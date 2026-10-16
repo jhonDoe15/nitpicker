@@ -28,13 +28,14 @@ function listed(entries, limit) {
   return `${entries.slice(0, limit).join(', ')}${more}`;
 }
 
-function loosening(label, reason, files, scope) {
+function loosening({ label, reason, files }, scope) {
   const entries =
     reason === 'imported'
       ? files.map((file) => `${file} (imported by ${scope.productionReach().get(file)})`)
       : files;
-  const describe = (limit) =>
-    `${label} hide code this change adds or moves ${REASONS[reason]}: ${listed(entries, limit)}`;
+  function describe(limit) {
+    return `${label} hide code this change adds or moves ${REASONS[reason]}: ${listed(entries, limit)}`;
+  }
   return { text: describe(LISTED_FILES), key: describe(entries.length), files };
 }
 
@@ -47,7 +48,7 @@ export function hiddenCodeChanges(baseConfig, headConfig, scope) {
     );
     return Object.keys(REASONS)
       .filter((reason) => byReason.has(reason))
-      .map((reason) => loosening(set.label, reason, byReason.get(reason), scope));
+      .map((reason) => loosening({ label: set.label, reason, files: byReason.get(reason) }, scope));
   });
   return { loosened, changed: [] };
 }

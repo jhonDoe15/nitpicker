@@ -1,7 +1,7 @@
 import { existsSync } from 'node:fs';
 import path from 'node:path';
 import { configError } from '../../../shared/config.mjs';
-import { filesUnder } from '../../../shared/filesystem.mjs';
+import { filesUnder, pathInside } from '../../../shared/filesystem.mjs';
 import { globToRegExp } from '../../../shared/glob.mjs';
 import {
   sourceRoots as defaultSourceRoots,
@@ -20,8 +20,8 @@ export function rejectHeadBase(base) {
 }
 
 function existingJsxFiles(projectRoot, root) {
-  const directory = path.join(projectRoot, root);
-  if (!existsSync(directory)) {
+  const directory = pathInside(projectRoot, root);
+  if (directory === undefined || !existsSync(directory)) {
     return [];
   }
   return [

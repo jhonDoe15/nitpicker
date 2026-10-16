@@ -1,4 +1,4 @@
-import { DEPENDENCY_PATH_PATTERN, EXCLUDED_PATH_PATTERN, resolveLayout } from './layout.mjs';
+import { EXCLUDED_PATH_PATTERN, resolveLayout } from './layout.mjs';
 import { testExecutionChecksFor } from './checks/test-execution.mjs';
 import {
   POLICY_FILES,

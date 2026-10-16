@@ -5,7 +5,7 @@ import { exceptionPathsByRule, keyedExclusions, testRootReclassifier } from './h
 
 const NOTHING_NEW = 'covers no checked file it did not cover before';
 
-function newlyCovered(baseGlobs, headGlob, paths, basePathOf = (file) => file) {
+function newlyCovered(baseGlobs, headGlob, { paths, basePathOf = (file) => file }) {
   const before = matcherOf(baseGlobs);
   const after = matcherOf([headGlob]);
   return paths.filter((file) => after(file) && !before(basePathOf(file)));
@@ -34,7 +34,7 @@ function exclusionChanges(baseConfig, headConfig, scope) {
       if (!keyOf.has(glob)) {
         return addedGlob(
           `${key} added: ${glob}`,
-          newlyCovered(baseGlobs, glob, scope.keptPaths),
+          newlyCovered(baseGlobs, glob, { paths: scope.keptPaths }),
           scope,
         );
       }
@@ -58,7 +58,7 @@ function exceptionChanges(baseExceptions = [], headExceptions = [], scope) {
     const before = basePaths.get(rule) ?? [];
     const coverage = paths
       .filter((glob) => !before.includes(glob))
-      .map((glob) => ({ glob, covered: newlyCovered(before, glob, scope.keptPaths) }));
+      .map((glob) => ({ glob, covered: newlyCovered(before, glob, { paths: scope.keptPaths }) }));
     const covering = coverage.filter(({ covered }) => covered.length > 0);
     const idle = coverage.filter(({ covered }) => covered.length === 0).map(({ glob }) => glob);
     return {
@@ -100,7 +100,10 @@ function entryPointChanges(baseConfig, headConfig, scope) {
       .map((glob) =>
         addedGlob(
           `layout.entryPoints added: ${glob}`,
-          newlyCovered(before, glob, scope.codePaths, scope.basePathOf),
+          newlyCovered(before, glob, {
+            paths: scope.codePaths,
+            basePathOf: scope.basePathOf,
+          }),
           scope,
         ),
       ),

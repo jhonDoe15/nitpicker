@@ -1,6 +1,7 @@
 import { createHash } from 'node:crypto';
 import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
+import { pathInside } from '../../shared/filesystem.mjs';
 import { globToRegExp } from '../../shared/glob.mjs';
 import { runGit } from '../diff/git/repository/command.mjs';
 import { detectSourceRoots } from '../../languages/python/adapters/execution/python-project.mjs';
@@ -169,8 +170,10 @@ function productionReachOf(headProjectRoot, headConfig, files) {
 
 function blobReader(projectRoot) {
   return (file) => {
-    const absolute = path.join(projectRoot, file);
-    return existsSync(absolute) ? gitBlobId(readFileSync(absolute)) : 'absent';
+    const absolute = pathInside(projectRoot, file);
+    return absolute !== undefined && existsSync(absolute)
+      ? gitBlobId(readFileSync(absolute))
+      : 'absent';
   };
 }
 

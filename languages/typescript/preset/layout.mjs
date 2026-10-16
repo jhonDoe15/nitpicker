@@ -150,6 +150,12 @@ function globsFor({ sourceRoots, testRoots, javascript, extensionGlob }) {
   };
 }
 
+function exactPathPattern(files) {
+  return files.length === 0
+    ? undefined
+    : `^(?:${files.map((file) => escapeRegExp(file)).join('|')})$`;
+}
+
 export function resolveLayout(
   layout = {},
   exclude = [],
@@ -185,10 +191,7 @@ export function resolveLayout(
       hiddenGlobs.length === 0
         ? undefined
         : hiddenGlobs.map((glob) => globToRegExpSource(glob)).join('|'),
-    generatedFilePattern:
-      generatedFiles.length === 0
-        ? undefined
-        : `^(?:${generatedFiles.map((file) => escapeRegExp(file)).join('|')})$`,
+    generatedFilePattern: exactPathPattern(generatedFiles),
     ...createClassifiers({
       sourceRoots,
       testRoots,

@@ -1,6 +1,7 @@
 import { existsSync, readFileSync, realpathSync } from 'node:fs';
 import path from 'node:path';
 import ts from 'typescript';
+import { depthFirst } from '../../../../shared/traversal.mjs';
 import { reachableModules } from './module-resolution.mjs';
 import { readJsonc } from './tsconfig-files.mjs';
 
@@ -17,17 +18,12 @@ function specifiersOf(file) {
     : [];
 }
 
+function childValues(node) {
+  return node !== null && typeof node === 'object' ? Object.values(node) : [];
+}
+
 function stringLeaves(value) {
-  const pending = [value];
-  const found = [];
-  for (const node of pending) {
-    if (typeof node === 'string') {
-      found.push(node);
-    } else if (node !== null && typeof node === 'object') {
-      pending.push(...Object.values(node));
-    }
-  }
-  return found;
+  return [...depthFirst(value, childValues)].filter((node) => typeof node === 'string');
 }
 
 function manifestEntries(projectRoot, manifest) {
