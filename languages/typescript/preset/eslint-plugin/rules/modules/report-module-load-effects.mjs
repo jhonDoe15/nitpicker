@@ -1,8 +1,8 @@
+import { stylesheetSpecifier } from '../../../layout.mjs';
 import { ancestorsOf } from '../analysis/ancestry.mjs';
 
 const ENTRY_HINT =
-  ' If this file is the app entry, list it under `layout.entryPoints` in nitpicker.config.json.';
-const stylesheetImport = /\.(?:css|scss|sass|less|styl|pcss)(?:\?.*)?$/u;
+  " Move the work into a function that the app entry calls. The entry (the module script in Vite's index.html, else src/main.tsx) is detected; for another entry file, list it under `layout.entryPoints` in nitpicker.config.json.";
 
 const TOP_LEVEL_CONTROL = new Set([
   'BlockStatement',
@@ -89,7 +89,7 @@ export const rule = {
     const commonJsExports = context.options[0]?.commonJsExports === true;
     return {
       ImportDeclaration(node) {
-        if (node.specifiers.length === 0 && !stylesheetImport.test(node.source.value)) {
+        if (node.specifiers.length === 0 && !stylesheetSpecifier.test(node.source.value)) {
           context.report({ node, messageId: 'sideEffectImport' });
         }
       },

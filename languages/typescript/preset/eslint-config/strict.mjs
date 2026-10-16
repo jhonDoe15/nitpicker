@@ -77,6 +77,18 @@ const configFileAllowances = {
   'nitpicker/no-promise-chain': 'off',
 };
 
+function frameworkFileEntries(files = []) {
+  return files.length === 0
+    ? []
+    : [
+        {
+          files,
+          plugins: { nitpicker: nitpickerRules },
+          rules: { 'nitpicker/no-default-export': 'off' },
+        },
+      ];
+}
+
 const domainNitpickerRules = {
   'nitpicker/no-throw': 'error',
   'nitpicker/no-ui-framework-in-domain': 'error',
@@ -108,6 +120,7 @@ export function strictSyntaxConfigFor(layout = defaultResolvedLayout, options = 
         ...configFileAllowances,
       },
     },
+    ...frameworkFileEntries(options.frameworkDefaultExports),
     {
       files: domainGlobsFor(layout.sourceRoots),
       ...productionScope(layout),

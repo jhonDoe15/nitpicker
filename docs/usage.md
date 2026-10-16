@@ -227,13 +227,17 @@ request that adds React does not turn the whole project into new findings.
 Set `"react": { "enabled": true }` to force the scope on (a monorepo whose manifest is elsewhere) or
 `false` to turn it off. `react.styling` picks the approach: `class-names` flags inline `style`
 objects and CSS-in-JS imports, `css-in-js` flags stylesheet imports and inline `style` objects,
-`inline-style` flags stylesheet imports and CSS-in-JS imports. Unset, it is `css-in-js` when
-`package.json` lists styled-components, Emotion or another CSS-in-JS library, else `class-names`. A
+`inline-style` flags stylesheet imports and CSS-in-JS imports, `style-sheet` (React Native) flags
+everything but `StyleSheet.create` styles. Unset, it is `css-in-js` when `package.json` lists
+styled-components, Emotion or another CSS-in-JS library, `style-sheet` when it lists `react-native`
+or `expo`, else `class-names`. The React major, the framework files that need a default export
+(Next.js routes, Storybook stories, Expo Router screens) and the Vite entry are detected from the
+head checkout too, and React files outside React Native get the browser globals. A
 rule that flags legitimate code is lifted for some paths with an entry in `exceptions` (for example
 `react-hooks/exhaustive-deps`); an exception that names a React rule is skipped while the scope is
 off, so adding or removing React in a PR does not break either side of the comparison. The rules and
-their allowed forms, and the Vite entry point, CSS Module typing and framework file-convention
-exceptions, are in [The strict preset](typescript-strict-preset.md#react).
+their allowed forms, and the Vite entry point, CSS Module typing and framework file conventions,
+are in [The strict preset](typescript-strict-preset.md#react).
 
 ### Internationalized messages
 

@@ -1,6 +1,8 @@
 import { EXCEPTION_HINT, GENERAL_HINT } from '../../rule-hints.mjs';
 
 export const reactXHints = {
+  'no-class-component': ` Write a function component with hooks (\`useState\`, \`useEffect\`); an error boundary stays a class.${GENERAL_HINT}`,
+  'no-array-index-key': ` Use a stable id from the item (\`key={todo.id}\`). For a static list that never changes order, ${EXCEPTION_HINT}`,
   immutability: ` Copy instead: \`setList([...list, item])\`, \`items.toSorted()\`.${GENERAL_HINT}`,
   purity: ` Pass the value in as a prop or state, or read it in an event handler or an effect.${GENERAL_HINT}`,
   'set-state-in-render': ` Compute the value during render, or set state in an event handler or an effect.${GENERAL_HINT}`,

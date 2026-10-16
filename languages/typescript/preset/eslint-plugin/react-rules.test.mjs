@@ -4,7 +4,7 @@ import tseslint from 'typescript-eslint';
 import { rule as reactNoEffectDataFetching } from './rules/react/react-no-effect-data-fetching.mjs';
 import { rule as reactNoEffectDerivedState } from './rules/react/react-no-effect-derived-state.mjs';
 import { rule as reactSingleStylingApproach } from './rules/react/react-single-styling-approach.mjs';
-import { rule as reactTestNoImplementationDetails } from './rules/react/react-test-no-implementation-details.mjs';
+import { rule as reactTestNoImplementationDetails } from './rules/react-tests/react-test-no-implementation-details.mjs';
 
 Object.assign(RuleTester, {
   afterAll,
@@ -290,6 +290,28 @@ tester.run('react-single-styling-approach: inline style', reactSingleStylingAppr
       errors: [otherApproachError(inlineAllowed, 'a CSS-in-JS library')],
     },
   ].map((testCase) => ({ filename, options: [{ approach: 'inline-style' }], ...testCase })),
+});
+
+tester.run('react-single-styling-approach: React Native style sheets', reactSingleStylingApproach, {
+  valid: [
+    "import { StyleSheet } from 'react-native'; const styles = StyleSheet.create({ title: { fontSize: 18 } }); export const A = () => <Text style={styles.title} />;",
+    'export const A = ({ width }) => <View style={[styles.bar, { width }]} />;',
+  ].map((code) => ({ filename, code, options: [{ approach: 'style-sheet' }] })),
+  invalid: [
+    {
+      code: 'export const A = () => <Text style={{ fontSize: 18 }} />;',
+      errors: [
+        {
+          messageId: 'inlineStyleSheet',
+          data: { allowed: 'React Native `StyleSheet.create` styles' },
+        },
+      ],
+    },
+    {
+      code: "import styled from 'styled-components/native';",
+      errors: [{ messageId: 'otherApproach' }],
+    },
+  ].map((testCase) => ({ filename, options: [{ approach: 'style-sheet' }], ...testCase })),
 });
 
 const testFilename = '/repo/test/ui/panel.test.tsx';

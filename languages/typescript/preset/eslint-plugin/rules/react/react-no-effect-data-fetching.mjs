@@ -1,5 +1,6 @@
+import ts from 'typescript';
 import { ancestorsOf } from '../analysis/ancestry.mjs';
-import { isEffectCallback } from './react-effects.mjs';
+import { isEffectCallback, isFunctionNode } from './react-effects.mjs';
 
 const requestFunctions = new Set(['fetch', 'axios', 'ky']);
 const requestLibraries = new Set(['axios', 'ky']);
@@ -33,17 +34,79 @@ function effectCallbackOf(sourceCode, node) {
   return ancestorsOf(node).find((ancestor) => isEffectCallback(sourceCode, ancestor));
 }
 
+function enclosingFunction(node) {
+  return ancestorsOf(node).find(isFunctionNode);
+}
+
+function effectOfCall(sourceCode, call) {
+  const caller = enclosingFunction(call);
+  return caller !== undefined && isEffectCallback(sourceCode, caller) ? caller : undefined;
+}
+
+function bindingOf(fn) {
+  if (fn.type === 'FunctionDeclaration') {
+    return fn;
+  }
+  const declarator = fn.parent;
+  return declarator.type === 'VariableDeclarator' && declarator.init === fn
+    ? declarator
+    : undefined;
+}
+
+function directCallsOf(sourceCode, fn) {
+  if (fn.parent.type === 'CallExpression' && fn.parent.callee === fn) {
+    return [fn.parent];
+  }
+  const binding = bindingOf(fn);
+  const variables = binding === undefined ? [] : sourceCode.getDeclaredVariables(binding);
+  return variables
+    .flatMap((variable) => variable.references)
+    .map(({ identifier }) => identifier)
+    .filter((identifier) => identifier.parent.type === 'CallExpression')
+    .filter((identifier) => identifier.parent.callee === identifier)
+    .map((identifier) => identifier.parent);
+}
+
+function owningEffect(sourceCode, node) {
+  const fn = enclosingFunction(node);
+  if (fn === undefined || isEffectCallback(sourceCode, fn)) {
+    return fn;
+  }
+  const outer = ancestorsOf(fn);
+  return directCallsOf(sourceCode, fn)
+    .map((call) => effectOfCall(sourceCode, call))
+    .find((effect) => effect !== undefined && outer.includes(effect));
+}
+
 function isThenable(type) {
   return type.getProperty('then') !== undefined || (type.types?.some(isThenable) ?? false);
 }
 
-function returnsPromise(context, node) {
+const settledWithoutValue = ts.TypeFlags.Void | ts.TypeFlags.Undefined;
+
+function isDiscarded(node) {
+  const outer = node.parent.type === 'ChainExpression' ? node.parent.parent : node.parent;
+  return outer.type === 'UnaryExpression' && outer.operator === 'void';
+}
+
+function isDiscardedVoidPromise(checker, node, type) {
+  const awaited = checker.getAwaitedType(type);
+  const settled = awaited?.types ?? (awaited === undefined ? [] : [awaited]);
+  return (
+    isDiscarded(node) &&
+    settled.length > 0 &&
+    settled.every((member) => (member.flags & settledWithoutValue) !== 0)
+  );
+}
+
+function startsAsyncWork(context, node) {
   const services = context.sourceCode.parserServices;
   if (!services?.program) {
     return false;
   }
   const checker = services.program.getTypeChecker();
-  return isThenable(checker.getTypeAtLocation(services.esTreeNodeToTSNodeMap.get(node)));
+  const type = checker.getTypeAtLocation(services.esTreeNodeToTSNodeMap.get(node));
+  return isThenable(type) && !isDiscardedVoidPromise(checker, node, type);
 }
 
 export const rule = {
@@ -71,31 +134,30 @@ export const rule = {
       return effects.get(effect);
     }
 
-    function check(node) {
-      const effect = effectCallbackOf(context.sourceCode, node);
-      if (effect === undefined) {
+    function checkAsync(node) {
+      const effect = owningEffect(context.sourceCode, node);
+      if (effect === undefined || entryFor(effect).firstAsync !== undefined) {
         return;
       }
-      const entry = entryFor(effect);
-      if (sendsRequest(node)) {
-        entry.requested = true;
-        context.report({ node, messageId: 'fetchInEffect' });
-      } else if (entry.firstAsync === undefined && returnsPromise(context, node)) {
-        entry.firstAsync = node;
+      if (node.type === 'AwaitExpression' || startsAsyncWork(context, node)) {
+        entryFor(effect).firstAsync = node;
       }
     }
 
-    function checkAwait(node) {
+    function check(node) {
       const effect = effectCallbackOf(context.sourceCode, node);
-      if (effect !== undefined) {
-        entryFor(effect).firstAsync ??= node;
+      if (effect !== undefined && sendsRequest(node)) {
+        entryFor(effect).requested = true;
+        context.report({ node, messageId: 'fetchInEffect' });
+      } else {
+        checkAsync(node);
       }
     }
 
     return {
       CallExpression: check,
       NewExpression: check,
-      AwaitExpression: checkAwait,
+      AwaitExpression: checkAsync,
       'Program:exit'() {
         for (const { requested, firstAsync } of effects.values()) {
           if (!requested && firstAsync !== undefined) {

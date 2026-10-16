@@ -40,7 +40,7 @@ tester.run('report-module-load-effects for style and asset imports', rule, {
 describe('module-load messages name the entry point exception', () => {
   it('names layout.entryPoints on every top-level effect but static blocks', () => {
     const hint =
-      ' If this file is the app entry, list it under `layout.entryPoints` in nitpicker.config.json.';
+      " Move the work into a function that the app entry calls. The entry (the module script in Vite's index.html, else src/main.tsx) is detected; for another entry file, list it under `layout.entryPoints` in nitpicker.config.json.";
     expect(rule.meta.messages).toEqual({
       sideEffectImport: `Side-effect-only import executes code during module loading.${hint}`,
       staticBlock: 'Static initialization block executes during module loading.',

@@ -84,7 +84,7 @@ describe('the scope decision in the head policy', () => {
     const [intl, react] = [resolveHeadPolicy({}, withIntl), resolveHeadPolicy({}, without)];
 
     expect([intl.i18n, intl.react]).toEqual([{ enabled: true }, { enabled: false }]);
-    expect([react.i18n, react.react]).toEqual([{ enabled: false }, { enabled: true }]);
+    expect([react.i18n, react.react]).toEqual([{ enabled: false }, { enabled: true, major: 19 }]);
   });
 
   it('keeps what the config sets, and the other settings of the key', () => {

@@ -4,9 +4,9 @@ import reactDom from 'eslint-plugin-react-dom';
 import reactWebApi from 'eslint-plugin-react-web-api';
 import reactX from 'eslint-plugin-react-x';
 import testingLibrary from 'eslint-plugin-testing-library';
-import { inReactTestFilesOnly } from '../../eslint-plugin/rules/react/react-test-files.mjs';
+import { inReactTestFilesOnly } from '../../eslint-plugin/rules/react-tests/react-test-files.mjs';
 import { accessibilityRuleNames, testingLibraryHints } from './react-rules.mjs';
-import { accessibilityOptionOverrides } from './rules/accessibility-rules.mjs';
+import { accessibilityHints, accessibilityOptionOverrides } from './rules/accessibility-rules.mjs';
 import {
   reactDomHints,
   reactWebApiHints,
@@ -15,6 +15,7 @@ import {
 } from './rules/third-party-rules.mjs';
 import { EXCEPTION_HINT, GENERAL_HINT, withHint, withoutFixes } from '../rule-hints.mjs';
 import { createdByCallOnly } from './rules/static-components.mjs';
+import { outsideKeyAttributes } from './rules/purity-outside-keys.mjs';
 
 const accessibilityRulePrefix = 'jsx-a11y-x';
 
@@ -47,29 +48,23 @@ export const reactPlugins = {
   'react-dom': { rules: hintedRules(reactDom, reactDomHints) },
   'react-web-api': { rules: hintedRules(reactWebApi, reactWebApiHints) },
   'react-x': {
-    rules: {
-      ...hintedRules(
-        {
-          rules: {
-            ...reactX.rules,
-            'static-components': createdByCallOnly(reactX.rules['static-components']),
-          },
+    rules: hintedRules(
+      {
+        rules: {
+          ...reactX.rules,
+          purity: outsideKeyAttributes(reactX.rules.purity),
+          'static-components': createdByCallOnly(reactX.rules['static-components']),
         },
-        reactXHints,
-        typedReactXRules,
-      ),
-      'no-class-component': withHint(reactX.rules['no-class-component'], GENERAL_HINT),
-      'no-array-index-key': withHint(
-        reactX.rules['no-array-index-key'],
-        ` Use a stable id from the item (\`key={todo.id}\`). For a static list that never changes order, ${EXCEPTION_HINT}`,
-      ),
-    },
+      },
+      reactXHints,
+      typedReactXRules,
+    ),
   },
   'jsx-a11y': {
     rules: Object.fromEntries(
       accessibilityRuleNames.map((name) => [
         name,
-        withHint(accessibility.rules[name], GENERAL_HINT),
+        withHint(accessibility.rules[name], accessibilityHints[name] ?? GENERAL_HINT),
       ]),
     ),
   },

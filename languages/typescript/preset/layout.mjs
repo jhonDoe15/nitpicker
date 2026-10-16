@@ -13,6 +13,11 @@ const defaultSourceRoots = ['src'];
 const defaultTestRoots = ['test', 'tests'];
 export const codeExtensionNames = ['ts', 'tsx', 'mts', 'cts', 'js', 'jsx', 'mjs', 'cjs'];
 export const codeExtensions = `{${codeExtensionNames.join(',')}}`;
+export const stylesheetExtensionNames = ['css', 'scss', 'sass', 'less', 'styl', 'pcss'];
+export const stylesheetSpecifier = new RegExp(
+  `\\.(?:${stylesheetExtensionNames.join('|')})(?:\\?.*)?$`,
+  'u',
+);
 const javascriptProjectExtensionNames = [
   ...TYPESCRIPT_EXTENSIONS_IN_JAVASCRIPT_PROJECT,
   ...JAVASCRIPT_EXTENSIONS,

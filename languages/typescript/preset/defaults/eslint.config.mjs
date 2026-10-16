@@ -77,7 +77,10 @@ const presetConfig = defineConfig(
       'nitpicker/preserve-error-cause': ['error', errorWrappingPolicy],
     },
   },
-  ...strictPresetConfig(layout, parserOptions, { react }),
+  ...strictPresetConfig(layout, parserOptions, {
+    react,
+    frameworkDefaultExports: policy.frameworks.defaultExports,
+  }),
   ...(react ? await reactScopeConfigFor(layout, policy.react) : []),
   ...(i18n ? await i18nScopeConfigFor(layout, policy.i18n) : []),
   {

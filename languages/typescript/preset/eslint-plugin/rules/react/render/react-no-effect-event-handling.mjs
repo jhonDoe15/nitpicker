@@ -18,33 +18,45 @@ function isDestructuredFromParameter(sourceCode, { type, node }) {
   );
 }
 
-function isPropBinding(sourceCode, identifier) {
-  return (
-    variableNamed(sourceCode, identifier)?.defs.some(
-      (definition) =>
-        definition.type === 'Parameter' || isDestructuredFromParameter(sourceCode, definition),
-    ) ?? false
+function isPropDefinition(sourceCode, definition) {
+  return definition.type === 'Parameter' || isDestructuredFromParameter(sourceCode, definition);
+}
+
+function destructuredKey(binding) {
+  const target = binding.parent.type === 'AssignmentPattern' ? binding.parent : binding;
+  const property = target.parent;
+  const isRenamed =
+    property.type === 'Property' &&
+    property.value === target &&
+    !property.computed &&
+    property.key.type === 'Identifier';
+  return isRenamed ? property.key.name : binding.name;
+}
+
+function propName(sourceCode, identifier) {
+  const definition = variableNamed(sourceCode, identifier)?.defs.find((candidate) =>
+    isPropDefinition(sourceCode, candidate),
   );
+  return definition === undefined ? undefined : destructuredKey(definition.name);
 }
 
 function propCallbackName(sourceCode, callee) {
   if (callee.type === 'Identifier') {
-    return callbackName.test(callee.name) && isPropBinding(sourceCode, callee)
-      ? callee.name
-      : undefined;
+    const name = propName(sourceCode, callee);
+    return name !== undefined && callbackName.test(name) ? callee.name : undefined;
   }
   const isMember =
     callee.type === 'MemberExpression' &&
     !callee.computed &&
     callee.object.type === 'Identifier' &&
     callbackName.test(callee.property.name) &&
-    isPropBinding(sourceCode, callee.object);
+    propName(sourceCode, callee.object) !== undefined;
   return isMember ? callee.property.name : undefined;
 }
 
-function hasDependencies(effectCall) {
+function runsOnlyOnMount(effectCall) {
   const dependencies = effectCall.arguments[1];
-  return dependencies?.type === 'ArrayExpression' && dependencies.elements.length > 0;
+  return dependencies?.type === 'ArrayExpression' && dependencies.elements.length === 0;
 }
 
 export const rule = {
@@ -69,7 +81,7 @@ export const rule = {
           name !== undefined &&
           enclosing !== undefined &&
           isEffectCallback(sourceCode, enclosing) &&
-          hasDependencies(enclosing.parent)
+          !runsOnlyOnMount(enclosing.parent)
         ) {
           context.report({ node, messageId: 'effectEvent', data: { name } });
         }

@@ -1,6 +1,5 @@
-import path from 'node:path';
+import globals from 'globals';
 import tseslint from 'typescript-eslint';
-import { readJsonc } from '../../modules/tsconfig-files.mjs';
 import { nitpickerRules } from '../../eslint-plugin/index.mjs';
 import { cssInJsSource } from '../../eslint-plugin/rules/react/react-single-styling-approach.mjs';
 import { codeExtensions } from '../../layout.mjs';
@@ -17,9 +16,10 @@ import {
   typedReactXRules,
 } from './rules/third-party-rules.mjs';
 import {
+  isReactNativePackage,
   productionScope,
+  reactMajorOf,
   readDependencyNames,
-  readManifest,
   storyGlobs,
 } from '../scope-support.mjs';
 
@@ -28,26 +28,20 @@ export { isReactProject } from '../scope-support.mjs';
 const typedRuleIds = typedReactXRules.map((name) => `react-x/${name}`);
 const untypedThirdPartyRuleIds = thirdPartyReactRuleIds.filter((id) => !typedRuleIds.includes(id));
 
-function reactMajorOf(projectRoot) {
-  const installed = readJsonc(path.join(projectRoot, 'node_modules/react/package.json'))?.version;
-  const manifest = readManifest(projectRoot);
-  const declared = manifest?.dependencies?.react ?? manifest?.devDependencies?.react;
-  const major = /\d+/u.exec(typeof installed === 'string' ? installed : String(declared ?? ''));
-  return major === null ? undefined : Number(major[0]);
-}
-
 function ruleIdsForReact(major) {
   const before19 = major !== undefined && major < 19;
   return untypedThirdPartyRuleIds.filter((id) => !before19 || !react19RuleIds.includes(id));
 }
 
-export function stylingApproachFor({ projectRoot, react = {} }) {
-  if (react.styling !== undefined) {
-    return react.styling;
+function inferredStylingApproach(dependencies) {
+  if (dependencies.some((name) => cssInJsSource.test(name))) {
+    return 'css-in-js';
   }
-  return readDependencyNames(projectRoot).some((name) => cssInJsSource.test(name))
-    ? 'css-in-js'
-    : defaultStylingApproach;
+  return dependencies.some(isReactNativePackage) ? 'style-sheet' : defaultStylingApproach;
+}
+
+export function stylingApproachFor({ projectRoot, react = {} }) {
+  return react.styling ?? inferredStylingApproach(readDependencyNames(projectRoot));
 }
 
 export function analyzedProjectRoot(environment = process.env) {
@@ -63,18 +57,26 @@ function testScope(layout) {
   };
 }
 
+function reactVersionSettings(major) {
+  return major === undefined ? {} : { settings: { 'react-x': { version: `${major}.0.0` } } };
+}
+
+function platformGlobals(react) {
+  return react.nativeApp ? {} : { languageOptions: { globals: globals.browser } };
+}
+
 export async function reactSyntaxConfigFor(layout, react = {}) {
   const { reactPlugins, accessibilityRuleOptions, testingLibraryPlugin } =
     await import('./react-plugins.mjs');
   return [
     {
       ...productionScope(layout),
+      ...platformGlobals(react),
+      ...reactVersionSettings(react.major),
       plugins: { nitpicker: nitpickerRules, ...reactPlugins },
       rules: {
         'react-hooks/rules-of-hooks': 'error',
         'react-hooks/exhaustive-deps': 'error',
-        'react-x/no-class-component': 'error',
-        'react-x/no-array-index-key': 'error',
         ...Object.fromEntries(
           [...nitpickerReactRuleIds, ...ruleIdsForReact(react.major)].map((id) => [id, 'error']),
         ),
@@ -92,6 +94,7 @@ export async function reactSyntaxConfigFor(layout, react = {}) {
     },
     {
       ...testScope(layout),
+      ...platformGlobals(react),
       plugins: { nitpicker: nitpickerRules, 'testing-library': testingLibraryPlugin },
       settings: testingLibrarySettings,
       rules: {
@@ -134,11 +137,16 @@ async function reactTypedConfigFor(layout) {
 }
 
 export async function reactScopeConfigFor(layout, react = {}, projectRoot = analyzedProjectRoot()) {
-  const styling = stylingApproachFor({ projectRoot, react });
-  const reactNative = readDependencyNames(projectRoot).includes(reactNativeTestingPackage);
-  const major = reactMajorOf(projectRoot);
+  const dependencies = readDependencyNames(projectRoot);
+  const scope = {
+    ...react,
+    styling: stylingApproachFor({ projectRoot, react }),
+    reactNative: dependencies.includes(reactNativeTestingPackage),
+    nativeApp: dependencies.some(isReactNativePackage),
+    major: react.major ?? reactMajorOf(projectRoot),
+  };
   return [
-    ...(await reactSyntaxConfigFor(layout, { ...react, styling, reactNative, major })),
+    ...(await reactSyntaxConfigFor(layout, scope)),
     ...storyConfigFor(),
     ...(await reactTypedConfigFor(layout)),
   ];
