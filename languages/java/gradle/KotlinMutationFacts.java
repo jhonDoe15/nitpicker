@@ -17,8 +17,8 @@
 //                          body), delegated
 //   functions              every named function with a body: name, class, start, end, suspend, inline,
 //                          returnsUnit (a block body or a declared Unit result), inlineCalls (names of the
-//                          project's inline functions it calls), staticIn (the class that gets the static
-//                          bridge of a @JvmStatic function of a companion object)
+//                          project's inline functions it calls), staticIn (only for a @JvmStatic function of a
+//                          companion object: the class that gets the static bridge)
 //   lambdas                every lambda: start, end, valueLines (first and last line of the expression whose
 //                          value it returns, none when its last statement is not an expression), returnLines
 //                          (the lines of its labeled returns), callee (the call it is an argument of),
@@ -338,7 +338,7 @@ public final class KotlinMutationFacts {
           + ",\"inline\":" + function.hasModifier(KtTokens.INLINE_KEYWORD)
           + ",\"returnsUnit\":" + returnsUnit(function)
           + ",\"inlineCalls\":" + inlineCalls(function)
-          + ",\"staticIn\":" + (jvmStatic && staticOwner != null ? quote(staticOwner) : "null") + "}");
+          + (jvmStatic && staticOwner != null ? ",\"staticIn\":" + quote(staticOwner) : "") + "}");
     }
 
     private boolean returnsUnit(KtNamedFunction function) {
