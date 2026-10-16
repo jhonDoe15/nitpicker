@@ -59,10 +59,15 @@ export function lintWithOxlint({ options, environment, projectConfigPath, runEsl
       ]),
       directiveFiles,
     });
+    const screening = screenedResults(results, translation.screenedRules);
     return mergeResults([
-      ...results,
+      ...screening.results,
       ...inlineConfig.results,
-      ...residualResults(options.projectRoot, translation.residual, runEslintCli),
+      ...residualResults(options.projectRoot, translation.residual, {
+        ...screening,
+        screenedRules: translation.screenedRules,
+        runEslintCli,
+      }),
     ]).map((result) => ({ ...result, filePath: path.join(options.projectRoot, result.filePath) }));
   } finally {
     rmSync(stage, { recursive: true, force: true });
@@ -180,9 +185,30 @@ function argumentChunks(files) {
   return chunks.filter((chunk) => chunk.length > 0);
 }
 
-function residualResults(projectRoot, residual, runEslintCli) {
-  if (residual.length === 0) return [];
-  const files = [...new Set(residual.flatMap((group) => group.files))].sort();
+function screenedResults(results, screenedRules) {
+  const candidates = new Set(
+    results
+      .filter(({ messages }) => messages.some(({ ruleId }) => screenedRules.has(ruleId)))
+      .map(({ filePath }) => filePath),
+  );
+  return {
+    candidates,
+    results: results.map((result) => ({
+      ...result,
+      messages: result.messages.filter(({ ruleId }) => !screenedRules.has(ruleId)),
+    })),
+  };
+}
+
+function residualFiles(group, { screenedRules, candidates }) {
+  return group.rules.every((ruleId) => screenedRules.has(ruleId))
+    ? group.files.filter((file) => candidates.has(file))
+    : group.files;
+}
+
+function residualResults(projectRoot, residual, { runEslintCli, ...screening }) {
+  const files = [...new Set(residual.flatMap((group) => residualFiles(group, screening)))].sort();
+  if (files.length === 0) return [];
   const rules = [...new Set(residual.flatMap((group) => group.rules))].sort();
   return runEslintCli(files, { NITPICKER_DIFF_ESLINT_ONLY_RULES: JSON.stringify(rules) }).map(
     (result) => ({
