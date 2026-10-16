@@ -41,6 +41,12 @@ function sampleFor(definition, candidates) {
 }
 
 function measureConvention(definition, sample, texts) {
+  return definition.kind === 'names'
+    ? measureNames(definition, sample, texts)
+    : measureOptions(definition, sample, texts);
+}
+
+function measureOptions(definition, sample, texts) {
   const counts = Object.fromEntries(definition.options.map((option) => [option, 0]));
   for (const file of sample) {
     const text = texts.get(file);
@@ -53,6 +59,22 @@ function measureConvention(definition, sample, texts) {
   return winner === undefined
     ? { choice: definition.fallback, source: 'default', counts, files: sample.length }
     : { choice: winner, source: 'majority', counts, files: sample.length };
+}
+
+function measureNames(definition, sample, texts) {
+  const counts = {};
+  for (const file of sample) {
+    const text = texts.get(file);
+    for (const name of new Set(text === undefined ? [] : definition.measure(text, file))) {
+      counts[name] = (counts[name] ?? 0) + 1;
+    }
+  }
+  const names = Object.keys(counts)
+    .filter((name) => counts[name] >= definition.minFiles)
+    .sort();
+  return names.length === 0
+    ? { choice: definition.fallback, source: 'default', counts, files: sample.length }
+    : { choice: names.join(','), source: 'majority', counts, files: sample.length };
 }
 
 function pluralityOf(counts) {

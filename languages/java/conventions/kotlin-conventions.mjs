@@ -1,6 +1,7 @@
-import { indentationStep } from './java-conventions.mjs';
-import { lineLength } from './kotlin-line-length.mjs';
-import { trailingCommas, wildcardImports } from './kotlin-measures.mjs';
+import { assertionHelpers, MIN_FILES } from './measures/assertion-helpers.mjs';
+import { indentationStep, TEST_SOURCE_GLOB } from './java-conventions.mjs';
+import { lineLength } from './measures/kotlin-line-length.mjs';
+import { trailingCommas, wildcardImports } from './measures/kotlin-measures.mjs';
 
 const KOTLIN_FILES = ['**/*.kt'];
 
@@ -8,6 +9,7 @@ export const KOTLIN_INDENTATION = 'kotlin.indentation';
 export const KOTLIN_TRAILING_COMMAS = 'kotlin.trailingCommas';
 export const KOTLIN_WILDCARD_IMPORTS = 'kotlin.wildcardImports';
 export const KOTLIN_LINE_LENGTH = 'kotlin.lineLength';
+export const KOTLIN_ASSERTION_HELPERS = 'kotlin.assertionHelpers';
 
 export const KOTLIN_CONVENTIONS = [
   {
@@ -45,5 +47,14 @@ export const KOTLIN_CONVENTIONS = [
     fallback: undefined,
     files: KOTLIN_FILES,
     measure: lineLength,
+  },
+  {
+    id: KOTLIN_ASSERTION_HELPERS,
+    label: 'Kotlin assertion helpers',
+    kind: 'names',
+    minFiles: MIN_FILES,
+    fallback: '',
+    files: [`${TEST_SOURCE_GLOB}*.kt`],
+    measure: (text) => assertionHelpers(text, 'kotlin'),
   },
 ];

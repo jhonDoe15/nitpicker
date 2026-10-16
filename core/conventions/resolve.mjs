@@ -58,9 +58,10 @@ function fromProject(detected, project, pinned = {}) {
 
 function appliedChoices(detected, definitions) {
   return Object.fromEntries(
-    Object.entries(conventionChoices(detected, definitions)).filter(([id, choice]) =>
-      definitions.find((definition) => definition.id === id).options.includes(choice),
-    ),
+    Object.entries(conventionChoices(detected, definitions)).filter(([id, choice]) => {
+      const definition = definitions.find((candidate) => candidate.id === id);
+      return definition.kind === 'names' || definition.options.includes(choice);
+    }),
   );
 }
 

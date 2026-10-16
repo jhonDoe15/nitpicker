@@ -15,6 +15,7 @@ const ENTRY_FILES = [
 ];
 const RESOURCE_FILES = [
   'languages/java/gradle/nitpicker.init.gradle',
+  'languages/java/adapters/tool-config/checkstyle-merge-cli.mjs',
   'languages/java/gradle/checkstyle-suppressions.xml',
   'languages/java/gradle/pmd-ruleset.xml',
   'languages/java/gradle/spring-ruleset.xml',

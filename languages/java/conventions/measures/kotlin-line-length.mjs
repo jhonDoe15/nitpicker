@@ -1,4 +1,4 @@
-import { bracketGroups, indentOf } from '../../../shared/conventions/lines.mjs';
+import { bracketGroups, indentOf } from '../../../../shared/conventions/lines.mjs';
 
 const WIDTHS = [100, 120, 140];
 const MIN_BEYOND = 2;
