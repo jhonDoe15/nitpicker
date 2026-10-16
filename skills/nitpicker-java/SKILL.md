@@ -99,8 +99,8 @@ With Spring on the classpath, also follow [spring.md](spring.md).
 - Tests get the same PMD, Checkstyle, Error Prone and formatter checks as main code, plus the file
   (500 lines) and folder (6 files) limits. SpotBugs, the method limits, CRAP and duplicate detection
   read main sources only. In a test, use `assertThrows` instead of a try/catch. Spring rules apply
-  to main sources only. If a PMD rule flags test code that is right, add an exception for
-  `pmd/<rule>`.
+  to main sources only. If a PMD rule or an Error Prone check flags test code that is right, add an
+  exception for `pmd/<rule>` or `errorprone/<Check>`.
 
 ## Editing existing code
 
@@ -120,13 +120,17 @@ With Spring on the classpath, also follow [spring.md](spring.md).
   `"serial"` or `"fallthrough"` is itself a finding (`pmd/InlineSuppression`). The one allowed
   marker is `@SuppressWarnings("PMD.SpringDataNativeQuery")` on a repository method with native
   SQL ([spring.md](spring.md)).
+- A `@SuppressWarnings` naming an Error Prone check (`"CheckReturnValue"`, `"dep-ann"`) or NullAway
+  (`"NullAway"`, `"NullAway.Init"`), `@NullUnmarked`, and a `@CanIgnoreReturnValue` the project
+  declares itself are findings too (`errorprone/InlineSuppression`).
 - `@SuppressFBWarnings` is a finding too (`spotbugs/InlineSuppression`). Checkstyle's
   `@SuppressWarnings("checkstyle:...")` and `CHECKSTYLE.OFF`/`CHECKSTYLE.SUPPRESS` comments do
   nothing.
 - Code that is right despite a rule gets a reviewed `exceptions` entry in `nitpicker.config.json`
-  that names the finding as printed, for example `pmd/UnusedPrivateField`, with its paths and a
-  reason. Never add one, nor a config `exclude`, `disable`, `thresholds` or legacy entry, nor a
-  weaker test, to get past the gate yourself: stop and ask.
+  that names the finding as printed, for example `pmd/UnusedPrivateField` or
+  `errorprone/FieldCanBeFinal`, with its paths and a reason. Never add one, nor a config `exclude`,
+  `disable`, `thresholds` or legacy entry, nor a weaker test, to get past the gate yourself: stop
+  and ask.
 - A violated ArchUnit rule is a finding (`archunit/<rule>`) on the offending class. Run the
   `*ArchTest` class with the build's test task to read the full violation, and fix the code.
 

@@ -20,8 +20,17 @@ const NULLAWAY =
 const STACK =
   'Stack is a nonstandard class that predates the Java Collections Framework; prefer ArrayDeque. Note that the Stack methods push/pop/peek correspond to the Deque methods addFirst/removeFirst/peekFirst.';
 
+const SUMMARIES = new Map([
+  [CHECK_RETURN_VALUE, 'The result of `evaluate()` must be used'],
+  [FUTURE, FUTURE.replace(/ Did you mean .*$/u, '')],
+  [NULLAWAY, NULLAWAY.replace(/ Annotate what may be null .*$/u, '')],
+]);
+
 const identity = (rule, message) =>
-  hashIdentity('errorprone', [rule, message.replace(/\bline \d+\b/g, 'line')]);
+  hashIdentity('errorprone', [
+    rule,
+    (SUMMARIES.get(message) ?? message).replace(/\bline \d+\b/g, 'line'),
+  ]);
 
 describe('ingestErrorProne', () => {
   it('turns each Error Prone diagnostic under a source root into an enforceable finding', () => {
@@ -90,6 +99,17 @@ describe('ingestErrorProne', () => {
       ingestErrorProne(json, { resolvePath }).findings.map((finding) => finding.identity);
 
     expect(identities(JSON.stringify(moved))).toEqual(identities(REPORT));
+  });
+
+  it('keeps identities when the suggested fix changes with the code', () => {
+    const reformatted = JSON.parse(REPORT).map((diagnostic) => ({
+      ...diagnostic,
+      message: diagnostic.message.replace(/Did you mean '[^']*'/u, "Did you mean 'other code'"),
+    }));
+    const identities = (json) =>
+      ingestErrorProne(json, { resolvePath }).findings.map((finding) => finding.identity);
+
+    expect(identities(JSON.stringify(reformatted))).toEqual(identities(REPORT));
   });
 
   it('numbers repeats by position, whatever the report order', () => {

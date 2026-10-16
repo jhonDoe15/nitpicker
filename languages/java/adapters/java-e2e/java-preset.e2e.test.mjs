@@ -60,6 +60,7 @@ const BASELINED_FINDINGS = [
   'coupling module-coupling Legacy.java',
   'coupling module-coupling Wide.java',
   'coupling package-coupling .',
+  'errorprone PrivateConstructorForUtilityClass ArchitectureTest.java',
   'errorprone UnnecessarilyFullyQualified Greeter.java',
   'jacoco changed-branch-coverage Branchy.java',
   'jacoco line-coverage Branchy.java',
@@ -87,6 +88,7 @@ const BASELINED_FINDINGS_WITHOUT_GREETER_LINE_COVERAGE = [
   'coupling module-coupling Legacy.java',
   'coupling module-coupling Wide.java',
   'coupling package-coupling .',
+  'errorprone PrivateConstructorForUtilityClass ArchitectureTest.java',
   'errorprone UnnecessarilyFullyQualified Greeter.java',
   'jacoco changed-branch-coverage Branchy.java',
   'jacoco line-coverage Branchy.java',
@@ -209,7 +211,6 @@ describe.skipIf(!enabled)('Java preset end to end', () => {
         'google-java-format format Bad.java',
         'pit mutant-nocoverage Bad.java', // Bad.decode has no test
         'pmd EmptyCatchBlock Bad.java',
-        'spotbugs DM_DEFAULT_ENCODING Bad.java',
       ]);
       expect([...new Set(summarize(result.unchangedFindings))].sort()).toEqual(BASELINED_FINDINGS);
     },

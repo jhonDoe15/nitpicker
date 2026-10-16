@@ -19,7 +19,8 @@
 //   build/nitpicker/jdeps.txt        jdeps -verbose:class -filter:none over the main classes (coupling input)
 //   build/nitpicker/jdeps-classes.txt the binary names of those main classes, one per line
 //   build/nitpicker/errorprone.json  Error Prone and NullAway diagnostics over main and test sources, a JSON
-//                                    array of {file, line, column, kind, message} (languages/java/gradle/errorprone/)
+//                                    array of {file, line, column, position, kind, message}
+//                                    (languages/java/gradle/errorprone/)
 //   build/nitpicker/manifest.json    tool versions and the source roots the reports are relative to
 //
 // With -Pnitpicker.kotlin=true (the Kotlin preset) Kotlin JVM modules (org.jetbrains.kotlin.jvm) also write:
@@ -224,7 +225,9 @@ allprojects {
                 def classDirs = analyzedClassDirs().findAll { it.exists() }
                 def auxiliary = kotlinPreset
                     ? sourceSets.main.runtimeClasspath.files.findAll { it.exists() && !classDirs.contains(it) } : []
-                args(['-effort:default', '-medium', '-sarif',
+                def overlaps = kotlinPreset ? []
+                    : ['-exclude', new File(initScriptDir, 'spotbugs-exclude.xml').absolutePath]
+                args(['-effort:default', '-medium', '-sarif'] + overlaps + [
                       '-output', reportDir.get().file('spotbugs.sarif').asFile.absolutePath,
                       '-sourcepath', sourcePath] +
                     (auxiliary.isEmpty() ? [] : ['-auxclasspath', auxiliary.join(File.pathSeparator)]) +

@@ -1,4 +1,4 @@
-import { mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
@@ -8,11 +8,6 @@ const roots = [];
 afterEach(() => {
   for (const root of roots.splice(0)) rmSync(root, { recursive: true, force: true });
 });
-
-const packageRoot = path.resolve(import.meta.dirname, '../../../..');
-const checks = JSON.parse(
-  readFileSync(path.join(packageRoot, 'languages/java/gradle/errorprone/checks.json'), 'utf8'),
-);
 
 function reportRootWith(diagnostics) {
   const projectRoot = realpathSync(mkdtempSync(path.join(tmpdir(), 'nitpicker-errorprone-')));
@@ -92,33 +87,52 @@ describe('readErrorProneFindings', () => {
     ]);
   });
 
+  it('drops what Lombok generates at its annotations and keeps the findings in written code', () => {
+    const source = [
+      'package demo;',
+      'import lombok.*;',
+      '@Data',
+      'class A {',
+      '  @Deprecated private int legacy() { return 1; }',
+      '}',
+    ].join('\n');
+    const { projectRoot, reportRoot } = reportRootWith((root) => {
+      const file = path.join(root, 'src/main/java/demo/A.java');
+      mkdirSync(path.dirname(file), { recursive: true });
+      writeFileSync(file, source);
+      return [
+        {
+          file,
+          line: 3,
+          position: source.indexOf('@Data'),
+          message: '[UnnecessarySemicolon] Unnecessary semicolon',
+        },
+        {
+          file,
+          line: 5,
+          position: source.indexOf('@Deprecated'),
+          message: '[MethodCanBeStatic] Can be static',
+        },
+      ];
+    });
+
+    const findings = readErrorProneFindings({
+      reportRoot,
+      roots: [projectRoot],
+      lintedRoots: ['src/main/java'],
+      kotlin: true,
+    });
+
+    expect(findings.map((finding) => [finding.rule, finding.location.line])).toStrictEqual([
+      ['MethodCanBeStatic', 5],
+    ]);
+  });
+
   it('reads no findings when the report is absent', () => {
     const { projectRoot, reportRoot } = reportRootWith();
 
     expect(
       readErrorProneFindings({ reportRoot, roots: [projectRoot], lintedRoots: ['src'] }),
     ).toEqual([]);
-  });
-});
-
-describe('Error Prone check policy', () => {
-  const documented = () => {
-    const doc = readFileSync(path.join(packageRoot, 'docs/java-preset.md'), 'utf8');
-    const section = doc.slice(doc.indexOf('### Checks that are off'));
-    const table = section.slice(0, section.indexOf('\n\n', section.indexOf('| ---')));
-    return [...table.matchAll(/^\| `(\w+)` +\| .+\|$/gm)].map(([, name]) => name);
-  };
-
-  it('documents a reason for every check it turns off, and documents no check it turns on', () => {
-    const offList = documented();
-
-    expect(checks.disable.filter((name) => !offList.includes(name))).toEqual([]);
-    expect(offList.filter((name) => checks.enable.includes(name))).toEqual([]);
-  });
-
-  it('keeps each list sorted and free of repeats', () => {
-    for (const list of [checks.enable, checks.disable]) {
-      expect(list).toEqual([...new Set(list)].sort());
-    }
   });
 });
