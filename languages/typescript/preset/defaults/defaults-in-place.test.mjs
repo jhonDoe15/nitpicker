@@ -47,6 +47,7 @@ const POLICY_PATHS = [
   'languages/typescript/adapters/eslint',
   'languages/typescript/adapters/immutable-types',
   'languages/typescript/preset/syntax',
+  'languages/typescript/preset/modules',
   'shared',
 ];
 const temporaryRoots = [];
