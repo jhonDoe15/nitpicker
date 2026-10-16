@@ -4,12 +4,13 @@ import {
   validateProjectRelativePath,
 } from '../../../../shared/config.mjs';
 import { JAVA_NATIVE_RULES, SHARED_EXCEPTION_RULES } from '../../../../shared/policy.mjs';
-import { ONE_WAY_RULE_IDS } from './rules/kotlin-rules.mjs';
+import { ONE_WAY_RULE_IDS, SOURCE_RULE_IDS } from './rules/kotlin-rules.mjs';
 
 export const KOTLIN_FORMATTERS = ['ktlint', 'ktfmt', 'none'];
 const KOTLIN_KEYS = ['formatter', 'detektConfig'];
 export const KOTLIN_EXCEPTION_RULES = [
   ...ONE_WAY_RULE_IDS,
+  ...SOURCE_RULE_IDS,
   ...SHARED_EXCEPTION_RULES.filter((rule) => !JAVA_NATIVE_RULES.includes(rule)),
   'test-runtime/slow-test',
 ];

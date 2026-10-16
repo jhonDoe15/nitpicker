@@ -225,6 +225,37 @@ not a rule with `exceptions`.
 - Type resolution reports less where a library is built with a newer Kotlin than detekt's (above);
   `!!` on a value of such a type is not seen.
 
+## Source scans
+
+Two checks read the `.kt` files themselves, after masking comments and string literals (the same
+mask as `inline-suppression`), and report as tool `detekt`. Both can flag legitimate code, so both
+take an `exceptions` entry per path.
+
+**`catch-log-without-exception`.** A `catch (e: ...)` block that logs must pass the caught exception
+itself to the logger, so the stack trace is kept: `log.error("what failed", e)` (SLF4J, Log4j2),
+`logger.error(e) { "what failed" }` or `logger.atError { cause = e }` (kotlin-logging),
+`logger.log(Level.SEVERE, "what failed", e)` (java.util.logging). `e.message`, `e.toString()` and a
+string template of the exception do not count, and neither does a log call without the exception.
+A call counts as a log call when its receiver is declared from `KotlinLogging.logger`,
+`LoggerFactory.getLogger`, `LogManager.getLogger`/`getFormatterLogger`, `Logger.getLogger` or
+`System.getLogger`, or is named `log`, `logger`, `LOG`, `LOGGER` or ends in `Log` or `Logger`
+(`languages/java/source/loggers.mjs`, shared with the Java preset). The innermost catch is the one
+checked, and a catch of `_`, `ignored...`, `expected...` or `unused...` is left alone. Main and test
+sources are scanned. One finding per log call, identified by `catch-log:<receiver>.<level>`.
+
+**`test-without-assertion`.** A test method (`@Test`, `@ParameterizedTest`, `@RepeatedTest`,
+`@TestTemplate`, block or expression body, backtick names) that calls no assertion. These count:
+anything starting with `assert` (kotlin.test, JUnit, AssertJ, Hamcrest `assertThat`,
+`assertFailsWith`, `assertThrows`), `check`, `verify` and `coVerify`/`confirmVerified` (MockK,
+Mockito), `expect` (Strikt, `expectThat`), `should...` (Kotest matchers: `x shouldBe y`,
+`shouldThrow`), `fail`, `andExpect` and `forAll`. A test that is `@Test(expected = ...)` is skipped.
+The project's own helpers are learned: the convention `kotlin.assertionHelpers` lists the names that
+end the last statement of tests without a known assertion in at least two test files and read like
+an assertion (`ensure...`, `must...`, `validate...`, `is...`, `has...`, `await...`); pin it in
+`conventions` to set the list yourself. Kotest specs written as `"name" { ... }` have no `@Test`
+and are not scanned. The test sources are the Kotlin directories of the `test` source set.
+One finding per test, identified by `test:<name>`.
+
 ## Format check: ktlint, ktfmt or none
 
 The format check runs only for a project that uses a Kotlin formatter: Nitpicker does not make a
@@ -592,7 +623,8 @@ the comparison and exiting with 2. Nothing is silently skipped and nothing throw
 (legacy inventory sources are the findings' `identity`, for example
 `fp:nitpicker/subject=This expression contains a magic number. ...`). `kotlin.formatter` and
 `kotlin.detektConfig` are new and valid only with this preset. `exceptions` lifts the
-[one-way rules](#one-way-rules), the file limits `file-lines-limit` and `folder-files-limit` and
+[one-way rules](#one-way-rules), `catch-log-without-exception` and `test-without-assertion`
+([source scans](#source-scans)), the file limits `file-lines-limit` and `folder-files-limit` and
 `test-runtime/slow-test` per path. `layout` is a config error.
 
 ## Slow tests

@@ -95,6 +95,7 @@ function moduleContextFindings(projectRoot, module, { manifest, options }) {
       allSourceRoots: manifest.sourceRoots,
       kotlin: preset === 'kotlin' && module.manifest.kotlin === true,
       formatAdvice: options.formatAdvice,
+      conventions: options.conventions,
       jacoco: readModuleJacoco(module, preset),
       mainCheckstyle: readMainCheckstyle(projectRoot, module, preset),
       testTimes: {
