@@ -5,17 +5,13 @@ import path from 'node:path';
 import { classSummaries } from '../classes/class-summary.mjs';
 import { languageLevel, lintCompatible, lintCompiler } from './javac-options.mjs';
 import { lombokPath } from './lint-arguments.mjs';
-import { inheritedLombokConfigs, lombokConfigs } from './lint-staging.mjs';
+import { inheritedLombokConfigs, lombokConfigs, posix } from './lint-staging.mjs';
 
 export const LINT_CACHE = 'javac-lint.txt';
 export const LINT_FINGERPRINT = 'javac-lint-fingerprint.txt';
 const WARNING_FILE = /^(.+\.java):\d+: warning: \[/u;
 const NO_REUSE = { unchanged: new Set(), kept: '' };
 const javacVersions = new Map();
-
-function posix(file) {
-  return file.split(path.sep).join('/');
-}
 
 function javacVersion(javac) {
   if (!javacVersions.has(javac)) {
