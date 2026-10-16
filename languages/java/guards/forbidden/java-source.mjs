@@ -1,6 +1,6 @@
 const ANNOTATION_START = /@(?!interface\b)[\w.]+\s*/g;
 const TYPE_DECLARATION = /\b(?:class|interface|enum|record)\s+([\w$]+)/g;
-const PARAMETER = /([\w.$]+)\s*((?:\[\s*\]\s*)*)\s+[\w$]+\s*((?:\[\s*\]\s*)*)$/;
+const PARAMETER = /([\w.$]+)((?:\s*\[\s*\])*)\s+[\w$]+((?:\s*\[\s*\])*)$/;
 
 function spaces(text) {
   return text.replaceAll(/[^\n]/g, ' ');

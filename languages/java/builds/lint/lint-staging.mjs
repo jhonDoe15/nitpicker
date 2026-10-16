@@ -83,8 +83,12 @@ export function stageSources({ root, sources, staged }) {
   function at(directory) {
     return path.join(tree, path.relative(top, directory));
   }
+  const stagedRoot = at(root);
   const files = sources.map((source) => {
-    const target = path.join(at(root), path.relative(root, source));
+    const target = path.resolve(stagedRoot, path.relative(root, source));
+    if (!target.startsWith(stagedRoot + path.sep)) {
+      throw new Error(`${source} is outside the lint root ${root}`);
+    }
     mkdirSync(path.dirname(target), { recursive: true });
     writeFileSync(target, blankSuppressions(readFileSync(source, 'latin1')), 'latin1');
     return target;
@@ -93,5 +97,5 @@ export function stageSources({ root, sources, staged }) {
     copyLombokConfig(at(path.dirname(config)), config);
   }
   writeFileSync(path.join(staged, LOMBOK_CONFIG), STOP_BUBBLING, 'latin1');
-  return { files, root: at(root) };
+  return { files, root: stagedRoot };
 }

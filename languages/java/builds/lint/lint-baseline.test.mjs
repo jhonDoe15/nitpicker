@@ -10,12 +10,13 @@ import {
   javaPlan,
   lint,
   namesWarning,
-  removeTemporaries,
-  temporary,
+  createTemporaries,
   warning,
   warningHeaders,
   writeFiles,
 } from './test-support/lint-project.mjs';
+
+const temporaries = createTemporaries();
 
 function fakeJavac(directory) {
   const javac = path.join(directory, 'bin/javac');
@@ -31,12 +32,12 @@ describe('the differential lint', () => {
 
   afterEach(() => {
     vi.unstubAllEnvs();
-    removeTemporaries();
+    temporaries.remove();
   });
 
   it('keeps the base warnings of files unchanged since the base without compiling them', () => {
-    const base = temporary();
-    const head = temporary();
+    const base = temporaries.directory();
+    const head = temporaries.directory();
     const sources = {
       'src/main/java/demo/A.java': 'class A {}',
       'src/main/java/demo/B.java': 'class B {}',
@@ -75,8 +76,8 @@ describe('the differential lint', () => {
       },
     ],
   ])('lints every file again when %s', (_, writeBase) => {
-    const base = temporary();
-    const head = temporary();
+    const base = temporaries.directory();
+    const head = temporaries.directory();
     writeFiles(base, {
       'src/main/java/demo/A.java': RAW_NAMES,
       'lib/dep.jar': zipOf({ 'dep/Old.class': '' }),
@@ -100,8 +101,8 @@ describe('the differential lint', () => {
     ['a lombok.config changed', { 'lombok.config': 'lombok.accessors.chain = true\n' }],
     ['a project jar changed but kept its size', { 'lib/dep.jar': zipOf({ 'dep/A.class': 'y' }) }],
   ])('lints every file again when %s since the base', (_, headFiles) => {
-    const base = temporary();
-    const head = temporary();
+    const base = temporaries.directory();
+    const head = temporaries.directory();
     const files = {
       'src/main/java/demo/A.java': RAW_NAMES,
       'lombok.config': 'lombok.accessors.fluent = true\n',
@@ -126,7 +127,7 @@ describe('the differential lint', () => {
     ['the javac version', 'lombok.accessors.fluent = true\n', fakeJavac],
     ['a lombok.config above the root', 'lombok.accessors.chain = true\n', () => JAVAC],
   ])('lints every file again when %s changed since the base', (_, headConfig, baseJavac) => {
-    const [baseTop, headTop] = [temporary(), temporary()];
+    const [baseTop, headTop] = [temporaries.directory(), temporaries.directory()];
     const files = { 'repo/src/main/java/demo/A.java': RAW_NAMES };
     writeFiles(baseTop, { ...files, 'lombok.config': 'lombok.accessors.fluent = true\n' });
     writeFiles(headTop, { ...files, 'lombok.config': headConfig });
@@ -143,8 +144,8 @@ describe('the differential lint', () => {
   });
 
   it('reuses the base warnings when the compiler arguments differ only by the project folder', () => {
-    const base = temporary();
-    const head = temporary();
+    const base = temporaries.directory();
+    const head = temporaries.directory();
     writeFiles(base, { 'src/main/java/demo/A.java': RAW_NAMES });
     writeFiles(head, { 'src/main/java/demo/A.java': RAW_NAMES });
     const argsUnder = (root) => ({ args: [`-Aproject.folder=${root}/src`] });
@@ -159,8 +160,8 @@ describe('the differential lint', () => {
   });
 
   it("adds the changed files' warnings to the unchanged files' base warnings, ignoring a class path argument", () => {
-    const base = temporary();
-    const head = temporary();
+    const base = temporaries.directory();
+    const head = temporaries.directory();
     writeFiles(base, {
       'src/main/java/demo/A.java': 'package demo;\nclass A {}\n',
       'src/main/java/demo/B.java': 'package demo;\nclass B {}\n',
@@ -185,8 +186,8 @@ describe('the differential lint', () => {
   });
 
   it('lints an unchanged file again when a class it uses, directly or through a subclass, changed', () => {
-    const base = temporary();
-    const head = temporary();
+    const base = temporaries.directory();
+    const head = temporaries.directory();
     const unchanged = {
       'src/main/java/demo/Sub.java': 'package demo;\npublic class Sub extends Box {}\n',
       'src/main/java/demo/User.java':
@@ -210,8 +211,8 @@ describe('the differential lint', () => {
   });
 
   it('reports the warnings an unchanged file gets when a class it uses turns generic and deprecated', () => {
-    const base = temporary();
-    const head = temporary();
+    const base = temporaries.directory();
+    const head = temporaries.directory();
     const user = [
       'package shop;',
       '',

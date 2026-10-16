@@ -1,7 +1,12 @@
 import { existsSync, readdirSync } from 'node:fs';
 import path from 'node:path';
 
+export const CLASS_HEADER_BYTES = 8;
 const UTF8 = 1;
+const U4 = 4;
+const CONTINUATION = { shift: 6, mask: 0x3f };
+const TWO_BYTES = { shift: 5, lead: 0b110, mask: 0x1f };
+const THREE_BYTES = { shift: 4, lead: 0b1110, mask: 0x0f };
 const CLASS = 7;
 const WIDE_CONSTANTS = new Set([5, 6]);
 const CONSTANT_SIZES = {
@@ -24,16 +29,17 @@ const CONSTANT_SIZES = {
 
 function decodeStep(state, byte) {
   if (state.left > 0) {
-    return { ...state, value: (state.value << 6) | (byte & 0x3f), left: state.left - 1 };
+    const value = (state.value << CONTINUATION.shift) | (byte & CONTINUATION.mask);
+    return { ...state, value, left: state.left - 1 };
   }
   if (state.value !== undefined) {
     state.units.push(state.value);
   }
-  if (byte >> 5 === 0b110) {
-    return { units: state.units, value: byte & 0x1f, left: 1 };
+  if (byte >> TWO_BYTES.shift === TWO_BYTES.lead) {
+    return { units: state.units, value: byte & TWO_BYTES.mask, left: 1 };
   }
-  if (byte >> 4 === 0b1110) {
-    return { units: state.units, value: byte & 0x0f, left: 2 };
+  if (byte >> THREE_BYTES.shift === THREE_BYTES.lead) {
+    return { units: state.units, value: byte & THREE_BYTES.mask, left: 2 };
   }
   return { units: state.units, value: byte, left: 0 };
 }
@@ -53,7 +59,7 @@ export function classReader(buffer) {
   return {
     u1: () => buffer.readUInt8(take(1)),
     u2: () => buffer.readUInt16BE(take(2)),
-    u4: () => buffer.readUInt32BE(take(4)),
+    u4: () => buffer.readUInt32BE(take(U4)),
     skip: take,
     utf: () => {
       const length = buffer.readUInt16BE(take(2));
@@ -93,7 +99,7 @@ export function readConstantPool(reader) {
 
 export function constantPoolStrings(buffer) {
   const reader = classReader(buffer);
-  reader.skip(8);
+  reader.skip(CLASS_HEADER_BYTES);
   return [...readConstantPool(reader).utf.values()];
 }
 

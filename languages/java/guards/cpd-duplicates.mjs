@@ -1,7 +1,7 @@
 import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { evaluateDuplicates } from '../../../shared/rules/duplicates.mjs';
-import { childrenNamed, parseXml } from '../ingest/common.mjs';
+import { childrenNamed, parseXml, projectFile } from '../ingest/common.mjs';
 import { LITERAL_OR_COMMENT } from '../ingest/source-text.mjs';
 import { CPD_IDENTITY_PREFIX, cpdNotRun, readCpdReport, skippedPaths } from './cpd/cpd-report.mjs';
 
@@ -14,13 +14,13 @@ const BOILERPLATE_LINES = [
   /^[{}]*$/,
   /^@\w+(?:\(.*\))?$/,
   new RegExp(
-    String.raw`^${NOT_CONTROL}${MODIFIERS}[\w<>\[\],.? ]+\s+\w+\s*\([^)]*\)\s*(?:throws [\w., ]+)?\s*\{$`,
+    String.raw`^${NOT_CONTROL}${MODIFIERS}(?:[\w<>\[\],.?]+\s+)+\w+\s*\([^)]*\)\s*(?:throws [\w., ]*[\w.,]\s*)?\{$`,
   ),
   new RegExp(String.raw`^${NOT_CONTROL}${MODIFIERS}[A-Z]\w*\s*\([^)]*\)\s*\{$`),
-  new RegExp(String.raw`^${MODIFIERS}(?:class|interface|record|enum)\s+\w+.*\{$`),
+  new RegExp(String.raw`^${MODIFIERS}(?:class|interface|record|enum)\s+\w.*\{$`),
   /^return\s+(?:this\.)?\w+;$/,
   /^(?:this\.)?\w+\s*=\s*\w+;$/,
-  new RegExp(String.raw`^${NOT_CONTROL}${MODIFIERS}[\w<>\[\],.? ]+\s+\w+;$`),
+  new RegExp(String.raw`^${NOT_CONTROL}${MODIFIERS}(?:[\w<>\[\],.?]+\s+)+\w+;$`),
 ];
 
 const STRING_LITERAL = /"(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*'/g;
@@ -28,12 +28,12 @@ const NUMBER = /(?:\b\d|\.\d)(?:[eEpP][+-]|[\w.])*/g;
 const WORD = /[\w$]+/g;
 const DATA_LINES = [
   /^[A-Z][A-Z0-9_]*(?:\(.*\))?[,;]?$/,
-  /^(?:Arguments\.)?(?:of|arguments)\(.*\)[,;)]*$/,
-  /^(?=.*\d)(?![\w.]+\()[\w.]*[\s\d.,;{}()[\]+-]*$/,
+  /^(?:Arguments\.)?(?:of|arguments)\(.*\)[,;]*$/,
+  /^(?=.*\d)(?![\w.]+\()[\w.]*(?:[\s,;{}()[\]+-][\s\d.,;{}()[\]+-]*)?$/,
   /^[\s,;{}()[\]]+$/,
   /^(?:Map\.)?entry\([\w\s.,+-]*\)[,;)]*$/,
   new RegExp(
-    String.raw`^(?:\w+\s+)*[\w<>,.?\s[\]]*\s\w+\s*=\s*` +
+    String.raw`^(?:[\w<>,.?[\]]+\s+)+\w+\s*=\s*` +
       String.raw`(?:Map\.ofEntries|Map\.of|List\.of|Set\.of|Stream\.of|Arrays\.asList)\([\w\s.,()+-]*$`,
   ),
 ];
@@ -73,8 +73,8 @@ function fileRange(element, projectRoot) {
 }
 
 function linesOf(projectRoot, side) {
-  const absolute = path.join(projectRoot, side.file);
-  return existsSync(absolute)
+  const absolute = projectFile(projectRoot, side.file);
+  return absolute !== undefined && existsSync(absolute)
     ? readFileSync(absolute, 'utf8')
         .split(/\r?\n/)
         .slice(side.line - 1, side.endLine)

@@ -2,7 +2,9 @@ import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import { readForbiddenApiFindings } from '../forbidden-apis.mjs';
-import { guardProject, newLines, removeGuardProjects } from '../test-support/guard-project.mjs';
+import { createGuardProjects, newLines } from '../test-support/guard-project.mjs';
+
+const guardProjects = createGuardProjects();
 
 const LEGACY_DATE =
   'ERROR: Forbidden class/interface use: java.util.Date [legacy-date-time: Use java.time.]';
@@ -17,7 +19,7 @@ function declarations(className, members) {
 }
 
 function auditFindings(source, report) {
-  const root = guardProject({
+  const root = guardProjects.project({
     'src/main/java/demo/Audit.java': source.join('\n'),
     'reports/forbidden-apis.txt': report,
   });
@@ -31,7 +33,7 @@ const LEGACY_LOG = ['  void log(Date when, String message) {', '  }'];
 
 describe('forbiddenapis declarations of a banned type', () => {
   afterEach(() => {
-    removeGuardProjects();
+    guardProjects.remove();
   });
 
   it('places each overload on its own declaration and reports the added one as new', () => {

@@ -11,12 +11,13 @@ import {
   lint,
   namesWarning,
   rawTypeWarning,
-  removeTemporaries,
-  temporary,
+  createTemporaries,
   warning,
   warningHeaders,
   writeFiles,
 } from './test-support/lint-project.mjs';
+
+const temporaries = createTemporaries();
 
 describe('runJavacLint', () => {
   beforeEach(() => {
@@ -25,11 +26,11 @@ describe('runJavacLint', () => {
 
   afterEach(() => {
     vi.unstubAllEnvs();
-    removeTemporaries();
+    temporaries.remove();
   });
 
   it('reports suppressed warnings, reads the project encoding and skips sources outside the module', () => {
-    const root = temporary();
+    const root = temporaries.directory();
     const basedir = path.join(root, 'app');
     const latin = [
       'package demo;',
@@ -66,7 +67,7 @@ describe('runJavacLint', () => {
   });
 
   it('writes paths relative to the report root, the analysis root on Gradle', () => {
-    const root = temporary();
+    const root = temporaries.directory();
     const basedir = path.join(root, 'app');
     writeFiles(basedir, { 'src/main/java/demo/A.java': RAW_NAMES });
     const plan = { ...javaPlan(root, { basedir }), reportRoot: root };
@@ -77,8 +78,8 @@ describe('runJavacLint', () => {
   });
 
   it('lints a module with a descriptor whole, ignoring the base report', () => {
-    const base = temporary();
-    const head = temporary();
+    const base = temporaries.directory();
+    const head = temporaries.directory();
     const sources = {
       'src/main/java/module-info.java': 'module demo {}\n',
       'src/main/java/demo/A.java': RAW_NAMES,
@@ -94,7 +95,7 @@ describe('runJavacLint', () => {
   });
 
   it('compiles the generated sources with a module, without reporting their warnings', () => {
-    const head = temporary();
+    const head = temporaries.directory();
     writeFiles(head, {
       'src/main/java/module-info.java': 'module demo {}\n',
       'src/main/java/demo/A.java':
@@ -119,7 +120,7 @@ describe('runJavacLint', () => {
   });
 
   it('compiles a generated source once when the project lists it among its sources', () => {
-    const head = temporary();
+    const head = temporaries.directory();
     writeFiles(head, {
       'src/main/java/module-info.java': 'module demo {}\n',
       'src/main/java/demo/A.java':
@@ -139,7 +140,7 @@ describe('runJavacLint', () => {
   });
 
   it('writes the compiler output to the failure report when the lint compile fails', () => {
-    const head = temporary();
+    const head = temporaries.directory();
     writeFiles(head, { 'src/main/java/demo/A.java': 'package demo;\nclass A {\n  int x =\n}\n' });
 
     expect(lint(javaPlan(head), undefined)).toEqual({
@@ -156,7 +157,7 @@ describe('runJavacLint', () => {
 
   it('reads the warnings of a javac whose platform locale is not English', () => {
     vi.stubEnv('JAVA_TOOL_OPTIONS', '-Duser.language=de -Duser.country=DE');
-    const head = temporary();
+    const head = temporaries.directory();
     writeFiles(head, { 'src/main/java/demo/A.java': RAW_NAMES });
 
     expect(warningHeaders(lint(javaPlan(head), undefined).report)).toEqual([
@@ -165,7 +166,7 @@ describe('runJavacLint', () => {
   });
 
   it('reads the options of an argument file in the compiler arguments, leaving out the ones that hide warnings', () => {
-    const head = temporary();
+    const head = temporaries.directory();
     writeFiles(head, {
       'src/main/java/demo/A.java': RAW_NAMES,
       'config/javac.options': '# lint options\n-nowarn "-Xlint:none"\n-parameters\n',
@@ -178,7 +179,7 @@ describe('runJavacLint', () => {
   });
 
   it('writes a failure report when javac counts warnings it printed in a form it cannot read', () => {
-    const head = temporary();
+    const head = temporaries.directory();
     writeFiles(head, {
       'src/main/java/demo/A.java': RAW_NAMES,
       'bin/javac':
@@ -198,8 +199,8 @@ describe('runJavacLint', () => {
   });
 
   it('retries with every library on the module path when a descriptor requires a plain jar', () => {
-    const head = temporary();
-    const library = temporary();
+    const head = temporaries.directory();
+    const library = temporaries.directory();
     writeFiles(library, {
       'src/lib/Greeter.java':
         'package lib;\npublic class Greeter {\n  public static String hi() { return "hi"; }\n}\n',

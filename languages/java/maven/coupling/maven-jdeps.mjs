@@ -17,6 +17,7 @@ import { toolCommand } from '../../builds/tools/tool-commands.mjs';
 
 const MODULE_INFO = 'module-info.class';
 const MAX_ERROR_LINES = 10;
+const MAX_OUTPUT_BYTES = 50 * 1024 * 1024;
 const ERROR_LINE = /Error|Exception|Caused by/u;
 
 function classFiles(directory) {
@@ -59,7 +60,7 @@ function analyzeClasses(module, classes) {
   const result = spawnSync(javaCommand('jdeps'), command.args, {
     cwd: module.basedir,
     encoding: 'utf8',
-    maxBuffer: 50 * 1024 * 1024,
+    maxBuffer: MAX_OUTPUT_BYTES,
   });
   if (result.error !== undefined) {
     throw result.error;

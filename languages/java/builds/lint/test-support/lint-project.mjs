@@ -10,32 +10,42 @@ import {
 } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
+import { javaCommand } from '../../../maven/maven-command.mjs';
 import { lintFingerprint } from '../lint-baseline.mjs';
 import { runJavacLint } from '../javac-lint-runner.mjs';
 
-const roots = [];
-
-export function removeTemporaries() {
-  for (const root of roots.splice(0)) {
-    rmSync(root, { recursive: true, force: true });
-  }
-}
-
-export const JAVAC = process.env.JAVA_HOME
-  ? path.join(process.env.JAVA_HOME, 'bin', 'javac')
-  : 'javac';
+export const JAVAC = javaCommand('javac');
 const NO_SETTINGS = { release: '17', source: undefined, target: undefined, args: [] };
 
-export function temporary() {
-  const root = mkdtempSync(path.join(tmpdir(), 'nitpicker-javac-lint-'));
-  roots.push(root);
-  return root;
+export function createTemporaries() {
+  const roots = [];
+  return {
+    directory() {
+      const root = mkdtempSync(path.join(tmpdir(), 'nitpicker-javac-lint-'));
+      roots.push(root);
+      return root;
+    },
+    remove() {
+      for (const root of roots.splice(0)) {
+        rmSync(root, { recursive: true, force: true });
+      }
+    },
+  };
+}
+
+function inside(root, name) {
+  const target = path.resolve(root, name);
+  if (!target.startsWith(root + path.sep)) {
+    throw new Error(`${name} is outside ${root}`);
+  }
+  return target;
 }
 
 export function writeFiles(root, files) {
   for (const [name, text] of Object.entries(files)) {
-    mkdirSync(path.dirname(path.join(root, name)), { recursive: true });
-    writeFileSync(path.join(root, name), text);
+    const target = inside(root, name);
+    mkdirSync(path.dirname(target), { recursive: true });
+    writeFileSync(target, text);
   }
 }
 
@@ -95,8 +105,7 @@ export function namesWarning(file, line = 3) {
   return rawTypeWarning(file, { line, source: '  java.util.List names;', caret: '           ^' });
 }
 
-function reportLines(reportDir, name) {
-  const file = path.join(reportDir, name);
+function reportLines(file) {
   return existsSync(file) ? readFileSync(file, 'utf8').split('\n') : undefined;
 }
 
@@ -105,8 +114,8 @@ export function lint(plan, baselineRoot) {
   mkdirSync(reportDir, { recursive: true });
   runJavacLint(plan, { reportDir, baselineRoot });
   return {
-    report: reportLines(reportDir, 'javac-lint.txt'),
-    failure: reportLines(reportDir, 'javac-lint-failed.txt'),
+    report: reportLines(path.join(reportDir, 'javac-lint.txt')),
+    failure: reportLines(path.join(reportDir, 'javac-lint-failed.txt')),
   };
 }
 
