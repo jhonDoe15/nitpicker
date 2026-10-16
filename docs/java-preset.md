@@ -1010,7 +1010,9 @@ declared type name (`*Repository`, `*Dao`, `*Client`, `EntityManager`, `JdbcTemp
 body assigns, as in `do { page = repository.findAll(pageable); ... } while (page.hasNext())`; an
 index stepped with `i += 1`, `i++` or `i = i + 1` does not make a paging loop), retry loops (a
 `try` that returns or breaks on success and a `catch` that lets the loop go on), `Files.exists`
-and similar checks, and `Optional` callbacks (`Optional.map`, which runs once) are skipped. In a
+and similar checks, the batch forms (`saveAll`, `deleteAll`, `deleteAllById`, `findAllById` and
+similar, called once per chunk) and `Optional` callbacks (`Optional.map`, which runs once) are
+skipped. In a
 Spring project, the `save`, `delete`, `persist` and similar writes that `SpringDataNoSaveInLoop`
 reports (a Spring Data repository or `jakarta.persistence.EntityManager` receiver, in a loop or a
 `forEach`, `map`, `peek` or `forEachOrdered` callback) and the flushes `SpringDataNoFlush` reports
