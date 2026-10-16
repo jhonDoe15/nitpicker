@@ -9,7 +9,7 @@ import {
 import { SHARED_EXCEPTION_RULES } from '../../../../shared/policy.mjs';
 import { ruleIdProblem } from './python-rule-ids.mjs';
 
-const ENVIRONMENTS = ['uv', 'poetry', 'path'];
+const ENVIRONMENTS = ['uv', 'poetry', 'path', 'pipenv', 'hatch', 'conda'];
 const FORMATTERS = ['ruff', 'black'];
 const TEST_RUNNERS = ['pytest', 'unittest'];
 const TYPE_CHECKERS = ['mypy', 'pyright', 'basedpyright'];

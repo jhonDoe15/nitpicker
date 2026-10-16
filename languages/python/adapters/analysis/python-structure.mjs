@@ -36,6 +36,7 @@ export function readPythonStructureFindings(reportRoot, projectRoot) {
   return readStructureFindings(reportRoot, projectRoot, {
     textOf: functionText,
     hints: STRUCTURE_HINTS,
+    numberedAmongSameSource: true,
   });
 }
 

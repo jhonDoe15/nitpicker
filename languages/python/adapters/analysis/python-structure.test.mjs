@@ -124,6 +124,24 @@ describe('reading the structure report', () => {
     });
   });
 
+  it('keeps the identity of a property setter when another function of that name is added above it', () => {
+    const getter = ['    @property', '    def value(self, a, b, c, d):', '        return a'];
+    const setter = ['    @value.setter', '    def value(self, a, b, c, d):', '        self.a = a'];
+    const source = (lines) => `class Service:\n${lines.join('\n')}\n`;
+    const named = (start) => entry({ name: 'Service.value', parameters: 4, start, end: start + 1 });
+    const setterIdentity = (lines, starts) => {
+      const findings = findingsFor(starts.map(named), {
+        'src/demo/service.py': source(lines),
+      });
+      return findings.at(-1).identity;
+    };
+
+    const before = setterIdentity([...getter, '', ...setter], [3, 7]);
+    const after = setterIdentity([...getter, '', ...getter, '', ...setter], [3, 7, 11]);
+
+    expect(after).toBe(before);
+  });
+
   it('finds nothing when no function is over a limit', () => {
     expect(findingsFor([entry({})])).toEqual([]);
   });

@@ -165,14 +165,38 @@ describe.skipIf(!pythonUsable())('with python3 3.10 or newer on the PATH', () =>
       expect(metrics.map(({ overload }) => overload)).toEqual([true, true, true, false]);
     });
 
-    it('skips a file that does not parse, or that is too deep for the parser', () => {
+    it('skips a file that does not parse, which ruff reports as a syntax error', () => {
       const metrics = metricsOf({
         'broken.py': 'def (:\n',
-        'deep.py': `X = ${Array.from({ length: 60_000 }, () => '1').join(' + ')}\n`,
         'ok.py': 'def f():\n    return 1\n',
       });
 
       expect(metrics.map(({ file, name }) => `${file} ${name}`)).toEqual(['ok.py f']);
+    });
+
+    it('fails with a clear message on a file too deeply nested for the parser instead of skipping it', () => {
+      const directory = scratchDirectory();
+      writeFileSync(
+        path.join(directory, 'deep.py'),
+        `X = ${Array.from({ length: 60_000 }, () => '1').join(' + ')}\n`,
+      );
+      writeFileSync(path.join(directory, 'listing.txt'), 'deep.py');
+
+      const result = spawnSync(
+        'python3',
+        [
+          script,
+          path.join(directory, STRUCTURE_REPORT),
+          directory,
+          path.join(directory, 'listing.txt'),
+        ],
+        { encoding: 'utf8' },
+      );
+
+      expect([result.status, result.stderr]).toEqual([
+        1,
+        'structure_metrics: deep.py is too deeply nested for the Python parser (RecursionError), so its functions cannot be measured: split the very long expression or data literal into smaller parts\n',
+      ]);
     });
 
     it('does not count the docstring as a line, so documenting a long function does not grow it', () => {

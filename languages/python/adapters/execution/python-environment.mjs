@@ -1,21 +1,24 @@
 import { spawnSync } from 'node:child_process';
 import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
+import { environmentError, OVERRIDE_HINT, venvLauncher } from './environments/launchers.mjs';
+import {
+  activeCondaEnvironment,
+  declaredManagedEnvironment,
+  MANAGED_ENVIRONMENTS,
+  openManagedEnvironment,
+} from './environments/managed.mjs';
 
-const NAMED_ENVIRONMENTS = ['uv', 'poetry', 'path'];
+export { environmentError };
+
+const NAMED_ENVIRONMENTS = ['uv', 'poetry', 'path', ...MANAGED_ENVIRONMENTS];
 const LOCKFILE_ENVIRONMENTS = [
   ['uv.lock', 'uv'],
   ['poetry.lock', 'poetry'],
 ];
 const VENV_DIRECTORY = '.venv';
 const UV_WORKSPACE_TABLE = /^\s*\[tool\.uv\.workspace\]/m;
-const OVERRIDE_HINT = 'or set "python.environment"';
 const POETRY_TIMEOUT_MS = 60 * 1000;
-const ENVIRONMENT_FAILED_RULE = 'environment-failed';
-
-export function environmentError(message) {
-  return Object.assign(new Error(message), { rule: ENVIRONMENT_FAILED_RULE });
-}
 
 export function detectEnvironment(projectRoot, setting) {
   if (NAMED_ENVIRONMENTS.includes(setting)) {
@@ -31,8 +34,20 @@ export function detectEnvironment(projectRoot, setting) {
   if (uvWorkspaceRoot(projectRoot) !== undefined) {
     return { kind: 'uv' };
   }
+  const declared = declaredManagedEnvironment(projectRoot);
+  if (declared !== undefined) {
+    return { kind: declared, detected: true };
+  }
+  return unmanagedEnvironment(projectRoot);
+}
+
+function unmanagedEnvironment(projectRoot) {
   const directory = path.join(projectRoot, VENV_DIRECTORY);
-  return existsSync(directory) ? { kind: 'venv', directory } : { kind: 'path' };
+  if (existsSync(directory)) {
+    return { kind: 'venv', directory };
+  }
+  const conda = activeCondaEnvironment();
+  return conda === undefined ? { kind: 'path' } : { kind: conda, detected: true };
 }
 
 export function openEnvironment(environment, projectRoot) {
@@ -45,7 +60,23 @@ export function openEnvironment(environment, projectRoot) {
   if (environment.kind === 'venv') {
     return venvLauncher(environment.directory, 'virtualenv');
   }
+  if (MANAGED_ENVIRONMENTS.includes(environment.kind)) {
+    return openManaged(environment, projectRoot);
+  }
   return pathLauncher();
+}
+
+function openManaged(environment, projectRoot) {
+  const launcher = openManagedEnvironment(environment.kind, projectRoot);
+  if (launcher !== undefined) {
+    return launcher;
+  }
+  if (environment.detected !== true) {
+    throw environmentError(
+      `No ${environment.kind} environment found for ${projectRoot}: install ${environment.kind} or activate the environment, ${OVERRIDE_HINT}`,
+    );
+  }
+  return openEnvironment(unmanagedEnvironment(projectRoot), projectRoot);
 }
 
 function pathLauncher() {
@@ -56,23 +87,6 @@ function pathLauncher() {
       args,
       env: {},
     }),
-  };
-}
-
-function venvLauncher(directory, description) {
-  const bin = path.join(directory, process.platform === 'win32' ? 'Scripts' : 'bin');
-  if (!existsSync(bin)) {
-    throw environmentError(
-      `No Python environment at ${directory} (${bin} does not exist): create it, ${OVERRIDE_HINT}`,
-    );
-  }
-  const env = { VIRTUAL_ENV: directory, PATH: `${bin}${path.delimiter}${process.env.PATH ?? ''}` };
-  return {
-    description,
-    launch: (tool, args) => {
-      const installed = path.join(bin, tool);
-      return { command: existsSync(installed) ? installed : tool, args, env };
-    },
   };
 }
 

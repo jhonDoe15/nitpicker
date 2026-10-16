@@ -13,6 +13,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { PACKAGE_ROOT } from '../../../core/tooling/tool-resolution.mjs';
 import { installStrykerTsconfig, mutationSkipFor } from './quality-areas/runners/mutation.mjs';
 import { normalizeStructure } from './quality-areas/reporting/repository.mjs';
+import { normalizeCrap } from './quality-areas/reporting/tests.mjs';
 import { parseArguments } from './quality-areas/arguments.mjs';
 import { runQualityArea } from './quality-areas-runner.mjs';
 
@@ -158,6 +159,59 @@ describe('structure limit messages', () => {
     expect(violations({ statements: 16 })).toEqual([
       'big has 16 statements; limit is 15. Split by responsibility and name each part for what it checks or does.',
     ]);
+  });
+});
+
+describe('numbering of functions that share a name', () => {
+  const site = (start, sourceHash) => ({
+    source: 'src/a.ts',
+    function: 'handler',
+    start,
+    end: start + 1,
+    lines: { start, end: start + 1 },
+    sourceHash,
+    complexity: 1,
+    crap: 30,
+  });
+  const identities = (starts) =>
+    normalizeCrap({ functions: starts.map(([start, hash]) => site(start, hash)) }, 'crap')
+      .filter(({ classification }) => classification === 'enforceable')
+      .map(({ identity }) => identity);
+  const structureIdentities = (starts) =>
+    normalizeStructure(
+      {
+        functions: starts.map(([start, hash]) => ({
+          source: 'src/a.ts',
+          function: 'handler',
+          start,
+          end: start + 1,
+          sourceHash: hash,
+          parameters: 9,
+        })),
+      },
+      'structure',
+    )
+      .filter(({ classification }) => classification === 'enforceable')
+      .map(({ identity }) => identity);
+
+  it('keeps the identity of a CRAP finding when a function of the same name is added above it', () => {
+    expect(identities([[20, 'b']])).toEqual(['function:handler:occurrence:1:source:b']);
+    expect(
+      identities([
+        [5, 'a'],
+        [20, 'b'],
+      ]),
+    ).toEqual(['function:handler:occurrence:1:source:a', 'function:handler:occurrence:1:source:b']);
+  });
+
+  it('keeps the identity of a structure finding when a function of the same name is added above it', () => {
+    expect(structureIdentities([[20, 'b']])).toEqual(['function:handler:occurrence:1:source:b']);
+    expect(
+      structureIdentities([
+        [5, 'a'],
+        [20, 'b'],
+      ]),
+    ).toEqual(['function:handler:occurrence:1:source:a', 'function:handler:occurrence:1:source:b']);
   });
 });
 
