@@ -1,6 +1,7 @@
+import { SYNTAX_EXCEPTION_HINT } from '../rule-hints.mjs';
+
 const loopMessage = 'for...of is the only loop; iterate the items with for...of.';
-const promiseChainMessage =
-  'Use async/await (with try/catch) instead of promise chains, and Promise.all for concurrent work.';
+const promiseChainMessage = `Use async/await (with try/catch) instead of promise chains, and Promise.all for concurrent work.${SYNTAX_EXCEPTION_HINT}`;
 
 export const loopSelectors = [
   { selector: 'ForStatement', message: loopMessage },
@@ -48,16 +49,15 @@ const promiseMisuseSelectors = [
 export const controlFlowSelectors = [
   ...loopSelectors,
   ...forEachSelectors,
-  ...promiseChainSelectors,
   ...promiseMisuseSelectors,
 ];
 
-export const testControlFlowSelectors = [
-  ...testLoopSelectors,
-  ...forEachSelectors,
-  ...promiseChainSelectors,
-];
+export const testControlFlowSelectors = [...testLoopSelectors, ...forEachSelectors];
 
-export const controlFlowRules = { eqeqeq: ['error', 'always'] };
+export const promiseChainRule = {
+  'nitpicker/no-promise-chain': ['error', ...promiseChainSelectors],
+};
+
+export const controlFlowRules = { eqeqeq: ['error', 'always'], ...promiseChainRule };
 
 export const controlFlowTypedRules = { '@typescript-eslint/no-floating-promises': 'error' };
