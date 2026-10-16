@@ -1,6 +1,6 @@
-import { RULE_IDS } from '../../../../../../shared/policy.mjs';
-import { copyGroups } from '../copy-groups.mjs';
-import { listPaths, reuseFinding } from '../finding.mjs';
+import { RULE_IDS } from '../../policy.mjs';
+import { copyGroups } from './copy-groups.mjs';
+import { listPaths, reuseFinding } from './reuse-finding.mjs';
 
 const SAME = {
   const: 'the same value',

@@ -1,22 +1,15 @@
-import { RULE_IDS } from '../../../../../../shared/policy.mjs';
-import { copyGroups } from '../copy-groups.mjs';
-import { listPaths, reuseFinding } from '../finding.mjs';
-import { createSimilarityCache, tokenSimilarity } from '../syntax/token-similarity.mjs';
+import { RULE_IDS } from '../../policy.mjs';
+import { copyGroups } from './copy-groups.mjs';
+import { listPaths, reuseFinding } from './reuse-finding.mjs';
+import { createSimilarityCache, tokenSimilarity } from './token-similarity.mjs';
 
 const KINDS = new Set(['function', 'class']);
-const HTTP_METHODS = new Set(['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'HEAD', 'OPTIONS']);
 const MINIMUM_TOKENS = 20;
 const MINIMUM_SIMILARITY = 0.8;
 
-function isFrameworkEntry({ exportNames }) {
-  return exportNames.some((name) => name === 'default' || HTTP_METHODS.has(name));
-}
-
 function isComparable(definition) {
   return (
-    KINDS.has(definition.kind) &&
-    definition.tokens.length >= MINIMUM_TOKENS &&
-    !isFrameworkEntry(definition)
+    KINDS.has(definition.kind) && definition.tokens.length >= MINIMUM_TOKENS && !definition.entry
   );
 }
 
@@ -76,13 +69,17 @@ function groupFindings({ copies, baselineFile, analyzerName, cache }) {
     .map((found) => editFinding({ ...found, analyzerName }));
 }
 
-export function siblingCopyEditFindings(facts, { analyzerName, isExcepted, baselineFile }) {
+export function siblingCopyEditFindings(
+  modules,
+  { analyzerName, isExcepted, baselineFile, acrossPackages = false },
+) {
   if (baselineFile === undefined) {
     return [];
   }
   const baselineOf = memoized(baselineFile);
   const cache = createSimilarityCache();
-  return copyGroups(facts, {
+  const grouped = acrossPackages ? modules.map((module) => ({ ...module, packageRoot: '' })) : modules;
+  return copyGroups(grouped, {
     rule: RULE_IDS.siblingCopyEdit,
     isExcepted,
     isComparable,

@@ -1,5 +1,5 @@
-import { RULE_IDS } from '../../../../../../shared/policy.mjs';
-import { listPaths, reuseFinding } from '../finding.mjs';
+import { RULE_IDS } from '../../policy.mjs';
+import { listPaths, reuseFinding } from './reuse-finding.mjs';
 
 const COLLISION_FIX = 'Rename one, or alias both imports.';
 
@@ -16,77 +16,78 @@ function mergedDefinitions(definitions) {
   return byName;
 }
 
-function moduleIndex(facts) {
-  return new Map(
-    facts.map((fact) => [
-      fact.path,
+function exportIndex(definitions) {
+  const byExport = new Map();
+  for (const definition of definitions) {
+    for (const exported of definition.exportNames) byExport.set(exported, definition.name);
+  }
+  return byExport;
+}
+
+function moduleIndex(modules, imports) {
+  const index = new Map(
+    modules.map((module) => [
+      module.path,
       {
-        definitions: mergedDefinitions(fact.definitions),
-        locals: new Map(fact.exports.locals.map(({ local, exported }) => [exported, local])),
-        bindings: new Map(
-          fact.imports.flatMap(({ specifier, named }) =>
-            named.map(({ local, imported }) => [local, { specifier, name: imported }]),
-          ),
-        ),
-        reexports: fact.exports.reexports,
+        definitions: mergedDefinitions(module.definitions),
+        exports: exportIndex(module.definitions),
+        reexports: [],
       },
     ]),
   );
+  const reexports = imports.filter(({ reexport, role }) => reexport && role !== 'test');
+  for (const record of reexports) {
+    const entry = index.get(record.from) ?? {
+      definitions: new Map(),
+      exports: new Map(),
+      reexports: [],
+    };
+    entry.reexports.push(record);
+    index.set(record.from, entry);
+  }
+  return index;
 }
 
 function reexportTargets(entry, name) {
-  return entry.reexports.flatMap(({ specifier, star, names }) =>
-    star
-      ? [{ specifier, name }]
-      : names
-          .filter(({ exported }) => exported === name)
-          .map(({ imported }) => ({ specifier, name: imported })),
+  return entry.reexports.flatMap(({ to, names }) =>
+    names
+      .filter((entryName) =>
+        entryName.name === '*' ? entryName.alias === undefined : (entryName.alias ?? entryName.name) === name,
+      )
+      .map((entryName) => ({ path: to, name: entryName.name === '*' ? name : entryName.name })),
   );
 }
 
-function exportedLocal(entry, name) {
-  return entry.locals.get(name) ?? (entry.definitions.get(name)?.exported ? name : undefined);
-}
-
-function nextSteps({ entry, step, local, resolve }) {
-  const binding = local === undefined ? undefined : entry.bindings.get(local);
-  return [...(binding === undefined ? [] : [binding]), ...reexportTargets(entry, step.name)]
-    .map((target) => ({ target, resolved: resolve(target.specifier, step.path) }))
-    .filter(({ resolved }) => resolved.path !== undefined)
-    .map(({ target, resolved }) => ({ path: resolved.path, name: target.name }));
-}
-
-function findOrigin(index, resolve, start) {
+function findOrigin(index, start) {
   const seen = new Set();
   const pending = [start];
   for (const step of pending) {
     const visit = `${step.path}\0${step.name}`;
     const entry = seen.has(visit) ? undefined : index.get(step.path);
     seen.add(visit);
-    const local = entry === undefined ? undefined : exportedLocal(entry, step.name);
+    const local = entry?.exports.get(step.name);
     if (local !== undefined && entry.definitions.has(local)) {
       return { path: step.path, name: local };
     }
-    if (entry !== undefined) pending.push(...nextSteps({ entry, step, local, resolve }));
+    if (entry !== undefined) pending.push(...reexportTargets(entry, step.name));
   }
   return undefined;
 }
 
-function importedOrigins(fact, { index, resolve }) {
-  return fact.imports.flatMap((declaration) => {
-    const target = resolve(declaration.specifier, fact.path);
-    return target.path === undefined
-      ? []
-      : declaration.named.map(({ imported, local }) => ({
-          name: imported,
-          keepsName: local === imported,
-          origin: findOrigin(index, resolve, { path: target.path, name: imported }),
-        }));
-  });
+function importedOrigins(path, { index, importsByFile }) {
+  return (importsByFile.get(path) ?? []).flatMap(({ to, names }) =>
+    names
+      .filter(({ name }) => name !== '*')
+      .map(({ name, alias }) => ({
+        name,
+        keepsName: alias === undefined || alias === name,
+        origin: findOrigin(index, { path: to, name }),
+      })),
+  );
 }
 
-function collisionsIn(fact, context) {
-  const found = importedOrigins(fact, context).filter(
+function collisionsIn(path, context) {
+  const found = importedOrigins(path, context).filter(
     ({ origin }) =>
       origin !== undefined && !context.isExcepted(RULE_IDS.exportedNameCollision, origin.path),
   );
@@ -101,7 +102,7 @@ function collisionsIn(fact, context) {
     .filter(([, { keepsName }]) => keepsName)
     .map(([name, { origins }]) => ({
       name,
-      importer: fact.path,
+      importer: path,
       origins: [...origins.values()],
     }));
 }
@@ -142,11 +143,21 @@ function mergeEntries(entries) {
   return [...merged.values()];
 }
 
-export function exportedNameCollisionFindings(facts, context) {
-  const index = moduleIndex(facts);
-  const environment = { ...context, index };
-  const entries = facts
-    .flatMap((fact) => collisionsIn(fact, environment))
+function importsByImporter(imports) {
+  const byFile = new Map();
+  for (const record of imports.filter(({ reexport, role }) => !reexport && role !== 'test')) {
+    byFile.set(record.from, [...(byFile.get(record.from) ?? []), record]);
+  }
+  return byFile;
+}
+
+export function exportedNameCollisionFindings(modules, imports, context) {
+  const index = moduleIndex(modules, imports);
+  const importsByFile = importsByImporter(imports);
+  const environment = { ...context, index, importsByFile };
+  const importers = [...importsByFile.keys()].toSorted();
+  const entries = importers
+    .flatMap((importer) => collisionsIn(importer, environment))
     .flatMap((collision) => collisionEntries(collision, index));
   return mergeEntries(entries).map(({ origin, name, importer, others }) =>
     reuseFinding(context.analyzerName, {

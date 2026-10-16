@@ -1,44 +1,53 @@
 import path from 'node:path';
 import { hash } from '../../../../../shared/rules/finding-helpers.mjs';
 
-function addNames(usage, filePath, names) {
-  const used = usage.get(filePath) ?? new Set();
-  usage.set(filePath, used);
-  for (const name of names) used.add(name);
+const HTTP_METHODS = new Set(['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'HEAD', 'OPTIONS']);
+
+function named(name, alias) {
+  return alias === undefined || alias === name ? { name } : { name, alias };
 }
 
-function importUses(fact) {
+function importRecords(fact) {
+  const bindings = new Map(
+    fact.imports.flatMap(({ specifier, named: names }) =>
+      names.map(({ local, imported }) => [local, { specifier, imported }]),
+    ),
+  );
   return [
-    ...fact.imports.map((declaration) => ({
-      specifier: declaration.specifier,
+    ...fact.imports.map(({ specifier, defaultName, namespaceName, named: names }) => ({
+      specifier,
       names: [
-        ...(declaration.defaultName === undefined ? [] : ['default']),
-        ...(declaration.namespaceName === undefined ? [] : ['*']),
-        ...declaration.named.map(({ imported }) => imported),
+        ...(defaultName === undefined ? [] : [named('default', defaultName)]),
+        ...(namespaceName === undefined ? [] : [named('*', namespaceName)]),
+        ...names.map(({ imported, local }) => named(imported, local)),
       ],
     })),
-    ...fact.dynamicImports.map((specifier) => ({ specifier, names: ['*'] })),
-    ...fact.exports.namespaces.map(({ specifier }) => ({ specifier, names: ['*'] })),
+    ...fact.dynamicImports.map((specifier) => ({ specifier, names: [named('*')] })),
+    ...fact.exports.namespaces.map(({ specifier, name }) => ({
+      specifier,
+      names: [named('*', name)],
+      reexport: true,
+    })),
     ...fact.exports.reexports.map(({ specifier, star, names }) => ({
       specifier,
-      names: star ? ['*'] : names.map(({ imported }) => imported),
+      names: star ? [named('*')] : names.map(({ imported, exported }) => named(imported, exported)),
+      reexport: true,
     })),
+    ...fact.exports.locals
+      .filter(({ local }) => bindings.has(local))
+      .map(({ local, exported }) => ({
+        specifier: bindings.get(local).specifier,
+        names: [named(bindings.get(local).imported, exported)],
+        reexport: true,
+      })),
   ];
 }
 
-function importedNames(facts, resolve) {
-  const usage = new Map();
-  const uses = facts.flatMap((fact) =>
-    importUses(fact).map((use) => ({
-      names: use.names,
-      from: fact.path,
-      target: resolve(use.specifier, fact.path),
-    })),
-  );
-  for (const { names, from, target } of uses) {
-    if (target.path !== undefined && target.path !== from) addNames(usage, target.path, names);
-  }
-  return usage;
+function neutralImports(fact, resolve) {
+  return importRecords(fact).flatMap(({ specifier, names, reexport = false }) => {
+    const target = resolve(specifier, fact.path);
+    return target.path === undefined ? [] : [{ from: fact.path, to: target.path, names, reexport }];
+  });
 }
 
 function exportedAs(fact, definition) {
@@ -69,23 +78,32 @@ function keyOf(definition, fact, resolve) {
   return hash(`${definition.text}|${free.join(',')}`);
 }
 
-export function resolvedDefinitions(facts, resolve) {
-  const imported = importedNames(facts, resolve);
-  return facts.map((fact) => {
-    const names = imported.get(fact.path) ?? new Set();
-    return {
-      ...fact,
-      definitions: fact.definitions.map((definition) => {
-        const exportNames = exportedAs(fact, definition);
-        return {
-          ...definition,
-          exported: exportNames.length > 0,
-          exportNames,
-          key: keyOf(definition, fact, resolve),
-          used:
-            definition.usedLocally || names.has('*') || exportNames.some((name) => names.has(name)),
-        };
-      }),
-    };
-  });
+function neutralDefinition(definition, fact, resolve) {
+  const exportNames = exportedAs(fact, definition);
+  return {
+    file: fact.path,
+    package: fact.packageRoot,
+    name: definition.name,
+    kind: definition.kind,
+    line: definition.line,
+    lines: definition.lines,
+    exported: exportNames.length > 0,
+    exportNames,
+    tokens: definition.tokens,
+    text: definition.text,
+    key: keyOf(definition, fact, resolve),
+    size: definition.size,
+    literal: definition.literal,
+    usedLocally: definition.usedLocally,
+    entry: exportNames.some((name) => name === 'default' || HTTP_METHODS.has(name)),
+  };
+}
+
+export function neutralReuseFacts(facts, resolve) {
+  return {
+    definitions: facts.flatMap((fact) =>
+      fact.definitions.map((definition) => neutralDefinition(definition, fact, resolve)),
+    ),
+    imports: facts.flatMap((fact) => neutralImports(fact, resolve)),
+  };
 }
