@@ -247,7 +247,7 @@ yet. A project that wraps `formatMessage` or `FormattedMessage` lists the wrappe
 legitimate code (a brand name in JSX text) is lifted for some paths with an entry in `exceptions`
 (`formatjs/no-literal-string-in-jsx`); an exception that names an i18n rule is skipped while the
 scope is off, and one that names an i18n rule nitpicker does not run is an error. Story files
-(`*.stories.*`) are not checked. The rules, the ones left off and why are in
+(`*.stories.*`, `*.story.*`) are not checked. The rules, the ones left off and why are in
 [The strict preset](typescript-strict-preset.md#internationalized-messages).
 
 ### Custom analyzers

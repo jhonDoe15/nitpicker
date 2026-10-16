@@ -7,6 +7,7 @@ import tseslint from 'typescript-eslint';
 import { afterEach, describe, expect, it } from 'vitest';
 import { lintFixture } from '../../failure-messages/test-support/harness.mjs';
 import { resolveLayout } from '../../layout.mjs';
+import { GENERAL_HINT } from '../rule-hints.mjs';
 import {
   accessibilityRuleNames,
   reactRuleIds,
@@ -243,6 +244,37 @@ describe('the React scope config', () => {
     ]);
   });
 
+  it('requires focus and blur handlers next to hover-only enter and leave handlers', async () => {
+    const [entry] = await reactSyntaxConfigFor(layout);
+    const config = [{ languageOptions: { parser: tseslint.parser } }, entry];
+    const flagged = (attributes) =>
+      lintFixture({
+        config,
+        filename: 'src/main/ui/card.tsx',
+        code: `export const Card = () => <div ${attributes} />;`,
+      })
+        .filter(({ ruleId }) => ruleId === 'jsx-a11y/mouse-events-have-key-events')
+        .map(({ message }) => message);
+
+    expect(entry.rules['jsx-a11y/mouse-events-have-key-events']).toEqual([
+      'error',
+      {
+        hoverInHandlers: ['onMouseOver', 'onMouseEnter'],
+        hoverOutHandlers: ['onMouseOut', 'onMouseLeave'],
+      },
+    ]);
+    expect(flagged('onMouseEnter={show} onMouseLeave={hide}')).toEqual([
+      `onMouseEnter must be accompanied by onFocus for accessibility.${GENERAL_HINT}`,
+      `onMouseLeave must be accompanied by onBlur for accessibility.${GENERAL_HINT}`,
+    ]);
+    expect(flagged('onMouseOver={show}')).toEqual([
+      `onMouseOver must be accompanied by onFocus for accessibility.${GENERAL_HINT}`,
+    ]);
+    expect(flagged('onMouseEnter={show} onFocus={show} onMouseLeave={hide} onBlur={hide}')).toEqual(
+      [],
+    );
+  });
+
   it('applies to production source only, not to tests', async () => {
     const entries = await reactScopeConfigFor(layout);
 
@@ -253,6 +285,25 @@ describe('the React scope config', () => {
     for (const file of ['src/ui/panel.test.tsx', 'test/panel.tsx', 'src/ui/__tests__/panel.tsx']) {
       const config = await calculatedConfig(entries, file);
       expect(config?.rules?.['react-hooks/rules-of-hooks'], file).toBeUndefined();
+    }
+  });
+
+  it('checks colors in every production source file, but not in tests or stories', async () => {
+    const entries = await reactScopeConfigFor(layout);
+    const severityOf = async (file) =>
+      (await calculatedConfig(entries, file))?.rules?.['nitpicker/react-no-hardcoded-colors']?.[0];
+
+    for (const file of ['src/ui/panel.tsx', 'src/map/geometry.ts', 'src/map/geometry.mjs']) {
+      expect(await severityOf(file), file).toBe(2);
+    }
+    for (const file of [
+      'src/ui/panel.test.tsx',
+      'test/panel.tsx',
+      'src/ui/__tests__/panel.tsx',
+      'src/ui/panel.stories.tsx',
+      'src/ui/panel.stories.ts',
+    ]) {
+      expect(await severityOf(file), file).not.toBe(2);
     }
   });
 
