@@ -174,6 +174,15 @@ Full diagnostics: /tmp/nitpicker-java-out-${/[A-Za-z0-9]{6}/}/reports/report.txt
           'This code repeats src/main/java/demo/Second.java:3 (30 lines). Keep one copy and call it from both places.',
         classification: 'enforceable',
         location: { line: 3 },
+        ratchet: {
+          key: 'pair:src/main/java/demo/First.java|src/main/java/demo/Second.java:clone',
+          value: 381,
+          divisible: true,
+          mustKeepUnchangedLines: [
+            { path: 'src/main/java/demo/First.java', startLine: 3, endLine: 32 },
+            { path: 'src/main/java/demo/Second.java', startLine: 3, endLine: 32 },
+          ],
+        },
       },
     ]);
   });
