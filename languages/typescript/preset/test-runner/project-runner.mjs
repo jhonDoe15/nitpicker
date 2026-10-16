@@ -1,14 +1,11 @@
-import { PACKAGE_ROOT } from '../../../../core/tooling/tool-resolution.mjs';
 import { readHeadPolicy } from '../head-policy.mjs';
 import { detectTestRunner, testRunnerFor } from './detect-runner.mjs';
 import { runnerCommand } from './script-command.mjs';
 
 const NO_COMMAND = { environment: {}, nodeArguments: [], arguments_: [], precedingCommands: [] };
 
-function detectionRoot({ projectRoot, liveProjectRoot }) {
-  return liveProjectRoot === undefined || liveProjectRoot === PACKAGE_ROOT
-    ? projectRoot
-    : liveProjectRoot;
+function detectionRoot({ projectRoot, runnerProjectRoot }) {
+  return runnerProjectRoot ?? projectRoot;
 }
 
 export function projectTestRunner(options) {

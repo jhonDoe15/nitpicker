@@ -2,7 +2,6 @@ import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
-import { PACKAGE_ROOT } from '../../../../core/tooling/tool-resolution.mjs';
 import { policyTestRunner, projectTestRunner, recordedTestRunner } from './project-runner.mjs';
 
 const roots = [];
@@ -32,7 +31,7 @@ describe('the test runner nitpicker runs for a snapshot', () => {
     const base = project({ test: 'jest --ci' });
     const live = project({ test: 'tsc && vitest run --project unit' });
 
-    expect(projectTestRunner({ projectRoot: base, liveProjectRoot: live })).toEqual({
+    expect(projectTestRunner({ projectRoot: base, runnerProjectRoot: live })).toEqual({
       runner: 'vitest',
       evidence: 'package.json script "test"',
       command: {
@@ -53,9 +52,6 @@ describe('the test runner nitpicker runs for a snapshot', () => {
     };
 
     expect(projectTestRunner({ projectRoot: root })).toEqual(expected);
-    expect(projectTestRunner({ projectRoot: root, liveProjectRoot: PACKAGE_ROOT })).toEqual(
-      expected,
-    );
   });
 });
 
