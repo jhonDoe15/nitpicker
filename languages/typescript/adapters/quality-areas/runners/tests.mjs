@@ -7,6 +7,7 @@ import {
   readCoverageFindings,
   toolErrorFinding,
 } from '../reporting/test-report.mjs';
+import { readSlowTestFindings } from '../../slow-tests/slow-tests.mjs';
 import { runProjectTests } from '../../test-runners/run-project-tests.mjs';
 import { hasProjectTests, projectTestFiles } from '../../test-runners/test-run.mjs';
 import { readLayout } from '../../../preset/head-policy.mjs';
@@ -41,7 +42,10 @@ export async function runCoverage(options) {
     rmSync(path.join(options.projectRoot, COVERAGE_REPORT_PATH), { force: true });
     return [noTestsRanFinding(options, run.runnerName)];
   }
-  return readCoverageFindings(options, run.report);
+  return [
+    ...readCoverageFindings(options, run.report),
+    ...readSlowTestFindings(options, run.report),
+  ];
 }
 
 function noTestsRanFinding(options, runnerName) {

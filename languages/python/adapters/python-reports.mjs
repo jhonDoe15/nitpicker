@@ -23,6 +23,7 @@ import {
 } from './analysis/python-structure.mjs';
 import { COVERAGE_REPORT, FORMAT_REPORT, MANIFEST_REPORT, RUFF_REPORT } from './python-tools.mjs';
 import { TYPES_REPORT } from './python-types.mjs';
+import { readSlowTestFindings } from '../slow-tests/slow-test-findings.mjs';
 
 const FORMATTER_TOOLS = { ruff: 'ruff-format', black: 'black' };
 const NO_TESTS_RULE = 'no-tests-ran';
@@ -64,6 +65,7 @@ export function readPythonFindings({ projectRoot, reportRoot, crapLimit, policy 
       ...readDuplicateFindings(reportRoot),
       ...readCouplingFindings(reportRoot),
       ...readImportLinterFindings(reportRoot),
+      ...readSlowTestFindings(reportRoot, policy.testSeconds),
     ]),
   };
 }

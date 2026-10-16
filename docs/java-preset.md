@@ -523,7 +523,9 @@ resolved plus a new finding, as in the TypeScript check.
 
 - **Rule.** `test-runtime/slow-test` fails a test the change adds or edits when it takes more than 5 s
   as a unit test, or more than 30 s as an integration test (`thresholds.unitTestSeconds` and
-  `thresholds.integrationTestSeconds`). Integration tests are those of a test task other than `test`
+  `thresholds.integrationTestSeconds`). The rule, message shape, budgets and exception are the same
+  for [TypeScript and JavaScript](typescript-strict-preset.md#slow-tests) and
+  [Python](python-preset.md#slow-tests); the bare id `slow-test` lifts it in every preset. Integration tests are those of a test task other than `test`
   (Maven's `surefire` counts as `test`), classes named `*IT`, `*ITCase` or `*IntegrationTest(s)`, and
   classes annotated `@SpringBootTest`, also through a superclass or an annotation of their own that
   carries it, when that type's source is in a test root.

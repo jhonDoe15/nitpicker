@@ -110,12 +110,13 @@ set `python.sourceRoots`.
 ## Configuration
 
 Config keys with this preset: `base`, `disable` (the analyzer names are `python` and `mutation`), `analyzers`, the keys shared by all languages,
-`thresholds` (`crapLimit`, enforced from slice 3, and the file limits `fileLines`, `testFileLines`,
-`lineLength` and `folderFiles`), `exclude` (findings under the globs are dropped) and
+`thresholds` (`crapLimit`, enforced from slice 3, the file limits `fileLines`, `testFileLines`,
+`lineLength` and `folderFiles`, and the [slow test](#slow-tests) budgets `unitTestSeconds` and
+`integrationTestSeconds`), `exclude` (findings under the globs are dropped) and
 `legacyInventory` (same format and `baseline-expansion` rule as for Java), and the `python` object
 below. `layout` describes TypeScript source roots and stays a config error with this preset. The
-top-level `exceptions` is accepted only for the file limits shared by every language
-(`file-lines-limit`, `line-length-limit`, `folder-files-limit`); the Python equivalent of
+top-level `exceptions` is accepted only for the rules shared by every language
+(`file-lines-limit`, `line-length-limit`, `folder-files-limit`, `slow-test`); the Python equivalent of
 `exceptions` for every other rule is `python.exceptions`. `python` is an error with any other preset.
 
 ```json
@@ -754,6 +755,41 @@ the statistics again, which is one run of the suite. And changed tests are not h
 stays "survived" after a test that kills it was added, and a killed mutant stays "killed" after a
 test was weakened, so a test change cannot reuse anything. Stryker re-tests the mutants covered by
 a changed test; mutmut has no such step yet, hence source-only.
+
+## Slow tests
+
+- **Rule.** `test-runtime/slow-test` fails a test the change adds or edits when it takes more than
+  5 s as a unit test, or more than 30 s as an integration test (`thresholds.unitTestSeconds` and
+  `thresholds.integrationTestSeconds`), the same rule, message shape and budgets as for
+  [Java and Kotlin](java-preset.md#slow-tests) and
+  [TypeScript](typescript-strict-preset.md#slow-tests). The message names the budget, the measured
+  time, the fixes (patch the clock instead of `time.sleep`, fake network, database and disk, or move
+  the test to an integration test) and the exception. The exception is a top-level `exceptions`
+  entry, `{ "rule": "slow-test", "paths": ["tests/db/**"], "reason": "..." }`, not `python.exceptions`.
+- **Measurement.** Head only, in the coverage run that already executes the tests, so there is no
+  extra run. pytest gets `--junitxml` (with `junit_family=xunit1`) and writes the time of each test
+  to the report directory; unittest runs through `languages/python/slow-tests/unittest_timing.py`,
+  which takes the same `discover` arguments, runs the tests as `python -m unittest` does and writes
+  the same XML. A parameterized pytest case is timed per case, and a rerun test keeps its slowest
+  time. A project that turns the built-in `junitxml` plugin off (`-p no:junitxml`) is not timed.
+- **Unit or integration.** A test is an integration test when it, its class or its module carries a
+  pytest marker named `integration`, `integrations`, `e2e`, `end_to_end`, `functional`, `acceptance`
+  or `system` (`@pytest.mark.integration`, `pytestmark = pytest.mark.e2e`), or its file is under a
+  folder named `integration`, `integrations`, `e2e`, `end-to-end`, `functional`, `acceptance` or
+  `system` (also with a `_tests` suffix), or its file name has `integration` or `e2e` as a word
+  (`test_orders_integration.py`), or its class name contains `Integration`, `E2E` or `EndToEnd`.
+  Every other test is a unit test.
+- **Edited or added.** `languages/python/slow-tests/test_facts.py` parses the test file with `ast`
+  in the project's environment and gives, per function or method (`Class.test_name`), its line, its
+  markers and a hash of its text with its decorators. A test counts when its hash differs from the
+  one in the base snapshot's file, or the file is new on the base. A reported test with no function
+  of that name (a generated test) counts when its file differs from the base. Only files with a slow
+  test are parsed, so a run without one starts no extra process. Slow tests the change does not touch
+  stay baselined, and the base snapshot reports none.
+- **Tests.** `languages/python/slow-tests/*.test.mjs` (sample JUnit XML, canned `ast` facts, budgets
+  and messages), the gated `slow-test-scripts.e2e.test.mjs` (the two helpers on real Python) and
+  `slow-tests.e2e.test.mjs` (a test that really sleeps, with pytest, unittest, an integration
+  folder and an exception, asserting only that the rule fires or not).
 
 ## Slices
 

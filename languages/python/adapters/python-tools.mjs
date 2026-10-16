@@ -28,6 +28,8 @@ import {
 } from './execution/python-test-runner.mjs';
 import { resolveTypeChecker, typeCheck } from './python-types.mjs';
 import { structure } from './analysis/python-structure.mjs';
+import { collectSlowTests } from '../slow-tests/slow-test-step.mjs';
+import { timedTestCommand } from '../slow-tests/timing-command.mjs';
 
 export const RUFF_REPORT = 'ruff.sarif';
 export const FORMAT_REPORT = 'format.txt';
@@ -57,6 +59,7 @@ export function createToolContext({
   exclude = [],
   snapshot = 'head',
   baselineRoot,
+  testSeconds,
 }) {
   const launcher = openEnvironment(detectEnvironment(liveRoot, settings.environment), liveRoot);
   const sourceRoots = detectSourceRoots(projectRoot, settings.sourceRoots);
@@ -68,6 +71,7 @@ export function createToolContext({
     reportRoot,
     snapshot,
     baselineRoot,
+    testSeconds,
     launcher,
     exclude,
     project: {
@@ -93,6 +97,7 @@ export function runPythonTools(context) {
     lint,
     format,
     test,
+    collectSlowTests,
     typeCheck,
     checkRules,
     structure,
@@ -231,10 +236,14 @@ function test(context, outcome) {
   const sources = coverageSources(context);
   const config = path.join(context.reportRoot, COVERAGE_CONFIG);
   writeFileSync(config, coverageConfig(sources));
-  const result = run(context, ['coverage', 'run', '--rcfile', config, ...testCommand(context)], {
-    accepted: [0, NO_TESTS_EXIT],
-    rule: TESTS_FAILED_RULE,
-  });
+  const result = run(
+    context,
+    ['coverage', 'run', '--rcfile', config, ...timedTestCommand(context, testCommand(context))],
+    {
+      accepted: [0, NO_TESTS_EXIT],
+      rule: TESTS_FAILED_RULE,
+    },
+  );
   outcome.testsRan = testsRan(result);
   writeCoverageReport(context, { config, measured: sources.length > 0 });
 }

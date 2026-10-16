@@ -39,6 +39,7 @@ function toolContext({ projectRoot, liveRoot, settings, policy }, reportRoot) {
     exclude: policy?.exclude,
     snapshot: policy?.snapshot,
     baselineRoot: policy?.baselineRoot,
+    testSeconds: policy?.testSeconds,
   });
 }
 

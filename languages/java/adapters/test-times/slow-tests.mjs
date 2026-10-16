@@ -6,6 +6,7 @@ import { sourceLocator } from '../reporting/kotlin-reports.mjs';
 import {
   MESSAGES,
   RULE_IDS,
+  SLOW_TEST_FIXES,
   TEST_TIME_DEFAULTS,
   renderMessage,
 } from '../../../../shared/policy.mjs';
@@ -110,7 +111,9 @@ function slowTestFinding({ testCase, source, method, limit, integration, moduleP
       seconds: testCase.seconds.toFixed(1),
       kind: integration ? 'an integration' : 'a unit',
       limit,
-      move: integration ? '' : MOVE_ADVICE[MAVEN_TASKS.has(testCase.task) ? 'maven' : 'gradle'],
+      fix: renderMessage(SLOW_TEST_FIXES.java, {
+        move: integration ? '' : MOVE_ADVICE[MAVEN_TASKS.has(testCase.task) ? 'maven' : 'gradle'],
+      }),
       exception,
     }),
     classification: 'enforceable',
