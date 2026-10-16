@@ -22,6 +22,7 @@
       "core/diff/execution/analyzer-scheduler.mjs",
       "core/diff/execution/test-support/fake-analyzer.mjs",
       "languages/java/adapters/java-runner.mjs",
+      "languages/java/builds/rulesets/write-rules.mjs",
       "languages/typescript/adapters/eslint-runner.mjs",
       "languages/typescript/adapters/quality-areas-runner.mjs",
       "languages/typescript/adapters/static-checks-runner.mjs",

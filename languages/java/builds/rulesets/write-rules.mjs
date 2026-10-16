@@ -22,7 +22,10 @@ function readPlan(file) {
   return JSON.parse(readFileSync(file, 'utf8'), (_, value) => value ?? undefined);
 }
 
-if (realpathSync(process.argv[1]) === import.meta.filename) {
-  const [kind, planFile] = process.argv.slice(2);
+export function main([kind, planFile]) {
   writeRules(kind, readPlan(planFile));
+}
+
+if (process.argv[1] !== undefined && realpathSync(process.argv[1]) === import.meta.filename) {
+  main(process.argv.slice(2));
 }
