@@ -63,12 +63,12 @@ export function classReader(buffer) {
   };
 }
 
-function readConstant(reader, { pool, index }) {
+function readConstant(reader, { constants, index }) {
   const tag = reader.u1();
   if (tag === UTF8) {
-    pool.utf.set(index, reader.utf());
+    constants.utf.set(index, reader.utf());
   } else if (tag === CLASS) {
-    pool.classes.set(index, reader.u2());
+    constants.classes.set(index, reader.u2());
   } else {
     reader.skip(CONSTANT_SIZES[tag]);
   }
@@ -77,17 +77,18 @@ function readConstant(reader, { pool, index }) {
 
 export function readConstantPool(reader) {
   const count = reader.u2();
-  const pool = { utf: new Map(), classes: new Map() };
+  const constants = { utf: new Map(), classes: new Map() };
   const wideSlots = new Set();
   for (const index of Array.from({ length: count - 1 }, (_, slot) => slot + 1)) {
-    if (!wideSlots.has(index) && readConstant(reader, { pool, index })) {
+    if (!wideSlots.has(index) && readConstant(reader, { constants, index })) {
       wideSlots.add(index + 1);
     }
   }
   return {
-    utf: pool.utf,
-    className: (index) => pool.utf.get(pool.classes.get(index)),
-    classNames: () => [...pool.classes.values()].map((nameIndex) => pool.utf.get(nameIndex)),
+    utf: constants.utf,
+    className: (index) => constants.utf.get(constants.classes.get(index)),
+    classNames: () =>
+      [...constants.classes.values()].map((nameIndex) => constants.utf.get(nameIndex)),
   };
 }
 

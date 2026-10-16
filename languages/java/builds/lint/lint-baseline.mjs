@@ -9,6 +9,7 @@ import { inheritedLombokConfigs, lombokConfigs } from './lint-staging.mjs';
 
 export const LINT_CACHE = 'javac-lint.txt';
 export const LINT_FINGERPRINT = 'javac-lint-fingerprint.txt';
+const DIGEST = 'sha256';
 const WARNING_FILE = /^(.+\.java):\d+: warning: \[/u;
 const NO_REUSE = { unchanged: new Set(), kept: '' };
 const javacVersions = new Map();
@@ -32,7 +33,7 @@ function insideRoot(root, entry) {
 }
 
 function fileDigest(file) {
-  return createHash('sha256').update(readFileSync(file)).digest('hex');
+  return createHash(DIGEST).update(readFileSync(file)).digest('hex');
 }
 
 function directoryDigest(directory) {
@@ -44,7 +45,7 @@ function directoryDigest(directory) {
     .reduce(
       (hash, file) =>
         hash.update(`${posix(path.relative(directory, file))}\0`).update(readFileSync(file)),
-      createHash('sha256'),
+      createHash(DIGEST),
     )
     .digest('hex');
 }
@@ -77,7 +78,7 @@ export function lintFingerprint(plan) {
     lombokConfigs: digests(plan.root, lombokConfigs({ root: plan.root, sources })),
     inheritedLombokConfigs: inheritedLombokConfigs(plan.root).map((config) => fileDigest(config)),
   };
-  return createHash('sha256').update(JSON.stringify(inputs)).digest('hex');
+  return createHash(DIGEST).update(JSON.stringify(inputs)).digest('hex');
 }
 
 function ownerKey({ name, sourceFile }) {
