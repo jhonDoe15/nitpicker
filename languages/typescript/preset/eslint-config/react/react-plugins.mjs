@@ -7,6 +7,14 @@ import { accessibilityRuleNames, testingLibraryHints } from './react-rules.mjs';
 import { EXCEPTION_HINT, GENERAL_HINT, withHint, withoutFixes } from '../rule-hints.mjs';
 
 const accessibilityRulePrefix = 'jsx-a11y-x';
+const accessibilityOptionOverrides = {
+  'mouse-events-have-key-events': [
+    {
+      hoverInHandlers: ['onMouseOver', 'onMouseEnter'],
+      hoverOutHandlers: ['onMouseOut', 'onMouseLeave'],
+    },
+  ],
+};
 
 export const reactPlugins = {
   'react-hooks': {
@@ -37,15 +45,16 @@ export const reactPlugins = {
   },
 };
 
+function recommendedOptions(name) {
+  const configured = accessibility.configs.recommended.rules[`${accessibilityRulePrefix}/${name}`];
+  return Array.isArray(configured) ? configured.slice(1) : [];
+}
+
 export const accessibilityRuleOptions = Object.fromEntries(
-  accessibilityRuleNames.map((name) => {
-    const configured =
-      accessibility.configs.recommended.rules[`${accessibilityRulePrefix}/${name}`];
-    return [
-      `jsx-a11y/${name}`,
-      ['error', ...(Array.isArray(configured) ? configured.slice(1) : [])],
-    ];
-  }),
+  accessibilityRuleNames.map((name) => [
+    `jsx-a11y/${name}`,
+    ['error', ...(accessibilityOptionOverrides[name] ?? recommendedOptions(name))],
+  ]),
 );
 
 function testingLibraryRule(name, hint) {

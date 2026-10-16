@@ -61,6 +61,29 @@ describe('head policy react key', () => {
   });
 });
 
+describe('head policy icon package', () => {
+  function projectWith(dependencies) {
+    const root = temporaryDirectory();
+    writeFileSync(path.join(root, 'package.json'), JSON.stringify({ dependencies }));
+    return root;
+  }
+
+  it('records the first icon package of the head checkout next to the React scope', () => {
+    const root = projectWith({ react: '19.0.0', 'react-icons': '5.0.0', 'lucide-react': '1.0.0' });
+
+    expect(resolveHeadPolicy({}, root).react).toEqual({
+      enabled: true,
+      iconPackage: 'react-icons',
+    });
+  });
+
+  it('leaves the key out when the head checkout has no icon package', () => {
+    const root = projectWith({ react: '19.0.0' });
+
+    expect(resolveHeadPolicy({}, root).react).toEqual({ enabled: true });
+  });
+});
+
 describe('head policy reader', () => {
   it('falls back to preset layout defaults without a policy file', () => {
     expect(readHeadPolicy({})).toEqual({

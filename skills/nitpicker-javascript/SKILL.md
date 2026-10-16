@@ -27,7 +27,8 @@ Before you change code other modules use or fix a bug, read
    `@types/node` in devDependencies.
 2. When the change is complete, run `npx nitpicker --fix` as a background command you wait on,
    without a pipe: you need its exit code. It applies ESLint and Prettier fixes with its own
-   configs (don't format with plain `prettier`), then checks your change against the merge base. It
+   configs (don't format with plain `prettier`; its quotes, semicolons, indentation and width follow
+   most of the project's files), then checks your change against the merge base. It
    takes minutes and prints a progress line for each slow analyzer.
 3. Act on the exit code:
    - 0: done.
