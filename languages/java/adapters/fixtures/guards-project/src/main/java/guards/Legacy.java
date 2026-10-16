@@ -10,8 +10,14 @@ import java.util.Date;
 import java.util.concurrent.ThreadFactory;
 
 public final class Legacy {
+  private Date created; // violation: forbiddenapis/legacy-date-time
+
   public Object stamp() {
     return new Date(0L); // violation: forbiddenapis/legacy-date-time
+  }
+
+  public long age(Date since) { // violation: forbiddenapis/legacy-date-time
+    return since.getTime(); // violation: forbiddenapis/legacy-date-time
   }
 
   public Instant expiry(X509Certificate certificate) {

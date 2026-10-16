@@ -138,6 +138,98 @@ describe('readForbiddenApiFindings', () => {
     ).toEqual([]);
   });
 
+  it('places a field, method, class or record declaration of a banned type on its source line', () => {
+    const root = project();
+    const banned =
+      'ERROR: Forbidden class/interface use: java.util.Date [legacy-date-time: Use java.time.]';
+    const declarations = [
+      "Decl$Source (Decl.java, method declaration of 'next()')",
+      'Decl$Stamp (Decl.java, class declaration)',
+      'Decl$Stamp (Decl.java:22)',
+      "Decl$Event (Decl.java, record component declaration of 'at')",
+      "Decl$Event (Decl.java, field declaration of 'at')",
+      "Decl$Event (Decl.java, method declaration of '<init>(java.util.Date)')",
+      "Decl$Event (Decl.java, method declaration of 'at()')",
+      "Decl (Decl.java, field declaration of 'created')",
+      "Decl (Decl.java, method declaration of '<init>(java.util.Date)')",
+      "Decl (Decl.java, method declaration of 'created()')",
+      "Decl (Decl.java, method declaration of 'take(int,java.util.Date)')",
+      "Decl (Decl.java, method declaration of 'lambda$take$0(java.util.Date)')",
+    ];
+    writeFileSync(
+      path.join(root, 'build/nitpicker/forbidden-apis.txt'),
+      declarations.flatMap((place) => [banned, `ERROR:   in demo.${place}`]).join('\n'),
+    );
+    writeFileSync(
+      path.join(root, 'src/main/java/demo/Decl.java'),
+      [
+        'package demo;',
+        '',
+        'import java.util.Date;',
+        '',
+        'public class Decl {',
+        '  private Date created;',
+        '',
+        '  public Decl(Date start) {',
+        '    Date copy = created();',
+        '    this.created = start;',
+        '  }',
+        '',
+        '  Date created() {',
+        '    return created;',
+        '  }',
+        '',
+        '  void take(String a) {}',
+        '',
+        '  void take(int a,',
+        '      Date b) {}',
+        '',
+        '  static class Stamp extends Date {}',
+        '',
+        '  interface Source {',
+        '    Date next();',
+        '  }',
+        '',
+        '  record Event(Date at) {}',
+        '}',
+      ].join('\n'),
+    );
+
+    const findings = readForbiddenApiFindings(path.join(root, 'build/nitpicker'), {
+      locate,
+      projectRoot: root,
+    });
+
+    expect(findings.map(({ rule, location }) => [rule, location.line])).toEqual(
+      [25, 22, 28, 6, 8, 13, 19].map((line) => ['legacy-date-time', line]),
+    );
+    expect(new Set(findings.map((finding) => finding.identity)).size).toBe(findings.length);
+  });
+
+  it('keeps the identity of a declaration when the class gains other uses', () => {
+    const root = project();
+    const banned =
+      'ERROR: Forbidden class/interface use: java.util.Date [legacy-date-time: Use java.time.]';
+    const read = (places) => {
+      writeFileSync(
+        path.join(root, 'build/nitpicker/forbidden-apis.txt'),
+        places.flatMap((place) => [banned, `ERROR:   in demo.Held (Held.java${place})`]).join('\n'),
+      );
+      return readForbiddenApiFindings(path.join(root, 'build/nitpicker'), {
+        locate,
+        projectRoot: root,
+      }).map((finding) => finding.identity);
+    };
+    writeFileSync(
+      path.join(root, 'src/main/java/demo/Held.java'),
+      'class Held {\n  private Date at;\n  long millis() {\n    return new Date().getTime();\n  }\n}\n',
+    );
+
+    const [field] = read([", field declaration of 'at'"]);
+
+    expect(read([':4', ", field declaration of 'at'"])).toEqual([expect.any(String), field]);
+  });
+
   it('skips a Date another API returns that the same statement converts with toInstant()', () => {
     const root = project();
     const legacyDate = (line) => [
