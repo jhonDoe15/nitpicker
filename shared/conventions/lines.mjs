@@ -6,13 +6,16 @@ export function indentOf(line) {
   return line.trim().length === 0 ? Infinity : leadingSpaces(line);
 }
 
+const NARROW_STEP = 2;
+const WIDE_STEP = 4;
+
 export function majorityStep(steps) {
-  const two = steps.filter((step) => step === 2).length;
-  const four = steps.filter((step) => step === 4).length;
-  if (two === four) {
+  const narrow = steps.filter((step) => step === NARROW_STEP).length;
+  const wide = steps.filter((step) => step === WIDE_STEP).length;
+  if (narrow === wide) {
     return undefined;
   }
-  return two > four ? '2' : '4';
+  return narrow > wide ? String(NARROW_STEP) : String(WIDE_STEP);
 }
 
 export function bracketGroups(lines, { opener, closer }) {

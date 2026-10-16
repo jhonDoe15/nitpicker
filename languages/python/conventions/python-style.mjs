@@ -58,8 +58,8 @@ function formattingLines({ formatter, precedence, conventions, projectRoot }) {
       ? []
       : ignoredConfig(formatter, projectRoot);
     return [`Format with ${formatter}: ${plan.command}`, ...ignored];
-  } catch {
-    return [];
+  } catch (error) {
+    return [`Could not read the Python formatting settings: ${error.message}`];
   }
 }
 
