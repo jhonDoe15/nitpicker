@@ -48,10 +48,16 @@ function titlePattern(node, each) {
   return ts.isParenthesizedExpression(node) ? titlePattern(node.expression, each) : ANY;
 }
 
+function kindOf(root) {
+  if (TEST_FUNCTIONS.has(root)) {
+    return 'test';
+  }
+  return SUITE_FUNCTIONS.has(root) ? 'suite' : undefined;
+}
+
 function describeCall(call) {
   const names = calleeNames(call.expression);
-  const root = names?.[0];
-  const kind = TEST_FUNCTIONS.has(root) ? 'test' : SUITE_FUNCTIONS.has(root) ? 'suite' : undefined;
+  const kind = kindOf(names?.[0]);
   if (kind === undefined || isEachTable(call)) {
     return undefined;
   }

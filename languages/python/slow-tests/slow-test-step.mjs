@@ -29,15 +29,14 @@ function testCasesOf(xml) {
 
 function locate(projectRoot, className) {
   const parts = className.split('.');
-  for (let count = parts.length; count > 0; count -= 1) {
-    for (const folder of TEST_ROOTS) {
-      const file = `${path.posix.join(folder, ...parts.slice(0, count))}.py`;
-      if (existsSync(path.join(projectRoot, file))) {
-        return { file, classes: parts.slice(count) };
-      }
-    }
-  }
-  return undefined;
+  return Array.from({ length: parts.length }, (_, index) => parts.length - index)
+    .flatMap((count) =>
+      TEST_ROOTS.map((folder) => ({
+        file: `${path.posix.join(folder, ...parts.slice(0, count))}.py`,
+        classes: parts.slice(count),
+      })),
+    )
+    .find(({ file }) => existsSync(path.join(projectRoot, file)));
 }
 
 function factsOf(context, root, files) {
