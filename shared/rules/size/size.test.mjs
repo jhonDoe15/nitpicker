@@ -39,8 +39,16 @@ describe('folder depth', () => {
     expect(findings[0].message).toBe(
       `Folder is 3 levels below the root (limit 1). Keep it 1 deep. ${HINT('folder-depth-limit', 'root/a/b/c/**')}`,
     );
-    expect(findings[0].ratchet).toMatchObject({ key: 'folder-depth:source', value: 3 });
-    expect(findings[0].ratchet.pathIsFolder).toBe(true);
+    const hint = HINT('folder-depth-limit', 'root/a/b/c/**');
+    expect(findings[0].ratchet).toEqual({
+      key: 'folder-depth:source',
+      value: 3,
+      worseMessage: `Folder grew from {base} to 3 levels below the root (limit 1). Keep it 1 deep. ${hint}`,
+      heldMessage:
+        'Folder: 3 levels below the root (limit 1), allowed because base was {base}; any increase fails.',
+      pathIsFolder: true,
+      folderFiles: 2,
+    });
   });
 
   it('skips files the language does not cover, test data and excepted files', () => {

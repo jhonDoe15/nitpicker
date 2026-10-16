@@ -2,12 +2,7 @@ import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { acceptedDigest } from '../../../../core/command/test-support/accepted-digest.mjs';
-import {
-  GREETER_HI_TEST,
-  NO_MUTATION,
-  SAME_NAME_SOURCES,
-  VIOLATION,
-} from './test-support/python-preset-data.mjs';
+import { NO_MUTATION, SAME_NAME_SOURCES, VIOLATION } from './test-support/python-preset-data.mjs';
 import {
   commitBranch,
   fixture,
