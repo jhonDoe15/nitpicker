@@ -364,7 +364,17 @@ describe('readCpdFindings', () => {
     [
       'a launcher that timed out',
       'ETIMEDOUT\nspawnSync java ETIMEDOUT',
-      'PMD CPD did not finish (ETIMEDOUT) and wrote no report: spawnSync java ETIMEDOUT',
+      'PMD CPD did not finish within the tool timeout and wrote no report: spawnSync java ETIMEDOUT',
+    ],
+    [
+      'a launcher killed by a signal',
+      'SIGKILL\n',
+      'PMD CPD was stopped by SIGKILL and wrote no report: no error output',
+    ],
+    [
+      'a java that could not start',
+      'EACCES\nspawnSync /jdk/bin/java EACCES',
+      'PMD CPD could not run (EACCES) and wrote no report: spawnSync /jdk/bin/java EACCES',
     ],
   ])('reports %s as CPD not run, naming the exit code and stderr', (_, failure, reason) => {
     const { root, reportRoot } = project({});
@@ -387,6 +397,46 @@ describe('readCpdFindings', () => {
     expect(readCpdFindings(reportRoot, { projectRoot: root, ...moduleRoots })).toEqual(
       notRun(reason),
     );
+  });
+
+  it('reports the paths CPD could not read next to its clones', () => {
+    const { root, reportRoot } = project({});
+    writeFileSync(path.join(reportRoot, 'cpd.xml'), report());
+    writeFileSync(
+      path.join(reportRoot, 'cpd-skipped.txt'),
+      `${path.join(root, 'src/main/java/loop')}: symbolic link loop\n` +
+        `${path.join(root, 'src/test/java')}: java.nio.file.NoSuchFileException\n`,
+    );
+
+    const findings = readCpdFindings(reportRoot, options(root));
+
+    expect(findings).toEqual([
+      {
+        tool: 'duplicates',
+        rule: 'cpd-skipped-paths',
+        path: '.',
+        identity: 'cpd-skipped-paths',
+        message:
+          'CPD could not read 2 path(s), so duplicated code there was not checked: ' +
+          'src/main/java/loop: symbolic link loop; src/test/java: java.nio.file.NoSuchFileException',
+        classification: 'descriptive',
+      },
+    ]);
+    expect(() => parseAnalyzerReport({ findings }, 'java')).not.toThrow();
+  });
+
+  it('scopes a notice whose source roots lie outside the project to the module folder', () => {
+    const { root, reportRoot } = project({});
+    writeFileSync(path.join(reportRoot, 'cpd-failed.txt'), '1\n');
+
+    expect(
+      readCpdFindings(reportRoot, {
+        projectRoot: root,
+        sourceRoots: ['../shared/src/main/java'],
+        testRoots: [],
+        moduleDir: 'app',
+      }).map(({ notRunScope }) => notRunScope),
+    ).toEqual([['app']]);
   });
 
   it('reports nothing when CPD did not run on the module', () => {

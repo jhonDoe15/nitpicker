@@ -79,12 +79,13 @@ export function readJavaFindings(projectRoot, options = {}) {
   };
 }
 
-function guardFindings({ projectRoot, reportRoot, reportBase, manifest }) {
+function guardFindings({ projectRoot, reportRoot, reportBase, manifest, moduleDir }) {
   return readGuardFindings({
     reportRoot,
     jscpdRoot: reportBase,
     projectRoot,
     manifest,
+    moduleDir,
     locate: sourceLocator(projectRoot, lintedRoots(manifest)),
   });
 }
@@ -98,6 +99,7 @@ function moduleContextFindings(projectRoot, module, { manifest, options }) {
       reportRoot: module.reportRoot,
       reportBase: options.reportBase,
       manifest: module.manifest,
+      moduleDir: module.dir,
       sourceRoots: module.manifest.sourceRoots ?? [],
       allSourceRoots: manifest.sourceRoots,
       kotlin: preset === 'kotlin' && module.manifest.kotlin === true,

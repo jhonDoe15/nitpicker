@@ -1,0 +1,33 @@
+{
+  "description": "Moving one file out of a directory a base notice covers adds the moved directory to the notice's scope and keeps the original. The base notice for core still covers the clone left in core/src/main/java and the one in integration/src/test/java, and the head's core notice, with the same identity, is not a tool error.",
+  "renames": {
+    "core/src/test/java/p/T.java": "integration/src/test/java/p/T.java"
+  },
+  "new": [
+    {
+      "tool": "duplicates",
+      "rule": "duplicate-clone",
+      "path": "core/src/main/java/p/Old.java",
+      "identity": "cpd:pair:core/src/main/java/p/Old.java|core/src/main/java/p/Copy.java:occurrence:1",
+      "classification": "descriptive"
+    },
+    {
+      "tool": "duplicates",
+      "rule": "duplicate-clone",
+      "path": "integration/src/test/java/p/T.java",
+      "identity": "cpd:pair:integration/src/test/java/p/T.java|integration/src/test/java/p/U.java:occurrence:1",
+      "classification": "descriptive"
+    }
+  ],
+  "resolved": [],
+  "unchanged": [
+    {
+      "tool": "duplicates",
+      "rule": "cpd-not-run",
+      "path": ".",
+      "identity": "cpd-not-run@:core",
+      "classification": "descriptive"
+    }
+  ],
+  "changedMetrics": []
+}

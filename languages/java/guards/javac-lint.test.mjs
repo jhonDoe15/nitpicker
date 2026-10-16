@@ -133,6 +133,22 @@ describe('readLintFindings', () => {
     expect(() => parseAnalyzerReport({ findings }, 'java')).not.toThrow();
   });
 
+  it('scopes the notice to the module folder when its source roots lie outside the project', () => {
+    const root = project([]);
+    const reports = path.join(root, 'nothing');
+    mkdirSync(reports);
+    writeFileSync(path.join(reports, 'javac-lint-failed.txt'), 'A.java:3: error: boom\n');
+
+    const findings = readLintFindings(reports, {
+      projectRoot: root,
+      sourceRoots: ['../shared/src/main/java'],
+      moduleDir: 'app',
+    });
+
+    expect(findings.map(({ notRunScope }) => notRunScope)).toEqual([['app']]);
+    expect(parseAnalyzerReport({ findings }, 'java').findings).toEqual(findings);
+  });
+
   it('reports head warnings as descriptive when the base lint compile failed', () => {
     const head = project(['src/main/java/demo/Raw.java']);
     const base = project([]);
