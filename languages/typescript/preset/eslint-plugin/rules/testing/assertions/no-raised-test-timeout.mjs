@@ -1,5 +1,6 @@
 import { constantNumber, resolveConstant } from '../../analysis/test-code-analysis.mjs';
 import { chainOf } from '../../analysis/ancestry.mjs';
+import { vocabularyOf } from '../runners/runner-option.mjs';
 
 export const TEST_TIMEOUT_CEILING_MS = 10_000;
 
@@ -100,7 +101,8 @@ function reportTimeout(context, timeout) {
     return;
   }
   if (value > TEST_TIMEOUT_CEILING_MS) {
-    context.report({ node: timeout, messageId: 'raisedTimeout' });
+    const { sharedSetupHook } = vocabularyOf(context);
+    context.report({ node: timeout, messageId: 'raisedTimeout', data: { sharedSetupHook } });
   }
 }
 
@@ -109,7 +111,7 @@ export const rule = {
     type: 'problem',
     schema: [],
     messages: {
-      raisedTimeout: `Do not raise a test or hook timeout above ${String(TEST_TIMEOUT_CEILING_MS)} ms, the testTimeout nitpicker runs tests with. Make the test faster instead: import code rather than spawning it, and share expensive setup in beforeAll. A genuinely long end-to-end suite can add an exception for this rule in nitpicker.config.json.`,
+      raisedTimeout: `Do not raise a test or hook timeout above ${String(TEST_TIMEOUT_CEILING_MS)} ms, the testTimeout nitpicker runs tests with. Make the test faster instead: import code rather than spawning it, and share expensive setup in {{sharedSetupHook}}. A genuinely long end-to-end suite can add an exception for this rule in nitpicker.config.json.`,
       unknownTimeout: `Give a test or hook timeout as a number of at most ${String(TEST_TIMEOUT_CEILING_MS)} ms written in this file, or keep the default; make the test faster instead of computing a longer timeout.`,
     },
   },
