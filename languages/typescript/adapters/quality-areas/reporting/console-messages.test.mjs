@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { normalizeConsoleMessage } from './console-messages.mjs';
+import { hasSpecificText, normalizeConsoleMessage } from './console-messages.mjs';
 
 describe('console message normalization', () => {
   it.each([
@@ -55,8 +55,8 @@ describe('console message normalization', () => {
     expect(normalizeConsoleMessage(line)).toBe(line);
   });
 
-  it('keeps the first 200 characters', () => {
-    expect(normalizeConsoleMessage('x'.repeat(500))).toHaveLength(200);
+  it('keeps the first 300 characters', () => {
+    expect(normalizeConsoleMessage('x'.repeat(500))).toHaveLength(300);
   });
 
   it('gives the same message when only paths, numbers and times differ', () => {
@@ -64,5 +64,19 @@ describe('console message normalization', () => {
     const after = 'Warning: timer fired in /other/src/x.ts:99:5 at 2026-02-03T04:05:06Z (pid 91)';
 
     expect(normalizeConsoleMessage(before)).toBe(normalizeConsoleMessage(after));
+  });
+});
+
+describe('text that can identify a message', () => {
+  it.each([
+    ['is no longer supported', true],
+    ['Error: 404', true],
+    ['404', false],
+    ['<n> <id>', false],
+    ['  a b  ', false],
+    ['\u001B[31m\u001B[0m', false],
+    ['/var/tmp/x', false],
+  ])('judges %j as %s', (text, expected) => {
+    expect(hasSpecificText(text)).toBe(expected);
   });
 });

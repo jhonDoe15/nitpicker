@@ -15,11 +15,13 @@ export function testConsoleCheckFor(exclusions) {
       'languages/typescript/adapters/quality-areas/reporting/vitest.mjs',
       'languages/typescript/adapters/quality-areas/runners/console/test-console.mjs',
       'languages/typescript/adapters/quality-areas/runners/tests.mjs',
+      'languages/typescript/adapters/quality-areas/runners/tooling.mjs',
       'languages/typescript/preset/head-policy.mjs',
       'languages/typescript/preset/test-console/ansi.mjs',
       'languages/typescript/preset/test-console/vitest-reporter.config.mjs',
       'shared/glob.mjs',
       'shared/policy.mjs',
+      'shared/rules/finding-helpers.mjs',
       'shared/rules/exceptions.mjs',
     ],
   };

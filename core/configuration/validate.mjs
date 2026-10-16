@@ -19,6 +19,7 @@ import { conventionDefinitions } from '../conventions/definitions.mjs';
 import { validateConventions } from '../../shared/conventions/settings.mjs';
 import { stylingApproaches } from '../../languages/typescript/preset/eslint-config/react/react-rules.mjs';
 import { i18nRuleIds } from '../../languages/typescript/preset/eslint-config/i18n/i18n-rules.mjs';
+import { hasSpecificText } from '../../languages/typescript/adapters/quality-areas/reporting/console-messages.mjs';
 import path from 'node:path';
 
 export const SUPPORTED_PRESETS = ['typescript', 'javascript', ...GRADLE_PRESETS, 'python'];
@@ -194,13 +195,16 @@ function validateAllowEntry(entry, label) {
   }
   for (const key of Object.keys(entry)) {
     if (!ALLOW_KEYS.includes(key)) {
+      const hint = key === 'pattern' ? ': use "contains"' : '';
       throw configError(
-        `unknown key "${key}" in "${label}". Allowed keys: ${ALLOW_KEYS.join(', ')}`,
+        `unknown key "${key}" in "${label}"${hint}. Allowed keys: ${ALLOW_KEYS.join(', ')}`,
       );
     }
   }
-  if (typeof entry.contains !== 'string' || entry.contains.replaceAll(/\s/gu, '').length < 3) {
-    throw configError(`"${label}.contains" must be a message substring of at least 3 characters`);
+  if (typeof entry.contains !== 'string' || !hasSpecificText(entry.contains)) {
+    throw configError(
+      `"${label}.contains" must keep at least 3 characters once numbers and ids become <n> and <id>`,
+    );
   }
   if (entry.paths !== undefined) {
     validateStringArray(entry.paths, `${label}.paths`);

@@ -15,7 +15,9 @@ const IDENTIFIER_PATTERN = /\b(?=[A-Za-z]*\d)(?=\d*[A-Za-z])[A-Za-z0-9]{6,}\b/gu
 const NUMBER_PATTERN =
   /(?<![A-Za-z_$])\d+(?:[.,]\d+)*(?:%|\s?(?:ms|s|sec|secs|seconds?|min|minutes?|hours?|[kmg]i?b|bytes?)\b)?/giu;
 
-const MAX_MESSAGE_LENGTH = 200;
+const PLACEHOLDER_PATTERN = /<(?:time|hex|uuid|id|n|root|tmp|home)>/gu;
+
+const MAX_MESSAGE_LENGTH = 300;
 
 function lastSegment(match) {
   return match.split(/[\\/]/u).at(-1);
@@ -32,4 +34,11 @@ export function normalizeConsoleMessage(line) {
     .replaceAll(/\s+/gu, ' ')
     .trim()
     .slice(0, MAX_MESSAGE_LENGTH);
+}
+
+export function hasSpecificText(text) {
+  return (
+    normalizeConsoleMessage(text).replaceAll(PLACEHOLDER_PATTERN, '').replaceAll(/\s/gu, '')
+      .length >= 3
+  );
 }
