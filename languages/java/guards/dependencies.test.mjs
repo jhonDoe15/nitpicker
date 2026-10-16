@@ -4,7 +4,10 @@ import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import { parseAnalyzerReport } from '../../../core/diff/comparison/finding-schema.mjs';
 import { dependencyFindings, readDependencyFindings } from './dependencies.mjs';
-import { classWithStrings, descriptorOfLength } from '../builds/test-support/class-bytes.mjs';
+import {
+  classWithStrings,
+  descriptorOfLength,
+} from '../builds/classes/test-support/class-bytes.mjs';
 
 const roots = [];
 afterEach(() => {

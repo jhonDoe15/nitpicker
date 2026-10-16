@@ -41,7 +41,7 @@ export function analyzeJavaCoupling({ classes, edges, fileOf, moduleOf = outerCl
   });
 }
 
-export function readCouplingFindings(reportRoot, { projectRoot, sourceRoots, kotlin }) {
+export function readCouplingFindings(reportRoot, { projectRoot, sourceRoots, kotlin, files }) {
   const jdeps = path.join(reportRoot, JDEPS_REPORT);
   const classList = path.join(reportRoot, JDEPS_CLASSES);
   if (!existsSync(jdeps) || !existsSync(classList)) {
@@ -49,7 +49,7 @@ export function readCouplingFindings(reportRoot, { projectRoot, sourceRoots, kot
   }
   const classes = readFileSync(classList, 'utf8').split(/\r?\n/).filter(Boolean);
   function fileOf(className) {
-    const known = kotlin?.fileOf.get(className);
+    const known = kotlin?.fileOf.get(className) ?? files?.get(className);
     if (known !== undefined) {
       return known;
     }

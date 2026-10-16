@@ -1,6 +1,6 @@
 import { readFileSync, statSync } from 'node:fs';
 import path from 'node:path';
-import { readZipOrFailure } from './zip-entries.mjs';
+import { readZipOrFailure } from '../zip-entries.mjs';
 import { classFiles, constantPoolStrings } from './class-file.mjs';
 
 const CLASS_NAME = /[A-Za-z_$][\w$]*(?:\/[\w$]+)+/gu;

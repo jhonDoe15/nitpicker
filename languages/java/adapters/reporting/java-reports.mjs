@@ -62,7 +62,11 @@ export function readJavaFindings(projectRoot, options = {}) {
       ...(kotlinPreset ? readKotlinDuplicateFindings(reportBase) : []),
       ...(projectWide
         ? projectWideFindings(projectRoot, {
-            reportRoots: modules.map((module) => module.reportRoot),
+            projects: modules.map((module) => ({
+              reportRoot: module.reportRoot,
+              qualifier: module.key === ROOT_MODULE ? '' : module.dir,
+              sourceRoots: module.manifest.sourceRoots ?? [],
+            })),
             mergedRoot: path.join(reportBase, PROJECT_REPORTS),
             manifest,
             kotlin: kotlinPreset,
@@ -99,7 +103,11 @@ function moduleContextFindings(projectRoot, module, { manifest, options }) {
       kotlin: preset === 'kotlin' && module.manifest.kotlin === true,
       jacoco: readModuleJacoco(module, preset),
       mainCheckstyle: readMainCheckstyle(projectRoot, module, preset),
-      testTimes: { limits: options.testSeconds, baseline: options.baseline },
+      testTimes: {
+        limits: options.testSeconds,
+        baseline: options.baseline,
+        modulePath: options.modulePath,
+      },
     },
     options.crapLimit,
   );

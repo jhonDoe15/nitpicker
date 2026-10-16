@@ -43,9 +43,12 @@ gradle -I languages/java/gradle/nitpicker.init.gradle nitpickerJava   (per snaps
   projects costs about the sum of single-project runs; Gradle's own `--parallel` setting applies.
   File limits, coupling (with the stability direction) and package cycles are evaluated once over
   all projects, as for Maven modules, so a package dependency from one project to another counts
-  and a cycle through two projects is one cycle. The `permits.txt` of every project is merged too,
-  so a sealed type's `permits` edge is left out whichever project declares it. Their findings
-  carry no project suffix, and a one-project build reads its own jdeps reports unmerged.
+  and a cycle through two projects is one cycle. Packages and classes of a project other than the
+  root are named with its folder (`lib/demo.lib`), so two projects that share a package or class
+  name stay apart, and a dependency goes to the project that declares the class (its own first).
+  The `permits.txt` of every project is merged with the same names, so a sealed type's `permits`
+  edge is left out whichever project declares it. The root's names and identities are as in a
+  one-project build, which reads its own jdeps reports unmerged.
 - **Nitpicker side: `languages/java/adapters/`.** `runJavaPreset` runs the task,
   `readJavaFindings` converts the reports, `runJavaDiff` does worktrees, rename map, comparison.
   `languages/java/adapters/java-analyzer.mjs` wraps all of it as one analyzer named `java` for the CLI (slice
@@ -104,6 +107,16 @@ field by field. Per snapshot:
   `<includes>` miss them, as they would `*Rules`, or the module skips tests), that is a tool error
   rather than a silent pass. ArchUnit reads bytecode without running it, so running these classes in
   the covered test run does not change coverage.
+- **Slow-test reports.** Per module, the fresh `TEST-*.xml` files of surefire's reports directory
+  (`<reportsDirectory>` of maven-surefire-plugin, default `<build directory>/surefire-reports`) are
+  copied to `target/nitpicker/test-results/surefire/` and those of maven-failsafe-plugin's (its
+  `<reportsDirectory>`, default `<build directory>/failsafe-reports`) to `test-results/failsafe/`,
+  without the ArchUnit rule classes (as Gradle leaves out its ArchUnit task). When both plugins
+  report to the same directory, it is copied once, as `surefire`, so unit tests keep the unit budget.
+  Only files written since the build started are copied, so results left by an earlier run never
+  count. The build runs the `test` phase only, so Failsafe (`integration-test`) does not run in it
+  and `failsafe` stays empty in practice; the copy is there for a project that binds Failsafe to an
+  earlier phase.
 - **JaCoCo.** Our `prepare-agent` always runs; a project's own `prepare-agent` replaces it (the agent
   replaces an earlier agent in `argLine`) and writes to its configured `destFile`, which is read
   instead. A module whose tests ran but left no fresh coverage file is a tool error that points at a
@@ -503,24 +516,40 @@ resolved plus a new finding, as in the TypeScript check.
 
 - **Rule.** `test-runtime/slow-test` fails a test the change adds or edits when it takes more than 5 s
   as a unit test, or more than 30 s as an integration test (`thresholds.unitTestSeconds` and
-  `thresholds.integrationTestSeconds`). Integration tests are those of a test task other than `test`,
-  classes named `*IT`, `*ITCase` or `*IntegrationTest(s)`, and classes annotated `@SpringBootTest`.
+  `thresholds.integrationTestSeconds`). Integration tests are those of a test task other than `test`
+  (Maven's `surefire` counts as `test`), classes named `*IT`, `*ITCase` or `*IntegrationTest(s)`, and
+  classes annotated `@SpringBootTest`, also through a superclass or an annotation of their own that
+  carries it, when that type's source is in a test root.
   The message names the budget, the measured time, the fixes (no `Thread.sleep` or other waits, a
-  smaller Spring context or a test slice, or moving it to an integration test source set) and the
-  exception route.
+  smaller Spring context or a test slice, or moving it to an integration test source set; on Maven,
+  making it an integration test that Failsafe runs, `*IT`) and the exception route.
+  Nitpicker runs only the tests its run needs: on Gradle the `test` task and any test task the build
+  makes it depend on, on Maven the `test` phase, so a test moved out of them is not timed.
 - **Measurement.** Head only, from the JUnit XML the test tasks already write: the init script copies
   `TEST-*.xml` of every test task in the run (not `nitpickerArchunit`) to
   `test-results/<task>/` in each module's report directory. No extra test run. A rerun test keeps
-  its slowest time. Gradle builds only: the Maven side does not copy surefire's reports there yet,
-  so a Maven build reports no slow tests.
+  its slowest time. Maven builds copy Surefire's `TEST-*.xml` to `test-results/surefire/` and
+  Failsafe's to `test-results/failsafe/` (see [Maven builds](#maven-builds)); `surefire` counts as
+  the `test` task, `failsafe` as an integration task.
 - **Edited or added.** Each test is keyed by class and testcase name (Gradle writes the display name,
   so a parameterized case is keyed by its `[n] ...` name; Surefire writes the method name). The test
-  method is found in the source by that name or its `@DisplayName`, with its annotations; a test is
-  counted when its method text differs from the base, or the file is new. A name that maps to no
-  method (a custom parameterized name) is counted when its file changed. Slow tests the change does
-  not touch stay baselined, and the base snapshot reports none.
-- **Tests.** `adapters/test-times/slow-tests.test.mjs` (sample Gradle and Surefire XML) and the
-  multi-project e2e fixture.
+  method is found in the source by that name (also `name()[n]` and JUnit 4's `name[n]`) or its
+  `@DisplayName`, with its annotations, inside the class the report names: a `@Nested` test
+  (`CalcTest$WhenFull`) is looked up in that nested class, and named `CalcTest.WhenFull` in the
+  message. `void` and `fun` methods count, and `@TestFactory` methods that return dynamic tests. A
+  test is counted when its method text differs from the base, or the file is new. A name that maps
+  to no method (a default `[1] 1` or custom parameterized name, a dynamic test) is counted when the
+  file is new or one of its class's `@ParameterizedTest`, `@RepeatedTest`, `@TestFactory` or
+  `@TestTemplate` methods changed. Slow tests the change does not touch stay baselined, and the base
+  snapshot reports none.
+- **Module paths.** The reader works in one module's folder, so a Maven submodule's test file is
+  found there and compared with the base file under the module path (`core/src/test/java/...`),
+  and the exception hint in the message names the project-relative path. `readModuleFindings`
+  passes each module's path (`modulePath`, `builds/module-path.mjs`), empty for a single module at the
+  project root; a Gradle build reads from the project root and passes none.
+- **Tests.** `adapters/test-times/slow-tests.test.mjs` (sample Gradle, Surefire and Failsafe XML,
+  module-path baseline), `builds/java-modules.test.mjs`, `maven/results/maven-test-results.test.mjs`
+  and the multi-module Maven e2e fixture.
 
 ## Structure limits (SH5)
 
