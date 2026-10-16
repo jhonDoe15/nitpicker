@@ -32,4 +32,5 @@ export const JAVA_TOOLS = [
   'structure',
   'coupling',
   'spring',
+  'test-runtime',
 ];

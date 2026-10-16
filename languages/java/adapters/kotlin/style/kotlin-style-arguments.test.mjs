@@ -177,10 +177,12 @@ describe('what runs with the project listed', () => {
 describe('the Gradle hand-off', () => {
   const argumentsOf = (root, policy) => {
     collectJavaFindings(root, { gradle: fakeGradle, policy });
-    return JSON.parse(readFileSync(path.join(root, 'build/nitpicker/gradle-args.json'), 'utf8'));
+    return JSON.parse(readFileSync(path.join(root, 'build/gradle-args.json'), 'utf8')).filter(
+      (argument) => !argument.startsWith('-Pnitpicker.reportDir='),
+    );
   };
   const styleFileOf = (root) =>
-    JSON.parse(readFileSync(path.join(root, 'build/nitpicker/style-file.json'), 'utf8'));
+    JSON.parse(readFileSync(path.join(root, 'build/style-file.json'), 'utf8'));
 
   it('hands the style of the policy to Gradle in a file, which is gone once the run ends', () => {
     const root = project({ 'build.gradle.kts': 'ktlint' });
