@@ -3,7 +3,6 @@ import path from 'node:path';
 import { evaluateDuplicates } from '../../../shared/rules/duplicates.mjs';
 import { childrenNamed, parseXml } from '../ingest/common.mjs';
 import { LITERAL_OR_COMMENT } from '../ingest/source-text.mjs';
-import { exceptionRoute } from './advice/exception-route.mjs';
 import { CPD_IDENTITY_PREFIX, cpdNotRun, readCpdReport, skippedPaths } from './cpd/cpd-report.mjs';
 
 const DUPLICATES_TOOL = 'duplicates';
@@ -214,7 +213,6 @@ export function readCpdFindings(reportRoot, { projectRoot, sourceRoots = [], tes
     .map((finding) => ({
       ...finding,
       identity: `${CPD_IDENTITY_PREFIX}${finding.identity}`,
-      message: `${finding.message} ${exceptionRoute(DUPLICATES_TOOL, finding.rule)}`,
     }));
   return [...skippedPaths(reportRoot, { projectRoot, xml: read.xml }), ...findings];
 }

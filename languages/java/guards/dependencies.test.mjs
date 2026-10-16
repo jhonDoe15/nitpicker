@@ -35,8 +35,7 @@ const UNUSED_LANG = {
     'Dependency org.apache.commons:commons-lang3 is declared in implementation but no main class uses it. ' +
     'Remove it, declare it testImplementation if only the tests use it, ' +
     'runtimeOnly if it is only needed at run time, ' +
-    'or compileOnly if only its source annotations are needed. ' +
-    'If it is right here, add an exception for dependencies/unused-declared-dependency in nitpicker.config.json.',
+    'or compileOnly if only its source annotations are needed.',
 };
 
 describe('dependencyFindings', () => {
@@ -79,8 +78,7 @@ describe('dependencyFindings', () => {
         'pom.xml',
         'Dependency g:a has compile scope but no main class uses it. ' +
           'Remove it, give it test scope if only the tests use it, runtime scope if it is only needed at run time, ' +
-          'or provided scope if only its source annotations are needed. ' +
-          'If it is right here, add an exception for dependencies/unused-declared-dependency in nitpicker.config.json.',
+          'or provided scope if only its source annotations are needed.',
       ],
     ]);
   });

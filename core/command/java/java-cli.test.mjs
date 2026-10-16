@@ -6,9 +6,13 @@ import { exactText } from '../../diff/reporting/test-support/output-expectations
 import { commit, fixtureGit } from '../../diff/git/test-support/git-repository.mjs';
 import { unusedFieldMessage, useGradleFixtures } from './test-support/java-cli-harness.mjs';
 import { writeFiles } from '../../diff/git/test-support/fixture-files.mjs';
+import { exceptionHint } from '../../../shared/rules/exceptions.mjs';
 
 const { gradleRepository, run, runCli, temporaryRoot } = useGradleFixtures(nitpickerCli);
 const addedField = unusedFieldMessage('added');
+const cloneMessage =
+  'This code repeats src/main/java/demo/Second.java:3 (30 lines). Keep one copy and call it from both places. ' +
+  exceptionHint('duplicates/duplicate-clone', 'src/main/java/demo/First.java');
 const xmlText = (text) =>
   text.replaceAll('&', '&amp;').replaceAll('"', '&quot;').replaceAll("'", '&apos;');
 
@@ -155,7 +159,7 @@ describe('nitpicker with "preset": "java"', () => {
 Quality gate summary
 ✖ 1 new enforceable violation
   duplicates/duplicate-clone src/main/java/demo/First.java:3
-    This code repeats src/main/java/demo/Second.java:3 (30 lines). Keep one copy and call it from both places.
+    ${cloneMessage}
 Full diagnostics: /tmp/nitpicker-java-out-${/[A-Za-z0-9]{6}/}/reports/report.txt
 `),
     });
@@ -169,8 +173,7 @@ Full diagnostics: /tmp/nitpicker-java-out-${/[A-Za-z0-9]{6}/}/reports/report.txt
         path: 'src/main/java/demo/First.java',
         identity:
           'pair:src/main/java/demo/First.java|src/main/java/demo/Second.java:fragment:41aa749b80d76291fc31cc1b:occurrence:1',
-        message:
-          'This code repeats src/main/java/demo/Second.java:3 (30 lines). Keep one copy and call it from both places.',
+        message: cloneMessage,
         classification: 'enforceable',
         location: { line: 3 },
         ratchet: {
