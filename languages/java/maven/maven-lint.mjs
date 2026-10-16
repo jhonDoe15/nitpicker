@@ -1,8 +1,10 @@
-import { existsSync, mkdirSync, readdirSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { runJava } from './maven-command.mjs';
 import { GRADLE_DIRECTORY } from '../builds/java-build.mjs';
 import { writeCheckstyleConfigs } from '../builds/rulesets/checkstyle-config.mjs';
+import { FORMAT_SKIPPED } from '../adapters/reporting/outcomes/skipped-tools.mjs';
+import { GOOGLE_JAVA_FORMAT, toolJava } from './errorprone/maven-jdk.mjs';
 
 export const EMPTY_SARIF = '{"version":"2.1.0","runs":[]}';
 const JAVAC_EXPORTS = ['api', 'file', 'parser', 'tree', 'util', 'code'].map(
@@ -49,12 +51,21 @@ export function runSpotbugs({ module, reportDir, tools }) {
 
 export function runFormat({ module, reportDir, tools }) {
   const report = path.join(reportDir, 'format.txt');
+  const skipped = path.join(reportDir, FORMAT_SKIPPED);
+  rmSync(skipped, { force: true });
   const files = javaFiles([...module.sourceRoots, ...module.testSourceRoots]);
   if (files.length === 0) {
     writeFileSync(report, '');
     return;
   }
+  const { java, problem } = toolJava(GOOGLE_JAVA_FORMAT);
+  if (problem !== undefined) {
+    writeFileSync(report, '');
+    writeFileSync(skipped, `${problem}\n`);
+    return;
+  }
   const result = runJava({
+    java,
     tool: 'google-java-format',
     classpath: tools.format,
     jvmArgs: JAVAC_EXPORTS,

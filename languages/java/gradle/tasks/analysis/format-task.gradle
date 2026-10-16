@@ -1,6 +1,7 @@
 def reportDir = project.ext.nitpickerReportDir
 def testSourceDirectories = project.ext.nitpickerTestSourceDirectories
 def mainSources = sourceSets.main.allJava.sourceDirectories
+def skippedFile = reportDir.map { it.file('format-skipped.txt') }
 
 tasks.register('nitpickerFormat', JavaExec) {
     group = 'nitpicker'
@@ -10,8 +11,22 @@ tasks.register('nitpickerFormat', JavaExec) {
     jvmArgs(['api', 'file', 'parser', 'tree', 'util', 'code'].collect {
         "--add-exports=jdk.compiler/com.sun.tools.javac.${it}=ALL-UNNAMED".toString()
     })
-    doFirst {
+    def chosen = null
+    def choose = { ->
+        chosen = chosen ?: project.ext.nitpickerToolJava('google-java-format', 21, project.ext.nitpickerJavaCompiles())
+        chosen
+    }
+    javaLauncher.set(project.provider { choose().launcher }.flatMap { it })
+    onlyIf {
         reportDir.get().asFile.mkdirs()
+        skippedFile.get().asFile.delete()
+        if (choose().skipped) {
+            reportDir.get().file('format.txt').asFile.text = ''
+            skippedFile.get().asFile.text = "${choose().skipped}\n"
+        }
+        !choose().skipped
+    }
+    doFirst {
         standardOutput = new FileOutputStream(reportDir.get().file('format.txt').asFile)
         def files = (mainSources.files + testSourceDirectories()).findAll { it.exists() }
             .collectMany { directory -> fileTree(directory) { include '**/*.java' }.files }.unique().sort()

@@ -4,7 +4,9 @@ import { homedir } from 'node:os';
 import path from 'node:path';
 import { javaCommand } from '../maven-command.mjs';
 
-const ERROR_PRONE_JDK = 21;
+export const ERROR_PRONE = { tool: 'Error Prone', minimum: 21 };
+export const GOOGLE_JAVA_FORMAT = { tool: 'google-java-format', minimum: 21 };
+export const STRUCTURE_METRICS = { tool: 'StructureMetrics', minimum: 21 };
 const VERSION = /version "(?:1\.)?(\d+)/u;
 const VERSIONED_HOME = /^JAVA_HOME_\d+_(?:X64|ARM64|AARCH64)$/u;
 const JDK_HOME = /<jdkHome>\s*([^<]+?)\s*<\/jdkHome>/gu;
@@ -40,14 +42,14 @@ export function jdkHomes({ env = process.env, home = homedir(), systemJdks = SYS
   );
 }
 
-export function chooseErrorProneJdk({ project, preview, installed }) {
-  const wanted = preview ? project.feature : Math.max(ERROR_PRONE_JDK, project.feature);
-  if (wanted < ERROR_PRONE_JDK) {
+export function chooseToolJdk({ tool, minimum, project, preview = false, installed }) {
+  const wanted = preview ? project.feature : Math.max(minimum, project.feature);
+  if (wanted < minimum) {
     return {
       problem:
-        `Error Prone needs JDK ${ERROR_PRONE_JDK} or newer, and this project compiles with ` +
+        `${tool} needs JDK ${String(minimum)} or newer, and this project compiles with ` +
         `--enable-preview on JDK ${String(wanted)} (${project.java}), whose preview features only ` +
-        `that JDK compiles. Move the build to JDK ${ERROR_PRONE_JDK} or newer, or drop --enable-preview`,
+        `that JDK compiles. Move the build to JDK ${String(minimum)} or newer, or drop --enable-preview`,
     };
   }
   if (project.feature === wanted || (!preview && project.feature > wanted)) {
@@ -62,11 +64,12 @@ export function chooseErrorProneJdk({ project, preview, installed }) {
   return found === undefined
     ? {
         problem:
-          `Error Prone needs ${preview ? 'exactly' : 'at least'} JDK ${String(wanted)} ` +
-          `(JDK ${ERROR_PRONE_JDK} or newer, and at least the project's own JDK), and ${project.java} is ` +
-          `JDK ${String(project.feature)}. nitpicker found no such JDK in JAVA_HOME, the JAVA_HOME_<N>_X64 ` +
-          'variables, ~/.m2/toolchains.xml, SDKMAN, /usr/lib/jvm or /Library/Java/JavaVirtualMachines. ' +
-          'Install one there; the project keeps compiling for its own release',
+          `${tool} needs ${preview ? 'exactly' : 'at least'} JDK ${String(wanted)} ` +
+          `(JDK ${String(minimum)} or newer, and at least the project's own JDK), and ${project.java} ` +
+          `is JDK ${String(project.feature)}. nitpicker found no such JDK in JAVA_HOME, the ` +
+          'JAVA_HOME_<N>_X64 variables, ~/.m2/toolchains.xml, SDKMAN, /usr/lib/jvm or ' +
+          '/Library/Java/JavaVirtualMachines. Install one there; the project keeps compiling for ' +
+          'its own release',
       }
     : { java: found.java };
 }
@@ -79,7 +82,7 @@ function describe(java) {
   return { java, feature: featureVersion(`${result.stderr}${result.stdout}`) };
 }
 
-export function errorProneJava({ preview }) {
+export function toolJava({ tool, minimum, preview = false }) {
   const project = describe(javaCommand('java'));
   if (project.missing) {
     throw new Error(
@@ -90,9 +93,5 @@ export function errorProneJava({ preview }) {
     throw new Error(`nitpicker could not read the version of ${project.java} (java -version)`);
   }
   const installed = jdkHomes().map((jdk) => describe(path.join(jdk, 'bin', 'java')));
-  const { java, problem } = chooseErrorProneJdk({ project, preview, installed });
-  if (problem !== undefined) {
-    throw new Error(problem);
-  }
-  return java;
+  return chooseToolJdk({ tool, minimum, project, preview, installed });
 }

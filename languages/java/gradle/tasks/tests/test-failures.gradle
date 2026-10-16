@@ -14,7 +14,7 @@ gradle.projectsEvaluated {
             if (result.resultType == TestResult.ResultType.FAILURE) {
                 def message = result.exception?.message?.readLines()?.find { it.trim() } ?:
                     result.exception?.getClass()?.name ?: ''
-                failures << "${descriptor.className}.${descriptor.name}: ${message}".toString()
+                failures << "${descriptor.className}.${descriptor.name - ~/\(\)$/}: ${message}".toString()
                 if (descriptor.className) {
                     failedClasses << descriptor.className.replaceAll(/\$.*/, '')
                 }

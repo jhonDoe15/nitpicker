@@ -199,6 +199,10 @@
     "fix": "Make the class final (records already are), or validate in a static factory method before calling a private constructor.",
     "mayBeIntended": true
   },
+  "CWO_CLOSED_WITHOUT_OPENED": {
+    "fix": "Call lock() right before the try whose finally calls unlock(): lock.lock(); try { ... } finally { lock.unlock(); }.",
+    "mayBeIntended": false
+  },
   "DB_DUPLICATE_BRANCHES": {
     "fix": "Drop the condition and keep one copy of the code, or fix the branch that was meant to differ.",
     "mayBeIntended": false
@@ -346,6 +350,10 @@
   "DMI_LONG_BITS_TO_DOUBLE_INVOKED_ON_INT": {
     "fix": "Pass a long to Double.longBitsToDouble, or use Float.intBitsToFloat for an int.",
     "mayBeIntended": false
+  },
+  "DMI_MISLEADING_SUBSTRING": {
+    "fix": "Call toString() instead of substring(0).",
+    "mayBeIntended": true
   },
   "DMI_NONSERIALIZABLE_OBJECT_WRITTEN": {
     "fix": "Make the written class implement Serializable, or write a serializable copy (a record of the needed fields).",

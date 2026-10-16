@@ -24,6 +24,7 @@ import { projectWideFindings } from '../../builds/project-wide.mjs';
 import { applyRuleMessages } from '../../messages/rule-messages.mjs';
 import { readKotlinFindings, requireKotlinManifest, sourceLocator } from './kotlin-reports.mjs';
 import { readTestFailures, sourceFileOf, testResultFindings } from './outcomes/test-results.mjs';
+import { skippedToolFindings, withoutCheckstyleParseSkips } from './outcomes/skipped-tools.mjs';
 
 const LINE_NUMBER = /\bline \d+\b/g;
 const CHECKSTYLE_SOURCE_SET_REPORT = /^checkstyle-.+\.xml$/u;
@@ -119,7 +120,8 @@ function readModuleFindings(context, crapLimit) {
       kotlin: context.kotlinPreset,
     }),
     ...formatFindings(context),
-    ...checkstyleFindings(context),
+    ...skippedToolFindings(context),
+    ...withoutCheckstyleParseSkips(checkstyleFindings(context), context.testScope),
     ...archunitFindings(context),
     ...readJavaStructureFindings(reportRoot, projectRoot),
     ...(kotlin ? readKotlinFindings(context, crapLimit) : []),

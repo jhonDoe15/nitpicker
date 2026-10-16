@@ -9,6 +9,7 @@ def checks = new File(scriptDir, 'checks.json')
 def reportDir = project.ext.nitpickerReportDir
 def workDir = reportDir.map { it.dir('errorprone') }
 def reportFile = reportDir.map { it.file('errorprone.json') }
+def skippedFile = reportDir.map { it.file('errorprone-skipped.txt') }
 def compilerPackages = ['api', 'file', 'main', 'model', 'parser', 'processing', 'tree', 'util', 'code', 'comp']
 def jvmFlags = compilerPackages.collect {
     "--add-exports=jdk.compiler/com.sun.tools.javac.${it}=ALL-UNNAMED".toString()
@@ -34,11 +35,6 @@ def errorProneClasspath = {
     configuration.files
 }
 
-// The JDK version a compile task runs on: its toolchain's, or the one running Gradle.
-def compilerVersion = { JavaCompile compile ->
-    compile.javaCompiler.orNull?.metadata?.languageVersion?.asInt() ?: (JavaVersion.current().majorVersion as int)
-}
-
 // The build's own form of the language level (ErrorProneReport.java decides what javac gets), its
 // compiler arguments and the encoding.
 def projectOptions = { JavaCompile compile ->
@@ -47,36 +43,6 @@ def projectOptions = { JavaCompile compile ->
         : ["--source=${compile.sourceCompatibility}", "--target=${compile.targetCompatibility}"]
     compile.options.compilerArgs.collect { "--project-arg=${it}".toString() } + level*.toString() +
         (compile.options.encoding ? ['-encoding', compile.options.encoding] : [])
-}
-
-// Error Prone needs JDK 21 or newer, and at least the JDK the project compiles with; with
-// --enable-preview exactly that JDK. The JVM running Gradle is used when it fits, otherwise a
-// toolchain launcher, which Gradle finds or provisions like the project's own toolchains.
-def runnerJava = { Collection<JavaCompile> compiles ->
-    def versions = compiles.collect { compilerVersion(it) }
-    def preview = compiles.any { it.options.compilerArgs.contains('--enable-preview') }
-    def wanted = preview ? versions.max() : Math.max(21, versions.max())
-    if (wanted < 21) {
-        throw new GradleException("Error Prone needs JDK 21 or newer, and this project compiles with " +
-            "--enable-preview on JDK ${wanted}, whose preview features only that JDK compiles. Move the " +
-            "build to JDK 21 or newer, or drop --enable-preview.")
-    }
-    def current = JavaVersion.current().majorVersion as int
-    if (current == wanted || (!preview && current > wanted)) {
-        return new File(System.getProperty('java.home'), 'bin/java').absolutePath
-    }
-    try {
-        def launcher = project.extensions.getByType(JavaToolchainService).launcherFor {
-            languageVersion = JavaLanguageVersion.of(wanted)
-        }
-        return launcher.get().executablePath.asFile.absolutePath
-    } catch (Exception e) {
-        throw new GradleException("Error Prone needs a JDK ${wanted} to compile this project (JDK 21 or " +
-            "newer, and at least the project's own JDK), and Gradle runs on JDK ${current}. Gradle found " +
-            "no JDK ${wanted}: run Gradle on JDK ${wanted}, install one where Gradle looks for " +
-            "toolchains, or let Gradle download it (the org.gradle.toolchains.foojay-resolver-convention " +
-            "plugin). ${e.message}", e)
-    }
 }
 
 def classDirectories = { Collection<File> directories ->
@@ -114,6 +80,7 @@ tasks.register('nitpickerErrorProne') {
         workDir.get().asFile.mkdirs()
         def report = reportFile.get().asFile
         report.delete()
+        skippedFile.get().asFile.delete()
         def compiles = [main: tasks.named('compileJava').get(), test: tasks.named('compileTestJava').get()]
         if (compiles.values().every { it.source.isEmpty() }) {
             report.text = '[]\n'
@@ -124,8 +91,13 @@ tasks.register('nitpickerErrorProne') {
             writeArguments(name, compile, errorProne, name == 'test')
         }
             .findAll { it != null }
-        def java = runnerJava(compiles.values().findAll { !it.source.isEmpty() })
-        def process = new ProcessBuilder([java] + jvmFlags + [runner.absolutePath, report.absolutePath,
+        def chosen = project.ext.nitpickerToolJava('Error Prone', 21, project.ext.nitpickerJavaCompiles())
+        if (chosen.skipped) {
+            report.text = '[]\n'
+            skippedFile.get().asFile.text = "${chosen.skipped}\n"
+            return
+        }
+        def process = new ProcessBuilder([chosen.java] + jvmFlags + [runner.absolutePath, report.absolutePath,
                 checks.absolutePath] + argumentFiles*.absolutePath)
             .directory(projectDir).redirectErrorStream(true).start()
         // The JVM's own "Picked up JAVA_TOOL_OPTIONS" notice is not part of the cause.

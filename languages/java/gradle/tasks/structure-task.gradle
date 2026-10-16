@@ -10,8 +10,15 @@ tasks.register('nitpickerStructure') {
         def roots = sourceSets.main.allJava.sourceDirectories.files.findAll { it.exists() }
             .collect { relativeToRoot(it) }
         def output = reportDir.get().file('structure.json').asFile
-        def java = new File(System.getProperty('java.home'), 'bin/java').absolutePath
-        def process = new ProcessBuilder([java, metricsSource.canonicalPath,
+        def skipped = reportDir.get().file('structure-skipped.txt').asFile
+        skipped.delete()
+        def chosen = project.ext.nitpickerToolJava('StructureMetrics', 21, project.ext.nitpickerJavaCompiles())
+        if (chosen.skipped) {
+            output.text = '[]\n'
+            skipped.text = "${chosen.skipped}\n"
+            return
+        }
+        def process = new ProcessBuilder([chosen.java, metricsSource.canonicalPath,
                 output.absolutePath, analysisRoot.absolutePath] + roots)
             .directory(projectDir).redirectErrorStream(true).start()
         def log = process.inputStream.getText('UTF-8')

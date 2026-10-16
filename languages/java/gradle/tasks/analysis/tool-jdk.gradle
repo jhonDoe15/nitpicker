@@ -1,0 +1,44 @@
+def compilerVersion = { JavaCompile compile ->
+    compile.javaCompiler.orNull?.metadata?.languageVersion?.asInt() ?: (JavaVersion.current().majorVersion as int)
+}
+
+def launcherOf = { int version ->
+    project.extensions.getByType(JavaToolchainService).launcherFor {
+        languageVersion = JavaLanguageVersion.of(version)
+    }
+}
+
+def currentJava = { ->
+    def current = JavaVersion.current().majorVersion as int
+    [java: new File(System.getProperty('java.home'), 'bin/java').absolutePath, launcher: launcherOf(current)]
+}
+
+project.ext.nitpickerToolJava = { String tool, int minimum, Collection<JavaCompile> compiles ->
+    def current = JavaVersion.current().majorVersion as int
+    def versions = compiles.collect { compilerVersion(it) }
+    def preview = compiles.any { it.options.compilerArgs.contains('--enable-preview') }
+    def projectVersion = versions ? versions.max() : current
+    def wanted = preview ? projectVersion : Math.max(minimum, projectVersion)
+    if (wanted < minimum) {
+        return currentJava() + [skipped: "${tool} needs JDK ${minimum} or newer, and this project compiles " +
+            "with --enable-preview on JDK ${wanted}, whose preview features only that JDK compiles. Move " +
+            "the build to JDK ${minimum} or newer, or drop --enable-preview"]
+    }
+    if (current == wanted || (!preview && current > wanted)) {
+        return currentJava()
+    }
+    try {
+        def launcher = launcherOf(wanted)
+        return [java: launcher.get().executablePath.asFile.absolutePath, launcher: launcher]
+    } catch (Exception ignored) {
+        return currentJava() + [skipped: "${tool} needs a JDK ${wanted} for this project (JDK ${minimum} or " +
+            "newer, and at least the project's own JDK), and Gradle runs on JDK ${current}. Gradle found no " +
+            "JDK ${wanted}: run Gradle on JDK ${wanted}, install one where Gradle looks for toolchains, or " +
+            "let Gradle download it (the org.gradle.toolchains.foojay-resolver-convention plugin); the " +
+            "project keeps compiling for its own release"]
+    }
+}
+
+project.ext.nitpickerJavaCompiles = {
+    ['compileJava', 'compileTestJava'].collect { tasks.named(it).get() }.findAll { !it.source.isEmpty() }
+}

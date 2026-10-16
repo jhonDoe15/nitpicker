@@ -1,15 +1,17 @@
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { chmodSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { runJava } from '../maven-command.mjs';
-import { chooseErrorProneJdk, featureVersion, jdkHomes } from './maven-jdk.mjs';
+import { runErrorProne } from './maven-errorprone.mjs';
+import { chooseToolJdk, ERROR_PRONE, featureVersion, jdkHomes } from './maven-jdk.mjs';
 
 const VERSION_OUTPUT = (version) =>
   `openjdk version "${version}" 2024-01-16\nOpenJDK Runtime Environment`;
 const jdk = (feature) => ({ java: `/jdk${String(feature)}/bin/java`, feature });
 const roots = [];
 afterEach(() => {
+  vi.unstubAllEnvs();
   for (const root of roots.splice(0)) rmSync(root, { recursive: true, force: true });
 });
 
@@ -33,11 +35,11 @@ describe('the JDK Error Prone runs on', () => {
     const installed = [jdk(25), jdk(17), jdk(21)];
 
     expect([
-      chooseErrorProneJdk({ project: jdk(21), preview: false, installed }),
-      chooseErrorProneJdk({ project: jdk(25), preview: false, installed: [] }),
-      chooseErrorProneJdk({ project: jdk(17), preview: false, installed }),
-      chooseErrorProneJdk({ project: jdk(17), preview: false, installed: [jdk(25)] }),
-      chooseErrorProneJdk({ project: jdk(22), preview: true, installed }),
+      chooseToolJdk({ ...ERROR_PRONE, project: jdk(21), preview: false, installed }),
+      chooseToolJdk({ ...ERROR_PRONE, project: jdk(25), preview: false, installed: [] }),
+      chooseToolJdk({ ...ERROR_PRONE, project: jdk(17), preview: false, installed }),
+      chooseToolJdk({ ...ERROR_PRONE, project: jdk(17), preview: false, installed: [jdk(25)] }),
+      chooseToolJdk({ ...ERROR_PRONE, project: jdk(22), preview: true, installed }),
     ]).toStrictEqual([
       { java: '/jdk21/bin/java' },
       { java: '/jdk25/bin/java' },
@@ -49,8 +51,8 @@ describe('the JDK Error Prone runs on', () => {
 
   it('says where it looked when no JDK fits, and why preview needs the JDK itself', () => {
     expect([
-      chooseErrorProneJdk({ project: jdk(17), preview: false, installed: [jdk(11)] }),
-      chooseErrorProneJdk({ project: jdk(17), preview: true, installed: [jdk(21)] }),
+      chooseToolJdk({ ...ERROR_PRONE, project: jdk(17), preview: false, installed: [jdk(11)] }),
+      chooseToolJdk({ ...ERROR_PRONE, project: jdk(17), preview: true, installed: [jdk(21)] }),
     ]).toStrictEqual([
       {
         problem:
@@ -95,5 +97,43 @@ describe('the JDK Error Prone runs on', () => {
     expect(() => runJava({ java: '/nowhere/bin/java', tool: 'Error Prone', args: [] })).toThrow(
       'java not found (/nowhere/bin/java): set JAVA_HOME to a JDK, or put its bin directory on the PATH',
     );
+  });
+
+  it('records why it skipped Error Prone, instead of failing the build, when no JDK fits', () => {
+    const root = mkdtempSync(path.join(tmpdir(), 'nitpicker-skipped-errorprone-'));
+    roots.push(root);
+    const java = path.join(fakeJdk(path.join(root, 'jdk17')), 'bin', 'java');
+    writeFileSync(java, `#!/bin/sh\necho 'openjdk version "17.0.10" 2024-01-16' >&2\n`);
+    chmodSync(java, 0o755);
+    vi.stubEnv('JAVA_HOME', path.dirname(path.dirname(java)));
+    const source = path.join(root, 'src', 'main', 'java');
+    mkdirSync(source, { recursive: true });
+    writeFileSync(path.join(source, 'A.java'), 'class A {}\n');
+    const compiler = { args: ['--enable-preview'], test: { args: [] } };
+
+    runErrorProne({
+      module: {
+        basedir: root,
+        sourceRoots: [source],
+        testSourceRoots: [],
+        outputDirectory: path.join(root, 'classes'),
+        testOutputDirectory: path.join(root, 'test-classes'),
+        compiler,
+      },
+      reportDir: root,
+      tools: { errorprone: [] },
+      classpaths: { mainCompile: [], testCompile: [] },
+    });
+
+    expect(
+      ['errorprone.json', 'errorprone-skipped.txt'].map((name) =>
+        readFileSync(path.join(root, name), 'utf8'),
+      ),
+    ).toStrictEqual([
+      '[]\n',
+      'Error Prone needs JDK 21 or newer, and this project compiles with --enable-preview on JDK 17 ' +
+        `(${java}), whose preview features only that JDK compiles. Move the build to JDK 21 ` +
+        'or newer, or drop --enable-preview\n',
+    ]);
   });
 });

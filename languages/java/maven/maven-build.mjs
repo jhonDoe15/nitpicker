@@ -22,8 +22,10 @@ import {
 import { copyTestResults } from './results/maven-test-results.mjs';
 import { jacocoPlugin, MAVEN_PLUGINS, resolveTools } from './maven-tools.mjs';
 import { processorTool, runErrorProne } from './errorprone/maven-errorprone.mjs';
+import { STRUCTURE_METRICS, toolJava } from './errorprone/maven-jdk.mjs';
 import { GRADLE_DIRECTORY, readPinnedTools } from '../builds/java-build.mjs';
 import { TEST_FAILURES_REPORT } from '../adapters/reporting/outcomes/test-results.mjs';
+import { STRUCTURE_SKIPPED } from '../adapters/reporting/outcomes/skipped-tools.mjs';
 
 export const MAVEN_REPORT_DIRECTORY = 'target/nitpicker';
 const OWN_JACOCO_EXEC = 'nitpicker-jacoco.exec';
@@ -81,7 +83,16 @@ function runStructure(module, reportDir) {
   const roots = module.sourceRoots
     .filter((root) => existsSync(root))
     .map((root) => relativeTo(module.basedir, root));
+  const skipped = path.join(reportDir, STRUCTURE_SKIPPED);
+  rmSync(skipped, { force: true });
+  const { java, problem } = toolJava(STRUCTURE_METRICS);
+  if (problem !== undefined) {
+    writeFileSync(path.join(reportDir, 'structure.json'), '[]\n');
+    writeFileSync(skipped, `${problem}\n`);
+    return;
+  }
   runJava({
+    java,
     tool: 'StructureMetrics',
     args: [
       path.join(GRADLE_DIRECTORY, 'StructureMetrics.java'),

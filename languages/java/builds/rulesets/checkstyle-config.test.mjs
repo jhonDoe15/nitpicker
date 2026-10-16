@@ -105,6 +105,16 @@ describe('withGuardChecks', () => {
     });
   });
 
+  it('makes the TreeWalker skip a file it cannot parse instead of failing the run', () => {
+    const treeWalker = parseXml(withGuardChecks(config, []))
+      .children.filter((element) => element.name === 'module')
+      .find((element) => element.attrs.name === 'TreeWalker');
+
+    expect(
+      childrenNamed(treeWalker, 'property').map(({ attrs }) => [attrs.name, attrs.value]),
+    ).toEqual([['skipFileOnJavaParseException', 'true']]);
+  });
+
   it('fails when the bundled checks have no TreeWalker', () => {
     expect(() => withGuardChecks('<module name="Checker"/>', ['checkstyle-all.xml'])).toThrow(
       new Error('nitpicker could not find TreeWalker in google_checks.xml'),

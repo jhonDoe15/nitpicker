@@ -299,6 +299,10 @@
     "fix": "Replace x.equals(null) with x == null.",
     "mayBeIntended": false
   },
+  "ExhaustiveSwitchHasDefault": {
+    "fix": "Drop the default branch: the switch already covers every enum constant or sealed subtype, and without it the compiler flags a constant or subtype added later.",
+    "mayBeIntended": true
+  },
   "FinalizeDoesNotCallSuperFinalize": {
     "fix": "Delete finalize() and clean up with try-with-resources or Cleaner; if it stays, end it with super.finalize() in a finally.",
     "mayBeIntended": false
@@ -334,6 +338,10 @@
   "IdempotentOperations": {
     "fix": "Delete the self-assignment (x = x), or assign the value you meant.",
     "mayBeIntended": false
+  },
+  "ImplicitFunctionalInterface": {
+    "fix": "Annotate the interface with @FunctionalInterface when lambdas implement it, or make it sealed when they must not.",
+    "mayBeIntended": true
   },
   "ImplicitSwitchFallThrough": {
     "fix": "Rewrite the switch in arrow form, case A, B -> ..., which cannot fall through; in a colon-form switch end every case with break, return or throw.",
@@ -515,6 +523,14 @@
     "fix": "Declare Map and create a HashMap, or a ConcurrentHashMap when threads share it.",
     "mayBeIntended": true
   },
+  "ReplaceJavaUtilCalendar": {
+    "fix": "Use java.time: ZonedDateTime or LocalDateTime for date arithmetic, LocalDate for a day.",
+    "mayBeIntended": true
+  },
+  "ReplaceJavaUtilDate": {
+    "fix": "Use java.time: Instant for a point in time, LocalDate or LocalDateTime for calendar values.",
+    "mayBeIntended": true
+  },
   "ReplaceVectorWithList": {
     "fix": "Declare List and create an ArrayList, or use CopyOnWriteArrayList when threads share it.",
     "mayBeIntended": true
@@ -638,6 +654,10 @@
   "UnnecessaryVarargsArrayCreation": {
     "fix": "Pass the elements directly: Arrays.asList(\"a\", \"b\") instead of wrapping them in new String[] { ... }.",
     "mayBeIntended": false
+  },
+  "UnnecessaryWarningSuppression": {
+    "fix": "Remove the @SuppressWarnings value or NOPMD comment that suppresses nothing.",
+    "mayBeIntended": true
   },
   "UnsynchronizedStaticFormatter": {
     "fix": "Use a static java.time DateTimeFormatter, which is thread-safe, or a local formatter.",

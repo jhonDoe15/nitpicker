@@ -4,7 +4,8 @@ import path from 'node:path';
 import { GRADLE_DIRECTORY } from '../../builds/java-build.mjs';
 import { runJava } from '../maven-command.mjs';
 import { javaFiles } from '../maven-lint.mjs';
-import { errorProneJava } from './maven-jdk.mjs';
+import { ERROR_PRONE, toolJava } from './maven-jdk.mjs';
+import { ERROR_PRONE_SKIPPED } from '../../adapters/reporting/outcomes/skipped-tools.mjs';
 
 const RUNNER_DIRECTORY = path.join(GRADLE_DIRECTORY, 'errorprone');
 const COMPILER_PACKAGES = [
@@ -75,12 +76,8 @@ function writeArguments(work, { name, roots, classpath, own, processors, compile
   return [file];
 }
 
-export function runErrorProne({ module, reportDir, tools, classpaths }) {
-  const report = path.join(reportDir, 'errorprone.json');
-  const work = path.join(reportDir, 'errorprone');
-  rmSync(work, { recursive: true, force: true });
-  const { compiler } = module;
-  const sets = [
+function sourceSets(module, classpaths) {
+  return [
     {
       name: 'main',
       roots: module.sourceRoots,
@@ -96,22 +93,39 @@ export function runErrorProne({ module, reportDir, tools, classpaths }) {
       test: true,
     },
   ];
-  const argumentFiles = sets.flatMap((set) =>
+}
+
+function errorProneJdk(compiler) {
+  const preview = [compiler, compiler.test ?? compiler].some((settings) =>
+    settings.args.includes('--enable-preview'),
+  );
+  return toolJava({ ...ERROR_PRONE, preview });
+}
+
+export function runErrorProne({ module, reportDir, tools, classpaths }) {
+  const report = path.join(reportDir, 'errorprone.json');
+  const work = path.join(reportDir, 'errorprone');
+  const skipped = path.join(reportDir, ERROR_PRONE_SKIPPED);
+  rmSync(work, { recursive: true, force: true });
+  rmSync(skipped, { force: true });
+  const { compiler } = module;
+  const argumentFiles = sourceSets(module, classpaths).flatMap((set) =>
     writeArguments(work, {
       ...set,
       compiler: set.test ? { ...compiler, ...compiler.test } : compiler,
       processors: [...tools.errorprone, ...processorPath(set.classpath, compiler, tools)],
     }),
   );
-  if (argumentFiles.length === 0) {
+  const { java, problem } = argumentFiles.length === 0 ? {} : errorProneJdk(compiler);
+  if (argumentFiles.length === 0 || problem !== undefined) {
     writeFileSync(report, '[]\n');
+    if (problem !== undefined) {
+      writeFileSync(skipped, `${problem}\n`);
+    }
     return;
   }
-  const preview = [compiler, compiler.test ?? compiler].some((settings) =>
-    settings.args.includes('--enable-preview'),
-  );
   runJava({
-    java: errorProneJava({ preview }),
+    java,
     tool: 'Error Prone',
     jvmArgs: JVM_FLAGS,
     args: [

@@ -28,8 +28,8 @@ gradle -I languages/java/gradle/nitpicker.init.gradle nitpickerJava   (per snaps
   not edited, and the base snapshot (a git worktree of the merge base) is analyzed with exactly the
   same tools and versions as head, even if the base predates any adoption. It registers
   `nitpickerJava` in every project that applies the `java` plugin. Every tool version is pinned
-  exactly in one map at the top of the file (PMD 7.7.0, SpotBugs 4.9.3, google-java-format 1.25.2,
-  JaCoCo 0.8.12, Checkstyle 10.21.1, Error Prone 2.50.0, NullAway 0.14.2). Tools run from their own configurations (`nitpickerPmd` and so on), so they never
+  exactly in one map at the top of the file (PMD 7.16.0, SpotBugs 4.9.8, google-java-format 1.35.0,
+  JaCoCo 0.8.14, Checkstyle 10.21.1, PIT 1.19.6, Error Prone 2.50.0, NullAway 0.14.2). Tools run from their own configurations (`nitpickerPmd` and so on), so they never
   touch the consumer's compile classpath. Nitpicker passes `-Pnitpicker.reportDir=<dir>`, a
   temporary directory outside the project, and the task writes only below it, one subdirectory per
   Gradle project (layout in [internals.md](internals.md#java-report-directory)). A build script
@@ -93,6 +93,69 @@ module lib of the base snapshot`), and says what still ran.
   (`skippedTools` in `core/diff/comparison/results.mjs`); every other Java finding is still
   compared. The summary hides a `tests-failed-skipped` notice when the same snapshot has a
   `tests-failed` error, which already lists it.
+
+## JDK versions
+
+The preset supports projects on JDK 17 and newer: a `release`/`source` of 17 or above, a Gradle
+toolchain of any version from 17 up, and Gradle or Maven running on any JDK from 17 up. No version
+is hard-coded: the level comes from the build (`release`, else `source`/`target`, else the
+toolchain), and javac options, `--release` handling and the class readers accept any version.
+
+- **Tools that need a newer runtime** run on a JDK that fits while the project keeps compiling for
+  its own level. Error Prone, google-java-format and nitpicker's `StructureMetrics.java` need JDK 21
+  or newer (`StructureMetrics` reads guards and case labels through the JDK 21 tree API).
+  google-java-format and `StructureMetrics` parse with the javac of the JVM they run on, so they
+  also need at least the project's own JDK. On Gradle
+  `languages/java/gradle/tasks/analysis/tool-jdk.gradle` picks the JVM running Gradle when it fits,
+  otherwise a toolchain launcher of the version needed; on Maven
+  `languages/java/maven/errorprone/maven-jdk.mjs` picks the JDK Maven runs on when it fits,
+  otherwise the closest installed one (see Which JDK under
+  [Error Prone and NullAway](#error-prone-and-nullaway)). Error Prone gets
+  `--release <project level>`, so a JDK 17 project compiled by Error Prone on JDK 21 still sees
+  only the JDK 17 API. The other tools run where they did: on Gradle on the project's toolchain (a
+  `JavaExec` task's default launcher), on Maven on the JDK Maven runs on.
+- **When no JDK fits,** that one tool is skipped, not the build: `errorprone-skipped.txt`,
+  `format-skipped.txt` or `structure-skipped.txt` in the report directory holds the reason, and a
+  `tool-skipped` tool error (`languages/java/adapters/reporting/outcomes/skipped-tools.mjs`) names
+  the tool, the side, the module and what to install; without structure metrics CRAP is skipped
+  too. The other analyzers still report.
+- **Class file 69 (JDK 25).** Every tool that reads class files reads JDK 25 classes at the pinned
+  versions: ASM 9.8 or newer is the threshold (`Opcodes.V25`). JaCoCo 0.8.14 is the first release
+  that officially supports Java 25 (0.8.13 only experimentally); SpotBugs 4.9.8 ships ASM 9.9 (4.9.3
+  had 9.7.1); PIT 1.19.6 is the first release on ASM 9.8; forbiddenapis 3.10 bundles an ASM that
+  knows class files up to 70. PMD 7.16.0 is the first release that parses Java 25 (module import
+  declarations, compact source files, flexible constructor bodies); PMD runs without
+  `--use-version`, so it parses at its newest level, which also reads code written for 17. The
+  categories nitpicker takes whole gained five rules between 7.7.0 and 7.16.0; they are excluded in
+  `pmd-ruleset.xml` so the bump changes no findings: `ReplaceJavaUtilDate` and
+  `ReplaceJavaUtilCalendar` repeat forbiddenapis' legacy date check, `UnnecessaryWarningSuppression`
+  is experimental, and `ExhaustiveSwitchHasDefault` and `ImplicitFunctionalInterface` are new
+  policy for the maintainers to decide on. The rule catalogs carry messages for them and for
+  SpotBugs 4.9.8's two new patterns (`DMI_MISLEADING_SUBSTRING`, `CWO_CLOSED_WITHOUT_OPENED`).
+  google-java-format 1.25.2 and 1.26.0 crash on a JDK 25 runtime (`Log$DeferredDiagnosticHandler`),
+  1.27.0 to 1.29.0 cannot parse `import module`; 1.30 to 1.35 work on JDK 25, and 1.35.0 is pinned (it runs on
+  JDK 21 or newer). Error Prone 2.50.0 and NullAway 0.14.2 compile Java 25 on a JDK 25 runtime.
+  ArchUnit is the project's own dependency: version 1.4.1 or newer reads class file 69 (1.4.0 stops
+  at 68).
+- **Checkstyle stays on 10.21.1.** It parses with its own grammar, independent of the JDK, and
+  reads Java 25 code except module import declarations and statements before `super()`; every
+  release before 13.5.0 fails on those, and 13.0 and newer need a JDK 21 runtime. Moving to 13.5.0
+  changes `google_checks.xml` (13 checks added, among them `GoogleNonConstantFieldName` and the
+  `OperatorWrapNL`/`OperatorWrapEOL` pair, and `MemberName`, `OperatorWrap` and
+  `AnnotationLocationMostCases` removed), so it needs its own change to the rule catalog, the
+  camel-case rewrite in `checkstyle-config.mjs` and the overlap pairs. Until then nitpicker's
+  configuration sets `skipFileOnJavaParseException` on the TreeWalker: a file Checkstyle cannot
+  parse is skipped instead of failing the build, and one `checkstyle/tool-skipped` tool error names
+  every such file (`withoutCheckstyleParseSkips` in `skipped-tools.mjs`), which leaves Checkstyle
+  out of that comparison while every other analyzer still reports.
+- **Verified end to end** by `languages/java/adapters/java-e2e/jdk-levels.e2e.test.mjs`: a Gradle
+  project with a JDK 17 toolchain on Gradle running on JDK 17, a Gradle project with a JDK 25
+  toolchain on Gradle running on JDK 21, and Maven projects at release 17 and 25 on JDKs 17 and 25.
+  Each has a failing test and an unformatted file, and the test pins every finding: Error Prone,
+  forbiddenapis, google-java-format, JaCoCo, PIT (with the failing class left out), PMD, and
+  Checkstyle on 17 (on 25 its parse skip). The release-25 sources use a module import, statements
+  before `super()`, an unnamed catch parameter and record patterns. A level without an installed
+  JDK is skipped.
 
 ## Maven builds
 
@@ -321,7 +384,7 @@ comma-separated>` changes that. Those classes are excluded from the regular `tes
   `org.example` targets `org.example.*`. PIT refuses `org.*` because it matches PIT's own classes,
   so classes directly in `org` are named one by one), against the project's own tests. The only
   profile can produce enforceable findings.
-- **What runs.** `nitpickerPit` (`languages/java/gradle/tasks/pit-task.gradle`) runs the pinned `pitest-command-line` (1.17.4) with the
+- **What runs.** `nitpickerPit` (`languages/java/gradle/tasks/pit-task.gradle`) runs the pinned `pitest-command-line` (1.19.6) with the
   `pitest-junit5-plugin` (1.2.1), default mutators, XML output, two threads, to
   `pit/mutations.xml` in the report directory. Tests are named class by class (`--targetTests`), and
   `--mutableCodePaths` limits mutation to the main classes. The JUnit Platform is not pinned by
@@ -664,15 +727,16 @@ resolved plus a new finding, as in the TypeScript check.
 - **Which JDK.** Error Prone needs JDK 21 or newer. On Gradle the runner uses the JVM that runs
   Gradle when it is at least 21 and at least the JDK of every compile task's toolchain; otherwise
   it asks Gradle's toolchain service for a launcher of the version it needs (found locally or
-  downloaded, like the project's own toolchains), and when there is none it fails with a message
-  that says which JDK to install or how to let Gradle download it. With `--enable-preview` it runs
-  on exactly the project's JDK, since only that JDK compiles its preview features. On Maven the
+  downloaded, like the project's own toolchains), and when there is none it skips Error Prone with
+  a `tool-skipped` tool error that says which JDK to install or how to let Gradle download it.
+  With `--enable-preview` it runs on exactly the project's JDK, since only that JDK compiles its
+  preview features. On Maven the
   runner uses the JDK Maven runs on (`JAVA_HOME`, else `java` on the PATH) when it is 21 or newer
   (with `--enable-preview`, always that JDK); otherwise it takes the installed JDK closest to 21
   from the `JAVA_HOME_<N>_X64`/`_ARM64` variables of hosted CI, the `jdkHome` entries of
   `~/.m2/toolchains.xml`, SDKMAN, `/usr/lib/jvm` and `/Library/Java/JavaVirtualMachines`, so a
-  project on JDK 17 keeps working wherever a JDK 21 is installed. With none it fails before
-  anything compiles, naming the JDK it needs and where it looked; a missing `java` is reported as
+  project on JDK 17 keeps working wherever a JDK 21 is installed. With none it skips Error Prone
+  with a `tool-skipped` tool error naming the JDK it needs and where it looked; a missing `java` is reported as
   `java not found`.
 - **Language level and options.** The runner mirrors the project's own form: `--release <n>` when
   the build uses `release`, `-source <n> -target <n>` when it uses source and target compatibility

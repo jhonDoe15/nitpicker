@@ -1,0 +1,57 @@
+import { existsSync, readFileSync } from 'node:fs';
+import path from 'node:path';
+import { snapshotScope } from './test-results.mjs';
+
+const TOOL_SKIPPED_RULE = 'tool-skipped';
+export const ERROR_PRONE_SKIPPED = 'errorprone-skipped.txt';
+export const FORMAT_SKIPPED = 'format-skipped.txt';
+export const STRUCTURE_SKIPPED = 'structure-skipped.txt';
+const SKIP_REPORTS = [
+  [ERROR_PRONE_SKIPPED, 'errorprone', 'Error Prone'],
+  [FORMAT_SKIPPED, 'google-java-format', 'google-java-format'],
+  [STRUCTURE_SKIPPED, 'structure', 'The structure metrics'],
+  [STRUCTURE_SKIPPED, 'crap', 'CRAP'],
+];
+
+const PARSE_SKIP_SOURCE = /(?:^|\.)TreeWalker$/u;
+
+function toolSkipped(tool, message) {
+  return {
+    tool,
+    rule: TOOL_SKIPPED_RULE,
+    path: '.',
+    identity: TOOL_SKIPPED_RULE,
+    classification: 'tool-error',
+    message,
+  };
+}
+
+export function withoutCheckstyleParseSkips(findings, testScope = {}) {
+  const skipped = findings.filter(
+    (finding) => finding.tool === 'checkstyle' && PARSE_SKIP_SOURCE.test(finding.rule),
+  );
+  if (skipped.length === 0) {
+    return findings;
+  }
+  const files = [...new Set(skipped.map((finding) => finding.path))].sort();
+  return [
+    ...findings.filter((finding) => !skipped.includes(finding)),
+    toolSkipped(
+      'checkstyle',
+      `Checkstyle did not run in ${snapshotScope(testScope)}: it cannot parse ${files.join(', ')}, ` +
+        'whose Java syntax is newer than the pinned Checkstyle knows (a module import, or ' +
+        'statements before super()). The other analyzers still ran.',
+    ),
+  ];
+}
+
+export function skippedToolFindings({ reportRoot, testScope = {} }) {
+  return SKIP_REPORTS.filter(([file]) => existsSync(path.join(reportRoot, file))).map(
+    ([file, tool, name]) =>
+      toolSkipped(
+        tool,
+        `${name} did not run in ${snapshotScope(testScope)}: ` +
+          `${readFileSync(path.join(reportRoot, file), 'utf8').trim()}.`,
+      ),
+  );
+}

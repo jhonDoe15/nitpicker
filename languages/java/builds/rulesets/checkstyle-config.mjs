@@ -4,6 +4,7 @@ import { GRADLE_DIRECTORY } from '../java-build.mjs';
 import { readZip } from '../zip-entries.mjs';
 
 const TREE_WALKER = '<module name="TreeWalker">';
+const SKIP_UNPARSEABLE = '<property name="skipFileOnJavaParseException" value="true"/>';
 const INLINE_CHECKSTYLE_FILTERS = [
   'SuppressWarningsFilter',
   'SuppressWarningsHolder',
@@ -54,7 +55,7 @@ export function withGuardChecks(config, files) {
     throw new Error('nitpicker could not find TreeWalker in google_checks.xml');
   }
   const modules = files.map((file) => checkstyleRuleModules(file)).join('\n');
-  return config.replace(TREE_WALKER, () => `${TREE_WALKER}\n${modules}`);
+  return config.replace(TREE_WALKER, () => `${TREE_WALKER}\n${SKIP_UNPARSEABLE}\n${modules}`);
 }
 
 function bundledGoogleChecks(checkstyleJar) {
