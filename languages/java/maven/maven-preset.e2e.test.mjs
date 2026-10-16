@@ -103,6 +103,23 @@ function lineCoverage(text, value) {
 }
 
 const comparable = (findings) => findings.map((finding) => JSON.stringify(finding)).sort();
+const CONSOLE_RULE = 'test-console-output';
+const ARCHUNIT_DISCOVERY_OUTPUT = [
+  'SLF4J(W): Defaulting to no-operation (NOP) logger implementation',
+  'SLF4J(W): No SLF4J providers were found.',
+  'SLF4J(W): See https://www.slf4j.org/codes.html#noProviders for further details.',
+];
+
+function printedLines(findings) {
+  return findings
+    .filter(({ rule }) => rule === CONSOLE_RULE)
+    .map(({ message }) => message.split('"')[1])
+    .sort();
+}
+
+function withoutConsole(findings) {
+  return findings.filter(({ rule }) => rule !== CONSOLE_RULE);
+}
 
 afterAll(() => {
   for (const root of temporary.splice(0)) {
@@ -124,9 +141,11 @@ describe.skipIf(!enabled)('Java preset on Maven builds', () => {
       }
       const fromGradle = collectJavaFindings(gradleProject, { gradle, policy: {} });
       const fromMaven = collectJavaFindings(mavenProject, { maven, policy: {} });
-      const tools = new Set(fromMaven.map((finding) => finding.tool));
+      const tools = new Set(withoutConsole(fromMaven).map((finding) => finding.tool));
 
-      expect(comparable(fromMaven)).toEqual(comparable(fromGradle));
+      expect(comparable(withoutConsole(fromMaven))).toEqual(comparable(withoutConsole(fromGradle)));
+      expect(printedLines(fromGradle)).toEqual([]);
+      expect(printedLines(fromMaven)).toEqual(ARCHUNIT_DISCOVERY_OUTPUT);
       expect([...tools].sort()).toEqual([
         'archunit',
         'checkstyle',
