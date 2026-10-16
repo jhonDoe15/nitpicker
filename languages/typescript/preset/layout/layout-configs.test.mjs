@@ -172,14 +172,14 @@ describe('layout-aware tool configurations', () => {
     expect([...new Set(jscpd.ignore)].sort()).toEqual([
       '**/*.d.ts',
       '**/.stryker-tmp/**',
-      '**/build/**',
-      '**/coverage/**',
-      '**/dist/**',
-      '**/generated/**',
       '**/node_modules/**',
-      '**/reports/**',
-      '**/target/**',
+      'build/**',
+      'coverage/**',
+      'dist/**',
+      'generated/**',
       'lib/legacy/**',
+      'reports/**',
+      'target/**',
     ]);
   });
   it('add the configured entry points to the knip entries', () => {

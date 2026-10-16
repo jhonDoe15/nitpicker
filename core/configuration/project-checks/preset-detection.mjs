@@ -1,6 +1,8 @@
-import { existsSync, readdirSync } from 'node:fs';
+import { existsSync } from 'node:fs';
 import path from 'node:path';
 import { configError } from '../../../shared/config.mjs';
+import { filesUnder } from '../../../shared/filesystem.mjs';
+import { sourceRoots as defaultSourceRoots } from '../../../languages/typescript/preset/layout.mjs';
 
 const PROJECT_MARKERS = [
   {
@@ -32,24 +34,15 @@ const ASSET_FOLDERS = new Set([
 ]);
 
 function codeFiles(directory, skippedFolders = SKIPPED_FOLDERS) {
-  const pending = existsSync(directory) ? [directory] : [];
-  const found = [];
-  for (const folder of pending) {
-    for (const entry of readdirSync(folder, { withFileTypes: true })) {
-      collectEntry({ folder, entry, pending, found, skippedFolders });
-    }
+  if (!existsSync(directory)) {
+    return [];
   }
-  return found;
-}
-
-function collectEntry({ folder, entry, pending, found, skippedFolders }) {
-  const skipped = entry.name.startsWith('.') || skippedFolders.has(entry.name);
-  if (entry.isDirectory() && !skipped) {
-    pending.push(path.join(folder, entry.name));
-  }
-  if (entry.isFile()) {
-    found.push(entry.name);
-  }
+  return [
+    ...filesUnder(directory, {
+      skipDirectory: (_absolute, entry) =>
+        entry.name.startsWith('.') || skippedFolders.has(entry.name),
+    }),
+  ].map((file) => path.basename(file));
 }
 
 function detectedPreset(projectRoot) {
@@ -68,7 +61,7 @@ function detectedPreset(projectRoot) {
 }
 
 export function presetToDeclare(config, projectRoot) {
-  const roots = config.layout?.sourceRoots ?? ['src'];
+  const roots = config.layout?.sourceRoots ?? defaultSourceRoots;
   const hasScripts = roots.some((root) =>
     codeFiles(path.join(projectRoot, root), ASSET_FOLDERS).some(
       (name) => SCRIPT_FILE.test(name) && !MINIFIED_FILE.test(name),
@@ -83,7 +76,7 @@ export function rejectUndeclaredPreset(config, projectRoot) {
   }
   const detected = presetToDeclare(config, projectRoot);
   if (detected !== undefined) {
-    const roots = config.layout?.sourceRoots ?? ['src'];
+    const roots = config.layout?.sourceRoots ?? defaultSourceRoots;
     throw configError(
       `no "preset" is set, so the TypeScript preset would run, but this is a ${detected.label} project (${detected.file}) with no TypeScript or JavaScript sources under ${roots.join(', ')}. Add "preset": "${detected.preset}" to nitpicker.config.json (create the file if there is none).`,
     );

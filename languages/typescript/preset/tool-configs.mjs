@@ -12,16 +12,17 @@ import {
   readJsonc,
   referencedConfigFile,
 } from './modules/tsconfig-files.mjs';
+import { sourceRoots, testRoots } from './layout.mjs';
 
-const DEFAULT_SOURCE_ROOT = 'src';
-const DEFAULT_TEST_ROOTS = new Set(['test', 'tests']);
+const DEFAULT_SOURCE_ROOTS = new Set(sourceRoots);
+const DEFAULT_TEST_ROOTS = new Set(testRoots);
 const STRYKER_TSCONFIG = 'tsconfig.stryker.json';
 
 function expandLayoutRoots(entries, layout) {
   const expanded = entries.flatMap((entry) => {
     const [first, ...rest] = entry.split('/');
     const suffix = rest.length === 0 ? '' : `/${rest.join('/')}`;
-    if (first === DEFAULT_SOURCE_ROOT) {
+    if (DEFAULT_SOURCE_ROOTS.has(first)) {
       return layout.sourceRoots.map((root) => `${root}${suffix}`);
     }
     if (DEFAULT_TEST_ROOTS.has(first)) {
@@ -35,7 +36,7 @@ function expandLayoutRoots(entries, layout) {
 export function isCustomLayout(layout) {
   return (
     JSON.stringify([layout.sourceRoots, layout.testRoots]) !==
-      JSON.stringify([[DEFAULT_SOURCE_ROOT], [...DEFAULT_TEST_ROOTS]]) ||
+      JSON.stringify([sourceRoots, testRoots]) ||
     layout.exclude.length > 0 ||
     (layout.entryPoints ?? []).length > 0
   );
