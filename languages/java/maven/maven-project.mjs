@@ -77,26 +77,36 @@ function runsFailsafe(project, plugin) {
   );
 }
 
+function rootsInside(basedir, roots) {
+  const resolved = roots.map((root) => path.resolve(basedir, root));
+  return [...new Set(resolved.filter((root) => root === basedir || insideOf(basedir, root)))];
+}
+
 function helperRoots(plugin, goal, basedir) {
-  return plugin === undefined
-    ? []
-    : executionsWithGoal(plugin, goal).flatMap((execution) =>
-        childrenAt(execution, 'configuration', 'sources', 'source').map((source) =>
-          path.resolve(basedir, source.text ?? '.'),
-        ),
-      );
+  const sources =
+    plugin === undefined
+      ? []
+      : executionsWithGoal(plugin, goal).flatMap((execution) =>
+          childrenAt(execution, 'configuration', 'sources', 'source').map(
+            (source) => source.text ?? '.',
+          ),
+        );
+  return rootsInside(basedir, sources);
 }
 
 function groovyTestRoots(plugin, basedir) {
-  if (plugin === undefined) {
-    return [];
-  }
-  const directories = [plugin, ...childrenAt(plugin, 'executions', 'execution')]
+  const configured = (
+    plugin === undefined ? [] : [plugin, ...childrenAt(plugin, 'executions', 'execution')]
+  )
     .flatMap((element) => childrenAt(element, 'configuration', 'testSources', 'testSource'))
     .map((source) => textAt(source, 'directory'))
     .filter((directory) => directory !== undefined);
-  const roots = directories.length === 0 ? [GROOVY_TEST_ROOT] : directories;
-  return [...new Set(roots.map((root) => path.resolve(basedir, root)))];
+  const pluginDefault = plugin !== undefined && configured.length === 0;
+  const present = existsSync(path.join(basedir, GROOVY_TEST_ROOT));
+  return rootsInside(basedir, [
+    ...configured,
+    ...(pluginDefault || present ? [GROOVY_TEST_ROOT] : []),
+  ]);
 }
 
 function jacocoDestFiles(plugin, basedir) {
