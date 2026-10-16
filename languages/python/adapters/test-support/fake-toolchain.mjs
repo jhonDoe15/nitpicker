@@ -1,7 +1,8 @@
 import { chmodSync, mkdirSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 
-const fakeTools = path.join(import.meta.dirname, '../fixtures/fake-python-tools.mjs');
+const fakeTools = path.join(import.meta.dirname, '../fixtures/fake-python-tools.cjs');
+const fastTools = path.join(import.meta.dirname, '../fixtures/fake-python-tools.sh');
 const TOOLS = [
   'ruff',
   'black',
@@ -27,7 +28,7 @@ export function installFakeToolchain(binDirectory, tools = TOOLS) {
     install(
       binDirectory,
       tool,
-      `exec "${process.execPath}" "${fakeTools}" ${tool.replace('python3', 'python')} "$@"`,
+      `exec /bin/sh "${fastTools}" "${process.execPath}" "${fakeTools}" ${tool.replace('python3', 'python')} "$@"`,
     );
   }
 }

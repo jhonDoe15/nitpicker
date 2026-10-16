@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 // Stand-in for the Python toolchain (ruff, black, coverage, python) in tests that run without
-// Python. Invoked as `fake-python-tools.mjs <tool> <args...>` (see fake-toolchain.mjs for the
+// Python. Invoked as `fake-python-tools.cjs <tool> <args...>` (see fake-toolchain.mjs for the
 // wrappers). The project directory (cwd) controls it:
 //   fail.json            { "<tool>" or "<tool> <subcommand>": "message" }: that call exits 2 with the
 //                        message on stderr (`--version` always works)
@@ -34,15 +34,15 @@
 // `python -c` with `sys.executable` prints `$VIRTUAL_ENV/bin/python` and always works.
 // When FAKE_PYTHON_LOG is set, every call appends a JSON line with the tool, arguments, cwd,
 // PYTHONPATH, MYPYPATH and PYTEST_ADDOPTS.
-import {
+const {
   appendFileSync,
   existsSync,
   mkdirSync,
   readdirSync,
   readFileSync,
   writeFileSync,
-} from 'node:fs';
-import path from 'node:path';
+} = require('node:fs');
+const path = require('node:path');
 
 const [tool, ...args] = process.argv.slice(2);
 const cwd = process.cwd();

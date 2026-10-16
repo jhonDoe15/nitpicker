@@ -2,6 +2,7 @@ import { readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { afterEach, vi } from 'vitest';
 import { installFakeToolchain } from '../../../../languages/python/adapters/test-support/fake-toolchain.mjs';
+import { runTasksInProcess } from '../../../diff/execution/test-support/in-process-analyzers.mjs';
 import { usePresetFixtures } from '../../test-support/preset-fixtures.mjs';
 
 export const LEGACY_VIOLATION = 'F401|src/demo/a.py|`os` imported but unused\n';
@@ -26,6 +27,7 @@ export function usePythonFixtures(runNitpickerCli) {
     runCli: runNitpickerCli,
     name: 'python',
     templateFiles: PYTHON_TEMPLATE_FILES,
+    runOptions: { runTasks: runTasksInProcess },
     prepareRepository(root) {
       installFakeToolchain(path.join(root, '.venv/bin'));
     },
