@@ -27,7 +27,7 @@ function resultAt(uri, index, fields) {
   };
 }
 
-function writeKotlinReports(report, kotlinFile) {
+function writeKotlinReports(report, { kotlinFile, inside }) {
   writeFileSync(
     report('detekt.sarif'),
     sarif(
@@ -55,8 +55,11 @@ function writeKotlinReports(report, kotlinFile) {
     ),
   );
   writeFileSync(report('ktfmt.txt'), lines('kotlin-format.txt').join('\n'));
-  if (existsSync('kotlin-metrics.json')) {
-    writeFileSync(report('kotlin-metrics.json'), readFileSync('kotlin-metrics.json'));
+  const metrics = [inside('kotlin-metrics.json'), 'kotlin-metrics.json'].find((file) =>
+    existsSync(file),
+  );
+  if (metrics !== undefined) {
+    writeFileSync(report('kotlin-metrics.json'), readFileSync(metrics));
   }
 }
 
@@ -83,7 +86,7 @@ function writeModule({ key, dir }) {
     return;
   }
   if (kotlin) {
-    writeKotlinReports(report, inside('src/main/kotlin/demo/K.kt'));
+    writeKotlinReports(report, { kotlinFile: inside('src/main/kotlin/demo/K.kt'), inside });
   }
   writeFileSync(
     report('pmd.sarif'),

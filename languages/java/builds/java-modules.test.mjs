@@ -139,4 +139,26 @@ describe('readModuleFindings', () => {
     write(path.join(base, 'core', testFile), testSource.replace('check()', 'other()'));
     expect(slow(base)).toEqual([`core/${testFile}`]);
   });
+
+  it('keeps a class of the same name in two modules apart, each on its own file', () => {
+    const root = realpathSync(mkdtempSync(path.join(tmpdir(), 'nitpicker-java-modules-')));
+    temporaryRoots.push(root);
+    writeModule(path.join(root, 'core'), { className: 'Same', lines: 5 });
+    writeModule(path.join(root, 'app'), { className: 'Same', lines: 5 });
+    write(path.join(root, 'app', REPORT_DIRECTORY, 'jdeps-classes.txt'), 'demo.Same\ndemo.Main\n');
+    write(path.join(root, 'app', REPORT_DIRECTORY, 'jdeps.txt'), '   demo.Main -> demo.Same app\n');
+
+    const coupling = readModuleFindings(root, [path.join(root, 'app'), path.join(root, 'core')], {
+      reportDirectory: REPORT_DIRECTORY,
+    })
+      .filter(
+        ({ identity, path: file }) => identity === 'module:fanIn' && file.endsWith('Same.java'),
+      )
+      .map((finding) => `${finding.path} ${String(finding.metric.value)}`);
+
+    expect(coupling.toSorted()).toEqual([
+      'app/src/main/java/demo/Same.java 1',
+      'core/src/main/java/demo/Same.java 0',
+    ]);
+  });
 });

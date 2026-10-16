@@ -9,14 +9,18 @@ import {
   TEST_TIME_DEFAULTS,
   renderMessage,
 } from '../../../../shared/policy.mjs';
-import { testMethod } from './test-methods.mjs';
+import { isSpringBootTest } from './spring-boot-tests.mjs';
+import { templateMethods, testMethod } from './test-methods.mjs';
 
 const SLOW_TEST_TOOL = 'test-runtime';
 export const TEST_RESULTS_DIRECTORY = 'test-results';
 const UNIT_TEST_TASKS = new Set(['test', 'surefire']);
 const INTEGRATION_CLASS = /(?:IT|ITCase|IntegrationTests?)$/u;
-const SPRING_BOOT_TEST = /@SpringBootTest\b/u;
-const MOVE_ADVICE = ', or move it to an integration test source set if it is one';
+const MOVE_ADVICE = {
+  gradle: ', or move it to an integration test source set if it is one',
+  maven: ', or make it an integration test that Failsafe runs (*IT) if it is one',
+};
+const MAVEN_TASKS = new Set(['surefire', 'failsafe']);
 
 export function testCasesOf(xml, task) {
   const root = parseXml(xml);
@@ -67,21 +71,26 @@ function readOptional(root, relative) {
   return file !== undefined && existsSync(file) ? readFileSync(file, 'utf8') : undefined;
 }
 
-function isIntegration(testCase, text) {
+function isIntegration(testCase, text, context) {
   const simple = testCase.className.split('.').pop().split('$')[0];
   return (
     !UNIT_TEST_TASKS.has(testCase.task) ||
     INTEGRATION_CLASS.test(simple) ||
-    SPRING_BOOT_TEST.test(text ?? '')
+    (text !== undefined && isSpringBootTest(text, context))
   );
 }
 
 function isChanged({ testCase, source, text, method, modulePath }, baselineRoot) {
   const baseText = readOptional(baselineRoot, source && inModule(modulePath, source));
-  if (baseText === undefined || method === undefined) {
+  if (baseText === undefined || text === undefined) {
     return baseText !== text;
   }
-  return testMethod(baseText, testCase.name)?.text !== method.text;
+  if (method === undefined) {
+    return (
+      templateMethods(baseText, testCase.className) !== templateMethods(text, testCase.className)
+    );
+  }
+  return testMethod(baseText, testCase.name, testCase.className)?.text !== method.text;
 }
 
 function slowTestFinding({ testCase, source, method, limit, integration, modulePath }) {
@@ -97,11 +106,11 @@ function slowTestFinding({ testCase, source, method, limit, integration, moduleP
     identity: `test:${testCase.className}#${testCase.name}`,
     ...(method === undefined ? {} : { location: { line: method.line } }),
     message: renderMessage(MESSAGES.slowTest, {
-      name: `${testCase.className.split('.').pop()} ${testCase.name}`,
+      name: `${testCase.className.split('.').pop().replaceAll('$', '.')} ${testCase.name}`,
       seconds: testCase.seconds.toFixed(1),
       kind: integration ? 'an integration' : 'a unit',
       limit,
-      move: integration ? '' : MOVE_ADVICE,
+      move: integration ? '' : MOVE_ADVICE[MAVEN_TASKS.has(testCase.task) ? 'maven' : 'gradle'],
       exception,
     }),
     classification: 'enforceable',
@@ -118,9 +127,10 @@ export function readSlowTestFindings(options) {
   return slowestRuns(readTestCases(reportRoot)).flatMap((testCase) => {
     const source = sourceOf(locate, testCase.className);
     const text = readOptional(projectRoot, source);
-    const integration = isIntegration(testCase, text);
+    const integration = isIntegration(testCase, text, { locate, projectRoot });
     const limit = integration ? budget.integrationTestSeconds : budget.unitTestSeconds;
-    const method = text === undefined ? undefined : testMethod(text, testCase.name);
+    const method =
+      text === undefined ? undefined : testMethod(text, testCase.name, testCase.className);
     const slow = { testCase, source, text, method, limit, integration, modulePath };
     const counted = baseline?.baselineRoot === undefined || isChanged(slow, baseline.baselineRoot);
     return testCase.seconds > limit && counted ? [slowTestFinding(slow)] : [];
