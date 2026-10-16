@@ -20,6 +20,7 @@ const RESOURCE_FILES = [
   'languages/java/gradle/spring-ruleset.xml',
   'languages/java/gradle/StructureMetrics.java',
   'languages/java/gradle/KotlinMetrics.java',
+  'languages/java/gradle/KotlinSyntax.java',
   'languages/java/gradle/errorprone/error-prone.gradle',
   'languages/java/gradle/errorprone/checks.json',
   'languages/java/adapters/overlaps/overlap-pairs.json',

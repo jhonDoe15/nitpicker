@@ -8,6 +8,7 @@ import {
   readKotlinStructureFindings,
 } from '../kotlin/kotlin-metrics.mjs';
 import { addOneWayHint } from '../kotlin/rules/kotlin-rules.mjs';
+import { readKotlinSpringFindings } from '../kotlin/spring/kotlin-spring.mjs';
 import { readSuppressionFindings } from '../kotlin/rules/kotlin-suppressions.mjs';
 
 const DETEKT_TOOL = 'detekt';
@@ -79,6 +80,7 @@ export function readKotlinFindings(context, crapLimit) {
   return [
     ...detektFindings(reportRoot),
     ...readSuppressionFindings(projectRoot, manifest.kotlinSourceRoots),
+    ...(manifest.spring === true ? readKotlinSpringFindings({ projectRoot, reportRoot }) : []),
     ...formatterFindings(reportRoot, manifest.kotlinFormatter),
     ...readKotlinStructureFindings(metrics, projectRoot),
     ...readKotlinCrapFindings(metrics, {

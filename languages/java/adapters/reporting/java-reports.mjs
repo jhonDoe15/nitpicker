@@ -47,7 +47,7 @@ export function readJavaFindings(projectRoot, options = {}) {
   const { reportBase, report, preset = 'java', projectWide = true } = options;
   const kotlinPreset = preset === 'kotlin';
   const { modules, manifest } = report ?? readReportModules(reportBase, preset);
-  if (kotlinPreset) {
+  if (kotlinPreset && options.requireKotlin !== false) {
     requireKotlinManifest(manifest);
   }
   const moduleFindings = modules
@@ -152,7 +152,7 @@ function lintedRoots({ sourceRoots = [], testSourceRoots = [] }) {
 function springFindings(projectRoot, manifest) {
   return manifest.spring === true
     ? readSpringConfigFindings(projectRoot, {
-        sourceRoots: manifest.sourceRoots,
+        sourceRoots: [...(manifest.sourceRoots ?? []), ...(manifest.kotlinSourceRoots ?? [])],
         resourceRoots: manifest.resourceRoots,
       })
     : [];
@@ -219,14 +219,18 @@ function jacocoFindings(context, jacoco) {
   );
 }
 
-function archunitFindings({ reportRoot, projectRoot, sourceRoots, manifest }) {
+function archunitFindings({ reportRoot, projectRoot, sourceRoots, manifest, kotlin }) {
   const archunitRoot = path.join(reportRoot, 'archunit');
   const archunitReports = existsSync(archunitRoot)
     ? readdirSync(archunitRoot)
         .filter((name) => name.endsWith('.xml'))
         .sort()
     : [];
-  const locate = sourceLocator(projectRoot, [...sourceRoots, ...(manifest.testSourceRoots ?? [])]);
+  const locate = sourceLocator(projectRoot, [
+    ...sourceRoots,
+    ...(manifest.testSourceRoots ?? []),
+    ...(kotlin ? [...manifest.kotlinSourceRoots, ...(manifest.kotlinTestSourceRoots ?? [])] : []),
+  ]);
   return archunitReports.flatMap(
     (name) =>
       ingestArchunit(readFileSync(path.join(archunitRoot, name), 'utf8'), {
@@ -275,7 +279,10 @@ function branchFindings(context, jacoco) {
 function sourceFileOf(locate, className, fileName) {
   const parts = className.split('.');
   const simple = parts.pop().split('$')[0];
-  return locate(parts.join('/'), fileName ?? `${simple}.java`);
+  const directory = parts.join('/');
+  return fileName === undefined
+    ? (locate(directory, `${simple}.java`) ?? locate(directory, `${simple}.kt`))
+    : locate(directory, fileName);
 }
 
 function projectRoots(projectRoot) {

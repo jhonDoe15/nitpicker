@@ -12,13 +12,14 @@ it with `npx skills add jhonDoe15/nitpicker --skill nitpicker-java`.
 
 ## Finish with the gate
 
-1. Run the project's tests (`./gradlew test`). Failing tests stop coverage, CRAP and mutation from
-   running.
+1. Run the project's tests (`./gradlew test`, or `./mvnw test` on Maven). Failing tests stop
+   coverage, CRAP and mutation from running.
 2. When the change is complete, run `npx nitpicker` as a background command you wait on, without a
    pipe: you need its exit code. It has no `--fix` for Kotlin; format with the project's ktlint or
-   ktfmt. It runs Gradle on the merge base and on head, with the project's `./gradlew` when there
-   is one, otherwise `gradle` from the PATH (`NITPICKER_GRADLE` overrides both). It takes minutes
-   and prints a progress line for each slow analyzer.
+   ktfmt. It runs the project's build (Gradle, or Maven with `kotlin-maven-plugin`) on the merge
+   base and on head, with the project's `./gradlew` or `./mvnw` when there is one, otherwise
+   `gradle` or `mvn` from the PATH (`NITPICKER_GRADLE` or `NITPICKER_MAVEN` overrides both). It
+   takes minutes and prints a progress line for each slow analyzer.
 3. Act on the exit code:
    - 0: done.
    - 1: fix every new finding and any tool error listed below them, then rerun.
@@ -74,3 +75,5 @@ it with `npx skills add jhonDoe15/nitpicker --skill nitpicker-java`.
   waits, a test slice instead of a full context.
 - A function or file already over a limit may be edited but must not get worse: put new code in a
   new function or file and call it.
+
+With Spring on the classpath, also follow [spring.md](spring.md).
