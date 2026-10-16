@@ -1,6 +1,9 @@
 import { mutantFindings } from '../../../shared/rules/mutation.mjs';
 import { decodeEntities } from './common.mjs';
 
+const PIT_WAY_OUT =
+  'If no input can tell the two apart (a compareTo boundary, a discarded lambda return), simplify the code so this mutant disappears.';
+
 const STATUS_NAMES = {
   KILLED: 'Killed',
   SURVIVED: 'Survived',
@@ -23,7 +26,7 @@ export function ingestPit(xml, options = {}) {
     .filter((mutant) => mutant !== undefined);
 
   const { groups, statusCounts } = groupMutants(mutants, resolvePath);
-  const findings = mutantFindings(neutralMutants(groups), { tool });
+  const findings = mutantFindings(neutralMutants(groups), { tool, wayOut: PIT_WAY_OUT });
   findings.push(...statusSummaries(statusCounts, tool));
   return { findings };
 }

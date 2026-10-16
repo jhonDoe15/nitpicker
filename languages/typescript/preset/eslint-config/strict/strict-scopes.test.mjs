@@ -57,14 +57,16 @@ describe('no-restricted-syntax lists are unified across scopes', () => {
   it('bans self-recursion in every production file, not in tests', () => {
     const recursive = 'export function retry(n) { return n > 0 ? retry(n - 1) : 0; }';
 
+    expect(messages(recursive, 'src/main/features/x/domain/run.ts')).toEqual([
+      "'retry' calls itself. domain/ has no loops and no recursion, so a walk over data of unknown depth (a tree) belongs in adapters/: for...of over a worklist, pushing each node's children onto it. Pass domain/ the flat result; flat data uses map, filter, flatMap or Object.fromEntries. An exception fits only when the recursion is bounded and deliberate.",
+    ]);
     for (const file of [
-      'src/main/features/x/domain/run.ts',
       'src/main/features/x/adapters/run.ts',
       'src/main/composition-root.ts',
       'src/main/shared/run.ts',
     ]) {
       expect(messages(recursive, file)).toEqual([
-        "'retry' calls itself. Retry or poll: loop with for...of over attempt numbers. Tree walk (directories, AST, JSON): for...of over a worklist, pushing each node's children onto it (for (const node of pending) { pending.push(...children) }). Flat data: map, filter, flatMap or Object.fromEntries. domain/ has no loops, so there use map or flatMap, or do the walk in adapters/.",
+        "'retry' calls itself. Retry or poll: loop with for...of over attempt numbers. Tree walk (directories, AST, JSON): for...of over a worklist, pushing each node's children onto it (for (const node of pending) { pending.push(...children) }). Flat data: map, filter, flatMap or Object.fromEntries. A component that renders itself in JSX is not reported. An exception fits only when the recursion is bounded and deliberate.",
       ]);
     }
     expect(messages(recursive, 'src/run.test.ts')).toEqual([

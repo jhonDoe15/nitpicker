@@ -150,6 +150,7 @@ describe('configureJavaAnalyzer', () => {
       'spotbugs',
       'spring',
       'structure',
+      'test-runtime',
     ]);
   });
 });
@@ -271,6 +272,17 @@ describe('Java file limits', () => {
       thresholds: { crapLimit: 12 },
     });
     const parsed = parseRunnerArguments(configured.createInvocation(context()).args.slice(1));
+    expect(parsed.policy.fileLimits).toBeUndefined();
+  });
+
+  it('hands the test time budgets to the runner', () => {
+    const configured = configureJavaAnalyzer(createJavaAnalyzer(), {
+      thresholds: { unitTestSeconds: 2, integrationTestSeconds: 40 },
+    });
+
+    const parsed = parseRunnerArguments(configured.createInvocation(context()).args.slice(1));
+
+    expect(parsed.policy.testSeconds).toEqual({ unitTestSeconds: 2, integrationTestSeconds: 40 });
     expect(parsed.policy.fileLimits).toBeUndefined();
   });
 

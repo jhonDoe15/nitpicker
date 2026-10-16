@@ -95,7 +95,7 @@ describe('reading the structure report', () => {
         rule: 'function-control-nesting-limit',
         symbol: 'Service.run',
         message:
-          'Service.run nests control flow 3 deep (limit 2). Return early instead of nesting. An elif chain counts one level per branch; use match, a dict lookup or a helper function. If a reviewer agrees this is intended, add {"rule":"function-control-nesting-limit","paths":["src/demo/service.py"],"function":"Service.run","reason":"<why this is intended>"} to "exceptions" in nitpicker.config.json.',
+          'Service.run nests control flow 3 deep (limit 2). Return early instead of nesting. An if/elif chain counts as one level; use match, a dict lookup or a helper function for what nests inside a branch. If a reviewer agrees this is intended, add {"rule":"function-control-nesting-limit","paths":["src/demo/service.py"],"function":"Service.run","reason":"<why this is intended>"} to "exceptions" in nitpicker.config.json.',
       },
     ]);
     expect(

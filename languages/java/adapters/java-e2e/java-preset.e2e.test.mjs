@@ -6,7 +6,6 @@ import { tmpdir } from 'node:os';
 import {
   LEGACY,
   BRANCHY,
-  WIDE,
   FAREWELL,
   GREETER_TEST,
   LEGACY_MOVED,
@@ -19,12 +18,11 @@ import {
   BRANCHY_MOVED,
   BRANCHY_EDITED,
   BRANCHY_ADDED,
-  WIDE_EXTENDED,
-  WIDE_REFORMATTED,
   STABILITY_FILES,
   stabilityClass,
   repeated,
 } from './test-support/java-preset-data.mjs';
+import { WIDE, WIDE_EXTENDED, WIDE_REFORMATTED } from './test-support/wide-sources.mjs';
 import { runJavaDiff } from '../java-diff.mjs';
 import {
   commitBranch,
@@ -285,7 +283,7 @@ describe.skipIf(!enabled)('Java preset end to end', () => {
       expect(survivor.failed).toBe(true);
       expect(summarize(survivor.newEnforceable)).toEqual(['pit mutant-survived Calc.java']);
       expect(survivor.newEnforceable.find((finding) => finding.tool === 'pit').message).toEqual(
-        'Survived ConditionalsBoundaryMutator: changed conditional boundary: no test fails when this code changes. Add an assertion that would. If no input can tell the two apart, simplify the code so this mutant disappears. If a reviewer agrees this is intended, add {"rule":"mutant-survived","paths":["src/main/java/demo/Calc.java"],"function":"Calc.clamp","reason":"<why this is intended>"} to "exceptions" in nitpicker.config.json.',
+        'Survived ConditionalsBoundaryMutator: changed conditional boundary: no test fails when this code changes. Add an assertion that would. If no input can tell the two apart (a compareTo boundary, a discarded lambda return), simplify the code so this mutant disappears. If a reviewer agrees this is intended, add {"rule":"mutant-survived","paths":["src/main/java/demo/Calc.java"],"function":"Calc.clamp","reason":"<why this is intended>"} to "exceptions" in nitpicker.config.json.',
       );
       // The legacy uncovered mutants (Greeter.shout, Legacy.value) stay baselined.
       expect([...new Set(summarize(survivor.unchangedFindings))].sort()).toEqual(
@@ -382,10 +380,16 @@ describe.skipIf(!enabled)('Java preset end to end', () => {
       expect(result.failed).toBe(true);
       expect(structureOf(result.newEnforceable)).toEqual([
         'function-control-nesting-limit Wide.deep',
+        'function-control-nesting-limit Wide.nested',
       ]);
-      expect(result.newEnforceable.find((finding) => finding.tool === 'structure').message).toBe(
+      expect(
+        result.newEnforceable
+          .filter((finding) => finding.tool === 'structure')
+          .map(({ message }) => message),
+      ).toEqual([
         'Wide.deep nests control flow 3 deep (limit 2). Return early instead of nesting. If a reviewer agrees this is intended, add {"rule":"function-control-nesting-limit","paths":["src/main/java/demo/Wide.java"],"function":"Wide.deep","reason":"<why this is intended>"} to "exceptions" in nitpicker.config.json.',
-      );
+        'Wide.nested nests control flow 3 deep (limit 2). Return early instead of nesting. If a reviewer agrees this is intended, add {"rule":"function-control-nesting-limit","paths":["src/main/java/demo/Wide.java"],"function":"Wide.nested","reason":"<why this is intended>"} to "exceptions" in nitpicker.config.json.',
+      ]);
       expect(structureOf(result.unchangedFindings)).toEqual(['function-parameters-limit Wide.sum']);
     },
     GRADLE_STEP_TIMEOUT_MS,

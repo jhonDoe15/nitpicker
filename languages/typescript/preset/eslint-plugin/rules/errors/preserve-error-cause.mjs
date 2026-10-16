@@ -1,8 +1,19 @@
 import { ancestorsOf } from '../analysis/ancestry.mjs';
 
+const ERROR_SUBCLASS_NAME = /Error$/;
+const SUBCLASS_WRAPPER = { optionsIndex: undefined };
+
+function wrapperFor(wrappers, name) {
+  const configured = wrappers.find((candidate) => candidate.name === name);
+  if (configured !== undefined) {
+    return configured;
+  }
+  return ERROR_SUBCLASS_NAME.test(name) ? SUBCLASS_WRAPPER : undefined;
+}
+
 function matchingWrapper(wrappers, node) {
   if (node.callee.type !== 'Identifier') return undefined;
-  const wrapper = wrappers.find((candidate) => candidate.name === node.callee.name);
+  const wrapper = wrapperFor(wrappers, node.callee.name);
   if (!wrapper) return undefined;
   const isClassified = wrapper.classificationIndex !== undefined;
   const isUnclassified =
@@ -20,7 +31,7 @@ function referencesCatch(caughtVariables, expression) {
   );
 }
 
-function preservesCause(options, caughtVariables) {
+function hasCauseProperty(options, caughtVariables) {
   return (
     options?.type === 'ObjectExpression' &&
     options.properties.some(
@@ -31,6 +42,90 @@ function preservesCause(options, caughtVariables) {
     )
   );
 }
+
+function isCaughtValue(argument, caughtVariables) {
+  const values = argument.type === 'ArrayExpression' ? argument.elements : [argument];
+  return values.some(
+    (value) => value?.type === 'Identifier' && referencesCatch(caughtVariables, value),
+  );
+}
+
+function preservesCause(wrapper, node, caughtVariables) {
+  if (wrapper.optionsIndex !== undefined) {
+    return hasCauseProperty(node.arguments[wrapper.optionsIndex], caughtVariables);
+  }
+  return node.arguments.some(
+    (argument) =>
+      hasCauseProperty(argument, caughtVariables) || isCaughtValue(argument, caughtVariables),
+  );
+}
+
+function constAlias(sourceCode, { identifier }) {
+  const declarator = identifier.parent;
+  return declarator.type === 'VariableDeclarator' &&
+    declarator.init === identifier &&
+    declarator.parent.kind === 'const' &&
+    declarator.id.type === 'Identifier'
+    ? sourceCode.getDeclaredVariables(declarator)
+    : [];
+}
+
+function withAliases(sourceCode, caughtVariables) {
+  return [
+    ...caughtVariables,
+    ...caughtVariables.flatMap((variable) =>
+      variable.references.flatMap((reference) => constAlias(sourceCode, reference)),
+    ),
+  ];
+}
+
+function isPromiseReject(call) {
+  return (
+    call.type === 'CallExpression' &&
+    call.callee.type === 'MemberExpression' &&
+    !call.callee.computed &&
+    call.callee.object.type === 'Identifier' &&
+    call.callee.object.name === 'Promise' &&
+    call.callee.property.name === 'reject'
+  );
+}
+
+function isThrownLocal(sourceCode, declarator) {
+  return sourceCode
+    .getDeclaredVariables(declarator)
+    .some((variable) =>
+      variable.references.some(({ identifier }) => identifier.parent.type === 'ThrowStatement'),
+    );
+}
+
+function isThrown(sourceCode, node) {
+  const { parent } = node;
+  if (parent.type === 'ThrowStatement') {
+    return true;
+  }
+  if (isPromiseReject(parent)) {
+    return parent.arguments[0] === node;
+  }
+  return (
+    parent.type === 'VariableDeclarator' &&
+    parent.init === node &&
+    isThrownLocal(sourceCode, parent)
+  );
+}
+
+function causeReport(sourceCode, { wrapper, node, handler }) {
+  const caughtVariables = withAliases(sourceCode, sourceCode.getDeclaredVariables(handler));
+  const thrown = isThrown(sourceCode, node);
+  if (thrown && handler.param === null) {
+    return 'bindingLess';
+  }
+  const wrapsCaught =
+    wrapper.classificationIndex !== undefined || thrown || referencesCatch(caughtVariables, node);
+  return wrapsCaught && !preservesCause(wrapper, node, caughtVariables) ? 'lostCause' : undefined;
+}
+
+const EXCEPTION_ROUTE =
+  ' An exception fits only when the original failure is deliberately dropped.';
 
 export const rule = {
   meta: {
@@ -58,8 +153,8 @@ export const rule = {
       },
     ],
     messages: {
-      lostCause:
-        'Preserve the original cause when wrapping an unclassified caught failure, or use the error normalization boundary.',
+      lostCause: `Preserve the original cause when wrapping a caught failure: \`new AppError(message, { cause: error })\`.${EXCEPTION_ROUTE}`,
+      bindingLess: `This catch has no binding, so the new failure loses the original cause. Bind it and pass it on: \`catch (error) { throw new AppError(message, { cause: error }); }\`.${EXCEPTION_ROUTE}`,
     },
   },
   create(context) {
@@ -70,12 +165,10 @@ export const rule = {
         if (!wrapper) return;
         const handler = ancestorsOf(node).find((ancestor) => ancestor.type === 'CatchClause');
         if (!handler) return;
-        const caughtVariables = context.sourceCode.getDeclaredVariables(handler);
-        if (wrapper.classificationIndex === undefined && !referencesCatch(caughtVariables, node)) {
-          return;
+        const messageId = causeReport(context.sourceCode, { wrapper, node, handler });
+        if (messageId !== undefined) {
+          context.report({ node, messageId });
         }
-        if (preservesCause(node.arguments[wrapper.optionsIndex], caughtVariables)) return;
-        context.report({ node, messageId: 'lostCause' });
       },
     };
   },

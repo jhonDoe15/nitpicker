@@ -39,6 +39,15 @@ describe('strict rule exceptions', () => {
     expect(applyRuleExceptions(presetConfig, [fileLimit])).toEqual(presetConfig);
   });
 
+  it('leaves exceptions for a dependency boundary rule to the architecture check', () => {
+    const boundary = {
+      rule: 'domain-does-not-import-node-io',
+      paths: ['src/legacy/**'],
+      reason: 'Legacy rewrite',
+    };
+    expect(applyRuleExceptions(presetConfig, [boundary])).toEqual(presetConfig);
+  });
+
   it('leaves exceptions for the reuse rules to the structure and coupling checks', () => {
     const reuseRules = [
       'shared-used-by-one-feature',

@@ -40,11 +40,14 @@ export function crapFindings(
       message: `${
         unknown
           ? renderMessage(unknownMessage, { name: shown })
-          : renderMessage(MESSAGES.crapScoreLimit, {
-              name: shown,
-              crap: fn.crap.toFixed(2),
-              limit,
-            })
+          : renderMessage(
+              fn.covered === true ? MESSAGES.crapScoreLimitCovered : MESSAGES.crapScoreLimit,
+              {
+                name: shown,
+                crap: fn.crap.toFixed(2),
+                limit,
+              },
+            )
       } ${route}`,
       classification: 'enforceable',
       symbol: fn.name,
