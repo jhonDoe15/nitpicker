@@ -10,7 +10,8 @@ import {
   runnableTestFiles,
   temporaryProjectPath,
 } from '../test-run.mjs';
-import { reportFromMocha } from './mocha-report.mjs';
+import { loadFailureReport, reportFromMocha } from './mocha-report.mjs';
+import { existsSync } from 'node:fs';
 
 const OPTIONS_NITPICKER_SETS = {
   flags: ['--watch', '-w', '--forbid-only', '--bail', '-b'],
@@ -27,7 +28,21 @@ const OPTIONS_NITPICKER_SETS = {
   ],
 };
 
+function mochaReport({ options, mochaReportPath, result, testFiles }) {
+  const loadFailure = existsSync(mochaReportPath)
+    ? undefined
+    : loadFailureReport(result.stderr, testFiles);
+  if (loadFailure !== undefined) {
+    return loadFailure;
+  }
+  return reportFromMocha(
+    readTestReport(mochaReportPath, result, RUNNER_NAMES.mocha),
+    options.projectRoot,
+  );
+}
+
 export async function runMocha(options, command) {
+  const testFiles = runnableTestFiles(options);
   const mochaReportPath = temporaryProjectPath(options, 'mocha-output.json');
   const coverage = startV8Coverage(options, command);
   try {
@@ -44,14 +59,11 @@ export async function runMocha(options, command) {
         `output=${mochaReportPath}`,
         '--timeout',
         String(TEST_TIMEOUT_MS),
-        ...runnableTestFiles(options),
+        ...testFiles,
       ],
     });
     const run = finishedRun({
-      report: reportFromMocha(
-        readTestReport(mochaReportPath, result, RUNNER_NAMES.mocha),
-        options.projectRoot,
-      ),
+      report: mochaReport({ options, mochaReportPath, result, testFiles }),
       result,
       runnerName: RUNNER_NAMES.mocha,
     });
