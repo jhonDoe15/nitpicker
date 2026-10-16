@@ -12,6 +12,7 @@ function scoredFunctions(entries) {
       name: entry.name,
       start: entry.definition,
       end: entry.end,
+      numberedAmongSameSource: true,
     }));
 }
 

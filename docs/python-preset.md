@@ -13,8 +13,8 @@ and converting them into findings.
 
 The purpose is the same as everywhere else: narrow a flexible language to roughly one allowed way
 of doing each thing. That "one way" lives in the code and architecture rules (slices 2 to 5), not in
-which tools a project uses, so the preset detects the tools a project already has (uv, poetry or a
-plain virtualenv; ruff or black; pytest or unittest) and never makes adoption depend on switching.
+which tools a project uses, so the preset detects the tools a project already has (uv, poetry,
+pipenv, hatch, conda or a plain virtualenv; ruff or black; pytest or unittest) and never makes adoption depend on switching.
 
 ## How it works
 
@@ -62,14 +62,24 @@ directory is the contract between the tool runs and the readers; later slices ad
 The tools run inside the environment the project already has, detected in this order (the first
 that applies wins):
 
-| Order | Detected by                 | The tools run as                                                                                             |
-| ----- | --------------------------- | ------------------------------------------------------------------------------------------------------------ |
-| 0     | `python.environment` is set | `uv`, `poetry` or `path` as named; any other value is a virtualenv directory, inside the project or absolute |
-| 1     | `uv.lock`                   | `uv run --project <checkout> --no-sync -- <tool>`; needs `uv sync` to have run (or `UV_PROJECT_ENVIRONMENT`) |
-| 2     | `poetry.lock`               | the virtualenv `poetry env info --path` reports, first on `PATH`; needs `poetry install` to have run         |
-| 3     | a uv workspace root above   | as 1: an ancestor with a `uv.lock` and a `[tool.uv.workspace]` table; its `.venv` is the environment         |
-| 4     | a `.venv/` directory        | `.venv/bin` first on `PATH`, `VIRTUAL_ENV` set                                                               |
-| 5     | nothing                     | `ruff`, `black`, `coverage`, `mypy`, `pyright`, `basedpyright` and `python3` from the `PATH`                 |
+| Order | Detected by                                                   | The tools run as                                                                                                                                                                                 |
+| ----- | ------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| 0     | `python.environment` is set                                   | `uv`, `poetry`, `pipenv`, `hatch`, `conda` or `path` as named; any other value is a virtualenv directory, inside the project or absolute                                                         |
+| 1     | `uv.lock`                                                     | `uv run --project <checkout> --no-sync -- <tool>`; needs `uv sync` to have run (or `UV_PROJECT_ENVIRONMENT`)                                                                                     |
+| 2     | `poetry.lock`                                                 | the virtualenv `poetry env info --path` reports, first on `PATH`; needs `poetry install` to have run                                                                                             |
+| 3     | a uv workspace root above                                     | as 1: an ancestor with a `uv.lock` and a `[tool.uv.workspace]` table; its `.venv` is the environment                                                                                             |
+| 4     | a `Pipfile` or `Pipfile.lock`                                 | the virtualenv `pipenv --venv` reports, first on `PATH`; needs `pipenv install --dev` to have run                                                                                                |
+| 5     | `[tool.hatch.envs...]` in `pyproject.toml`, or a `hatch.toml` | the environment `hatch env find` reports (the default one), first on `PATH`; needs `hatch env create`                                                                                            |
+| 6     | an `environment.yml` or `environment.yaml`                    | the `prefix:` it declares, else the active conda environment when it is the one its `name:` names, else the one `conda env list` finds under that name; `CONDA_PREFIX` and `bin` first on `PATH` |
+| 7     | a `.venv/` directory                                          | `.venv/bin` first on `PATH`, `VIRTUAL_ENV` set                                                                                                                                                   |
+| 8     | an active conda environment (`CONDA_PREFIX`, not `base`)      | as 6                                                                                                                                                                                             |
+| 9     | nothing                                                       | `ruff`, `black`, `coverage`, `mypy`, `pyright`, `basedpyright` and `python3` from the `PATH`                                                                                                     |
+
+For pipenv, hatch and conda found by detection, a missing manager command is not an error: the
+detection goes on with the next row, because the tools may be on the `PATH` (a CI job that installed
+them with `pip`). When the manager runs and has no environment for the project, or the setting names
+it and it is not installed, the run stops with an `environment-failed` error that says how to create
+it.
 
 The environment is always the one of the live checkout (the head work tree you run `nitpicker` in).
 It is never created or synced by nitpicker: the uv environment is checked before `uv run --no-sync`
@@ -139,15 +149,15 @@ top-level `exceptions` is accepted only for the file limits shared by every lang
 }
 ```
 
-| Key            | Values                                 | Default                                                                              |
-| -------------- | -------------------------------------- | ------------------------------------------------------------------------------------ |
-| `environment`  | `uv`, `poetry`, `path`, or a directory | detected, see above                                                                  |
-| `formatter`    | `ruff`, `black`                        | `black` if the project declares it (see below) and not ruff's formatter, else `ruff` |
-| `testRunner`   | `pytest`, `unittest`                   | `pytest` if the project uses it (see below), else `unittest`                         |
-| `typeChecker`  | `mypy`, `pyright`, `basedpyright`      | detected from the project, see below                                                 |
-| `importLinter` | `true`, `false`                        | run when the project has an import-linter config (see slice 5), else not             |
-| `sourceRoots`  | non-empty array of project directories | `src`, else the top-level packages (directories with `__init__.py`), else `.`        |
-| `exceptions`   | array of `{ rule, paths, reason }`     | none; see [Exceptions](#exceptions)                                                  |
+| Key            | Values                                                             | Default                                                                              |
+| -------------- | ------------------------------------------------------------------ | ------------------------------------------------------------------------------------ |
+| `environment`  | `uv`, `poetry`, `pipenv`, `hatch`, `conda`, `path`, or a directory | detected, see above                                                                  |
+| `formatter`    | `ruff`, `black`                                                    | `black` if the project declares it (see below) and not ruff's formatter, else `ruff` |
+| `testRunner`   | `pytest`, `unittest`                                               | `pytest` if the project uses it (see below), else `unittest`                         |
+| `typeChecker`  | `mypy`, `pyright`, `basedpyright`                                  | detected from the project, see below                                                 |
+| `importLinter` | `true`, `false`                                                    | run when the project has an import-linter config (see slice 5), else not             |
+| `sourceRoots`  | non-empty array of project directories                             | `src`, else the top-level packages (directories with `__init__.py`), else `.`        |
+| `exceptions`   | array of `{ rule, paths, reason }`                                 | none; see [Exceptions](#exceptions)                                                  |
 
 The type checker is the one the project uses: `mypy` when it has a `[tool.mypy]` table (or
 `[mypy]` in `mypy.ini`, `setup.cfg` or `tox.ini`), `pyright` when it has `pyrightconfig.json` or a
@@ -307,7 +317,7 @@ Details that are decisions rather than the table:
   The subject is `except <type>` (`except (A, B)`, plain `except` for a bare one), so identities
   survive edits above; repeats in a file are numbered. The message says to log it with
   `logger.exception(...)`, re-raise it or use it, or return a named default or a value built from
-  the error, that `contextlib.suppress(SpecificError)` ignores one expected error, and the `python.exceptions` entry for `swallowed-exception` for a handler that
+  the error, that `contextlib.suppress(SpecificError)` ignores one expected error, that a test uses `pytest.raises(SpecificError)` (`self.assertRaises` in unittest), and the `python.exceptions` entry for `swallowed-exception` for a handler that
   must stay (a lookup that answers `False` for bad input, say). Untested `except` handlers are not
   gated by branch coverage either, since coverage.py emits no arcs for them.
 - `blind-suppress` closes the way around the rule above: `contextlib.suppress(Exception)`,
@@ -316,7 +326,7 @@ Details that are decisions rather than the table:
   stands for. The subject is the call as written with the resolved name, for example
   `contextlib.suppress(Exception)`; a `suppress` imported from anywhere other than `contextlib` is
   not checked. The message points to naming the expected exception, or handling or logging the
-  error, and to the `python.exceptions` entry for `blind-suppress`.
+  error, to `pytest.raises` in a test, and to the `python.exceptions` entry for `blind-suppress`.
 - `ruff check` runs with `--ignore-noqa`, so a `noqa` never hides a finding either.
 
 ## Slice 1: tools, reports and identities
@@ -399,8 +409,10 @@ directory>` or `-m unittest discover` (with `-s tests` or `-s test` when that di
   and writes one object per function to `structure.json`. It is run by the project's own Python
   (`python <script> <output> <project> <file list>`), so it needs no dependency and no pin, and it
   parses with the grammar of the interpreter the project uses; a file that does not parse is
-  skipped, as is a file too deeply nested for the parser (`RecursionError`, `MemoryError`); ruff's
-  `E9` rules already report a syntax error. The four limit metrics and the cyclomatic complexity
+  skipped, since ruff's `E9` rules already report a syntax error; a file too deeply nested for the
+  parser (`RecursionError`, `MemoryError`) stops the run with a `structure-failed` tool error that
+  names the file, as an unparsable TypeScript file does, because no other tool reports it and
+  skipping it would leave it outside the structure gate unnoticed. The four limit metrics and the cyclomatic complexity
   (the CRAP input) all come from this one script, like `StructureMetrics.java` for Java; no
   external tool is involved.
 - **Definitions** (the TypeScript analyzer's, applied to Python syntax). Unit: every `def` and
@@ -437,8 +449,10 @@ directory>` or `-m unittest discover` (with `-s tests` or `-s test` when that di
   outside the default source roots, so they are not gated.
 - **Findings.** Same as Java: `languages/python/adapters/analysis/python-structure.mjs` gives the metrics to
   `evaluateStructure` and keeps the enforceable limit findings (tool `structure`; the descriptive
-  per-function metrics are not emitted). Identity: qualified name, occurrence among equal names in
-  the file, and a hash of the function text with the common indentation removed, so moving or
+  per-function metrics are not emitted). Identity: qualified name, occurrence among the functions of that name and the same text
+  that are over the same limit (so a property getter and setter, or a function defined in two
+  branches, do not renumber each other when another of that name is added above; the CRAP identity
+  numbers the same way, and so do the TypeScript structure and CRAP findings), and a hash of the function text with the common indentation removed, so moving or
   re-indenting a whole function keeps it baselined while changing the nesting of a statement inside
   it counts as an edit (Java trims every line, which would hide that in Python).
 - **Cyclomatic complexity** (`complexity`, the CRAP input). Computed by the same script from the

@@ -409,8 +409,11 @@ format and coverage findings, and mutation testing is skipped when the `python` 
 error.
 
 The environment is detected: `uv.lock` (also the one of a uv workspace above a member) runs the
-tools with `uv run --no-sync`, `poetry.lock` uses the environment poetry reports, a `.venv/`
-directory is used as is, otherwise the tools come from the `PATH`; `python.environment` can also be
+tools with `uv run --no-sync`, `poetry.lock` uses the environment poetry reports, a `Pipfile` the one `pipenv --venv` reports,
+`[tool.hatch.envs]` in `pyproject.toml` (or a `hatch.toml`) the one `hatch env find` reports,
+an `environment.yml` the conda environment it names (the active one, or found by `conda env list`)
+or its `prefix`, a `.venv/` directory is used as is (so is an active non-base conda environment),
+otherwise the tools come from the `PATH`; `python.environment` can also be
 an absolute virtualenv directory. The environment has to exist already (`uv sync`, `poetry install`, or your CI's
 install step) and needs `coverage`, a type checker (`mypy`, `pyright` or `basedpyright`) and `pytest`, and `mutmut` unless mutation is disabled (mutmut runs every suite with pytest, which also runs `unittest` tests); `ruff` (or `black`) may come
 from the `PATH`. The base snapshot runs against the same environment with its own sources first on
@@ -430,7 +433,7 @@ test can tell from the original (an equivalent mutant) is lifted in `[tool.mutmu
 Config keys with this preset: `base`, `disable` (`python` and `mutation` are the analyzer names), `analyzers`, `thresholds` (`crapLimit`), `exclude` (findings
 under the globs are dropped), `legacyInventory` (same format as the Java one; `source` is the
 finding's `identity`) and `python`, whose keys all override a detection: `environment` (`"uv"`,
-`"poetry"`, `"path"` or a virtualenv directory in the project), `formatter` (`"ruff"` or
+`"poetry"`, `"pipenv"`, `"hatch"`, `"conda"`, `"path"` or a virtualenv directory in the project), `formatter` (`"ruff"` or
 `"black"`), `testRunner` (`"pytest"` or `"unittest"`; default `pytest` when the project uses it),
 `typeChecker` (`"mypy"`, `"pyright"` or `"basedpyright"`), `importLinter` (`true` or `false`; by default the import-linter
 contracts run when the project configures them) and `sourceRoots` (default `src`, else the top-level

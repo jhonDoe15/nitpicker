@@ -164,8 +164,14 @@ def file_entries(project, relative):
         source = handle.read()
     try:
         module = ast.parse(source, relative)
-    except (SyntaxError, ValueError, RecursionError, MemoryError):
+    except (SyntaxError, ValueError):
         return []
+    except (RecursionError, MemoryError) as error:
+        raise SystemExit(
+            f"structure_metrics: {relative} is too deeply nested for the Python parser "
+            f"({type(error).__name__}), so its functions cannot be measured: "
+            "split the very long expression or data literal into smaller parts"
+        )
     return [dict(entry, file=relative) for entry in function_entries(module)]
 
 

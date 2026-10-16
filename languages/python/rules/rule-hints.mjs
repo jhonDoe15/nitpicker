@@ -3,8 +3,8 @@ const TYPE_CHECK_TOOLS = ['mypy', 'pyright', 'basedpyright'];
 const HINTED_TOOLS = ['ruff', ...TYPE_CHECK_TOOLS, RULES_TOOL];
 
 const LOGGING = 'Use `logging`: `logger = logging.getLogger(__name__)`, then `logger.info(...)`.';
-const HANDLE_EXCEPTION =
-  'Catch the specific exception and handle it, log it with `logger.exception(...)` or re-raise it; `contextlib.suppress(SpecificError)` ignores one expected error.';
+const IN_TEST = 'In a test, use `pytest.raises(SpecificError)` (`self.assertRaises` in unittest).';
+const HANDLE_EXCEPTION = `Catch the specific exception and handle it, log it with \`logger.exception(...)\` or re-raise it; \`contextlib.suppress(SpecificError)\` ignores one expected error. ${IN_TEST}`;
 const FIX_TYPE = 'Fix the type; inline ignores are banned.';
 const INSTALL_PACKAGE = 'Install the package, or its `types-` stubs, in the project environment.';
 
@@ -42,15 +42,13 @@ export const RULE_HINTS = [
     tool: RULES_TOOL,
     rules: ['swallowed-exception'],
     describe: (subject) => `\`${subject}\` swallows the error`,
-    allowed:
-      'Log it with `logger.exception(...)`, re-raise it or use it, or return a named default or a value built from the error; `contextlib.suppress(SpecificError)` ignores one expected error.',
+    allowed: `Log it with \`logger.exception(...)\`, re-raise it or use it, or return a named default or a value built from the error; \`contextlib.suppress(SpecificError)\` ignores one expected error. ${IN_TEST}`,
   },
   {
     tool: RULES_TOOL,
     rules: ['blind-suppress'],
     describe: (subject) => `\`${subject}\` ignores every error`,
-    allowed:
-      'Name the expected exception: `contextlib.suppress(KeyError)`; or handle it, log it with `logger.exception(...)` or re-raise it.',
+    allowed: `Name the expected exception: \`contextlib.suppress(KeyError)\`; or handle it, log it with \`logger.exception(...)\` or re-raise it. ${IN_TEST}`,
   },
   {
     tool: RULES_TOOL,

@@ -287,6 +287,7 @@ describe('hints for the production policy rules', () => {
     ['no-eval', 'eval can be harmful.', 'look it up in a table keyed by name'],
     ['no-param-reassign', "Assignment to function parameter 'n'.", 'Declare a new const'],
     ['no-duplicate-imports', "'a' import is duplicated.", 'single import statement'],
+    ['vitest/no-conditional-expect', 'Avoid calling `expect` conditionally.', '.toThrow(Specific)'],
     [
       'regexp/no-super-linear-backtracking',
       'Unsafe quantifier.',
