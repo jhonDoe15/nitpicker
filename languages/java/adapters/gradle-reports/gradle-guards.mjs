@@ -1,4 +1,4 @@
-import { existsSync, readFileSync } from 'node:fs';
+import { existsSync, readFileSync, realpathSync } from 'node:fs';
 import path from 'node:path';
 import { runPermits } from '../../builds/classes/class-permits.mjs';
 import { runJavacLint } from '../../builds/lint/javac-lint-runner.mjs';
@@ -15,8 +15,10 @@ export function runGuardPlan(reportDir, { baselineRoot }) {
   runJavacLint(plan.lint, { reportDir, baselineRoot });
 }
 
-export function runGradleGuards(modules, { baselineRoot }) {
-  for (const module of modules) {
-    runGuardPlan(module.reportRoot, { baselineRoot });
-  }
+export function main([reportDir, baselineRoot]) {
+  runGuardPlan(reportDir, { baselineRoot });
+}
+
+if (process.argv[1] !== undefined && realpathSync(process.argv[1]) === import.meta.filename) {
+  main(process.argv.slice(2));
 }

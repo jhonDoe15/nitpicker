@@ -15,8 +15,8 @@ side contributes only two things: producing reports, and converting them into fi
 
 ```
 gradle -I languages/java/gradle/nitpicker.init.gradle nitpickerJava   (per snapshot: base, head; Maven builds: see below)
-  -> <report dir>/modules.json and, per Gradle project that applies java, <report dir>/<key>/{pmd.sarif, spotbugs.sarif, format.txt, jacoco.xml, checkstyle.xml, checkstyle-<source set>.xml, archunit/*.xml, structure.json, pit/mutations.xml, jdeps.txt, jdeps-classes.txt, forbidden-apis.txt, cpd.xml, dependencies.json, guards-plan.json, manifest.json}
-  -> languages/java/adapters/gradle-reports/gradle-guards.mjs (runGradleGuards: javac-lint.txt and permits.txt from each guards-plan.json)
+  -> <report dir>/modules.json and, per Gradle project that applies java, <report dir>/<key>/{pmd.sarif, spotbugs.sarif, format.txt, jacoco.xml, checkstyle.xml, checkstyle-<source set>.xml, archunit/*.xml, structure.json, pit/mutations.xml, jdeps.txt, jdeps-classes.txt, forbidden-apis.txt, cpd.xml, dependencies.json, guards-plan.json, javac-lint.txt, permits.txt, manifest.json}
+     (nitpickerLint runs node languages/java/adapters/gradle-reports/gradle-guards.mjs on its guards-plan.json)
   -> languages/java/adapters/reporting/java-reports.mjs       (readJavaFindings, via the ingesters)
   -> languages/java/adapters/spring/java-spring.mjs    (spring findings read straight from application*.properties/yml, no Gradle report; only when manifest.json says spring: true)
   -> compareFindings(base, head, renames)               (languages/java/adapters/java-diff.mjs)
@@ -722,8 +722,10 @@ A Checkstyle rule prints as its full check class, for example
   generated config, not inline suppressions. The messages are rewritten to name the allowed form.
 - **javac lint.** The `nitpickerLint` task writes `guards-plan.json` (the main sources, the
   compile class path, the processor path, the compiler, its release, source, target, encoding and
-  arguments, the classes directory and the generated-sources directory), and after Gradle has run
-  nitpicker compiles the main sources once more from it with
+  arguments, the classes directory and the generated-sources directory) and runs node on it
+  (`-Pnitpicker.node`, the head run also passing the base project as `-Pnitpicker.lintBaseline`),
+  so the lint of several projects runs in parallel when Gradle does; it compiles the main sources
+  once more with
   `-Xlint:rawtypes,unchecked,deprecation,removal,cast` and writes the warnings to
   `javac-lint.txt` in the report directory (tool `javac`, rule = lint category). The same runner
   serves Maven. It compiles a copy in which every `@SuppressWarnings(...)` is blanked out (same
