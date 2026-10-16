@@ -4,12 +4,12 @@ import { exceptionHint } from '../../../shared/rules/exceptions.mjs';
 export const CATALOG_TOOLS = ['pmd', 'checkstyle', 'spotbugs'];
 export const LAYOUT_FIX = 'Run google-java-format on the file; it fixes this layout.';
 const CATALOGS = new Map(CATALOG_TOOLS.map((tool) => [tool, readCatalog(tool)]));
-const ROUTED_TOOLS = new Set([
+const ROUTED = new Set([
   ...CATALOG_TOOLS,
   'javac',
   'forbiddenapis',
   'duplicates',
-  'coupling',
+  'coupling/package-cycle',
   'dependencies',
   'spring',
   'pit',
@@ -28,7 +28,7 @@ export function checkstyleRuleName(source) {
 }
 
 export function withRuleMessage(finding, { preset = 'java' } = {}) {
-  if (!ROUTED_TOOLS.has(finding.tool)) {
+  if (!ROUTED.has(finding.tool) && !ROUTED.has(`${finding.tool}/${finding.rule}`)) {
     return finding;
   }
   const catalog = CATALOGS.get(finding.tool) ?? {};
