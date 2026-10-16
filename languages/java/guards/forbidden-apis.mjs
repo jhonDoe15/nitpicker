@@ -7,6 +7,8 @@ const FORBIDDEN_APIS_TOOL = 'forbiddenapis';
 const FORBIDDEN_REPORT = 'forbidden-apis.txt';
 const VIOLATION = /^ERROR: Forbidden [\w/ ]+: (.+?) \[([a-z-]+): (.+)\]$/;
 const LOCATION = /^ERROR:\s+in (\S+) \((\S+?):(\d+)\)$/;
+const LEGACY_DATE = 'java.util.Date';
+const STATEMENT_LINES = 5;
 
 function shortName(signature) {
   const method = /^([\w.$]+)#(<init>|\w+)/.exec(signature);
@@ -52,15 +54,41 @@ function useFinding(use, file, unique) {
   };
 }
 
-export function readForbiddenApiFindings(reportRoot, { locate }) {
+function convertsDateRightAway(use, source) {
+  if (use.signature !== LEGACY_DATE || source === undefined) {
+    return false;
+  }
+  const [statement] = source
+    .split(/\r?\n/)
+    .slice(use.line - 1, use.line - 1 + STATEMENT_LINES)
+    .join('\n')
+    .split(';');
+  return /\.toInstant\(\)/.test(statement) && !/\bDate\b/.test(statement);
+}
+
+function sourceReader(projectRoot) {
+  const sources = new Map();
+  return (file) => {
+    if (!sources.has(file)) {
+      const absolute = path.join(projectRoot, file);
+      sources.set(file, existsSync(absolute) ? readFileSync(absolute, 'utf8') : undefined);
+    }
+    return sources.get(file);
+  };
+}
+
+export function readForbiddenApiFindings(reportRoot, { locate, projectRoot }) {
   const report = path.join(reportRoot, FORBIDDEN_REPORT);
   if (!existsSync(report)) {
     return [];
   }
   const unique = createIdentityCounter();
+  const source = sourceReader(projectRoot);
   return parseForbiddenApiUses(readFileSync(report, 'utf8')).flatMap((use) => {
     const packageDirectory = use.className.split('.').slice(0, -1).join('/');
     const file = locate(packageDirectory, use.fileName);
-    return file === undefined ? [] : [useFinding(use, file, unique)];
+    return file === undefined || convertsDateRightAway(use, source(file))
+      ? []
+      : [useFinding(use, file, unique)];
   });
 }

@@ -637,22 +637,22 @@ the dependency and cycle checks end with it too. Inline suppressions are not a r
 `@SuppressWarnings("unchecked")` and the like are blanked before `javac` lints, so they hide
 nothing. The rules read base and head the same way, so only a pattern a change adds fails.
 
-| Guard                                                                                                                                            | Rule as printed                                                                                                                                                        | Allowed form                                                                                                       |
-| ------------------------------------------------------------------------------------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------ |
-| Package cycles                                                                                                                                   | `coupling/package-cycle`                                                                                                                                               | Move shared types down, or invert one dependency behind an interface                                               |
-| `Optional.get()`; `Optional` as field, parameter or record component; `Optional<List<..>>`                                                       | `pmd/OptionalGet`, `pmd/OptionalAsFieldOrParameter`, `pmd/OptionalOfCollection`                                                                                        | `orElseThrow()`, `orElse`, `map`, `ifPresent`; return an empty collection                                          |
-| Raw types, unchecked casts, deprecated and removed APIs, redundant casts                                                                         | `javac/rawtypes`, `javac/unchecked`, `javac/deprecation`, `javac/removal`, `javac/cast`                                                                                | Type arguments, typed APIs, the replacement the Javadoc names                                                      |
-| `instanceof` followed by a cast                                                                                                                  | `pmd/InstanceofThenCast`                                                                                                                                               | Pattern matching (`x instanceof Circle c`) or a `switch` over a sealed type                                        |
-| Non-private fields, mutable static state, `@SneakyThrows`                                                                                        | `checkstyle/...VisibilityModifierCheck`, `pmd/NonFinalStaticField`, `pmd/MutableStaticCollection`, `pmd/SneakyThrows`                                                  | Private fields, a `record`, immutable `List.of` and `Map.of`, a declared exception                                 |
-| Legacy date and time, `now()` without a `Clock`, `Thread.sleep`, `new Thread`, `Runtime.exec(String)`, `ObjectInputStream`                       | `forbiddenapis/legacy-date-time`, `clock-now`, `thread-sleep`, `new-thread`, `runtime-exec`, `java-deserialization`                                                    | `java.time`, an injected `Clock`, an executor, `ProcessBuilder` with a list, JSON                                  |
-| Swallowed `InterruptedException`; side effects in `forEach` and `peek`; `collect(Collectors.toList())`; an unclosed `Files.lines/list/walk/find` | `pmd/SwallowedInterruptedException`, `pmd/ForEachSideEffect`, `pmd/CollectorsToList`, `pmd/StreamResourceNotClosed`                                                    | `Thread.currentThread().interrupt()`, `map` and `collect`, `Stream.toList()`, try-with-resources                   |
-| `throws Exception`, raw `RuntimeException`                                                                                                       | `pmd/SignatureDeclareThrowsException`, `pmd/AvoidThrowingRawExceptionTypes`                                                                                            | The checked exceptions the method throws; `IllegalArgumentException`, `IllegalStateException`, a project exception |
-| SQL built with `+` or `String.format` in JDBC calls; MD5 and SHA-1; nested-quantifier regexes; a path joined from a parameter                    | `pmd/SqlConcatenation`, `pmd/WeakHash`, `pmd/NestedQuantifierRegex`, `pmd/PathFromParameter`                                                                           | `?` parameters, SHA-256, a regex without `(a+)+`, `normalize()` and `startsWith(base)`                             |
-| Constant names; magic numbers                                                                                                                    | `checkstyle/...ConstantNameCheck`, `checkstyle/...MagicNumberCheck`                                                                                                    | `UPPER_SNAKE_CASE` (a logger may be `log` or `logger`); a named `private static final`                             |
-| Unused imports                                                                                                                                   | `pmd/UnnecessaryImport`                                                                                                                                                | Remove the import                                                                                                  |
-| Duplicates with renamed names, and in test sources                                                                                               | `duplicates/duplicate-clone`                                                                                                                                           | One shared method; a helper or `@ParameterizedTest` in tests                                                       |
-| Declared but unused dependencies                                                                                                                 | `dependencies/unused-declared-dependency`                                                                                                                              | Remove it, or declare it `runtimeOnly` or `compileOnly` (Maven: `test`, `runtime` or `provided` scope)                                                  |
-| Test honesty                                                                                                                                     | `pmd/TestSleep`, `DisabledTest`, `AssertionInControlFlow`, `TryCatchInTest`, `AssertTrueOnEquality`, `TautologicalAssertion`, `MockedValueType`, `TestOrderDependence` | See Tests below                                                                                                    |
+| Guard                                                                                                                                            | Rule as printed                                                                                                                                                        | Allowed form                                                                                                                 |
+| ------------------------------------------------------------------------------------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------- |
+| Package cycles                                                                                                                                   | `coupling/package-cycle`                                                                                                                                               | Move shared types down, or invert one dependency behind an interface                                                         |
+| `Optional.get()`; `Optional` as field, parameter or record component; `Optional<List<..>>`                                                       | `pmd/OptionalGet`, `pmd/OptionalAsFieldOrParameter`, `pmd/OptionalOfCollection`                                                                                        | `orElseThrow()`, `orElse`, `map`, `ifPresent`; return an empty collection                                                    |
+| Raw types, unchecked casts, deprecated and removed APIs, redundant casts                                                                         | `javac/rawtypes`, `javac/unchecked`, `javac/deprecation`, `javac/removal`, `javac/cast`                                                                                | Type arguments, typed APIs, the replacement the Javadoc names                                                                |
+| `instanceof` followed by a cast                                                                                                                  | `pmd/InstanceofThenCast`                                                                                                                                               | Pattern matching (`x instanceof Circle c`) or a `switch` over a sealed type                                                  |
+| Non-private fields, mutable static state, `@SneakyThrows`                                                                                        | `checkstyle/...VisibilityModifierCheck`, `pmd/NonFinalStaticField`, `pmd/MutableStaticCollection`, `pmd/SneakyThrows`                                                  | Private fields, a `record`, immutable `List.of` and `Map.of`, a declared exception                                           |
+| Legacy date and time, `now()` without a `Clock`, `Thread.sleep`, `Thread.start()`, `Runtime.exec(String)`, `ObjectInputStream`                   | `forbiddenapis/legacy-date-time`, `clock-now`, `thread-sleep`, `new-thread`, `runtime-exec`, `java-deserialization`                                                    | `java.time`, an injected `Clock`, an executor, `ProcessBuilder` with a list, JSON                                            |
+| Swallowed `InterruptedException`; side effects in `forEach` and `peek`; `collect(Collectors.toList())`; an unclosed `Files.lines/list/walk/find` | `pmd/SwallowedInterruptedException`, `pmd/ForEachSideEffect`, `pmd/CollectorsToList`, `pmd/StreamResourceNotClosed`                                                    | `Thread.currentThread().interrupt()`, `map` and `collect`, `Stream.toList()`, try-with-resources                             |
+| `throws Exception`, raw `RuntimeException`                                                                                                       | `pmd/SignatureDeclareThrowsException`, `pmd/AvoidThrowingRawExceptionTypes`                                                                                            | The checked exceptions the method throws; `IllegalArgumentException`, `IllegalStateException`, a project exception           |
+| SQL built with `+` or `String.format` in JDBC calls; MD5 and SHA-1; nested-quantifier regexes; a path joined from a parameter                    | `pmd/SqlConcatenation`, `pmd/WeakHash`, `pmd/NestedQuantifierRegex`, `pmd/PathFromParameter`                                                                           | `?` parameters, SHA-256, a regex without `(a+)+`, `normalize()` and `startsWith(base)`                                       |
+| Constant names; magic numbers                                                                                                                    | `checkstyle/...ConstantNameCheck`, `checkstyle/...MagicNumberCheck`                                                                                                    | `UPPER_SNAKE_CASE` (a logger may be `log` or `logger`); a named `private static final`                                       |
+| Unused imports                                                                                                                                   | `pmd/UnnecessaryImport`                                                                                                                                                | Remove the import                                                                                                            |
+| Duplicates with renamed names, and in test sources                                                                                               | `duplicates/duplicate-clone`                                                                                                                                           | One shared method; a helper or `@ParameterizedTest` in tests                                                                 |
+| Declared but unused dependencies                                                                                                                 | `dependencies/unused-declared-dependency`                                                                                                                              | Remove it, or declare it `testImplementation`, `runtimeOnly` or `compileOnly` (Maven: `test`, `runtime` or `provided` scope) |
+| Test honesty                                                                                                                                     | `pmd/TestSleep`, `DisabledTest`, `AssertionInControlFlow`, `TryCatchInTest`, `AssertTrueOnEquality`, `TautologicalAssertion`, `MockedValueType`, `TestOrderDependence` | See Tests below                                                                                                              |
 
 A Checkstyle rule prints as its full check class, for example
 `checkstyle/com.puppycrawl.tools.checkstyle.checks.coding.MagicNumberCheck`; the message names it.
@@ -688,10 +688,14 @@ A Checkstyle rule prints as its full check class, for example
   `(List<String>) o`). `CollectorsToList` reports `collect(Collectors.toList())` only, not a downstream
   `toList()` inside `groupingBy` or `mapping`. `NestedQuantifierRegex` reports a repeated group
   whose whole body is one quantified item (`(a+)+`, `(\s*)*`, `([a-z]+)*`), not a group of
-  several items such as `([A-Z][a-z]+)+`. `SignatureDeclareThrowsException` skips overriding
+  several items such as `([A-Z][a-z]+)+`. `PathFromParameter` reports non-private methods and
+  constructors only, so a private helper called with fixed names is fine.
+  `SignatureDeclareThrowsException` skips overriding
   methods, a method that takes Spring Security's `HttpSecurity`, `WebSecurity`,
   `AuthenticationConfiguration` or `AuthenticationManagerBuilder` (whose methods declare
-  `Exception`), and `getObject()` of a `FactoryBean`. `NonFinalStaticField` skips JUnit's `@TempDir`, `@Container`, `@RegisterExtension`
+  `Exception`), `getObject()` of a `FactoryBean`, `main(String[])` and the methods of a
+  `@FunctionalInterface` (a `Callable`-like type whose lambdas may throw anything).
+  `NonFinalStaticField` skips JUnit's `@TempDir`, `@Container`, `@RegisterExtension`
   and `@ClassRule` fields, Testcontainers containers and fields assigned in `@BeforeAll`;
   `MutableStaticCollection` skips a private static concurrent collection used as a cache.
 - **Checkstyle.** `rules/checkstyle-all.xml` (`ConstantName`) is added to the `google_checks.xml`
@@ -700,7 +704,9 @@ A Checkstyle rule prints as its full check class, for example
   fields allowed) for main sources only. `ConstantName` checks constants of primitive, `String`,
   boxed, `BigDecimal`, `BigInteger` and `Duration` type; a `static final` reference to an object
   such as `mapper` keeps its camel-case name. `VisibilityModifier` allows protected fields of a
-  `@MappedSuperclass`. These scopes are `SuppressionXpathSingleFilter` modules inside the
+  `@MappedSuperclass`, and fields without an access modifier in a class annotated with Lombok's
+  `@Value` or `@FieldDefaults(level = AccessLevel.PRIVATE)`, which Lombok makes private. These
+  scopes are `SuppressionXpathSingleFilter` modules inside the
   generated config, not inline suppressions. The messages are rewritten to name the allowed form.
 - **javac lint.** The `nitpickerLint` task compiles the main sources once more with
   `-Xlint:rawtypes,unchecked,deprecation,removal,cast` and writes the warnings to
@@ -733,7 +739,10 @@ A Checkstyle rule prints as its full check class, for example
   (Apache-2.0, one jar from Maven Central, pinned in the init script) reads the main bytecode
   against `rules/forbidden-apis.txt`. Each signature group has a tag that becomes the rule name
   (`thread-sleep`); the report is `forbidden-apis.txt`. Source locations come
-  from the class's debug line numbers.
+  from the class's debug line numbers. `new-thread` bans `Thread.start()`, so a `ThreadFactory`
+  or `Runtime.addShutdownHook` may still construct a `Thread`. `legacy-date-time` skips a
+  statement that converts a `Date` another API returns with `toInstant()` and does not name `Date`
+  itself (`certificate.getNotAfter().toInstant()`).
 - **Duplicates.** The jscpd check is unchanged. `nitpickerCpd` runs PMD's copy-paste detector
   (BSD-style, already inside the pinned PMD) over main and test sources with identifiers and
   literals ignored and at least 100 tokens, so a copy with renamed variables is found. A clone
@@ -742,7 +751,10 @@ A Checkstyle rule prints as its full check class, for example
   are clones made only of getters, setters, field declarations and field-assigning constructors
   or only of data rows (enum constants, `Arguments.of(...)` rows, literal lists, and constants
   built from literals with `Map.ofEntries`, `Map.of`, `List.of`, `Set.of`, `Stream.of` or
-  `Arrays.asList`). Findings use the
+  `Arrays.asList`). The files of a duplication are sorted by path, so the order CPD lists them in
+  does not matter, and the identity hashes the clone's token shape (its punctuation and
+  operators, without names, literals and comments), so editing a name or a literal in a legacy
+  copy keeps its identity. Findings use the
   same tool and rule as jscpd (`duplicates/duplicate-clone`), with identities starting `cpd:` so
   they never match a jscpd finding; between two test files the message points at a helper or a
   `@ParameterizedTest`. The message ends with the exception route for
@@ -768,11 +780,13 @@ A Checkstyle rule prints as its full check class, for example
   `TimeUnit.sleep`), `DisabledTest` (`@Disabled`, `@Ignore`), `AssertionInControlFlow` (an
   assertion or `verify` inside an `if` or `switch` of a test method; a loop over results and an
   `if` that only calls `fail` are fine),
-  `TryCatchInTest` (use `assertThrows`), `AssertTrueOnEquality` (`assertTrue(a.equals(b))`,
+  `TryCatchInTest` (use `assertThrows`; a `try` inside a lambda or an anonymous class is fine),
+  `AssertTrueOnEquality` (`assertTrue(a.equals(b))`,
   `assertTrue(a == b)`), `TautologicalAssertion` (`assertThat(true)`, `assertTrue(true)`,
   `assertEquals(1, 1)`; `assertEquals(a, a)` is a reflexivity test and is fine), `MockedValueType` (a `String`, number, date, collection, `Optional` or
-  record mocked with `mock` or `@Mock`) and `TestOrderDependence` (`@TestMethodOrder`,
-  `@FixMethodOrder`, `@Order` on a test). A test class with `static` non-final fields or a static
+  record mocked with `mock` or `@Mock`) and `TestOrderDependence` (`@TestMethodOrder` other than
+  `MethodOrderer.Random`, `@FixMethodOrder`, `@Order` on a test). A test class with `static`
+  non-final fields or a static
   collection it changes is a `pmd/NonFinalStaticField` or `pmd/MutableStaticCollection` finding
   like production code. A test with no assertion at all is still
   `pmd/UnitTestShouldIncludeAssert`. Assumptions (`assumeTrue`) and tests that only `verify` a
