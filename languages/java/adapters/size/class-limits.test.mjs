@@ -1,11 +1,13 @@
-import { spawnSync } from 'node:child_process';
 import { mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { readClassLimitFindings } from './class-limits.mjs';
+import {
+  compiledMetrics,
+  runMetrics,
+} from '../structure-metrics/test-support/compiled-metrics.mjs';
 
-const METRICS_SOURCE = path.resolve(import.meta.dirname, '../../gradle/StructureMetrics.java');
 const SOURCE_ROOT = 'src/main/java';
 
 const SAMPLE = `package demo;
@@ -104,28 +106,24 @@ function projectWith(files) {
 function measure(root) {
   const reportRoot = path.join(root, 'report');
   mkdirSync(reportRoot);
-  const result = spawnSync(
-    'java',
-    [
-      METRICS_SOURCE,
+  const result = runMetrics(METRICS_CLASSES, {
+    cwd: root,
+    args: [
       path.join(reportRoot, 'structure.json'),
       path.join(reportRoot, 'classes.json'),
       root,
       SOURCE_ROOT,
     ],
-    { cwd: root, encoding: 'utf8', timeout: 120_000 },
-  );
-  const stderr = result.stderr
-    .split('\n')
-    .filter((line) => !line.startsWith('Picked up '))
-    .join('\n');
-  return { status: result.status, stderr, reportRoot };
+  });
+  return { ...result, reportRoot };
 }
+
+const METRICS_CLASSES = compiledMetrics();
 
 beforeAll(() => {
   const root = projectWith({ 'Sample.java': SAMPLE, ...CHAIN });
   sample = { ...measure(root), root };
-}, 60_000);
+});
 
 afterAll(() => {
   for (const root of temporaryRoots.splice(0)) {
@@ -229,7 +227,7 @@ describe('readClassLimitFindings', () => {
   it('fails loudly, naming the step, without a report', () => {
     const missing = path.join(sample.root, 'missing');
     expect(() => readClassLimitFindings(missing, { thresholds: {} })).toThrow(
-      `The classes.json report is missing from ${missing}: the nitpickerStructure step did not write it, so the class limits cannot be checked`,
+      `The classes.json report is missing from ${missing}: the structure step (StructureMetrics.java) did not write it, so the class limits cannot be checked`,
     );
   });
 });

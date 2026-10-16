@@ -10,9 +10,17 @@ import {
 export { globToRegExp };
 
 const defaultSourceRoots = ['src'];
-const defaultTestRoots = ['test', 'tests'];
+export const END_TO_END_ROOT = 'e2e';
+const defaultTestRoots = ['test', 'tests', '__tests__', END_TO_END_ROOT];
 export const codeExtensionNames = ['ts', 'tsx', 'mts', 'cts', 'js', 'jsx', 'mjs', 'cjs'];
 export const codeExtensions = `{${codeExtensionNames.join(',')}}`;
+export const stylesheetExtensionNames = ['css', 'scss', 'sass', 'less', 'styl', 'pcss'];
+export const stylesheetSpecifier = new RegExp(
+  `\\.(?:${stylesheetExtensionNames.join('|')})(?:\\?.*)?$`,
+  'u',
+);
+export const cssInJsSource =
+  /^(?:styled-components(?:\/|$)|@emotion\/|@stitches\/react$|goober$|@linaria\/)/u;
 const javascriptProjectExtensionNames = [
   ...TYPESCRIPT_EXTENSIONS_IN_JAVASCRIPT_PROJECT,
   ...JAVASCRIPT_EXTENSIONS,
@@ -28,8 +36,12 @@ const builtInExcludedGlobs = [
   '**/target/**',
   '**/*.d.ts',
 ];
-const GENERATED_DIRECTORY =
-  /(?:^|\/)(?:dist|build|generated|node_modules|coverage|reports|target)(?:\/|$)/;
+const GENERATED_PATH = new RegExp(
+  [
+    '(?:^|/)(?:dist|build|generated|__generated__|node_modules|coverage|reports|target)(?:/|$)',
+    '(?:\\.(?:generated|gen|pb)|_pb)\\.[^/]+$',
+  ].join('|'),
+);
 
 function normalizeRoot(root) {
   return root.replaceAll('\\', '/').replace(/^\.\//, '').replace(/\/$/, '');
@@ -65,7 +77,7 @@ function unitTestGlobsFor({ sourceRoots, testRoots, javascript, extensionGlob })
   ];
 }
 
-function toPosix(file) {
+export function toPosix(file) {
   return file.replaceAll('\\', '/');
 }
 
@@ -97,7 +109,7 @@ function createClassifiers({ sourceRoots, testRoots, exclude, patterns }) {
     return (
       patterns.sourcePattern.test(normalized) &&
       !isTestFile(normalized) &&
-      !GENERATED_DIRECTORY.test(normalized) &&
+      !GENERATED_PATH.test(normalized) &&
       !normalized.endsWith('.d.ts') &&
       !isExcluded(normalized)
     );
@@ -105,6 +117,8 @@ function createClassifiers({ sourceRoots, testRoots, exclude, patterns }) {
   return {
     isExcluded,
     isTestFile,
+    isGeneratedPath: (file) => GENERATED_PATH.test(toPosix(file)),
+    isTestPath: (file) => patterns.testPattern.test(toPosix(file)),
     isRunnableTestFile: (file) => isTestFile(file) && patterns.runnableTestPattern.test(file),
     isSourceFile,
     isSourceUnderRoot: sourceUnderRootClassifier({
@@ -137,6 +151,19 @@ function globsFor({ sourceRoots, testRoots, javascript, extensionGlob }) {
   };
 }
 
+function endToEndFor(layout, testRoots, extensionGlob) {
+  const isRoot = testRoots.includes(END_TO_END_ROOT);
+  return {
+    executedTestRoots:
+      layout.testRoots === undefined
+        ? testRoots.filter((root) => root !== END_TO_END_ROOT)
+        : testRoots,
+    endToEndGlobs: isRoot ? [`${END_TO_END_ROOT}/**/*.${extensionGlob}`] : [],
+    isEndToEndTest: (file) =>
+      isRoot && file.replaceAll('\\', '/').startsWith(`${END_TO_END_ROOT}/`),
+  };
+}
+
 export function resolveLayout(layout = {}, exclude = [], { javascript = false } = {}) {
   const sourceRoots = (layout.sourceRoots ?? defaultSourceRoots).map(normalizeRoot);
   const testRoots = (layout.testRoots ?? defaultTestRoots).map(normalizeRoot);
@@ -157,6 +184,7 @@ export function resolveLayout(layout = {}, exclude = [], { javascript = false } 
     exclude,
     excludedGlobs: [...(layout.excludedGlobs ?? builtInExcludedGlobs), ...exclude],
     ...globs,
+    ...endToEndFor(layout, testRoots, extensionGlob),
     excludePattern:
       exclude.length === 0 ? undefined : exclude.map((glob) => globToRegExpSource(glob)).join('|'),
     ...createClassifiers({ sourceRoots, testRoots, exclude, patterns }),
@@ -176,7 +204,7 @@ function codeFilesUnderRoot(layout, projectRoot, root) {
   for (const relative of pending) {
     const entries = readdirSync(path.join(projectRoot, relative), { withFileTypes: true })
       .map((entry) => ({ entry, name: relative ? `${relative}/${entry.name}` : entry.name }))
-      .filter(({ name }) => !GENERATED_DIRECTORY.test(name));
+      .filter(({ name }) => !GENERATED_PATH.test(name));
     pending.push(...entries.filter(({ entry }) => entry.isDirectory()).map(({ name }) => name));
     files.push(...entries.filter((item) => isCodeFile(layout, item)).map(({ name }) => name));
   }

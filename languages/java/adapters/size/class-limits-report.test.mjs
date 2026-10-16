@@ -2,7 +2,10 @@ import { mkdirSync, mkdtempSync, realpathSync, rmSync, writeFileSync } from 'nod
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
-import { readJavaFindings } from '../reporting/java-reports.mjs';
+import { readJavaFindings as readFindings } from '../reporting/java-reports.mjs';
+import { readingFrom, reportBaseOf, writeModules } from '../test-support/report-base.mjs';
+
+const readJavaFindings = readingFrom(readFindings);
 
 const legacy = 'src/main/java/demo/Legacy.java';
 const EMPTY_SARIF = JSON.stringify({ version: '2.1.0', runs: [] });
@@ -17,8 +20,8 @@ afterEach(() => {
 function kotlinProject() {
   const root = realpathSync(mkdtempSync(path.join(tmpdir(), 'nitpicker-kotlin-classes-')));
   roots.push(root);
-  const reports = path.join(root, 'build/nitpicker');
-  mkdirSync(reports, { recursive: true });
+  const reports = writeModules(root);
+  writeFileSync(path.join(reportBaseOf(root), 'duplicates.json'), JSON.stringify({ runs: [] }));
   mkdirSync(path.dirname(path.join(root, legacy)), { recursive: true });
   writeFileSync(path.join(root, legacy), 'package demo;\n\nclass Legacy {}\n');
   const files = {
@@ -36,7 +39,6 @@ function kotlinProject() {
     'checkstyle.xml': '<checkstyle version="10.21.1"></checkstyle>',
     'jacoco.xml': '<report name="demo"></report>',
     'structure.json': '[]',
-    'duplicates.json': JSON.stringify({ runs: [] }),
     'classes.json': JSON.stringify({
       files: { [legacy]: { package: 'demo', imports: [] } },
       classes: [{ file: legacy, name: 'Legacy', kind: 'class', start: 3, methods: 3, fields: 0 }],
@@ -70,10 +72,10 @@ describe('class limits read from the report of a project', () => {
 
   it('fails when the class report is missing, so a missing step cannot drop the limits', () => {
     const root = kotlinProject();
-    rmSync(path.join(root, 'build/nitpicker/classes.json'));
+    rmSync(path.join(writeModules(root), 'classes.json'));
 
     expect(() => readJavaFindings(root, { preset: 'kotlin' })).toThrow(
-      /The classes\.json report is missing from .*: the nitpickerStructure step did not write it/u,
+      /The classes\.json report is missing from .*: the structure step \(StructureMetrics\.java\) did not write it/u,
     );
   });
 });

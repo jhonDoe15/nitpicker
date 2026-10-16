@@ -1,0 +1,60 @@
+name: github-release
+
+# Manual only: publishes a GitHub release for a commit on main, with the packed tarball and its
+# checksum attached. It never publishes to npm.
+on:
+  workflow_dispatch:
+    inputs:
+      commit:
+        description: Full SHA of the commit on main to release
+        required: true
+      prerelease:
+        description: Mark the release as a pre-release
+        type: boolean
+        default: true
+
+permissions:
+  contents: write
+
+concurrency:
+  group: ${{ github.workflow }}
+  cancel-in-progress: false
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.commit }}
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - name: Check the commit and read the version
+        id: version
+        env:
+          COMMIT: ${{ inputs.commit }}
+        run: |
+          git merge-base --is-ancestor "$COMMIT" origin/main
+          echo "tag=v$(node -p "require('./package.json').version")" >> "$GITHUB_OUTPUT"
+      # The notes come from .github/release-notes/<tag>.md on main, or from the released commit.
+      - name: Pack the tarball and checksum
+        env:
+          TAG: ${{ steps.version.outputs.tag }}
+        run: |
+          mkdir release-assets
+          npm pack --pack-destination release-assets
+          (cd release-assets && shasum -a 256 nitpicker-*.tgz > SHA256SUMS)
+          git show "origin/main:.github/release-notes/$TAG.md" > notes.md 2>/dev/null || cp ".github/release-notes/$TAG.md" notes.md
+      - name: Create the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ steps.version.outputs.tag }}
+          COMMIT: ${{ inputs.commit }}
+          PRERELEASE: ${{ inputs.prerelease }}
+        run: |
+          flags=()
+          if [ "$PRERELEASE" = "true" ]; then flags+=(--prerelease); fi
+          gh release create "$TAG" release-assets/* --target "$COMMIT" --title "$TAG" --notes-file notes.md "${flags[@]}"

@@ -6,11 +6,13 @@ import { errorWrappingPolicy } from './policies/error-wrapping-policy.mjs';
 import {
   escapeHatchLinterOptions,
   escapeHatchRules,
-  escapeHatchSelectorsFor,
+  escapeHatchSelectors,
+  nullSelectorsFor,
 } from './strict/strict-escape-hatches.mjs';
 import {
   declarationSelectorsFor,
   defaultExportSelectors,
+  moduleSurfaceSelectors,
   typeDefinitionSelectors,
   typedDeclarationRules,
 } from './strict/strict-declarations.mjs';
@@ -23,6 +25,7 @@ import {
 } from './strict/strict-control-flow.mjs';
 import {
   domainFunctionalRules,
+  domainPurityRules,
   domainGlobsFor,
   domainRestrictedSyntax,
   domainTypeAwareFunctionalRules,
@@ -33,16 +36,14 @@ import {
   strictAdaptersTypedConfig,
 } from './strict-adapters.mjs';
 import { strictTestConfigFor } from './strict-tests.mjs';
+import { configFileGlobsFor, productionPolicyConfigFor } from './policy/production-policy.mjs';
 
 export function restrictedSyntaxFor(options = {}) {
-  const everywhereSelectors = [
-    ...escapeHatchSelectorsFor(options),
-    ...declarationSelectorsFor(options),
-  ];
+  const everywhereSelectors = [...escapeHatchSelectors, ...declarationSelectorsFor(options)];
   const productionSelectors = [
     ...everywhereSelectors,
     ...typeDefinitionSelectors,
-    ...defaultExportSelectors,
+    ...moduleSurfaceSelectors,
     ...controlFlowSelectors,
   ];
   return {
@@ -60,13 +61,41 @@ export function restrictedSyntaxFor(options = {}) {
 
 export const restrictedSyntaxByScope = restrictedSyntaxFor();
 
-function configFileGlobsFor(layout) {
-  return layout.sourceRoots.flatMap((root) => [`${root}/**/*.config.*`, `${root}/**/.*rc.*`]);
-}
-
 function productionScope(layout) {
   return { ignores: [...layout.testGlobs, ...layout.sourceTestDirectoryGlobs] };
 }
+
+function sourceSyntaxBans(options) {
+  return {
+    'nitpicker/no-default-export': ['error', ...defaultExportSelectors],
+    'nitpicker/no-null': ['error', ...nullSelectorsFor(options)],
+  };
+}
+
+const configFileAllowances = {
+  'nitpicker/no-default-export': 'off',
+  'nitpicker/no-promise-chain': 'off',
+};
+
+function frameworkFileEntries(files = []) {
+  return files.length === 0
+    ? []
+    : [
+        {
+          files,
+          plugins: { nitpicker: nitpickerRules },
+          rules: { 'nitpicker/no-default-export': 'off' },
+        },
+      ];
+}
+
+const domainRules = {
+  ...domainFunctionalRules,
+  ...domainPurityRules,
+  'nitpicker/no-throw': 'error',
+  'nitpicker/no-ui-framework-in-domain': 'error',
+  'nitpicker/no-unknown-in-domain': 'error',
+};
 
 export function strictSyntaxConfigFor(layout = defaultResolvedLayout, options = {}) {
   const restrictedSyntax = restrictedSyntaxFor(options);
@@ -82,23 +111,23 @@ export function strictSyntaxConfigFor(layout = defaultResolvedLayout, options = 
         ...escapeHatchRules,
         ...controlFlowRules,
         'no-restricted-syntax': ['error', ...restrictedSyntax.source],
+        ...sourceSyntaxBans(options),
         'nitpicker/no-self-recursion': 'error',
       },
     },
     {
       files: configFileGlobsFor(layout),
-      rules: { 'no-restricted-syntax': ['error', ...restrictedSyntax.configFile] },
+      rules: {
+        'no-restricted-syntax': ['error', ...restrictedSyntax.configFile],
+        ...configFileAllowances,
+      },
     },
+    ...frameworkFileEntries(options.frameworkDefaultExports),
     {
       files: domainGlobsFor(layout.sourceRoots),
       ...productionScope(layout),
       plugins: { functional, nitpicker: nitpickerRules },
-      rules: {
-        ...domainFunctionalRules,
-        'no-restricted-syntax': ['error', ...restrictedSyntax.domain],
-        'nitpicker/no-throw': 'error',
-        'nitpicker/no-unknown-in-domain': 'error',
-      },
+      rules: { ...domainRules, 'no-restricted-syntax': ['error', ...restrictedSyntax.domain] },
     },
     {
       files: adapterGlobsFor(layout.sourceRoots),
@@ -163,6 +192,7 @@ export const strictProductionRules = {
 
 export function strictPresetConfig(layout, parserOptions, options = {}) {
   return [
+    ...productionPolicyConfigFor(layout, options),
     ...strictSyntaxConfigFor(layout, options),
     ...strictTypedConfigFor(layout, parserOptions),
     {

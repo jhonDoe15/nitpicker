@@ -22,7 +22,9 @@ describe('common layout', () => {
     const roots = [sourceRoot, ...testRoots];
     const includes = roots.map((root) => `${root}/**/*`);
     expect([...typecheck.include].sort()).toEqual([...includes, 'vitest*.ts'].sort());
-    expect([...stryker.include].sort()).toEqual([...includes, 'stryker.vitest.config.ts'].sort());
+    expect([...stryker.include].sort()).toEqual(
+      [...includes.filter((glob) => glob !== 'e2e/**/*'), 'stryker.vitest.config.ts'].sort(),
+    );
     for (const root of roots) {
       expect(knip.project.some((glob) => glob.startsWith(`${root}/**/`))).toBe(true);
     }
@@ -32,6 +34,8 @@ describe('common layout', () => {
   it('selects both conventional source and test locations without treating colocated tests as source', () => {
     expect([...new Set(sourceGlobs)].sort()).toEqual(['src/**/*.{ts,tsx,mts,cts,js,jsx,mjs,cjs}']);
     expect([...new Set(testGlobs)].sort()).toEqual([
+      '__tests__/**/*.{ts,tsx,mts,cts,js,jsx,mjs,cjs}',
+      'e2e/**/*.{ts,tsx,mts,cts,js,jsx,mjs,cjs}',
       'src/**/*.{test,spec}.{ts,tsx,mts,cts,js,jsx,mjs,cjs}',
       'test/**/*.{ts,tsx,mts,cts,js,jsx,mjs,cjs}',
       'tests/**/*.{ts,tsx,mts,cts,js,jsx,mjs,cjs}',
@@ -44,6 +48,73 @@ describe('common layout', () => {
     expect(isSourceFile('src/main/features/service.ts')).toBe(true);
     expect(isSourceFile('src/generated/service.ts')).toBe(false);
     expect(isSourceFile('src/service.d.ts')).toBe(false);
+  });
+});
+
+describe('generated files', () => {
+  it.each([
+    'src/api.generated.ts',
+    'src/schema.gen.tsx',
+    'src/__generated__/types.ts',
+    'src/generated/service.ts',
+    'src/proto/user_pb.js',
+    'src/proto/user_grpc_pb.ts',
+    'src/proto/user.pb.ts',
+  ])('are not source: %s', (file) => {
+    expect(isSourceFile(file)).toBe(false);
+  });
+
+  it.each(['src/generator.ts', 'src/gen.ts', 'src/generated-names.ts', 'src/pb.ts', 'src/web.ts'])(
+    'does not treat a similar name as generated: %s',
+    (file) => {
+      expect(isSourceFile(file)).toBe(true);
+    },
+  );
+});
+
+describe('layout.isTestPath', () => {
+  it('recognizes any file under a test folder, whatever its extension', () => {
+    const layout = resolveLayout();
+
+    expect(layout.isTestPath('src/ui/__tests__/logo.svg')).toBe(true);
+    expect(layout.isTestPath('tests/logo.svg')).toBe(true);
+    expect(layout.isTestPath('src/ui/logo.svg')).toBe(false);
+  });
+});
+
+describe('repo-root test folders', () => {
+  it.each([
+    '__tests__/panel.test.tsx',
+    '__tests__/ui/panel.tsx',
+    'e2e/checkout.spec.ts',
+    'e2e/support/page.ts',
+    'src/ui/__tests__/panel.tsx',
+  ])('treats %s as a test file, not source', (file) => {
+    expect(isTestFile(file)).toBe(true);
+    expect(isSourceFile(file)).toBe(false);
+  });
+
+  it('lists both folders as default test roots and selects their code files', () => {
+    expect(testRoots).toEqual(['test', 'tests', '__tests__', 'e2e']);
+    expect(testGlobs).toEqual([
+      'test/**/*.{ts,tsx,mts,cts,js,jsx,mjs,cjs}',
+      'tests/**/*.{ts,tsx,mts,cts,js,jsx,mjs,cjs}',
+      '__tests__/**/*.{ts,tsx,mts,cts,js,jsx,mjs,cjs}',
+      'e2e/**/*.{ts,tsx,mts,cts,js,jsx,mjs,cjs}',
+      'src/**/*.{test,spec}.{ts,tsx,mts,cts,js,jsx,mjs,cjs}',
+    ]);
+  });
+
+  it('does not treat a nested e2e or __tests__ folder outside a root as a test folder', () => {
+    expect(isTestFile('lib/e2e/helper.ts')).toBe(false);
+    expect(isTestFile('docs/e2e/example.ts')).toBe(false);
+  });
+
+  it('keeps a configured test root list as given', () => {
+    const layout = resolveLayout({ testRoots: ['spec'] });
+
+    expect(layout.isTestFile('e2e/checkout.spec.ts')).toBe(false);
+    expect(layout.isTestFile('spec/panel.ts')).toBe(true);
   });
 });
 

@@ -1,6 +1,7 @@
 import { readHeadPolicy, readLayout } from '../head-policy.mjs';
 import { componentStoryFindings } from './component-stories.mjs';
 import { typescriptFileLimitFindings } from './limits/file-limits.mjs';
+import { reuseFindings } from './reuse/reuse-findings.mjs';
 
 export function typescriptStructureProjectFindings(
   { projectRoot, liveProjectRoot, analyzerName },
@@ -15,5 +16,6 @@ export function typescriptStructureProjectFindings(
       layout: readLayout(environment),
       exceptions: readHeadPolicy(environment).exceptions,
     }),
+    ...reuseFindings(projectRoot, analyzerName, environment),
   ];
 }

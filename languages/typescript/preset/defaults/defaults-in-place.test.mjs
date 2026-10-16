@@ -31,10 +31,14 @@ const POLICY_PATHS = [
   'languages/javascript/preset/javascript-preset.mjs',
   'languages/javascript/preset/documentation/jsdoc.mjs',
   'languages/javascript/preset/eslint-dialect.mjs',
+  'languages/typescript/conventions/layout-measures.mjs',
+  'languages/typescript/conventions/prettier-conventions.mjs',
+  'languages/typescript/conventions/print-width.mjs',
   'languages/typescript/preset/layout.mjs',
   'languages/typescript/preset/head-policy.mjs',
   'languages/typescript/preset/tool-configs.mjs',
   'languages/typescript/preset/architecture/strict-boundary-rules.mjs',
+  'languages/typescript/preset/architecture/domain-packages.mjs',
   'languages/typescript/preset/architecture/strict-layout.mjs',
   'languages/typescript/preset/dependency-graph',
   'languages/typescript/preset/entry-points/analyze.mjs',
@@ -294,21 +298,21 @@ function createProject(files = oldLayoutFiles()) {
 
 function oldLayoutFiles() {
   return {
-    'src/main/greeting.ts': [
+    'src/main/shared/greeting.ts': [
       'export function greeting(name: string): string {',
       '  return `Hello, ${name}`;',
       '}',
       '',
     ].join('\n'),
     'src/main/index.ts': [
-      "import { greeting } from './greeting.js';",
+      "import { greeting } from './shared/greeting.js';",
       '',
       "export const message = greeting('world');",
       '',
     ].join('\n'),
     'tests/unit/greeting.test.ts': [
       "import { describe, expect, it } from 'vitest';",
-      "import { greeting } from '../../src/main/greeting.js';",
+      "import { greeting } from '../../src/main/shared/greeting.js';",
       '',
       "describe('greeting', () => {",
       "  it('greets by name', () => {",

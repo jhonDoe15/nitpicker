@@ -55,7 +55,7 @@ function gradleProperties(width) {
   const project = realpathSync(mkdtempSync(path.join(tmpdir(), 'nitpicker-kotlin-style-')));
   projects.push(project);
   analyzeJavaSnapshot(project, { gradle: fakeGradle, policy });
-  return JSON.parse(readFileSync(path.join(project, 'build/nitpicker/gradle-args.json'), 'utf8'));
+  return JSON.parse(readFileSync(path.join(project, 'build/gradle-args.json'), 'utf8'));
 }
 
 describe('the Java style of a kotlin-preset project', () => {
