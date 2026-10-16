@@ -218,10 +218,15 @@ Math` and `Math['random']()` are caught; `process`, `fetch`, `setTimeout`, `setI
   variables and parameters in camelCase; constants may be UPPER_CASE; a leading underscore is
   allowed. A schema constant may be PascalCase when its initializer starts from a binding imported
   from `zod`, `valibot` or `yup`, under any name (`const Order = z.object(...)`, then
-  `type Order = z.infer<typeof Order>`, or a bare `object({...})` imported from valibot), and so may
-  a parameter typed as a component (`ComponentType`, `FC`, `ElementType`) or named `*Component`.
-  PascalCase functions and variables are allowed in a React project. Names a destructuring takes
-  from external data are not checked.
+  `type Order = z.infer<typeof Order>`, or a bare `object({...})` imported from valibot), or from
+  another schema constant (`const CreateOrder = Order.omit({ id: true })`), or from an imported
+  PascalCase binding through a schema method such as `.extend`, `.omit`, `.pick` or `.array`
+  (`const Event = BaseEvent.extend({...})`), and so may a parameter typed as a component
+  (`ComponentType`, `FC`, `ElementType`) or named `*Component`. PascalCase functions and variables
+  are allowed in a React project. When the project depends on a framework with file-based route
+  handlers (`next`, `@sveltejs/kit`, `astro`, `@solidjs/start`), an exported function named
+  `GET`, `HEAD`, `POST`, `PUT`, `PATCH`, `DELETE` or `OPTIONS` is allowed. Names a destructuring
+  takes from external data are not checked.
 - Exported production functions declare their return type
   (`@typescript-eslint/explicit-module-boundary-types`): `export function total(rows: readonly Row[]): number`;
   a React component returns `ReactElement`. A function typed by its variable
