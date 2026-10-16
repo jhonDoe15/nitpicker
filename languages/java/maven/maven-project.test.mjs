@@ -110,6 +110,7 @@ function defaultModule(basedir, coordinates, packaging) {
     surefireReports: path.join(target, 'surefire-reports'),
     failsafeReports: path.join(target, 'failsafe-reports'),
     runsFailsafe: false,
+    published: false,
     jacocoDestFiles: [],
     archunitIncludes: undefined,
     compiler: NO_COMPILER_SETTINGS,
@@ -145,6 +146,7 @@ describe('readReactor', () => {
       surefireReports: `${root}/core/out/tests`,
       failsafeReports: `${root}/core/out/it-tests`,
       runsFailsafe: true,
+      published: false,
       jacocoDestFiles: [`${root}/core/out/mine.exec`],
       archunitIncludes: '**/*Rules.class',
       compiler: NO_COMPILER_SETTINGS,
@@ -368,6 +370,25 @@ describe('describeModule plugin configuration', () => {
       path.join(module.basedir, 'target/unit.exec'),
       path.join(module.basedir, 'target/it.exec'),
     ]);
+  });
+});
+
+describe('describeModule publishing', () => {
+  const DISTRIBUTION =
+    '<distributionManagement><repository><id>releases</id><url>https://repo.example.com</url>' +
+    '</repository></distributionManagement>';
+
+  it('counts a module with distributionManagement as published unless deploy is skipped', () => {
+    const skippedByProperty = `${DISTRIBUTION}<properties><maven.deploy.skip>true</maven.deploy.skip></properties>`;
+    const skippedByPlugin =
+      DISTRIBUTION +
+      inBuild(plugin('maven-deploy-plugin', '<configuration><skip>true</skip></configuration>'));
+
+    expect(
+      [DISTRIBUTION, skippedByProperty, skippedByPlugin, ''].map(
+        (inner) => soloModule(inner).published,
+      ),
+    ).toEqual([true, false, false, false]);
   });
 });
 

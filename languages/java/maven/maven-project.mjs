@@ -9,6 +9,7 @@ const TEST_COMPILE_SCOPES = new Set([...MAIN_COMPILE_SCOPES, 'test']);
 const BUILD_HELPER = 'org.codehaus.mojo:build-helper-maven-plugin';
 const JACOCO = 'org.jacoco:jacoco-maven-plugin';
 const SUREFIRE = 'org.apache.maven.plugins:maven-surefire-plugin';
+const DEPLOY = 'org.apache.maven.plugins:maven-deploy-plugin';
 const FAILSAFE = 'org.apache.maven.plugins:maven-failsafe-plugin';
 const AGENT_GOALS = ['prepare-agent', 'prepare-agent-integration'];
 const FAILSAFE_SKIPS = ['skip', 'skipITs', 'skipTests'];
@@ -72,6 +73,14 @@ function runsFailsafe(project, plugin) {
     (execution) =>
       textAt(execution, 'phase') !== 'none' &&
       !FAILSAFE_SKIPS.some((name) => isTrue(configured(execution, plugin, name))),
+  );
+}
+
+function isPublished(project, plugin) {
+  return (
+    childAt(project, 'distributionManagement') !== undefined &&
+    !isTrue(textAt(project, 'properties', 'maven.deploy.skip')) &&
+    !isTrue(textAt(plugin, 'configuration', 'skip'))
   );
 }
 
@@ -141,6 +150,7 @@ function describeModule(project, basedir) {
       failsafeReports ?? path.join(buildDirectory, 'failsafe-reports'),
     ),
     runsFailsafe: runsFailsafe(project, plugins.get(FAILSAFE)),
+    published: isPublished(project, plugins.get(DEPLOY)),
     jacocoDestFiles: jacocoDestFiles(plugins.get(JACOCO), basedir),
     archunitIncludes: textAt(project, 'properties', 'nitpicker.archunit.includes'),
     compiler: compilerSettings(project),
