@@ -162,9 +162,12 @@ function libsWithEndToEndDom(libs, projectDirectory, layout) {
 }
 
 function withEndToEndDom(text, name, { projectDirectory, layout }) {
+  if (name !== 'tsconfig.quality.json') {
+    return text;
+  }
   const config = JSON.parse(text);
-  const lib = libsWithEndToEndDom(config.compilerOptions.lib, projectDirectory, layout);
-  if (name !== 'tsconfig.quality.json' || lib === undefined) {
+  const lib = libsWithEndToEndDom(config.compilerOptions?.lib, projectDirectory, layout);
+  if (lib === undefined) {
     return text;
   }
   return `${JSON.stringify({ ...config, compilerOptions: { ...config.compilerOptions, lib } }, null, 2)}\n`;
