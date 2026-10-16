@@ -1,15 +1,11 @@
-import { ancestorsOf, variableNamed } from '../analysis/ancestry.mjs';
-import { hookName, isEffectCallback, isFunctionNode } from './react-effects.mjs';
+import { variableNamed } from '../analysis/ancestry.mjs';
+import { enclosingFunction, hookName, isEffectCallback } from './react-effects.mjs';
 
 const SETTER_INDEX = 1;
 
 function runsOnce(effectCall) {
   const dependencies = effectCall.arguments[1];
   return dependencies?.type === 'ArrayExpression' && dependencies.elements.length === 0;
-}
-
-function enclosingFunction(node) {
-  return ancestorsOf(node).find(isFunctionNode);
 }
 
 function declaredName(fn) {

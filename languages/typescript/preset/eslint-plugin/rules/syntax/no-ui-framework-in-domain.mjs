@@ -16,8 +16,10 @@ function frameworkReachedThroughShared(source, filename) {
   if (entry === undefined || !isSharedModule(entry)) {
     return undefined;
   }
-  const specifiersOf = (file) =>
-    file === filename ? [source] : isSharedModule(file) ? moduleSourcesOf(file) : [];
+  function specifiersOf(file) {
+    if (file === filename) return [source];
+    return isSharedModule(file) ? moduleSourcesOf(file) : [];
+  }
   for (const step of reachableModules(filename, specifiersOf, LIMITS)) {
     if (step.truncated === true) return undefined;
     const framework = specifiersOf(step.file).find((next) => UI_FRAMEWORK.test(next));

@@ -72,11 +72,7 @@ function hasConfigFile(projectRoot, stem) {
 }
 
 function readText(file) {
-  try {
-    return readFileSync(file, 'utf8');
-  } catch {
-    return '';
-  }
+  return existsSync(file) ? readFileSync(file, 'utf8') : '';
 }
 
 function indexHtmlEntries(projectRoot) {

@@ -1,6 +1,6 @@
 import ts from 'typescript';
 import { ancestorsOf } from '../analysis/ancestry.mjs';
-import { isEffectCallback, isFunctionNode } from './react-effects.mjs';
+import { enclosingFunction, isEffectCallback } from './react-effects.mjs';
 
 const requestFunctions = new Set(['fetch', 'axios', 'ky']);
 const requestLibraries = new Set(['axios', 'ky']);
@@ -32,10 +32,6 @@ function sendsRequest(node) {
 
 function effectCallbackOf(sourceCode, node) {
   return ancestorsOf(node).find((ancestor) => isEffectCallback(sourceCode, ancestor));
-}
-
-function enclosingFunction(node) {
-  return ancestorsOf(node).find(isFunctionNode);
 }
 
 function effectOfCall(sourceCode, call) {

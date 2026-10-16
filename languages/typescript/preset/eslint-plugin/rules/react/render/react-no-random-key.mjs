@@ -28,12 +28,13 @@ const cryptoModules = new Set(['crypto', 'node:crypto']);
 const globalObjects = new Set(['window', 'globalThis', 'self']);
 
 function memberChain(node) {
-  if (node.type === 'Identifier') {
-    return [node];
+  const pending = [node];
+  for (const current of pending) {
+    if (current.type === 'MemberExpression' && !current.computed) pending.push(current.object);
   }
-  const isNamed = node.type === 'MemberExpression' && !node.computed;
-  const object = isNamed ? memberChain(node.object) : undefined;
-  return object === undefined ? undefined : [...object, node.property];
+  return pending.at(-1).type === 'Identifier'
+    ? pending.toReversed().map((part) => (part.type === 'Identifier' ? part : part.property))
+    : undefined;
 }
 
 function withoutGlobalObject(names) {
