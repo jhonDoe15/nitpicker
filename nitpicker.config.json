@@ -75,6 +75,10 @@
         "languages/java/adapters/java-e2e/multi-project.e2e.test.mjs",
         "languages/java/adapters/java-e2e/pit-targets.e2e.test.mjs",
         "languages/java/maven/maven-preset.e2e.test.mjs",
+        "languages/java/adapters/errorprone/error-prone.e2e.test.mjs",
+        "languages/java/adapters/errorprone/lombok.e2e.test.mjs",
+        "languages/java/adapters/errorprone/checks/checks-catalog.e2e.test.mjs",
+        "languages/java/maven/errorprone/maven-errorprone.e2e.test.mjs",
         "languages/java/messages/rule-catalog.e2e.test.mjs"
       ],
       "reason": "Opt-in end-to-end suite that runs Gradle and Maven builds (minutes per step); it cannot be made faster and is skipped unless NITPICKER_JAVA_E2E=1."

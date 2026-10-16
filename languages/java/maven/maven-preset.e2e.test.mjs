@@ -36,6 +36,10 @@ public class Dated {
         try { Integer.parseInt("x"); } catch (NumberFormatException e) { }
         return new Date(new String(new byte[] {1}).length());
     }
+
+    public String shout(String text) {
+        return text.toUpperCase();
+    }
 }
 `;
 
@@ -128,6 +132,7 @@ describe.skipIf(!enabled)('Java preset on Maven builds', () => {
         'checkstyle',
         'coupling',
         'crap',
+        'errorprone',
         'google-java-format',
         'jacoco',
         'pit',
@@ -155,9 +160,12 @@ describe.skipIf(!enabled)('Java preset on Maven builds', () => {
 
       expect(
         findings
-          .filter((finding) => finding.tool === 'pmd')
-          .map(({ rule, path: file }) => `${rule} ${file}`),
-      ).toEqual(['SystemPrintln app/src/main/java/demo/app/Main.java']);
+          .filter((finding) => ['errorprone', 'pmd'].includes(finding.tool))
+          .map(({ tool, rule, path: file }) => `${tool} ${rule} ${file}`),
+      ).toEqual([
+        'errorprone PrivateConstructorForUtilityClass app/src/main/java/demo/app/Main.java',
+        'errorprone SystemOut app/src/main/java/demo/app/Main.java',
+      ]);
       expect(metrics('core/src/main/java/demo/core/Adder.java')).toEqual([
         'coupling fanIn 1',
         'coupling fanOut 0',
@@ -313,7 +321,7 @@ describe.skipIf(!enabled)('Java preset on Maven builds', () => {
       );
 
       expect(failing).toEqual(
-        ['checkstyle EmptyCatchBlock', 'pit mutant-nocoverage', 'pmd EmptyCatchBlock'].map(
+        ['errorprone EmptyCatch', 'pit mutant-nocoverage'].map(
           (finding) => `${finding} app/src/main/java/demo/app/Parser.java`,
         ),
       );
