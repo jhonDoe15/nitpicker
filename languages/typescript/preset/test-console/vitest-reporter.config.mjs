@@ -10,14 +10,18 @@ const MAX_CONTENT_LENGTH = 4000;
 
 const EMPTY_LINE = '<empty line>';
 
+const STACK_LINE = /^\s+(?:at|in)\s/u;
+
 function realOrGiven(directory) {
   return existsSync(directory) ? realpathSync(directory) : directory;
 }
 
+const PATH_CHARACTER = String.raw`[\w.@+~$%-]`;
+
 function prefixesOf(directory) {
   return [...new Set([directory, realOrGiven(directory)])]
     .filter((prefix) => prefix.length > 1)
-    .map(escapeRegExp);
+    .map((prefix) => `(?<!${PATH_CHARACTER})${escapeRegExp(prefix)}(?![\\w-])`);
 }
 
 const TEMPORARY_REST = String.raw`[^\s'"\x60)\]}>,;]*`;
@@ -51,11 +55,15 @@ function blocksOf(lines, writes) {
   );
 }
 
+function isMessageLine(line) {
+  return /[\p{L}\p{N}]/u.test(line) && !STACK_LINE.test(line) && line.trim() !== EMPTY_LINE;
+}
+
 export function consoleMessagesOf(content, writes) {
   return blocksOf(stripAnsi(content).split(/\r?\n/u), writes)
-    .map((block) => block.find((line) => /[\p{L}\p{N}]/u.test(line)))
-    .filter((line) => line !== undefined && line.trim() !== EMPTY_LINE)
-    .map((line) => line.trim());
+    .map((block) => block.filter((line) => isMessageLine(line)).map((line) => line.trim()))
+    .filter((lines) => lines.length > 0)
+    .map((lines) => lines.join(' '));
 }
 
 function locate(entity) {

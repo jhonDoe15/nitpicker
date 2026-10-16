@@ -80,6 +80,17 @@ describe('the vitest console reporter', () => {
     ]);
   });
 
+  it('leaves a path that only starts like a directory alone', () => {
+    const content = `${ROOT}lication/x\n${ROOT}/x\n/before${ROOT}/x\n${tmpdir()}-other/y\n`;
+
+    expect(entriesFor([{ content, size: 4 }])[0].messages).toEqual([
+      `${ROOT}lication/x`,
+      '<root>/x',
+      `/before${ROOT}/x`,
+      `${tmpdir()}-other/y`,
+    ]);
+  });
+
   it('cuts a long log to 4000 characters', () => {
     const [{ messages }] = entriesFor([{ content: 'a'.repeat(5000) }]);
 
@@ -98,13 +109,31 @@ describe('the vitest console reporter', () => {
 });
 
 describe('splitting one console flush into messages', () => {
-  it('takes the first line with a letter or digit of a single write', () => {
-    const content = "{\n  code: 'NEW',\n  more: [1, 2]\n}\n";
+  it('joins the lines of one write without closers and blank lines', () => {
+    const content = "{\n  level: 'warn',\n  code: 'NEW',\n\n  more: [1, 2]\n}\n";
 
-    expect(consoleMessagesOf(content, 1)).toEqual(["code: 'NEW',"]);
+    expect(consoleMessagesOf(content, 1)).toEqual(["level: 'warn', code: 'NEW', more: [1, 2]"]);
   });
 
-  it('takes one message per block of several writes and drops frames and closers', () => {
+  it('keeps the cause of an error and drops its stack frames', () => {
+    const content = [
+      'Error: outer',
+      '    at run (/a/b.js:1:2)',
+      '    at async Promise.all (index 0)',
+      '[cause]: Error: inner',
+      '    at <anonymous>',
+    ].join('\n');
+
+    expect(consoleMessagesOf(content, 1)).toEqual(['Error: outer [cause]: Error: inner']);
+  });
+
+  it('drops component stacks', () => {
+    const content = 'Warning: Each child needs a key.\n    in Item (at List.js:4)\n    in List\n';
+
+    expect(consoleMessagesOf(content, 1)).toEqual(['Warning: Each child needs a key.']);
+  });
+
+  it('gives one message per block of several writes', () => {
     const content = "warn one\nError: boom\n    at run (/a/b.js:1:2)\n{\n  code: 'X'\n}\n]\n";
 
     expect(consoleMessagesOf(content, 3)).toEqual(['warn one', 'Error: boom', "code: 'X'"]);

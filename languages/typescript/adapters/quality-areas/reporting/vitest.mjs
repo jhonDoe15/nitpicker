@@ -1,12 +1,12 @@
 import { TESTS_FAILED_RULE } from '../../../../../shared/rules/finding-helpers.mjs';
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
+import { stripAnsi } from '../../../preset/test-console/ansi.mjs';
 
 export const COVERAGE_REPORT_PATH = 'reports/quality/coverage/coverage-final.json';
 
 export const TEST_CONSOLE_REPORT_PATH = 'reports/quality/test-console/report.json';
 
-import { stripAnsi } from '../../../preset/test-console/ansi.mjs';
 import { normalizeCoverage } from './tests.mjs';
 
 import { withBranchSourceHashes } from './source-hashes.mjs';
