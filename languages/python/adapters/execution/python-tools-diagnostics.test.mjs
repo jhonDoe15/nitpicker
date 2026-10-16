@@ -120,7 +120,12 @@ describe('running pytest', () => {
       `cache_dir=${path.join(reportRoot, 'pytest-cache')}`,
       '--no-cov',
       '-n0',
+      '-p',
+      'nitpicker_pytest_report',
     ]);
+    expect(calls('coverage', 'run')[0].pythonPath.split(path.delimiter)[0]).toMatch(
+      /adapters[\\/]test-results$/,
+    );
   });
   it('is an environment error naming the override when pytest is indicated but not importable', () => {
     const root = project({ 'conftest.py': '', 'no-pytest.txt': '' });

@@ -110,8 +110,9 @@ set `python.sourceRoots`.
 ## Configuration
 
 Config keys with this preset: `base`, `disable` (the analyzer names are `python` and `mutation`), `analyzers`, the keys shared by all languages,
-`thresholds` (`crapLimit`, enforced from slice 3, and the file limits `fileLines`, `testFileLines`,
-`lineLength` and `folderFiles`), `exclude` (findings under the globs are dropped) and
+`thresholds` (`crapLimit`, enforced from slice 3, the file limits `fileLines`, `testFileLines`,
+`lineLength` and `folderFiles`, and the [slow test](#slow-tests) budgets `unitTestSeconds` and
+`integrationTestSeconds`), `exclude` (findings under the globs are dropped) and
 `legacyInventory` (same format and `baseline-expansion` rule as for Java), and the `python` object
 below. `layout` describes TypeScript source roots and stays a config error with this preset. The
 top-level `exceptions` is accepted only for the file limits shared by every language
@@ -387,6 +388,27 @@ assert_never(value)`, or an `if`/`elif` chain ending in `else: assert_never(valu
   `package-mode = false`): then its own tests count, as in the TypeScript preset. The subject is
   `function.parameter`, so the finding is new only when the change adds the parameter or removes
   its last caller.
+
+### Slow tests
+
+- **Rule.** `test-runtime/slow-test` (as for [Java](java-preset.md#slow-tests)) fails a pytest test
+  the change adds or edits when it takes more than 5 s as a unit test, or more than 30 s as an
+  integration test (`thresholds.unitTestSeconds` and `thresholds.integrationTestSeconds`).
+  Integration tests are those under a folder named `integration`, `integration_tests`, `e2e` or `it`,
+  in a file whose name has an `integration` or `e2e` part (`test_db_integration.py`), or marked
+  `@pytest.mark.integration` or `@pytest.mark.e2e`. The message names the test
+  (`tests/test_order.py::TestCart::test_empty`), the measured time and the budget, the fixes (no
+  `time.sleep` or other fixed waits, a wider fixture scope for a costly fixture, or the
+  `integration` marker if it is one) and the `python.exceptions` entry for `slow-test`.
+- **Measurement.** Head only, from the same pytest run that measures coverage, with no extra run:
+  nitpicker loads its own plugin (`-p nitpicker_pytest_report`, from
+  `languages/python/adapters/test-results/`), which adds the setup, call and teardown time of each
+  test and writes them to a report. A parametrized test is one test, timed by its slowest case.
+  `unittest` runs are not timed.
+- **Edited or added.** The test function is found in the file by its pytest name (`Class::method`,
+  nested classes included) with its decorators, and counted when its text differs from the base, or
+  the file is new. A test whose function is not found (a generated test) is counted when its file
+  changed. Slow tests the change does not touch stay baselined, and the base snapshot reports none.
 
 ## Slice 1: tools, reports and identities
 
