@@ -394,6 +394,43 @@ describe('describeModule Groovy test sources', () => {
   });
 });
 
+describe('describeModule test roots of other compilers and outside the module', () => {
+  it('adds an existing src/test/groovy without GMavenPlus, as groovy-eclipse-compiler builds it', () => {
+    const solo = '<project><groupId>demo</groupId><artifactId>solo</artifactId></project>';
+    const withGroovy = reactor({ 'pom.xml': raw('solo'), 'src/test/groovy/demo/ASpec.groovy': '' });
+    const withoutGroovy = reactor({ 'pom.xml': raw('solo') });
+
+    expect(
+      [withGroovy, withoutGroovy].map((root) => readReactor(root, solo)[0].testSourceRoots),
+    ).toEqual([
+      [path.join(withGroovy, 'src/test/java'), path.join(withGroovy, 'src/test/groovy')],
+      [path.join(withoutGroovy, 'src/test/java')],
+    ]);
+  });
+
+  it('keeps no build-helper or GMavenPlus root that lies outside the module', () => {
+    const helper = plugin(
+      'build-helper-maven-plugin',
+      '<executions><execution><goals><goal>add-test-source</goal></goals><configuration>' +
+        '<sources><source>../shared/src/test/java</source><source>src/it/java</source></sources>' +
+        '</configuration></execution></executions>',
+      'org.codehaus.mojo',
+    );
+    const gmavenplus = plugin(
+      'gmavenplus-plugin',
+      '<configuration><testSources><testSource><directory>/elsewhere/groovy</directory>' +
+        '</testSource></testSources></configuration>',
+      'org.codehaus.gmavenplus',
+    );
+    const module = soloModule(inBuild(helper + gmavenplus));
+
+    expect(module.testSourceRoots).toEqual([
+      path.join(module.basedir, 'src/test/java'),
+      path.join(module.basedir, 'src/it/java'),
+    ]);
+  });
+});
+
 describe('parseDependencyList', () => {
   it('reads scope and file, with classifiers, module names, optional markers and drive letters', () => {
     const listing = [
