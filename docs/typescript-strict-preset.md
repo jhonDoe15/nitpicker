@@ -307,7 +307,6 @@ off (a PR that adds or removes React keeps linting on both sides); a misspelled 
   `stateNode`, `memoizedState`) and no `spyOn(React, 'useState')`; assert what the user sees. An
   element with no role or accessible name needs an exception. A project with
   `@testing-library/react-native` keeps `testID` queries, the idiom there.
-
 The plugins are `eslint-plugin-react-hooks`, `eslint-plugin-react-x` (from eslint-react),
 `eslint-plugin-jsx-a11y-x` and `eslint-plugin-testing-library` (whose peer range includes ESLint 10). `eslint-plugin-react` and `eslint-plugin-jsx-a11y` declare no ESLint 10
 support, so their maintained, ESLint 10 compatible counterparts are used.
@@ -438,6 +437,9 @@ Off, with the reason:
   code, and keep such exceptions narrow.
 - The file limits (`file-lines-limit`, `line-length-limit`, `folder-files-limit`) take exceptions the
   same way; each failure message spells out the entry that would lift it.
+- The reuse rules (`shared-used-by-one-feature`, `duplicate-definition`, `exported-name-collision`,
+  `redefined-library-component`, `new-icon-asset`) come from the `coupling` and `structure` checks,
+  not from ESLint, and take exceptions the same way; the JavaScript preset runs them too.
 - `layout.excludedGlobs`, `layout.entryPoints` and `layout.sourceRoots`/`layout.testRoots` are all valid `layout` keys. The
   roots must be directories; `excludedGlobs` are globs and replace the built-in exclusions;
   `entryPoints` are globs added to knip's entries for files that are loaded by path, not imported;

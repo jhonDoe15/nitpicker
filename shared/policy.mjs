@@ -2,8 +2,10 @@
 // default limits, failure-message templates and the languages that enforce each rule. Every
 // language adapter reads it, and `spec/checks.md` is generated from it (`npm run gen:checks`).
 //
-// Language-neutral: no imports, so any entry point can load it. Nothing under `shared/` may
+// Language-neutral: imports only from shared/rules, so any entry point can load it. Nothing under `shared/` may
 // import from `core/`, `languages/` or a tool package (shared/import-direction.test.mjs).
+
+import { reuseRules } from './rules/reuse-rules.mjs';
 
 export const LANGUAGES = ['typescript', 'java', 'python', 'kotlin'];
 
@@ -26,6 +28,11 @@ export const RULE_IDS = {
   fileLines: 'file-lines-limit',
   lineLength: 'line-length-limit',
   folderFiles: 'folder-files-limit',
+  sharedUsedByOneFeature: 'shared-used-by-one-feature',
+  duplicateDefinition: 'duplicate-definition',
+  exportedNameCollision: 'exported-name-collision',
+  redefinedLibraryComponent: 'redefined-library-component',
+  newIconAsset: 'new-icon-asset',
 };
 
 /** Per-function structure limits, keyed by the metric name the TypeScript analyzer reports. */
@@ -53,6 +60,15 @@ export const SHARED_EXCEPTION_RULES = [
   RULE_IDS.fileLines,
   RULE_IDS.lineLength,
   RULE_IDS.folderFiles,
+];
+
+export const ANALYZER_EXCEPTION_RULES = [
+  ...SHARED_EXCEPTION_RULES,
+  RULE_IDS.sharedUsedByOneFeature,
+  RULE_IDS.duplicateDefinition,
+  RULE_IDS.exportedNameCollision,
+  RULE_IDS.redefinedLibraryComponent,
+  RULE_IDS.newIconAsset,
 ];
 
 /** The shared rules the Java preset leaves to its own tools (Checkstyle checks line length). */
@@ -106,6 +122,11 @@ export const MESSAGES = {
   fileLines: `File has {value} lines (limit {limit}). Split it into files by responsibility. ${EXCEPTION_HINT}`,
   lineLength: `Line is {value} characters (limit {limit}). Break it up or extract a named value. ${EXCEPTION_HINT}`,
   folderFiles: `Folder has {value} {kind} files directly in it (limit {limit}). Group related files into subfolders (packages in Java). ${EXCEPTION_HINT}`,
+  sharedUsedByOneFeature: `{path} is used only by feature {feature}. Move it into {directory}. ${EXCEPTION_HINT}`,
+  duplicateDefinition: `{name} is also defined with {same} in {others}. {fix} ${EXCEPTION_HINT}`,
+  exportedNameCollision: `{name} is also exported by {others}; {importer} imports both. {fix} ${EXCEPTION_HINT}`,
+  redefinedLibraryComponent: `{name} is already rendered from {package} in {count}. Use that one. ${EXCEPTION_HINT}`,
+  newIconAsset: `Use an icon from {package} instead of adding {path}. ${EXCEPTION_HINT}`,
 };
 
 export function renderMessage(template, values) {
@@ -268,4 +289,5 @@ export const RULES = [
     limit: `more than ${String(FILE_LIMIT_DEFAULTS.folderFiles)} source files, or test files, directly in one folder; override with \`thresholds.folderFiles\``,
     enforcedBy: withKotlin(ALL, true),
   },
+  ...reuseRules(RULE_IDS, withKotlin(TYPESCRIPT_ONLY, false)),
 ];
