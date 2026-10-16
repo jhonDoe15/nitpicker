@@ -1,15 +1,20 @@
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { cruiseStrict } from './test-support/strict-cruise.mjs';
-import { strictBoundaryRules, strictBoundaryRulesFor } from './strict-boundary-rules.mjs';
+import {
+  REACH_THROUGH_SHARED_RULE,
+  sharedReachPath,
+  strictBoundaryRules,
+  strictBoundaryRulesFor,
+} from './strict-boundary-rules.mjs';
 
 const fixturesRoot = path.resolve(import.meta.dirname, 'fixtures/strict');
 
-function cruiseFixture(name) {
+function cruiseFixture(name, outputType = 'err-long') {
   return cruiseStrict({
     baseDir: path.join(fixturesRoot, name),
     paths: ['src'],
-    outputType: 'err-long',
+    outputType,
   });
 }
 
@@ -139,5 +144,31 @@ describe('npm package patterns in the domain rules', () => {
         matches(ruleName, target),
       ),
     ).toEqual([false, false]);
+  });
+});
+
+describe('the shared module a domain file reaches I/O through', () => {
+  async function reachPaths(name) {
+    const report = JSON.parse((await cruiseFixture(name, 'json')).output);
+    return report.summary.violations
+      .filter((violation) => violation.rule.name === REACH_THROUGH_SHARED_RULE)
+      .map((violation) => [violation.from, sharedReachPath(violation, report.modules)]);
+  }
+
+  it('names the shared module and the I/O module it reaches', async () => {
+    expect(await reachPaths('domain-reaches-io-through-shared')).toEqual([
+      ['src/main/features/auth/domain/login.ts', ['src/main/shared/clock.ts', 'fs']],
+    ]);
+  });
+
+  it('reaches nothing through a type-only import, a direct import or another domain file', async () => {
+    const paths = await reachPaths('domain-reaches-io-only-directly');
+
+    expect(paths.map(([from]) => from).sort()).toEqual([
+      'src/main/features/calc/domain/direct.ts',
+      'src/main/features/calc/domain/typed.ts',
+      'src/main/features/calc/domain/user.ts',
+    ]);
+    expect(paths.map(([, via]) => via)).toEqual([undefined, undefined, undefined]);
   });
 });
