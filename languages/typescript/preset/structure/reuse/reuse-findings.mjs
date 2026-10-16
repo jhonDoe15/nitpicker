@@ -6,6 +6,7 @@ import { resolvedDefinitions } from './definition-facts.mjs';
 import { uniqueFindings } from './finding.mjs';
 import { productionFacts } from './project-files.mjs';
 import { projectPathOf } from './reuse-paths.mjs';
+import { duplicateDefinitionFindings } from './rules/duplicate-definitions.mjs';
 
 const IGNORED = { kind: 'ignored' };
 
@@ -31,5 +32,6 @@ export function reuseFindings(projectRoot, analyzerName, environment = process.e
   const facts = resolvedDefinitions(productionFacts(projectRoot, layout), resolve);
   const context = { analyzerName, isExcepted: exceptionMatcher(exceptions), resolve };
   return uniqueFindings([
+    ...duplicateDefinitionFindings(facts, context),
   ]);
 }
