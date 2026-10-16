@@ -17,6 +17,7 @@ import {
   ktlintDefaults,
   projectEditorconfig,
 } from './style/kotlin-style-files.mjs';
+import { writeDetektLists } from './detekt/detekt-lists.mjs';
 
 const BUILD_FILES = [
   'build.gradle',
@@ -215,7 +216,16 @@ export function kotlinStyleFile(tools, conventions) {
   return Object.keys(style).length === 0 ? undefined : style;
 }
 
-function detektProperties(tools, conventions, configRoot) {
+function detektListsProperty(tools, { projectRoot, configRoot }) {
+  const lists =
+    tools.detektConfig === undefined
+      ? undefined
+      : writeDetektLists(projectRoot, path.join(configRoot, tools.detektConfig));
+  return lists === undefined ? [] : [`-Pnitpicker.kotlin.detektLists=${lists}`];
+}
+
+function detektProperties(tools, conventions, roots) {
+  const { configRoot } = roots;
   const layers = detektLayers({
     conventionLayer: detektConventionLayer(conventions, {
       nitpickerFirst: tools.detektNitpickerFirst,
@@ -228,6 +238,7 @@ function detektProperties(tools, conventions, configRoot) {
     ...(tools.detektConfig === undefined
       ? []
       : [`-Pnitpicker.kotlin.detektConfig=${path.join(configRoot, tools.detektConfig)}`]),
+    ...detektListsProperty(tools, roots),
   ];
 }
 
@@ -245,7 +256,7 @@ export function kotlinGradleArguments(
     ...(options?.styleFile === undefined
       ? []
       : [`-Pnitpicker.kotlin.styleFile=${options.styleFile}`]),
-    ...detektProperties(tools, options?.conventions ?? {}, configRoot),
+    ...detektProperties(tools, options?.conventions ?? {}, { projectRoot, configRoot }),
   ];
 }
 
