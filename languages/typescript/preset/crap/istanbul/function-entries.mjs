@@ -10,6 +10,7 @@ import {
 } from './spans.mjs';
 
 const SPAN_SOURCE_RANK = { loc: 0, decl: 1, line: 2 };
+const UNRANKED_SPAN_SOURCE = 3;
 
 function resolvedSpan(entry) {
   const loc = parseSpan(entry.loc);
@@ -54,7 +55,7 @@ function lineCount(span) {
 }
 
 function rankOf(entry) {
-  return SPAN_SOURCE_RANK[entry.spanSource] ?? 3;
+  return SPAN_SOURCE_RANK[entry.spanSource] ?? UNRANKED_SPAN_SOURCE;
 }
 
 function compareSpecificity(left, right) {
