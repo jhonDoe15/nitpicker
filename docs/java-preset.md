@@ -733,11 +733,14 @@ A Checkstyle rule prints as its full check class, for example
   `target/nitpicker-lint/`), the base's warnings are reused for files whose content is the same as
   on the base, so the report matches a full lint. They are reused only when the compile inputs
   match the base's: the javac version, the language level, the encoding, the compiler arguments
-  and every class path and Lombok entry (a jar by name and size, a classes directory such as
-  another project's by its content), so a dependency bump that deprecates an API is reported in
-  unchanged files too. An unchanged file whose classes use a class of a changed file, directly or
-  through a subclass (read from the head's class files), is compiled again, so a method the change
-  deprecated or a class the change made generic is reported where it is called. Without a base
+  (the checkout's folder left out), every `lombok.config` on the sources' paths and every class
+  path and Lombok entry (a jar outside the project by name and size; a jar inside it, or a classes
+  directory such as another project's, by its content), so a dependency bump that deprecates an API
+  or a changed Lombok setting is reported in unchanged files too. An unchanged file whose classes
+  use a class of a changed file, directly or through a subclass (read from the head's class
+  files), is compiled again, so a method the change deprecated or a class the change made generic
+  is reported where it is called. A constant javac inlined leaves no trace in the class files, so
+  deprecating a `static final` constant is reported only in changed files. Without a base
   report or with other compile inputs the head lints every file. When the lint compile fails the
   run goes on: the report says so in a descriptive `javac/lint-not-run` notice that quotes the
   first error, and javac warnings are not checked in that run. When only the base failed, the
