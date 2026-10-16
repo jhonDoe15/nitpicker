@@ -27,7 +27,6 @@
     "**/node_modules/**",
     "**/coverage/**",
     "**/reports/**",
-    "**/target/**",
-    "**/*.d.ts"
+    "**/target/**"
   ]
 }

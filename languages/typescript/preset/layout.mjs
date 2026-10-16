@@ -14,6 +14,13 @@ export const END_TO_END_ROOT = 'e2e';
 const defaultTestRoots = ['test', 'tests', '__tests__', END_TO_END_ROOT];
 export const codeExtensionNames = ['ts', 'tsx', 'mts', 'cts', 'js', 'jsx', 'mjs', 'cjs'];
 export const codeExtensions = `{${codeExtensionNames.join(',')}}`;
+export const stylesheetExtensionNames = ['css', 'scss', 'sass', 'less', 'styl', 'pcss'];
+export const stylesheetSpecifier = new RegExp(
+  `\\.(?:${stylesheetExtensionNames.join('|')})(?:\\?.*)?$`,
+  'u',
+);
+export const cssInJsSource =
+  /^(?:styled-components(?:\/|$)|@emotion\/|@stitches\/react$|goober$|@linaria\/)/u;
 const javascriptProjectExtensionNames = [
   ...TYPESCRIPT_EXTENSIONS_IN_JAVASCRIPT_PROJECT,
   ...JAVASCRIPT_EXTENSIONS,

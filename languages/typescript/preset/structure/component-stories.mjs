@@ -2,7 +2,11 @@ import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { MESSAGES, RULE_IDS, renderMessage } from '../../../../shared/policy.mjs';
 import { exceptionMatcher, exceptionText } from '../../../../shared/rules/exceptions.mjs';
-import { readDependencyNames, storySuffixes } from '../eslint-config/scope-support.mjs';
+import {
+  isStorybookPackage,
+  readDependencyNames,
+  storySuffixes,
+} from '../eslint-config/scope-support.mjs';
 import { codeExtensionNames } from '../layout.mjs';
 import { DEFAULT_EXPORT, exportedComponents } from '../syntax/exported-components.mjs';
 
@@ -12,7 +16,6 @@ const STORY_FILE = new RegExp(
   'u',
 );
 const STORY_FOLDER_SEGMENT = /(?:^|\/)(?:__stories__|stories)\//u;
-const STORYBOOK_PACKAGE = /^(?:storybook|@storybook\/.+)$/u;
 const INDEX_FILE = /^index\./u;
 const RULE = RULE_IDS.componentStoryMissing;
 
@@ -92,7 +95,7 @@ function storybookScope(projectRoot, { components, stories }) {
       .map(({ directory }) => directory)
       .filter((directory) =>
         readDependencyNames(path.join(projectRoot, directory)).some((name) =>
-          STORYBOOK_PACKAGE.test(name),
+          isStorybookPackage(name),
         ),
       ),
   );

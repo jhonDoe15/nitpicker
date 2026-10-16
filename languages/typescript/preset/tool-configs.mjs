@@ -1,19 +1,19 @@
 import { existsSync } from 'node:fs';
 import path from 'node:path';
-import { createRequire } from 'node:module';
 import {
   JAVASCRIPT_COMPILER_OPTIONS,
   JAVASCRIPT_JSCPD_FORMAT,
   JAVASCRIPT_KNIP_ENTRIES,
   JAVASCRIPT_KNIP_PROJECT,
 } from '../../javascript/preset/javascript-preset.mjs';
-import { END_TO_END_ROOT, testRoots } from './layout.mjs';
 import {
   PROJECT_TSCONFIG,
   isSolutionTsconfig,
+  projectLibs,
   readJsonc,
   referencedConfigFile,
 } from './modules/tsconfig-files.mjs';
+import { END_TO_END_ROOT, testRoots } from './layout.mjs';
 
 const DEFAULT_SOURCE_ROOT = 'src';
 const DEFAULT_TEST_ROOTS = new Set(testRoots);
@@ -75,11 +75,7 @@ const JAVASCRIPT_RELAXED_OPTIONS = Object.fromEntries(
 );
 
 export const layoutTsconfig = tsconfigRewrite(
-  {
-    ...JAVASCRIPT_COMPILER_OPTIONS,
-    ...JAVASCRIPT_RELAXED_OPTIONS,
-    noEmit: true,
-  },
+  { ...JAVASCRIPT_COMPILER_OPTIONS, ...JAVASCRIPT_RELAXED_OPTIONS, noEmit: true },
   (layout) => layout.testRoots,
 );
 
@@ -157,18 +153,6 @@ export function layoutTransformFor(policyFileName, layout, { strictMutants = tru
 }
 
 const DOM_LIB = 'dom';
-const LIB_FILE = /^lib\.(.+)\.d\.ts$/u;
-
-function projectLibs(projectDirectory, configName) {
-  const typescript = createRequire(import.meta.url)('typescript');
-  const { options } = typescript.parseJsonConfigFileContent(
-    readJsonc(path.join(projectDirectory, configName)),
-    typescript.sys,
-    projectDirectory,
-  );
-  return options.lib?.map((lib) => path.basename(lib).replace(LIB_FILE, '$1'));
-}
-
 function libsWithEndToEndDom(libs, projectDirectory, layout) {
   const hasEndToEnd =
     layout.testRoots.includes(END_TO_END_ROOT) &&
@@ -178,9 +162,12 @@ function libsWithEndToEndDom(libs, projectDirectory, layout) {
 }
 
 function withEndToEndDom(text, name, { projectDirectory, layout }) {
+  if (name !== 'tsconfig.quality.json') {
+    return text;
+  }
   const config = JSON.parse(text);
   const lib = libsWithEndToEndDom(config.compilerOptions?.lib, projectDirectory, layout);
-  if (name !== 'tsconfig.quality.json' || lib === undefined) {
+  if (lib === undefined) {
     return text;
   }
   return `${JSON.stringify({ ...config, compilerOptions: { ...config.compilerOptions, lib } }, null, 2)}\n`;
