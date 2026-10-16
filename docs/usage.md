@@ -658,6 +658,16 @@ Vitest, Jest, `node:test` or Mocha. nitpicker picks the first of:
 4. The runner in `dependencies` or `devDependencies`.
 5. Vitest.
 
+Before the dependencies come the test files' imports (`vitest`, `@jest/globals`, `node:test`,
+`mocha`): the runner most test files import wins. `ts-jest`, `babel-jest`, `@jest/globals`,
+`react-scripts` and `@craco/craco` count as Jest dependencies. When one step names several runners
+(a `test` script running two, a Jest config next to a `test:unit` script running Vitest, as many
+test files for each, or two runner dependencies), nitpicker stops with exit 2 before any check runs,
+naming each runner with its evidence, until `tools.tests.runner` chooses one. In a comparison the base
+runs its tests with its own runner (its `tools.tests.runner`, else the head's, else what the base
+shows) when that runner is installed; when it is not, coverage and CRAP are not compared on that
+change and nitpicker says so.
+
 From the script nitpicker also takes the environment variables (`NODE_ENV=test`, also through
 `cross-env`), the Node options before the runner (`node --import tsx --test`) and the runner's own
 options (`--config`, `--require`, test file patterns). It drops the options it sets itself (watch
