@@ -340,6 +340,9 @@ off (a PR that adds or removes React keeps linting on both sides); a misspelled 
   heuristic.
 
 - **Accessibility** (`jsx-a11y/*`): the recommended `eslint-plugin-jsx-a11y` rule set, as errors.
+  `jsx-a11y/mouse-events-have-key-events` is configured beyond the recommended default, which only
+  checks `onMouseOver`/`onMouseOut`: `onMouseEnter` also needs `onFocus` and `onMouseLeave` also
+  needs `onBlur`, so hover-only cards are caught.
 - **`null` for refs and contexts.** `null` stays banned, except as the argument and the type
   argument of `useRef` and `createContext` (`useRef<HTMLDivElement>(null)`,
   `createContext<Theme | null>(null)`), where React's types need it.
