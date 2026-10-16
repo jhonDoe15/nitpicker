@@ -10,6 +10,7 @@ import { rule as noModuleLevelLet } from './rules/modules/no-module-level-let.mj
 import { rule as noMockingSubjectUnderTest } from './rules/testing/assertions/no-mocking-subject-under-test.mjs';
 import { rule as cognitiveComplexity } from './rules/analysis/cognitive-complexity.mjs';
 import { rule as noComments } from './rules/modules/no-comments.mjs';
+import { rule as fileNameCasing } from './rules/naming/file-name-casing.mjs';
 import { rule as noProductionConsole } from './rules/modules/no-production-console.mjs';
 import { rule as noSelfRecursion } from './rules/control/no-self-recursion.mjs';
 import { rule as noSilentCatch } from './rules/errors/no-silent-catch.mjs';
@@ -69,6 +70,7 @@ export const nitpickerRules = {
     'no-mocking-subject-under-test': noMockingSubjectUnderTest,
     'cognitive-complexity': cognitiveComplexity,
     'no-comments': noComments,
+    'file-name-casing': fileNameCasing,
     'no-production-console': noProductionConsole,
     'no-self-recursion': noSelfRecursion,
     'no-silent-catch': noSilentCatch,
