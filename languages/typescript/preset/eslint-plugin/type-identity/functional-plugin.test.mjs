@@ -2,8 +2,9 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { ESLint } from 'eslint';
+import ts from 'typescript';
 import tseslint from 'typescript-eslint';
-import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 import { functionalPlugin } from './functional-plugin.mjs';
 
 const fixtures = {
@@ -13,12 +14,34 @@ const fixtures = {
   'c-alias.ts':
     'export function rowsAlias(grid: ReadonlyArray<ReadonlyArray<string>>): number { return grid.length; }\n',
   'd-map.ts':
-    'export function lookup(m: ReadonlyMap<string, ReadonlyMap<string, readonly string[]>>): number { return m.size; }\n',
+    'export function lookup(m: ReadonlyMap<string, ReadonlyMap<string, readonly string[]>>): number ' +
+    '{ return m.size; }\n',
   'e-inner-mutable.ts':
     'export function bad(grid: readonly (string[])[]): number { return grid.length; }\n',
   'f-plain-mutable.ts': 'export function worse(list: string[]): number { return list.length; }\n',
   'g-recursive.ts':
-    'export interface Tree<T> { readonly kids: readonly Tree<readonly T[]>[] }\nexport function size(tree: Tree<string>): number { return tree.kids.length; }\n',
+    'export interface Tree<T> { readonly kids: readonly Tree<readonly T[]>[] }\n' +
+    'export function size(tree: Tree<string>): number { return tree.kids.length; }\n',
+  'h-mutable-tree.ts':
+    'import type { Tree } from "./g-recursive";\n' +
+    'export function heights(tree: Tree<string[]>): number { return tree.kids.length; }\n',
+};
+
+function parameterBelowReadonlyDeep(actual) {
+  return [
+    `Parameter should have an immutability of at least "ReadonlyDeep" (actual: "${actual}").`,
+  ];
+}
+
+const expectedFindings = {
+  'a-nested.ts': [],
+  'b-plain.ts': [],
+  'c-alias.ts': [],
+  'd-map.ts': [],
+  'e-inner-mutable.ts': parameterBelowReadonlyDeep('ReadonlyShallow'),
+  'f-plain-mutable.ts': parameterBelowReadonlyDeep('Mutable'),
+  'g-recursive.ts': [],
+  'h-mutable-tree.ts': parameterBelowReadonlyDeep('ReadonlyShallow'),
 };
 
 const root = mkdtempSync(path.join(os.tmpdir(), 'nitpicker-immutable-identity-'));
@@ -27,31 +50,48 @@ mkdirSync(directory, { recursive: true });
 for (const [name, code] of Object.entries(fixtures)) {
   writeFileSync(path.join(directory, name), code);
 }
-writeFileSync(
-  path.join(root, 'tsconfig.json'),
-  JSON.stringify({
-    compilerOptions: {
-      strict: true,
-      target: 'ES2022',
-      module: 'ESNext',
-      lib: ['ES2022'],
-      types: [],
-    },
-    include: ['src/**/*'],
-  }),
-);
 
-function createLinter() {
+const compilerOptions = {
+  strict: true,
+  target: ts.ScriptTarget.ES2022,
+  module: ts.ModuleKind.ESNext,
+  lib: ['lib.es2022.d.ts'],
+  types: [],
+  noEmit: true,
+};
+const libraryFiles = new Map();
+
+function compilerHostSharingLibraryFiles() {
+  const host = ts.createCompilerHost(compilerOptions);
+  const readSourceFile = host.getSourceFile.bind(host);
+  host.getSourceFile = (fileName, ...rest) => {
+    if (fileName.startsWith(root)) {
+      return readSourceFile(fileName, ...rest);
+    }
+    if (!libraryFiles.has(fileName)) {
+      libraryFiles.set(fileName, readSourceFile(fileName, ...rest));
+    }
+    return libraryFiles.get(fileName);
+  };
+  return host;
+}
+
+function freshProgram() {
+  return ts.createProgram(
+    Object.keys(fixtures).map((name) => path.join(directory, name)),
+    compilerOptions,
+    compilerHostSharingLibraryFiles(),
+  );
+}
+
+function createLinter(program) {
   return new ESLint({
     cwd: root,
     overrideConfigFile: true,
     overrideConfig: [
       {
         files: ['**/*.ts'],
-        languageOptions: {
-          parser: tseslint.parser,
-          parserOptions: { project: './tsconfig.json', tsconfigRootDir: root },
-        },
+        languageOptions: { parser: tseslint.parser, parserOptions: { programs: [program] } },
         plugins: { functional: functionalPlugin },
         rules: { 'functional/prefer-immutable-types': ['error', { enforcement: 'ReadonlyDeep' }] },
       },
@@ -60,7 +100,7 @@ function createLinter() {
 }
 
 async function lintInOrder(names) {
-  const eslint = createLinter();
+  const eslint = createLinter(freshProgram());
   const found = {};
   for (const name of names) {
     const [result] = await eslint.lintFiles([path.join(directory, name)]);
@@ -69,40 +109,33 @@ async function lintInOrder(names) {
   return found;
 }
 
-const orders = [Object.keys(fixtures), Object.keys(fixtures).toReversed()];
+const orders = {
+  forward: Object.keys(fixtures),
+  reversed: Object.keys(fixtures).toReversed(),
+};
 
-const linted = { forward: {}, backward: {} };
+const linted = {};
 
 beforeAll(async () => {
-  [linted.forward, linted.backward] = await Promise.all(orders.map(lintInOrder));
+  vi.stubEnv('NODE_ENV', 'production');
+  try {
+    for (const [order, names] of Object.entries(orders)) {
+      linted[order] = await lintInOrder(names);
+    }
+  } finally {
+    vi.unstubAllEnvs();
+  }
 });
-
-function mutableParameters() {
-  expect(linted.backward).toEqual(linted.forward);
-  return linted.forward;
-}
 
 afterAll(() => {
   rmSync(root, { recursive: true, force: true });
 });
 
-describe('prefer-immutable-types with a nested readonly type', () => {
-  it('accepts deeply readonly nested arrays and maps in any file order', () => {
-    const found = mutableParameters();
-    expect(found['a-nested.ts']).toEqual([]);
-    expect(found['b-plain.ts']).toEqual([]);
-    expect(found['c-alias.ts']).toEqual([]);
-    expect(found['d-map.ts']).toEqual([]);
-  });
-
-  it('still reports a mutable inner or outer array', () => {
-    const found = mutableParameters();
-    expect(found['e-inner-mutable.ts']).toHaveLength(1);
-    expect(found['f-plain-mutable.ts']).toHaveLength(1);
-  });
-
-  it('terminates on a generic type that expands without end', () => {
-    const found = mutableParameters();
-    expect(found['g-recursive.ts']).toEqual([]);
-  });
+describe('prefer-immutable-types with nested readonly types and the process-wide type cache', () => {
+  it.each(Object.keys(orders))(
+    'reports exactly the mutable parameters when a fresh program lints the files %s',
+    (order) => {
+      expect(linted[order]).toEqual(expectedFindings);
+    },
+  );
 });
