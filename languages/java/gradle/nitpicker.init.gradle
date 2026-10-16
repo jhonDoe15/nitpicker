@@ -18,6 +18,9 @@
 //   build/nitpicker/pit/mutations.xml PIT mutation report, XML (absent when there are no main classes)
 //   build/nitpicker/jdeps.txt        jdeps -verbose:class -filter:none over the main classes (coupling input)
 //   build/nitpicker/jdeps-classes.txt the binary names of those main classes, one per line
+//   build/nitpicker/errorprone.json  Error Prone and NullAway diagnostics over main and test sources, a JSON
+//                                    array of {file, line, column, position, kind, message}
+//                                    (languages/java/gradle/errorprone/)
 //   build/nitpicker/manifest.json    tool versions and the source roots the reports are relative to
 //
 // With -Pnitpicker.testsFailed=true (the Nitpicker side sets it for a base whose tests fail) `test`, JaCoCo and PIT
@@ -56,6 +59,8 @@ def pinned = [
     ktlint          : '1.8.0',
     ktfmt           : '0.64',
     kotlinCompiler  : '2.4.21',
+    errorProne      : '2.50.0',
+    nullAway        : '0.14.2',
 ]
 
 // BEGIN SH5 structure metrics
@@ -91,6 +96,7 @@ allprojects {
             nitpickerSpotbugs { canBeConsumed = false }
             nitpickerFormat { canBeConsumed = false }
             nitpickerPit { canBeConsumed = false }
+            nitpickerCheckstyle { canBeConsumed = false }
         }
         repositories { mavenCentral() }
         dependencies {
@@ -98,6 +104,7 @@ allprojects {
             nitpickerPmd "net.sourceforge.pmd:pmd-java:${pinned.pmd}"
             nitpickerSpotbugs "com.github.spotbugs:spotbugs:${pinned.spotbugs}"
             nitpickerFormat "com.google.googlejavaformat:google-java-format:${pinned.googleJavaFormat}"
+            nitpickerCheckstyle "com.puppycrawl.tools:checkstyle:${pinned.checkstyle}"
         }
         dependencies {
             nitpickerPit "org.pitest:pitest-command-line:${pinned.pitest}"
@@ -116,7 +123,8 @@ allprojects {
             'SuppressionXpathFilter']
         def nitpickerCheckstyleConfig = layout.buildDirectory.file('nitpicker-checkstyle/checkstyle.xml')
         def projectCheckstyleConfig = nitpickerArgument('nitpicker.checkstyle.projectConfig')
-        def checkstyleJar = configurations.checkstyle.filter { it.name == "checkstyle-${pinned.checkstyle}.jar".toString() }
+        def checkstyleJar = configurations.nitpickerCheckstyle
+            .filter { it.name == "checkstyle-${pinned.checkstyle}.jar".toString() }
         def bundledCheckstyleConfig = resources.text.fromArchiveEntry(checkstyleJar, 'google_checks.xml')
         def writeCheckstyleConfig = tasks.register('nitpickerCheckstyleConfig') {
             group = 'nitpicker'
@@ -145,6 +153,7 @@ allprojects {
                     configFile = file(projectCheckstyleConfig)
                 } else {
                     dependsOn writeCheckstyleConfig
+                    checkstyleClasspath = configurations.nitpickerCheckstyle
                     configFile = nitpickerCheckstyleConfig.get().asFile
                     configProperties = ['org.checkstyle.google.suppressionfilter.config':
                         new File(initScriptDir, 'checkstyle-suppressions.xml').absolutePath]
@@ -174,6 +183,7 @@ allprojects {
         def usesSpring = {
             sourceSets.main.compileClasspath.files.any { it.name ==~ /spring-(context|boot)-.*\.jar/ }
         }
+        def hasGuava = { sourceSet -> sourceSet.compileClasspath.files.any { it.name ==~ /guava-\d.*\.jar/ } }
 
         tasks.register('nitpickerPmd', JavaExec) {
             group = 'nitpicker'
@@ -382,10 +392,17 @@ allprojects {
         }
         // END SH5 structure metrics
 
+        project.ext.nitpickerErrorProneVersions = pinned.subMap(['errorProne', 'nullAway'])
+        project.ext.nitpickerReportDir = reportDir
+        project.apply from: new File(initScriptDir, 'errorprone/error-prone.gradle')
+
         tasks.register('nitpickerJava') {
             group = 'nitpicker'
-            description = 'Runs PMD, SpotBugs, the formatter check, JaCoCo, Checkstyle, ArchUnit rule tests, structure metrics and PIT; reports go to build/nitpicker.'
-            dependsOn 'nitpickerPmd', 'nitpickerSpotbugs', 'nitpickerFormat', 'nitpickerJacoco', 'checkstyleMain', 'checkstyleTest', 'nitpickerArchunit', 'nitpickerStructure', 'nitpickerPit'
+            description = 'Runs PMD, SpotBugs, Error Prone, the formatter check, JaCoCo, Checkstyle, ' +
+                'ArchUnit rule tests, structure metrics and PIT; reports go to build/nitpicker.'
+            dependsOn 'nitpickerPmd', 'nitpickerSpotbugs', 'nitpickerErrorProne', 'nitpickerFormat',
+                'nitpickerJacoco', 'checkstyleMain', 'checkstyleTest', 'nitpickerArchunit',
+                'nitpickerStructure', 'nitpickerPit'
             doLast {
                 def roots = mainSources.files.collect {
                     project.projectDir.toPath().relativize(it.toPath()).toString().replace('\\', '/')
@@ -403,6 +420,8 @@ allprojects {
                     resourceRoots  : resourceRoots,
                     spring         : usesSpring(),
                     testsFailed    : testsFailed,
+                    guava          : hasGuava(sourceSets.main),
+                    testGuava      : hasGuava(sourceSets.test),
                 ])
             }
         }
