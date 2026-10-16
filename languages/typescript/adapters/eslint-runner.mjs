@@ -16,6 +16,10 @@ import {
 } from './eslint/policy.mjs';
 import { validatedContainedFile } from './eslint/paths.mjs';
 import { normalizeEslintResults } from './eslint/normalize.mjs';
+import {
+  testEnvironmentNotices,
+  testEnvironmentsFor,
+} from '../preset/test-environment/resolve-environment.mjs';
 
 const invokedPath = process.argv[1];
 
@@ -48,16 +52,21 @@ export function runEslint(options) {
       options.configRelativePath,
       '--config',
     );
+    const testEnvironments = testEnvironmentsFor(options);
     const value = runLintEngine({
       options,
       projectConfigPath: installedPolicyFiles.at(0)?.targetPath,
       policyConfigPath: policyConfig.canonicalPath,
+      testEnvironments,
     });
-    return normalizeEslintResults({
-      value,
-      projectRoot: options.projectRoot,
-      analyzerName: options.analyzerName,
-    });
+    return [
+      ...normalizeEslintResults({
+        value,
+        projectRoot: options.projectRoot,
+        analyzerName: options.analyzerName,
+      }),
+      ...testEnvironmentNotices({ testEnvironments, analyzerName: options.analyzerName }),
+    ];
   } finally {
     cleanUpEslint(state);
   }

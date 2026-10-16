@@ -1,4 +1,8 @@
 import path from 'node:path';
+import { prettierConventionOptions } from '../../conventions/prettier-conventions.mjs';
+import { readHeadPolicy } from '../../preset/head-policy.mjs';
+
+const CODE_FILE = /\.(?:[cm]?[jt]s|[jt]sx)$/;
 
 export async function layeredPrettierOptions(
   prettier,
@@ -7,13 +11,19 @@ export async function layeredPrettierOptions(
   const layers = await Promise.all(
     precedence.map(async (layer) =>
       layer === 'nitpicker'
-        ? policyOptions
+        ? { ...policyOptions, ...conventionOptions(relativePath) }
         : ((await prettier.resolveConfig(path.join(liveProjectRoot, relativePath), {
             editorconfig: true,
           })) ?? {}),
     ),
   );
   return layers.toReversed().reduce((merged, layer) => ({ ...merged, ...layer }), {});
+}
+
+function conventionOptions(relativePath) {
+  return CODE_FILE.test(relativePath)
+    ? prettierConventionOptions(readHeadPolicy().conventions)
+    : {};
 }
 
 export async function isIgnoredByLayers(

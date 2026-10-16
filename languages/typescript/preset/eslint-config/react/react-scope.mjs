@@ -1,5 +1,3 @@
-import { readFileSync } from 'node:fs';
-import path from 'node:path';
 import tseslint from 'typescript-eslint';
 import { nitpickerRules } from '../../eslint-plugin/index.mjs';
 import { cssInJsSource } from '../../eslint-plugin/rules/react/react-single-styling-approach.mjs';
@@ -10,27 +8,15 @@ import {
   reactTestRuleIds,
   testingLibrarySettings,
 } from './react-rules.mjs';
-
-const REACT_PACKAGE = 'react';
-
-function readManifest(projectRoot) {
-  try {
-    return JSON.parse(readFileSync(path.join(projectRoot, 'package.json'), 'utf8'));
-  } catch {
-    return {};
-  }
-}
-
-function readDependencyNames(projectRoot) {
-  const manifest = readManifest(projectRoot);
-  return [
-    ...Object.keys(manifest?.dependencies ?? {}),
-    ...Object.keys(manifest?.devDependencies ?? {}),
-  ];
-}
+import {
+  hasScopePackage,
+  productionScope,
+  readDependencyNames,
+  storyGlobs,
+} from '../scope-support.mjs';
 
 export function isReactProject({ projectRoot, react = {} }) {
-  return react.enabled ?? readDependencyNames(projectRoot).includes(REACT_PACKAGE);
+  return react.enabled ?? hasScopePackage(projectRoot, 'react');
 }
 
 export function stylingApproachFor({ projectRoot, react = {} }) {
@@ -44,13 +30,6 @@ export function stylingApproachFor({ projectRoot, react = {} }) {
 
 export function analyzedProjectRoot(environment = process.env) {
   return environment.NITPICKER_DIFF_ESLINT_PROJECT_ROOT ?? process.cwd();
-}
-
-function productionScope(layout) {
-  return {
-    files: layout.sourceGlobs,
-    ignores: [...layout.testGlobs, ...layout.sourceTestDirectoryGlobs],
-  };
 }
 
 function testScope(layout) {
@@ -75,8 +54,11 @@ export async function reactSyntaxConfigFor(layout, react = {}) {
         'react-x/no-class-component': 'error',
         'react-x/no-array-index-key': 'error',
         ...accessibilityRuleOptions,
+        'nitpicker/no-runtime-exclusive-props-check': 'error',
+        'nitpicker/no-singular-and-plural-prop': 'error',
         'nitpicker/react-no-effect-derived-state': 'error',
         'nitpicker/react-no-effect-data-fetching': 'error',
+        'nitpicker/react-no-hardcoded-colors': 'error',
         'nitpicker/react-single-styling-approach': [
           'error',
           { approach: react.styling ?? defaultStylingApproach },
@@ -91,6 +73,16 @@ export async function reactSyntaxConfigFor(layout, react = {}) {
         ...Object.fromEntries(reactTestRuleIds.map((id) => [id, 'error'])),
         ...(react.reactNative ? { 'testing-library/no-test-id-queries': 'off' } : {}),
       },
+    },
+  ];
+}
+
+function storyConfigFor() {
+  return [
+    {
+      files: storyGlobs,
+      plugins: { nitpicker: nitpickerRules },
+      rules: { 'nitpicker/react-no-hardcoded-colors': 'off' },
     },
   ];
 }
@@ -115,6 +107,7 @@ export async function reactScopeConfigFor(layout, react = {}, projectRoot = anal
   const reactNative = readDependencyNames(projectRoot).includes(reactNativeTestingPackage);
   return [
     ...(await reactSyntaxConfigFor(layout, { ...react, styling, reactNative })),
+    ...storyConfigFor(),
     ...reactTypedConfigFor(layout),
   ];
 }
