@@ -1,7 +1,7 @@
 import { mkdirSync, mkdtempSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
-import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { afterAll, describe, expect, it } from 'vitest';
 import { lintWithOxlint } from './oxlint-runner.mjs';
 
 const RULES_URL = import.meta.resolve('../../preset/eslint-plugin/rules');
@@ -17,6 +17,7 @@ import { rule as singularAndPlural } from ${ruleUrl('react-props/no-singular-and
 import { rule as exclusiveProps } from ${ruleUrl('react-props/no-runtime-exclusive-props-check.mjs')};
 import { rule as unionPredicate } from ${ruleUrl('api-shape/exhaustive-union-predicate.mjs')};
 import { rule as hoverNeedsKeyboard } from ${ruleUrl('react-tests/hover-test-needs-keyboard.mjs')};
+import { rule as forwardingWrapper } from ${ruleUrl('api-shape/no-forwarding-wrapper.mjs')};
 
 const nitpicker = {
   rules: {
@@ -24,6 +25,7 @@ const nitpicker = {
     'no-runtime-exclusive-props-check': exclusiveProps,
     'exhaustive-union-predicate': unionPredicate,
     'hover-test-needs-keyboard': hoverNeedsKeyboard,
+    'no-forwarding-wrapper': forwardingWrapper,
   },
 };
 
@@ -37,6 +39,7 @@ export default [
       'nitpicker/no-runtime-exclusive-props-check': 'error',
       'nitpicker/exhaustive-union-predicate': 'error',
       'nitpicker/hover-test-needs-keyboard': 'error',
+      'nitpicker/no-forwarding-wrapper': 'error',
     },
   },
 ];
@@ -77,15 +80,18 @@ const EXPECTED = {
 };
 
 let root;
-let results;
-let residualRules;
+let outcome;
 
 function recordResidualRules(files, extraEnvironment) {
-  residualRules = JSON.parse(extraEnvironment.NITPICKER_DIFF_ESLINT_ONLY_RULES);
+  outcome.residualRules = JSON.parse(extraEnvironment.NITPICKER_DIFF_ESLINT_ONLY_RULES);
   return [];
 }
 
-beforeAll(() => {
+function lintOnce() {
+  if (outcome !== undefined) {
+    return outcome;
+  }
+  outcome = {};
   root = realpathSync(mkdtempSync(path.join(tmpdir(), 'nitpicker-oxlint-messages-')));
   const files = {
     'policy.mjs': POLICY,
@@ -100,19 +106,23 @@ beforeAll(() => {
     NITPICKER_DIFF_ESLINT_POLICY_CONFIG: path.join(root, 'policy.mjs'),
     NITPICKER_DIFF_ESLINT_PROJECT_ROOT: root,
   };
-  results = lintWithOxlint({
+  outcome.results = lintWithOxlint({
     options: { projectRoot: root, patterns: ['src/**/*.{ts,tsx}'] },
     environment,
     runEslintCli: recordResidualRules,
   });
-});
+  return outcome;
+}
 
 afterAll(() => {
-  rmSync(root, { recursive: true, force: true });
+  if (root !== undefined) {
+    rmSync(root, { recursive: true, force: true });
+  }
 });
 
 describe('nitpicker rule messages through the oxlint engine', () => {
   it.each(Object.entries(EXPECTED))('keeps the full message text in %s', (file, expected) => {
+    const { results } = lintOnce();
     const messages = results
       .find((entry) => entry.filePath === path.join(root, file))
       .messages.map(({ ruleId, message }) => [ruleId, message]);
@@ -120,7 +130,10 @@ describe('nitpicker rule messages through the oxlint engine', () => {
     expect(messages).toEqual(expected);
   });
 
-  it('hands only the type-aware rule to the ESLint residual pass, where its message is kept', () => {
-    expect(residualRules).toEqual(['nitpicker/exhaustive-union-predicate']);
+  it('hands only the type-aware rules to the ESLint residual pass, where their messages are kept', () => {
+    expect(lintOnce().residualRules).toEqual([
+      'nitpicker/exhaustive-union-predicate',
+      'nitpicker/no-forwarding-wrapper',
+    ]);
   });
 });

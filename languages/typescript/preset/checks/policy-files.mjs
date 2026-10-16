@@ -46,6 +46,7 @@ export const POLICY_FILES = [
   'languages/typescript/preset/syntax/component-names.mjs',
   'languages/typescript/preset/eslint-plugin/rules/analysis/static-shapes.mjs',
   'languages/typescript/preset/eslint-plugin/rules/api-shape/exhaustive-union-predicate.mjs',
+  'languages/typescript/preset/eslint-plugin/rules/api-shape/no-forwarding-wrapper.mjs',
   'languages/typescript/preset/eslint-plugin/rules/react-props/react-components.mjs',
   'languages/typescript/preset/eslint-plugin/rules/react-props/no-runtime-exclusive-props-check.mjs',
   'languages/typescript/preset/eslint-plugin/rules/react-props/no-singular-and-plural-prop.mjs',
