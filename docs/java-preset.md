@@ -383,6 +383,22 @@ default, and their messages name it:
 | `GuardLogStatement`                | `trace` and `debug` (and JUL `fine` levels) with placeholders whose values are variables, fields, literals or a no-argument call on one (`order.id()`); a guard only when an argument is computed. |
 | `LogStringConcatenation` (new)     | `info`, `warn` and `error` with placeholders, for SLF4J, Log4j 2, commons-logging, JUL and `System.Logger`.                                                                                        |
 | `GeneratedOnHandWrittenCode` (new) | No `@Generated` annotation on a class, method or constructor: JaCoCo and PIT skip what it marks.                                                                                                   |
+| `SwallowedException` (new)         | A `catch` that does something with the failure: the body is not only `continue`, `return;`, a return or an assignment of a constant (see below).                                                   |
+
+**`SwallowedException` (PMD XPath rule, main and test sources).** It reports a non-empty `catch`
+whose statements are all inert: `continue`, `return;`, `;`, a `return` of a literal (`null`, `true`,
+`-1`, `"none"`, `'x'`), of `Optional.empty()` (also `OptionalInt`, `OptionalLong`, `OptionalDouble`
+and `Stream.empty()`), of an empty collection (`List.of()`, `Set.of()`, `Map.of()`,
+`Collections.emptyList()` and its siblings, `new ArrayList<>()` and other no-argument collection
+constructors) or of an empty array, or an assignment of a literal (`found = false;`). It is the
+Python `swallowed-exception` rule for Java; `EmptyCatchBlock` and Error Prone's `EmptyCatch` keep the
+empty block. A handler that logs, throws, calls anything, or returns or assigns a name or a computed
+value (a named constant, `text.length()`, `Optional.of(DEFAULT)`) is allowed, as is a handler that
+only catches `ClassNotFoundException` or `NoClassDefFoundError` and assigns a literal (the
+optional-class probe, `present = false`). The rule applies to tests too, where `assertThrows`
+replaces the `catch`. The message says to log it, rethrow it with the cause, use it, or return a
+named default, names `assertThrows` for tests, and gives the exception entry for `pmd/SwallowedException`.
+`languages/java/adapters/java-e2e/swallowed-exception.e2e.test.mjs` runs it on Gradle and Maven.
 
 ## Slice 3: Checkstyle
 

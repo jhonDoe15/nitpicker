@@ -28,6 +28,12 @@ export const ONE_WAY_RULES = [
       'Handle null with `value ?: return`, `value?.let { ... }`, or `checkNotNull(value) { "why" }` when null is a bug.',
   },
   { name: 'CastNullableToNonNullableType', ruleset: 'potential-bugs' },
+  {
+    name: 'SwallowedException',
+    ruleset: 'exceptions',
+    allowed:
+      'Log it with the exception as the last argument, rethrow it or pass it on as the cause (`throw AppError("x", e)`), or return a named default or a value built from the error. In a test, use `assertFailsWith`.',
+  },
   { name: 'GlobalCoroutineUsage', ruleset: 'coroutines' },
   { name: 'ForbiddenMethodCall', ruleset: 'style' },
   {

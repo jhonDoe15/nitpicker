@@ -23,6 +23,16 @@ export const kotlinRuleCases = [
     allowed: 'fun text(value: Any?): String = value as? String ?: "none"\n',
   },
   {
+    id: 'swallowedException',
+    rule: 'detekt.exceptions.SwallowedException',
+    message: 'The caught exception is swallowed. The original exception could be lost.',
+    allowedForm: 'pass it on as the cause',
+    banned:
+      'fun parse(text: String): Int? {\n    return try {\n        text.toInt()\n    } catch (error: NumberFormatException) {\n        null\n    }\n}\n',
+    allowed:
+      'fun parse(text: String): Int {\n    return try {\n        text.toInt()\n    } catch (error: NumberFormatException) {\n        throw IllegalArgumentException("not a number", error)\n    }\n}\n',
+  },
+  {
     id: 'globalScope',
     rule: 'detekt.coroutines.GlobalCoroutineUsage',
     message: 'This use of GlobalScope should be replaced by `CoroutineScope` or `coroutineScope`.',

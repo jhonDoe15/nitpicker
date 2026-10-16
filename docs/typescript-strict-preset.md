@@ -201,7 +201,10 @@ Math` and `Math['random']()` are caught; `process`, `fetch`, `setTimeout`, `setI
   result) or when it returns a failure result object (`catch { return { kind: 'malformed-json' } }`).
   Carry the caught value only where something reads it; a field added just so the binding is read
   is slop. A `catch` that falls through, or returns a non-object such as `undefined` or `[]`, is
-  reported. A deliberately dropped error needs an exception in the config file.
+  reported. A deliberately dropped error needs an exception in the config file. The rule also
+  covers test files (a catch that returns `null`, continues or returns a constant there is
+  reported); in a test, assert the failure with `expect(() => run()).toThrow()` or
+  `await expect(promise).rejects.toThrow()`.
 - `nitpicker/no-unvalidated-schema-field` (all production code): no `z.unknown()` or `z.any()`
   (also with `.optional()`, `.nullable()`, `.default()` and similar wrappers, `z.optional(...)`,
   `z.nullable(...)`, `z.nullish(...)` and `z.readonly(...)`) as a field of `z.object`,

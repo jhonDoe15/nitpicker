@@ -10,6 +10,7 @@ export const strictTestRules = {
   'nitpicker/no-node-process-per-test': 'error',
   'nitpicker/no-server-or-worker-per-test': 'error',
   'nitpicker/no-raised-test-timeout': 'error',
+  'nitpicker/no-silent-catch': 'error',
   'nitpicker/no-first-test-charged-setup': 'error',
   'nitpicker/test-tsconfig-pins-lib-and-types': 'error',
 };
