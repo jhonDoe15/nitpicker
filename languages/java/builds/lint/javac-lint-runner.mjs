@@ -14,6 +14,7 @@ import { stageSources } from './lint-staging.mjs';
 const LINT_REPORT = 'javac-lint.txt';
 const LINT_FAILURE = 'javac-lint-failed.txt';
 const UNREAD_WARNINGS = 'error: javac printed warnings in a form nitpicker cannot read';
+const ENGLISH_OUTPUT = ['-J-Duser.language=en', '-J-Duser.country=US'];
 const MODULE_INFO = 'module-info.java';
 const MAX_OUTPUT_BYTES = 50 * 1024 * 1024;
 const LINT_TIMEOUT_MS = 15 * 60 * 1000;
@@ -48,7 +49,7 @@ function compileForLint({ plan, work, args, files }) {
     argumentFile,
     [...args, ...files].map((token) => argumentFileToken(token)).join('\n'),
   );
-  const result = spawnSync(plan.javac, [`@${argumentFile}`], {
+  const result = spawnSync(plan.javac, [...ENGLISH_OUTPUT, `@${argumentFile}`], {
     cwd: plan.basedir,
     encoding: 'utf8',
     maxBuffer: MAX_OUTPUT_BYTES,

@@ -4,6 +4,7 @@ import path from 'node:path';
 const WARNING = /^(.+\.java):\d+: warning: \[/u;
 const SOURCE_HEADER = /^.+?\.java(?=:\d+: )/gmu;
 const WARNING_COUNT = /^\d+ warnings?$/mu;
+const LINT_DIAGNOSTIC = /^.+\.java:\d+: [^:]+: \[\w+\]/u;
 const PRINTED_WARNING = /^(?:.+\.java:\d+: )?warning: /mu;
 const BLOCK_END = /^\d+ warnings?$|^Note: /u;
 const ANNOTATION = /^@\s*([\w.]+)/u;
@@ -84,5 +85,8 @@ export function lintedWarnings(log, context) {
 }
 
 export function hasUnreadWarnings(log) {
-  return WARNING_COUNT.test(log) && !PRINTED_WARNING.test(log);
+  return (
+    (WARNING_COUNT.test(log) && !PRINTED_WARNING.test(log)) ||
+    log.split(/\r?\n/u).some((line) => LINT_DIAGNOSTIC.test(line) && !WARNING.test(line))
+  );
 }

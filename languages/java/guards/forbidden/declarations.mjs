@@ -1,12 +1,14 @@
-import { LITERAL_OR_COMMENT } from '../cpd-duplicates.mjs';
+import {
+  closing,
+  declaringBody,
+  descriptorTypes,
+  ownMember,
+  parameterTypes,
+  withoutAnnotations,
+} from './java-source.mjs';
 
-const ANNOTATION = /@[\w.]+(?:\s*\([^()]*\))?/g;
 const DECLARATION_END = /^(?:\{|;|throws\b|default\b)/;
-const NOT_A_DECLARATION = /[=()]|\b(?:return|new|throw)\b/;
-
-export function blanked(source) {
-  return source.replace(LITERAL_OR_COMMENT, (match) => match.replaceAll(/[^\n]/g, ' '));
-}
+const NOT_A_DECLARATION = /[=()]|\b(?:return|new|throw|record)\b/;
 
 function escaped(text) {
   return text.replaceAll(/[$.]/g, String.raw`\$&`);
@@ -20,37 +22,10 @@ function lineAt(text, index) {
   return text.slice(0, index).split('\n').length;
 }
 
-function closingParen(text, open) {
-  let depth = 0;
-  for (const [offset, character] of [...text.slice(open)].entries()) {
-    depth += { '(': 1, ')': -1 }[character] ?? 0;
-    if (depth === 0) {
-      return open + offset;
-    }
-  }
-  return -1;
-}
-
-function sourceArity(parameters) {
-  const bare = parameters.replace(ANNOTATION, ' ').trim();
-  let depth = 0;
-  let count = bare === '' ? 0 : 1;
-  for (const character of bare) {
-    depth += { '<': 1, '>': -1 }[character] ?? 0;
-    count += character === ',' && depth === 0 ? 1 : 0;
-  }
-  return count;
-}
-
-function descriptorArity(member) {
-  const inside = member.slice(member.indexOf('(') + 1, member.lastIndexOf(')'));
-  return inside === '' ? 0 : inside.split(',').length;
-}
-
 function prefixBefore(text, index) {
   const before = text.slice(0, index);
   const start = Math.max(before.lastIndexOf(';'), before.lastIndexOf('{'), before.lastIndexOf('}'));
-  return before.slice(start + 1).replace(ANNOTATION, ' ');
+  return before.slice(start + 1);
 }
 
 function methodCandidate(text, match, { naming, constructor }) {
@@ -59,55 +34,74 @@ function methodCandidate(text, match, { naming, constructor }) {
     return undefined;
   }
   const open = match.index + match[0].length - 1;
-  const close = closingParen(text, open);
+  const close = closing(text, open);
   const parameters = close === -1 ? '' : text.slice(open + 1, close);
   const declared =
     close !== -1 &&
     DECLARATION_END.test(text.slice(close + 1).trimStart()) &&
     (naming.test(prefix) || naming.test(parameters));
-  return declared ? { index: match.index, arity: sourceArity(parameters) } : undefined;
+  return declared ? { index: match.index, types: parameterTypes(parameters) } : undefined;
 }
 
-function methodIndex(text, { declaration: { member }, className }, naming) {
+function typeScore(types, descriptor, constructor) {
+  const alignments = constructor
+    ? [descriptor.slice(0, types.length), descriptor.slice(descriptor.length - types.length)]
+    : [descriptor];
+  return Math.max(
+    ...alignments.map((aligned) => aligned.filter((type, at) => type === types[at]).length),
+  );
+}
+
+function methodIndexes(text, { declaration: { member }, className }, naming) {
   const name = member.split('(')[0];
   const constructor = name === '<init>';
   const declared = constructor ? simpleName(className) : name;
-  const arity = descriptorArity(member);
-  const candidates = [
-    ...text.matchAll(new RegExp(String.raw`(?<![\w$.])${escaped(declared)}\s*\(`, 'g')),
-  ]
+  const descriptor = descriptorTypes(member);
+  const inClass = ownMember(text, declaringBody(className, text));
+  return [...text.matchAll(new RegExp(String.raw`(?<![\w$.])${escaped(declared)}\s*\(`, 'g'))]
+    .filter((match) => inClass(match.index))
     .map((match) => methodCandidate(text, match, { naming, constructor }))
     .filter((candidate) => candidate !== undefined)
-    .filter((candidate) => (constructor ? candidate.arity <= arity : candidate.arity === arity));
-  return candidates.sort((left, right) => right.arity - left.arity)[0]?.index;
+    .filter(({ types }) =>
+      constructor ? types.length <= descriptor.length : types.length === descriptor.length,
+    )
+    .map((candidate) => ({
+      ...candidate,
+      score: typeScore(candidate.types, descriptor, constructor),
+    }))
+    .sort((left, right) => right.score - left.score || right.types.length - left.types.length)
+    .map((candidate) => candidate.index);
 }
 
-function classIndex(text, className, naming) {
+function classIndexes(text, className, naming) {
   const pattern = new RegExp(
     String.raw`\b(?:class|interface|enum|record)\s+${escaped(simpleName(className))}\b`,
     'g',
   );
-  return [...text.matchAll(pattern)].find((match) =>
-    naming.test(text.slice(match.index).split('{')[0]),
-  )?.index;
+  return [...text.matchAll(pattern)]
+    .filter((match) => naming.test(text.slice(match.index).split('{')[0]))
+    .map((match) => match.index);
 }
 
-function fieldIndex(text, member, type) {
+function fieldIndexes(text, { declaration: { member }, className }, type) {
   const pattern = new RegExp(
     String.raw`\b${type}\b[\w\s<>[\],.?]*\b(${escaped(member)})\b(?!\s*\()`,
-    'd',
+    'dg',
   );
-  return pattern.exec(text)?.indices[1][0];
+  const inClass = ownMember(text, declaringBody(className, text));
+  return [...text.matchAll(pattern)]
+    .map((match) => match.indices[1][0])
+    .filter((index) => inClass(index));
 }
 
-function declarationIndex(use, text) {
+function declarationIndexes(use, text) {
   const type = escaped(simpleName(use.signature));
   const naming = new RegExp(String.raw`\b${type}\b`);
-  const { kind, member } = use.declaration;
+  const { kind } = use.declaration;
   if (kind === 'class') {
-    return classIndex(text, use.className, naming);
+    return classIndexes(text, use.className, naming);
   }
-  return kind === 'method' ? methodIndex(text, use, naming) : fieldIndex(text, member, type);
+  return kind === 'method' ? methodIndexes(text, use, naming) : fieldIndexes(text, use, type);
 }
 
 function ownClassIndex(className, text) {
@@ -161,14 +155,32 @@ function coveredByField(use, placed, text) {
   );
 }
 
+function declarationPlacer(textOf) {
+  const texts = new Map();
+  const taken = new Set();
+  function textFor(file) {
+    if (!texts.has(file)) {
+      const text = textOf(file);
+      texts.set(file, text === undefined ? undefined : withoutAnnotations(text));
+    }
+    return texts.get(file);
+  }
+  return (use) => {
+    const text = textFor(use.file);
+    const indexes = text === undefined ? [] : declarationIndexes(use, text);
+    const index = indexes.find((candidate) => !taken.has(`${use.file}\0${String(candidate)}`));
+    taken.add(`${use.file}\0${String(index)}`);
+    return index === undefined ? use : { ...use, line: lineAt(text, index) };
+  };
+}
+
 export function placeDeclarations(uses, textOf) {
+  const place = declarationPlacer(textOf);
   const placed = uses.flatMap((use) => {
     if (use.declaration === undefined || isSynthetic(use)) {
       return use.declaration === undefined ? [use] : [];
     }
-    const text = textOf(use.file);
-    const index = text === undefined ? undefined : declarationIndex(use, text);
-    return [index === undefined ? use : { ...use, line: lineAt(text, index) }];
+    return [place(use)];
   });
   return placed.flatMap((use) => {
     if (use.declaration === undefined || use.line !== undefined) {
