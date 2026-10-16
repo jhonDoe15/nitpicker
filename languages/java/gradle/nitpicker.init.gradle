@@ -504,6 +504,12 @@ allprojects {
                 def kotlinFiles = {
                     kotlinSourceDirs().collectMany { dir -> fileTree(dir) { include '**/*.kt' }.files.sort() }.unique()
                 }
+                def detektJdkHome = {
+                    def toolchain = project.extensions.findByType(JavaPluginExtension)?.toolchain
+                    toolchain != null && toolchain.languageVersion.isPresent()
+                        ? project.extensions.getByType(JavaToolchainService).launcherFor(toolchain).get().metadata.installationPath.asFile.absolutePath
+                        : System.getProperty('java.home')
+                }
                 def hasJavaSources = { !(sourceSets.main.java.files + sourceSets.test.java.files).isEmpty() }
                 def hasJavaClasses = { analyzedClassDirs().any { it.exists() && it.list()?.length } }
                 def kotlinFormatter = { nitpickerArgument('nitpicker.kotlin.formatter')?.toString() ?: 'none' }
@@ -546,7 +552,10 @@ allprojects {
                 // (--build-upon-default-config), the project's config (nitpicker.kotlin.detektConfig, chosen on the
                 // Nitpicker side), and Nitpicker's languages/java/detekt/nitpicker-detekt.yml, so the one-way rules
                 // cannot be switched off from the project's file; a rule the project sets active: false stays off
-                // and one it omits runs with its default. languages/java/detekt/detekt-validation.yml comes last
+                // and one it omits runs with its default. nitpicker.kotlin.detektLists, when the Nitpicker side wrote
+                // one, follows Nitpicker's file and carries only the ForbiddenMethodCall.methods list, Nitpicker's
+                // entries plus the project's own (detekt replaces a list instead of merging it).
+                // languages/java/detekt/detekt-validation.yml comes last
                 // and turns config validation off: the project's file may configure rulesets of plugins that this
                 // detekt run does not load (formatting), and validation would end the run with exit code 3 on them.
                 // --includes '**/*.kt' keeps .kts scripts (precompiled Gradle plugins) out: detekt's type resolution
@@ -556,7 +565,9 @@ allprojects {
                 // project's kotlin-stdlib replaced by the one detekt itself embeds (pinned.detektKotlin):
                 // detekt 1.23 cannot read the metadata of a newer Kotlin standard library, and then every
                 // call to it stays unresolved. Libraries built with a newer Kotlin than detekt's stay
-                // unresolved too, so rules report less there. --jdk-home makes JDK types resolve.
+                // unresolved too, so rules report less there. --jdk-home makes JDK types resolve: it is the project's Gradle
+                // Java toolchain JDK when the project declares one (java.toolchain, kotlin.jvmToolchain), else the JDK
+                // that runs Gradle.
                 tasks.register('nitpickerDetekt', JavaExec) {
                     group = 'nitpicker'
                     classpath = configurations.nitpickerDetekt
@@ -573,6 +584,7 @@ allprojects {
                         standardOutput = log
                         errorOutput = log
                         def projectConfig = nitpickerArgument('nitpicker.kotlin.detektConfig')
+                        def mergedLists = nitpickerArgument('nitpicker.kotlin.detektLists')
                         def libraries = sourceSets.main.compileClasspath.files.findAll {
                             it.exists() && !it.name.startsWith('kotlin-stdlib')
                         }
@@ -583,9 +595,9 @@ allprojects {
                               '--report', "sarif:${report.get().asFile.absolutePath}".toString(),
                               '--base-path', analysisRoot.absolutePath,
                               '--build-upon-default-config',
-                              '--config', ([projectConfig, nitpickerConfig.absolutePath, validationOff.absolutePath]).findAll { it }.join(','),
+                              '--config', ([projectConfig, nitpickerConfig.absolutePath, mergedLists, validationOff.absolutePath]).findAll { it }.join(','),
                               '--classpath', typeResolutionClasspath,
-                              '--jdk-home', System.getProperty('java.home')])
+                              '--jdk-home', detektJdkHome()])
                     }
                     doLast {
                         def code = executionResult.get().exitValue
