@@ -1,6 +1,6 @@
-import { pad } from '../../../shared/pad.cjs';
 import { describeResult, greet } from '../domain/greet.js';
 import { initials } from '../domain/initials.cjs';
+import { pad } from '../domain/pad.cjs';
 
 /**
  * @typedef {{ readonly write: (text: string) => void }} Writer
