@@ -271,3 +271,79 @@ describe('routedEslintMessage', () => {
     ).toBe('Unused eslint-disable directive');
   });
 });
+
+describe('hints for the production policy rules', () => {
+  const hint = (ruleId, text) => eslintMessageWithHint({ ruleId, text, relativePath: 'src/a.ts' });
+
+  it('names the awaited form instead of the rule wording that recommends .catch', () => {
+    const message = hint(
+      '@typescript-eslint/no-floating-promises',
+      'Promises must be awaited, end with a call to .catch, or end with a call to .then with a rejection handler.',
+    );
+
+    expect(message).toBe(
+      `Await this promise: \`await job()\`, or \`await Promise.all([...])\` for several; \`.then()\` and \`.catch()\` do not count. Deliberate fire-and-forget is written \`void job();\`.`,
+    );
+  });
+
+  it('keeps the rule wording of other floating-promise messages', () => {
+    expect(
+      hint('@typescript-eslint/no-floating-promises', 'An array of Promises may be unintentional.'),
+    ).toBe('An array of Promises may be unintentional.');
+  });
+
+  it.each([
+    [
+      'Missing return type on function.',
+      'Write the return type of an exported function: `export function total(rows: readonly Row[]): number`, `export async function load(): Promise<Report>`; a React component returns `ReactElement`.',
+    ],
+    [
+      "Argument 'rows' should be typed.",
+      "Argument 'rows' should be typed. Write the parameter type in the signature: `(rows: readonly Row[])`.",
+    ],
+    [
+      'Missing return type on function',
+      'Write the return type of an exported function: `export function total(rows: readonly Row[]): number`, `export async function load(): Promise<Report>`; a React component returns `ReactElement`.',
+    ],
+    [
+      'Missing argument type on function',
+      'Missing argument type on function. Write the parameter type in the signature: `(rows: readonly Row[])`.',
+    ],
+  ])('names the typed signature for a module boundary finding: %s', (text, expected) => {
+    expect(hint('@typescript-eslint/explicit-module-boundary-types', text)).toBe(expected);
+  });
+
+  it('names the allowed casing for a naming-convention finding', () => {
+    expect(hint('nitpicker/naming-convention', 'Function name `a_b` must match camelCase')).toBe(
+      `Function name \`a_b\` must match camelCase. Types are PascalCase; functions, variables and parameters are camelCase; constants may be UPPER_CASE; a schema constant may be PascalCase (\`const Order = z.object(...)\`).  An exception fits only when an external API forces the name.`,
+    );
+  });
+
+  it.each([
+    ['no-eval', 'eval can be harmful.', 'look it up in a table keyed by name'],
+    ['no-param-reassign', "Assignment to function parameter 'n'.", 'Declare a new const'],
+    ['no-duplicate-imports', "'a' import is duplicated.", 'single import statement'],
+    [
+      'regexp/no-super-linear-backtracking',
+      'Unsafe quantifier.',
+      'without nested or overlapping quantifiers',
+    ],
+  ])('rewrites %s', (ruleId, text, expected) => {
+    expect(hint(ruleId, text)).toContain(expected);
+  });
+
+  it.each([
+    [
+      'curly',
+      "Expected { after 'if' condition.",
+      "Expected { after 'if' condition. Wrap the body in braces: `if (done) { return; }`.",
+    ],
+    [
+      'no-param-reassign',
+      "Assignment to function parameter 'n'.",
+      "Assignment to function parameter 'n'. Declare a new const with another name instead of reassigning the parameter. An exception fits only when the reassignment is deliberate.",
+    ],
+  ])('names the allowed form for %s', (ruleId, text, expected) => {
+    expect(hint(ruleId, text)).toBe(expected);
+  });
+});

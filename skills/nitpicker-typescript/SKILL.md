@@ -89,6 +89,15 @@ nitpicker.config.json`). That entry is for a human reviewer. Never add one, and 
 - `async`/`await`, never `.then()`. No floating promises.
 - Named exports only. No comments; a `/** ... */` doc comment on an export is the one exception.
 
+## Production rules
+
+- Wire clients, servers, pools and config in the composition root (`src/main/composition-root.ts`,
+  `main.ts` or `server.ts`) and pass them into factories; read `process.env` only there.
+- Parse untrusted input once with zod in `adapters/`; `domain/` takes readonly types it declares.
+- Run programs with `execFile(command, [args])`, never a command string.
+- Each finding names the allowed form. A deliberate exception goes in `nitpicker.config.json`
+  `exceptions` (rule, paths, reason), never inline.
+
 ## domain/ is deeply readonly
 
 - `const` only, no loops, no mutation: use `map`, `filter`, `flatMap`, `reduce` with an initial

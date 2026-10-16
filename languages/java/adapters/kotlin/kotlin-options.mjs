@@ -13,6 +13,7 @@ const KOTLIN_KEYS = ['formatter', 'detektConfig'];
 const KOTLIN_EXCEPTION_RULES = [
   ...ONE_WAY_RULE_IDS,
   ...SHARED_EXCEPTION_RULES.filter((rule) => !JAVA_NATIVE_RULES.includes(rule)),
+  'test-runtime/slow-test',
 ];
 
 function validateKotlinExceptions(config) {

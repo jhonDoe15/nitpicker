@@ -122,6 +122,29 @@ describe('a finding anchored on a whole function is about its signature', () => 
   });
 });
 
+describe('a finding that spans the whole file is about the file', () => {
+  const wholeFileFinding = (code) =>
+    findingFor({ code, reported: code.trimStart(), ruleId: 'nitpicker/no-unknown-main-folder' });
+
+  it('stays baselined when the file had one statement and lines are added above it', () => {
+    const before = 'export const a = 1;\n';
+    const result = compare(
+      wholeFileFinding(before),
+      wholeFileFinding(`\n\n\nexport const unrelatedValue = 1;\n\n${before}`),
+    );
+
+    expect(result.newFindings).toEqual([]);
+    expect(result.resolvedFindings).toEqual([]);
+    expect(result.unchangedFindings).toHaveLength(1);
+  });
+
+  it('anchors on the program', () => {
+    expect(wholeFileFinding('export const a = 1;\n')[0].identity).toBe(
+      'message:Reported text.|node:Program|syntax:program|occurrence:1',
+    );
+  });
+});
+
 describe('a finding in an edited function stays baselined while the function has no more of them', () => {
   const SILENT = 'nitpicker/no-silent-catch';
   const originalHandler = "\n    return '';\n  ";

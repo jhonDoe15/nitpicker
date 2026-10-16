@@ -12,6 +12,26 @@ function isInMainGuardTest(node) {
   );
 }
 
+const LOOP_TYPES = [
+  'ForStatement',
+  'ForInStatement',
+  'ForOfStatement',
+  'WhileStatement',
+  'DoWhileStatement',
+];
+const DEFAULT_VALUE_TYPES = new Set([
+  'Literal',
+  'TemplateLiteral',
+  'ObjectExpression',
+  'ArrayExpression',
+  'CallExpression',
+  'NewExpression',
+]);
+
+function isDefaultValue(node) {
+  return node.operator === '||' && DEFAULT_VALUE_TYPES.has(node.right.type);
+}
+
 export const rule = {
   meta: {
     type: 'problem',
@@ -21,7 +41,7 @@ export const rule = {
     schema: compositionRootOptionsSchema,
     messages: {
       branch:
-        "The composition root only wires features: it passes things in and does not branch. Move this lookup or decision into the feature's adapters/ or domain/. An exception fits only when this branch belongs here.",
+        "The composition root only wires features: it passes things in and does not branch, loop or default a missing value (`??`, `||`). Move this lookup or decision into the feature's adapters/ or domain/. An exception fits only when this branch belongs here.",
     },
   },
   create(context) {
@@ -40,6 +60,12 @@ export const rule = {
       SwitchStatement: report,
       ChainExpression: report,
       'LogicalExpression[operator="??"]': report,
+      LogicalExpression(node) {
+        if (isDefaultValue(node)) {
+          report(node);
+        }
+      },
+      [LOOP_TYPES.join(', ')]: report,
     };
   },
 };

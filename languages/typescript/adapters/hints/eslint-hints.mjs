@@ -56,6 +56,29 @@ const SWITCH_NOT_EXHAUSTIVE_HINT =
 const NODE_TEST_HINT =
   ' nitpicker runs tests with Vitest only (Jest and node:test support is tracked in issue #162). An exception fits only a file that must stay on node:test.';
 
+const FLOATING_PROMISE_TEXT = /^Promises must be awaited/u;
+
+const FLOATING_PROMISE_MESSAGE = `Await this promise: \`await job()\`, or \`await Promise.all([...])\` for several; \`.then()\` and \`.catch()\` do not count. Deliberate fire-and-forget is written \`void job();\`.`;
+
+const EVAL_MESSAGE = `Do not evaluate a string as code. Call the function directly, look it up in a table keyed by name, or parse the data with JSON.parse and a schema.`;
+
+const PARAM_REASSIGN_HINT = ` Declare a new const with another name instead of reassigning the parameter. An exception fits only when the reassignment is deliberate.`;
+
+const CURLY_HINT = ` Wrap the body in braces: \`if (done) { return; }\`.`;
+
+const NAMING_HINT = `. Types are PascalCase; functions, variables and parameters are camelCase; constants may be UPPER_CASE; a schema constant may be PascalCase (\`const Order = z.object(...)\`). An exception fits only when an external API forces the name.`;
+
+const REGEXP_HINT = ` Rewrite the pattern without nested or overlapping quantifiers, or use a string method. An exception fits only when the input is bounded and trusted.`;
+
+const RETURN_TYPE_TEXT = /^Missing return type on function\.?$/u;
+
+const RETURN_TYPE_MESSAGE =
+  'Write the return type of an exported function: `export function total(rows: readonly Row[]): number`, `export async function load(): Promise<Report>`; a React component returns `ReactElement`.';
+
+const ARGUMENT_TYPE_HINT = ' Write the parameter type in the signature: `(rows: readonly Row[])`.';
+
+const DUPLICATE_IMPORT_HINT = ' Merge the imports of one module into a single import statement.';
+
 const GROWTH_ADVICE = new Map([
   [
     'nitpicker/no-throw',
@@ -115,6 +138,20 @@ function switchExhaustivenessMessage({ text }) {
     : text;
 }
 
+function floatingPromiseMessage({ text }) {
+  return FLOATING_PROMISE_TEXT.test(text) ? FLOATING_PROMISE_MESSAGE : text;
+}
+
+function boundaryTypesMessage({ text }) {
+  return RETURN_TYPE_TEXT.test(text)
+    ? RETURN_TYPE_MESSAGE
+    : `${text.replace(/\.?$/u, '.')}${ARGUMENT_TYPE_HINT}`;
+}
+
+function appendHint(hint) {
+  return ({ text }) => `${text}${hint}`;
+}
+
 function nodeTestMessage({ text }) {
   return `${text}${NODE_TEST_HINT}`;
 }
@@ -133,6 +170,14 @@ const MESSAGE_REWRITERS = new Map([
   ['@typescript-eslint/no-duplicate-type-constituents', duplicateConstituentsMessage],
   ['@typescript-eslint/switch-exhaustiveness-check', switchExhaustivenessMessage],
   ['@typescript-eslint/no-invalid-void-type', invalidVoidMessage],
+  ['@typescript-eslint/no-floating-promises', floatingPromiseMessage],
+  ['nitpicker/naming-convention', appendHint(NAMING_HINT)],
+  ['@typescript-eslint/explicit-module-boundary-types', boundaryTypesMessage],
+  ['no-eval', () => EVAL_MESSAGE],
+  ['no-param-reassign', appendHint(PARAM_REASSIGN_HINT)],
+  ['curly', appendHint(CURLY_HINT)],
+  ['no-duplicate-imports', appendHint(DUPLICATE_IMPORT_HINT)],
+  ['regexp/no-super-linear-backtracking', appendHint(REGEXP_HINT)],
 ]);
 
 const NO_ROUTE_RULES = new Set([
