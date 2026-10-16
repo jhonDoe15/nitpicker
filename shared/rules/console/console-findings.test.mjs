@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { compareFindings } from '../../../../../core/diff/comparison/compare.mjs';
+import { compareFindings } from '../../../core/diff/comparison/compare.mjs';
 import { testConsoleFindings } from './console-findings.mjs';
 
 function entry(file, message, test = 'works') {

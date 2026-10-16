@@ -7,7 +7,7 @@ const COVERAGE_CONFIGURATION_FILES = [
   'languages/typescript/preset/defaults/vitest.quality.config.ts',
   'languages/typescript/preset/layout.mjs',
   'languages/typescript/preset/head-policy.mjs',
-  'languages/typescript/preset/test-console/ansi.mjs',
+  'shared/rules/console/ansi.mjs',
   'languages/typescript/preset/test-console/vitest-reporter.config.mjs',
   JAVASCRIPT_PRESET_FILE,
 ];

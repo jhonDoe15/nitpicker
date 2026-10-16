@@ -1,4 +1,4 @@
-import { stripAnsi } from '../../../preset/test-console/ansi.mjs';
+import { stripAnsi } from './ansi.mjs';
 
 const ABSOLUTE_PATH_PATTERN =
   /(?<![\w/:.\\-])(?:<(?:root|tmp|home)>)?(?:file:\/\/)?(?:[A-Za-z]:)?(?:[\\/][\w.@+~$%-]+)+/gu;
