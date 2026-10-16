@@ -117,4 +117,51 @@ describe('nitpicker with "preset": "python" and its architecture checks', () => 
       },
     ]);
   });
+  it('fails on a new package cycle and a new import of a package the project does not list', () => {
+    const from = (module, ...names) => ({ level: 0, module, names });
+    const scan = (imports) => `${JSON.stringify(imports)}\n`;
+    const root = pythonRepository({
+      'src/orders/__init__.py': '',
+      'src/orders/service.py': '',
+      'src/billing/__init__.py': '',
+      'src/billing/invoice.py': '',
+      'pyproject.toml': '[project]\nname = "demo"\nversion = "0.1.0"\ndependencies = []\n',
+      'distributions.json': JSON.stringify({
+        python: [3, 12],
+        stdlib: [],
+        modules: { yaml: ['PyYAML'] },
+        entryPoints: [],
+        optional: {},
+        references: [],
+      }),
+      'import-scan.json': scan({ 'src/orders/service.py': [from('billing', 'invoice')] }),
+    });
+    expect(run(root).exitCode).toBe(0);
+    writeFiles(root, {
+      'import-scan.json': scan({
+        'src/orders/service.py': [from('billing', 'invoice')],
+        'src/billing/invoice.py': [from('orders', 'service'), from('yaml', 'safe_load')],
+      }),
+    });
+    commit(root, 'import back and add yaml');
+
+    const result = run(root);
+
+    expect(result.exitCode, result.text).toBe(1);
+    expect(newFindings(result, 'package-cycle').map(({ path }) => path)).toEqual([
+      'src/billing/__init__.py',
+      'src/orders/__init__.py',
+    ]);
+    expect(newFindings(result, 'unlisted-dependency')).toEqual([
+      {
+        tool: 'dependencies',
+        rule: 'unlisted-dependency',
+        path: 'src/billing/invoice.py',
+        identity: 'unlisted:pyyaml',
+        message:
+          'Package pyyaml is imported (as yaml) but not listed in pyproject.toml. Add it to the project dependencies (a dev dependency group for tests and tooling). To allow it for some paths, add a "python.exceptions" entry for unlisted-dependency in nitpicker.config.json.',
+        classification: 'enforceable',
+      },
+    ]);
+  });
 });

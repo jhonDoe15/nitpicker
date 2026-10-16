@@ -111,6 +111,7 @@ export function createMutationAnalyzer(settings = {}) {
     exclusions: [],
     reportedTools: ['mutmut'],
     dependencies: [PYTHON_ANALYZER_NAME],
+    toleratedDependencyErrors: ['tests', 'test-runtime', 'dependencies'],
     shardWeight: MUTATION_SHARD_WEIGHT,
     timeoutMs: MUTATION_TIMEOUT_MS,
     createInvocation: pythonInvocation(settings, MUTATION_ANALYZER_NAME),
