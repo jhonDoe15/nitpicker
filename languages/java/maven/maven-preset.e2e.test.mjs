@@ -155,6 +155,11 @@ describe.skipIf(!enabled)('Java preset on Maven builds', () => {
           ),
         ),
       ).toEqual([true, true, true, true]);
+      expect(
+        fromMaven
+          .filter((finding) => finding.rule === 'TestClassWithoutTestCases')
+          .map((finding) => finding.path),
+      ).toEqual(['src/test/java/guards/HelpersTest.java']);
     },
     2 * GRADLE_STEP_TIMEOUT_MS,
   );

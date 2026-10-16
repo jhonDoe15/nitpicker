@@ -1,4 +1,4 @@
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
@@ -13,6 +13,11 @@ afterEach(() => {
 });
 
 const METHOD = 'Forbidden method invocation';
+const SIGNATURES = readFileSync(
+  path.join(import.meta.dirname, '../gradle/rules/forbidden-apis.txt'),
+  'utf8',
+);
+const NEW_THREAD = /^@defaultMessage new-thread: (.+)$/m.exec(SIGNATURES)[1];
 const REPORT = [
   'Picked up JAVA_TOOL_OPTIONS: -Dx=y',
   'Reading API signatures: /gradle/rules/forbidden-apis.txt',
@@ -22,7 +27,7 @@ const REPORT = [
   'ERROR:   in demo.Legacy (Legacy.java:11)',
   `ERROR: ${METHOD}: java.lang.Thread#sleep(**) [thread-sleep: Do not sleep in production code.]`,
   'ERROR:   in demo.Legacy$Worker (Legacy.java:15)',
-  `ERROR: ${METHOD}: java.lang.Thread#<init>(**) [new-thread: Do not start threads by hand.]`,
+  `ERROR: ${METHOD}: java.lang.Thread#start() [new-thread: ${NEW_THREAD}]`,
   'ERROR:   in demo.Legacy (Legacy.java:16)',
   `ERROR: ${METHOD}: java.lang.Thread#sleep(**) [thread-sleep: Do not sleep in production code.]`,
   'ERROR:   in demo.Legacy$Worker (Legacy.java:30)',
@@ -72,14 +77,7 @@ describe('parseForbiddenApiUses', () => {
         11,
       ),
       use(...sleep, 'demo.Legacy$Worker', 'Legacy.java', 15),
-      use(
-        'java.lang.Thread#<init>(**)',
-        'new-thread',
-        'Do not start threads by hand.',
-        'demo.Legacy',
-        'Legacy.java',
-        16,
-      ),
+      use('java.lang.Thread#start()', 'new-thread', NEW_THREAD, 'demo.Legacy', 'Legacy.java', 16),
       use(...sleep, 'demo.Legacy$Worker', 'Legacy.java', 30),
       use(
         'java.lang.Runtime#exec(java.lang.String, java.lang.String[])',
@@ -116,7 +114,8 @@ describe('readForbiddenApiFindings', () => {
         'If it is right here, add an exception for forbiddenapis/legacy-date-time in nitpicker.config.json.',
       'Do not sleep in production code. Found: Thread.sleep. ' +
         'If it is right here, add an exception for forbiddenapis/thread-sleep in nitpicker.config.json.',
-      'Do not start threads by hand. Found: new Thread. ' +
+      'Do not start threads by hand. Submit the work to an injected ExecutorService ' +
+        '(a ThreadFactory or a shutdown hook may still create the Thread). Found: Thread.start. ' +
         'If it is right here, add an exception for forbiddenapis/new-thread in nitpicker.config.json.',
       'Do not sleep in production code. Found: Thread.sleep. ' +
         'If it is right here, add an exception for forbiddenapis/thread-sleep in nitpicker.config.json.',
@@ -230,6 +229,91 @@ describe('readForbiddenApiFindings', () => {
     expect(read([':4', ", field declaration of 'at'"])).toEqual([expect.any(String), field]);
   });
 
+  it('bans every way to start a thread by hand and names the builder in the message', () => {
+    const newThread = SIGNATURES.split(/\n\s*\n/)
+      .filter((group) => group.includes('@defaultMessage new-thread:'))
+      .flatMap((group) => group.split('\n').filter((line) => /^[a-z]/.test(line)));
+    const root = project();
+    writeFileSync(
+      path.join(root, 'build/nitpicker/forbidden-apis.txt'),
+      [
+        `ERROR: ${METHOD}: java.lang.Thread$Builder#start(java.lang.Runnable) [new-thread: x]`,
+        'ERROR:   in demo.Legacy (Legacy.java:9)',
+      ].join('\n'),
+    );
+
+    const [finding] = readForbiddenApiFindings(path.join(root, 'build/nitpicker'), {
+      locate,
+      projectRoot: root,
+    });
+
+    expect(newThread).toEqual([
+      'java.lang.Thread#start()',
+      'java.lang.Thread#startVirtualThread(java.lang.Runnable)',
+      'java.lang.Thread$Builder#start(java.lang.Runnable)',
+    ]);
+    expect(finding.message).toMatch(/^x Found: Thread\.Builder\.start\. /);
+  });
+
+  it('places a wrapped or split declaration, keeps one it cannot place on its class line and drops synthetic ones', () => {
+    const root = project();
+    const banned =
+      'ERROR: Forbidden class/interface use: java.util.Date [legacy-date-time: Use java.time.]';
+    const declarations = [
+      "Report (Report.java, method declaration of 'build(java.lang.String,java.lang.String," +
+        "java.lang.String,java.lang.String,java.lang.String,java.util.Date)')",
+      "Report (Report.java, method declaration of 'summary(java.lang.String,java.util.Date)')",
+      "Report (Report.java, method declaration of 'startOf(java.lang.String)')",
+      "Report (Report.java, field declaration of 'at')",
+      "Report (Report.java, method declaration of 'getAt()')",
+      "Report (Report.java, method declaration of 'generated(java.util.Date)')",
+      "Report (Report.java, method declaration of 'lambda$summary$0(java.util.Date)')",
+      "Report$ReportBuilder (Report.java, field declaration of 'at')",
+      "Report$ReportBuilder (Report.java, method declaration of 'at(java.util.Date)')",
+      "Report$1 (Report.java, field declaration of 'val$date')",
+    ];
+    writeFileSync(
+      path.join(root, 'build/nitpicker/forbidden-apis.txt'),
+      declarations.flatMap((place) => [banned, `ERROR:   in demo.${place}`]).join('\n'),
+    );
+    writeFileSync(
+      path.join(root, 'src/main/java/demo/Report.java'),
+      [
+        'package demo;',
+        '',
+        '@Getter',
+        'public final class Report {',
+        '  /** The Date at which it was issued; see {@link #summary(String, Date)}. */',
+        '  private Date at;',
+        '',
+        '  public static String build(',
+        '      String title, String author, String owner,',
+        '      String region,',
+        '      String currency,',
+        '      Date issuedOn) {',
+        '    return title + "summary(Date x) {";',
+        '  }',
+        '',
+        '  public static String summary(String title, Date issuedOn) {',
+        '    return title;',
+        '  }',
+        '',
+        '  public static Date',
+        '      startOf(String title) {',
+        '    return null;',
+        '  }',
+        '}',
+      ].join('\n'),
+    );
+
+    const findings = readForbiddenApiFindings(path.join(root, 'build/nitpicker'), {
+      locate,
+      projectRoot: root,
+    });
+
+    expect(findings.map(({ location }) => location.line)).toEqual([8, 16, 21, 6, 4]);
+  });
+
   it('skips a Date another API returns that the same statement converts with toInstant()', () => {
     const root = project();
     const legacyDate = (line) => [
@@ -238,7 +322,7 @@ describe('readForbiddenApiFindings', () => {
     ];
     writeFileSync(
       path.join(root, 'build/nitpicker/forbidden-apis.txt'),
-      [3, 7, 8, 10, 11].flatMap((line) => legacyDate(line)).join('\n'),
+      [3, 7, 8, 10, 11, 13, 15, 16].flatMap((line) => legacyDate(line)).join('\n'),
     );
     writeFileSync(
       path.join(root, 'src/main/java/demo/Expiry.java'),
@@ -254,6 +338,11 @@ describe('readForbiddenApiFindings', () => {
         '  }',
         '  Instant held(X509Certificate certificate) { Date date = certificate.getNotAfter();',
         '    return new Date().toInstant(); }',
+        '  Optional<Instant> referenced(Optional<X509Certificate> certificate) {',
+        '    return certificate.map(X509Certificate::getNotAfter).map(Date::toInstant); }',
+        '  List<Instant> valid(List<X509Certificate> certificates) {',
+        '    return certificates.stream().filter(c -> c.getNotAfter().after(c.getNotBefore()))',
+        '        .map(c -> c.getNotAfter().toInstant()).toList(); }',
         '}',
       ].join('\n'),
     );
@@ -266,6 +355,7 @@ describe('readForbiddenApiFindings', () => {
     expect(findings.map(({ rule, location }) => [rule, location.line])).toEqual([
       ['legacy-date-time', 10],
       ['legacy-date-time', 11],
+      ['legacy-date-time', 15],
     ]);
   });
 });
