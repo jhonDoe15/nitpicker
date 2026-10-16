@@ -18,7 +18,7 @@ export function parseJdeps(text) {
   return edges;
 }
 
-function outerClass(className) {
+export function outerClass(className) {
   return className.split('$')[0];
 }
 
