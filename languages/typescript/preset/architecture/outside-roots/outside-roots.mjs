@@ -3,8 +3,8 @@ import { GENERATED_CODE_PATTERN } from '../../layout.mjs';
 
 export const NO_IMPORT_OUTSIDE_ROOTS = 'no-import-outside-roots';
 
-const EXCEPTION_ROUTE =
-  'Move it under a source root or add its folder to layout.sourceRoots; to leave it unchecked, list it in "exclude" in nitpicker.config.json.';
+const OUTSIDE_ROOTS_COMMENT =
+  'Production code imports only from layout.sourceRoots: move the imported code under a source root, or add its folder to layout.sourceRoots so the gate checks it. Excluding the imported file instead is a policy loosening that fails until a person accepts it.';
 const NON_PROJECT_DEPENDENCIES = [
   'core',
   'npm',
@@ -23,6 +23,7 @@ export function outsideRootsRule({ productionSource, roots, excludePattern }) {
   return {
     name: NO_IMPORT_OUTSIDE_ROOTS,
     severity: 'error',
+    comment: OUTSIDE_ROOTS_COMMENT,
     from: { path: productionSource },
     to: {
       pathNot: [
@@ -37,14 +38,4 @@ export function outsideRootsRule({ productionSource, roots, excludePattern }) {
       dependencyTypesNot: NON_PROJECT_DEPENDENCIES,
     },
   };
-}
-
-export function architectureMessage(rule, { from, to, cycle }) {
-  if (cycle !== undefined) {
-    return `Dependency cycle: ${cycle.join(' -> ')} -> ${cycle[0]}`;
-  }
-  const message = `${from} must not depend on ${to}`;
-  return rule === NO_IMPORT_OUTSIDE_ROOTS
-    ? `${message}: production code imports only from layout.sourceRoots. ${EXCEPTION_ROUTE}`
-    : message;
 }

@@ -4,11 +4,7 @@ import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import { cruiseWithConfig } from '../test-support/strict-cruise.mjs';
 import { createQualityChecks } from '../../quality-checks.mjs';
-import {
-  NO_IMPORT_OUTSIDE_ROOTS,
-  architectureMessage,
-  outsideRootsRule,
-} from './outside-roots.mjs';
+import { NO_IMPORT_OUTSIDE_ROOTS, outsideRootsRule } from './outside-roots.mjs';
 
 const tsConfig = path.resolve(import.meta.dirname, '../fixtures/tsconfig.fixture.json');
 const created = [];
@@ -124,24 +120,10 @@ describe('outsideRootsRule', () => {
   });
 });
 
-describe('architectureMessage', () => {
-  it('names the exception route for the outside-roots rule', () => {
-    const message = architectureMessage(NO_IMPORT_OUTSIDE_ROOTS, {
-      from: 'src/a.ts',
-      to: 'lib/b.ts',
-    });
-
-    expect(message).toBe(
-      'src/a.ts must not depend on lib/b.ts: production code imports only from layout.sourceRoots. ' +
-        'Move it under a source root or add its folder to layout.sourceRoots; to leave it unchecked, list it in "exclude" in nitpicker.config.json.',
+describe('the outside-roots message', () => {
+  it('names moving the code under a source root first and the loosening route second', () => {
+    expect(outsideRootsRule({ productionSource: '^src/', roots: ['src'] }).comment).toBe(
+      'Production code imports only from layout.sourceRoots: move the imported code under a source root, or add its folder to layout.sourceRoots so the gate checks it. Excluding the imported file instead is a policy loosening that fails until a person accepts it.',
     );
-  });
-
-  it('keeps other rules short', () => {
-    expect(architectureMessage('other', { from: 'a', to: 'b' })).toBe('a must not depend on b');
-  });
-
-  it('describes a cycle', () => {
-    expect(architectureMessage('x', { cycle: ['a', 'b'] })).toBe('Dependency cycle: a -> b -> a');
   });
 });

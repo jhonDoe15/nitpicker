@@ -161,7 +161,6 @@ function typeAndArchitectureChecksFor(layout) {
       patterns: layout.graphRoots,
       exclusions: [EXCLUDED_PATH_PATTERN, ...layout.exclude],
       configRelativePath: ARCHITECTURE_CONFIG,
-      exclude: DEPENDENCY_PATH_PATTERN,
       shardWeight: 7,
       configurationFiles: [
         'languages/typescript/preset/layout.mjs',

@@ -8,9 +8,12 @@ import {
 import { runPrettier } from './static-checks/prettier.mjs';
 import { runTypecheck } from './static-checks/typescript.mjs';
 import { readLayout } from '../preset/head-policy.mjs';
-import { architectureMessage } from '../preset/architecture/outside-roots/outside-roots.mjs';
 import { existingRoots } from '../preset/layout.mjs';
 import { loadDependencyGraph } from './dependency-graph/project-dependency-graph.mjs';
+import {
+  REACH_THROUGH_SHARED_RULE,
+  sharedReachPath,
+} from '../preset/architecture/strict-boundary-rules.mjs';
 
 const invokedPath = process.argv[1];
 
@@ -63,20 +66,32 @@ function runArchitecture(options) {
   return normalizeArchitectureViolations(report, options.analyzerName);
 }
 
+function reportedViolations(report) {
+  const modules = Array.isArray(report.modules) ? report.modules : [];
+  return report.summary.violations.flatMap((violation) => {
+    if (violation?.rule?.name !== REACH_THROUGH_SHARED_RULE) {
+      return [violation];
+    }
+    const via = sharedReachPath(violation, modules);
+    return via === undefined ? [] : [{ ...violation, via: via.map((name) => ({ name })) }];
+  });
+}
+
 export function normalizeArchitectureViolations(report, analyzerName) {
   if (!Array.isArray(report?.summary?.violations)) {
     throw new TypeError('dependency-cruiser report is missing summary.violations');
   }
   const occurrences = new Map();
-  return report.summary.violations.map((violation, index) => {
+  const comments = ruleComments(report);
+  return reportedViolations(report).map((violation, index) => {
     const context = `dependency-cruiser violation ${String(index)}`;
     const rule = requiredString(violation?.rule?.name, `${context}.rule.name`);
     const severity = requiredString(violation?.rule?.severity, `${context}.rule.severity`);
     const from = normalizedRelativePath(requiredString(violation.from, `${context}.from`), context);
-    const to = normalizedRelativePath(requiredString(violation.to, `${context}.to`), context);
+    const to = displayedPath(requiredString(violation.to, `${context}.to`));
     const cycle = violation.type === 'cycle' ? canonicalCycle(violation.cycle, context) : undefined;
     const semanticIdentity = cycle === undefined ? `target:${to}` : `cycle:${cycle.join('>')}`;
-    const canonicalPath = cycle?.[0] ?? from;
+    const canonicalPath = cycle !== undefined && isInSnapshot(cycle[0]) ? cycle[0] : from;
     const occurrenceKey = JSON.stringify([rule, canonicalPath, semanticIdentity]);
     const occurrence = (occurrences.get(occurrenceKey) ?? 0) + 1;
     occurrences.set(occurrenceKey, occurrence);
@@ -85,10 +100,23 @@ export function normalizeArchitectureViolations(report, analyzerName) {
       rule,
       path: canonicalPath,
       identity: `${semanticIdentity}|occurrence:${String(occurrence)}`,
-      message: architectureMessage(rule, { from, to, cycle }),
+      message: withComment(
+        cycle === undefined
+          ? `${from} must not depend on ${to}${viaText(violation.via)}`
+          : `Dependency cycle: ${cycle.join(' -> ')} -> ${cycle[0]}`,
+        comments.get(rule),
+      ),
       classification: severity === 'error' ? 'enforceable' : 'descriptive',
     };
   });
+}
+
+function displayedPath(value) {
+  return path.posix.normalize(value.replaceAll('\\', '/')).replace(/^\.\//, '');
+}
+
+function isInSnapshot(value) {
+  return !value.startsWith('../') && !path.posix.isAbsolute(value) && !/^[A-Za-z]:\//.test(value);
 }
 
 function canonicalCycle(value, context) {
@@ -96,11 +124,34 @@ function canonicalCycle(value, context) {
     throw new TypeError(`${context}.cycle must contain at least two modules`);
   }
   const names = value.map((item, index) =>
-    normalizedRelativePath(
-      requiredString(item?.name, `${context}.cycle[${String(index)}].name`),
-      context,
-    ),
+    displayedPath(requiredString(item?.name, `${context}.cycle[${String(index)}].name`)),
   );
   const rotations = names.map((_, index) => [...names.slice(index), ...names.slice(0, index)]);
-  return rotations.sort((left, right) => left.join('\0').localeCompare(right.join('\0')))[0];
+  const inSnapshot = rotations.filter(([first]) => isInSnapshot(first));
+  return (inSnapshot.length > 0 ? inSnapshot : rotations).sort((left, right) =>
+    left.join('\0').localeCompare(right.join('\0')),
+  )[0];
+}
+
+function ruleComments(report) {
+  const rules = report.summary.ruleSetUsed?.forbidden ?? [];
+  return new Map(
+    rules
+      .filter((rule) => typeof rule?.name === 'string' && typeof rule.comment === 'string')
+      .map((rule) => [rule.name, rule.comment]),
+  );
+}
+
+function withComment(message, comment) {
+  return comment === undefined ? message : `${message}. ${comment}`;
+}
+
+function viaText(via) {
+  if (!Array.isArray(via) || via.length < 2) {
+    return '';
+  }
+  const steps = via
+    .slice(0, -1)
+    .map((step) => (typeof step?.name === 'string' ? displayedPath(step.name) : '?'));
+  return ` through ${steps.join(' -> ')}`;
 }

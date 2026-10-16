@@ -31,6 +31,7 @@ export default {
   ],
   required: [],
   options: {
+    preserveSymlinks: true,
     doNotFollow: {
       path: [EXCLUDED_PATH_PATTERN, excludePattern]
         .filter((pattern) => pattern !== undefined)
