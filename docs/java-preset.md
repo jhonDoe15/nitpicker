@@ -772,10 +772,16 @@ A Checkstyle rule prints as its full check class, for example
   against `rules/forbidden-apis.txt`. Each signature group has a tag that becomes the rule name
   (`thread-sleep`); the report is `forbidden-apis.txt`. Source locations come
   from the class's debug line numbers; a field, parameter, return type, record component or
-  supertype of a banned type is placed on its declaration in the source. `new-thread` bans `Thread.start()`, so a `ThreadFactory`
-  or `Runtime.addShutdownHook` may still construct a `Thread`. `legacy-date-time` skips a
-  statement that converts a `Date` another API returns with `toInstant()` and does not name `Date`
-  itself (`certificate.getNotAfter().toInstant()`).
+  supertype of a banned type is placed on its declaration in the source (comments and strings
+  do not count); one forbiddenapis cannot tie to a line goes on its class's line, and generated
+  members (lambdas, record accessors, Lombok accessors and builders of a reported field) are
+  dropped. forbiddenapis reads type descriptors, so a generic argument such as `List<Date>` or
+  `Map<String, Date>` is not reported. `new-thread` bans `Thread.start()`,
+  `Thread.startVirtualThread` and `Thread.Builder.start`, so a `ThreadFactory` or
+  `Runtime.addShutdownHook` may still construct a `Thread`. `legacy-date-time` skips a `Date`
+  another API returns when `.toInstant()` follows the call right away, on that line or at the start
+  of the next (`certificate.getNotAfter().toInstant()`), or it is converted with
+  `map(Date::toInstant)`.
 - **Duplicates.** The jscpd check is unchanged. `nitpickerCpd` runs PMD's copy-paste detector
   (BSD-style, already inside the pinned PMD) over main and test sources with identifiers and
   literals ignored and at least 100 tokens, so a copy with renamed variables is found. When jscpd

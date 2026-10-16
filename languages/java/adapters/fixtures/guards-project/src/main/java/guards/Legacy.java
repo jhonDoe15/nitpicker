@@ -10,6 +10,7 @@ import java.util.Date;
 import java.util.concurrent.ThreadFactory;
 
 public final class Legacy {
+  /** The Date this was created, see {@link #age(Date)}. */
   private Date created; // violation: forbiddenapis/legacy-date-time
 
   public Object stamp() {
@@ -38,6 +39,10 @@ public final class Legacy {
 
   public void spawn(Runnable work) {
     new Thread(work).start(); // violation: forbiddenapis/new-thread
+  }
+
+  public void spawnVirtual(Runnable work) {
+    Thread.ofVirtual().start(work); // violation: forbiddenapis/new-thread
   }
 
   public ThreadFactory daemons() {

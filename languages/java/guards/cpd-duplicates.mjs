@@ -24,7 +24,7 @@ const BOILERPLATE_LINES = [
 ];
 
 const STRING_LITERAL = /"(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*'/g;
-const LITERAL_OR_COMMENT =
+export const LITERAL_OR_COMMENT =
   /"""[\s\S]*?"""|"(?:[^"\\\n]|\\.)*"|'(?:[^'\\\n]|\\.)*'|\/\*[\s\S]*?\*\/|\/\/[^\n]*/g;
 const NUMBER = /(?:\b\d|\.\d)(?:[eEpP][+-]|[\w.])*/g;
 const WORD = /[\w$]+/g;
@@ -166,7 +166,7 @@ function jscpdRange(side, lines) {
   return { file: side.file, line: side.line, endLine: side.line + (lines ?? 0) };
 }
 
-export function readCpdClones(reportRoot, projectRoot) {
+function readCpdClones(reportRoot, projectRoot) {
   const report = path.join(reportRoot, CPD_REPORT);
   return existsSync(report)
     ? distinctClones(cpdClones(readFileSync(report, 'utf8'), projectRoot)).filter(
