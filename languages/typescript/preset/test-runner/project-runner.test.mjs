@@ -1,13 +1,15 @@
 import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { PACKAGE_ROOT } from '../../../../core/tooling/tool-resolution.mjs';
+import { headPolicyEnvironment, withHeadPolicyFile } from '../head-policy.mjs';
 import { policyTestRunner, projectTestRunner, recordedTestRunner } from './project-runner.mjs';
 
 const roots = [];
 
 afterEach(() => {
+  vi.unstubAllEnvs();
   for (const root of roots.splice(0)) {
     rmSync(root, { recursive: true, force: true });
   }
@@ -41,6 +43,25 @@ describe('the test runner nitpicker runs for a snapshot', () => {
         arguments_: ['run', '--project', 'unit'],
         precedingCommands: ['tsc'],
       },
+    });
+  });
+
+  it('takes the runner and the command from the snapshot when its policy names its own runner', () => {
+    const base = project({ test: 'jest --ci' });
+    const live = project({ test: 'vitest run' });
+    const policy = { tools: { tests: { detectedRunner: 'vitest', snapshotRunner: 'jest' } } };
+
+    const detected = withHeadPolicyFile(policy, (policyFile) => {
+      for (const [name, value] of Object.entries(headPolicyEnvironment(policyFile))) {
+        vi.stubEnv(name, value);
+      }
+      return projectTestRunner({ projectRoot: base, liveProjectRoot: live });
+    });
+
+    expect(detected).toEqual({
+      runner: 'jest',
+      evidence: 'nitpicker.config.json "tools.tests.runner"',
+      command: { environment: {}, nodeArguments: [], arguments_: ['--ci'], precedingCommands: [] },
     });
   });
 
