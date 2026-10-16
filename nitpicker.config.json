@@ -84,6 +84,17 @@
       "reason": "Opt-in end-to-end suite that runs Gradle and Maven builds (minutes per step); it cannot be made faster and is skipped unless NITPICKER_JAVA_E2E=1."
     },
     {
+      "rule": "nitpicker/no-unsafe-path-join",
+      "paths": [
+        "languages/java/adapters/gradle-reports/report-modules.mjs",
+        "languages/java/adapters/jpa/jpa-source-filters.mjs",
+        "languages/java/adapters/reporting/java-reports.mjs",
+        "languages/java/adapters/test-times/slow-tests.mjs",
+        "languages/java/builds/project-wide.mjs"
+      ],
+      "reason": "These readers join the report directory nitpicker itself created, the file names the build tools wrote into it, and the source roots the build reported for the project under analysis; none of them comes from user input or from the code under analysis."
+    },
+    {
       "rule": "nitpicker/no-raised-test-timeout",
       "paths": ["core/installed.test.mjs"],
       "reason": "Opt-in end-to-end suite that packs the package and runs real npm installs for three dependency layouts (minutes per layout, and removing each installed tree takes long enough to need its own hook timeout); it is skipped unless NITPICKER_INSTALLED_TEST=1."
