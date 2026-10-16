@@ -2,6 +2,7 @@ import path from 'node:path';
 import { readFileSync } from 'node:fs';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { collectJavaFindings } from '../java-diff.mjs';
+import { exceptionRoute } from '../../../../shared/exceptions/rule-names.mjs';
 import { analyzeJavaSnapshot } from '../java-runner.mjs';
 import {
   BROKEN,
@@ -128,7 +129,12 @@ describe.skipIf(!kotlinE2eEnabled)('Kotlin preset coverage and structure end to 
       result.newEnforceable
         .filter(({ tool }) => tool === 'jacoco')
         .map(({ message, location }) => ({ message, location })),
-    ).toEqual([{ message: 'Branch coverage is 50.00%; minimum is 95%', location: { line: 4 } }]);
+    ).toEqual([
+      {
+        message: `Branch coverage is 50.00%; minimum is 95%. ${exceptionRoute({ rule: 'changed-branch-coverage', path: `${kotlinSources}/Label.kt`, function: 'Label.larger' })}`,
+        location: { line: 4 },
+      },
+    ]);
     expect(fromTool(result.newEnforceable, 'pit')).toEqual([]);
     expect(
       result.newFindings.filter(
@@ -162,6 +168,9 @@ describe.skipIf(!kotlinE2eEnabled)('Kotlin preset coverage and structure end to 
   });
   it('applies the structure, CRAP, clone and stability rules to one change', () => {
     const result = diffOf(project, 'head', { base: 'structure-base' });
+    function routeOf(rule, file, name) {
+      return exceptionRoute({ rule, path: `${kotlinSources}/${file}`, function: name });
+    }
     const messageOf = (rule, symbol) =>
       onlyTools(result.newEnforceable, 'structure', 'crap').find(
         (finding) => finding.rule === rule && finding.symbol === symbol,
@@ -189,13 +198,13 @@ describe.skipIf(!kotlinE2eEnabled)('Kotlin preset coverage and structure end to 
       'structure function-statements-limit rank',
     ]);
     expect(messageOf('function-control-nesting-limit', 'depth')).toBe(
-      'depth nests control flow 3 deep (limit 2). Return early instead of nesting.',
+      `depth nests control flow 3 deep (limit 2). Return early instead of nesting. ${routeOf('function-control-nesting-limit', 'change/Deep.kt', 'depth')}`,
     );
     expect(messageOf('function-parameters-limit', 'product')).toBe(
-      'product grew from 4 to 5 parameters (limit 3). Group related parameters into one object instead of adding another.',
+      `product grew from 4 to 5 parameters (limit 3). Group related parameters into one object instead of adding another. ${routeOf('function-parameters-limit', 'Grown.kt', 'product')}`,
     );
     expect(messageOf('crap-score-limit', 'classify2')).toBe(
-      'classify2 CRAP rose from 110 to 132 (limit 9). Put new code in a new function and cover it with tests.',
+      `classify2 CRAP rose from 110 to 132 (limit 9). Put new code in a new function and cover it with tests. ${routeOf('crap-score-limit', 'Complex2.kt', 'classify2')}`,
     );
     expect(rulesOf(result.unchangedFindings, 'structure', 'crap')).toEqual([
       'crap crap-score-limit classify',
