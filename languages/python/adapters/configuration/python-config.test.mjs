@@ -51,6 +51,7 @@ describe('python config validation', () => {
     'reportAny',
     'reportImplicitOverride',
     'reportUnusedCallResult',
+    'slow-test',
   ])('accepts the exception rule %s', (rule) => {
     expect(() => {
       validate({
@@ -141,6 +142,10 @@ describe('python config validation', () => {
     [
       { exceptions: [{ rule: 'frozen-dataclas', paths: ['a'], reason: 'r' }] },
       '"frozen-dataclas"; did you mean "frozen-dataclass"?',
+    ],
+    [
+      { exceptions: [{ rule: 'slow-tst', paths: ['a'], reason: 'r' }] },
+      '"slow-tst"; did you mean "slow-test"?',
     ],
     [{ importLinter: 'yes' }, '"python.importLinter" must be true or false'],
     [{ environment: '' }, '"python.environment" must be a non-empty string'],

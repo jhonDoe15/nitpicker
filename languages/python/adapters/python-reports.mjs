@@ -23,6 +23,8 @@ import {
 } from './analysis/python-structure.mjs';
 import { COVERAGE_REPORT, FORMAT_REPORT, MANIFEST_REPORT, RUFF_REPORT } from './python-tools.mjs';
 import { TYPES_REPORT } from './python-types.mjs';
+import { PYTEST_REPORT } from './execution/python-test-step.mjs';
+import { readPytestReport, slowTestFindings } from './test-results/slow-tests.mjs';
 
 const FORMATTER_TOOLS = { ruff: 'ruff-format', black: 'black' };
 const NO_TESTS_RULE = 'no-tests-ran';
@@ -40,6 +42,7 @@ export function readPythonFindings({ projectRoot, reportRoot, crapLimit, policy 
   const manifest = JSON.parse(readReport(reportRoot, MANIFEST_REPORT));
   const roots = [...new Set([path.resolve(projectRoot), realpathSync(projectRoot)])];
   const coverage = readReport(reportRoot, COVERAGE_REPORT);
+  const pytest = readPytestReport(reportRoot, PYTEST_REPORT);
   return {
     findings: applyRuleHints([
       ...ruffFindings(JSON.parse(readReport(reportRoot, RUFF_REPORT)), { roots, projectRoot }),
@@ -64,6 +67,7 @@ export function readPythonFindings({ projectRoot, reportRoot, crapLimit, policy 
       ...readDuplicateFindings(reportRoot),
       ...readCouplingFindings(reportRoot),
       ...readImportLinterFindings(reportRoot),
+      ...slowTestFindings(pytest, { projectRoot, policy }),
     ]),
   };
 }

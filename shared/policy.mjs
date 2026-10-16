@@ -180,7 +180,6 @@ export const HELD_MESSAGES = {
     'Folder: {value} {kind} files (limit {limit}), allowed because base was {base}; any increase fails.',
 };
 
-const BOTH = { typescript: true, java: true, python: false };
 const ALL = { typescript: true, java: true, python: true };
 const TYPESCRIPT_ONLY = { typescript: true, java: false, python: false };
 const withKotlin = (enforcedBy, kotlin) => ({ ...enforcedBy, kotlin });
@@ -305,7 +304,7 @@ export const RULES = [
     id: RULE_IDS.slowTest,
     check: 'test-runtime',
     limit: `a test the change adds or edits taking more than ${String(TEST_TIME_DEFAULTS.unitTestSeconds)} s (unit) or ${String(TEST_TIME_DEFAULTS.integrationTestSeconds)} s (integration); override with \`thresholds.unitTestSeconds\` and \`thresholds.integrationTestSeconds\``,
-    enforcedBy: withKotlin({ ...BOTH, typescript: false }, true),
+    enforcedBy: withKotlin({ ...ALL, typescript: false }, true),
   },
   {
     id: RULE_IDS.componentStoryMissing,

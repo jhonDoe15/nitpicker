@@ -1,7 +1,6 @@
-import { existsSync, writeFileSync } from 'node:fs';
+import { writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { jscpdVersion } from '../../java/adapters/metrics/java-duplicates.mjs';
-import { TESTS_FAILED_RULE } from '../../../shared/rules/finding-helpers.mjs';
 import { scanImports } from './analysis/python-coupling.mjs';
 import { runDuplicates } from './analysis/python-duplicates.mjs';
 import { globToRegExpSource } from '../../../shared/glob.mjs';
@@ -18,31 +17,15 @@ import {
   importRoots,
 } from './execution/python-project.mjs';
 import { RUFF_CONFIG } from './configuration/python-ruff-config.mjs';
-import {
-  detectTestRunner,
-  NO_TESTS_EXIT,
-  pytestLabel,
-  testCommand,
-  testRunnerLabel,
-  testsRan,
-} from './execution/python-test-runner.mjs';
+import { detectTestRunner, pytestLabel, testRunnerLabel } from './execution/python-test-runner.mjs';
+import { COVERAGE_DATA, test } from './execution/python-test-step.mjs';
 import { resolveTypeChecker, typeCheck } from './python-types.mjs';
 import { structure } from './analysis/python-structure.mjs';
 
 export const RUFF_REPORT = 'ruff.sarif';
 export const FORMAT_REPORT = 'format.txt';
-export const COVERAGE_REPORT = 'coverage.json';
 export const MANIFEST_REPORT = 'manifest.json';
-const COVERAGE_CONFIG = 'coveragerc';
-const COVERAGE_DATA = '.coverage';
-const UNTESTABLE_LINES = [
-  String.raw`^\s*if (typing\.)?TYPE_CHECKING:`,
-  String.raw`^\s*if __name__ == .__main__.:`,
-  String.raw`^\s*@(typing\.)?overload\b`,
-  String.raw`^\s*raise NotImplementedError\b`,
-];
-const TEST_FILES = ['test_*.py', '*_test.py', 'conftest.py', '*/tests/*', '*/test/*'];
-const EMPTY_COVERAGE_REPORT = '{"files":{}}';
+export { COVERAGE_REPORT } from './execution/python-test-step.mjs';
 const FORMAT_FAILURE_STATUS = { black: 123, ruff: 2 };
 const PARSE_ERROR = {
   black: /^error: cannot (?:format .+: cannot )?parse\b/i,
@@ -203,53 +186,6 @@ function format(context) {
     );
   }
   writeFileSync(path.join(context.reportRoot, FORMAT_REPORT), paths.join('\n'));
-}
-
-function coverageSources({ projectRoot, project }) {
-  return project.sourceRoots.filter((root) => existsSync(path.join(projectRoot, root)));
-}
-
-function indented(entries) {
-  return entries.map((entry) => `    ${entry}`).join('\n');
-}
-
-function coverageConfig(sources) {
-  return [
-    '[run]',
-    'branch = True',
-    'parallel = False',
-    `source =\n${indented(sources)}`,
-    `omit =\n${indented(TEST_FILES)}`,
-    '[report]',
-    `exclude_lines =\n${indented(UNTESTABLE_LINES)}`,
-    'partial_branches =',
-    '',
-  ].join('\n');
-}
-
-function test(context, outcome) {
-  const sources = coverageSources(context);
-  const config = path.join(context.reportRoot, COVERAGE_CONFIG);
-  writeFileSync(config, coverageConfig(sources));
-  const result = run(context, ['coverage', 'run', '--rcfile', config, ...testCommand(context)], {
-    accepted: [0, NO_TESTS_EXIT],
-    rule: TESTS_FAILED_RULE,
-  });
-  outcome.testsRan = testsRan(result);
-  writeCoverageReport(context, { config, measured: sources.length > 0 });
-}
-
-function writeCoverageReport(context, { config, measured }) {
-  const report = path.join(context.reportRoot, COVERAGE_REPORT);
-  if (!measured) {
-    writeFileSync(report, EMPTY_COVERAGE_REPORT);
-    return;
-  }
-  run(
-    context,
-    ['coverage', 'json', '--rcfile', config, '-o', report, '--fail-under=0', '--ignore-errors'],
-    { rule: 'coverage-failed' },
-  );
 }
 
 function typeCheckerVersion(context) {
