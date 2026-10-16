@@ -1,3 +1,3 @@
 export function Box() {
-  return <div style={{ color: 'red' }} />;
+  return <div style={{ color: 'var(--ink)' }} />;
 }
