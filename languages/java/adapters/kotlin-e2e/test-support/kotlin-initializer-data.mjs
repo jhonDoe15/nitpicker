@@ -1,3 +1,5 @@
+const FIRST_NESTED_THRESHOLD = 5;
+
 export const BOOTER = `package demo
 
 class Booter(value: Int) {
@@ -9,7 +11,7 @@ class Booter(value: Int) {
                 while (total < step) {
                     total += 1
                 }
-${Array.from({ length: 4 }, (_, index) => `                if (step > ${(index + 5) * 10}) {\n                    total -= ${index + 1}\n                }`).join('\n')}
+${Array.from({ length: 4 }, (_, index) => `                if (step > ${(index + FIRST_NESTED_THRESHOLD) * 10}) {\n                    total -= ${index + 1}\n                }`).join('\n')}
             }
         }
     }
@@ -44,7 +46,7 @@ function nestedInit(counter, value, indent) {
             while (${counter} < step) {
                 ${counter} += 1
             }
-${Array.from({ length: 4 }, (_, index) => `            if (step > ${(index + 5) * 10}) {\n                ${counter} -= ${index + 1}\n            }`).join('\n')}
+${Array.from({ length: 4 }, (_, index) => `            if (step > ${(index + FIRST_NESTED_THRESHOLD) * 10}) {\n                ${counter} -= ${index + 1}\n            }`).join('\n')}
         }
     }
 }`

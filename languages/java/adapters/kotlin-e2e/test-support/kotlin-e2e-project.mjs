@@ -130,8 +130,11 @@ tasks.matching { it.name == "nitpickerDetekt" }.configureEach {
 `;
 
 export function copyJdkWithNativeImage(target) {
-  const java = process.env.JAVA_HOME ? path.join(process.env.JAVA_HOME, 'bin/java') : 'java';
-  const settings = spawnSync(java, ['-XshowSettings:properties', '-version'], { encoding: 'utf8' });
+  const settings = spawnSync(
+    'sh',
+    ['-c', 'exec "${JAVA_HOME:+$JAVA_HOME/bin/}java" -XshowSettings:properties -version'],
+    { encoding: 'utf8' },
+  );
   const home = /java\.home = (.+)/.exec(settings.stderr)[1];
   execFileSync('cp', ['-a', home, target]);
   writeFileSync(path.join(target, 'bin/native-image'), '#!/bin/sh\n', { mode: 0o755 });
