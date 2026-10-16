@@ -123,8 +123,13 @@ function strictTypedConfigFor(layout, parserOptions) {
       files: layout.sourceGlobs,
       ...productionScope(layout),
       languageOptions: { parser: tseslint.parser, parserOptions },
-      plugins: { '@typescript-eslint': tseslint.plugin },
-      rules: { ...typedDeclarationRules, ...controlFlowTypedRules },
+      plugins: { '@typescript-eslint': tseslint.plugin, nitpicker: nitpickerRules },
+      rules: {
+        ...typedDeclarationRules,
+        ...controlFlowTypedRules,
+        'nitpicker/exhaustive-union-predicate': 'error',
+        'nitpicker/no-forwarding-wrapper': 'error',
+      },
     },
     {
       files: domainGlobsFor(layout.sourceRoots),

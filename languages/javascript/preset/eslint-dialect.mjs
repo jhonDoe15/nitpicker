@@ -1,5 +1,8 @@
 import path from 'node:path';
-import ts from 'typescript';
+import {
+  parsedTsconfig,
+  PROJECT_TSCONFIG,
+} from '../../typescript/preset/modules/tsconfig-files.mjs';
 import {
   isJavascriptPolicy,
   JAVASCRIPT_EXTENSIONS,
@@ -123,10 +126,7 @@ export function scriptRuleEntries(files) {
 }
 
 export function projectChecksJavascript(projectRoot) {
-  const file = path.join(projectRoot, 'tsconfig.json');
-  const { config } = ts.readConfigFile(file, (name) => ts.sys.readFile(name));
-  const host = { ...ts.sys, readDirectory: () => [] };
-  return ts.parseJsonConfigFileContent(config ?? {}, host, projectRoot).options.checkJs === true;
+  return parsedTsconfig(path.join(projectRoot, PROJECT_TSCONFIG)).options.checkJs === true;
 }
 
 export function untypedScriptEntries(policy, checksJavascript) {

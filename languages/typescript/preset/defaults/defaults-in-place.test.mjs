@@ -31,6 +31,9 @@ const POLICY_PATHS = [
   'languages/javascript/preset/javascript-preset.mjs',
   'languages/javascript/preset/documentation/jsdoc.mjs',
   'languages/javascript/preset/eslint-dialect.mjs',
+  'languages/typescript/conventions/layout-measures.mjs',
+  'languages/typescript/conventions/prettier-conventions.mjs',
+  'languages/typescript/conventions/print-width.mjs',
   'languages/typescript/preset/layout.mjs',
   'languages/typescript/preset/head-policy.mjs',
   'languages/typescript/preset/tool-configs.mjs',
@@ -49,6 +52,8 @@ const POLICY_PATHS = [
   'languages/typescript/adapters/eslint',
   'languages/typescript/adapters/immutable-types',
   'languages/typescript/preset/syntax',
+  'languages/typescript/preset/modules',
+  'languages/typescript/preset/test-environment',
   'shared',
 ];
 const temporaryRoots = [];
@@ -222,6 +227,42 @@ describe('default configs used in place', () => {
       expect(run.reports.get('entry-points')?.findings).toEqual([]);
       expect(run.temporaryPolicyLinks).toEqual([]);
     });
+  });
+});
+
+describe('with a noisy jsdom project config', () => {
+  const noisyConfig = [
+    "console.log('loading the test config');",
+    "console.warn('Your Vite config uses features that are unsupported by configLoader');",
+    "export default { test: { environment: 'jsdom' } };",
+    '',
+  ].join('\n');
+
+  it('lints without tool errors and reports only the test that never uses the DOM', () => {
+    const lintCheck = eslintChecks.find(({ name }) => name === 'eslint-lint');
+    const projectRoot = createProject({
+      ...oldLayoutFiles(),
+      'vitest.config.mjs': noisyConfig,
+      'tests/unit/page.test.ts': [
+        "import { expect, it } from 'vitest';",
+        '',
+        "it('has a document', () => {",
+        '  expect(globalThis.document).toBeDefined();',
+        '});',
+        '',
+      ].join('\n'),
+    });
+    const run = runInPlace(
+      createEslintAnalyzer({ ...lintCheck, version: 'fixture', configurationHash: 'fixture' }),
+      projectRoot,
+    );
+    expect(run.toolErrors).toEqual([]);
+    expect(
+      run.reports
+        .get('eslint-lint')
+        ?.findings.filter(({ rule }) => rule === 'nitpicker/no-unused-dom-environment')
+        .map(({ path: findingPath }) => findingPath),
+    ).toEqual(['tests/unit/greeting.test.ts']);
   });
 });
 

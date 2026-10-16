@@ -24,7 +24,21 @@ function readBaseConfig(baseProjectRoot, warn) {
   }
 }
 
-export function createBaseSetupResolver({ headConfig, injectedAnalyzers, warn = () => undefined }) {
+export function baseSetupResolver(cli, headConfig, headPolicy) {
+  return createBaseSetupResolver({
+    headConfig,
+    conventions: headPolicy.conventions,
+    injectedAnalyzers: cli.injectedAnalyzers,
+    warn: (message) => cli.stderr.write(`nitpicker: ${message}\n`),
+  });
+}
+
+export function createBaseSetupResolver({
+  headConfig,
+  conventions,
+  injectedAnalyzers,
+  warn = () => undefined,
+}) {
   return ({ baseProjectRoot, headSnapshotRoot, moves, analyzers }) => {
     const baseConfig = readBaseConfig(baseProjectRoot, warn);
     const compared = baseConfig ?? {};
@@ -39,16 +53,19 @@ export function createBaseSetupResolver({ headConfig, injectedAnalyzers, warn = 
     return {
       ...(baseConfig === undefined || unchanged
         ? {}
-        : measuredBase({ baseConfig, headConfig, injectedAnalyzers, analyzers })),
+        : measuredBase({ baseConfig, headConfig, conventions, injectedAnalyzers, analyzers })),
       ...(unchanged ? {} : policyChangeFields(compared, headConfig, scope)),
       notices: excludedFileNotices({ baseConfig: compared, headConfig, scope, baseProjectRoot }),
     };
   };
 }
 
-function measuredBase({ baseConfig, headConfig, injectedAnalyzers, analyzers }) {
+function measuredBase({ baseConfig, headConfig, conventions, injectedAnalyzers, analyzers }) {
   const measured = baseConfigCoveringHead(baseConfig, headConfig);
-  const baseHeadPolicy = resolveHeadPolicy(measured);
+  const baseHeadPolicy = {
+    ...resolveHeadPolicy(measured),
+    ...(conventions === undefined ? {} : { conventions }),
+  };
   const configured = new Map(
     configureAnalyzers(presetAnalyzers(measured, injectedAnalyzers), measured, baseHeadPolicy).map(
       (analyzer) => [analyzer.name, analyzer],

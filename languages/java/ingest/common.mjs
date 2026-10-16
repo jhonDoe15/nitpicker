@@ -151,6 +151,15 @@ export function childrenNamed(element, name) {
   return element.children.filter((child) => child.name === name);
 }
 
+export function childAt(element, ...names) {
+  return names.reduce((current, name) => current && childrenNamed(current, name)[0], element);
+}
+
+export function childrenAt(element, ...names) {
+  const parent = childAt(element, ...names.slice(0, -1));
+  return parent === undefined ? [] : childrenNamed(parent, names.at(-1));
+}
+
 function consumeXmlTag(match, { stack, text, contentStarts }) {
   const [, closing, name, rest, selfClosing] = match;
   if (name === undefined) {

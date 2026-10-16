@@ -12,10 +12,12 @@ import { configureAnalyzers } from './configuration/configure-analyzers.mjs';
 import { presetAnalyzers } from './configuration/preset-analyzers.mjs';
 import { withRunLock } from './command/run-lock.mjs';
 import { runSnapshotCli } from './command/snapshot.mjs';
-import { createBaseSetupResolver } from './command/policy-review/base-setup.mjs';
+import { baseSetupResolver } from './command/policy-review/base-setup.mjs';
 import { noticeDescriber } from './command/policy-review/notices.mjs';
 import { policyAcceptance } from './command/policy-review/policy-acceptance.mjs';
+import { comparisonPolicy, snapshotPolicy } from './conventions/resolve.mjs';
 import { runGit } from './diff/git/repository/command.mjs';
+import { resolveComparison } from './diff/git/repository/git.mjs';
 import { resolveBase } from './diff/git/repository/base-ref.mjs';
 import path from 'node:path';
 import { clearDiffReports, absoluteTextReportPath } from './diff/reporting/reporters.mjs';
@@ -102,7 +104,7 @@ function runConfigured(cli) {
         options,
         currentProjectRoot,
         analyzers,
-        headPolicy,
+        headPolicy: snapshotPolicy({ config, currentProjectRoot, headPolicy, stdout }),
         stdout,
         runTasks,
       });
@@ -111,11 +113,7 @@ function runConfigured(cli) {
       ...cli,
       currentProjectRoot,
       analyzers,
-      resolveBaseSetup: createBaseSetupResolver({
-        headConfig: config,
-        injectedAnalyzers: cli.analyzers,
-        warn: (message) => cli.stderr.write(`nitpicker: ${message}\n`),
-      }),
+      injectedAnalyzers: cli.analyzers,
       config,
       headPolicy,
     });
@@ -123,7 +121,7 @@ function runConfigured(cli) {
 }
 
 function runComparisonCli(cli) {
-  const { options, currentProjectRoot, config, headPolicy } = cli;
+  const { options, currentProjectRoot, config } = cli;
   const repositoryRoot = realpathSync(
     runGit(currentProjectRoot, ['rev-parse', '--show-toplevel']).trim(),
   );
@@ -137,8 +135,10 @@ function runComparisonCli(cli) {
     options.outputRoot === undefined
       ? path.join(currentProjectRoot, 'reports/quality/diff')
       : path.resolve(currentProjectRoot, options.outputRoot);
-  const fixResult = fixIfRequested(cli, repositoryRoot, base);
   clearDiffReports(outputRoot);
+  const analyzers = selectComparisonAnalyzers(cli);
+  const headPolicy = comparisonPolicy({ ...cli, repositoryRoot, base }, resolveComparison);
+  const fixResult = fixIfRequested({ ...cli, headPolicy }, repositoryRoot, base);
   const cacheStore = resolveRunCacheStore(cli);
   const report = runQualityDiff({
     repositoryRoot,
@@ -146,13 +146,13 @@ function runComparisonCli(cli) {
     headProjectRoot: currentProjectRoot,
     requestedBaseRef: base.baseRef,
     outputRoot,
-    analyzers: selectComparisonAnalyzers(cli),
+    analyzers,
     cacheStore,
     includeWorkingTree: true,
     additionalToolErrors: fixResult.toolErrors,
     configOverrides: describeConfigOverrides(config),
     headPolicy,
-    resolveBaseSetup: cli.resolveBaseSetup,
+    resolveBaseSetup: baseSetupResolver(cli, config, headPolicy),
     describeNotices: noticeDescriber(config, headPolicy),
     ...policyAcceptance(options, cli.environment),
     progress: cli.progress,

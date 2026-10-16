@@ -17,6 +17,32 @@ export {
   gitSubcommand,
 } from './subprocess-calls.mjs';
 
+export function memberName(node) {
+  if (node.type !== 'MemberExpression') return undefined;
+  const { property } = node;
+  if (!node.computed) return property.type === 'Identifier' ? property.name : undefined;
+  return property.type === 'Literal' && typeof property.value === 'string'
+    ? property.value
+    : undefined;
+}
+
+export function propertyKeyName(property) {
+  const { key } = property;
+  if (key.type === 'Identifier' && !property.computed) return key.name;
+  return key.type === 'Literal' ? String(key.value) : undefined;
+}
+
+export function isExpectCall(node) {
+  if (node?.type !== 'CallExpression') return false;
+  const { callee } = node;
+  if (callee.type === 'Identifier') return callee.name === 'expect';
+  return (
+    callee.type === 'MemberExpression' &&
+    callee.object.type === 'Identifier' &&
+    callee.object.name === 'expect'
+  );
+}
+
 const PER_TEST_TESTS = new Set(['it', 'test']);
 const REGISTRATION_FACTORIES = new Set(['each', 'for', 'extend', 'runIf', 'skipIf', 'todo']);
 
