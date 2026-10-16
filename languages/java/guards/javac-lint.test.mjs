@@ -44,15 +44,40 @@ function project(files) {
 
 describe('parseLintWarnings', () => {
   it('reads the file, line, lint category and text of each warning and skips the noise', () => {
-    const warnings = parseLintWarnings(REPORT);
-
-    expect(warnings).toHaveLength(7);
-    expect(warnings[0]).toEqual({
-      file: 'src/main/java/demo/Raw.java',
-      line: 9,
-      rule: 'rawtypes',
-      text: 'found raw type: List',
-    });
+    expect(parseLintWarnings(REPORT)).toEqual([
+      {
+        file: 'src/main/java/demo/Raw.java',
+        line: 9,
+        rule: 'rawtypes',
+        text: 'found raw type: List',
+      },
+      { file: 'src/main/java/demo/Raw.java', line: 16, rule: 'unchecked', text: 'unchecked cast' },
+      {
+        file: 'src/main/java/demo/Raw.java',
+        line: 19,
+        rule: 'rawtypes',
+        text: 'found raw type: Map',
+      },
+      {
+        file: 'src/main/java/demo/Raw.java',
+        line: 21,
+        rule: 'rawtypes',
+        text: 'found raw type: Map',
+      },
+      {
+        file: 'src/main/java/demo/Old.java',
+        line: 4,
+        rule: 'deprecation',
+        text: 'exec(String) in Runtime has been deprecated',
+      },
+      {
+        file: 'src/main/java/demo/Old.java',
+        line: 5,
+        rule: 'removal',
+        text: 'finalize() in Object has been deprecated and marked for removal',
+      },
+      { file: 'build/generated/Gen.java', line: 1, rule: 'unchecked', text: 'unchecked cast' },
+    ]);
   });
 });
 
@@ -123,7 +148,10 @@ describe('readLintFindings', () => {
         toolNotRun: true,
         message:
           'No javac lint report: the lint compile failed (src/main/java/demo/A.java:3: error: cannot find symbol), ' +
-          'so raw types, unchecked operations, deprecated calls and redundant casts were not checked.',
+          'so raw types, unchecked operations, deprecated calls and redundant casts were not checked. ' +
+          'The lint compiles the main sources again with javac, the compile class path and, of the annotation ' +
+          'processors, only Lombok; fix what that compile reports, or, if this project cannot be linted that way, ' +
+          'add an exception for javac/lint-not-run with the path "**" in nitpicker.config.json.',
       },
     ]);
     expect(() => parseAnalyzerReport({ findings }, 'java')).not.toThrow();
