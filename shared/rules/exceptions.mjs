@@ -3,6 +3,7 @@
 // Language-neutral: shared by the file limits and the project-level checks of a language preset.
 
 import { globToRegExp } from '../glob.mjs';
+import { EXCEPTION_HINT, renderMessage } from '../policy.mjs';
 
 /**
  * `exceptions` holds `{ rule, paths }` config entries or `{ rule, glob }` runner entries. The
@@ -24,4 +25,9 @@ export function exceptionMatcher(exceptions) {
 /** The `exceptions` entry, as JSON, that lifts `rule` for `glob`; the reason is left to fill in. */
 export function exceptionText(rule, glob) {
   return JSON.stringify({ rule, paths: [glob], reason: '...' });
+}
+
+/** The sentence that tells how to lift a finding of `rule` at `glob`. */
+export function exceptionHint(rule, glob) {
+  return renderMessage(EXCEPTION_HINT, { exception: exceptionText(rule, glob) });
 }

@@ -27,6 +27,7 @@ import { ingestPit } from '../../ingest/pit.mjs';
 import { ingestJacocoBranches } from '../../ingest/coverage-reports/jacoco-branches.mjs';
 import { ingestSarif, prepareSarif, projectRelative } from '../../ingest/sarif.mjs';
 import { projectWideFindings } from '../../builds/project-wide.mjs';
+import { applyRuleMessages } from '../../messages/rule-messages.mjs';
 import {
   jacocoSourceRoots,
   readKotlinFindings,
@@ -54,26 +55,29 @@ export function readJavaFindings(projectRoot, options = {}) {
       withModuleIdentity(moduleContextFindings(projectRoot, module, { manifest, options }), module),
     );
   return {
-    findings: [
-      ...moduleFindings,
-      ...readDuplicateFindings(reportBase),
-      ...(kotlinPreset ? readKotlinDuplicateFindings(reportBase) : []),
-      ...(projectWide
-        ? projectWideFindings(projectRoot, {
-            projects: modules.map((module) => ({
-              reportRoot: module.reportRoot,
-              qualifier: module.key === ROOT_MODULE ? '' : module.dir,
-              sourceRoots: module.manifest.sourceRoots ?? [],
-            })),
-            mergedRoot: path.join(reportBase, PROJECT_REPORTS),
-            manifest,
-            kotlin: kotlinPreset,
-            policy: options,
-          })
-        : []),
-      ...readInlineSuppressionFindings(projectRoot, lintedRoots(manifest)),
-      ...springFindings(projectRoot, manifest),
-    ],
+    findings: applyRuleMessages(
+      [
+        ...moduleFindings,
+        ...readDuplicateFindings(reportBase),
+        ...(kotlinPreset ? readKotlinDuplicateFindings(reportBase) : []),
+        ...(projectWide
+          ? projectWideFindings(projectRoot, {
+              projects: modules.map((module) => ({
+                reportRoot: module.reportRoot,
+                qualifier: module.key === ROOT_MODULE ? '' : module.dir,
+                sourceRoots: module.manifest.sourceRoots ?? [],
+              })),
+              mergedRoot: path.join(reportBase, PROJECT_REPORTS),
+              manifest,
+              kotlin: kotlinPreset,
+              policy: options,
+            })
+          : []),
+        ...readInlineSuppressionFindings(projectRoot, lintedRoots(manifest)),
+        ...springFindings(projectRoot, manifest),
+      ],
+      { preset },
+    ),
   };
 }
 
