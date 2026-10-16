@@ -8,11 +8,12 @@ import {
   lintFingerprint,
   reusableWarnings,
 } from './lint-baseline.mjs';
-import { lintedWarnings, relocated } from './lint-output.mjs';
+import { lintedWarnings, relocated, hasUnreadWarnings } from './lint-output.mjs';
 import { stageSources } from './lint-staging.mjs';
 
 const LINT_REPORT = 'javac-lint.txt';
 const LINT_FAILURE = 'javac-lint-failed.txt';
+const UNREAD_WARNINGS = 'error: javac printed warnings in a form nitpicker cannot read';
 const MODULE_INFO = 'module-info.java';
 const MAX_OUTPUT_BYTES = 50 * 1024 * 1024;
 const LINT_TIMEOUT_MS = 15 * 60 * 1000;
@@ -81,7 +82,11 @@ function lintSources(plan, { sources, modular }) {
       });
     }
     const first = compile(modular);
-    const result = first.code === 0 || !modular ? first : compile('all');
+    const compiled = first.code === 0 || !modular ? first : compile('all');
+    const result =
+      compiled.code === 0 && hasUnreadWarnings(compiled.log)
+        ? { code: 1, log: `${UNREAD_WARNINGS}\n${compiled.log}` }
+        : compiled;
     const context = {
       staged: stagedTree.root,
       from: path.relative(plan.root, plan.basedir),

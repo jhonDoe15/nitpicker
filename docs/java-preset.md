@@ -729,9 +729,11 @@ A Checkstyle rule prints as its full check class, for example
   serves Maven. It compiles a copy in which every `@SuppressWarnings(...)` is blanked out (same
   lines and columns), with the project's compiler, release (or `-source`/`-target` from the source
   and target compatibility when no release is set) and compiler arguments (without `-Werror`,
-  `-Xlint`, `-Xplugin`, processor options and class or module paths), and with the main classes on
-  the classpath, so it runs only Lombok of the annotation processors (the classes other processors
-  generate are already compiled) and stops after flow analysis without writing classes. The copy
+  `-nowarn`, `-Xlint`, `-Xdiags`, `-XD`, `-Xplugin`, processor options and class or module paths),
+  and with the main classes on the classpath, so it runs only Lombok of the annotation processors
+  (the classes other processors generate are already compiled) and stops after flow analysis
+  without writing classes. When javac counts warnings but prints none in the form nitpicker reads,
+  the lint counts as not run. The copy
   keeps the sources' paths below the analysis root, with every `lombok.config` on the way from the
   root down to each source folder, so Lombok reads the project's configuration (a package folder's
   `fluent` accessors or log field name included), and those of the folders above the root up to
