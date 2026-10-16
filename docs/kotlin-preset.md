@@ -431,13 +431,17 @@ the wrong lines.
 | complexity          | 1 plus each `if`, `for`, `while`, `do`, `when` branch other than `else`, `catch`, `&&`, `\|\|` and `?:`. It is the CRAP input, below.                                                                                                                                                                 |
 
 A unit is a function with a body, a property accessor with a body, a secondary constructor with a
-block body, an `init` block with statements, or a property whose initializer is a lambda or an
-anonymous function or whose delegate takes a lambda (`val handler = { x -> ... }`,
-`val f = fun(x: Int) { ... }`, `val v by lazy { ... }`, `val o by Delegates.observable(0) { ... }`),
-the way an arrow-function constant is a unit in TypeScript; the body is the lambda's and the unit is
-named after the property. Any other property initializer is a unit when it holds a block (a lambda
-such as `run { ... }` or `map { ... }`, or the braces of `if`, `try` and `when`) or branches
-(`if`, `when`, `&&`, `?:` and the like); `val x = a + 1` and `val s = "text"` are not. Each `init`
+block body, an `init` block with statements, a lambda, an anonymous function or a local function, or
+a property whose initializer is a lambda or an anonymous function or a call with a lambda, or whose
+delegate takes a lambda (`val handler = { x -> ... }`, `val f = fun(x: Int) { ... }`,
+`val v by lazy { ... }`, `val o by Delegates.observable(0) { ... }`, `val m = n.let { ... }`,
+`val l = list.map { ... }`), the way an arrow-function constant is a unit in TypeScript; the body is
+the lambda's and the unit is named after the property. Any other lambda is a unit named after the
+unit that holds it and `<lambda>` (`Class.bump.<lambda>`, `Class.bump.<lambda>.<lambda>` for one
+inside it), or, for a local property or local function, after that name (`Class.bump.scale`,
+`Class.bump.clamp`). Any other property initializer is a unit when it holds the braces of `if`, `try`
+or `when`, or branches (`if`, `when`, `&&`, `?:` and the like) outside its lambdas, and so is a call
+with a lambda whose other parts branch; `val x = a + 1` and `val s = "text"` are not. Each `init`
 block is a unit named after its class, `Class.<init>` (an empty block is not a unit). A class's
 blocks share the name, so a finding on one is numbered only among the blocks of that class with the
 same text that are over the same limit: inserting, deleting or reordering other blocks, or adding
@@ -445,9 +449,11 @@ an empty `init {}`, never makes a legacy block new. An edited block is held by t
 `init` block or a property initializer says to move the nested part into its own function, because
 neither can `return` early. To accept such a unit, drop its file with `exclude`, as for any structure
 or CRAP finding; the unit name (`Class.<init>`, `Class.property`) is the one that a per-function
-exception would name. Lambdas and local functions inside a function count towards
-the function that contains them; members of nested, local and anonymous classes and objects are
-units of their own. Primary constructors and functions without a body (abstract, interface,
+exception would name. Lambdas, anonymous functions and local functions, and the members of
+nested, local and anonymous classes and objects, are units of their own and do not count towards
+the function that contains them: its statements, control nesting and complexity leave them out (as
+TypeScript's analyzer does for its callbacks), while `lines` is its physical span, which includes
+theirs. A unit inside an `inline` function is `inline` too. Primary constructors and functions without a body (abstract, interface,
 `expect`) are not units. Names are `function` (top level), `Class.function`,
 `Class.Receiver.function` for an extension, `Class.property.get` for an accessor, `Class.property`
 for a property unit, `Class.<init>` for an `init` block, `Class.Class` for a secondary
@@ -476,11 +482,13 @@ nested classes and `DefaultImpls` of one file are all that file's methods. The k
 `package` statement of the file and its file name, not from its directory, so a file outside the
 directory of its package (`src/main/kotlin/Flat.kt` with `package demo`) gets its coverage. A JaCoCo
 method belongs to the function whose line range holds its first line, unless it lies inside a unit of its own (a member
-of a class declared in the function). So the getter `getDoubled` belongs to `val doubled get() = ...`,
-the lambda `bump$lambda$0` and a local function belong to the function that declares them, and their
-lines and branches are summed into its coverage. The synthetic `name$default` method that Kotlin
+of a class declared in the function, a lambda, a local function). So the getter `getDoubled` belongs to `val doubled get() = ...`,
+the lambda `bump$lambda$0` and a local function belong to their own units, not to the function that declares them. A lambda that
+the compiler inlined (`let { }`, `map { }`, a lambda passed to an `inline` function) has no method of its own: it
+is scored from the source lines of its range in JaCoCo's per-line data, as an `init` block is, and the function around it is
+scored without those lines, unless nothing is left to measure. The synthetic `name$default` method that Kotlin
 generates for default arguments is ignored: it has no source of its own and delegates to the function.
-An `init` block and a property initializer that is not a lambda or delegate lambda run inside the
+An `init` block and a property initializer that is not a lambda or a call with a lambda run inside the
 class constructor or the static initializer, whose JaCoCo method starts on the class line, outside
 the unit. Their coverage is therefore read from the source lines of the unit in JaCoCo's per-file
 line data (covered lines, covered branches), minus the lines of a unit nested in them; the lower of

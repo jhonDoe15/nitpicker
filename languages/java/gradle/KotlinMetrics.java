@@ -19,14 +19,18 @@
 //   initializer        true for an init block or a property initializer that runs inside the class
 //                      constructor or static initializer: JaCoCo has no method of its own for it, so
 //                      its coverage is read from the coverage of its source lines
+//   lambda             true for a lambda, an anonymous function or a local function: its coverage is
+//                      JaCoCo's method for it, or, when the compiler inlined it into the caller, the
+//                      coverage of its source lines
 // A unit is a named function, a property accessor with a body, a secondary constructor with a block
 // body, an init block with statements (named after its class, Foo.<init>; several blocks of a class share the name),
 // a property whose initializer is a lambda or an anonymous function or whose delegate takes a lambda
 // (by lazy { }), or a property whose other initializer holds a block (a lambda such as run { } or
 // map { }, or braces of if, try and when) or is more than a straight line (complexity above 1 or control
 // nesting); a property unit is named after the property. Members of nested, local and
-// anonymous classes and objects are units of their own and do not count towards the enclosing function;
-// lambdas and local functions count towards it.
+// anonymous classes and objects, lambdas, anonymous functions and local functions are units of their
+// own and do not count towards the enclosing function; a lambda is named after the unit that holds it
+// and <lambda> (Foo.bar.<lambda>), or after the local property it initializes (Foo.bar.callback).
 // Every file also lists its package and the JVM names of its top-level classes and, when it declares
 // top-level functions or properties, of its file facade (the coupling step maps classes back to files
 // with it, and the CRAP step finds the JaCoCo class of a file by package and file name). Of a
@@ -211,14 +215,14 @@ public final class KotlinMetrics {
           KtTypeReference receiver = function.getReceiverTypeReference();
           String name = (receiver == null ? "" : receiver.getText() + ".") + function.getName();
           report(function, join(owner, name), function.getBodyExpression());
-          nestedClasses(function.getBodyExpression(), owner);
+          nested(function.getBodyExpression(), owner, join(owner, name), inline(function));
         }
       } else if (declaration instanceof KtSecondaryConstructor) {
         KtSecondaryConstructor constructor = (KtSecondaryConstructor) declaration;
         if (constructor.getBodyExpression() instanceof KtBlockExpression) {
           String className = owner.substring(owner.lastIndexOf('.') + 1);
           report(constructor, join(owner, className), constructor.getBodyExpression());
-          nestedClasses(constructor.getBodyExpression(), owner);
+          nested(constructor.getBodyExpression(), owner, join(owner, className), false);
         }
       } else if (declaration instanceof KtProperty) {
         property((KtProperty) declaration, owner);
@@ -230,25 +234,27 @@ public final class KotlinMetrics {
       if (body instanceof KtBlockExpression && !((KtBlockExpression) body).getStatements().isEmpty()) {
         report(initializer, join(owner, "<init>"), body, 0, false, true);
       }
-      nestedClasses(body, owner);
+      nested(body, owner, join(owner, "<init>"), false);
     }
 
     private void property(KtProperty property, String owner) {
       for (KtPropertyAccessor accessor : property.getAccessors()) {
         if (accessor.hasBody()) {
           String kind = accessor.isGetter() ? "get" : "set";
-          report(accessor, join(owner, property.getName() + "." + kind), accessor.getBodyExpression());
-          nestedClasses(accessor.getBodyExpression(), owner);
+          String name = join(owner, property.getName() + "." + kind);
+          report(accessor, name, accessor.getBodyExpression());
+          nested(accessor.getBodyExpression(), owner, name, inline(accessor));
         }
       }
+      String name = join(owner, property.getName());
       KtFunction unit = unitOf(property);
       if (unit != null && unit.getBodyExpression() != null) {
-        report(property, join(owner, property.getName()), unit.getBodyExpression(), unit.getValueParameters().size(), false);
+        report(property, name, unit.getBodyExpression(), unit.getValueParameters().size(), false, false, true);
       } else if (unit == null && property.getInitializer() != null && measuredInitializer(property.getInitializer())) {
-        report(property, join(owner, property.getName()), property.getInitializer(), 0, false, true);
+        report(property, name, property.getInitializer(), 0, false, true);
       }
-      nestedClasses(property.getInitializer(), owner);
-      nestedClasses(property.getDelegateExpression(), owner);
+      nested(property.getInitializer(), owner, name, unit, false);
+      nested(property.getDelegateExpression(), owner, name, unit, false);
     }
 
     private static boolean measuredInitializer(KtExpression initializer) {
@@ -266,19 +272,26 @@ public final class KotlinMetrics {
       if (initializer instanceof KtNamedFunction && ((KtNamedFunction) initializer).getName() == null) {
         return (KtNamedFunction) initializer;
       }
-      KtExpression delegate = property.getDelegateExpression();
-      if (delegate instanceof KtQualifiedExpression) {
-        delegate = ((KtQualifiedExpression) delegate).getSelectorExpression();
+      if (initializer != null && measuredInitializer(initializer)) {
+        return null;
       }
-      if (delegate instanceof KtCallExpression) {
-        KtLambdaExpression lambda = null;
-        for (KtValueArgument argument : ((KtCallExpression) delegate).getValueArguments()) {
-          KtExpression expression = argument.getArgumentExpression();
-          lambda = expression instanceof KtLambdaExpression ? (KtLambdaExpression) expression : lambda;
-        }
-        return lambda == null ? null : lambda.getFunctionLiteral();
+      return lambdaArgument(initializer == null ? property.getDelegateExpression() : initializer);
+    }
+
+    private static KtFunction lambdaArgument(KtExpression holder) {
+      KtExpression call = holder;
+      if (call instanceof KtQualifiedExpression) {
+        call = ((KtQualifiedExpression) call).getSelectorExpression();
       }
-      return null;
+      if (!(call instanceof KtCallExpression)) {
+        return null;
+      }
+      KtLambdaExpression lambda = null;
+      for (KtValueArgument argument : ((KtCallExpression) call).getValueArguments()) {
+        KtExpression expression = argument.getArgumentExpression();
+        lambda = expression instanceof KtLambdaExpression ? (KtLambdaExpression) expression : lambda;
+      }
+      return lambda == null ? null : lambda.getFunctionLiteral();
     }
 
     private void klass(KtClassOrObject klass, String owner) {
@@ -289,7 +302,7 @@ public final class KotlinMetrics {
       }
       String qualified = join(owner, simple);
       for (KtSuperTypeListEntry entry : klass.getSuperTypeListEntries()) {
-        nestedClasses(entry, qualified);
+        nested(entry, qualified, qualified, false);
       }
       for (KtDeclaration member : klass.getDeclarations()) {
         if (member instanceof KtClassInitializer) {
@@ -299,21 +312,62 @@ public final class KotlinMetrics {
         }
       }
       for (KtParameter parameter : klass.getPrimaryConstructorParameters()) {
-        nestedClasses(parameter.getDefaultValue(), qualified);
+        nested(parameter.getDefaultValue(), qualified, qualified, false);
       }
     }
 
-    private void nestedClasses(PsiElement root, String owner) {
+    private void nested(PsiElement root, String owner, String scope, boolean inline) {
+      nested(root, owner, scope, null, inline);
+    }
+
+    private void nested(PsiElement root, String owner, String scope, KtFunction held, boolean inline) {
       if (root == null) {
         return;
       }
       if (root instanceof KtClassOrObject) {
         klass((KtClassOrObject) root, owner);
+      } else if (root instanceof KtLambdaExpression) {
+        lambda((KtLambdaExpression) root, owner, scope, held, inline);
+      } else if (root instanceof KtNamedFunction) {
+        localFunction((KtNamedFunction) root, owner, scope, held, inline);
+      } else if (root instanceof KtProperty && ((KtProperty) root).isLocal()) {
+        localProperty((KtProperty) root, owner, scope, inline);
+      } else {
+        for (PsiElement child : root.getChildren()) {
+          nested(child, owner, scope, held, inline);
+        }
+      }
+    }
+
+    private void lambda(KtLambdaExpression lambda, String owner, String scope, KtFunction held, boolean inline) {
+      KtFunctionLiteral literal = lambda.getFunctionLiteral();
+      String name = literal == held ? scope : join(scope, "<lambda>");
+      if (literal != held && literal.getBodyExpression() != null) {
+        report(lambda, name, literal.getBodyExpression(), literal.getValueParameters().size(), inline, false, true);
+      }
+      nested(literal.getBodyExpression(), owner, name, inline);
+    }
+
+    private void localFunction(KtNamedFunction function, String owner, String scope, KtFunction held, boolean inline) {
+      if (function.getBodyExpression() == null) {
         return;
       }
-      for (PsiElement child : root.getChildren()) {
-        nestedClasses(child, owner);
+      String name =
+          function == held ? scope : join(scope, function.getName() == null ? "<lambda>" : function.getName());
+      if (function != held) {
+        report(function, name, function.getBodyExpression(), function.getValueParameters().size(), inline, false, true);
       }
+      nested(function.getBodyExpression(), owner, name, inline);
+    }
+
+    private void localProperty(KtProperty property, String owner, String scope, boolean inline) {
+      String name = join(scope, property.getName());
+      KtFunction unit = unitOf(property);
+      if (unit != null && unit.getBodyExpression() != null) {
+        report(property, name, unit.getBodyExpression(), unit.getValueParameters().size(), inline, false, true);
+      }
+      nested(property.getInitializer(), owner, name, unit, inline);
+      nested(property.getDelegateExpression(), owner, name, unit, inline);
     }
 
     private static String join(String owner, String name) {
@@ -330,6 +384,17 @@ public final class KotlinMetrics {
 
     private void report(
         PsiElement declaration, String name, KtExpression body, int parameters, boolean inline, boolean initializer) {
+      report(declaration, name, body, parameters, inline, initializer, false);
+    }
+
+    private void report(
+        PsiElement declaration,
+        String name,
+        KtExpression body,
+        int parameters,
+        boolean inline,
+        boolean initializer,
+        boolean lambda) {
       int start = significant(declaration.getNode(), true);
       int end = significant(declaration.getNode(), false);
       int startLine = lineOf(start);
@@ -352,6 +417,7 @@ public final class KotlinMetrics {
               + ",\"complexity\":" + metrics.complexity
               + ",\"inline\":" + inline
               + ",\"initializer\":" + initializer
+              + ",\"lambda\":" + lambda
               + "}");
     }
 
@@ -381,7 +447,7 @@ public final class KotlinMetrics {
     }
   }
 
-  /** Statement count, control nesting and complexity of one body; nested classes are not entered. */
+  /** Statement count, control nesting and complexity of one body; nested classes, lambdas and local functions are not entered. */
   private static final class Body {
     int statements = 0;
     int maxNesting = 0;
@@ -389,7 +455,10 @@ public final class KotlinMetrics {
     int blocks = 0;
 
     void visit(PsiElement element, int depth) {
-      if (element == null || element instanceof KtClassOrObject) {
+      if (element == null
+          || element instanceof KtClassOrObject
+          || element instanceof KtLambdaExpression
+          || element instanceof KtNamedFunction) {
         return;
       }
       int next = isControl(element) && !isElseIf(element) ? depth + 1 : depth;

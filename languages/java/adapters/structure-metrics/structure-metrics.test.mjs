@@ -216,8 +216,76 @@ public class Constructs {
 }
 `;
 
+const INITIALIZERS = `package demo;
+
+import java.util.List;
+import java.util.function.Function;
+import java.util.function.Supplier;
+
+public class Initializers {
+  static final Function<Integer, Integer> DOUBLE = x -> x > 0 ? x * 2 : 0;
+  static final int FLAG = System.getenv("X") != null && System.getenv("Y") != null ? 1 : 2;
+  static final int PLAIN = 3;
+  private final Supplier<String> supplier = () -> {
+    if (FLAG > 1) {
+      return "a";
+    }
+    return "b";
+  };
+  static List<String> names;
+
+  static {
+    if (FLAG > 1) {
+      names = List.of("a");
+    }
+    Runnable r = () -> System.out.println("hi");
+    r.run();
+  }
+
+  static {
+  }
+
+  {
+    names = null;
+  }
+
+  void run(List<Integer> list) {
+    list.forEach(i -> {
+      if (i > 0) {
+        list.stream().map(j -> j > 1 ? j : -j).forEach(System.out::println);
+      }
+    });
+    Function<Integer, Integer> local = (Integer v) -> v + 1;
+    Runnable anonymous = new Runnable() {
+      public void run() {
+        Runnable inner = () -> {};
+      }
+    };
+    if (list.isEmpty() || list.size() > 3) {
+      System.out.println(local.apply(1));
+    }
+  }
+
+  enum Code {
+    A(x -> x),
+    B(x -> x + 1) {
+      int value() {
+        return 2;
+      }
+    };
+
+    Code(Function<Integer, Integer> function) {}
+
+    int value() {
+      return 1;
+    }
+  }
+}
+`;
+
 const temporaryRoots = [];
 let measured;
+let initializers;
 
 function projectWith(files) {
   const root = realpathSync(mkdtempSync(path.join(tmpdir(), 'nitpicker-structure-')));
@@ -280,13 +348,18 @@ function summary(entries) {
 }
 
 beforeAll(() => {
-  const root = projectWith({ [`${SOURCE_ROOT}/demo/Constructs.java`]: CONSTRUCTS });
+  const root = projectWith({
+    [`${SOURCE_ROOT}/demo/Constructs.java`]: CONSTRUCTS,
+    [`${SOURCE_ROOT}/demo/Initializers.java`]: INITIALIZERS,
+  });
   const result = measure(root);
   measured = {
     status: result.status,
     stderr: result.stderr,
     structure: JSON.parse(readFileSync(result.output, 'utf8')),
   };
+  initializers = measured.structure.filter((entry) => entry.file.endsWith('Initializers.java'));
+  measured.structure = measured.structure.filter((entry) => entry.file.endsWith('Constructs.java'));
 });
 
 afterAll(() => {
@@ -314,7 +387,8 @@ describe('StructureMetrics.java', () => {
       'Constructs.arrowStatement(Code)': { complexity: 3 },
       'Constructs.elseIf(int)': { complexity: 5 },
       'Constructs.ternary(int)': { complexity: 2 },
-      'Constructs.lambda(List<Integer>)': { complexity: 2 },
+      'Constructs.lambda(List<Integer>)': { complexity: 1 },
+      'Constructs.lambda.<lambda>': { complexity: 2 },
       'Constructs.anonymous(boolean)': { complexity: 1 },
       'Constructs.<anonymous>.get()': { complexity: 2 },
       'Constructs.multiCatch()': { complexity: 2 },
@@ -329,6 +403,40 @@ describe('StructureMetrics.java', () => {
       'Constructs.Wide.Wide(java.util.Map.Entry<K, V>)': { complexity: 1 },
       'Constructs.Box.Box(T, U, List<T>, T[])': { complexity: 1 },
     });
+  });
+
+  it('measures initializer blocks, field initializers that branch and every lambda as units of their own', () => {
+    expect(
+      initializers.map(
+        ({ name, start, end, statements, maxControlNesting, parameters, complexity, ...flags }) =>
+          [
+            `${name} ${String(start)}-${String(end)} s${String(statements)} n${String(maxControlNesting)}`,
+            `p${String(parameters)} c${String(complexity)}`,
+            flags.lambda === true ? 'lambda' : '',
+            flags.initializer === true ? 'initializer' : '',
+          ]
+            .filter(Boolean)
+            .join(' '),
+      ),
+    ).toEqual([
+      'Initializers.DOUBLE 8-8 s1 n0 p1 c2 lambda',
+      'Initializers.FLAG 9-9 s1 n0 p0 c3 initializer',
+      'Initializers.supplier 11-16 s3 n1 p0 c2 lambda',
+      'Initializers.<clinit> 19-25 s4 n1 p0 c2 initializer',
+      'Initializers.<clinit>.r 23-23 s1 n0 p0 c1 lambda',
+      'Initializers.<init> 30-32 s1 n0 p0 c1 initializer',
+      'Initializers.run 34-49 s5 n1 p1 c3',
+      'Initializers.run.<lambda> 35-39 s2 n1 p1 c2 lambda',
+      'Initializers.run.<lambda>.<lambda> 37-37 s1 n0 p1 c2 lambda',
+      'Initializers.run.local 40-40 s1 n0 p1 c1 lambda',
+      'Initializers.<anonymous>.run 42-44 s1 n0 p0 c1',
+      'Initializers.<anonymous>.run.inner 43-43 s0 n0 p0 c1 lambda',
+      'Initializers.Code.A.<lambda> 52-52 s1 n0 p1 c1 lambda',
+      'Initializers.Code.B.<lambda> 53-53 s1 n0 p1 c1 lambda',
+      'Initializers.Code.<anonymous>.value 54-56 s1 n0 p0 c1',
+      'Initializers.Code.Code 59-59 s0 n0 p1 c1',
+      'Initializers.Code.value 61-63 s1 n0 p0 c1',
+    ]);
   });
 
   it('keeps an else if on the nesting level of the if it continues', () => {

@@ -2,7 +2,7 @@ import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { globToRegExp } from '../../../../shared/glob.mjs';
 import { collectFileLimitFindings } from '../../../../shared/rules/file-limits.mjs';
-import { hash } from '../../../../shared/rules/finding-helpers.mjs';
+import { hash, repeatsInSource } from '../../../../shared/rules/finding-helpers.mjs';
 import { evaluateStructure } from '../../../../shared/rules/structure.mjs';
 
 const STRUCTURE_REPORT = 'structure.json';
@@ -24,6 +24,7 @@ export function structureFindings(entries, projectRoot, { textOf = methodText, h
   const sources = new Map();
   const functions = entries.map((entry) => ({
     ...entry,
+    numberedAmongSameSource: repeatsInSource(entry.name),
     sourceHash: hash(textOf(sources, projectRoot, entry)),
   }));
   return evaluateStructure({ functions }, STRUCTURE_TOOL, { hints }).filter(
