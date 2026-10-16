@@ -37,13 +37,16 @@ gradle.projectsEvaluated {
 
 def nodeCommand = nitpickerArgument('nitpicker.node') ?: 'node'
 def rulesWriter = new File(initScriptDir, '../builds/rulesets/write-rules.mjs').canonicalFile
-def writeRules = { String kind, File plan ->
-    def process = new ProcessBuilder([nodeCommand, rulesWriter.absolutePath, kind, plan.absolutePath])
+def runNode = { File script, List<String> arguments, String failure ->
+    def process = new ProcessBuilder([nodeCommand, script.absolutePath] + arguments)
         .redirectErrorStream(true).start()
     def log = process.inputStream.getText('UTF-8')
     if (process.waitFor() != 0) {
-        throw new GradleException("nitpicker could not write the ${kind} configuration: ${log.trim()}")
+        throw new GradleException("${failure}: ${log.trim()}")
     }
+}
+def writeRules = { String kind, File plan ->
+    runNode(rulesWriter, [kind, plan.absolutePath], "nitpicker could not write the ${kind} configuration")
 }
 def toolCommands = new groovy.json.JsonSlurper().parse(new File(initScriptDir, '../builds/tools/tool-commands.json'))
 def expandedToken = { token, Map values ->
@@ -98,6 +101,7 @@ allprojects {
         project.ext.nitpickerAnalysisRoot = analysisRoot
         project.ext.nitpickerCompilerOf = compilerOf
         project.ext.nitpickerToolCommand = toolCommand
+        project.ext.nitpickerRunNode = runNode
 
         configurations {
             nitpickerPmd { canBeConsumed = false }

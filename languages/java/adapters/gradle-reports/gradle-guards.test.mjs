@@ -2,7 +2,7 @@ import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { runGradleGuards } from './gradle-guards.mjs';
+import { main } from './gradle-guards.mjs';
 
 const roots = [];
 const JAVAC = process.env.JAVA_HOME ? path.join(process.env.JAVA_HOME, 'bin', 'javac') : 'javac';
@@ -27,8 +27,8 @@ function moduleWithPlan(root, key, plan) {
   return { key, reportRoot };
 }
 
-describe('runGradleGuards', () => {
-  it('writes the permits and lint reports of each module that wrote a guards plan', () => {
+describe('gradle-guards', () => {
+  it('writes the permits and lint reports of a module that wrote a guards plan, and nothing without one', () => {
     const root = mkdtempSync(path.join(tmpdir(), 'nitpicker-gradle-guards-'));
     roots.push(root);
     const basedir = path.join(root, 'app');
@@ -52,7 +52,8 @@ describe('runGradleGuards', () => {
     const planned = moduleWithPlan(root, 'module-app', { classDirectories: [], lint });
     const unplanned = moduleWithPlan(root, 'module-legacy', undefined);
 
-    runGradleGuards([planned, unplanned], { baselineRoot: undefined });
+    main([planned.reportRoot]);
+    main([unplanned.reportRoot]);
 
     expect(readFileSync(path.join(planned.reportRoot, 'permits.txt'), 'utf8')).toBe('');
     expect(
