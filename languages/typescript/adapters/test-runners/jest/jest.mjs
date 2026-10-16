@@ -29,6 +29,8 @@ const OPTIONS_NITPICKER_SETS = {
     '--changedFilesWithAncestor',
     '--findRelatedTests',
     '--showConfig',
+    '--listTests',
+    '--clearCache',
   ],
   valued: [
     '--outputFile',
@@ -50,10 +52,24 @@ const OPTIONS_NITPICKER_SETS = {
 
 const SERIAL_OPTIONS = new Set(['--runInBand', '-i']);
 
+function withoutRelatedFiles(tokens) {
+  const kept = [];
+  let related = false;
+  for (const token of tokens) {
+    if (token.startsWith('-')) {
+      related = token === '--findRelatedTests';
+    }
+    if (!related || token.startsWith('-')) {
+      kept.push(token);
+    }
+  }
+  return kept;
+}
+
 export function jestArguments(command, nitpickerArguments, { leading, trailing }) {
   return [
     ...leading,
-    ...withoutOptions(command.arguments_, OPTIONS_NITPICKER_SETS),
+    ...withoutOptions(withoutRelatedFiles(command.arguments_), OPTIONS_NITPICKER_SETS),
     ...nitpickerArguments,
     ...trailing,
   ];

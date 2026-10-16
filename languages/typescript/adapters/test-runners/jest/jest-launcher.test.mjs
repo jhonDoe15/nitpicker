@@ -70,7 +70,8 @@ describe('the Jest command line', () => {
   it('drops the options that narrow the run to some of the tests', () => {
     const tokens = [
       ...['--shard=1/2', '--shard', '2/3', '-t', 'parse', '--testNamePattern=x'],
-      ...['--findRelatedTests', '--lastCommit', '--changedFilesWithAncestor', '--onlyFailures'],
+      ...['--findRelatedTests', 'src/a.ts', 'src/b.ts', '--lastCommit', '--onlyFailures'],
+      ...['--changedFilesWithAncestor', '--listTests', '--clearCache'],
       ...['--selectProjects', 'unit', '--runInBand'],
     ];
 
