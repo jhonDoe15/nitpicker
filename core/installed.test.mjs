@@ -63,6 +63,8 @@ const expectedDirtyFindings = [
   },
 ];
 const expectedSnapshotOutput = [
+  "Following this project's conventions:",
+  '  Trailing commas: none (used by 1 of 1 measured files)',
   'Nitpicker quality snapshot',
   'Status: violations',
   'Enforceable findings: 2',
@@ -336,6 +338,7 @@ suite('packed nitpicker in a separate consumer', () => {
           'eslint-plugin-jsx-a11y-x',
           'eslint-plugin-react-hooks',
           'eslint-plugin-react-x',
+          'eslint-plugin-regexp',
           'eslint-plugin-testing-library',
           'typescript-eslint',
         ].map((name) => `${name}@${manifest.dependencies[name]}`);
