@@ -9,7 +9,24 @@ const BUILD_HELPER = 'org.codehaus.mojo:build-helper-maven-plugin';
 const JACOCO = 'org.jacoco:jacoco-maven-plugin';
 const SUREFIRE = 'org.apache.maven.plugins:maven-surefire-plugin';
 const FAILSAFE = 'org.apache.maven.plugins:maven-failsafe-plugin';
-const FAILSAFE_BUILD = ['verify', '-DskipITs=false', '-Djacoco.haltOnFailure=false'];
+const AGENT_GOALS = ['prepare-agent', 'prepare-agent-integration'];
+const FAILSAFE_SKIPS = ['skip', 'skipITs', 'skipTests'];
+const SKIP_PROPERTIES = ['skipITs', 'skipTests'];
+const VERIFY_BUILD = [
+  'verify',
+  '-Djacoco.haltOnFailure=false',
+  '-Dgpg.skip=true',
+  '-Dmaven.javadoc.skip=true',
+  '-Dmaven.source.skip=true',
+  '-Dmaven.deploy.skip=true',
+  '-Djib.skip=true',
+  '-Ddependency-check.skip=true',
+  '-Drat.skip=true',
+  '-Dlicense.skip=true',
+  '-Dlicense.skipDownloadLicenses=true',
+  '-Dlicense.skipAggregateDownloadLicenses=true',
+  '-Djapicmp.skip=true',
+];
 
 function child(element, ...names) {
   return names.reduce((current, name) => current && childrenNamed(current, name)[0], element);
@@ -44,8 +61,26 @@ function executionsWithGoal(plugin, goal) {
   );
 }
 
-function bindsGoal(plugin, goal) {
-  return plugin !== undefined && executionsWithGoal(plugin, goal).length > 0;
+function configured(execution, plugin, name) {
+  return textAt(execution, 'configuration', name) ?? textAt(plugin, 'configuration', name);
+}
+
+function isTrue(text) {
+  return text?.trim().toLowerCase() === 'true';
+}
+
+function runsFailsafe(project, plugin) {
+  if (
+    plugin === undefined ||
+    SKIP_PROPERTIES.some((name) => isTrue(textAt(project, 'properties', name)))
+  ) {
+    return false;
+  }
+  return executionsWithGoal(plugin, 'integration-test').some(
+    (execution) =>
+      textAt(execution, 'phase') !== 'none' &&
+      !FAILSAFE_SKIPS.some((name) => isTrue(configured(execution, plugin, name))),
+  );
 }
 
 function helperRoots(plugin, goal, basedir) {
@@ -58,13 +93,13 @@ function helperRoots(plugin, goal, basedir) {
       );
 }
 
-function jacocoDestFile(plugin) {
-  const execution =
-    plugin === undefined ? undefined : executionsWithGoal(plugin, 'prepare-agent')[0];
-  return execution === undefined
-    ? undefined
-    : (textAt(execution, 'configuration', 'destFile') ??
-        textAt(plugin, 'configuration', 'destFile'));
+function jacocoDestFiles(plugin, basedir) {
+  const executions =
+    plugin === undefined ? [] : AGENT_GOALS.flatMap((goal) => executionsWithGoal(plugin, goal));
+  const files = executions
+    .map((execution) => configured(execution, plugin, 'destFile'))
+    .filter((file) => file !== undefined);
+  return [...new Set(files.map((file) => path.resolve(basedir, file)))];
 }
 
 function resolvedText(build, basedir, name) {
@@ -72,17 +107,18 @@ function resolvedText(build, basedir, name) {
   return value === undefined ? undefined : path.resolve(basedir, value);
 }
 
-function reportsDirectory(plugin) {
-  return plugin && textAt(plugin, 'configuration', 'reportsDirectory');
+function reportsDirectory(plugin, goal) {
+  return plugin === undefined
+    ? undefined
+    : configured(executionsWithGoal(plugin, goal)[0], plugin, 'reportsDirectory');
 }
 
 function describeModule(project, basedir) {
   const build = child(project, 'build');
   const plugins = pluginsOf(project);
   const buildDirectory = resolvedText(build, basedir, 'directory') ?? path.join(basedir, 'target');
-  const reports = reportsDirectory(plugins.get(SUREFIRE));
-  const failsafeReports = reportsDirectory(plugins.get(FAILSAFE));
-  const destFile = jacocoDestFile(plugins.get(JACOCO));
+  const reports = reportsDirectory(plugins.get(SUREFIRE), 'test');
+  const failsafeReports = reportsDirectory(plugins.get(FAILSAFE), 'integration-test');
   return {
     basedir,
     coordinates: coordinates(project),
@@ -112,8 +148,8 @@ function describeModule(project, basedir) {
       basedir,
       failsafeReports ?? path.join(buildDirectory, 'failsafe-reports'),
     ),
-    runsFailsafe: bindsGoal(plugins.get(FAILSAFE), 'integration-test'),
-    jacocoDestFile: destFile === undefined ? undefined : path.resolve(basedir, destFile),
+    runsFailsafe: runsFailsafe(project, plugins.get(FAILSAFE)),
+    jacocoDestFiles: jacocoDestFiles(plugins.get(JACOCO), basedir),
     archunitIncludes: textAt(project, 'properties', 'nitpicker.archunit.includes'),
   };
 }
@@ -192,7 +228,7 @@ export function readReactor(projectRoot, effectivePom) {
 }
 
 export function lifecycleArgs(modules) {
-  return modules.some((module) => module.runsFailsafe) ? FAILSAFE_BUILD : ['test'];
+  return modules.some((module) => module.runsFailsafe) ? VERIFY_BUILD : ['test'];
 }
 
 export function parseDependencyList(text) {
