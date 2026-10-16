@@ -1,6 +1,6 @@
 import path from 'node:path';
 import { storyGlobs } from '../eslint-config/scope-support.mjs';
-import { codeExtensionNames, globToRegExp } from '../layout.mjs';
+import { codeExtensionNames, globToRegExp, toPosix } from '../layout.mjs';
 
 const TYPESCRIPT_EXTENSIONS = new Set(
   codeExtensionNames.filter((name) => name.includes('ts')).map((name) => `.${name}`),
@@ -13,10 +13,6 @@ const HEADER_LENGTH = 1000;
 
 export function isTypeScriptFile(file) {
   return TYPESCRIPT_EXTENSIONS.has(path.extname(file));
-}
-
-function toPosix(file) {
-  return file.replaceAll('\\', '/');
 }
 
 function isSupportPath(relative, layout) {
