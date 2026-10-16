@@ -22,7 +22,7 @@ export function loadConfig(projectRoot) {
 
 export function describeConfigOverrides(config) {
   return KEYS.filter((key) => config[key] !== undefined).flatMap((key) =>
-    key === 'python' ? describePythonOverrides(config.python) : describeOverride(config, key),
+    describeOverride(config, key),
   );
 }
 
@@ -34,13 +34,6 @@ function describeOverride(config, key) {
 
 function describeException(entry) {
   return `exception: ${JSON.stringify(entry)}`;
-}
-
-function describePythonOverrides({ exceptions = [], ...settings }) {
-  return [
-    ...(Object.keys(settings).length === 0 ? [] : [`python: ${JSON.stringify(settings)}`]),
-    ...exceptions.map(describeException),
-  ];
 }
 
 export function applyDisable(analyzers, config) {

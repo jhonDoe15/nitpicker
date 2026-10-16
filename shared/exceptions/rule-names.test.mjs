@@ -90,16 +90,15 @@ describe('exceptionRoute', () => {
     );
   });
 
-  it('names a declaration and a different config key', () => {
+  it('names a declaration', () => {
     expect(
       exceptionRoute({
         rule: 'exports',
         path: 'src/lib.ts',
         name: 'unusedA',
-        key: 'python.exceptions',
       }),
     ).toBe(
-      'If a reviewer agrees this is intended, add {"rule":"exports","paths":["src/lib.ts"],"name":"unusedA","reason":"<why this is intended>"} to "python.exceptions" in nitpicker.config.json.',
+      'If a reviewer agrees this is intended, add {"rule":"exports","paths":["src/lib.ts"],"name":"unusedA","reason":"<why this is intended>"} to "exceptions" in nitpicker.config.json.',
     );
   });
 });

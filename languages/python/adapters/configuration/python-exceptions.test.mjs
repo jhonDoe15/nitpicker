@@ -60,4 +60,17 @@ describe('python exceptions', () => {
       applyPythonExceptions(broken, [exception('contract-broken', ['src/app/web/views.py'])]),
     ).toEqual([broken[1]]);
   });
+
+  it('leaves the rules nitpicker adds to the shared exceptions, which can name one function', () => {
+    const structure = {
+      tool: 'structure',
+      rule: 'function-lines-limit',
+      path: 'src/a.py',
+      identity: 'z',
+    };
+
+    expect(applyPythonExceptions([structure], [exception('function-lines-limit', ['**'])])).toEqual(
+      [structure],
+    );
+  });
 });

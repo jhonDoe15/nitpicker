@@ -22,8 +22,8 @@ export function exceptionEntryText({ rule, path, glob, function: functionName, n
 }
 
 /** The one sentence every message uses to name the config entry that accepts its finding. */
-export function exceptionSentence(entryText, key = 'exceptions') {
-  return `If a reviewer agrees this is intended, add ${entryText} to "${key}" in nitpicker.config.json.`;
+export function exceptionSentence(entryText) {
+  return `If a reviewer agrees this is intended, add ${entryText} to "exceptions" in nitpicker.config.json.`;
 }
 
 /** `message` ended with a full stop, then `sentence`. */

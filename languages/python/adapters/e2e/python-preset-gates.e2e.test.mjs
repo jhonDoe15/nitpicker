@@ -47,13 +47,11 @@ describe.skipIf(!pythonE2eEnabled)('Python preset lint, type and rule gates end 
       'nitpicker.config.json': JSON.stringify({
         preset: 'python',
         disable: ['mutation'],
-        python: {
-          exceptions: [
-            { rule: 'PTH118', paths: ['src/demo/rules.py'], reason: 'fixture' },
-            { rule: 'frozen-dataclass', paths: ['src/demo/*.py'], reason: 'fixture' },
-            { rule: 'no-inline-suppression', paths: ['src/**'], reason: 'fixture' },
-          ],
-        },
+        exceptions: [
+          { rule: 'PTH118', paths: ['src/demo/rules.py'], reason: 'fixture' },
+          { rule: 'frozen-dataclass', paths: ['src/demo/*.py'], reason: 'fixture' },
+          { rule: 'no-inline-suppression', paths: ['src/**'], reason: 'fixture' },
+        ],
       }),
     });
     commitBranch(project, 'pyright', {
@@ -142,10 +140,10 @@ describe.skipIf(!pythonE2eEnabled)('Python preset lint, type and rule gates end 
     expect(result.text).toMatch(/Use `pathlib\.Path`/);
     expect(result.text).toMatch(/Remove the comment and fix the code/);
     expect(result.text).toMatch(
-      /add \{"rule":"PTH118","paths":\["src\/demo\/rules\.py"\],"reason":"<why this is intended>"\} to "python\.exceptions" in nitpicker\.config\.json\./,
+      /add \{"rule":"PTH118","paths":\["src\/demo\/rules\.py"\],"reason":"<why this is intended>"\} to "exceptions" in nitpicker\.config\.json\./,
     );
   });
-  it('passes the same code when python.exceptions lifts its rules', () => {
+  it('passes the same code when exceptions lift its rules', () => {
     const result = gate(project, 'excepted');
 
     expect(result.exitCode, result.text).toBe(0);

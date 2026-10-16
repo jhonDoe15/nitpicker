@@ -18,7 +18,7 @@ export function normalizeFunctionName(name) {
 }
 
 /** The sentence that names the config entry which accepts a finding of `rule` in `path`. */
-export function exceptionRoute({ rule, path, function: functionName, name, key }) {
+export function exceptionRoute({ rule, path, function: functionName, name }) {
   return exceptionSentence(
     exceptionEntryText({
       rule,
@@ -26,7 +26,6 @@ export function exceptionRoute({ rule, path, function: functionName, name, key }
       name,
       ...(functionName === undefined ? {} : { function: normalizeFunctionName(functionName) }),
     }),
-    key,
   );
 }
 

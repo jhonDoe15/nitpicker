@@ -26,15 +26,15 @@ describe('staleExceptionLines', () => {
     ]);
   });
 
-  it('checks python.exceptions too, under its own name', () => {
+  it('checks the ruff and type-checker exceptions of a Python project too', () => {
     const root = repository(['src/app.py']);
     const config = {
       preset: 'python',
-      python: { exceptions: [entry('T201', ['scripts/**']), entry('T201', ['src/*.py'])] },
+      exceptions: [entry('T201', ['scripts/**']), entry('T201', ['src/*.py'])],
     };
 
     expect(staleExceptionLines(config, root)).toEqual([
-      'python.exceptions[0] (T201) matches no file: scripts/**',
+      'exceptions[0] (T201) matches no file: scripts/**',
     ]);
   });
 

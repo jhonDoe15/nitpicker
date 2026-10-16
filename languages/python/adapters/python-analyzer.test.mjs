@@ -140,10 +140,7 @@ describe('Python analyzer', () => {
     expect(hash).toMatch(/^[0-9a-f]{64}$/);
     expect(createPythonAnalyzer({}).configurationHash).toBe(hash);
     expect(createPythonAnalyzer({ formatter: 'black' }).configurationHash).not.toBe(hash);
-    expect(
-      createPythonAnalyzer({ exceptions: [{ rule: 'T201', paths: ['cli/**'], reason: 'CLI' }] })
-        .configurationHash,
-    ).not.toBe(hash);
+    expect(createPythonAnalyzer({ typeChecker: 'pyright' }).configurationHash).not.toBe(hash);
     expect(createPythonAnalyzer({ formatter: 'ruff' }).configurationHash).not.toBe(
       createPythonAnalyzer({ formatter: 'black' }).configurationHash,
     );

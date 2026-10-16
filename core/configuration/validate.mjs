@@ -3,7 +3,6 @@ import {
   isPlainObject,
   configError,
   isNonEmptyString,
-  liftsOnlyRules,
   validateStringArray,
   validateThresholds,
   validateExceptions,
@@ -13,7 +12,6 @@ import {
 import { validateJavaConfig } from '../../languages/java/adapters/java-policy.mjs';
 import { validateKotlinOptions } from '../../languages/java/adapters/kotlin/kotlin-options.mjs';
 import { validatePythonConfig } from '../../languages/python/adapters/configuration/python-config.mjs';
-import { SHARED_EXCEPTION_RULES } from '../../shared/policy.mjs';
 import { validateTools } from './tool-settings.mjs';
 import { conventionDefinitions } from '../conventions/definitions.mjs';
 import { validateConventions } from '../../shared/conventions/settings.mjs';
@@ -86,9 +84,7 @@ function validateScalars(config) {
   validateKotlinOptions(config);
   validatePythonConfig(
     config,
-    liftsOnlyRules(config.exceptions, SHARED_EXCEPTION_RULES)
-      ? TYPESCRIPT_ONLY_KEYS.filter((key) => key !== 'exceptions')
-      : TYPESCRIPT_ONLY_KEYS,
+    TYPESCRIPT_ONLY_KEYS.filter((key) => key !== 'exceptions'),
   );
 }
 

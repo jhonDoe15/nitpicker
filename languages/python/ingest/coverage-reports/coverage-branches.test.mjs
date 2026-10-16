@@ -58,7 +58,7 @@ describe('ingestCoverageBranches', () => {
     expect(() => parseAnalyzerReport({ findings }, 'python')).not.toThrow();
   });
 
-  it('names the function that holds a branch and the python.exceptions entry that accepts it', () => {
+  it('names the function that holds a branch and the exceptions entry that accepts it', () => {
     const functions = [
       { file: FILE, name: 'pick', start: 1, end: 9 },
       { file: FILE, name: 'lonely', start: 12, end: 15 },

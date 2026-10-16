@@ -43,24 +43,22 @@ describe('config file', () => {
     ]);
   });
 
-  it('lists each python exception separately in the config overrides', () => {
+  it('lists each exception separately in the config overrides of a python project', () => {
     const exception = { rule: 'T201', paths: ['scripts/**'], reason: 'command line scripts' };
 
     expect(
       describeConfigOverrides({
-        python: { typeChecker: 'mypy', exceptions: [exception, { ...exception, rule: 'B006' }] },
+        python: { typeChecker: 'mypy' },
+        exceptions: [exception, { ...exception, rule: 'B006' }],
       }),
     ).toEqual([
+      'exception: ' + JSON.stringify(exception),
+      'exception: ' + JSON.stringify({ ...exception, rule: 'B006' }),
       'python: {"typeChecker":"mypy"}',
-      `exception: ${JSON.stringify(exception)}`,
-      `exception: ${JSON.stringify({ ...exception, rule: 'B006' })}`,
-    ]);
-    expect(describeConfigOverrides({ python: { exceptions: [exception] } })).toEqual([
-      `exception: ${JSON.stringify(exception)}`,
     ]);
   });
 
-  it('shares thresholds, exclude, legacyInventory and file-limit exceptions with the python preset', () => {
+  it('shares thresholds, exclude, legacyInventory and exceptions with the python preset', () => {
     const shared = {
       thresholds: { crapLimit: 12 },
       exclude: ['generated/**'],
@@ -78,14 +76,18 @@ describe('config file', () => {
       preset: 'python',
       exceptions,
     });
+    expect(
+      validateConfig({
+        preset: 'python',
+        exceptions: [{ rule: 'T201', paths: ['scripts/**'], reason: 'command line scripts' }],
+      }).exceptions,
+    ).toHaveLength(1);
     expect(() =>
       validateConfig({
         preset: 'python',
         exceptions: [{ rule: 'nitpicker/no-throw', paths: ['src/**'], reason: 'Legacy' }],
       }),
-    ).toThrow(
-      '"exceptions" has rule "nitpicker/no-throw", which no top-level exception lifts in the python preset. Top-level "exceptions" take only function-lines-limit, function-statements-limit, function-control-nesting-limit, function-parameters-limit, crap-score-limit, crap-coverage-unknown, changed-branch-coverage, mutant-survived, mutant-nocoverage, duplicate-clone, stability-direction, file-lines-limit, line-length-limit, folder-files-limit; a ruff, type-checker or python-rules id goes in "python.exceptions"',
-    );
+    ).toThrow('"exceptions[0].rule" names no rule nitpicker reports: "nitpicker/no-throw"');
   });
 
   describe('kotlin options', () => {

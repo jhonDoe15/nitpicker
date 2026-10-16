@@ -141,7 +141,7 @@ export function withHint(finding) {
     ...(hint === undefined ? [] : [hint.allowed]),
     ...(hint?.exception === false
       ? []
-      : [exceptionRoute({ rule: finding.rule, path: finding.path, key: 'python.exceptions' })]),
+      : [exceptionRoute({ rule: finding.rule, path: finding.path })]),
   ];
   return { ...finding, message: sentences.join(' ') };
 }
