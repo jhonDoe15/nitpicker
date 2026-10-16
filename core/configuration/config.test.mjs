@@ -150,11 +150,13 @@ describe('config file', () => {
       });
     });
 
-    it('accepts an exception for a file limit and leaves line length to detekt', () => {
+    it('accepts an exception for a file limit or a slow test and leaves line length to detekt', () => {
       const fileLimit = { ...exception, rule: 'folder-files-limit' };
-      expect(validateConfig({ preset: 'kotlin', exceptions: [fileLimit] })).toEqual({
-        preset: 'kotlin',
-        exceptions: [fileLimit],
+      const slowTest = { ...exception, rule: 'test-runtime/slow-test' };
+      const config = { preset: 'kotlin', thresholds: { unitTestSeconds: 2.5 } };
+      expect(validateConfig({ ...config, exceptions: [fileLimit, slowTest] })).toEqual({
+        ...config,
+        exceptions: [fileLimit, slowTest],
       });
       expect(() =>
         validateConfig({
@@ -186,6 +188,9 @@ describe('config file', () => {
     expect(validateConfig({ preset: 'typescript', ...shared })).toBeDefined();
     expect(() => validateConfig({ preset: 'java', thresholds: { crapLimit: 0 } })).toThrow(
       /positive number/,
+    );
+    expect(() => validateConfig({ preset: 'python', thresholds: { unitTestSeconds: 2 } })).toThrow(
+      '"thresholds.unitTestSeconds" is supported only with "preset": "java" or "kotlin"',
     );
     expect(() => validateConfig({ preset: 'java', legacyInventory: '../x.json' })).toThrow(
       /inside the project/,

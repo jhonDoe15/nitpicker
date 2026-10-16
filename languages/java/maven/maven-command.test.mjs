@@ -96,6 +96,25 @@ describe.skipIf(process.platform === 'win32')('Maven failures', () => {
     );
   });
 
+  it('names the time limit and the skipped cleanup when Maven runs too long', () => {
+    const root = project();
+    const maven = project({ mvn: { text: '#!/bin/sh\nexec sleep 5\n', mode: 0o755 } });
+
+    expect(() =>
+      runMaven({
+        projectRoot: root,
+        maven: path.join(maven, 'mvn'),
+        args: ['verify'],
+        timeoutMs: 300,
+      }),
+    ).toThrow(
+      new Error(
+        `Maven did not finish in ${root} within 0.3 s and was stopped. Its post-integration-test ` +
+          'steps may not have run, so containers or servers the build started may still be running',
+      ),
+    );
+  });
+
   it('reports a failed Maven build of the analyzed project as java/maven-failure', () => {
     const root = project({ 'pom.xml': {} });
     const maven = project({
