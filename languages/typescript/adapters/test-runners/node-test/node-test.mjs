@@ -2,7 +2,10 @@ import { globSync } from 'node:fs';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { withoutOptions } from '../../../preset/test-runner/script-command.mjs';
-import { RUNNER_NAMES } from '../../../preset/test-runner/runners.mjs';
+import {
+  NODE_TEST_OPTIONS_NITPICKER_SETS,
+  RUNNER_NAMES,
+} from '../../../preset/test-runner/runners.mjs';
 import { spawnNodeTool } from '../../quality-areas/runners/tooling.mjs';
 import { startV8Coverage } from '../v8-coverage/v8-coverage-run.mjs';
 import {
@@ -35,22 +38,6 @@ const NODE_DEFAULT_PATTERNS = [
   `**/test.${SCRIPT_EXTENSIONS}`,
   `**/test/**/*.${SCRIPT_EXTENSIONS}`,
 ];
-
-const OPTIONS_NITPICKER_SETS = {
-  flags: ['--watch', '--test-only', '--experimental-test-coverage', '--test-update-snapshots'],
-  valued: [
-    '--test-reporter',
-    '--test-reporter-destination',
-    '--test-concurrency',
-    '--test-timeout',
-    '--test-shard',
-    '--test-coverage-include',
-    '--test-coverage-exclude',
-    '--test-coverage-branches',
-    '--test-coverage-functions',
-    '--test-coverage-lines',
-  ],
-};
 
 const VALUED_NODE_OPTIONS = new Set([
   '--import',
@@ -103,7 +90,7 @@ function selectedTestFiles(options, patterns, files) {
 
 export function nodeTestSelection(options, command) {
   const { options: scriptOptions, patterns } = splitArguments(
-    withoutOptions(command.arguments_, OPTIONS_NITPICKER_SETS),
+    withoutOptions(command.arguments_, NODE_TEST_OPTIONS_NITPICKER_SETS),
   );
   const files = runnableTestFiles(options);
   return {
