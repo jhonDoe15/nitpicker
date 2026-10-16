@@ -10,6 +10,7 @@ import {
   mypyLayers,
   mypyOwnModules,
 } from '../project-tools/mypy-layers.mjs';
+import { attempt } from '../project-tools/project-tool-layers.mjs';
 
 const MYPY_CONFIG = 'mypy.ini';
 const GLOBAL_OPTIONS = [
@@ -27,6 +28,10 @@ const PLUGIN_FILE = /^.+\.py(?=(?::\w+)?$)/;
 const INI_SECTION = /^\[([^\]]+)\]\s*$/;
 const INI_OPTION = /^([^\s=:][^=:]*?)\s*[=:]\s*(.*)$/;
 const INI_COMMENT = /\s+[#;].*$/;
+
+function isDedicatedFile(name) {
+  return INI_FILES.includes(name);
+}
 
 function toml() {
   return createRequire(import.meta.url)('smol-toml');
@@ -86,8 +91,8 @@ export function parseIni(text) {
   return sections;
 }
 
-function iniModel(sections) {
-  if (!sections.has('mypy')) {
+function iniModel(sections, shared) {
+  if (shared && !sections.has('mypy')) {
     return undefined;
   }
   const others = [...sections].filter(
@@ -104,14 +109,18 @@ function iniModel(sections) {
     }));
   return {
     format: 'ini',
-    options: Object.fromEntries(sections.get('mypy')),
+    options: Object.fromEntries(sections.get('mypy') ?? []),
     modules,
     others,
   };
 }
 
-function tomlModel(text) {
-  const { tool = {} } = toml().parse(text);
+function tomlModel(text, name) {
+  const { value: parsed, error } = attempt(() => toml().parse(text));
+  if (error !== undefined) {
+    throw new Error(`${name} could not be parsed (${error.message}): fix it`);
+  }
+  const { tool = {} } = parsed;
   const { mypy, ...others } = tool;
   if (mypy === undefined) {
     return undefined;
@@ -133,14 +142,26 @@ function readCandidate(projectRoot, name) {
     return undefined;
   }
   const text = readFileSync(file, 'utf8');
-  const model = name.endsWith('.toml') ? tomlModel(text) : iniModel(parseIni(text));
+  const model = name.endsWith('.toml')
+    ? tomlModel(text, name)
+    : iniModel(parseIni(text), !isDedicatedFile(name));
   return model === undefined ? undefined : { ...model, file: name };
 }
 
 export function readMypyConfig(projectRoot) {
-  return [...INI_FILES, 'pyproject.toml', 'setup.cfg']
-    .map((name) => readCandidate(projectRoot, name))
-    .find((model) => model !== undefined);
+  for (const name of [...INI_FILES, 'pyproject.toml', 'setup.cfg']) {
+    const model = readCandidate(projectRoot, name);
+    if (model !== undefined) {
+      return model;
+    }
+  }
+  return undefined;
+}
+
+export function mypyExcludeArguments(context) {
+  return mypyLayers(context).appliesProject && context.exclude.length > 0
+    ? ['--exclude', excludePattern(context.exclude)]
+    : [];
 }
 
 function pluginEntry(entry, projectRoot) {
@@ -177,7 +198,7 @@ function pick(options, keys, projectRoot) {
   );
 }
 
-function excludePattern(exclude) {
+export function excludePattern(exclude) {
   const patterns = exclude.map((glob) => `${globToRegExpSource(glob).slice(1, -1)}(?:/.*)?/?`);
   return `^(?:${patterns.join('|')})$`;
 }
@@ -203,12 +224,6 @@ function pickAll(options, projectRoot) {
   );
 }
 
-function combinedExclude(projectExclude, exclude) {
-  const own = exclude.length === 0 ? [] : [excludePattern(exclude)];
-  const patterns = [...[projectExclude ?? []].flat().map((pattern) => `(?:${pattern})`), ...own];
-  return patterns.length === 0 ? {} : { exclude: patterns.join('|') };
-}
-
 function isolatedSections(model, { projectRoot, exclude, own }) {
   return {
     options: { ...pick(model.options, GLOBAL_OPTIONS, projectRoot), ...excludeOption(exclude) },
@@ -221,13 +236,13 @@ function isolatedSections(model, { projectRoot, exclude, own }) {
   };
 }
 
-function layeredSections(model, { projectRoot, exclude }) {
+function layeredSections(model, { projectRoot }) {
   const { exclude: projectExclude, ...rest } = model.options;
   return {
     options: {
       strict: true,
       ...pickAll(rest, projectRoot),
-      ...combinedExclude(projectExclude, exclude),
+      ...(projectExclude === undefined ? {} : { exclude: projectExclude }),
     },
     modules: model.modules.map(({ patterns, options }) => ({
       patterns,
@@ -284,7 +299,7 @@ export function writeMypyConfig(context) {
       projectRoot,
       exclude,
       appliesProject: layers.appliesProject,
-      own: layers.appliesProject ? new Set() : mypyOwnModules(context),
+      own: layers.appliesProject ? new Set() : mypyOwnModules(context, model),
     }),
   );
   return file;

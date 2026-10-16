@@ -2,7 +2,12 @@ import { mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSy
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
-import { readMypyConfig, writeMypyConfig } from './mypy-config.mjs';
+import {
+  excludePattern,
+  mypyExcludeArguments,
+  readMypyConfig,
+  writeMypyConfig,
+} from './mypy-config.mjs';
 
 const roots = [];
 
@@ -267,27 +272,13 @@ describe('the mypy config with tools.mypy listing the project', () => {
   }
 
   it('puts strict first and lets every key the project sets override it', () => {
-    const head = [
-      /^\[tool\.mypy\]\n/u,
-      /strict = true\n/u,
-      /disallow_untyped_defs = false\n/u,
-      /plugins = \[ "pydantic\.mypy" \]\n/u,
-      /exclude = "\(\?:\^legacy\/\)\|\^\(\?:/u,
-    ];
-
-    expect(layered({ 'pyproject.toml': PYPROJECT }, ['src/gen/**'])).toMatch(
-      new RegExp(head.map(({ source }) => source).join(''), 'u'),
-    );
-  });
-
-  it('keeps the per-module sections of the project, own modules included', () => {
-    expect(layered({ 'pyproject.toml': PYPROJECT }, [])).toBe(
+    expect(layered({ 'pyproject.toml': PYPROJECT }, ['src/gen/**'])).toBe(
       [
         '[tool.mypy]',
         'strict = true',
         'disallow_untyped_defs = false',
         'plugins = [ "pydantic.mypy" ]',
-        'exclude = "(?:^legacy/)"',
+        'exclude = [ "^legacy/" ]',
         '',
         '[[tool.mypy.overrides]]',
         'module = [ "shop.*" ]',
@@ -295,6 +286,25 @@ describe('the mypy config with tools.mypy listing the project', () => {
         '',
       ].join('\n'),
     );
+  });
+
+  it('passes the project exclude through untouched, so an inline (?x) keeps working', () => {
+    const verbose = '[mypy]\nexclude = (?x)(\n    ^legacy/\n    | ^gen/\n  )\n';
+
+    expect(layered({ 'mypy.ini': verbose }, ['src/gen/**'])).toBe(
+      '[mypy]\nstrict = true\nexclude = (?x)(\n    ^legacy/\n    | ^gen/\n    )\n',
+    );
+  });
+
+  it('gives nitpicker exclude to the command line, where it adds to the project one', () => {
+    const exclude = ['src/gen/**'];
+    const listedContext = { exclude, toolPrecedence: { mypy: ['project'] }, policyRoot: '/p' };
+
+    expect(mypyExcludeArguments(listedContext)).toEqual(['--exclude', excludePattern(exclude)]);
+    expect(mypyExcludeArguments({ exclude: [], toolPrecedence: { mypy: ['project'] } })).toEqual(
+      [],
+    );
+    expect(mypyExcludeArguments({ exclude })).toEqual([]);
   });
 
   it('is nitpicker strictness alone for a project that sets nothing', () => {
@@ -323,6 +333,99 @@ describe('the mypy config with tools.mypy listing the project', () => {
   it('names the missing config', () => {
     expect(() => layered({}, [])).toThrow(
       /^"tools\.mypy\.precedence" lists "project" but a mypy config \(.+\) is missing/u,
+    );
+  });
+});
+
+describe('own modules found beyond the source roots', () => {
+  const sections = [
+    '[mypy]',
+    'mypy_path = $MYPY_CONFIG_FILE_DIR/stubs:lib',
+    '[mypy-typed_stub]',
+    'follow_imports = silent',
+    '[mypy-libmod.*]',
+    'ignore_missing_imports = True',
+    '[mypy-pkg_stubs]',
+    'follow_imports = skip',
+    '[mypy-loose]',
+    'follow_imports = silent',
+    '[mypy-yaml]',
+    'ignore_missing_imports = True',
+    '',
+  ].join('\n');
+
+  it('drops sections for packages under mypy_path, stub files and stub packages', () => {
+    const { projectRoot, text } = generated(
+      {
+        'src/pkg/__init__.py': '',
+        'stubs/typed_stub.pyi': '',
+        'lib/libmod/__init__.py': '',
+        'src/pkg_stubs/__init__.pyi': '',
+        'src/loose.pyi': '',
+        'mypy.ini': sections,
+      },
+      [],
+      { project: { sourceRoots: ['src'] } },
+    );
+
+    expect(text).toBe(
+      [
+        '[mypy]',
+        `mypy_path = ${projectRoot}/stubs:lib`,
+        '',
+        '[mypy-yaml]',
+        'ignore_missing_imports = True',
+        '',
+      ].join('\n'),
+    );
+  });
+});
+
+describe('where mypy finds its config', () => {
+  it('stops at a mypy.ini without a mypy section and uses its module sections only', () => {
+    const { text } = generated({
+      'mypy.ini': '[mypy-yaml]\nignore_missing_imports = True\n',
+      'setup.cfg': '[mypy]\npython_version = 3.9\n',
+    });
+
+    expect(text).toBe('[mypy]\n\n[mypy-yaml]\nignore_missing_imports = True\n');
+  });
+
+  it('skips a pyproject.toml without a mypy table, and a setup.cfg without a mypy section', () => {
+    const { text } = generated({
+      'pyproject.toml': '[tool.black]\nline-length = 100\n',
+      'setup.cfg': '[mypy]\npython_version = 3.9\n',
+    });
+
+    expect(text).toBe('[mypy]\npython_version = 3.9\n');
+  });
+
+  it('names a pyproject.toml it cannot parse', () => {
+    expect(() => generated({ 'pyproject.toml': '[tool.mypy\nx = 1\n' })).toThrow(
+      /^pyproject\.toml could not be parsed \([\s\S]+\): fix it$/u,
+    );
+  });
+});
+
+describe('the project config of the head read for the snapshot', () => {
+  it('resolves plugin files and the config directory variable against the snapshot', () => {
+    const head = temporary();
+    const snapshot = temporary();
+    writeFileSync(
+      path.join(head, 'mypy.ini'),
+      '[mypy]\nplugins = tools/plugin.py\nmypy_path = $MYPY_CONFIG_FILE_DIR/stubs\n',
+    );
+    const file = writeMypyConfig({
+      projectRoot: snapshot,
+      reportRoot: temporary(),
+      exclude: [],
+      project: { sourceRoots: ['.'] },
+      toolPrecedence: { mypy: ['project', 'nitpicker'] },
+      policyRoot: head,
+    });
+
+    expect(readFileSync(file, 'utf8')).toBe(
+      `[mypy]\nstrict = true\nplugins = ${path.join(snapshot, 'tools/plugin.py')}\nmypy_path = ${snapshot}/stubs\n`,
     );
   });
 });

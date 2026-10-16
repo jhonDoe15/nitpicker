@@ -4,11 +4,14 @@ import {
 } from '../../../../shared/conventions/tool-precedence.mjs';
 import { readMypyConfig } from '../configuration/mypy-config.mjs';
 import { detectTypeCheckers } from '../execution/python-project.mjs';
-import { MUTMUT_TOOL, readMutmutConfig } from './mutmut/mutmut-config.mjs';
+import { ignoredMutmutKeys, MUTMUT_TOOL, readMutmutConfig } from './mutmut/mutmut-config.mjs';
 import { MYPY_TOOL } from './mypy-layers.mjs';
 import { PYRIGHT_TOOL } from './pyright/pyright-config.mjs';
 import { pyrightConfigLabel, readProjectPyright } from './pyright/pyright-project-config.mjs';
 import { attempt } from './project-tool-layers.mjs';
+
+const ENVIRONMENT_NOTE = ' except its environment keys';
+const MUTMUT_NOTE = ' except also_copy and its process options';
 
 function notOptedIn(config, tool) {
   return !precedenceLayers(config.tools?.[tool]?.precedence).usesProject;
@@ -24,7 +27,12 @@ function pyrightNotices(projectRoot, config) {
       : readProjectPyright(projectRoot, checker);
   return found === undefined
     ? []
-    : [ignoredConfigNotice(pyrightConfigLabel(found, projectRoot), PYRIGHT_TOOL)];
+    : [
+        ignoredConfigNotice(
+          `${pyrightConfigLabel(found, projectRoot)}${ENVIRONMENT_NOTE}`,
+          PYRIGHT_TOOL,
+        ),
+      ];
 }
 
 const MYPY_LABELS = {
@@ -40,7 +48,12 @@ function mypyNotices(projectRoot, config) {
       : undefined;
   return found === undefined
     ? []
-    : [ignoredConfigNotice(MYPY_LABELS[found.file] ?? found.file, MYPY_TOOL)];
+    : [
+        ignoredConfigNotice(
+          `${MYPY_LABELS[found.file] ?? found.file}${ENVIRONMENT_NOTE}`,
+          MYPY_TOOL,
+        ),
+      ];
 }
 
 const MUTMUT_LABELS = {
@@ -53,7 +66,9 @@ function mutmutNotices(projectRoot, config) {
     (config.disable ?? []).includes('mutation') || !notOptedIn(config, MUTMUT_TOOL)
       ? undefined
       : readMutmutConfig(projectRoot);
-  return found === undefined ? [] : [ignoredConfigNotice(MUTMUT_LABELS[found.file], MUTMUT_TOOL)];
+  return found === undefined || ignoredMutmutKeys(found.table).length === 0
+    ? []
+    : [ignoredConfigNotice(`${MUTMUT_LABELS[found.file]}${MUTMUT_NOTE}`, MUTMUT_TOOL)];
 }
 
 export function ignoredProjectToolNotices({ config, projectRoot }) {

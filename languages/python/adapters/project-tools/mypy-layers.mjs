@@ -12,16 +12,20 @@ export function mypyLayers(context) {
   return toolLayers(context, MYPY_TOOL);
 }
 
+const MODULE_SUFFIX = /\.pyi?$/u;
+const STUBS_SUFFIX = /-stubs$/u;
+const CONFIG_DIRECTORY_VARIABLE = /\$\{?MYPY_CONFIG_FILE_DIR\}?/gu;
+
 function moduleName(entry) {
   if (entry.isDirectory()) {
-    return entry.name.startsWith('.') ? undefined : entry.name;
+    return entry.name.startsWith('.') ? undefined : entry.name.replace(STUBS_SUFFIX, '');
   }
-  return entry.name.endsWith('.py') ? entry.name.slice(0, -'.py'.length) : undefined;
+  return MODULE_SUFFIX.test(entry.name) ? entry.name.replace(MODULE_SUFFIX, '') : undefined;
 }
 
-function ownModuleNames(projectRoot, sourceRoots) {
+function ownModuleNames(roots) {
   return new Set(
-    importRoots(projectRoot, sourceRoots)
+    roots
       .filter((root) => existsSync(root))
       .flatMap((root) => readdirSync(root, { withFileTypes: true }))
       .map(moduleName)
@@ -34,6 +38,18 @@ export function isOwnModulePattern(pattern, own) {
   return first === ANY_MODULE || own.has(first);
 }
 
-export function mypyOwnModules({ projectRoot, project }) {
-  return ownModuleNames(path.resolve(projectRoot), project.sourceRoots);
+function mypyPathRoots(projectRoot, mypyPath) {
+  const entries = Array.isArray(mypyPath) ? mypyPath : String(mypyPath ?? '').split(/[:,]/u);
+  return entries
+    .map((entry) => entry.trim().replace(CONFIG_DIRECTORY_VARIABLE, projectRoot))
+    .filter((entry) => entry !== '')
+    .map((entry) => path.resolve(projectRoot, entry));
+}
+
+export function mypyOwnModules({ projectRoot, project }, model) {
+  const root = path.resolve(projectRoot);
+  return ownModuleNames([
+    ...importRoots(root, project.sourceRoots),
+    ...mypyPathRoots(root, model?.options?.mypy_path),
+  ]);
 }
