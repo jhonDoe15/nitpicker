@@ -1,16 +1,16 @@
 import { spawnSync } from 'node:child_process';
-import { existsSync } from 'node:fs';
-import path from 'node:path';
+import { readdirSync } from 'node:fs';
 import { resolveTool } from '../../../../../core/tooling/tool-resolution.mjs';
 
-const CONFIG_EXTENSIONS = ['ts', 'mts', 'cts', 'js', 'mjs', 'cjs', 'json'];
+const CONFIG_NAMES = ['ts', 'mts', 'cts', 'js', 'mjs', 'cjs', 'json'].map(
+  (extension) => `jest.config.${extension}`,
+);
 const MAX_OUTPUT_BYTES = 10 * 1024 * 1024;
 const OUTPUT_START = '{\n  "configs"';
 
 export function jestConfigFile(projectRoot) {
-  const found = CONFIG_EXTENSIONS.map((extension) => `jest.config.${extension}`).find((name) =>
-    existsSync(path.join(projectRoot, name)),
-  );
+  const present = new Set(readdirSync(projectRoot));
+  const found = CONFIG_NAMES.find((name) => present.has(name));
   return found ?? 'package.json';
 }
 
@@ -50,10 +50,11 @@ function parsedConfig(result) {
 
 export function readJestConfig({ projectRoot, liveProjectRoot, timeoutMs }) {
   const { binary, failure } = jestBinary(projectRoot, liveProjectRoot);
-  if (binary === undefined) return { failure };
+  if (binary === undefined) {
+    return { failure };
+  }
   const result = spawnSync(process.execPath, [binary, '--showConfig', '--no-watchman'], {
     cwd: projectRoot,
-    env: { ...process.env, NODE_ENV: 'test' },
     encoding: 'utf8',
     input: '',
     maxBuffer: MAX_OUTPUT_BYTES,

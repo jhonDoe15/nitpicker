@@ -30,7 +30,10 @@ describe('the knip config without tests', () => {
   ])('leaves the %s test runner config out of the entries', (file) => {
     const layout = resolveLayoutFor({ layout: { sourceRoots: ['src/main'] } });
 
-    const config = layoutKnipProductionConfig({ entry: ['src/main/main.ts', file] }, layout);
+    const config = layoutKnipProductionConfig(
+      { entry: ['src/main/main.ts', file], project: [] },
+      layout,
+    );
 
     expect(config.entry).toEqual(['src/main/main.ts']);
   });

@@ -8,7 +8,9 @@ const ENVIRONMENT_NAMES = [
 ];
 
 function environmentName(testEnvironment) {
-  if (typeof testEnvironment !== 'string') return undefined;
+  if (typeof testEnvironment !== 'string') {
+    return undefined;
+  }
   const normalized = testEnvironment.split(path.sep).join('/');
   return ENVIRONMENT_NAMES.find(([, pattern]) => pattern.test(normalized))?.[0];
 }
@@ -45,7 +47,9 @@ function scopeOf(config, projectRoot) {
   const inside =
     typeof config.rootDir === 'string' &&
     !path.relative(projectRoot, config.rootDir).startsWith('..');
-  if (patterns.length === 0 || hasRegex || !inside) return [];
+  if (patterns.length === 0 || hasRegex || !inside) {
+    return [];
+  }
   const setupFiles = setupFilesOf(config);
   return [
     {

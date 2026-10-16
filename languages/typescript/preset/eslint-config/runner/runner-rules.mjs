@@ -1,3 +1,5 @@
+import vitest from '@vitest/eslint-plugin';
+import jest from 'eslint-plugin-jest';
 import globals from 'globals';
 import { nodeTestPlugin } from './node-test-plugin.mjs';
 
@@ -48,8 +50,7 @@ function withAssertions(runner, rules) {
   };
 }
 
-async function vitestConfig() {
-  const { default: vitest } = await import('@vitest/eslint-plugin');
+function vitestConfig() {
   return {
     plugins: vitest.configs.recommended.plugins,
     globals: vitest.configs.env.languageOptions.globals,
@@ -65,8 +66,7 @@ async function vitestConfig() {
   };
 }
 
-async function jestConfig() {
-  const { default: jest } = await import('eslint-plugin-jest');
+function jestConfig() {
   return {
     plugins: { jest },
     globals: globals.jest,
@@ -75,8 +75,7 @@ async function jestConfig() {
   };
 }
 
-async function nodeTestConfig() {
-  const { default: jest } = await import('eslint-plugin-jest');
+function nodeTestConfig() {
   const rules = withAssertions('node', STRUCTURE_RULES);
   return {
     plugins: { 'node-test': nodeTestPlugin(jest, Object.keys(rules)) },
@@ -86,8 +85,7 @@ async function nodeTestConfig() {
   };
 }
 
-async function mochaConfig() {
-  const { default: jest } = await import('eslint-plugin-jest');
+function mochaConfig() {
   return {
     plugins: { mocha: { rules: jest.rules } },
     globals: globals.mocha,

@@ -24,14 +24,16 @@ describe('hints follow the runner the project uses', () => {
   it.each([
     ['vitest', '`vi.fn().mockRejectedValue(value)`'],
     ['jest', '`jest.fn().mockRejectedValue(value)`'],
-    ['node', '`mock.fn(async () => { throw value; })`'],
-    ['mocha', '`async () => { throw value; }`'],
-  ])('names the non-Error rejection of a %s test with %s', (runner, call) => {
+    [
+      'node',
+      'an async mock that throws an `unknown` value: `mock.fn(async () => { throw value; })`',
+    ],
+    ['mocha', 'an async stub that throws an `unknown` value: `async () => { throw value; }`'],
+  ])('names the non-Error rejection of a %s test: %s', (runner, call) => {
     underRunner(runner, () => {
-      const message = hint('@typescript-eslint/prefer-promise-reject-errors', REJECT);
-
-      expect(message).toContain(`In tests, reject with `);
-      expect(message).toContain(call);
+      expect(hint('@typescript-eslint/prefer-promise-reject-errors', REJECT)).toBe(
+        `${REJECT} In tests, reject with ${call} to use a non-Error reason.`,
+      );
     });
   });
 
@@ -67,17 +69,17 @@ describe('hints follow the runner the project uses', () => {
 
   it('keeps the Vitest wording when the policy records no runner', () => {
     underRunner(undefined, () => {
-      expect(hint('vitest/expect-expect', 'Test has no assertions')).toContain('`expect` it');
+      expect(hint('vitest/expect-expect', 'Test has no assertions')).toBe(
+        'Test has no assertions. Call `expect` in the test body: asserting helpers do not count, so return the value and `expect` it in the test.',
+      );
     });
   });
 
   it('tells a Vitest project with node:test files how to run them, without naming issue ids', () => {
     underRunner('vitest', () => {
-      const message = hint('vitest/no-import-node-test', 'Import from vitest instead of node:test');
-
-      expect(message).toContain('Import from `vitest`');
-      expect(message).toContain('"tools.tests.runner" to "node"');
-      expect(message).not.toMatch(/#\d+/u);
+      expect(hint('vitest/no-import-node-test', 'Import from vitest instead of node:test')).toBe(
+        'Import from vitest instead of node:test nitpicker runs this project\'s tests with Vitest, which does not collect node:test files. Import from `vitest`, or, if the project runs its tests with node:test, set "tools.tests.runner" to "node" in nitpicker.config.json.',
+      );
     });
   });
 });

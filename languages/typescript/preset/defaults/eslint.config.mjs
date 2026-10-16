@@ -33,7 +33,7 @@ import {
 
 const policy = readHeadPolicy();
 const testRunner = policyTestRunner(policy, analyzedProjectRoot());
-const runnerConfig = await testRunnerLintConfig(testRunner);
+const runnerConfig = testRunnerLintConfig(testRunner);
 
 const layout = readLayout();
 const react = isReactProject({ projectRoot: analyzedProjectRoot(), react: policy.react });
