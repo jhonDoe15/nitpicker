@@ -1,5 +1,6 @@
 import { DEFAULT_CRAP_SCORE_LIMIT } from '../policy.mjs';
 import { crapFindings } from '../rules/crap.mjs';
+import { nextOccurrence } from '../rules/finding-helpers.mjs';
 import { createIdentityCounter, normalizeReportPath } from './common.mjs';
 
 const FULL_COVERAGE = 100;
@@ -12,35 +13,59 @@ export function calculateCrap(complexity, coveragePercent) {
 export function ingestCrapRows(parsed, options, resolve) {
   const tool = options.tool ?? 'crap';
   const limit = options.limit ?? DEFAULT_CRAP_SCORE_LIMIT;
-  const counters = new Map();
-  const functions = [];
-
-  for (const fn of parsed) {
+  const state = { options, limit, resolve, counters: new Map(), sameSourceByFile: new Map() };
+  const functions = parsed.flatMap((fn) => {
     const filePath = normalizeReportPath(fn.file, options.root);
-    if (filePath === undefined) {
-      continue;
-    }
-    const { coverage, name = fn.longName } = resolve(fn, filePath);
-    const unique = counters.get(filePath) ?? createIdentityCounter();
-    counters.set(filePath, unique);
-    const key = unique(`function:${name}`);
-    const sourceHash =
-      coverage === undefined
-        ? undefined
-        : options.sourceHash?.({ file: filePath, start: fn.start, end: fn.end });
-    functions.push({
-      path: filePath,
-      name,
-      identity: sourceHash === undefined ? key : `${key}:source:${sourceHash}`,
-      ratchetKey: `${key}:crap`,
-      line: fn.start,
-      crap: coverage === undefined ? undefined : calculateCrap(fn.ccn, coverage),
-      covered: coverage !== undefined && coverage >= FULL_COVERAGE,
-    });
-  }
+    return filePath === undefined ? [] : [crapRow(fn, filePath, state)];
+  });
   return {
     findings: crapFindings(functions, { tool, limit, unknownMessage: options.unknownMessage }),
   };
+}
+
+function crapRow(fn, filePath, { options, limit, resolve, counters, sameSourceByFile }) {
+  const { coverage, name = fn.longName } = resolve(fn, filePath);
+  const crap = coverage === undefined ? undefined : calculateCrap(fn.ccn, coverage);
+  const sourceHash =
+    coverage === undefined
+      ? undefined
+      : options.sourceHash?.({ file: filePath, start: fn.start, end: fn.end });
+  const key =
+    fn.numberedAmongSameSource === true
+      ? keyAmongSameSource(
+          perFile(sameSourceByFile, filePath, () => new Map()),
+          {
+            name,
+            sourceHash,
+            over: crap === undefined || crap >= limit,
+          },
+        )
+      : perFile(counters, filePath, createIdentityCounter)(`function:${name}`);
+  return {
+    path: filePath,
+    name,
+    identity: sourceHash === undefined ? key : `${key}:source:${sourceHash}`,
+    ratchetKey: `${key}:crap`,
+    line: fn.start,
+    crap,
+    covered: coverage !== undefined && coverage >= FULL_COVERAGE,
+  };
+}
+
+function perFile(byFile, filePath, create) {
+  if (!byFile.has(filePath)) {
+    byFile.set(filePath, create());
+  }
+  return byFile.get(filePath);
+}
+
+function keyAmongSameSource(seen, { name, sourceHash, over }) {
+  const base = `function:${name}`;
+  if (!over) {
+    return base;
+  }
+  const occurrence = nextOccurrence(seen, `${base}\0${String(sourceHash)}`);
+  return occurrence === 1 ? base : `${base}#${String(occurrence)}`;
 }
 
 export function parseLizardCsv(text) {

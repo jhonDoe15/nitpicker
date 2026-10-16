@@ -1,9 +1,14 @@
+import { execFile } from 'node:child_process';
 import { globSync } from 'node:fs';
+import { tmpdir } from 'node:os';
 import path from 'node:path';
+import { promisify } from 'node:util';
 import { ESLint } from 'eslint';
+import { oxlintBinary } from './oxlint-process.mjs';
 
 const [projectRoot, ...patterns] = process.argv.slice(2);
 const wrapperConfigPath = path.join(import.meta.dirname, '..', 'eslint-wrapper.config.mjs');
+const MAX_LISTING_BYTES = 64 * 1024 * 1024;
 
 try {
   process.stdout.write(`${JSON.stringify(await lintPlan(projectRoot, patterns))}\n`);
@@ -14,7 +19,21 @@ try {
   process.exitCode = 2;
 }
 
+async function listedNativeRules() {
+  const { stdout } = await promisify(execFile)(
+    process.execPath,
+    [oxlintBinary(), '--rules', '--format', 'json'],
+    { cwd: tmpdir(), maxBuffer: MAX_LISTING_BYTES },
+  );
+  return JSON.parse(stdout);
+}
+
 async function lintPlan(root, globs) {
+  const [nativeRules, plan] = await Promise.all([listedNativeRules(), filePlan(root, globs)]);
+  return { ...plan, nativeRules };
+}
+
+async function filePlan(root, globs) {
   const eslint = new ESLint({ cwd: root, overrideConfigFile: wrapperConfigPath });
   const plan = {
     groups: new Map(),
@@ -24,7 +43,9 @@ async function lintPlan(root, globs) {
   };
   for (const file of candidateFiles(root, globs)) {
     const config = await lintedConfig(eslint, file);
-    if (config !== undefined) addFile(plan, file, config);
+    if (config !== undefined) {
+      addFile(plan, file, config);
+    }
   }
   return {
     groups: [...plan.groups.values()],
