@@ -273,12 +273,15 @@ export default [
 ];
 `;
 
-describe('lintWithOxlint with type-aware rules whose types only exempt', () => {
-  let screenedRoot;
+const SCREENED_LINT_TIMEOUT_MS = 60_000;
 
-  function screenedLint(patterns, runEslintCli) {
-    return lintProject({ root: screenedRoot, patterns, runEslintCli });
-  }
+describe('lintWithOxlint with type-aware rules whose types only exempt', () => {
+  const typed = { ruleId: 'local/no-foo-typed', line: 1, column: 1, message: 'Typed foo.' };
+  let screenedRoot;
+  let candidateRuns;
+  let candidateLint;
+  let cleanRuns;
+  let cleanLint;
 
   beforeAll(() => {
     screenedRoot = createProject('nitpicker-oxlint-screened-test-', {
@@ -286,23 +289,36 @@ describe('lintWithOxlint with type-aware rules whose types only exempt', () => {
       'src/candidate.ts': 'export const foo = 1;\n',
       'src/clean.ts': 'export const bar = 1;\ndebugger;\n',
     });
-  });
+    candidateRuns = [];
+    candidateLint = lintProject({
+      root: screenedRoot,
+      patterns: ['src/**/*.ts'],
+      runEslintCli: (files, environment) => {
+        candidateRuns.push({ files, rules: environment.NITPICKER_DIFF_ESLINT_ONLY_RULES });
+        return [{ filePath: path.join(screenedRoot, 'src/candidate.ts'), messages: [typed] }];
+      },
+    });
+    cleanRuns = [];
+    cleanLint = lintProject({
+      root: screenedRoot,
+      patterns: ['src/clean.ts'],
+      runEslintCli: (files) => {
+        cleanRuns.push(files);
+        return [];
+      },
+    });
+  }, SCREENED_LINT_TIMEOUT_MS);
 
   afterAll(() => {
     rmSync(screenedRoot, { recursive: true, force: true });
   });
 
   it('runs ESLint only on the files the untyped rule reported and keeps its typed findings', () => {
-    const calls = [];
-    const typed = { ruleId: 'local/no-foo-typed', line: 1, column: 1, message: 'Typed foo.' };
-    const linted = screenedLint(['src/**/*.ts'], (files, environment) => {
-      calls.push({ files, rules: environment.NITPICKER_DIFF_ESLINT_ONLY_RULES });
-      return [{ filePath: path.join(screenedRoot, 'src/candidate.ts'), messages: [typed] }];
-    });
-
-    expect(calls).toEqual([{ files: ['src/candidate.ts'], rules: '["local/no-foo-typed"]' }]);
+    expect(candidateRuns).toEqual([
+      { files: ['src/candidate.ts'], rules: '["local/no-foo-typed"]' },
+    ]);
     expect(
-      linted.map(({ filePath, messages }) => [
+      candidateLint.map(({ filePath, messages }) => [
         path.relative(screenedRoot, filePath),
         messages.map(({ ruleId, line, message }) => ({ ruleId, line, message })),
       ]),
@@ -313,12 +329,9 @@ describe('lintWithOxlint with type-aware rules whose types only exempt', () => {
   });
 
   it('starts no ESLint run when the untyped rule reports nothing', () => {
-    const linted = screenedLint(['src/clean.ts'], () => {
-      throw new Error('no file needs ESLint here');
-    });
-
-    expect(linted.flatMap(({ messages }) => messages.map(({ ruleId }) => ruleId))).toEqual([
-      'no-debugger',
-    ]);
+    expect({
+      runs: cleanRuns,
+      rules: cleanLint.flatMap(({ messages }) => messages.map(({ ruleId }) => ruleId)),
+    }).toEqual({ runs: [], rules: ['no-debugger'] });
   });
 });
