@@ -5,6 +5,10 @@ import {
   analyzeJavaSnapshot,
   parseRunnerArguments,
 } from '../../../../languages/java/adapters/java-runner.mjs';
+import {
+  analyzePythonSnapshot,
+  parsePythonArguments,
+} from '../../../../languages/python/adapters/python-runner.mjs';
 import { headPolicyEnvironment } from '../../../../languages/typescript/preset/head-policy.mjs';
 import { progressEvent } from '../analyzer-scheduler.mjs';
 import { reportFromAnalyzerOutput } from '../process.mjs';
@@ -17,10 +21,15 @@ const javaRunnerPath = path.resolve(
   import.meta.dirname,
   '../../../../languages/java/adapters/java-runner.mjs',
 );
+const pythonRunnerPath = path.resolve(
+  import.meta.dirname,
+  '../../../../languages/python/adapters/python-runner.mjs',
+);
 
 const inProcessScripts = new Map([
   [fakeAnalyzerPath, runFakeAnalyzer],
   [javaRunnerPath, runJavaRunner],
+  [pythonRunnerPath, runPythonRunner],
 ]);
 
 export function runTasksInProcess(tasks, headPolicyFile, { progress } = {}) {
@@ -201,6 +210,26 @@ function runJavaRunner(argv) {
     return { status: 2, signal: undefined, stdoutText: '', stderrText: error.message };
   }
   const report = analyzeJavaSnapshot(realpathSync(parsed.projectRoot), { policy: parsed.policy });
+  return {
+    status: 0,
+    signal: undefined,
+    stdoutText: `${JSON.stringify(report)}\n`,
+    stderrText: '',
+  };
+}
+
+function runPythonRunner(argv) {
+  let parsed;
+  try {
+    parsed = parsePythonArguments(argv);
+  } catch (error) {
+    return { status: 2, signal: undefined, stdoutText: '', stderrText: error.message };
+  }
+  const report = analyzePythonSnapshot({
+    ...parsed,
+    projectRoot: realpathSync(parsed.projectRoot),
+    liveRoot: realpathSync(parsed.liveRoot),
+  });
   return {
     status: 0,
     signal: undefined,
