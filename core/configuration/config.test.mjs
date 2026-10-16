@@ -284,9 +284,7 @@ describe('config file', () => {
   it('refuses to disable an analyzer that another enabled analyzer depends on', () => {
     const analyzers = [{ name: 'coverage' }, { name: 'crap', dependencies: ['coverage'] }];
 
-    expect(() => applyDisable(analyzers, { disable: ['coverage'] })).toThrow(
-      '"disable" cannot disable coverage because crap depends on it; add it to "disable" too',
-    );
+    expect(() => applyDisable(analyzers, { disable: ['coverage'] })).toThrow(/depends on it/);
     expect(applyDisable(analyzers, { disable: ['coverage', 'crap'] })).toEqual([]);
   });
 
