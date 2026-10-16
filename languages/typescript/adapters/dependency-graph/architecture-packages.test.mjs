@@ -10,6 +10,10 @@ import architectureConfig from '../../preset/defaults/dependency-cruiser.config.
 import { strictSyntaxConfigFor } from '../../preset/eslint-config/strict.mjs';
 import { resolveLayout } from '../../preset/layout.mjs';
 import { staticChecks } from '../../preset/quality-checks.mjs';
+import {
+  REACH_THROUGH_SHARED_RULE,
+  sharedReachPath,
+} from '../../preset/architecture/strict-boundary-rules.mjs';
 
 const root = mkdtempSync(path.join(tmpdir(), 'nitpicker-architecture-packages-'));
 const domain = 'src/main/features/billing/domain';
@@ -58,6 +62,11 @@ async function architectureViolations() {
     { tsConfig, babelConfig: {} },
   );
   return result.output.summary.violations
+    .filter(
+      (violation) =>
+        violation.rule.name !== REACH_THROUGH_SHARED_RULE ||
+        sharedReachPath(violation, result.output.modules) !== undefined,
+    )
     .map(({ from, rule }) => `${from} ${rule.name}`)
     .toSorted();
 }
