@@ -260,7 +260,8 @@ a React "state update on an unmounted component" warning from a timer that survi
 check reads the `coverage` run, so it starts no tests of its own; it costs a small reporter in that
 run and a file read per side.
 
-What it sees is what Vitest sends to standard error from the console: `console.error`,
+The check runs on Vitest projects, since only Vitest reports console output per test. What it sees is
+what Vitest sends to standard error from the console: `console.error`,
 `console.warn`, `console.trace` and a failed `console.assert`. A message the project's own
 `onConsoleLog` returns `false` for is skipped, because that is the project saying it is expected.
 `silent: true` does not hide anything from the check, because it silences the terminal, not the
