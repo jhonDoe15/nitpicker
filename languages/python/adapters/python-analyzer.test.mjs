@@ -1,7 +1,7 @@
-import { mkdtempSync, realpathSync, rmSync } from 'node:fs';
+import { mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { jscpdVersion } from '../../java/adapters/metrics/java-duplicates.mjs';
 import { installFakeToolchain } from './test-support/fake-toolchain.mjs';
 import {
@@ -22,6 +22,7 @@ function temporaryRoot() {
 }
 
 afterEach(() => {
+  vi.unstubAllEnvs();
   for (const root of roots.splice(0)) {
     rmSync(root, { recursive: true, force: true });
   }
@@ -166,6 +167,52 @@ describe('Python analyzer', () => {
       createPythonAnalyzer({ typeChecker: 'pyright', testRunner: 'pytest' }).resolveVersion(live),
     ).toBe(`ruff@0.9.9;pyright@1.1.390;coverage@7.6.1;pytest@8.3.1;${jscpd}`);
     expect(createMutationAnalyzer().resolveVersion(live)).toBe('mutmut@3.8.0;pytest@8.3.1');
+  });
+
+  it('probes each tool once when base and head resolve the versions, and again for another checkout', () => {
+    const live = temporaryRoot();
+    const other = temporaryRoot();
+    installFakeToolchain(path.join(live, '.venv/bin'));
+    installFakeToolchain(path.join(other, '.venv/bin'));
+    const log = path.join(temporaryRoot(), 'calls.jsonl');
+    writeFileSync(log, '');
+    vi.stubEnv('FAKE_PYTHON_LOG', log);
+    const [python, mutation] = createPythonAnalyzers({ testRunner: 'pytest' });
+    const calls = () =>
+      readFileSync(log, 'utf8')
+        .split('\n')
+        .filter(Boolean)
+        .map((line) => JSON.parse(line))
+        .map(({ tool, args, cwd }) => ({ tool, args, cwd }));
+    const pytestProbe = (cwd) => ({
+      tool: 'python',
+      args: [
+        '-c',
+        'import importlib.util as u, pytest; print(pytest.__version__, int(u.find_spec("pytest_cov") is not None), int(u.find_spec("xdist") is not None))',
+      ],
+      cwd,
+    });
+    const pythonProbes = (cwd) => [
+      { tool: 'ruff', args: ['--version'], cwd },
+      { tool: 'mypy', args: ['--version'], cwd },
+      { tool: 'coverage', args: ['--version'], cwd },
+      pytestProbe(cwd),
+    ];
+    const mutmutProbe = (cwd) => ({
+      tool: 'python',
+      args: ['-c', 'import importlib.metadata; print(importlib.metadata.version("mutmut"))'],
+      cwd,
+    });
+
+    for (const checkout of [live, live]) {
+      python.resolveVersion(checkout);
+      mutation.resolveVersion(checkout);
+    }
+    const resolvedOnce = calls();
+    python.resolveVersion(other);
+
+    expect(resolvedOnce).toEqual([...pythonProbes(live), mutmutProbe(live)]);
+    expect(calls()).toEqual([...resolvedOnce, ...pythonProbes(other)]);
   });
 
   it('reports a missing environment when resolving the version', () => {

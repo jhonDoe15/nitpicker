@@ -18,6 +18,19 @@ export function execute(context, command, { timeout = TOOL_TIMEOUT_MS, env = {} 
   });
 }
 
+export function probe(context, command) {
+  const [tool, ...args] = command;
+  const key = JSON.stringify([
+    context.launcher.launch(tool, args),
+    context.projectRoot,
+    context.env,
+  ]);
+  if (!context.probes.has(key)) {
+    context.probes.set(key, execute(context, command));
+  }
+  return context.probes.get(key);
+}
+
 function isAccepted(accepted, result) {
   return typeof accepted === 'function' ? accepted(result) : accepted.includes(result.status);
 }
@@ -61,7 +74,7 @@ function describeFailure({ context, command, result, timeoutMs = TOOL_TIMEOUT_MS
 }
 
 export function probeVersion(context, command) {
-  const result = execute(context, command);
+  const result = probe(context, command);
   if (result.error !== undefined || result.status !== 0) {
     return 'missing';
   }

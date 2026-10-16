@@ -58,6 +58,7 @@ export function createToolContext({
   exclude = [],
   snapshot = 'head',
   baselineRoot,
+  probes = new Map(),
 }) {
   const launcher = openEnvironment(detectEnvironment(liveRoot, settings.environment), liveRoot);
   const sourceRoots = detectSourceRoots(projectRoot, settings.sourceRoots);
@@ -69,6 +70,7 @@ export function createToolContext({
     reportRoot,
     snapshot,
     baselineRoot,
+    probes,
     launcher,
     exclude,
     project: {
