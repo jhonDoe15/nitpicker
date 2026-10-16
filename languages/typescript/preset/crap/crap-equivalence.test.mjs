@@ -1,7 +1,7 @@
 import { readFileSync, readdirSync } from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { normalizeCrap } from '../../adapters/quality-areas-runner.mjs';
+import { normalizeCrap } from '../../adapters/quality-areas/reporting/tests.mjs';
 import { measureCrap } from './measure.mjs';
 import { reportFunctionsOf } from './report-functions.mjs';
 
