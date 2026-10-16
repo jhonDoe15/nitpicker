@@ -1,6 +1,7 @@
 import {
   GRADLE_PRESETS,
   PROJECT_TOOL_CONFIGS,
+  STYLE_TOOLS,
 } from '../../languages/java/adapters/gradle-presets.mjs';
 import { configError, isPlainObject } from '../../shared/config.mjs';
 
@@ -26,17 +27,25 @@ const ENGINES = new Map([
     },
   ],
 ]);
-const GRADLE_TOOL_SETTING_KEYS = new Map(
-  [...PROJECT_TOOL_CONFIGS.keys()].map((tool) => [tool, ['precedence']]),
-);
+const PRECEDENCE_KEYS = ['precedence'];
 const SINGLE_CONFIG_TOOLS = ['checkstyle'];
+const PROJECT_FIRST_TOOLS = ['ktlint'];
 const ORDERED_PRECEDENCE_TOOLS = ['prettier'];
 const PRECEDENCE_LAYERS = ['project', 'nitpicker'];
 
+function toolSettingKeysOf(preset) {
+  if (GRADLE_PRESETS.includes(preset) || preset === 'python') {
+    const names = [
+      ...(GRADLE_PRESETS.includes(preset) ? PROJECT_TOOL_CONFIGS.keys() : []),
+      ...(STYLE_TOOLS.get(preset) ?? []),
+    ];
+    return new Map(names.map((tool) => [tool, PRECEDENCE_KEYS]));
+  }
+  return TOOL_SETTING_KEYS;
+}
+
 export function validateTools(tools, preset) {
-  const toolSettingKeys = GRADLE_PRESETS.includes(preset)
-    ? GRADLE_TOOL_SETTING_KEYS
-    : TOOL_SETTING_KEYS;
+  const toolSettingKeys = toolSettingKeysOf(preset);
   if (!isPlainObject(tools)) {
     throw configError('"tools" must be an object keyed by tool name');
   }
@@ -69,6 +78,15 @@ function validateToolSettings(name, settings, toolSettingKeys) {
   if (SINGLE_CONFIG_TOOLS.includes(name) && settings.precedence.length > 1) {
     throw configError(
       `"tools.${name}.precedence" must be ["nitpicker"] or ["project"]: ${name} runs one configuration, so the two cannot be merged`,
+    );
+  }
+  if (
+    PROJECT_FIRST_TOOLS.includes(name) &&
+    settings.precedence[0] === 'nitpicker' &&
+    settings.precedence.length > 1
+  ) {
+    throw configError(
+      `"tools.${name}.precedence" must list "project" first: ${name} reads the project's .editorconfig natively, which always wins over nitpicker's measured conventions`,
     );
   }
 }

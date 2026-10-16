@@ -12,7 +12,7 @@ export const KOTLIN_CONVENTIONS = [
     id: KOTLIN_INDENTATION,
     label: 'Kotlin indentation',
     options: ['2', '4'],
-    optionLabels: { 2: '2 spaces (ktfmt meta)', 4: '4 spaces (ktfmt kotlinlang)' },
+    optionLabels: { 2: '2 spaces', 4: '4 spaces' },
     fallback: undefined,
     files: KOTLIN_FILES,
     measure: indentationStep,

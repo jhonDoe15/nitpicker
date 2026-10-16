@@ -17,24 +17,37 @@ import { REPORT_DIRECTORY, requireGradleReports } from './reporting/java-reports
 import { MAVEN_REPORT_DIRECTORY, runMavenPreset } from '../maven/maven-build.mjs';
 import { detectJavaBuild, INIT_SCRIPT } from '../builds/java-build.mjs';
 import { readModuleFindings } from '../builds/java-modules.mjs';
-import { kotlinGradleArguments } from './kotlin/kotlin-tools.mjs';
+import { kotlinFormatAdvice } from './kotlin/kotlin-format-advice.mjs';
+import { kotlinGradleArguments, resolveKotlinTools } from './kotlin/kotlin-tools.mjs';
 import { isJavaTouchedRule } from './touched-rules.mjs';
 
 const GRADLE_TIMEOUT_MS = 15 * 60 * 1000;
 const MAX_OUTPUT_BYTES = 50 * 1024 * 1024;
 
-function kotlinProperties(
-  projectRoot,
-  { preset, kotlinFormatter, kotlinDetektConfig, snapshot, conventions },
-) {
-  return preset === 'kotlin'
-    ? kotlinGradleArguments(projectRoot, {
-        formatter: kotlinFormatter,
-        detektConfig: kotlinDetektConfig,
-        snapshot,
-        conventions,
-      })
+function kotlinOptions(policy) {
+  return {
+    formatter: policy.kotlinFormatter,
+    detektConfig: policy.kotlinDetektConfig,
+    snapshot: policy.snapshot,
+    conventions: policy.conventions,
+    policyRoot: policy.policyRoot,
+    toolPrecedence: policy.toolPrecedence,
+  };
+}
+
+function kotlinProperties(projectRoot, policy) {
+  return policy.preset === 'kotlin'
+    ? kotlinGradleArguments(projectRoot, kotlinOptions(policy))
     : [];
+}
+
+function kotlinAdvice(projectRoot, policy = {}) {
+  return policy.preset === 'kotlin'
+    ? kotlinFormatAdvice(
+        resolveKotlinTools(projectRoot, kotlinOptions(policy)),
+        policy.conventions ?? {},
+      )
+    : undefined;
 }
 
 function toolConfigChoices(projectRoot, { toolPrecedence = {}, policyRoot } = {}) {
@@ -129,6 +142,7 @@ export function collectJavaFindings(root, options = {}) {
         fileLimits: options.policy?.fileLimits,
         exclude: options.policy?.exclude,
         exceptions: options.policy?.exceptions,
+        formatAdvice: kotlinAdvice(projectRoot, options.policy),
       }),
     },
     preset,

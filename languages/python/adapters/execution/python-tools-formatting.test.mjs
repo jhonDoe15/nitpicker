@@ -93,6 +93,15 @@ describe('lint and format arguments', () => {
       '--check',
       '--diff',
       '--no-cache',
+      '--isolated',
+      '--target-version',
+      'py310',
+      '--line-length',
+      '88',
+      '--config',
+      'format.quote-style = "double"',
+      '--config',
+      'indent-width = 4',
       '--extend-exclude',
       'legacy/**',
       '.',
@@ -150,6 +159,9 @@ describe('formatter arguments from the conventions followed', () => {
       '--check',
       '--diff',
       '--no-cache',
+      '--isolated',
+      '--target-version',
+      'py38',
       '--line-length',
       '100',
       '--config',
@@ -163,30 +175,54 @@ describe('formatter arguments from the conventions followed', () => {
     const calls = callsLog();
     const root = project({ 'pyproject.toml': '[tool.black]\n' });
 
-    runPythonTools(contextWithConventions(root, followed).context);
+    const { context, reportRoot } = contextWithConventions(root, followed);
+    runPythonTools(context);
 
-    expect(calls('black', '--check')[0].args).toEqual([
+    const { args } = calls('black', '--check')[0];
+    expect(args).toEqual([
       '--check',
-      '--line-length',
-      '100',
-      '--skip-string-normalization',
+      '--config',
+      path.join(reportRoot, 'nitpicker-black.toml'),
       '.',
     ]);
+    expect(readReport(reportRoot, 'nitpicker-black.toml')).toBe(
+      '[tool.black]\nline-length = 100\nskip-string-normalization = true\n',
+    );
   });
-  it('leaves the formatter alone for the options the project configures itself', () => {
+  it('keeps the project ruff config out unless it is listed', () => {
+    const calls = callsLog();
+    const root = project({
+      'pyproject.toml': '[tool.ruff]\nline-length = 120\n',
+    });
+
+    runPythonTools(contextWithConventions(root, followed).context);
+
+    expect(calls('ruff', 'format')[0].args.slice(0, 5)).toEqual([
+      'format',
+      '--check',
+      '--diff',
+      '--no-cache',
+      '--isolated',
+    ]);
+  });
+  it('leaves the formatter alone for the options the project configures itself once it is listed', () => {
     const calls = callsLog();
     const root = project({
       'pyproject.toml':
         '[tool.ruff]\nline-length = 120\n\n[tool.ruff.format]\nquote-style = "double"\n',
     });
 
-    runPythonTools(contextWithConventions(root, followed).context);
+    runPythonTools(
+      contextWithConventions(root, followed, { ruff: ['project', 'nitpicker'] }).context,
+    );
 
     expect(calls('ruff', 'format')[0].args).toEqual([
       'format',
       '--check',
       '--diff',
       '--no-cache',
+      '--config',
+      path.join(root, 'pyproject.toml'),
       '--config',
       'indent-width = 2',
       '.',
@@ -206,6 +242,20 @@ describe('the ruff config for the installed ruff', () => {
     runPythonTools(contextFor(root).context);
 
     expect(calls('ruff', 'check')[0].args[2]).toBe(RUFF_CONFIG);
+  });
+  it('drops the rules the installed ruff still has in preview', () => {
+    const everyRule = selected(RUFF_CONFIG).map((code) =>
+      code === 'RUF071'
+        ? { code, preview: true, status: { Preview: { since: '0.15.6' } } }
+        : rule(code),
+    );
+    const root = project({ 'ruff-rules.json': JSON.stringify(everyRule) });
+    const { context, reportRoot } = contextFor(root);
+
+    runPythonTools(context);
+
+    const filtered = readFileSync(path.join(reportRoot, 'nitpicker-ruff.toml'), 'utf8');
+    expect(filtered).toBe(readFileSync(RUFF_CONFIG, 'utf8').replace('  "RUF071",\n', ''));
   });
   it('drops the rules an older ruff does not know instead of failing on them', () => {
     const calls = callsLog();

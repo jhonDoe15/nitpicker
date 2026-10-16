@@ -193,17 +193,34 @@ The formatter is `black` when `pyproject.toml`, `setup.cfg`, `tox.ini`, `Pipfile
 `[tool.black]` table, `black` as a dependency (a requirements line, a poetry key or an entry of any
 TOML dependency array), a `tox` command, or the `psf/black` or `black-pre-commit-mirror` repository
 or the `black` hook id, and none of them configures ruff's formatter (`[tool.ruff.format]`, a
-`[format]` table in `ruff.toml`, the `ruff-format` hook). The format check uses the project's own
-formatter configuration (line length and so on); only the lint rules are nitpicker's. For a setting
-the project's ruff or black configuration does not write down (`line-length`, `format.quote-style`,
-`indent-width`, black's `skip-string-normalization`), the format check follows the project's code
-instead of the formatter default (double quotes, 88 columns, 4 spaces): `python.quotes`,
-`python.lineLength` and `python.indentation` in the `conventions` key of `nitpicker.config.json`
-pin them. A file votes a line length only from a call or bracket that the formatter left wrapped
-without a trailing comma (joined, it would have fit any wider limit), or 120 when two lines pass
-100; `black` has no indentation option, and for single quotes it gets `--skip-string-normalization`. A format
-finding from a detected formatter says so and names `python.formatter`, the setting that changes
-it.
+`[format]` table in `ruff.toml`, the `ruff-format` hook).
+
+**The format check follows the project's code, not its formatter config.** Behavior change: a
+project whose `[tool.ruff]`, `ruff.toml` or `[tool.black]` set the line length, quote style or
+indentation is now checked with the settings nitpicker measures from the code (below), which may
+differ from that config, until the project opts in. By default `ruff format` runs with `--isolated`
+and always gets `--line-length`, `--config 'format.quote-style = "..."'` and
+`--config 'indent-width = N'`; `black` runs with `--config` pointing at a file nitpicker writes
+(`line-length`, and `skip-string-normalization` for single quotes). The values are `python.quotes`
+(double), `python.lineLength` (88) and `python.indentation` (4) when the code has no clear majority.
+A format finding names the exact command that passes (for example
+`ruff format --isolated --target-version py38 --line-length 88 --config 'format.quote-style = "double"' --config 'indent-width = 4' .`)
+and the opt-in. A format finding from a detected formatter also names `python.formatter`, the setting
+that changes it.
+
+**Opt-in.** `"tools": { "ruff": { "precedence": ["project", "nitpicker"] } }` (or `black`) reads the
+project's own config: `.ruff.toml`, then `ruff.toml`, then `pyproject.toml`, the first found from
+the project root up to the repository root, following `extend` (for black, `[tool.black]` in
+`pyproject.toml`). A key the config sets wins; the measured or pinned convention fills the rest
+(`["nitpicker", "project"]` lets the conventions win instead). The file is read from the head
+checkout for both sides of the comparison, passed to the formatter as `--config <file>`, and its
+content is part of the cache key. Which formatter applies which convention: ruff format applies all
+three; black applies `python.lineLength` and `python.quotes` (it keeps single quotes as written, so
+it accepts both styles) and has no indentation option, so `python.indentation` is neither measured
+nor printed with black, and pinning it is a config error. A file votes a line length only from a
+call or bracket that the formatter left wrapped without a trailing comma (joined, it would have fit
+any wider limit), or 120 when two lines pass 100. The run prints the source of each convention:
+the files it measured, the pin in `nitpicker.config.json`, or "from your ruff config".
 
 The test runner is `pytest` when the project shows it uses it: a `[tool.pytest.ini_options]`,
 `[pytest]` or `[tool:pytest]` section, `pytest.ini`, `pytest` or a pytest plugin as a dependency or
@@ -295,9 +312,11 @@ Details that are decisions rather than the table:
 --no-cache --output-format sarif`. The rule set is nitpicker's, not the project's, so the gate
   means the same on every project: pyflakes (`F`), the error rules of pycodestyle that are not
   formatting (`E4`, `E7`, `E9`), bugbear (`B`), comprehensions (`C4`), `SIM`, `PIE`, `RET`, `PERF`,
-  the `RUF` rules listed one by one in the file (the stable ones ruff 0.16 enables, so a newer ruff
-  cannot add rules on its own; a rule the installed ruff does not know yet is left out of a copy of
-  the config instead of failing it) and `T20` (no `print`), without `B008` (a call in an argument
+  the `RUF` rules listed one by one in the file (the stable ones ruff 0.16 enables, plus `RUF071`,
+  which is stable from ruff 0.17, so a newer ruff cannot add rules on its own; the installed ruff is
+  asked for its rules with `ruff rule --all`, and a rule it does not know, or still has in preview or
+  removed, is left out of a copy of the config instead of failing it; when that call itself fails the
+  file is used as it is, and a ruff that rejects one of its codes fails the run) and `T20` (no `print`), without `B008` (a call in an argument
   default, which the web frameworks need) and `RUF001`, `RUF002`, `RUF003` and `RUF012` (non-ASCII
   text and mutable class attributes, both common in correct code). The target version follows the project's
   `requires-python` (or poetry's `python`, or `python_requires`): its lowest version, never lower
@@ -768,6 +787,10 @@ and CRAP rules.
   and pyright from the `PATH`; the second drives `nitpicker_rules.py` over edge cases (test files,
   nested classes, comment forms). The preset e2e test also gates type errors with mypy and pyright,
   the one-way rules and `python.exceptions` end to end.
+- `languages/python/ruff/ruff-rules.e2e.test.mjs`: gated behind `NITPICKER_PYTHON_E2E=1` (the ruff
+  from the `PATH`, or `NITPICKER_RUFF`). Every stable `RUF` rule of the installed ruff must be
+  selected or ignored in `nitpicker-ruff.toml`, so a new stable rule fails the test until someone
+  reviews it.
 - `core/pack-contents.test.mjs` checks that the Python files, including the ruff config and the
   rules script, are in the npm package.
 - Slice 5 unit tests: `python-sources.test.mjs` (module naming, exclusions), `python-coupling.test.mjs`

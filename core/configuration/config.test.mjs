@@ -358,7 +358,7 @@ describe('tool precedence', () => {
       expect(() =>
         validateConfig({ preset, tools: { prettier: { precedence: ['project'] } } }),
       ).toThrow(
-        '"tools" names unknown tool "prettier". Supported tools with this preset: pmd, checkstyle',
+        `"tools" names unknown tool "prettier". Supported tools with this preset: pmd, checkstyle${preset === 'kotlin' ? ', ktlint, ktfmt, detekt' : ''}`,
       );
       expect(() =>
         validateConfig({ preset, tools: { checkstyle: { precedence: ['nitpicker', 'project'] } } }),
@@ -375,9 +375,44 @@ describe('tool precedence', () => {
     );
     expect(() => validateConfig({ preset: 'python', tools })).toThrow(
       new Error(
-        'nitpicker.config.json: "tools" is not supported with "preset": "python": it describes the TypeScript source layout and ESLint rules, which the Python preset does not have. Not supported with python: layout, exceptions, react, i18n, tools, except exceptions for file-lines-limit, line-length-limit, folder-files-limit. Shared by all presets: thresholds, exclude, legacyInventory',
+        'nitpicker.config.json: "tools" names unknown tool "pmd". Supported tools with this preset: ruff, black',
       ),
     );
+  });
+
+  it('names ruff and black with the python preset, and the formatters with the kotlin preset', () => {
+    const python = {
+      ruff: { precedence: ['project', 'nitpicker'] },
+      black: { precedence: ['project'] },
+    };
+    const kotlin = {
+      ktlint: { precedence: ['project', 'nitpicker'] },
+      ktfmt: { precedence: ['nitpicker', 'project'] },
+      detekt: { precedence: ['project'] },
+    };
+
+    expect(validateConfig({ preset: 'python', tools: python }).tools).toEqual(python);
+    expect(validateConfig({ preset: 'kotlin', tools: kotlin }).tools).toEqual(kotlin);
+    expect(() =>
+      validateConfig({ preset: 'java', tools: { ktlint: { precedence: ['project'] } } }),
+    ).toThrow(
+      '"tools" names unknown tool "ktlint". Supported tools with this preset: pmd, checkstyle',
+    );
+    expect(() => validateConfig({ preset: 'python', tools: { ruff: { precedence: [] } } })).toThrow(
+      '"tools.ruff.precedence" must list "project", "nitpicker" or both, each once',
+    );
+  });
+
+  it('asks for the project first with ktlint, which reads .editorconfig itself', () => {
+    expect(() =>
+      validateConfig({
+        preset: 'kotlin',
+        tools: { ktlint: { precedence: ['nitpicker', 'project'] } },
+      }),
+    ).toThrow('"tools.ktlint.precedence" must list "project" first');
+    expect(
+      validateConfig({ preset: 'kotlin', tools: { ktlint: { precedence: ['nitpicker'] } } }),
+    ).toBeDefined();
   });
 });
 

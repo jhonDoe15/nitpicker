@@ -8,7 +8,12 @@ import {
   withLegacyInventory,
 } from '../../../shared/legacy-inventory.mjs';
 import { configError, TYPESCRIPT_ONLY_KEYS } from '../../../shared/config.mjs';
-import { JAVA_TOOLS, PROJECT_TOOL_CONFIGS } from './gradle-presets.mjs';
+import {
+  JAVA_TOOLS,
+  PROJECT_STYLE_FILES,
+  PROJECT_TOOL_CONFIGS,
+  STYLE_TOOL_NAMES,
+} from './gradle-presets.mjs';
 import { JAVA_NATIVE_RULES, SHARED_EXCEPTION_RULES } from '../../../shared/policy.mjs';
 import { evaluateBaselineExpansions } from '../../../shared/rules/baseline-expansion.mjs';
 import { checkstyleRuleName } from '../messages/rule-messages.mjs';
@@ -81,7 +86,7 @@ function javaAdapterArguments({
     ),
     ...(kotlin.formatter === undefined ? [] : ['--kotlin-formatter', kotlin.formatter]),
     ...(kotlin.detektConfig === undefined ? [] : ['--kotlin-detekt-config', kotlin.detektConfig]),
-    ...[...PROJECT_TOOL_CONFIGS.keys()]
+    ...[...PROJECT_TOOL_CONFIGS.keys(), ...STYLE_TOOL_NAMES]
       .filter((tool) => tools[tool] !== undefined)
       .flatMap((tool) => [`--${tool}-precedence`, tools[tool].precedence.join(',')]),
   ];
@@ -97,18 +102,20 @@ export function configureJavaAnalyzer(analyzer, options) {
   const projectConfigDirectories = [...PROJECT_TOOL_CONFIGS]
     .filter(([tool]) => tools[tool]?.precedence.includes('project'))
     .map(([, file]) => path.dirname(file));
+  const projectStyleFiles = [...PROJECT_STYLE_FILES]
+    .filter(([tool]) => tools[tool]?.precedence.includes('project'))
+    .flatMap(([, files]) => files);
   const configured = {
     ...analyzer,
     configurationHash,
-    ...(projectConfigDirectories.length === 0
+    ...(projectConfigDirectories.length + projectStyleFiles.length === 0
       ? {}
       : {
           resolveConfigurationHash: (policyRoot) =>
-            hashWithProjectConfigDirectories(
-              configurationHash,
-              policyRoot,
-              projectConfigDirectories,
-            ),
+            hashWithProjectConfigs(configurationHash, policyRoot, {
+              directories: projectConfigDirectories,
+              files: projectStyleFiles,
+            }),
         }),
     createInvocation: (context) => {
       const invocation = analyzer.createInvocation(context);
@@ -140,9 +147,13 @@ function isLifted(finding, lifted) {
   );
 }
 
-function hashWithProjectConfigDirectories(configurationHash, policyRoot, directories) {
+function hashWithProjectConfigs(configurationHash, policyRoot, { directories, files }) {
   const hash = createHash('sha256').update(configurationHash);
-  for (const file of directories.flatMap((directory) => filesUnder(policyRoot, directory))) {
+  const present = files.filter((file) => existsSync(path.join(policyRoot, file)));
+  for (const file of [
+    ...directories.flatMap((directory) => filesUnder(policyRoot, directory)),
+    ...present,
+  ]) {
     const content = readFileSync(path.join(policyRoot, file));
     hash.update(`${file}\0${String(content.length)}\0`).update(content);
   }

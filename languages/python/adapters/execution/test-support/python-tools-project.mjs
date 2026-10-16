@@ -84,10 +84,16 @@ export function contextFor(root, settings = {}, exclude = []) {
   };
 }
 
-export function contextWithConventions(root, conventions) {
+export function contextWithConventions(root, conventions, toolPrecedence) {
   const reportRoot = temporaryRoot();
   return {
-    context: createToolContext({ projectRoot: root, liveRoot: root, reportRoot, conventions }),
+    context: createToolContext({
+      projectRoot: root,
+      liveRoot: root,
+      reportRoot,
+      conventions,
+      toolPrecedence,
+    }),
     reportRoot,
   };
 }

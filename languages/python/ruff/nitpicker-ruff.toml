@@ -51,6 +51,7 @@ select = [
   "RUF063",
   "RUF064",
   "RUF068",
+  "RUF071",
   "RUF101",
   "RUF102",
   "RUF103",
