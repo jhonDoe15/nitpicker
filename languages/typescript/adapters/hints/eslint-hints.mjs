@@ -70,7 +70,7 @@ const NAMING_HINT = `. Types are PascalCase; functions, variables and parameters
 
 const REGEXP_HINT = ` Rewrite the pattern without nested or overlapping quantifiers, or use a string method. If the input is bounded and trusted, ${EXCEPTION_ROUTE}.`;
 
-const RETURN_TYPE_TEXT = 'Missing return type on function.';
+const RETURN_TYPE_TEXT = /^Missing return type on function\.?$/u;
 
 const RETURN_TYPE_MESSAGE =
   'Write the return type of an exported function: `export function total(rows: readonly Row[]): number`, `export async function load(): Promise<Report>`; a React component returns `ReactElement`.';
@@ -145,7 +145,9 @@ function floatingPromiseMessage({ text }) {
 }
 
 function boundaryTypesMessage({ text }) {
-  return text === RETURN_TYPE_TEXT ? RETURN_TYPE_MESSAGE : `${text}${ARGUMENT_TYPE_HINT}`;
+  return RETURN_TYPE_TEXT.test(text)
+    ? RETURN_TYPE_MESSAGE
+    : `${text.replace(/\.?$/u, '.')}${ARGUMENT_TYPE_HINT}`;
 }
 
 function appendHint(hint) {

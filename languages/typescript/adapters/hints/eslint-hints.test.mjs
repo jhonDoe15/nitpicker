@@ -265,6 +265,14 @@ describe('hints for the production policy rules', () => {
       "Argument 'rows' should be typed.",
       "Argument 'rows' should be typed. Write the parameter type in the signature: `(rows: readonly Row[])`.",
     ],
+    [
+      'Missing return type on function',
+      'Write the return type of an exported function: `export function total(rows: readonly Row[]): number`, `export async function load(): Promise<Report>`; a React component returns `ReactElement`.',
+    ],
+    [
+      'Missing argument type on function',
+      'Missing argument type on function. Write the parameter type in the signature: `(rows: readonly Row[])`.',
+    ],
   ])('names the typed signature for a module boundary finding: %s', (text, expected) => {
     expect(hint('@typescript-eslint/explicit-module-boundary-types', text)).toBe(expected);
   });
