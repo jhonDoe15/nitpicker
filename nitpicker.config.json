@@ -54,16 +54,6 @@
   "disable": ["typescript-typecheck", "coverage", "crap", "mutation"],
   "exceptions": [
     {
-      "rule": "nitpicker/no-silent-catch",
-      "paths": [
-        "languages/java/conventions/kotlin-style.mjs",
-        "languages/python/adapters/formatting/format-options.mjs",
-        "languages/python/adapters/formatting/project-format-config.mjs",
-        "languages/python/conventions/python-style.mjs"
-      ],
-      "reason": "These read a project's formatter config only to print a summary line, to read the project's scope quietly when it is not opted in, or to list its files for the cache key. A config that does not parse is reported by the run itself (a config error or a tool error naming the file), so repeating it here would print the same failure twice."
-    },
-    {
       "rule": "nitpicker/no-node-process-per-test",
       "paths": ["languages/typescript/preset/duplicates/duplicates-policy.test.mjs"],
       "reason": "jscpd ships only as a native executable behind a launcher script with no importable API, and the file checks its exit status and report for a missing config, so the process boundary is the thing under test."
