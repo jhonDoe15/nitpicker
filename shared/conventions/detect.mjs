@@ -44,7 +44,7 @@ function measureConvention(definition, sample, texts) {
   const counts = Object.fromEntries(definition.options.map((option) => [option, 0]));
   for (const file of sample) {
     const text = texts.get(file);
-    const option = text === undefined ? undefined : definition.measure(text);
+    const option = text === undefined ? undefined : definition.measure(text, file);
     if (option !== undefined && option in counts) {
       counts[option] += 1;
     }
