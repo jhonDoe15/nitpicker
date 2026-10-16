@@ -25,6 +25,7 @@ import { COVERAGE_REPORT, FORMAT_REPORT, MANIFEST_REPORT, RUFF_REPORT } from './
 import { TYPES_REPORT } from './python-types.mjs';
 import { PYTEST_REPORT } from './execution/python-test-step.mjs';
 import { readPytestReport, slowTestFindings } from './test-results/slow-tests.mjs';
+import { consoleOutputFindings } from './test-results/console-output.mjs';
 
 const FORMATTER_TOOLS = { ruff: 'ruff-format', black: 'black' };
 const NO_TESTS_RULE = 'no-tests-ran';
@@ -68,6 +69,7 @@ export function readPythonFindings({ projectRoot, reportRoot, crapLimit, policy 
       ...readCouplingFindings(reportRoot),
       ...readImportLinterFindings(reportRoot),
       ...slowTestFindings(pytest, { projectRoot, policy }),
+      ...consoleOutputFindings(pytest, { projectRoot }),
     ]),
   };
 }

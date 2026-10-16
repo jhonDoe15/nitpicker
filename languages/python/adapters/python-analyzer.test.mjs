@@ -48,6 +48,7 @@ describe('Python analyzer', () => {
       'coupling',
       'import-linter',
       'test-runtime',
+      'test-console',
     ]);
     expect(analyzer.exclusions).toEqual([]);
     expect(analyzer.timeoutMs).toBe(30 * 60 * 1000);
