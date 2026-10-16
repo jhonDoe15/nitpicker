@@ -41,7 +41,11 @@ export function installCommand(packageManager, platform = process.platform) {
   return {
     command: platform === 'win32' && binary !== 'bun' ? `${binary}.cmd` : binary,
     args,
-    environment: { COREPACK_ENABLE_DOWNLOAD_PROMPT: '0', ...environment },
+    environment: {
+      COREPACK_ENABLE_DOWNLOAD_PROMPT: '0',
+      COREPACK_ENABLE_AUTO_PIN: '0',
+      ...environment,
+    },
     installHint,
   };
 }
