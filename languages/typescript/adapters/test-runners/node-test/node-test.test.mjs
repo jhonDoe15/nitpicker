@@ -19,7 +19,9 @@ function nodeTestProject(files, test = 'node --test') {
   });
 }
 
-afterEach(projects.remove);
+afterEach(() => {
+  projects.remove();
+});
 
 describe('coverage on a node:test project', () => {
   it('runs the tests with node:test, then CRAP reads the coverage it wrote', async () => {

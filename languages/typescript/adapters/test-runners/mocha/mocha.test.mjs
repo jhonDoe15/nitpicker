@@ -20,7 +20,9 @@ function mochaProject(files, test = 'mocha') {
 const testFile = (expected) =>
   `import assert from 'node:assert/strict';\nimport { pick } from '../src/main/pick.ts';\ndescribe('pick', () => {\n  it('answers', () => {\n    assert.equal(pick(true), '${expected}');\n  });\n});\n`;
 
-afterEach(projects.remove);
+afterEach(() => {
+  projects.remove();
+});
 
 describe('coverage on a Mocha project', () => {
   it('runs the tests with Mocha and reports the arm no test takes', async () => {
