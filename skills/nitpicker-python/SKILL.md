@@ -10,7 +10,7 @@ backstop. It fails only on findings your change adds, so leave code the task doe
 
 ## Finish with the gate
 
-1. Run the project's tests with its own runner (pytest or unittest). Failing tests stop coverage,
+1. Run the project's tests with its own runner (pytest, unittest, `manage.py test` or nose2). Failing tests stop coverage,
    CRAP and mutation from running.
 2. When the change is complete, run `npx nitpicker` as a background command you wait on, without a
    pipe: you need its exit code. It has no `--fix` for Python; format with the project's ruff or
@@ -49,7 +49,7 @@ backstop. It fails only on findings your change adds, so leave code the task doe
   an `adapters/` package, where untrusted input is parsed once; pass frozen dataclasses on from there.
 - Constants: a fixed set of strings is an `enum.StrEnum` (`class X(str, Enum)` before Python 3.11),
   not `STATUS_ACTIVE = "active"` constants or a class holding them. Settings like `DB_HOST` are fine.
-- Tests: use the project's runner (pytest or unittest). Every branch you add needs a test, and a
+- Tests: use the project's runner (pytest, unittest, Django or nose2). Every branch you add needs a test, and a
   surviving mutant fails: assert the exact value, so a changed line breaks a test.
 - A finding that flags legitimate code (a command line entry point that prints) is lifted in
   `nitpicker.config.json`, under `python.exceptions`, with an entry such as
