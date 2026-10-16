@@ -628,8 +628,12 @@ resolved plus a new finding, as in the TypeScript check.
   NullAway resolve from a detached configuration with their versions pinned in the init script's
   map, so a dependency-management plugin of the project cannot move them. A compile error in this
   second compile fails the task with javac's errors (a `tool-error` on the CLI path); it never
-  becomes an empty report. `module-info.java` is left out, so the sources compile in the unnamed
-  module. Kotlin preset: Java sources only, like PMD and SpotBugs.
+  becomes an empty report. Main sources with a `module-info.java` compile as that module on both
+  builds: jars and class directories that are modules (`module-info.class`, also under
+  `META-INF/versions/`, or an `Automatic-Module-Name`) go on `--module-path`, the rest on the class
+  path, and when that compile fails it is retried with every library on `--module-path`, so a sealed
+  type may permit classes in another package. Test sources compile on the class path, without the
+  descriptor. Kotlin preset: Java sources only, like PMD and SpotBugs.
 - **Which JDK.** Error Prone needs JDK 21 or newer. On Gradle the runner uses the JVM that runs
   Gradle when it is at least 21 and at least the JDK of every compile task's toolchain; otherwise
   it asks Gradle's toolchain service for a launcher of the version it needs (found locally or
