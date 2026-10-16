@@ -44,6 +44,7 @@ const GUARD_RULES = new Set([
   'TautologicalAssertion',
   'MockedValueType',
   'TestOrderDependence',
+  'TestClassWithoutTestCases',
   'com.puppycrawl.tools.checkstyle.checks.naming.ConstantNameCheck',
   'com.puppycrawl.tools.checkstyle.checks.coding.MagicNumberCheck',
   'com.puppycrawl.tools.checkstyle.checks.design.VisibilityModifierCheck',
