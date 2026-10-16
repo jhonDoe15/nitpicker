@@ -167,7 +167,7 @@ describe('measureCrap', () => {
 
     expect(functions).toEqual([['twice', 1, unknownBecause('file_unmatched'), undefined]]);
     expect(warnings).toEqual([
-      "Warning: Could not parse src/broken.ts: Unable to parse TypeScript source <root>/src/broken.ts: '}' expected.. Skipping file.",
+      "Warning: Could not parse src/broken.ts: Unable to parse TypeScript source <root>/src/broken.ts: line 1, column 26: '}' expected.. Skipping file.",
     ]);
   });
 });

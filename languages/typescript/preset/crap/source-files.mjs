@@ -27,6 +27,7 @@ const GENERATED_MARKERS = [
   'DO NOT EDIT',
 ];
 
+const DECLARATION_SUFFIXES = ['.d.ts', '.d.mts', '.d.cts'];
 const OUTPUT_SEGMENTS = new Set(['build', 'out', 'target']);
 const EXCLUDED_SEGMENTS = [
   '__tests__',
@@ -59,7 +60,7 @@ function isAnalyzable(relative, extensions) {
   const directories = lowered.split('/').slice(0, -1);
   return (
     extensions.some((extension) => lowered.endsWith(`.${extension}`)) &&
-    !lowered.endsWith('.d.ts') &&
+    !DECLARATION_SUFFIXES.some((suffix) => lowered.endsWith(suffix)) &&
     !isTestFileName(lowered) &&
     !isCompiledSourceRoot(directories) &&
     !directories.some((segment) => EXCLUDED_SEGMENTS.includes(segment))

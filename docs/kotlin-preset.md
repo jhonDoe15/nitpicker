@@ -143,15 +143,15 @@ message names the fix and both routes. Each rule has a banned and an allowed fix
 |                   | `if (x == null) null else ...`        | `x?.let { ... }`                                                  | `style.UseLet`                                                           |
 | Coroutines        | `GlobalScope`                         | `coroutineScope { launch { ... } }`, or a scope its owner cancels | `coroutines.GlobalCoroutineUsage`                                        |
 |                   | `runBlocking`                         | a `suspend` caller (`suspend fun main()`); `runTest` in a test    | `style.ForbiddenMethodCall` (`kotlinx.coroutines.runBlocking`)           |
-| Exceptions        | `catch (e: Exception)`, `Throwable`   | catch the specific exception type                                 | `exceptions.TooGenericExceptionCaught`                                   |
+| Exceptions        | `catch (e: Exception)`, `Throwable`   | catch the specific exception type; `assertFailsWith` in a test    | `exceptions.TooGenericExceptionCaught`                                   |
 | Records           | a class that only holds `val`s        | `data class`                                                      | `style.UseDataClass` (`allowVars: true`)                                 |
 |                   | a `data class` with a `var`           | `val` and `copy(...)`                                             | `style.DataClassShouldBeImmutable`                                       |
 
 Rule ids in findings are `detekt.<ruleset>.<Rule>`. Test sources are analyzed with the same rules, so
 `runBlocking` in a test is a finding too; its message points to `runTest`. A broad catch in a test
 (`catch (error: Exception)`) is a finding as well: assert on the specific exception with
-`assertFailsWith`, or catch the specific type. A variable named `_`, `ignore...` or `expected...`
-(`catch (ignored: Exception)`) is allowed, as detekt's default.
+`assertFailsWith`, or catch the specific type. No variable name lifts the rule (`catch (ignored:
+Exception)` is a finding too); the only exit is an `exceptions` entry with a reason.
 
 **Why these allowed forms (decision).** One function per job: `let` binds a value to a name for a
 block (and is the null-handling form), `apply` configures an object and returns it. `run` and `with`

@@ -6,7 +6,7 @@ describe('the react key', () => {
     'is an error with the javascript preset, which points to the typescript preset (%j)',
     (react) => {
       expect(() => validateConfig({ preset: 'javascript', react })).toThrow(
-        'nitpicker.config.json: "react" is not supported with "preset": "javascript": React and JSX belong to the TypeScript preset, so a React project uses "preset": "typescript"',
+        'nitpicker.config.json: "react" is not supported with "preset": "javascript": React and JSX belong to the TypeScript preset, so remove the key, or use "preset": "typescript" for a React project',
       );
     },
   );

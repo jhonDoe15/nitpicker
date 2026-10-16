@@ -88,7 +88,7 @@ function validateScalars(config) {
 function validateJavascriptConfig(config) {
   if (config.preset === 'javascript' && config.react !== undefined) {
     throw configError(
-      '"react" is not supported with "preset": "javascript": React and JSX belong to the TypeScript preset, so a React project uses "preset": "typescript"',
+      '"react" is not supported with "preset": "javascript": React and JSX belong to the TypeScript preset, so remove the key, or use "preset": "typescript" for a React project',
     );
   }
 }

@@ -42,10 +42,10 @@ it with `npx skills add jhonDoe15/nitpicker --skill nitpicker-java`.
   A class with `var`s is not flagged. Where equality by value is wrong (a JPA `@Entity`), the project
   narrows `UseDataClass` with detekt's own `excludeAnnotatedClasses` in its `detekt.yml`.
 - Test sources are linted like main ones (detekt, and ktlint or ktfmt): the rules above, including `!!`, apply
-  in tests. detekt's own exclusions for tests stay off there: magic numbers, `lateinit`, many functions,
-  duplicated string literals, spread operators and function names in backticks are not findings in a test.
-  A test asserts on the specific exception (`assertFailsWith<IllegalStateException> { ... }`) instead of
-  catching `Exception`.
+  in tests. detekt keeps its default exclusions for tests, so magic numbers, `lateinit`, many functions,
+  duplicated string literals, spread operators and function names in backticks are not findings in a
+  test. A test asserts on the specific exception (`assertFailsWith<IllegalStateException> { ... }`)
+  instead of catching `Exception`, whatever the variable is called.
 - detekt's defaults stay on. In main sources: lines of at most 120 characters, named constants
   instead of numbers other than -1, 0, 1 and 2 (`MagicNumber`), at most 2 `return` and 2 `throw`
   per function, conditions of at most 3 `&&`/`||` parts, no wildcard imports, and no `TODO:` or
