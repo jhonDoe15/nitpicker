@@ -30,9 +30,6 @@ java.time.MonthDay#now(java.time.ZoneId)
 java.lang.Thread#sleep(**)
 java.util.concurrent.TimeUnit#sleep(long)
 
-@defaultMessage new-thread: Do not start threads by hand. Submit the work to an injected ExecutorService (a ThreadFactory or a shutdown hook may still create the Thread).
-java.lang.Thread#start()
-
 @defaultMessage runtime-exec: Run commands with ProcessBuilder and an argument list, never a command string.
 java.lang.Runtime#exec(java.lang.String)
 java.lang.Runtime#exec(java.lang.String, java.lang.String[])
@@ -40,3 +37,9 @@ java.lang.Runtime#exec(java.lang.String, java.lang.String[], java.io.File)
 
 @defaultMessage java-deserialization: Do not read Java-serialized objects. Use JSON or another data format.
 java.io.ObjectInputStream#<init>(java.io.InputStream)
+
+@defaultMessage new-thread: Do not start threads by hand. Submit the work to an injected ExecutorService (a ThreadFactory or a shutdown hook may still create the Thread).
+java.lang.Thread#start()
+@ignoreUnresolvable
+java.lang.Thread#startVirtualThread(java.lang.Runnable)
+java.lang.Thread$Builder#start(java.lang.Runnable)

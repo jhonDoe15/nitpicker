@@ -1,0 +1,26 @@
+{
+  "description": "An existing module that ran on the base and fails on the head after receiving one file from a not-run module is a tool-error: the base notice for legacy covers legacy and the moved file, not kernel's directories.",
+  "renames": {
+    "legacy/src/main/java/p/E.java": "kernel/src/main/java/p/E.java"
+  },
+  "new": [
+    {
+      "tool": "duplicates",
+      "rule": "cpd-not-run",
+      "path": ".",
+      "identity": "cpd-not-run@:kernel",
+      "classification": "tool-error"
+    }
+  ],
+  "resolved": [],
+  "unchanged": [
+    {
+      "tool": "duplicates",
+      "rule": "cpd-not-run",
+      "path": ".",
+      "identity": "cpd-not-run@:legacy",
+      "classification": "descriptive"
+    }
+  ],
+  "changedMetrics": []
+}

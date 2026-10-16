@@ -1,5 +1,5 @@
 import { execFileSync } from 'node:child_process';
-import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { chmodSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { zipOf } from '../test-support/zip-writer.mjs';
@@ -149,6 +149,49 @@ describe('runJavacLint', () => {
         '}',
         '^',
         '1 error',
+        '',
+      ],
+    });
+  });
+
+  it('reads the warnings of a javac whose platform locale is not English', () => {
+    vi.stubEnv('JAVA_TOOL_OPTIONS', '-Duser.language=de -Duser.country=DE');
+    const head = temporary();
+    writeFiles(head, { 'src/main/java/demo/A.java': RAW_NAMES });
+
+    expect(warningHeaders(lint(javaPlan(head), undefined).report)).toEqual([
+      warning('src/main/java/demo/A.java', 3),
+    ]);
+  });
+
+  it('reads the options of an argument file in the compiler arguments, leaving out the ones that hide warnings', () => {
+    const head = temporary();
+    writeFiles(head, {
+      'src/main/java/demo/A.java': RAW_NAMES,
+      'config/javac.options': '# lint options\n-nowarn "-Xlint:none"\n-parameters\n',
+    });
+    const plan = javaPlan(head, { compiler: { args: ['@config/javac.options'] } });
+
+    expect(warningHeaders(lint(plan, undefined).report)).toEqual([
+      warning('src/main/java/demo/A.java', 3),
+    ]);
+  });
+
+  it('writes a failure report when javac counts warnings it printed in a form it cannot read', () => {
+    const head = temporary();
+    writeFiles(head, {
+      'src/main/java/demo/A.java': RAW_NAMES,
+      'bin/javac':
+        "#!/bin/sh\nprintf 'A.java:3:5: compiler.warn.raw.class.use: java.util.List\\n1 warning\\n' >&2\n",
+    });
+    chmodSync(path.join(head, 'bin/javac'), 0o755);
+
+    expect(lint(javaPlan(head, { javac: path.join(head, 'bin/javac') }), undefined)).toEqual({
+      report: undefined,
+      failure: [
+        'error: javac printed warnings in a form nitpicker cannot read',
+        'A.java:3:5: compiler.warn.raw.class.use: java.util.List',
+        '1 warning',
         '',
       ],
     });

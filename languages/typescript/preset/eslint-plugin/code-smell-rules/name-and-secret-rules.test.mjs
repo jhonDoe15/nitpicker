@@ -1,8 +1,8 @@
 import { rule as genericNames } from '../rules/code-smells/generic-names.mjs';
 import { rule as hardcodedSecret } from '../rules/code-smells/hardcoded-secret.mjs';
-import { cases, createRuleTester } from '../test-support/rule-tester.mjs';
+import { cases, typescriptRuleTester } from '../test-support/rule-tester.mjs';
 
-const ruleTester = createRuleTester();
+const ruleTester = typescriptRuleTester();
 
 const inFile = (filename, code = 'export const a = 1;') => ({ filename, code });
 

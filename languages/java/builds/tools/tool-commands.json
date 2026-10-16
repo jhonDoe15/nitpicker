@@ -1,0 +1,42 @@
+{
+  "cpd": {
+    "launcher": "../../gradle/CpdReport.java",
+    "args": [{ "value": "report" }, { "each": "directories" }],
+    "accept": { "exits": [0], "report": "report", "root": "pmd-cpd" }
+  },
+  "forbiddenapis": {
+    "args": [
+      { "each": "classDirectories", "flag": "-d" },
+      "-c",
+      { "join": "libraries", "separator": "path" },
+      "-f",
+      { "value": "signatures" },
+      "--allowmissingclasses"
+    ],
+    "accept": { "exits": [0, 1] }
+  },
+  "pmd": {
+    "args": [
+      "check",
+      "--no-cache",
+      "--no-progress",
+      "--format",
+      "sarif",
+      "--report-file",
+      { "value": "report" },
+      "--rulesets",
+      { "join": "rulesets", "separator": "," },
+      "--aux-classpath",
+      { "value": "auxClasspath", "prefix": "file:" },
+      "--suppress-marker",
+      "NITPICKER-NO-INLINE-SUPPRESSION",
+      "--dir",
+      { "join": "directories", "separator": "," }
+    ],
+    "accept": { "report": "report" }
+  },
+  "jdeps": {
+    "args": ["-verbose:class", "-filter:none", { "each": "classDirectories" }],
+    "accept": { "exits": [0] }
+  }
+}

@@ -7,6 +7,8 @@ import { GRADLE_DIRECTORY } from '../../builds/java-build.mjs';
 import { writePmdRulesets } from '../../builds/rulesets/pmd-rulesets.mjs';
 import { expectedViolations } from '../test-support/violation-markers.mjs';
 import { codeSmellRules } from '../test-support/code-smell-rules.mjs';
+import { withRuleMessage } from '../../messages/rule-messages.mjs';
+import { exceptionHint } from '../../../../shared/rules/exceptions.mjs';
 
 const packageRoot = path.resolve(import.meta.dirname, '../../../..');
 const fixture = path.join(import.meta.dirname, '..', 'fixtures', 'code-smells-project', 'src');
@@ -26,11 +28,25 @@ describe('the Java code smell ruleset', () => {
     );
   });
 
-  it.each(rules)('$name names its exception route', ({ name, message }) => {
-    expect(message.endsWith(`add an exception for pmd/${name} in nitpicker.config.json.`)).toBe(
-      true,
-    );
-  });
+  it.each(rules)(
+    '$name gets the shared exception route and writes none itself',
+    ({ name, message }) => {
+      const file = 'src/main/java/demo/A.java';
+      const hint = exceptionHint(`pmd/${name}`, file);
+      const routed = withRuleMessage({
+        tool: 'pmd',
+        rule: name,
+        path: file,
+        message,
+        classification: 'enforceable',
+      }).message;
+
+      expect([message.includes('nitpicker.config.json'), routed.slice(-hint.length - 1)]).toEqual([
+        false,
+        ` ${hint}`,
+      ]);
+    },
+  );
 
   it.each(rules)('$name has a marked violation in the fixture', ({ name }) => {
     expect(markedRules('main').has(name)).toBe(true);
@@ -63,7 +79,7 @@ describe('the Java code smell ruleset', () => {
         .map((ruleset) => readFileSync(ruleset, 'utf8'))
         .find((text) => text.includes(path.join(GRADLE_DIRECTORY, file)));
     const script = readFileSync(
-      path.join(packageRoot, 'languages/java/gradle/nitpicker.init.gradle'),
+      path.join(packageRoot, 'languages/java/gradle/tasks/analysis/pmd-task.gradle'),
       'utf8',
     );
     const maven = readFileSync(

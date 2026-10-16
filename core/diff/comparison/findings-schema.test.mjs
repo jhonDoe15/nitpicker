@@ -36,6 +36,7 @@ const SUPPORTED_KEYWORDS = new Set([
   'properties',
   'additionalProperties',
   'items',
+  'minItems',
   'enum',
   'const',
   'minLength',
@@ -106,15 +107,18 @@ function validate(value, node = schema, errors = [], at = '$') {
   if (isRecord(value)) {
     checkObject(value, node, errors, at);
   }
-  if (Array.isArray(value) && node.items !== undefined) {
-    validateItems(value, node.items, errors, at);
+  if (Array.isArray(value)) {
+    checkArray(value, node, errors, at);
   }
   return errors;
 }
 
-function validateItems(items, node, errors, at) {
-  for (const [index, item] of items.entries()) {
-    validate(item, node, errors, `${at}[${String(index)}]`);
+function checkArray(items, node, errors, at) {
+  if (node.minItems !== undefined && items.length < node.minItems) {
+    errors.push(`${at} has fewer than ${String(node.minItems)} items`);
+  }
+  for (const [index, item] of node.items === undefined ? [] : items.entries()) {
+    validate(item, node.items, errors, `${at}[${String(index)}]`);
   }
 }
 
@@ -125,6 +129,7 @@ function checkType(value, node, errors, at) {
     string: typeof value === 'string',
     number: typeof value === 'number' && Number.isFinite(value),
     integer: Number.isInteger(value),
+    boolean: typeof value === 'boolean',
   };
   if (node.type !== undefined && !checks[node.type]) {
     errors.push(`${at} must be ${node.type}`);
@@ -337,6 +342,13 @@ describe('spec/findings.schema.json', () => {
       { ...valid, metric: { name: 'm', value: 1 } },
       { ...valid, toolNotRun: true },
       { ...valid, classification: 'descriptive', toolNotRun: false },
+      { ...valid, classification: 'descriptive', notRunScope: ['core'] },
+      { ...valid, classification: 'descriptive', toolNotRun: true, notRunScope: [] },
+      { ...valid, classification: 'descriptive', toolNotRun: true, notRunScope: [''] },
+      { ...valid, classification: 'descriptive', toolNotRun: true, notRunScope: 'core' },
+      { ...valid, classification: 'descriptive', notRunIdentityPrefix: 'cpd:' },
+      { ...valid, classification: 'descriptive', toolNotRun: true, notRunIdentityPrefix: '' },
+      { ...valid, classification: 'descriptive', toolNotRun: true, notRunIdentityPrefix: 1 },
     ];
 
     for (const finding of malformed) {
@@ -382,6 +394,39 @@ describe('spec/findings.schema.json', () => {
     expect(validate({ findings: [empty] })).not.toEqual([]);
   });
 
+  it('accepts line ranges a held finding must keep unchanged and rejects a reversed one', () => {
+    const finding = {
+      tool: 'duplicates',
+      rule: 'duplicate-clone',
+      path: 'a.java',
+      identity: 'id',
+      message: 'message',
+      classification: 'enforceable',
+      ratchet: {
+        key: 'pair:a.java|b.java:clone',
+        value: 60,
+        mustKeepUnchangedLines: [{ path: 'a.java', startLine: 3, endLine: 9 }],
+      },
+    };
+    const reversed = {
+      ...finding,
+      ratchet: {
+        ...finding.ratchet,
+        mustKeepUnchangedLines: [{ path: 'a.java', startLine: 9, endLine: 3 }],
+      },
+    };
+    const unnamed = {
+      ...finding,
+      ratchet: { ...finding.ratchet, mustKeepUnchangedLines: [{ startLine: 3, endLine: 9 }] },
+    };
+
+    expect(parseFinding(finding)).toEqual(finding);
+    expect(validate({ findings: [finding] })).toEqual([]);
+    expect(() => parseFinding(reversed)).toThrow(TypeError);
+    expect(() => parseFinding(unnamed)).toThrow(TypeError);
+    expect(validate({ findings: [unnamed] })).not.toEqual([]);
+  });
+
   it('accepts a tool-not-run notice on a descriptive finding', () => {
     const finding = {
       tool: 'javac',
@@ -395,6 +440,27 @@ describe('spec/findings.schema.json', () => {
 
     expect(parseFinding(finding)).toEqual(finding);
     expect(validate({ findings: [finding] })).toEqual([]);
+  });
+
+  it('accepts a tool-not-run notice scoped to directories and an identity prefix', () => {
+    const finding = {
+      tool: 'duplicates',
+      rule: 'cpd-not-run',
+      path: '.',
+      identity: 'cpd-not-run',
+      message: 'No CPD duplicate report.',
+      classification: 'descriptive',
+      toolNotRun: true,
+      notRunScope: ['core/src/main/java', 'core/src/test/java'],
+      notRunIdentityPrefix: 'cpd:',
+    };
+
+    expect(parseFinding(finding)).toEqual(finding);
+    expect(validate({ findings: [finding] })).toEqual([]);
+    expect(parseFinding({ ...finding, notRunScope: ['./', '.\\', 'core\\src/'] })).toEqual({
+      ...finding,
+      notRunScope: ['.', '.', 'core/src'],
+    });
   });
 
   it('is exercised by a validator that covers every keyword the schema uses', () => {

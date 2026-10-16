@@ -1,0 +1,32 @@
+{
+  "description": "A pair identity (`pair:<a>|<b>...`, also behind a prefix such as `cpd:`) lists its two files in path order, and the finding sits on the first. Renaming src/a/A.java to src/c/A.java moves it behind src/b/B.java, so after the rename the base key's two files are put back in path order and its path becomes the new first file; the clone and its size metric stay unchanged instead of resolved plus new.",
+  "renames": {
+    "src/a/A.java": "src/c/A.java"
+  },
+  "new": [],
+  "resolved": [],
+  "unchanged": [
+    {
+      "tool": "duplicates",
+      "rule": "duplicate-clone",
+      "path": "src/b/B.java",
+      "identity": "cpd:pair:src/b/B.java|src/c/A.java:fragment:f1:occurrence:1",
+      "classification": "enforceable"
+    },
+    {
+      "tool": "duplicates",
+      "rule": "duplicate-clone",
+      "path": "src/b/B.java",
+      "identity": "pair:src/b/B.java|src/c/A.java:fragment:f1:occurrence:1",
+      "classification": "enforceable"
+    },
+    {
+      "tool": "duplicates",
+      "rule": "duplicate-clone-size",
+      "path": "src/b/B.java",
+      "identity": "pair:src/b/B.java|src/c/A.java:occurrence:1:lines",
+      "classification": "descriptive"
+    }
+  ],
+  "changedMetrics": []
+}

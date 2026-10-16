@@ -1,24 +1,19 @@
 import {
   describeSubprocess,
   describeWrapperCall,
+  propertyKeyName,
   resolveConstant,
   subprocessBindings,
 } from '../../analysis/test-code-analysis.mjs';
 
 const HERMETIC_KEYS = ['GIT_CONFIG_GLOBAL', 'GIT_CONFIG_NOSYSTEM'];
 
-function propertyName(property) {
-  if (property.key.type === 'Identifier' && !property.computed) return property.key.name;
-  if (property.key.type === 'Literal') return String(property.key.value);
-  return undefined;
-}
-
 function recordKey(property, keys, pending) {
   if (property.type === 'SpreadElement') {
     pending.push(property.argument);
     return;
   }
-  const name = propertyName(property);
+  const name = propertyKeyName(property);
   if (name !== undefined) keys.add(name);
 }
 
@@ -38,7 +33,7 @@ function environmentNode(context, optionsNode) {
   const resolved = resolveConstant(context, optionsNode);
   if (resolved?.type !== 'ObjectExpression') return undefined;
   const property = resolved.properties.find(
-    (candidate) => candidate.type === 'Property' && propertyName(candidate) === 'env',
+    (candidate) => candidate.type === 'Property' && propertyKeyName(candidate) === 'env',
   );
   return property?.value;
 }

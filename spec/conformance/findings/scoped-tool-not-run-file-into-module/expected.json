@@ -1,0 +1,40 @@
+{
+  "description": "Moving one file from a not-run module into an existing module that ran adds only that file's head path to the base notice's scope. The moved kernel/src/main/java/p/E.java is descriptive; the kernel clones that did not come from legacy stay enforceable, and the head's legacy notice is unchanged.",
+  "renames": {
+    "legacy/src/main/java/p/E.java": "kernel/src/main/java/p/E.java"
+  },
+  "new": [
+    {
+      "tool": "duplicates",
+      "rule": "duplicate-clone",
+      "path": "kernel/src/main/java/p/E.java",
+      "identity": "cpd:pair:kernel/src/main/java/p/E.java|kernel/src/main/java/p/G.java:occurrence:1",
+      "classification": "descriptive"
+    },
+    {
+      "tool": "duplicates",
+      "rule": "duplicate-clone",
+      "path": "kernel/src/main/java/q/Unrelated.java",
+      "identity": "cpd:pair:kernel/src/main/java/q/Unrelated.java|kernel/src/main/java/q/Other.java:occurrence:1",
+      "classification": "enforceable"
+    },
+    {
+      "tool": "duplicates",
+      "rule": "duplicate-clone",
+      "path": "kernel/src/test/java/q/UnrelatedTest.java",
+      "identity": "cpd:pair:kernel/src/test/java/q/UnrelatedTest.java|kernel/src/test/java/q/OtherTest.java:occurrence:1",
+      "classification": "enforceable"
+    }
+  ],
+  "resolved": [],
+  "unchanged": [
+    {
+      "tool": "duplicates",
+      "rule": "cpd-not-run",
+      "path": ".",
+      "identity": "cpd-not-run@:legacy",
+      "classification": "descriptive"
+    }
+  ],
+  "changedMetrics": []
+}

@@ -1,0 +1,34 @@
+{
+  "description": "Moving every file of a not-run module into an existing module that ran relaxes only the moved files: kernel/src/main/java/p/A.java is descriptive, while the new warning in kernel/src/main/java/q/Existing.java stays enforceable.",
+  "renames": {
+    "legacy/src/main/java/p/A.java": "kernel/src/main/java/p/A.java",
+    "legacy/src/main/java/p/B.java": "kernel/src/main/java/p/B.java"
+  },
+  "new": [
+    {
+      "tool": "javac",
+      "rule": "rawtypes",
+      "path": "kernel/src/main/java/p/A.java",
+      "identity": "rawtypes:kernel/src/main/java/p/A.java",
+      "classification": "descriptive"
+    },
+    {
+      "tool": "javac",
+      "rule": "rawtypes",
+      "path": "kernel/src/main/java/q/Existing.java",
+      "identity": "rawtypes:kernel/src/main/java/q/Existing.java",
+      "classification": "enforceable"
+    }
+  ],
+  "resolved": [
+    {
+      "tool": "javac",
+      "rule": "lint-not-run",
+      "path": "legacy",
+      "identity": "lint-not-run",
+      "classification": "descriptive"
+    }
+  ],
+  "unchanged": [],
+  "changedMetrics": []
+}

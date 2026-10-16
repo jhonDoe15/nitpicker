@@ -1,5 +1,6 @@
 def pinned = project.ext.nitpickerPinned
 def reportDir = project.ext.nitpickerReportDir
+def toolCommand = project.ext.nitpickerToolCommand
 def rulesDir = new File(buildscript.sourceFile.parentFile, '../rules')
 def javaHome = new File(System.getProperty('java.home'))
 
@@ -20,8 +21,10 @@ tasks.register('nitpickerForbiddenApis', JavaExec) {
     def report = reportDir.map { it.file('forbidden-apis.txt') }
     inputs.files({ analyzedClassDirs() }, sourceSets.main.compileClasspath, new File(rulesDir, 'forbidden-apis.txt'))
         .withPropertyName('classes')
+    inputs.files(project.ext.nitpickerToolCommandInputs).withPropertyName('toolCommands')
     outputs.file(report).withPropertyName('report')
     def log = new ByteArrayOutputStream()
+    def command = null
     onlyIf { analyzedClassDirs().any { it.exists() && it.list()?.length } }
     doFirst {
         reportDir.get().asFile.mkdirs()
@@ -29,15 +32,17 @@ tasks.register('nitpickerForbiddenApis', JavaExec) {
         errorOutput = log
         def classDirs = analyzedClassDirs().findAll { it.exists() }
         def libraries = sourceSets.main.compileClasspath.files.findAll { it.exists() }
-        args(classDirs.collectMany { ['-d', it.absolutePath] } +
-            ['-c', libraries.collect { it.absolutePath }.join(File.pathSeparator),
-             '-f', new File(rulesDir, 'forbidden-apis.txt').absolutePath,
-             '--allowmissingclasses'])
+        command = toolCommand('forbiddenapis', [
+            classDirectories: classDirs*.absolutePath,
+            libraries       : libraries*.absolutePath,
+            signatures      : new File(rulesDir, 'forbidden-apis.txt').absolutePath,
+        ], temporaryDir)
+        args(command.args)
     }
     doLast {
         def code = executionResult.get().exitValue
         report.get().asFile.text = log.toString('UTF-8')
-        if (!(code in [0, 1])) {
+        if (!command.accepts(code)) {
             throw new GradleException("forbiddenapis failed with exit code ${code}: ${log.toString('UTF-8').trim()}")
         }
     }
@@ -46,10 +51,14 @@ tasks.register('nitpickerForbiddenApis', JavaExec) {
 def analysisRoot = project.ext.nitpickerAnalysisRoot
 def compilerOf = project.ext.nitpickerCompilerOf
 def pathsOf = { Collection<File> files -> files.collect { it.absolutePath } }
+def runNode = project.ext.nitpickerRunNode
+def guardsRunner = new File(buildscript.sourceFile.parentFile, '../../adapters/gradle-reports/gradle-guards.mjs')
+    .canonicalFile
+def lintBaseline = gradle.startParameter.projectProperties['nitpicker.lintBaseline']
 
 tasks.register('nitpickerLint') {
     group = 'nitpicker'
-    description = 'Writes guards-plan.json, from which nitpicker runs the javac lint and reads the sealed permits.'
+    description = 'Runs the javac lint and reads the sealed permits from guards-plan.json.'
     dependsOn tasks.named('classes')
     doLast {
         def compile = tasks.named('compileJava').get()
@@ -74,6 +83,8 @@ tasks.register('nitpickerLint') {
                 cacheDirectory  : lintDirectory.absolutePath,
             ],
         ])
+        runNode(guardsRunner, [reportDir.get().asFile.absolutePath] + (lintBaseline ? [lintBaseline.toString()] : []),
+            'nitpicker could not run the javac lint')
     }
 }
 

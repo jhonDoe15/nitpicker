@@ -11,7 +11,7 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { GRADLE_DIRECTORY } from '../../builds/java-build.mjs';
-import { runPmd } from './maven-pmd.mjs';
+import { runCpd, runPmd } from './maven-pmd.mjs';
 
 const roots = [];
 const RULESET = 'http://pmd.sourceforge.net/ruleset/2.0.0';
@@ -280,5 +280,106 @@ describe.skipIf(process.platform === 'win32')('runPmd rulesets', () => {
         ref: HONESTY_RULES,
       }),
     );
+  });
+});
+
+const CPD_XML =
+  '<?xml version="1.0" encoding="UTF-8"?>\n<pmd-cpd pmdVersion="7.7.0">\n</pmd-cpd>\n';
+const CPD_CRASH =
+  '[main] ERROR net.sourceforge.pmd.cli - Exception while running CPD: NullPointerException';
+
+function fakeCpdJava({ report, stderr, ending }) {
+  const root = mkdtempSync(path.join(tmpdir(), 'nitpicker-cpd-'));
+  roots.push(root);
+  const java = path.join(root, 'jdk/bin/java');
+  mkdirSync(path.dirname(java), { recursive: true });
+  writeFileSync(path.join(root, 'report'), report);
+  writeFileSync(path.join(root, 'stderr'), stderr);
+  const script = [
+    `cat "\${1#@}" > '${root}/arguments'`,
+    `cat '${root}/report' > '${root}/app/target/nitpicker/cpd.xml'`,
+    `cat '${root}/stderr' >&2`,
+  ];
+  writeFileSync(java, ['#!/bin/sh', ...script, ending].join('\n'));
+  chmodSync(java, 0o755);
+  vi.stubEnv('JAVA_HOME', path.join(root, 'jdk'));
+  return root;
+}
+
+function reportFiles(reportDir) {
+  return ['cpd.xml', 'cpd-failed.txt', 'cpd-skipped.txt'].map((name) =>
+    existsSync(path.join(reportDir, name))
+      ? readFileSync(path.join(reportDir, name), 'utf8')
+      : undefined,
+  );
+}
+
+function cpd(run) {
+  const root = fakeCpdJava(run);
+  const basedir = path.join(root, 'app');
+  const reportDir = path.join(basedir, 'target/nitpicker');
+  mkdirSync(path.join(basedir, 'src/main/java'), { recursive: true });
+  mkdirSync(reportDir, { recursive: true });
+  for (const stale of ['cpd.xml', 'cpd-failed.txt', 'cpd-skipped.txt']) {
+    writeFileSync(path.join(reportDir, stale), 'stale');
+  }
+  runCpd({
+    module: { basedir, sourceRoots: [path.join(basedir, 'src/main/java')], testSourceRoots: [] },
+    reportDir,
+    tools: { pmd: ['/tools/pmd.jar'] },
+  });
+  const tokens = readFileSync(path.join(root, 'arguments'), 'utf8').split('\n');
+  return {
+    outputs: reportFiles(reportDir),
+    arguments: tokens.map((line) => JSON.parse(line)),
+    basedir,
+  };
+}
+
+describe.skipIf(process.platform === 'win32')('runCpd', () => {
+  it('keeps the XML report the CPD launcher writes when it exits 0', () => {
+    const run = cpd({ report: CPD_XML, stderr: '', ending: 'exit 0' });
+
+    expect(run.outputs).toEqual([CPD_XML, undefined, undefined]);
+    expect(run.arguments).toEqual([
+      '-cp',
+      '/tools/pmd.jar',
+      path.join(GRADLE_DIRECTORY, 'CpdReport.java'),
+      path.join(run.basedir, 'target/nitpicker/cpd.xml'),
+      path.join(run.basedir, 'src/main/java'),
+    ]);
+  });
+
+  it.each([
+    ['a crash that exits 0 with no report', '', 'exit 0', '0'],
+    ['an exit code other than 0', CPD_XML, 'exit 4', '4'],
+    ['output that is not a CPD report', 'oops', 'exit 0', '0'],
+    ['a launcher killed by a signal', CPD_XML, 'kill -9 $$', 'SIGKILL'],
+  ])('records the exit and stderr instead of a report for %s', (_, report, ending, exit) => {
+    const run = cpd({ report, stderr: `${CPD_CRASH}\n`, ending });
+
+    expect(run.outputs).toEqual([undefined, `${exit}\n${CPD_CRASH}\n`, undefined]);
+  });
+
+  it('records a java that cannot start instead of failing the run', () => {
+    const basedir = mkdtempSync(path.join(tmpdir(), 'nitpicker-cpd-'));
+    roots.push(basedir);
+    const java = path.join(basedir, 'jdk/bin/java');
+    mkdirSync(path.dirname(java), { recursive: true });
+    writeFileSync(java, 'not executable');
+    vi.stubEnv('JAVA_HOME', path.join(basedir, 'jdk'));
+    mkdirSync(path.join(basedir, 'src/main/java'), { recursive: true });
+
+    runCpd({
+      module: { basedir, sourceRoots: [path.join(basedir, 'src/main/java')], testSourceRoots: [] },
+      reportDir: basedir,
+      tools: { pmd: ['/tools/pmd.jar'] },
+    });
+
+    expect(reportFiles(basedir)).toEqual([
+      undefined,
+      `EACCES\nspawnSync ${java} EACCES`,
+      undefined,
+    ]);
   });
 });

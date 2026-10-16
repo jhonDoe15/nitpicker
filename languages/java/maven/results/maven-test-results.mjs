@@ -1,7 +1,7 @@
 import { copyFileSync, mkdirSync } from 'node:fs';
 import path from 'node:path';
 import { TEST_RESULTS_DIRECTORY } from '../../adapters/test-times/slow-tests.mjs';
-import { freshReports, suiteNameOf } from '../maven-tests.mjs';
+import { freshReports, suiteNameOf, testReportDirectories } from '../maven-tests.mjs';
 
 function copyReports(reports, target) {
   if (reports.length === 0) {
@@ -13,14 +13,8 @@ function copyReports(reports, target) {
   }
 }
 
-function resultDirectories(module) {
-  const tasks = [['surefire', module.surefireReports]];
-  const shared = path.resolve(module.failsafeReports) === path.resolve(module.surefireReports);
-  return shared ? tasks : [...tasks, ['failsafe', module.failsafeReports]];
-}
-
 export function copyTestResults({ module, reportDir, since, isArchunit }) {
-  for (const [task, directory] of resultDirectories(module)) {
+  for (const [task, directory] of testReportDirectories(module)) {
     copyReports(
       freshReports(directory, since).filter((report) => !isArchunit(suiteNameOf(report))),
       path.join(reportDir, TEST_RESULTS_DIRECTORY, task),

@@ -17,14 +17,8 @@ function isTest(source) {
   return TEST_FILE.test(source);
 }
 
-function sourceEvidence(sourceText) {
-  const sourceFile = ts.createSourceFile(
-    'test.ts',
-    sourceText,
-    ts.ScriptTarget.Latest,
-    true,
-    ts.ScriptKind.TS,
-  );
+function sourceEvidence(source, sourceText) {
+  const sourceFile = ts.createSourceFile(source, sourceText, ts.ScriptTarget.Latest, true);
   const dynamicImports = new Set();
 
   for (const node of depthFirst(sourceFile, syntaxChildren)) {
@@ -64,7 +58,7 @@ function dependencyMap(graph, sourceTexts) {
   return new Map(
     graph.modules.map((module) => {
       const source = normalizePath(module.source);
-      const evidence = sourceEvidence(sourceTexts.get(source) ?? '');
+      const evidence = sourceEvidence(source, sourceTexts.get(source) ?? '');
       return [
         source,
         (module.dependencies ?? [])

@@ -1,8 +1,8 @@
 import { rule as accumulatorSpread } from '../rules/loops/no-accumulator-spread-in-reduce.mjs';
 import { rule as ioInLoop } from '../rules/loops/no-io-in-loop.mjs';
-import { cases, createRuleTester } from '../test-support/rule-tester.mjs';
+import { cases, typescriptRuleTester } from '../test-support/rule-tester.mjs';
 
-const ruleTester = createRuleTester();
+const ruleTester = typescriptRuleTester();
 
 const inLoop = (statement) => `for (const id of ids) { ${statement} }`;
 const inMap = (statement) => `ids.map((id) => ${statement});`;

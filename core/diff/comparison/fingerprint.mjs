@@ -11,13 +11,13 @@ export function comparisonKey(
   const cycle = parseCycleIdentity(finding.identity);
   const canonical =
     cycle === undefined
-      ? {
+      ? sortedPair({
           path: baseToHeadRenames.get(normalizedPath) ?? normalizedPath,
           identity: remapRootPrefix(
             remapIdentityPaths(finding.identity, baseToHeadRenames),
             baseToHeadDirectories,
           ),
-        }
+        })
       : remapCycle(cycle, baseToHeadRenames);
   return JSON.stringify([
     finding.tool,
@@ -28,6 +28,20 @@ export function comparisonKey(
     finding.classification,
     finding.metric?.name ?? '',
   ]);
+}
+
+const PAIR_IDENTITY = /^((?:[\w-]+:)*pair:)([^|]+)\|([^:]+)(:.*)?$/u;
+
+function sortedPair(canonical) {
+  const match = PAIR_IDENTITY.exec(canonical.identity);
+  if (match === null || match[2].localeCompare(match[3]) <= 0) {
+    return canonical;
+  }
+  const [, prefix, first, second, suffix = ''] = match;
+  return {
+    path: canonical.path === first ? second : canonical.path,
+    identity: `${prefix}${second}|${first}${suffix}`,
+  };
 }
 
 function parseCycleIdentity(identity) {

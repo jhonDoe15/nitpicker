@@ -2,6 +2,8 @@ import { mkdirSync, mkdtempSync, realpathSync, rmSync, writeFileSync } from 'nod
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
+import { compareFindings } from '../../../core/diff/comparison/compare.mjs';
+import { parseAnalyzerReport } from '../../../core/diff/comparison/finding-schema.mjs';
 import { readModuleFindings } from './java-modules.mjs';
 
 const REPORT_DIRECTORY = 'target/nitpicker';
@@ -183,4 +185,112 @@ describe('readModuleFindings', () => {
     ]);
     expect(coupling(['app', 'core'])).toEqual(alone);
   });
+
+  it('scopes a Maven module whose CPD run failed to that module across the reactor', () => {
+    const base = reactor({ legacy: 'failed', modular: 'none' });
+    const head = reactor({ legacy: 'clone', modular: 'clone', fresh: 'failed' });
+
+    const result = compareFindings({ baseFindings: base, headFindings: head });
+
+    expect(
+      result.newFindings
+        .filter(({ tool }) => tool === 'duplicates')
+        .map(({ rule, path: file, classification }) => `${rule} ${file} ${classification}`),
+    ).toEqual([
+      'cpd-not-run fresh tool-error',
+      'duplicate-clone legacy/src/main/java/demo/A.java descriptive',
+      'duplicate-clone modular/src/main/java/demo/A.java enforceable',
+    ]);
+    expect(base.find(({ rule }) => rule === 'cpd-not-run').notRunScope).toEqual([
+      'legacy/src/main/java',
+    ]);
+  });
+
+  it('drops guard findings on files outside the project, so the report still parses', () => {
+    const root = realpathSync(mkdtempSync(path.join(tmpdir(), 'nitpicker-java-reactor-')));
+    const outside = realpathSync(mkdtempSync(path.join(tmpdir(), 'nitpicker-java-elsewhere-')));
+    temporaryRoots.push(root, outside);
+    const files = ['X', 'Y'].map((name) => path.join(outside, `src/p/${name}.java`));
+    for (const file of files) {
+      write(
+        file,
+        `class ${path.basename(file, '.java')} {\n  int run(int rate) {\n${LOGIC}\n  }\n}\n`,
+      );
+    }
+    const platform = path.join(root, 'platform');
+    cpdModule(platform, 'none');
+    write(path.join(platform, REPORT_DIRECTORY, 'cpd.xml'), cpdReport(files));
+    write(
+      path.join(platform, REPORT_DIRECTORY, 'javac-lint.txt'),
+      `${path.relative(platform, files[0])}:3: warning: [rawtypes] found raw type: List\n`,
+    );
+
+    const findings = readModuleFindings(root, [platform], { reportDirectory: REPORT_DIRECTORY });
+
+    expect(findings.filter(({ tool }) => ['duplicates', 'javac'].includes(tool))).toEqual([]);
+    expect(parseAnalyzerReport({ findings }, 'java').findings).toEqual(findings);
+  });
+
+  it('places the source roots of a failed Maven module under its folder before it scopes them', () => {
+    const findings = reactor({ outside: 'failed', platform: 'failed' }, (module) =>
+      module === 'outside' ? ['src/main/java', '../shared/src'] : ['../../elsewhere/src'],
+    );
+
+    expect(
+      findings
+        .filter(({ rule }) => rule === 'cpd-not-run')
+        .map(({ path: file, toolNotRun, notRunScope }) => [file, toolNotRun, notRunScope]),
+    ).toEqual([
+      ['outside', true, ['outside/src/main/java', 'shared/src']],
+      ['platform', undefined, undefined],
+    ]);
+  });
 });
+
+const LOGIC = Array.from(
+  { length: 12 },
+  (_, index) => `    total += compute(${String(index)}) * rate;`,
+).join('\n');
+
+function cpdReport(files) {
+  const sides = files
+    .map((file) => `<file path="${file}" line="2" endline="9" begintoken="0" endtoken="9"/>`)
+    .join('');
+  const duplication =
+    files.length === 0 ? '' : `<duplication lines="8" tokens="120">${sides}</duplication>`;
+  return `<?xml version="1.0"?>\n<pmd-cpd>${duplication}</pmd-cpd>\n`;
+}
+
+function cpdModule(moduleDir, outcome) {
+  writeModule(moduleDir, { className: 'Main', lines: 5 });
+  const reports = path.join(moduleDir, REPORT_DIRECTORY);
+  if (outcome === 'failed') {
+    write(path.join(reports, 'cpd-failed.txt'), '1\n');
+    return;
+  }
+  const names = outcome === 'clone' ? ['A', 'B'] : [];
+  const files = names.map((name) => path.join(moduleDir, `src/main/java/demo/${name}.java`));
+  for (const name of names) {
+    write(
+      path.join(moduleDir, `src/main/java/demo/${name}.java`),
+      `class ${name} {\n  int run(int rate) {\n    int total = 0;\n${LOGIC}\n    return total;\n  }\n}\n`,
+    );
+  }
+  write(path.join(reports, 'cpd.xml'), cpdReport(files));
+}
+
+function reactor(modules, sourceRootsOf) {
+  const root = realpathSync(mkdtempSync(path.join(tmpdir(), 'nitpicker-java-reactor-')));
+  temporaryRoots.push(root);
+  for (const [module, outcome] of Object.entries(modules)) {
+    cpdModule(path.join(root, module), outcome);
+    if (sourceRootsOf !== undefined) {
+      write(
+        path.join(root, module, REPORT_DIRECTORY, 'manifest.json'),
+        JSON.stringify({ build: 'maven', sourceRoots: sourceRootsOf(module), testSourceRoots: [] }),
+      );
+    }
+  }
+  const moduleDirs = Object.keys(modules).map((module) => path.join(root, module));
+  return readModuleFindings(root, moduleDirs, { reportDirectory: REPORT_DIRECTORY });
+}

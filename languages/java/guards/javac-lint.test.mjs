@@ -2,9 +2,16 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
+import { exceptionHint } from '../../../shared/rules/exceptions.mjs';
 import { compareFindings } from '../../../core/diff/comparison/compare.mjs';
 import { parseAnalyzerReport } from '../../../core/diff/comparison/finding-schema.mjs';
 import { parseLintWarnings, readLintFindings } from './javac-lint.mjs';
+import {
+  guardProject,
+  javaClass,
+  newLines,
+  removeGuardProjects,
+} from './test-support/guard-project.mjs';
 
 const roots = [];
 afterEach(() => {
@@ -58,9 +65,7 @@ function lintFinding(rule, [file, line, text]) {
     identity: expect.any(String),
     classification: 'enforceable',
     location: { line },
-    message:
-      `${text}. ${ADVICE[rule]} ` +
-      `If it is right here, add an exception for javac/${rule} in nitpicker.config.json.`,
+    message: `${text}. ${ADVICE[rule]}`,
   };
 }
 
@@ -119,7 +124,7 @@ describe('parseLintWarnings', () => {
 describe('readLintFindings', () => {
   const files = ['src/main/java/demo/Raw.java', 'src/main/java/demo/Old.java'];
 
-  it('turns each project warning into an enforceable javac finding that names the form and the exception', () => {
+  it('turns each project warning into an enforceable javac finding that names the form', () => {
     const root = project(files);
 
     const findings = readLintFindings(path.join(root, 'build/nitpicker'), { projectRoot: root });
@@ -153,7 +158,10 @@ describe('readLintFindings', () => {
       'Picked up JAVA_TOOL_OPTIONS: -Dx=y\nsrc/main/java/demo/A.java:3: error: cannot find symbol\n1 error\n',
     );
 
-    const findings = readLintFindings(reports, { projectRoot: root });
+    const findings = readLintFindings(reports, {
+      projectRoot: root,
+      sourceRoots: ['src/main/java', 'src/main/generated'],
+    });
 
     expect(findings).toEqual([
       {
@@ -163,15 +171,57 @@ describe('readLintFindings', () => {
         identity: 'lint-not-run',
         classification: 'descriptive',
         toolNotRun: true,
+        notRunScope: ['src/main/java', 'src/main/generated'],
         message:
-          'No javac lint report: the lint compile failed (src/main/java/demo/A.java:3: error: cannot find symbol), ' +
+          'No javac lint report from the lint compile (src/main/java/demo/A.java:3: error: cannot find symbol), ' +
           'so raw types, unchecked operations, deprecated calls and redundant casts were not checked. ' +
-          'Fix what that compile reports (the main sources, the compile class path and Lombok), ' +
-          'or add an exception for javac/lint-not-run with the path "**" in nitpicker.config.json ' +
-          'if the project cannot be linted that way.',
+          'Fix what that compile reports (the main sources, the compile class path and Lombok). ' +
+          exceptionHint('javac/lint-not-run', '**'),
       },
     ]);
     expect(() => parseAnalyzerReport({ findings }, 'java')).not.toThrow();
+  });
+
+  it('scopes the notice of a module without source roots to the module folder', () => {
+    const root = project([]);
+    const reports = path.join(root, 'nothing');
+    mkdirSync(reports);
+    writeFileSync(path.join(reports, 'javac-lint-failed.txt'), 'A.java:3: error: boom\n');
+
+    const findings = readLintFindings(reports, {
+      projectRoot: root,
+      sourceRoots: [],
+      module: { moduleDir: 'app' },
+    });
+
+    expect(findings.map(({ notRunScope }) => notRunScope)).toEqual([['app']]);
+    expect(parseAnalyzerReport({ findings }, 'java').findings).toEqual(findings);
+  });
+
+  it('keeps comparing the project when the failed module compiles only sources outside it', () => {
+    const head = project(['src/main/java/demo/Raw.java']);
+    const base = project([]);
+    const baseReports = path.join(base, 'failed');
+    mkdirSync(baseReports);
+    writeFileSync(path.join(baseReports, 'javac-lint-failed.txt'), 'A.java:3: error: boom\n');
+    const baseFindings = readLintFindings(baseReports, {
+      projectRoot: base,
+      sourceRoots: ['../../x/src/main/java'],
+      module: { moduleDir: '', modulePath: 'platform' },
+    });
+    const headFindings = readLintFindings(path.join(head, 'build/nitpicker'), {
+      projectRoot: head,
+    });
+
+    expect(baseFindings.map(({ toolNotRun, notRunScope }) => [toolNotRun, notRunScope])).toEqual([
+      [undefined, undefined],
+    ]);
+    expect(parseAnalyzerReport({ findings: baseFindings }, 'java').findings).toEqual(baseFindings);
+    expect(
+      compareFindings({ baseFindings, headFindings }).newFindings.map(
+        (finding) => finding.classification,
+      ),
+    ).toEqual(['enforceable', 'enforceable', 'enforceable', 'enforceable']);
   });
 
   it('reports head warnings as descriptive when the base lint compile failed', () => {
@@ -183,12 +233,14 @@ describe('readLintFindings', () => {
     const headFindings = readLintFindings(path.join(head, 'build/nitpicker'), {
       projectRoot: head,
     });
-    const compare = (baseFindings) => compareFindings({ baseFindings, headFindings }).newFindings;
+    function compare(baseFindings) {
+      return compareFindings({ baseFindings, headFindings }).newFindings;
+    }
 
     const uncompared = compare(readLintFindings(baseReports, { projectRoot: base }));
 
     expect(uncompared).toEqual(
-      [0, 2, 3, 1]
+      [2, 3, 0, 1]
         .map((index) => PROJECT_FINDINGS[index])
         .map((finding) => ({
           ...finding,
@@ -202,5 +254,80 @@ describe('readLintFindings', () => {
       'enforceable',
       'enforceable',
     ]);
+  });
+
+  it('relaxes only the warnings under the source roots of the module whose base lint failed', () => {
+    const head = project(['src/main/java/demo/Raw.java']);
+    const base = project([]);
+    const baseReports = path.join(base, 'failed');
+    mkdirSync(baseReports);
+    writeFileSync(path.join(baseReports, 'javac-lint-failed.txt'), 'A.java:3: error: boom\n');
+    const headFindings = readLintFindings(path.join(head, 'build/nitpicker'), {
+      projectRoot: head,
+    });
+    function compare(sourceRoots) {
+      return compareFindings({
+        baseFindings: readLintFindings(baseReports, { projectRoot: base, sourceRoots }),
+        headFindings,
+      }).newFindings.map((finding) => finding.classification);
+    }
+
+    expect(compare(['legacy/src/main/java'])).toEqual([
+      'enforceable',
+      'enforceable',
+      'enforceable',
+      'enforceable',
+    ]);
+    expect(compare([''])).toEqual(['descriptive', 'descriptive', 'descriptive', 'descriptive']);
+  });
+});
+
+describe('javac identities', () => {
+  afterEach(() => {
+    removeGuardProjects();
+  });
+
+  const MAPS = javaClass('class A {', ['java.util.Map first;', 'java.util.Map second;']);
+  const MAPS_ADDED = javaClass('class A {', [
+    'java.util.Map added;',
+    'java.util.Map first;',
+    'java.util.Map second;',
+  ]);
+
+  function lintFindings(files) {
+    const root = guardProject(files);
+    return readLintFindings(path.join(root, 'reports'), { projectRoot: root });
+  }
+
+  function rawMap(file, lines) {
+    return lines.map((line) => `${file}:${String(line)}: warning: [rawtypes] found raw type: Map`);
+  }
+
+  it('keeps the javac warnings of a file moved to another package', () => {
+    const base = lintFindings({
+      'src/main/java/demo/A.java': MAPS,
+      'reports/javac-lint.txt': rawMap('src/main/java/demo/A.java', [3, 4]).join('\n'),
+    });
+    const head = lintFindings({
+      'src/main/java/moved/A.java': MAPS.replace('package demo;', 'package moved;'),
+      'reports/javac-lint.txt': rawMap('src/main/java/moved/A.java', [3, 4]).join('\n'),
+    });
+
+    expect(
+      newLines(base, head, new Map([['src/main/java/demo/A.java', 'src/main/java/moved/A.java']])),
+    ).toEqual([]);
+  });
+
+  it('reports the javac warning of an added line, not of a legacy line with the same message', () => {
+    const base = lintFindings({
+      'src/main/java/demo/A.java': MAPS,
+      'reports/javac-lint.txt': rawMap('src/main/java/demo/A.java', [3, 4]).join('\n'),
+    });
+    const head = lintFindings({
+      'src/main/java/demo/A.java': MAPS_ADDED,
+      'reports/javac-lint.txt': rawMap('src/main/java/demo/A.java', [3, 4, 5]).join('\n'),
+    });
+
+    expect(newLines(base, head)).toEqual([['src/main/java/demo/A.java', 3]]);
   });
 });

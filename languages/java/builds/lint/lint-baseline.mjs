@@ -3,9 +3,9 @@ import { createHash } from 'node:crypto';
 import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs';
 import path from 'node:path';
 import { classSummaries } from '../classes/class-summary.mjs';
-import { languageLevel, lintCompatible } from './javac-options.mjs';
+import { languageLevel, lintCompatible, lintCompiler } from './javac-options.mjs';
 import { lombokPath } from './lint-arguments.mjs';
-import { inheritedLombokConfigs, lombokConfigs } from './lint-staging.mjs';
+import { inheritedLombokConfigs, lombokConfigs, posix } from './lint-staging.mjs';
 
 export const LINT_CACHE = 'javac-lint.txt';
 export const LINT_FINGERPRINT = 'javac-lint-fingerprint.txt';
@@ -13,10 +13,6 @@ const DIGEST = 'sha256';
 const WARNING_FILE = /^(.+\.java):\d+: warning: \[/u;
 const NO_REUSE = { unchanged: new Set(), kept: '' };
 const javacVersions = new Map();
-
-function posix(file) {
-  return file.split(path.sep).join('/');
-}
 
 function javacVersion(javac) {
   if (!javacVersions.has(javac)) {
@@ -70,9 +66,9 @@ export function lintFingerprint(plan) {
   const sources = plan.sources.filter((source) => insideRoot(plan.root, source));
   const inputs = {
     javac: javacVersion(plan.javac),
-    level: languageLevel(plan.compiler),
+    level: languageLevel(lintCompiler(plan)),
     encoding: plan.compiler.encoding ?? 'UTF-8',
-    args: lintCompatible(plan.compiler.args).map((arg) => arg.replaceAll(plan.root, '<root>')),
+    args: lintCompatible(lintCompiler(plan).args).map((arg) => arg.replaceAll(plan.root, '<root>')),
     classpath: digests(plan.root, plan.classpath),
     lombok: digests(plan.root, lombokPath(plan)),
     lombokConfigs: digests(plan.root, lombokConfigs({ root: plan.root, sources })),

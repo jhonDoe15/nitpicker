@@ -1,0 +1,31 @@
+{
+  "findings": [
+    {
+      "tool": "duplicates",
+      "rule": "cpd-not-run",
+      "path": "kernel",
+      "identity": "cpd-not-run",
+      "message": "No CPD duplicate report for kernel.",
+      "classification": "descriptive",
+      "toolNotRun": true,
+      "notRunScope": ["kernel/src/main/java", "kernel/src/test/java"],
+      "notRunIdentityPrefix": "cpd:"
+    },
+    {
+      "tool": "duplicates",
+      "rule": "duplicate-clone",
+      "path": "kernel/src/main/java/n/Fresh.java",
+      "identity": "cpd:pair:kernel/src/main/java/n/Fresh.java|kernel/src/main/java/n/Copy.java:occurrence:1",
+      "message": "This code repeats kernel/src/main/java/n/Copy.java.",
+      "classification": "enforceable"
+    },
+    {
+      "tool": "duplicates",
+      "rule": "duplicate-clone",
+      "path": "kernel/src/main/java/p/E.java",
+      "identity": "cpd:pair:kernel/src/main/java/p/E.java|kernel/src/main/java/p/F.java:occurrence:1",
+      "message": "This code repeats kernel/src/main/java/p/F.java.",
+      "classification": "enforceable"
+    }
+  ]
+}

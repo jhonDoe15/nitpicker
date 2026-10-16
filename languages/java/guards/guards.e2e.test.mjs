@@ -1,5 +1,14 @@
 import { spawnSync } from 'node:child_process';
-import { cpSync, mkdtempSync, readdirSync, readFileSync, rmSync } from 'node:fs';
+import {
+  cpSync,
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  readdirSync,
+  readFileSync,
+  rmSync,
+  symlinkSync,
+} from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
@@ -7,18 +16,19 @@ import { INIT_SCRIPT } from '../builds/java-build.mjs';
 import { runJavaDuplicates } from '../adapters/metrics/java-duplicates.mjs';
 import { readJavaFindings } from '../adapters/reporting/java-reports.mjs';
 import { readReportModules } from '../adapters/gradle-reports/report-modules.mjs';
-import { runGradleGuards, runGuardPlan } from '../adapters/gradle-reports/gradle-guards.mjs';
+import { readCouplingFindings } from '../adapters/metrics/java-coupling.mjs';
+import { readCpdFindings } from './cpd-duplicates.mjs';
 import { readLintFindings } from './javac-lint.mjs';
+import { exceptionHint } from '../../../shared/rules/exceptions.mjs';
 
 const enabled = process.env.NITPICKER_JAVA_E2E === '1';
 const gradle = process.env.NITPICKER_GRADLE ?? 'gradle';
 const fixtures = path.join(import.meta.dirname, '..', 'adapters', 'fixtures');
-const OPTIONAL_GET_MESSAGE =
+const optionalGetMessage = (file) =>
   'Use orElseThrow(), orElse(...), map or ifPresent instead of Optional.get(). ' +
-  'If it is right here, add an exception for pmd/OptionalGet in nitpicker.config.json.';
+  exceptionHint('pmd/OptionalGet', file);
 const LINE_MARKER = /\/\/ violation: (.*)$/;
 const FILE_MARKER = /\/\/ file violation: (.*)$/;
-const COMPILE_MODES = ['legacy', 'arguments', 'plugged', 'preview', 'modular', 'outside', 'lombok'];
 const GUARD_TOOLS = new Set(['javac', 'forbiddenapis', 'dependencies', 'coupling', 'duplicates']);
 const GUARD_RULES = new Set([
   'OptionalGet',
@@ -46,9 +56,10 @@ const GUARD_RULES = new Set([
   'TautologicalAssertion',
   'MockedValueType',
   'TestOrderDependence',
-  'com.puppycrawl.tools.checkstyle.checks.naming.ConstantNameCheck',
-  'com.puppycrawl.tools.checkstyle.checks.coding.MagicNumberCheck',
-  'com.puppycrawl.tools.checkstyle.checks.design.VisibilityModifierCheck',
+  'TestClassWithoutTestCases',
+  'ConstantName',
+  'MagicNumber',
+  'VisibilityModifier',
 ]);
 
 function markedFiles(root) {
@@ -104,25 +115,21 @@ function reportedViolations(root) {
     .sort();
 }
 
-function gradleTasks(fixture, tasks, properties = () => []) {
-  const projectRoot = path.join(mkdtempSync(path.join(tmpdir(), 'nitpicker-guards-')), fixture);
-  cpSync(path.join(fixtures, fixture), projectRoot, { recursive: true });
+function runGradle(projectRoot, args) {
   const result = spawnSync(
     gradle,
-    [
-      '--console=plain',
-      '--quiet',
-      '--no-configuration-cache',
-      ...properties(projectRoot),
-      '-I',
-      INIT_SCRIPT,
-      ...tasks,
-    ],
+    ['--console=plain', '--quiet', '--no-configuration-cache', '-I', INIT_SCRIPT, ...args],
     { cwd: projectRoot, encoding: 'utf8', timeout: 15 * 60 * 1000 },
   );
   if (result.status !== 0) {
     throw new Error(`Gradle failed: ${result.stderr}`);
   }
+}
+
+function gradleTasks(fixture, tasks, properties = () => []) {
+  const projectRoot = path.join(mkdtempSync(path.join(tmpdir(), 'nitpicker-guards-')), fixture);
+  cpSync(path.join(fixtures, fixture), projectRoot, { recursive: true });
+  runGradle(projectRoot, [...properties(projectRoot), ...tasks]);
   return projectRoot;
 }
 
@@ -143,21 +150,17 @@ describe.skipIf(!enabled)('Java guards on a fixture project', () => {
           `-Pnitpicker.reportDir=${reportBaseOf(root)}`,
         ]),
       );
-      const { modules, manifest } = readReportModules(reportBaseOf(roots[0]), 'java');
-      runGradleGuards(modules, { baselineRoot: undefined });
+      const { manifest } = readReportModules(reportBaseOf(roots[0]), 'java');
       runJavaDuplicates(roots[0], { reportRoot: reportBaseOf(roots[0]), manifest });
       roots.push(
         gradleTasks('guards-compile-modes', [
           'nitpickerLint',
           ':legacy:nitpickerPmd',
           ':arguments:nitpickerPmd',
+          ':modular:nitpickerJdeps',
+          ':legacy:nitpickerCpd',
         ]),
       );
-      for (const module of COMPILE_MODES) {
-        runGuardPlan(path.join(roots[1], module, 'build', 'nitpicker'), {
-          baselineRoot: undefined,
-        });
-      }
     },
     30 * 60 * 1000,
   );
@@ -175,7 +178,7 @@ describe.skipIf(!enabled)('Java guards on a fixture project', () => {
   it('ends a guard message with its exception route', () => {
     const optionalGet = guardFindings(roots[0]).find((finding) => finding.rule === 'OptionalGet');
 
-    expect(optionalGet.message).toBe(OPTIONAL_GET_MESSAGE);
+    expect(optionalGet.message).toBe(optionalGetMessage(optionalGet.path));
   });
 
   it.each(['legacy', 'arguments'])(
@@ -204,5 +207,77 @@ describe.skipIf(!enabled)('Java guards on a fixture project', () => {
       'outside/src/main/java/outside/Names.java:7 rawtypes',
       'lombok/src/main/java/fluent/Item.java:18 rawtypes',
     ]);
+  });
+
+  it('reads the coupling of a module whose descriptor requires a jar module', () => {
+    const findings = readCouplingFindings(path.join(roots[1], 'modular', 'build', 'nitpicker'), {
+      projectRoot: roots[1],
+      sourceRoots: ['modular/src/main/java'],
+    });
+
+    expect(
+      findings
+        .filter((finding) => finding.path.startsWith('modular/'))
+        .map(({ path: file, metric }) => `${file} ${metric.name} ${String(metric.value)}`),
+    ).toEqual(
+      [
+        'Labels.java fanIn 0',
+        'Labels.java fanOut 1',
+        'Labels.java totalCoupling 1',
+        'Labels.java instability 1',
+        'Shape.java fanIn 3',
+        'Shape.java fanOut 2',
+        'Shape.java totalCoupling 5',
+        'Shape.java instability 0.4',
+        'impl/Circle.java fanIn 1',
+        'impl/Circle.java fanOut 1',
+        'impl/Circle.java totalCoupling 2',
+        'impl/Circle.java instability 0.5',
+        'impl/Square.java fanIn 1',
+        'impl/Square.java fanOut 1',
+        'impl/Square.java totalCoupling 2',
+        'impl/Square.java instability 0.5',
+      ].map((line) => `modular/src/main/java/modular/shapes/${line}`),
+    );
+  });
+
+  it('runs CPD over class literals followed by a declaration without modifiers', () => {
+    const reportRoot = path.join(roots[1], 'legacy', 'build', 'nitpicker');
+
+    expect(
+      readCpdFindings(reportRoot, {
+        projectRoot: roots[1],
+        sourceRoots: ['legacy/src/main/java'],
+        testRoots: [],
+      }),
+    ).toEqual([]);
+    expect(
+      ['cpd.xml', 'cpd-failed.txt'].map((name) => existsSync(path.join(reportRoot, name))),
+    ).toEqual([true, false]);
+  });
+
+  it('leaves symbolic links in a modular class directory out of the jdeps class list and copy', () => {
+    const module = path.join(roots[1], 'modular');
+    const classes = path.join(module, 'build', 'classes', 'java', 'main');
+    const outside = path.join(path.dirname(roots[1]), 'outside');
+    const labels = path.join(classes, 'modular', 'shapes', 'Labels.class');
+    mkdirSync(path.join(outside, 'q'), { recursive: true });
+    cpSync(labels, path.join(outside, 'B.class'));
+    cpSync(labels, path.join(outside, 'q', 'C.class'));
+    symlinkSync(path.join(outside, 'B.class'), path.join(classes, 'modular', 'shapes', 'L.class'));
+    symlinkSync(path.join(outside, 'q'), path.join(classes, 'linked'));
+
+    runGradle(roots[1], [':modular:nitpickerJdeps', '-x', 'compileJava']);
+
+    expect(readFileSync(path.join(module, 'build', 'nitpicker', 'jdeps-classes.txt'), 'utf8')).toBe(
+      [
+        'modular.shapes.Labels',
+        'modular.shapes.Shape',
+        'modular.shapes.impl.Circle',
+        'modular.shapes.impl.Square',
+      ]
+        .map((name) => `${name}\n`)
+        .join(''),
+    );
   });
 });

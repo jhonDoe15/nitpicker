@@ -124,9 +124,16 @@ export function runJavaDuplicates(
   });
 }
 
-export function readDuplicateFindings(reportRoot, reportFile = DUPLICATES_REPORT) {
+export function readDuplicateFindings(
+  reportRoot,
+  reportFile = DUPLICATES_REPORT,
+  { skip = () => false } = {},
+) {
   const { runs } = JSON.parse(readFileSync(path.join(reportRoot, reportFile), 'utf8'));
   return runs.flatMap(({ root, report }) =>
-    evaluateDuplicates(jscpdClones(report, [root]), DUPLICATES_TOOL),
+    evaluateDuplicates(
+      jscpdClones(report, [root]).filter((clone) => !skip(clone)),
+      DUPLICATES_TOOL,
+    ),
   );
 }

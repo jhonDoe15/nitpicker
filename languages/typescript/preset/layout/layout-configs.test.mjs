@@ -38,6 +38,8 @@ describe('resolveLayout', () => {
     expect(customLayout.isRunnableTestFile('spec/helper.ts')).toBe(false);
     expect(customLayout.isTestFixture('/repo/spec/fixtures/app.ts')).toBe(true);
     expect(customLayout.isTestFixture('/repo/tests/fixtures/app.ts')).toBe(false);
+    expect(customLayout.isTestFixture('/repo/lib/__tests__/fixtures/app.ts')).toBe(true);
+    expect(customLayout.isTestFixture('/repo/lib/fixtures/app.ts')).toBe(false);
     expect(customLayout.sourceRootOf('/repo/lib/a.ts')).toBe('lib');
   });
   it('treats exclude globs as excluded from source, test and graph analysis', () => {

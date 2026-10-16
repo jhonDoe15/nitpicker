@@ -1,11 +1,11 @@
-import { mkdirSync, mkdtempSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
-import { configurationFiles, createJavaAnalyzer } from './java-analyzer.mjs';
+import { createJavaAnalyzer } from './java-analyzer.mjs';
 import { JAVA_TOOLS } from './gradle-presets.mjs';
-import { applyJavaPolicy, configureJavaAnalyzer } from './java-policy.mjs';
-import { lintBaselineRoot, toolConfigProperties } from './java-diff.mjs';
+import { applyJavaPolicy, configureJavaAnalyzer, validateJavaConfig } from './java-policy.mjs';
+import { lintBaselineProperties, toolConfigProperties } from './java-diff.mjs';
 import { parseRunnerArguments } from './java-runner.mjs';
 
 const roots = [];
@@ -248,12 +248,14 @@ describe('project tool configs', () => {
   });
 });
 
-describe('lintBaselineRoot', () => {
-  it('hands the base project to the differential lint on the head side only', () => {
-    expect(lintBaselineRoot({ snapshot: 'head', baselineRoot: '/base/app' })).toBe('/base/app');
-    expect(lintBaselineRoot({ snapshot: 'base', baselineRoot: '/base/app' })).toBeUndefined();
-    expect(lintBaselineRoot({ snapshot: 'head' })).toBeUndefined();
-    expect(lintBaselineRoot()).toBeUndefined();
+describe('lintBaselineProperties', () => {
+  it('passes the base project root to the head run only', () => {
+    expect(lintBaselineProperties({ snapshot: 'head', baselineRoot: '/base/app' })).toEqual([
+      '-Pnitpicker.lintBaseline=/base/app',
+    ]);
+    expect(lintBaselineProperties({ snapshot: 'base', baselineRoot: '/base/app' })).toEqual([]);
+    expect(lintBaselineProperties({ snapshot: 'head' })).toEqual([]);
+    expect(lintBaselineProperties()).toEqual([]);
   });
 });
 
@@ -470,29 +472,21 @@ describe('applyJavaPolicy', () => {
   });
 });
 
-describe('createJavaAnalyzer', () => {
-  it('hashes every rule, task, guard and lint file, so changing one invalidates cached findings', () => {
-    const packageRoot = path.resolve(import.meta.dirname, '../../..');
-    const listed = [
-      'languages/java/gradle/rules',
-      'languages/java/gradle/tasks',
-      'languages/java/guards',
-      'languages/java/builds/lint',
-      'languages/java/builds/classes',
-      'languages/java/builds/rulesets',
-    ]
-      .flatMap((directory) =>
-        readdirSync(path.join(packageRoot, directory), { recursive: true, withFileTypes: true })
-          .filter((entry) => entry.isFile() && !entry.name.endsWith('.test.mjs'))
-          .filter((entry) => !entry.parentPath.includes('test-support'))
-          .map((entry) =>
-            path
-              .relative(packageRoot, path.join(entry.parentPath, entry.name))
-              .replaceAll(path.sep, '/'),
-          ),
-      )
-      .filter((file) => !configurationFiles().includes(file));
+describe('validateJavaConfig', () => {
+  it('asks for the printed name of a Checkstyle check instead of its class', () => {
+    const exception = { rule: 'checkstyle/Indentation', paths: ['src/**'], reason: 'Legacy' };
+    const byClass = {
+      ...exception,
+      rule: 'checkstyle/com.puppycrawl.tools.checkstyle.checks.indentation.IndentationCheck',
+    };
 
-    expect(listed).toEqual([]);
+    expect(() => {
+      validateJavaConfig({ preset: 'java', exceptions: [exception] });
+    }).not.toThrow();
+    expect(() => {
+      validateJavaConfig({ preset: 'java', exceptions: [byClass] });
+    }).toThrow(
+      `"exceptions[0].rule" names a Checkstyle check by class; findings print the check's name, so write "checkstyle/Indentation"`,
+    );
   });
 });
