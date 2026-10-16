@@ -133,8 +133,10 @@ sum + x, 0)`), `Object.fromEntries`, and `Object.groupBy`. No loops, `forEach`, 
 - No comments, except doc comments (`/** ... */`) on exported declarations and the members of
   exported types. They are allowed there, never required; the Java preset follows the same rule for
   Javadoc. Tool directives are allowed, except suppressions: ESLint's `noInlineConfig` blocks
-  inline disables, and `@typescript-eslint/ban-ts-comment` bans `@ts-ignore`, `@ts-expect-error`,
-  and `@ts-nocheck`. `noInlineConfig` alone does not cover TypeScript suppressions. Coverage and
+  inline disables, and `@typescript-eslint/ban-ts-comment` bans `@ts-ignore`, `@ts-expect-error`
+  (with or without a description) and `@ts-nocheck`. `noInlineConfig` alone does not cover
+  TypeScript suppressions. A test that a type rejects a value asserts it with Vitest's
+  `expectTypeOf(fn).parameter(0).not.toExtend<Value>()`, which counts as an assertion. Coverage and
   mutation ignore comments (`istanbul ignore`, `c8 ignore`, `v8 ignore`, `Stryker disable`) are
   suppressions too: `nitpicker/no-comments` reports them, and code that truly cannot be tested
   gets a reviewed exception for that rule in `nitpicker.config.json`.
