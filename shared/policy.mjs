@@ -1,10 +1,3 @@
-// The single source for the custom checks nitpicker adds on top of third-party tools: rule ids,
-// default limits, failure-message templates and the languages that enforce each rule. Every
-// language adapter reads it, and `spec/checks.md` is generated from it (`npm run gen:checks`).
-//
-// Language-neutral: no imports, so any entry point can load it. Nothing under `shared/` may
-// import from `core/`, `languages/` or a tool package (shared/import-direction.test.mjs).
-
 import {
   JAVA_LINE_LENGTH,
   SIZE_HELD_MESSAGES,
