@@ -779,10 +779,13 @@ Their findings end with the exceptions route.
 
 ### Overlaps between the tools
 
-No rule is turned off because another tool reports the same code: there is no SpotBugs exclude
-file, and the PMD ruleset leaves out only the test-style rules named in its header. Instead,
-`languages/java/adapters/overlaps/overlap-pairs.json` lists pairs of a primary rule and the
-secondary rules it stands for, with a scope:
+No Error Prone, PMD, SpotBugs or Checkstyle rule is turned off because one of the others reports
+the same code: there is no SpotBugs exclude file, and the PMD ruleset leaves out only the
+test-style rules named in its header. (Two Error Prone checks are still off as repeats:
+`RemoveUnusedImports`, whose unused import google-java-format already reports as an unformatted
+file, and `EmptyIf`, whose `if (c);` Error Prone's own `UnnecessarySemicolon` reports at the same
+position.) Instead, `languages/java/adapters/overlaps/overlap-pairs.json` lists pairs of a
+primary rule and the secondary rules it stands for, with a scope:
 
 - `line`: the same file and line.
 - `member`: the same method, constructor or field initializer, from a scan of the source that skips
