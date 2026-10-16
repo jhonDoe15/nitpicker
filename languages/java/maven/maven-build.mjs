@@ -153,21 +153,33 @@ function readClasspaths(work, module) {
   return { ...moduleClasspaths(module, dependencies), dependencies };
 }
 
-function analyzeModule({ module, classpaths, tools, pinned, configs, since, project }) {
-  const reportDir = path.join(module.basedir, MAVEN_REPORT_DIRECTORY);
-  const isArchunit = archunitMatcher(module.archunitIncludes);
-  const spring = classpaths.mainCompile.some((entry) => SPRING_JAR.test(path.basename(entry)));
-  const testsRan = collectTestResults({ module, reportDir, since, isArchunit });
-  runPmd({ module, reportDir, tools, classpaths, configs, spring });
+function analyzeSources(context, project) {
+  const { module, reportDir, tools, classpaths, configs, pinned } = context;
+  runPmd({ module, reportDir, tools, classpaths, configs, spring: context.spring });
   runSpotbugs({ module, reportDir, tools });
   runFormat({ module, reportDir, tools });
   runCheckstyle({ module, reportDir, tools, configs, pinned });
   runStructure(module, reportDir);
   runJdeps(module, reportDir);
   runGuards({ module, reportDir, tools, classpaths }, project);
+}
+
+function analyzeTests(context, testsRan) {
+  const { module, reportDir, tools, classpaths, since, isArchunit } = context;
   const execFile = module.jacocoDestFile ?? path.join(module.buildDirectory, OWN_JACOCO_EXEC);
   runJacocoReport({ module, reportDir, tools, execFile, since, testsRan });
   runPit({ module, reportDir, tools, classpaths, isArchunit });
+}
+
+function analyzeModule({ project, ...options }) {
+  const { module, classpaths, since, pinned } = options;
+  const reportDir = path.join(module.basedir, MAVEN_REPORT_DIRECTORY);
+  const isArchunit = archunitMatcher(module.archunitIncludes);
+  const spring = classpaths.mainCompile.some((entry) => SPRING_JAR.test(path.basename(entry)));
+  const context = { ...options, reportDir, isArchunit, spring };
+  const testsRan = collectTestResults({ module, reportDir, since, isArchunit });
+  analyzeSources(context, project);
+  analyzeTests(context, testsRan);
   writeManifest({ module, reportDir, pinned, spring });
 }
 

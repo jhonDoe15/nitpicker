@@ -28,14 +28,14 @@ const JAVAC_EXPORTS = ['api', 'file', 'parser', 'tree', 'util', 'code'].map(
 );
 
 export function javaFiles(roots) {
-  return roots
+  const files = roots
     .filter((root) => existsSync(root))
     .flatMap((root) =>
       readdirSync(root, { recursive: true, withFileTypes: true })
         .filter((entry) => entry.isFile() && entry.name.endsWith('.java'))
         .map((entry) => path.join(entry.parentPath, entry.name)),
-    )
-    .sort();
+    );
+  return [...new Set(files)].sort();
 }
 
 export function runSpotbugs({ module, reportDir, tools }) {
