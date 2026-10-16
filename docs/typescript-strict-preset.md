@@ -183,6 +183,15 @@ for a file takes that file out of the rule, so a pair of copies that must both s
   other files, once per name and file; the identity is the name and file, so existing copies are
   baselined. The message tells an exported copy to keep one definition and import it, a private copy
   to import the exported copy when there is one, and otherwise to move to one module and import it.
+- `exported-name-collision`: two modules export different definitions under one name and a module
+  imports both without aliasing both, so a reader and auto-import can mistake one for the other. A
+  module that aliases every colliding import (`import { handler as getUser }`, `import type`,
+  `export { x as y }`) is not reported. Both defining modules are reported. Re-exports
+  (`export { x } from`, `export *`, an imported name exported again) resolve to the module that
+  defines the name, so a feature's `index.ts` is not a second definition. Imports resolve through relative paths,
+  `tsconfig.json` `paths` and `baseUrl`, and a workspace package linked into `node_modules` resolves
+  to its source; installed packages are skipped. Rename one, or alias both imports.
+
 ## Inside tests
 
 These rules cover every file of the test layout area (`<testRoot>/**`, `*.test.*` and `*.spec.*`
