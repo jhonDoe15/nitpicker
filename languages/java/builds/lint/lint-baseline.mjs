@@ -5,6 +5,7 @@ import path from 'node:path';
 import { classSummaries } from '../classes/class-summary.mjs';
 import { languageLevel, lintCompatible } from './javac-options.mjs';
 import { lombokPath } from './lint-arguments.mjs';
+import { lombokConfigs } from './lint-staging.mjs';
 
 export const LINT_CACHE = 'javac-lint.txt';
 export const LINT_FINGERPRINT = 'javac-lint-fingerprint.txt';
@@ -19,17 +20,19 @@ function posix(file) {
 function javacVersion(javac) {
   if (!javacVersions.has(javac)) {
     const result = spawnSync(javac, ['-version'], { encoding: 'utf8' });
-    const lines = `${result.stdout ?? ''}${result.stderr ?? ''}`.split(/\r?\n/u);
+    const lines = [result.stdout, result.stderr].join('').split(/\r?\n/u);
     javacVersions.set(javac, lines.filter((line) => line.startsWith('javac')).join('\n'));
   }
   return javacVersions.get(javac);
 }
 
-function entryName(root, entry) {
+function insideRoot(root, entry) {
   const relative = path.relative(root, entry);
-  return relative.startsWith('..') || path.isAbsolute(relative)
-    ? path.basename(entry)
-    : posix(relative);
+  return !relative.startsWith('..') && !path.isAbsolute(relative);
+}
+
+function fileDigest(file) {
+  return createHash('sha256').update(readFileSync(file)).digest('hex');
 }
 
 function directoryDigest(directory) {
@@ -47,24 +50,31 @@ function directoryDigest(directory) {
 }
 
 function entryDigest(root, entry) {
-  const name = entryName(root, entry);
+  if (!insideRoot(root, entry)) {
+    const size = existsSync(entry) ? String(statSync(entry).size) : 'missing';
+    return `${path.basename(entry)} ${size}`;
+  }
+  const name = posix(path.relative(root, entry));
   if (!existsSync(entry)) {
     return `${name} missing`;
   }
-  const stats = statSync(entry);
-  return stats.isDirectory() ? `${name} ${directoryDigest(entry)}` : `${name} ${stats.size}`;
+  return `${name} ${statSync(entry).isDirectory() ? directoryDigest(entry) : fileDigest(entry)}`;
+}
+
+function digests(root, entries) {
+  return entries.map((entry) => entryDigest(root, entry)).sort();
 }
 
 export function lintFingerprint(plan) {
+  const sources = plan.sources.filter((source) => insideRoot(plan.root, source));
   const inputs = {
     javac: javacVersion(plan.javac),
     level: languageLevel(plan.compiler),
     encoding: plan.compiler.encoding ?? 'UTF-8',
-    args: lintCompatible(plan.compiler.args),
-    classpath: plan.classpath.map((entry) => entryDigest(plan.root, entry)).sort(),
-    lombok: lombokPath(plan)
-      .map((entry) => entryDigest(plan.root, entry))
-      .sort(),
+    args: lintCompatible(plan.compiler.args).map((arg) => arg.replaceAll(plan.root, '<root>')),
+    classpath: digests(plan.root, plan.classpath),
+    lombok: digests(plan.root, lombokPath(plan)),
+    lombokConfigs: digests(plan.root, lombokConfigs({ root: plan.root, sources })),
   };
   return createHash('sha256').update(JSON.stringify(inputs)).digest('hex');
 }
@@ -84,17 +94,22 @@ function ownedBy(summary, files) {
 }
 
 function withSubtypes(summaries, names) {
-  const added = summaries.filter(
-    (summary) =>
-      !names.has(summary.name) &&
-      [summary.superName, ...summary.interfaces].some((name) => names.has(name)),
-  );
-  return added.length === 0
-    ? names
-    : withSubtypes(summaries, new Set([...names, ...added.map((summary) => summary.name)]));
+  const marked = new Set(names);
+  const pending = [...marked];
+  for (const name of pending) {
+    const subtypes = summaries.filter(
+      (summary) =>
+        !marked.has(summary.name) && [summary.superName, ...summary.interfaces].includes(name),
+    );
+    for (const subtype of subtypes) {
+      marked.add(subtype.name);
+      pending.push(subtype.name);
+    }
+  }
+  return marked;
 }
 
-export function dependentSources(classDirectory, { changed, unchanged }) {
+function dependentSources(classDirectory, { changed, unchanged }) {
   if (changed.length === 0 || unchanged.length === 0) {
     return new Set();
   }
@@ -134,7 +149,9 @@ export function reusableWarnings(plan, { baselineRoot, sources, fingerprint, rep
   if (baselineRoot === undefined) {
     return NO_REUSE;
   }
-  const inBaseline = (file) => path.join(baselineRoot, path.relative(plan.root, file));
+  function inBaseline(file) {
+    return path.join(baselineRoot, path.relative(plan.root, file));
+  }
   const cache = inBaseline(path.join(plan.cacheDirectory, LINT_CACHE));
   const stored = inBaseline(path.join(plan.cacheDirectory, LINT_FINGERPRINT));
   if (!existsSync(cache) || !existsSync(stored) || readFileSync(stored, 'utf8') !== fingerprint) {
