@@ -87,6 +87,7 @@ function argumentFileToken(value) {
 }
 
 export function runJava({
+  java = javaCommand('java'),
   tool,
   classpath,
   mainClass,
@@ -105,12 +106,17 @@ export function runJava({
       ...args,
     ];
     writeFileSync(argumentFile, tokens.map(argumentFileToken).join('\n'));
-    const result = spawnSync(javaCommand('java'), [`@${argumentFile}`], {
+    const result = spawnSync(java, [`@${argumentFile}`], {
       cwd,
       encoding: 'utf8',
       maxBuffer: MAX_OUTPUT_BYTES,
       timeout: TOOL_TIMEOUT_MS,
     });
+    if (result.error?.code === 'ENOENT') {
+      throw new Error(
+        `java not found (${java}): set JAVA_HOME to a JDK, or put its bin directory on the PATH`,
+      );
+    }
     if (result.error !== undefined) {
       throw result.error;
     }
