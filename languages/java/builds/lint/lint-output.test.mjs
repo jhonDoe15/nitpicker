@@ -125,4 +125,19 @@ describe('relocated', () => {
       'app/src/A.java:3: error: boom\n',
     );
   });
+
+  it('writes forward slashes for a staged tree javac printed with backslashes', () => {
+    const staged = String.raw`C:\work\sources\tree`;
+    const log = [
+      String.raw`C:\work\sources\tree\src\demo\A.java:3: warning: [rawtypes] found raw type: List`,
+      '    List names;',
+      '    ^',
+      '1 warning',
+      '',
+    ].join('\n');
+
+    expect(lintedWarnings(log, { staged, from: '', to: 'app' }).split('\n')[0]).toBe(
+      'app/src/demo/A.java:3: warning: [rawtypes] found raw type: List',
+    );
+  });
 });
