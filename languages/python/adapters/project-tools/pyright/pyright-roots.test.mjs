@@ -85,7 +85,13 @@ describe('pyright paths of a project config under the opt-in', () => {
 describe('finding and parsing the project pyright config under the opt-in', () => {
   it('says a config could not be parsed instead of calling it missing', () => {
     expect(() => snapshotConfig({ 'pyrightconfig.json': '{ "include": [' })).toThrow(
-      /^The pyright config .*pyrightconfig\.json could not be parsed \(.+\): fix it, or remove "project" from tools\.pyright\.precedence$/u,
+      new RegExp(
+        [
+          '^The pyright config .*pyrightconfig\\.json could not be parsed \\(.+\\):',
+          'fix it, or remove "project" from tools\\.pyright\\.precedence$',
+        ].join(' '),
+        'u',
+      ),
     );
   });
 

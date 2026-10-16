@@ -9,6 +9,10 @@ export const TEST_PATTERNS = [
   'conftest.py',
   '*/conftest.py',
 ];
-const list = (items) => `[ ${items.map((item) => JSON.stringify(item)).join(', ')} ]`;
-export const section = (sourcePaths, patterns = TEST_PATTERNS) =>
-  `[tool.mutmut]\nsource_paths = ${list(sourcePaths)}\ndo_not_mutate = ${list(patterns)}\n`;
+function list(items) {
+  return `[ ${items.map((item) => JSON.stringify(item)).join(', ')} ]`;
+}
+
+export function section(sourcePaths, patterns = TEST_PATTERNS) {
+  return `[tool.mutmut]\nsource_paths = ${list(sourcePaths)}\ndo_not_mutate = ${list(patterns)}\n`;
+}
