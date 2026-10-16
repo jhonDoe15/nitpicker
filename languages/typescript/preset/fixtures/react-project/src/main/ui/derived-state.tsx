@@ -1,6 +1,13 @@
 import { useEffect, useState } from 'react';
+import type { ReactElement } from 'react';
 
-export function Name({ first, last }: { readonly first: string; readonly last: string }) {
+export function Name({
+  first,
+  last,
+}: {
+  readonly first: string;
+  readonly last: string;
+}): ReactElement {
   const [full, setFull] = useState('');
   useEffect(() => {
     setFull(`${first} ${last}`);

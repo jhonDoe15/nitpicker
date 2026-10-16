@@ -5,7 +5,9 @@ import {
   readHeadPolicyFile,
   resolveHeadPolicy as resolveSharedHeadPolicy,
 } from '../../../shared/head-policy.mjs';
+import { hasScopePackage, scopePackage } from './eslint-config/scope-support.mjs';
 import { excludedGlobs, resolveLayoutFor, sourceRoots, testRoots } from './layout.mjs';
+import { prettierConventionOptions } from '../conventions/prettier-conventions.mjs';
 
 export { headPolicyEnvironment, withHeadPolicyFile } from '../../../shared/head-policy.mjs';
 
@@ -35,18 +37,40 @@ const PRETTIER_PROJECT_FILES = [
   'package.json',
 ];
 
+const SCOPED_PRESETS = [undefined, 'typescript', 'javascript'];
+
 export function resolveHeadPolicy(config = {}, projectRoot) {
   const policy = resolveSharedHeadPolicy(config);
+  return projectRoot === undefined ? policy : withProjectFacts(policy, config, projectRoot);
+}
+
+function withProjectFacts(policy, config, projectRoot) {
   const prettier = policy.tools?.prettier;
-  if (projectRoot === undefined || !usesProjectConfig(prettier?.precedence ?? [])) {
-    return policy;
-  }
   return {
     ...policy,
-    tools: {
-      ...policy.tools,
-      prettier: { ...prettier, projectConfigDigest: projectFilesDigest(projectRoot) },
-    },
+    ...(SCOPED_PRESETS.includes(config.preset) ? detectedScopes(policy, projectRoot) : {}),
+    ...(usesProjectConfig(prettier?.precedence ?? [])
+      ? {
+          tools: {
+            ...policy.tools,
+            prettier: { ...prettier, projectConfigDigest: projectFilesDigest(projectRoot) },
+          },
+        }
+      : {}),
+  };
+}
+
+function detectedScopes(policy, projectRoot) {
+  const scopes = Object.fromEntries(
+    ['react', 'i18n'].map((scope) => [
+      scope,
+      { ...policy[scope], enabled: policy[scope]?.enabled ?? hasScopePackage(projectRoot, scope) },
+    ]),
+  );
+  const iconPackage = scopePackage(projectRoot, 'icons');
+  return {
+    ...scopes,
+    react: { ...scopes.react, ...(iconPackage === undefined ? {} : { iconPackage }) },
   };
 }
 
@@ -59,7 +83,7 @@ function projectFilesDigest(projectRoot) {
   return hash.digest('hex');
 }
 
-export function usesProjectConfig(precedence) {
+function usesProjectConfig(precedence) {
   return precedence.includes('project');
 }
 
@@ -71,6 +95,14 @@ export function prettierPrecedence(environment = process.env) {
   return readHeadPolicy(environment).tools.prettier?.precedence ?? ['nitpicker'];
 }
 
+export function usesLayeredPrettier(environment = process.env) {
+  const policy = readHeadPolicy(environment);
+  return (
+    usesProjectConfig(policy.tools.prettier?.precedence ?? []) ||
+    Object.keys(prettierConventionOptions(policy.conventions)).length > 0
+  );
+}
+
 export function readHeadPolicy(environment = process.env) {
   const policy = readHeadPolicyFile(environment);
   return {
@@ -79,9 +111,11 @@ export function readHeadPolicy(environment = process.env) {
     exceptions: policy.exceptions ?? [],
     thresholds: policy.thresholds ?? {},
     react: policy.react ?? {},
+    i18n: policy.i18n ?? {},
     preset: policy.preset,
     tools: policy.tools ?? {},
     duplicates: policy.duplicates ?? {},
+    conventions: policy.conventions,
   };
 }
 

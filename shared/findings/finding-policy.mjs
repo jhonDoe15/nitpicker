@@ -31,12 +31,15 @@ export function applyFindingPolicy(
     snapshot = 'head',
     inventoryTool,
   } = {},
+  resolveOverlaps = (reported) => reported,
 ) {
   const excluders = exclude.map((glob) => globToRegExp(glob));
   const lifted = exceptions.map(({ rule, glob }) => ({ rule, matcher: globToRegExp(glob) }));
-  const kept = findings.filter(
-    (finding) =>
-      !excluders.some((matcher) => matchesAny(matcher, finding)) && !isLifted(finding, lifted),
+  const kept = resolveOverlaps(
+    findings.filter(
+      (finding) =>
+        !excluders.some((matcher) => matchesAny(matcher, finding)) && !isLifted(finding, lifted),
+    ),
   );
   if (legacyInventory === undefined || policyRoot === undefined) {
     return kept;
