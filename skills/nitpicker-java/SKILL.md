@@ -12,8 +12,9 @@ forms below from the start; the gate is a backstop.
 
 ## Finish with the gate
 
-1. Run the project's tests (`./gradlew test`, or `./mvnw test` on Maven). Failing tests or compile
-   errors make the gate exit 2.
+1. Run the project's tests (`./gradlew test`, or `./mvnw test` on Maven). Compile errors make the
+   gate exit 2. Failing tests do not stop the other analyzers: the gate reports them as a tool error
+   that names each failing test, and mutation testing leaves those test classes out.
 2. Format with google-java-format 1.25.2 (the project's own formatter task, or the CLI with
    `--replace`). `npx nitpicker --fix` does not touch Java.
 3. Run `npx nitpicker` as a background command you wait on, without a pipe: you need its exit

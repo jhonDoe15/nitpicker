@@ -289,7 +289,7 @@ allprojects {
 
         ['analysis/pmd-task.gradle', 'analysis/spotbugs-task.gradle', 'analysis/format-task.gradle',
          'structure-task.gradle', 'jdeps-task.gradle', 'lint-tasks.gradle', 'cpd-task.gradle',
-         'dependency-tasks.gradle', 'pit-task.gradle'].collect { "tasks/${it}" }
+         'dependency-tasks.gradle', 'tests/test-failures.gradle', 'pit-task.gradle'].collect { "tasks/${it}" }
             .plus('errorprone/error-prone.gradle').each { project.apply from: new File(initScriptDir, it) }
 
         if (kotlinPreset) {

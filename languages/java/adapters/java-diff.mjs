@@ -3,6 +3,7 @@ import { existsSync, mkdtempSync, readFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { compareFindings } from '../../../core/diff/comparison/compare.mjs';
+import { skippedTools } from '../../../core/diff/comparison/results.mjs';
 import { parseAnalyzerReport } from '../../../core/diff/comparison/finding-schema.mjs';
 import { captureWorkingTree, resolveComparison } from '../../../core/diff/git/repository/git.mjs';
 import { readChangedLines } from '../../../core/diff/git/patches/changed-lines.mjs';
@@ -205,6 +206,12 @@ function compareAcrossMoves({ repositoryRoot, comparison, projectRelativePath },
   });
 }
 
+function withoutSkipped(findings, skipped) {
+  return findings.filter(
+    (finding) => finding.classification === 'tool-error' || !skipped.has(finding.tool),
+  );
+}
+
 export function runJavaDiff({
   repositoryRoot,
   projectRelativePath = '.',
@@ -226,11 +233,19 @@ export function runJavaDiff({
     );
   }
 
+  const findings = {
+    baseFindings: collectAt(comparison.mergeBaseSha),
+    headFindings: collectAt(comparison.headSha),
+  };
+  const skipped = skippedTools(policy?.preset ?? 'java', [
+    { findings: findings.baseFindings },
+    { findings: findings.headFindings },
+  ]);
   const result = compareAcrossMoves(
     { repositoryRoot, comparison, projectRelativePath },
     {
-      baseFindings: collectAt(comparison.mergeBaseSha),
-      headFindings: collectAt(comparison.headSha),
+      baseFindings: withoutSkipped(findings.baseFindings, skipped),
+      headFindings: withoutSkipped(findings.headFindings, skipped),
     },
   );
   const newEnforceable = result.newFindings.filter(

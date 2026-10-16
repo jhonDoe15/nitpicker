@@ -13,8 +13,8 @@ import { globToRegExp } from '../../../shared/glob.mjs';
 import { childrenNamed, parseXml } from '../ingest/common.mjs';
 import { runJava } from './maven-command.mjs';
 
+const OFF = 'false';
 const DEFAULT_ARCHUNIT_INCLUDES = '**/*ArchTest.class,**/*ArchitectureTest.class';
-const MAX_LISTED_FAILURES = 10;
 
 export function archunitMatcher(includes = DEFAULT_ARCHUNIT_INCLUDES) {
   const patterns = includes
@@ -72,7 +72,8 @@ function failedCases(file) {
           ...childrenNamed(testCase, 'error'),
         ][0];
         const message = (problem.attrs.message ?? problem.attrs.type ?? '').split('\n')[0];
-        return `${testCase.attrs.classname ?? suite.attrs.name}.${testCase.attrs.name}: ${message}`;
+        const className = testCase.attrs.classname ?? suite.attrs.name;
+        return { className, text: `${className}.${testCase.attrs.name}: ${message}` };
       }),
   );
 }
@@ -92,21 +93,13 @@ export function collectTestResults({ module, reportDir, since, isArchunit }) {
     }
   }
   requireArchunitRun(module, reports, isArchunit);
-  if (failures.length > 0) {
-    const listed = failures.slice(0, MAX_LISTED_FAILURES).map((failure) => `  ${failure}`);
-    const more =
-      failures.length > MAX_LISTED_FAILURES
-        ? [`  and ${String(failures.length - MAX_LISTED_FAILURES)} more`]
-        : [];
-    throw new Error(
-      [
-        `Tests fail in ${module.basedir}; nitpicker needs a passing test suite for coverage and mutation testing:`,
-        ...listed,
-        ...more,
-      ].join('\n'),
-    );
-  }
-  return reports.length > 0;
+  return {
+    ran: reports.length > 0,
+    failures: failures.map(({ text }) => text),
+    failedClasses: [...new Set(failures.map(({ className }) => className.replace(/\$.*$/u, '')))]
+      .filter(Boolean)
+      .sort(),
+  };
 }
 
 function requireArchunitRun(module, reports, isArchunit) {
@@ -212,47 +205,58 @@ export function junitLauncherVersion(classpath) {
     : engine.replace(/^junit-platform-engine-|\.jar$/gu, '');
 }
 
-export function runPit({ module, reportDir, tools, classpaths, isArchunit }) {
+function pitArguments({ module, pitDir, tests, classpaths, excludedTestClasses }) {
+  return [
+    ...['--reportDir', pitDir, '--targetClasses', pitTargets(module.outputDirectory).join(',')],
+    ...['--targetTests', tests.join(',')],
+    ...['--sourceDirs', module.sourceRoots.filter((root) => existsSync(root)).join(',')],
+    '--classPath',
+    [...new Set(classpaths.testRuntime)].filter((entry) => existsSync(entry)).join(','),
+    ...['--mutableCodePaths', module.outputDirectory, '--outputFormats', 'XML'],
+    ...['--timestampedReports', OFF, '--threads', '2'],
+    ...['--failWhenNoMutations', OFF, '--verbose', OFF],
+    ...(excludedTestClasses.length === 0
+      ? []
+      : [
+          '--excludedTestClasses',
+          excludedTestClasses.flatMap((name) => [name, `${name}$*`]).join(','),
+        ]),
+  ];
+}
+
+export function runPit({
+  module,
+  reportDir,
+  tools,
+  classpaths,
+  isArchunit,
+  excludedTestClasses = [],
+}) {
   const pitDir = path.join(reportDir, 'pit');
   rmSync(pitDir, { recursive: true, force: true });
   mkdirSync(pitDir, { recursive: true });
   const report = path.join(pitDir, 'mutations.xml');
   if (classFiles(module.outputDirectory).length === 0) {
-    return;
+    return undefined;
+  }
+  const tests = pitTests(module.testOutputDirectory, isArchunit);
+  if (excludedTestClasses.length > 0 && tests.every((test) => excludedTestClasses.includes(test))) {
+    return {
+      tool: 'pit',
+      reason: 'every test class has a failing test, so no passing test is left to kill mutants',
+    };
   }
   const launcher = junitLauncherVersion(classpaths.testRuntime);
   runJava({
     tool: 'PIT',
     classpath: [...tools.pit, ...(launcher === undefined ? [] : tools[`launcher-${launcher}`])],
     mainClass: 'org.pitest.mutationtest.commandline.MutationCoverageReport',
-    args: [
-      '--reportDir',
-      pitDir,
-      '--targetClasses',
-      pitTargets(module.outputDirectory).join(','),
-      '--targetTests',
-      pitTests(module.testOutputDirectory, isArchunit).join(','),
-      '--sourceDirs',
-      module.sourceRoots.filter((root) => existsSync(root)).join(','),
-      '--classPath',
-      [...new Set(classpaths.testRuntime)].filter((entry) => existsSync(entry)).join(','),
-      '--mutableCodePaths',
-      module.outputDirectory,
-      '--outputFormats',
-      'XML',
-      '--timestampedReports',
-      'false',
-      '--threads',
-      '2',
-      '--failWhenNoMutations',
-      'false',
-      '--verbose',
-      'false',
-    ],
+    args: pitArguments({ module, pitDir, tests, classpaths, excludedTestClasses }),
     cwd: module.basedir,
     accept: (result) => result.status === 0,
   });
   if (!existsSync(report)) {
     writeFileSync(report, '<mutations/>');
   }
+  return undefined;
 }

@@ -24,4 +24,5 @@ export const JAVA_TOOLS = [
   'spring',
   'comments',
   'test-runtime',
+  'tests',
 ];

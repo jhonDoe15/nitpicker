@@ -148,6 +148,7 @@ describe('configureJavaAnalyzer', () => {
       'spring',
       'structure',
       'test-runtime',
+      'tests',
     ]);
   });
 });

@@ -1,0 +1,41 @@
+def reportDir = project.ext.nitpickerReportDir
+def failures = Collections.synchronizedList([])
+def failedClasses = Collections.synchronizedSet(new TreeSet())
+def unnamedFailures = Collections.synchronizedList([])
+def skipped = Collections.synchronizedList([])
+project.ext.nitpickerFailedTestClasses = { -> new ArrayList(failedClasses) }
+project.ext.nitpickerUnnamedTestFailures = { -> new ArrayList(unnamedFailures) }
+project.ext.nitpickerSkipAfterFailingTests = { String tool, String reason -> skipped << [tool: tool, reason: reason] }
+
+gradle.projectsEvaluated {
+    tasks.withType(Test).matching { it.name != 'nitpickerArchunit' }.configureEach { testTask ->
+        ignoreFailures = true
+        afterTest { descriptor, result ->
+            if (result.resultType == TestResult.ResultType.FAILURE) {
+                def message = result.exception?.message?.readLines()?.find { it.trim() } ?:
+                    result.exception?.getClass()?.name ?: ''
+                failures << "${descriptor.className}.${descriptor.name}: ${message}".toString()
+                if (descriptor.className) {
+                    failedClasses << descriptor.className.replaceAll(/\$.*/, '')
+                }
+            }
+        }
+        afterSuite { descriptor, result ->
+            if (descriptor.parent == null && result.resultType == TestResult.ResultType.FAILURE &&
+                result.failedTestCount == 0) {
+                failures << "${testTask.path}: the test task failed without a failing test".toString()
+                unnamedFailures << testTask.path
+            }
+        }
+    }
+}
+
+tasks.named('nitpickerJava') {
+    doLast {
+        reportDir.get().file('test-failures.json').asFile.text = groovy.json.JsonOutput.toJson([
+            failures           : failures,
+            excludedTestClasses: failedClasses,
+            skipped            : skipped,
+        ])
+    }
+}

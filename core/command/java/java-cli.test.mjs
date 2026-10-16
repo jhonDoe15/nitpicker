@@ -25,6 +25,23 @@ Quality gate summary
 Full diagnostics: /tmp/nitpicker-java-out-${/[A-Za-z0-9]{6}/}/reports/report.txt
 `);
 
+const FAILING_TEST = 'demo.ATest.adds: expected 2 but was 3';
+const TEST_FAILURES = `${JSON.stringify({ failures: [FAILING_TEST], excludedTestClasses: ['demo.ATest'] })}\n`;
+const testFailureErrors = (snapshot) => [
+  {
+    tool: 'tests',
+    snapshot,
+    rule: 'tests-failed',
+    path: '.',
+    message: [
+      `Tests fail in the ${snapshot} snapshot. Make each failing test pass:`,
+      `  ${FAILING_TEST}`,
+      'The static analyzers ran as usual; coverage and CRAP come from the tests that ran.',
+      'Mutation testing (PIT) left out the test classes demo.ATest.',
+    ].join('\n'),
+  },
+];
+
 describe('nitpicker with "preset": "java"', () => {
   it('passes when the change adds no finding and keeps the legacy one baselined', () => {
     const root = gradleRepository();
@@ -209,6 +226,20 @@ Full diagnostics: /tmp/nitpicker-java-out-${/[A-Za-z0-9]{6}/}/reports/report.txt
       },
     ]);
   });
+  it('still reports the other analyzers when tests fail, and names each failing test', () => {
+    const root = gradleRepository();
+    writeFiles(root, {
+      TEST_FAILURES,
+      'violations.txt': 'Avoid unused field: legacy\nAvoid unused field: added\n',
+    });
+    commit(root, 'break a test and add a violation');
+
+    const result = run(root);
+
+    expect(result.exitCode).toBe(1);
+    expect(result.json('summary.json').newEnforceableFindings).toBe(1);
+    expect(result.json('tool-errors.json')).toEqual(testFailureErrors('head'));
+  });
   it('reports a missing gradle binary as a tool error', () => {
     vi.stubEnv('NITPICKER_GRADLE', path.join(temporaryRoot('nitpicker-java-none-'), 'no-gradle'));
     const root = gradleRepository();
@@ -225,6 +256,30 @@ Full diagnostics: /tmp/nitpicker-java-out-${/[A-Za-z0-9]{6}/}/reports/report.txt
         exactText`spawnSync /tmp/nitpicker-java-none-${/[A-Za-z0-9]{6}/}/no-gradle ENOENT`,
       ),
     });
+  });
+  it('names the base snapshot when only its tests fail', () => {
+    const root = gradleRepository({ TEST_FAILURES });
+    fixtureGit(root, ['rm', '-q', 'TEST_FAILURES']);
+    commit(root, 'fix the test');
+
+    expect(run(root).json('tool-errors.json')).toEqual(testFailureErrors('base'));
+  });
+  it('names the head snapshot, not a temporary directory, when its tests fail under --all', () => {
+    const root = gradleRepository({ TEST_FAILURES });
+    const reports = path.join(temporaryRoot('nitpicker-java-snapshot-'), 'reports');
+
+    const exitCode = runCli({
+      arguments_: ['--all', '--output', reports],
+      environment: { NO_COLOR: '1' },
+      currentProjectRoot: root,
+      stdout: { write: () => undefined },
+      stderr: { write: () => undefined },
+    });
+
+    expect(exitCode).toBe(1);
+    expect(JSON.parse(readFileSync(path.join(reports, 'tool-errors.json'), 'utf8'))).toEqual(
+      testFailureErrors('head'),
+    );
   });
   it('gates a snapshot with --all', () => {
     const root = gradleRepository();

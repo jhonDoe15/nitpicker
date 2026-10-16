@@ -82,6 +82,9 @@ function writeModule({ key, dir }) {
       }),
     }),
   );
+  if (existsSync(inside('TEST_FAILURES'))) {
+    writeFileSync(report('test-failures.json'), readFileSync(inside('TEST_FAILURES')));
+  }
   if (lines('EMPTY_MODULES').includes(dir)) {
     return;
   }

@@ -6,6 +6,8 @@ import {
 } from '../reporting/report-model.mjs';
 import { compareFindings } from './compare.mjs';
 
+const TOOL_ERROR = 'tool-error';
+
 export function combineAnalyzerReports(context) {
   const { analyzers, baseRun, headRun, additionalToolErrors } = context;
   const toolErrors = [...additionalToolErrors, ...baseRun.toolErrors, ...headRun.toolErrors];
@@ -20,8 +22,15 @@ function compareAnalyzer(context) {
   const name = analyzerName(analyzer, index);
   const baseReport = baseRun.reports.get(name);
   const headReport = headRun.reports.get(name);
-  const baseFindings = withoutEmittedToolErrors(baseReport?.findings ?? [], 'base', toolErrors);
-  const headFindings = withoutEmittedToolErrors(headReport?.findings ?? [], 'head', toolErrors);
+  const skipped = skippedTools(name, [baseReport, headReport]);
+  const baseFindings = withoutTools(
+    withoutEmittedToolErrors(baseReport?.findings ?? [], 'base', toolErrors),
+    skipped,
+  );
+  const headFindings = withoutTools(
+    withoutEmittedToolErrors(headReport?.findings ?? [], 'head', toolErrors),
+    skipped,
+  );
   const comparable =
     baseReport !== undefined &&
     headReport !== undefined &&
@@ -105,7 +114,7 @@ function buildReport(context) {
       exclusions: declaredExclusions(analyzers),
       renamedPaths: context.baseToHeadRenames.size,
       elapsedMs: Date.now() - startedAt,
-      overallStatus: toolErrors.length === 0 ? 'completed' : 'tool-error',
+      overallStatus: toolErrors.length === 0 ? 'completed' : TOOL_ERROR,
       newEnforceableFindings: newFindings.filter(
         (finding) => finding.classification === 'enforceable',
       ).length,
@@ -120,7 +129,7 @@ function buildReport(context) {
 
 function withoutEmittedToolErrors(findings, snapshot, toolErrors) {
   return findings.filter((finding) => {
-    if (finding.classification !== 'tool-error') {
+    if (finding.classification !== TOOL_ERROR) {
       return true;
     }
     toolErrors.push({
@@ -132,6 +141,20 @@ function withoutEmittedToolErrors(findings, snapshot, toolErrors) {
     });
     return false;
   });
+}
+
+export function skippedTools(analyzer, reports) {
+  return new Set(
+    reports.flatMap((report) =>
+      (report?.findings ?? [])
+        .filter((finding) => finding.classification === TOOL_ERROR && finding.tool !== analyzer)
+        .map((finding) => finding.tool),
+    ),
+  );
+}
+
+function withoutTools(findings, tools) {
+  return findings.filter((finding) => !tools.has(finding.tool));
 }
 
 function emptyComparison() {

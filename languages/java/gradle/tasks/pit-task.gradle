@@ -3,6 +3,31 @@ def reportDir = project.ext.nitpickerReportDir
 def archunitIncludes = project.ext.nitpickerArchunitIncludes
 def mainSources = sourceSets.main.allJava.sourceDirectories
 def mutatedClassDirs = { sourceSets.main.output.classesDirs.files }
+def failedTestClasses = project.ext.nitpickerFailedTestClasses
+def unnamedTestFailures = project.ext.nitpickerUnnamedTestFailures
+def skipAfterFailingTests = project.ext.nitpickerSkipAfterFailingTests
+def testClassNames = {
+    sourceSets.test.output.classesDirs.files.findAll { it.exists() }.collectMany { dir ->
+        fileTree(dir) { include '**/*.class'; exclude archunitIncludes }.files.collect {
+            dir.toPath().relativize(it.toPath()).toString().replace('\\', '/')
+                .replaceAll(/\.class$/, '').replace('/', '.').replaceAll(/\$.*/, '')
+        }
+    }.unique()
+}
+def mutationAfterFailingTests = {
+    def unnamed = unnamedTestFailures()
+    if (!unnamed.isEmpty()) {
+        skipAfterFailingTests('pit', "the test task ${unnamed.join(', ')} failed without naming a failing test, " +
+            'so nitpicker cannot tell which test classes to leave out')
+        return false
+    }
+    def failed = failedTestClasses()
+    if (!failed.isEmpty() && testClassNames().every { it in failed }) {
+        skipAfterFailingTests('pit', 'every test class has a failing test, so no passing test is left to kill mutants')
+        return false
+    }
+    true
+}
 
 configurations {
     nitpickerPit { canBeConsumed = false }
@@ -40,13 +65,8 @@ tasks.register('nitpickerPit', JavaExec) {
                 : ["${prefix}*".toString()]
         }
         def targets = classDirs.collectMany { dir -> packageTargets(dir, '') }.unique().sort()
-        def testClassDirs = sourceSets.test.output.classesDirs.files.findAll { it.exists() }
-        def tests = testClassDirs.collectMany { dir ->
-            fileTree(dir) { include '**/*.class'; exclude archunitIncludes }.files.collect {
-                dir.toPath().relativize(it.toPath()).toString().replace('\\', '/')
-                    .replaceAll(/\.class$/, '').replace('/', '.').replaceAll(/\$.*/, '')
-            }
-        }.unique()
+        def tests = testClassNames()
+        def excludedTests = failedTestClasses().collectMany { [it, "${it}\$*".toString()] }
         def runtimeJars = sourceSets.test.runtimeClasspath.files*.name
         def engineJar = runtimeJars.find { it ==~ /junit-platform-engine-.+\.jar/ }
         def engine = engineJar?.replaceAll(/^junit-platform-engine-|\.jar$/, '')
@@ -71,9 +91,12 @@ tasks.register('nitpickerPit', JavaExec) {
               '--timestampedReports', 'false',
               '--threads', '2',
               '--failWhenNoMutations', 'false',
-              '--verbose', 'false'])
+              '--verbose', 'false'] +
+             (excludedTests.isEmpty() ? [] : ['--excludedTestClasses', excludedTests.join(',')]))
     }
+    mustRunAfter tasks.withType(Test)
     onlyIf { mutatedClassDirs().any { it.exists() && it.list()?.length } }
+    onlyIf { mutationAfterFailingTests() }
     doLast {
         def report = pitDir.get().file('mutations.xml').asFile
         if (!report.exists()) {

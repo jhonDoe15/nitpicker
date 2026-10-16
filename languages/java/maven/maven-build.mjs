@@ -23,6 +23,7 @@ import { copyTestResults } from './results/maven-test-results.mjs';
 import { jacocoPlugin, MAVEN_PLUGINS, resolveTools } from './maven-tools.mjs';
 import { processorTool, runErrorProne } from './errorprone/maven-errorprone.mjs';
 import { GRADLE_DIRECTORY, readPinnedTools } from '../builds/java-build.mjs';
+import { TEST_FAILURES_REPORT } from '../adapters/reporting/outcomes/test-results.mjs';
 
 export const MAVEN_REPORT_DIRECTORY = 'target/nitpicker';
 const OWN_JACOCO_EXEC = 'nitpicker-jacoco.exec';
@@ -134,11 +135,15 @@ function analyzeSources(context, project) {
   runGuards({ module, reportDir, tools, classpaths }, project);
 }
 
-function analyzeTests(context, testsRan) {
+function analyzeTests(context, { ran, failedClasses }) {
   const { module, reportDir, tools, classpaths, since, isArchunit } = context;
   const execFiles = [path.join(module.buildDirectory, OWN_JACOCO_EXEC), ...module.jacocoDestFiles];
-  runJacocoReport({ module, reportDir, tools, execFiles, since, testsRan });
-  runPit({ module, reportDir, tools, classpaths, isArchunit });
+  runJacocoReport({ module, reportDir, tools, execFiles, since, testsRan: ran });
+  const skipped = runPit({
+    ...{ module, reportDir, tools, classpaths, isArchunit },
+    excludedTestClasses: failedClasses,
+  });
+  return skipped === undefined ? [] : [skipped];
 }
 
 function analyzeModule({ project, ...options }) {
@@ -147,10 +152,18 @@ function analyzeModule({ project, ...options }) {
   const isArchunit = archunitMatcher(module.archunitIncludes);
   const spring = classpaths.mainCompile.some((entry) => SPRING_JAR.test(path.basename(entry)));
   const context = { ...options, reportDir, isArchunit, spring };
-  const testsRan = collectTestResults({ module, reportDir, since, isArchunit });
+  const results = collectTestResults({ module, reportDir, since, isArchunit });
   copyTestResults({ module, reportDir, since, isArchunit });
   analyzeSources(context, project);
-  analyzeTests(context, testsRan);
+  const skipped = analyzeTests(context, results);
+  writeFileSync(
+    path.join(reportDir, TEST_FAILURES_REPORT),
+    JSON.stringify({
+      failures: results.failures,
+      excludedTestClasses: results.failedClasses,
+      skipped,
+    }),
+  );
   writeManifest({ module, reportDir, pinned, spring, classpaths });
 }
 

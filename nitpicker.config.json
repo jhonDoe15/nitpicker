@@ -63,6 +63,7 @@
         "languages/java/adapters/gradle-reports/report-modules.mjs",
         "languages/java/adapters/jpa/jpa-source-filters.mjs",
         "languages/java/adapters/reporting/java-reports.mjs",
+        "languages/java/adapters/reporting/outcomes/test-results.mjs",
         "languages/java/adapters/test-times/slow-tests.mjs",
         "languages/java/adapters/test-times/spring-boot-tests.mjs",
         "languages/java/builds/project-wide.mjs",

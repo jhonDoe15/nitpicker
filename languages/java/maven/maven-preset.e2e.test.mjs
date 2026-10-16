@@ -2,7 +2,6 @@ import { existsSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync
 import path from 'node:path';
 import { afterAll, describe, expect, it } from 'vitest';
 import { collectJavaFindings, runJavaDiff } from '../adapters/java-diff.mjs';
-import { analyzeJavaSnapshot } from '../adapters/java-runner.mjs';
 import { readPinnedTools } from '../builds/java-build.mjs';
 import { readCpdFindings } from '../guards/cpd-duplicates.mjs';
 import { runCpd } from './guards/maven-pmd.mjs';
@@ -267,27 +266,55 @@ describe.skipIf(!enabled)('Java preset on Maven builds', () => {
   );
 
   it(
-    'reports a failing test as a maven-failure tool error that names the test',
+    'still runs every analyzer when a test fails, and names the failing test',
     () => {
       const project = copyOf(path.join(fixtures, 'multi-module'));
       writeFileSync(
         path.join(project, 'core/src/test/java/demo/core/AdderTest.java'),
         FAILING_TEST,
       );
-      const [finding] = analyzeJavaSnapshot(project, { maven, policy: {} }).findings;
-
-      expect(finding).toEqual({
-        tool: 'java',
-        rule: 'maven-failure',
-        path: '.',
-        identity: 'maven-failure',
-        classification: 'tool-error',
-        message: [
-          `Tests fail in ${path.join(project, 'core')}; nitpicker needs a passing test suite ` +
-            'for coverage and mutation testing:',
-          '  demo.core.AdderTest.adds: expected: <4> but was: <3>',
-        ].join('\n'),
+      const findings = collectJavaFindings(project, {
+        maven,
+        policy: { testSeconds: { unitTestSeconds: -1 } },
       });
+
+      expect(
+        findings
+          .filter((finding) => finding.classification === 'tool-error')
+          .map(({ tool, rule, message }) => ({ tool, rule, message })),
+      ).toEqual([
+        {
+          tool: 'tests',
+          rule: 'tests-failed',
+          message: [
+            'Tests fail in module core of the head snapshot. Make each failing test pass:',
+            '  demo.core.AdderTest.adds: expected: <4> but was: <3>',
+            'The static analyzers ran as usual; coverage and CRAP come from the tests that ran.',
+            'Mutation testing (PIT) did not run: every test class has a failing test, so no ' +
+              'passing test is left to kill mutants.',
+          ].join('\n'),
+        },
+        {
+          tool: 'pit',
+          rule: 'tests-failed-skipped',
+          message:
+            'Mutation testing (PIT) did not run in module core of the head snapshot: every test ' +
+            'class has a failing test, so no passing test is left to kill mutants.',
+        },
+      ]);
+      expect(
+        findings
+          .filter(
+            (finding) =>
+              ['errorprone', 'pmd'].includes(finding.tool) ||
+              finding.metric?.name === 'line-coverage',
+          )
+          .map(({ tool, rule, path: file }) => `${tool} ${rule} ${file}`),
+      ).toEqual([
+        'errorprone PrivateConstructorForUtilityClass app/src/main/java/demo/app/Main.java',
+        'errorprone SystemOut app/src/main/java/demo/app/Main.java',
+        'jacoco line-coverage core/src/main/java/demo/core/Adder.java',
+      ]);
     },
     GRADLE_STEP_TIMEOUT_MS,
   );

@@ -61,9 +61,38 @@ gradle -I languages/java/gradle/nitpicker.init.gradle nitpickerJava   (per snaps
   project vendors dependencies in the tree, a `gradleDependencyHook` with the manifests
   `build.gradle(.kts)`, `settings.gradle(.kts)`, `gradle/libs.versions.toml` and `gradle.lockfile`
   fits the X7 interface.
-- **Failure policy.** If Gradle fails on either snapshot (does not compile, tests fail, tool
-  crashes, no `gradle` on the PATH, unreadable reports), nothing is silently skipped. `runJavaDiff`
-  (the library entry) throws; the CLI path maps the failure to a `tool-error` finding, see slice 2.
+- **Failure policy.** If Gradle fails on either snapshot (does not compile, tool crashes, no
+  `gradle` on the PATH, unreadable reports), nothing is silently skipped. `runJavaDiff` (the library
+  entry) throws; the CLI path maps the failure to a `tool-error` finding, see slice 2. Failing tests
+  are not a build failure: see [Failing tests](#failing-tests).
+
+## Failing tests
+
+A project whose test suite does not fully pass still gets every analyzer that can work, on Gradle
+and on Maven alike:
+
+- **Static analyzers** (PMD, SpotBugs, Error Prone, Checkstyle, google-java-format, forbiddenapis,
+  the structure metrics, CPD and the guards) run as usual. Gradle's test tasks get
+  `ignoreFailures = true` (`languages/java/gradle/tasks/tests/test-failures.gradle`), and Maven runs
+  with `-Dmaven.test.failure.ignore=true`.
+- **Coverage and CRAP** come from the tests that ran: JaCoCo records every test that executed,
+  passing or failing.
+- **The failing tests** are one `tests/tests-failed` tool error per module and snapshot. It names
+  each failing test (`Class.method: first line of the failure`), the side and module (`Tests fail in
+module lib of the base snapshot`), and says what still ran.
+- **Mutation testing** runs with the failing test classes (and their nested classes) left out
+  through PIT's `--excludedTestClasses`, so the passing tests still kill mutants; the tool error
+  lists the classes left out. When every test class has a failing test, or Gradle reports a failed
+  test task without naming a failing test, PIT does not run and a `pit/tests-failed-skipped` tool
+  error says why.
+- **The contract** between the builds and the reader is `test-failures.json` in each module's report
+  directory: `{ "failures": [...], "excludedTestClasses": [...], "skipped": [{ "tool", "reason" }] }`
+  (`languages/java/adapters/reporting/outcomes/test-results.mjs`). A tool listed under `skipped` (`jacoco`,
+  `crap`, `pit`, `test-runtime`) is not read, and its own tool error names it with the reason.
+- **Comparison.** A tool error from one tool leaves out only that tool's findings on both snapshots
+  (`skippedTools` in `core/diff/comparison/results.mjs`); every other Java finding is still
+  compared. The summary hides a `tests-failed-skipped` notice when the same snapshot has a
+  `tests-failed` error, which already lists it.
 
 ## Maven builds
 
@@ -129,8 +158,9 @@ by field. Per snapshot:
   with Failsafe kept off in every module, stays on `test`.
 - **Tests.** Failures of the ArchUnit rule classes (`*ArchTest`, `*ArchitectureTest`, or the
   `nitpicker.archunit.includes` property in the POM) become findings; any other failing test, from
-  Surefire's or Failsafe's reports, is a `java/maven-failure` tool error that names up to ten
-  failing tests. Reports older than the build are ignored. Gradle runs the ArchUnit classes in their
+  Surefire's or Failsafe's reports, is reported as described in [Failing tests](#failing-tests),
+  and every analyzer still runs. Reports older than the build are ignored. Gradle runs the
+  ArchUnit classes in their
   own task, but Maven only has the Surefire and Failsafe results: when a module has ArchUnit classes
   and neither plugin ran any of them (Surefire's `<includes>` miss them, as they would `*Rules`, or
   the module skips tests), that is a tool error rather than a silent pass. ArchUnit reads bytecode
@@ -297,8 +327,9 @@ comma-separated>` changes that. Those classes are excluded from the regular `tes
   `--mutableCodePaths` limits mutation to the main classes. The JUnit Platform is not pinned by
   Nitpicker: the plugin's own platform dependencies are excluded and the project's are used, with a
   launcher of the project's engine version added when the project does not declare one. PIT
-  requires a green test run: a failing test suite fails the task, which is a Gradle failure
-  (`tool-error` on the CLI path). Projects without main classes produce no report and no findings.
+  needs a green run of the tests it uses, so it leaves out the test classes that failed
+  (`--excludedTestClasses`, see [Failing tests](#failing-tests)). Projects without main classes
+  produce no report and no findings.
   The `pitest-junit5-plugin` and the launcher are added only when the project's test runtime has
   `junit-platform-engine`; a JUnit 4 project runs PIT's built-in JUnit 4 support.
 - **Equivalent mutants.** A survived mutant's message names the common equivalent cases (a
