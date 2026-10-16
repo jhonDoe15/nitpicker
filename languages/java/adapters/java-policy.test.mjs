@@ -130,6 +130,7 @@ describe('configureJavaAnalyzer', () => {
       'spotbugs',
       'spring',
       'structure',
+      'test-runtime',
     ]);
   });
 });
@@ -280,6 +281,17 @@ describe('Java file limits', () => {
     expect(parsed.policy.fileLimits).toBeUndefined();
   });
 
+  it('hands the test time budgets to the runner', () => {
+    const configured = configureJavaAnalyzer(createJavaAnalyzer(), {
+      thresholds: { unitTestSeconds: 2, integrationTestSeconds: 40 },
+    });
+
+    const parsed = parseJavaRunnerArguments(configured.createInvocation(context()).args.slice(1));
+
+    expect(parsed.policy.testSeconds).toEqual({ unitTestSeconds: 2, integrationTestSeconds: 40 });
+    expect(parsed.policy.fileLimits).toBeUndefined();
+  });
+
   it('rejects file limits that are not a JSON object', () => {
     expect(() => parseJavaRunnerArguments(['--project-root', '/p', '--file-limits', '[]'])).toThrow(
       '--file-limits must be a JSON object',
@@ -288,7 +300,7 @@ describe('Java file limits', () => {
 });
 
 const JAVA_USAGE = new Error(
-  'Usage: java-runner.mjs --project-root <directory> [--snapshot base|head] [--policy-root <directory>] [--baseline-root <directory>] [--crap-limit <number>] [--exclude <glob>]... [--exception <rule>:<glob>]... [--legacy-inventory <path>] [--kotlin-detekt-config <path>] [--file-limits <json>] [--duplicate-skipped-folders <json array>] [--preset java|kotlin] [--kotlin-formatter ktlint|ktfmt|none] [--pmd-precedence <layers>] [--checkstyle-precedence <layers>]',
+  'Usage: java-runner.mjs --project-root <directory> [--snapshot base|head] [--policy-root <directory>] [--baseline-root <directory>] [--crap-limit <number>] [--exclude <glob>]... [--exception <rule>:<glob>]... [--legacy-inventory <path>] [--kotlin-detekt-config <path>] [--file-limits <json>] [--test-seconds <json>] [--duplicate-skipped-folders <json array>] [--preset java|kotlin] [--kotlin-formatter ktlint|ktfmt|none] [--pmd-precedence <layers>] [--checkstyle-precedence <layers>]',
 );
 
 describe('parseJavaRunnerArguments', () => {

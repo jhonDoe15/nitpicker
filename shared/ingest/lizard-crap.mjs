@@ -2,6 +2,8 @@ import { DEFAULT_CRAP_SCORE_LIMIT } from '../policy.mjs';
 import { crapFindings } from '../rules/crap.mjs';
 import { createIdentityCounter, normalizeReportPath } from './common.mjs';
 
+const FULL_COVERAGE = 100;
+
 export function calculateCrap(complexity, coveragePercent) {
   const uncovered = 1 - coveragePercent / 100;
   return complexity * complexity * uncovered ** 3 + complexity;
@@ -33,6 +35,7 @@ export function ingestCrapRows(parsed, options, resolve) {
       ratchetKey: `${key}:crap`,
       line: fn.start,
       crap: coverage === undefined ? undefined : calculateCrap(fn.ccn, coverage),
+      covered: coverage !== undefined && coverage >= FULL_COVERAGE,
     });
   }
   return {

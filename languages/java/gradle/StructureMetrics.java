@@ -1,26 +1,3 @@
-// Per-method structure metrics for the Java preset (languages/java/gradle/nitpicker.init.gradle, task
-// nitpickerStructure). Run in the JDK's single-file source mode, so it needs no dependency beyond
-// the JDK that already runs Gradle: it parses (never compiles) the main sources with the compiler
-// tree API (jdk.compiler) and writes one JSON object per method and constructor.
-//
-//   java StructureMetrics.java <output.json> <projectDir> <sourceRoot>...
-//
-// Metrics follow the TypeScript structure analyzer so both languages enforce the same limits:
-//   lines              last line - first line + 1 (annotations and modifiers included, Javadoc not)
-//   statements         every statement below the body except blocks
-//   maxControlNesting  deepest nesting of if, for, enhanced for, while, do, switch and catch
-//   parameters         declared parameters
-//   complexity         cyclomatic complexity (the CRAP input): 1 + if, for, enhanced for, while, do, catch,
-//                      ?:, &&, || and every `case` except a default one (`default`, `case null, default`);
-//                      an arrow case and a case with several constants count once
-//   signature          Owner.method(parameter types), the identity of the method in the CRAP check
-//   privateEmptyConstructor  true for `private Name() {}`, which JaCoCo often leaves out of its report
-// Members of nested classes (anonymous, local or member) are reported as methods of their own and
-// do not count towards the enclosing method; lambda bodies count towards the enclosing method.
-//
-// A syntax error (for example syntax newer than the JVM that runs Gradle) prints file:line and the compiler
-// message to stderr and exits with status 1, so the Gradle task fails instead of dropping methods.
-
 import com.sun.source.tree.*;
 import com.sun.source.util.*;
 import java.io.IOException;
@@ -99,6 +76,7 @@ public final class StructureMetrics {
     private final SourcePositions positions;
     private final String file;
     private final List<String> entries;
+    private final Deque<List<? extends TypeParameterTree>> typeScopes = new ArrayDeque<>();
 
     Collector(
         CompilationUnitTree unit, SourcePositions positions, String file, List<String> entries) {
@@ -113,9 +91,11 @@ public final class StructureMetrics {
       String simple = tree.getSimpleName().toString();
       String name = simple.isEmpty() ? "<anonymous>" : simple;
       String qualified = owner.isEmpty() ? name : owner + "." + name;
+      typeScopes.push(tree.getTypeParameters());
       for (Tree member : tree.getMembers()) {
         scan(member, qualified);
       }
+      typeScopes.pop();
       return null;
     }
 
@@ -123,7 +103,9 @@ public final class StructureMetrics {
     public Void visitMethod(MethodTree tree, String owner) {
       if (tree.getBody() != null) {
         report(tree, owner);
+        typeScopes.push(tree.getTypeParameters());
         visitNestedTypes(tree.getBody(), owner);
+        typeScopes.pop();
       }
       return null;
     }
@@ -142,6 +124,18 @@ public final class StructureMetrics {
       // Initializer blocks are not methods, but may declare nested types.
       visitNestedTypes(tree, owner);
       return null;
+    }
+
+    private Map<String, TypeParameterTree> typeVariables(MethodTree tree) {
+      Map<String, TypeParameterTree> variables = new HashMap<>();
+      typeScopes.descendingIterator().forEachRemaining(scope -> declare(variables, scope));
+      declare(variables, tree.getTypeParameters());
+      return variables;
+    }
+
+    private static void declare(
+        Map<String, TypeParameterTree> variables, List<? extends TypeParameterTree> scope) {
+      scope.forEach(parameter -> variables.put(parameter.getName().toString(), parameter));
     }
 
     private void visitNestedTypes(Tree root, String owner) {
@@ -179,6 +173,7 @@ public final class StructureMetrics {
               + ",\"parameters\":" + tree.getParameters().size()
               + ",\"complexity\":" + (1 + complexity.branches)
               + ",\"signature\":" + quote(signature(owner, name, tree))
+              + ",\"parameterTypes\":" + parameterTypes(tree, typeVariables(tree))
               + (isPrivateEmptyConstructor(tree) ? ",\"privateEmptyConstructor\":true" : "")
               + "}");
     }
@@ -188,6 +183,7 @@ public final class StructureMetrics {
   private static final class Body extends TreeScanner<Void, Integer> {
     int statements = 0;
     int maxNesting = 0;
+    private final Set<Tree> continuedIfs = Collections.newSetFromMap(new IdentityHashMap<>());
 
     @Override
     public Void scan(Tree tree, Integer depth) {
@@ -197,7 +193,10 @@ public final class StructureMetrics {
       if (tree instanceof StatementTree && !(tree instanceof BlockTree)) {
         statements += 1;
       }
-      int next = isControl(tree) ? depth + 1 : depth;
+      if (tree instanceof IfTree branch && branch.getElseStatement() instanceof IfTree continued) {
+        continuedIfs.add(continued);
+      }
+      int next = isControl(tree) && !continuedIfs.contains(tree) ? depth + 1 : depth;
       maxNesting = Math.max(maxNesting, next);
       return super.scan(tree, next);
     }
@@ -239,6 +238,47 @@ public final class StructureMetrics {
       }
       return super.scan(tree, ignored);
     }
+
+    @Override
+    public Void visitSwitchExpression(SwitchExpressionTree tree, Void ignored) {
+      return isFlat(tree.getKind(), tree.getCases())
+          ? countOnce(tree.getExpression(), tree.getCases())
+          : super.visitSwitchExpression(tree, ignored);
+    }
+
+    @Override
+    public Void visitSwitch(SwitchTree tree, Void ignored) {
+      return isFlat(tree.getKind(), tree.getCases())
+          ? countOnce(tree.getExpression(), tree.getCases())
+          : super.visitSwitch(tree, ignored);
+    }
+
+    private Void countOnce(ExpressionTree selector, List<? extends CaseTree> cases) {
+      long counted = cases.stream().filter(arm -> !isDefault(arm)).count();
+      long guards = cases.stream().filter(arm -> arm.getGuard() != null).count();
+      branches += (int) Math.min(counted, 1 + guards);
+      scan(selector, null);
+      for (CaseTree arm : cases) {
+        scan(arm.getGuard(), null);
+        scan(arm.getBody(), null);
+      }
+      return null;
+    }
+  }
+
+  private static boolean isFlat(Tree.Kind kind, List<? extends CaseTree> cases) {
+    boolean exhaustive =
+        kind == Tree.Kind.SWITCH_EXPRESSION
+            || cases.stream()
+                .flatMap(arm -> arm.getLabels().stream())
+                .anyMatch(label -> label.getKind() == Tree.Kind.PATTERN_CASE_LABEL);
+    return exhaustive
+        && !cases.isEmpty()
+        && cases.stream()
+            .allMatch(
+                arm ->
+                    arm.getCaseKind() == CaseTree.CaseKind.RULE
+                        && !(arm.getBody() instanceof BlockTree));
   }
 
   private static boolean isBranch(Tree tree) {
@@ -260,6 +300,31 @@ public final class StructureMetrics {
             .map(parameter -> parameter.getType().toString())
             .collect(Collectors.joining(", "));
     return owner + "." + name + "(" + types + ")";
+  }
+
+  private static String parameterTypes(
+      MethodTree tree, Map<String, TypeParameterTree> variables) {
+    return tree.getParameters().stream()
+        .map(parameter -> quote(erasedName(parameter.getType(), variables)))
+        .collect(Collectors.joining(",", "[", "]"));
+  }
+
+  private static String erasedName(Tree type, Map<String, TypeParameterTree> variables) {
+    return switch (type) {
+      case ParameterizedTypeTree parameterized -> erasedName(parameterized.getType(), variables);
+      case ArrayTypeTree array -> erasedName(array.getType(), variables) + "[]";
+      case AnnotatedTypeTree annotated -> erasedName(annotated.getUnderlyingType(), variables);
+      case MemberSelectTree select -> select.getIdentifier().toString();
+      case IdentifierTree identifier when variables.containsKey(identifier.getName().toString()) ->
+          erasure(variables.get(identifier.getName().toString()), variables);
+      default -> type.toString();
+    };
+  }
+
+  private static String erasure(TypeParameterTree variable, Map<String, TypeParameterTree> variables) {
+    Map<String, TypeParameterTree> outer = new HashMap<>(variables);
+    outer.remove(variable.getName().toString());
+    return variable.getBounds().isEmpty() ? "Object" : erasedName(variable.getBounds().get(0), outer);
   }
 
   private static boolean isPrivateEmptyConstructor(MethodTree tree) {

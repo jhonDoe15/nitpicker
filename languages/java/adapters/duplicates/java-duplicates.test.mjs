@@ -1,4 +1,4 @@
-import { mkdirSync, mkdtempSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
@@ -76,8 +76,14 @@ function project(files, manifest = { sourceRoots: ['src/main/java'] }) {
   return projectRoot;
 }
 
+function duplicateOptions(projectRoot, options) {
+  const reportRoot = path.join(projectRoot, 'build/nitpicker');
+  const manifest = JSON.parse(readFileSync(path.join(reportRoot, 'manifest.json'), 'utf8'));
+  return { reportRoot, manifest, ...options };
+}
+
 function clones(projectRoot, options) {
-  runJavaDuplicates(projectRoot, options);
+  runJavaDuplicates(projectRoot, duplicateOptions(projectRoot, options));
   return readDuplicateFindings(path.join(projectRoot, 'build/nitpicker')).filter(
     ({ rule }) => rule === 'duplicate-clone',
   );
@@ -120,7 +126,7 @@ describe('duplicates in Java sources', () => {
       'src/main/java/demo/One.java': javaFile('One', '', BODY),
       'src/main/java/demo/Two.java': javaFile('Two', '', BODY),
     });
-    runJavaDuplicates(projectRoot);
+    runJavaDuplicates(projectRoot, duplicateOptions(projectRoot));
     const found = readDuplicateFindings(path.join(projectRoot, 'build/nitpicker')).filter(
       ({ rule }) => rule === 'duplicate-clone',
     );
@@ -167,7 +173,7 @@ describe('duplicates in Kotlin sources', () => {
     project(files, { sourceRoots: [], kotlinSourceRoots: ['src/main/kotlin'] });
 
   function kotlinClones(projectRoot, skippedFolders) {
-    runKotlinDuplicates(projectRoot, skippedFolders);
+    runKotlinDuplicates(projectRoot, duplicateOptions(projectRoot, { skippedFolders }));
     return readKotlinDuplicateFindings(path.join(projectRoot, 'build/nitpicker')).filter(
       ({ rule }) => rule === 'duplicate-clone',
     );
