@@ -9,10 +9,20 @@ import { expectedViolations } from '../test-support/violation-markers.mjs';
 import { codeSmellRules } from '../test-support/code-smell-rules.mjs';
 import { withRuleMessage } from '../../messages/rule-messages.mjs';
 import { exceptionHint } from '../../../../shared/rules/exceptions.mjs';
+import { GENERIC_NAME_WORDS, LOG_LEVEL_METHODS } from '../../../../shared/naming/smell-words.mjs';
 
 const packageRoot = path.resolve(import.meta.dirname, '../../../..');
 const fixture = path.join(import.meta.dirname, '..', 'fixtures', 'code-smells-project', 'src');
 const rules = codeSmellRules();
+const ruleset = readFileSync(
+  path.join(packageRoot, 'languages/java/gradle/code-smells-ruleset.xml'),
+  'utf8',
+);
+
+function ruleText(name) {
+  const start = ruleset.indexOf(`<rule name="${name}"`);
+  return ruleset.slice(start, ruleset.indexOf('</rule>', start));
+}
 
 function markedRules(sourceSet) {
   return new Set(
@@ -47,6 +57,17 @@ describe('the Java code smell ruleset', () => {
       ]);
     },
   );
+
+  it('names the log levels and generic names the TypeScript rules use', () => {
+    const levels = `@MethodName = (${LOG_LEVEL_METHODS.map((name) => `'${name}'`).join(', ')})`;
+    const typeWords = GENERIC_NAME_WORDS.map((word) => word[0].toUpperCase() + word.slice(1));
+
+    expect({
+      catch: ruleText('CatchOnlyLogsOrReturnsDefault').includes(levels),
+      type: ruleText('GenericTypeName').split(`(${typeWords.join('|')})$`).length,
+      package: ruleText('GenericPackageName').includes(`(${GENERIC_NAME_WORDS.join('|')})(`),
+    }).toEqual({ catch: true, type: 3, package: true });
+  });
 
   it.each(rules)('$name has a marked violation in the fixture', ({ name }) => {
     expect(markedRules('main').has(name)).toBe(true);

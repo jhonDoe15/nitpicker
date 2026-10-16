@@ -14,6 +14,12 @@ public final class Secrets {
   private final String url = "jdbc:postgresql://db/shop?user=app&password=s3cr3tValue"; // violation: CredentialLiteral
   private final String key = "AKIAIOSFODNN7EXAMPLE"; // violation: CredentialLiteral
   private final String environmentToken = System.getenv("SHOP_TOKEN");
+  private final String apiKey =
+      java.util.Optional.ofNullable(System.getenv("API_KEY")).orElse("sk29x8dj3k2l"); // violation: HardcodedSecret
+  private final String clientSecret = System.getenv().getOrDefault("CLIENT_SECRET", "c1ient5ecret"); // violation: HardcodedSecret
+  private final String dbPassword = System.getProperty("db.password", "pa55word9"); // violation: HardcodedSecret
+  private final String webhookToken = environmentToken != null ? environmentToken : "wh00ktoken"; // violation: HardcodedSecret
+  private final String sessionSecret = System.getProperty("SESSION_SECRET");
 
   public void report() {
     log.info("token " + environmentToken); // violation: SecretInLog
@@ -21,5 +27,7 @@ public final class Secrets {
     log.info("token length " + environmentToken.length());
     log.info(CSRF_TOKEN + TOKEN_KEY + password.length() + signingKey.length + apiToken.length());
     log.info(settings.size() + url.length() + key.length() + "");
+    log.info(apiKey.length() + clientSecret.length() + dbPassword.length() + webhookToken.length() + "");
+    log.info(sessionSecret.length() + "");
   }
 }

@@ -57,6 +57,31 @@ describe('scopedRuleset', () => {
       ].join('\n'),
     );
   });
+  it('runs one rule of the ruleset with its properties overridden', () => {
+    expect(
+      scopedRuleset('nitpicker-code-smells-main', '/rules/smells.xml', {
+        directories: [tests],
+        overrides: [{ rule: 'IoCallInLoop', properties: { springData: true } }],
+      }),
+    ).toBe(
+      [
+        '<?xml version="1.0" encoding="UTF-8"?>',
+        '<ruleset name="nitpicker-code-smells-main" xmlns="http://pmd.sourceforge.net/ruleset/2.0.0">',
+        '  <description>nitpicker-code-smells-main</description>',
+        `  <exclude-pattern>${quoted}.*</exclude-pattern>`,
+        '  <rule ref="/rules/smells.xml">',
+        '    <exclude name="IoCallInLoop"/>',
+        '  </rule>',
+        '  <rule ref="/rules/smells.xml/IoCallInLoop">',
+        '    <properties>',
+        '      <property name="springData" value="true"/>',
+        '    </properties>',
+        '  </rule>',
+        '</ruleset>',
+        '',
+      ].join('\n'),
+    );
+  });
 });
 
 describe('javaRelease', () => {
@@ -151,6 +176,17 @@ describe('writePmdRulesets', () => {
         { directories: [test], onlyThere: true },
       ),
     ]);
+    writePmdRulesets({ ...plan, spring: true });
+    expect(text('pmd-code-smells-main.xml')).toBe(
+      scopedRuleset(
+        'nitpicker-code-smells-main',
+        path.join(GRADLE_DIRECTORY, 'code-smells-ruleset.xml'),
+        {
+          directories: [test],
+          overrides: [{ rule: 'IoCallInLoop', properties: { springData: true } }],
+        },
+      ),
+    );
     expect(
       writePmdRulesets({ ...plan, testDirectories: [path.join(root, 'src/it/java')] }),
     ).toEqual([
