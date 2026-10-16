@@ -16,8 +16,10 @@ const FILES = [
 const NOTHING_NEW = 'covers no checked file it did not cover before';
 
 function scopeOf(baseConfig, headConfig, files = FILES, moves) {
+  const sources = new Map([...(moves?.files ?? [])].map(([from, to]) => [to, from]));
   return createPolicyScope({
     files,
+    baseFiles: files.map((file) => sources.get(file) ?? file),
     baseRoots: rootSets(baseConfig, '.'),
     headRoots: rootSets(headConfig, '.'),
     headConfig,
@@ -65,17 +67,14 @@ describe('describePolicyChanges', () => {
   });
 
   it('lists an exclude or exception that covers no newly checked file without counting it', () => {
-    const outsideRoots = { exclude: ['tools/**', 'docs/**'] };
+    const outsideRoots = { exclude: ['docs/**'] };
     const narrowed = { ...exception, paths: ['src/legacy/old.ts'] };
     const reworded = { ...exception, reason: 'Still legacy' };
     const moved = { ...exception, paths: ['src/old/**', 'src/new/**'] };
 
     expect(changes({}, outsideRoots)).toEqual({
       loosened: [],
-      changed: [
-        `exclude added: tools/** (${NOTHING_NEW})`,
-        `exclude added: docs/** (${NOTHING_NEW})`,
-      ],
+      changed: [`exclude added: docs/** (${NOTHING_NEW})`],
     });
     expect(loosened({ exclude: ['src/vendor/**'] }, { exclude: ['src/vendor/lib.ts'] })).toEqual(
       [],
@@ -237,16 +236,50 @@ describe('describePolicyChanges', () => {
     });
   });
 
-  it('counts turning checkJs off in the project tsconfig and lists turning it on', () => {
-    const scope = (before, after) => ({ ...scopeOf({}, {}), checkJs: { before, after } });
+  it('counts an exclude that covers code outside the roots, such as code production imports', () => {
+    expect(loosened({}, { exclude: ['lib/**', 'tools/**'] })).toEqual([
+      'exclude added: lib/**',
+      'exclude added: tools/**',
+    ]);
+  });
 
-    expect(describePolicyChanges({}, {}, scope(true, false))).toEqual({
-      loosened: ['tsconfig.json checkJs: true -> false'],
-      changed: [],
+  it('counts a removed tsconfig and checkJs turned off in any of them, and lists checkJs turned on', () => {
+    const scope = (base, head) => ({
+      ...scopeOf({}, {}),
+      tsconfigs: { base: new Map(base), head: new Map(head) },
     });
-    expect(describePolicyChanges({}, {}, scope(false, true))).toEqual({
-      loosened: [],
+
+    expect(
+      describePolicyChanges(
+        {},
+        {},
+        scope(
+          [
+            ['tsconfig.json', false],
+            ['config/app.json', true],
+            ['packages/web/tsconfig.json', false],
+          ],
+          [
+            ['tsconfig.json', true],
+            ['config/app.json', false],
+          ],
+        ),
+      ),
+    ).toEqual({
+      loosened: [
+        'tsconfig removed: packages/web/tsconfig.json',
+        'config/app.json checkJs: true -> false',
+      ],
       changed: ['tsconfig.json checkJs: false -> true'],
+    });
+  });
+
+  it('lists a glob moved between exclude and layout.excludedGlobs', () => {
+    expect(
+      changes({ exclude: ['src/vendor/**'] }, { layout: { excludedGlobs: ['src/vendor/**'] } }),
+    ).toEqual({
+      loosened: [],
+      changed: ['src/vendor/** moved from exclude to layout.excludedGlobs'],
     });
   });
 
@@ -378,6 +411,7 @@ describe('describePolicyChanges', () => {
     expect(policyChangeFields(base, head, scopeOf(base, head))).toEqual({
       policyChanges: ['exclude added: src/vendor/**', 'base: "a" -> "b"'],
       policyLoosenings: ['exclude added: src/vendor/**'],
+      policyDigest: expect.stringMatching(/^[0-9a-f]{12}$/u),
     });
   });
 });

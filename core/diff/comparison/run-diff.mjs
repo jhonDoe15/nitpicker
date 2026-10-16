@@ -172,7 +172,9 @@ function runAndCombine(context) {
     configOverrides: settings.configOverrides,
     policyChanges: context.baseSetup.policyChanges,
     policyLoosenings: context.baseSetup.policyLoosenings,
+    policyDigest: context.baseSetup.policyDigest,
     acceptPolicyChange: settings.acceptPolicyChange,
+    policyAcceptanceSource: settings.policyAcceptanceSource,
     reportsPolicy: settings.reportsPolicy !== false,
     notices: settings.describeNotices?.([...layout.touchedCode.changedLines.keys()]) ?? [],
   });

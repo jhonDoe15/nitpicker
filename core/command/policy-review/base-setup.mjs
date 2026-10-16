@@ -27,6 +27,7 @@ export function baseSetupResolver(cli, headConfig, headPolicy) {
   return createBaseSetupResolver({
     headConfig,
     conventions: headPolicy.conventions,
+    generatedFiles: headPolicy.generatedFiles,
     injectedAnalyzers: cli.injectedAnalyzers,
     warn: (message) => cli.stderr.write(`nitpicker: ${message}\n`),
   });
@@ -35,6 +36,7 @@ export function baseSetupResolver(cli, headConfig, headPolicy) {
 export function createBaseSetupResolver({
   headConfig,
   conventions,
+  generatedFiles,
   injectedAnalyzers,
   warn = () => undefined,
 }) {
@@ -52,17 +54,23 @@ export function createBaseSetupResolver({
     return {
       ...(baseConfig === undefined || unchanged
         ? {}
-        : measuredBase({ baseConfig, headConfig, conventions, injectedAnalyzers, analyzers })),
+        : measuredBase({
+            baseConfig,
+            headConfig,
+            headFacts: { conventions, generatedFiles },
+            injectedAnalyzers,
+            analyzers,
+          })),
       ...policyChangeFields(compared, headConfig, scope),
     };
   };
 }
 
-function measuredBase({ baseConfig, headConfig, conventions, injectedAnalyzers, analyzers }) {
+function measuredBase({ baseConfig, headConfig, headFacts, injectedAnalyzers, analyzers }) {
   const measured = baseConfigCoveringHead(baseConfig, headConfig);
   const baseHeadPolicy = {
     ...resolveHeadPolicy(measured),
-    ...(conventions === undefined ? {} : { conventions }),
+    ...Object.fromEntries(Object.entries(headFacts).filter(([, value]) => value !== undefined)),
   };
   const configured = new Map(
     configureAnalyzers(presetAnalyzers(measured, injectedAnalyzers), measured, baseHeadPolicy).map(

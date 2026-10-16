@@ -1,33 +1,63 @@
 import { existsSync, readFileSync, realpathSync } from 'node:fs';
 import path from 'node:path';
 import ts from 'typescript';
-import { resolveModuleSpecifier } from './module-resolution.mjs';
+import { reachableModules } from './module-resolution.mjs';
+import { readJsonc } from './tsconfig-files.mjs';
+
+const PACKAGE_JSON = /(?:^|\/)package\.json$/u;
+const DEPENDENCY_FOLDER = /(?:^|\/)node_modules\//u;
+const ENTRY_FIELDS = ['main', 'bin', 'exports'];
+const UNLIMITED = { maxDepth: Number.POSITIVE_INFINITY, maxFiles: Number.POSITIVE_INFINITY };
 
 function specifiersOf(file) {
-  return ts
-    .preProcessFile(readFileSync(file, 'utf8'), true, true)
-    .importedFiles.map(({ fileName }) => fileName);
+  return existsSync(file)
+    ? ts
+        .preProcessFile(readFileSync(file, 'utf8'), true, true)
+        .importedFiles.map(({ fileName }) => fileName)
+    : [];
 }
 
-function projectPath(projectRoot, file) {
-  return path.relative(projectRoot, file).split(path.sep).join('/');
+function stringLeaves(value) {
+  const pending = [value];
+  const found = [];
+  for (const node of pending) {
+    if (typeof node === 'string') {
+      found.push(node);
+    } else if (node !== null && typeof node === 'object') {
+      pending.push(...Object.values(node));
+    }
+  }
+  return found;
 }
 
-function importedFiles(projectRoot, importer) {
-  const file = path.join(projectRoot, importer);
-  return specifiersOf(file)
-    .map((specifier) => resolveModuleSpecifier(specifier, file).path)
-    .filter((target) => target !== undefined)
-    .map((target) => projectPath(projectRoot, realpathSync(target)));
-}
-
-export function productionImports(projectRoot, importers) {
-  const root = realpathSync(projectRoot);
-  return new Map(
-    importers
-      .filter((importer) => existsSync(path.join(root, importer)))
-      .toSorted()
-      .toReversed()
-      .flatMap((importer) => importedFiles(root, importer).map((target) => [target, importer])),
+function manifestEntries(projectRoot, manifest) {
+  const directory = path.posix.dirname(manifest);
+  const fields = readJsonc(path.join(projectRoot, manifest));
+  return ENTRY_FIELDS.flatMap((field) =>
+    stringLeaves(fields?.[field]).map((target) => ({
+      file: path.posix.normalize(path.posix.join(directory, target)),
+      label: `${manifest} ${field}`,
+    })),
   );
+}
+
+export function packageEntryFiles(projectRoot, files) {
+  const tracked = new Set(files);
+  return files
+    .filter((file) => PACKAGE_JSON.test(file) && !DEPENDENCY_FOLDER.test(file))
+    .flatMap((manifest) => manifestEntries(projectRoot, manifest))
+    .filter(({ file }) => tracked.has(file));
+}
+
+export function productionReach(projectRoot, { importers, entries = [] }) {
+  const root = realpathSync(projectRoot);
+  const starts = [...importers.map((file) => ({ file, label: file })), ...entries];
+  const labels = new Map(starts.map(({ file, label }) => [path.join(root, file), label]));
+  const reached = new Map(entries.map(({ file, label }) => [file, label]));
+  for (const step of reachableModules([...labels.keys()], specifiersOf, UNLIMITED)) {
+    const label = labels.get(step.from);
+    labels.set(step.file, label);
+    reached.set(path.relative(root, step.file).split(path.sep).join('/'), label);
+  }
+  return reached;
 }

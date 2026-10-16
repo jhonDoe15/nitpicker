@@ -1,18 +1,29 @@
-import { existsSync } from 'node:fs';
 import path from 'node:path';
+import { filesUnder } from '../../../../../shared/filesystem.mjs';
 import { MESSAGES, RULE_IDS, renderMessage } from '../../../../../shared/policy.mjs';
 import { exceptionMatcher, exceptionText } from '../../../../../shared/rules/exceptions.mjs';
 import { isJavascriptPolicy } from '../../../../javascript/preset/javascript-preset.mjs';
-import { globToRegExp } from '../../layout.mjs';
-import { PROJECT_TSCONFIG } from '../../modules/tsconfig-files.mjs';
+import { codeExtensionNames } from '../../layout.mjs';
+import { projectTsconfigs } from '../../modules/tsconfig-files.mjs';
 
 const RULE = RULE_IDS.javascriptInTypescriptProject;
-const SCRIPT_EXTENSION = /\.(?:jsx|[cm]?js)$/u;
+const SCRIPT_EXTENSION = new RegExp(
+  `\\.(?:${codeExtensionNames.filter((extension) => extension.includes('js')).join('|')})$`,
+  'u',
+);
+const SKIPPED_FOLDERS = new Set(['node_modules', '.git']);
 
 function typescriptName(file) {
-  return file.replace(SCRIPT_EXTENSION, (extension) =>
-    extension === '.jsx' ? '.tsx' : extension.replace('js', 'ts'),
-  );
+  return file.replace(SCRIPT_EXTENSION, (extension) => (extension === '.jsx' ? '.tsx' : '.ts'));
+}
+
+function isTypescriptProject(projectRoot, layout) {
+  const files = [
+    ...filesUnder(projectRoot, {
+      skipDirectory: (_absolute, entry) => SKIPPED_FOLDERS.has(entry.name),
+    }),
+  ].map((file) => path.relative(projectRoot, file).split(path.sep).join('/'));
+  return projectTsconfigs(projectRoot, files, layout.isExcluded).length > 0;
 }
 
 export function javascriptFileFindings({
@@ -22,18 +33,15 @@ export function javascriptFileFindings({
   layout,
   policy,
 }) {
-  if (isJavascriptPolicy(policy) || !existsSync(path.join(liveProjectRoot, PROJECT_TSCONFIG))) {
+  if (isJavascriptPolicy(policy) || !isTypescriptProject(liveProjectRoot, layout)) {
     return [];
   }
   const isExcepted = exceptionMatcher(policy.exceptions);
-  const entryPoints = (policy.layout?.entryPoints ?? []).map(globToRegExp);
   return layout
     .projectCodeFiles(projectRoot)
     .filter(
       (file) =>
-        SCRIPT_EXTENSION.test(file) &&
-        !entryPoints.some((matcher) => matcher.test(file)) &&
-        !isExcepted(RULE, file),
+        SCRIPT_EXTENSION.test(file) && !layout.isTestFixture(file) && !isExcepted(RULE, file),
     )
     .map((file) => ({
       tool: analyzerName,

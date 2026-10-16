@@ -1,5 +1,4 @@
 import { escapeRegExp } from '../../../../../shared/glob.mjs';
-import { GENERATED_CODE_PATTERN } from '../../layout.mjs';
 
 export const NO_IMPORT_OUTSIDE_ROOTS = 'no-import-outside-roots';
 
@@ -18,7 +17,12 @@ const NON_PROJECT_DEPENDENCIES = [
   'undetermined',
 ];
 
-export function outsideRootsRule({ productionSource, roots, excludePattern }) {
+export function outsideRootsRule({
+  productionSource,
+  roots,
+  excludePattern,
+  generatedFilePattern,
+}) {
   const insideRoots = `^(?:${roots.map(escapeRegExp).join('|')})/`;
   return {
     name: NO_IMPORT_OUTSIDE_ROOTS,
@@ -29,7 +33,7 @@ export function outsideRootsRule({ productionSource, roots, excludePattern }) {
       pathNot: [
         insideRoots,
         '(?:^|/)node_modules/',
-        GENERATED_CODE_PATTERN,
+        generatedFilePattern,
         '\\.json$',
         excludePattern,
       ]

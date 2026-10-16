@@ -57,6 +57,9 @@ function withCliDefaults(options) {
     ...options,
     arguments_: options.arguments_ ?? process.argv.slice(2),
     environment: options.environment ?? process.env,
+    interactive:
+      options.interactive ??
+      (process.stdin.isTTY === true && (options.stdout ?? process.stdout).isTTY === true),
     snapshotAnalyzers: options.snapshotAnalyzers ?? options.analyzers,
     stdout: options.stdout ?? process.stdout,
     stderr,
@@ -154,11 +157,23 @@ function runComparisonCli(cli) {
     headPolicy,
     resolveBaseSetup: baseSetupResolver(cli, config, headPolicy),
     describeNotices: noticeDescriber(config, headPolicy),
-    ...policyAcceptance(options, cli.environment),
+    ...acceptanceOf(cli),
     progress: cli.progress,
     runTasks: cli.runTasks,
   });
   return writeComparisonOutcome({ cli, report, base, outputRoot });
+}
+
+function acceptanceOf(cli) {
+  const { ignoredAcceptance, ...acceptance } = policyAcceptance(
+    cli.options,
+    cli.environment,
+    cli.interactive,
+  );
+  if (ignoredAcceptance !== undefined) {
+    cli.stderr.write(`nitpicker: ${ignoredAcceptance}\n`);
+  }
+  return acceptance;
 }
 
 function fixIfRequested(cli, repositoryRoot, base) {

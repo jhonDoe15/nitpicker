@@ -160,11 +160,12 @@ function followedFilesOf(file, specifiersOf, aliases) {
     .filter((target) => target !== undefined);
 }
 
-export function* reachableModules(entryFile, specifiersOf, { maxDepth, maxFiles, aliases = [] }) {
-  const visited = new Set([entryFile]);
-  const queue = [{ file: entryFile, depth: 0 }];
-  for (const { file, depth } of queue) {
-    if (depth > 0) yield { file, depth };
+export function* reachableModules(entries, specifiersOf, { maxDepth, maxFiles, aliases = [] }) {
+  const entryFiles = [entries].flat();
+  const visited = new Set(entryFiles);
+  const queue = entryFiles.map((file) => ({ file, depth: 0 }));
+  for (const { file, depth, from } of queue) {
+    if (depth > 0) yield { file, depth, from };
     const followed = new Set(followedFilesOf(file, specifiersOf, aliases));
     const fresh = [...followed].filter((candidate) => !visited.has(candidate));
     const room = depth < maxDepth ? Math.max(0, maxFiles - visited.size) : 0;
@@ -174,7 +175,7 @@ export function* reachableModules(entryFile, specifiersOf, { maxDepth, maxFiles,
     }
     for (const target of fresh) {
       visited.add(target);
-      queue.push({ file: target, depth: depth + 1 });
+      queue.push({ file: target, depth: depth + 1, from: file });
     }
   }
 }

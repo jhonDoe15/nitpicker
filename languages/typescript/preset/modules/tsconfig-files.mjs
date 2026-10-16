@@ -1,3 +1,4 @@
+import { existsSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import path from 'node:path';
 
@@ -39,6 +40,29 @@ export function isSolutionTsconfig(config) {
   );
 }
 
-export function projectChecksJavascript(projectRoot) {
-  return parsedTsconfig(path.join(projectRoot, PROJECT_TSCONFIG)).options.checkJs === true;
+const PROJECT_CONFIG = /(?:^|\/)tsconfig\.json$/u;
+const DEPENDENCY_FOLDER = /(?:^|\/)node_modules\//u;
+
+function referencedConfigs(projectRoot, config) {
+  const directory = path.join(projectRoot, path.posix.dirname(config));
+  return (readJsonc(path.join(projectRoot, config))?.references ?? [])
+    .map((reference) => referencedConfigFile(directory, reference))
+    .filter((file) => existsSync(file))
+    .map((file) => path.relative(projectRoot, file).split(path.sep).join('/'));
+}
+
+export function projectTsconfigs(projectRoot, files, isHidden = () => false) {
+  const found = new Set(
+    files.filter(
+      (file) => PROJECT_CONFIG.test(file) && !DEPENDENCY_FOLDER.test(file) && !isHidden(file),
+    ),
+  );
+  for (const config of found) {
+    for (const referenced of referencedConfigs(projectRoot, config)) found.add(referenced);
+  }
+  return [...found].toSorted();
+}
+
+export function checksJavascript(configFile) {
+  return parsedTsconfig(configFile).options.checkJs === true;
 }

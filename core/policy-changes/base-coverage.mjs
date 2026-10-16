@@ -4,6 +4,7 @@ import {
   testRoots,
 } from '../../languages/typescript/preset/layout.mjs';
 import { THRESHOLD_DEFAULTS } from './loosenings.mjs';
+import { exceptionPathsByRule } from './paths/hiding.mjs';
 
 const DEFAULT_ROOTS = { sourceRoots, testRoots };
 const DEFAULT_LAYOUT = { ...DEFAULT_ROOTS, excludedGlobs: builtInExcludedGlobs, entryPoints: [] };
@@ -40,12 +41,11 @@ function coveringLayout(baseLayout, headLayout) {
 }
 
 function commonExceptions(base, head = []) {
+  const headPaths = exceptionPathsByRule(head);
   return base
     .map((entry) => ({
       ...entry,
-      paths: entry.paths.filter((glob) =>
-        head.some(({ rule, paths }) => rule === entry.rule && paths.includes(glob)),
-      ),
+      paths: entry.paths.filter((glob) => (headPaths.get(entry.rule) ?? []).includes(glob)),
     }))
     .filter(({ paths }) => paths.length > 0);
 }

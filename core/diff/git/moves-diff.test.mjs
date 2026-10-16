@@ -333,6 +333,7 @@ describe('a config that changed between base and head', () => {
     const comparedWithDefaults = {
       policyChanges: ['exclude added: src/vendor/**'],
       policyLoosenings: ['exclude added: src/vendor/**'],
+      policyDigest: expect.stringMatching(/^[0-9a-f]{12}$/),
     };
 
     expect(
@@ -346,8 +347,11 @@ describe('a config that changed between base and head', () => {
         baseProjectRoot: path.join(root, 'missing'),
         headSnapshotRoot: root,
         analyzers: [],
-      }),
-    ).toEqual(comparedWithDefaults);
+      }).policyLoosenings,
+    ).toEqual([
+      'exclude and layout.excludedGlobs hide code this change adds or moves where the base config checked it: ' +
+        'src/vendor/a.ts',
+    ]);
     expect(warnings).toHaveLength(1);
   });
 

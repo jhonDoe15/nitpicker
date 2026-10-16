@@ -33,7 +33,7 @@ Before you change code other modules use, fix a bug, or add a UI state, read
      wait for that run; never kill it.
 4. Never suppress: no `eslint-disable`, `@ts-ignore`, coverage or mutation ignore comments
    (`istanbul`/`c8`/`v8 ignore`, `Stryker disable`), config `exclude`/`disable`, legacy entries,
-   or weakened tests. If a finding seems wrong, stop and ask. Never pass `--accept-policy-change` or set
+   generator markers (`@generated`, `DO NOT EDIT`) in files you wrote, or weakened tests. If a finding seems wrong, stop and ask. Never pass `--accept-policy-change` or set
    `NITPICKER_ACCEPT_POLICY_CHANGE`: a `nitpicker-config/policy-loosened` finding is for a person to
    accept.
 
