@@ -151,6 +151,38 @@ sum + x, 0)`), `Object.fromEntries`, and `Object.groupBy`. No loops, `forEach`, 
   suppressions too: `nitpicker/no-comments` reports them, and code that truly cannot be tested
   gets a reviewed exception for that rule in `nitpicker.config.json`.
 
+## Reuse after a move
+
+A move that leaves the old copy behind, or a second definition with a familiar name, is the most
+common review comment on a large codebase, and `jscpd` (the `duplicates` check, 5 lines and 50
+tokens at least) does not see small ones. These rules are reported by the `structure` check on
+production files under the source roots; tests, declaration files, stories (`*.stories.*`,
+`*.story.*`) and files under `__mocks__/`, `__fixtures__/`, `fixtures/` and `stories/` are left out.
+Each message spells out the entry to add to `exceptions` in `nitpicker.config.json`; an exception
+for a file takes that file out of the rule, so a pair of copies that must both stay needs one entry.
+
+- `duplicate-definition`: two or more modules of one package define a top-level declaration with the
+  same name and the same normalized text (whitespace, comments, quote style, semicolons and trailing
+  commas ignored). It covers a function (declaration, `function` expression or arrow function:
+  overload signatures, the type annotation of a `const`, parameters and body are compared), exported
+  or private, and, only when exported, a `type` alias, an `interface` and a `const` whose
+  initializer is only literals (numbers, strings, bigints, booleans, regular expressions, plain
+  template literals, and arrays and objects of those, with or without `as const` or `satisfies`); a
+  private `Props` type or `initialState` per module is normal. A `const` with any other initializer
+  is not compared. Only definitions that are used are compared: another module imports them (by
+  name, default, namespace or a dynamic `import()`, also through a workspace package), or the module
+  references them, so framework conventions nothing imports (`export const dynamic`, `revalidate`, a
+  route `GET`, a default `Loading` page) are skipped without a list of frameworks. A definition of 5
+  lines and 50 tokens or more is left to the `duplicates` check. The text includes what each free
+  name resolves to (the file or package it is imported from, the path from the importing file for an
+  import that is not a source file such as `./styles.module.css`, or the text of the top-level
+  declaration it names), so `count() { return db.size }` over two different `db` values is not a
+  duplicate. Generated files (`*.generated.*`, `*.gen.*`, `*.pb.*`, `*_pb.*`, `__generated__/`,
+  `generated/`) are skipped, and a monorepo compares within one package (the nearest `package.json`;
+  without one, within one source root). Every copy is reported at its declaration and names the
+  other files, once per name and file; the identity is the name and file, so existing copies are
+  baselined. The message tells an exported copy to keep one definition and import it, a private copy
+  to import the exported copy when there is one, and otherwise to move to one module and import it.
 ## Inside tests
 
 These rules cover every file of the test layout area (`<testRoot>/**`, `*.test.*` and `*.spec.*`
