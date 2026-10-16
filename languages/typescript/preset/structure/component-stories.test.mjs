@@ -180,12 +180,12 @@ describe('component stories', () => {
       [
         'component-story-missing:Pair',
         { line: 1 },
-        'Most components in this project have a story. Add src/Pair.stories.tsx for Pair. If this is intended, add {"rule":"component-story-missing","paths":["src/Pair.tsx"],"reason":"..."} to "exceptions" in nitpicker.config.json.',
+        'Most components in this project have a story. Add src/Pair.stories.tsx for Pair. If a reviewer agrees this is intended, add {"rule":"component-story-missing","paths":["src/Pair.tsx"],"reason":"<why this is intended>"} to "exceptions" in nitpicker.config.json.',
       ],
       [
         'component-story-missing:PairItem',
         { line: 2 },
-        'Most components in this project have a story. Add src/Pair.stories.tsx for PairItem. If this is intended, add {"rule":"component-story-missing","paths":["src/Pair.tsx"],"reason":"..."} to "exceptions" in nitpicker.config.json.',
+        'Most components in this project have a story. Add src/Pair.stories.tsx for PairItem. If a reviewer agrees this is intended, add {"rule":"component-story-missing","paths":["src/Pair.tsx"],"reason":"<why this is intended>"} to "exceptions" in nitpicker.config.json.',
       ],
     ]);
   });
@@ -256,7 +256,7 @@ describe('component stories', () => {
       identity: 'component-story-missing:D',
       location: { line: 1 },
       message:
-        'Most components in this project have a story. Add src/D.stories.tsx for D. If this is intended, add {"rule":"component-story-missing","paths":["src/D.tsx"],"reason":"..."} to "exceptions" in nitpicker.config.json.',
+        'Most components in this project have a story. Add src/D.stories.tsx for D. If a reviewer agrees this is intended, add {"rule":"component-story-missing","paths":["src/D.tsx"],"reason":"<why this is intended>"} to "exceptions" in nitpicker.config.json.',
       classification: 'enforceable',
     });
   });
@@ -265,7 +265,7 @@ describe('component stories', () => {
     const root = project({ 'package.json': storybookManifest, ...plain('src', 'A') });
 
     expect(findingsOf(root).map(({ message }) => message)).toEqual([
-      'A has no story. Add src/A.stories.tsx. Not enforced until more than half of the components have one. If this is intended, add {"rule":"component-story-missing","paths":["src/A.tsx"],"reason":"..."} to "exceptions" in nitpicker.config.json.',
+      'A has no story. Add src/A.stories.tsx. Not enforced until more than half of the components have one. If a reviewer agrees this is intended, add {"rule":"component-story-missing","paths":["src/A.tsx"],"reason":"<why this is intended>"} to "exceptions" in nitpicker.config.json.',
     ]);
   });
 });

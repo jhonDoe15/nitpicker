@@ -32,7 +32,7 @@ describe('redefined-library-component', () => {
     expect(findings[0].message).toBe(
       [
         'Card is already rendered from @acme/ui in 2 files. Use that one.',
-        `If this is intended, add ${exceptionFor('redefined-library-component', 'src/card.tsx')}`,
+        `If a reviewer agrees this is intended, add ${exceptionFor('redefined-library-component', 'src/card.tsx')}`,
         'to "exceptions" in nitpicker.config.json.',
       ].join(' '),
     );

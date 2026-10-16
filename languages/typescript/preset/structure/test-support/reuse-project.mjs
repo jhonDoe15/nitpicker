@@ -87,7 +87,7 @@ export function rows(findings) {
 }
 
 export function exceptionFor(rule, file) {
-  return JSON.stringify({ rule, paths: [file], reason: '...' });
+  return JSON.stringify({ rule, paths: [file], reason: '<why this is intended>' });
 }
 
 export function usesValues(...names) {

@@ -10,8 +10,6 @@ function ruleUrl(path) {
   return JSON.stringify(`${RULES_URL}/${path}`);
 }
 
-const EXCEPTION = 'add an exception for this rule in nitpicker.config.json.';
-
 const POLICY = `import tseslint from ${JSON.stringify(import.meta.resolve('typescript-eslint'))};
 import { rule as singularAndPlural } from ${ruleUrl('react-props/no-singular-and-plural-prop.mjs')};
 import { rule as exclusiveProps } from ${ruleUrl('react-props/no-runtime-exclusive-props-check.mjs')};
@@ -64,17 +62,17 @@ const EXPECTED = {
   'src/Panel.tsx': [
     [
       'nitpicker/no-singular-and-plural-prop',
-      `Optional props \`field\` and \`fields\` are two ways to pass the same data. Keep \`fields\` and pass a single item as a one-element array. If both props are intended, ${EXCEPTION}`,
+      `Optional props \`field\` and \`fields\` are two ways to pass the same data. Keep \`fields\` and pass a single item as a one-element array.`,
     ],
     [
       'nitpicker/no-runtime-exclusive-props-check',
-      `Props \`icon\`, \`image\` are checked together at runtime. Make the props a discriminated union (\`{ icon: Icon; image?: never } | { image: string; icon?: never }\`) so the compiler rejects the combination. If a runtime check is still needed, ${EXCEPTION}`,
+      `Props \`icon\`, \`image\` are checked together at runtime. Make the props a discriminated union (\`{ icon: Icon; image?: never } | { image: string; icon?: never }\`) so the compiler rejects the combination.`,
     ],
   ],
   'src/Tip.test.tsx': [
     [
       'nitpicker/hover-test-needs-keyboard',
-      `Every hover behavior needs a keyboard equivalent. Add a test that tabs to the element (\`await user.tab()\`) and asserts the same state. If this element is hover-only by design, ${EXCEPTION}`,
+      `Every hover behavior needs a keyboard equivalent. Add a test that tabs to the element (\`await user.tab()\`) and asserts the same state.`,
     ],
   ],
 };

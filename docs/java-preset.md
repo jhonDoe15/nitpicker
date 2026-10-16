@@ -506,7 +506,7 @@ resolved plus a new finding, as in the TypeScript check.
   (`IllegalStateException` for `VerifyException`, `List.of` for `ImmutableList.of`) or dropped,
   with the summary's Guava advice too. In the java preset, a finding of a
   check that can flag correct code ends with the exceptions route, in the same words as the other
-  tools (`If this is intended, add {"rule":"errorprone/<Check>",...} to "exceptions" ...`, with the
+  tools (`If a reviewer agrees this is intended, add {"rule":"errorprone/<Check>",...} to "exceptions" ...`, with the
   file as the path). Only findings in main sources of the checks in `certainBugs` in `checks.json` go without it: a
   curated list of ERROR checks whose finding in main code is a bug, not a severity filter (the
   ERROR checks left out, and why, are listed below). Findings in test sources always keep the
@@ -1256,7 +1256,7 @@ path:
 
 ```
 Usage of System.out/err. Write through a logger, or take a PrintStream as a parameter so callers
-choose the stream. If this is intended, add {"rule":"pmd/SystemPrintln","paths":["src/main/java/demo/Cli.java"],"reason":"..."}
+choose the stream. If a reviewer agrees this is intended, add {"rule":"pmd/SystemPrintln","paths":["src/main/java/demo/Cli.java"],"reason":"<why this is intended>"}
 to "exceptions" in nitpicker.config.json.
 ```
 

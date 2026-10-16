@@ -22,7 +22,7 @@ const finding = (tool, rule, message, classification = 'enforceable') => ({
 });
 
 const hint = (rule) =>
-  `If this is intended, add {"rule":"${rule}","paths":["${FILE}"],"reason":"..."} to "exceptions" in nitpicker.config.json.`;
+  `If a reviewer agrees this is intended, add {"rule":"${rule}","paths":["${FILE}"],"reason":"<why this is intended>"} to "exceptions" in nitpicker.config.json.`;
 
 describe('checkstyleRuleName', () => {
   it('shortens check classes to the module name and keeps configured ids', () => {
