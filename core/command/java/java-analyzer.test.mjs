@@ -102,6 +102,7 @@ const PINNED_TOOLS = [
   'lizard',
   'pitest',
   'pitestJunit5',
+  'pitestTestng',
   'detekt',
   'detektKotlin',
   'ktlint',

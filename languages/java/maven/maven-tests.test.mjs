@@ -14,6 +14,7 @@ import {
   archunitMatcher,
   collectTestResults,
   junitLauncherVersion,
+  pitClasspath,
   pitTargets,
   pitTests,
   freshExecFiles,
@@ -100,6 +101,35 @@ describe('junitLauncherVersion', () => {
       ]),
     ).toBeUndefined();
     expect(junitLauncherVersion(['/m2/junit-4.13.2.jar'])).toBeUndefined();
+  });
+});
+
+describe('pitClasspath', () => {
+  const tools = {
+    pit: ['/m2/pitest-command-line.jar'],
+    'pit-junit5': ['/m2/pitest-junit5-plugin.jar'],
+    'pit-testng': ['/m2/pitest-testng-plugin.jar'],
+    'launcher-1.11.4': ['/m2/junit-platform-launcher-1.11.4.jar'],
+  };
+
+  it('adds each test plugin only for the test framework the project runs on', () => {
+    expect(
+      [
+        ['/m2/junit-4.13.2.jar'],
+        ['/m2/junit-platform-engine-1.11.4.jar'],
+        ['/m2/junit-platform-engine-1.11.4.jar', '/m2/junit-platform-launcher-1.11.4.jar'],
+        ['/m2/testng-7.10.2.jar', '/m2/testng-helper-1.0.jar'],
+      ].map((testRuntime) => pitClasspath(tools, testRuntime)),
+    ).toEqual([
+      ['/m2/pitest-command-line.jar'],
+      [
+        '/m2/pitest-command-line.jar',
+        '/m2/pitest-junit5-plugin.jar',
+        '/m2/junit-platform-launcher-1.11.4.jar',
+      ],
+      ['/m2/pitest-command-line.jar', '/m2/pitest-junit5-plugin.jar'],
+      ['/m2/pitest-command-line.jar', '/m2/pitest-testng-plugin.jar'],
+    ]);
   });
 });
 
