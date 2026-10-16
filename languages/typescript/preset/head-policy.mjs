@@ -107,6 +107,40 @@ function detectedScopes(policy, projectRoot) {
   };
 }
 
+const HEAD_CHECKOUT_FACTS = ['conventions', 'generatedFiles', 'frameworks'];
+const SCOPE_FACTS = [
+  ['react', ['enabled', 'iconPackage', 'major', 'styling', 'autoCleanup']],
+  ['i18n', ['enabled']],
+];
+
+function picked(source, keys) {
+  return Object.fromEntries(
+    keys.filter((key) => source[key] !== undefined).map((key) => [key, source[key]]),
+  );
+}
+
+function headPrettierDigest(policy, headPolicy) {
+  const digest = headPolicy.tools?.prettier?.projectConfigDigest;
+  const prettier = policy.tools?.prettier;
+  return digest === undefined || !usesProjectConfig(prettier?.precedence ?? [])
+    ? {}
+    : { tools: { ...policy.tools, prettier: { ...prettier, projectConfigDigest: digest } } };
+}
+
+export function withHeadCheckoutFacts(policy, headPolicy = {}) {
+  return {
+    ...policy,
+    ...picked(headPolicy, HEAD_CHECKOUT_FACTS),
+    ...Object.fromEntries(
+      SCOPE_FACTS.filter(([scope]) => headPolicy[scope] !== undefined).map(([scope, keys]) => [
+        scope,
+        { ...policy[scope], ...picked(headPolicy[scope], keys) },
+      ]),
+    ),
+    ...headPrettierDigest(policy, headPolicy),
+  };
+}
+
 function projectFilesDigest(projectRoot) {
   const hash = createHash('sha256');
   for (const name of PRETTIER_PROJECT_FILES) {

@@ -2,6 +2,7 @@ import { existsSync } from 'node:fs';
 import path from 'node:path';
 import { CONFIG_FILE_NAME } from '../../../shared/config.mjs';
 import { resolveHeadPolicy } from '../../../shared/head-policy.mjs';
+import { withHeadCheckoutFacts } from '../../../languages/typescript/preset/head-policy.mjs';
 import { configureAnalyzers } from '../../configuration/configure-analyzers.mjs';
 import { describeConfigOverrides, readConfigFile } from '../../configuration/config.mjs';
 import { baseConfigCoveringHead } from '../../policy-changes/base-coverage.mjs';
@@ -26,8 +27,7 @@ function readBaseConfig(baseProjectRoot, warn) {
 export function baseSetupResolver(cli, headConfig, headPolicy) {
   return createBaseSetupResolver({
     headConfig,
-    conventions: headPolicy.conventions,
-    generatedFiles: headPolicy.generatedFiles,
+    headPolicy,
     injectedAnalyzers: cli.injectedAnalyzers,
     warn: (message) => cli.stderr.write(`nitpicker: ${message}\n`),
   });
@@ -35,8 +35,7 @@ export function baseSetupResolver(cli, headConfig, headPolicy) {
 
 export function createBaseSetupResolver({
   headConfig,
-  conventions,
-  generatedFiles,
+  headPolicy = {},
   injectedAnalyzers,
   warn = () => undefined,
 }) {
@@ -57,7 +56,7 @@ export function createBaseSetupResolver({
         : measuredBase({
             baseConfig,
             headConfig,
-            headFacts: { conventions, generatedFiles },
+            headPolicy,
             injectedAnalyzers,
             analyzers,
           })),
@@ -66,12 +65,9 @@ export function createBaseSetupResolver({
   };
 }
 
-function measuredBase({ baseConfig, headConfig, headFacts, injectedAnalyzers, analyzers }) {
+function measuredBase({ baseConfig, headConfig, headPolicy, injectedAnalyzers, analyzers }) {
   const measured = baseConfigCoveringHead(baseConfig, headConfig);
-  const baseHeadPolicy = {
-    ...resolveHeadPolicy(measured),
-    ...Object.fromEntries(Object.entries(headFacts).filter(([, value]) => value !== undefined)),
-  };
+  const baseHeadPolicy = withHeadCheckoutFacts(resolveHeadPolicy(measured), headPolicy);
   const configured = new Map(
     configureAnalyzers(presetAnalyzers(measured, injectedAnalyzers), measured, baseHeadPolicy).map(
       (analyzer) => [analyzer.name, analyzer],
