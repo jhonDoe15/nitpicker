@@ -31,7 +31,7 @@ describe('the vitest console reporter', () => {
       state: { getReportedEntityById: (id) => entities[id] },
     });
     for (const log of logs) {
-      reporter.onUserConsoleLog({ type: 'stderr', size: 1, taskId: 't', ...log });
+      reporter.onUserConsoleLog({ type: 'stderr', taskId: 't', ...log });
     }
     reporter.onTestRunEnd();
     return JSON.parse(readFileSync(reportPath, 'utf8')).entries;
@@ -73,7 +73,7 @@ describe('the vitest console reporter', () => {
   it('replaces the project, temporary and home directories with placeholders', () => {
     const content = `in ${ROOT}/src\nopen ${tmpdir()}/scratch-x1/file\nhome ${homedir()}/.cache\n`;
 
-    expect(entriesFor([{ content, size: 3 }])[0].messages).toEqual([
+    expect(entriesFor([{ content }])[0].messages).toEqual([
       'in <root>/src',
       'open <tmp>',
       'home <home>/.cache',
@@ -83,7 +83,7 @@ describe('the vitest console reporter', () => {
   it('leaves a path that only starts like a directory alone', () => {
     const content = `${ROOT}lication/x\n${ROOT}/x\n/before${ROOT}/x\n${tmpdir()}-other/y\n`;
 
-    expect(entriesFor([{ content, size: 4 }])[0].messages).toEqual([
+    expect(entriesFor([{ content }])[0].messages).toEqual([
       `${ROOT}lication/x`,
       '<root>/x',
       `/before${ROOT}/x`,
@@ -101,7 +101,7 @@ describe('the vitest console reporter', () => {
     vi.stubEnv(REPORT_VARIABLE, '');
     const reporter = new TestConsoleReporter();
     reporter.onInit({ config: { root: ROOT }, state: { getReportedEntityById: () => undefined } });
-    reporter.onUserConsoleLog({ type: 'stderr', content: 'x\n', size: 1 });
+    reporter.onUserConsoleLog({ type: 'stderr', content: 'x\n' });
     reporter.onTestRunEnd();
 
     expect(existsSync(reportPath)).toBe(false);
@@ -112,38 +112,53 @@ describe('splitting one console flush into messages', () => {
   it('joins the lines of one write without closers and blank lines', () => {
     const content = "{\n  level: 'warn',\n  code: 'NEW',\n\n  more: [1, 2]\n}\n";
 
-    expect(consoleMessagesOf(content, 1)).toEqual(["level: 'warn', code: 'NEW', more: [1, 2]"]);
+    expect(consoleMessagesOf(content)).toEqual(["level: 'warn', code: 'NEW', more: [1, 2]"]);
   });
 
   it('keeps the cause of an error and drops its stack frames', () => {
     const content = [
       'Error: outer',
       '    at run (/a/b.js:1:2)',
-      '    at async Promise.all (index 0)',
-      '[cause]: Error: inner',
-      '    at <anonymous>',
+      '    at async Promise.all (index 0) {',
+      '  [cause]: Error: inner',
+      '      at <anonymous>',
+      '}',
     ].join('\n');
 
-    expect(consoleMessagesOf(content, 1)).toEqual(['Error: outer [cause]: Error: inner']);
+    expect(consoleMessagesOf(content)).toEqual(['Error: outer [cause]: Error: inner']);
   });
 
   it('drops component stacks', () => {
     const content = 'Warning: Each child needs a key.\n    in Item (at List.js:4)\n    in List\n';
 
-    expect(consoleMessagesOf(content, 1)).toEqual(['Warning: Each child needs a key.']);
+    expect(consoleMessagesOf(content)).toEqual(['Warning: Each child needs a key.']);
+  });
+
+  it('gives a call the same messages alone and in a batch', () => {
+    const call = 'The above error occurred in Foo:\n    at Foo (x.tsx:1:1)\n\nReact will try again';
+    const other = 'Another warning';
+
+    expect(consoleMessagesOf(`${call}\n${other}\n`)).toEqual([
+      ...consoleMessagesOf(call),
+      ...consoleMessagesOf(other),
+    ]);
+    expect(consoleMessagesOf(call)).toEqual([
+      'The above error occurred in Foo:',
+      'React will try again',
+    ]);
   });
 
   it('gives one message per block of several writes', () => {
     const content = "warn one\nError: boom\n    at run (/a/b.js:1:2)\n{\n  code: 'X'\n}\n]\n";
 
-    expect(consoleMessagesOf(content, 3)).toEqual(['warn one', 'Error: boom', "code: 'X'"]);
+    expect(consoleMessagesOf(content)).toEqual(['warn one', 'Error: boom', "code: 'X'"]);
   });
 
   it('drops terminal colors and the placeholder for an empty call', () => {
-    expect(consoleMessagesOf('\u001B[33mWarning\u001B[39m\n<empty line>', 2)).toEqual(['Warning']);
+    expect(consoleMessagesOf('\u001B[33mWarning\u001B[39m\n<empty line>')).toEqual(['Warning']);
   });
 
   it('gives nothing for a flush without any letter or digit', () => {
-    expect(consoleMessagesOf('{\n}\n', 1)).toEqual([]);
+    expect(consoleMessagesOf('{\n}\n')).toEqual([]);
   });
 });

@@ -42,10 +42,7 @@ function startsBlock(line) {
   return /^[^\s\])}]/u.test(line);
 }
 
-function blocksOf(lines, writes) {
-  if (writes === 1) {
-    return [lines];
-  }
+function blocksOf(lines) {
   return lines.reduce(
     (blocks, line) =>
       blocks.length === 0 || startsBlock(line)
@@ -59,8 +56,8 @@ function isMessageLine(line) {
   return /[\p{L}\p{N}]/u.test(line) && !STACK_LINE.test(line) && line.trim() !== EMPTY_LINE;
 }
 
-export function consoleMessagesOf(content, writes) {
-  return blocksOf(stripAnsi(content).split(/\r?\n/u), writes)
+export function consoleMessagesOf(content) {
+  return blocksOf(stripAnsi(content).split(/\r?\n/u))
     .map((block) => block.filter((line) => isMessageLine(line)).map((line) => line.trim()))
     .filter((lines) => lines.length > 0)
     .map((lines) => lines.join(' '));
@@ -95,7 +92,7 @@ export default function TestConsoleReporter() {
         log.content.slice(0, MAX_CONTENT_LENGTH),
         vitest.config.root,
       );
-      const messages = consoleMessagesOf(content, log.size);
+      const messages = consoleMessagesOf(content);
       if (messages.length > 0) {
         entries.push({ ...locate(entity), messages });
       }
