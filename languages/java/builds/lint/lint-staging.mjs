@@ -3,6 +3,7 @@ import path from 'node:path';
 
 const SUPPRESS_WARNINGS = /@\s*(?:java\s*\.\s*lang\s*\.\s*)?SuppressWarnings\s*\([^)]*\)/gu;
 const LOMBOK_CONFIG = 'lombok.config';
+const LATIN1 = 'latin1';
 const STOP_BUBBLING = 'config.stopBubbling = true\n';
 const STOPS_BUBBLING = /^\s*config\.stopBubbling\s*=\s*true\s*$/mu;
 const IMPORT = /^(\s*import\s+)(\S(?:.*\S)?)\s*$/gmu;
@@ -29,7 +30,7 @@ export function inheritedLombokConfigs(root) {
   const configs = [resolved, ...ancestorsOf(resolved)]
     .map((directory) => path.join(directory, LOMBOK_CONFIG))
     .filter((config) => existsSync(config));
-  const stop = configs.findIndex((config) => STOPS_BUBBLING.test(readFileSync(config, 'latin1')));
+  const stop = configs.findIndex((config) => STOPS_BUBBLING.test(readFileSync(config, LATIN1)));
   return (stop < 0 ? configs : configs.slice(0, stop + 1)).filter(
     (config) => path.dirname(config) !== resolved,
   );
@@ -75,21 +76,26 @@ function copyLombokConfig(staged, config) {
   const directory = path.dirname(config);
   const target = path.join(mirrored(staged, directory), LOMBOK_CONFIG);
   mkdirSync(path.dirname(target), { recursive: true });
-  writeFileSync(target, withAnchoredImports(readFileSync(config, 'latin1'), directory), 'latin1');
+  writeFileSync(target, withAnchoredImports(readFileSync(config, LATIN1), directory), LATIN1);
 }
 
 export function stageSources({ root, sources, staged }) {
   const base = stagedRoot(staged, root);
-  const files = sources.map((source) => {
-    const target = path.join(base, path.relative(root, source));
-    mkdirSync(path.dirname(target), { recursive: true });
-    writeFileSync(target, blankSuppressions(readFileSync(source, 'latin1')), 'latin1');
+  const staging = sources.map((source) => ({
+    source,
+    target: path.join(base, path.relative(root, source)),
+  }));
+  for (const directory of new Set(staging.map(({ target }) => path.dirname(target)))) {
+    mkdirSync(directory, { recursive: true });
+  }
+  const files = staging.map(({ source, target }) => {
+    writeFileSync(target, blankSuppressions(readFileSync(source, LATIN1)), LATIN1);
     return target;
   });
   const configs = [...inheritedLombokConfigs(root), ...lombokConfigs({ root, sources })];
   for (const config of configs) {
     copyLombokConfig(staged, config);
   }
-  writeFileSync(path.join(staged, LOMBOK_CONFIG), STOP_BUBBLING, 'latin1');
+  writeFileSync(path.join(staged, LOMBOK_CONFIG), STOP_BUBBLING, LATIN1);
   return files;
 }

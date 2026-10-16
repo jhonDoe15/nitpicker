@@ -9,14 +9,16 @@ const OTHER_IMPORT = /^\s*import\s+(?!lombok\.)[\w.]+\.(\w+)\s*;/gmu;
 const LOMBOK_PACKAGE = 'lombok.';
 
 function blocks(log) {
-  return log.split(/(?<=\n)/u).reduce((found, line) => {
+  const found = [];
+  for (const line of log.split(/(?<=\n)/u)) {
     const isStart = WARNING.test(line) || BLOCK_END.test(line.trimEnd());
     if (isStart || found.length === 0) {
-      return [...found, [line]];
+      found.push([line]);
+    } else {
+      found.at(-1).push(line);
     }
-    found.at(-1).push(line);
-    return found;
-  }, []);
+  }
+  return found;
 }
 
 function importedNames(text) {
