@@ -23,7 +23,12 @@ import { i18nRuleIds } from '../../languages/typescript/preset/eslint-config/i18
 import path from 'node:path';
 
 const OPTIONAL_VALIDATORS = [
-  ['thresholds', (thresholds, _key, preset) => validateThresholds(thresholds, preset)],
+  [
+    'thresholds',
+    (thresholds, _key, preset) => {
+      return validateThresholds(thresholds, preset);
+    },
+  ],
   ['exclude', validateStringArray],
   ['layout', validateLayout],
   ['exceptions', validateExceptions],

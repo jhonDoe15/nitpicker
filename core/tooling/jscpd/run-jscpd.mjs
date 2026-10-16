@@ -11,6 +11,15 @@ const JSCPD_TIMEOUT_MS = 10 * 60 * 1000;
 const JSCPD_CONFIG = 'jscpd-config.json';
 const JSCPD_SETTINGS = { minTokens: 50, minLines: 5, threshold: 100 };
 
+function insideReportRoot(reportRoot, ...segments) {
+  const root = path.resolve(reportRoot);
+  const target = path.resolve(root, ...segments);
+  if (!target.startsWith(`${root}${path.sep}`)) {
+    throw new Error(`Report path escapes ${root}: ${target}`);
+  }
+  return target;
+}
+
 export function jscpdVersion() {
   return resolveTool('jscpd', { bin: 'run-jscpd.js' }).version;
 }
@@ -87,12 +96,12 @@ export function runJscpd({
     ? [roots].filter((group) => group.length > 0)
     : roots.map((root) => [root]);
   const runs = groups.map((paths, index) => {
-    const output = path.join(reportRoot, 'jscpd', String(index));
+    const output = insideReportRoot(reportRoot, 'jscpd', String(index));
     const args = jscpdArguments({ jscpd, paths, config, format, output, ignore, together });
     const report = runJscpdOnce({ cwd, output, args });
     return together
       ? { root: '.', report: relativeNames(report, cwd) }
       : { root: paths[0], report };
   });
-  writeFileSync(path.join(reportRoot, reportFile), `${JSON.stringify({ runs })}\n`);
+  writeFileSync(insideReportRoot(reportRoot, reportFile), `${JSON.stringify({ runs })}\n`);
 }
