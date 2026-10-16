@@ -1,10 +1,10 @@
-import { spawnSync } from 'node:child_process';
 import { existsSync, mkdtempSync, readFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { compareFindings } from '../../../core/diff/comparison/compare.mjs';
 import { parseAnalyzerReport } from '../../../core/diff/comparison/finding-schema.mjs';
 import { captureWorkingTree, resolveComparison } from '../../../core/diff/git/repository/git.mjs';
+import { processes } from '../../../core/tooling/processes.mjs';
 import { readChangedLines } from '../../../core/diff/git/patches/changed-lines.mjs';
 import { readRenameMap } from '../../../core/diff/git/patches/project-moves.mjs';
 import { withTemporaryWorktree } from '../../../core/diff/git/repository/worktree.mjs';
@@ -84,7 +84,7 @@ function runJavaPreset(
       'nitpickerJava',
     ],
   });
-  const result = spawnSync(target.command, target.args, {
+  const result = processes.spawn(target.command, target.args, {
     cwd: projectRoot,
     encoding: 'utf8',
     maxBuffer: MAX_OUTPUT_BYTES,

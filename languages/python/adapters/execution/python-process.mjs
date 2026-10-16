@@ -1,6 +1,4 @@
-import { spawnSync } from 'node:child_process';
-
-export const processes = { spawn: spawnSync };
+import { processes } from '../../../../core/tooling/processes.mjs';
 
 const MAX_OUTPUT_BYTES = 50 * 1024 * 1024;
 const TOOL_TIMEOUT_MS = 25 * 60 * 1000;

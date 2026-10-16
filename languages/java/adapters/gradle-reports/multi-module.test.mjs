@@ -3,10 +3,12 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import { collectJavaFindings } from '../java-diff.mjs';
+import { fakeGradle, useInProcessGradle } from '../test-support/in-process-gradle.mjs';
 import { readReportModules } from './report-modules.mjs';
 
-const fakeGradle = path.resolve(import.meta.dirname, '../fixtures/fake-gradle.mjs');
 const roots = [];
+
+useInProcessGradle();
 
 afterEach(() => {
   for (const root of roots.splice(0)) {
