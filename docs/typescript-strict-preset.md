@@ -32,6 +32,18 @@ config file is an exception like any other.
   are not allowed.
 - Objects are constructed only in the composition root. Dependencies are passed explicitly. No
   module-level `let`.
+- `shared-used-by-one-feature` (the `coupling` check): `src/main/shared/` holds code that two or
+  more features use. A production module there that exactly one feature reaches, directly or through
+  other shared modules only, and that nothing else imports, is reported on the module with the
+  feature's folder to move it to. Type-only imports count as use, and so does an import through a
+  workspace package linked into `node_modules`. The composition root, any other production module
+  (`main.ts`, a module of another source root) and a second feature each count as another consumer;
+  test files, stories (`*.stories.*`, `*.story.*`) and files under `__mocks__/`, `__fixtures__/`,
+  `fixtures/` and `stories/` do not, and are not reported. A module no feature reaches is left to
+  the dead-code check. The feature and shared folders are the ones the architecture rules use
+  (`architecture/strict-layout.mjs`), under every `layout.sourceRoots` entry; a feature of another
+  source root is another feature. A module that is shared on purpose before a second feature uses it
+  needs an exception for this rule in `nitpicker.config.json`.
 - `nitpicker/no-branch-in-composition-root`: the composition root (`composition-root.ts`, `main.ts`,
   `server.ts`, plus the `compositionRootPattern` option shared with
   `no-managed-resource-construction-outside-composition-roots`) only wires features with named
