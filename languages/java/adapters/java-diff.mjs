@@ -1,5 +1,5 @@
 import { spawnSync } from 'node:child_process';
-import { existsSync, mkdtempSync, rmSync } from 'node:fs';
+import { existsSync, mkdtempSync, readFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { compareFindings } from '../../../core/diff/comparison/compare.mjs';
@@ -13,6 +13,7 @@ import { condenseFailure } from './gradle-wrapper/failure-text.mjs';
 import { runJavaDuplicates } from './metrics/java-duplicates.mjs';
 import { runKotlinDuplicates } from './kotlin/kotlin-duplicates.mjs';
 import { applyJavaPolicy } from './java-policy.mjs';
+import { withoutOverlaps } from './overlaps/static-overlaps.mjs';
 import { PROJECT_TOOL_CONFIGS } from './gradle-presets.mjs';
 import { readJavaFindings } from './reporting/java-reports.mjs';
 import { readReportModules } from './gradle-reports/report-modules.mjs';
@@ -169,7 +170,17 @@ export function collectJavaFindings(root, options = {}) {
       ? mavenFindings(projectRoot, options)
       : withGradleReports(projectRoot, options);
   const preset = options.policy?.preset ?? 'java';
-  return applyJavaPolicy(parseAnalyzerReport({ findings }, preset).findings, options.policy);
+  return applyJavaPolicy(
+    parseAnalyzerReport({ findings }, preset).findings,
+    options.policy,
+    (reported) =>
+      withoutOverlaps(reported, { readSource: (file) => sourceText(projectRoot, file) }),
+  );
+}
+
+function sourceText(projectRoot, file) {
+  const absolute = path.join(projectRoot, file);
+  return existsSync(absolute) ? readFileSync(absolute, 'utf8') : undefined;
 }
 
 export function runJavaDiff({

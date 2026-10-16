@@ -12,6 +12,8 @@ def pinned = [
     ktlint          : '1.8.0',
     ktfmt           : '0.64',
     kotlinCompiler  : '2.4.21',
+    errorProne      : '2.50.0',
+    nullAway        : '0.14.2',
 ]
 
 // BEGIN SH5 structure metrics
@@ -84,6 +86,7 @@ allprojects {
             nitpickerFormat { canBeConsumed = false }
             nitpickerPit { canBeConsumed = false }
             nitpickerPitJunit5 { canBeConsumed = false }
+            nitpickerCheckstyle { canBeConsumed = false }
         }
         repositories { mavenCentral() }
         dependencies {
@@ -91,6 +94,7 @@ allprojects {
             nitpickerPmd "net.sourceforge.pmd:pmd-java:${pinned.pmd}"
             nitpickerSpotbugs "com.github.spotbugs:spotbugs:${pinned.spotbugs}"
             nitpickerFormat "com.google.googlejavaformat:google-java-format:${pinned.googleJavaFormat}"
+            nitpickerCheckstyle "com.puppycrawl.tools:checkstyle:${pinned.checkstyle}"
         }
         dependencies {
             nitpickerPit "org.pitest:pitest-command-line:${pinned.pitest}"
@@ -109,7 +113,8 @@ allprojects {
             'SuppressionXpathFilter']
         def nitpickerCheckstyleConfig = layout.buildDirectory.file('nitpicker-checkstyle/checkstyle.xml')
         def projectCheckstyleConfig = nitpickerArgument('nitpicker.checkstyle.projectConfig')
-        def checkstyleJar = configurations.checkstyle.filter { it.name == "checkstyle-${pinned.checkstyle}.jar".toString() }
+        def checkstyleJar = configurations.nitpickerCheckstyle
+            .filter { it.name == "checkstyle-${pinned.checkstyle}.jar".toString() }
         def bundledCheckstyleConfig = resources.text.fromArchiveEntry(checkstyleJar, 'google_checks.xml')
         def writeCheckstyleConfig = tasks.register('nitpickerCheckstyleConfig') {
             group = 'nitpicker'
@@ -146,6 +151,7 @@ allprojects {
                     configFile = file(projectCheckstyleConfig)
                 } else {
                     dependsOn writeCheckstyleConfig
+                    checkstyleClasspath = configurations.nitpickerCheckstyle
                     configFile = nitpickerCheckstyleConfig.get().asFile
                     configProperties = ['org.checkstyle.google.suppressionfilter.config':
                         new File(initScriptDir, 'checkstyle-suppressions.xml').absolutePath]
@@ -179,6 +185,7 @@ allprojects {
         def usesSpring = {
             sourceSets.main.compileClasspath.files.any { it.name ==~ /spring-(context|boot)-.*\.jar/ }
         }
+        def hasGuava = { sourceSet -> sourceSet.compileClasspath.files.any { it.name ==~ /guava-\d.*\.jar/ } }
 
         tasks.register('nitpickerPmd', JavaExec) {
             group = 'nitpicker'
@@ -409,10 +416,16 @@ allprojects {
         }
         // END SH5 structure metrics
 
+        project.ext.nitpickerErrorProneVersions = pinned.subMap(['errorProne', 'nullAway'])
+        project.ext.nitpickerReportDir = reportDir
+        project.apply from: new File(initScriptDir, 'errorprone/error-prone.gradle')
+
         tasks.register('nitpickerJava') {
             group = 'nitpicker'
-            description = 'Runs PMD, SpotBugs, the formatter check, JaCoCo, Checkstyle, ArchUnit rule tests, structure metrics and PIT; reports go to build/nitpicker.'
-            dependsOn 'nitpickerPmd', 'nitpickerSpotbugs', 'nitpickerFormat', 'nitpickerJacoco', 'nitpickerArchunit', 'nitpickerStructure', 'nitpickerPit'
+            description = 'Runs PMD, SpotBugs, Error Prone, the formatter check, JaCoCo, Checkstyle, ' +
+                'ArchUnit rule tests, structure metrics and PIT; reports go to build/nitpicker.'
+            dependsOn 'nitpickerPmd', 'nitpickerSpotbugs', 'nitpickerErrorProne', 'nitpickerFormat',
+                'nitpickerJacoco', 'nitpickerArchunit', 'nitpickerStructure', 'nitpickerPit'
             dependsOn { tasks.withType(Checkstyle) }
             doLast {
                 tasks.withType(Test).findAll { it.name != 'nitpickerArchunit' && gradle.taskGraph.hasTask(it) }.each { testTask ->
@@ -431,6 +444,8 @@ allprojects {
                     testSourceRoots: testRoots,
                     resourceRoots  : resourceRoots,
                     spring         : usesSpring(),
+                    guava          : hasGuava(sourceSets.main),
+                    testGuava      : hasGuava(sourceSets.test),
                 ])
             }
         }

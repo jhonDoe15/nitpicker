@@ -135,6 +135,7 @@ describe('configureJavaAnalyzer', () => {
       'coupling',
       'crap',
       'duplicates',
+      'errorprone',
       'google-java-format',
       'jacoco',
       'pit',
