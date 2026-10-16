@@ -3,7 +3,10 @@
      design, run over main and test sources. Two test rules are left out because they set an
      assertion style the TypeScript preset does not have: a message on every assertion, and one
      assertion per test. A test without any assertion still fails (UnitTestShouldIncludeAssert),
-     and mutation testing catches weak ones. -->
+     and mutation testing catches weak ones. Rules that report the same code as Error Prone,
+     SpotBugs or Checkstyle stay on: a rule whose finding repeats another tool's on the same code is
+     dropped after policy only while that other finding is reported
+     (languages/java/adapters/overlaps/overlap-pairs.json, docs/java-preset.md "Overlaps"). -->
 <ruleset name="nitpicker"
          xmlns="http://pmd.sourceforge.net/ruleset/2.0.0"
          xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
@@ -28,6 +31,5 @@
       <property name="extraAssertMethodNames" value="andExpect"/>
     </properties>
   </rule>
-  <rule ref="category/java/design.xml/AvoidCatchingGenericException"
-        message="Catch the specific exceptions this code can handle, not Exception, RuntimeException or NullPointerException. If a boundary must catch everything, add an exception for pmd/AvoidCatchingGenericException in nitpicker.config.json."/>
+  <rule ref="category/java/design.xml/AvoidCatchingGenericException"/>
 </ruleset>
