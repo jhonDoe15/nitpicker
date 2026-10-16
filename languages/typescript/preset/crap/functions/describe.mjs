@@ -5,7 +5,7 @@ import {
   expectsStatementCoverage,
 } from './complexity.mjs';
 import { assignedFunctionName, containerNameFrom, displayName, propertyName } from './names.mjs';
-import { childrenOf } from './own-nodes.mjs';
+import { appendAll, childrenOf } from './own-nodes.mjs';
 
 function startOf(sourceFile, node) {
   return sourceFile.getLineAndCharacterOfPosition(node.getStart(sourceFile));
@@ -86,7 +86,7 @@ function describeNode(sourceFile, node) {
 export function describeFunctions(sourceFile) {
   const nodes = [sourceFile];
   for (const node of nodes) {
-    nodes.push(...childrenOf(node));
+    appendAll(nodes, childrenOf(node));
   }
   return nodes
     .sort((left, right) => left.pos - right.pos)

@@ -288,7 +288,9 @@ analyzer named `kotlin`. Details and the remaining slices: [kotlin-preset.md](ko
 The preset also narrows Kotlin to one way of writing the common many-ways spots, with detekt rules
 of its own that the project's detekt config cannot switch off: `!!` and unsafe casts of nullable
 values, the scope functions `run`, `with` and `also` (`let` and `apply` stay), `GlobalScope` and
-`runBlocking`, and plain classes that only hold data. Every message names the allowed form.
+`runBlocking`, a broad `catch` of `Exception` or `Throwable` (`TooGenericExceptionCaught`), and plain
+classes that only hold data. Every message names the allowed form. Test sources are linted by detekt,
+ktlint and ktfmt like the main sources, and these rules apply in them too.
 A project's own `ForbiddenMethodCall.methods` entries in its `detekt.yml` (for example
 `java.lang.Thread.sleep`) are added to the preset's four calls and never replace them; an entry that is not a
 method name with an optional parameter list is ignored. `init` blocks and property initializers that

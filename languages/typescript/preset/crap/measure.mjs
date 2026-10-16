@@ -77,6 +77,15 @@ function methodCoverages(descriptors, fileCoverage) {
     : withFunctionMap;
 }
 
+function formatDiagnostic(sourceFile, diagnostic) {
+  const text = ts.flattenDiagnosticMessageText(diagnostic.messageText, ' ');
+  if (diagnostic.start === undefined) {
+    return `unknown location: ${text}`;
+  }
+  const position = sourceFile.getLineAndCharacterOfPosition(diagnostic.start);
+  return `line ${position.line + 1}, column ${position.character + 1}: ${text}`;
+}
+
 function parseSource(file) {
   const kind = file.toLowerCase().endsWith('.tsx') ? ts.ScriptKind.TSX : ts.ScriptKind.TS;
   const sourceFile = ts.createSourceFile(
@@ -88,9 +97,7 @@ function parseSource(file) {
   );
   const diagnostics = sourceFile.parseDiagnostics ?? [];
   if (diagnostics.length > 0) {
-    const messages = diagnostics.map((diagnostic) =>
-      ts.flattenDiagnosticMessageText(diagnostic.messageText, ' '),
-    );
+    const messages = diagnostics.map((diagnostic) => formatDiagnostic(sourceFile, diagnostic));
     throw new SyntaxError(`Unable to parse TypeScript source ${file}: ${messages.join('; ')}`);
   }
   return sourceFile;

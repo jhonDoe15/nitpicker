@@ -82,4 +82,12 @@ describe('function descriptors', () => {
 
     expect(describeSource(source)).toEqual([['measured', 1, 10, 17]]);
   });
+
+  it('describes a function whose body holds a very large array literal', () => {
+    const elements = '0,'.repeat(250_000);
+
+    expect(describeSource(`export function table() { return [${elements}]; }`)).toEqual([
+      ['table', 1, 1, 1],
+    ]);
+  });
 });

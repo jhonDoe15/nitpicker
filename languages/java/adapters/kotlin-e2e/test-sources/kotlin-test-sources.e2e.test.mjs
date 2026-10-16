@@ -57,6 +57,7 @@ describe.skipIf(!enabled)('Kotlin preset on test sources', () => {
     () => {
       expect(ofFile(defaultDiff().newEnforceable, 'ShoutingTest.kt')).toEqual([
         'detekt detekt.exceptions.TooGenericExceptionCaught ShoutingTest.kt',
+        'detekt detekt.exceptions.TooGenericExceptionCaught ShoutingTest.kt',
         'detekt detekt.potential-bugs.UnsafeCallOnNullableType ShoutingTest.kt',
         'detekt detekt.style.ForbiddenMethodCall ShoutingTest.kt',
         'ktlint ktlint.standard:indent ShoutingTest.kt',

@@ -65,6 +65,17 @@ class ShoutingTest {
         assertEquals(7, value)
     }
 
+    @Test
+    fun ignores() {
+        val value =
+            try {
+                "8".toInt()
+            } catch (ignored: Exception) {
+                0
+            }
+        assertEquals(8, value)
+    }
+
   @Test
   fun misindented() {
         assertEquals(1, 1)
