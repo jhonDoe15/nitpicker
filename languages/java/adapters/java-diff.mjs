@@ -15,7 +15,7 @@ import { runKotlinDuplicates } from './kotlin/kotlin-duplicates.mjs';
 import { applyJavaPolicy } from './java-policy.mjs';
 import { withoutFollowedImports } from './imports/followed-imports.mjs';
 import { withoutOverlaps } from './overlaps/static-overlaps.mjs';
-import { PROJECT_TOOL_CONFIGS } from './gradle-presets.mjs';
+import { toolConfigChoices, toolConfigProperties } from './tool-config/tool-config-choices.mjs';
 import { readJavaFindings } from './reporting/java-reports.mjs';
 import { readReportModules } from './gradle-reports/report-modules.mjs';
 import { runMavenPreset, MAVEN_REPORT_DIRECTORY } from '../maven/maven-build.mjs';
@@ -27,34 +27,6 @@ import { isJavaTouchedRule } from './touched-rules.mjs';
 const GRADLE_TIMEOUT_MS = 15 * 60 * 1000;
 const MAX_OUTPUT_BYTES = 50 * 1024 * 1024;
 const MAX_FAILURE_LENGTH = 3500;
-
-function toolConfigChoices(projectRoot, { toolPrecedence = {}, policyRoot } = {}) {
-  return Object.fromEntries(
-    [...PROJECT_TOOL_CONFIGS].map(([tool, file]) => {
-      const precedence = toolPrecedence[tool] ?? ['nitpicker'];
-      const projectConfig = path.join(policyRoot ?? projectRoot, file);
-      if (precedence.includes('project') && !existsSync(projectConfig)) {
-        throw new Error(`"tools.${tool}.precedence" lists "project" but ${file} is missing`);
-      }
-      return [
-        tool,
-        {
-          nitpicker: precedence.includes('nitpicker'),
-          project: precedence.includes('project') ? projectConfig : undefined,
-        },
-      ];
-    }),
-  );
-}
-
-export function toolConfigProperties(projectRoot, policy = {}) {
-  return Object.entries(toolConfigChoices(projectRoot, policy)).flatMap(([tool, choice]) => [
-    ...(choice.project === undefined
-      ? []
-      : [`-Pnitpicker.${tool}.projectConfig=${choice.project}`]),
-    ...(choice.nitpicker ? [] : [`-Pnitpicker.${tool}.nitpickerConfig=false`]),
-  ]);
-}
 
 function runJavaPreset(
   projectRoot,
@@ -71,7 +43,7 @@ function runJavaPreset(
         '--no-configuration-cache',
         `-Pnitpicker.reportDir=${reportBase}`,
         ...kotlinArguments,
-        ...toolConfigProperties(projectRoot, policy),
+        ...toolConfigProperties(projectRoot, policy, path.join(reportBase, 'tool-config')),
         '-I',
         initScript,
         'nitpickerJava',

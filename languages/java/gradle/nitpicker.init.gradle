@@ -117,12 +117,18 @@ allprojects {
             'SuppressionXpathFilter']
         def nitpickerCheckstyleConfig = layout.buildDirectory.file('nitpicker-checkstyle/checkstyle.xml')
         def projectCheckstyleConfig = nitpickerArgument('nitpicker.checkstyle.projectConfig')
+        def mergedCheckstyleConfig = layout.buildDirectory.file('nitpicker-checkstyle/checkstyle-merged.xml')
         def checkstyleJar = configurations.nitpickerCheckstyle
             .filter { it.name == "checkstyle-${pinned.checkstyle}.jar".toString() }
         def bundledCheckstyleConfig = resources.text.fromArchiveEntry(checkstyleJar, 'google_checks.xml')
         def writeCheckstyleConfig = tasks.register('nitpickerCheckstyleConfig') {
             group = 'nitpicker'
             inputs.files(checkstyleJar)
+            if (projectCheckstyleConfig) {
+                inputs.file(projectCheckstyleConfig)
+                inputs.property('projectWins', nitpickerArgument('nitpicker.checkstyle.projectWins') ?: 'true')
+                outputs.file(mergedCheckstyleConfig)
+            }
             outputs.file(nitpickerCheckstyleConfig)
             doLast {
                 def text = bundledCheckstyleConfig.asString()
@@ -143,6 +149,21 @@ allprojects {
                 def target = nitpickerCheckstyleConfig.get().asFile
                 target.parentFile.mkdirs()
                 target.text = text
+                if (projectCheckstyleConfig) {
+                    // The project's modules are laid over nitpicker's by languages/java/adapters/tool-config
+                    // (the same code the Maven build runs): a property the project sets wins, every other
+                    // module and property stays nitpicker's.
+                    def mergeScript = new File(initScriptDir, '../adapters/tool-config/checkstyle-merge-cli.mjs').canonicalFile
+                    def merge = new ProcessBuilder([nitpickerArgument('nitpicker.node'), mergeScript.absolutePath,
+                            target.absolutePath, projectCheckstyleConfig.toString(),
+                            mergedCheckstyleConfig.get().asFile.absolutePath] +
+                        (nitpickerArgument('nitpicker.checkstyle.projectWins') == 'false' ? ['nitpicker-first'] : []))
+                        .redirectErrorStream(true).start()
+                    def mergeLog = merge.inputStream.getText('UTF-8')
+                    if (merge.waitFor() != 0) {
+                        throw new GradleException("nitpicker could not merge ${projectCheckstyleConfig} into its Checkstyle config: ${mergeLog.trim()}")
+                    }
+                }
             }
         }
         checkstyle { toolVersion = pinned.checkstyle }
@@ -151,15 +172,11 @@ allprojects {
                 ignoreFailures = true
                 showViolations = false
                 maxWarnings = Integer.MAX_VALUE
-                if (projectCheckstyleConfig) {
-                    configFile = file(projectCheckstyleConfig)
-                } else {
-                    dependsOn writeCheckstyleConfig
-                    checkstyleClasspath = configurations.nitpickerCheckstyle
-                    configFile = nitpickerCheckstyleConfig.get().asFile
-                    configProperties = ['org.checkstyle.google.suppressionfilter.config':
-                        new File(initScriptDir, 'checkstyle-suppressions.xml').absolutePath]
-                }
+                dependsOn writeCheckstyleConfig
+                checkstyleClasspath = configurations.nitpickerCheckstyle
+                configFile = (projectCheckstyleConfig ? mergedCheckstyleConfig : nitpickerCheckstyleConfig).get().asFile
+                configProperties = ['org.checkstyle.google.suppressionfilter.config':
+                    new File(initScriptDir, 'checkstyle-suppressions.xml').absolutePath]
             }
         }
         tasks.withType(Checkstyle).configureEach { checkstyleTask ->
@@ -197,10 +214,12 @@ allprojects {
             classpath = configurations.nitpickerPmd
             mainClass = 'net.sourceforge.pmd.cli.PmdCli'
             ignoreExitValue = true // PMD exits 4 when it finds violations
-            def nitpickerRulesets = nitpickerArgument('nitpicker.pmd.nitpickerConfig') != 'false'
+            // languages/java/adapters/tool-config writes a layered copy of nitpicker's ruleset when the
+            // project lists its own ruleset or the tests use assertion helpers of their own, and the
+            // project's ruleset without the rules nitpicker already has.
+            def nitpickerRuleset = nitpickerArgument('nitpicker.pmd.nitpickerRuleset') ?: new File(initScriptDir, 'pmd-ruleset.xml').absolutePath
             def projectRuleset = nitpickerArgument('nitpicker.pmd.projectConfig')
-            def ruleset = ((nitpickerRulesets ? [new File(initScriptDir, 'pmd-ruleset.xml').absolutePath] : [])
-                + (projectRuleset ? [projectRuleset] : [])).join(',')
+            def ruleset = ([nitpickerRuleset] + (projectRuleset ? [projectRuleset] : [])).join(',')
             doFirst {
                 reportDir.get().asFile.mkdirs()
                 // Type resolution: the main and test compile classpaths (compileOnly libraries are on the
@@ -214,8 +233,7 @@ allprojects {
                 def testRuleset = reportDir.get().file('pmd-tests.xml').asFile
                 testRuleset.text = testRulesOnTestSources(mainSources.files)
                 def nitpickerExtras = [testRuleset] + (usesSpring() ? [springMainRuleset] : [])
-                def rulesets = nitpickerRulesets
-                    ? ([ruleset] + nitpickerExtras.collect { it.absolutePath }).join(',') : ruleset
+                def rulesets = ([ruleset] + nitpickerExtras.collect { it.absolutePath }).join(',')
                 args 'check', '--no-cache', '--no-progress', '--format', 'sarif',
                     '--report-file', reportDir.get().file('pmd.sarif').asFile.absolutePath,
                     '--rulesets', rulesets,

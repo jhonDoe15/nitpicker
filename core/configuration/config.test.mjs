@@ -353,21 +353,20 @@ describe('tool precedence', () => {
   });
 
   it.each(['java', 'kotlin'])(
-    'names PMD and Checkstyle with the %s preset, where Checkstyle runs one config',
+    'names PMD and Checkstyle with the %s preset, and accepts both layers for each',
     (preset) => {
       const tools = {
         pmd: { precedence: ['project', 'nitpicker'] },
         checkstyle: { precedence: ['project'] },
       };
+      const layered = { checkstyle: { precedence: ['nitpicker', 'project'] } };
       expect(validateConfig({ preset, tools })).toEqual({ preset, tools });
+      expect(validateConfig({ preset, tools: layered })).toEqual({ preset, tools: layered });
       expect(() =>
         validateConfig({ preset, tools: { prettier: { precedence: ['project'] } } }),
       ).toThrow(
         `"tools" names unknown tool "prettier". Supported tools with this preset: pmd, checkstyle${preset === 'kotlin' ? ', ktlint, ktfmt, detekt' : ''}`,
       );
-      expect(() =>
-        validateConfig({ preset, tools: { checkstyle: { precedence: ['nitpicker', 'project'] } } }),
-      ).toThrow('"tools.checkstyle.precedence" must be ["nitpicker"] or ["project"]');
     },
   );
 
