@@ -174,6 +174,22 @@ allprojects {
             sourceSets.findAll { it.name != 'main' }.collectMany { it.allJava.sourceDirectories.files }.unique()
         }
         def lintedSources = { (mainSources.files + testSourceDirectories()).findAll { it.exists() } }
+        // The test tasks the project's own build runs, as Maven's `verify` runs Surefire and Failsafe:
+        // `test`, every task of a jvm-test-suite (`integrationTest`, ...) and every Test task that
+        // `check` depends on.
+        def checkedTestTasks = {
+            def seen = new LinkedHashSet<Task>()
+            def pending = [tasks.named('check').get()]
+            while (!pending.isEmpty()) {
+                def task = pending.remove(0)
+                task.taskDependencies.getDependencies(task).findAll { it.project == project && seen.add(it) }
+                    .each { pending << it }
+            }
+            def suiteTasks = (extensions.findByName('testing')?.suites ?: [])
+                .collectMany { suite -> suite.targets.collect { it.testTask.get() } }
+            ([tasks.named('test').get()] + suiteTasks + seen.findAll { it instanceof Test })
+                .findAll { it.name != 'nitpickerArchunit' }.unique()
+        }
         def allClassesTasks = { sourceSets.collect { tasks.named(it.classesTaskName) } }
         def analyzedClassDirs = {
             kotlinPreset ? [tasks.named('compileJava').get().destinationDirectory.get().asFile]
@@ -283,6 +299,7 @@ allprojects {
         tasks.register('nitpickerPit', JavaExec) {
             group = 'nitpicker'
             dependsOn tasks.named('classes'), tasks.named('testClasses')
+            dependsOn { checkedTestTasks().collect { it.testClassesDirs } }
             classpath = configurations.nitpickerPit
             mainClass = 'org.pitest.mutationtest.commandline.MutationCoverageReport'
             def pitDir = reportDir.map { it.dir('pit') }
@@ -307,7 +324,9 @@ allprojects {
                 def targets = classDirs.collectMany { dir -> packageTargets(dir, '') }.unique().sort()
                 // Tests are named class by class: a package glob would also hand the main classes
                 // that share a package with the tests to the test engine.
-                def testClassDirs = sourceSets.test.output.classesDirs.files.findAll { it.exists() }
+                def checkedTests = checkedTestTasks()
+                def testRuntimeFiles = checkedTests.collectMany { it.classpath.files }.unique()
+                def testClassDirs = checkedTests.collectMany { it.testClassesDirs.files }.unique().findAll { it.exists() }
                 def tests = testClassDirs.collectMany { dir ->
                     // ArchUnit rule classes are run by nitpickerArchunit, not by `test`, so they are no
                     // part of PIT's green-suite baseline.
@@ -318,7 +337,7 @@ allprojects {
                 }.unique()
                 // PIT's JUnit 5 plugin needs the launcher next to the project's engine; Gradle itself
                 // supplies one to `test`, so a project may not declare it. Take the engine's version.
-                def runtimeJars = sourceSets.test.runtimeClasspath.files*.name
+                def runtimeJars = testRuntimeFiles*.name
                 def engineJar = runtimeJars.find { it ==~ /junit-platform-engine-.+\.jar/ }
                 def engine = engineJar?.replaceAll(/^junit-platform-engine-|\.jar$/, '')
                 if (engine != null) {
@@ -330,7 +349,7 @@ allprojects {
                 }
                 project.delete(pitDir)
                 pitDir.get().asFile.mkdirs()
-                def pitClasspath = (sourceSets.test.runtimeClasspath.files + classDirs)
+                def pitClasspath = (testRuntimeFiles + classDirs)
                     .findAll { it.exists() }.collect { it.absolutePath }.unique()
                 args(['--reportDir', pitDir.get().asFile.absolutePath,
                       '--targetClasses', targets.join(','),
@@ -356,7 +375,8 @@ allprojects {
 
         tasks.register('nitpickerJacoco') {
             group = 'nitpicker'
-            dependsOn tasks.named('test'), tasks.named('jacocoTestReport')
+            dependsOn tasks.named('jacocoTestReport')
+            dependsOn { checkedTestTasks() }
             doLast {
                 copy {
                     from tasks.named('jacocoTestReport').get().reports.xml.outputLocation
@@ -386,9 +406,18 @@ allprojects {
                     coverage.excludeClassLoaders = []
                 }
             }
+            def testFramework = tasks.named('test').get().options
+            tasks.named('nitpickerArchunit') {
+                if (testFramework instanceof org.gradle.api.tasks.testing.testng.TestNGOptions) {
+                    useTestNG()
+                } else if (testFramework instanceof org.gradle.api.tasks.testing.junit.JUnitOptions) {
+                    useJUnit()
+                }
+            }
             tasks.named('jacocoTestReport') {
                 enabled = true
                 classDirectories.setFrom(sourceSets.main.output.classesDirs)
+                checkedTestTasks().each { executionData(it) }
             }
         }
 

@@ -3,7 +3,7 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterAll, describe, expect, it } from 'vitest';
 import { readSlowTestFindings, testCasesOf } from './slow-tests.mjs';
-import { testMethod } from './test-methods.mjs';
+import { templateMethods, testMethod } from './test-methods.mjs';
 
 const TEST_ROOT = 'src/test/java';
 const ORDER_TEST = `${TEST_ROOT}/shop/OrderTest.java`;
@@ -119,6 +119,26 @@ describe('testMethod', () => {
         (name) => testMethod(source, name)?.line,
       ),
     ).toEqual([3, 6, 6, 11]);
+  });
+
+  it('finds a TestNG test by the name Gradle gives a data provider case, and flags its template', () => {
+    const source = `class A {
+  @Test
+  public void adds() {}
+
+  @Test(dataProvider = "names")
+  public void greets(String name) {}
+}
+`;
+
+    expect(
+      ['adds', 'greets[0](Ada)', 'greets[1](Grace, 2)'].map(
+        (name) => testMethod(source, name)?.line,
+      ),
+    ).toEqual([3, 6, 6]);
+    expect(templateMethods(source, 'A')).toBe(
+      '@Test(dataProvider = "names")\npublic void greets(String name) {}',
+    );
   });
 
   it('looks for a @Nested test inside its own class, and an outer test outside nested ones', () => {

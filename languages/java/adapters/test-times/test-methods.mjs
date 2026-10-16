@@ -7,7 +7,8 @@ const DECLARATION = new RegExp(
   'gu',
 );
 const CLASS_DECLARATION = /\bclass\s+([\p{L}_$][\p{L}\p{N}_$]*)/gu;
-const TEMPLATE_ANNOTATION = /@(?:ParameterizedTest|RepeatedTest|TestFactory|TestTemplate)\b/gu;
+const TEMPLATE_ANNOTATION =
+  /@(?:(?:ParameterizedTest|RepeatedTest|TestFactory|TestTemplate)\b|Test\s*\([^)]*\bdataProvider\b)/gu;
 const ANNOTATION_LINE = /^\s*@/u;
 const BRACES_OUTSIDE_LITERALS = /"(?:\\.|[^"\\\n])*"|'(?:\\.|[^'\\\n])*'|[{}]/gu;
 const BRACE_DEPTH = { '{': 1, '}': -1 };
@@ -103,7 +104,13 @@ export function testMethod(text, testName, className) {
     return undefined;
   }
   const found = declarations(text, scope);
-  const candidates = [CALL.exec(testName)?.[1], INDEXED.exec(testName)?.[1], testName];
+  const called = CALL.exec(testName)?.[1];
+  const candidates = [
+    called,
+    INDEXED.exec(called ?? '')?.[1],
+    INDEXED.exec(testName)?.[1],
+    testName,
+  ];
   const declaration =
     found.find((entry) => candidates.includes(entry.name)) ??
     namedByDisplayName(text, { name: testName, scope, found });

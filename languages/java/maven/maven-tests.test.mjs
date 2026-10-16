@@ -130,6 +130,28 @@ describe('collectTestResults', () => {
     expect(existsSync(path.join(reportDir, 'archunit/TEST-shop.OrderTest.xml'))).toBe(false);
   });
 
+  it('separates the ArchUnit classes of a TestNG report that holds every class in one suite', () => {
+    const cases = [
+      '<testcase classname="shop.OrderTest" name="totals"/>',
+      '<testcase classname="shop.ArchTest" name="layers"><failure message="Rule violated" type="AssertionError">trace</failure></testcase>',
+    ];
+    const reports = tree({
+      'TEST-TestSuite.xml': `<?xml version="1.0"?><testsuite name="TestSuite">${cases.join('')}</testsuite>`,
+    });
+    const reportDir = tree({});
+
+    collectTestResults({
+      module: { basedir: '/m', surefireReports: reports, failsafeReports: reports },
+      reportDir,
+      since,
+      isArchunit: archunitMatcher(),
+    });
+
+    expect(readFileSync(path.join(reportDir, 'archunit/TEST-TestSuite.xml'), 'utf8')).toBe(
+      `<?xml version="1.0" encoding="UTF-8"?>\n<testsuite name="TestSuite">${cases[1]}</testsuite>\n`,
+    );
+  });
+
   it('fails with the first failing tests by name', () => {
     const cases = Array.from({ length: 12 }, (_, index) => [
       `case${String(index)}`,

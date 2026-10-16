@@ -1,9 +1,18 @@
+import { chmodSync, mkdirSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
-import { afterEach, beforeEach, vi } from 'vitest';
+import { afterEach, beforeEach, expect, vi } from 'vitest';
 import { runTasksInProcess } from '../../../diff/execution/test-support/in-process-analyzers.mjs';
 import { usePresetFixtures } from '../../test-support/preset-fixtures.mjs';
 import { readCatalog } from '../../../../languages/java/messages/rule-messages.mjs';
 import { exceptionHint } from '../../../../shared/rules/exceptions.mjs';
+
+const fakeMavenTools = path.resolve(
+  import.meta.dirname,
+  '../../../../languages/java/maven/fixtures/fake-tools',
+);
+export const fakeMaven = path.join(fakeMavenTools, 'fake-maven.mjs');
+const fakeJdk = path.join(fakeMavenTools, 'fake-jdk.mjs');
+const FAKE_JDK_TOOLS = ['java', 'jdeps', 'jar'];
 
 export const fakeGradle = path.resolve(
   import.meta.dirname,
@@ -13,6 +22,15 @@ export const fakeGradle = path.resolve(
 const GRADLE_TEMPLATE_FILES = {
   'nitpicker.config.json': '{ "preset": "java" }\n',
   'build.gradle': "plugins { id 'java' }\n",
+  'src/main/java/demo/A.java': 'package demo;\n\npublic final class A {}\n',
+  'violations.txt': 'Avoid unused field: legacy\n',
+};
+
+const MAVEN_TEMPLATE_FILES = {
+  'nitpicker.config.json': '{ "preset": "java" }\n',
+  'pom.xml':
+    '<project><modelVersion>4.0.0</modelVersion><groupId>demo</groupId><artifactId>demo</artifactId>' +
+    '<version>1</version><build><finalName>demo</finalName></build></project>\n',
   'src/main/java/demo/A.java': 'package demo;\n\npublic final class A {}\n',
   'violations.txt': 'Avoid unused field: legacy\n',
 };
@@ -46,6 +64,78 @@ export function useGradleFixtures(runNitpickerCli) {
       }),
     run: fixtures.run,
     runCli: fixtures.runCli,
+    repository: (files = {}) => fixtures.repository(files),
+    build: {
+      descriptive: [],
+      failure: {
+        files: { GRADLE_FAIL: 'Execution failed for task :compileJava\n' },
+        error: {
+          rule: 'gradle-failure',
+          message: (snapshot) =>
+            `Java preset failed in ${snapshot}: Execution failed for task :compileJava`,
+        },
+      },
+      missingBinary: {
+        variable: 'NITPICKER_GRADLE',
+        rule: 'gradle-failure',
+        message: (binary) => `spawnSync ${binary} ENOENT`,
+      },
+    },
+  };
+}
+
+function writeFakeJdk(directory) {
+  for (const name of FAKE_JDK_TOOLS) {
+    const file = path.join(directory, 'bin', name);
+    mkdirSync(path.dirname(file), { recursive: true });
+    writeFileSync(file, `#!/bin/sh\nexec "${process.execPath}" "${fakeJdk}" ${name} "$@"\n`);
+    chmodSync(file, 0o755);
+  }
+}
+
+export function useMavenFixtures(runNitpickerCli) {
+  const fixtures = usePresetFixtures({
+    runCli: runNitpickerCli,
+    name: 'java',
+    templateFiles: MAVEN_TEMPLATE_FILES,
+    runOptions: { runTasks: runTasksInProcess },
+  });
+  beforeEach(() => {
+    const jdk = fixtures.temporaryRoot('nitpicker-fake-jdk-');
+    writeFakeJdk(jdk);
+    vi.stubEnv('NITPICKER_MAVEN', fakeMaven);
+    vi.stubEnv('JAVA_HOME', jdk);
+    vi.stubEnv('XDG_CACHE_HOME', fixtures.temporaryRoot('nitpicker-fake-cache-'));
+  });
+  afterEach(() => {
+    vi.unstubAllEnvs();
+  });
+  return {
+    temporaryRoot: fixtures.temporaryRoot,
+    run: fixtures.run,
+    runCli: fixtures.runCli,
+    repository: (files = {}) => fixtures.repository(files),
+    build: {
+      descriptive: [
+        'coupling/coupling . dependencies summary',
+        'coupling/coupling . modules summary',
+        'coupling/coupling . packages summary',
+      ],
+      failure: {
+        files: { MAVEN_FAIL: 'COMPILATION ERROR in A.java\n' },
+        error: {
+          rule: 'maven-failure',
+          message: (snapshot) =>
+            `Maven failed in ${snapshot}:\n[ERROR] COMPILATION ERROR in A.java`,
+        },
+      },
+      missingBinary: {
+        variable: 'NITPICKER_MAVEN',
+        rule: 'maven-failure',
+        message: (binary) =>
+          `${binary} was not found. Add the Maven wrapper (mvnw) to the project, put mvn on the PATH, or set NITPICKER_MAVEN`,
+      },
+    },
   };
 }
 
