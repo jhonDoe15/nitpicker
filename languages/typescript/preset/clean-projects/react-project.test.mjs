@@ -119,6 +119,7 @@ describe('the react-project fixture', () => {
       'css-properties.ts': [folder],
       'derived-state': [naming, folder],
       'effect-fetch': [naming, folder],
+      'hard-coded-color': [naming, folder],
       inaccessible: [naming, folder],
       'index-key': [naming, folder],
       'inline-style': [naming, folder],
