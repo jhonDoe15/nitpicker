@@ -1,6 +1,6 @@
 import { closingIndex } from './brackets.mjs';
 
-const LOG_LEVELS = [
+const LEVELS = [
   'trace',
   'debug',
   'info',
@@ -19,7 +19,26 @@ const LOG_LEVELS = [
   'atInfo',
   'atWarn',
   'atError',
+  'v',
+  'd',
+  'i',
+  'w',
+  'e',
+  'wtf',
 ];
+const FAILURE_LEVELS = new Set([
+  'warn',
+  'warning',
+  'error',
+  'fatal',
+  'severe',
+  'atWarn',
+  'atError',
+  'w',
+  'e',
+  'wtf',
+]);
+const FAILURE_LEVEL_ARGUMENT = /\bLevel\.(?:SEVERE|WARNING|WARN|ERROR|FATAL)\b/;
 
 const LOGGER_FACTORIES = [
   'KotlinLogging.logger',
@@ -38,16 +57,9 @@ const DECLARATION = new RegExp(
   String.raw`\b(\w+)\s*(?::[^=\n;]+?)?=\s*(?:[\w.]+\.)?(?:${FACTORY_CALL})\b`,
   'g',
 );
-const LOGGER_NAME = new RegExp(
-  [
-    '^(?:[a-z][a-z0-9]*)?Logger$',
-    '^(?:[a-z][a-z0-9]*)?Log$',
-    String.raw`^(?:log|logger)\w*$`,
-    '^[A-Z][A-Z0-9_]*LOG(?:GER)?$',
-    String.raw`^LOG(?:GER)?\w*$`,
-  ].join('|'),
-);
-const CALL = new RegExp(String.raw`\b(\w+)\s*\.\s*(${LOG_LEVELS.join('|')})\s*(?=[({])`, 'g');
+const LOGGER_NAME = /(?:log|logger)$/i;
+const CALL = new RegExp(String.raw`\b(\w+)\s*\??\.\s*(${LEVELS.join('|')})\s*(?=[({])`, 'g');
+const CHAIN = /(?:\s*\??\.\s*\w+\s*\((?:[^()]|\([^()]*\))*\))*/y;
 const OPENERS = { '(': ')', '{': '}', '[': ']' };
 const CLOSERS = new Set(Object.values(OPENERS));
 
@@ -76,6 +88,11 @@ export function topLevelArguments(text) {
   return [...parts, text.slice(start)].map((part) => part.trim()).filter(Boolean);
 }
 
+function chainEnd(code, end) {
+  CHAIN.lastIndex = end + 1;
+  return end + CHAIN.exec(code)[0].length;
+}
+
 function callAt(code, match) {
   const open = match.index + match[0].length;
   const close = closingIndex(code, open);
@@ -84,14 +101,18 @@ function callAt(code, match) {
   }
   const lambdaLength =
     code[open] === '(' ? /^\s*\{/.exec(code.slice(close + 1))?.[0].length : undefined;
-  const end = lambdaLength === undefined ? close : closingIndex(code, close + lambdaLength);
+  const lambdaEnd = lambdaLength === undefined ? close : closingIndex(code, close + lambdaLength);
   return {
     index: match.index,
     receiver: match[1],
     level: match[2],
     args: code[open] === '(' ? topLevelArguments(code.slice(open + 1, close)) : [],
-    text: code.slice(match.index, end === -1 ? close + 1 : end + 1),
+    text: code.slice(match.index, chainEnd(code, lambdaEnd === -1 ? close : lambdaEnd) + 1),
   };
+}
+
+export function isFailureCall({ level, args }) {
+  return level === 'log' ? FAILURE_LEVEL_ARGUMENT.test(args[0] ?? '') : FAILURE_LEVELS.has(level);
 }
 
 export function logCalls(code) {

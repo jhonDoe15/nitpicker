@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { logCalls, loggerNames, topLevelArguments } from './loggers.mjs';
+import { isFailureCall, logCalls, loggerNames, topLevelArguments } from './loggers.mjs';
 
 describe('loggerNames', () => {
   it.each([
@@ -19,14 +19,17 @@ describe('loggerNames', () => {
 });
 
 describe('logCalls', () => {
-  it('finds calls on declared loggers and on conventional names, with their arguments', () => {
+  it('finds calls on declared loggers and on names ending in log or logger', () => {
     const code = [
       'val journal = LoggerFactory.getLogger(Foo::class.java)',
       'journal.warn("slow", e)',
       'LOGGER.info("done")',
       'logger.error(e) { "failed" }',
+      'logger?.warn("maybe")',
       'logger.atError { cause = e }',
-      'dialog.error("not a logger", e)',
+      'Log.e(TAG, "android", e)',
+      'auditLog.debug("x")',
+      'service.error("not a logger", e)',
       'journal.size()',
     ].join('\n');
 
@@ -34,14 +37,43 @@ describe('logCalls', () => {
       { receiver: 'journal', level: 'warn', args: ['"slow"', 'e'] },
       { receiver: 'LOGGER', level: 'info', args: ['"done"'] },
       { receiver: 'logger', level: 'error', args: ['e'] },
+      { receiver: 'logger', level: 'warn', args: ['"maybe"'] },
       { receiver: 'logger', level: 'atError', args: [] },
+      { receiver: 'Log', level: 'e', args: ['TAG', '"android"', 'e'] },
+      { receiver: 'auditLog', level: 'debug', args: ['"x"'] },
     ]);
   });
 
-  it('keeps the trailing lambda in the text of the call', () => {
-    const [call] = logCalls('logger.error(e) { "failed ${x}" }\nrun()');
+  it('keeps the trailing lambda and the fluent chain in the text of the call', () => {
+    const [lambda] = logCalls('logger.error(e) { "failed ${x}" }\nrun()');
+    const [chain] = logCalls(
+      'logger.atError().setCause(e).addKeyValue("a", f(b)).log("x");\nrun();',
+    );
 
-    expect(call.text).toBe('logger.error(e) { "failed ${x}" }');
+    expect(lambda.text).toBe('logger.error(e) { "failed ${x}" }');
+    expect(chain.text).toBe('logger.atError().setCause(e).addKeyValue("a", f(b)).log("x")');
+  });
+});
+
+describe('isFailureCall', () => {
+  it.each([
+    ['logger.warn("x")', true],
+    ['logger.error("x")', true],
+    ['logger.warning("x")', true],
+    ['logger.severe("x")', true],
+    ['logger.atWarn { }', true],
+    ['Log.w(TAG, "x")', true],
+    ['Log.e(TAG, "x")', true],
+    ['logger.log(Level.SEVERE, "x")', true],
+    ['logger.log(Level.WARNING, "x")', true],
+    ['logger.log(Level.INFO, "x")', false],
+    ['logger.debug("x")', false],
+    ['logger.info("x")', false],
+    ['logger.trace("x")', false],
+    ['logger.fine("x")', false],
+    ['Log.d(TAG, "x")', false],
+  ])('%s is %s', (code, expected) => {
+    expect(isFailureCall(logCalls(code)[0])).toBe(expected);
   });
 });
 

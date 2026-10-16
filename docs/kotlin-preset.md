@@ -231,17 +231,23 @@ Two checks read the `.kt` files themselves, after masking comments and string li
 mask as `inline-suppression`), and report as tool `detekt`. Both can flag legitimate code, so both
 take an `exceptions` entry per path.
 
-**`catch-log-without-exception`.** A `catch (e: ...)` block that logs must pass the caught exception
-itself to the logger, so the stack trace is kept: `log.error("what failed", e)` (SLF4J, Log4j2),
+**`catch-log-without-exception`.** A `catch (e: ...)` block that logs a failure must pass the caught
+exception itself to the logger, so the stack trace is kept: `log.error("what failed", e)` (SLF4J, Log4j2),
 `logger.error(e) { "what failed" }` or `logger.atError { cause = e }` (kotlin-logging),
-`logger.log(Level.SEVERE, "what failed", e)` (java.util.logging). `e.message`, `e.toString()` and a
-string template of the exception do not count, and neither does a log call without the exception.
-A call counts as a log call when its receiver is declared from `KotlinLogging.logger`,
-`LoggerFactory.getLogger`, `LogManager.getLogger`/`getFormatterLogger`, `Logger.getLogger` or
-`System.getLogger`, or is named `log`, `logger`, `LOG`, `LOGGER` or ends in `Log` or `Logger`
-(`languages/java/source/loggers.mjs`, shared with the Java preset). The innermost catch is the one
-checked, and a catch of `_`, `ignored...`, `expected...` or `unused...` is left alone. Main and test
-sources are scanned. One finding per log call, identified by `catch-log:<receiver>.<level>`.
+`logger.log(Level.SEVERE, "what failed", e)` (java.util.logging), `Log.e(TAG, "what failed", e)` (Android).
+`e.message`, `e.toString()` and a string template of the exception do not count, and neither does a log
+call without the exception. Only the failure levels are checked: `warn` and `error` (and `fatal`), JUL
+`warning`, `severe` and `log(Level.SEVERE | WARNING, ...)`, Android `Log.w`, `Log.e` and `Log.wtf`;
+`debug`, `info` and `trace` logs in a catch are not findings. These pass as well: the SLF4J 2 fluent API
+with the exception anywhere in the chain (`atError().setCause(e).log(...)`, `withThrowable(e)`), a cast of
+the exception (`e as Throwable`), and a catch that rethrows `e` or throws a new exception with `e` as an
+argument (its cause) after logging. A call is a log call when its receiver (also as `logger?.error(...)`) is
+declared from `KotlinLogging.logger`, `LoggerFactory.getLogger`, `LogManager.getLogger` or
+`getFormatterLogger`, `Logger.getLogger` or `System.getLogger`, or its name ends in `log` or `logger`
+(any case: `log`, `LOGGER`, `auditLog`). The list lives in `languages/java/source/loggers.mjs`. The
+innermost catch is the one checked, and a catch of `_`, `ignored...`, `expected...` or `unused...` is left
+alone. Main and test sources are scanned. One finding per log call, identified by
+`catch-log:<receiver>.<level>`.
 
 **`test-without-assertion`.** A test method (`@Test`, `@ParameterizedTest`, `@RepeatedTest`,
 `@TestTemplate`, block or expression body, backtick names) that calls no assertion. A call counts when its
