@@ -271,6 +271,7 @@ function repositoryChecksFor(exclusions) {
         'languages/typescript/preset/eslint-config/scope-support.mjs',
         'languages/typescript/preset/libraries/file-libraries.mjs',
         'languages/typescript/preset/libraries/logger-libraries.mjs',
+        'languages/typescript/preset/libraries/module-bindings.mjs',
         'languages/typescript/preset/libraries/project-libraries.mjs',
         'languages/typescript/preset/libraries/schema-calls.mjs',
         'languages/typescript/preset/libraries/validation-libraries.mjs',

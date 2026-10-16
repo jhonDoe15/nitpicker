@@ -2,6 +2,7 @@ import { readdirSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { readSpringDocuments, valueOr } from './spring-config-files.mjs';
 import { relaxKey } from './spring-config-parser.mjs';
+import { hasLocalWord, hasTestWord, isProductionLike } from './profile-words.mjs';
 
 const DEFAULT_TEST_SOURCE_ROOTS = ['src/test/java', 'src/test/kotlin'];
 const DEFAULT_TEST_RESOURCE_ROOTS = ['src/test/resources'];
@@ -10,46 +11,16 @@ const ACTIVE_PROFILES_ANNOTATION = /@ActiveProfiles\s*\(([^)]*)\)/g;
 const ACTIVE_PROFILES_PROPERTY = /spring\.profiles\.active\s*[=:]\s*["']?([\w.,-]+)/g;
 const STRING_LITERAL = /"([^"]+)"/g;
 const ACTIVE_KEY = relaxKey('spring.profiles.active');
-const LOCAL_WORDS = new Set(['local', 'dev', 'development']);
-const TEST_WORDS = new Set(['test', 'tests', 'it', 'integration']);
-const PRODUCTION_WORDS = new Set([
-  'prod',
-  'prd',
-  'production',
-  'live',
-  'preprod',
-  'staging',
-  'stage',
-  'stg',
-  'uat',
-]);
 
-function words(profile) {
-  return profile
-    .toLowerCase()
-    .split(/[-_.]/)
-    .filter((word) => word !== '');
-}
-
-function mentionsAny(profile, set) {
-  return words(profile).some((word) => set.has(word));
-}
-
-function isProductionLike(profile) {
-  return mentionsAny(profile, PRODUCTION_WORDS);
-}
-
-function isTestProfile(profile, detected) {
+function isTestProfile(profile, { detected, mainFiles }) {
+  const name = profile.toLowerCase();
   return (
-    !isProductionLike(profile) &&
-    (profile.toLowerCase().startsWith('test') ||
-      mentionsAny(profile, TEST_WORDS) ||
-      detected.has(profile.toLowerCase()))
+    !isProductionLike(name) && (hasTestWord(name) || (detected.has(name) && !mainFiles.has(name)))
   );
 }
 
 function isLocalProfile(profile) {
-  return !isProductionLike(profile) && mentionsAny(profile, LOCAL_WORDS);
+  return !isProductionLike(profile) && hasLocalWord(profile);
 }
 
 function exemptWhenEvery(document, matches) {
@@ -59,12 +30,14 @@ function exemptWhenEvery(document, matches) {
 }
 
 export function withProfileKinds(documents, detected) {
+  const mainFiles = new Set(documents.map(({ fileProfile }) => fileProfile).filter(Boolean));
+  const test = { detected, mainFiles };
   return documents.map((document) => ({
     ...document,
-    testOnly: exemptWhenEvery(document, (profile) => isTestProfile(profile, detected)),
+    testOnly: exemptWhenEvery(document, (profile) => isTestProfile(profile, test)),
     testOrLocalOnly: exemptWhenEvery(
       document,
-      (profile) => isTestProfile(profile, detected) || isLocalProfile(profile),
+      (profile) => isTestProfile(profile, test) || isLocalProfile(profile),
     ),
   }));
 }

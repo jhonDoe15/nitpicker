@@ -116,7 +116,7 @@ function allowance(rule) {
 
 export function readSpringConfigFindings(
   projectRoot,
-  { sourceRoots = [], resourceRoots, testSourceRoots } = {},
+  { sourceRoots = [], resourceRoots, testSourceRoots, baselineRoot } = {},
 ) {
   const read = readSpringDocuments(
     projectRoot,
@@ -125,7 +125,10 @@ export function readSpringConfigFindings(
   if (read.length === 0) {
     return [];
   }
-  const documents = withProfileKinds(read, readTestProfiles(projectRoot, testSourceRoots));
+  const documents = withProfileKinds(
+    read,
+    readTestProfiles(baselineRoot ?? projectRoot, testSourceRoots),
+  );
   const occurrences = new Map();
   return [
     ...(usesJpa(projectRoot, sourceRoots) ? openInViewFindings(documents, occurrences) : []),

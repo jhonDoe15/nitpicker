@@ -1171,15 +1171,24 @@ decides what counts as a literal secret, and `java-spring.mjs` applies the rules
   when it has at least one profile, every positive token is exempt for that rule, and the expression
   has no `!`. Test profiles are `test`, a name starting with `test`, any name with a `test`, `tests`,
   `it` or `integration` word (words split on `-`, `_` and `.`, so `integration-test` and `ci-test`),
-  and every profile the project's tests use: the names of `application-<profile>.(properties|yml|yaml)`
-  files and `spring.profiles.active` values under test resources (`src/test/resources`, the sibling
-  `resources` of each test source root), and the `@ActiveProfiles` strings and
-  `spring.profiles.active=` values in the test sources (`src/test/java`, `src/test/kotlin` or the
-  manifest's `testSourceRoots`). Words are compared case-insensitively. A name with a `prod`, `prd`,
-  `production`, `live`, `preprod`, `staging`, `stage`, `stg` or `uat` word is never a test or local
-  profile, whatever its other words (`prod-test`, `prod-dev`) and even when a test activates it.
-  Local profiles are names with a `local`, `dev` or `development` word, so `local-dev` counts. A profile built from a constant (`@ActiveProfiles(Profiles.TEST)`) cannot be read; name it
-  with a literal or add an exception for the rule.
+  and every profile the project's tests use that is not also configured for the main application.
+  A profile counts as used by the tests when `application-<profile>.(properties|yml|yaml)` or a
+  `spring.profiles.active` value sits under test resources (`src/test/resources`, the sibling
+  `resources` of each test source root), or the profile is named by `@ActiveProfiles` or
+  `spring.profiles.active=` in the test sources (`src/test/java`, `src/test/kotlin` or the manifest's
+  `testSourceRoots`). A profile is not test-only when
+  `application-<profile>.(properties|yml|yaml)` also exists in main resources, so `docker`, `k8s` or
+  `qa` stay checked; a main-resources file for a profile is exempt only through a test word in its
+  name. The set the tests use is measured on the merge base when the run has one, so a branch cannot exempt a profile
+  by adding a test that activates it. Words are compared case-insensitively, trailing digits are
+  dropped from each word (`prod2`, `stage1`), and a word that begins or ends with a production word
+  followed or preceded by a two-letter region or a known word (`testprod`, `prodeu`) counts too, while
+  `product`, `staged` and `livestock` do not. A name with a `prod`, `prd`, `production`, `live`,
+  `preprod`, `staging`, `stage`, `stg` or `uat` word is never a test or local profile, whatever its
+  other words (`prod-test`, `prod-dev`) and even when a test activates it. Local profiles are names
+  with a `local`, `dev` or `development` word, so `local-dev` counts. A profile built from a constant
+  (`@ActiveProfiles(Profiles.TEST)`) cannot be read; name it with a literal or add an exception for
+  the rule.
 - **True.** Wherever a rule needs `true`, Spring's spellings `true`, `on`, `yes` and `1` count, in
   any case.
 - **Rules**, all enforceable. Each message ends with the exception line to add to

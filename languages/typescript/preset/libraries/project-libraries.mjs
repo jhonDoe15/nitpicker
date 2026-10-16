@@ -53,6 +53,7 @@ export function validationBehavior(libraries) {
   const [primary] = accepted;
   return {
     name: primary.id,
+    phrase: primary.phrase,
     call: primary.call,
     example: primary.example,
     inferred: primary.infer === undefined ? '' : ` (${primary.infer})`,
@@ -60,7 +61,9 @@ export function validationBehavior(libraries) {
   };
 }
 
-export function appliesPinoErrorShape(libraries) {
-  const primary = LOGGER_LIBRARIES.find(({ id }) => id === libraries?.logger?.[0]);
-  return primary === undefined || primary.errorField;
+export function loggerShapes(libraries) {
+  const shapes = (libraries?.logger ?? [])
+    .map((id) => LOGGER_LIBRARIES.find((library) => library.id === id)?.shape)
+    .filter((shape) => shape !== undefined);
+  return shapes.length === 0 ? ['err-field'] : [...new Set(shapes)];
 }

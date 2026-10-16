@@ -72,8 +72,9 @@ sum + x, 0)`), `Object.fromEntries`, and `Object.groupBy`. No loops, `forEach`, 
 - Illegal states are made unrepresentable with discriminated unions.
 - `nitpicker/no-unknown-in-domain`: no `unknown` in a parameter or property type (including inside
   `readonly unknown[]`, `Record<string, unknown>` and index signatures). `domain/` receives values
-  already parsed and typed; the zod schema that parses untrusted input lives in `adapters/`, and
-  `domain/` types the value as `z.infer<typeof schema>` or a hand-written type. `unknown` as a
+  already parsed and typed; the schema that parses untrusted input (zod by default, otherwise the
+  project's validation library) lives in `adapters/`, and `domain/` types the value as
+  `z.infer<typeof schema>` or the library's equivalent, or a hand-written type. `unknown` as a
   generic bound or default (`<T extends unknown>`, `<T = unknown>`), a return type, a variable or a
   `catch (error: unknown)` is not reported, and neither is a bare `cause: unknown` or `error: unknown`
   that carries a caught error through a failure result. An opaque value needs an exception in the
@@ -116,36 +117,51 @@ sum + x, 0)`), `Object.fromEntries`, and `Object.groupBy`. No loops, `forEach`, 
 
 The rules keep their reason (validate at the boundary, keep the caught error on the log call) and
 only the library follows the project. Nitpicker reads `dependencies`, `peerDependencies`,
-`optionalDependencies` and `devDependencies` (presence, not a vote over files). For the root
-`package.json` the result is recorded in the head policy as `libraries: { validation, logger }`, for
-the base checkout as well as the head. The rules that report per file also read the `package.json`
-nearest the file and every one above it up to the project root, so a monorepo package that
-declares valibot is checked against valibot. Within the list, `dependencies` come before
-`devDependencies`, nearest package first; the first entry is the primary library.
+`optionalDependencies` and `devDependencies` (presence, not a vote over files).
 
+- **Where it reads.** The head policy carries the root `package.json` result as
+  `libraries: { validation, logger }`. When the base checkout has its own `nitpicker.config.json`
+  that differs from the head's, the base policy is resolved against the base checkout root, so it
+  detects the base's own dependencies; otherwise the base reuses the head policy. The rules that
+  report per file (the boundary guard, `unknown` in `domain/`, catch logging) also read, while
+  linting, the `package.json` nearest the file and every one above it up to the project root of the
+  checkout being linted, so a monorepo package that declares valibot is checked against valibot.
+  Within the list `dependencies` come before `devDependencies`, nearest package first; the first
+  entry names the library in messages. The static `as`, `any` and JSDoc-cast messages read the
+  policy only, so they name the root's library.
 - **Validation library.** Recognised: zod, valibot, yup, joi (and `@hapi/joi`), io-ts, arktype,
-  class-validator (with class-transformer), ajv and typebox. With none found the preset names zod.
+  class-validator (with class-transformer), ajv, typebox, superstruct, runtypes, typia, effect
+  (`effect`, `@effect/schema`) and valita. With none found the preset names zod.
   `nitpicker/no-handwritten-boundary-guard` accepts a parse of any detected library, matched by
-  receiver and method: zod `.parse`, `.safeParse` (and the async forms) on any schema; valibot
-  `v.parse`/`v.safeParse`/`v.assert` or the named imports; yup `.validateSync` on any schema and
-  `.validate` on a schema built from `yup`; joi `.validate` on a schema built from `joi` and
-  `Joi.attempt`/`Joi.assert`; io-ts `.decode`; arktype `.assert` on, or a call of, a schema built from
-  `arktype`; ajv `ajv.validate` on an `Ajv` instance and a call of a function from `ajv.compile`;
-  typebox `Value.Parse`/`Decode`/`Assert`; class-validator `validate`, `validateSync` and
-  `validateOrReject`, with `plainToInstance` (class-transformer) allowed in between. Other calls with
-  the same names (`console.assert`, `form.validate`, `Value.Check`, `cast`) do not count. A schema
-  imported from your own module counts only for the zod, yup `validateSync` and io-ts forms, which
-  need no import from the library. The rule message, the `as`/`any`/JSDoc-cast messages and the
-  `domain/` `unknown` message name the primary library; the last three read the root `package.json`
-  only. A hand-written type guard, an unparsed `JSON.parse` and `unknown` in `domain/` stay reported
-  with any library. `nitpicker/no-unvalidated-schema-field` only looks at zod schemas, so it stays
-  silent without zod.
-- **Logger.** `nitpicker/structured-catch-logging` (`logger.<level>({ err: error }, message)`) is
-  Pino's, and bunyan's, convention. It stays on when the primary logger (pino, nestjs-pino,
-  pino-http or bunyan) uses that field or when no logger library is found. When the primary logger
-  is another one (winston, log4js, loglevel, consola, tslog, roarr, signale), including when a
-  Pino package is only a devDependency next to a winston dependency, the rule stays silent.
-  `nitpicker/no-production-console` and `no-silent-catch` stay on for every logger.
+  receiver and method. Calls on a schema built from the library (a value whose chain starts at an
+  import or `require` of it) count for the library's parse methods: zod `parse`/`safeParse` and
+  the async forms, yup `validate`/`validateSync`/`isValid` and the `At` forms, joi `validate`/
+  `validateAsync`, io-ts `decode`, arktype `assert` and calling the schema, ajv `validate` and
+  calling a function from `compile`, typebox `Decode`/`Parse` on a compiled type, runtypes `check`/
+  `parse`/`assert`/`guard`/`validate`, valita `parse`/`try`. Functions of the library namespace or
+  named import count too: valibot `parse`/`safeParse`/`assert`/`is` and `parser(schema)(data)`,
+  `Joi.attempt`/`Joi.assert`, typebox `Value.Parse`/`Decode`/`Assert`, superstruct `create`/
+  `assert`/`validate`/`mask`/`is`, typia `assert`/`is`/`validate`, effect
+  `Schema.decodeUnknownSync(schema)(data)` and the other `decode` forms, class-validator
+  `validate`/`validateSync`/`validateOrReject` (with `plainToInstance` in between). The forms
+  `const { parse } = schema`, `schema['parse']`, `schema.parse.bind(schema)`, `pipe(data, codec.decode)`,
+  casts (`as`, `!`) and `await` around the `JSON.parse` call are followed.
+  A receiver the file cannot resolve (imported from your own module, a parameter, `this.schema`,
+  a class field) counts for those same methods when type information shows a type declared by the
+  library, or, without it, when its text matches `schema`, `codec`, `validat`, `type`, `ajv`,
+  `struct` or `parser`. Other calls with the same names (`console.assert`, `form.validate`,
+  `Value.Check`, yup `cast`) do not count. The guard and `unknown` messages are grammatical
+  per library ("an io-ts codec", "an ajv schema") and the guard messages say how to add an
+  exception. `nitpicker/no-unvalidated-schema-field` only looks at zod schemas, so it stays silent
+  without zod.
+- **Logger.** `nitpicker/structured-catch-logging` is never turned off; it checks the shape each
+  detected logger reads. pino, nestjs-pino, pino-http and bunyan take the caught value as
+  `logger.<level>({ err: error, ...context }, message)`. winston, log4js, loglevel, consola, tslog,
+  roarr and signale take the caught value itself, passed as an argument or as a field of an object
+  argument (`logger.error('message', error)`, `logger.error('message', { error })`), not its
+  `.message` or a template string. With several loggers any of their shapes passes; with none
+  found the `err` shape applies. `nitpicker/no-production-console` and `no-silent-catch` apply to
+  every logger.
 
 ## Everywhere
 
@@ -820,14 +836,16 @@ change in review.
 
 Recommendation: documented expectation, not a peer dependency.
 
-The preset only requires that adapter code parse untrusted input with zod. Nitpicker's own runtime
-never imports zod (it is not in `package.json`), so a peer dependency would make every
-consumer install a package nitpicker does not use, and would break installs for projects that
-choose to have no external-input boundary. The `strict` ESLint rule that would check this works on
-syntax (a hand-written type guard on external data), not on which library parses it. Document in the
-preset README that adapters are expected to use zod, and have the rule message name zod as the
-allowed form (the library named is the project's own, see "Libraries follow the project"). Revisit as a peer dependency (optional, via `peerDependenciesMeta`) only if a rule
-needs to import from zod at lint time.
+The preset only requires that adapter code parse untrusted input with a schema library, and zod is
+the default. Nitpicker's own runtime never imports zod (it is not in `package.json`), so a peer
+dependency would make every consumer install a package nitpicker does not use, and would break
+installs for projects that choose to have no external-input boundary. The rule that checks this
+works on syntax (a hand-written type guard on external data, an unparsed `JSON.parse`) and on which
+calls count as a parse, not on importing the library. Document in the preset README that adapters
+are expected to use zod unless the project has another validation library, and have the rule
+message name the project's library, or zod when it has none (see "Libraries follow the project").
+Revisit as a peer dependency (optional, via `peerDependenciesMeta`) only if a rule needs to import
+from zod at lint time.
 
 ### Does nitpicker's own code follow the preset
 

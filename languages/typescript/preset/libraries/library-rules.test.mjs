@@ -23,10 +23,11 @@ function guardRule(...validation) {
 }
 
 const PREDICATE = 'function isUser(value: unknown): value is User { return true; }';
-const ZOD_PREDICATE_MESSAGE =
-  'Do not hand-write a type guard for external data: parse it once at the boundary with a zod schema (schema.parse or schema.safeParse).';
+const EXCEPTION =
+  'If this is legitimate, add an exception for nitpicker/no-handwritten-boundary-guard in nitpicker.config.json.';
+const ZOD_PREDICATE_MESSAGE = `Do not hand-write a type guard for external data: parse it once at the boundary with a zod schema (schema.parse or schema.safeParse). ${EXCEPTION}`;
 const unparsed = (call) => ({
-  message: `Pass \`JSON.parse(text)\` straight into \`${call}(...)\` inside the same \`try\`.`,
+  message: `Pass \`JSON.parse(text)\` straight into \`${call}(...)\` inside the same \`try\`. ${EXCEPTION}`,
 });
 
 tester.run('boundary guard with no validation library detected', guardRule(), {
@@ -51,8 +52,7 @@ tester.run('boundary guard with valibot', guardRule('valibot'), {
       code: PREDICATE,
       errors: [
         {
-          message:
-            'Do not hand-write a type guard for external data: parse it once at the boundary with a valibot schema (v.parse or v.safeParse).',
+          message: `Do not hand-write a type guard for external data: parse it once at the boundary with a valibot schema (v.parse or v.safeParse). ${EXCEPTION}`,
         },
       ],
     },
@@ -78,7 +78,7 @@ tester.run('boundary guard with yup', guardRule('yup'), {
       errors: [unparsed('schema.validateSync')],
     },
     {
-      code: "import { validate } from './forms'; const data = validate.validate(JSON.parse(text));",
+      code: "import { form } from './forms'; const data = form.validate(JSON.parse(text));",
       errors: [unparsed('schema.validateSync')],
     },
   ],
@@ -197,35 +197,5 @@ tester.run(
         ],
       },
     ],
-  },
-);
-
-const PINO_CATCH = "try { run(); } catch (error) { logger.error({ error }, 'failed'); }";
-const WINSTON_CATCH = "try { run(); } catch (error) { logger.error('failed', { error }); }";
-
-tester.run(
-  'catch logging when the project logs with winston',
-  structuredCatchLoggingRule({ logger: ['winston'] }),
-  {
-    valid: [PINO_CATCH, WINSTON_CATCH],
-    invalid: [],
-  },
-);
-
-tester.run(
-  'catch logging when the project logs with bunyan',
-  structuredCatchLoggingRule({ logger: ['bunyan'] }),
-  {
-    valid: [],
-    invalid: [{ code: PINO_CATCH, errors: 1 }],
-  },
-);
-
-tester.run(
-  'catch logging when pino is the primary logger next to winston',
-  structuredCatchLoggingRule({ logger: ['pino', 'winston'] }),
-  {
-    valid: [],
-    invalid: [{ code: PINO_CATCH, errors: 1 }],
   },
 );

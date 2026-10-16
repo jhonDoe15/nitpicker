@@ -4,11 +4,7 @@ import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import { resolveHeadPolicy } from '../head-policy.mjs';
 import { librariesForFile } from './file-libraries.mjs';
-import {
-  appliesPinoErrorShape,
-  detectLibraries,
-  validationBehavior,
-} from './project-libraries.mjs';
+import { detectLibraries, loggerShapes, validationBehavior } from './project-libraries.mjs';
 
 const roots = [];
 
@@ -107,16 +103,16 @@ describe('validation behavior', () => {
   });
 });
 
-describe('logger error shape', () => {
+describe('logger error shapes', () => {
   it.each([
-    [undefined, true],
-    [{ logger: [] }, true],
-    [{ logger: ['pino'] }, true],
-    [{ logger: ['bunyan'] }, true],
-    [{ logger: ['winston'] }, false],
-    [{ logger: ['pino', 'winston'] }, true],
-    [{ logger: ['winston', 'pino'] }, false],
-  ])('for %j the Pino shape applies: %s', (libraries, applies) => {
-    expect(appliesPinoErrorShape(libraries)).toBe(applies);
+    [undefined, ['err-field']],
+    [{ logger: [] }, ['err-field']],
+    [{ logger: ['pino'] }, ['err-field']],
+    [{ logger: ['bunyan', 'pino'] }, ['err-field']],
+    [{ logger: ['winston'] }, ['caught-value']],
+    [{ logger: ['pino', 'winston'] }, ['err-field', 'caught-value']],
+    [{ logger: ['winston', 'pino'] }, ['caught-value', 'err-field']],
+  ])('for %j the shapes are %j', (libraries, shapes) => {
+    expect(loggerShapes(libraries)).toEqual(shapes);
   });
 });

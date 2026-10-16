@@ -42,6 +42,7 @@ export function readJavaFindings(
     exceptions,
     reportDirectory = REPORT_DIRECTORY,
     projectWide = true,
+    baselineRoot,
   } = {},
 ) {
   const kotlin = preset === 'kotlin';
@@ -55,6 +56,7 @@ export function readJavaFindings(
     lintedRoots: lintedRoots(manifest),
     roots: projectRoots(projectRoot),
     kotlin,
+    baselineRoot,
     jacoco: readFileSync(path.join(reportRoot, 'jacoco.xml'), 'utf8'),
   };
   return {
@@ -123,12 +125,13 @@ export function requireGradleReports(projectRoot, preset) {
   }
 }
 
-function springFindings({ projectRoot, manifest, sourceRoots }) {
+function springFindings({ projectRoot, manifest, sourceRoots, baselineRoot }) {
   return manifest.spring === true
     ? readSpringConfigFindings(projectRoot, {
         sourceRoots,
         resourceRoots: manifest.resourceRoots,
         testSourceRoots: manifest.testSourceRoots,
+        baselineRoot,
       })
     : [];
 }
