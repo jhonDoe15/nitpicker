@@ -1,6 +1,7 @@
 import { globToRegExpSource } from '../../../../shared/glob.mjs';
 import { readHeadPolicy, readLayout } from '../head-policy.mjs';
 import { layoutFeatures } from './strict-layout.mjs';
+import { isTypeOnlyDependency } from '../dependency-graph/cruise.mjs';
 
 const layout = readLayout();
 const sourceRoot = `(?:${layout.sourceRoots.join('|')})`;
@@ -222,3 +223,35 @@ export function strictBoundaryRulesFor(exceptions) {
 }
 
 export const strictBoundaryRules = strictBoundaryRulesFor(readHeadPolicy().exceptions);
+
+export const REACH_THROUGH_SHARED_RULE = 'domain-does-not-reach-io-through-shared';
+
+const featureOrCompositionRoot = new RegExp(`${featureRoot}/|${compositionRoot}`);
+
+function runtimeTargets(modules, source) {
+  return (modules.get(source)?.dependencies ?? [])
+    .filter((dependency) => !isTypeOnlyDependency(dependency))
+    .map(({ resolved }) => resolved);
+}
+
+export function sharedReachPath(violation, moduleList) {
+  const modules = new Map(moduleList.map((module) => [module.source, module]));
+  const firstSteps = runtimeTargets(modules, violation.from).filter(
+    (step) => step !== violation.to && !featureOrCompositionRoot.test(step),
+  );
+  const seen = new Set([violation.from, ...firstSteps]);
+  const pending = firstSteps.map((step) => [step]);
+  for (const candidate of pending) {
+    if (candidate.at(-1) === violation.to) {
+      return candidate;
+    }
+    const next = [...new Set(runtimeTargets(modules, candidate.at(-1)))].filter(
+      (step) => !seen.has(step),
+    );
+    for (const step of next) {
+      seen.add(step);
+      pending.push([...candidate, step]);
+    }
+  }
+  return undefined;
+}

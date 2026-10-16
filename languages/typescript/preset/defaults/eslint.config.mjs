@@ -6,7 +6,10 @@ import tseslint from 'typescript-eslint';
 import { nitpickerRules } from '../eslint-plugin/index.mjs';
 import { errorWrappingPolicy } from '../eslint-config/policies/error-wrapping-policy.mjs';
 import { strictPresetConfig } from '../eslint-config/strict.mjs';
-import { productionLayoutConfigFor } from '../eslint-config/policy/production-policy.mjs';
+import {
+  usesRouteHandlerFramework,
+  productionLayoutConfigFor,
+} from '../eslint-config/policy/production-policy.mjs';
 import { applyRuleExceptions } from '../eslint-config/exceptions.mjs';
 import {
   applyJavascriptDialect,
@@ -17,6 +20,7 @@ import {
   analyzedProjectRoot,
   isReactProject,
   reactScopeConfigFor,
+  readDependencyNames,
 } from '../eslint-config/react/react-scope.mjs';
 import { readHeadPolicy, readLayout } from '../head-policy.mjs';
 
@@ -24,6 +28,7 @@ const policy = readHeadPolicy();
 
 const layout = readLayout();
 const react = isReactProject({ projectRoot: analyzedProjectRoot(), react: policy.react });
+const routeHandlers = usesRouteHandlerFramework(readDependencyNames(analyzedProjectRoot()));
 const { sourceGlobs, testGlobs, excludedGlobs, unitTestGlobs } = layout;
 const parserOptions = {
   project: './tsconfig.quality.json',
@@ -67,7 +72,7 @@ const presetConfig = defineConfig(
       'nitpicker/preserve-error-cause': ['error', errorWrappingPolicy],
     },
   },
-  ...strictPresetConfig(layout, parserOptions, { react }),
+  ...strictPresetConfig(layout, parserOptions, { react, routeHandlers }),
   ...productionLayoutConfigFor(layout, { react }),
   ...(react ? await reactScopeConfigFor(layout, policy.react) : []),
   {

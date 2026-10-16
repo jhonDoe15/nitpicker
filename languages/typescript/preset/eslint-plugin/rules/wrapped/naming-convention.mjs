@@ -15,6 +15,25 @@ const COMPONENT_TYPES = new Set([
 ]);
 const PASCAL_CASE = /^[A-Z][A-Za-z0-9]*$/;
 const WRAPPERS = new Set(['TSAsExpression', 'TSSatisfiesExpression']);
+const MAX_SCHEMA_DEPTH = 4;
+const SCHEMA_DERIVATIONS = new Set([
+  'extend',
+  'safeExtend',
+  'merge',
+  'omit',
+  'pick',
+  'partial',
+  'required',
+  'strict',
+  'array',
+  'optional',
+  'nullable',
+  'refine',
+  'superRefine',
+  'transform',
+  'pipe',
+  'brand',
+]);
 
 function chainRoot(expression) {
   const chain = [expression];
@@ -41,13 +60,51 @@ function isSchemaLibraryBinding(sourceCode, identifier) {
   );
 }
 
-function isSchemaConstant(identifier, sourceCode) {
+function firstMethod(root) {
+  const member = root.parent;
+  return member?.type === 'MemberExpression' &&
+    member.object === root &&
+    !member.computed &&
+    member.parent?.type === 'CallExpression' &&
+    member.parent.callee === member
+    ? member.property.name
+    : undefined;
+}
+
+function importedSchemaDerivation(sourceCode, root) {
+  const imported =
+    PASCAL_CASE.test(root.name) &&
+    variableNamed(sourceCode, root)?.defs.some(({ type }) => type === 'ImportBinding') === true;
+  return imported && SCHEMA_DERIVATIONS.has(firstMethod(root));
+}
+
+function schemaDeclarator(identifier) {
   const declarator = identifier.parent;
-  if (declarator?.type !== 'VariableDeclarator' || declarator.id !== identifier) {
-    return false;
+  return declarator?.type === 'VariableDeclarator' && declarator.id === identifier
+    ? declarator
+    : undefined;
+}
+
+function isSchemaConstant(identifier, sourceCode) {
+  const pending = [identifier];
+  for (const current of pending) {
+    const init = schemaDeclarator(current)?.init;
+    const root = init === undefined || init === null ? undefined : chainRoot(init);
+    if (root?.type !== 'Identifier' || pending.length > MAX_SCHEMA_DEPTH) {
+      return false;
+    }
+    if (isSchemaLibraryBinding(sourceCode, root)) {
+      return true;
+    }
+    const base = variableNamed(sourceCode, root)?.defs.find(({ type }) => type === 'Variable');
+    if (base === undefined) {
+      return importedSchemaDerivation(sourceCode, root);
+    }
+    if (base.parent.kind === 'const' && !pending.includes(base.name)) {
+      pending.push(base.name);
+    }
   }
-  const root = declarator.init === null ? undefined : chainRoot(declarator.init);
-  return root?.type === 'Identifier' && isSchemaLibraryBinding(sourceCode, root);
+  return false;
 }
 
 function typeName(annotation) {

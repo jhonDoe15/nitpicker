@@ -1,4 +1,4 @@
-import { createRuleTester } from './rule-tester.mjs';
+import { createRuleTester } from './test-support/rule-tester.mjs';
 import { rule as noBranchInCompositionRoot } from '../boundaries/no-branch-in-composition-root.mjs';
 import { rule as noHandwrittenBoundaryGuard } from '../boundaries/no-handwritten-boundary-guard.mjs';
 import { rule as noManagedResource } from '../boundaries/no-managed-resource-construction-outside-composition-roots.mjs';
@@ -22,8 +22,18 @@ tester.run('preserve-error-cause for Error subclasses', preserveErrorCause, {
     'try { run(); } catch (error) { return Promise.reject(new AppError("failed", { cause: error })); }',
     'try { run(); } catch (error) { const failure = new AppError("failed"); return failure; }',
     'try { run(); } catch (error) { throw new Wrapper(String(error)); }',
+    'try { run(); } catch (error) { throw new AggregateError([error, other], "run and close failed"); }',
+    'try { run(); } catch (error) { const cause = error; throw new AppError("bad", { cause }); }',
   ],
   invalid: [
+    {
+      code: 'try { run(); } catch (error) { throw new AggregateError([other], "failed"); }',
+      errors: [{ messageId: 'lostCause' }],
+    },
+    {
+      code: 'try { run(); } catch (error) { const cause = String(error); throw new AppError("bad", { cause: other }); }',
+      errors: [{ messageId: 'lostCause' }],
+    },
     {
       code: 'try { run(); } catch (error) { throw new AppError(String(error)); }',
       errors: [{ messageId: 'lostCause' }],
@@ -74,6 +84,8 @@ tester.run('no-self-recursion through references and cycles', noSelfRecursion, {
     'function watch() { emitter.on("change", () => watch()); }',
     'function start() { window.addEventListener("load", function onLoad() { start(); }); }',
     'function outer() { const run = () => helper(); return run; } function helper() { return outer(); }',
+    'function poll() { const timer = setTimeout(() => poll(), 1000); return timer; }',
+    'function later() { schedule(() => later()); }',
   ],
   invalid: [
     {
@@ -113,6 +125,14 @@ tester.run('no-self-recursion through references and cycles', noSelfRecursion, {
       code: 'function outer() { const run = () => helper(); return run(); } function helper() { return outer(); }',
       errors: [{ messageId: 'mutualRecursion', data: { name: 'outer', other: 'run' } }],
     },
+    {
+      code: 'async function crawl(url) { const links = await fetchLinks(url); return Promise.all(links.map((link) => limit(() => crawl(link)))); }',
+      errors: [{ messageId: 'recursion', data: { name: 'crawl' } }],
+    },
+    {
+      code: 'async function retry(job) { return await withLock(() => retry(job)); }',
+      errors: [{ messageId: 'recursion', data: { name: 'retry' } }],
+    },
   ],
 });
 
@@ -124,6 +144,8 @@ tester.run('no-unknown-in-domain through aliases', noUnknownInDomain, {
     'export function f(value: Missing) { return value; }',
     'type Raw = unknown; type Row = { readonly cause: Raw };',
     'type A = B; type B = A; export function f(value: A) { return value; }',
+    'type Failure = { readonly cause: unknown }; export function f(failure: Failure) { return failure; }',
+    'type Make = <T = unknown>() => T; export function f(make: Make) { return make; }',
   ],
   invalid: [
     {
@@ -138,11 +160,25 @@ tester.run('no-unknown-in-domain through aliases', noUnknownInDomain, {
       code: 'type Raw = unknown; export type Row = { readonly payload: Raw };',
       errors: [{ messageId: 'unknownType' }],
     },
+    {
+      code: 'type JsonObject = Readonly<Record<string, unknown>>; export function f(payload: JsonObject) { return payload; }',
+      errors: [{ messageId: 'unknownType' }],
+    },
+    {
+      code: 'type Bag = Record<string, unknown>; type Event = { readonly bag: Bag };',
+      errors: [{ messageId: 'unknownType' }],
+    },
+    {
+      code: 'type Items = readonly unknown[]; type Batch = Items; type Event = { readonly items: Batch };',
+      errors: [{ messageId: 'unknownType' }],
+    },
   ],
 });
 
 tester.run('no-unvalidated-schema-field loose forms', noUnvalidatedSchemaField, {
   valid: [
+    'const Event = Base.extend({ payload: z.string(), tags: z.string().array() });',
+    'const options = defaults.extend({ payload: unknownThing() });',
     'const s = z.object({ a: z.string(), b: z.array(z.string()) });',
     'const s = z.object({ a: z.record(z.string(), z.number()) });',
     'const s = z.object({ a: z.custom<A>((v) => isA(v)) });',
@@ -152,6 +188,22 @@ tester.run('no-unvalidated-schema-field loose forms', noUnvalidatedSchemaField, 
     'const s = other.object({ a: other.string() }).passthrough();',
   ],
   invalid: [
+    {
+      code: 'const Base = z.object({ id: z.string() }); const Event = Base.extend({ payload: z.unknown() });',
+      errors: [{ messageId: 'unvalidatedField' }],
+    },
+    {
+      code: 'const Event = Base.safeExtend({ payload: z.any() });',
+      errors: [{ messageId: 'unvalidatedField' }],
+    },
+    {
+      code: 'const Batch = z.object({ items: z.unknown().array() });',
+      errors: [{ messageId: 'unvalidatedField' }],
+    },
+    {
+      code: 'const Opt = z.object({ extra: z.optional(z.any()), more: z.nullable(z.unknown()) });',
+      errors: [{ messageId: 'unvalidatedField' }, { messageId: 'unvalidatedField' }],
+    },
     {
       code: 'const s = z.object({ a: z.record(z.string(), z.unknown()) });',
       errors: [{ messageId: 'unvalidatedField', data: { factory: 'z.unknown' } }],
@@ -207,6 +259,8 @@ tester.run('no-handwritten-boundary-guard by input type', noHandwrittenBoundaryG
     "function code(error: unknown, quiet: boolean) { if (!(error instanceof Error) || quiet) { throw error; } return 'code' in error; }",
     "function code(error: unknown) { const isError = error instanceof Error; return isError && 'code' in error; }",
     "function code(error: unknown) { switch (true) { case error instanceof Error: return 'code' in error; default: return false; } }",
+    "function code(error: unknown) { return error instanceof HttpError && 'code' in error; }",
+    "function issues(error: unknown) { return error instanceof z.ZodError && 'issues' in error; }",
   ],
   invalid: [
     {
@@ -251,6 +305,18 @@ tester.run('no-handwritten-boundary-guard by input type', noHandwrittenBoundaryG
     },
     {
       code: "function code(error: unknown) { return !(error instanceof Error) && 'code' in error; }",
+      errors: [{ messageId: 'inlineNarrowing' }],
+    },
+    {
+      code: "function id(data: unknown) { return data instanceof Object && 'id' in data; }",
+      errors: [{ messageId: 'inlineNarrowing' }],
+    },
+    {
+      code: "function name(data: unknown) { if (!(data instanceof Object)) { return undefined; } return 'name' in data; }",
+      errors: [{ messageId: 'inlineNarrowing' }],
+    },
+    {
+      code: "function name(data: unknown) { return data instanceof Map && 'size' in data; }",
       errors: [{ messageId: 'inlineNarrowing' }],
     },
     {

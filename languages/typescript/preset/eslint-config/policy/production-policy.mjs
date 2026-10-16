@@ -19,10 +19,24 @@ function withReactFormat(formats, react) {
   return react ? [...formats, 'PascalCase'] : formats;
 }
 
-function namingConvention({ react }) {
+const ROUTE_HANDLER_FRAMEWORKS = new Set(['next', '@sveltejs/kit', 'astro', '@solidjs/start']);
+
+export function usesRouteHandlerFramework(dependencyNames) {
+  return dependencyNames.some((name) => ROUTE_HANDLER_FRAMEWORKS.has(name));
+}
+
+const routeHandlerNames = {
+  selector: 'function',
+  modifiers: ['exported'],
+  filter: { regex: '^(?:GET|HEAD|POST|PUT|PATCH|DELETE|OPTIONS)$', match: true },
+  format: ['UPPER_CASE'],
+};
+
+function namingConvention({ react, routeHandlers }) {
   const underscores = 'allowSingleOrDouble';
   return [
     'error',
+    ...(routeHandlers ? [routeHandlerNames] : []),
     { selector: 'typeLike', format: ['PascalCase'] },
     {
       selector: 'function',
@@ -43,14 +57,14 @@ function namingConvention({ react }) {
   ];
 }
 
-function productionRules({ react }) {
+function productionRules({ react, routeHandlers }) {
   return {
     curly: ['error', 'all'],
     'no-eval': 'error',
     'no-param-reassign': ['error', { props: false }],
     'no-duplicate-imports': ['error', { allowSeparateTypeImports: true }],
     'no-restricted-properties': ['error', ...productionRestrictedProperties],
-    'nitpicker/naming-convention': namingConvention({ react }),
+    'nitpicker/naming-convention': namingConvention({ react, routeHandlers }),
     'nitpicker/no-magic-numbers': [
       'error',
       {
@@ -83,16 +97,16 @@ function configFileGlobsFor(layout) {
 }
 
 export function productionLayoutConfigFor(layout, options = {}) {
-  if (options.react === true) {
-    return [];
-  }
   return [
     {
       files: layout.sourceGlobs,
       ignores: [...layout.testGlobs, ...layout.sourceTestDirectoryGlobs],
       plugins: { nitpicker: nitpickerRules },
       rules: {
-        'nitpicker/no-unknown-main-folder': ['error', { sourceRoots: layout.sourceRoots }],
+        'nitpicker/no-unknown-main-folder': [
+          'error',
+          { sourceRoots: layout.sourceRoots, react: options.react === true },
+        ],
       },
     },
   ];
@@ -109,7 +123,10 @@ export function productionPolicyConfigFor(layout, options = {}) {
       languageOptions: { parser: tseslint.parser },
       plugins: { '@typescript-eslint': tseslint.plugin, nitpicker: nitpickerRules, regexp },
       rules: {
-        ...productionRules({ react: options.react === true }),
+        ...productionRules({
+          react: options.react === true,
+          routeHandlers: options.routeHandlers === true,
+        }),
         ...productionGuardRules({ react: options.react === true }),
       },
     },

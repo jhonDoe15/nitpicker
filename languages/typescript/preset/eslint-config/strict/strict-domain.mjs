@@ -44,6 +44,11 @@ const IO_GLOBALS = [
   'sessionStorage',
 ];
 
+const GLOBAL_OBJECTS = 'globalThis|window|self|global';
+const GLOBAL_OBJECT = `[object.name=/^(${GLOBAL_OBJECTS})$/]`;
+const ON_GLOBAL_OBJECT = `[object.type='MemberExpression'][object.object.name=/^(${GLOBAL_OBJECTS})$/]`;
+const CLOCK_IMPORTS = 'dayjs|moment';
+
 const MUTATING_ARRAY_METHODS = 'push|pop|shift|unshift|splice|sort|reverse|fill|copyWithin';
 const READONLY_WRAPPER = "TSTypeOperator[operator='readonly']";
 const TRANSFORMS =
@@ -92,7 +97,7 @@ export const domainRestrictedSyntax = [
   },
   {
     selector:
-      "NewExpression[callee.name='Date'][arguments.length=0], CallExpression[callee.property.name=/^(randomUUID|getRandomValues)$/], CallExpression[callee.name=/^(dayjs|moment)$/][arguments.length=0], CallExpression[callee.object.name='DateTime'][callee.property.name=/^(now|local|utc)$/][arguments.length=0]",
+      "NewExpression[callee.name='Date'][arguments.length=0], CallExpression[callee.name='Date'], CallExpression[callee.property.name=/^(randomUUID|getRandomValues)$/], CallExpression[callee.name=/^(dayjs|moment)$/][arguments.length=0], CallExpression[callee.object.name='DateTime'][callee.property.name=/^(now|local|utc)$/][arguments.length=0]",
     message: CLOCK_AND_RANDOM_MESSAGE,
   },
   {
@@ -101,8 +106,19 @@ export const domainRestrictedSyntax = [
       'CallExpression[callee.property.name=/^(fromNow|toNow)$/]',
       "MemberExpression[object.name='Temporal'][property.name='Now']",
       `ImportDeclaration[source.value=/^date-fns/] ImportSpecifier[imported.name=/^(${DATE_FNS_CLOCK_FUNCTIONS})$/]`,
+      `:matches(NewExpression, CallExpression)[callee.type='MemberExpression'][callee.object.name=/^(${GLOBAL_OBJECTS})$/][callee.property.name='Date']`,
+      `MemberExpression${ON_GLOBAL_OBJECT}[object.property.name='Date'][property.name='now']`,
+      `MemberExpression${ON_GLOBAL_OBJECT}[object.property.name='Math'][property.name='random']`,
     ].join(', '),
     message: CLOCK_AND_RANDOM_MESSAGE,
+  },
+  {
+    selector: `MemberExpression${GLOBAL_OBJECT}:matches([property.name=/^(${IO_GLOBALS.join('|')})$/], [property.value=/^(${IO_GLOBALS.join('|')})$/])`,
+    message: IO_GLOBAL_MESSAGE,
+  },
+  {
+    selector: `ImportDeclaration[source.value=/^(${CLOCK_IMPORTS})$/] > :matches(ImportDefaultSpecifier, ImportNamespaceSpecifier)[local.name!=/^(${CLOCK_IMPORTS})$/]`,
+    message: `domain/ code imports dayjs and moment under their own names (\`import dayjs from 'dayjs'\`), so a clock read such as \`dayjs()\` stays visible. ${CLOCK_AND_RANDOM_MESSAGE}`,
   },
   {
     selector:

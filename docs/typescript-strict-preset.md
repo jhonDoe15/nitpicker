@@ -33,7 +33,7 @@ config file is an exception like any other.
   `.fromNow()`, and date-fns `isToday`, `isPast`, `startOfToday` or `formatDistanceToNow`) is reported
   like `Date.now()`.
   It may not reach Node I/O or a client through a `shared/` module it imports
-  (`domain-does-not-reach-io-through-shared`). Time, IDs, and randomness arrive as parameters. A
+  (`domain-does-not-reach-io-through-shared`; an `import type` does not count). Time, IDs, and randomness arrive as parameters. A
   dependency-cruiser rule that flags legitimate code is lifted with an `exceptions` entry that names
   the rule (for example `domain-does-not-import-node-io`), where `paths` are the importing files.
 - `features/<name>/adapters/` performs I/O and calls `domain/`. A feature with no I/O has no
@@ -43,17 +43,25 @@ config file is an exception like any other.
 - Code under `src/main/` lives in `features/`, `shared/` or the composition root
   (`nitpicker/no-unknown-main-folder`): a `services/`, `utils/` or `models/` folder there is
   reported on every file, with the layout in the message, and so is a file directly in `src/main/`
-  other than the composition root and `index.ts` (`src/main/helpers.ts`). Put the code in the
+  other than the composition root and `index.ts` (`src/main/helpers.ts`). Inside
+  `features/<name>/` only `domain/`, `adapters/` and the public `index.ts` are allowed
+  (`features/auth/services/` and `features/auth/helpers.ts` are reported). Put the code in the
   feature that uses it (`domain/` for pure logic, `adapters/` for I/O) or in `shared/` when several
-  features need it. A React project's own UI folders are not reported. The rule reports on line 1,
+  features need it. A React project may also have UI folders directly under `src/main/` (`ui/`,
+  `components/`, `pages/`, `app/`, `routes/`, `views/`, `layouts/`, `screens/`, `hooks/`, `styles/`,
+  `assets/`) and `App.tsx`, and a `ui/` folder in a feature; any other folder, such as
+  `src/main/services/`, is reported there too. The rule reports on line 1,
   so it is not strict: editing a legacy file in `utils/` does not fail, only a new file does.
 - Objects are constructed only in the composition root. Dependencies are passed explicitly. No
   module-level `let`, and no module-level collection or object that the module mutates
   (`nitpicker/no-module-level-mutable-state`: `const cache = new Map()` with `cache.set(...)`,
   `const state = { count: 0 }` with `state.count++` or `state.items.push(x)`, a `Set`, `WeakMap`,
   typed array or `Object.create(null)` that is written to, an array with `push`, and
-  `Object.assign` onto it). An exported `Map`, `Set`, `WeakMap`, `WeakSet`, typed array or
-  `Object.create(null)` is reported where it is declared, since another module can mutate it. Build a lookup table inside a
+  `Object.assign`, `Object.defineProperty` or `Reflect.set` onto it, also through a `const`
+  alias such as `const registry = cache`). An exported `Map`, `Set`, `WeakMap`, `WeakSet`, typed
+  array or `Object.create(null)` is reported where it is declared, since another module can
+  mutate it, unless it is annotated with a readonly type (`ReadonlySet<T>`, `ReadonlyMap<K, V>`,
+  `readonly number[]`). Build a lookup table inside a
   function and return it; create a store in the composition root and pass it in. `domain/` is
   covered by `functional/prefer-immutable-types` instead.
 - The composition root is `src/main/composition-root.ts`, `src/main/main.ts`,
@@ -71,10 +79,14 @@ config file is an exception like any other.
 - `nitpicker/no-process-access-outside-composition-root`: environment variables (`process.env`,
   `import.meta.env`, `Deno.env`) are read only in the composition root, parsed once with a zod
   schema, and the typed config is passed down. `process.exit` is called only in the composition
-  root or a main guard. Entry scripts listed in `layout.entryPoints` and config files
-  (`*.config.*`, `.*rc.*`) are exempt. In a React project `import.meta.env` is allowed anywhere:
-  Vite replaces it with public build-time values (`import.meta.env.DEV`, `VITE_*`). So are
-  `process.env.NODE_ENV` and `process.env.NEXT_PUBLIC_*`, which bundlers replace the same way.
+  root or a main guard. However `process` is reached, it counts: `import { env }` from
+  `node:process`, a namespace, default or `require` import, `const { env, exit } = process`, a
+  `const` alias and `globalThis.process`. Entry scripts listed in `layout.entryPoints` and config
+  files (`*.config.*`, `.*rc.*`) are exempt. In a React project `import.meta.env` is allowed
+  anywhere: Vite replaces it with public build-time values (`import.meta.env.DEV`, `VITE_*`). So
+  are `process.env.NODE_ENV`, `process.env.NEXT_PUBLIC_*`, `process.env.EXPO_PUBLIC_*` and
+  `process.env.REACT_APP_*` written exactly that way, which Next.js, Expo and Create React App
+  replace the same way.
 - `nitpicker/no-branch-in-composition-root`: the composition root (`composition-root.ts`, `main.ts`,
   `server.ts`, plus the `compositionRootPattern` option shared with
   `no-managed-resource-construction-outside-composition-roots`) only wires features with named
@@ -102,7 +114,10 @@ sum + x, 0)`), `Object.fromEntries`, and `Object.groupBy`. No loops, `forEach`, 
   `performance.now` are reported as properties, so `const now = Date.now`, `const { random } =
 Math` and `Math['random']()` are caught; `process`, `fetch`, `setTimeout`, `setInterval`,
   `setImmediate`, `queueMicrotask`, `performance`, `XMLHttpRequest`, `WebSocket`, `localStorage`
-  and `sessionStorage` are restricted globals; `Reflect.set` and its mutating siblings are
+  and `sessionStorage` are restricted globals, also read through `globalThis`, `window`, `self`
+  or `global` (`globalThis.fetch(url)`, `globalThis.Date.now()`); `Date()` without `new` reads the
+  clock too; `dayjs` and `moment` are imported under their own names so `dayjs()` stays visible;
+  `Reflect.set` and its mutating siblings are
   restricted like `Object.assign`.
 - Expected failures are returned as discriminated unions, never thrown. TypeScript has no checked
   exceptions, so a result type is the only way the compiler forces every caller to handle a new
@@ -115,8 +130,9 @@ Math` and `Math['random']()` are caught; `process`, `fetch`, `setTimeout`, `setI
   `domain/` writes its own readonly type for the value. Do not write `z.infer<typeof schema>`
   in `domain/`: importing the schema type from `adapters/` breaks the layer rule, and a schema
   defined in `domain/` is itself mutable. A zod output is assignable to the readonly type, so
-  `adapters/` parses and passes the result in. An alias of `unknown` (`type Raw = unknown`) is
-  reported like `unknown`. `unknown` as a
+  `adapters/` parses and passes the result in. An alias that is or contains `unknown`
+  (`type Raw = unknown`, `type JsonObject = Readonly<Record<string, unknown>>`), also one imported
+  from another file, is reported like `unknown`. `unknown` as a
   generic bound or default (`<T extends unknown>`, `<T = unknown>`), a return type, a variable or a
   `catch (error: unknown)` is not reported, and neither is a bare `cause: unknown` or `error: unknown`
   that carries a caught error through a failure result. An opaque value needs an exception in the
@@ -148,8 +164,9 @@ Math` and `Math['random']()` are caught; `process`, `fetch`, `setTimeout`, `setI
 - Throw only for unexpected failures, using `Error` subclasses that preserve `cause`. Convert
   library exceptions into domain results at the boundary. `nitpicker/preserve-error-cause` checks
   `Error` and every class whose name ends in `Error`: one thrown in a `catch` is reported unless
-  it passes `{ cause: error }` as an option or the caught value itself as an argument, whether or
-  not it mentions the caught value (`throw new AppError('range')` and
+  it passes `{ cause: error }` as an option or the caught value itself as an argument (also inside
+  an array, as in `new AggregateError([error, closeError], message)`, or through a
+  `const cause = error`), whether or not it mentions the caught value (`throw new AppError('range')` and
   `new AppError(String(error))` are both reported).
 - `nitpicker/no-silent-catch`: a `catch` must hand the failure on. It passes when it uses the
   caught value (rethrow an `Error` subclass with `{ cause: error }`, log it, or return it in a
@@ -158,13 +175,15 @@ Math` and `Math['random']()` are caught; `process`, `fetch`, `setTimeout`, `setI
   is slop. A `catch` that falls through, or returns a non-object such as `undefined` or `[]`, is
   reported. A deliberately dropped error needs an exception in the config file.
 - `nitpicker/no-unvalidated-schema-field` (all production code): no `z.unknown()` or `z.any()`
-  (also with `.optional()`, `.nullable()`, `.default()` and similar wrappers) as a field of
-  `z.object`, `z.strictObject` or `z.looseObject`. A schema that only checks the shape hands the
+  (also with `.optional()`, `.nullable()`, `.default()` and similar wrappers, `z.optional(...)`,
+  `z.nullable(...)`, `z.nullish(...)` and `z.readonly(...)`) as a field of `z.object`,
+  `z.strictObject` or `z.looseObject`, or of a shape passed to `.extend`, `.safeExtend` or
+  `.augment`. A schema that only checks the shape hands the
   field on unchecked, and `domain/` then re-validates it by hand. Validate the field in the schema
   (`z.string().trim().min(1)`, `z.email()`). `z.array(z.unknown())` or `z.unknown()` as a whole
   schema, and `z.unknown().refine(...)`/`.pipe(...)`, are not reported. The check looks through
-  `z.record`, `z.array`, `z.set`, `z.map` and `z.tuple` elements (`z.record(z.string(), z.unknown())`
-  as a field is reported) and through a same-file `const` (`const anything = z.any()`). `z.custom<T>()`
+  `z.record`, `z.array`, `z.set`, `z.map` and `z.tuple` elements and `.array()`
+  (`z.record(z.string(), z.unknown())` and `z.unknown().array()` as a field are reported) and through a same-file `const` (`const anything = z.any()`). `z.custom<T>()`
   without a check function is a cast, and `z.looseObject()`, `.loose()`, `.passthrough()` and
   `.catchall(z.unknown())` let unknown keys through: use `z.object({...})` or
   `z.strictObject({...})`.
@@ -174,9 +193,11 @@ Math` and `Math['random']()` are caught; `process`, `fetch`, `setTimeout`, `setI
   `{}` or `Record<string, unknown>`, an `unknown` value narrowed inline with `typeof x ===
 'object'` or `'key' in x`, and an overload whose implementation returns `unknown` or `any`. A
   predicate over a union (`(result): result is Ok => result.kind === 'ok'`) is fine, and so is
-  `error instanceof Error` on a caught value, including the checks it narrows: later in the same
-  `&&` chain, inside the `if` or `?:` it guards, or after an earlier
-  `if (!(error instanceof Error))` exit (`error instanceof Error && 'code' in error`).
+  `error instanceof Error` (or another class named `...Error` or `...Exception`, such as
+  `z.ZodError`) on a caught value, including the checks it narrows: later in the same `&&` chain,
+  inside the `if` or `?:` it guards, or after an earlier `if (!(error instanceof Error))` exit
+  (`error instanceof Error && 'code' in error`). `instanceof Object` or any other class does not
+  count as a guard.
   `JSON.parse(JSON.stringify(value))` as a copy is reported: use `structuredClone(value)`.
 
 ## Everywhere
@@ -187,7 +208,11 @@ Math` and `Math['random']()` are caught; `process`, `fetch`, `setTimeout`, `setI
   shared code), not in tests. A reference counts when it is called, constructed or passed to an
   array method (`map`, `flatMap`, `forEach`, `filter`, `reduce`, `sort` and the like); a
   component that renders itself in JSX, `setTimeout(poll)` and an event handler that removes
-  itself are not reported. Allowed forms: a retry or poll
+  itself are not reported. A call inside a callback counts as the enclosing function's call when
+  the callback is an array-method callback or is passed to a call whose result is used
+  (`await limit(() => crawl(link))`); a callback handed to a timer or an event registration
+  (`setTimeout`, `on`, `addEventListener`, `subscribe` and the like) or to a call written as a bare
+  statement is its own function. Allowed forms: a retry or poll
   is a `for...of` over attempt numbers with `await` inside the loop; a tree walk (directories, AST,
   JSON) is a `for...of` over a worklist that each step pushes the node's children onto
   (`for (const node of pending) { pending.push(...children) }`); flat data uses `map`, `filter`,
@@ -208,10 +233,15 @@ Math` and `Math['random']()` are caught; `process`, `fetch`, `setTimeout`, `setI
   variables and parameters in camelCase; constants may be UPPER_CASE; a leading underscore is
   allowed. A schema constant may be PascalCase when its initializer starts from a binding imported
   from `zod`, `valibot` or `yup`, under any name (`const Order = z.object(...)`, then
-  `type Order = z.infer<typeof Order>`, or a bare `object({...})` imported from valibot), and so may
-  a parameter typed as a component (`ComponentType`, `FC`, `ElementType`) or named `*Component`.
-  PascalCase functions and variables are allowed in a React project. Names a destructuring takes
-  from external data are not checked.
+  `type Order = z.infer<typeof Order>`, or a bare `object({...})` imported from valibot), or from
+  another schema constant (`const CreateOrder = Order.omit({ id: true })`), or from an imported
+  PascalCase binding through a schema method such as `.extend`, `.omit`, `.pick` or `.array`
+  (`const Event = BaseEvent.extend({...})`), and so may a parameter typed as a component
+  (`ComponentType`, `FC`, `ElementType`) or named `*Component`. PascalCase functions and variables
+  are allowed in a React project. When the project depends on a framework with file-based route
+  handlers (`next`, `@sveltejs/kit`, `astro`, `@solidjs/start`), an exported function named
+  `GET`, `HEAD`, `POST`, `PUT`, `PATCH`, `DELETE` or `OPTIONS` is allowed. Names a destructuring
+  takes from external data are not checked.
 - Exported production functions declare their return type
   (`@typescript-eslint/explicit-module-boundary-types`): `export function total(rows: readonly Row[]): number`;
   a React component returns `ReactElement`. A function typed by its variable
@@ -220,22 +250,32 @@ Math` and `Math['random']()` are caught; `process`, `fetch`, `setTimeout`, `setI
   `@typescript-eslint/no-magic-numbers`): name the number with a module-level constant; any number
   in its initializer is allowed (`const SECONDS_PER_DAY = 24 * 60 * 60;`,
   `const RETRY_STATUSES = [429, 503] as const;`). `-1`, `0`, `1`, `2`, `10`, `100` and `1000`
-  (so `Math.round(x * 100) / 100`), an HTTP status code passed to `status`, `sendStatus`, `json`,
-  `send`, `redirect`, `code` or `writeHead` (`res.status(404)`, `c.json(body, 201)`), the digits of
-  `toFixed(2)` and `toPrecision(3)`, default parameter values, array indexes, numeric literal types
+  (so `Math.round(x * 100) / 100`), an HTTP status code in the status argument of a response or
+  error call (the first argument of `status`, `sendStatus`, `code`, `writeHead` and a bare `error` or
+  `fail`, the second of `text`, `json`, `body` and `html`, either of `redirect`, `throw` and a
+  callee named `...Error` or `...Exception`: `res.status(404)`, `c.json(body, 201)`,
+  `new HttpException('gone', 410)`), the digits of `toFixed(2)` and `toPrecision(3)`, default parameter values, array indexes, numeric literal types
   and object property values are allowed. `x % 7` is reported: name the divisor. Tests are exempt.
 - Security: no `eval` (`no-eval`); no regular expression with nested or overlapping quantifiers
   that backtracks super-linearly (`regexp/no-super-linear-backtracking`, from `eslint-plugin-regexp`);
   no shell command built from a variable or template (`nitpicker/no-shell-string-command`: `exec`
   and `execSync`, also through `promisify(exec)`, take a string literal or a `const` holding one,
-  otherwise `execFile(program, [args])`, and `shell: true` is reported); no `Math.random` for ids
+  otherwise `execFile(program, [args])`; `shell: true` is reported, also in a `const` options
+  object or a spread of one, and so is `sh`, `bash`, `zsh` or `cmd` run through
+  `spawn`/`execFile` with `-c` (`/c`) and a command that is not a string literal); no
+  `Math.random` for ids
   or tokens (use `crypto.randomUUID()` or `crypto.randomInt()`, or take the value as a parameter);
-  no `fs` call on a `path.join`/`path.resolve` whose later segment comes from a parameter (also
-  through a `const` alias or a call on it, such as `c.req.param('file')` or `req.query.name`)
-  unless the same function checks containment on the joined variable
-  (`nitpicker/no-unsafe-path-join`: `const full = path.resolve(base, name)`, then
-  `full.startsWith(base + path.sep)` or `path.relative(base, full)`). A parameter as the first
-  segment is the base and is fine (`path.join(dir, 'package.json')`).
+  no `fs` call on a path built from a parameter after its first segment (`path.join`,
+  `path.resolve`, a template literal `` `${dir}/${name}` `` or `+`, also inside
+  `path.normalize`/`path.resolve`, through a `const` or `let` variable, or a call on a parameter
+  such as `c.req.param('file')` or `req.query.name`) unless the function checks containment on
+  the variable in an `if` that returns, throws, `continue`s or `break`s before the call, or wraps
+  the call in the `if`'s passing branch (`nitpicker/no-unsafe-path-join`:
+  `const full = path.resolve(base, name); if (!full.startsWith(base + path.sep)) return ...`, or
+  `if (path.relative(base, full).startsWith('..')) throw ...`). The prefix must end in a
+  separator (`base + path.sep`, `` `${base}/` ``, `'/srv/'`): `full.startsWith(base)` also
+  accepts `/srv-other`. A parameter as the first segment is the base and is fine
+  (`path.join(dir, 'package.json')`).
 - Named exports list their names: no `export *`, which makes every internal export of a feature's
   `index.ts` public (`export { name } from './domain/x.js'`).
 - Cognitive complexity of at most 15 per function, tests included (`nitpicker/cognitive-complexity`).

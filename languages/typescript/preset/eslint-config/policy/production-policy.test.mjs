@@ -8,9 +8,9 @@ const layout = { ...defaultResolvedLayout, entryPoints: ['src/scripts/*.ts'] };
 
 const RETURN_TYPE_RULE = '@typescript-eslint/explicit-module-boundary-types';
 
-function allRuleIds(filename, code, { react = false } = {}) {
+function allRuleIds(filename, code, { react = false, routeHandlers = false } = {}) {
   const config = [
-    ...productionPolicyConfigFor(layout, { react }),
+    ...productionPolicyConfigFor(layout, { react, routeHandlers }),
     ...productionLayoutConfigFor(layout, { react }),
     ...strictSyntaxConfigFor(layout, { react }),
   ];
@@ -146,6 +146,14 @@ describe('identifier casing', () => {
       "import * as yup from 'yup'; export const User = yup.object({ name: yup.string() });",
     ],
     [
+      'a schema derived from a schema constant',
+      "import { z } from 'zod'; const User = z.object({}); const CreateUser = User.omit({ id: true }); export const Users = CreateUser.array();",
+    ],
+    [
+      'a schema derived from an imported schema',
+      "import { BaseEvent } from './events.js'; export const Event = BaseEvent.extend({});",
+    ],
+    [
       'a component parameter',
       'export function withLog(Component: ComponentType) { return Component; }',
     ],
@@ -164,6 +172,11 @@ describe('identifier casing', () => {
       'a bare object() from another library',
       "import { object } from './builders.js'; export const Order = object({});",
     ],
+    ['a call on a local value', 'const make = build(); export const Order = make.extend({});'],
+    [
+      'an imported value that is not derived as a schema',
+      "import { Store } from './store.js'; export const Order = Store.load();",
+    ],
   ])('still rejects a PascalCase constant built by %s', (_name, code) => {
     expect(ruleIds(adapter, code)).toEqual(['nitpicker/naming-convention']);
   });
@@ -178,6 +191,22 @@ describe('identifier casing', () => {
     expect(ruleIds(adapter, 'export const key = process.env.SECRET;', { react: true })).toEqual([
       rule,
     ]);
+  });
+
+  it('allows HTTP method names for exported route handlers only in a route-handler framework', () => {
+    const code = 'export async function GET() { return 1; } export function DELETE() { return 1; }';
+    const naming = 'nitpicker/naming-convention';
+
+    expect(ruleIds(adapter, code, { routeHandlers: true })).toEqual([]);
+    expect(ruleIds(adapter, code)).toEqual([naming, naming]);
+    expect(
+      ruleIds(adapter, 'function GET() { return 1; } export const g = GET;', {
+        routeHandlers: true,
+      }),
+    ).toEqual([naming]);
+    expect(
+      ruleIds(adapter, 'export function FETCH() { return 1; }', { routeHandlers: true }),
+    ).toEqual([naming]);
   });
 
   it('allows PascalCase functions and variables only in a React project', () => {
@@ -209,6 +238,15 @@ describe('magic numbers and other basics', () => {
       'export function f(r: R) { return r.size === 404; }',
     ],
     ['a number outside the status range', 'export function f(r: R) { return r.status === 600; }'],
+    ['a padding width', 'export function f(text: string) { return text.padEnd(120); }'],
+    ['a batch size', 'export function f(send: Send, xs: Xs) { send(xs, 500); }'],
+    ['canvas coordinates', "export function f(ctx: Ctx) { ctx.fillText('hi', 240, 0); }"],
+    ['a timeout', 'export function f(extendTimeout: Grow) { extendTimeout(300); }'],
+    [
+      'a status-sized number after the status argument',
+      'export function f(res: Res) { res.status(404, 300); }',
+    ],
+    ['a buffer size passed to append', 'export function f(b: B) { b.append(b, 256); }'],
   ])('rejects %s', (_name, code) => {
     expect(ruleIds(adapter, code)).toEqual(['nitpicker/no-magic-numbers']);
   });
@@ -232,6 +270,10 @@ describe('magic numbers and other basics', () => {
     ['a Hono text reply', "export function f(c: C) { return c.text('missing', 404); }"],
     ['an error factory', "export function f() { throw createError(409, 'conflict'); }"],
     ['an HTTP exception', "export function f() { throw new HttpException('gone', 410); }"],
+    ['a status-only reply', 'export function f(res: Res) { res.sendStatus(204); }'],
+    ['a header write', 'export function f(res: Res) { res.writeHead(404, {}); }'],
+    ['a redirect', "export function f(c: C) { return c.redirect('/home', 301); }"],
+    ['a SvelteKit error', "export function f() { throw error(404, 'missing'); }"],
     ['rounding digits', 'export function f(x: number) { return x.toFixed(3); }'],
     ['percent scaling', 'export function f(x: number) { return Math.round(x * 100) / 100; }'],
   ])('allows %s', (_name, code) => {
@@ -263,6 +305,9 @@ describe('magic numbers and other basics', () => {
 
     expect(ruleIds(file, 'export const panel = 1;')).toEqual(['nitpicker/no-unknown-main-folder']);
     expect(ruleIds(file, 'export const panel = 1;', { react: true })).toEqual([]);
+    expect(ruleIds('src/main/services/api.ts', 'export const api = 1;', { react: true })).toEqual([
+      'nitpicker/no-unknown-main-folder',
+    ]);
   });
 
   it('requires a return type on exported production functions, components included', () => {

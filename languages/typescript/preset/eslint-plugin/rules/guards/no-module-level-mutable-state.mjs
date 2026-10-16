@@ -93,17 +93,27 @@ function outermostMember(identifier) {
   return chain.at(-1);
 }
 
+const MUTATING_STATICS = {
+  Object: new Set(['assign', 'defineProperty', 'defineProperties', 'setPrototypeOf']),
+  Reflect: new Set(['set', 'defineProperty', 'deleteProperty', 'setPrototypeOf']),
+};
+
+function isMutatingStaticTarget(identifier) {
+  const { parent } = identifier;
+  const callee = parent.type === 'CallExpression' ? parent.callee : undefined;
+  return (
+    parent.arguments?.[0] === identifier &&
+    callee?.type === 'MemberExpression' &&
+    !callee.computed &&
+    MUTATING_STATICS[callee.object.name]?.has(callee.property.name) === true
+  );
+}
+
 function isMutatedBy(identifier, ownMethodsMutate) {
   const member = outermostMember(identifier);
   const { parent } = member;
   if (member === identifier) {
-    return (
-      parent.type === 'CallExpression' &&
-      parent.arguments[0] === identifier &&
-      parent.callee.type === 'MemberExpression' &&
-      parent.callee.object.name === 'Object' &&
-      parent.callee.property.name === 'assign'
-    );
+    return isMutatingStaticTarget(identifier);
   }
   const mutatingCall =
     parent.type === 'CallExpression' &&
@@ -153,13 +163,36 @@ function isExportedCollection(declarator) {
   );
 }
 
+function aliasDeclarator(identifier) {
+  const { parent } = identifier;
+  return parent.type === 'VariableDeclarator' &&
+    parent.init === identifier &&
+    parent.id.type === 'Identifier' &&
+    parent.parent.kind === 'const'
+    ? parent
+    : undefined;
+}
+
+function referencesWithAliases(context, declarator) {
+  const variables = [...context.sourceCode.getDeclaredVariables(declarator)];
+  const identifiers = [];
+  for (const variable of variables) {
+    const reads = variable.references.map(({ identifier }) => identifier);
+    identifiers.push(...reads);
+    const aliases = reads.map(aliasDeclarator).filter((alias) => alias !== undefined);
+    variables.push(...aliases.flatMap((alias) => context.sourceCode.getDeclaredVariables(alias)));
+  }
+  return identifiers;
+}
+
 function stateReport(context, declarator) {
   if (isExportedCollection(declarator)) {
     return 'exportedState';
   }
-  const variable = context.sourceCode.getDeclaredVariables(declarator).at(0);
   const ownMethodsMutate = hasMutatingMethods(declarator.init);
-  return variable?.references.some(({ identifier }) => isMutatedBy(identifier, ownMethodsMutate))
+  return referencesWithAliases(context, declarator).some((identifier) =>
+    isMutatedBy(identifier, ownMethodsMutate),
+  )
     ? 'moduleState'
     : undefined;
 }
@@ -173,7 +206,7 @@ export const rule = {
       moduleState:
         "Module-level '{{name}}' is mutated, which is hidden shared state. Build a lookup table inside a function and return it, create shared state in the composition root and pass it in, or return a new value instead of mutating. If it is a deliberate per-process singleton, add an exception for this rule in nitpicker.config.json.",
       exportedState:
-        "Module-level '{{name}}' is an exported mutable collection that any importer can change. Build it inside a function and return it, or create it in the composition root and pass it in. If it is a deliberate per-process singleton, add an exception for this rule in nitpicker.config.json.",
+        "Module-level '{{name}}' is an exported mutable collection that any importer can change. If importers only read it, annotate it with a readonly type (`ReadonlySet<T>`, `ReadonlyMap<K, V>`, `readonly number[]`); otherwise build it inside a function and return it, or create it in the composition root and pass it in. If it is a deliberate per-process singleton, add an exception for this rule in nitpicker.config.json.",
     },
   },
   create(context) {
