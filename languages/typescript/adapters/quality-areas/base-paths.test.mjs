@@ -44,12 +44,11 @@ function snapshots(baseFiles, headFiles) {
   };
 }
 
-function siblingRows(options) {
-  return runQualityArea(parseArguments(options)).then((findings) =>
-    findings
-      .filter(({ rule }) => rule === 'sibling-copy-edit')
-      .map(({ path: file, message }) => [file, message.split(',')[0]]),
-  );
+async function siblingRows(options) {
+  const findings = await runQualityArea(parseArguments(options));
+  return findings
+    .filter(({ rule }) => rule === 'sibling-copy-edit')
+    .map(({ path: file, message }) => [file, message.split(',')[0]]);
 }
 
 describe('baselinePathsOf', () => {
