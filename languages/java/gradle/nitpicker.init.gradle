@@ -45,6 +45,29 @@ def writeRules = { String kind, File plan ->
         throw new GradleException("nitpicker could not write the ${kind} configuration: ${log.trim()}")
     }
 }
+def toolCommands = new groovy.json.JsonSlurper().parse(new File(initScriptDir, '../builds/tools/tool-commands.json'))
+def expandedToken = { token, Map values ->
+    if (token instanceof String) {
+        return [token]
+    }
+    if (token.each != null) {
+        return values[token.each].collectMany { token.flag == null ? [it.toString()] : [token.flag, it.toString()] }
+    }
+    def separator = token.separator == 'path' ? File.pathSeparator : token.separator
+    def value = token.join == null ? values[token.value].toString()
+        : values[token.join].collect { it.toString() }.join(separator)
+    [(token.prefix ?: '') + value]
+}
+def toolCommand = { String tool, Map values ->
+    def command = toolCommands[tool]
+    [
+        args   : command.args.collectMany { expandedToken(it, values) },
+        accepts: { int code ->
+            (command.accept.exits == null || code in command.accept.exits) &&
+                (command.accept.report == null || new File(values[command.accept.report].toString()).exists())
+        },
+    ]
+}
 def compilerOf = { compile ->
     [
         release : compile.options.release.orNull?.toString(),
@@ -74,6 +97,7 @@ allprojects {
         project.ext.nitpickerRelativeToRoot = relativeToRoot
         project.ext.nitpickerAnalysisRoot = analysisRoot
         project.ext.nitpickerCompilerOf = compilerOf
+        project.ext.nitpickerToolCommand = toolCommand
 
         configurations {
             nitpickerPmd { canBeConsumed = false }
@@ -176,7 +200,8 @@ allprojects {
             dependsOn allClassesTasks
             classpath = configurations.nitpickerPmd
             mainClass = 'net.sourceforge.pmd.cli.PmdCli'
-            ignoreExitValue = true // PMD exits 4 when it finds violations
+            ignoreExitValue = true
+            def command = null
             def nitpickerRulesets = nitpickerArgument('nitpicker.pmd.nitpickerConfig') != 'false'
             def projectRuleset = nitpickerArgument('nitpicker.pmd.projectConfig')
             doFirst {
@@ -198,13 +223,19 @@ allprojects {
                     project        : projectRuleset,
                 ])
                 writeRules('pmd', plan)
-                def rulesets = reportDir.get().file('pmd-rulesets.txt').asFile.text
-                args 'check', '--no-cache', '--no-progress', '--format', 'sarif',
-                    '--report-file', reportDir.get().file('pmd.sarif').asFile.absolutePath,
-                    '--rulesets', rulesets,
-                    '--aux-classpath', "file:${auxClasspath.absolutePath}",
-                    '--suppress-marker', 'NITPICKER-NO-INLINE-SUPPRESSION',
-                    '--dir', lintedSources().join(',')
+                command = toolCommand('pmd', [
+                    report      : reportDir.get().file('pmd.sarif').asFile.absolutePath,
+                    rulesets    : reportDir.get().file('pmd-rulesets.txt').asFile.text.split(',').toList(),
+                    auxClasspath: auxClasspath.absolutePath,
+                    directories : lintedSources()*.absolutePath,
+                ])
+                args command.args
+            }
+            doLast {
+                def code = executionResult.get().exitValue
+                if (!command.accepts(code)) {
+                    throw new GradleException("PMD failed with exit code ${code} and wrote no report")
+                }
             }
         }
 
