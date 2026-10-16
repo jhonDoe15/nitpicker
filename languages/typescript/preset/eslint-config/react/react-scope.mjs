@@ -1,6 +1,6 @@
-import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import tseslint from 'typescript-eslint';
+import { readJsonc } from '../../modules/tsconfig-files.mjs';
 import { nitpickerRules } from '../../eslint-plugin/index.mjs';
 import { cssInJsSource } from '../../eslint-plugin/rules/react/react-single-styling-approach.mjs';
 import { codeExtensions } from '../../layout.mjs';
@@ -28,18 +28,8 @@ export { isReactProject } from '../scope-support.mjs';
 const typedRuleIds = typedReactXRules.map((name) => `react-x/${name}`);
 const untypedThirdPartyRuleIds = thirdPartyReactRuleIds.filter((id) => !typedRuleIds.includes(id));
 
-function installedReactVersion(projectRoot) {
-  try {
-    return JSON.parse(
-      readFileSync(path.join(projectRoot, 'node_modules/react/package.json'), 'utf8'),
-    ).version;
-  } catch {
-    return undefined;
-  }
-}
-
 function reactMajorOf(projectRoot) {
-  const installed = installedReactVersion(projectRoot);
+  const installed = readJsonc(path.join(projectRoot, 'node_modules/react/package.json'))?.version;
   const manifest = readManifest(projectRoot);
   const declared = manifest?.dependencies?.react ?? manifest?.devDependencies?.react;
   const major = /\d+/u.exec(typeof installed === 'string' ? installed : String(declared ?? ''));

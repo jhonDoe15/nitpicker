@@ -26,7 +26,9 @@ const probe = {
 function projectWith(files) {
   const root = mkdtempSync(path.join(tmpdir(), 'nitpicker-react-test-files-'));
   temporaryRoots.push(root);
-  const tsconfig = { compilerOptions: { baseUrl: '.', paths: { '@/*': ['src/*'] } } };
+  const tsconfig = {
+    compilerOptions: { baseUrl: '.', paths: { '@/*': ['src/*'] }, types: [], lib: ['ES2022'] },
+  };
   for (const [file, text] of Object.entries({
     'tsconfig.json': JSON.stringify(tsconfig),
     ...files,
