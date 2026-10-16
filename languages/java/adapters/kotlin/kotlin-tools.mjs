@@ -1,5 +1,10 @@
 import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
+import {
+  KOTLIN_INDENTATION,
+  KOTLIN_TRAILING_COMMAS,
+  KOTLIN_WILDCARD_IMPORTS,
+} from '../../conventions/kotlin-conventions.mjs';
 
 const BUILD_FILES = [
   'build.gradle',
@@ -68,11 +73,18 @@ function detectFormatter({ build, editorconfig }) {
   return editorconfig.includes('ktlint_') ? 'ktlint' : 'none';
 }
 
-function ktfmtStyle(build) {
-  if (build.includes('kotlinlangstyle')) {
-    return 'kotlinlang';
+const NAMED_KTFMT_STYLES = [
+  ['kotlinlangstyle', 'kotlinlang'],
+  ['googlestyle', 'google'],
+  ['metastyle', 'meta'],
+];
+
+function ktfmtStyle(build, conventions) {
+  const named = NAMED_KTFMT_STYLES.find(([call]) => build.includes(call));
+  if (named !== undefined) {
+    return named[1];
   }
-  return build.includes('googlestyle') ? 'google' : 'meta';
+  return conventions[KOTLIN_INDENTATION] === '4' ? 'kotlinlang' : 'meta';
 }
 
 function detektConfigOf(projectRoot, configured, snapshot) {
@@ -88,15 +100,32 @@ function detektConfigOf(projectRoot, configured, snapshot) {
   return configured;
 }
 
-export function resolveKotlinTools(projectRoot, { formatter, detektConfig, snapshot } = {}) {
+export function resolveKotlinTools(
+  projectRoot,
+  { formatter, detektConfig, snapshot, conventions = {} } = {},
+) {
   const build = buildText(projectRoot);
   const editorconfig = readIfExists(projectRoot, EDITORCONFIG);
   return {
     formatter: formatter ?? detectFormatter({ build, editorconfig }),
-    ktfmtStyle: ktfmtStyle(build),
+    ktfmtStyle: ktfmtStyle(build, conventions),
     editorconfig: existsSync(path.join(projectRoot, EDITORCONFIG)),
     detektConfig: detektConfigOf(projectRoot, detektConfig, snapshot),
   };
+}
+
+function conventionProperties(conventions) {
+  return [
+    ...(conventions[KOTLIN_INDENTATION] === undefined
+      ? []
+      : [`-Pnitpicker.kotlin.indentSize=${conventions[KOTLIN_INDENTATION]}`]),
+    ...(conventions[KOTLIN_TRAILING_COMMAS] === 'never'
+      ? ['-Pnitpicker.kotlin.trailingCommas=never']
+      : []),
+    ...(conventions[KOTLIN_WILDCARD_IMPORTS] === 'wildcard'
+      ? ['-Pnitpicker.kotlin.wildcardImports=allow']
+      : []),
+  ];
 }
 
 export function kotlinGradleArguments(projectRoot, options) {
@@ -109,5 +138,6 @@ export function kotlinGradleArguments(projectRoot, options) {
     ...(tools.detektConfig === undefined
       ? []
       : [`-Pnitpicker.kotlin.detektConfig=${path.join(projectRoot, tools.detektConfig)}`]),
+    ...conventionProperties(options?.conventions ?? {}),
   ];
 }

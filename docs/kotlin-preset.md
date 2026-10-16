@@ -231,9 +231,22 @@ override there.
   message with its numbers replaced, like detekt's. **Exception route.** Turn a rule off in
   `.editorconfig`: `ktlint_standard_no-wildcard-imports = disabled` (`ktlint_<ruleset>_<rule>`),
   or drop findings under a path with `exclude`.
+
+Two styles are equally valid in each of these, so the preset follows the project (the
+[`conventions`](usage.md#configuration) key pins them). Most Kotlin files indenting by 2 or by 4
+(`kotlin.indentation`) sets ktlint's `indent_size` and chooses ktfmt's `meta` or `kotlinlang`; most
+wrapped call and declaration lists ending without a comma (`kotlin.trailingCommas` `never`) sets
+`ij_kotlin_allow_trailing_comma` and `ij_kotlin_allow_trailing_comma_on_call_site` to `false` for ktlint
+(ktfmt adds the commas itself); most files that have a wildcard import (`kotlin.wildcardImports`
+`wildcard`) turns off ktlint's `no-wildcard-imports` and detekt's `WildcardImport`. For ktlint they
+are defaults that the project's own `.editorconfig` overrides, for detekt a layer below the
+project's `detekt.yml`. A project with no clear majority keeps ktlint's code style (`ktlint_official`:
+4 spaces, trailing commas) and the ban on wildcard imports. The scope-function rules do not change.
+
 - **ktfmt.** `--dry-run` lists the files that would change. The style is `--kotlinlang-style` or
   `--google-style` when the build files name `kotlinLangStyle`/`googleStyle`, else ktfmt's default
-  (Meta); `--enable-editorconfig` is passed when the project has an `.editorconfig`. One `format`
+  (Meta), or `--kotlinlang-style` when the build names no style and most Kotlin files indent by 4
+  (`kotlin.indentation`); `--enable-editorconfig` is passed when the project has an `.editorconfig`. One `format`
   finding per file, tool `ktfmt`, identity `format`; a file that already failed on the base stays
   baselined, new files and files that start failing do not.
 

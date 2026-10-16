@@ -33,7 +33,10 @@
 // the formatter, the ktfmt style and the detekt config and passes them as the properties
 // nitpicker.kotlin.formatter (ktlint, ktfmt or none), nitpicker.kotlin.ktfmtStyle (kotlinlang,
 // google or meta), nitpicker.kotlin.editorconfig (true when the project has an .editorconfig) and
-// nitpicker.kotlin.detektConfig (an absolute path). PMD and SpotBugs then
+// nitpicker.kotlin.detektConfig (an absolute path). The conventions the project follows come as
+// nitpicker.kotlin.indentSize (2 or 4), nitpicker.kotlin.trailingCommas (never) and
+// nitpicker.kotlin.wildcardImports (allow). ktlint takes them as defaults that the project's
+// .editorconfig overrides, detekt as a layer below the project's config. PMD and SpotBugs then
 // only see the Java sources and classes; JaCoCo, PIT and jdeps cover both languages.
 //
 // ArchUnit is not a Nitpicker-provided tool: the project's own ArchUnit tests (archunit-junit5 on
@@ -545,12 +548,18 @@ allprojects {
                         }
                         def typeResolutionClasspath = (configurations.nitpickerDetektStdlib.files + analyzedClassDirs().findAll { it.exists() } + libraries)
                             .collect { it.absolutePath }.join(File.pathSeparator)
+                        def conventionConfig = new File(temporaryDir, 'followed-conventions.yml')
+                        def conventionLayers = []
+                        if (nitpickerArgument('nitpicker.kotlin.wildcardImports') == 'allow') {
+                            conventionConfig.text = 'style:\n  WildcardImport:\n    active: false\n'
+                            conventionLayers = [conventionConfig.absolutePath]
+                        }
                         args(['--input', kotlinSourceDirs().join(','),
                               '--includes', '**/*.kt',
                               '--report', "sarif:${report.get().asFile.absolutePath}".toString(),
                               '--base-path', projectDir.absolutePath,
                               '--build-upon-default-config',
-                              '--config', ([projectConfig, nitpickerConfig.absolutePath, validationOff.absolutePath]).findAll { it }.join(','),
+                              '--config', (conventionLayers + [projectConfig, nitpickerConfig.absolutePath, validationOff.absolutePath]).findAll { it }.join(','),
                               '--classpath', typeResolutionClasspath,
                               '--jdk-home', System.getProperty('java.home')])
                     }
@@ -575,8 +584,26 @@ allprojects {
                         standardOutput = log
                         errorOutput = log
                         report.get().asFile.delete()
+                        def styleDefaults = []
+                        def indentSize = nitpickerArgument('nitpicker.kotlin.indentSize')
+                        if (indentSize) {
+                            styleDefaults << "indent_size = ${indentSize}".toString()
+                        }
+                        if (nitpickerArgument('nitpicker.kotlin.trailingCommas') == 'never') {
+                            styleDefaults << 'ij_kotlin_allow_trailing_comma = false'
+                            styleDefaults << 'ij_kotlin_allow_trailing_comma_on_call_site = false'
+                        }
+                        if (nitpickerArgument('nitpicker.kotlin.wildcardImports') == 'allow') {
+                            styleDefaults << 'ktlint_standard_no-wildcard-imports = disabled'
+                        }
+                        def defaultsArguments = []
+                        if (!styleDefaults.isEmpty()) {
+                            def defaultsFile = new File(temporaryDir, 'followed-conventions.editorconfig')
+                            defaultsFile.text = (['[*.{kt,kts}]'] + styleDefaults).collect { it + '\n' }.join('')
+                            defaultsArguments = ["--editorconfig=${defaultsFile.absolutePath}".toString()]
+                        }
                         args(['--relative', "--reporter=sarif,output=${report.get().asFile.absolutePath}".toString()] +
-                            kotlinSourceDirs().collect { "${relative(it)}/**/*.kt".toString() })
+                            defaultsArguments + kotlinSourceDirs().collect { "${relative(it)}/**/*.kt".toString() })
                     }
                     doLast {
                         if (executionResult.get().exitValue > 1 || !report.get().asFile.exists()) {

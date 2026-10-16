@@ -1,4 +1,5 @@
 import { realpathSync } from 'node:fs';
+import { readHeadPolicyFile } from '../../../shared/head-policy.mjs';
 import { collectJavaFindings } from './java-diff.mjs';
 import { detectJavaBuild } from '../builds/java-build.mjs';
 import { GRADLE_PRESETS } from './gradle-presets.mjs';
@@ -168,9 +169,11 @@ function realpathOptional(directory) {
 
 function main(arguments_) {
   const { projectRoot, policy } = parseRunnerArguments(arguments_);
-  process.stdout.write(
-    `${JSON.stringify(analyzeJavaSnapshot(realpathSync(projectRoot), { policy }))}\n`,
-  );
+  const conventions = readHeadPolicyFile().conventions;
+  const report = analyzeJavaSnapshot(realpathSync(projectRoot), {
+    policy: { ...policy, conventions },
+  });
+  process.stdout.write(`${JSON.stringify(report)}\n`);
 }
 
 if (process.argv[1] !== undefined && realpathSync(process.argv[1]) === import.meta.filename) {

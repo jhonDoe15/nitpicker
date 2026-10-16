@@ -162,6 +162,40 @@ describe('reading the measured files', () => {
   });
 });
 
+describe('conventions of the Python and Kotlin presets', () => {
+  const singleQuoted = "a = 'a'\nb = 'b'\nc = 'c'\ndef f():\n  return 'd'\n";
+  const wildcardKotlin = 'package a\n\nimport b.*\n\nclass A {\n  fun f() {\n    run()\n  }\n}\n';
+
+  it('follows the single quotes and two spaces of Python files', () => {
+    const { root } = createGitRepository({ 'a.py': singleQuoted, 'pkg/b.py': singleQuoted });
+    const stdout = output();
+
+    const policy = compare(root, { preset: 'python' }, { stdout });
+
+    expect(policy.conventions).toEqual({ 'python.quotes': 'single', 'python.indentation': '2' });
+    expect(stdout.text()).toBe(
+      "Following this project's conventions:\n" +
+        '  Python quotes: single quotes (used by 2 of 2 measured files)\n' +
+        '  Python indentation: 2 spaces (used by 2 of 2 measured files)\n',
+    );
+  });
+
+  it('follows the wildcard imports and two spaces of Kotlin files, and lets a pin win', () => {
+    const { root } = createGitRepository({
+      'src/A.kt': wildcardKotlin,
+      'src/B.kt': wildcardKotlin,
+    });
+
+    expect(compare(root, { preset: 'kotlin' }).conventions).toEqual({
+      'kotlin.indentation': '2',
+      'kotlin.wildcardImports': 'wildcard',
+    });
+    expect(
+      compare(root, { preset: 'kotlin', conventions: { 'kotlin.indentation': '4' } }).conventions,
+    ).toEqual({ 'kotlin.indentation': '4', 'kotlin.wildcardImports': 'wildcard' });
+  });
+});
+
 describe('conventions config key', () => {
   it('pins only the conventions the preset has', () => {
     const config = { preset: 'java', conventions: { 'java.indentation': '4' } };
@@ -177,7 +211,9 @@ describe('conventions config key', () => {
     ]);
     expect(() =>
       validateConfig({ preset: 'python', conventions: { 'java.indentation': '4' } }),
-    ).toThrow('unknown convention "java.indentation". Allowed conventions: (none for this preset)');
+    ).toThrow(
+      'unknown convention "java.indentation". Allowed conventions: python.quotes, python.lineLength, python.indentation',
+    );
     expect(() => validateConfig({ conventions: { 'java.indentation': '4' } })).toThrow(
       /Allowed conventions: prettier\.quotes, prettier\.semicolons/,
     );

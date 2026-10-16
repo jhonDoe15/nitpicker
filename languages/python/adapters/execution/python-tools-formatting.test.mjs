@@ -1,14 +1,17 @@
+import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import { onlyUnparsableFiles, runPythonTools, unformattedPaths } from '../python-tools.mjs';
 import {
   callsLog,
   contextFor,
+  contextWithConventions,
   project,
   readReport,
   restoreTemporaryState,
 } from './test-support/python-tools-project.mjs';
 import { fileURLToPath } from 'node:url';
+import { RUFF_CONFIG } from '../configuration/python-ruff-config.mjs';
 
 afterEach(restoreTemporaryState);
 
@@ -126,5 +129,99 @@ describe('lint and format arguments', () => {
         message: 'ruff format exited 2 in the virtualenv environment:\ninvalid config',
       },
     ]);
+  });
+});
+
+describe('formatter arguments from the conventions followed', () => {
+  const followed = {
+    'python.quotes': 'single',
+    'python.lineLength': '100',
+    'python.indentation': '2',
+  };
+
+  it('hands ruff format the measured quotes, line length and indentation', () => {
+    const calls = callsLog();
+    const root = project({ 'pyproject.toml': '[project]\nname = "demo"\n' });
+
+    runPythonTools(contextWithConventions(root, followed).context);
+
+    expect(calls('ruff', 'format')[0].args).toEqual([
+      'format',
+      '--check',
+      '--diff',
+      '--no-cache',
+      '--line-length',
+      '100',
+      '--config',
+      'format.quote-style = "single"',
+      '--config',
+      'indent-width = 2',
+      '.',
+    ]);
+  });
+  it('hands black the line length and keeps its quotes when the project uses single quotes', () => {
+    const calls = callsLog();
+    const root = project({ 'pyproject.toml': '[tool.black]\n' });
+
+    runPythonTools(contextWithConventions(root, followed).context);
+
+    expect(calls('black', '--check')[0].args).toEqual([
+      '--check',
+      '--line-length',
+      '100',
+      '--skip-string-normalization',
+      '.',
+    ]);
+  });
+  it('leaves the formatter alone for the options the project configures itself', () => {
+    const calls = callsLog();
+    const root = project({
+      'pyproject.toml':
+        '[tool.ruff]\nline-length = 120\n\n[tool.ruff.format]\nquote-style = "double"\n',
+    });
+
+    runPythonTools(contextWithConventions(root, followed).context);
+
+    expect(calls('ruff', 'format')[0].args).toEqual([
+      'format',
+      '--check',
+      '--diff',
+      '--no-cache',
+      '--config',
+      'indent-width = 2',
+      '.',
+    ]);
+  });
+});
+describe('the ruff config for the installed ruff', () => {
+  const rule = (code, status = { Stable: { since: '0.1.0' } }) => ({ code, status });
+  const selected = (path) =>
+    [...readFileSync(path, 'utf8').matchAll(/^\s*"(RUF\d+)",$/gm)].map((match) => match[1]);
+
+  it('keeps the preset file when ruff knows every rule it selects', () => {
+    const calls = callsLog();
+    const everyRule = selected(RUFF_CONFIG).map((code) => rule(code));
+    const root = project({ 'ruff-rules.json': JSON.stringify(everyRule) });
+
+    runPythonTools(contextFor(root).context);
+
+    expect(calls('ruff', 'check')[0].args[2]).toBe(RUFF_CONFIG);
+  });
+  it('drops the rules an older ruff does not know instead of failing on them', () => {
+    const calls = callsLog();
+    const root = project({ 'ruff-rules.json': JSON.stringify([rule('RUF005'), rule('RUF006')]) });
+    const { context, reportRoot } = contextFor(root);
+
+    runPythonTools(context);
+
+    const config = path.join(reportRoot, 'nitpicker-ruff.toml');
+    const sourceFiles = calls('ruff', 'check').find(({ args }) => args.includes('--show-files'));
+    const expected = readFileSync(RUFF_CONFIG, 'utf8')
+      .split('\n')
+      .filter((line) => !/^\s*"RUF\d+",$/.test(line) || /RUF00[56]/.test(line))
+      .join('\n');
+    expect(calls('ruff', 'check')[0].args[2]).toBe(config);
+    expect(sourceFiles.args[3]).toBe(config);
+    expect(readFileSync(config, 'utf8')).toBe(expected);
   });
 });
