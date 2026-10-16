@@ -47,6 +47,26 @@ describe('gradleFailure', () => {
     expect(gradleFailure('/p', "Execution failed for task ':app:test'.").testsFailed).toBe(true);
   });
 
+  it('marks a failed Test task of any name, in the root project or a module', () => {
+    const failing = (task) =>
+      `* What went wrong:\nExecution failed for task '${task}'.\n> There were failing tests. See the report at: file:///p/build/reports/tests/index.html`;
+
+    expect(
+      [':integrationTest', ':app:functionalTest', ':jvmTest', ':app:testDebugUnitTest'].map(
+        (task) => gradleFailure('/p', failing(task)).testsFailed,
+      ),
+    ).toEqual([true, true, true, true]);
+  });
+
+  it('does not mark a test source set that fails to compile', () => {
+    expect(
+      gradleFailure(
+        '/p',
+        "Execution failed for task ':compileIntegrationTestJava'.\n> Compilation failed; see the compiler output below.",
+      ).testsFailed,
+    ).toBe(false);
+  });
+
   it('does not mark any other Gradle failure', () => {
     expect(gradleFailure('/p', "Execution failed for task ':compileJava'.").testsFailed).toBe(
       false,

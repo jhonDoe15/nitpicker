@@ -1,6 +1,7 @@
 import { TESTS_FAILED_RULE } from '../../../../shared/rules/finding-helpers.mjs';
 
-const TEST_TASK_FAILED = /Execution failed for task '[^']*:test'/u;
+const TEST_TASK_FAILED =
+  /Execution failed for task '[^']*:test'|Execution failed for task '[^']*'\.\s+> There were failing tests/u;
 const MAX_MESSAGE_LENGTH = 4000;
 
 export function gradleFailure(projectRoot, detail) {

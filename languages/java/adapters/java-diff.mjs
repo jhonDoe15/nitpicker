@@ -116,12 +116,16 @@ function runGradleOrNoteFailingTests(projectRoot, options) {
 
 function buildModules(projectRoot, options) {
   if (detectJavaBuild(projectRoot) === 'maven') {
-    const moduleDirs = runMavenPreset(projectRoot, {
+    const { moduleDirs, testsFailure } = runMavenPreset(projectRoot, {
       maven: options.maven,
       policy: options.policy,
       configs: toolConfigChoices(projectRoot, options.policy),
     });
-    return { moduleDirs, reportDirectory: MAVEN_REPORT_DIRECTORY };
+    return {
+      moduleDirs,
+      reportDirectory: MAVEN_REPORT_DIRECTORY,
+      testsFailure: testsFailure === undefined ? undefined : { detail: testsFailure },
+    };
   }
   const testsFailure = runGradleOrNoteFailingTests(projectRoot, options);
   requireGradleReports(projectRoot, options.policy?.preset ?? 'java');

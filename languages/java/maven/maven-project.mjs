@@ -90,6 +90,7 @@ function describeModule(project, basedir) {
     surefireReports: reports
       ? path.resolve(basedir, reports)
       : path.join(buildDirectory, 'surefire-reports'),
+    failsafeReports: path.join(buildDirectory, 'failsafe-reports'),
     jacocoDestFile: destFile === undefined ? undefined : path.resolve(basedir, destFile),
     archunitIncludes: textAt(project, 'properties', 'nitpicker.archunit.includes'),
     compiler: compilerSettings(project),

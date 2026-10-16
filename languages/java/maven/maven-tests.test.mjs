@@ -168,9 +168,43 @@ describe('collectTestResults', () => {
       });
 
     expect([
-      run({}),
-      run({ 'TEST-shop.OrderTest.xml': suite('shop.OrderTest', [['totals']]) }),
+      run({}).testsRan,
+      run({ 'TEST-shop.OrderTest.xml': suite('shop.OrderTest', [['totals']]) }).testsRan,
     ]).toEqual([false, true]);
+  });
+
+  it('lists the failing tests instead of failing when it is told to tolerate them', () => {
+    const reports = tree({
+      'TEST-shop.OrderTest.xml': suite('shop.OrderTest', [['totals', 'expected 3']]),
+    });
+
+    expect(
+      collectTestResults({
+        module: { basedir: '/m', surefireReports: reports },
+        reportDir: tree({}),
+        since,
+        isArchunit: archunitMatcher(),
+        tolerateFailures: true,
+      }),
+    ).toEqual({
+      testsRan: true,
+      testsFailure: 'Tests fail in /m:\n  shop.OrderTest.totals: expected 3',
+    });
+  });
+
+  it('reads the failures of integration tests too', () => {
+    const failsafe = tree({
+      'TEST-shop.OrderIT.xml': suite('shop.OrderIT', [['places', 'expected 1']]),
+    });
+
+    expect(() => {
+      collectTestResults({
+        module: { basedir: '/m', surefireReports: tree({}), failsafeReports: failsafe },
+        reportDir: tree({}),
+        since,
+        isArchunit: archunitMatcher(),
+      });
+    }).toThrow(/shop\.OrderIT\.places: expected 1/u);
   });
 
   it('fails when surefire ran none of the ArchUnit classes', () => {

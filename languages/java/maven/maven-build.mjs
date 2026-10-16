@@ -138,7 +138,7 @@ function hasGuava(classpath) {
   return classpath.some((entry) => GUAVA_JAR.test(path.basename(entry)));
 }
 
-function writeManifest({ module, reportDir, pinned, spring, classpaths }) {
+function writeManifest({ module, reportDir, pinned, spring, classpaths, testsFailed }) {
   writeFileSync(
     path.join(reportDir, 'manifest.json'),
     JSON.stringify({
@@ -150,6 +150,7 @@ function writeManifest({ module, reportDir, pinned, spring, classpaths }) {
       spring,
       guava: hasGuava(classpaths.mainCompile),
       testGuava: hasGuava(classpaths.testCompile),
+      ...(testsFailed ? { testsFailed: true } : {}),
     }),
   );
 }
@@ -161,11 +162,17 @@ function readClasspaths(work, module) {
   );
 }
 
-function analyzeModule({ module, classpaths, tools, pinned, configs, since }) {
+function analyzeModule({ module, classpaths, tools, pinned, configs, since, tolerateFailures }) {
   const reportDir = path.join(module.basedir, MAVEN_REPORT_DIRECTORY);
   const isArchunit = archunitMatcher(module.archunitIncludes);
   const spring = classpaths.mainCompile.some((entry) => SPRING_JAR.test(path.basename(entry)));
-  const testsRan = collectTestResults({ module, reportDir, since, isArchunit });
+  const { testsRan, testsFailure } = collectTestResults({
+    module,
+    reportDir,
+    since,
+    isArchunit,
+    tolerateFailures,
+  });
   runPmd({ module, reportDir, tools, classpaths, configs, spring });
   runSpotbugs({ module, reportDir, tools });
   runErrorProne({ module, reportDir, tools, classpaths });
@@ -174,9 +181,19 @@ function analyzeModule({ module, classpaths, tools, pinned, configs, since }) {
   runStructure(module, reportDir);
   runJdeps(module, reportDir);
   const execFile = module.jacocoDestFile ?? path.join(module.buildDirectory, OWN_JACOCO_EXEC);
-  runJacocoReport({ module, reportDir, tools, execFile, since, testsRan });
-  runPit({ module, reportDir, tools, classpaths, isArchunit });
-  writeManifest({ module, reportDir, pinned, spring, classpaths });
+  if (testsFailure === undefined) {
+    runJacocoReport({ module, reportDir, tools, execFile, since, testsRan });
+    runPit({ module, reportDir, tools, classpaths, isArchunit });
+  }
+  writeManifest({
+    module,
+    reportDir,
+    pinned,
+    spring,
+    classpaths,
+    testsFailed: testsFailure !== undefined,
+  });
+  return testsFailure;
 }
 
 function staleOutputs(module) {
@@ -213,6 +230,7 @@ function missingLauncherVersions(analyzed) {
 }
 
 export function runMavenPreset(projectRoot, { maven, policy = {}, configs }) {
+  const tolerateFailures = policy.snapshot === 'base';
   if (policy.preset === 'kotlin') {
     throw new Error(
       'The kotlin preset needs a Gradle build, and this project builds with Maven. Use the java preset for its Java sources',
@@ -235,10 +253,15 @@ export function runMavenPreset(projectRoot, { maven, policy = {}, configs }) {
       launcherVersions: missingLauncherVersions(analyzed),
       extraTools: modules.map((module) => processorTool(module.compiler)).filter(Boolean),
     });
-    for (const { module, classpaths } of analyzed) {
-      analyzeModule({ module, classpaths, tools, pinned, configs, since });
-    }
-    return modules.map((module) => module.basedir);
+    const failures = analyzed
+      .map(({ module, classpaths }) =>
+        analyzeModule({ module, classpaths, tools, pinned, configs, since, tolerateFailures }),
+      )
+      .filter((failure) => failure !== undefined);
+    return {
+      moduleDirs: modules.map((module) => module.basedir),
+      testsFailure: failures.length === 0 ? undefined : failures.join('\n'),
+    };
   } finally {
     rmSync(work, { recursive: true, force: true });
   }
