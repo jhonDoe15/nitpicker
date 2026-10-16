@@ -11,7 +11,7 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { GRADLE_DIRECTORY } from '../../builds/java-build.mjs';
-import { javaRelease, runPmd, scopedRuleset } from './maven-pmd.mjs';
+import { runPmd } from './maven-pmd.mjs';
 
 const roots = [];
 const RULESET = 'http://pmd.sourceforge.net/ruleset/2.0.0';
@@ -19,67 +19,6 @@ const PMD_RULESET = path.join(GRADLE_DIRECTORY, 'pmd-ruleset.xml');
 const GUARDS_RULES = path.join(GRADLE_DIRECTORY, 'rules/guards-ruleset.xml');
 const HONESTY_RULES = path.join(GRADLE_DIRECTORY, 'rules/test-honesty-ruleset.xml');
 const SPRING_RULES = path.join(GRADLE_DIRECTORY, 'spring-ruleset.xml');
-const tests = path.join('/work', 'my.app', 'src', 'test', 'java');
-const quoted = String.raw`/work/my\.app/src/test/java/`;
-
-describe('scopedRuleset', () => {
-  it('keeps a ruleset off the given directories and leaves out skipped rules', () => {
-    expect(
-      scopedRuleset('nitpicker-guards-main', '/rules/guards.xml', {
-        directories: [tests],
-        skipped: ['InstanceofThenCast', 'CollectorsToList'],
-      }),
-    ).toBe(
-      [
-        '<?xml version="1.0" encoding="UTF-8"?>',
-        '<ruleset name="nitpicker-guards-main" xmlns="http://pmd.sourceforge.net/ruleset/2.0.0">',
-        '  <description>nitpicker-guards-main</description>',
-        `  <exclude-pattern>${quoted}.*</exclude-pattern>`,
-        '  <rule ref="/rules/guards.xml">',
-        '    <exclude name="InstanceofThenCast"/>',
-        '    <exclude name="CollectorsToList"/>',
-        '  </rule>',
-        '</ruleset>',
-        '',
-      ].join('\n'),
-    );
-  });
-
-  it('runs a ruleset only on the given directories', () => {
-    expect(
-      scopedRuleset('nitpicker-test-honesty', '/rules/honesty.xml', {
-        directories: [tests],
-        onlyThere: true,
-      }),
-    ).toBe(
-      [
-        '<?xml version="1.0" encoding="UTF-8"?>',
-        '<ruleset name="nitpicker-test-honesty" xmlns="http://pmd.sourceforge.net/ruleset/2.0.0">',
-        '  <description>nitpicker-test-honesty</description>',
-        '  <exclude-pattern>.*</exclude-pattern>',
-        `  <include-pattern>${quoted}.*</include-pattern>`,
-        '  <rule ref="/rules/honesty.xml"/>',
-        '</ruleset>',
-        '',
-      ].join('\n'),
-    );
-  });
-});
-
-describe('javaRelease', () => {
-  it.each([
-    [{ release: '17', target: '11', args: [] }, 17],
-    [{ target: '1.8', args: [] }, 8],
-    [{ target: '11', args: [] }, 11],
-    [{ args: [] }, 8],
-    [{ target: '11', args: ['--release', '17'] }, 17],
-    [{ args: ['--release=21'] }, 21],
-    [{ target: '11', args: ['-target', '1.8'] }, 8],
-    [{ target: '${java.version}', args: [] }, 8],
-  ])('reads %o as Java %i', (compiler, release) => {
-    expect(javaRelease(compiler)).toBe(release);
-  });
-});
 
 function workspace() {
   const root = mkdtempSync(path.join(tmpdir(), 'nitpicker-pmd-'));
@@ -188,7 +127,7 @@ describe.skipIf(process.platform === 'win32')('runPmd rulesets', () => {
     );
   });
 
-  it('passes the project ruleset, the guard wrappers and the spring ruleset in order', () => {
+  it('passes the project ruleset, the guard wrappers, the test-class rule and the spring ruleset in order', () => {
     const root = workspace();
     const run = pmd(root, {
       tests: TEST_DIRECTORY,
@@ -202,6 +141,7 @@ describe.skipIf(process.platform === 'win32')('runPmd rulesets', () => {
         '/custom/pmd.xml',
         path.join(run.reportDir, 'pmd-guards-main.xml'),
         path.join(run.reportDir, 'pmd-test-honesty.xml'),
+        path.join(run.reportDir, 'pmd-tests.xml'),
         path.join(run.reportDir, 'pmd-spring-main.xml'),
       ].join(','),
     );
@@ -232,6 +172,7 @@ describe.skipIf(process.platform === 'win32')('runPmd rulesets', () => {
         PMD_RULESET,
         path.join(run.reportDir, 'pmd-guards-main.xml'),
         path.join(run.reportDir, 'pmd-test-honesty.xml'),
+        path.join(run.reportDir, 'pmd-tests.xml'),
       ].join(','),
     );
   });
@@ -257,7 +198,11 @@ describe.skipIf(process.platform === 'win32')('runPmd rulesets', () => {
     });
 
     expect(run.option('--rulesets')).toBe(
-      [PMD_RULESET, path.join(run.reportDir, 'pmd-guards-main.xml')].join(','),
+      [
+        PMD_RULESET,
+        path.join(run.reportDir, 'pmd-guards-main.xml'),
+        path.join(run.reportDir, 'pmd-tests.xml'),
+      ].join(','),
     );
     expect(run.exists('pmd-test-honesty.xml')).toBe(false);
     expect(run.option('--dir')).toBe(run.main);

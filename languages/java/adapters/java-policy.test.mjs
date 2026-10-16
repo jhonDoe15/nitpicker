@@ -478,6 +478,7 @@ describe('createJavaAnalyzer', () => {
       'languages/java/guards',
       'languages/java/builds/lint',
       'languages/java/builds/classes',
+      'languages/java/builds/rulesets',
     ]
       .flatMap((directory) =>
         readdirSync(path.join(packageRoot, directory), { recursive: true, withFileTypes: true })

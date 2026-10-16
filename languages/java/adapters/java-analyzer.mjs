@@ -28,6 +28,7 @@ const RESOURCE_FILES = [
   'languages/java/gradle/tasks/jdeps-task.gradle',
   'languages/java/gradle/tasks/lint-tasks.gradle',
   'languages/java/gradle/tasks/structure-task.gradle',
+  'languages/java/builds/rulesets/write-rules.mjs',
   'languages/java/gradle/StructureMetrics.java',
   'languages/java/gradle/KotlinMetrics.java',
   'languages/java/detekt/nitpicker-detekt.yml',
