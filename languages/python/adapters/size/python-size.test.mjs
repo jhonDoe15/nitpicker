@@ -31,14 +31,27 @@ describe('Python package depth', () => {
       { thresholds: {} },
     );
 
-    expect(findings).toHaveLength(1);
-    expect(findings[0]).toMatchObject({
-      tool: 'structure',
-      rule: 'folder-depth-limit',
-      path: deep,
-      ratchet: { value: 5, folderFiles: 2 },
-    });
-    expect(findings[0].message).toContain('Package');
+    const fix =
+      'Keep packages at most 4 levels below the top-level package: group by responsibility instead of nesting. If this is intended, add {"rule":"folder-depth-limit","paths":["src/app/a/b/c/d/e/**"],"reason":"..."} to "exceptions" in nitpicker.config.json.';
+    expect(findings).toEqual([
+      {
+        tool: 'structure',
+        rule: 'folder-depth-limit',
+        path: deep,
+        identity: 'folder-depth:source:5',
+        message: `Package is 5 levels below its top-level package (limit 4). ${fix}`,
+        classification: 'enforceable',
+        ratchet: {
+          key: 'folder-depth:source',
+          value: 5,
+          worseMessage: `Package grew from {base} to 5 levels below its top-level package (limit 4). ${fix}`,
+          heldMessage:
+            'Package: 5 levels below its top-level package (limit 4), allowed because base was {base}; any increase fails.',
+          pathIsFolder: true,
+          folderFiles: 2,
+        },
+      },
+    ]);
   });
   it('takes the limit from thresholds and lifts excepted folders', () => {
     const modules = [module('src/app/a/b.py', 'app.a.b')];

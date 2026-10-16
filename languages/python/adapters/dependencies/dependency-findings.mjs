@@ -1,6 +1,7 @@
 import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { readProjectFile } from '../../libraries/project-files.mjs';
 import { readImportsReport } from '../analysis/python-coupling.mjs';
 import { snapshotScope } from '../test-runs/test-failures.mjs';
 import {
@@ -8,8 +9,8 @@ import {
   readPythonDependencies,
 } from '../../libraries/python-dependencies.mjs';
 
-export const DEPENDENCIES_TOOL = 'dependencies';
-export const DEPENDENCY_RULES = {
+const DEPENDENCIES_TOOL = 'dependencies';
+const DEPENDENCY_RULES = {
   unused: 'unused-dependency',
   unlisted: 'unlisted-dependency',
   devInProduction: 'no-dev-dependency-in-production',
@@ -174,25 +175,25 @@ function usedDistributions(state) {
   for (const name of state.scan.entryPoints ?? []) {
     used.add(normalizeRequirementName(name));
   }
-  for (const [owner, optional] of Object.entries(state.scan.optional ?? {})) {
-    if (state.declaredBy.has(normalizeRequirementName(owner))) {
-      for (const name of optional) {
-        used.add(normalizeRequirementName(name));
-      }
-    }
+  for (const name of optionalOfDeclared(state)) {
+    used.add(normalizeRequirementName(name));
   }
   return used;
 }
 
+function optionalOfDeclared(state) {
+  return Object.entries(state.scan.optional ?? {})
+    .filter(([owner]) => state.declaredBy.has(normalizeRequirementName(owner)))
+    .flatMap(([, optional]) => optional);
+}
+
 function lineOf(projectRoot, file, name) {
-  const absolute = path.join(projectRoot, file);
-  if (!existsSync(absolute)) {
+  const text = readProjectFile(projectRoot, file);
+  if (text === undefined) {
     return undefined;
   }
   const pattern = new RegExp(`(^|["'\\s])${name.replaceAll(/[-_.]/gu, '[-_.]')}(?![\\w-])`, 'iu');
-  const index = readFileSync(absolute, 'utf8')
-    .split(/\r?\n/u)
-    .findIndex((line) => pattern.test(line));
+  const index = text.split(/\r?\n/u).findIndex((line) => pattern.test(line));
   return index === -1 ? undefined : index + 1;
 }
 

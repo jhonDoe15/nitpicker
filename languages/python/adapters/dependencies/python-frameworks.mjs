@@ -1,4 +1,4 @@
-import { existsSync, readFileSync } from 'node:fs';
+import { readProjectFile } from '../../libraries/project-files.mjs';
 import path from 'node:path';
 import { importEdges } from '../analysis/python-coupling.mjs';
 import { readPythonDependencies } from '../../libraries/python-dependencies.mjs';
@@ -51,22 +51,24 @@ function entryFiles(imports) {
 function declaredSettings(projectRoot, imports) {
   return new Set(
     entryFiles(imports)
-      .filter((file) => existsSync(path.join(projectRoot, file)))
-      .flatMap((file) =>
-        [...readFileSync(path.join(projectRoot, file), 'utf8').matchAll(SETTINGS_MODULE)].map(
-          ([, module]) => module,
-        ),
-      ),
+      .flatMap((file) => [...(readProjectFile(projectRoot, file) ?? '').matchAll(SETTINGS_MODULE)])
+      .map(([, module]) => module),
   );
 }
 
 function settingsFiles(projectRoot, imports) {
   const declared = declaredSettings(projectRoot, imports);
-  const isSettings = (module) =>
-    SETTINGS_NAME.test(module) ||
-    [...declared].some((name) => module === name || module.startsWith(`${name}.`));
   return new Set(
-    imports.modules.filter(({ module }) => isSettings(module)).map(({ file }) => file),
+    imports.modules
+      .filter(({ module }) => isSettingsModule(module, declared))
+      .map(({ file }) => file),
+  );
+}
+
+function isSettingsModule(module, declared) {
+  return (
+    SETTINGS_NAME.test(module) ||
+    [...declared].some((name) => module === name || module.startsWith(`${name}.`))
   );
 }
 
@@ -95,7 +97,7 @@ function entryPointFiles(imports) {
   );
 }
 
-export function frameworkAllowances(projectRoot, imports) {
+function frameworkAllowances(projectRoot, imports) {
   const frameworks = detectFrameworks(projectRoot, imports);
   const allowed = [];
   if (frameworks.has('django')) {

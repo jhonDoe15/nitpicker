@@ -42,6 +42,7 @@ export function createToolContext({
   exclude = [],
   snapshot = 'head',
   baselineRoot,
+  pytestAddopts,
 }) {
   const launcher = openEnvironment(detectEnvironment(liveRoot, settings.environment), liveRoot);
   const sourceRoots = detectSourceRoots(projectRoot, settings.sourceRoots);
@@ -55,6 +56,7 @@ export function createToolContext({
     baselineRoot,
     launcher,
     exclude,
+    pytestAddopts,
     project: {
       formatter: detectFormatter(projectRoot, settings.formatter),
       formatterDetected: settings.formatter === undefined,

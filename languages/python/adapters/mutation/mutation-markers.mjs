@@ -1,17 +1,17 @@
-import { existsSync, readFileSync } from 'node:fs';
-import { createRequire } from 'node:module';
-import path from 'node:path';
 import { hashIdentity } from '../../../java/ingest/common.mjs';
+import { readProjectFile, toml } from '../../libraries/project-files.mjs';
 import { listProductionModules } from '../analysis/python-sources.mjs';
 import { parseIni } from '../configuration/mypy-config.mjs';
 
-// What hides production code from mutmut: `# pragma: no mutate` comments, and the project's own
-// [tool.mutmut] (or setup.cfg [mutmut]) do_not_mutate patterns and mutate_only_covered_lines.
-// Each is an enforceable mutant-ignored finding, the way the TypeScript preset reports a Stryker
-// disable comment.
+/**
+ * What hides production code from mutmut: `# pragma: no mutate` comments, and the project's own
+ * [tool.mutmut] (or setup.cfg [mutmut]) do_not_mutate patterns and mutate_only_covered_lines.
+ * Each is an enforceable mutant-ignored finding, the way the TypeScript preset reports a Stryker
+ * disable comment.
+ */
 
 const MUTMUT_TOOL = 'mutmut';
-export const MUTANT_IGNORED_RULE = 'mutant-ignored';
+const MUTANT_IGNORED_RULE = 'mutant-ignored';
 const NO_MUTATE = /#\s*pragma:\s*no mutate\b(?:[ \t]+(block|start|end|class|function))?/u;
 const NOT_A_ROUTE =
   'Remove it and test the code. Ignore comments and patterns are not an exception route.';
@@ -32,30 +32,28 @@ function ignoredFinding({ file, identity, line, message }) {
 
 function pragmaFindings(projectRoot, file) {
   const occurrences = new Map();
-  return readFileSync(path.join(projectRoot, file), 'utf8')
-    .split(/\r?\n/u)
-    .flatMap((text, index) => {
-      const match = NO_MUTATE.exec(text);
-      if (match === null) {
-        return [];
-      }
-      const key = hashIdentity('no-mutate', [text.trim()]);
-      const occurrence = (occurrences.get(key) ?? 0) + 1;
-      occurrences.set(key, occurrence);
-      const scope = match[1] === undefined ? 'this line' : `this ${match[1]}`;
-      return [
-        ignoredFinding({
-          file,
-          identity: occurrence === 1 ? key : `${key}#${String(occurrence)}`,
-          line: index + 1,
-          message: `\`${match[0]}\` hides ${scope} from mutation testing.`,
-        }),
-      ];
-    });
+  return (readProjectFile(projectRoot, file) ?? '').split(/\r?\n/u).flatMap((text, index) => {
+    const match = NO_MUTATE.exec(text);
+    if (match === null) {
+      return [];
+    }
+    const key = hashIdentity('no-mutate', [text.trim()]);
+    const occurrence = (occurrences.get(key) ?? 0) + 1;
+    occurrences.set(key, occurrence);
+    const scope = match[1] === undefined ? 'this line' : `this ${match[1]}`;
+    return [
+      ignoredFinding({
+        file,
+        identity: occurrence === 1 ? key : `${key}#${String(occurrence)}`,
+        line: index + 1,
+        message: `\`${match[0]}\` hides ${scope} from mutation testing.`,
+      }),
+    ];
+  });
 }
 
 function fnmatch(pattern) {
-  const source = [...pattern]
+  const source = Array.from(pattern)
     .map((character) => {
       if (character === '*') {
         return '.*';
@@ -80,19 +78,13 @@ function listOf(value) {
 }
 
 function readOptions(projectRoot) {
-  const pyproject = path.join(projectRoot, PYPROJECT);
-  if (existsSync(pyproject)) {
-    const parsed = createRequire(import.meta.url)('smol-toml').parse(
-      readFileSync(pyproject, 'utf8'),
-    );
-    if (parsed.tool?.mutmut !== undefined) {
-      return { file: PYPROJECT, section: '[tool.mutmut]', options: parsed.tool.mutmut };
-    }
+  const pyproject = readProjectFile(projectRoot, PYPROJECT);
+  const mutmut = pyproject === undefined ? undefined : toml().parse(pyproject).tool?.mutmut;
+  if (mutmut !== undefined) {
+    return { file: PYPROJECT, section: '[tool.mutmut]', options: mutmut };
   }
-  const setupCfg = path.join(projectRoot, SETUP_CFG);
-  const section = existsSync(setupCfg)
-    ? parseIni(readFileSync(setupCfg, 'utf8')).get('mutmut')
-    : undefined;
+  const setupCfg = readProjectFile(projectRoot, SETUP_CFG);
+  const section = setupCfg === undefined ? undefined : parseIni(setupCfg).get('mutmut');
   return section === undefined
     ? undefined
     : { file: SETUP_CFG, section: '[mutmut]', options: Object.fromEntries(section) };

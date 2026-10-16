@@ -91,18 +91,23 @@ function countedBases(entry) {
   return entry.bases.filter((written) => !INTERFACE_BASES.has(written.split('.').at(-1)));
 }
 
-function inheritanceDepth(entry, resolve, seen = new Set()) {
-  const bases = countedBases(entry);
-  if (bases.length === 0) {
-    return 0;
-  }
-  const parents = bases
+function parentsOf({ entry, lineage }, resolve) {
+  const onPath = new Set([...lineage, entry]);
+  return countedBases(entry)
     .map((written) => resolve(entry, written))
-    .filter((parent) => parent !== undefined && !seen.has(parent));
-  const inherited = parents.map((parent) =>
-    inheritanceDepth(parent, resolve, new Set([...seen, entry])),
-  );
-  return 1 + Math.max(0, ...inherited);
+    .filter((parent) => parent !== undefined && !onPath.has(parent))
+    .map((parent) => ({ entry: parent, lineage: onPath }));
+}
+
+/** The longest chain of counted bases, walked one generation at a time. */
+function inheritanceDepth(entry, resolve) {
+  const generations = [[{ entry, lineage: new Set() }]];
+  for (const generation of generations) {
+    if (generation.some((current) => countedBases(current.entry).length > 0)) {
+      generations.push(generation.flatMap((current) => parentsOf(current, resolve)));
+    }
+  }
+  return generations.length - 1;
 }
 
 export function readClassesReport(reportRoot) {

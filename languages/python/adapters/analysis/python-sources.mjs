@@ -174,23 +174,28 @@ function isUnder(file, root) {
   return root === '.' || file === root || file.startsWith(`${root}/`);
 }
 
+function isWalked(entry) {
+  return (
+    entry.isDirectory() && !entry.name.startsWith(HIDDEN_PREFIX) && !OUTSIDE_SKIPPED.has(entry.name)
+  );
+}
+
 function projectFiles(projectRoot) {
   const files = [];
   const pending = [''];
   for (const directory of pending) {
-    const entries = readdirSync(path.join(projectRoot, directory), { withFileTypes: true });
-    for (const entry of entries) {
-      const relative = directory === '' ? entry.name : `${directory}/${entry.name}`;
-      if (
-        entry.isDirectory() &&
-        !entry.name.startsWith(HIDDEN_PREFIX) &&
-        !OUTSIDE_SKIPPED.has(entry.name)
-      ) {
-        pending.push(relative);
-      } else if (entry.isFile() && entry.name.endsWith('.py')) {
-        files.push(relative);
-      }
-    }
+    const entries = readdirSync(path.join(projectRoot, directory), { withFileTypes: true }).map(
+      (entry) => ({
+        entry,
+        relative: directory === '' ? entry.name : `${directory}/${entry.name}`,
+      }),
+    );
+    pending.push(...entries.filter(({ entry }) => isWalked(entry)).map(({ relative }) => relative));
+    files.push(
+      ...entries
+        .filter(({ entry }) => entry.isFile() && entry.name.endsWith('.py'))
+        .map(({ relative }) => relative),
+    );
   }
   return files.sort();
 }

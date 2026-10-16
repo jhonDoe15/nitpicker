@@ -6,8 +6,6 @@ const MODULE_CYCLE_RULE = 'no-production-cycles';
 const OUTSIDE_ROOTS_RULE = 'no-import-outside-roots';
 const LISTED_MEMBERS = 5;
 
-export const IMPORT_RULE_IDS = [PACKAGE_CYCLE_RULE, MODULE_CYCLE_RULE, OUTSIDE_ROOTS_RULE];
-
 function packageOf(entry) {
   if (entry.isPackage) {
     return entry.module;
@@ -21,41 +19,40 @@ function isInside(name, owner) {
   return name === owner || name.startsWith(`${owner}.`);
 }
 
-export function stronglyConnected(nodes, edges) {
-  const next = new Map(nodes.map((node) => [node, []]));
-  for (const { source, target } of edges) {
-    next.get(source)?.push(target);
+function adjacency(nodes, edges) {
+  const next = new Map(nodes.map((node) => [node, new Set()]));
+  for (const { source, target } of edges.filter((edge) => next.has(edge.target))) {
+    next.get(source)?.add(target);
   }
-  const state = { index: 0, indices: new Map(), low: new Map(), stack: [], onStack: new Set() };
+  return next;
+}
+
+/** Everything reachable from start, staying inside within when it is given. */
+function reachable(start, next, within) {
+  const seen = new Set([start]);
+  for (const node of seen) {
+    const targets = [...(next.get(node) ?? [])];
+    targets.filter((target) => within?.has(target) ?? true).forEach((target) => seen.add(target));
+  }
+  return seen;
+}
+
+/** Each component is what a node reaches and is reached by; components of one are left out. */
+export function stronglyConnected(nodes, edges) {
+  const next = adjacency(nodes, edges);
+  const previous = adjacency(
+    nodes,
+    edges.map(({ source, target }) => ({ source: target, target: source })),
+  );
+  const assigned = new Set();
   const components = [];
-  const visit = (node) => {
-    state.indices.set(node, state.index);
-    state.low.set(node, state.index);
-    state.index += 1;
-    state.stack.push(node);
-    state.onStack.add(node);
-    for (const target of next.get(node) ?? []) {
-      if (!state.indices.has(target)) {
-        visit(target);
-        state.low.set(node, Math.min(state.low.get(node), state.low.get(target)));
-      } else if (state.onStack.has(target)) {
-        state.low.set(node, Math.min(state.low.get(node), state.indices.get(target)));
-      }
-    }
-    if (state.low.get(node) === state.indices.get(node)) {
-      const component = [];
-      for (let member = state.stack.pop(); ; member = state.stack.pop()) {
-        state.onStack.delete(member);
-        component.push(member);
-        if (member === node) {
-          break;
-        }
-      }
-      components.push(component.sort());
-    }
-  };
   for (const node of [...nodes].sort()) {
-    if (!state.indices.has(node)) visit(node);
+    if (assigned.has(node)) {
+      continue;
+    }
+    const component = [...reachable(node, previous, reachable(node, next))].sort();
+    component.forEach((member) => assigned.add(member));
+    components.push(component);
   }
   return components.filter((component) => component.length > 1);
 }
@@ -73,22 +70,25 @@ function runtimeEdges({ modules, imports }) {
   );
 }
 
-// A package __init__ that imports its own submodules re-exports them; it is not a dependency.
+/** A package __init__ that imports its own submodules re-exports them; it is not a dependency. */
 function reExports(byName, source, target) {
   return byName.get(source).isPackage && isInside(target, source);
 }
 
 function packageCycles(modules, edges) {
   const byName = new Map(modules.map((entry) => [entry.module, entry]));
-  const owner = (name) => packageOf(byName.get(name));
   const packaged = edges
     .filter(({ source, target }) => !reExports(byName, source, target))
-    .map(({ source, target }) => ({ source: owner(source), target: owner(target) }))
+    .map(({ source, target }) => ({
+      source: packageOf(byName.get(source)),
+      target: packageOf(byName.get(target)),
+    }))
     .filter(({ source, target }) => source !== target);
   const anchor = new Map();
   for (const entry of [...modules].sort((left, right) => left.file.localeCompare(right.file))) {
-    if (!anchor.has(packageOf(entry)) || entry.module === packageOf(entry))
+    if (!anchor.has(packageOf(entry)) || entry.module === packageOf(entry)) {
       anchor.set(packageOf(entry), entry.file);
+    }
   }
   return stronglyConnected([...anchor.keys()], packaged).flatMap((members) =>
     members.map((member) => ({

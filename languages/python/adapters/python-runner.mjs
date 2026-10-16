@@ -40,6 +40,7 @@ function toolContext({ projectRoot, liveRoot, settings, policy }, reportRoot) {
     exclude: policy?.exclude,
     snapshot: policy?.snapshot,
     baselineRoot: policy?.baselineRoot,
+    pytestAddopts: process.env.PYTEST_ADDOPTS,
   });
 }
 

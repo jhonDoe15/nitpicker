@@ -23,16 +23,25 @@ describe('pytest JUnit results', () => {
       seconds: 1234.5,
       outcome: 'passed',
     });
-    expect(bad).toMatchObject({
+    expect(bad).toEqual({
+      file: 'tests/test_a.py',
+      line: 10,
       className: '',
+      name: 'test_bad',
+      functionName: 'test_bad',
       id: 'tests/test_a.py::test_bad',
+      seconds: 0.2,
       outcome: 'failed',
     });
     expect(skipped.outcome).toBe('skipped');
-    expect(collection).toMatchObject({
+    expect(collection).toEqual({
       file: 'tests/test_c.py',
+      line: undefined,
+      className: '',
       name: undefined,
+      functionName: undefined,
       id: 'tests/test_c.py',
+      seconds: 0.1,
       outcome: 'failed',
     });
   });

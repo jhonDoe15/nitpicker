@@ -1,6 +1,6 @@
 import { TESTS_FAILED_RULE } from '../../../../shared/rules/finding-helpers.mjs';
 
-export const TESTS_TOOL = 'tests';
+const TESTS_TOOL = 'tests';
 const UNITTEST_FAILURE = /^(?:FAIL|ERROR): (\S+) \(([\w.]+)\)/gmu;
 const LISTED_TESTS = 20;
 
@@ -15,7 +15,7 @@ export function snapshotScope(snapshot = 'head') {
   return `the ${snapshot} snapshot`;
 }
 
-export function failingTestModules(failures) {
+function modulesOfFailures(failures) {
   return [...new Set(failures.map(({ file }) => file).filter(Boolean))].sort();
 }
 
@@ -26,7 +26,7 @@ function listed(failures) {
 }
 
 function mutationLine(failures, testRunner) {
-  const modules = failingTestModules(failures);
+  const modules = modulesOfFailures(failures);
   if (testRunner !== 'pytest' || modules.length === 0) {
     return [];
   }

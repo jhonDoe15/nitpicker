@@ -27,8 +27,9 @@ function mutmutError(rule, message) {
 
 function pythonVersion(context) {
   const result = execute(context, PYTHON_VERSION_PROBE);
-  const match = result.status === 0 ? VERSION.exec(result.stdout.trim()) : null;
-  return match === null ? undefined : [Number(match[1]), Number(match[2])];
+  const output = result.status === 0 ? result.stdout.trim() : '';
+  const [, major, minor] = VERSION.exec(output) ?? [];
+  return major === undefined ? undefined : [Number(major), Number(minor)];
 }
 
 function tooOld([major, minor]) {
@@ -61,7 +62,7 @@ export function failingTestModules(context) {
   run(context, ['python', ...pytestCommand(context), `--ignore=${MUTANTS_DIRECTORY}`], {
     accepted: () => true,
     rule: 'mutation-failed',
-    env: pinnedEnvironmentAddopts(process.env.PYTEST_ADDOPTS),
+    env: pinnedEnvironmentAddopts(context.pytestAddopts),
   });
   return failingModules(readJunit(context.reportRoot));
 }

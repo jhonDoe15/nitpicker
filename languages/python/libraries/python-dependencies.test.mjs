@@ -39,6 +39,10 @@ describe('requirement names', () => {
   });
 });
 
+function declaration({ runtime, development, complete, manifest }) {
+  return { runtime, development, complete, manifest };
+}
+
 describe('the dependencies a project declares', () => {
   it('reads PEP 621, extras, dependency groups, uv and pdm from pyproject.toml', () => {
     const root = project({
@@ -61,7 +65,12 @@ describe('the dependencies a project declares', () => {
 
     expect(result.runtime).toEqual(['attrs', 'django', 'psycopg']);
     expect(result.development).toEqual(['mypy', 'pytest', 'ruff', 'sphinx']);
-    expect(result).toMatchObject({ complete: true, declaresDev: true, manifest: 'pyproject.toml' });
+    const { complete, declaresDev, manifest } = result;
+    expect({ complete, declaresDev, manifest }).toEqual({
+      complete: true,
+      declaresDev: true,
+      manifest: 'pyproject.toml',
+    });
     expect(result.dependencies.find(({ normalized }) => normalized === 'psycopg')).toEqual({
       name: 'psycopg',
       normalized: 'psycopg',
@@ -82,7 +91,8 @@ describe('the dependencies a project declares', () => {
       ].join('\n'),
     });
 
-    expect(readPythonDependencies(root)).toMatchObject({
+    const { runtime, development, complete } = readPythonDependencies(root);
+    expect({ runtime, development, complete }).toEqual({
       runtime: ['fastapi'],
       development: ['black', 'pytest'],
       complete: true,
@@ -94,7 +104,7 @@ describe('the dependencies a project declares', () => {
         '[packages]\nrequests = "*"\n[dev-packages]\npytest = "*"\n[docs-packages]\nsphinx = "*"\n',
     });
 
-    expect(readPythonDependencies(root)).toMatchObject({
+    expect(declaration(readPythonDependencies(root))).toEqual({
       runtime: ['requests'],
       development: ['pytest', 'sphinx'],
       complete: true,
@@ -110,7 +120,7 @@ describe('the dependencies a project declares', () => {
         '[options]\ninstall_requires =\n    attrs\ntests_require = hypothesis\n[options.extras_require]\nlint = ruff\n',
     });
 
-    expect(readPythonDependencies(root)).toMatchObject({
+    expect(declaration(readPythonDependencies(root))).toEqual({
       runtime: ['attrs', 'click', 'flask'],
       development: ['hypothesis', 'pytest', 'ruff'],
       complete: true,
