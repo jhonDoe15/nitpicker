@@ -10,8 +10,8 @@ export function testConsoleCheckFor(exclusions) {
     shardWeight: 1,
     timeoutMs: MINUTE_MS,
     configurationFiles: [
-      'languages/typescript/adapters/quality-areas/reporting/console-findings.mjs',
-      'languages/typescript/adapters/quality-areas/reporting/console-messages.mjs',
+      'languages/typescript/adapters/quality-areas/reporting/console/console-findings.mjs',
+      'languages/typescript/adapters/quality-areas/reporting/console/console-messages.mjs',
       'languages/typescript/adapters/quality-areas/reporting/vitest.mjs',
       'languages/typescript/adapters/quality-areas/runners/console/test-console.mjs',
       'languages/typescript/adapters/quality-areas/runners/tests.mjs',
