@@ -164,7 +164,7 @@ describe('readLintFindings', () => {
         classification: 'descriptive',
         toolNotRun: true,
         message:
-          'No javac lint report: the lint compile failed (src/main/java/demo/A.java:3: error: cannot find symbol), ' +
+          'No javac lint report from the lint compile (src/main/java/demo/A.java:3: error: cannot find symbol), ' +
           'so raw types, unchecked operations, deprecated calls and redundant casts were not checked. ' +
           'Fix what that compile reports (the main sources, the compile class path and Lombok), ' +
           'or add an exception for javac/lint-not-run with the path "**" in nitpicker.config.json ' +
