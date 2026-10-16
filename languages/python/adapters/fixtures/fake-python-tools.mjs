@@ -15,8 +15,8 @@
 //   sources.txt          one path per line: what `ruff check --show-files` lists (default: every
 //                        .py file below the project, except .venv)
 //   type-errors.txt      printed by mypy as its report (exit 1 when not empty)
-//   pyright.json         { generalDiagnostics } printed by pyright as its report, relative files made
-//                        absolute (exit 1 when it has diagnostics)
+//   pyright.json         { generalDiagnostics } printed by pyright and basedpyright as their
+//                        report, relative files made absolute (exit 1 when it has diagnostics)
 //   rules.json           written by the nitpicker rules script (default: no findings)
 //   structure-data.json  written as the structure metrics report of `python structure_metrics.py`
 //                        (default: no functions)
@@ -169,9 +169,14 @@ function mypy() {
   process.exit(report === '' ? 0 : 1);
 }
 
+const PYRIGHT_VERSIONS = {
+  pyright: 'pyright 1.1.390\n',
+  basedpyright: 'basedpyright 1.40.2\nbased on pyright 1.1.414\n',
+};
+
 function pyright() {
   if (args[0] === '--version') {
-    process.stdout.write('pyright 1.1.390\n');
+    process.stdout.write(PYRIGHT_VERSIONS[tool]);
     return;
   }
   const { generalDiagnostics = [] } = existsSync('pyright.json')
@@ -283,6 +288,7 @@ const tools = {
   coverage,
   mypy,
   pyright,
+  basedpyright: pyright,
   python,
   mutmut,
   'lint-imports': lintImports,
