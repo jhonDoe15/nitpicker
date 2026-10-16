@@ -128,6 +128,7 @@ function prettierCheckFor(layout, exclusions) {
     shardWeight: 8,
     configurationFiles: [
       'languages/typescript/adapters/prettier/prettier-layers.mjs',
+      'languages/typescript/conventions/prettier-conventions.mjs',
       'languages/typescript/preset/layout.mjs',
       'languages/typescript/preset/head-policy.mjs',
       JAVASCRIPT_PRESET_FILE,
