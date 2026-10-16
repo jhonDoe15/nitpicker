@@ -44,12 +44,15 @@ backstop. It fails only on findings your change adds, so leave code the task doe
 - Flow: no `else` after a `return`, and return an expression directly instead of assigning it to a
   local first. Build a list with a comprehension, not `append` in a loop.
 - Imports: name what you use. No `from module import *`.
-- Output: `logger = logging.getLogger(__name__)` and `logger.info(...)`. No `print`.
-- Records: `@dataclass(frozen=True)`, and `dataclasses.replace` for a changed copy. Pydantic only in
-  an `adapters/` package, where untrusted input is parsed once; pass frozen dataclasses on from there.
+- Output: the project's logger (`logging.getLogger(__name__)`, structlog or loguru), never `print`. In an
+  `except` pass the exception itself to the log call (`logger.exception(...)`, `exc_info=True`), not
+  `str(error)`.
+- Records: `@dataclass(frozen=True)`, and `dataclasses.replace` for a changed copy. The project's
+  validation library (pydantic by default) only in an `adapters/` package, where untrusted input is
+  parsed once; pass frozen dataclasses on from there.
 - Constants: a fixed set of strings is an `enum.StrEnum` (`class X(str, Enum)` before Python 3.11),
   not `STATUS_ACTIVE = "active"` constants or a class holding them. Settings like `DB_HOST` are fine.
-- Tests: use the project's runner (pytest or unittest). Every branch you add needs a test, and a
+- Tests: use the project's runner (pytest or unittest). Every test asserts something. Every branch you add needs a test, and a
   surviving mutant fails: assert the exact value, so a changed line breaks a test.
 - A finding that flags legitimate code (a command line entry point that prints) is lifted in
   `nitpicker.config.json`, under `python.exceptions`, with an entry such as
