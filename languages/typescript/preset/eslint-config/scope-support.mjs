@@ -1,10 +1,14 @@
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
+import { codeExtensions } from '../layout.mjs';
 
 const scopePackages = {
   react: ['react'],
   i18n: ['react-intl', '@formatjs/intl'],
 };
+
+const storySuffixes = ['stories', 'story'];
+export const storyGlobs = [`**/*.{${storySuffixes.join(',')}}.${codeExtensions}`];
 
 function readManifest(projectRoot) {
   try {
