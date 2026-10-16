@@ -42,8 +42,11 @@ gradle -I languages/java/gradle/nitpicker.init.gradle nitpickerJava   (per snaps
   runs every tool (tests, JaCoCo, PIT included) in the one Gradle invocation, so a build of several
   projects costs about the sum of single-project runs; Gradle's own `--parallel` setting applies.
   File limits and coupling (with the stability direction) are evaluated once over all projects, as
-  for Maven modules, so a package dependency from one project to another counts. Their findings
-  carry no project suffix, and a one-project build reads its own jdeps reports unmerged.
+  for Maven modules, so a package dependency from one project to another counts. Packages and classes
+  of a project other than the root are named with its folder (`lib/demo.lib`), so two projects that
+  share a package or class name stay apart, and a dependency goes to the project that declares the
+  class (its own first). The root's names and identities are as in a one-project build, which reads
+  its own jdeps reports unmerged.
 - **Nitpicker side: `languages/java/adapters/`.** `runJavaPreset` runs the task,
   `readJavaFindings` converts the reports, `runJavaDiff` does worktrees, rename map, comparison.
   `languages/java/adapters/java-analyzer.mjs` wraps all of it as one analyzer named `java` for the CLI (slice
@@ -483,10 +486,13 @@ resolved plus a new finding, as in the TypeScript check.
   as a unit test, or more than 30 s as an integration test (`thresholds.unitTestSeconds` and
   `thresholds.integrationTestSeconds`). Integration tests are those of a test task other than `test`
   (Maven's `surefire` counts as `test`), classes named `*IT`, `*ITCase` or `*IntegrationTest(s)`, and
-  classes annotated `@SpringBootTest`.
+  classes annotated `@SpringBootTest`, also through a superclass or an annotation of their own that
+  carries it, when that type's source is in a test root.
   The message names the budget, the measured time, the fixes (no `Thread.sleep` or other waits, a
-  smaller Spring context or a test slice, or moving it to an integration test source set) and the
-  exception route.
+  smaller Spring context or a test slice, or moving it to an integration test source set; on Maven,
+  making it a Failsafe integration test, a class name ending in `IT`) and the exception route.
+  Nitpicker runs only the tests its run needs: on Gradle the `test` task and any test task the build
+  makes it depend on, on Maven the `test` phase, so a test moved out of them is not timed.
 - **Measurement.** Head only, from the JUnit XML the test tasks already write: the init script copies
   `TEST-*.xml` of every test task in the run (not `nitpickerArchunit`) to
   `test-results/<task>/` in each module's report directory. No extra test run. A rerun test keeps
@@ -495,10 +501,15 @@ resolved plus a new finding, as in the TypeScript check.
   the `test` task, `failsafe` as an integration task.
 - **Edited or added.** Each test is keyed by class and testcase name (Gradle writes the display name,
   so a parameterized case is keyed by its `[n] ...` name; Surefire writes the method name). The test
-  method is found in the source by that name or its `@DisplayName`, with its annotations; a test is
-  counted when its method text differs from the base, or the file is new. A name that maps to no
-  method (a custom parameterized name) is counted when its file changed. Slow tests the change does
-  not touch stay baselined, and the base snapshot reports none.
+  method is found in the source by that name (also `name()[n]` and JUnit 4's `name[n]`) or its
+  `@DisplayName`, with its annotations, inside the class the report names: a `@Nested` test
+  (`CalcTest$WhenFull`) is looked up in that nested class, and named `CalcTest.WhenFull` in the
+  message. `void` and `fun` methods count, and `@TestFactory` methods that return dynamic tests. A
+  test is counted when its method text differs from the base, or the file is new. A name that maps
+  to no method (a default `[1] 1` or custom parameterized name, a dynamic test) is counted when the
+  file is new or one of its class's `@ParameterizedTest`, `@RepeatedTest`, `@TestFactory` or
+  `@TestTemplate` methods changed. Slow tests the change does not touch stay baselined, and the base
+  snapshot reports none.
 - **Module paths.** The reader works in one module's folder, so a Maven submodule's test file is
   found there and compared with the base file under the module path (`core/src/test/java/...`),
   and the exception hint in the message names the project-relative path. `readModuleFindings`

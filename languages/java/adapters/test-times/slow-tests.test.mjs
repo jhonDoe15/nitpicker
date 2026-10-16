@@ -9,6 +9,8 @@ const TEST_ROOT = 'src/test/java';
 const ORDER_TEST = `${TEST_ROOT}/shop/OrderTest.java`;
 const WAITS = 'Remove Thread.sleep and other waits, start a smaller Spring context or a test slice';
 const EXCEPTIONS = 'to "exceptions" in nitpicker.config.json.';
+const FAILSAFE_ADVICE =
+  'or make it a Failsafe integration test (class name ending in IT) if it is one';
 const temporaryRoots = [];
 
 const ORDER_SOURCE = `package shop;
@@ -94,6 +96,56 @@ describe('testMethod', () => {
     expect(testMethod(ORDER_SOURCE, 'totals')?.line).toBe(5);
     expect(testMethod(named, 'adds "two"')?.line).toBe(4);
     expect(testMethod(ORDER_SOURCE, '[1] 1')).toBeUndefined();
+  });
+
+  it('finds a JUnit 4 parameterized case and a @TestFactory that returns dynamic tests', () => {
+    const source = `class A {
+  @Test
+  public void adds() {}
+
+  @TestFactory
+  Stream<DynamicTest> grows() {
+    return Stream.of();
+  }
+
+  @TestFactory
+  DynamicTest[] shrinks() {
+    return new DynamicTest[0];
+  }
+}
+`;
+
+    expect(
+      ['adds[0]', 'grows()', 'grows()[1]', 'shrinks()'].map(
+        (name) => testMethod(source, name)?.line,
+      ),
+    ).toEqual([3, 6, 6, 11]);
+  });
+
+  it('looks for a @Nested test inside its own class, and an outer test outside nested ones', () => {
+    const source = `class CalcTest {
+  @Nested
+  class WhenEmpty {
+    @Test
+    void returnsZero() {}
+  }
+
+  @Nested
+  class WhenFull {
+    @Test
+    void returnsZero() {}
+  }
+
+  @Test
+  void returnsZero() {}
+}
+`;
+
+    expect(
+      ['CalcTest$WhenEmpty', 'CalcTest$WhenFull', 'CalcTest', 'CalcTest$Missing'].map(
+        (className) => testMethod(source, 'returnsZero()', className)?.line,
+      ),
+    ).toEqual([5, 11, 15, undefined]);
   });
 
   it('finds a Kotlin test named with backticks', () => {
@@ -191,6 +243,57 @@ describe('readSlowTestFindings', () => {
     expect(findingsFor({ sources: unchanged, results, snapshot: 'base' })).toEqual([]);
   });
 
+  it('counts a case named after no method only when its file is new or a parameterized test changed', () => {
+    const results = { test: suite('shop.OrderTest', [['[1] 1', '9']]) };
+    const base = { [ORDER_TEST]: ORDER_SOURCE };
+    const run = (source) => findingsFor({ sources: { [ORDER_TEST]: source }, results, base });
+
+    expect(run(ORDER_SOURCE.replace('total()', 'total() + 0'))).toEqual([]);
+    expect(
+      run(ORDER_SOURCE.replace('ints = {1, 2}', 'ints = {1, 3}')).map(({ identity }) => identity),
+    ).toEqual(['test:shop.OrderTest#[1] 1']);
+  });
+
+  it('attributes a @Nested test to its own class and names it with a dot', () => {
+    const calc = `${TEST_ROOT}/shop/CalcTest.java`;
+    const source = (body) =>
+      `package shop;\n\nclass CalcTest {\n  @Nested\n  class WhenEmpty {\n    @Test\n    void returnsZero() {}\n  }\n\n  @Nested\n  class WhenFull {\n    @Test\n    void returnsZero() {${body}}\n  }\n}\n`;
+    const results = { test: suite('shop.CalcTest$WhenFull', [['returnsZero()', '9']]) };
+    const run = (body) =>
+      findingsFor({ sources: { [calc]: source(body) }, results, base: { [calc]: source('') } });
+
+    expect(run('')).toEqual([]);
+    expect(
+      run(' sleep(); ').map(({ location, message }) => [location, message.split(' took')[0]]),
+    ).toEqual([[{ line: 13 }, 'CalcTest.WhenFull returnsZero()']]);
+  });
+
+  it('gives the integration budget to tests whose superclass or annotation is a @SpringBootTest', () => {
+    const support = `${TEST_ROOT}/shop/support`;
+    const findings = findingsFor({
+      sources: {
+        [`${support}/AbstractIntegrationTest.java`]:
+          'package shop.support;\n\n@SpringBootTest\npublic abstract class AbstractIntegrationTest {}\n',
+        [`${support}/ShopTest.java`]:
+          'package shop.support;\n\n@Retention(RUNTIME)\n@SpringBootTest\npublic @interface ShopTest {}\n',
+        [`${TEST_ROOT}/shop/FlowTest.java`]:
+          'package shop;\n\nimport shop.support.AbstractIntegrationTest;\n\nclass FlowTest extends AbstractIntegrationTest {\n  @Test\n  void runs() {}\n}\n',
+        [`${TEST_ROOT}/shop/CheckoutTest.java`]:
+          'package shop;\n\nimport shop.support.ShopTest;\n\n@ShopTest\nclass CheckoutTest {\n  @Test\n  void checksOut() {}\n}\n',
+        [ORDER_TEST]: ORDER_SOURCE,
+      },
+      results: {
+        test: [
+          suite('shop.FlowTest', [['runs()', '6']]),
+          suite('shop.CheckoutTest', [['checksOut()', '6']]),
+          suite('shop.OrderTest', [['totals()', '6']]),
+        ],
+      },
+    });
+
+    expect(findings.map(({ identity }) => identity)).toEqual(['test:shop.OrderTest#totals()']);
+  });
+
   it('reports a test whose source is missing on the project root path', () => {
     const findings = findingsFor({ results: { test: suite('gen.Made', [['x()', '6']]) } });
 
@@ -226,7 +329,7 @@ describe('readSlowTestFindings', () => {
         path: ORDER_TEST,
         identity: 'test:shop.OrderTest#totals()',
         location: { line: 5 },
-        message: `OrderTest totals() took 6.0 s; a unit test may take 5 s. ${WAITS}, or move it to an integration test source set if it is one. If this is intended, add {"rule":"test-runtime/slow-test","paths":["${ORDER_TEST}"],"reason":"..."} ${EXCEPTIONS}`,
+        message: `OrderTest totals() took 6.0 s; a unit test may take 5 s. ${WAITS}, ${FAILSAFE_ADVICE}. If this is intended, add {"rule":"test-runtime/slow-test","paths":["${ORDER_TEST}"],"reason":"..."} ${EXCEPTIONS}`,
         classification: 'enforceable',
       },
     ]);
@@ -253,7 +356,7 @@ describe('readSlowTestFindings', () => {
         path: ORDER_TEST,
         identity: 'test:shop.OrderTest#totals()',
         location: { line: 5 },
-        message: `OrderTest totals() took 9.0 s; a unit test may take 5 s. ${WAITS}, or move it to an integration test source set if it is one. If this is intended, add {"rule":"test-runtime/slow-test","paths":["${modulePath}/${ORDER_TEST}"],"reason":"..."} ${EXCEPTIONS}`,
+        message: `OrderTest totals() took 9.0 s; a unit test may take 5 s. ${WAITS}, ${FAILSAFE_ADVICE}. If this is intended, add {"rule":"test-runtime/slow-test","paths":["${modulePath}/${ORDER_TEST}"],"reason":"..."} ${EXCEPTIONS}`,
         classification: 'enforceable',
       },
     ]);
