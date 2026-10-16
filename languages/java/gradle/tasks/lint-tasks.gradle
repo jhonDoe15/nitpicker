@@ -88,6 +88,7 @@ def warningsOf = { File report, Set<String> files ->
         match.find() && match.group(1) in files
     }.collect { it + '\n' }.join('')
 }
+def insideProject = { File file -> file.toPath().normalize().startsWith(projectDir.toPath().normalize()) }
 def isModule = { File file ->
     if (file.isDirectory()) {
         return new File(file, 'module-info.class').isFile()
@@ -141,7 +142,8 @@ tasks.register('nitpickerLint') {
         def cache = lintCache.get().asFile
         project.delete(output, failure, cache)
         def all = mainSources.files
-            .findAll { it.name.endsWith('.java') && it.name != 'module-info.java' && it.exists() }.sort()
+            .findAll { it.name.endsWith('.java') && it.name != 'module-info.java' && it.exists() && insideProject(it) }
+            .sort()
         def moduleInfo = mainSources.files.find { it.name == 'module-info.java' && it.isFile() }
         def reused = moduleInfo == null ? baselineReport() : null
         Set<String> unchanged = reused == null ? new HashSet<String>() : unchangedSince(all)
