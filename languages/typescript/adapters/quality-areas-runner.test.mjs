@@ -36,7 +36,7 @@ function snapshotWith(files) {
   return root;
 }
 
-function optionsFor(kind, projectRoot) {
+function optionsFor(kind, projectRoot, extra = []) {
   return parseArguments([
     '--analyzer-name',
     kind,
@@ -50,11 +50,12 @@ function optionsFor(kind, projectRoot) {
     PACKAGE_ROOT,
     '--snapshot',
     'head',
+    ...extra,
   ]);
 }
 
-function runKind(kind, projectRoot) {
-  return runQualityArea(optionsFor(kind, projectRoot));
+function runKind(kind, projectRoot, extra) {
+  return runQualityArea(optionsFor(kind, projectRoot, extra));
 }
 
 describe('crap runner without a coverage report', () => {
@@ -131,6 +132,45 @@ describe('coverage runner invoked as a script', () => {
       { rule: 'tests-failed', classification: 'tool-error' },
     ]);
     expect(findings[0].message).toMatch(/returns two/u);
+  });
+});
+
+describe('structure runner with a base checkout', () => {
+  const copy = (tail) =>
+    [
+      'export function total(items: number[], tax: number): number {',
+      '  const sum = items.reduce((a, b) => a + b, 0);',
+      '  const taxed = sum * (1 + tax);',
+      '  const rounded = Math.round(taxed * 100) / 100;',
+      `  ${tail}`,
+      '}',
+      '',
+    ].join('\n');
+  const files = (cart) => ({
+    'package.json': '{"name":"p","type":"module"}\n',
+    'src/cart/total.ts': copy(cart),
+    'src/checkout/total.ts': copy('return rounded;'),
+  });
+
+  it('reports the edit of one of two near-identical copies against the base side', async () => {
+    const baseRoot = snapshotWith(files('return rounded;'));
+    const headRoot = snapshotWith(files('return Math.max(rounded, 0);'));
+
+    const findings = await runKind('structure', headRoot, ['--baseline-root', baseRoot]);
+
+    expect(
+      findings
+        .filter(({ rule }) => rule === 'sibling-copy-edit')
+        .map(({ path: file, identity }) => [file, identity]),
+    ).toEqual([['src/cart/total.ts', 'sibling-copy:total']]);
+  });
+
+  it('reports nothing without a base checkout', async () => {
+    const headRoot = snapshotWith(files('return Math.max(rounded, 0);'));
+
+    const findings = await runKind('structure', headRoot);
+
+    expect(findings.filter(({ rule }) => rule === 'sibling-copy-edit')).toEqual([]);
   });
 });
 

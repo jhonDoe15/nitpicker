@@ -6,6 +6,7 @@ import {
   resolveHeadPolicy,
   withHeadPolicyFile,
 } from '../../head-policy.mjs';
+import { typescriptStructureProjectFindings } from '../project-findings.mjs';
 import { reuseFindings } from '../reuse/reuse-findings.mjs';
 
 export const WORKSPACE_POLICY = { layout: { sourceRoots: ['packages'] } };
@@ -53,7 +54,7 @@ function withProject(files, policy, operation) {
 
 export function findingsOf(files, policy = {}) {
   return withProject(files, policy, ({ root, environment }) =>
-    reuseFindings(root, 'structure', environment),
+    reuseFindings({ projectRoot: root, analyzerName: 'structure' }, environment),
   );
 }
 
@@ -66,11 +67,40 @@ export function bothSides(baseFiles, headFiles, config = {}) {
     const policy = resolveHeadPolicy(config, headRoot);
     function run(root) {
       return withHeadPolicyFile(policy, (policyFile) =>
-        reuseFindings(root, 'structure', headPolicyEnvironment(policyFile)),
+        reuseFindings(
+          { projectRoot: root, analyzerName: 'structure' },
+          headPolicyEnvironment(policyFile),
+        ),
       );
     }
     return { head: run(headRoot), base: withFiles(baseFiles, run) };
   });
+}
+
+export function changeFindings(baseFiles, headFiles, config = {}) {
+  return withFiles(headFiles, (headRoot) =>
+    withFiles(baseFiles, (baselineRoot) =>
+      withHeadPolicyFile(resolveHeadPolicy(config, headRoot), (policyFile) =>
+        reuseFindings(
+          { projectRoot: headRoot, analyzerName: 'structure', baselineRoot },
+          headPolicyEnvironment(policyFile),
+        ),
+      ),
+    ),
+  );
+}
+
+export function projectChangeFindings(baseFiles, headFiles, snapshot) {
+  return withFiles(headFiles, (projectRoot) =>
+    withFiles(baseFiles, (baselineRoot) =>
+      withHeadPolicyFile(resolveHeadPolicy({}, projectRoot), (policyFile) =>
+        typescriptStructureProjectFindings(
+          { projectRoot, baselineRoot, analyzerName: 'structure', snapshot },
+          headPolicyEnvironment(policyFile),
+        ),
+      ),
+    ),
+  );
 }
 
 export function newFindings({ base, head }) {

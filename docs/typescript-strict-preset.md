@@ -233,6 +233,18 @@ for a file takes that file out of the rule, so a pair of copies that must both s
   other files, once per name and file; the identity is the name and file, so existing copies are
   baselined. The message tells an exported copy to keep one definition and import it, a private copy
   to import the exported copy when there is one, and otherwise to move to one module and import it.
+- `sibling-copy-edit`: a change edits a function or class and leaves unedited a copy with the same
+  name and kind in another module of the package, whose tokens are at least 80% the same (twice the
+  longest common token sequence over the tokens of both; identical copies are
+  `duplicate-definition`'s and the `duplicates` check's). Definitions of fewer than 20 tokens
+  (parameters and body) are skipped, and so are types, interfaces and constants. A copy is edited
+  when its normalized text differs from the definition at the same path in the base (whitespace,
+  comments, quote style and semicolons do not count). Only the edited copy is reported, naming the
+  unedited ones. A pair neither side of the change touches, copies that are all edited (the same way
+  or differently), a new or moved copy, and an edit that leaves the copies under 80% alike are not
+  reported. Only the head snapshot reports it, as it reads the base checkout; the identity is the
+  name and file. It covers the same files as `duplicate-definition`, and an exception for either
+  copy's path lifts it. Edit the other copy too, or merge the two.
 - `exported-name-collision`: two modules export different definitions under one name and a module
   imports both without aliasing both, so a reader and auto-import can mistake one for the other. A
   module that aliases every colliding import (`import { handler as getUser }`, `import type`,
@@ -693,8 +705,8 @@ Off, with the reason:
   code, and keep such exceptions narrow.
 - The file limits (`file-lines-limit`, `line-length-limit`, `folder-files-limit`) take exceptions the
   same way; each failure message spells out the entry that would lift it.
-- The reuse rules (`shared-used-by-one-feature`, `duplicate-definition`, `exported-name-collision`,
-  `redefined-library-component`, `new-icon-asset`) come from the `coupling` and `structure` checks,
+- The reuse rules (`shared-used-by-one-feature`, `duplicate-definition`, `sibling-copy-edit`,
+  `exported-name-collision`, `redefined-library-component`, `new-icon-asset`) come from the `coupling` and `structure` checks,
   not from ESLint, and take exceptions the same way; the JavaScript preset runs them too.
 - `layout.excludedGlobs`, `layout.entryPoints` and `layout.sourceRoots`/`layout.testRoots` are all valid `layout` keys. The
   roots must be directories; `excludedGlobs` are globs and replace the built-in exclusions;
