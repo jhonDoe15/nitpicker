@@ -1,4 +1,4 @@
-import { existsSync, readdirSync } from 'node:fs';
+import { existsSync, lstatSync, readdirSync } from 'node:fs';
 import path from 'node:path';
 import ts from 'typescript';
 import { filesUnder } from '../../../../shared/filesystem.mjs';
@@ -55,14 +55,48 @@ function isSkippedDirectory(absolute, entry, layout) {
   );
 }
 
-function siblingCodeFiles(siblings, layout) {
-  return siblings
-    .flatMap(({ dir }) => [
+export function codeFilesUnder(directories, layout) {
+  return directories
+    .flatMap((dir) => [
       ...filesUnder(dir, {
         skipDirectory: (absolute, entry) => isSkippedDirectory(absolute, entry, layout),
       }),
     ])
     .filter((file) => isCodeFile(file));
+}
+
+function isInside(root, target) {
+  const relative = path.relative(root, target);
+  return relative !== '..' && !relative.startsWith(`..${path.sep}`) && !path.isAbsolute(relative);
+}
+
+export function walkRules({ projectRoot, layout }) {
+  const root = path.resolve(projectRoot);
+  const plain = new Map();
+  function isPlainDirectory(directory) {
+    if (!plain.has(directory)) {
+      const entry = lstatSync(directory, { throwIfNoEntry: false });
+      const skipped = isSkippedDirectory(directory, { name: path.basename(directory) }, layout);
+      plain.set(directory, entry?.isDirectory() === true && !skipped);
+    }
+    return plain.get(directory);
+  }
+  function isWalkedDirectory(directory) {
+    const segments = path.relative(root, directory).split(path.sep).filter(Boolean);
+    return (
+      isInside(root, directory) &&
+      segments
+        .map((_, index) => path.join(root, ...segments.slice(0, index + 1)))
+        .every((ancestor) => isPlainDirectory(ancestor))
+    );
+  }
+  return {
+    isDirectory: (directory) => isWalkedDirectory(path.resolve(directory)),
+    isFile: (file) =>
+      isCodeFile(file) &&
+      lstatSync(file, { throwIfNoEntry: false })?.isFile() === true &&
+      isWalkedDirectory(path.dirname(path.resolve(file))),
+  };
 }
 
 function compilerOptions({ parsed, packages, projectRoot, layout }) {
@@ -92,7 +126,10 @@ export function createProjectProgram({ projectRoot, configPath, packagesInfo, la
   const rootNames = new Set([
     ...parsed.fileNames,
     ...rootConfigsAndScripts(projectRoot, layout),
-    ...siblingCodeFiles(siblings, layout),
+    ...codeFilesUnder(
+      siblings.map(({ dir }) => dir),
+      layout,
+    ),
   ]);
   return ts.createProgram({
     rootNames: [...rootNames],
