@@ -189,9 +189,14 @@ describe('config file', () => {
     expect(() => validateConfig({ preset: 'java', thresholds: { crapLimit: 0 } })).toThrow(
       /positive number/,
     );
-    expect(() => validateConfig({ preset: 'python', thresholds: { unitTestSeconds: 2 } })).toThrow(
-      '"thresholds.unitTestSeconds" is supported only with "preset": "java" or "kotlin"',
+    expect(() =>
+      validateConfig({ preset: 'typescript', thresholds: { unitTestSeconds: 2 } }),
+    ).toThrow(
+      '"thresholds.unitTestSeconds" is supported only with "preset": "java", "kotlin" or "python"',
     );
+    expect(
+      validateConfig({ preset: 'python', thresholds: { unitTestSeconds: 2, classMethods: 30 } }),
+    ).toEqual({ preset: 'python', thresholds: { unitTestSeconds: 2, classMethods: 30 } });
     expect(() => validateConfig({ preset: 'java', legacyInventory: '../x.json' })).toThrow(
       /inside the project/,
     );
@@ -380,7 +385,7 @@ describe('tool precedence', () => {
     );
     expect(() => validateConfig({ preset: 'python', tools })).toThrow(
       new Error(
-        'nitpicker.config.json: "tools" is not supported with "preset": "python": it describes the TypeScript source layout and ESLint rules, which the Python preset does not have. Not supported with python: layout, exceptions, react, i18n, tools, except exceptions for file-lines-limit, line-length-limit, folder-files-limit. Shared by all presets: thresholds, exclude, legacyInventory',
+        'nitpicker.config.json: "tools" is not supported with "preset": "python": it describes the TypeScript source layout and ESLint rules, which the Python preset does not have. Not supported with python: layout, exceptions, react, i18n, tools, except exceptions for file-lines-limit, line-length-limit, folder-files-limit, folder-depth-limit, class-methods-limit, class-fields-limit, inheritance-depth-limit. Shared by all presets: thresholds, exclude, legacyInventory',
       ),
     );
   });

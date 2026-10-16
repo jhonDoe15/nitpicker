@@ -1,6 +1,20 @@
 export const RULES_TOOL = 'python-rules';
 const TYPE_CHECK_TOOLS = ['mypy', 'pyright', 'basedpyright'];
-const HINTED_TOOLS = ['ruff', ...TYPE_CHECK_TOOLS, RULES_TOOL];
+const HINTED_TOOLS = [
+  'ruff',
+  ...TYPE_CHECK_TOOLS,
+  RULES_TOOL,
+  'coverage-py',
+  'duplicates',
+  'coupling',
+  'import-linter',
+  'dependencies',
+  'test-runtime',
+  'mutmut',
+];
+
+// Rules whose message names a setting to change instead of an exception.
+const ROUTED_BY_SETTING = new Set(['no-import-outside-roots']);
 
 const LOGGING = 'Use `logging`: `logger = logging.getLogger(__name__)`, then `logger.info(...)`.';
 const HANDLE_EXCEPTION =
@@ -96,9 +110,7 @@ export const RULE_HINTS = [
     tool: RULES_TOOL,
     rules: ['no-inline-suppression'],
     describe: (subject) => `Inline suppression \`# ${subject}\``,
-    allowed:
-      'Remove the comment and fix the code. If it must stay, add a "python.exceptions" entry for no-inline-suppression for this path.',
-    exception: false,
+    allowed: 'Remove the comment and fix the code.',
   },
   { tool: 'mypy', rules: ['import-not-found', 'import-untyped'], allowed: INSTALL_PACKAGE },
   ...['pyright', 'basedpyright'].map((tool) => ({
@@ -145,7 +157,8 @@ function canBeLifted(finding) {
     HINTED_TOOLS.includes(finding.tool) &&
     finding.classification === 'enforceable' &&
     typeof finding.rule === 'string' &&
-    finding.rule !== ''
+    finding.rule !== '' &&
+    finding.path !== '.'
   );
 }
 
@@ -154,10 +167,11 @@ export function withHint(finding) {
   if (hint === undefined && !canBeLifted(finding)) {
     return finding;
   }
+  const routed = hint?.exception === false || ROUTED_BY_SETTING.has(finding.rule);
   const sentences = [
     `${finding.message.replace(/\.$/, '')}.`,
     ...(hint === undefined ? [] : [hint.allowed]),
-    ...(hint?.exception === false ? [] : [exceptionSentence(finding.rule)]),
+    ...(routed ? [] : [exceptionSentence(finding.rule)]),
   ];
   return { ...finding, message: sentences.join(' ') };
 }

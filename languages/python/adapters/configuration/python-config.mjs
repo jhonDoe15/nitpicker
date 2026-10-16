@@ -7,6 +7,10 @@ import {
   validateStringArray,
 } from '../../../../shared/config.mjs';
 import { SHARED_EXCEPTION_RULES } from '../../../../shared/policy.mjs';
+import { PYTHON_SIZE_RULES } from '../../../../shared/policy-size.mjs';
+
+/** The shared limits the top-level "exceptions" lift; python.exceptions lifts every other rule. */
+export const PYTHON_TOP_LEVEL_EXCEPTION_RULES = [...SHARED_EXCEPTION_RULES, ...PYTHON_SIZE_RULES];
 import { ruleIdProblem } from './python-rule-ids.mjs';
 
 const ENVIRONMENTS = ['uv', 'poetry', 'path'];
@@ -33,7 +37,7 @@ export function validatePythonConfig(config, typescriptOnlyKeys) {
   const unsupported = typescriptOnlyKeys.filter((key) => config[key] !== undefined);
   if (unsupported.length > 0) {
     throw configError(
-      `"${unsupported[0]}" is not supported with "preset": "python": it describes the TypeScript source layout and ESLint rules, which the Python preset does not have. Not supported with python: ${typescriptOnlyKeys.join(', ')}, except exceptions for ${SHARED_EXCEPTION_RULES.join(', ')}. Shared by all presets: thresholds, exclude, legacyInventory`,
+      `"${unsupported[0]}" is not supported with "preset": "python": it describes the TypeScript source layout and ESLint rules, which the Python preset does not have. Not supported with python: ${typescriptOnlyKeys.join(', ')}, except exceptions for ${PYTHON_TOP_LEVEL_EXCEPTION_RULES.join(', ')}. Shared by all presets: thresholds, exclude, legacyInventory`,
     );
   }
   if (config.python !== undefined) {
@@ -80,7 +84,7 @@ function validateSettings(settings) {
 
 function validateRuleIds(exceptions) {
   for (const [index, { rule }] of exceptions.entries()) {
-    if (SHARED_EXCEPTION_RULES.includes(rule)) {
+    if (PYTHON_TOP_LEVEL_EXCEPTION_RULES.includes(rule)) {
       throw configError(
         `"python.exceptions[${String(index)}].rule" is "${rule}", a file limit shared by every preset: lift it in the top-level "exceptions" instead`,
       );

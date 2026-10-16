@@ -159,26 +159,115 @@ def function_entries(module):
     return entries
 
 
-def file_entries(project, relative):
+def written_name(node):
+    if isinstance(node, ast.Subscript):
+        return written_name(node.value)
+    if isinstance(node, ast.Attribute):
+        owner = written_name(node.value)
+        return None if owner is None else owner + "." + node.attr
+    return node.id if isinstance(node, ast.Name) else None
+
+
+def is_class_var(annotation):
+    name = written_name(annotation) or ""
+    return name.split(".")[-1] == "ClassVar"
+
+
+def self_attributes(function):
+    names = set()
+    for node in ast.walk(function):
+        targets = node.targets if isinstance(node, ast.Assign) else []
+        if isinstance(node, (ast.AnnAssign, ast.AugAssign)):
+            targets = [node.target]
+        for target in targets:
+            if (
+                isinstance(target, ast.Attribute)
+                and isinstance(target.value, ast.Name)
+                and target.value.id == "self"
+            ):
+                names.add(target.attr)
+    return names
+
+
+def class_entry(node, owners):
+    methods = [child for child in node.body if isinstance(child, FUNCTIONS)]
+    fields = set()
+    for child in node.body:
+        if isinstance(child, ast.AnnAssign) and isinstance(child.target, ast.Name):
+            if not is_class_var(child.annotation):
+                fields.add(child.target.id)
+    for method in methods:
+        fields |= self_attributes(method)
+    return {
+        "name": ".".join(owner.name for owner in (*owners, node)),
+        "start": first_line(node),
+        "kind": "class",
+        "methods": sum(method.name != "__init__" for method in methods),
+        "fields": len(fields),
+        "bases": [name for name in map(written_name, node.bases) if name is not None],
+    }
+
+
+def class_entries(module):
+    entries = []
+    pending = [(child, ()) for child in reversed(blocks_of(module))]
+    while pending:
+        node, owners = pending.pop()
+        if isinstance(node, ast.ClassDef):
+            entries.append(class_entry(node, owners))
+        inner = (*owners, node) if isinstance(node, SCOPES) else owners
+        pending.extend((child, inner) for child in reversed(blocks_of(node)))
+    return entries
+
+
+def import_entries(module):
+    entries = []
+    for node in ast.walk(module):
+        if isinstance(node, ast.Import):
+            entries.extend({"module": a.name, "asname": a.asname} for a in node.names)
+        elif isinstance(node, ast.ImportFrom):
+            entries.extend(
+                {"level": node.level, "module": node.module, "name": a.name, "asname": a.asname}
+                for a in node.names
+            )
+    return entries
+
+
+def parse_file(project, relative):
     with open(os.path.join(project, relative), "rb") as handle:
         source = handle.read()
     try:
-        module = ast.parse(source, relative)
+        return ast.parse(source, relative)
     except (SyntaxError, ValueError, RecursionError, MemoryError):
-        return []
-    return [dict(entry, file=relative) for entry in function_entries(module)]
+        return None
+
+
+def file_entries(project, relative):
+    module = parse_file(project, relative)
+    if module is None:
+        return [], None
+    functions = [dict(entry, file=relative) for entry in function_entries(module)]
+    classes = [dict(entry, file=relative) for entry in class_entries(module)]
+    return functions, {"classes": classes, "imports": import_entries(module)}
 
 
 def main(arguments):
-    output, project, listing = arguments
+    output, project, listing, *classes_output = arguments
     warnings.simplefilter("ignore")
     with open(listing, encoding="utf-8") as handle:
         files = [line for line in handle.read().split("\n") if line]
     entries = []
+    classes = {}
     for relative in files:
-        entries.extend(file_entries(project, relative))
+        functions, described = file_entries(project, relative)
+        entries.extend(functions)
+        if described is not None:
+            classes[relative] = described
     with open(output, "w", encoding="utf-8") as handle:
         json.dump(entries, handle)
+    if classes_output:
+        with open(classes_output[0], "w", encoding="utf-8") as handle:
+            json.dump(classes, handle)
 
 
 if __name__ == "__main__":

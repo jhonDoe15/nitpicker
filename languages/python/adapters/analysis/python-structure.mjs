@@ -12,6 +12,7 @@ const METRICS_SCRIPT = path.resolve(
   '../metrics/structure_metrics.py',
 );
 export const STRUCTURE_REPORT = 'structure.json';
+export const CLASSES_REPORT = 'classes.json';
 const STRUCTURE_HINTS = {
   maxControlNesting:
     'An if/elif chain counts as one level; use match, a dict lookup or a helper function for what nests inside a branch.',
@@ -27,6 +28,7 @@ export function structure(context) {
       path.join(context.reportRoot, STRUCTURE_REPORT),
       context.projectRoot,
       listing,
+      path.join(context.reportRoot, CLASSES_REPORT),
     ],
     { rule: 'structure-failed' },
   );

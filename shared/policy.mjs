@@ -8,6 +8,13 @@
 import { UNUSED_API_RULES, UNUSED_API_RULE_IDS } from './unused-api/unused-api-policy.mjs';
 
 import { reuseRules } from './rules/reuse-rules.mjs';
+import {
+  SIZE_HELD_MESSAGES,
+  SIZE_RULE_IDS,
+  sizeGrewMessages,
+  sizeMessages,
+  sizeRules,
+} from './policy-size.mjs';
 
 export const LANGUAGES = ['typescript', 'java', 'python', 'kotlin'];
 
@@ -31,6 +38,7 @@ export const RULE_IDS = {
   fileLines: 'file-lines-limit',
   lineLength: 'line-length-limit',
   folderFiles: 'folder-files-limit',
+  ...SIZE_RULE_IDS,
   slowTest: 'slow-test',
   sharedUsedByOneFeature: 'shared-used-by-one-feature',
   duplicateDefinition: 'duplicate-definition',
@@ -128,6 +136,7 @@ export const MESSAGES = {
   fileLines: `File has {value} lines (limit {limit}). Split it into files by responsibility. ${EXCEPTION_HINT}`,
   lineLength: `Line is {value} characters (limit {limit}). Break it up or extract a named value. ${EXCEPTION_HINT}`,
   folderFiles: `Folder has {value} {kind} files directly in it (limit {limit}). Group related files into subfolders (packages in Java). ${EXCEPTION_HINT}`,
+  ...sizeMessages(EXCEPTION_HINT),
   slowTest: `{name} took {seconds} s; {kind} test may take {limit} s. Remove Thread.sleep and other waits, start a smaller Spring context or a test slice{move}. ${EXCEPTION_HINT}`,
   sharedUsedByOneFeature: `{path} is used only by feature {feature}. Move it into {directory}. ${EXCEPTION_HINT}`,
   duplicateDefinition: `{name} is also defined with {same} in {others}. {fix} ${EXCEPTION_HINT}`,
@@ -160,6 +169,7 @@ export const GREW_MESSAGES = {
   fileLines: `File grew from {base} to {value} lines (limit {limit}). Put new code in a new file. ${EXCEPTION_HINT}`,
   lineLength: `Line grew from {base} to {value} characters (limit {limit}). Break it up or extract a named value. ${EXCEPTION_HINT}`,
   folderFiles: `Folder grew from {base} to {value} {kind} files (limit {limit}). Put the new file in a subfolder. ${EXCEPTION_HINT}`,
+  ...sizeGrewMessages(EXCEPTION_HINT),
 };
 
 export const HELD_MESSAGES = {
@@ -178,6 +188,7 @@ export const HELD_MESSAGES = {
     'Line: {value} characters (limit {limit}), allowed because base was {base}; any increase fails.',
   folderFiles:
     'Folder: {value} {kind} files (limit {limit}), allowed because base was {base}; any increase fails.',
+  ...SIZE_HELD_MESSAGES,
 };
 
 const BOTH = { typescript: true, java: true, python: false };
@@ -300,12 +311,13 @@ export const RULES = [
     limit: `more than ${String(FILE_LIMIT_DEFAULTS.folderFiles)} source files, or test files, directly in one folder; override with \`thresholds.folderFiles\``,
     enforcedBy: withKotlin(ALL, true),
   },
+  ...sizeRules({ both: BOTH, withKotlin }),
   ...reuseRules(RULE_IDS, withKotlin(TYPESCRIPT_ONLY, false)),
   {
     id: RULE_IDS.slowTest,
     check: 'test-runtime',
     limit: `a test the change adds or edits taking more than ${String(TEST_TIME_DEFAULTS.unitTestSeconds)} s (unit) or ${String(TEST_TIME_DEFAULTS.integrationTestSeconds)} s (integration); override with \`thresholds.unitTestSeconds\` and \`thresholds.integrationTestSeconds\``,
-    enforcedBy: withKotlin({ ...BOTH, typescript: false }, true),
+    enforcedBy: withKotlin({ ...ALL, typescript: false }, true),
   },
   {
     id: RULE_IDS.componentStoryMissing,

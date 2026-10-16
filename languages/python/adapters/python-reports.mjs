@@ -13,7 +13,6 @@ import { ingestRulesReport } from '../ingest/rules-report.mjs';
 import { ingestMypy, ingestPyright } from '../ingest/type-check.mjs';
 import { applyRuleHints } from '../rules/rule-hints.mjs';
 import { RULES_REPORT } from './analysis/python-ast-rules.mjs';
-import { readCouplingFindings } from './analysis/python-coupling.mjs';
 import { readPythonCrapFindings } from './mutation/python-crap.mjs';
 import { readImportLinterFindings } from './analysis/python-import-linter.mjs';
 import {
@@ -21,7 +20,19 @@ import {
   readPythonFunctions,
   readPythonStructureFindings,
 } from './analysis/python-structure.mjs';
-import { COVERAGE_REPORT, FORMAT_REPORT, MANIFEST_REPORT, RUFF_REPORT } from './python-tools.mjs';
+import { FORMAT_REPORT, MANIFEST_REPORT, RUFF_REPORT } from './python-tools.mjs';
+import { COVERAGE_REPORT } from './test-runs/test-step.mjs';
+import { testFailureFindings } from './test-runs/test-failures.mjs';
+import { readSlowTestFindings } from './test-runs/slow-tests.mjs';
+import { readCouplingFindings, readImportsReport } from './analysis/python-coupling.mjs';
+import { cycleFindings, outsideRootsFindings } from './imports/python-import-rules.mjs';
+import {
+  pythonClassLimitFindings,
+  pythonFolderDepthFindings,
+  readClassesReport,
+} from './size/python-size.mjs';
+import { readDependencyFindings } from './dependencies/dependency-findings.mjs';
+import { withoutFrameworkForms } from './dependencies/python-frameworks.mjs';
 import { TYPES_REPORT } from './python-types.mjs';
 
 const FORMATTER_TOOLS = { ruff: 'ruff-format', black: 'black' };
@@ -40,32 +51,52 @@ export function readPythonFindings({ projectRoot, reportRoot, crapLimit, policy 
   const manifest = JSON.parse(readReport(reportRoot, MANIFEST_REPORT));
   const roots = [...new Set([path.resolve(projectRoot), realpathSync(projectRoot)])];
   const coverage = readReport(reportRoot, COVERAGE_REPORT);
-  return {
-    findings: applyRuleHints([
-      ...ruffFindings(JSON.parse(readReport(reportRoot, RUFF_REPORT)), { roots, projectRoot }),
-      ...formatFindings(readReport(reportRoot, FORMAT_REPORT), { roots, manifest }),
-      ...typeFindings(JSON.parse(readReport(reportRoot, TYPES_REPORT)), roots),
-      ...ingestRulesReport(readReport(reportRoot, RULES_REPORT)),
-      ...ingestCoverageJson(coverage, { roots }).findings,
-      ...readPythonStructureFindings(reportRoot, projectRoot),
-      ...pythonFileLimitFindings(projectRoot, policy),
-      ...readPythonCrapFindings({
-        functions: readPythonFunctions(reportRoot),
-        coverage,
-        projectRoot,
-        roots,
-        crapLimit,
-      }),
-      ...(manifest.testsRan === false ? [noTestsFinding()] : []),
-      ...ingestCoverageBranches(readReport(reportRoot, COVERAGE_REPORT), {
-        roots,
-        sourceText: (file) => readSource(projectRoot, file),
-      }).findings,
-      ...readDuplicateFindings(reportRoot),
-      ...readCouplingFindings(reportRoot),
-      ...readImportLinterFindings(reportRoot),
-    ]),
-  };
+  const imports = readImportsReport(reportRoot);
+  const found = applyRuleHints([
+    ...ruffFindings(JSON.parse(readReport(reportRoot, RUFF_REPORT)), { roots, projectRoot }),
+    ...formatFindings(readReport(reportRoot, FORMAT_REPORT), { roots, manifest }),
+    ...typeFindings(JSON.parse(readReport(reportRoot, TYPES_REPORT)), roots),
+    ...ingestRulesReport(readReport(reportRoot, RULES_REPORT)),
+    ...ingestCoverageJson(coverage, { roots }).findings,
+    ...readPythonStructureFindings(reportRoot, projectRoot),
+    ...pythonFileLimitFindings(projectRoot, policy),
+    ...readPythonCrapFindings({
+      functions: readPythonFunctions(reportRoot),
+      coverage,
+      projectRoot,
+      roots,
+      crapLimit,
+    }),
+    ...(manifest.testsRan === false ? [noTestsFinding()] : []),
+    ...ingestCoverageBranches(readReport(reportRoot, COVERAGE_REPORT), {
+      roots,
+      sourceText: (file) => readSource(projectRoot, file),
+    }).findings,
+    ...readDuplicateFindings(reportRoot),
+    ...readCouplingFindings(reportRoot),
+    ...readImportLinterFindings(reportRoot),
+    ...testFailureFindings(manifest, policy.snapshot),
+    ...projectShapeFindings({ projectRoot, reportRoot, policy, imports }),
+  ]);
+  return { findings: withoutFrameworkForms(found, projectRoot, imports) };
+}
+
+function projectShapeFindings({ projectRoot, reportRoot, policy, imports }) {
+  const limits = { thresholds: policy.fileLimits ?? {}, exceptions: policy.exceptions ?? [] };
+  return [
+    ...readSlowTestFindings({
+      reportRoot,
+      projectRoot,
+      limits: policy.testSeconds,
+      baselineRoot: policy.baselineRoot,
+      snapshot: policy.snapshot,
+    }),
+    ...pythonFolderDepthFindings(imports.modules, limits),
+    ...pythonClassLimitFindings(readClassesReport(reportRoot), imports.modules, limits),
+    ...cycleFindings(imports),
+    ...outsideRootsFindings(imports),
+    ...readDependencyFindings({ reportRoot, projectRoot, snapshot: policy.snapshot }),
+  ];
 }
 
 export function ruffFindings(log, { roots, projectRoot }) {
