@@ -9,6 +9,46 @@ export function domainGlobsFor(sourceRoots) {
 
 const domainGlobs = domainGlobsFor(['src']);
 
+const EXCEPTION_ROUTE =
+  ' If it is deliberate, add an exception for this rule in nitpicker.config.json.';
+const CLOCK_AND_RANDOM_MESSAGE = `domain/ code does not read the clock or randomness: take the time, ID or random value as a parameter from adapters/.${EXCEPTION_ROUTE}`;
+const IO_GLOBAL_MESSAGE = `domain/ code does no I/O and does not touch the process or timers: do it in adapters/ and pass the result in as a parameter.${EXCEPTION_ROUTE}`;
+const DATE_FNS_CLOCK_FUNCTIONS = [
+  'isToday',
+  'isTomorrow',
+  'isYesterday',
+  'isPast',
+  'isFuture',
+  'isThis[A-Z]\\w*',
+  'startOfToday',
+  'endOfToday',
+  'startOfTomorrow',
+  'endOfTomorrow',
+  'startOfYesterday',
+  'endOfYesterday',
+  'formatDistanceToNow',
+  'formatDistanceToNowStrict',
+].join('|');
+
+const IO_GLOBALS = [
+  'process',
+  'fetch',
+  'setTimeout',
+  'setInterval',
+  'setImmediate',
+  'queueMicrotask',
+  'performance',
+  'XMLHttpRequest',
+  'WebSocket',
+  'localStorage',
+  'sessionStorage',
+];
+
+const GLOBAL_OBJECTS = 'globalThis|window|self|global';
+const GLOBAL_OBJECT = `[object.name=/^(${GLOBAL_OBJECTS})$/]`;
+const ON_GLOBAL_OBJECT = `[object.type='MemberExpression'][object.object.name=/^(${GLOBAL_OBJECTS})$/]`;
+const CLOCK_IMPORTS = 'dayjs|moment';
+
 const MUTATING_ARRAY_METHODS = 'push|pop|shift|unshift|splice|sort|reverse|fill|copyWithin';
 const READONLY_WRAPPER = "TSTypeOperator[operator='readonly']";
 const TRANSFORMS =
@@ -57,9 +97,28 @@ export const domainRestrictedSyntax = [
   },
   {
     selector:
-      "CallExpression[callee.object.name='Date'][callee.property.name='now'], NewExpression[callee.name='Date'][arguments.length=0], CallExpression[callee.object.name='Math'][callee.property.name='random'], CallExpression[callee.property.name=/^(randomUUID|getRandomValues)$/]",
-    message:
-      'domain/ code does not read the clock or randomness: take the time, ID or random value as a parameter from adapters/.',
+      "NewExpression[callee.name='Date'][arguments.length=0], CallExpression[callee.name='Date'], CallExpression[callee.property.name=/^(randomUUID|getRandomValues)$/], CallExpression[callee.name=/^(dayjs|moment)$/][arguments.length=0], CallExpression[callee.object.name='DateTime'][callee.property.name=/^(now|local|utc)$/][arguments.length=0]",
+    message: CLOCK_AND_RANDOM_MESSAGE,
+  },
+  {
+    selector: [
+      "CallExpression[callee.object.name=/^(dayjs|moment)$/][callee.property.name='utc'][arguments.length=0]",
+      'CallExpression[callee.property.name=/^(fromNow|toNow)$/]',
+      "MemberExpression[object.name='Temporal'][property.name='Now']",
+      `ImportDeclaration[source.value=/^date-fns/] ImportSpecifier[imported.name=/^(${DATE_FNS_CLOCK_FUNCTIONS})$/]`,
+      `:matches(NewExpression, CallExpression)[callee.type='MemberExpression'][callee.object.name=/^(${GLOBAL_OBJECTS})$/][callee.property.name='Date']`,
+      `MemberExpression${ON_GLOBAL_OBJECT}[object.property.name='Date'][property.name='now']`,
+      `MemberExpression${ON_GLOBAL_OBJECT}[object.property.name='Math'][property.name='random']`,
+    ].join(', '),
+    message: CLOCK_AND_RANDOM_MESSAGE,
+  },
+  {
+    selector: `MemberExpression${GLOBAL_OBJECT}:matches([property.name=/^(${IO_GLOBALS.join('|')})$/], [property.value=/^(${IO_GLOBALS.join('|')})$/])`,
+    message: IO_GLOBAL_MESSAGE,
+  },
+  {
+    selector: `ImportDeclaration[source.value=/^(${CLOCK_IMPORTS})$/] > :matches(ImportDefaultSpecifier, ImportNamespaceSpecifier)[local.name!=/^(${CLOCK_IMPORTS})$/]`,
+    message: `domain/ code imports dayjs and moment under their own names (\`import dayjs from 'dayjs'\`), so a clock read such as \`dayjs()\` stays visible. ${CLOCK_AND_RANDOM_MESSAGE}`,
   },
   {
     selector:
@@ -94,6 +153,19 @@ export const domainRestrictedSyntax = [
   },
 ];
 
+export const domainPurityRules = {
+  'no-restricted-globals': [
+    'error',
+    ...IO_GLOBALS.map((name) => ({ name, message: IO_GLOBAL_MESSAGE })),
+  ],
+  'no-restricted-properties': [
+    'error',
+    { object: 'Date', property: 'now', message: CLOCK_AND_RANDOM_MESSAGE },
+    { object: 'Math', property: 'random', message: CLOCK_AND_RANDOM_MESSAGE },
+    { object: 'performance', property: 'now', message: CLOCK_AND_RANDOM_MESSAGE },
+  ],
+};
+
 export const domainFunctionalRules = {
   'functional/no-let': 'error',
   'functional/no-classes': 'error',
@@ -116,6 +188,7 @@ export const strictDomainConfig = [
     plugins: { functional, nitpicker: nitpickerRules },
     rules: {
       ...domainFunctionalRules,
+      ...domainPurityRules,
       'no-restricted-syntax': ['error', ...domainRestrictedSyntax],
       'nitpicker/no-self-recursion': 'error',
       'nitpicker/no-throw': 'error',

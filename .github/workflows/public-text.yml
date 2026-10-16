@@ -1,0 +1,33 @@
+name: public-text
+
+on:
+  pull_request:
+    types: [opened, edited, synchronize, reopened]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      # Fails when the PR title, description or commit messages carry private workspace links, ids or
+      # paths. The required attribution block at the top of a description is allowed. Extra terms that
+      # must never appear come from the PUBLIC_TEXT_DENYLIST secret (one extended regex), so the list
+      # itself is never published.
+      - name: Check PR text and commit messages
+        env:
+          PR_TITLE: ${{ github.event.pull_request.title }}
+          PR_BODY: ${{ github.event.pull_request.body }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          DENYLIST: ${{ secrets.PUBLIC_TEXT_DENYLIST }}
+        run: bash scripts/check-public-text.sh

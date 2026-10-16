@@ -8,16 +8,9 @@ import {
   reactTestRuleIds,
   testingLibrarySettings,
 } from './react-rules.mjs';
-import {
-  hasScopePackage,
-  productionScope,
-  readDependencyNames,
-  storyGlobs,
-} from '../scope-support.mjs';
+import { productionScope, readDependencyNames, storyGlobs } from '../scope-support.mjs';
 
-export function isReactProject({ projectRoot, react = {} }) {
-  return react.enabled ?? hasScopePackage(projectRoot, 'react');
-}
+export { isReactProject } from '../scope-support.mjs';
 
 export function stylingApproachFor({ projectRoot, react = {} }) {
   if (react.styling !== undefined) {

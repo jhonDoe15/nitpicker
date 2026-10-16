@@ -12,6 +12,7 @@ export default {
   forbidden: [],
   required: [],
   options: {
+    preserveSymlinks: true,
     doNotFollow: {
       path: [
         '(?:^|/)(?:node_modules|dist|build|generated|coverage|reports|target)(?:/|$)',

@@ -124,7 +124,7 @@ public class OrderService {
 
   @Transactional
   public void touch(Long id) {
-    products.findById(id).map(products::save);
+    var unused = products.findById(id).map(products::save);
     products.findById(id).ifPresent(product -> products.save(product));
   }
 

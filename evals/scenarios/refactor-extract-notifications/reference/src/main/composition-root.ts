@@ -1,6 +1,7 @@
 import type { Message } from './features/notifications/index.js';
 import { orderReceipt, orderReminder } from './features/orders/index.js';
 import { subscriptionReceipt, subscriptionReminder } from './features/subscriptions/index.js';
+export { chooseChannel } from './features/notifications/index.js';
 
 type Order = Parameters<typeof orderReceipt>[0];
 type Customer = Parameters<typeof orderReceipt>[1];

@@ -34,7 +34,7 @@ const scopePackages = {
 export const storySuffixes = ['stories', 'story'];
 export const storyGlobs = [`**/*.{${storySuffixes.join(',')}}.${codeExtensions}`];
 
-function readManifest(projectRoot) {
+export function readManifest(projectRoot) {
   try {
     return JSON.parse(readFileSync(path.join(projectRoot, 'package.json'), 'utf8'));
   } catch {
@@ -60,6 +60,10 @@ export function scopePackage(projectRoot, scope) {
 
 export function hasScopePackage(projectRoot, scope) {
   return scopePackage(projectRoot, scope) !== undefined;
+}
+
+export function isReactProject({ projectRoot, react = {} }) {
+  return react.enabled ?? hasScopePackage(projectRoot, 'react');
 }
 
 export function productionScope(layout) {

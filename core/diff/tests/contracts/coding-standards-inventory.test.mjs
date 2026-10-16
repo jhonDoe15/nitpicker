@@ -8,10 +8,18 @@ import {
   collectSignals,
 } from '../../../../languages/typescript/preset/coding-standards/check.mjs';
 import { configuredAnalyzers } from '../../../../languages/typescript/preset/diff/configured-analyzers.mjs';
+import {
+  resolveHeadPolicy,
+  withHeadPolicyFile,
+} from '../../../../languages/typescript/preset/head-policy.mjs';
 import { compareFindings } from '../../comparison/compare.mjs';
 import { runAnalyzers } from '../../execution/run-analyzers.mjs';
 
 const packageAnalyzers = configuredAnalyzers();
+const LOST_CAUSE = [
+  'Preserve the original cause when wrapping a caught failure: `new AppError(message, { cause: error })`.',
+  ' If the original failure is deliberately dropped, add an exception for this rule in nitpicker.config.json.',
+].join('');
 const temporaryRoots = [];
 
 afterEach(() => {
@@ -35,6 +43,7 @@ it('compares both sides using the head coding inventory when that inventory entr
       file: 'src/main/legacy.ts',
       rule: 'nitpicker/preserve-error-cause',
       source: 'new Error(String(error))',
+      message: LOST_CAUSE,
     },
   ]);
   writeFileSync(
@@ -74,10 +83,44 @@ it('compares both sides using the head coding inventory when that inventory entr
       rule: 'nitpicker/preserve-error-cause',
       path: 'src/main/legacy.ts',
       identity: 'source:2b12a180517391cf91a57a1f|count:1',
-      message: 'New coding-standard site: new Error(String(error))',
+      message: LOST_CAUSE,
       classification: 'enforceable',
     },
   ]);
+});
+
+function headFindings(config) {
+  const projectRoot = createSnapshotRoot();
+  writeProject(projectRoot);
+  const run = withHeadPolicyFile(resolveHeadPolicy(config), (headPolicyFile) =>
+    runAnalyzers({
+      analyzers: packageAnalyzers.filter(({ name }) => name === 'coding-standards'),
+      projectRoot,
+      policyRoot: projectRoot,
+      toolRoot: PACKAGE_ROOT,
+      liveProjectRoot: PACKAGE_ROOT,
+      snapshot: 'head',
+      headPolicyFile,
+    }),
+  );
+  expect(run.toolErrors).toEqual([]);
+  return run.reports
+    .get('coding-standards')
+    ?.findings.map(({ rule, message }) => ({ rule, message }));
+}
+
+it('reports a new coding-standard site with the rule message', () => {
+  expect(headFindings({})).toEqual([
+    { rule: 'nitpicker/preserve-error-cause', message: LOST_CAUSE },
+  ]);
+});
+
+it('lifts a coding-standard site that an exceptions entry lifts for the same rule', () => {
+  expect(
+    headFindings({
+      exceptions: [{ rule: 'nitpicker/preserve-error-cause', paths: ['src/main/legacy.ts'] }],
+    }),
+  ).toEqual([]);
 });
 
 function createSnapshotRoot() {

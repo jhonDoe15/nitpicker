@@ -54,7 +54,7 @@ function pmd(root, { release = '17', tests: testDirectories, pmdConfig, spring =
       testSourceRoots,
       outputDirectory: path.join(basedir, 'target/classes'),
       testOutputDirectory: path.join(basedir, 'target/test-classes'),
-      compiler: { release, args: [] },
+      compiler: { release, compilerArgs: [] },
     },
     reportDir,
     tools: { pmd: ['/tools/pmd.jar'] },
