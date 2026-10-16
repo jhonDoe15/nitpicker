@@ -56,6 +56,10 @@ const presetConfig = defineConfig(
         { disallowTypeAnnotations: false, fixStyle: 'separate-type-imports' },
       ],
       'nitpicker/cognitive-complexity': ['error', 15],
+      '@typescript-eslint/ban-ts-comment': [
+        'error',
+        { 'ts-expect-error': true, 'ts-ignore': true, 'ts-nocheck': true, 'ts-check': false },
+      ],
     },
   },
   {
@@ -117,6 +121,10 @@ const presetConfig = defineConfig(
       'nitpicker/no-wait-for-with-fake-timers': 'error',
       'nitpicker/no-partial-output-assertion': 'error',
       'nitpicker/test-must-use-production-runtime': 'error',
+      'vitest/expect-expect': [
+        'error',
+        { assertFunctionNames: ['expect', 'assert', 'expectTypeOf', 'assertType'] },
+      ],
       'vitest/no-conditional-in-test': 'error',
       'vitest/valid-expect': ['error', { maxArgs: 2 }],
       'vitest/require-awaited-expect-poll': 'error',

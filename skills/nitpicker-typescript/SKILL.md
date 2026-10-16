@@ -11,6 +11,9 @@ backstop. It fails only on findings your change adds, so leave code the task doe
 If your change edits a function that existed before it, read
 [editing-existing-code.md](editing-existing-code.md) before you edit.
 
+Before you change code other modules use, fix a bug, or add a UI state, read
+[beyond-the-gate.md](beyond-the-gate.md).
+
 ## Finish with the gate
 
 1. Run your tests (`npx vitest run`). Failing tests stop coverage, CRAP and mutation from running.
