@@ -1,45 +1,13 @@
 import { existsSync, readFileSync, statSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { childrenNamed, parseXml } from '../../ingest/common.mjs';
-import { readZipOrFailure } from '../../builds/zip-entries.mjs';
-import { classFiles } from './class-permits.mjs';
+import { classFiles } from '../../builds/class-file.mjs';
+import { referencedNames, usesArchive } from '../../builds/class-references.mjs';
 
-const CLASS_NAME = /[A-Za-z_$][\w$]*(?:\/[\w$]+)+/gu;
 const COMPILE_SCOPE = 'compile';
-const PROCESSOR_SERVICE = 'META-INF/services/javax.annotation.processing.Processor';
 
 function textOf(element, name) {
   return childrenNamed(element, name)[0]?.text;
-}
-
-function referencedNames(classDirectory) {
-  const names = new Set();
-  for (const file of classFiles(classDirectory)) {
-    for (const [token] of readFileSync(file, 'latin1').matchAll(CLASS_NAME)) {
-      names.add(`${token}.class`);
-      names.add(`${token.slice(1)}.class`);
-      names.add(`${token.slice(2)}.class`);
-    }
-  }
-  return names;
-}
-
-function archiveEntries(archive) {
-  if (statSync(archive).isDirectory()) {
-    return classFiles(archive).map((file) =>
-      path.relative(archive, file).split(path.sep).join('/'),
-    );
-  }
-  const read = readZipOrFailure(archive);
-  return read.kind === 'zip' ? [...read.zip.names] : undefined;
-}
-
-function usesArchive(archive, names) {
-  const entries = archiveEntries(archive);
-  return (
-    entries === undefined ||
-    entries.some((entry) => names.has(entry) || entry === PROCESSOR_SERVICE)
-  );
 }
 
 export function declaredDependencies(pomText) {
@@ -82,7 +50,7 @@ function declaredEntry(declared, { resolved, names }) {
 }
 
 export function dependencyReport({ module, resolved, reactor }) {
-  const names = referencedNames(module.outputDirectory);
+  const names = referencedNames([module.outputDirectory]);
   const declared = declaredDependencies(readFileSync(module.pomFile, 'utf8')).filter(
     (dependency) =>
       !reactor.some((coordinates) => sameArtifact(dependency, splitCoordinates(coordinates))),
