@@ -28,6 +28,81 @@ Findings follow `spec/findings.schema.json`. Identity (the part of the compariso
 
 - **Project conventions** (`shared/conventions/`, `core/conventions/`). A convention is `{ id, label, options, optionLabels, fallback, files, measure(text) }`; `measure` returns the option one file follows, or `undefined`. `detectConventions` takes the files not under `exclude` (the CLI adds the layout's excluded folders, such as `dist`, `build`, `generated` and `target`), samples at most 400 per convention evenly over the sorted paths, counts one vote per file, and picks the plurality; a tie or no votes is `fallback` (`source: 'default'`), a `conventions` pin in the config skips measuring (`source: 'pinned'`). The CLI measures once the config, the analyzer selection and the base ref have been checked, so their errors come first and a run outside git fails as before: a comparison reads the merge-base commit through `git ls-tree -l` (regular blobs up to 512 KiB only, so generated files, symlinks and submodules never vote) and one `git cat-file --batch` by object id (so a branch cannot flip the choice); when every convention is pinned no git command runs, and re-measures on the working tree only the conventions the base had no files for; `--all` measures the working tree and `cache publish` the published commit (which later comparisons use as their merge base, so the keys match). Only choices that differ from the preset default go into the head policy, as `conventions: { id: option }` (omitted when empty, so default-style projects keep their policy and cache keys), also into the base's policy when the base has its own config, so both snapshots and the findings cache key see the same values. Presets list their conventions in `core/conventions/definitions.mjs`; a preset with none leaves the policy as it was. The TypeScript and JavaScript presets measure Prettier options (`languages/typescript/conventions/`) and add the choices to the `nitpicker` Prettier layer for code files, which then always runs through the layered Prettier API path. Short code says nothing about the print width, so a file votes a width only when it is the one value between its longest breakable line and the shortest call, array or assignment Prettier left wrapped (joined, that would have fit any wider limit), or 120 when at least two lines exceed 100. The measures skip comments and template-literal contents, and a file with no evidence casts no vote, so a project keeps the preset default rather than a guess.
 
+## Facts schema (`shared/rules/facts/`)
+
+The reuse, doc-comment, test-only-export and console rules are written once, over neutral facts. A language only produces the facts; `sharedFactFindings` turns them into findings. All paths are project-relative with `/` separators, lines are 1-based, and a field marked optional may be left out. Unknown fields are ignored, so a producer can add its own.
+
+A facts bundle is one JSON object; each list is optional, and a rule runs only when the lists it needs are present:
+
+```json
+{
+  "modules": [{ "file": "app/orders/service.py", "role": "production", "entry": false }],
+  "packages": [{ "root": "libs/money", "published": true }],
+  "definitions": [
+    {
+      "file": "app/orders/service.py",
+      "name": "total",
+      "kind": "function",
+      "line": 12,
+      "exported": true,
+      "tokens": ["def", "total", "(", "items", ")", ":", "return", "sum", "(", "items", ")"]
+    }
+  ],
+  "imports": [
+    {
+      "from": "app/billing/invoice.py",
+      "to": "app/orders/service.py",
+      "names": [{ "name": "total", "alias": "order_total" }],
+      "reexport": false,
+      "role": "production"
+    }
+  ],
+  "docComments": [
+    { "file": "app/orders/service.py", "line": 11, "name": "total", "lines": ["Sum of the items."] }
+  ],
+  "console": [
+    {
+      "file": "tests/test_service.py",
+      "test": "test_total",
+      "messages": ["WARNING: rate limit is 0"]
+    }
+  ]
+}
+```
+
+- **`modules`**: every file the producer read. `role` is `production` or `test` (a test file, or a helper only tests load, such as a `test-support/` module or `conftest.py`). `entry` (optional, default false) marks a file loaded by path rather than imported: a script, a `__main__` module, a class the build or container starts. Needed by `shared-used-by-one-feature` and `test-only-export`.
+- **`packages`** (optional): `root` is the folder of a unit that is versioned and depended on by itself (an npm workspace package, a Gradle or Maven module, a Python distribution; `""` is the project root). A file belongs to the longest root that contains it. `published` says whether other projects install it (npm without `private`, `maven-publish`/`java-library` or a deployed Maven module, a `pyproject.toml` with `[project]` and a build backend and no `Private :: Do Not Upload` classifier). A published package's own tests count as callers, so `test-only-export` does not judge it. The package is also the unit `duplicate-definition` and `exported-name-collision` compare within.
+- **`definitions`**: module-level declarations. `kind` is one of `function`, `class`, `const`, `type`, `interface`, `enum` (a Java or Kotlin static method or top-level `fun` is a `function`, a `static final`/`const val`/`UPPER = literal` is a `const`). `exported` says whether another module can import it (TypeScript `export`; Python a public name or one in `__all__`; Java and Kotlin `public`, `protected` or `internal`). `tokens` are the declaration's token texts in order, with comments and layout dropped and each string literal one token; two copies are compared by these tokens. Emit the declarations of every module; those of a `test` module are ignored. Optional fields:
+  - `lines` (default 1): the declaration's line count. `duplicate-definition` leaves a declaration of 5+ lines and 50+ tokens to the duplicates check.
+  - `literal` (default false): a `const` whose value is built only from literals; only those `const`s are compared.
+  - `usedLocally` (default false): the module itself reads the name outside its declaration. A name that is neither used locally nor imported is not compared (the dead-code check owns it).
+  - `exportNames` (default `[name]` when `exported`): the names other modules import it by, for example `default` or an alias.
+  - `key` (default: `text`): the identity two same-named copies must share to be duplicates; a producer that resolves free names adds them, so `return helper()` over two different `helper`s is not a copy.
+  - `text` (default: the tokens joined by spaces): compared with the base copy to tell an edited declaration from an untouched one.
+  - `entry` (default false): a framework entry (a route handler, a default export a framework loads); `sibling-copy-edit` skips it.
+  - `package` (default: from `packages`): overrides the package the declaration is compared within.
+- **`imports`**: one per import statement that resolves to a project file (imports of other packages are left out). `names` holds `{ name, alias? }` pairs: `name` is the name in the target, `alias` the local name when it differs; `*` is the whole module (a namespace import, `import pkg.mod`, a dynamic import, a star re-export), and an empty list only loads the module (the parent `__init__.py` files a Python import runs). `reexport` (default false) marks a statement that makes the names part of the importer's own exports (`export { a } from`, `export *`, a Python `__init__.py` import of a name in `__all__` or of a public name). `role` is the role of `from`.
+- **`docComments`**: one per doc comment on a declaration. `name` is the declaration's name; `lines` are the description lines: the text before the first block tag (`@param`, `@return` in JSDoc, Javadoc and KDoc; `:param x:`, `Args:`/`Returns:` sections or a numpy section underline in docstrings), with comment markers stripped and blank lines dropped.
+- **`console`**: what tests printed, one entry per test (or per file when the runner only knows the file). `file` is the test file, `test` the test name (`""` when unknown), `messages` the printed lines that count: stderr lines, `console.error`/`console.warn` output, and stdout lines whose log level is `WARN` or `ERROR`. Normalization (paths, numbers, ids, ANSI colors) is done by the evaluator.
+
+**Registering a rule.** `FACT_RULE_LANGUAGES` in `shared/rules/facts/registry.mjs` lists the languages that produce the facts of each fact rule. It drives the language columns of the checks table and the exception rules a preset accepts. A runner then calls `sharedFactFindings(facts, { language, analyzerName, policy, baseline })`:
+
+- `policy` is the head policy (`readHeadPolicyFile()` from `shared/head-policy.mjs`, which every analyzer process can read). Its `exceptions`, `testConsole.allow` and `layout.sharedRoots`/`layout.featureRoots` apply.
+- `baseline` is `{ facts, movesFile }` on the head run of a change: the bundle the producer emits for the base checkout (`--baseline-root`; only `definitions` are read) and the `--baseline-moves-file` the diff passes. Without it `sibling-copy-edit` reports nothing.
+- It runs every rule registered for `language`, and throws when a registered rule's lists are missing, so a registration without a producer is a tool error rather than a silent pass. `validateFacts` checks the shapes first and names the first bad field.
+
+| Rule                         | Lists it reads                                  |
+| ---------------------------- | ----------------------------------------------- |
+| `duplicate-definition`       | `definitions`, `imports`                        |
+| `exported-name-collision`    | `definitions`, `imports`                        |
+| `sibling-copy-edit`          | `definitions` (head and base)                   |
+| `shared-used-by-one-feature` | `modules`, `imports`                            |
+| `test-only-export`           | `modules`, `definitions`, `imports`, `packages` |
+| `doc-comment-content`        | `docComments`                                   |
+| `test-console-output`        | `console`                                       |
+
+**Feature layout.** `shared-used-by-one-feature` needs to know which folders are shared and which are features. `layout.sharedRoots` and `layout.featureRoots` are folder globs (a Java or Kotlin package is its source folder, such as `**/com/acme/shared`). A file under a shared root is shared; a file under `<feature root>/<name>/` belongs to feature `<name>`. The TypeScript default is `<source root>/main/shared` and `<source root>/main/features`; the other presets default to `**/shared` and `**/features`. Without a feature folder the rule finds nothing.
+
 ## TypeScript preset (`languages/typescript/`)
 
 - **Strict preset assembly.** Flat config replaces rather than merges a rule's options when several entries match a file, so each scope in `eslint-config/strict.mjs` carries its full `no-restricted-syntax` list: the everywhere selectors plus the scope's own. Add a selector to its scope's list, never as a separate entry for a narrower glob. `domain/` has its own loop and forEach selectors, so it drops those from the production set. Default exports, `null` and promise chains are not in these lists: `nitpicker/no-default-export`, `nitpicker/no-null` and `nitpicker/no-promise-chain` (`eslint-plugin/rules/syntax/syntax-bans.mjs`) take the same `{ selector, message }` options as `no-restricted-syntax`, are set once on the source entry (domain/ and adapters/ inherit them, the config-file entry turns the default-export and promise-chain ones off) and in the test entry (promise chains), so an exception for one lifts only that ban. The JavaScript dialect strips TypeScript-only selectors from `nitpicker/no-null` as it does from `no-restricted-syntax`. `strictSyntaxConfig` (`strict.mjs`), `strictAdaptersConfig` (`strict-adapters.mjs`) and `strictTestsConfig` (`strict-tests.mjs`) are standalone configs so the failure-message harness can lint one rule family alone; no tool loads them by path, which is why they are ordinary modules and not `*.config.mjs` files. The typed ones (`strictConfig(parserOptions)`, `strictAdaptersTypedConfig`) need `parserOptions` (e.g. `{ project: './tsconfig.quality.json', tsconfigRootDir }`) and later entries win.
