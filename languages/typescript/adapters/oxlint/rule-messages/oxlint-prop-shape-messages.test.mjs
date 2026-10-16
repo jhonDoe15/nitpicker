@@ -2,9 +2,9 @@ import { mkdirSync, mkdtempSync, realpathSync, rmSync, writeFileSync } from 'nod
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterAll, describe, expect, it } from 'vitest';
-import { lintWithOxlint } from './oxlint-runner.mjs';
+import { lintWithOxlint } from '../oxlint-runner.mjs';
 
-const RULES_URL = import.meta.resolve('../../preset/eslint-plugin/rules');
+const RULES_URL = import.meta.resolve('../../../preset/eslint-plugin/rules');
 
 function ruleUrl(path) {
   return JSON.stringify(`${RULES_URL}/${path}`);
