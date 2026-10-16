@@ -5,7 +5,7 @@ import path from 'node:path';
 import { classSummaries } from '../classes/class-summary.mjs';
 import { languageLevel, lintCompatible } from './javac-options.mjs';
 import { lombokPath } from './lint-arguments.mjs';
-import { lombokConfigs } from './lint-staging.mjs';
+import { lombokConfigs, rootLombokConfig } from './lint-staging.mjs';
 
 export const LINT_CACHE = 'javac-lint.txt';
 export const LINT_FINGERPRINT = 'javac-lint-fingerprint.txt';
@@ -75,6 +75,7 @@ export function lintFingerprint(plan) {
     classpath: digests(plan.root, plan.classpath),
     lombok: digests(plan.root, lombokPath(plan)),
     lombokConfigs: digests(plan.root, lombokConfigs({ root: plan.root, sources })),
+    inheritedLombokConfig: createHash('sha256').update(rootLombokConfig(plan.root)).digest('hex'),
   };
   return createHash('sha256').update(JSON.stringify(inputs)).digest('hex');
 }
