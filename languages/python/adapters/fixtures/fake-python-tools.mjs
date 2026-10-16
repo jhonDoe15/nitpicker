@@ -8,6 +8,7 @@
 //   unformatted.txt      one path per line: files ruff format / black would reformat
 //   test-exit.txt        exit status of `coverage run` (default 0); its output says the tests failed
 //   coverage-data.json   written as the coverage.py JSON report (default: no files)
+//   parallel-coverage.txt  `coverage run` leaves a per-process data file next to $COVERAGE_FILE
 //   unparsable.txt       one path per line: files the formatter cannot parse (it exits like the real
 //                        formatter does and names them on stderr)
 //   no-pytest.txt        `python -c "import pytest"` fails
@@ -153,10 +154,13 @@ function coverage() {
   if (args[0] === '--version') {
     process.stdout.write('Coverage.py, version 7.6.1 with C extension\n');
   } else if (args[0] === 'run') {
+    if (existsSync('parallel-coverage.txt')) {
+      writeFileSync(`${process.env.COVERAGE_FILE}.host.1`, '');
+    }
     const status = Number(lines('test-exit.txt')[0] ?? 0);
     process.stdout.write(status === 0 ? '1 passed\n' : '1 failed: test_greet\n');
     process.exit(status);
-  } else {
+  } else if (args[0] !== 'combine') {
     const data = existsSync('coverage-data.json')
       ? readFileSync('coverage-data.json', 'utf8')
       : '{"files":{}}';

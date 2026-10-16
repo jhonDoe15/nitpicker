@@ -41,7 +41,7 @@ describe('nitpicker with "preset": "python"', () => {
     ]);
     expect(result.json('summary.json').tools.map(({ version }) => version)).toEqual([
       `ruff@0.9.9;mypy@1.13.0;coverage@7.6.1;unittest;jscpd@${jscpdVersion()}`,
-      'mutmut@3.8.0;pytest@8.3.1',
+      'mutmut@3.8.0;pytest@8.3.1;pytest-django@missing',
     ]);
   });
   it('fails on a new lint finding and a new unformatted file in every report format', () => {

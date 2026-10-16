@@ -93,8 +93,8 @@ Decision: **prepend the snapshot's own import roots to `PYTHONPATH`** for every 
 way for base and head. The import root of a source root is the directory itself for a `src/`
 layout, and its parent for a flat package. `PYTHONPATH` entries come before `site-packages` and
 before the `.pth` files and import hooks editable installs use, so the snapshot's sources win.
-Tests run with the snapshot as working directory, so `tests/` and `conftest.py` are the snapshot's
-too, and coverage only measures the snapshot's source roots.
+Tests run with the snapshot as working directory (a Django project's from the directory of its
+`manage.py`), so `tests/`, `tests.py` and `conftest.py` are the snapshot's too, and coverage only measures the snapshot's source roots.
 
 Why not the dependency hook (`languages/typescript/adapters/dependency-graph/dependency-hooks.mjs`)? A hook installs
 a directory into the snapshot (`npm ci` for `node_modules`) and removes it afterwards. For Python
@@ -208,7 +208,11 @@ The test runner is the first of these the project shows it uses:
 
 1. `pytest`: a `[tool.pytest.ini_options]`, `[pytest]` or `[tool:pytest]` section, `pytest.ini`, or
    `pytest` or a pytest plugin (`pytest-django` too) as a dependency or tox command.
-2. `django`: a `manage.py` next to a Django dependency, or a `manage.py` that imports `django`.
+2. `django`: a `manage.py` next to a Django dependency, or a `manage.py` that imports `django`,
+   at the project root or in a direct subdirectory (`backend/manage.py`), which the tests then run
+   from. mutmut names modules by their path from the project root, so in the subdirectory case
+   mutation testing is skipped with a descriptive `mutation-skipped` finding
+   (`django-subdirectory`); run nitpicker in that directory to mutate the project.
 3. `nose2`: a `nose2.cfg`, a `unittest.cfg` whose `[unittest]` section lists `plugins`, or `nose2`
    as a dependency or tox command.
 4. `pytest`: a `conftest.py`, or test files with top-level `def test_` functions, `import pytest` or
@@ -229,7 +233,9 @@ project's settings). `python.testRunner` overrides the detection.
 
 mutmut 3 runs every suite with pytest (see slice 6), which also runs `unittest.TestCase` classes and
 nose2's test functions; Django's test cases need the pytest-django plugin, and the settings module
-is taken from `manage.py` unless the pytest configuration names one.
+is taken from `manage.py` (an `os.environ.setdefault("DJANGO_SETTINGS_MODULE", ...)` call or an
+`os.environ["DJANGO_SETTINGS_MODULE"] = ...` assignment, commented-out lines skipped) unless a
+pytest section (`[pytest]`, `[tool:pytest]`, `[tool.pytest.ini_options]`) names one.
 
 ## Slice 2: type checking and the one-way rules
 
@@ -290,7 +296,7 @@ through the real tools.
 Details that are decisions rather than the table:
 
 - `frozen-dataclass` and `pydantic-boundary` do not apply to test files (a `tests` or `test`
-  directory, `test_*.py`, `*_test.py`, `conftest.py`), where fakes mutate and tests exercise the
+  directory, `test_*.py`, `*_test.py`, `tests.py`, `conftest.py`), where fakes mutate and tests exercise the
   adapters. `frozen=True` must be the literal `True`.
 - The boundary is a directory named `adapters` anywhere in the path (`src/shop/adapters/api.py`),
   as in the TypeScript preset; a project that keeps its pydantic models elsewhere (`schemas/`,
@@ -367,7 +373,7 @@ Details that are decisions rather than the table:
 - **Tests under coverage.** `coverage run --rcfile <nitpicker> -m pytest -q -o cache_dir=<report
 directory>`, `-m unittest discover` (with `-s tests` or `-s test` when that directory exists,
   and `-t .` when it is a package), `manage.py test --noinput` (the project's own settings, from
-  `manage.py`) or `-m nose2`, then `coverage json`. The project's pytest configuration keeps
+  `manage.py`, run from the directory `manage.py` is in) or `-m nose2`, then `coverage json`. The project's pytest configuration keeps
   working: `--no-cov` and `-n0` are added only when pytest-cov or xdist is installed, so
   `--cov=pkg` or `-n 2` in `addopts` cannot replace the outer coverage run or fork it away, and
   `--lf` or `--sw` find their cache in the report directory. The coverage settings are nitpicker's,
@@ -378,7 +384,11 @@ directory>`, `-m unittest discover` (with `-s tests` or `-s test` when that dire
   (the first of `.coveragerc`, `setup.cfg` `[coverage:run]`, `tox.ini` `[coverage:run]` and
   `[tool.coverage.run]` that has coverage settings, the order coverage.py reads them in) the run
   settings that decide what code gets measured at all are kept: `concurrency` (multiprocessing,
-  gevent, eventlet, ...), `patch` (subprocesses), `plugins`, and `omit`, added to the test files.
+  gevent, eventlet, ...), `patch` (subprocesses), `plugins`, and the `omit` of the run and of the
+  report section (where projects often list `migrations/*`), added to the test files. Lists may run
+  over several lines with comments and blank lines in between, as coverage.py reads them; relative
+  `omit` patterns and the `source` paths are made absolute, so they match whatever directory the
+  tests run from.
   When they make coverage.py write one data file per process, the files are combined before the
   report. Its `exclude_lines`, `exclude_also`, `partial_branches`, `branch` and `source` are
   dropped, so the gate judges every project's code the same way. Test files are not scored for
@@ -410,7 +420,7 @@ directory>`, `-m unittest discover` (with `-s tests` or `-s test` when that dire
 
 - **File limits.** The shared file-limit rule (`shared/rules/file-limits.mjs`) checks every `.py`
   file outside dot, virtualenv (`venv`, `env`), build, `migrations` and `__pycache__` folders: 300 lines per module, 500 per test
-  module (`test_*.py`, `*_test.py`, `conftest.py`, or anything under a `test` or `tests` folder),
+  module (`test_*.py`, `*_test.py`, `tests.py`, `conftest.py`, or anything under a `test` or `tests` folder),
   120 characters per line, and 6 modules (and separately 6 test modules) directly in one folder, where an `__init__.py` is checked but not counted. A
   file or folder already over a limit fails only when it grows, and a folder moved to a new path is
   matched to its old path.
@@ -579,7 +589,7 @@ or remove it if it can't happen. To exempt a file, add it to exclude in nitpicke
 ## Slice 5: duplicates, coupling and import contracts
 
 All three read only the production sources under `python.sourceRoots`. A file is not production
-code when it is `test_*.py`, `*_test.py` or `conftest.py`, or sits under a directory named `tests`,
+code when it is `test_*.py`, `*_test.py`, `tests.py` or `conftest.py`, or sits under a directory named `tests`,
 `test`, `migrations`, `build`, `dist`, `venv`, `site-packages`, `node_modules`, `__pycache__` or a
 hidden one such as `.venv`; the same list feeds jscpd's `--ignore`, the import scan and the module
 list. When the source root is `.` (a flat project without packages, or `python.sourceRoots`
@@ -713,14 +723,17 @@ location.
   `exclude` (the mutants of the file are dropped), or, with a `[tool.mutmut]` of your own, list it
   in `do_not_mutate`, which also saves the run time.
 - **pytest.** mutmut 3 runs the suite with pytest, which also runs `unittest.TestCase` classes and
-  nose2's test functions. Every project therefore needs pytest installed for mutation testing,
+  plain test functions; nose2's own test kinds (generators, layers, parameterized tests) do not run
+  under pytest, so their mutants are reported as not covered. Every project therefore needs pytest installed for mutation testing,
   whatever runner coverage.py uses; without it the `mutation` analyzer fails with a
   `mutation-failed` error that says to install it. A Django project also needs pytest-django:
   without it mutmut is not run and a descriptive `mutation-skipped` finding (`pytest-django`) says
   so; with it `DJANGO_SETTINGS_MODULE` is taken from `manage.py` unless the environment or the
   pytest configuration sets it. Whenever pytest-django is installed (a pytest project that uses it
   too), `-o django_find_project=false` keeps it from putting the real project (where `manage.py`
-  is) ahead of mutmut's copy on `sys.path`, which would test the unmutated code. Whether pytest-django is installed is part of the cache key.
+  is) ahead of mutmut's copy on `sys.path`, which would test the unmutated code. Whether
+  pytest-django is installed is part of the cache key for every runner, since the option applies to
+  all of them.
 - **Windows.** mutmut forks processes (`os.fork`), so it does not run on native Windows: run
   nitpicker inside WSL. On Windows the `mutation` analyzer does not run mutmut; it reports a
   descriptive `mutation-skipped` finding that says so (the other analyzer is unaffected).
@@ -770,7 +783,7 @@ results when that is safe: the `mutants/*.meta` files of the base work tree are 
 head work tree before `mutmut run`, and mutmut re-tests the mutants of the functions whose code
 changed and the ones it has no result for. This happens when every file changed between the base
 commit and head is an added or modified `.py` file under a source root that is not a test
-(`tests/`, `test/`, `test_*.py`, `*_test.py`, `conftest.py`). Anything else (a test, a dependency
+(`tests/`, `test/`, `test_*.py`, `*_test.py`, `tests.py`, `conftest.py`). Anything else (a test, a dependency
 file, a deleted or renamed file, a file outside the project) runs every mutant. When the base side
 comes from the findings cache, there are no base results to copy and head runs every mutant.
 

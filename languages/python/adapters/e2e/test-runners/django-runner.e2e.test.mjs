@@ -51,7 +51,7 @@ const GRADE_TESTS = [
 const WEAK_TESTS = GRADE_TESTS.split('\n    def test_boundary')[0];
 const UNTYPED_DJANGO = ['import-untyped', 'misc'].map((rule) => ({
   rule,
-  paths: ['polls/tests.py'],
+  paths: ['polls/tests.py', 'backend/polls/tests.py'],
   reason: 'Django ships no type information',
 }));
 
@@ -61,6 +61,20 @@ function enforceable(result) {
       .json('new-findings.json')
       .filter(({ classification }) => classification === 'enforceable'),
   );
+}
+
+function killedMutants(result) {
+  return result
+    .json('new-findings.json')
+    .filter(({ rule }) => rule === 'mutation-summary')
+    .map(({ path: file, identity, metric }) => `${file} ${identity}=${String(metric.value)}`);
+}
+
+function mutmutNotes(result) {
+  return result
+    .json('new-findings.json')
+    .filter(({ tool }) => tool === 'mutmut')
+    .map(({ rule, identity }) => `${rule} ${identity}`);
 }
 
 function djangoProject(packages) {
@@ -87,13 +101,43 @@ function djangoProject(packages) {
   return root;
 }
 
+function nestedDjangoProject(packages) {
+  const root = repository();
+  write(root, {
+    'nitpicker.config.json': JSON.stringify({
+      preset: 'python',
+      python: { sourceRoots: ['backend/polls'], exceptions: UNTYPED_DJANGO },
+    }),
+    '.gitignore': '.venv/\n__pycache__/\nmutants/\n',
+    'requirements.txt': 'django\n',
+    'backend/polls/__init__.py': '',
+  });
+  initializeRepository(root, 'base without Django');
+  installPackages(root, packages);
+  const django = Object.entries({
+    'manage.py': MANAGE,
+    'site_config/__init__.py': '',
+    'site_config/settings.py': SETTINGS,
+    'polls/grades.py': GRADE,
+    'polls/tests.py': GRADE_TESTS,
+  });
+  commitBranch(
+    root,
+    'nested',
+    Object.fromEntries(django.map(([file, text]) => [`backend/${file}`, text])),
+  );
+  return root;
+}
+
 describe.skipIf(!pythonE2eEnabled)('Python preset on a Django project run with manage.py', () => {
   let project;
   let withoutPlugin;
+  let nested;
   afterAll(removeRepositories);
   beforeAll(() => {
     project = djangoProject(['django', 'coverage', 'pytest', 'pytest-django', 'mutmut']);
     withoutPlugin = djangoProject(['django', 'coverage', 'pytest', 'mutmut']);
+    nested = nestedDjangoProject(['django', 'coverage', 'pytest', 'pytest-django', 'mutmut']);
   });
   it('runs manage.py test under coverage and mutates the app, not its tests.py', () => {
     const result = gate(project, 'tested');
@@ -102,12 +146,7 @@ describe.skipIf(!pythonE2eEnabled)('Python preset on a Django project run with m
     expect(result.json('summary.json').tools[0].version).toMatch(
       /^ruff@[\d.]+;(?:mypy|pyright)@[\d.]+;coverage@[\d.]+;django@[\d.]+;jscpd@[\d.]+$/,
     );
-    expect(
-      result
-        .json('new-findings.json')
-        .filter(({ rule }) => rule === 'mutation-summary')
-        .map(({ path: file, identity, metric }) => `${file} ${identity}=${String(metric.value)}`),
-    ).toEqual(['. status:Killed=6']);
+    expect(killedMutants(result)).toEqual(['. status:Killed=6']);
   });
   it('fails the survivors that the weaker tests leave', () => {
     const result = gate(project, 'weak');
@@ -118,15 +157,16 @@ describe.skipIf(!pythonE2eEnabled)('Python preset on a Django project run with m
       ...Array.from({ length: 4 }, () => 'mutmut mutant-survived grades.py'),
     ]);
   });
+  it('runs manage.py test from the directory below the root that holds it', () => {
+    const result = gate(nested, 'nested');
+
+    expect(result.exitCode, result.text).toBe(0);
+    expect(mutmutNotes(result)).toEqual(['mutation-skipped django-subdirectory']);
+  });
   it('skips mutation testing with a note when pytest-django is missing', () => {
     const result = gate(withoutPlugin, 'tested');
 
     expect(result.exitCode, result.text).toBe(0);
-    expect(
-      result
-        .json('new-findings.json')
-        .filter(({ tool }) => tool === 'mutmut')
-        .map(({ rule, identity }) => `${rule} ${identity}`),
-    ).toEqual(['mutation-skipped pytest-django']);
+    expect(mutmutNotes(result)).toEqual(['mutation-skipped pytest-django']);
   });
 });

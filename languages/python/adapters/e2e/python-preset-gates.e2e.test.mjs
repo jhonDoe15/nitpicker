@@ -80,7 +80,7 @@ describe.skipIf(!pythonE2eEnabled)('Python preset lint, type and rule gates end 
     expect(python.version).toMatch(
       /^ruff@[\d.]+;mypy@[\d.]+;coverage@[\d.]+;pytest@[\d.]+;jscpd@[\d.]+$/,
     );
-    expect(mutation.version).toMatch(/^mutmut@3\.[\d.]+;pytest@[\d.]+$/);
+    expect(mutation.version).toMatch(/^mutmut@3\.[\d.]+;pytest@[\d.]+;pytest-django@missing$/);
     expect(python.unchanged).toBeGreaterThan(0);
   });
   it('keeps the legacy violation baselined when its line moves', () => {

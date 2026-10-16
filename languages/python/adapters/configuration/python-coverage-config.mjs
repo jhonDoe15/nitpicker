@@ -1,6 +1,7 @@
-import { existsSync, readFileSync, writeFileSync } from 'node:fs';
+import { writeFileSync } from 'node:fs';
 import path from 'node:path';
-import { parseIni, toml } from './mypy-config.mjs';
+import { parseIni, readFileEntries, toml } from '../execution/python-project.mjs';
+import { coverageTestOmits } from '../execution/python-test-files.mjs';
 
 const COVERAGE_CONFIG = 'coveragerc';
 const UNTESTABLE_LINES = [
@@ -9,14 +10,6 @@ const UNTESTABLE_LINES = [
   String.raw`^\s*@(typing\.)?overload\b`,
   String.raw`^\s*raise NotImplementedError\b`,
 ];
-const TEST_FILES = [
-  '*/test_*.py',
-  '*_test.py',
-  '*/tests.py',
-  '*/conftest.py',
-  '*/tests/*',
-  '*/test/*',
-];
 const CARRIED_KEYS = ['concurrency', 'patch', 'plugins'];
 const PROJECT_FILES = [
   { name: '.coveragerc', prefixes: ['coverage:', ''] },
@@ -24,6 +17,7 @@ const PROJECT_FILES = [
   { name: 'tox.ini', prefixes: ['coverage:'] },
   { name: 'pyproject.toml', prefixes: [] },
 ];
+const WILDCARD_START = /^[*?]/;
 
 function listValue(value) {
   return [value]
@@ -33,45 +27,61 @@ function listValue(value) {
     .filter((entry) => entry !== '');
 }
 
-function iniRunSection(text, { name, prefixes }) {
+function iniSettings(text, { name, prefixes }) {
   const sections = parseIni(text);
   const ownsFile = name === '.coveragerc';
   const hasCoverage = [...sections.keys()].some((section) => section.startsWith('coverage:'));
   if (!ownsFile && !hasCoverage) {
     return undefined;
   }
-  const found = prefixes.map((prefix) => sections.get(`${prefix}run`)).find(Boolean);
-  return Object.fromEntries(found ?? []);
+  return {
+    run: iniSection(sections, prefixes, 'run'),
+    report: iniSection(sections, prefixes, 'report'),
+  };
 }
 
-function tomlRunSection(text) {
-  const coverage = toml().parse(text).tool?.coverage;
-  return coverage === undefined ? undefined : (coverage.run ?? {});
-}
-
-function readRunSection(projectRoot, candidate) {
-  const root = path.resolve(projectRoot);
-  const file = path.resolve(root, candidate.name);
-  if (!file.startsWith(root + path.sep)) {
-    return undefined;
-  }
-  const text = existsSync(file) ? readFileSync(file, 'utf8') : undefined;
-  if (text === undefined) {
-    return undefined;
-  }
-  return candidate.prefixes.length === 0 ? tomlRunSection(text) : iniRunSection(text, candidate);
-}
-
-export function readProjectCoverageRun(projectRoot) {
-  const section =
-    PROJECT_FILES.map((candidate) => readRunSection(projectRoot, candidate)).find(
-      (found) => found !== undefined,
-    ) ?? {};
+function iniSection(sections, prefixes, kind) {
   return Object.fromEntries(
-    [...CARRIED_KEYS, 'omit']
-      .map((key) => [key, listValue(section[key] ?? [])])
-      .filter(([, values]) => values.length > 0),
+    prefixes.map((prefix) => sections.get(`${prefix}${kind}`)).find(Boolean) ?? [],
   );
+}
+
+function tomlSettings(text) {
+  const coverage = toml().parse(text).tool?.coverage;
+  return coverage === undefined
+    ? undefined
+    : { run: coverage.run ?? {}, report: coverage.report ?? {} };
+}
+
+function settingsOf([name, text]) {
+  const candidate = PROJECT_FILES.find((file) => file.name === name);
+  return candidate.prefixes.length === 0 ? tomlSettings(text) : iniSettings(text, candidate);
+}
+
+function absoluteOmits(projectRoot, value) {
+  return listValue(value ?? []).map((pattern) =>
+    WILDCARD_START.test(pattern) || path.isAbsolute(pattern)
+      ? pattern
+      : path.join(projectRoot, pattern),
+  );
+}
+
+export function readProjectCoverage(projectRoot) {
+  const { run = {}, report = {} } =
+    readFileEntries(
+      projectRoot,
+      PROJECT_FILES.map(({ name }) => name),
+    )
+      .map(settingsOf)
+      .find((found) => found !== undefined) ?? {};
+  const carried = CARRIED_KEYS.map((key) => [key, listValue(run[key] ?? [])]).filter(
+    ([, values]) => values.length > 0,
+  );
+  return {
+    run: Object.fromEntries(carried),
+    omit: absoluteOmits(projectRoot, run.omit),
+    reportOmit: absoluteOmits(projectRoot, report.omit),
+  };
 }
 
 function indented(entries) {
@@ -79,15 +89,16 @@ function indented(entries) {
 }
 
 function coverageConfig(projectRoot, sources) {
-  const { omit = [], ...carried } = readProjectCoverageRun(projectRoot);
+  const { run, omit, reportOmit } = readProjectCoverage(projectRoot);
   return [
     '[run]',
     'branch = True',
     'parallel = False',
-    `source =\n${indented(sources)}`,
-    `omit =\n${indented([...TEST_FILES, ...omit])}`,
-    ...Object.entries(carried).map(([key, values]) => `${key} =\n${indented(values)}`),
+    `source =\n${indented(sources.map((source) => path.join(projectRoot, source)))}`,
+    `omit =\n${indented([...coverageTestOmits(), ...omit])}`,
+    ...Object.entries(run).map(([key, values]) => `${key} =\n${indented(values)}`),
     '[report]',
+    ...(reportOmit.length === 0 ? [] : [`omit =\n${indented(reportOmit)}`]),
     `exclude_lines =\n${indented(UNTESTABLE_LINES)}`,
     'partial_branches =',
     '',

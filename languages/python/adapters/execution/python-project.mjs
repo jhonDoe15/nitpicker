@@ -1,6 +1,10 @@
 import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs';
+import { createRequire } from 'node:module';
 import path from 'node:path';
 
+const INI_SECTION = /^\[([^\]]+)\]\s*$/;
+const INI_SEPARATOR = /[=:]/;
+const INI_COMMENT = /\s+[#;].*$/;
 const HINT_FILES = [
   'pyproject.toml',
   'ruff.toml',
@@ -63,10 +67,8 @@ export const NON_SOURCE_DIRECTORIES = new Set([
   ...INSTALLED_DIRECTORIES,
 ]);
 export const NON_SOURCE_FILES = new Set(['conftest.py']);
-export const TEST_PATH =
-  /(?:^|\/)(?:tests?\/|test_[^/]*\.py$|[^/]*_test\.py$|tests\.py$|conftest\.py$)/u;
 
-function readFileEntries(projectRoot, names) {
+export function readFileEntries(projectRoot, names) {
   return names
     .filter((name) => isFile(path.join(projectRoot, name)))
     .map((name) => [name, readFileSync(path.join(projectRoot, name), 'utf8')]);
@@ -191,4 +193,61 @@ function isFile(file) {
 
 function isDirectory(directory) {
   return existsSync(directory) && statSync(directory).isDirectory();
+}
+
+export function toml() {
+  return createRequire(import.meta.url)('smol-toml');
+}
+
+function startSection(name, sections, state) {
+  state.options = new Map();
+  state.key = undefined;
+  sections.set(name.trim(), state.options);
+}
+
+function appendValue(content, state) {
+  state.options.set(state.key, `${state.options.get(state.key)}\n${content}`);
+}
+
+function startOption(line, state) {
+  const separator = line.search(INI_SEPARATOR);
+  if (separator <= 0 || isIndented(line) || state.options === undefined) {
+    return;
+  }
+  state.key = line.slice(0, separator).trim();
+  state.options.set(state.key, line.slice(separator + 1).trim());
+}
+
+function isIndented(line) {
+  return /^\s/.test(line);
+}
+
+function sectionName(line) {
+  return isIndented(line) ? undefined : INI_SECTION.exec(line.trim())?.[1];
+}
+
+function readIniLine(line, sections, state) {
+  const content = line.trim();
+  const name = sectionName(line);
+  if (content === '' || /^[#;]/.test(content)) {
+    return;
+  }
+  if (name !== undefined) {
+    startSection(name, sections, state);
+    return;
+  }
+  if (isIndented(line) && state.key !== undefined) {
+    appendValue(content, state);
+    return;
+  }
+  startOption(line, state);
+}
+
+export function parseIni(text) {
+  const sections = new Map();
+  const state = { options: undefined, key: undefined };
+  for (const raw of text.split(/\r?\n/)) {
+    readIniLine(raw.replace(INI_COMMENT, ''), sections, state);
+  }
+  return sections;
 }

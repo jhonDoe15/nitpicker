@@ -1,14 +1,13 @@
-import { readProjectHints } from '../execution/python-project.mjs';
 import {
   djangoSettingsModule,
-  mutationPytestOptions,
-  probePytest,
-} from '../execution/python-test-runner.mjs';
+  djangoSubdirectory,
+  pytestNamesDjangoSettings,
+} from '../execution/python-django.mjs';
+import { mutationPytestOptions, probePytest } from '../execution/python-test-runner.mjs';
 
 export const MUTATION_SKIPPED_RULE = 'mutation-skipped';
 export const DISABLE_HINT =
   'To run without mutation testing, add "mutation" to "disable" in nitpicker.config.json.';
-const CONFIGURED_SETTINGS = /^\s*DJANGO_SETTINGS_MODULE\s*=/m;
 const COPY_HINT = 'list them under "also_copy" in [tool.mutmut] of pyproject.toml';
 
 export function skippedFinding(identity, reason) {
@@ -29,7 +28,17 @@ export function missingPytest(context) {
 }
 
 export function runnerSkip(context) {
-  if (context.project.testRunner !== 'django' || probePytest(context)?.django) {
+  if (context.project.testRunner !== 'django') {
+    return undefined;
+  }
+  const directory = djangoSubdirectory(context.projectRoot);
+  if (directory !== undefined) {
+    return skippedFinding(
+      'django-subdirectory',
+      `mutmut names each module by its path from the project root, while the Django tests import it from ${directory}/, where manage.py is, so no test would match a mutant. Run nitpicker with ${directory}/ as the project root to enable it.`,
+    );
+  }
+  if (probePytest(context)?.django) {
     return undefined;
   }
   return skippedFinding(
@@ -40,7 +49,7 @@ export function runnerSkip(context) {
 
 function djangoEnvironment(context) {
   const module = djangoSettingsModule(context.projectRoot);
-  const configured = CONFIGURED_SETTINGS.test(readProjectHints(context.projectRoot));
+  const configured = pytestNamesDjangoSettings(context.projectRoot);
   return module === undefined || configured ? {} : { DJANGO_SETTINGS_MODULE: module };
 }
 
@@ -53,9 +62,6 @@ export function mutmutEnvironment(context) {
 }
 
 export function mutationRunnerLabels(context) {
-  if (context.project.testRunner !== 'django') {
-    return [];
-  }
   return [`pytest-django@${probePytest(context)?.django ? 'installed' : 'missing'}`];
 }
 

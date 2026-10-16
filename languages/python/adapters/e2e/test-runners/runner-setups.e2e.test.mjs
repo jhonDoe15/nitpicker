@@ -12,6 +12,14 @@ import {
 } from '../test-support/python-e2e-support.mjs';
 
 const IGNORED = '.venv/\n__pycache__/\nmutants/\n';
+const SURVIVOR = 'mutmut mutant-survived sign.py';
+const UNCOVERED_FINDINGS = [
+  'coverage-py changed-branch-coverage sign.py',
+  SURVIVOR,
+  SURVIVOR,
+  SURVIVOR,
+];
+const WEAK_FINDINGS = [SURVIVOR, SURVIVOR];
 const SIGN = 'def sign(x: int) -> int:\n    if x > 0:\n        return 1\n    return -1\n';
 
 function enforceable(result) {
@@ -30,31 +38,55 @@ function project(files, packages) {
   return root;
 }
 
+function signTests(...cases) {
+  const tests = cases.map(
+    ([name, value, expected]) =>
+      `def test_${name}():\n    assert sign(${String(value)}) == ${String(expected)}\n`,
+  );
+  return `from calc.sign import sign\n\n\n${tests.join('\n\n')}`;
+}
+
 describe.skipIf(!pythonE2eEnabled)('Python preset on a nose2 project', () => {
   let nose2;
   afterAll(removeRepositories);
   beforeAll(() => {
     nose2 = project(
       {
-        'nitpicker.config.json': '{ "preset": "python", "disable": ["mutation"] }\n',
+        'nitpicker.config.json': '{ "preset": "python" }\n',
         'nose2.cfg': '[unittest]\nstart-dir = tests\n',
         'tests/__init__.py': '',
       },
-      ['coverage', 'nose2'],
+      ['coverage', 'nose2', 'pytest', 'mutmut'],
     );
-    commitBranch(nose2, 'tested', {
-      'calc/sign.py': SIGN,
-      'tests/test_sign.py':
-        'from calc.sign import sign\n\n\ndef test_positive():\n    assert sign(2) == 1\n\n\ndef test_negative():\n    assert sign(-2) == -1\n',
-    });
+    const branch = (name, ...cases) => {
+      commitBranch(nose2, name, {
+        'calc/sign.py': SIGN,
+        'tests/test_sign.py': signTests(...cases),
+      });
+    };
+    branch('tested', ['positive', 1, 1], ['zero', 0, -1]);
+    branch('uncovered', ['positive', 1, 1]);
+    branch('weak', ['positive', 2, 1], ['negative', -2, -1]);
   });
-  it('runs the test functions with nose2 under coverage', () => {
+  it('runs the test functions with nose2 under coverage and mutmut', () => {
     const result = gate(nose2, 'tested');
 
     expect(result.exitCode, result.text).toBe(0);
     expect(result.json('summary.json').tools[0].version).toMatch(
       /^ruff@[\d.]+;(?:mypy|pyright)@[\d.]+;coverage@[\d.]+;nose2@[\d.]+;jscpd@[\d.]+$/,
     );
+  });
+  it('fails a branch no nose2 test takes', () => {
+    const result = gate(nose2, 'uncovered');
+
+    expect(result.exitCode, result.text).toBe(1);
+    expect(enforceable(result)).toEqual(UNCOVERED_FINDINGS);
+  });
+  it('fails the survivors that weak nose2 tests leave', () => {
+    const result = gate(nose2, 'weak');
+
+    expect(result.exitCode, result.text).toBe(1);
+    expect(enforceable(result)).toEqual(WEAK_FINDINGS);
   });
 });
 

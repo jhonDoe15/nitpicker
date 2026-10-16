@@ -17,12 +17,12 @@ function withAppended(inherited, additions) {
 export function execute(
   context,
   command,
-  { timeout = TOOL_TIMEOUT_MS, env = {}, defaultEnv = {}, appendEnv = {} } = {},
+  { timeout = TOOL_TIMEOUT_MS, env = {}, defaultEnv = {}, appendEnv = {}, cwd } = {},
 ) {
   const [tool, ...args] = command;
   const launch = context.launcher.launch(tool, args);
   return spawnSync(launch.command, launch.args, {
-    cwd: context.projectRoot,
+    cwd: cwd ?? context.projectRoot,
     env: withAppended(
       { ...defaultEnv, ...process.env, ...launch.env, ...context.env, ...env },
       appendEnv,
