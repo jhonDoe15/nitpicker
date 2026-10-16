@@ -5,6 +5,8 @@ def analysisRoot = project.ext.nitpickerAnalysisRoot
 def analyzedClassDirs = project.ext.nitpickerAnalyzedClassDirs
 def nitpickerArgument = { String name -> gradle.startParameter.projectProperties[name] }
 def gradleDirectory = new File(buildscript.sourceFile.parentFile, '../..').canonicalFile
+def kotlinToolMinimum = 17
+def detektNewestJdk = 21
 
 plugins.withId('org.jetbrains.kotlin.jvm') {
     def relative = relativeToRoot
@@ -25,6 +27,26 @@ plugins.withId('org.jetbrains.kotlin.jvm') {
     def writeFormatList = { List<String> files ->
         reportDir.get().asFile.mkdirs()
         reportDir.get().file('ktfmt.txt').asFile.text = files.unique().sort().collect { it + '\n' }.join('')
+    }
+    def kotlinToolJava = { String tool, int maximum = Integer.MAX_VALUE ->
+        project.ext.nitpickerToolJava(tool, kotlinToolMinimum, [], maximum)
+    }
+    def runsOnToolJava = { JavaExec task, String tool, String skipName, int maximum = Integer.MAX_VALUE ->
+        def chosen = null
+        def choose = { ->
+            chosen = chosen ?: kotlinToolJava(tool, maximum)
+            chosen
+        }
+        task.javaLauncher.set(project.provider { choose().launcher }.flatMap { it })
+        task.onlyIf {
+            reportDir.get().asFile.mkdirs()
+            def skipped = reportDir.get().file(skipName).asFile
+            skipped.delete()
+            if (choose().skipped) {
+                skipped.text = "${choose().skipped}\n"
+            }
+            !choose().skipped
+        }
     }
 
     configurations {
@@ -69,6 +91,7 @@ plugins.withId('org.jetbrains.kotlin.jvm') {
         def validationOff = new File(gradleDirectory, '../detekt/detekt-validation.yml').canonicalFile
         dependsOn 'compileJava'
         onlyIf { !kotlinSourceDirs().isEmpty() }
+        runsOnToolJava(it, 'detekt', 'detekt-skipped.txt', detektNewestJdk)
         doFirst {
             reportDir.get().asFile.mkdirs()
             standardOutput = log
@@ -88,7 +111,7 @@ plugins.withId('org.jetbrains.kotlin.jvm') {
                   '--config', [projectConfig, nitpickerConfig.absolutePath, validationOff.absolutePath]
                       .findAll { it }.join(','),
                   '--classpath', typeResolutionClasspath,
-                  '--jdk-home', System.getProperty('java.home')])
+                  '--jdk-home', project.ext.nitpickerProjectJavaHome()])
         }
         doLast {
             def code = executionResult.get().exitValue
@@ -108,6 +131,7 @@ plugins.withId('org.jetbrains.kotlin.jvm') {
         def report = reportDir.map { it.file('ktlint.sarif') }
         workingDir = analysisRoot
         onlyIf { kotlinFormatter() == 'ktlint' && !kotlinFiles().isEmpty() }
+        runsOnToolJava(it, 'ktlint', 'ktlint-skipped.txt')
         doFirst {
             reportDir.get().asFile.mkdirs()
             standardOutput = log
@@ -132,6 +156,7 @@ plugins.withId('org.jetbrains.kotlin.jvm') {
         def errors = new ByteArrayOutputStream()
         workingDir = analysisRoot
         onlyIf { kotlinFormatter() == 'ktfmt' && !kotlinFiles().isEmpty() }
+        runsOnToolJava(it, 'ktfmt', 'ktfmt-skipped.txt')
         doFirst {
             standardOutput = changed
             errorOutput = errors
@@ -161,12 +186,17 @@ plugins.withId('org.jetbrains.kotlin.jvm') {
             reportDir.get().asFile.mkdirs()
             def output = reportDir.get().file('kotlin-metrics.json').asFile
             def roots = kotlinSourceDirs().collect { relative(it) }
-            if (kotlinFiles().isEmpty()) {
+            def skipped = reportDir.get().file('kotlin-metrics-skipped.txt').asFile
+            skipped.delete()
+            def chosen = kotlinFiles().isEmpty() ? null : kotlinToolJava('KotlinMetrics')
+            if (chosen?.skipped) {
+                skipped.text = "${chosen.skipped}\n"
+            }
+            if (chosen == null || chosen.skipped) {
                 output.text = '{"functions":[],"files":[]}'
                 return
             }
-            def java = new File(System.getProperty('java.home'), 'bin/java').absolutePath
-            def process = new ProcessBuilder([java, '-Djava.awt.headless=true',
+            def process = new ProcessBuilder([chosen.java, '-Djava.awt.headless=true',
                     "-Dnitpicker.kotlinCompiler=${pinned.kotlinCompiler}".toString(), '-cp',
                     configurations.nitpickerKotlinCompiler.asPath, metricsSource.absolutePath,
                     output.absolutePath, analysisRoot.absolutePath] + roots)

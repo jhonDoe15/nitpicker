@@ -61,6 +61,28 @@ describe('skippedToolFindings', () => {
     ]);
   });
 
+  it('names each Kotlin tool that could not run on its own', () => {
+    const reportRoot = reportRootWith({
+      'detekt-skipped.txt': 'detekt runs on JDK 17 to 21 only\n',
+      'ktlint-skipped.txt': 'ktlint needs JDK 17\n',
+      'ktfmt-skipped.txt': 'ktfmt needs JDK 17\n',
+      'kotlin-metrics-skipped.txt': 'KotlinMetrics needs JDK 17\n',
+    });
+
+    expect(
+      skippedToolFindings({ reportRoot }).map(({ tool, message }) => [tool, message]),
+    ).toStrictEqual([
+      ['detekt', 'detekt did not run in the head snapshot: detekt runs on JDK 17 to 21 only.'],
+      ['ktlint', 'ktlint did not run in the head snapshot: ktlint needs JDK 17.'],
+      ['ktfmt', 'ktfmt did not run in the head snapshot: ktfmt needs JDK 17.'],
+      [
+        'structure',
+        'The Kotlin structure metrics did not run in the head snapshot: KotlinMetrics needs JDK 17.',
+      ],
+      ['crap', 'Kotlin CRAP did not run in the head snapshot: KotlinMetrics needs JDK 17.'],
+    ]);
+  });
+
   it('reports nothing when every tool ran', () => {
     expect(skippedToolFindings({ reportRoot: reportRootWith({}) })).toStrictEqual([]);
   });

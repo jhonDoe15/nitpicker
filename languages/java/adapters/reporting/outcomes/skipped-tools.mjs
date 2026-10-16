@@ -6,11 +6,17 @@ const TOOL_SKIPPED_RULE = 'tool-skipped';
 export const ERROR_PRONE_SKIPPED = 'errorprone-skipped.txt';
 export const FORMAT_SKIPPED = 'format-skipped.txt';
 export const STRUCTURE_SKIPPED = 'structure-skipped.txt';
+const KOTLIN_METRICS_SKIPPED = 'kotlin-metrics-skipped.txt';
 const SKIP_REPORTS = [
   [ERROR_PRONE_SKIPPED, 'errorprone', 'Error Prone'],
   [FORMAT_SKIPPED, 'google-java-format', 'google-java-format'],
   [STRUCTURE_SKIPPED, 'structure', 'The structure metrics'],
   [STRUCTURE_SKIPPED, 'crap', 'CRAP'],
+  ['detekt-skipped.txt', 'detekt', 'detekt'],
+  ['ktlint-skipped.txt', 'ktlint', 'ktlint'],
+  ['ktfmt-skipped.txt', 'ktfmt', 'ktfmt'],
+  [KOTLIN_METRICS_SKIPPED, 'structure', 'The Kotlin structure metrics'],
+  [KOTLIN_METRICS_SKIPPED, 'crap', 'Kotlin CRAP'],
 ];
 
 const PARSE_SKIP_SOURCE = /(?:^|\.)TreeWalker$/u;

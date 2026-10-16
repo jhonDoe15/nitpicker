@@ -10,11 +10,32 @@ def launcherOf = { int version ->
 
 def currentJava = { ->
     def current = JavaVersion.current().majorVersion as int
-    [java: new File(System.getProperty('java.home'), 'bin/java').absolutePath, launcher: launcherOf(current)]
+    def home = System.getProperty('java.home')
+    [java: new File(home, 'bin/java').absolutePath, launcher: launcherOf(current), home: home]
 }
 
-project.ext.nitpickerToolJava = { String tool, int minimum, Collection<JavaCompile> compiles ->
+def toolchainJava = { int version ->
+    def launcher = launcherOf(version)
+    [java: launcher.get().executablePath.asFile.absolutePath, launcher: launcher,
+     home: launcher.get().metadata.installationPath.asFile.absolutePath]
+}
+
+def olderJava = { String tool, int minimum, int maximum, int current ->
+    try {
+        return toolchainJava(maximum)
+    } catch (Exception ignored) {
+        return currentJava() + [skipped: "${tool} runs on JDK ${minimum} to ${maximum} only, and Gradle runs on " +
+            "JDK ${current}. Gradle found no JDK ${maximum}: install one where Gradle looks for toolchains, or " +
+            "let Gradle download it (the org.gradle.toolchains.foojay-resolver-convention plugin)"]
+    }
+}
+
+project.ext.nitpickerToolJava = { String tool, int minimum, Collection<JavaCompile> compiles,
+                                  int maximum = Integer.MAX_VALUE ->
     def current = JavaVersion.current().majorVersion as int
+    if (current > maximum) {
+        return olderJava(tool, minimum, maximum, current)
+    }
     def versions = compiles.collect { compilerVersion(it) }
     def preview = compiles.any { it.options.compilerArgs.contains('--enable-preview') }
     def projectVersion = versions ? versions.max() : current
@@ -28,8 +49,7 @@ project.ext.nitpickerToolJava = { String tool, int minimum, Collection<JavaCompi
         return currentJava()
     }
     try {
-        def launcher = launcherOf(wanted)
-        return [java: launcher.get().executablePath.asFile.absolutePath, launcher: launcher]
+        return toolchainJava(wanted)
     } catch (Exception ignored) {
         return currentJava() + [skipped: "${tool} needs a JDK ${wanted} for this project (JDK ${minimum} or " +
             "newer, and at least the project's own JDK), and Gradle runs on JDK ${current}. Gradle found no " +
@@ -37,6 +57,11 @@ project.ext.nitpickerToolJava = { String tool, int minimum, Collection<JavaCompi
             "let Gradle download it (the org.gradle.toolchains.foojay-resolver-convention plugin); the " +
             "project keeps compiling for its own release"]
     }
+}
+
+project.ext.nitpickerProjectJavaHome = { ->
+    tasks.named('compileJava').get().javaCompiler.orNull?.metadata?.installationPath?.asFile?.absolutePath ?:
+        System.getProperty('java.home')
 }
 
 project.ext.nitpickerJavaCompiles = {
