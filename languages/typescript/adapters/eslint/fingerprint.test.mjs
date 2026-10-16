@@ -122,6 +122,29 @@ describe('a finding anchored on a whole function is about its signature', () => 
   });
 });
 
+describe('a finding that spans the whole file is about the file', () => {
+  const wholeFileFinding = (code) =>
+    findingFor({ code, reported: code.trimStart(), ruleId: 'nitpicker/no-unknown-main-folder' });
+
+  it('stays baselined when the file had one statement and lines are added above it', () => {
+    const before = 'export const a = 1;\n';
+    const result = compare(
+      wholeFileFinding(before),
+      wholeFileFinding(`\n\n\nexport const unrelatedValue = 1;\n\n${before}`),
+    );
+
+    expect(result.newFindings).toEqual([]);
+    expect(result.resolvedFindings).toEqual([]);
+    expect(result.unchangedFindings).toHaveLength(1);
+  });
+
+  it('anchors on the program', () => {
+    expect(wholeFileFinding('export const a = 1;\n')[0].identity).toBe(
+      'message:Reported text.|node:Program|syntax:program|occurrence:1',
+    );
+  });
+});
+
 describe('a finding in an edited function stays baselined while the function has no more of them', () => {
   const SILENT = 'nitpicker/no-silent-catch';
   const originalHandler = "\n    return '';\n  ";
@@ -367,5 +390,50 @@ describe('a complexity finding fails only when the number rises', () => {
     const result = compare([], find(build, reported, 16));
 
     expect(result.newFindings.map(({ message }) => message)).toEqual([complexity(16)]);
+  });
+});
+
+describe('findings another rule already covers', () => {
+  function normalized(code, reports) {
+    const root = mkdtempSync(path.join(tmpdir(), 'nitpicker-eslint-superseded-'));
+    temporaryRoots.push(root);
+    mkdirSync(path.join(root, 'src'), { recursive: true });
+    writeFileSync(path.join(root, 'src/rows.tsx'), code);
+    const messages = reports.map(([ruleId, text]) => {
+      const start = positionOf(code, code.indexOf(text));
+      const end = positionOf(code, code.indexOf(text) + text.length);
+      return {
+        ruleId,
+        message: `${ruleId} text`,
+        severity: 2,
+        ...start,
+        endLine: end.line,
+        endColumn: end.column,
+      };
+    });
+    return normalizeEslintResults({
+      value: [{ filePath: path.join(root, 'src/rows.tsx'), messages }],
+      projectRoot: root,
+      analyzerName: 'eslint-lint',
+    }).map(({ rule }) => rule);
+  }
+
+  it('keeps only the key finding for a random key', () => {
+    const code = 'export const row = <li key={Math.random()} />;\n';
+
+    expect(
+      normalized(code, [
+        ['no-restricted-properties', 'Math.random'],
+        ['nitpicker/react-no-random-key', 'Math.random()'],
+      ]),
+    ).toEqual(['nitpicker/react-no-random-key']);
+  });
+
+  it('keeps the restricted-property finding outside a key', () => {
+    const code = 'export const row = <li key={id} data-seed={Math.random()} />;\n';
+
+    expect(normalized(code, [['no-restricted-properties', 'Math.random']])).toEqual([
+      'no-restricted-properties',
+    ]);
   });
 });

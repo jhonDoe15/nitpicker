@@ -69,21 +69,12 @@ export function lintWithOxlint({ options, environment, projectConfigPath, runEsl
   }
 }
 
-function nativeRules(environment) {
-  const listed = spawnJson([oxlintBinary(), '--rules', '--format', 'json'], {
-    cwd: import.meta.dirname,
-    env: environment,
-    context: 'oxlint rule listing',
-  });
-  return { nativeRules: nativeRuleIndex(listed) };
-}
-
 function lintUntilAccepted({ plan, environment, ...run }) {
   const context = {
     plan,
     environment,
     ...run,
-    native: nativeRules(environment),
+    native: { nativeRules: nativeRuleIndex(plan.nativeRules) },
     bridgedRules: new Set(PARITY_BRIDGED_RULES),
   };
   const attempts = Array.from({ length: MAX_CONFIGURATION_ATTEMPTS }, () => context);

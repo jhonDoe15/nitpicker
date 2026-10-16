@@ -24,6 +24,7 @@ export function createEslintAnalyzer({
     exclusions,
     timeoutMs,
     shardWeight,
+    requiresDependencies: true,
     concurrencyGroup: 'eslint-snapshot-dependencies',
     createInvocation({ projectRoot, policyRoot, toolRoot, liveProjectRoot }) {
       const args = [
