@@ -3,11 +3,11 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import {
-  detectTestRunner,
   djangoSettingsModule,
-  testCommand,
-  testsRan,
-} from './python-test-runner.mjs';
+  djangoSubdirectory,
+  pytestNamesDjangoSettings,
+} from './python-django.mjs';
+import { detectTestRunner, testCommand, testsRan } from './python-test-runner.mjs';
 
 const DJANGO_MANAGE = [
   'import os',
@@ -94,6 +94,11 @@ describe('test runner detection', () => {
       'test functions Django would not run',
       { 'manage.py': DJANGO_MANAGE, 'tests/test_a.py': 'def test_a():\n    pass\n' },
     ],
+    [
+      'nose2 signals too',
+      { 'manage.py': DJANGO_MANAGE, 'nose2.cfg': '', 'requirements.txt': 'nose2\n' },
+    ],
+    ['the manage.py one directory down', { 'backend/manage.py': DJANGO_MANAGE }],
   ])('chooses django for manage.py with %s', (_, files) => {
     expect(detectTestRunner(project(files))).toBe('django');
   });
@@ -117,10 +122,70 @@ describe('test runner detection', () => {
     expect(detectTestRunner(project({ 'nose2.cfg': '' }), 'django')).toBe('django');
   });
 
-  it('reads the settings module from manage.py', () => {
-    expect(djangoSettingsModule(project({ 'manage.py': DJANGO_MANAGE }))).toBe('site.settings');
-    expect(djangoSettingsModule(project({ 'manage.py': 'import django\n' }))).toBeUndefined();
-    expect(djangoSettingsModule(project({}))).toBeUndefined();
+  it.each([
+    ['the setdefault call', { 'manage.py': DJANGO_MANAGE }, 'site.settings'],
+    [
+      'an assignment',
+      { 'manage.py': 'import os\nos.environ["DJANGO_SETTINGS_MODULE"] = "site.prod"\n' },
+      'site.prod',
+    ],
+    [
+      'the line that is not commented out',
+      {
+        'manage.py': `# os.environ.setdefault("DJANGO_SETTINGS_MODULE", "old.settings")\n${DJANGO_MANAGE}`,
+      },
+      'site.settings',
+    ],
+    ['the manage.py one directory down', { 'backend/manage.py': DJANGO_MANAGE }, 'site.settings'],
+    ['a manage.py without settings', { 'manage.py': 'import django\n' }, undefined],
+    ['no manage.py', {}, undefined],
+  ])('reads the settings module from %s', (_, files, expected) => {
+    expect(djangoSettingsModule(project(files))).toBe(expected);
+  });
+
+  it.each([
+    ['pytest.ini', { 'pytest.ini': '[pytest]\nDJANGO_SETTINGS_MODULE = site.test\n' }, true],
+    ['setup.cfg', { 'setup.cfg': '[tool:pytest]\nDJANGO_SETTINGS_MODULE = site.test\n' }, true],
+    ['tox.ini', { 'tox.ini': '[pytest]\nDJANGO_SETTINGS_MODULE = site.test\n' }, true],
+    [
+      'pyproject.toml',
+      { 'pyproject.toml': '[tool.pytest.ini_options]\nDJANGO_SETTINGS_MODULE = "site.test"\n' },
+      true,
+    ],
+    [
+      'a tox setenv',
+      { 'tox.ini': '[testenv]\nsetenv =\n    DJANGO_SETTINGS_MODULE = site.ci\n' },
+      false,
+    ],
+    ['nothing', {}, false],
+  ])('tells whether the pytest configuration in %s names the settings', (_, files, expected) => {
+    expect(pytestNamesDjangoSettings(project(files))).toBe(expected);
+  });
+
+  it.each([
+    ['manage.py one directory down', { 'backend/manage.py': DJANGO_MANAGE }, 'backend'],
+    ['manage.py at the root', { 'manage.py': DJANGO_MANAGE }, undefined],
+    ['no manage.py', {}, undefined],
+  ])('names the subdirectory of the Django project with %s', (_, files, expected) => {
+    expect(djangoSubdirectory(project(files))).toBe(expected);
+  });
+});
+describe('Django and nose2 commands', () => {
+  const contextFor = (root, testRunner) => ({
+    projectRoot: root,
+    project: { testRunner },
+    launcher: {
+      description: 'test',
+      launch: () => ({ command: process.execPath, args: ['-e', 'console.log("5.1.0")'], env: {} }),
+    },
+  });
+
+  it.each([
+    ['django', { 'manage.py': DJANGO_MANAGE }, ['manage.py', 'test', '--noinput']],
+    ['django', { 'backend/manage.py': DJANGO_MANAGE }, ['manage.py', 'test', '--noinput']],
+    ['nose2', {}, ['-m', 'nose2']],
+  ])('runs %s as the project does', (testRunner, files, command) => {
+    expect(testCommand(contextFor(project(files), testRunner))).toEqual(command);
   });
 });
 describe('unittest command', () => {

@@ -4,7 +4,7 @@ import { globToRegExp } from '../../../../shared/glob.mjs';
 import { collectFileLimitFindings } from '../../../../shared/rules/file-limits.mjs';
 import { readStructureFindings } from '../../../java/adapters/metrics/java-structure.mjs';
 import { run } from '../execution/python-process.mjs';
-import { TEST_PATH } from '../execution/python-project.mjs';
+import { TEST_PATH } from '../execution/python-test-files.mjs';
 import { functionText, writeSourceListing } from './python-sources.mjs';
 import { fileURLToPath } from 'node:url';
 

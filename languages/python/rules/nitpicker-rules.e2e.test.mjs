@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, it } from 'vitest';
+import { TEST_DIRECTORIES, TEST_FILE_GLOBS } from '../adapters/execution/python-test-files.mjs';
 import { createScripts } from './test-support/python-script-helpers.mjs';
 
 const enabled = process.env.NITPICKER_PYTHON_E2E === '1';
@@ -38,13 +39,14 @@ describe.skipIf(!enabled)('frozen-dataclass', () => {
   });
 
   it.each([
-    'tests/test_orders.py',
-    'test/helpers.py',
-    'src/test_orders.py',
-    'src/orders_test.py',
-    'src/polls/tests.py',
-    'src/conftest.py',
-  ])('does not apply to the test file %s', (file) => {
+    ...TEST_DIRECTORIES.flatMap((directory) => [
+      `${directory}/helpers.py`,
+      `src/${directory}/a.py`,
+    ]),
+    ...TEST_FILE_GLOBS.flatMap((glob) => [glob, `src/polls/${glob}`]).map((file) =>
+      file.replace('*', 'orders'),
+    ),
+  ])('does not apply to %s, a test file of the shared test file list', (file) => {
     expect(single('@dataclass\nclass A:\n    x: int\n', file)).toEqual([]);
   });
 

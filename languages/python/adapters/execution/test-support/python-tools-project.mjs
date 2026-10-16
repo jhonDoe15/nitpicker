@@ -14,16 +14,16 @@ export function temporaryRoot() {
   return root;
 }
 
-export function coverageRc(sources, carried = []) {
+export function coverageRc(root, sources, carried = []) {
   return [
     '[run]',
     'branch = True',
     'parallel = False',
     'source =',
-    ...sources.map((source) => `    ${source}`),
+    ...sources.map((source) => `    ${path.join(root, source)}`),
     'omit =',
     '    */test_*.py',
-    '    *_test.py',
+    '    */*_test.py',
     '    */tests.py',
     '    */conftest.py',
     '    */tests/*',

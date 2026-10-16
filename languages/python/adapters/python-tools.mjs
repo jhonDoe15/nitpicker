@@ -24,6 +24,7 @@ import {
   NO_TESTS_EXIT,
   pytestLabel,
   testCommand,
+  testDirectory,
   testRunnerLabel,
   testsRan,
 } from './execution/python-test-runner.mjs';
@@ -218,6 +219,7 @@ function test(context, outcome) {
   const result = run(context, ['coverage', 'run', '--rcfile', config, ...testCommand(context)], {
     accepted: [0, NO_TESTS_EXIT],
     rule: TESTS_FAILED_RULE,
+    cwd: testDirectory(context),
   });
   outcome.testsRan = testsRan(result);
   combineCoverageData(context, config);

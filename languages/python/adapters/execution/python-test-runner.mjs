@@ -3,6 +3,8 @@ import path from 'node:path';
 import { environmentError } from './python-environment.mjs';
 import { execute, probeVersion, VERSION_PATTERN } from './python-process.mjs';
 import { readOptional, readProjectHints } from './python-project.mjs';
+import { DJANGO_SCRIPT, readDjangoScript } from './python-django.mjs';
+import { TEST_DIRECTORIES, TEST_FILE_NAME } from './python-test-files.mjs';
 
 export const NO_TESTS_EXIT = 5;
 const PYTEST_PROBE = [
@@ -14,26 +16,22 @@ const UNITTEST_FILES = 'python_files=test*.py';
 const RUNNER_DISTRIBUTIONS = { django: 'Django', nose2: 'nose2' };
 const probes = new WeakMap();
 
-const TEST_DIRECTORIES = ['tests', 'test'];
-const DJANGO_SCRIPT = 'manage.py';
 const PYTEST_CONFIGURATION = /^\s*\[(?:tool\.pytest(?:\.ini_options)?|pytest|tool:pytest)\]/m;
 const PYTEST_DEPENDENCY = /(?:^|[\s"'=])pytest(?:\b|_)/m;
 const PYTEST_STYLE_TEST =
   /^(?:async\s+)?def test_|^(?:import|from)\s+pytest\b|^class Test\w*\s*(?:\(\s*\))?:/m;
-const TEST_FILE = /^(?:test_.*|.*_test|tests)\.py$/;
 const DJANGO_DEPENDENCY = /(?:^|[\s"'=])django(?![\w.-])/im;
 const DJANGO_IMPORT = /^\s*(?:from|import)\s+django\b/m;
 const NOSE2_DEPENDENCY = /(?:^|[\s"'=])nose2(?![\w.-])/m;
 const NOSE2_SECTION = '[unittest]';
-const DJANGO_SETTINGS = /DJANGO_SETTINGS_MODULE["']\s*,\s*["']([\w.]+)["']/;
 
 function existingTestFiles(projectRoot) {
   const directories = TEST_DIRECTORIES.filter((name) => existsSync(path.join(projectRoot, name)));
   return [
-    ...readdirSync(projectRoot).filter((name) => TEST_FILE.test(name)),
+    ...readdirSync(projectRoot).filter((name) => TEST_FILE_NAME.test(name)),
     ...directories.flatMap((directory) =>
       readdirSync(path.join(projectRoot, directory), { recursive: true })
-        .filter((name) => TEST_FILE.test(path.basename(name)))
+        .filter((name) => TEST_FILE_NAME.test(path.basename(name)))
         .map((name) => path.join(directory, name)),
     ),
   ];
@@ -60,11 +58,8 @@ function declaresPytest(projectRoot, hints) {
 }
 
 function usesDjango(projectRoot, hints) {
-  const script = path.join(projectRoot, DJANGO_SCRIPT);
-  return (
-    existsSync(script) &&
-    (DJANGO_DEPENDENCY.test(hints) || DJANGO_IMPORT.test(readOptional(script)))
-  );
+  const found = readDjangoScript(projectRoot);
+  return found !== undefined && (DJANGO_DEPENDENCY.test(hints) || DJANGO_IMPORT.test(found.text));
 }
 
 function listsNose2Plugins(text) {
@@ -98,10 +93,6 @@ export function detectTestRunner(projectRoot, setting) {
     ['pytest', () => hasPytestFile(projectRoot)],
   ];
   return signals.find(([, applies]) => applies())?.[0] ?? 'unittest';
-}
-
-export function djangoSettingsModule(projectRoot) {
-  return DJANGO_SETTINGS.exec(readOptional(path.join(projectRoot, DJANGO_SCRIPT)))?.[1];
 }
 
 export function probePytest(context) {
@@ -188,8 +179,19 @@ function requireRunner(context, runner) {
 }
 
 function djangoCommand(context) {
+  if (readDjangoScript(context.projectRoot) === undefined) {
+    throw environmentError(
+      `the tests run with Django's manage.py test, but there is no manage.py at ${path.join(context.projectRoot, DJANGO_SCRIPT)} or one directory below it: add it there, or set "python.testRunner" to the runner the tests use`,
+    );
+  }
   requireRunner(context, 'django');
   return [DJANGO_SCRIPT, 'test', '--noinput'];
+}
+
+export function testDirectory(context) {
+  const found =
+    context.project.testRunner === 'django' ? readDjangoScript(context.projectRoot) : undefined;
+  return found?.directory ?? context.projectRoot;
 }
 
 function nose2Command(context) {

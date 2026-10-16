@@ -63,7 +63,7 @@ function configurationContext(files = {}, overrides = {}) {
 }
 
 const TEST_PATTERNS =
-  '"tests/*","test/*","*/tests/*","*/test/*","test_*.py","*/test_*.py","*_test.py","tests.py","*/tests.py","conftest.py","*/conftest.py"';
+  '"tests/*","*/tests/*","test/*","*/test/*","test_*.py","*/test_*.py","*_test.py","*/*_test.py","tests.py","*/tests.py","conftest.py","*/conftest.py"';
 const section = (sourcePaths, patterns = TEST_PATTERNS) =>
   `[tool.mutmut]\nsource_paths = ${sourcePaths}\ndo_not_mutate = [${patterns}]\n`;
 
@@ -429,20 +429,24 @@ describe('running mutmut for the other test runners', () => {
     expect(mutmutCalls(calls)).toEqual([]);
   });
 
-  it('skips a Django project without pytest-django with a descriptive note', () => {
+  it.each([
+    [
+      'pytest-django',
+      { 'manage.py': DJANGO_MANAGE },
+      'mutmut runs the tests with pytest, and the Django tests need the pytest-django plugin under pytest, which is not installed in the virtualenv environment. Install pytest-django there to enable it; the settings module is read from manage.py.',
+    ],
+    [
+      'django-subdirectory',
+      { 'backend/manage.py': DJANGO_MANAGE, 'pytest-django.txt': '' },
+      'mutmut names each module by its path from the project root, while the Django tests import it from backend/, where manage.py is, so no test would match a mutant. Run nitpicker with backend/ as the project root to enable it.',
+    ],
+  ])('skips a Django project with a descriptive %s note', (identity, files, reason) => {
     const calls = callsLog();
-    const root = project({ 'manage.py': DJANGO_MANAGE });
+    const message = `Mutation testing was skipped: ${reason} To run without mutation testing, add "mutation" to "disable" in nitpicker.config.json.`;
+    const skipped = { tool: 'mutmut', rule: MUTATION_SKIPPED_RULE, path: '.', identity, message };
 
-    expect(mutationFindings(runnerContext(root, 'django'))).toEqual([
-      {
-        tool: 'mutmut',
-        rule: MUTATION_SKIPPED_RULE,
-        path: '.',
-        identity: 'pytest-django',
-        message:
-          'Mutation testing was skipped: mutmut runs the tests with pytest, and the Django tests need the pytest-django plugin under pytest, which is not installed in the virtualenv environment. Install pytest-django there to enable it; the settings module is read from manage.py. To run without mutation testing, add "mutation" to "disable" in nitpicker.config.json.',
-        classification: 'descriptive',
-      },
+    expect(mutationFindings(runnerContext(project(files), 'django'))).toEqual([
+      { ...skipped, classification: 'descriptive' },
     ]);
     expect(mutmutCalls(calls)).toEqual([]);
   });
@@ -472,7 +476,7 @@ describe('running mutmut for the other test runners', () => {
     expect(mutmutCalls(calls)[0].pytestAddopts).toBe('-o django_find_project=false');
   });
 
-  it('keeps the settings module of the caller and of the pytest configuration', () => {
+  it('keeps the settings of the caller and of pytest, and sets none manage.py lacks', () => {
     const calls = callsLog();
     const plugin = { 'manage.py': DJANGO_MANAGE, 'pytest-django.txt': '' };
     setEnvironment('DJANGO_SETTINGS_MODULE', 'site.ci');
@@ -483,9 +487,12 @@ describe('running mutmut for the other test runners', () => {
       'setup.cfg': '[tool:pytest]\nDJANGO_SETTINGS_MODULE = site.test\n',
     });
     mutationFindings(runnerContext(configured, 'django'));
+    const unnamed = project({ ...plugin, 'manage.py': 'import django\n' });
+    mutationFindings(runnerContext(unnamed, 'django'));
 
     expect(mutmutCalls(calls).map(({ djangoSettings }) => djangoSettings)).toEqual([
       'site.ci',
+      undefined,
       undefined,
     ]);
   });

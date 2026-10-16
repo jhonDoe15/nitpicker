@@ -9,6 +9,7 @@ import {
 import { seedMutantsFromBase } from './python-mutation-reuse.mjs';
 import { probeVersion, run } from '../execution/python-process.mjs';
 import { readOptional } from '../execution/python-project.mjs';
+import { mutmutTestPatterns } from '../execution/python-test-files.mjs';
 import {
   DISABLE_HINT,
   missingPytest,
@@ -34,19 +35,6 @@ const SUPPORTED_MAJOR = /^3\./u;
 const PYPROJECT = 'pyproject.toml';
 const PYPROJECT_SECTION = /^\s*\[tool\.mutmut\]/mu;
 const SETUP_CFG_SECTION = /^\s*\[mutmut\]/mu;
-const TEST_PATTERNS = [
-  'tests/*',
-  'test/*',
-  '*/tests/*',
-  '*/test/*',
-  'test_*.py',
-  '*/test_*.py',
-  '*_test.py',
-  'tests.py',
-  '*/tests.py',
-  'conftest.py',
-  '*/conftest.py',
-];
 
 function failure(message) {
   return Object.assign(new Error(message), { rule: MUTATION_FAILED_RULE });
@@ -76,7 +64,7 @@ export function ensureMutmutConfiguration({ projectRoot, project, exclude }) {
   const section = [
     '[tool.mutmut]',
     `source_paths = ${JSON.stringify(project.sourceRoots)}`,
-    `do_not_mutate = ${JSON.stringify([...TEST_PATTERNS, ...excludedPatterns(exclude)])}`,
+    `do_not_mutate = ${JSON.stringify([...mutmutTestPatterns(), ...excludedPatterns(exclude)])}`,
   ].join('\n');
   writeFileSync(pyproject, `${readOptional(pyproject)}\n${section}\n`);
 }
