@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { installCommand } from './commands.mjs';
 
-const PROMPT = { COREPACK_ENABLE_DOWNLOAD_PROMPT: '0' };
+const PROMPT = { COREPACK_ENABLE_DOWNLOAD_PROMPT: '0', COREPACK_ENABLE_AUTO_PIN: '0' };
 
 describe('frozen install commands', () => {
   it.each([
