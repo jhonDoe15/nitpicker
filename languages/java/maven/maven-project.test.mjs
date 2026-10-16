@@ -2,7 +2,12 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
-import { moduleClasspaths, parseDependencyList, readReactor } from './maven-project.mjs';
+import {
+  lifecycleArgs,
+  moduleClasspaths,
+  parseDependencyList,
+  readReactor,
+} from './maven-project.mjs';
 
 const roots = [];
 
@@ -64,6 +69,9 @@ function effective(root) {
         <plugin>
           <artifactId>maven-failsafe-plugin</artifactId>
           <configuration><reportsDirectory>${root}/core/out/it-tests</reportsDirectory></configuration>
+          <executions>
+            <execution><goals><goal>integration-test</goal><goal>verify</goal></goals></execution>
+          </executions>
         </plugin>
       </plugins>
     </build>
@@ -91,6 +99,7 @@ function defaultModule(basedir, coordinates, packaging) {
     resourceRoots: [],
     surefireReports: path.join(target, 'surefire-reports'),
     failsafeReports: path.join(target, 'failsafe-reports'),
+    runsFailsafe: false,
     jacocoDestFile: undefined,
     archunitIncludes: undefined,
   };
@@ -124,6 +133,7 @@ describe('readReactor', () => {
       resourceRoots: [`${root}/core/src/main/resources`],
       surefireReports: `${root}/core/out/tests`,
       failsafeReports: `${root}/core/out/it-tests`,
+      runsFailsafe: true,
       jacocoDestFile: `${root}/core/out/mine.exec`,
       archunitIncludes: '**/*Rules.class',
     });
@@ -195,6 +205,31 @@ describe('readReactor', () => {
     ].join('');
 
     expect(() => readReactor(root, effectivePom)).toThrow(new Error(message(root)));
+  });
+});
+
+describe('lifecycleArgs', () => {
+  const failsafe = (executions) =>
+    `<project><groupId>demo</groupId><artifactId>solo</artifactId><build><plugins><plugin>
+      <artifactId>maven-failsafe-plugin</artifactId><executions>${executions}</executions>
+    </plugin></plugins></build></project>`;
+  const argsFor = (executions) =>
+    lifecycleArgs(readReactor(reactor({ 'pom.xml': raw('solo') }), failsafe(executions)));
+
+  it('runs verify, with integration tests on and JaCoCo checks not halting, when Failsafe runs', () => {
+    expect(argsFor('<execution><goals><goal>integration-test</goal></goals></execution>')).toEqual([
+      'verify',
+      '-DskipITs=false',
+      '-Djacoco.haltOnFailure=false',
+    ]);
+  });
+
+  it('runs test when no module binds the integration-test goal of Failsafe', () => {
+    expect([
+      argsFor(''),
+      argsFor('<execution><goals><goal>verify</goal></goals></execution>'),
+      lifecycleArgs([{ runsFailsafe: false }, { runsFailsafe: false }]),
+    ]).toEqual([['test'], ['test'], ['test']]);
   });
 });
 

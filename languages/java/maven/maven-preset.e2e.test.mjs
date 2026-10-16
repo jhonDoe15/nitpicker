@@ -1,9 +1,10 @@
-import { cpSync, existsSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { cpSync, existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterAll, describe, expect, it } from 'vitest';
 import { collectJavaFindings, runJavaDiff } from '../adapters/java-diff.mjs';
 import { analyzeJavaSnapshot } from '../adapters/java-runner.mjs';
+import { testCasesOf } from '../adapters/test-times/slow-tests.mjs';
 import {
   commitBranch,
   GRADLE_STEP_TIMEOUT_MS,
@@ -157,6 +158,47 @@ describe.skipIf(!enabled)('Java preset on Maven builds', () => {
           ),
         ),
       ).toBe(true);
+    },
+    GRADLE_STEP_TIMEOUT_MS,
+  );
+
+  it(
+    'runs verify when Failsafe is bound, counting its tests for coverage and the integration budget',
+    () => {
+      const project = copyOf(path.join(fixtures, 'failsafe'));
+      const findings = collectJavaFindings(project, {
+        maven,
+        policy: { testSeconds: { integrationTestSeconds: -1 } },
+      });
+      const report = 'target/nitpicker/test-results/failsafe/TEST-demo.GreeterIT.xml';
+      const testCases = testCasesOf(readFileSync(path.join(project, report), 'utf8'), 'failsafe');
+      const seconds = testCases[0].seconds.toFixed(1);
+      const exception =
+        '{"rule":"test-runtime/slow-test","paths":["src/test/java/demo/GreeterIT.java"],"reason":"..."}';
+
+      expect(testCases.map(({ className, name }) => `${className}#${name}`)).toEqual([
+        'demo.GreeterIT#saysGoodbye',
+      ]);
+      expect(
+        findings
+          .filter((finding) => finding.path === 'src/main/java/demo/Greeter.java')
+          .filter((finding) => finding.metric?.name === 'line-coverage')
+          .map(({ metric }) => metric.value),
+      ).toEqual([100]);
+      expect(findings.filter((finding) => finding.tool === 'test-runtime')).toEqual([
+        {
+          tool: 'test-runtime',
+          rule: 'slow-test',
+          path: 'src/test/java/demo/GreeterIT.java',
+          identity: 'test:demo.GreeterIT#saysGoodbye',
+          location: { line: 9 },
+          message:
+            `GreeterIT saysGoodbye took ${seconds} s; an integration test may take -1 s. ` +
+            'Remove Thread.sleep and other waits, start a smaller Spring context or a test slice. ' +
+            `If this is intended, add ${exception} to "exceptions" in nitpicker.config.json.`,
+          classification: 'enforceable',
+        },
+      ]);
     },
     GRADLE_STEP_TIMEOUT_MS,
   );

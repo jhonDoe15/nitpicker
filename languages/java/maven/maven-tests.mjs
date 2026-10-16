@@ -47,6 +47,12 @@ export function freshReports(directory, since) {
     : [];
 }
 
+export function testReportDirectories(module) {
+  const surefire = ['surefire', module.surefireReports];
+  const shared = path.resolve(module.failsafeReports) === path.resolve(module.surefireReports);
+  return shared ? [surefire] : [surefire, ['failsafe', module.failsafeReports]];
+}
+
 export function suiteNameOf(report) {
   return path.basename(report).replace(/^TEST-|\.xml$/gu, '');
 }
@@ -72,7 +78,9 @@ function failedCases(file) {
 }
 
 export function collectTestResults({ module, reportDir, since, isArchunit }) {
-  const reports = freshReports(module.surefireReports, since);
+  const reports = testReportDirectories(module).flatMap(([, directory]) =>
+    freshReports(directory, since),
+  );
   const archunitDir = path.join(reportDir, 'archunit');
   const failures = [];
   for (const report of reports) {

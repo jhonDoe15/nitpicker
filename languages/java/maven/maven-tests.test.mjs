@@ -119,7 +119,7 @@ describe('collectTestResults', () => {
     const reportDir = tree({});
 
     collectTestResults({
-      module: { basedir: '/m', surefireReports: reports },
+      module: { basedir: '/m', surefireReports: reports, failsafeReports: reports },
       reportDir,
       since,
       isArchunit: archunitMatcher(),
@@ -142,7 +142,7 @@ describe('collectTestResults', () => {
 
     expect(() => {
       collectTestResults({
-        module: { basedir: '/m', surefireReports: reports },
+        module: { basedir: '/m', surefireReports: reports, failsafeReports: reports },
         reportDir: tree({}),
         since,
         isArchunit: archunitMatcher(),
@@ -158,10 +158,42 @@ describe('collectTestResults', () => {
     );
   });
 
+  it('fails on failing Failsafe tests as on Surefire ones, reading a shared directory once', () => {
+    const surefire = tree({
+      'TEST-shop.OrderTest.xml': suite('shop.OrderTest', [['totals', 'no']]),
+    });
+    const failsafe = tree({ 'TEST-shop.OrderIT.xml': suite('shop.OrderIT', [['stores', 'gone']]) });
+    const run = (failsafeReports) => () => {
+      collectTestResults({
+        module: { basedir: '/m', surefireReports: surefire, failsafeReports },
+        reportDir: tree({}),
+        since,
+        isArchunit: archunitMatcher(),
+      });
+    };
+    const failing = (...lines) =>
+      new Error(
+        [
+          'Tests fail in /m; nitpicker needs a passing test suite for coverage and mutation testing:',
+          ...lines,
+        ].join('\n'),
+      );
+
+    expect(run(failsafe)).toThrow(
+      failing('  shop.OrderTest.totals: no', '  shop.OrderIT.stores: gone'),
+    );
+    expect(run(`${surefire}/.`)).toThrow(failing('  shop.OrderTest.totals: no'));
+  });
+
   it('reports whether any test ran', () => {
     const run = (files) =>
       collectTestResults({
-        module: { basedir: '/m', surefireReports: tree(files), testOutputDirectory: tree({}) },
+        module: {
+          basedir: '/m',
+          surefireReports: tree(files),
+          failsafeReports: '/missing',
+          testOutputDirectory: tree({}),
+        },
         reportDir: tree({}),
         since,
         isArchunit: archunitMatcher(),
@@ -183,6 +215,7 @@ describe('collectTestResults', () => {
           surefireReports: tree({
             'TEST-shop.OrderTest.xml': suite('shop.OrderTest', [['totals']]),
           }),
+          failsafeReports: '/missing',
           testOutputDirectory: testClasses,
         },
         reportDir: tree({}),
