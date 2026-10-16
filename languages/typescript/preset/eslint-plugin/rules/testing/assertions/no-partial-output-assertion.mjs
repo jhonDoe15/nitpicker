@@ -1,4 +1,5 @@
 import { chainOf } from '../../analysis/ancestry.mjs';
+import { isExpectCall, memberName } from '../../analysis/test-code-analysis.mjs';
 
 const PARTIAL_MATCHERS = new Set(['toContain', 'toContainEqual']);
 const WHOLE_VALUE_MATCHERS = new Set(['toEqual', 'toStrictEqual']);
@@ -8,21 +9,6 @@ const PARTIAL_ASYMMETRIC_MATCHERS = new Set([
   'arrayContaining',
 ]);
 
-function propertyName(member) {
-  return !member.computed && member.property.type === 'Identifier' ? member.property.name : '';
-}
-
-function isExpectCall(node) {
-  if (node.type !== 'CallExpression') return false;
-  const callee = node.callee;
-  if (callee.type === 'Identifier') return callee.name === 'expect';
-  return (
-    callee.type === 'MemberExpression' &&
-    callee.object.type === 'Identifier' &&
-    callee.object.name === 'expect'
-  );
-}
-
 function matcherChain(callee) {
   return chainOf(callee.object, (link) =>
     link.type === 'MemberExpression' ? link.object : undefined,
@@ -31,7 +17,7 @@ function matcherChain(callee) {
 
 function isNegatedExpectation(callee) {
   return matcherChain(callee).some(
-    (link) => link.type === 'MemberExpression' && propertyName(link) === 'not',
+    (link) => link.type === 'MemberExpression' && memberName(link) === 'not',
   );
 }
 
@@ -53,7 +39,7 @@ function isPositiveExpectation(callee) {
 function isPartialAssertion(node) {
   const callee = node.callee;
   if (callee.type !== 'MemberExpression') return false;
-  const matcher = propertyName(callee);
+  const matcher = memberName(callee);
   if (!PARTIAL_MATCHERS.has(matcher)) return false;
   if (matcher === 'toContain' && !isTextArgument(node.arguments[0])) return false;
   return isPositiveExpectation(callee);
@@ -65,7 +51,7 @@ function isPartialAsymmetricMatcher(node) {
     node.callee.type === 'MemberExpression' &&
     node.callee.object.type === 'Identifier' &&
     node.callee.object.name === 'expect' &&
-    PARTIAL_ASYMMETRIC_MATCHERS.has(propertyName(node.callee))
+    PARTIAL_ASYMMETRIC_MATCHERS.has(memberName(node.callee))
   );
 }
 
@@ -92,7 +78,7 @@ function containsPartialMatcher(expected) {
 function isPartialMatcherAssertion(node) {
   const callee = node.callee;
   if (callee.type !== 'MemberExpression' || !isPositiveExpectation(callee)) return false;
-  const matcher = propertyName(callee);
+  const matcher = memberName(callee);
   if (matcher === 'toMatchObject') return true;
   return WHOLE_VALUE_MATCHERS.has(matcher) && node.arguments.some(containsPartialMatcher);
 }

@@ -22,6 +22,9 @@ const RESOURCE_FILES = [
   'languages/java/gradle/KotlinMetrics.java',
   'languages/java/detekt/nitpicker-detekt.yml',
   'languages/java/detekt/detekt-validation.yml',
+  'languages/java/messages/pmd.json',
+  'languages/java/messages/checkstyle.json',
+  'languages/java/messages/spotbugs.json',
 ];
 
 function configurationContents() {
