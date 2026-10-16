@@ -102,7 +102,7 @@ describe('kotlin.lineLength', () => {
       `import ${'a'.repeat(130)}\n// ${'b'.repeat(130)}\nval u = "https://${'c'.repeat(130)}"\n${fits(60)}`,
       undefined,
     ],
-    ['a raw string', `val t = \"\"\"\n${'x = ('.repeat(30)}\n\"\"\"\n${fits(60)}`, undefined],
+    ['a raw string', `val t = """\n${'x = ('.repeat(30)}\n"""\n${fits(60)}`, undefined],
     ['tab indentation', `fun a() {\n\t${fits(125)}}\n`, undefined],
   ])('reads %s', (_name, text, expected) => {
     expect(measures['kotlin.lineLength'](text)).toBe(expected);

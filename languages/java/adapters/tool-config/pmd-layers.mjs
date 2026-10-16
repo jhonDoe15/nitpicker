@@ -7,7 +7,7 @@ const ASSERT_RULE = 'UnitTestShouldIncludeAssert';
 const ASSERT_PROPERTY = 'extraAssertMethodNames';
 
 function referenceOf(rule) {
-  const match = rule.attrs.ref === undefined ? null : REFERENCE.exec(rule.attrs.ref);
+  const match = REFERENCE.exec(rule.attrs.ref ?? '');
   return match === null
     ? { file: rule.attrs.ref, rule: rule.attrs.name }
     : { file: match[1], rule: match[2] };

@@ -9,7 +9,7 @@ export const KOTLIN_INDENTATION = 'kotlin.indentation';
 export const KOTLIN_TRAILING_COMMAS = 'kotlin.trailingCommas';
 export const KOTLIN_WILDCARD_IMPORTS = 'kotlin.wildcardImports';
 export const KOTLIN_LINE_LENGTH = 'kotlin.lineLength';
-export const KOTLIN_ASSERTION_HELPERS = 'kotlin.assertionHelpers';
+const KOTLIN_ASSERTION_HELPERS = 'kotlin.assertionHelpers';
 
 export const KOTLIN_CONVENTIONS = [
   {

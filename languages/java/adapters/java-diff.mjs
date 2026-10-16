@@ -142,7 +142,9 @@ export function collectJavaFindings(root, options = {}) {
       ? mavenFindings(projectRoot, options)
       : withGradleReports(projectRoot, options);
   const preset = options.policy?.preset ?? 'java';
-  const readSource = (file) => sourceText(projectRoot, file);
+  function readSource(file) {
+    return sourceText(projectRoot, file);
+  }
   return applyJavaPolicy(
     withoutFollowedImports(
       parseAnalyzerReport({ findings }, preset).findings,
