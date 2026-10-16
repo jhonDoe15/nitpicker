@@ -54,6 +54,7 @@ function moduleOf(root, files) {
   return {
     module: {
       basedir,
+      buildDirectory: path.join(basedir, 'target'),
       pomFile: path.join(basedir, 'pom.xml'),
       outputDirectory,
       sourceRoots: [],

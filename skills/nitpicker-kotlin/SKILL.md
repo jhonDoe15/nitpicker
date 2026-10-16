@@ -60,8 +60,8 @@ it with `npx skills add jhonDoe15/nitpicker --skill nitpicker-java`.
 - A function stays within 50 lines, 15 statements, 2 levels of control nesting and 3 parameters;
   past 3 parameters, pass a data class. Complex code needs tests: the CRAP score of a function must
   stay below 9.
-- A new clone of at least 5 lines and 50 tokens in main sources (`duplicate-clone`) fails: extract
-  a function. A package must not depend on a less stable one (`stability-direction`).
+- Copied code fails (`duplicate-clone`): extract a function; in tests, a helper or one
+  parameterized test. A package must not depend on a less stable one (`stability-direction`).
 - A file stays within 300 lines (a test file 500). A package folder holds at most 6 files and 6
   test files directly: group the rest into subpackages by what they do.
 - Every branch you add needs a test: changed-branch coverage runs on your change.

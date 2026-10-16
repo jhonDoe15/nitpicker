@@ -1,116 +1,10 @@
 import { existsSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
-import { escapeRegExp } from '../../../../shared/glob.mjs';
 import { runJava } from '../maven-command.mjs';
-import { targetRelease } from './javac-options.mjs';
+import { writePmdRulesets } from '../../builds/rulesets/pmd-rulesets.mjs';
 import { EMPTY_SARIF } from '../maven-lint.mjs';
-import { GRADLE_DIRECTORY } from '../../builds/java-build.mjs';
 
-const PATTERN_MATCHING_RULES = ['InstanceofThenCast', 'CollectorsToList'];
-const PATTERN_MATCHING_RELEASE = 16;
-const MAVEN_DEFAULT_RELEASE = 8;
 const CPD_FINDINGS_EXIT = 4;
-
-function escapeXml(text) {
-  return text
-    .replaceAll('&', '&amp;')
-    .replaceAll('<', '&lt;')
-    .replaceAll('>', '&gt;')
-    .replaceAll('"', '&quot;');
-}
-
-function directoryPattern(kind, directory) {
-  const pattern = `${escapeRegExp(directory + path.sep)}.*`;
-  return `  <${kind}-pattern>${escapeXml(pattern)}</${kind}-pattern>`;
-}
-
-function ruleReference(ruleset, skipped) {
-  const ref = escapeXml(ruleset);
-  return skipped.length === 0
-    ? [`  <rule ref="${ref}"/>`]
-    : [
-        `  <rule ref="${ref}">`,
-        ...skipped.map((name) => `    <exclude name="${name}"/>`),
-        '  </rule>',
-      ];
-}
-
-export function scopedRuleset(name, ruleset, { directories, onlyThere = false, skipped = [] }) {
-  const kind = onlyThere ? 'include' : 'exclude';
-  return [
-    '<?xml version="1.0" encoding="UTF-8"?>',
-    `<ruleset name="${name}" xmlns="http://pmd.sourceforge.net/ruleset/2.0.0">`,
-    `  <description>${name}</description>`,
-    ...(onlyThere ? ['  <exclude-pattern>.*</exclude-pattern>'] : []),
-    ...directories.map((directory) => directoryPattern(kind, directory)),
-    ...ruleReference(ruleset, skipped),
-    '</ruleset>',
-    '',
-  ].join('\n');
-}
-
-function majorVersion(version) {
-  const parts = String(version).split('.');
-  return Number(parts[0] === '1' ? parts[1] : parts[0]);
-}
-
-export function javaRelease(compiler) {
-  const major = majorVersion(targetRelease(compiler));
-  return Number.isInteger(major) ? major : MAVEN_DEFAULT_RELEASE;
-}
-
-function writeRuleset(reportDir, file, content) {
-  const target = path.join(reportDir, file);
-  writeFileSync(target, content);
-  return target;
-}
-
-function mainRuleset(module, reportDir, { name, file, skipped }) {
-  return writeRuleset(
-    reportDir,
-    `pmd-${name}-main.xml`,
-    scopedRuleset(`nitpicker-${name}-main`, path.join(GRADLE_DIRECTORY, file), {
-      directories: module.testSourceRoots,
-      skipped,
-    }),
-  );
-}
-
-function testRuleset(reportDir, tests, { name, file }) {
-  return writeRuleset(
-    reportDir,
-    `pmd-${name}.xml`,
-    scopedRuleset(`nitpicker-${name}`, path.join(GRADLE_DIRECTORY, file), {
-      directories: tests,
-      onlyThere: true,
-    }),
-  );
-}
-
-function guardRulesets(module, reportDir) {
-  const skipped =
-    javaRelease(module.compiler) < PATTERN_MATCHING_RELEASE ? PATTERN_MATCHING_RULES : [];
-  const main = [
-    mainRuleset(module, reportDir, { name: 'guards', file: 'rules/guards-ruleset.xml', skipped }),
-    mainRuleset(module, reportDir, {
-      name: 'code-smells',
-      file: 'code-smells-ruleset.xml',
-      skipped: [],
-    }),
-  ];
-  const tests = module.testSourceRoots.filter((root) => existsSync(root));
-  if (tests.length === 0) {
-    return main;
-  }
-  return [
-    ...main,
-    testRuleset(reportDir, tests, {
-      name: 'code-smells-test',
-      file: 'code-smells-test-ruleset.xml',
-    }),
-    testRuleset(reportDir, tests, { name: 'test-honesty', file: 'rules/test-honesty-ruleset.xml' }),
-  ];
-}
 
 function writeAuxClasspath({ module, reportDir, classpaths }) {
   const entries = new Set([
@@ -119,28 +13,21 @@ function writeAuxClasspath({ module, reportDir, classpaths }) {
     module.outputDirectory,
     module.testOutputDirectory,
   ]);
-  return writeRuleset(
-    reportDir,
-    'pmd-aux-classpath.txt',
-    [...entries].filter((entry) => existsSync(entry)).join('\n'),
-  );
+  const target = path.join(reportDir, 'pmd-aux-classpath.txt');
+  writeFileSync(target, [...entries].filter((entry) => existsSync(entry)).join('\n'));
+  return target;
 }
 
 function pmdRulesets({ module, reportDir, configs, spring }) {
-  const nitpicker = configs.pmd.nitpicker;
-  const springMain = writeRuleset(
+  return writePmdRulesets({
     reportDir,
-    'pmd-spring-main.xml',
-    scopedRuleset('nitpicker-spring-main', path.join(GRADLE_DIRECTORY, 'spring-ruleset.xml'), {
-      directories: module.testSourceRoots,
-    }),
-  );
-  return [
-    ...(nitpicker ? [path.join(GRADLE_DIRECTORY, 'pmd-ruleset.xml')] : []),
-    ...(configs.pmd.project === undefined ? [] : [configs.pmd.project]),
-    ...(nitpicker ? guardRulesets(module, reportDir) : []),
-    ...(nitpicker && spring ? [springMain] : []),
-  ];
+    mainDirectories: module.sourceRoots,
+    testDirectories: module.testSourceRoots,
+    compiler: module.compiler,
+    spring,
+    nitpicker: configs.pmd.nitpicker,
+    project: configs.pmd.project,
+  });
 }
 
 export function runPmd(context) {

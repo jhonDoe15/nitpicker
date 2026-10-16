@@ -1,7 +1,10 @@
-import { readFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, readFileSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { configurationFiles } from '../java-analyzer.mjs';
+import { GRADLE_DIRECTORY } from '../../builds/java-build.mjs';
+import { writePmdRulesets } from '../../builds/rulesets/pmd-rulesets.mjs';
 import { expectedViolations } from '../test-support/violation-markers.mjs';
 import { codeSmellRules } from '../test-support/code-smell-rules.mjs';
 
@@ -40,7 +43,25 @@ describe('the Java code smell ruleset', () => {
     ]);
   });
 
-  it('ships both rulesets and the init script and Maven PMD run that scope them', () => {
+  it('ships both rulesets and scopes them in the PMD rulesets both builds run', () => {
+    const root = mkdtempSync(path.join(tmpdir(), 'nitpicker-code-smell-wiring-'));
+    const test = path.join(root, 'src/test/java');
+    mkdirSync(test, { recursive: true });
+    const reportDir = path.join(root, 'report');
+    const rulesets = writePmdRulesets({
+      reportDir,
+      mainDirectories: [path.join(root, 'src/main/java')],
+      testDirectories: [test],
+      compiler: { target: '21', args: [] },
+      spring: false,
+      nitpicker: true,
+      project: undefined,
+    });
+    const wrapperOf = (file) =>
+      rulesets
+        .filter((ruleset) => ruleset.startsWith(reportDir))
+        .map((ruleset) => readFileSync(ruleset, 'utf8'))
+        .find((text) => text.includes(path.join(GRADLE_DIRECTORY, file)));
     const script = readFileSync(
       path.join(packageRoot, 'languages/java/gradle/nitpicker.init.gradle'),
       'utf8',
@@ -50,12 +71,17 @@ describe('the Java code smell ruleset', () => {
       'utf8',
     );
     const shipped = ['code-smells-ruleset.xml', 'code-smells-test-ruleset.xml'];
-    expect({
-      inScript: shipped.filter((file) => script.includes(`'${file}'`)),
-      inMaven: shipped.filter((file) => maven.includes(`'${file}'`)),
+    const wiring = {
+      main: wrapperOf(shipped[0]).includes(`<exclude-pattern>${test}/.*</exclude-pattern>`),
+      test: wrapperOf(shipped[1]).includes(`<include-pattern>${test}/.*</include-pattern>`),
+      gradle: script.includes("writeRules('pmd', plan)"),
+      maven: maven.includes("from '../../builds/rulesets/pmd-rulesets.mjs'"),
       shipped: shipped.filter((file) =>
         configurationFiles().includes(`languages/java/gradle/${file}`),
       ),
-    }).toEqual({ inScript: shipped, inMaven: shipped, shipped });
+    };
+    rmSync(root, { recursive: true, force: true });
+
+    expect(wiring).toEqual({ main: true, test: true, gradle: true, maven: true, shipped });
   });
 });

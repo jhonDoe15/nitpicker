@@ -39,7 +39,9 @@
     <description>try/catch in a test hides failures or asserts nothing.</description>
     <priority>3</priority>
     <properties><property name="xpath"><value><![CDATA[
-//MethodDeclaration[ModifierList/Annotation[@SimpleName = ('Test', 'ParameterizedTest', 'RepeatedTest', 'TestFactory', 'TestTemplate')]]//TryStatement[CatchClause]
+//TryStatement[CatchClause]
+  [ancestor::*[self::MethodDeclaration or self::LambdaExpression or self::AnonymousClassDeclaration][1]
+    [self::MethodDeclaration][ModifierList/Annotation[@SimpleName = ('Test', 'ParameterizedTest', 'RepeatedTest', 'TestFactory', 'TestTemplate')]]]
 ]]></value></property></properties>
   </rule>
 
@@ -80,11 +82,13 @@
   </rule>
 
   <rule name="TestOrderDependence" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
-        message="Tests must not depend on order: give each test its own state and remove @TestMethodOrder, @FixMethodOrder and @Order.">
+        message="Tests must not depend on order: give each test its own state, remove @Order and @FixMethodOrder, and use @TestMethodOrder only with MethodOrderer.Random.">
     <description>Order-dependent tests fail when run alone or in parallel.</description>
     <priority>3</priority>
     <properties><property name="xpath"><value><![CDATA[
-//Annotation[@SimpleName = ('TestMethodOrder', 'FixMethodOrder')]
+//Annotation[@SimpleName = 'TestMethodOrder'][not(.//ClassType[@SimpleName = 'Random'])]
+|
+//Annotation[@SimpleName = 'FixMethodOrder']
 |
 //MethodDeclaration[ModifierList/Annotation[@SimpleName = ('Test', 'ParameterizedTest', 'RepeatedTest', 'TestFactory', 'TestTemplate')]]/ModifierList/Annotation[@SimpleName = 'Order']
 ]]></value></property></properties>

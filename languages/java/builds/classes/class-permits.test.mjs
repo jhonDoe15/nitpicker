@@ -169,7 +169,7 @@ describe('runPermits', () => {
     );
     writeFileSync(path.join(outputDirectory, 'demo/notes.txt'), 'not a class');
 
-    runPermits({ module: { outputDirectory }, reportDir: root });
+    runPermits({ classDirectories: [outputDirectory], reportDir: root });
 
     expect(readFileSync(path.join(root, 'permits.txt'), 'utf8')).toBe(
       'demo.Animal -> demo.Cat\ndemo.Shape -> demo.Circle\n',
@@ -187,7 +187,7 @@ describe('runPermits', () => {
     writeFileSync(path.join(outputDirectory, 'demo/Text.class'), 'this is not a class file at all');
     writeFileSync(path.join(outputDirectory, 'demo/Empty.class'), '');
 
-    runPermits({ module: { outputDirectory }, reportDir: root });
+    runPermits({ classDirectories: [outputDirectory], reportDir: root });
 
     expect(readFileSync(path.join(root, 'permits.txt'), 'utf8')).toBe(
       'demo.Shape -> demo.Circle\n',
@@ -198,7 +198,7 @@ describe('runPermits', () => {
     const root = mkdtempSync(path.join(tmpdir(), 'nitpicker-permits-'));
     roots.push(root);
 
-    runPermits({ module: { outputDirectory: path.join(root, 'missing') }, reportDir: root });
+    runPermits({ classDirectories: [path.join(root, 'missing')], reportDir: root });
 
     expect(readFileSync(path.join(root, 'permits.txt'), 'utf8')).toBe('');
   });
