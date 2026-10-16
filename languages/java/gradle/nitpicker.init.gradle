@@ -524,9 +524,17 @@ allprojects {
                             .every { it.contains('/') && legalName(it.substring(0, it.lastIndexOf('/')).replace('/', '.')) }
                     }
                 }
+                def readableJarModule = { File jar ->
+                    try {
+                        jarModule(jar)
+                    } catch (IOException unreadable) {
+                        logger.info("nitpicker: ${jar} left off the jdeps module path: ${unreadable.message}")
+                        false
+                    }
+                }
                 def moduleEntry = { File entry ->
                     entry.isDirectory() ? new File(entry, 'module-info.class').isFile()
-                        : entry.name.endsWith('.jmod') || (entry.name.endsWith('.jar') && jarModule(entry))
+                        : entry.name.endsWith('.jmod') || (entry.name.endsWith('.jar') && readableJarModule(entry))
                 }
                 def modular = classDirs.any { new File(it, 'module-info.class').isFile() }
                 def modulePath = modular ? sourceSets.main.compileClasspath.files.findAll { it.exists() && moduleEntry(it) } : []
