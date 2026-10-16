@@ -126,6 +126,25 @@ describe('running mypy', () => {
     expect(call.cwd).toBe(root);
   });
 
+  it('leaves --strict to the generated config when the project is listed', () => {
+    const logFile = logged();
+    const root = fakes.project({ 'mypy.ini': '[mypy]\ndisallow_untyped_defs = False\n' });
+    const { context, reportRoot } = fakes.contextFor(root, {}, [], {
+      toolPrecedence: { mypy: ['project', 'nitpicker'] },
+      policyRoot: root,
+    });
+
+    typeCheck(context);
+
+    const [call] = fakes
+      .calls(logFile)
+      .filter(({ args }) => args.includes('--explicit-package-bases'));
+    expect(call.args).not.toContain('--strict');
+    expect(readFileSync(path.join(reportRoot, 'mypy.ini'), 'utf8')).toBe(
+      '[mypy]\nstrict = true\ndisallow_untyped_defs = False\n',
+    );
+  });
+
   it('adds the import roots to MYPYPATH before an existing value', () => {
     const logFile = logged();
     setEnvironment('MYPYPATH', '/existing');

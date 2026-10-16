@@ -1,7 +1,15 @@
 import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import path from 'node:path';
+import { missingProjectConfig } from '../../../../shared/conventions/tool-precedence.mjs';
 import { globToRegExpSource } from '../../../../shared/glob.mjs';
+import {
+  isOwnModulePattern,
+  MYPY_LOOKED,
+  MYPY_TOOL,
+  mypyLayers,
+  mypyOwnModules,
+} from '../project-tools/mypy-layers.mjs';
 
 const MYPY_CONFIG = 'mypy.ini';
 const GLOBAL_OPTIONS = [
@@ -125,7 +133,8 @@ function readCandidate(projectRoot, name) {
     return undefined;
   }
   const text = readFileSync(file, 'utf8');
-  return name.endsWith('.toml') ? tomlModel(text) : iniModel(parseIni(text));
+  const model = name.endsWith('.toml') ? tomlModel(text) : iniModel(parseIni(text));
+  return model === undefined ? undefined : { ...model, file: name };
 }
 
 export function readMypyConfig(projectRoot) {
@@ -184,17 +193,53 @@ function iniText(sections) {
     .join('\n');
 }
 
-function mypyConfigText(model, { projectRoot, exclude }) {
-  const options = {
-    ...pick(model.options, GLOBAL_OPTIONS, projectRoot),
-    ...(exclude.length === 0 ? {} : { exclude: excludePattern(exclude) }),
+function excludeOption(exclude) {
+  return exclude.length === 0 ? {} : { exclude: excludePattern(exclude) };
+}
+
+function pickAll(options, projectRoot) {
+  return Object.fromEntries(
+    Object.entries(options).map(([key, value]) => [key, environmentValue(key, value, projectRoot)]),
+  );
+}
+
+function combinedExclude(projectExclude, exclude) {
+  const own = exclude.length === 0 ? [] : [excludePattern(exclude)];
+  const patterns = [...[projectExclude ?? []].flat().map((pattern) => `(?:${pattern})`), ...own];
+  return patterns.length === 0 ? {} : { exclude: patterns.join('|') };
+}
+
+function isolatedSections(model, { projectRoot, exclude, own }) {
+  return {
+    options: { ...pick(model.options, GLOBAL_OPTIONS, projectRoot), ...excludeOption(exclude) },
+    modules: model.modules
+      .map(({ patterns, options }) => ({
+        patterns: patterns.filter((pattern) => !isOwnModulePattern(pattern, own)),
+        options: pick(options, MODULE_OPTIONS, projectRoot),
+      }))
+      .filter(({ patterns, options }) => patterns.length > 0 && Object.keys(options).length > 0),
   };
-  const modules = model.modules
-    .map(({ patterns, options: moduleOptions }) => ({
+}
+
+function layeredSections(model, { projectRoot, exclude }) {
+  const { exclude: projectExclude, ...rest } = model.options;
+  return {
+    options: {
+      strict: true,
+      ...pickAll(rest, projectRoot),
+      ...combinedExclude(projectExclude, exclude),
+    },
+    modules: model.modules.map(({ patterns, options }) => ({
       patterns,
-      options: pick(moduleOptions, MODULE_OPTIONS, projectRoot),
-    }))
-    .filter(({ options: kept }) => Object.keys(kept).length > 0);
+      options: pickAll(options, projectRoot),
+    })),
+  };
+}
+
+function mypyConfigText(model, settings) {
+  const { options, modules } = settings.appliesProject
+    ? layeredSections(model, settings)
+    : isolatedSections(model, settings);
   if (model.format === 'toml') {
     return toml().stringify({
       tool: {
@@ -223,14 +268,23 @@ function mypyConfigText(model, { projectRoot, exclude }) {
   ]);
 }
 
-export function writeMypyConfig({ projectRoot, reportRoot, exclude }) {
-  const model = readMypyConfig(projectRoot);
+export function writeMypyConfig(context) {
+  const { projectRoot, reportRoot, exclude } = context;
+  const layers = mypyLayers(context);
+  const model = readMypyConfig(layers.configRoot);
+  if (layers.optedIn && model === undefined) {
+    throw new Error(
+      missingProjectConfig(MYPY_TOOL, `${MYPY_LOOKED} (searched ${layers.configRoot})`),
+    );
+  }
   const file = path.join(reportRoot, model?.format === 'toml' ? 'pyproject.toml' : MYPY_CONFIG);
   writeFileSync(
     file,
     mypyConfigText(model ?? { format: 'ini', options: {}, modules: [], others: [] }, {
       projectRoot,
       exclude,
+      appliesProject: layers.appliesProject,
+      own: layers.appliesProject ? new Set() : mypyOwnModules(context),
     }),
   );
   return file;
