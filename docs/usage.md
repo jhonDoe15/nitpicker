@@ -93,8 +93,10 @@ on the head, the run is not a tool error in any preset: the report carries a not
   both are listed as tool errors.
 - A base that does not type-check (`typecheck-failed-skipped`) or whose build fails for any other
   reason is still a tool error.
-- Java and Kotlin Gradle builds rerun the base without the tests to read the other checks. Maven
-  builds have no such rerun.
+- Java and Kotlin Gradle builds rerun the base without the tests (any failing `Test` task counts,
+  not only `test`) to read the other checks. A Maven base does not need a rerun: the build runs
+  with `-Dmaven.test.failure.ignore=true`, so the Surefire and Failsafe reports of a failing module
+  are read and only that module skips JaCoCo and PIT.
 
 The base ref is the first match of:
 
@@ -306,8 +308,9 @@ and `report.junit.xml` are the same as for TypeScript. If Gradle fails on either
 failure is reported as a `java/gradle-failure` tool error (exit 2 when there are no new findings), never thrown.
 A project whose root has a `pom.xml` and no Gradle build file (or both, with `mvnw` and no `gradlew`)
 is built with Maven 3.6.3 or newer instead, with the same tools, versions and findings, one module
-at a time (findings carry the module path); a Maven failure or a failing test is a
-`java/maven-failure` tool error naming the cause. Maven runs through `mvnw` when the project has
+at a time (findings carry the module path); a Maven failure or a failing test on the head is a
+`java/maven-failure` tool error naming the cause (a base whose tests fail is a note, see "A base
+whose tests fail"). Maven runs through `mvnw` when the project has
 one, else `mvn` from the PATH; `NITPICKER_MAVEN=<command>` overrides both. See
 [Maven builds](java-preset.md#maven-builds).
 
