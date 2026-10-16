@@ -118,6 +118,7 @@ function readOptions(policy = {}) {
     exclude: policy.exclude,
     exceptions: policy.exceptions,
     testSeconds: policy.testSeconds,
+    testConsoleAllow: policy.testConsoleAllow,
     baseline: { snapshot: policy.snapshot, baselineRoot: policy.baselineRoot },
   };
 }

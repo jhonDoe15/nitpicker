@@ -26,7 +26,7 @@ const JAVA_EXCEPTION_RULES = SHARED_EXCEPTION_RULES.filter(
 
 export function validateJavaConfig(config) {
   const typescriptOnly = TYPESCRIPT_ONLY_KEYS.filter(
-    (key) => !['exceptions', 'tools'].includes(key),
+    (key) => !['exceptions', 'tools', 'testConsole'].includes(key),
   );
   const unsupported = typescriptOnly.filter((key) => config[key] !== undefined);
   if (unsupported.length > 0) {
@@ -71,6 +71,7 @@ function javaAdapterArguments({
   exceptions = [],
   kotlin = {},
   tools = {},
+  testConsole = {},
 }) {
   const fileLimits = chosenThresholds(thresholds, FILE_LIMIT_THRESHOLDS);
   const testSeconds = chosenThresholds(thresholds, TEST_TIME_THRESHOLDS);
@@ -79,6 +80,9 @@ function javaAdapterArguments({
     ...exclude.flatMap((glob) => ['--exclude', glob]),
     ...(fileLimits === undefined ? [] : ['--file-limits', JSON.stringify(fileLimits)]),
     ...(testSeconds === undefined ? [] : ['--test-seconds', JSON.stringify(testSeconds)]),
+    ...(testConsole.allow === undefined
+      ? []
+      : ['--test-console-allow', JSON.stringify(testConsole.allow)]),
     ...exceptions.flatMap(({ rule, paths }) =>
       paths.flatMap((glob) => ['--exception', `${rule}${EXCEPTION_SEPARATOR}${glob}`]),
     ),

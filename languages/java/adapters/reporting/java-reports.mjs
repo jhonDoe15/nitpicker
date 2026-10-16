@@ -23,6 +23,7 @@ import { methodText, readJavaStructureFindings } from '../metrics/java-structure
 import { hash } from '../../../../shared/rules/finding-helpers.mjs';
 import { ingestFormatCheck } from '../../ingest/formatting/format-check.mjs';
 import { readSlowTestFindings } from '../test-times/slow-tests.mjs';
+import { readTestConsoleFindings } from '../test-times/console-findings.mjs';
 import { ingestJacoco } from '../../ingest/coverage-reports/jacoco.mjs';
 import { ingestPit } from '../../ingest/pit.mjs';
 import { ingestJacocoBranches } from '../../ingest/coverage-reports/jacoco-branches.mjs';
@@ -102,13 +103,24 @@ function moduleContextFindings(projectRoot, module, { manifest, options }) {
         baseline: options.baseline,
         modulePath: options.modulePath,
       },
+      testConsole: {
+        allow: options.testConsoleAllow,
+        exceptions: options.exceptions,
+        modulePath: options.modulePath,
+        moduleRoot: module.dir,
+      },
     },
     options.crapLimit,
   );
 }
 
+function testRootsOf(manifest) {
+  return [...(manifest.testSourceRoots ?? []), ...(manifest.kotlinTestSourceRoots ?? [])];
+}
+
 function readModuleFindings(context, crapLimit) {
   const { reportRoot, projectRoot, kotlin, jacoco } = context;
+  const testRoots = testRootsOf(context.manifest);
   return [
     ...sarifFindings(context),
     ...readErrorProneFindings(context),
@@ -121,15 +133,8 @@ function readModuleFindings(context, crapLimit) {
     ...readJavaStructureFindings(reportRoot, projectRoot),
     ...branchFindings(context, jacoco),
     ...(kotlin ? readKotlinFindings(context, crapLimit) : []),
-    ...readSlowTestFindings({
-      reportRoot,
-      projectRoot,
-      testRoots: [
-        ...(context.manifest.testSourceRoots ?? []),
-        ...(context.manifest.kotlinTestSourceRoots ?? []),
-      ],
-      ...context.testTimes,
-    }),
+    ...readSlowTestFindings({ reportRoot, projectRoot, testRoots, ...context.testTimes }),
+    ...readTestConsoleFindings({ reportRoot, projectRoot, testRoots }, context.testConsole),
   ];
 }
 

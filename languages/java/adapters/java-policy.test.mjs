@@ -279,6 +279,19 @@ describe('Java file limits', () => {
     expect(parsed.policy.fileLimits).toBeUndefined();
   });
 
+  it('hands the test console allow list to the runner and changes the hash', () => {
+    const allow = [{ contains: 'deprecated driver', paths: ['src/test/**'], reason: 'vendor' }];
+    const configured = configureJavaAnalyzer(createJavaAnalyzer(), { testConsole: { allow } });
+
+    const parsed = parseRunnerArguments(configured.createInvocation(context()).args.slice(1));
+
+    expect(parsed.policy.testConsoleAllow).toEqual(allow);
+    expect(configured.configurationHash).not.toBe(createJavaAnalyzer().configurationHash);
+    expect(() =>
+      parseRunnerArguments(['--project-root', '/p', '--test-console-allow', '{}']),
+    ).toThrow('--test-console-allow must be a JSON array');
+  });
+
   it('rejects file limits that are not a JSON object', () => {
     expect(() => parseRunnerArguments(['--project-root', '/p', '--file-limits', '[]'])).toThrow(
       '--file-limits must be a JSON object',
@@ -459,6 +472,14 @@ describe('applyJavaPolicy', () => {
 });
 
 describe('validateJavaConfig', () => {
+  it.each(['java', 'kotlin'])('accepts testConsole with the %s preset', (preset) => {
+    const testConsole = { allow: [{ contains: 'deprecated driver', reason: 'vendor' }] };
+
+    expect(() => {
+      validateJavaConfig({ preset, testConsole });
+    }).not.toThrow();
+  });
+
   it('asks for the printed name of a Checkstyle check instead of its class', () => {
     const exception = { rule: 'checkstyle/Indentation', paths: ['src/**'], reason: 'Legacy' };
     const byClass = {
