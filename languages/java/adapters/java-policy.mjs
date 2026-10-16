@@ -13,6 +13,7 @@ import { JAVA_NATIVE_RULES, SHARED_EXCEPTION_RULES } from '../../../shared/polic
 import { checkstyleRuleName } from '../messages/rule-messages.mjs';
 
 const FILE_LIMIT_THRESHOLDS = ['fileLines', 'testFileLines', 'lineLength', 'folderFiles'];
+const TEST_TIME_THRESHOLDS = ['unitTestSeconds', 'integrationTestSeconds'];
 const NATIVE_LINE_LENGTH = {
   java: 'Checkstyle checks Java line length; set it in config/checkstyle/checkstyle.xml and opt in with "tools": { "checkstyle": { "precedence": ["project"] } }',
   kotlin: 'detekt checks Kotlin line length; set style>MaxLineLength in config/detekt/detekt.yml',
@@ -78,11 +79,13 @@ function runnerArguments({
   duplicates = {},
   tools = {},
 }) {
-  const fileLimits = fileLimitThresholds(thresholds);
+  const fileLimits = chosenThresholds(thresholds, FILE_LIMIT_THRESHOLDS);
+  const testSeconds = chosenThresholds(thresholds, TEST_TIME_THRESHOLDS);
   return [
     ...(thresholds.crapLimit === undefined ? [] : ['--crap-limit', String(thresholds.crapLimit)]),
     ...exclude.flatMap((glob) => ['--exclude', glob]),
     ...(fileLimits === undefined ? [] : ['--file-limits', JSON.stringify(fileLimits)]),
+    ...(testSeconds === undefined ? [] : ['--test-seconds', JSON.stringify(testSeconds)]),
     ...exceptions.flatMap(({ rule, paths }) =>
       paths.flatMap((glob) => ['--exception', `${rule}${EXCEPTION_SEPARATOR}${glob}`]),
     ),
@@ -162,8 +165,8 @@ function filesUnder(root, directory) {
     .sort();
 }
 
-function fileLimitThresholds(thresholds) {
-  const limits = FILE_LIMIT_THRESHOLDS.filter((key) => thresholds[key] !== undefined);
+function chosenThresholds(thresholds, keys) {
+  const limits = keys.filter((key) => thresholds[key] !== undefined);
   return limits.length === 0
     ? undefined
     : Object.fromEntries(limits.map((key) => [key, thresholds[key]]));

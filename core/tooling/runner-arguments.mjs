@@ -5,7 +5,7 @@ export const EXCEPTION_SEPARATOR = ':';
 const BASE_USAGE =
   ' --project-root <directory> [--snapshot base|head] [--policy-root <directory>]' +
   ' [--baseline-root <directory>] [--crap-limit <number>] [--exclude <glob>]... [--exception <rule>:<glob>]... [--legacy-inventory <path>]' +
-  ' [--kotlin-detekt-config <path>] [--file-limits <json>] [--duplicate-skipped-folders <json array>]';
+  ' [--kotlin-detekt-config <path>] [--file-limits <json>] [--test-seconds <json>] [--duplicate-skipped-folders <json array>]';
 
 function usageOf(runner, choices, precedenceTools) {
   const listed = Object.entries(choices).map(
@@ -89,7 +89,8 @@ export function parseRunnerArguments(
     projectRoot: values.get('--project-root'),
     policy: {
       crapLimit,
-      fileLimits: parseFileLimits(values.get('--file-limits')),
+      fileLimits: parseJsonObject(values.get('--file-limits'), '--file-limits'),
+      testSeconds: parseJsonObject(values.get('--test-seconds'), '--test-seconds'),
       exclude,
       exceptions,
       legacyInventory: values.get('--legacy-inventory'),
@@ -133,16 +134,17 @@ const RUNNER_OPTIONS = [
   '--kotlin-formatter',
   '--kotlin-detekt-config',
   '--file-limits',
+  '--test-seconds',
   '--duplicate-skipped-folders',
 ];
 
-function parseFileLimits(text) {
+function parseJsonObject(text, option) {
   if (text === undefined) {
     return undefined;
   }
   const parsed = JSON.parse(text);
   if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) {
-    throw new Error('--file-limits must be a JSON object');
+    throw new Error(`${option} must be a JSON object`);
   }
   return parsed;
 }

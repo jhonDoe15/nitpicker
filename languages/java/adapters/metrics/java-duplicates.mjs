@@ -16,15 +16,14 @@ import {
 export function runJavaDuplicates(
   projectRoot,
   {
+    reportRoot,
+    manifest,
     format = 'java',
     rootsKey = 'sourceRoots',
     reportFile = DUPLICATES_REPORT,
     skippedFolders = JVM_SKIPPED_FOLDERS,
-    reportDirectory = 'build/nitpicker',
-  } = {},
+  },
 ) {
-  const reportRoot = path.join(projectRoot, reportDirectory);
-  const manifest = JSON.parse(readFileSync(path.join(reportRoot, 'manifest.json'), 'utf8'));
   const roots = (manifest[rootsKey] ?? []).filter((root) =>
     existsSync(path.join(projectRoot, root)),
   );

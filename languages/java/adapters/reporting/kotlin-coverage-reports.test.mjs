@@ -1,8 +1,9 @@
 import { writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
-import { readJavaFindings } from './java-reports.mjs';
 import {
+  readJavaFindings,
+  rootReports,
   mutation,
   projectWithKotlinReports,
   removeTemporaryProjects,
@@ -36,7 +37,7 @@ describe('readJavaFindings with the kotlin preset: coverage and mutation', () =>
   });
   it('finds a Kotlin file whose directory does not match its package', () => {
     const root = projectWithKotlinReports();
-    const reports = path.join(root, 'build/nitpicker');
+    const reports = rootReports(root);
     writeFileSync(
       path.join(root, 'src/main/kotlin/Flat.kt'),
       'package demo.flat\n\nfun pick(x: Int) = if (x > 0) 1 else 2\n',
@@ -70,7 +71,7 @@ describe('readJavaFindings with the kotlin preset: coverage and mutation', () =>
   it('does not take a Kotlin file of another package for the one JaCoCo names', () => {
     const root = projectWithKotlinReports();
     writeFileSync(
-      path.join(root, 'build/nitpicker/jacoco.xml'),
+      path.join(rootReports(root), 'jacoco.xml'),
       '<report name="demo"><package name="demo/other"><sourcefile name="Bad.kt"><line nr="8" mi="1" ci="0" mb="2" cb="0"/></sourcefile></package></report>',
     );
 

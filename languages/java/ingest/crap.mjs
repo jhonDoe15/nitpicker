@@ -1,8 +1,17 @@
+import { MESSAGES } from '../../../shared/policy.mjs';
+import {
+  descriptorTypes,
+  sameConstructor,
+  simpleClassName,
+} from './constructors/constructor-match.mjs';
 import { childrenNamed, parseXml } from '../../../shared/ingest/common.mjs';
 import { ingestCrapRows } from '../../../shared/ingest/lizard-crap.mjs';
 
 export function ingestCrap(structure, jacocoXml, options = {}) {
-  return ingestCrapFunctions(structureFunctions(structure), jacocoXml, options);
+  return ingestCrapFunctions(structureFunctions(structure), jacocoXml, {
+    unknownMessage: MESSAGES.crapCoverageUnknownJava,
+    ...options,
+  });
 }
 
 export function ingestCrapFunctions(parsed, jacocoXml, options = {}) {
@@ -34,8 +43,27 @@ function structureFunctions(entries) {
         longName: entry.signature,
         start: entry.start,
         end: entry.end,
+        parameterTypes: entry.parameterTypes,
       };
     });
+}
+
+function jacocoMethod(method, cls) {
+  const line = Number.parseInt(method.attrs.line, 10);
+  if (!Number.isInteger(line)) {
+    return [];
+  }
+  const constructor = method.attrs.name === '<init>';
+  return [
+    {
+      name: constructor ? simpleClassName(cls.attrs.name ?? '') : method.attrs.name,
+      constructorTypes: constructor ? descriptorTypes(method.attrs.desc) : undefined,
+      className: cls.attrs.name ?? '',
+      line,
+      lines: counter(method, 'LINE'),
+      branches: counter(method, 'BRANCH'),
+    },
+  ];
 }
 
 function jacocoMethods(xml) {
@@ -64,7 +92,9 @@ function counter(element, type) {
 
 function selectNamedMethods(fn, candidates) {
   return candidates.filter(
-    (method) => method.name === fn.name && method.line >= fn.start && method.line <= fn.end,
+    (method) =>
+      method.name === fn.name &&
+      ((method.line >= fn.start && method.line <= fn.end) || sameConstructor(method, fn)),
   );
 }
 
@@ -104,25 +134,8 @@ function lowestCoverage(matches) {
 
 function addClassMethods({ pkg, cls }, byFile) {
   const file = [pkg.attrs.name, cls.attrs.sourcefilename].filter(Boolean).join('/');
-  const simpleName = (cls.attrs.name ?? '')
-    .split('/')
-    .at(-1)
-    .split('$')
-    .at(-1)
-    .replace(/^\d+/u, '');
-  const methods = childrenNamed(cls, 'method')
-    .map((method) => ({ method, line: Number.parseInt(method.attrs.line, 10) }))
-    .filter(({ line }) => Number.isInteger(line));
-  for (const { method, line } of methods) {
-    byFile.set(file, [
-      ...(byFile.get(file) ?? []),
-      {
-        name: method.attrs.name === '<init>' ? simpleName : method.attrs.name,
-        className: cls.attrs.name ?? '',
-        line,
-        lines: counter(method, 'LINE'),
-        branches: counter(method, 'BRANCH'),
-      },
-    ]);
+  const methods = childrenNamed(cls, 'method').flatMap((method) => jacocoMethod(method, cls));
+  if (methods.length > 0) {
+    byFile.set(file, [...(byFile.get(file) ?? []), ...methods]);
   }
 }

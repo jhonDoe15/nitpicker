@@ -432,7 +432,7 @@ describe('runner arguments', () => {
   it('rejects unknown options', () => {
     expect(() => parsePythonArguments(['--project-root', '/p', '--nope', 'x'])).toThrow(
       new Error(
-        'Usage: python-runner.mjs --project-root <directory> [--snapshot base|head] [--policy-root <directory>] [--baseline-root <directory>] [--crap-limit <number>] [--exclude <glob>]... [--exception <rule>:<glob>]... [--legacy-inventory <path>] [--kotlin-detekt-config <path>] [--file-limits <json>] [--duplicate-skipped-folders <json array>]',
+        'Usage: python-runner.mjs --project-root <directory> [--snapshot base|head] [--policy-root <directory>] [--baseline-root <directory>] [--crap-limit <number>] [--exclude <glob>]... [--exception <rule>:<glob>]... [--legacy-inventory <path>] [--kotlin-detekt-config <path>] [--file-limits <json>] [--test-seconds <json>] [--duplicate-skipped-folders <json array>]',
       ),
     );
   });
