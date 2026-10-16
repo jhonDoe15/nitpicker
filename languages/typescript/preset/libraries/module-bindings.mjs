@@ -12,7 +12,7 @@ export function variableOf(sourceCode, identifier) {
   return undefined;
 }
 
-export function isFromPackages(source, packages) {
+function isFromPackages(source, packages) {
   return (
     typeof source === 'string' &&
     packages.some((name) => source === name || source.startsWith(`${name}/`))

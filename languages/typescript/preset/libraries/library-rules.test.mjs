@@ -3,7 +3,6 @@ import { afterAll, afterEach, beforeAll, beforeEach, describe, it } from 'vitest
 import tseslint from 'typescript-eslint';
 import { boundaryGuardRule } from '../eslint-plugin/rules/boundaries/no-handwritten-boundary-guard.mjs';
 import { unknownInDomainRule } from '../eslint-plugin/rules/boundaries/no-unknown-in-domain.mjs';
-import { structuredCatchLoggingRule } from '../eslint-plugin/rules/errors/structured-catch-logging.mjs';
 
 Object.assign(RuleTester, {
   afterAll,
