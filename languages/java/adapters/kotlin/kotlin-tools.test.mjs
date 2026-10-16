@@ -5,13 +5,11 @@ import { afterEach, describe, expect, it } from 'vitest';
 import { collectJavaFindings } from '../java-diff.mjs';
 import { INIT_SCRIPT } from '../../builds/java-build.mjs';
 import { kotlinGradleArguments, resolveKotlinTools } from './kotlin-tools.mjs';
-import { fileURLToPath } from 'node:url';
+import { fakeGradle, useInProcessGradle } from '../test-support/in-process-gradle.mjs';
 
-const fakeGradle = path.join(
-  fileURLToPath(new URL('../', import.meta.url)),
-  'fixtures/fake-gradle.mjs',
-);
 const temporaryRoots = [];
+
+useInProcessGradle();
 
 afterEach(() => {
   for (const root of temporaryRoots.splice(0)) {

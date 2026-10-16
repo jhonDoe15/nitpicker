@@ -1,14 +1,14 @@
-import path from 'node:path';
 import { afterEach, beforeEach, vi } from 'vitest';
+import {
+  fakeGradle,
+  useInProcessGradle,
+} from '../../../../languages/java/adapters/test-support/in-process-gradle.mjs';
 import { runTasksInProcess } from '../../../diff/execution/test-support/in-process-analyzers.mjs';
 import { usePresetFixtures } from '../../test-support/preset-fixtures.mjs';
 import { readCatalog } from '../../../../languages/java/messages/rule-messages.mjs';
 import { exceptionHint } from '../../../../shared/rules/exceptions.mjs';
 
-export const fakeGradle = path.resolve(
-  import.meta.dirname,
-  '../../../../languages/java/adapters/fixtures/fake-gradle.mjs',
-);
+export { fakeGradle };
 
 const GRADLE_TEMPLATE_FILES = {
   'nitpicker.config.json': '{ "preset": "java" }\n',
@@ -22,6 +22,7 @@ export function kotlinConfig(formatter) {
 }
 
 export function useGradleFixtures(runNitpickerCli) {
+  useInProcessGradle();
   beforeEach(() => {
     vi.stubEnv('NITPICKER_GRADLE', fakeGradle);
   });

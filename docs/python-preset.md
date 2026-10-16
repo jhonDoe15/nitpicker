@@ -782,7 +782,7 @@ and CRAP rules.
 - `core/command/python/python-cli-*.test.mjs`: fast, always on. The CLI end to end with a fake
   toolchain: `languages/python/adapters/fixtures/fake-python-tools.cjs` (`runFake`) answers the
   tools of a `.venv/bin` in the test process, through the `processes.spawn` seam of
-  `python-process.mjs`, and the runners run in process through `runTasksInProcess`, as the Java
+  `core/tooling/processes.mjs`, and the runners run in process through `runTasksInProcess`, as the Java
   CLI tests do. They cover clean and failing changes in every report format, a change that removes
   every test, tool errors (failing tests, no environment), `--all`, rejected TypeScript-only keys,
   and that base and head each run with their own sources on `PYTHONPATH`. One test per behaviour

@@ -1,7 +1,7 @@
 import { readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { afterEach, beforeEach, vi } from 'vitest';
-import { processes } from '../../../../languages/python/adapters/execution/python-process.mjs';
+import { processes } from '../../../tooling/processes.mjs';
 import {
   installFakeToolchain,
   spawnFakeTools,
