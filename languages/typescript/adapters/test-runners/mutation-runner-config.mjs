@@ -19,7 +19,7 @@ const JEST_TIMEOUT_FACTOR = 2;
 
 export const CRACO_JEST_CONFIG = '.nitpicker-diff-stryker.craco.jest.config.cjs';
 
-export const MOCHA_MUTATION_MAX_MAJOR = 11;
+const MOCHA_MUTATION_MAX_MAJOR = 11;
 
 const CRACO_JEST_CONFIG_LINES = [
   "'use strict';",
