@@ -1,12 +1,14 @@
 const SECTION = /^\[(.+)\]$/;
-const PAIR = /^([^=:\s][^=:]*?)\s*[=:]\s*(.*?)\s*$/;
 const COMMENT = /^\s*[#;]/;
 const EXTENSIONS = /^\*\.(?:\{([^}]*)\}|(\w+))$/;
 const WILDCARD_RULE = /^\s*WildcardImport:\s*(?:#.*)?$/;
 const ACTIVE = /^\s*active:\s*(true|false)\b/;
 
 function pairOf(line) {
-  return PAIR.exec(line.trim()) ?? undefined;
+  const text = line.trim();
+  const separator = text.search(/[=:]/);
+  const key = separator > 0 ? text.slice(0, separator).trimEnd() : '';
+  return key === '' ? undefined : [key, text.slice(separator + 1).trim()];
 }
 
 function coversKotlin(glob) {
@@ -22,7 +24,7 @@ export function kotlinEditorconfigValues(text) {
     applies = section === null ? applies : coversKotlin(section[1]);
     const pair = section === null && applies && !COMMENT.test(line) ? pairOf(line) : undefined;
     if (pair !== undefined) {
-      entries.push([pair[1].toLowerCase(), pair[2].toLowerCase()]);
+      entries.push([pair[0].toLowerCase(), pair[1].toLowerCase()]);
     }
   }
   return Object.fromEntries(entries);

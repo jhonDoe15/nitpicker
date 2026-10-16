@@ -1,7 +1,7 @@
 import {
   GRADLE_PRESETS,
   PROJECT_TOOL_CONFIGS,
-  STYLE_TOOLS,
+  styleToolsOf,
 } from '../../languages/java/adapters/gradle-presets.mjs';
 import { configError, isPlainObject } from '../../shared/config.mjs';
 
@@ -37,7 +37,7 @@ function toolSettingKeysOf(preset) {
   if (GRADLE_PRESETS.includes(preset) || preset === 'python') {
     const names = [
       ...(GRADLE_PRESETS.includes(preset) ? PROJECT_TOOL_CONFIGS.keys() : []),
-      ...(STYLE_TOOLS.get(preset) ?? []),
+      ...styleToolsOf(preset),
     ];
     return new Map(names.map((tool) => [tool, PRECEDENCE_KEYS]));
   }
