@@ -24,7 +24,9 @@ backstop. It fails only on findings your change adds, so leave code the task doe
      is in progress, wait for that run; never kill it.
 4. Never suppress: no `# noqa`, `# type: ignore`, `# pragma: no mutate`, `do_not_mutate`, config
    `exclude`/`disable`, legacy entries, or weakened tests (`-x`, `-k`, `--deselect` and reruns in
-   `addopts` are ignored anyway). If a finding seems wrong, stop and ask.
+   `addopts` are ignored anyway). If a finding seems wrong, stop and ask. Never pass
+   `--accept-policy-change` or set `NITPICKER_ACCEPT_POLICY_CHANGE`: a
+   `nitpicker-config/policy-loosened` finding is for a person to accept.
 
 ## Write it this way
 

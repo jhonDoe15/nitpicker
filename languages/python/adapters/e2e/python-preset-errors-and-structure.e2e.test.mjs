@@ -1,7 +1,13 @@
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { NO_MUTATION, VIOLATION, SAME_NAME_SOURCES } from './test-support/python-preset-data.mjs';
+import { acceptedDigest } from '../../../../core/command/test-support/accepted-digest.mjs';
+import {
+  GREETER_HI_TEST,
+  NO_MUTATION,
+  SAME_NAME_SOURCES,
+  VIOLATION,
+} from './test-support/python-preset-data.mjs';
 import {
   commitBranch,
   fixture,
@@ -10,6 +16,13 @@ import {
   pythonE2eEnabled,
   removeRepositories,
 } from './test-support/python-e2e-support.mjs';
+
+const MUTATION_DISABLED = {
+  environment: {
+    CI: 'true',
+    NITPICKER_ACCEPT_POLICY_CHANGE: acceptedDigest(['analyzer disabled: mutation'], NO_MUTATION),
+  },
+};
 
 describe.skipIf(!pythonE2eEnabled)(
   'Python preset tool errors, structure and CRAP end to end',
@@ -64,7 +77,7 @@ describe.skipIf(!pythonE2eEnabled)(
       ).toEqual(['F401']);
     });
     it('reports a slow new test, an import cycle and a dev-only package in production code', () => {
-      const result = gate(project, 'project-shape');
+      const result = gate(project, 'project-shape', MUTATION_DISABLED);
 
       expect(result.exitCode, result.text).toBe(1);
       const shape = result
@@ -124,7 +137,7 @@ describe.skipIf(!pythonE2eEnabled)(
               classification === 'enforceable' && ['structure', 'crap'].includes(tool),
           );
       it('fails a new function over the structure limits with the same rules as TypeScript and Java', () => {
-        const result = gate(project, 'nested-and-wide');
+        const result = gate(project, 'nested-and-wide', MUTATION_DISABLED);
 
         expect(result.exitCode, result.text).toBe(1);
         expect(
@@ -135,9 +148,9 @@ describe.skipIf(!pythonE2eEnabled)(
         ]);
       });
       it('keeps a touched legacy function that is still over the limit, and fails it when it grows', () => {
-        expect(gate(project, 'legacy-edited').exitCode).toBe(0);
+        expect(gate(project, 'legacy-edited', MUTATION_DISABLED).exitCode).toBe(0);
 
-        const grown = gate(project, 'legacy-grown');
+        const grown = gate(project, 'legacy-grown', MUTATION_DISABLED);
 
         expect(grown.exitCode, grown.text).toBe(1);
         expect(enforceable(grown)).toEqual([
@@ -163,7 +176,7 @@ describe.skipIf(!pythonE2eEnabled)(
         ]);
       });
       it('fails a new untested branchy function on its CRAP score, and scores tested same-named definitions from their own lines', () => {
-        const result = gate(project, 'untested-complex');
+        const result = gate(project, 'untested-complex', MUTATION_DISABLED);
 
         expect(result.exitCode, result.text).toBe(1);
         expect(enforceable(result)).toEqual([
