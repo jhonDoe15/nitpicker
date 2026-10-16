@@ -331,6 +331,7 @@ suite('packed nitpicker in a separate consumer', () => {
         const plugins = [
           '@eslint/js',
           '@vitest/eslint-plugin',
+          'eslint-plugin-formatjs',
           'eslint-plugin-functional',
           'eslint-plugin-jsx-a11y-x',
           'eslint-plugin-react-hooks',
