@@ -1,3 +1,5 @@
+import { SYNTAX_EXCEPTION_HINT } from '../rule-hints.mjs';
+
 const nonErrorSuperclass =
   ':not([superClass.name=/Error$/]):not([superClass.property.name=/Error$/])';
 const nonComponentSuperclass =
@@ -79,13 +81,11 @@ const scriptFile = `Program:not(:has(${moduleStatements}))`;
 export const defaultExportSelectors = [
   {
     selector: `ExportDefaultDeclaration:not(${moduleAugmentation} ExportDefaultDeclaration)`,
-    message:
-      'Use a named export (`export function name() {}` or `export const name = ...`). Default exports are only allowed in config files and `declare module` blocks.',
+    message: `Use a named export (\`export function name() {}\` or \`export const name = ...\`). Default exports are only allowed in config files, \`declare module\` blocks and the framework files that need one (Next.js routes, Storybook stories, Expo Router screens).${SYNTAX_EXCEPTION_HINT}`,
   },
   {
     selector: "ExportSpecifier[exported.name='default']",
-    message:
-      'Use a named export (`export { name }`). Default exports are only allowed in config files.',
+    message: `Use a named export (\`export { name }\`). Default exports are only allowed in config files and in the framework files that need one (Next.js routes, Storybook stories, Expo Router screens).${SYNTAX_EXCEPTION_HINT}`,
   },
 ];
 

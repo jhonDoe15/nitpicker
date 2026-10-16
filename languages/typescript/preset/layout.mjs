@@ -11,9 +11,17 @@ import {
 export { globToRegExp };
 
 const defaultSourceRoots = ['src'];
-const defaultTestRoots = ['test', 'tests'];
+export const END_TO_END_ROOT = 'e2e';
+const defaultTestRoots = ['test', 'tests', '__tests__', END_TO_END_ROOT];
 export const codeExtensionNames = ['ts', 'tsx', 'mts', 'cts', 'js', 'jsx', 'mjs', 'cjs'];
 export const codeExtensions = `{${codeExtensionNames.join(',')}}`;
+export const stylesheetExtensionNames = ['css', 'scss', 'sass', 'less', 'styl', 'pcss'];
+export const stylesheetSpecifier = new RegExp(
+  `\\.(?:${stylesheetExtensionNames.join('|')})(?:\\?.*)?$`,
+  'u',
+);
+export const cssInJsSource =
+  /^(?:styled-components(?:\/|$)|@emotion\/|@stitches\/react$|goober$|@linaria\/)/u;
 const javascriptProjectExtensionNames = [
   ...TYPESCRIPT_EXTENSIONS_IN_JAVASCRIPT_PROJECT,
   ...JAVASCRIPT_EXTENSIONS,
@@ -156,6 +164,19 @@ function exactPathPattern(files) {
     : `^(?:${files.map((file) => escapeRegExp(file)).join('|')})$`;
 }
 
+function endToEndFor(layout, testRoots, extensionGlob) {
+  const isRoot = testRoots.includes(END_TO_END_ROOT);
+  return {
+    executedTestRoots:
+      layout.testRoots === undefined
+        ? testRoots.filter((root) => root !== END_TO_END_ROOT)
+        : testRoots,
+    endToEndGlobs: isRoot ? [`${END_TO_END_ROOT}/**/*.${extensionGlob}`] : [],
+    isEndToEndTest: (file) =>
+      isRoot && file.replaceAll('\\', '/').startsWith(`${END_TO_END_ROOT}/`),
+  };
+}
+
 export function resolveLayout(
   layout = {},
   exclude = [],
@@ -187,6 +208,7 @@ export function resolveLayout(
     runtimeExcludedGlobs: [...excludedGlobs, ...declarationGlobs],
     ...globs,
     hiddenGlobs,
+    ...endToEndFor(layout, testRoots, extensionGlob),
     excludePattern:
       hiddenGlobs.length === 0
         ? undefined

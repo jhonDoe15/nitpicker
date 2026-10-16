@@ -22,7 +22,8 @@ const loopMessage =
   'for...of is the only loop; iterate the items with for...of, or give each case its own test with it.each.';
 const forEachMessage = 'Use a for...of loop instead of forEach.';
 const chainMessage =
-  'Use async/await (with try/catch) instead of promise chains, and Promise.all for concurrent work.';
+  'Use async/await (with try/catch) instead of promise chains, and Promise.all for concurrent work.' +
+  ' If a framework or library requires it, add an exception for this rule for those paths in nitpicker.config.json.';
 const asMessage =
   'Do not assert with `as`. Narrow the value (a discriminated union check or a zod parse) or give it the correct type at its source. `as const` is allowed.';
 const angleMessage =

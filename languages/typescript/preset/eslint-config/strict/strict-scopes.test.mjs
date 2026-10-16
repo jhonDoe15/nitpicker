@@ -20,7 +20,7 @@ describe('no-restricted-syntax lists are unified across scopes', () => {
       'domain/ code has no loops: transform with map, filter, flatMap, reduce with an initial value, Object.fromEntries or Object.groupBy.',
     ]);
     expect(messages(defaultExport, file)).toEqual([
-      'Use a named export (`export function name() {}` or `export const name = ...`). Default exports are only allowed in config files and `declare module` blocks.',
+      'Use a named export (`export function name() {}` or `export const name = ...`). Default exports are only allowed in config files, `declare module` blocks and the framework files that need one (Next.js routes, Storybook stories, Expo Router screens). If a framework or library requires it, add an exception for this rule for those paths in nitpicker.config.json.',
     ]);
   });
 
@@ -29,10 +29,10 @@ describe('no-restricted-syntax lists are unified across scopes', () => {
 
     expect([...new Set(messages(`${asserted}\n${thenChain}\n`, file))].sort()).toEqual([
       'Do not assert with `as`. Narrow the value (a discriminated union check or a zod parse) or give it the correct type at its source. `as const` is allowed.',
-      'Use async/await (with try/catch) instead of promise chains, and Promise.all for concurrent work.',
+      'Use async/await (with try/catch) instead of promise chains, and Promise.all for concurrent work. If a framework or library requires it, add an exception for this rule for those paths in nitpicker.config.json.',
     ]);
     expect(messages(defaultExport, file)).toEqual([
-      'Use a named export (`export function name() {}` or `export const name = ...`). Default exports are only allowed in config files and `declare module` blocks.',
+      'Use a named export (`export function name() {}` or `export const name = ...`). Default exports are only allowed in config files, `declare module` blocks and the framework files that need one (Next.js routes, Storybook stories, Expo Router screens). If a framework or library requires it, add an exception for this rule for those paths in nitpicker.config.json.',
     ]);
   });
 
@@ -42,7 +42,7 @@ describe('no-restricted-syntax lists are unified across scopes', () => {
         'for...of is the only loop; iterate the items with for...of.',
       ]);
       expect(messages(thenChain, file)).toEqual([
-        'Use async/await (with try/catch) instead of promise chains, and Promise.all for concurrent work.',
+        'Use async/await (with try/catch) instead of promise chains, and Promise.all for concurrent work. If a framework or library requires it, add an exception for this rule for those paths in nitpicker.config.json.',
       ]);
       expect(messages('export const same = a == b;', file)).toEqual([
         "Expected '===' and instead saw '=='.",

@@ -27,7 +27,7 @@ describe('dependency architecture rules', () => {
         severity: 'error',
         from: { path: '(?:^|/)(?:src)/(?!.*(?:__tests__|\\.test\\.|\\.spec\\.))' },
         to: {
-          path: '(?:^|/)(?:(?:test|tests)/|(?:src)/.*/__tests__/|(?:src)/.*\\.(?:test|spec)\\.)',
+          path: '^(?:test|tests|__tests__|e2e)/|(?:^|/)(?:src)/.*/__tests__/|(?:^|/)(?:src)/.*\\.(?:test|spec)\\.',
         },
       },
       {
