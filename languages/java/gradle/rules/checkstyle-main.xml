@@ -13,4 +13,8 @@
       <property name="checks" value="VisibilityModifierCheck"/>
       <property name="query" value="//CLASS_DEF[./MODIFIERS/ANNOTATION/IDENT[@text = 'MappedSuperclass']]/OBJBLOCK/VARIABLE_DEF[./MODIFIERS/LITERAL_PROTECTED]/IDENT"/>
     </module>
+    <module name="SuppressionXpathSingleFilter">
+      <property name="checks" value="VisibilityModifierCheck"/>
+      <property name="query" value="//CLASS_DEF[./MODIFIERS/ANNOTATION[(./IDENT | ./DOT/IDENT)[@text = 'Value'] or (./IDENT | ./DOT/IDENT)[@text = 'FieldDefaults'] and .//IDENT[@text = 'PRIVATE']]]/OBJBLOCK/VARIABLE_DEF[not(./MODIFIERS/LITERAL_PUBLIC or ./MODIFIERS/LITERAL_PROTECTED or ./MODIFIERS/LITERAL_STATIC)]/IDENT"/>
+    </module>
 </modules>

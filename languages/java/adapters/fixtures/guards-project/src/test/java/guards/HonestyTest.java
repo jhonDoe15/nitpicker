@@ -9,6 +9,7 @@ import static org.mockito.Mockito.verify;
 
 import java.util.List;
 import java.util.Optional;
+import java.util.function.Supplier;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.MethodOrderer;
@@ -55,6 +56,19 @@ class HonestyTest {
     } catch (NumberFormatException e) {
       assertEquals("3", e.getMessage());
     }
+  }
+
+  @Test
+  void parsesLater() {
+    Supplier<Integer> parse =
+        () -> {
+          try {
+            return Integer.parseInt(names.get(0));
+          } catch (NumberFormatException e) {
+            return -1;
+          }
+        };
+    assertEquals(-1, parse.get());
   }
 
   @Test
