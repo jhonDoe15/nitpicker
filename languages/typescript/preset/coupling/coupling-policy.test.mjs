@@ -77,6 +77,22 @@ describe('coupling report', () => {
     expect(report.stabilityDirection).toEqual([]);
   });
 
+  it('lists shared modules that exactly one feature reaches, counting type-only imports', async () => {
+    const sourceRoot = `${fixtureRoot}/reuse/src`;
+    const report = analyzeCoupling(
+      await cruise([sourceRoot], { typeScriptRoot: `${fixtureRoot}/reuse` }),
+      sourceRoot,
+    );
+
+    expect(report.sharedUsedByOneFeature).toEqual([
+      {
+        source: `${sourceRoot}/main/shared/price.ts`,
+        feature: 'billing',
+        directory: `${sourceRoot}/main/features/billing/`,
+      },
+    ]);
+  });
+
   it('fails visibly for a malformed analyzer graph', () => {
     expect(() => analyzeCoupling({ modules: null }, 'src/main')).toThrow(/modules array/);
   });
