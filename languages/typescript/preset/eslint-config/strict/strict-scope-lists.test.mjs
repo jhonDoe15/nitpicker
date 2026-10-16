@@ -69,6 +69,11 @@ const commonBans = [
     message:
       'Use a `type` instead of an `interface`: `type Shape = { size: number }`. Only a `declare module` or `declare global` augmentation may declare an `interface`.',
   },
+  {
+    selector: 'ExportAllDeclaration',
+    message:
+      "List the public names: `export { name } from './module.js'`. `export *` makes every internal export public. If it is deliberate, add an exception for this rule in nitpicker.config.json.",
+  },
 ];
 
 const loopBans = [
@@ -91,6 +96,21 @@ const loopBans = [
   {
     selector: "CallExpression[callee.property.name='forEach']",
     message: 'Use a for...of loop instead of forEach.',
+  },
+];
+
+const promiseMisuseBans = [
+  {
+    selector:
+      "ExpressionStatement > AwaitExpression > CallExpression[callee.object.name='Promise'][callee.property.name='allSettled']",
+    message:
+      'Promise.allSettled with its result dropped hides every rejection. Read the results and handle the rejected ones, or use Promise.all to fail on the first rejection.',
+  },
+  {
+    selector:
+      "NewExpression[callee.name='Promise'] > ArrowFunctionExpression[body.type='CallExpression'][body.callee.name='resolve'], NewExpression[callee.name='Promise'] > :matches(ArrowFunctionExpression, FunctionExpression) > BlockStatement[body.length=1] > ExpressionStatement > CallExpression[callee.name='resolve']",
+    message:
+      'Do not wrap a value in `new Promise`. Return it from an async function, or use `Promise.resolve(value)`; `new Promise` is for callback APIs.',
   },
 ];
 
@@ -140,9 +160,36 @@ const domainOnlyBans = [
   },
   {
     selector:
-      "CallExpression[callee.object.name='Date'][callee.property.name='now'], NewExpression[callee.name='Date'][arguments.length=0], CallExpression[callee.object.name='Math'][callee.property.name='random'], CallExpression[callee.property.name=/^(randomUUID|getRandomValues)$/]",
+      "NewExpression[callee.name='Date'][arguments.length=0], CallExpression[callee.name='Date'], CallExpression[callee.property.name=/^(randomUUID|getRandomValues)$/], CallExpression[callee.name=/^(dayjs|moment)$/][arguments.length=0], CallExpression[callee.object.name='DateTime'][callee.property.name=/^(now|local|utc)$/][arguments.length=0]",
     message:
-      'domain/ code does not read the clock or randomness: take the time, ID or random value as a parameter from adapters/.',
+      'domain/ code does not read the clock or randomness: take the time, ID or random value as a parameter from adapters/. If it is deliberate, add an exception for this rule in nitpicker.config.json.',
+  },
+  {
+    selector: [
+      "CallExpression[callee.object.name=/^(dayjs|moment)$/][callee.property.name='utc'][arguments.length=0]",
+      'CallExpression[callee.property.name=/^(fromNow|toNow)$/]',
+      "MemberExpression[object.name='Temporal'][property.name='Now']",
+      String.raw`ImportDeclaration[source.value=/^date-fns/] ImportSpecifier[imported.name=/^(isToday|isTomorrow|isYesterday|isPast|isFuture|isThis[A-Z]\w*|startOfToday|endOfToday|startOfTomorrow|endOfTomorrow|startOfYesterday|endOfYesterday|formatDistanceToNow|formatDistanceToNowStrict)$/]`,
+      ":matches(NewExpression, CallExpression)[callee.type='MemberExpression'][callee.object.name=/^(globalThis|window|self|global)$/][callee.property.name='Date']",
+      "MemberExpression[object.type='MemberExpression'][object.object.name=/^(globalThis|window|self|global)$/][object.property.name='Date'][property.name='now']",
+      "MemberExpression[object.type='MemberExpression'][object.object.name=/^(globalThis|window|self|global)$/][object.property.name='Math'][property.name='random']",
+    ].join(', '),
+    message:
+      'domain/ code does not read the clock or randomness: take the time, ID or random value as a parameter from adapters/. If it is deliberate, add an exception for this rule in nitpicker.config.json.',
+  },
+  {
+    selector:
+      'MemberExpression[object.name=/^(globalThis|window|self|global)$/]:matches(' +
+      '[property.name=/^(process|fetch|setTimeout|setInterval|setImmediate|queueMicrotask|performance|XMLHttpRequest|WebSocket|localStorage|sessionStorage)$/], ' +
+      '[property.value=/^(process|fetch|setTimeout|setInterval|setImmediate|queueMicrotask|performance|XMLHttpRequest|WebSocket|localStorage|sessionStorage)$/])',
+    message:
+      'domain/ code does no I/O and does not touch the process or timers: do it in adapters/ and pass the result in as a parameter. If it is deliberate, add an exception for this rule in nitpicker.config.json.',
+  },
+  {
+    selector:
+      'ImportDeclaration[source.value=/^(dayjs|moment)$/] > :matches(ImportDefaultSpecifier, ImportNamespaceSpecifier)[local.name!=/^(dayjs|moment)$/]',
+    message:
+      "domain/ code imports dayjs and moment under their own names (`import dayjs from 'dayjs'`), so a clock read such as `dayjs()` stays visible. domain/ code does not read the clock or randomness: take the time, ID or random value as a parameter from adapters/. If it is deliberate, add an exception for this rule in nitpicker.config.json.",
   },
   {
     selector:
@@ -197,9 +244,14 @@ describe('no-restricted-syntax lists per scope', () => {
   it('gives every scope the complete list of the scopes it is nested in', () => {
     const { source, domain, adapters } = restrictedSyntaxByScope;
 
-    expect(domain).toEqual([...commonBans, ...domainOnlyBans]);
-    expect(adapters).toEqual([...commonBans, ...loopBans, ...adaptersOnlyBans]);
-    expect(source).toEqual([...commonBans, ...loopBans]);
+    expect(domain).toEqual([...commonBans, ...promiseMisuseBans, ...domainOnlyBans]);
+    expect(adapters).toEqual([
+      ...commonBans,
+      ...loopBans,
+      ...promiseMisuseBans,
+      ...adaptersOnlyBans,
+    ]);
+    expect(source).toEqual([...commonBans, ...loopBans, ...promiseMisuseBans]);
     expect(domain.length).toBeGreaterThan(source.length);
     expect(adapters.length).toBeGreaterThan(source.length);
   });

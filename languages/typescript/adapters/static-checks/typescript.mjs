@@ -4,12 +4,11 @@ import { readLayout, typecheckEngine } from '../../preset/head-policy.mjs';
 import { projectFile, hash, policyFile } from './shared.mjs';
 import { linkPolicyFile } from '../../../../core/tooling/policy-links.mjs';
 import { layoutTransformFor } from '../../preset/tool-configs.mjs';
+import { diagnosticMessages } from '../typecheck/compiler-hints.mjs';
 import {
   enclosingSymbol,
-  formatDiagnostic,
   loadTypeScript,
   preEmitDiagnostics,
-  withoutProjectRoot,
 } from '../typecheck/typescript-program.mjs';
 import { withAssetImportHint } from '../typecheck/asset-import-hint.mjs';
 
@@ -55,7 +54,7 @@ export function normalizeTypeScriptDiagnostics({
 }) {
   const occurrences = new Map();
   return diagnostics.map((diagnostic) => {
-    const message = withoutProjectRoot(formatDiagnostic(ts, diagnostic), projectRoot);
+    const { message, display } = diagnosticMessages(ts, diagnostic, projectRoot);
     const relativePath =
       diagnostic.file === undefined
         ? configRelativePath
@@ -77,7 +76,7 @@ export function normalizeTypeScriptDiagnostics({
         `symbol:${symbol ?? ''}`,
         `occurrence:${String(occurrence)}`,
       ].join('|'),
-      message: withAssetImportHint(diagnostic.code, message),
+      message: withAssetImportHint(diagnostic.code, display),
       classification: 'enforceable',
     };
     if (symbol !== undefined) {

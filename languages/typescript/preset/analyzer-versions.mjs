@@ -39,6 +39,7 @@ export const ESLINT_PLUGIN_PACKAGES = [
   'eslint-plugin-react-hooks',
   'eslint-plugin-react-web-api',
   'eslint-plugin-react-x',
+  'eslint-plugin-regexp',
   'eslint-plugin-testing-library',
   'typescript-eslint',
 ];

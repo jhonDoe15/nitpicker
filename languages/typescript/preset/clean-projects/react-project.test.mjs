@@ -110,9 +110,20 @@ describe('the react-project fixture', () => {
       }),
     );
 
+    const folder = 'nitpicker/no-unknown-main-folder';
+    const naming = 'nitpicker/naming-convention';
     expect(rulesByFile(findings)).toEqual({
-      allowed: ['@typescript-eslint/no-misused-promises', 'nitpicker/no-null'],
-      'class-component': ['no-restricted-syntax'],
+      allowed: ['@typescript-eslint/no-misused-promises', naming, folder, 'nitpicker/no-null'],
+      'class-component': [folder, 'no-restricted-syntax'],
+      'conditional-hook': [naming, folder],
+      'css-properties.ts': [folder],
+      'derived-state': [naming, folder],
+      'effect-fetch': [naming, folder],
+      'hard-coded-color': [naming, folder],
+      inaccessible: [naming, folder],
+      'index-key': [naming, folder],
+      'inline-style': [naming, folder],
+      'missing-dependency': [naming, folder],
     });
   });
 

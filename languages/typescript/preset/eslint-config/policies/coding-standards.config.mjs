@@ -1,11 +1,12 @@
 import tseslint from 'typescript-eslint';
 import { nitpickerRules } from '../../eslint-plugin/index.mjs';
 import { errorWrappingPolicy } from './error-wrapping-policy.mjs';
-import { readLayout } from '../../head-policy.mjs';
+import { readHeadPolicy, readLayout } from '../../head-policy.mjs';
+import { applyMatchingRuleExceptions } from '../exceptions.mjs';
 
 const { sourceGlobs, testGlobs, excludedGlobs, unitTestGlobs } = readLayout();
 
-export default [
+const config = [
   { ignores: excludedGlobs },
   {
     files: [...sourceGlobs, ...testGlobs],
@@ -29,3 +30,5 @@ export default [
     },
   },
 ];
+
+export default applyMatchingRuleExceptions(config, readHeadPolicy().exceptions);

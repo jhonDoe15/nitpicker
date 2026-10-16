@@ -338,6 +338,7 @@ suite('packed nitpicker in a separate consumer', () => {
           'eslint-plugin-react-hooks',
           'eslint-plugin-react-web-api',
           'eslint-plugin-react-x',
+          'eslint-plugin-regexp',
           'eslint-plugin-testing-library',
           'typescript-eslint',
         ].map((name) => `${name}@${manifest.dependencies[name]}`);
