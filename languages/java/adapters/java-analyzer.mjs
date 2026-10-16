@@ -21,6 +21,7 @@ const RESOURCE_FILES = [
   'languages/java/gradle/StructureMetrics.java',
   'languages/java/gradle/KotlinMetrics.java',
   'languages/java/gradle/errorprone/error-prone.gradle',
+  'languages/java/gradle/kotlin/kotlin-lint.gradle',
   'languages/java/gradle/errorprone/checks.json',
   'languages/java/adapters/overlaps/overlap-pairs.json',
   'languages/java/gradle/errorprone/ErrorProneReport.java',
@@ -57,7 +58,7 @@ function hashConfiguration() {
   return hash.digest('hex');
 }
 
-const KOTLIN_TOOLS = ['detekt', 'ktlint', 'ktfmt'];
+const KOTLIN_TOOLS = ['detekt', 'ktlint', 'ktfmt', 'kotlin-source', 'kotlinc'];
 
 export function createJavaAnalyzer({ kotlin = false } = {}) {
   return {

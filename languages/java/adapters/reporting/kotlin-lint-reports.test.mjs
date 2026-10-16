@@ -107,8 +107,8 @@ describe('readJavaFindings with the kotlin preset: detekt, ktlint and ktfmt', ()
       new RegExp(
         [
           '^Calling !! on a nullable type will throw\\. Handle null with `value \\?: return`',
-          '.*checkNotNull\\(value\\).*"exceptions" entry for rule',
-          ' detekt\\.potential-bugs\\.UnsafeCallOnNullableType in nitpicker\\.config\\.json\\.$',
+          '.*checkNotNull\\(value\\).* If this is intended, add \\{"rule":',
+          '"detekt\\.potential-bugs\\.UnsafeCallOnNullableType".* to "exceptions" in nitpicker\\.config\\.json\\.$',
         ].join(''),
         '',
       ),
@@ -118,7 +118,7 @@ describe('readJavaFindings with the kotlin preset: detekt, ktlint and ktfmt', ()
     const root = projectWithKotlinReports();
     writeFileSync(
       path.join(root, bad),
-      `${KOTLIN_SOURCE}\n@Suppress("UnsafeCallOnNullableType", "UNCHECKED_CAST")\nfun f(text: String?) = text!!.length\n`,
+      `${KOTLIN_SOURCE}\n@Suppress("UnsafeCallOnNullableType", "unused")\nfun f(text: String?) = text!!.length\n`,
     );
 
     expect(

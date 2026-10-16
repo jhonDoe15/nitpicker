@@ -2,13 +2,17 @@ import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { ingestFormatCheck } from '../../ingest/formatting/format-check.mjs';
 import { ingestSarif } from '../../ingest/sarif.mjs';
+import { readKotlinClassLimitFindings } from '../kotlin/kotlin-class-limits.mjs';
 import {
   readKotlinCrapFindings,
   readKotlinMetrics,
   readKotlinStructureFindings,
 } from '../kotlin/kotlin-metrics.mjs';
-import { addOneWayHint } from '../kotlin/rules/kotlin-rules.mjs';
+import { readCompilerFindings } from '../kotlin/rules/kotlin-compiler.mjs';
+import { applyKotlinRuleMessages } from '../kotlin/rules/kotlin-messages.mjs';
 import { readSuppressionFindings } from '../kotlin/rules/kotlin-suppressions.mjs';
+import { withFrameworkAllowances } from '../kotlin/scan/framework-allowances.mjs';
+import { readKotlinSourceFindings } from '../kotlin/scan/kotlin-scan.mjs';
 
 const DETEKT_TOOL = 'detekt';
 const DETEKT_REPORT = 'detekt.sarif';
@@ -76,11 +80,20 @@ export function reportOnlyKotlinMutants(findings) {
 export function readKotlinFindings(context, crapLimit) {
   const { reportRoot, manifest, projectRoot, jacoco } = context;
   const metrics = readKotlinMetrics(reportRoot);
+  const ruleFindings = applyKotlinRuleMessages([
+    ...withFrameworkAllowances(detektFindings(reportRoot), {
+      projectRoot,
+      spring: manifest.spring === true,
+    }),
+    ...readKotlinSourceFindings(projectRoot, manifest),
+    ...readCompilerFindings(reportRoot, manifest.kotlinSourceRoots ?? []),
+  ]);
   return [
-    ...detektFindings(reportRoot),
+    ...ruleFindings,
     ...readSuppressionFindings(projectRoot, manifest.kotlinSourceRoots),
     ...formatterFindings(reportRoot, manifest.kotlinFormatter),
     ...readKotlinStructureFindings(metrics, projectRoot),
+    ...readKotlinClassLimitFindings(metrics),
     ...readKotlinCrapFindings(metrics, {
       projectRoot,
       jacoco,
@@ -111,9 +124,7 @@ function readSarif(reportRoot, file) {
 }
 
 function detektFindings(reportRoot) {
-  return ingestSarif(readSarif(reportRoot, DETEKT_REPORT), { tool: DETEKT_TOOL }).findings.map(
-    addOneWayHint,
-  );
+  return ingestSarif(readSarif(reportRoot, DETEKT_REPORT), { tool: DETEKT_TOOL }).findings;
 }
 
 function ktlintSwitch(ruleId) {

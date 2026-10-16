@@ -690,6 +690,10 @@ allprojects {
                 }
                 // --- end kotlin structure ---
 
+                project.ext.nitpickerKotlinFiles = kotlinFiles
+                project.ext.nitpickerKotlinJdkHome = detektJdkHome
+                project.apply from: new File(initScriptDir, 'kotlin/kotlin-lint.gradle')
+
                 // Reports a skipped tool would have written, so the Nitpicker side reads the same files for
                 // every module; and the Kotlin entries of the manifest. The Java source roots stay Java-only.
                 tasks.named('nitpickerJava') {

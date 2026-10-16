@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { exceptionHint } from '../../../shared/rules/exceptions.mjs';
 import { runCli as nitpickerCli } from '../../cli.mjs';
 import { commit } from '../../diff/git/test-support/git-repository.mjs';
 import { kotlinConfig, useGradleFixtures } from './test-support/java-cli-harness.mjs';
@@ -46,7 +47,7 @@ describe('nitpicker with "preset": "kotlin"', () => {
         rule: 'detekt.style.MagicNumber',
         path: 'src/main/kotlin/demo/K.kt',
         identity: 'fp:nitpicker/subject=Added magic number',
-        message: 'Added magic number',
+        message: `Added magic number. ${exceptionHint('detekt.style.MagicNumber', 'src/main/kotlin/demo/K.kt')}`,
         classification: 'enforceable',
         location: { line: 4 },
       },

@@ -4,15 +4,21 @@ import {
   validateProjectRelativePath,
 } from '../../../../shared/config.mjs';
 import { JAVA_NATIVE_RULES, SHARED_EXCEPTION_RULES } from '../../../../shared/policy.mjs';
-import { ONE_WAY_RULE_IDS } from './rules/kotlin-rules.mjs';
+import { isKotlinFindingRule, KOTLIN_LISTED_RULES } from './rules/kotlin-messages.mjs';
 
 export const KOTLIN_FORMATTERS = ['ktlint', 'ktfmt', 'none'];
 const KOTLIN_KEYS = ['formatter', 'detektConfig'];
 export const KOTLIN_EXCEPTION_RULES = [
-  ...ONE_WAY_RULE_IDS,
-  ...SHARED_EXCEPTION_RULES.filter((rule) => !JAVA_NATIVE_RULES.includes(rule)),
-  'test-runtime/slow-test',
+  ...new Set([
+    ...SHARED_EXCEPTION_RULES.filter((rule) => !JAVA_NATIVE_RULES.includes(rule)),
+    'test-runtime/slow-test',
+    ...KOTLIN_LISTED_RULES,
+  ]),
 ];
+
+function isKotlinExceptionRule(rule) {
+  return isKotlinFindingRule(rule) || KOTLIN_EXCEPTION_RULES.includes(rule);
+}
 
 function validateKotlinExceptions(config) {
   if (config.preset !== 'kotlin' || !Array.isArray(config.exceptions)) {
@@ -20,9 +26,9 @@ function validateKotlinExceptions(config) {
   }
   for (const [index, entry] of config.exceptions.entries()) {
     const rule = isPlainObject(entry) ? entry.rule : undefined;
-    if (typeof rule === 'string' && rule !== '' && !KOTLIN_EXCEPTION_RULES.includes(rule)) {
+    if (typeof rule === 'string' && rule !== '' && !isKotlinExceptionRule(rule)) {
       throw configError(
-        `"exceptions[${String(index)}].rule" is "${rule}", which is not a rule with exceptions. Rules with exceptions for the kotlin preset: ${KOTLIN_EXCEPTION_RULES.join(', ')}. Tune any other detekt rule in config/detekt/detekt.yml`,
+        `"exceptions[${String(index)}].rule" is "${rule}", which is not a rule with exceptions. Write the rule as the finding prints it; rules with exceptions for the kotlin preset: detekt.<ruleset>.<Rule>, ${KOTLIN_EXCEPTION_RULES.join(', ')}`,
       );
     }
   }

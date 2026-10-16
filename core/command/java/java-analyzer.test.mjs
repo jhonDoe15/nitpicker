@@ -45,7 +45,14 @@ describe('Kotlin analyzer', () => {
     const invocation = analyzer.createInvocation({ projectRoot: '/project', toolRoot: '/tool' });
 
     expect(analyzer.name).toBe('kotlin');
-    expect(analyzer.reportedTools).toEqual([...JAVA_TOOLS, 'detekt', 'ktlint', 'ktfmt']);
+    expect(analyzer.reportedTools).toEqual([
+      ...JAVA_TOOLS,
+      'detekt',
+      'ktlint',
+      'ktfmt',
+      'kotlin-source',
+      'kotlinc',
+    ]);
     expect(invocation.args.slice(-2)).toEqual(['--preset', 'kotlin']);
     expect(createJavaAnalyzer().name).toBe('java');
     expect(createJavaAnalyzer().reportedTools).not.toContain('detekt');

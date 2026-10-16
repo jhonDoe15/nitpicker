@@ -5,7 +5,7 @@
 //
 //   java -Dnitpicker.kotlinCompiler=<version> -cp <kotlin-compiler-embeddable and dependencies> KotlinMetrics.java <output.json> <projectDir> <sourceRoot>...
 //
-// Output: {"functions": [...], "files": [...]}. Every function with a body is one entry:
+// Output: {"functions": [...], "files": [...], "types": [...]}. Every function with a body is one entry:
 //   lines              last line - first line + 1 (annotations and modifiers included, KDoc and comments not)
 //   statements         every element of a block, plus the unbraced body of an if, else, loop or when branch
 //                      that is itself a statement, plus 1 for an expression body
@@ -71,6 +71,7 @@ public final class KotlinMetrics {
     }
     List<String> entries = new ArrayList<>();
     List<String> fileEntries = new ArrayList<>();
+    List<String> typeEntries = new ArrayList<>();
     Set<String> claimedFacades = new HashSet<>();
     Disposable disposable = Disposer.newDisposable();
     try {
@@ -104,13 +105,15 @@ public final class KotlinMetrics {
         }
         new Collector(ktFile, text, relative, entries).collect();
         fileEntries.add(describe(ktFile, relative, claimedFacades));
+        types(ktFile, text, relative, typeEntries);
       }
     } finally {
       Disposer.dispose(disposable);
     }
     Files.writeString(
         output,
-        "{\"functions\":[" + String.join(",", entries) + "],\"files\":[" + String.join(",", fileEntries) + "]}\n",
+        "{\"functions\":[" + String.join(",", entries) + "],\"files\":[" + String.join(",", fileEntries)
+            + "],\"types\":[" + String.join(",", typeEntries) + "]}\n",
         StandardCharsets.UTF_8);
   }
 
@@ -141,8 +144,75 @@ public final class KotlinMetrics {
         classes.add(prefix + facadeName);
       }
     }
+    List<String> imports = new ArrayList<>();
+    for (KtImportDirective directive : file.getImportDirectives()) {
+      if (directive.getImportedFqName() != null) {
+        imports.add(quote(directive.getImportedFqName().asString() + (directive.isAllUnder() ? ".*" : "")));
+      }
+    }
     return "{\"file\":" + quote(relative) + ",\"package\":" + quote(packageName) + ",\"classes\":["
-        + classes.stream().map(KotlinMetrics::quote).collect(Collectors.joining(",")) + "]}";
+        + classes.stream().map(KotlinMetrics::quote).collect(Collectors.joining(",")) + "],\"imports\":["
+        + String.join(",", imports) + "]}";
+  }
+
+  private static void types(KtFile file, String text, String relative, List<String> typeEntries) {
+    for (KtClassOrObject type : PsiTreeUtil.findChildrenOfType(file, KtClassOrObject.class)) {
+      if (type instanceof KtEnumEntry || type.isLocal()
+          || (type instanceof KtObjectDeclaration && ((KtObjectDeclaration) type).isObjectLiteral())) {
+        continue;
+      }
+      List<String> names = new ArrayList<>();
+      for (KtClassOrObject owner = type; owner != null;
+          owner = PsiTreeUtil.getParentOfType(owner, KtClassOrObject.class, true)) {
+        names.add(0, owner.getName() == null ? "Companion" : owner.getName());
+      }
+      int fields = 0;
+      for (KtParameter parameter : type.getPrimaryConstructorParameters()) {
+        fields += parameter.hasValOrVar() ? 1 : 0;
+      }
+      for (KtDeclaration declaration : type.getDeclarations()) {
+        fields += declaration instanceof KtProperty && hasField(type, (KtProperty) declaration) ? 1 : 0;
+      }
+      String superclass = null;
+      for (KtSuperTypeListEntry entry : type.getSuperTypeListEntries()) {
+        if (entry instanceof KtSuperTypeCallEntry && entry.getTypeReference() != null) {
+          superclass = entry.getTypeReference().getText().replaceAll("<.*", "").replaceAll("\\s", "");
+        }
+      }
+      int offset = type.getNameIdentifier() == null ? type.getTextOffset() : type.getNameIdentifier().getTextOffset();
+      int start = text.substring(0, Math.min(offset, text.length())).split("\n", -1).length;
+      typeEntries.add("{\"file\":" + quote(relative) + ",\"name\":" + quote(String.join(".", names))
+          + ",\"start\":" + start + ",\"kind\":" + quote(kindOf(type)) + ",\"methods\":"
+          + type.getDeclarations().stream().filter(KtNamedFunction.class::isInstance).count()
+          + ",\"fields\":" + fields + (superclass == null ? "" : ",\"extends\":" + quote(superclass)) + "}");
+    }
+  }
+
+  private static boolean hasField(KtClassOrObject type, KtProperty property) {
+    if (property.hasModifier(KtTokens.ABSTRACT_KEYWORD) || property.hasModifier(KtTokens.CONST_KEYWORD)
+        || (type instanceof KtClass && ((KtClass) type).isInterface())) {
+      return false;
+    }
+    boolean computed = property.getAccessors().stream().anyMatch(KtPropertyAccessor::hasBody);
+    return property.hasInitializer() || property.hasDelegate()
+        || property.hasModifier(KtTokens.LATEINIT_KEYWORD) || !computed;
+  }
+
+  private static String kindOf(KtClassOrObject type) {
+    if (type instanceof KtObjectDeclaration) {
+      return ((KtObjectDeclaration) type).isCompanion() ? "companion object" : "object";
+    }
+    KtClass declared = (KtClass) type;
+    if (declared.isInterface()) {
+      return "interface";
+    }
+    if (declared.isEnum()) {
+      return "enum class";
+    }
+    if (declared.isData()) {
+      return "data class";
+    }
+    return declared.isAnnotation() ? "annotation class" : "class";
   }
 
   private static boolean multifile(KtFile file) {
