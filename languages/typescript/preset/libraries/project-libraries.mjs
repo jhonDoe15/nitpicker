@@ -56,7 +56,6 @@ export function validationBehavior(libraries) {
     phrase: primary.phrase,
     call: primary.call,
     example: primary.example,
-    inferred: primary.infer === undefined ? '' : ` (${primary.infer})`,
     accepted,
   };
 }
