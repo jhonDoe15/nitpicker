@@ -117,20 +117,6 @@ describe('generated files', () => {
   );
 });
 
-describe('layout.excludedGlobs', () => {
-  it('hides the files it lists from every check, like exclude', () => {
-    const layout = resolveLayout({ excludedGlobs: ['dist/**', 'src/hidden/**'] }, [
-      'src/vendor/**',
-    ]);
-
-    expect(layout.isSourceFile('src/hidden/big.ts')).toBe(false);
-    expect(layout.isExcluded('src/hidden/big.ts')).toBe(true);
-    expect(layout.isExcluded('src/vendor/a.ts')).toBe(true);
-    expect(new RegExp(layout.excludePattern).test('src/hidden/big.ts')).toBe(true);
-    expect(layout.isSourceFile('src/shown.ts')).toBe(true);
-  });
-});
-
 describe('layout.isGeneratedPath', () => {
   it('is the one generated-code test: output folders at the root, generated names anywhere', () => {
     const layout = resolveLayout();
@@ -159,5 +145,17 @@ describe('layout.excludedGlobs', () => {
     const layout = resolveLayout({ excludedGlobs: ['**/vendor/**'] }, ['legacy/**']);
 
     expect(layout.excludedGlobs).toEqual(['**/vendor/**', 'legacy/**']);
+  });
+
+  it('hides the files it lists from every check, like exclude', () => {
+    const layout = resolveLayout({ excludedGlobs: ['dist/**', 'src/hidden/**'] }, [
+      'src/vendor/**',
+    ]);
+
+    expect(layout.isSourceFile('src/hidden/big.ts')).toBe(false);
+    expect(layout.isExcluded('src/hidden/big.ts')).toBe(true);
+    expect(layout.isExcluded('src/vendor/a.ts')).toBe(true);
+    expect(new RegExp(layout.excludePattern).test('src/hidden/big.ts')).toBe(true);
+    expect(layout.isSourceFile('src/shown.ts')).toBe(true);
   });
 });

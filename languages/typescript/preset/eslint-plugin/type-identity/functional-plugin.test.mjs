@@ -3,7 +3,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { ESLint } from 'eslint';
 import tseslint from 'typescript-eslint';
-import { afterAll, describe, expect, it } from 'vitest';
+import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { functionalPlugin } from './functional-plugin.mjs';
 
 const fixtures = {
@@ -71,17 +71,15 @@ async function lintInOrder(names) {
 
 const orders = [Object.keys(fixtures), Object.keys(fixtures).toReversed()];
 
-let linted;
+const linted = { forward: {}, backward: {} };
 
-function lintBothOrders() {
-  linted ??= Promise.all(orders.map(lintInOrder));
-  return linted;
-}
+beforeAll(async () => {
+  [linted.forward, linted.backward] = await Promise.all(orders.map(lintInOrder));
+});
 
-async function mutableParameters() {
-  const [forward, backward] = await lintBothOrders();
-  expect(backward).toEqual(forward);
-  return forward;
+function mutableParameters() {
+  expect(linted.backward).toEqual(linted.forward);
+  return linted.forward;
 }
 
 afterAll(() => {
@@ -89,22 +87,22 @@ afterAll(() => {
 });
 
 describe('prefer-immutable-types with a nested readonly type', () => {
-  it('accepts deeply readonly nested arrays and maps in any file order', async () => {
-    const found = await mutableParameters();
+  it('accepts deeply readonly nested arrays and maps in any file order', () => {
+    const found = mutableParameters();
     expect(found['a-nested.ts']).toEqual([]);
     expect(found['b-plain.ts']).toEqual([]);
     expect(found['c-alias.ts']).toEqual([]);
     expect(found['d-map.ts']).toEqual([]);
   });
 
-  it('still reports a mutable inner or outer array', async () => {
-    const found = await mutableParameters();
+  it('still reports a mutable inner or outer array', () => {
+    const found = mutableParameters();
     expect(found['e-inner-mutable.ts']).toHaveLength(1);
     expect(found['f-plain-mutable.ts']).toHaveLength(1);
   });
 
-  it('terminates on a generic type that expands without end', async () => {
-    const found = await mutableParameters();
+  it('terminates on a generic type that expands without end', () => {
+    const found = mutableParameters();
     expect(found['g-recursive.ts']).toEqual([]);
   });
 });

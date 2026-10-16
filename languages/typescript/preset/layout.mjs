@@ -181,7 +181,9 @@ function codeFilesUnder(layout, projectRoot, roots) {
 }
 
 function codeFilesUnderRoot(layout, projectRoot, root) {
-  const relativeOf = (absolute) => toPosix(path.relative(projectRoot, absolute));
+  function relativeOf(absolute) {
+    return toPosix(path.relative(projectRoot, absolute));
+  }
   return [
     ...filesUnder(path.join(projectRoot, root), {
       skipDirectory: (absolute) => GENERATED_PATH.test(relativeOf(absolute)),

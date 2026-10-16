@@ -22,19 +22,27 @@ function acceptedDigest(argument) {
   return digest;
 }
 
+function isAcceptFlag(argument) {
+  return argument === ACCEPT_FLAG || argument.startsWith(`${ACCEPT_FLAG}=`);
+}
+
+function readFlag(options, argument) {
+  if (isAcceptFlag(argument)) {
+    options.acceptPolicyChange = acceptedDigest(argument);
+    return true;
+  }
+  const flag = FLAGS.get(argument);
+  if (flag !== undefined) {
+    options[flag.property] = flag.value;
+  }
+  return flag !== undefined;
+}
+
 function remainingOptions(arguments_) {
   const options = { all: false, fix: false, help: false, cache: true };
   const remaining = arguments_.values();
   for (const argument of remaining) {
-    if (argument === ACCEPT_FLAG || argument.startsWith(`${ACCEPT_FLAG}=`)) {
-      options.acceptPolicyChange = acceptedDigest(argument);
-      continue;
-    }
-    const flag = FLAGS.get(argument);
-    if (flag !== undefined) {
-      options[flag.property] = flag.value;
-      continue;
-    }
+    if (readFlag(options, argument)) continue;
     const property = VALUES.get(argument);
     if (property === undefined) throw new Error(`Unknown argument: ${argument}`);
     const value = remaining.next().value;

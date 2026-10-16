@@ -95,13 +95,14 @@ function testRootAdditions(baseConfig, headConfig, scope) {
   const base = resolveLayoutFor(baseConfig);
   const head = resolveLayoutFor(headConfig);
   const added = scope.headRoots[key].filter((root) => !scope.baseRoots[key].includes(root));
-  const reclassifies = (root) =>
-    scope.code.some(
+  function reclassifies(root) {
+    return scope.code.some(
       (file) =>
         isUnder(file, root) &&
         !head.isSourceFile(file) &&
         base.isSourceFile(scope.basePathOf(file)),
     );
+  }
   return {
     loosened: added
       .filter(reclassifies)

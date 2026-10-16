@@ -173,10 +173,11 @@ See [typescript-single-command.md](typescript-single-command.md) for the full mo
 
 Optional. Put `nitpicker.config.json` at the project root. The head is measured with the head's
 config. The base is measured with the base's own `nitpicker.config.json` when it has one that
-differs, widened to what the head reads: the head's added source and test roots are added, and an
-`exclude`, `layout.excludedGlobs` or `layout.entryPoints` entry the head drops is dropped, so code that
-was already there stays baselined when a change brings it under the gate. A finding is new only if
-the change added it. With no config on the base, or an identical one, the head's config applies to
+differs, widened to what the head reads and tightened to what the head checks: the head's added
+source and test roots are added; an `exclude`, `layout.excludedGlobs`, `layout.entryPoints`,
+`disable`, `exceptions` or `python.exceptions` entry the head drops is dropped; and each threshold
+is the lower of the two sides. Code that was already there stays baselined when a change brings it
+under the gate or tightens the policy. A finding is new only if the change added it. With no config on the base, or an identical one, the head's config applies to
 both sides; a base config that does not load is ignored the same way, and the head's config is then
 compared with the defaults. Because the head controls its own config, every change to it is printed
 in the console summary and in `report.txt` as "Policy changed in this change" and listed in
@@ -193,7 +194,13 @@ defaults. These changes are loosening:
   base path, so updating a glob after a move is not loosening; a glob that covers no newly checked
   file is listed but does not fail;
 - a removed `layout.sourceRoots`, `layout.testRoots` or `python.sourceRoots` entry that still has
-  checked files under it (Python's detected default counts when the setting is absent);
+  checked files under it (Python's detected default counts when the setting is absent), and an
+  added `layout.testRoots` entry that turns production code the base checked into test code;
+- code the change adds, or moves from a path that was not hidden, under an `exclude` or
+  `layout.excludedGlobs` glob or a test root inside a source root that the base config already
+  had, or under an `exceptions` or `python.exceptions` path that covered no code in the base. An
+  idle glob is listed when it is added, and the code that later arrives under it fails then;
+- `checkJs` turned off in the project's `tsconfig.json` (TypeScript preset);
 - a newly disabled analyzer, a threshold above the base's (a removed threshold counts at its
   default), and a removed or changed custom analyzer (any change to its `command` or `args`);
 - a `preset` that checks less: an explicit preset changed to another one, or `javascript` set where
@@ -209,7 +216,9 @@ defaults. These changes are loosening:
 Choosing another tool that runs the same checks is not loosening and is only listed:
 `tools.eslint.engine`, `tools.typescript.engine`, `python.typeChecker`, `python.formatter`,
 `python.testRunner`, `python.environment` and a `kotlin.formatter` other than `none`. Other changes
-(`base`, added roots, `legacyInventory`, tightening) are listed and never fail; an added
+(`base`, added roots, `legacyInventory`, and tightenings: a removed `exclude`, `layout.excludedGlobs`,
+`layout.entryPoints` or exception path, a re-enabled analyzer, a lowered threshold, `checkJs` turned
+on) are listed and never fail; an added
 `nitpicker.legacy.json` entry fails on its own as `baseline-expansion`. With sharding, the first
 shard reports the findings. Unknown keys and
 invalid values are an error (exit 2). Every override is listed in the report and changes the policy
@@ -583,10 +592,12 @@ own tools do:
   `useUnknownInCatchVariables` and the
   rest of the strict family) plus `noEmit` and `skipLibCheck`. The files checked are the source and
   test roots. Because `noEmit` is set, `.js` files that the project's tsconfig includes no longer
-  fail with TS5055; they get the JavaScript lint rules, `no-var` and `prefer-const` among them.
-  Unless the project's tsconfig sets `checkJs`, their values have no types, so the type-aware
-  `no-unsafe-*`, `restrict-plus-operands` and `restrict-template-expressions` rules are off for
-  `.js`, `.mjs`, `.cjs` and `.jsx` files (the JavaScript preset type-checks them and keeps them).
+  fail with TS5055; they get the JavaScript lint rules, `no-var` and `prefer-const` among them,
+  and the type-aware `no-unsafe-*`, `restrict-plus-operands` and `restrict-template-expressions`
+  rules, so code a change adds to an existing `.js` file is held to the types it can see. A new
+  `.js`, `.mjs`, `.cjs` or `.jsx` file under the source or test roots of a project with a
+  `tsconfig.json` fails as `javascript-in-typescript-project`: write it as `.ts`, `.mts`, `.cts` or
+  `.tsx`. `layout.entryPoints` and files outside the roots (root config files) are not checked.
 - **Mutation testing** type-checks mutants with the same policy flags, so a mutant such as
   `rows[0]?.text` to `rows[0].text` is discarded as a compile error instead of surviving. The
   flags are only added when the project already type-checks with them; otherwise mutants are checked

@@ -56,13 +56,17 @@ function thresholdChanges(baseThresholds = {}, headThresholds = {}) {
     before: baseThresholds[key] ?? THRESHOLD_DEFAULTS[key],
     after: headThresholds[key] ?? THRESHOLD_DEFAULTS[key],
   }));
-  const text =
-    (verb) =>
-    ({ key, before, after }) =>
-      `threshold ${key} ${verb} from ${String(before)} to ${String(after)}`;
+  function described(verb, wanted) {
+    return moves
+      .filter(wanted)
+      .map(
+        ({ key, before, after }) =>
+          `threshold ${key} ${verb} from ${String(before)} to ${String(after)}`,
+      );
+  }
   return {
-    loosened: moves.filter(({ before, after }) => after > before).map(text('raised')),
-    changed: moves.filter(({ before, after }) => after < before).map(text('lowered')),
+    loosened: described('raised', ({ before, after }) => after > before),
+    changed: described('lowered', ({ before, after }) => after < before),
   };
 }
 
