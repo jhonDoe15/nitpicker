@@ -1,3 +1,5 @@
+import { isConcurrentBatch } from './concurrent-batches.mjs';
+
 const LOOPS = new Set([
   'ForOfStatement',
   'ForInStatement',
@@ -17,7 +19,7 @@ const ITERATION_METHODS = new Set([
   'find',
   'findIndex',
 ]);
-const CONCURRENT_COMBINATORS = new Set(['all', 'allSettled', 'any', 'race']);
+const ARITHMETIC_OPERATORS = new Set(['+', '-', '*', '/', '%', '**']);
 const LOOP_EXITS = new Set(['ThrowStatement', 'ReturnStatement', 'BreakStatement']);
 const BREAK_TARGETS = new Set([...LOOPS, 'SwitchStatement']);
 
@@ -61,23 +63,12 @@ function isIterationCallback(fn) {
   );
 }
 
-function isConcurrentBatch(callback) {
-  const outer = callback.parent.parent;
-  const { callee } = outer ?? {};
-  return (
-    outer?.type === 'CallExpression' &&
-    callee.type === 'MemberExpression' &&
-    callee.object.name === 'Promise' &&
-    CONCURRENT_COMBINATORS.has(callee.property.name)
-  );
-}
-
-export function enclosingLoop(node) {
+export function enclosingLoop(node, sourceCode) {
   let child = node;
   for (const parent of ancestorsOf(node)) {
     if (LOOPS.has(parent.type) && isLoopBody(parent, child)) return { loop: parent, child };
     if (FUNCTIONS.has(parent.type)) {
-      const sequential = isIterationCallback(parent) && !isConcurrentBatch(parent);
+      const sequential = isIterationCallback(parent) && !isConcurrentBatch(parent, sourceCode);
       return sequential ? { callback: parent } : undefined;
     }
     child = parent;
@@ -117,6 +108,15 @@ export function isRetryAttempt(call, loop, visitorKeys) {
   return continues && exitsLoop(attempt.block, visitorKeys);
 }
 
+function isArithmeticSelfUpdate({ operator, left, right }) {
+  if (operator !== '=') return ARITHMETIC_OPERATORS.has(operator.slice(0, -1));
+  return (
+    right.type === 'BinaryExpression' &&
+    ARITHMETIC_OPERATORS.has(right.operator) &&
+    [right.left, right.right].some((side) => side.type === 'Identifier' && side.name === left.name)
+  );
+}
+
 export function isPagingLoop(loop, visitorKeys) {
   if (loop === undefined || loop.test === null || loop.test === undefined) return false;
   if (loop.type === 'ForOfStatement' || loop.type === 'ForInStatement') return false;
@@ -129,6 +129,7 @@ export function isPagingLoop(loop, visitorKeys) {
     (node) =>
       node.type === 'AssignmentExpression' &&
       node.left.type === 'Identifier' &&
-      tested.has(node.left.name),
+      tested.has(node.left.name) &&
+      !isArithmeticSelfUpdate(node),
   );
 }

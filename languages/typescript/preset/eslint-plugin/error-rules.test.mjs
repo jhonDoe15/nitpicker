@@ -59,6 +59,9 @@ const handledCatches = [
   'load().catch((error) => reject(error));',
   "load().catch(() => ({ ok: false, reason: 'unavailable' }));",
   'load().catch(handleError);',
+  'try { execute(); } catch (error) { reportError(error); }',
+  'try { execute(); } catch (error) { next(error); }',
+  'try { await save(); } catch (caught) { toast.error(caught); }',
 ];
 
 const silentCatches = [
@@ -85,6 +88,15 @@ const silentCatches = [
   'load().catch(() => undefined);',
   'load().catch((error) => logger.error({ err: error }, "load"));',
   'load().catch(() => { return []; });',
+  'const log = (value) => value; function read() { try { return load(); } catch (error) { log(error); return []; } }',
+  'function read() { try { return load(); } catch (error) { logError(error); return []; } }',
+  'try { execute(); } catch (error) { logger(error); }',
+  'try { execute(); } catch (error) { const message = String(error); log(message); }',
+  'function read() { try { return load(); } catch (error) { console.table(error); return []; } }',
+  'function read() { try { return load(); } catch (error) { getLogger().warn(error); return []; } }',
+  'function read() { try { return load(); } catch (error) { audit.info(error); return []; } }',
+  'function read() { try { return load(); } catch (error) { this.logFailure(error); return []; } }',
+  'load().catch((error) => logError(error));',
 ];
 
 ruleTester.run('no-silent-catch', noSilentCatch, {

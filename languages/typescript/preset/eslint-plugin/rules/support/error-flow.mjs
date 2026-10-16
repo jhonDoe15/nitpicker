@@ -1,4 +1,8 @@
-const LOG_METHODS = new Set(['trace', 'debug', 'info', 'warn', 'error', 'fatal', 'log']);
+import { LOG_LEVEL_METHODS, LOG_NAME_WORDS } from '../../../../../../shared/naming/smell-words.mjs';
+import { wordsOf } from './identifier-words.mjs';
+
+const LOG_METHODS = new Set(LOG_LEVEL_METHODS);
+const LOG_WORDS = new Set(LOG_NAME_WORDS);
 const LOG_OWNER = /^(?:console|pino|winston|bunyan)$|log(?:ger)?$/i;
 const STREAM_OWNERS = new Set(['stderr', 'stdout']);
 const DISCARDING_FUNCTIONS = new Set(['ignore', 'noop', 'swallow', 'suppress', 'discard']);
@@ -46,6 +50,22 @@ export function isLogCall(call) {
   );
 }
 
+function namesLogging(name) {
+  return wordsOf(name ?? '').some((word) => LOG_WORDS.has(word));
+}
+
+export function isLoggingCall(call) {
+  const { callee } = call;
+  if (callee.type !== MEMBER) return namesLogging(nameOf(callee));
+  const method = nameOf(callee.property);
+  return (
+    isLogCall(call) ||
+    nameOf(callee.object) === 'console' ||
+    LOG_METHODS.has(method) ||
+    namesLogging(method)
+  );
+}
+
 function isWrapperCall({ callee }) {
   if (callee.type === IDENTIFIER) return WRAPPER_FUNCTIONS.has(callee.name);
   return callee.type === MEMBER && WRAPPER_METHODS.has(nameOf(callee.property));
@@ -53,7 +73,7 @@ function isWrapperCall({ callee }) {
 
 function stepThroughCall(call, node) {
   if (call.callee === node) return STEP.climb;
-  if (isLogCall(call) || DISCARDING_FUNCTIONS.has(nameOf(call.callee))) return STEP.stop;
+  if (isLoggingCall(call) || DISCARDING_FUNCTIONS.has(nameOf(call.callee))) return STEP.stop;
   return isWrapperCall(call) ? STEP.climb : STEP.outflow;
 }
 

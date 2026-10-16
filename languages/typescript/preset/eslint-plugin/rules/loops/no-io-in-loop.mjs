@@ -1,4 +1,5 @@
 import { wordsOf } from '../support/identifier-words.mjs';
+import { isPushedForConcurrency } from './concurrent-batches.mjs';
 import { enclosingLoop, isPagingLoop, isRetryAttempt } from './loop-shapes.mjs';
 
 const BUILT_IN_MODULES = /^(?:node:)?(?:fs|fs\/promises|http|https|http2|net|dns|child_process)$/;
@@ -155,11 +156,16 @@ export const rule = {
         importedNames = importedInputOutputNames(program);
       },
       CallExpression(node) {
-        const found = isInputOutputCall(node, importedNames) ? enclosingLoop(node) : undefined;
+        const { sourceCode } = context;
+        const found = isInputOutputCall(node, importedNames)
+          ? enclosingLoop(node, sourceCode)
+          : undefined;
         if (found === undefined) return;
-        const { visitorKeys } = context.sourceCode;
+        const { visitorKeys } = sourceCode;
         const exempt =
-          isRetryAttempt(node, found.loop, visitorKeys) || isPagingLoop(found.loop, visitorKeys);
+          isRetryAttempt(node, found.loop, visitorKeys) ||
+          isPagingLoop(found.loop, visitorKeys) ||
+          isPushedForConcurrency(node, sourceCode);
         if (exempt) return;
         const callee = chainNames(node.callee).join('.');
         context.report({ node, messageId: 'call', data: { callee: `${callee}()` } });
