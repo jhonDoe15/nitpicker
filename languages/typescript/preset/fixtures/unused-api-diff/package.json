@@ -1,0 +1,8 @@
+{
+  "name": "unused-api-diff-fixture",
+  "private": true,
+  "type": "module",
+  "dependencies": {
+    "react": "19.2.0"
+  }
+}

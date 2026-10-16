@@ -73,6 +73,16 @@ function effective(root) {
 `;
 }
 
+const PLUGIN_DEFAULT_LEVEL = { release: undefined, source: '8', target: '8' };
+const NO_COMPILER_SETTINGS = {
+  ...PLUGIN_DEFAULT_LEVEL,
+  encoding: undefined,
+  compilerArgs: [],
+  proc: undefined,
+  processorPaths: undefined,
+  test: { ...PLUGIN_DEFAULT_LEVEL, compilerArgs: [] },
+};
+
 function defaultModule(basedir, coordinates, packaging) {
   const target = path.join(basedir, 'target');
   return {
@@ -88,6 +98,7 @@ function defaultModule(basedir, coordinates, packaging) {
     surefireReports: path.join(target, 'surefire-reports'),
     jacocoDestFile: undefined,
     archunitIncludes: undefined,
+    compiler: NO_COMPILER_SETTINGS,
   };
 }
 
@@ -120,6 +131,7 @@ describe('readReactor', () => {
       surefireReports: `${root}/core/out/tests`,
       jacocoDestFile: `${root}/core/out/mine.exec`,
       archunitIncludes: '**/*Rules.class',
+      compiler: NO_COMPILER_SETTINGS,
     });
     expect(app).toEqual(defaultModule(path.join(root, 'tools'), 'demo:app', 'war'));
   });

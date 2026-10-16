@@ -39,6 +39,23 @@ describe('strict rule exceptions', () => {
     expect(applyRuleExceptions(presetConfig, [fileLimit])).toEqual(presetConfig);
   });
 
+  it('leaves exceptions for the reuse rules to the structure and coupling checks', () => {
+    const reuseRules = [
+      'shared-used-by-one-feature',
+      'duplicate-definition',
+      'exported-name-collision',
+      'redefined-library-component',
+      'new-icon-asset',
+    ];
+    const exceptions = reuseRules.map((name) => ({ ...exception, rule: name }));
+    expect(applyRuleExceptions(presetConfig, exceptions)).toEqual(presetConfig);
+  });
+
+  it('leaves exceptions for the component story check to the structure check', () => {
+    const story = { rule: 'component-story-missing', paths: ['src/ui/Badge.tsx'], reason: 'None' };
+    expect(applyRuleExceptions(presetConfig, [story])).toEqual(presetConfig);
+  });
+
   it('fails for a rule the preset does not define', () => {
     expect(() =>
       applyRuleExceptions(presetConfig, [{ ...exception, rule: 'nitpicker/nope' }]),

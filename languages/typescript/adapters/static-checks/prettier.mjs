@@ -1,5 +1,5 @@
 import { globSync, readFileSync, existsSync, symlinkSync, unlinkSync } from 'node:fs';
-import { prettierPrecedence, usesProjectConfig, readLayout } from '../../preset/head-policy.mjs';
+import { prettierPrecedence, usesLayeredPrettier, readLayout } from '../../preset/head-policy.mjs';
 import { runNodeTool, projectFile, policyFile, hash } from './shared.mjs';
 import { isIgnoredByLayers, layeredPrettierOptions } from '../prettier/prettier-layers.mjs';
 import path from 'node:path';
@@ -21,9 +21,8 @@ export async function runPrettier(options) {
     return [];
   const installedPolicy = installPrettierPolicy(options);
   try {
-    const precedence = prettierPrecedence();
-    if (usesProjectConfig(precedence)) {
-      return await layeredFormattingFindings(options, installedPolicy, precedence);
+    if (usesLayeredPrettier()) {
+      return await layeredFormattingFindings(options, installedPolicy, prettierPrecedence());
     }
     const unformattedFiles = listUnformattedFiles(options, installedPolicy);
     return await formattingFindingsOf(options, unformattedFiles, installedPolicy.configPath);
@@ -41,6 +40,7 @@ function listUnformattedFiles(options, installedPolicy) {
       installedPolicy.configPath,
       '--ignore-path',
       installedPolicy.ignorePath,
+      '--no-editorconfig',
       '--list-different',
       '--no-error-on-unmatched-pattern',
       ...options.patterns,
