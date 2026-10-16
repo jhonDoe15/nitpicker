@@ -22,7 +22,9 @@ function jestProject(testText, jest = { preset: 'ts-jest', testEnvironment: 'nod
   });
 }
 
-afterEach(projects.remove);
+afterEach(() => {
+  projects.remove();
+});
 
 describe('coverage on a Jest project', () => {
   it('runs the tests with Jest and reports the arm no test takes', async () => {
