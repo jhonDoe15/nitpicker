@@ -32,7 +32,9 @@ const COLLECTORS = {
   },
 };
 
-function findingsFor({ fixture, tool }, side) {
+const remembered = new Map();
+
+function collectFindings({ fixture, tool }, side) {
   const projectRoot = realpathSync(mkdtempSync(path.join(tmpdir(), 'nitpicker-python-case-')));
   const reportRoot = realpathSync(mkdtempSync(path.join(tmpdir(), 'nitpicker-python-case-')));
   try {
@@ -54,6 +56,14 @@ function findingsFor({ fixture, tool }, side) {
     rmSync(projectRoot, { recursive: true, force: true });
     rmSync(reportRoot, { recursive: true, force: true });
   }
+}
+
+function findingsFor(testCase, side) {
+  const key = `${testCase.tool}/${testCase.fixture}/${side}`;
+  if (!remembered.has(key)) {
+    remembered.set(key, collectFindings(testCase, side));
+  }
+  return remembered.get(key);
 }
 
 export function checkRuleCase(testCase) {

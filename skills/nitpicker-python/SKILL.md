@@ -33,13 +33,14 @@ backstop. It fails only on findings your change adds, so leave code the task doe
 - Paths: `pathlib.Path` with `/`, `.read_text()`, `.exists()`. No `os.path`, no `open(path)`.
 - Strings: f-strings only. No `.format()` and no `%`.
 - Defaults: `None`, then build the value inside the function. No mutable default arguments.
-- Errors: catch the specific exception and handle it, log it with `logger.exception(...)`, or
-  re-raise. A new exception raised inside `except` keeps the cause: `raise ParseError(text) from err`
-  (or `from None`). No bare `except:`, `except Exception:`, or a handler that only does `pass`, `...`, `continue`,
-  `return None` / `return []` (or another constant) or `x = None`: log it, re-raise it, use the error, or return a
-  named default or a value built from the error. `except ImportError: x = None` is the one allowed constant
-  assignment. One expected error that is deliberately ignored is `with contextlib.suppress(SpecificError):`,
-  never `suppress(Exception)`.
+- Errors: catch the specific exception and handle it, or re-raise it with its cause:
+  `raise ParseError(text) from err` (or `from None`). Logging alone is not handling: a handler that only
+  logs, prints, or does `pass`, `...`, `continue`, `return None` / `return []` (or another constant) or
+  `x = None` is flagged, so re-raise, return a failure value built from the error, or return a named default.
+  No bare `except:`, `except Exception:`, or `raise Exception(...)`; raise `TypeError` for a wrong type. Inside a handler,
+  `logger.exception("...")` is the log call, with no `exc_info` and no exception in the message.
+  `except ImportError: x = None` is the one allowed constant assignment. One expected error that is
+  deliberately ignored is `with contextlib.suppress(SpecificError):`, never `suppress(Exception)`.
 - A `try` inside a loop is flagged (PERF203): move it out, or extract the loop body into a function.
 - Flow: no `else` after a `return`, and return an expression directly instead of assigning it to a
   local first. Build a list with a comprehension, not `append` in a loop.
@@ -49,6 +50,17 @@ backstop. It fails only on findings your change adds, so leave code the task doe
   an `adapters/` package, where untrusted input is parsed once; pass frozen dataclasses on from there.
 - Constants: a fixed set of strings is an `enum.StrEnum` (`class X(str, Enum)` before Python 3.11),
   not `STATUS_ACTIVE = "active"` constants or a class holding them. Settings like `DB_HOST` are fine.
+- Also enforced, so write it this way: log with arguments (`logger.info("Loaded %s", count)`, never an
+  f-string); read `os.environ` only in `main.py`, `settings.py` or another composition root and pass the
+  values in; in `domain/` take the clock, ids and random values as parameters, do no I/O and use no
+  `Any`; no module-level dict, list or set that a function changes; a path from user input is resolved and
+  checked with `is_relative_to` before use; name numbers other than -1, 0, 1, 2, 10, 100 and 1000 as
+  constants, and a string used three times; no `util`, `helper` or `manager` names; no hardcoded secret,
+  and never a secret in a log call; `subprocess.run([...])` with a list, a `timeout=` on `requests` calls,
+  `yaml.safe_load`, `hashlib.sha256`, no pickle; a boolean parameter is keyword-only; no commented-out
+  code; `# TODO(#123)` names an issue. Tests: a reason on every skip, no `time.sleep`, no `assert True`,
+  no real clock, unseeded random values or network in a unit test, and test files named `test_*.py` (or
+  what `python_files` says). `ruff`'s `PT`, `S`, `N` and `ARG` rules apply as well.
 - Tests: use the project's runner (pytest or unittest). Every branch you add needs a test, and a
   surviving mutant fails: assert the exact value, so a changed line breaks a test.
 - A finding that flags legitimate code (a command line entry point that prints) is lifted in
