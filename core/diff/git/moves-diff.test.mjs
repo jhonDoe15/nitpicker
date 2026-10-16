@@ -431,7 +431,7 @@ describe('a tool that produced no report on one side', () => {
     ]);
   });
 
-  it('carries the scope to the new folder when the whole not-run folder moves', () => {
+  it('keeps an existing folder enforced when the whole not-run folder moves into it', () => {
     const root = createRepository({
       'src/legacy/a.mjs': filler('a'),
       'src/legacy/b.mjs': filler('b'),
@@ -441,15 +441,38 @@ describe('a tool that produced no report on one side', () => {
     move(root, 'src/legacy/a.mjs', 'src/kernel/a.mjs');
     move(root, 'src/legacy/b.mjs', 'src/kernel/b.mjs');
     write(root, {
+      'src/kernel/a.mjs': `${filler('a')}${finding('moved-site')}`,
       'src/kernel/k.mjs': `${filler('k')}${finding('kernel-site')}`,
-      'src/legacy/fresh.mjs': `${filler('f')}${finding('fresh-site')}`,
       'src/notice.mjs': filler('n'),
     });
     commitHead(root);
 
     expect(classified(compare(root))).toEqual([
-      'kernel-site descriptive',
-      'fresh-site enforceable',
+      'moved-site descriptive',
+      'kernel-site enforceable',
+    ]);
+  });
+
+  it('keeps the folder of a subproject whose files partly leave the project', () => {
+    const root = createRepository({
+      'proj/src/legacy/a.mjs': filler('a'),
+      'proj/src/legacy/b.mjs': filler('b'),
+      'proj/src/legacy/c.mjs': filler('c'),
+      'proj/src/legacy/keep.mjs': filler('keep'),
+      'proj/src/notice.mjs': `${filler('n')}${legacyNotRun}`,
+    });
+    move(root, 'proj/src/legacy/a.mjs', 'other/src/legacy/a.mjs');
+    move(root, 'proj/src/legacy/b.mjs', 'other/src/legacy/b.mjs');
+    move(root, 'proj/src/legacy/c.mjs', 'proj/src/core/c.mjs');
+    write(root, {
+      'proj/src/core/c.mjs': `${filler('c')}${finding('moved-site')}`,
+      'proj/src/legacy/keep.mjs': `${filler('keep')}${finding('keep-site')}`,
+    });
+    commitHead(root);
+
+    expect(classified(compare(root, { projectRelativePath: 'proj' }))).toEqual([
+      'moved-site descriptive',
+      'keep-site descriptive',
     ]);
   });
 });

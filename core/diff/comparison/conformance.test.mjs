@@ -6,7 +6,7 @@ import { fileURLToPath } from 'node:url';
 import { afterAll, describe, expect, it } from 'vitest';
 import { compareFindings } from './compare.mjs';
 import { parseAnalyzerReport } from './finding-schema.mjs';
-import { readRenameMap } from '../git/patches/project-moves.mjs';
+import { readProjectMoves } from '../git/patches/project-moves.mjs';
 import { resolveComparison } from '../git/repository/git.mjs';
 import { runGit } from '../git/repository/command.mjs';
 
@@ -71,7 +71,6 @@ describe('findings conformance fixtures', () => {
         baseFindings,
         headFindings,
         baseToHeadRenames: new Map(Object.entries(expected.renames ?? {})),
-        keptBasePaths: expected.keptPaths === undefined ? undefined : new Set(expected.keptPaths),
       });
     }
 
@@ -113,7 +112,7 @@ describe('git conformance fixtures', () => {
     expect(comparison.mergeBaseSha).toBe(resolve(expected.mergeBase));
     expect(comparison.headSha).toBe(resolve(expected.head));
 
-    const renames = readRenameMap({
+    const { files: renames } = readProjectMoves({
       repositoryRoot,
       mergeBaseSha: comparison.mergeBaseSha,
       headSha: comparison.headSha,

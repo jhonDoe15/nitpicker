@@ -13,7 +13,9 @@ import java.nio.file.attribute.BasicFileAttributes;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.EnumSet;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
 import net.sourceforge.pmd.cpd.CPDConfiguration;
 import net.sourceforge.pmd.cpd.CPDReport;
@@ -27,7 +29,6 @@ import net.sourceforge.pmd.lang.ast.impl.javacc.CharStream;
 import net.sourceforge.pmd.lang.ast.impl.javacc.JavaccToken;
 import net.sourceforge.pmd.lang.document.FileId;
 import net.sourceforge.pmd.lang.document.TextDocument;
-import net.sourceforge.pmd.lang.document.TextRegion;
 import net.sourceforge.pmd.lang.java.ast.InternalApiBridge;
 import net.sourceforge.pmd.lang.java.ast.JavaTokenKinds;
 
@@ -80,12 +81,14 @@ public final class CpdReport {
 
     private static List<Path> sourceFiles(String[] directories, List<String> skipped) throws IOException {
         List<Path> files = new ArrayList<>();
+        Set<Path> seen = new HashSet<>();
         for (String directory : directories) {
             Files.walkFileTree(Path.of(directory), EnumSet.of(FileVisitOption.FOLLOW_LINKS), Integer.MAX_VALUE,
                 new SimpleFileVisitor<>() {
                     @Override
-                    public FileVisitResult visitFile(Path file, BasicFileAttributes attributes) {
-                        if (attributes.isRegularFile() && file.toString().endsWith(".java")) {
+                    public FileVisitResult visitFile(Path file, BasicFileAttributes attributes) throws IOException {
+                        boolean java = attributes.isRegularFile() && file.toString().endsWith(".java");
+                        if (java && seen.add(file.toRealPath())) {
                             files.add(file);
                         }
                         return FileVisitResult.CONTINUE;
@@ -113,32 +116,45 @@ public final class CpdReport {
     }
 
     private static String lexable(Path file, String text) {
+        TextDocument document = TextDocument.readOnlyString(text, FileId.fromPath(file), JAVA.getDefaultVersion());
+        StringBuilder safe = new StringBuilder(document.getText());
         try {
-            return withoutClassLiterals(file, text);
+            withoutClassLiterals(document, safe);
         } catch (LexException e) {
             System.err.println("CPD reports the lexical error in " + file + ": " + e.getMessage());
-            return text;
         }
+        return safe.toString();
     }
 
-    private static String withoutClassLiterals(Path file, String text) {
-        StringBuilder safe = new StringBuilder(text);
-        TextDocument document = TextDocument.readOnlyString(text, FileId.fromPath(file), JAVA.getDefaultVersion());
+    private static void withoutClassLiterals(TextDocument document, StringBuilder safe) {
         TokenManager<JavaccToken> tokens =
             JavaTokenKinds.newTokenManager(CharStream.create(document, InternalApiBridge.javaTokenDoc()));
         int previous = JavaTokenKinds.EOF;
         for (JavaccToken token = tokens.getNextToken(); !token.isEof(); token = tokens.getNextToken()) {
             if (token.kind == JavaTokenKinds.CLASS && previous == JavaTokenKinds.DOT) {
-                overwrite(safe, token.getReportLocation().getRegionInFile());
+                overwrite(safe, token.getReportLocation().getRegionInFile().getStartOffset());
             }
             previous = token.kind;
         }
-        return safe.toString();
     }
 
-    private static void overwrite(StringBuilder text, TextRegion keyword) {
-        String replacement = CONST + " ".repeat(keyword.getLength() - CONST.length());
-        text.replace(keyword.getStartOffset(), keyword.getEndOffset(), replacement);
+    private static void overwrite(StringBuilder text, int start) {
+        int end = start;
+        for (int decoded = 0; decoded < CONST.length(); decoded++) {
+            end = nextJavaChar(text, end);
+        }
+        text.replace(start, end, CONST + " ".repeat(end - start - CONST.length()));
+    }
+
+    private static int nextJavaChar(StringBuilder text, int index) {
+        if (text.charAt(index) != '\\' || index + 1 >= text.length() || text.charAt(index + 1) != 'u') {
+            return index + 1;
+        }
+        int hex = index + 1;
+        while (text.charAt(hex) == 'u') {
+            hex++;
+        }
+        return hex + 4;
     }
 
     private static void skip(List<String> skipped, Path file, String reason) {

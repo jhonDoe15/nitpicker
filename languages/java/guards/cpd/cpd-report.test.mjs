@@ -182,7 +182,7 @@ describe('readCpdFindings without a usable CPD run', () => {
     expect(parseAnalyzerReport({ findings }, 'java').findings).toEqual(findings);
   });
 
-  it('adds the files CPD could not tokenize to the paths it could not read', () => {
+  it('adds the files CPD could not tokenize to the paths it could not read, each once', () => {
     const { root, reportRoot } = project();
     const lexed = path.join(root, 'src/main/java/L.java');
     writeFileSync(
@@ -194,7 +194,7 @@ describe('readCpdFindings without a usable CPD run', () => {
     );
     writeFileSync(
       path.join(reportRoot, 'cpd-skipped.txt'),
-      `${path.join(root, 'src/main/java/loop')}: symbolic link loop\n`,
+      `${path.join(root, 'src/main/java/loop')}: symbolic link loop\n`.repeat(2),
     );
 
     expect(readCpdFindings(reportRoot, options(root))).toEqual([

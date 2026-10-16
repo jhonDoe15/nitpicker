@@ -2,10 +2,11 @@ import { readCpdFindings } from './cpd-duplicates.mjs';
 import { readDependencyFindings } from './dependencies.mjs';
 import { readForbiddenApiFindings } from './forbidden-apis.mjs';
 import { readLintFindings } from './javac-lint.mjs';
+import { liesInProject } from '../builds/module-path.mjs';
 
 export function readGuardFindings(context) {
   const { reportRoot, jscpdRoot, projectRoot, manifest, module, locate } = context;
-  return [
+  const findings = [
     ...readLintFindings(reportRoot, {
       projectRoot,
       sourceRoots: manifest.sourceRoots ?? [],
@@ -21,4 +22,5 @@ export function readGuardFindings(context) {
     }),
     ...readDependencyFindings(reportRoot),
   ];
+  return findings.filter((finding) => liesInProject(finding.path, module));
 }

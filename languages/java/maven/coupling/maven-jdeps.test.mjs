@@ -113,6 +113,17 @@ describe.skipIf(process.platform === 'win32')('runJdeps', () => {
     expect(read(path.join(reportDir, 'jdeps.txt'))).toBe(GRAPH);
   });
 
+  it('stages the classes of a class directory that is a symbolic link', () => {
+    const { root, module, reportDir } = project(['module-info.class', 'app/Main.class']);
+    const linked = path.join(root, 'linked-classes');
+    symlinkSync(module.outputDirectory, linked);
+
+    runJdeps({ ...module, outputDirectory: linked }, reportDir);
+
+    expect(read(path.join(root, 'staged.txt'))).toBe('./app/Main.class\n');
+    expect(read(path.join(reportDir, 'jdeps-classes.txt'))).toBe('app.Main\n');
+  });
+
   it('stages in the temporary folder when the class directory holds the build directory', () => {
     const { root, module, reportDir } = project([]);
     const shared = { ...module, outputDirectory: module.buildDirectory };
