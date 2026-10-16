@@ -3,7 +3,7 @@ import path from 'node:path';
 import { createLineIdentity } from '../ingest/common.mjs';
 import { exceptionRoute } from './advice/exception-route.mjs';
 import { placeDeclarations } from './forbidden/declarations.mjs';
-import { blanked } from './forbidden/java-source.mjs';
+import { blanked } from '../ingest/source-text.mjs';
 
 const FORBIDDEN_APIS_TOOL = 'forbiddenapis';
 const FORBIDDEN_REPORT = 'forbidden-apis.txt';

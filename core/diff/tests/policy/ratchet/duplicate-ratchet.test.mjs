@@ -87,7 +87,7 @@ describe('duplicate clones held at the size of a legacy clone of the same files'
     ).toEqual(['fresh']);
   });
 
-  it('holds a shrunk legacy clone while each file keeps a line the change did not edit', () => {
+  it('holds a shrunk legacy clone while most of each copy is unchanged', () => {
     const shrunk = clone('shrunk', 80, {
       kept: [
         ['a.java', 3, 12],
@@ -95,31 +95,16 @@ describe('duplicate clones held at the size of a legacy clone of the same files'
       ],
     });
     const editedB = (ranges) => ({
-      ...touched,
-      changedLines: new Map([...touched.changedLines, ['b.java', { added: false, ranges }]]),
+      isStrictRule: () => false,
+      changedLines: new Map([['b.java', { added: false, ranges }]]),
     });
 
-    expect(compared([clone('old', 100)], [shrunk]).held).toEqual([['shrunk', 100]]);
-    expect(
-      compared(
-        [clone('old', 100)],
-        [shrunk],
-        editedB([
-          [1, 4],
-          [6, 20],
-        ]),
-      ).held,
-    ).toEqual([['shrunk', 100]]);
-    expect(
-      compared(
-        [clone('old', 100)],
-        [shrunk],
-        editedB([
-          [1, 4],
-          [5, 20],
-        ]),
-      ).newIdentities,
-    ).toEqual(['shrunk']);
+    expect(compared([clone('old', 100)], [shrunk], editedB([[5, 8]])).held).toEqual([
+      ['shrunk', 100],
+    ]);
+    expect(compared([clone('old', 100)], [shrunk], editedB([[3, 8]])).newIdentities).toEqual([
+      'shrunk',
+    ]);
   });
 
   it('holds only one finding per base finding when the value is not divisible', () => {
