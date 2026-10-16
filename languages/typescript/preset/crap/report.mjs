@@ -1,4 +1,5 @@
 import { existsSync } from 'node:fs';
+import { format as formatOutput } from 'node:util';
 import { mkdir, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import config from '../defaults/crap.config.mjs';
@@ -40,7 +41,9 @@ const report = {
 await mkdir(path.dirname(outputPath), { recursive: true });
 await writeFile(outputPath, `${JSON.stringify(report, undefined, 2)}\n`);
 
-console.log(JSON.stringify({ output: config.outputPath, ...report.summary }, null, 2));
+process.stdout.write(
+  formatOutput(JSON.stringify({ output: config.outputPath, ...report.summary }, null, 2)) + '\n',
+);
 for (const entry of functions.slice(0, 20)) {
   process.stdout.write(scoreLine(entry));
 }
