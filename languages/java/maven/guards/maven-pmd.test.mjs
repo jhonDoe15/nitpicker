@@ -202,6 +202,7 @@ describe.skipIf(process.platform === 'win32')('runPmd rulesets', () => {
         '/custom/pmd.xml',
         path.join(run.reportDir, 'pmd-guards-main.xml'),
         path.join(run.reportDir, 'pmd-test-honesty.xml'),
+        path.join(run.reportDir, 'pmd-tests.xml'),
         path.join(run.reportDir, 'pmd-spring-main.xml'),
       ].join(','),
     );
@@ -232,7 +233,30 @@ describe.skipIf(process.platform === 'win32')('runPmd rulesets', () => {
         PMD_RULESET,
         path.join(run.reportDir, 'pmd-guards-main.xml'),
         path.join(run.reportDir, 'pmd-test-honesty.xml'),
+        path.join(run.reportDir, 'pmd-tests.xml'),
       ].join(','),
+    );
+  });
+
+  it('runs the test-only rules from a ruleset that keeps them off the main sources', () => {
+    const run = pmd(workspace(), { tests: TEST_DIRECTORY, pmdConfig: { nitpicker: true } });
+
+    expect(run.text('pmd-tests.xml')).toBe(
+      [
+        '<?xml version="1.0" encoding="UTF-8"?>',
+        `<ruleset name="nitpicker-tests" xmlns="${RULESET}">`,
+        "  <description>Nitpicker's test-only rules on test sources only.</description>",
+        `  <exclude-pattern>${run.main}/.*</exclude-pattern>`,
+        '  <rule ref="category/java/errorprone.xml/TestClassWithoutTestCases">',
+        '    <properties>',
+        '      <property name="testClassPattern"',
+        '                value="^(?:.*\\.)?Test[^\\.]*$|^(?:.*\\.)?.*(?&lt;!Arch|Architecture)Tests?$|' +
+          '^(?:.*\\.)?.*TestCase$"/>',
+        '    </properties>',
+        '  </rule>',
+        '</ruleset>',
+        '',
+      ].join('\n'),
     );
   });
 
@@ -257,7 +281,11 @@ describe.skipIf(process.platform === 'win32')('runPmd rulesets', () => {
     });
 
     expect(run.option('--rulesets')).toBe(
-      [PMD_RULESET, path.join(run.reportDir, 'pmd-guards-main.xml')].join(','),
+      [
+        PMD_RULESET,
+        path.join(run.reportDir, 'pmd-guards-main.xml'),
+        path.join(run.reportDir, 'pmd-tests.xml'),
+      ].join(','),
     );
     expect(run.exists('pmd-test-honesty.xml')).toBe(false);
     expect(run.option('--dir')).toBe(run.main);

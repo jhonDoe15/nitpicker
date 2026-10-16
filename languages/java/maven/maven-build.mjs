@@ -94,7 +94,19 @@ function runStructure(module, reportDir) {
   });
 }
 
-function runJdeps(module, reportDir) {
+function jdepsModulePath(module, classpaths) {
+  if (!existsSync(path.join(module.outputDirectory, 'module-info.class'))) {
+    return [];
+  }
+  const modulePath = classpaths.mainCompile.filter((entry) => existsSync(entry));
+  const release = module.compiler.release ?? module.compiler.target;
+  return [
+    ...(modulePath.length === 0 ? [] : ['--module-path', modulePath.join(path.delimiter)]),
+    ...(release === undefined ? [] : ['--multi-release', release]),
+  ];
+}
+
+function runJdeps(module, reportDir, classpaths) {
   const classes = existsSync(module.outputDirectory)
     ? readdirSync(module.outputDirectory, { recursive: true, withFileTypes: true })
         .filter((entry) => entry.isFile() && entry.name.endsWith('.class'))
@@ -116,7 +128,12 @@ function runJdeps(module, reportDir) {
   }
   const result = spawnSync(
     javaCommand('jdeps'),
-    ['-verbose:class', '-filter:none', module.outputDirectory],
+    [
+      '-verbose:class',
+      '-filter:none',
+      ...jdepsModulePath(module, classpaths),
+      module.outputDirectory,
+    ],
     {
       cwd: module.basedir,
       encoding: 'utf8',
@@ -161,7 +178,7 @@ function analyzeSources(context, project) {
   runFormat({ module, reportDir, tools });
   runCheckstyle({ module, reportDir, tools, configs, pinned });
   runStructure(module, reportDir);
-  runJdeps(module, reportDir);
+  runJdeps(module, reportDir, classpaths);
   runGuards({ module, reportDir, tools, classpaths }, project);
 }
 
