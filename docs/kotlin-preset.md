@@ -105,7 +105,9 @@ Kotlin classes (see [Mutation](#mutation-report-only-for-kotlin)), and jdeps rea
   (`languages/java/detekt/detekt-validation.yml`): a config may configure rulesets of detekt plugins,
   for example `formatting:` of detekt-formatting, that the CLI run does not load, and validation
   would end the run on them. The price is that a misspelled key is not reported.
-- **Type resolution.** The task passes `--classpath` and `--jdk-home`, so rules that need types run:
+- **Type resolution.** The task passes `--classpath` and `--jdk-home`, so rules that need types run.
+  `--jdk-home` is the JDK of the project's Gradle Java toolchain (`java.toolchain`, `kotlin { jvmToolchain(17) }`)
+  when it declares one, otherwise the JDK that runs Gradle. The classpath is
   the module's compile classpath, its compiled Java classes, and the Kotlin standard library that
   detekt itself embeds (2.0.21, pinned as `detektKotlin`), in place of the project's own. detekt 1.23
   cannot read the metadata of a newer standard library, and then no call to it resolves, so
@@ -157,13 +159,22 @@ are `let` with `this`, and `also` is `apply` with `it`, so each is a second way 
 `let` and `apply` are the ones that cover the other three.
 
 **Owned by Nitpicker.** The file is laid over the project's detekt config. For each of its rulesets
-and rules it sets `active: true`, `excludes: []` and `includes: []`, and for each rule
-`severity: warning`, so a project cannot switch these rules off, lower them to `info` (which the
-gate reads as descriptive) or skip paths in `detekt.yml`; paths are lifted only by `exceptions`. A
+and rules it sets `active: true`, `excludes: []`, `includes: []` and `ignoreAnnotated: []`, and for
+each rule `severity: warning`, so a project cannot switch these rules off, lower them to `info`
+(which the gate reads as descriptive) or skip paths or annotated classes in `detekt.yml`; paths are
+lifted only by `exceptions`. A
 test keeps the rule keys of the file equal to the rules the gate knows. Other rules and keys in the
-project's config work as before, with one limit: a list the file sets replaces the project's, so a
-project's own `ForbiddenMethodCall.methods` entries are ignored while the preset is on (detekt does
-not merge lists, and nitpicker does not read the project's file). The one narrowing that stays with
+project's config work as before. The one list the preset sets, `ForbiddenMethodCall.methods`, is
+merged: detekt replaces a list instead of merging it, so Nitpicker reads the project's detekt file
+and the effective list is the preset's four calls followed by the project's own entries (strings or
+`value`/`reason` entries; a call both list keeps the preset's reason). A project can add forbidden
+calls, for example `java.lang.Thread.sleep`, but never drop one of ours. An entry is a method name
+with an optional parameter list (`java.lang.Thread.sleep` or `java.lang.Thread.sleep(long)`); an
+entry of any other shape, a `methods` key that is not a list or a file that does not parse adds
+nothing. Findings for a
+project's own entry have the rule `detekt.style.ForbiddenMethodCall` as well, so they are one-way
+and an exception lifts them the same way. `ForbiddenImport` is not set by the preset, so a project's
+own `ForbiddenImport.imports` works as it does in detekt. The one narrowing that stays with
 the project is detekt's own `excludeAnnotatedClasses` for `UseDataClass`, for example
 `excludeAnnotatedClasses: ['Entity']` for JPA entities, whose equality must not become value equality.
 `UseDataClass` has `allowVars: true`, because `DataClassShouldBeImmutable` bans the `var` in a data
@@ -211,8 +222,6 @@ not a rule with `exceptions`.
   is why `let` is not limited to `?.let` (detekt cannot tell the two apart), `takeIf`, `takeUnless`,
   `lateinit` and unstructured `CoroutineScope(...)` are not covered. `GlobalScope` imported under
   another name (`import kotlinx.coroutines.GlobalScope as G`) is not seen by detekt's rule.
-- Detekt does not merge lists: the project's `ForbiddenMethodCall.methods` is replaced by the
-  preset's, see [Owned by Nitpicker](#one-way-rules).
 - Type resolution reports less where a library is built with a newer Kotlin than detekt's (above);
   `!!` on a value of such a type is not seen.
 
@@ -451,33 +460,45 @@ there are no inline disables.
 runs Gradle, with `org.jetbrains.kotlin:kotlin-compiler-embeddable` on the class path. The version is
 pinned as `kotlinCompiler` in the init script (2.4.21) and resolved from its own Gradle configuration
 (`nitpickerKotlinCompiler`), like the other tools. It uses the compiler's PSI classes, so bumping the
-pin means running `npm run test:kotlin` again. A line-based tool cannot be the source: it has no
-statement count or control nesting, and token-based readers misread ordinary Kotlin (extension
-functions such as `fun String.shout() = ...`, expression-bodied functions, the `->` of a lambda), which
-would attribute a complexity per function to the wrong lines.
+pin means running `npm run test:kotlin` again; the `kotlin-e2e` GitHub Actions workflow runs it for a
+push to `main` that changes `languages/java`, `core` or `shared`, the package files or the workflow
+itself, by hand, and on a pull request when the `run-ci` label is added. A line-based tool cannot be the source: it has no statement count or control nesting, and
+token-based readers misread ordinary Kotlin (extension functions such as `fun String.shout() = ...`,
+expression-bodied functions, the `->` of a lambda), which would attribute a complexity per function to
+the wrong lines.
 
 **What is measured, all from the one parse, with the definitions of the other languages.**
 
-| Metric              | Definition                                                                                                                                                                                               |
-| ------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `lines`             | Last line minus first line plus 1; annotations and modifiers count, KDoc and comments do not.                                                                                                            |
-| `statements`        | Every element of a block (declarations, expressions, `return`), plus the unbraced body of an `if`, `else`, loop or `when` branch that is itself a statement, plus 1 for an expression body.              |
-| `maxControlNesting` | Deepest nesting of `if`, `for`, `while`, `do`, `when` (like Java's `switch`) and `catch`; an `else if` nests one level deeper, as in TypeScript and Java. `try` itself and lambdas are not control flow. |
-| `parameters`        | Declared value parameters. An extension receiver is not one; a parameter with a default value is.                                                                                                        |
-| complexity          | 1 plus each `if`, `for`, `while`, `do`, `when` branch other than `else`, `catch`, `&&`, `\|\|` and `?:`. It is the CRAP input, below.                                                                    |
+| Metric              | Definition                                                                                                                                                                                                                                                                                            |
+| ------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `lines`             | Last line minus first line plus 1; annotations and modifiers count, KDoc and comments do not.                                                                                                                                                                                                         |
+| `statements`        | Every element of a block (declarations, expressions, `return`), plus the unbraced body of an `if`, `else`, loop or `when` branch that is itself a statement, plus 1 for an expression body.                                                                                                           |
+| `maxControlNesting` | Deepest nesting of `if`, `for`, `while`, `do`, `when` (like Java's `switch`) and `catch`; a flat `if` / `else if` / `else` chain is one level, whatever its length, while an `if` inside an `else { }` block or inside a branch body nests one deeper. `try` itself and lambdas are not control flow. |
+| `parameters`        | Declared value parameters. An extension receiver is not one; a parameter with a default value is.                                                                                                                                                                                                     |
+| complexity          | 1 plus each `if`, `for`, `while`, `do`, `when` branch other than `else`, `catch`, `&&`, `\|\|` and `?:`. It is the CRAP input, below.                                                                                                                                                                 |
 
 A unit is a function with a body, a property accessor with a body, a secondary constructor with a
-block body, or a property whose initializer is a lambda or an anonymous function or whose delegate
-takes a lambda (`val handler = { x -> ... }`, `val f = fun(x: Int) { ... }`, `val v by lazy { ... }`),
+block body, an `init` block with statements, or a property whose initializer is a lambda or an
+anonymous function or whose delegate takes a lambda (`val handler = { x -> ... }`,
+`val f = fun(x: Int) { ... }`, `val v by lazy { ... }`, `val o by Delegates.observable(0) { ... }`),
 the way an arrow-function constant is a unit in TypeScript; the body is the lambda's and the unit is
-named after the property. Lambdas and local functions inside a function count towards the function
-that contains them; members of nested, local and anonymous classes and objects are units of their
-own. Init blocks, other property initializers (`val x = run { ... }`), primary constructors and
-functions without a body (abstract, interface, `expect`) are not units, as initializer blocks are
-not in the Java preset. Names are `function` (top level), `Class.function`,
+named after the property. Any other property initializer is a unit when it holds a block (a lambda
+such as `run { ... }` or `map { ... }`, or the braces of `if`, `try` and `when`) or branches
+(`if`, `when`, `&&`, `?:` and the like); `val x = a + 1` and `val s = "text"` are not. Each `init`
+block is a unit named after its class, `Class.<init>` (an empty block is not a unit). A class's
+blocks share the name, so a finding on one is numbered only among the blocks of that class with the
+same text that are over the same limit: inserting, deleting or reordering other blocks, or adding
+an empty `init {}`, never makes a legacy block new. An edited block is held by that rule's ratchet like any function. A message on an
+`init` block or a property initializer says to move the nested part into its own function, because
+neither can `return` early. To accept such a unit, drop its file with `exclude`, as for any structure
+or CRAP finding; the unit name (`Class.<init>`, `Class.property`) is the one that a per-function
+exception would name. Lambdas and local functions inside a function count towards
+the function that contains them; members of nested, local and anonymous classes and objects are
+units of their own. Primary constructors and functions without a body (abstract, interface,
+`expect`) are not units. Names are `function` (top level), `Class.function`,
 `Class.Receiver.function` for an extension, `Class.property.get` for an accessor, `Class.property`
-for a lambda property, `Class.Class` for a secondary constructor and `<anonymous>` for an object
-expression. Script files (`.kts`) are not read. Source directories are the ones Gradle reports
+for a property unit, `Class.<init>` for an `init` block, `Class.Class` for a secondary
+constructor and `<anonymous>` for an object expression. Script files (`.kts`) are not read. Source directories are the ones Gradle reports
 (generated code under the build directory is already left out), so a package named `build`, `out`
 or `target` is measured like any other.
 
@@ -506,6 +527,11 @@ of a class declared in the function). So the getter `getDoubled` belongs to `val
 the lambda `bump$lambda$0` and a local function belong to the function that declares them, and their
 lines and branches are summed into its coverage. The synthetic `name$default` method that Kotlin
 generates for default arguments is ignored: it has no source of its own and delegates to the function.
+An `init` block and a property initializer that is not a lambda or delegate lambda run inside the
+class constructor or the static initializer, whose JaCoCo method starts on the class line, outside
+the unit. Their coverage is therefore read from the source lines of the unit in JaCoCo's per-file
+line data (covered lines, covered branches), minus the lines of a unit nested in them; the lower of
+the two percentages is used as everywhere else.
 A `@JvmStatic` companion function, which compiles to the function and a static method that delegates
 to it on the same line, is counted once, through the method that holds the code. The score of a
 function whose range holds no instrumented method is unknown, which is a finding
@@ -664,8 +690,6 @@ fails only when it grows, and a package folder moved to a new path is matched to
   project forces on `org.jetbrains.kotlin` (a `resolutionStrategy` rule, Spring's dependency
   management) does not reach that compiler: the pin is applied last.
 - `inline` functions are not measured by CRAP (see [CRAP](#crap)); their structure limits still apply.
-- `init` blocks and other property initializers (`val x = run { ... }`) are not units: logic moved
-  into one is not measured.
 - Kotlin Multiplatform and Android modules are not covered (`org.jetbrains.kotlin.jvm` only).
 - detekt's type resolution uses detekt's own Kotlin standard library (see [detekt](#detekt)), so its
   results can differ from a project's own detekt run, and a library built with a newer Kotlin stays

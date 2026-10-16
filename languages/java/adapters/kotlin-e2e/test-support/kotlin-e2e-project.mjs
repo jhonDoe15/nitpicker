@@ -1,4 +1,4 @@
-import { execFileSync } from 'node:child_process';
+import { execFileSync, spawnSync } from 'node:child_process';
 import path from 'node:path';
 import { cpSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -56,9 +56,13 @@ export function commitBranch(project, name, files) {
   commitFiles(project, name, files);
 }
 
-export function commitFromStructureBase(project, name, files) {
-  git(project, 'checkout', '-q', '-b', name, 'structure-base');
+export function commitFromBranch(project, { name, from, files }) {
+  git(project, 'checkout', '-q', '-b', name, from);
   commitFiles(project, name, files);
+}
+
+export function commitFromStructureBase(project, name, files) {
+  commitFromBranch(project, { name, from: 'structure-base', files });
 }
 
 export function initializeProject() {
@@ -117,3 +121,43 @@ export function detektFindingsOf(findings, testCase) {
     ({ tool, path: file }) => tool === 'detekt' && file.includes(`/demo/${testCase.id}/`),
   );
 }
+
+export const JDK_PROBE = `
+tasks.matching { it.name == "nitpickerDetekt" }.configureEach {
+    doLast {
+        val args = (this as JavaExec).args.orEmpty()
+        val out = layout.buildDirectory.get().asFile
+        out.resolve("jdk-home.txt").writeText(args[args.indexOf("--jdk-home") + 1])
+        out.resolve("gradle-jvm-home.txt").writeText(System.getProperty("java.home"))
+    }
+}
+`;
+
+export function copyJdkWithNativeImage(target) {
+  const settings = spawnSync(
+    'sh',
+    ['-c', 'exec "${JAVA_HOME:+$JAVA_HOME/bin/}java" -XshowSettings:properties -version'],
+    { encoding: 'utf8' },
+  );
+  const home = /java\.home = (.+)/.exec(settings.stderr)[1];
+  execFileSync('cp', ['-a', home, target]);
+  writeFileSync(path.join(target, 'bin/native-image'), '#!/bin/sh\n', { mode: 0o755 });
+  return target;
+}
+
+export const TOOLCHAIN_PROBE = `
+kotlin {
+    jvmToolchain {
+        languageVersion.set(JavaLanguageVersion.of(21))
+        nativeImageCapable.set(true)
+    }
+}
+
+tasks.matching { it.name == "nitpickerDetekt" }.configureEach {
+    doLast {
+        layout.buildDirectory.get().asFile.resolve("toolchain-home.txt").writeText(
+            javaToolchains.launcherFor(java.toolchain).get().metadata.installationPath.asFile.absolutePath,
+        )
+    }
+}
+`;

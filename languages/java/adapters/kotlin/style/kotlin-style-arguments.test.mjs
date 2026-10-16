@@ -172,6 +172,20 @@ describe('what runs with the project listed', () => {
       `-Pnitpicker.kotlin.detektConfig=${path.join(root, 'detekt.yml')}`,
     ]);
   });
+
+  it("passes the merged forbidden-call list when the project's detekt config lists calls of its own", () => {
+    const root = project({
+      'detekt.yml': "style:\n  ForbiddenMethodCall:\n    methods: ['kotlin.io.println']\n",
+    });
+
+    expect(
+      kotlinGradleArguments(root, { toolPrecedence: { detekt: ['project'] } }).slice(3),
+    ).toEqual([
+      '-Pnitpicker.kotlin.detektLayers=project',
+      `-Pnitpicker.kotlin.detektConfig=${path.join(root, 'detekt.yml')}`,
+      `-Pnitpicker.kotlin.detektLists=${path.join(root, 'build/nitpicker/detekt-lists.yml')}`,
+    ]);
+  });
 });
 
 describe('the Gradle hand-off', () => {
