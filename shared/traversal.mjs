@@ -1,3 +1,5 @@
+import path from 'node:path';
+
 function stackIterator(items) {
   return {
     [Symbol.iterator]() {
@@ -26,6 +28,11 @@ export function chainOf(start, next) {
     if (following) nodes.push(following);
   }
   return nodes;
+}
+
+export function parentDirectory(directory) {
+  const parent = path.dirname(directory);
+  return parent === directory ? undefined : parent;
 }
 
 export function objectChildren(node) {
