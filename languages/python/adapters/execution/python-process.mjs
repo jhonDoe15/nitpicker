@@ -1,5 +1,7 @@
 import { spawnSync } from 'node:child_process';
 
+export const processes = { spawn: spawnSync };
+
 const MAX_OUTPUT_BYTES = 50 * 1024 * 1024;
 const TOOL_TIMEOUT_MS = 25 * 60 * 1000;
 const MILLISECONDS_PER_MINUTE = 60000;
@@ -9,7 +11,7 @@ export const VERSION_PATTERN = /\d+(?:\.\d+)+\S*/;
 export function execute(context, command, { timeout = TOOL_TIMEOUT_MS, env = {} } = {}) {
   const [tool, ...args] = command;
   const launch = context.launcher.launch(tool, args);
-  return spawnSync(launch.command, launch.args, {
+  return processes.spawn(launch.command, launch.args, {
     cwd: context.projectRoot,
     env: { ...process.env, ...launch.env, ...context.env, ...env },
     encoding: 'utf8',

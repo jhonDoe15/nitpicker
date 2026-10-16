@@ -716,15 +716,15 @@ and CRAP rules.
 
 ## Tests
 
-- `core/command/python/python-cli-*.test.mjs`: fast, always on. The CLI end to end with a fake toolchain
-  (`languages/python/adapters/fixtures/fake-python-tools.cjs` behind wrapper scripts in a
-  `.venv/bin`; `fake-python-tools.sh` answers the common calls without starting node and hands
-  the rest, every logged call and every call under `fail.json` to the script, and
-  `languages/python/adapters/fake-python-tools.test.mjs` keeps the two in step) run in the test
-  process through `runTasksInProcess`, as the Java CLI tests do: clean and failing changes in every report format, a change that removes every test,
-  tool errors (failing tests, no environment), `--all`, rejected TypeScript-only keys, and that
-  base and head each run with their own sources on `PYTHONPATH`. One test per behaviour that no
-  unit test below covers.
+- `core/command/python/python-cli-*.test.mjs`: fast, always on. The CLI end to end with a fake
+  toolchain: `languages/python/adapters/fixtures/fake-python-tools.cjs` (`runFake`) answers the
+  tools of a `.venv/bin` in the test process, through the `processes.spawn` seam of
+  `python-process.mjs`, and the runners run in process through `runTasksInProcess`, as the Java
+  CLI tests do. They cover clean and failing changes in every report format, a change that removes
+  every test, tool errors (failing tests, no environment), `--all`, rejected TypeScript-only keys,
+  and that base and head each run with their own sources on `PYTHONPATH`. One test per behaviour
+  that no unit test below covers. `python-runner.test.mjs` also starts the runner as a program, and
+  the wrapper scripts in a `.venv/bin` start the fake as one, for the tests that do not use the seam.
 - Unit tests next to the code: environment (including uv, poetry and workspace launchers), formatter,
   test runner, target version and source root detection, the tool steps (arguments, long output,
   missing tools, unparsable files), the runner (exclude, legacy inventory, messages) and its
