@@ -148,14 +148,18 @@ describe('layout-aware tool configurations', () => {
 
     const knip = layoutKnipConfig(readDefault('knip.json'), customLayout);
     expect([...new Set(knip.entry)].sort()).toEqual([
+      '.mocharc.{js,cjs,mjs}',
+      'jest.config.{ts,mts}',
       'lib/main.ts',
       'lib/main/composition-root.{ts,mts,js,mjs}',
       'lib/main/composition-root/index.{ts,mts,js,mjs}',
+      'lib/main/jest.config.{ts,mts}',
       'lib/main/main.ts',
       'lib/main/server.ts',
       'lib/main/vitest.config.ts',
       'lib/server.ts',
       'spec/fixtures/*harness*.{ts,mts,mjs}',
+      'spec/jest.config.{ts,mts}',
       'spec/vitest.config.ts',
       'vitest.config.ts',
       'vitest.quality.config.ts',
@@ -197,15 +201,19 @@ describe('layout-aware tool configurations', () => {
     const knip = layoutKnipConfig(readDefault('knip.json'), layout);
 
     expect([...new Set(knip.entry)].sort()).toEqual([
+      '.mocharc.{js,cjs,mjs}',
+      'jest.config.{ts,mts}',
       'lib/main.ts',
       'lib/main/composition-root.{ts,mts,js,mjs}',
       'lib/main/composition-root/index.{ts,mts,js,mjs}',
+      'lib/main/jest.config.{ts,mts}',
       'lib/main/main.ts',
       'lib/main/server.ts',
       'lib/main/vitest.config.ts',
       'lib/server.ts',
       'lib/tools/*-runner.mjs',
       'spec/fixtures/*harness*.{ts,mts,mjs}',
+      'spec/jest.config.{ts,mts}',
       'spec/vitest.config.ts',
       'vitest.config.ts',
       'vitest.quality.config.ts',

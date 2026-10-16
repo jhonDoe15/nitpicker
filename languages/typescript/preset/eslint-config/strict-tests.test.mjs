@@ -4,6 +4,7 @@ import ts from 'typescript';
 import { depthFirst } from '../../../../shared/traversal.mjs';
 import { describe, expect, it } from 'vitest';
 import { failureMessagesFor } from '../failure-messages/test-support/harness.mjs';
+import { TEST_TIMEOUT_MS } from '../../adapters/test-runners/test-run.mjs';
 import { TEST_TIMEOUT_CEILING_MS } from '../eslint-plugin/rules/testing/assertions/no-raised-test-timeout.mjs';
 import { TEST_TIMEOUT_MS } from '../../adapters/test-runners/test-run.mjs';
 import { resolveLayout } from '../layout.mjs';

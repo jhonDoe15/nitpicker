@@ -1,11 +1,10 @@
-import { readLayout } from '../../preset/head-policy.mjs';
+import { readHeadPolicy, readLayout } from '../../preset/head-policy.mjs';
+import { recordedTestRunner } from '../../preset/test-runner/project-runner.mjs';
+import { runnerVocabulary } from '../../preset/test-runner/runner-vocabulary.mjs';
 import { immutableTypesMessage } from './immutable-types-hint.mjs';
 
 const IMMUTABLE_TYPES_PREFIX =
   /^(Variable|Parameter|Return type|Property) should have an immutability of at least/u;
-
-const REJECT_ERRORS_TEST_HINT =
-  ' In tests, reject with `vi.fn().mockRejectedValue(value)` to use a non-Error reason.';
 
 const FIX_TYPE_ERROR_FIRST = 'fix any TypeScript error on the line first';
 
@@ -38,8 +37,6 @@ const THROW_ERROR_TEST_HINT = `${THROW_ERROR_HINT} A test double that must throw
 
 const NO_ASSERTIONS_TEXT = 'Test has no assertions';
 
-const NO_ASSERTIONS_HINT = `${NO_ASSERTIONS_TEXT}. Call \`expect\` in the test body: asserting helpers do not count, so return the value and \`expect\` it in the test.`;
-
 const DUPLICATE_CONSTITUENTS_HINT =
   ' The members are now the same type: use the one type the feature exports (e.g. `import type { Message }`), not a `ReturnType<...>` alias.';
 
@@ -52,7 +49,7 @@ const SWITCH_NOT_EXHAUSTIVE_HINT =
   '. If this function is already over a size limit, adding cases will fail the size check: extract an exhaustive helper instead (e.g. a `Record<Union, number>` lookup).';
 
 const NODE_TEST_HINT =
-  ' nitpicker runs tests with Vitest only (Jest and node:test support is tracked in issue #162). If this file must stay on node:test, add an exception for this rule in nitpicker.config.json.';
+  ' nitpicker runs this project\'s tests with Vitest, which does not collect node:test files. Import from `vitest`, or, if the project runs its tests with node:test, set "tools.tests.runner" to "node" in nitpicker.config.json.';
 
 const EXCEPTION_ROUTE = 'add an exception for this rule in nitpicker.config.json';
 
@@ -91,8 +88,13 @@ function immutableTypesRewrite({ text, node, sourceFile }) {
   return kind === undefined ? text : immutableTypesMessage({ kind, node, sourceFile });
 }
 
+function projectVocabulary() {
+  return runnerVocabulary(recordedTestRunner(readHeadPolicy()));
+}
+
 function rejectErrorsMessage({ text, relativePath }) {
-  return readLayout().isTestFile(relativePath) ? `${text}${REJECT_ERRORS_TEST_HINT}` : text;
+  if (!readLayout().isTestFile(relativePath)) return text;
+  return `${text} In tests, reject with ${projectVocabulary().rejection} to use a non-Error reason.`;
 }
 
 function legacyAnyHint(relativePath) {
@@ -121,7 +123,9 @@ function onlyThrowErrorMessage({ text, relativePath }) {
 }
 
 function expectExpectMessage({ text }) {
-  return text === NO_ASSERTIONS_TEXT ? NO_ASSERTIONS_HINT : text;
+  if (text !== NO_ASSERTIONS_TEXT) return text;
+  const { assertCall, assertIt } = projectVocabulary();
+  return `${NO_ASSERTIONS_TEXT}. Call ${assertCall} in the test body: asserting helpers do not count, so return the value and ${assertIt} in the test.`;
 }
 
 function duplicateConstituentsMessage({ text }) {
@@ -169,6 +173,9 @@ const MESSAGE_REWRITERS = new Map([
   ['@typescript-eslint/no-unsafe-return', unsafeAnyMessage],
   ['@typescript-eslint/only-throw-error', onlyThrowErrorMessage],
   ['vitest/expect-expect', expectExpectMessage],
+  ['jest/expect-expect', expectExpectMessage],
+  ['node-test/expect-expect', expectExpectMessage],
+  ['mocha/expect-expect', expectExpectMessage],
   ['@typescript-eslint/no-duplicate-type-constituents', duplicateConstituentsMessage],
   ['@typescript-eslint/switch-exhaustiveness-check', switchExhaustivenessMessage],
   ['@typescript-eslint/no-invalid-void-type', invalidVoidMessage],

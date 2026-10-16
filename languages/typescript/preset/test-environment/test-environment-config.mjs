@@ -1,6 +1,6 @@
 import { nitpickerRules } from '../eslint-plugin/index.mjs';
 import { codeExtensions } from '../layout.mjs';
-import { TEST_ENVIRONMENTS_VARIABLE, TEST_ENVIRONMENT_RULE } from './resolve-environment.mjs';
+import { TEST_ENVIRONMENTS_VARIABLE, TEST_ENVIRONMENT_RULE } from './environments.mjs';
 
 const UNKNOWN = { environment: undefined, scopes: [] };
 
@@ -24,22 +24,30 @@ function runnableTestGlobs(layout) {
   );
 }
 
-function environmentBlock({ files, ignores = [], environment, setupFiles = [] }, aliases, layout) {
+function environmentBlock({ files, ignores = [], environment, setupFiles = [] }, context) {
+  const { aliases, layout, runner } = context;
   return {
     files,
     ignores: [...layout.excludedGlobs, ...ignores],
     plugins: { nitpicker: nitpickerRules },
-    rules: { [TEST_ENVIRONMENT_RULE]: ['error', { environment, aliases, setupFiles }] },
+    rules: {
+      [TEST_ENVIRONMENT_RULE]: [
+        'error',
+        { environment, aliases, setupFiles, ...(runner === undefined ? {} : { runner }) },
+      ],
+    },
   };
 }
 
 export function testEnvironmentConfigFor(
   layout,
   { environment, scopes, aliases = [], setupFiles = [] },
+  runner,
 ) {
   const files = runnableTestGlobs(layout);
+  const context = { aliases, layout, runner };
   return [
-    environmentBlock({ files, environment, setupFiles }, aliases, layout),
-    ...scopes.map((scope) => environmentBlock(scope, aliases, layout)),
+    environmentBlock({ files, environment, setupFiles }, context),
+    ...scopes.map((scope) => environmentBlock(scope, context)),
   ];
 }

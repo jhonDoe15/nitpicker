@@ -2,6 +2,7 @@ import path from 'node:path';
 import { readLayout } from '../../../../head-policy.mjs';
 import { scanDomEvidence } from './dom-evidence.mjs';
 import { closureUsesDom, setupUsesDom } from './module-closure.mjs';
+import { RUNNER_OPTION_PROPERTY, vocabularyOf } from '../runners/runner-option.mjs';
 
 const layout = readLayout();
 const DOM_ENVIRONMENTS = new Set(['jsdom', 'happy-dom']);
@@ -60,9 +61,12 @@ function projectSetupUsesDom(options, cwd, aliases) {
   );
 }
 
-function reportFor(declared, projectEnvironment) {
+function reportFor(declared, projectEnvironment, directive) {
   if (declared === undefined) {
-    return { messageId: 'unusedProjectEnvironment', data: { environment: projectEnvironment } };
+    return {
+      messageId: 'unusedProjectEnvironment',
+      data: { environment: projectEnvironment, directive },
+    };
   }
   return {
     messageId: DOM_ENVIRONMENTS.has(projectEnvironment)
@@ -80,6 +84,7 @@ export const rule = {
       {
         type: 'object',
         properties: {
+          ...RUNNER_OPTION_PROPERTY,
           environment: { type: 'string' },
           setupFiles: { type: 'array', items: { type: 'string' } },
           aliases: {
@@ -98,7 +103,7 @@ export const rule = {
     messages: {
       unusedDirectiveEnvironment: `This test file declares {{environment}} but never uses the DOM. Change the directive to \`{{directive}} node\` or remove it. ${EXCEPTION_HINT}`,
       unusedDirectiveOverDomProject: `This test file declares {{environment}} but never uses the DOM, and the project default is a DOM environment too. Change the directive to \`{{directive}} node\`. ${EXCEPTION_HINT}`,
-      unusedProjectEnvironment: `This test file runs in {{environment}}, the project default, but never uses the DOM. Add \`/** @vitest-environment node */\` here, or default to node and add \`/** @vitest-environment {{environment}} */\` to DOM tests. ${EXCEPTION_HINT}`,
+      unusedProjectEnvironment: `This test file runs in {{environment}}, the project default, but never uses the DOM. Add \`/** {{directive}} node */\` here, or default to node and add \`/** {{directive}} {{environment}} */\` to DOM tests. ${EXCEPTION_HINT}`,
     },
   },
   create(context) {
@@ -114,7 +119,11 @@ export const rule = {
         const aliases = bundlerAliases(options);
         if (mayUseDom(filename, sourceCode.text, aliases)) return;
         if (projectSetupUsesDom(options, context.cwd, aliases)) return;
-        context.report({ node: program, ...reportFor(declared, options?.environment) });
+        const { environmentDirective } = vocabularyOf(context);
+        context.report({
+          node: program,
+          ...reportFor(declared, options?.environment, environmentDirective),
+        });
       },
     };
   },

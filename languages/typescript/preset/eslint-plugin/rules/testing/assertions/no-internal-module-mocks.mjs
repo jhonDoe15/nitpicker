@@ -1,5 +1,6 @@
 import path from 'node:path';
 import { readLayout } from '../../../../head-policy.mjs';
+import { createRunnerApis, moduleMockSource, runnerApiVisitors } from '../runners/runner-apis.mjs';
 
 const layout = readLayout();
 
@@ -13,28 +14,11 @@ export const rule = {
     },
   },
   create(context) {
-    const aliases = new Set(['vi', 'vitest']);
+    const apis = createRunnerApis();
     return {
-      ImportDeclaration(node) {
-        if (node.source.value !== 'vitest') return;
-        for (const specifier of node.specifiers) {
-          if (
-            specifier.type === 'ImportSpecifier' &&
-            ['vi', 'vitest'].includes(specifier.imported.name)
-          )
-            aliases.add(specifier.local.name);
-        }
-      },
+      ...runnerApiVisitors(apis),
       CallExpression(node) {
-        const callee = node.callee;
-        if (
-          callee.type !== 'MemberExpression' ||
-          callee.computed ||
-          !aliases.has(callee.object.name) ||
-          !['mock', 'doMock'].includes(callee.property.name)
-        )
-          return;
-        const target = node.arguments[0];
+        const target = moduleMockSource(apis, node);
         const source = target?.type === 'ImportExpression' ? target.source.value : target?.value;
         if (typeof source !== 'string') return;
         const resolved = source.startsWith('.')

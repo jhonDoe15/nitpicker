@@ -16,8 +16,9 @@ Before you change code other modules use, fix a bug, or add a UI state, read
 
 ## Finish with the gate
 
-1. Run your tests (`npx vitest run`). Failing tests stop coverage, CRAP and mutation from running.
-   The gate type-checks for you. Node globals (`process`, `AbortSignal`) and `node:` imports need
+1. Run your tests with the project's runner (`npx vitest run`, `npx jest`, `node --test` or
+   `npx mocha`). Failing tests stop coverage, CRAP and mutation from running. The gate type-checks
+   for you. Node globals (`process`, `AbortSignal`) and `node:` imports need
    `@types/node` in devDependencies.
 2. When the change is complete, run `npx nitpicker --fix` as a background command you wait on,
    without a pipe: you need its exit code. It applies ESLint and Prettier fixes with its own
@@ -131,10 +132,15 @@ Before you change code other modules use, fix a bug, or add a UI state, read
   change. Test each outcome of each union.
 - Test features through their `index.ts` with fakes: plain functions returning
   `Promise.resolve(x)` / `Promise.reject(error)`; a non-Error rejection is
-  `vi.fn().mockRejectedValue(42)`, a non-Error throw is `const value: unknown = 7; throw value;`.
+  `vi.fn().mockRejectedValue(42)` (`jest.fn()` under Jest, `mock.fn(async () => { throw 42; })`
+  under `node:test`), a non-Error throw is `const value: unknown = 7; throw value;`.
   Read a fake's calls through a helper that throws when the call is missing, not `calls[n]?.`. Spy on `process.stdout` only to test composition-root wiring,
-  and give it a real temp file (`mkdtemp`) rather than `vi.mock` of `node:` modules. The gate
-  restores spies; restore fake timers with `vi.useRealTimers()` in `afterEach`.
+  and give it a real temp file (`mkdtemp`) rather than `vi.mock` of `node:` modules (`jest.mock`,
+  `mock.module` and the other runners' module mocks count too). The gate restores spies; restore
+  fake timers with `vi.useRealTimers()` in `afterEach` (`jest.useRealTimers()`, `mock.timers.reset()`).
+- The gate runs your tests with the runner the project uses, found from its `test` script, a runner
+  config file or a dependency, and the same test rules apply to Vitest, Jest, `node:test` and Mocha;
+  only the names differ. Examples in this guide are Vitest.
 - Assert whole outputs with `toEqual`/`toBe`, not `toContain`, `toMatchObject` or `expect.any`.
   Write `expect` in the test body; asserting helpers don't count. Repeated cases are `it.each`,
   not loops. The rules above (`for...of` only, no `.then()`, no `as`) apply to tests too.

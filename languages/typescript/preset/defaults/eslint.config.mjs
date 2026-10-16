@@ -1,6 +1,5 @@
 import eslint from '@eslint/js';
 import { defineConfig } from 'eslint/config';
-import vitest from '@vitest/eslint-plugin';
 import globals from 'globals';
 import tseslint from 'typescript-eslint';
 import { nitpickerRules } from '../eslint-plugin/index.mjs';
@@ -25,12 +24,16 @@ import { readDependencyNames } from '../eslint-config/scope-support.mjs';
 import { i18nRuleIds } from '../eslint-config/i18n/i18n-rules.mjs';
 import { i18nScopeConfigFor, isI18nProject } from '../eslint-config/i18n/i18n-scope.mjs';
 import { readHeadPolicy, readLayout } from '../head-policy.mjs';
+import { testRunnerLintConfig } from '../eslint-config/runner/runner-rules.mjs';
+import { policyTestRunner } from '../test-runner/project-runner.mjs';
 import {
   testEnvironmentConfigFor,
   testEnvironmentsFromVariables,
 } from '../test-environment/test-environment-config.mjs';
 
 const policy = readHeadPolicy();
+const testRunner = policyTestRunner(policy, analyzedProjectRoot());
+const runnerConfig = await testRunnerLintConfig(testRunner);
 
 const layout = readLayout();
 const react = isReactProject({ projectRoot: analyzedProjectRoot(), react: policy.react });
@@ -103,17 +106,16 @@ const presetConfig = defineConfig(
     },
   },
   {
-    ...vitest.configs.recommended,
     files: testFiles,
     plugins: {
-      ...vitest.configs.recommended.plugins,
+      ...runnerConfig.plugins,
       nitpicker: nitpickerRules,
     },
+    settings: runnerConfig.settings,
     languageOptions: {
-      ...vitest.configs.env.languageOptions,
       globals: {
         ...globals.node,
-        ...vitest.configs.env.languageOptions.globals,
+        ...runnerConfig.globals,
       },
       parserOptions: {
         project: './tsconfig.quality.json',
@@ -121,32 +123,24 @@ const presetConfig = defineConfig(
       },
     },
     rules: {
-      ...vitest.configs.recommended.rules,
+      ...runnerConfig.rules,
       'nitpicker/integration-test-uses-approved-harness': 'error',
       'nitpicker/container-pause-requires-finally-unpause': 'error',
       'nitpicker/bounded-container-teardown': 'error',
-      'nitpicker/no-fixed-sleep-synchronization': 'error',
-      'nitpicker/no-interval-polling-in-tests': 'error',
+      'nitpicker/no-fixed-sleep-synchronization': ['error', { runner: testRunner }],
+      'nitpicker/no-interval-polling-in-tests': ['error', { runner: testRunner }],
       'nitpicker/no-mocking-subject-under-test': 'error',
       'nitpicker/no-internal-module-mocks': 'error',
       'nitpicker/no-wait-for-with-fake-timers': 'error',
       'nitpicker/no-partial-output-assertion': 'error',
       'nitpicker/test-must-use-production-runtime': 'error',
-      'vitest/expect-expect': [
-        'error',
-        { assertFunctionNames: ['expect', 'assert', 'expectTypeOf', 'assertType'] },
-      ],
-      'vitest/no-conditional-in-test': 'error',
-      'vitest/valid-expect': ['error', { maxArgs: 2 }],
-      'vitest/require-awaited-expect-poll': 'error',
-      'vitest/valid-expect-in-promise': 'error',
     },
   },
   {
     files: unitTestGlobs,
     rules: { 'nitpicker/no-external-executables-in-unit-tests': 'error' },
   },
-  ...testEnvironmentConfigFor(layout, testEnvironmentsFromVariables()),
+  ...testEnvironmentConfigFor(layout, testEnvironmentsFromVariables(), testRunner),
 );
 
 const inactiveRuleIds = [
