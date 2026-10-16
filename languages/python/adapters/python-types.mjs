@@ -3,6 +3,7 @@ import path from 'node:path';
 import { writeMypyConfig } from './configuration/mypy-config.mjs';
 import { execute, run } from './execution/python-process.mjs';
 import { importRoots } from './execution/python-project.mjs';
+import { mypyLayers } from './project-tools/mypy-layers.mjs';
 import { pyrightConfig } from './project-tools/pyright-config.mjs';
 
 export const TYPES_REPORT = 'type-check.json';
@@ -35,15 +36,16 @@ function mypyPath(context) {
 }
 
 function runMypy(context) {
+  const config = writeMypyConfig(context);
   return run(
     context,
     [
       'mypy',
       '--config-file',
-      writeMypyConfig(context),
+      config,
       '--python-executable',
       environmentPython(context),
-      '--strict',
+      ...(mypyLayers(context).appliesProject ? [] : ['--strict']),
       '--explicit-package-bases',
       '--show-error-codes',
       '--no-error-summary',

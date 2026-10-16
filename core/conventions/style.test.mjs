@@ -115,6 +115,36 @@ describe('Python type checker configs of the project', () => {
   });
 });
 
+describe('Python mypy config of the project', () => {
+  const fixed = `Format with ruff: ruff format --isolated --target-version py38 --line-length 88 --config 'format.quote-style = "double"' --config 'indent-width = 4' .\n`;
+  const notice = (what) =>
+    `Ignoring ${what}; opt in with "tools": { "mypy": { "precedence": ["project", "nitpicker"] } }\n`;
+
+  it('names the file or table that is ignored, until the project is listed', () => {
+    expect(follow({ preset: 'python' }, { 'mypy.ini': '[mypy]\n' }).printed).toBe(
+      fixed + notice('mypy.ini'),
+    );
+    expect(
+      follow({ preset: 'python' }, { 'pyproject.toml': '[tool.mypy]\nstrict = false\n' }).printed,
+    ).toBe(fixed + notice('[tool.mypy] in pyproject.toml'));
+    expect(follow({ preset: 'python' }, { 'setup.cfg': '[mypy]\nstrict = false\n' }).printed).toBe(
+      fixed + notice('[mypy] in setup.cfg'),
+    );
+    expect(
+      follow(
+        { preset: 'python', tools: { mypy: { precedence: LISTED } } },
+        { 'mypy.ini': '[mypy]\n' },
+      ).printed,
+    ).toBe(fixed);
+  });
+
+  it('says nothing when another type checker is chosen', () => {
+    const config = { preset: 'python', python: { typeChecker: 'pyright' } };
+
+    expect(follow(config, { 'mypy.ini': '[mypy]\n' }).printed).toBe(fixed);
+  });
+});
+
 describe('Python conventions that black can apply', () => {
   const black = { preset: 'python', python: { formatter: 'black' } };
 

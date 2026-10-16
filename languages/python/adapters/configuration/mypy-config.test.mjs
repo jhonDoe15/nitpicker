@@ -1,4 +1,4 @@
-import { mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
@@ -18,13 +18,20 @@ function temporary() {
   return root;
 }
 
-function generated(files, exclude = []) {
+function generated(files, exclude = [], extra = {}) {
   const projectRoot = temporary();
   const reportRoot = temporary();
   for (const [name, text] of Object.entries(files)) {
+    mkdirSync(path.dirname(path.join(projectRoot, name)), { recursive: true });
     writeFileSync(path.join(projectRoot, name), text);
   }
-  const file = writeMypyConfig({ projectRoot, reportRoot, exclude });
+  const file = writeMypyConfig({
+    projectRoot,
+    reportRoot,
+    exclude,
+    project: { sourceRoots: ['.'] },
+    ...extra,
+  });
   return { projectRoot, file: path.basename(file), text: readFileSync(file, 'utf8') };
 }
 
@@ -158,5 +165,156 @@ describe('the mypy config nitpicker generates', () => {
     expect(
       ['src/generated.py', 'src/a.py', 'buildings/a.py'].map((file) => pattern.test(file)),
     ).toEqual([false, false, false]);
+  });
+});
+
+describe('per-module sections that would silence the project own modules', () => {
+  const files = {
+    'src/shop/__init__.py': '',
+    'src/helper.py': '',
+    'mypy.ini': [
+      '[mypy]',
+      '[mypy-shop.*]',
+      'follow_imports = skip',
+      'ignore_missing_imports = True',
+      '[mypy-helper]',
+      'ignore_missing_imports = True',
+      '[mypy-shop.vendored,yaml.*,requests]',
+      'follow_imports = silent',
+      '[mypy-*.generated]',
+      'ignore_missing_imports = True',
+      '[mypy-numpy.*]',
+      'ignore_missing_imports = True',
+      '',
+    ].join('\n'),
+  };
+
+  it('keeps only the sections of modules the project does not own', () => {
+    const { text } = generated(files, [], { project: { sourceRoots: ['src'] } });
+
+    expect(text).toBe(
+      [
+        '[mypy]',
+        '',
+        '[mypy-yaml.*,requests]',
+        'follow_imports = silent',
+        '',
+        '[mypy-numpy.*]',
+        'ignore_missing_imports = True',
+        '',
+      ].join('\n'),
+    );
+  });
+
+  it('drops a wildcard section that could reach any module, and an own module of a toml table', () => {
+    const { text } = generated(
+      {
+        'src/shop/__init__.py': '',
+        'pyproject.toml': [
+          '[tool.mypy]',
+          '[[tool.mypy.overrides]]',
+          'module = ["shop.*", "attrs"]',
+          'ignore_missing_imports = true',
+          '[[tool.mypy.overrides]]',
+          'module = "*"',
+          'follow_imports = "skip"',
+          '',
+        ].join('\n'),
+      },
+      [],
+      { project: { sourceRoots: ['src'] } },
+    );
+
+    expect(text).toBe(
+      ['[[tool.mypy.overrides]]', 'module = [ "attrs" ]', 'ignore_missing_imports = true', ''].join(
+        '\n',
+      ),
+    );
+  });
+});
+
+describe('the mypy config with tools.mypy listing the project', () => {
+  const listed = (root) => ({
+    toolPrecedence: { mypy: ['project', 'nitpicker'] },
+    policyRoot: root,
+  });
+  const PYPROJECT = [
+    '[tool.mypy]',
+    'disallow_untyped_defs = false',
+    'exclude = ["^legacy/"]',
+    'plugins = ["pydantic.mypy"]',
+    '',
+    '[[tool.mypy.overrides]]',
+    'module = "shop.*"',
+    'ignore_errors = true',
+    '',
+  ].join('\n');
+
+  function layered(files, exclude, precedence) {
+    const projectRoot = temporary();
+    const reportRoot = temporary();
+    for (const [name, text] of Object.entries(files)) {
+      writeFileSync(path.join(projectRoot, name), text);
+    }
+    const file = writeMypyConfig({
+      projectRoot,
+      reportRoot,
+      exclude,
+      project: { sourceRoots: ['.'] },
+      ...(precedence ?? listed(projectRoot)),
+    });
+    return readFileSync(file, 'utf8');
+  }
+
+  it('puts strict first and lets every key the project sets override it', () => {
+    expect(layered({ 'pyproject.toml': PYPROJECT }, ['src/gen/**'])).toMatch(
+      /^\[tool\.mypy\]\nstrict = true\ndisallow_untyped_defs = false\nplugins = \[ "pydantic\.mypy" \]\nexclude = "\(\?:\^legacy\/\)\|\^\(\?:/,
+    );
+  });
+
+  it('keeps the per-module sections of the project, own modules included', () => {
+    expect(layered({ 'pyproject.toml': PYPROJECT }, [])).toBe(
+      [
+        '[tool.mypy]',
+        'strict = true',
+        'disallow_untyped_defs = false',
+        'plugins = [ "pydantic.mypy" ]',
+        'exclude = "(?:^legacy/)"',
+        '',
+        '[[tool.mypy.overrides]]',
+        'module = [ "shop.*" ]',
+        'ignore_errors = true',
+        '',
+      ].join('\n'),
+    );
+  });
+
+  it('is nitpicker strictness alone for a project that sets nothing', () => {
+    expect(layered({ 'mypy.ini': '[mypy]\n' }, [])).toBe('[mypy]\nstrict = true\n');
+  });
+
+  it('keeps the isolated config when nitpicker is listed first', () => {
+    const precedence = (root) => ({
+      toolPrecedence: { mypy: ['nitpicker', 'project'] },
+      policyRoot: root,
+    });
+    const projectRoot = temporary();
+    writeFileSync(path.join(projectRoot, 'pyproject.toml'), PYPROJECT);
+    const reportRoot = temporary();
+    const file = writeMypyConfig({
+      projectRoot,
+      reportRoot,
+      exclude: [],
+      project: { sourceRoots: ['.'] },
+      ...precedence(projectRoot),
+    });
+
+    expect(readFileSync(file, 'utf8')).toBe('[tool.mypy]\nplugins = [ "pydantic.mypy" ]\n');
+  });
+
+  it('names the missing config', () => {
+    expect(() => layered({}, [])).toThrow(
+      /^"tools\.mypy\.precedence" lists "project" but a mypy config \(.+\) is missing/u,
+    );
   });
 });
