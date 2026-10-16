@@ -1,7 +1,7 @@
 import { existsSync } from 'node:fs';
 import path from 'node:path';
 import { CONFIG_FILE_NAME } from '../../shared/config.mjs';
-import { resolveHeadPolicy } from '../../shared/head-policy.mjs';
+import { resolveHeadPolicy } from '../../languages/typescript/preset/head-policy.mjs';
 import { configureAnalyzers } from './configure-analyzers.mjs';
 import { describeConfigOverrides, loadConfig } from './config.mjs';
 import { presetAnalyzers } from './preset-analyzers.mjs';
@@ -28,6 +28,7 @@ export function createBaseSetupResolver({
     try {
       return baseSetupFromConfig({
         baseConfig: loadConfig(baseProjectRoot),
+        baseProjectRoot,
         headConfig,
         conventions,
         injectedAnalyzers,
@@ -44,6 +45,7 @@ export function createBaseSetupResolver({
 
 function baseSetupFromConfig({
   baseConfig,
+  baseProjectRoot,
   headConfig,
   conventions,
   injectedAnalyzers,
@@ -53,7 +55,7 @@ function baseSetupFromConfig({
     return {};
   }
   const baseHeadPolicy = {
-    ...resolveHeadPolicy(baseConfig),
+    ...resolveHeadPolicy(baseConfig, baseProjectRoot),
     ...(conventions === undefined ? {} : { conventions }),
   };
   const configured = new Map(

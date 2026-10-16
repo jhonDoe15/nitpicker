@@ -1,4 +1,5 @@
 import { readHeadPolicy } from '../../../head-policy.mjs';
+import { librariesForFile } from '../../../libraries/file-libraries.mjs';
 import { appliesPinoErrorShape } from '../../../libraries/project-libraries.mjs';
 
 const LOG_METHODS = new Set(['trace', 'debug', 'info', 'warn', 'error', 'fatal']);
@@ -102,7 +103,7 @@ function loggingVisitors(context) {
   };
 }
 
-export function structuredCatchLoggingRule(active) {
+export function structuredCatchLoggingRule(rootLibraries) {
   return {
     meta: {
       type: 'problem',
@@ -115,8 +116,11 @@ export function structuredCatchLoggingRule(active) {
           'Log a caught value as logger.<level>({ err: error, ...context }, message).',
       },
     },
-    create: (context) => (active ? loggingVisitors(context) : {}),
+    create: (context) =>
+      appliesPinoErrorShape(librariesForFile(context.filename, rootLibraries))
+        ? loggingVisitors(context)
+        : {},
   };
 }
 
-export const rule = structuredCatchLoggingRule(appliesPinoErrorShape(readHeadPolicy().libraries));
+export const rule = structuredCatchLoggingRule(readHeadPolicy().libraries);

@@ -4,7 +4,9 @@ import {
   withJsdoc,
 } from '../../../../../javascript/preset/documentation/jsdoc.mjs';
 import { readHeadPolicy } from '../../../head-policy.mjs';
+import { librariesForFile } from '../../../libraries/file-libraries.mjs';
 import { validationBehavior } from '../../../libraries/project-libraries.mjs';
+import { isParsedBySchema } from '../../../libraries/schema-calls.mjs';
 
 function isJsonParse(node) {
   return (
@@ -17,29 +19,27 @@ function isJsonParse(node) {
   );
 }
 
-function isSchemaParseCall(node, validation) {
-  if (node.type !== 'CallExpression') {
-    return false;
-  }
-  const { callee } = node;
-  if (callee.type === 'Identifier') {
-    return validation.functions.has(callee.name);
-  }
-  return (
-    callee.type === 'MemberExpression' &&
-    !callee.computed &&
-    callee.property.type === 'Identifier' &&
-    validation.methods.has(callee.property.name)
-  );
+function createVisitors(context, rootLibraries) {
+  const validation = validationBehavior(librariesForFile(context.filename, rootLibraries));
+  const data = { name: validation.name, example: validation.example };
+  const visitors = {
+    TSTypePredicate(node) {
+      context.report({ node, messageId: 'typePredicate', data });
+    },
+    CallExpression(node) {
+      if (isJsonParse(node) && !isParsedBySchema(context.sourceCode, node, validation.accepted)) {
+        context.report({ node, messageId: 'unparsedJson', data: { call: validation.call } });
+      }
+    },
+  };
+  return withJsdoc(context, visitors, {
+    selectTags: typePredicateTags,
+    messageId: 'typePredicate',
+    data,
+  });
 }
 
-function isSchemaParseArgument(expression, validation) {
-  const parent = expression.parent;
-  return isSchemaParseCall(parent, validation) && parent.arguments.includes(expression);
-}
-
-export function boundaryGuardRule(validation) {
-  const schemaName = validation.isZod ? 'a zod schema' : `a ${validation.name} schema`;
+export function boundaryGuardRule(rootLibraries) {
   return {
     meta: {
       type: 'problem',
@@ -49,54 +49,14 @@ export function boundaryGuardRule(validation) {
       },
       schema: jsdocOptionSchema,
       messages: {
-        typePredicate: `Do not hand-write a type guard for external data: parse it once at the boundary with ${schemaName} (${validation.example}).`,
-        unparsedJson: `Pass \`JSON.parse(text)\` straight into \`${validation.call}(...)\` inside the same \`try\`.`,
+        typePredicate:
+          'Do not hand-write a type guard for external data: parse it once at the boundary with a {{name}} schema ({{example}}).',
+        unparsedJson:
+          'Pass `JSON.parse(text)` straight into `{{call}}(...)` inside the same `try`.',
       },
     },
-    create: (context) => createVisitors(context, validation),
+    create: (context) => createVisitors(context, rootLibraries),
   };
 }
 
-function createVisitors(context, validation) {
-  const sourceCode = context.sourceCode;
-
-  function isParsedBySchema(call) {
-    if (isSchemaParseArgument(call, validation)) {
-      return true;
-    }
-    const declarator = call.parent;
-    if (
-      declarator.type !== 'VariableDeclarator' ||
-      declarator.init !== call ||
-      declarator.id.type !== 'Identifier'
-    ) {
-      return false;
-    }
-    return sourceCode
-      .getDeclaredVariables(declarator)
-      .some((variable) =>
-        variable.references.some(
-          (reference) =>
-            reference.identifier !== declarator.id &&
-            isSchemaParseArgument(reference.identifier, validation),
-        ),
-      );
-  }
-
-  const visitors = {
-    TSTypePredicate(node) {
-      context.report({ node, messageId: 'typePredicate' });
-    },
-    CallExpression(node) {
-      if (isJsonParse(node) && !isParsedBySchema(node)) {
-        context.report({ node, messageId: 'unparsedJson' });
-      }
-    },
-  };
-  return withJsdoc(context, visitors, {
-    selectTags: typePredicateTags,
-    messageId: 'typePredicate',
-  });
-}
-
-export const rule = boundaryGuardRule(validationBehavior(readHeadPolicy().libraries));
+export const rule = boundaryGuardRule(readHeadPolicy().libraries);

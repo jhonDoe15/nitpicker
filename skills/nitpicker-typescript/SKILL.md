@@ -95,7 +95,7 @@ Before you change code other modules use, fix a bug, or add a UI state, read
   `Date` instead of calling `add`, `set` or `setHours`. Give a callback that returns an object or
   array literal a readonly return type. Return readonly results as they are; don't spread-copy
   them.
-- No module-level `RegExp` or schema object (both are mutable): write the regex literal inside the
+- No module-level `RegExp` or zod schema (both are mutable): write the regex literal inside the
   function; schemas live in `adapters/`. Dedupe with `[...new Set(xs)]` or a `ReadonlySet`.
 - A `Date` is mutable: use it in one expression (`new Date(ms).getUTCHours()`) or type it
   `Readonly<Date>`.

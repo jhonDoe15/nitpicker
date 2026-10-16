@@ -8,9 +8,14 @@ import {
   reactTestRuleIds,
   testingLibrarySettings,
 } from './react-rules.mjs';
-import { productionScope, readDependencyNames, storyGlobs } from '../scope-support.mjs';
+import {
+  analyzedProjectRoot,
+  productionScope,
+  readDependencyNames,
+  storyGlobs,
+} from '../scope-support.mjs';
 
-export { isReactProject } from '../scope-support.mjs';
+export { analyzedProjectRoot, isReactProject } from '../scope-support.mjs';
 
 export function stylingApproachFor({ projectRoot, react = {} }) {
   if (react.styling !== undefined) {
@@ -19,10 +24,6 @@ export function stylingApproachFor({ projectRoot, react = {} }) {
   return readDependencyNames(projectRoot).some((name) => cssInJsSource.test(name))
     ? 'css-in-js'
     : defaultStylingApproach;
-}
-
-export function analyzedProjectRoot(environment = process.env) {
-  return environment.NITPICKER_DIFF_ESLINT_PROJECT_ROOT ?? process.cwd();
 }
 
 function testScope(layout) {

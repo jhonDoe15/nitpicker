@@ -144,7 +144,7 @@ line) is a finding.
   with `@returns {Total}` and pass it: `statuses.map((status) => totalFor(xs, status))`. A reducer is
   the same: `xs.reduce(addInvoice, none)`, with `addInvoice` taking and returning the readonly type.
   Return readonly results as they are; don't spread-copy them.
-- No module-level `RegExp` or schema object (both are mutable): write the regex literal inside the
+- No module-level `RegExp` or zod schema (both are mutable): write the regex literal inside the
   function; schemas live in `adapters/`. Dedupe with `[...new Set(xs)]` or a `ReadonlySet`.
 - A `Date` is mutable: use it in one expression (`new Date(ms).getUTCHours()`) or type it
   `Readonly<Date>`.

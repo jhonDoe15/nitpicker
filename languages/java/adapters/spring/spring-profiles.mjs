@@ -12,26 +12,44 @@ const STRING_LITERAL = /"([^"]+)"/g;
 const ACTIVE_KEY = relaxKey('spring.profiles.active');
 const LOCAL_WORDS = new Set(['local', 'dev', 'development']);
 const TEST_WORDS = new Set(['test', 'tests', 'it', 'integration']);
-const PRODUCTION_WORDS = new Set(['prod', 'production', 'live']);
+const PRODUCTION_WORDS = new Set([
+  'prod',
+  'prd',
+  'production',
+  'live',
+  'preprod',
+  'staging',
+  'stage',
+  'stg',
+  'uat',
+]);
 
 function words(profile) {
-  return profile.split(/[-_.]/).filter((word) => word !== '');
+  return profile
+    .toLowerCase()
+    .split(/[-_.]/)
+    .filter((word) => word !== '');
 }
 
 function mentionsAny(profile, set) {
   return words(profile).some((word) => set.has(word));
 }
 
+function isProductionLike(profile) {
+  return mentionsAny(profile, PRODUCTION_WORDS);
+}
+
 function isTestProfile(profile, detected) {
   return (
-    profile.startsWith('test') ||
-    mentionsAny(profile, TEST_WORDS) ||
-    (detected.has(profile) && !mentionsAny(profile, PRODUCTION_WORDS))
+    !isProductionLike(profile) &&
+    (profile.toLowerCase().startsWith('test') ||
+      mentionsAny(profile, TEST_WORDS) ||
+      detected.has(profile.toLowerCase()))
   );
 }
 
 function isLocalProfile(profile) {
-  return mentionsAny(profile, LOCAL_WORDS);
+  return !isProductionLike(profile) && mentionsAny(profile, LOCAL_WORDS);
 }
 
 function exemptWhenEvery(document, matches) {
