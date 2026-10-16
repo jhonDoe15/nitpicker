@@ -126,6 +126,9 @@ export function configureJavaAnalyzer(analyzer, options) {
             ? []
             : ['--policy-root', context.projectPolicyRoot]),
           ...(context.baselineRoot === undefined ? [] : ['--baseline-root', context.baselineRoot]),
+          ...(context.baselineMovesFile === undefined
+            ? []
+            : ['--baseline-moves-file', context.baselineMovesFile]),
         ],
       };
     },

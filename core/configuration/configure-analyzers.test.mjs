@@ -2,6 +2,8 @@ import { describe, expect, it } from 'vitest';
 import { configuredAnalyzers } from '../../languages/typescript/preset/diff/configured-analyzers.mjs';
 import { resolveHeadPolicy } from '../../languages/typescript/preset/head-policy.mjs';
 import { createPythonAnalyzers } from '../../languages/python/adapters/python-analyzer.mjs';
+import { createJavaAnalyzer } from '../../languages/java/adapters/java-analyzer.mjs';
+import { parseRunnerArguments } from '../../languages/java/adapters/java-runner.mjs';
 import { configureAnalyzers } from './configure-analyzers.mjs';
 
 const packageAnalyzers = configuredAnalyzers();
@@ -92,5 +94,43 @@ describe('configureAnalyzers', () => {
     expect(() => configure(['python'])).toThrow(
       '"disable" cannot disable python because mutation depends on it; add it to "disable" too',
     );
+  });
+});
+
+describe('the baseline moves file', () => {
+  const context = {
+    projectRoot: '/p',
+    policyRoot: '/p',
+    toolRoot: '/t',
+    liveProjectRoot: '/p',
+    snapshot: 'head',
+    baselineRoot: '/base',
+    baselineMovesFile: '/tmp/moves.json',
+  };
+  const movesArgument = (analyzer) => {
+    const { args } = analyzer.createInvocation(context);
+    return args[args.indexOf('--baseline-moves-file') + 1];
+  };
+
+  it.each([
+    ['typescript', () => packageAnalyzers, 'structure'],
+    ['python', () => createPythonAnalyzers(), 'python'],
+    ['java', () => [createJavaAnalyzer()], 'java'],
+    ['kotlin', () => [createJavaAnalyzer({ kotlin: true })], 'kotlin'],
+  ])('reaches the %s analyzer', (preset, analyzers, name) => {
+    const config = { preset };
+    const configured = configureAnalyzers(analyzers(), config, resolveHeadPolicy(config));
+
+    expect(movesArgument(configured.find((analyzer) => analyzer.name === name))).toBe(
+      '/tmp/moves.json',
+    );
+  });
+
+  it('is read by the Java and Python runner', () => {
+    const config = { preset: 'java' };
+    const [java] = configureAnalyzers([createJavaAnalyzer()], config, resolveHeadPolicy(config));
+    const { args } = java.createInvocation({ ...context, baselineRoot: undefined });
+
+    expect(parseRunnerArguments(args.slice(1)).policy.baselineMovesFile).toBe('/tmp/moves.json');
   });
 });
