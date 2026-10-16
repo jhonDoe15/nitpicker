@@ -139,8 +139,14 @@ describe('Prettier conventions', () => {
           arrowParens: 'always',
           bracketSpacing: true,
           endOfLine: 'lf',
+          jsxSingleQuote: false,
+          bracketSameLine: false,
         });
-        expect(await optionsFor(directory, 'data.json', ['project'])).toEqual({ semi: false });
+        expect(await optionsFor(directory, 'data.json', ['project'])).toEqual({
+          semi: false,
+          useTabs: false,
+          tabWidth: 2,
+        });
       });
     } finally {
       rmSync(directory, { recursive: true, force: true });

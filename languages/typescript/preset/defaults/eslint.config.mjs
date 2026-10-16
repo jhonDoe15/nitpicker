@@ -26,6 +26,7 @@ import { i18nRuleIds } from '../eslint-config/i18n/i18n-rules.mjs';
 import { i18nScopeConfigFor, isI18nProject } from '../eslint-config/i18n/i18n-scope.mjs';
 import { readHeadPolicy, readLayout } from '../head-policy.mjs';
 import { fileNameRuleOptions } from '../../conventions/file-name-casing.mjs';
+import { assertionFunctionNames } from '../../conventions/measures/assertion-helpers.mjs';
 import { typeImportFixStyle } from '../../conventions/type-import-style.mjs';
 import {
   testEnvironmentConfigFor,
@@ -149,7 +150,7 @@ const presetConfig = defineConfig(
       'nitpicker/test-must-use-production-runtime': 'error',
       'vitest/expect-expect': [
         'error',
-        { assertFunctionNames: ['expect', 'assert', 'expectTypeOf', 'assertType'] },
+        { assertFunctionNames: assertionFunctionNames(policy.conventions) },
       ],
       'vitest/no-conditional-in-test': 'error',
       'vitest/valid-expect': ['error', { maxArgs: 2 }],

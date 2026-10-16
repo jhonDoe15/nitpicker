@@ -1,5 +1,7 @@
 import { configError, isPlainObject } from '../config.mjs';
 
+const NAME = /^[A-Za-z_$][\w$]*$/;
+
 export function validateConventions(value, definitions) {
   if (!isPlainObject(value)) {
     throw configError('"conventions" must be an object');
@@ -11,6 +13,15 @@ export function validateConventions(value, definitions) {
       throw configError(
         `unknown convention "${id}". Allowed conventions: ${[...known.keys()].join(', ') || '(none for this preset)'}`,
       );
+    }
+    if (definition.kind === 'names') {
+      if (
+        !Array.isArray(choice) ||
+        !choice.every((name) => typeof name === 'string' && NAME.test(name))
+      ) {
+        throw configError(`"conventions.${id}" must be a list of function names`);
+      }
+      continue;
     }
     if (!definition.options.includes(choice)) {
       throw configError(
@@ -24,7 +35,13 @@ export function describeConventions(detected, definitions) {
   return definitions.map((definition) => describeOne(definition, detected[definition.id]));
 }
 
-function describeOne(definition, { choice, source, counts }) {
+function describeOne(definition, { choice, source, counts, files }) {
+  if (Array.isArray(choice)) {
+    const names = `${definition.label}: ${choice.join(', ')}`;
+    return source === 'pinned'
+      ? `${names} (set in nitpicker.config.json)`
+      : `${names} (final call of at least ${String(definition.minFiles)} of ${String(files)} measured files)`;
+  }
   const label = `${definition.label}: ${definition.optionLabels[choice]}`;
   if (source === 'pinned') {
     return `${label} (set in nitpicker.config.json)`;

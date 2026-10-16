@@ -21,7 +21,7 @@ import {
   testRoots,
 } from './layout.mjs';
 import { stylingApproachFor } from './eslint-config/react/react-styling.mjs';
-import { prettierConventionOptions } from '../conventions/prettier-conventions.mjs';
+import { hasPrettierConventions } from '../conventions/prettier-conventions.mjs';
 
 export { headPolicyEnvironment, withHeadPolicyFile } from '../../../shared/head-policy.mjs';
 
@@ -126,7 +126,7 @@ export function usesLayeredPrettier(environment = process.env) {
   const policy = readHeadPolicy(environment);
   return (
     usesProjectConfig(policy.tools.prettier?.precedence ?? []) ||
-    Object.keys(prettierConventionOptions(policy.conventions)).length > 0
+    hasPrettierConventions(policy.conventions)
   );
 }
 

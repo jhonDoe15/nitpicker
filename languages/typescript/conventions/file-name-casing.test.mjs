@@ -18,7 +18,9 @@ describe('file name casing votes', () => {
     ['src/user-profile.test.ts', 'kebab-case'],
     ['src/userProfile.spec.mjs', 'camelCase'],
     ['src/use-session.tsx', 'kebab-case'],
-    ['src/useSession.tsx', 'camelCase'],
+    ['src/user-session.tsx', 'kebab-case'],
+    ['src/userSession.tsx', 'camelCase'],
+    ['src/user.ts', undefined],
     ['src/user-Profile.ts', undefined],
   ])('%s votes %s', (file, expected) => {
     expect(vote(file)).toBe(expected);
@@ -58,6 +60,13 @@ describe('file name casing votes', () => {
   ])('%s is PascalCase and gives no vote', (file) => {
     expect(vote(file)).toBeUndefined();
   });
+
+  it.each(['src/useAuth.ts', 'src/hooks/useSession.tsx', 'src/useAuth.test.ts', 'src/useX.ts'])(
+    '%s is a React hook file and gives no vote',
+    (file) => {
+      expect(vote(file)).toBeUndefined();
+    },
+  );
 
   it.each([
     'dist/chunk-3f9a1c2b.js',
@@ -116,6 +125,8 @@ describe('file name casing compliance', () => {
     'src/UserProfile.ts',
     'src/UserProfile.tsx',
     'src/Button.js',
+    'src/useAuth.ts',
+    'src/hooks/useSession.tsx',
     'dist/chunk-3f9a1c2b.js',
     'src/main.3f9a1c2b.js',
     'src/__generated__/UserQuery.graphql.ts',
