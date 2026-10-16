@@ -146,7 +146,9 @@ function bindingIdentifiers(name) {
 
 function declaredExports(statement) {
   const kinds = modifierKinds(statement);
-  if (!kinds.includes(ts.SyntaxKind.ExportKeyword)) return [];
+  if (!kinds.includes(ts.SyntaxKind.ExportKeyword)) {
+    return [];
+  }
   if (ts.isVariableStatement(statement)) {
     return statement.declarationList.declarations
       .flatMap(({ name }) => bindingIdentifiers(name))
@@ -159,7 +161,9 @@ function declaredExports(statement) {
 }
 
 function specifiedExports(statement) {
-  if (ts.isExportAssignment(statement)) return [{ name: 'default', node: statement }];
+  if (ts.isExportAssignment(statement)) {
+    return [{ name: 'default', node: statement }];
+  }
   const clause = ts.isExportDeclaration(statement) ? statement.exportClause : undefined;
   return statement.moduleSpecifier === undefined &&
     clause !== undefined &&
