@@ -18,7 +18,7 @@ const UNIT_TEST_TASKS = new Set(['test', 'surefire']);
 const INTEGRATION_CLASS = /(?:IT|ITCase|IntegrationTests?)$/u;
 const MOVE_ADVICE = {
   gradle: ', or move it to an integration test source set if it is one',
-  maven: ', or make it a Failsafe integration test (class name ending in IT) if it is one',
+  maven: ', or make it an integration test that Failsafe runs (*IT) if it is one',
 };
 const MAVEN_TASKS = new Set(['surefire', 'failsafe']);
 

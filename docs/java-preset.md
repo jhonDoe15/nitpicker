@@ -490,7 +490,7 @@ resolved plus a new finding, as in the TypeScript check.
   carries it, when that type's source is in a test root.
   The message names the budget, the measured time, the fixes (no `Thread.sleep` or other waits, a
   smaller Spring context or a test slice, or moving it to an integration test source set; on Maven,
-  making it a Failsafe integration test, a class name ending in `IT`) and the exception route.
+  making it an integration test that Failsafe runs, `*IT`) and the exception route.
   Nitpicker runs only the tests its run needs: on Gradle the `test` task and any test task the build
   makes it depend on, on Maven the `test` phase, so a test moved out of them is not timed.
 - **Measurement.** Head only, from the JUnit XML the test tasks already write: the init script copies
