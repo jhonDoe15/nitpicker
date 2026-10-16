@@ -8,7 +8,8 @@
       "message": "No CPD duplicate report for core.",
       "classification": "descriptive",
       "toolNotRun": true,
-      "notRunScope": ["core/src/main/java", "core/src/test/java", "core/src/testFixtures/java"]
+      "notRunScope": ["core/src/main/java", "core/src/test/java", "core/src/testFixtures/java"],
+      "notRunIdentityPrefix": "cpd:"
     },
     {
       "tool": "duplicates",
@@ -18,7 +19,8 @@
       "message": "No CPD duplicate report for lib-all.",
       "classification": "descriptive",
       "toolNotRun": true,
-      "notRunScope": ["lib/src/main/java", "lib/src/test/java"]
+      "notRunScope": ["lib/src/main/java", "lib/src/test/java"],
+      "notRunIdentityPrefix": "cpd:"
     },
     {
       "tool": "duplicates",
@@ -28,7 +30,8 @@
       "message": "No CPD duplicate report for app.",
       "classification": "descriptive",
       "toolNotRun": true,
-      "notRunScope": ["app/src/main/java"]
+      "notRunScope": ["app/src/main/java"],
+      "notRunIdentityPrefix": "cpd:"
     }
   ]
 }

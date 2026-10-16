@@ -8,7 +8,8 @@
       "message": "No CPD duplicate report for core.",
       "classification": "descriptive",
       "toolNotRun": true,
-      "notRunScope": ["core/src/main/java", "core/src/test/java"]
+      "notRunScope": ["core/src/main/java", "core/src/test/java"],
+      "notRunIdentityPrefix": "cpd:"
     }
   ]
 }

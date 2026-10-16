@@ -346,6 +346,9 @@ describe('spec/findings.schema.json', () => {
       { ...valid, classification: 'descriptive', toolNotRun: true, notRunScope: [] },
       { ...valid, classification: 'descriptive', toolNotRun: true, notRunScope: [''] },
       { ...valid, classification: 'descriptive', toolNotRun: true, notRunScope: 'core' },
+      { ...valid, classification: 'descriptive', notRunIdentityPrefix: 'cpd:' },
+      { ...valid, classification: 'descriptive', toolNotRun: true, notRunIdentityPrefix: '' },
+      { ...valid, classification: 'descriptive', toolNotRun: true, notRunIdentityPrefix: 1 },
     ];
 
     for (const finding of malformed) {
@@ -439,7 +442,7 @@ describe('spec/findings.schema.json', () => {
     expect(validate({ findings: [finding] })).toEqual([]);
   });
 
-  it('accepts a tool-not-run notice scoped to identity prefixes', () => {
+  it('accepts a tool-not-run notice scoped to directories and an identity prefix', () => {
     const finding = {
       tool: 'duplicates',
       rule: 'cpd-not-run',
@@ -449,6 +452,7 @@ describe('spec/findings.schema.json', () => {
       classification: 'descriptive',
       toolNotRun: true,
       notRunScope: ['core/src/main/java', 'core/src/test/java'],
+      notRunIdentityPrefix: 'cpd:',
     };
 
     expect(parseFinding(finding)).toEqual(finding);
