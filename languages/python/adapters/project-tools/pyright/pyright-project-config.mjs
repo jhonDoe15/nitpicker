@@ -1,6 +1,6 @@
 import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
-import { parseJsonc } from '../../../../../shared/jsonc.mjs';
+import { parseJsonc } from '../../../../../shared/jsonc/jsonc.mjs';
 import { attempt, parseToml } from '../project-tool-layers.mjs';
 
 export const PYRIGHT_JSON = 'pyrightconfig.json';
