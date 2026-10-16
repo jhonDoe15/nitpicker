@@ -60,9 +60,9 @@ it with `npx skills add jhonDoe15/nitpicker --skill nitpicker-java`.
 ## Size and tests
 
 - A function stays within 50 lines, 15 statements, 2 levels of control nesting and 3 parameters;
-  past 3 parameters, pass a data class. `init` blocks (`Class.<init>`) and property
-  initializers that hold a block or a branch (`val x = run { ... }`, `val y = if (...) ... else ...`) count as
-  functions with the same limits. An `init` block cannot return early: move the nested part into
+  past 3 parameters, pass a data class. Each lambda, anonymous function and local function is a function
+  with the same limits, counted on its own and not towards the function around it; so are `init` blocks
+  (`Class.<init>`) and property initializers that branch (`val y = if (...) ... else ...`). An `init` block cannot return early: move the nested part into
   a function. Complex code needs tests: the CRAP score of a function must
   stay below 9.
 - A new clone of at least 5 lines and 50 tokens in main sources (`duplicate-clone`) fails: extract

@@ -140,43 +140,49 @@ describe.skipIf(!enabled)('KotlinMetrics on source files', () => {
 
     expect(
       metrics.functions.map(
-        ({ name, start, end, statements, parameters, complexity, inline, initializer }) =>
-          `${name} ${start}-${end} s${statements} p${parameters} c${complexity}${inline ? ' inline' : ''}${initializer ? ' initializer' : ''}`,
+        ({ name, start, end, statements, parameters, complexity, inline, initializer, lambda }) =>
+          `${name} ${start}-${end} s${statements} p${parameters} c${complexity}${inline ? ' inline' : ''}${initializer ? ' initializer' : ''}${lambda ? ' lambda' : ''}`,
       ),
     ).toEqual([
       'plain 3-8 s3 p2 c5',
       'Int.double 10-10 s1 p0 c1',
-      'twice 12-15 s2 p1 c1 inline',
-      'Holder.Holder 18-20 s1 p0 c1',
-      'Holder.<init> 22-24 s1 p0 c1 initializer',
-      'Holder.doubled.get 27-27 s1 p0 c1',
-      'Holder.combine 29-31 s3 p4 c2',
-      'Holder.cached 33-36 s2 p0 c1',
-      'Holder.anonymous 38-40 s1 p1 c1',
-      'Holder.eager 42-45 s3 p0 c1 initializer',
+      'twice 12-16 s3 p1 c1 inline',
+      'twice.inside 13-13 s1 p0 c1 inline lambda',
+      'callbacks 18-25 s4 p1 c1',
+      'callbacks.scale 19-19 s3 p1 c2 lambda',
+      'callbacks.clamp 20-22 s1 p1 c3 lambda',
+      'callbacks.named 23-23 s1 p1 c1 lambda',
+      'callbacks.<lambda> 24-24 s3 p1 c2 lambda',
+      'Holder.Holder 28-30 s1 p0 c1',
+      'Holder.<init> 32-34 s1 p0 c1 initializer',
+      'Holder.doubled.get 37-37 s1 p0 c1',
+      'Holder.combine 39-41 s3 p4 c2 lambda',
+      'Holder.cached 43-46 s2 p0 c1 lambda',
+      'Holder.anonymous 48-50 s1 p1 c1 lambda',
+      'Holder.eager 52-55 s2 p0 c1 lambda',
     ]);
   });
 
-  it('measures init blocks and property initializers that hold a block or branch, and leaves out the straight-line ones', () => {
+  it('measures init blocks and property initializers that branch, every lambda as a unit of its own, and leaves out the straight-line initializers', () => {
     const { metrics } = measure(writeSources('initializers', { 'src/Init.kt': INITIALIZERS }));
 
     expect(
       metrics.functions.map(
-        ({ name, start, end, statements, parameters, complexity, initializer }) =>
-          `${name} ${start}-${end} s${statements} p${parameters} c${complexity}${initializer ? ' initializer' : ''}`,
+        ({ name, start, end, statements, parameters, complexity, initializer, lambda }) =>
+          `${name} ${start}-${end} s${statements} p${parameters} c${complexity}${initializer ? ' initializer' : ''}${lambda ? ' lambda' : ''}`,
       ),
     ).toEqual([
       'Boot.<init> 9-12 s2 p0 c1 initializer',
       'Boot.label 16-16 s1 p0 c2 initializer',
-      'Boot.table 18-18 s2 p0 c1 initializer',
+      'Boot.table 18-18 s1 p1 c1 lambda',
       'Boot.chosen 20-24 s1 p0 c3 initializer',
-      'Boot.observed 26-28 s1 p3 c1',
+      'Boot.observed 26-28 s1 p3 c1 lambda',
       'Boot.<anonymous>.run 31-33 s1 p0 c1',
       'Boot.<anonymous>.<init> 35-37 s1 p0 c1 initializer',
-      'Boot.Companion.registry 41-41 s2 p0 c1 initializer',
+      'Boot.Companion.registry 41-41 s1 p0 c1 lambda',
       'Boot.Companion.<init> 43-45 s1 p0 c1 initializer',
       'Single.<init> 50-52 s1 p0 c1 initializer',
-      'top 55-55 s2 p0 c1 initializer',
+      'top 55-55 s1 p0 c1 lambda',
     ]);
   });
 

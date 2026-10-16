@@ -1,6 +1,6 @@
 import { DEFAULT_CRAP_SCORE_LIMIT, MESSAGES } from '../../../shared/policy.mjs';
 import { crapFindings } from '../../../shared/rules/crap.mjs';
-import { nextOccurrence } from '../../../shared/rules/finding-helpers.mjs';
+import { nextOccurrence, repeatsInSource } from '../../../shared/rules/finding-helpers.mjs';
 import {
   descriptorTypes,
   sameConstructor,
@@ -8,8 +8,10 @@ import {
 } from './constructors/constructor-match.mjs';
 import { childrenNamed, createIdentityCounter, normalizeReportPath, parseXml } from './common.mjs';
 import { jacocoLineUnits } from './coverage-reports/jacoco-lines.mjs';
+import { coverageLookup, ownRange } from './units/unit-coverage.mjs';
 
 const FULL_COVERAGE = 100;
+const LAMBDA_METHOD_PREFIX = 'lambda$';
 
 export function calculateCrap(complexity, coveragePercent) {
   const uncovered = 1 - coveragePercent / 100;
@@ -28,10 +30,12 @@ export function ingestCrapFunctions(parsed, jacocoXml, options = {}) {
   const coverageOf = coverageLookup({
     pools: {
       methods: jacocoMethods(report),
-      lines: parsed.some((fn) => fn.lineScoped) ? jacocoLineUnits(report) : new Map(),
+      lines: parsed.some((fn) => fn.lineScoped || fn.lineFallback)
+        ? jacocoLineUnits(report)
+        : new Map(),
     },
     keysOf: options.jacocoKeys ?? rootRelativeKeys(options.sourceRoots ?? ['']),
-    selectMethods: options.selectMethods ?? selectNamedMethods,
+    selectMethods: options.selectMethods ?? selectJavaMethods,
     parsed,
   });
   return ingestCrapRows(parsed, options, (fn, filePath) => ({
@@ -115,6 +119,9 @@ function structureFunctions(entries) {
         parameterTypes: entry.parameterTypes,
         start: entry.start,
         end: entry.end,
+        lambda: entry.lambda === true,
+        lineScoped: entry.initializer === true,
+        numberedAmongSameSource: repeatsInSource(entry.name),
       };
     });
 }
@@ -203,6 +210,19 @@ function counter(element, type) {
   return { covered, total: covered + Number.parseInt(found.attrs.missed, 10) };
 }
 
+function selectJavaMethods(fn, candidates, siblings) {
+  if (fn.lineScoped) {
+    return ownRange(fn, candidates, siblings);
+  }
+  return fn.lambda
+    ? ownRange(fn, candidates.filter(isLambdaMethod), siblings)
+    : selectNamedMethods(fn, candidates);
+}
+
+function isLambdaMethod(method) {
+  return method.name.startsWith(LAMBDA_METHOD_PREFIX);
+}
+
 function selectNamedMethods(fn, candidates) {
   return candidates.filter(
     (method) =>
@@ -217,33 +237,6 @@ function rootRelativeKeys(sourceRoots) {
       const prefix = root === '' ? '' : `${root.replace(/\/+$/, '')}/`;
       return filePath.startsWith(prefix) ? [filePath.slice(prefix.length)] : [];
     });
-}
-
-function coverageLookup({ pools, keysOf, selectMethods, parsed }) {
-  const siblings = Map.groupBy(parsed, (fn) => fn.file);
-
-  function coverageOf(fn, filePath) {
-    const pool = fn.lineScoped ? pools.lines : pools.methods;
-    const matches = keysOf(filePath).flatMap((key) =>
-      selectMethods(fn, pool.get(key) ?? [], siblings.get(fn.file)),
-    );
-    return lowestCoverage(matches);
-  }
-
-  return coverageOf;
-}
-
-function lowestCoverage(matches) {
-  function sum(key) {
-    return {
-      covered: matches.reduce((total, method) => total + method[key].covered, 0),
-      total: matches.reduce((total, method) => total + method[key].total, 0),
-    };
-  }
-  const percents = [sum('lines'), sum('branches')]
-    .filter((measure) => measure.total > 0)
-    .map((measure) => (measure.covered / measure.total) * 100);
-  return percents.length === 0 ? undefined : Math.min(...percents);
 }
 
 function jacocoMethod(method, cls) {
