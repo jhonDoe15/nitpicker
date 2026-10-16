@@ -155,6 +155,11 @@ describe.skipIf(!enabled)('Java preset on Maven builds', () => {
           ),
         ),
       ).toEqual([true, true, true, true]);
+      expect(
+        fromMaven
+          .filter((finding) => finding.rule === 'TestClassWithoutTestCases')
+          .map(({ path: file, location }) => `${file}:${String(location.line)}`),
+      ).toEqual(['src/test/java/guards/GreetingFixturesTest.java:3']);
     },
     2 * GRADLE_STEP_TIMEOUT_MS,
   );
@@ -186,6 +191,30 @@ describe.skipIf(!enabled)('Java preset on Maven builds', () => {
           .filter((finding) => finding.path.startsWith('legacy/') && watched.has(finding.rule))
           .map((finding) => finding.rule),
       ).toEqual(['OptionalGet']);
+      expect(
+        findings
+          .filter((finding) => finding.tool === 'coupling' && finding.path.startsWith('modular/'))
+          .map(({ path: file, metric }) => `${file} ${metric.name} ${String(metric.value)}`),
+      ).toEqual(
+        [
+          'Labels.java fanIn 0',
+          'Labels.java fanOut 1',
+          'Labels.java totalCoupling 1',
+          'Labels.java instability 1',
+          'Shape.java fanIn 3',
+          'Shape.java fanOut 2',
+          'Shape.java totalCoupling 5',
+          'Shape.java instability 0.4',
+          'impl/Circle.java fanIn 1',
+          'impl/Circle.java fanOut 1',
+          'impl/Circle.java totalCoupling 2',
+          'impl/Circle.java instability 0.5',
+          'impl/Square.java fanIn 1',
+          'impl/Square.java fanOut 1',
+          'impl/Square.java totalCoupling 2',
+          'impl/Square.java instability 0.5',
+        ].map((line) => `modular/src/main/java/modular/shapes/${line}`),
+      );
     },
     GRADLE_STEP_TIMEOUT_MS,
   );

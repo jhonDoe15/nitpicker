@@ -129,6 +129,12 @@ field by field. Per snapshot:
   over every module's roots, so `exceptions` and `exclude` globs are relative to the project root
   (`languages/java/builds/java-modules.mjs`; both builds share `builds/project-wide.mjs`). Duplicate detection runs per module, so
   a clone between two modules is not found, as a clone between two source roots is not.
+- **Module descriptors.** jdeps reads a module with a `module-info.class` as that module, so it
+  must find every module the descriptor `requires`: there it also gets the main compile classpath
+  on `--module-path` and `--multi-release` with the module's `release` (else `target`), as jars
+  such as commons-lang3 keep their descriptor under `META-INF/versions/9/`. Only the edges between
+  the module's own classes are read, so coupling is the same as without a descriptor. The Gradle
+  init script does not pass these yet, and its `nitpickerJdeps` fails on such a module.
 - **Guards.** The [guards](#guards) run on Maven too, outside Maven and per module
   (`languages/java/maven/guards/`), writing the same reports in `target/nitpicker/`. The javac
   lint pass reads the `maven-compiler-plugin` settings from the effective POM (`release`, `source`,
@@ -147,6 +153,8 @@ field by field. Per snapshot:
   the base's warnings for unchanged files exactly as on Gradle. forbiddenapis reads the module's
   output directory (`target/classes` unless the POM moves it) against the main compile classpath
   and is skipped when the module has no classes; CPD, the guard and test-honesty PMD rulesets,
+  `pmd-tests.xml` (`TestClassWithoutTestCases` with the main source roots excluded, after the
+  guard rulesets and before the Spring one, only with Nitpicker's rulesets on),
   the extra Checkstyle modules and the sealed `permits` edges are the same as on Gradle. The Java
   16 PMD rules are skipped below release 16, with the same Java 8 default. The dependency check
   reads the dependencies the module's own `pom.xml` declares with compile scope (no `<scope>` or
@@ -158,7 +166,7 @@ field by field. Per snapshot:
   from `dependency:list`, and the finding sits on
   the module's `pom.xml` with Maven's scopes as the alternatives. The end-to-end suite compares
   Gradle and Maven on the guards fixture and lints a reactor with a javac plug-in, preview
-  features, a module descriptor and an older release.
+  features, a module descriptor that requires a jar module, and an older release.
 - **Binary.** `NITPICKER_MAVEN` when set; otherwise the project's `mvnw` (`mvnw.cmd` on Windows),
   run with `sh` when not executable; otherwise `mvn` from the PATH. A missing `mvn` is a tool error
   that names these three ways. The JDK tools (`java`, `jar`, `jdeps`) come from `JAVA_HOME` when

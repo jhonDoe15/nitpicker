@@ -10,6 +10,11 @@ const PATTERN_MATCHING_RULES = ['InstanceofThenCast', 'CollectorsToList'];
 const PATTERN_MATCHING_RELEASE = 16;
 const MAVEN_DEFAULT_RELEASE = 8;
 const CPD_FINDINGS_EXIT = 4;
+const TEST_CLASS_PATTERN = [
+  String.raw`^(?:.*\.)?Test[^\.]*$`,
+  String.raw`^(?:.*\.)?.*(?<!Arch|Architecture)Tests?$`,
+  String.raw`^(?:.*\.)?.*TestCase$`,
+].join('|');
 
 function escapeXml(text) {
   return text
@@ -57,6 +62,23 @@ function majorVersion(version) {
 export function javaRelease(compiler) {
   const major = majorVersion(targetRelease(compiler));
   return Number.isInteger(major) ? major : MAVEN_DEFAULT_RELEASE;
+}
+
+function testRulesOnTestSources(mainDirectories) {
+  return [
+    '<?xml version="1.0" encoding="UTF-8"?>',
+    '<ruleset name="nitpicker-tests" xmlns="http://pmd.sourceforge.net/ruleset/2.0.0">',
+    "  <description>Nitpicker's test-only rules on test sources only.</description>",
+    ...mainDirectories.map((directory) => directoryPattern('exclude', directory)),
+    '  <rule ref="category/java/errorprone.xml/TestClassWithoutTestCases">',
+    '    <properties>',
+    '      <property name="testClassPattern"',
+    `                value="${escapeXml(TEST_CLASS_PATTERN)}"/>`,
+    '    </properties>',
+    '  </rule>',
+    '</ruleset>',
+    '',
+  ].join('\n');
 }
 
 function writeRuleset(reportDir, file, content) {
@@ -115,10 +137,15 @@ function pmdRulesets({ module, reportDir, configs, spring }) {
       directories: module.testSourceRoots,
     }),
   );
+  const tests = writeRuleset(
+    reportDir,
+    'pmd-tests.xml',
+    testRulesOnTestSources(module.sourceRoots),
+  );
   return [
     ...(nitpicker ? [path.join(GRADLE_DIRECTORY, 'pmd-ruleset.xml')] : []),
     ...(configs.pmd.project === undefined ? [] : [configs.pmd.project]),
-    ...(nitpicker ? guardRulesets(module, reportDir) : []),
+    ...(nitpicker ? [...guardRulesets(module, reportDir), tests] : []),
     ...(nitpicker && spring ? [springMain] : []),
   ];
 }
