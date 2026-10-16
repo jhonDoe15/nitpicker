@@ -50,9 +50,14 @@ function hashConfiguration(settings, part) {
   return hash.digest('hex');
 }
 
-function resolveVersion(liveProjectRoot, settings, versions) {
+function resolveVersion(liveProjectRoot, settings, versions, probes) {
   return versions(
-    createToolContext({ projectRoot: liveProjectRoot, liveRoot: liveProjectRoot, settings }),
+    createToolContext({
+      projectRoot: liveProjectRoot,
+      liveRoot: liveProjectRoot,
+      settings,
+      probes,
+    }),
   );
 }
 
@@ -75,11 +80,12 @@ function pythonInvocation(settings, part) {
   });
 }
 
-export function createPythonAnalyzer(settings = {}) {
+export function createPythonAnalyzer(settings = {}, probes = new Map()) {
   return {
     name: PYTHON_ANALYZER_NAME,
     version: UNRESOLVED_VERSION,
-    resolveVersion: (liveProjectRoot) => resolveVersion(liveProjectRoot, settings, toolVersions),
+    resolveVersion: (liveProjectRoot) =>
+      resolveVersion(liveProjectRoot, settings, toolVersions, probes),
     configurationHash: hashConfiguration(settings, PYTHON_ANALYZER_NAME),
     exclusions: [],
     reportedTools: [
@@ -102,12 +108,12 @@ export function createPythonAnalyzer(settings = {}) {
   };
 }
 
-export function createMutationAnalyzer(settings = {}) {
+export function createMutationAnalyzer(settings = {}, probes = new Map()) {
   return {
     name: MUTATION_ANALYZER_NAME,
     version: UNRESOLVED_VERSION,
     resolveVersion: (liveProjectRoot) =>
-      resolveVersion(liveProjectRoot, settings, mutationVersions),
+      resolveVersion(liveProjectRoot, settings, mutationVersions, probes),
     configurationHash: hashConfiguration(settings, MUTATION_ANALYZER_NAME),
     exclusions: [],
     reportedTools: ['mutmut'],
@@ -119,5 +125,6 @@ export function createMutationAnalyzer(settings = {}) {
 }
 
 export function createPythonAnalyzers(settings = {}) {
-  return [createPythonAnalyzer(settings), createMutationAnalyzer(settings)];
+  const probes = new Map();
+  return [createPythonAnalyzer(settings, probes), createMutationAnalyzer(settings, probes)];
 }

@@ -1,7 +1,7 @@
 import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { writeMypyConfig } from './configuration/mypy-config.mjs';
-import { execute, run } from './execution/python-process.mjs';
+import { probe, run } from './execution/python-process.mjs';
 import { importRoots } from './execution/python-project.mjs';
 
 export const TYPES_REPORT = 'type-check.json';
@@ -22,7 +22,7 @@ export function resolveTypeChecker(context) {
   const candidates = typeCheckers.length === 0 ? TYPE_CHECKERS : typeCheckers;
   return candidates.length === 1
     ? candidates[0]
-    : candidates.find((checker) => execute(context, [checker, '--version']).status === 0);
+    : candidates.find((checker) => probe(context, [checker, '--version']).status === 0);
 }
 
 function environmentPython(context) {

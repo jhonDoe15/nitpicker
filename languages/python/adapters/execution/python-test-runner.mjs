@@ -1,7 +1,7 @@
 import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { environmentError } from './python-environment.mjs';
-import { execute, VERSION_PATTERN } from './python-process.mjs';
+import { probe, VERSION_PATTERN } from './python-process.mjs';
 import { readProjectHints } from './python-project.mjs';
 
 export const NO_TESTS_EXIT = 5;
@@ -57,7 +57,7 @@ export function detectTestRunner(projectRoot, setting) {
 
 function probePytest(context) {
   if (!probes.has(context)) {
-    const result = execute(context, PYTEST_PROBE);
+    const result = probe(context, PYTEST_PROBE);
     const [version, coverage, xdist] =
       result.error === undefined && result.status === 0 ? result.stdout.trim().split(' ') : [];
     probes.set(
