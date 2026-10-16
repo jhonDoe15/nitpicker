@@ -1,11 +1,9 @@
-import { afterEach, describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import { pythonE2eEnabled } from '../e2e/test-support/python-e2e-support.mjs';
-import { realTypeFindings, removeTemporaryRoots } from './test-support/real-type-check.mjs';
+import { realTypeFindings } from './test-support/real-type-check.mjs';
 
 const UNTYPED = 'def f(x):\n    return x\n';
 const LISTED = { mypy: ['project', 'nitpicker'] };
-
-afterEach(removeTemporaryRoots);
 
 describe.skipIf(!pythonE2eEnabled)('mypy with the project config end to end', () => {
   const sections = {

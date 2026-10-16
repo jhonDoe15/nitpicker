@@ -28,12 +28,10 @@ const PROJECT_CONFIG = JSON.stringify({
 
 function configOf(files, { precedence, settings = {}, exclude = [] } = {}, checker = 'pyright') {
   const root = fakes.project(files);
-  const { context, reportRoot } = fakes.contextFor(
-    root,
-    settings,
+  const { context, reportRoot } = fakes.contextFor(root, settings, {
     exclude,
-    precedence === undefined ? {} : { toolPrecedence: precedence, policyRoot: root },
-  );
+    ...(precedence === undefined ? {} : { toolPrecedence: precedence, policyRoot: root }),
+  });
   return { root, reportRoot, config: pyrightConfig(context, checker) };
 }
 

@@ -12,6 +12,14 @@ export function stringifyToml(value) {
   return createRequire(import.meta.url)('smol-toml').stringify(value);
 }
 
+export function attempt(read) {
+  try {
+    return { value: read() };
+  } catch (error) {
+    return { error };
+  }
+}
+
 export function toolLayers(context, tool) {
   const layers = precedenceLayers(context.toolPrecedence?.[tool]);
   return {

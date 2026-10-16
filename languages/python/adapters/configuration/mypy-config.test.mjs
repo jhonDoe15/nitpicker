@@ -267,8 +267,16 @@ describe('the mypy config with tools.mypy listing the project', () => {
   }
 
   it('puts strict first and lets every key the project sets override it', () => {
+    const head = [
+      /^\[tool\.mypy\]\n/u,
+      /strict = true\n/u,
+      /disallow_untyped_defs = false\n/u,
+      /plugins = \[ "pydantic\.mypy" \]\n/u,
+      /exclude = "\(\?:\^legacy\/\)\|\^\(\?:/u,
+    ];
+
     expect(layered({ 'pyproject.toml': PYPROJECT }, ['src/gen/**'])).toMatch(
-      /^\[tool\.mypy\]\nstrict = true\ndisallow_untyped_defs = false\nplugins = \[ "pydantic\.mypy" \]\nexclude = "\(\?:\^legacy\/\)\|\^\(\?:/,
+      new RegExp(head.map(({ source }) => source).join(''), 'u'),
     );
   });
 

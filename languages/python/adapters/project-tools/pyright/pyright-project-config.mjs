@@ -1,7 +1,7 @@
 import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { parseJsonc } from '../../../../../shared/jsonc.mjs';
-import { parseToml } from '../project-tool-layers.mjs';
+import { attempt, parseToml } from '../project-tool-layers.mjs';
 
 export const PYRIGHT_JSON = 'pyrightconfig.json';
 const PYPROJECT = 'pyproject.toml';
@@ -57,22 +57,26 @@ function absolutized(config, directory) {
   return result;
 }
 
-function chainOf(file, checker, depth = 0) {
-  const read = readFileConfig(file, checker);
-  if (read === undefined) {
-    return [];
-  }
-  const directory = path.dirname(file);
-  const own = absolutized(read.config, directory);
+function parentOf(file, config) {
   const parent =
-    typeof read.config.extends === 'string'
-      ? path.resolve(directory, read.config.extends)
+    typeof config.extends === 'string'
+      ? path.resolve(path.dirname(file), config.extends)
       : undefined;
-  const inherited =
-    parent !== undefined && depth < MAXIMUM_EXTENDS_DEPTH && existsSync(parent)
-      ? chainOf(parent, checker, depth + 1)
-      : [];
-  return [{ file, table: read.table, config: own }, ...inherited];
+  return parent !== undefined && existsSync(parent) ? parent : undefined;
+}
+
+function chainOf(first, checker) {
+  const chain = [];
+  let file = first;
+  for (let depth = 0; file !== undefined && depth <= MAXIMUM_EXTENDS_DEPTH; depth += 1) {
+    const read = readFileConfig(file, checker);
+    if (read === undefined) {
+      break;
+    }
+    chain.push({ file, table: read.table, config: absolutized(read.config, path.dirname(file)) });
+    file = parentOf(file, read.config);
+  }
+  return chain;
 }
 
 function locate(projectRoot, checker) {
@@ -86,23 +90,23 @@ function locate(projectRoot, checker) {
     : undefined;
 }
 
-export function readProjectPyright(projectRoot, checker) {
-  try {
-    const file = locate(projectRoot, checker);
-    if (file === undefined) {
-      return undefined;
-    }
-    const chain = chainOf(file, checker);
-    const merged = Object.assign({}, ...chain.toReversed().map((link) => link.config));
-    return {
-      file,
-      files: chain.map((link) => link.file),
-      table: chain[0].table,
-      config: Object.fromEntries(Object.entries(merged).filter(([key]) => key !== 'extends')),
-    };
-  } catch {
+function loadProjectPyright(projectRoot, checker) {
+  const file = locate(projectRoot, checker);
+  if (file === undefined) {
     return undefined;
   }
+  const chain = chainOf(file, checker);
+  const merged = Object.assign({}, ...chain.toReversed().map((link) => link.config));
+  return {
+    file,
+    files: chain.map((link) => link.file),
+    table: chain[0].table,
+    config: Object.fromEntries(Object.entries(merged).filter(([key]) => key !== 'extends')),
+  };
+}
+
+export function readProjectPyright(projectRoot, checker) {
+  return attempt(() => loadProjectPyright(projectRoot, checker)).value;
 }
 
 export function pyrightConfigLabel(found, projectRoot) {

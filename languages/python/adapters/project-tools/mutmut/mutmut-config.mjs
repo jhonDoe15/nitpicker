@@ -4,8 +4,7 @@ import { parseIni } from '../../configuration/mypy-config.mjs';
 import { parseToml, stringifyToml, toolLayers, unique } from '../project-tool-layers.mjs';
 
 export const MUTMUT_TOOL = 'mutmut';
-export const MUTMUT_LOOKED =
-  'a mutmut config ([tool.mutmut] in pyproject.toml, or [mutmut] in setup.cfg)';
+const MUTMUT_LOOKED = 'a mutmut config ([tool.mutmut] in pyproject.toml, or [mutmut] in setup.cfg)';
 const PYPROJECT = 'pyproject.toml';
 const SETUP_CFG = 'setup.cfg';
 const RUN_KEYS = [
@@ -103,7 +102,7 @@ function sourceOf(table) {
   return table.source_paths ?? table.paths_to_mutate;
 }
 
-export function mutmutSettings({ context, fail }) {
+function mutmutSettings({ context, fail }) {
   const layers = toolLayers(context, MUTMUT_TOOL);
   const found = readMutmutConfig(layers.configRoot);
   if (layers.optedIn && found === undefined) {

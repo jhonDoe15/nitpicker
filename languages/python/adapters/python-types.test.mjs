@@ -129,10 +129,14 @@ describe('running mypy', () => {
   it('leaves --strict to the generated config when the project is listed', () => {
     const logFile = logged();
     const root = fakes.project({ 'mypy.ini': '[mypy]\ndisallow_untyped_defs = False\n' });
-    const { context, reportRoot } = fakes.contextFor(root, {}, [], {
-      toolPrecedence: { mypy: ['project', 'nitpicker'] },
-      policyRoot: root,
-    });
+    const { context, reportRoot } = fakes.contextFor(
+      root,
+      {},
+      {
+        toolPrecedence: { mypy: ['project', 'nitpicker'] },
+        policyRoot: root,
+      },
+    );
 
     typeCheck(context);
 
@@ -175,7 +179,7 @@ describe('running mypy', () => {
         '',
       ].join('\n'),
     });
-    const { context, reportRoot } = fakes.contextFor(root, {}, ['src/gen/**']);
+    const { context, reportRoot } = fakes.contextFor(root, {}, { exclude: ['src/gen/**'] });
 
     typeCheck(context);
 

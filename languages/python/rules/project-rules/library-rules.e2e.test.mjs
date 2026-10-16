@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it } from 'vitest';
-import { createScripts } from './test-support/python-script-helpers.mjs';
+import { createScripts } from '../test-support/python-script-helpers.mjs';
 
 const enabled = process.env.NITPICKER_PYTHON_E2E === '1';
 const { cleanup, findingsOf } = createScripts();

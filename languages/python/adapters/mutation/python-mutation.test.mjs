@@ -137,7 +137,7 @@ describe('the mutmut configuration', () => {
         '[tool.ruff]',
         'line-length = 100',
         '',
-        `${section('["src"]').trimEnd()}`,
+        section('["src"]').trimEnd(),
         'also_copy = ["data/"]',
         'process_isolation = "forkserver"',
         '',

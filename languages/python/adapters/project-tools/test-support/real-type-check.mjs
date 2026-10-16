@@ -5,27 +5,23 @@ import { typeFindings } from '../../python-reports.mjs';
 import { createToolContext } from '../../python-tools.mjs';
 import { TYPES_REPORT, typeCheck } from '../../python-types.mjs';
 
-const roots = [];
-
 function temporaryRoot() {
-  const root = realpathSync(mkdtempSync(path.join(tmpdir(), 'nitpicker-type-tools-')));
-  roots.push(root);
-  return root;
+  return realpathSync(mkdtempSync(path.join(tmpdir(), 'nitpicker-type-tools-')));
 }
 
-export function removeTemporaryRoots() {
-  for (const root of roots.splice(0)) {
-    rmSync(root, { recursive: true, force: true });
-  }
-}
-
-export function realTypeFindings({ files, checker, toolPrecedence, settings = {} }) {
-  const projectRoot = temporaryRoot();
-  const reportRoot = temporaryRoot();
+function writeProject(projectRoot, files) {
   for (const [file, content] of Object.entries(files)) {
-    mkdirSync(path.dirname(path.join(projectRoot, file)), { recursive: true });
-    writeFileSync(path.join(projectRoot, file), content);
+    const full = path.resolve(projectRoot, file);
+    if (!full.startsWith(projectRoot + path.sep)) {
+      throw new Error(`${file} is outside the project`);
+    }
+    mkdirSync(path.dirname(full), { recursive: true });
+    writeFileSync(full, content);
   }
+}
+
+function findingsIn({ files, checker, toolPrecedence, settings }, projectRoot, reportRoot) {
+  writeProject(projectRoot, files);
   const context = createToolContext({
     projectRoot,
     liveRoot: projectRoot,
@@ -39,4 +35,15 @@ export function realTypeFindings({ files, checker, toolPrecedence, settings = {}
   return typeFindings(report, [projectRoot]).map(
     ({ rule, path: file }) => `${rule} ${path.basename(file)}`,
   );
+}
+
+export function realTypeFindings({ settings = {}, ...options }) {
+  const projectRoot = temporaryRoot();
+  const reportRoot = temporaryRoot();
+  try {
+    return findingsIn({ ...options, settings }, projectRoot, reportRoot);
+  } finally {
+    rmSync(projectRoot, { recursive: true, force: true });
+    rmSync(reportRoot, { recursive: true, force: true });
+  }
 }
