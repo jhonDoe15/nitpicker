@@ -54,6 +54,6 @@ export function spawnFakeTools(realSpawn) {
       cwd: options.cwd,
       env: options.env,
     });
-    return { status, signal: null, stdout, stderr, error: undefined };
+    return { status, signal: undefined, stdout, stderr, error: undefined };
   };
 }
