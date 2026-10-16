@@ -4,7 +4,11 @@ import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import { createJavaAnalyzer } from './java-analyzer.mjs';
 import { JAVA_TOOLS } from './gradle-presets.mjs';
-import { configureJavaAnalyzer, parseJavaRunnerArguments } from './java-policy.mjs';
+import {
+  configureJavaAnalyzer,
+  parseJavaRunnerArguments,
+  validateJavaConfig,
+} from './java-policy.mjs';
 import { toolConfigProperties } from './java-diff.mjs';
 
 const roots = [];
@@ -118,6 +122,7 @@ describe('configureJavaAnalyzer', () => {
       'coupling',
       'crap',
       'duplicates',
+      'errorprone',
       'google-java-format',
       'jacoco',
       'pit',
@@ -359,5 +364,24 @@ describe('parseJavaRunnerArguments', () => {
     expect(() =>
       parseJavaRunnerArguments(['--project-root', '/p', '--kotlin-formatter', 'prettier']),
     ).toThrow('--kotlin-formatter must be one of: ktlint, ktfmt, none');
+  });
+});
+
+describe('validateJavaConfig', () => {
+  it('asks for the printed name of a Checkstyle check instead of its class', () => {
+    const exception = { rule: 'checkstyle/Indentation', paths: ['src/**'], reason: 'Legacy' };
+    const byClass = {
+      ...exception,
+      rule: 'checkstyle/com.puppycrawl.tools.checkstyle.checks.indentation.IndentationCheck',
+    };
+
+    expect(() => {
+      validateJavaConfig({ preset: 'java', exceptions: [exception] });
+    }).not.toThrow();
+    expect(() => {
+      validateJavaConfig({ preset: 'java', exceptions: [byClass] });
+    }).toThrow(
+      `"exceptions[0].rule" names a Checkstyle check by class; findings print the check's name, so write "checkstyle/Indentation"`,
+    );
   });
 });

@@ -57,6 +57,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import org.junit.jupiter.api.Test;
 
 class SwallowingTest {
+  // This comment runs past the 100 columns of Checkstyle's line length, which nothing else reports here.
   @Test
   void parses() {
     try {
@@ -72,8 +73,6 @@ class SwallowingTest {
   }
 }
 `;
-
-const CHECKSTYLE_PREFIX = 'com.puppycrawl.tools.checkstyle.checks.';
 
 let repository;
 
@@ -116,16 +115,13 @@ describe.skipIf(!enabled)('Java preset escape hatches', () => {
 
       expect(result.failed).toBe(true);
       expect(ofFile(result, 'Bad.java')).toEqual([
-        ...[
-          'blocks.EmptyCatchBlockCheck',
-          'indentation.IndentationCheck',
-          'regexp.RegexpSinglelineJavaCheck',
-          'whitespace.EmptyLineSeparatorCheck',
-        ].map((check) => `checkstyle ${CHECKSTYLE_PREFIX}${check} Bad.java`),
+        ...['EmptyLineSeparator', 'Indentation', 'RegexpSinglelineJava'].map(
+          (check) => `checkstyle ${check} Bad.java`,
+        ),
+        'errorprone DefaultCharset Bad.java',
+        'errorprone EmptyCatch Bad.java',
         'google-java-format format Bad.java',
         'pit mutant-nocoverage Bad.java',
-        'pmd EmptyCatchBlock Bad.java',
-        'spotbugs DM_DEFAULT_ENCODING Bad.java',
       ]);
     },
     GRADLE_STEP_TIMEOUT_MS,
@@ -135,10 +131,10 @@ describe.skipIf(!enabled)('Java preset escape hatches', () => {
     'lints test sources with PMD, Checkstyle and the formatter, without the assertion-style rules',
     () => {
       expect(ofFile(defaultDiff(), 'SwallowingTest.java')).toEqual([
-        `checkstyle ${CHECKSTYLE_PREFIX}blocks.EmptyCatchBlockCheck SwallowingTest.java`,
+        'checkstyle LineLength SwallowingTest.java',
+        'errorprone EmptyCatch SwallowingTest.java',
         'google-java-format format SwallowingTest.java',
         'pmd AvoidCatchingGenericException SwallowingTest.java',
-        'pmd EmptyCatchBlock SwallowingTest.java',
         'pmd UnitTestShouldIncludeAssert SwallowingTest.java',
       ]);
     },

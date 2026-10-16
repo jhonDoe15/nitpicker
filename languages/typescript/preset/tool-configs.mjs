@@ -1,5 +1,4 @@
 import { existsSync } from 'node:fs';
-import { createRequire } from 'node:module';
 import path from 'node:path';
 import {
   JAVASCRIPT_COMPILER_OPTIONS,
@@ -11,6 +10,12 @@ import {
   SCRIPT_SKIPPED_FOLDERS,
   withSkippedFolders,
 } from '../../../core/tooling/jscpd/skipped-folders.mjs';
+import {
+  PROJECT_TSCONFIG,
+  isSolutionTsconfig,
+  readJsonc,
+  referencedConfigFile,
+} from './modules/tsconfig-files.mjs';
 
 const DEFAULT_SOURCE_ROOT = 'src';
 const DEFAULT_TEST_ROOTS = new Set(['test', 'tests']);
@@ -54,7 +59,21 @@ function tsconfigRewrite(javascriptOptions) {
   };
 }
 
-export const layoutTsconfig = tsconfigRewrite({ ...JAVASCRIPT_COMPILER_OPTIONS, noEmit: true });
+const TYPESCRIPT_ONLY_OPTIONS = {
+  exactOptionalPropertyTypes: true,
+  noPropertyAccessFromIndexSignature: true,
+  noUncheckedSideEffectImports: true,
+};
+
+const JAVASCRIPT_RELAXED_OPTIONS = Object.fromEntries(
+  Object.keys(TYPESCRIPT_ONLY_OPTIONS).map((option) => [option, false]),
+);
+
+export const layoutTsconfig = tsconfigRewrite({
+  ...JAVASCRIPT_COMPILER_OPTIONS,
+  ...JAVASCRIPT_RELAXED_OPTIONS,
+  noEmit: true,
+});
 
 const layoutStrykerTsconfig = tsconfigRewrite(JAVASCRIPT_COMPILER_OPTIONS);
 
@@ -139,7 +158,6 @@ function withoutMutantStrictness(text) {
   return `${JSON.stringify({ ...config, compilerOptions }, null, 2)}\n`;
 }
 
-const PROJECT_TSCONFIG = 'tsconfig.json';
 const PROJECT_JSCONFIG = 'jsconfig.json';
 const MUTANT_STRICTNESS_OPTIONS = new Set([
   'noImplicitReturns',
@@ -174,30 +192,9 @@ const POLICY_COMPILER_OPTIONS = {
 
 const NO_EMIT_ANALYSIS_OPTIONS = { noEmit: true, skipLibCheck: true };
 
-function readJsonc(file) {
-  const typescript = createRequire(import.meta.url)('typescript');
-  const { config } = typescript.readConfigFile(file, typescript.sys.readFile);
-  return config;
-}
-
-function referencedConfigFile(projectDirectory, reference) {
-  const target = path.resolve(projectDirectory, reference.path);
-  return path.extname(target) === '.json' ? target : path.join(target, PROJECT_TSCONFIG);
-}
-
 function includesSourceRoot(config, layout) {
   return (config?.include ?? []).some((entry) =>
     layout.sourceRoots.includes(path.posix.normalize(entry).split('/')[0]),
-  );
-}
-
-function isSolutionTsconfig(config) {
-  return (
-    Array.isArray(config?.references) &&
-    config.references.length > 0 &&
-    config.compilerOptions === undefined &&
-    config.include === undefined &&
-    (config.files ?? []).length === 0
   );
 }
 
@@ -234,6 +231,7 @@ function projectLayeredTsconfig(extended, base, layout) {
     compilerOptions: {
       ...NO_EMIT_ANALYSIS_OPTIONS,
       ...POLICY_COMPILER_OPTIONS,
+      ...(layout.javascript ? {} : TYPESCRIPT_ONLY_OPTIONS),
       ...javascriptOptions,
     },
     include: layered.include,

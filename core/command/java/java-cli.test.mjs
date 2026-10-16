@@ -4,10 +4,13 @@ import { describe, expect, it, vi } from 'vitest';
 import { runCli as nitpickerCli } from '../../cli.mjs';
 import { exactText } from '../../diff/reporting/test-support/output-expectations.mjs';
 import { commit, fixtureGit } from '../../diff/git/test-support/git-repository.mjs';
-import { useGradleFixtures } from './test-support/java-cli-harness.mjs';
+import { unusedFieldMessage, useGradleFixtures } from './test-support/java-cli-harness.mjs';
 import { writeFiles } from '../../diff/git/test-support/fixture-files.mjs';
 
 const { gradleRepository, run, runCli, temporaryRoot } = useGradleFixtures(nitpickerCli);
+const addedField = unusedFieldMessage('added');
+const xmlText = (text) =>
+  text.replaceAll('&', '&amp;').replaceAll('"', '&quot;').replaceAll("'", '&apos;');
 
 const CLONE_MESSAGE = [
   'This code repeats src/main/java/demo/Second.java:3 (30 lines).',
@@ -21,7 +24,7 @@ const addedFieldOutput = expect.stringMatching(exactText`Base: comparison-base (
 Quality gate summary
 ✖ 1 new enforceable violation
   pmd/UnusedPrivateField src/main/java/demo/A.java:4
-    Avoid unused field: added
+    ${addedField}
 Full diagnostics: /tmp/nitpicker-java-out-${/[A-Za-z0-9]{6}/}/reports/report.txt
 `);
 
@@ -58,7 +61,7 @@ describe('nitpicker with "preset": "java"', () => {
         rule: 'UnusedPrivateField',
         path: 'src/main/java/demo/A.java',
         identity: 'fp:nitpicker/subject=Avoid unused field: added',
-        message: 'Avoid unused field: added',
+        message: addedField,
         classification: 'enforceable',
         location: { line: 4 },
       },
@@ -92,7 +95,7 @@ describe('nitpicker with "preset": "java"', () => {
           "ruleId": "pmd/UnusedPrivateField",
           "level": "error",
           "message": {
-            "text": "Avoid unused field: added"
+            "text": ${JSON.stringify(addedField)}
           },
           "locations": [
             {
@@ -120,7 +123,7 @@ describe('nitpicker with "preset": "java"', () => {
       expect.stringMatching(exactText`<?xml version="1.0" encoding="UTF-8"?>
 <testsuite name="quality.diff" tests="2" failures="1" errors="0" time="${/[0-9]+(?:\.[0-9]+)?/}">
   <testcase classname="quality.diff" name="java" time="${/[0-9]+(?:\.[0-9]+)?/}"></testcase>
-  <testcase classname="quality.diff.new-findings" name="pmd/UnusedPrivateField src/main/java/demo/A.java:4" time="${/[0-9]+(?:\.[0-9]+)?/}"><failure message="Avoid unused field: added" type="pmd/UnusedPrivateField">Avoid unused field: added</failure></testcase>
+  <testcase classname="quality.diff.new-findings" name="pmd/UnusedPrivateField src/main/java/demo/A.java:4" time="${/[0-9]+(?:\.[0-9]+)?/}"><failure message="${xmlText(addedField)}" type="pmd/UnusedPrivateField">${xmlText(addedField)}</failure></testcase>
 </testsuite>
 `),
     );
@@ -245,7 +248,7 @@ Full diagnostics: /tmp/nitpicker-java-out-${/[A-Za-z0-9]{6}/}/reports/report.txt
         'java: total=1 enforceable=1 descriptive=0',
         '',
         'Enforceable findings:',
-        'pmd/UnusedPrivateField src/main/java/demo/A.java:3 Avoid unused field: legacy',
+        `pmd/UnusedPrivateField src/main/java/demo/A.java:3 ${unusedFieldMessage('legacy')}`,
         '',
       ].join('\n'),
     );
