@@ -1,32 +1,23 @@
-import { childrenNamed } from '../../ingest/common.mjs';
+import { childAt, childrenAt, childrenNamed } from '../../ingest/common.mjs';
 
 const COMPILER = 'maven-compiler-plugin';
 const UNRESOLVED = /\$\{/u;
 
-function child(element, ...names) {
-  return names.reduce((current, name) => current && childrenNamed(current, name)[0], element);
-}
-
 function textAt(element, ...names) {
-  return child(element, ...names)?.text?.trim();
-}
-
-function all(element, ...names) {
-  const parent = child(element, ...names.slice(0, -1));
-  return parent === undefined ? [] : childrenNamed(parent, names.at(-1));
+  return childAt(element, ...names)?.text?.trim();
 }
 
 function compilerPlugin(project) {
-  return all(project, 'build', 'plugins', 'plugin').find(
+  return childrenAt(project, 'build', 'plugins', 'plugin').find(
     (candidate) => textAt(candidate, 'artifactId') === COMPILER,
   );
 }
 
 function compilerConfigurations(plugin, executionId) {
-  const execution = all(plugin, 'executions', 'execution').find(
+  const execution = childrenAt(plugin, 'executions', 'execution').find(
     (candidate) => textAt(candidate, 'id') === executionId,
   );
-  return [child(execution, 'configuration'), child(plugin, 'configuration')].filter(
+  return [childAt(execution, 'configuration'), childAt(plugin, 'configuration')].filter(
     (configuration) => configuration !== undefined,
   );
 }
@@ -37,7 +28,7 @@ function defaultLevel(pluginVersion) {
 }
 
 function managedVersion(project, groupId, artifactId) {
-  const declared = all(project, 'dependencyManagement', 'dependencies', 'dependency').find(
+  const declared = childrenAt(project, 'dependencyManagement', 'dependencies', 'dependency').find(
     (dependency) =>
       textAt(dependency, 'groupId') === groupId && textAt(dependency, 'artifactId') === artifactId,
   );
@@ -64,7 +55,7 @@ function processorCoordinates(project, entry) {
 
 function processorPaths(project, configurations) {
   const paths = configurations
-    .map((configuration) => child(configuration, 'annotationProcessorPaths'))
+    .map((configuration) => childAt(configuration, 'annotationProcessorPaths'))
     .find((element) => element !== undefined);
   return paths === undefined
     ? undefined
@@ -83,7 +74,7 @@ function settingOf(project, configurations) {
 
 function argumentsOf(configurations, setting) {
   const listed = configurations
-    .map((configuration) => all(configuration, 'compilerArgs', 'arg'))
+    .map((configuration) => childrenAt(configuration, 'compilerArgs', 'arg'))
     .find((args) => args.length > 0);
   const single = configurations
     .map((configuration) => textAt(configuration, 'compilerArgument'))
