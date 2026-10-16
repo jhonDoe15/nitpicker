@@ -75,7 +75,7 @@ function collectPythonFindings({ projectRoot, liveRoot, settings, policy }) {
       crapLimit: policy.crapLimit,
       policy,
     });
-    return applyJavaPolicy(applyPythonExceptions(findings, settings.exceptions), {
+    return applyJavaPolicy(applyPythonExceptions(findings, policy.exceptions), {
       ...policy,
       inventoryTool: PYTHON_ANALYZER_NAME,
     });

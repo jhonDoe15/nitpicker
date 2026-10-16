@@ -11,8 +11,7 @@ import {
   withHint,
 } from './rule-hints.mjs';
 
-const routeFor = (rule) =>
-  exceptionSentence(exceptionEntryText({ rule, path: 'src/a.py' }), 'python.exceptions');
+const routeFor = (rule) => exceptionSentence(exceptionEntryText({ rule, path: 'src/a.py' }));
 
 const sample = ({ tool, rule }) => ({
   tool,
@@ -61,7 +60,7 @@ describe('every message names the allowed form', () => {
     const { message } = withHint(sample({ tool: 'python-rules', rule: 'no-inline-suppression' }));
 
     expect(message).toBe(
-      'The base message. Remove the comment and fix the code. If a reviewer agrees this is intended, add {"rule":"no-inline-suppression","paths":["src/a.py"],"reason":"<why this is intended>"} to "python.exceptions" in nitpicker.config.json.',
+      'The base message. Remove the comment and fix the code. If a reviewer agrees this is intended, add {"rule":"no-inline-suppression","paths":["src/a.py"],"reason":"<why this is intended>"} to "exceptions" in nitpicker.config.json.',
     );
   });
 
@@ -94,7 +93,7 @@ describe('hints', () => {
     expect(withHint(sample({ tool: 'ruff', rule: 'T201' }))).toEqual({
       ...sample({ tool: 'ruff', rule: 'T201' }),
       message:
-        'The base message. Use `logging`: `logger = logging.getLogger(__name__)`, then `logger.info(...)`. If a reviewer agrees this is intended, add {"rule":"T201","paths":["src/a.py"],"reason":"<why this is intended>"} to "python.exceptions" in nitpicker.config.json.',
+        'The base message. Use `logging`: `logger = logging.getLogger(__name__)`, then `logger.info(...)`. If a reviewer agrees this is intended, add {"rule":"T201","paths":["src/a.py"],"reason":"<why this is intended>"} to "exceptions" in nitpicker.config.json.',
     });
   });
 

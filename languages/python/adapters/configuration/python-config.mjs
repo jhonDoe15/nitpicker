@@ -2,7 +2,6 @@ import path from 'node:path';
 import {
   configError,
   isPlainObject,
-  validateExceptions,
   validateProjectRelativePath,
   validateStringArray,
 } from '../../../../shared/config.mjs';
@@ -21,7 +20,6 @@ const SETTING_KEYS = [
   'typeChecker',
   'importLinter',
   'sourceRoots',
-  'exceptions',
 ];
 
 export function validatePythonConfig(config, typescriptOnlyKeys) {
@@ -32,28 +30,20 @@ export function validatePythonConfig(config, typescriptOnlyKeys) {
     return;
   }
   const unsupported = typescriptOnlyKeys.filter((key) => config[key] !== undefined);
-  const stray = strayException(config.exceptions);
-  if (unsupported[0] === 'exceptions' && stray !== undefined) {
-    throw configError(
-      `"exceptions" has rule "${String(stray.rule)}", which no top-level exception lifts in the python preset. Top-level "exceptions" take only ${SHARED_EXCEPTION_RULES.join(', ')}; a ruff, type-checker or python-rules id goes in "python.exceptions"`,
-    );
-  }
   if (unsupported.length > 0) {
     throw configError(
-      `"${unsupported[0]}" is not supported with "preset": "python": it describes the TypeScript source layout and ESLint rules, which the Python preset does not have. Not supported with python: ${typescriptOnlyKeys.join(', ')}, except exceptions for ${SHARED_EXCEPTION_RULES.join(', ')}. Shared by all presets: thresholds, exclude, legacyInventory`,
+      `"${unsupported[0]}" is not supported with "preset": "python": it describes the TypeScript source layout and ESLint rules, which the Python preset does not have. Not supported with python: ${typescriptOnlyKeys.join(', ')}. Shared by all presets: thresholds, exclude, exceptions, legacyInventory`,
     );
   }
+  if (config.python?.exceptions !== undefined) {
+    throw configError(
+      '"python.exceptions" does not exist: put the entries in the top-level "exceptions", for every rule',
+    );
+  }
+  validateRuleIds(config.exceptions);
   if (config.python !== undefined) {
     validateSettings(config.python);
   }
-}
-
-function strayException(exceptions) {
-  return Array.isArray(exceptions)
-    ? exceptions.find(
-        (entry) => !SHARED_EXCEPTION_RULES.includes(canonicalRule(String(entry?.rule))),
-      )
-    : undefined;
 }
 
 function validateKnownKeys(settings) {
@@ -87,23 +77,21 @@ function validateSettings(settings) {
   if (settings.sourceRoots !== undefined) {
     validateSourceRoots(settings.sourceRoots);
   }
-  if (settings.exceptions !== undefined) {
-    validateExceptions(settings.exceptions, 'python.exceptions');
-    validateRuleIds(settings.exceptions);
-  }
 }
 
 function validateRuleIds(exceptions) {
-  for (const [index, { rule }] of exceptions.entries()) {
-    if (SHARED_EXCEPTION_RULES.includes(canonicalRule(rule))) {
-      throw configError(
-        `"python.exceptions[${String(index)}].rule" is "${rule}", a file limit shared by every preset: lift it in the top-level "exceptions" instead`,
-      );
+  if (!Array.isArray(exceptions)) {
+    return;
+  }
+  for (const [index, entry] of exceptions.entries()) {
+    const rule = entry?.rule;
+    if (typeof rule !== 'string' || SHARED_EXCEPTION_RULES.includes(canonicalRule(rule))) {
+      continue;
     }
     const problem = ruleIdProblem(rule);
     if (problem !== undefined) {
       throw configError(
-        `"python.exceptions[${String(index)}].rule" names no rule nitpicker reports: "${rule}"; ${problem}`,
+        `"exceptions[${String(index)}].rule" names no rule nitpicker reports: "${rule}"; ${problem}`,
       );
     }
   }

@@ -38,7 +38,9 @@ function ruleMessage(finding, entry, preset) {
   }
   const fix = entry?.layout === true ? LAYOUT_FIX : entry?.fix;
   const liftable =
-    preset === 'java' && finding.classification === 'enforceable' && entry?.mayBeIntended !== false;
+    (preset === 'java' || finding.path.endsWith('.java')) &&
+    finding.classification === 'enforceable' &&
+    entry?.mayBeIntended !== false;
   return [
     SENTENCE_END.test(message) ? message : `${message}.`,
     ...(typeof fix === 'string' ? [fix] : []),

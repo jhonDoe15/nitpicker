@@ -83,7 +83,7 @@ describe('nitpicker with "preset": "python" and its architecture checks', () => 
         path: 'src/demo/a.py',
         identity: 'contract:Layers:demo.a -> demo.b',
         message:
-          'Import contract "Layers" is broken: demo.a -> demo.b. Remove the import. If a reviewer agrees this is intended, add {"rule":"contract-broken","paths":["src/demo/a.py"],"reason":"<why this is intended>"} to "python.exceptions" in nitpicker.config.json.',
+          'Import contract "Layers" is broken: demo.a -> demo.b. Remove the import. If a reviewer agrees this is intended, add {"rule":"contract-broken","paths":["src/demo/a.py"],"reason":"<why this is intended>"} to "exceptions" in nitpicker.config.json.',
         classification: 'enforceable',
         location: { line: 4 },
       },

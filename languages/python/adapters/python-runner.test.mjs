@@ -93,7 +93,7 @@ describe('analyzing a Python snapshot', () => {
       path: 'src/demo/a.py',
       identity: 'fp:nitpicker/subject=`os` imported but unused',
       message:
-        '`os` imported but unused. If a reviewer agrees this is intended, add {"rule":"F401","paths":["src/demo/a.py"],"reason":"<why this is intended>"} to "python.exceptions" in nitpicker.config.json.',
+        '`os` imported but unused. If a reviewer agrees this is intended, add {"rule":"F401","paths":["src/demo/a.py"],"reason":"<why this is intended>"} to "exceptions" in nitpicker.config.json.',
       classification: 'enforceable',
       location: { line: 1, column: 1 },
     });
@@ -147,9 +147,9 @@ describe('analyzing a Python snapshot', () => {
       'python-rules frozen-dataclass Order',
     ]);
     expect(findings.map(({ message }) => message)).toEqual([
-      '`print` found. Use `logging`: `logger = logging.getLogger(__name__)`, then `logger.info(...)`. If a reviewer agrees this is intended, add {"rule":"T201","paths":["src/demo/a.py"],"reason":"<why this is intended>"} to "python.exceptions" in nitpicker.config.json.',
-      'Incompatible return value type (got "int", expected "str"). Fix the type; inline ignores are banned. If a reviewer agrees this is intended, add {"rule":"return-value","paths":["src/demo/a.py"],"reason":"<why this is intended>"} to "python.exceptions" in nitpicker.config.json.',
-      'Dataclass Order is not frozen. Declare records as `@dataclass(frozen=True)` and build a changed copy with `dataclasses.replace`. If a reviewer agrees this is intended, add {"rule":"frozen-dataclass","paths":["src/demo/a.py"],"reason":"<why this is intended>"} to "python.exceptions" in nitpicker.config.json.',
+      '`print` found. Use `logging`: `logger = logging.getLogger(__name__)`, then `logger.info(...)`. If a reviewer agrees this is intended, add {"rule":"T201","paths":["src/demo/a.py"],"reason":"<why this is intended>"} to "exceptions" in nitpicker.config.json.',
+      'Incompatible return value type (got "int", expected "str"). Fix the type; inline ignores are banned. If a reviewer agrees this is intended, add {"rule":"return-value","paths":["src/demo/a.py"],"reason":"<why this is intended>"} to "exceptions" in nitpicker.config.json.',
+      'Dataclass Order is not frozen. Declare records as `@dataclass(frozen=True)` and build a changed copy with `dataclasses.replace`. If a reviewer agrees this is intended, add {"rule":"frozen-dataclass","paths":["src/demo/a.py"],"reason":"<why this is intended>"} to "exceptions" in nitpicker.config.json.',
     ]);
   });
 
@@ -159,7 +159,7 @@ describe('analyzing a Python snapshot', () => {
     });
     const exceptions = [{ rule: 'T201', paths: ['scripts/**'], reason: 'command line scripts' }];
 
-    const findings = withoutCoupling(analyze(root, { settings: { exceptions } }));
+    const findings = withoutCoupling(analyze(root, { policy: { exceptions } }));
 
     expect(findings.map(({ path: file }) => file)).toEqual(['src/demo/a.py']);
   });

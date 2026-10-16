@@ -74,7 +74,7 @@ function brokenMessage(name, violation, file) {
   const message = `Import contract "${name}" is broken${detail}. Remove the import.`;
   return file === undefined
     ? message
-    : `${message} ${exceptionRoute({ rule: 'contract-broken', path: file, key: 'python.exceptions' })}`;
+    : `${message} ${exceptionRoute({ rule: 'contract-broken', path: file })}`;
 }
 
 function contractFinding({ name, violation, files, identity }) {

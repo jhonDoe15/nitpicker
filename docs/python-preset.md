@@ -114,10 +114,11 @@ Config keys with this preset: `base`, `disable` (the analyzer names are `python`
 `lineLength` and `folderFiles`), `exclude` (findings under the globs are dropped) and
 `legacyInventory` (same format and `baseline-expansion` rule as for Java), and the `python` object
 below. `layout` describes TypeScript source roots and stays a config error with this preset. The
-top-level `exceptions` takes the rules nitpicker adds, shared by every language (the file limits,
-the function size limits, CRAP, changed-branch coverage, `mutant-survived`, `mutant-nocoverage`,
-`duplicate-clone` and `stability-direction`); the Python equivalent of `exceptions` for the ruff,
-type-checker and one-way rules is `python.exceptions`. `python` is an error with any other preset.
+one `exceptions` list takes every rule: the rules nitpicker adds, shared by every language (the file
+limits, the function size limits, CRAP, changed-branch coverage, `mutant-survived`,
+`mutant-nocoverage`, `duplicate-clone` and `stability-direction`) and the ruff, type-checker and
+one-way rules of this preset, each by the id the finding prints. `python` is an error with any
+other preset, and `python.exceptions` does not exist.
 
 ```json
 {
@@ -167,9 +168,8 @@ yours to fix (generated code) is dropped with `exclude`.
 ### Exceptions
 
 There is no inline disable: `# noqa`, `# type: ignore`, `# pyright: ignore` and the other comments
-in the table below are findings themselves. The way out is `python.exceptions` in
-`nitpicker.config.json`, the Python counterpart of the TypeScript `exceptions` key and of the same
-shape: `rule` (the id printed in the finding, for example `T201`, `PTH118`, `frozen-dataclass`,
+in the table below are findings themselves. The way out is `exceptions` in
+`nitpicker.config.json`, the same list and shape as in every preset: `rule` (the id printed in the finding, for example `T201`, `PTH118`, `frozen-dataclass`,
 `return-value`, `reportReturnType`), `paths` (a non-empty array of globs relative to the project)
 and `reason` (required text). It lifts that rule for those paths, in the base and in the head
 snapshot alike, and every exception is listed in the report's config overrides. The id is checked
@@ -192,7 +192,7 @@ error.
 handed to ruff or black either. The rules most likely to flag code that is right for its place are
 `T201` (`print` in a command-line tool or a notebook), `PERF203` (`try` in a loop that must handle
 each item) and `F401` (an `__init__.py` that re-exports): lift them for the path with
-`python.exceptions`, or `exclude` the path, for example
+`exceptions`, or `exclude` the path, for example
 `"exclude": ["src/demo/cli.py", "**/__init__.py"]`. The project's own ruff configuration
 (`[tool.ruff]`, `ruff.toml`) and `[tool.coverage]` are not read for linting and coverage, so the
 result means the same on every project; there is no override key for them (the coverage settings that are dropped are listed under the test step below).
@@ -218,7 +218,7 @@ can import, so an environment without pytest is an error (`environment-failed`, 
 
 The purpose of this slice is the "one way" for each construct. Every finding message names the
 allowed form, and, because any rule can flag legitimate code, ends with how to add the exception.
-Every enforceable finding of ruff, the type checkers and the rules ends with the `python.exceptions` sentence (the size, CRAP, coverage, mutation, duplicate and coupling findings end with an entry for the top-level `exceptions`, from the shared rules), except the two whose own advice differs (`no-inline-suppression`, mypy `unused-ignore`). The wording lives in `languages/python/rules/rule-hints.mjs`; a test checks that each rule's message
+Every enforceable finding of ruff, the type checkers and the rules ends with the `exceptions` sentence, the same one the size, CRAP, coverage, mutation, duplicate and coupling findings end with, except the two whose own advice differs (`no-inline-suppression`, mypy `unused-ignore`). The wording lives in `languages/python/rules/rule-hints.mjs`; a test checks that each rule's message
 names its allowed form, and an opt-in test runs a banned and an allowed fixture of every rule
 through the real tools.
 
@@ -268,7 +268,7 @@ Details that are decisions rather than the table:
   adapters. `frozen=True` must be the literal `True`.
 - The boundary is a directory named `adapters` anywhere in the path (`src/shop/adapters/api.py`),
   as in the TypeScript preset; a project that keeps its pydantic models elsewhere (`schemas/`,
-  `api/`) adds a `python.exceptions` entry for `pydantic-boundary` with those paths.
+  `api/`) adds an `exceptions` entry for `pydantic-boundary` with those paths.
 - `enum-string-constants` flags a class with no bases or decorators whose body assigns at least two
   `UPPER_CASE` names to string literals, and module-level `UPPER_CASE` string constants where at
   least three share the prefix before the first underscore (`STATUS_ACTIVE`, `STATUS_CLOSED`, ...),
@@ -281,7 +281,7 @@ Details that are decisions rather than the table:
   `# type: ignore`, `# noqa`, `# ruff: noqa`, `# flake8: noqa`, `# pyright: ignore`, the
   `# pyright: basic|standard|off` modes and `# pyright: reportX=false|none|warning|information`,
   `# fmt: off` and `# fmt: skip`, and any `# mypy:` directive except `strict`. The message says
-  to remove the comment and fix the code; when it must stay, the way out is a `python.exceptions`
+  to remove the comment and fix the code; when it must stay, the way out is an `exceptions`
   entry for `no-inline-suppression` itself with the path. `# pyright: strict` is allowed. Mypy has no switch
   that ignores `# type: ignore` comments, so there the comment still silences the checker; the
   rule reports it all the same, and pyright is run with `enableTypeIgnoreComments: false`.
@@ -595,7 +595,7 @@ the source root detection already does.
   version; both are read. Items of contract types that do not print import chains (acyclic
   siblings) are reported by their text, and a broken contract with nothing readable is one finding
   for the contract; these have path `.`, so their message says only to remove the import. Findings
-  on a file end with the `python.exceptions` entry for `contract-broken` on that file. A run that checked no
+  on a file end with the `exceptions` entry for `contract-broken` on that file. A run that checked no
   contract (missing config file, `lint-imports` not installed in the environment, which the
   message answers with `"python": { "importLinter": false }`) is an `import-linter-failed` tool
   error, as `duplicates-failed` and `coupling-failed` are for the other two steps.
@@ -796,7 +796,7 @@ and CRAP rules.
   (`languages/python/rules/fixtures/<case>/{banned,allowed}`) through the real ruff, python3, mypy
   and pyright from the `PATH`; the second drives `nitpicker_rules.py` over edge cases (test files,
   nested classes, comment forms). The preset e2e test also gates type errors with mypy and pyright,
-  the one-way rules and `python.exceptions` end to end.
+  the one-way rules and `exceptions` end to end.
 - `core/pack-contents.test.mjs` checks that the Python files, including the ruff config and the
   rules script, are in the npm package.
 - Slice 5 unit tests: `python-sources.test.mjs` (module naming, exclusions), `python-coupling.test.mjs`

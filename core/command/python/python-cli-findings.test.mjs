@@ -15,7 +15,7 @@ const FAILING_SUMMARY = [
   'Quality gate summary',
   '✖ 2 new enforceable violations',
   '  ruff/B006 src/demo/a.py:2',
-  '    Do not use mutable data structures for argument defaults. Default to `None` and create the value inside the function, or use an immutable default such as a tuple. If a reviewer agrees this is intended, add {"rule":"B006","paths":["src/demo/a.py"],"reason":"<why this is intended>"} to "python.exceptions" in nitpicker.config.json.',
+  '    Do not use mutable data structures for argument defaults. Default to `None` and create the value inside the function, or use an immutable default such as a tuple. If a reviewer agrees this is intended, add {"rule":"B006","paths":["src/demo/a.py"],"reason":"<why this is intended>"} to "exceptions" in nitpicker.config.json.',
   '  ruff-format/format src/demo/a.py',
   '    File is not formatted with ruff (detected; set "python.formatter" if wrong)',
   'Full diagnostics: <path>',
@@ -63,7 +63,7 @@ describe('nitpicker with "preset": "python"', () => {
         path: 'src/demo/a.py',
         identity: 'fp:nitpicker/subject=Do not use mutable data structures for argument defaults',
         message:
-          'Do not use mutable data structures for argument defaults. Default to `None` and create the value inside the function, or use an immutable default such as a tuple. If a reviewer agrees this is intended, add {"rule":"B006","paths":["src/demo/a.py"],"reason":"<why this is intended>"} to "python.exceptions" in nitpicker.config.json.',
+          'Do not use mutable data structures for argument defaults. Default to `None` and create the value inside the function, or use an immutable default such as a tuple. If a reviewer agrees this is intended, add {"rule":"B006","paths":["src/demo/a.py"],"reason":"<why this is intended>"} to "exceptions" in nitpicker.config.json.',
         classification: 'enforceable',
         location: { line: 2, column: 1 },
       },
@@ -106,28 +106,26 @@ describe('nitpicker with "preset": "python"', () => {
       [
         'mypy/return-value',
         'Incompatible return value type (got "int", expected "str")',
-        'Incompatible return value type (got "int", expected "str"). Fix the type; inline ignores are banned. If a reviewer agrees this is intended, add {"rule":"return-value","paths":["src/demo/a.py"],"reason":"<why this is intended>"} to "python.exceptions" in nitpicker.config.json.',
+        'Incompatible return value type (got "int", expected "str"). Fix the type; inline ignores are banned. If a reviewer agrees this is intended, add {"rule":"return-value","paths":["src/demo/a.py"],"reason":"<why this is intended>"} to "exceptions" in nitpicker.config.json.',
       ],
       [
         'python-rules/frozen-dataclass',
         'Order',
-        'Dataclass Order is not frozen. Declare records as `@dataclass(frozen=True)` and build a changed copy with `dataclasses.replace`. If a reviewer agrees this is intended, add {"rule":"frozen-dataclass","paths":["src/demo/a.py"],"reason":"<why this is intended>"} to "python.exceptions" in nitpicker.config.json.',
+        'Dataclass Order is not frozen. Declare records as `@dataclass(frozen=True)` and build a changed copy with `dataclasses.replace`. If a reviewer agrees this is intended, add {"rule":"frozen-dataclass","paths":["src/demo/a.py"],"reason":"<why this is intended>"} to "exceptions" in nitpicker.config.json.',
       ],
       [
         'python-rules/no-inline-suppression',
         'noqa',
-        'Inline suppression `# noqa`. Remove the comment and fix the code. If a reviewer agrees this is intended, add {"rule":"no-inline-suppression","paths":["src/demo/a.py"],"reason":"<why this is intended>"} to "python.exceptions" in nitpicker.config.json.',
+        'Inline suppression `# noqa`. Remove the comment and fix the code. If a reviewer agrees this is intended, add {"rule":"no-inline-suppression","paths":["src/demo/a.py"],"reason":"<why this is intended>"} to "exceptions" in nitpicker.config.json.',
       ],
     ]);
   });
-  it('lifts a rule for some paths with python.exceptions and lists the exception', () => {
+  it('lifts a rule for some paths with exceptions and lists the exception', () => {
     const root = pythonRepository();
     writeFiles(root, {
       'nitpicker.config.json': JSON.stringify({
         preset: 'python',
-        python: {
-          exceptions: [{ rule: 'T201', paths: ['scripts/**'], reason: 'command line scripts' }],
-        },
+        exceptions: [{ rule: 'T201', paths: ['scripts/**'], reason: 'command line scripts' }],
       }),
       'violations.txt': `${LEGACY_VIOLATION}T201|scripts/run.py|\`print\` found\n`,
     });
@@ -147,7 +145,7 @@ describe('nitpicker with "preset": "python"', () => {
     writeFiles(root, {
       'nitpicker.config.json': JSON.stringify({
         preset: 'python',
-        python: { exceptions: [{ rule: 'T201', paths: ['scripts/**'], reason: 'scripts' }] },
+        exceptions: [{ rule: 'T201', paths: ['scripts/**'], reason: 'scripts' }],
       }),
       'violations.txt': `${LEGACY_VIOLATION}T201|src/demo/a.py|\`print\` found\n`,
     });
@@ -159,7 +157,7 @@ describe('nitpicker with "preset": "python"', () => {
     expect(result.json('new-findings.json').map(({ rule, message }) => [rule, message])).toEqual([
       [
         'T201',
-        '`print` found. Use `logging`: `logger = logging.getLogger(__name__)`, then `logger.info(...)`. If a reviewer agrees this is intended, add {"rule":"T201","paths":["src/demo/a.py"],"reason":"<why this is intended>"} to "python.exceptions" in nitpicker.config.json.',
+        '`print` found. Use `logging`: `logger = logging.getLogger(__name__)`, then `logger.info(...)`. If a reviewer agrees this is intended, add {"rule":"T201","paths":["src/demo/a.py"],"reason":"<why this is intended>"} to "exceptions" in nitpicker.config.json.',
       ],
     ]);
   });
@@ -191,7 +189,7 @@ describe('nitpicker with "preset": "python"', () => {
         path: 'src/demo/a.py',
         identity: 'Bad',
         message:
-          'Bad. Fix the type; inline ignores are banned. If a reviewer agrees this is intended, add {"rule":"reportReturnType","paths":["src/demo/a.py"],"reason":"<why this is intended>"} to "python.exceptions" in nitpicker.config.json.',
+          'Bad. Fix the type; inline ignores are banned. If a reviewer agrees this is intended, add {"rule":"reportReturnType","paths":["src/demo/a.py"],"reason":"<why this is intended>"} to "exceptions" in nitpicker.config.json.',
         classification: 'enforceable',
         location: { line: 4, column: 5 },
       },
