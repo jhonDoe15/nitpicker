@@ -144,8 +144,8 @@ field by field. Per snapshot:
   the differential lint and the Lombok handling below are the same on both builds; the annotation
   processors' generated sources for a module with a descriptor come from
   `target/generated-sources/annotations`. A POM that sets no release, source or target is linted
-  as Java 8, the compiler plugin's default. Sources under a root outside the module directory (a `build-helper` root such
-  as `../shared/src`) are not linted; their classes are on the class path, except in a module with
+  as Java 8, the compiler plugin's default. Sources under a root outside the module directory (a
+  `build-helper` root such as `../shared/src`) are not linted; their classes are on the class path, except in a module with
   a `module-info.java`, where such a root can make the lint compile fail (`javac/lint-not-run`). In
   a module with a descriptor, jars that are modules go on `--module-path` and the rest on `-cp`,
   as on Gradle; when that compile fails, it is retried with every jar on `--module-path`, as the
@@ -679,14 +679,18 @@ A Checkstyle rule prints as its full check class, for example
   points at a lock, since its stock advice (a `synchronized` block) is what
   `AvoidSynchronizedStatement` forbids.
 - **Where they run.** `languages/java/gradle/pmd-ruleset.xml` holds the rules for main and test
-  sources. `rules/guards-ruleset.xml` runs on main sources only (the init script writes a wrapper
-  ruleset that excludes the test directories), `rules/test-honesty-ruleset.xml` on test sources
-  only (its wrapper excludes every file, then includes the test directories back, since PMD lets
-  an include pattern override an exclude pattern). A project's own `config/pmd/ruleset.xml`
+  sources. `rules/guards-ruleset.xml` runs on main sources only (nitpicker writes a wrapper
+  ruleset that excludes the test directories, with the same code on Gradle and Maven: the init
+  script hands the source directories and the compiler settings to
+  `languages/java/builds/rulesets/write-rules.mjs`), `rules/test-honesty-ruleset.xml` on test
+  sources only (its wrapper excludes every file, then includes the test directories back, since
+  PMD lets an include pattern override an exclude pattern). A project's own `config/pmd/ruleset.xml`
   replaces all of them unless it opts in as before. `InstanceofThenCast` and `CollectorsToList` are
   left out when the main compile targets a release below 16 (`options.release`, else the last
-  `--release` of the compiler arguments, else their last `-target`, else `targetCompatibility`;
-  Maven reads the same order), since pattern matching and `Stream.toList()` need 16.
+  `--release` of the compiler arguments, else their last `-target`, else `targetCompatibility`,
+  on both builds), since pattern matching and `Stream.toList()` need 16. Maven modules also get
+  `pmd-tests.xml` (`TestClassWithoutTestCases` on test sources) and the Checkstyle name formats
+  below, as Gradle projects do.
 - **Narrowed rules.** `OptionalAsFieldOrParameter` skips parameters bound by Spring web
   annotations (`@RequestParam`, `@RequestHeader`, `@PathVariable`, `@CookieValue`,
   `@RequestAttribute`, `@SessionAttribute`, `@MatrixVariable`, `@RequestPart`), where an optional

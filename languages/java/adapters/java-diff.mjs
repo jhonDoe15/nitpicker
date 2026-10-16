@@ -81,6 +81,7 @@ function runJavaPreset(
       '--quiet',
       '--no-configuration-cache',
       `-Pnitpicker.reportDir=${reportBase}`,
+      `-Pnitpicker.node=${process.execPath}`,
       ...kotlinProperties(projectRoot, policy),
       ...toolConfigProperties(projectRoot, policy),
       '-I',
