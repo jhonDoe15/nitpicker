@@ -1,0 +1,28 @@
+{
+  "docComments": [
+    {
+      "file": "src/main/java/com/acme/Orders.java",
+      "line": 10,
+      "name": "getOrderTotal",
+      "lines": ["Gets the order total."]
+    },
+    {
+      "file": "src/main/java/com/acme/Orders.java",
+      "line": 20,
+      "name": "retryDelay",
+      "lines": ["Milliseconds before the first retry; doubles after each failure."]
+    },
+    {
+      "file": "src/main/java/com/acme/Orders.java",
+      "line": 30,
+      "name": "reconcile",
+      "lines": ["One.", "Two.", "Three.", "Four.", "Five.", "Six."]
+    },
+    {
+      "file": "app/legacy.py",
+      "line": 3,
+      "name": "parse_rows",
+      "lines": ["Parses the rows."]
+    }
+  ]
+}
