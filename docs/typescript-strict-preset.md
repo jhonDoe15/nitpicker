@@ -284,6 +284,14 @@ off (a PR that adds or removes React keeps linting on both sides); a misspelled 
   in any module: `declare module 'csstype' { interface Properties { '--progress'?: number } }`
   (needs `csstype` installed; `interface` is allowed in that augmentation). This is the default
   because inline `style` objects are the usual agent slop.
+- **One optional input per concept** (`nitpicker/no-singular-and-plural-prop`). A component's props
+  type (or an exported `*Props` type) that declares both `tag?: string` and `tags?: string[]` offers
+  two ways to pass the same data. The rule reports the plural when both props are optional and the
+  plural is an array (`T[]`, `readonly T[]`, `Array<T>`, `ReadonlyArray<T>`) of the singular's type;
+  keep the plural and pass a single item as a one-element array. Props that differ in type, a
+  required prop, a prop typed `never` in a discriminated union and props in different union branches
+  are not reported. Aliases and interfaces in the same file are followed; types imported from other
+  files are not.
 - **Accessibility** (`jsx-a11y/*`): the recommended `eslint-plugin-jsx-a11y` rule set, as errors.
 - **`null` for refs and contexts.** `null` stays banned, except as the argument and the type
   argument of `useRef` and `createContext` (`useRef<HTMLDivElement>(null)`,
