@@ -234,29 +234,22 @@ function runtimeTargets(modules, source) {
     .map(({ resolved }) => resolved);
 }
 
-function pathTo(target, modules, paths, seen) {
-  const found = paths.find((candidate) => candidate.at(-1) === target);
-  if (found !== undefined || paths.length === 0) {
-    return found;
-  }
-  const next = paths.flatMap((candidate) =>
-    runtimeTargets(modules, candidate.at(-1))
-      .filter((step) => !seen.has(step))
-      .map((step) => [...candidate, step]),
-  );
-  const unique = [...new Map(next.map((candidate) => [candidate.at(-1), candidate])).values()];
-  return pathTo(target, modules, unique, new Set([...seen, ...unique.map((p) => p.at(-1))]));
-}
-
 export function sharedReachPath(violation, moduleList) {
   const modules = new Map(moduleList.map((module) => [module.source, module]));
   const firstSteps = runtimeTargets(modules, violation.from).filter(
     (step) => step !== violation.to && !featureOrCompositionRoot.test(step),
   );
-  return pathTo(
-    violation.to,
-    modules,
-    firstSteps.map((step) => [step]),
-    new Set([violation.from, ...firstSteps]),
-  );
+  const seen = new Set([violation.from, ...firstSteps]);
+  const pending = firstSteps.map((step) => [step]);
+  for (const candidate of pending) {
+    if (candidate.at(-1) === violation.to) {
+      return candidate;
+    }
+    const next = [...new Set(runtimeTargets(modules, candidate.at(-1)))].filter(
+      (step) => !seen.has(step),
+    );
+    next.forEach((step) => seen.add(step));
+    pending.push(...next.map((step) => [...candidate, step]));
+  }
+  return undefined;
 }

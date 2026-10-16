@@ -50,13 +50,15 @@ describe('analyzer cache keys', () => {
         packageRoot,
       );
 
-    expect([...hashedBy('eslint-lint').keys()]).toEqual(
-      expect.arrayContaining([
+    const missing = (name, files) => files.filter((file) => !hashedBy(name).has(file));
+
+    expect(
+      missing('eslint-lint', [
         'languages/typescript/preset/architecture/strict-boundary-rules.mjs',
         'languages/typescript/preset/architecture/strict-layout.mjs',
         'languages/typescript/preset/eslint-plugin/rules/analysis/constant-resolution.mjs',
       ]),
-    );
-    expect([...hashedBy('dependency-architecture').keys()]).toContain('shared/glob.mjs');
+    ).toEqual([]);
+    expect(missing('dependency-architecture', ['shared/glob.mjs'])).toEqual([]);
   });
 });

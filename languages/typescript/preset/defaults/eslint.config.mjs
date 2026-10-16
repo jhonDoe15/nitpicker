@@ -7,7 +7,7 @@ import { nitpickerRules } from '../eslint-plugin/index.mjs';
 import { errorWrappingPolicy } from '../eslint-config/policies/error-wrapping-policy.mjs';
 import { strictPresetConfig } from '../eslint-config/strict.mjs';
 import {
-  ROUTE_HANDLER_FRAMEWORKS,
+  usesRouteHandlerFramework,
   productionLayoutConfigFor,
 } from '../eslint-config/policy/production-policy.mjs';
 import { applyRuleExceptions } from '../eslint-config/exceptions.mjs';
@@ -28,9 +28,7 @@ const policy = readHeadPolicy();
 
 const layout = readLayout();
 const react = isReactProject({ projectRoot: analyzedProjectRoot(), react: policy.react });
-const routeHandlers = readDependencyNames(analyzedProjectRoot()).some((name) =>
-  ROUTE_HANDLER_FRAMEWORKS.has(name),
-);
+const routeHandlers = usesRouteHandlerFramework(readDependencyNames(analyzedProjectRoot()));
 const { sourceGlobs, testGlobs, excludedGlobs, unitTestGlobs } = layout;
 const parserOptions = {
   project: './tsconfig.quality.json',

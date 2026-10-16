@@ -108,10 +108,10 @@ describe('unknown through an imported alias', () => {
     ].join('\n');
 
     expect(
-      (await typedFindings(code)).filter(
-        ({ ruleId }) => ruleId === 'nitpicker/no-unknown-in-domain',
-      ),
-    ).toEqual([expect.objectContaining({ line: 2 })]);
+      (await typedFindings(code))
+        .filter(({ ruleId }) => ruleId === 'nitpicker/no-unknown-in-domain')
+        .map(lineAndRule),
+    ).toEqual(['2 nitpicker/no-unknown-in-domain']);
   });
 });
 
