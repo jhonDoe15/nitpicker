@@ -126,7 +126,11 @@ field by field. Per snapshot:
   provided and system scopes), takes Lombok from it, and reads the sources in the project's
   encoding. A POM that sets no release, source or target is linted as Java 8, the compiler
   plugin's default. Sources under a root outside the module directory (a `build-helper` root such
-  as `../shared/src`) are not linted; their classes are on the class path. On the head it reuses
+  as `../shared/src`) are not linted; their classes are on the class path, except in a module with
+  a `module-info.java`, where such a root can make the lint compile fail (`javac/lint-not-run`). In
+  a module with a descriptor, jars that are modules go on `--module-path` and the rest on `-cp`,
+  as on Gradle; when that compile fails, it is retried with every jar on `--module-path`, as the
+  compiler plugin puts a plain jar there when `module-info.java` requires it. On the head it reuses
   the base's warnings for unchanged files exactly as on Gradle. forbiddenapis reads the module's
   output directory (`target/classes` unless the POM moves it) against the main compile classpath
   and is skipped when the module has no classes; CPD, the guard and test-honesty PMD rulesets,
@@ -137,7 +141,8 @@ field by field. Per snapshot:
   nor are dependencies on other modules of the reactor or dependencies a parent POM declares (the
   parent has no classes to compare with). A jar that registers an annotation processor
   (`META-INF/services/javax.annotation.processing.Processor`, such as `mapstruct-processor`)
-  counts as used. Each dependency's own jar comes from `dependency:list`, and the finding sits on
+  counts as used, and so does a jar that cannot be read as a zip. Each dependency's own jar comes
+  from `dependency:list`, and the finding sits on
   the module's `pom.xml` with Maven's scopes as the alternatives. The end-to-end suite compares
   Gradle and Maven on the guards fixture and lints a reactor with a javac plug-in, preview
   features, a module descriptor and an older release.

@@ -134,6 +134,19 @@ export function permittedSubclasses(buffer) {
   );
 }
 
+function permitsOrFailure(buffer) {
+  try {
+    return { kind: 'class', permits: permittedSubclasses(buffer) };
+  } catch (error) {
+    return { kind: 'unreadable', error };
+  }
+}
+
+function readablePermits(buffer) {
+  const read = permitsOrFailure(buffer);
+  return read.kind === 'class' ? read.permits : [];
+}
+
 export function classFiles(directory) {
   return existsSync(directory)
     ? readdirSync(directory, { recursive: true, withFileTypes: true })
@@ -145,7 +158,7 @@ export function classFiles(directory) {
 
 export function runPermits({ module, reportDir }) {
   const lines = classFiles(module.outputDirectory).flatMap((file) =>
-    permittedSubclasses(readFileSync(file)),
+    readablePermits(readFileSync(file)),
   );
   writeFileSync(path.join(reportDir, 'permits.txt'), lines.map((line) => `${line}\n`).join(''));
 }

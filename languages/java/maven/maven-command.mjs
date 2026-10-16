@@ -82,7 +82,7 @@ export function javaCommand(name) {
     : name;
 }
 
-function argumentFileToken(value) {
+export function argumentFileToken(value) {
   return `"${String(value).replaceAll('\\', '\\\\').replaceAll('"', '\\"')}"`;
 }
 

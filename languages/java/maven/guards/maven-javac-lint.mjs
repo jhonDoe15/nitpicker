@@ -10,91 +10,19 @@ import {
 } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
-import { readZip } from '../../builds/zip-entries.mjs';
-import { javaCommand } from '../maven-command.mjs';
+import { readZipOrFailure } from '../../builds/zip-entries.mjs';
+import { argumentFileToken, javaCommand } from '../maven-command.mjs';
 import { javaFiles } from '../maven-lint.mjs';
+import { languageLevel, lintCompatible } from './javac-options.mjs';
 
 const LINT_REPORT = 'javac-lint.txt';
 const LINT_FAILURE = 'javac-lint-failed.txt';
 const MODULE_INFO = 'module-info.java';
 const MAX_OUTPUT_BYTES = 50 * 1024 * 1024;
 const LINT_TIMEOUT_MS = 15 * 60 * 1000;
-const PAIRED_OPTIONS = new Set([
-  '-Xmaxwarns',
-  '-Xmaxerrs',
-  '-processor',
-  '-processorpath',
-  '--processor-path',
-  '--processor-module-path',
-  '--module-path',
-  '-p',
-  '-d',
-  '-s',
-  '-h',
-  '-encoding',
-  '-cp',
-  '-classpath',
-  '--class-path',
-  '-sourcepath',
-  '--source-path',
-]);
-const DROPPED_PREFIXES = ['-Xlint', '-Xdoclint', '-proc:', '-implicit:', '-Xplugin:', '-J'];
-const DROPPED_OPTIONS = [
-  '--processor-path',
-  '--processor-module-path',
-  '--module-path',
-  '--class-path',
-  '--source-path',
-];
-const DEFAULT_LEVEL = '8';
 const SUPPRESS_WARNINGS = /@\s*(?:java\s*\.\s*lang\s*\.\s*)?SuppressWarnings\s*\([^)]*\)/gu;
 const WARNING_FILE = /^(.+\.java):\d+: warning: \[/u;
 const VERSIONED_MODULE_INFO = /^META-INF\/versions\/\d+\/module-info\.class$/u;
-
-function isDropped(arg) {
-  return (
-    arg === '-Werror' ||
-    DROPPED_PREFIXES.some((prefix) => arg.startsWith(prefix)) ||
-    DROPPED_OPTIONS.some((prefix) => arg === prefix || arg.startsWith(`${prefix}=`))
-  );
-}
-
-function keepStep(state, arg) {
-  if (state.skipNext) {
-    return { kept: state.kept, skipNext: false };
-  }
-  if (PAIRED_OPTIONS.has(arg)) {
-    return { kept: state.kept, skipNext: true };
-  }
-  return { kept: isDropped(arg) ? state.kept : [...state.kept, arg], skipNext: false };
-}
-
-export function lintCompatible(args) {
-  return args.reduce(keepStep, { kept: [], skipNext: false }).kept;
-}
-
-function hasOption(args, names) {
-  return args.some((arg) => names.some((name) => arg === name || arg.startsWith(`${name}=`)));
-}
-
-export function languageLevel(compiler) {
-  if (compiler.release !== undefined) {
-    return ['--release', compiler.release];
-  }
-  if (hasOption(compiler.args, ['--release'])) {
-    return [];
-  }
-  const source = hasOption(compiler.args, ['-source', '--source'])
-    ? undefined
-    : (compiler.source ?? DEFAULT_LEVEL);
-  const target = hasOption(compiler.args, ['-target', '--target'])
-    ? undefined
-    : (compiler.target ?? DEFAULT_LEVEL);
-  return [
-    ...(source === undefined ? [] : ['-source', source]),
-    ...(target === undefined ? [] : ['-target', target]),
-  ];
-}
 
 export function isJavaModule(file) {
   if (statSync(file).isDirectory()) {
@@ -103,7 +31,11 @@ export function isJavaModule(file) {
   if (!file.endsWith('.jar')) {
     return false;
   }
-  const jar = readZip(file);
+  const read = readZipOrFailure(file);
+  if (read.kind !== 'zip') {
+    return false;
+  }
+  const jar = read.zip;
   return (
     jar.names.has('module-info.class') ||
     /^Automatic-Module-Name:/mu.test(jar.text('META-INF/MANIFEST.MF') ?? '') ||
@@ -113,10 +45,11 @@ export function isJavaModule(file) {
 
 function lookupPath({ modular, classesDir, libraries }) {
   const existing = libraries.filter((library) => existsSync(library));
-  if (!modular) {
+  if (modular === false) {
     return ['-cp', [classesDir, ...existing].join(path.delimiter)];
   }
-  const modules = existing.filter((library) => isJavaModule(library));
+  const modules =
+    modular === 'all' ? existing : existing.filter((library) => isJavaModule(library));
   const plain = existing.filter((library) => !modules.includes(library));
   return [
     ...(modules.length === 0 ? [] : ['--module-path', modules.join(path.delimiter)]),
@@ -216,9 +149,7 @@ function compileForLint({ work, args, files }) {
   const argumentFile = path.join(work, 'javac.args');
   writeFileSync(
     argumentFile,
-    [...args, ...files]
-      .map((token) => `"${token.replaceAll('\\', '\\\\').replaceAll('"', '\\"')}"`)
-      .join('\n'),
+    [...args, ...files].map((token) => argumentFileToken(token)).join('\n'),
   );
   const result = spawnSync(javaCommand('javac'), [`@${argumentFile}`], {
     cwd: path.join(work, 'sources'),
@@ -239,8 +170,15 @@ function lintSources(context, sources) {
     const classes = path.join(work, 'classes');
     mkdirSync(classes, { recursive: true });
     const files = stageSources({ module: context.module, sources, staged });
-    const args = lintArguments({ ...context, classes });
-    const result = compileForLint({ work, args, files });
+    const first = compileForLint({ work, args: lintArguments({ ...context, classes }), files });
+    const result =
+      first.code === 0 || context.modular === false
+        ? first
+        : compileForLint({
+            work,
+            args: lintArguments({ ...context, classes, modular: 'all' }),
+            files,
+          });
     return { ...result, log: result.log.replaceAll(staged + path.sep, '') };
   } finally {
     rmSync(work, { recursive: true, force: true });
