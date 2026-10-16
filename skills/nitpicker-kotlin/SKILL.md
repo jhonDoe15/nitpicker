@@ -67,5 +67,7 @@ it with `npx skills add jhonDoe15/nitpicker --skill nitpicker-java`.
 - A file stays within 300 lines (a test file 500). A package folder holds at most 6 files and 6
   test files directly: group the rest into subpackages by what they do.
 - Every branch you add needs a test: changed-branch coverage runs on your change.
+- Plan tests to be fast (`test-runtime/slow-test`): a test dispatcher or fake clock instead of
+  waits, a test slice instead of a full context.
 - A function or file already over a limit may be edited but must not get worse: put new code in a
   new function or file and call it.
