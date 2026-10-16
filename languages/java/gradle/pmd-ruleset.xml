@@ -142,5 +142,36 @@
       </property>
     </properties>
   </rule>
+  <rule name="StaticForwardingWrapper" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
+        message="This static method only passes its parameters, in order, to another method. Call that method directly where this one is used and delete the wrapper. If the wrapper is intended (a public alias, or a name a framework looks up), add an exception for pmd/StaticForwardingWrapper in nitpicker.config.json.">
+    <priority>3</priority>
+    <properties>
+      <property name="xpath">
+        <value><![CDATA[
+//MethodDeclaration[pmd-java:modifiers() = 'static'][not(ModifierList/Annotation)][not(TypeParameters)]
+  [not(@Name = ('main', 'valueOf', 'fromString'))]
+  [FormalParameters/@Size > 0]
+  [not(ancestor::*[self::ClassDeclaration or self::RecordDeclaration or self::EnumDeclaration]/ModifierList/Annotation
+       [pmd-java:typeIs('org.springframework.stereotype.Component')
+        or pmd-java:typeIs('org.springframework.stereotype.Service')
+        or pmd-java:typeIs('org.springframework.stereotype.Repository')
+        or pmd-java:typeIs('org.springframework.stereotype.Controller')
+        or pmd-java:typeIs('org.springframework.web.bind.annotation.RestController')
+        or pmd-java:typeIs('org.springframework.web.bind.annotation.ControllerAdvice')
+        or pmd-java:typeIs('org.springframework.web.bind.annotation.RestControllerAdvice')
+        or pmd-java:typeIs('org.springframework.context.annotation.Configuration')
+        or pmd-java:typeIs('org.springframework.boot.autoconfigure.SpringBootApplication')])]
+  [let $method := ., $parameters := FormalParameters/FormalParameter/VariableId/@Name,
+       $call := Block[count(*) = 1]/(ReturnStatement | ExpressionStatement[$method/VoidType])/MethodCall
+     return exists($call)
+       and not($call/TypeArguments)
+       and ($call/*[1][self::TypeExpression] or ($call/*[1][self::ArgumentList] and $call/@MethodName != $method/@Name))
+       and $call/ArgumentList/@Size = count($parameters)
+       and (every $i in 1 to count($parameters)
+            satisfies $call/ArgumentList/*[$i][self::VariableAccess]/@Name = $parameters[$i])]
+]]></value>
+      </property>
+    </properties>
+  </rule>
   <rule ref="category/java/design.xml/AvoidCatchingGenericException"/>
 </ruleset>
