@@ -71,8 +71,8 @@ export default { define: { value: fromViteConfig } };
 
 let directories = [];
 
-function deadCode({ manifest = PRIVATE_APP, policy = {} } = {}) {
-  const root = createProject(SOURCES, { manifest });
+function deadCode({ sources = SOURCES, manifest = PRIVATE_APP, policy = {} } = {}) {
+  const root = createProject(sources, { manifest });
   const policyDirectory = mkdtempSync(path.join(tmpdir(), 'nitpicker-policy-'));
   directories.push(root, policyDirectory);
   const policyFile = path.join(policyDirectory, 'policy.json');
@@ -100,6 +100,42 @@ function deadCode({ manifest = PRIVATE_APP, policy = {} } = {}) {
 function symbols(findings) {
   return findings.map(({ path: file, symbol }) => `${file} ${symbol}`).toSorted();
 }
+
+const REEXPORTS = {
+  'src/main/main.ts': `import { stampLabel } from './features/labels/stamp';
+import { dyeCloth } from './features/cloth/dye';
+export { applyDiscount } from './features/pricing/discount';
+export { glazeTile } from './features/tiles/barrel';
+export { sealJar } from './features/jars/lid';
+export { dyeCloth };
+export * from './features/shelves/shelf';
+export { weighCrate } from './features/crates';
+console.log(stampLabel());
+`,
+  'src/main/features/pricing/discount.ts': 'export function applyDiscount() { return 1; }\n',
+  'src/main/features/cloth/dye.ts': 'export function dyeCloth() { return 6; }\n',
+  'src/main/features/tiles/barrel.ts': "export { glazeTile } from './glaze';\n",
+  'src/main/features/tiles/glaze.ts': 'export function glazeTile() { return 2; }\n',
+  'src/main/features/jars/lid.ts': 'export function sealJar() { return 3; }\n',
+  'src/main/features/shelves/shelf.ts': 'export function stackShelf() { return 4; }\n',
+  'src/main/features/crates/index.ts': "export { weighCrate } from './weigh';\n",
+  'src/main/features/crates/weigh.ts': 'export function weighCrate() { return 5; }\n',
+  'src/main/features/labels/stamp.ts': `import { weighCrate } from '../crates';
+export function stampLabel() { return weighCrate(); }
+`,
+  'src/main/features/reexports.test.ts': `import { it } from 'vitest';
+import { applyDiscount } from './pricing/discount';
+import { glazeTile } from './tiles/glaze';
+import { stackShelf } from './shelves/shelf';
+import { weighCrate } from './crates/weigh';
+import { dyeCloth } from './cloth/dye';
+it('uses them', () => { applyDiscount(); glazeTile(); stackShelf(); weighCrate(); dyeCloth(); });
+`,
+  'src/main/features/jars/jars.test.ts': `import { it } from 'vitest';
+import { sealJar } from '../../main';
+it('seals', () => sealJar());
+`,
+};
 
 let privateFindings;
 
@@ -149,5 +185,51 @@ describe('exports and modules only tests import', () => {
       'src/main/builders.ts src/main/builders.ts',
       'src/main/colocated.ts colocatedTestOnly',
     ]);
+  });
+});
+
+describe('exports that an entry re-exports', () => {
+  let reexportFindings;
+
+  function inFolder(folder) {
+    return reexportFindings.filter((finding) => finding.includes(`/features/${folder}/`));
+  }
+
+  beforeAll(() => {
+    reexportFindings = symbols(deadCode({ sources: REEXPORTS }));
+  });
+
+  it('does not count a re-export from the entry of a private app as a use', () => {
+    expect(inFolder('pricing')).toEqual(['src/main/features/pricing/discount.ts applyDiscount']);
+  });
+
+  it('follows a barrel chain to the declaration', () => {
+    expect(inFolder('tiles')).toEqual(['src/main/features/tiles/glaze.ts glazeTile']);
+  });
+
+  it('does not count `export *` or an import that is exported again', () => {
+    expect(inFolder('shelves')).toEqual(['src/main/features/shelves/shelf.ts stackShelf']);
+    expect(inFolder('cloth')).toEqual(['src/main/features/cloth/dye.ts dyeCloth']);
+  });
+
+  it('does not count another test that imports it from the entry', () => {
+    expect(inFolder('jars')).toEqual(['src/main/features/jars/lid.ts sealJar']);
+  });
+
+  it('leaves out a barrel re-export that production code imports onward, and nothing else', () => {
+    expect(inFolder('crates')).toEqual([]);
+    expect(inFolder('labels')).toEqual([]);
+    expect(reexportFindings).toHaveLength(5);
+  });
+
+  it('counts the re-export of a published package, whose entry is public', () => {
+    const manifest = {
+      ...PRIVATE_APP,
+      name: 'library',
+      private: false,
+      exports: './src/main/main.ts',
+    };
+
+    expect(deadCode({ sources: REEXPORTS, manifest })).toEqual([]);
   });
 });

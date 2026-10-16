@@ -3,7 +3,10 @@ import { linkPolicyFile } from '../../../../../core/tooling/policy-links.mjs';
 import { exceptionMatcher } from '../../../../../shared/rules/exceptions.mjs';
 import { readHeadPolicy, readLayout } from '../../../preset/head-policy.mjs';
 import { layoutTransformFor } from '../../../preset/tool-configs.mjs';
-import { layoutKnipProductionConfig } from '../../../preset/unused-api/test-only/production-config.mjs';
+import {
+  layoutKnipProductionConfig,
+  withEntryExports,
+} from '../../../preset/unused-api/test-only/production-config.mjs';
 import {
   needsProductionRun,
   testOnlyExportFindings,
@@ -51,11 +54,17 @@ function testOnlyFindings(options, { config, normal, knip }) {
   const packagesInfo = loadPackages(options.projectRoot, layout);
   const hasTests = layout.projectCodeFiles(options.projectRoot).some(layout.isTestFile);
   if (!hasTests || !needsProductionRun(packagesInfo, options.projectRoot)) return [];
+  const productionConfig = layoutKnipProductionConfig(config, layout);
   return testOnlyExportFindings({
     normal,
-    production: knip(layoutKnipProductionConfig(config, layout)),
+    production: knip(productionConfig),
+    entryExportRuns: {
+      production: () => knip(withEntryExports(productionConfig)),
+      normal: () => knip(withEntryExports(config)),
+    },
     packagesInfo,
     context: {
+      layout,
       projectRoot: options.projectRoot,
       analyzerName: options.analyzerName,
       isExcepted: exceptionMatcher(readHeadPolicy().exceptions),

@@ -28,6 +28,17 @@ function manifestTargets(manifest) {
   ];
 }
 
+function nestedValues(value) {
+  return value !== null && typeof value === 'object' ? Object.values(value) : [];
+}
+
+function declaredTargets(manifest) {
+  return [
+    ...MANIFEST_ENTRY_FIELDS.map((field) => manifest[field]),
+    ...depthFirst(manifest.exports, nestedValues),
+  ].filter((target) => typeof target === 'string');
+}
+
 function isSourceEntry(file, layout) {
   const extension = path.extname(file).slice(1);
   return (
@@ -48,6 +59,12 @@ function sourceEntryOf({ dir, manifest }, layout) {
   const declared = manifestTargets(manifest).map((target) => path.join(dir, target));
   const candidates = [...declared, ...indexFiles(dir, [...layout.sourceRoots, ...FALLBACK_ROOTS])];
   return candidates.find((file) => isSourceEntry(file, layout));
+}
+
+export function publicEntryGlobs(entry, layout) {
+  const targets = declaredTargets(entry.manifest).map((target) => path.join(entry.dir, target));
+  const sources = targets.filter((target) => target.includes('*') || isSourceEntry(target, layout));
+  return sources.length > 0 ? sources : [sourceEntryOf(entry, layout)].filter(Boolean);
 }
 
 /**

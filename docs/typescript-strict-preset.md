@@ -686,7 +686,12 @@ from a real caller) and the `exceptions` entry that lifts it.
   `vite.config.ts`, `bin` and `exports` stay entries) lists what production code does not use, and
   what the normal run does not list is used only by tests. That covers whole modules too: a module
   that only tests import should move to a `test-support/` folder, and modules under `test-support/`
-  are not reported.
+  are not reported. A re-export (`export { x } from`, `export * from`, or an import that is only
+  exported again) is not a use by itself: re-exporting a function from an entry such as
+  `src/main/main.ts` or a composition root does not clear the finding. It counts only when
+  something imports the name onward from the re-exporting module, through any number of barrels,
+  and the final importer decides: production code counts, a test does not. The one exception is
+  a re-export from a public entry of a published package (see below), which is public API.
 - **Callers the check cannot see.** A component or function that is used as a value (passed as
   `component={X}`, put in a route or config object, `.call`ed, mapped over, assigned) is left alone,
   as are all exports of a module that is loaded with `import()` or `require()` (`lazy`, route
@@ -700,7 +705,10 @@ from a real caller) and the `exceptions` entry that lifts it.
   no `"private": true`, and says what it ships (`main`, `exports`, `bin`, `files` or
   `publishConfig`); it can have callers outside the repository. Its own tests, stories and examples
   count as callers, so a new public prop or option must at least be exercised there, and its
-  `test-only-export` findings are not reported. In any other package, or an app whose manifest has
+  `test-only-export` findings are not reported, and a re-export from its public entries (the files
+  that `main`, `module`, `types`, `source` and `exports` of its `package.json` name, or else its
+  source-root `index`, and the files that `layout.entryPoints` lists inside it) counts as a use of
+  what it re-exports, wherever that is declared. In any other package, or an app whose manifest has
   no name, only production callers count: a prop that only a test or story passes fails. Callers
   in the other packages of an npm, Yarn or pnpm workspace count for the package that declares the
   prop; a package name resolves to the source file its `package.json` names, or else to the

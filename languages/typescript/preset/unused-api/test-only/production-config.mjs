@@ -36,3 +36,7 @@ export function layoutKnipProductionConfig(config, layout) {
     project: [...config.project, ...tests.map((glob) => `!${glob}`)],
   };
 }
+
+export function withEntryExports(config) {
+  return { ...config, includeEntryExports: true };
+}
