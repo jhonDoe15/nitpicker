@@ -135,6 +135,34 @@ describe('running pytest', () => {
     ]);
   });
 });
+describe('running the Django and nose2 runners', () => {
+  it.each([
+    ['django', ['manage.py', 'test', '--noinput']],
+    ['nose2', ['-m', 'nose2']],
+  ])('runs the %s tests under coverage', (testRunner, command) => {
+    const calls = callsLog();
+    const { context } = contextFor(project(), { testRunner });
+
+    expect(runPythonTools(context)).toEqual([]);
+
+    expect(calls('coverage', 'run')[0].args.slice(3)).toEqual(command);
+  });
+  it.each([
+    ['django', 'Django'],
+    ['nose2', 'nose2'],
+  ])('is an environment error when %s is not installed', (testRunner, distribution) => {
+    const calls = callsLog();
+    const root = project({ [`no-${distribution}.txt`]: '' });
+
+    expect(runPythonTools(contextFor(root, { testRunner }).context)).toEqual([
+      {
+        rule: 'environment-failed',
+        message: `${distribution} runs the tests of this project but is not installed in the virtualenv environment: install it there, or set "python.testRunner" to the runner the tests use`,
+      },
+    ]);
+    expect(calls('coverage', 'run')).toEqual([]);
+  });
+});
 describe('failure messages', () => {
   it('says a tool timed out instead of quoting the system error', () => {
     const root = project();
@@ -171,6 +199,21 @@ describe('tool versions', () => {
       `ruff@0.9.9;mypy@1.13.0;coverage@7.6.1;unittest;${jscpd}`,
     );
     expect(mutationVersions(contextFor(root).context)).toBe('mutmut@3.8.0;pytest@8.3.1');
+  });
+  it('names the Django and nose2 versions, and whether pytest-django can run the mutants', () => {
+    const jscpd = `jscpd@${jscpdVersion()}`;
+    const django = (files) => contextFor(project(files), { testRunner: 'django' }).context;
+
+    expect(toolVersions(django())).toBe(
+      `ruff@0.9.9;mypy@1.13.0;coverage@7.6.1;django@5.1.0;${jscpd}`,
+    );
+    expect(toolVersions(contextFor(project(), { testRunner: 'nose2' }).context)).toBe(
+      `ruff@0.9.9;mypy@1.13.0;coverage@7.6.1;nose2@5.1.0;${jscpd}`,
+    );
+    expect(mutationVersions(django())).toBe('mutmut@3.8.0;pytest@8.3.1;pytest-django@missing');
+    expect(mutationVersions(django({ 'pytest-django.txt': '' }))).toBe(
+      'mutmut@3.8.0;pytest@8.3.1;pytest-django@installed',
+    );
   });
   it('adds import-linter to the versions when the project has contracts', () => {
     const root = project({ '.importlinter': '[importlinter]\n', 'conftest.py': '' });

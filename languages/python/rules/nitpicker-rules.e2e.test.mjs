@@ -42,6 +42,7 @@ describe.skipIf(!enabled)('frozen-dataclass', () => {
     'test/helpers.py',
     'src/test_orders.py',
     'src/orders_test.py',
+    'src/polls/tests.py',
     'src/conftest.py',
   ])('does not apply to the test file %s', (file) => {
     expect(single('@dataclass\nclass A:\n    x: int\n', file)).toEqual([]);

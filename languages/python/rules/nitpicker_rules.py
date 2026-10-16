@@ -75,6 +75,7 @@ def is_test_path(path):
         bool(TEST_DIRECTORIES.intersection(parts[:-1]))
         or name.startswith("test_")
         or name.endswith("_test.py")
+        or name == "tests.py"
         or name == "conftest.py"
     )
 

@@ -1,4 +1,4 @@
-import { existsSync, writeFileSync } from 'node:fs';
+import { existsSync, readdirSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { jscpdVersion } from '../../java/adapters/metrics/java-duplicates.mjs';
 import { TESTS_FAILED_RULE } from '../../../shared/rules/finding-helpers.mjs';
@@ -18,6 +18,7 @@ import {
   importRoots,
 } from './execution/python-project.mjs';
 import { RUFF_CONFIG } from './configuration/python-ruff-config.mjs';
+import { writeCoverageConfig } from './configuration/python-coverage-config.mjs';
 import {
   detectTestRunner,
   NO_TESTS_EXIT,
@@ -26,6 +27,7 @@ import {
   testRunnerLabel,
   testsRan,
 } from './execution/python-test-runner.mjs';
+import { mutationRunnerLabels } from './mutation/python-mutation-runner.mjs';
 import { resolveTypeChecker, typeCheck } from './python-types.mjs';
 import { structure } from './analysis/python-structure.mjs';
 
@@ -33,15 +35,7 @@ export const RUFF_REPORT = 'ruff.sarif';
 export const FORMAT_REPORT = 'format.txt';
 export const COVERAGE_REPORT = 'coverage.json';
 export const MANIFEST_REPORT = 'manifest.json';
-const COVERAGE_CONFIG = 'coveragerc';
 const COVERAGE_DATA = '.coverage';
-const UNTESTABLE_LINES = [
-  String.raw`^\s*if (typing\.)?TYPE_CHECKING:`,
-  String.raw`^\s*if __name__ == .__main__.:`,
-  String.raw`^\s*@(typing\.)?overload\b`,
-  String.raw`^\s*raise NotImplementedError\b`,
-];
-const TEST_FILES = ['test_*.py', '*_test.py', 'conftest.py', '*/tests/*', '*/test/*'];
 const EMPTY_COVERAGE_REPORT = '{"files":{}}';
 const FORMAT_FAILURE_STATUS = { black: 123, ruff: 2 };
 const PARSE_ERROR = {
@@ -209,33 +203,24 @@ function coverageSources({ projectRoot, project }) {
   return project.sourceRoots.filter((root) => existsSync(path.join(projectRoot, root)));
 }
 
-function indented(entries) {
-  return entries.map((entry) => `    ${entry}`).join('\n');
-}
-
-function coverageConfig(sources) {
-  return [
-    '[run]',
-    'branch = True',
-    'parallel = False',
-    `source =\n${indented(sources)}`,
-    `omit =\n${indented(TEST_FILES)}`,
-    '[report]',
-    `exclude_lines =\n${indented(UNTESTABLE_LINES)}`,
-    'partial_branches =',
-    '',
-  ].join('\n');
+function combineCoverageData(context, config) {
+  const parallel = readdirSync(context.reportRoot).some((name) =>
+    name.startsWith(`${COVERAGE_DATA}.`),
+  );
+  if (parallel) {
+    run(context, ['coverage', 'combine', '--rcfile', config], { rule: 'coverage-failed' });
+  }
 }
 
 function test(context, outcome) {
   const sources = coverageSources(context);
-  const config = path.join(context.reportRoot, COVERAGE_CONFIG);
-  writeFileSync(config, coverageConfig(sources));
+  const config = writeCoverageConfig(context, sources);
   const result = run(context, ['coverage', 'run', '--rcfile', config, ...testCommand(context)], {
     accepted: [0, NO_TESTS_EXIT],
     rule: TESTS_FAILED_RULE,
   });
   outcome.testsRan = testsRan(result);
+  combineCoverageData(context, config);
   writeCoverageReport(context, { config, measured: sources.length > 0 });
 }
 
@@ -291,5 +276,9 @@ export function toolVersions(context) {
 }
 
 export function mutationVersions(context) {
-  return [`mutmut@${probeVersion(context, MUTMUT_VERSION_PROBE)}`, pytestLabel(context)].join(';');
+  return [
+    `mutmut@${probeVersion(context, MUTMUT_VERSION_PROBE)}`,
+    pytestLabel(context),
+    ...mutationRunnerLabels(context),
+  ].join(';');
 }

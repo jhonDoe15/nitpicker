@@ -88,7 +88,7 @@ describe('running the tools', () => {
       sourceRoots: ['src'],
       testsRan: true,
     });
-    expect(readReport(reportRoot, 'coveragerc')).toBe(coverageRc('src'));
+    expect(readReport(reportRoot, 'coveragerc')).toBe(coverageRc(['src']));
   });
   it('checks formatting with black when the project uses it', () => {
     const root = project({
@@ -101,21 +101,26 @@ describe('running the tools', () => {
 
     expect(readReport(reportRoot, 'format.txt')).toBe(path.join(root, 'src/demo/a.py'));
   });
-  it('measures branches without honoring pragmas, the project config or test files', () => {
+  it('measures branches without honoring pragmas, the report settings of the project or test files', () => {
     const { context, reportRoot } = contextFor(
-      project({ 'pyproject.toml': '[tool.coverage.run]\n' }),
+      project({
+        'pyproject.toml':
+          '[tool.coverage.run]\nbranch = false\nconcurrency = ["multiprocessing"]\n[tool.coverage.report]\nexclude_also = ["pragma: no cover"]\n',
+      }),
     );
 
     runPythonTools(context);
 
-    expect(readReport(reportRoot, 'coveragerc')).toBe(coverageRc('src'));
+    expect(readReport(reportRoot, 'coveragerc')).toBe(
+      coverageRc(['src'], ['concurrency =', '    multiprocessing']),
+    );
   });
   it('measures the source roots that exist and writes an empty report when none does', () => {
     const calls = callsLog();
     const root = project({ 'lib/a.py': '' });
     const both = contextFor(root, { sourceRoots: ['src', 'lib', 'missing'] });
     runPythonTools(both.context);
-    expect(readReport(both.reportRoot, 'coveragerc')).toBe(coverageRc('src', 'lib'));
+    expect(readReport(both.reportRoot, 'coveragerc')).toBe(coverageRc(['src', 'lib']));
 
     const none = contextFor(root, { sourceRoots: ['missing'] });
     expect(runPythonTools(none.context)).toEqual([]);

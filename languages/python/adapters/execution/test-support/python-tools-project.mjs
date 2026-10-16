@@ -14,7 +14,7 @@ export function temporaryRoot() {
   return root;
 }
 
-export function coverageRc(...sources) {
+export function coverageRc(sources, carried = []) {
   return [
     '[run]',
     'branch = True',
@@ -22,11 +22,13 @@ export function coverageRc(...sources) {
     'source =',
     ...sources.map((source) => `    ${source}`),
     'omit =',
-    '    test_*.py',
+    '    */test_*.py',
     '    *_test.py',
-    '    conftest.py',
+    '    */tests.py',
+    '    */conftest.py',
     '    */tests/*',
     '    */test/*',
+    ...carried,
     '[report]',
     'exclude_lines =',
     String.raw`    ^\s*if (typing\.)?TYPE_CHECKING:`,
