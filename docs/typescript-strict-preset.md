@@ -143,7 +143,7 @@ sum + x, 0)`), `Object.fromEntries`, and `Object.groupBy`. No loops, `forEach`, 
   binding or destructured parameter that holds a library value), when the comparison is on a
   property of a union-typed object (`event.type === 'a' || event.type === 'b'`, which narrows a
   discriminated union), or inside a function whose return type is a type predicate (`kind is
-  'a' | 'b'`), which names the subset in its type. The type is read at the first comparison, so an
+'a' | 'b'`), which names the subset in its type. The type is read at the first comparison, so an
   earlier guard that already narrowed the union can shrink it below three members. Add an exception
   for the rule when a partial test is intended.
 - `nitpicker/no-forwarding-wrapper` (type-aware): a module-level named function or `const` arrow
@@ -337,6 +337,25 @@ off (a PR that adds or removes React keeps linting on both sides); a misspelled 
   combination. Props are the destructured parameter names or `props.name`. A branch that renders a
   fallback, returns `null`, logs at another level or sets state is not flagged, and neither is a check
   inside a nested function or a hook callback.
+- **A story for every component, where Storybook is used** (`component-story-missing`, a check of
+  the `structure` analyzer, not an ESLint rule). A package whose nearest `package.json` lists
+  `storybook` or an `@storybook/*` package is checked: each source file in it that exports a real
+  component (a function returning JSX, a `memo` or `forwardRef` result or a class extending
+  `Component` or `PureComponent`; not objects, arrays or tables holding JSX) needs a story. The
+  story is `<Name>.stories.<ext>` or `<Name>.story.<ext>` (any code extension, the story pattern
+  the i18n scope uses), anywhere under the source roots of the same package (beside the component,
+  in a `__stories__` folder or in a top-level `src/stories/` as Storybook's setup creates it), named
+  after any component the file exports, after the file, or after the folder for an `index.*` file
+  (`Card/index.tsx` with `Card/Card.stories.tsx`). MDX docs pages do not count, because they hold
+  no stories. Story files and files under `__stories__` or `stories` are not components. Each
+  component of a file without a story is its own finding, located at its declaration, so a second
+  component added to a file that has none is a new finding. A finding is enforced when more than half of the checked
+  components have a story, and only reported (`descriptive`) otherwise, so a project adopting
+  stories is not failed on every old component. That decision, and whether Storybook is present, are
+  read from the head checkout on both sides of a comparison, so a pull request that adds Storybook or
+  crosses the half mark does not turn untouched components into new findings. An exception lists the
+  file; the message carries the exact entry:
+  `{"rule":"component-story-missing","paths":["src/Card.tsx"],"reason":"..."}`.
 - **Accessibility** (`jsx-a11y/*`): the recommended `eslint-plugin-jsx-a11y` rule set, as errors.
 - **`null` for refs and contexts.** `null` stays banned, except as the argument and the type
   argument of `useRef` and `createContext` (`useRef<HTMLDivElement>(null)`,
