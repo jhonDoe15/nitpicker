@@ -1,5 +1,6 @@
 import path from 'node:path';
 import { readLayout } from '../../../../head-policy.mjs';
+import { mockedModuleSource } from '../../analysis/test-code-analysis.mjs';
 
 const layout = readLayout();
 
@@ -26,17 +27,8 @@ export const rule = {
         }
       },
       CallExpression(node) {
-        const callee = node.callee;
-        if (
-          callee.type !== 'MemberExpression' ||
-          callee.computed ||
-          !aliases.has(callee.object.name) ||
-          !['mock', 'doMock'].includes(callee.property.name)
-        )
-          return;
-        const target = node.arguments[0];
-        const source = target?.type === 'ImportExpression' ? target.source.value : target?.value;
-        if (typeof source !== 'string') return;
+        const source = mockedModuleSource(node, aliases);
+        if (source === undefined) return;
         const resolved = source.startsWith('.')
           ? path.resolve(path.dirname(context.filename), source).replaceAll('\\\\', '/')
           : source;
