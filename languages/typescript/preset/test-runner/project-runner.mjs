@@ -1,6 +1,7 @@
 import { PACKAGE_ROOT } from '../../../../core/tooling/tool-resolution.mjs';
 import { readHeadPolicy } from '../head-policy.mjs';
 import { detectTestRunner, testRunnerFor } from './detect-runner.mjs';
+import { recordedTestRunner } from './runner-vocabulary.mjs';
 import { runnerCommand } from './script-command.mjs';
 
 const NO_COMMAND = { environment: {}, nodeArguments: [], arguments_: [], precedingCommands: [] };
@@ -17,11 +18,6 @@ export function projectTestRunner(options) {
     ...detected,
     command: runnerCommand(detected.command, detected.runner) ?? NO_COMMAND,
   };
-}
-
-export function recordedTestRunner(policy) {
-  const tests = policy.tools?.tests;
-  return tests?.runner ?? tests?.detectedRunner;
 }
 
 export function policyTestRunner(policy, projectRoot) {

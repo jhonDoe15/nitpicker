@@ -56,24 +56,26 @@ export const reactRuleIds = [
   ...accessibilityRuleNames.map((name) => `jsx-a11y/${name}`),
 ];
 
-export const testingLibraryHints = {
-  'await-async-events': `. Await the call: \`await user.<event>(...)\`. On user-event v13, whose calls are synchronous, ${EXCEPTION_HINT}`,
-  'await-async-queries': `. Await it: \`await screen.findByRole(...)\`.${GENERAL_HINT}`,
-  'await-async-utils': `. Await it: \`await waitFor(...)\`.${GENERAL_HINT}`,
-  'no-debugging-utils': `. Remove the debug output and assert what you were looking for: \`expect(screen.getByRole(...)).toBeVisible()\`.${GENERAL_HINT}`,
-  'no-manual-cleanup': ` Testing Library unmounts after each test by itself in this project: remove the call.${GENERAL_HINT}`,
-  'no-node-access': ` Use \`screen.getByRole(...)\` or \`within(...)\`, and \`toHaveFocus()\` for focus.${GENERAL_HINT}`,
-  'no-test-id-queries': ` Use \`screen.getByRole('button', { name: 'Save' })\`.${GENERAL_HINT}`,
-  'no-unnecessary-act': `: \`render\` and \`user\` events already run in \`act\`. Call them directly.${GENERAL_HINT}`,
-  'prefer-presence-queries': `: \`expect(screen.getByText('Saved')).toBeInTheDocument()\`, \`expect(screen.queryByText('Error')).not.toBeInTheDocument()\`.${GENERAL_HINT}`,
-  'prefer-screen-queries': `. For part of the page use \`within(element).getByRole(...)\`.${GENERAL_HINT}`,
-  'prefer-user-event': `. Use \`await user.click(button)\`.${GENERAL_HINT}`,
-  'prefer-user-event-setup': `, with \`import { userEvent } from '@testing-library/user-event'\`.${GENERAL_HINT}`,
-};
+export function testingLibraryHintsFor({ assertVisible, assertFocus }) {
+  return {
+    'await-async-events': `. Await the call: \`await user.<event>(...)\`. On user-event v13, whose calls are synchronous, ${EXCEPTION_HINT}`,
+    'await-async-queries': `. Await it: \`await screen.findByRole(...)\`.${GENERAL_HINT}`,
+    'await-async-utils': `. Await it: \`await waitFor(...)\`.${GENERAL_HINT}`,
+    'no-debugging-utils': `. Remove the debug output and assert what you were looking for: ${assertVisible}.${GENERAL_HINT}`,
+    'no-manual-cleanup': ` Testing Library unmounts after each test by itself in this project: remove the call.${GENERAL_HINT}`,
+    'no-node-access': ` Use \`screen.getByRole(...)\` or \`within(...)\`, and ${assertFocus} for focus.${GENERAL_HINT}`,
+    'no-test-id-queries': ` Use \`screen.getByRole('button', { name: 'Save' })\`.${GENERAL_HINT}`,
+    'no-unnecessary-act': `: \`render\` and \`user\` events already run in \`act\`. Call them directly.${GENERAL_HINT}`,
+    'prefer-presence-queries': `: \`expect(screen.getByText('Saved')).toBeInTheDocument()\`, \`expect(screen.queryByText('Error')).not.toBeInTheDocument()\`.${GENERAL_HINT}`,
+    'prefer-screen-queries': `. For part of the page use \`within(element).getByRole(...)\`.${GENERAL_HINT}`,
+    'prefer-user-event': `. Use \`await user.click(button)\`.${GENERAL_HINT}`,
+    'prefer-user-event-setup': `, with \`import { userEvent } from '@testing-library/user-event'\`.${GENERAL_HINT}`,
+  };
+}
 
-const testingLibraryRuleIds = Object.keys(testingLibraryHints).map(
-  (name) => `testing-library/${name}`,
-);
+const testingLibraryRuleIds = Object.keys(
+  testingLibraryHintsFor({ assertVisible: '', assertFocus: '' }),
+).map((name) => `testing-library/${name}`);
 
 export const reactTestRuleIds = [
   'nitpicker/hover-test-needs-keyboard',

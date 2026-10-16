@@ -75,6 +75,29 @@ describe('hints follow the runner the project uses', () => {
     });
   });
 
+  it.each([
+    [
+      'jest',
+      'an asymmetric matcher (`expect.any`, `expect.stringContaining`, `expect.objectContaining`): assert the whole value with `toEqual`',
+    ],
+    [
+      'node',
+      "a mock's recorded calls (`fn.mock.calls[0].arguments`): give `mock.fn` the function it replaces (`mock.fn(send)`) so its calls are typed",
+    ],
+    [
+      'mocha',
+      'a sinon stub or matcher (`stub.firstCall.args`, `sinon.match.any`): type the stub (`sinon.stub<[string], number>()`) and assert the whole value',
+    ],
+  ])('names where an `any` in a %s test comes from', (runner, source) => {
+    underRunner(runner, () => {
+      expect(
+        hint('@typescript-eslint/no-unsafe-assignment', 'Unsafe assignment of an `any` value.'),
+      ).toBe(
+        `Unsafe assignment of an \`any\` value. In tests the \`any\` usually comes from ${source}, and fix any TypeScript error on the line first.`,
+      );
+    });
+  });
+
   it('tells a Vitest project with node:test files how to run them, without naming issue ids', () => {
     underRunner('vitest', () => {
       expect(hint('vitest/no-import-node-test', 'Import from vitest instead of node:test')).toBe(
