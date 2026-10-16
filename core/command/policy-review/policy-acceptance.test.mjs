@@ -32,8 +32,10 @@ describe('policyAcceptance', () => {
       'flag',
       'environment',
     ]);
-    expect(fromAgent.ignoredAcceptance).toContain('only at an interactive terminal');
-    expect(fromScript.ignoredAcceptance).toContain('only in CI');
+    expect([fromAgent.ignoredAcceptance, fromScript.ignoredAcceptance]).toEqual([
+      '--accept-policy-change is honoured only at an interactive terminal, where a person reviews the change; in CI a person sets NITPICKER_ACCEPT_POLICY_CHANGE instead.',
+      'NITPICKER_ACCEPT_POLICY_CHANGE is honoured only in CI (CI set); at a terminal a person passes --accept-policy-change instead.',
+    ]);
     expect(policyAcceptance({}, {}, true)).toEqual({
       acceptPolicyChange: undefined,
       ignoredAcceptance: undefined,

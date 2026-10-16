@@ -2,7 +2,7 @@ import { globToRegExp } from '../../../shared/glob.mjs';
 import { resolveLayoutFor } from '../../../languages/typescript/preset/layout.mjs';
 import { isUnder } from '../policy-scope.mjs';
 
-export const EXCLUSIONS = 'exclude and layout.excludedGlobs';
+const EXCLUSIONS = 'exclude and layout.excludedGlobs';
 
 export function exceptionPathsByRule(exceptions = []) {
   const byRule = new Map();

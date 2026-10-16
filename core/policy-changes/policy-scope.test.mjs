@@ -28,8 +28,14 @@ describe('readPolicyScope', () => {
 
   it('reads checkJs from every project tsconfig, and counts a removed one', () => {
     const checkJs = (value) =>
-      JSON.stringify({ compilerOptions: { allowJs: true, checkJs: value } });
-    const root = JSON.stringify({ files: [], references: [{ path: './config/app.json' }] });
+      JSON.stringify({
+        compilerOptions: { allowJs: true, checkJs: value, types: [], lib: ['ES2022'] },
+      });
+    const root = JSON.stringify({
+      compilerOptions: { types: [], lib: ['ES2022'] },
+      files: [],
+      references: [{ path: './config/app.json' }],
+    });
 
     expect(
       fieldsBetween({

@@ -1,7 +1,7 @@
 import { existsSync } from 'node:fs';
 import path from 'node:path';
 import { configError } from '../../../shared/config.mjs';
-import { filesUnder } from '../../../shared/filesystem.mjs';
+import { filesUnder, pathInside } from '../../../shared/filesystem.mjs';
 import { sourceRoots as defaultSourceRoots } from '../../../languages/typescript/preset/layout.mjs';
 
 const PROJECT_MARKERS = [
@@ -48,7 +48,7 @@ function codeFiles(directory, skippedFolders = SKIPPED_FOLDERS) {
 function detectedPreset(projectRoot) {
   const marker = PROJECT_MARKERS.flatMap(({ preset, label, files }) =>
     files
-      .filter((file) => existsSync(path.join(projectRoot, file)))
+      .filter((file) => existsSync(pathInside(projectRoot, file) ?? ''))
       .map((file) => ({ preset, label, file })),
   )[0];
   if (marker?.preset !== 'java') {

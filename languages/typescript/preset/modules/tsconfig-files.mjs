@@ -58,7 +58,9 @@ export function projectTsconfigs(projectRoot, files, isHidden = () => false) {
     ),
   );
   for (const config of found) {
-    for (const referenced of referencedConfigs(projectRoot, config)) found.add(referenced);
+    for (const referenced of referencedConfigs(projectRoot, config)) {
+      found.add(referenced);
+    }
   }
   return [...found].toSorted();
 }

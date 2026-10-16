@@ -42,9 +42,13 @@ function remainingOptions(arguments_) {
   const options = { all: false, fix: false, help: false, cache: true };
   const remaining = arguments_.values();
   for (const argument of remaining) {
-    if (readFlag(options, argument)) continue;
+    if (readFlag(options, argument)) {
+      continue;
+    }
     const property = VALUES.get(argument);
-    if (property === undefined) throw new Error(`Unknown argument: ${argument}`);
+    if (property === undefined) {
+      throw new Error(`Unknown argument: ${argument}`);
+    }
     const value = remaining.next().value;
     if (value === undefined || value.startsWith('--')) {
       throw new Error(`${argument} requires a value`);

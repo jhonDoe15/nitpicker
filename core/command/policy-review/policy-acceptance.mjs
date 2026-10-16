@@ -4,6 +4,8 @@ const IGNORED_FLAG =
 const IGNORED_VARIABLE =
   'NITPICKER_ACCEPT_POLICY_CHANGE is honoured only in CI (CI set); at a terminal a person passes --accept-policy-change instead.';
 
+const IGNORED = { flag: IGNORED_FLAG, environment: IGNORED_VARIABLE };
+
 function isSet(value) {
   return value !== undefined && value !== '';
 }
@@ -27,12 +29,7 @@ export function policyAcceptance(options, environment, interactive = false) {
   return {
     acceptPolicyChange: honoured ? requested.digest : undefined,
     ...(requested === undefined ? {} : { policyAcceptanceSource: requested.source }),
-    ignoredAcceptance:
-      requested === undefined || honoured
-        ? undefined
-        : requested.source === 'flag'
-          ? IGNORED_FLAG
-          : IGNORED_VARIABLE,
+    ignoredAcceptance: requested === undefined || honoured ? undefined : IGNORED[requested.source],
     reportsPolicy: (options.shardIndex ?? 0) === 0,
   };
 }

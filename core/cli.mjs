@@ -50,6 +50,10 @@ export function runCli(options = {}) {
   }
 }
 
+function isTerminal(stream) {
+  return stream.isTTY === true;
+}
+
 function withCliDefaults(options) {
   const stderr = options.stderr ?? process.stderr;
   const progress = options.progress ?? stderr;
@@ -58,8 +62,7 @@ function withCliDefaults(options) {
     arguments_: options.arguments_ ?? process.argv.slice(2),
     environment: options.environment ?? process.env,
     interactive:
-      options.interactive ??
-      (process.stdin.isTTY === true && (options.stdout ?? process.stdout).isTTY === true),
+      options.interactive ?? [process.stdin, options.stdout ?? process.stdout].every(isTerminal),
     snapshotAnalyzers: options.snapshotAnalyzers ?? options.analyzers,
     stdout: options.stdout ?? process.stdout,
     stderr,

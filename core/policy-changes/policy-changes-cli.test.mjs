@@ -5,6 +5,7 @@ import { runCli } from '../cli.mjs';
 import { fixtureGit, useGitFixtures } from '../diff/git/test-support/git-repository.mjs';
 import { runTasksInProcess } from '../diff/execution/test-support/in-process-analyzers.mjs';
 import { writeFiles } from '../diff/git/test-support/fixture-files.mjs';
+import { policyFindings as findingsFor } from '../diff/reporting/review/policy-findings.mjs';
 
 const fakeAnalyzerPath = path.resolve(
   import.meta.dirname,
@@ -91,10 +92,19 @@ function policyBlock(text, heading = HEADING) {
   return lines.slice(start, start + 4);
 }
 
-function policyFindings(newFindings) {
+function policyMessages(newFindings) {
   return newFindings
     .filter(({ tool }) => tool === 'nitpicker-config')
-    .map(({ message }) => message.split('. ')[0]);
+    .map(({ message }) => message)
+    .sort();
+}
+
+function policyFindings(newFindings) {
+  return policyMessages(newFindings).map((message) => message.split('. ')[0]);
+}
+
+function stderrLines(run, prefix) {
+  return run.stderrText.split('\n').filter((line) => line.startsWith(prefix));
 }
 
 describe('a change that loosens nitpicker.config.json', () => {
@@ -125,10 +135,14 @@ describe('a change that loosens nitpicker.config.json', () => {
     expect(outsideCi.exitCode).toBe(1);
     expect(outsideCi.summary.policyLoosenings).toEqual(expected);
     expect(outsideCi.summary.policyAcceptanceSource).toBe('environment');
-    expect(outsideCi.stderrText).toContain('NITPICKER_ACCEPT_POLICY_CHANGE is honoured only in CI');
+    expect(stderrLines(outsideCi, 'nitpicker: NITPICKER_ACCEPT_POLICY_CHANGE')).toEqual([
+      'nitpicker: NITPICKER_ACCEPT_POLICY_CHANGE is honoured only in CI (CI set); at a terminal a person passes --accept-policy-change instead.',
+    ]);
     expect(policyFindings(outsideCi.newFindings)).toEqual([...expected].sort());
-    expect(outsideCi.newFindings[0].message).toContain(
-      `NITPICKER_ACCEPT_POLICY_CHANGE=${outsideCi.summary.policyDigest} in CI`,
+    expect(policyMessages(outsideCi.newFindings)).toEqual(
+      findingsFor(expected, outsideCi.summary.policyDigest)
+        .map(({ message }) => message)
+        .sort(),
     );
     expect(policyBlock(outsideCi.report)).toEqual([
       HEADING,
@@ -164,8 +178,8 @@ describe('a change that keeps the policy', () => {
       ],
     ]);
     expect(run.summary.policyAcceptanceSource).toBe('flag');
-    expect(run.stderrText).toContain(
-      '--accept-policy-change is honoured only at an interactive terminal',
-    );
+    expect(stderrLines(run, 'nitpicker: --accept-policy-change')).toEqual([
+      'nitpicker: --accept-policy-change is honoured only at an interactive terminal, where a person reviews the change; in CI a person sets NITPICKER_ACCEPT_POLICY_CHANGE instead.',
+    ]);
   });
 });
