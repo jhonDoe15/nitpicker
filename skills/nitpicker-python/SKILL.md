@@ -28,7 +28,7 @@ backstop. It fails only on findings your change adds, so leave code the task doe
 
 ## Write it this way
 
-- Types: annotate every function, method and parameter; strict mypy or pyright (the project's own
+- Types: annotate every function, method and parameter; strict mypy, pyright or basedpyright (the project's own
   choice) checks the source roots. Fix the type. `# type: ignore`, `# noqa` and `# pyright: ignore`
   are findings themselves, so never write them, nor `# fmt: off`, `@no_type_check`, `if not TYPE_CHECKING:`
   around code, or a `.pyi` beside its `.py`.
@@ -37,8 +37,11 @@ backstop. It fails only on findings your change adds, so leave code the task doe
 - Defaults: `None`, then build the value inside the function. No mutable default arguments.
 - Errors: catch the specific exception and handle it, log it with `logger.exception(...)`, or
   re-raise. A new exception raised inside `except` keeps the cause: `raise ParseError(text) from err`
-  (or `from None`). No bare `except:`, `except Exception:` or `except X: pass`;
-  one expected error that is deliberately ignored is `with contextlib.suppress(SpecificError):`.
+  (or `from None`). No bare `except:`, `except Exception:`, or a handler that only does `pass`, `...`, `continue`,
+  `return None` / `return []` (or another constant) or `x = None`: log it, re-raise it, use the error, or return a
+  named default or a value built from the error. `except ImportError: x = None` is the one allowed constant
+  assignment. One expected error that is deliberately ignored is `with contextlib.suppress(SpecificError):`,
+  never `suppress(Exception)`.
 - A `try` inside a loop is flagged (PERF203): move it out, or extract the loop body into a function.
 - Flow: no `else` after a `return`, and return an expression directly instead of assigning it to a
   local first. Build a list with a comprehension, not `append` in a loop.
