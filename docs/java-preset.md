@@ -785,7 +785,8 @@ A Checkstyle rule prints as its full check class, for example
   `Runtime.addShutdownHook` may still construct a `Thread`. `legacy-date-time` skips a `Date`
   another API returns when `.toInstant()` follows the call right away, on that line or at the start
   of the next (`certificate.getNotAfter().toInstant()`), or it is converted with
-  `map(Date::toInstant)`.
+  `map(Date::toInstant)`; any other call on a `Date` in the same line, such as `getTime()`, is
+  still reported.
 - **Duplicates.** The jscpd check is unchanged. `nitpickerCpd` runs PMD's copy-paste detector
   (BSD-style, already inside the pinned PMD) over main and test sources with identifiers and
   literals ignored and at least 100 tokens, so a copy with renamed variables is found. When jscpd

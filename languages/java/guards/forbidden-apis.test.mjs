@@ -320,7 +320,7 @@ describe('readForbiddenApiFindings', () => {
     expect(findings.map(({ location }) => location.line)).toEqual([8, 16, 21, 6, 4]);
   });
 
-  it('skips a Date another API returns that the same statement converts with toInstant()', () => {
+  it('skips as many Date uses on a line as it converts with toInstant() right away', () => {
     const root = project();
     const legacyDate = (line) => [
       'ERROR: Forbidden class/interface use: java.util.Date [legacy-date-time: Use java.time.]',
@@ -328,7 +328,9 @@ describe('readForbiddenApiFindings', () => {
     ];
     writeFileSync(
       path.join(root, 'build/nitpicker/forbidden-apis.txt'),
-      [3, 7, 8, 10, 11, 13, 15, 16].flatMap((line) => legacyDate(line)).join('\n'),
+      [3, 8, 10, 11, 11, 13, 13, 13, 15, 16, 18, 21, 21, 23, 23]
+        .flatMap((line) => legacyDate(line))
+        .join('\n'),
     );
     writeFileSync(
       path.join(root, 'src/main/java/demo/Expiry.java'),
@@ -349,6 +351,13 @@ describe('readForbiddenApiFindings', () => {
         '  List<Instant> valid(List<X509Certificate> certificates) {',
         '    return certificates.stream().filter(c -> c.getNotAfter().after(c.getNotBefore()))',
         '        .map(c -> c.getNotAfter().toInstant()).toList(); }',
+        '  Instant early(X509Certificate certificate) {',
+        '    return certificate.getNotAfter()',
+        '        .toInstant(); }',
+        '  long validity(X509Certificate cert) {',
+        '    return cert.getNotAfter().getTime() - cert.getNotBefore().toInstant().toEpochMilli(); }',
+        '  void mixed(Date when) {',
+        '    use(when.getTime(), clock().toInstant()); }',
         '}',
       ].join('\n'),
     );
@@ -362,6 +371,8 @@ describe('readForbiddenApiFindings', () => {
       ['legacy-date-time', 10],
       ['legacy-date-time', 11],
       ['legacy-date-time', 15],
+      ['legacy-date-time', 21],
+      ['legacy-date-time', 23],
     ]);
   });
 });
