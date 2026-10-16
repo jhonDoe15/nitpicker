@@ -1,7 +1,7 @@
 import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 
-export const TOOL_COMMANDS_FILE = path.join(import.meta.dirname, 'tool-commands.json');
+const TOOL_COMMANDS_FILE = path.join(import.meta.dirname, 'tool-commands.json');
 
 function expanded(token, values) {
   if (typeof token === 'string') {
