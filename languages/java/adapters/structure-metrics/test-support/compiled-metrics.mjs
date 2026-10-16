@@ -4,14 +4,12 @@ import { existsSync, mkdtempSync, readFileSync, renameSync, rmSync } from 'node:
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 
-export const METRICS_SOURCE = path.resolve(
-  import.meta.dirname,
-  '../../../gradle/StructureMetrics.java',
-);
+const HASH_LENGTH = 16;
+const METRICS_SOURCE = path.resolve(import.meta.dirname, '../../../gradle/StructureMetrics.java');
 
 export function compiledMetrics() {
   const source = readFileSync(METRICS_SOURCE);
-  const hash = createHash('sha256').update(source).digest('hex').slice(0, 16);
+  const hash = createHash('sha256').update(source).digest('hex').slice(0, HASH_LENGTH);
   const classes = path.join(tmpdir(), `nitpicker-structure-metrics-${hash}`);
   if (!existsSync(classes)) {
     const staging = mkdtempSync(`${classes}-`);
@@ -21,8 +19,11 @@ export function compiledMetrics() {
     }
     try {
       renameSync(staging, classes);
-    } catch {
+    } catch (error) {
       rmSync(staging, { recursive: true, force: true });
+      if (!existsSync(classes)) {
+        throw new Error(`could not place the compiled metrics at ${classes}`, { cause: error });
+      }
     }
   }
   return classes;

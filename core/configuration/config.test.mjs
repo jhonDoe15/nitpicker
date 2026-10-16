@@ -155,9 +155,7 @@ describe('config file', () => {
       const lineLength = { ...exception, rule: 'line-length-limit' };
       const slowTest = { ...exception, rule: 'test-runtime/slow-test' };
       const config = { preset: 'kotlin', thresholds: { unitTestSeconds: 2.5 } };
-      expect(
-        validateConfig({ ...config, exceptions: [fileLimit, lineLength, slowTest] }),
-      ).toEqual({
+      expect(validateConfig({ ...config, exceptions: [fileLimit, lineLength, slowTest] })).toEqual({
         ...config,
         exceptions: [fileLimit, lineLength, slowTest],
       });

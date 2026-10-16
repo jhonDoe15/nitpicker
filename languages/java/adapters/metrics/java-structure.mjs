@@ -93,9 +93,16 @@ export function readJavaFileLimitFindings(projectRoot, { manifest, kotlin = fals
 }
 
 function javaFiles(projectRoot, entries) {
+  const base = path.resolve(projectRoot);
   return entries
     .filter((entry) => entry.path.endsWith('.java'))
-    .map((entry) => ({ ...entry, text: readFileSync(path.join(projectRoot, entry.path), 'utf8') }));
+    .flatMap((entry) => {
+      const full = path.resolve(base, entry.path);
+      if (!full.startsWith(base + path.sep)) {
+        return [];
+      }
+      return [{ ...entry, text: readFileSync(full, 'utf8') }];
+    });
 }
 
 function codeFiles(projectRoot, { roots, kind, kotlin }) {
