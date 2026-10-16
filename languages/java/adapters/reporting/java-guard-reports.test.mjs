@@ -34,17 +34,74 @@ const REPORTS = {
   }),
 };
 
-function projectWithGuardReports() {
+function projectWithGuardReports({ reports = {}, jscpd = { runs: [] }, sources = {} } = {}) {
   const root = realpathSync(mkdtempSync(path.join(tmpdir(), 'nitpicker-guard-reports-')));
   roots.push(root);
-  const reports = writeModules(root);
-  for (const [name, text] of Object.entries(REPORTS)) {
-    writeFileSync(path.join(reports, name), text);
+  const moduleReports = writeModules(root);
+  for (const [name, text] of Object.entries({ ...REPORTS, ...reports })) {
+    writeFileSync(path.join(moduleReports, name), text);
   }
-  writeFileSync(path.join(reportBaseOf(root), 'duplicates.json'), JSON.stringify({ runs: [] }));
-  mkdirSync(path.join(root, 'src/main/java/demo'), { recursive: true });
-  writeFileSync(path.join(root, 'src/main/java/demo/Bad.java'), 'package demo;\n');
+  writeFileSync(path.join(reportBaseOf(root), 'duplicates.json'), JSON.stringify(jscpd));
+  for (const [file, text] of Object.entries({ [BAD]: 'package demo;\n', ...sources })) {
+    mkdirSync(path.dirname(path.join(root, file)), { recursive: true });
+    writeFileSync(path.join(root, file), text);
+  }
   return root;
+}
+
+const BAD = 'src/main/java/demo/Bad.java';
+const LEFT = 'src/main/java/demo/Left.java';
+const RIGHT = 'src/main/java/demo/Right.java';
+const LOGIC = Array.from({ length: 12 }, (_, index) => `    total += compute(${String(index)});`);
+const sourceOf = (name) =>
+  [
+    `class ${name} {`,
+    '  int run() {',
+    '    int total = 0;',
+    ...LOGIC,
+    '    return total;',
+    '  }',
+    '}',
+    '',
+  ].join('\n');
+const CPD = [
+  '<?xml version="1.0"?>',
+  '<pmd-cpd>',
+  '  <duplication lines="8" tokens="120">',
+  `    <file path="${LEFT}" line="2" endline="9" begintoken="0" endtoken="9"/>`,
+  `    <file path="${RIGHT}" line="2" endline="9" begintoken="0" endtoken="9"/>`,
+  '    <codefragment><![CDATA[ignored]]></codefragment>',
+  '  </duplication>',
+  '</pmd-cpd>',
+  '',
+].join('\n');
+const JSCPD_CLONE = {
+  runs: [
+    {
+      root: '.',
+      report: {
+        duplicates: [
+          {
+            firstFile: { name: LEFT, start: 3 },
+            secondFile: { name: RIGHT, start: 3 },
+            lines: 6,
+            tokens: 80,
+          },
+        ],
+      },
+    },
+  ],
+};
+
+function cpdIdentities(jscpd) {
+  const root = projectWithGuardReports({
+    reports: { 'cpd.xml': CPD },
+    jscpd,
+    sources: { [LEFT]: sourceOf('Left'), [RIGHT]: sourceOf('Right') },
+  });
+  return readJavaFindings(root, { reportBase: reportBaseOf(root) })
+    .findings.filter(({ identity }) => identity.startsWith('cpd:'))
+    .map(({ path: file }) => file);
 }
 
 describe('readJavaFindings: guard reports', () => {
@@ -62,5 +119,10 @@ describe('readJavaFindings: guard reports', () => {
       ['forbiddenapis', 'legacy-date-time', 'src/main/java/demo/Bad.java'],
       ['dependencies', 'unused-declared-dependency', 'build.gradle'],
     ]);
+  });
+
+  it('drops a PMD CPD clone that the build-wide jscpd report already has', () => {
+    expect(cpdIdentities({ runs: [] })).toEqual([LEFT]);
+    expect(cpdIdentities(JSCPD_CLONE)).toEqual([]);
   });
 });
