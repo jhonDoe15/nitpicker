@@ -10,7 +10,12 @@ import { writeFiles } from '../../diff/git/test-support/fixture-files.mjs';
 const { gradleRepository, run, runCli, temporaryRoot } = useGradleFixtures(nitpickerCli);
 const addedField = unusedFieldMessage('added');
 const xmlText = (text) =>
-  text.replaceAll('&', '&amp;').replaceAll('"', '&quot;').replaceAll("'", '&apos;');
+  text
+    .replaceAll('&', '&amp;')
+    .replaceAll('<', '&lt;')
+    .replaceAll('>', '&gt;')
+    .replaceAll('"', '&quot;')
+    .replaceAll("'", '&apos;');
 
 const DUPLICATE_CLONE_MESSAGE =
   'This code repeats src/main/java/demo/Second.java:3 (30 lines). Keep one copy and call it from both places. If a reviewer agrees this is intended, add {"rule":"duplicate-clone","paths":["src/main/java/demo/First.java"],"reason":"<why this is intended>"} to "exceptions" in nitpicker.config.json.';

@@ -28,6 +28,8 @@ const MESSAGE =
 
 const route = (rule, file) =>
   `If a reviewer agrees this is intended, add {"rule":"${rule}","paths":["${file}"],"reason":"<why this is intended>"} to "exceptions" in nitpicker.config.json.`;
+const ERROR_PRONE_ROUTE = route('errorprone/<check>', 'A.java');
+const PMD_ROUTE = route('pmd/<PMD rule>', 'A.java');
 const afterMessage = (message, prefix) =>
   message.slice(prefix.length, message.indexOf(' If a reviewer agrees'));
 
@@ -256,15 +258,30 @@ describe('fileFindings for Error Prone', () => {
         finding.message,
       ]),
     ).toEqual([
-      ['errorprone', 'InlineSuppression', 2, `${ERROR_PRONE_MESSAGE} Found: "NullAway".`],
-      ['errorprone', 'InlineSuppression', 3, `${ERROR_PRONE_MESSAGE} Found: "NullAway.Init".`],
+      [
+        'errorprone',
+        'InlineSuppression',
+        2,
+        `${ERROR_PRONE_MESSAGE} Found: "NullAway". ${ERROR_PRONE_ROUTE}`,
+      ],
+      [
+        'errorprone',
+        'InlineSuppression',
+        3,
+        `${ERROR_PRONE_MESSAGE} Found: "NullAway.Init". ${ERROR_PRONE_ROUTE}`,
+      ],
       [
         'errorprone',
         'InlineSuppression',
         4,
-        `${ERROR_PRONE_MESSAGE} Found: "FutureReturnValueIgnored".`,
+        `${ERROR_PRONE_MESSAGE} Found: "FutureReturnValueIgnored". ${ERROR_PRONE_ROUTE}`,
       ],
-      ['errorprone', 'InlineSuppression', 6, `${ERROR_PRONE_MESSAGE} Found: "dep-ann".`],
+      [
+        'errorprone',
+        'InlineSuppression',
+        6,
+        `${ERROR_PRONE_MESSAGE} Found: "dep-ann". ${ERROR_PRONE_ROUTE}`,
+      ],
     ]);
   });
 
@@ -274,8 +291,8 @@ describe('fileFindings for Error Prone', () => {
     expect(
       fileFindings(source, 'A.java').map((finding) => [finding.tool, finding.message]),
     ).toEqual([
-      ['pmd', `${MESSAGE} Found: "PMD".`],
-      ['errorprone', `${ERROR_PRONE_MESSAGE} Found: "NullAway".`],
+      ['pmd', `${MESSAGE} Found: "PMD". ${PMD_ROUTE}`],
+      ['errorprone', `${ERROR_PRONE_MESSAGE} Found: "NullAway". ${ERROR_PRONE_ROUTE}`],
     ]);
   });
 
@@ -285,8 +302,8 @@ describe('fileFindings for Error Prone', () => {
     expect(
       fileFindings(source, 'A.java').map((finding) => [finding.tool, finding.message]),
     ).toEqual([
-      ['pmd', `${MESSAGE} Found: "unused".`],
-      ['errorprone', `${ERROR_PRONE_MESSAGE} Found: "dep-ann".`],
+      ['pmd', `${MESSAGE} Found: "unused". ${PMD_ROUTE}`],
+      ['errorprone', `${ERROR_PRONE_MESSAGE} Found: "dep-ann". ${ERROR_PRONE_ROUTE}`],
     ]);
   });
 });

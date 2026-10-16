@@ -44,7 +44,7 @@ describe('duplicate-definition', () => {
 
     expect(
       duplicates({ 'src/a.ts': privateCopy, 'src/b.ts': privateCopy }).map(
-        ({ message }) => message.split(' If this')[0],
+        ({ message }) => message.split(' If a reviewer')[0],
       ),
     ).toEqual([
       'twice is also defined with the same code in src/b.ts. Move it to one module and import it.',
@@ -52,7 +52,7 @@ describe('duplicate-definition', () => {
     ]);
     expect(
       duplicates({ 'src/a.ts': exportedCopy, 'src/b.ts': privateCopy }).map(
-        ({ message }) => message.split(' If this')[0],
+        ({ message }) => message.split(' If a reviewer')[0],
       ),
     ).toEqual([
       'twice is also defined with the same code in src/b.ts. Keep one definition and import it.',

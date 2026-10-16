@@ -28,10 +28,6 @@ const finding = (file, identity = 'id') => ({
   message: 'Rule violated.',
   classification: 'enforceable',
 });
-const routed = (item, rule = `${item.tool}/${item.rule}`) => ({
-  ...item,
-  message: `${item.message} If a reviewer agrees this is intended, add {"rule":"${rule}","paths":["${item.path}"],"reason":"<why this is intended>"} to "exceptions" in nitpicker.config.json.`,
-});
 const allow = (file, count, source = 'id') => ({ file, rule: 'Rule', source, count });
 
 const context = () => ({
@@ -368,10 +364,8 @@ describe('applyJavaPolicy', () => {
   it('drops findings under excluded globs only', () => {
     const findings = [finding('src/main/java/gen/A.java'), finding('src/main/java/app/B.java')];
 
-    expect(applyJavaPolicy(findings, { exclude: ['src/main/java/gen/**'] })).toEqual([
-      routed(findings[1]),
-    ]);
-    expect(applyJavaPolicy(findings, {})).toEqual(findings.map((item) => routed(item)));
+    expect(applyJavaPolicy(findings, { exclude: ['src/main/java/gen/**'] })).toEqual([findings[1]]);
+    expect(applyJavaPolicy(findings, {})).toEqual(findings);
   });
 
   it('drops only the findings of the excepted rule under the excepted globs', () => {
@@ -386,7 +380,7 @@ describe('applyJavaPolicy', () => {
       applyJavaPolicy(findings, {
         exceptions: [{ rule: 'detekt.style.ForbiddenMethodCall', paths: ['src/Main.kt'] }],
       }),
-    ).toEqual([routed(findings[1]), routed(findings[2])]);
+    ).toEqual([findings[1], findings[2]]);
   });
 
   it('drops a finding of a function exception only inside that function', () => {
@@ -419,7 +413,7 @@ describe('applyJavaPolicy', () => {
       applyJavaPolicy(findings, {
         exceptions: [{ rule: 'pmd/Rule', paths: ['src/main/java/legacy/**'] }],
       }),
-    ).toEqual([routed(findings[1]), routed(findings[2]), routed(findings[3])]);
+    ).toEqual([findings[1], findings[2], findings[3]]);
   });
 
   it('baselines inventory sites on both snapshots, using the head inventory', () => {
@@ -432,7 +426,7 @@ describe('applyJavaPolicy', () => {
         policyRoot: headRoot,
         snapshot: 'base',
       }),
-    ).toEqual([routed(findings[1]), routed(findings[2])]);
+    ).toEqual([findings[1], findings[2]]);
   });
 
   it('reports baseline-expansion on head when the allowance rose over base', () => {

@@ -84,7 +84,7 @@ describe('structural metrics report', () => {
     ].join('\n');
 
     expect(analyzeSource(source, 'name-list.tsx').functions.map((entry) => entry.function)).toEqual(
-      ['NameList', '<anonymous>'],
+      ['NameList', 'NameList.<anonymous>'],
     );
   });
 
