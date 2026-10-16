@@ -1,5 +1,5 @@
 import { globToRegExp } from '../../shared/glob.mjs';
-import { resolveLayout } from '../../languages/typescript/preset/layout.mjs';
+import { resolveLayout, resolveLayoutFor } from '../../languages/typescript/preset/layout.mjs';
 import { isUnder, matcherOf } from './policy-scope.mjs';
 
 const NOTHING_NEW = 'covers no checked file it did not cover before';
@@ -24,6 +24,15 @@ function addedGlobs(label, [baseGlobs, headGlobs], scope) {
   };
 }
 
+function removedGlobs(label, [baseGlobs, headGlobs]) {
+  return {
+    loosened: [],
+    changed: baseGlobs
+      .filter((glob) => !headGlobs.includes(glob))
+      .map((glob) => `${label} removed: ${glob}`),
+  };
+}
+
 function exclusions(config) {
   return [...resolveLayout(config.layout).excludedGlobs, ...(config.exclude ?? [])];
 }
@@ -45,9 +54,16 @@ function exceptionChanges(baseExceptions = [], headExceptions = [], scope) {
           : [`exception added: ${rule} for ${idle.join(', ')} (${NOTHING_NEW})`],
     };
   });
+  const removed = baseExceptions.flatMap(({ rule, paths }) => {
+    const kept = headExceptions
+      .filter((entry) => entry.rule === rule)
+      .flatMap((entry) => entry.paths);
+    const dropped = paths.filter((glob) => !kept.includes(glob));
+    return dropped.length === 0 ? [] : [`exception removed: ${rule} for ${dropped.join(', ')}`];
+  });
   return {
     loosened: parts.flatMap((part) => part.loosened),
-    changed: parts.flatMap((part) => part.changed),
+    changed: [...parts.flatMap((part) => part.changed), ...removed],
   };
 }
 
@@ -71,19 +87,48 @@ function rootRemovals(scope) {
   };
 }
 
+function testRootAdditions(baseConfig, headConfig, scope) {
+  const key = 'layout.testRoots';
+  if (!(key in scope.headRoots) || !(key in scope.baseRoots)) {
+    return { loosened: [], changed: [] };
+  }
+  const base = resolveLayoutFor(baseConfig);
+  const head = resolveLayoutFor(headConfig);
+  const added = scope.headRoots[key].filter((root) => !scope.baseRoots[key].includes(root));
+  const reclassifies = (root) =>
+    scope.code.some(
+      (file) =>
+        isUnder(file, root) &&
+        !head.isSourceFile(file) &&
+        base.isSourceFile(scope.basePathOf(file)),
+    );
+  return {
+    loosened: added
+      .filter(reclassifies)
+      .map((root) => `${key} added: ${root} (production code under it becomes test code)`),
+    changed: [],
+  };
+}
+
 export function coveredPathChanges(baseConfig, headConfig, scope) {
   const baseExclusions = exclusions(baseConfig);
+  const headExclusions = exclusions(headConfig);
   const headLayout = resolveLayout(headConfig.layout);
+  const baseEntryPoints = baseConfig.layout?.entryPoints ?? [];
+  const headEntryPoints = headConfig.layout?.entryPoints ?? [];
   return [
+    removedGlobs('exclude', [baseConfig.exclude ?? [], headExclusions]),
+    removedGlobs('layout.excludedGlobs', [
+      resolveLayout(baseConfig.layout).excludedGlobs,
+      headExclusions,
+    ]),
+    removedGlobs('layout.entryPoints', [baseEntryPoints, headEntryPoints]),
     addedGlobs('exclude', [baseExclusions, headConfig.exclude ?? []], scope),
     addedGlobs('layout.excludedGlobs', [baseExclusions, headLayout.excludedGlobs], scope),
-    addedGlobs(
-      'layout.entryPoints',
-      [baseConfig.layout?.entryPoints ?? [], headConfig.layout?.entryPoints ?? []],
-      scope,
-    ),
+    addedGlobs('layout.entryPoints', [baseEntryPoints, headEntryPoints], scope),
     exceptionChanges(baseConfig.exceptions, headConfig.exceptions, scope),
     exceptionChanges(baseConfig.python?.exceptions, headConfig.python?.exceptions, scope),
     rootRemovals(scope),
+    testRootAdditions(baseConfig, headConfig, scope),
   ];
 }

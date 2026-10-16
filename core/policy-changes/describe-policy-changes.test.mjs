@@ -153,7 +153,16 @@ describe('describePolicyChanges', () => {
         {
           layout: {
             sourceRoots: ['src', 'app'],
-            excludedGlobs: ['dist/**', '**/vendor/**'],
+            excludedGlobs: [
+              'dist/**',
+              'build/**',
+              'generated/**',
+              'coverage/**',
+              'reports/**',
+              'target/**',
+              '**/node_modules/**',
+              '**/vendor/**',
+            ],
             entryPoints: ['src/a.ts', 'src/cli/*.ts'],
           },
         },
@@ -323,6 +332,30 @@ describe('describePolicyChanges', () => {
         [],
       ),
     ).toEqual([]);
+  });
+
+  it('lists the tightenings: removed globs and exceptions, enabled analyzers, lowered thresholds', () => {
+    expect(
+      changes(
+        {
+          exclude: ['src/vendor/**'],
+          disable: ['mutation'],
+          exceptions: [{ ...exception, paths: ['src/legacy/**', 'src/a.ts'] }],
+          thresholds: { fileLines: 500 },
+          layout: { entryPoints: ['src/cli/run.ts'] },
+        },
+        { exceptions: [exception] },
+      ),
+    ).toEqual({
+      loosened: [],
+      changed: [
+        'exclude removed: src/vendor/**',
+        'layout.entryPoints removed: src/cli/run.ts',
+        'exception removed: nitpicker/no-comments for src/a.ts',
+        'analyzer enabled: mutation',
+        'threshold fileLines lowered from 500 to 300',
+      ],
+    });
   });
 
   it('lists the loosening changes first in the summary fields', () => {

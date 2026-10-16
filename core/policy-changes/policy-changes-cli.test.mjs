@@ -5,6 +5,7 @@ import { runCli } from '../cli.mjs';
 import { fixtureGit, useGitFixtures } from '../diff/git/test-support/git-repository.mjs';
 import { runTasksInProcess } from '../diff/execution/test-support/in-process-analyzers.mjs';
 import { policyDigest } from '../diff/reporting/review/policy-findings.mjs';
+import { writeFiles } from '../diff/git/test-support/fixture-files.mjs';
 
 const fakeAnalyzerPath = path.resolve(
   import.meta.dirname,
@@ -50,6 +51,7 @@ function prepareRepository({
   headMoves = [],
   commitHead = false,
   projectFiles = TYPESCRIPT_FILES,
+  headFiles = {},
 }) {
   const files = { 'quality-policy.json': '{"marker":"QUALITY_FINDING"}\n', ...projectFiles };
   const repository = createGitRepository(
@@ -59,6 +61,7 @@ function prepareRepository({
     { prefix: 'nitpicker-policy-changes-' },
   );
   writeFileSync(path.join(repository.root, 'nitpicker.config.json'), JSON.stringify(headConfig));
+  writeFiles(repository.root, headFiles);
   for (const [from, to] of headMoves) {
     fixtureGit(repository.root, ['mv', from, to]);
   }
@@ -196,7 +199,11 @@ describe('a change that loosens nitpicker.config.json', () => {
 
     expect(exitCode).toBe(0);
     expect(summary.policyLoosenings).toEqual([]);
-    expect(summary.policyChanges).toEqual(['base: not set -> "comparison-base"']);
+    expect(summary.policyChanges).toEqual([
+      'exclude removed: src/legacy/**',
+      'threshold crapLimit lowered from 20 to 12',
+      'base: not set -> "comparison-base"',
+    ]);
   });
 
   it('prints nothing when the config did not change', () => {
@@ -297,17 +304,45 @@ describe('a change that adopts or keeps the policy', () => {
     expect([exitCode, summary.policyLoosenings]).toEqual([1, ['exclude added: src/legacy/**']]);
   });
 
-  it('notices a file the change moves under an exclude', () => {
-    const config = { exclude: ['src/vendor/**'] };
+  it('fails code the change adds or moves under an exclude or exception the base already had', () => {
+    const config = {
+      exclude: ['src/vendor/**'],
+      exceptions: [{ rule: 'file-lines-limit', paths: ['src/later/**'], reason: 'Generated' }],
+    };
     const { exitCode, summary } = runWithHeadConfig({
       baseConfig: config,
       headConfig: config,
       headMoves: [['src/a.ts', 'src/vendor/a.ts']],
+      headFiles: {
+        'src/later/big.ts': 'export {};\n',
+        'src/vendor/lib.ts': 'export const a = 1;\n',
+      },
     });
 
-    expect(exitCode).toBe(0);
-    expect(summary.notices).toEqual([
-      '1 file this change adds or moves under "exclude" in nitpicker.config.json, so nothing checks it: src/vendor/a.ts. Keep project code out of excluded folders.',
+    expect([exitCode, summary.policyLoosenings]).toEqual([
+      1,
+      [
+        'exclude src/vendor/** hides code this change adds or moves: src/vendor/a.ts. Keep new code where the gate checks it',
+        'exception file-lines-limit for src/later/** hides code this change adds or moves: src/later/big.ts. Keep new code where the gate checks it',
+      ],
+    ]);
+    expect(summary.notices).toEqual([]);
+  });
+
+  it('fails a test root added over production code, and code added under one the base had', () => {
+    const testRoots = ['test', 'tests', 'src/legacy'];
+    const added = runWithHeadConfig({ headConfig: { layout: { testRoots } } });
+    const kept = runWithHeadConfig({
+      baseConfig: { layout: { testRoots } },
+      headConfig: { layout: { testRoots } },
+      headFiles: { 'src/legacy/big.ts': 'export {};\n' },
+    });
+
+    expect(added.summary.policyLoosenings).toEqual([
+      'layout.testRoots added: src/legacy (production code under it becomes test code)',
+    ]);
+    expect(kept.summary.policyLoosenings).toEqual([
+      'layout.testRoots src/legacy hides code this change adds or moves: src/legacy/big.ts. Keep new code where the gate checks it',
     ]);
   });
 });

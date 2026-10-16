@@ -6,7 +6,6 @@ import { configureAnalyzers } from '../../configuration/configure-analyzers.mjs'
 import { describeConfigOverrides, readConfigFile } from '../../configuration/config.mjs';
 import { baseConfigCoveringHead } from '../../policy-changes/base-coverage.mjs';
 import { policyChangeFields } from '../../policy-changes/describe-policy-changes.mjs';
-import { excludedFileNotices } from '../../policy-changes/excluded-files.mjs';
 import { readPolicyScope } from '../../policy-changes/policy-scope.mjs';
 import { presetAnalyzers } from '../../configuration/preset-analyzers.mjs';
 
@@ -54,8 +53,7 @@ export function createBaseSetupResolver({
       ...(baseConfig === undefined || unchanged
         ? {}
         : measuredBase({ baseConfig, headConfig, conventions, injectedAnalyzers, analyzers })),
-      ...(unchanged ? {} : policyChangeFields(compared, headConfig, scope)),
-      notices: excludedFileNotices({ baseConfig: compared, headConfig, scope, baseProjectRoot }),
+      ...policyChangeFields(compared, headConfig, scope),
     };
   };
 }
