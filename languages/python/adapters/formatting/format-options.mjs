@@ -5,7 +5,7 @@ import {
   PYTHON_LINE_LENGTH,
   PYTHON_QUOTES,
 } from '../../conventions/python-conventions.mjs';
-import { precedenceLayers } from '../../../../shared/tool-precedence.mjs';
+import { precedenceLayers, projectOptIn } from '../../../../shared/tool-precedence.mjs';
 import { readBlackConfig, readRuffConfig } from './project-format-config.mjs';
 
 const DEFAULTS = { lineLength: '88', quotes: 'double', indentation: '4' };
@@ -16,10 +16,6 @@ const IDS = {
 };
 const BLACK_CONFIG = 'nitpicker-black.toml';
 const SHELL_WORD = /^[\w./=:@%+-]+$/;
-
-function optIn(tool) {
-  return `"tools": { "${tool}": { "precedence": ["project", "nitpicker"] } }`;
-}
 
 function formatWith(command) {
   return `Format with \`${command}\`.`;
@@ -69,7 +65,7 @@ function ruffPlan({ conventions, project, wins, targetVersion, policyRoot }) {
     options: project === undefined ? options : ['--config', project.file, ...flags],
     advice:
       project === undefined
-        ? `${formatWith(command)} To use your ruff config instead, add ${optIn('ruff')} to nitpicker.config.json.`
+        ? `${formatWith(command)} To use your ruff config instead, add ${projectOptIn('ruff')} to nitpicker.config.json.`
         : `Nitpicker uses ${path.relative(policyRoot, project.file)} for the options it sets. ${formatWith(command)}`,
   };
 }
@@ -94,7 +90,7 @@ function blackPlan({ conventions, project, wins, reportRoot, policyRoot }) {
   );
   return {
     options: ['--config', file],
-    advice: `Nitpicker checks with black line-length ${lineLength}${single ? ' and string normalization off' : ''} and ignores your [tool.black] table. Put the same settings in [tool.black] and add ${optIn('black')} to nitpicker.config.json, then run black.`,
+    advice: `Nitpicker checks with black line-length ${lineLength}${single ? ' and string normalization off' : ''} and ignores your [tool.black] table. Put the same settings in [tool.black] and add ${projectOptIn('black')} to nitpicker.config.json, then run black.`,
   };
 }
 

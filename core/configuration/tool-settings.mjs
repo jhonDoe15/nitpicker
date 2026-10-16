@@ -75,15 +75,19 @@ function validateToolSettings(name, settings, toolSettingKeys) {
     return;
   }
   validatePrecedence(settings.precedence, name);
-  if (SINGLE_CONFIG_TOOLS.includes(name) && settings.precedence.length > 1) {
+  validatePrecedenceOrder(settings.precedence, name);
+}
+
+function validatePrecedenceOrder(precedence, name) {
+  if (SINGLE_CONFIG_TOOLS.includes(name) && precedence.length > 1) {
     throw configError(
       `"tools.${name}.precedence" must be ["nitpicker"] or ["project"]: ${name} runs one configuration, so the two cannot be merged`,
     );
   }
   if (
     PROJECT_FIRST_TOOLS.includes(name) &&
-    settings.precedence[0] === 'nitpicker' &&
-    settings.precedence.length > 1
+    precedence[0] === 'nitpicker' &&
+    precedence.length > 1
   ) {
     throw configError(
       `"tools.${name}.precedence" must list "project" first: ${name} reads the project's .editorconfig natively, which always wins over nitpicker's measured conventions`,

@@ -5,6 +5,10 @@ const EXTENSIONS = /^\*\.(?:\{([^}]*)\}|(\w+))$/;
 const WILDCARD_RULE = /^\s*WildcardImport:\s*(?:#.*)?$/;
 const ACTIVE = /^\s*active:\s*(true|false)\b/;
 
+function pairOf(line) {
+  return PAIR.exec(line.trim()) ?? undefined;
+}
+
 function coversKotlin(glob) {
   const match = EXTENSIONS.exec(glob);
   return glob === '*' || (match !== null && (match[1] ?? match[2]).split(',').includes('kt'));
@@ -16,8 +20,8 @@ export function kotlinEditorconfigValues(text) {
   for (const line of text.split(/\r?\n/)) {
     const section = SECTION.exec(line.trim());
     applies = section === null ? applies : coversKotlin(section[1]);
-    const pair = section === null && applies && !COMMENT.test(line) ? PAIR.exec(line.trim()) : null;
-    if (pair !== null) {
+    const pair = section === null && applies && !COMMENT.test(line) ? pairOf(line) : undefined;
+    if (pair !== undefined) {
       entries.push([pair[1].toLowerCase(), pair[2].toLowerCase()]);
     }
   }
