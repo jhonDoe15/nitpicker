@@ -40,16 +40,46 @@ function isIterationCallback(identifier, call) {
   );
 }
 
-function isInlineIterationCallback(fn) {
+const DEFERRING_CALLEES = new Set([
+  'setTimeout',
+  'setInterval',
+  'setImmediate',
+  'queueMicrotask',
+  'requestAnimationFrame',
+  'requestIdleCallback',
+  'nextTick',
+  'on',
+  'once',
+  'addEventListener',
+  'addListener',
+  'prependListener',
+  'subscribe',
+]);
+
+function calleeName(callee) {
+  if (callee.type === 'Identifier') {
+    return callee.name;
+  }
+  return callee.type === 'MemberExpression' ? callee.property.name : undefined;
+}
+
+function isRunByItsCall(fn) {
   const { parent } = fn;
-  return parent.type === 'CallExpression' && isIterationCallback(fn, parent);
+  if (parent.type !== 'CallExpression' || !parent.arguments.includes(fn)) {
+    return false;
+  }
+  if (isIterationCallback(fn, parent)) {
+    return true;
+  }
+  return (
+    parent.parent.type !== 'ExpressionStatement' &&
+    !DEFERRING_CALLEES.has(calleeName(parent.callee))
+  );
 }
 
 function callingFunction(node, target) {
   const functions = ancestorsOf(node).filter((current) => FUNCTION_TYPES.has(current.type));
-  return (
-    functions.find((fn) => fn === target || !isInlineIterationCallback(fn)) ?? functions.at(-1)
-  );
+  return functions.find((fn) => fn === target || !isRunByItsCall(fn)) ?? functions.at(-1);
 }
 
 function isCallEdge({ identifier }) {
