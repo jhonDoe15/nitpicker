@@ -27,12 +27,13 @@ function adjacency(nodes, edges) {
   return next;
 }
 
-/** Everything reachable from start, staying inside within when it is given. */
 function reachable(start, next, within) {
   const seen = new Set([start]);
   for (const node of seen) {
-    const targets = [...(next.get(node) ?? [])];
-    targets.filter((target) => within?.has(target) ?? true).forEach((target) => seen.add(target));
+    const targets = [...(next.get(node) ?? [])].filter((target) => within?.has(target) ?? true);
+    for (const target of targets) {
+      seen.add(target);
+    }
   }
   return seen;
 }
@@ -51,7 +52,9 @@ export function stronglyConnected(nodes, edges) {
       continue;
     }
     const component = [...reachable(node, previous, reachable(node, next))].sort();
-    component.forEach((member) => assigned.add(member));
+    for (const member of component) {
+      assigned.add(member);
+    }
     components.push(component);
   }
   return components.filter((component) => component.length > 1);
@@ -70,7 +73,6 @@ function runtimeEdges({ modules, imports }) {
   );
 }
 
-/** A package __init__ that imports its own submodules re-exports them; it is not a dependency. */
 function reExports(byName, source, target) {
   return byName.get(source).isPackage && isInside(target, source);
 }

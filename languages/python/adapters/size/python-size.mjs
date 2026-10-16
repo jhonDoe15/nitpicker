@@ -66,8 +66,9 @@ function resolver(report, modules) {
   const known = new Map();
   for (const [file, { classes }] of Object.entries(report)) {
     const module = byFile.get(file)?.module;
-    for (const entry of module === undefined ? [] : classes)
+    for (const entry of module === undefined ? [] : classes) {
       known.set(`${module}.${entry.name}`, entry);
+    }
   }
   const names = new Map(
     Object.entries(report).map(([file, { imports }]) => [
@@ -99,7 +100,6 @@ function parentsOf({ entry, lineage }, resolve) {
     .map((parent) => ({ entry: parent, lineage: onPath }));
 }
 
-/** The longest chain of counted bases, walked one generation at a time. */
 function inheritanceDepth(entry, resolve) {
   const generations = [[{ entry, lineage: new Set() }]];
   for (const generation of generations) {

@@ -3,13 +3,6 @@ import { readProjectFile, toml } from '../../libraries/project-files.mjs';
 import { listProductionModules } from '../analysis/python-sources.mjs';
 import { parseIni } from '../configuration/mypy-config.mjs';
 
-/**
- * What hides production code from mutmut: `# pragma: no mutate` comments, and the project's own
- * [tool.mutmut] (or setup.cfg [mutmut]) do_not_mutate patterns and mutate_only_covered_lines.
- * Each is an enforceable mutant-ignored finding, the way the TypeScript preset reports a Stryker
- * disable comment.
- */
-
 const MUTMUT_TOOL = 'mutmut';
 const MUTANT_IGNORED_RULE = 'mutant-ignored';
 const NO_MUTATE = /#\s*pragma:\s*no mutate\b(?:[ \t]+(block|start|end|class|function))?/u;
@@ -120,7 +113,13 @@ function configFindings(config, files) {
   return [...hidden, ...coveredOnly];
 }
 
-/** Read before nitpicker writes its own [tool.mutmut], so only the project's settings count. */
+/**
+ * What hides production code from mutmut: `# pragma: no mutate` comments, and the project's own
+ * [tool.mutmut] (or setup.cfg [mutmut]) do_not_mutate patterns and mutate_only_covered_lines.
+ * Each is an enforceable mutant-ignored finding, the way the TypeScript preset reports a Stryker
+ * disable comment. Read before nitpicker writes its own [tool.mutmut], so only the project's
+ * settings count.
+ */
 export function mutationMarkerFindings({ projectRoot, project }) {
   const files = listProductionModules(projectRoot, project.sourceRoots).map(({ file }) => file);
   const config = readOptions(projectRoot);

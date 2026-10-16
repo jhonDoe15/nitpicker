@@ -13,8 +13,7 @@ const HINTED_TOOLS = [
   'mutmut',
 ];
 
-/** Rules whose message names a setting to change instead of an exception. */
-const ROUTED_BY_SETTING = new Set(['no-import-outside-roots']);
+const RULES_ROUTED_BY_A_SETTING = new Set(['no-import-outside-roots']);
 
 const LOGGING = 'Use `logging`: `logger = logging.getLogger(__name__)`, then `logger.info(...)`.';
 const HANDLE_EXCEPTION =
@@ -167,7 +166,7 @@ export function withHint(finding) {
   if (hint === undefined && !canBeLifted(finding)) {
     return finding;
   }
-  const routed = hint?.exception === false || ROUTED_BY_SETTING.has(finding.rule);
+  const routed = hint?.exception === false || RULES_ROUTED_BY_A_SETTING.has(finding.rule);
   const sentences = [
     `${finding.message.replace(/\.$/, '')}.`,
     ...(hint === undefined ? [] : [hint.allowed]),
