@@ -51,7 +51,14 @@ describe('generated tsconfig.quality.json', () => {
       strict: true,
       noUncheckedIndexedAccess: true,
     });
-    expect(config.include).toEqual(['src/**/*', 'test/**/*', 'tests/**/*', 'vitest*.ts']);
+    expect(config.include).toEqual([
+      'src/**/*',
+      'test/**/*',
+      'tests/**/*',
+      '__tests__/**/*',
+      'e2e/**/*',
+      'vitest*.ts',
+    ]);
   });
 
   it('keeps the TypeScript preset free of checkJs', () => {
@@ -85,7 +92,14 @@ describe('generated tsconfig.quality.json', () => {
       skipLibCheck: true,
       strict: true,
     });
-    expect(config.include).toEqual(['src/**/*', 'test/**/*', 'tests/**/*', 'vitest*.ts']);
+    expect(config.include).toEqual([
+      'src/**/*',
+      'test/**/*',
+      'tests/**/*',
+      '__tests__/**/*',
+      'e2e/**/*',
+      'vitest*.ts',
+    ]);
   });
 
   it('extends a jsconfig.json when the project has no tsconfig.json', () => {

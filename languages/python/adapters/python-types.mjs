@@ -8,8 +8,17 @@ export const TYPES_REPORT = 'type-check.json';
 const TYPES_FAILED_RULE = 'types-failed';
 const PYRIGHT_CONFIG = 'pyrightconfig.json';
 const MYPY_CACHE = 'mypy-cache';
-const TYPE_CHECKERS = ['mypy', 'pyright'];
-const PYRIGHT_SECTION = /^\s*\[\s*tool\.pyright\s*\]/m;
+const TYPE_CHECKERS = ['mypy', 'pyright', 'basedpyright'];
+const PYRIGHT_FAMILY = {
+  pyright: {
+    files: [PYRIGHT_CONFIG],
+    section: /^\s*\[\s*tool\.pyright\s*\]/m,
+  },
+  basedpyright: {
+    files: [PYRIGHT_CONFIG],
+    section: /^\s*\[\s*tool\.(?:basedpyright|pyright)\s*\]/m,
+  },
+};
 const PYRIGHT_DEFAULT_EXCLUDE = ['**/node_modules', '**/__pycache__', '**/.*'];
 const EXECUTABLE_PROBE = ['python', '-c', 'import sys; print(sys.executable)'];
 
@@ -59,15 +68,15 @@ function runMypy(context) {
   );
 }
 
-function projectPyrightConfig(projectRoot) {
-  const json = path.join(projectRoot, PYRIGHT_CONFIG);
-  if (existsSync(json)) {
+function projectPyrightConfig(projectRoot, checker) {
+  const { files, section } = PYRIGHT_FAMILY[checker];
+  const json = files.map((file) => path.join(projectRoot, file)).find((file) => existsSync(file));
+  if (json !== undefined) {
     return json;
   }
   const pyproject = path.join(projectRoot, 'pyproject.toml');
-  const declaresPyright =
-    existsSync(pyproject) && PYRIGHT_SECTION.test(readFileSync(pyproject, 'utf8'));
-  return declaresPyright ? pyproject : undefined;
+  const declaresSection = existsSync(pyproject) && section.test(readFileSync(pyproject, 'utf8'));
+  return declaresSection ? pyproject : undefined;
 }
 
 function pyrightExclude({ projectRoot, reportRoot, exclude }) {
@@ -77,13 +86,14 @@ function pyrightExclude({ projectRoot, reportRoot, exclude }) {
   ];
 }
 
-export function pyrightConfig({ projectRoot, reportRoot, project, exclude }) {
-  const inherited = projectPyrightConfig(projectRoot);
+export function pyrightConfig({ projectRoot, reportRoot, project, exclude }, checker = 'pyright') {
+  const inherited = projectPyrightConfig(projectRoot, checker);
   return {
     ...(inherited === undefined ? {} : { extends: inherited }),
     typeCheckingMode: 'strict',
     enableTypeIgnoreComments: false,
     ignore: [],
+    executionEnvironments: [],
     exclude: pyrightExclude({ projectRoot, reportRoot, exclude }),
     include: project.sourceRoots.map((root) =>
       path.relative(reportRoot, path.resolve(projectRoot, root)),
@@ -92,22 +102,28 @@ export function pyrightConfig({ projectRoot, reportRoot, project, exclude }) {
   };
 }
 
-function runPyright(context) {
-  const config = path.join(context.reportRoot, PYRIGHT_CONFIG);
-  writeFileSync(config, JSON.stringify(pyrightConfig(context)));
-  return run(context, ['pyright', '--outputjson', '--project', config], {
-    accepted: [0, 1],
-    rule: TYPES_FAILED_RULE,
-  });
+function pyrightRunner(checker) {
+  return (context) => {
+    const config = path.join(context.reportRoot, PYRIGHT_CONFIG);
+    writeFileSync(config, JSON.stringify(pyrightConfig(context, checker)));
+    return run(context, [checker, '--outputjson', '--project', config], {
+      accepted: [0, 1],
+      rule: TYPES_FAILED_RULE,
+    });
+  };
 }
 
-const RUNNERS = { mypy: runMypy, pyright: runPyright };
+const RUNNERS = {
+  mypy: runMypy,
+  pyright: pyrightRunner('pyright'),
+  basedpyright: pyrightRunner('basedpyright'),
+};
 
 export function typeCheck(context) {
   const checker = resolveTypeChecker(context);
   if (checker === undefined) {
     throw typesError(
-      `No type checker found in the ${context.launcher.description} environment: install mypy or pyright there, or set "python.typeChecker" in nitpicker.config.json`,
+      `No type checker found in the ${context.launcher.description} environment: install mypy, pyright or basedpyright there, or set "python.typeChecker" in nitpicker.config.json`,
     );
   }
   const { stdout } = RUNNERS[checker](context);

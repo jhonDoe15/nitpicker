@@ -6,9 +6,22 @@ import {
   resolveHeadPolicy as resolveSharedHeadPolicy,
 } from '../../../shared/head-policy.mjs';
 import { isJavascriptPolicy } from '../../javascript/preset/javascript-preset.mjs';
-import { hasScopePackage, scopePackage } from './eslint-config/scope-support.mjs';
+import {
+  frameworkConventions,
+  hasScopePackage,
+  reactMajorOf,
+  scopePackage,
+  testsCleanUpAutomatically,
+} from './eslint-config/scope-support.mjs';
+import {
+  excludedGlobs,
+  resolveLayout,
+  resolveLayoutFor,
+  sourceRoots,
+  testRoots,
+} from './layout.mjs';
 import { detectLibraries } from './libraries/project-libraries.mjs';
-import { excludedGlobs, resolveLayout, sourceRoots, testRoots } from './layout.mjs';
+import { stylingApproachFor } from './eslint-config/react/react-styling.mjs';
 import { prettierConventionOptions } from '../conventions/prettier-conventions.mjs';
 
 export { headPolicyEnvironment, withHeadPolicyFile } from '../../../shared/head-policy.mjs';
@@ -72,9 +85,22 @@ function detectedScopes(policy, projectRoot) {
     ]),
   );
   const iconPackage = scopePackage(projectRoot, 'icons');
+  const major = scopes.react.enabled ? reactMajorOf(projectRoot) : undefined;
+  const styling = scopes.react.enabled
+    ? stylingApproachFor({ projectRoot, react: scopes.react, layout: resolveLayoutFor(policy) })
+    : undefined;
+  const frameworks = frameworkConventions(projectRoot);
+  const detected = frameworks.defaultExports.length + frameworks.entryPoints.length > 0;
   return {
     ...scopes,
-    react: { ...scopes.react, ...(iconPackage === undefined ? {} : { iconPackage }) },
+    ...(detected ? { frameworks } : {}),
+    react: {
+      ...scopes.react,
+      ...(iconPackage === undefined ? {} : { iconPackage }),
+      ...(major === undefined ? {} : { major }),
+      ...(styling === undefined ? {} : { styling }),
+      ...(scopes.react.enabled ? { autoCleanup: testsCleanUpAutomatically(projectRoot) } : {}),
+    },
   };
 }
 
@@ -120,13 +146,16 @@ export function readHeadPolicy(environment = process.env) {
     tools: policy.tools ?? {},
     conventions: policy.conventions,
     libraries: policy.libraries,
+    frameworks: { defaultExports: [], entryPoints: [], ...policy.frameworks },
   };
 }
 
 export function readLayout(environment = process.env) {
   const policy = readHeadPolicy(environment);
   return {
-    ...resolveLayout(policy.layout, policy.exclude, { javascript: isJavascriptPolicy(policy) }),
-    entryPoints: policy.layout.entryPoints ?? [],
+    ...resolveLayout(readHeadPolicyFile(environment).layout, policy.exclude, {
+      javascript: isJavascriptPolicy(policy),
+    }),
+    entryPoints: [...(policy.layout.entryPoints ?? []), ...policy.frameworks.entryPoints],
   };
 }
