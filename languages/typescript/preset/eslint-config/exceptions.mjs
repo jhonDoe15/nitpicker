@@ -5,7 +5,7 @@ export function applyRuleExceptions(configEntries, allExceptions = []) {
   const unknown = exceptions.filter(({ rule }) => !isKnownRule(configEntries, rule));
   if (unknown.length > 0) {
     throw new Error(
-      `nitpicker.config.json "exceptions" name unknown rules: ${unknown.map(({ rule }) => rule).join(', ')}`,
+      `nitpicker.config.json "exceptions" name unknown rules: ${unknown.map(({ rule }) => rule).join(', ')}. Only rules nitpicker runs can be lifted: check the spelling.`,
     );
   }
   return [
