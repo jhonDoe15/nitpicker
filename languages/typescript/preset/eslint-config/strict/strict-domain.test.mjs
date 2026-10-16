@@ -173,7 +173,7 @@ describe('readonly types and mutation of domain values', () => {
       '11 nitpicker/no-mutating-method-in-domain',
     ]);
     expect(findings.find(({ line }) => line === 11).message).toBe(
-      'domain/ code does not mutate values, and URLSearchParams.append changes the value it is called on: build a new value instead, e.g. new Set([...set, x]), new Map([...map, [key, value]]), new Map(xs.map((x) => [x.id, x] as const)) or new Date(ms + delta). If this mutation is intended, add an exception for this rule in nitpicker.config.json.',
+      'domain/ code does not mutate values, and URLSearchParams.append changes the value it is called on: build a new value instead, e.g. new Set([...set, x]), new Map([...map, [key, value]]), new Map(xs.map((x) => [x.id, x] as const)) or new Date(ms + delta).',
     );
   });
 

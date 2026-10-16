@@ -25,8 +25,8 @@ const LIBRARY = { name: 'library', main: 'src/index.ts' };
 function iconMessage(scope) {
   return (
     'Prop Badge.icon is never passed. Remove it, or pass it from a real caller ' +
-    `(${scope}). If this is intended, add ` +
-    '{"rule":"unused-prop","paths":["src/badge.tsx"],"reason":"..."} ' +
+    `(${scope}). If a reviewer agrees this is intended, add ` +
+    '{"rule":"unused-prop","paths":["src/badge.tsx"],"reason":"<why this is intended>"} ' +
     'to "exceptions" in nitpicker.config.json.'
   );
 }

@@ -13,7 +13,7 @@ describe('shared-used-by-one-feature findings', () => {
     const exception = JSON.stringify({
       rule: 'shared-used-by-one-feature',
       paths: [entry.source],
-      reason: '...',
+      reason: '<why this is intended>',
     });
 
     expect(findings).toEqual([
@@ -25,7 +25,7 @@ describe('shared-used-by-one-feature findings', () => {
         message: [
           'src/main/shared/format-price.ts is used only by feature billing.',
           'Move it into src/main/features/billing/.',
-          `If this is intended, add ${exception} to "exceptions" in nitpicker.config.json.`,
+          `If a reviewer agrees this is intended, add ${exception} to "exceptions" in nitpicker.config.json.`,
         ].join(' '),
         classification: 'enforceable',
       },

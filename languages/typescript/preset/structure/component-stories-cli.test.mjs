@@ -46,7 +46,7 @@ describe('component-story-missing through the CLI', () => {
         identity: 'component-story-missing:Table',
         location: { line: 1 },
         message:
-          'Most components in this project have a story. Add src/Table.stories.tsx for Table. If this is intended, add {"rule":"component-story-missing","paths":["src/Table.tsx"],"reason":"..."} to "exceptions" in nitpicker.config.json.',
+          'Most components in this project have a story. Add src/Table.stories.tsx for Table. If a reviewer agrees this is intended, add {"rule":"component-story-missing","paths":["src/Table.tsx"],"reason":"<why this is intended>"} to "exceptions" in nitpicker.config.json.',
         classification: 'enforceable',
       },
     ]);

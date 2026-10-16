@@ -14,8 +14,8 @@ export function Button({ label }: ButtonProps) { return <button>{label}</button>
 `;
 const PROP_MESSAGE =
   'Prop Button.tone is never passed. Remove it, or pass it from a real caller ' +
-  '(tests and stories do not count). If this is intended, add ' +
-  '{"rule":"unused-prop","paths":["src/button.tsx"],"reason":"..."} ' +
+  '(tests and stories do not count). If a reviewer agrees this is intended, add ' +
+  '{"rule":"unused-prop","paths":["src/button.tsx"],"reason":"<why this is intended>"} ' +
   'to "exceptions" in nitpicker.config.json.';
 const FILES = {
   'src/button.tsx': BUTTON,

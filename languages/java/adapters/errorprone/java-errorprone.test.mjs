@@ -56,8 +56,8 @@ describe('readErrorProneFindings', () => {
       [
         'DeadException',
         'src/test/java/demo/ATest.java',
-        "Exception created but not thrown. Did you mean 'throw new X();'? If this is intended, add " +
-          '{"rule":"errorprone/DeadException","paths":["src/test/java/demo/ATest.java"],"reason":"..."} ' +
+        "Exception created but not thrown. Did you mean 'throw new X();'? If a reviewer agrees this is intended, add " +
+          '{"rule":"errorprone/DeadException","paths":["src/test/java/demo/ATest.java"],"reason":"<why this is intended>"} ' +
           'to "exceptions" in nitpicker.config.json.',
       ],
     ]);
@@ -81,7 +81,7 @@ describe('readErrorProneFindings', () => {
       }).map((finding) => finding.message);
 
     expect(read(false)).toEqual([
-      'Stack is a nonstandard class. If this is intended, add {"rule":"errorprone/JdkObsolete","paths":["src/main/java/demo/A.java"],"reason":"..."} to "exceptions" in nitpicker.config.json.',
+      'Stack is a nonstandard class. If a reviewer agrees this is intended, add {"rule":"errorprone/JdkObsolete","paths":["src/main/java/demo/A.java"],"reason":"<why this is intended>"} to "exceptions" in nitpicker.config.json.',
       "Exception created but not thrown. Did you mean 'throw new X();'?",
     ]);
     expect(read(true)).toEqual([
