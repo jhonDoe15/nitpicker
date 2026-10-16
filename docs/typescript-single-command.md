@@ -186,7 +186,7 @@ Status: implemented. The consumer installs one npm dev dependency and runs `npx 
   if a peer or the consumer's install is missing or incompatible, the affected tool fails the way
   it would when run directly, and the report shows that as a tool error. A committed
   `node_modules/` is used like any project's, and tools that cache under `node_modules` write to
-  the consumer's install. Single-package npm projects are the tested setup.
+  the consumer's install. npm, pnpm, Yarn and Bun projects are supported, with the base's own frozen install described in [usage](usage.md#what-it-compares).
 - The `policy-tests` analyzer, which runs nitpicker's own test suite, is not in the default set.
 - Default file globs cover common layouts (`src/`, `test/`, `tests/`, `__tests__/`, `e2e/`) instead of only `src/main`
   and `tests`. The config file can change them.

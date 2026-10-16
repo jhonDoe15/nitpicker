@@ -1,5 +1,7 @@
 import { PACKAGE_ROOT } from '../../../../core/tooling/tool-resolution.mjs';
 import { resolveDependencyHook } from '../dependency-graph/dependency-hooks.mjs';
+import { detectPackageManager } from '../dependency-graph/package-managers/detect.mjs';
+import { memberDependencyDirectories } from '../dependency-graph/package-managers/members.mjs';
 import {
   existsSync,
   readFileSync,
@@ -36,7 +38,7 @@ function dependencyManifestsDiffer(projectRoot, liveProjectRoot, dependencyHook)
     if (!projectManifestExists || !policyManifestExists) {
       return projectManifestExists !== policyManifestExists;
     }
-    return readFileSync(projectPath, 'utf8') !== readFileSync(policyPath, 'utf8');
+    return !readFileSync(projectPath).equals(readFileSync(policyPath));
   });
 }
 
@@ -83,12 +85,11 @@ function validatePreparedDependencies({ mode, dependencyPath, liveProjectRoot, d
 }
 
 function linkDependencies(options, dependencyHook) {
-  if (options.projectRoot === (options.liveProjectRoot ?? PACKAGE_ROOT)) {
+  const liveProjectRoot = options.liveProjectRoot ?? PACKAGE_ROOT;
+  if (options.projectRoot === liveProjectRoot) {
     return undefined;
   }
-  const dependencyRoot = realpathSync(
-    path.join(options.liveProjectRoot ?? PACKAGE_ROOT, dependencyHook.directory),
-  );
+  const dependencyRoot = liveDependencyRoot(liveProjectRoot, dependencyHook);
   const linkPath = path.join(options.projectRoot, dependencyHook.directory);
   if (existsSync(linkPath)) {
     const entry = lstatSync(linkPath);
@@ -98,12 +99,39 @@ function linkDependencies(options, dependencyHook) {
     throw new Error(`Refusing to replace existing dependencies at ${linkPath}`);
   }
   symlinkSync(dependencyRoot, linkPath, 'dir');
-  return { kind: 'linked', dependencyPath: linkPath, dependencyRoot };
+  const memberPaths = linkMemberDependencies(options.projectRoot, liveProjectRoot);
+  return { kind: 'linked', dependencyPath: linkPath, dependencyRoot, memberPaths };
+}
+
+function liveDependencyRoot(liveProjectRoot, dependencyHook) {
+  const dependencyPath = path.join(liveProjectRoot, dependencyHook.directory);
+  if (!existsSync(dependencyPath)) {
+    const { name } = detectPackageManager(liveProjectRoot);
+    throw new Error(
+      `Dependencies are not installed: ${dependencyPath} is missing. Run \`${name} install\` in ${liveProjectRoot} first (Yarn Plug'n'Play is not supported: set \`nodeLinker: node-modules\`).`,
+    );
+  }
+  return realpathSync(dependencyPath);
+}
+
+function linkMemberDependencies(projectRoot, liveProjectRoot) {
+  const linked = [];
+  for (const relative of memberDependencyDirectories(liveProjectRoot)) {
+    const linkPath = path.join(projectRoot, relative);
+    if (existsSync(path.dirname(linkPath)) && !existsSync(linkPath)) {
+      symlinkSync(realpathSync(path.join(liveProjectRoot, relative)), linkPath, 'dir');
+      linked.push(linkPath);
+    }
+  }
+  return linked;
 }
 
 export function removeSnapshotDependencies(dependencies) {
   if (dependencies === undefined) {
     return;
+  }
+  for (const memberPath of dependencies.memberPaths ?? []) {
+    removeMemberDependencies(dependencies.kind, memberPath);
   }
   const entry = lstatSync(dependencies.dependencyPath);
   if (dependencies.kind === 'installed') {
@@ -122,4 +150,18 @@ export function removeSnapshotDependencies(dependencies) {
     throw new Error(`Refusing to remove replaced dependency link: ${dependencies.dependencyPath}`);
   }
   unlinkSync(dependencies.dependencyPath);
+}
+
+function removeMemberDependencies(kind, memberPath) {
+  if (!existsSync(memberPath)) {
+    return;
+  }
+  const entry = lstatSync(memberPath);
+  if (kind === 'installed' && entry.isDirectory() && !entry.isSymbolicLink()) {
+    rmSync(memberPath, { recursive: true });
+  } else if (kind === 'linked' && entry.isSymbolicLink()) {
+    unlinkSync(memberPath);
+  } else {
+    throw new Error(`Refusing to remove replaced member dependencies: ${memberPath}`);
+  }
 }
