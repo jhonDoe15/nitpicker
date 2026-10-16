@@ -36,6 +36,13 @@ style:
         reason: 'Use a scheduler or a test clock instead of sleeping.'
 coroutines:
   active: false
+exceptions:
+  active: false
+  SwallowedException:
+    active: false
+    severity: info
+    ignoredExceptionTypes: ['NumberFormatException']
+    allowedExceptionNameRegex: 'error'
 potential-bugs:
   active: false
   ignoreAnnotated: ['Marker']

@@ -45,7 +45,9 @@ it with `npx skills add jhonDoe15/nitpicker --skill nitpicker-java`.
   instead of numbers other than -1, 0, 1 and 2 (`MagicNumber`), at most 2 `return` and 2 `throw`
   per function, conditions of at most 3 `&&`/`||` parts, no wildcard imports, and no `TODO:` or
   `FIXME:` comments. Catch and throw specific exceptions, never `Exception`, `RuntimeException` or
-  `Throwable`, and pass the caught exception on as the cause (`SwallowedException`). Use
+  `Throwable`, and pass the caught exception on as the cause or log it with the exception (a `catch`
+  that never uses the exception, or reads only its message, is `SwallowedException`, even
+  `catch (e: NumberFormatException) { null }`; in a test, use `assertFailsWith`). Use
   `require(...)` and `check(...)` instead of throwing `IllegalArgumentException` and
   `IllegalStateException`; a top-level `val` holding a literal is `const val`. Remove unused private
   members and parameters.

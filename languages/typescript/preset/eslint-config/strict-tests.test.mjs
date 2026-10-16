@@ -28,6 +28,8 @@ const asMessage =
   'Do not assert with `as`. Narrow the value (a discriminated union check or a zod parse) or give it the correct type at its source. `as const` is allowed.';
 const angleMessage =
   'Do not assert with `<Type>value`. Narrow the value (a discriminated union check or a zod parse) or give it the correct type at its source.';
+const silentCatchMessage =
+  "This catch discards the failure. Return a failure result (`return { kind: 'malformed-json' }`), or rethrow an Error subclass with `{ cause: error }`. In a test, use `expect(() => run()).toThrow()` or `await expect(promise).rejects.toThrow()`. If dropping it is intended, add an exception for this rule in nitpicker.config.json.";
 const moduleLevelArgv = 'export const [root] = process.argv.slice(2);';
 
 function messages(code, filename, config = strictTestsConfig) {
@@ -73,6 +75,29 @@ describe('strict test rules', () => {
     expect(messages(raisedTimeout, 'tests/generated/a.test.ts')).toEqual([
       'No matching configuration found for tests/generated/a.test.ts.',
     ]);
+  });
+
+  it.each([
+    ['returns null', 'function find() { try { return load(); } catch (error) { return null; } }'],
+    ['continues', 'for (const item of items) { try { run(item); } catch { continue; } }'],
+    [
+      'returns a constant',
+      'function has() { try { load(); return true; } catch { return false; } }',
+    ],
+  ])('report a catch in a test file that %s and name the test form', (_name, code) => {
+    for (const file of ['test/a.test.ts', 'tests/support/helpers.ts']) {
+      expect(messages(code, file)).toEqual([silentCatchMessage]);
+    }
+  });
+
+  it('allow a catch in a test file that uses the error or returns a failure result', () => {
+    const allowed = [
+      'function find() { try { return load(); } catch (error) { return describe(error); } }',
+      "function find() { try { return load(); } catch { return { kind: 'missing' }; } }",
+    ];
+    for (const code of allowed) {
+      expect(messages(code, 'test/a.test.ts')).toEqual([]);
+    }
   });
 
   it('hold helper and fixture scripts, not test files, to the main guard', () => {

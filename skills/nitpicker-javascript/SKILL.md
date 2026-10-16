@@ -168,6 +168,7 @@ line) is a finding.
   rethrows an `Error` subclass with `{ cause: error }`, which a test asserts. Keep the `try` around
   the call that throws:
   `try { return schema.safeParse(JSON.parse(text)); } catch { return { kind: 'malformed-json' }; }`.
+  The same holds in tests, where `expect(() => run()).toThrow()` replaces a `catch`.
 - With no caught error, throw `new XError(message)` without `cause`.
 - Handle malformed input only as the ticket says; don't silently drop entries.
 

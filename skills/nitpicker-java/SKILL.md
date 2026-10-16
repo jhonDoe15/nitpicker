@@ -72,9 +72,12 @@ With Spring on the classpath, also follow [spring.md](spring.md).
 
 ## Errors
 
-- Never swallow: no empty `catch` (PMD `EmptyCatchBlock` and Checkstyle both fail it). A `catch`
-  returns a failure value, logs and recovers, or rethrows with the cause:
-  `throw new IllegalStateException("bad quantity " + text, e);` (`PreserveStackTrace`).
+- Never swallow: no empty `catch` (PMD `EmptyCatchBlock` and Checkstyle both fail it), and no
+  `catch` that only does `continue`, `return;`, or returns or assigns a constant such as `null`,
+  `false`, `-1`, `Optional.empty()` or an empty list (PMD `SwallowedException`, also in tests). A
+  `catch` returns a named default or a value built from the error, logs and recovers, or rethrows
+  with the cause: `throw new IllegalStateException("bad quantity " + text, e);`
+  (`PreserveStackTrace`). `catch (ClassNotFoundException e) { present = false; }` is allowed.
 - Catch the narrowest type: `catch (NumberFormatException e)`. `catch (Exception)`,
   `catch (RuntimeException)`, `catch (Throwable)` and `catch (NullPointerException)` fail. Keep
   the `try` around the one call that throws.

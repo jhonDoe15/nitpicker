@@ -136,8 +136,16 @@ message names the fix and both routes. Each rule has a banned and an allowed fix
 |                   | `if (x == null) null else ...`        | `x?.let { ... }`                                                  | `style.UseLet`                                                           |
 | Coroutines        | `GlobalScope`                         | `coroutineScope { launch { ... } }`, or a scope its owner cancels | `coroutines.GlobalCoroutineUsage`                                        |
 |                   | `runBlocking`                         | a `suspend` caller (`suspend fun main()`)                         | `style.ForbiddenMethodCall` (`kotlinx.coroutines.runBlocking`)           |
+| Errors            | a `catch` that never uses the error   | log it with the exception, rethrow it or pass it as the cause     | `exceptions.SwallowedException` (no ignored types or names)              |
 | Records           | a class that only holds `val`s        | `data class`                                                      | `style.UseDataClass` (`allowVars: true`)                                 |
 |                   | a `data class` with a `var`           | `val` and `copy(...)`                                             | `style.DataClassShouldBeImmutable`                                       |
+
+`exceptions.SwallowedException` is the Python `swallowed-exception` rule for Kotlin. The preset sets
+`ignoredExceptionTypes` and `allowedExceptionNameRegex` empty, so `catch (e: NumberFormatException) { null }`,
+`continue`, a logged message without the exception and `catch (ignored: IOException) { 0 }` are reported like
+any other catch that never uses the error; a handler that logs the exception, rethrows it, passes it as the
+cause or reads more of it than the message is fine. detekt reports a catch that reads only `e.message` as
+swallowed too (the cause is lost). The message names the exception route and, for tests, `assertFailsWith`.
 
 Rule ids in findings are `detekt.<ruleset>.<Rule>`. Only main source sets are analyzed, so
 `runBlocking` in tests is not seen.

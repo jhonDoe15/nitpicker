@@ -23,6 +23,20 @@ potential-bugs:
     ignoreAnnotated: []
     includes: []
 
+exceptions:
+  active: true
+  excludes: []
+  ignoreAnnotated: []
+  includes: []
+  SwallowedException:
+    active: true
+    severity: warning
+    excludes: []
+    ignoreAnnotated: []
+    includes: []
+    ignoredExceptionTypes: []
+    allowedExceptionNameRegex: ''
+
 coroutines:
   active: true
   excludes: []

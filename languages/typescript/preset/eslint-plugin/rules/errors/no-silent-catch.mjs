@@ -15,7 +15,7 @@ export const rule = {
     schema: [],
     messages: {
       silent:
-        "This catch discards the failure. Return a failure result (`return { kind: 'malformed-json' }`), or rethrow an Error subclass with `{ cause: error }`. If dropping it is intended, add an exception for this rule in nitpicker.config.json.",
+        "This catch discards the failure. Return a failure result (`return { kind: 'malformed-json' }`), or rethrow an Error subclass with `{ cause: error }`. In a test, use `expect(() => run()).toThrow()` or `await expect(promise).rejects.toThrow()`. If dropping it is intended, add an exception for this rule in nitpicker.config.json.",
     },
   },
   create(context) {
