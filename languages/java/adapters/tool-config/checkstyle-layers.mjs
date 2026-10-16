@@ -84,14 +84,17 @@ function mergeModules(base, other, otherWins) {
   return result;
 }
 
-function mergeModule(base, other, otherWins) {
-  const parts = (module) => ({
+function partsOf(module) {
+  return {
     properties: childrenNamed(module, 'property'),
     modules: module.children.filter(isModule),
     rest: module.children.filter((child) => !isModule(child) && child.name !== 'property'),
-  });
-  const left = parts(base);
-  const right = parts(other);
+  };
+}
+
+function mergeModule(base, other, otherWins) {
+  const left = partsOf(base);
+  const right = partsOf(other);
   return {
     ...base,
     children: [

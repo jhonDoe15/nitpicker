@@ -13,6 +13,7 @@ import path from 'node:path';
 import { escapeRegExp } from '../../../shared/glob.mjs';
 import { javaCommand, runJava } from './maven-command.mjs';
 import { GRADLE_DIRECTORY } from '../builds/java-build.mjs';
+import { escapeXml } from '../adapters/tool-config/xml-write.mjs';
 import { layerCheckstyle } from '../adapters/tool-config/checkstyle-layers.mjs';
 import { NITPICKER_RULESET, pmdLayerFiles } from '../adapters/tool-config/layer-files.mjs';
 
@@ -38,14 +39,6 @@ export function javaFiles(roots) {
         .map((entry) => path.join(entry.parentPath, entry.name)),
     )
     .sort();
-}
-
-function escapeXml(text) {
-  return text
-    .replaceAll('&', '&amp;')
-    .replaceAll('<', '&lt;')
-    .replaceAll('>', '&gt;')
-    .replaceAll('"', '&quot;');
 }
 
 function springMainRuleset(testRoots) {

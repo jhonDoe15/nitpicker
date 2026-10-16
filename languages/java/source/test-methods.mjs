@@ -1,36 +1,21 @@
 import { maskKotlinSource } from '../adapters/kotlin/rules/kotlin-literals.mjs';
+import { closingIndex } from './brackets.mjs';
 import { maskJavaSource } from './java-masking.mjs';
 
 const TEST_ANNOTATION =
   /@(?:[\w.]+\.)?(?:Test|ParameterizedTest|RepeatedTest|TestTemplate)\b(\s*\((?:[^()]|\([^()]*\))*\))?/g;
-const JAVA_SIGNATURE = /^(?:\s*@[\w.]+(?:\s*\((?:[^()]|\([^()]*\))*\))?)*[^{;(]*?\b(\w+)\s*\(/;
-const KOTLIN_SIGNATURE =
-  /^(?:\s*@[\w.]+(?:\s*\((?:[^()]|\([^()]*\))*\))?)*[^{=(]*?\bfun\s+(?:<[^>]*>\s*)?(?:[\w.]+\.)?(?:`([^`]+)`|(\w+))\s*\(/;
+const ANNOTATIONS = /^(?:\s*@[\w.]+(?:\s*\((?:[^()]|\([^()]*\))*\))?)*/;
+const HEAD = /^([^{;(=]*)\(/;
+const KOTLIN_NAME = /`([^`]+)`\s*$|(\w+)\s*$/;
+const JAVA_NAME = /(\w+)\s*$/;
 const AFTER_PARAMETERS = {
   java: /^\s*(?:throws[^{;]*)?([{])/,
   kotlin: /^\s*(?::[^={]*)?([{=])/,
 };
-const WRAPPER = /^\s*\w+\s*(?:\((?:[^()]|\([^()]*\))*\))?\s*\{/;
-const OPENERS = { '(': ')', '{': '}', '[': ']' };
-const CLOSERS = new Set(Object.values(OPENERS));
+const WRAPPER = /^\s*\w+(?:\s*\((?:[^()]|\([^()]*\))*\))?\s*\{/;
 
-export function maskedSource(text, language) {
+function maskedSource(text, language) {
   return language === 'kotlin' ? maskKotlinSource(text).code : maskJavaSource(text);
-}
-
-function closingIndex(code, openAt) {
-  let depth = 0;
-  for (let index = openAt; index < code.length; index += 1) {
-    if (code[index] in OPENERS) {
-      depth += 1;
-    } else if (CLOSERS.has(code[index])) {
-      depth -= 1;
-      if (depth === 0) {
-        return index;
-      }
-    }
-  }
-  return -1;
 }
 
 function lineIndent(code, index) {
@@ -64,20 +49,29 @@ function bodyOf({ code, afterParameters, indent, language }) {
   return close === -1 ? undefined : code.slice(at + 1, close);
 }
 
+function nameOf(head, language) {
+  if (language === 'kotlin') {
+    const match = /\bfun\b/.test(head) ? KOTLIN_NAME.exec(head) : undefined;
+    return match?.[1] ?? match?.[2];
+  }
+  return JAVA_NAME.exec(head)?.[1];
+}
+
 function methodAfter(code, annotationEnd, language) {
-  const signature = language === 'kotlin' ? KOTLIN_SIGNATURE : JAVA_SIGNATURE;
   const rest = code.slice(annotationEnd);
-  const match = signature.exec(rest);
-  if (match === null) {
+  const skipped = ANNOTATIONS.exec(rest)[0].length;
+  const match = HEAD.exec(rest.slice(skipped));
+  const name = match === null ? undefined : nameOf(match[1], language);
+  if (name === undefined) {
     return undefined;
   }
-  const open = annotationEnd + match[0].length - 1;
+  const open = annotationEnd + skipped + match[0].length - 1;
   const close = closingIndex(code, open);
   const body =
     close === -1
       ? undefined
       : bodyOf({ code, afterParameters: close + 1, indent: lineIndent(code, open), language });
-  return body === undefined ? undefined : { name: match[1] ?? match[2], body };
+  return body === undefined ? undefined : { name, body };
 }
 
 export function testMethods(text, language) {
