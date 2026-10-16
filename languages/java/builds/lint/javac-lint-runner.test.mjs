@@ -154,6 +154,16 @@ describe('runJavacLint', () => {
     });
   });
 
+  it('reads the warnings of a javac whose platform locale is not English', () => {
+    vi.stubEnv('JAVA_TOOL_OPTIONS', '-Duser.language=de -Duser.country=DE');
+    const head = temporary();
+    writeFiles(head, { 'src/main/java/demo/A.java': RAW_NAMES });
+
+    expect(warningHeaders(lint(javaPlan(head), undefined).report)).toEqual([
+      warning('src/main/java/demo/A.java', 3),
+    ]);
+  });
+
   it('writes a failure report when javac counts warnings it printed in a form it cannot read', () => {
     const head = temporary();
     writeFiles(head, {
