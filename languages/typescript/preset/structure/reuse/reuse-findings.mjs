@@ -63,7 +63,7 @@ function reactFindings({ facts, context, projectRoot, layout, react }) {
 
 export function reuseFindings(
   { projectRoot, analyzerName, baselineRoot, baselinePaths = new Map() },
-  environment = process.env,
+  environment,
 ) {
   const { exceptions, react } = readHeadPolicy(environment);
   const layout = readLayout(environment);

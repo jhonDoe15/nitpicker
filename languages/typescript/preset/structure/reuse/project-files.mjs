@@ -36,8 +36,17 @@ function usedLocally(definition, references) {
   return (references.get(definition.name) ?? []).some((at) => at < start || at >= end);
 }
 
+function insideRoot(root, file) {
+  const base = path.resolve(root);
+  const full = path.resolve(base, file);
+  if (!full.startsWith(`${base}${path.sep}`)) {
+    throw new Error(`${file} is outside ${root}`);
+  }
+  return full;
+}
+
 function parsedFile(projectRoot, file) {
-  const text = readFileSync(path.join(projectRoot, file), 'utf8');
+  const text = readFileSync(insideRoot(projectRoot, file), 'utf8');
   return ts.createSourceFile(file, text, ts.ScriptTarget.Latest, true);
 }
 
@@ -45,11 +54,12 @@ export function baselineFileReader({ projectRoot, baselineRoot, baselinePaths })
   const unknown = { unchanged: false, definitions: [] };
   return (file) => {
     const baselinePath = baselinePaths.get(file) ?? file;
-    const baselineText = existsSync(path.join(baselineRoot, baselinePath))
-      ? readFileSync(path.join(baselineRoot, baselinePath), 'utf8')
-      : undefined;
-    if (baselineText === undefined) return unknown;
-    const unchanged = baselineText === readFileSync(path.join(projectRoot, file), 'utf8');
+    const baselineFull = insideRoot(baselineRoot, baselinePath);
+    if (!existsSync(baselineFull)) {
+      return unknown;
+    }
+    const unchanged =
+      readFileSync(baselineFull, 'utf8') === readFileSync(insideRoot(projectRoot, file), 'utf8');
     const definitions = unchanged ? [] : fileDefinitions(parsedFile(baselineRoot, baselinePath));
     return { unchanged, definitions };
   };
