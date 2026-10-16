@@ -22,6 +22,7 @@ import { detectJavaBuild, INIT_SCRIPT } from '../builds/java-build.mjs';
 import { moduleReport, readModuleFindings } from '../builds/java-modules.mjs';
 import { kotlinGradleArguments } from './kotlin/kotlin-tools.mjs';
 import { isJavaTouchedRule } from './touched-rules.mjs';
+import { withProjectEnumPredicates } from './review-rules/enum-predicates.mjs';
 
 const GRADLE_TIMEOUT_MS = 15 * 60 * 1000;
 const MAX_OUTPUT_BYTES = 50 * 1024 * 1024;
@@ -171,7 +172,7 @@ export function collectJavaFindings(root, options = {}) {
       : withGradleReports(projectRoot, options);
   const preset = options.policy?.preset ?? 'java';
   return applyJavaPolicy(
-    parseAnalyzerReport({ findings }, preset).findings,
+    withProjectEnumPredicates(parseAnalyzerReport({ findings }, preset).findings, projectRoot),
     options.policy,
     (reported) =>
       withoutOverlaps(reported, { readSource: (file) => sourceText(projectRoot, file) }),

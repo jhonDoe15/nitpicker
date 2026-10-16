@@ -109,5 +109,38 @@
       </property>
     </properties>
   </rule>
+  <rule name="ExhaustiveEnumPredicate" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
+        message="These comparisons list only some constants of an enum of the project, so a constant added later silently falls into the other case. Classify every constant: a switch expression without default (adding a constant then fails to compile), or a boolean each constant declares (PAID(true)). If a partial test is intended, add an exception for pmd/ExhaustiveEnumPredicate in nitpicker.config.json.">
+    <priority>3</priority>
+    <properties>
+      <property name="xpath">
+        <value><![CDATA[
+(
+  //InfixExpression[@Operator = ('||', '&&')][not(parent::InfixExpression/@Operator = @Operator)]
+    [let $root := ., $op := @Operator, $test := if ($op = '||') then '==' else '!=',
+         $operands := descendant::*[not(self::InfixExpression[@Operator = $op])]
+           [ancestor::*[not(self::InfixExpression[@Operator = $op])][1] is $root/..]
+           [parent::InfixExpression[@Operator = $op]],
+         $constants := $operands/FieldAccess[pmd-java:typeIs('java.lang.Enum')][TypeExpression],
+         $subjects := $operands/*[not(self::FieldAccess[pmd-java:typeIs('java.lang.Enum')][TypeExpression])]
+       return count($operands) >= 2
+         and (every $o in $operands satisfies $o[self::InfixExpression[@Operator = $test]]
+               [count(FieldAccess[pmd-java:typeIs('java.lang.Enum')][TypeExpression]) = 1]
+               [*[self::VariableAccess or self::FieldAccess[ThisExpression]]])
+         and count(distinct-values($subjects/@Name)) = 1
+         and count(distinct-values($constants/TypeExpression/ClassType/@SimpleName)) = 1
+         and count(distinct-values($constants/@Name)) = count($constants)]
+  | //MethodCall[@MethodName = 'contains'][ArgumentList/@Size = 1]
+      [*[1][self::MethodCall[pmd-java:matchesSig('java.util.EnumSet#of(_*)')]]
+        [ArgumentList/@Size >= 2]
+        [every $c in ArgumentList/* satisfies $c[self::FieldAccess[TypeExpression]]]]
+)
+  [let $slot := ancestor-or-self::*[not(parent::UnaryExpression[@Operator = '!'])][1]
+   return $slot/parent::ReturnStatement or $slot/parent::LambdaExpression
+     or $slot/parent::VariableDeclarator or ($slot/parent::AssignmentExpression and not($slot/parent::*/*[1] is $slot))]
+]]></value>
+      </property>
+    </properties>
+  </rule>
   <rule ref="category/java/design.xml/AvoidCatchingGenericException"/>
 </ruleset>
