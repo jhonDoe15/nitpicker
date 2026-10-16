@@ -22,4 +22,5 @@ export const JAVA_TOOLS = [
   'dependencies',
   'spring',
   'comments',
+  'test-runtime',
 ];

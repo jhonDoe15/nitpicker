@@ -1,27 +1,5 @@
-def reportDir = layout.buildDirectory.dir('nitpicker')
+def reportDir = project.ext.nitpickerReportDir
 def declaredConfigurations = ['implementation', 'api']
-
-def referencedNames = { Collection<File> classDirs ->
-    def names = [] as Set
-    classDirs.each { directory ->
-        directory.eachFileRecurse(groovy.io.FileType.FILES) { file ->
-            if (file.name.endsWith('.class')) {
-                (file.getText('ISO-8859-1') =~ /[A-Za-z_$][\w$]*(?:\/[\w$]+)+/).each { String token ->
-                    names << "${token}.class".toString()
-                    names << "${token.substring(1)}.class".toString()
-                }
-            }
-        }
-    }
-    names
-}
-
-def usesArchive = { File archive, Set<String> names ->
-    if (archive.isDirectory()) {
-        return names.any { new File(archive, it).isFile() }
-    }
-    new java.util.zip.ZipFile(archive).withCloseable { zip -> names.any { zip.getEntry(it) != null } }
-}
 
 tasks.register('nitpickerDependencies') {
     group = 'nitpicker'
@@ -40,18 +18,18 @@ tasks.register('nitpickerDependencies') {
                 resolved.moduleArtifacts.collect { it.file }.findAll { it.exists() }.unique()
         }
         def classDirs = sourceSets.main.output.classesDirs.files.findAll { it.exists() && it.list()?.length }
-        Set<String> names = referencedNames.call(classDirs)
         def declared = declaredConfigurations.findAll { configurations.findByName(it) != null }.collectMany { name ->
             configurations.getByName(name).dependencies.withType(ExternalModuleDependency).collect { dependency ->
                 def archives = archivesOf["${dependency.group}:${dependency.name}".toString()] ?: []
                 [configuration: name, group: dependency.group ?: '', name: dependency.name,
-                 archives: archives.collect { it.name }, used: archives.any { usesArchive(it, names) }]
+                 archives: archives.collect { it.name }, archivePaths: archives.collect { it.absolutePath }]
             }
         }
-        def buildFile = project.buildFile.exists() ? projectDir.toPath().relativize(project.buildFile.toPath()).toString().replace('\\', '/') : null
+        def buildFile = project.buildFile.exists() ? project.ext.nitpickerRelativeToRoot(project.buildFile) : null
         reportDir.get().file('dependencies.json').asFile.text = groovy.json.JsonOutput.toJson([
             buildFile: buildFile,
             analyzed : !classDirs.isEmpty(),
+            classDirectories: classDirs.collect { it.absolutePath },
             declared : declared,
         ])
     }

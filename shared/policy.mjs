@@ -27,6 +27,7 @@ export const RULE_IDS = {
   fileLines: 'file-lines-limit',
   lineLength: 'line-length-limit',
   folderFiles: 'folder-files-limit',
+  slowTest: 'slow-test',
 };
 
 /** Per-function structure limits, keyed by the metric name the TypeScript analyzer reports. */
@@ -48,6 +49,8 @@ export const FILE_LIMIT_DEFAULTS = {
   lineLength: 120,
   folderFiles: 6,
 };
+
+export const TEST_TIME_DEFAULTS = { unitTestSeconds: 5, integrationTestSeconds: 30 };
 
 /** Rules `exceptions` can lift for some paths in any preset (TypeScript also takes ESLint rules). */
 export const SHARED_EXCEPTION_RULES = [
@@ -99,14 +102,19 @@ export const MESSAGES = {
     '{name} nests control flow {value} deep (limit {limit}). Return early instead of nesting.',
   crapScoreLimit:
     '{name} has CRAP {crap}; score must be below {limit}. Test its uncovered branches, or split a branchy part into its own function.',
+  crapScoreLimitCovered:
+    '{name} has CRAP {crap} although tests cover it; score must be below {limit}. Reduce its branches: split a branchy part into its own function.',
   crapCoverageUnknown:
     '{name} has unknown coverage and no CRAP score: no test runs it. Add a test that calls it; for inline composition-root wiring, move it to a named function in adapters/ and test that.',
+  crapCoverageUnknownJava:
+    '{name} has unknown coverage and no CRAP score: JaCoCo has no data for it, so no test runs it or it is annotated @Generated. Add a test that calls it, and remove @Generated from hand-written code.',
   crapCoverageUnknownPlain:
     '{name} has unknown coverage and no CRAP score: no test runs it. Add a test that calls it.',
   changedBranchCoverage: 'Branch coverage is {percent}%; minimum is {minimum}%',
   fileLines: `File has {value} lines (limit {limit}). Split it into files by responsibility. ${EXCEPTION_HINT}`,
   lineLength: `Line is {value} characters (limit {limit}). Break it up or extract a named value. ${EXCEPTION_HINT}`,
   folderFiles: `Folder has {value} {kind} files directly in it (limit {limit}). Group related files into subfolders (packages in Java). ${EXCEPTION_HINT}`,
+  slowTest: `{name} took {seconds} s; {kind} test may take {limit} s. Remove Thread.sleep and other waits, start a smaller Spring context or a test slice{move}. ${EXCEPTION_HINT}`,
 };
 
 export function renderMessage(template, values) {
@@ -275,5 +283,11 @@ export const RULES = [
     check: 'structure',
     limit: `more than ${String(FILE_LIMIT_DEFAULTS.folderFiles)} source files, or test files, directly in one folder; override with \`thresholds.folderFiles\``,
     enforcedBy: withKotlin(ALL, true),
+  },
+  {
+    id: RULE_IDS.slowTest,
+    check: 'test-runtime',
+    limit: `a test the change adds or edits taking more than ${String(TEST_TIME_DEFAULTS.unitTestSeconds)} s (unit) or ${String(TEST_TIME_DEFAULTS.integrationTestSeconds)} s (integration); override with \`thresholds.unitTestSeconds\` and \`thresholds.integrationTestSeconds\``,
+    enforcedBy: withKotlin({ ...BOTH, typescript: false }, true),
   },
 ];
