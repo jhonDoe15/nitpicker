@@ -639,7 +639,9 @@ infer the same target. The other keys the project sets (`skip-magic-trailing-com
 The ids and values: `"kotlin.indentation"` `"2"`/`"4"` (ktfmt `meta`/`kotlinlang`, and ktlint `indent_size`; unlike
 `java.indentation` it has no default: with no clear majority the tools keep their own, ktfmt Meta and
 ktlint 4), `"kotlin.trailingCommas"` `"always"`/`"never"` (ktlint only), `"kotlin.wildcardImports"`
-`"explicit"`/`"wildcard"` (ktlint `no-wildcard-imports` and detekt `WildcardImport`), `"python.quotes"`
+`"explicit"`/`"wildcard"` (ktlint `no-wildcard-imports` and detekt `WildcardImport`), `"kotlin.lineLength"`
+`"100"`/`"120"`/`"140"` (ktlint `max_line_length`, ktfmt `--max-width` and detekt `MaxLineLength`; no default, so with no
+clear majority each tool keeps its own width), `"python.quotes"`
 `"double"`/`"single"` (ruff format; black keeps single quotes as written, so it accepts both),
 `"python.lineLength"` `"79"`/`"88"`/`"100"`/`"120"` (ruff format and black) and `"python.indentation"`
 `"4"`/`"2"`/`"tab"` (ruff format only). A convention the formatter in use cannot apply is not measured
@@ -656,6 +658,7 @@ Which formatter applies which convention:
 | `kotlin.indentation`     | -           | -                                     | yes    | yes (`meta`/`kotlinlang`) | -      |
 | `kotlin.trailingCommas`  | -           | -                                     | yes    | no (always adds them)     | -      |
 | `kotlin.wildcardImports` | -           | -                                     | yes    | -                         | yes    |
+| `kotlin.lineLength`      | -           | -                                     | yes    | yes (`--max-width`)       | yes    |
 
 ### Lint engine
 

@@ -186,4 +186,50 @@ describe('Kotlin conventions that the formatter can apply', () => {
         'ktlint reads your .editorconfig files, and uses indent_size = 4, ktlint_standard_no-wildcard-imports = disabled where they set nothing\n',
     });
   });
+
+  it('follows the line length and prints it with the ktfmt command', () => {
+    const wide = `fun f() {\n  g(${'a'.repeat(105)},\n    1)\n  g(${'b'.repeat(112)},\n    2)\n}\n`;
+    const files = { 'build.gradle.kts': 'ktfmt()', 'src/A.kt': wide, 'src/B.kt': wide };
+
+    expect(follow({ preset: 'kotlin' }, files)).toEqual({
+      conventions: { 'kotlin.indentation': '2', 'kotlin.lineLength': '120' },
+      printed:
+        HEADER +
+        '  Kotlin indentation: 2 spaces (used by 2 of 2 measured files)\n' +
+        '  Kotlin line length: 120 columns (used by 2 of 2 measured files)\n' +
+        'Format with ktfmt: ktfmt --meta-style --max-width=120 <Kotlin files>\n',
+    });
+  });
+
+  it('takes the line length from the .editorconfig and the detekt config when they are listed', () => {
+    const config = {
+      preset: 'kotlin',
+      tools: { ktlint: { precedence: LISTED }, detekt: { precedence: LISTED } },
+    };
+    const editorconfig = '[*.{kt,kts}]\nmax_line_length = 120\n';
+    const detekt = 'style:\n  MaxLineLength:\n    maxLineLength: 100\n';
+
+    expect(
+      follow(config, { 'build.gradle.kts': 'ktlint', '.editorconfig': editorconfig }).conventions,
+    ).toEqual({ 'kotlin.lineLength': '120' });
+    expect(
+      follow(
+        { preset: 'kotlin', tools: { detekt: { precedence: LISTED } } },
+        { 'build.gradle.kts': 'plugins {}', 'detekt.yml': detekt },
+      ).conventions,
+    ).toBeUndefined();
+    expect(
+      follow(config, {
+        'build.gradle.kts': 'ktlint',
+        '.editorconfig': 'root = true\n',
+        'config/detekt/detekt.yml': detekt,
+      }).conventions,
+    ).toEqual({ 'kotlin.lineLength': '100' });
+  });
+
+  it('refuses a pinned line length when no formatter runs', () => {
+    expect(() =>
+      follow({ preset: 'kotlin', conventions: { 'kotlin.lineLength': '120' } }, { 'src/A.kt': '' }),
+    ).toThrow('"conventions.kotlin.lineLength" has no effect: no Kotlin formatter runs');
+  });
 });

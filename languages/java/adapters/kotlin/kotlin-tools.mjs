@@ -5,7 +5,7 @@ import {
   missingProjectConfig,
   precedenceLayers,
 } from '../../../../shared/conventions/tool-precedence.mjs';
-import { KOTLIN_INDENTATION } from '../../conventions/kotlin-conventions.mjs';
+import { KOTLIN_INDENTATION, KOTLIN_LINE_LENGTH } from '../../conventions/kotlin-conventions.mjs';
 import {
   isolatedWorkspace,
   mirroredWorkspace,
@@ -196,6 +196,7 @@ export function resolveKotlinTools(
   return {
     formatter: chosen,
     ktfmtStyle: ktfmtStyle({ build, conventions, layers: ktfmtLayers }),
+    ktfmtMaxWidth: chosen === 'ktfmt' ? conventions[KOTLIN_LINE_LENGTH] : undefined,
     ktfmtBuildStyleIgnored:
       chosen === 'ktfmt' && !ktfmtLayers.usesProject && namedStyle(build) !== undefined,
     ...projectStyle(chosen, configRoot, toolPrecedence),
@@ -252,6 +253,9 @@ export function kotlinGradleArguments(
     '-Pnitpicker.kotlin=true',
     `-Pnitpicker.kotlin.formatter=${tools.formatter}`,
     `-Pnitpicker.kotlin.ktfmtStyle=${tools.ktfmtStyle}`,
+    ...(tools.ktfmtMaxWidth === undefined
+      ? []
+      : [`-Pnitpicker.kotlin.ktfmtMaxWidth=${tools.ktfmtMaxWidth}`]),
     ...(tools.ktfmtEditorconfig ? ['-Pnitpicker.kotlin.ktfmtEditorconfig=true'] : []),
     ...(options?.styleFile === undefined
       ? []

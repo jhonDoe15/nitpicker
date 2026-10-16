@@ -1,4 +1,5 @@
 import { indentationStep } from './java-conventions.mjs';
+import { lineLength } from './kotlin-line-length.mjs';
 import { trailingCommas, wildcardImports } from './kotlin-measures.mjs';
 
 const KOTLIN_FILES = ['**/*.kt'];
@@ -6,6 +7,7 @@ const KOTLIN_FILES = ['**/*.kt'];
 export const KOTLIN_INDENTATION = 'kotlin.indentation';
 export const KOTLIN_TRAILING_COMMAS = 'kotlin.trailingCommas';
 export const KOTLIN_WILDCARD_IMPORTS = 'kotlin.wildcardImports';
+export const KOTLIN_LINE_LENGTH = 'kotlin.lineLength';
 
 export const KOTLIN_CONVENTIONS = [
   {
@@ -34,5 +36,14 @@ export const KOTLIN_CONVENTIONS = [
     fallback: 'explicit',
     files: KOTLIN_FILES,
     measure: wildcardImports,
+  },
+  {
+    id: KOTLIN_LINE_LENGTH,
+    label: 'Kotlin line length',
+    options: ['100', '120', '140'],
+    optionLabels: { 100: '100 columns', 120: '120 columns', 140: '140 columns' },
+    fallback: undefined,
+    files: KOTLIN_FILES,
+    measure: lineLength,
   },
 ];

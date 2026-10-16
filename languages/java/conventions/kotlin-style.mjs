@@ -8,9 +8,14 @@ import {
   resolveKotlinTools,
 } from '../adapters/kotlin/kotlin-tools.mjs';
 import { kotlinSummary } from '../adapters/kotlin/style/kotlin-format-advice.mjs';
-import { detektWildcardActive, kotlinEditorconfigValues } from './editorconfig-values.mjs';
+import {
+  detektMaxLineLength,
+  detektWildcardActive,
+  kotlinEditorconfigValues,
+} from './editorconfig-values.mjs';
 import {
   KOTLIN_INDENTATION,
+  KOTLIN_LINE_LENGTH,
   KOTLIN_TRAILING_COMMAS,
   KOTLIN_WILDCARD_IMPORTS,
 } from './kotlin-conventions.mjs';
@@ -43,18 +48,27 @@ function ktlintChoices(root) {
     values.ij_kotlin_allow_trailing_comma ?? values.ij_kotlin_allow_trailing_comma_on_call_site;
   return choicesFrom('your .editorconfig', {
     [KOTLIN_INDENTATION]: values.indent_size,
+    [KOTLIN_LINE_LENGTH]: values.max_line_length,
     [KOTLIN_TRAILING_COMMAS]: COMMA_CHOICES[commas],
     [KOTLIN_WILDCARD_IMPORTS]: WILDCARD_CHOICES[values['ktlint_standard_no-wildcard-imports']],
   });
 }
 
 function ktfmtChoices(root) {
-  const indentSize = editorconfigValues(root)?.indent_size;
-  return indentSize === undefined
-    ? choicesFrom('your build file', {
-        [KOTLIN_INDENTATION]: KTFMT_INDENTATION[declaredKtfmtStyle(root)],
-      })
-    : choicesFrom('your .editorconfig', { [KOTLIN_INDENTATION]: indentSize });
+  const values = editorconfigValues(root);
+  const buildStyle =
+    values?.indent_size === undefined
+      ? choicesFrom('your build file', {
+          [KOTLIN_INDENTATION]: KTFMT_INDENTATION[declaredKtfmtStyle(root)],
+        })
+      : {};
+  return {
+    ...buildStyle,
+    ...choicesFrom('your .editorconfig', {
+      [KOTLIN_INDENTATION]: values?.indent_size,
+      [KOTLIN_LINE_LENGTH]: values?.max_line_length,
+    }),
+  };
 }
 
 function detektChoices(root, configured) {
@@ -63,6 +77,7 @@ function detektChoices(root, configured) {
   const active = text === undefined ? undefined : detektWildcardActive(text);
   return choicesFrom('your detekt config', {
     [KOTLIN_WILDCARD_IMPORTS]: DETEKT_WILDCARD_CHOICES[active],
+    [KOTLIN_LINE_LENGTH]: text === undefined ? undefined : detektMaxLineLength(text),
   });
 }
 
@@ -74,7 +89,9 @@ function unusedFor(formatter) {
           [KOTLIN_TRAILING_COMMAS]:
             formatter === 'ktfmt' ? 'ktfmt always adds trailing commas' : NO_FORMATTER,
         }),
-    ...(formatter === 'none' ? { [KOTLIN_INDENTATION]: NO_FORMATTER } : {}),
+    ...(formatter === 'none'
+      ? { [KOTLIN_INDENTATION]: NO_FORMATTER, [KOTLIN_LINE_LENGTH]: NO_FORMATTER }
+      : {}),
   };
 }
 
