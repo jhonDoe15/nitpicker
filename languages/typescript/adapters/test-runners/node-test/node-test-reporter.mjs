@@ -1,6 +1,8 @@
 import path from 'node:path';
 
 const RESULT_EVENTS = new Set(['test:pass', 'test:fail']);
+const CANCELLED_BY_PARENT = 'cancelledByParent';
+const HOOK_FAILED = 'hookFailed';
 const MAX_STDERR_LENGTH = 2000;
 
 function fileState(files, file) {
@@ -46,6 +48,18 @@ function prefixed(name, children) {
   }));
 }
 
+function withHookFailure(children, error) {
+  if (error?.failureType !== HOOK_FAILED) {
+    return children;
+  }
+  const message = `${String(error.message)}: ${failureMessage(error)}`;
+  return children.map((child) =>
+    child.cancelled
+      ? { ...child, cancelled: false, entry: { ...child.entry, failureMessages: [message] } }
+      : child,
+  );
+}
+
 function isFileItself(data) {
   return (
     data.nesting === 0 &&
@@ -63,13 +77,22 @@ function record(state, type, data) {
   }
   const firstChild = state.pending.findIndex(({ nesting }) => nesting > data.nesting);
   const children = firstChild === -1 ? [] : prefixed(data.name, state.pending.splice(firstChild));
-  const lifted = children.map((child) => ({ ...child, nesting: data.nesting }));
+  const lifted = withHookFailure(children, data.details?.error).map((child) => ({
+    ...child,
+    nesting: data.nesting,
+  }));
   const isSuite = data.details?.type === 'suite';
   const subtestsOnly = data.details?.error?.failureType === 'subtestsFailed';
   const own =
     isSuite || (children.length > 0 && (type === 'test:pass' || subtestsOnly))
       ? []
-      : [{ nesting: data.nesting, entry: entryFor(type, data) }];
+      : [
+          {
+            nesting: data.nesting,
+            entry: entryFor(type, data),
+            cancelled: data.details?.error?.failureType === CANCELLED_BY_PARENT,
+          },
+        ];
   state.pending.push(...lifted, ...own);
 }
 
