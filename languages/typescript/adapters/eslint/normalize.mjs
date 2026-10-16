@@ -14,7 +14,11 @@ import {
   normalizeMessageText,
   nodeChain,
 } from './syntax.mjs';
-import { growthAdviceFor, eslintMessageWithHint } from '../hints/eslint-hints.mjs';
+import {
+  growthAdviceFor,
+  eslintMessageWithHint,
+  withoutFatalDirectives,
+} from '../hints/eslint-hints.mjs';
 import { requiredString, positiveInteger } from './arguments.mjs';
 
 export function normalizeEslintResults({ value, projectRoot, analyzerName }) {
@@ -38,7 +42,7 @@ function normalizeResult({ result, resultIndex, projectRoot, analyzerName }) {
     throw new TypeError(`ESLint result ${String(resultIndex)} must contain messages`);
   }
   const projectFile = validatedProjectFile(projectRoot, result.filePath);
-  const messages = withoutSupersededMessages(result.messages);
+  const messages = withoutFatalDirectives(withoutSupersededMessages(result.messages));
   if (messages.length === 0) {
     return [];
   }

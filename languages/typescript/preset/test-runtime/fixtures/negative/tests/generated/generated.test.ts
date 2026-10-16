@@ -1,1 +1,1 @@
-throw new Error('generated test must be excluded');
+throw new Error('a folder named generated below the project root is checked');

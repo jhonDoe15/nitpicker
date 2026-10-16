@@ -1,8 +1,9 @@
-import { codeExtensionNames } from '../layout.mjs';
+import { EXCLUDED_PATH_PATTERN, codeExtensionNames } from '../layout.mjs';
 import { readLayout } from '../head-policy.mjs';
+import { outsideRootsRule } from '../architecture/outside-roots/outside-roots.mjs';
 import { strictBoundaryRules } from '../architecture/strict-boundary-rules.mjs';
 
-const { sourceRoots, testRoots, excludePattern } = readLayout();
+const { sourceRoots, testRoots, excludePattern, generatedFilePattern } = readLayout();
 const sourceRootPattern = `(?:^|/)(?:${sourceRoots.join('|')})/`;
 const productionSource = `${sourceRootPattern}(?!.*(?:__tests__|\\.test\\.|\\.spec\\.))`;
 export default {
@@ -21,16 +22,19 @@ export default {
       from: { path: productionSource },
       to: { circular: true },
     },
+    outsideRootsRule({
+      productionSource,
+      roots: [...sourceRoots, ...testRoots],
+      excludePattern,
+      generatedFilePattern,
+    }),
     ...strictBoundaryRules,
   ],
   required: [],
   options: {
     preserveSymlinks: true,
     doNotFollow: {
-      path: [
-        '(?:^|/)(?:node_modules|dist|build|generated|coverage|reports|target)(?:/|$)',
-        excludePattern,
-      ]
+      path: [EXCLUDED_PATH_PATTERN, excludePattern]
         .filter((pattern) => pattern !== undefined)
         .join('|'),
     },

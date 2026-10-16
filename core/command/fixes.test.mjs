@@ -171,6 +171,10 @@ No new enforceable violations, but the run is incomplete:
       elapsedMs: expect.any(Number),
       overallStatus: 'tool-error',
       newEnforceableFindings: 0,
+      policyChanges: [],
+      policyLoosenings: [],
+      policyChangeAccepted: false,
+      notices: [],
     });
     expect(JSON.parse(readFileSync(path.join(outputRoot, 'tool-errors.json'), 'utf8'))).toEqual([
       {

@@ -2,6 +2,15 @@ import { readdirSync } from 'node:fs';
 import path from 'node:path';
 import { depthFirst } from './traversal.mjs';
 
+export function pathInside(root, relative) {
+  const full = path.resolve(root, relative);
+  const fromRoot = path.relative(path.resolve(root), full);
+  if (fromRoot === '..' || fromRoot.startsWith(`..${path.sep}`) || path.isAbsolute(fromRoot)) {
+    return undefined;
+  }
+  return full;
+}
+
 export function* filesUnder(root, { skipDirectory = () => false } = {}) {
   function children(frame) {
     if (frame.entry && (!frame.entry.isDirectory() || skipDirectory(frame.absolute, frame.entry)))

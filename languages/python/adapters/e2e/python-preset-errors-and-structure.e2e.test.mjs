@@ -1,5 +1,6 @@
 import path from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { acceptedDigest } from '../../../../core/command/test-support/accepted-digest.mjs';
 import {
   GREETER_HI_TEST,
   NO_MUTATION,
@@ -12,6 +13,13 @@ import {
   pythonE2eEnabled,
   removeRepositories,
 } from './test-support/python-e2e-support.mjs';
+
+const MUTATION_DISABLED = {
+  environment: {
+    CI: 'true',
+    NITPICKER_ACCEPT_POLICY_CHANGE: acceptedDigest(['analyzer disabled: mutation'], NO_MUTATION),
+  },
+};
 
 describe.skipIf(!pythonE2eEnabled)(
   'Python preset tool errors, structure and CRAP end to end',
@@ -94,7 +102,7 @@ describe.skipIf(!pythonE2eEnabled)(
               classification === 'enforceable' && ['structure', 'crap'].includes(tool),
           );
       it('fails a new function over the structure limits with the same rules as TypeScript and Java', () => {
-        const result = gate(project, 'nested-and-wide');
+        const result = gate(project, 'nested-and-wide', MUTATION_DISABLED);
 
         expect(result.exitCode, result.text).toBe(1);
         expect(
@@ -105,9 +113,9 @@ describe.skipIf(!pythonE2eEnabled)(
         ]);
       });
       it('keeps a touched legacy function that is still over the limit, and fails it when it grows', () => {
-        expect(gate(project, 'legacy-edited').exitCode).toBe(0);
+        expect(gate(project, 'legacy-edited', MUTATION_DISABLED).exitCode).toBe(0);
 
-        const grown = gate(project, 'legacy-grown');
+        const grown = gate(project, 'legacy-grown', MUTATION_DISABLED);
 
         expect(grown.exitCode, grown.text).toBe(1);
         expect(enforceable(grown)).toEqual([
@@ -133,7 +141,7 @@ describe.skipIf(!pythonE2eEnabled)(
         ]);
       });
       it('fails a new untested branchy function on its CRAP score, and scores tested same-named definitions from their own lines', () => {
-        const result = gate(project, 'untested-complex');
+        const result = gate(project, 'untested-complex', MUTATION_DISABLED);
 
         expect(result.exitCode, result.text).toBe(1);
         expect(enforceable(result)).toEqual([

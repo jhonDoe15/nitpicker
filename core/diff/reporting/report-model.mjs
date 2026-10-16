@@ -23,6 +23,20 @@ export function policyHash(analyzers, configOverrides = []) {
   return createHash('sha256').update(JSON.stringify(hashed)).digest('hex');
 }
 
+export function summaryFields(configOverrides, shardSummary) {
+  return {
+    configOverrides,
+    policyChanges: shardSummary.policyChanges ?? [],
+    policyLoosenings: shardSummary.policyLoosenings ?? [],
+    ...(shardSummary.policyDigest === undefined ? {} : { policyDigest: shardSummary.policyDigest }),
+    policyChangeAccepted: shardSummary.policyChangeAccepted === true,
+    ...(shardSummary.policyAcceptanceSource === undefined
+      ? {}
+      : { policyAcceptanceSource: shardSummary.policyAcceptanceSource }),
+    notices: shardSummary.notices ?? [],
+  };
+}
+
 export function sortByToolAndPath(entries) {
   return entries.sort(
     (left, right) =>

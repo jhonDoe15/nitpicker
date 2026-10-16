@@ -13,7 +13,7 @@ import {
 import { applyRuleExceptions } from '../eslint-config/exceptions.mjs';
 import {
   applyJavascriptDialect,
-  javascriptRuleEntries,
+  scriptRuleEntries,
 } from '../../../javascript/preset/eslint-dialect.mjs';
 import { reactRuleIds, reactTestRuleIds } from '../eslint-config/react/react-rules.mjs';
 import {
@@ -170,9 +170,6 @@ const applicableExceptions = policy.exceptions.filter(
 );
 
 export default applyRuleExceptions(
-  applyJavascriptDialect(
-    [...presetConfig, ...javascriptRuleEntries(policy, selectedFiles)],
-    policy,
-  ),
+  applyJavascriptDialect([...presetConfig, ...scriptRuleEntries(selectedFiles)], policy),
   applicableExceptions,
 );

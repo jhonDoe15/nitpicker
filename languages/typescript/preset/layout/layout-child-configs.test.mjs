@@ -15,16 +15,15 @@ describe('package-owned child configs', () => {
       entry.files === undefined ? (entry.ignores ?? []) : [],
     );
     expect([...new Set(ignores)].sort()).toEqual([
-      '**/*.d.ts',
-      '**/build/**',
-      '**/coverage/**',
-      '**/dist/**',
-      '**/generated/**',
       '**/node_modules/**',
-      '**/reports/**',
-      '**/target/**',
       '.stryker-tmp/**',
+      'build/**',
+      'coverage/**',
+      'dist/**',
+      'generated/**',
       'lib/legacy/**',
+      'reports/**',
+      'target/**',
     ]);
     const files = config.flatMap((entry) => entry.files ?? []).flat();
     expect([...new Set(files)].sort()).toEqual([
@@ -46,6 +45,21 @@ describe('package-owned child configs', () => {
     ]);
     expect(files.filter((glob) => glob.startsWith('src/') || glob.startsWith('test'))).toEqual([]);
   });
+  it('eslint.config.mjs turns on the script rules typescript-eslint leaves off for .js files', async () => {
+    const config = await loadConfig('defaults/eslint.config.mjs', policy);
+    const scriptEntry = config.find(
+      (entry) =>
+        entry.rules?.['no-var'] === 'error' &&
+        entry.files?.includes('lib/**/*.{ts,tsx,mts,cts,js,jsx,mjs,cjs}'),
+    );
+
+    expect(scriptEntry?.rules).toEqual({
+      'no-var': 'error',
+      'prefer-const': 'error',
+      'prefer-rest-params': 'error',
+      'prefer-spread': 'error',
+    });
+  });
   it('eslint-config policies/base.mjs and coding-standards.config.mjs follow the same layout', async () => {
     const config = await loadConfig(
       'eslint-config/policies/coding-standards.config.mjs',
@@ -53,15 +67,14 @@ describe('package-owned child configs', () => {
       selectFilesAndIgnores,
     );
     expect([...new Set(config[0].ignores)].sort()).toEqual([
-      '**/*.d.ts',
-      '**/build/**',
-      '**/coverage/**',
-      '**/dist/**',
-      '**/generated/**',
       '**/node_modules/**',
-      '**/reports/**',
-      '**/target/**',
+      'build/**',
+      'coverage/**',
+      'dist/**',
+      'generated/**',
       'lib/legacy/**',
+      'reports/**',
+      'target/**',
     ]);
     expect([...new Set(config.flatMap((entry) => entry.files ?? []).flat())].sort()).toEqual([
       'lib/**/*.{test,spec}.{ts,tsx,mts,cts,js,jsx,mjs,cjs}',
@@ -74,19 +87,18 @@ describe('package-owned child configs', () => {
       module.productionPolicyConfig({}).map(({ ignores }) => ({ ignores })),
     );
     expect([...new Set(production.flatMap((entry) => entry.ignores ?? []))].sort()).toEqual([
-      '**/*.d.ts',
-      '**/build/**',
-      '**/coverage/**',
-      '**/dist/**',
-      '**/generated/**',
       '**/node_modules/**',
-      '**/reports/**',
-      '**/target/**',
       '.stryker-tmp/**',
+      'build/**',
+      'coverage/**',
+      'dist/**',
+      'generated/**',
       'lib/**/*.{test,spec}.{ts,tsx,mts,cts,js,jsx,mjs,cjs}',
       'lib/**/__tests__/**',
       'lib/legacy/**',
+      'reports/**',
       'spec/**/*.{ts,tsx,mts,cts,js,jsx,mjs,cjs}',
+      'target/**',
     ]);
   });
   it('production policy configs skip the module-load rule for configured entry points', async () => {
@@ -123,33 +135,33 @@ describe('package-owned child configs', () => {
     expect(config.sourcePaths).toEqual(['lib']);
     expect([...new Set(config.excludes)].sort()).toEqual([
       '**/*.d.ts',
-      '**/build/**',
-      '**/coverage/**',
-      '**/dist/**',
-      '**/generated/**',
       '**/node_modules/**',
-      '**/reports/**',
-      '**/target/**',
+      'build/**',
+      'coverage/**',
+      'dist/**',
+      'generated/**',
       'lib/**/*.{test,spec}.{ts,tsx,mts,cts,js,jsx,mjs,cjs}',
       'lib/legacy/**',
+      'reports/**',
       'spec/**/*.{ts,tsx,mts,cts,js,jsx,mjs,cjs}',
+      'target/**',
     ]);
   });
   it('stryker.config.mjs mutates the custom source roots and skips excluded paths', async () => {
     const config = await loadConfig('defaults/stryker.config.mjs', policy);
     expect([...new Set(config.mutate)].sort()).toEqual([
       '!**/*.d.ts',
-      '!**/build/**',
-      '!**/coverage/**',
-      '!**/dist/**',
-      '!**/generated/**',
       '!**/node_modules/**',
-      '!**/reports/**',
-      '!**/target/**',
+      '!build/**',
+      '!coverage/**',
+      '!dist/**',
+      '!generated/**',
       '!lib/**/*.{test,spec}.{ts,tsx,mts,cts,js,jsx,mjs,cjs}',
       '!lib/**/__tests__/**',
       '!lib/legacy/**',
+      '!reports/**',
       '!spec/**/*.{ts,tsx,mts,cts,js,jsx,mjs,cjs}',
+      '!target/**',
       'lib/**/*.{ts,tsx,mts,cts,js,jsx,mjs,cjs}',
     ]);
     expect(config.mutate.filter((glob) => glob.includes('src/'))).toEqual([]);

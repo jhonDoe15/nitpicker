@@ -10,6 +10,7 @@
     "exactOptionalPropertyTypes": true,
     "forceConsistentCasingInFileNames": true,
     "noFallthroughCasesInSwitch": true,
+    "noEmit": true,
     "noImplicitReturns": true,
     "noPropertyAccessFromIndexSignature": true,
     "noUncheckedIndexedAccess": true,
@@ -21,12 +22,12 @@
   },
   "include": ["src/**/*", "test/**/*", "tests/**/*", "__tests__/**/*", "e2e/**/*", "vitest*.ts"],
   "exclude": [
-    "**/dist/**",
-    "**/build/**",
-    "**/generated/**",
+    "dist/**",
+    "build/**",
+    "generated/**",
     "**/node_modules/**",
-    "**/coverage/**",
-    "**/reports/**",
-    "**/target/**"
+    "coverage/**",
+    "reports/**",
+    "target/**"
   ]
 }
