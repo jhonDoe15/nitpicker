@@ -19,8 +19,16 @@ function bindingsOf(imports) {
   );
 }
 
+function usedNames({ aliases, referenced }) {
+  const readThroughAlias = aliases
+    .filter(({ exported }) => referenced.has(exported))
+    .map(({ local }) => local);
+  return new Set([...referenced, ...readThroughAlias]);
+}
+
 export function moduleLinks({ imports, dynamicImports, exports, referenced }) {
   const bindings = bindingsOf(imports);
+  const used = usedNames({ aliases: exports.aliases, referenced });
   const edges = [
     ...exports.reexports.flatMap(({ specifier, star, names }) =>
       star
@@ -30,16 +38,15 @@ export function moduleLinks({ imports, dynamicImports, exports, referenced }) {
     ...exports.namespaces.map(({ specifier, name }) => ({
       exported: name,
       imported: EVERYTHING,
+      namespace: true,
       specifier,
     })),
-    ...exports.locals
-      .filter(({ local }) => bindings.has(local) && !referenced.has(local))
+    ...[...exports.locals, ...exports.aliases]
+      .filter(({ local }) => bindings.has(local) && !used.has(local))
       .map(({ local, exported }) => ({ exported, ...bindings.get(local), viaImport: true })),
   ];
   const references = [
-    ...[...bindings.entries()]
-      .filter(([local]) => referenced.has(local))
-      .map(([, binding]) => binding),
+    ...[...bindings.entries()].filter(([local]) => used.has(local)).map(([, binding]) => binding),
     ...dynamicImports.map((specifier) => ({ specifier, imported: EVERYTHING })),
   ];
   return { edges, references };
@@ -116,7 +123,7 @@ export function reexportGraph(moduleOf) {
         : { file, name: link.exported, viaImport: false };
       return declarationsFrom(start).map((node) => ({
         hostFile: file,
-        hostName: link.star ? undefined : link.exported,
+        hostName: link.star || link.namespace ? undefined : link.exported,
         node,
       }));
     });
