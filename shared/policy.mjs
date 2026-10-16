@@ -27,6 +27,7 @@ export const RULE_IDS = {
   lineLength: 'line-length-limit',
   folderFiles: 'folder-files-limit',
   slowTest: 'slow-test',
+  componentStoryMissing: 'component-story-missing',
 };
 
 /** Per-function structure limits, keyed by the metric name the TypeScript analyzer reports. */
@@ -114,6 +115,8 @@ export const MESSAGES = {
   lineLength: `Line is {value} characters (limit {limit}). Break it up or extract a named value. ${EXCEPTION_HINT}`,
   folderFiles: `Folder has {value} {kind} files directly in it (limit {limit}). Group related files into subfolders (packages in Java). ${EXCEPTION_HINT}`,
   slowTest: `{name} took {seconds} s; {kind} test may take {limit} s. Remove Thread.sleep and other waits, start a smaller Spring context or a test slice{move}. ${EXCEPTION_HINT}`,
+  componentStoryMissing: `Most components in this project have a story. Add {story} for {name}. ${EXCEPTION_HINT}`,
+  componentStoryMissingUnenforced: `{name} has no story. Add {story}. Not enforced until more than half of the components have one. ${EXCEPTION_HINT}`,
 };
 
 export function renderMessage(template, values) {
@@ -282,4 +285,20 @@ export const RULES = [
     limit: `a test the change adds or edits taking more than ${String(TEST_TIME_DEFAULTS.unitTestSeconds)} s (unit) or ${String(TEST_TIME_DEFAULTS.integrationTestSeconds)} s (integration); override with \`thresholds.unitTestSeconds\` and \`thresholds.integrationTestSeconds\``,
     enforcedBy: withKotlin({ ...BOTH, typescript: false }, true),
   },
+  {
+    id: RULE_IDS.componentStoryMissing,
+    check: 'structure',
+    limit:
+      'a component file without a story, in a package that has Storybook; enforced when more than half of its component files have one, reported otherwise',
+    enforcedBy: withKotlin(TYPESCRIPT_ONLY, false),
+  },
 ];
+
+/**
+ * Project-level TypeScript checks that take `exceptions` entries although no ESLint rule has their
+ * id: the rules only the TypeScript structure check enforces.
+ */
+export const TYPESCRIPT_PROJECT_EXCEPTION_RULES = RULES.filter(
+  ({ check, enforcedBy }) =>
+    check === 'structure' && enforcedBy.typescript && !enforcedBy.java && !enforcedBy.python,
+).map(({ id }) => id);

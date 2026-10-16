@@ -116,6 +116,7 @@ over limit" and does not fail.
 | `line-length-limit`               | `structure`        | a line longer than 120 characters, except imports, URLs and string literal text; override with `thresholds.lineLength` (Java: Checkstyle's own line length; Kotlin: detekt's) | enforced     | not enforced | enforced     | not enforced |
 | `folder-files-limit`              | `structure`        | more than 6 source files, or test files, directly in one folder; override with `thresholds.folderFiles`                                                                       | enforced     | enforced     | enforced     | enforced     |
 | `slow-test`                       | `test-runtime`     | a test the change adds or edits taking more than 5 s (unit) or 30 s (integration); override with `thresholds.unitTestSeconds` and `thresholds.integrationTestSeconds`         | not enforced | enforced     | not enforced | enforced     |
+| `component-story-missing`         | `structure`        | a component file without a story, in a package that has Storybook; enforced when more than half of its component files have one, reported otherwise                           | enforced     | not enforced | not enforced | not enforced |
 
 <!-- generated:custom-rules end -->
 
