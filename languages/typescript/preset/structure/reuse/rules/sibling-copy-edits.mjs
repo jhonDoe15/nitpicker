@@ -1,53 +1,47 @@
 import { RULE_IDS } from '../../../../../../shared/policy.mjs';
+import { copyGroups } from '../copy-groups.mjs';
 import { listPaths, reuseFinding } from '../finding.mjs';
-import { isNearCopy } from '../syntax/token-similarity.mjs';
+import { tokenSimilarity } from '../syntax/token-similarity.mjs';
 
 const KINDS = new Set(['function', 'class']);
+const HTTP_METHODS = new Set(['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'HEAD', 'OPTIONS']);
 const MINIMUM_TOKENS = 20;
 const MINIMUM_SIMILARITY = 0.8;
 
-function copyGroups(facts, isExcepted) {
-  const groups = new Map();
-  for (const { path: filePath, packageRoot, definitions } of facts) {
-    const comparable = isExcepted(RULE_IDS.siblingCopyEdit, filePath)
-      ? []
-      : definitions.filter(
-          ({ kind, tokens }) => KINDS.has(kind) && tokens.length >= MINIMUM_TOKENS,
-        );
-    for (const definition of comparable) {
-      const key = `${packageRoot}\0${definition.kind}\0${definition.name}`;
-      const group = groups.get(key) ?? [];
-      groups.set(key, [...group, { path: filePath, definition }]);
-    }
-  }
-  return [...groups.values()].filter((copies) => new Set(copies.map(({ path }) => path)).size >= 2);
+function isFrameworkEntry({ exportNames }) {
+  return exportNames.some((name) => name === 'default' || HTTP_METHODS.has(name));
 }
 
-function nearCopiesOf(copy, copies) {
-  return copies.filter(
-    (other) =>
-      other.path !== copy.path &&
-      isNearCopy(copy.definition.tokens, other.definition.tokens, MINIMUM_SIMILARITY),
+function isComparable(definition) {
+  return (
+    KINDS.has(definition.kind) &&
+    definition.tokens.length >= MINIMUM_TOKENS &&
+    !isFrameworkEntry(definition)
   );
 }
 
-function baseDefinitionReader(definitionsAt) {
+function memoized(read) {
   const known = new Map();
-  return ({ path, definition }) => {
-    if (!known.has(path)) known.set(path, definitionsAt(path));
-    return known
-      .get(path)
-      .find(({ kind, name }) => kind === definition.kind && name === definition.name);
+  return (file) => {
+    if (!known.has(file)) known.set(file, read(file));
+    return known.get(file);
   };
 }
 
-function isEdited(copy, baseDefinitionOf) {
-  const before = baseDefinitionOf(copy);
-  return before !== undefined && before.text !== copy.definition.text;
+function stateOf({ path, definition }, baselineFile) {
+  const baseline = baselineFile(path);
+  if (baseline.unchanged) return { state: 'untouched' };
+  const before = baseline.definitions.find(
+    ({ kind, name }) => kind === definition.kind && name === definition.name,
+  );
+  if (before === undefined) return { state: 'new' };
+  return before.text === definition.text ? { state: 'untouched' } : { state: 'edited', before };
 }
 
-function isUntouched(copy, baseDefinitionOf) {
-  return baseDefinitionOf(copy)?.text === copy.definition.text;
+function divergesFrom({ copy, before }, other) {
+  const { tokens } = other.definition;
+  const after = tokenSimilarity(copy.definition.tokens, tokens, MINIMUM_SIMILARITY);
+  return after > 0 && tokenSimilarity(before.tokens, tokens, MINIMUM_SIMILARITY) > after;
 }
 
 function editFinding({ copy, untouched, analyzerName }) {
@@ -62,21 +56,26 @@ function editFinding({ copy, untouched, analyzerName }) {
   });
 }
 
-function groupFindings({ copies, baseDefinitionOf, analyzerName }) {
-  return copies
-    .filter((copy) => isEdited(copy, baseDefinitionOf))
-    .map((copy) => ({
-      copy,
-      untouched: nearCopiesOf(copy, copies).filter((other) => isUntouched(other, baseDefinitionOf)),
+function groupFindings({ copies, baselineFile, analyzerName }) {
+  const states = copies.map((copy) => ({ copy, ...stateOf(copy, baselineFile) }));
+  const untouched = states.filter(({ state }) => state === 'untouched').map(({ copy }) => copy);
+  return states
+    .filter(({ state }) => state === 'edited')
+    .map((edited) => ({
+      copy: edited.copy,
+      untouched: untouched.filter((other) => divergesFrom(edited, other)),
     }))
-    .filter(({ untouched }) => untouched.length > 0)
-    .map(({ copy, untouched }) => editFinding({ copy, untouched, analyzerName }));
+    .filter((found) => found.untouched.length > 0)
+    .map((found) => editFinding({ ...found, analyzerName }));
 }
 
-export function siblingCopyEditFindings(facts, { analyzerName, isExcepted, baselineDefinitions }) {
-  if (baselineDefinitions === undefined) return [];
-  const baseDefinitionOf = baseDefinitionReader(baselineDefinitions);
-  return copyGroups(facts, isExcepted).flatMap((copies) =>
-    groupFindings({ copies, baseDefinitionOf, analyzerName }),
-  );
+export function siblingCopyEditFindings(facts, { analyzerName, isExcepted, baselineFile }) {
+  if (baselineFile === undefined) return [];
+  const baselineOf = memoized(baselineFile);
+  return copyGroups(facts, {
+    rule: RULE_IDS.siblingCopyEdit,
+    isExcepted,
+    isComparable,
+    keyOf: ({ kind, name }) => `${kind}\0${name}`,
+  }).flatMap((copies) => groupFindings({ copies, baselineFile: baselineOf, analyzerName }));
 }

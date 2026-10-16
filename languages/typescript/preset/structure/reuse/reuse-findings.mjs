@@ -9,7 +9,7 @@ import { readHeadPolicy, readLayout } from '../../head-policy.mjs';
 import { resolveModuleSpecifier } from '../../modules/module-resolution.mjs';
 import { resolvedDefinitions } from './definition-facts.mjs';
 import { uniqueFindings } from './finding.mjs';
-import { definitionsAt, productionFacts, svgFiles } from './project-files.mjs';
+import { baselineFileReader, productionFacts, svgFiles } from './project-files.mjs';
 import { projectPathOf } from './reuse-paths.mjs';
 import { duplicateDefinitionFindings } from './rules/duplicate-definitions.mjs';
 import { iconAssetFindings } from './rules/icon-assets.mjs';
@@ -62,7 +62,7 @@ function reactFindings({ facts, context, projectRoot, layout, react }) {
 }
 
 export function reuseFindings(
-  { projectRoot, analyzerName, baselineRoot },
+  { projectRoot, analyzerName, baselineRoot, baselinePaths = new Map() },
   environment = process.env,
 ) {
   const { exceptions, react } = readHeadPolicy(environment);
@@ -70,13 +70,15 @@ export function reuseFindings(
   const resolve = projectResolver(projectRoot);
   const facts = resolvedDefinitions(productionFacts(projectRoot, layout), resolve);
   const context = { analyzerName, isExcepted: exceptionMatcher(exceptions), resolve };
-  const baselineDefinitions =
-    baselineRoot === undefined ? undefined : (file) => definitionsAt(baselineRoot, file);
+  const baselineFile =
+    baselineRoot === undefined
+      ? undefined
+      : baselineFileReader({ projectRoot, baselineRoot, baselinePaths });
   const inReactScope = react.enabled ?? hasScopePackage(projectRoot, 'react');
   return uniqueFindings([
     ...duplicateDefinitionFindings(facts, context),
     ...exportedNameCollisionFindings(facts, context),
-    ...siblingCopyEditFindings(facts, { ...context, baselineDefinitions }),
+    ...siblingCopyEditFindings(facts, { ...context, baselineFile }),
     ...(inReactScope ? reactFindings({ facts, context, projectRoot, layout, react }) : []),
   ]);
 }

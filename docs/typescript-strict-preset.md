@@ -233,18 +233,28 @@ for a file takes that file out of the rule, so a pair of copies that must both s
   other files, once per name and file; the identity is the name and file, so existing copies are
   baselined. The message tells an exported copy to keep one definition and import it, a private copy
   to import the exported copy when there is one, and otherwise to move to one module and import it.
-- `sibling-copy-edit`: a change edits a function or class and leaves unedited a copy with the same
-  name and kind in another module of the package, whose tokens are at least 80% the same (twice the
-  longest common token sequence over the tokens of both; identical copies are
-  `duplicate-definition`'s and the `duplicates` check's). Definitions of fewer than 20 tokens
-  (parameters and body) are skipped, and so are types, interfaces and constants. A copy is edited
-  when its normalized text differs from the definition at the same path in the base (whitespace,
-  comments, quote style and semicolons do not count). Only the edited copy is reported, naming the
-  unedited ones. A pair neither side of the change touches, copies that are all edited (the same way
-  or differently), a new or moved copy, and an edit that leaves the copies under 80% alike are not
-  reported. Only the head snapshot reports it, as it reads the base checkout; the identity is the
-  name and file. It covers the same files as `duplicate-definition`, and an exception for either
-  copy's path lifts it. Edit the other copy too, or merge the two.
+- `sibling-copy-edit`: a change edits a function or class so that it drifts from a copy with the
+  same name and kind in another module of the package, and leaves that copy unedited. The two must
+  be at least 80% the same tokens (twice the longest common token sequence over the tokens of both)
+  both before and after the edit, and the edit must lower that figure: an edit that brings two
+  copies closer, or that leaves them under 80% alike, is not reported. A pair that is identical
+  before the edit counts as 100%; a pair that is identical after it is left to
+  `duplicate-definition` and the `duplicates` check. It covers functions (declarations, function
+  expressions and arrow-function `const`s) and classes of 20 tokens or more in parameters and body;
+  types, interfaces, enums and constants are skipped, as are default exports and exported `GET`,
+  `POST`, `PUT`, `PATCH`, `DELETE`, `HEAD` and `OPTIONS` handlers, whose name is the framework's and
+  not a shared one (a route's `Page`, `Layout` or `GET`); ordinary names such as `handler` or
+  `render` are compared. A copy is edited when its normalized text differs from the definition of
+  the same name in the base (whitespace, comments, quote style and semicolons do not count), and
+  untouched when it is equal; a copy with no base counterpart is new and left to
+  `duplicate-definition`. A file that git reports as moved or renamed is read at its old path, so a
+  moved copy counts as edited or untouched like any other. A pair is compared only when the tokens
+  that differ, after the shared start and end are set aside, fill at most one million table cells
+  (about a thousand tokens each); a bigger pair is skipped. Only the edited copy is reported, naming
+  the untouched ones, so copies that are all edited, in the same way or differently, report nothing.
+  Only the head snapshot reports it, as it reads the base checkout; the identity is the name and
+  file. It covers the same files as `duplicate-definition`, and an exception for either copy's path
+  lifts it. Edit the other copy too, or merge the two.
 - `exported-name-collision`: two modules export different definitions under one name and a module
   imports both without aliasing both, so a reader and auto-import can mistake one for the other. A
   module that aliases every colliding import (`import { handler as getUser }`, `import type`,
@@ -765,8 +775,9 @@ from a real caller) and the `exceptions` entry that lifts it.
 - The file limits (`file-lines-limit`, `line-length-limit`, `folder-files-limit`) take exceptions the
   same way; each failure message spells out the entry that would lift it.
 - The reuse rules (`shared-used-by-one-feature`, `duplicate-definition`, `sibling-copy-edit`,
-  `exported-name-collision`, `redefined-library-component`, `new-icon-asset`) come from the `coupling` and `structure` checks,
-  not from ESLint, and take exceptions the same way; the JavaScript preset runs them too.
+  `exported-name-collision`, `redefined-library-component`, `new-icon-asset`) come from the
+  `coupling` and `structure` checks, not from ESLint, and take exceptions the same way; the
+  JavaScript preset runs them too.
 - `layout.excludedGlobs`, `layout.entryPoints` and `layout.sourceRoots`/`layout.testRoots` are all valid `layout` keys. The
   roots must be directories; `excludedGlobs` are globs and replace the built-in exclusions;
   `entryPoints` are globs added to knip's entries for files that are loaded by path, not imported;

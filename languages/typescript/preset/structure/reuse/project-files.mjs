@@ -41,10 +41,18 @@ function parsedFile(projectRoot, file) {
   return ts.createSourceFile(file, text, ts.ScriptTarget.Latest, true);
 }
 
-export function definitionsAt(projectRoot, file) {
-  return existsSync(path.join(projectRoot, file))
-    ? fileDefinitions(parsedFile(projectRoot, file))
-    : [];
+export function baselineFileReader({ projectRoot, baselineRoot, baselinePaths }) {
+  const unknown = { unchanged: false, definitions: [] };
+  return (file) => {
+    const baselinePath = baselinePaths.get(file) ?? file;
+    const baselineText = existsSync(path.join(baselineRoot, baselinePath))
+      ? readFileSync(path.join(baselineRoot, baselinePath), 'utf8')
+      : undefined;
+    if (baselineText === undefined) return unknown;
+    const unchanged = baselineText === readFileSync(path.join(projectRoot, file), 'utf8');
+    const definitions = unchanged ? [] : fileDefinitions(parsedFile(baselineRoot, baselinePath));
+    return { unchanged, definitions };
+  };
 }
 
 function fileFacts(projectRoot, file, packageRoot) {
