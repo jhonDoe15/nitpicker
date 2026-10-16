@@ -3,27 +3,28 @@ import path from 'node:path';
 import { exceptionHint } from '../../../../shared/policy.mjs';
 import { normalizeReportPath } from '../../ingest/common.mjs';
 import { ingestErrorProne } from '../../ingest/errorprone/errorprone.mjs';
+import { isClassExempt } from './exemptions/class-exemptions.mjs';
 import { isLombokGenerated } from './lombok/lombok-generated.mjs';
 
 const ERROR_PRONE_REPORT = 'errorprone.json';
 const SENTENCE_END = /[.?!:]$/u;
-const CERTAIN_BUGS = new Set(
-  JSON.parse(readFileSync(new URL('../../gradle/errorprone/checks.json', import.meta.url), 'utf8'))
-    .certainBugs,
+const CHECKS = JSON.parse(
+  readFileSync(new URL('../../gradle/errorprone/checks.json', import.meta.url), 'utf8'),
 );
+const CERTAIN_BUGS = new Set(CHECKS.certainBugs);
 
 export function readErrorProneFindings({ reportRoot, roots, lintedRoots, kotlin = false }) {
   const reportPath = path.join(reportRoot, ERROR_PRONE_REPORT);
   if (!existsSync(reportPath)) {
     return [];
   }
-  const { findings } = ingestErrorProne(withoutLombokCode(readFileSync(reportPath, 'utf8')), {
+  const { findings } = ingestErrorProne(withoutExemptCode(readFileSync(reportPath, 'utf8')), {
     resolvePath: (file) => lintedPath(file, roots, lintedRoots),
   });
   return kotlin ? findings : findings.map((finding) => withExceptionRoute(finding));
 }
 
-function withoutLombokCode(json) {
+function withoutExemptCode(json) {
   const diagnostics = JSON.parse(json);
   if (!Array.isArray(diagnostics)) {
     return json;
@@ -39,7 +40,11 @@ function withoutLombokCode(json) {
     return texts.get(file);
   }
   return JSON.stringify(
-    diagnostics.filter((diagnostic) => !isLombokGenerated(diagnostic, textOf(diagnostic.file))),
+    diagnostics.filter(
+      (diagnostic) =>
+        !isClassExempt(diagnostic, CHECKS.classExemptions) &&
+        !isLombokGenerated(diagnostic, textOf(diagnostic.file)),
+    ),
   );
 }
 

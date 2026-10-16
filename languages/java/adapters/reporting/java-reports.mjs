@@ -6,6 +6,7 @@ import { ingestArchunit } from '../../ingest/archunit.mjs';
 import { ingestCrap } from '../../ingest/crap.mjs';
 import { readDuplicateFindings } from '../metrics/java-duplicates.mjs';
 import { readErrorProneFindings } from '../errorprone/java-errorprone.mjs';
+import { withoutOverlaps } from '../overlaps/static-overlaps.mjs';
 import { readInlineSuppressionFindings } from '../suppressions/java-suppressions.mjs';
 import { readSpringConfigFindings } from '../spring/java-spring.mjs';
 import {
@@ -57,7 +58,7 @@ export function readJavaFindings(
     jacoco: readFileSync(path.join(reportRoot, 'jacoco.xml'), 'utf8'),
   };
   return {
-    findings: [
+    findings: withoutOverlaps([
       ...sarifFindings(context),
       ...readErrorProneFindings(context),
       ...formatFindings(context),
@@ -73,7 +74,7 @@ export function readJavaFindings(
       ...(kotlin ? readKotlinFindings(context, crapLimit) : []),
       ...readInlineSuppressionFindings(projectRoot, context.lintedRoots),
       ...springFindings(context),
-    ],
+    ]),
   };
 }
 

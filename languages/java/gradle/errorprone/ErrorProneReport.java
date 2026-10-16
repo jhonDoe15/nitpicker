@@ -1,3 +1,12 @@
+import com.sun.source.tree.ClassTree;
+import com.sun.source.tree.CompilationUnitTree;
+import com.sun.source.util.JavacTask;
+import com.sun.source.util.SourcePositions;
+import com.sun.source.util.TaskEvent;
+import com.sun.source.util.TaskListener;
+import com.sun.source.util.TreePath;
+import com.sun.source.util.TreePathScanner;
+import com.sun.source.util.Trees;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
@@ -9,7 +18,11 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
+import javax.lang.model.element.AnnotationMirror;
+import javax.lang.model.element.Element;
+import javax.lang.model.element.TypeElement;
 import javax.tools.Diagnostic;
 import javax.tools.DiagnosticCollector;
 import javax.tools.JavaCompiler;
@@ -19,24 +32,13 @@ import javax.tools.ToolProvider;
 
 /**
  * Compiles source sets with javac and Error Prone as its plugin, and writes the diagnostics as a JSON
- * array of {file, line, column, position, kind, message} (position: the character offset Error Prone
- * reports, -1 when unknown; it is one point, not a span). The Gradle and the Maven builds both run
- * it, so both get the same checks.
- *
- * <p>Usage: {@code ErrorProneReport <report.json> <checks.json> <arguments file>...}. Each arguments
- * file holds one javac argument per line, then a line {@code --sources} and one source file per
- * line. Some lines before {@code --sources} are not javac arguments: {@code --test-only} marks test
- * sources (NullAway is off there); {@code --own-classes=<directories>} (joined with the path
- * separator) gives the project's own top-level packages, which CheckReturnValue and NullAway cover;
- * {@code --release=<n>}, {@code --source=<n>} and {@code --target=<n>} are the build's own form of
- * the language level, kept as it is except that {@code --release} becomes {@code -source} and
- * {@code -target} next to an {@code --add-exports} or {@code --add-opens} of a JDK module; and
- * {@code --project-arg=<arg>} is one of the build's compiler arguments, of which only the preview,
- * module and {@code -A} processor options are kept. A {@code lombok.config} that sets {@code
- * lombok.addSuppressWarnings = false} for any source turns off the checks listed under {@code
- * lombokUnsuppressedOff} in checks.json, which crash on Lombok's generated code. A compilation that
- * fails (a compiler error, not an Error Prone finding: those are warnings) ends the program with
- * exit status 1 and the errors on standard error, so it is never read as a clean report.
+ * array of {file, line, column, position, kind, message, classAnnotations}: position is the one offset
+ * Error Prone reports, classAnnotations the annotations (meta-annotations included) of the innermost
+ * class around it. Usage: {@code ErrorProneReport <report.json> <checks.json> <arguments file>...};
+ * each arguments file holds javac arguments, then {@code --sources} and the sources, one per line.
+ * The non-javac lines ({@code --test-only}, {@code --own-classes=}, {@code --release=}, {@code
+ * --source=}, {@code --target=}, {@code --project-arg=}) and lombok.config handling are described in
+ * docs/java-preset.md. A failed compilation exits with status 1 and javac's errors on stderr.
  */
 public final class ErrorProneReport {
   private static final String SOURCES = "--sources";
@@ -56,6 +58,8 @@ public final class ErrorProneReport {
 
   private ErrorProneReport() {}
 
+  private record ClassSpan(long start, long end, List<String> annotations) {}
+
   public static void main(String[] args) throws IOException {
     JavaCompiler compiler = ToolProvider.getSystemJavaCompiler();
     String checks = Files.readString(Path.of(args[1]), StandardCharsets.UTF_8);
@@ -68,25 +72,18 @@ public final class ErrorProneReport {
       System.err.println(String.join("\n", errors));
       System.exit(1);
     }
-    Files.writeString(
-        Path.of(args[0]), "[" + String.join(",\n", entries) + "]\n", StandardCharsets.UTF_8);
+    Files.writeString(Path.of(args[0]), "[" + String.join(",\n", entries) + "]\n", StandardCharsets.UTF_8);
   }
 
   /** Every package holding a class, without the ones nested in another such package. */
   static List<String> ownPackages(String classDirectories) throws IOException {
     List<String> packages = new ArrayList<>();
-    for (String directory : classDirectories.split(java.io.File.pathSeparator)) {
-      Path root = Path.of(directory);
-      if (directory.isEmpty() || !Files.isDirectory(root)) {
-        continue;
-      }
+    for (Path root : Stream.of(classDirectories.split(java.io.File.pathSeparator)).filter(d -> !d.isEmpty())
+        .map(Path::of).filter(Files::isDirectory).toList()) {
       try (Stream<Path> files = Files.walk(root)) {
-        files
-            .filter(file -> file.toString().endsWith(".class"))
-            .map(file -> root.relativize(file.getParent() == null ? root : file.getParent()))
-            .map(relative -> relative.toString().replace(java.io.File.separatorChar, '.'))
-            .filter(name -> !name.isEmpty())
-            .forEach(packages::add);
+        files.filter(file -> file.toString().endsWith(".class"))
+            .map(file -> root.relativize(file.getParent()).toString().replace(java.io.File.separatorChar, '.'))
+            .filter(name -> !name.isEmpty()).forEach(packages::add);
       }
     }
     List<String> sorted = packages.stream().distinct().sorted().toList();
@@ -97,21 +94,12 @@ public final class ErrorProneReport {
 
   static List<String> namesIn(String checks, String key) {
     Matcher list = Pattern.compile("\"" + key + "\"\\s*:\\s*\\[([^\\]]*)\\]").matcher(checks);
-    List<String> names = new ArrayList<>();
-    if (list.find()) {
-      Matcher name = NAME.matcher(list.group(1));
-      while (name.find()) {
-        names.add(name.group(1));
-      }
-    }
-    return names;
+    return list.find() ? NAME.matcher(list.group(1)).results().map(name -> name.group(1)).toList() : List.of();
   }
 
   static String pluginArgument(
       String checks, List<String> packages, boolean test, boolean lombokUnsuppressed) {
-    List<String> flags = new ArrayList<>();
-    flags.add("-Xplugin:ErrorProne");
-    flags.add("-XepAllErrorsAsWarnings");
+    List<String> flags = new ArrayList<>(List.of("-Xplugin:ErrorProne", "-XepAllErrorsAsWarnings"));
     if (test) {
       flags.add("-XepCompilingTestOnlyCode");
     }
@@ -180,8 +168,7 @@ public final class ErrorProneReport {
   }
 
   private static boolean kept(String argument) {
-    return argument.equals("--enable-preview")
-        || argument.startsWith("-A")
+    return argument.equals("--enable-preview") || argument.startsWith("-A")
         || MODULE_OPTIONS.stream().anyMatch(option -> argument.startsWith(option + "="));
   }
 
@@ -203,13 +190,8 @@ public final class ErrorProneReport {
     return false;
   }
 
-  private static void compile(
-      JavaCompiler compiler,
-      Path argumentsFile,
-      String checks,
-      List<String> entries,
-      List<String> errors)
-      throws IOException {
+  private static void compile(JavaCompiler compiler, Path argumentsFile, String checks, List<String> entries,
+      List<String> errors) throws IOException {
     List<String> lines = Files.readAllLines(argumentsFile, StandardCharsets.UTF_8);
     int separator = lines.indexOf(SOURCES);
     List<String> head = lines.subList(0, separator);
@@ -220,26 +202,22 @@ public final class ErrorProneReport {
     String ownClasses =
         head.stream().filter(line -> line.startsWith(OWN_CLASSES)).findFirst().orElse(OWN_CLASSES);
     List<String> options = javacOptions(head);
-    options.add(
-        pluginArgument(
-            checks,
-            ownPackages(ownClasses.substring(OWN_CLASSES.length())),
-            head.contains(TEST_ONLY),
-            lombokUnsuppressed(sources)));
+    options.add(pluginArgument(checks, ownPackages(ownClasses.substring(OWN_CLASSES.length())),
+        head.contains(TEST_ONLY), lombokUnsuppressed(sources)));
     DiagnosticCollector<JavaFileObject> diagnostics = new DiagnosticCollector<>();
     boolean compiled;
+    Map<String, List<ClassSpan>> classes = new HashMap<>();
     try (StandardJavaFileManager files =
         compiler.getStandardFileManager(diagnostics, Locale.ROOT, StandardCharsets.UTF_8)) {
-      compiled =
-          compiler
-              .getTask(
-                  null, files, diagnostics, options, null, files.getJavaFileObjectsFromStrings(sources))
-              .call();
+      JavacTask task = (JavacTask) compiler.getTask(
+          null, files, diagnostics, options, null, files.getJavaFileObjectsFromStrings(sources));
+      recordClasses(task, classes);
+      compiled = task.call();
     }
     for (Diagnostic<? extends JavaFileObject> diagnostic : diagnostics.getDiagnostics()) {
       String code = diagnostic.getCode() == null ? "" : diagnostic.getCode();
       if (code.endsWith(".error.prone") && diagnostic.getSource() != null) {
-        entries.add(entry(diagnostic));
+        entries.add(entry(diagnostic, classes));
       } else if (diagnostic.getKind() == Diagnostic.Kind.ERROR) {
         errors.add(location(diagnostic) + diagnostic.getMessage(Locale.ROOT));
       }
@@ -249,38 +227,73 @@ public final class ErrorProneReport {
     }
   }
 
+  /** Records each analyzed class's span and annotations, keyed by its source file's path. */
+  private static void recordClasses(JavacTask task, Map<String, List<ClassSpan>> classes) {
+    Trees trees = Trees.instance(task);
+    task.addTaskListener(
+        new TaskListener() {
+          @Override
+          public void finished(TaskEvent event) {
+            TreePath top = event.getTypeElement() == null ? null : trees.getPath(event.getTypeElement());
+            if (event.getKind() != TaskEvent.Kind.ANALYZE || top == null) {
+              return;
+            }
+            CompilationUnitTree unit = top.getCompilationUnit();
+            List<ClassSpan> spans =
+                classes.computeIfAbsent(Path.of(unit.getSourceFile().toUri()).toString(), file -> new ArrayList<>());
+            new TreePathScanner<Void, Void>() {
+              @Override
+              public Void visitClass(ClassTree tree, Void unused) {
+                SourcePositions at = trees.getSourcePositions();
+                spans.add(new ClassSpan(at.getStartPosition(unit, tree), at.getEndPosition(unit, tree),
+                    annotationNames(trees.getElement(getCurrentPath()), new ArrayList<>())));
+                return super.visitClass(tree, unused);
+              }
+            }.scan(top, null);
+          }
+        });
+  }
+
+  private static List<String> annotationNames(Element element, List<String> names) {
+    for (AnnotationMirror mirror : element == null ? List.<AnnotationMirror>of() : element.getAnnotationMirrors()) {
+      TypeElement type = (TypeElement) mirror.getAnnotationType().asElement();
+      String name = type.getQualifiedName().toString();
+      if (!name.startsWith("java.lang.annotation.") && !names.contains(name)) {
+        names.add(name);
+        annotationNames(type, names);
+      }
+    }
+    return names;
+  }
+
   private static String location(Diagnostic<? extends JavaFileObject> diagnostic) {
     return diagnostic.getSource() == null
         ? ""
         : Path.of(diagnostic.getSource().toUri()) + ":" + diagnostic.getLineNumber() + ": ";
   }
 
-  private static String entry(Diagnostic<? extends JavaFileObject> diagnostic) {
-    return "{\"file\":"
-        + json(Path.of(diagnostic.getSource().toUri()).toString())
-        + ",\"line\":"
-        + diagnostic.getLineNumber()
-        + ",\"column\":"
-        + diagnostic.getColumnNumber()
-        + ",\"position\":"
-        + diagnostic.getPosition()
-        + ",\"kind\":"
-        + json(diagnostic.getKind().name())
-        + ",\"message\":"
-        + json(diagnostic.getMessage(Locale.ROOT))
-        + "}";
+  private static String entry(
+      Diagnostic<? extends JavaFileObject> diagnostic, Map<String, List<ClassSpan>> classes) {
+    String file = Path.of(diagnostic.getSource().toUri()).toString();
+    long position = diagnostic.getPosition();
+    List<String> annotations = classes.getOrDefault(file, List.of()).stream()
+            .filter(span -> span.start() <= position && position < span.end())
+            .max((left, right) -> Long.compare(left.start(), right.start()))
+            .map(ClassSpan::annotations)
+            .orElse(List.of());
+    return String.format(
+        "{\"file\":%s,\"line\":%d,\"column\":%d,\"position\":%d,\"kind\":%s,\"message\":%s,"
+            + "\"classAnnotations\":[%s]}",
+        json(file), diagnostic.getLineNumber(), diagnostic.getColumnNumber(), position,
+        json(diagnostic.getKind().name()), json(diagnostic.getMessage(Locale.ROOT)),
+        annotations.stream().map(ErrorProneReport::json).collect(Collectors.joining(",")));
   }
 
   private static String json(String text) {
     StringBuilder out = new StringBuilder("\"");
     for (char character : text.toCharArray()) {
-      if (character == '"' || character == '\\') {
-        out.append('\\').append(character);
-      } else if (character < 0x20) {
-        out.append(String.format("\\u%04x", (int) character));
-      } else {
-        out.append(character);
-      }
+      boolean quoted = character == '"' || character == '\\';
+      out.append(character < 0x20 ? String.format("\\u%04x", (int) character) : quoted ? "\\" + character : character);
     }
     return out.append('"').toString();
   }

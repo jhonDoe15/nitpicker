@@ -130,6 +130,37 @@ describe('ingestErrorProne', () => {
     ]);
   });
 
+  it('reports one finding for repeats of a check and message on one line, with a stable identity', () => {
+    const sun = (column, name) => ({
+      file: '/project/src/main/java/A.java',
+      line: 8,
+      column,
+      message: `[SunApi] ${name} is an internal JDK API which may be removed in a future release`,
+    });
+    const once = [sun(12, 'sun.misc.Unsafe'), sun(18, 'class')];
+    const repeated = [...once, sun(43, 'class'), sun(37, 'sun.misc.Signal'), sun(50, 'class')];
+    const read = (report) =>
+      ingestErrorProne(JSON.stringify(report), { resolvePath }).findings.map(
+        ({ identity: id, message }) => [id, message],
+      );
+
+    expect(read(repeated)).toEqual([
+      ...read(once),
+      [
+        identity(
+          'SunApi',
+          'sun.misc.Signal is an internal JDK API which may be removed in a future release',
+        ),
+        'sun.misc.Signal is an internal JDK API which may be removed in a future release',
+      ],
+    ]);
+    expect(read(repeated).map(([, message]) => message.split(' ')[0])).toEqual([
+      'sun.misc.Unsafe',
+      'class',
+      'sun.misc.Signal',
+    ]);
+  });
+
   it('uses the check name when a message has no text, and omits an invalid location', () => {
     const report = JSON.stringify([
       { file: '/project/src/main/java/A.java', line: 0, message: '[DeadException]' },

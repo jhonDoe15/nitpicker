@@ -5,6 +5,7 @@ import { CHECKS, documentedChecks } from './checks-docs.mjs';
 
 const OFF = 'Checks that are off';
 const ROUTE_KEPT = 'ERROR checks that keep the exceptions route';
+const SPARED = 'Checks spared in annotated classes';
 const LISTS = ['reviewedChecks', 'enable', 'disable', 'certainBugs', 'lombokUnsuppressedOff'];
 
 describe('Error Prone check policy', () => {
@@ -46,5 +47,16 @@ describe('Error Prone check policy', () => {
     expect(routeKept.filter((name) => CHECKS.certainBugs.includes(name))).toStrictEqual([]);
     expect(routeKept.filter((name) => !CHECKS.reviewedChecks.includes(name))).toStrictEqual([]);
     expect(CHECKS.certainBugs.filter((name) => CHECKS.disable.includes(name))).toStrictEqual([]);
+  });
+
+  it('spares only reviewed, documented checks in classes with sorted, unrepeated annotations', () => {
+    const exempted = Object.keys(CHECKS.classExemptions);
+
+    expect(exempted).toStrictEqual([...new Set(exempted)].sort());
+    expect(exempted.filter((name) => !CHECKS.reviewedChecks.includes(name))).toStrictEqual([]);
+    expect(documentedChecks(SPARED)).toStrictEqual(exempted);
+    for (const annotations of Object.values(CHECKS.classExemptions)) {
+      expect(annotations).toStrictEqual([...new Set(annotations)].sort());
+    }
   });
 });

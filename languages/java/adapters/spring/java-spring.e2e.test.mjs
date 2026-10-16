@@ -4,6 +4,7 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { INIT_SCRIPT } from '../../builds/java-build.mjs';
+import { readErrorProneFindings } from '../errorprone/java-errorprone.mjs';
 
 const enabled = process.env.NITPICKER_JAVA_E2E === '1';
 const gradle = process.env.NITPICKER_GRADLE ?? 'gradle';
@@ -88,6 +89,17 @@ describe.skipIf(!enabled)('Spring rules on a Spring project', () => {
       'utf8',
     );
     expect(CHECKSTYLE_VERSION.exec(report)?.[1]).toBe('10.21.1');
+  });
+
+  it('reports no FieldCanBeFinal in JPA entities and no utility-class finding on configuration classes', () => {
+    const findings = readErrorProneFindings({
+      reportRoot: path.join(projectRoot, 'build', 'nitpicker'),
+      roots: [projectRoot],
+      lintedRoots: ['src/main/java', 'src/test/java'],
+    });
+    expect(
+      findings.map(({ rule, path: file, location }) => `${file}:${location.line} ${rule}`),
+    ).toEqual(['src/main/java/shop/orders/OrderService.java:125 MethodCanBeStatic']);
   });
 
   it('records the resource roots and that the project uses Spring', () => {
