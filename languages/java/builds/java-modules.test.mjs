@@ -163,6 +163,28 @@ describe('readModuleFindings', () => {
     ]);
   });
 
+  it('gives a module the same coupling identities whether it is the only one or not', () => {
+    const root = mavenProject();
+    const coupling = (modules) =>
+      readModuleFindings(
+        root,
+        modules.map((name) => path.join(root, name)),
+        { reportDirectory: REPORT_DIRECTORY },
+      )
+        .filter(
+          ({ tool, path: file, identity }) =>
+            tool === 'coupling' && !file.startsWith('app/') && !identity.includes('app/'),
+        )
+        .map(({ path: file, identity }) => `${file} ${identity}`)
+        .toSorted();
+
+    const alone = coupling(['core']);
+    expect(alone.filter((identity) => identity.endsWith('demo:modules'))).toEqual([
+      '. package:core/demo:modules',
+    ]);
+    expect(coupling(['app', 'core'])).toEqual(alone);
+  });
+
   it('scopes a Maven module whose CPD run failed to that module across the reactor', () => {
     const base = reactor({ legacy: 'failed', modular: 'none' });
     const head = reactor({ legacy: 'clone', modular: 'clone', fresh: 'failed' });

@@ -55,7 +55,12 @@ function lintNotRun(reportRoot, sourceRoots, moduleDir) {
       rule: LINT_NOT_RUN,
       path: '.',
       identity: LINT_NOT_RUN,
-      message: `No javac lint report: the lint compile failed (${firstError.trim()}), so raw types, unchecked operations, deprecated calls and redundant casts were not checked.`,
+      message:
+        `No javac lint report: the lint compile failed (${firstError.trim()}), so raw types, ` +
+        'unchecked operations, deprecated calls and redundant casts were not checked. ' +
+        'Fix what that compile reports (the main sources, the compile class path and Lombok), ' +
+        `or add an exception for ${LINT_TOOL}/${LINT_NOT_RUN} with the path "**" in nitpicker.config.json ` +
+        'if the project cannot be linted that way.',
       classification: 'descriptive',
       toolNotRun: true,
       notRunScope: rootsScope(sourceRoots, moduleDir),

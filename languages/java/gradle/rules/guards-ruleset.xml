@@ -146,7 +146,8 @@ let $mutators := ('add', 'addAll', 'put', 'putAll', 'putIfAbsent', 'append', 'of
   | //ConstructorCall[pmd-java:typeIs('java.io.File')][count(ArgumentList/*) = 2]
   | //MethodCall[pmd-java:matchesSig('java.nio.file.Path#resolve(java.lang.String)')]
 )[let $method := ancestor::*[self::MethodDeclaration or self::ConstructorDeclaration][1] return
-    ArgumentList/VariableAccess[@Name = $method/FormalParameters/FormalParameter/VariableId/@Name]
+    $method/@Visibility != 'private'
+    and ArgumentList/VariableAccess[@Name = $method/FormalParameters/FormalParameter/VariableId/@Name]
     and not($method//MethodCall[@MethodName = ('normalize', 'toRealPath', 'getCanonicalPath', 'getCanonicalFile', 'startsWith')])]
 ]]></value></property></properties>
   </rule>
@@ -161,6 +162,8 @@ let $mutators := ('add', 'addAll', 'put', 'putAll', 'putIfAbsent', 'append', 'of
   [not(FormalParameters/FormalParameter/ClassType[@SimpleName = ('HttpSecurity', 'WebSecurity',
     'AuthenticationConfiguration', 'AuthenticationManagerBuilder')])]
   [not(@Name = 'getObject' and ancestor::ClassDeclaration[1]/ImplementsList/ClassType[@SimpleName = 'FactoryBean'])]
+  [not(@MainMethod = true())]
+  [not(ancestor::ClassDeclaration[1]/ModifierList/Annotation[@SimpleName = 'FunctionalInterface'])]
 ]]></value></property></properties>
   </rule>
   <rule ref="category/java/design.xml/AvoidThrowingRawExceptionTypes"
