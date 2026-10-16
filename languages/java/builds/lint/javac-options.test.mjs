@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { languageLevel, lintCompatible } from './javac-options.mjs';
+import { argumentFileTokens, languageLevel, lintCompatible } from './javac-options.mjs';
 
 const NO_SETTINGS = { release: undefined, source: undefined, target: undefined, args: [] };
 
@@ -79,5 +79,29 @@ describe('languageLevel', () => {
     ],
   ])('passes %s', (_, compiler, expected) => {
     expect(languageLevel(compiler)).toEqual(expected);
+  });
+});
+
+describe('argumentFileTokens', () => {
+  it('splits an argument file as javac does, with quotes, escapes, continued lines and comments', () => {
+    const text = [
+      '# options',
+      '-nowarn  -Xlint:none',
+      '"-Aname=two words" \'-Apath=C:\\\\work\\\\out\'',
+      '"-Atab=a\\tb" -Araw=a\\b',
+      '"-Along=first \\',
+      '    second" # a comment',
+      '',
+    ].join('\n');
+
+    expect(argumentFileTokens(text)).toEqual([
+      '-nowarn',
+      '-Xlint:none',
+      '-Aname=two words',
+      String.raw`-Apath=C:\work\out`,
+      '-Atab=a\tb',
+      String.raw`-Araw=a\b`,
+      '-Along=first second',
+    ]);
   });
 });

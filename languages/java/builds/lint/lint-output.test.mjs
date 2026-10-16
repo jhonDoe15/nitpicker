@@ -169,6 +169,26 @@ describe('hasUnreadWarnings', () => {
       false,
     ],
     [
+      'unread warnings javac printed in German',
+      [
+        'A.java:2: Warnung: [rawtypes] Raw-Typ gefunden: List',
+        'class A { List names; }',
+        '          ^',
+        '1 Warnung',
+      ],
+      true,
+    ],
+    [
+      'unread warnings javac printed in Japanese',
+      [
+        'A.java:2: 警告: [rawtypes] raw型が見つかりました: List',
+        'class A { List names; }',
+        '          ^',
+        '警告1個',
+      ],
+      true,
+    ],
+    [
       'no unread warnings for a Lombok warning',
       ['src/A.java:4: warning: Not generating equals', '1 warning'],
       false,
