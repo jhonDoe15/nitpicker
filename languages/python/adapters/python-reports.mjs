@@ -77,10 +77,14 @@ export function ruffFindings(log, { roots, projectRoot }) {
   return ingestSarif(prepared, { tool: 'ruff' }).findings;
 }
 
-const TYPE_INGESTERS = { mypy: ingestMypy, pyright: ingestPyright };
+const TYPE_INGESTERS = {
+  mypy: (output, roots) => ingestMypy(output, { roots }),
+  pyright: (output, roots) => ingestPyright(output, { roots }),
+  basedpyright: (output, roots) => ingestPyright(output, { roots, tool: 'basedpyright' }),
+};
 
 export function typeFindings({ checker, output }, roots) {
-  return TYPE_INGESTERS[checker](output, { roots });
+  return TYPE_INGESTERS[checker](output, roots);
 }
 
 function noTestsFinding() {

@@ -379,7 +379,7 @@ CRAP is measured on `.js`, `.mjs`, `.cjs` and `.ts` files like on TypeScript one
 
 Set `"preset": "python"` in `nitpicker.config.json` to gate a Python project the same way: ruff, a
 format check (ruff format or black, whichever the project uses), a strict type check (mypy or
-pyright, whichever the project uses), a few small checks of nitpicker's own, the test suite under
+pyright or basedpyright, whichever the project uses), a few small checks of nitpicker's own, the test suite under
 coverage.py, function size limits (lines, statements, control nesting, parameters) and the CRAP
 score (cyclomatic complexity computed from Python's own syntax tree, plus per-function coverage; nothing extra to install) run on the merge base and on head, inside the project's own environment, and only new
 enforceable findings fail. Exit codes, console summary, `new-findings.json`, `report.sarif` and
@@ -395,7 +395,7 @@ The environment is detected: `uv.lock` (also the one of a uv workspace above a m
 tools with `uv run --no-sync`, `poetry.lock` uses the environment poetry reports, a `.venv/`
 directory is used as is, otherwise the tools come from the `PATH`; `python.environment` can also be
 an absolute virtualenv directory. The environment has to exist already (`uv sync`, `poetry install`, or your CI's
-install step) and needs `coverage`, a type checker (`mypy` or `pyright`) and `pytest`, and `mutmut` unless mutation is disabled (mutmut runs every suite with pytest, which also runs `unittest` tests); `ruff` (or `black`) may come
+install step) and needs `coverage`, a type checker (`mypy`, `pyright` or `basedpyright`) and `pytest`, and `mutmut` unless mutation is disabled (mutmut runs every suite with pytest, which also runs `unittest` tests); `ruff` (or `black`) may come
 from the `PATH`. The base snapshot runs against the same environment with its own sources first on
 `PYTHONPATH`, so an editable install does not make base tests exercise head code.
 
@@ -415,18 +415,18 @@ under the globs are dropped), `legacyInventory` (same format as the Java one; `s
 finding's `identity`) and `python`, whose keys all override a detection: `environment` (`"uv"`,
 `"poetry"`, `"path"` or a virtualenv directory in the project), `formatter` (`"ruff"` or
 `"black"`), `testRunner` (`"pytest"` or `"unittest"`; default `pytest` when the project uses it),
-`typeChecker` (`"mypy"` or `"pyright"`), `importLinter` (`true` or `false`; by default the import-linter
+`typeChecker` (`"mypy"`, `"pyright"` or `"basedpyright"`), `importLinter` (`true` or `false`; by default the import-linter
 contracts run when the project configures them) and `sourceRoots` (default `src`, else the top-level
 packages). The gate also reports new duplicates (`duplicates/duplicate-clone`), package coupling
-(`coupling/stability-direction`) and broken import-linter contracts (`import-linter/contract-broken`);
+(`coupling/stability-direction`; an import under `if TYPE_CHECKING:` is never the reported dependency, though it still counts toward instability) and broken import-linter contracts (`import-linter/contract-broken`);
 their messages name the file to add to `exclude` when the repetition or dependency is intended (a duplicate names both files of the pair, and an `exclude` or exception that matches either one lifts it, so excluding an old or generated file also hides a clone between it and a new file).
 `layout` describes TypeScript and stays a config error; the top-level `exceptions` is accepted only
 for the file limits (`file-lines-limit`, `line-length-limit`, `folder-files-limit`).
 
-The one-way rules (pathlib, f-strings, no mutable defaults, no bare or swallowing `except`, no
+The one-way rules (pathlib, f-strings, no mutable defaults, no bare `except`, no `except` that only passes, continues, returns or assigns a constant, no `contextlib.suppress(Exception)`, no
 `import *`, logging instead of `print`, frozen dataclasses, pydantic only in `adapters/`, enums
 instead of string constants) and the strict type check name the allowed form in every failure
-message. Inline `# type: ignore`, `# noqa`, `# pyright: ignore` and `# fmt: off` are findings themselves, and so are `@no_type_check`, `if not TYPE_CHECKING:` and a `.pyi` beside its `.py`. A project's own mypy or pyright config cannot weaken the check. The way out of a finding that flags legitimate code (including a comment, with the rule `no-inline-suppression`) is `python.exceptions`; a rule id that nitpicker does not report is a config error. Code
+message. Inline `# type: ignore`, `# noqa`, `# pyright: ignore` and `# fmt: off` are findings themselves, and so are `@no_type_check`, `if not TYPE_CHECKING:` and a `.pyi` beside its `.py`. A project's own mypy, pyright or basedpyright config cannot weaken the check. The way out of a finding that flags legitimate code (including a comment, with the rule `no-inline-suppression`) is `python.exceptions`; a rule id that nitpicker does not report is a config error. Code
 that is legitimately outside a rule is lifted with `python.exceptions`, the Python counterpart of
 `exceptions` and of the same shape (`rule`, `paths`, `reason`, all required):
 
