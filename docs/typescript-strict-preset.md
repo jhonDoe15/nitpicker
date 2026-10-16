@@ -115,8 +115,9 @@ Math` and `Math['random']()` are caught; `process`, `fetch`, `setTimeout`, `setI
   `domain/` writes its own readonly type for the value. Do not write `z.infer<typeof schema>`
   in `domain/`: importing the schema type from `adapters/` breaks the layer rule, and a schema
   defined in `domain/` is itself mutable. A zod output is assignable to the readonly type, so
-  `adapters/` parses and passes the result in. An alias of `unknown` (`type Raw = unknown`) is
-  reported like `unknown`. `unknown` as a
+  `adapters/` parses and passes the result in. An alias that is or contains `unknown`
+  (`type Raw = unknown`, `type JsonObject = Readonly<Record<string, unknown>>`), also one imported
+  from another file, is reported like `unknown`. `unknown` as a
   generic bound or default (`<T extends unknown>`, `<T = unknown>`), a return type, a variable or a
   `catch (error: unknown)` is not reported, and neither is a bare `cause: unknown` or `error: unknown`
   that carries a caught error through a failure result. An opaque value needs an exception in the

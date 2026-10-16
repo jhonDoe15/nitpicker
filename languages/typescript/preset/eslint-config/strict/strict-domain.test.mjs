@@ -1,7 +1,7 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { ESLint } from 'eslint';
 import functional from 'eslint-plugin-functional';
-import { mkdtempSync, rmSync } from 'node:fs';
+import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import tseslint from 'typescript-eslint';
@@ -94,6 +94,25 @@ beforeAll(() => {
 
 afterAll(() => {
   rmSync(typed.root, { recursive: true, force: true });
+});
+
+describe('unknown through an imported alias', () => {
+  it('follows a type alias imported from another file', async () => {
+    writeFileSync(
+      path.join(typed.root, 'json.ts'),
+      'export type JsonObject = Readonly<Record<string, unknown>>;\nexport type Name = string;\n',
+    );
+    const code = [
+      "import type { JsonObject, Name } from './json.js';",
+      'export type Event = { readonly payload: JsonObject; readonly name: Name };',
+    ].join('\n');
+
+    expect(
+      (await typedFindings(code)).filter(
+        ({ ruleId }) => ruleId === 'nitpicker/no-unknown-in-domain',
+      ),
+    ).toEqual([expect.objectContaining({ line: 2 })]);
+  });
 });
 
 async function typedFindings(code) {
