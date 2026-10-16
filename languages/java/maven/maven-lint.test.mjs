@@ -1,8 +1,10 @@
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
-import { javaFiles, nitpickerCheckstyleConfig } from './maven-lint.mjs';
+import { GRADLE_DIRECTORY } from '../builds/java-build.mjs';
+import { layerCheckstyle } from '../adapters/tool-config/checkstyle-layers.mjs';
+import { javaFiles, nitpickerCheckstyleConfig, writeCheckstyleSetup } from './maven-lint.mjs';
 import { toolDependencies } from './maven-tools.mjs';
 import { readPinnedTools } from '../builds/java-build.mjs';
 
@@ -39,6 +41,54 @@ describe('nitpickerCheckstyleConfig', () => {
         '  <module name="TreeWalker"></module>',
         '</module>',
       ].join('\n'),
+    );
+  });
+});
+
+describe('writeCheckstyleSetup', () => {
+  const nitpickerConfig =
+    '<module name="Checker"><module name="TreeWalker"><module name="AvoidStarImport"/></module></module>';
+  const projectConfig =
+    '<module name="Checker"><module name="TreeWalker"><module name="MagicNumber"/></module></module>';
+  const suppressions = `org.checkstyle.google.suppressionfilter.config=${GRADLE_DIRECTORY}/checkstyle-suppressions.xml`;
+
+  function directoryWith() {
+    const root = mkdtempSync(path.join(tmpdir(), 'nitpicker-checkstyle-setup-'));
+    roots.push(root);
+    return root;
+  }
+
+  it('writes only the nitpicker checks when the project has no config', () => {
+    const root = directoryWith();
+
+    const setup = writeCheckstyleSetup({ directory: path.join(root, 'out'), nitpickerConfig });
+
+    expect(readFileSync(setup.config, 'utf8')).toBe(nitpickerConfig);
+    expect(readFileSync(setup.properties, 'utf8')).toBe(suppressions);
+  });
+
+  it('layers the project config over the nitpicker checks and points config_loc at it', () => {
+    const root = directoryWith();
+    const project = path.join(root, 'config', 'checkstyle.xml');
+    mkdirSync(path.dirname(project), { recursive: true });
+    writeFileSync(project, projectConfig);
+
+    const setup = writeCheckstyleSetup({
+      directory: path.join(root, 'out'),
+      nitpickerConfig,
+      project,
+      projectWins: true,
+    });
+
+    expect(readFileSync(setup.config, 'utf8')).toBe(
+      layerCheckstyle({
+        nitpickerText: nitpickerConfig,
+        projectText: projectConfig,
+        projectWins: true,
+      }),
+    );
+    expect(readFileSync(setup.properties, 'utf8')).toBe(
+      `config_loc=${path.dirname(project)}\n${suppressions}`,
     );
   });
 });

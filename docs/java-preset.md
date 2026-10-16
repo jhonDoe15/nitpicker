@@ -372,6 +372,15 @@ Notes on the glue in `java-reports.mjs`:
   remap them: a renamed file with such findings shows them as resolved plus new. `format` and
   `fp:` identities carry no path, so they follow renames.
 
+**The project's PMD ruleset.** With `tools.pmd.precedence` listing `"project"`, PMD runs
+nitpicker's ruleset and the project's together, on Gradle and Maven alike
+(`adapters/tool-config/pmd-layers.mjs`). A rule the project names on its own, or defines inline,
+replaces nitpicker's copy of the rule (PMD keeps the first reference of a rule), so the project's
+properties, priority and `exclude-pattern`s win for it; a whole-category reference adds only the
+rules nitpicker does not run, and an `<exclude>` in the project's file cannot turn a nitpicker
+rule off. A rule the project names singly runs with PMD's defaults for the properties it does not
+set, not with nitpicker's tuned ones.
+
 **PMD rules tuned by nitpicker.** These rules of the rule set allow a narrower form than PMD's
 default, and their messages name it:
 
@@ -398,8 +407,12 @@ default, and their messages name it:
   names may be a single lowercase letter (`x`, `y`), as record components can. Javadoc that is
   there still has to be well formed. With this bundled config the tasks run on nitpicker's own
   `nitpickerCheckstyle` configuration, so a project that declares its own Checkstyle version in
-  `checkstyle` (Spring PetClinic declares 12.3.1) still gets the pinned version and its config;
-  a project config chosen by policy keeps the project's Checkstyle classpath. Decision to review: google_checks is noisy on
+  `checkstyle` (Spring PetClinic declares 12.3.1) still gets the pinned version and its config.
+  A project config chosen by policy (`tools.checkstyle.precedence` lists `"project"`) is merged
+  into this one module by module (`adapters/tool-config/checkstyle-layers.mjs`, run by
+  `checkstyle-merge-cli.mjs` in the Gradle task and in-process for Maven): the project's property
+  values win for the modules both configs name, the modules only one names stay, so nitpicker's
+  checks are never dropped, and the merged file still runs on the pinned Checkstyle. Decision to review: google_checks is noisy on
   code that was never written for it, but the gate is differential, so existing violations stay
   baselined and only new ones fail.
 - **Ingestion.** `ingestCheckstyle` (X6) unchanged, `tool` `checkstyle`, absolute file paths made
@@ -955,8 +968,7 @@ primary rule and the secondary rules it stands for, with a scope:
 `withoutOverlaps` (`static-overlaps.mjs`) runs in `collectJavaFindings`, on the base and the head
 alike, after the policy's `exclude` and `exceptions` and before the legacy inventory. A secondary
 finding is dropped only when a primary finding in the same scope is itself reported. So an
-exception for the primary, a primary tool that did not run (PMD with
-`nitpicker.pmd.nitpickerConfig=false`, NullAway without packages) or a primary dropped for its own
+exception for the primary, a primary tool that did not run (NullAway without packages) or a primary dropped for its own
 primary brings the secondary back, while a baselined primary still stands for its secondary, so a
 baselined issue does not come back under another tool's name. The primary is the finding with the
 clearest message: usually the Error Prone check with its fix over a SpotBugs pattern, the specific

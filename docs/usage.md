@@ -595,10 +595,26 @@ config, so it is read only when `precedence` lists `"project"`.
 
 With the `java` and `kotlin` presets the tools are `pmd` (the project's `config/pmd/ruleset.xml`) and
 `checkstyle` (the project's `config/checkstyle/checkstyle.xml`). Both files are read from the head
-checkout, and naming `"project"` without the file is a tool error. PMD runs both rule sets when both
-layers are listed, so the order makes no difference; nitpicker's Spring rules run whenever
-`"nitpicker"` is listed. Checkstyle runs one config, so its `precedence` is `["nitpicker"]` or
-`["project"]`. Without a `tools` entry these files are not used.
+checkout, and naming `"project"` without the file is a tool error. Without a `tools` entry these files
+are not used. Listing `"project"` never drops a nitpicker rule, with Gradle or Maven and for the Kotlin
+preset's Java files: `["project"]` and `["project", "nitpicker"]` both lay the project's file over
+nitpicker's, and only what the project sets changes (`["nitpicker", "project"]` lets nitpicker's value win where both
+set one).
+
+- **PMD** runs nitpicker's ruleset and the project's together. A rule the project names on its own, such as
+  `<rule ref="category/java/errorprone.xml/AvoidLiteralsInIfCondition">` (with or without properties), or defines inline,
+  replaces nitpicker's copy of that rule, so the project's properties, priority and message win, and the
+  project's ruleset-level `exclude-pattern`s apply to the rules it brings. A whole-ruleset reference such as
+  `<rule ref="category/java/errorprone.xml"/>` only adds what nitpicker does not run: a category nitpicker
+  imports in full (errorprone, bestpractices) adds nothing, and an `<exclude name>` in the project's ruleset cannot
+  switch a nitpicker rule off. A rule nitpicker lacks (performance, security, codestyle, your own XPath rules)
+  is added as written.
+- **Checkstyle** merges the two configs module by module. A module in both (matched by name, and by `id`
+  when it has one) keeps nitpicker's properties and takes the project's value for each property the project
+  sets; a module in only one stays; the project's `SuppressionFilter`s run next to nitpicker's, and its inline
+  suppression filters (`SuppressWarningsFilter`, `SuppressionCommentFilter` and the like) are removed, as in
+  nitpicker's own config. The merged config runs on the Checkstyle version nitpicker pins, not the project's
+  own, and the project's `${config_loc}` still points at its config folder.
 
 #### Formatter and detekt configs (python and kotlin presets)
 

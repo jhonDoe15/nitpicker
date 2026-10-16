@@ -13,6 +13,8 @@ import path from 'node:path';
 import { escapeRegExp } from '../../../shared/glob.mjs';
 import { javaCommand, runJava } from './maven-command.mjs';
 import { GRADLE_DIRECTORY } from '../builds/java-build.mjs';
+import { layerCheckstyle } from '../adapters/tool-config/checkstyle-layers.mjs';
+import { NITPICKER_RULESET, pmdLayerFiles } from '../adapters/tool-config/layer-files.mjs';
 
 const EMPTY_SARIF = '{"version":"2.1.0","runs":[]}';
 const INLINE_CHECKSTYLE_FILTERS = [
@@ -86,10 +88,11 @@ export function runPmd({ module, reportDir, tools, classpaths, configs, spring }
   const auxClasspath = writeAuxClasspath({ module, reportDir, classpaths });
   const springRuleset = path.join(reportDir, 'pmd-spring-main.xml');
   writeFileSync(springRuleset, springMainRuleset(module.testSourceRoots));
+  const layers = pmdLayerFiles({ ...configs.pmd, directory: reportDir });
   const rulesets = [
-    ...(configs.pmd.nitpicker ? [path.join(GRADLE_DIRECTORY, 'pmd-ruleset.xml')] : []),
-    ...(configs.pmd.project === undefined ? [] : [configs.pmd.project]),
-    ...(configs.pmd.nitpicker && spring ? [springRuleset] : []),
+    layers.nitpicker ?? NITPICKER_RULESET,
+    ...(layers.project === undefined ? [] : [layers.project]),
+    ...(spring ? [springRuleset] : []),
   ];
   runJava({
     tool: 'PMD',
@@ -200,27 +203,39 @@ function propertiesLine(name, value) {
 }
 
 function checkstyleSetup({ reportDir, tools, configs, pinned }) {
-  const directory = path.join(reportDir, 'checkstyle-config');
-  mkdirSync(directory, { recursive: true });
-  const properties = path.join(directory, 'checkstyle.properties');
-  if (configs.checkstyle.project !== undefined) {
-    writeFileSync(
-      properties,
-      propertiesLine('config_loc', path.dirname(configs.checkstyle.project)),
-    );
-    return { config: configs.checkstyle.project, properties };
-  }
   const jar = tools.checkstyle.find(
     (entry) => path.basename(entry) === `checkstyle-${pinned.checkstyle}.jar`,
   );
+  return writeCheckstyleSetup({
+    directory: path.join(reportDir, 'checkstyle-config'),
+    nitpickerConfig: nitpickerCheckstyleConfig(bundledGoogleChecks(jar)),
+    ...configs.checkstyle,
+  });
+}
+
+export function writeCheckstyleSetup({ directory, nitpickerConfig, project, projectWins }) {
+  mkdirSync(directory, { recursive: true });
   const config = path.join(directory, 'checkstyle.xml');
-  writeFileSync(config, nitpickerCheckstyleConfig(bundledGoogleChecks(jar)));
+  writeFileSync(
+    config,
+    project === undefined
+      ? nitpickerConfig
+      : layerCheckstyle({
+          nitpickerText: nitpickerConfig,
+          projectText: readFileSync(project, 'utf8'),
+          projectWins,
+        }),
+  );
+  const properties = path.join(directory, 'checkstyle.properties');
   writeFileSync(
     properties,
-    propertiesLine(
-      'org.checkstyle.google.suppressionfilter.config',
-      path.join(GRADLE_DIRECTORY, 'checkstyle-suppressions.xml'),
-    ),
+    [
+      ...(project === undefined ? [] : [propertiesLine('config_loc', path.dirname(project))]),
+      propertiesLine(
+        'org.checkstyle.google.suppressionfilter.config',
+        path.join(GRADLE_DIRECTORY, 'checkstyle-suppressions.xml'),
+      ),
+    ].join('\n'),
   );
   return { config, properties };
 }
