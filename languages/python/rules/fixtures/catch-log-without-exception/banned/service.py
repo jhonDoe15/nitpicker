@@ -9,4 +9,4 @@ def load(path: str) -> str:
             return handle.read()
     except OSError as error:
         logger.error(f"cannot read {path}: {error}")
-        raise
+        return ""

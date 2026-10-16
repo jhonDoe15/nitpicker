@@ -207,18 +207,18 @@ describe('hints that follow the libraries of the project', () => {
   it.each([
     [
       undefined,
-      'Pass the caught exception to the logger: `logger.exception("message")`, or `logger.error("message", exc_info=True)`.',
+      'Keep the traceback: `logger.exception("message")` or `logger.error("message", exc_info=True)`; the exception as an argument drops it. Re-raising after the log also passes.',
     ],
     [
       ['structlog'],
-      'Pass the caught exception to the logger: `logger.exception("event")`, or `logger.error("event", exc_info=True)`.',
+      'Keep the traceback: `logger.exception("event")` or `logger.error("event", exc_info=True)`; the exception as a field drops it. Re-raising after the log also passes.',
     ],
     [
       ['loguru'],
-      'Pass the caught exception to the logger: `logger.exception("message")`, or `logger.opt(exception=error).error("message")`.',
+      'Keep the traceback: `logger.exception("message")` or `logger.opt(exception=True).error("message")`; the exception as an argument drops it. Re-raising after the log also passes.',
     ],
   ])(
-    'tell a caught error log to pass the exception the way the %s logger does',
+    'tell a caught error log to keep the traceback the way the %s logger does',
     (logger, expected) => {
       const behaviors = behaviorsOf({ validation: [], logger });
 
@@ -230,7 +230,7 @@ describe('hints that follow the libraries of the project', () => {
 
   it('describe the new rules by their subject', () => {
     expect(describeRuleFinding('catch-log-without-exception', 'logger.error(...)')).toBe(
-      '`logger.error(...)` logs a caught error without passing the exception',
+      '`logger.error(...)` logs a caught error without its traceback',
     );
     expect(describeRuleFinding('test-without-assertion', 'TestOrders.test_total')).toBe(
       'Test `TestOrders.test_total` has no assertion',

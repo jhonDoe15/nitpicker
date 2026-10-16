@@ -174,7 +174,7 @@ describe('analyzing a Python snapshot', () => {
     expect(findings.map(({ message }) => message)).toEqual([
       '`print` found. Use `loguru`: `from loguru import logger`, then `logger.info(...)`. To allow it for some paths, add a "python.exceptions" entry for T201 in nitpicker.config.json.',
       'marshmallow is imported outside an adapters/ package. Use marshmallow only in an `adapters/` package to parse untrusted input (`Schema().load(data)`), and pass frozen dataclasses on from there. To allow it for some paths, add a "python.exceptions" entry for pydantic-boundary in nitpicker.config.json.',
-      '`logger.error(...)` logs a caught error without passing the exception. Pass the caught exception to the logger: `logger.exception("message")`, or `logger.opt(exception=error).error("message")`. To allow it for some paths, add a "python.exceptions" entry for catch-log-without-exception in nitpicker.config.json.',
+      '`logger.error(...)` logs a caught error without its traceback. Keep the traceback: `logger.exception("message")` or `logger.opt(exception=True).error("message")`; the exception as an argument drops it. Re-raising after the log also passes. To allow it for some paths, add a "python.exceptions" entry for catch-log-without-exception in nitpicker.config.json.',
     ]);
   });
 
