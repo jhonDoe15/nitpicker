@@ -1,5 +1,5 @@
-import { childrenNamed, parseXml } from '../../ingest/common.mjs';
-import { renderXml } from './xml-write.mjs';
+import { childrenNamed, parseXml } from '../../../ingest/common.mjs';
+import { renderXml } from '../xml-write.mjs';
 
 const DOCTYPE_ID = '-//Checkstyle//DTD Checkstyle Configuration 1.3//EN';
 const DOCTYPE_URL = 'https://checkstyle.org/dtds/configuration_1_3.dtd';

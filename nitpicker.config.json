@@ -22,7 +22,7 @@
       "core/diff/execution/analyzer-scheduler.mjs",
       "core/diff/execution/test-support/fake-analyzer.mjs",
       "languages/java/adapters/java-runner.mjs",
-      "languages/java/adapters/tool-config/checkstyle-merge-cli.mjs",
+      "languages/java/adapters/tool-config/checkstyle/checkstyle-merge-cli.mjs",
       "languages/typescript/adapters/eslint-runner.mjs",
       "languages/typescript/adapters/quality-areas-runner.mjs",
       "languages/typescript/adapters/static-checks-runner.mjs",
@@ -110,14 +110,14 @@
     {
       "rule": "nitpicker/no-self-recursion",
       "paths": [
-        "languages/java/adapters/tool-config/checkstyle-layers.mjs",
+        "languages/java/adapters/tool-config/checkstyle/checkstyle-layers.mjs",
         "languages/java/adapters/tool-config/xml-write.mjs"
       ],
       "reason": "These walk the module tree of a Checkstyle config file and write it back; the depth is the nesting of one XML file, which is a handful of levels, and a worklist would only hide the parent-child structure the merge follows."
     },
     {
       "rule": "nitpicker/no-production-console",
-      "paths": ["languages/java/adapters/tool-config/checkstyle-merge-cli.mjs"],
+      "paths": ["languages/java/adapters/tool-config/checkstyle/checkstyle-merge-cli.mjs"],
       "reason": "Gradle runs this file as a command (like the analyzer runners) and reads its exit code and standard error as the failure of the Checkstyle merge task; there is no logger in that process."
     },
     {
