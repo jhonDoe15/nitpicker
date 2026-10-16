@@ -52,7 +52,7 @@ describe.skipIf(!pythonE2eEnabled)('Python preset mutation gates end to end', ()
       path: 'src/demo/pricing.py',
       identity: 'discount|-→+#1',
       message:
-        'Survived operator: replacing `-` with `+` fails no test. Add an assertion that would. If no input can tell the two apart, simplify the code so this mutant disappears.',
+        'Survived operator: replacing `-` with `+` fails no test. Add an assertion that would. If no input can tell the two apart, simplify the code so this mutant disappears. If a reviewer agrees this is intended, add {"rule":"mutant-survived","paths":["src/demo/pricing.py"],"function":"discount","reason":"<why this is intended>"} to "exceptions" in nitpicker.config.json.',
       classification: 'enforceable',
       symbol: 'discount',
       location: { line: 2 },
