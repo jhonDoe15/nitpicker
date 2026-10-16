@@ -178,4 +178,47 @@ describe('coverage on a node:test project', () => {
       "Branch coverage is 0.00%; minimum is 95%. Not taken: the true arm of the if at 2:3; the false arm of the if (or its else) at 2:3. Test it, or remove it if it can't happen.",
     ]);
   });
+
+  it.each([
+    ['ES modules', { type: 'module', scripts: { test: 'node --test' } }, 'test/b.test.mjs'],
+    [
+      'a require hook',
+      {
+        scripts: {
+          test: 'TS_NODE_TRANSPILE_ONLY=true node --require ts-node/register --test test/*.test.ts',
+        },
+      },
+      'test/b.test.ts',
+    ],
+  ])(
+    'restores what a test replaced with mock.method before the next test, with %s',
+    async (_loading, manifest, second) => {
+      const replaceThenRead = [
+        `${IMPORTS}import { mock } from 'node:test';`,
+        "const target = { answer: () => 'real' };",
+        "it('replaces the answer', () => {",
+        "  mock.method(target, 'answer', () => 'fake');",
+        "  assert.equal(target.answer(), 'fake');",
+        '});',
+        "it('reads the real answer', () => {",
+        "  assert.equal(target.answer(), 'real');",
+        '});',
+        '',
+      ].join('\n');
+      const root = projects.project({
+        'package.json': { name: 'p', ...manifest },
+        'tsconfig.json': {
+          compilerOptions: { module: 'commonjs', target: 'es2022', types: ['node'], rootDir: '.' },
+        },
+        'src/main/pick.ts': PICK_SOURCE,
+        'test/a.test.ts': replaceThenRead,
+        [second]: replaceThenRead,
+      });
+
+      const findings = await runArea('coverage', root);
+
+      expect(findings.filter(({ rule }) => rule === 'tests-failed')).toEqual([]);
+      expect(findings.find(({ identity }) => identity === 'test-count')?.metric.value).toBe(4);
+    },
+  );
 });
