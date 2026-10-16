@@ -34,11 +34,11 @@ export function shellCommand(words) {
   return words.map(shellWord).join(' ');
 }
 
-function readQuietly(read, root) {
+function readScope(read, root) {
   try {
-    return read(root);
-  } catch {
-    return undefined;
+    return { project: read(root) };
+  } catch (error) {
+    return { failure: error };
   }
 }
 
@@ -46,7 +46,7 @@ export function projectConfigFor({ formatter, precedence, policyRoot }) {
   const { read, looked } = READERS[formatter];
   const layers = precedenceLayers(precedence);
   if (!layers.usesProject) {
-    return { optedIn: false, project: readQuietly(read, policyRoot), wins: () => false };
+    return { optedIn: false, project: readScope(read, policyRoot).project, wins: () => false };
   }
   const project = read(policyRoot);
   if (project === undefined) {

@@ -9,7 +9,12 @@ function parseToml(file) {
   try {
     return createRequire(import.meta.url)('smol-toml').parse(readFileSync(file, 'utf8'));
   } catch (error) {
-    throw new Error(`${file} is not valid TOML: ${error.message}`, { cause: error });
+    throw Object.assign(
+      new Error(`${file} is not valid TOML: ${error.message}`, { cause: error }),
+      {
+        file,
+      },
+    );
   }
 }
 
@@ -152,14 +157,25 @@ export function readBlackConfig(start) {
   };
 }
 
-function filesOf(read, start) {
+function existingCandidates(start, names) {
+  return directoriesUp(start)
+    .flatMap((directory) => names.map((name) => path.join(directory, name)))
+    .filter((candidate) => existsSync(candidate));
+}
+
+function filesOf(read, start, names) {
   try {
     return read(start)?.files ?? [];
-  } catch {
-    return [];
+  } catch (error) {
+    return [...existingCandidates(start, names), ...(error.file === undefined ? [] : [error.file])];
   }
 }
 
 export function projectFormatConfigFiles(start) {
-  return [...new Set([...filesOf(readRuffConfig, start), ...filesOf(readBlackConfig, start)])];
+  return [
+    ...new Set([
+      ...filesOf(readRuffConfig, start, RUFF_FILES),
+      ...filesOf(readBlackConfig, start, [PYPROJECT]),
+    ]),
+  ];
 }

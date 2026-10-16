@@ -137,6 +137,18 @@ describe('ruff without an opt-in', () => {
   });
 });
 
+describe('ruff without an opt-in and a config that does not parse', () => {
+  it('runs with the nitpicker options and leaves the project scope out', () => {
+    const root = project({ 'ruff.toml': 'line-length = \n' });
+
+    expect(ruffPlan(root, { conventions: {} }).options.slice(0, 3)).toEqual([
+      '--isolated',
+      '--target-version',
+      'py310',
+    ]);
+  });
+});
+
 describe('ruff with the project listed', () => {
   const precedence = ['project', 'nitpicker'];
 
