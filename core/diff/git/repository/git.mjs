@@ -1,5 +1,5 @@
 import { runGit } from './command.mjs';
-import { mkdtempSync, existsSync, copyFileSync, rmSync } from 'node:fs';
+import { mkdtempSync, existsSync, copyFileSync, rmSync, statSync, utimesSync } from 'node:fs';
 import path from 'node:path';
 import { tmpdir } from 'node:os';
 
@@ -47,6 +47,8 @@ export function captureWorkingTree(repositoryRoot, headSha) {
     const temporaryIndexPath = path.join(temporaryRoot, 'index');
     if (existsSync(indexPath)) {
       copyFileSync(indexPath, temporaryIndexPath);
+      const { atime, mtime } = statSync(indexPath);
+      utimesSync(temporaryIndexPath, atime, mtime);
     }
     const environment = { GIT_INDEX_FILE: temporaryIndexPath };
     runGit(repositoryRoot, ['add', '--all', '--', ':/'], { environment });
