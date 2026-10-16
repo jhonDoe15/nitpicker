@@ -171,19 +171,17 @@ function analyzeModule({ module, classpaths, tools, pinned, configs, since }) {
   runCheckstyle({ module, reportDir, tools, configs, pinned });
   runStructure(module, reportDir);
   runJdeps(module, reportDir);
-  const execFile = module.jacocoDestFile ?? path.join(module.buildDirectory, OWN_JACOCO_EXEC);
-  runJacocoReport({ module, reportDir, tools, execFile, since, testsRan });
+  const execFiles = [path.join(module.buildDirectory, OWN_JACOCO_EXEC), ...module.jacocoDestFiles];
+  runJacocoReport({ module, reportDir, tools, execFiles, since, testsRan });
   runPit({ module, reportDir, tools, classpaths, isArchunit });
   writeManifest({ module, reportDir, pinned, spring });
 }
 
 function staleOutputs(module) {
-  const execFiles = [path.join(module.buildDirectory, OWN_JACOCO_EXEC), module.jacocoDestFile];
+  const execFiles = [path.join(module.buildDirectory, OWN_JACOCO_EXEC), ...module.jacocoDestFiles];
   return [
     path.join(module.basedir, MAVEN_REPORT_DIRECTORY),
-    ...execFiles.filter(
-      (file) => file !== undefined && file.startsWith(`${module.buildDirectory}${path.sep}`),
-    ),
+    ...execFiles.filter((file) => file.startsWith(`${module.buildDirectory}${path.sep}`)),
   ];
 }
 
