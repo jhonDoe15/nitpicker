@@ -1,4 +1,4 @@
-import { writeFileSync } from 'node:fs';
+import { mkdirSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import { parseAnalyzerReport } from '../../../../core/diff/comparison/finding-schema.mjs';
@@ -148,6 +148,38 @@ describe('readJavaFindings with the kotlin preset: detekt, ktlint and ktfmt', ()
           'Suppressing "UnsafeCallOnNullableType" inline is not allowed. Fix the code the rule flags. To lift a one-way rule for some paths, add an "exceptions" entry for it in nitpicker.config.json; to skip generated code, add it to "exclude" there.',
         classification: 'enforceable',
       },
+    ]);
+  });
+  it('reports a catch that logs without the exception and tests without an assertion', () => {
+    const root = projectWithKotlinReports({
+      manifest: { kotlinTestSourceRoots: ['src/test/kotlin'] },
+    });
+    const test = 'src/test/kotlin/demo/BadTest.kt';
+    writeFileSync(
+      path.join(root, bad),
+      `${KOTLIN_SOURCE}\nval log = LoggerFactory.getLogger(Bad::class.java)\nfun g() {\n  try { run() } catch (e: Exception) { log.error(e.message) }\n}\n`,
+    );
+    mkdirSync(path.dirname(path.join(root, test)), { recursive: true });
+    writeFileSync(
+      path.join(root, test),
+      'class BadTest {\n  @Test fun asserts() { assertEquals(1, one()) }\n  @Test fun helper() { prepare(); ensureReady() }\n  @Test fun forgot() { run() }\n}\n',
+    );
+    const rules = (policy) =>
+      readJavaFindings(root, { preset: 'kotlin', ...policy })
+        .findings.filter(({ tool }) => tool === 'detekt')
+        .filter(({ rule }) =>
+          ['catch-log-without-exception', 'test-without-assertion'].includes(rule),
+        )
+        .map(({ rule, path: file, identity }) => [rule, file, identity]);
+
+    expect(rules()).toEqual([
+      ['catch-log-without-exception', bad, 'catch-log:log.error'],
+      ['test-without-assertion', test, 'test:helper'],
+      ['test-without-assertion', test, 'test:forgot'],
+    ]);
+    expect(rules({ conventions: { 'kotlin.assertionHelpers': 'ensureReady' } })).toEqual([
+      ['catch-log-without-exception', bad, 'catch-log:log.error'],
+      ['test-without-assertion', test, 'test:forgot'],
     ]);
   });
   describe('identity of a finding with a measured value', () => {
