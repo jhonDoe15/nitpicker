@@ -528,8 +528,9 @@ below the root package (the longest package prefix all the code shares) fail `fo
 `thresholds.folderDepth` and an exception for that rule change it. The Java class limits
 (`class-methods-limit`, `class-fields-limit`, `inheritance-depth-limit`) apply to the `.java` files of a
 Kotlin project, with `classMethods`, `classFields` and `inheritanceDepth`; Kotlin classes are not measured. The `java.indentation` convention (`"4"`) switches the Java sources' format check
-to 4 spaces. Line length stays with
-detekt's `MaxLineLength` (120 by default, set in `config/detekt/detekt.yml`), so
+to 4 spaces. The Kotlin files' line length is
+detekt's `MaxLineLength` (120 by default, set in `config/detekt/detekt.yml`), the `.java` files keep
+nitpicker's fixed 100 characters (`line-length-limit`, which an exception lifts for some paths), and
 `thresholds.lineLength` is a config error with this preset. A file or folder already over a limit
 fails only when it grows, and a package folder moved to a new path is matched to its old path.
 
