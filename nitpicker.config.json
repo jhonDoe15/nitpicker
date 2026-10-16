@@ -67,6 +67,16 @@
       "reason": "These files test the process boundary itself: the bin entry guard under a symlinked launch; the environment a spawned analyzer receives, the force-kill of an analyzer that ignores SIGTERM, and the analyzer scheduler's exit code and cancelled queue under SIGINT and SIGTERM; and that shard aggregation starts with a fresh module graph that loads no development dependency. None of that is observable in-process."
     },
     {
+      "rule": "nitpicker/no-process-access-outside-composition-root",
+      "paths": ["languages/typescript/preset/eslint-config/scope-support.mjs"],
+      "reason": "The lint worker is a separate process that learns the analyzed checkout only from the environment variable the lint engine sets, and the rules that follow the project's libraries read the nearest package.json under it; this one function is the single place that reads it."
+    },
+    {
+      "rule": "nitpicker/no-module-level-mutable-state",
+      "paths": ["languages/typescript/preset/libraries/file-libraries.mjs"],
+      "reason": "A lint worker visits thousands of files, and each visit needs the libraries declared by the package.json files above it; the per-directory cache keeps that to one read and parse per directory, and a worker handles one checkout, so the cache cannot go stale."
+    },
+    {
       "rule": "nitpicker/no-raised-test-timeout",
       "paths": [
         "languages/java/adapters/java-e2e/java-preset.e2e.test.mjs",
