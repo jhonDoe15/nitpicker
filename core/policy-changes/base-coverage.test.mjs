@@ -17,8 +17,20 @@ describe('baseConfigCoveringHead', () => {
         { layout: { sourceRoots: ['core', 'shared'], testRoots: ['spec'] } },
       ),
     ).toEqual({
-      layout: { sourceRoots: ['core', 'shared'], testRoots: ['test', 'tests', 'spec'] },
+      layout: {
+        sourceRoots: ['core', 'shared'],
+        testRoots: ['test', 'tests', '__tests__', 'spec'],
+      },
     });
+  });
+
+  it('adds the default roots without e2e, so the base never runs end-to-end specs', () => {
+    expect(baseConfigCoveringHead({ layout: { testRoots: ['spec'] } }, {})).toEqual({
+      layout: { testRoots: ['spec', 'test', 'tests', '__tests__'] },
+    });
+    expect(
+      baseConfigCoveringHead({}, { layout: { testRoots: ['test', 'tests', '__tests__', 'e2e'] } }),
+    ).toEqual({});
   });
 
   it('keeps only the exclusions and entry points both sides declare', () => {

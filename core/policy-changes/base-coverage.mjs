@@ -1,13 +1,19 @@
 import {
   builtInExcludedGlobs,
+  defaultResolvedLayout,
   sourceRoots,
   testRoots,
 } from '../../languages/typescript/preset/layout.mjs';
 import { THRESHOLD_DEFAULTS } from './loosenings.mjs';
 import { exceptionPathsByRule } from './paths/hiding.mjs';
 
-const DEFAULT_ROOTS = { sourceRoots, testRoots };
-const DEFAULT_LAYOUT = { ...DEFAULT_ROOTS, excludedGlobs: builtInExcludedGlobs, entryPoints: [] };
+const UNSET_ROOTS = { sourceRoots, testRoots: defaultResolvedLayout.executedTestRoots };
+const DEFAULT_LAYOUT = {
+  sourceRoots,
+  testRoots,
+  excludedGlobs: builtInExcludedGlobs,
+  entryPoints: [],
+};
 
 function union(base, head) {
   return [...new Set([...base, ...head])];
@@ -23,10 +29,10 @@ function same(left, right) {
 
 function coveringLayout(baseLayout, headLayout) {
   const roots = Object.fromEntries(
-    Object.entries(DEFAULT_ROOTS).map(([key, defaults]) => {
-      const base = baseLayout[key] ?? defaults;
-      return [key, union(base, headLayout[key] ?? defaults)];
-    }),
+    Object.entries(UNSET_ROOTS).map(([key, unset]) => [
+      key,
+      union(baseLayout[key] ?? unset, headLayout[key] ?? unset),
+    ]),
   );
   const excludedGlobs = common(
     baseLayout.excludedGlobs ?? builtInExcludedGlobs,
@@ -35,7 +41,9 @@ function coveringLayout(baseLayout, headLayout) {
   const entryPoints = common(baseLayout.entryPoints ?? [], headLayout.entryPoints ?? []);
   return Object.fromEntries(
     Object.entries({ ...roots, excludedGlobs, entryPoints }).filter(
-      ([key, value]) => baseLayout[key] !== undefined || !same(value, DEFAULT_LAYOUT[key]),
+      ([key, value]) =>
+        baseLayout[key] !== undefined ||
+        (headLayout[key] !== undefined && !same(value, DEFAULT_LAYOUT[key])),
     ),
   );
 }
