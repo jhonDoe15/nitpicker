@@ -13,6 +13,7 @@ import { condenseFailure } from './gradle-wrapper/failure-text.mjs';
 import { runJavaDuplicates } from './metrics/java-duplicates.mjs';
 import { runKotlinDuplicates } from './kotlin/kotlin-duplicates.mjs';
 import { applyJavaPolicy } from './java-policy.mjs';
+import { withoutFollowedImports } from './imports/followed-imports.mjs';
 import { withoutOverlaps } from './overlaps/static-overlaps.mjs';
 import { PROJECT_TOOL_CONFIGS } from './gradle-presets.mjs';
 import { readJavaFindings } from './reporting/java-reports.mjs';
@@ -168,11 +169,15 @@ export function collectJavaFindings(root, options = {}) {
       ? mavenFindings(projectRoot, options)
       : withGradleReports(projectRoot, options);
   const preset = options.policy?.preset ?? 'java';
+  const readSource = (file) => sourceText(projectRoot, file);
   return applyJavaPolicy(
-    parseAnalyzerReport({ findings }, preset).findings,
+    withoutFollowedImports(
+      parseAnalyzerReport({ findings }, preset).findings,
+      options.policy?.conventions,
+      readSource,
+    ),
     options.policy,
-    (reported) =>
-      withoutOverlaps(reported, { readSource: (file) => sourceText(projectRoot, file) }),
+    (reported) => withoutOverlaps(reported, { readSource }),
   );
 }
 

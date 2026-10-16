@@ -149,13 +149,42 @@ describe('reading the measured files', () => {
     );
   });
 
+  it('follows wildcard imports in main code and static wildcards in tests apart', () => {
+    const main = (name) => `package a;\n\nimport b.*;\n\nclass ${name} {}\n`;
+    const test = (name) =>
+      `package a;\n\nimport static org.assertj.core.api.Assertions.*;\nimport b.C;\n\nclass ${name} {}\n`;
+    const { root } = createGitRepository({
+      'src/main/java/A.java': main('A'),
+      'src/main/java/B.java': main('B'),
+      'src/test/java/ATest.java': test('ATest'),
+    });
+    const stdout = output();
+
+    const policy = compare(root, { preset: 'java' }, { stdout });
+
+    expect(policy.conventions).toEqual({
+      'java.wildcardImports': 'wildcard',
+      'java.testStaticImports': 'wildcard',
+    });
+    expect(stdout.text()).toBe(
+      "Following this project's conventions:\n" +
+        '  Java imports: wildcards allowed (used by 2 of 3 measured files)\n' +
+        '  Java static imports in tests: wildcards allowed (used by 1 of 1 measured files)\n',
+    );
+  });
+
   it('needs no git when every convention is pinned', () => {
     const root = mkdtempSync(path.join(tmpdir(), 'nitpicker-no-git-'));
     try {
-      expect(
-        snapshotPolicy(runOf({ preset: 'java', conventions: { 'java.indentation': '4' } }, root))
-          .conventions,
-      ).toEqual({ 'java.indentation': '4' });
+      const conventions = {
+        'java.indentation': '4',
+        'java.wildcardImports': 'wildcard',
+        'java.testStaticImports': 'wildcard',
+      };
+
+      expect(snapshotPolicy(runOf({ preset: 'java', conventions }, root)).conventions).toEqual(
+        conventions,
+      );
     } finally {
       rmSync(root, { recursive: true, force: true });
     }
