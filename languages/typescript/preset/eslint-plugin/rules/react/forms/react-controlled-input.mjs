@@ -1,22 +1,19 @@
-import { attributeNamed, elementName, hasSpread, literalValueOf } from './jsx.mjs';
+import {
+  attributeNamed,
+  elementName,
+  fieldElements,
+  fixedValueInputTypes,
+  hasSpread,
+  literalValueOf,
+} from '../jsx.mjs';
 
-const fields = new Set(['input', 'textarea', 'select']);
-const readOnlyValueTypes = new Set([
-  'button',
-  'checkbox',
-  'hidden',
-  'image',
-  'radio',
-  'reset',
-  'submit',
-]);
 const changeAttributes = ['onChange', 'readOnly', 'disabled'];
 
 function valueNeedsHandler(opening) {
   const isInput = elementName(opening) === 'input';
   const type = literalValueOf(attributeNamed(opening, 'type'));
   return (
-    attributeNamed(opening, 'value') !== undefined && !(isInput && readOnlyValueTypes.has(type))
+    attributeNamed(opening, 'value') !== undefined && !(isInput && fixedValueInputTypes.has(type))
   );
 }
 
@@ -42,7 +39,7 @@ export const rule = {
   create(context) {
     return {
       JSXOpeningElement(node) {
-        if (!fields.has(elementName(node)) || hasSpread(node)) {
+        if (!fieldElements.has(elementName(node)) || hasSpread(node)) {
           return;
         }
         if (

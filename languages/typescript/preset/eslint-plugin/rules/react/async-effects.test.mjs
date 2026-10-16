@@ -60,10 +60,34 @@ describe('async work in an effect', () => {
     ).toEqual(['asyncInEffect']);
   });
 
-  it('reports a new Promise', async () => {
-    expect(await messageIds(typed, 'void new Promise<void>(() => undefined);')).toEqual([
+  it('reports a new Promise that settles with a value', async () => {
+    expect(await messageIds(typed, 'void new Promise<string>(() => undefined);')).toEqual([
       'asyncInEffect',
     ]);
+  });
+
+  it.each([
+    ['a discarded Promise<void>', 'void ref.current?.play();'],
+    ['a discarded new Promise<void>', 'void new Promise<void>(() => undefined);'],
+    [
+      'an await in a listener the effect only registers',
+      'async function onKey() { await load(id); } window.addEventListener("keydown", onKey); return () => { window.removeEventListener("keydown", onKey); };',
+    ],
+    [
+      'an await in a callback handed to another call',
+      'setTimeout(async () => { await load(id); }, 10);',
+    ],
+  ])('lets %s through, which syncs with an external system', async (_name, body) => {
+    const extra = `${load}\nconst ref: { current: { play(): Promise<void> } | null } = { current: null };`;
+
+    expect(await messageIds(typed, body, extra)).toEqual([]);
+  });
+
+  it.each([
+    ['an async helper the effect calls', 'async function run() { await load(id); } void run();'],
+    ['an async IIFE', 'void (async () => { await load(id); })();'],
+  ])('reports %s', async (_name, body) => {
+    expect(await messageIds(typed, body, load)).toEqual(['asyncInEffect']);
   });
 
   it('reports one finding for an effect, at its first async step', async () => {
@@ -100,7 +124,7 @@ describe('async work in an effect', () => {
   });
 
   it('names the handler and the redirect form next to the query for an action', async () => {
-    const code = `import { useEffect } from 'react';\nexport function Copy({ text }: { text: string }) { useEffect(() => { void navigator.clipboard.writeText(text); }, [text]); return <div />; }`;
+    const code = `import { useEffect } from 'react';\nexport function Copy({ text }: { text: string }) { useEffect(() => { void navigator.clipboard.readText(); }, [text]); return <div />; }`;
     const [result] = await typed.lintText(code, { filePath: path.join(root, 'src/copy.tsx') });
 
     expect(result.messages.map(({ message }) => message)).toEqual([

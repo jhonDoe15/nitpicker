@@ -51,7 +51,7 @@ import { rule as reactFieldHasLabel } from './rules/react/forms/react-field-has-
 import { rule as reactNoDirectDom } from './rules/react/render/react-no-direct-dom.mjs';
 import { rule as reactNoEffectEventHandling } from './rules/react/render/react-no-effect-event-handling.mjs';
 import { rule as reactNoRandomKey } from './rules/react/render/react-no-random-key.mjs';
-import { rule as reactTestNoImplementationDetails } from './rules/react/react-test-no-implementation-details.mjs';
+import { rule as reactTestNoImplementationDetails } from './rules/react-tests/react-test-no-implementation-details.mjs';
 
 export const nitpickerRules = {
   meta: {

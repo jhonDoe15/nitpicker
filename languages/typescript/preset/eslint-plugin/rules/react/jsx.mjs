@@ -1,3 +1,7 @@
+export const fieldElements = new Set(['input', 'textarea', 'select']);
+export const buttonLikeInputTypes = new Set(['button', 'hidden', 'image', 'reset', 'submit']);
+export const fixedValueInputTypes = new Set([...buttonLikeInputTypes, 'checkbox', 'radio']);
+
 export function elementName(opening) {
   return opening.name.type === 'JSXIdentifier' ? opening.name.name : undefined;
 }

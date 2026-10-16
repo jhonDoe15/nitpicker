@@ -1,17 +1,35 @@
+import { execFile } from 'node:child_process';
 import { globSync } from 'node:fs';
+import { tmpdir } from 'node:os';
 import path from 'node:path';
+import { promisify } from 'node:util';
 import { ESLint } from 'eslint';
+import { oxlintBinary } from './oxlint-process.mjs';
 
 const [projectRoot, ...patterns] = process.argv.slice(2);
 const wrapperConfigPath = path.join(import.meta.dirname, '..', 'eslint-wrapper.config.mjs');
+const MAX_LISTING_BYTES = 64 * 1024 * 1024;
 
 try {
-  process.stdout.write(`${JSON.stringify(await lintPlan(projectRoot, patterns))}\n`);
+  const [nativeRules, plan] = await Promise.all([
+    listedNativeRules(),
+    lintPlan(projectRoot, patterns),
+  ]);
+  process.stdout.write(`${JSON.stringify({ ...plan, nativeRules })}\n`);
 } catch (error) {
   process.stderr.write(
     `oxlint planning failed: ${error instanceof Error ? error.message : String(error)}\n`,
   );
   process.exitCode = 2;
+}
+
+async function listedNativeRules() {
+  const { stdout } = await promisify(execFile)(
+    process.execPath,
+    [oxlintBinary(), '--rules', '--format', 'json'],
+    { cwd: tmpdir(), maxBuffer: MAX_LISTING_BYTES },
+  );
+  return JSON.parse(stdout);
 }
 
 async function lintPlan(root, globs) {

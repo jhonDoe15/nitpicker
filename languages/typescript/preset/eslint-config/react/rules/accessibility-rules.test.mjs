@@ -3,7 +3,9 @@ import { describe, expect, it } from 'vitest';
 import { lintFixture } from '../../../failure-messages/test-support/harness.mjs';
 import { resolveLayout } from '../../../layout.mjs';
 import { GENERAL_HINT } from '../../rule-hints.mjs';
+import { accessibilityRuleNames } from '../react-rules.mjs';
 import { reactSyntaxConfigFor } from '../react-scope.mjs';
+import { accessibilityHints, extraAccessibilityRuleNames } from './accessibility-rules.mjs';
 
 const config = [
   { languageOptions: { parser: tseslint.parser } },
@@ -101,5 +103,38 @@ describe('accessibility rules beyond the plugin recommendation', () => {
     expect(flagged('onMouseEnter={show} onFocus={show} onMouseLeave={hide} onBlur={hide}')).toEqual(
       [],
     );
+  });
+});
+
+describe('accessibility messages', () => {
+  function messagesFor(markup) {
+    return lintFixture({
+      config,
+      filename: 'src/main/ui/form.tsx',
+      code: `export const Form = () => <form>${markup}</form>;`,
+    }).map(({ message }) => message);
+  }
+
+  it('name the allowed form for a control without a text label', () => {
+    expect(
+      messagesFor('<button type="button" title="Close"><svg aria-hidden="true" /></button>'),
+    ).toEqual([
+      `A control must be associated with a text label. Give it visible text (\`<button>Close</button>\`) or \`aria-label="Close"\`; \`title\` is not a label.${GENERAL_HINT}`,
+    ]);
+  });
+
+  it.each(extraAccessibilityRuleNames)('give %s a hint of its own', (name) => {
+    const hint = accessibilityHints[name];
+
+    expect([
+      hint.endsWith(GENERAL_HINT),
+      hint.slice(0, -GENERAL_HINT.length).includes('`'),
+    ]).toEqual([true, true]);
+  });
+
+  it('give hints only to rules the scope runs', () => {
+    expect(
+      Object.keys(accessibilityHints).filter((name) => !accessibilityRuleNames.includes(name)),
+    ).toEqual([]);
   });
 });

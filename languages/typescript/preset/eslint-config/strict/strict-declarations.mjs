@@ -68,11 +68,11 @@ export function declarationSelectorsFor({ react = false } = {}) {
 export const defaultExportSelectors = [
   {
     selector: 'ExportDefaultDeclaration',
-    message: `Use a named export (\`export function name() {}\` or \`export const name = ...\`). Default exports are only allowed in config files.${SYNTAX_EXCEPTION_HINT}`,
+    message: `Use a named export (\`export function name() {}\` or \`export const name = ...\`). Default exports are only allowed in config files and in the framework files that need one (Next.js routes, Storybook stories, Expo Router screens).${SYNTAX_EXCEPTION_HINT}`,
   },
   {
     selector: "ExportSpecifier[exported.name='default']",
-    message: `Use a named export (\`export { name }\`). Default exports are only allowed in config files.${SYNTAX_EXCEPTION_HINT}`,
+    message: `Use a named export (\`export { name }\`). Default exports are only allowed in config files and in the framework files that need one (Next.js routes, Storybook stories, Expo Router screens).${SYNTAX_EXCEPTION_HINT}`,
   },
 ];
 

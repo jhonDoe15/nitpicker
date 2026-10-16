@@ -1,5 +1,6 @@
 import { readLayout } from '../head-policy.mjs';
 import { layoutFeatures } from './strict-layout.mjs';
+import { loggers, networkAndDatabaseClients, resolvedPackagePattern } from './domain-packages.mjs';
 
 const layout = readLayout();
 const sourceRoot = `(?:${layout.sourceRoots.join('|')})`;
@@ -16,30 +17,6 @@ const { featureRoot, feature, shared, compositionRoot } = layoutFeatures;
 const codeFile = '\\.[cm]?[jt]sx?$';
 
 const pureNodeModules = ['path', 'url', 'util', 'assert', 'buffer', 'events', 'string_decoder'];
-const networkAndDatabaseClients = [
-  'axios',
-  'node-fetch',
-  'undici',
-  'got',
-  'ky',
-  'ws',
-  'pg',
-  'mysql',
-  'mysql2',
-  'mongodb',
-  'mongoose',
-  'redis',
-  'ioredis',
-  'sqlite3',
-  'better-sqlite3',
-  'knex',
-  'sequelize',
-  'typeorm',
-  'drizzle-orm',
-  '@prisma/client',
-  '@aws-sdk/[^/]+',
-];
-const loggers = ['pino', 'winston', 'bunyan', 'log4js', 'loglevel', 'consola', 'debug'];
 
 const domain = { path: `${feature}/domain/` };
 
@@ -102,7 +79,7 @@ export const strictBoundaryRules = [
     comment:
       'domain/ may not import network or database clients. Call the client from adapters/ and pass the data into domain/ as a parameter.',
     from: domain,
-    to: { path: `(?:^|/)(?:node_modules/)?(?:${networkAndDatabaseClients.join('|')})(?:/|$)` },
+    to: { path: resolvedPackagePattern(networkAndDatabaseClients) },
   },
   {
     name: 'domain-does-not-import-the-logger',
@@ -112,7 +89,7 @@ export const strictBoundaryRules = [
     from: domain,
     to: {
       path: [
-        `(?:^|/)(?:node_modules/)?(?:${loggers.join('|')})(?:/|$)`,
+        resolvedPackagePattern(loggers),
         `(?:^|/)(?:logger|logging|log)(?:/index)?${codeFile}`,
         '(?:^|/)(?:logger|logging)/',
       ],

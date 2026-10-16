@@ -39,21 +39,38 @@ function projectWith(files) {
   return root;
 }
 
-function runsIn(root, code) {
+const settingsProbe = {
+  meta: { type: 'problem', schema: [], messages: { seen: '{{module}}' } },
+  create: inReactTestFilesOnly((context) => ({
+    Program(node) {
+      const module = String(context.settings['testing-library/utils-module']);
+      context.report({ node, messageId: 'seen', data: { module } });
+    },
+  })),
+};
+
+function lintIn(root, code, plugin, rules) {
   const linter = new Linter({ cwd: root });
   const config = [
     {
       files: ['**/*.tsx'],
       languageOptions: { parser: tseslint.parser },
-      plugins: { demo: { rules: { probe } } },
-      rules: { 'demo/probe': 'error' },
+      plugins: { demo: plugin },
+      settings: { 'testing-library/utils-module': 'test-utils' },
+      rules,
     },
   ];
-  const messages = linter.verify(code, config, path.join(root, 'test/ui/a.test.tsx'));
+  return linter.verify(code, config, path.join(root, 'test/ui/a.test.tsx'));
+}
+
+function runsIn(root, code) {
+  const messages = lintIn(root, code, { rules: { probe } }, { 'demo/probe': 'error' });
   return messages.some(({ ruleId }) => ruleId === 'demo/probe');
 }
 
 const testUtils = "export { render } from '@testing-library/react';\n";
+const renderHelper =
+  "import { render } from '@testing-library/react';\nexport function renderPage(node) { return render(node); }\n";
 
 describe('the React test file detection', () => {
   it.each([
@@ -64,12 +81,17 @@ describe('the React test file detection', () => {
     ['a barrel that re-exports test-utils', "import { render } from '@/testing';"],
     ['a relative barrel that re-exports test-utils', "import { render } from '../../src/testing';"],
     ['a barrel that re-exports Testing Library', "import { render } from '@/support';"],
+    ['a helper that imports Testing Library', "import { renderPage } from '@/test/render';"],
+    ['a barrel that re-exports such a helper', "import { renderPage } from '@/helpers';"],
   ])('runs the rule for %s', (_name, code) => {
     const root = projectWith({
       'src/test-utils.tsx': testUtils,
       'src/testing/test-utils/index.tsx': testUtils,
       'src/testing/index.ts': "export * from './test-utils';\n",
       'src/support/index.ts': "export { screen } from '@testing-library/react';\n",
+      'src/test/render.tsx': renderHelper,
+      'src/helpers/index.ts': "export * from './page';\n",
+      'src/helpers/page.tsx': renderHelper,
     });
 
     expect(runsIn(root, code)).toBe(true);
@@ -79,12 +101,31 @@ describe('the React test file detection', () => {
     ['a domain import through the alias', "import { sum } from '@/domain/sum';"],
     ['a barrel of domain modules', "import { sum } from '@/domain';"],
     ['an alias that resolves nowhere', "import { render } from '@/missing';"],
+    ['a component that imports react', "import { Badge } from '@/ui/badge';"],
   ])('skips the rule for %s', (_name, code) => {
     const root = projectWith({
+      'src/ui/badge.tsx': "import { memo } from 'react';\nexport const Badge = memo(() => null);\n",
       'src/domain/sum.ts': 'export const sum = (a: number, b: number) => a + b;\n',
       'src/domain/index.ts': "export * from './sum';\nexport * from './index';\n",
     });
 
     expect(runsIn(root, code)).toBe(false);
+  });
+
+  it('treats the helper import as the Testing Library module for the wrapped rule', async () => {
+    const { testingLibraryPlugin } = await import('../../../eslint-config/react/react-plugins.mjs');
+    const root = projectWith({ 'src/test/render.tsx': renderHelper });
+    const code =
+      "import { renderPage } from '@/test/render';\nrenderPage(null).getByTestId('a');\n";
+    const direct = "import { render } from '@testing-library/react';\n";
+    const settingOf = (text) =>
+      lintIn(root, text, { rules: { probe: settingsProbe } }, { 'demo/probe': 'error' })[0].message;
+    const queries = lintIn(root, code, testingLibraryPlugin, {
+      'demo/no-test-id-queries': 'error',
+    });
+
+    expect(settingOf(code)).toBe('@/test/render');
+    expect(settingOf(direct)).toBe('test-utils');
+    expect(queries.map(({ line }) => line)).toEqual([2]);
   });
 });

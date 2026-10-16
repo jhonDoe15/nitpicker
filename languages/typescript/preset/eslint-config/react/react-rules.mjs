@@ -51,8 +51,6 @@ export const reactRuleIds = [
   'nitpicker/react-single-styling-approach',
   'react-hooks/exhaustive-deps',
   'react-hooks/rules-of-hooks',
-  'react-x/no-array-index-key',
-  'react-x/no-class-component',
   ...nitpickerReactRuleIds,
   ...thirdPartyReactRuleIds,
   ...accessibilityRuleNames.map((name) => `jsx-a11y/${name}`),

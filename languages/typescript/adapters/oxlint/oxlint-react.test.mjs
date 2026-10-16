@@ -46,7 +46,7 @@ const files = {
       module: 'NodeNext',
       skipLibCheck: true,
       types: [],
-      lib: ['ES2022', 'DOM'],
+      lib: ['ES2022'],
     },
     include: ['src/**/*.ts', 'src/**/*.tsx'],
   }),

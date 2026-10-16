@@ -20,7 +20,7 @@ describe('no-restricted-syntax lists are unified across scopes', () => {
       'domain/ code has no loops: transform with map, filter, flatMap, reduce with an initial value, Object.fromEntries or Object.groupBy.',
     ]);
     expect(messages(defaultExport, file)).toEqual([
-      'Use a named export (`export function name() {}` or `export const name = ...`). Default exports are only allowed in config files. If a framework or library requires it, add an exception for this rule for those paths in nitpicker.config.json.',
+      'Use a named export (`export function name() {}` or `export const name = ...`). Default exports are only allowed in config files and in the framework files that need one (Next.js routes, Storybook stories, Expo Router screens). If a framework or library requires it, add an exception for this rule for those paths in nitpicker.config.json.',
     ]);
   });
 
@@ -32,7 +32,7 @@ describe('no-restricted-syntax lists are unified across scopes', () => {
       'Use async/await (with try/catch) instead of promise chains, and Promise.all for concurrent work. If a framework or library requires it, add an exception for this rule for those paths in nitpicker.config.json.',
     ]);
     expect(messages(defaultExport, file)).toEqual([
-      'Use a named export (`export function name() {}` or `export const name = ...`). Default exports are only allowed in config files. If a framework or library requires it, add an exception for this rule for those paths in nitpicker.config.json.',
+      'Use a named export (`export function name() {}` or `export const name = ...`). Default exports are only allowed in config files and in the framework files that need one (Next.js routes, Storybook stories, Expo Router screens). If a framework or library requires it, add an exception for this rule for those paths in nitpicker.config.json.',
     ]);
   });
 

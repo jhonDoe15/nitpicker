@@ -34,6 +34,9 @@ tester.run('react-field-has-label', reactFieldHasLabel, {
     '<Input name="x" />',
     '<div />',
     '<ns:input />',
+    '<><Label htmlFor="email">Email</Label><input id="email" /></>',
+    '<><Form.Label htmlFor="email">Email</Form.Label><input id="email" /></>',
+    '<><FormLabel htmlFor={emailId}>Email</FormLabel><input id="email" /></>',
   ].map(valid),
   invalid: [
     invalid('<input />', 'unlabelled'),
@@ -49,6 +52,7 @@ tester.run('react-field-has-label', reactFieldHasLabel, {
     invalid('<><input /><input /></>', 'unlabelled', 'unlabelled'),
     invalid('<input id="name" />', 'unlabelled'),
     invalid('<><label htmlFor="email">Email</label><input id="name" /></>', 'unlabelled'),
+    invalid('<><Label htmlFor="email">Email</Label><input id="name" /></>', 'unlabelled'),
   ],
 });
 

@@ -81,7 +81,8 @@ function setPolicyEnvironment(policy) {
     const root = mkdtempSync(path.join(tmpdir(), 'nitpicker-layout-config-'));
     trackTemporaryRoot(root);
     const policyFile = path.join(root, 'policy.json');
-    writeFileSync(policyFile, JSON.stringify(resolveHeadPolicy(policy)));
+    const { frameworks } = policy;
+    writeFileSync(policyFile, JSON.stringify({ ...resolveHeadPolicy(policy), frameworks }));
     process.env.NITPICKER_POLICY = policyFile;
   }
   return () => {

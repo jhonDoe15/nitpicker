@@ -36,6 +36,11 @@ tester.run('react-no-random-key', reactNoRandomKey, {
     'const id = nanoid(); export const Row = () => <li key={id} />;',
     'export function Row() { let id = nanoid(); id = item.id; return <li key={id} />; }',
     'export function Row({ item }) { const id = item.id; return <li key={id} />; }',
+    "import { v4 } from './ids'; export const Row = () => <li key={v4()} />;",
+    'function uuid() { return 1; } export const Row = () => <li key={uuid()} />;',
+    '<li key={new Date(item.createdAt).getTime()} />',
+    'export function Row({ item }) { const key = `${item.id}-${item.version}`; return <li key={key} />; }',
+    'export function Row({ item }) { const key = items.map(() => Math.random()); return <li key={key} />; }',
   ].map(valid),
   invalid: [
     invalid('<li key={Math.random()} />', {
@@ -66,6 +71,35 @@ tester.run('react-no-random-key', reactNoRandomKey, {
       'export function List({ items }) { const id = uuid(); return items.map((item) => <li key={id}>{item}</li>); }',
       { messageId: 'randomKey', data: { call: 'uuid' } },
     ),
+    invalid("import * as uuid from 'uuid'; export const Row = () => <li key={uuid.v4()} />;", {
+      messageId: 'randomKey',
+      data: { call: 'uuid.v4' },
+    }),
+    invalid(
+      "import { v4 as makeId } from 'uuid'; export const Row = () => <li key={makeId()} />;",
+      {
+        messageId: 'randomKey',
+        data: { call: 'makeId' },
+      },
+    ),
+    invalid(
+      "import { randomUUID } from 'node:crypto'; export const Row = () => <li key={randomUUID()} />;",
+      {
+        messageId: 'randomKey',
+      },
+    ),
+    invalid('<li key={window.crypto.randomUUID()} />', {
+      messageId: 'randomKey',
+      data: { call: 'window.crypto.randomUUID' },
+    }),
+    invalid('<li key={new Date().getTime()} />', {
+      messageId: 'randomKey',
+      data: { call: 'new Date' },
+    }),
+    invalid(
+      'export function Row({ name }) { const key = `${name}-${String(Math.random())}`; return <li key={key} />; }',
+      { messageId: 'randomKey', data: { call: 'Math.random' } },
+    ),
   ],
 });
 
@@ -91,6 +125,20 @@ tester.run('react-no-direct-dom', reactNoDirectDom, {
     inPanel('document.documentElement.classList.toggle("dark", dark);'),
     inPanel('document.body.style.overflow = "hidden";'),
     inPanel('window.document.body.className = "locked";'),
+    inPanel(
+      'const data = new FormData(); data.append("a", "b"); span.setAttribute("http.status", 200);',
+    ),
+    inPanel(
+      'ref.current?.appendChild(chart.element); ref.current?.setAttribute("aria-busy", "true");',
+    ),
+    inPanel('document.documentElement.setAttribute("data-theme", theme);'),
+    inPanel(
+      'const node = ref.current; node.style.setProperty("--x", "1px"); Object.assign(node.style, s);',
+    ),
+    inPanel('const a = document.createElement("a"); a.href = url; a.click();'),
+    inPanel('function f(document) { document.querySelector("a"); }'),
+    inPanel('Object.assign(target, { color });'),
+    "const target = document.getElementById('modal'); export const Modal = ({ children }) => createPortal(children, target);",
   ]
     .map(valid)
     .concat(
@@ -98,8 +146,7 @@ tester.run('react-no-direct-dom', reactNoDirectDom, {
         "document.getElementById('root');",
         "export function readRoot() { return document.querySelector('#root'); }",
         "export const el = document.getElementById('app'); el.innerHTML = '';",
-        "export function set(el) { el.innerHTML = '<b/>'; el.style.color = 'red'; el.classList.add('x'); }",
-      ].map((code) => ({ filename: '/repo/src/main/adapters/dom.ts', code })),
+      ].map((code) => ({ filename: '/repo/src/main/domain/dom.ts', code })),
     ),
   invalid: [
     invalid(inPanel("document.getElementById('banner');"), { messageId: 'directDom' }),
@@ -138,6 +185,29 @@ tester.run('react-no-direct-dom', reactNoDirectDom, {
     invalid(inPanel("window.document.querySelector('.x');"), { messageId: 'directDom' }),
     invalid(inPanel("globalThis.document.getElementById('x');"), { messageId: 'directDom' }),
     invalid(inPanel("document.body.innerHTML = '';"), { messageId: 'directDom' }),
+    ...[
+      inPanel("ref.current?.insertAdjacentHTML('beforeend', html);"),
+      inPanel("const doc = document; doc.querySelector('.banner');"),
+      inPanel("const doc = window.document; const root = doc; root.getElementById('x');"),
+      inPanel("el.style.setProperty('background', color);"),
+      inPanel('Object.assign(el.style, { color });'),
+      inPanel("const element = document.createElement('div'); element.append(text);"),
+      inPanel('document.body.appendChild(element);'),
+      inPanel("const node = document.createElement('a'); node.removeAttribute('hidden');"),
+    ].map((code) => invalid(code, { messageId: 'directDom' })),
+    invalid(
+      inPanel("const node = document.querySelector('.a'); node?.setAttribute('class', 'x');"),
+      { messageId: 'directDom' },
+      { messageId: 'directDom' },
+    ),
+    ...[
+      "export function set(el) { el.innerHTML = '<b/>'; }",
+      "export function readRoot() { return document.querySelector('#root'); }",
+    ].map((code) => ({
+      filename: '/repo/src/main/features/x/adapters/dom.ts',
+      code,
+      errors: [{ messageId: 'directDom' }],
+    })),
     ...['/repo/src/main/ui/banner.ts', '/repo/src/main/adapters/use-banner.ts'].map((path) => ({
       filename: path,
       code: "export function hide() { document.querySelector('.banner')?.remove(); }",
@@ -167,8 +237,8 @@ tester.run('react-no-effect-event-handling', reactNoEffectEventHandling, {
     inPanel('useEffect(() => { store.onSave(); }, [items]);'),
     inPanel('useEffect(() => { onSave; }, [items]);'),
     inPanel('useCustom(() => { onSave(); }, [items]);'),
-    inPanel('useEffect(() => { onSave(); });'),
-    inPanel('useEffect(() => { onSave(); }, deps);'),
+    'export function Panel({ onChange: report, save }) { useEffect(() => { save(); }, [report]); return <div />; }',
+    'export function Panel({ value, report }) { useEffect(() => { report(value); }, [value]); return <div />; }',
     'export function Panel(props) { const { onSave } = store; useEffect(() => { onSave(); }, [props.value]); return <div />; }',
     'export function Panel(props) { const onSave = props.onSave ?? noop; useEffect(() => { onSave(); }, [props.value]); return <div />; }',
   ].map(valid),
@@ -204,6 +274,23 @@ tester.run('react-no-effect-event-handling', reactNoEffectEventHandling, {
       {
         messageId: 'effectEvent',
       },
+    ),
+    invalid(inPanel('useEffect(() => { onSave(); });'), {
+      messageId: 'effectEvent',
+      data: { name: 'onSave' },
+    }),
+    invalid(inPanel('useEffect(() => { onSave(); }, deps);'), { messageId: 'effectEvent' }),
+    invalid(
+      'export function Panel({ value, onChange: report }) { useEffect(() => { report(value); }, [value, report]); return <div />; }',
+      { messageId: 'effectEvent', data: { name: 'report' } },
+    ),
+    invalid(
+      'export function Panel({ value, onChange: report = noop }) { useEffect(() => { report(value); }, [value]); return <div />; }',
+      { messageId: 'effectEvent', data: { name: 'report' } },
+    ),
+    invalid(
+      'export function Panel(props) { const { onChange: report } = props; useEffect(() => { report(); }, [props.value]); return <div />; }',
+      { messageId: 'effectEvent', data: { name: 'report' } },
     ),
   ],
 });

@@ -28,9 +28,13 @@ config file is an exception like any other.
   clients, the logger, or module state. Time, IDs, and randomness arrive as parameters.
 - `features/<name>/adapters/` performs I/O and calls `domain/`. A feature with neither I/O nor UI
   has no `adapters/` folder. React components and hooks live in `adapters/` (the UI is I/O with the
-  user), or in `shared/ui/` when several features use them. `domain/` may not import `react`,
-  `react-dom`, `react-native` or `preact`, also through `require` or `import = require`
-  (`nitpicker/no-ui-framework-in-domain`, so an exception lifts only this ban).
+  user), or in `shared/ui/` when several features use them. `domain/` may not import a UI
+  framework or UI state package: `react`, `react-*`, `@*/react` and `@*/react-*` (TanStack Query,
+  Redux Toolkit), `preact`, `next` and `next/*`, `expo` and `expo-*`, `zustand`, `jotai`, `valtio`,
+  `mobx`, `recoil` or `swr`, also through `require`, `import = require` or a `shared/` module that
+  imports or re-exports one (`nitpicker/no-ui-framework-in-domain`, so an exception lifts only this
+  ban). The list is `uiFrameworks` in `architecture/domain-packages.mjs`, beside the network,
+  database and logger packages the dependency rules keep out of `domain/`.
 - Shared code does not import features. Features do not import the composition root. Import cycles
   are not allowed.
 - Objects are constructed only in the composition root. Dependencies are passed explicitly. No
@@ -419,24 +423,33 @@ off (a PR that adds or removes React keeps linting on both sides); a misspelled 
   `fetch` (also `window.fetch` and `globalThis.fetch`), `axios`, `ky` and `new XMLHttpRequest`
   anywhere inside an effect callback are flagged: use a data-fetching library (TanStack Query
   `useQuery`, SWR `useSWR`) or the framework (a route loader, a Server Component). Beyond the
-  names, an effect that contains an `await`, or calls a function whose type returns a promise
-  (found through the type checker, so a loader declared outside the effect counts), is flagged
-  once, at its first async step. Wrappers like `api.get(...)` are caught when they are typed to
+  names, an effect whose own callback contains an `await`, or calls a function whose type returns
+  a promise (found through the type checker, so a loader declared outside the effect counts), is
+  flagged once, at its first async step. An async helper or IIFE declared inside the effect and
+  called by it counts as the effect's own work; a handler the effect only registers
+  (`addEventListener('keydown', async () => ...)`, a timer callback) does not, and neither does a
+  `void`-discarded `Promise<void>` (`void ref.current?.play()`), which syncs with an external
+  system. Wrappers like `api.get(...)` are caught when they are typed to
   return a promise; with no type information only `await` is seen. The message names the form for
   each kind of work: data through `useQuery` or a route loader, an action (a save, a clipboard
   write) in the event handler that causes it, a redirect by rendering `<Navigate />`.
 - **No prop callbacks called from effects** (`nitpicker/react-no-effect-event-handling`). An
-  effect with dependencies that calls a prop callback (`onSave(value)`, `props.onChange()`, or one
-  destructured with `const { onChange } = props`) reacts
-  to a change instead of to an event: call the callback in the handler that causes the change.
-  A call inside a nested function (a subscription, a timer) and an effect with `[]` are left alone;
-  an effect that synchronizes with an external system needs an exception.
+  effect that calls a prop callback (`onSave(value)`, `props.onChange()`, or one destructured with
+  `const { onChange } = props`, also renamed as `{ onChange: report }`) reacts to a change instead
+  of to an event: call the callback in the handler that causes the change. An effect with no
+  dependency array runs after every render and is reported too. A call inside a nested function (a
+  subscription, a timer) and an effect with `[]` are left alone; an effect that synchronizes with
+  an external system needs an exception.
 - **No array index as `key`** (`react-x/no-array-index-key`): use a stable id from the item. Every
   element rendered from a list has a `key` (`react-x/no-missing-key`) and siblings do not repeat
   one (`react-x/no-duplicate-key`). A `key` built from `Math.random()`, `Date.now()`,
-  `performance.now()`, `crypto.randomUUID()`, `uuid()`, `nanoid()` and similar generators, directly
-  or through a `const` declared in the component (`const id = crypto.randomUUID(); key={id}`), is
-  flagged (`nitpicker/react-no-random-key`): it changes on every render and remounts the row.
+  `new Date()`, `performance.now()`, `crypto.randomUUID()` (also through `window.` or
+  `globalThis.`), a generator imported from `uuid`, `nanoid`, `cuid`, `@paralleldrive/cuid2`,
+  `ulid` or `short-uuid` under any local name, or `randomUUID` from `node:crypto`, directly, inside
+  a template or expression, or through a `const` declared in the component
+  (`const id = crypto.randomUUID(); key={id}`), is flagged (`nitpicker/react-no-random-key`): it
+  changes on every render and remounts the row. `react-x/purity` leaves a call inside a `key` to
+  this rule, so it is reported once.
 - **Pure render, no mutation.** State, props and hook results are not mutated
   (`react-x/immutability`: `setList([...list, item])`, `items.toSorted()`); render does not call
   `Date.now()`, `Math.random()` or storage, read or write refs, or set state
@@ -457,7 +470,9 @@ off (a PR that adds or removes React keeps linting on both sides); a misspelled 
   (`react-x/no-unstable-context-value`, `react-x/no-unstable-default-props`). `ref` is a plain prop
   and `<Context value={...}>` is the provider (`react-x/no-forward-ref`,
   `react-x/no-context-provider`); both are off when the installed `react` (or, when none is
-  installed, the declared range) is older than 19.
+  installed, the declared range) of the head checkout is older than 19. The major is read once into
+  the head policy (`react.major`) and passed to the React plugins as their React version, so a pull
+  request that upgrades React to 19 reports no existing `forwardRef` as new.
 - **Browser APIs** (`eslint-plugin-react-dom`): no `dangerouslySetInnerHTML` (render JSX; sanitised
   and reviewed HTML needs an exception for `react-dom/no-dangerously-set-innerhtml`), an explicit
   `type` on every `<button>`, `rel="noreferrer noopener"` next to `target="_blank"`, no
@@ -468,16 +483,23 @@ off (a PR that adds or removes React keeps linting on both sides); a misspelled 
   above.
 - **No direct DOM changes in components** (`nitpicker/react-no-direct-dom`), in files that render
   JSX, files under `ui/` and hook files (`use*`). `document.getElementById`/`querySelector`/
-  `querySelectorAll` and `getElementsBy*` (also through `window.document` or
-  `globalThis.document`), assignments to `.innerHTML`, `.outerHTML`, `.innerText` or
-  `.textContent`, and `.className`, `.style.*` or `classList.add`, `remove`, `toggle`, `replace` on
-  anything but a ref (`ref.current`, or a const read from it), `document.documentElement` or
-  `document.body` are flagged: state and props drive the DOM. The file that mounts the app with
-  `createRoot` or `hydrateRoot` may look up its container. Glue for a third-party widget needs an
-  exception.
+  `querySelectorAll` and `getElementsBy*` (also through `window.document`, `globalThis.document`
+  or a `const` alias of `document`), assignments to `.innerHTML`, `.outerHTML`, `.innerText` or
+  `.textContent`, `insertAdjacentHTML` and `insertAdjacentText`, and `.className`, `.style.*`,
+  `style.setProperty`/`removeProperty`, `Object.assign(el.style, ...)` or `classList.add`,
+  `remove`, `toggle`, `replace` on anything but a ref (`ref.current`, or a const read from it),
+  `document.documentElement` or `document.body` are flagged: state and props drive the DOM.
+  `setAttribute`, `removeAttribute` and `toggleAttribute`, and inserting nodes (`append`,
+  `appendChild`, `prepend`, `insertBefore`, `replaceChildren`, ...) are flagged on a queried or
+  created element and on `document.head`; `documentElement` and `body` may change their attributes,
+  and a ref may receive children. Render into another node with `createPortal`. Files under
+  `adapters/` are checked even without JSX. The file that mounts the app with `createRoot`,
+  `hydrateRoot` or `createPortal` may look up its container. Glue for a third-party widget or a
+  file download needs an exception.
 - **Form fields** (`nitpicker/react-field-has-label`, `nitpicker/react-controlled-input`). An
   `<input>`, `<textarea>` or `<select>` has a label: wrapped in `<label>`, an `id` that a
-  `<label htmlFor>` in the same file points to (a computed `id` is accepted), `aria-label` or
+  `<label htmlFor>` or a label component with `htmlFor` (`<Label htmlFor="email">`, `<Form.Label>`)
+  in the same file points to (a computed `id` is accepted), `aria-label` or
   `aria-labelledby` (hidden, submit, reset, button and image inputs, and fields with spread props,
   are left alone). A field is either controlled (`value` or `checked` with `onChange`, `readOnly`
   or `disabled`) or uncontrolled (`defaultValue`), never `value` with `defaultValue`; a form library
@@ -486,8 +508,11 @@ off (a PR that adds or removes React keeps linting on both sides); a misspelled 
   `react.styling`: `class-names` (`className` with CSS Modules, plain stylesheets or utility
   classes; inline `style` objects and CSS-in-JS libraries are flagged), `css-in-js` (styled-components,
   Emotion, Stitches, goober, Linaria; stylesheet imports and inline `style` objects are flagged) or
-  `inline-style` (`style` objects; stylesheet imports and CSS-in-JS libraries are flagged). Unset,
-  the approach is `css-in-js` when `package.json` lists one of those libraries, else `class-names`.
+  `inline-style` (`style` objects; stylesheet imports and CSS-in-JS libraries are flagged) or
+  `style-sheet` (React Native `StyleSheet.create` styles; inline `style` objects, stylesheet imports
+  and CSS-in-JS libraries are flagged, and a runtime value joins as `style={[styles.bar, { width }]}`).
+  Unset, the approach is `css-in-js` when `package.json` lists one of those libraries, `style-sheet`
+  when it lists `react-native` or `expo`, else `class-names`.
   A `style` object is flagged when it is written inline, bound to a `const` in the same file
   (also `style={styles.box}` and `styles['box']` on a `const styles = { box: {...} }`),
   or reached through `?:`, `&&`, `??`, `satisfies` or `as`; `css=` and `sx=` props and `style` inside
@@ -573,7 +598,10 @@ off (a PR that adds or removes React keeps linting on both sides); a misspelled 
   counts as a labelled control for any capitalised component.
   `jsx-a11y/mouse-events-have-key-events` is configured beyond the recommended default, which only
   checks `onMouseOver`/`onMouseOut`: `onMouseEnter` also needs `onFocus` and `onMouseLeave` also
-  needs `onBlur`, so hover-only cards are caught.
+  needs `onBlur`, so hover-only cards are caught. Each jsx-a11y message ends with the allowed form
+  where one exists (`accessibilityHints` in `eslint-config/react/rules/accessibility-rules.mjs`,
+  for example "Give it visible text (`<button>Close</button>`) or `aria-label="Close"`; `title` is
+  not a label.") and with the exception route.
 - **`null` for refs and contexts.** `null` stays banned, except as the argument and the type
   argument of `useRef` and `createContext` (`useRef<HTMLDivElement>(null)`,
   `createContext<Theme | null>(null)`), where React's types need it.
@@ -586,7 +614,10 @@ off (a PR that adds or removes React keeps linting on both sides); a misspelled 
   Jest), and report only in a test file that imports `@testing-library/*`, `react`, `react-dom`
   or another `react-*` package, `enzyme`, `react-test-renderer`, or a project `test-utils`
   module (relative, through a tsconfig `paths` alias such as `@/test-utils`, or re-exported by a
-  barrel), so Playwright and domain tests in the same roots are left alone. Query by accessible
+  barrel), or a project helper that imports `@testing-library/*` (`@/test/render` exporting its own
+  `renderApp`, also through a barrel such as `@support`; followed up to four imports deep), so
+  Playwright and domain tests in the same roots are left alone. An import of such a helper counts as
+  the Testing Library import, so queries on what it returns are checked. Query by accessible
   role, not test ids (`testing-library/no-test-id-queries`) or DOM traversal, class selectors and
   `container` queries (`testing-library/no-node-access`): `screen.getByRole('button', { name: 'Save' })`,
   or `toHaveFocus()` for focus. Drive the component with `userEvent`, not `fireEvent`
@@ -639,19 +670,28 @@ off (a PR that adds or removes React keeps linting on both sides); a misspelled 
 
 ### Vite, Next.js and other framework conventions
 
-- **App entry.** The file that mounts the app (`src/main/main.tsx` with `createRoot(...).render(...)`)
-  runs work at import time on purpose. List it as an entry point, and the module-load rule skips it:
+- **App entry.** The file that mounts the app runs work at import time on purpose. When
+  `package.json` lists `vite` (or a `vite.config.*` exists), the module scripts of `index.html`
+  (`<script type="module" src="/src/main.tsx">`), else the first of `src/main.tsx`, `src/main.ts`,
+  `src/main.jsx` and `src/main.js` that exists, are detected as entry points and the module-load
+  rule skips them. List another entry file yourself:
   `"layout": { "entryPoints": ["src/main/main.tsx"] }`. Side-effect imports of stylesheets
-  (`import './index.css'`) are not module-load effects.
+  (`import './index.css'`, also `.scss`, `.sass`, `.less`, `.styl`, `.pcss`) are not module-load
+  effects.
 - **CSS Modules and assets.** `import styles from './panel.module.css'` and image imports need
   types. Add `vite/client` to `types` in `tsconfig.json`, or put
   `/// <reference types="vite/client" />` in a `.d.ts` under `src/` (what `create-vite` generates as
   `vite-env.d.ts`), or declare the module in a `.d.ts`. Hand-written `.d.ts` files under the source
   roots are part of the type-check program, so these declarations take effect.
-- **Default exports.** Next.js `page.tsx`, `layout.tsx` and route handlers, React Router route
-  modules and Storybook `*.stories.tsx` need `export default`. The messages name the exception;
-  scope it to those paths:
-  `"exceptions": [{ "rule": "nitpicker/no-default-export", "paths": ["src/app/**/page.tsx", "src/app/**/layout.tsx", "**/*.stories.tsx"], "reason": "framework file convention" }]`.
+- **Default exports.** The framework files that need `export default` are detected from the head
+  checkout and allowed: with `next` in `package.json` (or a `next.config.*`), the App Router files
+  `page`, `layout`, `loading`, `error`, `global-error`, `not-found`, `template`, `default` and
+  `route` under `app/` or `src/app/`, every file under `pages/` or `src/pages/`, and `middleware`;
+  with `@storybook/*` or `storybook` (or a `.storybook/` folder), `*.stories.*` and `*.story.*`;
+  with `expo-router`, every file under `app/` or `src/app/`. The detected globs and entry points
+  are written into the head policy (`frameworks`) for both sides. Other framework files, such as
+  React Router route modules, take an exception scoped to those paths:
+  `"exceptions": [{ "rule": "nitpicker/no-default-export", "paths": ["src/routes/**"], "reason": "framework file convention" }]`.
   The default-export ban is its own rule, so the exception lifts nothing else for those paths.
 - **Lazy components.** The standard `lazy(() => import('./x').then(...))` is a promise chain. Use
   `lazy(async () => ({ default: (await import('./badge.js')).Badge }))`.

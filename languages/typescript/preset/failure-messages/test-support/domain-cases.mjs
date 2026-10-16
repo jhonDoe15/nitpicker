@@ -11,7 +11,7 @@ export const domainFailureMessageCases = [
   domainCase(
     'react import names adapters/',
     "import { useState } from 'react'; export const run = useState;",
-    'components and hooks live in adapters/ (or shared/ui)',
+    'components, hooks and stores live in adapters/ (or shared/ui)',
   ),
   domainCase(
     'destructuring assignment names spread',

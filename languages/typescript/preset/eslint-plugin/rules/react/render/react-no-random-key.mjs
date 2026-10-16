@@ -1,6 +1,8 @@
 import { ancestorsOf, variableNamed } from '../../analysis/ancestry.mjs';
+import { isFunctionNode } from '../react-effects.mjs';
+import { attributeNamed } from '../jsx.mjs';
 
-const generators = new Set([
+const globalGenerators = new Set([
   'Math.random',
   'Date.now',
   'performance.now',
@@ -13,18 +15,101 @@ const generators = new Set([
   'cuid',
   'createId',
 ]);
+const generatorModules = new Set([
+  'uuid',
+  'nanoid',
+  'nanoid/non-secure',
+  'cuid',
+  '@paralleldrive/cuid2',
+  'ulid',
+  'short-uuid',
+]);
+const cryptoModules = new Set(['crypto', 'node:crypto']);
+const globalObjects = new Set(['window', 'globalThis', 'self']);
 
-function calleeName(callee) {
-  if (callee.type === 'Identifier') {
-    return callee.name;
+function memberChain(node) {
+  if (node.type === 'Identifier') {
+    return [node];
   }
-  const isNamed =
-    callee.type === 'MemberExpression' && !callee.computed && callee.object.type === 'Identifier';
-  return isNamed ? `${callee.object.name}.${callee.property.name}` : undefined;
+  const isNamed = node.type === 'MemberExpression' && !node.computed;
+  const object = isNamed ? memberChain(node.object) : undefined;
+  return object === undefined ? undefined : [...object, node.property];
 }
 
-function isKeyAttribute(node) {
-  return node.type === 'JSXAttribute' && node.name.name === 'key';
+function withoutGlobalObject(names) {
+  return names.length > 1 && globalObjects.has(names[0]) ? names.slice(1) : names;
+}
+
+function importOf(sourceCode, identifier) {
+  const variable = variableNamed(sourceCode, identifier);
+  if (variable === undefined || variable.defs.length === 0) {
+    return { bound: false };
+  }
+  const definition = variable.defs.find(({ type }) => type === 'ImportBinding');
+  return { bound: true, source: definition?.parent.source.value };
+}
+
+function isImportedGenerator(source, names) {
+  return (
+    generatorModules.has(source) || (cryptoModules.has(source) && names.at(-1) === 'randomUUID')
+  );
+}
+
+function generatorName(sourceCode, callee) {
+  const chain = memberChain(callee);
+  if (chain === undefined) {
+    return undefined;
+  }
+  const names = chain.map(({ name }) => name);
+  const { bound, source } = importOf(sourceCode, chain[0]);
+  const isGenerator = bound
+    ? source !== undefined && isImportedGenerator(source, names)
+    : globalGenerators.has(withoutGlobalObject(names).join('.'));
+  return isGenerator ? names.join('.') : undefined;
+}
+
+function isClockRead(sourceCode, node) {
+  return (
+    node.callee.type === 'Identifier' &&
+    node.callee.name === 'Date' &&
+    node.arguments.length === 0 &&
+    !importOf(sourceCode, node.callee).bound
+  );
+}
+
+function generatedBy(sourceCode, node) {
+  if (node.type === 'NewExpression') {
+    return isClockRead(sourceCode, node) ? 'new Date' : undefined;
+  }
+  return node.type === 'CallExpression' ? generatorName(sourceCode, node.callee) : undefined;
+}
+
+function isKeyAttribute(attribute) {
+  return attributeNamed(attribute.parent, 'key') === attribute;
+}
+
+function inKeyAttribute(node) {
+  const owner = ancestorsOf(node).find(({ type }) => type === 'JSXAttribute');
+  return owner !== undefined && isKeyAttribute(owner);
+}
+
+function childNodesOf(node) {
+  return Object.entries(node)
+    .filter(([field]) => field !== 'parent')
+    .flatMap(([, value]) => [value].flat())
+    .filter((value) => typeof value?.type === 'string');
+}
+
+function firstGeneratorIn(sourceCode, root) {
+  const pending = [root];
+  for (const node of pending) {
+    const call = generatedBy(sourceCode, node);
+    if (call !== undefined) {
+      return call;
+    }
+    pending.push(...(isFunctionNode(node) ? [] : childNodesOf(node)));
+  }
+  return undefined;
 }
 
 function generatedConstant(sourceCode, identifier) {
@@ -33,9 +118,7 @@ function generatedConstant(sourceCode, identifier) {
   const inRender = variable?.scope.variableScope.type === 'function';
   const isConst = definition?.type === 'Variable' && definition.parent.kind === 'const';
   const init = isConst && inRender ? definition.node.init : undefined;
-  return init?.type === 'CallExpression' && generators.has(calleeName(init.callee))
-    ? calleeName(init.callee)
-    : undefined;
+  return init ? firstGeneratorIn(sourceCode, init) : undefined;
 }
 
 export const rule = {
@@ -51,6 +134,12 @@ export const rule = {
     },
   },
   create(context) {
+    function reportGenerated(node) {
+      const call = generatedBy(context.sourceCode, node);
+      if (call !== undefined && inKeyAttribute(node)) {
+        context.report({ node, messageId: 'randomKey', data: { call } });
+      }
+    }
     return {
       JSXAttribute(node) {
         const expression =
@@ -63,13 +152,8 @@ export const rule = {
           context.report({ node: expression, messageId: 'randomKey', data: { call } });
         }
       },
-      CallExpression(node) {
-        const call = calleeName(node.callee);
-        const owner = ancestorsOf(node).find(({ type }) => type === 'JSXAttribute');
-        if (generators.has(call) && owner !== undefined && isKeyAttribute(owner)) {
-          context.report({ node, messageId: 'randomKey', data: { call } });
-        }
-      },
+      CallExpression: reportGenerated,
+      NewExpression: reportGenerated,
     };
   },
 };

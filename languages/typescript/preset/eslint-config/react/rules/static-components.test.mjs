@@ -34,3 +34,15 @@ describe('components created during render', () => {
     expect(ruleIdsFor('return <Card />;')).toEqual([]);
   });
 });
+
+describe('impure calls during render', () => {
+  it('report a random key once, under the key rule', () => {
+    expect(
+      ruleIdsFor('return <ul>{[1].map((n) => <li key={Math.random()}>{n}</li>)}</ul>;'),
+    ).toEqual(['nitpicker/react-no-random-key']);
+  });
+
+  it('still report an impure call outside a key', () => {
+    expect(ruleIdsFor('return <p>{Math.random()}</p>;')).toEqual(['react-x/purity']);
+  });
+});

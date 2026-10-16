@@ -1,5 +1,6 @@
 import { spawnSync } from 'node:child_process';
 import { createRequire } from 'node:module';
+import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { CONFIG_FILE_NAME } from '../../../../shared/config.mjs';
 import { resolveTool } from '../../../../core/tooling/tool-resolution.mjs';
@@ -32,10 +33,17 @@ export function withEngineHint(detail) {
   return detail.includes(CONFIG_FILE_NAME) ? detail : `${detail}\n${ENGINE_HINT}`;
 }
 
+export function withCompileCache(environment = process.env) {
+  return {
+    NODE_COMPILE_CACHE: path.join(tmpdir(), 'nitpicker-node-compile-cache'),
+    ...environment,
+  };
+}
+
 export function spawnJson(argumentList, { cwd, env, context, timeoutMs, acceptedStatuses = [0] }) {
   const result = spawnSync(process.execPath, argumentList, {
     cwd,
-    env,
+    env: withCompileCache(env),
     encoding: 'utf8',
     maxBuffer: MAX_OUTPUT_BYTES,
     timeout: timeoutMs,

@@ -74,13 +74,100 @@ describe('head policy icon package', () => {
     expect(resolveHeadPolicy({}, root).react).toEqual({
       enabled: true,
       iconPackage: 'react-icons',
+      major: 19,
     });
   });
 
   it('leaves the key out when the head checkout has no icon package', () => {
     const root = projectWith({ react: '19.0.0' });
 
-    expect(resolveHeadPolicy({}, root).react).toEqual({ enabled: true });
+    expect(resolveHeadPolicy({}, root).react).toEqual({ enabled: true, major: 19 });
+  });
+});
+
+describe('head policy React major version', () => {
+  function projectWith(dependencies) {
+    const root = temporaryDirectory();
+    writeFileSync(path.join(root, 'package.json'), JSON.stringify({ dependencies }));
+    return root;
+  }
+
+  it('records the installed major of the head checkout over its declared range', () => {
+    const root = projectWith({ react: '^19.0.0' });
+    mkdirSync(path.join(root, 'node_modules/react'), { recursive: true });
+    writeFileSync(
+      path.join(root, 'node_modules/react/package.json'),
+      JSON.stringify({ version: '18.3.1' }),
+    );
+
+    expect(resolveHeadPolicy({}, root).react.major).toBe(18);
+  });
+
+  it('leaves the major out when React is off or its version is unreadable', () => {
+    expect(resolveHeadPolicy({}, projectWith({})).react).toEqual({ enabled: false });
+    expect(resolveHeadPolicy({}, projectWith({ react: 'latest' })).react).toEqual({
+      enabled: true,
+    });
+  });
+});
+
+describe('head policy framework conventions', () => {
+  function projectWith(manifest, files = {}) {
+    const root = temporaryDirectory();
+    writeFileSync(path.join(root, 'package.json'), JSON.stringify(manifest));
+    for (const [file, text] of Object.entries(files)) {
+      mkdirSync(path.dirname(path.join(root, file)), { recursive: true });
+      writeFileSync(path.join(root, file), text);
+    }
+    return resolveHeadPolicy({}, root).frameworks;
+  }
+
+  const nextFiles = [
+    '{app,src/app}/**/{page,layout,loading,error,global-error,not-found,template,default,route}.{ts,tsx,mts,cts,js,jsx,mjs,cjs}',
+    '{pages,src/pages}/**/*.{ts,tsx,mts,cts,js,jsx,mjs,cjs}',
+    '{middleware,src/middleware}.{ts,tsx,mts,cts,js,jsx,mjs,cjs}',
+  ];
+  const storyFiles = ['**/*.{stories,story}.{ts,tsx,mts,cts,js,jsx,mjs,cjs}'];
+  const expoFiles = ['{app,src/app}/**/*.{ts,tsx,mts,cts,js,jsx,mjs,cjs}'];
+
+  it.each([
+    ['Next.js from its dependency', { dependencies: { next: '15.0.0' } }, {}, nextFiles],
+    ['Next.js from its config file', {}, { 'next.config.mjs': 'export default {};' }, nextFiles],
+    [
+      'Storybook from a package',
+      { devDependencies: { '@storybook/react': '9.0.0' } },
+      {},
+      storyFiles,
+    ],
+    ['Storybook from its folder', {}, { '.storybook/main.ts': 'export default {};' }, storyFiles],
+    ['Expo Router', { dependencies: { 'expo-router': '6.0.0' } }, {}, expoFiles],
+  ])('allows the default exports of %s', (_name, manifest, files, defaultExports) => {
+    expect(projectWith(manifest, files)).toEqual({ defaultExports, entryPoints: [] });
+  });
+
+  it.each([
+    [
+      'the module script of index.html',
+      {
+        'index.html':
+          '<script src="/src/boot.tsx?v=1" type="module"></script><script src="/x.js"></script>',
+      },
+      ['src/boot.tsx'],
+    ],
+    ['the conventional src/main.tsx', { 'src/main.tsx': 'export {};' }, ['src/main.tsx']],
+    ['no entry it can find', {}, []],
+  ])('takes the Vite entry from %s', (_name, files, entryPoints) => {
+    const frameworks = projectWith({ devDependencies: { vite: '7.0.0' } }, files);
+
+    expect(frameworks).toEqual(
+      entryPoints.length === 0 ? undefined : { defaultExports: [], entryPoints },
+    );
+  });
+
+  it('records nothing for a project without those frameworks', () => {
+    expect(projectWith({ dependencies: { react: '19.0.0' } }, { 'src/main.tsx': '' })).toBe(
+      undefined,
+    );
   });
 });
 
@@ -94,6 +181,7 @@ describe('head policy reader', () => {
       react: {},
       i18n: {},
       tools: {},
+      frameworks: { defaultExports: [], entryPoints: [] },
     });
   });
 
@@ -112,6 +200,7 @@ describe('head policy reader', () => {
         react: {},
         i18n: {},
         tools: {},
+        frameworks: { defaultExports: [], entryPoints: [] },
       });
     });
   });
@@ -245,6 +334,7 @@ describe('head policy delivery', () => {
         react: {},
         i18n: {},
         tools: {},
+        frameworks: { defaultExports: [], entryPoints: [] },
       });
     }
   });

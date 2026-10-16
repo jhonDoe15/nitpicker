@@ -1,14 +1,19 @@
 import { ancestorsOf } from '../../analysis/ancestry.mjs';
-import { attributeNamed, elementName, hasSpread, literalValueOf } from './jsx.mjs';
+import {
+  attributeNamed,
+  buttonLikeInputTypes,
+  elementName,
+  fieldElements,
+  hasSpread,
+  literalValueOf,
+} from '../jsx.mjs';
 
-const fields = new Set(['input', 'textarea', 'select']);
-const buttonLikeTypes = new Set(['hidden', 'submit', 'reset', 'button', 'image']);
 const ariaLabels = ['aria-label', 'aria-labelledby'];
 
 function isButtonLike(opening) {
   return (
     elementName(opening) === 'input' &&
-    buttonLikeTypes.has(literalValueOf(attributeNamed(opening, 'type')))
+    buttonLikeInputTypes.has(literalValueOf(attributeNamed(opening, 'type')))
   );
 }
 
@@ -68,9 +73,8 @@ export const rule = {
     const labelTargets = { ids: new Set(), dynamic: false };
     return {
       JSXOpeningElement(node) {
-        if (elementName(node) === 'label') {
-          recordLabelTarget(node, labelTargets);
-        } else if (fields.has(elementName(node))) {
+        recordLabelTarget(node, labelTargets);
+        if (fieldElements.has(elementName(node))) {
           fieldsToCheck.push(node);
         }
       },

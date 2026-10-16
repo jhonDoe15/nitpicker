@@ -1,7 +1,7 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { ESLint } from 'eslint';
+import { ESLint, Linter } from 'eslint';
 import functional from 'eslint-plugin-functional';
-import { mkdtempSync, rmSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import tseslint from 'typescript-eslint';
@@ -57,30 +57,78 @@ export function total(lines: readonly Line[]) {
   });
 
   it('keeps react and other UI frameworks out of domain/', () => {
-    const message =
-      'domain/ does not import react, react-dom, react-native or preact: components and hooks live in adapters/ (or shared/ui) and call the logic in domain/. ' +
+    const messageFor = (source) =>
+      `domain/ does not import a UI framework or UI state library (\`${source}\`): components, hooks and stores live in adapters/ (or shared/ui) and call the logic in domain/, which takes and returns plain values. ` +
       'If a framework requires this file in domain/, add an exception for this rule for those paths in nitpicker.config.json.';
     const banned = [
-      "import { useState } from 'react'; export const y = useState;",
-      "import { createRoot } from 'react-dom/client'; export const y = createRoot;",
-      "import { View } from 'react-native'; export const y = View;",
-      "import { useState } from 'preact/hooks'; export const y = useState;",
-      "import type { ReactNode } from 'react'; export type A = ReactNode;",
-      "export const load = () => import('react');",
-      "export { useState } from 'react';",
-      "export * from 'react';",
-      "const react = require('react'); export const y = react;",
-      "import React = require('react'); export const y = React;",
+      ['react', "import { useState } from 'react'; export const y = useState;"],
+      [
+        'react-dom/client',
+        "import { createRoot } from 'react-dom/client'; export const y = createRoot;",
+      ],
+      ['react-native', "import { View } from 'react-native'; export const y = View;"],
+      ['preact/hooks', "import { useState } from 'preact/hooks'; export const y = useState;"],
+      ['react', "import type { ReactNode } from 'react'; export type A = ReactNode;"],
+      ['react', "export const load = () => import('react');"],
+      ['react', "export { useState } from 'react';"],
+      ['react', "export * from 'react';"],
+      ['react', "const react = require('react'); export const y = react;"],
+      ['react', "import React = require('react'); export const y = React;"],
+      [
+        '@tanstack/react-query',
+        "import { useQuery } from '@tanstack/react-query'; export const y = useQuery;",
+      ],
+      ['zustand', "import { create } from 'zustand'; export const y = create;"],
+      [
+        'next/navigation',
+        "import { useRouter } from 'next/navigation'; export const y = useRouter;",
+      ],
+      ['expo-router', "import { Link } from 'expo-router'; export const y = Link;"],
+      ['jotai', "import { atom } from 'jotai'; export const y = atom;"],
     ];
-    expect(banned.map((code) => messagesFor(domainFile, code))).toEqual(
-      banned.map(() => [message]),
+    expect(banned.map(([, code]) => messagesFor(domainFile, code))).toEqual(
+      banned.map(([source]) => [messageFor(source)]),
     );
-    expect(
-      messagesFor(domainFile, "import { x } from 'react-query-lite'; export const y = x;"),
-    ).toEqual([]);
+    for (const allowed of ['reactive-x', 'nextra-utils', '@acme/reactor', 'zod']) {
+      expect(
+        messagesFor(domainFile, `import { x } from '${allowed}'; export const y = x;`),
+      ).toEqual([]);
+    }
     expect(messagesFor('src/main/features/billing/adapters/view.ts', "import 'react';")).toEqual(
       [],
     );
+  });
+
+  it('follows imports through shared/ to a UI framework', () => {
+    const root = mkdtempSync(path.join(tmpdir(), 'nitpicker-domain-shared-'));
+    const files = {
+      'tsconfig.json': '{}',
+      'src/main/shared/ui/hooks.ts': "export { useState as useLocalState } from 'react';\n",
+      'src/main/shared/ui/index.ts': "export * from './hooks';\n",
+      'src/main/shared/money.ts': 'export const cents = (n: number) => n * 100;\n',
+    };
+    for (const [file, text] of Object.entries(files)) {
+      mkdirSync(path.dirname(path.join(root, file)), { recursive: true });
+      writeFileSync(path.join(root, file), text);
+    }
+    const linted = (code) =>
+      new Linter({ cwd: root })
+        .verify(
+          code,
+          strictDomainConfig.map((entry) => ({ ...entry, files: ['**/*.ts'] })),
+          path.join(root, domainFile),
+        )
+        .filter(({ ruleId }) => ruleId === 'nitpicker/no-ui-framework-in-domain')
+        .map(({ message }) => message.split(':')[0]);
+
+    try {
+      expect(linted("import { useLocalState } from '../../../shared/ui';")).toEqual([
+        'domain/ does not import a UI framework or UI state library, here `react` through `../../../shared/ui`',
+      ]);
+      expect(linted("import { cents } from '../../../shared/money';")).toEqual([]);
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
   });
 
   it('does not apply outside domain/', () => {

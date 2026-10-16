@@ -132,6 +132,15 @@ describe('the styling approach', () => {
     expect(stylingApproachFor({ projectRoot: projectWith(manifest) })).toBe('class-names');
   });
 
+  it.each([
+    ['react-native', { dependencies: { 'react-native': '0.81.0' } }],
+    ['expo', { dependencies: { expo: '54.0.0' } }],
+  ])('is style-sheet for a React Native app that lists %s', (_name, fields) => {
+    expect(stylingApproachFor({ projectRoot: projectWith(manifestWith(fields)) })).toBe(
+      'style-sheet',
+    );
+  });
+
   it('lets the config override what the manifest suggests', () => {
     const projectRoot = projectWith(
       manifestWith({ dependencies: { 'styled-components': '6.0.0' } }),
