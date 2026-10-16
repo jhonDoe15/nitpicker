@@ -83,7 +83,11 @@ const presetConfig = defineConfig(
       'nitpicker/preserve-error-cause': ['error', errorWrappingPolicy],
     },
   },
-  ...strictPresetConfig(layout, parserOptions, { react, routeHandlers }),
+  ...strictPresetConfig(layout, parserOptions, {
+    react,
+    routeHandlers,
+    frameworkDefaultExports: policy.frameworks.defaultExports,
+  }),
   ...productionLayoutConfigFor(layout, { react }),
   ...(layout.endToEndGlobs.length === 0
     ? []

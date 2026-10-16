@@ -5,21 +5,71 @@ import tseslint from 'typescript-eslint';
 import { afterEach, describe, expect, it } from 'vitest';
 import { lintFixture } from '../../failure-messages/test-support/harness.mjs';
 import { resolveLayout } from '../../layout.mjs';
-import { GENERAL_HINT } from '../rule-hints.mjs';
+import { storyGlobs } from '../scope-support.mjs';
+import { installReact, manifestWith, temporaryProjects } from './test-support/react-projects.mjs';
+import { extraAccessibilityRuleNames } from './rules/accessibility-rules.mjs';
 import {
   accessibilityRuleNames,
   reactRuleIds,
   reactTestRuleIds,
   testingLibraryHints,
 } from './react-rules.mjs';
-import { reactScopeConfigFor, reactSyntaxConfigFor } from './react-scope.mjs';
+import {
+  analyzedProjectRoot,
+  isReactProject,
+  reactScopeConfigFor,
+  reactSyntaxConfigFor,
+} from './react-scope.mjs';
 import { fileURLToPath } from 'node:url';
-import { createProjects, manifestWith } from './test-support/projects.mjs';
 
 const layout = resolveLayout();
-const { cleanup, projectWith } = createProjects();
+const { projectWith, removeProjects } = temporaryProjects();
 
-afterEach(cleanup);
+afterEach(removeProjects);
+
+describe('React detection', () => {
+  it.each([
+    ['dependencies', { dependencies: { react: '19.0.0' } }],
+    ['devDependencies', { devDependencies: { react: '19.0.0' } }],
+    ['both', { dependencies: { react: '19.0.0' }, devDependencies: { react: '19.0.0' } }],
+  ])('turns on when react is in %s', (_name, fields) => {
+    const projectRoot = projectWith(manifestWith(fields));
+
+    expect(isReactProject({ projectRoot })).toBe(true);
+  });
+
+  it.each([
+    ['no manifest', undefined],
+    ['a manifest without dependencies', manifestWith({})],
+    ['other dependencies only', manifestWith({ dependencies: { preact: '10.0.0' } })],
+    ['react only as a peer dependency', manifestWith({ peerDependencies: { react: '19.0.0' } })],
+    ['react-dom without react', manifestWith({ dependencies: { 'react-dom': '19.0.0' } })],
+    ['a malformed manifest', '{ not json'],
+    ['a manifest that is JSON null', 'null'],
+    ['a manifest that is a JSON number', '5'],
+  ])('stays off with %s', (_name, manifest) => {
+    const projectRoot = projectWith(manifest);
+
+    expect(isReactProject({ projectRoot })).toBe(false);
+  });
+
+  it('lets the config switch the scope on or off whatever package.json says', () => {
+    const withReact = projectWith(manifestWith({ dependencies: { react: '19.0.0' } }));
+    const withoutReact = projectWith(manifestWith({}));
+
+    expect(isReactProject({ projectRoot: withReact, react: { enabled: false } })).toBe(false);
+    expect(isReactProject({ projectRoot: withoutReact, react: { enabled: true } })).toBe(true);
+    expect(isReactProject({ projectRoot: withReact, react: { styling: 'css-in-js' } })).toBe(true);
+    expect(isReactProject({ projectRoot: withoutReact, react: {} })).toBe(false);
+  });
+
+  it('reads the analyzed project from the ESLint wrapper environment, else the working directory', () => {
+    expect(analyzedProjectRoot({ NITPICKER_DIFF_ESLINT_PROJECT_ROOT: '/analyzed' })).toBe(
+      '/analyzed',
+    );
+    expect(analyzedProjectRoot({})).toBe(process.cwd());
+  });
+});
 
 async function calculatedConfig(entries, file) {
   const eslint = new ESLint({
@@ -31,24 +81,50 @@ async function calculatedConfig(entries, file) {
 }
 
 describe('the React scope config', () => {
-  it('configures exactly the listed React rule ids', async () => {
-    const [production, tests] = await reactSyntaxConfigFor(layout);
+  it.each([
+    ['a React 18 range', { dependencies: { react: '^18.2.0' } }, [], false],
+    ['an installed React 18', { dependencies: { react: '*' } }, ['18.3.1'], false],
+    [
+      'an installed React 18 under a React 19 range',
+      { dependencies: { react: '^19.0.0' } },
+      ['18.3.1'],
+      false,
+    ],
+    ['React 19', { dependencies: { react: '19.0.0' } }, [], true],
+    ['an unreadable version', { dependencies: { react: 'latest' } }, [], true],
+  ])('applies the React 19 rules for %s: %s', async (_name, fields, installed, applied) => {
+    const projectRoot = projectWith(manifestWith(fields));
+    for (const version of installed) {
+      installReact(projectRoot, version);
+    }
+    const [{ rules }] = await reactScopeConfigFor(layout, {}, projectRoot);
+    const react19 = ['react-x/no-forward-ref', 'react-x/no-context-provider'];
 
-    expect(Object.keys(production.rules).toSorted()).toEqual(reactRuleIds.toSorted());
+    expect(react19.filter((id) => id in rules)).toEqual(applied ? react19 : []);
+  });
+
+  it('configures exactly the listed React rule ids', async () => {
+    const [production, tests, , typed] = await reactScopeConfigFor(layout);
+    const typedReactRules = Object.keys(typed.rules).filter((id) => id.startsWith('react-x/'));
+
+    expect([...Object.keys(production.rules), ...typedReactRules].toSorted()).toEqual(
+      reactRuleIds.toSorted(),
+    );
     expect(Object.keys(tests.rules).toSorted()).toEqual(reactTestRuleIds.toSorted());
   });
 
   it('registers an implementation for every plugin rule it configures', async () => {
-    for (const entry of await reactSyntaxConfigFor(layout)) {
-      for (const id of Object.keys(entry.rules)) {
+    for (const entry of await reactScopeConfigFor(layout)) {
+      for (const id of Object.keys(entry.rules).filter((ruleId) => ruleId.includes('/'))) {
         const [pluginName, ...rest] = id.split('/');
         expect(entry.plugins[pluginName].rules[rest.join('/')], id).toBeDefined();
       }
     }
   });
 
-  it('runs every rule as an error', async () => {
-    for (const entry of await reactSyntaxConfigFor(layout)) {
+  it('runs every rule as an error, except the ones story files switch off', async () => {
+    const entries = await reactScopeConfigFor(layout, { autoCleanup: true });
+    for (const entry of entries.filter(({ files }) => files !== storyGlobs)) {
       for (const [id, setting] of Object.entries(entry.rules)) {
         expect([setting].flat()[0], id).toBe('error');
       }
@@ -70,12 +146,14 @@ describe('the React scope config', () => {
     }
   });
 
-  it('lists the accessibility rules the plugin recommends, and only those', () => {
+  it('lists the accessibility rules the plugin recommends, plus the extra ones', () => {
     const recommended = Object.entries(accessibility.configs.recommended.rules)
       .filter(([, setting]) => [setting].flat()[0] !== 'off')
       .map(([id]) => id.replace('jsx-a11y-x/', ''));
 
-    expect(accessibilityRuleNames.toSorted()).toEqual(recommended.toSorted());
+    expect(accessibilityRuleNames.toSorted()).toEqual(
+      [...recommended, ...extraAccessibilityRuleNames].toSorted(),
+    );
   });
 
   it('defaults to class names and passes the configured styling approach to the rule', async () => {
@@ -124,37 +202,6 @@ describe('the React scope config', () => {
       'error',
       { tags: [], roles: ['tabpanel'], allowExpressionValues: true },
     ]);
-  });
-
-  it('requires focus and blur handlers next to hover-only enter and leave handlers', async () => {
-    const [entry] = await reactSyntaxConfigFor(layout);
-    const config = [{ languageOptions: { parser: tseslint.parser } }, entry];
-    const flagged = (attributes) =>
-      lintFixture({
-        config,
-        filename: 'src/main/ui/card.tsx',
-        code: `export const Card = () => <div ${attributes} />;`,
-      })
-        .filter(({ ruleId }) => ruleId === 'jsx-a11y/mouse-events-have-key-events')
-        .map(({ message }) => message);
-
-    expect(entry.rules['jsx-a11y/mouse-events-have-key-events']).toEqual([
-      'error',
-      {
-        hoverInHandlers: ['onMouseOver', 'onMouseEnter'],
-        hoverOutHandlers: ['onMouseOut', 'onMouseLeave'],
-      },
-    ]);
-    expect(flagged('onMouseEnter={show} onMouseLeave={hide}')).toEqual([
-      `onMouseEnter must be accompanied by onFocus for accessibility.${GENERAL_HINT}`,
-      `onMouseLeave must be accompanied by onBlur for accessibility.${GENERAL_HINT}`,
-    ]);
-    expect(flagged('onMouseOver={show}')).toEqual([
-      `onMouseOver must be accompanied by onFocus for accessibility.${GENERAL_HINT}`,
-    ]);
-    expect(flagged('onMouseEnter={show} onFocus={show} onMouseLeave={hide} onBlur={hide}')).toEqual(
-      [],
-    );
   });
 
   it('applies to production source only, not to tests', async () => {
@@ -237,7 +284,7 @@ describe('the React scope config', () => {
       ...(await reactSyntaxConfigFor(layout)),
     ];
 
-    expect(lintFixture({ config, filename: 'test/ui/a.test.tsx', code })).toEqual([]);
+    expect(lintFixture({ config, filename: 'test/ui/a.test.ts', code })).toEqual([]);
   });
 
   it.each([
@@ -246,7 +293,6 @@ describe('the React scope config', () => {
     ['react-dom', "import { flushSync } from 'react-dom';"],
     ['enzyme', "import { mount } from 'enzyme';"],
     ['react-test-renderer', "import renderer from 'react-test-renderer';"],
-    ['a project test-utils module', "import { renderWithProviders } from '../utils/test-utils';"],
   ])('reports in a test that imports %s', async (_name, importLine) => {
     const config = [
       { languageOptions: { parser: tseslint.parser } },
@@ -255,8 +301,8 @@ describe('the React scope config', () => {
 
     const rules = lintFixture({
       config,
-      filename: 'test/ui/a.test.tsx',
-      code: `${importLine} wrapper.state();`,
+      filename: 'test/ui/a.test.ts',
+      code: `${importLine} wrapper.instance();`,
     }).map(({ ruleId }) => ruleId);
 
     expect(rules).toEqual(['nitpicker/react-test-no-implementation-details']);
@@ -379,8 +425,10 @@ describe('the React scope config', () => {
     const [result] = await eslint.lintText(code, { filePath: path.join(root, 'test/a.test.tsx') });
 
     expect(result.messages.map(({ ruleId }) => ruleId)).toEqual([
+      'testing-library/prefer-user-event-setup',
       'testing-library/await-async-events',
       'testing-library/await-async-events',
+      'testing-library/prefer-user-event-setup',
       'testing-library/await-async-events',
     ]);
     expect(result.messages.every(({ fix, suggestions }) => !fix && !suggestions)).toBe(true);

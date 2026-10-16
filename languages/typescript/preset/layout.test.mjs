@@ -21,10 +21,9 @@ describe('common layout', () => {
     const knip = readConfig('knip.json');
     const roots = [sourceRoot, ...testRoots];
     const includes = roots.map((root) => `${root}/**/*`);
-    const strykerIncludes = roots.filter((root) => root !== 'e2e').map((root) => `${root}/**/*`);
     expect([...typecheck.include].sort()).toEqual([...includes, 'vitest*.ts'].sort());
     expect([...stryker.include].sort()).toEqual(
-      [...strykerIncludes, 'stryker.vitest.config.ts'].sort(),
+      [...includes.filter((glob) => glob !== 'e2e/**/*'), 'stryker.vitest.config.ts'].sort(),
     );
     for (const root of roots) {
       expect(knip.project.some((glob) => glob.startsWith(`${root}/**/`))).toBe(true);
@@ -49,6 +48,37 @@ describe('common layout', () => {
     expect(isSourceFile('src/main/features/service.ts')).toBe(true);
     expect(isSourceFile('src/generated/service.ts')).toBe(false);
     expect(isSourceFile('src/service.d.ts')).toBe(false);
+  });
+});
+
+describe('generated files', () => {
+  it.each([
+    'src/api.generated.ts',
+    'src/schema.gen.tsx',
+    'src/__generated__/types.ts',
+    'src/generated/service.ts',
+    'src/proto/user_pb.js',
+    'src/proto/user_grpc_pb.ts',
+    'src/proto/user.pb.ts',
+  ])('are not source: %s', (file) => {
+    expect(isSourceFile(file)).toBe(false);
+  });
+
+  it.each(['src/generator.ts', 'src/gen.ts', 'src/generated-names.ts', 'src/pb.ts', 'src/web.ts'])(
+    'does not treat a similar name as generated: %s',
+    (file) => {
+      expect(isSourceFile(file)).toBe(true);
+    },
+  );
+});
+
+describe('layout.isTestPath', () => {
+  it('recognizes any file under a test folder, whatever its extension', () => {
+    const layout = resolveLayout();
+
+    expect(layout.isTestPath('src/ui/__tests__/logo.svg')).toBe(true);
+    expect(layout.isTestPath('tests/logo.svg')).toBe(true);
+    expect(layout.isTestPath('src/ui/logo.svg')).toBe(false);
   });
 });
 
@@ -85,37 +115,6 @@ describe('repo-root test folders', () => {
 
     expect(layout.isTestFile('e2e/checkout.spec.ts')).toBe(false);
     expect(layout.isTestFile('spec/panel.ts')).toBe(true);
-  });
-});
-
-describe('generated files', () => {
-  it.each([
-    'src/api.generated.ts',
-    'src/schema.gen.tsx',
-    'src/__generated__/types.ts',
-    'src/generated/service.ts',
-    'src/proto/user_pb.js',
-    'src/proto/user_grpc_pb.ts',
-    'src/proto/user.pb.ts',
-  ])('are not source: %s', (file) => {
-    expect(isSourceFile(file)).toBe(false);
-  });
-
-  it.each(['src/generator.ts', 'src/gen.ts', 'src/generated-names.ts', 'src/pb.ts', 'src/web.ts'])(
-    'does not treat a similar name as generated: %s',
-    (file) => {
-      expect(isSourceFile(file)).toBe(true);
-    },
-  );
-});
-
-describe('layout.isTestPath', () => {
-  it('recognizes any file under a test folder, whatever its extension', () => {
-    const layout = resolveLayout();
-
-    expect(layout.isTestPath('src/ui/__tests__/logo.svg')).toBe(true);
-    expect(layout.isTestPath('tests/logo.svg')).toBe(true);
-    expect(layout.isTestPath('src/ui/logo.svg')).toBe(false);
   });
 });
 

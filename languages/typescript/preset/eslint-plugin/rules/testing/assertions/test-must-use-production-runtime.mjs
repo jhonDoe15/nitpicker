@@ -1,5 +1,11 @@
 import path from 'node:path';
 import { readLayout } from '../../../../head-policy.mjs';
+import {
+  reachableModules,
+  resolveModuleSpecifier,
+} from '../../../../modules/module-resolution.mjs';
+import { moduleReferencesOf, statementSources } from '../../../../modules/module-sources.mjs';
+import { isBrowserEndToEndTest } from '../../analysis/test-code-analysis.mjs';
 
 const layout = readLayout();
 const { testRoots } = layout;
@@ -9,6 +15,43 @@ const RUNNABLE_TEST = /\.(?:test|spec)\.[cm]?[jt]sx?$/;
 const TEST_SUPPORT = new RegExp(
   `(?:^|/)(?:__tests__|fixtures)(?:/|$)|^(?:${testRoots.join('|')})(?:/|$)|\\.(?:test|spec)\\.[cm]?[jt]sx?$`,
 );
+
+const relativeModule = /^\.{1,2}\//u;
+const MAX_REEXPORT_DEPTH = 3;
+const MAX_REEXPORTED_FILES = 50;
+
+function resolveModule(fromFile, source) {
+  const resolved = resolveModuleSpecifier(source, fromFile);
+  return resolved.kind === 'file' ? resolved.path : undefined;
+}
+
+function reexportSources(file) {
+  return moduleReferencesOf(file)
+    .filter(({ reexport }) => reexport)
+    .map(({ source }) => source);
+}
+
+function helperFiles(helper) {
+  const reexported = [
+    ...reachableModules(helper, reexportSources, {
+      maxDepth: MAX_REEXPORT_DEPTH,
+      maxFiles: MAX_REEXPORTED_FILES,
+    }),
+  ];
+  return [helper, ...reexported.map(({ file }) => file).filter(Boolean)];
+}
+
+function helperReaches(testFile, source) {
+  const helper = resolveModule(testFile, source);
+  return (
+    helper !== undefined &&
+    helperFiles(helper).some((file) =>
+      moduleReferencesOf(file).some(
+        (reference) => reference.runtime && isProductionModule(file, reference.source),
+      ),
+    )
+  );
+}
 
 function isRuntimeImport(node) {
   if (node.importKind === 'type') {
@@ -30,16 +73,23 @@ function isProductionModule(filename, source) {
   ) {
     return true;
   }
-  if (!source.startsWith('.')) {
-    return false;
-  }
-
-  const resolved = path.resolve(path.dirname(filename), source).replaceAll('\\', '/');
+  const resolved = (
+    relativeModule.test(source)
+      ? path.resolve(path.dirname(filename), source)
+      : (resolveModule(filename, source) ?? '')
+  ).replaceAll('\\', '/');
   const resolvedRoot = layout.sourceRootOf(`${resolved}/`);
   return (
     resolvedRoot !== undefined &&
     !TEST_SUPPORT.test(resolved.slice(resolved.indexOf(`/${resolvedRoot}/`) + 1))
   );
+}
+
+function reachesProduction(filename, source) {
+  if (isProductionModule(filename, source)) {
+    return true;
+  }
+  return helperReaches(filename, source);
 }
 
 function isProductionRequire(filename, node) {
@@ -49,7 +99,21 @@ function isProductionRequire(filename, node) {
     node.callee.name === 'require' &&
     argument?.type === 'Literal' &&
     typeof argument.value === 'string' &&
-    isProductionModule(filename, argument.value)
+    reachesProduction(filename, argument.value)
+  );
+}
+
+function isExemptTest(context, filename) {
+  const exemptTest = new RegExp(context.options[0]?.exemptPattern ?? DEFAULT_EXEMPT_PATTERN);
+  const projectFile = path.relative(context.cwd, filename).replaceAll('\\', '/');
+  return (
+    !RUNNABLE_TEST.test(filename) ||
+    exemptTest.test(filename) ||
+    isBrowserEndToEndTest({
+      sources: context.sourceCode.ast.body.flatMap(statementSources),
+      projectFile,
+      layout,
+    })
   );
 }
 
@@ -70,18 +134,12 @@ export const rule = {
     ],
     messages: {
       missingRuntime:
-        'This test imports no production code at runtime (only types, helpers or libraries). Import the code under test from the source root. Shared helpers belong in a file not named *.test.* or *.spec.*.',
+        'This test imports no production code at runtime (only types, libraries, or helpers that import none). Import the code under test from the source root, directly or through a helper such as a render function that imports it. Shared helpers belong in a file not named *.test.* or *.spec.*.',
     },
   },
   create(context) {
     const filename = context.filename.replaceAll('\\', '/');
-    const exemptTest = new RegExp(context.options[0]?.exemptPattern ?? DEFAULT_EXEMPT_PATTERN);
-    const projectFile = path.relative(context.cwd, filename).replaceAll('\\', '/');
-    if (
-      !RUNNABLE_TEST.test(filename) ||
-      exemptTest.test(filename) ||
-      layout.isEndToEndTest(projectFile)
-    ) {
+    if (isExemptTest(context, filename)) {
       return {};
     }
 
@@ -96,7 +154,7 @@ export const rule = {
         if (
           isRuntimeImport(node) &&
           typeof node.source.value === 'string' &&
-          isProductionModule(filename, node.source.value)
+          reachesProduction(filename, node.source.value)
         ) {
           hasProductionRuntime = true;
         }
@@ -105,7 +163,7 @@ export const rule = {
         if (
           node.source.type === 'Literal' &&
           typeof node.source.value === 'string' &&
-          isProductionModule(filename, node.source.value)
+          reachesProduction(filename, node.source.value)
         ) {
           hasProductionRuntime = true;
         }

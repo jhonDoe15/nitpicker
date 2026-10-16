@@ -4,6 +4,7 @@ import { reportedRuleKey } from './oxlint-translation.mjs';
 
 const SENTINEL_HINT = / Unused [a-z ]+ should match \/\[\^\\s\\S\]\/\./gu;
 const IRREGULAR_WHITESPACE_RULE = 'no-irregular-whitespace';
+const MESSAGE_IN_HELP_RULES = new Set(['no-restricted-imports', 'no-restricted-properties']);
 const TSCONFIG_ERROR_CODE = 'typescript(tsconfig-error)';
 const TOLERATED_TSCONFIG_ERRORS = [
   /Cannot find type definition file/u,
@@ -84,8 +85,13 @@ function eslintMessage(diagnostic, { ruleNames, messageIdOf }, locate) {
       `oxlint reported ${diagnostic.code}: ${diagnostic.message} ${diagnostic.help ?? ''}`.trim(),
     );
   }
-  const message = withoutSentinelHint(diagnostic.message);
+  const message = withoutSentinelHint(configuredMessage(diagnostic, ruleId));
   return { ruleId, messageId: messageIdOf(ruleId, message), message, severity: 2, ...position };
+}
+
+function configuredMessage(diagnostic, ruleId) {
+  const carriesMessage = MESSAGE_IN_HELP_RULES.has(ruleId) && diagnostic.help !== undefined;
+  return carriesMessage ? `${diagnostic.message} ${diagnostic.help}` : diagnostic.message;
 }
 
 function withoutSentinelHint(message) {

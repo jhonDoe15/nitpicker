@@ -140,7 +140,6 @@ describe('layout-aware tool configurations', () => {
     const tsconfig = layoutTsconfig(readDefault('tsconfig.quality.json'), customLayout);
     expect(tsconfig.include).toEqual(['lib/**/*', 'spec/**/*', 'vitest*.ts']);
     expect([...new Set(tsconfig.exclude)].sort()).toEqual([
-      '**/*.d.ts',
       '**/build/**',
       '**/coverage/**',
       '**/dist/**',

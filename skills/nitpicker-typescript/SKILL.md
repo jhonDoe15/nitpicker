@@ -149,20 +149,8 @@ Before you change code other modules use, fix a bug, or add a UI state, read
 
 ## React
 
-Applies when `react` is in `package.json`.
+Applies when `react` is in `package.json`. Every React finding names the allowed form and its
+exception route in the message: write that form, don't work around the rule.
 
-- Function components only. Hooks follow the rules of hooks, and every effect lists its
-  dependencies. No array index as `key`: use the item's id.
-- Compute derived values while rendering (`useMemo` if costly); never copy props or state into
-  state in an effect. Reset state with a `key`.
-- Fetch with the project's data library (`useQuery`) or the framework's loader, never in `useEffect`.
-- Style with `className` (CSS Modules or utility classes), not `style={{ ... }}`. A runtime value
-  goes in a custom property, `style={{ '--progress': percent }}`, typed once with
-  `declare module 'csstype' { interface Properties { '--progress'?: number } }`. If the project
-  styles with CSS-in-JS (or `react.styling` says so), follow that instead.
-- `null` only as the argument of `useRef` and `createContext`; elsewhere `undefined`.
-- Accessible markup: `alt` on images, buttons for clicks, labels on inputs.
-- Component tests: query through `screen` (`screen.getByRole`, `within(...)` for part of the page),
-  not test ids, class selectors, `container` or queries destructured from `render`;
-  `await userEvent`, not `fireEvent`; assert what the user sees, never component state, instances
-  or hook internals, and never `spyOn` a React hook (`renderHook` tests a custom hook).
+- Component tests query through `screen` and assert what the user sees (text, roles, focus), never
+  component state, instances or hook internals.

@@ -1,6 +1,10 @@
 import tseslint from 'typescript-eslint';
 import { reactSyntaxConfigFor } from '../../eslint-config/react/react-scope.mjs';
 import { defaultResolvedLayout } from '../../layout.mjs';
+import { browserCases } from './react/browser-cases.mjs';
+import { componentTestCases } from './react/component-test-cases.mjs';
+import { correctnessCases } from './react/correctness-cases.mjs';
+import { exceptionHintCases } from './react/exception-hint-cases.mjs';
 
 const filename = 'src/main/ui/fixture.tsx';
 const parserConfig = { languageOptions: { parser: tseslint.parser } };
@@ -22,7 +26,7 @@ function reactCase([name, banned, allowed, styling = 'class-names']) {
 
 const testFilename = 'test/ui/panel.test.tsx';
 const testingLibraryImport = [
-  "import { render, screen, fireEvent, waitFor } from '@testing-library/react';",
+  "import { act, render, screen, fireEvent, waitFor } from '@testing-library/react';",
   "import userEvent from '@testing-library/user-event';",
   '',
 ].join('\n');
@@ -124,14 +128,9 @@ const reactSyntaxCases = [
     '`className`',
   ],
   [
-    'inline style names a CSS custom property',
+    'inline style names the runtime-value form',
     "export const Box = () => <div style={{ color: 'red' }} />;",
-    'CSS custom property',
-  ],
-  [
-    'inline style names the typed custom property',
-    "export const Box = () => <div style={{ color: 'red' }} />;",
-    "declare module 'csstype'",
+    'values computed at runtime',
   ],
   [
     'inline style names the config exception',
@@ -183,93 +182,12 @@ const reactSyntaxCases = [
   ],
 ].map(reactCase);
 
-const reactTestCases = [
-  ['test id query names the accessible role', "screen.getByTestId('save');", 'screen.getByRole'],
-  [
-    'test id query names the config exception',
-    "screen.getByTestId('save');",
-    'nitpicker.config.json',
-  ],
-  [
-    'container query names the accessible role',
-    "const { container } = render(<Panel />); container.querySelector('.save');",
-    'screen.getByRole',
-  ],
-  [
-    'container query names the config exception',
-    "const { container } = render(<Panel />); container.querySelector('.save');",
-    'nitpicker.config.json',
-  ],
-  ['fireEvent names userEvent', "fireEvent.click(screen.getByRole('button'));", 'await user.click'],
-  [
-    'fireEvent names the config exception',
-    "fireEvent.click(screen.getByRole('button'));",
-    'nitpicker.config.json',
-  ],
-  [
-    'unawaited userEvent names await',
-    "userEvent.click(screen.getByRole('button'));",
-    'await user.<event>',
-  ],
-  [
-    'unawaited userEvent names the user-event v13 exception',
-    "userEvent.click(screen.getByRole('button'));",
-    'user-event v13',
-  ],
-  [
-    'unawaited findBy query names await',
-    "const button = screen.findByRole('button');",
-    'await screen.findByRole',
-  ],
-  ['unawaited waitFor names await', 'waitFor(() => expect(ok()).toBe(true));', 'await waitFor'],
-  [
-    'node access names toHaveFocus',
-    'expect(document.activeElement).toBe(button);',
-    '`toHaveFocus()`',
-  ],
-  [
-    'component state names what the user sees',
-    'expect(wrapper.state()).toEqual({});',
-    'what the user sees',
-  ],
-  [
-    'component state names the config exception',
-    'expect(wrapper.state()).toEqual({});',
-    'nitpicker.config.json',
-  ],
-  [
-    'hover test names tabbing to the element',
-    "await userEvent.hover(screen.getByRole('button'));",
-    'await user.tab()',
-  ],
-  [
-    'hover test names the config exception',
-    "await userEvent.hover(screen.getByRole('button'));",
-    'nitpicker.config.json',
-  ],
-  ['hook spy names renderHook', "vi.spyOn(React, 'useState');", '`renderHook`'],
-  ['hook spy names what the user sees', "vi.spyOn(React, 'useState');", 'what the user sees'],
-  ['hook spy names the config exception', "vi.spyOn(React, 'useState');", 'nitpicker.config.json'],
-  [
-    'hook spy on a namespace import names renderHook',
-    "import * as R from 'react'; jest.spyOn(R, 'useEffect');",
-    '`renderHook`',
-  ],
-  [
-    'destructured query names screen',
-    "const { getByRole } = render(<Panel />); getByRole('button');",
-    'screen.getByRole',
-  ],
-  [
-    'destructured query names within',
-    "const { getByRole } = render(<Panel />); getByRole('button');",
-    'within(element)',
-  ],
-  [
-    'destructured query names the config exception',
-    "const { getByRole } = render(<Panel />); getByRole('button');",
-    'nitpicker.config.json',
-  ],
-].map(reactTestCase);
+const reactTestCases = componentTestCases.map(reactTestCase);
 
-export const reactFailureMessageCases = [...reactSyntaxCases, ...reactTestCases];
+export const reactFailureMessageCases = [
+  ...reactSyntaxCases,
+  ...reactTestCases,
+  ...correctnessCases.map(reactCase),
+  ...browserCases.map(reactCase),
+  ...exceptionHintCases,
+];
