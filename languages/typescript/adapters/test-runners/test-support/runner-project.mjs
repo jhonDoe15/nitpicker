@@ -17,14 +17,20 @@ function writeProjectFile(root, file, text) {
 export function createRunnerProjects() {
   const parents = [];
   return {
-    project(files) {
+    project(files, { linkDependencies = true } = {}) {
       const parent = realpathSync(mkdtempSync(path.join(tmpdir(), 'nitpicker-diff-')));
       parents.push(parent);
       const root = path.join(parent, 'head');
       for (const [file, text] of Object.entries(files)) {
         writeProjectFile(root, file, text);
       }
-      symlinkSync(path.join(PACKAGE_ROOT, 'node_modules'), path.join(root, 'node_modules'), 'dir');
+      if (linkDependencies) {
+        symlinkSync(
+          path.join(PACKAGE_ROOT, 'node_modules'),
+          path.join(root, 'node_modules'),
+          'dir',
+        );
+      }
       return root;
     },
     remove() {
