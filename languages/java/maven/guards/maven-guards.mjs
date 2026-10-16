@@ -8,29 +8,25 @@ import { runPermits } from '../../builds/classes/class-permits.mjs';
 import { runJavacLint } from '../../builds/lint/javac-lint-runner.mjs';
 import { runDependencies } from './maven-dependencies.mjs';
 import { runCpd } from './maven-pmd.mjs';
-
-const FORBIDDEN_FOUND_EXIT = 1;
+import { toolCommand } from '../../builds/tools/tool-commands.mjs';
 
 function runForbiddenApis({ module, reportDir, tools, classpaths }) {
   if (classFiles(module.outputDirectory).length === 0) {
     return;
   }
   const libraries = classpaths.mainCompile.filter((entry) => existsSync(entry));
+  const command = toolCommand('forbiddenapis', {
+    classDirectories: [module.outputDirectory],
+    libraries,
+    signatures: path.join(GRADLE_DIRECTORY, 'rules/forbidden-apis.txt'),
+  });
   const result = runJava({
     tool: 'forbiddenapis',
     classpath: tools.forbiddenapis,
     mainClass: 'de.thetaphi.forbiddenapis.cli.CliMain',
-    args: [
-      '-d',
-      module.outputDirectory,
-      '-c',
-      libraries.join(path.delimiter),
-      '-f',
-      path.join(GRADLE_DIRECTORY, 'rules/forbidden-apis.txt'),
-      '--allowmissingclasses',
-    ],
+    args: command.args,
     cwd: module.basedir,
-    accept: ({ status }) => status === 0 || status === FORBIDDEN_FOUND_EXIT,
+    accept: ({ status }) => command.accepts(status),
   });
   writeFileSync(path.join(reportDir, 'forbidden-apis.txt'), `${result.stdout}${result.stderr}`);
 }

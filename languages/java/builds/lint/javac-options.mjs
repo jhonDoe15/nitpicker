@@ -17,7 +17,17 @@ const PAIRED_OPTIONS = new Set([
   '-sourcepath',
   '--source-path',
 ]);
-const DROPPED_PREFIXES = ['-Xlint', '-Xdoclint', '-proc:', '-implicit:', '-Xplugin:', '-J'];
+const DROPPED_PREFIXES = [
+  '-Xlint',
+  '-Xdoclint',
+  '-Xdiags:',
+  '-XD',
+  '-proc:',
+  '-implicit:',
+  '-Xplugin:',
+  '-J',
+];
+const DROPPED_FLAGS = new Set(['-Werror', '-nowarn']);
 const DROPPED_OPTIONS = [
   '--processor-path',
   '--processor-module-path',
@@ -29,7 +39,7 @@ const DEFAULT_LEVEL = '8';
 
 function isDropped(arg) {
   return (
-    arg === '-Werror' ||
+    DROPPED_FLAGS.has(arg) ||
     DROPPED_PREFIXES.some((prefix) => arg.startsWith(prefix)) ||
     DROPPED_OPTIONS.some((prefix) => arg.startsWith(`${prefix}=`))
   );

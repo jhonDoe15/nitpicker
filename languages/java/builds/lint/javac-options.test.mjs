@@ -31,6 +31,9 @@ describe('lintCompatible', () => {
 
   it.each([
     '-Werror',
+    '-nowarn',
+    '-Xdiags:verbose',
+    '-XDrawDiagnostics',
     '-Xlint:all',
     '-Xdoclint:none',
     '-proc:full',

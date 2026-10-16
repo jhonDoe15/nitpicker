@@ -3,8 +3,7 @@ import path from 'node:path';
 import { runJava } from '../maven-command.mjs';
 import { writePmdRulesets } from '../../builds/rulesets/pmd-rulesets.mjs';
 import { EMPTY_SARIF } from '../maven-lint.mjs';
-
-const CPD_FINDINGS_EXIT = 4;
+import { toolCommand } from '../../builds/tools/tool-commands.mjs';
 
 function writeAuxClasspath({ module, reportDir, classpaths }) {
   const entries = new Set([
@@ -40,30 +39,19 @@ export function runPmd(context) {
     writeFileSync(report, EMPTY_SARIF);
     return;
   }
-  const auxClasspath = writeAuxClasspath(context);
+  const command = toolCommand('pmd', {
+    report,
+    rulesets: pmdRulesets(context),
+    auxClasspath: writeAuxClasspath(context),
+    directories: linted,
+  });
   runJava({
     tool: 'PMD',
     classpath: tools.pmd,
     mainClass: 'net.sourceforge.pmd.cli.PmdCli',
-    args: [
-      'check',
-      '--no-cache',
-      '--no-progress',
-      '--format',
-      'sarif',
-      '--report-file',
-      report,
-      '--rulesets',
-      pmdRulesets(context).join(','),
-      '--aux-classpath',
-      `file:${auxClasspath}`,
-      '--suppress-marker',
-      'NITPICKER-NO-INLINE-SUPPRESSION',
-      '--dir',
-      linted.join(','),
-    ],
+    args: command.args,
     cwd: module.basedir,
-    accept: () => existsSync(report),
+    accept: ({ status }) => command.accepts(status),
   });
 }
 
@@ -74,25 +62,14 @@ export function runCpd({ module, reportDir, tools }) {
   if (directories.length === 0) {
     return;
   }
+  const command = toolCommand('cpd', { directories });
   const result = runJava({
     tool: 'PMD CPD',
     classpath: tools.pmd,
     mainClass: 'net.sourceforge.pmd.cli.PmdCli',
-    args: [
-      'cpd',
-      '--minimum-tokens',
-      '100',
-      '--ignore-identifiers',
-      '--ignore-literals',
-      '--language',
-      'java',
-      '--format',
-      'xml',
-      '--no-fail-on-error',
-      ...directories.flatMap((directory) => ['--dir', directory]),
-    ],
+    args: command.args,
     cwd: module.basedir,
-    accept: ({ status }) => status === 0 || status === CPD_FINDINGS_EXIT,
+    accept: ({ status }) => command.accepts(status),
   });
   writeFileSync(path.join(reportDir, 'cpd.xml'), result.stdout);
 }
