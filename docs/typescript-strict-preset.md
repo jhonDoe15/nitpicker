@@ -171,7 +171,19 @@ alone.
 - `nitpicker/no-fixed-sleep-synchronization` (existing, extended): besides `await sleep()` and
   `await new Promise((resolve) => setTimeout(resolve, n))`, it also flags
   `setTimeout(() => resolve(), n)`, `await setTimeout(n)` from `node:timers/promises` and
-  `scheduler.wait(n)`. Wait on a condition with `vi.waitFor` or `expect.poll`.
+  `scheduler.wait(n)`. Wait on a condition with `vi.waitFor` or `expect.poll`. It also flags waits
+  on wall-clock time. A timeout-based negative assertion, `expect(waitFor(...)).rejects`,
+  `expect(vi.waitFor(...)).rejects` or `expect(screen.findByRole(...)).rejects` (a `findBy*` or
+  `findAllBy*` call on `screen`, on a `within(...)` result or on a render result, or a bare
+  `waitFor`; awaited or not, also through a `const`; a data-layer `repo.findByEmail(...)` is not),
+  passes only after the full wait times out, so it is slow and depends on the delay: advance fake
+  timers past the delay (`vi.advanceTimersByTime`) and assert absence at once
+  (`expect(screen.queryByRole('tooltip')).toBeNull()`). Playwright `<anything>.waitForTimeout(n)`
+  and Cypress `cy.wait(500)` (a number literal, or a `const` bound to a number; `cy.wait('@alias')`
+  is fine, and so is `cy.wait(0)`) are flagged too: wait on a condition (`await expect(locator).toBeVisible()`,
+  `cy.wait('@request')`). The rule covers every test-area file: the test roots (e2e folders under
+  them included), `*.test.*`/`*.spec.*` next to sources, and `__tests__` directories (their
+  fixtures are skipped). A wait that cannot be avoided gets an exception for the rule.
 - `nitpicker/no-raised-test-timeout`: no test, suite or hook timeout above 10 000 ms. That is the
   `testTimeout` nitpicker runs a project's tests with (`languages/typescript/preset/defaults/vitest.quality.config.ts`, which
   Stryker also uses, and the coverage runner's `--testTimeout`; a test keeps them in step).
