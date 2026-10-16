@@ -113,7 +113,7 @@ describe('the react-project fixture', () => {
     const folder = 'nitpicker/no-unknown-main-folder';
     const naming = 'nitpicker/naming-convention';
     expect(rulesByFile(findings)).toEqual({
-      allowed: ['@typescript-eslint/no-misused-promises', naming, folder, 'nitpicker/no-null'],
+      allowed: ['@typescript-eslint/no-misused-promises', naming, 'nitpicker/no-null', folder],
       'class-component': [folder, 'no-restricted-syntax'],
       'conditional-hook': [naming, folder],
       'css-properties.ts': [folder],
