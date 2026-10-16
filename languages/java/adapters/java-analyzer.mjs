@@ -28,6 +28,7 @@ const RESOURCE_FILES = [
   'languages/java/gradle/tasks/lint-tasks.gradle',
   'languages/java/gradle/tasks/permits-task.gradle',
   'languages/java/gradle/StructureMetrics.java',
+  'languages/java/gradle/CpdReport.java',
   'languages/java/gradle/KotlinMetrics.java',
   'languages/java/detekt/nitpicker-detekt.yml',
   'languages/java/detekt/detekt-validation.yml',

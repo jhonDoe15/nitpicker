@@ -344,15 +344,19 @@ const CPD_XML =
 const CPD_CRASH =
   '[main] ERROR net.sourceforge.pmd.cli - Exception while running CPD: NullPointerException';
 
-function fakeCpdJava({ stdout, stderr, status }) {
+function fakeCpdJava({ stdout, stderr, ending }) {
   const root = mkdtempSync(path.join(tmpdir(), 'nitpicker-cpd-'));
   roots.push(root);
   const java = path.join(root, 'jdk/bin/java');
   mkdirSync(path.dirname(java), { recursive: true });
   writeFileSync(path.join(root, 'stdout'), stdout);
   writeFileSync(path.join(root, 'stderr'), stderr);
-  const script = [`cat '${root}/stdout'`, `cat '${root}/stderr' >&2`, `exit ${String(status)}`];
-  writeFileSync(java, ['#!/bin/sh', ...script].join('\n'));
+  const script = [
+    `cat "\${1#@}" > '${root}/arguments'`,
+    `cat '${root}/stdout'`,
+    `cat '${root}/stderr' >&2`,
+  ];
+  writeFileSync(java, ['#!/bin/sh', ...script, ending].join('\n'));
   chmodSync(java, 0o755);
   vi.stubEnv('JAVA_HOME', path.join(root, 'jdk'));
   return root;
@@ -364,28 +368,44 @@ function cpd(run) {
   const reportDir = path.join(basedir, 'target/nitpicker');
   mkdirSync(path.join(basedir, 'src/main/java'), { recursive: true });
   mkdirSync(reportDir, { recursive: true });
+  for (const stale of ['cpd.xml', 'cpd-failed.txt']) {
+    writeFileSync(path.join(reportDir, stale), 'stale');
+  }
   runCpd({
     module: { basedir, sourceRoots: [path.join(basedir, 'src/main/java')], testSourceRoots: [] },
     reportDir,
     tools: { pmd: ['/tools/pmd.jar'] },
   });
-  return ['cpd.xml', 'cpd-failed.txt'].map((name) =>
+  const outputs = ['cpd.xml', 'cpd-failed.txt'].map((name) =>
     existsSync(path.join(reportDir, name))
       ? readFileSync(path.join(reportDir, name), 'utf8')
       : undefined,
   );
+  const tokens = readFileSync(path.join(root, 'arguments'), 'utf8').split('\n');
+  return { outputs, arguments: tokens.map((line) => JSON.parse(line)), basedir };
 }
 
 describe.skipIf(process.platform === 'win32')('runCpd', () => {
-  it.each([0, 4])('writes the XML report when CPD exits %i', (status) => {
-    expect(cpd({ stdout: CPD_XML, stderr: '', status })).toEqual([CPD_XML, undefined]);
+  it.each([0, 4])('writes the XML report of the CPD launcher when it exits %i', (status) => {
+    const run = cpd({ stdout: CPD_XML, stderr: '', ending: `exit ${String(status)}` });
+
+    expect(run.outputs).toEqual([CPD_XML, undefined]);
+    expect(run.arguments).toEqual([
+      '-cp',
+      '/tools/pmd.jar',
+      path.join(GRADLE_DIRECTORY, 'CpdReport.java'),
+      path.join(run.basedir, 'src/main/java'),
+    ]);
   });
 
   it.each([
-    ['a crash that exits 0 with no report', { stdout: '', stderr: `${CPD_CRASH}\n`, status: 0 }],
-    ['an exit code other than 0 or 4', { stdout: CPD_XML, stderr: `${CPD_CRASH}\n`, status: 1 }],
-    ['output that is not a CPD report', { stdout: 'oops', stderr: `${CPD_CRASH}\n`, status: 4 }],
-  ])('records the exit code and stderr instead of a report for %s', (_, run) => {
-    expect(cpd(run)).toEqual([undefined, `${String(run.status)}\n${CPD_CRASH}\n`]);
+    ['a crash that exits 0 with no report', '', 'exit 0', '0'],
+    ['an exit code other than 0 or 4', CPD_XML, 'exit 1', '1'],
+    ['output that is not a CPD report', 'oops', 'exit 4', '4'],
+    ['a launcher killed by a signal', CPD_XML, 'kill -9 $$', 'SIGKILL'],
+  ])('records the exit and stderr instead of a report for %s', (_, stdout, ending, exit) => {
+    const run = cpd({ stdout, stderr: `${CPD_CRASH}\n`, ending });
+
+    expect(run.outputs).toEqual([undefined, `${exit}\n${CPD_CRASH}\n`]);
   });
 });

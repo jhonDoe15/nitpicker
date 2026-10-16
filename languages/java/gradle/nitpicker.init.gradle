@@ -508,16 +508,39 @@ allprojects {
                     return
                 }
                 def jdeps = new File(System.getProperty('java.home'), 'bin/jdeps')
+                def legalName = { String name -> javax.lang.model.SourceVersion.isName(name) }
+                def jarModule = { File jar ->
+                    new java.util.jar.JarFile(jar).withCloseable { archive ->
+                        def names = archive.entries().collect { it.name }
+                        if (names.any { it == 'module-info.class' || it ==~ /META-INF\/versions\/\d+\/module-info\.class/ }) {
+                            return true
+                        }
+                        def base = jar.name - ~/\.jar$/
+                        def version = base =~ /-(\d+(\.|$))/
+                        def derived = (version.find() ? base.substring(0, version.start()) : base)
+                            .replaceAll(/[^A-Za-z0-9]/, '.').replaceAll(/\.{2,}/, '.').replaceAll(/^\.|\.$/, '')
+                        def name = archive.manifest?.mainAttributes?.getValue('Automatic-Module-Name') ?: derived
+                        legalName(name) && names.findAll { it.endsWith('.class') && !it.startsWith('META-INF/') }
+                            .every { it.contains('/') && legalName(it.substring(0, it.lastIndexOf('/')).replace('/', '.')) }
+                    }
+                }
+                def moduleEntry = { File entry ->
+                    entry.isDirectory() ? new File(entry, 'module-info.class').isFile()
+                        : entry.name.endsWith('.jmod') || (entry.name.endsWith('.jar') && jarModule(entry))
+                }
                 def modular = classDirs.any { new File(it, 'module-info.class').isFile() }
-                def modulePath = modular ? sourceSets.main.compileClasspath.files.findAll { it.exists() } : []
+                def modulePath = modular ? sourceSets.main.compileClasspath.files.findAll { it.exists() && moduleEntry(it) } : []
                 def moduleArgs = (modulePath.isEmpty() ? [] : ['--module-path', modulePath.join(File.pathSeparator)]) +
-                    (modular ? ['--multi-release', javaRelease().toString()] : [])
+                    (modular ? ['--multi-release', Math.max(9, javaRelease() as int).toString()] : [])
                 def process = new ProcessBuilder([jdeps.absolutePath, '-verbose:class', '-filter:none'] + moduleArgs +
-                    classDirs.collect { it.absolutePath }).directory(projectDir)
-                    .redirectError(ProcessBuilder.Redirect.DISCARD).start()
-                def output = process.inputStream.getText('UTF-8')
-                if (process.waitFor() != 0) {
-                    throw new GradleException("jdeps failed (${jdeps}) with exit code ${process.exitValue()}")
+                    classDirs.collect { it.absolutePath }).directory(projectDir).start()
+                def stdout = new ByteArrayOutputStream()
+                def stderr = new ByteArrayOutputStream()
+                process.waitForProcessOutput(stdout, stderr)
+                def output = stdout.toString('UTF-8')
+                if (process.exitValue() != 0) {
+                    def detail = stderr.toString('UTF-8').readLines().take(10).join('\n')
+                    throw new GradleException("jdeps failed (${jdeps}) with exit code ${process.exitValue()}: ${detail}")
                 }
                 graph.text = output
             }
