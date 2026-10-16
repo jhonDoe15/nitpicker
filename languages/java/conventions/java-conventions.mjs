@@ -1,3 +1,5 @@
+import { leadingSpaces } from '../../../shared/conventions/lines.mjs';
+
 const OPENS_BLOCK = /\{\s*(?:\/\/.*)?$/;
 const COMMENT_LINE = /^\s*(?:\/\/|\/\*|\*)/;
 
@@ -31,8 +33,4 @@ export function indentationStep(text) {
     return undefined;
   }
   return two > four ? '2' : '4';
-}
-
-function leadingSpaces(line) {
-  return line.length - line.trimStart().length;
 }

@@ -1,66 +1,38 @@
+import { leadingSpaces } from '../../../shared/conventions/lines.mjs';
+
 const MIN_STRINGS = 3;
+const TOKEN =
+  /#[^\n]*|('''|""")(?:\\[\s\S]|(?!\1)[\s\S])*(?:\1|$)|(["'])((?:\\.|(?!\2)[^\\\n])*)\2/g;
 const BLOCK_OPENER =
   /^\s*(?:async\s+)?(?:def|class|if|elif|else|for|while|try|except|finally|with|match|case)\b.*:\s*(?:#.*)?$/;
 const COMMENT_OR_BLANK = /^\s*(?:#.*)?$/;
 const OTHER_QUOTE = { "'": '"', '"': "'" };
 
-function closingTriple(text, from, quote) {
-  let index = from;
-  while (index < text.length) {
-    if (text[index] === '\\') {
-      index += 2;
-    } else if (text.startsWith(quote.repeat(3), index)) {
-      return index + 3;
-    } else {
-      index += 1;
-    }
-  }
-  return text.length;
-}
-
-function closingQuote(text, from, quote) {
-  let index = from;
-  while (index < text.length && text[index] !== '\n') {
-    if (text[index] === '\\') {
-      index += 2;
-    } else if (text[index] === quote) {
-      return index;
-    } else {
-      index += 1;
-    }
-  }
-  return -1;
-}
-
 function isEvidence(content, quote) {
   return !content.includes(OTHER_QUOTE[quote]) && !content.includes(`\\${quote}`);
 }
 
+function quoteOf(match) {
+  const [, , quote, content] = match;
+  return quote !== undefined && isEvidence(content, quote) ? quote : undefined;
+}
+
 export function stringQuotes(text) {
-  const counts = { "'": 0, '"': 0 };
-  let index = 0;
-  while (index < text.length) {
-    const character = text[index];
-    if (character === '#') {
-      const end = text.indexOf('\n', index);
-      index = end === -1 ? text.length : end;
-    } else if (character in OTHER_QUOTE && text.startsWith(character.repeat(3), index)) {
-      index = closingTriple(text, index + 3, character);
-    } else if (character in OTHER_QUOTE) {
-      const end = closingQuote(text, index + 1, character);
-      if (end !== -1 && isEvidence(text.slice(index + 1, end), character)) {
-        counts[character] += 1;
-      }
-      index = end === -1 ? index + 1 : end + 1;
-    } else {
-      index += 1;
-    }
-  }
-  const total = counts["'"] + counts['"'];
-  if (total < MIN_STRINGS || counts["'"] === counts['"']) {
+  const quotes = [...text.matchAll(TOKEN)].map(quoteOf).filter((quote) => quote !== undefined);
+  const single = quotes.filter((quote) => quote === "'").length;
+  const double = quotes.length - single;
+  if (quotes.length < MIN_STRINGS || single === double) {
     return undefined;
   }
-  return counts["'"] > counts['"'] ? 'single' : 'double';
+  return single > double ? 'single' : 'double';
+}
+
+function blockSteps(lines) {
+  return lines
+    .slice(0, -1)
+    .flatMap((line, index) =>
+      BLOCK_OPENER.test(line) ? [leadingSpaces(lines[index + 1]) - leadingSpaces(line)] : [],
+    );
 }
 
 export function indentationWidth(text) {
@@ -68,22 +40,11 @@ export function indentationWidth(text) {
   if (lines.some((line) => line.startsWith('\t'))) {
     return undefined;
   }
-  const code = lines.filter((line) => !COMMENT_OR_BLANK.test(line));
-  const steps = new Map();
-  for (const [index, line] of code.slice(0, -1).entries()) {
-    if (BLOCK_OPENER.test(line)) {
-      const step = leadingSpaces(code[index + 1]) - leadingSpaces(line);
-      steps.set(step, (steps.get(step) ?? 0) + 1);
-    }
-  }
-  const two = steps.get(2) ?? 0;
-  const four = steps.get(4) ?? 0;
+  const steps = blockSteps(lines.filter((line) => !COMMENT_OR_BLANK.test(line)));
+  const two = steps.filter((step) => step === 2).length;
+  const four = steps.filter((step) => step === 4).length;
   if (two === four) {
     return undefined;
   }
   return two > four ? '2' : '4';
-}
-
-function leadingSpaces(line) {
-  return line.length - line.trimStart().length;
 }

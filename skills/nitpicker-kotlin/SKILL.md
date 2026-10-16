@@ -43,8 +43,8 @@ it with `npx skills add jhonDoe15/nitpicker --skill nitpicker-java`.
   narrows `UseDataClass` with detekt's own `excludeAnnotatedClasses` in its `detekt.yml`.
 - detekt's defaults stay on. In main sources: lines of at most 120 characters, named constants
   instead of numbers other than -1, 0, 1 and 2 (`MagicNumber`), at most 2 `return` and 2 `throw`
-  per function, conditions of at most 3 `&&`/`||` parts, no wildcard imports, and no `TODO:` or
-  `FIXME:` comments. Catch and throw specific exceptions, never `Exception`, `RuntimeException` or
+  per function, conditions of at most 3 `&&`/`||` parts, no wildcard imports unless most of the project's files
+  already use them, and no `TODO:` or `FIXME:` comments. Catch and throw specific exceptions, never `Exception`, `RuntimeException` or
   `Throwable`, and pass the caught exception on as the cause (`SwallowedException`). Use
   `require(...)` and `check(...)` instead of throwing `IllegalArgumentException` and
   `IllegalStateException`; a top-level `val` holding a literal is `const val`. Remove unused private

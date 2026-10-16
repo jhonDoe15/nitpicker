@@ -1,3 +1,5 @@
+import { indentOf } from '../../../shared/conventions/lines.mjs';
+
 const WIDTHS = [79, 88, 100, 120];
 const BEYOND_WIDTH = 100;
 const MAX_WIDTH = 120;
@@ -14,7 +16,7 @@ function withoutBlockStrings(lines) {
     const quotes = (line.match(TRIPLE_QUOTE) ?? []).length;
     const inside = open || quotes > 0;
     open = quotes % 2 === 1 ? !open : open;
-    return inside ? `${' '.repeat(indentOf(line) === Infinity ? 0 : indentOf(line))}#` : line;
+    return inside ? `${' '.repeat(Math.min(indentOf(line), line.length))}#` : line;
   });
 }
 
@@ -55,8 +57,4 @@ function joinedGroupLengths(lines) {
     const body = inner.map((other) => other.trim()).join(' ');
     return [line.trimEnd().length + body.length + lines[closer].trim().length];
   });
-}
-
-function indentOf(line) {
-  return line.trim().length === 0 ? Infinity : line.length - line.trimStart().length;
 }
