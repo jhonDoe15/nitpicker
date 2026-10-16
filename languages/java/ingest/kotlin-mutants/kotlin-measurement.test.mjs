@@ -34,14 +34,13 @@ describe('the Kotlin mutation filter on the measurement fixture', () => {
     expect(counts()).toEqual({ Survived: 43, Killed: 177, NoCoverage: 17, Timeout: 3 });
   });
 
-  it('leaves out the 44 mutants of compiler-generated code and keeps the 16 a test could kill', () => {
+  it('leaves out the 45 mutants of compiler-generated code and keeps the 15 a test could kill', () => {
     const options = { generated: createGeneratedFilter(facts) };
 
     expect(counts(options)).toEqual({
       Survived: 15,
-      Killed: 145,
-      NoCoverage: 1,
-      GeneratedCode: 79,
+      Killed: 147,
+      GeneratedCode: 78,
     });
     expect(leftovers(options)).toEqual([
       [
@@ -118,11 +117,6 @@ describe('the Kotlin mutation filter on the measurement fixture', () => {
         'Nulls.kt:10',
         'mutant-survived',
         'demo.Person|forced()I|VoidMethodCallMutator|removed call to kotlin/jvm/internal/Intrinsics::checkNotNull#1',
-      ],
-      [
-        'More.kt:97',
-        'mutant-nocoverage',
-        'demo.Animal$DefaultImpls|sound(Ldemo/Animal;)Ljava/lang/String;|EmptyObjectReturnValsMutator|replaced return value with "" for demo/Animal$DefaultImpls::sound#1',
       ],
     ]);
   });

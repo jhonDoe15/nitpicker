@@ -33,6 +33,7 @@ function groupMutants(mutants, { resolvePath, generated }) {
   const statusCounts = new Map();
   const groups = new Map();
   let leftOut = 0;
+  generated?.observe?.(mutants);
   for (const mutant of mutants) {
     const status = STATUS_NAMES[mutant.status] ?? 'Unknown';
     const filePath =
