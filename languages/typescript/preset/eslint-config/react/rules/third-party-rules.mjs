@@ -1,4 +1,4 @@
-import { EXCEPTION_HINT, GENERAL_HINT } from './hints.mjs';
+import { EXCEPTION_HINT, GENERAL_HINT } from '../../rule-hints.mjs';
 
 export const reactXHints = {
   immutability: ` Copy instead: \`setList([...list, item])\`, \`items.toSorted()\`.${GENERAL_HINT}`,

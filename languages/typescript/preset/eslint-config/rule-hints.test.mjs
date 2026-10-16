@@ -81,6 +81,14 @@ describe('withHint', () => {
     ]);
   });
 
+  it('leaves the message as it is when the hint starts with its own separator', () => {
+    const separated = '. Await it.';
+
+    expect(
+      messagesOf(withHint(ruleReporting('Promise must be handled'), separated), 'foo;'),
+    ).toEqual([`Promise must be handled${separated}`, `Promise must be handled${separated}`]);
+  });
+
   it('leaves the rule untouched', () => {
     expect(messagesOf(namedMessageRule, 'foo;')).toEqual(['Bad foo.']);
     expect(messagesOf(plainMessageRule, 'foo;')).toEqual(['Plain text of foo;.']);
