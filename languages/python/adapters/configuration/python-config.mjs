@@ -7,7 +7,7 @@ import {
   validateStringArray,
 } from '../../../../shared/config.mjs';
 import { SHARED_EXCEPTION_RULES } from '../../../../shared/policy.mjs';
-import { PYTHON_SIZE_RULES } from '../../../../shared/policy-size.mjs';
+import { PYTHON_SIZE_RULES } from '../../../../shared/rules/size/size-policy.mjs';
 
 /** The shared limits the top-level "exceptions" lift; python.exceptions lifts every other rule. */
 export const PYTHON_TOP_LEVEL_EXCEPTION_RULES = [...SHARED_EXCEPTION_RULES, ...PYTHON_SIZE_RULES];

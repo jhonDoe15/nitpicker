@@ -1,6 +1,6 @@
 import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
-import { FOLDER_DEPTH_DEFAULTS } from '../../../../shared/policy-size.mjs';
+import { FOLDER_DEPTH_DEFAULTS } from '../../../../shared/rules/size/size-policy.mjs';
 import { classLimitFindings } from '../../../../shared/rules/size/class-limits.mjs';
 import { folderDepthFindings } from '../../../../shared/rules/size/folder-depth.mjs';
 import { CLASSES_REPORT } from '../analysis/python-structure.mjs';

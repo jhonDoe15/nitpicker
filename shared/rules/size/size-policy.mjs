@@ -13,13 +13,7 @@ export const CLASS_LIMIT_DEFAULTS = {
 
 export const FOLDER_DEPTH_DEFAULTS = { typescript: 1, java: 4, python: 4 };
 
-export const JAVA_SIZE_RULES = Object.values(SIZE_RULE_IDS);
-
-export const TYPESCRIPT_SIZE_RULES = [SIZE_RULE_IDS.folderDepth];
-
 export const PYTHON_SIZE_RULES = Object.values(SIZE_RULE_IDS);
-
-export const JAVA_LINE_LENGTH = 100;
 
 export function sizeMessages(hint) {
   return {
@@ -54,30 +48,38 @@ export const SIZE_HELD_MESSAGES = {
     '{name}: extends {value} classes deep (limit {limit}), allowed because base was {base}; any increase fails.',
 };
 
-export function sizeRules({ both, withKotlin }) {
-  const pythonOnly = { typescript: false, java: false, python: true };
-  const classRule = (id, limit) => ({
-    id,
-    check: 'structure',
-    limit,
-    enforcedBy: withKotlin(pythonOnly, false),
-  });
+const PYTHON_ONLY = { typescript: false, java: false, python: true };
+
+function pythonRule(withKotlin, id, limit) {
+  return { id, check: 'structure', limit, enforcedBy: withKotlin(PYTHON_ONLY, false) };
+}
+
+/** The folder-files rule, then the folder depth and class limits, in catalog order. */
+export function sizeRules({ all, withKotlin, folderFiles }) {
   return [
     {
-      id: SIZE_RULE_IDS.folderDepth,
+      id: 'folder-files-limit',
       check: 'structure',
-      limit: `code more than ${String(FOLDER_DEPTH_DEFAULTS.python)} packages below the top-level package (Python); override with \`thresholds.folderDepth\``,
-      enforcedBy: withKotlin({ ...both, typescript: false, java: false, python: true }, false),
+      limit: `more than ${String(folderFiles)} source files, or test files, directly in one folder; override with \`thresholds.folderFiles\``,
+      enforcedBy: withKotlin(all, true),
     },
-    classRule(
+    pythonRule(
+      withKotlin,
+      SIZE_RULE_IDS.folderDepth,
+      `code more than ${String(FOLDER_DEPTH_DEFAULTS.python)} packages below the top-level package (Python); override with \`thresholds.folderDepth\``,
+    ),
+    pythonRule(
+      withKotlin,
       SIZE_RULE_IDS.classMethods,
       `more than ${String(CLASS_LIMIT_DEFAULTS.classMethods)} methods in a class of the Python source roots; override with \`thresholds.classMethods\``,
     ),
-    classRule(
+    pythonRule(
+      withKotlin,
       SIZE_RULE_IDS.classFields,
       `more than ${String(CLASS_LIMIT_DEFAULTS.classFields)} instance fields in a class of the Python source roots; override with \`thresholds.classFields\``,
     ),
-    classRule(
+    pythonRule(
+      withKotlin,
       SIZE_RULE_IDS.inheritanceDepth,
       `a class more than ${String(CLASS_LIMIT_DEFAULTS.inheritanceDepth)} superclasses deep in the Python source roots; override with \`thresholds.inheritanceDepth\``,
     ),
