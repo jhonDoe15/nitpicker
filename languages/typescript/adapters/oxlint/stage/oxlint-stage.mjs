@@ -100,11 +100,34 @@ export function writeStageConfigs({ stage, projectRoot, sampleFile, translation 
     );
     return `./${STAGE_DIRECTORY}/${plugin.alias}.mjs`;
   });
+  const bridgedRulePrefixes = translation.plugins.map(({ alias }) => `${alias}/`);
   return translation.partitions.map((partition, index) => {
     const configPath = path.join(stage, `${STAGE_DIRECTORY}rc-${String(index)}.json`);
-    writeFileSync(configPath, JSON.stringify(stageConfig(partition, jsPlugins), null, 2));
-    return { configPath, files: partition.files };
+    const nativeConfigPath = path.join(stage, `${STAGE_DIRECTORY}rc-${String(index)}-native.json`);
+    const config = stageConfig(partition, jsPlugins);
+    writeFileSync(configPath, JSON.stringify(config, null, 2));
+    writeFileSync(nativeConfigPath, JSON.stringify(nativeConfig(config, bridgedRulePrefixes)));
+    return { configPath, nativeConfigPath, files: partition.files };
   });
+}
+
+function nativeConfig(config, bridgedRulePrefixes) {
+  return {
+    ...config,
+    jsPlugins: [],
+    overrides: config.overrides.map((override) => ({
+      ...override,
+      rules: nativeRules(override.rules ?? {}, bridgedRulePrefixes),
+    })),
+  };
+}
+
+function nativeRules(rules, bridgedRulePrefixes) {
+  return Object.fromEntries(
+    Object.entries(rules).filter(
+      ([rule]) => !bridgedRulePrefixes.some((prefix) => rule.startsWith(prefix)),
+    ),
+  );
 }
 
 function stageConfig({ settings, overrides }, jsPlugins) {

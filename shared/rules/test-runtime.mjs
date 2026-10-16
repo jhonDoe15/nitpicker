@@ -39,3 +39,13 @@ export function evaluateTestRuntime(report, analyzerName) {
   }
   return findings;
 }
+
+export function testConsoleRule(ids, enforcedBy) {
+  return {
+    id: ids.testConsoleOutput,
+    check: 'test-console',
+    limit:
+      'a test file printing console.error or console.warn output (compared by first line, numbers and paths normalized) that the base run did not print',
+    enforcedBy,
+  };
+}

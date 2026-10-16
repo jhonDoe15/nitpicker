@@ -1,6 +1,9 @@
-import { rmSync } from 'node:fs';
+import { spawnSync } from 'node:child_process';
+import { readFileSync, rmSync } from 'node:fs';
 import path from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { oxlintBinary } from './oxlint-process.mjs';
+import { rejectedRuleIds } from './oxlint-translation.mjs';
 import { createProject, lintProject, TYPED_POLICY } from './test-support/oxlint-project.mjs';
 
 const POLICY = `import tseslint from ${JSON.stringify(import.meta.resolve('typescript-eslint'))};
@@ -148,5 +151,92 @@ describe('lintWithOxlint with type-aware rules', () => {
 
     expect(lines('src/top.ts')).toEqual(expected);
     expect(lines('src/sub/nested.ts')).toEqual(expected);
+  });
+});
+
+describe('lintWithOxlint with rule options oxlint rejects', () => {
+  let rejectedRoot;
+  let rejectedResults;
+  let policyLoads;
+  let oxlintRejected;
+
+  beforeAll(() => {
+    rejectedRoot = createProject('nitpicker-oxlint-rejected-', {
+      'policy.mjs': `import { appendFileSync } from 'node:fs';
+import path from 'node:path';
+import tseslint from ${JSON.stringify(import.meta.resolve('typescript-eslint'))};
+
+appendFileSync(path.join(import.meta.dirname, 'policy-loads.txt'), 'loaded\\n');
+
+const local = {
+  rules: {
+    'no-foo': {
+      meta: { type: 'problem', schema: [], messages: { foo: 'No foo.' } },
+      create(context) {
+        return {
+          Identifier(node) {
+            if (node.name === 'foo') context.report({ node, messageId: 'foo' });
+          },
+        };
+      },
+    },
+  },
+};
+
+export default [
+  {
+    files: ['src/**/*.ts'],
+    languageOptions: { parser: tseslint.parser },
+    plugins: { local },
+    rules: { 'local/no-foo': 'error', 'preserve-caught-error': 'error' },
+  },
+];
+`,
+      'src/caught.ts': [
+        'export function run(task: () => void) {',
+        '  try {',
+        '    task();',
+        '  } catch (error) {',
+        "    throw new Error('failed', {});",
+        '  }',
+        '}',
+        'export const foo = 1;',
+        '',
+      ].join('\n'),
+      'eslint-defaults.json': JSON.stringify({
+        rules: {
+          'preserve-caught-error': ['error', { requireCatchParameter: false, errorClassNames: [] }],
+        },
+      }),
+    });
+    rejectedResults = lintProject({ root: rejectedRoot, patterns: ['src/**/*.ts'] });
+    policyLoads = readFileSync(path.join(rejectedRoot, 'policy-loads.txt'), 'utf8')
+      .split('\n')
+      .filter(Boolean).length;
+    const check = spawnSync(
+      process.execPath,
+      [oxlintBinary(), '--config', 'eslint-defaults.json', 'src/caught.ts'],
+      { cwd: rejectedRoot, encoding: 'utf8' },
+    );
+    oxlintRejected = rejectedRuleIds(
+      check.stdout,
+      new Map([['preserve-caught-error', 'preserve-caught-error']]),
+    );
+  });
+
+  afterAll(() => {
+    rmSync(rejectedRoot, { recursive: true, force: true });
+  });
+
+  it('uses a rule whose ESLint default options oxlint rejects', () => {
+    expect(oxlintRejected).toEqual(['preserve-caught-error']);
+  });
+
+  it('runs the rule through ESLint and loads the ESLint policy only to plan and lint once', () => {
+    expect(rejectedResults[0].messages.map(({ ruleId, line }) => ({ ruleId, line }))).toEqual([
+      { ruleId: 'preserve-caught-error', line: 5 },
+      { ruleId: 'local/no-foo', line: 8 },
+    ]);
+    expect(policyLoads).toBe(2);
   });
 });

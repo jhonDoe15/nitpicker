@@ -32,6 +32,18 @@ config file is an exception like any other.
   are not allowed.
 - Objects are constructed only in the composition root. Dependencies are passed explicitly. No
   module-level `let`.
+- `shared-used-by-one-feature` (the `coupling` check): `src/main/shared/` holds code that two or
+  more features use. A production module there that exactly one feature reaches, directly or through
+  other shared modules only, and that nothing else imports, is reported on the module with the
+  feature's folder to move it to. Type-only imports count as use, and so does an import through a
+  workspace package linked into `node_modules`. The composition root, any other production module
+  (`main.ts`, a module of another source root) and a second feature each count as another consumer;
+  test files, stories (`*.stories.*`, `*.story.*`) and files under `__mocks__/`, `__fixtures__/`,
+  `fixtures/` and `stories/` do not, and are not reported. A module no feature reaches is left to
+  the dead-code check. The feature and shared folders are the ones the architecture rules use
+  (`architecture/strict-layout.mjs`), under every `layout.sourceRoots` entry; a feature of another
+  source root is another feature. A module that is shared on purpose before a second feature uses it
+  needs an exception for this rule in `nitpicker.config.json`.
 - `nitpicker/no-branch-in-composition-root`: the composition root (`composition-root.ts`, `main.ts`,
   `server.ts`, plus the `compositionRootPattern` option shared with
   `no-managed-resource-construction-outside-composition-roots`) only wires features with named
@@ -176,6 +188,59 @@ sum + x, 0)`), `Object.fromEntries`, and `Object.groupBy`. No loops, `forEach`, 
   mutation ignore comments (`istanbul ignore`, `c8 ignore`, `v8 ignore`, `Stryker disable`) are
   suppressions too: `nitpicker/no-comments` reports them, and code that truly cannot be tested
   gets a reviewed exception for that rule in `nitpicker.config.json`.
+- A doc comment has to say something the name does not. `nitpicker/no-comments` reports a doc
+  comment on an exported declaration or exported type member whose description only restates the
+  name: it splits the name into words (camelCase, PascalCase, snake_case, kebab-case, digits),
+  drops stopwords (`the`, `a`, `of`, `get`, `returns`, `component`, `value`...), and reports when
+  every remaining description word, with a crude `ing`/`ed`/`es`/`s` stem, is a word of the name
+  (`/** Gets the user name. */ getUserName`, `/** The order id */ orderId`, `/** Button component */
+Button`). `@param`, `@returns` and other tag lines are not part of the description. Write the
+  unit, the limit, the edge case or the reason (`/** Price in cents, rounded down. */`). A
+  description longer than 5 lines, tag lines and blank lines not counted (an `@example` block is a
+  tag), is reported too: keep the non-obvious point and move the rest into names and types. Both
+  checks are skipped in the JavaScript preset's JSDoc mode, which already bans JSDoc prose, and a
+  doc comment that is needed as written gets an exception for the rule.
+
+## Reuse after a move
+
+A move that leaves the old copy behind, or a second definition with a familiar name, is the most
+common review comment on a large codebase, and `jscpd` (the `duplicates` check, 5 lines and 50
+tokens at least) does not see small ones. These rules are reported by the `structure` check on
+production files under the source roots; tests, declaration files, stories (`*.stories.*`,
+`*.story.*`) and files under `__mocks__/`, `__fixtures__/`, `fixtures/` and `stories/` are left out.
+Each message spells out the entry to add to `exceptions` in `nitpicker.config.json`; an exception
+for a file takes that file out of the rule, so a pair of copies that must both stay needs one entry.
+
+- `duplicate-definition`: two or more modules of one package define a top-level declaration with the
+  same name and the same normalized text (whitespace, comments, quote style, semicolons and trailing
+  commas ignored). It covers a function (declaration, `function` expression or arrow function:
+  overload signatures, the type annotation of a `const`, parameters and body are compared), exported
+  or private, and, only when exported, a `type` alias, an `interface` and a `const` whose
+  initializer is only literals (numbers, strings, bigints, booleans, regular expressions, plain
+  template literals, and arrays and objects of those, with or without `as const` or `satisfies`); a
+  private `Props` type or `initialState` per module is normal. A `const` with any other initializer
+  is not compared. Only definitions that are used are compared: another module imports them (by
+  name, default, namespace or a dynamic `import()`, also through a workspace package), or the module
+  references them, so framework conventions nothing imports (`export const dynamic`, `revalidate`, a
+  route `GET`, a default `Loading` page) are skipped without a list of frameworks. A definition of 5
+  lines and 50 tokens or more is left to the `duplicates` check. The text includes what each free
+  name resolves to (the file or package it is imported from, the path from the importing file for an
+  import that is not a source file such as `./styles.module.css`, or the text of the top-level
+  declaration it names), so `count() { return db.size }` over two different `db` values is not a
+  duplicate. Generated files (`*.generated.*`, `*.gen.*`, `*.pb.*`, `*_pb.*`, `__generated__/`,
+  `generated/`) are skipped, and a monorepo compares within one package (the nearest `package.json`;
+  without one, within one source root). Every copy is reported at its declaration and names the
+  other files, once per name and file; the identity is the name and file, so existing copies are
+  baselined. The message tells an exported copy to keep one definition and import it, a private copy
+  to import the exported copy when there is one, and otherwise to move to one module and import it.
+- `exported-name-collision`: two modules export different definitions under one name and a module
+  imports both without aliasing both, so a reader and auto-import can mistake one for the other. A
+  module that aliases every colliding import (`import { handler as getUser }`, `import type`,
+  `export { x as y }`) is not reported. Both defining modules are reported. Re-exports
+  (`export { x } from`, `export *`, an imported name exported again) resolve to the module that
+  defines the name, so a feature's `index.ts` is not a second definition. Imports resolve through relative paths,
+  `tsconfig.json` `paths` and `baseUrl`, and a workspace package linked into `node_modules` resolves
+  to its source; installed packages are skipped. Rename one, or alias both imports.
 
 ## Inside tests
 
@@ -209,7 +274,19 @@ alone.
 - `nitpicker/no-fixed-sleep-synchronization` (existing, extended): besides `await sleep()` and
   `await new Promise((resolve) => setTimeout(resolve, n))`, it also flags
   `setTimeout(() => resolve(), n)`, `await setTimeout(n)` from `node:timers/promises` and
-  `scheduler.wait(n)`. Wait on a condition with `vi.waitFor` or `expect.poll`.
+  `scheduler.wait(n)`. Wait on a condition with `vi.waitFor` or `expect.poll`. It also flags waits
+  on wall-clock time. A timeout-based negative assertion, `expect(waitFor(...)).rejects`,
+  `expect(vi.waitFor(...)).rejects` or `expect(screen.findByRole(...)).rejects` (a `findBy*` or
+  `findAllBy*` call on `screen`, on a `within(...)` result or on a render result, or a bare
+  `waitFor`; awaited or not, also through a `const`; a data-layer `repo.findByEmail(...)` is not),
+  passes only after the full wait times out, so it is slow and depends on the delay: advance fake
+  timers past the delay (`vi.advanceTimersByTime`) and assert absence at once
+  (`expect(screen.queryByRole('tooltip')).toBeNull()`). Playwright `<anything>.waitForTimeout(n)`
+  and Cypress `cy.wait(500)` (a number literal, or a `const` bound to a number; `cy.wait('@alias')`
+  is fine, and so is `cy.wait(0)`) are flagged too: wait on a condition (`await expect(locator).toBeVisible()`,
+  `cy.wait('@request')`). The rule covers every test-area file: the test roots (e2e folders under
+  them included), `*.test.*`/`*.spec.*` next to sources, and `__tests__` directories (their
+  fixtures are skipped). A wait that cannot be avoided gets an exception for the rule.
 - `nitpicker/no-raised-test-timeout`: no test, suite or hook timeout above 10 000 ms. That is the
   `testTimeout` nitpicker runs a project's tests with (`languages/typescript/preset/defaults/vitest.quality.config.ts`, which
   Stryker also uses, and the coverage runner's `--testTimeout`; a test keeps them in step).
@@ -365,6 +442,37 @@ off (a PR that adds or removes React keeps linting on both sides); a misspelled 
   in any module: `declare module 'csstype' { interface Properties { '--progress'?: number } }`
   (needs `csstype` installed; `interface` is allowed in that augmentation). This is the default
   because inline `style` objects are the usual agent slop.
+- **No hard-coded colors** (`nitpicker/react-no-hardcoded-colors`). Every production source file
+  of the scope is checked (`.ts` and `.mjs` helpers included; tests and story files,
+  `*.stories.*` and `*.story.*`, are not; the story pattern is `storyGlobs` in
+  `eslint-config/scope-support.mjs`, shared with the i18n scope). A whole string that is a 6- or
+  8-digit hex color (`'#336699'`) or a color function with
+  literal arguments (`rgb()`, `rgba()`, `hsl()`, `hsla()`, `hwb()`, `lab()`, `lch()`, `oklab()`,
+  `oklch()`, `color(display-p3 ...)`) is reported anywhere. A 3- or 4-digit hex (`'#add'`) and a
+  named color (`red`, `gray`) are reported only in a color position, so ids, hashes and anchors
+  that happen to look like colors are left alone. The color positions are:
+  - the value of `color`, `backgroundColor`, `background`, `borderColor`, `fill`, `stroke`,
+    `outlineColor`, `textDecorationColor` or `caretColor`, as an object key or as a JSX attribute
+    (`<svg fill="red">`). A named color under such a key is reported only in a JSX attribute or in
+    a style context, so domain data such as `{ name: 'Tee', color: 'black' }` passes;
+  - a style context: the JSX `style`, `sx` and `css` attributes, an object passed to `styled`,
+    `css`, `keyframes`, `createGlobalStyle` or `StyleSheet.create`, and an object typed or
+    asserted as `CSSProperties` and similar style types. Compound values are checked there
+    (`border: '1px solid #ccc'`, `boxShadow: '0 0 4px rgba(0, 0, 0, 0.2)'`);
+  - the text of a `styled.x`, `styled(X)`, `css`, `keyframes` or `createGlobalStyle` template
+    (comments and `url(#id)` references are ignored), where a named color is reported as the
+    whole value of a color property (`color: red;`, `background-color: white !important;`);
+  - a CSS declaration in any other string or template, with a color-bearing property name at the
+    start or after `;` or `{` (`'border: 1px solid #ccc'`, `'a:1; --brand: #336699'`), so prose
+    such as `'Invalid color: #fff is not allowed'` passes, and a Tailwind arbitrary value
+    (`bg-[#336699]`, `bg-[rgb(0,0,0)]`).
+
+  Prose that mentions a color function (`'Use rgb(255, 0, 0) format'`), `rgb(var(--brand-rgb))`,
+  `transparent`, `currentColor`, `inherit`, `initial` and `unset` are fine. Take the color from the
+  theme or palette (a theme token, a CSS variable, `currentColor`). The file or folder that
+  defines the palette gets one exception for the rule (`src/theme/**`); there is no filename
+  heuristic.
+
 - **One optional input per concept** (`nitpicker/no-singular-and-plural-prop`). A component's props
   type (or an exported `*Props` type) that declares both `tag?: string` and `tags?: string[]` offers
   two ways to pass the same data. The rule reports the plural when both props are optional and the
@@ -402,6 +510,9 @@ off (a PR that adds or removes React keeps linting on both sides); a misspelled 
   file; the message carries the exact entry:
   `{"rule":"component-story-missing","paths":["src/Card.tsx"],"reason":"..."}`.
 - **Accessibility** (`jsx-a11y/*`): the recommended `eslint-plugin-jsx-a11y` rule set, as errors.
+  `jsx-a11y/mouse-events-have-key-events` is configured beyond the recommended default, which only
+  checks `onMouseOver`/`onMouseOut`: `onMouseEnter` also needs `onFocus` and `onMouseLeave` also
+  needs `onBlur`, so hover-only cards are caught.
 - **`null` for refs and contexts.** `null` stays banned, except as the argument and the type
   argument of `useRef` and `createContext` (`useRef<HTMLDivElement>(null)`,
   `createContext<Theme | null>(null)`), where React's types need it.
@@ -432,6 +543,35 @@ off (a PR that adds or removes React keeps linting on both sides); a misspelled 
   reports the first hover when none appears: add a test that tabs to the element and asserts the
   same state. A hover-only control gets an exception. A project with
   `@testing-library/react-native` keeps `testID` queries, the idiom there.
+- **Use the library's component** (`redefined-library-component`, reported by the `structure`
+  check). A component definition (a top-level PascalCase function, or `const` arrow function,
+  function expression, `memo` or `forwardRef`, in a `.tsx` or `.jsx` file) whose name is one that
+  production files render from a package is reported, for example a second `Card` when `<Card />`
+  from `@acme/ui` is rendered in several files. A name counts only when the package is listed in the
+  `package.json` of the file (or the project root), so a bundler alias such as `@components/Button`
+  is not a package, and only when the project uses it as a JSX element, so a `Request` or an ORM
+  `Table` that is never rendered does not. Names come from named imports rendered as a top-level
+  element (the imported name, not the local alias) and a default import of a deep path whose last
+  segment is the local name (`import Button from '@mui/material/Button'`); a namespace member
+  (`<Tabs.List />`) and the icon packages of `scopePackages.icons` (an imported `Search` icon) do
+  not count. Relative imports, `tsconfig.json` aliases such as `@/` and `~/`, and type-only imports
+  are not packages. A file that imports anything from a package that exports the name, directly or
+  through project modules that re-export it (a `../ui` barrel over `@acme/ui`), is not reported: it
+  is a wrapper. A workspace package counts as a library, but its own components are not reported
+  against it. Use the library's component, compose it under a different name, or rename the new one.
+- **Use the icon library** (`new-icon-asset`, reported by the `structure` check). An icon-sized
+  `.svg` file (a `viewBox`, or without one a `width` and `height`, of 48 or less in both dimensions;
+  logos and illustrations are larger, and a sprite sheet with neither is not an icon) under the
+  source roots is reported when `package.json` lists an icon package, one of the names in
+  `scopePackages.icons` in `languages/typescript/preset/eslint-config/scope-support.mjs`
+  (`lucide-react`, `react-icons`, `@heroicons/react`, `@mui/icons-material`, `@tabler/icons-react`,
+  `@phosphor-icons/react`, ...). The framework favicon conventions (`icon.svg`, `favicon.svg`,
+  `apple-icon.svg`), names with `logo` or `brand` in them, and generated, test, excluded,
+  `__mocks__/`, `__fixtures__/`, `fixtures/` and `stories/` folders are skipped, and the extension
+  matches in any case. Both the React scope and the icon package are read once from the head
+  checkout and written into the head policy for both sides, like `react.enabled`, so a pull request
+  that adopts an icon package does not report every old svg. Existing files are baselined by path. A
+  new icon or illustration that is a design decision needs an exception for the file.
 
 The plugins are `eslint-plugin-react-hooks`, `eslint-plugin-react-x` (from eslint-react),
 `eslint-plugin-jsx-a11y-x` and `eslint-plugin-testing-library` (whose peer range includes ESLint 10). `eslint-plugin-react` and `eslint-plugin-jsx-a11y` declare no ESLint 10
@@ -522,6 +662,65 @@ Off, with the reason:
 - `formatjs/enforce-message-types`: without its type generation option it repeats
   `enforce-placeholders`, so every missing value would be reported twice.
 
+## No prop, option or export without a caller
+
+New public surface that nothing uses is rejected in review, so it is a check. A finding names the
+symbol (`Button.tone`, `useFetch.timeout`, an export's name) and fails only when the change adds it,
+or removes the last caller that used it. Each message names the allowed form (remove it, or use it
+from a real caller) and the `exceptions` entry that lifts it.
+
+- **Unused props** (`unused-prop`, React scope only). A prop that a component's props type declares
+  in the project's own files (a type literal, interface or alias, through intersections, `Pick`,
+  `Omit` and `Partial`) and that no caller passes. Members that come from a library type
+  (`ButtonHTMLAttributes`, `PropsWithChildren`) are not checked. A caller passes a prop with a JSX
+  attribute, a spread of an object literal, or the props object of `createElement` and the JSX
+  runtime calls; `children` is passed by JSX children. A spread of anything else
+  (`{...rest}`) passes every prop. Keys of `X.defaultProps` count as passed, and so do the props
+  that any `cloneElement` call sets, for every component (a `cloneElement` whose props are not an
+  object literal passes every prop of every component). Components are found as function
+  declarations and `const` functions in `.tsx` files, also inside `memo` and `forwardRef`, and
+  callers are found through imports, aliases, namespaces and barrels. A component that nothing
+  renders is not judged.
+- **Unused options** (`unused-option`). A property of the options parameter of an exported function
+  that no call sets. The parameter is the one named `options`, `opts`, `config`, `settings`,
+  `params`, `args`, typed `...Options`, `...Opts`, `...Config` or `...Settings`, or destructured in
+  the signature. A call sets the properties of its object-literal argument; any other argument, or a
+  spread before it, sets all of them. A function nothing calls is not judged.
+- **Only the type of one component or function.** A props or options type that several
+  declarations use (a domain type such as `Rect` or `User`, a shared `PluginOptions`) is not judged:
+  each of them may read a different subset of it. A parameter typed by a type parameter is not
+  judged either.
+- **Exports and modules only tests import** (`test-only-export`). Reported by the `dead-code` check
+  from knip itself: a second knip run with the normal config minus test and story files, test
+  entries and test-runner plugins (scripts in `package.json`, tool configs such as
+  `vite.config.ts`, `bin` and `exports` stay entries) lists what production code does not use, and
+  what the normal run does not list is used only by tests. That covers whole modules too: a module
+  that only tests import should move to a `test-support/` folder, and modules under `test-support/`
+  are not reported.
+- **Callers the check cannot see.** A component or function that is used as a value (passed as
+  `component={X}`, put in a route or config object, `.call`ed, mapped over, assigned) is left alone,
+  as are all exports of a module that is loaded with `import()` or `require()` (`lazy`, route
+  loaders) or used as a namespace value. An `import()` of a template literal leaves every module
+  under its static prefix alone (``import(`./pages/${name}`)``), and `import.meta.glob` every
+  module it matches. Generated files (`@generated`, "do not edit" in the first lines), declaration
+  files, and test, story and `test-support/` files do not declare checked props. JavaScript files,
+  root tool configs (`vite.config.ts`) and `scripts/` count as callers even when the `tsconfig`
+  does not include them.
+- **Private and published packages.** A package is published when its `package.json` has a name,
+  no `"private": true`, and says what it ships (`main`, `exports`, `bin`, `files` or
+  `publishConfig`); it can have callers outside the repository. Its own tests, stories and examples
+  count as callers, so a new public prop or option must at least be exercised there, and its
+  `test-only-export` findings are not reported. In any other package, or an app whose manifest has
+  no name, only production callers count: a prop that only a test or story passes fails. Callers
+  in the other packages of an npm, Yarn or pnpm workspace count for the package that declares the
+  prop; a package name resolves to the source file its `package.json` names, or else to the
+  `index` of a source root, and `name/*` resolves into the source roots.
+- **Failures.** A `tsconfig` that TypeScript cannot read, or any other failure of the check, is a
+  tool error of `structure` (or of `dead-code` for the second knip run); the other findings of the
+  analyzer are still reported.
+- Exceptions use the rule ids `unused-prop`, `unused-option` and `test-only-export` with the file
+  that declares the symbol.
+
 ## How it is enforced
 
 - `languages/typescript/preset/defaults/eslint.config.mjs` (the `eslint-lint` analyzer) adds `strictPresetConfig()` from
@@ -563,6 +762,9 @@ Off, with the reason:
   code, and keep such exceptions narrow.
 - The file limits (`file-lines-limit`, `line-length-limit`, `folder-files-limit`) take exceptions the
   same way; each failure message spells out the entry that would lift it.
+- The reuse rules (`shared-used-by-one-feature`, `duplicate-definition`, `exported-name-collision`,
+  `redefined-library-component`, `new-icon-asset`) come from the `coupling` and `structure` checks,
+  not from ESLint, and take exceptions the same way; the JavaScript preset runs them too.
 - `layout.excludedGlobs`, `layout.entryPoints` and `layout.sourceRoots`/`layout.testRoots` are all valid `layout` keys. The
   roots must be directories; `excludedGlobs` are globs and replace the built-in exclusions;
   `entryPoints` are globs added to knip's entries for files that are loaded by path, not imported;
