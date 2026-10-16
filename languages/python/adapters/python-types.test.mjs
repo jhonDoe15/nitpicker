@@ -1,7 +1,9 @@
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
+import { jscpdVersion } from '../../java/adapters/metrics/java-duplicates.mjs';
 import { createFakeProjects } from './test-support/fake-project.mjs';
+import { toolVersions } from './python-tools.mjs';
 import { pyrightConfig, resolveTypeChecker, typeCheck } from './python-types.mjs';
 
 const fakes = createFakeProjects();
@@ -64,6 +66,20 @@ describe('choosing the type checker', () => {
     expect(resolveTypeChecker(fakes.contextFor(both).context)).toBe('mypy');
     expect(resolveTypeChecker(fakes.contextFor(pyrightOnly).context)).toBe('pyright');
     expect(resolveTypeChecker(fakes.contextFor(neither).context)).toBeUndefined();
+  });
+
+  it('detects basedpyright from its table or its dependency name', () => {
+    const detect = (files) => resolveTypeChecker(fakes.contextFor(fakes.project(files)).context);
+
+    expect(detect({ 'pyproject.toml': '[tool.basedpyright]\n' })).toBe('basedpyright');
+    expect(detect({ 'pyproject.toml': 'dev = ["basedpyright>=1.20"]\n' })).toBe('basedpyright');
+  });
+
+  it('takes the installed basedpyright when the project says nothing and mypy is missing', () => {
+    const basedOnly = fakes.project({}, { tools: ['basedpyright', 'python'] });
+    setEnvironment('PATH', fakes.temporaryRoot());
+
+    expect(resolveTypeChecker(fakes.contextFor(basedOnly).context)).toBe('basedpyright');
   });
 
   it('finds none when neither is installed', () => {
@@ -171,7 +187,7 @@ describe('running mypy', () => {
     expect(() => {
       typeCheck(context);
     }).toThrow(
-      'No type checker found in the virtualenv environment: install mypy or pyright there, or set "python.typeChecker" in nitpicker.config.json',
+      'No type checker found in the virtualenv environment: install mypy, pyright or basedpyright there, or set "python.typeChecker" in nitpicker.config.json',
     );
   });
 
@@ -200,6 +216,73 @@ describe('running mypy', () => {
   });
 });
 
+describe('running basedpyright', () => {
+  it('runs it with the same strict project file as pyright', () => {
+    const logFile = logged();
+    const root = fakes.project({ 'pyright.json': '{"generalDiagnostics":[]}' });
+    const { context, reportRoot } = fakes.contextFor(root, { typeChecker: 'basedpyright' });
+
+    typeCheck(context);
+
+    expect(report(reportRoot)).toEqual({
+      checker: 'basedpyright',
+      output: '{"generalDiagnostics":[]}',
+    });
+    const [call] = fakes.calls(logFile).filter(({ args }) => args.includes('--outputjson'));
+    expect([call.tool, call.args]).toEqual([
+      'basedpyright',
+      ['--outputjson', '--project', path.join(reportRoot, 'pyrightconfig.json')],
+    ]);
+    expect(JSON.parse(readFileSync(path.join(reportRoot, 'pyrightconfig.json'), 'utf8'))).toEqual({
+      typeCheckingMode: 'strict',
+      enableTypeIgnoreComments: false,
+      ignore: [],
+      executionEnvironments: [],
+      exclude: ['**/node_modules', '**/__pycache__', '**/.*'],
+      include: [path.relative(reportRoot, path.join(root, 'src'))],
+      extraPaths: [path.join(root, 'src')],
+    });
+  });
+
+  it('extends the project file or the pyproject table it reads', () => {
+    const configOf = (files) => {
+      const root = fakes.project(files);
+      return [root, pyrightConfig(fakes.contextFor(root).context, 'basedpyright').extends];
+    };
+    const [fileRoot, fromFile] = configOf({
+      'pyrightconfig.json': '{}',
+      'pyproject.toml': '[tool.basedpyright]\n',
+    });
+    const [ignoredRoot, fromIgnored] = configOf({
+      'basedpyrightconfig.json': '{}',
+      'pyproject.toml': '[tool.basedpyright]\n',
+    });
+    const [tableRoot, fromTable] = configOf({ 'pyproject.toml': '[tool.basedpyright]\n' });
+    const [sharedRoot, fromShared] = configOf({ 'pyproject.toml': '[tool.pyright]\n' });
+    const [, fromNothing] = configOf({ 'pyproject.toml': '[tool.black]\n' });
+
+    expect(fromFile).toBe(path.join(fileRoot, 'pyrightconfig.json'));
+    expect(fromIgnored).toBe(path.join(ignoredRoot, 'pyproject.toml'));
+    expect(fromTable).toBe(path.join(tableRoot, 'pyproject.toml'));
+    expect(fromShared).toBe(path.join(sharedRoot, 'pyproject.toml'));
+    expect(fromNothing).toBeUndefined();
+  });
+
+  it('names its version in the tool versions', () => {
+    const root = fakes.project({ 'conftest.py': '' });
+
+    expect(toolVersions(fakes.contextFor(root, { typeChecker: 'basedpyright' }).context)).toBe(
+      `ruff@0.9.9;basedpyright@1.40.2;coverage@7.6.1;pytest@8.3.1;jscpd@${jscpdVersion()}`,
+    );
+  });
+
+  it('leaves pyright alone with a basedpyright-only table', () => {
+    const root = fakes.project({ 'pyproject.toml': '[tool.basedpyright]\n' });
+
+    expect(pyrightConfig(fakes.contextFor(root).context)).not.toHaveProperty('extends');
+  });
+});
+
 describe('running pyright', () => {
   it('runs it with a strict project file in the report directory', () => {
     const logFile = logged();
@@ -222,6 +305,7 @@ describe('running pyright', () => {
       typeCheckingMode: 'strict',
       enableTypeIgnoreComments: false,
       ignore: [],
+      executionEnvironments: [],
       exclude: ['**/node_modules', '**/__pycache__', '**/.*'],
       include: [path.relative(reportRoot, path.join(root, 'src'))],
       extraPaths: [path.join(root, 'src')],
@@ -253,6 +337,7 @@ describe('running pyright', () => {
       typeCheckingMode: 'strict',
       enableTypeIgnoreComments: false,
       ignore: [],
+      executionEnvironments: [],
       exclude: [
         '**/node_modules',
         '**/__pycache__',
@@ -273,6 +358,7 @@ describe('running pyright', () => {
       typeCheckingMode: 'strict',
       enableTypeIgnoreComments: false,
       ignore: [],
+      executionEnvironments: [],
       exclude: ['**/node_modules', '**/__pycache__', '**/.*'],
       include: [
         path.relative(reportRoot, path.join(root, 'pkg')),
