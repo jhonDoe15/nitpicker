@@ -115,6 +115,95 @@ describe('ingestCrap', () => {
     ]);
   });
 
+  describe('a constructor whose JaCoCo method starts at a field initializer', () => {
+    const jacocoConstructor = (descriptor, line) =>
+      [
+        '<report name="demo"><package name="demo">',
+        '<class name="demo/Service" sourcefilename="Service.java">',
+        `<method name="&lt;init&gt;" desc="${descriptor}" line="${line}">`,
+        '<counter type="LINE" missed="0" covered="4"/>',
+        '</method></class></package></report>',
+      ].join('');
+    const constructor = (parameterTypes) => ({
+      file: 'src/main/java/demo/Service.java',
+      name: 'Service.Service',
+      start: 15,
+      end: 20,
+      complexity: 12,
+      signature: `Service.Service(${parameterTypes.join(', ')})`,
+      parameterTypes,
+    });
+
+    it('is joined by its parameter types, not by the line of the initializer', () => {
+      const findings = ingest(
+        [constructor(['Clock'])],
+        jacocoConstructor('(Ljava/time/Clock;)V', 12),
+      );
+
+      expect(findings.map((f) => `${f.rule} ${f.symbol}`)).toEqual([
+        'crap-score-limit Service.Service(Clock)',
+      ]);
+    });
+
+    it('joins generic, array, primitive and erased type-variable parameters', () => {
+      const declared = ['List', 'int[]', 'Object', 'Entry'];
+      const descriptor = '(Ljava/util/List;[ILjava/lang/Object;Ljava/util/Map$Entry;)V';
+
+      expect(
+        ingest([constructor(declared)], jacocoConstructor(descriptor, 3)).map((f) => f.rule),
+      ).toEqual(['crap-score-limit']);
+    });
+
+    it('joins an enum or inner constructor, whose descriptor has leading synthetic parameters', () => {
+      const descriptor = '(Ljava/lang/String;ILjava/lang/String;)V';
+
+      expect(
+        ingest([constructor(['String'])], jacocoConstructor(descriptor, 3)).map((f) => f.rule),
+      ).toEqual(['crap-score-limit']);
+    });
+
+    it('does not join another constructor of the class', () => {
+      const findings = ingest(
+        [constructor(['Clock'])],
+        jacocoConstructor('(Ljava/lang/String;)V', 12),
+      );
+
+      expect(findings.map((f) => f.rule)).toEqual(['crap-coverage-unknown']);
+    });
+
+    it('does not join a constructor with a different number of parameters', () => {
+      const findings = ingest([constructor(['Clock'])], jacocoConstructor('()V', 12));
+
+      expect(findings.map((f) => f.rule)).toEqual(['crap-coverage-unknown']);
+    });
+
+    it('does not join a primitive to an erased type variable', () => {
+      const findings = ingest([constructor(['Object'])], jacocoConstructor('(I)V', 12));
+
+      expect(findings.map((f) => f.rule)).toEqual(['crap-coverage-unknown']);
+    });
+  });
+
+  it('says in the Java text that JaCoCo has no data, and names @Generated', () => {
+    const unknown = ingest().find((f) => f.rule === 'crap-coverage-unknown');
+
+    expect(unknown.message).toBe(
+      'Calc.Inner.get(int) has unknown coverage and no CRAP score: JaCoCo has no data for it, so no test runs it or it is annotated @Generated. Add a test that calls it, and remove @Generated from hand-written code.',
+    );
+  });
+
+  it('asks a fully covered method over the limit to reduce its branches', () => {
+    const covered = fixture('jacoco-crap.xml').replace(
+      '<counter type="LINE" missed="11" covered="1"/>\n        <counter type="BRANCH" missed="14" covered="2"/>',
+      '<counter type="LINE" missed="0" covered="12"/>',
+    );
+    const score = ingest(undefined, covered).find((f) => f.rule === 'crap-score-limit');
+
+    expect(score.message).toBe(
+      'Calc.classify(int, int, String) has CRAP 9.00 although tests cover it; score must be below 9. Reduce its branches: split a branchy part into its own function.',
+    );
+  });
+
   describe('an edited method over the limit', () => {
     const scoreFinding = (findings) => findings.find((f) => f.rule === 'crap-score-limit');
     const withHash = (sourceHash, entries = structure()) =>

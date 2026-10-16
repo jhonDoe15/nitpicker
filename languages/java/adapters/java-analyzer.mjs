@@ -20,8 +20,15 @@ const RESOURCE_FILES = [
   'languages/java/gradle/spring-ruleset.xml',
   'languages/java/gradle/StructureMetrics.java',
   'languages/java/gradle/KotlinMetrics.java',
+  'languages/java/gradle/errorprone/error-prone.gradle',
+  'languages/java/gradle/errorprone/checks.json',
+  'languages/java/adapters/overlaps/overlap-pairs.json',
+  'languages/java/gradle/errorprone/ErrorProneReport.java',
   'languages/java/detekt/nitpicker-detekt.yml',
   'languages/java/detekt/detekt-validation.yml',
+  'languages/java/messages/pmd.json',
+  'languages/java/messages/checkstyle.json',
+  'languages/java/messages/spotbugs.json',
 ];
 
 function configurationContents() {
