@@ -15,11 +15,13 @@ const EXCEPTION = 'add an exception for this rule in nitpicker.config.json.';
 const POLICY = `import tseslint from ${JSON.stringify(import.meta.resolve('typescript-eslint'))};
 import { rule as singularAndPlural } from ${ruleUrl('react-props/no-singular-and-plural-prop.mjs')};
 import { rule as exclusiveProps } from ${ruleUrl('react-props/no-runtime-exclusive-props-check.mjs')};
+import { rule as unionPredicate } from ${ruleUrl('api-shape/exhaustive-union-predicate.mjs')};
 
 const nitpicker = {
   rules: {
     'no-singular-and-plural-prop': singularAndPlural,
     'no-runtime-exclusive-props-check': exclusiveProps,
+    'exhaustive-union-predicate': unionPredicate,
   },
 };
 
@@ -31,6 +33,7 @@ export default [
     rules: {
       'nitpicker/no-singular-and-plural-prop': 'error',
       'nitpicker/no-runtime-exclusive-props-check': 'error',
+      'nitpicker/exhaustive-union-predicate': 'error',
     },
   },
 ];
@@ -103,7 +106,7 @@ describe('nitpicker rule messages through the oxlint engine', () => {
     expect(messages).toEqual(expected);
   });
 
-  it('runs no ESLint residual pass when no rule needs the type checker', () => {
-    expect(residualRules).toBeUndefined();
+  it('hands only the type-aware rule to the ESLint residual pass, where its message is kept', () => {
+    expect(residualRules).toEqual(['nitpicker/exhaustive-union-predicate']);
   });
 });

@@ -160,6 +160,18 @@ export const failureMessageCases = [
       "type Shape = { kind: 'a' } | { kind: 'b' };\nexport function read(shape: Shape) { switch (shape.kind) { case 'a': return 1; } return 0; }",
     allowed: 'exhaustive',
   },
+  ...[
+    ['partial union test names the switch', 'switch'],
+    ['partial union test names the Record lookup', 'Record<Union, boolean>'],
+    ['partial union test names the config exception', 'nitpicker.config.json'],
+  ].map(([name, allowed]) => ({
+    name,
+    config: typedStrictConfig,
+    filename: path.resolve('src/fixture.ts'),
+    banned:
+      "type Kind = 'a' | 'b' | 'c';\nexport const isEarly = (kind: Kind) => kind === 'a' || kind === 'b';",
+    allowed,
+  })),
   ...domainFailureMessageCases,
   {
     name: 'domain recursion names flatMap',

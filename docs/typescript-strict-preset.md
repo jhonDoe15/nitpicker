@@ -128,6 +128,24 @@ sum + x, 0)`), `Object.fromEntries`, and `Object.groupBy`. No loops, `forEach`, 
 - Named exports only; config files are exempt.
 - Early returns; no `else` after a `return`; no nested ternaries.
 - A `switch` over a discriminated union must handle every case.
+- `nitpicker/exhaustive-union-predicate` (type-aware): no `||` chain of `===` (or `&&` chain of
+  `!==`) that compares one plain reference (`kind`, `props.kind`) with some string or number
+  literals of a union that has at least three members, when the chain is a predicate's value: an
+  arrow body, a `return`, or a value stored in a variable or assigned (also inside `!`, another
+  `&&`/`||` or a ternary branch). A chain used as the condition of an `if`, `while`, `for` or
+  ternary is ordinary narrowing and is not reported, and neither is a call argument. Allowed forms: a `switch` over the union with no `default`, or a
+  `Record<Union, boolean>` lookup, so adding a member fails to compile. A subset check such as
+  `status === 'open' || status === 'pending'` on a project union of three or more members is the
+  case this reports. The message names the union by its alias (`Kind`) when the value's declared type
+  has one, also after the value was narrowed or when it is `Kind | undefined`; an inline union is
+  reported as "the union". It is not reported when the union comes from a library (its alias, or the
+  property it is read from, is declared in `node_modules` or the default library, including a local
+  binding or destructured parameter that holds a library value), when the comparison is on a
+  property of a union-typed object (`event.type === 'a' || event.type === 'b'`, which narrows a
+  discriminated union), or inside a function whose return type is a type predicate (`kind is
+  'a' | 'b'`), which names the subset in its type. The type is read at the first comparison, so an
+  earlier guard that already narrowed the union can shrink it below three members. Add an exception
+  for the rule when a partial test is intended.
 - No `as`, `any`, or non-null assertions.
 - `undefined` only for absent values. `null` only where a library or JSON requires it.
 - No comments, except doc comments (`/** ... */`) on exported declarations and the members of

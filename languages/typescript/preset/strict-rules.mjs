@@ -13,6 +13,7 @@ export const strictEslintRuleIds = [
   'functional/no-let',
   'functional/no-this-expressions',
   'functional/prefer-immutable-types',
+  'nitpicker/exhaustive-union-predicate',
   'nitpicker/hermetic-git-in-tests',
   'nitpicker/no-branch-in-composition-root',
   'nitpicker/no-comments',
