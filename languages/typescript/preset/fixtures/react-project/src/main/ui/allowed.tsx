@@ -1,8 +1,9 @@
 import { useRef, useState } from 'react';
+import type { ReactElement } from 'react';
 
 type Item = { readonly id: string; readonly label: string };
 
-export function Counter({ items }: { readonly items: readonly Item[] }) {
+export function Counter({ items }: { readonly items: readonly Item[] }): ReactElement {
   const [count, setCount] = useState(0);
   const total = count * items.length;
   const list = useRef<HTMLUListElement>(null);
