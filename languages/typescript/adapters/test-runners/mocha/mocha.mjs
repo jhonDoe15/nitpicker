@@ -12,6 +12,9 @@ import {
 } from '../test-run.mjs';
 import { loadFailureReport, reportFromMocha } from './mocha-report.mjs';
 import { existsSync } from 'node:fs';
+import path from 'node:path';
+
+export const RESTORE_SINON_PLUGIN = path.join(import.meta.dirname, 'restore-sinon.mjs');
 
 const OPTIONS_NITPICKER_SETS = {
   flags: ['--watch', '-w', '--forbid-only', '--bail', '-b'],
@@ -53,6 +56,8 @@ export async function runMocha(options, command) {
       environment: coverage.environment,
       arguments_: [
         ...withoutOptions(command.arguments_, OPTIONS_NITPICKER_SETS),
+        '--require',
+        RESTORE_SINON_PLUGIN,
         '--reporter',
         'json',
         '--reporter-option',
