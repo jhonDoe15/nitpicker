@@ -1,7 +1,7 @@
 import tseslint from 'typescript-eslint';
 import { nitpickerRules } from '../../eslint-plugin/index.mjs';
 import { functionalPlugin } from '../../eslint-plugin/type-identity/functional-plugin.mjs';
-import { codeExtensions, excludedGlobs } from '../../layout.mjs';
+import { codeExtensions, builtInExcludedGlobs } from '../../layout.mjs';
 
 export function domainGlobsFor(sourceRoots) {
   return sourceRoots.map((root) => `${root}/main/features/*/domain/**/*.${codeExtensions}`);
@@ -109,7 +109,7 @@ export const domainTypeAwareFunctionalRules = {
 };
 
 export const strictDomainConfig = [
-  { ignores: excludedGlobs },
+  { ignores: builtInExcludedGlobs },
   {
     files: domainGlobs,
     languageOptions: { parser: tseslint.parser },

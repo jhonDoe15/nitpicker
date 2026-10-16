@@ -1,5 +1,6 @@
-import { existsSync, readdirSync } from 'node:fs';
+import { existsSync } from 'node:fs';
 import path from 'node:path';
+import { filesUnder } from '../../../shared/filesystem.mjs';
 import { escapeRegExp, globToRegExp, globToRegExpSource } from '../../../shared/glob.mjs';
 import {
   isJavascriptPolicy,
@@ -180,24 +181,18 @@ function codeFilesUnder(layout, projectRoot, roots) {
 }
 
 function codeFilesUnderRoot(layout, projectRoot, root) {
-  const files = [];
-  const pending = [root];
-  for (const relative of pending) {
-    const entries = readdirSync(path.join(projectRoot, relative), { withFileTypes: true })
-      .map((entry) => ({ entry, name: relative ? `${relative}/${entry.name}` : entry.name }))
-      .filter(({ name }) => !GENERATED_PATH.test(name));
-    pending.push(...entries.filter(({ entry }) => entry.isDirectory()).map(({ name }) => name));
-    files.push(...entries.filter((item) => isCodeFile(layout, item)).map(({ name }) => name));
-  }
-  return files;
+  const relativeOf = (absolute) => toPosix(path.relative(projectRoot, absolute));
+  return [
+    ...filesUnder(path.join(projectRoot, root), {
+      skipDirectory: (absolute) => GENERATED_PATH.test(relativeOf(absolute)),
+    }),
+  ]
+    .map(relativeOf)
+    .filter((name) => !GENERATED_PATH.test(name) && isCodeFile(layout, name));
 }
 
-function isCodeFile(layout, { entry, name }) {
-  return (
-    entry.isFile() &&
-    (layout.isSourceFile(name) || layout.isTestFile(name)) &&
-    !layout.isExcluded(name)
-  );
+function isCodeFile(layout, name) {
+  return (layout.isSourceFile(name) || layout.isTestFile(name)) && !layout.isExcluded(name);
 }
 
 export function existingRoots(projectRoot, roots) {
@@ -217,6 +212,5 @@ export const sourceRoots = defaults.sourceRoots;
 export const testRoots = defaults.testRoots;
 export const sourceGlobs = defaults.sourceGlobs;
 export const testGlobs = defaults.testGlobs;
-export const excludedGlobs = defaults.excludedGlobs;
 export const isTestFile = defaults.isTestFile;
 export const isSourceFile = defaults.isSourceFile;

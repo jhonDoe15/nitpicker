@@ -7,12 +7,12 @@ import {
 } from '../../../shared/head-policy.mjs';
 import { isJavascriptPolicy } from '../../javascript/preset/javascript-preset.mjs';
 import { hasScopePackage, scopePackage } from './eslint-config/scope-support.mjs';
-import { excludedGlobs, resolveLayout, sourceRoots, testRoots } from './layout.mjs';
+import { builtInExcludedGlobs, resolveLayout, sourceRoots, testRoots } from './layout.mjs';
 import { prettierConventionOptions } from '../conventions/prettier-conventions.mjs';
 
 export { headPolicyEnvironment, withHeadPolicyFile } from '../../../shared/head-policy.mjs';
 
-export const defaultLayout = { sourceRoots, testRoots, excludedGlobs };
+export const defaultLayout = { sourceRoots, testRoots, excludedGlobs: builtInExcludedGlobs };
 
 const PRETTIER_PROJECT_FILES = [
   '.prettierrc',

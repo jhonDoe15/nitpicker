@@ -2,6 +2,7 @@ import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import {
+  builtInExcludedGlobs,
   defaultResolvedLayout,
   globToRegExp,
   sourceGlobs,
@@ -30,6 +31,23 @@ describe('common layout', () => {
     }
     expect(duplicates.path).toContain(sourceRoot);
     expect(duplicates.path).toContain(testRoots[0]);
+  });
+  it('keeps the output folders of every tool config equal to the built-in exclusions', () => {
+    const defaults = path.join(import.meta.dirname, 'defaults');
+    const read = (name) => readFileSync(path.join(defaults, name), 'utf8');
+    const outputGlobs = (globs) => globs.filter((glob) => /^\*{0,2}\/?\w+\/\*\*$/u.test(glob));
+    const builtIn = [...builtInExcludedGlobs].sort();
+
+    for (const name of ['tsconfig.quality.json', 'tsconfig.stryker.json']) {
+      expect([...JSON.parse(read(name)).exclude].sort(), name).toEqual(builtIn);
+    }
+    expect(outputGlobs(JSON.parse(read('jscpd.json')).ignore).sort()).toEqual(builtIn);
+    for (const glob of outputGlobs(JSON.parse(read('knip.json')).ignore)) {
+      expect(builtIn).toContain(glob);
+    }
+    for (const [, glob] of read('vitest.quality.config.ts').matchAll(/'(\w+\/\*\*)'/gu)) {
+      expect(builtIn).toContain(glob);
+    }
   });
   it('selects both conventional source and test locations without treating colocated tests as source', () => {
     expect([...new Set(sourceGlobs)].sort()).toEqual(['src/**/*.{ts,tsx,mts,cts,js,jsx,mjs,cjs}']);
