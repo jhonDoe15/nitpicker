@@ -816,8 +816,9 @@ A Checkstyle rule prints as its full check class, for example
   and `CollectorsToList` must not fire, and the lint on modules with a javac plug-in (`-Xplugin`),
   `--enable-preview`, a module descriptor with a sealed type across packages, a source root
   outside the project and Lombok with a package folder's `lombok.config` and a `@SuperBuilder`
-  warning. The `lint-not-run` path is unit-tested only: a source that
-  breaks the lint compile breaks `compileJava` first.
+  warning; `maven-preset.e2e.test.mjs` lints the same modules with Maven, Lombok included. The
+  `lint-not-run` path is unit-tested only: a source that breaks the lint compile breaks
+  `compileJava` first.
 - **Left out on purpose.** Lombok `@Data` (a record is the allowed form for data, but `@Data` on a
   JPA entity is common enough that blocking it needs its own decision), `java.util.Random`
   (`SecureRandom` is right for tokens, but a plain `Random` for sampling is legitimate and the
