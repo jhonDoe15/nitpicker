@@ -7,6 +7,7 @@ import {
 } from '../adapters/metrics/java-coupling.mjs';
 import { readJavaFileLimitFindings } from '../adapters/metrics/java-structure.mjs';
 import { kotlinModules, readKotlinMetrics } from '../adapters/kotlin/kotlin-metrics.mjs';
+import { readTestOnlyClassFindings } from '../adapters/review-rules/test-only-classes.mjs';
 
 const JDEPS_REPORT = 'jdeps.txt';
 const JDEPS_CLASSES = 'jdeps-classes.txt';
@@ -138,5 +139,6 @@ export function projectWideFindings(
       },
     }),
     ...couplingFindings(projectRoot, { projects, mergedRoot, manifest, kotlin }),
+    ...readTestOnlyClassFindings(projectRoot, { projects }),
   ];
 }
