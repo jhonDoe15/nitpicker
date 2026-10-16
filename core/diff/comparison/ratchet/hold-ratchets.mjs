@@ -33,30 +33,40 @@ export function holdRatchetedFindings({
   };
 }
 
+function roomTracker() {
+  const left = new Map();
+  function roomOf(candidate) {
+    return left.get(candidate) ?? candidate.ratchet.value;
+  }
+  function take(candidates, baseFinding, headFinding) {
+    const { value, divisible } = headFinding.ratchet;
+    if (divisible === true && value < roomOf(baseFinding)) {
+      left.set(baseFinding, roomOf(baseFinding) - value);
+      return;
+    }
+    candidates.splice(candidates.indexOf(baseFinding), 1);
+  }
+  return { roomOf, take };
+}
+
 function holdAgainst(headFindings, baseByRatchet, { touchedCode, matchedBase }) {
   const result = { unmatched: [], grew: [], heldFindings: [], matchedBase };
-  const left = new Map();
-  const room = (candidate) => left.get(candidate) ?? candidate.ratchet.value;
+  const rooms = roomTracker();
   for (const headFinding of headFindings) {
-    const candidates = holdCandidatesFor(headFinding, baseByRatchet, touchedCode);
+    const candidates = holdCandidatesFor(headFinding, baseByRatchet, touchedCode) ?? [];
     const baseFinding =
-      candidates === undefined || candidates.length === 0
+      candidates.length === 0
         ? undefined
-        : closestCandidate(candidates, headFinding.ratchet.value, room);
+        : closestCandidate(candidates, headFinding.ratchet.value, rooms.roomOf);
     if (baseFinding === undefined) {
       result.unmatched.push(headFinding);
       continue;
     }
-    const value = headFinding.ratchet.value;
-    if (value > room(baseFinding)) {
+    if (headFinding.ratchet.value > rooms.roomOf(baseFinding)) {
       result.grew.push(grewFinding(headFinding, baseFinding.ratchet.value));
       continue;
     }
-    if (headFinding.ratchet.divisible === true && value < room(baseFinding)) {
-      left.set(baseFinding, room(baseFinding) - value);
-    } else {
-      candidates.splice(candidates.indexOf(baseFinding), 1);
-    }
+    rooms.take(candidates, baseFinding, headFinding);
     result.matchedBase.add(baseFinding);
     result.heldFindings.push({ ...headFinding, heldAtBase: baseFinding.ratchet.value });
   }

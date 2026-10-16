@@ -101,7 +101,7 @@ With Spring on the classpath, also follow [spring.md](spring.md).
   slice instead of `@SpringBootTest`.
 - Tests get the PMD, Checkstyle and formatter checks of main code, with test rules in place of some
   main-code ones, plus the file (500 lines) and folder (6 files) limits. SpotBugs, the method
-  limits, CRAP and jscpd read main sources only. Spring rules apply to main sources only. If a PMD rule flags test code that is right, add an exception for `pmd/<rule>`.
+  limits, CRAP and jscpd read main sources only. Spring rules apply to main sources only.
 
 ## Editing existing code
 
