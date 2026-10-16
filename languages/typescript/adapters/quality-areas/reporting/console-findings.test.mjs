@@ -69,8 +69,8 @@ describe('console output findings', () => {
   });
 
   it.each([
-    ['Error: boom otdgex', 'Error: boom uuxpek'],
-    ["{ id: 'otdgex', n: 4 }", "{ id: 'uuxpek', n: 9 }"],
+    ['Error: boom kqzmwa', 'Error: boom xvbnrt'],
+    ["{ id: 'kqzmwa', n: 4 }", "{ id: 'xvbnrt', n: 9 }"],
   ])('does not treat %j as new when one random token changed', (before, after) => {
     expect(
       newMessages([entry('test/a.test.ts', before)], [entry('test/a.test.ts', after)]),
@@ -79,9 +79,28 @@ describe('console output findings', () => {
 
   it.each([
     ['Error: boom', 'Error: bang'],
-    ['Error: boom otdgex', 'Error: bang uuxpek'],
+    ['Error: boom kqzmwa', 'Error: bang xvbnrt'],
     ['level: warn code: OLD', 'level: warn code: FATAL extra: yes'],
   ])('treats %j then %j as a new message', (before, after) => {
+    expect(
+      newMessages([entry('test/a.test.ts', before)], [entry('test/a.test.ts', after)]),
+    ).toHaveLength(1);
+  });
+
+  it.each([
+    [
+      'Warning: Each child should have a unique "key" prop. Check the render method of `List`.',
+      'Warning: Each child should have a unique "key" prop. Check the render method of `Table`.',
+    ],
+    [
+      'Warning: Each child should have a unique "key" prop.',
+      'Warning: Each child should have a unique "ref" prop.',
+    ],
+    ['Warning: Cannot update a component', 'Warning: Cannot update a element'],
+    ['Warning: Unknown handler `onFoo` ignored', 'Warning: Unknown handler `onBar` ignored'],
+    ['deprecated: use fooBar instead', 'deprecated: use bazQux instead'],
+    ["{ code: 'ECONNREFUSED', more: <n> }", "{ code: 'ENOTFOUND', more: <n> }"],
+  ])('treats a changed ordinary word in %j as a new message', (before, after) => {
     expect(
       newMessages([entry('test/a.test.ts', before)], [entry('test/a.test.ts', after)]),
     ).toHaveLength(1);

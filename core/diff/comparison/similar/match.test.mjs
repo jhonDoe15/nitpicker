@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { compareFindings } from './compare.mjs';
+import { compareFindings } from '../compare.mjs';
 
 function finding(identity, message, overrides = {}) {
   return {
@@ -26,7 +26,7 @@ function compare(baseFindings, headFindings, baseToHeadRenames) {
 describe('findings that match the base by tokens', () => {
   it('keeps a finding present when one token of three or more differs', () => {
     expect(
-      compare([finding('b', 'Error: boom abcdef')], [finding('h', 'Error: boom ghijkl')]),
+      compare([finding('b', 'Error: boom kqzmwa')], [finding('h', 'Error: boom xvbnrt')]),
     ).toEqual({
       added: [],
       kept: ['h'],
@@ -36,7 +36,7 @@ describe('findings that match the base by tokens', () => {
 
   it('reports a finding when two tokens differ', () => {
     expect(
-      compare([finding('b', 'Error: boom abcdef')], [finding('h', 'Warn: boom ghijkl')]),
+      compare([finding('b', 'Error: boom kqzmwa')], [finding('h', 'Warn: boom xvbnrt')]),
     ).toEqual({
       added: ['h'],
       kept: [],
@@ -53,15 +53,15 @@ describe('findings that match the base by tokens', () => {
   });
 
   it('does not match fewer than three tokens', () => {
-    expect(compare([finding('b', 'boom abcdef')], [finding('h', 'boom ghijkl')]).added).toEqual([
+    expect(compare([finding('b', 'boom kqzmwa')], [finding('h', 'boom xvbnrt')]).added).toEqual([
       'h',
     ]);
   });
 
   it('matches one base finding to one head finding only', () => {
     const result = compare(
-      [finding('b', 'Error: boom abcdef')],
-      [finding('h1', 'Error: boom ghijkl'), finding('h2', 'Error: boom mnopqr')],
+      [finding('b', 'Error: boom kqzmwa')],
+      [finding('h1', 'Error: boom xvbnrt'), finding('h2', 'Error: boom zgcfdk')],
     );
 
     expect(result.added).toHaveLength(1);
@@ -69,26 +69,52 @@ describe('findings that match the base by tokens', () => {
   });
 
   it('matches only within the same tool, rule and path', () => {
-    const base = [finding('b', 'Error: boom abcdef')];
+    const base = [finding('b', 'Error: boom kqzmwa')];
 
     expect(
-      compare(base, [finding('h', 'Error: boom ghijkl', { path: 'test/b.test.ts' })]).added,
+      compare(base, [finding('h', 'Error: boom xvbnrt', { path: 'test/b.test.ts' })]).added,
     ).toEqual(['h']);
-    expect(compare(base, [finding('h', 'Error: boom ghijkl', { rule: 'other' })]).added).toEqual([
+    expect(compare(base, [finding('h', 'Error: boom xvbnrt', { rule: 'other' })]).added).toEqual([
       'h',
     ]);
   });
 
   it('follows a renamed file', () => {
     const renames = new Map([['test/a.test.ts', 'test/c.test.ts']]);
-    const head = finding('h', 'Error: boom ghijkl', { path: 'test/c.test.ts' });
+    const head = finding('h', 'Error: boom xvbnrt', { path: 'test/c.test.ts' });
 
-    expect(compare([finding('b', 'Error: boom abcdef')], [head], renames).added).toEqual([]);
+    expect(compare([finding('b', 'Error: boom kqzmwa')], [head], renames).added).toEqual([]);
   });
 
   it('ignores a finding without tokens', () => {
-    const [base, head] = [finding('b', 'Error: boom abcdef'), finding('h', 'Error: boom ghijkl')];
+    const [base, head] = [finding('b', 'Error: boom kqzmwa'), finding('h', 'Error: boom xvbnrt')];
 
     expect(compare([base], [{ ...head, tokens: undefined }]).added).toEqual(['h']);
+  });
+
+  it('finds the best pairing whatever the order of the findings', () => {
+    const base = [finding('b1', 'Error: kqzmwa zgcfdk'), finding('b2', 'Error: xvbnrt qwrtpl')];
+    const head = [finding('h1', 'Error: kqzmwa qwrtpl'), finding('h2', 'Error: kqzmwa hjklmn')];
+
+    expect(compare(base, head)).toEqual({ added: [], kept: ['h1', 'h2'], resolved: [] });
+    expect(compare(base.toReversed(), head.toReversed())).toEqual({
+      added: [],
+      kept: ['h1', 'h2'],
+      resolved: [],
+    });
+  });
+
+  it('stays fast for thousands of different messages in one file', () => {
+    const many = (prefix) =>
+      Array.from({ length: 4000 }, (_, index) =>
+        finding(
+          `${prefix}${String(index)}`,
+          `${prefix}${String(index)} ${String(index)}${prefix} one two three`,
+        ),
+      );
+    const started = Date.now();
+
+    expect(compare(many('base'), many('head')).added).toHaveLength(4000);
+    expect(Date.now() - started).toBeLessThan(2000);
   });
 });

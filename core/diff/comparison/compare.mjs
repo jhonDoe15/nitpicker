@@ -1,4 +1,5 @@
-import { comparisonKey, matchSimilarFindings } from './fingerprint.mjs';
+import { comparisonKey } from './fingerprint.mjs';
+import { matchSimilarFindings } from './similar/match.mjs';
 import { normalizeGitPath } from '../git/normalize.mjs';
 import { folderMoves, mainDestination } from '../git/patches/renames.mjs';
 
