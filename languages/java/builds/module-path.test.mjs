@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { inModule, rootsScope } from './module-path.mjs';
+import { inModule, liesInProject, rootsScope } from './module-path.mjs';
 
 describe('inModule', () => {
   it('puts a module-relative path under the module path, and leaves a root module path alone', () => {
@@ -50,5 +50,16 @@ describe('rootsScope', () => {
       'services/common/src',
     ]);
     expect(rootsScope(['/opt/src', '../../shared/src'], { modulePath: 'platform' })).toEqual([]);
+  });
+});
+
+describe('liesInProject', () => {
+  it('places a module-relative path under the module path before it checks it', () => {
+    expect(
+      ['.', 'src/A.java', '../shared/A.java', '../../x/A.java', '/opt/A.java'].map((file) =>
+        liesInProject(file, { modulePath: 'app' }),
+      ),
+    ).toEqual([true, true, true, false, false]);
+    expect(liesInProject('../x/A.java')).toBe(false);
   });
 });

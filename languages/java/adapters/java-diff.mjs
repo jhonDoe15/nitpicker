@@ -186,12 +186,9 @@ function compareAcrossMoves({ repositoryRoot, comparison, projectRelativePath },
     headSha: comparison.headSha,
     projectRelativePath,
   };
-  const moves = readProjectMoves(commits);
   return compareFindings({
     ...findings,
-    baseToHeadRenames: moves.files,
-    baseToHeadDirectories: moves.directories,
-    keptBasePaths: moves.kept,
+    baseToHeadRenames: readProjectMoves(commits).files,
     touchedCode: { changedLines: readChangedLines(commits), isStrictRule: isJavaTouchedRule },
   });
 }

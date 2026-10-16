@@ -1,5 +1,4 @@
 import { comparisonKey } from '../fingerprint.mjs';
-import { directoryMoves, mapDirectory } from '../../git/patches/renames.mjs';
 
 const BROKEN_ON_HEAD = 'The base produced this {tool} report, so the change broke it.';
 const NOT_COMPARED = 'Not enforced: no base {tool} report shows whether the change added it.';
@@ -31,35 +30,19 @@ function inScope(scope, findingPath) {
   return scope.some((directory) => under(findingPath, directory));
 }
 
-function baseMoves(renames, directories) {
-  const inferred = [...directoryMoves(renames)].filter(([from]) => from !== '');
-  return new Map([...inferred, ...directories]);
+function renamedOutOf(directory, renames) {
+  return [...renames].filter(([from]) => under(from, directory)).map(([, to]) => to);
 }
 
-function movedScope(directory, moves) {
-  if (directory === WHOLE_PROJECT) {
-    return { scope: [directory], whole: false };
-  }
-  const movedFiles = [...moves.renames]
-    .filter(([from]) => under(from, directory))
-    .map(([, to]) => to);
-  const target = mapDirectory(directory, moves.folders);
-  const whole =
-    target !== directory &&
-    movedFiles.length > 0 &&
-    moves.kept !== undefined &&
-    ![...moves.kept].some((kept) => under(kept, directory));
-  return { scope: [whole ? target : directory, ...movedFiles], whole };
-}
-
-function baseNotice(notice, moves) {
-  const moved = scopeOf(notice).map((directory) => movedScope(directory, moves));
+function baseNotice(notice, renames) {
+  const original = scopeOf(notice);
+  const moved = original.includes(WHOLE_PROJECT)
+    ? []
+    : original.flatMap((directory) => renamedOutOf(directory, renames));
   return {
     tool: notice.tool,
-    key: moved.some(({ whole }) => whole)
-      ? undefined
-      : comparisonKey(notice, moves.renames, moves.directories),
-    scope: [...new Set(moved.flatMap(({ scope }) => scope))],
+    key: comparisonKey(notice, renames),
+    scope: [...new Set([...original, ...moved])],
   };
 }
 
@@ -79,11 +62,10 @@ function covered(notRunOnBase, finding) {
   );
 }
 
-export function againstMissingReports(headFindings, baseFindings, { renames, directories, kept }) {
-  const moves = { renames, directories, kept, folders: baseMoves(renames, directories) };
+export function againstMissingReports(headFindings, baseFindings, renames) {
   const notRunOnBase = baseFindings
     .filter((finding) => finding.toolNotRun === true)
-    .map((notice) => baseNotice(notice, moves));
+    .map((notice) => baseNotice(notice, renames));
   return headFindings.map((finding) => {
     if (finding.toolNotRun === true) {
       return alsoNotRun(notRunOnBase, finding)

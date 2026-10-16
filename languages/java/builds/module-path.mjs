@@ -27,3 +27,7 @@ export function rootsScope(roots, { moduleDir = '', modulePath = '' } = {}) {
   );
   return [...new Set(directories.filter((directory) => directory !== undefined))];
 }
+
+export function liesInProject(projectPath, { modulePath = '' } = {}) {
+  return inProject(modulePath, projectPath) !== undefined;
+}

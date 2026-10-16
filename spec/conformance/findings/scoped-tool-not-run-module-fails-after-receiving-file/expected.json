@@ -1,9 +1,8 @@
 {
-  "description": "An existing module that ran on the base and fails on the head after receiving one file from a not-run module is a tool-error: the base notice for legacy covers only legacy and the moved file, not kernel's directories, because legacy keeps base files (keptPaths).",
+  "description": "An existing module that ran on the base and fails on the head after receiving one file from a not-run module is a tool-error: the base notice for legacy covers legacy and the moved file, not kernel's directories.",
   "renames": {
     "legacy/src/main/java/p/E.java": "kernel/src/main/java/p/E.java"
   },
-  "keptPaths": ["legacy/src/main/java/p/F.java"],
   "new": [
     {
       "tool": "duplicates",

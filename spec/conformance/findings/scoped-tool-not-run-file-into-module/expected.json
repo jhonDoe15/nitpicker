@@ -1,9 +1,8 @@
 {
-  "description": "Moving one file from a not-run module into an existing module that ran adds only that file's head path to the base notice's scope, since legacy keeps base files (keptPaths). The moved kernel/src/main/java/p/E.java is descriptive; the kernel clones that did not come from legacy stay enforceable, and the head's legacy notice is unchanged.",
+  "description": "Moving one file from a not-run module into an existing module that ran adds only that file's head path to the base notice's scope. The moved kernel/src/main/java/p/E.java is descriptive; the kernel clones that did not come from legacy stay enforceable, and the head's legacy notice is unchanged.",
   "renames": {
     "legacy/src/main/java/p/E.java": "kernel/src/main/java/p/E.java"
   },
-  "keptPaths": ["legacy/src/main/java/p/F.java", "legacy/src/test/java/p/FTest.java"],
   "new": [
     {
       "tool": "duplicates",

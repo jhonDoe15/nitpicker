@@ -3,6 +3,7 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import { compareFindings } from '../../../core/diff/comparison/compare.mjs';
+import { parseAnalyzerReport } from '../../../core/diff/comparison/finding-schema.mjs';
 import { readModuleFindings } from './java-modules.mjs';
 
 const REPORT_DIRECTORY = 'target/nitpicker';
@@ -203,6 +204,31 @@ describe('readModuleFindings', () => {
     expect(base.find(({ rule }) => rule === 'cpd-not-run').notRunScope).toEqual([
       'legacy/src/main/java',
     ]);
+  });
+
+  it('drops guard findings on files outside the project, so the report still parses', () => {
+    const root = realpathSync(mkdtempSync(path.join(tmpdir(), 'nitpicker-java-reactor-')));
+    const outside = realpathSync(mkdtempSync(path.join(tmpdir(), 'nitpicker-java-elsewhere-')));
+    temporaryRoots.push(root, outside);
+    const files = ['X', 'Y'].map((name) => path.join(outside, `src/p/${name}.java`));
+    for (const file of files) {
+      write(
+        file,
+        `class ${path.basename(file, '.java')} {\n  int run(int rate) {\n${LOGIC}\n  }\n}\n`,
+      );
+    }
+    const platform = path.join(root, 'platform');
+    cpdModule(platform, 'none');
+    write(path.join(platform, REPORT_DIRECTORY, 'cpd.xml'), cpdReport(files));
+    write(
+      path.join(platform, REPORT_DIRECTORY, 'javac-lint.txt'),
+      `${path.relative(platform, files[0])}:3: warning: [rawtypes] found raw type: List\n`,
+    );
+
+    const findings = readModuleFindings(root, [platform], { reportDirectory: REPORT_DIRECTORY });
+
+    expect(findings.filter(({ tool }) => ['duplicates', 'javac'].includes(tool))).toEqual([]);
+    expect(parseAnalyzerReport({ findings }, 'java').findings).toEqual(findings);
   });
 
   it('places the source roots of a failed Maven module under its folder before it scopes them', () => {
