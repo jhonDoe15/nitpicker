@@ -15,17 +15,22 @@ function directoriesUpTo(root, directory) {
   return parts.map((_, index) => path.join(root, ...parts.slice(0, index + 1)));
 }
 
+export function lombokConfigs({ root, sources }) {
+  const directories = new Set([
+    root,
+    ...sources.flatMap((source) => directoriesUpTo(root, path.dirname(source))),
+  ]);
+  return [...directories]
+    .map((directory) => path.join(directory, LOMBOK_CONFIG))
+    .filter((config) => existsSync(config))
+    .sort();
+}
+
 function copyLombokConfigs({ root, sources, staged }) {
-  const directories = new Set(
-    sources.flatMap((source) => directoriesUpTo(root, path.dirname(source))),
-  );
-  for (const directory of directories) {
-    const config = path.join(directory, LOMBOK_CONFIG);
-    if (existsSync(config)) {
-      copyFileSync(config, path.join(staged, path.relative(root, config)));
-    }
-  }
   const rootConfig = path.join(root, LOMBOK_CONFIG);
+  for (const config of lombokConfigs({ root, sources }).filter((file) => file !== rootConfig)) {
+    copyFileSync(config, path.join(staged, path.relative(root, config)));
+  }
   const top = existsSync(rootConfig) ? `${readFileSync(rootConfig, 'latin1')}\n` : '';
   writeFileSync(path.join(staged, LOMBOK_CONFIG), `${top}${STOP_BUBBLING}`, 'latin1');
 }

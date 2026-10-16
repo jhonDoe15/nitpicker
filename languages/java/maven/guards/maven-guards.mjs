@@ -35,7 +35,7 @@ function runForbiddenApis({ module, reportDir, tools, classpaths }) {
   writeFileSync(path.join(reportDir, 'forbidden-apis.txt'), `${result.stdout}${result.stderr}`);
 }
 
-export function lintPlan({ module, classpaths }, projectRoot) {
+function lintPlan({ module, classpaths }, projectRoot) {
   const lintDirectory = path.join(module.buildDirectory, 'nitpicker-lint');
   return {
     root: projectRoot,
