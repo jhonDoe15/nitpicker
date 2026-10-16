@@ -9,7 +9,7 @@ import {
   reusableWarnings,
 } from './lint-baseline.mjs';
 import { lintedWarnings, relocated } from './lint-output.mjs';
-import { stagedRoot, stageSources } from './lint-staging.mjs';
+import { stageSources } from './lint-staging.mjs';
 
 const LINT_REPORT = 'javac-lint.txt';
 const LINT_FAILURE = 'javac-lint-failed.txt';
@@ -67,8 +67,9 @@ function lintSources(plan, { sources, modular }) {
     const classes = path.join(work, 'classes');
     mkdirSync(classes, { recursive: true });
     const listed = new Set(plan.sources);
+    const stagedTree = stageSources({ root: plan.root, sources, staged });
     const files = [
-      ...stageSources({ root: plan.root, sources, staged }),
+      ...stagedTree.files,
       ...(modular ? generatedFiles(plan.generatedSources).filter((file) => !listed.has(file)) : []),
     ];
     function compile(lookup) {
@@ -82,7 +83,7 @@ function lintSources(plan, { sources, modular }) {
     const first = compile(modular);
     const result = first.code === 0 || !modular ? first : compile('all');
     const context = {
-      staged: stagedRoot(staged, plan.root),
+      staged: stagedTree.root,
       from: path.relative(plan.root, plan.basedir),
       to: posix(path.relative(plan.reportRoot, plan.basedir)),
     };
