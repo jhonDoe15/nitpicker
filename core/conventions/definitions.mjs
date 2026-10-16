@@ -3,6 +3,7 @@ import { FILE_NAME_CONVENTION } from '../../languages/typescript/conventions/fil
 import { PRETTIER_CONVENTIONS } from '../../languages/typescript/conventions/prettier-conventions.mjs';
 import { TYPE_IMPORT_CONVENTION } from '../../languages/typescript/conventions/type-import-style.mjs';
 
+const JAVASCRIPT_CONVENTIONS = [...PRETTIER_CONVENTIONS, FILE_NAME_CONVENTION];
 const TYPESCRIPT_CONVENTIONS = [
   ...PRETTIER_CONVENTIONS,
   TYPE_IMPORT_CONVENTION,
@@ -11,7 +12,7 @@ const TYPESCRIPT_CONVENTIONS = [
 
 const BY_PRESET = new Map([
   ['typescript', TYPESCRIPT_CONVENTIONS],
-  ['javascript', TYPESCRIPT_CONVENTIONS],
+  ['javascript', JAVASCRIPT_CONVENTIONS],
   ['java', JAVA_CONVENTIONS],
   ['kotlin', JAVA_CONVENTIONS],
 ]);

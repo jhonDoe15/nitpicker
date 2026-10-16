@@ -2,18 +2,35 @@ import { globToRegExp } from '../glob.mjs';
 
 export const SAMPLE_LIMIT = 400;
 
-export function detectConventions({ definitions, source, pinned = {}, exclude = [] }) {
+export function detectConventions({
+  definitions,
+  source,
+  pinned = {},
+  exclude = [],
+  accepts = () => true,
+}) {
   const measured = definitions.filter((definition) => pinned[definition.id] === undefined);
   const excluded = exclude.map(globToRegExp);
-  const candidates =
+  const candidatesOf = (options) =>
     measured.length === 0
       ? []
-      : source.paths().filter((file) => !excluded.some((glob) => glob.test(file)));
+      : source.paths(options).filter((file) => !excluded.some((glob) => glob.test(file)));
+  const readable = candidatesOf({});
+  const named = measured.some(({ nameOnly }) => nameOnly) ? candidatesOf({ unreadable: true }) : [];
   const samples = new Map(
-    measured.map((definition) => [definition.id, sampleFor(definition, candidates)]),
+    measured.map((definition) => [
+      definition.id,
+      sampleFor(definition, definition.nameOnly ? named : readable, accepts),
+    ]),
   );
   const texts =
-    measured.length === 0 ? new Map() : source.readMany([...new Set([...samples.values()].flat())]);
+    measured.length === 0
+      ? new Map()
+      : source.readMany([
+          ...new Set(
+            measured.filter(({ nameOnly }) => !nameOnly).flatMap(({ id }) => samples.get(id)),
+          ),
+        ]);
   return Object.fromEntries(
     definitions.map((definition) => [
       definition.id,
@@ -32,10 +49,10 @@ export function conventionChoices(detected, definitions) {
   );
 }
 
-function sampleFor(definition, candidates) {
+function sampleFor(definition, candidates, accepts) {
   const files = definition.files.map(globToRegExp);
   return evenSample(
-    candidates.filter((file) => files.some((glob) => glob.test(file))),
+    candidates.filter((file) => files.some((glob) => glob.test(file)) && accepts(definition, file)),
     SAMPLE_LIMIT,
   );
 }
@@ -44,7 +61,8 @@ function measureConvention(definition, sample, texts) {
   const counts = Object.fromEntries(definition.options.map((option) => [option, 0]));
   for (const file of sample) {
     const text = texts.get(file);
-    const option = text === undefined ? undefined : definition.measure(text, file);
+    const option =
+      text === undefined && !definition.nameOnly ? undefined : definition.measure(text, file);
     if (option !== undefined && option in counts) {
       counts[option] += 1;
     }

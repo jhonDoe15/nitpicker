@@ -114,11 +114,11 @@ describe('rules configured from the followed conventions', () => {
     expect(
       await ruleSettings({
         'typescript.typeImports': 'inline',
-        'typescript.fileNames': 'PascalCase',
+        'typescript.fileNames': 'snake_case',
       }),
     ).toEqual({
       typeImports: ['error', { disallowTypeAnnotations: false, fixStyle: 'inline-type-imports' }],
-      fileNames: ['error', { casing: 'PascalCase' }],
+      fileNames: ['error', { casing: 'snake_case' }],
     });
   });
 });

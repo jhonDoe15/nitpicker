@@ -30,6 +30,10 @@ const SOURCES = {
   'src/types.ts': 'export type Name = string;\n',
   'src/separate-style.ts': "import type { Name } from './types';\nexport const a: Name = 'a';\n",
   'src/inline-style.ts': "import { type Name } from './types';\nexport const b: Name = 'b';\n",
+  'src/snake/one_a.ts': 'export const one = 1;\n',
+  'src/snake/two_b.ts': 'export const two = 2;\n',
+  'src/snake/three_c.ts': 'export const three = 3;\n',
+  'src/snake/odd-one.ts': 'export const odd = 4;\n',
   'src/valueStyle.ts': "import { Name } from './types';\nexport const c: Name = 'c';\n",
 };
 
@@ -59,6 +63,7 @@ describe('convention-driven rules on the default oxlint engine', () => {
     'accepts both type import forms with fixStyle %s and flags only the value import',
     (fixStyle) => {
       expect(findings({ fixStyle, casing: 'kebab-case' })).toEqual([
+        { file: 'src/snake/odd-one.ts', ruleId: 'nitpicker/file-name-casing', line: 1 },
         {
           file: 'src/valueStyle.ts',
           ruleId: '@typescript-eslint/consistent-type-imports',
@@ -69,10 +74,11 @@ describe('convention-driven rules on the default oxlint engine', () => {
     },
   );
 
-  it('checks file names against the configured casing', () => {
+  it('checks file names against the configured casing and the folder majority', () => {
     expect(findings({ fixStyle: 'separate-type-imports', casing: 'camelCase' })).toEqual([
       { file: 'src/inline-style.ts', ruleId: 'nitpicker/file-name-casing', line: 1 },
       { file: 'src/separate-style.ts', ruleId: 'nitpicker/file-name-casing', line: 1 },
+      { file: 'src/snake/odd-one.ts', ruleId: 'nitpicker/file-name-casing', line: 1 },
       { file: 'src/valueStyle.ts', ruleId: '@typescript-eslint/consistent-type-imports', line: 1 },
     ]);
   });
