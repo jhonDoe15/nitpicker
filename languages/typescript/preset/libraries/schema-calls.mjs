@@ -61,16 +61,14 @@ function derivedParents(sourceCode, node, packages) {
 function isDerived(sourceCode, start, packages) {
   const pending = [start];
   for (const node of pending) {
-    if (pending.length > MAX_NODES) {
-      return false;
+    const parents =
+      node === null || node === undefined || pending.length > MAX_NODES
+        ? []
+        : derivedParents(sourceCode, node, packages);
+    if (parents === true) {
+      return true;
     }
-    if (node !== null && node !== undefined) {
-      const parents = derivedParents(sourceCode, node, packages);
-      if (parents === true) {
-        return true;
-      }
-      pending.push(...parents);
-    }
+    pending.push(...parents);
   }
   return false;
 }
