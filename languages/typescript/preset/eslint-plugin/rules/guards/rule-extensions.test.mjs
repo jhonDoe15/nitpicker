@@ -1,4 +1,4 @@
-import { createRuleTester } from './rule-tester.mjs';
+import { createRuleTester } from './test-support/rule-tester.mjs';
 import { rule as noBranchInCompositionRoot } from '../boundaries/no-branch-in-composition-root.mjs';
 import { rule as noHandwrittenBoundaryGuard } from '../boundaries/no-handwritten-boundary-guard.mjs';
 import { rule as noManagedResource } from '../boundaries/no-managed-resource-construction-outside-composition-roots.mjs';
