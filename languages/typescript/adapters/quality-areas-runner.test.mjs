@@ -134,6 +134,28 @@ describe('coverage runner invoked as a script', () => {
   });
 });
 
+describe('coverage run in a project that configures its own reporters', () => {
+  it('writes the test report where nitpicker reads it', async () => {
+    const projectRoot = snapshotWith({
+      'package.json': '{"name":"p","type":"module"}\n',
+      'vitest.config.ts':
+        "export default { test: { reporters: [['json', { outputFile: 'mine.json' }]], outputFile: { json: 'mine.json' } } };\n",
+      'src/main/a.ts': 'export function a(): number {\n  return 1;\n}\n',
+      'test/a.test.ts':
+        "import { expect, it } from 'vitest';\nimport { a } from '../src/main/a';\nit('returns one', () => {\n  expect(a()).toBe(1);\n});\n",
+    });
+    symlinkSync(
+      path.join(PACKAGE_ROOT, 'node_modules'),
+      path.join(projectRoot, 'node_modules'),
+      'dir',
+    );
+
+    const findings = await runKind('coverage', projectRoot);
+
+    expect(findings.filter(({ classification }) => classification === 'tool-error')).toEqual([]);
+  });
+});
+
 describe('structure limit messages', () => {
   function violations(metrics) {
     return normalizeStructure(
