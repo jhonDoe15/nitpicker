@@ -4,7 +4,7 @@ import {
   policyHash,
   sortByToolAndPath,
 } from '../reporting/report-model.mjs';
-import { policyFindings } from '../reporting/review/policy-findings.mjs';
+import { isPolicyChangeAccepted, policyFindings } from '../reporting/review/policy-findings.mjs';
 import { compareFindings } from './compare.mjs';
 
 export function combineAnalyzerReports(context) {
@@ -110,7 +110,7 @@ function buildReport(context) {
       configOverrides,
       policyChanges,
       policyLoosenings,
-      policyChangeAccepted: acceptPolicyChange && policyLoosenings.length > 0,
+      policyChangeAccepted: isPolicyChangeAccepted(policyLoosenings, acceptPolicyChange),
       notices,
       tools: outcomes.map(({ tool }) => tool),
       exclusions: declaredExclusions(analyzers),

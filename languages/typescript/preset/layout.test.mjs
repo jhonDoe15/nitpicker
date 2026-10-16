@@ -100,12 +100,14 @@ describe('generated files', () => {
 });
 
 describe('layout.isGeneratedPath', () => {
-  it('also counts output folders below the project root, which are still source', () => {
+  it('is the one generated-code test: output folders at the root, generated names anywhere', () => {
     const layout = resolveLayout();
 
-    expect(layout.isGeneratedPath('src/generated/service.ts')).toBe(true);
-    expect(layout.isGeneratedPath('src/dist/b.svg')).toBe(true);
-    expect(isSourceFile('src/generated/service.ts')).toBe(true);
+    expect(layout.isGeneratedPath('dist/b.svg')).toBe(true);
+    expect(layout.isGeneratedPath('src/__generated__/types.ts')).toBe(true);
+    expect(layout.isGeneratedPath('src/api.gen.ts')).toBe(true);
+    expect(layout.isGeneratedPath('src/billing/build/math.ts')).toBe(false);
+    expect(layout.isGeneratedPath('src/generated/service.ts')).toBe(false);
     expect(layout.isGeneratedPath('src/generator.ts')).toBe(false);
   });
 });

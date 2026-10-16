@@ -58,10 +58,7 @@ export function productionFacts(projectRoot, layout) {
   const packageRootOf = packageRootFinder(projectRoot, layout);
   return layout
     .projectCodeFiles(projectRoot, layout.sourceRoots)
-    .filter(
-      (file) =>
-        layout.isSourceFile(file) && !layout.isGeneratedPath(file) && isReuseProductionPath(file),
-    )
+    .filter((file) => layout.isSourceFile(file) && isReuseProductionPath(file))
     .map((file) => fileFacts(projectRoot, file, packageRootOf(file)));
 }
 

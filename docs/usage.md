@@ -127,7 +127,7 @@ automatically.
 nitpicker [--base <ref>] [--output <dir>] [--all | --fix]
           [--analyzer <name>]... [--rule <substring>]...
           [--shard-count <n> --shard-index <i>] [--defer-exit] [--no-cache]
-          [--accept-policy-change] [--help]
+          [--accept-policy-change=<digest>] [--help]
 nitpicker aggregate --input-root <dir> --shard-count <n>
           [--output <dir>] [--policy-root <dir>]
 nitpicker cache publish [--analyzer <name>]...
@@ -145,9 +145,11 @@ nitpicker cache publish [--analyzer <name>]...
 - `--output <dir>`: where reports go.
 
 - `--no-cache`: do not read or write the findings cache for this run (local and remote).
-- `--accept-policy-change`: accept a change that loosens `nitpicker.config.json` (see
-  [Configuration](#configuration)); `NITPICKER_ACCEPT_POLICY_CHANGE=1` does the same. It is for the
-  person who approves the change, never for a coding agent.
+- `--accept-policy-change=<digest>`: accept the loosenings of `nitpicker.config.json` whose digest
+  the `nitpicker-config/policy-loosened` findings name (see [Configuration](#configuration));
+  `NITPICKER_ACCEPT_POLICY_CHANGE=<digest>` does the same. A digest accepts exactly the loosenings
+  it was printed for: a later loosening changes it and fails again. It is for the person who
+  approves the change, never for a coding agent.
 - `nitpicker cache publish`: analyze the committed `HEAD` tree and upload its findings to the remote
   cache so later branches reuse them as their base. Requires `NITPICKER_CACHE_URL`; exits 0 when
   everything was uploaded and 2 otherwise.
@@ -180,8 +182,8 @@ compared with the defaults. Because the head controls its own config, every chan
 in the console summary and in `report.txt` as "Policy changed in this change" and listed in
 `summary.json` under `policyChanges`. A change that checks less fails the run with one
 `nitpicker-config/policy-loosened` finding per loosening; the finding tells a coding agent to stop
-and ask a person, who accepts it with `--accept-policy-change` (in CI,
-`NITPICKER_ACCEPT_POLICY_CHANGE=1`). A project's first `nitpicker.config.json` is compared with the
+and ask a person, who accepts it with the `--accept-policy-change=<digest>` the finding names (in
+CI, `NITPICKER_ACCEPT_POLICY_CHANGE=<digest>`). A project's first `nitpicker.config.json` is compared with the
 defaults. These changes are loosening:
 
 - an added `exclude`, `layout.excludedGlobs`, `layout.entryPoints`, `exceptions` or
@@ -195,9 +197,11 @@ defaults. These changes are loosening:
 - a newly disabled analyzer, a threshold above the base's (a removed threshold counts at its
   default), and a removed or changed custom analyzer (any change to its `command` or `args`);
 - a `preset` that checks less: an explicit preset changed to another one, or `javascript` set where
-  `typescript` ran. Setting the preset that ran (or, on a project without one, `java`, `kotlin` or
-  `python`), dropping `typescript`, and `javascript` to `typescript` are not loosening;
-- `react.enabled` or `python.importLinter` set to `false`, `kotlin.formatter` set to `none`, and
+  `typescript` ran, or a first preset on a project whose TypeScript or JavaScript sources the
+  default preset checks. Setting the preset that ran, dropping `typescript`, `javascript` to
+  `typescript`, and the preset that a project without such sources must declare (the run stops
+  with "no \"preset\" is set" otherwise) are not loosening;
+- `react.enabled`, `i18n.enabled` or `python.importLinter` set to `false`, `kotlin.formatter` set to `none`, and
   any change of `kotlin.detektConfig`;
 - a tool `precedence` that puts `"project"` first where it was not first, or that drops
   `"nitpicker"` (for `pmd`, which runs both rule sets, only dropping `"nitpicker"` counts).

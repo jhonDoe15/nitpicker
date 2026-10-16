@@ -105,6 +105,16 @@ describe('resolveBase', () => {
     expect(resolve('origin/main')()).toEqual({ baseRef: 'origin/main', source: 'config' });
   });
 
+  it('accepts a remote HEAD at the checked commit and rejects a reflog entry of HEAD', () => {
+    const repositoryRoot = createRepository();
+    setRemoteHead(repositoryRoot, 'origin', 'main');
+    const resolve = (configuredBase) => () =>
+      resolveBase({ repositoryRoot, configuredBase, environment: {} });
+
+    expect(resolve('origin/HEAD')()).toEqual({ baseRef: 'origin/HEAD', source: 'config' });
+    expect(resolve('HEAD@{0}')).toThrow('"base" is HEAD@{0}, the commit you are on');
+  });
+
   it('accepts a configured commit id that is not the checked commit, and an explicit base at HEAD', () => {
     const repositoryRoot = createRepository();
     const sha = fixtureGit(repositoryRoot, ['rev-parse', 'HEAD']).trim();

@@ -22,7 +22,6 @@ export const NEGATIVE_CASES = [
       {
         overlay: 'disable-analyzers',
         withoutAnalyzers: ['eslint-lint', 'coding-standards'],
-        // Disabling analyzers loosens nitpicker.config.json, which fails until a person accepts it.
         outcome: 'gate-findings',
         flaggedBy: { finding: 'nitpicker-config/policy-loosened' },
         expected: [

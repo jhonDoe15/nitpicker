@@ -67,18 +67,23 @@ function detectedPreset(projectRoot) {
   return kotlin > java ? { ...marker, preset: 'kotlin' } : marker;
 }
 
-export function rejectUndeclaredPreset(config, projectRoot) {
-  if (config.preset !== undefined) {
-    return;
-  }
+export function presetToDeclare(config, projectRoot) {
   const roots = config.layout?.sourceRoots ?? ['src'];
   const hasScripts = roots.some((root) =>
     codeFiles(path.join(projectRoot, root), ASSET_FOLDERS).some(
       (name) => SCRIPT_FILE.test(name) && !MINIFIED_FILE.test(name),
     ),
   );
-  const detected = hasScripts ? undefined : detectedPreset(projectRoot);
+  return hasScripts ? undefined : detectedPreset(projectRoot);
+}
+
+export function rejectUndeclaredPreset(config, projectRoot) {
+  if (config.preset !== undefined) {
+    return;
+  }
+  const detected = presetToDeclare(config, projectRoot);
   if (detected !== undefined) {
+    const roots = config.layout?.sourceRoots ?? ['src'];
     throw configError(
       `no "preset" is set, so the TypeScript preset would run, but this is a ${detected.label} project (${detected.file}) with no TypeScript or JavaScript sources under ${roots.join(', ')}. Add "preset": "${detected.preset}" to nitpicker.config.json (create the file if there is none).`,
     );

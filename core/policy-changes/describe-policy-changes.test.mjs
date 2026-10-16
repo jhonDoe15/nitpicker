@@ -200,8 +200,8 @@ describe('describePolicyChanges', () => {
 
     expect(presetChange(undefined, 'typescript')).toEqual([]);
     expect(presetChange('typescript', undefined)).toEqual([]);
-    expect(presetChange(undefined, 'java')).toEqual([]);
-    expect(presetChange(undefined, 'python')).toEqual([]);
+    expect(presetChange(undefined, 'java')).toEqual(['preset: not set -> "java"']);
+    expect(presetChange(undefined, 'python')).toEqual(['preset: not set -> "python"']);
     expect(presetChange('javascript', 'typescript')).toEqual([]);
     expect(presetChange('javascript', undefined)).toEqual([]);
     expect(presetChange(undefined, 'javascript')).toEqual(['preset: not set -> "javascript"']);
@@ -210,6 +210,29 @@ describe('describePolicyChanges', () => {
     ]);
     expect(presetChange('java', 'kotlin')).toEqual(['preset: "java" -> "kotlin"']);
     expect(presetChange('java', undefined)).toEqual(['preset: "java" -> not set']);
+  });
+
+  it('does not count declaring the preset a project without scripts has to declare', () => {
+    const head = { preset: 'python' };
+    const scope = createPolicyScope({
+      files: [],
+      baseRoots: {},
+      headRoots: {},
+      headConfig: head,
+      presetRequired: true,
+    });
+
+    expect(describePolicyChanges({}, head, scope)).toEqual({
+      loosened: [],
+      changed: ['preset: not set -> "python"'],
+    });
+  });
+
+  it('counts turning i18n off', () => {
+    expect(loosened({ i18n: { enabled: true } }, { i18n: { enabled: false } })).toEqual([
+      'i18n.enabled: true -> false',
+    ]);
+    expect(loosened({ i18n: { enabled: false } }, { i18n: { enabled: true } })).toEqual([]);
   });
 
   it('counts turning a check off or giving the project config precedence, not a tool swap', () => {

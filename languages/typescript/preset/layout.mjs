@@ -28,10 +28,7 @@ export const DEPENDENCY_PATH_PATTERN = '(?:^|/)node_modules(?:/|$)';
 export const GENERATED_CODE_PATTERN = '^generated/';
 export const EXCLUDED_PATH_PATTERN = `^(?:${ROOT_OUTPUT_FOLDERS.join('|')})(?:/|$)|${DEPENDENCY_PATH_PATTERN}`;
 const GENERATED_NAME = '(?:^|/)__generated__(?:/|$)|(?:\\.(?:generated|gen|pb)|_pb)\\.[^/]+$';
-const UNCHECKED_PATH = new RegExp(`${EXCLUDED_PATH_PATTERN}|${GENERATED_NAME}`);
-const GENERATED_PATH = new RegExp(
-  `(?:^|/)(?:${ROOT_OUTPUT_FOLDERS.join('|')}|node_modules)(?:/|$)|${GENERATED_NAME}`,
-);
+const GENERATED_PATH = new RegExp(`${EXCLUDED_PATH_PATTERN}|${GENERATED_NAME}`);
 
 function normalizeRoot(root) {
   return root.replaceAll('\\', '/').replace(/^\.\//, '').replace(/\/$/, '');
@@ -99,7 +96,7 @@ function createClassifiers({ sourceRoots, testRoots, exclude, patterns }) {
     return (
       patterns.sourcePattern.test(normalized) &&
       !isTestFile(normalized) &&
-      !UNCHECKED_PATH.test(normalized) &&
+      !GENERATED_PATH.test(normalized) &&
       !normalized.endsWith('.d.ts') &&
       !isExcluded(normalized)
     );
@@ -182,7 +179,7 @@ function codeFilesUnderRoot(layout, projectRoot, root) {
   for (const relative of pending) {
     const entries = readdirSync(path.join(projectRoot, relative), { withFileTypes: true })
       .map((entry) => ({ entry, name: relative ? `${relative}/${entry.name}` : entry.name }))
-      .filter(({ name }) => !UNCHECKED_PATH.test(name));
+      .filter(({ name }) => !GENERATED_PATH.test(name));
     pending.push(...entries.filter(({ entry }) => entry.isDirectory()).map(({ name }) => name));
     files.push(...entries.filter((item) => isCodeFile(layout, item)).map(({ name }) => name));
   }

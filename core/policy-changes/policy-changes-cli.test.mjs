@@ -4,6 +4,7 @@ import { describe, expect, it } from 'vitest';
 import { runCli } from '../cli.mjs';
 import { fixtureGit, useGitFixtures } from '../diff/git/test-support/git-repository.mjs';
 import { runTasksInProcess } from '../diff/execution/test-support/in-process-analyzers.mjs';
+import { policyDigest } from '../diff/reporting/review/policy-findings.mjs';
 
 const fakeAnalyzerPath = path.resolve(
   import.meta.dirname,
@@ -36,14 +37,21 @@ function fakeAnalyzer(name = 'fake-quality-analyzer') {
   };
 }
 
-function prepareRepository({ baseConfig, headConfig, headMoves = [], commitHead = false }) {
-  const files = {
-    'quality-policy.json': '{"marker":"QUALITY_FINDING"}\n',
-    'src/a.ts': 'export {};\n',
-    'src/legacy/old.ts': 'export {};\n',
-    'src/vendor/lib.ts': 'export {};\n',
-    'src/view.jsx': 'export {};\n',
-  };
+const TYPESCRIPT_FILES = {
+  'src/a.ts': 'export {};\n',
+  'src/legacy/old.ts': 'export {};\n',
+  'src/vendor/lib.ts': 'export {};\n',
+  'src/view.jsx': 'export {};\n',
+};
+
+function prepareRepository({
+  baseConfig,
+  headConfig,
+  headMoves = [],
+  commitHead = false,
+  projectFiles = TYPESCRIPT_FILES,
+}) {
+  const files = { 'quality-policy.json': '{"marker":"QUALITY_FINDING"}\n', ...projectFiles };
   const repository = createGitRepository(
     baseConfig === undefined
       ? files
@@ -101,9 +109,13 @@ function runWithHeadConfig({ extraArguments = [], environment = {}, ...repositor
 const HEADING = 'Policy changed in this change (nitpicker.config.json, head against base):';
 const ACCEPTED_HEADING =
   'Policy changed in this change (nitpicker.config.json, head against base; loosening accepted with --accept-policy-change):';
-const ACCEPT_ROUTE =
-  'Stop and ask a person to review this change; they accept it with --accept-policy-change ' +
-  '(or NITPICKER_ACCEPT_POLICY_CHANGE=1 in CI).';
+function acceptRoute(loosenings) {
+  const digest = policyDigest(loosenings);
+  return (
+    'Stop and ask a person to review this change; they accept exactly these loosenings with ' +
+    `--accept-policy-change=${digest} (or NITPICKER_ACCEPT_POLICY_CHANGE=${digest} in CI).`
+  );
+}
 
 function policyBlock(text, heading = HEADING) {
   const lines = text.split('\n');
@@ -143,34 +155,27 @@ describe('a change that loosens nitpicker.config.json', () => {
       [...expected].sort().map((change) => ({
         rule: 'policy-loosened',
         file: 'nitpicker.config.json',
-        message: `${change}. ${ACCEPT_ROUTE}`,
+        message: `${change}. ${acceptRoute(expected)}`,
       })),
     );
     expect(policyBlock(stdoutText)).toEqual([HEADING, ...expected.map((change) => `  ${change}`)]);
     expect(policyBlock(report)).toEqual([HEADING, ...expected.map((change) => `  ${change}`)]);
   });
 
-  it('passes when a person accepts it with the flag or the environment variable', () => {
-    const flagged = runWithHeadConfig({
+  it('passes when a person accepts the digest of these loosenings', () => {
+    const run = runWithHeadConfig({
       baseConfig: { exclude: ['src/legacy/**'] },
       headConfig: loosened,
-      extraArguments: ['--accept-policy-change'],
-    });
-    const fromEnvironment = runWithHeadConfig({
-      baseConfig: { exclude: ['src/legacy/**'] },
-      headConfig: loosened,
-      environment: { NITPICKER_ACCEPT_POLICY_CHANGE: '1' },
+      environment: { NITPICKER_ACCEPT_POLICY_CHANGE: policyDigest(expected) },
     });
 
-    for (const run of [flagged, fromEnvironment]) {
-      expect(run.exitCode).toBe(0);
-      expect(run.summary.policyChangeAccepted).toBe(true);
-      expect(policyFindings(run.newFindings)).toEqual([]);
-      expect(policyBlock(run.stdoutText, ACCEPTED_HEADING)).toEqual([
-        ACCEPTED_HEADING,
-        ...expected.map((change) => `  ${change}`),
-      ]);
-    }
+    expect(run.exitCode).toBe(0);
+    expect(run.summary.policyChangeAccepted).toBe(true);
+    expect(policyFindings(run.newFindings)).toEqual([]);
+    expect(policyBlock(run.stdoutText, ACCEPTED_HEADING)).toEqual([
+      ACCEPTED_HEADING,
+      ...expected.map((change) => `  ${change}`),
+    ]);
   });
 
   it('counts the whole head config when the base has none', () => {
@@ -256,11 +261,22 @@ describe('a change that loosens nitpicker.config.json', () => {
 
 describe('a change that adopts or keeps the policy', () => {
   it('passes when a first config declares the preset that the project needs', () => {
-    for (const headConfig of [{ preset: 'java' }, { preset: 'typescript' }]) {
-      const { exitCode, summary } = runWithHeadConfig({ headConfig });
+    const java = { 'pom.xml': '<project/>\n', 'src/main/java/A.java': 'class A {}\n' };
+    const runs = [
+      runWithHeadConfig({ headConfig: { preset: 'java' }, projectFiles: java }),
+      runWithHeadConfig({ headConfig: { preset: 'typescript' } }),
+    ];
 
-      expect([exitCode, summary.policyLoosenings]).toEqual([0, []]);
-    }
+    expect(runs.map(({ exitCode, summary }) => [exitCode, summary.policyLoosenings])).toEqual([
+      [0, []],
+      [0, []],
+    ]);
+  });
+
+  it('fails when a first config moves a TypeScript project to another preset', () => {
+    const { exitCode, summary } = runWithHeadConfig({ headConfig: { preset: 'java' } });
+
+    expect([exitCode, summary.policyLoosenings]).toEqual([1, ['preset: not set -> "java"']]);
   });
 
   it('passes when the config drops a preset that is the default anyway', () => {

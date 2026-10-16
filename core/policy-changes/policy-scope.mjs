@@ -2,6 +2,7 @@ import { globToRegExp } from '../../shared/glob.mjs';
 import { runGit } from '../diff/git/repository/command.mjs';
 import { detectSourceRoots } from '../../languages/python/adapters/execution/python-project.mjs';
 import { resolveLayout } from '../../languages/typescript/preset/layout.mjs';
+import { presetToDeclare } from '../configuration/project-checks/preset-detection.mjs';
 
 const GRADLE_EXTENSIONS = ['java', 'kt', 'kts'];
 const PRESET_EXTENSIONS = new Map([
@@ -60,7 +61,14 @@ function basePathResolver({ files = new Map(), directories = new Map() } = {}, f
   };
 }
 
-export function createPolicyScope({ files, baseRoots, headRoots, headConfig, moves }) {
+export function createPolicyScope({
+  files,
+  baseRoots,
+  headRoots,
+  headConfig,
+  moves,
+  presetRequired = false,
+}) {
   const extensions = new Set(extensionsOf(headConfig));
   const code = files.filter((file) => extensions.has(file.slice(file.lastIndexOf('.') + 1)));
   const roots = Object.values(headRoots).flat();
@@ -75,6 +83,7 @@ export function createPolicyScope({ files, baseRoots, headRoots, headConfig, mov
     baseRoots,
     headRoots,
     basePathOf: basePathResolver(moves, folders),
+    presetRequired,
   };
 }
 
@@ -92,5 +101,6 @@ export function readPolicyScope({
     headRoots: rootSets(headConfig, headProjectRoot),
     headConfig,
     moves,
+    presetRequired: presetToDeclare(headConfig, headProjectRoot) !== undefined,
   });
 }
