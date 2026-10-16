@@ -97,8 +97,8 @@ function summaryLines({ config, projectRoot }, conventions) {
       toolPrecedence,
     });
     return kotlinSummary(tools, conventions);
-  } catch {
-    return [];
+  } catch (error) {
+    return [`Could not read the Kotlin style settings: ${error.message}`];
   }
 }
 
