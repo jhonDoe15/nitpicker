@@ -77,6 +77,31 @@ describe('stageSources', () => {
     expect(existsSync(path.join(staged, 'app/src/test/lombok.config'))).toBe(false);
   });
 
+  it('writes the configuration the root inherits from its parents, up to one that stops bubbling', () => {
+    const outer = temporary();
+    const root = path.join(outer, 'repo/app');
+    writeFiles(outer, {
+      'lombok.config': 'config.stopBubbling = true\nlombok.log.fieldName = LOG',
+      'repo/lombok.config': 'lombok.accessors.fluent = true',
+      'repo/app/lombok.config': 'lombok.accessors.chain = true',
+      'repo/app/src/main/java/demo/A.java': 'package demo;\nclass A {}\n',
+    });
+    const staged = path.join(root, 'build/nitpicker-lint/work/sources');
+
+    stageSources({ root, sources: [path.join(root, 'src/main/java/demo/A.java')], staged });
+
+    expect(readFileSync(path.join(staged, 'lombok.config'), 'utf8')).toBe(
+      [
+        'config.stopBubbling = true',
+        'lombok.log.fieldName = LOG',
+        'lombok.accessors.fluent = true',
+        'lombok.accessors.chain = true',
+        'config.stopBubbling = true',
+        '',
+      ].join('\n'),
+    );
+  });
+
   it('stops the configuration lookup at the staged root when the project has no root lombok.config', () => {
     const root = temporary();
     writeFiles(root, { 'src/main/java/demo/A.java': 'package demo;\nclass A {}\n' });

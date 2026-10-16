@@ -722,8 +722,8 @@ A Checkstyle rule prints as its full check class, for example
   generate are already compiled) and stops after flow analysis without writing classes. The copy
   keeps the sources' paths below the analysis root, with every `lombok.config` on the way from the
   root down to each source folder, so Lombok reads the project's configuration (a package folder's
-  `fluent` accessors or log field name included); the copy's root configuration stops the lookup
-  there. A warning javac places on a Lombok annotation (`@SuperBuilder` or `@Builder` code that
+  `fluent` accessors or log field name included); the copy's root configuration holds what the
+  root inherits from the folders above it and stops the lookup there. A warning javac places on a Lombok annotation (`@SuperBuilder` or `@Builder` code that
   Lombok generates) is dropped: it is not in code the project wrote. With a `module-info.java` the
   sources compile as that module, with the modular jars of the class path on `--module-path` (and,
   if that fails, every jar), the sources other annotation processors generated (MapStruct,
@@ -733,10 +733,10 @@ A Checkstyle rule prints as its full check class, for example
   `target/nitpicker-lint/`), the base's warnings are reused for files whose content is the same as
   on the base, so the report matches a full lint. They are reused only when the compile inputs
   match the base's: the javac version, the language level, the encoding, the compiler arguments
-  (the checkout's folder left out), every `lombok.config` on the sources' paths and every class
-  path and Lombok entry (a jar outside the project by name and size; a jar inside it, or a classes
-  directory such as another project's, by its content), so a dependency bump that deprecates an API
-  or a changed Lombok setting is reported in unchanged files too. An unchanged file whose classes
+  (the checkout's folder left out), every `lombok.config` that applies to the sources and every
+  class path and Lombok entry (a jar outside the project by name and size; a jar inside it, or a
+  classes directory such as another project's, by its content), so a dependency bump that
+  deprecates an API or a changed Lombok setting is reported in unchanged files too. An unchanged file whose classes
   use a class of a changed file, directly or through a subclass (read from the head's class
   files), is compiled again, so a method the change deprecated or a class the change made generic
   is reported where it is called. A constant javac inlined leaves no trace in the class files, so
