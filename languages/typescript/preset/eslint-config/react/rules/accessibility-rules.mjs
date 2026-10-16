@@ -6,21 +6,29 @@ export const extraAccessibilityRuleNames = [
 ];
 
 export const accessibilityOptionOverrides = {
-  'control-has-associated-label': {
-    ignoreElements: ['audio', 'canvas', 'embed', 'input', 'select', 'textarea', 'tr', 'video'],
-    ignoreRoles: [
-      'grid',
-      'listbox',
-      'menu',
-      'menubar',
-      'radiogroup',
-      'row',
-      'tablist',
-      'toolbar',
-      'tree',
-      'treegrid',
-    ],
-    includeRoles: ['alert', 'dialog'],
-  },
-  'label-has-associated-control': { controlComponents: ['[A-Z]*'] },
+  'control-has-associated-label': [
+    {
+      ignoreElements: ['audio', 'canvas', 'embed', 'input', 'select', 'textarea', 'tr', 'video'],
+      ignoreRoles: [
+        'grid',
+        'listbox',
+        'menu',
+        'menubar',
+        'radiogroup',
+        'row',
+        'tablist',
+        'toolbar',
+        'tree',
+        'treegrid',
+      ],
+      includeRoles: ['alert', 'dialog'],
+    },
+  ],
+  'label-has-associated-control': [{ controlComponents: ['[A-Z]*'] }],
+  'mouse-events-have-key-events': [
+    {
+      hoverInHandlers: ['onMouseOver', 'onMouseEnter'],
+      hoverOutHandlers: ['onMouseOut', 'onMouseLeave'],
+    },
+  ],
 };

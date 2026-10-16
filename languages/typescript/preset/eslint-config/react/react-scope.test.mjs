@@ -7,6 +7,7 @@ import tseslint from 'typescript-eslint';
 import { afterEach, describe, expect, it } from 'vitest';
 import { lintFixture } from '../../failure-messages/test-support/harness.mjs';
 import { resolveLayout } from '../../layout.mjs';
+import { storyGlobs } from '../scope-support.mjs';
 import { extraAccessibilityRuleNames } from './rules/accessibility-rules.mjs';
 import {
   accessibilityRuleNames,
@@ -180,7 +181,7 @@ describe('the React scope config', () => {
   });
 
   it('configures exactly the listed React rule ids', async () => {
-    const [production, tests, typed] = await reactScopeConfigFor(layout);
+    const [production, tests, , typed] = await reactScopeConfigFor(layout);
     const typedReactRules = Object.keys(typed.rules).filter((id) => id.startsWith('react-x/'));
 
     expect([...Object.keys(production.rules), ...typedReactRules].toSorted()).toEqual(
@@ -198,8 +199,9 @@ describe('the React scope config', () => {
     }
   });
 
-  it('runs every rule as an error', async () => {
-    for (const entry of await reactScopeConfigFor(layout)) {
+  it('runs every rule as an error, except the ones story files switch off', async () => {
+    const entries = await reactScopeConfigFor(layout);
+    for (const entry of entries.filter(({ files }) => files !== storyGlobs)) {
       for (const [id, setting] of Object.entries(entry.rules)) {
         expect([setting].flat()[0], id).toBe('error');
       }
@@ -289,6 +291,25 @@ describe('the React scope config', () => {
     for (const file of ['src/ui/panel.test.tsx', 'test/panel.tsx', 'src/ui/__tests__/panel.tsx']) {
       const config = await calculatedConfig(entries, file);
       expect(config?.rules?.['react-hooks/rules-of-hooks'], file).toBeUndefined();
+    }
+  });
+
+  it('checks colors in every production source file, but not in tests or stories', async () => {
+    const entries = await reactScopeConfigFor(layout);
+    const severityOf = async (file) =>
+      (await calculatedConfig(entries, file))?.rules?.['nitpicker/react-no-hardcoded-colors']?.[0];
+
+    for (const file of ['src/ui/panel.tsx', 'src/map/geometry.ts', 'src/map/geometry.mjs']) {
+      expect(await severityOf(file), file).toBe(2);
+    }
+    for (const file of [
+      'src/ui/panel.test.tsx',
+      'test/panel.tsx',
+      'src/ui/__tests__/panel.tsx',
+      'src/ui/panel.stories.tsx',
+      'src/ui/panel.stories.ts',
+    ]) {
+      expect(await severityOf(file), file).not.toBe(2);
     }
   });
 

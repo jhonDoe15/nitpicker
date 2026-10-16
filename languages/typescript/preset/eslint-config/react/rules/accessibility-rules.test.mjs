@@ -2,6 +2,7 @@ import tseslint from 'typescript-eslint';
 import { describe, expect, it } from 'vitest';
 import { lintFixture } from '../../../failure-messages/test-support/harness.mjs';
 import { resolveLayout } from '../../../layout.mjs';
+import { GENERAL_HINT } from '../../rule-hints.mjs';
 import { reactSyntaxConfigFor } from '../react-scope.mjs';
 
 const config = [
@@ -70,5 +71,35 @@ describe('accessibility rules beyond the plugin recommendation', () => {
 
   it('reports a field with no label through the field rule, not the plugin', () => {
     expect(ruleIdsFor('<input type="text" />')).toEqual(['nitpicker/react-field-has-label']);
+  });
+
+  it('requires focus and blur handlers next to hover-only enter and leave handlers', async () => {
+    const [, entry] = config;
+    const flagged = (attributes) =>
+      lintFixture({
+        config,
+        filename: 'src/main/ui/card.tsx',
+        code: `export const Card = () => <div ${attributes} />;`,
+      })
+        .filter(({ ruleId }) => ruleId === 'jsx-a11y/mouse-events-have-key-events')
+        .map(({ message }) => message);
+
+    expect(entry.rules['jsx-a11y/mouse-events-have-key-events']).toEqual([
+      'error',
+      {
+        hoverInHandlers: ['onMouseOver', 'onMouseEnter'],
+        hoverOutHandlers: ['onMouseOut', 'onMouseLeave'],
+      },
+    ]);
+    expect(flagged('onMouseEnter={show} onMouseLeave={hide}')).toEqual([
+      `onMouseEnter must be accompanied by onFocus for accessibility.${GENERAL_HINT}`,
+      `onMouseLeave must be accompanied by onBlur for accessibility.${GENERAL_HINT}`,
+    ]);
+    expect(flagged('onMouseOver={show}')).toEqual([
+      `onMouseOver must be accompanied by onFocus for accessibility.${GENERAL_HINT}`,
+    ]);
+    expect(flagged('onMouseEnter={show} onFocus={show} onMouseLeave={hide} onBlur={hide}')).toEqual(
+      [],
+    );
   });
 });

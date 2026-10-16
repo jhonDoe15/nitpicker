@@ -5,12 +5,7 @@ import reactWebApi from 'eslint-plugin-react-web-api';
 import reactX from 'eslint-plugin-react-x';
 import testingLibrary from 'eslint-plugin-testing-library';
 import { inReactTestFilesOnly } from '../../eslint-plugin/rules/react/react-test-files.mjs';
-import {
-  accessibilityRuleNames,
-  EXCEPTION_HINT,
-  GENERAL_HINT,
-  testingLibraryHints,
-} from './react-rules.mjs';
+import { accessibilityRuleNames, testingLibraryHints } from './react-rules.mjs';
 import { accessibilityOptionOverrides } from './rules/accessibility-rules.mjs';
 import {
   reactDomHints,
@@ -18,7 +13,7 @@ import {
   reactXHints,
   typedReactXRules,
 } from './rules/third-party-rules.mjs';
-import { withHint, withoutFixes } from '../rule-hints.mjs';
+import { EXCEPTION_HINT, GENERAL_HINT, withHint, withoutFixes } from '../rule-hints.mjs';
 import { createdByCallOnly } from './rules/static-components.mjs';
 
 const accessibilityRulePrefix = 'jsx-a11y-x';
@@ -80,20 +75,16 @@ export const reactPlugins = {
   },
 };
 
+function recommendedOptions(name) {
+  const configured = accessibility.configs.recommended.rules[`${accessibilityRulePrefix}/${name}`];
+  return Array.isArray(configured) ? configured.slice(1) : [];
+}
+
 export const accessibilityRuleOptions = Object.fromEntries(
-  accessibilityRuleNames.map((name) => {
-    const configured =
-      accessibility.configs.recommended.rules[`${accessibilityRulePrefix}/${name}`];
-    const override = accessibilityOptionOverrides[name];
-    return [
-      `jsx-a11y/${name}`,
-      [
-        'error',
-        ...(override === undefined ? [] : [override]),
-        ...(Array.isArray(configured) && override === undefined ? configured.slice(1) : []),
-      ],
-    ];
-  }),
+  accessibilityRuleNames.map((name) => [
+    `jsx-a11y/${name}`,
+    ['error', ...(accessibilityOptionOverrides[name] ?? recommendedOptions(name))],
+  ]),
 );
 
 function testingLibraryRule(name, hint) {

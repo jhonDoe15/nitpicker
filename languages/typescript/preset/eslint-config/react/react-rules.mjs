@@ -1,10 +1,9 @@
+import { EXCEPTION_HINT, GENERAL_HINT } from '../rule-hints.mjs';
 import { extraAccessibilityRuleNames } from './rules/accessibility-rules.mjs';
-import { EXCEPTION_HINT, GENERAL_HINT } from './rules/hints.mjs';
 import { nitpickerReactRuleIds } from './rules/nitpicker-rules.mjs';
 import { thirdPartyReactRuleIds } from './rules/third-party-rules.mjs';
 
 export { stylingApproaches } from '../../eslint-plugin/rules/react/react-single-styling-approach.mjs';
-export { EXCEPTION_HINT, GENERAL_HINT };
 
 export const defaultStylingApproach = 'class-names';
 
@@ -44,8 +43,11 @@ export const accessibilityRuleNames = [
 ];
 
 export const reactRuleIds = [
+  'nitpicker/no-runtime-exclusive-props-check',
+  'nitpicker/no-singular-and-plural-prop',
   'nitpicker/react-no-effect-data-fetching',
   'nitpicker/react-no-effect-derived-state',
+  'nitpicker/react-no-hardcoded-colors',
   'nitpicker/react-single-styling-approach',
   'react-hooks/exhaustive-deps',
   'react-hooks/rules-of-hooks',
@@ -70,6 +72,7 @@ const testingLibraryRuleIds = Object.keys(testingLibraryHints).map(
 );
 
 export const reactTestRuleIds = [
+  'nitpicker/hover-test-needs-keyboard',
   'nitpicker/react-test-no-implementation-details',
   ...testingLibraryRuleIds,
 ];

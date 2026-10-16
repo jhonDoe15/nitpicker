@@ -16,25 +16,30 @@ import {
   thirdPartyReactRuleIds,
   typedReactXRules,
 } from './rules/third-party-rules.mjs';
+import {
+  productionScope,
+  readDependencyNames,
+  readManifest,
+  storyGlobs,
+} from '../scope-support.mjs';
 
-const REACT_PACKAGE = 'react';
+export { isReactProject } from '../scope-support.mjs';
+
 const typedRuleIds = typedReactXRules.map((name) => `react-x/${name}`);
 const untypedThirdPartyRuleIds = thirdPartyReactRuleIds.filter((id) => !typedRuleIds.includes(id));
 
-function readJson(file) {
+function installedReactVersion(projectRoot) {
   try {
-    return JSON.parse(readFileSync(file, 'utf8'));
+    return JSON.parse(
+      readFileSync(path.join(projectRoot, 'node_modules/react/package.json'), 'utf8'),
+    ).version;
   } catch {
-    return {};
+    return undefined;
   }
 }
 
-function readManifest(projectRoot) {
-  return readJson(path.join(projectRoot, 'package.json'));
-}
-
 function reactMajorOf(projectRoot) {
-  const installed = readJson(path.join(projectRoot, 'node_modules/react/package.json'))?.version;
+  const installed = installedReactVersion(projectRoot);
   const manifest = readManifest(projectRoot);
   const declared = manifest?.dependencies?.react ?? manifest?.devDependencies?.react;
   const major = /\d+/u.exec(typeof installed === 'string' ? installed : String(declared ?? ''));
@@ -44,18 +49,6 @@ function reactMajorOf(projectRoot) {
 function ruleIdsForReact(major) {
   const before19 = major !== undefined && major < 19;
   return untypedThirdPartyRuleIds.filter((id) => !before19 || !react19RuleIds.includes(id));
-}
-
-function readDependencyNames(projectRoot) {
-  const manifest = readManifest(projectRoot);
-  return [
-    ...Object.keys(manifest?.dependencies ?? {}),
-    ...Object.keys(manifest?.devDependencies ?? {}),
-  ];
-}
-
-export function isReactProject({ projectRoot, react = {} }) {
-  return react.enabled ?? readDependencyNames(projectRoot).includes(REACT_PACKAGE);
 }
 
 export function stylingApproachFor({ projectRoot, react = {} }) {
@@ -69,13 +62,6 @@ export function stylingApproachFor({ projectRoot, react = {} }) {
 
 export function analyzedProjectRoot(environment = process.env) {
   return environment.NITPICKER_DIFF_ESLINT_PROJECT_ROOT ?? process.cwd();
-}
-
-function productionScope(layout) {
-  return {
-    files: layout.sourceGlobs,
-    ignores: [...layout.testGlobs, ...layout.sourceTestDirectoryGlobs],
-  };
 }
 
 function testScope(layout) {
@@ -103,8 +89,11 @@ export async function reactSyntaxConfigFor(layout, react = {}) {
           [...nitpickerReactRuleIds, ...ruleIdsForReact(react.major)].map((id) => [id, 'error']),
         ),
         ...accessibilityRuleOptions,
+        'nitpicker/no-runtime-exclusive-props-check': 'error',
+        'nitpicker/no-singular-and-plural-prop': 'error',
         'nitpicker/react-no-effect-derived-state': 'error',
         'nitpicker/react-no-effect-data-fetching': 'error',
+        'nitpicker/react-no-hardcoded-colors': 'error',
         'nitpicker/react-single-styling-approach': [
           'error',
           { approach: react.styling ?? defaultStylingApproach },
@@ -119,6 +108,16 @@ export async function reactSyntaxConfigFor(layout, react = {}) {
         ...Object.fromEntries(reactTestRuleIds.map((id) => [id, 'error'])),
         ...(react.reactNative ? { 'testing-library/no-test-id-queries': 'off' } : {}),
       },
+    },
+  ];
+}
+
+function storyConfigFor() {
+  return [
+    {
+      files: storyGlobs,
+      plugins: { nitpicker: nitpickerRules },
+      rules: { 'nitpicker/react-no-hardcoded-colors': 'off' },
     },
   ];
 }
@@ -150,6 +149,7 @@ export async function reactScopeConfigFor(layout, react = {}, projectRoot = anal
   const major = reactMajorOf(projectRoot);
   return [
     ...(await reactSyntaxConfigFor(layout, { ...react, styling, reactNative, major })),
+    ...storyConfigFor(),
     ...(await reactTypedConfigFor(layout)),
   ];
 }
