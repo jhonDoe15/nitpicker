@@ -64,6 +64,8 @@ class AdderTest {
 
 const comparable = (findings) => findings.map((finding) => JSON.stringify(finding)).sort();
 
+const UNTIMED = { unitTestSeconds: 600, integrationTestSeconds: 600 };
+
 function onEitherBuildFile(findings) {
   return findings.map((finding) =>
     BUILD_FILES.has(finding.path) ? { ...finding, path: 'build file', message: '' } : finding,
@@ -112,8 +114,9 @@ describe.skipIf(!enabled)('Java preset on Maven builds', () => {
       const guards = path.join(gradleFixtures, 'guards-project');
       const gradleProject = copyOf(guards);
       const mavenProject = withoutGradle(copyOf(guards, path.join(fixtures, 'guards')));
-      const fromGradle = collectJavaFindings(gradleProject, { gradle, policy: {} });
-      const fromMaven = collectJavaFindings(mavenProject, { maven, policy: {} });
+      const policy = { testSeconds: UNTIMED };
+      const fromGradle = collectJavaFindings(gradleProject, { gradle, policy });
+      const fromMaven = collectJavaFindings(mavenProject, { maven, policy });
 
       expect(comparable(onEitherBuildFile(fromMaven))).toEqual(
         comparable(onEitherBuildFile(fromGradle)),
