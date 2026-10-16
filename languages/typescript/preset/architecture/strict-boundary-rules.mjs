@@ -248,8 +248,10 @@ export function sharedReachPath(violation, moduleList) {
     const next = [...new Set(runtimeTargets(modules, candidate.at(-1)))].filter(
       (step) => !seen.has(step),
     );
-    next.forEach((step) => seen.add(step));
-    pending.push(...next.map((step) => [...candidate, step]));
+    for (const step of next) {
+      seen.add(step);
+      pending.push([...candidate, step]);
+    }
   }
   return undefined;
 }
