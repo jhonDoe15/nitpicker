@@ -168,6 +168,7 @@ function typeAndArchitectureChecksFor(layout) {
         ARCHITECTURE_CONFIG,
         'languages/typescript/preset/architecture/outside-roots/outside-roots.mjs',
         'languages/typescript/preset/architecture/strict-boundary-rules.mjs',
+        'languages/typescript/preset/architecture/domain-packages.mjs',
         'languages/typescript/preset/architecture/strict-layout.mjs',
         'languages/typescript/preset/defaults/tsconfig.quality.json',
       ],

@@ -25,9 +25,15 @@ export function parsedTsconfig(configFile) {
   );
 }
 
-export function referencedConfigFile(projectDirectory, reference) {
+function referencedConfigFile(projectDirectory, reference) {
   const target = path.resolve(projectDirectory, reference.path);
   return path.extname(target) === '.json' ? target : path.join(target, PROJECT_TSCONFIG);
+}
+
+export function referencedTsconfigs(configFile, config = readJsonc(configFile)) {
+  return (config?.references ?? [])
+    .map((reference) => referencedConfigFile(path.dirname(configFile), reference))
+    .filter((file) => existsSync(file));
 }
 
 export function isSolutionTsconfig(config) {
@@ -44,11 +50,9 @@ const PROJECT_CONFIG = /(?:^|\/)tsconfig\.json$/u;
 const DEPENDENCY_FOLDER = /(?:^|\/)node_modules\//u;
 
 function referencedConfigs(projectRoot, config) {
-  const directory = path.join(projectRoot, path.posix.dirname(config));
-  return (readJsonc(path.join(projectRoot, config))?.references ?? [])
-    .map((reference) => referencedConfigFile(directory, reference))
-    .filter((file) => existsSync(file))
-    .map((file) => path.relative(projectRoot, file).split(path.sep).join('/'));
+  return referencedTsconfigs(path.join(projectRoot, config)).map((file) =>
+    path.relative(projectRoot, file).split(path.sep).join('/'),
+  );
 }
 
 export function projectTsconfigs(projectRoot, files, isHidden = () => false) {
@@ -67,4 +71,11 @@ export function projectTsconfigs(projectRoot, files, isHidden = () => false) {
 
 export function checksJavascript(configFile) {
   return parsedTsconfig(configFile).options.checkJs === true;
+}
+
+const LIB_FILE = /^lib\.(.+)\.d\.ts$/u;
+
+export function projectLibs(projectDirectory, configName) {
+  const { options } = parsedTsconfig(path.join(projectDirectory, configName));
+  return options.lib?.map((lib) => path.basename(lib).replace(LIB_FILE, '$1'));
 }

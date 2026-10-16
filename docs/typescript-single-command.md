@@ -104,12 +104,13 @@ Decision (proposed, pending owner review):
 
 - `layout` accepts `sourceRoots` and `testRoots`: non-empty arrays of project-relative directories
   (no absolute paths, `..` or globs), `entryPoints`: an array of globs of files started or loaded by path rather than imported (the dead-code check adds them to knip's entries), and `excludedGlobs`: an array of globs that replaces the
-  built-in exclusions. Other keys are an error. The defaults stay `["src"]` and
-  `["test", "tests"]`. `exclude` is a list of globs relative to the project root (`**`, `*`, `?`,
-  `{a,b}`) that is added to the built-in exclusions: the project-root folders `dist`, `build`,
-  `generated`, `coverage`, `reports` and `target`, and `node_modules` at any depth. Hand-written
-  `*.d.ts` files under the source roots are linted and type-checked; `runtimeExcludedGlobs` in the
-  resolved layout adds them back for coverage, CRAP and mutation, which cannot instrument them.
+  built-in exclusions. Other keys are an error. The defaults are `["src"]` and
+  `["test", "tests", "__tests__", "e2e"]`. `exclude` is a list of globs relative to the project
+  root (`**`, `*`, `?`, `{a,b}`) that is added to the built-in exclusions: the project-root folders
+  `dist`, `build`, `generated`, `coverage`, `reports` and `target`, and `node_modules` at any depth.
+  Hand-written `*.d.ts` files under the source roots are linted and type-checked;
+  `runtimeExcludedGlobs` in the resolved layout adds them back for coverage, CRAP and mutation,
+  which cannot instrument them.
 - `languages/typescript/preset/layout.mjs` exposes `resolveLayout(layout, exclude)`, which derives every glob, regular
   expression and predicate (`isSourceFile`, `isTestFile`, `isExcluded`, `projectCodeFiles`, ...)
   from the roots and exclusions. `readLayout()` in `languages/typescript/preset/head-policy.mjs` resolves the delivered
@@ -192,7 +193,7 @@ Status: implemented. The consumer installs one npm dev dependency and runs `npx 
   `node_modules/` is used like any project's, and tools that cache under `node_modules` write to
   the consumer's install. Single-package npm projects are the tested setup.
 - The `policy-tests` analyzer, which runs nitpicker's own test suite, is not in the default set.
-- Default file globs cover common layouts (`src/`, `test/`, `tests/`) instead of only `src/main`
+- Default file globs cover common layouts (`src/`, `test/`, `tests/`, `__tests__/`, `e2e/`) instead of only `src/main`
   and `tests`. The config file can change them.
 - Runners keep the `--tool-root` argument, pinned to nitpicker's package folder.
 

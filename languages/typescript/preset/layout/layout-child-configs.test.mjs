@@ -116,6 +116,20 @@ describe('package-owned child configs', () => {
       rules: { 'nitpicker/report-module-load-effects': 'off' },
     });
   });
+  it('production policy configs skip the module-load rule for the detected framework entry', async () => {
+    const entryPolicy = {
+      ...policy,
+      layout: { ...policy.layout, entryPoints: ['lib/tools/run.mjs'] },
+      frameworks: { defaultExports: [], entryPoints: ['src/main.tsx'] },
+    };
+    const build = (module) => module.productionPolicyConfig({});
+    const config = await loadConfig('eslint-config/policies/base.mjs', entryPolicy, build);
+
+    expect(config.at(-1)).toEqual({
+      files: ['lib/tools/run.mjs', 'src/main.tsx'],
+      rules: { 'nitpicker/report-module-load-effects': 'off' },
+    });
+  });
   it('crap.config.mjs measures the custom source roots and skips excluded paths', async () => {
     const config = await loadConfig('defaults/crap.config.mjs', policy);
     expect(config.sourcePaths).toEqual(['lib']);

@@ -1,5 +1,7 @@
 export const EXCEPTION_HINT = 'add an exception for this rule in nitpicker.config.json.';
 export const GENERAL_HINT = ` If this is intentional, ${EXCEPTION_HINT}`;
+export const SYNTAX_EXCEPTION_HINT =
+  ' If a framework or library requires it, add an exception for this rule for those paths in nitpicker.config.json.';
 
 export function withReportFilter(rule, filterFor) {
   return {
@@ -30,14 +32,27 @@ export function withHint(rule, hint) {
   };
 }
 
+const closingPunctuation = /[.!?:;]$/u;
+const leadingPunctuation = /^[.!?:;]/u;
+
+function withHintText(text, hint) {
+  if (leadingPunctuation.test(hint)) {
+    return `${text}${hint}`;
+  }
+  const trimmed = text.trimEnd();
+  return closingPunctuation.test(trimmed) ? `${trimmed}${hint}` : `${trimmed}.${hint}`;
+}
+
 function hintedMessages(messages, hint) {
-  return Object.fromEntries(Object.entries(messages).map(([id, text]) => [id, `${text}${hint}`]));
+  return Object.fromEntries(
+    Object.entries(messages).map(([id, text]) => [id, withHintText(text, hint)]),
+  );
 }
 
 function hintedDescriptor(descriptor, hint) {
   return descriptor.message === undefined
     ? descriptor
-    : { ...descriptor, message: `${descriptor.message}${hint}` };
+    : { ...descriptor, message: withHintText(descriptor.message, hint) };
 }
 
 function omit(object, keys) {

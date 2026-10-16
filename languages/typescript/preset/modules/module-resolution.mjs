@@ -3,7 +3,7 @@ import { builtinModules } from 'node:module';
 import path from 'node:path';
 import ts from 'typescript';
 import { chainOf } from '../../../../shared/traversal.mjs';
-import { parsedTsconfig, readJsonc, referencedConfigFile } from './tsconfig-files.mjs';
+import { parsedTsconfig, readJsonc, referencedTsconfigs } from './tsconfig-files.mjs';
 
 const CONFIG_NAMES = ['tsconfig.json', 'jsconfig.json'];
 const PATH_KEYS = ['paths', 'pathsBasePath', 'baseUrl'];
@@ -41,9 +41,7 @@ function pathMapping(options) {
 }
 
 function referencedMapping(configFile, rawConfig) {
-  return (rawConfig?.references ?? [])
-    .map((reference) => referencedConfigFile(path.dirname(configFile), reference))
-    .filter((file) => existsSync(file))
+  return referencedTsconfigs(configFile, rawConfig)
     .map((file) => pathMapping(parsedTsconfig(file).options))
     .find(Boolean);
 }
