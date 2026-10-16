@@ -19,7 +19,7 @@ import { conventionDefinitions } from '../conventions/definitions.mjs';
 import { validateConventions } from '../../shared/conventions/settings.mjs';
 import { stylingApproaches } from '../../languages/typescript/preset/eslint-config/react/react-rules.mjs';
 import { i18nRuleIds } from '../../languages/typescript/preset/eslint-config/i18n/i18n-rules.mjs';
-import { hasSpecificText } from '../../languages/typescript/adapters/quality-areas/reporting/console-messages.mjs';
+import { hasSpecificText } from '../../languages/typescript/adapters/quality-areas/reporting/console/console-messages.mjs';
 import path from 'node:path';
 
 export const SUPPORTED_PRESETS = ['typescript', 'javascript', ...GRADLE_PRESETS, 'python'];
