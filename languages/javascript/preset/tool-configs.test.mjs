@@ -174,11 +174,19 @@ describe('generated knip.json', () => {
     for (const entry of [
       'src/main.{js,mjs,cjs}',
       'vitest.config.{js,mjs,cjs}',
+      'jest.config.{js,mjs,cjs}',
+      'tests/jest.config.{js,mjs,cjs}',
       'tests/fixtures/*harness*.{js,mjs,cjs}',
     ]) {
       expect(config.entry.includes(entry), entry).toBe(true);
     }
     expect(config.project).toEqual([...base.project, '*.config.{js,mjs,cjs}']);
+  });
+
+  it('lists the Jest and Mocha config files in the shared entries, for both presets', () => {
+    expect(base.entry).toEqual(
+      expect.arrayContaining(['jest.config.{ts,mts}', '.mocharc.{js,cjs,mjs}']),
+    );
   });
 
   it('does not add them for TypeScript', () => {

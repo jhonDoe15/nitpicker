@@ -12,6 +12,11 @@
     "test/vitest.config.ts",
     "tests/vitest.config.ts",
     "vitest.quality.config.ts",
+    "jest.config.{ts,mts}",
+    "src/main/jest.config.{ts,mts}",
+    "test/jest.config.{ts,mts}",
+    "tests/jest.config.{ts,mts}",
+    ".mocharc.{js,cjs,mjs}",
     "test/fixtures/*harness*.{ts,mts,mjs}",
     "tests/fixtures/*harness*.{ts,mts,mjs}"
   ],

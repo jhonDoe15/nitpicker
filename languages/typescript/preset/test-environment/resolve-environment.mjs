@@ -1,12 +1,19 @@
 import { spawnSync } from 'node:child_process';
 import path from 'node:path';
 import { readHeadPolicy, readLayout } from '../head-policy.mjs';
+import { DEFAULT_TEST_RUNNER } from '../test-runner/runners.mjs';
+import { policyTestRunner } from '../test-runner/project-runner.mjs';
 import { projectConfigFile } from './config-files.mjs';
-import { DEFAULT_ENVIRONMENT } from './environments.mjs';
+import {
+  DEFAULT_ENVIRONMENT,
+  TEST_ENVIRONMENT_RULE,
+  TEST_ENVIRONMENTS_VARIABLE,
+} from './environments.mjs';
+import { environmentsFromJestConfig } from './jest/jest-environment.mjs';
+import { jestConfigFile, readJestConfig } from './jest/read-jest-config.mjs';
 import { RESULT_MARKER } from './read-environment.mjs';
 
-export const TEST_ENVIRONMENTS_VARIABLE = 'NITPICKER_TEST_ENVIRONMENTS';
-export const TEST_ENVIRONMENT_RULE = 'nitpicker/no-unused-dom-environment';
+export { TEST_ENVIRONMENTS_VARIABLE, TEST_ENVIRONMENT_RULE };
 export const LINT_CONFIG = 'languages/typescript/preset/defaults/eslint.config.mjs';
 
 const READER = path.join(import.meta.dirname, 'read-environment.mjs');
@@ -36,11 +43,22 @@ function runReader({ configFile, projectRoot, resolveRoots, timeoutMs }) {
   return JSON.parse(line.slice(RESULT_MARKER.length));
 }
 
-export function loadTestEnvironments({
-  projectRoot,
-  liveProjectRoot = projectRoot,
-  timeoutMs = TIMEOUT_MS,
-}) {
+function unreadable(projectRoot, configFile, failure) {
+  const configPath = path.relative(projectRoot, configFile).split(path.sep).join('/');
+  return {
+    ...UNKNOWN,
+    notice: { path: configPath, message: noticeFor(configPath, failure) },
+  };
+}
+
+function loadJestEnvironments({ projectRoot, liveProjectRoot, timeoutMs }) {
+  const { config, failure } = readJestConfig({ projectRoot, liveProjectRoot, timeoutMs });
+  return config === undefined
+    ? unreadable(projectRoot, path.join(projectRoot, jestConfigFile(projectRoot)), failure)
+    : environmentsFromJestConfig(config, projectRoot);
+}
+
+function loadViteEnvironments({ projectRoot, liveProjectRoot, timeoutMs }) {
   const configFile = projectConfigFile(projectRoot);
   if (configFile === undefined) return { ...UNKNOWN, environment: DEFAULT_ENVIRONMENT };
   const outcome = runReader({
@@ -49,14 +67,22 @@ export function loadTestEnvironments({
     resolveRoots: [...new Set([projectRoot, liveProjectRoot])],
     timeoutMs,
   });
-  if (outcome.result === undefined) {
-    const configPath = path.relative(projectRoot, configFile).split(path.sep).join('/');
-    return {
-      ...UNKNOWN,
-      notice: { path: configPath, message: noticeFor(configPath, outcome.failure) },
-    };
-  }
-  return outcome.result;
+  return outcome.result === undefined
+    ? unreadable(projectRoot, configFile, outcome.failure)
+    : outcome.result;
+}
+
+export function loadTestEnvironments({
+  projectRoot,
+  liveProjectRoot = projectRoot,
+  timeoutMs = TIMEOUT_MS,
+  runner = DEFAULT_TEST_RUNNER,
+}) {
+  const options = { projectRoot, liveProjectRoot, timeoutMs };
+  if (runner === 'jest') return loadJestEnvironments(options);
+  return runner === 'vitest'
+    ? loadViteEnvironments(options)
+    : { ...UNKNOWN, environment: DEFAULT_ENVIRONMENT };
 }
 
 function noticeFor(configPath, reason) {
@@ -72,11 +98,17 @@ function ruleIsExcepted(exceptions) {
 
 export function testEnvironmentsFor(options) {
   const layout = readLayout();
+  const policy = readHeadPolicy();
   const selected =
     options.configRelativePath === LINT_CONFIG &&
-    !ruleIsExcepted(readHeadPolicy().exceptions) &&
+    !ruleIsExcepted(policy.exceptions) &&
     layout.projectCodeFiles(options.projectRoot).some((file) => layout.isRunnableTestFile(file));
-  return selected ? loadTestEnvironments(options) : UNKNOWN;
+  return selected
+    ? loadTestEnvironments({
+        ...options,
+        runner: policyTestRunner(policy, options.projectRoot),
+      })
+    : UNKNOWN;
 }
 
 export function testEnvironmentNotices({ testEnvironments, analyzerName }) {

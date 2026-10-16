@@ -9,6 +9,7 @@ import { isJavascriptPolicy } from '../../javascript/preset/javascript-preset.mj
 import { hasScopePackage, scopePackage } from './eslint-config/scope-support.mjs';
 import { excludedGlobs, resolveLayout, sourceRoots, testRoots } from './layout.mjs';
 import { prettierConventionOptions } from '../conventions/prettier-conventions.mjs';
+import { detectTestRunner } from './test-runner/detect-runner.mjs';
 
 export { headPolicyEnvironment, withHeadPolicyFile } from '../../../shared/head-policy.mjs';
 
@@ -46,19 +47,30 @@ export function resolveHeadPolicy(config = {}, projectRoot) {
 }
 
 function withProjectFacts(policy, config, projectRoot) {
-  const prettier = policy.tools?.prettier;
+  const scoped = SCOPED_PRESETS.includes(config.preset);
   return {
     ...policy,
-    ...(SCOPED_PRESETS.includes(config.preset) ? detectedScopes(policy, projectRoot) : {}),
-    ...(usesProjectConfig(prettier?.precedence ?? [])
+    ...(scoped ? detectedScopes(policy, projectRoot) : {}),
+    ...detectedTools(policy, scoped, projectRoot),
+  };
+}
+
+function detectedTools(policy, scoped, projectRoot) {
+  const prettier = policy.tools?.prettier;
+  const facts = {
+    ...(scoped
       ? {
-          tools: {
-            ...policy.tools,
-            prettier: { ...prettier, projectConfigDigest: projectFilesDigest(projectRoot) },
+          tests: {
+            ...policy.tools?.tests,
+            detectedRunner: detectTestRunner(projectRoot).runner,
           },
         }
       : {}),
+    ...(usesProjectConfig(prettier?.precedence ?? [])
+      ? { prettier: { ...prettier, projectConfigDigest: projectFilesDigest(projectRoot) } }
+      : {}),
   };
+  return Object.keys(facts).length === 0 ? {} : { tools: { ...policy.tools, ...facts } };
 }
 
 function detectedScopes(policy, projectRoot) {

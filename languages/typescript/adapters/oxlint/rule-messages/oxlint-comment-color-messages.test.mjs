@@ -52,7 +52,10 @@ const EXPECTED = {
     finding('nitpicker/react-no-hardcoded-colors', noHardcodedColors, 'hardcodedColor', { color }),
   ),
   'src/tooltip.test.ts': ['negativeTimeoutAssertion', 'playwrightTimeout', 'cypressWait'].map(
-    (messageId) => finding('nitpicker/no-fixed-sleep-synchronization', noFixedSleep, messageId),
+    (messageId) =>
+      finding('nitpicker/no-fixed-sleep-synchronization', noFixedSleep, messageId, {
+        advanceFakeTime: 'vi.advanceTimersByTime',
+      }),
   ),
 };
 

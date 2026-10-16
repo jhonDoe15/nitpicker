@@ -34,6 +34,7 @@ export const ESLINT_PLUGIN_PACKAGES = [
   '@vitest/eslint-plugin',
   'eslint-plugin-formatjs',
   'eslint-plugin-functional',
+  'eslint-plugin-jest',
   'eslint-plugin-jsx-a11y-x',
   'eslint-plugin-react-hooks',
   'eslint-plugin-react-x',

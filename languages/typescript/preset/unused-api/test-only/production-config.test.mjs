@@ -19,6 +19,22 @@ const TEST_RUNNERS = [
 ];
 
 describe('the knip config without tests', () => {
+  it.each([
+    'vitest.config.ts',
+    'vitest.workspace.ts',
+    'jest.config.ts',
+    'jest.config.cjs',
+    'src/main/jest.config.mts',
+    '.mocharc.cjs',
+    '.mocharc.yml',
+  ])('leaves the %s test runner config out of the entries', (file) => {
+    const layout = resolveLayoutFor({ layout: { sourceRoots: ['src/main'] } });
+
+    const config = layoutKnipProductionConfig({ entry: ['src/main/main.ts', file] }, layout);
+
+    expect(config.entry).toEqual(['src/main/main.ts']);
+  });
+
   it('keeps the non-test entries and the rest of the config and leaves tests and stories out', () => {
     const layout = resolveLayoutFor({ layout: { sourceRoots: ['src/main'] } });
     const config = layoutKnipProductionConfig(

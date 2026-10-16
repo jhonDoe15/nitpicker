@@ -1,5 +1,6 @@
 import path from 'node:path';
 import { readLayout } from '../../../../head-policy.mjs';
+import { createRunnerApis, moduleMockSource, runnerApiVisitors } from '../runners/runner-apis.mjs';
 
 const layout = readLayout();
 
@@ -25,18 +26,8 @@ function isProductionModule(filename, source) {
   );
 }
 
-function mockedSource(node) {
-  if (
-    node.callee.type !== 'MemberExpression' ||
-    node.callee.computed ||
-    node.callee.object.type !== 'Identifier' ||
-    node.callee.object.name !== 'vi' ||
-    node.callee.property.type !== 'Identifier' ||
-    !['mock', 'doMock'].includes(node.callee.property.name)
-  ) {
-    return undefined;
-  }
-  const [firstArgument] = node.arguments;
+function mockedSource(apis, node) {
+  const firstArgument = moduleMockSource(apis, node);
   return firstArgument?.type === 'Literal' && typeof firstArgument.value === 'string'
     ? firstArgument.value
     : undefined;
@@ -57,9 +48,13 @@ export const rule = {
     const filename = context.filename.replaceAll('\\', '/');
     const productionImports = new Set();
     const mocks = [];
+    const apis = createRunnerApis();
+    const apiVisitors = runnerApiVisitors(apis);
 
     return {
+      ...apiVisitors,
       ImportDeclaration(node) {
+        apiVisitors.ImportDeclaration(node);
         const source = node.source.value;
         if (
           typeof source === 'string' &&
@@ -71,7 +66,7 @@ export const rule = {
         }
       },
       CallExpression(node) {
-        const source = mockedSource(node);
+        const source = mockedSource(apis, node);
         if (source !== undefined) {
           mocks.push({ node, source });
         }

@@ -4,7 +4,7 @@ import { chainOf } from '../../analysis/ancestry.mjs';
 export const TEST_TIMEOUT_CEILING_MS = 10_000;
 
 const TEST_FUNCTIONS = new Set(['it', 'test', 'describe', 'suite']);
-const HOOKS = new Set(['beforeAll', 'beforeEach', 'afterAll', 'afterEach']);
+const HOOKS = new Set(['beforeAll', 'beforeEach', 'afterAll', 'afterEach', 'before', 'after']);
 const TIMEOUT_KEYS = new Set(['timeout', 'testTimeout', 'hookTimeout', 'teardownTimeout']);
 
 function rootName(callee) {
@@ -31,21 +31,45 @@ function timeoutProperties(context, node) {
   );
 }
 
-function isSetConfig(callee) {
-  return (
+function identifierMember(callee) {
+  const isMember =
     callee.type === 'MemberExpression' &&
     !callee.computed &&
     callee.object.type === 'Identifier' &&
-    callee.object.name === 'vi' &&
-    callee.property.type === 'Identifier' &&
-    callee.property.name === 'setConfig'
+    callee.property.type === 'Identifier';
+  return isMember ? { object: callee.object.name, method: callee.property.name } : undefined;
+}
+
+function globalTimeouts(context, node) {
+  const member = identifierMember(node.callee);
+  if (member?.object === 'vi' && member.method === 'setConfig') {
+    return timeoutProperties(context, node.arguments[0]).map((property) => property.value);
+  }
+  return member?.object === 'jest' && member.method === 'setTimeout'
+    ? node.arguments.slice(0, 1)
+    : undefined;
+}
+
+function isChainedTimeout({ callee }) {
+  const isTimeout =
+    callee.type === 'MemberExpression' && !callee.computed && callee.property.name === 'timeout';
+  return (
+    isTimeout &&
+    (callee.object.type === 'ThisExpression' || TEST_FUNCTIONS.has(rootName(callee.object)))
   );
 }
 
+function argumentTimeouts(context, argument) {
+  if (argument === undefined || isFunction(argument)) return [];
+  const properties = timeoutProperties(context, argument);
+  if (properties.length > 0) return properties.map((property) => property.value);
+  return resolveConstant(context, argument)?.type === 'ObjectExpression' ? [] : [argument];
+}
+
 function timeoutNodes(context, node) {
-  if (isSetConfig(node.callee)) {
-    return timeoutProperties(context, node.arguments[0]).map((property) => property.value);
-  }
+  const global = globalTimeouts(context, node);
+  if (global !== undefined) return global;
+  if (isChainedTimeout(node)) return node.arguments.slice(0, 1);
   const root = rootName(node.callee);
   if (
     node.callee.type === 'MemberExpression' &&
@@ -55,16 +79,10 @@ function timeoutNodes(context, node) {
     return [];
   }
   if (HOOKS.has(root) && node.callee.type === 'Identifier') {
-    return node.arguments.slice(1, 2);
+    return node.arguments.slice(1, 2).flatMap((argument) => argumentTimeouts(context, argument));
   }
   if (!TEST_FUNCTIONS.has(root) || !node.arguments.some(isFunction)) return [];
-  return node.arguments.slice(1).flatMap((argument) => {
-    if (isFunction(argument)) return [];
-    const properties = timeoutProperties(context, argument);
-    if (properties.length > 0) return properties.map((property) => property.value);
-    const resolved = resolveConstant(context, argument);
-    return resolved?.type === 'ObjectExpression' ? [] : [argument];
-  });
+  return node.arguments.slice(1).flatMap((argument) => argumentTimeouts(context, argument));
 }
 
 function reportTimeout(context, timeout) {

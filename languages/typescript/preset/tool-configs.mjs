@@ -12,6 +12,9 @@ import {
   readJsonc,
   referencedConfigFile,
 } from './modules/tsconfig-files.mjs';
+import { readHeadPolicy } from './head-policy.mjs';
+import { policyTestRunner } from './test-runner/project-runner.mjs';
+import { withRunnerTypes } from './test-runner/runner-types.mjs';
 
 const DEFAULT_SOURCE_ROOT = 'src';
 const DEFAULT_TEST_ROOTS = new Set(['test', 'tests']);
@@ -136,7 +139,9 @@ export function layoutTransformFor(policyFileName, layout, { strictMutants = tru
       return `${JSON.stringify(layered, null, 2)}\n`;
     }
     const rewritten = layoutTransform?.(text) ?? text;
-    return relaxesMutants ? withoutMutantStrictness(rewritten) : rewritten;
+    const runner = policyTestRunner(readHeadPolicy(), projectDirectory);
+    const typed = withRunnerTypes(rewritten, { runner, projectDirectory });
+    return relaxesMutants ? withoutMutantStrictness(typed) : typed;
   };
 }
 
