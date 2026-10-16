@@ -107,7 +107,7 @@ export function analyzeProductionCallbacks({
   contracts = callbackProtocolContracts,
 } = {}) {
   function skipDirectory(_absolute, entry) {
-    return /^(?:__tests__|tests|dist|build|node_modules)$/.test(entry.name);
+    return /^(?:__tests__|tests|node_modules)$/.test(entry.name);
   }
   const files = existsSync(sourceRoot)
     ? [...filesUnder(sourceRoot, { skipDirectory })]
