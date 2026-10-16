@@ -17,7 +17,7 @@ export const NEUTRAL_TEST_ONLY_MESSAGES = {
   reexport: MESSAGES.testOnlyDeclaration,
 };
 
-export function isJudgedTestOnly(item, { isPublished, isExcepted }) {
+function isJudgedTestOnly(item, { isPublished, isExcepted }) {
   return (
     !(item.category === 'files' && TEST_SUPPORT.test(item.file)) &&
     !isPublished(item.file) &&
@@ -32,7 +32,7 @@ function templateFor({ category, reexportedBy }, messages) {
   return reexportedBy === undefined ? messages.exports : messages.reexport;
 }
 
-export function testOnlyFinding(item, { analyzerName, messages }) {
+function testOnlyFinding(item, { analyzerName, messages }) {
   const { file, category, entry, reexportedBy } = item;
   return {
     tool: analyzerName,

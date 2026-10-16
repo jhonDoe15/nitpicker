@@ -98,7 +98,7 @@ function definitionsByFile(definitions) {
   return byFile;
 }
 
-export function testOnlyCandidates({ modules, definitions, imports }) {
+function testOnlyCandidates({ modules, definitions, imports }) {
   const graph = usesOf({ definitions, imports });
   const byFile = definitionsByFile(definitions);
   const production = modules.filter(({ role }) => role !== 'test');

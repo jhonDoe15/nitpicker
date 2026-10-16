@@ -15,7 +15,7 @@ const MIN_STEM_LENGTH = 3;
 const CODE_FENCE = /^(?:```|~~~)/u;
 const INLINE_TAG = /\{@\w+\s*([^}]*)\}/gu;
 
-export const MAX_DESCRIPTION_LINES = 5;
+const MAX_DESCRIPTION_LINES = 5;
 
 function wordsOf(text) {
   return text
@@ -52,7 +52,7 @@ export function descriptionLines(text, { blockTag, marker = /^/u }) {
   return description;
 }
 
-export function restatesName(lines, name) {
+function restatesName(lines, name) {
   const description = wordsOf(lines.join(' ').replace(INLINE_TAG, ' $1 '));
   const nameStems = new Set(wordsOf(name).flatMap(stemVariants));
   return (
