@@ -33,10 +33,6 @@ const scopePackages = {
   ],
 };
 
-export function analyzedProjectRoot(environment = process.env) {
-  return environment.NITPICKER_DIFF_ESLINT_PROJECT_ROOT ?? process.cwd();
-}
-
 export const storySuffixes = ['stories', 'story'];
 export const storyGlobs = [`**/*.{${storySuffixes.join(',')}}.${codeExtensions}`];
 

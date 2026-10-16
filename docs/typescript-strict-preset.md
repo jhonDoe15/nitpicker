@@ -235,16 +235,19 @@ The rules keep their reason (validate at the boundary, keep the caught error on 
 only the library follows the project. Nitpicker reads `dependencies`, `peerDependencies`,
 `optionalDependencies` and `devDependencies` (presence, not a vote over files).
 
-- **Where it reads.** The head policy carries the root `package.json` result as
-  `libraries: { validation, logger }`. When the base checkout has its own `nitpicker.config.json`
-  that differs from the head's, the base policy is resolved against the base checkout root, so it
-  detects the base's own dependencies; otherwise the base reuses the head policy. The rules that
-  report per file (the boundary guard, `unknown` in `domain/`, catch logging) also read, while
-  linting, the `package.json` nearest the file and every one above it up to the project root of the
-  checkout being linted, so a monorepo package that declares valibot is checked against valibot.
-  Within the list `dependencies` come before `devDependencies`, nearest package first; the first
-  entry names the library in messages. The static `as`, `any` and JSDoc-cast messages read the
-  policy only, so they name the root's library.
+- **Where it reads.** The head policy carries the libraries of the head checkout:
+  `libraries: { validation, logger, packages }`, where `validation` and `logger` come from the root
+  `package.json` and `packages` maps each project-relative directory with a `package.json` (`.` for
+  the root; `node_modules` and excluded folders are skipped) to the libraries it declares. A base
+  run with its own `nitpicker.config.json` still takes the head's libraries, like the other facts of
+  the head checkout, so base and head are checked against the same libraries, and the policy hash
+  and cache key include them. The rules that report per file (the boundary guard, `unknown` in
+  `domain/`, catch logging) pick, from `packages`, the entry of the directory nearest the file and
+  every one above it up to the project root, so a monorepo package that declares valibot is
+  checked against valibot; they read no `package.json` while linting. Within the list
+  `dependencies` come before `devDependencies`, nearest package first; the first entry names the
+  library in messages. The static `as`, `any` and JSDoc-cast messages read the root list only, so
+  they name the root's library.
 - **Validation library.** Recognised: zod, valibot, yup, joi (and `@hapi/joi`), io-ts, arktype,
   class-validator (with class-transformer), ajv, typebox, superstruct, runtypes, typia, effect
   (`effect`, `@effect/schema`) and valita. With none found the preset names zod.

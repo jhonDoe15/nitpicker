@@ -18,7 +18,6 @@ import {
   typedReactXRules,
 } from './rules/third-party-rules.mjs';
 import {
-  analyzedProjectRoot,
   isReactNativePackage,
   productionScope,
   reactMajorOf,
@@ -27,7 +26,7 @@ import {
   testsCleanUpAutomatically,
 } from '../scope-support.mjs';
 
-export { analyzedProjectRoot, isReactProject } from '../scope-support.mjs';
+export { isReactProject } from '../scope-support.mjs';
 
 const typedRuleIds = typedReactXRules.map((name) => `react-x/${name}`);
 const untypedThirdPartyRuleIds = thirdPartyReactRuleIds.filter((id) => !typedRuleIds.includes(id));
@@ -41,6 +40,10 @@ function ruleIdsForReact(major) {
 
 function scannableLayout(layout) {
   return typeof layout.projectCodeFiles === 'function' ? layout : undefined;
+}
+
+export function analyzedProjectRoot(environment = process.env) {
+  return environment.NITPICKER_DIFF_ESLINT_PROJECT_ROOT ?? process.cwd();
 }
 
 function testScope(layout) {

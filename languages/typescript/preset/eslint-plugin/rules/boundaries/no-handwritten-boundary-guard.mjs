@@ -133,7 +133,7 @@ function isHandNarrowing(sourceCode, node) {
 
 function createVisitors(context, rootLibraries) {
   const { sourceCode } = context;
-  const validation = validationBehavior(librariesForFile(context.filename, rootLibraries));
+  const validation = validationBehavior(librariesForFile(context, rootLibraries));
   const schema = schemaContext(context);
   const data = { phrase: validation.phrase, example: validation.example };
   const visitors = {

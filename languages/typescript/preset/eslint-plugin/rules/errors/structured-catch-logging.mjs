@@ -171,7 +171,7 @@ export function structuredCatchLoggingRule(rootLibraries) {
       },
     },
     create: (context) =>
-      loggingVisitors(context, loggerShapes(librariesForFile(context.filename, rootLibraries))),
+      loggingVisitors(context, loggerShapes(librariesForFile(context, rootLibraries))),
   };
 }
 

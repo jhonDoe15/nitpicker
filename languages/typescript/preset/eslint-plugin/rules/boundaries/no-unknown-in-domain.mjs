@@ -173,7 +173,7 @@ function reportUnknown(context, node, data) {
 }
 
 function createVisitors(context, rootLibraries) {
-  const validation = validationBehavior(librariesForFile(context.filename, rootLibraries));
+  const validation = validationBehavior(librariesForFile(context, rootLibraries));
   const data = { phrase: validation.phrase };
   const visitors = {
     TSUnknownKeyword(node) {
