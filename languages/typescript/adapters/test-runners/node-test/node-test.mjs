@@ -1,14 +1,11 @@
 import { spawnSync } from 'node:child_process';
-import { mkdirSync } from 'node:fs';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { withoutOptions } from '../../../preset/test-runner/script-command.mjs';
-import { writeV8Coverage } from '../v8-coverage/v8-coverage.mjs';
+import { startV8Coverage } from '../v8-coverage/v8-coverage-run.mjs';
 import {
   MAX_WORKERS,
   TEST_TIMEOUT_MS,
-  coverageOutputFile,
-  coverageSourceFiles,
   readRun,
   removeTemporary,
   runnableTestFiles,
@@ -85,15 +82,23 @@ function typeStrippingArguments(nodeArguments, files) {
     : [];
 }
 
-function testArguments(options, command, reportPath) {
+export function nodeTestSelection(options, command) {
   const { options: scriptOptions, patterns } = splitArguments(
     withoutOptions(command.arguments_, OPTIONS_NITPICKER_SETS),
   );
   const files = runnableTestFiles(options);
-  const nodeArguments = [
-    ...command.nodeArguments,
-    ...typeStrippingArguments(command.nodeArguments, files),
-  ];
+  return {
+    nodeArguments: [
+      ...command.nodeArguments,
+      ...typeStrippingArguments(command.nodeArguments, files),
+    ],
+    scriptOptions,
+    testFiles: [...(patterns.length === 0 ? NODE_DEFAULT_PATTERNS : patterns), ...files],
+  };
+}
+
+function testArguments(options, command, reportPath) {
+  const { nodeArguments, scriptOptions, testFiles } = nodeTestSelection(options, command);
   return [
     ...nodeArguments,
     '--test',
@@ -102,38 +107,26 @@ function testArguments(options, command, reportPath) {
     `--test-timeout=${String(TEST_TIMEOUT_MS)}`,
     `--test-concurrency=${String(MAX_WORKERS)}`,
     ...scriptOptions,
-    ...(patterns.length === 0 ? NODE_DEFAULT_PATTERNS : patterns),
-    ...files,
+    ...testFiles,
   ];
 }
 
 export async function runNodeTest(options, command) {
   const reportPath = temporaryProjectPath(options, 'node-test-report.json');
-  const coverageDirectory = temporaryProjectPath(options, 'v8-coverage');
-  mkdirSync(coverageDirectory);
+  const coverage = startV8Coverage(options, command);
   try {
     const result = spawnSync(process.execPath, testArguments(options, command, reportPath), {
       cwd: options.projectRoot,
-      env: {
-        NODE_ENV: 'test',
-        ...process.env,
-        ...command.environment,
-        NODE_V8_COVERAGE: coverageDirectory,
-      },
+      env: { ...process.env, ...coverage.environment },
       encoding: 'utf8',
       maxBuffer: MAX_OUTPUT_BYTES,
     });
     if (result.error !== undefined) throw result.error;
     const run = readRun({ reportPath, result, runnerName: 'node:test' });
-    if (!run.failed) {
-      await writeV8Coverage({
-        coverageDirectory,
-        sourceFiles: coverageSourceFiles(options),
-        outputFile: coverageOutputFile(options),
-      });
-    }
+    if (!run.failed) await coverage.write();
     return run;
   } finally {
-    removeTemporary(reportPath, coverageDirectory);
+    removeTemporary(reportPath);
+    coverage.remove();
   }
 }

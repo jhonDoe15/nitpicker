@@ -460,8 +460,8 @@ alone.
   them included), `*.test.*`/`*.spec.*` next to sources, and `__tests__` directories (their
   fixtures are skipped). A wait that cannot be avoided gets an exception for the rule.
 - `nitpicker/no-raised-test-timeout`: no test, suite or hook timeout above 10 000 ms. That is the
-  `testTimeout` nitpicker runs a project's tests with (`languages/typescript/preset/defaults/vitest.quality.config.ts`, which
-  Stryker also uses, and the coverage runner's `--testTimeout`; a test keeps them in step).
+  test timeout nitpicker runs a project's tests with (`languages/typescript/preset/defaults/vitest.quality.config.ts`, which
+  Stryker also uses, and the timeout it passes to Vitest, Jest, `node:test` and Mocha; a test keeps them in step).
   The rule covers the third argument of `it`/`test`, `{ timeout }` options, hook timeouts and
   `vi.setConfig`. A timeout that is not a constant written in the file is also reported. There is
   no e2e exemption; a genuinely long suite needs an exception in the config file.
@@ -544,8 +544,10 @@ alone.
 - The vitest config nitpicker runs tests with (`defaults/vitest.quality.config.ts`, used for
   coverage and mutation) sets `restoreMocks: true`, so a `vi.spyOn` spy is restored after every test
   even when an assertion fails, and cannot leak into the next test. It also overrides a
-  `restoreMocks` value in the project's own vitest config for these runs. Vitest has no option that
-  restores fake timers automatically: call `vi.useRealTimers()` in `afterEach`.
+  `restoreMocks` value in the project's own vitest config for these runs. Jest runs with
+  `--restoreMocks` for the same reason, and `node:test` restores a test's `t.mock` itself. Neither
+  Vitest nor Jest restores fake timers automatically: call `vi.useRealTimers()` (or
+  `jest.useRealTimers()`) in `afterEach`.
 
 Left out, from the same write-up: recomputing one expensive result in every test, and running the
 whole pipeline to check a decision made earlier. Both need a heuristic (repeated constant arguments

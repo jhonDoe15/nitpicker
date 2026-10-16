@@ -2,6 +2,7 @@ import { existsSync, rmSync } from 'node:fs';
 import path from 'node:path';
 import { trackTemporaryPath } from '../../../../core/tooling/temporary-files.mjs';
 import { readLayout } from '../../preset/head-policy.mjs';
+import { projectTestRunner } from '../../preset/test-runner/project-runner.mjs';
 import { TEST_TIMEOUT_CEILING_MS } from '../../preset/eslint-plugin/rules/testing/assertions/no-raised-test-timeout.mjs';
 import {
   COVERAGE_REPORT_PATH,
@@ -40,6 +41,18 @@ export function runnableTestFiles(options) {
     options,
     layout.projectCodeFiles(options.projectRoot).filter(layout.isRunnableTestFile),
   );
+}
+
+export function projectTestFiles(options, layout, files) {
+  const isTest =
+    projectTestRunner(options.projectRoot).runner === 'vitest'
+      ? layout.isRunnableTestFile
+      : layout.isTestFile;
+  return files.filter(isTest);
+}
+
+export function hasProjectTests(options, layout, files) {
+  return projectTestFiles(options, layout, files).length > 0;
 }
 
 export function coverageSourceFiles(options) {

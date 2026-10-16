@@ -7,6 +7,7 @@ import {
   toolErrorFinding,
 } from '../reporting/test-report.mjs';
 import { runProjectTests } from '../../test-runners/run-project-tests.mjs';
+import { hasProjectTests, projectTestFiles } from '../../test-runners/test-run.mjs';
 import { readLayout } from '../../../preset/head-policy.mjs';
 import {
   TESTS_FAILED_RULE,
@@ -45,16 +46,17 @@ export async function runCoverage(options) {
 
 function noTestsRanFinding(options, runnerName) {
   const layout = readLayout();
-  const [first] = layout.projectCodeFiles(options.projectRoot).filter(layout.isRunnableTestFile);
+  const [first] = projectTestFiles(options, layout, layout.projectCodeFiles(options.projectRoot));
   return toolErrorFinding(options, {
     rule: TESTS_FAILED_RULE,
+    path: first,
     message: `${runnerName} ran no tests, but nitpicker sees test files such as ${first}. Make the project's ${runnerName} config find them, or set "tools.tests.runner" in nitpicker.config.json to the runner they are written for.`,
   });
 }
 
 function hasRunnableTests(options) {
   const layout = readLayout();
-  return layout.projectCodeFiles(options.projectRoot).some(layout.isRunnableTestFile);
+  return hasProjectTests(options, layout, layout.projectCodeFiles(options.projectRoot));
 }
 
 export function runCrap(options) {

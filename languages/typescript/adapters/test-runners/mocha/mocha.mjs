@@ -1,12 +1,9 @@
-import { mkdirSync } from 'node:fs';
 import { readTestReport } from '../../quality-areas/reporting/test-report.mjs';
 import { spawnNodeTool } from '../../quality-areas/runners/tooling.mjs';
 import { withoutOptions } from '../../../preset/test-runner/script-command.mjs';
-import { writeV8Coverage } from '../v8-coverage/v8-coverage.mjs';
+import { startV8Coverage } from '../v8-coverage/v8-coverage-run.mjs';
 import {
   TEST_TIMEOUT_MS,
-  coverageOutputFile,
-  coverageSourceFiles,
   finishedRun,
   removeTemporary,
   runnableTestFiles,
@@ -31,14 +28,13 @@ const OPTIONS_NITPICKER_SETS = {
 
 export async function runMocha(options, command) {
   const mochaReportPath = temporaryProjectPath(options, 'mocha-output.json');
-  const coverageDirectory = temporaryProjectPath(options, 'v8-coverage');
-  mkdirSync(coverageDirectory);
+  const coverage = startV8Coverage(options, command);
   try {
     const result = spawnNodeTool({
       options,
       relativeToolPath: 'mocha/bin/mocha.js',
       nodeArguments: command.nodeArguments,
-      environment: { NODE_ENV: 'test', ...command.environment, NODE_V8_COVERAGE: coverageDirectory },
+      environment: coverage.environment,
       arguments_: [
         ...withoutOptions(command.arguments_, OPTIONS_NITPICKER_SETS),
         '--reporter',
@@ -55,15 +51,10 @@ export async function runMocha(options, command) {
       result,
       runnerName: 'Mocha',
     });
-    if (!run.failed) {
-      await writeV8Coverage({
-        coverageDirectory,
-        sourceFiles: coverageSourceFiles(options),
-        outputFile: coverageOutputFile(options),
-      });
-    }
+    if (!run.failed) await coverage.write();
     return run;
   } finally {
-    removeTemporary(mochaReportPath, coverageDirectory);
+    removeTemporary(mochaReportPath);
+    coverage.remove();
   }
 }

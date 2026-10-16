@@ -1,7 +1,7 @@
 import path from 'node:path';
 import { readFileSync, writeFileSync } from 'node:fs';
-import { runNodeTool } from '../quality-areas/runners/tooling.mjs';
-import { TEST_TIMEOUT_MS, readRun, removeTemporary, temporaryProjectPath } from './test-run.mjs';
+import { runNodeTool } from '../../quality-areas/runners/tooling.mjs';
+import { TEST_TIMEOUT_MS, readRun, removeTemporary, temporaryProjectPath } from '../test-run.mjs';
 
 const QUALITY_CONFIG = 'languages/typescript/preset/defaults/vitest.quality.config.ts';
 
