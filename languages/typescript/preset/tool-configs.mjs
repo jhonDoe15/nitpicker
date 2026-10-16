@@ -179,7 +179,7 @@ function libsWithEndToEndDom(libs, projectDirectory, layout) {
 
 function withEndToEndDom(text, name, { projectDirectory, layout }) {
   const config = JSON.parse(text);
-  const lib = libsWithEndToEndDom(config.compilerOptions.lib, projectDirectory, layout);
+  const lib = libsWithEndToEndDom(config.compilerOptions?.lib, projectDirectory, layout);
   if (name !== 'tsconfig.quality.json' || lib === undefined) {
     return text;
   }
