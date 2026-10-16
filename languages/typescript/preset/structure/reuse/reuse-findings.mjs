@@ -3,14 +3,16 @@ import { exceptionMatcher } from '../../../../../shared/rules/file-limits.mjs';
 import {
   hasScopePackage,
   readDependencyNames,
+  scopePackage,
 } from '../../eslint-config/scope-support.mjs';
 import { readHeadPolicy, readLayout } from '../../head-policy.mjs';
 import { resolveModuleSpecifier } from '../../modules/module-resolution.mjs';
 import { resolvedDefinitions } from './definition-facts.mjs';
 import { uniqueFindings } from './finding.mjs';
-import { productionFacts } from './project-files.mjs';
+import { productionFacts, svgFiles } from './project-files.mjs';
 import { projectPathOf } from './reuse-paths.mjs';
 import { duplicateDefinitionFindings } from './rules/duplicate-definitions.mjs';
+import { iconAssetFindings } from './rules/icon-assets.mjs';
 import { redefinedLibraryComponentFindings } from './rules/library-components.mjs';
 import { exportedNameCollisionFindings } from './rules/name-collisions.mjs';
 
@@ -48,11 +50,13 @@ function dependencyReader(projectRoot) {
 }
 
 function reactFindings({ facts, context, projectRoot, layout, react }) {
+  const iconPackage = react.iconPackage ?? scopePackage(projectRoot, 'icons');
   return [
     ...redefinedLibraryComponentFindings(facts, {
       ...context,
       dependenciesOf: dependencyReader(projectRoot),
     }),
+    ...iconAssetFindings(svgFiles(projectRoot, layout), { ...context, iconPackage }),
   ];
 }
 
