@@ -17,7 +17,7 @@ import { existsSync, readFileSync, writeFileSync, realpathSync, unlinkSync } fro
 import { existingRoots } from '../../../preset/layout.mjs';
 import { readLayout } from '../../../preset/head-policy.mjs';
 import { withFunctionSourceHashes, withDeadCodeSourceHashes } from '../reporting/source-hashes.mjs';
-import { typescriptFileLimitFindings } from '../../../preset/structure/file-limits.mjs';
+import { typescriptStructureProjectFindings } from '../../../preset/structure/project-findings.mjs';
 import { layoutJscpdConfig, layoutKnipConfig } from '../../../preset/tool-configs.mjs';
 import { trackTemporaryPath } from '../../../../../core/tooling/temporary-files.mjs';
 import { normalizeDuplicates } from '../../../preset/duplicates/normalize.mjs';
@@ -122,10 +122,7 @@ export async function runStructure(options) {
       options.analyzerName,
     ),
   );
-  return [
-    ...functionFindings,
-    ...typescriptFileLimitFindings(options.projectRoot, options.analyzerName),
-  ];
+  return [...functionFindings, ...typescriptStructureProjectFindings(options)];
 }
 
 export function runDuplicates(options) {
