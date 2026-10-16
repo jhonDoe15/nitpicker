@@ -126,7 +126,34 @@ function parseRatchet(value, context) {
     }
     ratchet[name] = value[name];
   }
+  if (value.mustKeepUnchangedLines !== undefined) {
+    ratchet.mustKeepUnchangedLines = parseLineRanges(
+      value.mustKeepUnchangedLines,
+      `${context}.mustKeepUnchangedLines`,
+    );
+  }
   return ratchet;
+}
+
+function parseLineRanges(value, context) {
+  if (!Array.isArray(value)) {
+    throw new TypeError(`${context} must be an array`);
+  }
+  return value.map((range, index) => {
+    if (!isRecord(range)) {
+      throw new TypeError(`${context}[${String(index)}] must be an object`);
+    }
+    const startLine = positiveInteger(range.startLine, `${context}[${String(index)}].startLine`);
+    const endLine = positiveInteger(range.endLine, `${context}[${String(index)}].endLine`);
+    if (endLine < startLine) {
+      throw new TypeError(`${context}[${String(index)}].endLine must not be before startLine`);
+    }
+    return {
+      path: requiredString(range.path, `${context}[${String(index)}].path`),
+      startLine,
+      endLine,
+    };
+  });
 }
 
 function positiveInteger(value, context) {

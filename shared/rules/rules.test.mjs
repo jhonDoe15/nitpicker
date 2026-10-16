@@ -213,6 +213,10 @@ describe('duplicates rule on neutral clones', () => {
       key: 'pair:a.java|b.java:clone',
       value: 60,
       divisible: true,
+      mustKeepUnchangedLines: [
+        { path: 'a.java', startLine: 8, endLine: 13 },
+        { path: 'b.java', startLine: 3, endLine: 8 },
+      ],
     });
     expect(byLines.ratchet.value).toBe(6);
   });
@@ -227,6 +231,24 @@ describe('duplicates rule on neutral clones', () => {
       { name: 'tokens', value: 60 },
     ]);
     expect(byRule(findings, 'duplicate-clone')[0]).not.toHaveProperty('location');
+    expect(byRule(findings, 'duplicate-clone')[0].ratchet).not.toHaveProperty(
+      'mustKeepUnchangedLines',
+    );
+  });
+
+  it('takes the end of a cloned range from the reported end line before the line count', () => {
+    const [failure] = byRule(
+      evaluateDuplicates(
+        [clone('a.java', 'b.java', { first: { file: 'a.java', line: 3, endLine: 20 } })],
+        'duplicates',
+      ),
+      'duplicate-clone',
+    );
+
+    expect(failure.ratchet.mustKeepUnchangedLines).toEqual([
+      { path: 'a.java', startLine: 3, endLine: 20 },
+      { path: 'b.java', startLine: 8, endLine: 13 },
+    ]);
   });
 });
 
