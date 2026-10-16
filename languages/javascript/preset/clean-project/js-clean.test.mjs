@@ -137,7 +137,7 @@ export function charge(cents) {
  * @returns {number}
  */
 export function place(cents) {
-  return charge(cents);
+  return charge(cents) + 1;
 }
 `,
   'src/main/dup/a.js': duplicatedBody('summarizeA'),

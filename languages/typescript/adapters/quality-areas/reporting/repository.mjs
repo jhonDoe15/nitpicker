@@ -1,5 +1,5 @@
 import { evaluateBaselineExpansions } from '../../../../../shared/rules/baseline-expansion.mjs';
-import { evaluateCoupling } from '../../../../../shared/rules/coupling.mjs';
+import { evaluateCoupling } from '../../../preset/coupling/evaluate-coupling.mjs';
 import { evaluateTestRuntime } from '../../../../../shared/rules/test-runtime.mjs';
 import { evaluateStructure } from '../../../../../shared/rules/structure.mjs';
 import {
@@ -24,13 +24,14 @@ export function normalizeBaselineExpansions(baseSites, headSites, analyzerName) 
   return evaluateBaselineExpansions(baseSites, headSites, analyzerName);
 }
 
-export function normalizeCoupling(report, analyzerName) {
+export function normalizeCoupling(report, analyzerName, exceptions) {
   return evaluateCoupling(
     {
       ...report,
       modules: report.modules?.map(({ source, ...metrics }) => ({ file: source, ...metrics })),
     },
     analyzerName,
+    exceptions,
   );
 }
 
