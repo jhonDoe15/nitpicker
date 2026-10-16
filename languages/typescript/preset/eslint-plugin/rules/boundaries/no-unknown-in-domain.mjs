@@ -5,6 +5,7 @@ import {
 } from '../../../../../javascript/preset/documentation/jsdoc.mjs';
 import { ancestorsOf } from '../analysis/ancestry.mjs';
 import { readHeadPolicy } from '../../../head-policy.mjs';
+import { librariesForFile } from '../../../libraries/file-libraries.mjs';
 import { validationBehavior } from '../../../libraries/project-libraries.mjs';
 
 const PARAMETER_WRAPPERS = new Set(['AssignmentPattern', 'RestElement', 'TSParameterProperty']);
@@ -44,8 +45,33 @@ function isCaughtErrorSlot(node, annotation) {
   );
 }
 
-export function unknownInDomainRule(validation) {
-  const parsedType = validation.infer === undefined ? '' : ` (${validation.infer})`;
+function createVisitors(context, rootLibraries) {
+  const validation = validationBehavior(librariesForFile(context.filename, rootLibraries));
+  const data = { name: validation.name, inferred: validation.inferred };
+  const visitors = {
+    TSUnknownKeyword(node) {
+      const chain = [node, ...ancestorsOf(node)];
+      const memberAt = chain.findIndex(
+        (current) => current.type === 'TSTypeAnnotation' && isAnnotatedMember(current),
+      );
+      const typeParameterAt = chain.findIndex((current) => current.type === 'TSTypeParameter');
+      if (
+        memberAt !== -1 &&
+        (typeParameterAt === -1 || memberAt < typeParameterAt) &&
+        !isCaughtErrorSlot(node, chain[memberAt])
+      ) {
+        context.report({ node, messageId: 'unknownType', data });
+      }
+    },
+  };
+  return withJsdoc(context, visitors, {
+    selectTags: unknownMemberTags,
+    messageId: 'unknownType',
+    data,
+  });
+}
+
+export function unknownInDomainRule(rootLibraries) {
   return {
     meta: {
       type: 'problem',
@@ -54,32 +80,12 @@ export function unknownInDomainRule(validation) {
       },
       schema: jsdocOptionSchema,
       messages: {
-        unknownType: `domain/ code takes typed values, not unknown. Parse the input with a ${validation.name} schema in adapters/ and give this parameter or property the parsed type${parsedType}. A caught error may be typed unknown as \`cause\` or \`error\`. If the value is genuinely opaque, add an exception for this rule in nitpicker.config.json.`,
+        unknownType:
+          'domain/ code takes typed values, not unknown. Parse the input with a {{name}} schema in adapters/ and give this parameter or property the parsed type{{inferred}}. A caught error may be typed unknown as `cause` or `error`. If the value is genuinely opaque, add an exception for this rule in nitpicker.config.json.',
       },
     },
-    create(context) {
-      const visitors = {
-        TSUnknownKeyword(node) {
-          const chain = [node, ...ancestorsOf(node)];
-          const memberAt = chain.findIndex(
-            (current) => current.type === 'TSTypeAnnotation' && isAnnotatedMember(current),
-          );
-          const typeParameterAt = chain.findIndex((current) => current.type === 'TSTypeParameter');
-          if (
-            memberAt !== -1 &&
-            (typeParameterAt === -1 || memberAt < typeParameterAt) &&
-            !isCaughtErrorSlot(node, chain[memberAt])
-          ) {
-            context.report({ node, messageId: 'unknownType' });
-          }
-        },
-      };
-      return withJsdoc(context, visitors, {
-        selectTags: unknownMemberTags,
-        messageId: 'unknownType',
-      });
-    },
+    create: (context) => createVisitors(context, rootLibraries),
   };
 }
 
-export const rule = unknownInDomainRule(validationBehavior(readHeadPolicy().libraries));
+export const rule = unknownInDomainRule(readHeadPolicy().libraries);

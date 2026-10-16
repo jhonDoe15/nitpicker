@@ -8,7 +8,7 @@ afterEach(removeProjects);
 const DDL_CREATE = 'spring.jpa.hibernate.ddl-auto=create-drop';
 
 function ddlFiles(extra) {
-  return { [resource('application-staging.properties')]: DDL_CREATE, ...extra };
+  return { [resource('application-qa.properties')]: DDL_CREATE, ...extra };
 }
 
 function flaggedFiles(files, options = {}) {
@@ -20,13 +20,13 @@ function flaggedFiles(files, options = {}) {
 
 describe('test profiles taken from the project', () => {
   it('flags an unknown profile name until the tests use it', () => {
-    expect(flaggedFiles(ddlFiles({}))).toEqual([resource('application-staging.properties')]);
+    expect(flaggedFiles(ddlFiles({}))).toEqual([resource('application-qa.properties')]);
   });
 
   it('accepts a profile named by @ActiveProfiles in a test', () => {
     const files = ddlFiles({
-      'src/test/java/demo/StagingTest.java':
-        'package demo;\n@ActiveProfiles({"staging", "extra"})\nclass StagingTest {}\n',
+      'src/test/java/demo/QaTest.java':
+        'package demo;\n@ActiveProfiles({"qa", "extra"})\nclass QaTest {}\n',
     });
 
     expect(flaggedFiles(files)).toEqual([]);
@@ -34,15 +34,15 @@ describe('test profiles taken from the project', () => {
 
   it('accepts a profile named by @ActiveProfiles(profiles = ...) in a Kotlin test', () => {
     const files = ddlFiles({
-      'src/test/kotlin/demo/StagingTest.kt':
-        '@ActiveProfiles(profiles = ["x"], value = ["Staging"])\nclass StagingTest\n',
+      'src/test/kotlin/demo/QaTest.kt':
+        '@ActiveProfiles(profiles = ["x"], value = ["Qa"])\nclass QaTest\n',
     });
 
     expect(flaggedFiles(files)).toEqual([]);
   });
 
   it('accepts a profile that has its own file under test resources', () => {
-    const files = ddlFiles({ 'src/test/resources/application-staging.yml': 'a: b\n' });
+    const files = ddlFiles({ 'src/test/resources/application-qa.yml': 'a: b\n' });
 
     expect(flaggedFiles(files)).toEqual([]);
   });
@@ -50,14 +50,14 @@ describe('test profiles taken from the project', () => {
   it('accepts a profile set by spring.profiles.active in test resources or test properties', () => {
     expect(
       flaggedFiles(
-        ddlFiles({ 'src/test/resources/application.properties': 'spring.profiles.active=staging' }),
+        ddlFiles({ 'src/test/resources/application.properties': 'spring.profiles.active=qa' }),
       ),
     ).toEqual([]);
     expect(
       flaggedFiles(
         ddlFiles({
           'src/test/java/demo/T.java':
-            '@SpringBootTest(properties = "spring.profiles.active=staging")\nclass T {}\n',
+            '@SpringBootTest(properties = "spring.profiles.active=qa")\nclass T {}\n',
         }),
       ),
     ).toEqual([]);
@@ -65,21 +65,34 @@ describe('test profiles taken from the project', () => {
 
   it('uses the test source roots the build declares', () => {
     const files = ddlFiles({
-      'it/java/demo/StagingIT.java': '@ActiveProfiles("staging")\nclass StagingIT {}\n',
+      'it/java/demo/QaIT.java': '@ActiveProfiles("qa")\nclass QaIT {}\n',
     });
 
-    expect(flaggedFiles(files)).toEqual([resource('application-staging.properties')]);
+    expect(flaggedFiles(files)).toEqual([resource('application-qa.properties')]);
     expect(flaggedFiles(files, { testSourceRoots: ['it/java'] })).toEqual([]);
   });
 
-  it('never treats a production profile as a test profile', () => {
-    const files = {
-      [resource('application-prod.properties')]: DDL_CREATE,
-      'src/test/java/demo/ProdTest.java': '@ActiveProfiles("prod")\nclass ProdTest {}\n',
-    };
+  it.each(['prod', 'staging', 'Stage', 'UAT', 'preprod', 'stg', 'prd', 'live', 'production'])(
+    'never treats %s as a test profile even when the tests activate it',
+    (profile) => {
+      const name = profile.toLowerCase();
+      const files = {
+        [resource(`application-${name}.properties`)]: DDL_CREATE,
+        'src/test/java/demo/EnvTest.java': `@ActiveProfiles("${profile}")\nclass EnvTest {}\n`,
+      };
 
-    expect(flaggedFiles(files)).toEqual([resource('application-prod.properties')]);
-  });
+      expect(flaggedFiles(files)).toEqual([resource(`application-${name}.properties`)]);
+    },
+  );
+
+  it.each(['prod-test', 'prod-dev', 'test-prod', 'local-staging', 'it-UAT', 'dev_stg'])(
+    'lets a production word win over the other words of %s',
+    (profile) => {
+      const files = { [resource(`application-${profile}.properties`)]: DDL_CREATE };
+
+      expect(flaggedFiles(files)).toEqual([resource(`application-${profile}.properties`)]);
+    },
+  );
 
   it('lists lower-cased profile names from sources and resources', () => {
     const root = project(

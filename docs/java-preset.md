@@ -1175,9 +1175,10 @@ decides what counts as a literal secret, and `java-spring.mjs` applies the rules
   files and `spring.profiles.active` values under test resources (`src/test/resources`, the sibling
   `resources` of each test source root), and the `@ActiveProfiles` strings and
   `spring.profiles.active=` values in the test sources (`src/test/java`, `src/test/kotlin` or the
-  manifest's `testSourceRoots`). A detected name with a `prod`, `production` or `live` word is never a
-  test profile. Local profiles are names with a `local`, `dev` or `development` word, so `local-dev`
-  counts. A profile built from a constant (`@ActiveProfiles(Profiles.TEST)`) cannot be read; name it
+  manifest's `testSourceRoots`). Words are compared case-insensitively. A name with a `prod`, `prd`,
+  `production`, `live`, `preprod`, `staging`, `stage`, `stg` or `uat` word is never a test or local
+  profile, whatever its other words (`prod-test`, `prod-dev`) and even when a test activates it.
+  Local profiles are names with a `local`, `dev` or `development` word, so `local-dev` counts. A profile built from a constant (`@ActiveProfiles(Profiles.TEST)`) cannot be read; name it
   with a literal or add an exception for the rule.
 - **True.** Wherever a rule needs `true`, Spring's spellings `true`, `on`, `yes` and `1` count, in
   any case.

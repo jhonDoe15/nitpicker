@@ -115,25 +115,37 @@ sum + x, 0)`), `Object.fromEntries`, and `Object.groupBy`. No loops, `forEach`, 
 ### Libraries follow the project
 
 The rules keep their reason (validate at the boundary, keep the caught error on the log call) and
-only the library follows the project. Nitpicker reads the root `package.json` `dependencies` and
-`devDependencies` once per run (presence, not a vote over files) and records the result in the head
-policy as `libraries: { validation: [...], logger: [...] }`.
+only the library follows the project. Nitpicker reads `dependencies`, `peerDependencies`,
+`optionalDependencies` and `devDependencies` (presence, not a vote over files). For the root
+`package.json` the result is recorded in the head policy as `libraries: { validation, logger }`, for
+the base checkout as well as the head. The rules that report per file also read the `package.json`
+nearest the file and every one above it up to the project root, so a monorepo package that
+declares valibot is checked against valibot. Within the list, `dependencies` come before
+`devDependencies`, nearest package first; the first entry is the primary library.
 
 - **Validation library.** Recognised: zod, valibot, yup, joi (and `@hapi/joi`), io-ts, arktype,
-  class-validator (with class-transformer), ajv and typebox. With none installed the preset behaves as
-  before and names zod. `nitpicker/no-handwritten-boundary-guard` then accepts the calls of every
-  detected library as the parse (zod `schema.parse`/`safeParse`, valibot `v.parse`/`safeParse`, yup
-  `validate`/`validateSync`, joi `validate`/`attempt`, io-ts `decode`, arktype `assert`,
-  class-validator `validate`/`validateOrReject`/`plainToInstance`, ajv `validate`, typebox
-  `Value.Parse`/`Decode`), and its message, the `as`/`any`/JSDoc-cast messages and the `domain/`
-  `unknown` message name the detected library (the first one found, zod first). A hand-written type
-  guard, an unparsed `JSON.parse` and `unknown` in `domain/` stay reported with any library.
-  `nitpicker/no-unvalidated-schema-field` only looks at zod schemas, so it stays silent without zod.
+  class-validator (with class-transformer), ajv and typebox. With none found the preset names zod.
+  `nitpicker/no-handwritten-boundary-guard` accepts a parse of any detected library, matched by
+  receiver and method: zod `.parse`, `.safeParse` (and the async forms) on any schema; valibot
+  `v.parse`/`v.safeParse`/`v.assert` or the named imports; yup `.validateSync` on any schema and
+  `.validate` on a schema built from `yup`; joi `.validate` on a schema built from `joi` and
+  `Joi.attempt`/`Joi.assert`; io-ts `.decode`; arktype `.assert` on, or a call of, a schema built from
+  `arktype`; ajv `ajv.validate` on an `Ajv` instance and a call of a function from `ajv.compile`;
+  typebox `Value.Parse`/`Decode`/`Assert`; class-validator `validate`, `validateSync` and
+  `validateOrReject`, with `plainToInstance` (class-transformer) allowed in between. Other calls with
+  the same names (`console.assert`, `form.validate`, `Value.Check`, `cast`) do not count. A schema
+  imported from your own module counts only for the zod, yup `validateSync` and io-ts forms, which
+  need no import from the library. The rule message, the `as`/`any`/JSDoc-cast messages and the
+  `domain/` `unknown` message name the primary library; the last three read the root `package.json`
+  only. A hand-written type guard, an unparsed `JSON.parse` and `unknown` in `domain/` stay reported
+  with any library. `nitpicker/no-unvalidated-schema-field` only looks at zod schemas, so it stays
+  silent without zod.
 - **Logger.** `nitpicker/structured-catch-logging` (`logger.<level>({ err: error }, message)`) is
-  Pino's, and bunyan's, convention. It stays on when pino, nestjs-pino, pino-http or bunyan is
-  installed, or when no logger library is found; when the project only has another logger (winston,
-  log4js, loglevel, consola, tslog, roarr, signale) that field name is not its convention and the rule
-  stays silent. `nitpicker/no-production-console` and `no-silent-catch` stay on for every logger.
+  Pino's, and bunyan's, convention. It stays on when the primary logger (pino, nestjs-pino,
+  pino-http or bunyan) uses that field or when no logger library is found. When the primary logger
+  is another one (winston, log4js, loglevel, consola, tslog, roarr, signale), including when a
+  Pino package is only a devDependency next to a winston dependency, the rule stays silent.
+  `nitpicker/no-production-console` and `no-silent-catch` stay on for every logger.
 
 ## Everywhere
 
