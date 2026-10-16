@@ -52,7 +52,10 @@ function dependentsOf(name, analyzers) {
 
 function blockMessage(name, dependents) {
   const [verb, pronoun] = dependents.length > 1 ? ['depend', 'them'] : ['depends', 'it'];
-  const names = dependents.join(' and ');
+  const names =
+    dependents.length > 1
+      ? `${dependents.slice(0, -1).join(', ')} and ${dependents.at(-1)}`
+      : dependents[0];
   return `cannot disable ${name} because ${names} ${verb} on it; add ${pronoun} to "disable" too`;
 }
 
