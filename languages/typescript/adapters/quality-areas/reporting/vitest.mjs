@@ -4,6 +4,9 @@ import path from 'node:path';
 
 export const COVERAGE_REPORT_PATH = 'reports/quality/coverage/coverage-final.json';
 
+export const TEST_CONSOLE_REPORT_PATH = 'reports/quality/test-console/report.json';
+
+import { stripAnsi } from '../../../preset/test-console/ansi.mjs';
 import { normalizeCoverage } from './tests.mjs';
 
 import { withBranchSourceHashes } from './source-hashes.mjs';
@@ -62,10 +65,6 @@ const MAX_LISTED_FAILURES = 5;
 
 const MAX_ASSERTION_LINE_LENGTH = 200;
 
-const ESCAPE_CHARACTER = String.fromCodePoint(0x1b);
-
-const ANSI_PATTERN = new RegExp(`${ESCAPE_CHARACTER}\\[[0-9;]*m`, 'gu');
-
 function vitestFailures(report, projectRoot) {
   const failures = [];
   const testResults = Array.isArray(report?.testResults) ? report.testResults : [];
@@ -105,8 +104,7 @@ function findingPath(file) {
 function firstLine(message) {
   const line =
     typeof message === 'string'
-      ? message
-          .replaceAll(ANSI_PATTERN, '')
+      ? stripAnsi(message)
           .split('\n')
           .map((candidate) => candidate.trim())
           .find((candidate) => candidate.length > 0)

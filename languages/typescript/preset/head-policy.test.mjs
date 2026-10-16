@@ -71,6 +71,7 @@ describe('head policy reader', () => {
       react: {},
       i18n: {},
       tools: {},
+      testConsole: {},
     });
   });
 
@@ -89,6 +90,7 @@ describe('head policy reader', () => {
         react: {},
         i18n: {},
         tools: {},
+        testConsole: {},
       });
     });
   });
@@ -222,6 +224,7 @@ describe('head policy delivery', () => {
         react: {},
         i18n: {},
         tools: {},
+        testConsole: {},
       });
     }
   });

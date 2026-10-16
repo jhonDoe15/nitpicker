@@ -1,0 +1,120 @@
+import { mkdtempSync, existsSync, readFileSync, rmSync } from 'node:fs';
+import { homedir, tmpdir } from 'node:os';
+import path from 'node:path';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import TestConsoleReporter, {
+  REPORT_VARIABLE,
+  consoleMessagesOf,
+} from './vitest-reporter.config.mjs';
+
+const ROOT = '/work/app';
+const moduleEntity = { type: 'module', moduleId: `${ROOT}/test/a.test.ts` };
+const testEntity = { type: 'test', fullName: 'suite > works', module: moduleEntity };
+
+describe('the vitest console reporter', () => {
+  let reportPath;
+
+  beforeEach(() => {
+    reportPath = path.join(mkdtempSync(path.join(tmpdir(), 'reporter-')), 'out', 'report.json');
+    vi.stubEnv(REPORT_VARIABLE, reportPath);
+  });
+
+  afterEach(() => {
+    vi.unstubAllEnvs();
+    rmSync(path.dirname(path.dirname(reportPath)), { recursive: true, force: true });
+  });
+
+  function entriesFor(logs, { config = {}, entities = {} } = {}) {
+    const reporter = new TestConsoleReporter();
+    reporter.onInit({
+      config: { root: ROOT, ...config },
+      state: { getReportedEntityById: (id) => entities[id] },
+    });
+    for (const log of logs) {
+      reporter.onUserConsoleLog({ type: 'stderr', size: 1, taskId: 't', ...log });
+    }
+    reporter.onTestRunEnd();
+    return JSON.parse(readFileSync(reportPath, 'utf8')).entries;
+  }
+
+  it('keeps standard error only, and attributes it to the file and test', () => {
+    const logs = [
+      { content: 'printed with console.log\n', type: 'stdout' },
+      { content: 'Warning: leaked timer\n', taskId: 'test' },
+      { content: 'Global warning\n', taskId: 'module' },
+    ];
+
+    expect(entriesFor(logs, { entities: { test: testEntity, module: moduleEntity } })).toEqual([
+      {
+        file: `${ROOT}/test/a.test.ts`,
+        test: 'suite > works',
+        messages: ['Warning: leaked timer'],
+      },
+      { file: `${ROOT}/test/a.test.ts`, test: '', messages: ['Global warning'] },
+    ]);
+  });
+
+  it('attributes output from an unknown task to no file', () => {
+    expect(entriesFor([{ content: 'Orphan warning\n', taskId: 'gone' }])).toEqual([
+      { file: '', test: '', messages: ['Orphan warning'] },
+    ]);
+  });
+
+  it('skips a log the project filters out with onConsoleLog', () => {
+    const onConsoleLog = vi.fn((content) => !content.startsWith('Known'));
+    const logs = [{ content: 'Known noise\n', taskId: 'test' }, { content: 'New noise\n' }];
+
+    const entries = entriesFor(logs, { config: { onConsoleLog }, entities: { test: testEntity } });
+
+    expect(entries.map(({ messages }) => messages)).toEqual([['New noise']]);
+    expect(onConsoleLog).toHaveBeenCalledWith('Known noise\n', 'stderr', testEntity);
+  });
+
+  it('replaces the project, temporary and home directories with placeholders', () => {
+    const content = `in ${ROOT}/src\nopen ${tmpdir()}/scratch-x1/file\nhome ${homedir()}/.cache\n`;
+
+    expect(entriesFor([{ content, size: 3 }])[0].messages).toEqual([
+      'in <root>/src',
+      'open <tmp>',
+      'home <home>/.cache',
+    ]);
+  });
+
+  it('cuts a long log to 4000 characters', () => {
+    const [{ messages }] = entriesFor([{ content: 'a'.repeat(5000) }]);
+
+    expect(messages[0]).toHaveLength(4000);
+  });
+
+  it('writes nothing when the report variable is not set', () => {
+    vi.stubEnv(REPORT_VARIABLE, '');
+    const reporter = new TestConsoleReporter();
+    reporter.onInit({ config: { root: ROOT }, state: { getReportedEntityById: () => undefined } });
+    reporter.onUserConsoleLog({ type: 'stderr', content: 'x\n', size: 1 });
+    reporter.onTestRunEnd();
+
+    expect(existsSync(reportPath)).toBe(false);
+  });
+});
+
+describe('splitting one console flush into messages', () => {
+  it('takes the first line with a letter or digit of a single write', () => {
+    const content = "{\n  code: 'NEW',\n  more: [1, 2]\n}\n";
+
+    expect(consoleMessagesOf(content, 1)).toEqual(["code: 'NEW',"]);
+  });
+
+  it('takes one message per block of several writes and drops frames and closers', () => {
+    const content = "warn one\nError: boom\n    at run (/a/b.js:1:2)\n{\n  code: 'X'\n}\n]\n";
+
+    expect(consoleMessagesOf(content, 3)).toEqual(['warn one', 'Error: boom', "code: 'X'"]);
+  });
+
+  it('drops terminal colors and the placeholder for an empty call', () => {
+    expect(consoleMessagesOf('\u001B[33mWarning\u001B[39m\n<empty line>', 2)).toEqual(['Warning']);
+  });
+
+  it('gives nothing for a flush without any letter or digit', () => {
+    expect(consoleMessagesOf('{\n}\n', 1)).toEqual([]);
+  });
+});

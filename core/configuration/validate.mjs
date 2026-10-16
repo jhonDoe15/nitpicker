@@ -35,6 +35,7 @@ export const KEYS = [
   'legacyInventory',
   'python',
   'tools',
+  'testConsole',
   'kotlin',
 ];
 
@@ -45,6 +46,10 @@ const GLOB_LAYOUT_KEYS = ['excludedGlobs', 'entryPoints'];
 const REACT_KEYS = ['enabled', 'styling'];
 
 const I18N_KEYS = ['enabled', 'functionNames', 'componentNames'];
+
+const TEST_CONSOLE_KEYS = ['allow'];
+
+const ALLOW_KEYS = ['contains', 'paths', 'reason'];
 
 const CUSTOM_ANALYZER_KEYS = ['name', 'command', 'args'];
 
@@ -57,6 +62,7 @@ export function validateConfig(config) {
   validateDisable(config.disable);
   validateReact(config.react);
   validateI18n(config.i18n);
+  validateTestConsole(config.testConsole);
   validateOptional(config);
   return config;
 }
@@ -153,6 +159,47 @@ function validateI18n(i18n) {
     if (i18n?.[key] !== undefined) {
       validateStringArray(i18n[key], `i18n.${key}`);
     }
+  }
+}
+
+function validateTestConsole(testConsole) {
+  if (testConsole === undefined) {
+    return;
+  }
+  validateScope('testConsole', testConsole, TEST_CONSOLE_KEYS);
+  if (testConsole.allow === undefined) {
+    return;
+  }
+  if (!Array.isArray(testConsole.allow)) {
+    throw configError('"testConsole.allow" must be an array');
+  }
+  for (const [index, entry] of testConsole.allow.entries()) {
+    validateAllowEntry(entry, `testConsole.allow[${String(index)}]`);
+  }
+}
+
+function validateAllowEntry(entry, label) {
+  if (!isPlainObject(entry)) {
+    throw configError(`"${label}" must be an object`);
+  }
+  for (const key of Object.keys(entry)) {
+    if (!ALLOW_KEYS.includes(key)) {
+      throw configError(
+        `unknown key "${key}" in "${label}". Allowed keys: ${ALLOW_KEYS.join(', ')}`,
+      );
+    }
+  }
+  if (typeof entry.contains !== 'string' || entry.contains.replaceAll(/\s/gu, '').length < 3) {
+    throw configError(`"${label}.contains" must be a message substring of at least 3 characters`);
+  }
+  if (entry.paths !== undefined) {
+    validateStringArray(entry.paths, `${label}.paths`);
+    if (entry.paths.length === 0) {
+      throw configError(`"${label}.paths" needs at least one path glob`);
+    }
+  }
+  if (!isNonEmptyString(entry.reason) || entry.reason.trim().length === 0) {
+    throw configError(`"${label}.reason" is required: say which library prints this and why`);
   }
 }
 

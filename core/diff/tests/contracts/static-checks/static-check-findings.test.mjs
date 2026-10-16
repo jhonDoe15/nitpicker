@@ -158,6 +158,7 @@ describe('static differential adapters', () => {
         'mutation',
         'prettier-format',
         'structure',
+        'test-console',
         'test-runtime',
         'typescript-typecheck',
       ]);

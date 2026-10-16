@@ -12,7 +12,8 @@ import { readLayout } from '../../../preset/head-policy.mjs';
 import { TESTS_FAILED_SKIPPED_RULE } from '../../../../../shared/rules/finding-helpers.mjs';
 import { normalizeCrap } from '../reporting/tests.mjs';
 import { withFunctionSourceHashes } from '../reporting/source-hashes.mjs';
-import { COVERAGE_REPORT_PATH } from '../reporting/vitest.mjs';
+import { COVERAGE_REPORT_PATH, TEST_CONSOLE_REPORT_PATH } from '../reporting/vitest.mjs';
+import { REPORT_VARIABLE } from '../../../preset/test-console/vitest-reporter.config.mjs';
 
 export function runPolicyTests(options) {
   if (options.snapshot === 'base') {
@@ -28,12 +29,16 @@ export function runPolicyTests(options) {
   return [];
 }
 
-export function runCoverage(options) {
+const CONSOLE_REPORTER_PATH = 'languages/typescript/preset/test-console/vitest-reporter.config.mjs';
+
+function prepareCoverageFiles(options) {
   const configPath = path.join(options.projectRoot, '.nitpicker-diff-vitest.config.ts');
   const testReportPath = path.join(options.projectRoot, '.nitpicker-diff-vitest-report.json');
   if (existsSync(testReportPath)) {
     throw new Error(`Temporary coverage report already exists: ${testReportPath}`);
   }
+  const consoleReportPath = path.join(options.projectRoot, TEST_CONSOLE_REPORT_PATH);
+  rmSync(consoleReportPath, { force: true });
   trackTemporaryPath(configPath);
   trackTemporaryPath(testReportPath);
   writeFileSync(
@@ -46,6 +51,11 @@ export function runCoverage(options) {
       'utf8',
     ),
   );
+  return { configPath, testReportPath, consoleReportPath };
+}
+
+export function runCoverage(options) {
+  const { configPath, testReportPath, consoleReportPath } = prepareCoverageFiles(options);
   try {
     const result = runNodeTool({
       options,
@@ -61,7 +71,10 @@ export function runCoverage(options) {
         'json',
         '--outputFile',
         testReportPath,
+        '--reporter',
+        path.join(options.policyRoot, CONSOLE_REPORTER_PATH),
       ],
+      environment: { [REPORT_VARIABLE]: consoleReportPath },
       acceptedStatuses: [0, 1],
     });
     if (result.status !== 0) {

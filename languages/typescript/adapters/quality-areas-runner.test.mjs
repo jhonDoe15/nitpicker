@@ -80,6 +80,30 @@ describe('crap runner without a coverage report', () => {
   });
 });
 
+describe('test-console runner without a console report', () => {
+  it('says the coverage run left no report instead of blaming the tests', async () => {
+    const projectRoot = snapshotWith({
+      'package.json': '{"name":"p","type":"module"}\n',
+      'src/main/a.ts': 'export function a(): number {\n  return 1;\n}\n',
+      'test/a.test.ts': "import { it } from 'vitest';\nit('x', () => {});\n",
+    });
+
+    const findings = await runKind('test-console', projectRoot);
+
+    expect(findings).toEqual([
+      {
+        tool: 'test-console',
+        rule: 'test-console-report-missing',
+        path: '.',
+        identity: 'test-console-report-missing',
+        message:
+          'Test console output was not checked: the coverage run left no reports/quality/test-console/report.json.',
+        classification: 'tool-error',
+      },
+    ]);
+  });
+});
+
 describe('coverage runner invoked as a script', () => {
   const originalArguments = process.argv;
   const originalExitCode = process.exitCode;

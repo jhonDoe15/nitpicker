@@ -101,6 +101,7 @@ export function readHeadPolicy(environment = process.env) {
     i18n: policy.i18n ?? {},
     preset: policy.preset,
     tools: policy.tools ?? {},
+    testConsole: policy.testConsole ?? {},
   };
 }
 
