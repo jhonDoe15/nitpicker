@@ -8,7 +8,8 @@
       "message": "No CPD duplicate report for kernel.",
       "classification": "descriptive",
       "toolNotRun": true,
-      "notRunScope": ["kernel/src/main/java", "kernel/src/test/java"]
+      "notRunScope": ["kernel/src/main/java", "kernel/src/test/java"],
+      "notRunIdentityPrefix": "cpd:"
     },
     {
       "tool": "duplicates",

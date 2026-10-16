@@ -1,21 +1,25 @@
 def reportDir = project.ext.nitpickerReportDir
 def toolCommand = project.ext.nitpickerToolCommand
+def classFiles = { File dir ->
+    def root = dir.toPath()
+    java.nio.file.Files.walk(root).withCloseable { paths ->
+        paths.filter { java.nio.file.Files.isRegularFile(it, java.nio.file.LinkOption.NOFOLLOW_LINKS) }
+            .filter { it.fileName.toString().endsWith('.class') }
+            .map { root.relativize(it) }
+            .collect(java.util.stream.Collectors.toList())
+    }
+}
 
 tasks.register('nitpickerJdeps') {
     group = 'nitpicker'
     dependsOn tasks.named('classes')
+    inputs.file(project.ext.nitpickerToolCommandsFile).withPropertyName('toolCommands')
     doLast {
         reportDir.get().asFile.mkdirs()
         def classDirs = sourceSets.main.output.classesDirs.files.findAll { it.exists() }
         def classNames = classDirs.collectMany { dir ->
-            def classFiles = fileTree(dir) {
-                include '**/*.class'
-                exclude '**/module-info.class', '**/package-info.class'
-            }
-            classFiles.files.collect {
-                dir.toPath().relativize(it.toPath()).toString().replace('\\', '/')
-                    .replaceAll(/\.class$/, '').replace('/', '.')
-            }
+            classFiles(dir).findAll { !(it.fileName.toString() in ['module-info.class', 'package-info.class']) }
+                .collect { it.toString().replace('\\', '/').replaceAll(/\.class$/, '').replace('/', '.') }
         }.unique().sort()
         reportDir.get().file('jdeps-classes.txt').asFile.text = classNames.collect { it + '\n' }.join('')
         def graph = reportDir.get().file('jdeps.txt').asFile
@@ -36,12 +40,10 @@ tasks.register('nitpickerJdeps') {
                     return dir
                 }
                 def copy = new File(staged, index.toString())
-                dir.eachFileRecurse(groovy.io.FileType.FILES) { file ->
-                    if (file.name.endsWith('.class') && file.name != 'module-info.class') {
-                        def target = copy.toPath().resolve(dir.toPath().relativize(file.toPath()))
-                        java.nio.file.Files.createDirectories(target.parent)
-                        java.nio.file.Files.copy(file.toPath(), target)
-                    }
+                classFiles(dir).findAll { it.fileName.toString() != 'module-info.class' }.each { relative ->
+                    def target = copy.toPath().resolve(relative)
+                    java.nio.file.Files.createDirectories(target.parent)
+                    java.nio.file.Files.copy(dir.toPath().resolve(relative), target)
                 }
                 copy
             }

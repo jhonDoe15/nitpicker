@@ -192,7 +192,7 @@ describe('readCpdFindings', () => {
         location: { line: 2 },
         classification: 'enforceable',
         ratchet: {
-          key: `cpd:pair:${MAIN_A}|${MAIN_B}:clone`,
+          key: `pair:${MAIN_A}|${MAIN_B}:clone`,
           value: 120,
           divisible: true,
           mustKeepUnchangedLines: [
@@ -311,6 +311,51 @@ describe('readCpdFindings', () => {
         covered(clone),
       ),
     ).toEqual([true, true, false]);
+  });
+
+  it('covers a jscpd clone of data rows that CPD reported and nitpicker dropped as boilerplate', () => {
+    const rows = Array.from(
+      { length: 8 },
+      (_, index) => `    RATE_${String(index)}(${String(index)}, "r${String(index)}"),`,
+    ).join('\n');
+    const table = (name) => `enum ${name} {\n${rows}\n    ;\n}\n`;
+    const { root, reportRoot } = project({ [MAIN_A]: table('A'), [MAIN_B]: table('B') });
+    writeFileSync(
+      path.join(reportRoot, 'cpd.xml'),
+      report(
+        duplication(8, [
+          [MAIN_A, 2, 9],
+          [MAIN_B, 2, 9],
+        ]),
+      ),
+    );
+    const jscpd = { first: { file: MAIN_A, line: 2 }, second: { file: MAIN_B, line: 2 }, lines: 8 };
+
+    expect({
+      findings: readCpdFindings(reportRoot, options(root)),
+      covered: coveredByCpd([{ reportRoot }], root)(jscpd),
+    }).toEqual({ findings: [], covered: true });
+  });
+
+  it('does not stretch a jscpd clone past its last line when matching CPD clones', () => {
+    const { root, reportRoot } = project({ [MAIN_A]: sourceWith('A'), [MAIN_B]: sourceWith('B') });
+    writeFileSync(
+      path.join(reportRoot, 'cpd.xml'),
+      report(
+        duplication(8, [
+          [MAIN_A, 10, 17],
+          [MAIN_B, 10, 17],
+        ]),
+      ),
+    );
+    const jscpd = (start) => ({
+      first: { file: MAIN_A, line: start },
+      second: { file: MAIN_B, line: start },
+      lines: 6,
+    });
+    const covered = coveredByCpd([{ reportRoot }], root);
+
+    expect([jscpd(4), jscpd(5)].map((clone) => covered(clone))).toEqual([false, true]);
   });
 
   it('covers no jscpd clone in a module where CPD failed, even with a stale report', () => {

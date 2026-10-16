@@ -73,7 +73,23 @@ function parseNotRunFields(value, classification, context) {
   if (value.notRunScope !== undefined) {
     fields.notRunScope = parseNotRunScope(value.notRunScope, fields.toolNotRun, context);
   }
+  if (value.notRunIdentityPrefix !== undefined) {
+    fields.notRunIdentityPrefix = parseNotRunIdentityPrefix(
+      value.notRunIdentityPrefix,
+      fields.toolNotRun,
+      context,
+    );
+  }
   return fields;
+}
+
+function parseNotRunIdentityPrefix(value, toolNotRun, context) {
+  if (toolNotRun !== true || typeof value !== 'string' || value === '') {
+    throw new TypeError(
+      `${context}.notRunIdentityPrefix must be a non-empty string on a toolNotRun finding`,
+    );
+  }
+  return value;
 }
 
 function parseToolNotRun(value, classification, context) {

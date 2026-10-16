@@ -4,7 +4,7 @@ const BROKEN_ON_HEAD = 'The base produced this {tool} report, so the change brok
 const NOT_COMPARED = 'Not enforced: no base {tool} report shows whether the change added it.';
 const WHOLE_PROJECT = '.';
 
-const NOT_RUN_FIELDS = new Set(['toolNotRun', 'notRunScope']);
+const NOT_RUN_FIELDS = new Set(['toolNotRun', 'notRunScope', 'notRunIdentityPrefix']);
 
 function reclassified(finding, classification, sentence) {
   return {
@@ -41,13 +41,16 @@ function baseNotice(notice, renames) {
     : original.flatMap((directory) => renamedOutOf(directory, renames));
   return {
     tool: notice.tool,
+    prefix: notice.notRunIdentityPrefix,
     key: comparisonKey(notice, renames),
     scope: [...new Set([...original, ...moved])],
   };
 }
 
 function alsoNotRun(notRunOnBase, headNotice) {
-  const sameTool = notRunOnBase.filter((base) => base.tool === headNotice.tool);
+  const sameTool = notRunOnBase.filter(
+    (base) => base.tool === headNotice.tool && base.prefix === headNotice.notRunIdentityPrefix,
+  );
   const key = comparisonKey(headNotice);
   const scope = sameTool.flatMap((base) => base.scope);
   return (
@@ -58,15 +61,18 @@ function alsoNotRun(notRunOnBase, headNotice) {
 
 function covered(notRunOnBase, finding) {
   return notRunOnBase.some(
-    (base) => base.tool === finding.tool && inScope(base.scope, finding.path),
+    (base) =>
+      base.tool === finding.tool &&
+      finding.identity.startsWith(base.prefix ?? '') &&
+      inScope(base.scope, finding.path),
   );
 }
 
-export function againstMissingReports(headFindings, baseFindings, renames) {
+export function againstMissingReports(unmatchedHead, baseFindings, renames) {
   const notRunOnBase = baseFindings
     .filter((finding) => finding.toolNotRun === true)
     .map((notice) => baseNotice(notice, renames));
-  return headFindings.map((finding) => {
+  return unmatchedHead.map((finding) => {
     if (finding.toolNotRun === true) {
       return alsoNotRun(notRunOnBase, finding)
         ? finding

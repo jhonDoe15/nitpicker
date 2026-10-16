@@ -48,6 +48,7 @@ describe('readCpdFindings without a usable CPD run', () => {
         classification: 'descriptive',
         toolNotRun: true,
         notRunScope: ['core/src/main/java', 'core/src/test/java'],
+        notRunIdentityPrefix: 'cpd:',
       },
     ];
   }

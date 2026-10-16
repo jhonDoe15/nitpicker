@@ -8,7 +8,8 @@
       "message": "No CPD duplicate report for core/src/main/java.",
       "classification": "descriptive",
       "toolNotRun": true,
-      "notRunScope": ["core/src/main/java"]
+      "notRunScope": ["core/src/main/java"],
+      "notRunIdentityPrefix": "cpd:"
     },
     {
       "tool": "duplicates",
@@ -18,7 +19,8 @@
       "message": "No CPD duplicate report for app/src/main/java.",
       "classification": "descriptive",
       "toolNotRun": true,
-      "notRunScope": ["app/src/main/java"]
+      "notRunScope": ["app/src/main/java"],
+      "notRunIdentityPrefix": "cpd:"
     },
     {
       "tool": "duplicates",
@@ -28,7 +30,8 @@
       "message": "No CPD duplicate report for kernel/src/main/java.",
       "classification": "descriptive",
       "toolNotRun": true,
-      "notRunScope": ["kernel/src/main/java"]
+      "notRunScope": ["kernel/src/main/java"],
+      "notRunIdentityPrefix": "cpd:"
     },
     {
       "tool": "duplicates",

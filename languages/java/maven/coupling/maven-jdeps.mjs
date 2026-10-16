@@ -19,20 +19,29 @@ const MODULE_INFO = 'module-info.class';
 const MAX_ERROR_LINES = 10;
 const ERROR_LINE = /Error|Exception|Caused by/u;
 
+function classFiles(directory) {
+  const pending = [''];
+  const files = [];
+  for (const below of pending) {
+    const entries = readdirSync(path.join(directory, below), { withFileTypes: true });
+    function relative(entry) {
+      return path.posix.join(below, entry.name);
+    }
+    pending.push(...entries.filter((entry) => entry.isDirectory()).map(relative));
+    files.push(
+      ...entries.filter((entry) => entry.isFile() && entry.name.endsWith('.class')).map(relative),
+    );
+  }
+  return files;
+}
+
 function mainClasses(directory) {
   if (!existsSync(directory)) {
     return [];
   }
-  return readdirSync(directory, { recursive: true, withFileTypes: true })
-    .filter((entry) => entry.isFile() && entry.name.endsWith('.class'))
-    .filter((entry) => ![MODULE_INFO, 'package-info.class'].includes(entry.name))
-    .map((entry) =>
-      path
-        .relative(directory, path.join(entry.parentPath, entry.name))
-        .replaceAll('\\', '/')
-        .replace(/\.class$/u, '')
-        .replaceAll('/', '.'),
-    )
+  return classFiles(directory)
+    .filter((file) => ![MODULE_INFO, 'package-info.class'].includes(path.posix.basename(file)))
+    .map((file) => file.replace(/\.class$/u, '').replaceAll('/', '.'))
     .sort();
 }
 

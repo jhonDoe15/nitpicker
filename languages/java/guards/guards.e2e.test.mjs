@@ -1,5 +1,14 @@
 import { spawnSync } from 'node:child_process';
-import { cpSync, existsSync, mkdtempSync, readdirSync, readFileSync, rmSync } from 'node:fs';
+import {
+  cpSync,
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  readdirSync,
+  readFileSync,
+  rmSync,
+  symlinkSync,
+} from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
@@ -105,25 +114,21 @@ function reportedViolations(root) {
     .sort();
 }
 
-function gradleTasks(fixture, tasks, properties = () => []) {
-  const projectRoot = path.join(mkdtempSync(path.join(tmpdir(), 'nitpicker-guards-')), fixture);
-  cpSync(path.join(fixtures, fixture), projectRoot, { recursive: true });
+function runGradle(projectRoot, args) {
   const result = spawnSync(
     gradle,
-    [
-      '--console=plain',
-      '--quiet',
-      '--no-configuration-cache',
-      ...properties(projectRoot),
-      '-I',
-      INIT_SCRIPT,
-      ...tasks,
-    ],
+    ['--console=plain', '--quiet', '--no-configuration-cache', '-I', INIT_SCRIPT, ...args],
     { cwd: projectRoot, encoding: 'utf8', timeout: 15 * 60 * 1000 },
   );
   if (result.status !== 0) {
     throw new Error(`Gradle failed: ${result.stderr}`);
   }
+}
+
+function gradleTasks(fixture, tasks, properties = () => []) {
+  const projectRoot = path.join(mkdtempSync(path.join(tmpdir(), 'nitpicker-guards-')), fixture);
+  cpSync(path.join(fixtures, fixture), projectRoot, { recursive: true });
+  runGradle(projectRoot, [...properties(projectRoot), ...tasks]);
   return projectRoot;
 }
 
@@ -248,5 +253,30 @@ describe.skipIf(!enabled)('Java guards on a fixture project', () => {
     expect(
       ['cpd.xml', 'cpd-failed.txt'].map((name) => existsSync(path.join(reportRoot, name))),
     ).toEqual([true, false]);
+  });
+
+  it('leaves symbolic links in a modular class directory out of the jdeps class list and copy', () => {
+    const module = path.join(roots[1], 'modular');
+    const classes = path.join(module, 'build', 'classes', 'java', 'main');
+    const outside = path.join(path.dirname(roots[1]), 'outside');
+    const labels = path.join(classes, 'modular', 'shapes', 'Labels.class');
+    mkdirSync(path.join(outside, 'q'), { recursive: true });
+    cpSync(labels, path.join(outside, 'B.class'));
+    cpSync(labels, path.join(outside, 'q', 'C.class'));
+    symlinkSync(path.join(outside, 'B.class'), path.join(classes, 'modular', 'shapes', 'L.class'));
+    symlinkSync(path.join(outside, 'q'), path.join(classes, 'linked'));
+
+    runGradle(roots[1], [':modular:nitpickerJdeps', '-x', 'compileJava']);
+
+    expect(readFileSync(path.join(module, 'build', 'nitpicker', 'jdeps-classes.txt'), 'utf8')).toBe(
+      [
+        'modular.shapes.Labels',
+        'modular.shapes.Shape',
+        'modular.shapes.impl.Circle',
+        'modular.shapes.impl.Square',
+      ]
+        .map((name) => `${name}\n`)
+        .join(''),
+    );
   });
 });

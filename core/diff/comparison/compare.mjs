@@ -20,8 +20,7 @@ export function compareFindings({
     directories: baseToHeadDirectories,
     snapshot: 'base',
   });
-  const comparedHead = againstMissingReports(headFindings, baseFindings, baseToHeadRenames);
-  const headByKey = indexFindings({ findings: comparedHead, snapshot: 'head' });
+  const headByKey = indexFindings({ findings: headFindings, snapshot: 'head' });
   const present = classifyHeadFindings({ headByKey, baseByKey, touchedCode });
   const unmatchedBase = [...baseByKey]
     .filter(([key]) => !headByKey.has(key))
@@ -33,12 +32,16 @@ export function compareFindings({
     directories: baseToHeadDirectories,
     touchedCode,
   });
-  present.newFindings = withGrowthAdvice({
-    findings: ratcheted.newFindings,
+  present.newFindings = againstMissingReports(
+    withGrowthAdvice({
+      findings: ratcheted.newFindings,
+      baseFindings,
+      renames: baseToHeadRenames,
+      directories: baseToHeadDirectories,
+    }),
     baseFindings,
-    renames: baseToHeadRenames,
-    directories: baseToHeadDirectories,
-  });
+    baseToHeadRenames,
+  );
   present.unchangedFindings.push(...ratcheted.heldFindings);
   const resolvedFindings = unmatchedBase.filter((finding) => !ratcheted.matchedBase.has(finding));
 
