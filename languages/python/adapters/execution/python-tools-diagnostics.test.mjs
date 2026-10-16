@@ -48,6 +48,7 @@ describe('running the import and duplicate tools', () => {
         { file: 'src/demo/a.py', module: 'demo.a', isPackage: false },
         { file: 'src/demo/b.py', module: 'demo.b', isPackage: false },
       ],
+      others: [],
       imports: { 'src/demo/a.py': [] },
     });
     expect(readReport(reportRoot, 'import-linter.txt')).toBe('Contracts: 1 kept, 0 broken.\n');
@@ -120,6 +121,10 @@ describe('running pytest', () => {
       `cache_dir=${path.join(reportRoot, 'pytest-cache')}`,
       '--no-cov',
       '-n0',
+      '--continue-on-collection-errors',
+      `--junitxml=${path.join(reportRoot, 'pytest-junit.xml')}`,
+      '-o',
+      'junit_family=xunit1',
     ]);
   });
   it('is an environment error naming the override when pytest is indicated but not importable', () => {

@@ -3,6 +3,8 @@ import path from 'node:path';
 import { environmentError } from './python-environment.mjs';
 import { execute, VERSION_PATTERN } from './python-process.mjs';
 import { readProjectHints } from './python-project.mjs';
+import { JUNIT_REPORT } from '../test-runs/junit-results.mjs';
+import { pinnedEnvironmentAddopts, pinnedPytestArguments } from '../test-runs/pytest-pins.mjs';
 
 export const NO_TESTS_EXIT = 5;
 const TEST_DIRECTORIES = ['tests', 'test'];
@@ -14,7 +16,7 @@ const TEST_FILE = /^(?:test_.*|.*_test)\.py$/;
 const PYTEST_PROBE = [
   'python',
   '-c',
-  'import importlib.util as u, pytest; print(pytest.__version__, int(u.find_spec("pytest_cov") is not None), int(u.find_spec("xdist") is not None))',
+  'import importlib.util as u, pytest; print(pytest.__version__, *(int(u.find_spec(m) is not None) for m in ("pytest_cov", "xdist", "pytest_rerunfailures")))',
 ];
 const probes = new WeakMap();
 
@@ -58,12 +60,17 @@ export function detectTestRunner(projectRoot, setting) {
 function probePytest(context) {
   if (!probes.has(context)) {
     const result = execute(context, PYTEST_PROBE);
-    const [version, coverage, xdist] =
+    const [version, coverage, xdist, rerunfailures] =
       result.error === undefined && result.status === 0 ? result.stdout.trim().split(' ') : [];
     probes.set(
       context,
       VERSION_PATTERN.test(version ?? '')
-        ? { version, coverage: coverage === '1', xdist: xdist === '1' }
+        ? {
+            version,
+            coverage: coverage === '1',
+            xdist: xdist === '1',
+            rerunfailures: rerunfailures === '1',
+          }
         : undefined,
     );
   }
@@ -79,13 +86,21 @@ export function testRunnerLabel(context) {
   return testRunner === 'pytest' ? pytestLabel(context) : testRunner;
 }
 
-export function singleProcessPytestEnvironment(context) {
-  return probePytest(context)?.xdist
-    ? { PYTEST_ADDOPTS: [process.env.PYTEST_ADDOPTS, '-n0'].filter(Boolean).join(' ') }
-    : {};
+/** PYTEST_ADDOPTS for the pytest runs mutmut starts: pinned, single-process, `ignored` left out. */
+export function mutmutPytestEnvironment(context, ignored = []) {
+  const inherited = process.env.PYTEST_ADDOPTS;
+  const pinned = pinnedEnvironmentAddopts(inherited).PYTEST_ADDOPTS ?? inherited;
+  const options = [
+    pinned,
+    ...(probePytest(context)?.xdist ? ['-n0'] : []),
+    ...ignored.map((file) => `--ignore=${file}`),
+  ].filter(Boolean);
+  return options.length === 0 || options.join(' ') === inherited
+    ? {}
+    : { PYTEST_ADDOPTS: options.join(' ') };
 }
 
-function pytestCommand(context) {
+export function pytestCommand(context) {
   const probe = probePytest(context);
   if (probe === undefined) {
     throw environmentError(
@@ -100,7 +115,18 @@ function pytestCommand(context) {
     `cache_dir=${path.join(context.reportRoot, 'pytest-cache')}`,
     ...(probe.coverage ? ['--no-cov'] : []),
     ...(probe.xdist ? ['-n0'] : []),
+    '--continue-on-collection-errors',
+    `--junitxml=${path.join(context.reportRoot, JUNIT_REPORT)}`,
+    '-o',
+    'junit_family=xunit1',
+    ...pinnedPytestArguments(context.projectRoot, probe),
   ];
+}
+
+export function testEnvironment(context) {
+  return context.project.testRunner === 'pytest'
+    ? pinnedEnvironmentAddopts(process.env.PYTEST_ADDOPTS)
+    : {};
 }
 
 function unittestCommand(context) {

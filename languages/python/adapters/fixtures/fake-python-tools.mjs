@@ -7,11 +7,13 @@
 //   violations.txt       one `rule|path|message` per line: ruff check findings
 //   unformatted.txt      one path per line: files ruff format / black would reformat
 //   test-exit.txt        exit status of `coverage run` (default 0); its output says the tests failed
+//   junit.xml            written as the pytest JUnit report when `coverage run` passes --junitxml
+//                        (default: one passing test, or one failing test when test-exit.txt is 1)
 //   coverage-data.json   written as the coverage.py JSON report (default: no files)
 //   unparsable.txt       one path per line: files the formatter cannot parse (it exits like the real
 //                        formatter does and names them on stderr)
 //   no-pytest.txt        `python -c "import pytest"` fails
-//   pytest-cov.txt, xdist.txt  the pytest probe reports that plugin as installed
+//   pytest-cov.txt, xdist.txt, rerunfailures.txt  the pytest probe reports that plugin as installed
 //   sources.txt          one path per line: what `ruff check --show-files` lists (default: every
 //                        .py file below the project, except .venv)
 //   type-errors.txt      printed by mypy as its report (exit 1 when not empty)
@@ -20,6 +22,7 @@
 //   rules.json           written by the nitpicker rules script (default: no findings)
 //   structure-data.json  written as the structure metrics report of `python structure_metrics.py`
 //                        (default: no functions)
+//   classes-data.json    written as its classes report (default: no classes)
 //   no-mutmut.txt        the mutmut version probe fails
 //   mutmut-version.txt   the version the mutmut probe prints (default 3.8.0)
 //   mutants-data.json    { "<source path>": { "exitCodes": {...}, "mutated": "<text>" } }: what
@@ -27,7 +30,13 @@
 //   mutmut-exit.txt      exit status of `mutmut run` (default 0); 1 says no mutant is covered, any
 //                        other status says the clean test run failed
 //   mutmut-output.txt    what `mutmut run` prints instead of those messages
+//   mutmut-failing-tests.txt  one test module per line: `mutmut run` fails its stats run until
+//                        PYTEST_ADDOPTS ignores each (`python -m pytest` writes junit.xml for them)
+//   mutmut-only-failing.txt   with those ignored, no test is left (the stats run collects none)
+//   python-version.txt   the `major.minor` the interpreter version probe prints (default 3.12)
 //   import-scan.json     printed by the import scan script (default: no imports)
+//   distributions.json   printed by the distribution scan script (default: Python 3.12, nothing
+//                        installed)
 //   lint-imports.txt     printed by lint-imports (default: a report with no broken contracts); its
 //                        exit status is 1 when the text says BROKEN
 // `python -c` with `sys.executable` prints `$VIRTUAL_ENV/bin/python` and always works.
@@ -144,11 +153,30 @@ function black() {
   process.exit(unparsable.length > 0 ? 123 : files.length > 0 ? 1 : 0);
 }
 
+const JUNIT_CASE = {
+  passed:
+    '<testcase classname="tests.test_greet" name="test_greet" file="tests/test_greet.py" line="0" time="0.01"/>',
+  failed:
+    '<testcase classname="tests.test_greet" name="test_greet" file="tests/test_greet.py" line="0" time="0.01"><failure message="assert False"/></testcase>',
+};
+
+function writeJunit(status) {
+  const option = args.find((argument) => argument.startsWith('--junitxml='));
+  if (option === undefined) {
+    return;
+  }
+  const report = existsSync('junit.xml')
+    ? readFileSync('junit.xml', 'utf8')
+    : `<testsuites><testsuite name="pytest">${JUNIT_CASE[status === 1 ? 'failed' : 'passed']}</testsuite></testsuites>`;
+  writeFileSync(option.slice('--junitxml='.length), report);
+}
+
 function coverage() {
   if (args[0] === '--version') {
     process.stdout.write('Coverage.py, version 7.6.1 with C extension\n');
   } else if (args[0] === 'run') {
     const status = Number(lines('test-exit.txt')[0] ?? 0);
+    writeJunit(status);
     process.stdout.write(status === 0 ? '1 passed\n' : '1 failed: test_greet\n');
     process.exit(status);
   } else {
@@ -208,6 +236,14 @@ function python() {
     writeFileSync(args[3], report);
     return;
   }
+  if (args[1]?.includes('sys.version_info')) {
+    process.stdout.write(`${lines('python-version.txt')[0] ?? '3.12'}\n`);
+    return;
+  }
+  if (args[0] === '-m' && args[1] === 'pytest') {
+    writeJunit(Number(lines('test-exit.txt')[0] ?? 0));
+    return;
+  }
   if (args[1]?.includes('sys.executable')) {
     process.stdout.write(`${process.env.VIRTUAL_ENV ?? '/usr'}/bin/python\n`);
     return;
@@ -225,6 +261,14 @@ function python() {
     );
     return;
   }
+  if (args.some((argument) => argument.endsWith('distribution-scan.py'))) {
+    process.stdout.write(
+      existsSync('distributions.json')
+        ? readFileSync('distributions.json', 'utf8')
+        : '{"python":[3,12],"stdlib":[],"modules":{},"entryPoints":[],"optional":{},"references":[]}',
+    );
+    return;
+  }
   if (args.some((argument) => argument.includes('"import-linter"'))) {
     process.stdout.write('2.5\n');
     return;
@@ -234,13 +278,21 @@ function python() {
       ? readFileSync('structure-data.json', 'utf8')
       : '[]';
     writeFileSync(args[1], data);
+    if (args[4] !== undefined) {
+      writeFileSync(
+        args[4],
+        existsSync('classes-data.json') ? readFileSync('classes-data.json', 'utf8') : '{}',
+      );
+    }
     return;
   }
   if (existsSync('no-pytest.txt')) {
     process.exit(1);
   }
   const flag = (file) => (existsSync(file) ? 1 : 0);
-  process.stdout.write(`8.3.1 ${flag('pytest-cov.txt')} ${flag('xdist.txt')}\n`);
+  process.stdout.write(
+    `8.3.1 ${flag('pytest-cov.txt')} ${flag('xdist.txt')} ${flag('rerunfailures.txt')}\n`,
+  );
 }
 
 const MUTMUT_MESSAGES = {
@@ -272,6 +324,17 @@ function mutmut() {
       JSON.stringify({ exit_code_by_key: exitCodes }),
     );
     writeFileSync(path.join('mutants', file), mutated);
+  }
+  const failing = lines('mutmut-failing-tests.txt');
+  const addopts = process.env.PYTEST_ADDOPTS ?? '';
+  const ignored = failing.filter((file) => addopts.includes(`--ignore=${file}`));
+  if (failing.length > 0 && ignored.length < failing.length) {
+    process.stdout.write('failed to collect stats. runner returned 1\n');
+    process.exit(1);
+  }
+  if (failing.length > 0 && existsSync('mutmut-only-failing.txt')) {
+    process.stdout.write('failed to collect stats. runner returned 5\n');
+    process.exit(1);
   }
   const status = Number(lines('mutmut-exit.txt')[0] ?? 0);
   process.stdout.write(

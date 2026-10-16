@@ -167,3 +167,48 @@ export function listProductionModules(projectRoot, sourceRoots) {
     });
   });
 }
+
+const OUTSIDE_SKIPPED = new Set([...INSTALLED_DIRECTORIES, 'venv', 'env', 'build', 'dist']);
+
+function isUnder(file, root) {
+  return root === '.' || file === root || file.startsWith(`${root}/`);
+}
+
+function projectFiles(projectRoot) {
+  const files = [];
+  const pending = [''];
+  for (const directory of pending) {
+    const entries = readdirSync(path.join(projectRoot, directory), { withFileTypes: true });
+    for (const entry of entries) {
+      const relative = directory === '' ? entry.name : `${directory}/${entry.name}`;
+      if (
+        entry.isDirectory() &&
+        !entry.name.startsWith(HIDDEN_PREFIX) &&
+        !OUTSIDE_SKIPPED.has(entry.name)
+      ) {
+        pending.push(relative);
+      } else if (entry.isFile() && entry.name.endsWith('.py')) {
+        files.push(relative);
+      }
+    }
+  }
+  return files.sort();
+}
+
+function dottedName(file) {
+  const parts = file.replace(/\.py$/u, '').split('/');
+  return (parts.at(-1) === '__init__' ? parts.slice(0, -1) : parts).join('.');
+}
+
+export function listOtherModules(projectRoot, sourceRoots, production) {
+  const known = new Set(production.map(({ file }) => file));
+  const roots = existingSourceRoots(projectRoot, sourceRoots).filter((root) => root !== '.');
+  return projectFiles(projectRoot)
+    .filter((file) => !known.has(file))
+    .map((file) => {
+      const inside = roots.some((root) => isUnder(file, root));
+      const test = TEST_FILE.test(path.posix.basename(file)) || /(?:^|\/)tests?\//u.test(file);
+      return { file, module: dottedName(file), kind: test ? 'test' : 'other', inRoots: inside };
+    })
+    .filter(({ module }) => module !== '');
+}

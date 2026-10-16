@@ -14,7 +14,16 @@ import { evaluateBaselineExpansions } from '../../../shared/rules/baseline-expan
 import { checkstyleRuleName } from '../messages/rule-messages.mjs';
 
 export const EXCEPTION_SEPARATOR = ':';
-const FILE_LIMIT_THRESHOLDS = ['fileLines', 'testFileLines', 'lineLength', 'folderFiles'];
+const FILE_LIMIT_THRESHOLDS = [
+  'fileLines',
+  'testFileLines',
+  'lineLength',
+  'folderFiles',
+  'folderDepth',
+  'classMethods',
+  'classFields',
+  'inheritanceDepth',
+];
 const TEST_TIME_THRESHOLDS = ['unitTestSeconds', 'integrationTestSeconds'];
 const NATIVE_LINE_LENGTH = {
   java: 'Checkstyle checks Java line length; set it in config/checkstyle/checkstyle.xml and opt in with "tools": { "checkstyle": { "precedence": ["project"] } }',

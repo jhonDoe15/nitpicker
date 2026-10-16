@@ -87,6 +87,8 @@ describe('running the tools', () => {
       formatterDetected: true,
       sourceRoots: ['src'],
       testsRan: true,
+      testFailures: [],
+      testRunner: 'unittest',
     });
     expect(readReport(reportRoot, 'coveragerc')).toBe(coverageRc('src'));
   });
@@ -144,6 +146,7 @@ describe('running the tools', () => {
         ['types-failed', 'mypy', 'mypy'],
         ['rules-failed', 'python', 'python'],
         ['structure-failed', `python ${structureScript}`, 'python'],
+        ['dependencies-failed', 'python', 'python'],
       ].map(([rule, command, call]) => ({
         rule,
         message: `${command} exited 2 in the virtualenv environment:\n${call} blew up`,
