@@ -154,8 +154,9 @@ Math` and `Math['random']()` are caught; `process`, `fetch`, `setTimeout`, `setI
 - Throw only for unexpected failures, using `Error` subclasses that preserve `cause`. Convert
   library exceptions into domain results at the boundary. `nitpicker/preserve-error-cause` checks
   `Error` and every class whose name ends in `Error`: one thrown in a `catch` is reported unless
-  it passes `{ cause: error }` as an option or the caught value itself as an argument, whether or
-  not it mentions the caught value (`throw new AppError('range')` and
+  it passes `{ cause: error }` as an option or the caught value itself as an argument (also inside
+  an array, as in `new AggregateError([error, closeError], message)`, or through a
+  `const cause = error`), whether or not it mentions the caught value (`throw new AppError('range')` and
   `new AppError(String(error))` are both reported).
 - `nitpicker/no-silent-catch`: a `catch` must hand the failure on. It passes when it uses the
   caught value (rethrow an `Error` subclass with `{ cause: error }`, log it, or return it in a
