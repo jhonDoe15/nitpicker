@@ -56,7 +56,7 @@ describe.skipIf(!enabled)('a Gradle build of two projects and an extra source se
       ['AvoidFieldNameMatchingMethodName', 'AvoidLiteralsInIfCondition', 'GuardLogStatement'].map(
         (rule) => located(findings, 'pmd', rule),
       ),
-    ).toEqual([[], [], ['lib/src/main/java/demo/lib/Settings.java']]);
+    ).toEqual([[], [], ['app/src/main/java/demo/app/Settings.java']]);
   });
 
   it('lints the integrationTest source set with the test rules', () => {
