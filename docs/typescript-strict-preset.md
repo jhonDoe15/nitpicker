@@ -220,9 +220,11 @@ Math` and `Math['random']()` are caught; `process`, `fetch`, `setTimeout`, `setI
   `@typescript-eslint/no-magic-numbers`): name the number with a module-level constant; any number
   in its initializer is allowed (`const SECONDS_PER_DAY = 24 * 60 * 60;`,
   `const RETRY_STATUSES = [429, 503] as const;`). `-1`, `0`, `1`, `2`, `10`, `100` and `1000`
-  (so `Math.round(x * 100) / 100`), an HTTP status code passed to `status`, `sendStatus`, `json`,
-  `send`, `redirect`, `code` or `writeHead` (`res.status(404)`, `c.json(body, 201)`), the digits of
-  `toFixed(2)` and `toPrecision(3)`, default parameter values, array indexes, numeric literal types
+  (so `Math.round(x * 100) / 100`), an HTTP status code in the status argument of a response or
+  error call (the first argument of `status`, `sendStatus`, `code`, `writeHead` and a bare `error` or
+  `fail`, the second of `text`, `json`, `body` and `html`, either of `redirect`, `throw` and a
+  callee named `...Error` or `...Exception`: `res.status(404)`, `c.json(body, 201)`,
+  `new HttpException('gone', 410)`), the digits of `toFixed(2)` and `toPrecision(3)`, default parameter values, array indexes, numeric literal types
   and object property values are allowed. `x % 7` is reported: name the divisor. Tests are exempt.
 - Security: no `eval` (`no-eval`); no regular expression with nested or overlapping quantifiers
   that backtracks super-linearly (`regexp/no-super-linear-backtracking`, from `eslint-plugin-regexp`);
