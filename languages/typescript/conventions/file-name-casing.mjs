@@ -1,5 +1,5 @@
 import { escapeRegExp } from '../../../shared/glob.mjs';
-import { FIXTURE_PATH, GENERATED_PATH } from '../preset/layout.mjs';
+import { FIXTURE_PATH } from '../preset/layout.mjs';
 
 const SOURCE_FILES = ['**/*.{ts,tsx,mts,cts,js,jsx,mjs,cjs}'];
 const SOURCE_FILE = /\.(?:[cm]?[jt]s|[jt]sx)$/;
@@ -63,7 +63,7 @@ function isGeneratedSegment(segment) {
 
 function isExemptPath(file) {
   const posix = file.replaceAll('\\', '/');
-  return GENERATED_PATH.test(posix) || GENERATED_NAME.test(posix) || FIXTURE_PATH.test(posix);
+  return GENERATED_NAME.test(posix) || FIXTURE_PATH.test(posix);
 }
 
 function exportsName(text, hookName) {

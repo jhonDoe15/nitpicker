@@ -9,6 +9,7 @@ function followed(files, config) {
 }
 
 const code = 'export const a = 1;\n';
+const marked = `// @generated\n${code}`;
 
 describe('file name casing in the head policy', () => {
   it('counts only source and test roots, not fixtures, generated code or other folders', () => {
@@ -16,8 +17,8 @@ describe('file name casing in the head policy', () => {
       followed({
         'src/kebab-one.ts': code,
         'src/kebab-two.ts': code,
-        'src/__generated__/snake_one.ts': code,
-        'src/api/snake_pb.ts': code,
+        'src/__generated__/snake_one.ts': marked,
+        'src/api/snake_pb.ts': marked,
         'scripts/snake_three.ts': code,
         'scripts/snake_four.ts': code,
         'e2e/snake_five.ts': code,
@@ -25,6 +26,16 @@ describe('file name casing in the head policy', () => {
         '.storybook/snake_seven.ts': code,
       }),
     ).toBeUndefined();
+  });
+
+  it('counts files with generated-looking names that carry no generator marker', () => {
+    expect(
+      followed({
+        'src/kebab-one.ts': code,
+        'src/__generated__/snake_one.ts': code,
+        'src/api/snake_pb.ts': code,
+      }),
+    ).toEqual({ 'typescript.fileNames': 'snake_case' });
   });
 
   it('counts test roots and files too large to read', () => {

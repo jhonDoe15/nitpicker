@@ -14,20 +14,21 @@ export function validateConventions(value, definitions) {
         `unknown convention "${id}". Allowed conventions: ${[...known.keys()].join(', ') || '(none for this preset)'}`,
       );
     }
-    if (definition.kind === 'names') {
-      if (
-        !Array.isArray(choice) ||
-        !choice.every((name) => typeof name === 'string' && NAME.test(name))
-      ) {
-        throw configError(`"conventions.${id}" must be a list of function names`);
-      }
-      continue;
+    validateChoice(definition, choice);
+  }
+}
+
+function validateChoice(definition, choice) {
+  if (definition.kind === 'names') {
+    const valid =
+      Array.isArray(choice) && choice.every((name) => typeof name === 'string' && NAME.test(name));
+    if (!valid) {
+      throw configError(`"conventions.${definition.id}" must be a list of function names`);
     }
-    if (!definition.options.includes(choice)) {
-      throw configError(
-        `"conventions.${id}" must be one of: ${definition.options.map((option) => `"${option}"`).join(', ')}`,
-      );
-    }
+  } else if (!definition.options.includes(choice)) {
+    throw configError(
+      `"conventions.${definition.id}" must be one of: ${definition.options.map((option) => `"${option}"`).join(', ')}`,
+    );
   }
 }
 

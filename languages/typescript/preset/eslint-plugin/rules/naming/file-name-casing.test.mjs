@@ -3,7 +3,8 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import tseslint from 'typescript-eslint';
-import { afterAll, describe, expect, it } from 'vitest';
+import { afterAll, afterEach, describe, expect, it, vi } from 'vitest';
+import { HEAD_POLICY_ENV } from '../../../../../../shared/head-policy.mjs';
 import { typescriptRuleTester } from '../../test-support/rule-tester.mjs';
 import { rule } from './file-name-casing.mjs';
 
@@ -51,8 +52,6 @@ ruleTester.run('file-name-casing', rule, {
     { code, filename: 'src/foo.min.js', options: [{ casing: 'snake_case' }] },
     { code, filename: 'src/chunk-3f9a1c2b.js', options: [{ casing: 'camelCase' }] },
     { code, filename: 'src/__generated__/UserQuery.graphql.ts' },
-    { code, filename: 'src/api/user_pb.ts' },
-    { code, filename: 'src/api/userQuery.generated.ts' },
     { code, filename: 'tests/fixtures/some_file.ts' },
     { code, filename: 'vite.config.ts' },
     { code, filename: 'app/routes/[id].tsx' },
@@ -156,5 +155,50 @@ describe('file-name-casing messages', () => {
     expect(messageFor(path.join(snakeFolder, 'g-h.ts'))).toBe(
       'File name "g-h.ts" is not snake_case, which most other files in this folder use. Rename it, or add an "exceptions" entry for nitpicker/file-name-casing.',
     );
+  });
+});
+
+describe('file-name-casing and files marked as generated', () => {
+  afterEach(() => {
+    vi.unstubAllEnvs();
+  });
+
+  function messagesFor(generatedFiles, relative) {
+    const root = mkdtempSync(path.join(tmpdir(), 'nitpicker-generated-names-'));
+    roots.push(root);
+    mkdirSync(path.join(root, 'src'));
+    for (const file of generatedFiles) {
+      writeFileSync(path.join(root, file), '');
+    }
+    writeFileSync(path.join(root, 'policy.json'), JSON.stringify({ generatedFiles }));
+    vi.stubEnv(HEAD_POLICY_ENV, path.join(root, 'policy.json'));
+    return new Linter({ cwd: root })
+      .verify(
+        code,
+        [
+          {
+            files: ['**/*.ts'],
+            languageOptions: { parser: tseslint.parser },
+            plugins: { nitpicker: { rules: { 'file-name-casing': rule } } },
+            rules: { 'nitpicker/file-name-casing': ['error', { casing: 'kebab-case' }] },
+          },
+        ],
+        { filename: path.join(root, relative) },
+      )
+      .map(({ messageId }) => messageId);
+  }
+
+  it('does not flag a file the project marks as generated', () => {
+    expect(messagesFor(['src/user_query.ts'], 'src/user_query.ts')).toEqual([]);
+  });
+
+  it('flags the same name when nothing marks it as generated', () => {
+    expect(messagesFor([], 'src/user_query.ts')).toEqual(['casing']);
+  });
+
+  it('does not let marked generated siblings set the folder majority', () => {
+    const generated = ['src/g_a.ts', 'src/g_b.ts', 'src/g_c.ts'];
+
+    expect(messagesFor(generated, 'src/own_file.ts')).toEqual(['casing']);
   });
 });

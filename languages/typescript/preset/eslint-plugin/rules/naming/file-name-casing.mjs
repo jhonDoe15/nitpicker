@@ -6,6 +6,7 @@ import {
   fileNameParts,
   folderCasing,
 } from '../../../../conventions/file-name-casing.mjs';
+import { readLayout } from '../../../head-policy.mjs';
 
 const PIN_EXAMPLE = '"conventions": { "typescript.fileNames": "camelCase" }';
 
@@ -41,14 +42,20 @@ export const rule = {
   },
   create(context) {
     const projectCasing = context.options[0]?.casing ?? 'kebab-case';
+    const layout = readLayout();
     return {
       Program() {
         const file = projectFile(context);
-        const folder = context.options[0]?.pinned
-          ? undefined
-          : folderCasing(file, siblingNames(context.filename));
+        const directory = path.posix.dirname(file);
+        const siblings = siblingNames(context.filename).filter(
+          (name) => !layout.isGeneratedPath(path.posix.join(directory, name)),
+        );
+        const folder = context.options[0]?.pinned ? undefined : folderCasing(file, siblings);
         const casing = folder ?? projectCasing;
-        if (!fileNameComplies(file, casing, context.sourceCode.text)) {
+        if (
+          !layout.isGeneratedPath(file) &&
+          !fileNameComplies(file, casing, context.sourceCode.text)
+        ) {
           context.report({
             loc: { line: 1, column: 0 },
             messageId: folder === undefined ? 'casing' : 'folderCasing',

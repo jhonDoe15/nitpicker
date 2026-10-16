@@ -11,10 +11,11 @@ export function detectConventions({
 }) {
   const measured = definitions.filter((definition) => pinned[definition.id] === undefined);
   const excluded = exclude.map(globToRegExp);
-  const candidatesOf = (options) =>
-    measured.length === 0
+  function candidatesOf(options) {
+    return measured.length === 0
       ? []
       : source.paths(options).filter((file) => !excluded.some((glob) => glob.test(file)));
+  }
   const readable = candidatesOf({});
   const named = measured.some(({ nameOnly }) => nameOnly) ? candidatesOf({ unreadable: true }) : [];
   const samples = new Map(
