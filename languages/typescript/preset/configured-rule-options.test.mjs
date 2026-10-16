@@ -143,3 +143,13 @@ describe('rules configured from the followed conventions', () => {
     expect(fileNames).toEqual(['error', { casing: 'kebab-case', pinned: true }]);
   });
 });
+
+describe('@typescript-eslint/no-unsafe-assignment', () => {
+  it('stays on for JavaScript files that the project tsconfig does not check', () => {
+    expect(
+      presetConfig.filter(
+        (entry) => entry.rules?.['@typescript-eslint/no-unsafe-assignment'] === 'off',
+      ),
+    ).toEqual([]);
+  });
+});

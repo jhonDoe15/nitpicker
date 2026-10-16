@@ -47,10 +47,10 @@ describe('conventions measured per scope', () => {
         'src/fixtures/l.json': json(2),
         'src/fixtures/m.json': json(2),
         'src/fixtures/n.json': json(2),
-        'src/__generated__/o.json': json(2),
-        'src/__generated__/p.json': json(2),
-        'src/__generated__/q.json': json(2),
-        'src/__generated__/r.json': json(2),
+        'src/node_modules/pkg/o.json': json(2),
+        'src/node_modules/pkg/p.json': json(2),
+        'src/node_modules/pkg/q.json': json(2),
+        'src/node_modules/pkg/r.json': json(2),
       }),
     ).toEqual({ 'prettier.jsonIndentation': '4' });
   });

@@ -3,7 +3,7 @@ import { describeConventions } from '../../shared/conventions/settings.mjs';
 import { isJavascriptPolicy } from '../../languages/javascript/preset/javascript-preset.mjs';
 import { resolveHeadPolicy } from '../../languages/typescript/preset/head-policy.mjs';
 import {
-  excludedGlobs as builtInExcludedGlobs,
+  builtInExcludedGlobs,
   globToRegExp,
   prettierPatterns,
   resolveLayout,
@@ -73,6 +73,7 @@ const TEST_SUPPORT_PATH = /(?:^|\/)(?:test-support|test-utils|testing|testkit)\/
 function layoutFilter(config, headPolicy) {
   const layout = resolveLayout(headPolicy.layout, headPolicy.exclude, {
     javascript: isJavascriptPolicy(config),
+    generatedFiles: headPolicy.generatedFiles,
   });
   const formatted = prettierPatterns(layout).map(globToRegExp);
   const scopes = {
