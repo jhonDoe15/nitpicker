@@ -58,11 +58,12 @@ export function declaredNames(nodes) {
   );
 }
 
-export function referencedNames(nodes) {
+export function referencedNames(nodes, ignored = []) {
+  const skipped = new Set(ignored);
   return new Set(
     descendants(nodes)
       .filter(ts.isIdentifier)
-      .filter(isReference)
+      .filter((node) => isReference(node) && !skipped.has(node))
       .map(({ text }) => text),
   );
 }

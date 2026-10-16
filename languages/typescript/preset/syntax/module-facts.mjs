@@ -69,6 +69,27 @@ function defaultExportedName(sourceFile) {
     .map(({ text }) => ({ local: text, exported: 'default' }));
 }
 
+function modifierKinds(statement) {
+  return ts.canHaveModifiers(statement)
+    ? (ts.getModifiers(statement) ?? []).map(({ kind }) => kind)
+    : [];
+}
+
+function exportedAliasDeclarations(sourceFile) {
+  return sourceFile.statements
+    .filter(ts.isVariableStatement)
+    .filter((statement) => modifierKinds(statement).includes(ts.SyntaxKind.ExportKeyword))
+    .flatMap((statement) => statement.declarationList.declarations)
+    .filter(
+      ({ name, initializer }) =>
+        ts.isIdentifier(name) && initializer !== undefined && ts.isIdentifier(initializer),
+    );
+}
+
+export function fileAliasReads(sourceFile) {
+  return exportedAliasDeclarations(sourceFile).map(({ initializer }) => initializer);
+}
+
 export function fileExports(sourceFile) {
   const declarations = sourceFile.statements
     .filter(ts.isExportDeclaration)
@@ -77,6 +98,10 @@ export function fileExports(sourceFile) {
     ({ moduleSpecifier }) => moduleSpecifier !== undefined && ts.isStringLiteral(moduleSpecifier),
   );
   return {
+    aliases: exportedAliasDeclarations(sourceFile).map(({ name, initializer }) => ({
+      local: initializer.text,
+      exported: name.text,
+    })),
     locals: [
       ...declarations
         .filter(({ moduleSpecifier }) => moduleSpecifier === undefined)
@@ -103,4 +128,51 @@ export function fileExports(sourceFile) {
       names: exportedNames(declaration.exportClause),
     })),
   };
+}
+
+function bindingIdentifiers(name) {
+  const pending = [name];
+  for (const node of pending) {
+    if (!ts.isIdentifier(node)) {
+      pending.push(
+        ...node.elements
+          .filter((element) => !ts.isOmittedExpression(element))
+          .map(({ name: inner }) => inner),
+      );
+    }
+  }
+  return pending.filter(ts.isIdentifier);
+}
+
+function declaredExports(statement) {
+  const kinds = modifierKinds(statement);
+  if (!kinds.includes(ts.SyntaxKind.ExportKeyword)) return [];
+  if (ts.isVariableStatement(statement)) {
+    return statement.declarationList.declarations
+      .flatMap(({ name }) => bindingIdentifiers(name))
+      .map((node) => ({ name: node.text, node }));
+  }
+  if (kinds.includes(ts.SyntaxKind.DefaultKeyword)) {
+    return [{ name: 'default', node: statement.name ?? statement }];
+  }
+  return statement.name === undefined ? [] : [{ name: statement.name.text, node: statement.name }];
+}
+
+function specifiedExports(statement) {
+  if (ts.isExportAssignment(statement)) return [{ name: 'default', node: statement }];
+  const clause = ts.isExportDeclaration(statement) ? statement.exportClause : undefined;
+  return statement.moduleSpecifier === undefined &&
+    clause !== undefined &&
+    ts.isNamedExports(clause)
+    ? clause.elements.map((element) => ({ name: element.name.text, node: element }))
+    : [];
+}
+
+export function exportLine(sourceFile, name) {
+  const found = sourceFile.statements
+    .flatMap((statement) => [...declaredExports(statement), ...specifiedExports(statement)])
+    .find((declaration) => declaration.name === name);
+  return found === undefined
+    ? undefined
+    : sourceFile.getLineAndCharacterOfPosition(found.node.getStart(sourceFile)).line + 1;
 }

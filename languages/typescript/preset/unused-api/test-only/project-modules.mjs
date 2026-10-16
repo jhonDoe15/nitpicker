@@ -2,7 +2,13 @@ import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import ts from 'typescript';
 import { packageNameOf, resolveModuleSpecifier } from '../../modules/module-resolution.mjs';
-import { fileDynamicImports, fileExports, fileImports } from '../../syntax/module-facts.mjs';
+import {
+  exportLine,
+  fileAliasReads,
+  fileDynamicImports,
+  fileExports,
+  fileImports,
+} from '../../syntax/module-facts.mjs';
 import { referencedNames } from '../../syntax/references.mjs';
 import { codeExtensionNames } from '../../layout.mjs';
 import { workspacePaths } from '../workspace/entries.mjs';
@@ -41,23 +47,34 @@ function resolveSources(items, file, resolve) {
     .filter(({ source }) => source !== undefined);
 }
 
+export function lazily(compute) {
+  let value;
+  return () => (value ??= compute());
+}
+
+function isReadable(file) {
+  return CODE_FILE.test(file) && !file.endsWith('.d.ts');
+}
+
+function parse(file) {
+  return ts.createSourceFile(file, readFileSync(file, 'utf8'), ts.ScriptTarget.Latest, true);
+}
+
 function readModule(file, resolve) {
-  if (!CODE_FILE.test(file) || file.endsWith('.d.ts')) return NO_LINKS;
-  const sourceFile = ts.createSourceFile(
-    file,
-    readFileSync(file, 'utf8'),
-    ts.ScriptTarget.Latest,
-    true,
-  );
+  if (!isReadable(file)) return NO_LINKS;
+  const sourceFile = parse(file);
   const links = moduleLinks({
     imports: fileImports(sourceFile),
     dynamicImports: fileDynamicImports(sourceFile),
     exports: fileExports(sourceFile),
-    referenced: referencedNames([sourceFile]),
+    referenced: referencedNames([sourceFile], fileAliasReads(sourceFile)),
   });
+  const references = lazily(() => resolveSources(links.references, file, resolve));
   return {
     edges: resolveSources(links.edges, file, resolve),
-    references: resolveSources(links.references, file, resolve),
+    get references() {
+      return references();
+    },
   };
 }
 
@@ -68,4 +85,9 @@ export function projectModules(project) {
     if (!modules.has(file)) modules.set(file, readModule(path.normalize(file), resolve));
     return modules.get(file);
   };
+}
+
+export function exportLineOf(file, name) {
+  const normalized = path.normalize(file);
+  return isReadable(normalized) ? exportLine(parse(normalized), name) : undefined;
 }

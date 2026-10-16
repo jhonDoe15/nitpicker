@@ -167,11 +167,14 @@ function symbols(findings) {
 const REEXPORTS = {
   'src/main/main.ts': `import { stampLabel } from './features/labels/stamp';
 import { dyeCloth } from './features/cloth/dye';
+import { sandBoard } from './features/boards/sand';
 export { applyDiscount } from './features/pricing/discount';
 export { glazeTile } from './features/tiles/barrel';
 export { sealJar } from './features/jars/lid';
 export { dyeCloth };
 export * from './features/shelves/shelf';
+export * as cabinets from './features/cabinets/cabinet';
+export const finish = sandBoard;
 export { weighCrate } from './features/crates';
 console.log(stampLabel());
 `,
@@ -180,6 +183,8 @@ console.log(stampLabel());
   'src/main/features/tiles/barrel.ts': "export { glazeTile } from './glaze';\n",
   'src/main/features/tiles/glaze.ts': 'export function glazeTile() { return 2; }\n',
   'src/main/features/jars/lid.ts': 'export function sealJar() { return 3; }\n',
+  'src/main/features/cabinets/cabinet.ts': 'export function hangDoor() { return 7; }\n',
+  'src/main/features/boards/sand.ts': 'export function sandBoard() { return 8; }\n',
   'src/main/features/shelves/shelf.ts': 'export function stackShelf() { return 4; }\n',
   'src/main/features/crates/index.ts': "export { weighCrate } from './weigh';\n",
   'src/main/features/crates/weigh.ts': 'export function weighCrate() { return 5; }\n',
@@ -190,9 +195,13 @@ export function stampLabel() { return weighCrate(); }
 import { applyDiscount } from './pricing/discount';
 import { glazeTile } from './tiles/glaze';
 import { stackShelf } from './shelves/shelf';
+import { hangDoor } from './cabinets/cabinet';
+import { sandBoard } from './boards/sand';
 import { weighCrate } from './crates/weigh';
 import { dyeCloth } from './cloth/dye';
-it('uses them', () => { applyDiscount(); glazeTile(); stackShelf(); weighCrate(); dyeCloth(); });
+it('uses them', () => {
+  applyDiscount(); glazeTile(); stackShelf(); hangDoor(); sandBoard(); weighCrate(); dyeCloth();
+});
 `,
   'src/main/features/jars/jars.test.ts': `import { it } from 'vitest';
 import { sealJar } from '../../main';
@@ -260,6 +269,8 @@ describe('exports that an entry re-exports', () => {
 
   it('does not count a re-export as a use, however it is written or through whatever barrels', () => {
     expect(symbols(reexportFindings)).toEqual([
+      'src/main/features/boards/sand.ts sandBoard',
+      'src/main/features/cabinets/cabinet.ts hangDoor',
       'src/main/features/cloth/dye.ts dyeCloth',
       'src/main/features/jars/lid.ts sealJar',
       'src/main/features/pricing/discount.ts applyDiscount',
@@ -272,6 +283,12 @@ describe('exports that an entry re-exports', () => {
     expect(reexportFindings.find(({ symbol }) => symbol === 'applyDiscount')).toEqual(
       DISCOUNT_FINDING,
     );
+  });
+
+  it('locates an export that knip does not list by its declaration', () => {
+    const located = reexportFindings.find(({ symbol }) => symbol === 'dyeCloth');
+
+    expect(located.location).toEqual({ line: 1 });
   });
 
   it('counts the re-export of a published package, whose entry is public', () => {
