@@ -1,0 +1,26 @@
+{
+  "findings": [
+    {
+      "tool": "duplicates",
+      "rule": "cpd-not-run",
+      "path": ".",
+      "identity": "cpd-not-run@:legacy",
+      "message": "No CPD duplicate report for legacy.",
+      "classification": "descriptive",
+      "toolNotRun": true,
+      "notRunScope": ["legacy/src/main/java", "legacy/src/test/java"],
+      "notRunIdentityPrefix": "cpd:"
+    },
+    {
+      "tool": "duplicates",
+      "rule": "cpd-not-run",
+      "path": ".",
+      "identity": "cpd-not-run@:kernel",
+      "message": "No CPD duplicate report for kernel.",
+      "classification": "descriptive",
+      "toolNotRun": true,
+      "notRunScope": ["kernel/src/main/java", "kernel/src/test/java"],
+      "notRunIdentityPrefix": "cpd:"
+    }
+  ]
+}

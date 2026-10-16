@@ -6,7 +6,6 @@ import {
   firstCommentedOutCodeLine,
   unreferencedWorkTagLines,
 } from '../../../../shared/comments/comment-checks.mjs';
-import { exceptionRoute } from '../../guards/advice/exception-route.mjs';
 
 const COMMENTS_TOOL = 'comments';
 const TODO_RULE = 'TodoWithoutIssue';
@@ -15,15 +14,9 @@ const TOKENS =
   /"""(?:[^\\]|\\[\s\S])*?"""|"(?:[^"\\\n]|\\.)*"|'(?:[^'\\\n]|\\.)*'|\/\/[^\n]*|\/\*[\s\S]*?\*\//g;
 
 const MESSAGES = {
-  [TODO_RULE]: [
-    'A TODO or FIXME needs an issue reference: write "TODO(#123): ..." or "TODO PROJ-123: ...",',
-    'or do the work now.',
-    exceptionRoute(COMMENTS_TOOL, TODO_RULE),
-  ].join(' '),
-  [CODE_RULE]: [
-    'Delete the commented-out code; version control keeps it.',
-    exceptionRoute(COMMENTS_TOOL, CODE_RULE),
-  ].join(' '),
+  [TODO_RULE]:
+    'A TODO or FIXME needs an issue reference: write "TODO(#123): ..." or "TODO PROJ-123: ...", or do the work now.',
+  [CODE_RULE]: 'Delete the commented-out code; version control keeps it.',
 };
 
 export function readCommentFindings(projectRoot, sourceRoots) {

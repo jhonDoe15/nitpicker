@@ -74,8 +74,6 @@ class SwallowingTest {
 }
 `;
 
-const CHECKSTYLE_PREFIX = 'com.puppycrawl.tools.checkstyle.checks.';
-
 let repository;
 
 const ofTool = (result, tool) =>
@@ -118,12 +116,9 @@ describe.skipIf(!enabled)('Java preset escape hatches', () => {
 
       expect(result.failed).toBe(true);
       expect(ofFile(result, 'Bad.java')).toEqual([
-        ...[
-          'blocks.EmptyCatchBlockCheck',
-          'indentation.IndentationCheck',
-          'regexp.RegexpSinglelineJavaCheck',
-          'whitespace.EmptyLineSeparatorCheck',
-        ].map((check) => `checkstyle ${CHECKSTYLE_PREFIX}${check} Bad.java`),
+        ...['EmptyCatchBlock', 'EmptyLineSeparator', 'Indentation', 'RegexpSinglelineJava'].map(
+          (check) => `checkstyle ${check} Bad.java`,
+        ),
         'google-java-format format Bad.java',
         'pit mutant-nocoverage Bad.java',
         'pmd EmptyCatchBlock Bad.java',
@@ -137,7 +132,7 @@ describe.skipIf(!enabled)('Java preset escape hatches', () => {
     'lints test sources with PMD, Checkstyle and the formatter, without the assertion-style rules',
     () => {
       expect(ofFile(defaultDiff(), 'SwallowingTest.java')).toEqual([
-        `checkstyle ${CHECKSTYLE_PREFIX}blocks.EmptyCatchBlockCheck SwallowingTest.java`,
+        'checkstyle EmptyCatchBlock SwallowingTest.java',
         'google-java-format format SwallowingTest.java',
         'pmd AvoidCatchingGenericException SwallowingTest.java',
         'pmd EmptyCatchBlock SwallowingTest.java',

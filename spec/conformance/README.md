@@ -22,13 +22,24 @@ Runner contract:
 2. Compare with `renames` (an object mapping base paths to head paths; empty when absent). Renames
    apply to the base side only: they remap a base finding's path and every occurrence of an old path
    inside its `identity`, longest old path first.
-3. Before matching: when the base has a finding with `toolNotRun: true`, every `enforceable` head
-   finding of the same `tool` becomes `descriptive`. A head finding with `toolNotRun: true` whose
-   `tool` has no such finding on the base becomes `tool-error` (the change broke the tool); the
-   runner reports a new `tool-error` finding as a tool error.
-4. Two findings match when tool, rule, (renamed) path, symbol (empty when absent), (renamed)
+3. Two findings match when tool, rule, (renamed) path, symbol (empty when absent), (renamed)
    identity, classification and metric name (empty when absent) are all equal. Message and location
-   are not compared. Two findings with the same key in one snapshot are an error.
+   are not compared. Two findings with the same key in one snapshot are an error. A pair identity
+   (`pair:<a>|<b>` followed by `:` or the end, optionally behind prefixes such as `cpd:`) keeps its
+   two files in path order: when a rename puts them out of order, the key swaps them back, and a
+   path equal to the first file becomes the new first file.
+4. After matching, only head findings with no base match are checked against the base notices. A
+   finding with `toolNotRun: true` covers the project directories listed in its `notRunScope` (`.`
+   is the whole project; parsing reads `./` as `.` and rejects an empty string), or the whole
+   project without one, and with `notRunIdentityPrefix` only the findings whose `identity` starts
+   with that text. A base notice also covers the head path of each renamed file whose base path lies
+   in one of its directories; directories themselves never follow a move. Every unmatched
+   `enforceable` head finding of the same `tool` that a base notice covers becomes `descriptive`. An
+   unmatched head finding with `toolNotRun: true` becomes `tool-error` (the change broke the tool)
+   unless a base notice of the same `tool` and `notRunIdentityPrefix` has the same key (step 3,
+   after renames) or those base notices together cover each of its directories; the runner reports
+   a new `tool-error` finding as a tool error. A module renamed as a whole therefore turns its head
+   notice into a `tool-error`, while the findings of its renamed files stay `descriptive`.
 5. Compare the outputs with `expected.json`:
    - `new`: head findings with no base match. `resolved`: base findings with no head match.
      `unchanged`: head findings with a base match whose metric did not change.

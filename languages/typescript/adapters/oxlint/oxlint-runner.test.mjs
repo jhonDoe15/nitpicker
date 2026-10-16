@@ -1,8 +1,10 @@
-import { mkdirSync, mkdtempSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
+import { spawnSync } from 'node:child_process';
+import { readFileSync, rmSync } from 'node:fs';
 import path from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { lintWithOxlint } from './oxlint-runner.mjs';
+import { oxlintBinary } from './oxlint-process.mjs';
+import { rejectedRuleIds } from './oxlint-translation.mjs';
+import { createProject, lintProject, TYPED_POLICY } from './test-support/oxlint-project.mjs';
 
 const POLICY = `import tseslint from ${JSON.stringify(import.meta.resolve('typescript-eslint'))};
 
@@ -56,23 +58,8 @@ function messagesOf(relativePath) {
 }
 
 beforeAll(() => {
-  root = realpathSync(mkdtempSync(path.join(tmpdir(), 'nitpicker-oxlint-test-')));
-  writeFileSync(path.join(root, 'policy.mjs'), POLICY);
-  for (const [relativePath, text] of Object.entries(SOURCES)) {
-    mkdirSync(path.dirname(path.join(root, relativePath)), { recursive: true });
-    writeFileSync(path.join(root, relativePath), text);
-  }
-  results = lintWithOxlint({
-    options: { projectRoot: root, patterns: ['src/**/*.ts'] },
-    environment: {
-      ...process.env,
-      NITPICKER_DIFF_ESLINT_POLICY_CONFIG: path.join(root, 'policy.mjs'),
-      NITPICKER_DIFF_ESLINT_PROJECT_ROOT: root,
-    },
-    runEslintCli: () => {
-      throw new Error('no rule needs ESLint here');
-    },
-  });
+  root = createProject('nitpicker-oxlint-test-', { 'policy.mjs': POLICY, ...SOURCES });
+  results = lintProject({ root, patterns: ['src/**/*.ts'] });
 });
 
 afterAll(() => {
@@ -124,21 +111,6 @@ describe('lintWithOxlint', () => {
   });
 });
 
-const TYPED_POLICY = `import tseslint from ${JSON.stringify(import.meta.resolve('typescript-eslint'))};
-
-export default [
-  {
-    files: ['src/**/*.ts'],
-    languageOptions: {
-      parser: tseslint.parser,
-      parserOptions: { project: './tsconfig.json', tsconfigRootDir: import.meta.dirname },
-    },
-    plugins: { '@typescript-eslint': tseslint.plugin },
-    rules: { '@typescript-eslint/no-unnecessary-type-assertion': 'error' },
-  },
-];
-`;
-
 const TYPED_SOURCE =
   'declare const maybe: string | null;\nexport const needed = maybe as string;\ndeclare const sure: string;\nexport const redundant = sure as string;\n';
 
@@ -147,8 +119,7 @@ describe('lintWithOxlint with type-aware rules', () => {
   let typedResults;
 
   beforeAll(() => {
-    typedRoot = realpathSync(mkdtempSync(path.join(tmpdir(), 'nitpicker-oxlint-typed-test-')));
-    const files = {
+    typedRoot = createProject('nitpicker-oxlint-typed-test-', {
       'policy.mjs': TYPED_POLICY,
       'tsconfig.nitpicker.json': JSON.stringify({
         compilerOptions: { strict: true, skipLibCheck: true, types: [], lib: ['ES2022'] },
@@ -159,24 +130,11 @@ describe('lintWithOxlint with type-aware rules', () => {
       }),
       'src/top.ts': TYPED_SOURCE,
       'src/sub/nested.ts': TYPED_SOURCE,
-    };
-    for (const [relativePath, text] of Object.entries(files)) {
-      mkdirSync(path.dirname(path.join(typedRoot, relativePath)), { recursive: true });
-      writeFileSync(path.join(typedRoot, relativePath), text);
-    }
-    const projectConfigPath = path.join(typedRoot, 'tsconfig.nitpicker.json');
-    typedResults = lintWithOxlint({
-      options: { projectRoot: typedRoot, patterns: ['src/**/*.ts'] },
-      projectConfigPath,
-      environment: {
-        ...process.env,
-        NITPICKER_DIFF_ESLINT_POLICY_CONFIG: path.join(typedRoot, 'policy.mjs'),
-        NITPICKER_DIFF_ESLINT_PROJECT_ROOT: typedRoot,
-        NITPICKER_DIFF_ESLINT_PROJECT_CONFIG: projectConfigPath,
-      },
-      runEslintCli: () => {
-        throw new Error('no rule needs ESLint here');
-      },
+    });
+    typedResults = lintProject({
+      root: typedRoot,
+      patterns: ['src/**/*.ts'],
+      projectConfigName: 'tsconfig.nitpicker.json',
     });
   });
 
@@ -193,6 +151,93 @@ describe('lintWithOxlint with type-aware rules', () => {
 
     expect(lines('src/top.ts')).toEqual(expected);
     expect(lines('src/sub/nested.ts')).toEqual(expected);
+  });
+});
+
+describe('lintWithOxlint with rule options oxlint rejects', () => {
+  let rejectedRoot;
+  let rejectedResults;
+  let policyLoads;
+  let oxlintRejected;
+
+  beforeAll(() => {
+    rejectedRoot = createProject('nitpicker-oxlint-rejected-', {
+      'policy.mjs': `import { appendFileSync } from 'node:fs';
+import path from 'node:path';
+import tseslint from ${JSON.stringify(import.meta.resolve('typescript-eslint'))};
+
+appendFileSync(path.join(import.meta.dirname, 'policy-loads.txt'), 'loaded\\n');
+
+const local = {
+  rules: {
+    'no-foo': {
+      meta: { type: 'problem', schema: [], messages: { foo: 'No foo.' } },
+      create(context) {
+        return {
+          Identifier(node) {
+            if (node.name === 'foo') context.report({ node, messageId: 'foo' });
+          },
+        };
+      },
+    },
+  },
+};
+
+export default [
+  {
+    files: ['src/**/*.ts'],
+    languageOptions: { parser: tseslint.parser },
+    plugins: { local },
+    rules: { 'local/no-foo': 'error', 'preserve-caught-error': 'error' },
+  },
+];
+`,
+      'src/caught.ts': [
+        'export function run(task: () => void) {',
+        '  try {',
+        '    task();',
+        '  } catch (error) {',
+        "    throw new Error('failed', {});",
+        '  }',
+        '}',
+        'export const foo = 1;',
+        '',
+      ].join('\n'),
+      'eslint-defaults.json': JSON.stringify({
+        rules: {
+          'preserve-caught-error': ['error', { requireCatchParameter: false, errorClassNames: [] }],
+        },
+      }),
+    });
+    rejectedResults = lintProject({ root: rejectedRoot, patterns: ['src/**/*.ts'] });
+    policyLoads = readFileSync(path.join(rejectedRoot, 'policy-loads.txt'), 'utf8')
+      .split('\n')
+      .filter(Boolean).length;
+    const check = spawnSync(
+      process.execPath,
+      [oxlintBinary(), '--config', 'eslint-defaults.json', 'src/caught.ts'],
+      { cwd: rejectedRoot, encoding: 'utf8' },
+    );
+    oxlintRejected = rejectedRuleIds(
+      check.stdout,
+      new Map([['preserve-caught-error', 'preserve-caught-error']]),
+    );
+  });
+
+  afterAll(() => {
+    rmSync(rejectedRoot, { recursive: true, force: true });
+  });
+
+  it('uses a rule whose ESLint default options oxlint rejects', () => {
+    expect(oxlintRejected).toEqual(['preserve-caught-error']);
+  });
+
+  it('runs the rule through ESLint and loads the ESLint policy only to plan and lint once', () => {
+    expect(rejectedResults[0].messages.map(({ ruleId, line }) => ({ ruleId, line }))).toEqual([
+      { ruleId: 'preserve-caught-error', line: 5 },
+      { ruleId: 'local/no-foo', line: 8 },
+    ]);
+    expect(policyLoads).toBe(2);
   });
 });
 
@@ -232,25 +277,15 @@ describe('lintWithOxlint with type-aware rules whose types only exempt', () => {
   let screenedRoot;
 
   function screenedLint(patterns, runEslintCli) {
-    return lintWithOxlint({
-      options: { projectRoot: screenedRoot, patterns },
-      environment: {
-        ...process.env,
-        NITPICKER_DIFF_ESLINT_POLICY_CONFIG: path.join(screenedRoot, 'policy.mjs'),
-        NITPICKER_DIFF_ESLINT_PROJECT_ROOT: screenedRoot,
-      },
-      runEslintCli,
-    });
+    return lintProject({ root: screenedRoot, patterns, runEslintCli });
   }
 
   beforeAll(() => {
-    screenedRoot = realpathSync(
-      mkdtempSync(path.join(tmpdir(), 'nitpicker-oxlint-screened-test-')),
-    );
-    mkdirSync(path.join(screenedRoot, 'src'));
-    writeFileSync(path.join(screenedRoot, 'policy.mjs'), SCREENED_POLICY);
-    writeFileSync(path.join(screenedRoot, 'src/candidate.ts'), 'export const foo = 1;\n');
-    writeFileSync(path.join(screenedRoot, 'src/clean.ts'), 'export const bar = 1;\ndebugger;\n');
+    screenedRoot = createProject('nitpicker-oxlint-screened-test-', {
+      'policy.mjs': SCREENED_POLICY,
+      'src/candidate.ts': 'export const foo = 1;\n',
+      'src/clean.ts': 'export const bar = 1;\ndebugger;\n',
+    });
   });
 
   afterAll(() => {

@@ -1,0 +1,30 @@
+{
+  "description": "A base notice relaxes only head findings that match no base finding. The lint of app did not run on either side, but app/sub, a nested project in its scope, was linted and reports the same legacy rawtypes finding on both: it stays enforceable and unchanged rather than turning descriptive and showing up as resolved plus new. Only the finding the base lacks is made descriptive.",
+  "new": [
+    {
+      "tool": "javac",
+      "rule": "rawtypes",
+      "path": "app/sub/src/main/java/Raw.java",
+      "identity": "rawtypes:2",
+      "classification": "descriptive"
+    }
+  ],
+  "resolved": [],
+  "unchanged": [
+    {
+      "tool": "javac",
+      "rule": "lint-not-run",
+      "path": ".",
+      "identity": "lint-not-run@:app",
+      "classification": "descriptive"
+    },
+    {
+      "tool": "javac",
+      "rule": "rawtypes",
+      "path": "app/sub/src/main/java/Raw.java",
+      "identity": "rawtypes:1",
+      "classification": "enforceable"
+    }
+  ],
+  "changedMetrics": []
+}

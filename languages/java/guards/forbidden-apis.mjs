@@ -1,7 +1,8 @@
 import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
-import { createIdentityCounter, hashIdentity } from '../ingest/common.mjs';
-import { exceptionRoute } from './advice/exception-route.mjs';
+import { createLineIdentity } from '../ingest/common.mjs';
+import { placeDeclarations } from './forbidden/declarations.mjs';
+import { blanked } from '../ingest/source-text.mjs';
 
 const FORBIDDEN_APIS_TOOL = 'forbiddenapis';
 const FORBIDDEN_REPORT = 'forbidden-apis.txt';
@@ -9,16 +10,14 @@ const VIOLATION = /^ERROR: Forbidden [\w/ ]+: (.+?) \[([a-z-]+): (.+)\]$/;
 const LOCATION = /^ERROR:\s+in (\S+) \((\S+?):(\d+)\)$/;
 const DECLARATION =
   /^ERROR:\s+in (\S+) \((\S+?), (?:(class) declaration|(field|method|record component) declaration of '(.+)')\)$/;
-const DECLARATION_LINES = 5;
 const LEGACY_DATE = 'java.util.Date';
-const STATEMENT_LINES = 5;
 
 function shortName(signature) {
   const method = /^([\w.$]+)#(<init>|\w+)/.exec(signature);
   if (method === null) {
     return signature.split('.').at(-1);
   }
-  const owner = method[1].split('.').at(-1);
+  const owner = method[1].split('.').at(-1).replaceAll('$', '.');
   return method[2] === '<init>' ? `new ${owner}` : `${owner}.${method[2]}`;
 }
 
@@ -55,82 +54,67 @@ export function parseForbiddenApiUses(text) {
   return uses;
 }
 
-function escaped(text) {
-  return text.replaceAll(/[$.]/g, String.raw`\$&`);
-}
-
-function simpleName(qualified) {
-  return qualified.split(/[.$]/).at(-1);
-}
-
-function declarationPattern({ kind, member }, className, type) {
-  if (kind === 'class') {
-    return new RegExp(
-      String.raw`\b(?:class|interface|enum|record)\s+${escaped(simpleName(className))}\b`,
-    );
-  }
-  if (kind === 'method') {
-    const name = member.split('(')[0];
-    const declared = name === '<init>' ? simpleName(className) : name;
-    return new RegExp(
-      String.raw`(?:^\s*|[\w>\]]\s+)(?<!\b(?:return|new|throw)\s+)${escaped(declared)}\s*\(`,
-    );
-  }
-  return new RegExp(String.raw`\b${type}\b[\w\s<>[\],.?]*\b${escaped(member)}\b(?!\s*\()`);
-}
-
-function declarationLine(use, source) {
-  const type = escaped(simpleName(use.signature));
-  const pattern = declarationPattern(use.declaration, use.className, type);
-  const naming = new RegExp(String.raw`\b${type}\b`);
-  const lines = source.split(/\r?\n/);
-  const index = lines.findIndex((line, at) => {
-    const head = lines
-      .slice(at, at + DECLARATION_LINES)
-      .join('\n')
-      .split(/[{;]/)[0];
-    return pattern.test(line) && naming.test(head);
-  });
-  return index === -1 ? undefined : index + 1;
-}
-
-function located(use, source) {
-  if (use.declaration === undefined) {
-    return use;
-  }
-  const line = source === undefined ? undefined : declarationLine(use, source);
-  if (line === undefined) {
-    return use.declaration.kind === 'method' ? undefined : use;
-  }
-  return { ...use, line };
-}
-
-function useFinding(use, file, unique) {
+function useFinding(use, file, identity) {
   const declared =
     use.declaration === undefined ? [] : [use.declaration.kind, use.declaration.member];
+  const owner = use.className.split('.').at(-1);
   return {
     tool: FORBIDDEN_APIS_TOOL,
     rule: use.rule,
     path: file,
-    identity: unique(
-      hashIdentity('forbidden', [use.rule, file, use.className, use.signature, ...declared]),
-    ),
-    message: `${use.text} Found: ${shortName(use.signature)}. ${exceptionRoute(FORBIDDEN_APIS_TOOL, use.rule)}`,
+    identity: identity({
+      file,
+      line: use.line,
+      parts: [use.rule, owner, use.signature, ...declared],
+    }),
+    message: `${use.text} Found: ${shortName(use.signature)}.`,
     classification: 'enforceable',
     ...(use.line === undefined ? {} : { location: { line: use.line } }),
   };
 }
 
-function convertsDateRightAway(use, source) {
-  if (use.signature !== LEGACY_DATE || use.declaration !== undefined || source === undefined) {
-    return false;
-  }
-  const [statement] = source
-    .split(/\r?\n/)
-    .slice(use.line - 1, use.line - 1 + STATEMENT_LINES)
-    .join('\n')
-    .split(';');
-  return /\.toInstant\(\)/.test(statement) && !/\bDate\b/.test(statement);
+function continued(before = '', after = '') {
+  return /\)\s*$/.test(before) && /^\s*\.toInstant\(\)/.test(after);
+}
+
+function countOf(pattern, text) {
+  return (text.match(pattern) ?? []).length;
+}
+
+function conversionsOn(lines, line, reported) {
+  const text = lines[line - 1] ?? '';
+  return (
+    countOf(/\)\s*\.toInstant\(\)/g, text) +
+    2 * countOf(/\bDate::toInstant\b/g, text) +
+    countOf(/::\w+\)\s*\.map\(\s*(?:java\.util\.)?Date::toInstant\)/g, text) +
+    (continued(lines[line - 2], text) ? 1 : 0) +
+    (continued(text, lines[line]) && !reported.has(line + 1) ? 1 : 0)
+  );
+}
+
+function isLegacyDateUse(use) {
+  return use.signature === LEGACY_DATE && use.declaration === undefined;
+}
+
+function withoutConvertedDates(uses, source) {
+  const left = new Map();
+  return uses.filter((use) => {
+    const text = isLegacyDateUse(use) ? source(use.file) : undefined;
+    if (text === undefined) {
+      return true;
+    }
+    const key = `${use.file}\0${String(use.line)}`;
+    if (!left.has(key)) {
+      const reported = new Set(
+        uses
+          .filter((other) => other.file === use.file && isLegacyDateUse(other))
+          .map((other) => other.line),
+      );
+      left.set(key, conversionsOn(text.split('\n'), use.line, reported));
+    }
+    left.set(key, left.get(key) - 1);
+    return left.get(key) < 0;
+  });
 }
 
 function sourceReader(projectRoot) {
@@ -138,24 +122,28 @@ function sourceReader(projectRoot) {
   return (file) => {
     if (!sources.has(file)) {
       const absolute = path.join(projectRoot, file);
-      sources.set(file, existsSync(absolute) ? readFileSync(absolute, 'utf8') : undefined);
+      sources.set(file, existsSync(absolute) ? blanked(readFileSync(absolute, 'utf8')) : undefined);
     }
     return sources.get(file);
   };
 }
 
-function lineOf(use) {
-  return [use.rule, use.file, use.signature, use.line].join('\0');
+function lineOf(use, member = '') {
+  return [use.rule, use.file, use.signature, use.line, member].join('\0');
 }
 
 function withoutRepeatedDeclarations(uses) {
-  const taken = new Set(uses.filter((use) => use.declaration === undefined).map(lineOf));
+  const usedLines = new Set(
+    uses.filter((use) => use.declaration === undefined).map((use) => lineOf(use)),
+  );
+  const declared = new Set();
   return uses.filter((use) => {
     if (use.declaration === undefined || use.line === undefined) {
       return true;
     }
-    const free = !taken.has(lineOf(use));
-    taken.add(lineOf(use));
+    const key = lineOf(use, use.declaration.member);
+    const free = !usedLines.has(lineOf(use)) && !declared.has(key);
+    declared.add(key);
     return free;
   });
 }
@@ -165,15 +153,15 @@ export function readForbiddenApiFindings(reportRoot, { locate, projectRoot }) {
   if (!existsSync(report)) {
     return [];
   }
-  const unique = createIdentityCounter();
+  const identity = createLineIdentity('forbidden', projectRoot);
   const source = sourceReader(projectRoot);
-  const uses = parseForbiddenApiUses(readFileSync(report, 'utf8')).flatMap((use) => {
+  const located = parseForbiddenApiUses(readFileSync(report, 'utf8')).flatMap((use) => {
     const packageDirectory = use.className.split('.').slice(0, -1).join('/');
     const file = locate(packageDirectory, use.fileName);
-    const placed = file === undefined ? undefined : located(use, source(file));
-    return placed === undefined || convertsDateRightAway(placed, source(file))
-      ? []
-      : [{ ...placed, file }];
+    return file === undefined ? [] : [{ ...use, file }];
   });
-  return withoutRepeatedDeclarations(uses).map((use) => useFinding(use, use.file, unique));
+  const kept = withoutConvertedDates(located, source);
+  return withoutRepeatedDeclarations(placeDeclarations(kept, source)).map((use) =>
+    useFinding(use, use.file, identity),
+  );
 }

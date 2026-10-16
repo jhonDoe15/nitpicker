@@ -139,6 +139,15 @@ describe('nitpicker with "preset": "kotlin" and function structure', () => {
           'This code repeats src/main/kotlin/demo/Right.kt:3 (46 lines). Keep one copy and call it from both places.',
         classification: 'enforceable',
         location: { line: 3 },
+        ratchet: {
+          key: 'pair:src/main/kotlin/demo/Left.kt|src/main/kotlin/demo/Right.kt:clone',
+          value: 283,
+          divisible: true,
+          mustKeepUnchangedLines: [
+            { path: 'src/main/kotlin/demo/Left.kt', startLine: 3, endLine: 48 },
+            { path: 'src/main/kotlin/demo/Right.kt', startLine: 3, endLine: 48 },
+          ],
+        },
       },
     ]);
   });

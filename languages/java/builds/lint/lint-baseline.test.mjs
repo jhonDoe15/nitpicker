@@ -1,7 +1,9 @@
+import { chmodSync } from 'node:fs';
 import path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { zipOf } from '../test-support/zip-writer.mjs';
 import {
+  JAVAC,
   RAW_NAMES,
   baseCache,
   compileClasses,
@@ -14,6 +16,13 @@ import {
   warningHeaders,
   writeFiles,
 } from './test-support/lint-project.mjs';
+
+function fakeJavac(directory) {
+  const javac = path.join(directory, 'bin/javac');
+  writeFiles(directory, { 'bin/javac': '#!/bin/sh\necho "javac 0.0-other"\n' });
+  chmodSync(javac, 0o755);
+  return javac;
+}
 
 describe('the differential lint', () => {
   beforeEach(() => {
@@ -107,6 +116,26 @@ describe('the differential lint', () => {
     const plan = javaPlan(head, { classpath: [path.join(head, 'lib/dep.jar')] });
 
     expect(lint(plan, base).report).toEqual([
+      ...namesWarning('src/main/java/demo/A.java'),
+      '1 warning',
+      '',
+    ]);
+  });
+
+  it.each([
+    ['the javac version', 'lombok.accessors.fluent = true\n', fakeJavac],
+    ['a lombok.config above the root', 'lombok.accessors.chain = true\n', () => JAVAC],
+  ])('lints every file again when %s changed since the base', (_, headConfig, baseJavac) => {
+    const [baseTop, headTop] = [temporary(), temporary()];
+    const files = { 'repo/src/main/java/demo/A.java': RAW_NAMES };
+    writeFiles(baseTop, { ...files, 'lombok.config': 'lombok.accessors.fluent = true\n' });
+    writeFiles(headTop, { ...files, 'lombok.config': headConfig });
+    const base = path.join(baseTop, 'repo');
+    baseCache(javaPlan(base, { javac: baseJavac(baseTop) }), [
+      warning('src/main/java/demo/A.java', 9),
+    ]);
+
+    expect(lint(javaPlan(path.join(headTop, 'repo')), base).report).toEqual([
       ...namesWarning('src/main/java/demo/A.java'),
       '1 warning',
       '',

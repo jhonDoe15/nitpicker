@@ -1,20 +1,17 @@
-import { spawnSync } from 'node:child_process';
-import {
-  mkdirSync,
-  mkdtempSync,
-  readdirSync,
-  readFileSync,
-  rmSync,
-  writeFileSync,
-  existsSync,
-} from 'node:fs';
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync, existsSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
-import { javaCommand, runJava, runMaven } from './maven-command.mjs';
+import { runJava, runMaven } from './maven-command.mjs';
 import { runCheckstyle, runFormat, runSpotbugs } from './maven-lint.mjs';
 import { runGuards } from './guards/maven-guards.mjs';
 import { runPmd } from './guards/maven-pmd.mjs';
-import { moduleClasspaths, parseDependencyList, readReactor } from './maven-project.mjs';
+import { runJdeps } from './coupling/maven-jdeps.mjs';
+import {
+  lifecycleArgs,
+  moduleClasspaths,
+  parseDependencyList,
+  readReactor,
+} from './maven-project.mjs';
 import {
   archunitMatcher,
   collectTestResults,
@@ -56,7 +53,7 @@ function dependencyFile(work, module) {
   return path.join(work, 'dependencies', groupId, `${artifactId}.txt`);
 }
 
-function buildAndTest({ projectRoot, maven, work, pinned }) {
+function buildAndTest({ projectRoot, maven, work, pinned, modules }) {
   runMaven({
     projectRoot,
     maven,
@@ -64,7 +61,7 @@ function buildAndTest({ projectRoot, maven, work, pinned }) {
       '--quiet',
       `${jacocoPlugin(pinned)}:prepare-agent`,
       `-Djacoco.destFile=\${project.build.directory}/${OWN_JACOCO_EXEC}`,
-      'test',
+      ...lifecycleArgs(modules),
       `${MAVEN_PLUGINS.dependency}:list`,
       `-DoutputFile=${path.join(work, 'dependencies', '${project.groupId}', '${project.artifactId}.txt')}`,
       '-DoutputAbsoluteArtifactFilename=true',
@@ -92,43 +89,6 @@ function runStructure(module, reportDir) {
     cwd: module.basedir,
     accept: (result) => result.status === 0,
   });
-}
-
-function runJdeps(module, reportDir) {
-  const classes = existsSync(module.outputDirectory)
-    ? readdirSync(module.outputDirectory, { recursive: true, withFileTypes: true })
-        .filter((entry) => entry.isFile() && entry.name.endsWith('.class'))
-        .filter((entry) => !['module-info.class', 'package-info.class'].includes(entry.name))
-        .map((entry) =>
-          relativeTo(module.outputDirectory, path.join(entry.parentPath, entry.name))
-            .replace(/\.class$/u, '')
-            .replaceAll('/', '.'),
-        )
-        .sort()
-    : [];
-  writeFileSync(
-    path.join(reportDir, 'jdeps-classes.txt'),
-    classes.map((name) => `${name}\n`).join(''),
-  );
-  if (classes.length === 0) {
-    writeFileSync(path.join(reportDir, 'jdeps.txt'), '');
-    return;
-  }
-  const result = spawnSync(
-    javaCommand('jdeps'),
-    ['-verbose:class', '-filter:none', module.outputDirectory],
-    {
-      cwd: module.basedir,
-      encoding: 'utf8',
-      maxBuffer: 50 * 1024 * 1024,
-    },
-  );
-  if (result.error !== undefined || result.status !== 0) {
-    throw new Error(
-      `jdeps failed with exit code ${String(result.status)}: ${result.error?.message ?? result.stderr}`,
-    );
-  }
-  writeFileSync(path.join(reportDir, 'jdeps.txt'), result.stdout);
 }
 
 function relativeRoots(module, roots) {
@@ -167,8 +127,8 @@ function analyzeSources(context, project) {
 
 function analyzeTests(context, testsRan) {
   const { module, reportDir, tools, classpaths, since, isArchunit } = context;
-  const execFile = module.jacocoDestFile ?? path.join(module.buildDirectory, OWN_JACOCO_EXEC);
-  runJacocoReport({ module, reportDir, tools, execFile, since, testsRan });
+  const execFiles = [path.join(module.buildDirectory, OWN_JACOCO_EXEC), ...module.jacocoDestFiles];
+  runJacocoReport({ module, reportDir, tools, execFiles, since, testsRan });
   runPit({ module, reportDir, tools, classpaths, isArchunit });
 }
 
@@ -186,12 +146,10 @@ function analyzeModule({ project, ...options }) {
 }
 
 function staleOutputs(module) {
-  const execFiles = [path.join(module.buildDirectory, OWN_JACOCO_EXEC), module.jacocoDestFile];
+  const execFiles = [path.join(module.buildDirectory, OWN_JACOCO_EXEC), ...module.jacocoDestFiles];
   return [
     path.join(module.basedir, MAVEN_REPORT_DIRECTORY),
-    ...execFiles.filter(
-      (file) => file !== undefined && file.startsWith(`${module.buildDirectory}${path.sep}`),
-    ),
+    ...execFiles.filter((file) => file.startsWith(`${module.buildDirectory}${path.sep}`)),
   ];
 }
 
@@ -229,7 +187,7 @@ export function runMavenPreset(projectRoot, { maven, policy = {}, configs }) {
   try {
     const modules = readModules(projectRoot, maven, work);
     const since = Date.now() - 2000;
-    buildAndTest({ projectRoot, maven, work, pinned });
+    buildAndTest({ projectRoot, maven, work, pinned, modules });
     const analyzed = modules.map((module) => ({
       module,
       classpaths: readClasspaths(work, module),

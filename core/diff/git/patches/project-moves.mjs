@@ -68,7 +68,3 @@ export function readProjectMoves({
     headProjectPath: repositoryPath(projectRelativePath),
   });
 }
-
-export function readRenameMap(options) {
-  return readProjectMoves(options).files;
-}

@@ -183,6 +183,44 @@ describe('duplicates rule on neutral clones', () => {
     expect(failures[0].location).toEqual({ line: 8 });
   });
 
+  it('keeps the identity of one clone when another clone between the same files goes or comes', () => {
+    const identities = (...fragments) =>
+      byRule(
+        evaluateDuplicates(
+          fragments.map((fragment) => clone('a.java', 'b.java', { fragment })),
+          'duplicates',
+        ),
+        'duplicate-clone',
+      ).map((finding) => finding.identity);
+
+    const both = identities('x', 'y');
+
+    expect(identities('y')).toEqual([both[1]]);
+    expect(identities('z', 'x', 'y')).toEqual([expect.any(String), ...both]);
+  });
+
+  it('ratchets each clone on its file pair and token count', () => {
+    const [failure] = byRule(
+      evaluateDuplicates([clone('b.java', 'a.java')], 'duplicates'),
+      'duplicate-clone',
+    );
+    const [byLines] = byRule(
+      evaluateDuplicates([clone('a.java', 'b.java', { tokens: undefined })], 'duplicates'),
+      'duplicate-clone',
+    );
+
+    expect(failure.ratchet).toEqual({
+      key: 'pair:a.java|b.java:clone',
+      value: 60,
+      divisible: true,
+      mustKeepUnchangedLines: [
+        { path: 'a.java', startLine: 8, endLine: 13 },
+        { path: 'b.java', startLine: 3, endLine: 8 },
+      ],
+    });
+    expect(byLines.ratchet.value).toBe(6);
+  });
+
   it('adds size metrics and omits a location for an unusable line', () => {
     const findings = evaluateDuplicates(
       [clone('a.java', 'b.java', { first: { file: 'a.java' } })],
@@ -193,6 +231,24 @@ describe('duplicates rule on neutral clones', () => {
       { name: 'tokens', value: 60 },
     ]);
     expect(byRule(findings, 'duplicate-clone')[0]).not.toHaveProperty('location');
+    expect(byRule(findings, 'duplicate-clone')[0].ratchet).not.toHaveProperty(
+      'mustKeepUnchangedLines',
+    );
+  });
+
+  it('takes the end of a cloned range from the reported end line before the line count', () => {
+    const [failure] = byRule(
+      evaluateDuplicates(
+        [clone('a.java', 'b.java', { first: { file: 'a.java', line: 3, endLine: 20 } })],
+        'duplicates',
+      ),
+      'duplicate-clone',
+    );
+
+    expect(failure.ratchet.mustKeepUnchangedLines).toEqual([
+      { path: 'a.java', startLine: 3, endLine: 20 },
+      { path: 'b.java', startLine: 8, endLine: 13 },
+    ]);
   });
 });
 

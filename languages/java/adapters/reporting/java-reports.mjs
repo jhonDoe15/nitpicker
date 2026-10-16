@@ -1,16 +1,12 @@
-import { withPmdAdvice } from '../../guards/advice/pmd-advice.mjs';
 import { existsSync, readdirSync, readFileSync, realpathSync } from 'node:fs';
 import path from 'node:path';
 import { ingestCheckstyle } from '../../ingest/formatting/checkstyle.mjs';
 import { ingestArchunit } from '../../ingest/archunit.mjs';
 import { ingestCrap } from '../../ingest/crap.mjs';
-import { readDuplicateFindings } from '../metrics/java-duplicates.mjs';
+import { DUPLICATES_REPORT, readDuplicateFindings } from '../metrics/java-duplicates.mjs';
+import { coveredByCpd } from '../../guards/cpd-duplicates.mjs';
 import { readKotlinDuplicateFindings } from '../kotlin/kotlin-duplicates.mjs';
-import {
-  dropEntityAssociations,
-  dropInheritedVersions,
-  withExposureAdvice,
-} from '../jpa/jpa-source-filters.mjs';
+import { dropEntityAssociations, dropInheritedVersions } from '../jpa/jpa-source-filters.mjs';
 import {
   isEmptyModule,
   readMainCheckstyle,
@@ -30,6 +26,7 @@ import { ingestPit } from '../../ingest/pit.mjs';
 import { ingestJacocoBranches } from '../../ingest/coverage-reports/jacoco-branches.mjs';
 import { ingestSarif, prepareSarif, projectRelative } from '../../ingest/sarif.mjs';
 import { projectWideFindings } from '../../builds/project-wide.mjs';
+import { applyRuleMessages } from '../../messages/rule-messages.mjs';
 import {
   jacocoSourceRoots,
   readKotlinFindings,
@@ -57,38 +54,33 @@ export function readJavaFindings(projectRoot, options = {}) {
       withModuleIdentity(moduleContextFindings(projectRoot, module, { manifest, options }), module),
     );
   return {
-    findings: [
-      ...moduleFindings,
-      ...readDuplicateFindings(reportBase),
-      ...(kotlinPreset ? readKotlinDuplicateFindings(reportBase) : []),
-      ...(projectWide
-        ? projectWideFindings(projectRoot, {
-            projects: modules.map((module) => ({
-              reportRoot: module.reportRoot,
-              qualifier: module.key === ROOT_MODULE ? '' : module.dir,
-              sourceRoots: module.manifest.sourceRoots ?? [],
-            })),
-            mergedRoot: path.join(reportBase, PROJECT_REPORTS),
-            manifest,
-            kotlin: kotlinPreset,
-            policy: options,
-          })
-        : []),
-      ...readInlineSuppressionFindings(projectRoot, lintedRoots(manifest)),
-      ...readCommentFindings(projectRoot, lintedRoots(manifest)),
-      ...springFindings(projectRoot, manifest),
-    ],
+    findings: applyRuleMessages(
+      [
+        ...moduleFindings,
+        ...readDuplicateFindings(reportBase, DUPLICATES_REPORT, {
+          skip: coveredByCpd(modules, projectRoot),
+        }),
+        ...(kotlinPreset ? readKotlinDuplicateFindings(reportBase) : []),
+        ...(projectWide
+          ? projectWideFindings(projectRoot, {
+              projects: modules.map((module) => ({
+                reportRoot: module.reportRoot,
+                qualifier: module.key === ROOT_MODULE ? '' : module.dir,
+                sourceRoots: module.manifest.sourceRoots ?? [],
+              })),
+              mergedRoot: path.join(reportBase, PROJECT_REPORTS),
+              manifest,
+              kotlin: kotlinPreset,
+              policy: options,
+            })
+          : []),
+        ...readInlineSuppressionFindings(projectRoot, lintedRoots(manifest)),
+        ...readCommentFindings(projectRoot, lintedRoots(manifest)),
+        ...springFindings(projectRoot, manifest),
+      ],
+      { preset },
+    ),
   };
-}
-
-function guardFindings({ projectRoot, reportRoot, reportBase, manifest }) {
-  return readGuardFindings({
-    reportRoot,
-    jscpdRoot: reportBase,
-    projectRoot,
-    manifest,
-    locate: sourceLocator(projectRoot, lintedRoots(manifest)),
-  });
 }
 
 function moduleContextFindings(projectRoot, module, { manifest, options }) {
@@ -98,8 +90,8 @@ function moduleContextFindings(projectRoot, module, { manifest, options }) {
       projectRoot,
       roots: projectRoots(projectRoot),
       reportRoot: module.reportRoot,
-      reportBase: options.reportBase,
       manifest: module.manifest,
+      module: { moduleDir: module.dir, modulePath: options.modulePath },
       sourceRoots: module.manifest.sourceRoots ?? [],
       allSourceRoots: manifest.sourceRoots,
       kotlin: preset === 'kotlin' && module.manifest.kotlin === true,
@@ -128,7 +120,10 @@ function readModuleFindings(context, crapLimit) {
     ...readJavaStructureFindings(reportRoot, projectRoot),
     ...branchFindings(context, jacoco),
     ...(kotlin ? readKotlinFindings(context, crapLimit) : []),
-    ...guardFindings(context),
+    ...readGuardFindings({
+      ...context,
+      locate: sourceLocator(projectRoot, lintedRoots(context.manifest)),
+    }),
     ...readSlowTestFindings({
       reportRoot,
       projectRoot,
@@ -186,10 +181,10 @@ function sarifFindings(context) {
     ...dropInheritedVersions(ingestSarif(pmd, { tool: 'pmd' }).findings, {
       projectRoot,
       sourceRoots: allSourceRoots,
-    }).map(withPmdAdvice),
+    }),
     ...ingestSarif(dropEntityAssociations(spotbugs, projectRoot), {
       tool: 'spotbugs',
-    }).findings.map(withExposureAdvice),
+    }).findings,
   ];
 }
 

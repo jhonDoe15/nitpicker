@@ -2,9 +2,9 @@ import { rule as booleanFlag } from '../rules/code-smells/boolean-flag-parameter
 import { rule as duplicates } from '../rules/code-smells/duplicate-string-literals.mjs';
 import { Linter } from 'eslint';
 import { describe, expect, it } from 'vitest';
-import { cases, createRuleTester } from '../test-support/rule-tester.mjs';
+import { cases, typescriptRuleTester } from '../test-support/rule-tester.mjs';
 
-const ruleTester = createRuleTester();
+const ruleTester = typescriptRuleTester();
 
 const repeated = (value, times) =>
   Array.from({ length: times }, () => `use('${value}');`).join('\n');

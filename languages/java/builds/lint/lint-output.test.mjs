@@ -2,7 +2,7 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
-import { lintedWarnings, relocated } from './lint-output.mjs';
+import { lintedWarnings, relocated, hasUnreadWarnings } from './lint-output.mjs';
 
 const roots = [];
 
@@ -124,5 +124,81 @@ describe('relocated', () => {
     expect(relocated(log, { staged, from: 'app', to: 'app' })).toBe(
       'app/src/A.java:3: error: boom\n',
     );
+  });
+
+  it('writes forward slashes for a staged tree javac printed with backslashes', () => {
+    const staged = String.raw`C:\work\sources\tree`;
+    const log = [
+      String.raw`C:\work\sources\tree\src\demo\A.java:3: warning: [rawtypes] found raw type: List`,
+      '    List names;',
+      '    ^',
+      '1 warning',
+      '',
+    ].join('\n');
+
+    expect(lintedWarnings(log, { staged, from: '', to: 'app' }).split('\n')[0]).toBe(
+      'app/src/demo/A.java:3: warning: [rawtypes] found raw type: List',
+    );
+  });
+});
+
+describe('hasUnreadWarnings', () => {
+  it.each([
+    [
+      'unread warnings javac printed in another form',
+      [
+        'A.java:3:5: compiler.warn.raw.class.use: java.util.List',
+        '- compiler.note.unchecked',
+        '2 warnings',
+      ],
+      true,
+    ],
+    [
+      'no unread warnings for warnings in the plain form',
+      [
+        'src/A.java:3: warning: [rawtypes] found raw type: List',
+        '    List names;',
+        '    ^',
+        '1 warning',
+      ],
+      false,
+    ],
+    [
+      'no unread warnings for a warning without a file',
+      ['warning: [options] source value 8 is obsolete', '1 warning'],
+      false,
+    ],
+    [
+      'unread warnings javac printed in German',
+      [
+        'A.java:2: Warnung: [rawtypes] Raw-Typ gefunden: List',
+        'class A { List names; }',
+        '          ^',
+        '1 Warnung',
+      ],
+      true,
+    ],
+    [
+      'unread warnings javac printed in Japanese',
+      [
+        'A.java:2: 警告: [rawtypes] raw型が見つかりました: List',
+        'class A { List names; }',
+        '          ^',
+        '警告1個',
+      ],
+      true,
+    ],
+    [
+      'no unread warnings for a Lombok warning',
+      ['src/A.java:4: warning: Not generating equals', '1 warning'],
+      false,
+    ],
+    [
+      'no unread warnings without warnings',
+      ['Note: Some input files use unchecked operations.'],
+      false,
+    ],
+  ])('tells %s', (_, lines, expected) => {
+    expect(hasUnreadWarnings(`${lines.join('\n')}\n`)).toBe(expected);
   });
 });

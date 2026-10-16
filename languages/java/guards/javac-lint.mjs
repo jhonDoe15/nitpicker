@@ -1,7 +1,8 @@
 import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
-import { createIdentityCounter, hashIdentity } from '../ingest/common.mjs';
-import { exceptionRoute } from './advice/exception-route.mjs';
+import { createLineIdentity } from '../ingest/common.mjs';
+import { exceptionHint } from '../../../shared/rules/exceptions.mjs';
+import { rootsScope } from '../builds/module-path.mjs';
 
 const LINT_TOOL = 'javac';
 const LINT_REPORT = 'javac-lint.txt';
@@ -17,14 +18,14 @@ const ADVICE = {
   cast: 'Remove the cast.',
 };
 
-function warningFinding({ file, line, rule, text }, unique) {
+function warningFinding({ file, line, rule, text }, identity) {
   const advice = ADVICE[rule] ?? 'Fix the warning.';
   return {
     tool: LINT_TOOL,
     rule,
     path: file,
-    identity: unique(hashIdentity('javac', [rule, file, text])),
-    message: `${text}. ${advice} ${exceptionRoute(LINT_TOOL, rule)}`,
+    identity: identity({ file, line, parts: [rule, text] }),
+    message: `${text}. ${advice}`,
     classification: 'enforceable',
     location: { line },
   };
@@ -39,7 +40,7 @@ export function parseLintWarnings(text) {
   });
 }
 
-function lintNotRun(reportRoot) {
+function lintNotRun(reportRoot, sourceRoots, module) {
   const failure = path.join(reportRoot, LINT_FAILURE);
   if (!existsSync(failure)) {
     return [];
@@ -48,6 +49,7 @@ function lintNotRun(reportRoot) {
     readFileSync(failure, 'utf8')
       .split(/\r?\n/)
       .find((line) => /error:/.test(line)) ?? 'javac exited with an error';
+  const scope = rootsScope(sourceRoots, module);
   return [
     {
       tool: LINT_TOOL,
@@ -55,13 +57,12 @@ function lintNotRun(reportRoot) {
       path: '.',
       identity: LINT_NOT_RUN,
       message:
-        `No javac lint report: the lint compile failed (${firstError.trim()}), so raw types, ` +
+        `No javac lint report from the lint compile (${firstError.trim()}), so raw types, ` +
         'unchecked operations, deprecated calls and redundant casts were not checked. ' +
-        'Fix what that compile reports (the main sources, the compile class path and Lombok), ' +
-        `or add an exception for ${LINT_TOOL}/${LINT_NOT_RUN} with the path "**" in nitpicker.config.json ` +
-        'if the project cannot be linted that way.',
+        'Fix what that compile reports (the main sources, the compile class path and Lombok). ' +
+        exceptionHint(`${LINT_TOOL}/${LINT_NOT_RUN}`, '**'),
       classification: 'descriptive',
-      toolNotRun: true,
+      ...(scope.length === 0 ? {} : { toolNotRun: true, notRunScope: scope }),
     },
   ];
 }
@@ -76,14 +77,14 @@ function projectFileCheck(projectRoot) {
   };
 }
 
-export function readLintFindings(reportRoot, { projectRoot }) {
+export function readLintFindings(reportRoot, { projectRoot, sourceRoots = [], module }) {
   const report = path.join(reportRoot, LINT_REPORT);
   if (!existsSync(report)) {
-    return lintNotRun(reportRoot);
+    return lintNotRun(reportRoot, sourceRoots, module);
   }
-  const unique = createIdentityCounter();
+  const identity = createLineIdentity('javac', projectRoot);
   const inProject = projectFileCheck(projectRoot);
   return parseLintWarnings(readFileSync(report, 'utf8'))
     .filter(({ file }) => inProject(file))
-    .map((warning) => warningFinding(warning, unique));
+    .map((warning) => warningFinding(warning, identity));
 }

@@ -15,8 +15,8 @@ side contributes only two things: producing reports, and converting them into fi
 
 ```
 gradle -I languages/java/gradle/nitpicker.init.gradle nitpickerJava   (per snapshot: base, head; Maven builds: see below)
-  -> <report dir>/modules.json and, per Gradle project that applies java, <report dir>/<key>/{pmd.sarif, spotbugs.sarif, format.txt, jacoco.xml, checkstyle.xml, checkstyle-<source set>.xml, archunit/*.xml, structure.json, pit/mutations.xml, jdeps.txt, jdeps-classes.txt, forbidden-apis.txt, cpd.xml, dependencies.json, guards-plan.json, manifest.json}
-  -> languages/java/adapters/gradle-reports/gradle-guards.mjs (runGradleGuards: javac-lint.txt and permits.txt from each guards-plan.json)
+  -> <report dir>/modules.json and, per Gradle project that applies java, <report dir>/<key>/{pmd.sarif, spotbugs.sarif, format.txt, jacoco.xml, checkstyle.xml, checkstyle-<source set>.xml, archunit/*.xml, structure.json, pit/mutations.xml, jdeps.txt, jdeps-classes.txt, forbidden-apis.txt, cpd.xml, dependencies.json, guards-plan.json, javac-lint.txt, permits.txt, manifest.json}
+     (nitpickerLint runs node languages/java/adapters/gradle-reports/gradle-guards.mjs on its guards-plan.json)
   -> languages/java/adapters/reporting/java-reports.mjs       (readJavaFindings, via the ingesters)
   -> languages/java/adapters/spring/java-spring.mjs    (spring findings read straight from application*.properties/yml, no Gradle report; only when manifest.json says spring: true)
   -> compareFindings(base, head, renames)               (languages/java/adapters/java-diff.mjs)
@@ -68,21 +68,23 @@ gradle -I languages/java/gradle/nitpicker.init.gradle nitpickerJava   (per snaps
 ## Maven builds
 
 A project is built with Maven when its root has a `pom.xml` and no Gradle build file
-(`settings.gradle(.kts)`, `build.gradle(.kts)`); with both, a lone `mvnw` (no `gradlew`) picks Maven,
-anything else Gradle. Nothing is configured and the choice is never a finding: both builds are valid,
-so nitpicker follows the one the project uses (`detectJavaBuild` in
+(`settings.gradle(.kts)`, `build.gradle(.kts)`); with both, a lone `mvnw` (no `gradlew`) picks
+Maven, anything else Gradle. Nothing is configured and the choice is never a finding: both builds
+are valid, so nitpicker follows the one the project uses (`detectJavaBuild` in
 `languages/java/builds/java-build.mjs`). Maven 3.6.3 or newer is needed.
 
 The Maven side produces the same reports as the init script, one set per module in
 `<module>/target/nitpicker/`, so the same ingesters read them and the findings are identical: the
-end-to-end suite builds one source tree with Gradle and with Maven and compares the findings
-field by field. Per snapshot:
+end-to-end suite builds one source tree with Gradle and with Maven and compares the findings field
+by field. Per snapshot:
 
 1. `mvn help:effective-pom` (help plugin pinned): the modules, their source, test, resource and
    output directories (plus `build-helper-maven-plugin` `add-source`/`add-test-source` roots), the
-   surefire reports directory, a JaCoCo `destFile` the project configures, and the
-   `nitpicker.archunit.includes` property (read from the POM's `<properties>` only, not from `-D`
-   or `settings.xml`). Module directories come from following the effective `<modules>` (active
+   surefire and failsafe reports directories (an execution's `<reportsDirectory>` before the
+   plugin's), whether Failsafe runs (below), the `destFile` of every JaCoCo `prepare-agent` and
+   `prepare-agent-integration` execution the project configures, and the
+   `nitpicker.archunit.includes` property (read from the POM's `<properties>` only, not from `-D` or
+   `settings.xml`). Module directories come from following the effective `<modules>` (active
    profiles included) from the root `pom.xml`. Each module's `pom.xml` is matched to its effective
    project by `groupId:artifactId`, or, when the raw coordinates use a property, by the effective
    build directory inside the module directory. A declared module that matches nothing, a module
@@ -90,48 +92,92 @@ field by field. Per snapshot:
 2. One build: `mvn jacoco:prepare-agent test dependency:list` (JaCoCo at the init script's version,
    dependency plugin pinned), with `-Dmaven.test.failure.ignore=true` and the project's own
    Checkstyle, PMD, CPD, SpotBugs and Spotless checks skipped. `dependency:list` writes every
-   module's resolved classpath (reactor modules as their `target/classes`). Our coverage file
-   (`target/nitpicker-jacoco.exec`) and a project `destFile` inside `target` are deleted before the
-   build, so coverage never accumulates across runs.
+   module's resolved classpath (reactor modules as their `target/classes`, or as their packaged jar
+   in a `verify` build). Our coverage file (`target/nitpicker-jacoco.exec`) and every project
+   `destFile` inside `target` are deleted before the build, so coverage never accumulates across
+   runs. Maven gets 15 minutes; a build that takes longer is stopped and reported as a
+   `java/maven-failure` that names the limit and warns that its post-integration-test steps may not
+   have run.
 3. The tools resolved once from Maven Central through Maven itself (a generated tools project in
    `$XDG_CACHE_HOME/nitpicker` or `~/.cache/nitpicker`, private to the user, reused while the jars
    exist), so the project's `settings.xml` mirrors apply.
-4. Per module, outside Maven: PMD, SpotBugs, google-java-format, Checkstyle (the bundled Google checks
-   without inline suppression filters, as in the init script), `StructureMetrics.java`, jdeps, the
-   JaCoCo CLI report and PIT, with the same arguments and classpaths as the init script tasks (PMD's
-   auxiliary classpath is the main and test compile classpaths plus both class directories). The
-   versions are read from the init script's `pinned` map, so both builds always run the same tools.
+4. Per module, outside Maven: PMD, SpotBugs, google-java-format, Checkstyle (the bundled Google
+   checks without inline suppression filters, as in the init script), `StructureMetrics.java`,
+   jdeps, the JaCoCo CLI report and PIT, with the same arguments and classpaths as the init script
+   tasks (PMD's auxiliary classpath is the main and test compile classpaths plus both class
+   directories). The versions are read from the init script's `pinned` map, so both builds always
+   run the same tools.
 
+- **Integration tests.** Failsafe runs in a module whose effective POM (`<build><plugins>`, so
+  neither `<pluginManagement>` alone nor an inactive profile) binds maven-failsafe-plugin's
+  `integration-test` goal in an execution, unless the project keeps it off: a `skipITs` or
+  `skipTests` property set to `true`, `<skip>`, `<skipITs>` or `<skipTests>` set to `true` in that
+  execution's or the plugin's configuration (the execution's wins), or the execution's phase `none`.
+  When any module runs Failsafe, the build runs `verify` instead of `test`, so the project's
+  `package`, `pre-integration-test` and `post-integration-test` steps run as they normally do and
+  containers it starts are stopped again. `-Dmaven.test.failure.ignore=true` also keeps
+  `failsafe:verify` from failing the build. The `verify` build adds `-Djacoco.haltOnFailure=false`,
+  so a `jacoco:check` the project binds to `verify` only warns (`haltOnFailure` belongs to `check`
+  alone, so our `prepare-agent` is unaffected), and skips the plugins that sign, publish, need the
+  network or check a release: `-Dgpg.skip=true`, `-Dmaven.javadoc.skip=true`,
+  `-Dmaven.source.skip=true`, `-Dmaven.deploy.skip=true`, `-Djib.skip=true` (all Jib goals,
+  `dockerBuild` too), `-Ddependency-check.skip=true`, `-Drat.skip=true`, `-Dlicense.skip=true`
+  (com.mycila's license plugin), `-Dlicense.skipDownloadLicenses=true` and
+  `-Dlicense.skipAggregateDownloadLicenses=true` (the Codehaus license plugin, which has no single
+  skip property), and `-Djapicmp.skip=true`. fabric8's `docker.skip` is not set: it also skips
+  `docker:start` and `docker:stop`, which integration tests rely on. A project without Failsafe, or
+  with Failsafe kept off in every module, stays on `test`.
 - **Tests.** Failures of the ArchUnit rule classes (`*ArchTest`, `*ArchitectureTest`, or the
-  `nitpicker.archunit.includes` property in the POM) become findings; any other failing test is a
-  `java/maven-failure` tool error that names up to ten failing tests. Surefire reports older than
-  the build are ignored. Gradle runs the ArchUnit classes in their own task, but Maven only has
-  surefire's results: when a module has ArchUnit classes and surefire ran none of them (its
-  `<includes>` miss them, as they would `*Rules`, or the module skips tests), that is a tool error
-  rather than a silent pass. ArchUnit reads bytecode without running it, so running these classes in
-  the covered test run does not change coverage.
+  `nitpicker.archunit.includes` property in the POM) become findings; any other failing test, from
+  Surefire's or Failsafe's reports, is a `java/maven-failure` tool error that names up to ten
+  failing tests. Reports older than the build are ignored. Gradle runs the ArchUnit classes in their
+  own task, but Maven only has the Surefire and Failsafe results: when a module has ArchUnit classes
+  and neither plugin ran any of them (Surefire's `<includes>` miss them, as they would `*Rules`, or
+  the module skips tests), that is a tool error rather than a silent pass. ArchUnit reads bytecode
+  without running it, so running these classes in the covered test run does not change coverage.
 - **Slow-test reports.** Per module, the fresh `TEST-*.xml` files of surefire's reports directory
   (`<reportsDirectory>` of maven-surefire-plugin, default `<build directory>/surefire-reports`) are
   copied to `target/nitpicker/test-results/surefire/` and those of maven-failsafe-plugin's (its
   `<reportsDirectory>`, default `<build directory>/failsafe-reports`) to `test-results/failsafe/`,
   without the ArchUnit rule classes (as Gradle leaves out its ArchUnit task). When both plugins
-  report to the same directory, it is copied once, as `surefire`, so unit tests keep the unit budget.
-  Only files written since the build started are copied, so results left by an earlier run never
-  count. The build runs the `test` phase only, so Failsafe (`integration-test`) does not run in it
-  and `failsafe` stays empty in practice; the copy is there for a project that binds Failsafe to an
-  earlier phase.
-- **JaCoCo.** Our `prepare-agent` always runs; a project's own `prepare-agent` replaces it (the agent
-  replaces an earlier agent in `argLine`) and writes to its configured `destFile`, which is read
-  instead. A module whose tests ran but left no fresh coverage file is a tool error that points at a
-  surefire `<argLine>` without `@{argLine}`. A module whose test classes ran no test (only helpers,
-  or `*IT` classes surefire skips) gets zero coverage, as on Gradle, and a module without main
-  classes gets an empty report.
+  report to the same directory, it is copied once, as `surefire`, so unit tests keep the unit
+  budget. Only files written since the build started are copied, so results left by an earlier run
+  never count. `failsafe` counts as an integration task, so the tests Failsafe runs in a `verify`
+  build get the integration budget.
+- **JaCoCo.** Our `prepare-agent` always runs; a project's own `prepare-agent` or
+  `prepare-agent-integration` replaces it in `argLine` (the agent replaces an earlier agent there).
+  Without a configured `destFile` the project's agent still writes our file, because our
+  `-Djacoco.destFile` sets the default of both goals; a configured `destFile` is read as well. Every
+  fresh file among ours and the configured ones goes to one JaCoCo report. Failsafe reads the same
+  `argLine`, so integration tests append their coverage to the unit tests' file. A module whose
+  tests ran but left no fresh coverage file is a tool error that points at a surefire `<argLine>`
+  without `@{argLine}`. A module whose test classes ran no test (only helpers, or `*IT` classes
+  without a Failsafe that runs them) gets zero coverage, as on Gradle, and a module without main
+  classes gets an empty report. Failsafe tests the packaged jar; when that jar is shaded with
+  relocated packages, its classes no longer match `target/classes`, so the coverage integration
+  tests record for relocated classes is lost.
 - **Multi-module.** Each module (packaging other than `pom`) is analyzed on its own and its findings
   are prefixed with the module path (`core/src/main/java/...`). Coupling is computed once over all
   modules, so a dependency from one module to another counts, and file limits are evaluated once
   over every module's roots, so `exceptions` and `exclude` globs are relative to the project root
-  (`languages/java/builds/java-modules.mjs`; both builds share `builds/project-wide.mjs`). Duplicate detection runs per module, so
-  a clone between two modules is not found, as a clone between two source roots is not.
+  (`languages/java/builds/java-modules.mjs`; both builds share `builds/project-wide.mjs`). Duplicate
+  detection runs per module, so a clone between two modules is not found, as a clone between two
+  source roots is not.
+- **Module descriptors.** jdeps reads a class directory with a `module-info.class` as a module and
+  must then resolve every module its descriptor `requires`; it stops on a plain jar ("Unable to
+  derive module descriptor"), a missing module or a split package. Both builds run jdeps on such a
+  module exactly as on one without a descriptor, with no module path: over a temporary copy of the
+  class files of the modular class directories, without `module-info.class`, made in the build
+  directory (`target/` on Maven, Gradle's build directory) and removed afterwards
+  (`languages/java/maven/coupling/maven-jdeps.mjs`, and `tasks/jdeps-task.gradle`). The copy and
+  `jdeps-classes.txt` take regular `.class` files only, so a symbolic link inside a class directory,
+  to a file or a folder, is left out of both (a class directory that is itself a link is read
+  through it), and on Maven it goes to the system
+  temporary directory when the class directory is the build directory or holds it, since a copy
+  into itself is impossible. A class directory without a descriptor is read in place. Only the
+  edges between the module's own classes are read, so coupling is the same. When jdeps fails, the error gives its exit code and up to 10
+  lines of its stderr, the `Error`, `Exception` and `Caused by` lines first, without the JVM's
+  `Picked up ...` notes.
 - **Guards.** The [guards](#guards) run on Maven too, outside Maven and per module
   (`languages/java/maven/guards/`), writing the same reports in `target/nitpicker/`. The javac
   lint pass reads the `maven-compiler-plugin` settings from the effective POM (`release`, `source`,
@@ -153,7 +199,9 @@ field by field. Per snapshot:
   retries the same way). On the head it reuses the base's warnings for unchanged files exactly as
   on Gradle. forbiddenapis reads the module's
   output directory (`target/classes` unless the POM moves it) against the main compile classpath
-  and is skipped when the module has no classes; CPD, the guard, code smell and test-honesty PMD rulesets,
+  and is skipped when the module has no classes; CPD, the guard, code smell and test-honesty PMD
+  rulesets, `pmd-tests.xml` (`TestClassWithoutTestCases` with the main source roots excluded, after
+  the guard rulesets and before the Spring one, only with Nitpicker's rulesets on),
   the extra Checkstyle modules and the sealed `permits` edges are the same as on Gradle. The Java
   16 PMD rules are skipped below release 16, with the same Java 8 default. The dependency check
   reads the dependencies the module's own `pom.xml` declares with compile scope (no `<scope>` or
@@ -165,18 +213,19 @@ field by field. Per snapshot:
   from `dependency:list`, and the finding sits on
   the module's `pom.xml` with Maven's scopes as the alternatives. The end-to-end suite compares
   Gradle and Maven on the guards fixture and lints a reactor with a javac plug-in, preview
-  features, a module descriptor and an older release.
+  features, a module descriptor that requires a jar module, and an older release.
 - **Binary.** `NITPICKER_MAVEN` when set; otherwise the project's `mvnw` (`mvnw.cmd` on Windows),
   run with `sh` when not executable; otherwise `mvn` from the PATH. A missing `mvn` is a tool error
   that names these three ways. The JDK tools (`java`, `jar`, `jdeps`) come from `JAVA_HOME` when
   set, else the PATH.
 - **Not covered.** The Kotlin preset needs Gradle and says so; use the java preset for a Maven
-  project's Java sources. A surefire configuration that sets
-  `<testFailureIgnore>false</testFailureIgnore>` explicitly overrides the command line, so a
-  violated ArchUnit rule stops the build as a tool error. Maven 3 cannot resolve a `test-jar`
-  dependency on another module in the `test` phase; such reactors fail as they would with
-  `mvn test`. Gradle multi-project builds still read only the root project's reports (see
-  [Slice 1](#slice-1-what-is-deliberately-not-included)).
+  project's Java sources. A surefire or Failsafe configuration that sets
+  `<testFailureIgnore>false</testFailureIgnore>`, or a `jacoco:check` that sets
+  `<haltOnFailure>true</haltOnFailure>`, explicitly overrides the command line, so a violated
+  ArchUnit rule or coverage rule stops the build as a tool error. Maven 3 cannot resolve a
+  `test-jar` dependency on another module in the `test` phase; such reactors fail as they would with
+  `mvn test` (a `verify` build packages them first). Gradle multi-project builds still read only the
+  root project's reports (see [Slice 1](#slice-1-what-is-deliberately-not-included)).
 
 ## Slices
 
@@ -242,7 +291,7 @@ comma-separated>` changes that. Those classes are excluded from the regular `tes
   `org.example` targets `org.example.*`. PIT refuses `org.*` because it matches PIT's own classes,
   so classes directly in `org` are named one by one), against the project's own tests. The only
   profile can produce enforceable findings.
-- **What runs.** `nitpickerPit` runs the pinned `pitest-command-line` (1.17.4) with the
+- **What runs.** `nitpickerPit` (`languages/java/gradle/tasks/pit-task.gradle`) runs the pinned `pitest-command-line` (1.17.4) with the
   `pitest-junit5-plugin` (1.2.1), default mutators, XML output, two threads, to
   `pit/mutations.xml` in the report directory. Tests are named class by class (`--targetTests`), and
   `--mutableCodePaths` limits mutation to the main classes. The JUnit Platform is not pinned by
@@ -406,7 +455,10 @@ default, and their messages name it:
   code that was never written for it, but the gate is differential, so existing violations stay
   baselined and only new ones fail.
 - **Ingestion.** `ingestCheckstyle` (X6) unchanged, `tool` `checkstyle`, absolute file paths made
-  project-relative. Severities `error` and `warning` are enforceable, `info` is descriptive.
+  project-relative. Severities `error` and `warning` are enforceable, `info` is descriptive. The
+  rule is the check's short name (`checkstyle/Indentation`, not the class
+  `com.puppycrawl.tools.checkstyle.checks.indentation.IndentationCheck`), or the `id` the config
+  gives the module (`checkstyle/RightCurlySame`); see [Rule messages](#rule-messages).
 
 | Tool                      | Report         | Ingester           | Classification                                         | Identity                                                                                                                                                                                                                   |
 | ------------------------- | -------------- | ------------------ | ------------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -481,9 +533,9 @@ identity when the value changes: editing such a line counts as a resolved plus a
   (descriptive metrics `lines` and `tokens`). There is no extra threshold:
   jscpd's defaults (5 lines, 50 tokens) apply, as for TypeScript.
 
-| Tool                 | Report                      | Ingester                                              | Classification                                                    | Identity                                                                                                                                                  |
-| -------------------- | --------------------------- | ----------------------------------------------------- | ----------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| jscpd (`duplicates`) | jscpd JSON, per source root | `normalizeDuplicates` (TypeScript `duplicates` check) | `duplicate-clone` enforceable; `duplicate-clone-size` descriptive | Sorted file pair, a hash of the cloned text, and the n-th occurrence of that pair; the size metrics use pair, occurrence and metric name. No line number. |
+| Tool                 | Report                      | Ingester                                              | Classification                                                    | Identity                                                                                                                                                              |
+| -------------------- | --------------------------- | ----------------------------------------------------- | ----------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| jscpd (`duplicates`) | jscpd JSON, per source root | `normalizeDuplicates` (TypeScript `duplicates` check) | `duplicate-clone` enforceable; `duplicate-clone-size` descriptive | Sorted file pair, a hash of the cloned text, and the n-th occurrence of that text in the pair; the size metrics use pair, occurrence and metric name. No line number. |
 
 Editing the cloned text changes its hash, so a clone that was changed (not only moved) counts as a
 resolved plus a new finding, as in the TypeScript check.
@@ -537,7 +589,8 @@ resolved plus a new finding, as in the TypeScript check.
   `test-results/<task>/` in each module's report directory. No extra test run. A rerun test keeps
   its slowest time. Maven builds copy Surefire's `TEST-*.xml` to `test-results/surefire/` and
   Failsafe's to `test-results/failsafe/` (see [Maven builds](#maven-builds)); `surefire` counts as
-  the `test` task, `failsafe` as an integration task.
+  the `test` task, `failsafe` as an integration task. Failsafe runs when the project binds its
+  `integration-test` goal and does not keep it off, because nitpicker then builds to `verify`.
 - **Edited or added.** Each test is keyed by class and testcase name (Gradle writes the display name,
   so a parameterized case is keyed by its `[n] ...` name; Surefire writes the method name). The test
   method is found in the source by that name (also `name()[n]` and JUnit 4's `name[n]`) or its
@@ -556,7 +609,7 @@ resolved plus a new finding, as in the TypeScript check.
   project root; a Gradle build reads from the project root and passes none.
 - **Tests.** `adapters/test-times/slow-tests.test.mjs` (sample Gradle, Surefire and Failsafe XML,
   module-path baseline), `builds/java-modules.test.mjs`, `maven/results/maven-test-results.test.mjs`
-  and the multi-module Maven e2e fixture.
+  and the multi-module and `failsafe` Maven e2e fixtures.
 
 ## Structure limits (SH5)
 
@@ -605,7 +658,8 @@ resolved plus a new finding, as in the TypeScript check.
   JDK's `jdeps -verbose:class -filter:none` over the main class directories and writes
   `jdeps.txt` in the report directory plus `jdeps-classes.txt` (the main classes, one binary name per line).
   jdeps comes with the JDK that runs Gradle; nothing is downloaded and no version is pinned. The
-  block is delimited by `// --- coupling (SH6)` comments in the init script.
+  task lives in `languages/java/gradle/tasks/jdeps-task.gradle`, and its arguments come from the
+  `jdeps` entry of `languages/java/builds/tools/tool-commands.json`.
 - **Conversion.** `languages/java/adapters/metrics/java-coupling.mjs` parses the class graph, folds nested classes
   into their top-level class, keeps only edges between two main classes, computes the metrics and
   hands the neutral report to `evaluateCoupling` in `shared/rules/coupling.mjs`. The findings are
@@ -650,24 +704,24 @@ nothing. The rules read base and head the same way, so only a pattern a change a
 | `Optional.get()`; `Optional` as field, parameter or record component; `Optional<List<..>>`                                                       | `pmd/OptionalGet`, `pmd/OptionalAsFieldOrParameter`, `pmd/OptionalOfCollection`                                                                                        | `orElseThrow()`, `orElse`, `map`, `ifPresent`; return an empty collection                                                    |
 | Raw types, unchecked casts, deprecated and removed APIs, redundant casts                                                                         | `javac/rawtypes`, `javac/unchecked`, `javac/deprecation`, `javac/removal`, `javac/cast`                                                                                | Type arguments, typed APIs, the replacement the Javadoc names                                                                |
 | `instanceof` followed by a cast                                                                                                                  | `pmd/InstanceofThenCast`                                                                                                                                               | Pattern matching (`x instanceof Circle c`) or a `switch` over a sealed type                                                  |
-| Non-private fields, mutable static state, `@SneakyThrows`                                                                                        | `checkstyle/...VisibilityModifierCheck`, `pmd/NonFinalStaticField`, `pmd/MutableStaticCollection`, `pmd/SneakyThrows`                                                  | Private fields, a `record`, immutable `List.of` and `Map.of`, a declared exception                                           |
+| Non-private fields, mutable static state, `@SneakyThrows`                                                                                        | `checkstyle/VisibilityModifier`, `pmd/NonFinalStaticField`, `pmd/MutableStaticCollection`, `pmd/SneakyThrows`                                                          | Private fields, a `record`, immutable `List.of` and `Map.of`, a declared exception                                           |
 | Legacy date and time, `now()` without a `Clock`, `Thread.sleep`, `Thread.start()`, `Runtime.exec(String)`, `ObjectInputStream`                   | `forbiddenapis/legacy-date-time`, `clock-now`, `thread-sleep`, `new-thread`, `runtime-exec`, `java-deserialization`                                                    | `java.time`, an injected `Clock`, an executor, `ProcessBuilder` with a list, JSON                                            |
 | Swallowed `InterruptedException`; side effects in `forEach` and `peek`; `collect(Collectors.toList())`; an unclosed `Files.lines/list/walk/find` | `pmd/SwallowedInterruptedException`, `pmd/ForEachSideEffect`, `pmd/CollectorsToList`, `pmd/StreamResourceNotClosed`                                                    | `Thread.currentThread().interrupt()`, `map` and `collect`, `Stream.toList()`, try-with-resources                             |
 | `throws Exception`, raw `RuntimeException`                                                                                                       | `pmd/SignatureDeclareThrowsException`, `pmd/AvoidThrowingRawExceptionTypes`                                                                                            | The checked exceptions the method throws; `IllegalArgumentException`, `IllegalStateException`, a project exception           |
 | SQL built with `+` or `String.format` in JDBC calls; MD5 and SHA-1; nested-quantifier regexes; a path joined from a parameter                    | `pmd/SqlConcatenation`, `pmd/WeakHash`, `pmd/NestedQuantifierRegex`, `pmd/PathFromParameter`                                                                           | `?` parameters, SHA-256, a regex without `(a+)+`, `normalize()` and `startsWith(base)`                                       |
-| Constant names; magic numbers                                                                                                                    | `checkstyle/...ConstantNameCheck`, `checkstyle/...MagicNumberCheck`                                                                                                    | `UPPER_SNAKE_CASE` (a logger may be `log` or `logger`); a named `private static final`                                       |
+| Constant names; magic numbers                                                                                                                    | `checkstyle/ConstantName`, `checkstyle/MagicNumber`                                                                                                                    | `UPPER_SNAKE_CASE` (a logger may be `log` or `logger`); a named `private static final`                                       |
 | Unused imports                                                                                                                                   | `pmd/UnnecessaryImport`                                                                                                                                                | Remove the import                                                                                                            |
 | Duplicates with renamed names, and in test sources                                                                                               | `duplicates/duplicate-clone`                                                                                                                                           | One shared method; a helper or `@ParameterizedTest` in tests                                                                 |
 | Declared but unused dependencies                                                                                                                 | `dependencies/unused-declared-dependency`                                                                                                                              | Remove it, or declare it `testImplementation`, `runtimeOnly` or `compileOnly` (Maven: `test`, `runtime` or `provided` scope) |
 | Test honesty                                                                                                                                     | `pmd/TestSleep`, `DisabledTest`, `AssertionInControlFlow`, `TryCatchInTest`, `AssertTrueOnEquality`, `TautologicalAssertion`, `MockedValueType`, `TestOrderDependence` | See Tests below                                                                                                              |
 
-A Checkstyle rule prints as its full check class, for example
-`checkstyle/com.puppycrawl.tools.checkstyle.checks.coding.MagicNumberCheck`; the message names it.
+A Checkstyle rule prints as its check name, for example `checkstyle/MagicNumber`; see
+[Rule messages](#rule-messages).
 
 - **PMD categories.** `performance`, `multithreading` and `security` run next to `errorprone`
-  and `bestpractices`, on main and test sources. Messages that do not name the allowed form get
-  it appended (for example `StringToString`: "Remove the toString() call."), and every PMD message
-  gets the exception route, in one place: `languages/java/guards/advice/pmd-advice.mjs`. Six rules
+  and `bestpractices`, on main and test sources. Their fixes are in the PMD rule catalog
+  (`languages/java/messages/pmd.json`, for example `StringToString`: "Remove the toString()
+  call."), appended with the exception route like every catalog rule. Six rules
   are left out because they flag correct code by design, with no general recommendation behind
   them: `AvoidInstantiatingObjectsInLoops` (building result objects in a loop is the normal way
   to fill a list), `UseConcurrentHashMap` (it flags every `HashMap`, and a local map is correct),
@@ -722,46 +776,50 @@ A Checkstyle rule prints as its full check class, for example
   generated config, not inline suppressions. The messages are rewritten to name the allowed form.
 - **javac lint.** The `nitpickerLint` task writes `guards-plan.json` (the main sources, the
   compile class path, the processor path, the compiler, its release, source, target, encoding and
-  arguments, the classes directory and the generated-sources directory), and after Gradle has run
-  nitpicker compiles the main sources once more from it with
+  arguments, the classes directory and the generated-sources directory) and runs node on it
+  (`-Pnitpicker.node`, the head run also passing the base project as `-Pnitpicker.lintBaseline`),
+  so the lint of several projects runs in parallel when Gradle does; it compiles the main sources
+  once more with
   `-Xlint:rawtypes,unchecked,deprecation,removal,cast` and writes the warnings to
   `javac-lint.txt` in the report directory (tool `javac`, rule = lint category). The same runner
   serves Maven. It compiles a copy in which every `@SuppressWarnings(...)` is blanked out (same
   lines and columns), with the project's compiler, release (or `-source`/`-target` from the source
   and target compatibility when no release is set) and compiler arguments (without `-Werror`,
-  `-Xlint`, `-Xplugin`, processor options and class or module paths), and with the main classes on
-  the classpath, so it runs only Lombok of the annotation processors (the classes other processors
-  generate are already compiled) and stops after flow analysis without writing classes. The copy
+  `-nowarn`, `-Xlint`, `-Xdiags`, `-XD`, `-Xplugin`, processor options and class or module paths),
+  and with the main classes on the classpath, so it runs only Lombok of the annotation processors
+  (the classes other processors generate are already compiled) and stops after flow analysis
+  without writing classes. When javac counts warnings but prints none in the form nitpicker reads,
+  the lint counts as not run. The copy
   keeps the sources' paths below the analysis root, with every `lombok.config` on the way from the
   root down to each source folder, so Lombok reads the project's configuration (a package folder's
-  `fluent` accessors or log field name included), and those of the folders above the root up to
-  one that sets `config.stopBubbling`; a relative `import` in a copied file is pointed at the file
-  it names. A warning javac places on a Lombok annotation (`@SuperBuilder` or `@Builder` code that
+  `fluent` accessors or log field name included), and those of the folders above the root up to one
+  that sets `config.stopBubbling`; a relative `import` in a copied file is pointed at the file it
+  names. A warning javac places on a Lombok annotation (`@SuperBuilder` or `@Builder` code that
   Lombok generates) is dropped: it is not in code the project wrote. With a `module-info.java` the
   sources compile as that module, with the modular jars of the class path on `--module-path` (and,
   if that fails, every jar), the sources other annotation processors generated (MapStruct,
   Immutables, Dagger) compiled along without their warnings being reported, and every file is
-  linted. On the head, when the base produced a lint report in the same run (kept with a
-  fingerprint of its compile inputs in `<build dir>/nitpicker-lint/` of the base checkout, Maven's
+  linted. On the head, when the base produced a lint report in the same run (kept with a fingerprint
+  of its compile inputs in `<build dir>/nitpicker-lint/` of the base checkout, Maven's
   `target/nitpicker-lint/`), the base's warnings are reused for files whose content is the same as
-  on the base, so the report matches a full lint. They are reused only when the compile inputs
-  match the base's: the javac version, the language level, the encoding, the compiler arguments
-  (the checkout's folder left out), every `lombok.config` that applies to the sources and every
-  class path and Lombok entry (a jar outside the project by name and size; a jar inside it, or a
-  classes directory such as another project's, by its content), so a dependency bump that
-  deprecates an API or a changed Lombok setting is reported in unchanged files too. An unchanged file whose classes
-  use a class of a changed file, directly or through a subclass (read from the head's class
-  files), is compiled again, so a method the change deprecated or a class the change made generic
-  is reported where it is called. A constant javac inlined leaves no trace in the class files, so
-  deprecating a `static final` constant is reported only in changed files. Without a base
-  report or with other compile inputs the head lints every file. When the lint compile fails the
-  run goes on: the report says so in a descriptive `javac/lint-not-run` notice that quotes the
-  first error, and javac warnings are not checked in that run. When only the base failed, the
-  head's javac findings are reported but do not fail the gate: with no base report, nothing tells
-  which of them the change added, and each one says so. When only the head failed, the run fails
-  with a tool error: the change broke the lint compile. The notice says to fix what the lint
-  compile reports or to add an exception for `javac/lint-not-run` (path `**`) when the project
-  cannot be linted this way.
+  on the base, so the report matches a full lint. They are reused only when the compile inputs match
+  the base's: the javac version, the language level, the encoding, the compiler arguments (the
+  checkout's folder left out), every `lombok.config` that applies to the sources and every class
+  path and Lombok entry (a jar outside the project by name and size; a jar inside it, or a classes
+  directory such as another project's, by its content), so a dependency bump that deprecates an API
+  or a changed Lombok setting is reported in unchanged files too. An unchanged file whose classes
+  use a class of a changed file, directly or through a subclass (read from the head's class files),
+  is compiled again, so a method the change deprecated or a class the change made generic is
+  reported where it is called. A constant javac inlined leaves no trace in the class files, so
+  deprecating a `static final` constant is reported only in changed files. Without a base report or
+  with other compile inputs the head lints every file. When the lint compile fails the run goes on:
+  the report says so in a descriptive `javac/lint-not-run` notice that quotes the first error, and
+  javac warnings are not checked in that run. When only the base failed, the head's javac findings
+  under that module's main source roots are reported but do not fail the gate: with no base report,
+  nothing tells which of them the change added, and each one says so. When only the head failed, the
+  run fails with a tool error: the change broke the lint compile. The notice says to fix what the
+  lint compile reports, and ends with the exception route for `javac/lint-not-run` with the path
+  `**`, for a project that cannot be linted this way.
 - **Run time.** Each snapshot runs in a fresh worktree with a fresh report directory, so Gradle's
   up-to-date checks do not skip these tasks; what saves time is the differential lint. Measured on
   a project with 31 main files using Lombok and MapStruct (load about 40), the lint took 22.0 s for
@@ -772,26 +830,100 @@ A Checkstyle rule prints as its full check class, for example
   against `rules/forbidden-apis.txt`. Each signature group has a tag that becomes the rule name
   (`thread-sleep`); the report is `forbidden-apis.txt`. Source locations come
   from the class's debug line numbers; a field, parameter, return type, record component or
-  supertype of a banned type is placed on its declaration in the source. `new-thread` bans `Thread.start()`, so a `ThreadFactory`
-  or `Runtime.addShutdownHook` may still construct a `Thread`. `legacy-date-time` skips a
-  statement that converts a `Date` another API returns with `toInstant()` and does not name `Date`
-  itself (`certificate.getNotAfter().toInstant()`).
+  supertype of a banned type is placed on its declaration in the source (comments and strings
+  do not count); one forbiddenapis cannot tie to a line goes on its class's line, and generated
+  members (lambdas, record accessors, Lombok accessors and builders of a reported field) are
+  dropped. forbiddenapis reads type descriptors, so a generic argument such as `List<Date>` or
+  `Map<String, Date>` is not reported. `new-thread` bans `Thread.start()`,
+  `Thread.startVirtualThread` and `Thread.Builder.start`, so a `ThreadFactory` or
+  `Runtime.addShutdownHook` may still construct a `Thread`. `legacy-date-time` skips a `Date`
+  another API returns when `.toInstant()` follows the call right away, on that line or at the start
+  of the next (`certificate.getNotAfter().toInstant()`), or it is converted with
+  `map(Date::toInstant)`; any other call on a `Date` in the same line, such as `getTime()`, is
+  still reported.
 - **Duplicates.** The jscpd check is unchanged. `nitpickerCpd` runs PMD's copy-paste detector
   (BSD-style, already inside the pinned PMD) over main and test sources with identifiers and
-  literals ignored and at least 100 tokens, so a copy with renamed variables is found. A clone
-  jscpd already reports (same two files, overlapping lines) is not reported twice, overlapping
+  literals ignored and at least 100 tokens, so a copy with renamed variables is found. When jscpd
+  and CPD report the same clone (same two files, overlapping lines, jscpd's range ending at its
+  start line plus `lines` minus one), only the CPD finding is kept, also when nitpicker then drops
+  CPD's clone as boilerplate or as overlapping its own copy; in a module where CPD did not run or
+  wrote no usable report, jscpd's clones stay, overlapping
   windows of one file pair are one finding, a block that overlaps its own copy is dropped, and so
   are clones made only of getters, setters, field declarations and field-assigning constructors
   or only of data rows (enum constants, `Arguments.of(...)` rows, literal lists, and constants
   built from literals with `Map.ofEntries`, `Map.of`, `List.of`, `Set.of`, `Stream.of` or
-  `Arrays.asList`). The files of a duplication are sorted by path, so the order CPD lists them in
+  `Arrays.asList`; any other row needs a number or a literal, so a run of calls such as
+  `validate();` is code). The files of a duplication are sorted by path, so the order CPD lists them in
   does not matter, and the identity hashes the clone's token shape (its punctuation and
   operators, without names, literals and comments), so editing a name or a literal in a legacy
-  copy keeps its identity. Findings use the
-  same tool and rule as jscpd (`duplicates/duplicate-clone`), with identities starting `cpd:` so
-  they never match a jscpd finding; between two test files the message points at a helper or a
+  copy keeps its identity. A legacy clone that shrinks (a statement inserted in one copy) or
+  that jscpd splits in two is held at its base size, for jscpd and CPD alike, while most of each
+  of its two copies is unchanged code that was part of that base clone: a new clone between the
+  same two files fails when either copy is mostly added or edited lines, or lines that were not
+  in a base clone of the pair (a pasted copy, or code joined by deleting what was between), or
+  when it, with the other new clones of that pair, has more tokens than the base clone it came
+  from.
+  Both tools hold against the same pair (`pair:<a>|<b>:clone`, counted in tokens), so a legacy CPD
+  clone that shrinks below CPD's 100 tokens and is then reported by jscpd is held too. Findings use
+  the same tool and rule as jscpd (`duplicates/duplicate-clone`), with identities starting `cpd:` so
+  they never match a jscpd finding; renaming one of the two files keeps a clone's identity even when
+  the new name sorts the files the other way round; between two test files the message points at a helper or a
   `@ParameterizedTest`. The message ends with the exception route for
-  `duplicates/duplicate-clone`.
+  `duplicates/duplicate-clone`. Both builds run CPD through `languages/java/gradle/CpdReport.java`
+  (single-file source mode, with the pinned PMD on the class path) instead of `PmdCli cpd`, with
+  the same settings and the same XML report, which it writes to the path given as its first
+  argument. PMD 7.7.0 to 7.28.0 crash on common code with `Deque.peek().name is null`, and
+  `PmdCli` still exits 0 without a report: the Java CPD lexer's constructor detector pushes a type
+  on every `class` keyword, a class literal (`String.class`) followed by `}` leaves that type
+  without a name, the next declaration without a modifier (a bare `class`, or any `enum`) keeps it
+  on the stack, and the next `(` reads its null name. One file is enough
+  (`static final Class<?>[] TYPES = { String.class }; enum Kind { X } void register() { }`), and
+  the state also carries from one file to the next. The launcher reads each file as CPD would (CRLF and CR line ends become LF,
+  a byte order mark is dropped), runs PMD's own Java token manager over that text first and
+  overwrites every `class` token that directly follows a `.` token with `const`, at the token's
+  place: comments between the two are skipped like PMD skips them, text inside comments, strings,
+  text blocks and character literals is never a token, and a Unicode-escaped dot or `class` is
+  translated as PMD translates it, so `// values.` followed by a `class` line keeps its `class`.
+  `const` is a Java keyword no code uses, so it stays a keyword token like `class` and has the
+  same length (an escaped `class` is padded with spaces), and the tokens, lines, columns and paths
+  of the report do not move (an identifier such as `c$ass` would be ignored like any identifier
+  and match `other.value`). On the PMD 7.7.0 sources of pmd-java and pmd-core the report equals
+  `PmdCli`'s apart from the timestamp and the `codefragment` text, which shows the rewrite;
+  nitpicker reads clone text from the source files instead. The launcher follows symbolic links
+  and reads a file that two source roots reach once; a link loop, an unreadable file or directory,
+  a missing directory argument, or a file whose rewrite throws is skipped with a line on stderr and
+  listed in `cpd-skipped.txt`. A file PMD cannot lex (a stray `#`, or syntax PMD 7.7 does not know)
+  is handed to CPD with the class literals before the error rewritten; CPD skips it and records an
+  `<error>` in `cpd.xml`. The module then gets one descriptive `duplicates/cpd-skipped-paths`
+  notice naming each of those paths once. Both builds take the launcher, its
+  arguments (the report path, then the source roots) and what counts as a run from the `cpd`
+  entry of `languages/java/builds/tools/tool-commands.json`: exit code 0 and a `cpd.xml` whose
+  root is `<pmd-cpd>`. When CPD exits with another code or writes no XML report, both builds write its exit code (or signal) and stderr to
+  `cpd-failed.txt` instead of `cpd.xml`; on Maven a `java` that cannot start or runs past the
+  15-minute tool timeout writes the error code (such as `EACCES` or `ETIMEDOUT`) and message there
+  instead of failing the run. The module then gets a `duplicates/cpd-not-run` tool-not-run finding
+  that names its source roots and says how CPD ended: it exited with a code, was stopped by a
+  signal, could not run, or did not finish within the tool timeout (an empty or non-XML `cpd.xml`
+  gives the same finding). Its `notRunScope` lists the module's main and test source roots as
+  project-relative directories. Maven writes each module's roots relative to the module, so the
+  module folder goes in front of each root first; then a root that is the project folder itself
+  becomes `.`, and a root that lies outside the project after that (absolute, or above the project
+  folder) is left out. A module without source roots is scoped to its folder. When no directory in
+  the project is left, the notice keeps its message but is not a tool-not-run finding: the code it
+  did not check lies outside the project, and the guards drop every finding on a file outside the
+  project (a finding's path must lie in the project, and one that does not would make the whole
+  Java report fail to parse), so nothing in the comparison is left to relax. A failure on the base
+  makes the head's CPD findings (identity `cpd:...`, from `notRunIdentityPrefix`) in those
+  directories descriptive, and those on the exact head paths of the files renamed out of them, as
+  long as they match no base finding; jscpd's clones there stay enforced, since jscpd ran. The directories themselves never follow a move: a
+  module moved whole into an existing one relaxes only the moved files, and a module renamed whole
+  that still fails gives a conservative tool error on the head, while the CPD findings of its
+  renamed files stay descriptive. A legacy finding that matches a base finding stays unchanged and
+  enforceable, so a failed run never shows it as resolved plus new. A failure on the head is a tool
+  error unless a base notice of the tool with the same prefix has the same identity and path or
+  those base notices together cover each of its directories. One file moved into a module
+  that ran on the base therefore does not excuse that module failing on the head. The
+  `javac/lint-not-run` notice is scoped the same way, to the module's main source roots.
 - **Cycles.** `java-coupling.mjs` already has the class graph from jdeps. Each package in a
   strongly connected set of packages is one `package-cycle` finding, identified by the package
   name and placed on its first file, so growing a legacy cycle adds a finding for the new package
@@ -1086,6 +1218,46 @@ decides what counts as a literal secret, and `java-spring.mjs` applies the rules
   (the other rules) and `java-reports.test.mjs`
   (glue, the `spring: true` gate).
 
+## Rule messages
+
+PMD, Checkstyle and SpotBugs messages say what is wrong, rarely how to fix it, and never how to keep
+code that is right as it is. `languages/java/messages/` holds one catalog per tool (`pmd.json`,
+`checkstyle.json`, `spotbugs.json`) with an entry for every rule the preset can report: the
+errorprone and bestpractices PMD categories plus `AvoidCatchingGenericException`, every check in
+`google_checks.xml`, and every SpotBugs pattern. Each entry has:
+
+- `fix`: one sentence, in our words, naming the allowed form (`null` when the tool's message already
+  says it);
+- `mayBeIntended`: whether the rule can fire on code a careful team keeps (a CLI printing with
+  `System.out`, a catch-all at a boundary);
+- `layout` (Checkstyle only): a layout check google-java-format fixes; the message then says to run
+  the formatter instead of a fix of its own.
+
+`readJavaFindings` passes every finding through `applyRuleMessages`
+(`languages/java/messages/rule-messages.mjs`). It shortens Checkstyle rule names, then appends the
+fix to the tool's message, and for an enforceable finding of a rule that may be intended (or one
+the catalog does not know, from a project's own config) the exception route with the finding's own
+path. The guard tools (`javac`, `forbiddenapis`, `duplicates`, `coupling`, `dependencies`), `spring`
+and `pit` get the same route; no rule message, ruleset or guard writes its own, and
+`messages/exception-sentences.test.mjs` fails on one that does:
+
+```
+Usage of System.out/err. Write through a logger, or take a PrintStream as a parameter so callers
+choose the stream. If this is intended, add {"rule":"pmd/SystemPrintln","paths":["src/main/java/demo/Cli.java"],"reason":"..."}
+to "exceptions" in nitpicker.config.json.
+```
+
+The Kotlin preset, which runs the same tools on a mixed module's Java files, gets the fix but not
+the exception route: its `exceptions` only lift detekt rules. An `exceptions` entry that names a
+Checkstyle check by class (`checkstyle/com.puppycrawl...IndentationCheck`) is a config error that
+gives the name to write instead.
+
+Messages that already name `nitpicker.config.json` (the Spring rules) are left as they are, and
+identities are computed before, so neither the new text nor the short Checkstyle name moves a
+finding between base and head. `rule-catalog.e2e.test.mjs` downloads the pinned PMD, Checkstyle and
+SpotBugs jars and fails when the catalogs and the tools' rule lists differ, so a version bump
+cannot add a rule without fix text.
+
 ## Slice 1: what is deliberately not included
 
 - Nothing from the proposed slices 4 to 8 is left out: ArchUnit, CRAP, jscpd, PIT and the changed-line
@@ -1097,7 +1269,13 @@ decides what counts as a literal secret, and `java-spring.mjs` applies the rules
 
 - `languages/java/adapters/reporting/java-reports.test.mjs`: fast, always on. Report conversion, project-relative paths,
   classification, line-shift stability.
-- `languages/java/adapters/java-e2e/java-preset.e2e.test.mjs`: gated behind `NITPICKER_JAVA_E2E=1` (`npm run test:java`, which also runs `java-spring.e2e.test.mjs`, `escape-hatches.e2e.test.mjs`, `languages/java/adapters/java-e2e/pit-targets.e2e.test.mjs` and `languages/java/maven/maven-preset.e2e.test.mjs`, one file at a time because each stops the Gradle daemons when it ends). Needs Java 21, Gradle and network access to Maven Central; about 85 seconds
+- `languages/java/messages/rule-messages.test.mjs`: fast, always on. Short Checkstyle names, fix
+  text, the exception route, and the shape of every catalog entry.
+- `languages/java/messages/exception-sentences.test.mjs`: fast, always on. No Java message source
+  writes its own exception route.
+- `languages/java/messages/rule-catalog.e2e.test.mjs`: gated like the other e2e tests. The catalogs
+  name exactly the rules of the pinned tool versions.
+- `languages/java/adapters/java-e2e/java-preset.e2e.test.mjs`: gated behind `NITPICKER_JAVA_E2E=1` (`npm run test:java`, which also runs `java-spring.e2e.test.mjs`, `escape-hatches.e2e.test.mjs`, `languages/java/adapters/java-e2e/pit-targets.e2e.test.mjs`, `multi-project.e2e.test.mjs`, `languages/java/maven/maven-preset.e2e.test.mjs`, `maven-failsafe.e2e.test.mjs`, `guards.e2e.test.mjs` and `rule-catalog.e2e.test.mjs`, one file at a time because each stops the Gradle daemons when it ends). Needs Java 21, Gradle and network access to Maven Central; about 85 seconds
   warm. On a tiny Gradle project (`languages/java/adapters/fixtures/gradle-project`, one legacy PMD and
   SpotBugs violation on the base) it checks: a clean change passes; a change that only moves the
   legacy violation stays baselined; a change adding an empty catch block (PMD), a default-charset

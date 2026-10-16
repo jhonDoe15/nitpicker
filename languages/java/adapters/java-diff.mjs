@@ -6,7 +6,7 @@ import { compareFindings } from '../../../core/diff/comparison/compare.mjs';
 import { parseAnalyzerReport } from '../../../core/diff/comparison/finding-schema.mjs';
 import { captureWorkingTree, resolveComparison } from '../../../core/diff/git/repository/git.mjs';
 import { readChangedLines } from '../../../core/diff/git/patches/changed-lines.mjs';
-import { readRenameMap } from '../../../core/diff/git/patches/project-moves.mjs';
+import { readProjectMoves } from '../../../core/diff/git/patches/project-moves.mjs';
 import { withTemporaryWorktree } from '../../../core/diff/git/repository/worktree.mjs';
 import { gradleTarget } from './gradle-wrapper/gradle-command.mjs';
 import { condenseFailure } from './gradle-wrapper/failure-text.mjs';
@@ -16,7 +16,6 @@ import { applyJavaPolicy } from './java-policy.mjs';
 import { PROJECT_TOOL_CONFIGS } from './gradle-presets.mjs';
 import { readJavaFindings } from './reporting/java-reports.mjs';
 import { readReportModules } from './gradle-reports/report-modules.mjs';
-import { runGradleGuards } from './gradle-reports/gradle-guards.mjs';
 import { runMavenPreset, MAVEN_REPORT_DIRECTORY } from '../maven/maven-build.mjs';
 import { detectJavaBuild, INIT_SCRIPT } from '../builds/java-build.mjs';
 import { moduleReport, readModuleFindings } from '../builds/java-modules.mjs';
@@ -37,8 +36,10 @@ function kotlinProperties(projectRoot, { preset, kotlinFormatter, kotlinDetektCo
     : [];
 }
 
-export function lintBaselineRoot({ snapshot, baselineRoot } = {}) {
-  return snapshot === 'head' ? baselineRoot : undefined;
+export function lintBaselineProperties({ snapshot, baselineRoot } = {}) {
+  return snapshot === 'head' && baselineRoot !== undefined
+    ? [`-Pnitpicker.lintBaseline=${baselineRoot}`]
+    : [];
 }
 
 function toolConfigChoices(projectRoot, { toolPrecedence = {}, policyRoot } = {}) {
@@ -82,6 +83,7 @@ function runJavaPreset(
       '--no-configuration-cache',
       `-Pnitpicker.reportDir=${reportBase}`,
       `-Pnitpicker.node=${process.execPath}`,
+      ...lintBaselineProperties(policy),
       ...kotlinProperties(projectRoot, policy),
       ...toolConfigProperties(projectRoot, policy),
       '-I',
@@ -130,7 +132,6 @@ function gradleFindings(projectRoot, options, reportBase) {
   const preset = options.policy?.preset ?? 'java';
   runJavaPreset(projectRoot, { ...options, reportBase });
   const report = readReportModules(reportBase, preset);
-  runGradleGuards(report.modules, { baselineRoot: lintBaselineRoot(options.policy) });
   runJavaDuplicates(projectRoot, { reportRoot: reportBase, manifest: report.manifest });
   if (preset === 'kotlin') {
     runKotlinDuplicates(projectRoot, { reportRoot: reportBase, manifest: report.manifest });
@@ -179,6 +180,20 @@ export function collectJavaFindings(root, options = {}) {
   return applyJavaPolicy(parseAnalyzerReport({ findings }, preset).findings, options.policy);
 }
 
+function compareAcrossMoves({ repositoryRoot, comparison, projectRelativePath }, findings) {
+  const commits = {
+    repositoryRoot,
+    mergeBaseSha: comparison.mergeBaseSha,
+    headSha: comparison.headSha,
+    projectRelativePath,
+  };
+  return compareFindings({
+    ...findings,
+    baseToHeadRenames: readProjectMoves(commits).files,
+    touchedCode: { changedLines: readChangedLines(commits), isStrictRule: isJavaTouchedRule },
+  });
+}
+
 export function runJavaDiff({
   repositoryRoot,
   projectRelativePath = '.',
@@ -193,12 +208,6 @@ export function runJavaDiff({
   const comparison = includeWorkingTree
     ? { ...committed, headSha: captureWorkingTree(repositoryRoot, committed.headSha) }
     : committed;
-  const baseToHeadRenames = readRenameMap({
-    repositoryRoot,
-    mergeBaseSha: comparison.mergeBaseSha,
-    headSha: comparison.headSha,
-    projectRelativePath,
-  });
   const options = { gradle, maven, initScript, policy };
   function collectAt(sha) {
     return withTemporaryWorktree(repositoryRoot, sha, (worktreeRoot) =>
@@ -206,18 +215,13 @@ export function runJavaDiff({
     );
   }
 
-  const baseFindings = collectAt(comparison.mergeBaseSha);
-  const headFindings = collectAt(comparison.headSha);
-  const touchedCode = {
-    changedLines: readChangedLines({
-      repositoryRoot,
-      mergeBaseSha: comparison.mergeBaseSha,
-      headSha: comparison.headSha,
-      projectRelativePath,
-    }),
-    isStrictRule: isJavaTouchedRule,
-  };
-  const result = compareFindings({ baseFindings, headFindings, baseToHeadRenames, touchedCode });
+  const result = compareAcrossMoves(
+    { repositoryRoot, comparison, projectRelativePath },
+    {
+      baseFindings: collectAt(comparison.mergeBaseSha),
+      headFindings: collectAt(comparison.headSha),
+    },
+  );
   const newEnforceable = result.newFindings.filter(
     (finding) => finding.classification === 'enforceable',
   );

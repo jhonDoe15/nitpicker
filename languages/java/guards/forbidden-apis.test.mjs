@@ -1,9 +1,15 @@
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import { parseAnalyzerReport } from '../../../core/diff/comparison/finding-schema.mjs';
 import { parseForbiddenApiUses, readForbiddenApiFindings } from './forbidden-apis.mjs';
+import {
+  guardProject,
+  javaClass,
+  newLines,
+  removeGuardProjects,
+} from './test-support/guard-project.mjs';
 
 const roots = [];
 afterEach(() => {
@@ -13,6 +19,11 @@ afterEach(() => {
 });
 
 const METHOD = 'Forbidden method invocation';
+const SIGNATURES = readFileSync(
+  path.join(import.meta.dirname, '../gradle/rules/forbidden-apis.txt'),
+  'utf8',
+);
+const NEW_THREAD = /^@defaultMessage new-thread: (.+)$/m.exec(SIGNATURES)[1];
 const REPORT = [
   'Picked up JAVA_TOOL_OPTIONS: -Dx=y',
   'Reading API signatures: /gradle/rules/forbidden-apis.txt',
@@ -22,7 +33,7 @@ const REPORT = [
   'ERROR:   in demo.Legacy (Legacy.java:11)',
   `ERROR: ${METHOD}: java.lang.Thread#sleep(**) [thread-sleep: Do not sleep in production code.]`,
   'ERROR:   in demo.Legacy$Worker (Legacy.java:15)',
-  `ERROR: ${METHOD}: java.lang.Thread#<init>(**) [new-thread: Do not start threads by hand.]`,
+  `ERROR: ${METHOD}: java.lang.Thread#start() [new-thread: ${NEW_THREAD}]`,
   'ERROR:   in demo.Legacy (Legacy.java:16)',
   `ERROR: ${METHOD}: java.lang.Thread#sleep(**) [thread-sleep: Do not sleep in production code.]`,
   'ERROR:   in demo.Legacy$Worker (Legacy.java:30)',
@@ -72,14 +83,7 @@ describe('parseForbiddenApiUses', () => {
         11,
       ),
       use(...sleep, 'demo.Legacy$Worker', 'Legacy.java', 15),
-      use(
-        'java.lang.Thread#<init>(**)',
-        'new-thread',
-        'Do not start threads by hand.',
-        'demo.Legacy',
-        'Legacy.java',
-        16,
-      ),
+      use('java.lang.Thread#start()', 'new-thread', NEW_THREAD, 'demo.Legacy', 'Legacy.java', 16),
       use(...sleep, 'demo.Legacy$Worker', 'Legacy.java', 30),
       use(
         'java.lang.Runtime#exec(java.lang.String, java.lang.String[])',
@@ -112,14 +116,11 @@ describe('readForbiddenApiFindings', () => {
       findings.map(() => ['forbiddenapis', 'enforceable']),
     );
     expect(findings.map(({ message }) => message)).toEqual([
-      'Use java.time instead of the legacy date classes. Found: Date. ' +
-        'If it is right here, add an exception for forbiddenapis/legacy-date-time in nitpicker.config.json.',
-      'Do not sleep in production code. Found: Thread.sleep. ' +
-        'If it is right here, add an exception for forbiddenapis/thread-sleep in nitpicker.config.json.',
-      'Do not start threads by hand. Found: new Thread. ' +
-        'If it is right here, add an exception for forbiddenapis/new-thread in nitpicker.config.json.',
-      'Do not sleep in production code. Found: Thread.sleep. ' +
-        'If it is right here, add an exception for forbiddenapis/thread-sleep in nitpicker.config.json.',
+      'Use java.time instead of the legacy date classes. Found: Date.',
+      'Do not sleep in production code. Found: Thread.sleep.',
+      'Do not start threads by hand. Submit the work to an injected ExecutorService ' +
+        '(a ThreadFactory or a shutdown hook may still create the Thread). Found: Thread.start.',
+      'Do not sleep in production code. Found: Thread.sleep.',
     ]);
     expect(() => parseAnalyzerReport({ findings }, 'java')).not.toThrow();
   });
@@ -230,7 +231,92 @@ describe('readForbiddenApiFindings', () => {
     expect(read([':4', ", field declaration of 'at'"])).toEqual([expect.any(String), field]);
   });
 
-  it('skips a Date another API returns that the same statement converts with toInstant()', () => {
+  it('bans every way to start a thread by hand and names the builder in the message', () => {
+    const newThread = SIGNATURES.split(/\n\s*\n/)
+      .filter((group) => group.includes('@defaultMessage new-thread:'))
+      .flatMap((group) => group.split('\n').filter((line) => /^[a-z]/.test(line)));
+    const root = project();
+    writeFileSync(
+      path.join(root, 'build/nitpicker/forbidden-apis.txt'),
+      [
+        `ERROR: ${METHOD}: java.lang.Thread$Builder#start(java.lang.Runnable) [new-thread: x]`,
+        'ERROR:   in demo.Legacy (Legacy.java:9)',
+      ].join('\n'),
+    );
+
+    const [finding] = readForbiddenApiFindings(path.join(root, 'build/nitpicker'), {
+      locate,
+      projectRoot: root,
+    });
+
+    expect(newThread).toEqual([
+      'java.lang.Thread#start()',
+      'java.lang.Thread#startVirtualThread(java.lang.Runnable)',
+      'java.lang.Thread$Builder#start(java.lang.Runnable)',
+    ]);
+    expect(finding.message).toBe('x Found: Thread.Builder.start.');
+  });
+
+  it('places a wrapped or split declaration, keeps one it cannot place on its class line and drops synthetic ones', () => {
+    const root = project();
+    const banned =
+      'ERROR: Forbidden class/interface use: java.util.Date [legacy-date-time: Use java.time.]';
+    const declarations = [
+      "Report (Report.java, method declaration of 'build(java.lang.String,java.lang.String," +
+        "java.lang.String,java.lang.String,java.lang.String,java.util.Date)')",
+      "Report (Report.java, method declaration of 'summary(java.lang.String,java.util.Date)')",
+      "Report (Report.java, method declaration of 'startOf(java.lang.String)')",
+      "Report (Report.java, field declaration of 'at')",
+      "Report (Report.java, method declaration of 'getAt()')",
+      "Report (Report.java, method declaration of 'generated(java.util.Date)')",
+      "Report (Report.java, method declaration of 'lambda$summary$0(java.util.Date)')",
+      "Report$ReportBuilder (Report.java, field declaration of 'at')",
+      "Report$ReportBuilder (Report.java, method declaration of 'at(java.util.Date)')",
+      "Report$1 (Report.java, field declaration of 'val$date')",
+    ];
+    writeFileSync(
+      path.join(root, 'build/nitpicker/forbidden-apis.txt'),
+      declarations.flatMap((place) => [banned, `ERROR:   in demo.${place}`]).join('\n'),
+    );
+    writeFileSync(
+      path.join(root, 'src/main/java/demo/Report.java'),
+      [
+        'package demo;',
+        '',
+        '@Getter',
+        'public final class Report {',
+        '  /** The Date at which it was issued; see {@link #summary(String, Date)}. */',
+        '  private Date at;',
+        '',
+        '  public static String build(',
+        '      String title, String author, String owner,',
+        '      String region,',
+        '      String currency,',
+        '      Date issuedOn) {',
+        '    return title + "summary(Date x) {";',
+        '  }',
+        '',
+        '  public static String summary(String title, Date issuedOn) {',
+        '    return title;',
+        '  }',
+        '',
+        '  public static Date',
+        '      startOf(String title) {',
+        '    return null;',
+        '  }',
+        '}',
+      ].join('\n'),
+    );
+
+    const findings = readForbiddenApiFindings(path.join(root, 'build/nitpicker'), {
+      locate,
+      projectRoot: root,
+    });
+
+    expect(findings.map(({ location }) => location.line)).toEqual([8, 16, 21, 6, 4]);
+  });
+
+  it('skips as many Date uses on a line as it converts with toInstant() right away', () => {
     const root = project();
     const legacyDate = (line) => [
       'ERROR: Forbidden class/interface use: java.util.Date [legacy-date-time: Use java.time.]',
@@ -238,7 +324,9 @@ describe('readForbiddenApiFindings', () => {
     ];
     writeFileSync(
       path.join(root, 'build/nitpicker/forbidden-apis.txt'),
-      [3, 7, 8, 10, 11].flatMap((line) => legacyDate(line)).join('\n'),
+      [3, 8, 10, 11, 11, 13, 13, 13, 15, 16, 18, 21, 21, 23, 23]
+        .flatMap((line) => legacyDate(line))
+        .join('\n'),
     );
     writeFileSync(
       path.join(root, 'src/main/java/demo/Expiry.java'),
@@ -254,6 +342,18 @@ describe('readForbiddenApiFindings', () => {
         '  }',
         '  Instant held(X509Certificate certificate) { Date date = certificate.getNotAfter();',
         '    return new Date().toInstant(); }',
+        '  Optional<Instant> referenced(Optional<X509Certificate> certificate) {',
+        '    return certificate.map(X509Certificate::getNotAfter).map(Date::toInstant); }',
+        '  List<Instant> valid(List<X509Certificate> certificates) {',
+        '    return certificates.stream().filter(c -> c.getNotAfter().after(c.getNotBefore()))',
+        '        .map(c -> c.getNotAfter().toInstant()).toList(); }',
+        '  Instant early(X509Certificate certificate) {',
+        '    return certificate.getNotAfter()',
+        '        .toInstant(); }',
+        '  long validity(X509Certificate cert) {',
+        '    return cert.getNotAfter().getTime() - cert.getNotBefore().toInstant().toEpochMilli(); }',
+        '  void mixed(Date when) {',
+        '    use(when.getTime(), clock().toInstant()); }',
         '}',
       ].join('\n'),
     );
@@ -266,6 +366,106 @@ describe('readForbiddenApiFindings', () => {
     expect(findings.map(({ rule, location }) => [rule, location.line])).toEqual([
       ['legacy-date-time', 10],
       ['legacy-date-time', 11],
+      ['legacy-date-time', 15],
+      ['legacy-date-time', 21],
+      ['legacy-date-time', 23],
     ]);
   });
+});
+
+describe('forbiddenapis identities and declaration lines', () => {
+  afterEach(() => {
+    removeGuardProjects();
+  });
+
+  const SLEEP =
+    'ERROR: Forbidden method invocation: java.lang.Thread#sleep(**) [thread-sleep: Do not sleep.]';
+  const PAUSE = javaClass('class Pause {', [
+    'void a() { Thread.sleep(1); }',
+    'void b() { Thread.sleep(2); }',
+  ]);
+  const PAUSE_ADDED = javaClass('class Pause {', [
+    'void c() { Thread.sleep(3); }',
+    'void a() { Thread.sleep(1); }',
+    'void b() { Thread.sleep(2); }',
+  ]);
+  const EXPIRY = ['expiry(java.util.Date)', '  Date expiry(Date at) {'];
+  const CONSTRUCTOR = ['<init>(java.util.Date)', '  Held(Date at) {'];
+
+  function forbiddenFindings(files) {
+    const root = guardProject(files);
+    return readForbiddenApiFindings(path.join(root, 'reports'), {
+      locate: (packageDirectory, fileName) => `src/main/java/${packageDirectory}/${fileName}`,
+      projectRoot: root,
+    });
+  }
+
+  function sleeps(className, lines) {
+    return lines.flatMap((line) => [
+      SLEEP,
+      `ERROR:   in ${className} (Pause.java:${String(line)})`,
+    ]);
+  }
+
+  it('keeps the forbiddenapis uses of a class moved to another package', () => {
+    const base = forbiddenFindings({
+      'src/main/java/demo/Pause.java': PAUSE,
+      'reports/forbidden-apis.txt': sleeps('demo.Pause', [3, 4]).join('\n'),
+    });
+    const head = forbiddenFindings({
+      'src/main/java/moved/Pause.java': PAUSE.replace('package demo;', 'package moved;'),
+      'reports/forbidden-apis.txt': sleeps('moved.Pause', [3, 4]).join('\n'),
+    });
+
+    expect(
+      newLines(
+        base,
+        head,
+        new Map([['src/main/java/demo/Pause.java', 'src/main/java/moved/Pause.java']]),
+      ),
+    ).toEqual([]);
+  });
+
+  it('reports the forbiddenapis use of an added line, not of a legacy line', () => {
+    const base = forbiddenFindings({
+      'src/main/java/demo/Pause.java': PAUSE,
+      'reports/forbidden-apis.txt': sleeps('demo.Pause', [3, 4]).join('\n'),
+    });
+    const head = forbiddenFindings({
+      'src/main/java/demo/Pause.java': PAUSE_ADDED,
+      'reports/forbidden-apis.txt': sleeps('demo.Pause', [3, 4, 5]).join('\n'),
+    });
+
+    expect(newLines(base, head)).toEqual([['src/main/java/demo/Pause.java', 3]]);
+  });
+
+  it.each([
+    ['a call returned', '    return expiry(new Date(1));', EXPIRY],
+    ['a constructor call', '    Held held = new Held(new Date(1));', CONSTRUCTOR],
+    ['a thrown exception', '    throw new Held(new Date(1));', CONSTRUCTOR],
+  ])(
+    'skips %s and places the declaration on the line that declares it',
+    (_, use, [member, declaration]) => {
+      const findings = forbiddenFindings({
+        'src/main/java/demo/Held.java': [
+          'package demo;',
+          'class Held extends RuntimeException {',
+          '  Object first() {',
+          use,
+          '  }',
+          declaration,
+          '    return at;',
+          '  }',
+          '}',
+          '',
+        ].join('\n'),
+        'reports/forbidden-apis.txt': [
+          'ERROR: Forbidden class/interface use: java.util.Date [legacy-date-time: Use java.time.]',
+          `ERROR:   in demo.Held (Held.java, method declaration of '${member}')`,
+        ].join('\n'),
+      });
+
+      expect(findings.map((finding) => finding.location.line)).toEqual([6]);
+    },
+  );
 });
