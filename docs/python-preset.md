@@ -431,7 +431,9 @@ assert_never(value)`, or an `if`/`elif` chain ending in `else: assert_never(valu
   `python.exceptions` refuses it, so there is one place for it in every preset. The message names
   both.
 - **Measurement.** The pytest plugin of [slow tests](#slow-tests) records the messages in the run
-  that measures coverage, on both snapshots. `unittest` runs are not checked.
+  that measures coverage, on both snapshots. Standard error is read from pytest's capture, so a
+  project that turns capture off (`-s` in `addopts`) shows only its log records and warnings.
+  `unittest` runs are not checked.
 
 ## Slice 1: tools, reports and identities
 
@@ -929,7 +931,10 @@ and CRAP rules.
   callee is caught in its unchanged caller (not reused), and a project with xdist in its `addopts`
   and an excluded Python 2 file mutates with the `[tool.mutmut]` that nitpicker adds. The
   `unittest` project mutates with a `[tool.mutmut]` that nitpicker adds, and the xdist project with
-  its own `[tool.mutmut]` runs without a `-n 0` workaround.
+  its own `[tool.mutmut]` runs without a `-n 0` workaround. A change that adds a test sleeping past
+  a lowered `unitTestSeconds` and two tests that log a warning or print to standard error fails
+  `slow-test`, `fixed-sleep` and `test-console-output`, and passes once `python.exceptions`,
+  `testConsole.allow` and a top-level exception lift them.
 - Slice 2: `languages/python/rules/rule-hints.test.mjs` (always on) checks that every rule has a
   banned and an allowed fixture directory and that its message names the allowed form and the
   exception route; `type-check.test.mjs`, `rules-report.test.mjs`, `python-types.test.mjs`,

@@ -177,11 +177,18 @@ describe('the Python facts bundle', () => {
     const keys = definitions.map(({ key }) => key);
 
     expect(new Set(keys).size).toBe(keys.length);
-    expect(definitions[1]).toMatchObject({
+    expect(definitions[1]).toEqual({
       file: 'src/shop/orders/cart.py',
       name: 'first',
       kind: 'function',
+      line: 1,
+      lines: 2,
+      exported: true,
+      tokens: ['body'],
+      literal: false,
+      usedLocally: false,
       text: 'function|body',
+      key: expect.any(String),
       entry: false,
     });
   });

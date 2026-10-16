@@ -29,7 +29,7 @@ export function pythonSources(context) {
     .filter((file) => file !== undefined);
 }
 
-export function rulesOptions({ projectRoot, project }) {
+function rulesOptions({ projectRoot, project }) {
   const modules = listProductionModules(projectRoot, project.sourceRoots);
   return {
     modules: Object.fromEntries(modules.map(({ file, module }) => [file, module])),

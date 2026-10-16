@@ -79,7 +79,7 @@ function fromImports(file, statement, { resolver, scanned }) {
   });
 }
 
-function mergedStatements(file, entries, statement, role) {
+function mergedStatements(entries, statement, { file, role }) {
   const groups = new Map();
   for (const { to, names, reexport = false } of entries) {
     if (to === undefined) {
@@ -104,7 +104,7 @@ function importFacts(file, context) {
       statement.module === null && statement.level === 0
         ? moduleImports(file, statement, context.resolver)
         : fromImports(file, statement, context);
-    return mergedStatements(file, entries, statement, role);
+    return mergedStatements(entries, statement, { file, role });
   });
 }
 
@@ -164,8 +164,10 @@ function entryPointNames(entryPoints, resolver) {
 export function factsBundle({ modules, scanned, isTest, published = false, entryPoints = [] }) {
   const files = Object.keys(scanned).sort();
   const resolver = createResolver(modules, files);
-  const roleOf = (file) => (isTest(file) ? 'test' : 'production');
   const entryNames = entryPointNames(entryPoints, resolver);
+  function roleOf(file) {
+    return isTest(file) ? 'test' : 'production';
+  }
   const context = { resolver, scanned, roleOf, entryNames };
   const moduleNames = new Map(modules.map(({ file, module }) => [file, module]));
   return {
