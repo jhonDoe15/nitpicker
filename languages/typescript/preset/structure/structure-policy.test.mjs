@@ -75,6 +75,19 @@ describe('structural metrics report', () => {
     ).toEqual(['<anonymous>']);
   });
 
+  it('parses JSX in .tsx files', () => {
+    const source = [
+      'export function NameList({ names }: { readonly names: readonly string[] }) {',
+      '  return <ul>{names.map((name) => <li key={name}>{name}</li>)}</ul>;',
+      '}',
+      '',
+    ].join('\n');
+
+    expect(analyzeSource(source, 'name-list.tsx').functions.map((entry) => entry.function)).toEqual(
+      ['NameList', '<anonymous>'],
+    );
+  });
+
   it('fails visibly when TypeScript syntax cannot be parsed', () => {
     expect(() => analyzeSource('export function broken( {', 'broken.ts')).toThrow(
       /Unable to parse/,

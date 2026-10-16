@@ -1,6 +1,7 @@
+import type { runGreeting } from '../../greeting/index.js';
 import { countNonBlank } from '../domain/tally.js';
 
-export type Writer = { readonly write: (text: string) => void };
+export type Writer = Parameters<typeof runGreeting>[1];
 
 export function runTally(input: unknown, writer: Writer): void {
   writer.write(`${describeInput(input)}\n`);
