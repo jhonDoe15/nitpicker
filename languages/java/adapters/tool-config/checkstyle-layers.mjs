@@ -1,14 +1,17 @@
 import { childrenNamed, parseXml } from '../../ingest/common.mjs';
 import { renderXml } from './xml-write.mjs';
 
-const DECLARATION =
-  '<?xml version="1.0" encoding="UTF-8"?>\n<!DOCTYPE module PUBLIC "-//Checkstyle//DTD Checkstyle Configuration 1.3//EN" "https://checkstyle.org/dtds/configuration_1_3.dtd">\n';
+const DOCTYPE_ID = '-//Checkstyle//DTD Checkstyle Configuration 1.3//EN';
+const DOCTYPE_URL = 'https://checkstyle.org/dtds/configuration_1_3.dtd';
+const XML_PROLOG = '<?xml version="1.0" encoding="UTF-8"?>';
+const DECLARATION = `${XML_PROLOG}\n<!DOCTYPE module PUBLIC "${DOCTYPE_ID}" "${DOCTYPE_URL}">\n`;
 const INLINE_FILTERS = new Set([
   'SuppressWarningsFilter',
   'SuppressWarningsHolder',
   'SuppressionCommentFilter',
   'SuppressWithNearbyCommentFilter',
   'SuppressWithNearbyTextFilter',
+  'SuppressWithPlainTextCommentFilter',
   'SuppressionXpathFilter',
 ]);
 
@@ -40,15 +43,13 @@ function isFilter(module) {
   return nameOf(module).endsWith('Filter');
 }
 
-function counterpart(candidates, module) {
+function counterparts(candidates, module) {
   const sameName = candidates.filter((other) => nameOf(other) === nameOf(module));
   const id = idOf(module);
-  if (id === undefined) {
-    return sameName.length === 1
-      ? sameName[0]
-      : sameName.find((other) => idOf(other) === undefined);
+  if (sameName.length === 1 || id === undefined) {
+    return sameName;
   }
-  return sameName.find((other) => idOf(other) === id);
+  return sameName.filter((other) => idOf(other) === id);
 }
 
 function mergedProperties(base, other, otherWins) {
@@ -68,15 +69,16 @@ function mergeModules(base, other, otherWins) {
   const result = [...base];
   const used = new Set();
   for (const module of other) {
-    const match = isFilter(module)
-      ? undefined
-      : counterpart(
+    const matches = isFilter(module)
+      ? []
+      : counterparts(
           result.filter((candidate) => !used.has(candidate) && !isFilter(candidate)),
           module,
         );
-    if (match === undefined) {
+    if (matches.length === 0) {
       result.push(module);
-    } else {
+    }
+    for (const match of matches) {
       used.add(match);
       result[result.indexOf(match)] = mergeModule(match, module, otherWins);
     }

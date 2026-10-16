@@ -375,11 +375,15 @@ Notes on the glue in `java-reports.mjs`:
 **The project's PMD ruleset.** With `tools.pmd.precedence` listing `"project"`, PMD runs
 nitpicker's ruleset and the project's together, on Gradle and Maven alike
 (`adapters/tool-config/pmd-layers.mjs`). A rule the project names on its own, or defines inline,
-replaces nitpicker's copy of the rule (PMD keeps the first reference of a rule), so the project's
-properties, priority and `exclude-pattern`s win for it; a whole-category reference adds only the
-rules nitpicker does not run, and an `<exclude>` in the project's file cannot turn a nitpicker
-rule off. A rule the project names singly runs with PMD's defaults for the properties it does not
-set, not with nitpicker's tuned ones.
+is laid over nitpicker's definition of the rule: nitpicker's copy is excluded and the merged rule goes into
+the project's ruleset file (PMD keeps the first reference of a rule, and a ruleset's `exclude-pattern`
+applies to the file that holds it), so the project's priority, message and named properties win while the
+properties it leaves unset keep nitpicker's values (xpath, `violationSuppressXPath`, `ignore...`). A
+whole-category reference enables the rules nitpicker leaves out of that category (as single `<rule ref>`
+entries, minus the project's `<exclude>`s) and nothing nitpicker already runs, and an `<exclude>` in the
+project's file cannot turn a nitpicker rule off. With `["nitpicker", "project"]` nitpicker's values win
+where both set one. A category rule that nitpicker also runs through its test-only ruleset
+(`TestClassWithoutTestCases`) runs once more with PMD's defaults when the project enables the category.
 
 **PMD rules tuned by nitpicker.** These rules of the rule set allow a narrower form than PMD's
 default, and their messages name it:

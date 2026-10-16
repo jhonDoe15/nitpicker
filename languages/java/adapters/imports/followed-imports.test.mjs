@@ -90,11 +90,15 @@ describe('the Gradle run', () => {
       mkdirSync(path.dirname(path.join(root, file)), { recursive: true });
       writeFileSync(path.join(root, file), text);
     }
+    const source = 'com.puppycrawl.tools.checkstyle.checks.imports.AvoidStarImportCheck';
+    const message = "Using the '.*' form of import should be avoided.";
     const error = (line) =>
-      `<error line="${String(line)}" severity="warning" message="Using the '.*' form of import should be avoided." source="com.puppycrawl.tools.checkstyle.checks.imports.AvoidStarImportCheck"/>`;
+      `<error line="${String(line)}" severity="warning" message="${message}" source="${source}"/>`;
+    const fileEntry = (name) =>
+      `<file name="${path.join(root, name)}">${error(3)}${error(4)}</file>`;
     writeFileSync(
       path.join(root, 'checkstyle-report.xml'),
-      `<checkstyle version="10.21.1"><file name="${path.join(root, MAIN)}">${error(3)}${error(4)}</file><file name="${path.join(root, TEST)}">${error(3)}${error(4)}</file></checkstyle>`,
+      `<checkstyle version="10.21.1">${fileEntry(MAIN)}${fileEntry(TEST)}</checkstyle>`,
     );
     return root;
   }

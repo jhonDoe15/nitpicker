@@ -6,9 +6,14 @@ const NITPICKER = `<?xml version="1.0"?>
   <description>n</description>
   <rule ref="category/java/errorprone.xml">
     <exclude name="AvoidLiteralsInIfCondition"/>
+    <exclude name="TestClassWithoutTestCases"/>
   </rule>
-  <rule ref="category/java/errorprone.xml/AvoidLiteralsInIfCondition">
-    <properties><property name="ignoreMagicNumbers" value="0,1"/></properties>
+  <rule ref="category/java/errorprone.xml/AvoidLiteralsInIfCondition" message="Name this number.">
+    <priority>2</priority>
+    <properties>
+      <property name="ignoreMagicNumbers" value="0,1"/>
+      <property name="ignoreExpressions" value="true"/>
+    </properties>
   </rule>
   <rule ref="category/java/bestpractices.xml">
     <exclude name="UnitTestShouldIncludeAssert"/>
@@ -16,7 +21,9 @@ const NITPICKER = `<?xml version="1.0"?>
   <rule ref="category/java/bestpractices.xml/UnitTestShouldIncludeAssert">
     <properties><property name="extraAssertMethodNames" value="andExpect,verifyComplete"/></properties>
   </rule>
-  <rule name="OwnRule" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule">
+  <rule name="OwnRule" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
+        message="Own message.">
+    <description>Own description.</description>
     <properties><property name="xpath"><value><![CDATA[//A[@B < 1]]]></value></property></properties>
   </rule>
   <rule ref="category/java/design.xml/AvoidCatchingGenericException"/>
@@ -45,7 +52,7 @@ const layer = (options) =>
   layerPmdRulesets({ nitpickerPath: NITPICKER_PATH, nitpickerText: NITPICKER, ...options });
 
 describe('layering the project ruleset over nitpicker', () => {
-  it('replaces the rules the project names and keeps nitpicker for the rest', () => {
+  it('overlays the project rules on nitpicker definitions and keeps the rest of nitpicker', () => {
     const { nitpicker, project, replaced } = layer({ projectText: PROJECT });
 
     expect(replaced).toEqual(['AvoidLiteralsInIfCondition', 'OwnRule']);
@@ -62,43 +69,88 @@ describe('layering the project ruleset over nitpicker', () => {
       .toBe(`${HEADER}<ruleset name="project" xmlns="http://pmd.sourceforge.net/ruleset/2.0.0">
   <description>p</description>
   <exclude-pattern>.*/generated/.*</exclude-pattern>
+  <rule ref="category/java/errorprone.xml/TestClassWithoutTestCases"/>
   <rule ref="category/java/design.xml">
     <exclude name="LawOfDemeter"/>
     <exclude name="AvoidCatchingGenericException"/>
   </rule>
   <rule ref="category/java/codestyle.xml"/>
-  <rule ref="category/java/errorprone.xml/AvoidLiteralsInIfCondition">
+  <rule ref="category/java/errorprone.xml/AvoidLiteralsInIfCondition" message="Name this number.">
+    <priority>2</priority>
     <properties>
+      <property name="ignoreExpressions" value="true"/>
       <property name="ignoreMagicNumbers" value="0,1,7"/>
     </properties>
   </rule>
-  <rule name="OwnRule" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule">
+  <rule name="OwnRule" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule" message="Own message.">
+    <description>Own description.</description>
     <priority>1</priority>
+    <properties>
+      <property name="xpath">
+        <value>//A[@B &lt; 1]</value>
+      </property>
+    </properties>
   </rule>
   <rule ref="category/java/performance.xml/AvoidArrayLoops"/>
 </ruleset>
 `);
   });
 
-  it('lets nitpicker win where both name a rule when nitpicker is first', () => {
+  it('does not enable a category rule nitpicker left out when the project excludes it too', () => {
+    const projectText = `<ruleset name="project" xmlns="http://pmd.sourceforge.net/ruleset/2.0.0">
+  <description>p</description>
+  <rule ref="category/java/errorprone.xml">
+    <exclude name="TestClassWithoutTestCases"/>
+    <exclude name="CloseResource"/>
+  </rule>
+</ruleset>`;
+
+    expect(layer({ projectText }).project)
+      .toBe(`${HEADER}<ruleset name="project" xmlns="http://pmd.sourceforge.net/ruleset/2.0.0">
+  <description>p</description>
+</ruleset>
+`);
+  });
+
+  it('keeps the values nitpicker sets when nitpicker is first and adds what the project sets', () => {
     const { nitpicker, project, replaced } = layer({ projectText: PROJECT, projectWins: false });
 
-    expect(replaced).toEqual([]);
+    expect(replaced).toEqual(['AvoidLiteralsInIfCondition', 'OwnRule']);
     expect(nitpicker)
       .toBe(`${HEADER}<ruleset name="nitpicker" xmlns="http://pmd.sourceforge.net/ruleset/2.0.0">
   <description>Nitpicker's PMD rules, without the rules the project's ruleset sets itself.</description>
-  <rule ref="/nitpicker/pmd-ruleset.xml"/>
+  <rule ref="/nitpicker/pmd-ruleset.xml">
+    <exclude name="AvoidLiteralsInIfCondition"/>
+    <exclude name="OwnRule"/>
+  </rule>
 </ruleset>
 `);
     expect(project)
       .toBe(`${HEADER}<ruleset name="project" xmlns="http://pmd.sourceforge.net/ruleset/2.0.0">
   <description>p</description>
   <exclude-pattern>.*/generated/.*</exclude-pattern>
+  <rule ref="category/java/errorprone.xml/TestClassWithoutTestCases"/>
   <rule ref="category/java/design.xml">
     <exclude name="LawOfDemeter"/>
     <exclude name="AvoidCatchingGenericException"/>
   </rule>
   <rule ref="category/java/codestyle.xml"/>
+  <rule ref="category/java/errorprone.xml/AvoidLiteralsInIfCondition" message="Name this number.">
+    <priority>2</priority>
+    <properties>
+      <property name="ignoreMagicNumbers" value="0,1"/>
+      <property name="ignoreExpressions" value="true"/>
+    </properties>
+  </rule>
+  <rule name="OwnRule" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule" message="Own message.">
+    <description>Own description.</description>
+    <priority>1</priority>
+    <properties>
+      <property name="xpath">
+        <value>//A[@B &lt; 1]</value>
+      </property>
+    </properties>
+  </rule>
   <rule ref="category/java/performance.xml/AvoidArrayLoops"/>
 </ruleset>
 `);
@@ -123,25 +175,43 @@ describe('layering the project ruleset over nitpicker', () => {
 `);
   });
 
-  it('leaves the assertion rule to the project when the project names it', () => {
-    const projectText = PROJECT.replace(
-      'category/java/performance.xml/AvoidArrayLoops',
-      'category/java/bestpractices.xml/UnitTestShouldIncludeAssert',
-    );
+  it('keeps the measured helpers in the assertion rule the project names, unless it sets the list', () => {
+    const named = (body) =>
+      `<ruleset name="project" xmlns="http://pmd.sourceforge.net/ruleset/2.0.0">
+  <description>p</description>
+  <rule ref="category/java/bestpractices.xml/UnitTestShouldIncludeAssert">${body}</rule>
+</ruleset>`;
+    const projectFile = (
+      properties,
+    ) => `${HEADER}<ruleset name="project" xmlns="http://pmd.sourceforge.net/ruleset/2.0.0">
+  <description>p</description>
+  <rule ref="category/java/bestpractices.xml/UnitTestShouldIncludeAssert">
+    <priority>1</priority>
+    <properties>
+      <property name="extraAssertMethodNames" value="${properties}"/>
+    </properties>
+  </rule>
+</ruleset>
+`;
 
-    const { nitpicker, replaced } = layer({ projectText, assertionHelpers: ['expectOk'] });
+    const kept = layer({
+      projectText: named('<priority>1</priority>'),
+      assertionHelpers: ['expectOk'],
+    });
+    const own = layer({
+      projectText: named(
+        '<properties><property name="extraAssertMethodNames" value="mine"/></properties><priority>1</priority>',
+      ),
+      assertionHelpers: ['expectOk'],
+    });
 
-    expect(replaced).toEqual([
-      'AvoidLiteralsInIfCondition',
-      'OwnRule',
-      'UnitTestShouldIncludeAssert',
-    ]);
-    expect(nitpicker)
+    expect(kept.replaced).toEqual(['UnitTestShouldIncludeAssert']);
+    expect(kept.project).toBe(projectFile('andExpect,verifyComplete,expectOk'));
+    expect(own.project).toBe(projectFile('mine'));
+    expect(kept.nitpicker)
       .toBe(`${HEADER}<ruleset name="nitpicker" xmlns="http://pmd.sourceforge.net/ruleset/2.0.0">
   <description>Nitpicker's PMD rules, without the rules the project's ruleset sets itself.</description>
   <rule ref="/nitpicker/pmd-ruleset.xml">
-    <exclude name="AvoidLiteralsInIfCondition"/>
-    <exclude name="OwnRule"/>
     <exclude name="UnitTestShouldIncludeAssert"/>
   </rule>
 </ruleset>
