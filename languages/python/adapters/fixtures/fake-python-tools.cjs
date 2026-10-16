@@ -17,12 +17,11 @@
 //   sources.txt          one path per line: what `ruff check --show-files` lists (default: every
 //                        .py file below the project, except .venv)
 //   type-errors.txt      printed by mypy as its report (exit 1 when not empty)
-//   pyright.json         { generalDiagnostics } printed by pyright as its report, relative files made
-//                        absolute (exit 1 when it has diagnostics)
+//   pyright.json         { generalDiagnostics } printed by pyright and basedpyright as their
+//                        report, relative files made absolute (exit 1 when it has diagnostics)
 //   rules.json           written by the nitpicker rules script (default: no findings)
 //   structure-data.json  written as the structure metrics report of `python structure_metrics.py`
 //                        (default: no functions)
-//   lizard-data.csv      printed by `lizard --csv` (default: no functions); `lizard --version` is 1.24.1
 //   no-mutmut.txt        the mutmut version probe fails
 //   mutmut-version.txt   the version the mutmut probe prints (default 3.8.0)
 //   mutants-data.json    { "<source path>": { "exitCodes": {...}, "mutated": "<text>" } }: what
@@ -51,6 +50,10 @@ const MUTMUT_MESSAGES = {
   1: 'Stopping early, because we could not find any test case for any mutant.\n',
 };
 const PYRIGHT_REPORT_FAILURE = 1;
+const PYRIGHT_VERSIONS = {
+  pyright: 'pyright 1.1.390\n',
+  basedpyright: 'basedpyright 1.40.2\nbased on pyright 1.1.414\n',
+};
 
 function runFake({ tool, args, cwd, env }) {
   const result = { status: 0, stdout: '', stderr: '' };
@@ -167,7 +170,7 @@ function runFake({ tool, args, cwd, env }) {
 
   function pyright() {
     if (args[0] === '--version') {
-      out('pyright 1.1.390\n');
+      out(PYRIGHT_VERSIONS[tool]);
       return;
     }
     const { generalDiagnostics = [] } = exists('pyright.json')
@@ -230,14 +233,6 @@ function runFake({ tool, args, cwd, env }) {
     out(`8.3.1 ${flag('pytest-cov.txt')} ${flag('xdist.txt')}\n`);
   }
 
-  function lizard() {
-    if (args[0] === '--version') {
-      out('1.24.1\n');
-    } else if (exists('lizard-data.csv')) {
-      out(read('lizard-data.csv'));
-    }
-  }
-
   function seededMutants() {
     return existsSync(at('mutants'))
       ? readdirSync(at('mutants'), { recursive: true }).filter((file) => file.endsWith('.meta'))
@@ -297,8 +292,8 @@ function runFake({ tool, args, cwd, env }) {
     coverage,
     mypy,
     pyright,
+    basedpyright: pyright,
     python,
-    lizard,
     mutmut,
     'lint-imports': lintImports,
   };
