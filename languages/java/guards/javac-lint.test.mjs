@@ -188,7 +188,7 @@ describe('readLintFindings', () => {
     const uncompared = compare(readLintFindings(baseReports, { projectRoot: base }));
 
     expect(uncompared).toEqual(
-      [0, 2, 3, 1]
+      [2, 3, 0, 1]
         .map((index) => PROJECT_FINDINGS[index])
         .map((finding) => ({
           ...finding,
