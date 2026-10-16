@@ -174,26 +174,35 @@ line) is a finding.
 
 ## Tests
 
-- Tests are files in `test/` (`*.test.js`, `.mjs`) run by the runner the project uses, found from its
-  `test` script, a runner config file or a dependency (Vitest, Jest, `node:test` or Mocha; the
-  examples below are Vitest). In a Vitest project a test file must `import` from `'vitest'`:
-  `require('vitest')` fails, so a test is ESM even when the code it tests is CommonJS:
+- Tests are files in `test/` run by the runner the project uses, found from its `test` script, a
+  runner config file or a dependency (Vitest, Jest, `node:test` or Mocha; the examples below are
+  Vitest). Name them the way that runner finds them: its own file patterns, or the files the test
+  script or runner config names (`*.test.js` or `*.spec.js` for Vitest and Jest). In a Vitest
+  project a test file must `import` from `'vitest'`: `require('vitest')` fails, so a test is ESM
+  even when the code it tests is CommonJS:
   `import { initials } from '../src/main/features/greeting/domain/initials.cjs';`.
 - Every branch you add needs a test: changed-branch coverage and mutation testing run on your
   change. Test each outcome of each union.
 - Test features through their `index.js` with fakes: plain functions returning
   `Promise.resolve(x)` / `Promise.reject(error)`; a non-Error rejection is
   `vi.fn().mockRejectedValue(42)` (`jest.fn()` under Jest, `mock.fn(async () => { throw 42; })`
-  under `node:test`). Read a fake's calls through a helper that throws when the call is missing, not
-  `calls[n]?.`. Spy on `process.stdout` only to test composition-root wiring, and give it a real temp
-  file (`mkdtemp`) rather than `vi.mock` of `node:` modules (`jest.mock`, `mock.module` and the other
-  runners' module mocks count too). The gate restores spies; restore fake timers with
-  `vi.useRealTimers()` in `afterEach` (`jest.useRealTimers()`, `mock.timers.reset()`).
+  under `node:test`, `sinon.stub().rejects(42)` under Mocha with sinon). Read a fake's calls
+  through a helper that throws when the call is missing, not `calls[n]?.`. Spy on `process.stdout` only to test composition-root wiring, and give it a real temp
+  file (`mkdtemp`) rather than `vi.mock` of `node:` modules (`jest.mock`, `mock.module`,
+  `proxyquire`, `esmock` and the other runners' module mocks count too). After each test the gate
+  restores spies and stubs: Vitest's and Jest's mocks, the shared `node:test` `mock`
+  (`mock.restoreAll()`), and sinon's under Mocha (`sinon.restore()`, when the project has sinon).
+  Restore fake timers yourself in `afterEach`: `vi.useRealTimers()` (`jest.useRealTimers()`,
+  `mock.timers.reset()`, `clock.restore()` for a sinon clock).
 - Test data typed from a literal widens (`status: string`): write the array as
   `/** @type {const} */ ([...])`, or annotate the `const` with the typedef.
-- Assert whole outputs with `toEqual`/`toBe`, not `toContain`, `toMatchObject` or `expect.any`.
-  Write `expect` in the test body; asserting helpers don't count. Repeated cases are `it.each`,
-  not loops. The rules above (`for...of` only, no `.then()`, no casts) apply to tests too.
+- Assert whole outputs with `toEqual`/`toBe` (`assert.deepStrictEqual`/`assert.equal`, chai's
+  `expect(x).to.deep.equal`), not `toContain`, `toMatchObject` or `expect.any`. Write the assertion
+  (`expect`, or `assert` under `node:test` and Mocha) in the test body; asserting helpers don't
+  count. Repeated cases are `it.each`; `node:test` and Mocha have no `it.each`, so there write
+  `for (const testCase of cases) { it(testCase.name, () => { ... }); }`, not a loop inside one test.
+  Shared setup goes in `beforeAll` (`before` under `node:test` and Mocha). The rules above
+  (`for...of` only, no `.then()`, no casts) apply to tests too.
 - A shared helper (stdout capture) lives once, in a non-test file such as `test/support/lines.js`.
   When an existing test defines the same helper, make it import the shared one.
 - A surviving mutant no input can kill means the code is redundant: delete or restructure it.
