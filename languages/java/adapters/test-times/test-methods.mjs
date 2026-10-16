@@ -1,9 +1,10 @@
 const CALL = /^(.+?)\((?:[^()]|\([^()]*\))*\)(?:\[\d+\])?$/u;
 const INDEXED = /^([\p{L}_$][\p{L}\p{N}_$]*)\[\d+\]$/u;
-const DECLARED_NAME = String.raw`(\x60[^\x60]+\x60|[\p{L}_$][\p{L}\p{N}_$]*)`;
+const DECLARED_NAME = String.raw`(\x60[^\x60]+\x60|"[^"\n]+"|'[^'\n]+'|[\p{L}_$][\p{L}\p{N}_$]*)`;
+const NAME_QUOTES = /^[\x60"']|[\x60"']$/gu;
 const DYNAMIC_TYPE = String.raw`(?:[\w.]+\s*<[^;{}()]*Dynamic\w*\s*>|Dynamic\w*(?:\[\])?)`;
 const DECLARATION = new RegExp(
-  String.raw`(?:\b(?:void|fun)|${DYNAMIC_TYPE})\s+${DECLARED_NAME}\s*\(`,
+  String.raw`(?:\b(?:void|fun|def)|${DYNAMIC_TYPE})\s+${DECLARED_NAME}\s*\(`,
   'gu',
 );
 const CLASS_DECLARATION = /\bclass\s+([\p{L}_$][\p{L}\p{N}_$]*)/gu;
@@ -64,7 +65,7 @@ function scopeOf(text, className) {
 function declarations(text, scope) {
   const nested = scope.classBody ? outermostClasses(text, scope) : [];
   return [...text.slice(scope.start, scope.end).matchAll(DECLARATION)]
-    .map((match) => ({ name: match[1].replaceAll('`', ''), index: scope.start + match.index }))
+    .map((match) => ({ name: match[1].replace(NAME_QUOTES, ''), index: scope.start + match.index }))
     .filter(({ index }) => !nested.some((range) => range.start < index && index < range.end));
 }
 

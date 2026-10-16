@@ -45,7 +45,15 @@ function suite(className, cases) {
   return `<?xml version="1.0" encoding="UTF-8"?>\n<testsuite name="${className}">\n${testCases}\n</testsuite>\n`;
 }
 
-function findingsFor({ sources = {}, results, base, limits, snapshot = 'head', modulePath }) {
+function findingsFor({
+  sources = {},
+  results,
+  base,
+  limits,
+  snapshot = 'head',
+  modulePath,
+  testRoots = [TEST_ROOT],
+}) {
   const reportRoot = directoryWith(
     Object.fromEntries(
       Object.entries(results).flatMap(([task, xml]) =>
@@ -57,7 +65,7 @@ function findingsFor({ sources = {}, results, base, limits, snapshot = 'head', m
   return readSlowTestFindings({
     reportRoot,
     projectRoot: directoryWith(sources),
-    testRoots: [TEST_ROOT],
+    testRoots,
     limits,
     baseline,
     modulePath,
@@ -151,6 +159,24 @@ describe('testMethod', () => {
     const kotlin = 'class KTest {\n  @Test\n  fun `ships an order`() {\n    check(true)\n  }\n}\n';
 
     expect(testMethod(kotlin, 'ships an order()')?.line).toBe(3);
+  });
+
+  it('finds a Spock feature named with a double- or single-quoted string', () => {
+    const spock = `class OrderSpec extends Specification {
+  def "ships an order"() {
+    expect: true
+  }
+
+  def 'cancels an order'() {
+    expect: true
+  }
+}
+`;
+
+    expect(['ships an order', 'cancels an order'].map((name) => testMethod(spock, name))).toEqual([
+      { line: 2, text: 'def "ships an order"() {\nexpect: true\n}' },
+      { line: 6, text: "def 'cancels an order'() {\nexpect: true\n}" },
+    ]);
   });
 });
 
@@ -291,6 +317,39 @@ describe('readSlowTestFindings', () => {
     });
 
     expect(findings.map(({ identity }) => identity)).toEqual(['test:shop.OrderTest#totals()']);
+  });
+
+  it('finds a Spock specification under a Groovy test root and counts only its edited features', () => {
+    const groovyRoot = 'src/test/groovy';
+    const spec = `${groovyRoot}/shop/OrderSpec.groovy`;
+    const source = (body) =>
+      `package shop\n\nclass OrderSpec extends Specification {\n  def "ships an order"() {\n    expect: ${body}\n  }\n\n  def "cancels an order"() {\n    expect: true\n  }\n}\n`;
+    const results = {
+      test: suite('shop.OrderSpec', [
+        ['ships an order', '6'],
+        ['cancels an order', '6'],
+      ]),
+    };
+    const run = (body) =>
+      findingsFor({
+        sources: { [spec]: source(body) },
+        results,
+        base: { [spec]: source('true') },
+        testRoots: [TEST_ROOT, groovyRoot],
+      });
+
+    expect(run('true')).toEqual([]);
+    expect(run('1 == 1')).toEqual([
+      {
+        tool: 'test-runtime',
+        rule: 'slow-test',
+        path: spec,
+        identity: 'test:shop.OrderSpec#ships an order',
+        location: { line: 4 },
+        message: `OrderSpec ships an order took 6.0 s; a unit test may take 5 s. ${WAITS}, or move it to an integration test source set if it is one. If this is intended, add {"rule":"test-runtime/slow-test","paths":["${spec}"],"reason":"..."} ${EXCEPTIONS}`,
+        classification: 'enforceable',
+      },
+    ]);
   });
 
   it('reports a test whose source is missing on the project root path', () => {

@@ -63,7 +63,11 @@ function sourceOf(locate, className) {
   const parts = className.split('.');
   const simple = parts.pop().split('$')[0];
   const directory = parts.join('/');
-  return locate(directory, `${simple}.java`) ?? locate(directory, `${simple}.kt`);
+  return (
+    locate(directory, `${simple}.java`) ??
+    locate(directory, `${simple}.kt`) ??
+    locate(directory, `${simple}.groovy`)
+  );
 }
 
 function readOptional(root, relative) {
