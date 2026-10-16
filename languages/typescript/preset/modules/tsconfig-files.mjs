@@ -38,3 +38,7 @@ export function isSolutionTsconfig(config) {
     (config.files ?? []).length === 0
   );
 }
+
+export function projectChecksJavascript(projectRoot) {
+  return parsedTsconfig(path.join(projectRoot, PROJECT_TSCONFIG)).options.checkJs === true;
+}
