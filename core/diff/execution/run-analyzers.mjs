@@ -60,6 +60,7 @@ export function runAnalyzers({
   toolRoot,
   snapshot,
   baselineRoot,
+  baselineMovesFile,
   liveProjectRoot,
   headPolicyFile,
   runTasks = runScheduler,
@@ -74,6 +75,7 @@ export function runAnalyzers({
     toolRoot,
     snapshot,
     baselineRoot,
+    baselineMovesFile,
     liveProjectRoot,
   });
 
@@ -179,7 +181,7 @@ function prepareTasks(analyzers, context) {
 }
 
 function createTask(analyzer, context) {
-  const { projectRoot, policyRoot, toolRoot, snapshot, baselineRoot, liveProjectRoot } = context;
+  const { projectRoot, policyRoot, toolRoot, snapshot, liveProjectRoot } = context;
   resolveAnalyzerMetadata(analyzer, { liveProjectRoot, policyRoot });
   validateAnalyzer(analyzer);
   const invocation = analyzer.createInvocation({
@@ -188,7 +190,8 @@ function createTask(analyzer, context) {
     projectPolicyRoot: policyRoot,
     toolRoot,
     snapshot,
-    baselineRoot,
+    baselineRoot: context.baselineRoot,
+    baselineMovesFile: context.baselineMovesFile,
     liveProjectRoot,
   });
   validateInvocation(analyzer.name, invocation);

@@ -1,10 +1,9 @@
-import { mkdtempSync, realpathSync, rmSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync, realpathSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
-import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { afterAll, describe, expect, it } from 'vitest';
+import { withMovesFile } from '../../../../core/diff/git/patches/moves-file.mjs';
 import { PACKAGE_ROOT } from '../../../../core/tooling/tool-resolution.mjs';
-import { commit, fixtureGit } from '../../../../core/diff/git/test-support/git-repository.mjs';
-import { renameFile, writeFiles } from '../../../../core/diff/git/test-support/fixture-files.mjs';
 import { runQualityArea } from '../quality-areas-runner.mjs';
 import { parseArguments } from './arguments.mjs';
 import { baselinePathsOf } from './base-paths.mjs';
@@ -18,82 +17,91 @@ const PRICE = [
   '}',
   '',
 ].join('\n');
-
-const fixture = {};
-
-function stateWith(files) {
-  return { 'app/package.json': '{"name":"app","type":"module"}\n', ...files };
-}
-
-beforeAll(() => {
-  const parent = realpathSync(mkdtempSync(path.join(tmpdir(), 'nitpicker-diff-paths-')));
-  const repository = path.join(parent, 'head');
-  writeFiles(
-    repository,
-    stateWith({ 'app/src/cart/price.ts': PRICE, 'app/src/shop/price.ts': PRICE }),
-  );
-  fixtureGit(repository, ['init', '-q', '--initial-branch=main']);
-  commit(repository, 'base');
-  const baseline = path.join(parent, 'base');
-  fixtureGit(repository, ['worktree', 'add', '-q', '--detach', baseline, 'HEAD']);
-  renameFile(repository, 'app/src/cart/price.ts', 'app/src/orders/price.ts');
-  writeFiles(repository, { 'app/src/orders/price.ts': PRICE.replace('"EUR"', '"GBP"') });
-  commit(repository, 'head');
-  Object.assign(fixture, {
-    parent,
-    projectRoot: path.join(repository, 'app'),
-    baselineRoot: path.join(baseline, 'app'),
-  });
-});
+const MOVES = new Map([['src/cart/price.ts', 'src/orders/price.ts']]);
+const parents = [];
 
 afterAll(() => {
-  rmSync(fixture.parent, { recursive: true, force: true });
+  for (const parent of parents) rmSync(parent, { recursive: true, force: true });
 });
+
+function snapshots(baseFiles, headFiles) {
+  const parent = realpathSync(mkdtempSync(path.join(tmpdir(), 'nitpicker-diff-paths-')));
+  parents.push(parent);
+  for (const [side, files] of [
+    ['base', baseFiles],
+    ['head', headFiles],
+  ]) {
+    for (const [file, text] of Object.entries({ 'package.json': '{"name":"app"}\n', ...files })) {
+      mkdirSync(path.dirname(path.join(parent, side, file)), { recursive: true });
+      writeFileSync(path.join(parent, side, file), text);
+    }
+  }
+  writeFileSync(path.join(parent, 'moves.json'), JSON.stringify([...MOVES]));
+  return {
+    baselineRoot: path.join(parent, 'base'),
+    projectRoot: path.join(parent, 'head'),
+    movesFile: path.join(parent, 'moves.json'),
+  };
+}
+
+function siblingRows(options) {
+  return runQualityArea(parseArguments(options)).then((findings) =>
+    findings
+      .filter(({ rule }) => rule === 'sibling-copy-edit')
+      .map(({ path: file, message }) => [file, message.split(',')[0]]),
+  );
+}
 
 describe('baselinePathsOf', () => {
   it('maps a moved file of the head snapshot to its path in the base checkout', () => {
-    const { projectRoot, baselineRoot } = fixture;
-
-    expect(baselinePathsOf({ snapshot: 'head', projectRoot, baselineRoot })).toEqual(
-      new Map([['src/orders/price.ts', 'src/cart/price.ts']]),
+    const paths = withMovesFile(MOVES, (baselineMovesFile) =>
+      baselinePathsOf({ snapshot: 'head', baselineMovesFile }),
     );
+
+    expect(paths).toEqual(new Map([['src/orders/price.ts', 'src/cart/price.ts']]));
   });
 
-  it('maps nothing for the base snapshot, without a base checkout or outside a repository', () => {
-    const { projectRoot, baselineRoot } = fixture;
-    const outside = realpathSync(mkdtempSync(path.join(tmpdir(), 'nitpicker-no-git-')));
-
-    expect(baselinePathsOf({ snapshot: 'base', projectRoot, baselineRoot })).toEqual(new Map());
-    expect(baselinePathsOf({ snapshot: 'head', projectRoot })).toEqual(new Map());
-    expect(baselinePathsOf({ snapshot: 'head', projectRoot: outside, baselineRoot })).toEqual(
-      new Map(),
+  it('maps nothing for the base snapshot or without a moves file', () => {
+    const base = withMovesFile(MOVES, (baselineMovesFile) =>
+      baselinePathsOf({ snapshot: 'base', baselineMovesFile }),
     );
-    rmSync(outside, { recursive: true, force: true });
+
+    expect(base).toEqual(new Map());
+    expect(baselinePathsOf({ snapshot: 'head' })).toEqual(new Map());
   });
 });
 
 describe('structure runner with a moved copy', () => {
-  it('reports the copy that was moved and edited, and names the one that stayed', async () => {
-    const { projectRoot, baselineRoot } = fixture;
-    const options = parseArguments([
+  const edited = PRICE.replace('"EUR"', '"GBP"');
+
+  function options({ baselineRoot, projectRoot }, extra) {
+    return [
       ...['--analyzer-name', 'structure', '--kind', 'structure'],
       ...['--project-root', projectRoot, '--policy-root', PACKAGE_ROOT],
       ...['--tool-root', PACKAGE_ROOT, '--snapshot', 'head'],
-      ...['--baseline-root', baselineRoot],
-    ]);
+      ...['--baseline-root', baselineRoot, ...extra],
+    ];
+  }
 
-    const findings = await runQualityArea(options);
+  it('reports the copy that was moved and edited, and names the one that stayed', async () => {
+    const roots = snapshots(
+      { 'src/cart/price.ts': PRICE, 'src/shop/price.ts': PRICE },
+      { 'src/orders/price.ts': edited, 'src/shop/price.ts': PRICE },
+    );
 
-    expect(
-      findings
-        .filter(({ rule }) => rule === 'sibling-copy-edit')
-        .map(({ path: file, identity, message }) => [file, identity, message.split(',')[0]]),
-    ).toEqual([
-      [
-        'src/orders/price.ts',
-        'sibling-copy:formatPrice',
-        'formatPrice is edited here but not in src/shop/price.ts',
-      ],
+    const rows = await siblingRows(options(roots, ['--baseline-moves-file', roots.movesFile]));
+
+    expect(rows).toEqual([
+      ['src/orders/price.ts', 'formatPrice is edited here but not in src/shop/price.ts'],
     ]);
+  });
+
+  it('treats the moved and edited copy as new when no move is handed over', async () => {
+    const roots = snapshots(
+      { 'src/cart/price.ts': PRICE, 'src/shop/price.ts': PRICE },
+      { 'src/orders/price.ts': edited, 'src/shop/price.ts': PRICE },
+    );
+
+    expect(await siblingRows(options(roots, []))).toEqual([]);
   });
 });

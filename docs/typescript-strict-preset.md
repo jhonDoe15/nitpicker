@@ -247,14 +247,16 @@ for a file takes that file out of the rule, so a pair of copies that must both s
   `render` are compared. A copy is edited when its normalized text differs from the definition of
   the same name in the base (whitespace, comments, quote style and semicolons do not count), and
   untouched when it is equal; a copy with no base counterpart is new and left to
-  `duplicate-definition`. A file that git reports as moved or renamed is read at its old path, so a
-  moved copy counts as edited or untouched like any other. A pair is compared only when the tokens
-  that differ, after the shared start and end are set aside, fill at most one million table cells
-  (about a thousand tokens each); a bigger pair is skipped. Only the edited copy is reported, naming
-  the untouched ones, so copies that are all edited, in the same way or differently, report nothing.
-  Only the head snapshot reports it, as it reads the base checkout; the identity is the name and
-  file. It covers the same files as `duplicate-definition`, and an exception for either copy's path
-  lifts it. Edit the other copy too, or merge the two.
+  `duplicate-definition`. A file that the diff reports as moved or renamed (the diff engine's own
+  rename detection: at least 50% of the content kept, within git's rename limit of 20000 files) is
+  read at its old path, so a moved copy counts as edited or untouched like any other; a rename that
+  detection misses leaves the copy new. The token comparison stops as soon as 80% can no longer be
+  reached, so large functions with scattered small edits are compared; a pair is skipped only when
+  what lies between its shared start and shared end is more than 20,000 tokens in the two together.
+  Only the edited copy is reported, naming the untouched ones, so copies that are all edited, in the
+  same way or differently, report nothing. Only the head snapshot reports it, as it reads the base
+  checkout; the identity is the name and file. It covers the same files as `duplicate-definition`,
+  and an exception for either copy's path lifts it. Edit the other copy too, or merge the two.
 - `exported-name-collision`: two modules export different definitions under one name and a module
   imports both without aliasing both, so a reader and auto-import can mistake one for the other. A
   module that aliases every colliding import (`import { handler as getUser }`, `import type`,

@@ -1,62 +1,87 @@
-const MAX_COMPARED_CELLS = 1_000_000;
+const MAX_COMPARED_TOKENS = 20_000;
+const vocabulary = new Map();
+const idsByTokens = new WeakMap();
+const profilesByIds = new WeakMap();
 
-function sharedPrefixLength(left, right) {
-  const differing = left.findIndex((token, index) => token !== right[index]);
-  return differing === -1 ? left.length : differing;
+function idOf(token) {
+  if (!vocabulary.has(token)) vocabulary.set(token, vocabulary.size);
+  return vocabulary.get(token);
+}
+
+function idsOf(tokens) {
+  if (!idsByTokens.has(tokens)) idsByTokens.set(tokens, Uint32Array.from(tokens, idOf));
+  return idsByTokens.get(tokens);
+}
+
+function profileOf(ids) {
+  if (!profilesByIds.has(ids)) {
+    const counts = new Map();
+    for (const id of ids) counts.set(id, (counts.get(id) ?? 0) + 1);
+    profilesByIds.set(ids, counts);
+  }
+  return profilesByIds.get(ids);
 }
 
 function overlapLength(left, right) {
-  const counts = new Map();
-  for (const token of left) counts.set(token, (counts.get(token) ?? 0) + 1);
-  return right.filter((token) => {
-    const remaining = counts.get(token) ?? 0;
-    counts.set(token, remaining - 1);
-    return remaining > 0;
-  }).length;
-}
-
-function internedIds(tokens, ids) {
-  return Uint32Array.from(tokens, (token) => {
-    if (!ids.has(token)) ids.set(token, ids.size);
-    return ids.get(token);
-  });
-}
-
-function subsequenceLength(left, right) {
-  const ids = new Map();
-  const rightIds = internedIds(right, ids);
-  const columns = Array.from(rightIds.keys());
-  const lengths = internedIds(left, ids).reduce(
-    (previous, id) => {
-      const next = new Uint32Array(rightIds.length + 1);
-      for (const index of columns) {
-        next[index + 1] =
-          id === rightIds[index] ? previous[index] + 1 : Math.max(previous[index + 1], next[index]);
-      }
-      return next;
-    },
-    new Uint32Array(rightIds.length + 1),
+  const [small, large] = [profileOf(left), profileOf(right)].toSorted((a, b) => a.size - b.size);
+  return [...small].reduce(
+    (shared, [id, count]) => shared + Math.min(count, large.get(id) ?? 0),
+    0,
   );
-  return lengths[rightIds.length];
 }
 
-function sharedLength(left, right) {
+function sharedPrefixLength(left, right) {
+  const differing = left.findIndex((id, index) => id !== right[index]);
+  return differing === -1 ? left.length : differing;
+}
+
+function matchLength(left, right, x, y) {
+  if (x >= left.length || y >= right.length || left[x] !== right[y]) return 0;
+  const rest = Math.min(left.length - x, right.length - y);
+  const mismatch = left.subarray(x, x + rest).findIndex((id, offset) => id !== right[y + offset]);
+  return mismatch === -1 ? rest : mismatch;
+}
+
+function editDistance(left, right, limit) {
+  const furthest = new Int32Array(2 * limit + 3);
+  const steps = Uint32Array.from({ length: limit + 1 }, (_, index) => index);
+  for (const edits of steps) {
+    for (const step of steps.subarray(0, edits + 1)) {
+      const diagonal = 2 * step - edits;
+      const slot = limit + 1 + diagonal;
+      const down =
+        diagonal === -edits || (diagonal !== edits && furthest[slot - 1] < furthest[slot + 1]);
+      const start = down ? furthest[slot + 1] : furthest[slot - 1] + 1;
+      const end = start + matchLength(left, right, start, start - diagonal);
+      furthest[slot] = end;
+      if (end >= left.length && end - diagonal >= right.length) return edits;
+    }
+  }
+  return undefined;
+}
+
+function middleDistance(left, right, limit) {
   const prefix = sharedPrefixLength(left, right);
-  const leftRest = left.slice(prefix);
-  const rightRest = right.slice(prefix);
+  const leftRest = left.subarray(prefix);
+  const rightRest = right.subarray(prefix);
   const suffix = sharedPrefixLength(leftRest.toReversed(), rightRest.toReversed());
-  const leftMiddle = leftRest.slice(0, leftRest.length - suffix);
-  const rightMiddle = rightRest.slice(0, rightRest.length - suffix);
-  if (leftMiddle.length * rightMiddle.length > MAX_COMPARED_CELLS) return undefined;
-  return prefix + suffix + subsequenceLength(leftMiddle, rightMiddle);
+  const leftMiddle = leftRest.subarray(0, leftRest.length - suffix);
+  const rightMiddle = rightRest.subarray(0, rightRest.length - suffix);
+  if (leftMiddle.length + rightMiddle.length > MAX_COMPARED_TOKENS) return undefined;
+  return editDistance(
+    leftMiddle,
+    rightMiddle,
+    Math.min(limit, leftMiddle.length + rightMiddle.length),
+  );
 }
 
 export function tokenSimilarity(left, right, minimum) {
   const total = left.length + right.length;
   if (total === 0) return 0;
   if ((2 * Math.min(left.length, right.length)) / total < minimum) return 0;
-  if ((2 * overlapLength(left, right)) / total < minimum) return 0;
-  const shared = sharedLength(left, right);
-  const similarity = shared === undefined ? 0 : (2 * shared) / total;
+  const [leftIds, rightIds] = [idsOf(left), idsOf(right)];
+  if ((2 * overlapLength(leftIds, rightIds)) / total < minimum) return 0;
+  const distance = middleDistance(leftIds, rightIds, Math.ceil((1 - minimum) * total));
+  const similarity = distance === undefined ? 0 : (total - distance) / total;
   return similarity >= minimum ? similarity : 0;
 }
