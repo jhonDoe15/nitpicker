@@ -1,6 +1,6 @@
 import { readHeadPolicy } from '../../../head-policy.mjs';
 import { librariesForFile } from '../../../libraries/file-libraries.mjs';
-import { appliesPinoErrorShape } from '../../../libraries/project-libraries.mjs';
+import { loggerShapes } from '../../../libraries/project-libraries.mjs';
 
 const LOG_METHODS = new Set(['trace', 'debug', 'info', 'warn', 'error', 'fatal']);
 
@@ -36,6 +36,49 @@ function errorProperty(objectExpression) {
   );
 }
 
+const TYPE_WRAPPER = /^TS(?:As|NonNull|Satisfies)Expression$/;
+
+function unwrap(node) {
+  const chain = [node];
+  for (const current of chain) {
+    if (current?.expression !== undefined && TYPE_WRAPPER.test(current.type)) {
+      chain.push(current.expression);
+    }
+  }
+  return chain.at(-1);
+}
+
+function isCaughtValue(node, caught) {
+  const inner = unwrap(node);
+  return (
+    inner?.type === 'Identifier' &&
+    caught.some((variable) =>
+      variable.references.some((reference) => reference.identifier === inner),
+    )
+  );
+}
+
+function hasCaughtValueArgument(node, caught) {
+  return node.arguments.some(
+    (argument) =>
+      isCaughtValue(argument, caught) ||
+      (argument.type === 'ObjectExpression' &&
+        argument.properties.some(
+          (property) => property.type === 'Property' && isCaughtValue(property.value, caught),
+        )),
+  );
+}
+
+function hasErrorField(node, current) {
+  const fields = followInitializers(node.arguments[0], current.initializers, new Set());
+  const property = errorProperty(fields);
+  const hasCaughtErrorProperty =
+    property?.type === 'Property' &&
+    property.value.type !== 'MemberExpression' &&
+    referencesCaughtValue(property.value, current.variables);
+  return hasCaughtErrorProperty && node.arguments.length === 2 && hasMessageArgument(node);
+}
+
 function hasMessageArgument(node) {
   const lastArgument = node.arguments.at(-1);
   return (
@@ -56,17 +99,15 @@ function followInitializers(fields, initializers, visited) {
   return current;
 }
 
-function loggingVisitors(context) {
+function loggingVisitors(context, shapes) {
   const sourceCode = context.sourceCode;
   const catchStack = [];
+  const messageId = messageIdFor(shapes);
 
   return {
     CatchClause(node) {
-      catchStack.push({
-        node,
-        variables: sourceCode.getDeclaredVariables(node),
-        initializers: new Map(),
-      });
+      const variables = sourceCode.getDeclaredVariables(node);
+      catchStack.push({ node, variables, caught: [...variables], initializers: new Map() });
     },
     VariableDeclarator(node) {
       const currentCatch = catchStack.at(-1);
@@ -75,6 +116,9 @@ function loggingVisitors(context) {
       }
       if (currentCatch && node.init && referencesCaughtValue(node.init, currentCatch.variables)) {
         currentCatch.variables.push(...sourceCode.getDeclaredVariables(node));
+      }
+      if (currentCatch && isCaughtValue(node.init, currentCatch.caught)) {
+        currentCatch.caught.push(...sourceCode.getDeclaredVariables(node));
       }
     },
     CallExpression(node) {
@@ -86,15 +130,13 @@ function loggingVisitors(context) {
       ) {
         return;
       }
-
-      const fields = followInitializers(node.arguments[0], currentCatch.initializers, new Set());
-      const property = errorProperty(fields);
-      const hasCaughtErrorProperty =
-        property?.type === 'Property' &&
-        property.value.type !== 'MemberExpression' &&
-        referencesCaughtValue(property.value, currentCatch.variables);
-      if (!hasCaughtErrorProperty || node.arguments.length !== 2 || !hasMessageArgument(node)) {
-        context.report({ node, messageId: 'caughtErrorShape' });
+      const accepted = shapes.some((shape) =>
+        shape === 'err-field'
+          ? hasErrorField(node, currentCatch)
+          : hasCaughtValueArgument(node, currentCatch.caught),
+      );
+      if (!accepted) {
+        context.report({ node, messageId });
       }
     },
     'CatchClause:exit'() {
@@ -103,23 +145,33 @@ function loggingVisitors(context) {
   };
 }
 
+function messageIdFor(shapes) {
+  if (shapes.length > 1) {
+    return 'caughtEitherShape';
+  }
+  return shapes[0] === 'err-field' ? 'caughtErrorShape' : 'caughtValueShape';
+}
+
+const EXCEPTION =
+  'If this is legitimate, add an exception for nitpicker/structured-catch-logging in nitpicker.config.json.';
+
 export function structuredCatchLoggingRule(rootLibraries) {
   return {
     meta: {
       type: 'problem',
       docs: {
-        description: 'Preserve caught errors under Pino structured error serialization',
+        description: 'Keep a caught error on the logger call in the shape the project logger reads',
       },
       schema: [],
       messages: {
         caughtErrorShape:
           'Log a caught value as logger.<level>({ err: error, ...context }, message).',
+        caughtValueShape: `Pass the caught value itself to the logger, for example logger.error('message', error), not its message or a template string. ${EXCEPTION}`,
+        caughtEitherShape: `Log a caught value as logger.<level>({ err: error, ...context }, message), or pass the caught value itself, for example logger.error('message', error). ${EXCEPTION}`,
       },
     },
     create: (context) =>
-      appliesPinoErrorShape(librariesForFile(context.filename, rootLibraries))
-        ? loggingVisitors(context)
-        : {},
+      loggingVisitors(context, loggerShapes(librariesForFile(context.filename, rootLibraries))),
   };
 }
 

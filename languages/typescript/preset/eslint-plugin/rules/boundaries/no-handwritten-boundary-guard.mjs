@@ -6,7 +6,7 @@ import {
 import { readHeadPolicy } from '../../../head-policy.mjs';
 import { librariesForFile } from '../../../libraries/file-libraries.mjs';
 import { validationBehavior } from '../../../libraries/project-libraries.mjs';
-import { isParsedBySchema } from '../../../libraries/schema-calls.mjs';
+import { isParsedBySchema, schemaContext } from '../../../libraries/schema-calls.mjs';
 
 function isJsonParse(node) {
   return (
@@ -21,13 +21,14 @@ function isJsonParse(node) {
 
 function createVisitors(context, rootLibraries) {
   const validation = validationBehavior(librariesForFile(context.filename, rootLibraries));
-  const data = { name: validation.name, example: validation.example };
+  const schema = schemaContext(context);
+  const data = { phrase: validation.phrase, example: validation.example };
   const visitors = {
     TSTypePredicate(node) {
       context.report({ node, messageId: 'typePredicate', data });
     },
     CallExpression(node) {
-      if (isJsonParse(node) && !isParsedBySchema(context.sourceCode, node, validation.accepted)) {
+      if (isJsonParse(node) && !isParsedBySchema(schema, node, validation.accepted)) {
         context.report({ node, messageId: 'unparsedJson', data: { call: validation.call } });
       }
     },
@@ -50,9 +51,9 @@ export function boundaryGuardRule(rootLibraries) {
       schema: jsdocOptionSchema,
       messages: {
         typePredicate:
-          'Do not hand-write a type guard for external data: parse it once at the boundary with a {{name}} schema ({{example}}).',
+          'Do not hand-write a type guard for external data: parse it once at the boundary with {{phrase}} ({{example}}). If this is legitimate, add an exception for nitpicker/no-handwritten-boundary-guard in nitpicker.config.json.',
         unparsedJson:
-          'Pass `JSON.parse(text)` straight into `{{call}}(...)` inside the same `try`.',
+          'Pass `JSON.parse(text)` straight into `{{call}}(...)` inside the same `try`. If this is legitimate, add an exception for nitpicker/no-handwritten-boundary-guard in nitpicker.config.json.',
       },
     },
     create: (context) => createVisitors(context, rootLibraries),

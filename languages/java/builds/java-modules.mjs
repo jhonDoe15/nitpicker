@@ -56,12 +56,16 @@ export function readModuleFindings(projectRoot, moduleDirs, options) {
   }
   const moduleFindings = moduleDirs.flatMap((moduleDir) => {
     const prefix = prefixOf(projectRoot, moduleDir);
-    return readJavaFindings(moduleDir, { ...options, projectWide: false }).findings.map(
-      (finding) => ({
-        ...finding,
-        path: prefixed(prefix, finding.path),
-      }),
-    );
+    const baselineRoot =
+      options.baselineRoot === undefined ? undefined : path.join(options.baselineRoot, prefix);
+    return readJavaFindings(moduleDir, {
+      ...options,
+      baselineRoot,
+      projectWide: false,
+    }).findings.map((finding) => ({
+      ...finding,
+      path: prefixed(prefix, finding.path),
+    }));
   });
   const roots = mergedRoots(projectRoot, moduleDirs, options.reportDirectory);
   return [

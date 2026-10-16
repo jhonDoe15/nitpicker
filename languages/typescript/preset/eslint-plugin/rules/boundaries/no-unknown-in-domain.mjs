@@ -47,7 +47,7 @@ function isCaughtErrorSlot(node, annotation) {
 
 function createVisitors(context, rootLibraries) {
   const validation = validationBehavior(librariesForFile(context.filename, rootLibraries));
-  const data = { name: validation.name, inferred: validation.inferred };
+  const data = { phrase: validation.phrase, inferred: validation.inferred };
   const visitors = {
     TSUnknownKeyword(node) {
       const chain = [node, ...ancestorsOf(node)];
@@ -81,7 +81,7 @@ export function unknownInDomainRule(rootLibraries) {
       schema: jsdocOptionSchema,
       messages: {
         unknownType:
-          'domain/ code takes typed values, not unknown. Parse the input with a {{name}} schema in adapters/ and give this parameter or property the parsed type{{inferred}}. A caught error may be typed unknown as `cause` or `error`. If the value is genuinely opaque, add an exception for this rule in nitpicker.config.json.',
+          'domain/ code takes typed values, not unknown. Parse the input with {{phrase}} in adapters/ and give this parameter or property the parsed type{{inferred}}. A caught error may be typed unknown as `cause` or `error`. If the value is genuinely opaque, add an exception for this rule in nitpicker.config.json.',
       },
     },
     create: (context) => createVisitors(context, rootLibraries),
