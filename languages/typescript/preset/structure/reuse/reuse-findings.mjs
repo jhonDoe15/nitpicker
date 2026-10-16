@@ -1,5 +1,5 @@
 import path from 'node:path';
-import { exceptionMatcher } from '../../../../../shared/rules/file-limits.mjs';
+import { exceptionMatcher } from '../../../../../shared/rules/exceptions.mjs';
 import {
   hasScopePackage,
   readDependencyNames,

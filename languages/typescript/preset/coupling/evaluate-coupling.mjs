@@ -1,5 +1,5 @@
 import { evaluateCoupling as evaluateCouplingMetrics } from '../../../../shared/rules/coupling.mjs';
-import { exceptionMatcher, exceptionText } from '../../../../shared/rules/file-limits.mjs';
+import { exceptionMatcher, exceptionText } from '../../../../shared/rules/exceptions.mjs';
 import { renderMessage, MESSAGES, RULE_IDS } from '../../../../shared/policy.mjs';
 
 function sharedUsageFinding(entry, analyzerName) {

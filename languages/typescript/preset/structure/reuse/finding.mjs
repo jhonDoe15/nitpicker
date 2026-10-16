@@ -1,5 +1,5 @@
 import { MESSAGES, RULE_IDS, renderMessage } from '../../../../../shared/policy.mjs';
-import { exceptionText } from '../../../../../shared/rules/file-limits.mjs';
+import { exceptionText } from '../../../../../shared/rules/exceptions.mjs';
 
 const MAX_LISTED = 3;
 
