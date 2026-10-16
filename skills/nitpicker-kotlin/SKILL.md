@@ -15,8 +15,8 @@ it with `npx skills add jhonDoe15/nitpicker --skill nitpicker-java`.
 1. Run the project's tests (`./gradlew test`). Failing tests stop coverage, CRAP and mutation from
    running.
 2. When the change is complete, run `npx nitpicker` as a background command you wait on, without a
-   pipe: you need its exit code. It has no `--fix` for Kotlin; format with the project's ktlint or
-   ktfmt. It runs Gradle on the merge base and on head, with the project's `./gradlew` when there
+   pipe: you need its exit code. It has no `--fix` for Kotlin; format with the command and notes
+   printed at the start of the run. It runs Gradle on the merge base and on head, with the project's `./gradlew` when there
    is one, otherwise `gradle` from the PATH (`NITPICKER_GRADLE` overrides both). It takes minutes
    and prints a progress line for each slow analyzer.
 3. Act on the exit code:

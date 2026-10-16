@@ -2,7 +2,6 @@ import { mkdirSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import { createToolContext, runPythonTools } from '../python-tools.mjs';
-import { RUFF_FORMAT_ADVICE } from '../test-support/ruff-format-advice.mjs';
 import {
   callsLog,
   contextFor,
@@ -84,7 +83,6 @@ describe('running the tools', () => {
     });
     expect(readReport(reportRoot, 'rules.json')).toBe('[]');
     expect(JSON.parse(readReport(reportRoot, 'manifest.json'))).toEqual({
-      formatAdvice: RUFF_FORMAT_ADVICE,
       formatter: 'ruff',
       formatterDetected: true,
       sourceRoots: ['src'],

@@ -24,12 +24,15 @@ export function describeConventions(detected, definitions, note = () => undefine
   return definitions.map((definition) => describeOne(definition, detected[definition.id], note));
 }
 
-function describeOne(definition, { choice, source, counts, from }, note) {
+function describeOne(definition, { choice, source, counts, from, overrides }, note) {
   const extra = note(definition.id, choice);
   const option = definition.optionLabels[choice] ?? choice;
   const label = `${definition.label}: ${option}${extra === undefined ? '' : `, ${extra}`}`;
   if (source === 'project') {
-    return `${label} (from ${from})`;
+    const pin = definition.optionLabels[overrides] ?? overrides;
+    const overridden =
+      overrides === undefined ? '' : `, overriding the pin of ${pin} in nitpicker.config.json`;
+    return `${label} (from ${from}${overridden})`;
   }
   if (source === 'pinned') {
     return `${label} (set in nitpicker.config.json)`;

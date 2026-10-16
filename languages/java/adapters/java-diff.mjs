@@ -17,38 +17,11 @@ import { REPORT_DIRECTORY, requireGradleReports } from './reporting/java-reports
 import { MAVEN_REPORT_DIRECTORY, runMavenPreset } from '../maven/maven-build.mjs';
 import { detectJavaBuild, INIT_SCRIPT } from '../builds/java-build.mjs';
 import { readModuleFindings } from '../builds/java-modules.mjs';
-import { kotlinFormatAdvice } from './kotlin/kotlin-format-advice.mjs';
-import { kotlinGradleArguments, resolveKotlinTools } from './kotlin/kotlin-tools.mjs';
+import { resolveKotlinRun } from './kotlin/kotlin-run.mjs';
 import { isJavaTouchedRule } from './touched-rules.mjs';
 
 const GRADLE_TIMEOUT_MS = 15 * 60 * 1000;
 const MAX_OUTPUT_BYTES = 50 * 1024 * 1024;
-
-function kotlinOptions(policy) {
-  return {
-    formatter: policy.kotlinFormatter,
-    detektConfig: policy.kotlinDetektConfig,
-    snapshot: policy.snapshot,
-    conventions: policy.conventions,
-    policyRoot: policy.policyRoot,
-    toolPrecedence: policy.toolPrecedence,
-  };
-}
-
-function kotlinProperties(projectRoot, policy) {
-  return policy.preset === 'kotlin'
-    ? kotlinGradleArguments(projectRoot, kotlinOptions(policy))
-    : [];
-}
-
-function kotlinAdvice(projectRoot, policy = {}) {
-  return policy.preset === 'kotlin'
-    ? kotlinFormatAdvice(
-        resolveKotlinTools(projectRoot, kotlinOptions(policy)),
-        policy.conventions ?? {},
-      )
-    : undefined;
-}
 
 function toolConfigChoices(projectRoot, { toolPrecedence = {}, policyRoot } = {}) {
   return Object.fromEntries(
@@ -78,27 +51,33 @@ export function toolConfigProperties(projectRoot, policy = {}) {
   ]);
 }
 
-function runJavaPreset(projectRoot, { gradle, initScript = INIT_SCRIPT, policy = {} } = {}) {
-  const target = gradleTarget({
-    projectRoot,
-    configured: gradle,
-    args: [
-      '--console=plain',
-      '--quiet',
-      '--no-configuration-cache',
-      ...kotlinProperties(projectRoot, policy),
-      ...toolConfigProperties(projectRoot, policy),
-      '-I',
-      initScript,
-      'nitpickerJava',
-    ],
-  });
-  const result = spawnSync(target.command, target.args, {
-    cwd: projectRoot,
-    encoding: 'utf8',
-    maxBuffer: MAX_OUTPUT_BYTES,
-    shell: target.shell,
-    timeout: GRADLE_TIMEOUT_MS,
+function runJavaPreset(
+  projectRoot,
+  { gradle, initScript = INIT_SCRIPT, policy = {}, kotlinRun } = {},
+) {
+  const withKotlin = kotlinRun?.withArguments ?? ((run) => run([]));
+  const result = withKotlin((kotlinArguments) => {
+    const target = gradleTarget({
+      projectRoot,
+      configured: gradle,
+      args: [
+        '--console=plain',
+        '--quiet',
+        '--no-configuration-cache',
+        ...kotlinArguments,
+        ...toolConfigProperties(projectRoot, policy),
+        '-I',
+        initScript,
+        'nitpickerJava',
+      ],
+    });
+    return spawnSync(target.command, target.args, {
+      cwd: projectRoot,
+      encoding: 'utf8',
+      maxBuffer: MAX_OUTPUT_BYTES,
+      shell: target.shell,
+      timeout: GRADLE_TIMEOUT_MS,
+    });
   });
   if (result.error !== undefined) {
     throw result.error;
@@ -126,7 +105,8 @@ function buildModules(projectRoot, options) {
 export function collectJavaFindings(root, options = {}) {
   const projectRoot = path.resolve(root);
   const preset = options.policy?.preset ?? 'java';
-  const { moduleDirs, reportDirectory } = buildModules(projectRoot, options);
+  const kotlinRun = resolveKotlinRun(projectRoot, options.policy);
+  const { moduleDirs, reportDirectory } = buildModules(projectRoot, { ...options, kotlinRun });
   for (const moduleDir of moduleDirs) {
     runJavaDuplicates(moduleDir, { reportDirectory });
   }
@@ -142,7 +122,7 @@ export function collectJavaFindings(root, options = {}) {
         fileLimits: options.policy?.fileLimits,
         exclude: options.policy?.exclude,
         exceptions: options.policy?.exceptions,
-        formatAdvice: kotlinAdvice(projectRoot, options.policy),
+        formatAdvice: kotlinRun?.advice,
       }),
     },
     preset,

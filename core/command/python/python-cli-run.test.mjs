@@ -118,7 +118,8 @@ describe('nitpicker with "preset": "python" running the project', () => {
     });
 
     expect(exitCode).toBe(1);
-    expect(out.text).toBe(
+    expect(out.text).toMatch(/^Format with ruff: ruff format --isolated /);
+    expect(out.text.replace(/^Format with ruff: .*\n/, '')).toBe(
       [
         'Nitpicker quality snapshot',
         'Status: violations',

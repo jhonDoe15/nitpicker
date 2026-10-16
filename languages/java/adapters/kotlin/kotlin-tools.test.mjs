@@ -101,16 +101,6 @@ describe('formatter detection', () => {
     },
   );
 
-  it('lets the conventions win over the build when nitpicker is listed first', () => {
-    const options = { toolPrecedence: { ktfmt: ['nitpicker', 'project'] } };
-    const files = { 'build.gradle.kts': 'ktfmt { googleStyle() }' };
-
-    expect(
-      toolsOf(files, { ...options, conventions: { 'kotlin.indentation': '4' } }).ktfmtStyle,
-    ).toBe('kotlinlang');
-    expect(toolsOf(files, options).ktfmtStyle).toBe('google');
-  });
-
   it('reads the build of the policy root, which is the head checkout', () => {
     const base = project({ 'build.gradle.kts': 'ktfmt()' });
     const head = project({ 'build.gradle.kts': 'ktfmt { googleStyle() }' });
@@ -143,7 +133,7 @@ describe('detekt config', () => {
       'config/detekt/detekt.yml',
     );
     expect(() => toolsOf({}, listed)).toThrow(
-      '"tools.detekt.precedence" lists "project" but its config (config/detekt/detekt.yml) is missing',
+      '"tools.detekt.precedence" lists "project" but a detekt config (config/detekt/detekt.yml, config/detekt/detekt.yaml, config/detekt.yml, config/detekt.yaml, detekt.yml, detekt.yaml) is missing: create it, or remove "project" from tools.detekt.precedence',
     );
   });
 
@@ -166,7 +156,9 @@ describe('detekt config', () => {
 
     expect(() =>
       resolveKotlinTools(root, { detektConfig: 'tools/rules.yml', snapshot: 'head' }),
-    ).toThrow('"kotlin.detektConfig" is tools/rules.yml, which does not exist');
+    ).toThrow(
+      '"kotlin.detektConfig" is tools/rules.yml, which does not exist: create it, or change or remove "kotlin.detektConfig"',
+    );
     expect(
       resolveKotlinTools(root, { detektConfig: 'tools/rules.yml', snapshot: 'base' }).detektConfig,
     ).toBeUndefined();
@@ -174,25 +166,71 @@ describe('detekt config', () => {
 });
 
 describe('ktlint and ktfmt with a project .editorconfig', () => {
-  it('reads the .editorconfig only for a listed project', () => {
-    const files = { 'build.gradle.kts': 'ktlint', '.editorconfig': 'indent_size = 8\n' };
+  const ktlintFiles = { 'build.gradle.kts': 'ktlint', '.editorconfig': 'indent_size = 8\n' };
 
-    expect(toolsOf(files).projectEditorconfig).toBeUndefined();
-    expect(toolsOf(files, { toolPrecedence: { ktlint: ['project'] } }).projectEditorconfig).toBe(
-      'indent_size = 8\n',
+  it('runs ktlint in a mirror with a root .editorconfig of its own unless the project is listed', () => {
+    const tools = toolsOf(ktlintFiles);
+
+    expect(tools.workspace).toEqual({
+      offset: '',
+      editorconfigs: [{ path: '.editorconfig', text: 'root = true\n' }],
+    });
+    expect(tools.editorconfigIgnored).toBe(true);
+    expect(tools.editorconfigFiles).toBeUndefined();
+    expect(toolsOf({ 'build.gradle.kts': 'ktlint' }).editorconfigIgnored).toBe(false);
+  });
+
+  it('puts the .editorconfig files of a listed project into the mirror, root = true on the top one', () => {
+    const files = { ...ktlintFiles, 'src/main/.editorconfig': '[*.kt]\nindent_size = 2\n' };
+
+    const tools = toolsOf(files, { toolPrecedence: { ktlint: ['project'] } });
+
+    expect(tools.workspace).toEqual({
+      offset: '',
+      editorconfigs: [
+        { path: '.editorconfig', text: 'root = true\n\nindent_size = 8\n' },
+        { path: 'src/main/.editorconfig', text: '[*.kt]\nindent_size = 2\n' },
+      ],
+    });
+    expect(tools.editorconfigFiles).toHaveLength(2);
+    expect(tools.editorconfigIgnored).toBeUndefined();
+  });
+
+  it('fails when ktlint lists the project and there is no .editorconfig, saying how to fix it', () => {
+    const root = project({ 'build.gradle.kts': 'ktlint' });
+
+    expect(() => resolveKotlinTools(root, { toolPrecedence: { ktlint: ['project'] } })).toThrow(
+      `"tools.ktlint.precedence" lists "project" but an .editorconfig (searched ${root}, its subfolders and its parents up to the repository root) is missing: create it, or remove "project" from tools.ktlint.precedence`,
     );
   });
 
-  it('fails when ktlint lists the project and there is no .editorconfig', () => {
-    expect(() =>
-      toolsOf({ 'build.gradle.kts': 'ktlint' }, { toolPrecedence: { ktlint: ['project'] } }),
-    ).toThrow('"tools.ktlint.precedence" lists "project" but .editorconfig is missing');
+  it('turns ktfmt editorconfig support, and the mirror, on only for a listed project', () => {
+    const files = { 'build.gradle.kts': 'ktfmt()', '.editorconfig': 'indent_size = 4\n' };
+
+    function editorconfigState({ ktfmtEditorconfig, editorconfigIgnored, workspace }) {
+      return { ktfmtEditorconfig, editorconfigIgnored, workspace };
+    }
+
+    expect(editorconfigState(toolsOf(files))).toEqual({
+      ktfmtEditorconfig: false,
+      editorconfigIgnored: true,
+      workspace: undefined,
+    });
+    expect(editorconfigState(toolsOf(files, { toolPrecedence: PROJECT_KTFMT }))).toEqual({
+      ktfmtEditorconfig: true,
+      editorconfigIgnored: undefined,
+      workspace: {
+        offset: '',
+        editorconfigs: [{ path: '.editorconfig', text: 'root = true\n\nindent_size = 4\n' }],
+      },
+    });
   });
 
-  it('turns ktfmt editorconfig support on only for a listed project', () => {
-    const files = { 'build.gradle.kts': 'ktfmt()', '.editorconfig': '' };
+  it('names a ktfmt style the build declares and the run leaves out', () => {
+    const files = { 'build.gradle.kts': 'ktfmt { googleStyle() }' };
 
-    expect(toolsOf(files).ktfmtEditorconfig).toBe(false);
-    expect(toolsOf(files, { toolPrecedence: PROJECT_KTFMT }).ktfmtEditorconfig).toBe(true);
+    expect(toolsOf(files).ktfmtBuildStyleIgnored).toBe(true);
+    expect(toolsOf(files, { toolPrecedence: PROJECT_KTFMT }).ktfmtBuildStyleIgnored).toBe(false);
+    expect(toolsOf({ 'build.gradle.kts': 'ktfmt()' }).ktfmtBuildStyleIgnored).toBe(false);
   });
 });

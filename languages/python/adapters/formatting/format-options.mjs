@@ -1,109 +1,60 @@
-import { writeFileSync } from 'node:fs';
-import path from 'node:path';
 import {
-  PYTHON_INDENTATION,
-  PYTHON_LINE_LENGTH,
-  PYTHON_QUOTES,
-} from '../../conventions/python-conventions.mjs';
-import { precedenceLayers, projectOptIn } from '../../../../shared/tool-precedence.mjs';
+  missingProjectConfig,
+  precedenceLayers,
+} from '../../../../shared/conventions/tool-precedence.mjs';
+import { PYTHON_SETTING_IDS } from '../../conventions/python-conventions.mjs';
 import { readBlackConfig, readRuffConfig } from './project-format-config.mjs';
 
 const DEFAULTS = { lineLength: '88', quotes: 'double', indentation: '4' };
-const IDS = {
-  lineLength: PYTHON_LINE_LENGTH,
-  quotes: PYTHON_QUOTES,
-  indentation: PYTHON_INDENTATION,
-};
-const BLACK_CONFIG = 'nitpicker-black.toml';
 const SHELL_WORD = /^[\w./=:@%+-]+$/;
+export const EMPTY_FILE = '<empty file>';
+const READERS = {
+  ruff: {
+    read: readRuffConfig,
+    looked: (root) =>
+      `a ruff config (.ruff.toml, ruff.toml, or pyproject.toml with a [tool.ruff] table; searched ${root} and its parents)`,
+  },
+  black: {
+    read: readBlackConfig,
+    looked: (root) => `a pyproject.toml (searched ${root} and its parents)`,
+  },
+};
 
-function formatWith(command) {
-  return `Format with \`${command}\`.`;
+export function followed(conventions, key) {
+  return conventions[PYTHON_SETTING_IDS[key]] ?? DEFAULTS[key];
 }
 
 function shellWord(word) {
-  return SHELL_WORD.test(word) ? word : `'${word.replaceAll("'", String.raw`'\''`)}'`;
+  return SHELL_WORD.test(word) || word === EMPTY_FILE
+    ? word
+    : `'${word.replaceAll("'", String.raw`'\''`)}'`;
 }
 
-function followed(conventions, key) {
-  return conventions[IDS[key]] ?? DEFAULTS[key];
+export function shellCommand(words) {
+  return words.map(shellWord).join(' ');
 }
 
-function projectWins(project, nitpickerFirst, key) {
-  return project !== undefined && project.set[key] !== undefined && !nitpickerFirst;
-}
-
-function ruffFlags({ conventions, wins }) {
-  return [
-    ...(wins('lineLength') ? [] : ['--line-length', followed(conventions, 'lineLength')]),
-    ...(wins('quotes')
-      ? []
-      : ['--config', `format.quote-style = "${followed(conventions, 'quotes')}"`]),
-    ...(wins('indentation')
-      ? []
-      : ['--config', `indent-width = ${followed(conventions, 'indentation')}`]),
-  ];
-}
-
-function blackFlags({ conventions, wins }) {
-  return [
-    ...(wins('lineLength') ? [] : ['--line-length', followed(conventions, 'lineLength')]),
-    ...(!wins('quotes') && followed(conventions, 'quotes') === 'single'
-      ? ['--skip-string-normalization']
-      : []),
-  ];
-}
-
-function ruffPlan({ conventions, project, wins, targetVersion, policyRoot }) {
-  const flags = ruffFlags({ conventions, wins });
-  const options =
-    project === undefined
-      ? ['--isolated', '--target-version', targetVersion, ...flags]
-      : ['--config', path.relative(policyRoot, project.file), ...flags];
-  const command = ['ruff', 'format', ...options, '.'].map(shellWord).join(' ');
-  return {
-    options: project === undefined ? options : ['--config', project.file, ...flags],
-    advice:
-      project === undefined
-        ? `${formatWith(command)} To use your ruff config instead, add ${projectOptIn('ruff')} to nitpicker.config.json.`
-        : `Nitpicker uses ${path.relative(policyRoot, project.file)} for the options it sets. ${formatWith(command)}`,
-  };
-}
-
-function blackPlan({ conventions, project, wins, reportRoot, policyRoot }) {
-  const flags = blackFlags({ conventions, wins });
-  if (project !== undefined) {
-    const command = ['black', '--config', path.relative(policyRoot, project.file), ...flags, '.']
-      .map(shellWord)
-      .join(' ');
-    return {
-      options: ['--config', project.file, ...flags],
-      advice: `Nitpicker uses ${path.relative(policyRoot, project.file)} for the options it sets. ${formatWith(command)}`,
-    };
+function readQuietly(read, root) {
+  try {
+    return read(root);
+  } catch {
+    return undefined;
   }
-  const single = followed(conventions, 'quotes') === 'single';
-  const lineLength = followed(conventions, 'lineLength');
-  const file = path.join(reportRoot, BLACK_CONFIG);
-  writeFileSync(
-    file,
-    `[tool.black]\nline-length = ${lineLength}\nskip-string-normalization = ${String(single)}\n`,
-  );
-  return {
-    options: ['--config', file],
-    advice: `Nitpicker checks with black line-length ${lineLength}${single ? ' and string normalization off' : ''} and ignores your [tool.black] table. Put the same settings in [tool.black] and add ${projectOptIn('black')} to nitpicker.config.json, then run black.`,
-  };
 }
 
-export function formatterPlan(settings) {
-  const { formatter, precedence = ['nitpicker'], policyRoot } = settings;
-  const { usesProject, nitpickerFirst } = precedenceLayers(precedence);
-  const read = formatter === 'black' ? readBlackConfig : readRuffConfig;
-  const project = usesProject ? read(policyRoot) : undefined;
-  const plan = formatter === 'black' ? blackPlan : ruffPlan;
-  return plan({
-    ...settings,
-    conventions: settings.conventions ?? {},
+export function projectConfigFor({ formatter, precedence, policyRoot }) {
+  const { read, looked } = READERS[formatter];
+  const layers = precedenceLayers(precedence);
+  if (!layers.usesProject) {
+    return { optedIn: false, project: readQuietly(read, policyRoot), wins: () => false };
+  }
+  const project = read(policyRoot);
+  if (project === undefined) {
+    throw new Error(missingProjectConfig(formatter, looked(policyRoot)));
+  }
+  return {
+    optedIn: true,
     project,
-    wins: (key) => projectWins(project, nitpickerFirst, key),
-  });
+    wins: (key) => project.set[key] !== undefined && !layers.nitpickerFirst,
+  };
 }

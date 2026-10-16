@@ -2,7 +2,7 @@ import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { ingestFormatCheck } from '../../ingest/formatting/format-check.mjs';
 import { ingestSarif } from '../../ingest/sarif.mjs';
-import { kotlinFormatAdvice } from '../kotlin/kotlin-format-advice.mjs';
+import { kotlinFormatAdvice } from '../kotlin/style/kotlin-format-advice.mjs';
 import { readKotlinDuplicateFindings } from '../kotlin/kotlin-duplicates.mjs';
 import {
   readKotlinCrapFindings,

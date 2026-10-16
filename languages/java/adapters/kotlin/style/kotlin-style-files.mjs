@@ -4,19 +4,14 @@ import {
   KOTLIN_INDENTATION,
   KOTLIN_TRAILING_COMMAS,
   KOTLIN_WILDCARD_IMPORTS,
-} from '../../conventions/kotlin-conventions.mjs';
+} from '../../../conventions/kotlin-conventions.mjs';
 
 const EDITORCONFIG = '.editorconfig';
 const KOTLIN_SECTION = '[*.{kt,kts}]';
-const ROOT = 'root = true';
 
 export function projectEditorconfig(root) {
   const file = path.join(root, EDITORCONFIG);
   return existsSync(file) ? readFileSync(file, 'utf8') : undefined;
-}
-
-export function workspaceEditorconfig(projectText) {
-  return projectText === undefined ? `${ROOT}\n` : `${ROOT}\n\n${projectText}`;
 }
 
 export function ktlintDefaults(conventions) {
@@ -37,9 +32,10 @@ export function ktlintDefaults(conventions) {
   return lines.length === 0 ? undefined : [KOTLIN_SECTION, ...lines, ''].join('\n');
 }
 
-export function detektConventionLayer(conventions) {
-  return conventions[KOTLIN_WILDCARD_IMPORTS] === 'wildcard'
-    ? 'style:\n  WildcardImport:\n    active: false\n'
+export function detektConventionLayer(conventions, { nitpickerFirst = false } = {}) {
+  const wildcard = conventions[KOTLIN_WILDCARD_IMPORTS] === 'wildcard';
+  return wildcard || nitpickerFirst
+    ? `style:\n  WildcardImport:\n    active: ${String(!wildcard)}\n`
     : undefined;
 }
 

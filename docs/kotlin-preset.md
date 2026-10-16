@@ -45,10 +45,10 @@ Java ones: detekt 1.23.8, ktlint 1.8.0, ktfmt 0.64. `manifest.json` gains `kotli
 `kotlinSourceRoots` and `kotlinFormatter`; its `sourceRoots` stay the Java source roots. Which
 formatter, ktfmt style and detekt config to use is decided on the Nitpicker side
 (`languages/java/adapters/kotlin/kotlin-tools.mjs`, unit tested) and handed to the init script as Gradle
-properties; the text files (the copy's `.editorconfig`, the ktlint defaults, the detekt convention
-layer) are generated on the Nitpicker side, URL-encoded into properties, and only written out by the
-init script (`kotlin-style-files.e2e.test.mjs` runs its two small tasks against a stand-in Kotlin
-plugin).
+properties; the style texts (the `.editorconfig` files to mirror, the ktlint defaults, the detekt
+convention layer) are generated on the Nitpicker side into one JSON file in a temporary folder, whose
+path is the property `nitpicker.kotlin.styleFile`, and only written out by the init script
+(`kotlin-style-files.e2e.test.mjs` runs its two small tasks against a stand-in Kotlin plugin).
 
 ## What runs on what
 
@@ -237,17 +237,21 @@ override there.
 
 - **ktlint.** The pinned CLI runs on a copy of the Kotlin sources in a temporary folder whose root
   `.editorconfig` says `root = true`, so no `.editorconfig` of the project or of the folders above it
-  reaches it (a parent `.editorconfig` and the home one are ignored too). Behavior change: a
-  project whose `.editorconfig` set ktlint properties is checked with ktlint's defaults and the
-  conventions followed until it opts in with
-  `"tools": { "ktlint": { "precedence": ["project", "nitpicker"] } }`; then the `.editorconfig` at
-  the head checkout's project root (not those of subfolders) is copied into the root file of the copy,
-  and the conventions are ktlint defaults below it. Each violation is one finding: rule
+  reaches it (a parent `.editorconfig` and the home one are ignored too). A project whose
+  `.editorconfig` set ktlint properties is checked with ktlint's defaults and the conventions
+  followed until it opts in with `"tools": { "ktlint": { "precedence": ["project", "nitpicker"] } }`;
+  then every `.editorconfig` under the project (build folders, `node_modules` and dot tool folders
+  skipped) and in the folders above it up to the repository root is copied to the same relative
+  path in the copy, so nested files and path-qualified sections (`[src/test/**.kt]`) keep applying;
+  only the topmost one gets `root = true`, and the conventions are ktlint defaults below them. The
+  opt-in needs an `.editorconfig` at the project root or above, else it is a tool error that says to
+  create one or remove `"project"`. `["nitpicker", "project"]` is a config error for ktlint, since
+  ktlint always reads its `.editorconfig` first. The run prints once what ktlint runs with and what
+  to do to lift a rule, and one `Ignoring .editorconfig; opt in with ...` line when a project
+  `.editorconfig` exists and is not used. Each violation is one finding: rule
   `ktlint.<ruleset>:<rule>` (for example `ktlint.standard:no-wildcard-imports`), the line, and
-  ktlint's message, which also names the settings ktlint ran with and the exact route to lift the rule
-  (`ktlint_standard_no-wildcard-imports = disabled` in `.editorconfig` plus the opt-in above, or
-  `exclude` for a path). Not every violation is fixed by `ktlint --format`. The identity is the
-  message with its numbers replaced, like detekt's.
+  ktlint's message plus a pointer to that advice. Not every violation is fixed by `ktlint --format`.
+  The identity is the message with its numbers replaced, like detekt's.
 
 Two styles are equally valid in each of these, so the preset follows the project (the
 [`conventions`](usage.md#configuration) key pins them). Which formatter applies which id:
@@ -268,15 +272,17 @@ the project's `detekt.yml`. The scope-function rules do not change. With the pro
 project sets wins for every tool and the run prints it as "from your .editorconfig", "from your detekt
 config" or "from your build file" instead of "used by N of M measured files".
 
-- **ktfmt.** `--dry-run` lists the files that would change, run in the same copy of the sources.
-  By default the style is `--kotlinlang-style` when most Kotlin files indent by 4
-  (`kotlin.indentation`), else ktfmt's default (Meta), and no `.editorconfig` is read. Behavior
-  change: a build that names `kotlinLangStyle()` or `googleStyle()` and an `.editorconfig` are used
+- **ktfmt.** `--dry-run` lists the files that would change. By default the style is
+  `--kotlinlang-style` when most Kotlin files indent by 4 (`kotlin.indentation`), else ktfmt's
+  default (Meta), no `.editorconfig` is read, and it runs in the project, without a copy of the
+  sources. A build that names `kotlinLangStyle()` or `googleStyle()` and an `.editorconfig` are used
   only with `"tools": { "ktfmt": { "precedence": ["project", "nitpicker"] } }`, which then passes the
-  build's style (read from the head checkout) and `--enable-editorconfig` with the head's
-  `.editorconfig` in the copy. One `format` finding per file, tool `ktfmt`, identity `format`, whose
-  message names the flags checked with and the opt-in; a file that already failed on the base stays
-  baselined, new files and files that start failing do not.
+  build's style (read from the head checkout) and `--enable-editorconfig`, and runs in a copy of the
+  sources with the same mirrored `.editorconfig` files as ktlint. `["nitpicker", "project"]` is a
+  config error for ktfmt, as ktfmt has no flag to ignore the `.editorconfig` once enabled. One
+  `format` finding per file, tool `ktfmt`, identity `format`, whose message refers to the
+  `Format with ktfmt` command printed at the start of the run; a file that already failed on the base
+  stays baselined, new files and files that start failing do not.
 
 ## Coverage
 

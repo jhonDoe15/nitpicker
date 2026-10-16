@@ -24,7 +24,10 @@ const FAILING_SUMMARY = [
 ].join('\n');
 
 function summaryOf({ output }) {
-  return output.out.replace(/Full diagnostics: .*/, 'Full diagnostics: <path>');
+  expect(output.out).toMatch(/^Format with ruff: ruff format --isolated /);
+  return output.out
+    .replace(/^Format with ruff: .*\n/, '')
+    .replace(/Full diagnostics: .*/, 'Full diagnostics: <path>');
 }
 
 describe('nitpicker with "preset": "python"', () => {

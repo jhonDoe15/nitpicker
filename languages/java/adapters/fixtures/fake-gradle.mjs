@@ -8,7 +8,8 @@
 // each line of `ktlint.txt` (`rule|message`) one ktlint result there and each line of
 // `kotlin-format.txt` a file ktfmt would change, a file `kotlin-metrics.json` is the Kotlin metrics
 // report as it is, a file `jacoco.xml` becomes the JaCoCo report and a file `mutations.xml` the PIT
-// report. The arguments are kept in build/nitpicker/gradle-args.json.
+// report. The arguments are kept in build/nitpicker/gradle-args.json, and the style file named by
+// `-Pnitpicker.kotlin.styleFile=` (deleted when the run ends) in build/nitpicker/style-file.json.
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 
 if (existsSync('GRADLE_FAIL')) {
@@ -29,6 +30,15 @@ const formatterArgument = process.argv.find((argument) =>
   argument.startsWith('-Pnitpicker.kotlin.formatter='),
 );
 writeFileSync('build/nitpicker/gradle-args.json', JSON.stringify(process.argv.slice(2)));
+const styleFileArgument = process.argv.find((argument) =>
+  argument.startsWith('-Pnitpicker.kotlin.styleFile='),
+);
+if (styleFileArgument !== undefined) {
+  writeFileSync(
+    'build/nitpicker/style-file.json',
+    readFileSync(styleFileArgument.slice(styleFileArgument.indexOf('=') + 1)),
+  );
+}
 writeFileSync(
   'build/nitpicker/manifest.json',
   JSON.stringify({

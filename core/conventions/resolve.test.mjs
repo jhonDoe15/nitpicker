@@ -176,7 +176,8 @@ describe('conventions of the Python and Kotlin presets', () => {
     expect(stdout.text()).toBe(
       "Following this project's conventions:\n" +
         '  Python quotes: single quotes (used by 2 of 2 measured files)\n' +
-        '  Python indentation: 2 spaces (used by 2 of 2 measured files)\n',
+        '  Python indentation: 2 spaces (used by 2 of 2 measured files)\n' +
+        `Format with ruff: ruff format --isolated --target-version py38 --line-length 88 --config 'format.quote-style = "single"' --config 'indent-width = 2' .\n`,
     );
   });
 
