@@ -2,7 +2,7 @@ import { writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { normalizeReportPath } from '../../../java/ingest/common.mjs';
 import { run } from '../execution/python-process.mjs';
-import { readPackageFacts } from '../execution/python-package.mjs';
+import { readPackageFacts } from '../configuration/python-package.mjs';
 import { RUFF_CONFIG } from '../configuration/python-ruff-config.mjs';
 import { listProductionModules } from './python-sources.mjs';
 import { fileURLToPath } from 'node:url';
