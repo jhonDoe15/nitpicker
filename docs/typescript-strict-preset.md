@@ -174,9 +174,11 @@ Math` and `Math['random']()` are caught; `process`, `fetch`, `setTimeout`, `setI
   `{}` or `Record<string, unknown>`, an `unknown` value narrowed inline with `typeof x ===
 'object'` or `'key' in x`, and an overload whose implementation returns `unknown` or `any`. A
   predicate over a union (`(result): result is Ok => result.kind === 'ok'`) is fine, and so is
-  `error instanceof Error` on a caught value, including the checks it narrows: later in the same
-  `&&` chain, inside the `if` or `?:` it guards, or after an earlier
-  `if (!(error instanceof Error))` exit (`error instanceof Error && 'code' in error`).
+  `error instanceof Error` (or another class named `...Error` or `...Exception`, such as
+  `z.ZodError`) on a caught value, including the checks it narrows: later in the same `&&` chain,
+  inside the `if` or `?:` it guards, or after an earlier `if (!(error instanceof Error))` exit
+  (`error instanceof Error && 'code' in error`). `instanceof Object` or any other class does not
+  count as a guard.
   `JSON.parse(JSON.stringify(value))` as a copy is reported: use `structuredClone(value)`.
 
 ## Everywhere

@@ -207,6 +207,8 @@ tester.run('no-handwritten-boundary-guard by input type', noHandwrittenBoundaryG
     "function code(error: unknown, quiet: boolean) { if (!(error instanceof Error) || quiet) { throw error; } return 'code' in error; }",
     "function code(error: unknown) { const isError = error instanceof Error; return isError && 'code' in error; }",
     "function code(error: unknown) { switch (true) { case error instanceof Error: return 'code' in error; default: return false; } }",
+    "function code(error: unknown) { return error instanceof HttpError && 'code' in error; }",
+    "function issues(error: unknown) { return error instanceof z.ZodError && 'issues' in error; }",
   ],
   invalid: [
     {
@@ -251,6 +253,18 @@ tester.run('no-handwritten-boundary-guard by input type', noHandwrittenBoundaryG
     },
     {
       code: "function code(error: unknown) { return !(error instanceof Error) && 'code' in error; }",
+      errors: [{ messageId: 'inlineNarrowing' }],
+    },
+    {
+      code: "function id(data: unknown) { return data instanceof Object && 'id' in data; }",
+      errors: [{ messageId: 'inlineNarrowing' }],
+    },
+    {
+      code: "function name(data: unknown) { if (!(data instanceof Object)) { return undefined; } return 'name' in data; }",
+      errors: [{ messageId: 'inlineNarrowing' }],
+    },
+    {
+      code: "function name(data: unknown) { return data instanceof Map && 'size' in data; }",
       errors: [{ messageId: 'inlineNarrowing' }],
     },
     {
