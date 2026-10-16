@@ -27,12 +27,15 @@ describe('compilerSettings', () => {
     </execution>`;
     const properties = '<maven.compiler.target>${java.version}</maven.compiler.target>';
 
-    expect(compilerOf({ properties, configuration, executions })).toMatchObject({
+    expect(compilerOf({ properties, configuration, executions })).toEqual({
       release: '21',
       source: undefined,
       target: undefined,
       encoding: undefined,
       args: ['-b'],
+      proc: undefined,
+      processorPaths: undefined,
+      test: { release: '11', source: undefined, target: undefined, args: ['-a'] },
     });
   });
 
@@ -44,12 +47,15 @@ describe('compilerSettings', () => {
       '<project.build.sourceEncoding>ISO-8859-1</project.build.sourceEncoding>',
     ].join('');
 
-    expect(compilerOf({ properties })).toMatchObject({
+    expect(compilerOf({ properties })).toEqual({
       release: undefined,
       source: '11',
       target: '12',
       encoding: 'UTF-16',
       args: [],
+      proc: undefined,
+      processorPaths: undefined,
+      test: { release: undefined, source: '11', target: '12', args: [] },
     });
   });
 
@@ -71,7 +77,6 @@ describe('compilerSettings', () => {
     expect(compilerOf({ configuration, executions }).args).toEqual(['-parameters', '-g']);
   });
 });
-
 
 const project = (body) => parseXml(`<project><artifactId>app</artifactId>${body}</project>`);
 
