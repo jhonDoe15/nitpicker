@@ -11,6 +11,7 @@ describe('testConsole config', () => {
     [{ testConsole: {} }],
     [{ testConsole: { allow: [] } }],
     [{ testConsole: { allow: [allowed, { ...allowed, paths: ['test/legacy/**'] }] } }],
+    [{ preset: 'python', testConsole: { allow: [{ ...allowed, paths: ['tests/legacy/**'] }] } }],
   ])('accepts %j', (config) => {
     expect(validateConfig(config)).toEqual(config);
   });
@@ -34,7 +35,7 @@ describe('testConsole config', () => {
     [{ testConsole: { allow: [{ ...allowed, paths: 'test/**' }] } }, /paths" must be an array/],
     [{ testConsole: { allow: [{ contains: 'abc' }] } }, /reason" is required/],
     [{ testConsole: { allow: [{ contains: 'abc', reason: ' ' }] } }, /reason" is required/],
-    [{ preset: 'python', testConsole: { allow: [allowed] } }, /"testConsole" is not supported/],
+    [{ preset: 'java', testConsole: { allow: [allowed] } }, /"testConsole" is not supported/],
   ])('rejects %j', (config, message) => {
     expect(() => validateConfig(config)).toThrow(message);
   });

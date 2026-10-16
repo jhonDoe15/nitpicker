@@ -315,7 +315,7 @@ export const RULES = [
       'a component file without a story, in a package that has Storybook; enforced when more than half of its component files have one, reported otherwise',
     enforcedBy: withKotlin(TYPESCRIPT_ONLY, false),
   },
-  testConsoleRule(RULE_IDS, withKotlin(TYPESCRIPT_ONLY, false)),
+  testConsoleRule(RULE_IDS, withKotlin({ ...TYPESCRIPT_ONLY, python: true }, false)),
 ];
 
 /**

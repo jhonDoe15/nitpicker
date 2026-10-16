@@ -6,9 +6,14 @@ import {
   validateProjectRelativePath,
   validateStringArray,
 } from '../../../../shared/config.mjs';
-import { SHARED_EXCEPTION_RULES } from '../../../../shared/policy.mjs';
+import { RULE_IDS, SHARED_EXCEPTION_RULES } from '../../../../shared/policy.mjs';
 import { ruleIdProblem } from './python-rule-ids.mjs';
 
+export const PYTHON_TOP_LEVEL_EXCEPTION_RULES = [
+  ...SHARED_EXCEPTION_RULES,
+  RULE_IDS.testConsoleOutput,
+];
+const SHARED_KEYS = ['testConsole'];
 const ENVIRONMENTS = ['uv', 'poetry', 'path'];
 const FORMATTERS = ['ruff', 'black'];
 const TEST_RUNNERS = ['pytest', 'unittest'];
@@ -30,10 +35,11 @@ export function validatePythonConfig(config, typescriptOnlyKeys) {
     }
     return;
   }
-  const unsupported = typescriptOnlyKeys.filter((key) => config[key] !== undefined);
+  const typescriptOnly = typescriptOnlyKeys.filter((key) => !SHARED_KEYS.includes(key));
+  const unsupported = typescriptOnly.filter((key) => config[key] !== undefined);
   if (unsupported.length > 0) {
     throw configError(
-      `"${unsupported[0]}" is not supported with "preset": "python": it describes the TypeScript source layout and ESLint rules, which the Python preset does not have. Not supported with python: ${typescriptOnlyKeys.join(', ')}, except exceptions for ${SHARED_EXCEPTION_RULES.join(', ')}. Shared by all presets: thresholds, exclude, legacyInventory`,
+      `"${unsupported[0]}" is not supported with "preset": "python": it describes the TypeScript source layout and ESLint rules, which the Python preset does not have. Not supported with python: ${typescriptOnly.join(', ')}, except exceptions for ${PYTHON_TOP_LEVEL_EXCEPTION_RULES.join(', ')}. Shared by all presets: thresholds, exclude, legacyInventory; shared with TypeScript: testConsole`,
     );
   }
   if (config.python !== undefined) {
@@ -80,9 +86,10 @@ function validateSettings(settings) {
 
 function validateRuleIds(exceptions) {
   for (const [index, { rule }] of exceptions.entries()) {
-    if (SHARED_EXCEPTION_RULES.includes(rule)) {
+    if (PYTHON_TOP_LEVEL_EXCEPTION_RULES.includes(rule)) {
+      const kind = SHARED_EXCEPTION_RULES.includes(rule) ? 'a file limit' : 'a check';
       throw configError(
-        `"python.exceptions[${String(index)}].rule" is "${rule}", a file limit shared by every preset: lift it in the top-level "exceptions" instead`,
+        `"python.exceptions[${String(index)}].rule" is "${rule}", ${kind} shared by every preset: lift it in the top-level "exceptions" instead`,
       );
     }
     const problem = ruleIdProblem(rule);

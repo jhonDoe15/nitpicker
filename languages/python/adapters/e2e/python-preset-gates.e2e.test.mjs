@@ -6,7 +6,9 @@ import {
   GREETER_HI_TEST,
   HIDDEN_ERROR,
   LEGACY_MOVED,
+  NOISY_TEST,
   ONE_WAY_VIOLATIONS,
+  RUNTIME_TEST,
   TYPE_ERROR,
   VIOLATION,
   WEAKENED_MYPY,
@@ -69,6 +71,30 @@ describe.skipIf(!pythonE2eEnabled)('Python preset lint, type and rule gates end 
       'pyrightconfig.json': `${WEAKENED_PYRIGHT}\n`,
     });
     commitBranch(project, 'hidden-from-types', { 'src/demo/hidden.py': HIDDEN_ERROR });
+    const testRun = {
+      preset: 'python',
+      disable: ['mutation'],
+      thresholds: { unitTestSeconds: 0.2 },
+    };
+    const testFiles = { 'tests/test_runtime.py': RUNTIME_TEST, 'tests/test_noisy.py': NOISY_TEST };
+    commitBranch(project, 'test-run', {
+      ...testFiles,
+      'nitpicker.config.json': JSON.stringify(testRun),
+    });
+    commitBranch(project, 'test-run-lifted', {
+      ...testFiles,
+      'nitpicker.config.json': JSON.stringify({
+        ...testRun,
+        testConsole: { allow: [{ contains: 'cache is cold', reason: 'fixture' }] },
+        exceptions: [{ rule: 'test-console-output', paths: ['tests/test_noisy.py'], reason: 'f' }],
+        python: {
+          exceptions: [
+            { rule: 'slow-test', paths: ['tests/**'], reason: 'fixture' },
+            { rule: 'fixed-sleep', paths: ['tests/**'], reason: 'fixture' },
+          ],
+        },
+      }),
+    });
   });
   afterAll(removeRepositories);
   it('passes a change that alters behaviour: base tests run against base code, not the editable head install', () => {
@@ -183,6 +209,24 @@ describe.skipIf(!pythonE2eEnabled)('Python preset lint, type and rule gates end 
     expect(result.exitCode, result.text).toBe(1);
     expect(withoutMutants(enforceable(result))).toEqual(['python-rules no-type-check hidden.py']);
     expect(result.text).toMatch(/Remove the decorator and annotate the code/);
+  });
+  it('fails a new slow test and new test output, and passes them once lifted', () => {
+    const result = gate(project, 'test-run');
+
+    expect(result.exitCode, result.text).toBe(1);
+    expect(enforceable(result)).toEqual([
+      'python-rules fixed-sleep test_runtime.py',
+      'test-console test-console-output test_noisy.py',
+      'test-console test-console-output test_runtime.py',
+      'test-runtime slow-test test_runtime.py',
+    ]);
+    expect(result.text).toMatch(
+      /"WARNING demo: cache is cold for key <n>" \(test "test_value_is_cached"\)/,
+    );
+    expect(result.text).toMatch(/test_value_is_cached took 0\.\d s; a unit test may take 0\.2 s/);
+    const lifted = gate(project, 'test-run-lifted');
+    expect(lifted.exitCode, lifted.text).toBe(0);
+    expect(enforceable(lifted)).toEqual([]);
   });
   it('reports line coverage as a descriptive finding', () => {
     const result = gate(project, 'violation');

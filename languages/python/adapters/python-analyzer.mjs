@@ -5,6 +5,7 @@ import { importClosure } from '../../../shared/import-closure.mjs';
 import { RULES_TOOL } from '../rules/rule-hints.mjs';
 import { createToolContext, mutationVersions, toolVersions } from './python-tools.mjs';
 import { TEST_RUN_TOOL } from './test-results/slow-tests.mjs';
+import { TEST_CONSOLE_TOOL } from './test-results/console-output.mjs';
 
 export const PYTHON_ANALYZER_NAME = 'python';
 export const MUTATION_ANALYZER_NAME = 'mutation';
@@ -94,6 +95,7 @@ export function createPythonAnalyzer(settings = {}) {
       'coupling',
       'import-linter',
       TEST_RUN_TOOL,
+      TEST_CONSOLE_TOOL,
     ],
     timeoutMs: ANALYZER_TIMEOUT_MS,
     createInvocation: pythonInvocation(settings, PYTHON_ANALYZER_NAME),

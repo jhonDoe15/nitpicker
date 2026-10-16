@@ -112,11 +112,12 @@ set `python.sourceRoots`.
 Config keys with this preset: `base`, `disable` (the analyzer names are `python` and `mutation`), `analyzers`, the keys shared by all languages,
 `thresholds` (`crapLimit`, enforced from slice 3, the file limits `fileLines`, `testFileLines`,
 `lineLength` and `folderFiles`, and the [slow test](#slow-tests) budgets `unitTestSeconds` and
-`integrationTestSeconds`), `exclude` (findings under the globs are dropped) and
+`integrationTestSeconds`), `testConsole` (see [new console output](#new-console-output-from-tests)), `exclude` (findings under the globs are dropped) and
 `legacyInventory` (same format and `baseline-expansion` rule as for Java), and the `python` object
 below. `layout` describes TypeScript source roots and stays a config error with this preset. The
 top-level `exceptions` is accepted only for the file limits shared by every language
-(`file-lines-limit`, `line-length-limit`, `folder-files-limit`); the Python equivalent of
+(`file-lines-limit`, `line-length-limit`, `folder-files-limit`) and `test-console-output`, whose
+check every preset shares; the Python equivalent of
 `exceptions` for every other rule is `python.exceptions`. `python` is an error with any other preset.
 
 ```json
@@ -409,6 +410,28 @@ assert_never(value)`, or an `if`/`elif` chain ending in `else: assert_never(valu
   nested classes included) with its decorators, and counted when its text differs from the base, or
   the file is new. A test whose function is not found (a generated test) is counted when its file
   changed. Slow tests the change does not touch stay baselined, and the base snapshot reports none.
+
+### New console output from tests
+
+- **Rule.** `test-console-output` (as for [TypeScript](usage.md#console-output-from-tests)) fails a
+  change when a pytest test prints a message the base run did not print. The usual cause is work
+  that outlives a test or an error a handler now logs and swallows: a thread or task still running,
+  a resource closed twice, a deprecated call. A message counts when it is written to standard error,
+  logged at `WARNING` or above (through any logger; the exception's type and message are added for
+  `logger.exception`), or raised as a warning (`DeprecationWarning: ...`). Standard output
+  (`print`) never counts, and neither does a log record of a test that takes the `caplog` fixture,
+  because that test asserts on its logs. A warning raised while pytest collects a file is given to
+  that file with no test name.
+- **Matching.** The same as TypeScript, with the same code: a stderr traceback is one message
+  without its frames and source lines, numbers, paths, times and ids are normalized, each message is
+  reported once per test file, and a message that differs from a base message by one random-looking
+  word matches it. `testConsole.allow` drops a third-party message the project cannot fix
+  (`{ "contains": "old client is deprecated", "paths": ["tests/legacy/**"], "reason": "..." }`), and
+  the top-level `exceptions` entry for `test-console-output` lifts the rule for some test files;
+  `python.exceptions` refuses it, so there is one place for it in every preset. The message names
+  both.
+- **Measurement.** The pytest plugin of [slow tests](#slow-tests) records the messages in the run
+  that measures coverage, on both snapshots. `unittest` runs are not checked.
 
 ## Slice 1: tools, reports and identities
 
