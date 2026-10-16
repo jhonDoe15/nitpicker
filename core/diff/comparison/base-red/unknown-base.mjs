@@ -1,5 +1,13 @@
-import { TEST_RESULT_RULES } from '../../../../shared/policy.mjs';
+import { RULE_IDS } from '../../../../shared/policy.mjs';
 import { TESTS_FAILED_RULES } from '../../../../shared/rules/finding-helpers.mjs';
+
+const TEST_RESULT_RULES = [
+  RULE_IDS.crapScoreLimit,
+  RULE_IDS.crapCoverageUnknown,
+  RULE_IDS.changedBranchCoverage,
+  RULE_IDS.mutantSurvived,
+  RULE_IDS.mutantNoCoverage,
+];
 
 export function isTestResultFinding(finding) {
   return TEST_RESULT_RULES.includes(finding.rule) || finding.rule.startsWith('mutant-');

@@ -100,15 +100,6 @@ export const TOUCHED_CODE_RULES = [
   { rule: RULE_IDS.changedBranchCoverage, tools: ['coverage-py'] },
 ];
 
-/** Rules whose findings come from running the project's tests, so a base whose tests fail has none. */
-export const TEST_RESULT_RULES = [
-  RULE_IDS.crapScoreLimit,
-  RULE_IDS.crapCoverageUnknown,
-  RULE_IDS.changedBranchCoverage,
-  RULE_IDS.mutantSurvived,
-  RULE_IDS.mutantNoCoverage,
-];
-
 /** Failure-message templates; `{name}` placeholders are filled by `renderMessage`. */
 export const MESSAGES = {
   functionStructure: '{name} has {value} {metric}; limit is {limit}',
