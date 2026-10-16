@@ -110,12 +110,15 @@ export function languageLevel(compiler) {
 
 const ESCAPES = { n: '\n', r: '\r', t: '\t', f: '\f' };
 
-function quotedStep(state, char, next) {
-  if (char === '\\' && /[\n\r]/u.test(next ?? '')) {
-    return { ...state, continued: true, skip: 1 };
-  }
+function escapedStep(state, char) {
+  return /[\n\r]/u.test(char)
+    ? { ...state, escape: false, continued: true }
+    : { ...state, escape: false, token: state.token + (ESCAPES[char] ?? char) };
+}
+
+function quotedStep(state, char) {
   if (char === '\\') {
-    return { ...state, token: state.token + (ESCAPES[next] ?? next ?? ''), skip: 1 };
+    return { ...state, escape: true };
   }
   if (char === state.quote) {
     return { ...state, quote: undefined };
@@ -123,15 +126,18 @@ function quotedStep(state, char, next) {
   return { ...state, token: state.token + char };
 }
 
-function tokenStep(state, char, next) {
+function tokenStep(state, char) {
   if (state.comment) {
     return /[\n\r]/u.test(char) ? { ...state, comment: false } : state;
+  }
+  if (state.escape) {
+    return escapedStep(state, char);
   }
   if (state.continued && /\s/u.test(char)) {
     return state;
   }
   if (state.quote !== undefined) {
-    return quotedStep({ ...state, continued: false }, char, next);
+    return quotedStep({ ...state, continued: false }, char);
   }
   if (/\s/u.test(char)) {
     return state.token === undefined
@@ -146,17 +152,8 @@ function tokenStep(state, char, next) {
 }
 
 export function argumentFileTokens(text) {
-  let state = {
-    tokens: [],
-    token: undefined,
-    quote: undefined,
-    comment: false,
-    continued: false,
-    skip: 0,
-  };
-  for (let index = 0; index < text.length; index += 1 + state.skip) {
-    state = tokenStep({ ...state, skip: 0 }, text[index], text[index + 1]);
-  }
+  const start = { tokens: [], token: undefined, quote: undefined, comment: false };
+  const state = [...text].reduce(tokenStep, { ...start, escape: false, continued: false });
   return state.token === undefined ? state.tokens : [...state.tokens, state.token];
 }
 
