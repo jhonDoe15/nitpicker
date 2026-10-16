@@ -193,9 +193,7 @@ Full diagnostics: /tmp/nitpicker-java-out-${/[A-Za-z0-9]{6}/}/reports/report.txt
         snapshot: 'head',
         rule: 'gradle-failure',
         path: '.',
-        message: expect.stringMatching(
-          exactText`Java preset failed in /tmp/nitpicker-diff-${/[A-Za-z0-9]{6}/}/head: Execution failed for task :compileJava`,
-        ),
+        message: 'Java preset failed in head: Execution failed for task :compileJava',
       },
     ]);
   });

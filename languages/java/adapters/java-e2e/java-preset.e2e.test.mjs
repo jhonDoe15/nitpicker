@@ -283,7 +283,7 @@ describe.skipIf(!enabled)('Java preset end to end', () => {
       expect(survivor.failed).toBe(true);
       expect(summarize(survivor.newEnforceable)).toEqual(['pit mutant-survived Calc.java']);
       expect(survivor.newEnforceable.find((finding) => finding.tool === 'pit').message).toEqual(
-        'Survived ConditionalsBoundaryMutator: changed conditional boundary: no test fails when this code changes. Add an assertion that would. If no input can tell the two apart, simplify the code so this mutant disappears.',
+        'Survived ConditionalsBoundaryMutator: changed conditional boundary: no test fails when this code changes. Add an assertion that would. If no input can tell the two apart (a compareTo boundary, a discarded lambda return), simplify the code so this mutant disappears, or add an exception for pit/mutant-survived in nitpicker.config.json.',
       );
       // The legacy uncovered mutants (Greeter.shout, Legacy.value) stay baselined.
       expect([...new Set(summarize(survivor.unchangedFindings))].sort()).toEqual(
