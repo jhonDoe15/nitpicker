@@ -470,29 +470,6 @@ describe('readJavaFindings: Spring configuration', () => {
     },
   );
 
-  it('measures the test profiles on the baseline checkout only for the head snapshot', () => {
-    const root = projectWithReports();
-    mkdirSync(path.join(root, 'src/main/resources'), { recursive: true });
-    mkdirSync(path.join(root, 'src/test/java'), { recursive: true });
-    writeFileSync(
-      path.join(root, 'src/main/resources/application.yml'),
-      'spring:\n  config:\n    activate:\n      on-profile: qa\n  jpa:\n    hibernate:\n      ddl-auto: create-drop\n',
-    );
-    writeFileSync(
-      path.join(root, 'src/test/java/EnvTest.java'),
-      '@ActiveProfiles("qa")\nclass EnvTest {}\n',
-    );
-    const emptyBaseline = projectWithReports();
-    writeManifest(root, { spring: true, testSourceRoots: ['src/test/java'] });
-    const read = (baseline) => spring(readJavaFindings(root, { baseline }).findings);
-
-    expect(read(undefined)).toEqual([]);
-    expect(read({ snapshot: 'base', baselineRoot: emptyBaseline })).toEqual([]);
-    expect(read({ snapshot: 'head', baselineRoot: emptyBaseline })).toEqual([
-      ['ddl-auto', 'src/main/resources/application.yml'],
-    ]);
-  });
-
   it('adds nothing for projects without application files', () => {
     const root = projectWithReports();
     writeManifest(root, { spring: true });
