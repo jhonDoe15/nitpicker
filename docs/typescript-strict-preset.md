@@ -502,6 +502,13 @@ off (a PR that adds or removes React keeps linting on both sides); a misspelled 
   crosses the half mark does not turn untouched components into new findings. An exception lists the
   file; the message carries the exact entry:
   `{"rule":"component-story-missing","paths":["src/Card.tsx"],"reason":"..."}`.
+- **TypeScript sources in a TypeScript project** (`javascript-in-typescript-project`, a check of
+  the `structure` analyzer). In a project with a `tsconfig.json` (read from the head checkout on
+  both sides), every `.js`, `.mjs`, `.cjs` or `.jsx` file under the source and test roots is a
+  finding with the file as its identity, so only a file a change adds fails. The message names the
+  TypeScript file to write instead (`.mjs` to `.mts`, `.jsx` to `.tsx`) and the exception entry,
+  `{"rule":"javascript-in-typescript-project","paths":["src/cli.mjs"],"reason":"..."}`.
+  `layout.entryPoints` are skipped, and the JavaScript preset does not run the check.
 - **Accessibility** (`jsx-a11y/*`): the recommended `eslint-plugin-jsx-a11y` rule set, as errors.
   `jsx-a11y/mouse-events-have-key-events` is configured beyond the recommended default, which only
   checks `onMouseOver`/`onMouseOut`: `onMouseEnter` also needs `onFocus` and `onMouseLeave` also

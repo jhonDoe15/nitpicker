@@ -329,8 +329,22 @@ describe('a change that adopts or keeps the policy', () => {
     expect(summary.notices).toEqual([]);
   });
 
+  it('passes code added under an exception that already covered code in the base', () => {
+    const config = {
+      exceptions: [{ rule: 'file-lines-limit', paths: ['src/legacy/**'], reason: 'Legacy' }],
+    };
+    const { exitCode, summary } = runWithHeadConfig({
+      baseConfig: config,
+      headConfig: config,
+      headFiles: { 'src/legacy/new.ts': 'export {};\n' },
+    });
+
+    expect([exitCode, summary.policyLoosenings]).toEqual([0, []]);
+  });
+
   it('fails a change that turns checkJs off in the project tsconfig', () => {
-    const tsconfig = (checkJs) => JSON.stringify({ compilerOptions: { allowJs: true, checkJs } });
+    const tsconfig = (checkJs) =>
+      JSON.stringify({ compilerOptions: { allowJs: true, checkJs, types: [], lib: ['ES2022'] } });
     const { exitCode, summary } = runWithHeadConfig({
       headConfig: {},
       projectFiles: { ...TYPESCRIPT_FILES, 'tsconfig.json': tsconfig(true) },

@@ -12,17 +12,28 @@ function kept(baseGlobs = [], headGlobs = []) {
 function globHiders(label, globs) {
   return globs.map((glob) => {
     const matcher = globToRegExp(glob);
-    const covers = (file) => matcher.test(file);
+    function covers(file) {
+      return matcher.test(file);
+    }
     return { label: `${label} ${glob}`, covers, coveredInBase: covers };
   });
 }
 
-function exceptionHiders(label, baseExceptions = [], headExceptions = []) {
+function coversBaseCode(hider, scope) {
+  return scope.checked.some((file) => {
+    const basePath = scope.basePathOf(file);
+    return scope.existsInBase(basePath) && hider.coveredInBase(basePath);
+  });
+}
+
+function dormantExceptionHiders(label, [baseExceptions = [], headExceptions = []], scope) {
   return headExceptions.flatMap(({ rule, paths }) => {
     const basePaths = baseExceptions
       .filter((entry) => entry.rule === rule)
       .flatMap((entry) => entry.paths);
-    return globHiders(`${label} ${rule} for`, kept(basePaths, paths));
+    return globHiders(`${label} ${rule} for`, kept(basePaths, paths)).filter(
+      (hider) => !coversBaseCode(hider, scope),
+    );
   });
 }
 
@@ -71,11 +82,11 @@ export function hiddenCodeChanges(baseConfig, headConfig, scope) {
         resolveLayout(headConfig.layout).excludedGlobs,
       ),
     ),
-    ...exceptionHiders('exception', baseConfig.exceptions, headConfig.exceptions),
-    ...exceptionHiders(
+    ...dormantExceptionHiders('exception', [baseConfig.exceptions, headConfig.exceptions], scope),
+    ...dormantExceptionHiders(
       'python.exceptions',
-      baseConfig.python?.exceptions,
-      headConfig.python?.exceptions,
+      [baseConfig.python?.exceptions, headConfig.python?.exceptions],
+      scope,
     ),
     ...testRootHiders(baseConfig, headConfig, scope),
   ];

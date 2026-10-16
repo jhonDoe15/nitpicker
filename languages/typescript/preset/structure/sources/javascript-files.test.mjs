@@ -58,7 +58,7 @@ describe('javascript-in-typescript-project', () => {
         '{"rule":"javascript-in-typescript-project","paths":["src/orders/parse.mjs"],"reason":"..."} ' +
         'to "exceptions" in nitpicker.config.json.',
     );
-    expect(findings[2].message).toContain('Write it as src/orders/view.tsx instead.');
+    expect(findings[2].message.split('. ')[1]).toBe('Write it as src/orders/view.tsx instead');
   });
 
   it('skips entry points, excepted paths, JavaScript projects and projects without a tsconfig', () => {
