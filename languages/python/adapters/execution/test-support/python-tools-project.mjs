@@ -84,6 +84,14 @@ export function contextFor(root, settings = {}, exclude = []) {
   };
 }
 
+export function contextWithConventions(root, conventions) {
+  const reportRoot = temporaryRoot();
+  return {
+    context: createToolContext({ projectRoot: root, liveRoot: root, reportRoot, conventions }),
+    reportRoot,
+  };
+}
+
 export function callsLog() {
   const log = path.join(temporaryRoot(), 'calls.jsonl');
   writeFileSync(log, '');

@@ -92,6 +92,22 @@ describe('formatter detection', () => {
   ])('reads the ktfmt style from %s', (build, style) => {
     expect(toolsOf({ 'build.gradle.kts': build }).ktfmtStyle).toBe(style);
   });
+
+  it.each([
+    ['names no style', 'ktfmt()', '4', 'kotlinlang'],
+    ['names no style', 'ktfmt()', '2', 'meta'],
+    ['names no style', 'ktfmt()', undefined, 'meta'],
+    ['names google', 'ktfmt { googleStyle() }', '4', 'google'],
+    ['names meta', 'ktfmt { metaStyle() }', '4', 'meta'],
+    ['names kotlinlang', 'ktfmt { kotlinLangStyle() }', '2', 'kotlinlang'],
+  ])(
+    'with a build that %s and the indentation %s followed, uses ktfmt %s',
+    (_n, build, width, style) => {
+      const conventions = width === undefined ? {} : { 'kotlin.indentation': width };
+
+      expect(toolsOf({ 'build.gradle.kts': build }, { conventions }).ktfmtStyle).toBe(style);
+    },
+  );
 });
 
 describe('detekt config', () => {
@@ -143,6 +159,54 @@ describe('Gradle arguments', () => {
       '-Pnitpicker.kotlin.ktfmtStyle=google',
       '-Pnitpicker.kotlin.editorconfig=true',
       `-Pnitpicker.kotlin.detektConfig=${path.join(root, 'config/detekt.yml')}`,
+    ]);
+  });
+
+  it('passes the conventions followed for ktfmt, ktlint and detekt', () => {
+    const root = project({ 'build.gradle.kts': 'ktlint' });
+    const conventions = {
+      'kotlin.indentation': '4',
+      'kotlin.trailingCommas': 'never',
+      'kotlin.wildcardImports': 'wildcard',
+    };
+
+    expect(kotlinGradleArguments(root, { conventions })).toEqual([
+      '-Pnitpicker.kotlin=true',
+      '-Pnitpicker.kotlin.formatter=ktlint',
+      '-Pnitpicker.kotlin.ktfmtStyle=kotlinlang',
+      '-Pnitpicker.kotlin.indentSize=4',
+      '-Pnitpicker.kotlin.trailingCommas=never',
+      '-Pnitpicker.kotlin.wildcardImports=allow',
+    ]);
+  });
+
+  it('passes nothing for the conventions that match what the tools do already', () => {
+    const root = project({ 'build.gradle.kts': 'ktlint' });
+    const conventions = { 'kotlin.trailingCommas': 'always', 'kotlin.wildcardImports': 'explicit' };
+
+    expect(kotlinGradleArguments(root, { conventions })).toEqual([
+      '-Pnitpicker.kotlin=true',
+      '-Pnitpicker.kotlin.formatter=ktlint',
+      '-Pnitpicker.kotlin.ktfmtStyle=meta',
+    ]);
+  });
+
+  it('hands the conventions of the policy to Gradle', () => {
+    const root = project({ 'build.gradle.kts': 'ktlint' });
+    const conventions = { 'kotlin.indentation': '2' };
+
+    collectJavaFindings(root, { gradle: fakeGradle, policy: { preset: 'kotlin', conventions } });
+
+    expect(
+      JSON.parse(readFileSync(path.join(root, 'build/nitpicker/gradle-args.json'), 'utf8')).slice(
+        3,
+        7,
+      ),
+    ).toEqual([
+      '-Pnitpicker.kotlin=true',
+      '-Pnitpicker.kotlin.formatter=ktlint',
+      '-Pnitpicker.kotlin.ktfmtStyle=meta',
+      '-Pnitpicker.kotlin.indentSize=2',
     ]);
   });
 

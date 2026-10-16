@@ -18,7 +18,8 @@ import {
   detectTypeCheckers,
   importRoots,
 } from './execution/python-project.mjs';
-import { RUFF_CONFIG } from './configuration/python-ruff-config.mjs';
+import { formatterConventionArguments } from './configuration/python-format-options.mjs';
+import { ruffConfigFor } from './configuration/python-ruff-config.mjs';
 import {
   detectTestRunner,
   NO_TESTS_EXIT,
@@ -58,6 +59,7 @@ export function createToolContext({
   exclude = [],
   snapshot = 'head',
   baselineRoot,
+  conventions = {},
 }) {
   const launcher = openEnvironment(detectEnvironment(liveRoot, settings.environment), liveRoot);
   const sourceRoots = detectSourceRoots(projectRoot, settings.sourceRoots);
@@ -69,6 +71,7 @@ export function createToolContext({
     reportRoot,
     snapshot,
     baselineRoot,
+    conventions,
     launcher,
     exclude,
     project: {
@@ -138,7 +141,7 @@ export function lint(context) {
       'ruff',
       'check',
       '--config',
-      RUFF_CONFIG,
+      ruffConfigFor(context),
       '--target-version',
       context.project.targetVersion,
       '--ignore-noqa',
@@ -166,10 +169,24 @@ function blackExclusions({ exclude }) {
   return ['--extend-exclude', patterns.join('|')];
 }
 
-function formatCommand({ project, ...context }) {
+function formatCommand({ project, conventions, ...context }) {
+  const options = formatterConventionArguments({
+    formatter: project.formatter,
+    conventions,
+    projectRoot: context.projectRoot,
+  });
   return project.formatter === 'black'
-    ? ['black', '--check', ...blackExclusions(context), '.']
-    : ['ruff', 'format', '--check', '--diff', '--no-cache', ...ruffExclusions(context), '.'];
+    ? ['black', '--check', ...options, ...blackExclusions(context), '.']
+    : [
+        'ruff',
+        'format',
+        '--check',
+        '--diff',
+        '--no-cache',
+        ...options,
+        ...ruffExclusions(context),
+        '.',
+      ];
 }
 
 export function unformattedPaths(formatter, { stdout, stderr }) {

@@ -23,12 +23,16 @@ import { isJavaTouchedRule } from './touched-rules.mjs';
 const GRADLE_TIMEOUT_MS = 15 * 60 * 1000;
 const MAX_OUTPUT_BYTES = 50 * 1024 * 1024;
 
-function kotlinProperties(projectRoot, { preset, kotlinFormatter, kotlinDetektConfig, snapshot }) {
+function kotlinProperties(
+  projectRoot,
+  { preset, kotlinFormatter, kotlinDetektConfig, snapshot, conventions },
+) {
   return preset === 'kotlin'
     ? kotlinGradleArguments(projectRoot, {
         formatter: kotlinFormatter,
         detektConfig: kotlinDetektConfig,
         snapshot,
+        conventions,
       })
     : [];
 }

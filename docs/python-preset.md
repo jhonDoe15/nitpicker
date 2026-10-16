@@ -194,7 +194,14 @@ The formatter is `black` when `pyproject.toml`, `setup.cfg`, `tox.ini`, `Pipfile
 TOML dependency array), a `tox` command, or the `psf/black` or `black-pre-commit-mirror` repository
 or the `black` hook id, and none of them configures ruff's formatter (`[tool.ruff.format]`, a
 `[format]` table in `ruff.toml`, the `ruff-format` hook). The format check uses the project's own
-formatter configuration (line length and so on); only the lint rules are nitpicker's. A format
+formatter configuration (line length and so on); only the lint rules are nitpicker's. For a setting
+the project's ruff or black configuration does not write down (`line-length`, `format.quote-style`,
+`indent-width`, black's `skip-string-normalization`), the format check follows the project's code
+instead of the formatter default (double quotes, 88 columns, 4 spaces): `python.quotes`,
+`python.lineLength` and `python.indentation` in the `conventions` key of `nitpicker.config.json`
+pin them. A file votes a line length only from a call or bracket that the formatter left wrapped
+without a trailing comma (joined, it would have fit any wider limit), or 120 when two lines pass
+100; `black` has no indentation option, and for single quotes it gets `--skip-string-normalization`. A format
 finding from a detected formatter says so and names `python.formatter`, the setting that changes
 it.
 
@@ -288,9 +295,11 @@ Details that are decisions rather than the table:
 --no-cache --output-format sarif`. The rule set is nitpicker's, not the project's, so the gate
   means the same on every project: pyflakes (`F`), the error rules of pycodestyle that are not
   formatting (`E4`, `E7`, `E9`), bugbear (`B`), comprehensions (`C4`), `SIM`, `PIE`, `RET`, `PERF`,
-  `RUF` and `T20` (no `print`), without `B008` (a call in an argument default, which the web
-  frameworks need) and `RUF001`, `RUF002`, `RUF003` and `RUF012` (non-ASCII text and mutable class
-  attributes, both common in correct code). The target version follows the project's
+  the `RUF` rules listed one by one in the file (the stable ones ruff 0.16 enables, so a newer ruff
+  cannot add rules on its own; a rule the installed ruff does not know yet is left out of a copy of
+  the config instead of failing it) and `T20` (no `print`), without `B008` (a call in an argument
+  default, which the web frameworks need) and `RUF001`, `RUF002`, `RUF003` and `RUF012` (non-ASCII
+  text and mutable class attributes, both common in correct code). The target version follows the project's
   `requires-python` (or poetry's `python`, or `python_requires`): its lowest version, never lower
   than 3.8, and 3.8 when none is declared, so a rule that exists only on newer versions (`B905`,
   `zip(strict=)`) cannot flag code that must run on an older one. The SARIF goes through the existing generic ingester; identity is the

@@ -2,7 +2,7 @@ import { writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { normalizeReportPath } from '../../../java/ingest/common.mjs';
 import { run } from '../execution/python-process.mjs';
-import { RUFF_CONFIG } from '../configuration/python-ruff-config.mjs';
+import { ruffConfigFor } from '../configuration/python-ruff-config.mjs';
 import { fileURLToPath } from 'node:url';
 
 export const RULES_REPORT = 'rules.json';
@@ -16,7 +16,7 @@ const RULES_SCRIPT = path.resolve(
 export function pythonSources(context) {
   const { stdout } = run(
     context,
-    ['ruff', 'check', '--show-files', '--config', RUFF_CONFIG, '--no-cache', '.'],
+    ['ruff', 'check', '--show-files', '--config', ruffConfigFor(context), '--no-cache', '.'],
     { rule: RULES_FAILED_RULE },
   );
   return stdout
