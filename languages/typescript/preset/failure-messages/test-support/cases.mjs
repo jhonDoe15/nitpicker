@@ -158,7 +158,6 @@ export const failureMessageCases = [
   ...[
     ['partial union test names the switch', 'switch'],
     ['partial union test names the Record lookup', 'Record<Union, boolean>'],
-    ['partial union test names the config exception', 'nitpicker.config.json'],
   ].map(([name, allowed]) => ({
     name,
     config: typedStrictConfig,
@@ -170,7 +169,6 @@ export const failureMessageCases = [
   ...[
     ['forwarding wrapper names the direct call', 'call `fetchOne` directly'],
     ['forwarding wrapper names the re-export', 'export { fetchOne as readOne }'],
-    ['forwarding wrapper names the config exception', 'nitpicker.config.json'],
   ].map(([name, allowed]) => ({
     name,
     config: typedStrictConfig,

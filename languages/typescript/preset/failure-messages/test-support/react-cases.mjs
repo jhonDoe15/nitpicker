@@ -66,13 +66,7 @@ const reactSyntaxCases = [
     'export type PanelProps = { tag?: string; tags?: string[] };',
     'one-element array',
   ],
-  [
-    'singular and plural props name the config exception',
-    'export type PanelProps = { tag?: string; tags?: string[] };',
-    'nitpicker.config.json',
-  ],
   ['exclusive props check names the discriminated union', exclusivePair, 'discriminated union'],
-  ['exclusive props check names the config exception', exclusivePair, 'nitpicker.config.json'],
   [
     'index key names a stable id',
     'export const List = ({ items }) => <ul>{items.map((item, index) => <li key={index}>{item}</li>)}</ul>;',

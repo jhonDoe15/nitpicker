@@ -6,7 +6,7 @@ import path from 'node:path';
 import ts from 'typescript';
 import { isExcludedPath, normalizePath } from '../dependency-graph/cruise.mjs';
 import { defaultResolvedLayout } from '../layout.mjs';
-import { functionUnits, isFunctionLike } from './function-units.mjs';
+import { functionUnits, isFunctionLike } from './units/function-units.mjs';
 
 function parseSource(source, filename) {
   const sourceFile = ts.createSourceFile(filename, source, ts.ScriptTarget.Latest, true);

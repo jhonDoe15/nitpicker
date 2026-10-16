@@ -1,6 +1,6 @@
 import path from 'node:path';
 import ts from 'typescript';
-import { functionUnits } from '../../preset/structure/function-units.mjs';
+import { functionUnits } from '../../preset/structure/units/function-units.mjs';
 
 const SCRIPT_KINDS = new Map([
   ['.tsx', ts.ScriptKind.TSX],
