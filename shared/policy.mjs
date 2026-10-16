@@ -26,6 +26,7 @@ export const RULE_IDS = {
   fileLines: 'file-lines-limit',
   lineLength: 'line-length-limit',
   folderFiles: 'folder-files-limit',
+  componentStoryMissing: 'component-story-missing',
 };
 
 /** Per-function structure limits, keyed by the metric name the TypeScript analyzer reports. */
@@ -59,18 +60,8 @@ export const SHARED_EXCEPTION_RULES = [
 export const JAVA_NATIVE_RULES = [RULE_IDS.lineLength];
 
 /** `{exception}` is the `exceptions` entry that would lift the finding, as JSON. */
-const EXCEPTION_HINT =
+export const EXCEPTION_HINT =
   'If this is intended, add {exception} to "exceptions" in nitpicker.config.json.';
-
-/** The `exceptions` entry that lifts `rule` for `glob`, as JSON with a reason to fill in. */
-export function exceptionEntry(rule, glob) {
-  return JSON.stringify({ rule, paths: [glob], reason: '...' });
-}
-
-/** The sentence that tells how to lift a finding of `rule` at `glob`. */
-export function exceptionHint(rule, glob) {
-  return renderMessage(EXCEPTION_HINT, { exception: exceptionEntry(rule, glob) });
-}
 
 /** A CRAP score at or above this fails (`QUALITY_CRAP_SCORE_LIMIT` / `thresholds.crapLimit` override it). */
 export const DEFAULT_CRAP_SCORE_LIMIT = 9;
@@ -116,6 +107,8 @@ export const MESSAGES = {
   fileLines: `File has {value} lines (limit {limit}). Split it into files by responsibility. ${EXCEPTION_HINT}`,
   lineLength: `Line is {value} characters (limit {limit}). Break it up or extract a named value. ${EXCEPTION_HINT}`,
   folderFiles: `Folder has {value} {kind} files directly in it (limit {limit}). Group related files into subfolders (packages in Java). ${EXCEPTION_HINT}`,
+  componentStoryMissing: `Most components in this project have a story. Add {story} for {name}. ${EXCEPTION_HINT}`,
+  componentStoryMissingUnenforced: `{name} has no story. Add {story}. Not enforced until more than half of the components have one. ${EXCEPTION_HINT}`,
 };
 
 export function renderMessage(template, values) {
@@ -278,4 +271,20 @@ export const RULES = [
     limit: `more than ${String(FILE_LIMIT_DEFAULTS.folderFiles)} source files, or test files, directly in one folder; override with \`thresholds.folderFiles\``,
     enforcedBy: withKotlin(ALL, true),
   },
+  {
+    id: RULE_IDS.componentStoryMissing,
+    check: 'structure',
+    limit:
+      'a component file without a story, in a package that has Storybook; enforced when more than half of its component files have one, reported otherwise',
+    enforcedBy: withKotlin(TYPESCRIPT_ONLY, false),
+  },
 ];
+
+/**
+ * Project-level TypeScript checks that take `exceptions` entries although no ESLint rule has their
+ * id: the rules only the TypeScript structure check enforces.
+ */
+export const TYPESCRIPT_PROJECT_EXCEPTION_RULES = RULES.filter(
+  ({ check, enforcedBy }) =>
+    check === 'structure' && enforcedBy.typescript && !enforcedBy.java && !enforcedBy.python,
+).map(({ id }) => id);

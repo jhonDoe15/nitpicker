@@ -131,10 +131,10 @@ With Spring on the classpath, also follow [spring.md](spring.md).
   `@SuppressWarnings("checkstyle:...")` and `CHECKSTYLE.OFF`/`CHECKSTYLE.SUPPRESS` comments do
   nothing.
 - Code that is right despite a rule gets a reviewed `exceptions` entry in `nitpicker.config.json`
-  that names the finding as printed, for example `pmd/UnusedPrivateField` or
-  `errorprone/FieldCanBeFinal`, with its paths and a reason. Never add one, nor a config `exclude`,
-  `disable`, `thresholds` or legacy entry, nor a weaker test, to get past the gate yourself: stop
-  and ask.
+  that names the finding as printed, for example `pmd/UnusedPrivateField`,
+  `checkstyle/AbbreviationAsWordInName` or `errorprone/FieldCanBeFinal`, with its paths and a
+  reason. Never add one, nor a config `exclude`, `disable`, `thresholds` or legacy entry, nor a
+  weaker test, to get past the gate yourself: stop and ask.
 - A violated ArchUnit rule is a finding (`archunit/<rule>`) on the offending class. Run the
   `*ArchTest` class with the build's test task to read the full violation, and fix the code.
 

@@ -6,8 +6,6 @@ import { applyJavaPolicy } from '../java-policy.mjs';
 import { OVERLAP_PAIRS, withoutOverlaps } from './static-overlaps.mjs';
 
 const DOCS = path.resolve(import.meta.dirname, '../../../../docs/java-preset.md');
-const CHECKSTYLE =
-  /^checkstyle\/com\.puppycrawl\.tools\.checkstyle\.checks\.(?:\w+\.)*(\w+?)(?:Check)?$/u;
 const PROBE = JSON.parse(
   readFileSync(path.join(import.meta.dirname, 'fixtures/probe-findings.json'), 'utf8'),
 );
@@ -50,7 +48,7 @@ function sharedLines(findings) {
     .filter(([, group]) => new Set(group.map(({ tool }) => tool)).size > 1)
     .map(([line, group]) => [
       line,
-      [...new Set(group.map(({ tool, rule }) => `${tool}/${rule.split('.').at(-1)}`))].sort(),
+      [...new Set(group.map(({ tool, rule }) => `${tool}/${rule}`))].sort(),
     ])
     .sort(([left], [right]) => left.localeCompare(right));
 }
@@ -72,12 +70,12 @@ describe('overlaps on the probe project', () => {
         'C4Switches.java:6',
         ['errorprone/StatementSwitchToExpressionSwitch', 'pmd/NonExhaustiveSwitch'],
       ],
-      ['C8Equals.java:4', ['checkstyle/MemberNameCheck', 'errorprone/FieldCanBeStatic']],
-      ['EqOnly.java:4', ['checkstyle/MemberNameCheck', 'errorprone/FieldCanBeStatic']],
+      ['C8Equals.java:4', ['checkstyle/MemberName', 'errorprone/FieldCanBeStatic']],
+      ['EqOnly.java:4', ['checkstyle/MemberName', 'errorprone/FieldCanBeStatic']],
       [
         'Fields.java:5',
         [
-          'checkstyle/MemberNameCheck',
+          'checkstyle/MemberName',
           'errorprone/FieldCanBeStatic',
           'pmd/AvoidFieldNameMatchingMethodName',
         ],
@@ -105,7 +103,7 @@ describe('overlaps on the probe project', () => {
         'StaticCtor.java:4',
         ['errorprone/NonFinalStaticField', 'pmd/AvoidFieldNameMatchingMethodName'],
       ],
-      ['Volatile.java:4', ['checkstyle/MemberNameCheck', 'pmd/UnusedPrivateField']],
+      ['Volatile.java:4', ['checkstyle/MemberName', 'pmd/UnusedPrivateField']],
     ]);
   });
 
@@ -159,8 +157,7 @@ describe('overlaps after policy', () => {
 
 describe('the overlap list in docs/java-preset.md', () => {
   it('is the pair table, in order', () => {
-    const printed = (rules) =>
-      rules.map((rule) => `\`${rule.replace(CHECKSTYLE, 'checkstyle/$1')}\``).join(', ');
+    const printed = (rules) => rules.map((rule) => `\`${rule}\``).join(', ');
     const documented = readFileSync(DOCS, 'utf8')
       .split('\n')
       .filter((line) => /^- (?:line|member|javadoc|class|field|file): `/u.test(line));

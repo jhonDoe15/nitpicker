@@ -1,8 +1,18 @@
+import { readFileSync } from 'node:fs';
+import path from 'node:path';
 import { describe, expect, it } from 'vitest';
+import { CATALOG_TOOLS, readCatalog } from '../../messages/rule-messages.mjs';
 import { OVERLAP_PAIRS, matchesRule, withoutOverlaps } from './static-overlaps.mjs';
 
-const TOOLS =
-  /^(?:(?:pmd|spotbugs|errorprone)\/|checkstyle\/com\.puppycrawl\.tools\.checkstyle\.checks\.)/u;
+const CHECKS = path.resolve(import.meta.dirname, '../../gradle/errorprone/checks.json');
+const KNOWN_RULES = [
+  'errorprone/NullAway',
+  ...JSON.parse(readFileSync(CHECKS, 'utf8')).suppressible.map((check) => `errorprone/${check}`),
+  ...CATALOG_TOOLS.flatMap((tool) =>
+    Object.keys(readCatalog(tool)).map((rule) => `${tool}/${rule}`),
+  ),
+];
+const TOOLS = /^(?:pmd|spotbugs|errorprone|checkstyle)\/[A-Za-z0-9_*]+$/u;
 const SOURCE = [
   'package demo;',
   'public class A {',
@@ -82,6 +92,14 @@ describe('overlap pairs', () => {
     expect(rules.filter((rule) => reaches(rule, rule))).toStrictEqual([]);
   });
 
+  it('name rules as the findings print them: Checkstyle module ids, catalog rules, Error Prone checks', () => {
+    const rules = OVERLAP_PAIRS.flatMap(({ primary, secondary }) => [...primary, ...secondary]);
+
+    expect(
+      rules.filter((rule) => !KNOWN_RULES.some((known) => matchesRule([rule], known))),
+    ).toStrictEqual([]);
+  });
+
   it.each(cases)(
     'drops %s where %s is reported, in the same %s only',
     (secondary, primary, scope) => {
@@ -98,7 +116,7 @@ describe('overlap pairs', () => {
   it('keeps a secondary whose only primary is itself dropped', () => {
     const findings = [
       at('errorprone/ReturnFromVoid', 5),
-      at('checkstyle/com.puppycrawl.tools.checkstyle.checks.javadoc.JavadocMethodCheck', 5),
+      at('checkstyle/JavadocMethod', 5),
       at('errorprone/InvalidParam', 5),
     ];
 

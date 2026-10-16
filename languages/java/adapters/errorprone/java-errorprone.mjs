@@ -1,6 +1,6 @@
 import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
-import { exceptionHint } from '../../../../shared/policy.mjs';
+import { exceptionHint } from '../../../../shared/rules/exceptions.mjs';
 import { normalizeReportPath } from '../../ingest/common.mjs';
 import { ingestErrorProne } from '../../ingest/errorprone/errorprone.mjs';
 import { isClassExempt } from './exemptions/class-exemptions.mjs';

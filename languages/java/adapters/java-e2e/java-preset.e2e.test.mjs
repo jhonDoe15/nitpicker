@@ -104,13 +104,7 @@ const BASELINED_FINDINGS_WITHOUT_GREETER_LINE_COVERAGE = [
   'structure function-parameters-limit Wide.java',
 ];
 
-const CHECKSTYLE_PREFIX = 'com.puppycrawl.tools.checkstyle.checks.';
-
-const CHECKSTYLE_ON_BAD = [
-  'indentation.IndentationCheck',
-  'regexp.RegexpSinglelineJavaCheck',
-  'whitespace.EmptyLineSeparatorCheck',
-];
+const CHECKSTYLE_ON_BAD = ['EmptyLineSeparator', 'Indentation', 'RegexpSinglelineJava'];
 
 describe.skipIf(!enabled)('Java preset end to end', () => {
   beforeAll(() => {
@@ -201,7 +195,7 @@ describe.skipIf(!enabled)('Java preset end to end', () => {
 
       expect(result.failed).toBe(true);
       expect(summarize(result.newEnforceable)).toEqual([
-        ...CHECKSTYLE_ON_BAD.map((check) => `checkstyle ${CHECKSTYLE_PREFIX}${check} Bad.java`),
+        ...CHECKSTYLE_ON_BAD.map((check) => `checkstyle ${check} Bad.java`),
         'errorprone DefaultCharset Bad.java',
         'errorprone EmptyCatch Bad.java',
         'google-java-format format Bad.java',

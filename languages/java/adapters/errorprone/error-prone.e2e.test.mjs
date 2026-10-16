@@ -11,6 +11,7 @@ import {
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { exceptionHint } from '../../../../shared/rules/exceptions.mjs';
 import { GRADLE_DIRECTORY, INIT_SCRIPT } from '../../builds/java-build.mjs';
 import { GRADLE_STEP_TIMEOUT_MS } from '../test-support/gradle-e2e.mjs';
 import { readErrorProneFindings } from './java-errorprone.mjs';
@@ -232,8 +233,7 @@ const NULLAWAY_FORM =
   "(JSpecify's org.jspecify.annotations.Nullable if it uses none) and check it before use; " +
   'otherwise give it a non-null value.';
 const projects = [];
-const hint = (check, file) =>
-  `If this is intended, add {"rule":"errorprone/${check}","paths":["${file}"],"reason":"..."} to "exceptions" in nitpicker.config.json.`;
+const hint = (check, file) => exceptionHint(`errorprone/${check}`, file);
 
 const FULL_PROJECT = {
   'src/main/java/demo/Wired.java': WIRED,
