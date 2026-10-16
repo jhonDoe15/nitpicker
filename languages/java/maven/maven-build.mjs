@@ -21,11 +21,13 @@ import {
 } from './maven-tests.mjs';
 import { copyTestResults } from './results/maven-test-results.mjs';
 import { jacocoPlugin, MAVEN_PLUGINS, resolveTools } from './maven-tools.mjs';
+import { processorTool, runErrorProne } from './errorprone/maven-errorprone.mjs';
 import { GRADLE_DIRECTORY, readPinnedTools } from '../builds/java-build.mjs';
 
 export const MAVEN_REPORT_DIRECTORY = 'target/nitpicker';
 const OWN_JACOCO_EXEC = 'nitpicker-jacoco.exec';
 const SPRING_JAR = /^spring-(?:context|boot)-.*\.jar$/u;
+const GUAVA_JAR = /^guava-\d.*\.jar$/u;
 const PROJECT_CHECKS_OFF = [
   '-Dcheckstyle.skip=true',
   '-Dpmd.skip=true',
@@ -95,7 +97,11 @@ function relativeRoots(module, roots) {
   return roots.map((root) => relativeTo(module.basedir, root));
 }
 
-function writeManifest({ module, reportDir, pinned, spring }) {
+function hasGuava(classpath) {
+  return classpath.some((entry) => GUAVA_JAR.test(path.basename(entry)));
+}
+
+function writeManifest({ module, reportDir, pinned, spring, classpaths }) {
   writeFileSync(
     path.join(reportDir, 'manifest.json'),
     JSON.stringify({
@@ -105,6 +111,8 @@ function writeManifest({ module, reportDir, pinned, spring }) {
       testSourceRoots: relativeRoots(module, module.testSourceRoots),
       resourceRoots: relativeRoots(module, module.resourceRoots),
       spring,
+      guava: hasGuava(classpaths.mainCompile),
+      testGuava: hasGuava(classpaths.testCompile),
     }),
   );
 }
@@ -118,6 +126,7 @@ function analyzeSources(context, project) {
   const { module, reportDir, tools, classpaths, configs, pinned } = context;
   runPmd({ module, reportDir, tools, classpaths, configs, spring: context.spring });
   runSpotbugs({ module, reportDir, tools });
+  runErrorProne({ module, reportDir, tools, classpaths });
   runFormat({ module, reportDir, tools });
   runCheckstyle({ module, reportDir, tools, configs, pinned });
   runStructure(module, reportDir);
@@ -142,7 +151,7 @@ function analyzeModule({ project, ...options }) {
   copyTestResults({ module, reportDir, since, isArchunit });
   analyzeSources(context, project);
   analyzeTests(context, testsRan);
-  writeManifest({ module, reportDir, pinned, spring });
+  writeManifest({ module, reportDir, pinned, spring, classpaths });
 }
 
 function staleOutputs(module) {
@@ -197,6 +206,7 @@ export function runMavenPreset(projectRoot, { maven, policy = {}, configs }) {
       maven,
       pinned,
       launcherVersions: missingLauncherVersions(analyzed),
+      extraTools: modules.map((module) => processorTool(module.compiler)).filter(Boolean),
     });
     const project = {
       projectRoot,

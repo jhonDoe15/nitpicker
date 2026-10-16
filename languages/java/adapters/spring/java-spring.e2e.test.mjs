@@ -6,6 +6,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { INIT_SCRIPT } from '../../builds/java-build.mjs';
 import { codeSmellRules } from '../test-support/code-smell-rules.mjs';
 import { expectedViolations, reportedViolations } from '../test-support/violation-markers.mjs';
+import { readErrorProneFindings } from '../errorprone/java-errorprone.mjs';
 
 const enabled = process.env.NITPICKER_JAVA_E2E === '1';
 const gradle = process.env.NITPICKER_GRADLE ?? 'gradle';
@@ -13,6 +14,7 @@ const fixtures = path.join(import.meta.dirname, '..', 'fixtures');
 const SPRING_RULE = /^(?:Spring|Jpa)/;
 const GRADLE_TIMEOUT = 15 * 60 * 1000;
 const HOOK_TIMEOUT = 16 * 60 * 1000;
+const CHECKSTYLE_VERSION = /<checkstyle version="([^"]+)">/;
 
 function gradleProject(fixtureName) {
   const project = { root: '' };
@@ -53,6 +55,25 @@ describe.skipIf(!enabled)('Spring rules on a Spring project', () => {
       SPRING_RULE.test(rule),
     );
     expect(reported).toEqual(expected);
+  });
+
+  it('runs the pinned Checkstyle with the bundled config even when the project declares its own', () => {
+    const report = readFileSync(
+      path.join(project.root, 'build', 'nitpicker', 'checkstyle.xml'),
+      'utf8',
+    );
+    expect(CHECKSTYLE_VERSION.exec(report)?.[1]).toBe('10.21.1');
+  });
+
+  it('reports no FieldCanBeFinal in JPA entities and no utility-class finding on configuration classes', () => {
+    const findings = readErrorProneFindings({
+      reportRoot: path.join(project.root, 'build', 'nitpicker'),
+      roots: [project.root],
+      lintedRoots: ['src/main/java', 'src/test/java'],
+    });
+    expect(
+      findings.map(({ rule, path: file, location }) => `${file}:${location.line} ${rule}`),
+    ).toEqual(['src/main/java/shop/catalog/ProductRepository.java:11 MissingOverride']);
   });
 
   it('records the resource roots and that the project uses Spring', () => {

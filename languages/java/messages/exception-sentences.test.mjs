@@ -13,6 +13,10 @@ const OTHER_RULES_ROUTE = new Map([
     'names the route of the rule a suppression hides',
   ],
   [
+    'adapters/suppressions/errorprone/errorprone-escapes.mjs',
+    'names the route of the Error Prone check a suppression hides',
+  ],
+  [
     'adapters/kotlin/rules/kotlin-suppressions.mjs',
     'names the route of the rule a suppression hides',
   ],

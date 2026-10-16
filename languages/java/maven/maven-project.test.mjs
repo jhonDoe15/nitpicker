@@ -98,12 +98,14 @@ function effective(root) {
 `;
 }
 
+const PLUGIN_DEFAULT_LEVEL = { release: undefined, source: '8', target: '8' };
 const NO_COMPILER_SETTINGS = {
-  release: undefined,
-  source: undefined,
-  target: undefined,
+  ...PLUGIN_DEFAULT_LEVEL,
   encoding: undefined,
   args: [],
+  proc: undefined,
+  processorPaths: undefined,
+  test: { ...PLUGIN_DEFAULT_LEVEL, args: [] },
 };
 
 function defaultModule(basedir, { coordinates, packaging, pomFile = 'pom.xml' }) {
@@ -166,6 +168,14 @@ describe('readReactor', () => {
         target: undefined,
         encoding: 'ISO-8859-1',
         args: ['-Xlint:all', '-Xplugin:Noop', '-parameters', '--enable-preview'],
+        proc: undefined,
+        processorPaths: undefined,
+        test: {
+          release: '17',
+          source: '17',
+          target: undefined,
+          args: ['-Xlint:all', '-Xplugin:Noop', '-parameters', '--enable-preview'],
+        },
       },
     });
     expect(app).toEqual(

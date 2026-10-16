@@ -6,6 +6,7 @@ import { ingestCrap } from '../../ingest/crap.mjs';
 import { DUPLICATES_REPORT, readDuplicateFindings } from '../metrics/java-duplicates.mjs';
 import { coveredByCpd } from '../../guards/cpd-duplicates.mjs';
 import { readKotlinDuplicateFindings } from '../kotlin/kotlin-duplicates.mjs';
+import { readErrorProneFindings } from '../errorprone/java-errorprone.mjs';
 import { dropEntityAssociations, dropInheritedVersions } from '../jpa/jpa-source-filters.mjs';
 import {
   isEmptyModule,
@@ -94,6 +95,7 @@ function moduleContextFindings(projectRoot, module, { manifest, options }) {
       module: { moduleDir: module.dir, modulePath: options.modulePath },
       sourceRoots: module.manifest.sourceRoots ?? [],
       allSourceRoots: manifest.sourceRoots,
+      preset,
       kotlin: preset === 'kotlin' && module.manifest.kotlin === true,
       jacoco: readModuleJacoco(module, preset),
       mainCheckstyle: readMainCheckstyle(projectRoot, module, preset),
@@ -111,6 +113,11 @@ function readModuleFindings(context, crapLimit) {
   const { reportRoot, projectRoot, kotlin, jacoco } = context;
   return [
     ...sarifFindings(context),
+    ...readErrorProneFindings({
+      ...context,
+      lintedRoots: lintedRoots(context.manifest),
+      kotlin: context.preset === 'kotlin',
+    }),
     ...formatFindings(context),
     ...checkstyleFindings(context),
     ...jacocoFindings(context, jacoco),
@@ -182,9 +189,7 @@ function sarifFindings(context) {
       projectRoot,
       sourceRoots: allSourceRoots,
     }),
-    ...ingestSarif(dropEntityAssociations(spotbugs, projectRoot), {
-      tool: 'spotbugs',
-    }).findings,
+    ...ingestSarif(dropEntityAssociations(spotbugs, projectRoot), { tool: 'spotbugs' }).findings,
   ];
 }
 

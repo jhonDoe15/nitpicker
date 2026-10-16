@@ -1,24 +1,16 @@
-import { childrenNamed } from '../../ingest/common.mjs';
+import { childAt, childrenAt } from '../../ingest/common.mjs';
 
 export const CONFIGURATION = 'configuration';
 export const PROPERTIES = 'properties';
-
-export function child(element, ...names) {
-  return names.reduce((current, name) => current && childrenNamed(current, name)[0], element);
-}
+export { childAt as child, childrenAt as all };
 
 export function textAt(element, ...names) {
-  return child(element, ...names)?.text;
-}
-
-export function all(element, ...names) {
-  const parent = child(element, ...names.slice(0, -1));
-  return parent === undefined ? [] : childrenNamed(parent, names.at(-1));
+  return childAt(element, ...names)?.text;
 }
 
 export function pluginsOf(project) {
   return new Map(
-    all(project, 'build', 'plugins', 'plugin').map((plugin) => [
+    childrenAt(project, 'build', 'plugins', 'plugin').map((plugin) => [
       `${textAt(plugin, 'groupId') ?? 'org.apache.maven.plugins'}:${textAt(plugin, 'artifactId')}`,
       plugin,
     ]),
@@ -26,8 +18,8 @@ export function pluginsOf(project) {
 }
 
 export function executionsWithGoal(plugin, goal) {
-  return all(plugin, 'executions', 'execution').filter((execution) =>
-    all(execution, 'goals', 'goal').some((element) => element.text === goal),
+  return childrenAt(plugin, 'executions', 'execution').filter((execution) =>
+    childrenAt(execution, 'goals', 'goal').some((element) => element.text === goal),
   );
 }
 
