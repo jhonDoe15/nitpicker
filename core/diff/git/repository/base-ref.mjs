@@ -2,7 +2,7 @@ import { configError } from '../../../../shared/config.mjs';
 import { GitCommandError, runGit } from './command.mjs';
 
 const COMMIT_ID = /^[0-9a-f]{7,40}$/iu;
-const HEAD_SYNTAX = /HEAD|^@|@\{/u;
+const HEAD_SYNTAX = /^(?:HEAD|@)(?:$|[~^@{])|@\{/u;
 
 export function resolveBase({ repositoryRoot, explicitBase, configuredBase, environment = {} }) {
   if (isNonEmpty(explicitBase)) {

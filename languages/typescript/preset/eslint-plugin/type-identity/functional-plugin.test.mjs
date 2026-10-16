@@ -71,8 +71,15 @@ async function lintInOrder(names) {
 
 const orders = [Object.keys(fixtures), Object.keys(fixtures).toReversed()];
 
+let linted;
+
+function lintBothOrders() {
+  linted ??= Promise.all(orders.map(lintInOrder));
+  return linted;
+}
+
 async function mutableParameters() {
-  const [forward, backward] = await Promise.all(orders.map(lintInOrder));
+  const [forward, backward] = await lintBothOrders();
   expect(backward).toEqual(forward);
   return forward;
 }

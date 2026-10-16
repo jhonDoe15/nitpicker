@@ -113,9 +113,8 @@ describe('new-icon-asset', () => {
   it('looks in the source roots only, skipping generated, test, fixture, story and excluded folders', () => {
     const files = withLucide({
       'src/a.svg': icon,
-      'src/dist/b.svg': icon,
-      'src/generated/c.svg': icon,
       'src/__generated__/c.svg': icon,
+      'src/c.generated.svg': icon,
       'src/__tests__/d.svg': icon,
       'src/__fixtures__/e.svg': icon,
       'src/fixtures/e.svg': icon,
@@ -128,6 +127,12 @@ describe('new-icon-asset', () => {
 
     expect(rows(iconFindings(files, { exclude: ['src/vendor/**'] }))).toEqual([
       ['new-icon-asset', 'src/a.svg', 'new-icon-asset'],
+    ]);
+    expect(
+      rows(iconFindings(withLucide({ 'src/dist/b.svg': icon, 'src/generated/c.svg': icon }))),
+    ).toEqual([
+      ['new-icon-asset', 'src/dist/b.svg', 'new-icon-asset'],
+      ['new-icon-asset', 'src/generated/c.svg', 'new-icon-asset'],
     ]);
     expect(rows(iconFindings(files, { layout: { sourceRoots: ['public'] } }))).toEqual([
       ['new-icon-asset', 'public/g.svg', 'new-icon-asset'],

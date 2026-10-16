@@ -5,17 +5,31 @@ const FLAGS = new Map([
   ['--fix', { property: 'fix', value: true }],
   ['--help', { property: 'help', value: true }],
   ['--no-cache', { property: 'cache', value: false }],
-  ['--accept-policy-change', { property: 'acceptPolicyChange', value: true }],
 ]);
+const ACCEPT_FLAG = '--accept-policy-change';
 const VALUES = new Map([
   ['--base', 'baseRef'],
   ['--output', 'outputRoot'],
 ]);
 
+function acceptedDigest(argument) {
+  const digest = argument.slice(ACCEPT_FLAG.length + 1);
+  if (digest === '') {
+    throw new Error(
+      `${ACCEPT_FLAG} takes the digest that the policy-loosened finding names: ${ACCEPT_FLAG}=<digest>`,
+    );
+  }
+  return digest;
+}
+
 function remainingOptions(arguments_) {
-  const options = { all: false, fix: false, help: false, cache: true, acceptPolicyChange: false };
+  const options = { all: false, fix: false, help: false, cache: true };
   const remaining = arguments_.values();
   for (const argument of remaining) {
+    if (argument === ACCEPT_FLAG || argument.startsWith(`${ACCEPT_FLAG}=`)) {
+      options.acceptPolicyChange = acceptedDigest(argument);
+      continue;
+    }
     const flag = FLAGS.get(argument);
     if (flag !== undefined) {
       options[flag.property] = flag.value;
@@ -58,7 +72,7 @@ export function parseArguments(arguments_) {
 export const USAGE_TEXT =
   'Usage: nitpicker [--base <ref>] [--output <dir>] [--all | --fix]' +
   ' [--analyzer <name>]... [--rule <substring>]...' +
-  ' [--shard-count <n> --shard-index <i>] [--defer-exit] [--no-cache] [--accept-policy-change] [--help]\n' +
+  ' [--shard-count <n> --shard-index <i>] [--defer-exit] [--no-cache] [--accept-policy-change=<digest>] [--help]\n' +
   '       nitpicker aggregate --input-root <directory> --shard-count <count>' +
   ' [--output <directory>] [--policy-root <directory>]\n' +
   '       nitpicker cache publish [--analyzer <name>]... [--shard-count <n> --shard-index <i>]\n';

@@ -61,11 +61,11 @@ export function describePolicyChanges(baseConfig, headConfig, scope) {
   return {
     loosened: [
       ...parts.flatMap((part) => part.loosened),
-      ...settings.filter(loosensSetting).map(({ text }) => text),
+      ...settings.filter((entry) => loosensSetting(entry, scope)).map(({ text }) => text),
     ],
     changed: [
       ...parts.flatMap((part) => part.changed),
-      ...settings.filter((entry) => !loosensSetting(entry)).map(({ text }) => text),
+      ...settings.filter((entry) => !loosensSetting(entry, scope)).map(({ text }) => text),
     ],
   };
 }

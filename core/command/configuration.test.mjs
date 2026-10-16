@@ -9,6 +9,7 @@ import { policy } from '../diff/execution/test-support/analyzer-findings.mjs';
 import { captureOutput } from '../diff/reporting/test-support/output-capture.mjs';
 import { fakeAnalyzer, useCliFixtures } from './test-support/cli-harness.mjs';
 import { writeFiles } from '../diff/git/test-support/fixture-files.mjs';
+import { policyDigest } from '../diff/reporting/review/policy-findings.mjs';
 
 const { createRepository, makeOutputRoot, makeTemporaryRoot, runCli } =
   useCliFixtures(nitpickerCli);
@@ -234,7 +235,14 @@ describe('nitpicker config file', () => {
     const plain = runWithConfig(undefined, { analyzers });
     const disabled = runWithConfig(
       { disable: ['second-analyzer'] },
-      { analyzers, extraArguments: ['--base', 'HEAD', '--accept-policy-change'] },
+      {
+        analyzers,
+        extraArguments: [
+          '--base',
+          'HEAD',
+          `--accept-policy-change=${policyDigest(['analyzer disabled: second-analyzer'])}`,
+        ],
+      },
     );
 
     expect(plain.summary.tools.map(({ name }) => name)).toEqual([
