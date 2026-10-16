@@ -19,7 +19,7 @@ function moduleName(entry) {
   return entry.name.endsWith('.py') ? entry.name.slice(0, -'.py'.length) : undefined;
 }
 
-export function ownModuleNames(projectRoot, sourceRoots) {
+function ownModuleNames(projectRoot, sourceRoots) {
   return new Set(
     importRoots(projectRoot, sourceRoots)
       .filter((root) => existsSync(root))

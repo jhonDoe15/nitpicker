@@ -8,6 +8,7 @@ import { MUTMUT_TOOL, readMutmutConfig } from './mutmut/mutmut-config.mjs';
 import { MYPY_TOOL } from './mypy-layers.mjs';
 import { PYRIGHT_TOOL } from './pyright/pyright-config.mjs';
 import { pyrightConfigLabel, readProjectPyright } from './pyright/pyright-project-config.mjs';
+import { attempt } from './project-tool-layers.mjs';
 
 function notOptedIn(config, tool) {
   return !precedenceLayers(config.tools?.[tool]?.precedence).usesProject;
@@ -56,13 +57,10 @@ function mutmutNotices(projectRoot, config) {
 }
 
 export function ignoredProjectToolNotices({ config, projectRoot }) {
-  try {
-    return [
-      ...pyrightNotices(projectRoot, config),
-      ...mypyNotices(projectRoot, config),
-      ...mutmutNotices(projectRoot, config),
-    ];
-  } catch {
-    return [];
-  }
+  const { value = [] } = attempt(() => [
+    ...pyrightNotices(projectRoot, config),
+    ...mypyNotices(projectRoot, config),
+    ...mutmutNotices(projectRoot, config),
+  ]);
+  return value;
 }

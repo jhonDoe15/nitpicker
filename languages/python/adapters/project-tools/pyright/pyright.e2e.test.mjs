@@ -1,14 +1,12 @@
-import { afterEach, describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import { pythonE2eEnabled } from '../../e2e/test-support/python-e2e-support.mjs';
-import { realTypeFindings, removeTemporaryRoots } from '../test-support/real-type-check.mjs';
+import { realTypeFindings } from '../test-support/real-type-check.mjs';
 
 const TYPE_ERROR = 'def double(value: int) -> str:\n    return value\n';
 const WEAKENING = {
   'pyrightconfig.json': '{ "typeCheckingMode": "off", "reportReturnType": "none" }\n',
 };
 const LISTED = { pyright: ['project', 'nitpicker'] };
-
-afterEach(removeTemporaryRoots);
 
 describe.skipIf(!pythonE2eEnabled)('pyright with the project config end to end', () => {
   const files = { 'src/demo.py': TYPE_ERROR, ...WEAKENING };

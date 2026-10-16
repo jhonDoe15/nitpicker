@@ -4,7 +4,9 @@ export const RULES_TOOL = 'python-rules';
 const TYPE_CHECK_TOOLS = ['mypy', 'pyright', 'basedpyright'];
 const HINTED_TOOLS = ['ruff', ...TYPE_CHECK_TOOLS, RULES_TOOL];
 
-const LOGGING = ({ logger }) => logger.setup;
+function LOGGING({ logger }) {
+  return logger.setup;
+}
 const HANDLE_EXCEPTION =
   'Catch the specific exception and handle it, log it with `logger.exception(...)` or re-raise it; `contextlib.suppress(SpecificError)` ignores one expected error.';
 const FIX_TYPE = 'Fix the type; inline ignores are banned.';
@@ -145,7 +147,7 @@ export function exceptionSentence(rule) {
   return `To allow it for some paths, add a "python.exceptions" entry for ${rule} in nitpicker.config.json.`;
 }
 
-export function defaultBehaviors() {
+function defaultBehaviors() {
   return { validation: validationBehavior(undefined), logger: loggerBehavior(undefined) };
 }
 
