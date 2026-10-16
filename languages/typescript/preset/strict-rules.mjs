@@ -1,5 +1,6 @@
 import { isJavaTouchedRule } from '../../java/adapters/touched-rules.mjs';
 import { strictBoundaryRules } from './architecture/strict-boundary-rules.mjs';
+import { i18nRuleIds } from './eslint-config/i18n/i18n-rules.mjs';
 import { reactRuleIds, reactTestRuleIds } from './eslint-config/react/react-rules.mjs';
 
 // eslint-plugin-functional (about a second of CPU), which would tax every start of the CLI.
@@ -42,6 +43,7 @@ const strictRuleIds = new Set([
   ...strictEslintRuleIds,
   ...reactRuleIds,
   ...reactTestRuleIds,
+  ...i18nRuleIds,
   ...strictBoundaryRules.map(({ name }) => name),
 ]);
 

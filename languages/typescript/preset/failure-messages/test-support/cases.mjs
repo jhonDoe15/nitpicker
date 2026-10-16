@@ -7,6 +7,7 @@ import { domainFailureMessageCases } from './domain-cases.mjs';
 import { strictDomainConfig } from '../../eslint-config/strict/strict-domain.mjs';
 import { adapterFailureMessageCases, adapterSyntaxFailureMessageCases } from './adapter-cases.mjs';
 import { productionPolicyConfig } from '../../eslint-config/policies/base.mjs';
+import { i18nFailureMessageCases } from '../../eslint-config/i18n/test-support/i18n-cases.mjs';
 import { reactFailureMessageCases } from './react-cases.mjs';
 import { testFailureMessageCases } from './test-cases.mjs';
 
@@ -235,4 +236,5 @@ export const failureMessageCases = [
     allowed: 'exception for this rule in nitpicker.config.json',
   },
   ...reactFailureMessageCases,
+  ...i18nFailureMessageCases,
 ];

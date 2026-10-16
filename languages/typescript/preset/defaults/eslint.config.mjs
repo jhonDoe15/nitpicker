@@ -17,12 +17,15 @@ import {
   isReactProject,
   reactScopeConfigFor,
 } from '../eslint-config/react/react-scope.mjs';
+import { i18nRuleIds } from '../eslint-config/i18n/i18n-rules.mjs';
+import { i18nScopeConfigFor, isI18nProject } from '../eslint-config/i18n/i18n-scope.mjs';
 import { readHeadPolicy, readLayout } from '../head-policy.mjs';
 
 const policy = readHeadPolicy();
 
 const layout = readLayout();
 const react = isReactProject({ projectRoot: analyzedProjectRoot(), react: policy.react });
+const i18n = isI18nProject({ projectRoot: analyzedProjectRoot(), i18n: policy.i18n });
 const { sourceGlobs, testGlobs, excludedGlobs, unitTestGlobs } = layout;
 const parserOptions = {
   project: './tsconfig.quality.json',
@@ -68,6 +71,7 @@ const presetConfig = defineConfig(
   },
   ...strictPresetConfig(layout, parserOptions, { react }),
   ...(react ? await reactScopeConfigFor(layout, policy.react) : []),
+  ...(i18n ? await i18nScopeConfigFor(layout, policy.i18n) : []),
   {
     // eslint-errors reports this rule for all production code; reporting it here too lists every
     files: productionFiles,
@@ -125,11 +129,13 @@ const presetConfig = defineConfig(
   },
 );
 
-const applicableExceptions = react
-  ? policy.exceptions
-  : policy.exceptions.filter(
-      ({ rule }) => !reactRuleIds.includes(rule) && !reactTestRuleIds.includes(rule),
-    );
+const inactiveRuleIds = [
+  ...(react ? [] : [...reactRuleIds, ...reactTestRuleIds]),
+  ...(i18n ? [] : i18nRuleIds),
+];
+const applicableExceptions = policy.exceptions.filter(
+  ({ rule }) => !inactiveRuleIds.includes(rule),
+);
 
 export default applyRuleExceptions(
   applyJavascriptDialect(
