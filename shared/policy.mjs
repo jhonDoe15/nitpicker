@@ -2,12 +2,13 @@
 // default limits, failure-message templates and the languages that enforce each rule. Every
 // language adapter reads it, and `spec/checks.md` is generated from it (`npm run gen:checks`).
 //
-// Language-neutral: imports only from shared/rules and shared/unused-api, so any entry point can load it. Nothing
+// Language-neutral: imports only from shared/rules, shared/project-rules and shared/unused-api, so any entry point can load it. Nothing
 // under `shared/` may import from `core/`, `languages/` or a tool package (shared/import-direction.test.mjs).
 
 import { UNUSED_API_RULES, UNUSED_API_RULE_IDS } from './unused-api/unused-api-policy.mjs';
 
 import { reuseRules } from './rules/reuse-rules.mjs';
+import { SOURCE_RULE_IDS, sourceRuleMessages, sourceRules } from './project-rules/source-rules.mjs';
 
 export const LANGUAGES = ['typescript', 'java', 'python', 'kotlin'];
 
@@ -36,7 +37,7 @@ export const RULE_IDS = {
   exportedNameCollision: 'exported-name-collision',
   redefinedLibraryComponent: 'redefined-library-component',
   newIconAsset: 'new-icon-asset',
-  componentStoryMissing: 'component-story-missing',
+  ...SOURCE_RULE_IDS,
 };
 
 /** Per-function structure limits, keyed by the metric name the TypeScript analyzer reports. */
@@ -126,8 +127,7 @@ export const MESSAGES = {
   exportedNameCollision: `{name} is also exported by {others}; {importer} imports both. {fix} ${EXCEPTION_HINT}`,
   redefinedLibraryComponent: `{name} is already rendered from {package} in {count}. Use that one. ${EXCEPTION_HINT}`,
   newIconAsset: `Use an icon from {package} instead of adding {path}. ${EXCEPTION_HINT}`,
-  componentStoryMissing: `Most components in this project have a story. Add {story} for {name}. ${EXCEPTION_HINT}`,
-  componentStoryMissingUnenforced: `{name} has no story. Add {story}. Not enforced until more than half of the components have one. ${EXCEPTION_HINT}`,
+  ...sourceRuleMessages(EXCEPTION_HINT),
 };
 
 export function renderMessage(template, values) {
@@ -292,13 +292,7 @@ export const RULES = [
     enforcedBy: withKotlin(ALL, true),
   },
   ...reuseRules(RULE_IDS, withKotlin(TYPESCRIPT_ONLY, false)),
-  {
-    id: RULE_IDS.componentStoryMissing,
-    check: 'structure',
-    limit:
-      'a component file without a story, in a package that has Storybook; enforced when more than half of its component files have one, reported otherwise',
-    enforcedBy: withKotlin(TYPESCRIPT_ONLY, false),
-  },
+  ...sourceRules(RULE_IDS, withKotlin(TYPESCRIPT_ONLY, false)),
 ];
 
 /**

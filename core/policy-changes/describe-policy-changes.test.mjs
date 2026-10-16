@@ -237,6 +237,19 @@ describe('describePolicyChanges', () => {
     });
   });
 
+  it('counts turning checkJs off in the project tsconfig and lists turning it on', () => {
+    const scope = (before, after) => ({ ...scopeOf({}, {}), checkJs: { before, after } });
+
+    expect(describePolicyChanges({}, {}, scope(true, false))).toEqual({
+      loosened: ['tsconfig.json checkJs: true -> false'],
+      changed: [],
+    });
+    expect(describePolicyChanges({}, {}, scope(false, true))).toEqual({
+      loosened: [],
+      changed: ['tsconfig.json checkJs: false -> true'],
+    });
+  });
+
   it('counts turning i18n off', () => {
     expect(loosened({ i18n: { enabled: true } }, { i18n: { enabled: false } })).toEqual([
       'i18n.enabled: true -> false',
