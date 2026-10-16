@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Nitpicker's Spring rules for test sources only. Gradle and Maven add this ruleset, through a
+     generated ruleset that excludes the main source roots, to projects with Spring on the compile
+     classpath. docs/java-preset.md lists the rules and why each exists. -->
+<ruleset name="nitpicker-spring-tests"
+         xmlns="http://pmd.sourceforge.net/ruleset/2.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://pmd.sourceforge.net/ruleset/2.0.0 https://pmd.sourceforge.io/ruleset_2_0_0.xsd">
+  <description>Nitpicker Spring rules for test sources.</description>
+</ruleset>

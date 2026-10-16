@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Nitpicker's PMD rules for test sources only. Gradle and Maven reference this file from a
+     generated ruleset that excludes the main source roots. docs/java-preset.md lists the rules and
+     why each exists. -->
+<ruleset name="nitpicker-test-rules"
+         xmlns="http://pmd.sourceforge.net/ruleset/2.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://pmd.sourceforge.net/ruleset/2.0.0 https://pmd.sourceforge.io/ruleset_2_0_0.xsd">
+  <description>Nitpicker's PMD rules for test sources.</description>
+  <rule ref="category/java/errorprone.xml/TestClassWithoutTestCases">
+    <properties>
+      <property name="testClassPattern"
+                value="^(?:.*\.)?Test[^\.]*$|^(?:.*\.)?.*(?&lt;!Arch|Architecture)Tests?$|^(?:.*\.)?.*TestCase$"/>
+    </properties>
+  </rule>
+  <rule name="FixedSleepInTest" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
+        message="A fixed sleep makes the test slow and flaky. Wait on the condition: check it in a while loop against a deadline (a sleep inside that loop is allowed), or use verify(mock, timeout(1000)) for a mock. If a real wait is unavoidable, add an exception for pmd/FixedSleepInTest in nitpicker.config.json.">
+    <priority>2</priority>
+    <properties>
+      <property name="xpath">
+        <value><![CDATA[
+(
+  //MethodCall[pmd-java:matchesSig('java.lang.Thread#sleep(long)')
+    or pmd-java:matchesSig('java.lang.Thread#sleep(long,int)')
+    or pmd-java:matchesSig('java.lang.Thread#sleep(java.time.Duration)')
+    or pmd-java:matchesSig('java.util.concurrent.TimeUnit#sleep(long)')]
+    [not(ancestor::*[self::WhileStatement or self::DoStatement or self::LambdaExpression
+                     or self::MethodDeclaration or self::ConstructorDeclaration][1]
+         [self::WhileStatement or self::DoStatement])]
+  | //MethodCall[@MethodName = 'waitForTimeout']
+      [*[1][pmd-java:typeIs('com.microsoft.playwright.Page') or pmd-java:typeIs('com.microsoft.playwright.Frame')]]
+  | //MethodCall[@MethodName = 'until']
+      [*[1][pmd-java:typeIs('org.awaitility.core.ConditionFactory')]]
+      [ArgumentList/LambdaExpression/BooleanLiteral[@True = true()]]
+)
+]]></value>
+      </property>
+    </properties>
+  </rule>
+  <rule name="NegativeWaitInTest" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
+        message="Do not prove that something does not happen by waiting out a delay: after(ms) and during(...) pass only after the full wait, so the test is slow and depends on the timing. Give the code a Clock or a scheduler the test controls, move it past the delay and assert at once. If a real wait is unavoidable, add an exception for pmd/NegativeWaitInTest in nitpicker.config.json.">
+    <priority>2</priority>
+    <properties>
+      <property name="xpath">
+        <value><![CDATA[
+//MethodCall[pmd-java:matchesSig('org.mockito.Mockito#after(long)')
+  or pmd-java:matchesSig('org.awaitility.core.ConditionFactory#during(_)')
+  or pmd-java:matchesSig('org.awaitility.core.ConditionFactory#during(long,_)')]
+]]></value>
+      </property>
+    </properties>
+  </rule>
+</ruleset>

@@ -29,6 +29,7 @@ import { ingestJacocoBranches } from '../../ingest/coverage-reports/jacoco-branc
 import { ingestSarif, prepareSarif, projectRelative } from '../../ingest/sarif.mjs';
 import { projectWideFindings } from '../../builds/project-wide.mjs';
 import { applyRuleMessages } from '../../messages/rule-messages.mjs';
+import { withWaitAdvice } from '../../messages/wait-advice.mjs';
 import {
   jacocoSourceRoots,
   readKotlinFindings,
@@ -174,10 +175,13 @@ function sarifFindings(context) {
   );
   const spotbugs = preparedReport('spotbugs.sarif', context, spotbugsSubject);
   return [
-    ...dropInheritedVersions(ingestSarif(pmd, { tool: 'pmd' }).findings, {
-      projectRoot,
-      sourceRoots: allSourceRoots,
-    }),
+    ...withWaitAdvice(
+      dropInheritedVersions(ingestSarif(pmd, { tool: 'pmd' }).findings, {
+        projectRoot,
+        sourceRoots: allSourceRoots,
+      }),
+      context.manifest,
+    ),
     ...ingestSarif(dropEntityAssociations(spotbugs, projectRoot), {
       tool: 'spotbugs',
     }).findings.map(withExposureAdvice),

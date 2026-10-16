@@ -18,6 +18,8 @@ const RESOURCE_FILES = [
   'languages/java/gradle/checkstyle-suppressions.xml',
   'languages/java/gradle/pmd-ruleset.xml',
   'languages/java/gradle/spring-ruleset.xml',
+  'languages/java/gradle/pmd-test-ruleset.xml',
+  'languages/java/gradle/spring-test-ruleset.xml',
   'languages/java/gradle/StructureMetrics.java',
   'languages/java/gradle/KotlinMetrics.java',
   'languages/java/gradle/errorprone/error-prone.gradle',

@@ -46,20 +46,44 @@ function escapeXml(text) {
     .replaceAll('"', '&quot;');
 }
 
-function springMainRuleset(testRoots) {
-  const excludes = testRoots.map(
+function rulesetExcluding({ name, description, rulesets, excludedRoots }) {
+  const excludes = excludedRoots.map(
     (root) =>
       `  <exclude-pattern>${escapeXml(`${escapeRegExp(root + path.sep)}.*`)}</exclude-pattern>`,
   );
   return [
     '<?xml version="1.0" encoding="UTF-8"?>',
-    '<ruleset name="nitpicker-spring-main" xmlns="http://pmd.sourceforge.net/ruleset/2.0.0">',
-    "  <description>Nitpicker's Spring rules on main sources only.</description>",
+    `<ruleset name="${name}" xmlns="http://pmd.sourceforge.net/ruleset/2.0.0">`,
+    `  <description>${description}</description>`,
     ...excludes,
-    `  <rule ref="${escapeXml(path.join(GRADLE_DIRECTORY, 'spring-ruleset.xml'))}"/>`,
+    ...rulesets.map((file) => `  <rule ref="${escapeXml(path.join(GRADLE_DIRECTORY, file))}"/>`),
     '</ruleset>',
     '',
   ].join('\n');
+}
+
+function writeExtraRulesets(module, reportDir, spring) {
+  const springRuleset = path.join(reportDir, 'pmd-spring-main.xml');
+  writeFileSync(
+    springRuleset,
+    rulesetExcluding({
+      name: 'nitpicker-spring-main',
+      description: "Nitpicker's Spring rules on main sources only.",
+      rulesets: ['spring-ruleset.xml'],
+      excludedRoots: module.testSourceRoots,
+    }),
+  );
+  const testRuleset = path.join(reportDir, 'pmd-tests.xml');
+  writeFileSync(
+    testRuleset,
+    rulesetExcluding({
+      name: 'nitpicker-tests',
+      description: "Nitpicker's test-only rules on test sources only.",
+      rulesets: ['pmd-test-ruleset.xml', ...(spring ? ['spring-test-ruleset.xml'] : [])],
+      excludedRoots: module.sourceRoots,
+    }),
+  );
+  return [testRuleset, ...(spring ? [springRuleset] : [])];
 }
 
 function writeAuxClasspath({ module, reportDir, classpaths }) {
@@ -84,12 +108,11 @@ export function runPmd({ module, reportDir, tools, classpaths, configs, spring }
     return;
   }
   const auxClasspath = writeAuxClasspath({ module, reportDir, classpaths });
-  const springRuleset = path.join(reportDir, 'pmd-spring-main.xml');
-  writeFileSync(springRuleset, springMainRuleset(module.testSourceRoots));
+  const nitpicker = configs.pmd.nitpicker;
   const rulesets = [
-    ...(configs.pmd.nitpicker ? [path.join(GRADLE_DIRECTORY, 'pmd-ruleset.xml')] : []),
+    ...(nitpicker ? [path.join(GRADLE_DIRECTORY, 'pmd-ruleset.xml')] : []),
     ...(configs.pmd.project === undefined ? [] : [configs.pmd.project]),
-    ...(configs.pmd.nitpicker && spring ? [springRuleset] : []),
+    ...(nitpicker ? writeExtraRulesets(module, reportDir, spring) : []),
   ];
   runJava({
     tool: 'PMD',
