@@ -188,6 +188,39 @@ alone.
   for the setup, reports show that test as slow, and test order matters. Compute it in
   `beforeAll`. Constants, `new` expressions and calls on `path`, `Math`, `Object`, `JSON` and
   similar built-ins are not reported. A deliberate memo needs an exception in the config file.
+- `nitpicker/no-unused-dom-environment` (not strict: a finding counts only when new in the diff): a
+  runnable test file (`*.test.*`, `*.spec.*`) that runs in `jsdom` or `happy-dom` must use the DOM.
+  Keep `node` as the project's environment and put `/** @vitest-environment jsdom */` only on the
+  files that render. It reports once per file, on the directive when the file has one.
+  - Environment: the file's own `@vitest-environment` or `@jest-environment` directive (found in
+    the file text, as Vitest finds it), else the project's. nitpicker loads the project's
+    `vitest.config.*` or `vite.config.*` once per snapshot in a short-lived child process, with the
+    project's own `vite`, and reads `test.environment` (default `node`), inline `test.projects`
+    (`include`, `exclude`, `root`/`dir`, `environment`, `extends: true`) and the `resolve.alias` /
+    `test.alias` entries. A file in several projects counts as DOM if any of them is. When the
+    config cannot be read, sets `test.browser.enabled`, `test.environmentMatchGlobs` or
+    `test.workspace`, or a project is named by path, those files have no known default and only
+    directives are checked. An unreadable config is also reported as one report-only finding on
+    the config file.
+  - Uses the DOM, so nothing is reported: the file, or any project module it reaches through
+    imports, re-exports, `require`, dynamic `import()`, `vi.mock`/`vi.importActual`/`vi.doMock`,
+    `tsconfig`/`jsconfig` `paths`, Vite aliases, workspace packages linked into `node_modules` and
+    barrels: imports a DOM testing package (`@testing-library/*`, `@*/testing-library`,
+    `react-dom`, `enzyme`, `@vue/test-utils`, `@storybook/test`, `jest-axe` and similar) or a
+    Storybook `composeStories`; imports a `.tsx`, `.jsx`, `.vue` or `.svelte` module; or reads a
+    browser-only global (names from the `globals` package's `browser` set that Node does not have;
+    `navigator` only beyond `userAgent`, `language(s)`, `platform` and `hardwareConcurrency`).
+    Type-only imports and type annotations do not count, nor do `react-test-renderer`,
+    `react-dom/server` or `jsdom` imported as a library. When the imports reach deeper than 8
+    modules or more than 200 files, or a reached module loads a computed path (`import(name)`,
+    `require(name)`), the file is not reported.
+  - Setup files: when the project's environment is DOM and one of its `test.setupFiles` (or a
+    project module it imports) reads a browser-only global, every file in that project counts as
+    using the DOM. Importing a DOM testing package such as `@testing-library/jest-dom` in a setup
+    file does not count, since it also loads under `node`.
+  - Not seen: DOM use that only shows at run time, or behind a module nitpicker cannot resolve.
+    Adding `@vitest-environment jsdom` to such a file does not clear the finding; the only way out
+    is an exception for the rule in the config file.
 - `nitpicker/no-uninjectable-delay` (production code, not tests): `setTimeout`/`setInterval`
   (global, `globalThis`, or from `node:timers`/`node:timers/promises`) whose delay is a module-level
   `const` of 500 ms or more, inside an exported top-level function that has no parameter which

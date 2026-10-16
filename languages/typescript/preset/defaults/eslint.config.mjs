@@ -20,6 +20,10 @@ import {
 import { i18nRuleIds } from '../eslint-config/i18n/i18n-rules.mjs';
 import { i18nScopeConfigFor, isI18nProject } from '../eslint-config/i18n/i18n-scope.mjs';
 import { readHeadPolicy, readLayout } from '../head-policy.mjs';
+import {
+  testEnvironmentConfigFor,
+  testEnvironmentsFromVariables,
+} from '../test-environment/test-environment-config.mjs';
 
 const policy = readHeadPolicy();
 
@@ -135,6 +139,7 @@ const presetConfig = defineConfig(
     files: unitTestGlobs,
     rules: { 'nitpicker/no-external-executables-in-unit-tests': 'error' },
   },
+  ...testEnvironmentConfigFor(layout, testEnvironmentsFromVariables()),
 );
 
 const inactiveRuleIds = [
