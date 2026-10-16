@@ -130,7 +130,6 @@ over limit" and does not fail.
 | `component-story-missing`          | `structure`        | a component file without a story, in a package that has Storybook; enforced when more than half of its component files have one, reported otherwise                                                                                         | enforced     | not enforced | not enforced | not enforced |
 | `javascript-in-typescript-project` | `structure`        | a `.js`, `.mjs`, `.cjs` or `.jsx` file under the source or test roots of a project with a `tsconfig.json` (at the root, in a package or referenced from one), except files under a `fixtures/` or `__fixtures__/` folder in a test location | enforced     | not enforced | not enforced | not enforced |
 | `slow-test`                        | `test-runtime`     | a test the change adds or edits taking more than 5 s (unit) or 30 s (integration); override with `thresholds.unitTestSeconds` and `thresholds.integrationTestSeconds`                                                                       | not enforced | enforced     | not enforced | enforced     |
-| `component-story-missing`          | `structure`        | a component file without a story, in a package that has Storybook; enforced when more than half of its component files have one, reported otherwise                                                                                         | enforced     | not enforced | not enforced | not enforced |
 
 <!-- generated:custom-rules end -->
 
