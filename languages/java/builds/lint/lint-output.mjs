@@ -3,6 +3,8 @@ import path from 'node:path';
 
 const WARNING = /^(.+\.java):\d+: warning: \[/u;
 const SOURCE_HEADER = /^.+?\.java(?=:\d+: )/gmu;
+const WARNING_COUNT = /^\d+ warnings?$/mu;
+const PRINTED_WARNING = /^(?:.+\.java:\d+: )?warning: /mu;
 const BLOCK_END = /^\d+ warnings?$|^Note: /u;
 const ANNOTATION = /^@\s*([\w.]+)/u;
 const LOMBOK_IMPORT = /^\s*import\s+(lombok(?:\.\w+)*)\.(\w+|\*)\s*;/gmu;
@@ -79,4 +81,8 @@ export function lintedWarnings(log, context) {
     );
   });
   return relocated(kept.flat().join(''), context);
+}
+
+export function hasUnreadWarnings(log) {
+  return WARNING_COUNT.test(log) && !PRINTED_WARNING.test(log);
 }
