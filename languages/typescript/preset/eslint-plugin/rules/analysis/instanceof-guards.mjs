@@ -7,12 +7,24 @@ const EXIT_STATEMENTS = new Set([
   'BreakStatement',
 ]);
 
+const ERROR_CLASS = /^(?:Error|\w*(?:Error|Exception))$/;
+
+function className(expression) {
+  if (expression.type === 'Identifier') {
+    return expression.name;
+  }
+  return expression.type === 'MemberExpression' && !expression.computed
+    ? expression.property.name
+    : undefined;
+}
+
 function isInstanceofOf(expression, name) {
   return (
     expression.type === 'BinaryExpression' &&
     expression.operator === 'instanceof' &&
     expression.left.type === 'Identifier' &&
-    expression.left.name === name
+    expression.left.name === name &&
+    ERROR_CLASS.test(className(expression.right) ?? '')
   );
 }
 
