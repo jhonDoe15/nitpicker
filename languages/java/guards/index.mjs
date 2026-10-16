@@ -11,7 +11,7 @@ export function readGuardFindings(context) {
       sourceRoots: manifest.sourceRoots ?? [],
       moduleDir,
     }),
-    ...readForbiddenApiFindings(reportRoot, { locate }),
+    ...readForbiddenApiFindings(reportRoot, { locate, projectRoot }),
     ...readCpdFindings(reportRoot, {
       projectRoot,
       sourceRoots: manifest.sourceRoots ?? [],

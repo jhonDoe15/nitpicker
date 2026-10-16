@@ -1,28 +1,10 @@
-import { spawnSync } from 'node:child_process';
-import {
-  existsSync,
-  mkdirSync,
-  mkdtempSync,
-  readdirSync,
-  readFileSync,
-  rmSync,
-  writeFileSync,
-} from 'node:fs';
-import { tmpdir } from 'node:os';
+import { existsSync, mkdirSync, readdirSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
-import { javaCommand, runJava } from './maven-command.mjs';
+import { runJava } from './maven-command.mjs';
 import { GRADLE_DIRECTORY } from '../builds/java-build.mjs';
+import { writeCheckstyleConfigs } from '../builds/rulesets/checkstyle-config.mjs';
 
 export const EMPTY_SARIF = '{"version":"2.1.0","runs":[]}';
-const TREE_WALKER = '<module name="TreeWalker">';
-const INLINE_CHECKSTYLE_FILTERS = [
-  'SuppressWarningsFilter',
-  'SuppressWarningsHolder',
-  'SuppressionCommentFilter',
-  'SuppressWithNearbyCommentFilter',
-  'SuppressWithNearbyTextFilter',
-  'SuppressionXpathFilter',
-];
 const JAVAC_EXPORTS = ['api', 'file', 'parser', 'tree', 'util', 'code'].map(
   (name) => `--add-exports=jdk.compiler/com.sun.tools.javac.${name}=ALL-UNNAMED`,
 );
@@ -83,54 +65,8 @@ export function runFormat({ module, reportDir, tools }) {
   writeFileSync(report, result.stdout);
 }
 
-function bundledGoogleChecks(checkstyleJar) {
-  const directory = mkdtempSync(path.join(tmpdir(), 'nitpicker-checkstyle-'));
-  try {
-    const result = spawnSync(javaCommand('jar'), ['xf', checkstyleJar, 'google_checks.xml'], {
-      cwd: directory,
-      encoding: 'utf8',
-    });
-    const file = path.join(directory, 'google_checks.xml');
-    if (result.status !== 0 || !existsSync(file)) {
-      throw new Error(`could not read google_checks.xml from ${checkstyleJar}: ${result.stderr}`);
-    }
-    return readFileSync(file, 'utf8');
-  } finally {
-    rmSync(directory, { recursive: true, force: true });
-  }
-}
-
-export function nitpickerCheckstyleConfig(bundled) {
-  const text = INLINE_CHECKSTYLE_FILTERS.reduce(
-    (current, name) =>
-      current.replaceAll(
-        new RegExp(`<module name="${name}"\\s*(?:/>|>[\\s\\S]*?</module>)`, 'gu'),
-        '',
-      ),
-    bundled,
-  );
-  const left = INLINE_CHECKSTYLE_FILTERS.filter((name) => text.includes(`"${name}"`));
-  if (left.length > 0) {
-    throw new Error(`nitpicker could not remove ${left.join(', ')} from google_checks.xml`);
-  }
-  return text;
-}
-
 function propertiesLine(name, value) {
   return `${name}=${value.replaceAll('\\', '\\\\')}`;
-}
-
-function checkstyleRuleModules(file) {
-  const text = readFileSync(path.join(GRADLE_DIRECTORY, 'rules', file), 'utf8');
-  return /<modules>([\s\S]*)<\/modules>/u.exec(text)[1];
-}
-
-export function withGuardChecks(config, files) {
-  if (!config.includes(TREE_WALKER)) {
-    throw new Error('nitpicker could not find TreeWalker in google_checks.xml');
-  }
-  const modules = files.map((file) => checkstyleRuleModules(file)).join('\n');
-  return config.replace(TREE_WALKER, () => `${TREE_WALKER}\n${modules}`);
 }
 
 function checkstyleSetup({ reportDir, tools, configs, pinned }) {
@@ -147,11 +83,7 @@ function checkstyleSetup({ reportDir, tools, configs, pinned }) {
   const jar = tools.checkstyle.find(
     (entry) => path.basename(entry) === `checkstyle-${pinned.checkstyle}.jar`,
   );
-  const bundled = nitpickerCheckstyleConfig(bundledGoogleChecks(jar));
-  const main = path.join(directory, 'checkstyle.xml');
-  const test = path.join(directory, 'checkstyle-test.xml');
-  writeFileSync(main, withGuardChecks(bundled, ['checkstyle-all.xml', 'checkstyle-main.xml']));
-  writeFileSync(test, withGuardChecks(bundled, ['checkstyle-all.xml']));
+  const { main, test } = writeCheckstyleConfigs({ checkstyleJar: jar, directory });
   writeFileSync(
     properties,
     propertiesLine(

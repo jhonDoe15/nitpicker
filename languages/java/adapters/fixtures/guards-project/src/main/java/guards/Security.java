@@ -37,6 +37,14 @@ public final class Security {
     return Path.of("/data", name); // violation: pmd/PathFromParameter
   }
 
+  public Path settings() {
+    return under("settings.yml");
+  }
+
+  private static Path under(String name) {
+    return Path.of("/data", name);
+  }
+
   public Path openInside(String name) {
     Path base = Path.of("/data");
     Path resolved = base.resolve(name).normalize();

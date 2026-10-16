@@ -16,6 +16,7 @@ import { applyJavaPolicy } from './java-policy.mjs';
 import { PROJECT_TOOL_CONFIGS } from './gradle-presets.mjs';
 import { readJavaFindings } from './reporting/java-reports.mjs';
 import { readReportModules } from './gradle-reports/report-modules.mjs';
+import { runGradleGuards } from './gradle-reports/gradle-guards.mjs';
 import { runMavenPreset, MAVEN_REPORT_DIRECTORY } from '../maven/maven-build.mjs';
 import { detectJavaBuild, INIT_SCRIPT } from '../builds/java-build.mjs';
 import { moduleReport, readModuleFindings } from '../builds/java-modules.mjs';
@@ -36,10 +37,8 @@ function kotlinProperties(projectRoot, { preset, kotlinFormatter, kotlinDetektCo
     : [];
 }
 
-export function baselineProperties({ snapshot, baselineRoot } = {}) {
-  return snapshot === 'head' && baselineRoot !== undefined
-    ? [`-Pnitpicker.baselineRoot=${baselineRoot}`]
-    : [];
+export function lintBaselineRoot({ snapshot, baselineRoot } = {}) {
+  return snapshot === 'head' ? baselineRoot : undefined;
 }
 
 function toolConfigChoices(projectRoot, { toolPrecedence = {}, policyRoot } = {}) {
@@ -82,9 +81,9 @@ function runJavaPreset(
       '--quiet',
       '--no-configuration-cache',
       `-Pnitpicker.reportDir=${reportBase}`,
+      `-Pnitpicker.node=${process.execPath}`,
       ...kotlinProperties(projectRoot, policy),
       ...toolConfigProperties(projectRoot, policy),
-      ...baselineProperties(policy),
       '-I',
       initScript,
       'nitpickerJava',
@@ -131,6 +130,7 @@ function gradleFindings(projectRoot, options, reportBase) {
   const preset = options.policy?.preset ?? 'java';
   runJavaPreset(projectRoot, { ...options, reportBase });
   const report = readReportModules(reportBase, preset);
+  runGradleGuards(report.modules, { baselineRoot: lintBaselineRoot(options.policy) });
   runJavaDuplicates(projectRoot, { reportRoot: reportBase, manifest: report.manifest });
   if (preset === 'kotlin') {
     runKotlinDuplicates(projectRoot, { reportRoot: reportBase, manifest: report.manifest });

@@ -1,0 +1,65 @@
+def reportDir = project.ext.nitpickerReportDir
+
+tasks.register('nitpickerJdeps') {
+    group = 'nitpicker'
+    dependsOn tasks.named('classes')
+    doLast {
+        reportDir.get().asFile.mkdirs()
+        def classDirs = sourceSets.main.output.classesDirs.files.findAll { it.exists() }
+        def classNames = classDirs.collectMany { dir ->
+            def classFiles = fileTree(dir) {
+                include '**/*.class'
+                exclude '**/module-info.class', '**/package-info.class'
+            }
+            classFiles.files.collect {
+                dir.toPath().relativize(it.toPath()).toString().replace('\\', '/')
+                    .replaceAll(/\.class$/, '').replace('/', '.')
+            }
+        }.unique().sort()
+        reportDir.get().file('jdeps-classes.txt').asFile.text = classNames.collect { it + '\n' }.join('')
+        def graph = reportDir.get().file('jdeps.txt').asFile
+        if (classNames.isEmpty()) {
+            graph.text = ''
+            return
+        }
+        def jdeps = new File(System.getProperty('java.home'), 'bin/jdeps')
+        def modular = classDirs.findAll { new File(it, 'module-info.class').isFile() }
+        def buildDir = layout.buildDirectory.get().asFile
+        buildDir.mkdirs()
+        def staged = modular
+            ? java.nio.file.Files.createTempDirectory(buildDir.toPath(), 'nitpicker-jdeps-').toFile()
+            : null
+        try {
+            def analyzed = classDirs.withIndex().collect { dir, index ->
+                if (!modular.contains(dir)) {
+                    return dir
+                }
+                def copy = new File(staged, index.toString())
+                dir.eachFileRecurse(groovy.io.FileType.FILES) { file ->
+                    if (file.name.endsWith('.class') && file.name != 'module-info.class') {
+                        def target = copy.toPath().resolve(dir.toPath().relativize(file.toPath()))
+                        java.nio.file.Files.createDirectories(target.parent)
+                        java.nio.file.Files.copy(file.toPath(), target)
+                    }
+                }
+                copy
+            }
+            def process = new ProcessBuilder([jdeps.absolutePath, '-verbose:class', '-filter:none'] +
+                analyzed.collect { it.absolutePath }).directory(projectDir).start()
+            def stdout = new ByteArrayOutputStream()
+            def stderr = new ByteArrayOutputStream()
+            process.waitForProcessOutput(stdout, stderr)
+            if (process.exitValue() != 0) {
+                def jvmNoise = ~/^(?:Picked up (?:JAVA_TOOL_OPTIONS|_JAVA_OPTIONS|JDK_JAVA_OPTIONS)|NOTE: Picked up)/
+                def lines = stderr.toString('UTF-8').readLines().findAll { it.trim() && !(it =~ jvmNoise) }
+                def errors = lines.findAll { it =~ /Error|Exception|Caused by/ }
+                def detail = (errors ?: lines).take(10).join('\n')
+                throw new GradleException("jdeps failed (${jdeps}) with exit code ${process.exitValue()}: ${detail}")
+            }
+            graph.text = stdout.toString('UTF-8')
+        } finally {
+            staged?.deleteDir()
+        }
+    }
+}
+tasks.named('nitpickerJava') { dependsOn 'nitpickerJdeps' }

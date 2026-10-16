@@ -4,16 +4,8 @@ import { jscpdClones } from '../../../core/tooling/jscpd-clones.mjs';
 import { evaluateDuplicates } from '../../../shared/rules/duplicates.mjs';
 import { childrenNamed, parseXml } from '../ingest/common.mjs';
 import { exceptionRoute } from './advice/exception-route.mjs';
-import { rootsScope } from '../builds/module-path.mjs';
+import { cpdNotRun, readCpdReport, skippedPaths } from './cpd/cpd-report.mjs';
 
-const CPD_REPORT = 'cpd.xml';
-const CPD_FAILURE = 'cpd-failed.txt';
-const CPD_NOT_RUN = 'cpd-not-run';
-const CPD_SKIPPED = 'cpd-skipped.txt';
-const CPD_SKIPPED_RULE = 'cpd-skipped-paths';
-const CPD_ROOT = /<pmd-cpd[\s/>]/u;
-const JVM_NOTE = /^(?:NOTE: )?Picked up \w+/u;
-const MAX_ERROR_LINES = 10;
 const JSCPD_REPORT = 'duplicates.json';
 const DUPLICATES_TOOL = 'duplicates';
 const TEST_ADVICE =
@@ -34,6 +26,10 @@ const BOILERPLATE_LINES = [
 ];
 
 const STRING_LITERAL = /"(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*'/g;
+const LITERAL_OR_COMMENT =
+  /"""[\s\S]*?"""|"(?:[^"\\\n]|\\.)*"|'(?:[^'\\\n]|\\.)*'|\/\*[\s\S]*?\*\/|\/\/[^\n]*/g;
+const NUMBER = /(?:\b\d|\.\d)(?:[eEpP][+-]|[\w.])*/g;
+const WORD = /[\w$]+/g;
 const DATA_LINES = [
   /^[A-Z][A-Z0-9_]*(?:\(.*\))?[,;]?$/,
   /^(?:Arguments\.)?(?:of|arguments)\(.*\)[,;)]*$/,
@@ -72,25 +68,53 @@ function fileRange(element, projectRoot) {
     file: relative.split(path.sep).join('/').replaceAll('\\', '/'),
     line: Number(element.attrs.line),
     endLine: Number(element.attrs.endline),
+    ...(element.attrs.column === undefined ? {} : { column: Number(element.attrs.column) }),
+    ...(element.attrs.endcolumn === undefined
+      ? {}
+      : { endColumn: Number(element.attrs.endcolumn) }),
   };
 }
 
-function fragmentOf(projectRoot, side) {
+function linesOf(projectRoot, side) {
   const absolute = path.join(projectRoot, side.file);
   return existsSync(absolute)
     ? readFileSync(absolute, 'utf8')
         .split(/\r?\n/)
         .slice(side.line - 1, side.endLine)
-        .join('\n')
-    : '';
+    : [];
+}
+
+function clonedText(lines, side) {
+  const cut = [...lines];
+  if (cut.length > 0 && side.endColumn !== undefined) {
+    cut[cut.length - 1] = cut[cut.length - 1].slice(0, side.endColumn - 1);
+  }
+  if (cut.length > 0 && side.column !== undefined) {
+    cut[0] = cut[0].slice(side.column - 1);
+  }
+  return cut.join('\n');
+}
+
+export function tokenShape(text) {
+  return text
+    .replace(LITERAL_OR_COMMENT, ' ')
+    .replace(NUMBER, ' ')
+    .replace(WORD, ' ')
+    .replace(/\s+/g, '');
+}
+
+function byFile(left, right) {
+  return left.file.localeCompare(right.file);
 }
 
 function cloneOf(duplication, projectRoot, sides) {
   const [first, second] = sides;
+  const lines = linesOf(projectRoot, first);
   return {
     first,
     second,
-    fragment: fragmentOf(projectRoot, first),
+    fragment: lines.join('\n'),
+    shape: tokenShape(clonedText(lines, first)),
     lines: Number(duplication.attrs.lines),
     tokens: Number(duplication.attrs.tokens),
   };
@@ -99,11 +123,19 @@ function cloneOf(duplication, projectRoot, sides) {
 export function cpdClones(xml, projectRoot) {
   const report = parseXml(xml);
   return childrenNamed(report, 'duplication').flatMap((duplication) => {
-    const [first, ...others] = childrenNamed(duplication, 'file').map((element) =>
-      fileRange(element, projectRoot),
-    );
+    const [first, ...others] = childrenNamed(duplication, 'file')
+      .map((element) => fileRange(element, projectRoot))
+      .sort(byFile);
     return others.map((other) => cloneOf(duplication, projectRoot, [first, other]));
   });
+}
+
+function byPairAndShape(left, right) {
+  return (
+    byFile(left.first, right.first) ||
+    byFile(left.second, right.second) ||
+    left.shape.localeCompare(right.shape)
+  );
 }
 
 function overlaps(left, right) {
@@ -161,82 +193,6 @@ function withTestAdvice(finding, testFiles) {
     : finding;
 }
 
-function cpdFailure(reportRoot) {
-  const [status, ...stderr] = readFileSync(path.join(reportRoot, CPD_FAILURE), 'utf8').split(
-    /\r?\n/u,
-  );
-  const errors = stderr.filter((line) => line.trim() !== '' && !JVM_NOTE.test(line));
-  const detail = errors.slice(0, MAX_ERROR_LINES).join('\n') || 'no error output';
-  return { kind: 'failed', reason: `PMD CPD ${failedRun(status)} and wrote no report: ${detail}` };
-}
-
-function failedRun(status) {
-  if (/^\d+$/u.test(status)) {
-    return `exited with code ${status}`;
-  }
-  if (status === 'ETIMEDOUT') {
-    return 'did not finish within the tool timeout';
-  }
-  return /^SIG[A-Z0-9]+$/u.test(status) ? `was stopped by ${status}` : `could not run (${status})`;
-}
-
-function skippedPaths(reportRoot, projectRoot) {
-  const file = path.join(reportRoot, CPD_SKIPPED);
-  if (!existsSync(file)) {
-    return [];
-  }
-  const lines = readFileSync(file, 'utf8')
-    .split(/\r?\n/u)
-    .filter((line) => line.trim() !== '')
-    .map((line) => line.replaceAll(`${projectRoot}${path.sep}`, ''));
-  return [
-    {
-      tool: DUPLICATES_TOOL,
-      rule: CPD_SKIPPED_RULE,
-      path: '.',
-      identity: CPD_SKIPPED_RULE,
-      message:
-        `CPD could not read ${String(lines.length)} path(s), so duplicated code there was not ` +
-        `checked: ${lines.slice(0, MAX_ERROR_LINES).join('; ')}`,
-      classification: 'descriptive',
-    },
-  ];
-}
-
-function readCpdReport(reportRoot) {
-  if (existsSync(path.join(reportRoot, CPD_FAILURE))) {
-    return cpdFailure(reportRoot);
-  }
-  const report = path.join(reportRoot, CPD_REPORT);
-  if (!existsSync(report)) {
-    return { kind: 'missing' };
-  }
-  const xml = readFileSync(report, 'utf8');
-  return CPD_ROOT.test(xml)
-    ? { kind: 'report', xml }
-    : {
-        kind: 'failed',
-        reason: `PMD CPD wrote ${xml.trim() === '' ? 'an empty' : 'a non-XML'} ${CPD_REPORT}`,
-      };
-}
-
-function cpdNotRun(reason, roots, moduleDir) {
-  const scope = rootsScope(roots, moduleDir);
-  const place = scope
-    .map((directory) => (directory === '.' ? 'the module root' : directory))
-    .join(', ');
-  return {
-    tool: DUPLICATES_TOOL,
-    rule: CPD_NOT_RUN,
-    path: '.',
-    identity: CPD_NOT_RUN,
-    message: `No CPD duplicate report for this module, so duplicated code in ${place} was not checked: ${reason}`,
-    classification: 'descriptive',
-    toolNotRun: true,
-    notRunScope: scope,
-  };
-}
-
 export function readCpdFindings(
   reportRoot,
   { projectRoot, sourceRoots = [], testRoots, moduleDir, jscpdRoot = reportRoot },
@@ -255,7 +211,10 @@ export function readCpdFindings(
   function inTests(file) {
     return testRoots.some((root) => file.startsWith(`${root}/`));
   }
-  const findings = evaluateDuplicates(clones, DUPLICATES_TOOL)
+  const shaped = clones
+    .map((clone) => ({ ...clone, fragment: clone.shape }))
+    .sort((left, right) => byPairAndShape(left, right));
+  const findings = evaluateDuplicates(shaped, DUPLICATES_TOOL)
     .filter((finding) => finding.classification === 'enforceable')
     .map((finding) => withTestAdvice(finding, inTests))
     .map((finding) => ({
