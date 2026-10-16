@@ -72,13 +72,6 @@ const FAST_SCENARIOS = {
     args: ['json', '--rcfile', 'rc', '-o', 'coverage.json', '--fail-under=0'],
     files: { 'coverage-data.json': '{"files":{"src/a.py":{"summary":{}}}}' },
   },
-  'lizard --version': { tool: 'lizard', args: ['--version'] },
-  'lizard without data': { tool: 'lizard', args: ['--csv', '-l', 'python'] },
-  'lizard with data': {
-    tool: 'lizard',
-    args: ['--csv', '-l', 'python'],
-    files: { 'lizard-data.csv': '1,1,1,1,1,"f@1-2@a.py","a.py","f","f()",1,2\n' },
-  },
   'lint-imports --version': { tool: 'lint-imports', args: ['--version'] },
   'lint-imports default report': { tool: 'lint-imports', args: [] },
   'lint-imports kept report': {

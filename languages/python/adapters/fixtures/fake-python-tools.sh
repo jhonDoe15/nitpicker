@@ -100,12 +100,6 @@ coverage() {
   slow "$@"
 }
 
-lizard() {
-  if [ "$1" = --version ]; then printf '1.24.1\n'; exit 0; fi
-  [ ! -e lizard-data.csv ] || cat lizard-data.csv
-  exit 0
-}
-
 lint_imports() {
   if [ "$1" = --version ]; then printf 'lint-imports, version 2.5\n'; exit 0; fi
   if [ ! -e lint-imports.txt ]; then printf 'Contracts: 0 kept, 0 broken.\n'; exit 0; fi
@@ -152,7 +146,6 @@ case "$tool" in
   ruff) ruff "$@" ;;
   mypy) mypy "$@" ;;
   coverage) coverage "$@" ;;
-  lizard) lizard "$@" ;;
   lint-imports) lint_imports "$@" ;;
   python) python "$@" ;;
 esac
