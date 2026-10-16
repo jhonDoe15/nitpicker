@@ -273,7 +273,6 @@ allprojects {
             testClassesDirs = sourceSets.test.output.classesDirs
             classpath = sourceSets.test.runtimeClasspath
             include archunitIncludes
-            useJUnitPlatform()
             ignoreFailures = true // violations are findings; the Nitpicker side reads the XML
             reports {
                 junitXml.outputLocation = reportDir.map { it.dir('archunit') }
@@ -391,6 +390,15 @@ allprojects {
                     coverage.includes = []
                     coverage.excludes = []
                     coverage.excludeClassLoaders = []
+                }
+            }
+            // The rules run on the framework the project's own `test` task uses: archunit-junit4 needs
+            // JUnit 4, archunit-junit5 the JUnit Platform.
+            tasks.named('nitpickerArchunit') {
+                if (tasks.named('test').get().options instanceof org.gradle.api.tasks.testing.junit.JUnitOptions) {
+                    useJUnit()
+                } else {
+                    useJUnitPlatform()
                 }
             }
             tasks.named('jacocoTestReport') {
