@@ -19,6 +19,21 @@ function reactor(files) {
 const raw = (artifactId, parent = '') =>
   `<project>${parent === '' ? '<groupId>demo</groupId>' : `<parent><groupId>${parent}</groupId></parent>`}<artifactId>${artifactId}</artifactId></project>`;
 
+function compilerOf(root, { properties = '', configuration = '', executions = '' }) {
+  const [module] = readReactor(
+    root,
+    `<project><groupId>demo</groupId><artifactId>solo</artifactId>
+      <properties>${properties}</properties>
+      <build><plugins><plugin>
+        <artifactId>maven-compiler-plugin</artifactId>
+        <configuration>${configuration}</configuration>
+        <executions>${executions}</executions>
+      </plugin></plugins></build>
+    </project>`,
+  );
+  return module.compiler;
+}
+
 function effective(root) {
   return `<?xml version="1.0"?>
 <!-- Effective POMs -->
@@ -32,7 +47,11 @@ function effective(root) {
   <project>
     <parent><groupId>demo</groupId></parent>
     <artifactId>core</artifactId>
-    <properties><nitpicker.archunit.includes>**/*Rules.class</nitpicker.archunit.includes></properties>
+    <properties>
+      <nitpicker.archunit.includes>**/*Rules.class</nitpicker.archunit.includes>
+      <maven.compiler.release>17</maven.compiler.release>
+      <project.build.sourceEncoding>ISO-8859-1</project.build.sourceEncoding>
+    </properties>
     <build>
       <sourceDirectory>${root}/core/src/main/java</sourceDirectory>
       <testSourceDirectory>${root}/core/src/test/java</testSourceDirectory>
@@ -58,8 +77,21 @@ function effective(root) {
           <executions><execution><goals><goal>prepare-agent</goal></goals></execution></executions>
         </plugin>
         <plugin>
+          <artifactId>maven-compiler-plugin</artifactId>
+          <configuration>
+            <source>17</source>
+            <compilerArgs><arg>-Xlint:all</arg><arg>-Xplugin:Noop</arg></compilerArgs>
+            <compilerArgument>-parameters</compilerArgument>
+            <enablePreview>true</enablePreview>
+          </configuration>
+        </plugin>
+        <plugin>
           <artifactId>maven-surefire-plugin</artifactId>
           <configuration><reportsDirectory>${root}/core/out/tests</reportsDirectory></configuration>
+        </plugin>
+        <plugin>
+          <artifactId>maven-failsafe-plugin</artifactId>
+          <configuration><reportsDirectory>${root}/core/out/it-tests</reportsDirectory></configuration>
         </plugin>
       </plugins>
     </build>
@@ -73,10 +105,19 @@ function effective(root) {
 `;
 }
 
-function defaultModule(basedir, coordinates, packaging) {
+const NO_COMPILER_SETTINGS = {
+  release: undefined,
+  source: undefined,
+  target: undefined,
+  encoding: undefined,
+  args: [],
+};
+
+function defaultModule(basedir, { coordinates, packaging, pomFile = 'pom.xml' }) {
   const target = path.join(basedir, 'target');
   return {
     basedir,
+    pomFile: path.join(basedir, pomFile),
     coordinates,
     packaging,
     buildDirectory: target,
@@ -86,8 +127,10 @@ function defaultModule(basedir, coordinates, packaging) {
     testSourceRoots: [path.join(basedir, 'src/test/java')],
     resourceRoots: [],
     surefireReports: path.join(target, 'surefire-reports'),
+    failsafeReports: path.join(target, 'failsafe-reports'),
     jacocoDestFile: undefined,
     archunitIncludes: undefined,
+    compiler: NO_COMPILER_SETTINGS,
   };
 }
 
@@ -106,9 +149,10 @@ describe('readReactor', () => {
     });
     const [parent, core, app] = readReactor(root, effective(root));
 
-    expect(parent).toEqual(defaultModule(root, 'demo:parent', 'pom'));
+    expect(parent).toEqual(defaultModule(root, { coordinates: 'demo:parent', packaging: 'pom' }));
     expect(core).toEqual({
       basedir: path.join(root, 'core'),
+      pomFile: path.join(root, 'core/pom.xml'),
       coordinates: 'demo:core',
       packaging: 'jar',
       buildDirectory: `${root}/core/out`,
@@ -118,10 +162,24 @@ describe('readReactor', () => {
       testSourceRoots: [`${root}/core/src/test/java`],
       resourceRoots: [`${root}/core/src/main/resources`],
       surefireReports: `${root}/core/out/tests`,
+      failsafeReports: `${root}/core/out/it-tests`,
       jacocoDestFile: `${root}/core/out/mine.exec`,
       archunitIncludes: '**/*Rules.class',
+      compiler: {
+        release: '17',
+        source: '17',
+        target: undefined,
+        encoding: 'ISO-8859-1',
+        args: ['-Xlint:all', '-Xplugin:Noop', '-parameters', '--enable-preview'],
+      },
     });
-    expect(app).toEqual(defaultModule(path.join(root, 'tools'), 'demo:app', 'war'));
+    expect(app).toEqual(
+      defaultModule(path.join(root, 'tools'), {
+        coordinates: 'demo:app',
+        packaging: 'war',
+        pomFile: 'app-pom.xml',
+      }),
+    );
   });
 
   it('reads a single-module effective POM', () => {
@@ -135,6 +193,72 @@ describe('readReactor', () => {
       [root, 'demo:solo'],
     ]);
   });
+
+  it('prefers the default-compile execution and treats unresolved properties as unset', () => {
+    const root = reactor({ 'pom.xml': raw('solo') });
+    const [module] = readReactor(
+      root,
+      `<project><groupId>demo</groupId><artifactId>solo</artifactId>
+        <properties><maven.compiler.target>\${java.version}</maven.compiler.target></properties>
+        <build><plugins><plugin>
+          <artifactId>maven-compiler-plugin</artifactId>
+          <configuration>
+            <release>11</release><encoding>\${encoding}</encoding><compilerArgs><arg>-a</arg></compilerArgs>
+          </configuration>
+          <executions><execution><id>default-compile</id>
+            <configuration><release>21</release><compilerArgs><arg>-b</arg></compilerArgs></configuration>
+          </execution></executions>
+        </plugin></plugins></build>
+      </project>`,
+    );
+
+    expect(module.compiler).toEqual({
+      release: '21',
+      source: undefined,
+      target: undefined,
+      encoding: undefined,
+      args: ['-b'],
+    });
+  });
+
+  it('reads source, target and encoding from the maven.compiler properties before the sourceEncoding', () => {
+    const root = reactor({ 'pom.xml': raw('solo') });
+    const properties = [
+      '<maven.compiler.source>11</maven.compiler.source>',
+      '<maven.compiler.target>12</maven.compiler.target>',
+      '<maven.compiler.encoding>UTF-16</maven.compiler.encoding>',
+      '<project.build.sourceEncoding>ISO-8859-1</project.build.sourceEncoding>',
+    ].join('');
+
+    expect(compilerOf(root, { properties })).toEqual({
+      release: undefined,
+      source: '11',
+      target: '12',
+      encoding: 'UTF-16',
+      args: [],
+    });
+  });
+
+  it.each([
+    ['true', ['--enable-preview']],
+    ['false', []],
+  ])('turns the maven.compiler.enablePreview property %s into %j', (value, args) => {
+    const root = reactor({ 'pom.xml': raw('solo') });
+    const properties = `<maven.compiler.enablePreview>${value}</maven.compiler.enablePreview>`;
+
+    expect(compilerOf(root, { properties }).args).toEqual(args);
+  });
+
+  it('reads compilerArgument from the default-compile execution before the plugin configuration', () => {
+    const root = reactor({ 'pom.xml': raw('solo') });
+    const configuration = '<compilerArgument>-plugin</compilerArgument>';
+    const executions = `<execution><id>default-compile</id>
+      <configuration><compilerArgument>-parameters  -g</compilerArgument></configuration>
+    </execution>`;
+
+    expect(compilerOf(root, { configuration, executions }).args).toEqual(['-parameters', '-g']);
+  });
+
   it('matches a module whose raw coordinates use a property by its build directory', () => {
     const root = reactor({
       'pom.xml': raw('parent'),
@@ -193,7 +317,7 @@ describe('readReactor', () => {
 });
 
 describe('parseDependencyList', () => {
-  it('reads scope and file, with classifiers, module names, optional markers and drive letters', () => {
+  it('reads coordinates, scope and file, with classifiers, module names, optional markers and drive letters', () => {
     const listing = [
       '',
       'The following files have been resolved:',
@@ -205,10 +329,34 @@ describe('parseDependencyList', () => {
     ].join('\n');
 
     expect(parseDependencyList(listing)).toEqual([
-      { scope: 'test', file: '/m2/junit-jupiter-api-5.11.0.jar' },
-      { scope: 'test', file: '/work/core/target/test-classes' },
-      { scope: 'compile', file: 'C:\\work\\shared\\target\\classes' },
-      { scope: 'compile', file: '/m2/z-1.0-runtime.jar' },
+      {
+        groupId: 'org.junit.jupiter',
+        artifactId: 'junit-jupiter-api',
+        type: 'jar',
+        scope: 'test',
+        file: '/m2/junit-jupiter-api-5.11.0.jar',
+      },
+      {
+        groupId: 'demo',
+        artifactId: 'core',
+        type: 'jar',
+        scope: 'test',
+        file: '/work/core/target/test-classes',
+      },
+      {
+        groupId: 'demo',
+        artifactId: 'shared',
+        type: 'jar',
+        scope: 'compile',
+        file: 'C:\\work\\shared\\target\\classes',
+      },
+      {
+        groupId: 'demo',
+        artifactId: 'z',
+        type: 'jar',
+        scope: 'compile',
+        file: '/m2/z-1.0-runtime.jar',
+      },
     ]);
   });
 });

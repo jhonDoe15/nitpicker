@@ -1,9 +1,13 @@
-import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import { parseAnalyzerReport } from '../../../core/diff/comparison/finding-schema.mjs';
 import { dependencyFindings, readDependencyFindings } from './dependencies.mjs';
+import {
+  classWithStrings,
+  descriptorOfLength,
+} from '../builds/classes/test-support/class-bytes.mjs';
 
 const roots = [];
 afterEach(() => {
@@ -62,6 +66,24 @@ describe('dependencyFindings', () => {
     ]);
   });
 
+  it('names the Maven scopes on a Maven build', () => {
+    const findings = dependencyFindings({
+      build: 'maven',
+      analyzed: true,
+      declared: [declared('g', 'a', { configuration: 'compile' })],
+    });
+
+    expect(findings.map(({ path: file, message }) => [file, message])).toEqual([
+      [
+        'pom.xml',
+        'Dependency g:a has compile scope but no main class uses it. ' +
+          'Remove it, give it test scope if only the tests use it, runtime scope if it is only needed at run time, ' +
+          'or provided scope if only its source annotations are needed. ' +
+          'If it is right here, add an exception for dependencies/unused-declared-dependency in nitpicker.config.json.',
+      ],
+    ]);
+  });
+
   it('says nothing when the project has no main classes to compare with', () => {
     expect(dependencyFindings({ analyzed: false, declared: [declared('g', 'a')] })).toEqual([]);
   });
@@ -78,6 +100,38 @@ describe('readDependencyFindings', () => {
         buildFile: 'app/build.gradle.kts',
         analyzed: true,
         declared: [declared('org.apache.commons', 'commons-lang3')],
+      }),
+    );
+
+    expect(readDependencyFindings(root)).toEqual([UNUSED_LANG]);
+  });
+
+  it('decides usage from the class directories and archives the Gradle task lists', () => {
+    const root = mkdtempSync(path.join(tmpdir(), 'nitpicker-dependencies-'));
+    roots.push(root);
+    const field = descriptorOfLength(69, 'org/acme/widgets');
+    const write = (file, bytes) => {
+      mkdirSync(path.dirname(path.join(root, file)), { recursive: true });
+      writeFileSync(path.join(root, file), bytes);
+    };
+    write('classes/demo/A.class', classWithStrings([field]));
+    write(`widgets/${field.slice(1, -1)}.class`, '');
+    write('lang/org/apache/commons/lang3/StringUtils.class', '');
+    const entry = (group, name) =>
+      declared(group, name, { used: undefined, archivePaths: [path.join(root, name)] });
+    write(
+      'dependencies.json',
+      JSON.stringify({
+        buildFile: 'app/build.gradle.kts',
+        analyzed: true,
+        classDirectories: [path.join(root, 'classes')],
+        declared: [
+          {
+            ...entry('org.apache.commons', 'commons-lang3'),
+            archivePaths: [path.join(root, 'lang')],
+          },
+          { ...entry('org.acme', 'widgets'), archivePaths: [path.join(root, 'widgets')] },
+        ],
       }),
     );
 

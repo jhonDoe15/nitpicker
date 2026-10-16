@@ -39,6 +39,7 @@ export function toolDependencies(pinned, launcherVersions = []) {
       dependency(`net.sourceforge.pmd:pmd-cli:${pinned.pmd}`),
       dependency(`net.sourceforge.pmd:pmd-java:${pinned.pmd}`),
     ],
+    forbiddenapis: [dependency(`de.thetaphi:forbiddenapis:${pinned.forbiddenapis}`)],
     spotbugs: [dependency(`com.github.spotbugs:spotbugs:${pinned.spotbugs}`)],
     format: [
       dependency(`com.google.googlejavaformat:google-java-format:${pinned.googleJavaFormat}`),

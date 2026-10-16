@@ -6,6 +6,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { INIT_SCRIPT } from '../builds/java-build.mjs';
 import { runJavaDuplicates } from '../adapters/metrics/java-duplicates.mjs';
 import { readJavaFindings } from '../adapters/reporting/java-reports.mjs';
+import { readReportModules } from '../adapters/gradle-reports/report-modules.mjs';
 import { readLintFindings } from './javac-lint.mjs';
 
 const enabled = process.env.NITPICKER_JAVA_E2E === '1';
@@ -82,9 +83,17 @@ function isGuard({ tool, rule, classification }) {
   );
 }
 
+function reportBaseOf(root) {
+  return path.join(path.dirname(root), 'reports');
+}
+
+function guardFindings(root) {
+  return readJavaFindings(root, { reportBase: reportBaseOf(root) }).findings;
+}
+
 function reportedViolations(root) {
-  return readJavaFindings(root)
-    .findings.filter((finding) => isGuard(finding))
+  return guardFindings(root)
+    .filter((finding) => isGuard(finding))
     .map(({ tool, rule, path: file, location }) =>
       location === undefined
         ? `${file} ${tool}/${rule}`
@@ -93,12 +102,20 @@ function reportedViolations(root) {
     .sort();
 }
 
-function gradleTasks(fixture, tasks) {
+function gradleTasks(fixture, tasks, properties = () => []) {
   const projectRoot = path.join(mkdtempSync(path.join(tmpdir(), 'nitpicker-guards-')), fixture);
   cpSync(path.join(fixtures, fixture), projectRoot, { recursive: true });
   const result = spawnSync(
     gradle,
-    ['--console=plain', '--quiet', '--no-configuration-cache', '-I', INIT_SCRIPT, ...tasks],
+    [
+      '--console=plain',
+      '--quiet',
+      '--no-configuration-cache',
+      ...properties(projectRoot),
+      '-I',
+      INIT_SCRIPT,
+      ...tasks,
+    ],
     { cwd: projectRoot, encoding: 'utf8', timeout: 15 * 60 * 1000 },
   );
   if (result.status !== 0) {
@@ -119,8 +136,13 @@ describe.skipIf(!enabled)('Java guards on a fixture project', () => {
 
   beforeAll(
     () => {
-      roots.push(gradleTasks('guards-project', ['nitpickerJava']));
-      runJavaDuplicates(roots[0]);
+      roots.push(
+        gradleTasks('guards-project', ['nitpickerJava'], (root) => [
+          `-Pnitpicker.reportDir=${reportBaseOf(root)}`,
+        ]),
+      );
+      const { manifest } = readReportModules(reportBaseOf(roots[0]), 'java');
+      runJavaDuplicates(roots[0], { reportRoot: reportBaseOf(roots[0]), manifest });
       roots.push(gradleTasks('guards-compile-modes', ['nitpickerLint', ':legacy:nitpickerPmd']));
     },
     30 * 60 * 1000,
@@ -137,9 +159,7 @@ describe.skipIf(!enabled)('Java guards on a fixture project', () => {
   });
 
   it('ends a guard message with its exception route', () => {
-    const optionalGet = readJavaFindings(roots[0]).findings.find(
-      (finding) => finding.rule === 'OptionalGet',
-    );
+    const optionalGet = guardFindings(roots[0]).find((finding) => finding.rule === 'OptionalGet');
 
     expect(optionalGet.message).toBe(OPTIONAL_GET_MESSAGE);
   });
@@ -152,18 +172,17 @@ describe.skipIf(!enabled)('Java guards on a fixture project', () => {
     ).toEqual(['OptionalGet']);
   });
 
-  it('lints a project with a javac plug-in, preview features or a module descriptor', () => {
-    const lint = (module) => {
-      const projectRoot = path.join(roots[1], module);
-      return readLintFindings(path.join(projectRoot, 'build', 'nitpicker'), { projectRoot }).map(
-        ({ path: file, rule, location }) => `${module}/${file}:${String(location?.line)} ${rule}`,
-      );
-    };
+  it('lints a project with a javac plug-in, preview features, a module descriptor or a source root outside it', () => {
+    const lint = (module) =>
+      readLintFindings(path.join(roots[1], module, 'build', 'nitpicker'), {
+        projectRoot: roots[1],
+      }).map(({ path: file, rule, location }) => `${file}:${String(location?.line)} ${rule}`);
 
-    expect(['plugged', 'preview', 'modular'].flatMap((module) => lint(module))).toEqual([
+    expect(['plugged', 'preview', 'modular', 'outside'].flatMap((module) => lint(module))).toEqual([
       'plugged/src/main/java/plugged/Names.java:7 rawtypes',
       'preview/src/main/java/preview/Names.java:7 rawtypes',
       'modular/src/main/java/modular/shapes/Shape.java:10 rawtypes',
+      'outside/src/main/java/outside/Names.java:7 rawtypes',
     ]);
   });
 });

@@ -1,22 +1,31 @@
-import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { readFileSync } from 'node:fs';
 import path from 'node:path';
-import { readCouplingFindings } from '../adapters/metrics/java-coupling.mjs';
 import { readJavaFindings } from '../adapters/reporting/java-reports.mjs';
-import { readJavaFileLimitFindings } from '../adapters/metrics/java-structure.mjs';
+import { inModule } from './module-path.mjs';
+import { projectWideFindings } from './project-wide.mjs';
 
 function prefixOf(projectRoot, moduleDir) {
   return path.relative(projectRoot, moduleDir).replaceAll('\\', '/');
 }
 
-function prefixed(prefix, relativePath) {
-  if (prefix === '') {
-    return relativePath;
-  }
-  return relativePath === '.' ? prefix : `${prefix}/${relativePath}`;
-}
-
 function readManifest(moduleDir, reportDirectory) {
   return JSON.parse(readFileSync(path.join(moduleDir, reportDirectory, 'manifest.json'), 'utf8'));
+}
+
+export function moduleReport(moduleDir, reportDirectory) {
+  const reportRoot = path.join(moduleDir, reportDirectory);
+  const manifest = readManifest(moduleDir, reportDirectory);
+  return {
+    reportBase: reportRoot,
+    report: { modules: [{ key: 'root', path: ':', dir: '', reportRoot, manifest }], manifest },
+  };
+}
+
+function readModule(moduleDir, options) {
+  return readJavaFindings(moduleDir, {
+    ...options,
+    ...moduleReport(moduleDir, options.reportDirectory),
+  }).findings;
 }
 
 function mergedRoots(projectRoot, moduleDirs, reportDirectory) {
@@ -24,59 +33,42 @@ function mergedRoots(projectRoot, moduleDirs, reportDirectory) {
   for (const moduleDir of moduleDirs) {
     const prefix = prefixOf(projectRoot, moduleDir);
     const manifest = readManifest(moduleDir, reportDirectory);
-    roots.sourceRoots.push(...(manifest.sourceRoots ?? []).map((root) => prefixed(prefix, root)));
+    roots.sourceRoots.push(...(manifest.sourceRoots ?? []).map((root) => inModule(prefix, root)));
     roots.testSourceRoots.push(
-      ...(manifest.testSourceRoots ?? []).map((root) => prefixed(prefix, root)),
+      ...(manifest.testSourceRoots ?? []).map((root) => inModule(prefix, root)),
     );
   }
   return roots;
 }
 
-function mergeModuleReports(moduleDirs, { reportDirectory, reportRoot, name }) {
-  writeFileSync(
-    path.join(reportRoot, name),
-    moduleDirs
-      .map((moduleDir) => readFileSync(path.join(moduleDir, reportDirectory, name), 'utf8'))
-      .join('\n'),
-  );
-}
-
-function projectCoupling(projectRoot, moduleDirs, { reportDirectory, sourceRoots }) {
-  const reportRoot = path.join(projectRoot, reportDirectory);
-  mkdirSync(reportRoot, { recursive: true });
-  for (const name of ['jdeps.txt', 'jdeps-classes.txt']) {
-    mergeModuleReports(moduleDirs, { reportDirectory, reportRoot, name });
-  }
-  return readCouplingFindings(reportRoot, { projectRoot, sourceRoots });
-}
-
 export function readModuleFindings(projectRoot, moduleDirs, options) {
   if (moduleDirs.length === 1 && path.resolve(moduleDirs[0]) === path.resolve(projectRoot)) {
-    return readJavaFindings(projectRoot, options).findings;
+    return readModule(projectRoot, { ...options, modulePath: '' });
   }
   const moduleFindings = moduleDirs.flatMap((moduleDir) => {
     const prefix = prefixOf(projectRoot, moduleDir);
-    return readJavaFindings(moduleDir, { ...options, projectWide: false }).findings.map(
+    return readModule(moduleDir, { ...options, projectWide: false, modulePath: prefix }).map(
       (finding) => ({
         ...finding,
-        path: prefixed(prefix, finding.path),
+        path: inModule(prefix, finding.path),
       }),
     );
   });
   const roots = mergedRoots(projectRoot, moduleDirs, options.reportDirectory);
   return [
     ...moduleFindings,
-    ...readJavaFileLimitFindings(projectRoot, {
+    ...projectWideFindings(projectRoot, {
+      projects: moduleDirs.map((moduleDir) => ({
+        reportRoot: path.join(moduleDir, options.reportDirectory),
+        qualifier: prefixOf(projectRoot, moduleDir),
+        sourceRoots: (readManifest(moduleDir, options.reportDirectory).sourceRoots ?? []).map(
+          (root) => inModule(prefixOf(projectRoot, moduleDir), root),
+        ),
+      })),
+      mergedRoot: path.join(projectRoot, options.reportDirectory),
       manifest: roots,
-      policy: {
-        thresholds: options.fileLimits,
-        exclude: options.exclude,
-        exceptions: options.exceptions,
-      },
-    }),
-    ...projectCoupling(projectRoot, moduleDirs, {
-      reportDirectory: options.reportDirectory,
-      sourceRoots: roots.sourceRoots,
+      kotlin: false,
+      policy: options,
     }),
   ];
 }

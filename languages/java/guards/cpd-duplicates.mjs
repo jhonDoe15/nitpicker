@@ -123,8 +123,8 @@ function distinctClones(clones) {
   return kept;
 }
 
-function jscpdRanges(reportRoot) {
-  const report = path.join(reportRoot, JSCPD_REPORT);
+function jscpdRanges(jscpdRoot) {
+  const report = path.join(jscpdRoot, JSCPD_REPORT);
   if (!existsSync(report)) {
     return [];
   }
@@ -153,12 +153,12 @@ function withTestAdvice(finding, testFiles) {
     : finding;
 }
 
-export function readCpdFindings(reportRoot, { projectRoot, testRoots }) {
+export function readCpdFindings(reportRoot, { projectRoot, testRoots, jscpdRoot = reportRoot }) {
   const report = path.join(reportRoot, CPD_REPORT);
   if (!existsSync(report)) {
     return [];
   }
-  const known = jscpdRanges(reportRoot);
+  const known = jscpdRanges(jscpdRoot);
   const clones = distinctClones(cpdClones(readFileSync(report, 'utf8'), projectRoot)).filter(
     (clone) => !isBoilerplate(clone) && !known.some((other) => sameClone(clone, other)),
   );
