@@ -7,6 +7,7 @@ import {
 } from './checks/policy-files.mjs';
 import { ARCHITECTURE_CONFIG, POLICY_TYPESCRIPT_CONFIG } from './dependency-graph/cruise.mjs';
 import { MINUTE_MS, eslintVersion, vitestVersion } from './checks/constants.mjs';
+import { COUPLING_CHECK_FILES } from './coupling/check-files.mjs';
 import { STRUCTURE_CHECK_FILES } from './structure/check-files.mjs';
 
 const dependencyCruiserVersion = 'unresolved';
@@ -128,6 +129,7 @@ function prettierCheckFor(layout, exclusions) {
     shardWeight: 8,
     configurationFiles: [
       'languages/typescript/adapters/prettier/prettier-layers.mjs',
+      'languages/typescript/conventions/prettier-conventions.mjs',
       'languages/typescript/preset/layout.mjs',
       'languages/typescript/preset/head-policy.mjs',
       JAVASCRIPT_PRESET_FILE,
@@ -212,11 +214,7 @@ function graphChecksFor(exclusions) {
       exclusions: exclusions.production,
       timeoutMs: 2 * MINUTE_MS,
       shardWeight: 7,
-      configurationFiles: [
-        ...DEPENDENCY_GRAPH_FILES,
-        'languages/typescript/preset/coupling/analyze.mjs',
-        'shared/rules/coupling.mjs',
-      ],
+      configurationFiles: [...DEPENDENCY_GRAPH_FILES, ...COUPLING_CHECK_FILES],
     },
     {
       name: 'test-runtime',

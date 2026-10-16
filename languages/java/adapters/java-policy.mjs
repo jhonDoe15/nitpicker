@@ -7,15 +7,15 @@ import {
   readOptionalInventory,
   withLegacyInventory,
 } from '../../../shared/legacy-inventory.mjs';
-import { configError } from '../../../shared/config.mjs';
+import { configError, TYPESCRIPT_ONLY_KEYS } from '../../../shared/config.mjs';
 import { JAVA_TOOLS, PROJECT_TOOL_CONFIGS } from './gradle-presets.mjs';
 import { JAVA_NATIVE_RULES, SHARED_EXCEPTION_RULES } from '../../../shared/policy.mjs';
 import { evaluateBaselineExpansions } from '../../../shared/rules/baseline-expansion.mjs';
+import { checkstyleRuleName } from '../messages/rule-messages.mjs';
 
 export const EXCEPTION_SEPARATOR = ':';
 const FILE_LIMIT_THRESHOLDS = ['fileLines', 'testFileLines', 'lineLength', 'folderFiles'];
 const TEST_TIME_THRESHOLDS = ['unitTestSeconds', 'integrationTestSeconds'];
-const TYPESCRIPT_ONLY_KEYS = ['layout', 'exceptions', 'react', 'tools'];
 const NATIVE_LINE_LENGTH = {
   java: 'Checkstyle checks Java line length; set it in config/checkstyle/checkstyle.xml and opt in with "tools": { "checkstyle": { "precedence": ["project"] } }',
   kotlin: 'detekt checks Kotlin line length; set style>MaxLineLength in config/detekt/detekt.yml',
@@ -52,6 +52,12 @@ function validateJavaExceptionRule(rule, label) {
     return;
   }
   const [tool] = rule.split('/');
+  const checkstyleRule = rule.slice('checkstyle/'.length);
+  if (tool === 'checkstyle' && checkstyleRuleName(checkstyleRule) !== checkstyleRule) {
+    throw configError(
+      `"${label}" names a Checkstyle check by class; findings print the check's name, so write "checkstyle/${checkstyleRuleName(checkstyleRule)}"`,
+    );
+  }
   if (!JAVA_TOOLS.includes(tool) || rule.length <= tool.length + 1) {
     throw configError(
       `"${label}" must name a finding as it is printed, "<tool>/<rule>" (for example "pmd/SpringConstructorInjection"), or one of ${JAVA_EXCEPTION_RULES.join(', ')}. Tools: ${JAVA_TOOLS.join(', ')}`,
