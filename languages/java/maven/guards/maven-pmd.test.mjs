@@ -363,7 +363,7 @@ function fakeCpdJava({ report, stderr, ending }) {
 }
 
 function reportFiles(reportDir) {
-  return ['cpd.xml', 'cpd-failed.txt'].map((name) =>
+  return ['cpd.xml', 'cpd-failed.txt', 'cpd-skipped.txt'].map((name) =>
     existsSync(path.join(reportDir, name))
       ? readFileSync(path.join(reportDir, name), 'utf8')
       : undefined,
@@ -376,7 +376,7 @@ function cpd(run) {
   const reportDir = path.join(basedir, 'target/nitpicker');
   mkdirSync(path.join(basedir, 'src/main/java'), { recursive: true });
   mkdirSync(reportDir, { recursive: true });
-  for (const stale of ['cpd.xml', 'cpd-failed.txt']) {
+  for (const stale of ['cpd.xml', 'cpd-failed.txt', 'cpd-skipped.txt']) {
     writeFileSync(path.join(reportDir, stale), 'stale');
   }
   runCpd({
@@ -396,7 +396,7 @@ describe.skipIf(process.platform === 'win32')('runCpd', () => {
   it.each([0, 4])('keeps the XML report the CPD launcher writes when it exits %i', (status) => {
     const run = cpd({ report: CPD_XML, stderr: '', ending: `exit ${String(status)}` });
 
-    expect(run.outputs).toEqual([CPD_XML, undefined]);
+    expect(run.outputs).toEqual([CPD_XML, undefined, undefined]);
     expect(run.arguments).toEqual([
       '-cp',
       '/tools/pmd.jar',
@@ -414,7 +414,7 @@ describe.skipIf(process.platform === 'win32')('runCpd', () => {
   ])('records the exit and stderr instead of a report for %s', (_, report, ending, exit) => {
     const run = cpd({ report, stderr: `${CPD_CRASH}\n`, ending });
 
-    expect(run.outputs).toEqual([undefined, `${exit}\n${CPD_CRASH}\n`]);
+    expect(run.outputs).toEqual([undefined, `${exit}\n${CPD_CRASH}\n`, undefined]);
   });
 
   it('records a java that cannot start instead of failing the run', () => {
@@ -432,6 +432,10 @@ describe.skipIf(process.platform === 'win32')('runCpd', () => {
       tools: { pmd: ['/tools/pmd.jar'] },
     });
 
-    expect(reportFiles(basedir)).toEqual([undefined, `EACCES\nspawnSync ${java} EACCES`]);
+    expect(reportFiles(basedir)).toEqual([
+      undefined,
+      `EACCES\nspawnSync ${java} EACCES`,
+      undefined,
+    ]);
   });
 });

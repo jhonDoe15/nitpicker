@@ -91,7 +91,7 @@ function parseNotRunScope(value, toolNotRun, context) {
   }
   return value.map((directory, index) => {
     const at = `${context}.notRunScope[${String(index)}]`;
-    return normalizeFindingPath(requiredString(directory, at), at).replace(/\/+$/u, '');
+    return normalizeFindingPath(requiredString(directory, at), at).replace(/\/+$/u, '') || '.';
   });
 }
 

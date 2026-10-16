@@ -9,6 +9,8 @@ import { rootsScope } from '../builds/module-path.mjs';
 const CPD_REPORT = 'cpd.xml';
 const CPD_FAILURE = 'cpd-failed.txt';
 const CPD_NOT_RUN = 'cpd-not-run';
+const CPD_SKIPPED = 'cpd-skipped.txt';
+const CPD_SKIPPED_RULE = 'cpd-skipped-paths';
 const CPD_ROOT = /<pmd-cpd[\s/>]/u;
 const JVM_NOTE = /^(?:NOTE: )?Picked up \w+/u;
 const MAX_ERROR_LINES = 10;
@@ -165,10 +167,40 @@ function cpdFailure(reportRoot) {
   );
   const errors = stderr.filter((line) => line.trim() !== '' && !JVM_NOTE.test(line));
   const detail = errors.slice(0, MAX_ERROR_LINES).join('\n') || 'no error output';
-  const ending = /^\d+$/u.test(status)
-    ? `exited with code ${status}`
-    : `did not finish (${status})`;
-  return { kind: 'failed', reason: `PMD CPD ${ending} and wrote no report: ${detail}` };
+  return { kind: 'failed', reason: `PMD CPD ${failedRun(status)} and wrote no report: ${detail}` };
+}
+
+function failedRun(status) {
+  if (/^\d+$/u.test(status)) {
+    return `exited with code ${status}`;
+  }
+  if (status === 'ETIMEDOUT') {
+    return 'did not finish within the tool timeout';
+  }
+  return /^SIG[A-Z0-9]+$/u.test(status) ? `was stopped by ${status}` : `could not run (${status})`;
+}
+
+function skippedPaths(reportRoot, projectRoot) {
+  const file = path.join(reportRoot, CPD_SKIPPED);
+  if (!existsSync(file)) {
+    return [];
+  }
+  const lines = readFileSync(file, 'utf8')
+    .split(/\r?\n/u)
+    .filter((line) => line.trim() !== '')
+    .map((line) => line.replaceAll(`${projectRoot}${path.sep}`, ''));
+  return [
+    {
+      tool: DUPLICATES_TOOL,
+      rule: CPD_SKIPPED_RULE,
+      path: '.',
+      identity: CPD_SKIPPED_RULE,
+      message:
+        `CPD could not read ${String(lines.length)} path(s), so duplicated code there was not ` +
+        `checked: ${lines.slice(0, MAX_ERROR_LINES).join('; ')}`,
+      classification: 'descriptive',
+    },
+  ];
 }
 
 function readCpdReport(reportRoot) {
@@ -188,8 +220,8 @@ function readCpdReport(reportRoot) {
       };
 }
 
-function cpdNotRun(reason, roots) {
-  const scope = rootsScope(roots);
+function cpdNotRun(reason, roots, moduleDir) {
+  const scope = rootsScope(roots, moduleDir);
   const place = scope
     .map((directory) => (directory === '.' ? 'the module root' : directory))
     .join(', ');
@@ -207,14 +239,14 @@ function cpdNotRun(reason, roots) {
 
 export function readCpdFindings(
   reportRoot,
-  { projectRoot, sourceRoots = [], testRoots, jscpdRoot = reportRoot },
+  { projectRoot, sourceRoots = [], testRoots, moduleDir, jscpdRoot = reportRoot },
 ) {
   const read = readCpdReport(reportRoot);
   if (read.kind === 'missing') {
     return [];
   }
   if (read.kind === 'failed') {
-    return [cpdNotRun(read.reason, [...sourceRoots, ...testRoots])];
+    return [cpdNotRun(read.reason, [...sourceRoots, ...testRoots], moduleDir)];
   }
   const known = jscpdRanges(jscpdRoot);
   const clones = distinctClones(cpdClones(read.xml, projectRoot)).filter(
@@ -223,7 +255,7 @@ export function readCpdFindings(
   function inTests(file) {
     return testRoots.some((root) => file.startsWith(`${root}/`));
   }
-  return evaluateDuplicates(clones, DUPLICATES_TOOL)
+  const findings = evaluateDuplicates(clones, DUPLICATES_TOOL)
     .filter((finding) => finding.classification === 'enforceable')
     .map((finding) => withTestAdvice(finding, inTests))
     .map((finding) => ({
@@ -231,4 +263,5 @@ export function readCpdFindings(
       identity: `cpd:${finding.identity}`,
       message: `${finding.message} ${exceptionRoute(DUPLICATES_TOOL, finding.rule)}`,
     }));
+  return [...skippedPaths(reportRoot, projectRoot), ...findings];
 }

@@ -5,6 +5,7 @@ tasks.register('nitpickerCpd') {
     group = 'nitpicker'
     def report = reportDir.map { it.file('cpd.xml') }
     def failure = reportDir.map { it.file('cpd-failed.txt') }
+    def skipped = reportDir.map { it.file('cpd-skipped.txt') }
     def sourceDirectories = {
         sourceSets.collectMany { it.allJava.sourceDirectories.files }.unique().findAll { it.exists() }
     }
@@ -16,12 +17,14 @@ tasks.register('nitpickerCpd') {
         reportDir.get().asFile.mkdirs()
         report.get().asFile.delete()
         failure.get().asFile.delete()
+        skipped.get().asFile.delete()
         def directories = sourceDirectories()
         if (directories.isEmpty()) {
             return
         }
         def java = new File(System.getProperty('java.home'), 'bin/java').absolutePath
-        def launch = [java, '-cp', configurations.nitpickerPmd.asPath, cpdSource.absolutePath, report.get().asFile.absolutePath]
+        def launch = [java, '-cp', configurations.nitpickerPmd.asPath, cpdSource.absolutePath,
+            report.get().asFile.absolutePath]
         def process = new ProcessBuilder(launch + directories.collect { it.absolutePath })
             .directory(projectDir).redirectOutput(ProcessBuilder.Redirect.DISCARD).start()
         def errors = process.errorStream.getText('UTF-8')

@@ -1,3 +1,4 @@
+import { comparisonKey } from '../fingerprint.mjs';
 import { directoryMoves, mapDirectory } from '../../git/patches/renames.mjs';
 
 const BROKEN_ON_HEAD = 'The base produced this {tool} report, so the change broke it.';
@@ -32,37 +33,46 @@ function baseMoves(renames, directories) {
   return new Map([...inferred, ...directories]);
 }
 
-function inHeadDirectories(notice, moves) {
-  const scope = scopeOf(notice).map((directory) =>
-    directory === WHOLE_PROJECT ? directory : mapDirectory(directory, moves),
+function baseNotice(notice, moves) {
+  const original = scopeOf(notice);
+  const moved = original.map((directory) =>
+    directory === WHOLE_PROJECT ? directory : mapDirectory(directory, moves.folders),
   );
-  return { tool: notice.tool, scope };
+  return {
+    tool: notice.tool,
+    key: comparisonKey(notice, moves.renames, moves.directories),
+    scope: [...new Set([...original, ...moved])],
+  };
 }
 
-function covers(baseNotice, finding) {
-  return baseNotice.tool === finding.tool && inScope(baseNotice.scope, finding.path);
-}
-
-function alsoNotRun(baseNotice, headNotice) {
+function alsoNotRun(notRunOnBase, headNotice) {
+  const sameTool = notRunOnBase.filter((base) => base.tool === headNotice.tool);
+  const key = comparisonKey(headNotice);
+  const scope = sameTool.flatMap((base) => base.scope);
   return (
-    baseNotice.tool === headNotice.tool &&
-    scopeOf(headNotice).every((directory) => inScope(baseNotice.scope, directory))
+    sameTool.some((base) => base.key === key) ||
+    scopeOf(headNotice).every((directory) => inScope(scope, directory))
+  );
+}
+
+function covered(notRunOnBase, finding) {
+  return notRunOnBase.some(
+    (base) => base.tool === finding.tool && inScope(base.scope, finding.path),
   );
 }
 
 export function againstMissingReports(headFindings, baseFindings, { renames, directories }) {
-  const directoryMap = baseMoves(renames, directories);
+  const moves = { renames, directories, folders: baseMoves(renames, directories) };
   const notRunOnBase = baseFindings
     .filter((finding) => finding.toolNotRun === true)
-    .map((notice) => inHeadDirectories(notice, directoryMap));
+    .map((notice) => baseNotice(notice, moves));
   return headFindings.map((finding) => {
     if (finding.toolNotRun === true) {
-      return notRunOnBase.some((base) => alsoNotRun(base, finding))
+      return alsoNotRun(notRunOnBase, finding)
         ? finding
         : reclassified(finding, 'tool-error', BROKEN_ON_HEAD);
     }
-    return finding.classification === 'enforceable' &&
-      notRunOnBase.some((base) => covers(base, finding))
+    return finding.classification === 'enforceable' && covered(notRunOnBase, finding)
       ? reclassified(finding, 'descriptive', NOT_COMPARED)
       : finding;
   });
