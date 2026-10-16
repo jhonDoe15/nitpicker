@@ -48,6 +48,16 @@ gradle -I languages/java/gradle/nitpicker.init.gradle nitpickerJava   (per snaps
   class (its own first). A project's names depend only on its own folder, never on how many projects
   there are: a lone subproject is named with its folder too, and the root project's names and
   identities are as in a one-project build, which reads its own jdeps reports unmerged.
+- **Integration tests on Gradle.** As on Maven (Surefire and Failsafe in `verify`), a project's
+  integration tests are run and counted. Nitpicker runs `test`, the task of every test suite the
+  project declares under `testing.suites` (`integrationTest` from the `jvm-test-suite` plugin and so
+  on) and every `Test` task that `check` depends on. Their JaCoCo data is merged into one report
+  (coverage, CRAP and `changed-branch-coverage` count what an integration test covers), PIT runs the
+  test classes of all of them, and their JUnit XML goes to `test-results/<task>/` with the
+  integration budget of the [slow test](#slow-tests) rule (any task but `test`). A `Test` task the
+  build neither declares as a suite nor wires to `check` is not run, because the project's own
+  `check` does not run it either: wire it with `check.dependsOn` to have it counted. A task the
+  project disables (`enabled = false`, `onlyIf`) stays skipped, as `skipITs` keeps Failsafe off.
 - **Nitpicker side: `languages/java/adapters/`.** `runJavaPreset` runs the task,
   `readJavaFindings` converts the reports, `runJavaDiff` does worktrees, rename map, comparison.
   `languages/java/adapters/java-analyzer.mjs` wraps all of it as one analyzer named `java` for the CLI (slice
@@ -238,7 +248,9 @@ comma-separated>` changes that. Those classes are excluded from the regular `tes
   profile can produce enforceable findings.
 - **What runs.** `nitpickerPit` runs the pinned `pitest-command-line` (1.17.4) with the
   `pitest-junit5-plugin` (1.2.1), default mutators, XML output, two threads, to
-  `pit/mutations.xml` in the report directory. Tests are named class by class (`--targetTests`), and
+  `pit/mutations.xml` in the report directory. Tests are named class by class (`--targetTests`) from
+  the test classes of `test`, the declared test suites and the `check` test tasks (as on Maven, where
+  the integration tests in `src/test` are part of the test classes), and
   `--mutableCodePaths` limits mutation to the main classes. The JUnit Platform is not pinned by
   Nitpicker: the plugin's own platform dependencies are excluded and the project's are used, with a
   launcher of the project's engine version added when the project does not declare one. PIT
@@ -325,9 +337,10 @@ comma-separated>` changes that. Those classes are excluded from the regular `tes
 - **Packaging.** The init script moved to `languages/java/gradle/` and `languages/**` is in the npm `files`;
   the packed-contents test and the installed-package test assert that `languages/java/gradle/nitpicker.init.gradle`
   ships.
-- **Tests.** `core/command/java/java-cli.test.mjs` drives the CLI with a fake `gradle` (`languages/java/adapters/fixtures/fake-gradle.mjs`),
-  so it runs without Java: pass, new finding in text/JSON/SARIF/JUnit, Gradle failure on head and
-  on base, missing binary, `--all`. The real Gradle run stays behind `NITPICKER_JAVA_E2E=1`
+- **Tests.** `core/command/java/java-cli.test.mjs` drives the CLI with a fake `gradle` (`languages/java/adapters/fixtures/fake-gradle.mjs`)
+  and with a fake `mvn` plus a fake JDK (`languages/java/maven/fixtures/fake-tools/`), so it runs without Java:
+  pass, new finding in text/JSON/SARIF/JUnit, build failure on head and on base, an exception entry,
+  missing binary, `--all`, the same cases for both builds. The real Gradle run stays behind `NITPICKER_JAVA_E2E=1`
   (`npm run test:java`), unchanged.
 
 ## Slice 1: tools, reports and identities
@@ -530,8 +543,9 @@ resolved plus a new finding, as in the TypeScript check.
   The message names the budget, the measured time, the fixes (no `Thread.sleep` or other waits, a
   smaller Spring context or a test slice, or moving it to an integration test source set; on Maven,
   making it an integration test that Failsafe runs, `*IT`) and the exception route.
-  Nitpicker runs only the tests its run needs: on Gradle the `test` task and any test task the build
-  makes it depend on, on Maven the `test` phase, so a test moved out of them is not timed.
+  Nitpicker runs only the tests its run needs: on Gradle `test`, the declared test suites and the test
+  tasks `check` depends on (see [Integration tests on Gradle](#how-it-works)), on Maven the `test`
+  phase, or `verify` when Failsafe runs, so a test moved out of them is not timed.
 - **Measurement.** Head only, from the JUnit XML the test tasks already write: the init script copies
   `TEST-*.xml` of every test task in the run (not `nitpickerArchunit`) to
   `test-results/<task>/` in each module's report directory. No extra test run. A rerun test keeps
