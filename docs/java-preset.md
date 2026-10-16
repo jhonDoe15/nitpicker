@@ -15,7 +15,8 @@ side contributes only two things: producing reports, and converting them into fi
 
 ```
 gradle -I languages/java/gradle/nitpicker.init.gradle nitpickerJava   (per snapshot: base, head; Maven builds: see below)
-  -> <report dir>/modules.json and, per Gradle project that applies java, <report dir>/<key>/{pmd.sarif, spotbugs.sarif, format.txt, jacoco.xml, checkstyle.xml, checkstyle-<source set>.xml, archunit/*.xml, structure.json, pit/mutations.xml, jdeps.txt, jdeps-classes.txt, javac-lint.txt, forbidden-apis.txt, cpd.xml, dependencies.json, permits.txt, manifest.json}
+  -> <report dir>/modules.json and, per Gradle project that applies java, <report dir>/<key>/{pmd.sarif, spotbugs.sarif, format.txt, jacoco.xml, checkstyle.xml, checkstyle-<source set>.xml, archunit/*.xml, structure.json, pit/mutations.xml, jdeps.txt, jdeps-classes.txt, forbidden-apis.txt, cpd.xml, dependencies.json, guards-plan.json, manifest.json}
+  -> languages/java/adapters/gradle-reports/gradle-guards.mjs (runGradleGuards: javac-lint.txt and permits.txt from each guards-plan.json)
   -> languages/java/adapters/reporting/java-reports.mjs       (readJavaFindings, via the ingesters)
   -> languages/java/adapters/spring/java-spring.mjs    (spring findings read straight from application*.properties/yml, no Gradle report; only when manifest.json says spring: true)
   -> compareFindings(base, head, renames)               (languages/java/adapters/java-diff.mjs)
@@ -137,14 +138,18 @@ field by field. Per snapshot:
   value still holding an unresolved `${...}` counts as unset). It compiles with the `javac` of
   `JAVA_HOME` (or the PATH), not a Maven toolchain, against the main compile classpath (compile,
   provided and system scopes), takes Lombok from it, and reads the sources in the project's
-  encoding. A POM that sets no release, source or target is linted as Java 8, the compiler
+  encoding. The runner is the one the Gradle side uses (`languages/java/builds/lint/`), so staging,
+  the differential lint and the Lombok handling below are the same on both builds; the annotation
+  processors' generated sources for a module with a descriptor come from
+  `target/generated-sources/annotations`. A POM that sets no release, source or target is linted as Java 8, the compiler
   plugin's default. Sources under a root outside the module directory (a `build-helper` root such
   as `../shared/src`) are not linted; their classes are on the class path, except in a module with
   a `module-info.java`, where such a root can make the lint compile fail (`javac/lint-not-run`). In
   a module with a descriptor, jars that are modules go on `--module-path` and the rest on `-cp`,
   as on Gradle; when that compile fails, it is retried with every jar on `--module-path`, as the
-  compiler plugin puts a plain jar there when `module-info.java` requires it. On the head it reuses
-  the base's warnings for unchanged files exactly as on Gradle. forbiddenapis reads the module's
+  compiler plugin puts a plain jar there when `module-info.java` requires it (the Gradle side
+  retries the same way). On the head it reuses the base's warnings for unchanged files exactly as
+  on Gradle. forbiddenapis reads the module's
   output directory (`target/classes` unless the POM moves it) against the main compile classpath
   and is skipped when the module has no classes; CPD, the guard and test-honesty PMD rulesets,
   the extra Checkstyle modules and the sealed `permits` edges are the same as on Gradle. The Java
@@ -677,8 +682,9 @@ A Checkstyle rule prints as its full check class, for example
   only (its wrapper excludes every file, then includes the test directories back, since PMD lets
   an include pattern override an exclude pattern). A project's own `config/pmd/ruleset.xml`
   replaces all of them unless it opts in as before. `InstanceofThenCast` and `CollectorsToList` are
-  left out when the main compile targets a release below 16 (`options.release`, else
-  `targetCompatibility`), since pattern matching and `Stream.toList()` need 16.
+  left out when the main compile targets a release below 16 (`options.release`, else the last
+  `--release` of the compiler arguments, else their last `-target`, else `targetCompatibility`;
+  Maven reads the same order), since pattern matching and `Stream.toList()` need 16.
 - **Narrowed rules.** `OptionalAsFieldOrParameter` skips parameters bound by Spring web
   annotations (`@RequestParam`, `@RequestHeader`, `@PathVariable`, `@CookieValue`,
   `@RequestAttribute`, `@SessionAttribute`, `@MatrixVariable`, `@RequestPart`), where an optional
@@ -702,33 +708,49 @@ A Checkstyle rule prints as its full check class, for example
   such as `mapper` keeps its camel-case name. `VisibilityModifier` allows protected fields of a
   `@MappedSuperclass`. These scopes are `SuppressionXpathSingleFilter` modules inside the
   generated config, not inline suppressions. The messages are rewritten to name the allowed form.
-- **javac lint.** The `nitpickerLint` task compiles the main sources once more with
+- **javac lint.** The `nitpickerLint` task writes `guards-plan.json` (the main sources, the
+  compile class path, the processor path, the compiler, its release, source, target, encoding and
+  arguments, the classes directory and the generated-sources directory), and after Gradle has run
+  nitpicker compiles the main sources once more from it with
   `-Xlint:rawtypes,unchecked,deprecation,removal,cast` and writes the warnings to
-  `javac-lint.txt` in the report directory (tool `javac`, rule = lint category). It compiles a copy in
-  which every `@SuppressWarnings(...)` is blanked out (same lines and columns), with the project's
-  compiler, release (or `-source`/`-target` from the source and target compatibility when no
-  release is set) and compiler arguments (without `-Werror`, `-Xlint`, `-Xplugin` and processor
-  options),
-  and with the main classes on the classpath, so it runs only Lombok of the annotation processors
-  (the classes other processors generate are already compiled) and stops after flow analysis
-  without writing classes. With a `module-info.java` the sources compile as that module, with
-  the modular jars of the class path on `--module-path`, and every file is linted. On the head, when the base produced a lint report in the same run (kept in
-  `<build dir>/nitpicker-lint/javac-lint.txt` of the base checkout), only the source files
-  whose content differs from the base are compiled; the base's warnings for the unchanged files
-  are kept, so the report matches a full lint. The cost: a warning that appears in an unchanged
-  file only because a changed file changed (a method the change deprecated, called from an
-  unchanged file) is not reported. Without a base report (the base came from the findings cache,
-  or its lint failed) the head lints every file. When the lint compile fails the run goes on: the
-  report says so in a descriptive `javac/lint-not-run` notice, and javac warnings are not checked
-  in that run. When only the base failed, the head's javac findings are reported but do not fail
-  the gate: with no base report, nothing tells which of them the change added, and each one says
-  so. When only the head failed, the run fails with a tool error: the change broke the lint
-  compile.
-- **Run time.** The lint, forbiddenapis, CPD, dependency and permits tasks declare their inputs
-  and outputs, so Gradle skips them when nothing they read changed. Measured on the hx repro (31
-  main files, Lombok and MapStruct, load about 40), the lint task took 22.0 s before and 13.1 s
-  with a one-file change; on the java-base sandbox, 6.2 s before and 3.9 s. Most of what is left is
-  starting javac with the processor and class path.
+  `javac-lint.txt` in the report directory (tool `javac`, rule = lint category). The same runner
+  serves Maven. It compiles a copy in which every `@SuppressWarnings(...)` is blanked out (same
+  lines and columns), with the project's compiler, release (or `-source`/`-target` from the source
+  and target compatibility when no release is set) and compiler arguments (without `-Werror`,
+  `-Xlint`, `-Xplugin`, processor options and class or module paths), and with the main classes on
+  the classpath, so it runs only Lombok of the annotation processors (the classes other processors
+  generate are already compiled) and stops after flow analysis without writing classes. The copy
+  keeps the sources' paths below the analysis root, with every `lombok.config` on the way from the
+  root down to each source folder, so Lombok reads the project's configuration (a package folder's
+  `fluent` accessors or log field name included); the copy's root configuration stops the lookup
+  there. A warning javac places on a Lombok annotation (`@SuperBuilder` or `@Builder` code that
+  Lombok generates) is dropped: it is not in code the project wrote. With a `module-info.java` the
+  sources compile as that module, with the modular jars of the class path on `--module-path` (and,
+  if that fails, every jar), the sources other annotation processors generated (MapStruct,
+  Immutables, Dagger) compiled along without their warnings being reported, and every file is
+  linted. On the head, when the base produced a lint report in the same run (kept with a
+  fingerprint of its compile inputs in `<build dir>/nitpicker-lint/` of the base checkout, Maven's
+  `target/nitpicker-lint/`), the base's warnings are reused for files whose content is the same as
+  on the base, so the report matches a full lint. They are reused only when the compile inputs
+  match the base's: the javac version, the language level, the encoding, the compiler arguments
+  and every class path and Lombok entry (a jar by name and size, a classes directory such as
+  another project's by its content), so a dependency bump that deprecates an API is reported in
+  unchanged files too. An unchanged file whose classes use a class of a changed file, directly or
+  through a subclass (read from the head's class files), is compiled again, so a method the change
+  deprecated or a class the change made generic is reported where it is called. Without a base
+  report or with other compile inputs the head lints every file. When the lint compile fails the
+  run goes on: the report says so in a descriptive `javac/lint-not-run` notice that quotes the
+  first error, and javac warnings are not checked in that run. When only the base failed, the
+  head's javac findings are reported but do not fail the gate: with no base report, nothing tells
+  which of them the change added, and each one says so. When only the head failed, the run fails
+  with a tool error: the change broke the lint compile. The notice says to fix what the lint
+  compile reports or to add an exception for `javac/lint-not-run` (path `**`) when the project
+  cannot be linted this way.
+- **Run time.** Each snapshot runs in a fresh worktree with a fresh report directory, so Gradle's
+  up-to-date checks do not skip these tasks; what saves time is the differential lint. Measured on
+  a project with 31 main files using Lombok and MapStruct (load about 40), the lint took 22.0 s for
+  every file and 13.1 s with a one-file change; on a smaller project, 6.2 s and 3.9 s. Most of what
+  is left is starting javac with the processor and class path.
 - **forbiddenapis.** [forbiddenapis](https://github.com/policeman-tools/forbidden-apis) 3.10
   (Apache-2.0, one jar from Maven Central, pinned in the init script) reads the main bytecode
   against `rules/forbidden-apis.txt`. Each signature group has a tag that becomes the rule name
@@ -751,8 +773,9 @@ A Checkstyle rule prints as its full check class, for example
   strongly connected set of packages is one `package-cycle` finding, identified by the package
   name and placed on its first file, so growing a legacy cycle adds a finding for the new package
   only and shrinking it resolves findings without re-reporting the rest. The edge from a sealed
-  type to the subtypes it `permits` is left out (`permits.txt` in the report directory, read from the
-  `PermittedSubclasses` attribute of the main classes), since a sealed hierarchy across packages is
+  type to the subtypes it `permits` is left out (`permits.txt` in the report directory, read by
+  nitpicker from the `PermittedSubclasses` attribute of the main classes; a class file it cannot
+  read is skipped), since a sealed hierarchy across packages is
   the intended form. Cycles between classes of one package are not reported: two-way references
   such as a parent and its children or JPA associations are normal.
 - **Dependencies.** `nitpickerDependencies` writes `dependencies.json`: each
@@ -785,9 +808,12 @@ A Checkstyle rule prints as its full check class, for example
   a test rule's pattern in main code, the Spring Security methods that throw `Exception`, a generic
   cast after `instanceof`, a `try (lines)` on a variable, a `fail` guard and `assertEquals(a, a)`.
   The test also checks one message's exception route, and runs `guards-compile-modes`: PMD on its
-  `legacy` module, compiled for Java 11, where `InstanceofThenCast` and `CollectorsToList` must
-  not fire, and the lint on modules with a javac plug-in (`-Xplugin`), `--enable-preview` and a
-  module descriptor with a sealed type across packages. The `lint-not-run` path is unit-tested only: a source that
+  `legacy` module, compiled for Java 11 through `options.release`, and its `arguments` module,
+  compiled for Java 11 through `--release` in the compiler arguments, where `InstanceofThenCast`
+  and `CollectorsToList` must not fire, and the lint on modules with a javac plug-in (`-Xplugin`),
+  `--enable-preview`, a module descriptor with a sealed type across packages, a source root
+  outside the project and Lombok with a package folder's `lombok.config` and a `@SuperBuilder`
+  warning. The `lint-not-run` path is unit-tested only: a source that
   breaks the lint compile breaks `compileJava` first.
 - **Left out on purpose.** Lombok `@Data` (a record is the allowed form for data, but `@Data` on a
   JPA entity is common enough that blocking it needs its own decision), `java.util.Random`

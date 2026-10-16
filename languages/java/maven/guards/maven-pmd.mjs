@@ -2,7 +2,7 @@ import { existsSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { escapeRegExp } from '../../../../shared/glob.mjs';
 import { runJava } from '../maven-command.mjs';
-import { targetRelease } from './javac-options.mjs';
+import { targetRelease } from '../../builds/lint/javac-options.mjs';
 import { EMPTY_SARIF } from '../maven-lint.mjs';
 import { GRADLE_DIRECTORY } from '../../builds/java-build.mjs';
 

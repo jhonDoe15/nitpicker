@@ -11,24 +11,6 @@ dependencies {
 }
 
 def analyzedClassDirs = project.ext.nitpickerAnalyzedClassDirs
-def pairedOptions = ['-Xmaxwarns', '-Xmaxerrs', '-processor', '-processorpath', '--processor-path',
-                     '--processor-module-path', '--module-path', '-p', '-d', '-s', '-h']
-def lintCompatible = { List<String> arguments ->
-    def kept = []
-    def skipNext = false
-    arguments.each { argument ->
-        if (skipNext) {
-            skipNext = false
-        } else if (argument in pairedOptions) {
-            skipNext = true
-        } else if (!(argument == '-Werror' || argument.startsWith('-Xlint') || argument.startsWith('-Xdoclint')
-            || argument.startsWith('-proc:') || argument.startsWith('-implicit:') || argument.startsWith('-Xplugin:'))) {
-            kept << argument
-        }
-    }
-    kept
-}
-
 tasks.register('nitpickerForbiddenApis', JavaExec) {
     group = 'nitpicker'
     dependsOn tasks.named('classes')
@@ -61,139 +43,42 @@ tasks.register('nitpickerForbiddenApis', JavaExec) {
     }
 }
 
-def compileInChildProcess = { File javac, File argumentFile, File directory ->
-    def process = new ProcessBuilder([javac.absolutePath, "@${argumentFile.absolutePath}".toString()])
-        .directory(directory).redirectErrorStream(true).start()
-    def log = process.inputStream.getText('UTF-8')
-    [code: process.waitFor(), log: log]
-}
-
-def relativeToRoot = project.ext.nitpickerRelativeToRoot
-def baselineRoot = project.ext.nitpickerBaselineRoot
-def lintCache = layout.buildDirectory.file('nitpicker-lint/javac-lint.txt')
-def baselineReport = {
-    def report = baselineRoot == null ? null : new File(baselineRoot, relativeToRoot(lintCache.get().asFile))
-    report?.isFile() ? report : null
-}
-def unchangedSince = { Collection<File> sources ->
-    sources.findAll { source ->
-        def relative = relativeToRoot(source)
-        def before = new File(baselineRoot, relative)
-        !relative.startsWith('..') && before.isFile() && before.length() == source.length() && before.bytes == source.bytes
-    }.collect { relativeToRoot(it) } as Set
-}
-def warningsOf = { File report, Set<String> files ->
-    report.readLines('UTF-8').findAll { line ->
-        def match = line =~ /^(.+\.java):\d+: warning: \[/
-        match.find() && match.group(1) in files
-    }.collect { it + '\n' }.join('')
-}
-def insideProject = { File file -> file.toPath().normalize().startsWith(projectDir.toPath().normalize()) }
-def isModule = { File file ->
-    if (file.isDirectory()) {
-        return new File(file, 'module-info.class').isFile()
-    }
-    if (!file.isFile() || !file.name.endsWith('.jar')) {
-        return false
-    }
-    new java.util.jar.JarFile(file).withCloseable { jar ->
-        jar.getEntry('module-info.class') != null
-            || jar.manifest?.mainAttributes?.getValue('Automatic-Module-Name') != null
-            || jar.entries().toList().any { it.name ==~ /META-INF\/versions\/\d+\/module-info\.class/ }
-    }
-}
-def pathOf = { Collection<File> files -> files.collect { it.absolutePath }.join(File.pathSeparator) }
-def lookupPath = { boolean modular, File classesDir, Collection<File> libraries ->
-    def existing = libraries.findAll { it.exists() }
-    if (!modular) {
-        return ['-cp', pathOf([classesDir] + existing)]
-    }
-    def modules = existing.findAll { isModule(it) }
-    def plain = existing - modules
-    (modules.isEmpty() ? [] : ['--module-path', pathOf(modules)]) + (plain.isEmpty() ? [] : ['-cp', pathOf(plain)])
-}
-def languageLevel = { compile, List<String> arguments ->
-    def release = compile.options.release.orNull
-    if (release != null) {
-        return ['--release', release.toString()]
-    }
-    if (arguments.any { it == '--release' || it.startsWith('--release=') }) {
-        return []
-    }
-    (arguments.contains('-source') || arguments.contains('--source') ? [] : ['-source', compile.sourceCompatibility]) +
-        (arguments.contains('-target') || arguments.contains('--target') ? [] : ['-target', compile.targetCompatibility])
-}
+def analysisRoot = project.ext.nitpickerAnalysisRoot
+def pathsOf = { Collection<File> files -> files.collect { it.absolutePath } }
 
 tasks.register('nitpickerLint') {
     group = 'nitpicker'
-    dependsOn tasks.named('compileJava')
-    def mainSources = sourceSets.main.allJava
-    inputs.files(mainSources).withPropertyName('sources')
-    inputs.files(tasks.named('compileJava')).withPropertyName('classes')
-    inputs.files(sourceSets.main.compileClasspath).withPropertyName('classpath')
-    inputs.files({ baselineReport() ?: [] }).withPropertyName('baselineReport')
-    inputs.property('baseline', baselineRoot?.absolutePath ?: '')
-    outputs.files(reportDir.map { it.file('javac-lint.txt') }, reportDir.map { it.file('javac-lint-failed.txt') }, lintCache)
-        .withPropertyName('reports')
+    description = 'Writes guards-plan.json, from which nitpicker runs the javac lint and reads the sealed permits.'
+    dependsOn tasks.named('classes')
     doLast {
-        reportDir.get().asFile.mkdirs()
-        def output = reportDir.get().file('javac-lint.txt').asFile
-        def failure = reportDir.get().file('javac-lint-failed.txt').asFile
-        def cache = lintCache.get().asFile
-        project.delete(output, failure, cache)
-        def all = mainSources.files
-            .findAll { it.name.endsWith('.java') && it.name != 'module-info.java' && it.exists() && insideProject(it) }
-            .sort()
-        def moduleInfo = mainSources.files.find { it.name == 'module-info.java' && it.isFile() }
-        def reused = moduleInfo == null ? baselineReport() : null
-        Set<String> unchanged = reused == null ? new HashSet<String>() : unchangedSince(all)
-        def kept = reused == null ? '' : warningsOf(reused, unchanged)
-        def sources = all.findAll { !(relativeToRoot(it) in unchanged) } + (moduleInfo == null ? [] : [moduleInfo])
-        logger.info("nitpickerLint: linting ${sources.size()} of ${all.size()} source files")
-        def write = { String text ->
-            output.text = text
-            cache.parentFile.mkdirs()
-            cache.text = text
-        }
-        if (sources.isEmpty()) {
-            write(kept)
-            return
-        }
         def compile = tasks.named('compileJava').get()
-        def compilerPath = compile.javaCompiler.orNull?.executablePath?.asFile
-        def javac = compilerPath ?: new File(javaHome, 'bin/javac')
-        def lombok = (compile.options.annotationProcessorPath?.files ?: []).findAll { it.exists() && it.name.startsWith('lombok') }
-        def encoding = compile.options.encoding ?: 'UTF-8'
-        def staged = new File(temporaryDir, 'sources')
-        def classes = new File(temporaryDir, 'classes')
-        project.delete(staged, classes)
-        [staged, classes]*.mkdirs()
-        def relativeNames = sources.collect { source ->
-            def relative = relativeToRoot(source)
-            def target = new File(staged, relative)
-            target.parentFile.mkdirs()
-            target.setText(source.getText(encoding).replaceAll(/@\s*(?:java\s*\.\s*lang\s*\.\s*)?SuppressWarnings\s*\([^)]*\)/) { match ->
-                match.replaceAll(/[^\n]/, ' ')
-            }, encoding)
-            relative
-        }
-        def flags = ['-Xlint:rawtypes,unchecked,deprecation,removal,cast', '-Xmaxwarns', '100000', '-Xmaxerrs', '100',
-                     '-implicit:none', '-XDshould-stop.ifNoError=FLOW', '-encoding', encoding,
-                     '-d', classes.absolutePath] +
-            lookupPath(moduleInfo != null, compile.destinationDirectory.get().asFile, compile.classpath.files) +
-            (lombok.isEmpty() ? ['-proc:none'] : ['-processorpath', lombok.collect { it.absolutePath }.join(File.pathSeparator)]) +
-            languageLevel(compile, compile.options.allCompilerArgs.collect { it.toString() }) +
-            lintCompatible(compile.options.allCompilerArgs.collect { it.toString() })
-        def argumentFile = new File(temporaryDir, 'javac.args')
-        argumentFile.text = (flags + relativeNames.collect { new File(staged, it).absolutePath })
-            .collect { '"' + it.replace('\\', '\\\\').replace('"', '\\"') + '"' }.join('\n')
-        def result = compileInChildProcess(javac, argumentFile, staged)
-        def log = result.log.replace(staged.absolutePath + File.separator, '')
-        if (result.code == 0) {
-            write(kept + log)
-        } else {
-            failure.text = log
-        }
+        def javac = compile.javaCompiler.orNull?.executablePath?.asFile ?: new File(javaHome, 'bin/javac')
+        def lintDirectory = layout.buildDirectory.dir('nitpicker-lint').get().asFile
+        def generated = compile.options.generatedSourceOutputDirectory.asFile.orNull
+        reportDir.get().asFile.mkdirs()
+        reportDir.get().file('guards-plan.json').asFile.text = groovy.json.JsonOutput.toJson([
+            classDirectories: pathsOf(sourceSets.main.output.classesDirs.files.findAll { it.exists() }),
+            lint            : [
+                root            : analysisRoot.absolutePath,
+                basedir         : projectDir.absolutePath,
+                reportRoot      : analysisRoot.absolutePath,
+                sources         : pathsOf(sourceSets.main.allJava.files),
+                generatedSources: generated == null ? [] : [generated.absolutePath],
+                classDirectory  : compile.destinationDirectory.get().asFile.absolutePath,
+                classpath       : pathsOf(compile.classpath.files),
+                processorPath   : pathsOf(compile.options.annotationProcessorPath?.files ?: []),
+                javac           : javac.absolutePath,
+                compiler        : [
+                    release : compile.options.release.orNull?.toString(),
+                    source  : compile.sourceCompatibility,
+                    target  : compile.targetCompatibility,
+                    encoding: compile.options.encoding,
+                    args    : compile.options.allCompilerArgs.collect { it.toString() },
+                ],
+                workDirectory   : new File(lintDirectory, 'work').absolutePath,
+                cacheDirectory  : lintDirectory.absolutePath,
+            ],
+        ])
     }
 }
 

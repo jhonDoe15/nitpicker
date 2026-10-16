@@ -5,7 +5,7 @@ import { afterEach, describe, expect, it } from 'vitest';
 import { configurationFiles, createJavaAnalyzer } from './java-analyzer.mjs';
 import { JAVA_TOOLS } from './gradle-presets.mjs';
 import { applyJavaPolicy, configureJavaAnalyzer } from './java-policy.mjs';
-import { baselineProperties, toolConfigProperties } from './java-diff.mjs';
+import { lintBaselineRoot, toolConfigProperties } from './java-diff.mjs';
 import { parseRunnerArguments } from './java-runner.mjs';
 
 const roots = [];
@@ -247,13 +247,12 @@ describe('project tool configs', () => {
   });
 });
 
-describe('baselineProperties', () => {
-  it('hands the base project to Gradle on the head side only, for the differential lint', () => {
-    expect(baselineProperties({ snapshot: 'head', baselineRoot: '/base/app' })).toEqual([
-      '-Pnitpicker.baselineRoot=/base/app',
-    ]);
-    expect(baselineProperties({ snapshot: 'base', baselineRoot: '/base/app' })).toEqual([]);
-    expect(baselineProperties({ snapshot: 'head' })).toEqual([]);
+describe('lintBaselineRoot', () => {
+  it('hands the base project to the differential lint on the head side only', () => {
+    expect(lintBaselineRoot({ snapshot: 'head', baselineRoot: '/base/app' })).toBe('/base/app');
+    expect(lintBaselineRoot({ snapshot: 'base', baselineRoot: '/base/app' })).toBeUndefined();
+    expect(lintBaselineRoot({ snapshot: 'head' })).toBeUndefined();
+    expect(lintBaselineRoot()).toBeUndefined();
   });
 });
 
@@ -471,16 +470,19 @@ describe('applyJavaPolicy', () => {
 });
 
 describe('createJavaAnalyzer', () => {
-  it('hashes every rule, task and guard file, so changing one invalidates cached findings', () => {
+  it('hashes every rule, task, guard and lint file, so changing one invalidates cached findings', () => {
     const packageRoot = path.resolve(import.meta.dirname, '../../..');
     const listed = [
       'languages/java/gradle/rules',
       'languages/java/gradle/tasks',
       'languages/java/guards',
+      'languages/java/builds/lint',
+      'languages/java/builds/classes',
     ]
       .flatMap((directory) =>
         readdirSync(path.join(packageRoot, directory), { recursive: true, withFileTypes: true })
           .filter((entry) => entry.isFile() && !entry.name.endsWith('.test.mjs'))
+          .filter((entry) => !entry.parentPath.includes('test-support'))
           .map((entry) =>
             path
               .relative(packageRoot, path.join(entry.parentPath, entry.name))

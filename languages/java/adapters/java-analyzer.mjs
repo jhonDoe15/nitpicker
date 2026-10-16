@@ -26,7 +26,6 @@ const RESOURCE_FILES = [
   'languages/java/gradle/tasks/cpd-task.gradle',
   'languages/java/gradle/tasks/dependency-tasks.gradle',
   'languages/java/gradle/tasks/lint-tasks.gradle',
-  'languages/java/gradle/tasks/permits-task.gradle',
   'languages/java/gradle/StructureMetrics.java',
   'languages/java/gradle/KotlinMetrics.java',
   'languages/java/detekt/nitpicker-detekt.yml',
