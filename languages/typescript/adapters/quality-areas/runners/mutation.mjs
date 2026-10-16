@@ -19,8 +19,15 @@ import { toolErrorFinding } from '../reporting/test-report.mjs';
 import { layoutTransformFor } from '../../../preset/tool-configs.mjs';
 import { trackTemporaryPath } from '../../../../../core/tooling/temporary-files.mjs';
 import { projectTestRunner } from '../../../preset/test-runner/project-runner.mjs';
-import { mutationRunnerConfig } from '../../test-runners/mutation-runner-config.mjs';
+import {
+  CRACO_JEST_CONFIG,
+  cracoJestConfigText,
+  mutationRunnerConfig,
+  unsupportedMutationRunner,
+} from '../../test-runners/mutation-runner-config.mjs';
 import { runnableTestFiles } from '../../test-runners/test-run.mjs';
+
+const UNSUPPORTED_RUNNER_RULE = 'mutation-unsupported-runner';
 
 const STRYKER_TSCONFIG_TARGET = '.nitpicker-diff-tsconfig.stryker.json';
 
@@ -35,6 +42,15 @@ export async function runMutation(options) {
   if (targets?.length === 0) {
     return [];
   }
+  const testRunner = projectTestRunner(options);
+  const unsupported = unsupportedMutationRunner(options, testRunner.runner);
+  if (unsupported !== undefined) {
+    return [toolErrorFinding(options, { rule: UNSUPPORTED_RUNNER_RULE, message: unsupported })];
+  }
+  return mutateWith(options, { targets, testRunner });
+}
+
+async function mutateWith(options, { targets, testRunner }) {
   const sourceConfig = (
     await importPolicyModule(options, STRYKER_CONFIG_PATH, `?run=${Date.now().toString()}`)
   ).default;
@@ -47,6 +63,7 @@ export async function runMutation(options) {
       targets,
       configPath,
       createdFiles,
+      testRunner,
     });
     const skippedFindings = runStrykerOrExplainSkip(options, configPath, command);
     if (skippedFindings !== undefined) {
@@ -67,6 +84,10 @@ export async function runMutation(options) {
 function runnerConfig({ options, sourceConfig, createdFiles, testRunner }) {
   const tsconfigPath = installStrykerTsconfig(options, sourceConfig.tsconfigFile, createdFiles);
   const tsconfigFile = relativeProjectPath(options.projectRoot, tsconfigPath);
+  if (testRunner.command.launcher === 'craco') {
+    const cracoConfigPath = path.join(options.projectRoot, CRACO_JEST_CONFIG);
+    writeTemporaryFile(cracoConfigPath, cracoJestConfigText(), createdFiles);
+  }
   if (testRunner.runner !== 'vitest') {
     return mutationRunnerConfig({
       options,
@@ -87,8 +108,14 @@ function runnerConfig({ options, sourceConfig, createdFiles, testRunner }) {
   });
 }
 
-function writeStrykerConfig({ options, sourceConfig, targets, configPath, createdFiles }) {
-  const testRunner = projectTestRunner(options.projectRoot);
+function writeStrykerConfig({
+  options,
+  sourceConfig,
+  targets,
+  configPath,
+  createdFiles,
+  testRunner,
+}) {
   const config = {
     ...runnerConfig({ options, sourceConfig, createdFiles, testRunner }),
     ...(targets === undefined ? {} : { mutate: targets }),

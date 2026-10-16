@@ -125,6 +125,41 @@ describe('coverage reporting in the quality-area analyzers', () => {
       '1 test fails, so coverage, CRAP and mutation were skipped. Fix the tests and rerun:\n  /elsewhere/test/a.test.ts > adds: no',
     );
   });
+  it('says which steps of the test script nitpicker did not run before the tests', () => {
+    const run = (precedingCommands) =>
+      coverageFailureFindings(
+        { analyzerName: 'coverage', projectRoot: '/p' },
+        {
+          report: {
+            numFailedTests: 1,
+            testResults: [
+              {
+                name: '/p/test/a.test.js',
+                status: 'failed',
+                message: "Cannot find module '../dist/a.js'",
+                assertionResults: [],
+              },
+            ],
+          },
+          result: { status: 1, stdout: '', stderr: '' },
+          runnerName: 'node:test',
+          precedingCommands,
+        },
+      ).map(({ message }) => message);
+    const failure =
+      '1 test fails, so coverage, CRAP and mutation were skipped. Fix the tests and rerun:\n' +
+      "  test/a.test.js > could not run: Cannot find module '../dist/a.js'";
+
+    expect(run(['tsc'])).toEqual([
+      `${failure}\nThe test script runs "tsc" before the tests; nitpicker runs only the test command, ` +
+        'so run that step first if the tests need it.',
+    ]);
+    expect(run(['npm run build', 'npm run seed'])).toEqual([
+      `${failure}\nThe test script runs "npm run build", "npm run seed" before the tests; ` +
+        'nitpicker runs only the test command, so run those steps first if the tests need it.',
+    ]);
+    expect(run([])).toEqual([failure]);
+  });
   it('lists at most five failing tests and a test file that could not run', () => {
     const failing = (index) => ({
       fullName: `case ${String(index)}`,
