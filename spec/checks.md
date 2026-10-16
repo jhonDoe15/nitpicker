@@ -28,8 +28,10 @@ Each runs ESLint with a different config. Every ESLint message becomes an **enfo
 A message is identified by its rule, message and the syntax it points at. A message on a whole
 function is identified by the function's signature, not its body. A message inside a named
 function whose code was edited keeps matching the base while the function has no more messages of
-that rule and kind than on the base (a count ratchet); a message on a line the change touched, of a
-strict rule, is still new, and so is a message on a line the change added. Rules that report a
+that rule and kind than on the base (a count ratchet), also on an edited line (an added line paired
+with a removed line it resembles, such as `return text.slice(0, 4096)` becoming
+`return trimmed.slice(0, 4096)`). A message on a line the change added that resembles no removed
+line is new, and so is a message of a strict rule on a touched line outside a named function. Rules that report a
 number about a function (`nitpicker/cognitive-complexity`, `complexity`, `max-lines-per-function`,
 `max-statements`, `max-params`, `max-depth`) fail an edited function only when that number rises.
 
