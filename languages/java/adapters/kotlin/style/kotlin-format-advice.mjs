@@ -4,6 +4,7 @@ import { ktlintDefaults } from './kotlin-style-files.mjs';
 function ktfmtLines(tools) {
   const flags = [
     `--${tools.ktfmtStyle}-style`,
+    ...(tools.ktfmtMaxWidth === undefined ? [] : [`--max-width=${tools.ktfmtMaxWidth}`]),
     ...(tools.ktfmtEditorconfig ? ['--enable-editorconfig'] : []),
   ].join(' ');
   const ignored = [

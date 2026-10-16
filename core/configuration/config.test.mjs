@@ -165,7 +165,7 @@ describe('config file', () => {
         }),
       ).toThrow(/is not a rule with exceptions/u);
       expect(() => validateConfig({ preset: 'kotlin', thresholds: { lineLength: 140 } })).toThrow(
-        'detekt checks Kotlin line length',
+        '"kotlin.lineLength" ("100", "120" or "140") sets it for ktlint, ktfmt and detekt',
       );
     });
 

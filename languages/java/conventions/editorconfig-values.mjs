@@ -51,3 +51,19 @@ export function detektWildcardActive(text) {
     .find((match) => match !== null);
   return active === undefined ? undefined : active[1] === 'true';
 }
+
+const MAX_LENGTH = /^\s*maxLineLength:\s*(\d+)\b/;
+const MAX_LINE_LENGTH_RULE = /^\s*MaxLineLength:\s*(?:#.*)?$/;
+
+export function detektMaxLineLength(text) {
+  const lines = text.split(/\r?\n/);
+  const start = lines.findIndex((line) => MAX_LINE_LENGTH_RULE.test(line));
+  if (start === -1) {
+    return undefined;
+  }
+  const indent = indentOfLine(lines[start]);
+  const rest = lines.slice(start + 1);
+  const end = rest.findIndex((line) => line.trim() !== '' && indentOfLine(line) <= indent);
+  const body = end === -1 ? rest : rest.slice(0, end);
+  return body.map((line) => MAX_LENGTH.exec(line)).find((match) => match !== null)?.[1];
+}

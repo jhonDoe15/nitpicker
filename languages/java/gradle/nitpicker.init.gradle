@@ -712,7 +712,9 @@ allprojects {
                         workingDir = styleMirrorNeeded() ? tasks.named('nitpickerKotlinStyleWorkspace').get().ext.moduleWorkspace : analysisRoot
                         def style = "--${nitpickerArgument('nitpicker.kotlin.ktfmtStyle') ?: 'meta'}-style".toString()
                         def argumentFile = new File(temporaryDir, 'ktfmt.args')
+                        def maxWidth = nitpickerArgument('nitpicker.kotlin.ktfmtMaxWidth')
                         argumentFile.text = ([style, '--dry-run'] +
+                            (maxWidth ? ["--max-width=${maxWidth}".toString()] : []) +
                             (nitpickerArgument('nitpicker.kotlin.ktfmtEditorconfig') == 'true' ? ['--enable-editorconfig'] : []) +
                             kotlinFiles().collect { relative(it) }).collect { it + '\n' }.join('')
                         args("@${argumentFile.absolutePath}".toString())

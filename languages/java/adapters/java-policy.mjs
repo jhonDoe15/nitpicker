@@ -18,7 +18,8 @@ const FILE_LIMIT_THRESHOLDS = ['fileLines', 'testFileLines', 'lineLength', 'fold
 const TEST_TIME_THRESHOLDS = ['unitTestSeconds', 'integrationTestSeconds'];
 const NATIVE_LINE_LENGTH = {
   java: 'Checkstyle checks Java line length; set it in config/checkstyle/checkstyle.xml and opt in with "tools": { "checkstyle": { "precedence": ["project"] } }',
-  kotlin: 'detekt checks Kotlin line length; set style>MaxLineLength in config/detekt/detekt.yml',
+  kotlin:
+    'the "conventions" key "kotlin.lineLength" ("100", "120" or "140") sets it for ktlint, ktfmt and detekt when a formatter runs; otherwise set style>MaxLineLength in config/detekt/detekt.yml and opt in with "tools": { "detekt": { "precedence": ["project"] } }',
 };
 const JAVA_EXCEPTION_RULES = SHARED_EXCEPTION_RULES.filter(
   (rule) => !JAVA_NATIVE_RULES.includes(rule),

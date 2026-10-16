@@ -81,3 +81,30 @@ describe('kotlin.trailingCommas', () => {
     expect(measures['kotlin.trailingCommas'](text)).toBe(expected);
   });
 });
+
+describe('kotlin.lineLength', () => {
+  const fits = (length) => `val x = ${'a'.repeat(length - 8)}\n`;
+  const wrapped = (width) => `val y = call(\n    ${'b'.repeat(width)}\n)\n`;
+  const multi = 'val z = call(\n    first,\n    second,\n)\n';
+
+  it.each([
+    ['a call wrapped though it fits 100', `${fits(70)}${wrapped(70)}`, undefined],
+    ['wrapped calls that would not fit 100', `${fits(98)}${wrapped(97)}`, '100'],
+    ['wrapped calls that would not fit 120', `${fits(118)}${wrapped(117)}`, '120'],
+    ['a multi-argument list that would fit 100 when joined', `${fits(60)}${multi}`, undefined],
+    ['lines past 100 and none past 120', `${fits(110)}${fits(115)}`, '120'],
+    ['lines past 120 and none past 140', `${fits(130)}${fits(135)}`, '140'],
+    ['one long line only', fits(110), undefined],
+    ['lines past 140', `${fits(150)}${fits(160)}`, undefined],
+    ['short lines', `${fits(40)}${fits(60)}`, undefined],
+    [
+      'long lines nothing can break: imports, urls, comments and long strings',
+      `import ${'a'.repeat(130)}\n// ${'b'.repeat(130)}\nval u = "https://${'c'.repeat(130)}"\n${fits(60)}`,
+      undefined,
+    ],
+    ['a raw string', `val t = \"\"\"\n${'x = ('.repeat(30)}\n\"\"\"\n${fits(60)}`, undefined],
+    ['tab indentation', `fun a() {\n\t${fits(125)}}\n`, undefined],
+  ])('reads %s', (_name, text, expected) => {
+    expect(measures['kotlin.lineLength'](text)).toBe(expected);
+  });
+});
