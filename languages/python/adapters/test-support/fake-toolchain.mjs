@@ -10,7 +10,6 @@ const TOOLS = [
   'pyright',
   'python',
   'python3',
-  'lizard',
   'mutmut',
   'lint-imports',
 ];
