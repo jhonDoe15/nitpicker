@@ -21,7 +21,7 @@ const BANNED_FORM_OUTPUT = [
   'eslint-lint: total=1 enforceable=1 descriptive=0',
   '',
   'Enforceable findings:',
-  'eslint-lint/no-restricted-syntax src/main/features/greeting/domain/greet.ts:29 Do not assert with `as`. Narrow the value (a discriminated union check or a zod parse) or give it the correct type at its source. `as const` is allowed.',
+  'eslint-lint/no-restricted-syntax src/main/features/greeting/domain/greet.ts:21 Do not assert with `as`. Narrow the value (a discriminated union check or a zod parse) or give it the correct type at its source. `as const` is allowed.',
   '',
 ].join('\n');
 const FIXTURE_TIMEOUT_MS = 300_000;

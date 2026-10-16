@@ -1,3 +1,4 @@
+import { docCommentContentReports } from './doc-comment-content.mjs';
 import {
   castTags,
   isJsdocBlock,
@@ -65,18 +66,20 @@ function isExportedTypeMember(node) {
   );
 }
 
-function documentsPublicApi(sourceCode, comment) {
+function publicApiNode(sourceCode, comment) {
   const token = sourceCode.getTokenAfter(comment);
-  if (!token) return false;
+  if (!token) return undefined;
   const node = declarationStartingAt(sourceCode, token);
-  if (!node) return false;
-  return exportDeclarations.has(node.type) || isExportedTypeMember(node);
+  if (!node) return undefined;
+  return exportDeclarations.has(node.type) || isExportedTypeMember(node) ? node : undefined;
 }
 
 function plainCommentReports(comment, sourceCode) {
   if (toolDirective.test(comment.value)) return [];
   if (!isJsdocBlock(comment)) return [{ messageId: 'comment' }];
-  return documentsPublicApi(sourceCode, comment) ? [] : [{ messageId: 'internalDocComment' }];
+  const node = publicApiNode(sourceCode, comment);
+  if (!node) return [{ messageId: 'internalDocComment' }];
+  return docCommentContentReports(comment, node);
 }
 
 function commentReports(comment, { jsdocTypes, sourceCode }) {
@@ -121,6 +124,10 @@ export const rule = {
       jsdocAnyType: `Do not use \`any\`, \`*\` or a bare \`?\` in a JSDoc type. Use \`unknown\` and parse it into a specific type at the boundary with zod, or write the specific type. ${JSDOC_EXCEPTION}`,
       jsdocNullType: `Use \`undefined\` for an absent value; \`null\` and the \`?T\` and \`T?\` forms are not allowed in a JSDoc type. Type it as optional with \`undefined\`. ${JSDOC_EXCEPTION}`,
       jsdocCast: `Do not assert with a JSDoc cast (\`/** @type {T} */ (value)\`). Narrow the value (a discriminated union check or a zod parse) or give it the correct type at its source. \`/** @type {const} */\` is allowed. ${JSDOC_EXCEPTION}`,
+      restatingDocComment:
+        'This doc comment only restates {{name}}. Delete it, or say what the name cannot: a unit, a limit, an edge case or why. If it is needed as written, add an exception for nitpicker/no-comments in nitpicker.config.json.',
+      longDocComment:
+        "This doc comment's description is {{lines}} lines (limit {{limit}}). Keep the non-obvious point, a unit, a limit or an edge case, and put the rest in names and types. If it must be longer, add an exception for nitpicker/no-comments in nitpicker.config.json.",
       internalDocComment:
         'Doc comments are allowed only on exported declarations and the members of exported types. Remove this one and put the intent in code: a descriptive identifier, a named function, or a type.',
     },
