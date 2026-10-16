@@ -9,6 +9,8 @@ import { KOTLIN_FORMATTERS } from './kotlin/kotlin-options.mjs';
 export const GRADLE_FAILURE_RULE = 'gradle-failure';
 export const MAVEN_FAILURE_RULE = 'maven-failure';
 const MAX_MESSAGE_LENGTH = 4000;
+const FILE_LIMITS_OPTION = '--file-limits';
+const TEST_SECONDS_OPTION = '--test-seconds';
 
 export function analyzeJavaSnapshot(
   projectRoot,
@@ -106,8 +108,8 @@ export function parseRunnerArguments(arguments_) {
     projectRoot: values.get('--project-root'),
     policy: {
       crapLimit,
-      fileLimits: parseJsonObject(values.get('--file-limits'), '--file-limits'),
-      testSeconds: parseJsonObject(values.get('--test-seconds'), '--test-seconds'),
+      fileLimits: parseJsonObject(values.get(FILE_LIMITS_OPTION), FILE_LIMITS_OPTION),
+      testSeconds: parseJsonObject(values.get(TEST_SECONDS_OPTION), TEST_SECONDS_OPTION),
       exclude,
       exceptions,
       legacyInventory: values.get('--legacy-inventory'),
@@ -149,8 +151,8 @@ const RUNNER_OPTIONS = [
   '--kotlin-detekt-config',
   '--pmd-precedence',
   '--checkstyle-precedence',
-  '--file-limits',
-  '--test-seconds',
+  FILE_LIMITS_OPTION,
+  TEST_SECONDS_OPTION,
 ];
 
 function parseJsonObject(text, option) {

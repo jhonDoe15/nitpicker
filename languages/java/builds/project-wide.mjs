@@ -117,8 +117,8 @@ function mergeProjects(projectRoot, projects, mergedRoot) {
   writeFileSync(path.join(mergedRoot, PERMITS_REPORT), mergedPermits(projects, declared));
   return new Map(
     projects.flatMap((project) =>
-      project.classes.map((name) => [
-        qualified(project.qualifier, outerClass(name)),
+      [...new Set(project.classes.map(outerClass))].map((name) => [
+        qualified(project.qualifier, name),
         sourceFile(projectRoot, project.sourceRoots, name),
       ]),
     ),

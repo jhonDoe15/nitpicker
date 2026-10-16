@@ -1,3 +1,6 @@
+const RELEASE = '--release';
+const SOURCE = '-source';
+const TARGET = '-target';
 const PAIRED_OPTIONS = new Set([
   '-Xmaxwarns',
   '-Xmaxerrs',
@@ -69,8 +72,8 @@ function optionValue(args, names) {
 export function targetRelease(compiler) {
   return (
     compiler.release ??
-    optionValue(compiler.args, ['--release']) ??
-    optionValue(compiler.args, ['-target', '--target']) ??
+    optionValue(compiler.args, [RELEASE]) ??
+    optionValue(compiler.args, [TARGET, '--target']) ??
     compiler.target ??
     DEFAULT_LEVEL
   );
@@ -78,19 +81,19 @@ export function targetRelease(compiler) {
 
 export function languageLevel(compiler) {
   if (compiler.release !== undefined) {
-    return ['--release', compiler.release];
+    return [RELEASE, compiler.release];
   }
-  if (hasOption(compiler.args, ['--release'])) {
+  if (hasOption(compiler.args, [RELEASE])) {
     return [];
   }
-  const source = hasOption(compiler.args, ['-source', '--source'])
+  const source = hasOption(compiler.args, [SOURCE, '--source'])
     ? undefined
     : (compiler.source ?? DEFAULT_LEVEL);
-  const target = hasOption(compiler.args, ['-target', '--target'])
+  const target = hasOption(compiler.args, [TARGET, '--target'])
     ? undefined
     : (compiler.target ?? DEFAULT_LEVEL);
   return [
-    ...(source === undefined ? [] : ['-source', source]),
-    ...(target === undefined ? [] : ['-target', target]),
+    ...(source === undefined ? [] : [SOURCE, source]),
+    ...(target === undefined ? [] : [TARGET, target]),
   ];
 }

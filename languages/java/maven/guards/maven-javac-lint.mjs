@@ -104,10 +104,14 @@ function baselineWarnings({ module, baselineDir, sources, output }) {
 }
 
 function stageSources({ module, sources, staged }) {
-  mkdirSync(staged, { recursive: true });
-  return sources.map((source) => {
-    const target = path.join(staged, relativeTo(module.basedir, source));
-    mkdirSync(path.dirname(target), { recursive: true });
+  const staging = sources.map((source) => ({
+    source,
+    target: path.join(staged, relativeTo(module.basedir, source)),
+  }));
+  for (const directory of new Set([staged, ...staging.map(({ target }) => path.dirname(target))])) {
+    mkdirSync(directory, { recursive: true });
+  }
+  return staging.map(({ source, target }) => {
     const text = readFileSync(source, 'latin1');
     writeFileSync(
       target,
