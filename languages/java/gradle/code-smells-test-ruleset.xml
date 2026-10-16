@@ -4,6 +4,8 @@
          xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
          xsi:schemaLocation="http://pmd.sourceforge.net/ruleset/2.0.0 https://pmd.sourceforge.io/ruleset_2_0_0.xsd">
   <description>Nitpicker code smell rules for test sources.</description>
-  <rule ref="category/java/errorprone.xml/AvoidDuplicateLiterals"/>
-  <rule ref="category/java/bestpractices.xml/UnusedFormalParameter"/>
+  <rule ref="category/java/errorprone.xml/AvoidDuplicateLiterals"
+        message="The string literal {0} is repeated in this file. Name it once as a constant (private static final String NAME) and use the constant. If repeating it is intended, add an exception for pmd/AvoidDuplicateLiterals in nitpicker.config.json."/>
+  <rule ref="category/java/bestpractices.xml/UnusedFormalParameter"
+        message="Remove the unused parameter, or use it. If it must stay, add an exception for pmd/UnusedFormalParameter in nitpicker.config.json."/>
 </ruleset>

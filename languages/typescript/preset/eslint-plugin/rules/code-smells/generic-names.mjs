@@ -22,7 +22,7 @@ const DECLARATION_TYPES = new Set([
   'TSTypeAliasDeclaration',
   'TSEnumDeclaration',
 ]);
-const FILE_START = { start: { line: 1, column: 0 }, end: { line: 1, column: 1 } };
+const FILE_START = { line: 1, column: 0 };
 const SOURCE_EXTENSION = /(?:\.d)?\.[cm]?[jt]sx?$/;
 
 function isGenericContainer(name) {

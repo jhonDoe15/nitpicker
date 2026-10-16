@@ -19,6 +19,8 @@ const PMD_RULESET = path.join(GRADLE_DIRECTORY, 'pmd-ruleset.xml');
 const GUARDS_RULES = path.join(GRADLE_DIRECTORY, 'rules/guards-ruleset.xml');
 const HONESTY_RULES = path.join(GRADLE_DIRECTORY, 'rules/test-honesty-ruleset.xml');
 const SPRING_RULES = path.join(GRADLE_DIRECTORY, 'spring-ruleset.xml');
+const SMELLS_RULES = path.join(GRADLE_DIRECTORY, 'code-smells-ruleset.xml');
+const SMELLS_TEST_RULES = path.join(GRADLE_DIRECTORY, 'code-smells-test-ruleset.xml');
 const tests = path.join('/work', 'my.app', 'src', 'test', 'java');
 const quoted = String.raw`/work/my\.app/src/test/java/`;
 
@@ -201,9 +203,28 @@ describe.skipIf(process.platform === 'win32')('runPmd rulesets', () => {
         PMD_RULESET,
         '/custom/pmd.xml',
         path.join(run.reportDir, 'pmd-guards-main.xml'),
+        path.join(run.reportDir, 'pmd-code-smells-main.xml'),
+        path.join(run.reportDir, 'pmd-code-smells-test.xml'),
         path.join(run.reportDir, 'pmd-test-honesty.xml'),
         path.join(run.reportDir, 'pmd-spring-main.xml'),
       ].join(','),
+    );
+    expect(run.text('pmd-code-smells-main.xml')).toBe(
+      ruleset({
+        name: 'nitpicker-code-smells-main',
+        patterns: [`  <exclude-pattern>${run.testSourceRoots[0]}/.*</exclude-pattern>`],
+        ref: SMELLS_RULES,
+      }),
+    );
+    expect(run.text('pmd-code-smells-test.xml')).toBe(
+      ruleset({
+        name: 'nitpicker-code-smells-test',
+        patterns: [
+          '  <exclude-pattern>.*</exclude-pattern>',
+          `  <include-pattern>${run.testSourceRoots[0]}/.*</include-pattern>`,
+        ],
+        ref: SMELLS_TEST_RULES,
+      }),
     );
     expect(run.text('pmd-test-honesty.xml')).toBe(
       ruleset({
@@ -231,6 +252,8 @@ describe.skipIf(process.platform === 'win32')('runPmd rulesets', () => {
       [
         PMD_RULESET,
         path.join(run.reportDir, 'pmd-guards-main.xml'),
+        path.join(run.reportDir, 'pmd-code-smells-main.xml'),
+        path.join(run.reportDir, 'pmd-code-smells-test.xml'),
         path.join(run.reportDir, 'pmd-test-honesty.xml'),
       ].join(','),
     );
@@ -246,19 +269,26 @@ describe.skipIf(process.platform === 'win32')('runPmd rulesets', () => {
 
       expect(run.option('--rulesets')).toBe(expected);
       expect(run.exists('pmd-guards-main.xml')).toBe(false);
+      expect(run.exists('pmd-code-smells-main.xml')).toBe(false);
+      expect(run.exists('pmd-code-smells-test.xml')).toBe(false);
       expect(run.exists('pmd-test-honesty.xml')).toBe(false);
     },
   );
 
-  it('writes no test honesty wrapper when no test directory exists', () => {
+  it('writes no test wrappers when no test directory exists', () => {
     const run = pmd(workspace(), {
       tests: [['src/test/java', false]],
       pmdConfig: { nitpicker: true },
     });
 
     expect(run.option('--rulesets')).toBe(
-      [PMD_RULESET, path.join(run.reportDir, 'pmd-guards-main.xml')].join(','),
+      [
+        PMD_RULESET,
+        path.join(run.reportDir, 'pmd-guards-main.xml'),
+        path.join(run.reportDir, 'pmd-code-smells-main.xml'),
+      ].join(','),
     );
+    expect(run.exists('pmd-code-smells-test.xml')).toBe(false);
     expect(run.exists('pmd-test-honesty.xml')).toBe(false);
     expect(run.option('--dir')).toBe(run.main);
   });
