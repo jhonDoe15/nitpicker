@@ -76,6 +76,11 @@ const FILES = {
     `it('c', async () => { ${SLEEP} assert.ok(1); });`,
     "it('d', () => { setInterval(() => {}, 5); assert.ok(1); });",
   ],
+  'mocha/wrong-runner.test.mjs': [
+    "import { vi } from 'vitest';",
+    "import { mock } from 'node:test';",
+    "it('a', () => { assert.ok(vi, mock); });",
+  ],
 };
 
 let root = '';
@@ -196,6 +201,7 @@ describe('the test file rules report the same on both lint engines', () => {
         'nitpicker/no-fixed-sleep-synchronization@4:23',
         'nitpicker/no-interval-polling-in-tests@5:17',
       ],
+      'mocha/wrong-runner.test.mjs': ['no-restricted-imports@1:1', 'no-restricted-imports@2:1'],
     });
   });
 });

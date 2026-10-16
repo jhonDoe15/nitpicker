@@ -2,9 +2,9 @@ import { Linter } from 'eslint';
 import { describe, expect, it } from 'vitest';
 import { RUNNER_RULE_NAMESPACES, testRunnerLintConfig } from './runner-rules.mjs';
 
-function findings(runner, code) {
+function lint(runner, code) {
   const config = testRunnerLintConfig(runner);
-  const messages = new Linter().verify(code, [
+  return new Linter().verify(code, [
     {
       files: ['**/*.js'],
       plugins: config.plugins,
@@ -13,7 +13,10 @@ function findings(runner, code) {
       rules: config.rules,
     },
   ]);
-  return messages.map(({ ruleId }) => ruleId);
+}
+
+function findings(runner, code) {
+  return lint(runner, code).map(({ ruleId }) => ruleId);
 }
 
 const NODE_HEAD = "import test from 'node:test';\nimport assert from 'node:assert/strict';\n";
@@ -103,5 +106,45 @@ describe('the test file rules follow the runner', () => {
       'vitest/no-standalone-expect',
     ]);
     expect(findings('node', code)).toEqual([]);
+  });
+
+  it.each([
+    ['jest', 'vitest'],
+    ['jest', 'node:test'],
+    ['jest', 'mocha'],
+    ['mocha', 'vitest'],
+    ['mocha', 'node:test'],
+    ['mocha', '@jest/globals'],
+    ['node', 'vitest'],
+    ['node', '@jest/globals'],
+    ['node', 'mocha'],
+    ['vitest', '@jest/globals'],
+    ['vitest', 'mocha'],
+  ])('flags a %s test that imports the test functions of %s', (runner, module) => {
+    expect(
+      findings(runner, `import { describe } from '${module}';\ndescribe('a', () => {});`),
+    ).toEqual(['no-restricted-imports']);
+  });
+
+  it.each([
+    ['vitest', 'vitest'],
+    ['jest', '@jest/globals'],
+    ['node', 'node:test'],
+    ['mocha', 'mocha'],
+  ])('lets a %s test import its own runner %s', (runner, module) => {
+    expect(
+      findings(runner, `import { describe } from '${module}';\ndescribe('a', () => {});`),
+    ).toEqual([]);
+  });
+
+  it('tells a Jest project that imports vitest which runner it runs and how to change it', () => {
+    const [{ message }] = lint('jest', "import { it } from 'vitest';");
+
+    expect(message).toBe(
+      "'vitest' import is restricted from being used. nitpicker runs this project's tests with Jest, " +
+        'which does not run Vitest tests. Take the test functions from `@jest/globals` or the Jest globals, or, if the project runs its tests with Vitest, ' +
+        'set "tools.tests.runner" to "vitest" in nitpicker.config.json. If this file needs the module for another reason, ' +
+        'add an exception for no-restricted-imports for it in nitpicker.config.json.',
+    );
   });
 });
