@@ -734,8 +734,9 @@ A Checkstyle rule prints as its full check class, for example
   generate are already compiled) and stops after flow analysis without writing classes. The copy
   keeps the sources' paths below the analysis root, with every `lombok.config` on the way from the
   root down to each source folder, so Lombok reads the project's configuration (a package folder's
-  `fluent` accessors or log field name included); the copy's root configuration holds what the
-  root inherits from the folders above it and stops the lookup there. A warning javac places on a Lombok annotation (`@SuperBuilder` or `@Builder` code that
+  `fluent` accessors or log field name included), and those of the folders above the root up to
+  one that sets `config.stopBubbling`; a relative `import` in a copied file is pointed at the file
+  it names. A warning javac places on a Lombok annotation (`@SuperBuilder` or `@Builder` code that
   Lombok generates) is dropped: it is not in code the project wrote. With a `module-info.java` the
   sources compile as that module, with the modular jars of the class path on `--module-path` (and,
   if that fails, every jar), the sources other annotation processors generated (MapStruct,
