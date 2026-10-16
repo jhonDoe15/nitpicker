@@ -161,6 +161,31 @@ function sourceText(projectRoot, file) {
   return existsSync(absolute) ? readFileSync(absolute, 'utf8') : undefined;
 }
 
+function collectBothSnapshots({
+  repositoryRoot,
+  projectRelativePath,
+  comparison,
+  options,
+  policy,
+}) {
+  return withTemporaryWorktree(repositoryRoot, comparison.headSha, (headWorktree) => {
+    const policyRoot = path.join(headWorktree, projectRelativePath);
+    function collectIn(worktreeRoot, snapshot) {
+      return collectJavaFindings(path.join(worktreeRoot, projectRelativePath), {
+        ...options,
+        policy: { ...policy, snapshot, policyRoot },
+      });
+    }
+    const headFindings = collectIn(headWorktree, 'head');
+    const baseFindings = withTemporaryWorktree(
+      repositoryRoot,
+      comparison.mergeBaseSha,
+      (baseWorktree) => collectIn(baseWorktree, 'base'),
+    );
+    return { baseFindings, headFindings };
+  });
+}
+
 export function runJavaDiff({
   repositoryRoot,
   projectRelativePath = '.',
@@ -181,15 +206,13 @@ export function runJavaDiff({
     headSha: comparison.headSha,
     projectRelativePath,
   });
-  const options = { gradle, maven, initScript, policy };
-  function collectAt(sha) {
-    return withTemporaryWorktree(repositoryRoot, sha, (worktreeRoot) =>
-      collectJavaFindings(path.join(worktreeRoot, projectRelativePath), options),
-    );
-  }
-
-  const baseFindings = collectAt(comparison.mergeBaseSha);
-  const headFindings = collectAt(comparison.headSha);
+  const { baseFindings, headFindings } = collectBothSnapshots({
+    repositoryRoot,
+    projectRelativePath,
+    comparison,
+    options: { gradle, maven, initScript },
+    policy,
+  });
   const touchedCode = {
     changedLines: readChangedLines({
       repositoryRoot,
