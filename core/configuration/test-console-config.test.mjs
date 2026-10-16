@@ -79,4 +79,17 @@ describe('test-console analyzer and disable', () => {
 
     expect(names).not.toContain('test-console');
   });
+
+  it('lists three dependents with commas', () => {
+    const analyzers = [
+      { name: 'coverage' },
+      { name: 'crap', dependencies: ['coverage'] },
+      { name: 'mutation', dependencies: ['coverage'] },
+      { name: 'test-console', dependencies: ['coverage'] },
+    ];
+
+    expect(() => applyDisable(analyzers, { disable: ['coverage'] })).toThrow(
+      '"disable" cannot disable coverage because crap, mutation and test-console depend on it; add them to "disable" too',
+    );
+  });
 });
