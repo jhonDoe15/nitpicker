@@ -1,6 +1,7 @@
 import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { exceptionRoute } from './advice/exception-route.mjs';
+import { referencedNames, usesArchive } from '../builds/class-references.mjs';
 
 const DEPENDENCIES_TOOL = 'dependencies';
 const UNUSED_RULE = 'unused-declared-dependency';
@@ -45,7 +46,23 @@ export function dependencyFindings(report) {
   return [...byId.values()].map((entry) => unusedFinding(entry, { buildFile, build }));
 }
 
+function withUsage(report) {
+  if (report.classDirectories === undefined) {
+    return report;
+  }
+  const names = referencedNames(report.classDirectories);
+  return {
+    ...report,
+    declared: (report.declared ?? []).map((entry) => ({
+      ...entry,
+      used: (entry.archivePaths ?? []).some((archive) => usesArchive(archive, names)),
+    })),
+  };
+}
+
 export function readDependencyFindings(reportRoot) {
   const report = path.join(reportRoot, DEPENDENCIES_REPORT);
-  return existsSync(report) ? dependencyFindings(JSON.parse(readFileSync(report, 'utf8'))) : [];
+  return existsSync(report)
+    ? dependencyFindings(withUsage(JSON.parse(readFileSync(report, 'utf8'))))
+    : [];
 }
