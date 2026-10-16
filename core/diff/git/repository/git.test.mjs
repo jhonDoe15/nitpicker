@@ -6,23 +6,30 @@ import { captureWorkingTree } from './git.mjs';
 
 const { createGitRepository } = useGitFixtures();
 
-const SAME_SECOND = new Date('2026-01-01T00:00:00Z');
+const SECOND = Date.UTC(2026, 0, 1) / 1000;
 
 describe('captureWorkingTree', () => {
-  it('captures a same-size edit made in the second the index was written', () => {
-    const repository = createGitRepository();
-    fixtureGit(repository.root, ['config', 'core.checkStat', 'minimal']);
-    const filePath = path.join(repository.root, 'a.txt');
-    writeFileSync(filePath, 'old\n');
-    utimesSync(filePath, SAME_SECOND, SAME_SECOND);
-    commit(repository.root, 'add a');
-    const headSha = fixtureGit(repository.root, ['rev-parse', 'HEAD']).trim();
-    utimesSync(path.join(repository.root, '.git', 'index'), SAME_SECOND, SAME_SECOND);
-    writeFileSync(filePath, 'new\n');
-    utimesSync(filePath, SAME_SECOND, SAME_SECOND);
+  it.each([
+    ['at the start of', 0],
+    ['at the very end of', 0.9996],
+  ])(
+    'captures a same-size edit when the index was written %s that second',
+    (_moment, indexOffset) => {
+      const repository = createGitRepository();
+      fixtureGit(repository.root, ['config', 'core.checkStat', 'minimal']);
+      const filePath = path.join(repository.root, 'a.txt');
+      writeFileSync(filePath, 'old\n');
+      utimesSync(filePath, SECOND, SECOND);
+      commit(repository.root, 'add a');
+      const headSha = fixtureGit(repository.root, ['rev-parse', 'HEAD']).trim();
+      const indexTime = SECOND + indexOffset;
+      utimesSync(path.join(repository.root, '.git', 'index'), indexTime, indexTime);
+      writeFileSync(filePath, 'new\n');
+      utimesSync(filePath, SECOND, SECOND);
 
-    const capturedSha = captureWorkingTree(repository.root, headSha);
+      const capturedSha = captureWorkingTree(repository.root, headSha);
 
-    expect(fixtureGit(repository.root, ['show', `${capturedSha}:a.txt`])).toBe('new\n');
-  });
+      expect(fixtureGit(repository.root, ['show', `${capturedSha}:a.txt`])).toBe('new\n');
+    },
+  );
 });
