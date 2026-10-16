@@ -41,6 +41,9 @@ function panel(body) {
   return `export function Panel({ a }) { ${body} return <div />; }`;
 }
 
+const exclusivePair =
+  'export function Panel({ a, b }) { if (a && b) { throw new Error("both"); } return <div />; }';
+
 const reactSyntaxCases = [
   [
     'class component names function components',
@@ -73,6 +76,8 @@ const reactSyntaxCases = [
     'export type PanelProps = { tag?: string; tags?: string[] };',
     'nitpicker.config.json',
   ],
+  ['exclusive props check names the discriminated union', exclusivePair, 'discriminated union'],
+  ['exclusive props check names the config exception', exclusivePair, 'nitpicker.config.json'],
   [
     'index key names a stable id',
     'export const List = ({ items }) => <ul>{items.map((item, index) => <li key={index}>{item}</li>)}</ul>;',
