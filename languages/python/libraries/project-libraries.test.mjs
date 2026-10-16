@@ -98,7 +98,7 @@ describe('the logger behavior', () => {
     expect(loggerBehavior({ logger: [] }).id).toBe('logging');
     expect(loggerBehavior({ logger: ['loguru', 'structlog'] }).id).toBe('loguru');
     expect(loggerBehavior({ logger: ['structlog'] }).caught).toBe(
-      'Pass the caught exception to the logger: `logger.exception("event")`, or `logger.error("event", exc_info=True)`.',
+      'Keep the traceback: `logger.exception("event")` or `logger.error("event", exc_info=True)`; the exception as a field drops it. Re-raising after the log also passes.',
     );
   });
 });

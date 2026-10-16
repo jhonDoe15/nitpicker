@@ -1,17 +1,6 @@
 import ast
 
-LOG_METHODS = {
-    "debug",
-    "info",
-    "warning",
-    "warn",
-    "error",
-    "critical",
-    "fatal",
-    "log",
-    "msg",
-    "exception",
-}
+LOG_METHODS = {"warning", "warn", "error", "critical"}
 LOGGER_FACTORIES = {
     "logging.getLogger",
     "structlog.get_logger",
@@ -107,28 +96,31 @@ def carries_exception(call):
     return False
 
 
-def passes_caught(call, name):
-    arguments = [*call.args, *(keyword.value for keyword in call.keywords)]
-    return any(is_bare(argument, name) for argument in arguments)
-
-
-def is_bare(node, name):
-    if isinstance(node, ast.Starred):
-        return is_bare(node.value, name)
-    if isinstance(node, (ast.Tuple, ast.List, ast.Set)):
-        return any(is_bare(element, name) for element in node.elts)
-    if isinstance(node, ast.Dict):
-        return any(is_bare(value, name) for value in node.values)
-    return isinstance(node, ast.Name) and node.id == name
-
-
-def own_nodes(statements):
+def own_nodes(statements, enter_handlers=True):
     pending = list(statements)
     while pending:
         node = pending.pop()
         yield node
-        if not isinstance(node, ast.ExceptHandler):
+        if enter_handlers or not isinstance(node, ast.ExceptHandler):
             pending.extend(ast.iter_child_nodes(node))
+
+
+def is_name(node, name):
+    return isinstance(node, ast.Name) and node.id == name
+
+
+def reraises(handler):
+    name = handler.name
+    if any(
+        isinstance(node, ast.Raise) and node.exc is None
+        for node in own_nodes(handler.body, enter_handlers=False)
+    ):
+        return True
+    return any(
+        isinstance(node, ast.Raise)
+        and (is_name(node.exc, name) or is_name(node.cause, name))
+        for node in own_nodes(handler.body)
+    )
 
 
 def names_in(node):
@@ -147,7 +139,7 @@ def derived_names(handler):
 
 
 def uncaught_calls(handler, checker):
-    if handler.name is None:
+    if handler.name is None or reraises(handler):
         return []
     known = derived_names(handler)
     return [
@@ -156,6 +148,5 @@ def uncaught_calls(handler, checker):
         if isinstance(node, ast.Call)
         and checker.log_call(node)
         and not carries_exception(node)
-        and not passes_caught(node, handler.name)
         and names_in(node) & known
     ]

@@ -73,7 +73,7 @@ export const RULE_HINTS = [
   {
     tool: RULES_TOOL,
     rules: ['catch-log-without-exception'],
-    describe: (subject) => `\`${subject}\` logs a caught error without passing the exception`,
+    describe: (subject) => `\`${subject}\` logs a caught error without its traceback`,
     allowed: ({ logger }) => logger.caught,
   },
   {

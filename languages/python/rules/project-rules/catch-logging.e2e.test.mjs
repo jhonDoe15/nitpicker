@@ -18,7 +18,7 @@ describe.skipIf(!enabled)('catch-log-without-exception', () => {
   it.each([
     ['an f-string with the error', STDLIB, 'logger.error(f"failed: {error}")'],
     ['str of the error', STDLIB, 'logger.error("failed: %s", str(error))'],
-    ['the message of the error', STDLIB, 'logger.info("failed: " + error.args[0])'],
+    ['the message of the error', STDLIB, 'logger.warning("failed: " + error.args[0])'],
     ['exc_info switched off', STDLIB, 'logger.error("failed: %s", str(error), exc_info=False)'],
     ['a value derived from the error', STDLIB, 'message = str(error)\nlogger.error(message)'],
     ['the module level logging function', 'import logging\n\n', 'logging.error(f"{error}")'],
@@ -26,7 +26,7 @@ describe.skipIf(!enabled)('catch-log-without-exception', () => {
     [
       'a logger called log',
       'import logging\n\nlog = logging.getLogger("x")\n\n',
-      'log.debug(f"{error}")',
+      'log.warn(f"{error}")',
     ],
     [
       'a logger with another name',
@@ -34,6 +34,16 @@ describe.skipIf(!enabled)('catch-log-without-exception', () => {
       'out.error(f"{error}")',
     ],
     ['a bound logger', STDLIB, 'logger.bind(user=1).error(f"{error}")'],
+    ['the error as a plain argument', STDLIB, 'logger.warning("failed: %s", error)'],
+    ['the error in a structured field', STRUCTLOG, 'log.error("failed", error=error)'],
+    ['the error in extra', STDLIB, 'logger.error("failed", extra={"error": error})'],
+    ['loguru with the error as a placeholder value', LOGURU, 'logger.warning("failed: {}", error)'],
+    ['a critical log', STDLIB, 'logger.critical("failed: %s", error)'],
+    [
+      'a handler that raises another error without from',
+      STDLIB,
+      'logger.error(f"{error}")\nraise RuntimeError("x")',
+    ],
     ['loguru with the text', LOGURU, 'logger.error(f"failed: {error}")'],
     ['loguru with the text of a placeholder', LOGURU, 'logger.warning("failed: {}", str(error))'],
     ['structlog with the text', STRUCTLOG, 'log.error("failed", reason=str(error))'],
@@ -56,10 +66,6 @@ describe.skipIf(!enabled)('catch-log-without-exception', () => {
   it.each([
     ['logger.exception', STDLIB, 'logger.exception("failed")'],
     ['logger.exception with the text too', STDLIB, 'logger.exception(f"failed: {error}")'],
-    ['the error as a plain argument', STDLIB, 'logger.warning("failed: %s", error)'],
-    ['the error in a structured field', STRUCTLOG, 'log.error("failed", error=error)'],
-    ['the error in extra', STDLIB, 'logger.error("failed", extra={"error": error})'],
-    ['loguru with the error as a placeholder value', LOGURU, 'logger.warning("failed: {}", error)'],
     ['exc_info=True', STDLIB, 'logger.error("failed: %s", error, exc_info=True)'],
     ['exc_info with the error', STDLIB, 'logger.warning("failed", exc_info=error)'],
     ['exc_info from sys', STDLIB, 'logger.error(f"{error}", exc_info=sys.exc_info())'],
@@ -74,6 +80,18 @@ describe.skipIf(!enabled)('catch-log-without-exception', () => {
     ['loguru opt with True', LOGURU, 'logger.opt(exception=True).error(f"{error}")'],
     ['structlog exception', STRUCTLOG, 'log.exception("failed")'],
     ['structlog exc_info', STRUCTLOG, 'log.error("failed", exc_info=True)'],
+    ['a bare raise after the log', STDLIB, 'logger.error(f"failed: {error}")\nraise'],
+    ['raising the error after the log', STDLIB, 'logger.error("failed: %s", error)\nraise error'],
+    [
+      'raising another error from this one',
+      STDLIB,
+      'logger.error(f"failed: {error}")\nraise RuntimeError("x") from error',
+    ],
+    ['a raise before the log', STDLIB, 'if error:\n    raise\nlogger.error(f"{error}")'],
+    ['a debug log', STDLIB, 'logger.debug(f"failed: {error}")'],
+    ['an info log', STDLIB, 'logger.info(f"failed: {error}")'],
+    ['a log at a numeric level', STDLIB, 'logger.log(40, f"failed: {error}")'],
+    ['a structlog event', STRUCTLOG, 'log.msg(f"failed: {error}")'],
     ['a log call that does not use the error', STDLIB, 'logger.error("failed")'],
     ['an object that is not a logger', STDLIB, 'reporter.error(str(error))'],
     ['print', STDLIB, 'print(error)'],
@@ -89,7 +107,7 @@ describe.skipIf(!enabled)('catch-log-without-exception', () => {
     expect(single(`${STDLIB}def f(error):\n    logger.error(f"{error}")\n`)).toEqual([]);
   });
 
-  it('reports a call of a nested handler once, for its own variable', () => {
+  it('reports a call that uses both variables of nested handlers once', () => {
     const code = `${STDLIB}try:\n    run()\nexcept ValueError as outer:\n    try:\n        run()\n    except KeyError as inner:\n        logger.error(f"{inner} {outer}")\n`;
 
     expect(single(code)).toEqual(['catch-log-without-exception src/mod.py:11 logger.error(...)']);
@@ -102,5 +120,17 @@ describe.skipIf(!enabled)('catch-log-without-exception', () => {
       'swallowed-exception src/mod.py:10 except KeyError',
       'catch-log-without-exception src/mod.py:12 logger.error(...)',
     ]);
+  });
+
+  it('flags a call in a nested handler that uses only the outer variable', () => {
+    const code = `${STDLIB}try:\n    run()\nexcept ValueError as outer:\n    try:\n        run()\n    except KeyError as inner:\n        logger.error(f"{outer}")\n        logger.error("%s", inner, exc_info=inner)\n`;
+
+    expect(single(code)).toEqual(['catch-log-without-exception src/mod.py:11 logger.error(...)']);
+  });
+
+  it('does not take a raise in a nested handler as a re-raise of the outer error', () => {
+    const code = `${STDLIB}try:\n    run()\nexcept ValueError as outer:\n    logger.error(f"{outer}")\n    try:\n        run()\n    except KeyError:\n        raise\n`;
+
+    expect(single(code)).toEqual(['catch-log-without-exception src/mod.py:8 logger.error(...)']);
   });
 });
