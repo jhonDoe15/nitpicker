@@ -31,7 +31,7 @@ Kotlin tasks live in the Gradle init script, so a Maven project uses the java pr
 
 ```
 gradle -Pnitpicker.kotlin=true -I languages/java/gradle/nitpicker.init.gradle nitpickerJava   (per snapshot)
-  -> everything the Java preset writes, plus build/nitpicker/{detekt.sarif, ktlint.sarif | ktfmt.txt}
+  -> everything the Java preset writes, plus {detekt.sarif, ktlint.sarif | ktfmt.txt} in each project's report directory
   -> readJavaFindings(root, { preset: 'kotlin' })   (languages/java/adapters/reporting/java-reports.mjs)
        -> readKotlinFindings                         (languages/java/adapters/reporting/kotlin-reports.mjs)
   -> compareFindings(base, head, renames)
@@ -429,7 +429,7 @@ mutation reports for now. Enforcing it needs a filter validated on real projects
 that is a follow-up, and flipping it is the single `reportOnlyKotlinMutants` call in
 `languages/java/adapters/reporting/java-reports.mjs`. To reproduce the numbers: run
 `gradle -Pnitpicker.kotlin=true -I <nitpicker>/languages/java/gradle/nitpicker.init.gradle nitpickerPit`
-in that project and read `build/nitpicker/pit/mutations.xml`.
+in that project and read `pit/mutations.xml` in the report directory.
 
 ## Structure limits
 
@@ -447,7 +447,7 @@ there are no inline disables.
 
 **Metric source (decision).** `languages/java/gradle/KotlinMetrics.java` parses the Kotlin sources
 (parse only, no compilation) with the PSI parser of the Kotlin compiler and writes
-`build/nitpicker/kotlin-metrics.json`. It runs in Java's single-file source mode in the JVM that
+`kotlin-metrics.json` in the report directory. It runs in Java's single-file source mode in the JVM that
 runs Gradle, with `org.jetbrains.kotlin:kotlin-compiler-embeddable` on the class path. The version is
 pinned as `kotlinCompiler` in the init script (2.4.21) and resolved from its own Gradle configuration
 (`nitpickerKotlinCompiler`), like the other tools. It uses the compiler's PSI classes, so bumping the
@@ -562,8 +562,15 @@ the comparison and exiting with 2. Nothing is silently skipped and nothing throw
 (legacy inventory sources are the findings' `identity`, for example
 `fp:nitpicker/subject=This expression contains a magic number. ...`). `kotlin.formatter` and
 `kotlin.detektConfig` are new and valid only with this preset. `exceptions` lifts the
-[one-way rules](#one-way-rules) and the file limits `file-lines-limit` and `folder-files-limit` per
-path. `layout` is a config error.
+[one-way rules](#one-way-rules), the file limits `file-lines-limit` and `folder-files-limit` and
+`test-runtime/slow-test` per path. `layout` is a config error.
+
+## Slow tests
+
+As for Java ([slow tests](java-preset.md#slow-tests)): a test the change adds or edits fails over 5 s
+as a unit test or 30 s as an integration test (`thresholds.unitTestSeconds`,
+`thresholds.integrationTestSeconds`), measured on head from the JUnit XML of the test tasks. A Kotlin
+test named with backticks is found by its name.
 
 ## File limits
 
@@ -646,11 +653,9 @@ fails only when it grows, and a package folder moved to a new path is matched to
 
 ## Known limits
 
-- Multi-module builds: every module with the Kotlin plugin gets the tasks, but Nitpicker reads the
-  root project's `build/nitpicker`, as for Java. A root project that does not apply the Kotlin plugin
-  (an aggregator with the code in submodules) writes no reports, which is a tool error saying so; and
-  when the root and a submodule both have Kotlin, the submodule's reports are not read. Aggregating
-  per-module reports is not done for either preset yet.
+- Multi-module builds: every project with the Kotlin plugin is analyzed and its findings carry
+  the project's folder, as for Java. A build where no project applies the Kotlin plugin is a tool
+  error saying so.
 - Kotlin is linted in main sources only; Java files are linted in main and test sources, as in the
   Java preset. Generated sources under the build directory are skipped.
 - The Kotlin metrics step needs network access to Maven Central for `kotlin-compiler-embeddable`
