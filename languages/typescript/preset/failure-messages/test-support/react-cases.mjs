@@ -227,6 +227,16 @@ const reactTestCases = [
     'expect(wrapper.state()).toEqual({});',
     'nitpicker.config.json',
   ],
+  [
+    'hover test names tabbing to the element',
+    "await userEvent.hover(screen.getByRole('button'));",
+    'await user.tab()',
+  ],
+  [
+    'hover test names the config exception',
+    "await userEvent.hover(screen.getByRole('button'));",
+    'nitpicker.config.json',
+  ],
   ['hook spy names renderHook', "vi.spyOn(React, 'useState');", '`renderHook`'],
 ].map(reactTestCase);
 

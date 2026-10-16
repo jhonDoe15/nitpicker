@@ -65,6 +65,7 @@ const testingLibraryRuleIds = Object.keys(testingLibraryHints).map(
 );
 
 export const reactTestRuleIds = [
+  'nitpicker/hover-test-needs-keyboard',
   'nitpicker/react-test-no-implementation-details',
   ...testingLibraryRuleIds,
 ];

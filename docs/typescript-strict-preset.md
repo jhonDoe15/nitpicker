@@ -340,7 +340,15 @@ off (a PR that adds or removes React keeps linting on both sides); a misspelled 
   (`nitpicker/react-test-no-implementation-details`): no `.instance()`, `.state()`, `.setState()` or
   test-renderer `findByType`/`findByProps`, no React fiber internals (`_reactInternals`,
   `stateNode`, `memoizedState`) and no `spyOn(React, 'useState')`; assert what the user sees. An
-  element with no role or accessible name needs an exception. A project with
+  element with no role or accessible name needs an exception. A test file that hovers
+  (`user.hover`, `userEvent.hover`, `fireEvent.mouseEnter` or `mouseOver`, or a `user.pointer` call
+  that only moves to a `target`) must also exercise the keyboard path somewhere in the same file:
+  `user.tab()`, `user.keyboard(...)`, `user.type(...)` with a `{Enter}`-style key token, `.focus()`,
+  `fireEvent.focus`, `focusIn`, `keyDown`, `keyUp` or `keyPress`, a `press`, `down` or `up` call
+  (`locator.press('Enter')`), or any call through a `keyboard` object (`page.keyboard.press('Tab')`).
+  `nitpicker/hover-test-needs-keyboard`
+  reports the first hover when none appears: add a test that tabs to the element and asserts the
+  same state. A hover-only control gets an exception. A project with
   `@testing-library/react-native` keeps `testID` queries, the idiom there.
 
 The plugins are `eslint-plugin-react-hooks`, `eslint-plugin-react-x` (from eslint-react),
