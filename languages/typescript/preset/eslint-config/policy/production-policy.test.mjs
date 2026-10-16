@@ -8,9 +8,9 @@ const layout = { ...defaultResolvedLayout, entryPoints: ['src/scripts/*.ts'] };
 
 const RETURN_TYPE_RULE = '@typescript-eslint/explicit-module-boundary-types';
 
-function allRuleIds(filename, code, { react = false } = {}) {
+function allRuleIds(filename, code, { react = false, routeHandlers = false } = {}) {
   const config = [
-    ...productionPolicyConfigFor(layout, { react }),
+    ...productionPolicyConfigFor(layout, { react, routeHandlers }),
     ...productionLayoutConfigFor(layout, { react }),
     ...strictSyntaxConfigFor(layout, { react }),
   ];
@@ -146,6 +146,14 @@ describe('identifier casing', () => {
       "import * as yup from 'yup'; export const User = yup.object({ name: yup.string() });",
     ],
     [
+      'a schema derived from a schema constant',
+      "import { z } from 'zod'; const User = z.object({}); const CreateUser = User.omit({ id: true }); export const Users = CreateUser.array();",
+    ],
+    [
+      'a schema derived from an imported schema',
+      "import { BaseEvent } from './events.js'; export const Event = BaseEvent.extend({});",
+    ],
+    [
       'a component parameter',
       'export function withLog(Component: ComponentType) { return Component; }',
     ],
@@ -164,6 +172,11 @@ describe('identifier casing', () => {
       'a bare object() from another library',
       "import { object } from './builders.js'; export const Order = object({});",
     ],
+    ['a call on a local value', 'const make = build(); export const Order = make.extend({});'],
+    [
+      'an imported value that is not derived as a schema',
+      "import { Store } from './store.js'; export const Order = Store.load();",
+    ],
   ])('still rejects a PascalCase constant built by %s', (_name, code) => {
     expect(ruleIds(adapter, code)).toEqual(['nitpicker/naming-convention']);
   });
@@ -178,6 +191,22 @@ describe('identifier casing', () => {
     expect(ruleIds(adapter, 'export const key = process.env.SECRET;', { react: true })).toEqual([
       rule,
     ]);
+  });
+
+  it('allows HTTP method names for exported route handlers only in a route-handler framework', () => {
+    const code = 'export async function GET() { return 1; } export function DELETE() { return 1; }';
+    const naming = 'nitpicker/naming-convention';
+
+    expect(ruleIds(adapter, code, { routeHandlers: true })).toEqual([]);
+    expect(ruleIds(adapter, code)).toEqual([naming, naming]);
+    expect(
+      ruleIds(adapter, 'function GET() { return 1; } export const g = GET;', {
+        routeHandlers: true,
+      }),
+    ).toEqual([naming]);
+    expect(
+      ruleIds(adapter, 'export function FETCH() { return 1; }', { routeHandlers: true }),
+    ).toEqual([naming]);
   });
 
   it('allows PascalCase functions and variables only in a React project', () => {

@@ -19,10 +19,25 @@ function withReactFormat(formats, react) {
   return react ? [...formats, 'PascalCase'] : formats;
 }
 
-function namingConvention({ react }) {
+export const ROUTE_HANDLER_FRAMEWORKS = new Set([
+  'next',
+  '@sveltejs/kit',
+  'astro',
+  '@solidjs/start',
+]);
+
+const routeHandlerNames = {
+  selector: 'function',
+  modifiers: ['exported'],
+  filter: { regex: '^(?:GET|HEAD|POST|PUT|PATCH|DELETE|OPTIONS)$', match: true },
+  format: null,
+};
+
+function namingConvention({ react, routeHandlers }) {
   const underscores = 'allowSingleOrDouble';
   return [
     'error',
+    ...(routeHandlers ? [routeHandlerNames] : []),
     { selector: 'typeLike', format: ['PascalCase'] },
     {
       selector: 'function',
@@ -43,14 +58,14 @@ function namingConvention({ react }) {
   ];
 }
 
-function productionRules({ react }) {
+function productionRules({ react, routeHandlers }) {
   return {
     curly: ['error', 'all'],
     'no-eval': 'error',
     'no-param-reassign': ['error', { props: false }],
     'no-duplicate-imports': ['error', { allowSeparateTypeImports: true }],
     'no-restricted-properties': ['error', ...productionRestrictedProperties],
-    'nitpicker/naming-convention': namingConvention({ react }),
+    'nitpicker/naming-convention': namingConvention({ react, routeHandlers }),
     'nitpicker/no-magic-numbers': [
       'error',
       {
@@ -109,7 +124,10 @@ export function productionPolicyConfigFor(layout, options = {}) {
       languageOptions: { parser: tseslint.parser },
       plugins: { '@typescript-eslint': tseslint.plugin, nitpicker: nitpickerRules, regexp },
       rules: {
-        ...productionRules({ react: options.react === true }),
+        ...productionRules({
+          react: options.react === true,
+          routeHandlers: options.routeHandlers === true,
+        }),
         ...productionGuardRules({ react: options.react === true }),
       },
     },
