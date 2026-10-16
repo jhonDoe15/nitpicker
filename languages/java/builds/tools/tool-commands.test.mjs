@@ -1,8 +1,8 @@
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
-import { reportRootPattern, toolCommand } from './tool-commands.mjs';
+import { main, reportRootPattern, toolCommand } from './tool-commands.mjs';
 
 const roots = [];
 afterEach(() => {
@@ -110,4 +110,42 @@ describe('toolCommand', () => {
     expect(command.args).toEqual(['-verbose:class', '-filter:none', '/p/classes']);
     expect([0, 1].map((status) => command.accepts(status))).toEqual([true, false]);
   });
+});
+
+describe('the tool-commands command line', () => {
+  it.each([
+    [
+      'cpd',
+      { report: '/r/cpd.xml', directories: ['/p/main'] },
+      {
+        launcher: path.join(import.meta.dirname, '..', '..', 'gradle', 'CpdReport.java'),
+        args: ['/r/cpd.xml', '/p/main'],
+        accept: { exits: [0], report: '/r/cpd.xml', reportPattern: String.raw`<pmd-cpd[\s/>]` },
+      },
+    ],
+    [
+      'forbiddenapis',
+      { classDirectories: ['/p/classes'], libraries: ['/l/a.jar'], signatures: '/s.txt' },
+      {
+        args: ['-d', '/p/classes', '-c', '/l/a.jar', '-f', '/s.txt', '--allowmissingclasses'],
+        accept: { exits: [0, 1] },
+      },
+    ],
+    [
+      'jdeps',
+      { classDirectories: ['/p/classes'] },
+      { args: ['-verbose:class', '-filter:none', '/p/classes'], accept: { exits: [0] } },
+    ],
+  ])(
+    'writes the %s command line and what it accepts for the Gradle tasks',
+    (tool, values, spec) => {
+      const root = mkdtempSync(path.join(tmpdir(), 'nitpicker-tool-commands-'));
+      roots.push(root);
+      writeFileSync(path.join(root, 'values.json'), JSON.stringify(values));
+
+      main([tool, path.join(root, 'values.json'), path.join(root, 'command.json')]);
+
+      expect(JSON.parse(readFileSync(path.join(root, 'command.json'), 'utf8'))).toEqual(spec);
+    },
+  );
 });

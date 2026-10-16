@@ -49,34 +49,27 @@ def writeRules = { String kind, File plan ->
     runNode(rulesWriter, [kind, plan.absolutePath], "nitpicker could not write the ${kind} configuration")
 }
 def toolCommandsFile = new File(initScriptDir, '../builds/tools/tool-commands.json').canonicalFile
-def toolCommands = new groovy.json.JsonSlurper().parse(toolCommandsFile)
-def expandedToken = { token, Map values ->
-    if (token instanceof String) {
-        return [token]
-    }
-    if (token.each != null) {
-        return values[token.each].collectMany { token.flag == null ? [it.toString()] : [token.flag, it.toString()] }
-    }
-    def separator = token.separator == 'path' ? File.pathSeparator : token.separator
-    def value = token.join == null ? values[token.value].toString()
-        : values[token.join].collect { it.toString() }.join(separator)
-    [(token.prefix ?: '') + value]
-}
-def wroteReport = { File file, String root ->
-    file.isFile() && (root == null || file.getText('UTF-8') =~ "<${root}[\\s/>]")
-}
-def launcherFile = { String launcher ->
+def toolCommandsScript = new File(initScriptDir, '../builds/tools/tool-commands.mjs').canonicalFile
+def toolLauncher = { String tool ->
+    def launcher = new groovy.json.JsonSlurper().parse(toolCommandsFile)[tool].launcher
     launcher == null ? null : new File(toolCommandsFile.parentFile, launcher).canonicalFile
 }
-def toolCommand = { String tool, Map values ->
-    def command = toolCommands[tool]
+def toolCommand = { String tool, Map values, File directory ->
+    directory.mkdirs()
+    def valuesFile = new File(directory, "${tool}-values.json")
+    def commandFile = new File(directory, "${tool}-command.json")
+    valuesFile.text = groovy.json.JsonOutput.toJson(values)
+    runNode(toolCommandsScript, [tool, valuesFile.absolutePath, commandFile.absolutePath],
+        "nitpicker could not build the ${tool} command line")
+    def command = new groovy.json.JsonSlurper().parse(commandFile)
+    def accept = command.accept
     [
-        launcher: launcherFile(command.launcher),
-        args    : command.args.collectMany { expandedToken(it, values) },
+        launcher: command.launcher == null ? null : new File(command.launcher),
+        args    : command.args,
         accepts : { int code ->
-            (command.accept.exits == null || code in command.accept.exits) &&
-                (command.accept.report == null ||
-                    wroteReport(new File(values[command.accept.report].toString()), command.accept.root))
+            def report = accept.report == null ? null : new File(accept.report)
+            (accept.exits == null || code in accept.exits) && (report == null || (report.isFile() &&
+                (accept.reportPattern == null || (report.getText('UTF-8') =~ accept.reportPattern).find())))
         },
     ]
 }
@@ -110,8 +103,10 @@ allprojects {
         project.ext.nitpickerAnalysisRoot = analysisRoot
         project.ext.nitpickerCompilerOf = compilerOf
         project.ext.nitpickerToolCommand = toolCommand
-        project.ext.nitpickerToolCommandsFile = toolCommandsFile
+        project.ext.nitpickerToolCommandInputs = [toolCommandsFile, toolCommandsScript]
+        project.ext.nitpickerToolLauncher = toolLauncher
         project.ext.nitpickerRunNode = runNode
+        project.ext.nitpickerWriteRules = writeRules
 
         configurations {
             nitpickerPmd { canBeConsumed = false }
@@ -181,99 +176,18 @@ allprojects {
         def testSourceDirectories = {
             sourceSets.findAll { it.name != 'main' }.collectMany { it.allJava.sourceDirectories.files }.unique()
         }
-        def lintedSources = { (mainSources.files + testSourceDirectories()).findAll { it.exists() } }
-        def allClassesTasks = { sourceSets.collect { tasks.named(it.classesTaskName) } }
         def analyzedClassDirs = {
             kotlinPreset ? [tasks.named('compileJava').get().destinationDirectory.get().asFile]
                 : sourceSets.main.output.classesDirs.files
         }
         project.ext.nitpickerAnalyzedClassDirs = analyzedClassDirs
+        project.ext.nitpickerTestSourceDirectories = testSourceDirectories
+        project.ext.nitpickerKotlinPreset = kotlinPreset
 
         def usesSpring = {
             sourceSets.main.compileClasspath.files.any { it.name ==~ /spring-(context|boot)-.*\.jar/ }
         }
-
-        tasks.register('nitpickerPmd', JavaExec) {
-            group = 'nitpicker'
-            dependsOn allClassesTasks
-            classpath = configurations.nitpickerPmd
-            mainClass = 'net.sourceforge.pmd.cli.PmdCli'
-            ignoreExitValue = true
-            def command = null
-            inputs.file(toolCommandsFile).withPropertyName('toolCommands')
-            def nitpickerRulesets = nitpickerArgument('nitpicker.pmd.nitpickerConfig') != 'false'
-            def projectRuleset = nitpickerArgument('nitpicker.pmd.projectConfig')
-            doFirst {
-                reportDir.get().asFile.mkdirs()
-                // Type resolution: the main and test compile classpaths (compileOnly libraries are on the
-                // main one only) and the main and test classes, so rules can match annotation and
-                // supertype names exactly.
-                def auxClasspath = reportDir.get().file('pmd-aux-classpath.txt').asFile
-                auxClasspath.text = (sourceSets.collectMany { it.compileClasspath.files + it.output.classesDirs.files })
-                    .findAll { it.exists() }.unique().collect { it.absolutePath }.join('\n')
-                def plan = reportDir.get().file('pmd-plan.json').asFile
-                plan.text = groovy.json.JsonOutput.toJson([
-                    reportDir      : reportDir.get().asFile.absolutePath,
-                    mainDirectories: mainSources.files.collect { it.absolutePath },
-                    testDirectories: testSourceDirectories().collect { it.absolutePath },
-                    compiler       : compilerOf(tasks.named('compileJava').get()),
-                    spring         : usesSpring(),
-                    nitpicker      : nitpickerRulesets,
-                    project        : projectRuleset,
-                ])
-                writeRules('pmd', plan)
-                command = toolCommand('pmd', [
-                    report      : reportDir.get().file('pmd.sarif').asFile.absolutePath,
-                    rulesets    : reportDir.get().file('pmd-rulesets.txt').asFile.text.split(',').toList(),
-                    auxClasspath: auxClasspath.absolutePath,
-                    directories : lintedSources()*.absolutePath,
-                ])
-                args command.args
-            }
-            doLast {
-                def code = executionResult.get().exitValue
-                if (!command.accepts(code)) {
-                    throw new GradleException("PMD failed with exit code ${code} and wrote no report")
-                }
-            }
-        }
-
-        tasks.register('nitpickerSpotbugs', JavaExec) {
-            group = 'nitpicker'
-            dependsOn tasks.named('classes')
-            classpath = configurations.nitpickerSpotbugs
-            mainClass = 'edu.umd.cs.findbugs.FindBugs2'
-            ignoreExitValue = true
-            doFirst {
-                reportDir.get().asFile.mkdirs()
-                def sourcePath = mainSources.files.findAll { it.exists() }.join(File.pathSeparator)
-                def classDirs = analyzedClassDirs().findAll { it.exists() }
-                def auxiliary = kotlinPreset
-                    ? sourceSets.main.runtimeClasspath.files.findAll { it.exists() && !classDirs.contains(it) } : []
-                args(['-effort:default', '-medium', '-sarif',
-                      '-output', reportDir.get().file('spotbugs.sarif').asFile.absolutePath,
-                      '-sourcepath', sourcePath] +
-                    (auxiliary.isEmpty() ? [] : ['-auxclasspath', auxiliary.join(File.pathSeparator)]) +
-                    classDirs.collect { it.absolutePath })
-            }
-        }
-
-        tasks.register('nitpickerFormat', JavaExec) {
-            group = 'nitpicker'
-            classpath = configurations.nitpickerFormat
-            mainClass = 'com.google.googlejavaformat.java.Main'
-            ignoreExitValue = true
-            jvmArgs(['api', 'file', 'parser', 'tree', 'util', 'code'].collect {
-                "--add-exports=jdk.compiler/com.sun.tools.javac.${it}=ALL-UNNAMED".toString()
-            })
-            doFirst {
-                reportDir.get().asFile.mkdirs()
-                standardOutput = new FileOutputStream(reportDir.get().file('format.txt').asFile)
-                def files = (mainSources.files + testSourceDirectories()).findAll { it.exists() }
-                    .collectMany { directory -> fileTree(directory) { include '**/*.java' }.files }.unique().sort()
-                args(['--dry-run'] + files*.absolutePath)
-            }
-        }
+        project.ext.nitpickerUsesSpring = usesSpring
 
         def archunitIncludes = (findProperty('nitpicker.archunit.includes')
             ?: '**/*ArchTest.class,**/*ArchitectureTest.class')
@@ -289,7 +203,7 @@ allprojects {
             classpath = sourceSets.test.runtimeClasspath
             include archunitIncludes
             useJUnitPlatform()
-            ignoreFailures = true // violations are findings; the Nitpicker side reads the XML
+            ignoreFailures = true
             reports {
                 junitXml.outputLocation = reportDir.map { it.dir('archunit') }
                 html.required = false
@@ -365,7 +279,8 @@ allprojects {
             }
         }
 
-        ['structure-task.gradle', 'jdeps-task.gradle', 'lint-tasks.gradle', 'cpd-task.gradle',
+        ['analysis/pmd-task.gradle', 'analysis/spotbugs-task.gradle', 'analysis/format-task.gradle',
+         'structure-task.gradle', 'jdeps-task.gradle', 'lint-tasks.gradle', 'cpd-task.gradle',
          'dependency-tasks.gradle', 'pit-task.gradle'].each {
             project.apply from: new File(initScriptDir, "tasks/${it}")
         }
