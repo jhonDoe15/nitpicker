@@ -61,6 +61,9 @@ function parseOptionalFields(value, classification, context) {
   if (value.ratchet !== undefined) {
     fields.ratchet = parseRatchet(value.ratchet, `${context}.ratchet`);
   }
+  if (value.tokens !== undefined) {
+    fields.tokens = parseTokens(value.tokens, `${context}.tokens`);
+  }
 
   return fields;
 }
@@ -117,6 +120,13 @@ function parseRatchet(value, context) {
     ratchet[name] = value[name];
   }
   return ratchet;
+}
+
+function parseTokens(value, context) {
+  if (!Array.isArray(value)) {
+    throw new TypeError(`${context} must be an array`);
+  }
+  return value.map((token, index) => requiredString(token, `${context}[${String(index)}]`));
 }
 
 function positiveInteger(value, context) {

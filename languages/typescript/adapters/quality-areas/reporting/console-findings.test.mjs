@@ -68,6 +68,34 @@ describe('console output findings', () => {
     ).toEqual([]);
   });
 
+  it.each([
+    ['Error: boom otdgex', 'Error: boom uuxpek'],
+    ["{ id: 'otdgex', n: 4 }", "{ id: 'uuxpek', n: 9 }"],
+  ])('does not treat %j as new when one random token changed', (before, after) => {
+    expect(
+      newMessages([entry('test/a.test.ts', before)], [entry('test/a.test.ts', after)]),
+    ).toEqual([]);
+  });
+
+  it.each([
+    ['Error: boom', 'Error: bang'],
+    ['Error: boom otdgex', 'Error: bang uuxpek'],
+    ['level: warn code: OLD', 'level: warn code: FATAL extra: yes'],
+  ])('treats %j then %j as a new message', (before, after) => {
+    expect(
+      newMessages([entry('test/a.test.ts', before)], [entry('test/a.test.ts', after)]),
+    ).toHaveLength(1);
+  });
+
+  it('reports an error whose cause differs in more than one word', () => {
+    const before = 'Error: outer [cause]: Error: disk is full';
+    const after = 'Error: outer [cause]: Error: permission denied';
+
+    expect(
+      newMessages([entry('test/a.test.ts', before)], [entry('test/a.test.ts', after)]),
+    ).toHaveLength(1);
+  });
+
   it('does not treat a message as new when the test was renamed', () => {
     const base = [entry('test/a.test.ts', 'Deprecated: old api', 'old name')];
     const head = [entry('test/a.test.ts', 'Deprecated: old api', 'new name')];
@@ -109,6 +137,12 @@ describe('console output allowlist and exceptions', () => {
     const allow = [{ contains: 'waited 250 ms', reason: 'slow shim' }];
 
     expect(findingsOf([entry('test/a.test.ts', 'waited 31 ms for a lock')], { allow })).toEqual([]);
+  });
+
+  it('matches an allowed substring against the whole message, not a placeholder alone', () => {
+    const allow = [{ contains: 'waited 250 ms', reason: 'slow shim' }];
+
+    expect(findingsOf([entry('test/a.test.ts', 'retry in 31 ms')], { allow })).toHaveLength(1);
   });
 
   it('limits an allowed message to the listed paths', () => {
