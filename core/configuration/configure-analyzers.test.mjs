@@ -33,6 +33,7 @@ describe('configureAnalyzers', () => {
       'mutation',
       'prettier-format',
       'structure',
+      'test-console',
       'test-runtime',
       'typescript-typecheck',
     ]);

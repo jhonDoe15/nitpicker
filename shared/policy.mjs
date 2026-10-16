@@ -27,6 +27,7 @@ export const RULE_IDS = {
   lineLength: 'line-length-limit',
   folderFiles: 'folder-files-limit',
   componentStoryMissing: 'component-story-missing',
+  testConsoleOutput: 'test-console-output',
 };
 
 /** Per-function structure limits, keyed by the metric name the TypeScript analyzer reports. */
@@ -109,6 +110,7 @@ export const MESSAGES = {
   folderFiles: `Folder has {value} {kind} files directly in it (limit {limit}). Group related files into subfolders (packages in Java). ${EXCEPTION_HINT}`,
   componentStoryMissing: `Most components in this project have a story. Add {story} for {name}. ${EXCEPTION_HINT}`,
   componentStoryMissingUnenforced: `{name} has no story. Add {story}. Not enforced until more than half of the components have one. ${EXCEPTION_HINT}`,
+  testConsoleOutput: `Tests print new console output: {output}. Fix the cause (for example a timer that outlives the test), or allow a third-party message in "testConsole.allow" of nitpicker.config.json. ${EXCEPTION_HINT}`,
 };
 
 export function renderMessage(template, values) {
@@ -278,13 +280,19 @@ export const RULES = [
       'a component file without a story, in a package that has Storybook; enforced when more than half of its component files have one, reported otherwise',
     enforcedBy: withKotlin(TYPESCRIPT_ONLY, false),
   },
+  {
+    id: RULE_IDS.testConsoleOutput,
+    check: 'test-console',
+    limit: 'a test file printing console.error or console.warn output (compared by first line, numbers and paths normalized) that the base run did not print',
+    enforcedBy: withKotlin(TYPESCRIPT_ONLY, false),
+  },
 ];
 
-/**
- * Project-level TypeScript checks that take `exceptions` entries although no ESLint rule has their
- * id: the rules only the TypeScript structure check enforces.
- */
+/** Rules of the TypeScript-only structure and test-console checks, lifted by `exceptions` without ESLint. */
 export const TYPESCRIPT_PROJECT_EXCEPTION_RULES = RULES.filter(
   ({ check, enforcedBy }) =>
-    check === 'structure' && enforcedBy.typescript && !enforcedBy.java && !enforcedBy.python,
+    ['structure', 'test-console'].includes(check) &&
+    enforcedBy.typescript &&
+    !enforcedBy.java &&
+    !enforcedBy.python,
 ).map(({ id }) => id);
