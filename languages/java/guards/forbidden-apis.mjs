@@ -2,7 +2,8 @@ import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { createLineIdentity } from '../ingest/common.mjs';
 import { exceptionRoute } from './advice/exception-route.mjs';
-import { blanked, placeDeclarations } from './forbidden/declarations.mjs';
+import { placeDeclarations } from './forbidden/declarations.mjs';
+import { blanked } from './forbidden/java-source.mjs';
 
 const FORBIDDEN_APIS_TOOL = 'forbiddenapis';
 const FORBIDDEN_REPORT = 'forbidden-apis.txt';
@@ -11,7 +12,6 @@ const LOCATION = /^ERROR:\s+in (\S+) \((\S+?):(\d+)\)$/;
 const DECLARATION =
   /^ERROR:\s+in (\S+) \((\S+?), (?:(class) declaration|(field|method|record component) declaration of '(.+)')\)$/;
 const LEGACY_DATE = 'java.util.Date';
-const CONVERTED_RIGHT_AWAY = /\)\s*\.toInstant\(\)|\bDate::toInstant\b/;
 
 function shortName(signature) {
   const method = /^([\w.$]+)#(<init>|\w+)/.exec(signature);
@@ -78,18 +78,44 @@ function continued(before = '', after = '') {
   return /\)\s*$/.test(before) && /^\s*\.toInstant\(\)/.test(after);
 }
 
-function convertsDateRightAway(use, text) {
-  if (use.signature !== LEGACY_DATE || use.declaration !== undefined || text === undefined) {
-    return false;
-  }
-  const lines = text.split('\n');
-  const line = lines[use.line - 1] ?? '';
+function countOf(pattern, text) {
+  return (text.match(pattern) ?? []).length;
+}
+
+function conversionsOn(lines, line, reported) {
+  const text = lines[line - 1] ?? '';
   return (
-    !/\bDate\b/.test(line.replaceAll('Date::toInstant', '')) &&
-    (CONVERTED_RIGHT_AWAY.test(line) ||
-      continued(line, lines[use.line]) ||
-      continued(lines[use.line - 2], line))
+    countOf(/\)\s*\.toInstant\(\)/g, text) +
+    2 * countOf(/\bDate::toInstant\b/g, text) +
+    countOf(/::\w+\)\s*\.map\(\s*(?:java\.util\.)?Date::toInstant\)/g, text) +
+    (continued(lines[line - 2], text) ? 1 : 0) +
+    (continued(text, lines[line]) && !reported.has(line + 1) ? 1 : 0)
   );
+}
+
+function isLegacyDateUse(use) {
+  return use.signature === LEGACY_DATE && use.declaration === undefined;
+}
+
+function withoutConvertedDates(uses, source) {
+  const left = new Map();
+  return uses.filter((use) => {
+    const text = isLegacyDateUse(use) ? source(use.file) : undefined;
+    if (text === undefined) {
+      return true;
+    }
+    const key = `${use.file}\0${String(use.line)}`;
+    if (!left.has(key)) {
+      const reported = new Set(
+        uses
+          .filter((other) => other.file === use.file && isLegacyDateUse(other))
+          .map((other) => other.line),
+      );
+      left.set(key, conversionsOn(text.split('\n'), use.line, reported));
+    }
+    left.set(key, left.get(key) - 1);
+    return left.get(key) < 0;
+  });
 }
 
 function sourceReader(projectRoot) {
@@ -103,18 +129,22 @@ function sourceReader(projectRoot) {
   };
 }
 
-function lineOf(use) {
-  return [use.rule, use.file, use.signature, use.line].join('\0');
+function lineOf(use, member = '') {
+  return [use.rule, use.file, use.signature, use.line, member].join('\0');
 }
 
 function withoutRepeatedDeclarations(uses) {
-  const taken = new Set(uses.filter((use) => use.declaration === undefined).map(lineOf));
+  const usedLines = new Set(
+    uses.filter((use) => use.declaration === undefined).map((use) => lineOf(use)),
+  );
+  const declared = new Set();
   return uses.filter((use) => {
     if (use.declaration === undefined || use.line === undefined) {
       return true;
     }
-    const free = !taken.has(lineOf(use));
-    taken.add(lineOf(use));
+    const key = lineOf(use, use.declaration.member);
+    const free = !usedLines.has(lineOf(use)) && !declared.has(key);
+    declared.add(key);
     return free;
   });
 }
@@ -129,9 +159,10 @@ export function readForbiddenApiFindings(reportRoot, { locate, projectRoot }) {
   const located = parseForbiddenApiUses(readFileSync(report, 'utf8')).flatMap((use) => {
     const packageDirectory = use.className.split('.').slice(0, -1).join('/');
     const file = locate(packageDirectory, use.fileName);
-    return file === undefined || convertsDateRightAway(use, source(file)) ? [] : [{ ...use, file }];
+    return file === undefined ? [] : [{ ...use, file }];
   });
-  return withoutRepeatedDeclarations(placeDeclarations(located, source)).map((use) =>
+  const kept = withoutConvertedDates(located, source);
+  return withoutRepeatedDeclarations(placeDeclarations(kept, source)).map((use) =>
     useFinding(use, use.file, identity),
   );
 }
