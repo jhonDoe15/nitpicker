@@ -304,13 +304,6 @@ export const RULES = [
     limit: `a test the change adds or edits taking more than ${String(TEST_TIME_DEFAULTS.unitTestSeconds)} s (unit) or ${String(TEST_TIME_DEFAULTS.integrationTestSeconds)} s (integration); override with \`thresholds.unitTestSeconds\` and \`thresholds.integrationTestSeconds\``,
     enforcedBy: withKotlin({ ...BOTH, typescript: false }, true),
   },
-  {
-    id: RULE_IDS.componentStoryMissing,
-    check: 'structure',
-    limit:
-      'a component file without a story, in a package that has Storybook; enforced when more than half of its component files have one, reported otherwise',
-    enforcedBy: withKotlin(TYPESCRIPT_ONLY, false),
-  },
 ];
 
 /**
