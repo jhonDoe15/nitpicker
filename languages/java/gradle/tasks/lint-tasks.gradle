@@ -50,10 +50,14 @@ tasks.register('nitpickerForbiddenApis', JavaExec) {
 def analysisRoot = project.ext.nitpickerAnalysisRoot
 def compilerOf = project.ext.nitpickerCompilerOf
 def pathsOf = { Collection<File> files -> files.collect { it.absolutePath } }
+def runNode = project.ext.nitpickerRunNode
+def guardsRunner = new File(buildscript.sourceFile.parentFile, '../../adapters/gradle-reports/gradle-guards.mjs')
+    .canonicalFile
+def lintBaseline = gradle.startParameter.projectProperties['nitpicker.lintBaseline']
 
 tasks.register('nitpickerLint') {
     group = 'nitpicker'
-    description = 'Writes guards-plan.json, from which nitpicker runs the javac lint and reads the sealed permits.'
+    description = 'Runs the javac lint and reads the sealed permits from guards-plan.json.'
     dependsOn tasks.named('classes')
     doLast {
         def compile = tasks.named('compileJava').get()
@@ -78,6 +82,8 @@ tasks.register('nitpickerLint') {
                 cacheDirectory  : lintDirectory.absolutePath,
             ],
         ])
+        runNode(guardsRunner, [reportDir.get().asFile.absolutePath] + (lintBaseline ? [lintBaseline.toString()] : []),
+            'nitpicker could not run the javac lint')
     }
 }
 
