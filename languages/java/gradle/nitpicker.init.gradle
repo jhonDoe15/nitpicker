@@ -28,7 +28,8 @@
 //                                       JVM class names of each file (languages/java/gradle/KotlinMetrics.java)
 //   build/nitpicker/kotlin-mutation-facts.json  per-file classes, properties, functions, lambdas and the lines with branching
 //                                       syntax, which tell the Nitpicker side what PIT's mutants of compiler-generated code are
-//                                       (languages/java/gradle/KotlinMutationFacts.java)
+//                                       (languages/java/gradle/KotlinMutationFacts.java; empty when PIT's report has no mutant
+//                                       that survived)
 // and manifest.json gains kotlin, kotlinSourceRoots, kotlinTestSourceRoots, kotlinGeneratedSourceRoots (KSP and KAPT output) and kotlinFormatter. The Nitpicker side decides
 // the formatter, the ktfmt style and the detekt config and passes them as the properties
 // nitpicker.kotlin.formatter (ktlint, ktfmt or none), nitpicker.kotlin.ktfmtStyle (kotlinlang,
@@ -167,7 +168,7 @@ allprojects {
             kotlinPreset ? [tasks.named('compileJava').get().destinationDirectory.get().asFile]
                 : sourceSets.main.output.classesDirs.files
         }
-        // PIT mutates the Java and the Kotlin classes alike; the Kotlin findings are report-only (see the Nitpicker side).
+        // PIT mutates the Java and the Kotlin classes alike; the Nitpicker side leaves out the Kotlin mutants of code the compiler wrote.
         def mutatedClassDirs = { sourceSets.main.output.classesDirs.files }
 
         def usesSpring = {
@@ -641,13 +642,18 @@ allprojects {
                     }
                 }
                 // Source facts for the mutation filter: which mutants of PIT's report hit code that the compiler
-                // wrote (languages/java/gradle/KotlinMutationFacts.java, run like KotlinMetrics).
+                // wrote (languages/java/gradle/KotlinMutationFacts.java, run like KotlinMetrics). The filter
+                // only judges mutants that survived, so the sources are parsed again only when PIT's report
+                // holds one.
                 tasks.register('nitpickerKotlinMutationFacts') {
                     group = 'nitpicker'
                     dependsOn tasks.named('classes')
+                    mustRunAfter 'nitpickerPit'
                     doLast {
                         def output = reportDir.get().file('kotlin-mutation-facts.json').asFile
-                        if (kotlinFiles().isEmpty()) {
+                        def pitReport = reportDir.get().file('pit/mutations.xml').asFile
+                        def unjudged = !pitReport.exists() || !(pitReport.text =~ /status='(SURVIVED|NO_COVERAGE)'/)
+                        if (kotlinFiles().isEmpty() || unjudged) {
                             reportDir.get().asFile.mkdirs()
                             output.text = '{"files":[]}'
                             return

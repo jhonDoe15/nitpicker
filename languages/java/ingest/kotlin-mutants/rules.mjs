@@ -1,18 +1,16 @@
-const CONDITIONALS = new Set(['NegateConditionalsMutator', 'ConditionalsBoundaryMutator']);
-const SUSPEND_METHOD_END = 'Lkotlin/coroutines/Continuation;)Ljava/lang/Object;';
+import { generatedAccessor, generatedMember, valueClassMember } from './member-rules.mjs';
+import {
+  isConditional,
+  isReturn,
+  isSuspendContext,
+  outerClass,
+  unmangled,
+} from './mutant-kinds.mjs';
+
 const INTRINSICS_CALL = /^removed call to kotlin\/jvm\/internal\/Intrinsics::(\w+)$/;
 const INLINE_MARKER_CALL = /^removed call to kotlin\/jvm\/internal\/InlineMarker::/;
 const COMPOSE_CALL =
   /^removed call to androidx\/compose\/runtime\/(?:Composer|ComposerKt|ScopeUpdateScope|RecomposeScope)::/;
-const VALUE_CLASS_GENERATED = new Set([
-  'box-impl',
-  'unbox-impl',
-  'equals-impl',
-  'equals-impl0',
-  'hashCode-impl',
-  'toString-impl',
-  'constructor-impl',
-]);
 const UNIT_BUILDERS = new Set([
   'launch',
   'flow',
@@ -38,88 +36,6 @@ function sourceKey({ className, sourceFile }) {
   return [...className.split('.').slice(0, -1), sourceFile].join('/');
 }
 
-function isConditional({ mutatorName }) {
-  return CONDITIONALS.has(mutatorName);
-}
-
-function isReturn({ mutatorName }) {
-  return mutatorName.includes('Return');
-}
-
-function isSuspendContext({ method, methodDescription }) {
-  return method === 'invokeSuspend' || methodDescription.endsWith(SUSPEND_METHOD_END);
-}
-
-function unmangled(method) {
-  return method.replace(/-[\w]{7}$/, '');
-}
-
-function accessorName(prefix, name) {
-  return `${prefix}${name[0].toUpperCase()}${name.slice(1)}`;
-}
-
-function accessorsOf(property) {
-  const getters = property.name.startsWith('is')
-    ? [property.name, accessorName('get', property.name)]
-    : [accessorName('get', property.name)];
-  const setterName = property.name.startsWith('is')
-    ? accessorName('set', property.name.slice(2))
-    : accessorName('set', property.name);
-  return {
-    getters,
-    setters: [setterName],
-  };
-}
-
-function writtenNames(entry) {
-  const names = new Set(entry.functions);
-  for (const property of entry.properties) {
-    const { getters, setters } = accessorsOf(property);
-    for (const name of property.getter ? getters : []) {
-      names.add(name);
-    }
-    for (const name of property.setter ? setters : []) {
-      names.add(name);
-    }
-  }
-  return names;
-}
-
-function generatedAccessor({ mutant, cls }) {
-  return (
-    cls !== undefined &&
-    cls.properties.some((property) => {
-      const { getters, setters } = accessorsOf(property);
-      const written =
-        (property.getter && getters.includes(mutant.method)) ||
-        (property.setter && setters.includes(mutant.method));
-      const named = getters.includes(mutant.method) || setters.includes(mutant.method);
-      return named && !written && mutant.line >= property.start && mutant.line <= property.end;
-    })
-  );
-}
-
-function generatedMember({ mutant, cls }) {
-  return (
-    cls !== undefined &&
-    cls.kind !== 'facade' &&
-    mutant.method !== '<init>' &&
-    mutant.method !== '<clinit>' &&
-    mutant.line >= cls.start &&
-    mutant.line <= cls.headerEnd &&
-    !writtenNames(cls).has(unmangled(mutant.method))
-  );
-}
-
-function valueClassMember({ mutant, cls }) {
-  return (
-    cls?.kind === 'value' &&
-    VALUE_CLASS_GENERATED.has(mutant.method) &&
-    !(mutant.method === 'constructor-impl' && cls.init) &&
-    !cls.functions.includes(mutant.method.replace(/-impl0?$/, ''))
-  );
-}
-
 function inlineBody({ mutant, file }) {
   const base = unmangled(mutant.method.replace(/(?:\$default|\$\$forInline)$/, ''));
   return (
@@ -129,14 +45,20 @@ function inlineBody({ mutant, file }) {
         entry.inline &&
         entry.class === mutant.className &&
         entry.name === base &&
-        mutant.line >= entry.start &&
-        mutant.line <= entry.end,
+        (mutant.line > file.lines || (mutant.line >= entry.start && mutant.line <= entry.end)),
     )
   );
 }
 
 function inlinedBeyondFile({ mutant, file }) {
-  return file !== undefined && mutant.line > file.lines;
+  const owner = outerClass(mutant.className);
+  return (
+    file !== undefined &&
+    mutant.line > file.lines &&
+    !file.functions.some(
+      (entry) => entry.inlineCalls.length > 0 && outerClass(entry.class) === owner,
+    )
+  );
 }
 
 function defaultStub({ mutant, file }) {
@@ -174,10 +96,48 @@ function suspendLambdaResult({ mutant, file }) {
     return false;
   }
   const lambda = innermostLambda(file, mutant.line);
+  if (lambda === undefined) {
+    return true;
+  }
+  if (lambda.returnLines.includes(mutant.line)) {
+    return false;
+  }
   return (
-    lambda === undefined ||
     !lambda.valueLines.includes(mutant.line) ||
+    lambda.discarded ||
+    lambda.unitCallee ||
     UNIT_BUILDERS.has(lambda.callee)
+  );
+}
+
+function suspendUnitResult({ mutant, file }) {
+  return (
+    isReturn(mutant) &&
+    file !== undefined &&
+    file.functions.some(
+      (entry) =>
+        entry.suspend &&
+        entry.returnsUnit &&
+        entry.class === mutant.className &&
+        entry.name === unmangled(mutant.method),
+    )
+  );
+}
+
+function jvmStaticBridge({ mutant, file }) {
+  return (
+    file !== undefined &&
+    file.functions.some(
+      (entry) => entry.staticIn === mutant.className && entry.name === unmangled(mutant.method),
+    )
+  );
+}
+
+function defaultImplsTwin({ mutant, siblings }) {
+  const suffix = '$DefaultImpls';
+  return (
+    mutant.className.endsWith(suffix) &&
+    siblings.has(`${mutant.className.slice(0, -suffix.length)}|${mutant.method}`)
   );
 }
 
@@ -198,6 +158,11 @@ export const SOURCE_FREE_RULES = [
   ['null-check-intrinsic', nullCheckIntrinsic],
   ['inline-marker', ({ mutant }) => INLINE_MARKER_CALL.test(mutant.description)],
   [
+    'unit-result',
+    ({ mutant }) => isReturn(mutant) && mutant.methodDescription.endsWith(')Lkotlin/Unit;'),
+  ],
+  ['default-impls-twin', defaultImplsTwin],
+  [
     'when-mappings',
     ({ mutant, declared }) =>
       mutant.className.endsWith('$WhenMappings') && !declared.has(mutant.className),
@@ -214,6 +179,8 @@ export const SOURCE_FREE_RULES = [
 export const SOURCE_RULES = [
   ['state-machine-branch', stateMachineBranch],
   ['suspend-lambda-result', suspendLambdaResult],
+  ['suspend-unit-result', suspendUnitResult],
+  ['jvm-static-bridge', jvmStaticBridge],
   ['generated-accessor', generatedAccessor],
   ['generated-member', generatedMember],
   ['value-class-member', valueClassMember],

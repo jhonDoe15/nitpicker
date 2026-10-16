@@ -31,7 +31,7 @@
 // top-level functions or properties, of its file facade (the coupling step maps classes back to files
 // with it, and the CRAP step finds the JaCoCo class of a file by package and file name). Of a
 // @JvmMultifileClass facade, each file lists its own part (Facade__FileKt) and the first file the facade.
-// A syntax error ends the run: the sources compiled, so the pinned compiler does not read them.
+// A syntax error ends the run: the sources compiled, so the Kotlin of the project is newer than the pinned compiler.
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
@@ -97,9 +97,9 @@ public final class KotlinMetrics {
         if (error != null) {
           int line = text.substring(0, Math.min(error.getTextOffset(), text.length())).split("\n", -1).length;
           System.err.println(
-              relative + ":" + line + ": " + error.getErrorDescription() + ". The sources compile, so the pinned"
+              relative + ":" + line + ": " + error.getErrorDescription() + ". The sources compile, so Nitpicker's"
                   + " Kotlin compiler " + System.getProperty("nitpicker.kotlinCompiler", "(unknown)")
-                  + " is too old to read them: bump kotlinCompiler in nitpicker.init.gradle.");
+                  + " is older than the Kotlin of this project: upgrade Nitpicker.");
           System.exit(1);
         }
         new Collector(ktFile, text, relative, entries).collect();

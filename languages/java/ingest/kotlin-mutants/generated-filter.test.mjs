@@ -1,58 +1,17 @@
 import { describe, expect, it } from 'vitest';
 import { createGeneratedFilter } from './generated-filter.mjs';
-
-const FILE = 'src/main/kotlin/demo/Demo.kt';
-const emptyClass = {
-  name: 'demo.Demo',
-  kind: 'class',
-  start: 1,
-  headerEnd: 1,
-  init: false,
-  serializable: false,
-  functions: [],
-  properties: [],
-};
-const emptyFile = {
-  file: FILE,
-  package: 'demo',
-  lines: 40,
-  classes: [],
-  functions: [],
-  lambdas: [],
-  branching: [],
-  bang: [],
-};
-
-function filterFor(file = {}) {
-  return createGeneratedFilter({ files: [{ ...emptyFile, ...file }] });
-}
-
-function mutant(overrides) {
-  return {
-    status: 'SURVIVED',
-    className: 'demo.DemoKt',
-    sourceFile: 'Demo.kt',
-    method: 'run',
-    methodDescription: '()V',
-    mutator: 'org.pitest.mutationtest.engine.gregor.mutators.VoidMethodCallMutator',
-    mutatorName: 'VoidMethodCallMutator',
-    description: '',
-    line: 5,
-    block: 0,
-    ...overrides,
-  };
-}
-
-const returns = {
-  mutatorName: 'NullReturnValsMutator',
-  description: 'replaced return value with null',
-};
-const negate = { mutatorName: 'NegateConditionalsMutator', description: 'negated conditional' };
-const boundary = {
-  mutatorName: 'ConditionalsBoundaryMutator',
-  description: 'changed conditional boundary',
-};
-const removed = (call) => ({ description: `removed call to ${call}` });
+import {
+  FILE,
+  boundary,
+  emptyClass,
+  filterFor,
+  fn,
+  lambda,
+  mutant,
+  negate,
+  removed,
+  returns,
+} from './test-support/filter-helpers.mjs';
 
 describe('rules that need no source facts', () => {
   const filter = filterFor();
@@ -172,9 +131,9 @@ describe('state-machine-branch', () => {
 
 describe('suspend-lambda-result', () => {
   const lambdas = [
-    { start: 10, end: 20, valueLines: [18, 18], callee: 'withContext' },
-    { start: 12, end: 14, valueLines: [13, 13], callee: 'async' },
-    { start: 15, end: 15, valueLines: [15, 15], callee: 'launch' },
+    lambda({ start: 10, end: 20, valueLines: [18, 18], callee: 'withContext' }),
+    lambda({ start: 12, end: 14, valueLines: [13, 13], callee: 'async' }),
+    lambda({ start: 15, end: 15, valueLines: [15, 15], callee: 'launch' }),
   ];
   const filter = filterFor({ lambdas });
   const result = (line, overrides) =>
@@ -298,8 +257,8 @@ describe('value classes, inline functions and default arguments', () => {
   const filter = filterFor({
     classes: [meters, checked],
     functions: [
-      { name: 'twice', class: 'demo.DemoKt', start: 10, end: 12, suspend: false, inline: true },
-      { name: 'plain', class: 'demo.DemoKt', start: 14, end: 16, suspend: false, inline: false },
+      fn({ name: 'twice', start: 10, end: 12, inline: true }),
+      fn({ name: 'plain', start: 14, end: 16 }),
     ],
     branching: [21],
   });

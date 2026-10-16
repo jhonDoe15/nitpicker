@@ -15,15 +15,20 @@
 //                          init block), serializable (it carries @Serializable), functions (names written in its
 //                          body), properties: name, start, end, constructor, getter and setter (written with a
 //                          body), delegated
-//   functions              every named function with a body: name, class, start, end, suspend, inline
+//   functions              every named function with a body: name, class, start, end, suspend, inline,
+//                          returnsUnit (a block body or a declared Unit result), inlineCalls (names of the
+//                          project's inline functions it calls), staticIn (the class that gets the static
+//                          bridge of a @JvmStatic function of a companion object)
 //   lambdas                every lambda: start, end, valueLines (first and last line of the expression whose
-//                          value it returns, none when its last statement is not an expression), callee (the
-//                          call it is an argument of)
+//                          value it returns, none when its last statement is not an expression), returnLines
+//                          (the lines of its labeled returns), callee (the call it is an argument of),
+//                          discarded (the call is a statement whose value nobody reads), unitCallee (the
+//                          project function it is passed to takes a lambda that returns Unit)
 //   branching              lines that hold syntax the compiler turns into a conditional: if, when, loops, && and
 //                          ||, ?: and ?., comparisons, ==, !, !!, is, in, as, and a call of an inline function
 //                          that loops or branches (the standard library's and the project's own)
-//   bang                   lines that hold !!
-// A syntax error ends the run: the sources compiled, so the pinned compiler does not read them.
+//   bang                   first and last line of each expression that holds !!
+// A syntax error ends the run: the sources compiled, so the Kotlin of the project is newer than the pinned compiler.
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
@@ -92,16 +97,42 @@ public final class KotlinMutationFacts {
         parsed.add(parse(factory, projectDir, file));
       }
       Set<String> projectInline = new HashSet<>();
+      Map<String, Boolean> unitCallees = new HashMap<>();
       for (Parsed unit : parsed) {
-        PsiTreeUtil.findChildrenOfType(unit.file, KtNamedFunction.class).stream()
-            .filter(f -> f.hasModifier(KtTokens.INLINE_KEYWORD) && f.getName() != null)
-            .forEach(f -> projectInline.add(f.getName()));
+        for (KtNamedFunction function : PsiTreeUtil.findChildrenOfType(unit.file, KtNamedFunction.class)) {
+          if (function.getName() == null) {
+            continue;
+          }
+          if (function.hasModifier(KtTokens.INLINE_KEYWORD)) {
+            projectInline.add(function.getName());
+          }
+          unitCallees.merge(function.getName(), takesUnitLambda(function), (a, b) -> a && b);
+        }
       }
-      String body = parsed.stream().map(unit -> describe(unit, projectInline)).collect(Collectors.joining(","));
+      Project project = new Project(projectInline, unitCallees);
+      String body = parsed.stream().map(unit -> describe(unit, project)).collect(Collectors.joining(","));
       Files.writeString(output, "{\"files\":[" + body + "]}\n", StandardCharsets.UTF_8);
     } finally {
       Disposer.dispose(disposable);
     }
+  }
+
+  private record Project(Set<String> inline, Map<String, Boolean> unitCallees) {}
+
+  private static boolean takesUnitLambda(KtNamedFunction function) {
+    boolean any = false;
+    for (KtParameter parameter : function.getValueParameters()) {
+      KtTypeReference type = parameter.getTypeReference();
+      KtTypeElement element = type == null ? null : type.getTypeElement();
+      if (element instanceof KtFunctionType) {
+        KtTypeReference result = ((KtFunctionType) element).getReturnTypeReference();
+        if (result == null || !"Unit".equals(result.getText())) {
+          return false;
+        }
+        any = true;
+      }
+    }
+    return any;
   }
 
   private record Parsed(KtFile file, String relative, String text, int[] lineStarts) {}
@@ -119,9 +150,9 @@ public final class KotlinMutationFacts {
     if (error != null) {
       int line = text.substring(0, Math.min(error.getTextOffset(), text.length())).split("\n", -1).length;
       System.err.println(
-          relative + ":" + line + ": " + error.getErrorDescription() + ". The sources compile, so the pinned"
+          relative + ":" + line + ": " + error.getErrorDescription() + ". The sources compile, so Nitpicker's"
               + " Kotlin compiler " + System.getProperty("nitpicker.kotlinCompiler", "(unknown)")
-              + " is too old to read them: bump kotlinCompiler in nitpicker.init.gradle.");
+              + " is older than the Kotlin of this project: upgrade Nitpicker.");
       System.exit(1);
     }
     List<Integer> starts = new ArrayList<>(List.of(0));
@@ -133,8 +164,8 @@ public final class KotlinMutationFacts {
     return new Parsed(ktFile, relative, text, starts.stream().mapToInt(Integer::intValue).toArray());
   }
 
-  private static String describe(Parsed unit, Set<String> projectInline) {
-    Facts facts = new Facts(unit, projectInline);
+  private static String describe(Parsed unit, Project project) {
+    Facts facts = new Facts(unit, project);
     return "{\"file\":" + quote(unit.relative) + ",\"package\":" + quote(unit.file.getPackageFqName().asString())
         + ",\"lines\":" + unit.lineStarts.length
         + ",\"classes\":[" + String.join(",", facts.classes) + "]"
@@ -146,16 +177,16 @@ public final class KotlinMutationFacts {
 
   private static final class Facts {
     final Parsed unit;
-    final Set<String> projectInline;
+    final Project project;
     final List<String> classes = new ArrayList<>();
     final List<String> functions = new ArrayList<>();
     final List<String> lambdas = new ArrayList<>();
     final Set<Integer> branching = new HashSet<>();
     final Set<Integer> bang = new HashSet<>();
 
-    Facts(Parsed unit, Set<String> projectInline) {
+    Facts(Parsed unit, Project project) {
       this.unit = unit;
-      this.projectInline = projectInline;
+      this.project = project;
       String prefix = unit.file.getPackageFqName().isRoot() ? "" : unit.file.getPackageFqName().asString() + ".";
       List<KtDeclaration> topLevel = new ArrayList<>();
       for (KtDeclaration declaration : unit.file.getDeclarations()) {
@@ -176,7 +207,7 @@ public final class KotlinMutationFacts {
       classes.add(classEntry(name, "facade", 0, 0, false, false, declarations));
       for (KtDeclaration declaration : declarations) {
         if (declaration instanceof KtNamedFunction) {
-          declareFunction((KtNamedFunction) declaration, name);
+          declareFunction((KtNamedFunction) declaration, name, null);
         }
       }
     }
@@ -223,9 +254,14 @@ public final class KotlinMutationFacts {
         if (member instanceof KtClassOrObject) {
           declareClass((KtClassOrObject) member, name + "$");
         } else if (member instanceof KtNamedFunction) {
-          declareFunction((KtNamedFunction) member, name);
+          declareFunction((KtNamedFunction) member, name, staticOwner(klass, prefix));
         }
       }
+    }
+
+    private String staticOwner(KtClassOrObject klass, String prefix) {
+      boolean companion = klass instanceof KtObjectDeclaration && ((KtObjectDeclaration) klass).isCompanion();
+      return companion && prefix.endsWith("$") ? prefix.substring(0, prefix.length() - 1) : null;
     }
 
     private String kind(KtClassOrObject klass) {
@@ -288,16 +324,37 @@ public final class KotlinMutationFacts {
           + ",\"delegated\":" + delegated + "}";
     }
 
-    private void declareFunction(KtNamedFunction function, String owner) {
+    private void declareFunction(KtNamedFunction function, String owner, String staticOwner) {
       if (!function.hasBody() || function.getName() == null) {
         return;
       }
       int start = lineOf(significant(function.getNode(), true)) + 1;
       int end = lineOf(Math.max(0, significant(function.getNode(), false) - 1)) + 1;
+      boolean jvmStatic = function.getAnnotationEntries().stream()
+          .anyMatch(e -> e.getShortName() != null && "JvmStatic".equals(e.getShortName().asString()));
       functions.add("{\"name\":" + quote(function.getName()) + ",\"class\":" + quote(owner)
           + ",\"start\":" + start + ",\"end\":" + end
           + ",\"suspend\":" + function.hasModifier(KtTokens.SUSPEND_KEYWORD)
-          + ",\"inline\":" + function.hasModifier(KtTokens.INLINE_KEYWORD) + "}");
+          + ",\"inline\":" + function.hasModifier(KtTokens.INLINE_KEYWORD)
+          + ",\"returnsUnit\":" + returnsUnit(function)
+          + ",\"inlineCalls\":" + inlineCalls(function)
+          + ",\"staticIn\":" + (jvmStatic && staticOwner != null ? quote(staticOwner) : "null") + "}");
+    }
+
+    private boolean returnsUnit(KtNamedFunction function) {
+      KtTypeReference type = function.getTypeReference();
+      return type == null ? function.hasBlockBody() : "Unit".equals(type.getText());
+    }
+
+    private String inlineCalls(KtNamedFunction function) {
+      Set<String> names = new TreeSet<>();
+      for (KtCallExpression call : PsiTreeUtil.findChildrenOfType(function, KtCallExpression.class)) {
+        KtExpression callee = call.getCalleeExpression();
+        if (callee != null && project.inline().contains(callee.getText())) {
+          names.add(quote(callee.getText()));
+        }
+      }
+      return "[" + String.join(",", names) + "]";
     }
 
     private void scan(PsiElement element) {
@@ -327,6 +384,7 @@ public final class KotlinMutationFacts {
         Object token = ((KtBinaryExpression) element).getOperationToken();
         if (COMPARISONS.contains(token)) {
           mark(((KtBinaryExpression) element).getOperationReference());
+          markEnds(element);
         }
       } else if (element instanceof KtIsExpression) {
         mark(((KtIsExpression) element).getOperationReference());
@@ -338,6 +396,7 @@ public final class KotlinMutationFacts {
       } else if (element instanceof KtPostfixExpression
           && ((KtPostfixExpression) element).getOperationToken() == KtTokens.EXCLEXCL) {
         mark(((KtPostfixExpression) element).getOperationReference());
+        bang.add(lineOf(element.getTextRange().getStartOffset()) + 1);
         bang.add(lineOf(element.getTextRange().getEndOffset() - 1) + 1);
       } else if (element instanceof KtSafeQualifiedExpression) {
         mark(((KtSafeQualifiedExpression) element).getOperationTokenNode().getPsi());
@@ -358,7 +417,7 @@ public final class KotlinMutationFacts {
     private void markCall(KtCallExpression call) {
       KtExpression callee = call.getCalleeExpression();
       String name = callee == null ? null : callee.getText();
-      if (name != null && (INLINE_BRANCHING.contains(name) || projectInline.contains(name))) {
+      if (name != null && (INLINE_BRANCHING.contains(name) || project.inline().contains(name))) {
         mark(callee);
       }
     }
@@ -388,19 +447,62 @@ public final class KotlinMutationFacts {
       lambdas.add("{\"start\":" + start + ",\"end\":" + end + ",\"valueLines\":"
           + (value ? "[" + (lineOf(last.getTextRange().getStartOffset()) + 1) + ","
               + (lineOf(Math.max(0, last.getTextRange().getEndOffset() - 1)) + 1) + "]" : "[]")
-          + ",\"callee\":" + calleeOf(lambda) + "}");
+          + ",\"returnLines\":" + returnLines(lambda)
+          + ",\"callee\":" + calleeOf(lambda)
+          + ",\"discarded\":" + discarded(lambda)
+          + ",\"unitCallee\":" + unitCallee(lambda) + "}");
     }
 
-    private String calleeOf(KtLambdaExpression lambda) {
+    private String returnLines(KtLambdaExpression lambda) {
+      Set<Integer> lines = new TreeSet<>();
+      for (KtReturnExpression expression : PsiTreeUtil.findChildrenOfType(lambda, KtReturnExpression.class)) {
+        if (expression.getLabelQualifier() != null) {
+          lines.add(lineOf(expression.getTextRange().getStartOffset()) + 1);
+          lines.add(lineOf(Math.max(0, expression.getTextRange().getEndOffset() - 1)) + 1);
+        }
+      }
+      return lines.toString();
+    }
+
+    private KtCallExpression callOf(KtLambdaExpression lambda) {
       PsiElement parent = lambda.getParent();
       if (parent instanceof KtLambdaArgument || parent instanceof KtValueArgument) {
         PsiElement call = parent.getParent();
         call = call instanceof KtValueArgumentList ? call.getParent() : call;
-        if (call instanceof KtCallExpression && ((KtCallExpression) call).getCalleeExpression() != null) {
-          return quote(((KtCallExpression) call).getCalleeExpression().getText());
-        }
+        return call instanceof KtCallExpression ? (KtCallExpression) call : null;
       }
-      return "null";
+      return null;
+    }
+
+    private boolean discarded(KtLambdaExpression lambda) {
+      KtCallExpression call = callOf(lambda);
+      if (call == null) {
+        return false;
+      }
+      PsiElement expression = call;
+      while (expression.getParent() instanceof KtQualifiedExpression
+          && ((KtQualifiedExpression) expression.getParent()).getSelectorExpression() == expression) {
+        expression = expression.getParent();
+      }
+      PsiElement block = expression.getParent();
+      if (!(block instanceof KtBlockExpression)) {
+        return false;
+      }
+      List<KtExpression> statements = ((KtBlockExpression) block).getStatements();
+      boolean lastOfLambda = block.getParent() instanceof KtFunctionLiteral
+          && statements.get(statements.size() - 1) == expression;
+      return !lastOfLambda;
+    }
+
+    private boolean unitCallee(KtLambdaExpression lambda) {
+      KtCallExpression call = callOf(lambda);
+      KtExpression callee = call == null ? null : call.getCalleeExpression();
+      return callee != null && project.unitCallees().getOrDefault(callee.getText(), false);
+    }
+
+    private String calleeOf(KtLambdaExpression lambda) {
+      KtCallExpression call = callOf(lambda);
+      return call == null || call.getCalleeExpression() == null ? "null" : quote(call.getCalleeExpression().getText());
     }
 
     private int lineOf(int offset) {

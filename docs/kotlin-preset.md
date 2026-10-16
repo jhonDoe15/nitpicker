@@ -336,42 +336,57 @@ ingester finds a class's source file under both kinds of source root from PIT's 
 filter (on by default) removes only mutants at line 0 of a `.kt` file, which is not enough.
 
 **The filter.** `nitpickerKotlinMutationFacts` runs `languages/java/gradle/KotlinMutationFacts.java`
-(a PSI program like `KotlinMetrics.java`, 4 to 7 seconds on the files of a small project) and writes
-`build/nitpicker/kotlin-mutation-facts.json`: per file its classes (kind, header lines, whether it
-has an `init` block), each property with the lines of its declaration and whether an accessor is
-written, the written functions (`suspend`, `inline`), the lambdas with the lines that hold their
-value and the callee they are passed to, the lines with branching syntax (`if`, `when`, loops,
-`&&`, `||`, `?:`, `?.`, comparisons, `==`, `!`, `!!`, `is`, `in`, `as`, and calls of the standard
-library's inline functions that branch and of the project's own inline functions) and the lines
-with `!!`. The ingester (`languages/java/ingest/kotlin-mutants/`) applies the rules below to every
+(a PSI program like `KotlinMetrics.java`, 4 to 7 seconds on the files of a small project) after
+`nitpickerPit`, and only when PIT's report holds a mutant that survived or has no coverage (it
+writes an empty file otherwise). It writes `build/nitpicker/kotlin-mutation-facts.json`: per file
+its classes (kind, header lines, whether it has an `init` block), each property with the lines of
+its declaration and whether an accessor is written, the written functions (`suspend`, `inline`,
+whether they return `Unit`, the project's inline functions they call, and the class whose static
+method a `@JvmStatic` function also becomes), the lambdas with the lines that hold their value
+(the last expression and every labeled `return@`), the callee they are passed to, whether the
+call's result is discarded and whether the callee is a project function that takes a `() -> Unit`
+lambda, the lines with branching syntax (`if`, `when`, loops, `&&`, `||`, `?:`, `?.`, comparisons,
+`==`, `!`, `!!`, `is`, `in`, `as`, and calls of the standard library's inline functions that
+branch and of the project's own inline functions; for `&&`, `||`, `?:` and comparisons the first
+and the last line of the whole expression) and the first and last line of each expression with
+`!!`. It is a second program next to `KotlinMetrics.java` because both are single-file programs
+that the JVM compiles in memory and one file cannot hold both within the 300-line limit; a single
+JVM would also have to parse the sources for a report the Java preset never needs. The ingester (`languages/java/ingest/kotlin-mutants/`) applies the rules below to every
 mutant of PIT's report; a mutant a rule names is left out of the findings and counted in a
 descriptive `mutation-summary` finding `GeneratedCode`. The Java preset does not run any of it.
 A rule drops one named kind of mutant and nothing else; each has tests with the junk it drops and
 the look-alike it keeps (`generated-filter.test.mjs`).
 
-| Rule                         | Drops                                                                                                                                                                               | Keeps                                                                                             |
-| ---------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------- |
-| `generated-source`           | any mutant in a file of a KSP or KAPT source directory (`kotlinGeneratedSourceRoots` of the manifest: source roots under the build directory)                                       | a file of the same name in another package; the project's own sources                             |
-| `coroutine-throw-on-failure` | the removal of `ResultKt.throwOnFailure`, which every suspension point calls                                                                                                        | the removal of any other call, `Result.getOrThrow` included                                       |
-| `null-check-intrinsic`       | the removal of a call of `Intrinsics.*` (parameter, `checkNotNullExpressionValue`)                                                                                                  | the removal of `Intrinsics.checkNotNull` on a line with `!!`, which is written code               |
-| `inline-marker`              | the removal of `InlineMarker.mark`, which the compiler puts around suspension points of an inline function                                                                          | the removal of `SpreadBuilder.add`/`addSpread` (a `*vararg` argument)                             |
-| `when-mappings`              | any mutant in a `$WhenMappings` class the project did not declare                                                                                                                   | a class the project itself called `...$WhenMappings`                                              |
-| `synthetic-accessor`         | any mutant in a method named `access$...`                                                                                                                                           | a method named like it, such as `accessLevel`                                                     |
-| `serializer-class`           | any mutant in a `$$serializer` class (kotlinx.serialization)                                                                                                                        | the `@Serializable` class itself                                                                  |
-| `compose-generated`          | any mutant in a `ComposableSingletons$` class and the removal of calls of Compose's `Composer`, `ComposerKt`, `ScopeUpdateScope` and `RecomposeScope`                               | the removal of a call of a composable the project or the runtime offers (`SideEffect`)            |
-| `state-machine-branch`       | a conditional mutant (negate, boundary) in a suspend function or `invokeSuspend` on a line without branching syntax: the state machine's `label` test                               | a conditional mutant on a line with an `if`, `when`, comparison and so on                         |
-| `suspend-lambda-result`      | a return-value mutant of `invokeSuspend` when the lambda's value is not on that line, or the lambda is passed to a builder that returns `Unit`                                      | the value of the lambda of `async` or `withContext` that a test can read, also in a nested lambda |
-| `generated-accessor`         | a getter or setter of a property (constructor `val`, delegated, `isX`) whose accessor the developer did not write, on the lines of the property                                     | a getter written as `get() = ...`, and a method of that name on other lines                       |
-| `generated-member`           | a method of a class that the developer did not write (`copy`, `componentN`, `equals`, `hashCode`, `toString`, `values`, interface bridges, `write$Self`), on the class header lines | the constructor, which holds default values; any written function                                 |
-| `value-class-member`         | `box-impl`, `unbox-impl`, `equals-impl`, `hashCode-impl`, `toString-impl` and `constructor-impl` of a `value class` (the last only without `init`)                                  | a function the developer wrote (`doubled-1a2b3c4`), the check in an `init` block                  |
-| `inline-function-body`       | the out-of-line copy of an `inline fun` (also `$default` and `$$forInline`), which tests only run inlined                                                                           | the same lines when they are in another class or in an ordinary function                          |
-| `inlined-beyond-file`        | a mutant whose line lies past the end of its source file: inlined code mapped into the file of its caller                                                                           | the last line of a file                                                                           |
-| `default-argument-stub`      | a conditional mutant in a `$default` method (the mask test) on a line without branching syntax                                                                                      | the default value itself and a default that branches                                              |
+| Rule                         | Drops                                                                                                                                                                               | Keeps                                                                                                                      |
+| ---------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------- |
+| `generated-source`           | any mutant in a file of a KSP or KAPT source directory (`kotlinGeneratedSourceRoots` of the manifest: source roots under the build directory)                                       | a file of the same name in another package; the project's own sources                                                      |
+| `coroutine-throw-on-failure` | the removal of `ResultKt.throwOnFailure`, which every suspension point calls                                                                                                        | the removal of any other call, `Result.getOrThrow` included                                                                |
+| `null-check-intrinsic`       | the removal of a call of `Intrinsics.*` (parameter, `checkNotNullExpressionValue`)                                                                                                  | the removal of `Intrinsics.checkNotNull` on the first or last line of an expression with `!!`                              |
+| `unit-result`                | a return-value mutant of a method whose descriptor ends in `)Lkotlin/Unit;` (lambdas, callbacks, `withContext` and `coroutineScope` blocks that return `Unit`)                      | a return-value mutant of a method that returns a value                                                                     |
+| `default-impls-twin`         | a mutant in `Interface$DefaultImpls.m`, the compatibility copy no code calls, when the interface itself has a mutant for `m`                                                        | a `DefaultImpls` method with no twin in the interface, and the interface method itself                                     |
+| `inline-marker`              | the removal of `InlineMarker.mark`, which the compiler puts around suspension points of an inline function                                                                          | the removal of `SpreadBuilder.add`/`addSpread` (a `*vararg` argument)                                                      |
+| `when-mappings`              | any mutant in a `$WhenMappings` class the project did not declare                                                                                                                   | a class the project itself called `...$WhenMappings`                                                                       |
+| `synthetic-accessor`         | any mutant in a method named `access$...`                                                                                                                                           | a method named like it, such as `accessLevel`                                                                              |
+| `serializer-class`           | any mutant in a `$$serializer` class (kotlinx.serialization)                                                                                                                        | the `@Serializable` class itself                                                                                           |
+| `compose-generated`          | any mutant in a `ComposableSingletons$` class and the removal of calls of Compose's `Composer`, `ComposerKt`, `ScopeUpdateScope` and `RecomposeScope`                               | the removal of a call of a composable the project or the runtime offers (`SideEffect`)                                     |
+| `state-machine-branch`       | a conditional mutant (negate, boundary) in a suspend function or `invokeSuspend` on a line without branching syntax: the state machine's `label` test                               | a conditional mutant on a line of an `if`, `when`, comparison, or the operand lines of a multi-line `&&`, `\|\|`, `?:`     |
+| `suspend-lambda-result`      | a return-value mutant of `invokeSuspend` when the lambda's value is not on that line, or its result is discarded, or it is passed to a function that takes a `() -> Unit` lambda    | the value of the lambda of `async` or `withContext` that a test can read, an early `return@async`, also in a nested lambda |
+| `suspend-unit-result`        | a return-value mutant of a written `suspend` function that returns `Unit`                                                                                                           | the return value of a suspend function that returns a value                                                                |
+| `jvm-static-bridge`          | the static method that `@JvmStatic` in a companion object adds to the outer class: Kotlin callers go through `Companion`                                                            | the companion's own method and any other method of the outer class                                                         |
+| `generated-accessor`         | a getter or setter of a property (constructor `val`, delegated, `isX` of a Boolean) whose accessor the developer did not write, on the lines of the property                        | a getter written as `get() = ...`, the `setValue` call of a delegated `var`, and a method of that name on other lines      |
+| `generated-member`           | a method of a class that the developer did not write (`copy`, `componentN`, `equals`, `hashCode`, `toString`, `values`, interface bridges, `write$Self`), on the class header lines | the constructor, which holds default values; any written function                                                          |
+| `value-class-member`         | `box-impl`, `unbox-impl`, `equals-impl`, `hashCode-impl`, `toString-impl` and `constructor-impl` of a `value class` (the last only without `init`)                                  | a function the developer wrote (`doubled-1a2b3c4`), the check in an `init` block                                           |
+| `inline-function-body`       | the out-of-line copy of an `inline fun` (also `$default` and `$$forInline`), also its lines inlined from other files, which tests only run inlined                                  | the same lines when they are in another class or in an ordinary function, and the inlined copy in a caller                 |
+| `inlined-beyond-file`        | a mutant whose line lies past the end of its source file in a class that calls no function of the project that is `inline`: code of the standard library mapped into the caller     | the last line of a file; the copy of a project inline function inlined into its caller                                     |
+| `default-argument-stub`      | a conditional mutant in a `$default` method (the mask test) on a line without branching syntax                                                                                      | the default value itself and a default that branches                                                                       |
 
-Mutants of an inline function are therefore reported at its call sites, where the inlined copy
-lands on a line of the caller's file; its own declaration and copies that land past the end of
-the caller's file are left out, since no test can tell them from the inlined ones and they cannot
-be located. A conditional mutant on a line without branching syntax is dropped only in the three
+Mutants of an inline function are therefore reported where a test can kill them: the inlined copy
+in a caller of the project, on its line of the inline function's file or, when the function is in
+another file, on a line past the end of the caller's file (which the filter keeps when the caller
+calls a project inline function). A test that reaches the caller runs the copy, so it can kill that
+mutant. Only the function's own out-of-line body, which a test never runs, and copies of the
+standard library's inline functions (`use`, `map`), which have no source line in the project, are
+left out. A conditional mutant on a line without branching syntax is dropped only in the three
 places where the compiler writes such a branch (state machines, `$default` stubs, and the rules
 above); in any other function it stays, since the measured projects have none that is not a real
 gap.
@@ -385,11 +400,12 @@ message names. Mutants that survived on the base stay baselined, like every find
 **Cost.** PIT runs on the base and on head, and the Kotlin classes make its run longer. On the
 fixture below PIT took 33 seconds for 240 mutants (113 seconds for the whole Gradle run) and on
 the retry library 30 seconds for 199 (48 for the Gradle run). The facts program adds 4 to 7 seconds of parsing (14 to 27
-seconds as a Gradle task, with Gradle's start-up and the `classes` task). The filter reads PIT's
+seconds as a Gradle task, with Gradle's start-up and the `classes` task), and runs only when
+PIT's report has a mutant that survived. The filter reads PIT's
 report, so it saves no PIT time. It cannot move before the run without losing precision: the
-rules that need no source facts could be a PIT `MutationInterceptor`, but they cover 28 of the 79
-mutants the filter leaves out of the fixture, and the generated mutants are 79 of 240 (33%) but
-only 60 of its 220 test runs (27%); on the retry library 48 of 255 (19%). That is 6 to 8 seconds of
+rules that need no source facts could be a PIT `MutationInterceptor`, but they cover 28 of the 78
+mutants the filter leaves out of the fixture, and the generated mutants are 78 of 240 (33%) but
+only 58 of its 220 test runs (26%); on the retry library 48 of 255 (19%). That is 6 to 8 seconds of
 PIT's run. PIT's `--avoidCallsTo kotlin.jvm.internal.Intrinsics` was tried on the fixture and
 drops every mutant on a line that calls the intrinsic, and the compiler puts a parameter check on
 the function's declaration line, so the body of a one-line function goes with it: 227 mutants
@@ -420,33 +436,43 @@ not checked by CI and move with the tool versions.
 | Killed                                       | 177     | 99           |
 | Timed out                                    | 3       | 2            |
 | Survived or no coverage: would fail the gate | 60      | 98           |
-| Left out by the filter, of those             | 44      | 47           |
-| Left out by the filter, killed or timed out  | 35      | 4            |
-| Left: would fail the gate                    | 16      | 51           |
+| Left out by the filter, of those             | 45      | 47           |
+| Left out by the filter, killed or timed out  | 33      | 4            |
+| Left: would fail the gate                    | 15      | 51           |
 | Of those, junk (no test can kill)            | 0       | 0            |
-| Of those, test gaps                          | 16      | 51           |
+| Of those, test gaps                          | 15      | 51           |
 
-| Mutants left out of the fixture's 60, by rule: `coroutine-throw-on-failure` 25, |
-| `generated-accessor` 7, `suspend-lambda-result` 6, `null-check-intrinsic` 2, |
-| `inline-function-body` 2, `state-machine-branch` 1, `generated-member` 1. Of the retry library's |
-| 98: `inline-function-body` 18 (the out-of-line and `$$forInline` copies of `retry` and |
-| `runRetrying`), `state-machine-branch` 10, `inline-marker` 6, `inlined-beyond-file` 6, |
-| `coroutine-throw-on-failure` 4, `generated-accessor` 3. The 35 and 4 killed or timed-out mutants |
-| are in the same code; leaving them out changes the `Killed` count, never the gate. |
+Mutants left out of the fixture's 60, by rule: `coroutine-throw-on-failure` 25,
+`generated-accessor` 7, `suspend-lambda-result` 6, `null-check-intrinsic` 2,
+`inline-function-body` 2, `state-machine-branch` 1, `generated-member` 1, `default-impls-twin` 1.
+Of the retry library's 98: `inline-function-body` 22 (the out-of-line and `$$forInline` copies of
+`retry` and `runRetrying`, with the lines of `retry` inlined into `runRetrying`),
+`state-machine-branch` 10, `inline-marker` 6, `coroutine-throw-on-failure` 4,
+`generated-accessor` 3, `inlined-beyond-file` 2. The 33 and 4 killed or timed-out mutants
+are in the same code, and the copies of the standard library's inline functions in callers;
+leaving them out changes the `Killed` count, never the gate.
 
-What is left, classified by hand. **Fixture (16):** 12 boundary mutants of comparisons no test
-pins (`id < 0`, grade thresholds, `maybe`, `rangeSum`, `inRange`, `failing`, `useInline`), the
-removal of `reader.close()` in a `finally`, the removal of `closeFinally` (in `use`), the
-interface default `Animal$DefaultImpls.sound` that no test calls through `Fish().sound()`, and
-the removal of the `!!` check of `Person.forced`: all of them are killed by a test the author
-could add. **kotlin-retry (51):** 20 boundary mutants of `require(x > 0)` preconditions and of
-the saturating arithmetic (no test passes 0 or the maximum), 2 arithmetic mutants, and 29 mutants
-without coverage in `delayAtLeast`, `delayIn`, `stopAtRetries` and the `RetryPolicy` vararg
-factory, which the library's common tests do not reach.
+What is left, classified by hand. **Fixture (15):** 12 boundary mutants of comparisons no test
+pins (`id < 0`, grade thresholds, `maybe`, `rangeSum`, `inRange`, `failing`, the two of the lambda
+inlined into `useInline`), the removal of `reader.close()` in a `finally`, the removal of
+`closeFinally` (in `use`), and the removal of the `!!` check of `Person.forced`: all of them are
+killed by a test the author could add. The interface default `Animal$DefaultImpls.sound`, which an
+earlier version of this section counted as a gap, is gone: Kotlin 2.4 compiles interface defaults
+to JVM default methods, `DefaultImpls` is a compatibility copy that no Kotlin code calls, and
+`Fish().sound()` is covered through `Animal`. **kotlin-retry (51):** 20 boundary mutants of
+`require(x > 0)` preconditions and of the saturating arithmetic (no test passes 0 or the maximum),
+1 arithmetic mutant, 1 negated condition, and 29 mutants without coverage in `delayAtLeast`,
+`delayIn`, `stopAtRetries` and the `RetryPolicy` vararg factory, which the library's common tests
+do not reach.
 
-An earlier version of this section counted 46 of the fixture's 60 as junk; it counted the
-`DefaultImpls` method and the `!!` check, which a test can reach, as junk. The numbers above are
-what the final rules leave.
+Earlier versions of this section counted 46 of the fixture's 60 as junk (the `DefaultImpls`
+method and the `!!` check, which a test can reach, were counted as junk), then called 0 of the
+remaining ones junk while two reviewers found killable mutants dropped (the operand lines of
+multi-line `&&` and `?:` in suspend functions, multi-line `!!`, copies of project inline functions
+in their callers, early `return@async`, the setter of a delegated `var`) and unkillable ones kept
+(`Unit` results, `DefaultImpls` twins, `@JvmStatic` bridges). The rules above fix each of them, and
+the numbers are what the final rules leave; "0 junk" means that no leftover of the two projects
+is a mutant no test can kill, which two projects cannot show for every project.
 
 To reproduce: run
 `gradle -Pnitpicker.kotlin=true -I <nitpicker>/languages/java/gradle/nitpicker.init.gradle nitpickerPit nitpickerKotlinMutationFacts`
@@ -634,7 +660,7 @@ fails only when it grows, and a package folder moved to a new path is matched to
 - `languages/java/ingest/kotlin-mutants/`: every filter rule with the junk it drops and the
   look-alike it keeps (`generated-filter.test.mjs`), `ingestPit` with and without the filter
   (`pit-generated.test.mjs`), and the real PIT 1.17.4 report of the measurement project with the
-  facts of its sources (`kotlin-measurement.test.mjs`: 60 mutants that would fail the gate, 16 after
+  facts of its sources (`kotlin-measurement.test.mjs`: 60 mutants that would fail the gate, 15 after
   the filter, listed one by one). `languages/java/adapters/reporting/kotlin-generated-filter.test.mjs` reads
   the generated source directories of the manifest.
 - `languages/java/adapters/kotlin-psi/mutation-facts.e2e.test.mjs` (with `npm run test:kotlin`):
