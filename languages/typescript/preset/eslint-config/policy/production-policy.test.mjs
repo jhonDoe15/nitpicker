@@ -276,6 +276,9 @@ describe('magic numbers and other basics', () => {
 
     expect(ruleIds(file, 'export const panel = 1;')).toEqual(['nitpicker/no-unknown-main-folder']);
     expect(ruleIds(file, 'export const panel = 1;', { react: true })).toEqual([]);
+    expect(ruleIds('src/main/services/api.ts', 'export const api = 1;', { react: true })).toEqual([
+      'nitpicker/no-unknown-main-folder',
+    ]);
   });
 
   it('requires a return type on exported production functions, components included', () => {

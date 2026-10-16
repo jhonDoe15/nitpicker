@@ -83,16 +83,16 @@ function configFileGlobsFor(layout) {
 }
 
 export function productionLayoutConfigFor(layout, options = {}) {
-  if (options.react === true) {
-    return [];
-  }
   return [
     {
       files: layout.sourceGlobs,
       ignores: [...layout.testGlobs, ...layout.sourceTestDirectoryGlobs],
       plugins: { nitpicker: nitpickerRules },
       rules: {
-        'nitpicker/no-unknown-main-folder': ['error', { sourceRoots: layout.sourceRoots }],
+        'nitpicker/no-unknown-main-folder': [
+          'error',
+          { sourceRoots: layout.sourceRoots, react: options.react === true },
+        ],
       },
     },
   ];

@@ -43,9 +43,14 @@ config file is an exception like any other.
 - Code under `src/main/` lives in `features/`, `shared/` or the composition root
   (`nitpicker/no-unknown-main-folder`): a `services/`, `utils/` or `models/` folder there is
   reported on every file, with the layout in the message, and so is a file directly in `src/main/`
-  other than the composition root and `index.ts` (`src/main/helpers.ts`). Put the code in the
+  other than the composition root and `index.ts` (`src/main/helpers.ts`). Inside
+  `features/<name>/` only `domain/`, `adapters/` and the public `index.ts` are allowed
+  (`features/auth/services/` and `features/auth/helpers.ts` are reported). Put the code in the
   feature that uses it (`domain/` for pure logic, `adapters/` for I/O) or in `shared/` when several
-  features need it. A React project's own UI folders are not reported. The rule reports on line 1,
+  features need it. A React project may also have UI folders directly under `src/main/` (`ui/`,
+  `components/`, `pages/`, `app/`, `routes/`, `views/`, `layouts/`, `screens/`, `hooks/`, `styles/`,
+  `assets/`) and `App.tsx`, and a `ui/` folder in a feature; any other folder, such as
+  `src/main/services/`, is reported there too. The rule reports on line 1,
   so it is not strict: editing a legacy file in `utils/` does not fail, only a new file does.
 - Objects are constructed only in the composition root. Dependencies are passed explicitly. No
   module-level `let`, and no module-level collection or object that the module mutates
