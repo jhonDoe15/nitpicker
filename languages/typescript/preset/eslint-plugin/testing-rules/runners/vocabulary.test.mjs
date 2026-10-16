@@ -1,5 +1,7 @@
 import { Linter } from 'eslint';
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
+import { resolveHeadPolicy, withHeadPolicyFile } from '../../../head-policy.mjs';
+import { rule as noRaisedTimeout } from '../../rules/testing/assertions/no-raised-test-timeout.mjs';
 import { rule as noIntervalPolling } from '../../rules/testing/lifecycle/no-interval-polling-in-tests.mjs';
 import { rule as noFixedSleep } from '../../rules/testing/lifecycle/no-fixed-sleep-synchronization.mjs';
 import { TEST_RUNNERS } from '../../../test-runner/runners.mjs';
@@ -80,4 +82,27 @@ describe('rule messages name the API of the project runner', () => {
     }
     expect(() => messagesFor(sleepRules, SLEEP, 'tap')).toThrow(/allowed values/u);
   });
+
+  it.each([
+    [undefined, 'beforeAll'],
+    ['jest', 'beforeAll'],
+    ['node', 'before'],
+    ['mocha', 'before'],
+  ])('name the shared setup hook of the runner the head policy records (%s)', (runner, hook) => {
+    const config = runner === undefined ? {} : { tools: { tests: { runner } } };
+    const code = "it('a', () => { expect(1).toBe(1); }, 60_000);";
+
+    const messages = withHeadPolicyFile(resolveHeadPolicy(config), (policyFile) => {
+      vi.stubEnv('NITPICKER_POLICY', policyFile);
+      return messagesFor({ 'no-raised-test-timeout': noRaisedTimeout }, code);
+    });
+
+    expect(messages).toEqual([
+      `Do not raise a test or hook timeout above 10000 ms, the testTimeout nitpicker runs tests with. Make the test faster instead: import code rather than spawning it, and share expensive setup in ${hook}. A genuinely long end-to-end suite can add an exception for this rule in nitpicker.config.json.`,
+    ]);
+  });
+});
+
+afterEach(() => {
+  vi.unstubAllEnvs();
 });

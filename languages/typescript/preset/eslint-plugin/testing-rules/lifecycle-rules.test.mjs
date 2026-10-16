@@ -261,7 +261,13 @@ ruleTester.run('no-first-test-charged-setup', noFirstTestChargedSetup, {
         'async function build() { built ??= await compile(); return built; }',
         "it('x', async () => { await build(); });",
       ),
-      errors: [{ messageId: 'chargedSetup', data: { name: 'built' }, line: 2 }],
+      errors: [
+        {
+          messageId: 'chargedSetup',
+          data: { name: 'built', sharedSetupHook: 'beforeAll' },
+          line: 2,
+        },
+      ],
     },
     {
       filename: testFile,
