@@ -1,8 +1,9 @@
 {
-  "description": "A toolNotRun finding with notRunScope covers only the findings of its tool whose path lies in one of the listed project directories. The base notice for core/src/main/java makes the head's clones there descriptive, both the CPD clone and the jscpd clone of the same tool, while the clone under core/src/test/java and the one in lib stay enforceable. The base notice for legacy/src/main/java follows the rename into kernel/src/main/java, so it covers the kernel clone and the head's kernel notice. A head notice whose directories no base notice of the tool covers (app) is a tool-error.",
+  "description": "A toolNotRun finding with notRunScope covers only the findings of its tool whose path lies in one of the listed project directories. The base notice for core/src/main/java makes the head's clones there descriptive, both the CPD clone and the jscpd clone of the same tool, while the clone under core/src/test/java and the one in lib stay enforceable. Every base file of legacy/src/main/java moved (keptPaths lists no file left there), so the base notice for legacy/src/main/java follows the rename into kernel/src/main/java and covers the kernel clone and the head's kernel notice. A head notice whose directories no base notice of the tool covers (app) is a tool-error.",
   "renames": {
     "legacy/src/main/java/p/E.java": "kernel/src/main/java/p/E.java"
   },
+  "keptPaths": [],
   "new": [
     {
       "tool": "duplicates",

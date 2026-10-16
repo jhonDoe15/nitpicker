@@ -1,6 +1,7 @@
 import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { rootsScope } from '../../builds/module-path.mjs';
+import { childrenNamed, parseXml } from '../../ingest/common.mjs';
 
 const CPD_REPORT = 'cpd.xml';
 const CPD_FAILURE = 'cpd-failed.txt';
@@ -31,15 +32,21 @@ function failedRun(status) {
   return /^SIG[A-Z0-9]+$/u.test(status) ? `was stopped by ${status}` : `could not run (${status})`;
 }
 
-export function skippedPaths(reportRoot, projectRoot) {
+function lexErrors(xml) {
+  return childrenNamed(parseXml(xml), 'error').map(
+    (error) => `${error.attrs.filename}: ${error.attrs.msg}`,
+  );
+}
+
+export function skippedPaths(reportRoot, { projectRoot, xml }) {
   const file = path.join(reportRoot, CPD_SKIPPED);
-  if (!existsSync(file)) {
-    return [];
-  }
-  const lines = readFileSync(file, 'utf8')
-    .split(/\r?\n/u)
+  const unread = existsSync(file) ? readFileSync(file, 'utf8').split(/\r?\n/u) : [];
+  const lines = [...unread, ...lexErrors(xml)]
     .filter((line) => line.trim() !== '')
     .map((line) => line.replaceAll(`${projectRoot}${path.sep}`, ''));
+  if (lines.length === 0) {
+    return [];
+  }
   return [
     {
       tool: DUPLICATES_TOOL,
@@ -47,8 +54,8 @@ export function skippedPaths(reportRoot, projectRoot) {
       path: '.',
       identity: CPD_SKIPPED_RULE,
       message:
-        `CPD could not read ${String(lines.length)} path(s), so duplicated code there was not ` +
-        `checked: ${lines.slice(0, MAX_ERROR_LINES).join('; ')}`,
+        `CPD could not read or tokenize ${String(lines.length)} path(s), so duplicated code there ` +
+        `was not checked: ${lines.slice(0, MAX_ERROR_LINES).join('; ')}`,
       classification: 'descriptive',
     },
   ];
@@ -71,11 +78,12 @@ export function readCpdReport(reportRoot) {
       };
 }
 
-export function cpdNotRun(reason, roots, moduleDir) {
-  const scope = rootsScope(roots, moduleDir);
-  const place = scope
-    .map((directory) => (directory === '.' ? 'the module root' : directory))
-    .join(', ');
+export function cpdNotRun(reason, roots, module) {
+  const scope = rootsScope(roots, module);
+  const place =
+    scope.length === 0
+      ? 'its source roots, which lie outside the project,'
+      : scope.map((directory) => (directory === '.' ? 'the module root' : directory)).join(', ');
   return {
     tool: DUPLICATES_TOOL,
     rule: CPD_NOT_RUN,
@@ -83,7 +91,6 @@ export function cpdNotRun(reason, roots, moduleDir) {
     identity: CPD_NOT_RUN,
     message: `No CPD duplicate report for this module, so duplicated code in ${place} was not checked: ${reason}`,
     classification: 'descriptive',
-    toolNotRun: true,
-    notRunScope: scope,
+    ...(scope.length === 0 ? {} : { toolNotRun: true, notRunScope: scope }),
   };
 }

@@ -2,13 +2,14 @@ import { spawnSync } from 'node:child_process';
 import {
   cpSync,
   existsSync,
+  lstatSync,
   mkdirSync,
   mkdtempSync,
   readdirSync,
   rmSync,
-  statSync,
   writeFileSync,
 } from 'node:fs';
+import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { JVM_NOISE, javaCommand } from '../maven-command.mjs';
 
@@ -58,15 +59,23 @@ function analyzeClasses(module, classes) {
 }
 
 function isStagedClass(source) {
+  const entry = lstatSync(source);
   return (
-    statSync(source).isDirectory() ||
-    (source.endsWith('.class') && path.basename(source) !== MODULE_INFO)
+    entry.isDirectory() ||
+    (entry.isFile() && source.endsWith('.class') && path.basename(source) !== MODULE_INFO)
   );
 }
 
+function stagingParent({ outputDirectory, buildDirectory }) {
+  const below = path.relative(outputDirectory, buildDirectory);
+  const inside = below !== '..' && !below.startsWith(`..${path.sep}`) && !path.isAbsolute(below);
+  return inside ? tmpdir() : buildDirectory;
+}
+
 function analyzeWithoutModuleInfo(module) {
-  mkdirSync(module.buildDirectory, { recursive: true });
-  const staged = mkdtempSync(path.join(module.buildDirectory, 'nitpicker-jdeps-'));
+  const parent = stagingParent(module);
+  mkdirSync(parent, { recursive: true });
+  const staged = mkdtempSync(path.join(parent, 'nitpicker-jdeps-'));
   try {
     const classes = path.join(staged, 'classes');
     cpSync(module.outputDirectory, classes, { recursive: true, filter: isStagedClass });

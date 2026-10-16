@@ -12,7 +12,9 @@ afterEach(() => {
   }
 });
 
-const report = () => '<?xml version="1.0"?>\n<pmd-cpd>\n</pmd-cpd>\n';
+function report(children = '') {
+  return `<?xml version="1.0"?>\n<pmd-cpd>\n${children}</pmd-cpd>\n`;
+}
 
 function project() {
   const root = mkdtempSync(path.join(tmpdir(), 'nitpicker-cpd-'));
@@ -22,7 +24,9 @@ function project() {
   return { root, reportRoot };
 }
 
-const options = (root) => ({ projectRoot: root, testRoots: ['src/test/java'] });
+function options(root) {
+  return { projectRoot: root, testRoots: ['src/test/java'] };
+}
 
 describe('readCpdFindings without a usable CPD run', () => {
   const NPE =
@@ -115,7 +119,7 @@ describe('readCpdFindings without a usable CPD run', () => {
         path: '.',
         identity: 'cpd-skipped-paths',
         message:
-          'CPD could not read 2 path(s), so duplicated code there was not checked: ' +
+          'CPD could not read or tokenize 2 path(s), so duplicated code there was not checked: ' +
           'src/main/java/loop: symbolic link loop; src/test/java: java.nio.file.NoSuchFileException',
         classification: 'descriptive',
       },
@@ -123,18 +127,89 @@ describe('readCpdFindings without a usable CPD run', () => {
     expect(() => parseAnalyzerReport({ findings }, 'java')).not.toThrow();
   });
 
-  it('scopes a notice whose source roots lie outside the project to the module folder', () => {
+  it('scopes the notice of a module without source roots to the module folder', () => {
     const { root, reportRoot } = project();
     writeFileSync(path.join(reportRoot, 'cpd-failed.txt'), '1\n');
 
     expect(
       readCpdFindings(reportRoot, {
         projectRoot: root,
-        sourceRoots: ['../shared/src/main/java'],
+        sourceRoots: [],
         testRoots: [],
-        moduleDir: 'app',
+        module: { moduleDir: 'app' },
       }).map(({ notRunScope }) => notRunScope),
     ).toEqual([['app']]);
+  });
+
+  it('places the module-relative roots of a Maven module under its path', () => {
+    const { root, reportRoot } = project();
+    writeFileSync(path.join(reportRoot, 'cpd-failed.txt'), '1\n');
+
+    expect(
+      readCpdFindings(reportRoot, {
+        projectRoot: root,
+        sourceRoots: ['src/main/java', '../shared/src', '../../elsewhere/src'],
+        testRoots: [],
+        module: { moduleDir: '', modulePath: 'outside' },
+      }).map(({ notRunScope }) => notRunScope),
+    ).toEqual([['outside/src/main/java', 'shared/src']]);
+  });
+
+  it('claims no scope when every source root lies outside the project', () => {
+    const { root, reportRoot } = project();
+    writeFileSync(path.join(reportRoot, 'cpd-failed.txt'), '1\n');
+
+    const findings = readCpdFindings(reportRoot, {
+      projectRoot: root,
+      sourceRoots: ['../../x/src/main/java'],
+      testRoots: ['/opt/x/src/test/java'],
+      module: { moduleDir: '', modulePath: 'platform' },
+    });
+
+    expect(findings).toEqual([
+      {
+        tool: 'duplicates',
+        rule: 'cpd-not-run',
+        path: '.',
+        identity: 'cpd-not-run',
+        message:
+          'No CPD duplicate report for this module, so duplicated code in its source roots, which ' +
+          'lie outside the project, was not checked: PMD CPD exited with code 1 and wrote no ' +
+          'report: no error output',
+        classification: 'descriptive',
+      },
+    ]);
+    expect(parseAnalyzerReport({ findings }, 'java').findings).toEqual(findings);
+  });
+
+  it('adds the files CPD could not tokenize to the paths it could not read', () => {
+    const { root, reportRoot } = project();
+    const lexed = path.join(root, 'src/main/java/L.java');
+    writeFileSync(
+      path.join(reportRoot, 'cpd.xml'),
+      report(
+        `<error filename="${lexed}" msg="LexException: Lexical error at line 4, column 3: &#34;#&#34;">` +
+          'net.sourceforge.pmd.lang.ast.LexException\n\tat CpdReport.main(CpdReport.java:65)\n</error>\n',
+      ),
+    );
+    writeFileSync(
+      path.join(reportRoot, 'cpd-skipped.txt'),
+      `${path.join(root, 'src/main/java/loop')}: symbolic link loop\n`,
+    );
+
+    expect(readCpdFindings(reportRoot, options(root))).toEqual([
+      {
+        tool: 'duplicates',
+        rule: 'cpd-skipped-paths',
+        path: '.',
+        identity: 'cpd-skipped-paths',
+        message:
+          'CPD could not read or tokenize 2 path(s), so duplicated code there was not checked: ' +
+          'src/main/java/loop: symbolic link loop; ' +
+          'src/main/java/L.java: LexException: Lexical error at line 4, column 3: "#"',
+        classification: 'descriptive',
+      },
+    ]);
   });
 
   it('reports nothing when CPD did not run on the module', () => {

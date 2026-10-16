@@ -195,14 +195,14 @@ function withTestAdvice(finding, testFiles) {
 
 export function readCpdFindings(
   reportRoot,
-  { projectRoot, sourceRoots = [], testRoots, moduleDir, jscpdRoot = reportRoot },
+  { projectRoot, sourceRoots = [], testRoots, module, jscpdRoot = reportRoot },
 ) {
   const read = readCpdReport(reportRoot);
   if (read.kind === 'missing') {
     return [];
   }
   if (read.kind === 'failed') {
-    return [cpdNotRun(read.reason, [...sourceRoots, ...testRoots], moduleDir)];
+    return [cpdNotRun(read.reason, [...sourceRoots, ...testRoots], module)];
   }
   const known = jscpdRanges(jscpdRoot);
   const clones = distinctClones(cpdClones(read.xml, projectRoot)).filter(
@@ -222,5 +222,5 @@ export function readCpdFindings(
       identity: `cpd:${finding.identity}`,
       message: `${finding.message} ${exceptionRoute(DUPLICATES_TOOL, finding.rule)}`,
     }));
-  return [...skippedPaths(reportRoot, projectRoot), ...findings];
+  return [...skippedPaths(reportRoot, { projectRoot, xml: read.xml }), ...findings];
 }

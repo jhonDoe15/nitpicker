@@ -15,24 +15,27 @@ import java.util.Arrays;
 import java.util.EnumSet;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 import net.sourceforge.pmd.cpd.CPDConfiguration;
 import net.sourceforge.pmd.cpd.CPDReport;
 import net.sourceforge.pmd.cpd.CpdAnalysis;
 import net.sourceforge.pmd.cpd.XMLRenderer;
+import net.sourceforge.pmd.lang.Language;
 import net.sourceforge.pmd.lang.LanguageRegistry;
+import net.sourceforge.pmd.lang.TokenManager;
+import net.sourceforge.pmd.lang.ast.LexException;
+import net.sourceforge.pmd.lang.ast.impl.javacc.CharStream;
+import net.sourceforge.pmd.lang.ast.impl.javacc.JavaccToken;
 import net.sourceforge.pmd.lang.document.FileId;
+import net.sourceforge.pmd.lang.document.TextDocument;
+import net.sourceforge.pmd.lang.document.TextRegion;
+import net.sourceforge.pmd.lang.java.ast.InternalApiBridge;
+import net.sourceforge.pmd.lang.java.ast.JavaTokenKinds;
 
 public final class CpdReport {
-    private static final String KEPT = "//[^\\n]*|/\\*.*?\\*/|\"(?:\\\\.|[^\"\\\\])*\"|'(?:\\\\.|[^'\\\\])*'";
-    private static final String BLOCK_COMMENT = "/\\*.*?\\*/";
-    private static final Pattern CLASS_LITERAL = Pattern.compile(
-        "(" + KEPT + ")|([\\p{javaJavaIdentifierPart}\\]>](?:\\s|" + BLOCK_COMMENT + ")*)"
-            + "\\.((?:\\s|" + BLOCK_COMMENT + "|//[^\\n]*\\n)*)class(?!\\p{javaJavaIdentifierPart})",
-        Pattern.DOTALL);
     private static final String SKIPPED = "cpd-skipped.txt";
     private static final int MINIMUM_TOKENS = 100;
+    private static final String CONST = "const";
+    private static final Language JAVA = LanguageRegistry.CPD.getLanguageById("java");
 
     private CpdReport() {
     }
@@ -47,7 +50,7 @@ public final class CpdReport {
         config.setIgnoreIdentifiers(true);
         config.setIgnoreLiterals(true);
         config.setFailOnError(false);
-        config.setOnlyRecognizeLanguage(LanguageRegistry.CPD.getLanguageById("java"));
+        config.setOnlyRecognizeLanguage(JAVA);
         Path report = Path.of(args[0]);
         XMLRenderer renderer = new XMLRenderer(config.getSourceEncoding().name());
         AtomicBoolean reported = new AtomicBoolean();
@@ -103,12 +106,39 @@ public final class CpdReport {
     private static void addSource(CpdAnalysis cpd, Path file, List<String> skipped) {
         try {
             String text = new String(Files.readAllBytes(file), StandardCharsets.UTF_8);
-            String safe = CLASS_LITERAL.matcher(text).replaceAll(match -> Matcher.quoteReplacement(
-                match.group(1) != null ? match.group() : match.group(2) + "." + match.group(3) + "const"));
-            cpd.files().addSourceFile(FileId.fromPath(file), safe);
-        } catch (IOException e) {
+            cpd.files().addSourceFile(FileId.fromPath(file), lexable(file, text));
+        } catch (IOException | RuntimeException | StackOverflowError e) {
             skip(skipped, file, e.toString());
         }
+    }
+
+    private static String lexable(Path file, String text) {
+        try {
+            return withoutClassLiterals(file, text);
+        } catch (LexException e) {
+            System.err.println("CPD reports the lexical error in " + file + ": " + e.getMessage());
+            return text;
+        }
+    }
+
+    private static String withoutClassLiterals(Path file, String text) {
+        StringBuilder safe = new StringBuilder(text);
+        TextDocument document = TextDocument.readOnlyString(text, FileId.fromPath(file), JAVA.getDefaultVersion());
+        TokenManager<JavaccToken> tokens =
+            JavaTokenKinds.newTokenManager(CharStream.create(document, InternalApiBridge.javaTokenDoc()));
+        int previous = JavaTokenKinds.EOF;
+        for (JavaccToken token = tokens.getNextToken(); !token.isEof(); token = tokens.getNextToken()) {
+            if (token.kind == JavaTokenKinds.CLASS && previous == JavaTokenKinds.DOT) {
+                overwrite(safe, token.getReportLocation().getRegionInFile());
+            }
+            previous = token.kind;
+        }
+        return safe.toString();
+    }
+
+    private static void overwrite(StringBuilder text, TextRegion keyword) {
+        String replacement = CONST + " ".repeat(keyword.getLength() - CONST.length());
+        text.replace(keyword.getStartOffset(), keyword.getEndOffset(), replacement);
     }
 
     private static void skip(List<String> skipped, Path file, String reason) {

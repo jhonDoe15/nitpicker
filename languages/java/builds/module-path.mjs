@@ -8,22 +8,22 @@ export function inModule(modulePath, relativePath) {
 }
 
 function asDirectory(root) {
-  const normalized = path.posix.normalize(root.replaceAll('\\', '/')).replace(/\/+$/u, '');
+  const normalized = path.posix.normalize(root).replace(/\/+$/u, '');
   return normalized === '' ? '.' : normalized;
 }
 
-function insideProject(directory) {
-  return (
-    directory !== '..' &&
-    !directory.startsWith('../') &&
-    !path.isAbsolute(directory) &&
-    !/^[A-Za-z]:/u.test(directory)
-  );
+function inProject(modulePath, root) {
+  const slashed = root.replaceAll('\\', '/');
+  if (slashed.startsWith('/') || /^[A-Za-z]:/u.test(slashed)) {
+    return undefined;
+  }
+  const directory = asDirectory(path.posix.join(modulePath, slashed));
+  return directory === '..' || directory.startsWith('../') ? undefined : directory;
 }
 
-export function rootsScope(roots, moduleDir = '') {
-  const scope = [
-    ...new Set(roots.map((root) => asDirectory(root)).filter((root) => insideProject(root))),
-  ];
-  return scope.length === 0 ? [asDirectory(moduleDir)] : scope;
+export function rootsScope(roots, { moduleDir = '', modulePath = '' } = {}) {
+  const directories = (roots.length === 0 ? [moduleDir] : roots).map((root) =>
+    inProject(modulePath, root),
+  );
+  return [...new Set(directories.filter((directory) => directory !== undefined))];
 }

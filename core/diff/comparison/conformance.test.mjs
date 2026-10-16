@@ -66,12 +66,14 @@ describe('findings conformance fixtures', () => {
       readJson('findings', name, 'head.json'),
       'head',
     ).findings;
-    const compare = () =>
-      compareFindings({
+    function compare() {
+      return compareFindings({
         baseFindings,
         headFindings,
         baseToHeadRenames: new Map(Object.entries(expected.renames ?? {})),
+        keptBasePaths: expected.keptPaths === undefined ? undefined : new Set(expected.keptPaths),
       });
+    }
 
     expect(thrownMessage(compare)).toEqual(expectedFailure(expected.error));
     const result = compare();

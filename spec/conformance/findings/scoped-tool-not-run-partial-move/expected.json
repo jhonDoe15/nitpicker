@@ -1,5 +1,5 @@
 {
-  "description": "Moving one file out of a directory a base notice covers adds the moved directory to the notice's scope and keeps the original. The base notice for core still covers the clone left in core/src/main/java and the one in integration/src/test/java, and the head's core notice, with the same identity, is not a tool error.",
+  "description": "Moving one file out of a directory a base notice covers adds that file's head path to the notice's scope and keeps the original directory; without keptPaths a move counts as partial. The base notice for core still covers the clone left in core/src/main/java and the moved integration/src/test/java/p/T.java, and the head's core notice, with the same identity, is not a tool error.",
   "renames": {
     "core/src/test/java/p/T.java": "integration/src/test/java/p/T.java"
   },

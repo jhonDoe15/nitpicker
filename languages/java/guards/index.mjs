@@ -4,19 +4,19 @@ import { readForbiddenApiFindings } from './forbidden-apis.mjs';
 import { readLintFindings } from './javac-lint.mjs';
 
 export function readGuardFindings(context) {
-  const { reportRoot, jscpdRoot, projectRoot, manifest, moduleDir, locate } = context;
+  const { reportRoot, jscpdRoot, projectRoot, manifest, module, locate } = context;
   return [
     ...readLintFindings(reportRoot, {
       projectRoot,
       sourceRoots: manifest.sourceRoots ?? [],
-      moduleDir,
+      module,
     }),
     ...readForbiddenApiFindings(reportRoot, { locate, projectRoot }),
     ...readCpdFindings(reportRoot, {
       projectRoot,
       sourceRoots: manifest.sourceRoots ?? [],
       testRoots: manifest.testSourceRoots ?? [],
-      moduleDir,
+      module,
       jscpdRoot,
     }),
     ...readDependencyFindings(reportRoot),
