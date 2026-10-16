@@ -163,7 +163,7 @@ describe('the overlap list in docs/java-preset.md', () => {
       rules.map((rule) => `\`${rule.replace(CHECKSTYLE, 'checkstyle/$1')}\``).join(', ');
     const documented = readFileSync(DOCS, 'utf8')
       .split('\n')
-      .filter((line) => /^- (?:line|member|class|field|file): `/u.test(line));
+      .filter((line) => /^- (?:line|member|javadoc|class|field|file): `/u.test(line));
 
     expect(documented).toStrictEqual(
       OVERLAP_PAIRS.map(

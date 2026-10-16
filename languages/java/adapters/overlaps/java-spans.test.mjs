@@ -34,6 +34,7 @@ const SOURCE = [
 describe('javaSpans', () => {
   it('finds classes and members, skipping braces in comments, strings, characters and text blocks', () => {
     expect(javaSpans(SOURCE)).toStrictEqual([
+      { kind: 'javadoc', start: 3, end: 3 },
       { kind: 'member', name: 'Outer#job@6', start: 6, end: 8 },
       { kind: 'member', name: 'Outer#toString@10', start: 10, end: 19 },
       { kind: 'member', name: 'Outer$Inner#Inner@23', start: 23, end: 25 },
@@ -41,17 +42,27 @@ describe('javaSpans', () => {
       { kind: 'class', name: 'Outer', start: 4, end: 27 },
     ]);
   });
+
+  it('spans a Javadoc comment over all its lines, and not an empty block comment', () => {
+    expect(
+      javaSpans(['/**/', '/**', ' * @author x', ' */', 'class A {}'].join('\n')),
+    ).toStrictEqual([
+      { kind: 'javadoc', start: 2, end: 4 },
+      { kind: 'class', name: 'A', start: 5, end: 5 },
+    ]);
+  });
 });
 
 describe('lineLocator', () => {
-  it('names the class, member and declared field at a line', () => {
+  it('names the class, member, Javadoc comment and declared field at a line', () => {
     const at = lineLocator(SOURCE);
 
-    expect([5, 7, 17, 22].map((line) => at(line))).toStrictEqual([
-      { className: 'Outer', member: undefined, field: 'counts' },
-      { className: 'Outer', member: 'Outer#job@6', field: undefined },
-      { className: 'Outer', member: 'Outer#toString@10', field: undefined },
-      { className: 'Outer$Inner', member: undefined, field: 'value' },
+    expect([3, 5, 7, 17, 22].map((line) => at(line))).toStrictEqual([
+      { className: undefined, member: undefined, javadoc: 3, field: undefined },
+      { className: 'Outer', member: undefined, javadoc: undefined, field: 'counts' },
+      { className: 'Outer', member: 'Outer#job@6', javadoc: undefined, field: undefined },
+      { className: 'Outer', member: 'Outer#toString@10', javadoc: undefined, field: undefined },
+      { className: 'Outer$Inner', member: undefined, javadoc: undefined, field: 'value' },
     ]);
   });
 });

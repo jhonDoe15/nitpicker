@@ -18,6 +18,12 @@ const SOURCE = [
   'class B {',
   '  private int f;',
   '}',
+  '/**',
+  ' * @author x',
+  ' */',
+  'class C {}',
+  '/** D. */',
+  'class D {}',
 ].join('\n');
 
 function at(printedRule, line, extra = {}) {
@@ -35,6 +41,7 @@ const SCOPED = {
   line: { primary: 5, covered: { line: 5 }, apart: { line: 6 } },
   member: { primary: 5, covered: { line: 6 }, apart: { line: 9 } },
   class: { primary: 5, covered: { line: 9 }, apart: { line: 13 } },
+  javadoc: { primary: 16, covered: { line: 15 }, apart: { line: 19 } },
   file: { primary: 5, covered: { line: 13 }, apart: { line: 5, path: 'src/Other.java' } },
   field: { primary: 3, covered: { symbol: 'demo.A.f' }, apart: { symbol: 'demo.B.f' } },
 };

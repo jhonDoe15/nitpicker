@@ -369,7 +369,7 @@
   {
     "primary": ["errorprone/WildcardImport"],
     "secondary": ["checkstyle/com.puppycrawl.tools.checkstyle.checks.imports.AvoidStarImportCheck"],
-    "scope": "line"
+    "scope": "file"
   },
   {
     "primary": ["errorprone/LongLiteralLowerCaseSuffix"],
@@ -466,7 +466,7 @@
   {
     "primary": ["errorprone/MissingSummary"],
     "secondary": ["checkstyle/com.puppycrawl.tools.checkstyle.checks.javadoc.SummaryJavadocCheck"],
-    "scope": "line"
+    "scope": "javadoc"
   },
   {
     "primary": ["errorprone/AnnotationPosition"],
