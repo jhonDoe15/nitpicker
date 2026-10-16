@@ -55,6 +55,7 @@ describe('duplicate findings in the quality-area analyzers', () => {
           'This code repeats src/main/b.ts:7 (10 lines). Keep one copy and call it from both places.',
         classification: 'enforceable',
         location: { line: 2 },
+        ratchet: { key: 'pair:src/main/a.ts|src/main/b.ts:clone', value: 30, divisible: true },
       },
       {
         tool: 'duplicates',
@@ -104,6 +105,7 @@ describe('duplicate findings in the quality-area analyzers', () => {
           'This code repeats src/main/z.ts:2 (10 lines). Keep one copy and call it from both places.',
         classification: 'enforceable',
         location: { line: 7 },
+        ratchet: { key: 'pair:src/main/a.ts|src/main/z.ts:clone', value: 30, divisible: true },
       },
       {
         tool: 'duplicates',

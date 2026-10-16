@@ -481,9 +481,9 @@ identity when the value changes: editing such a line counts as a resolved plus a
   (descriptive metrics `lines` and `tokens`). There is no extra threshold:
   jscpd's defaults (5 lines, 50 tokens) apply, as for TypeScript.
 
-| Tool                 | Report                      | Ingester                                              | Classification                                                    | Identity                                                                                                                                                  |
-| -------------------- | --------------------------- | ----------------------------------------------------- | ----------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| jscpd (`duplicates`) | jscpd JSON, per source root | `normalizeDuplicates` (TypeScript `duplicates` check) | `duplicate-clone` enforceable; `duplicate-clone-size` descriptive | Sorted file pair, a hash of the cloned text, and the n-th occurrence of that pair; the size metrics use pair, occurrence and metric name. No line number. |
+| Tool                 | Report                      | Ingester                                              | Classification                                                    | Identity                                                                                                                                                              |
+| -------------------- | --------------------------- | ----------------------------------------------------- | ----------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| jscpd (`duplicates`) | jscpd JSON, per source root | `normalizeDuplicates` (TypeScript `duplicates` check) | `duplicate-clone` enforceable; `duplicate-clone-size` descriptive | Sorted file pair, a hash of the cloned text, and the n-th occurrence of that text in the pair; the size metrics use pair, occurrence and metric name. No line number. |
 
 Editing the cloned text changes its hash, so a clone that was changed (not only moved) counts as a
 resolved plus a new finding, as in the TypeScript check.
@@ -778,16 +778,21 @@ A Checkstyle rule prints as its full check class, for example
   itself (`certificate.getNotAfter().toInstant()`).
 - **Duplicates.** The jscpd check is unchanged. `nitpickerCpd` runs PMD's copy-paste detector
   (BSD-style, already inside the pinned PMD) over main and test sources with identifiers and
-  literals ignored and at least 100 tokens, so a copy with renamed variables is found. A clone
-  jscpd already reports (same two files, overlapping lines) is not reported twice, overlapping
+  literals ignored and at least 100 tokens, so a copy with renamed variables is found. When jscpd
+  and CPD report the same clone (same two files, overlapping lines), only the CPD finding is
+  kept, overlapping
   windows of one file pair are one finding, a block that overlaps its own copy is dropped, and so
   are clones made only of getters, setters, field declarations and field-assigning constructors
   or only of data rows (enum constants, `Arguments.of(...)` rows, literal lists, and constants
   built from literals with `Map.ofEntries`, `Map.of`, `List.of`, `Set.of`, `Stream.of` or
-  `Arrays.asList`). The files of a duplication are sorted by path, so the order CPD lists them in
+  `Arrays.asList`; any other row needs a number or a literal, so a run of calls such as
+  `validate();` is code). The files of a duplication are sorted by path, so the order CPD lists them in
   does not matter, and the identity hashes the clone's token shape (its punctuation and
   operators, without names, literals and comments), so editing a name or a literal in a legacy
-  copy keeps its identity. Findings use the
+  copy keeps its identity. A legacy clone that shrinks (a statement inserted in one copy) or
+  that jscpd splits in two is held at its base size, for jscpd and CPD alike: a new clone between
+  the same two files fails only when it, with the other new clones of that pair, has more tokens
+  than a base clone of the pair that no longer matches. Findings use the
   same tool and rule as jscpd (`duplicates/duplicate-clone`), with identities starting `cpd:` so
   they never match a jscpd finding; between two test files the message points at a helper or a
   `@ParameterizedTest`. The message ends with the exception route for

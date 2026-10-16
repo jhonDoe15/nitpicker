@@ -183,6 +183,40 @@ describe('duplicates rule on neutral clones', () => {
     expect(failures[0].location).toEqual({ line: 8 });
   });
 
+  it('keeps the identity of one clone when another clone between the same files goes or comes', () => {
+    const identities = (...fragments) =>
+      byRule(
+        evaluateDuplicates(
+          fragments.map((fragment) => clone('a.java', 'b.java', { fragment })),
+          'duplicates',
+        ),
+        'duplicate-clone',
+      ).map((finding) => finding.identity);
+
+    const both = identities('x', 'y');
+
+    expect(identities('y')).toEqual([both[1]]);
+    expect(identities('z', 'x', 'y')).toEqual([expect.any(String), ...both]);
+  });
+
+  it('ratchets each clone on its file pair and token count', () => {
+    const [failure] = byRule(
+      evaluateDuplicates([clone('b.java', 'a.java')], 'duplicates'),
+      'duplicate-clone',
+    );
+    const [byLines] = byRule(
+      evaluateDuplicates([clone('a.java', 'b.java', { tokens: undefined })], 'duplicates'),
+      'duplicate-clone',
+    );
+
+    expect(failure.ratchet).toEqual({
+      key: 'pair:a.java|b.java:clone',
+      value: 60,
+      divisible: true,
+    });
+    expect(byLines.ratchet.value).toBe(6);
+  });
+
   it('adds size metrics and omits a location for an unusable line', () => {
     const findings = evaluateDuplicates(
       [clone('a.java', 'b.java', { first: { file: 'a.java' } })],
