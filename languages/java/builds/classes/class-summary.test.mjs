@@ -58,16 +58,19 @@ describe('classSummary', () => {
     ).toEqual(['demo/Base', 'demo/Named', 'java/util/Map', 'java/util/List', 'java/time/Duration']);
   });
 
-  it('reads the permitted subclasses of a sealed type and no superclass for Object', () => {
+  it('reads the permitted subclasses of a sealed type', () => {
     const classes = compiled({
       'demo/Shape.java': 'package demo;\npublic sealed interface Shape permits Circle {}\n',
       'demo/Circle.java': 'package demo;\npublic final class Circle implements Shape {}\n',
     });
 
-    expect(classSummary(readFileSync(path.join(classes, 'demo/Shape.class')))).toMatchObject({
+    expect(classSummary(readFileSync(path.join(classes, 'demo/Shape.class')))).toEqual({
       name: 'demo/Shape',
       superName: 'java/lang/Object',
+      interfaces: [],
+      sourceFile: 'Shape.java',
       permitted: ['demo/Circle'],
+      references: new Set(['demo/Shape', 'java/lang/Object', 'demo/Circle']),
     });
   });
 });

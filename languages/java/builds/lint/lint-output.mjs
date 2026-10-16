@@ -36,8 +36,10 @@ function isLombokName(name, imports) {
 function lombokAnnotationAt(block, importsOf) {
   const [header, source = '', caret = ''] = block;
   const column = caret.indexOf('^');
-  const annotation = column < 0 ? null : ANNOTATION.exec(source.slice(column));
-  return annotation !== null && isLombokName(annotation[1], importsOf(WARNING.exec(header)[1]));
+  const annotation = column < 0 ? undefined : ANNOTATION.exec(source.slice(column));
+  return (
+    annotation?.[1] !== undefined && isLombokName(annotation[1], importsOf(WARNING.exec(header)[1]))
+  );
 }
 
 function importReader() {

@@ -66,17 +66,19 @@ function lintSources(plan, { sources, modular }) {
     const staged = path.join(work, 'sources');
     const classes = path.join(work, 'classes');
     mkdirSync(classes, { recursive: true });
+    const listed = new Set(plan.sources);
     const files = [
       ...stageSources({ root: plan.root, sources, staged }),
-      ...(modular ? generatedFiles(plan.generatedSources ?? []) : []),
+      ...(modular ? generatedFiles(plan.generatedSources).filter((file) => !listed.has(file)) : []),
     ];
-    const compile = (lookup) =>
-      compileForLint({
+    function compile(lookup) {
+      return compileForLint({
         plan,
         work,
         args: lintArguments(plan, { classes, modular: lookup }),
         files,
       });
+    }
     const first = compile(modular);
     const result = first.code === 0 || !modular ? first : compile('all');
     const context = {
@@ -112,18 +114,31 @@ function clearReports(plan, reportDir) {
   }
 }
 
-export function runJavacLint(plan, { reportDir, baselineRoot }) {
-  clearReports(plan, reportDir);
+function lintedSources(plan) {
   const java = [...new Set(plan.sources)]
     .filter((file) => file.endsWith('.java') && inside(plan.root, file) && existsSync(file))
     .sort();
   const moduleInfo = java.find((file) => path.basename(file) === MODULE_INFO);
-  const all = java.filter((file) => file !== moduleInfo && inside(plan.basedir, file));
+  return {
+    moduleInfo,
+    all: java.filter((file) => file !== moduleInfo && inside(plan.basedir, file)),
+  };
+}
+
+function reusedWarnings(plan, { baselineRoot, all, fingerprint }) {
+  function reportPath(file) {
+    return posix(path.relative(plan.reportRoot, file));
+  }
+  return reusableWarnings(plan, { baselineRoot, sources: all, fingerprint, reportPath });
+}
+
+export function runJavacLint(plan, { reportDir, baselineRoot }) {
+  clearReports(plan, reportDir);
+  const { moduleInfo, all } = lintedSources(plan);
   const fingerprint = lintFingerprint(plan);
-  const reportPath = (file) => posix(path.relative(plan.reportRoot, file));
   const { unchanged, kept } =
     moduleInfo === undefined
-      ? reusableWarnings(plan, { baselineRoot, sources: all, fingerprint, reportPath })
+      ? reusedWarnings(plan, { baselineRoot, all, fingerprint })
       : { unchanged: new Set(), kept: '' };
   const sources = [
     ...all.filter((file) => !unchanged.has(file)),
