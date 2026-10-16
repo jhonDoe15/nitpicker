@@ -21,6 +21,7 @@ const VALUE_ARGUMENTS = new Set([
   '--project-policy-root',
   '--snapshot',
   '--baseline-root',
+  '--baseline-moves-file',
   '--crap-score-limit',
   '--legacy-inventory',
 ]);
@@ -55,6 +56,7 @@ export function parseArguments(arguments_) {
       (value) => validatedSnapshotRoot(value, '--baseline-root'),
       undefined,
     ),
+    baselineMovesFile: optionalValue(values.get('--baseline-moves-file'), movesFileOf, undefined),
   };
 }
 
@@ -100,6 +102,14 @@ function trustedToolRoot(values) {
     throw new Error('--tool-root must be the project checkout containing this adapter');
   }
   return toolRoot;
+}
+
+function movesFileOf(value) {
+  const file = realpathSync(path.resolve(value));
+  if (!lstatSync(file).isFile()) {
+    throw new Error('--baseline-moves-file must be a file');
+  }
+  return file;
 }
 
 function projectPolicyRootOf(values, projectRoot) {

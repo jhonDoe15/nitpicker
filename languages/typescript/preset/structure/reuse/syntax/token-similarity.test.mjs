@@ -56,8 +56,8 @@ describe('tokenSimilarity', () => {
       left: ['a', ...tokens(count), 'b'],
       right: ['c', ...tokens(count), 'd'],
     });
-    const small = around(900);
-    const big = around(1100);
+    const small = around(9000);
+    const big = around(11000);
 
     expect(tokenSimilarity(small.left, small.right, 0.8)).toBeGreaterThan(0.99);
     expect(tokenSimilarity(big.left, big.right, 0.8)).toBe(0);

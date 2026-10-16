@@ -48,9 +48,16 @@ describe('sibling-copy-edit on many large copies', () => {
     );
   });
 
-  it('skips a pair whose differing middle is too big to compare', TIME_LIMIT, () => {
+  it('compares large copies with scattered edits', TIME_LIMIT, () => {
     const base = project(2, (index) => render({ seed: index, lines: 400 }));
     const head = { ...base, 'src/f0/render.ts': render({ seed: 0, lines: 400, edited: true }) };
+
+    expect(siblingRows(base, head).map(([, file]) => file)).toEqual(['src/f0/render.ts']);
+  });
+
+  it('skips a pair whose differing middle is too big to compare', TIME_LIMIT, () => {
+    const base = project(2, (index) => render({ seed: index, lines: 1500 }));
+    const head = { ...base, 'src/f0/render.ts': render({ seed: 0, lines: 1500, edited: true }) };
 
     expect(siblingRows(base, head)).toEqual([]);
   });
