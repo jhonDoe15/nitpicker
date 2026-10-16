@@ -91,6 +91,7 @@ export const rule = {
     docs: {
       description: 'Name a string literal that a file repeats three times or more',
       requiresTypeChecking: true,
+      typeCheckingOnlyExempts: true,
     },
     schema: [],
     messages: {

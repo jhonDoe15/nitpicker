@@ -137,6 +137,21 @@ describe('translatePlan', () => {
     ]);
   });
 
+  it('also screens with oxlint the type-aware plugin rules whose types only exempt', () => {
+    const translated = translatePlan(
+      { ...plan, screenedPluginRules: ['functional/prefer-immutable-types'] },
+      { nativeRules, bridgedRules: new Set() },
+    );
+
+    expect(
+      translated.partitions[0].overrides[0].rules['js-functional/prefer-immutable-types'],
+    ).toBe('error');
+    expect(translated.residual).toEqual([
+      { files: ['src/a.ts'], rules: ['functional/prefer-immutable-types'] },
+    ]);
+    expect([...translated.screenedRules]).toEqual(['functional/prefer-immutable-types']);
+  });
+
   it('maps reported oxlint names back to the ESLint rule ids', () => {
     const { ruleNames } = translatePlan(plan, { nativeRules, bridgedRules: new Set() });
 

@@ -20,6 +20,7 @@ async function lintPlan(root, globs) {
     groups: new Map(),
     noInlineConfig: [],
     typedPluginRules: new Set(),
+    screenedPluginRules: new Set(),
     ruleMessages: {},
   };
   for (const file of candidateFiles(root, globs)) {
@@ -30,6 +31,7 @@ async function lintPlan(root, globs) {
     groups: [...plan.groups.values()],
     noInlineConfig: plan.noInlineConfig,
     typedPluginRules: [...plan.typedPluginRules],
+    screenedPluginRules: [...plan.screenedPluginRules],
     ruleMessages: plan.ruleMessages,
   };
 }
@@ -42,7 +44,12 @@ function addFile(plan, file, config) {
     settings: config.settings ?? {},
   });
   if (config.linterOptions?.noInlineConfig === true) plan.noInlineConfig.push(file);
-  for (const ruleId of typedRulesOf(config, rules)) plan.typedPluginRules.add(ruleId);
+  for (const ruleId of typedRulesOf(config, rules)) {
+    plan.typedPluginRules.add(ruleId);
+    if (ruleDefinition(config, ruleId).meta.docs.typeCheckingOnlyExempts === true) {
+      plan.screenedPluginRules.add(ruleId);
+    }
+  }
   addRuleMessages(plan.ruleMessages, config, rules);
 }
 

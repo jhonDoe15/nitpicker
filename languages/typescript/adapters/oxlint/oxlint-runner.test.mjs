@@ -195,3 +195,95 @@ describe('lintWithOxlint with type-aware rules', () => {
     expect(lines('src/sub/nested.ts')).toEqual(expected);
   });
 });
+
+const SCREENED_POLICY = `import tseslint from ${JSON.stringify(import.meta.resolve('typescript-eslint'))};
+
+const local = {
+  rules: {
+    'no-foo-typed': {
+      meta: {
+        type: 'problem',
+        docs: { requiresTypeChecking: true, typeCheckingOnlyExempts: true },
+        schema: [],
+        messages: { foo: 'No foo.' },
+      },
+      create(context) {
+        return {
+          Identifier(node) {
+            if (node.name === 'foo') context.report({ node, messageId: 'foo' });
+          },
+        };
+      },
+    },
+  },
+};
+
+export default [
+  {
+    files: ['src/**/*.ts'],
+    languageOptions: { parser: tseslint.parser },
+    plugins: { local },
+    rules: { 'no-debugger': 'error', 'local/no-foo-typed': 'error' },
+  },
+];
+`;
+
+describe('lintWithOxlint with type-aware rules whose types only exempt', () => {
+  let screenedRoot;
+
+  function screenedLint(patterns, runEslintCli) {
+    return lintWithOxlint({
+      options: { projectRoot: screenedRoot, patterns },
+      environment: {
+        ...process.env,
+        NITPICKER_DIFF_ESLINT_POLICY_CONFIG: path.join(screenedRoot, 'policy.mjs'),
+        NITPICKER_DIFF_ESLINT_PROJECT_ROOT: screenedRoot,
+      },
+      runEslintCli,
+    });
+  }
+
+  beforeAll(() => {
+    screenedRoot = realpathSync(
+      mkdtempSync(path.join(tmpdir(), 'nitpicker-oxlint-screened-test-')),
+    );
+    mkdirSync(path.join(screenedRoot, 'src'));
+    writeFileSync(path.join(screenedRoot, 'policy.mjs'), SCREENED_POLICY);
+    writeFileSync(path.join(screenedRoot, 'src/candidate.ts'), 'export const foo = 1;\n');
+    writeFileSync(path.join(screenedRoot, 'src/clean.ts'), 'export const bar = 1;\ndebugger;\n');
+  });
+
+  afterAll(() => {
+    rmSync(screenedRoot, { recursive: true, force: true });
+  });
+
+  it('runs ESLint only on the files the untyped rule reported and keeps its typed findings', () => {
+    const calls = [];
+    const typed = { ruleId: 'local/no-foo-typed', line: 1, column: 1, message: 'Typed foo.' };
+    const linted = screenedLint(['src/**/*.ts'], (files, environment) => {
+      calls.push({ files, rules: environment.NITPICKER_DIFF_ESLINT_ONLY_RULES });
+      return [{ filePath: path.join(screenedRoot, 'src/candidate.ts'), messages: [typed] }];
+    });
+
+    expect(calls).toEqual([{ files: ['src/candidate.ts'], rules: '["local/no-foo-typed"]' }]);
+    expect(
+      linted.map(({ filePath, messages }) => [
+        path.relative(screenedRoot, filePath),
+        messages.map(({ ruleId, line, message }) => ({ ruleId, line, message })),
+      ]),
+    ).toEqual([
+      ['src/candidate.ts', [{ ruleId: 'local/no-foo-typed', line: 1, message: 'Typed foo.' }]],
+      ['src/clean.ts', [{ ruleId: 'no-debugger', line: 2, message: expect.any(String) }]],
+    ]);
+  });
+
+  it('starts no ESLint run when the untyped rule reports nothing', () => {
+    const linted = screenedLint(['src/clean.ts'], () => {
+      throw new Error('no file needs ESLint here');
+    });
+
+    expect(linted.flatMap(({ messages }) => messages.map(({ ruleId }) => ruleId))).toEqual([
+      'no-debugger',
+    ]);
+  });
+});

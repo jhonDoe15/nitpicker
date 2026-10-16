@@ -20,6 +20,7 @@ export const rule = {
     docs: {
       description: 'Do not spread the accumulator inside reduce',
       requiresTypeChecking: true,
+      typeCheckingOnlyExempts: true,
     },
     schema: [],
     messages: {

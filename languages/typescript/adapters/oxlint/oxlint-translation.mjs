@@ -77,19 +77,26 @@ function oxlintSetting(name, setting) {
   return options.length === 0 ? level : [level, ...options];
 }
 
+function residualRole(ruleId, translated, context) {
+  if (translated.plugin === undefined || !context.typedPluginRules.has(ruleId)) return 'none';
+  return context.screenedRules.has(ruleId) ? 'screened' : 'only';
+}
+
+function addTranslatedRule(rules, context, { ruleId, setting, translated }) {
+  rules[translated.name] = oxlintSetting(translated.name, setting);
+  context.ruleNames.set(translated.name, ruleId);
+  if (translated.plugin !== undefined) addBridgedRule(context.plugins, translated.plugin, ruleId);
+  if (translated.typeAware) context.typeAware.value = true;
+}
+
 function translateGroup(group, context) {
   const rules = {};
   const residualRules = [];
   for (const [ruleId, setting] of Object.entries(group.rules)) {
     const translated = translateRule(ruleId, context);
-    if (translated.plugin !== undefined && context.typedPluginRules.has(ruleId)) {
-      residualRules.push(ruleId);
-      continue;
-    }
-    rules[translated.name] = oxlintSetting(translated.name, setting);
-    context.ruleNames.set(translated.name, ruleId);
-    if (translated.plugin !== undefined) addBridgedRule(context.plugins, translated.plugin, ruleId);
-    if (translated.typeAware) context.typeAware.value = true;
+    const role = residualRole(ruleId, translated, context);
+    if (role !== 'none') residualRules.push(ruleId);
+    if (role !== 'only') addTranslatedRule(rules, context, { ruleId, setting, translated });
   }
   return {
     override: { files: group.files.map(escapeGlob), globals: group.globals ?? {}, rules },
@@ -109,6 +116,7 @@ export function translatePlan(plan, { nativeRules, bridgedRules }) {
     nativeRules,
     bridgedRules,
     typedPluginRules: new Set(plan.typedPluginRules),
+    screenedRules: new Set(plan.screenedPluginRules),
     ruleNames: new Map(),
     plugins: new Map(),
     typeAware: { value: false },
@@ -119,6 +127,7 @@ export function translatePlan(plan, { nativeRules, bridgedRules }) {
     residual: translated
       .filter(({ residualRules }) => residualRules.length > 0)
       .map(({ group, residualRules }) => ({ files: group.files, rules: residualRules })),
+    screenedRules: context.screenedRules,
     ruleNames: context.ruleNames,
     plugins: [...context.plugins.values()],
     typeAware: context.typeAware.value,
