@@ -169,7 +169,7 @@
       "reason": "The generated tsconfig must carry an explicit baseUrl: null to unset a baseUrl inherited through extends; undefined is dropped by JSON.stringify and leaves the inherited value in place."
     },
     {
-      "rule": "no-restricted-syntax",
+      "rule": "nitpicker/no-default-export",
       "paths": ["languages/typescript/adapters/test-runners/node-test/node-test-reporter.mjs"],
       "reason": "node --test-reporter loads a reporter only through the module's default export."
     }
