@@ -79,7 +79,7 @@ export function javaRelease(compiler) {
 }
 
 function written(reportDir, file, content) {
-  const target = path.join(reportDir, file);
+  const target = path.join(reportDir, path.basename(file));
   writeFileSync(target, content);
   return target;
 }

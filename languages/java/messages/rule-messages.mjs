@@ -4,10 +4,7 @@ import { exceptionHint } from '../../../shared/rules/exceptions.mjs';
 export const CATALOG_TOOLS = ['pmd', 'checkstyle', 'spotbugs'];
 export const LAYOUT_FIX = 'Run google-java-format on the file; it fixes this layout.';
 const CATALOGS = new Map(CATALOG_TOOLS.map((tool) => [tool, readCatalog(tool)]));
-const ERROR_PRONE_CERTAIN_BUGS = new Set(
-  JSON.parse(readFileSync(new URL('../gradle/errorprone/checks.json', import.meta.url), 'utf8'))
-    .certainBugs,
-);
+const ERROR_PRONE_CERTAIN_BUGS = readCertainBugs();
 const ROUTED = new Set([
   ...CATALOG_TOOLS,
   'errorprone',
@@ -26,6 +23,11 @@ const CONFIG_FILE = 'nitpicker.config.json';
 
 export function readCatalog(tool) {
   return JSON.parse(readFileSync(new URL(`./${tool}.json`, import.meta.url), 'utf8'));
+}
+
+function readCertainBugs() {
+  const checks = new URL('../gradle/errorprone/checks.json', import.meta.url);
+  return new Set(JSON.parse(readFileSync(checks, 'utf8')).certainBugs);
 }
 
 export function checkstyleRuleName(source) {

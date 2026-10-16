@@ -1,4 +1,5 @@
 const UTF8_TAG = 1;
+const DESCRIPTOR_PUNCTUATION = 3;
 const HEADER = [0xca, 0xfe, 0xba, 0xbe, 0x00, 0x00, 0x00, 0x41];
 
 function utf8Constant(text) {
@@ -15,6 +16,6 @@ export function classWithStrings(strings) {
 }
 
 export function descriptorOfLength(length, packagePath) {
-  const simpleLength = length - packagePath.length - 3;
+  const simpleLength = length - packagePath.length - DESCRIPTOR_PUNCTUATION;
   return `L${packagePath}/${'W'.repeat(simpleLength)};`;
 }

@@ -1,6 +1,6 @@
 import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
-import { createLineIdentity } from '../ingest/common.mjs';
+import { createLineIdentity, projectFile } from '../ingest/common.mjs';
 import { placeDeclarations } from './forbidden/declarations.mjs';
 import { blanked } from '../ingest/source-text.mjs';
 
@@ -121,8 +121,9 @@ function sourceReader(projectRoot) {
   const sources = new Map();
   return (file) => {
     if (!sources.has(file)) {
-      const absolute = path.join(projectRoot, file);
-      sources.set(file, existsSync(absolute) ? blanked(readFileSync(absolute, 'utf8')) : undefined);
+      const absolute = projectFile(projectRoot, file);
+      const exists = absolute !== undefined && existsSync(absolute);
+      sources.set(file, exists ? blanked(readFileSync(absolute, 'utf8')) : undefined);
     }
     return sources.get(file);
   };

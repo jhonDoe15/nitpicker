@@ -1,6 +1,6 @@
 import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
-import { createLineIdentity } from '../ingest/common.mjs';
+import { createLineIdentity, projectFile } from '../ingest/common.mjs';
 import { exceptionHint } from '../../../shared/rules/exceptions.mjs';
 import { rootsScope } from '../builds/module-path.mjs';
 
@@ -71,7 +71,8 @@ function projectFileCheck(projectRoot) {
   const known = new Map();
   return (file) => {
     if (!known.has(file)) {
-      known.set(file, existsSync(path.join(projectRoot, file)));
+      const absolute = projectFile(projectRoot, file);
+      known.set(file, absolute !== undefined && existsSync(absolute));
     }
     return known.get(file);
   };
