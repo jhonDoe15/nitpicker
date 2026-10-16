@@ -20,7 +20,6 @@
 //   rules.json           written by the nitpicker rules script (default: no findings)
 //   structure-data.json  written as the structure metrics report of `python structure_metrics.py`
 //                        (default: no functions)
-//   lizard-data.csv      printed by `lizard --csv` (default: no functions); `lizard --version` is 1.24.1
 //   no-mutmut.txt        the mutmut version probe fails
 //   mutmut-version.txt   the version the mutmut probe prints (default 3.8.0)
 //   mutants-data.json    { "<source path>": { "exitCodes": {...}, "mutated": "<text>" } }: what
@@ -244,14 +243,6 @@ function python() {
   process.stdout.write(`8.3.1 ${flag('pytest-cov.txt')} ${flag('xdist.txt')}\n`);
 }
 
-function lizard() {
-  if (args[0] === '--version') {
-    process.stdout.write('1.24.1\n');
-  } else if (existsSync('lizard-data.csv')) {
-    process.stdout.write(readFileSync('lizard-data.csv', 'utf8'));
-  }
-}
-
 const MUTMUT_MESSAGES = {
   0: '',
   1: 'Stopping early, because we could not find any test case for any mutant.\n',
@@ -299,7 +290,6 @@ const tools = {
   pyright,
   basedpyright: pyright,
   python,
-  lizard,
   mutmut,
   'lint-imports': lintImports,
 };

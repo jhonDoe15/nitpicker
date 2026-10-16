@@ -11,7 +11,6 @@ const TOOLS = [
   'basedpyright',
   'python',
   'python3',
-  'lizard',
   'mutmut',
   'lint-imports',
 ];

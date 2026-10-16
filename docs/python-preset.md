@@ -25,8 +25,7 @@ node languages/python/adapters/python-runner.mjs --part python     (analyzer pyt
   -> coverage run --branch -m pytest | unittest    -> coverage.json  (coverage.py JSON report)
   -> mypy --strict | pyright | basedpyright (strict) -> type-check.json
   -> python -I nitpicker_rules.py                  -> rules.json     (the small AST checks)
-  -> python structure_metrics.py                    -> structure.json  (slice 3)
-  -> lizard --csv -l python                         -> lizard.csv      (slice 3)
+  -> python structure_metrics.py                    -> structure.json  (slice 3; also the CRAP input)
   -> jscpd --format python (all source roots at once) -> duplicates.json
   -> python import-scan.py (stdlib ast)            -> imports.json    (modules and their imports)
   -> lint-imports (only with an import-linter config) -> import-linter.txt
@@ -367,7 +366,7 @@ directory>` or `-m unittest discover` (with `-s tests` or `-s test` when that di
   Paths are made project-relative.
 - **Tool failures.** Anything that goes wrong on either snapshot becomes a `tool-error` finding with
   the analyzer as tool (`python`, or `mutation` for `mutation-failed`) and path `.`, never a throw from the CLI: `ruff-failed`, `format-failed`, `tests-failed` (the project's own
-  tests fail, the same rule the TypeScript preset uses), `coverage-failed`, `types-failed` and `rules-failed` (slice 2), `structure-failed`, `lizard-failed`, `environment-failed`,
+  tests fail, the same rule the TypeScript preset uses), `coverage-failed`, `types-failed` and `rules-failed` (slice 2), `structure-failed`, `environment-failed`,
   `duplicates-failed`, `coupling-failed`, `import-linter-failed` (slice 5), `mutation-failed` (slice 6)
   and `python-failed` for anything unexpected. An environment that cannot be found at all (no
   `.venv` at the configured directory, no `uv sync`, poetry has none) is caught earlier, while the
@@ -401,8 +400,9 @@ directory>` or `-m unittest discover` (with `-s tests` or `-s test` when that di
   (`python <script> <output> <project> <file list>`), so it needs no dependency and no pin, and it
   parses with the grammar of the interpreter the project uses; a file that does not parse is
   skipped, as is a file too deeply nested for the parser (`RecursionError`, `MemoryError`); ruff's
-  `E9` rules already report a syntax error. lizard has no statement count or control nesting,
-  so all four metrics come from this one script, like `StructureMetrics.java` for Java.
+  `E9` rules already report a syntax error. The four limit metrics and the cyclomatic complexity
+  (the CRAP input) all come from this one script, like `StructureMetrics.java` for Java; no
+  external tool is involved.
 - **Definitions** (the TypeScript analyzer's, applied to Python syntax). Unit: every `def` and
   `async def` with a body, methods and nested functions alike; named `Outer.method` and
   `outer.inner`, the qualified names coverage.py uses. `lines`: last line - first line + 1, from the
@@ -410,15 +410,17 @@ directory>` or `-m unittest discover` (with `-s tests` or `-s test` when that di
   a long legacy function does not make it grow; TypeScript counts comments, Python has no comment
   node to leave out).
   `statements`: every statement in the body, compound statements counting once plus their bodies:
-  `if`/`elif` (an `elif` is a nested `if` statement, as `else if` is in TypeScript), `for`, `while`,
+  `if`/`elif` (an `elif` is a nested `if` statement in the syntax tree, as `else if` is in
+  TypeScript), `for`, `while`,
   `try`, `with`, `match`, `return`, `pass`, assignments, a nested `def` or `class` (but not its
   body); not counted: the docstring, `else`/`finally` themselves, `except` clauses and `case`
   clauses (only their bodies). `maxControlNesting`: the deepest nesting of `if`/`elif`, `for`,
   `async for`, `while`, `match` and `except`; `try`, `with` and comprehensions do not nest. An
-  `elif` chain nests one level per branch, like `else if` in TypeScript and Java, so an
-  `if`/`elif`/`elif` chain is already three deep: use early returns, `match`, a dict lookup or a
-  helper function (the finding says so). Counting a whole `elif` chain as one level would differ
-  from TypeScript and Java, so it is a cross-language decision, not made here.
+  `if`/`elif`/`else` chain nests one level, like an `else if` chain in TypeScript and Java; an `elif`
+  is the same level as the `if` it continues, and a statement nested in a branch is one level
+  deeper. An `else:` block that holds an `if` is nested, as an `else { if }` block is in TypeScript and Java. The
+  finding says so. A `match` is one level, whatever its number of `case` clauses; a statement in a
+  `case` is one level deeper.
   `parameters`: positional-only, positional, keyword-only, `*args` and `**kwargs`, one each; the
   `/` and `*` markers are not parameters. The first positional parameter of a method (`self`,
   `cls`, or whatever it is called) is not counted, because the caller does not pass it: a function
@@ -431,7 +433,7 @@ directory>` or `-m unittest discover` (with `-s tests` or `-s test` when that di
   treats as packages (`tests`, `test`, `docs`, `doc`, `examples`, `scripts`, `build`, `dist`, `env`,
   `venv`; one list in `python-project.mjs`) and `conftest.py` are skipped too, so tests, build
   copies and virtualenvs are not gated. Node lists the files once per snapshot
-  (`python-files.txt`) and hands the same list to the metrics script and to lizard. Tests are
+  (`python-files.txt`) and hands the list to the metrics script. Tests are
   outside the default source roots, so they are not gated.
 - **Findings.** Same as Java: `languages/python/adapters/analysis/python-structure.mjs` gives the metrics to
   `evaluateStructure` and keeps the enforceable limit findings (tool `structure`; the descriptive
@@ -439,48 +441,59 @@ directory>` or `-m unittest discover` (with `-s tests` or `-s test` when that di
   the file, and a hash of the function text with the common indentation removed, so moving or
   re-indenting a whole function keeps it baselined while changing the nesting of a statement inside
   it counts as an edit (Java trims every line, which would hide that in Python).
-- **CRAP.** lizard `--csv -l python -f <file list>` gives the cyclomatic complexity per function
-  (the file list, not directories, because lizard silently skips files whose content is identical
-  to another file when it walks a directory). It is pinned to the version in
-  `languages/java/gradle/nitpicker.init.gradle`, the same one Java uses (the pin file is in the
-  configuration hash). Resolution, like Java: the executable named by `NITPICKER_LIZARD` (only that
-  one), else `lizard` from the project environment or the `PATH`. Nothing is downloaded at run
-  time. A lizard that is missing or reports another version is the tool error `lizard-failed`,
-  which names the pinned version and the install commands (`pip install lizard==<pin>` or
-  `uv tool install lizard==<pin>`). It is not installed for the project.
+- **Cyclomatic complexity** (`complexity`, the CRAP input). Computed by the same script from the
+  syntax tree, with no external tool: 1 plus one for each decision point in the function's own
+  body. Decision points: `if` and `elif`, a conditional expression (`a if b else c`), `for` and
+  `async for`, `while`, each `except` handler, each `case` of a `match` (a `case _:` without a
+  guard is the `default` of a `switch` and does not count), each extra operand of `and` and `or`
+  (`a and b and c` is two), and in a comprehension or generator expression each `for`/`async for`
+  clause and each `if` clause. The decision points are the McCabe ones of the other presets
+  (ESLint's `complexity` rule for TypeScript, the Java and Kotlin metrics programs all
+  count `if`, loops, `case` but not `default`, `catch`, `&&`, `||` and `?:`), with two differences
+  in scope: a lambda counts towards the function around it, as in Java and Kotlin but unlike
+  TypeScript, which scores every arrow function and function expression on its own; and each `for`
+  and `if` clause of a comprehension counts, which has no equivalent in the other languages.
+  Not counted: `else`, `finally`, the `else` of a loop or a `try`, `with`, `assert`, `try` itself.
+  Lambdas and comprehensions are part of the function around them; nested functions and the
+  methods of nested classes have their own entry and do not count towards it. An
+  `@overload` stub (however the decorator is spelled: `overload`, `typing.overload`, `t.overload`)
+  gets no CRAP score, and neither does a function whose first body statement starts on the `def`
+  line (`def f(): return 1`): its only statement shares a line with the definition, which
+  runs when the module is imported, so its coverage cannot be told apart. The script writes `complexity`, `definition` (the `def` line, which differs from
+  `start` when the function is decorated) and `bodyStart` (the line of the first body statement)
+  next to the limit metrics, and the CRAP step reads them from `structure.json`; a failing
+  structure step is the only failure, `structure-failed`, and CRAP then has nothing to score.
 - **Coverage join.** `languages/python/ingest/crap.mjs` takes the per-function entries of the
   coverage.py JSON report PY1 already produces (`files.<path>.functions`, coverage.py 7.6 or newer)
-  and joins each lizard function to the entry with the same trailing name whose lines
-  (`executed_lines`, `missing_lines`, `excluded_lines`) lie inside the lizard line range; lizard
-  names carry no class (`m`, `m.inner`), coverage.py names do (`A.m`, `A.m.inner`), so the joined
-  entry also gives the display name. `start_line` is not used, because only recent coverage.py
+  and joins each function to the entry with the same qualified name (`A.m`, `A.m.inner`, the
+  names coverage.py reports) whose lines (`executed_lines`, `missing_lines`, `excluded_lines`) lie
+  inside the range from the `def` line to the last line of the function. `start_line` is not used, because only recent coverage.py
   versions report it. Coverage of a function is the lower of its line and branch percentage, as for
   JaCoCo, and CRAP is `ccn^2 * (1 - coverage)^3 + ccn`, shared with Java
   (`ingestCrapRows` in `languages/java/ingest/crap.mjs`). A function with no statements and no
-  branches (a docstring-only stub) counts as fully covered. Definitions that share a name in a
-  scope (a `@property` getter and its `@x.setter`, `@singledispatch` registrations all named `_`,
-  conditional definitions) collapse into one coverage.py entry, which keeps only the last one. A
-  lizard function that no entry's lines lie inside is therefore scored from the file's own
-  per-line data (`executed_lines`, `missing_lines`, `executed_branches`, `missing_branches`) over
-  its own line range: after its `def` line and without the lines of functions nested in it. A file
-  coverage.py did not report (outside the source roots), or a range without a statement, has
-  unknown coverage and fails with `crap-coverage-unknown`; nothing is guessed. `# pragma: no cover` keeps its coverage.py meaning (excluded lines are not statements).
+  branches counts as fully covered: a docstring-only stub, and a function whose lines coverage.py
+  excludes (`# pragma: no cover`, `if TYPE_CHECKING:`, a multi-line `@overload` stub). Definitions
+  that share a name in a scope (a `@property` getter and its `@x.setter`, `@singledispatch`
+  registrations all named `_`, conditional definitions) collapse into one coverage.py entry, which
+  keeps only the last one, so an entry is used only for the function whose lines lie inside it. Any
+  other function is scored from the file's own per-line data (`executed_lines`, `missing_lines`,
+  `executed_branches`, `missing_branches`) over its own line range: after its `def` line and
+  without the lines of functions nested in it; a docstring-only definition therefore cannot lend
+  its empty entry to a branchy one with the same name. A file coverage.py did not report (outside
+  the source roots) has unknown coverage and fails with `crap-coverage-unknown`; nothing is
+  guessed. `# pragma: no cover` keeps its coverage.py meaning (excluded lines are not statements).
   Identity: qualified name plus the same function-text hash, ratchet key the name, so an edited
   function over the limit fails only when its score rises.
 - **Cache invalidation.** The metrics script, the new adapters, the shared structure and CRAP rule
-  files, `shared/policy.mjs` and the pinned-version file (`languages/java/gradle/nitpicker.init.gradle`,
-  added by name because the analyzer reads it with a pattern, not an import) are in the Python
-  analyzer's configuration hash.
-- **Tests.** `ingest/crap.test.mjs` (the join, on a real lizard CSV and coverage.py report),
-  `python-structure.test.mjs`, `python-crap.test.mjs` (lizard resolution and failures) and
-  `python-sources.test.mjs`, all with the fake toolchain; `core/command/python/python-cli-*.test.mjs` drives the CLI
+  files and `shared/policy.mjs` are in the Python analyzer's configuration hash.
+- **Tests.** `ingest/crap.test.mjs` (the join, on structure entries and a coverage.py report),
+  `python-structure.test.mjs`, `python-crap.test.mjs`, `python-sources.test.mjs` (all with the fake
+  toolchain) and `metrics/structure-metrics.test.mjs` (the script itself, on the real `python3`:
+  the limit metrics, the nesting of `elif` chains and `match`, and each kind of decision point); `core/command/python/python-cli-*.test.mjs` drives the CLI
   in two runs: new structure, CRAP-score and unknown-coverage findings next to a touched legacy
   function that is held, then the legacy function grown under a raised `thresholds.crapLimit`; the
-  `lizard-failed` error is covered by `python-crap.test.mjs` (the runner passes any step's rule
-  through to the tool error). The gated e2e adds real branches for each
-  (nested loops with four parameters, a legacy function edited and then grown, an untested branchy
-  function) and runs the metrics script on a sample covering methods, decorators, `async`,
-  `match`, `elif` chains and a file that does not parse.
+  gated e2e adds real branches for each (nested loops with four parameters, a legacy function
+  edited and then grown, an untested branchy function).
 
 ## Slice 4: gate on changed branch coverage
 
@@ -752,7 +765,7 @@ exclude and legacy-inventory policy (`applyJavaPolicy`) serve more than one lang
 | --- | --------------------------------------------------------- | ---------------------------- | -------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------- | ------ |
 | PY1 | [#168](https://github.com/jhonDoe15/nitpicker/issues/168) | Base runner and CLI          | ruff, ruff format or black, pytest or unittest under coverage.py     | lint and format findings, `line-coverage`, `uncovered-function`, `tool-error`                     | done   |
 | PY2 | [#169](https://github.com/jhonDoe15/nitpicker/issues/169) | Type checking, one-way rules | mypy or pyright; ruff rules and import rules for the one allowed way | type errors; one-way rules with their failure messages; the Python skill                          | done   |
-| PY3 | [#170](https://github.com/jhonDoe15/nitpicker/issues/170) | Structure limits and CRAP    | `ast` metrics script; lizard joined with the coverage report         | `function-*-limit` rules as for TypeScript and Java; `crap-score-limit`, `crap-coverage-unknown`  | done   |
+| PY3 | [#170](https://github.com/jhonDoe15/nitpicker/issues/170) | Structure limits and CRAP    | `ast` metrics script and complexity, joined with the coverage report | `function-*-limit` rules as for TypeScript and Java; `crap-score-limit`, `crap-coverage-unknown`  | done   |
 | PY4 | [#171](https://github.com/jhonDoe15/nitpicker/issues/171) | Changed-branch coverage      | the coverage JSON branch data and the changed lines from git         | `changed-branch-coverage`                                                                         | done   |
 | PY5 | [#172](https://github.com/jhonDoe15/nitpicker/issues/172) | Duplicates and coupling      | jscpd with the `python` format; import graph for stability           | `duplicate-clone`, `duplicate-clone-size`; `stability-direction`; import-linter `contract-broken` | done   |
 | PY6 | [#173](https://github.com/jhonDoe15/nitpicker/issues/173) | Mutation testing             | mutmut 3 run data, per docs/mutation-testing                         | `mutant-survived`, `mutant-nocoverage` (new surviving mutants fail)                               | done   |
@@ -782,8 +795,13 @@ and CRAP rules.
   of a repository and a real `python3` for the import scan; the fake `mutmut` writes a `mutants/`
   directory from a `mutants-data.json` in the project and logs which result files it found there.
 - `languages/python/adapters/e2e/*.e2e.test.mjs`: gated behind `NITPICKER_PYTHON_E2E=1`
-  (`npm run test:python`). Needs python3, uv, ruff, black and network access to PyPI; about 2
-  minutes. On `languages/python/adapters/fixtures/python-project` (one legacy ruff violation on the
+  (`npm run test:python`). Needs python3 3.10 or newer, uv, ruff, black, mypy, pyright, coverage and
+  pytest on the `PATH` and network access to PyPI (it installs pytest, pytest-cov, pytest-xdist,
+  coverage, mypy, mutmut, black and import-linter into throwaway environments); 8 to 25 minutes
+  with mutation testing; no lizard. CI runs it in `.github/workflows/python-e2e.yml` only for changes
+  under `core/`, `shared/`, `languages/python/`, `languages/java/ingest/`, `languages/java/adapters/`
+  or the package files, with every tool version pinned in `.github/python-e2e-constraints.txt`
+  (also given to the suite's own `uv pip install` calls as `UV_CONSTRAINT`). On `languages/python/adapters/fixtures/python-project` (one legacy ruff violation on the
   base, editable install in a `.venv`) it checks: a change that alters behaviour and updates its
   tests passes, which only works when base tests run against base code; a moved legacy violation
   stays baselined; a new unused import and an unformatted file fail in every report format;
