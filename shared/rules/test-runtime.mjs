@@ -45,7 +45,7 @@ export function testConsoleRule(ids, enforcedBy) {
     id: ids.testConsoleOutput,
     check: 'test-console',
     limit:
-      'a test file printing console.error or console.warn output (compared by first line, numbers and paths normalized) that the base run did not print',
+      'a test file printing console.error or console.warn output (compared as text with numbers and paths normalized, one differing word tolerated) that the base run did not print',
     enforcedBy,
   };
 }

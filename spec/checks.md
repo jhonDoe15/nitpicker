@@ -127,7 +127,7 @@ over limit" and does not fail.
 | `redefined-library-component`     | `structure`        | React only: a component named like one the project renders from a dependency                                                                                                  | enforced   | not enforced | not enforced | not enforced |
 | `new-icon-asset`                  | `structure`        | React only: a new icon-sized `.svg` file while an icon package is a dependency                                                                                                | enforced   | not enforced | not enforced | not enforced |
 | `component-story-missing`         | `structure`        | a component file without a story, in a package that has Storybook; enforced when more than half of its component files have one, reported otherwise                           | enforced   | not enforced | not enforced | not enforced |
-| `test-console-output`             | `test-console`     | a test file printing console.error or console.warn output (compared by first line, numbers and paths normalized) that the base run did not print                              | enforced   | not enforced | not enforced | not enforced |
+| `test-console-output`             | `test-console`     | a test file printing console.error or console.warn output (compared as text with numbers and paths normalized, one differing word tolerated) that the base run did not print  | enforced   | not enforced | not enforced | not enforced |
 
 <!-- generated:custom-rules end -->
 
