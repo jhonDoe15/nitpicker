@@ -36,9 +36,19 @@ function usedLocally(definition, references) {
   return (references.get(definition.name) ?? []).some((at) => at < start || at >= end);
 }
 
-function fileFacts(projectRoot, file, packageRoot) {
+function parsedFile(projectRoot, file) {
   const text = readFileSync(path.join(projectRoot, file), 'utf8');
-  const sourceFile = ts.createSourceFile(file, text, ts.ScriptTarget.Latest, true);
+  return ts.createSourceFile(file, text, ts.ScriptTarget.Latest, true);
+}
+
+export function definitionsAt(projectRoot, file) {
+  return existsSync(path.join(projectRoot, file))
+    ? fileDefinitions(parsedFile(projectRoot, file))
+    : [];
+}
+
+function fileFacts(projectRoot, file, packageRoot) {
+  const sourceFile = parsedFile(projectRoot, file);
   const references = referencePositions(sourceFile);
   return {
     path: file,
