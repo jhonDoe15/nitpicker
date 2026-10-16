@@ -96,7 +96,9 @@ function candidatesOf(chain, { revealed, listed }) {
       .map((entry) => ({ ...entry, chain }));
   }
   const entry = revealed.get(slotOf(node.file, node.name));
-  if (entry !== undefined) return [{ ...entry, chain }];
+  if (entry !== undefined) {
+    return [{ ...entry, chain }];
+  }
   const isMasked = node.viaImport && !listed.has(slotOf(node.file, node.name));
   return isMasked ? [{ file: node.file, name: node.name, chain }] : [];
 }
@@ -175,11 +177,15 @@ export function reexportedTestOnlyEntries(options) {
   const moduleOf = projectModules(options);
   const graph = reexportGraph(moduleOf);
   const reexports = entryFilesOf(options, walk).flatMap((file) => graph.chainsOf(file));
-  if (reexports.length === 0) return [];
+  if (reexports.length === 0) {
+    return [];
+  }
   const project = projectOf(options, walk);
   const testUsed = graph.usedBy(project.supportFiles.flatMap((file) => usesOf(moduleOf(file))));
   const chains = reexports.filter(({ node }) => isTested(testUsed, node));
-  if (chains.length === 0) return [];
+  if (chains.length === 0) {
+    return [];
+  }
   const known = revealedEntries(options);
   const groups = Map.groupBy(
     chains.flatMap((chain) => candidatesOf(chain, known)),

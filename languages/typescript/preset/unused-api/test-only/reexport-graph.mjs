@@ -72,10 +72,13 @@ function expandWildcard(node, links) {
 }
 
 function expand(node, links) {
-  if (WILDCARDS.has(node.name)) return expandWildcard(node, links);
+  if (WILDCARDS.has(node.name)) {
+    return expandWildcard(node, links);
+  }
   const named = links.filter((link) => !link.star && link.exported === node.name);
-  if (named.length > 0)
+  if (named.length > 0) {
     return { isDeclaration: false, next: named.map((link) => nextNode(node, link)) };
+  }
   const stars = node.name === 'default' ? [] : links.filter((link) => link.star);
   return {
     isDeclaration: true,
@@ -102,7 +105,9 @@ export function reexportGraph(moduleOf) {
         ? expand(node, moduleOf(node.file).edges)
         : { isDeclaration: false, next: [] };
       seen.add(nodeKey(node));
-      if (isDeclaration) found.push(node);
+      if (isDeclaration) {
+        found.push(node);
+      }
       pending.push(...next);
     }
     return found;

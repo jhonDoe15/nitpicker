@@ -9,7 +9,9 @@ const TEST_SUPPORT = /(?:^|\/)test-support\//u;
 const RULE = UNUSED_API_RULE_IDS.testOnlyExport;
 
 function templateFor({ category, reexportedBy }) {
-  if (category === 'files') return MESSAGES.testOnlyModule;
+  if (category === 'files') {
+    return MESSAGES.testOnlyModule;
+  }
   return reexportedBy === undefined ? MESSAGES.testOnlyExport : MESSAGES.testOnlyReexport;
 }
 

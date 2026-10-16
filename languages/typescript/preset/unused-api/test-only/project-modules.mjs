@@ -35,8 +35,12 @@ function targetResolver({ packagesInfo, layout }) {
   const paths = workspacePaths(packagesInfo.packages, layout);
   return function resolve(specifier, containingFile) {
     const resolved = resolveModuleSpecifier(specifier, containingFile);
-    if (resolved.kind === 'file') return resolved.path;
-    if (resolved.kind !== 'package') return undefined;
+    if (resolved.kind === 'file') {
+      return resolved.path;
+    }
+    if (resolved.kind !== 'package') {
+      return undefined;
+    }
     return resolved.path ?? workspaceSource(specifier, containingFile, paths);
   };
 }
@@ -61,7 +65,9 @@ function parse(file) {
 }
 
 function readModule(file, resolve) {
-  if (!isReadable(file)) return NO_LINKS;
+  if (!isReadable(file)) {
+    return NO_LINKS;
+  }
   const sourceFile = parse(file);
   const links = moduleLinks({
     imports: fileImports(sourceFile),
@@ -82,7 +88,9 @@ export function projectModules(project) {
   const resolve = targetResolver(project);
   const modules = new Map();
   return function moduleOf(file) {
-    if (!modules.has(file)) modules.set(file, readModule(path.normalize(file), resolve));
+    if (!modules.has(file)) {
+      modules.set(file, readModule(path.normalize(file), resolve));
+    }
     return modules.get(file);
   };
 }
