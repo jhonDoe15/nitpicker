@@ -3,6 +3,7 @@ import {
   unknownMemberTags,
   withJsdoc,
 } from '../../../../../javascript/preset/documentation/jsdoc.mjs';
+import ts from 'typescript';
 import { ancestorsOf, variableNamed } from '../analysis/ancestry.mjs';
 
 const PARAMETER_WRAPPERS = new Set(['AssignmentPattern', 'RestElement', 'TSParameterProperty']);
@@ -42,6 +43,8 @@ function isCaughtErrorSlot(node, annotation) {
   );
 }
 
+const TYPE_PARAMETER_DECLARATION = 'TSTypeParameterDeclaration';
+
 function aliasedType(sourceCode, reference) {
   if (reference.typeName.type !== 'Identifier') {
     return undefined;
@@ -54,16 +57,102 @@ function aliasedType(sourceCode, reference) {
     : undefined;
 }
 
-function resolvesToUnknown(sourceCode, node) {
-  const chain = [node];
-  for (const current of chain) {
-    const target =
-      current.type === 'TSTypeReference' ? aliasedType(sourceCode, current) : undefined;
-    if (target !== undefined && !chain.includes(target)) {
-      chain.push(target);
+function isUnknownMember(node) {
+  return (
+    node.type === 'TSUnknownKeyword' &&
+    !(node.parent?.type === 'TSTypeAnnotation' && isCaughtErrorSlot(node, node.parent))
+  );
+}
+
+function childNodes(sourceCode, node) {
+  return (sourceCode.visitorKeys[node.type] ?? [])
+    .flatMap((key) => node[key] ?? [])
+    .filter(
+      (child) => typeof child?.type === 'string' && child.type !== TYPE_PARAMETER_DECLARATION,
+    );
+}
+
+function referencesUnknown(sourceCode, reference, services) {
+  const local = aliasedType(sourceCode, reference);
+  return local === undefined
+    ? importedAliasHasUnknown(reference, services)
+    : containsUnknown(sourceCode, local, services);
+}
+
+function containsUnknown(sourceCode, root, services) {
+  const pending = [root];
+  for (const current of pending) {
+    if (isUnknownMember(current)) {
+      return true;
     }
+    const local = current.type === 'TSTypeReference' ? aliasedType(sourceCode, current) : undefined;
+    if (current.type === 'TSTypeReference' && local === undefined) {
+      if (importedAliasHasUnknown(current, services)) {
+        return true;
+      }
+    }
+    const next = [...childNodes(sourceCode, current), ...(local === undefined ? [] : [local])];
+    pending.push(...next.filter((child) => !pending.includes(child)));
   }
-  return chain.at(-1).type === 'TSUnknownKeyword';
+  return false;
+}
+
+function typeChecker(services) {
+  return services?.program === undefined || services.program === null
+    ? undefined
+    : services.program.getTypeChecker();
+}
+
+function aliasDeclaration(checker, symbol) {
+  const target =
+    symbol !== undefined && (symbol.flags & ts.SymbolFlags.Alias) !== 0
+      ? checker.getAliasedSymbol(symbol)
+      : symbol;
+  return target?.declarations?.find(
+    (declaration) => ts.isTypeAliasDeclaration(declaration) && !declaration.typeParameters,
+  );
+}
+
+function isCaughtErrorProperty(node) {
+  return (
+    ts.isPropertySignature(node.parent) &&
+    node.parent.type === node &&
+    CAUGHT_ERROR_NAMES.has(node.parent.name.getText())
+  );
+}
+
+function tsContainsUnknown(checker, root) {
+  const pending = [root];
+  for (const current of pending) {
+    if (current.kind === ts.SyntaxKind.UnknownKeyword && !isCaughtErrorProperty(current)) {
+      return true;
+    }
+    const next = [];
+    ts.forEachChild(current, (child) => {
+      if (!ts.isTypeParameterDeclaration(child)) {
+        next.push(child);
+      }
+    });
+    const alias = ts.isTypeReferenceNode(current)
+      ? aliasDeclaration(checker, checker.getSymbolAtLocation(current.typeName))
+      : undefined;
+    pending.push(
+      ...[...next, ...(alias === undefined ? [] : [alias.type])].filter(
+        (child) => !pending.includes(child),
+      ),
+    );
+  }
+  return false;
+}
+
+function importedAliasHasUnknown(reference, services) {
+  const checker = typeChecker(services);
+  const typeName = services?.esTreeNodeToTSNodeMap?.get(reference.typeName);
+  const alias =
+    checker === undefined || typeName === undefined
+      ? undefined
+      : aliasDeclaration(checker, checker.getSymbolAtLocation(typeName));
+  return alias !== undefined && tsContainsUnknown(checker, alias.type);
 }
 
 export const rule = {
@@ -71,6 +160,7 @@ export const rule = {
     type: 'problem',
     docs: {
       description: 'Disallow the unknown type in parameter and property types of domain code',
+      requiresTypeChecking: true,
     },
     schema: jsdocOptionSchema,
     messages: {
@@ -96,7 +186,7 @@ export const rule = {
     const visitors = {
       TSUnknownKeyword: check,
       TSTypeReference(node) {
-        if (node.typeName.type === 'Identifier' && resolvesToUnknown(context.sourceCode, node)) {
+        if (referencesUnknown(context.sourceCode, node, context.sourceCode.parserServices)) {
           check(node);
         }
       },

@@ -124,6 +124,8 @@ tester.run('no-unknown-in-domain through aliases', noUnknownInDomain, {
     'export function f(value: Missing) { return value; }',
     'type Raw = unknown; type Row = { readonly cause: Raw };',
     'type A = B; type B = A; export function f(value: A) { return value; }',
+    'type Failure = { readonly cause: unknown }; export function f(failure: Failure) { return failure; }',
+    'type Make = <T = unknown>() => T; export function f(make: Make) { return make; }',
   ],
   invalid: [
     {
@@ -136,6 +138,18 @@ tester.run('no-unknown-in-domain through aliases', noUnknownInDomain, {
     },
     {
       code: 'type Raw = unknown; export type Row = { readonly payload: Raw };',
+      errors: [{ messageId: 'unknownType' }],
+    },
+    {
+      code: 'type JsonObject = Readonly<Record<string, unknown>>; export function f(payload: JsonObject) { return payload; }',
+      errors: [{ messageId: 'unknownType' }],
+    },
+    {
+      code: 'type Bag = Record<string, unknown>; type Event = { readonly bag: Bag };',
+      errors: [{ messageId: 'unknownType' }],
+    },
+    {
+      code: 'type Items = readonly unknown[]; type Batch = Items; type Event = { readonly items: Batch };',
       errors: [{ messageId: 'unknownType' }],
     },
   ],
