@@ -2,6 +2,8 @@ import ast
 import io
 import tokenize
 
+from python_docs import doc_comments, is_script
+
 SKIPPED_TOKENS = {
     tokenize.COMMENT,
     tokenize.NL,
@@ -87,7 +89,7 @@ def definition_kind(statement):
         or getattr(annotation, "attr", None) == "TypeAlias"
     ):
         return "type", "type"
-    return "constant", "constant"
+    return "const", "const"
 
 
 def defined_name(statement):
@@ -179,7 +181,7 @@ def definitions_of(tree, lines, bindings):
                 "exported": not name.startswith("_")
                 and (exported_names is None or name in exported_names),
                 "usedLocally": used_locally(tree, statement, name),
-                "literal": kind == "constant" and value is not None and is_literal(value),
+                "literal": kind == "const" and value is not None and is_literal(value),
                 "tokens": tokens,
                 "free": free_bindings(statement, name, module_names, bindings),
             }
@@ -233,4 +235,6 @@ def facts_of(relative, tree, text, imports):
             "all": exported_names,
             "reexports": reexports_of(tree, relative, exported_names),
         },
+        "script": is_script(tree),
+        "docComments": doc_comments(tree),
     }
