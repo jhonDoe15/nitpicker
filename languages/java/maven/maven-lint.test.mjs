@@ -70,6 +70,7 @@ describe('withGuardChecks', () => {
             leaf('MagicNumber'),
             leaf('VisibilityModifier'),
             leaf('SuppressionXpathSingleFilter'),
+            leaf('SuppressionXpathSingleFilter'),
             leaf('A'),
           ],
         },

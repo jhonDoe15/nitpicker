@@ -1,4 +1,4 @@
-@defaultMessage legacy-date-time: Use java.time (Instant, LocalDate, ZonedDateTime, ZoneId and DateTimeFormatter) instead of the legacy date classes.
+@defaultMessage legacy-date-time: Use java.time (Instant, LocalDate, ZonedDateTime, ZoneId and DateTimeFormatter) instead of the legacy date classes. Convert a Date another API returns with toInstant() in the same expression.
 java.util.Date
 java.util.Calendar
 java.util.GregorianCalendar
@@ -30,8 +30,8 @@ java.time.MonthDay#now(java.time.ZoneId)
 java.lang.Thread#sleep(**)
 java.util.concurrent.TimeUnit#sleep(long)
 
-@defaultMessage new-thread: Do not start threads by hand. Submit the work to an injected ExecutorService.
-java.lang.Thread#<init>(**)
+@defaultMessage new-thread: Do not start threads by hand. Submit the work to an injected ExecutorService (a ThreadFactory or a shutdown hook may still create the Thread).
+java.lang.Thread#start()
 
 @defaultMessage runtime-exec: Run commands with ProcessBuilder and an argument list, never a command string.
 java.lang.Runtime#exec(java.lang.String)

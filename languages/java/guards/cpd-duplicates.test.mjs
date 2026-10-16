@@ -3,7 +3,13 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import { parseAnalyzerReport } from '../../../core/diff/comparison/finding-schema.mjs';
-import { cpdClones, isAccessorOnly, isDataTable, readCpdFindings } from './cpd-duplicates.mjs';
+import {
+  cpdClones,
+  isAccessorOnly,
+  isDataTable,
+  readCpdFindings,
+  tokenShape,
+} from './cpd-duplicates.mjs';
 
 const roots = [];
 afterEach(() => {
@@ -16,8 +22,9 @@ const duplication = (lines, files) => `
   <duplication lines="${String(lines)}" tokens="120">
 ${files
   .map(
-    ([file, start, end]) =>
-      `    <file path="${file}" line="${String(start)}" endline="${String(end)}" begintoken="0" endtoken="9"/>`,
+    ([file, start, end, columns = '']) =>
+      `    <file path="${file}" line="${String(start)}" endline="${String(end)}"${columns} ` +
+      'begintoken="0" endtoken="9"/>',
   )
   .join('\n')}
     <codefragment><![CDATA[ignored]]></codefragment>
@@ -112,25 +119,46 @@ describe('isDataTable', () => {
 });
 
 describe('cpdClones', () => {
-  it('pairs the first file of a clone with each other file and reads the source text', () => {
+  it('pairs the first file by path with each other file and reads the source text', () => {
     const { root } = project({ [MAIN_A]: sourceWith('A'), [MAIN_B]: sourceWith('B') });
+    const sides = [
+      [MAIN_A, 2, 4],
+      [MAIN_B, 2, 4],
+      [TEST_A, 1, 3],
+    ];
+    const fragment = '  int run(int rate) {\n    int total = 0;\n    total += compute(0) * rate;';
+    const clone = (second) => ({
+      first: { file: MAIN_A, line: 2, endLine: 4 },
+      second,
+      fragment,
+      shape: tokenShape(fragment),
+      lines: 7,
+      tokens: 120,
+    });
+    const expected = [
+      clone({ file: MAIN_B, line: 2, endLine: 4 }),
+      clone({ file: TEST_A, line: 1, endLine: 3 }),
+    ];
+
+    expect(cpdClones(report(duplication(7, sides)), root)).toEqual(expected);
+    expect(cpdClones(report(duplication(7, sides.toReversed())), root)).toEqual(expected);
+  });
+
+  it('reads the columns CPD reports and shapes the text by its tokens alone', () => {
+    const text = 'int a = 1; if (b) {\n  call("x;", \'}\', 2.5e-3, a.b); // done\n} c();\n';
+    const { root } = project({ [MAIN_A]: text, [MAIN_B]: text });
+    const columns = ' column="12" endcolumn="2"';
     const xml = report(
-      duplication(7, [
-        [MAIN_A, 2, 4],
-        [MAIN_B, 2, 4],
-        [TEST_A, 1, 3],
+      duplication(3, [
+        [MAIN_B, 1, 3, columns],
+        [MAIN_A, 1, 3, columns],
       ]),
     );
 
-    const clones = cpdClones(xml, root);
+    const [clone] = cpdClones(xml, root);
 
-    expect(clones).toHaveLength(2);
-    expect(clones[0].first).toEqual({ file: MAIN_A, line: 2, endLine: 4 });
-    expect(clones[1].second.file).toBe(TEST_A);
-    expect(clones[0].fragment).toBe(
-      '  int run(int rate) {\n    int total = 0;\n    total += compute(0) * rate;',
-    );
-    expect(clones[0].lines).toBe(7);
+    expect(clone.first).toEqual({ file: MAIN_A, line: 1, endLine: 3, column: 12, endColumn: 2 });
+    expect(clone.shape).toBe('(){(,,,.);}');
   });
 });
 
@@ -163,6 +191,36 @@ describe('readCpdFindings', () => {
       },
     ]);
     expect(() => parseAnalyzerReport({ findings }, 'java')).not.toThrow();
+  });
+
+  it('keeps the identities when a literal or a name in a copy changes or CPD lists the files the other way', () => {
+    const identities = (files, order) => {
+      const { root, reportRoot } = project(files);
+      const sides = [MAIN_A, MAIN_B, TEST_A].map((file) => [
+        file,
+        2,
+        9,
+        ' column="3" endcolumn="6"',
+      ]);
+      writeFileSync(path.join(reportRoot, 'cpd.xml'), report(duplication(8, order(sides))));
+      return readCpdFindings(reportRoot, options(root)).map((finding) => finding.identity);
+    };
+    const base = {
+      [MAIN_A]: sourceWith('A'),
+      [MAIN_B]: sourceWith('B'),
+      [TEST_A]: sourceWith('C'),
+    };
+    const edited = {
+      ...base,
+      [MAIN_A]: sourceWith('A').replace('compute(3)', 'compute(30)').replace('rate)', 'factor)'),
+    };
+
+    const before = identities(base, (sides) => sides);
+
+    expect(before).toHaveLength(2);
+    expect(new Set(before).size).toBe(2);
+    expect(identities(edited, (sides) => sides)).toEqual(before);
+    expect(identities(edited, (sides) => sides.toReversed())).toEqual(before);
   });
 
   it('points test clones at a helper or a parameterized test', () => {
