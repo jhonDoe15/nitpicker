@@ -99,7 +99,10 @@ function pmdSuppressions(views, annotations) {
 }
 
 function silencesErrorProne(value) {
-  return ERROR_PRONE_NAMES.has(value) || /^NullAway(?:\.|$)/.test(value);
+  return (
+    (ERROR_PRONE_NAMES.has(value) && !PMD_WARNING_NAMES.has(value)) ||
+    /^NullAway(?:\.|$)/.test(value)
+  );
 }
 
 function errorProneSuppressions(views, annotations) {

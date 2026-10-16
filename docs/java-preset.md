@@ -312,7 +312,10 @@ Notes on the glue in `java-reports.mjs`:
   Checkstyle jar, which matches google-java-format, with `MissingJavadocMethod` and
   `MissingJavadocType` suppressed (`languages/java/gradle/checkstyle-suppressions.xml`): Javadoc is
   allowed on public API but not required, the same rule as the TypeScript preset. Javadoc that is
-  there still has to be well formed. Decision to review: google_checks is noisy on
+  there still has to be well formed. With this bundled config the tasks run on nitpicker's own
+  `nitpickerCheckstyle` configuration, so a project that declares its own Checkstyle version in
+  `checkstyle` (Spring PetClinic declares 12.3.1) still gets the pinned version and its config;
+  a project config chosen by policy keeps the project's Checkstyle classpath. Decision to review: google_checks is noisy on
   code that was never written for it, but the gate is differential, so existing violations stay
   baselined and only new ones fail.
 - **Ingestion.** `ingestCheckstyle` (X6) unchanged, `tool` `checkstyle`, absolute file paths made

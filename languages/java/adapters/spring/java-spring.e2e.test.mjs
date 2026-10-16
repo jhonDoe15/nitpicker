@@ -10,6 +10,7 @@ const gradle = process.env.NITPICKER_GRADLE ?? 'gradle';
 const fixture = path.join(import.meta.dirname, '..', 'fixtures', 'spring-project');
 const SPRING_RULE = /^(?:Spring|Jpa)/;
 const VIOLATION_MARKER = /\/\/ violation: (.*)$/;
+const CHECKSTYLE_VERSION = /<checkstyle version="([^"]+)">/;
 
 function javaFiles(root) {
   return readdirSync(root, { recursive: true })
@@ -79,6 +80,14 @@ describe.skipIf(!enabled)('Spring rules on a Spring project', () => {
     expect(
       reportedViolations(path.join(projectRoot, 'build', 'nitpicker', 'pmd.sarif'), sourceRoot),
     ).toEqual(expectedViolations(sourceRoot));
+  });
+
+  it('runs the pinned Checkstyle with the bundled config even when the project declares its own', () => {
+    const report = readFileSync(
+      path.join(projectRoot, 'build', 'nitpicker', 'checkstyle.xml'),
+      'utf8',
+    );
+    expect(CHECKSTYLE_VERSION.exec(report)?.[1]).toBe('10.21.1');
   });
 
   it('records the resource roots and that the project uses Spring', () => {

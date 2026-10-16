@@ -29,9 +29,10 @@ import javax.tools.ToolProvider;
  * Three kinds of line before {@code --sources} are not javac arguments: {@code --test-only} marks
  * test sources, {@code --target-release=<n>} is the release the build compiles for (used when this
  * JDK is newer and the build passes no module or preview options), and {@code --project-arg=<arg>}
- * is one of the build's own compiler arguments (only the preview and module options are kept). A compilation that fails (a compiler error,
- * not an Error Prone finding: those are warnings) ends the program with exit status 1 and the
- * errors on standard error, so it is never read as a clean report.
+ * is one of the build's own compiler arguments (only the preview and module options are kept). A
+ * compilation that fails (a compiler error, not an Error Prone finding: those are warnings) ends the
+ * program with exit status 1 and the errors on standard error, so it is never read as a clean
+ * report.
  */
 public final class ErrorProneReport {
   private static final String SOURCES = "--sources";

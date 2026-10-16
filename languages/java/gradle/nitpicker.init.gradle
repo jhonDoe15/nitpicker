@@ -91,6 +91,7 @@ allprojects {
             nitpickerSpotbugs { canBeConsumed = false }
             nitpickerFormat { canBeConsumed = false }
             nitpickerPit { canBeConsumed = false }
+            nitpickerCheckstyle { canBeConsumed = false }
         }
         repositories { mavenCentral() }
         dependencies {
@@ -98,6 +99,7 @@ allprojects {
             nitpickerPmd "net.sourceforge.pmd:pmd-java:${pinned.pmd}"
             nitpickerSpotbugs "com.github.spotbugs:spotbugs:${pinned.spotbugs}"
             nitpickerFormat "com.google.googlejavaformat:google-java-format:${pinned.googleJavaFormat}"
+            nitpickerCheckstyle "com.puppycrawl.tools:checkstyle:${pinned.checkstyle}"
         }
         dependencies {
             nitpickerPit "org.pitest:pitest-command-line:${pinned.pitest}"
@@ -116,7 +118,8 @@ allprojects {
             'SuppressionXpathFilter']
         def nitpickerCheckstyleConfig = layout.buildDirectory.file('nitpicker-checkstyle/checkstyle.xml')
         def projectCheckstyleConfig = nitpickerArgument('nitpicker.checkstyle.projectConfig')
-        def checkstyleJar = configurations.checkstyle.filter { it.name == "checkstyle-${pinned.checkstyle}.jar".toString() }
+        def checkstyleJar = configurations.nitpickerCheckstyle
+            .filter { it.name == "checkstyle-${pinned.checkstyle}.jar".toString() }
         def bundledCheckstyleConfig = resources.text.fromArchiveEntry(checkstyleJar, 'google_checks.xml')
         def writeCheckstyleConfig = tasks.register('nitpickerCheckstyleConfig') {
             group = 'nitpicker'
@@ -145,6 +148,7 @@ allprojects {
                     configFile = file(projectCheckstyleConfig)
                 } else {
                     dependsOn writeCheckstyleConfig
+                    checkstyleClasspath = configurations.nitpickerCheckstyle
                     configFile = nitpickerCheckstyleConfig.get().asFile
                     configProperties = ['org.checkstyle.google.suppressionfilter.config':
                         new File(initScriptDir, 'checkstyle-suppressions.xml').absolutePath]
@@ -384,8 +388,11 @@ allprojects {
 
         tasks.register('nitpickerJava') {
             group = 'nitpicker'
-            description = 'Runs PMD, SpotBugs, Error Prone, the formatter check, JaCoCo, Checkstyle, ArchUnit rule tests, structure metrics and PIT; reports go to build/nitpicker.'
-            dependsOn 'nitpickerPmd', 'nitpickerSpotbugs', 'nitpickerErrorProne', 'nitpickerFormat', 'nitpickerJacoco', 'checkstyleMain', 'checkstyleTest', 'nitpickerArchunit', 'nitpickerStructure', 'nitpickerPit'
+            description = 'Runs PMD, SpotBugs, Error Prone, the formatter check, JaCoCo, Checkstyle, ' +
+                'ArchUnit rule tests, structure metrics and PIT; reports go to build/nitpicker.'
+            dependsOn 'nitpickerPmd', 'nitpickerSpotbugs', 'nitpickerErrorProne', 'nitpickerFormat',
+                'nitpickerJacoco', 'checkstyleMain', 'checkstyleTest', 'nitpickerArchunit',
+                'nitpickerStructure', 'nitpickerPit'
             doLast {
                 def roots = mainSources.files.collect {
                     project.projectDir.toPath().relativize(it.toPath()).toString().replace('\\', '/')
