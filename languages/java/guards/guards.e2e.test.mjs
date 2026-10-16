@@ -7,6 +7,7 @@ import { INIT_SCRIPT } from '../builds/java-build.mjs';
 import { runJavaDuplicates } from '../adapters/metrics/java-duplicates.mjs';
 import { readJavaFindings } from '../adapters/reporting/java-reports.mjs';
 import { readReportModules } from '../adapters/gradle-reports/report-modules.mjs';
+import { readCouplingFindings } from '../adapters/metrics/java-coupling.mjs';
 import { readLintFindings } from './javac-lint.mjs';
 
 const enabled = process.env.NITPICKER_JAVA_E2E === '1';
@@ -144,7 +145,14 @@ describe.skipIf(!enabled)('Java guards on a fixture project', () => {
       );
       const { manifest } = readReportModules(reportBaseOf(roots[0]), 'java');
       runJavaDuplicates(roots[0], { reportRoot: reportBaseOf(roots[0]), manifest });
-      roots.push(gradleTasks('guards-compile-modes', ['nitpickerLint', ':legacy:nitpickerPmd']));
+      roots.push(
+        gradleTasks('guards-compile-modes', [
+          'nitpickerLint',
+          ':legacy:nitpickerPmd',
+          ':modular:nitpickerJdeps',
+          ':modular:nitpickerPermits',
+        ]),
+      );
     },
     30 * 60 * 1000,
   );
@@ -185,5 +193,37 @@ describe.skipIf(!enabled)('Java guards on a fixture project', () => {
       'modular/src/main/java/modular/shapes/Shape.java:10 rawtypes',
       'outside/src/main/java/outside/Names.java:7 rawtypes',
     ]);
+  });
+
+  it('reads the coupling of a module whose descriptor requires a jar module', () => {
+    const findings = readCouplingFindings(path.join(roots[1], 'modular', 'build', 'nitpicker'), {
+      projectRoot: roots[1],
+      sourceRoots: ['modular/src/main/java'],
+    });
+
+    expect(
+      findings
+        .filter((finding) => finding.path.startsWith('modular/'))
+        .map(({ path: file, metric }) => `${file} ${metric.name} ${String(metric.value)}`),
+    ).toEqual(
+      [
+        'Labels.java fanIn 0',
+        'Labels.java fanOut 1',
+        'Labels.java totalCoupling 1',
+        'Labels.java instability 1',
+        'Shape.java fanIn 3',
+        'Shape.java fanOut 2',
+        'Shape.java totalCoupling 5',
+        'Shape.java instability 0.4',
+        'impl/Circle.java fanIn 1',
+        'impl/Circle.java fanOut 1',
+        'impl/Circle.java totalCoupling 2',
+        'impl/Circle.java instability 0.5',
+        'impl/Square.java fanIn 1',
+        'impl/Square.java fanOut 1',
+        'impl/Square.java totalCoupling 2',
+        'impl/Square.java instability 0.5',
+      ].map((line) => `modular/src/main/java/modular/shapes/${line}`),
+    );
   });
 });

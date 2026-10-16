@@ -132,9 +132,9 @@ field by field. Per snapshot:
 - **Module descriptors.** jdeps reads a module with a `module-info.class` as that module, so it
   must find every module the descriptor `requires`: there it also gets the main compile classpath
   on `--module-path` and `--multi-release` with the module's `release` (else `target`), as jars
-  such as commons-lang3 keep their descriptor under `META-INF/versions/9/`. Only the edges between
-  the module's own classes are read, so coupling is the same as without a descriptor. The Gradle
-  init script does not pass these yet, and its `nitpickerJdeps` fails on such a module.
+  such as commons-lang3 keep their descriptor under `META-INF/versions/9/`. The init script's
+  `nitpickerJdeps` passes the same two options. Only the edges between the module's own classes
+  are read, so coupling is the same as without a descriptor.
 - **Guards.** The [guards](#guards) run on Maven too, outside Maven and per module
   (`languages/java/maven/guards/`), writing the same reports in `target/nitpicker/`. The javac
   lint pass reads the `maven-compiler-plugin` settings from the effective POM (`release`, `source`,
@@ -754,7 +754,16 @@ A Checkstyle rule prints as its full check class, for example
   same tool and rule as jscpd (`duplicates/duplicate-clone`), with identities starting `cpd:` so
   they never match a jscpd finding; between two test files the message points at a helper or a
   `@ParameterizedTest`. The message ends with the exception route for
-  `duplicates/duplicate-clone`.
+  `duplicates/duplicate-clone`. When CPD exits with a code other than 0 or 4, or prints no XML
+  report, both builds write its exit code and stderr to `cpd-failed.txt` instead of `cpd.xml`,
+  and the module gets a `duplicates/cpd-not-run` tool-not-run finding that quotes them (an empty
+  or non-XML `cpd.xml` gives the same finding). PMD 7.7.0 to 7.28.0 can crash here with
+  `Deque.peek().name is null` and still exit 0: one CPD lexer serves every file, and its
+  constructor detector keeps its state from file to file. A `X.class` literal followed only by
+  closing braces leaves a nameless type on its stack; when the next file starts with a bare
+  `class` (no modifier or annotation) the stack is not cleaned, and the first `(` reached with
+  that type on top, such as a later file's `@Annotation(...)`, throws. The guards fixture's
+  `GreetingFixturesTest` is `final` for this reason.
 - **Cycles.** `java-coupling.mjs` already has the class graph from jdeps. Each package in a
   strongly connected set of packages is one `package-cycle` finding, identified by the package
   name and placed on its first file, so growing a legacy cycle adds a finding for the new package

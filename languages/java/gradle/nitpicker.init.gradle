@@ -508,7 +508,11 @@ allprojects {
                     return
                 }
                 def jdeps = new File(System.getProperty('java.home'), 'bin/jdeps')
-                def process = new ProcessBuilder([jdeps.absolutePath, '-verbose:class', '-filter:none'] +
+                def modular = classDirs.any { new File(it, 'module-info.class').isFile() }
+                def modulePath = modular ? sourceSets.main.compileClasspath.files.findAll { it.exists() } : []
+                def moduleArgs = (modulePath.isEmpty() ? [] : ['--module-path', modulePath.join(File.pathSeparator)]) +
+                    (modular ? ['--multi-release', javaRelease().toString()] : [])
+                def process = new ProcessBuilder([jdeps.absolutePath, '-verbose:class', '-filter:none'] + moduleArgs +
                     classDirs.collect { it.absolutePath }).directory(projectDir)
                     .redirectError(ProcessBuilder.Redirect.DISCARD).start()
                 def output = process.inputStream.getText('UTF-8')
