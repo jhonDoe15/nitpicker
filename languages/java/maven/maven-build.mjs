@@ -12,7 +12,12 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { javaCommand, runJava, runMaven } from './maven-command.mjs';
 import { runCheckstyle, runFormat, runPmd, runSpotbugs } from './maven-lint.mjs';
-import { moduleClasspaths, parseDependencyList, readReactor } from './maven-project.mjs';
+import {
+  lifecycleArgs,
+  moduleClasspaths,
+  parseDependencyList,
+  readReactor,
+} from './maven-project.mjs';
 import {
   archunitMatcher,
   collectTestResults,
@@ -20,6 +25,7 @@ import {
   runJacocoReport,
   runPit,
 } from './maven-tests.mjs';
+import { copyTestResults } from './results/maven-test-results.mjs';
 import { jacocoPlugin, MAVEN_PLUGINS, resolveTools } from './maven-tools.mjs';
 import { processorTool, runErrorProne } from './errorprone/maven-errorprone.mjs';
 import { GRADLE_DIRECTORY, readPinnedTools } from '../builds/java-build.mjs';
@@ -55,7 +61,7 @@ function dependencyFile(work, module) {
   return path.join(work, 'dependencies', groupId, `${artifactId}.txt`);
 }
 
-function buildAndTest({ projectRoot, maven, work, pinned }) {
+function buildAndTest({ projectRoot, maven, work, pinned, modules }) {
   runMaven({
     projectRoot,
     maven,
@@ -63,7 +69,7 @@ function buildAndTest({ projectRoot, maven, work, pinned }) {
       '--quiet',
       `${jacocoPlugin(pinned)}:prepare-agent`,
       `-Djacoco.destFile=\${project.build.directory}/${OWN_JACOCO_EXEC}`,
-      'test',
+      ...lifecycleArgs(modules),
       `${MAVEN_PLUGINS.dependency}:list`,
       `-DoutputFile=${path.join(work, 'dependencies', '${project.groupId}', '${project.artifactId}.txt')}`,
       '-DoutputAbsoluteArtifactFilename=true',
@@ -166,6 +172,7 @@ function analyzeModule({ module, classpaths, tools, pinned, configs, since }) {
   const isArchunit = archunitMatcher(module.archunitIncludes);
   const spring = classpaths.mainCompile.some((entry) => SPRING_JAR.test(path.basename(entry)));
   const testsRan = collectTestResults({ module, reportDir, since, isArchunit });
+  copyTestResults({ module, reportDir, since, isArchunit });
   runPmd({ module, reportDir, tools, classpaths, configs, spring });
   runSpotbugs({ module, reportDir, tools });
   runErrorProne({ module, reportDir, tools, classpaths });
@@ -173,18 +180,27 @@ function analyzeModule({ module, classpaths, tools, pinned, configs, since }) {
   runCheckstyle({ module, reportDir, tools, configs, pinned });
   runStructure(module, reportDir);
   runJdeps(module, reportDir);
-  const execFile = module.jacocoDestFile ?? path.join(module.buildDirectory, OWN_JACOCO_EXEC);
-  runJacocoReport({ module, reportDir, tools, execFile, since, testsRan });
+  runJacocoReport({
+    module,
+    reportDir,
+    tools,
+    execFiles: jacocoExecFiles(module),
+    since,
+    testsRan,
+  });
   runPit({ module, reportDir, tools, classpaths, isArchunit });
   writeManifest({ module, reportDir, pinned, spring, classpaths });
 }
 
+function jacocoExecFiles(module) {
+  return [path.join(module.buildDirectory, OWN_JACOCO_EXEC), ...module.jacocoDestFiles];
+}
+
 function staleOutputs(module) {
-  const execFiles = [path.join(module.buildDirectory, OWN_JACOCO_EXEC), module.jacocoDestFile];
   return [
     path.join(module.basedir, MAVEN_REPORT_DIRECTORY),
-    ...execFiles.filter(
-      (file) => file !== undefined && file.startsWith(`${module.buildDirectory}${path.sep}`),
+    ...jacocoExecFiles(module).filter((file) =>
+      file.startsWith(`${module.buildDirectory}${path.sep}`),
     ),
   ];
 }
@@ -223,7 +239,7 @@ export function runMavenPreset(projectRoot, { maven, policy = {}, configs }) {
   try {
     const modules = readModules(projectRoot, maven, work);
     const since = Date.now() - 2000;
-    buildAndTest({ projectRoot, maven, work, pinned });
+    buildAndTest({ projectRoot, maven, work, pinned, modules });
     const analyzed = modules.map((module) => ({
       module,
       classpaths: readClasspaths(work, module),
