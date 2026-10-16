@@ -1,0 +1,661 @@
+[
+  {
+    "primary": ["errorprone/ArrayHashCode"],
+    "secondary": ["spotbugs/DMI_INVOKING_HASHCODE_ON_ARRAY"],
+    "scope": "line"
+  },
+  {
+    "primary": ["errorprone/ArrayEquals"],
+    "secondary": ["spotbugs/EC_BAD_ARRAY_COMPARE"],
+    "scope": "line"
+  },
+  {
+    "primary": ["errorprone/ArrayToString"],
+    "secondary": ["spotbugs/DMI_INVOKING_TOSTRING_ON_ARRAY"],
+    "scope": "line"
+  },
+  {
+    "primary": ["errorprone/EqualsUnsafeCast"],
+    "secondary": [
+      "spotbugs/BC_EQUALS_METHOD_SHOULD_WORK_FOR_ALL_OBJECTS",
+      "spotbugs/NP_EQUALS_SHOULD_HANDLE_NULL_ARGUMENT"
+    ],
+    "scope": "line"
+  },
+  {
+    "primary": ["errorprone/DoubleCheckedLocking"],
+    "secondary": ["spotbugs/DC_DOUBLECHECK", "spotbugs/IS2_INCONSISTENT_SYNC"],
+    "scope": "line"
+  },
+  {
+    "primary": ["errorprone/DefaultCharset"],
+    "secondary": ["spotbugs/DM_DEFAULT_ENCODING"],
+    "scope": "line"
+  },
+  {
+    "primary": ["errorprone/EqualsIncompatibleType"],
+    "secondary": ["spotbugs/EC_UNRELATED_TYPES"],
+    "scope": "line"
+  },
+  {
+    "primary": ["errorprone/CollectionIncompatibleType"],
+    "secondary": ["spotbugs/GC_UNRELATED_TYPES"],
+    "scope": "line"
+  },
+  {
+    "primary": ["errorprone/BadShiftAmount"],
+    "secondary": ["spotbugs/ICAST_BAD_SHIFT_AMOUNT"],
+    "scope": "line"
+  },
+  {
+    "primary": ["errorprone/NarrowCalculation"],
+    "secondary": ["spotbugs/ICAST_IDIV_CAST_TO_DOUBLE"],
+    "scope": "line"
+  },
+  {
+    "primary": ["errorprone/IntLongMath", "errorprone/NarrowCalculation"],
+    "secondary": ["spotbugs/ICAST_INTEGER_MULTIPLY_CAST_TO_LONG"],
+    "scope": "line"
+  },
+  {
+    "primary": ["errorprone/IntLongMath"],
+    "secondary": ["errorprone/NarrowCalculation"],
+    "scope": "line"
+  },
+  {
+    "primary": ["errorprone/InfiniteRecursion"],
+    "secondary": ["spotbugs/IL_INFINITE_RECURSIVE_LOOP"],
+    "scope": "line"
+  },
+  {
+    "primary": ["errorprone/ComparisonOutOfRange"],
+    "secondary": ["spotbugs/INT_BAD_COMPARISON_WITH_SIGNED_BYTE"],
+    "scope": "line"
+  },
+  {
+    "primary": ["errorprone/NonFinalStaticField"],
+    "secondary": [
+      "spotbugs/MS_FINAL_PKGPROTECT",
+      "spotbugs/MS_SHOULD_BE_FINAL",
+      "errorprone/FieldCanBeFinal"
+    ],
+    "scope": "line"
+  },
+  {
+    "primary": ["errorprone/MutablePublicArray"],
+    "secondary": ["spotbugs/MS_MUTABLE_ARRAY", "spotbugs/MS_PKGPROTECT"],
+    "scope": "line"
+  },
+  {
+    "primary": ["errorprone/NullAway"],
+    "secondary": ["pmd/NullAssignment", "pmd/ReturnEmptyCollectionRatherThanNull"],
+    "scope": "line"
+  },
+  {
+    "primary": ["errorprone/InvalidPatternSyntax"],
+    "secondary": ["spotbugs/RE_BAD_SYNTAX_FOR_REGULAR_EXPRESSION"],
+    "scope": "line"
+  },
+  {
+    "primary": ["errorprone/BareDotMetacharacter"],
+    "secondary": ["spotbugs/RE_POSSIBLE_UNINTENDED_PATTERN"],
+    "scope": "line"
+  },
+  {
+    "primary": ["errorprone/RandomCast"],
+    "secondary": ["spotbugs/RV_01_TO_INT"],
+    "scope": "line"
+  },
+  {
+    "primary": ["errorprone/MathAbsoluteNegative"],
+    "secondary": ["spotbugs/RV_ABSOLUTE_VALUE_OF_RANDOM_INT"],
+    "scope": "line"
+  },
+  {
+    "primary": ["errorprone/DeadException"],
+    "secondary": ["spotbugs/RV_EXCEPTION_NOT_THROWN"],
+    "scope": "line"
+  },
+  {
+    "primary": ["errorprone/CheckReturnValue", "errorprone/ReturnValueIgnored"],
+    "secondary": ["spotbugs/RV_RETURN_VALUE_IGNORED", "pmd/UselessOperationOnImmutable"],
+    "scope": "line"
+  },
+  {
+    "primary": ["errorprone/SelfAssignment"],
+    "secondary": [
+      "spotbugs/SA_FIELD_SELF_ASSIGNMENT",
+      "spotbugs/SA_LOCAL_SELF_ASSIGNMENT",
+      "pmd/IdempotentOperations"
+    ],
+    "scope": "line"
+  },
+  {
+    "primary": ["pmd/CheckSkipResult"],
+    "secondary": ["spotbugs/SR_NOT_CHECKED"],
+    "scope": "line"
+  },
+  {
+    "primary": ["errorprone/FieldCanBeStatic"],
+    "secondary": ["spotbugs/SS_SHOULD_BE_STATIC"],
+    "scope": "line"
+  },
+  {
+    "primary": ["errorprone/UnnecessarySemicolon"],
+    "secondary": [
+      "spotbugs/UCF_USELESS_CONTROL_FLOW_NEXT_LINE",
+      "checkstyle/com.puppycrawl.tools.checkstyle.checks.blocks.NeedBracesCheck",
+      "errorprone/MissingBraces"
+    ],
+    "scope": "line"
+  },
+  {
+    "primary": ["checkstyle/com.puppycrawl.tools.checkstyle.checks.blocks.NeedBracesCheck"],
+    "secondary": ["errorprone/MissingBraces"],
+    "scope": "line"
+  },
+  {
+    "primary": ["errorprone/LockNotBeforeTry"],
+    "secondary": ["spotbugs/UL_UNRELEASED_LOCK", "spotbugs/UL_UNRELEASED_LOCK_EXCEPTION_PATH"],
+    "scope": "line"
+  },
+  {
+    "primary": ["errorprone/WaitNotInLoop"],
+    "secondary": ["spotbugs/UW_UNCOND_WAIT", "spotbugs/WA_NOT_IN_LOOP"],
+    "scope": "line"
+  },
+  {
+    "primary": ["errorprone/NonAtomicVolatileUpdate"],
+    "secondary": ["spotbugs/VO_VOLATILE_INCREMENT"],
+    "scope": "line"
+  },
+  {
+    "primary": ["errorprone/SubstringOfZero"],
+    "secondary": ["spotbugs/DMI_USELESS_SUBSTRING"],
+    "scope": "line"
+  },
+  {
+    "primary": [
+      "errorprone/IdentityBinaryExpression",
+      "errorprone/SelfComparison",
+      "errorprone/SelfEquals"
+    ],
+    "secondary": ["spotbugs/SA_FIELD_SELF_COMPARISON", "spotbugs/SA_LOCAL_SELF_COMPARISON"],
+    "scope": "line"
+  },
+  {
+    "primary": ["errorprone/LockOnBoxedPrimitive"],
+    "secondary": ["spotbugs/DL_SYNCHRONIZATION_ON_*"],
+    "scope": "line"
+  },
+  {
+    "primary": ["errorprone/BoxedPrimitiveConstructor"],
+    "secondary": [
+      "spotbugs/DM_FP_NUMBER_CTOR",
+      "spotbugs/DM_NUMBER_CTOR",
+      "pmd/PrimitiveWrapperInstantiation"
+    ],
+    "scope": "line"
+  },
+  {
+    "primary": ["errorprone/DoNotCall"],
+    "secondary": ["spotbugs/RU_INVOKE_RUN"],
+    "scope": "line"
+  },
+  {
+    "primary": ["errorprone/EqualsNaN"],
+    "secondary": ["spotbugs/FE_TEST_IF_EQUAL_TO_NOT_A_NUMBER", "pmd/ComparisonWithNaN"],
+    "scope": "line"
+  },
+  {
+    "primary": [
+      "errorprone/BoxedPrimitiveEquality",
+      "errorprone/MemorySegmentReferenceEquality",
+      "errorprone/OptionalEquality",
+      "errorprone/ProtoStringFieldReferenceEquality"
+    ],
+    "secondary": ["errorprone/ReferenceEquality"],
+    "scope": "line"
+  },
+  {
+    "primary": [
+      "errorprone/BoxedPrimitiveEquality",
+      "errorprone/MemorySegmentReferenceEquality",
+      "errorprone/OptionalEquality",
+      "errorprone/ProtoStringFieldReferenceEquality",
+      "errorprone/ReferenceEquality"
+    ],
+    "secondary": [
+      "spotbugs/ES_COMPARING_*",
+      "spotbugs/RC_REF_COMPARISON*",
+      "pmd/CompareObjectsWithEquals",
+      "pmd/UseEqualsToCompareStrings"
+    ],
+    "scope": "line"
+  },
+  {
+    "primary": ["pmd/UseEqualsToCompareStrings"],
+    "secondary": ["pmd/CompareObjectsWithEquals", "spotbugs/ES_COMPARING_*"],
+    "scope": "line"
+  },
+  {
+    "primary": ["pmd/InstantiationToGetClass"],
+    "secondary": ["spotbugs/DM_NEW_FOR_GETCLASS"],
+    "scope": "line"
+  },
+  {
+    "primary": ["pmd/MethodReturnsInternalArray"],
+    "secondary": ["spotbugs/EI_EXPOSE_REP"],
+    "scope": "line"
+  },
+  {
+    "primary": ["pmd/ArrayIsStoredDirectly"],
+    "secondary": ["spotbugs/EI_EXPOSE_REP2"],
+    "scope": "line"
+  },
+  {
+    "primary": ["errorprone/MissingCasesInEnumSwitch"],
+    "secondary": [
+      "pmd/NonExhaustiveSwitch",
+      "errorprone/MissingDefault",
+      "checkstyle/com.puppycrawl.tools.checkstyle.checks.coding.MissingSwitchDefaultCheck",
+      "spotbugs/SF_SWITCH_NO_DEFAULT"
+    ],
+    "scope": "line"
+  },
+  {
+    "primary": ["pmd/NonExhaustiveSwitch"],
+    "secondary": [
+      "errorprone/MissingDefault",
+      "checkstyle/com.puppycrawl.tools.checkstyle.checks.coding.MissingSwitchDefaultCheck",
+      "spotbugs/SF_SWITCH_NO_DEFAULT"
+    ],
+    "scope": "line"
+  },
+  {
+    "primary": ["errorprone/MissingDefault"],
+    "secondary": [
+      "checkstyle/com.puppycrawl.tools.checkstyle.checks.coding.MissingSwitchDefaultCheck",
+      "spotbugs/SF_SWITCH_NO_DEFAULT"
+    ],
+    "scope": "line"
+  },
+  {
+    "primary": [
+      "checkstyle/com.puppycrawl.tools.checkstyle.checks.coding.MissingSwitchDefaultCheck"
+    ],
+    "secondary": ["spotbugs/SF_SWITCH_NO_DEFAULT"],
+    "scope": "line"
+  },
+  {
+    "primary": ["errorprone/FallThrough"],
+    "secondary": [
+      "pmd/ImplicitSwitchFallThrough",
+      "checkstyle/com.puppycrawl.tools.checkstyle.checks.coding.FallThroughCheck"
+    ],
+    "scope": "line"
+  },
+  {
+    "primary": ["pmd/ImplicitSwitchFallThrough"],
+    "secondary": ["checkstyle/com.puppycrawl.tools.checkstyle.checks.coding.FallThroughCheck"],
+    "scope": "line"
+  },
+  {
+    "primary": [
+      "errorprone/FallThrough",
+      "pmd/ImplicitSwitchFallThrough",
+      "checkstyle/com.puppycrawl.tools.checkstyle.checks.coding.FallThroughCheck"
+    ],
+    "secondary": ["spotbugs/SF_SWITCH_FALLTHROUGH"],
+    "scope": "member"
+  },
+  {
+    "primary": ["errorprone/EmptyCatch"],
+    "secondary": [
+      "pmd/EmptyCatchBlock",
+      "checkstyle/com.puppycrawl.tools.checkstyle.checks.blocks.EmptyCatchBlockCheck"
+    ],
+    "scope": "line"
+  },
+  {
+    "primary": ["pmd/EmptyCatchBlock"],
+    "secondary": ["checkstyle/com.puppycrawl.tools.checkstyle.checks.blocks.EmptyCatchBlockCheck"],
+    "scope": "line"
+  },
+  {
+    "primary": ["errorprone/MultiVariableDeclaration"],
+    "secondary": [
+      "pmd/OneDeclarationPerLine",
+      "checkstyle/com.puppycrawl.tools.checkstyle.checks.coding.MultipleVariableDeclarationsCheck"
+    ],
+    "scope": "line"
+  },
+  {
+    "primary": ["pmd/OneDeclarationPerLine"],
+    "secondary": [
+      "checkstyle/com.puppycrawl.tools.checkstyle.checks.coding.MultipleVariableDeclarationsCheck"
+    ],
+    "scope": "line"
+  },
+  {
+    "primary": ["errorprone/InterruptedExceptionSwallowed"],
+    "secondary": ["pmd/AvoidCatchingGenericException"],
+    "scope": "line"
+  },
+  {
+    "primary": ["errorprone/IdentifierName"],
+    "secondary": [
+      "checkstyle/com.puppycrawl.tools.checkstyle.checks.naming.CatchParameterNameCheck",
+      "checkstyle/com.puppycrawl.tools.checkstyle.checks.naming.LambdaParameterNameCheck",
+      "checkstyle/com.puppycrawl.tools.checkstyle.checks.naming.LocalVariableNameCheck",
+      "checkstyle/com.puppycrawl.tools.checkstyle.checks.naming.MemberNameCheck",
+      "checkstyle/com.puppycrawl.tools.checkstyle.checks.naming.MethodNameCheck",
+      "checkstyle/com.puppycrawl.tools.checkstyle.checks.naming.ParameterNameCheck",
+      "checkstyle/com.puppycrawl.tools.checkstyle.checks.naming.PatternVariableNameCheck",
+      "checkstyle/com.puppycrawl.tools.checkstyle.checks.naming.RecordComponentNameCheck"
+    ],
+    "scope": "line"
+  },
+  {
+    "primary": ["errorprone/TypeParameterNaming"],
+    "secondary": [
+      "checkstyle/com.puppycrawl.tools.checkstyle.checks.naming.ClassTypeParameterNameCheck",
+      "checkstyle/com.puppycrawl.tools.checkstyle.checks.naming.InterfaceTypeParameterNameCheck",
+      "checkstyle/com.puppycrawl.tools.checkstyle.checks.naming.MethodTypeParameterNameCheck",
+      "checkstyle/com.puppycrawl.tools.checkstyle.checks.naming.RecordTypeParameterNameCheck"
+    ],
+    "scope": "line"
+  },
+  {
+    "primary": ["errorprone/WildcardImport"],
+    "secondary": ["checkstyle/com.puppycrawl.tools.checkstyle.checks.imports.AvoidStarImportCheck"],
+    "scope": "line"
+  },
+  {
+    "primary": ["errorprone/LongLiteralLowerCaseSuffix"],
+    "secondary": ["checkstyle/com.puppycrawl.tools.checkstyle.checks.UpperEllCheck"],
+    "scope": "line"
+  },
+  {
+    "primary": ["errorprone/MixedArrayDimensions"],
+    "secondary": ["checkstyle/com.puppycrawl.tools.checkstyle.checks.ArrayTypeStyleCheck"],
+    "scope": "line"
+  },
+  {
+    "primary": ["errorprone/BigDecimalLiteralDouble"],
+    "secondary": [
+      "pmd/AvoidDecimalLiteralsInBigDecimalConstructor",
+      "spotbugs/DMI_BIGDECIMAL_CONSTRUCTED_FROM_DOUBLE"
+    ],
+    "scope": "line"
+  },
+  {
+    "primary": ["errorprone/StringBuilderInitWithChar"],
+    "secondary": ["pmd/StringBufferInstantiationWithChar"],
+    "scope": "line"
+  },
+  {
+    "primary": ["pmd/EqualsNull"],
+    "secondary": ["errorprone/EqualsNull", "spotbugs/EC_NULL_ARG"],
+    "scope": "line"
+  },
+  {
+    "primary": ["errorprone/EqualsNull"],
+    "secondary": ["spotbugs/EC_NULL_ARG"],
+    "scope": "line"
+  },
+  {
+    "primary": ["errorprone/ExplicitArrayForVarargs"],
+    "secondary": ["pmd/UnnecessaryVarargsArrayCreation"],
+    "scope": "line"
+  },
+  {
+    "primary": ["errorprone/SystemExitOutsideMain"],
+    "secondary": ["pmd/DoNotTerminateVM", "spotbugs/DM_EXIT"],
+    "scope": "line"
+  },
+  {
+    "primary": ["pmd/DoNotTerminateVM"],
+    "secondary": ["spotbugs/DM_EXIT"],
+    "scope": "line"
+  },
+  {
+    "primary": ["errorprone/CatchAndPrintStackTrace"],
+    "secondary": ["pmd/AvoidPrintStackTrace", "errorprone/SystemOut"],
+    "scope": "line"
+  },
+  {
+    "primary": ["errorprone/SystemOut"],
+    "secondary": ["pmd/SystemPrintln"],
+    "scope": "line"
+  },
+  {
+    "primary": ["errorprone/MissingOverride"],
+    "secondary": ["pmd/MissingOverride"],
+    "scope": "line"
+  },
+  {
+    "primary": ["pmd/DefaultLabelNotLastInSwitch"],
+    "secondary": ["errorprone/SwitchDefault"],
+    "scope": "line"
+  },
+  {
+    "primary": ["checkstyle/com.puppycrawl.tools.checkstyle.checks.javadoc.JavadocMethodCheck"],
+    "secondary": ["errorprone/InvalidParam"],
+    "scope": "line"
+  },
+  {
+    "primary": ["errorprone/ReturnFromVoid"],
+    "secondary": ["checkstyle/com.puppycrawl.tools.checkstyle.checks.javadoc.JavadocMethodCheck"],
+    "scope": "line"
+  },
+  {
+    "primary": ["errorprone/NotJavadoc"],
+    "secondary": [
+      "checkstyle/com.puppycrawl.tools.checkstyle.checks.javadoc.InvalidJavadocPositionCheck"
+    ],
+    "scope": "line"
+  },
+  {
+    "primary": ["errorprone/EmptyBlockTag"],
+    "secondary": [
+      "checkstyle/com.puppycrawl.tools.checkstyle.checks.javadoc.NonEmptyAtclauseDescriptionCheck"
+    ],
+    "scope": "line"
+  },
+  {
+    "primary": ["errorprone/MissingSummary"],
+    "secondary": ["checkstyle/com.puppycrawl.tools.checkstyle.checks.javadoc.SummaryJavadocCheck"],
+    "scope": "line"
+  },
+  {
+    "primary": ["errorprone/AnnotationPosition"],
+    "secondary": [
+      "checkstyle/com.puppycrawl.tools.checkstyle.checks.annotation.AnnotationLocationCheck"
+    ],
+    "scope": "line"
+  },
+  {
+    "primary": ["errorprone/ClassName"],
+    "secondary": ["checkstyle/com.puppycrawl.tools.checkstyle.checks.OuterTypeFilenameCheck"],
+    "scope": "line"
+  },
+  {
+    "primary": ["errorprone/AssignmentExpression"],
+    "secondary": ["pmd/AssignmentInOperand"],
+    "scope": "line"
+  },
+  {
+    "primary": ["errorprone/HardCodedSdCardPath"],
+    "secondary": ["pmd/DoNotHardCodeSDCard"],
+    "scope": "line"
+  },
+  {
+    "primary": ["errorprone/ForEachIterable"],
+    "secondary": ["pmd/ForLoopCanBeForeach"],
+    "scope": "line"
+  },
+  {
+    "primary": ["errorprone/Finally"],
+    "secondary": ["pmd/DoNotThrowExceptionInFinally", "pmd/ReturnFromFinallyBlock"],
+    "scope": "line"
+  },
+  {
+    "primary": ["errorprone/DoubleBraceInitialization"],
+    "secondary": ["pmd/DoubleBraceInitialization"],
+    "scope": "member"
+  },
+  {
+    "primary": ["errorprone/JdkObsolete"],
+    "secondary": [
+      "pmd/ReplaceEnumerationWithIterator",
+      "pmd/ReplaceHashtableWithMap",
+      "pmd/ReplaceVectorWithList"
+    ],
+    "scope": "line"
+  },
+  {
+    "primary": ["errorprone/JdkObsolete"],
+    "secondary": ["errorprone/StringCharset"],
+    "scope": "line"
+  },
+  {
+    "primary": ["errorprone/NonOverridingEquals"],
+    "secondary": ["pmd/SuspiciousEqualsMethodName"],
+    "scope": "line"
+  },
+  {
+    "primary": ["errorprone/DefaultLocale"],
+    "secondary": ["pmd/SimpleDateFormatNeedsLocale"],
+    "scope": "line"
+  },
+  {
+    "primary": ["pmd/UseLocaleWithCaseConversions"],
+    "secondary": ["errorprone/StringCaseLocaleUsage"],
+    "scope": "line"
+  },
+  {
+    "primary": ["spotbugs/ST_WRITE_TO_STATIC_FROM_INSTANCE_METHOD"],
+    "secondary": ["errorprone/StaticAssignmentInConstructor", "pmd/AssignmentToNonFinalStatic"],
+    "scope": "line"
+  },
+  {
+    "primary": ["errorprone/StaticAssignmentInConstructor"],
+    "secondary": ["pmd/AssignmentToNonFinalStatic"],
+    "scope": "line"
+  },
+  {
+    "primary": ["pmd/UnitTestShouldUseBeforeAnnotation"],
+    "secondary": [
+      "errorprone/JUnit4SetUpNotRun",
+      "errorprone/JUnit4TestNotRun",
+      "pmd/DetachedTestCase"
+    ],
+    "scope": "line"
+  },
+  {
+    "primary": ["pmd/UnitTestShouldUseAfterAnnotation"],
+    "secondary": [
+      "errorprone/JUnit4TearDownNotRun",
+      "errorprone/JUnit4TestNotRun",
+      "pmd/DetachedTestCase"
+    ],
+    "scope": "line"
+  },
+  {
+    "primary": [
+      "pmd/DetachedTestCase",
+      "errorprone/JUnit4SetUpNotRun",
+      "errorprone/JUnit4TearDownNotRun"
+    ],
+    "secondary": ["errorprone/JUnit4TestNotRun"],
+    "scope": "line"
+  },
+  {
+    "primary": ["errorprone/EqualsHashCode"],
+    "secondary": ["pmd/OverrideBothEqualsAndHashcode"],
+    "scope": "line"
+  },
+  {
+    "primary": ["pmd/UnusedPrivateMethod"],
+    "secondary": ["errorprone/UnusedMethod"],
+    "scope": "line"
+  },
+  {
+    "primary": ["pmd/PreserveStackTrace"],
+    "secondary": ["errorprone/UnusedException"],
+    "scope": "member"
+  },
+  {
+    "primary": ["pmd/AvoidReassigningLoopVariables"],
+    "secondary": ["errorprone/IncrementInForLoopAndHeader"],
+    "scope": "member"
+  },
+  {
+    "primary": ["errorprone/Finalize"],
+    "secondary": ["pmd/EmptyFinalizer", "spotbugs/FI_EMPTY"],
+    "scope": "line"
+  },
+  {
+    "primary": ["errorprone/Finalize"],
+    "secondary": ["checkstyle/com.puppycrawl.tools.checkstyle.checks.coding.NoFinalizerCheck"],
+    "scope": "member"
+  },
+  {
+    "primary": ["errorprone/UngroupedOverloads"],
+    "secondary": [
+      "checkstyle/com.puppycrawl.tools.checkstyle.checks.coding.OverloadMethodsDeclarationOrderCheck"
+    ],
+    "scope": "class"
+  },
+  {
+    "primary": ["checkstyle/com.puppycrawl.tools.checkstyle.checks.design.OneTopLevelClassCheck"],
+    "secondary": ["errorprone/MultipleTopLevelClasses"],
+    "scope": "file"
+  },
+  {
+    "primary": ["errorprone/SunApi"],
+    "secondary": ["pmd/DontImportSun"],
+    "scope": "file"
+  },
+  {
+    "primary": ["errorprone/EqualsHashCode", "pmd/OverrideBothEqualsAndHashcode"],
+    "secondary": ["spotbugs/HE_*"],
+    "scope": "member"
+  },
+  {
+    "primary": ["errorprone/NullAway", "errorprone/ToStringReturnsNull"],
+    "secondary": ["spotbugs/NP_TOSTRING_COULD_RETURN_NULL"],
+    "scope": "member"
+  },
+  {
+    "primary": ["errorprone/NullAway"],
+    "secondary": ["errorprone/ToStringReturnsNull"],
+    "scope": "member"
+  },
+  {
+    "primary": ["errorprone/NonOverridingEquals"],
+    "secondary": ["spotbugs/EQ_SELF_NO_OBJECT", "spotbugs/EQ_SELF_USE_OBJECT"],
+    "scope": "member"
+  },
+  {
+    "primary": ["errorprone/SynchronizeOnNonFinalField"],
+    "secondary": ["spotbugs/ML_SYNC_ON_FIELD_TO_GUARD_CHANGING_THAT_FIELD"],
+    "scope": "member"
+  },
+  {
+    "primary": ["errorprone/URLEqualsHashCode"],
+    "secondary": ["spotbugs/DMI_COLLECTION_OF_URLS"],
+    "scope": "field"
+  },
+  {
+    "primary": ["pmd/UnusedPrivateField"],
+    "secondary": ["spotbugs/URF_UNREAD_FIELD", "spotbugs/UUF_UNUSED_FIELD"],
+    "scope": "field"
+  },
+  {
+    "primary": ["errorprone/NullAway"],
+    "secondary": ["spotbugs/NP_UNWRITTEN_FIELD", "spotbugs/UWF_UNWRITTEN_FIELD"],
+    "scope": "field"
+  }
+]

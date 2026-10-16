@@ -179,6 +179,7 @@ allprojects {
         def usesSpring = {
             sourceSets.main.compileClasspath.files.any { it.name ==~ /spring-(context|boot)-.*\.jar/ }
         }
+        def hasGuava = { sourceSet -> sourceSet.compileClasspath.files.any { it.name ==~ /guava-\d.*\.jar/ } }
 
         tasks.register('nitpickerPmd', JavaExec) {
             group = 'nitpicker'
@@ -225,9 +226,7 @@ allprojects {
                 def classDirs = analyzedClassDirs().findAll { it.exists() }
                 def auxiliary = kotlinPreset
                     ? sourceSets.main.runtimeClasspath.files.findAll { it.exists() && !classDirs.contains(it) } : []
-                def overlaps = kotlinPreset ? []
-                    : ['-exclude', new File(initScriptDir, 'spotbugs-exclude.xml').absolutePath]
-                args(['-effort:default', '-medium', '-sarif'] + overlaps + [
+                args(['-effort:default', '-medium', '-sarif',
                       '-output', reportDir.get().file('spotbugs.sarif').asFile.absolutePath,
                       '-sourcepath', sourcePath] +
                     (auxiliary.isEmpty() ? [] : ['-auxclasspath', auxiliary.join(File.pathSeparator)]) +
@@ -412,6 +411,8 @@ allprojects {
                     testSourceRoots: testRoots,
                     resourceRoots  : resourceRoots,
                     spring         : usesSpring(),
+                    guava          : hasGuava(sourceSets.main),
+                    testGuava      : hasGuava(sourceSets.test),
                 ])
             }
         }

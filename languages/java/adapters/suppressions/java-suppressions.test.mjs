@@ -1,9 +1,13 @@
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import { ERROR_PRONE_MESSAGE } from './errorprone/errorprone-escapes.mjs';
-import { fileFindings, readInlineSuppressionFindings } from './java-suppressions.mjs';
+import {
+  INLINE_SUPPRESSIBLE_RULES,
+  fileFindings,
+  readInlineSuppressionFindings,
+} from './java-suppressions.mjs';
 
 const roots = [];
 afterEach(() => {
@@ -236,7 +240,7 @@ describe('fileFindings for Error Prone', () => {
       '  @SuppressWarnings({"NullAway.Init", "unchecked"}) private String b;',
       '  @SuppressWarnings("FutureReturnValueIgnored") void c() {}',
       '  @SuppressWarnings("NullAwayLike") void d() {}',
-      '  @SuppressWarnings({"dep-ann", "MissingOverride"}) void e() {}',
+      '  @SuppressWarnings({"dep-ann", "Varifier"}) void e() {}',
       '}',
     ].join('\n');
 
@@ -322,5 +326,19 @@ describe('readInlineSuppressionFindings', () => {
         (finding) => `${finding.path}:${String(finding.location.line)}`,
       ),
     ).toEqual(['src/main/java/shop/A.java:2']);
+  });
+});
+
+describe('the Java skill', () => {
+  it('names every accepted marker as the exception to its never-suppress rule', () => {
+    const skill = readFileSync(
+      path.resolve(import.meta.dirname, '../../../../skills/nitpicker-java/SKILL.md'),
+      'utf8',
+    );
+    const rule = /^\d+\. Never suppress:[\s\S]*?(?=\n\n|\n\d+\. )/mu.exec(skill)?.[0] ?? '';
+
+    expect(
+      INLINE_SUPPRESSIBLE_RULES.map((marker) => rule.includes(`@SuppressWarnings("${marker}")`)),
+    ).toStrictEqual(INLINE_SUPPRESSIBLE_RULES.map(() => true));
   });
 });

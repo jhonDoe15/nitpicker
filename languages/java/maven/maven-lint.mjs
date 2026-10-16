@@ -132,8 +132,6 @@ export function runSpotbugs({ module, reportDir, tools }) {
     args: [
       '-effort:default',
       '-medium',
-      '-exclude',
-      path.join(GRADLE_DIRECTORY, 'spotbugs-exclude.xml'),
       '-sarif',
       '-output',
       report,

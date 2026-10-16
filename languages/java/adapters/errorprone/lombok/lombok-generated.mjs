@@ -1,3 +1,6 @@
+import { existsSync } from 'node:fs';
+import path from 'node:path';
+
 const LOMBOK_ANNOTATIONS = new Set([
   ...[
     'AllArgsConstructor',
@@ -89,12 +92,23 @@ function imports(text) {
   return { single, onDemand };
 }
 
-function candidates(name, text) {
+function declaredInPackage(simpleName, text, file) {
+  const declared = new RegExp(`\\b(?:class|interface|enum|record)\\s+${simpleName}\\b`, 'u');
+  return (
+    declared.test(text) ||
+    (typeof file === 'string' && existsSync(path.join(path.dirname(file), `${simpleName}.java`)))
+  );
+}
+
+function candidates(name, text, file) {
   const [first, ...rest] = name.split('.');
   const nested = rest.length === 0 ? '' : `.${rest.join('.')}`;
   const { single, onDemand } = imports(text);
   if (single.has(first)) {
     return [`${single.get(first)}${nested}`];
+  }
+  if (rest.length === 0 && declaredInPackage(first, text, file)) {
+    return [];
   }
   return [name, ...onDemand.map((owner) => `${owner}.${name}`)];
 }
@@ -104,13 +118,13 @@ function inComment(text, position) {
   return COMMENT_BEFORE.test(text.slice(lineStart, position));
 }
 
-export function lombokAnnotationAt(text, position) {
+export function lombokAnnotationAt(text, position, file) {
   const match = ANNOTATION.exec(text.slice(position));
   if (match === null || inComment(text, position)) {
     return undefined;
   }
   const name = match[1].replaceAll(/\s/gu, '');
-  return candidates(name, text).find((candidate) => LOMBOK_ANNOTATIONS.has(candidate));
+  return candidates(name, text, file).find((candidate) => LOMBOK_ANNOTATIONS.has(candidate));
 }
 
 function onlyInGeneratedCode(message, annotation) {
@@ -126,6 +140,6 @@ export function isLombokGenerated(diagnostic, text) {
   if (!Number.isInteger(position) || position < 0 || typeof message !== 'string') {
     return false;
   }
-  const annotation = lombokAnnotationAt(text, position);
+  const annotation = lombokAnnotationAt(text, position, diagnostic.file);
   return annotation !== undefined && onlyInGeneratedCode(message, annotation);
 }

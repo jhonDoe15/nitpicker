@@ -49,7 +49,9 @@ describe('ingestErrorProne', () => {
         rule: 'CheckReturnValue',
         path: `${MAIN}/calculator/simple/Calculator.java`,
         identity: identity('CheckReturnValue', CHECK_RETURN_VALUE),
-        message: CHECK_RETURN_VALUE,
+        message:
+          'The result of `evaluate()` must be used. Use the result, or make the method return void if ' +
+          'callers do not need it. Did you mean to remove this line?',
         classification: 'enforceable',
         location: { line: 16, column: 26 },
       },
@@ -130,34 +132,30 @@ describe('ingestErrorProne', () => {
     ]);
   });
 
-  it('reports one finding for repeats of a check and message on one line, with a stable identity', () => {
+  it('drops repeated diagnostics and the class-literal echo of a SunApi type, keeping other columns', () => {
     const sun = (column, name) => ({
       file: '/project/src/main/java/A.java',
       line: 8,
       column,
       message: `[SunApi] ${name} is an internal JDK API which may be removed in a future release`,
     });
-    const once = [sun(12, 'sun.misc.Unsafe'), sun(18, 'class')];
-    const repeated = [...once, sun(43, 'class'), sun(37, 'sun.misc.Signal'), sun(50, 'class')];
-    const read = (report) =>
-      ingestErrorProne(JSON.stringify(report), { resolvePath }).findings.map(
-        ({ identity: id, message }) => [id, message],
+    const report = [
+      sun(12, 'sun.misc.Unsafe'),
+      sun(18, 'class'),
+      sun(37, 'sun.misc.Signal'),
+      sun(43, 'class'),
+      sun(37, 'sun.misc.Signal'),
+      sun(60, 'class'),
+    ];
+    const read = (diagnostics) =>
+      ingestErrorProne(JSON.stringify(diagnostics), { resolvePath }).findings.map(
+        ({ message, location }) => [location.column, message.split(' ')[0]],
       );
 
-    expect(read(repeated)).toEqual([
-      ...read(once),
-      [
-        identity(
-          'SunApi',
-          'sun.misc.Signal is an internal JDK API which may be removed in a future release',
-        ),
-        'sun.misc.Signal is an internal JDK API which may be removed in a future release',
-      ],
-    ]);
-    expect(read(repeated).map(([, message]) => message.split(' ')[0])).toEqual([
-      'sun.misc.Unsafe',
-      'class',
-      'sun.misc.Signal',
+    expect(read(report)).toStrictEqual([
+      [12, 'sun.misc.Unsafe'],
+      [37, 'sun.misc.Signal'],
+      [60, 'class'],
     ]);
   });
 

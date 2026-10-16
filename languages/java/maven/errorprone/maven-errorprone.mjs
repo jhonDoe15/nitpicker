@@ -4,7 +4,7 @@ import path from 'node:path';
 import { GRADLE_DIRECTORY } from '../../builds/java-build.mjs';
 import { runJava } from '../maven-command.mjs';
 import { javaFiles } from '../maven-lint.mjs';
-import { requireErrorProneJdk } from './maven-jdk.mjs';
+import { errorProneJava } from './maven-jdk.mjs';
 
 const RUNNER_DIRECTORY = path.join(GRADLE_DIRECTORY, 'errorprone');
 const COMPILER_PACKAGES = [
@@ -99,7 +99,7 @@ export function runErrorProne({ module, reportDir, tools, classpaths }) {
   const argumentFiles = sets.flatMap((set) =>
     writeArguments(work, {
       ...set,
-      compiler,
+      compiler: set.test ? { ...compiler, ...compiler.test } : compiler,
       processors: [...tools.errorprone, ...processorPath(set.classpath, compiler, tools)],
     }),
   );
@@ -107,8 +107,11 @@ export function runErrorProne({ module, reportDir, tools, classpaths }) {
     writeFileSync(report, '[]\n');
     return;
   }
-  requireErrorProneJdk();
+  const preview = [compiler, compiler.test ?? compiler].some((settings) =>
+    settings.compilerArgs.includes('--enable-preview'),
+  );
   runJava({
+    java: errorProneJava({ preview }),
     tool: 'Error Prone',
     jvmArgs: JVM_FLAGS,
     args: [

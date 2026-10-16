@@ -43,7 +43,60 @@ describe('compilerSettings', () => {
         'org.projectlombok:lombok:1.18.36',
         'org.mapstruct:mapstruct-processor:1.6.3',
       ],
+      test: {
+        release: '21',
+        source: undefined,
+        target: undefined,
+        compilerArgs: ['-parameters', '--enable-preview'],
+      },
     });
+  });
+
+  it('gives the test pass its own level and arguments, from test properties and default-testCompile', () => {
+    const settings = compilerSettings(
+      project(`<properties>
+          <maven.compiler.release>17</maven.compiler.release>
+          <maven.compiler.testRelease>21</maven.compiler.testRelease>
+        </properties>
+        <build><plugins><plugin><artifactId>maven-compiler-plugin</artifactId>
+        <configuration><compilerArgument>-Xlint:all -parameters</compilerArgument></configuration>
+        <executions><execution><id>default-testCompile</id><configuration>
+          <enablePreview>true</enablePreview><compilerArgs><arg>-Atest=true</arg></compilerArgs>
+        </configuration></execution></executions></plugin></plugins></build>`),
+    );
+
+    expect([settings.release, settings.compilerArgs, settings.test]).toStrictEqual([
+      '17',
+      ['-Xlint:all', '-parameters'],
+      {
+        release: '21',
+        source: undefined,
+        target: undefined,
+        compilerArgs: ['-Atest=true', '-Xlint:all', '-parameters', '--enable-preview'],
+      },
+    ]);
+  });
+
+  it("treats an empty release as missing and falls back to the plugin's own default level", () => {
+    const level = (body) => {
+      const { release, source, target } = compilerSettings(project(body));
+      return [release, source, target];
+    };
+    const plugin = (version, configuration = '') =>
+      `<build><plugins><plugin><artifactId>maven-compiler-plugin</artifactId><version>${version}</version>` +
+      `<configuration>${configuration}</configuration></plugin></plugins></build>`;
+
+    expect([
+      level(plugin('3.13.0', '<release/>')),
+      level(plugin('3.8.1')),
+      level(plugin('4.0.0-beta-2')),
+      level(plugin('3.13.0', '<release>21</release>')),
+    ]).toStrictEqual([
+      [undefined, '8', '8'],
+      [undefined, '8', '8'],
+      [undefined, undefined, undefined],
+      ['21', undefined, undefined],
+    ]);
   });
 
   it('keeps source and target apart from release, and reads proc from the plugin configuration', () => {

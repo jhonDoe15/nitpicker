@@ -4,7 +4,7 @@ import { hash, nextOccurrence } from '../../../../shared/rules/finding-helpers.m
 import { ERROR_PRONE_MESSAGE, errorProneEscapes } from './errorprone/errorprone-escapes.mjs';
 
 const INLINE_SUPPRESSION_RULE = 'InlineSuppression';
-const INLINE_SUPPRESSIBLE_RULES = ['PMD.SpringDataNativeQuery'];
+export const INLINE_SUPPRESSIBLE_RULES = ['PMD.SpringDataNativeQuery'];
 
 const LITERALS_AND_COMMENTS =
   /"""(?:[^\\]|\\[\s\S])*?"""|"(?:[^"\\\n]|\\.)*"|'(?:[^'\\\n]|\\.)*'|\/\/[^\n]*|\/\*[\s\S]*?\*\//g;

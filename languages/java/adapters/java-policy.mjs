@@ -182,12 +182,15 @@ export function applyJavaPolicy(
     preset = 'java',
     inventoryTool = preset,
   } = {},
+  resolveOverlaps = (reported) => reported,
 ) {
   const excluders = exclude.map((glob) => globToRegExp(glob));
   const lifted = exceptions.map(({ rule, glob }) => ({ rule, matcher: globToRegExp(glob) }));
-  const kept = findings.filter(
-    (finding) =>
-      !excluders.some((matcher) => matcher.test(finding.path)) && !isLifted(finding, lifted),
+  const kept = resolveOverlaps(
+    findings.filter(
+      (finding) =>
+        !excluders.some((matcher) => matcher.test(finding.path)) && !isLifted(finding, lifted),
+    ),
   );
   if (legacyInventory === undefined || policyRoot === undefined) {
     return kept;

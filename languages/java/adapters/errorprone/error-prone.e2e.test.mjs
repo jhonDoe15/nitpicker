@@ -11,7 +11,7 @@ import {
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { INIT_SCRIPT } from '../../builds/java-build.mjs';
+import { GRADLE_DIRECTORY, INIT_SCRIPT } from '../../builds/java-build.mjs';
 import { GRADLE_STEP_TIMEOUT_MS } from '../test-support/gradle-e2e.mjs';
 import { readErrorProneFindings } from './java-errorprone.mjs';
 
@@ -153,6 +153,12 @@ public class Beans {
   @org.springframework.context.annotation.Bean
   static StringBuilder builder() {
     return new StringBuilder();
+  }
+
+  static final class Sizes {
+    static int empty() {
+      return 0;
+    }
   }
 }
 `;
@@ -349,17 +355,67 @@ describe.skipIf(!enabled)('Error Prone through the init script', () => {
         'CheckReturnValue',
         'src/test/java/demo/JobsCheck.java',
         7,
-        "The result of `count()` must be used. Did you mean 'var unused = jobs.count();' or to " +
-          `remove this line? ${hint('CheckReturnValue', 'src/test/java/demo/JobsCheck.java')}`,
+        'The result of `count()` must be used. Use the result, or make the method return void if ' +
+          'callers do not need it. Did you mean to remove this line? ' +
+          hint('CheckReturnValue', 'src/test/java/demo/JobsCheck.java'),
       ],
       [
         'errorprone',
         'CheckReturnValue',
         'src/test/java/demo/JobsCheck.java',
         8,
-        "The result of `make()` must be used. Did you mean 'var unused = Samples.make();' or to " +
-          `remove this line? ${hint('CheckReturnValue', 'src/test/java/demo/JobsCheck.java')}`,
+        'The result of `make()` must be used. Use the result, or make the method return void if ' +
+          'callers do not need it. Did you mean to remove this line? ' +
+          hint('CheckReturnValue', 'src/test/java/demo/JobsCheck.java'),
       ],
+    ]);
+  });
+
+  it('records the annotations of every class around a diagnostic, so a nested class is spared too', () => {
+    const report = JSON.parse(
+      readFileSync(path.join(root, 'build/nitpicker/errorprone.json'), 'utf8'),
+    );
+
+    expect(
+      report
+        .filter(({ file }) => file.endsWith('Beans.java'))
+        .map(({ line, message, classAnnotations }) => [
+          line,
+          message.split(']')[0],
+          classAnnotations.includes('org.springframework.context.annotation.Configuration'),
+        ]),
+    ).toStrictEqual([
+      [6, '[PrivateConstructorForUtilityClass', true],
+      [12, '[PrivateConstructorForUtilityClass', true],
+    ]);
+  });
+
+  it('keeps --release when the only JDK-module option is an --add-opens, which javac never gets', () => {
+    const work = realpathSync(mkdtempSync(path.join(tmpdir(), 'nitpicker-levels-')));
+    projects.push(work);
+    writeFileSync(
+      path.join(work, 'LevelProbe.java'),
+      'public class LevelProbe {\n  public static void main(String[] args) {\n' +
+        '    System.out.println(String.join(" ", ErrorProneReport.javacOptions(java.util.List.of(args))));\n' +
+        '  }\n}\n',
+    );
+    const runner = path.join(GRADLE_DIRECTORY, 'errorprone/ErrorProneReport.java');
+    spawnSync('javac', ['-d', work, runner, path.join(work, 'LevelProbe.java')], {
+      encoding: 'utf8',
+    });
+    const options = (...args) =>
+      spawnSync('java', ['-cp', work, 'LevelProbe', ...args], { encoding: 'utf8' }).stdout.trim();
+    const project = (option) => [
+      `--project-arg=${option}`,
+      '--project-arg=java.base/java.lang=ALL-UNNAMED',
+    ];
+
+    expect([
+      options('--release=17', ...project('--add-opens')),
+      options('--release=17', ...project('--add-exports')),
+    ]).toStrictEqual([
+      '--release 17',
+      '--add-exports=java.base/java.lang=ALL-UNNAMED -source 17 -target 17',
     ]);
   });
 
