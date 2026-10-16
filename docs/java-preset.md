@@ -242,7 +242,7 @@ comma-separated>` changes that. Those classes are excluded from the regular `tes
   `org.example` targets `org.example.*`. PIT refuses `org.*` because it matches PIT's own classes,
   so classes directly in `org` are named one by one), against the project's own tests. The only
   profile can produce enforceable findings.
-- **What runs.** `nitpickerPit` runs the pinned `pitest-command-line` (1.17.4) with the
+- **What runs.** `nitpickerPit` (`languages/java/gradle/tasks/pit-task.gradle`) runs the pinned `pitest-command-line` (1.17.4) with the
   `pitest-junit5-plugin` (1.2.1), default mutators, XML output, two threads, to
   `pit/mutations.xml` in the report directory. Tests are named class by class (`--targetTests`), and
   `--mutableCodePaths` limits mutation to the main classes. The JUnit Platform is not pinned by
