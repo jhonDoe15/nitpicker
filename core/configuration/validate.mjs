@@ -9,6 +9,8 @@ import {
   validateExceptions,
   TYPESCRIPT_ONLY_KEYS,
   validateProjectRelativePath,
+  validateFolderGlobs,
+  validateTestConsole,
 } from '../../shared/config.mjs';
 import { validateJavaConfig } from '../../languages/java/adapters/java-policy.mjs';
 import { validateKotlinOptions } from '../../languages/java/adapters/kotlin/kotlin-options.mjs';
@@ -19,7 +21,6 @@ import { conventionDefinitions } from '../conventions/definitions.mjs';
 import { validateConventions } from '../../shared/conventions/settings.mjs';
 import { stylingApproaches } from '../../languages/typescript/preset/eslint-config/react/react-rules.mjs';
 import { i18nRuleIds } from '../../languages/typescript/preset/eslint-config/i18n/i18n-rules.mjs';
-import { hasSpecificText } from '../../shared/rules/console/console-messages.mjs';
 import path from 'node:path';
 
 export const SUPPORTED_PRESETS = ['typescript', 'javascript', ...GRADLE_PRESETS, 'python'];
@@ -43,17 +44,23 @@ export const KEYS = [
   'conventions',
 ];
 
-const LAYOUT_KEYS = ['sourceRoots', 'testRoots', 'excludedGlobs', 'entryPoints'];
+const FEATURE_LAYOUT_KEYS = ['sharedRoots', 'featureRoots'];
+
+const LAYOUT_KEYS = [
+  'sourceRoots',
+  'testRoots',
+  'excludedGlobs',
+  'entryPoints',
+  ...FEATURE_LAYOUT_KEYS,
+];
 
 const GLOB_LAYOUT_KEYS = ['excludedGlobs', 'entryPoints'];
+
+const TYPESCRIPT_PRESETS = [undefined, 'typescript', 'javascript'];
 
 const REACT_KEYS = ['enabled', 'styling'];
 
 const I18N_KEYS = ['enabled', 'functionNames', 'componentNames'];
-
-const TEST_CONSOLE_KEYS = ['allow'];
-
-const ALLOW_KEYS = ['contains', 'paths', 'reason'];
 
 const CUSTOM_ANALYZER_KEYS = ['name', 'command', 'args'];
 
@@ -123,7 +130,7 @@ function validateOptional(config) {
     validateStringArray(config.exclude, 'exclude');
   }
   if (config.layout !== undefined) {
-    validateLayout(config.layout);
+    validateLayout(config.layout, config.preset);
   }
   if (config.exceptions !== undefined) {
     validateExceptions(config.exceptions);
@@ -173,50 +180,6 @@ function validateI18n(i18n) {
   }
 }
 
-function validateTestConsole(testConsole) {
-  if (testConsole === undefined) {
-    return;
-  }
-  validateScope('testConsole', testConsole, TEST_CONSOLE_KEYS);
-  if (testConsole.allow === undefined) {
-    return;
-  }
-  if (!Array.isArray(testConsole.allow)) {
-    throw configError('"testConsole.allow" must be an array');
-  }
-  for (const [index, entry] of testConsole.allow.entries()) {
-    validateAllowEntry(entry, `testConsole.allow[${String(index)}]`);
-  }
-}
-
-function validateAllowEntry(entry, label) {
-  if (!isPlainObject(entry)) {
-    throw configError(`"${label}" must be an object`);
-  }
-  for (const key of Object.keys(entry)) {
-    if (!ALLOW_KEYS.includes(key)) {
-      const hint = key === 'pattern' ? ': use "contains"' : '';
-      throw configError(
-        `unknown key "${key}" in "${label}"${hint}. Allowed keys: ${ALLOW_KEYS.join(', ')}`,
-      );
-    }
-  }
-  if (typeof entry.contains !== 'string' || !hasSpecificText(entry.contains)) {
-    throw configError(
-      `"${label}.contains" must keep at least 3 characters once numbers and ids become <n> and <id>`,
-    );
-  }
-  if (entry.paths !== undefined) {
-    validateStringArray(entry.paths, `${label}.paths`);
-    if (entry.paths.length === 0) {
-      throw configError(`"${label}.paths" needs at least one path glob`);
-    }
-  }
-  if (!isNonEmptyString(entry.reason) || entry.reason.trim().length === 0) {
-    throw configError(`"${label}.reason" is required: say which library prints this and why`);
-  }
-}
-
 function validateI18nExceptions(exceptions, preset) {
   if (!['typescript', 'javascript', undefined].includes(preset)) {
     return;
@@ -230,20 +193,30 @@ function validateI18nExceptions(exceptions, preset) {
   }
 }
 
-function validateLayout(layout) {
+function validateLayout(layout, preset) {
   if (!isPlainObject(layout)) {
     throw configError('"layout" must be an object');
   }
-  for (const [key, value] of Object.entries(layout)) validateLayoutEntry(key, value);
+  const allowed = TYPESCRIPT_PRESETS.includes(preset) ? LAYOUT_KEYS : FEATURE_LAYOUT_KEYS;
+  for (const [key, value] of Object.entries(layout)) {
+    if (LAYOUT_KEYS.includes(key) && !allowed.includes(key)) {
+      throw configError(
+        `"layout.${key}" is not supported with "preset": "${preset}": it describes TypeScript source folders. Layout keys with ${preset}: ${allowed.join(', ')}`,
+      );
+    }
+    validateLayoutEntry(key, value, allowed);
+  }
 }
 
-function validateLayoutEntry(key, value) {
-  if (!LAYOUT_KEYS.includes(key)) {
-    throw configError(
-      `unknown layout key "${key}". Allowed layout keys: ${LAYOUT_KEYS.join(', ')}`,
-    );
+function validateLayoutEntry(key, value, allowed) {
+  if (!allowed.includes(key)) {
+    throw configError(`unknown layout key "${key}". Allowed layout keys: ${allowed.join(', ')}`);
   }
   validateStringArray(value, `layout.${key}`);
+  if (FEATURE_LAYOUT_KEYS.includes(key)) {
+    validateFolderGlobs(key, value);
+    return;
+  }
   if (GLOB_LAYOUT_KEYS.includes(key)) {
     return;
   }

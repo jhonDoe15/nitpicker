@@ -70,8 +70,8 @@ describe('config file', () => {
       preset: 'python',
       ...shared,
     });
-    expect(() => validateConfig({ preset: 'python', layout: {} })).toThrow(
-      '"layout" is not supported with "preset": "python"',
+    expect(() => validateConfig({ preset: 'python', layout: { sourceRoots: ['src'] } })).toThrow(
+      '"layout.sourceRoots" is not supported with "preset": "python"',
     );
     const exceptions = [{ rule: 'line-length-limit', paths: ['src/urls.py'], reason: 'URL table' }];
     expect(validateConfig({ preset: 'python', exceptions })).toEqual({
@@ -215,9 +215,7 @@ describe('config file', () => {
   });
 
   it.each([
-    ['java', 'layout'],
     ['java', 'react'],
-    ['kotlin', 'layout'],
     ['kotlin', 'react'],
   ])('rejects the %s preset with %s instead of ignoring it', (preset, key) => {
     expect(() => validateConfig({ preset, [key]: {} })).toThrow(
@@ -382,7 +380,7 @@ describe('tool precedence', () => {
     );
     expect(() => validateConfig({ preset: 'python', tools })).toThrow(
       new Error(
-        'nitpicker.config.json: "tools" is not supported with "preset": "python": it describes the TypeScript source layout and ESLint rules, which the Python preset does not have. Not supported with python: layout, exceptions, react, i18n, tools, testConsole, except exceptions for file-lines-limit, line-length-limit, folder-files-limit. Shared by all presets: thresholds, exclude, legacyInventory',
+        'nitpicker.config.json: "tools" is not supported with "preset": "python": it describes the TypeScript source layout and ESLint rules, which the Python preset does not have. Not supported with python: exceptions, react, i18n, tools, except exceptions for file-lines-limit, line-length-limit, folder-files-limit. Shared by all presets: thresholds, exclude, legacyInventory',
       ),
     );
   });
@@ -423,43 +421,6 @@ describe('strict exceptions', () => {
     expect(withLayout).toEqual(['layout: {"sourceRoots":["lib"]}']);
     const hashes = [plain, withException, withLayout].map((overrides) => policyHash([], overrides));
     expect(new Set(hashes).size).toBe(3);
-  });
-});
-
-describe('layout keys', () => {
-  it('accepts entry point globs for files that are loaded by path', () => {
-    const layout = { entryPoints: ['tools/*-runner.mjs'] };
-
-    expect(validateConfig({ layout })).toEqual({ layout });
-  });
-
-  it('accepts the directory roots and the excluded globs together', () => {
-    const layout = {
-      sourceRoots: ['lib'],
-      testRoots: ['spec'],
-      excludedGlobs: ['**/vendor/**', '**/*.generated.ts'],
-    };
-
-    expect(validateConfig({ layout })).toEqual({ layout });
-  });
-
-  it('validates globs for excludedGlobs and directories for the roots', () => {
-    expect(() => validateConfig({ layout: { excludedGlobs: ['**/vendor/**'] } })).not.toThrow();
-    expect(() => validateConfig({ layout: { sourceRoots: ['**/vendor/**'] } })).toThrow(
-      /entries must be directories inside the project/,
-    );
-    expect(() => validateConfig({ layout: { excludedGlobs: '**/vendor/**' } })).toThrow(
-      /"layout.excludedGlobs" must be an array/,
-    );
-    expect(() => validateConfig({ layout: { excludedGlobs: [''] } })).toThrow(
-      /"layout.excludedGlobs" must be an array of non-empty strings/,
-    );
-  });
-
-  it('lists every allowed layout key when one is unknown', () => {
-    expect(() => validateConfig({ layout: { roots: ['lib'] } })).toThrow(
-      /Allowed layout keys: sourceRoots, testRoots, excludedGlobs/,
-    );
   });
 });
 

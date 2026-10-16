@@ -1,10 +1,11 @@
 // The project config (`nitpicker.config.json`) rules that do not depend on a language: the file
-// name, the keys every preset honours and their validation. `core/configuration/config.mjs` adds the
-// TypeScript-only keys (`layout`, `tools`) and the preset gate on top of these.
+// name, the keys every preset honours (`testConsole`, the feature folders of `layout`) and their
+// validation. `core/configuration/validate.mjs` adds the TypeScript-only keys and the preset gate.
 //
 // Language-neutral: no imports from `core/`, `languages/` or tool packages.
 
 import path from 'node:path';
+import { hasSpecificText } from './rules/console/console-messages.mjs';
 
 export const CONFIG_FILE_NAME = 'nitpicker.config.json';
 
@@ -29,14 +30,11 @@ const WHOLE_NUMBER_THRESHOLD_KEYS = new Set([
 
 const EXCEPTION_KEYS = ['rule', 'paths', 'reason'];
 
-export const TYPESCRIPT_ONLY_KEYS = [
-  'layout',
-  'exceptions',
-  'react',
-  'i18n',
-  'tools',
-  'testConsole',
-];
+const TEST_CONSOLE_KEYS = ['allow'];
+
+const ALLOW_KEYS = ['contains', 'paths', 'reason'];
+
+export const TYPESCRIPT_ONLY_KEYS = ['exceptions', 'react', 'i18n', 'tools'];
 
 export function configError(message) {
   return new Error(`${CONFIG_FILE_NAME}: ${message}`);
@@ -125,5 +123,72 @@ function validateException(entry, label) {
   }
   if (!isNonEmptyString(entry.reason) || entry.reason.trim().length === 0) {
     throw configError(`"${label}.reason" is required: say why the rule is lifted for these paths`);
+  }
+}
+
+export function validateTestConsole(testConsole) {
+  if (testConsole === undefined) {
+    return;
+  }
+  if (!isPlainObject(testConsole)) {
+    throw configError('"testConsole" must be an object');
+  }
+  const unknown = Object.keys(testConsole).find((key) => !TEST_CONSOLE_KEYS.includes(key));
+  if (unknown !== undefined) {
+    throw configError(
+      `unknown testConsole key "${unknown}". Allowed testConsole keys: ${TEST_CONSOLE_KEYS.join(', ')}`,
+    );
+  }
+  if (testConsole.allow === undefined) {
+    return;
+  }
+  if (!Array.isArray(testConsole.allow)) {
+    throw configError('"testConsole.allow" must be an array');
+  }
+  for (const [index, entry] of testConsole.allow.entries()) {
+    validateAllowEntry(entry, `testConsole.allow[${String(index)}]`);
+  }
+}
+
+function validateAllowEntry(entry, label) {
+  if (!isPlainObject(entry)) {
+    throw configError(`"${label}" must be an object`);
+  }
+  for (const key of Object.keys(entry)) {
+    if (!ALLOW_KEYS.includes(key)) {
+      const hint = key === 'pattern' ? ': use "contains"' : '';
+      throw configError(
+        `unknown key "${key}" in "${label}"${hint}. Allowed keys: ${ALLOW_KEYS.join(', ')}`,
+      );
+    }
+  }
+  if (typeof entry.contains !== 'string' || !hasSpecificText(entry.contains)) {
+    throw configError(
+      `"${label}.contains" must keep at least 3 characters once numbers and ids become <n> and <id>`,
+    );
+  }
+  if (entry.paths !== undefined) {
+    validateStringArray(entry.paths, `${label}.paths`);
+    if (entry.paths.length === 0) {
+      throw configError(`"${label}.paths" needs at least one path glob`);
+    }
+  }
+  if (!isNonEmptyString(entry.reason) || entry.reason.trim().length === 0) {
+    throw configError(`"${label}.reason" is required: say which library prints this and why`);
+  }
+}
+
+export function validateFolderGlobs(key, globs) {
+  for (const glob of globs) {
+    const normalized = glob.replaceAll('\\', '/');
+    if (
+      path.isAbsolute(normalized) ||
+      /^[A-Za-z]:/.test(normalized) ||
+      normalized.split('/').includes('..')
+    ) {
+      throw configError(
+        `"layout.${key}" entries must be folder globs inside the project, such as "**/shared": ${glob}`,
+      );
+    }
   }
 }
