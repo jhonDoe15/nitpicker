@@ -8,6 +8,15 @@ import java.util.concurrent.Callable;
 public final class Failures implements Callable<String> {
   @interface SneakyThrows {}
 
+  @FunctionalInterface
+  public interface Step<T> {
+    T run() throws Exception;
+  }
+
+  public static void main(String[] args) throws Exception {
+    new Failures().call();
+  }
+
   @SneakyThrows // violation: pmd/SneakyThrows
   public void sneaky() {}
 

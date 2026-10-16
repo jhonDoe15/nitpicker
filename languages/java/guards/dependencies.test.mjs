@@ -33,7 +33,8 @@ const UNUSED_LANG = {
   classification: 'enforceable',
   message:
     'Dependency org.apache.commons:commons-lang3 is declared in implementation but no main class uses it. ' +
-    'Remove it, declare it runtimeOnly if it is only needed at run time, ' +
+    'Remove it, declare it testImplementation if only the tests use it, ' +
+    'runtimeOnly if it is only needed at run time, ' +
     'or compileOnly if only its source annotations are needed. ' +
     'If it is right here, add an exception for dependencies/unused-declared-dependency in nitpicker.config.json.',
 };

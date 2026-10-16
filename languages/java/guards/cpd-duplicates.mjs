@@ -26,6 +26,10 @@ const BOILERPLATE_LINES = [
 ];
 
 const STRING_LITERAL = /"(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*'/g;
+const LITERAL_OR_COMMENT =
+  /"""[\s\S]*?"""|"(?:[^"\\\n]|\\.)*"|'(?:[^'\\\n]|\\.)*'|\/\*[\s\S]*?\*\/|\/\/[^\n]*/g;
+const NUMBER = /(?:\b\d|\.\d)(?:[eEpP][+-]|[\w.])*/g;
+const WORD = /[\w$]+/g;
 const DATA_LINES = [
   /^[A-Z][A-Z0-9_]*(?:\(.*\))?[,;]?$/,
   /^(?:Arguments\.)?(?:of|arguments)\(.*\)[,;)]*$/,
@@ -64,25 +68,53 @@ function fileRange(element, projectRoot) {
     file: relative.split(path.sep).join('/').replaceAll('\\', '/'),
     line: Number(element.attrs.line),
     endLine: Number(element.attrs.endline),
+    ...(element.attrs.column === undefined ? {} : { column: Number(element.attrs.column) }),
+    ...(element.attrs.endcolumn === undefined
+      ? {}
+      : { endColumn: Number(element.attrs.endcolumn) }),
   };
 }
 
-function fragmentOf(projectRoot, side) {
+function linesOf(projectRoot, side) {
   const absolute = path.join(projectRoot, side.file);
   return existsSync(absolute)
     ? readFileSync(absolute, 'utf8')
         .split(/\r?\n/)
         .slice(side.line - 1, side.endLine)
-        .join('\n')
-    : '';
+    : [];
+}
+
+function clonedText(lines, side) {
+  const cut = [...lines];
+  if (cut.length > 0 && side.endColumn !== undefined) {
+    cut[cut.length - 1] = cut[cut.length - 1].slice(0, side.endColumn - 1);
+  }
+  if (cut.length > 0 && side.column !== undefined) {
+    cut[0] = cut[0].slice(side.column - 1);
+  }
+  return cut.join('\n');
+}
+
+export function tokenShape(text) {
+  return text
+    .replace(LITERAL_OR_COMMENT, ' ')
+    .replace(NUMBER, ' ')
+    .replace(WORD, ' ')
+    .replace(/\s+/g, '');
+}
+
+function byFile(left, right) {
+  return left.file.localeCompare(right.file);
 }
 
 function cloneOf(duplication, projectRoot, sides) {
   const [first, second] = sides;
+  const lines = linesOf(projectRoot, first);
   return {
     first,
     second,
-    fragment: fragmentOf(projectRoot, first),
+    fragment: lines.join('\n'),
+    shape: tokenShape(clonedText(lines, first)),
     lines: Number(duplication.attrs.lines),
     tokens: Number(duplication.attrs.tokens),
   };
@@ -91,11 +123,19 @@ function cloneOf(duplication, projectRoot, sides) {
 export function cpdClones(xml, projectRoot) {
   const report = parseXml(xml);
   return childrenNamed(report, 'duplication').flatMap((duplication) => {
-    const [first, ...others] = childrenNamed(duplication, 'file').map((element) =>
-      fileRange(element, projectRoot),
-    );
+    const [first, ...others] = childrenNamed(duplication, 'file')
+      .map((element) => fileRange(element, projectRoot))
+      .sort(byFile);
     return others.map((other) => cloneOf(duplication, projectRoot, [first, other]));
   });
+}
+
+function byPairAndShape(left, right) {
+  return (
+    byFile(left.first, right.first) ||
+    byFile(left.second, right.second) ||
+    left.shape.localeCompare(right.shape)
+  );
 }
 
 function overlaps(left, right) {
@@ -165,7 +205,10 @@ export function readCpdFindings(reportRoot, { projectRoot, testRoots, jscpdRoot 
   function inTests(file) {
     return testRoots.some((root) => file.startsWith(`${root}/`));
   }
-  return evaluateDuplicates(clones, DUPLICATES_TOOL)
+  const shaped = clones
+    .map((clone) => ({ ...clone, fragment: clone.shape }))
+    .sort((left, right) => byPairAndShape(left, right));
+  return evaluateDuplicates(shaped, DUPLICATES_TOOL)
     .filter((finding) => finding.classification === 'enforceable')
     .map((finding) => withTestAdvice(finding, inTests))
     .map((finding) => ({

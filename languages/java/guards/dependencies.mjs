@@ -15,7 +15,8 @@ function isUnused(entry) {
 const ALTERNATIVES = {
   gradle: (entry) =>
     `is declared in ${entry.configuration} but no main class uses it. ` +
-    'Remove it, declare it runtimeOnly if it is only needed at run time, ' +
+    'Remove it, declare it testImplementation if only the tests use it, ' +
+    'runtimeOnly if it is only needed at run time, ' +
     'or compileOnly if only its source annotations are needed.',
   maven: () =>
     'has compile scope but no main class uses it. ' +
