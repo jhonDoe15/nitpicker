@@ -36,46 +36,37 @@ function sectionWithin(name, prefix) {
   return name.startsWith(`${prefix}.`) ? name.slice(prefix.length + 1) : undefined;
 }
 
-function keysIn(text, prefix) {
-  const keys = new Set();
-  let section = prefix === '' ? '' : undefined;
-  for (const line of text.split(/\r?\n/)) {
-    const header = SECTION.exec(line);
-    if (header !== null) {
-      section = sectionWithin(header[1], prefix);
-    } else if (section !== undefined) {
-      addAssignment(keys, section, line);
-    }
-  }
-  return keys;
-}
-
-function addAssignment(keys, section, line) {
+function assignmentKeys(section, line) {
   const assignment = ASSIGNMENT.exec(line);
-  if (assignment === null) {
-    return;
+  if (section === undefined || assignment === null) {
+    return [];
   }
   const name = (section === '' ? assignment[1] : `${section}.${assignment[1]}`).replaceAll(
     '_',
     '-',
   );
-  keys.add(name);
-  for (const [, inner] of assignment[2].matchAll(INLINE_KEY)) {
-    keys.add(`${name}.${inner.replaceAll('_', '-')}`);
+  const inner = [...assignment[2].matchAll(INLINE_KEY)].map(([, key]) => key.replaceAll('_', '-'));
+  return [name, ...inner.map((key) => `${name}.${key}`)];
+}
+
+function keysIn(text, prefix) {
+  const keys = [];
+  let section = prefix === '' ? '' : undefined;
+  for (const line of text.split(/\r?\n/)) {
+    const header = SECTION.exec(line);
+    section = header === null ? section : sectionWithin(header[1], prefix);
+    keys.push(...(header === null ? assignmentKeys(section, line) : []));
   }
+  return keys;
 }
 
 function projectKeys(projectRoot, files) {
-  const keys = new Set();
-  for (const [file, prefix] of files) {
-    const absolute = path.join(projectRoot, file);
-    if (existsSync(absolute)) {
-      for (const key of keysIn(readFileSync(absolute, 'utf8'), prefix)) {
-        keys.add(key);
-      }
-    }
-  }
-  return keys;
+  const present = files
+    .map(([file, prefix]) => [path.join(projectRoot, file), prefix])
+    .filter(([absolute]) => existsSync(absolute));
+  return new Set(
+    present.flatMap(([absolute, prefix]) => keysIn(readFileSync(absolute, 'utf8'), prefix)),
+  );
 }
 
 function chosenByProject(keys, names) {

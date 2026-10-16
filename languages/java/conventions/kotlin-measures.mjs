@@ -1,3 +1,5 @@
+import { indentOf } from '../../../shared/conventions/lines.mjs';
+
 const IMPORT = /^import\s+(\S+)/gm;
 const DEFAULT_ON_DEMAND = /^(?:java\.util|kotlinx\.android\.synthetic(?:\.[\w.]+)?)\.\*+$/;
 const CALL_OPENER = /[\w>]\(\s*(?:\/\/.*)?$/;
@@ -41,8 +43,4 @@ function lastElementEnd(lines, index) {
     .filter((other) => other.trim() !== '' && !COMMENT_LINE.test(other));
   const last = inner.at(-1)?.replace(TRAILING_COMMENT, '').trimEnd();
   return last === undefined ? [] : [last.endsWith(',')];
-}
-
-function indentOf(line) {
-  return line.trim().length === 0 ? Infinity : line.length - line.trimStart().length;
 }

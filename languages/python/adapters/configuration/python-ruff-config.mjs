@@ -11,19 +11,23 @@ const FILTERED_CONFIG = 'nitpicker-ruff.toml';
 const SELECTED_RULE = /^\s*"(RUF\d+)",\n/gm;
 const configs = new WeakMap();
 
+function parseRules(text) {
+  try {
+    return { kind: 'rules', rules: JSON.parse(text) };
+  } catch {
+    return { kind: 'malformed-json' };
+  }
+}
+
 function installedRules(context) {
   const result = execute(context, ['ruff', 'rule', '--all', '--output-format', 'json']);
-  if (result.error !== undefined || result.status !== 0) {
+  const parsed = result.error === undefined && result.status === 0 ? parseRules(result.stdout) : {};
+  if (parsed.kind !== 'rules' || !Array.isArray(parsed.rules)) {
     return undefined;
   }
-  try {
-    const rules = JSON.parse(result.stdout);
-    return new Set(
-      rules.filter((rule) => rule.status?.Removed === undefined).map((rule) => rule.code),
-    );
-  } catch {
-    return undefined;
-  }
+  return new Set(
+    parsed.rules.filter((rule) => rule.status?.Removed === undefined).map((rule) => rule.code),
+  );
 }
 
 function filteredConfig(context) {

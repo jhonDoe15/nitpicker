@@ -4,7 +4,6 @@ import { jscpdVersion } from '../../java/adapters/metrics/java-duplicates.mjs';
 import { TESTS_FAILED_RULE } from '../../../shared/rules/finding-helpers.mjs';
 import { scanImports } from './analysis/python-coupling.mjs';
 import { runDuplicates } from './analysis/python-duplicates.mjs';
-import { globToRegExpSource } from '../../../shared/glob.mjs';
 import { detectEnvironment, openEnvironment } from './execution/python-environment.mjs';
 import { checkRules } from './analysis/python-ast-rules.mjs';
 import { crap } from './mutation/python-crap.mjs';
@@ -18,7 +17,7 @@ import {
   detectTypeCheckers,
   importRoots,
 } from './execution/python-project.mjs';
-import { formatterConventionArguments } from './configuration/python-format-options.mjs';
+import { formatCommand, ruffExclusions } from './execution/python-format-command.mjs';
 import { ruffConfigFor } from './configuration/python-ruff-config.mjs';
 import {
   detectTestRunner,
@@ -155,38 +154,6 @@ export function lint(context) {
     ],
     { accepted: [0, 1], rule: 'ruff-failed' },
   );
-}
-
-function ruffExclusions({ exclude }) {
-  return exclude.flatMap((glob) => ['--extend-exclude', glob]);
-}
-
-function blackExclusions({ exclude }) {
-  if (exclude.length === 0) {
-    return [];
-  }
-  const patterns = exclude.map((glob) => `^/${globToRegExpSource(glob).slice(1, -1)}(?:/.*)?/?$`);
-  return ['--extend-exclude', patterns.join('|')];
-}
-
-function formatCommand({ project, conventions, ...context }) {
-  const options = formatterConventionArguments({
-    formatter: project.formatter,
-    conventions,
-    projectRoot: context.projectRoot,
-  });
-  return project.formatter === 'black'
-    ? ['black', '--check', ...options, ...blackExclusions(context), '.']
-    : [
-        'ruff',
-        'format',
-        '--check',
-        '--diff',
-        '--no-cache',
-        ...options,
-        ...ruffExclusions(context),
-        '.',
-      ];
 }
 
 export function unformattedPaths(formatter, { stdout, stderr }) {
