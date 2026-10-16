@@ -10,15 +10,21 @@ function startsWith(buffer, bytes) {
   return bytes.every((byte, index) => buffer[index] === byte);
 }
 
-export function decodeText(buffer) {
+function decodeText(buffer) {
   if (startsWith(buffer, UTF8_BOM)) {
     return buffer.subarray(UTF8_BOM.length).toString('utf8');
   }
-  if (startsWith(buffer, UTF16_LE_BOM) || (buffer[1] === 0 && buffer[0] > 0)) {
-    return new TextDecoder('utf-16le').decode(buffer).replace(/^﻿/u, '');
+  if (startsWith(buffer, UTF16_LE_BOM)) {
+    return new TextDecoder('utf-16le').decode(buffer.subarray(UTF16_LE_BOM.length));
   }
-  if (startsWith(buffer, UTF16_BE_BOM) || (buffer[0] === 0 && buffer[1] > 0)) {
-    return new TextDecoder('utf-16be').decode(buffer).replace(/^﻿/u, '');
+  if (startsWith(buffer, UTF16_BE_BOM)) {
+    return new TextDecoder('utf-16be').decode(buffer.subarray(UTF16_BE_BOM.length));
+  }
+  if (buffer[1] === 0 && buffer[0] > 0) {
+    return new TextDecoder('utf-16le').decode(buffer);
+  }
+  if (buffer[0] === 0 && buffer[1] > 0) {
+    return new TextDecoder('utf-16be').decode(buffer);
   }
   return buffer.toString('utf8');
 }

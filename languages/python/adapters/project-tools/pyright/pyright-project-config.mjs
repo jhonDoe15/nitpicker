@@ -71,6 +71,12 @@ function parentOf(file, config) {
   return parent !== undefined && existsSync(parent) ? parent : undefined;
 }
 
+function linkOf(file, read, rebase) {
+  const original = path.dirname(file);
+  const config = absolutized(read.config, { original, source: rebase(original) });
+  return { file, table: read.table, config };
+}
+
 function chainOf(first, checker, rebase) {
   const links = [];
   const files = [];
@@ -78,15 +84,10 @@ function chainOf(first, checker, rebase) {
   for (const file of pending) {
     files.push(file);
     const { value: read, error } = attempt(() => readFileConfig(file, checker));
-    if (error !== undefined) {
-      return { links, files, unreadable: error.message };
+    if (error !== undefined || read === undefined) {
+      return { links, files, unreadable: error?.message };
     }
-    if (read === undefined) {
-      break;
-    }
-    const original = path.dirname(file);
-    const config = absolutized(read.config, { original, source: rebase(original) });
-    links.push({ file, table: read.table, config });
+    links.push(linkOf(file, read, rebase));
     const parent = parentOf(file, read.config);
     if (parent !== undefined && links.length <= MAXIMUM_EXTENDS_DEPTH) {
       pending.push(parent);

@@ -4,6 +4,7 @@ import { groupKind, namesOf } from './dependency-names.mjs';
 import { parseIni, readText } from './dependency-text.mjs';
 
 const PAIRS = { '[': ']', '{': '}', '(': ')' };
+const CLOSERS = Object.values(PAIRS);
 const STRING = /(["'])((?:(?!\1).)+)\1/gu;
 const EXTRA = /(["'])([^"']+)\1\s*:\s*(?=\[)/gu;
 
@@ -29,21 +30,33 @@ export function setupCfgGroups(projectRoot) {
   ];
 }
 
-function closing(text, start) {
-  const stack = [];
+function quoteAfter(quote, character) {
+  if (quote !== undefined) {
+    return character === quote ? undefined : quote;
+  }
+  return character === '"' || character === "'" ? character : undefined;
+}
+
+function structuralCharacters(text, start) {
+  const marks = [];
   let quote;
   for (const [offset, character] of [...text.slice(start)].entries()) {
-    if (quote !== undefined) {
-      quote = character === quote ? undefined : quote;
-    } else if (character === '"' || character === "'") {
-      quote = character;
-    } else if (character in PAIRS) {
-      stack.push(character);
-    } else if (Object.values(PAIRS).includes(character)) {
-      stack.pop();
-      if (stack.length === 0) {
-        return start + offset;
-      }
+    const quoted = quote !== undefined;
+    quote = quoteAfter(quote, character);
+    if (!quoted && quote === undefined) {
+      marks.push([start + offset, character]);
+    }
+  }
+  return marks;
+}
+
+function closing(text, start) {
+  let depth = 0;
+  for (const [index, character] of structuralCharacters(text, start)) {
+    depth += character in PAIRS ? 1 : 0;
+    depth -= CLOSERS.includes(character) ? 1 : 0;
+    if (depth === 0) {
+      return index;
     }
   }
   return -1;

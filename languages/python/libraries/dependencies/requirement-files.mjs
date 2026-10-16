@@ -12,7 +12,7 @@ const VIA = /#\s*via\b/u;
 const DIRECT = /(?:^|\s)-r\s*\S/u;
 
 function isFile(file) {
-  return existsSync(file) && statSync(file).isFile();
+  return statSync(file, { throwIfNoEntry: false })?.isFile() === true;
 }
 
 function discovered(root) {
@@ -42,15 +42,19 @@ function logicalLines(text) {
   return text.replaceAll(/\\\r?\n/gu, ' ').split(/\r?\n/u);
 }
 
+function annotate(entries, comment) {
+  const last = entries.at(-1);
+  if (last !== undefined) {
+    last.via += ` ${comment}`;
+  }
+}
+
 function entriesOf(text) {
   const entries = [];
   for (const line of logicalLines(text)) {
     const trimmed = line.trim();
     if (trimmed.startsWith('#')) {
-      const last = entries.at(-1);
-      if (last !== undefined) {
-        last.via += ` ${trimmed.slice(1)}`;
-      }
+      annotate(entries, trimmed.slice(1));
     } else if (trimmed !== '') {
       entries.push({ line: trimmed, via: /\s#(.*)$/u.exec(trimmed)?.[1] ?? '' });
     }
@@ -80,6 +84,16 @@ function inside(root, target) {
   return target.startsWith(root + path.sep) && isFile(target);
 }
 
+function includedFiles(root, { source, text, kind }) {
+  return includesOf(text)
+    .map((include) => path.resolve(path.dirname(source), include))
+    .filter((target) => inside(root, target))
+    .map((file) => ({
+      file,
+      kind: kind === 'development' || isDevelopmentGroup(stemOf(file)) ? 'development' : 'runtime',
+    }));
+}
+
 function readTree(root, start) {
   const seen = new Set();
   const groups = [];
@@ -92,13 +106,7 @@ function readTree(root, start) {
     seen.add(source);
     const text = readText(source);
     groups.push({ kind, names: namesOfText(text) });
-    for (const include of includesOf(text)) {
-      const target = path.resolve(path.dirname(source), include);
-      if (inside(root, target)) {
-        const development = kind === 'development' || isDevelopmentGroup(stemOf(target));
-        pending.push({ file: target, kind: development ? 'development' : 'runtime' });
-      }
-    }
+    pending.push(...includedFiles(root, { source, text, kind }));
   }
   return groups;
 }

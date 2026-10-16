@@ -1,5 +1,5 @@
 const INI_SECTION = /^\[([^\]]+)\]\s*$/;
-const INI_OPTION = /^([^\s=:][^=:]*?)\s*[=:]\s*(.*)$/;
+const INI_OPTION_START = /^[^\s=:]/;
 const INI_COMMENT = /\s+[#;].*$/;
 
 function startSection(name, sections, state) {
@@ -13,12 +13,12 @@ function appendValue(content, state) {
 }
 
 function startOption(line, state) {
-  const option = INI_OPTION.exec(line);
-  if (option === null || state.options === undefined) {
+  const split = line.search(/[=:]/);
+  if (!INI_OPTION_START.test(line) || split === -1 || state.options === undefined) {
     return;
   }
-  state.key = option[1].trim();
-  state.options.set(state.key, option[2].trim());
+  state.key = line.slice(0, split).trim();
+  state.options.set(state.key, line.slice(split + 1).trim());
 }
 
 function isIndented(line) {
