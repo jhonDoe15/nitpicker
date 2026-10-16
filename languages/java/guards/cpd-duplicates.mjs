@@ -1,12 +1,10 @@
 import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
-import { jscpdClones } from '../../../core/tooling/jscpd-clones.mjs';
 import { evaluateDuplicates } from '../../../shared/rules/duplicates.mjs';
 import { childrenNamed, parseXml } from '../ingest/common.mjs';
 import { exceptionRoute } from './advice/exception-route.mjs';
 import { cpdNotRun, readCpdReport, skippedPaths } from './cpd/cpd-report.mjs';
 
-const JSCPD_REPORT = 'duplicates.json';
 const DUPLICATES_TOOL = 'duplicates';
 const TEST_ADVICE =
   'Extract a helper, or fold the cases into one @ParameterizedTest. Keep one copy and call it from both places.';
@@ -26,14 +24,15 @@ const BOILERPLATE_LINES = [
 ];
 
 const STRING_LITERAL = /"(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*'/g;
-const LITERAL_OR_COMMENT =
+export const LITERAL_OR_COMMENT =
   /"""[\s\S]*?"""|"(?:[^"\\\n]|\\.)*"|'(?:[^'\\\n]|\\.)*'|\/\*[\s\S]*?\*\/|\/\/[^\n]*/g;
 const NUMBER = /(?:\b\d|\.\d)(?:[eEpP][+-]|[\w.])*/g;
 const WORD = /[\w$]+/g;
 const DATA_LINES = [
   /^[A-Z][A-Z0-9_]*(?:\(.*\))?[,;]?$/,
   /^(?:Arguments\.)?(?:of|arguments)\(.*\)[,;)]*$/,
-  /^[\w.]*[\s\d.,;{}()[\]+-]*$/,
+  /^(?=.*\d)(?![\w.]+\()[\w.]*[\s\d.,;{}()[\]+-]*$/,
+  /^[\s,;{}()[\]]+$/,
   /^(?:Map\.)?entry\([\w\s.,+-]*\)[,;)]*$/,
   new RegExp(
     String.raw`^(?:\w+\s+)*[\w<>,.?\s[\]]*\s\w+\s*=\s*` +
@@ -163,26 +162,28 @@ function distinctClones(clones) {
   return kept;
 }
 
-function jscpdRanges(jscpdRoot) {
-  const report = path.join(jscpdRoot, JSCPD_REPORT);
-  if (!existsSync(report)) {
-    return [];
-  }
-  const { runs } = JSON.parse(readFileSync(report, 'utf8'));
-  return runs.flatMap(({ root, report: run }) =>
-    jscpdClones(run, [root]).map((clone) => ({
-      first: {
-        file: clone.first.file,
-        line: clone.first.line,
-        endLine: clone.first.line + (clone.lines ?? 0),
-      },
-      second: {
-        file: clone.second.file,
-        line: clone.second.line,
-        endLine: clone.second.line + (clone.lines ?? 0),
-      },
-    })),
-  );
+function jscpdRange(side, lines) {
+  return { file: side.file, line: side.line, endLine: side.line + (lines ?? 0) };
+}
+
+function cloneList(xml, projectRoot) {
+  return distinctClones(cpdClones(xml, projectRoot)).filter((clone) => !isBoilerplate(clone));
+}
+
+function readCpdClones(reportRoot, projectRoot) {
+  const read = readCpdReport(reportRoot);
+  return read.kind === 'report' ? cloneList(read.xml, projectRoot) : [];
+}
+
+export function coveredByCpd(modules, projectRoot) {
+  const cpdCloneList = modules.flatMap(({ reportRoot }) => readCpdClones(reportRoot, projectRoot));
+  return (clone) => {
+    const range = {
+      first: jscpdRange(clone.first, clone.lines),
+      second: jscpdRange(clone.second, clone.lines),
+    };
+    return cpdCloneList.some((other) => sameClone(range, other));
+  };
 }
 
 function withTestAdvice(finding, testFiles) {
@@ -193,10 +194,7 @@ function withTestAdvice(finding, testFiles) {
     : finding;
 }
 
-export function readCpdFindings(
-  reportRoot,
-  { projectRoot, sourceRoots = [], testRoots, module, jscpdRoot = reportRoot },
-) {
+export function readCpdFindings(reportRoot, { projectRoot, sourceRoots = [], testRoots, module }) {
   const read = readCpdReport(reportRoot);
   if (read.kind === 'missing') {
     return [];
@@ -204,10 +202,7 @@ export function readCpdFindings(
   if (read.kind === 'failed') {
     return [cpdNotRun(read.reason, [...sourceRoots, ...testRoots], module)];
   }
-  const known = jscpdRanges(jscpdRoot);
-  const clones = distinctClones(cpdClones(read.xml, projectRoot)).filter(
-    (clone) => !isBoilerplate(clone) && !known.some((other) => sameClone(clone, other)),
-  );
+  const clones = cloneList(read.xml, projectRoot);
   function inTests(file) {
     return testRoots.some((root) => file.startsWith(`${root}/`));
   }
@@ -220,6 +215,9 @@ export function readCpdFindings(
     .map((finding) => ({
       ...finding,
       identity: `cpd:${finding.identity}`,
+      ...(finding.ratchet === undefined
+        ? {}
+        : { ratchet: { ...finding.ratchet, key: `cpd:${finding.ratchet.key}` } }),
       message: `${finding.message} ${exceptionRoute(DUPLICATES_TOOL, finding.rule)}`,
     }));
   return [...skippedPaths(reportRoot, { projectRoot, xml: read.xml }), ...findings];

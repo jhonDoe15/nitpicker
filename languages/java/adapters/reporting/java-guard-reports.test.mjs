@@ -93,15 +93,15 @@ const JSCPD_CLONE = {
   ],
 };
 
-function cpdIdentities(jscpd) {
+function cloneFindings(jscpd) {
   const root = projectWithGuardReports({
     reports: { 'cpd.xml': CPD },
     jscpd,
     sources: { [LEFT]: sourceOf('Left'), [RIGHT]: sourceOf('Right') },
   });
   return readJavaFindings(root, { reportBase: reportBaseOf(root) })
-    .findings.filter(({ identity }) => identity.startsWith('cpd:'))
-    .map(({ path: file }) => file);
+    .findings.filter(({ rule }) => rule === 'duplicate-clone')
+    .map(({ path: file, identity }) => [file, identity.split(':')[0]]);
 }
 
 describe('readJavaFindings: guard reports', () => {
@@ -121,8 +121,15 @@ describe('readJavaFindings: guard reports', () => {
     ]);
   });
 
-  it('drops a PMD CPD clone that the build-wide jscpd report already has', () => {
-    expect(cpdIdentities({ runs: [] })).toEqual([LEFT]);
-    expect(cpdIdentities(JSCPD_CLONE)).toEqual([]);
+  it('keeps the PMD CPD clone and drops the jscpd clone of the same lines', () => {
+    const elsewhere = structuredClone(JSCPD_CLONE);
+    elsewhere.runs[0].report.duplicates[0].firstFile.start = 40;
+
+    expect(cloneFindings({ runs: [] })).toEqual([[LEFT, 'cpd']]);
+    expect(cloneFindings(JSCPD_CLONE)).toEqual([[LEFT, 'cpd']]);
+    expect(cloneFindings(elsewhere)).toEqual([
+      [LEFT, 'cpd'],
+      [LEFT, 'pair'],
+    ]);
   });
 });

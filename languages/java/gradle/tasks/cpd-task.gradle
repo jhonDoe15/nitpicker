@@ -1,5 +1,5 @@
 def reportDir = project.ext.nitpickerReportDir
-def cpdSource = new File(buildscript.sourceFile.parentFile, '../CpdReport.java').canonicalFile
+def toolCommand = project.ext.nitpickerToolCommand
 
 tasks.register('nitpickerCpd') {
     group = 'nitpicker'
@@ -11,7 +11,7 @@ tasks.register('nitpickerCpd') {
     }
     inputs.files({ sourceSets*.allJava }).withPropertyName('sources')
     inputs.files(configurations.nitpickerPmd).withPropertyName('pmd')
-    inputs.file(cpdSource).withPropertyName('launcher')
+    inputs.file(toolCommand('cpd', [report: '', directories: []]).launcher).withPropertyName('launcher')
     outputs.file(report).withPropertyName('report')
     doLast {
         reportDir.get().asFile.mkdirs()
@@ -23,14 +23,16 @@ tasks.register('nitpickerCpd') {
             return
         }
         def java = new File(System.getProperty('java.home'), 'bin/java').absolutePath
-        def launch = [java, '-cp', configurations.nitpickerPmd.asPath, cpdSource.absolutePath,
-            report.get().asFile.absolutePath]
-        def process = new ProcessBuilder(launch + directories.collect { it.absolutePath })
+        def command = toolCommand('cpd', [
+            report     : report.get().asFile.absolutePath,
+            directories: directories*.absolutePath,
+        ])
+        def launch = [java, '-cp', configurations.nitpickerPmd.asPath, command.launcher.absolutePath]
+        def process = new ProcessBuilder(launch + command.args)
             .directory(projectDir).redirectOutput(ProcessBuilder.Redirect.DISCARD).start()
         def errors = process.errorStream.getText('UTF-8')
         def code = process.waitFor()
-        def written = report.get().asFile.isFile() ? report.get().asFile.text : ''
-        if (!(code in [0, 4]) || !(written =~ /<pmd-cpd[\s\/>]/)) {
+        if (!command.accepts(code)) {
             failure.get().asFile.text = "${code}\n${errors}"
             report.get().asFile.delete()
         }

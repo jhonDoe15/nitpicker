@@ -4,7 +4,8 @@ import path from 'node:path';
 import { ingestCheckstyle } from '../../ingest/formatting/checkstyle.mjs';
 import { ingestArchunit } from '../../ingest/archunit.mjs';
 import { ingestCrap } from '../../ingest/crap.mjs';
-import { readDuplicateFindings } from '../metrics/java-duplicates.mjs';
+import { DUPLICATES_REPORT, readDuplicateFindings } from '../metrics/java-duplicates.mjs';
+import { coveredByCpd } from '../../guards/cpd-duplicates.mjs';
 import { readKotlinDuplicateFindings } from '../kotlin/kotlin-duplicates.mjs';
 import {
   dropEntityAssociations,
@@ -58,7 +59,9 @@ export function readJavaFindings(projectRoot, options = {}) {
   return {
     findings: [
       ...moduleFindings,
-      ...readDuplicateFindings(reportBase),
+      ...readDuplicateFindings(reportBase, DUPLICATES_REPORT, {
+        skip: coveredByCpd(modules, projectRoot),
+      }),
       ...(kotlinPreset ? readKotlinDuplicateFindings(reportBase) : []),
       ...(projectWide
         ? projectWideFindings(projectRoot, {
@@ -79,13 +82,12 @@ export function readJavaFindings(projectRoot, options = {}) {
   };
 }
 
-function guardFindings({ projectRoot, reportRoot, reportBase, manifest, moduleDir, modulePath }) {
+function guardFindings({ projectRoot, reportRoot, manifest, module }) {
   return readGuardFindings({
     reportRoot,
-    jscpdRoot: reportBase,
     projectRoot,
     manifest,
-    module: { moduleDir, modulePath },
+    module,
     locate: sourceLocator(projectRoot, lintedRoots(manifest)),
   });
 }
@@ -97,10 +99,8 @@ function moduleContextFindings(projectRoot, module, { manifest, options }) {
       projectRoot,
       roots: projectRoots(projectRoot),
       reportRoot: module.reportRoot,
-      reportBase: options.reportBase,
       manifest: module.manifest,
-      moduleDir: module.dir,
-      modulePath: options.modulePath,
+      module: { moduleDir: module.dir, modulePath: options.modulePath },
       sourceRoots: module.manifest.sourceRoots ?? [],
       allSourceRoots: manifest.sourceRoots,
       kotlin: preset === 'kotlin' && module.manifest.kotlin === true,

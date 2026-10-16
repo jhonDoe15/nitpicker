@@ -1,6 +1,6 @@
 import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
-import { createIdentityCounter, hashIdentity } from '../ingest/common.mjs';
+import { createLineIdentity } from '../ingest/common.mjs';
 import { exceptionRoute } from './advice/exception-route.mjs';
 import { rootsScope } from '../builds/module-path.mjs';
 
@@ -18,13 +18,13 @@ const ADVICE = {
   cast: 'Remove the cast.',
 };
 
-function warningFinding({ file, line, rule, text }, unique) {
+function warningFinding({ file, line, rule, text }, identity) {
   const advice = ADVICE[rule] ?? 'Fix the warning.';
   return {
     tool: LINT_TOOL,
     rule,
     path: file,
-    identity: unique(hashIdentity('javac', [rule, file, text])),
+    identity: identity({ file, line, parts: [rule, text] }),
     message: `${text}. ${advice} ${exceptionRoute(LINT_TOOL, rule)}`,
     classification: 'enforceable',
     location: { line },
@@ -57,7 +57,7 @@ function lintNotRun(reportRoot, sourceRoots, module) {
       path: '.',
       identity: LINT_NOT_RUN,
       message:
-        `No javac lint report: the lint compile failed (${firstError.trim()}), so raw types, ` +
+        `No javac lint report from the lint compile (${firstError.trim()}), so raw types, ` +
         'unchecked operations, deprecated calls and redundant casts were not checked. ' +
         'Fix what that compile reports (the main sources, the compile class path and Lombok), ' +
         `or add an exception for ${LINT_TOOL}/${LINT_NOT_RUN} with the path "**" in nitpicker.config.json ` +
@@ -83,9 +83,9 @@ export function readLintFindings(reportRoot, { projectRoot, sourceRoots = [], mo
   if (!existsSync(report)) {
     return lintNotRun(reportRoot, sourceRoots, module);
   }
-  const unique = createIdentityCounter();
+  const identity = createLineIdentity('javac', projectRoot);
   const inProject = projectFileCheck(projectRoot);
   return parseLintWarnings(readFileSync(report, 'utf8'))
     .filter(({ file }) => inProject(file))
-    .map((warning) => warningFinding(warning, unique));
+    .map((warning) => warningFinding(warning, identity));
 }

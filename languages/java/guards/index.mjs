@@ -4,8 +4,7 @@ import { readForbiddenApiFindings } from './forbidden-apis.mjs';
 import { readLintFindings } from './javac-lint.mjs';
 import { liesInProject } from '../builds/module-path.mjs';
 
-export function readGuardFindings(context) {
-  const { reportRoot, jscpdRoot, projectRoot, manifest, module, locate } = context;
+export function readGuardFindings({ reportRoot, projectRoot, manifest, module, locate }) {
   const findings = [
     ...readLintFindings(reportRoot, {
       projectRoot,
@@ -18,7 +17,6 @@ export function readGuardFindings(context) {
       sourceRoots: manifest.sourceRoots ?? [],
       testRoots: manifest.testSourceRoots ?? [],
       module,
-      jscpdRoot,
     }),
     ...readDependencyFindings(reportRoot),
   ];
