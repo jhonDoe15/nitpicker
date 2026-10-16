@@ -1,8 +1,8 @@
-import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
-import { toolCommand } from './tool-commands.mjs';
+import { reportRootPattern, toolCommand } from './tool-commands.mjs';
 
 const roots = [];
 afterEach(() => {
@@ -31,6 +31,23 @@ describe('toolCommand', () => {
       args: [report, '/p/src/main/java', '/p/test'],
       accepted: [false, false, true, false, false],
     });
+  });
+
+  it('rejects a CPD report path that is a directory instead of failing on it', () => {
+    const root = mkdtempSync(path.join(tmpdir(), 'nitpicker-tool-commands-'));
+    roots.push(root);
+    const report = path.join(root, 'cpd.xml');
+    mkdirSync(report);
+
+    expect(toolCommand('cpd', { report, directories: [] }).accepts(0)).toBe(false);
+  });
+
+  it('gives the readers the root element a CPD report must have', () => {
+    expect(
+      ['<pmd-cpd>', '<pmd-cpd/>', '<pmd-cpd\n', '<pmd-cpdx>', '<html>'].map((text) =>
+        reportRootPattern('cpd').test(text),
+      ),
+    ).toEqual([true, true, true, false, false]);
   });
 
   it('joins the forbiddenapis libraries with the path separator', () => {

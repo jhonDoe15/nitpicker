@@ -3,7 +3,7 @@ import path from 'node:path';
 import { evaluateDuplicates } from '../../../shared/rules/duplicates.mjs';
 import { childrenNamed, parseXml } from '../ingest/common.mjs';
 import { exceptionRoute } from './advice/exception-route.mjs';
-import { cpdNotRun, readCpdReport, skippedPaths } from './cpd/cpd-report.mjs';
+import { CPD_IDENTITY_PREFIX, cpdNotRun, readCpdReport, skippedPaths } from './cpd/cpd-report.mjs';
 
 const DUPLICATES_TOOL = 'duplicates';
 const TEST_ADVICE =
@@ -163,7 +163,7 @@ function distinctClones(clones) {
 }
 
 function jscpdRange(side, lines) {
-  return { file: side.file, line: side.line, endLine: side.line + (lines ?? 0) };
+  return { file: side.file, line: side.line, endLine: side.line + (lines ?? 1) - 1 };
 }
 
 function cloneList(xml, projectRoot) {
@@ -172,7 +172,7 @@ function cloneList(xml, projectRoot) {
 
 function readCpdClones(reportRoot, projectRoot) {
   const read = readCpdReport(reportRoot);
-  return read.kind === 'report' ? cloneList(read.xml, projectRoot) : [];
+  return read.kind === 'report' ? cpdClones(read.xml, projectRoot) : [];
 }
 
 export function coveredByCpd(modules, projectRoot) {
@@ -214,10 +214,7 @@ export function readCpdFindings(reportRoot, { projectRoot, sourceRoots = [], tes
     .map((finding) => withTestAdvice(finding, inTests))
     .map((finding) => ({
       ...finding,
-      identity: `cpd:${finding.identity}`,
-      ...(finding.ratchet === undefined
-        ? {}
-        : { ratchet: { ...finding.ratchet, key: `cpd:${finding.ratchet.key}` } }),
+      identity: `${CPD_IDENTITY_PREFIX}${finding.identity}`,
       message: `${finding.message} ${exceptionRoute(DUPLICATES_TOOL, finding.rule)}`,
     }));
   return [...skippedPaths(reportRoot, { projectRoot, xml: read.xml }), ...findings];

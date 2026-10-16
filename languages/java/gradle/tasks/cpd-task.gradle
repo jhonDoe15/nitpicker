@@ -12,6 +12,7 @@ tasks.register('nitpickerCpd') {
     inputs.files({ sourceSets*.allJava }).withPropertyName('sources')
     inputs.files(configurations.nitpickerPmd).withPropertyName('pmd')
     inputs.file(toolCommand('cpd', [report: '', directories: []]).launcher).withPropertyName('launcher')
+    inputs.file(project.ext.nitpickerToolCommandsFile).withPropertyName('toolCommands')
     outputs.file(report).withPropertyName('report')
     doLast {
         reportDir.get().asFile.mkdirs()

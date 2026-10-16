@@ -1,5 +1,5 @@
 {
-  "description": "A toolNotRun finding with notRunScope covers only the findings of its tool whose path lies in one of the listed project directories, plus the head path of each file renamed out of them. The base notice for core/src/main/java makes the head's clones there descriptive, both the CPD clone and the jscpd clone of the same tool, while the clone under core/src/test/java and the one in lib stay enforceable. The base notice for legacy/src/main/java also covers kernel/src/main/java/p/E.java, renamed out of it, but not the rest of kernel, so the head's kernel notice is a tool-error, as is the app notice that no base notice covers.",
+  "description": "A toolNotRun finding with notRunScope covers only the findings of its tool whose path lies in one of the listed project directories, plus the head path of each file renamed out of them, and with notRunIdentityPrefix only those whose identity starts with it. The base notice for core/src/main/java makes the head's CPD clone there descriptive, while the jscpd clone of the same files, which jscpd still checked, the clone under core/src/test/java and the one in lib stay enforceable. The base notice for legacy/src/main/java also covers kernel/src/main/java/p/E.java, renamed out of it, but not the rest of kernel, so the head's kernel notice is a tool-error, as is the app notice that no base notice covers.",
   "renames": {
     "legacy/src/main/java/p/E.java": "kernel/src/main/java/p/E.java"
   },
@@ -30,7 +30,7 @@
       "rule": "duplicate-clone",
       "path": "core/src/main/java/A.java",
       "identity": "pair:core/src/main/java/A.java|core/src/main/java/B.java:occurrence:1",
-      "classification": "descriptive"
+      "classification": "enforceable"
     },
     {
       "tool": "duplicates",

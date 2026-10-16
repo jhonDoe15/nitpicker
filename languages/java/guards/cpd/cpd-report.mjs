@@ -1,6 +1,7 @@
 import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { rootsScope } from '../../builds/module-path.mjs';
+import { reportRootPattern } from '../../builds/tools/tool-commands.mjs';
 import { childrenNamed, parseXml } from '../../ingest/common.mjs';
 
 const CPD_REPORT = 'cpd.xml';
@@ -8,10 +9,11 @@ const CPD_FAILURE = 'cpd-failed.txt';
 const CPD_NOT_RUN = 'cpd-not-run';
 const CPD_SKIPPED = 'cpd-skipped.txt';
 const CPD_SKIPPED_RULE = 'cpd-skipped-paths';
-const CPD_ROOT = /<pmd-cpd[\s/>]/u;
+const CPD_ROOT = reportRootPattern('cpd');
 const JVM_NOTE = /^(?:NOTE: )?Picked up \w+/u;
 const MAX_ERROR_LINES = 10;
 const DUPLICATES_TOOL = 'duplicates';
+export const CPD_IDENTITY_PREFIX = 'cpd:';
 
 function cpdFailure(reportRoot) {
   const [status, ...stderr] = readFileSync(path.join(reportRoot, CPD_FAILURE), 'utf8').split(
@@ -95,6 +97,8 @@ export function cpdNotRun(reason, roots, module) {
     identity: CPD_NOT_RUN,
     message: `No CPD duplicate report for this module, so duplicated code in ${place} was not checked: ${reason}`,
     classification: 'descriptive',
-    ...(scope.length === 0 ? {} : { toolNotRun: true, notRunScope: scope }),
+    ...(scope.length === 0
+      ? {}
+      : { toolNotRun: true, notRunScope: scope, notRunIdentityPrefix: CPD_IDENTITY_PREFIX }),
   };
 }

@@ -113,6 +113,25 @@ describe.skipIf(process.platform === 'win32')('runJdeps', () => {
     expect(read(path.join(reportDir, 'jdeps.txt'))).toBe(GRAPH);
   });
 
+  it('leaves symbolic links to class files and folders out of the class list and the copy', () => {
+    const { root, module, reportDir } = project(['module-info.class', 'app/Main.class']);
+    mkdirSync(path.join(root, 'outside/q'), { recursive: true });
+    writeFileSync(path.join(root, 'outside/B.class'), 'class bytes');
+    writeFileSync(path.join(root, 'outside/q/C.class'), 'class bytes');
+    symlinkSync(
+      path.join(root, 'outside/B.class'),
+      path.join(module.outputDirectory, 'app/L.class'),
+    );
+    symlinkSync(path.join(root, 'outside/q'), path.join(module.outputDirectory, 'linked'));
+
+    runJdeps(module, reportDir);
+
+    expect({
+      staged: read(path.join(root, 'staged.txt')),
+      classes: read(path.join(reportDir, 'jdeps-classes.txt')),
+    }).toEqual({ staged: './app/Main.class\n', classes: 'app.Main\n' });
+  });
+
   it('stages the classes of a class directory that is a symbolic link', () => {
     const { root, module, reportDir } = project(['module-info.class', 'app/Main.class']);
     const linked = path.join(root, 'linked-classes');

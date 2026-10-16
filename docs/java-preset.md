@@ -138,9 +138,10 @@ field by field. Per snapshot:
   module exactly as on one without a descriptor, with no module path: over a temporary copy of the
   class files of the modular class directories, without `module-info.class`, made in the build
   directory (`target/` on Maven, Gradle's build directory) and removed afterwards
-  (`languages/java/maven/coupling/maven-jdeps.mjs`, and `tasks/jdeps-task.gradle`). The copy takes
-  regular `.class` files only, so a symbolic link inside the class directory is left out (a class
-  directory that is itself a link is read through it), and on Maven it goes to the system
+  (`languages/java/maven/coupling/maven-jdeps.mjs`, and `tasks/jdeps-task.gradle`). The copy and
+  `jdeps-classes.txt` take regular `.class` files only, so a symbolic link inside a class directory,
+  to a file or a folder, is left out of both (a class directory that is itself a link is read
+  through it), and on Maven it goes to the system
   temporary directory when the class directory is the build directory or holds it, since a copy
   into itself is impossible. A class directory without a descriptor is read in place. Only the
   edges between the module's own classes are read, so coupling is the same. When jdeps fails, the error gives its exit code and up to 10
@@ -621,7 +622,8 @@ resolved plus a new finding, as in the TypeScript check.
   JDK's `jdeps -verbose:class -filter:none` over the main class directories and writes
   `jdeps.txt` in the report directory plus `jdeps-classes.txt` (the main classes, one binary name per line).
   jdeps comes with the JDK that runs Gradle; nothing is downloaded and no version is pinned. The
-  block is delimited by `// --- coupling (SH6)` comments in the init script.
+  task lives in `languages/java/gradle/tasks/jdeps-task.gradle`, and its arguments come from the
+  `jdeps` entry of `languages/java/builds/tools/tool-commands.json`.
 - **Conversion.** `languages/java/adapters/metrics/java-coupling.mjs` parses the class graph, folds nested classes
   into their top-level class, keeps only edges between two main classes, computes the metrics and
   hands the neutral report to `evaluateCoupling` in `shared/rules/coupling.mjs`. The findings are
@@ -805,8 +807,10 @@ A Checkstyle rule prints as its full check class, for example
 - **Duplicates.** The jscpd check is unchanged. `nitpickerCpd` runs PMD's copy-paste detector
   (BSD-style, already inside the pinned PMD) over main and test sources with identifiers and
   literals ignored and at least 100 tokens, so a copy with renamed variables is found. When jscpd
-  and CPD report the same clone (same two files, overlapping lines), only the CPD finding is
-  kept; in a module where CPD did not run or wrote no usable report, jscpd's clones stay, overlapping
+  and CPD report the same clone (same two files, overlapping lines, jscpd's range ending at its
+  start line plus `lines` minus one), only the CPD finding is kept, also when nitpicker then drops
+  CPD's clone as boilerplate or as overlapping its own copy; in a module where CPD did not run or
+  wrote no usable report, jscpd's clones stay, overlapping
   windows of one file pair are one finding, a block that overlaps its own copy is dropped, and so
   are clones made only of getters, setters, field declarations and field-assigning constructors
   or only of data rows (enum constants, `Arguments.of(...)` rows, literal lists, and constants
@@ -819,9 +823,12 @@ A Checkstyle rule prints as its full check class, for example
   that jscpd splits in two is held at its base size, for jscpd and CPD alike, while each of its
   two copies keeps a line the change did not add or edit: a new clone between the same two files
   fails when one of its copies is made only of added or edited lines, or when it, with the other
-  new clones of that pair, has more tokens than a base clone of the pair that no longer matches. Findings use the
-  same tool and rule as jscpd (`duplicates/duplicate-clone`), with identities starting `cpd:` so
-  they never match a jscpd finding; between two test files the message points at a helper or a
+  new clones of that pair, has more tokens than a base clone of the pair that no longer matches.
+  Both tools hold against the same pair (`pair:<a>|<b>:clone`, counted in tokens), so a legacy CPD
+  clone that shrinks below CPD's 100 tokens and is then reported by jscpd is held too. Findings use
+  the same tool and rule as jscpd (`duplicates/duplicate-clone`), with identities starting `cpd:` so
+  they never match a jscpd finding; renaming one of the two files keeps a clone's identity even when
+  the new name sorts the files the other way round; between two test files the message points at a helper or a
   `@ParameterizedTest`. The message ends with the exception route for
   `duplicates/duplicate-clone`. Both builds run CPD through `languages/java/gradle/CpdReport.java`
   (single-file source mode, with the pinned PMD on the class path) instead of `PmdCli cpd`, with
@@ -867,15 +874,15 @@ A Checkstyle rule prints as its full check class, for example
   did not check lies outside the project, and the guards drop every finding on a file outside the
   project (a finding's path must lie in the project, and one that does not would make the whole
   Java report fail to parse), so nothing in the comparison is left to relax. A failure on the base
-  makes the head's `duplicates` findings in those directories descriptive, and those on the exact
-  head paths of the files renamed out of them. The directories themselves never follow a move: a
+  makes the head's CPD findings (identity `cpd:...`, from `notRunIdentityPrefix`) in those
+  directories descriptive, and those on the exact head paths of the files renamed out of them, as
+  long as they match no base finding; jscpd's clones there stay enforced, since jscpd ran. The directories themselves never follow a move: a
   module moved whole into an existing one relaxes only the moved files, and a module renamed whole
-  that still fails gives a conservative tool error on the head, while the findings of its renamed
-  files stay descriptive. That includes jscpd's clones there, although jscpd itself ran: both
-  tools report `duplicates`, and a CPD failure is now a genuine tool failure, so losing jscpd's
-  enforcement in that one module for that one comparison is the accepted cost of a simple scope. A
-  failure on the head is a tool error unless a base notice of the tool has the same identity and
-  path or the base notices together cover each of its directories. One file moved into a module
+  that still fails gives a conservative tool error on the head, while the CPD findings of its
+  renamed files stay descriptive. A legacy finding that matches a base finding stays unchanged and
+  enforceable, so a failed run never shows it as resolved plus new. A failure on the head is a tool
+  error unless a base notice of the tool with the same prefix has the same identity and path or
+  those base notices together cover each of its directories. One file moved into a module
   that ran on the base therefore does not excuse that module failing on the head. The
   `javac/lint-not-run` notice is scoped the same way, to the module's main source roots.
 - **Cycles.** `java-coupling.mjs` already has the class graph from jdeps. Each package in a

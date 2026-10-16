@@ -65,10 +65,13 @@ def expandedToken = { token, Map values ->
 def wroteReport = { File file, String root ->
     file.isFile() && (root == null || file.getText('UTF-8') =~ "<${root}[\\s/>]")
 }
+def launcherFile = { String launcher ->
+    launcher == null ? null : new File(toolCommandsFile.parentFile, launcher).canonicalFile
+}
 def toolCommand = { String tool, Map values ->
     def command = toolCommands[tool]
     [
-        launcher: command.launcher == null ? null : new File(toolCommandsFile.parentFile, command.launcher).canonicalFile,
+        launcher: launcherFile(command.launcher),
         args    : command.args.collectMany { expandedToken(it, values) },
         accepts : { int code ->
             (command.accept.exits == null || code in command.accept.exits) &&
@@ -107,6 +110,7 @@ allprojects {
         project.ext.nitpickerAnalysisRoot = analysisRoot
         project.ext.nitpickerCompilerOf = compilerOf
         project.ext.nitpickerToolCommand = toolCommand
+        project.ext.nitpickerToolCommandsFile = toolCommandsFile
         project.ext.nitpickerRunNode = runNode
 
         configurations {
@@ -196,6 +200,7 @@ allprojects {
             mainClass = 'net.sourceforge.pmd.cli.PmdCli'
             ignoreExitValue = true
             def command = null
+            inputs.file(toolCommandsFile).withPropertyName('toolCommands')
             def nitpickerRulesets = nitpickerArgument('nitpicker.pmd.nitpickerConfig') != 'false'
             def projectRuleset = nitpickerArgument('nitpicker.pmd.projectConfig')
             doFirst {
