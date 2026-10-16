@@ -151,6 +151,10 @@ function tokenStep(state, char) {
   return /["']/u.test(char) ? { ...state, token, quote: char } : { ...state, token: token + char };
 }
 
+export function argumentFileToken(value) {
+  return `"${String(value).replaceAll('\\', '\\\\').replaceAll('"', '\\"')}"`;
+}
+
 export function argumentFileTokens(text) {
   const start = { tokens: [], token: undefined, quote: undefined, comment: false };
   const state = [...text].reduce(tokenStep, { ...start, escape: false, continued: false });

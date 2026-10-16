@@ -1,6 +1,7 @@
 import { spawnSync } from 'node:child_process';
 import { existsSync, mkdirSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
+import { argumentFileToken } from './javac-options.mjs';
 import { lintArguments } from './lint-arguments.mjs';
 import {
   LINT_CACHE,
@@ -9,7 +10,7 @@ import {
   reusableWarnings,
 } from './lint-baseline.mjs';
 import { lintedWarnings, relocated, hasUnreadWarnings } from './lint-output.mjs';
-import { stageSources } from './lint-staging.mjs';
+import { posix, stageSources } from './lint-staging.mjs';
 
 const LINT_REPORT = 'javac-lint.txt';
 const LINT_FAILURE = 'javac-lint-failed.txt';
@@ -19,17 +20,9 @@ const MODULE_INFO = 'module-info.java';
 const MAX_OUTPUT_BYTES = 50 * 1024 * 1024;
 const LINT_TIMEOUT_MS = 15 * 60 * 1000;
 
-function posix(file) {
-  return file.split(path.sep).join('/');
-}
-
 function inside(directory, file) {
   const relative = path.relative(directory, file);
   return !relative.startsWith('..') && !path.isAbsolute(relative);
-}
-
-function argumentFileToken(value) {
-  return `"${String(value).replaceAll('\\', '\\\\').replaceAll('"', '\\"')}"`;
 }
 
 function generatedFiles(directories) {

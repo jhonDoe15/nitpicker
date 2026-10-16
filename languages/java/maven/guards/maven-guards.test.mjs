@@ -11,7 +11,7 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { GRADLE_DIRECTORY } from '../../builds/java-build.mjs';
-import { argumentFileToken } from '../maven-command.mjs';
+import { argumentFileToken } from '../../builds/lint/javac-options.mjs';
 import { runGuards } from './maven-guards.mjs';
 
 const roots = [];

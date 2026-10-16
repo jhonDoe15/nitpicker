@@ -9,6 +9,10 @@ const IMPORT = /^(\s*import\s+)(\S(?:.*\S)?)\s*$/gmu;
 const STAGED_TREE = 'tree';
 const ANCHORED_IMPORT = /^(?:[/~<\\]|[A-Za-z]:[/\\])/u;
 
+export function posix(file) {
+  return file.split(path.sep).join('/');
+}
+
 export function blankSuppressions(text) {
   return text.replaceAll(SUPPRESS_WARNINGS, (match) => match.replaceAll(/[^\n]/gu, ' '));
 }
@@ -52,7 +56,7 @@ function anchoredImport(directory, target) {
     return target;
   }
   const [file, ...entry] = target.split('!');
-  return [path.resolve(directory, file).split(path.sep).join('/'), ...entry].join('!');
+  return [posix(path.resolve(directory, file)), ...entry].join('!');
 }
 
 function withAnchoredImports(text, directory) {
