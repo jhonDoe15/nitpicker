@@ -6,7 +6,7 @@ import {
   resolveHeadPolicy as resolveSharedHeadPolicy,
 } from '../../../shared/head-policy.mjs';
 import { isJavascriptPolicy } from '../../javascript/preset/javascript-preset.mjs';
-import { hasScopePackage } from './eslint-config/scope-support.mjs';
+import { hasScopePackage, scopePackage } from './eslint-config/scope-support.mjs';
 import { excludedGlobs, resolveLayout, sourceRoots, testRoots } from './layout.mjs';
 import { prettierConventionOptions } from '../conventions/prettier-conventions.mjs';
 
@@ -62,12 +62,17 @@ function withProjectFacts(policy, config, projectRoot) {
 }
 
 function detectedScopes(policy, projectRoot) {
-  return Object.fromEntries(
+  const scopes = Object.fromEntries(
     ['react', 'i18n'].map((scope) => [
       scope,
       { ...policy[scope], enabled: policy[scope]?.enabled ?? hasScopePackage(projectRoot, scope) },
     ]),
   );
+  const iconPackage = scopePackage(projectRoot, 'icons');
+  return {
+    ...scopes,
+    react: { ...scopes.react, ...(iconPackage === undefined ? {} : { iconPackage }) },
+  };
 }
 
 function projectFilesDigest(projectRoot) {

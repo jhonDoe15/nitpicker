@@ -32,6 +32,18 @@ config file is an exception like any other.
   are not allowed.
 - Objects are constructed only in the composition root. Dependencies are passed explicitly. No
   module-level `let`.
+- `shared-used-by-one-feature` (the `coupling` check): `src/main/shared/` holds code that two or
+  more features use. A production module there that exactly one feature reaches, directly or through
+  other shared modules only, and that nothing else imports, is reported on the module with the
+  feature's folder to move it to. Type-only imports count as use, and so does an import through a
+  workspace package linked into `node_modules`. The composition root, any other production module
+  (`main.ts`, a module of another source root) and a second feature each count as another consumer;
+  test files, stories (`*.stories.*`, `*.story.*`) and files under `__mocks__/`, `__fixtures__/`,
+  `fixtures/` and `stories/` do not, and are not reported. A module no feature reaches is left to
+  the dead-code check. The feature and shared folders are the ones the architecture rules use
+  (`architecture/strict-layout.mjs`), under every `layout.sourceRoots` entry; a feature of another
+  source root is another feature. A module that is shared on purpose before a second feature uses it
+  needs an exception for this rule in `nitpicker.config.json`.
 - `nitpicker/no-branch-in-composition-root`: the composition root (`composition-root.ts`, `main.ts`,
   `server.ts`, plus the `compositionRootPattern` option shared with
   `no-managed-resource-construction-outside-composition-roots`) only wires features with named
@@ -188,6 +200,47 @@ Button`). `@param`, `@returns` and other tag lines are not part of the descripti
   tag), is reported too: keep the non-obvious point and move the rest into names and types. Both
   checks are skipped in the JavaScript preset's JSDoc mode, which already bans JSDoc prose, and a
   doc comment that is needed as written gets an exception for the rule.
+
+## Reuse after a move
+
+A move that leaves the old copy behind, or a second definition with a familiar name, is the most
+common review comment on a large codebase, and `jscpd` (the `duplicates` check, 5 lines and 50
+tokens at least) does not see small ones. These rules are reported by the `structure` check on
+production files under the source roots; tests, declaration files, stories (`*.stories.*`,
+`*.story.*`) and files under `__mocks__/`, `__fixtures__/`, `fixtures/` and `stories/` are left out.
+Each message spells out the entry to add to `exceptions` in `nitpicker.config.json`; an exception
+for a file takes that file out of the rule, so a pair of copies that must both stay needs one entry.
+
+- `duplicate-definition`: two or more modules of one package define a top-level declaration with the
+  same name and the same normalized text (whitespace, comments, quote style, semicolons and trailing
+  commas ignored). It covers a function (declaration, `function` expression or arrow function:
+  overload signatures, the type annotation of a `const`, parameters and body are compared), exported
+  or private, and, only when exported, a `type` alias, an `interface` and a `const` whose
+  initializer is only literals (numbers, strings, bigints, booleans, regular expressions, plain
+  template literals, and arrays and objects of those, with or without `as const` or `satisfies`); a
+  private `Props` type or `initialState` per module is normal. A `const` with any other initializer
+  is not compared. Only definitions that are used are compared: another module imports them (by
+  name, default, namespace or a dynamic `import()`, also through a workspace package), or the module
+  references them, so framework conventions nothing imports (`export const dynamic`, `revalidate`, a
+  route `GET`, a default `Loading` page) are skipped without a list of frameworks. A definition of 5
+  lines and 50 tokens or more is left to the `duplicates` check. The text includes what each free
+  name resolves to (the file or package it is imported from, the path from the importing file for an
+  import that is not a source file such as `./styles.module.css`, or the text of the top-level
+  declaration it names), so `count() { return db.size }` over two different `db` values is not a
+  duplicate. Generated files (`*.generated.*`, `*.gen.*`, `*.pb.*`, `*_pb.*`, `__generated__/`,
+  `generated/`) are skipped, and a monorepo compares within one package (the nearest `package.json`;
+  without one, within one source root). Every copy is reported at its declaration and names the
+  other files, once per name and file; the identity is the name and file, so existing copies are
+  baselined. The message tells an exported copy to keep one definition and import it, a private copy
+  to import the exported copy when there is one, and otherwise to move to one module and import it.
+- `exported-name-collision`: two modules export different definitions under one name and a module
+  imports both without aliasing both, so a reader and auto-import can mistake one for the other. A
+  module that aliases every colliding import (`import { handler as getUser }`, `import type`,
+  `export { x as y }`) is not reported. Both defining modules are reported. Re-exports
+  (`export { x } from`, `export *`, an imported name exported again) resolve to the module that
+  defines the name, so a feature's `index.ts` is not a second definition. Imports resolve through relative paths,
+  `tsconfig.json` `paths` and `baseUrl`, and a workspace package linked into `node_modules` resolves
+  to its source; installed packages are skipped. Rename one, or alias both imports.
 
 ## Inside tests
 
@@ -480,6 +533,35 @@ off (a PR that adds or removes React keeps linting on both sides); a misspelled 
   reports the first hover when none appears: add a test that tabs to the element and asserts the
   same state. A hover-only control gets an exception. A project with
   `@testing-library/react-native` keeps `testID` queries, the idiom there.
+- **Use the library's component** (`redefined-library-component`, reported by the `structure`
+  check). A component definition (a top-level PascalCase function, or `const` arrow function,
+  function expression, `memo` or `forwardRef`, in a `.tsx` or `.jsx` file) whose name is one that
+  production files render from a package is reported, for example a second `Card` when `<Card />`
+  from `@acme/ui` is rendered in several files. A name counts only when the package is listed in the
+  `package.json` of the file (or the project root), so a bundler alias such as `@components/Button`
+  is not a package, and only when the project uses it as a JSX element, so a `Request` or an ORM
+  `Table` that is never rendered does not. Names come from named imports rendered as a top-level
+  element (the imported name, not the local alias) and a default import of a deep path whose last
+  segment is the local name (`import Button from '@mui/material/Button'`); a namespace member
+  (`<Tabs.List />`) and the icon packages of `scopePackages.icons` (an imported `Search` icon) do
+  not count. Relative imports, `tsconfig.json` aliases such as `@/` and `~/`, and type-only imports
+  are not packages. A file that imports anything from a package that exports the name, directly or
+  through project modules that re-export it (a `../ui` barrel over `@acme/ui`), is not reported: it
+  is a wrapper. A workspace package counts as a library, but its own components are not reported
+  against it. Use the library's component, compose it under a different name, or rename the new one.
+- **Use the icon library** (`new-icon-asset`, reported by the `structure` check). An icon-sized
+  `.svg` file (a `viewBox`, or without one a `width` and `height`, of 48 or less in both dimensions;
+  logos and illustrations are larger, and a sprite sheet with neither is not an icon) under the
+  source roots is reported when `package.json` lists an icon package, one of the names in
+  `scopePackages.icons` in `languages/typescript/preset/eslint-config/scope-support.mjs`
+  (`lucide-react`, `react-icons`, `@heroicons/react`, `@mui/icons-material`, `@tabler/icons-react`,
+  `@phosphor-icons/react`, ...). The framework favicon conventions (`icon.svg`, `favicon.svg`,
+  `apple-icon.svg`), names with `logo` or `brand` in them, and generated, test, excluded,
+  `__mocks__/`, `__fixtures__/`, `fixtures/` and `stories/` folders are skipped, and the extension
+  matches in any case. Both the React scope and the icon package are read once from the head
+  checkout and written into the head policy for both sides, like `react.enabled`, so a pull request
+  that adopts an icon package does not report every old svg. Existing files are baselined by path. A
+  new icon or illustration that is a design decision needs an exception for the file.
 
 The plugins are `eslint-plugin-react-hooks`, `eslint-plugin-react-x` (from eslint-react),
 `eslint-plugin-jsx-a11y-x` and `eslint-plugin-testing-library` (whose peer range includes ESLint 10). `eslint-plugin-react` and `eslint-plugin-jsx-a11y` declare no ESLint 10
@@ -611,6 +693,9 @@ Off, with the reason:
   code, and keep such exceptions narrow.
 - The file limits (`file-lines-limit`, `line-length-limit`, `folder-files-limit`) take exceptions the
   same way; each failure message spells out the entry that would lift it.
+- The reuse rules (`shared-used-by-one-feature`, `duplicate-definition`, `exported-name-collision`,
+  `redefined-library-component`, `new-icon-asset`) come from the `coupling` and `structure` checks,
+  not from ESLint, and take exceptions the same way; the JavaScript preset runs them too.
 - `layout.excludedGlobs`, `layout.entryPoints` and `layout.sourceRoots`/`layout.testRoots` are all valid `layout` keys. The
   roots must be directories; `excludedGlobs` are globs and replace the built-in exclusions;
   `entryPoints` are globs added to knip's entries for files that are loaded by path, not imported;
