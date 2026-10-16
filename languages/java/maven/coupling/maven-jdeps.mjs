@@ -13,6 +13,7 @@ import {
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { JVM_NOISE, javaCommand } from '../maven-command.mjs';
+import { toolCommand } from '../../builds/tools/tool-commands.mjs';
 
 const MODULE_INFO = 'module-info.class';
 const MAX_ERROR_LINES = 10;
@@ -45,7 +46,8 @@ function jdepsFailure(result) {
 }
 
 function analyzeClasses(module, classes) {
-  const result = spawnSync(javaCommand('jdeps'), ['-verbose:class', '-filter:none', classes], {
+  const command = toolCommand('jdeps', { classDirectories: [classes] });
+  const result = spawnSync(javaCommand('jdeps'), command.args, {
     cwd: module.basedir,
     encoding: 'utf8',
     maxBuffer: 50 * 1024 * 1024,
@@ -53,7 +55,7 @@ function analyzeClasses(module, classes) {
   if (result.error !== undefined) {
     throw result.error;
   }
-  if (result.status !== 0) {
+  if (!command.accepts(result.status)) {
     throw jdepsFailure(result);
   }
   return result.stdout;

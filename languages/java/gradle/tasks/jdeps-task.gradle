@@ -1,4 +1,5 @@
 def reportDir = project.ext.nitpickerReportDir
+def toolCommand = project.ext.nitpickerToolCommand
 
 tasks.register('nitpickerJdeps') {
     group = 'nitpicker'
@@ -44,12 +45,12 @@ tasks.register('nitpickerJdeps') {
                 }
                 copy
             }
-            def process = new ProcessBuilder([jdeps.absolutePath, '-verbose:class', '-filter:none'] +
-                analyzed.collect { it.absolutePath }).directory(projectDir).start()
+            def command = toolCommand('jdeps', [classDirectories: analyzed*.absolutePath])
+            def process = new ProcessBuilder([jdeps.absolutePath] + command.args).directory(projectDir).start()
             def stdout = new ByteArrayOutputStream()
             def stderr = new ByteArrayOutputStream()
             process.waitForProcessOutput(stdout, stderr)
-            if (process.exitValue() != 0) {
+            if (!command.accepts(process.exitValue())) {
                 def jvmNoise = ~/^(?:Picked up (?:JAVA_TOOL_OPTIONS|_JAVA_OPTIONS|JDK_JAVA_OPTIONS)|NOTE: Picked up)/
                 def lines = stderr.toString('UTF-8').readLines().findAll { it.trim() && !(it =~ jvmNoise) }
                 def errors = lines.findAll { it =~ /Error|Exception|Caused by/ }

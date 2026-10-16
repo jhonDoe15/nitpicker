@@ -15,8 +15,8 @@ side contributes only two things: producing reports, and converting them into fi
 
 ```
 gradle -I languages/java/gradle/nitpicker.init.gradle nitpickerJava   (per snapshot: base, head; Maven builds: see below)
-  -> <report dir>/modules.json and, per Gradle project that applies java, <report dir>/<key>/{pmd.sarif, spotbugs.sarif, format.txt, jacoco.xml, checkstyle.xml, checkstyle-<source set>.xml, archunit/*.xml, structure.json, pit/mutations.xml, jdeps.txt, jdeps-classes.txt, forbidden-apis.txt, cpd.xml, dependencies.json, guards-plan.json, manifest.json}
-  -> languages/java/adapters/gradle-reports/gradle-guards.mjs (runGradleGuards: javac-lint.txt and permits.txt from each guards-plan.json)
+  -> <report dir>/modules.json and, per Gradle project that applies java, <report dir>/<key>/{pmd.sarif, spotbugs.sarif, format.txt, jacoco.xml, checkstyle.xml, checkstyle-<source set>.xml, archunit/*.xml, structure.json, pit/mutations.xml, jdeps.txt, jdeps-classes.txt, forbidden-apis.txt, cpd.xml, dependencies.json, guards-plan.json, javac-lint.txt, permits.txt, manifest.json}
+     (nitpickerLint runs node languages/java/adapters/gradle-reports/gradle-guards.mjs on its guards-plan.json)
   -> languages/java/adapters/reporting/java-reports.mjs       (readJavaFindings, via the ingesters)
   -> languages/java/adapters/spring/java-spring.mjs    (spring findings read straight from application*.properties/yml, no Gradle report; only when manifest.json says spring: true)
   -> compareFindings(base, head, renames)               (languages/java/adapters/java-diff.mjs)
@@ -258,7 +258,7 @@ comma-separated>` changes that. Those classes are excluded from the regular `tes
   `org.example` targets `org.example.*`. PIT refuses `org.*` because it matches PIT's own classes,
   so classes directly in `org` are named one by one), against the project's own tests. The only
   profile can produce enforceable findings.
-- **What runs.** `nitpickerPit` runs the pinned `pitest-command-line` (1.17.4) with the
+- **What runs.** `nitpickerPit` (`languages/java/gradle/tasks/pit-task.gradle`) runs the pinned `pitest-command-line` (1.17.4) with the
   `pitest-junit5-plugin` (1.2.1), default mutators, XML output, two threads, to
   `pit/mutations.xml` in the report directory. Tests are named class by class (`--targetTests`), and
   `--mutableCodePaths` limits mutation to the main classes. The JUnit Platform is not pinned by
@@ -497,9 +497,9 @@ identity when the value changes: editing such a line counts as a resolved plus a
   (descriptive metrics `lines` and `tokens`). There is no extra threshold:
   jscpd's defaults (5 lines, 50 tokens) apply, as for TypeScript.
 
-| Tool                 | Report                      | Ingester                                              | Classification                                                    | Identity                                                                                                                                                  |
-| -------------------- | --------------------------- | ----------------------------------------------------- | ----------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| jscpd (`duplicates`) | jscpd JSON, per source root | `normalizeDuplicates` (TypeScript `duplicates` check) | `duplicate-clone` enforceable; `duplicate-clone-size` descriptive | Sorted file pair, a hash of the cloned text, and the n-th occurrence of that pair; the size metrics use pair, occurrence and metric name. No line number. |
+| Tool                 | Report                      | Ingester                                              | Classification                                                    | Identity                                                                                                                                                              |
+| -------------------- | --------------------------- | ----------------------------------------------------- | ----------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| jscpd (`duplicates`) | jscpd JSON, per source root | `normalizeDuplicates` (TypeScript `duplicates` check) | `duplicate-clone` enforceable; `duplicate-clone-size` descriptive | Sorted file pair, a hash of the cloned text, and the n-th occurrence of that text in the pair; the size metrics use pair, occurrence and metric name. No line number. |
 
 Editing the cloned text changes its hash, so a clone that was changed (not only moved) counts as a
 resolved plus a new finding, as in the TypeScript check.
@@ -736,18 +736,22 @@ A Checkstyle rule prints as its full check class, for example
   `@Value` or `@FieldDefaults(level = AccessLevel.PRIVATE)`, which Lombok makes private. These
   scopes are `SuppressionXpathSingleFilter` modules inside the
   generated config, not inline suppressions. The messages are rewritten to name the allowed form.
-- **javac lint.** The `nitpickerLint` task writes `guards-plan.json` (the main sources, the compile
-  class path, the processor path, the compiler, its release, source, target, encoding and arguments,
-  the classes directory and the generated-sources directory), and after Gradle has run nitpicker
-  compiles the main sources once more from it with
-  `-Xlint:rawtypes,unchecked,deprecation,removal,cast` and writes the warnings to `javac-lint.txt`
-  in the report directory (tool `javac`, rule = lint category). The same runner serves Maven. It
-  compiles a copy in which every `@SuppressWarnings(...)` is blanked out (same lines and columns),
-  with the project's compiler, release (or `-source`/`-target` from the source and target
-  compatibility when no release is set) and compiler arguments (without `-Werror`, `-Xlint`,
-  `-Xplugin`, processor options and class or module paths), and with the main classes on the
-  classpath, so it runs only Lombok of the annotation processors (the classes other processors
-  generate are already compiled) and stops after flow analysis without writing classes. The copy
+- **javac lint.** The `nitpickerLint` task writes `guards-plan.json` (the main sources, the
+  compile class path, the processor path, the compiler, its release, source, target, encoding and
+  arguments, the classes directory and the generated-sources directory) and runs node on it
+  (`-Pnitpicker.node`, the head run also passing the base project as `-Pnitpicker.lintBaseline`),
+  so the lint of several projects runs in parallel when Gradle does; it compiles the main sources
+  once more with
+  `-Xlint:rawtypes,unchecked,deprecation,removal,cast` and writes the warnings to
+  `javac-lint.txt` in the report directory (tool `javac`, rule = lint category). The same runner
+  serves Maven. It compiles a copy in which every `@SuppressWarnings(...)` is blanked out (same
+  lines and columns), with the project's compiler, release (or `-source`/`-target` from the source
+  and target compatibility when no release is set) and compiler arguments (without `-Werror`,
+  `-nowarn`, `-Xlint`, `-Xdiags`, `-XD`, `-Xplugin`, processor options and class or module paths),
+  and with the main classes on the classpath, so it runs only Lombok of the annotation processors
+  (the classes other processors generate are already compiled) and stops after flow analysis
+  without writing classes. When javac counts warnings but prints none in the form nitpicker reads,
+  the lint counts as not run. The copy
   keeps the sources' paths below the analysis root, with every `lombok.config` on the way from the
   root down to each source folder, so Lombok reads the project's configuration (a package folder's
   `fluent` accessors or log field name included), and those of the folders above the root up to one
@@ -788,22 +792,34 @@ A Checkstyle rule prints as its full check class, for example
   against `rules/forbidden-apis.txt`. Each signature group has a tag that becomes the rule name
   (`thread-sleep`); the report is `forbidden-apis.txt`. Source locations come
   from the class's debug line numbers; a field, parameter, return type, record component or
-  supertype of a banned type is placed on its declaration in the source. `new-thread` bans `Thread.start()`, so a `ThreadFactory`
-  or `Runtime.addShutdownHook` may still construct a `Thread`. `legacy-date-time` skips a
-  statement that converts a `Date` another API returns with `toInstant()` and does not name `Date`
-  itself (`certificate.getNotAfter().toInstant()`).
+  supertype of a banned type is placed on its declaration in the source (comments and strings
+  do not count); one forbiddenapis cannot tie to a line goes on its class's line, and generated
+  members (lambdas, record accessors, Lombok accessors and builders of a reported field) are
+  dropped. forbiddenapis reads type descriptors, so a generic argument such as `List<Date>` or
+  `Map<String, Date>` is not reported. `new-thread` bans `Thread.start()`,
+  `Thread.startVirtualThread` and `Thread.Builder.start`, so a `ThreadFactory` or
+  `Runtime.addShutdownHook` may still construct a `Thread`. `legacy-date-time` skips a `Date`
+  another API returns when `.toInstant()` follows the call right away, on that line or at the start
+  of the next (`certificate.getNotAfter().toInstant()`), or it is converted with
+  `map(Date::toInstant)`.
 - **Duplicates.** The jscpd check is unchanged. `nitpickerCpd` runs PMD's copy-paste detector
   (BSD-style, already inside the pinned PMD) over main and test sources with identifiers and
-  literals ignored and at least 100 tokens, so a copy with renamed variables is found. A clone
-  jscpd already reports (same two files, overlapping lines) is not reported twice, overlapping
+  literals ignored and at least 100 tokens, so a copy with renamed variables is found. When jscpd
+  and CPD report the same clone (same two files, overlapping lines), only the CPD finding is
+  kept; in a module where CPD did not run or wrote no usable report, jscpd's clones stay, overlapping
   windows of one file pair are one finding, a block that overlaps its own copy is dropped, and so
   are clones made only of getters, setters, field declarations and field-assigning constructors
   or only of data rows (enum constants, `Arguments.of(...)` rows, literal lists, and constants
   built from literals with `Map.ofEntries`, `Map.of`, `List.of`, `Set.of`, `Stream.of` or
-  `Arrays.asList`). The files of a duplication are sorted by path, so the order CPD lists them in
+  `Arrays.asList`; any other row needs a number or a literal, so a run of calls such as
+  `validate();` is code). The files of a duplication are sorted by path, so the order CPD lists them in
   does not matter, and the identity hashes the clone's token shape (its punctuation and
   operators, without names, literals and comments), so editing a name or a literal in a legacy
-  copy keeps its identity. Findings use the
+  copy keeps its identity. A legacy clone that shrinks (a statement inserted in one copy) or
+  that jscpd splits in two is held at its base size, for jscpd and CPD alike, while each of its
+  two copies keeps a line the change did not add or edit: a new clone between the same two files
+  fails when one of its copies is made only of added or edited lines, or when it, with the other
+  new clones of that pair, has more tokens than a base clone of the pair that no longer matches. Findings use the
   same tool and rule as jscpd (`duplicates/duplicate-clone`), with identities starting `cpd:` so
   they never match a jscpd finding; between two test files the message points at a helper or a
   `@ParameterizedTest`. The message ends with the exception route for
@@ -814,9 +830,9 @@ A Checkstyle rule prints as its full check class, for example
   `PmdCli` still exits 0 without a report: the Java CPD lexer's constructor detector pushes a type
   on every `class` keyword, a class literal (`String.class`) followed by `}` leaves that type
   without a name, the next declaration without a modifier (a bare `class`, or any `enum`) keeps it
-  on the stack, and the next `(` reads its null name. One file is enough (`static final Class<?>[]
-  TYPES = { String.class }; enum Kind { X } void register() { }`), and the state also carries from
-  one file to the next. The launcher reads each file as CPD would (CRLF and CR line ends become LF,
+  on the stack, and the next `(` reads its null name. One file is enough
+  (`static final Class<?>[] TYPES = { String.class }; enum Kind { X } void register() { }`), and
+  the state also carries from one file to the next. The launcher reads each file as CPD would (CRLF and CR line ends become LF,
   a byte order mark is dropped), runs PMD's own Java token manager over that text first and
   overwrites every `class` token that directly follows a `.` token with `const`, at the token's
   place: comments between the two are skipped like PMD skips them, text inside comments, strings,
@@ -833,8 +849,10 @@ A Checkstyle rule prints as its full check class, for example
   listed in `cpd-skipped.txt`. A file PMD cannot lex (a stray `#`, or syntax PMD 7.7 does not know)
   is handed to CPD with the class literals before the error rewritten; CPD skips it and records an
   `<error>` in `cpd.xml`. The module then gets one descriptive `duplicates/cpd-skipped-paths`
-  notice naming each of those paths once. When CPD exits with a code other
-  than 0 or 4 or writes no XML report, both builds write its exit code (or signal) and stderr to
+  notice naming each of those paths once. Both builds take the launcher, its
+  arguments (the report path, then the source roots) and what counts as a run from the `cpd`
+  entry of `languages/java/builds/tools/tool-commands.json`: exit code 0 and a `cpd.xml` whose
+  root is `<pmd-cpd>`. When CPD exits with another code or writes no XML report, both builds write its exit code (or signal) and stderr to
   `cpd-failed.txt` instead of `cpd.xml`; on Maven a `java` that cannot start or runs past the
   15-minute tool timeout writes the error code (such as `EACCES` or `ETIMEDOUT`) and message there
   instead of failing the run. The module then gets a `duplicates/cpd-not-run` tool-not-run finding

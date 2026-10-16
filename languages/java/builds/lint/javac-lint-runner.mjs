@@ -8,11 +8,12 @@ import {
   lintFingerprint,
   reusableWarnings,
 } from './lint-baseline.mjs';
-import { lintedWarnings, relocated } from './lint-output.mjs';
-import { stagedRoot, stageSources } from './lint-staging.mjs';
+import { lintedWarnings, relocated, hasUnreadWarnings } from './lint-output.mjs';
+import { stageSources } from './lint-staging.mjs';
 
 const LINT_REPORT = 'javac-lint.txt';
 const LINT_FAILURE = 'javac-lint-failed.txt';
+const UNREAD_WARNINGS = 'error: javac printed warnings in a form nitpicker cannot read';
 const MODULE_INFO = 'module-info.java';
 const MAX_OUTPUT_BYTES = 50 * 1024 * 1024;
 const LINT_TIMEOUT_MS = 15 * 60 * 1000;
@@ -67,8 +68,9 @@ function lintSources(plan, { sources, modular }) {
     const classes = path.join(work, 'classes');
     mkdirSync(classes, { recursive: true });
     const listed = new Set(plan.sources);
+    const stagedTree = stageSources({ root: plan.root, sources, staged });
     const files = [
-      ...stageSources({ root: plan.root, sources, staged }),
+      ...stagedTree.files,
       ...(modular ? generatedFiles(plan.generatedSources).filter((file) => !listed.has(file)) : []),
     ];
     function compile(lookup) {
@@ -80,9 +82,13 @@ function lintSources(plan, { sources, modular }) {
       });
     }
     const first = compile(modular);
-    const result = first.code === 0 || !modular ? first : compile('all');
+    const compiled = first.code === 0 || !modular ? first : compile('all');
+    const result =
+      compiled.code === 0 && hasUnreadWarnings(compiled.log)
+        ? { code: 1, log: `${UNREAD_WARNINGS}\n${compiled.log}` }
+        : compiled;
     const context = {
-      staged: stagedRoot(staged, plan.root),
+      staged: stagedTree.root,
       from: path.relative(plan.root, plan.basedir),
       to: posix(path.relative(plan.reportRoot, plan.basedir)),
     };

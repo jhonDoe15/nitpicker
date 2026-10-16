@@ -277,7 +277,7 @@ describe.skipIf(!enabled)('Java preset end to end', () => {
   );
 
   it(
-    'fails a new clone found by jscpd, and the repeated blocks PMD CPD finds inside each copy',
+    'fails a new clone between two files, and the repeated blocks PMD CPD finds inside each copy',
     () => {
       const result = diffOf('clone');
 

@@ -9,7 +9,6 @@ import { readJavaFindings } from '../adapters/reporting/java-reports.mjs';
 import { readReportModules } from '../adapters/gradle-reports/report-modules.mjs';
 import { readCouplingFindings } from '../adapters/metrics/java-coupling.mjs';
 import { readCpdFindings } from './cpd-duplicates.mjs';
-import { runGradleGuards, runGuardPlan } from '../adapters/gradle-reports/gradle-guards.mjs';
 import { readLintFindings } from './javac-lint.mjs';
 
 const enabled = process.env.NITPICKER_JAVA_E2E === '1';
@@ -20,7 +19,6 @@ const OPTIONAL_GET_MESSAGE =
   'If it is right here, add an exception for pmd/OptionalGet in nitpicker.config.json.';
 const LINE_MARKER = /\/\/ violation: (.*)$/;
 const FILE_MARKER = /\/\/ file violation: (.*)$/;
-const COMPILE_MODES = ['legacy', 'arguments', 'plugged', 'preview', 'modular', 'outside', 'lombok'];
 const GUARD_TOOLS = new Set(['javac', 'forbiddenapis', 'dependencies', 'coupling', 'duplicates']);
 const GUARD_RULES = new Set([
   'OptionalGet',
@@ -146,8 +144,7 @@ describe.skipIf(!enabled)('Java guards on a fixture project', () => {
           `-Pnitpicker.reportDir=${reportBaseOf(root)}`,
         ]),
       );
-      const { modules, manifest } = readReportModules(reportBaseOf(roots[0]), 'java');
-      runGradleGuards(modules, { baselineRoot: undefined });
+      const { manifest } = readReportModules(reportBaseOf(roots[0]), 'java');
       runJavaDuplicates(roots[0], { reportRoot: reportBaseOf(roots[0]), manifest });
       roots.push(
         gradleTasks('guards-compile-modes', [
@@ -158,11 +155,6 @@ describe.skipIf(!enabled)('Java guards on a fixture project', () => {
           ':legacy:nitpickerCpd',
         ]),
       );
-      for (const module of COMPILE_MODES) {
-        runGuardPlan(path.join(roots[1], module, 'build', 'nitpicker'), {
-          baselineRoot: undefined,
-        });
-      }
     },
     30 * 60 * 1000,
   );

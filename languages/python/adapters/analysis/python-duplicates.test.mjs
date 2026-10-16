@@ -60,6 +60,15 @@ describe('duplicates in Python sources', () => {
           'This code repeats src/app/b.py:1 (10 lines). Keep one copy and call it from both places. If the repetition is intended, add src/app/a.py to "exclude" in nitpicker.config.json.',
         classification: 'enforceable',
         location: { line: 1 },
+        ratchet: {
+          key: 'pair:src/app/a.py|src/app/b.py:clone',
+          value: 59,
+          divisible: true,
+          mustKeepUnchangedLines: [
+            { path: 'src/app/a.py', startLine: 1, endLine: 10 },
+            { path: 'src/app/b.py', startLine: 1, endLine: 10 },
+          ],
+        },
       },
     ]);
   });

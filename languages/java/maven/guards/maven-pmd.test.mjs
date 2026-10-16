@@ -310,8 +310,8 @@ function cpd(run) {
 }
 
 describe.skipIf(process.platform === 'win32')('runCpd', () => {
-  it.each([0, 4])('keeps the XML report the CPD launcher writes when it exits %i', (status) => {
-    const run = cpd({ report: CPD_XML, stderr: '', ending: `exit ${String(status)}` });
+  it('keeps the XML report the CPD launcher writes when it exits 0', () => {
+    const run = cpd({ report: CPD_XML, stderr: '', ending: 'exit 0' });
 
     expect(run.outputs).toEqual([CPD_XML, undefined, undefined]);
     expect(run.arguments).toEqual([
@@ -325,8 +325,8 @@ describe.skipIf(process.platform === 'win32')('runCpd', () => {
 
   it.each([
     ['a crash that exits 0 with no report', '', 'exit 0', '0'],
-    ['an exit code other than 0 or 4', CPD_XML, 'exit 1', '1'],
-    ['output that is not a CPD report', 'oops', 'exit 4', '4'],
+    ['an exit code other than 0', CPD_XML, 'exit 4', '4'],
+    ['output that is not a CPD report', 'oops', 'exit 0', '0'],
     ['a launcher killed by a signal', CPD_XML, 'kill -9 $$', 'SIGKILL'],
   ])('records the exit and stderr instead of a report for %s', (_, report, ending, exit) => {
     const run = cpd({ report, stderr: `${CPD_CRASH}\n`, ending });

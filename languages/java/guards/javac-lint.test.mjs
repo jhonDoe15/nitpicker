@@ -5,6 +5,12 @@ import { afterEach, describe, expect, it } from 'vitest';
 import { compareFindings } from '../../../core/diff/comparison/compare.mjs';
 import { parseAnalyzerReport } from '../../../core/diff/comparison/finding-schema.mjs';
 import { parseLintWarnings, readLintFindings } from './javac-lint.mjs';
+import {
+  guardProject,
+  javaClass,
+  newLines,
+  removeGuardProjects,
+} from './test-support/guard-project.mjs';
 
 const roots = [];
 afterEach(() => {
@@ -168,7 +174,7 @@ describe('readLintFindings', () => {
         toolNotRun: true,
         notRunScope: ['src/main/java', 'src/main/generated'],
         message:
-          'No javac lint report: the lint compile failed (src/main/java/demo/A.java:3: error: cannot find symbol), ' +
+          'No javac lint report from the lint compile (src/main/java/demo/A.java:3: error: cannot find symbol), ' +
           'so raw types, unchecked operations, deprecated calls and redundant casts were not checked. ' +
           'Fix what that compile reports (the main sources, the compile class path and Lombok), ' +
           'or add an exception for javac/lint-not-run with the path "**" in nitpicker.config.json ' +
@@ -236,7 +242,7 @@ describe('readLintFindings', () => {
     const uncompared = compare(readLintFindings(baseReports, { projectRoot: base }));
 
     expect(uncompared).toEqual(
-      [0, 2, 3, 1]
+      [2, 3, 0, 1]
         .map((index) => PROJECT_FINDINGS[index])
         .map((finding) => ({
           ...finding,
@@ -275,5 +281,55 @@ describe('readLintFindings', () => {
       'enforceable',
     ]);
     expect(compare([''])).toEqual(['descriptive', 'descriptive', 'descriptive', 'descriptive']);
+  });
+});
+
+describe('javac identities', () => {
+  afterEach(() => {
+    removeGuardProjects();
+  });
+
+  const MAPS = javaClass('class A {', ['java.util.Map first;', 'java.util.Map second;']);
+  const MAPS_ADDED = javaClass('class A {', [
+    'java.util.Map added;',
+    'java.util.Map first;',
+    'java.util.Map second;',
+  ]);
+
+  function lintFindings(files) {
+    const root = guardProject(files);
+    return readLintFindings(path.join(root, 'reports'), { projectRoot: root });
+  }
+
+  function rawMap(file, lines) {
+    return lines.map((line) => `${file}:${String(line)}: warning: [rawtypes] found raw type: Map`);
+  }
+
+  it('keeps the javac warnings of a file moved to another package', () => {
+    const base = lintFindings({
+      'src/main/java/demo/A.java': MAPS,
+      'reports/javac-lint.txt': rawMap('src/main/java/demo/A.java', [3, 4]).join('\n'),
+    });
+    const head = lintFindings({
+      'src/main/java/moved/A.java': MAPS.replace('package demo;', 'package moved;'),
+      'reports/javac-lint.txt': rawMap('src/main/java/moved/A.java', [3, 4]).join('\n'),
+    });
+
+    expect(
+      newLines(base, head, new Map([['src/main/java/demo/A.java', 'src/main/java/moved/A.java']])),
+    ).toEqual([]);
+  });
+
+  it('reports the javac warning of an added line, not of a legacy line with the same message', () => {
+    const base = lintFindings({
+      'src/main/java/demo/A.java': MAPS,
+      'reports/javac-lint.txt': rawMap('src/main/java/demo/A.java', [3, 4]).join('\n'),
+    });
+    const head = lintFindings({
+      'src/main/java/demo/A.java': MAPS_ADDED,
+      'reports/javac-lint.txt': rawMap('src/main/java/demo/A.java', [3, 4, 5]).join('\n'),
+    });
+
+    expect(newLines(base, head)).toEqual([['src/main/java/demo/A.java', 3]]);
   });
 });
