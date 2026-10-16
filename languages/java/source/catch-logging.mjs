@@ -1,5 +1,5 @@
 import { closingIndex } from './brackets.mjs';
-import { logCalls } from './loggers.mjs';
+import { isFailureCall, logCalls, topLevelArguments } from './loggers.mjs';
 
 export const CATCH_LOG_RULE = 'catch-log-without-exception';
 export const CATCH_LOG_MESSAGE =
@@ -26,20 +26,47 @@ function innermost(blocks, index) {
     .sort((left, right) => right.open - left.open)[0];
 }
 
+function isException(argument, name) {
+  const value = argument
+    .replace(/^\w+\s*=\s*/, '')
+    .replace(/^\(\s*[\w.<>?]+\s*\)\s*/, '')
+    .replace(/\s+as\??\s+[\w.<>?]+$/, '')
+    .trim();
+  return value === name;
+}
+
 function passesException(call, name) {
-  const direct = new RegExp(String.raw`^(?:\w+\s*=\s*)?${name}$`);
-  return (
-    call.args.some((argument) => direct.test(argument)) ||
-    new RegExp(String.raw`\bcause\s*=\s*${name}\b`).test(call.text)
+  const cause = new RegExp(String.raw`\b(?:setCause|withThrowable|cause\s*=)\s*\(?\s*${name}\b`);
+  return call.args.some((argument) => isException(argument, name)) || cause.test(call.text);
+}
+
+function thrownCauses(rest) {
+  const call = /^\s*(?:new\s+)?[\w.<>?]+\s*\(/.exec(rest);
+  if (call === null) {
+    return [/^\s*(\w+)/.exec(rest)?.[1] ?? ''];
+  }
+  const open = call[0].length - 1;
+  return topLevelArguments(rest.slice(open + 1, closingIndex(rest, open)));
+}
+
+function rethrows(body, name) {
+  return [...body.matchAll(/\bthrow\b/g)].some((match) =>
+    thrownCauses(body.slice(match.index + 'throw'.length)).some((argument) =>
+      isException(argument, name),
+    ),
   );
 }
 
 export function catchLogViolations(code, language) {
   const blocks = catchBlocks(code, language);
-  return logCalls(code).flatMap((call) => {
-    const block = innermost(blocks, call.index);
-    return block === undefined || passesException(call, block.name)
-      ? []
-      : [{ receiver: call.receiver, level: call.level, caught: block.name }];
-  });
+  return logCalls(code)
+    .filter(isFailureCall)
+    .flatMap((call) => {
+      const block = innermost(blocks, call.index);
+      const handled =
+        block === undefined ||
+        passesException(call, block.name) ||
+        rethrows(code.slice(block.open, block.close), block.name);
+      return handled ? [] : [{ receiver: call.receiver, level: call.level, caught: block.name }];
+    });
 }
