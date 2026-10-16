@@ -189,7 +189,7 @@ describe.skipIf(!enabled)('Java guards on a fixture project', () => {
     },
   );
 
-  it('lints a project with a javac plug-in, preview features, a module descriptor, a source root outside it or Lombok', () => {
+  it('lints projects with a javac plug-in, preview, a descriptor, an outside source root or Lombok', () => {
     const lint = (module) =>
       readLintFindings(path.join(roots[1], module, 'build', 'nitpicker'), {
         projectRoot: roots[1],
