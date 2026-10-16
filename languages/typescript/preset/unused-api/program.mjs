@@ -55,9 +55,9 @@ function isSkippedDirectory(absolute, entry, layout) {
   );
 }
 
-function siblingCodeFiles(siblings, layout) {
-  return siblings
-    .flatMap(({ dir }) => [
+export function codeFilesUnder(directories, layout) {
+  return directories
+    .flatMap((dir) => [
       ...filesUnder(dir, {
         skipDirectory: (absolute, entry) => isSkippedDirectory(absolute, entry, layout),
       }),
@@ -92,7 +92,10 @@ export function createProjectProgram({ projectRoot, configPath, packagesInfo, la
   const rootNames = new Set([
     ...parsed.fileNames,
     ...rootConfigsAndScripts(projectRoot, layout),
-    ...siblingCodeFiles(siblings, layout),
+    ...codeFilesUnder(
+      siblings.map(({ dir }) => dir),
+      layout,
+    ),
   ]);
   return ts.createProgram({
     rootNames: [...rootNames],

@@ -1,162 +1,170 @@
-import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
-import ts from 'typescript';
-import { globToRegExp } from '../../layout.mjs';
-import { publicEntryGlobs, workspacePaths } from '../workspace/entries.mjs';
+import { globToRegExp, toPosix } from '../../layout.mjs';
+import { codeFilesUnder } from '../program.mjs';
+import { publicEntryGlobs } from '../workspace/entries.mjs';
 import { entriesOf, keyOf } from './knip-report.mjs';
-import { moduleSyntax, namesExport, reexportGraph } from './reexport-graph.mjs';
+import { layoutProductionMatcher } from './production-config.mjs';
+import { projectModules } from './project-modules.mjs';
+import { EVERYTHING, NAMED_EXPORTS, isCovered, reexportGraph } from './reexport-graph.mjs';
 
-function resolutionOptions({ projectRoot, layout, packagesInfo }) {
-  const configFile = path.join(projectRoot, 'tsconfig.json');
-  const config = existsSync(configFile)
-    ? ts.readConfigFile(configFile, (file) => ts.sys.readFile(file))
-    : undefined;
-  const parsed = ts.parseJsonConfigFileContent(
-    config?.config ?? {},
-    ts.sys,
-    projectRoot,
-    {},
-    configFile,
+function filesMatching(files, globs) {
+  const matchers = globs.filter((glob) => !glob.startsWith('!')).map((glob) => globToRegExp(glob));
+  return files.filter((file) => matchers.some((matcher) => matcher.test(file)));
+}
+
+function slotOf(file, name) {
+  return `${file}\0${name}`;
+}
+
+function isWildcard(name) {
+  return name === EVERYTHING || name === NAMED_EXPORTS;
+}
+
+function entryFilesOf({ files, projectRoot, entryPatterns, packagesInfo, layout }) {
+  const manifestGlobs = packagesInfo.packages.flatMap((entry) => publicEntryGlobs(entry, layout));
+  const configured = [...entryPatterns, ...(layout.entryPoints ?? [])].map((glob) =>
+    toPosix(path.join(projectRoot, glob)),
   );
-  return {
-    ...parsed.options,
-    allowJs: true,
-    module: ts.ModuleKind.ESNext,
-    moduleResolution: ts.ModuleResolutionKind.Bundler,
-    paths: { ...workspacePaths(packagesInfo.packages, layout), ...parsed.options.paths },
-    pathsBasePath: parsed.options.pathsBasePath ?? projectRoot,
-  };
+  return filesMatching(files, [...configured, ...manifestGlobs.map(toPosix)]);
 }
 
-function resolver(options) {
-  return (specifier, containingFile) => {
-    const { resolvedModule } = ts.resolveModuleName(specifier, containingFile, options, ts.sys);
-    return resolvedModule?.isExternalLibraryImport === false
-      ? resolvedModule.resolvedFileName
-      : undefined;
-  };
-}
-
-function resolveSources(items, { file, resolve }) {
-  return items
-    .map((item) => ({ ...item, source: resolve(item.specifier, file) }))
-    .filter(({ source }) => source !== undefined);
-}
-
-function resolvedModule(file, resolve) {
-  const text = readFileSync(file, 'utf8');
-  const sourceFile = ts.createSourceFile(file, text, ts.ScriptTarget.Latest, true);
-  const { edges, references } = moduleSyntax(sourceFile);
-  return {
-    edges: resolveSources(edges, { file, resolve }),
-    references: resolveSources(references, { file, resolve }),
-  };
-}
-
-function publicEntryFiles({ files, projectRoot, layout, packagesInfo }) {
-  const entryPoints = (layout.entryPoints ?? []).map((glob) =>
-    globToRegExp(path.join(projectRoot, glob)),
-  );
-  return packagesInfo.packages
+function publicFilesOf({ files, projectRoot, packagesInfo, layout }) {
+  const manifestGlobs = packagesInfo.packages
     .filter(({ published }) => published)
-    .flatMap((entry) => {
-      const globs = publicEntryGlobs(entry, layout).map((glob) => globToRegExp(glob));
-      return files.filter(
-        (file) =>
-          packagesInfo.packageOf(file) === entry &&
-          [...globs, ...entryPoints].some((glob) => glob.test(file)),
-      );
-    });
+    .flatMap((entry) => publicEntryGlobs(entry, layout));
+  const configured = (layout.entryPoints ?? []).map((glob) => path.join(projectRoot, glob));
+  return filesMatching(files, [...configured, ...manifestGlobs].map(toPosix));
 }
 
-function modulesOf(files, { projectRoot, resolve }) {
-  return files
-    .map((file) => path.join(projectRoot, file))
-    .map((file) => [file, resolvedModule(file, resolve)]);
+function usesOf(module) {
+  return [
+    ...module.references,
+    ...module.edges.map((edge) => ({
+      source: edge.source,
+      imported: edge.star ? NAMED_EXPORTS : edge.imported,
+    })),
+  ];
 }
 
-function projectModules(project) {
-  const { projectRoot, layout } = project;
-  const resolve = resolver(resolutionOptions(project));
-  const files = layout.projectCodeFiles(projectRoot);
-  const production = new Map(
-    modulesOf(
-      files.filter((file) => layout.isSourceFile(file)),
-      { projectRoot, resolve },
-    ),
-  );
-  const tests = modulesOf(
-    files.filter((file) => layout.isTestFile(file)),
-    { projectRoot, resolve },
-  );
-  return {
-    graph: reexportGraph(
-      production,
-      publicEntryFiles({ ...project, files: [...production.keys()] }),
-    ),
-    testReferences: tests.flatMap(([, { edges, references }]) => [...edges, ...references]),
-  };
+function touchesFile(used, file) {
+  return [...used].some((key) => key.startsWith(`${file}\0`));
 }
 
-function importedTarget({ graph, revealed }, specifier) {
-  const edge = graph.importedEdge(specifier.file, specifier.name);
-  if (edge === undefined) return undefined;
-  const { references, edges } = graph.consumers(edge.source, edge.imported);
-  const isOnlyReexported = edges.every(
-    ({ from, exported, viaImport }) => viaImport && revealed.has(`${from}\0${exported}`),
-  );
-  return references.length === 0 &&
-    isOnlyReexported &&
-    !graph.isReexportSpecifier(edge.source, edge.imported)
-    ? { file: edge.source, name: edge.imported }
-    : undefined;
+function isTested(used, node) {
+  return isWildcard(node.name) ? touchesFile(used, node.file) : isCovered(used, node);
 }
 
-function declarationsHidden(context, specifier) {
-  const { graph } = context;
-  if (graph.isPublic(specifier.file, specifier.name)) return [];
-  if (!graph.isReexportSpecifier(specifier.file, specifier.name)) {
-    return graph.reexports(specifier.file, specifier.name)
-      ? [{ specifier, target: specifier }]
-      : [];
+function isHostListed({ hostFile, hostName }, listed) {
+  return hostName === undefined || listed.has(slotOf(hostFile, hostName));
+}
+
+function lazily(compute) {
+  let value;
+  return () => (value ??= compute());
+}
+
+function candidatesOf(chain, { revealed, listed }) {
+  const { node } = chain;
+  if (isWildcard(node.name)) {
+    return [...revealed.values()]
+      .filter(
+        ({ file, name }) =>
+          file === node.file && !(node.name === NAMED_EXPORTS && name === 'default'),
+      )
+      .map((entry) => ({ ...entry, chain }));
   }
-  const target = importedTarget(context, specifier);
-  return target === undefined || graph.isPublic(target.file, target.name)
-    ? []
-    : [{ specifier, target }];
+  const entry = revealed.get(slotOf(node.file, node.name));
+  if (entry !== undefined) return [{ ...entry, chain }];
+  const isMasked = node.viaImport && !listed.has(slotOf(node.file, node.name));
+  return isMasked ? [{ file: node.file, name: node.name, chain }] : [];
 }
 
-function isUsedByTests({ item, target }, { unusedEverywhere, testReferences }) {
+function isInsideOnePackage(group, { projectRoot, packagesInfo }) {
+  const { file } = group[0];
   return (
-    !unusedEverywhere.has(keyOf(item)) ||
-    testReferences.some((reference) => namesExport(reference, target.file, target.name))
+    !path.relative(projectRoot, file).startsWith('..') &&
+    group.every(
+      ({ chain }) => packagesInfo.packageOf(chain.hostFile) === packagesInfo.packageOf(file),
+    )
   );
 }
 
-function asDeclaration(item, target, projectRoot) {
-  const file = path.relative(projectRoot, target.file);
-  const isItself = file === item.file && target.name === item.entry.name;
-  return isItself ? item : { file, category: item.category, entry: { name: target.name } };
-}
-
-export function reexportedTestOnlyEntries({ production, runs, packagesInfo, layout, projectRoot }) {
-  const { graph, testReferences } = projectModules({ projectRoot, layout, packagesInfo });
-  if (!graph.hasReexports) return [];
-  const reported = new Set(entriesOf(production).map(keyOf));
-  const revealed = entriesOf(runs.production())
-    .filter((item) => item.category !== 'files' && !reported.has(keyOf(item)))
-    .map((item) => ({ item, file: path.join(projectRoot, item.file), name: item.entry.name }));
-  const context = {
-    graph,
-    revealed: new Set(revealed.map(({ file, name }) => `${file}\0${name}`)),
+function reportedItem(group, projectRoot) {
+  const { file, name, item } = group[0];
+  const relative = path.relative(projectRoot, file);
+  const hosts = group.map(({ chain }) => path.relative(projectRoot, chain.hostFile)).toSorted();
+  return {
+    ...(item ?? { file: relative, category: 'exports', entry: { name } }),
+    reexportedBy: hosts[0],
   };
-  const hidden = revealed.flatMap(({ item, file, name }) =>
-    declarationsHidden(context, { file, name }).map((found) => ({ item, ...found })),
+}
+
+function revealedEntries({ production, entryExportsRun, projectRoot }) {
+  const known = new Set(entriesOf(production).map(keyOf));
+  const items = entriesOf(entryExportsRun())
+    .filter(({ category }) => category !== 'files')
+    .map((item) => ({
+      item,
+      file: toPosix(path.join(projectRoot, item.file)),
+      name: item.entry.name,
+    }));
+  return {
+    listed: new Set(items.map(({ file, name }) => slotOf(file, name))),
+    revealed: new Map(
+      items
+        .filter(({ item }) => !known.has(keyOf(item)))
+        .map((entry) => [slotOf(entry.file, entry.name), entry]),
+    ),
+  };
+}
+
+function projectOf({ layout, projectRoot, packagesInfo }) {
+  const moduleOf = projectModules({ projectRoot, layout, packagesInfo });
+  const files = codeFilesUnder([projectRoot], layout).map(toPosix);
+  const isProduction = layoutProductionMatcher(layout);
+  const productionFiles = files.filter((file) => isProduction(path.relative(projectRoot, file)));
+  return {
+    moduleOf,
+    graph: reexportGraph(moduleOf),
+    files,
+    productionFiles,
+    supportFiles: files.filter((file) => !productionFiles.includes(file)),
+  };
+}
+
+function testedChains(project, options) {
+  const { graph, moduleOf, files, supportFiles } = project;
+  const chains = entryFilesOf({ files, ...options }).flatMap((file) => graph.chainsOf(file));
+  if (chains.length === 0) return { chains, testUsed: new Set() };
+  const testUsed = graph.usedBy(supportFiles.flatMap((file) => usesOf(moduleOf(file))));
+  return { testUsed, chains: chains.filter(({ node }) => isTested(testUsed, node)) };
+}
+
+function survivors(groups, { project, testUsed, known, options }) {
+  const { graph, moduleOf, files, productionFiles } = project;
+  const { projectRoot, packagesInfo } = options;
+  const surface = graph.surfaceOf(publicFilesOf({ files, ...options }));
+  const productionUsed = lazily(() =>
+    graph.usedBy(productionFiles.flatMap((file) => moduleOf(file).references)),
   );
-  if (hidden.length === 0) return [];
-  const unusedEverywhere = new Set(entriesOf(runs.normal()).map(keyOf));
-  const declarations = hidden
-    .filter((found) => isUsedByTests(found, { unusedEverywhere, testReferences }))
-    .map(({ item, target }) => asDeclaration(item, target, projectRoot));
-  return [...new Map(declarations.map((item) => [keyOf(item), item])).values()];
+  return groups
+    .filter((group) => group.every(({ chain }) => isHostListed(chain, known.listed)))
+    .filter((group) => isInsideOnePackage(group, { projectRoot, packagesInfo }))
+    .filter((group) => !isCovered(surface, group[0]))
+    .filter((group) => isCovered(testUsed, group[0]))
+    .filter((group) => group[0].item !== undefined || !isCovered(productionUsed(), group[0]));
+}
+
+export function reexportedTestOnlyEntries(options) {
+  const project = projectOf(options);
+  const { chains, testUsed } = testedChains(project, options);
+  if (chains.length === 0) return [];
+  const known = revealedEntries(options);
+  const groups = Map.groupBy(
+    chains.flatMap((chain) => candidatesOf(chain, known)),
+    ({ file, name }) => slotOf(file, name),
+  );
+  return survivors([...groups.values()], { project, testUsed, known, options }).map((group) =>
+    reportedItem(group, options.projectRoot),
+  );
 }

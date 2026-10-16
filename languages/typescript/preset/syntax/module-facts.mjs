@@ -87,10 +87,16 @@ export function fileExports(sourceFile) {
     namespaces: sourceFile.statements
       .filter(ts.isExportDeclaration)
       .filter(
-        ({ exportClause }) => exportClause !== undefined && ts.isNamespaceExport(exportClause),
+        ({ exportClause, moduleSpecifier }) =>
+          exportClause !== undefined &&
+          ts.isNamespaceExport(exportClause) &&
+          moduleSpecifier !== undefined &&
+          ts.isStringLiteral(moduleSpecifier),
       )
-      .map(({ moduleSpecifier }) => moduleSpecifier?.text)
-      .filter((specifier) => specifier !== undefined),
+      .map(({ exportClause, moduleSpecifier }) => ({
+        specifier: moduleSpecifier.text,
+        name: exportClause.name.text,
+      })),
     reexports: withSpecifier.map((declaration) => ({
       specifier: declaration.moduleSpecifier.text,
       star: declaration.exportClause === undefined,

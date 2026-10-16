@@ -58,13 +58,11 @@ function testOnlyFindings(options, { config, normal, knip }) {
   return testOnlyExportFindings({
     normal,
     production: knip(productionConfig),
-    entryExportRuns: {
-      production: () => knip(withEntryExports(productionConfig)),
-      normal: () => knip(withEntryExports(config)),
-    },
+    entryExportsRun: () => knip(withEntryExports(productionConfig)),
     packagesInfo,
     context: {
       layout,
+      entryPatterns: productionConfig.entry,
       projectRoot: options.projectRoot,
       analyzerName: options.analyzerName,
       isExcepted: exceptionMatcher(readHeadPolicy().exceptions),

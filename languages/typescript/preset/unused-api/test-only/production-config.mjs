@@ -1,5 +1,6 @@
 import path from 'node:path';
 import { storyGlobs } from '../../eslint-config/scope-support.mjs';
+import { globToRegExp, toPosix } from '../../layout.mjs';
 
 const TEST_RUNNER_CONFIG = /^vitest/u;
 const TEST_RUNNER_PLUGINS = [
@@ -22,13 +23,22 @@ function isProductionEntry(pattern, layout) {
   return !underTestRoot && !TEST_RUNNER_CONFIG.test(path.posix.basename(pattern));
 }
 
+function testAndStoryGlobs(layout) {
+  return [...layout.testGlobs, ...layout.sourceTestDirectoryGlobs, ...storyGlobs];
+}
+
+export function layoutProductionMatcher(layout) {
+  const matchers = testAndStoryGlobs(layout).map((glob) => globToRegExp(glob));
+  return (relative) => !matchers.some((matcher) => matcher.test(toPosix(relative)));
+}
+
 /**
  * The knip config of the normal run without tests: test and story files leave the project, test
  * entries and test-runner plugins go, and everything else (scripts in `package.json`, tool configs
  * found by plugins, `bin` and `exports`) stays an entry as before.
  */
 export function layoutKnipProductionConfig(config, layout) {
-  const tests = [...layout.testGlobs, ...layout.sourceTestDirectoryGlobs, ...storyGlobs];
+  const tests = testAndStoryGlobs(layout);
   return {
     ...config,
     ...Object.fromEntries(TEST_RUNNER_PLUGINS.map((plugin) => [plugin, false])),

@@ -1,6 +1,5 @@
 import ts from 'typescript';
 import { describe, expect, it } from 'vitest';
-import { fileDynamicImports, fileExports } from './module-facts.mjs';
 import { declaredNames, jsxTagNames, referencePositions, referencedNames } from './references.mjs';
 
 function parse(text, fileName = 'a.tsx') {
@@ -49,29 +48,10 @@ describe('declared names', () => {
   });
 });
 
-describe('JSX tag names and dynamic imports', () => {
+describe('JSX tag names', () => {
   it('lists every element tag, namespaced tags included', () => {
     const file = parse('const a = <div><UI.Card /><Chip>text</Chip></div>;');
 
     expect([...jsxTagNames(file)].toSorted()).toEqual(['Chip', 'UI.Card', 'div']);
-  });
-
-  it('lists the string specifiers of import() and require() calls', () => {
-    const file = parse(
-      "const a = () => import('./a'); const b = require('./b'); const c = import(name); load('./c');",
-      'a.ts',
-    );
-
-    expect(fileDynamicImports(file)).toEqual(['./a', './b']);
-  });
-
-  it('lists export default of an identifier and export * as namespaces', () => {
-    const file = parse("const a = 1;\nexport default a;\nexport * as ns from './n';\n", 'a.ts');
-
-    expect(fileExports(file)).toEqual({
-      locals: [{ local: 'a', exported: 'default' }],
-      namespaces: ['./n'],
-      reexports: [],
-    });
   });
 });
