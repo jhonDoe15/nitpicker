@@ -593,6 +593,16 @@ hop, and type-only imports do not count.
   `restoreMocks` value in the project's own vitest config for these runs. Vitest has no option that
   restores fake timers automatically: call `vi.useRealTimers()` in `afterEach`.
 
+- `test-console-output` (the `test-console` check, not an ESLint rule): a test file that prints
+  `console.error` or `console.warn` output the base run did not print fails, with the message and
+  the test that printed it. A change that makes a suite start printing one (a React update on an
+  unmounted component from a timer that survives the test, a key warning, a logged error) is
+  usually a bug, and warnings in a suite hide the next real one. The allowed forms are fixing the
+  cause (cancel the timer or subscription in the cleanup), a `testConsole.allow` entry for a known
+  third-party message, or an `exceptions` entry for the test file. Messages are compared by their
+  normalized text, per test file, so an old warning that only moved is not new. See
+  [Console output from tests](usage.md#console-output-from-tests).
+
 Left out, from the same write-up: recomputing one expensive result in every test, and running the
 whole pipeline to check a decision made earlier. Both need a heuristic (repeated constant arguments
 across tests, or what an assertion depends on), so a finding would not reliably mean a slow test.

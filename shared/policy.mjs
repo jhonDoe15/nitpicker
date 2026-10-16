@@ -6,8 +6,8 @@
 // under `shared/` may import from `core/`, `languages/` or a tool package (shared/import-direction.test.mjs).
 
 import { UNUSED_API_RULES, UNUSED_API_RULE_IDS } from './unused-api/unused-api-policy.mjs';
-
 import { reuseRules } from './rules/reuse-rules.mjs';
+import { testConsoleRule } from './rules/test-runtime.mjs';
 
 export const LANGUAGES = ['typescript', 'java', 'python', 'kotlin'];
 
@@ -39,6 +39,7 @@ export const RULE_IDS = {
   redefinedLibraryComponent: 'redefined-library-component',
   newIconAsset: 'new-icon-asset',
   componentStoryMissing: 'component-story-missing',
+  testConsoleOutput: 'test-console-output',
 };
 
 /** Per-function structure limits, keyed by the metric name the TypeScript analyzer reports. */
@@ -138,6 +139,7 @@ export const MESSAGES = {
   newIconAsset: `Use an icon from {package} instead of adding {path}. ${EXCEPTION_HINT}`,
   componentStoryMissing: `Most components in this project have a story. Add {story} for {name}. ${EXCEPTION_HINT}`,
   componentStoryMissingUnenforced: `{name} has no story. Add {story}. Not enforced until more than half of the components have one. ${EXCEPTION_HINT}`,
+  testConsoleOutput: `Tests print new console output: {output}. Fix the cause (for example a timer that outlives the test), or allow a third-party message in "testConsole.allow" of nitpicker.config.json. ${EXCEPTION_HINT}`,
 };
 
 export function renderMessage(template, values) {
@@ -316,15 +318,13 @@ export const RULES = [
       'a component file without a story, in a package that has Storybook; enforced when more than half of its component files have one, reported otherwise',
     enforcedBy: withKotlin(TYPESCRIPT_ONLY, false),
   },
+  testConsoleRule(RULE_IDS, withKotlin(TYPESCRIPT_ONLY, false)),
 ];
 
-/**
- * Project-level TypeScript checks that take `exceptions` entries although no ESLint rule has their
- * id: the rules only the TypeScript structure, coupling and dead-code checks enforce.
- */
+/** Rules of the TypeScript-only structure, coupling, dead-code and test-console checks, lifted by `exceptions`. */
 export const TYPESCRIPT_PROJECT_EXCEPTION_RULES = RULES.filter(
   ({ check, enforcedBy }) =>
-    ['structure', 'coupling', 'dead-code'].includes(check) &&
+    ['structure', 'coupling', 'dead-code', 'test-console'].includes(check) &&
     enforcedBy.typescript &&
     !enforcedBy.java &&
     !enforcedBy.python,
