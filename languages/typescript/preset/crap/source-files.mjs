@@ -93,26 +93,27 @@ function skipWhitespace(text, from) {
   return whitespace.lastIndex;
 }
 
+function lineCommentRunEnd(text, start) {
+  const run = /(?:[\t ]*(?:\/\/|#!)[^\n]*(?:\n|$))+/uy;
+  run.lastIndex = start;
+  run.exec(text);
+  return run.lastIndex;
+}
+
 function commentEnd(text, start) {
   if (text.startsWith('/*', start)) {
     const close = text.indexOf('*/', start + 2);
     return close === -1 ? text.length : close + 2;
   }
   if (text.startsWith('//', start) || text.startsWith('#!', start)) {
-    const lineEnd = text.indexOf('\n', start);
-    return lineEnd === -1 ? text.length : lineEnd;
+    return lineCommentRunEnd(text, start);
   }
   return undefined;
 }
 
-function leadingCommentHeader(text) {
-  let end = 0;
-  let next = commentEnd(text, skipWhitespace(text, end));
-  while (next !== undefined) {
-    end = next;
-    next = commentEnd(text, skipWhitespace(text, end));
-  }
-  return text.slice(0, end);
+function leadingCommentHeader(text, from = 0) {
+  const next = commentEnd(text, skipWhitespace(text, from));
+  return next === undefined ? text.slice(0, from) : leadingCommentHeader(text, next);
 }
 
 function exclusionReason(file, relative, userRules) {
