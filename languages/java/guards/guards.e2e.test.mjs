@@ -7,6 +7,7 @@ import { INIT_SCRIPT } from '../builds/java-build.mjs';
 import { runJavaDuplicates } from '../adapters/metrics/java-duplicates.mjs';
 import { readJavaFindings } from '../adapters/reporting/java-reports.mjs';
 import { readReportModules } from '../adapters/gradle-reports/report-modules.mjs';
+import { runGradleGuards, runGuardPlan } from '../adapters/gradle-reports/gradle-guards.mjs';
 import { readLintFindings } from './javac-lint.mjs';
 
 const enabled = process.env.NITPICKER_JAVA_E2E === '1';
@@ -17,6 +18,7 @@ const OPTIONAL_GET_MESSAGE =
   'If it is right here, add an exception for pmd/OptionalGet in nitpicker.config.json.';
 const LINE_MARKER = /\/\/ violation: (.*)$/;
 const FILE_MARKER = /\/\/ file violation: (.*)$/;
+const COMPILE_MODES = ['legacy', 'arguments', 'plugged', 'preview', 'modular', 'outside', 'lombok'];
 const GUARD_TOOLS = new Set(['javac', 'forbiddenapis', 'dependencies', 'coupling', 'duplicates']);
 const GUARD_RULES = new Set([
   'OptionalGet',
@@ -141,9 +143,21 @@ describe.skipIf(!enabled)('Java guards on a fixture project', () => {
           `-Pnitpicker.reportDir=${reportBaseOf(root)}`,
         ]),
       );
-      const { manifest } = readReportModules(reportBaseOf(roots[0]), 'java');
+      const { modules, manifest } = readReportModules(reportBaseOf(roots[0]), 'java');
+      runGradleGuards(modules, { baselineRoot: undefined });
       runJavaDuplicates(roots[0], { reportRoot: reportBaseOf(roots[0]), manifest });
-      roots.push(gradleTasks('guards-compile-modes', ['nitpickerLint', ':legacy:nitpickerPmd']));
+      roots.push(
+        gradleTasks('guards-compile-modes', [
+          'nitpickerLint',
+          ':legacy:nitpickerPmd',
+          ':arguments:nitpickerPmd',
+        ]),
+      );
+      for (const module of COMPILE_MODES) {
+        runGuardPlan(path.join(roots[1], module, 'build', 'nitpicker'), {
+          baselineRoot: undefined,
+        });
+      }
     },
     30 * 60 * 1000,
   );
@@ -164,25 +178,31 @@ describe.skipIf(!enabled)('Java guards on a fixture project', () => {
     expect(optionalGet.message).toBe(OPTIONAL_GET_MESSAGE);
   });
 
-  it('skips the Java 16 rules on a project compiled for an older release', () => {
-    const watched = ['OptionalGet', 'InstanceofThenCast', 'CollectorsToList'];
+  it.each(['legacy', 'arguments'])(
+    'skips the Java 16 rules on a project compiled for an older release (%s)',
+    (module) => {
+      const watched = ['OptionalGet', 'InstanceofThenCast', 'CollectorsToList'];
 
-    expect(
-      pmdRules(path.join(roots[1], 'legacy')).filter((rule) => watched.includes(rule)),
-    ).toEqual(['OptionalGet']);
-  });
+      expect(
+        pmdRules(path.join(roots[1], module)).filter((rule) => watched.includes(rule)),
+      ).toEqual(['OptionalGet']);
+    },
+  );
 
-  it('lints a project with a javac plug-in, preview features, a module descriptor or a source root outside it', () => {
+  it('lints projects with a javac plug-in, preview, a descriptor, an outside source root or Lombok', () => {
     const lint = (module) =>
       readLintFindings(path.join(roots[1], module, 'build', 'nitpicker'), {
         projectRoot: roots[1],
       }).map(({ path: file, rule, location }) => `${file}:${String(location?.line)} ${rule}`);
 
-    expect(['plugged', 'preview', 'modular', 'outside'].flatMap((module) => lint(module))).toEqual([
+    expect(
+      ['plugged', 'preview', 'modular', 'outside', 'lombok'].flatMap((module) => lint(module)),
+    ).toEqual([
       'plugged/src/main/java/plugged/Names.java:7 rawtypes',
       'preview/src/main/java/preview/Names.java:7 rawtypes',
       'modular/src/main/java/modular/shapes/Shape.java:10 rawtypes',
       'outside/src/main/java/outside/Names.java:7 rawtypes',
+      'lombok/src/main/java/fluent/Item.java:18 rawtypes',
     ]);
   });
 });

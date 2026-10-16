@@ -64,8 +64,9 @@ With Spring on the classpath, also follow [spring.md](spring.md).
   every `@param`/`@return` has a description, in that order, and paragraphs start with `<p>`.
 - nitpicker runs its own PMD rules (errorprone, bestpractices, performance, multithreading,
   security, its guard and code smell rules), forbiddenapis, javac lint, comment checks and Google
-  checks. Each finding names the allowed form. A project's `config/pmd/ruleset.xml` or `config/checkstyle/checkstyle.xml` counts only
-  when `nitpicker.config.json` opts in under `tools`; then read it too.
+  checks. Each finding names the allowed form. A project's `config/pmd/ruleset.xml` or
+  `config/checkstyle/checkstyle.xml` counts only when `nitpicker.config.json` opts in under `tools`;
+  then read it too.
 
 ## Errors
 
@@ -87,8 +88,8 @@ With Spring on the classpath, also follow [spring.md](spring.md).
   test files directly in it; group the rest into sub-packages.
 - Cyclomatic complexity 9 or more fails `crap-score-limit` even when fully covered; less
   coverage lowers the ceiling (`ccn^2 * (1 - coverage)^3 + ccn < 9`). Split branchy methods.
-- A new clone of at least 5 lines and 50 tokens in main sources (`duplicate-clone`) fails: extract
-  a method.
+- Copied code fails (`duplicate-clone`): extract a method; in tests, a helper or one
+  `@ParameterizedTest`.
 
 ## Tests
 
@@ -103,8 +104,7 @@ With Spring on the classpath, also follow [spring.md](spring.md).
   slice instead of `@SpringBootTest`.
 - Tests get the PMD, Checkstyle and formatter checks of main code, with test rules in place of some
   main-code ones, plus the file (500 lines) and folder (6 files) limits. SpotBugs, the method
-  limits, CRAP and jscpd read main sources only. In a test, use `assertThrows` instead of a try/catch. Spring rules apply to main
-  sources only. If a PMD rule flags test code that is right, add an exception for `pmd/<rule>`.
+  limits, CRAP and jscpd read main sources only. Spring rules apply to main sources only. If a PMD rule flags test code that is right, add an exception for `pmd/<rule>`.
 
 ## Editing existing code
 

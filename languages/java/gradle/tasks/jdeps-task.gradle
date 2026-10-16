@@ -1,0 +1,36 @@
+def reportDir = project.ext.nitpickerReportDir
+
+tasks.register('nitpickerJdeps') {
+    group = 'nitpicker'
+    dependsOn tasks.named('classes')
+    doLast {
+        reportDir.get().asFile.mkdirs()
+        def classDirs = sourceSets.main.output.classesDirs.files.findAll { it.exists() }
+        def classNames = classDirs.collectMany { dir ->
+            def classFiles = fileTree(dir) {
+                include '**/*.class'
+                exclude '**/module-info.class', '**/package-info.class'
+            }
+            classFiles.files.collect {
+                dir.toPath().relativize(it.toPath()).toString().replace('\\', '/')
+                    .replaceAll(/\.class$/, '').replace('/', '.')
+            }
+        }.unique().sort()
+        reportDir.get().file('jdeps-classes.txt').asFile.text = classNames.collect { it + '\n' }.join('')
+        def graph = reportDir.get().file('jdeps.txt').asFile
+        if (classNames.isEmpty()) {
+            graph.text = ''
+            return
+        }
+        def jdeps = new File(System.getProperty('java.home'), 'bin/jdeps')
+        def process = new ProcessBuilder([jdeps.absolutePath, '-verbose:class', '-filter:none'] +
+            classDirs.collect { it.absolutePath }).directory(projectDir)
+            .redirectError(ProcessBuilder.Redirect.DISCARD).start()
+        def output = process.inputStream.getText('UTF-8')
+        if (process.waitFor() != 0) {
+            throw new GradleException("jdeps failed (${jdeps}) with exit code ${process.exitValue()}")
+        }
+        graph.text = output
+    }
+}
+tasks.named('nitpickerJava') { dependsOn 'nitpickerJdeps' }

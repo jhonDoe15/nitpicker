@@ -84,7 +84,11 @@ export function readConstantPool(reader) {
       wideSlots.add(index + 1);
     }
   }
-  return { utf: pool.utf, className: (index) => pool.utf.get(pool.classes.get(index)) };
+  return {
+    utf: pool.utf,
+    className: (index) => pool.utf.get(pool.classes.get(index)),
+    classNames: () => [...pool.classes.values()].map((nameIndex) => pool.utf.get(nameIndex)),
+  };
 }
 
 export function constantPoolStrings(buffer) {

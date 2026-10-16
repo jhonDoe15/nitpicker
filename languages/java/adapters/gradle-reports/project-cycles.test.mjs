@@ -51,6 +51,22 @@ describe('package cycles on a Gradle build with several projects', () => {
     expect(cycleIdentities(files)).toEqual([]);
   });
 
+  it('names a lone subproject by its folder and leaves out the edge its sealed type permits', () => {
+    const files = {
+      'modules.txt': 'lib\n',
+      'lib/src/main/java/demo/a/A.java': 'package demo.a;\n',
+      'lib/src/main/java/demo/b/B.java': 'package demo.b;\n',
+      'lib/jdeps-classes.txt': 'demo.a.A\ndemo.b.B\n',
+      'lib/jdeps.txt': '   demo.a.A -> demo.b.B lib\n   demo.b.B -> demo.a.A lib\n',
+    };
+
+    expect(cycleIdentities(files).toSorted()).toEqual([
+      'lib/src/main/java/demo/a/A.java cycle:lib/demo.a',
+      'lib/src/main/java/demo/b/B.java cycle:lib/demo.b',
+    ]);
+    expect(cycleIdentities({ ...files, 'lib/permits.txt': 'demo.a.A -> demo.b.B\n' })).toEqual([]);
+  });
+
   it('keeps two projects with the same package names apart when neither uses the other', () => {
     const files = {
       'modules.txt': 'lib\n',

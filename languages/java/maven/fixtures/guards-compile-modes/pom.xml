@@ -16,5 +16,6 @@
     <module>preview</module>
     <module>modular</module>
     <module>outside</module>
+    <module>lombok</module>
   </modules>
 </project>
