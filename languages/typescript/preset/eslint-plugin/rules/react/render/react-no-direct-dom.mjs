@@ -34,7 +34,11 @@ const uiFile = /(?:^|\/)(?:ui\/|adapters\/|use(?:[A-Z]|-)[^/]*$)/u;
 const MAX_ALIASES = 8;
 
 function unwrapped(node) {
-  return wrappers.has(node.type) ? unwrapped(node.expression) : node;
+  const chain = [node];
+  for (const current of chain) {
+    if (wrappers.has(current.type)) chain.push(current.expression);
+  }
+  return chain.at(-1);
 }
 
 function propertyName(member) {
@@ -52,11 +56,19 @@ function constInitOf(sourceCode, node) {
   return isConst && definition.node.init ? unwrapped(definition.node.init) : undefined;
 }
 
-function isDocument(sourceCode, node, depth = 0) {
-  const target = unwrapped(node);
-  const alias = constInitOf(sourceCode, target);
-  if (alias !== undefined) {
-    return depth < MAX_ALIASES && isDocument(sourceCode, alias, depth + 1);
+function aliasChain(sourceCode, node) {
+  const chain = [unwrapped(node)];
+  for (const current of chain) {
+    const alias = chain.length <= MAX_ALIASES ? constInitOf(sourceCode, current) : undefined;
+    if (alias !== undefined) chain.push(alias);
+  }
+  return chain;
+}
+
+function isDocument(sourceCode, node) {
+  const target = aliasChain(sourceCode, node).at(-1);
+  if (constInitOf(sourceCode, target) !== undefined) {
+    return false;
   }
   if (target.type === 'Identifier') {
     const definitions = variableNamed(sourceCode, target)?.defs ?? [];
@@ -94,14 +106,12 @@ function isRefElement(sourceCode, node) {
   );
 }
 
-function isPageNode(sourceCode, node, depth = 0) {
-  const target = unwrapped(node);
-  const alias = constInitOf(sourceCode, target);
-  return (
-    pageElements.has(pageElementName(sourceCode, target)) ||
-    isDocumentCall(sourceCode, target, queryMethods) ||
-    isDocumentCall(sourceCode, target, creationMethods) ||
-    (alias !== undefined && depth < MAX_ALIASES && isPageNode(sourceCode, alias, depth + 1))
+function isPageNode(sourceCode, node) {
+  return aliasChain(sourceCode, node).some(
+    (target) =>
+      pageElements.has(pageElementName(sourceCode, target)) ||
+      isDocumentCall(sourceCode, target, queryMethods) ||
+      isDocumentCall(sourceCode, target, creationMethods),
   );
 }
 
@@ -116,10 +126,12 @@ function isOutsideStyle(sourceCode, node) {
   return propertyName(target) === 'style' && !isChangeable(sourceCode, target.object);
 }
 
-function isStyleAssign(sourceCode, call, name, owner) {
+function isStyleAssign(sourceCode, call) {
+  const callee = unwrapped(call.callee);
+  const owner = callee.object;
   const [first] = call.arguments;
   return (
-    name === 'assign' &&
+    propertyName(callee) === 'assign' &&
     owner.type === 'Identifier' &&
     owner.name === 'Object' &&
     first !== undefined &&
@@ -145,7 +157,7 @@ function isMethodChange(sourceCode, call) {
   const owner = callee.object;
   return (
     contentMethods.has(name) ||
-    isStyleAssign(sourceCode, call, name, owner) ||
+    isStyleAssign(sourceCode, call) ||
     isClassListChange(sourceCode, name, owner) ||
     (styleMethods.has(name) && isOutsideStyle(sourceCode, owner)) ||
     (attributeMethods.has(name) &&

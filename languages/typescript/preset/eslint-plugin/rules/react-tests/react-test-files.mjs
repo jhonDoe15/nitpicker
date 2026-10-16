@@ -26,7 +26,9 @@ function isTestHelperModule(file) {
 }
 
 function reachesTestHelper(source, filename) {
-  const specifiersOf = (file) => (file === filename ? [source] : moduleSourcesOf(file));
+  function specifiersOf(file) {
+    return file === filename ? [source] : moduleSourcesOf(file);
+  }
   for (const step of reachableModules(filename, specifiersOf, LIMITS)) {
     if (step.truncated === true) return false;
     if (isTestHelperModule(step.file)) return true;
