@@ -13,7 +13,7 @@ def classFiles = { File dir ->
 tasks.register('nitpickerJdeps') {
     group = 'nitpicker'
     dependsOn tasks.named('classes')
-    inputs.file(project.ext.nitpickerToolCommandsFile).withPropertyName('toolCommands')
+    inputs.files(project.ext.nitpickerToolCommandInputs).withPropertyName('toolCommands')
     doLast {
         reportDir.get().asFile.mkdirs()
         def classDirs = sourceSets.main.output.classesDirs.files.findAll { it.exists() }
@@ -47,7 +47,7 @@ tasks.register('nitpickerJdeps') {
                 }
                 copy
             }
-            def command = toolCommand('jdeps', [classDirectories: analyzed*.absolutePath])
+            def command = toolCommand('jdeps', [classDirectories: analyzed*.absolutePath], temporaryDir)
             def process = new ProcessBuilder([jdeps.absolutePath] + command.args).directory(projectDir).start()
             def stdout = new ByteArrayOutputStream()
             def stderr = new ByteArrayOutputStream()

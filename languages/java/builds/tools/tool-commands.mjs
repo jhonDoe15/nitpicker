@@ -1,4 +1,4 @@
-import { readFileSync, statSync } from 'node:fs';
+import { readFileSync, realpathSync, statSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 
 const TOOL_COMMANDS_FILE = path.join(import.meta.dirname, 'tool-commands.json');
@@ -32,21 +32,42 @@ function wroteReport(file, rootPattern) {
   if (statSync(file, { throwIfNoEntry: false })?.isFile() !== true) {
     return false;
   }
-  return rootPattern === undefined || rootPattern.test(readFileSync(file, 'utf8'));
+  return rootPattern === undefined || new RegExp(rootPattern, 'u').test(readFileSync(file, 'utf8'));
 }
 
-export function toolCommand(tool, values) {
+export function commandSpec(tool, values) {
   const command = commandOf(tool);
   const { exits, report } = command.accept;
-  const rootPattern = reportRootPattern(tool);
   return {
     launcher:
       command.launcher === undefined
         ? undefined
         : path.resolve(path.dirname(TOOL_COMMANDS_FILE), command.launcher),
     args: command.args.flatMap((token) => expanded(token, values)),
-    accepts: (status) =>
-      (exits === undefined || exits.includes(status)) &&
-      (report === undefined || wroteReport(values[report], rootPattern)),
+    accept: {
+      exits,
+      report: report === undefined ? undefined : values[report],
+      reportPattern: reportRootPattern(tool)?.source,
+    },
   };
+}
+
+export function toolCommand(tool, values) {
+  const { launcher, args, accept } = commandSpec(tool, values);
+  return {
+    launcher,
+    args,
+    accepts: (status) =>
+      (accept.exits === undefined || accept.exits.includes(status)) &&
+      (accept.report === undefined || wroteReport(accept.report, accept.reportPattern)),
+  };
+}
+
+export function main([tool, valuesFile, outputFile]) {
+  const values = JSON.parse(readFileSync(valuesFile, 'utf8'));
+  writeFileSync(outputFile, JSON.stringify(commandSpec(tool, values)));
+}
+
+if (process.argv[1] !== undefined && realpathSync(process.argv[1]) === import.meta.filename) {
+  main(process.argv.slice(2));
 }

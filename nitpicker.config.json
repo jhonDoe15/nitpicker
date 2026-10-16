@@ -24,6 +24,7 @@
       "languages/java/adapters/java-runner.mjs",
       "languages/java/adapters/gradle-reports/gradle-guards.mjs",
       "languages/java/builds/rulesets/write-rules.mjs",
+      "languages/java/builds/tools/tool-commands.mjs",
       "languages/typescript/adapters/eslint-runner.mjs",
       "languages/typescript/adapters/quality-areas-runner.mjs",
       "languages/typescript/adapters/static-checks-runner.mjs",
