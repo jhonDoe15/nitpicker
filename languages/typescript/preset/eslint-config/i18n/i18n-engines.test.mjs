@@ -66,20 +66,34 @@ const expected = {
 };
 
 const patterns = ['src/**/*.tsx'];
-const root = createProject('nitpicker-i18n-engines-', { 'policy.mjs': POLICY, ...SOURCES });
-const oxlint = lintProject({ root, patterns });
-const eslint = await new ESLint({
-  cwd: root,
-  overrideConfigFile: path.join(root, 'policy.mjs'),
-}).lintFiles(patterns);
+const roots = [];
 
 afterAll(() => {
-  rmSync(root, { recursive: true, force: true });
+  for (const root of roots) rmSync(root, { recursive: true, force: true });
 });
 
 describe('the i18n rules report the same on both lint engines', () => {
-  it.each(Object.keys(expected))('in %s, after the filters', (file) => {
-    expect(messagesIn(root, eslint, file)).toEqual(expected[file]);
-    expect(messagesIn(root, oxlint, file)).toEqual(expected[file]);
+  it('checks every source', () => {
+    expect(Object.keys(expected)).toEqual(Object.keys(SOURCES));
+  });
+
+  it('reports the expected findings in each source, after the filters', async () => {
+    const root = createProject('nitpicker-i18n-engines-', { 'policy.mjs': POLICY, ...SOURCES });
+    roots.push(root);
+    const oxlint = lintProject({ root, patterns });
+    const eslint = await new ESLint({
+      cwd: root,
+      overrideConfigFile: path.join(root, 'policy.mjs'),
+    }).lintFiles(patterns);
+    for (const file of Object.keys(expected)) {
+      expect({ file, eslint: messagesIn(root, eslint, file) }).toEqual({
+        file,
+        eslint: expected[file],
+      });
+      expect({ file, oxlint: messagesIn(root, oxlint, file) }).toEqual({
+        file,
+        oxlint: expected[file],
+      });
+    }
   });
 });
