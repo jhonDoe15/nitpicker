@@ -18,6 +18,7 @@ const RESOURCE_FILES = [
   'languages/java/adapters/tool-config/checkstyle/checkstyle-merge-cli.mjs',
   'languages/java/gradle/checkstyle-suppressions.xml',
   'languages/java/gradle/pmd-ruleset.xml',
+  'languages/java/gradle/pmd-test-only.xml',
   'languages/java/gradle/spring-ruleset.xml',
   'languages/java/gradle/StructureMetrics.java',
   'languages/java/gradle/KotlinMetrics.java',

@@ -382,8 +382,9 @@ properties it leaves unset keep nitpicker's values (xpath, `violationSuppressXPa
 whole-category reference enables the rules nitpicker leaves out of that category (as single `<rule ref>`
 entries, minus the project's `<exclude>`s) and nothing nitpicker already runs, and an `<exclude>` in the
 project's file cannot turn a nitpicker rule off. With `["nitpicker", "project"]` nitpicker's values win
-where both set one. A category rule that nitpicker also runs through its test-only ruleset
-(`TestClassWithoutTestCases`) runs once more with PMD's defaults when the project enables the category.
+where both set one. A rule nitpicker runs through its test-only ruleset (`TestClassWithoutTestCases`, from
+`pmd-test-only.xml`) is never added to the project's file, so a project category reference does not run
+it a second time; a project rule that names it is overlaid on that ruleset (`pmd-test-rules.xml`) instead.
 
 **PMD rules tuned by nitpicker.** These rules of the rule set allow a narrower form than PMD's
 default, and their messages name it:
@@ -1270,7 +1271,7 @@ forbid broad catches. A test with no assertion still fails (`UnitTestShouldInclu
 also counts MockMvc's `andExpect` and `andExpectAll`, BDDMockito's `then(...).should()`,
 `WebTestClient`'s `expectStatus`/`expectBody`/`expectHeader` and `StepVerifier`'s `expectNext`,
 `verifyComplete` and friends), and a class in test sources named like a test but without test
-methods fails (`TestClassWithoutTestCases`, which runs from `pmd-tests.xml`, excluding the main
+methods fails (`TestClassWithoutTestCases`, which runs from `pmd-tests.xml` (Gradle and Maven), excluding the main
 source directories, so a main class such as `TestDataGenerator` is not a test), except `*ArchTest`
 and `*ArchitectureTest` classes, which hold ArchUnit rules. The Spring rule set reads main sources only: the init script wraps it in
 `pmd-spring-main.xml` in the report directory with an exclude pattern per test source directory, since

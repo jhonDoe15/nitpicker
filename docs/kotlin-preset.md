@@ -243,8 +243,8 @@ with the exception anywhere in the chain (`atError().setCause(e).log(...)`, `wit
 the exception (`e as Throwable`), and a catch that rethrows `e` or throws a new exception with `e` as an
 argument (its cause) after logging. A call is a log call when its receiver (also as `logger?.error(...)`) is
 declared from `KotlinLogging.logger`, `LoggerFactory.getLogger`, `LogManager.getLogger` or
-`getFormatterLogger`, `Logger.getLogger` or `System.getLogger`, or its name ends in `log` or `logger`
-(any case: `log`, `LOGGER`, `auditLog`). The list lives in `languages/java/source/loggers.mjs`. The
+`getFormatterLogger`, `Logger.getLogger` or `System.getLogger`, or its name is `log` or `logger` (any case) or ends in one at a
+camelCase or underscore boundary (`auditLog`, `appLogger`, `AUDIT_LOG`, `audit_log`; `dialog` and `catalog` are not loggers). The list lives in `languages/java/source/loggers.mjs`. The
 innermost catch is the one checked, and a catch of `_`, `ignored...`, `expected...` or `unused...` is left
 alone. Main and test sources are scanned. One finding per log call, identified by
 `catch-log:<receiver>.<level>`.

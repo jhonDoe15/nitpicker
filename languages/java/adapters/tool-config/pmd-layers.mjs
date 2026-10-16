@@ -41,9 +41,19 @@ function withHelpers(rule, helpers) {
   return { ...rule, children: groups };
 }
 
-function catalogOf(ruleset, helpers) {
+function testRulesOf(testRuleset) {
+  return childrenNamed(testRuleset, 'rule').map((rule) => ({
+    ...referenceOf(rule),
+    element: rule,
+  }));
+}
+
+function catalogOf({ ruleset, helpers, testRuleset }) {
   const definitions = new Map();
   const covers = new Map();
+  for (const { file, rule, element: definition } of testRulesOf(testRuleset)) {
+    definitions.set(rule, { file, element: definition, testOnly: true });
+  }
   for (const rule of childrenNamed(ruleset, 'rule')) {
     const { file, rule: name } = referenceOf(rule);
     if (name === undefined) {
@@ -130,7 +140,9 @@ function splitProjectRule(rule, catalog, projectWins) {
   const merged = projectWins
     ? overlay(definition.element, rule)
     : overlay(rule, definition.element);
-  return { kept: [merged], replaced: [name] };
+  return definition.testOnly
+    ? { kept: [], replaced: [], tests: [[name, merged]] }
+    : { kept: [merged], replaced: [name] };
 }
 
 function projectLayer(projectRuleset, catalog, projectWins) {
@@ -141,6 +153,7 @@ function projectLayer(projectRuleset, catalog, projectWins) {
       : { kept: [child], replaced: [] },
   );
   return {
+    tests: new Map(layers.flatMap(({ tests = [] }) => tests)),
     replaced: [...new Set(layers.flatMap(({ replaced }) => replaced))],
     ruleset: { ...project, children: layers.flatMap(({ kept }) => kept) },
   };
@@ -167,17 +180,37 @@ function nitpickerRuleset({ nitpickerPath, catalog, replaced, helpers }) {
   return `${DECLARATION}${renderXml(wrapper)}\n`;
 }
 
+function testRuleset(catalog, overlaid) {
+  const description = element('description');
+  description.text = "Nitpicker's test-only PMD rules, with the project's settings over them.";
+  const rules = [...catalog.definitions]
+    .filter(([, entry]) => entry.testOnly)
+    .map(([name, entry]) => overlaid.get(name) ?? entry.element);
+  const wrapper = element(
+    'ruleset',
+    { name: 'nitpicker-test-rules', xmlns: 'http://pmd.sourceforge.net/ruleset/2.0.0' },
+    [description, ...rules],
+  );
+  return `${DECLARATION}${renderXml(wrapper)}\n`;
+}
+
 export function layerPmdRulesets({
   nitpickerPath,
   nitpickerText,
+  testText,
   projectText,
   projectWins = true,
   assertionHelpers = [],
 }) {
-  const catalog = catalogOf(parseXml(nitpickerText), assertionHelpers);
+  const catalog = catalogOf({
+    ruleset: parseXml(nitpickerText),
+    helpers: assertionHelpers,
+    testRuleset: parseXml(testText),
+  });
   const project =
     projectText === undefined ? undefined : projectLayer(projectText, catalog, projectWins);
   return {
+    tests: project === undefined ? undefined : testRuleset(catalog, project.tests),
     nitpicker: nitpickerRuleset({
       nitpickerPath,
       catalog,

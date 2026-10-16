@@ -35,6 +35,7 @@ export function toolConfigProperties(projectRoot, policy = {}, directory) {
   return [
     ...(pmd.nitpicker === undefined ? [] : [`-Pnitpicker.pmd.nitpickerRuleset=${pmd.nitpicker}`]),
     ...(pmd.project === undefined ? [] : [`-Pnitpicker.pmd.projectConfig=${pmd.project}`]),
+    ...(pmd.tests === undefined ? [] : [`-Pnitpicker.pmd.testRules=${pmd.tests}`]),
     ...(checkstyle.project === undefined
       ? []
       : [

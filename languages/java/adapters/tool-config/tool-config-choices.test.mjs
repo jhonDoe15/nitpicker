@@ -46,6 +46,7 @@ describe('the Gradle properties of the project tool configs', () => {
     ).toEqual([
       `-Pnitpicker.pmd.nitpickerRuleset=${path.join(directory, 'pmd-nitpicker.xml')}`,
       `-Pnitpicker.pmd.projectConfig=${path.join(directory, 'pmd-project.xml')}`,
+      `-Pnitpicker.pmd.testRules=${path.join(directory, 'pmd-test-rules.xml')}`,
       `-Pnitpicker.checkstyle.projectConfig=${path.join(head, 'config/checkstyle/checkstyle.xml')}`,
       `-Pnitpicker.node=${process.execPath}`,
     ]);
@@ -74,6 +75,7 @@ describe('the Gradle properties of the project tool configs', () => {
     expect(properties).toEqual([
       `-Pnitpicker.pmd.nitpickerRuleset=${path.join(directory, 'pmd-nitpicker.xml')}`,
       `-Pnitpicker.pmd.projectConfig=${path.join(directory, 'pmd-project.xml')}`,
+      `-Pnitpicker.pmd.testRules=${path.join(directory, 'pmd-test-rules.xml')}`,
     ]);
   });
 

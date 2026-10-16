@@ -60,14 +60,9 @@ def springOnMainSources = { File springRuleset, Collection<File> testDirectories
         ["  <rule ref=\"${escapeXml(springRuleset.absolutePath)}\"/>"], testDirectories)
 }
 
-def testRulesOnTestSources = { Collection<File> mainDirectories ->
+def testRulesOnTestSources = { File testRules, Collection<File> mainDirectories ->
     rulesetExcluding('nitpicker-tests', "Nitpicker's test-only rules on test sources only.",
-        ['  <rule ref="category/java/errorprone.xml/TestClassWithoutTestCases">',
-         '    <properties>',
-         '      <property name="testClassPattern"',
-         '                value="^(?:.*\\.)?Test[^\\.]*$|^(?:.*\\.)?.*(?&lt;!Arch|Architecture)Tests?$|^(?:.*\\.)?.*TestCase$"/>',
-         '    </properties>',
-         '  </rule>'], mainDirectories)
+        ["  <rule ref=\"${escapeXml(testRules.absolutePath)}\"/>"], mainDirectories)
 }
 
 allprojects {
@@ -225,6 +220,7 @@ allprojects {
             // project's ruleset without the rules nitpicker already has.
             def nitpickerRuleset = nitpickerArgument('nitpicker.pmd.nitpickerRuleset') ?: new File(initScriptDir, 'pmd-ruleset.xml').absolutePath
             def projectRuleset = nitpickerArgument('nitpicker.pmd.projectConfig')
+            def testRules = new File(nitpickerArgument('nitpicker.pmd.testRules') ?: new File(initScriptDir, 'pmd-test-only.xml').absolutePath)
             def ruleset = ([nitpickerRuleset] + (projectRuleset ? [projectRuleset] : [])).join(',')
             doFirst {
                 reportDir.get().asFile.mkdirs()
@@ -237,7 +233,7 @@ allprojects {
                 def springMainRuleset = reportDir.get().file('pmd-spring-main.xml').asFile
                 springMainRuleset.text = springOnMainSources(new File(initScriptDir, 'spring-ruleset.xml'), testSourceDirectories())
                 def testRuleset = reportDir.get().file('pmd-tests.xml').asFile
-                testRuleset.text = testRulesOnTestSources(mainSources.files)
+                testRuleset.text = testRulesOnTestSources(testRules, mainSources.files)
                 def nitpickerExtras = [testRuleset] + (usesSpring() ? [springMainRuleset] : [])
                 def rulesets = ([ruleset] + nitpickerExtras.collect { it.absolutePath }).join(',')
                 args 'check', '--no-cache', '--no-progress', '--format', 'sarif',

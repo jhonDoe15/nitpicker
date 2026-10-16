@@ -44,6 +44,32 @@ describe('logCalls', () => {
     ]);
   });
 
+  it('accepts log, logger and names ending at a camelCase or underscore boundary only', () => {
+    const code = [
+      'dialog.error("x", e)',
+      'catalog.warn("x", e)',
+      'backlog.error("x", e)',
+      'changelog.error("x", e)',
+      'log.error("a")',
+      'Logger.warn("b")',
+      'LOG.error("c")',
+      'appLogger.error("d")',
+      'AUDIT_LOG.error("e")',
+      'audit_log.warn("f")',
+      'audit_logger.warn("g")',
+    ].join('\n');
+
+    expect(logCalls(code).map(({ receiver }) => receiver)).toEqual([
+      'log',
+      'Logger',
+      'LOG',
+      'appLogger',
+      'AUDIT_LOG',
+      'audit_log',
+      'audit_logger',
+    ]);
+  });
+
   it('keeps the trailing lambda and the fluent chain in the text of the call', () => {
     const [lambda] = logCalls('logger.error(e) { "failed ${x}" }\nrun()');
     const [chain] = logCalls(

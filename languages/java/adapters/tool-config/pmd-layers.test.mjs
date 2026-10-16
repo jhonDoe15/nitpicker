@@ -45,11 +45,24 @@ const PROJECT = `<?xml version="1.0"?>
   <rule ref="category/java/performance.xml/AvoidArrayLoops"/>
 </ruleset>
 `;
+const TESTS = `<?xml version="1.0"?>
+<ruleset name="tests" xmlns="http://pmd.sourceforge.net/ruleset/2.0.0">
+  <description>t</description>
+  <rule ref="category/java/errorprone.xml/TestClassWithoutTestCases">
+    <properties><property name="testClassPattern" value="Test.*"/></properties>
+  </rule>
+</ruleset>
+`;
 const HEADER = '<?xml version="1.0" encoding="UTF-8"?>\n';
 const NITPICKER_PATH = '/nitpicker/pmd-ruleset.xml';
 
 const layer = (options) =>
-  layerPmdRulesets({ nitpickerPath: NITPICKER_PATH, nitpickerText: NITPICKER, ...options });
+  layerPmdRulesets({
+    nitpickerPath: NITPICKER_PATH,
+    nitpickerText: NITPICKER,
+    testText: TESTS,
+    ...options,
+  });
 
 describe('layering the project ruleset over nitpicker', () => {
   it('overlays the project rules on nitpicker definitions and keeps the rest of nitpicker', () => {
@@ -69,7 +82,6 @@ describe('layering the project ruleset over nitpicker', () => {
       .toBe(`${HEADER}<ruleset name="project" xmlns="http://pmd.sourceforge.net/ruleset/2.0.0">
   <description>p</description>
   <exclude-pattern>.*/generated/.*</exclude-pattern>
-  <rule ref="category/java/errorprone.xml/TestClassWithoutTestCases"/>
   <rule ref="category/java/design.xml">
     <exclude name="LawOfDemeter"/>
     <exclude name="AvoidCatchingGenericException"/>
@@ -92,6 +104,60 @@ describe('layering the project ruleset over nitpicker', () => {
     </properties>
   </rule>
   <rule ref="category/java/performance.xml/AvoidArrayLoops"/>
+</ruleset>
+`);
+  });
+
+  it('overlays a test-only rule the project enables on the test ruleset instead of running it twice', () => {
+    const projectText = `<ruleset name="project" xmlns="http://pmd.sourceforge.net/ruleset/2.0.0">
+  <description>p</description>
+  <rule ref="category/java/errorprone.xml"/>
+  <rule ref="category/java/errorprone.xml/TestClassWithoutTestCases">
+    <priority>2</priority>
+    <properties><property name="testClassPattern" value="Spec.*"/></properties>
+  </rule>
+</ruleset>`;
+    const { project, tests, replaced } = layer({ projectText });
+
+    expect(replaced).toEqual([]);
+    expect(project)
+      .toBe(`${HEADER}<ruleset name="project" xmlns="http://pmd.sourceforge.net/ruleset/2.0.0">
+  <description>p</description>
+</ruleset>
+`);
+    expect(tests)
+      .toBe(`${HEADER}<ruleset name="nitpicker-test-rules" xmlns="http://pmd.sourceforge.net/ruleset/2.0.0">
+  <description>Nitpicker's test-only PMD rules, with the project's settings over them.</description>
+  <rule ref="category/java/errorprone.xml/TestClassWithoutTestCases">
+    <priority>2</priority>
+    <properties>
+      <property name="testClassPattern" value="Spec.*"/>
+    </properties>
+  </rule>
+</ruleset>
+`);
+  });
+
+  it('keeps the test ruleset as nitpicker has it when the project only enables the category', () => {
+    const projectText = `<ruleset name="project" xmlns="http://pmd.sourceforge.net/ruleset/2.0.0">
+  <description>p</description>
+  <rule ref="category/java/errorprone.xml"/>
+</ruleset>`;
+    const { project, tests } = layer({ projectText });
+
+    expect(project)
+      .toBe(`${HEADER}<ruleset name="project" xmlns="http://pmd.sourceforge.net/ruleset/2.0.0">
+  <description>p</description>
+</ruleset>
+`);
+    expect(tests)
+      .toBe(`${HEADER}<ruleset name="nitpicker-test-rules" xmlns="http://pmd.sourceforge.net/ruleset/2.0.0">
+  <description>Nitpicker's test-only PMD rules, with the project's settings over them.</description>
+  <rule ref="category/java/errorprone.xml/TestClassWithoutTestCases">
+    <properties>
+      <property name="testClassPattern" value="Test.*"/>
+    </properties>
+  </rule>
 </ruleset>
 `);
   });
@@ -129,7 +195,6 @@ describe('layering the project ruleset over nitpicker', () => {
       .toBe(`${HEADER}<ruleset name="project" xmlns="http://pmd.sourceforge.net/ruleset/2.0.0">
   <description>p</description>
   <exclude-pattern>.*/generated/.*</exclude-pattern>
-  <rule ref="category/java/errorprone.xml/TestClassWithoutTestCases"/>
   <rule ref="category/java/design.xml">
     <exclude name="LawOfDemeter"/>
     <exclude name="AvoidCatchingGenericException"/>
