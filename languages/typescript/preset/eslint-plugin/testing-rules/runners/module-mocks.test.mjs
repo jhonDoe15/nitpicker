@@ -24,6 +24,9 @@ ruleTester.run('no-internal-module-mocks across runners', noInternalMocks, {
     `import mockRequire from './mock-require.js'; mockRequire(${internal}, {});`,
     `const local = require('./local.js'); local(${internal});`,
     `jest[mock](${internal});`,
+    `import proxyquire from 'proxyquire'; proxyquire(${internal}, { undici: {} });`,
+    "import esmock from 'esmock'; await esmock('../feature.js', { undici: {} });",
+    `const sinon = require('sinon'); sinon.stub(${internal}, 'x');`,
   ].map((code) => ({ filename, code })),
   invalid: [
     `jest.mock(${internal});`,
@@ -44,6 +47,12 @@ ruleTester.run('no-internal-module-mocks across runners', noInternalMocks, {
     `import quibble from 'quibble'; await quibble.esm(${internal});`,
     `import quibble from 'quibble'; await quibble(${internal});`,
     `jest.mock(import(${internal}));`,
+    `vi['doMock'](${internal});`,
+    `import proxyquire from 'proxyquire'; proxyquire('../feature.js', { [${internal}]: {} });`,
+    `const proxyquire = require('proxyquire'); proxyquire('../feature.js', { ${internal}: {} });`,
+    `const proxyquire = require('proxyquire').noCallThru(); proxyquire.load('../feature.js', { ${internal}: {} });`,
+    `import esmock from 'esmock'; await esmock('../feature.js', { ${internal}: {} });`,
+    `import esmock from 'esmock'; await esmock.strict('../feature.js', {}, { ${internal}: {} });`,
   ].map((code) => ({ filename, code, errors: [{ messageId: 'internalMock' }] })),
 });
 
@@ -57,6 +66,12 @@ ruleTester.run('no-mocking-subject-under-test across runners', noMockingSubjectU
       'execute();',
     ),
     lines("import { mock } from 'node:test';", "mock.module('../feature.js');"),
+    lines(
+      "import { execute } from '../feature.js';",
+      "import proxyquire from 'proxyquire';",
+      "proxyquire('../feature.js', { undici: {} });",
+      'execute();',
+    ),
   ].map((code) => ({ filename, code })),
   invalid: [
     lines("import { execute } from '../feature.js';", "jest.mock('../feature.js');", 'execute();'),
@@ -82,6 +97,12 @@ ruleTester.run('no-mocking-subject-under-test across runners', noMockingSubjectU
       "import { execute } from '../feature.js';",
       "import td from 'testdouble';",
       "td.replace('../feature.js');",
+      'execute();',
+    ),
+    lines(
+      "import { execute } from '../feature.js';",
+      "import esmock from 'esmock';",
+      "await esmock('../consumer.js', { '../feature.js': { execute: () => 1 } });",
       'execute();',
     ),
   ].map((code) => ({
