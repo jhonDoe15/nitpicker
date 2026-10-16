@@ -67,7 +67,7 @@ function listProblem(facts, list) {
   return facts[list].map((item, index) => itemProblem(list, item, index)).find(Boolean);
 }
 
-export const FACT_LISTS = Object.keys(SHAPES);
+const FACT_LISTS = Object.keys(SHAPES);
 
 export function validateFacts(facts) {
   if (typeof facts !== 'object' || facts === null || Array.isArray(facts)) {

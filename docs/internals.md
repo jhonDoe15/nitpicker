@@ -92,7 +92,7 @@ A facts bundle is one JSON object; each list is optional, and a rule runs only w
 - `baseline` is `{ facts, movesFile }` on the head run of a change: the bundle the producer emits for the base checkout (`--baseline-root`; only `definitions` are read) and the `--baseline-moves-file` the diff passes. Without it `sibling-copy-edit` reports nothing.
 - `rules` (optional) narrows the run to some registered rules, for a runner that produces some lists in one place and the rest in another (console output from test reports, definitions from source). A rule the language does not register is an error.
 - `siblingCopiesAcrossPackages` (default false) lets `sibling-copy-edit` compare copies in different packages, such as the same class in two Gradle or Maven modules.
-- It runs every rule registered for `language` (or the `rules` given), and throws when a rule's lists are missing, so a registration without a producer is a tool error rather than a silent pass. `validateFacts` checks the shapes first and names the first bad field.
+- It runs every rule registered for `language` (or the `rules` given), and throws when a rule's lists are missing, so a registration without a producer is a tool error rather than a silent pass. `validateFacts` (`shared/rules/facts/schema.mjs`) checks the shapes first and names the first bad field; `readFactsFile(file)` reads a producer's JSON output and validates it.
 
 | Rule                         | Lists it reads                                  |
 | ---------------------------- | ----------------------------------------------- |
