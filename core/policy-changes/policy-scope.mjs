@@ -3,7 +3,8 @@ import path from 'node:path';
 import { globToRegExp } from '../../shared/glob.mjs';
 import { runGit } from '../diff/git/repository/command.mjs';
 import { detectSourceRoots } from '../../languages/python/adapters/execution/python-project.mjs';
-import { resolveLayout } from '../../languages/typescript/preset/layout.mjs';
+import { resolveLayout, resolveLayoutFor } from '../../languages/typescript/preset/layout.mjs';
+import { productionImports } from '../../languages/typescript/preset/modules/production-imports.mjs';
 import { projectChecksJavascript } from '../../languages/typescript/preset/modules/tsconfig-files.mjs';
 import { presetToDeclare } from '../configuration/project-checks/preset-detection.mjs';
 
@@ -64,6 +65,16 @@ function basePathResolver({ files = new Map(), directories = new Map() } = {}, f
   };
 }
 
+function computedOnce(compute) {
+  const results = [];
+  return () => {
+    if (results.length === 0) {
+      results.push(compute());
+    }
+    return results[0];
+  };
+}
+
 function checkJsOf(headConfig, baseProjectRoot, headProjectRoot) {
   return usesLayout(headConfig) && headConfig.preset !== 'javascript'
     ? {
@@ -82,6 +93,7 @@ export function createPolicyScope({
   presetRequired = false,
   existsInBase = () => true,
   checkJs,
+  importsOf = () => new Map(),
 }) {
   const extensions = new Set(extensionsOf(headConfig));
   const code = files.filter((file) => extensions.has(file.slice(file.lastIndexOf('.') + 1)));
@@ -90,6 +102,9 @@ export function createPolicyScope({
     ? code.filter((file) => roots.some((root) => isUnder(file, root)))
     : code;
   const folders = new Set(checked.flatMap(foldersOf));
+  const importers = usesLayout(headConfig)
+    ? code.filter(resolveLayoutFor(headConfig).isSourceFile)
+    : [];
   return {
     code,
     checked,
@@ -100,6 +115,7 @@ export function createPolicyScope({
     presetRequired,
     existsInBase,
     checkJs,
+    productionImports: computedOnce(() => importsOf(importers)),
   };
 }
 
@@ -120,5 +136,6 @@ export function readPolicyScope({
     presetRequired: presetToDeclare(headConfig, headProjectRoot) !== undefined,
     existsInBase: (file) => existsSync(path.join(baseProjectRoot, file)),
     checkJs: checkJsOf(headConfig, baseProjectRoot, headProjectRoot),
+    importsOf: (importers) => productionImports(headProjectRoot, importers),
   });
 }

@@ -92,11 +92,10 @@ Reports are written to `reports/quality/diff/` (`reports/quality/snapshot/` for 
 `report.txt`, `report.junit.xml`, `summary.json`, `new-findings.json`, `resolved-findings.json`,
 `changed-metrics.json` and `tool-errors.json`. The summary records every config override, a
 policy hash, the `policyChanges` the head config makes against the base and any `notices`. A notice
-is information that never fails the run. Today there are two: changed TypeScript files that lie
+is information that never fails the run. Today there is one: changed TypeScript files that lie
 outside `layout.sourceRoots` and `layout.testRoots` (move them under a root or add their folder to
-`layout.sourceRoots`; to leave them unchecked, list them in `exclude`), and files the change adds
-or moves under an `exclude` entry the base already had, so nothing checks them. Choose another directory with `--output <dir>`. Set `NO_COLOR` to disable colored
-console output.
+`layout.sourceRoots`; to leave them unchecked, list them in `exclude`). Choose another directory
+with `--output <dir>`. Set `NO_COLOR` to disable colored console output.
 
 ## Exit codes
 
@@ -196,10 +195,17 @@ defaults. These changes are loosening:
 - a removed `layout.sourceRoots`, `layout.testRoots` or `python.sourceRoots` entry that still has
   checked files under it (Python's detected default counts when the setting is absent), and an
   added `layout.testRoots` entry that turns production code the base checked into test code;
-- code the change adds, or moves from a path that was not hidden, under an `exclude` or
-  `layout.excludedGlobs` glob or a test root inside a source root that the base config already
-  had, or under an `exceptions` or `python.exceptions` path that covered no code in the base. An
-  idle glob is listed when it is added, and the code that later arrives under it fails then;
+- code the change adds, or moves from a path that was not hidden, under an `exclude`,
+  `layout.excludedGlobs`, `exceptions` or `python.exceptions` glob or a test root inside a source
+  root that the base config already had. When the glob or root covers no code of the base, any
+  such code fails: an idle glob is listed when it is added, and the code that later arrives under
+  it fails then. When it already covers base code (an established `vendor/**` or
+  `**/fixtures/**`), adding files there is normal and passes, unless production code (files under
+  the source roots that are neither tests nor hidden) imports one of them, so a feature cannot be
+  written under an excluded folder and imported from the checked code. Exceptions that cover base
+  code never fail this way, and the import check reads TypeScript and JavaScript imports only, so
+  under the Python, Java and Kotlin presets an established glob does not fail. The finding names
+  the allowed form, new code as production code under the source roots, and the acceptance route;
 - `checkJs` turned off in the project's `tsconfig.json` (TypeScript preset);
 - a newly disabled analyzer, a threshold above the base's (a removed threshold counts at its
   default), and a removed or changed custom analyzer (any change to its `command` or `args`);
