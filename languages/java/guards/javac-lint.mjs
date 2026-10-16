@@ -1,7 +1,7 @@
 import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { createLineIdentity } from '../ingest/common.mjs';
-import { exceptionRoute } from './advice/exception-route.mjs';
+import { exceptionHint } from '../../../shared/rules/exceptions.mjs';
 import { rootsScope } from '../builds/module-path.mjs';
 
 const LINT_TOOL = 'javac';
@@ -25,7 +25,7 @@ function warningFinding({ file, line, rule, text }, identity) {
     rule,
     path: file,
     identity: identity({ file, line, parts: [rule, text] }),
-    message: `${text}. ${advice} ${exceptionRoute(LINT_TOOL, rule)}`,
+    message: `${text}. ${advice}`,
     classification: 'enforceable',
     location: { line },
   };
@@ -59,9 +59,8 @@ function lintNotRun(reportRoot, sourceRoots, module) {
       message:
         `No javac lint report from the lint compile (${firstError.trim()}), so raw types, ` +
         'unchecked operations, deprecated calls and redundant casts were not checked. ' +
-        'Fix what that compile reports (the main sources, the compile class path and Lombok), ' +
-        `or add an exception for ${LINT_TOOL}/${LINT_NOT_RUN} with the path "**" in nitpicker.config.json ` +
-        'if the project cannot be linted that way.',
+        'Fix what that compile reports (the main sources, the compile class path and Lombok). ' +
+        exceptionHint(`${LINT_TOOL}/${LINT_NOT_RUN}`, '**'),
       classification: 'descriptive',
       ...(scope.length === 0 ? {} : { toolNotRun: true, notRunScope: scope }),
     },

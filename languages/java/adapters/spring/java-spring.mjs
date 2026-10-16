@@ -121,10 +121,6 @@ function exposesAll(value) {
     .some((item) => item.trim() === '*');
 }
 
-function allowance(rule) {
-  return `To allow it here, add an exception for spring/${rule} in nitpicker.config.json.`;
-}
-
 export function readSpringConfigFindings(projectRoot, { sourceRoots = [], resourceRoots } = {}) {
   const documents = readSpringDocuments(
     projectRoot,
@@ -200,7 +196,7 @@ function buildFinding({ rule, document, entry, key, message, occurrences }) {
     rule,
     path: document.path,
     identity: occurrence === 1 ? key : `${key}#${String(occurrence)}`,
-    message: `${message} ${allowance(rule)}`,
+    message,
     classification: 'enforceable',
     ...(entry === undefined ? {} : { location: { line: entry.line } }),
   };

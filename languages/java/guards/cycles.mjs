@@ -1,5 +1,4 @@
 import { RULE_IDS } from '../../../shared/policy.mjs';
-import { exceptionRoute } from './advice/exception-route.mjs';
 
 const PACKAGE_CYCLE_RULE = RULE_IDS.packageCycle;
 const LISTED_MEMBERS = 5;
@@ -109,8 +108,7 @@ function memberFinding({ tool, member, others, path }) {
     identity: `cycle:${member}`,
     message:
       `Package ${member} is in a dependency cycle with ${listed(others)}. ` +
-      'Move the shared types down into one of them, or invert one dependency behind an interface. ' +
-      exceptionRoute(tool, PACKAGE_CYCLE_RULE),
+      'Move the shared types down into one of them, or invert one dependency behind an interface.',
     classification: 'enforceable',
   };
 }

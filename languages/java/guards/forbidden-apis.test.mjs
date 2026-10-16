@@ -116,15 +116,11 @@ describe('readForbiddenApiFindings', () => {
       findings.map(() => ['forbiddenapis', 'enforceable']),
     );
     expect(findings.map(({ message }) => message)).toEqual([
-      'Use java.time instead of the legacy date classes. Found: Date. ' +
-        'If it is right here, add an exception for forbiddenapis/legacy-date-time in nitpicker.config.json.',
-      'Do not sleep in production code. Found: Thread.sleep. ' +
-        'If it is right here, add an exception for forbiddenapis/thread-sleep in nitpicker.config.json.',
+      'Use java.time instead of the legacy date classes. Found: Date.',
+      'Do not sleep in production code. Found: Thread.sleep.',
       'Do not start threads by hand. Submit the work to an injected ExecutorService ' +
-        '(a ThreadFactory or a shutdown hook may still create the Thread). Found: Thread.start. ' +
-        'If it is right here, add an exception for forbiddenapis/new-thread in nitpicker.config.json.',
-      'Do not sleep in production code. Found: Thread.sleep. ' +
-        'If it is right here, add an exception for forbiddenapis/thread-sleep in nitpicker.config.json.',
+        '(a ThreadFactory or a shutdown hook may still create the Thread). Found: Thread.start.',
+      'Do not sleep in production code. Found: Thread.sleep.',
     ]);
     expect(() => parseAnalyzerReport({ findings }, 'java')).not.toThrow();
   });
@@ -258,7 +254,7 @@ describe('readForbiddenApiFindings', () => {
       'java.lang.Thread#startVirtualThread(java.lang.Runnable)',
       'java.lang.Thread$Builder#start(java.lang.Runnable)',
     ]);
-    expect(finding.message).toMatch(/^x Found: Thread\.Builder\.start\. /);
+    expect(finding.message).toBe('x Found: Thread.Builder.start.');
   });
 
   it('places a wrapped or split declaration, keeps one it cannot place on its class line and drops synthetic ones', () => {

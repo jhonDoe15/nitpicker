@@ -6,11 +6,7 @@ import { ingestCrap } from '../../ingest/crap.mjs';
 import { DUPLICATES_REPORT, readDuplicateFindings } from '../metrics/java-duplicates.mjs';
 import { coveredByCpd } from '../../guards/cpd-duplicates.mjs';
 import { readKotlinDuplicateFindings } from '../kotlin/kotlin-duplicates.mjs';
-import {
-  dropEntityAssociations,
-  dropInheritedVersions,
-  withExposureAdvice,
-} from '../jpa/jpa-source-filters.mjs';
+import { dropEntityAssociations, dropInheritedVersions } from '../jpa/jpa-source-filters.mjs';
 import {
   isEmptyModule,
   readMainCheckstyle,
@@ -186,7 +182,7 @@ function sarifFindings(context) {
     }),
     ...ingestSarif(dropEntityAssociations(spotbugs, projectRoot), {
       tool: 'spotbugs',
-    }).findings.map(withExposureAdvice),
+    }).findings,
   ];
 }
 

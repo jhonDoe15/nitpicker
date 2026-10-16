@@ -3,11 +3,11 @@
     <module name="MagicNumber">
       <property name="ignoreHashCodeMethod" value="true"/>
       <property name="ignoreAnnotation" value="true"/>
-      <message key="magic.number" value="''{0}'' is a magic number. Name it as a private static final constant. If it is right here, add an exception for checkstyle/com.puppycrawl.tools.checkstyle.checks.coding.MagicNumberCheck in nitpicker.config.json."/>
+      <message key="magic.number" value="''{0}'' is a magic number. Name it as a private static final constant."/>
     </module>
     <module name="VisibilityModifier">
       <property name="allowPublicFinalFields" value="true"/>
-      <message key="variable.notPrivate" value="Variable ''{0}'' must be private, with an accessor if callers need it. Use a record for plain data. If it is right here, add an exception for checkstyle/com.puppycrawl.tools.checkstyle.checks.design.VisibilityModifierCheck in nitpicker.config.json."/>
+      <message key="variable.notPrivate" value="Variable ''{0}'' must be private, with an accessor if callers need it. Use a record for plain data."/>
     </module>
     <module name="SuppressionXpathSingleFilter">
       <property name="checks" value="VisibilityModifierCheck"/>

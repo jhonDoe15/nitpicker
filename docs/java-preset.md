@@ -818,8 +818,8 @@ A Checkstyle rule prints as its check name, for example `checkstyle/MagicNumber`
   under that module's main source roots are reported but do not fail the gate: with no base report,
   nothing tells which of them the change added, and each one says so. When only the head failed, the
   run fails with a tool error: the change broke the lint compile. The notice says to fix what the
-  lint compile reports or to add an exception for `javac/lint-not-run` (path `**`) when the project
-  cannot be linted this way.
+  lint compile reports, and ends with the exception route for `javac/lint-not-run` with the path
+  `**`, for a project that cannot be linted this way.
 - **Run time.** Each snapshot runs in a fresh worktree with a fresh report directory, so Gradle's
   up-to-date checks do not skip these tasks; what saves time is the differential lint. Measured on
   a project with 31 main files using Lombok and MapStruct (load about 40), the lint took 22.0 s for
@@ -1188,7 +1188,9 @@ errorprone and bestpractices PMD categories plus `AvoidCatchingGenericException`
 (`languages/java/messages/rule-messages.mjs`). It shortens Checkstyle rule names, then appends the
 fix to the tool's message, and for an enforceable finding of a rule that may be intended (or one
 the catalog does not know, from a project's own config) the exception route with the finding's own
-path:
+path. The guard tools (`javac`, `forbiddenapis`, `duplicates`, `coupling`, `dependencies`), `spring`
+and `pit` get the same route; no rule message, ruleset or guard writes its own, and
+`messages/exception-sentences.test.mjs` fails on one that does:
 
 ```
 Usage of System.out/err. Write through a logger, or take a PrintStream as a parameter so callers
@@ -1220,6 +1222,8 @@ cannot add a rule without fix text.
   classification, line-shift stability.
 - `languages/java/messages/rule-messages.test.mjs`: fast, always on. Short Checkstyle names, fix
   text, the exception route, and the shape of every catalog entry.
+- `languages/java/messages/exception-sentences.test.mjs`: fast, always on. No Java message source
+  writes its own exception route.
 - `languages/java/messages/rule-catalog.e2e.test.mjs`: gated like the other e2e tests. The catalogs
   name exactly the rules of the pinned tool versions.
 - `languages/java/adapters/java-e2e/java-preset.e2e.test.mjs`: gated behind `NITPICKER_JAVA_E2E=1` (`npm run test:java`, which also runs `java-spring.e2e.test.mjs`, `escape-hatches.e2e.test.mjs`, `languages/java/adapters/java-e2e/pit-targets.e2e.test.mjs`, `multi-project.e2e.test.mjs`, `languages/java/maven/maven-preset.e2e.test.mjs`, `maven-failsafe.e2e.test.mjs`, `guards.e2e.test.mjs` and `rule-catalog.e2e.test.mjs`, one file at a time because each stops the Gradle daemons when it ends). Needs Java 21, Gradle and network access to Maven Central; about 85 seconds

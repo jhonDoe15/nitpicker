@@ -100,7 +100,7 @@
     "mayBeIntended": true
   },
   "AvoidLiteralsInIfCondition": {
-    "fix": "Compare against a named private static final constant instead of the literal; 0 and -1 are fine.",
+    "fix": "Compare against a named private static final constant instead of the literal.",
     "mayBeIntended": true
   },
   "AvoidLosingExceptionInformation": {

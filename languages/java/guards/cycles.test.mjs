@@ -73,7 +73,7 @@ describe('cycleFindings', () => {
   const modules = ['app.a.Alpha', 'app.b.Beta', 'app.b.Gamma', 'app.c.Leaf'];
   const loop = [edge('app.a.Alpha', 'app.b.Beta'), edge('app.b.Beta', 'app.a.Alpha')];
 
-  it('reports each package of a cycle once, with the exception route', () => {
+  it('reports each package of a cycle once', () => {
     const result = findings(modules, [...loop, edge('app.b.Gamma', 'app.c.Leaf')]);
 
     expect(result).toEqual([
@@ -85,8 +85,7 @@ describe('cycleFindings', () => {
         classification: 'enforceable',
         message:
           'Package app.a is in a dependency cycle with app.b. ' +
-          'Move the shared types down into one of them, or invert one dependency behind an interface. ' +
-          'If it is right here, add an exception for coupling/package-cycle in nitpicker.config.json.',
+          'Move the shared types down into one of them, or invert one dependency behind an interface.',
       },
       {
         tool: 'coupling',
@@ -96,8 +95,7 @@ describe('cycleFindings', () => {
         classification: 'enforceable',
         message:
           'Package app.b is in a dependency cycle with app.a. ' +
-          'Move the shared types down into one of them, or invert one dependency behind an interface. ' +
-          'If it is right here, add an exception for coupling/package-cycle in nitpicker.config.json.',
+          'Move the shared types down into one of them, or invert one dependency behind an interface.',
       },
     ]);
     expect(() => parseAnalyzerReport({ findings: result }, 'java')).not.toThrow();
@@ -136,8 +134,7 @@ describe('cycleFindings', () => {
 
     expect(first.message).toBe(
       'Package app.p0 is in a dependency cycle with app.p1, app.p2, app.p3, app.p4, app.p5 and 2 more. ' +
-        'Move the shared types down into one of them, or invert one dependency behind an interface. ' +
-        'If it is right here, add an exception for coupling/package-cycle in nitpicker.config.json.',
+        'Move the shared types down into one of them, or invert one dependency behind an interface.',
     );
   });
 });

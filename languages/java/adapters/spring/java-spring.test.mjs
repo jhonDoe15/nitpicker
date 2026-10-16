@@ -32,7 +32,7 @@ describe('readSpringConfigFindings', () => {
     expect(read({})).toEqual([]);
   });
 
-  it('shapes findings with the printed id, the allowance sentence and a line location', () => {
+  it('shapes findings with the printed id and a line location', () => {
     const findings = read({
       [resource('application.properties')]: '\n\nspring.jpa.open-in-view=true\n',
     });
