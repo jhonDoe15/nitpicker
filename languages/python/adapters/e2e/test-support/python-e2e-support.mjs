@@ -48,14 +48,22 @@ export function write(root, files) {
   }
 }
 
-export function commitBranch(root, name, files, from = 'main') {
+export function commitBranchFrom({ root, name, files, from }) {
   git(root, 'checkout', '-q', '-b', name, from);
   write(root, files);
   git(root, 'add', '-A');
   git(root, 'commit', '-q', '-m', name);
 }
 
-export function gate(root, branch, extra = [], base = 'main') {
+export function commitBranch(root, name, files) {
+  commitBranchFrom({ root, name, files, from: 'main' });
+}
+
+export function gate(root, branch, extra = []) {
+  return gateAgainst({ root, branch, base: 'main', extra });
+}
+
+export function gateAgainst({ root, branch, base, extra = [] }) {
   git(root, 'checkout', '-q', branch);
   const reports = mkdtempSync(path.join(tmpdir(), 'nitpicker-python-e2e-out-'));
   const output = { text: '' };

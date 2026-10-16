@@ -34,55 +34,79 @@ function writeFiles(root, files) {
   }
 }
 
-export function createTypescriptProject({ packageRoot, prefix, files, firstBranch = 'main' }) {
-  const root = realpathSync(mkdtempSync(path.join(tmpdir(), `${prefix}-`)));
-  const output = realpathSync(mkdtempSync(path.join(tmpdir(), `${prefix}-out-`)));
-  symlinkSync(path.join(packageRoot, 'node_modules'), path.join(root, 'node_modules'));
+function git(root, ...args) {
+  return run('git', args, root);
+}
+
+function commitOnBranch({ root, name, files, from }) {
+  git(root, 'checkout', '-q', '-b', name, from);
+  writeFiles(root, files);
+  git(root, 'add', '-A');
+  git(root, 'commit', '-q', '-m', name);
+}
+
+function readReport(outputRoot, name) {
+  return JSON.parse(readFileSync(path.join(outputRoot, name), 'utf8'));
+}
+
+function enforceableFindings(outputRoot) {
+  return readReport(outputRoot, 'new-findings.json')
+    .filter(({ classification }) => classification === 'enforceable')
+    .map(({ tool, rule, path: file }) => `${tool} ${rule} ${file}`);
+}
+
+function runGate({ project, branch, options }) {
+  const { base, analyzers = ['coverage', 'crap'], extraArguments = [], environment = {} } = options;
+  git(project.root, 'checkout', '-q', branch);
+  const outputRoot = path.join(project.output, `${branch}-${base}-${extraArguments.length}`);
+  const analyzerArguments = analyzers.flatMap((name) => ['--analyzer', name]);
+  const result = spawnSync(
+    'node',
+    [
+      path.join(project.packageRoot, 'core/cli.mjs'),
+      ...['--base', base, ...analyzerArguments, ...extraArguments, '--output', outputRoot],
+    ],
+    { cwd: project.root, encoding: 'utf8', env: { ...process.env, ...environment } },
+  );
+  return {
+    exitCode: result.status,
+    text: result.stdout + result.stderr,
+    json(name) {
+      return readReport(outputRoot, name);
+    },
+    enforceable() {
+      return enforceableFindings(outputRoot);
+    },
+  };
+}
+
+function initialiseRepository({ root, firstBranch, files }) {
   writeFiles(root, {
     '.gitignore': 'node_modules\n',
     'package.json': '{"name":"p","type":"module","private":true}\n',
     'tsconfig.json': TSCONFIG,
     ...files,
   });
-  const git = (...args) => run('git', args, root);
-  git('init', '-q', '-b', firstBranch);
-  git('config', 'user.email', 'test@example.com');
-  git('config', 'user.name', 'Nitpicker Test');
-  git('add', '-A');
-  git('commit', '-q', '-m', firstBranch);
+  git(root, 'init', '-q', '-b', firstBranch);
+  git(root, 'config', 'user.email', 'test@example.com');
+  git(root, 'config', 'user.name', 'Nitpicker Test');
+  git(root, 'add', '-A');
+  git(root, 'commit', '-q', '-m', firstBranch);
+}
+
+export function createTypescriptProject({ packageRoot, prefix, files, firstBranch = 'main' }) {
+  const root = realpathSync(mkdtempSync(path.join(tmpdir(), `${prefix}-`)));
+  const output = realpathSync(mkdtempSync(path.join(tmpdir(), `${prefix}-out-`)));
+  symlinkSync(path.join(packageRoot, 'node_modules'), path.join(root, 'node_modules'));
+  initialiseRepository({ root, firstBranch, files });
+  const project = { root, output, packageRoot };
   return {
     root,
     commitBranch(name, branchFiles, from) {
-      git('checkout', '-q', '-b', name, from);
-      writeFiles(root, branchFiles);
-      git('add', '-A');
-      git('commit', '-q', '-m', name);
+      commitOnBranch({ root, name, files: branchFiles, from });
     },
-    gate(
-      branch,
-      { base, analyzers = ['coverage', 'crap'], extraArguments = [], environment = {} },
-    ) {
-      git('checkout', '-q', branch);
-      const outputRoot = path.join(output, `${branch}-${base}-${extraArguments.length}`);
-      const result = spawnSync(
-        'node',
-        [
-          path.join(packageRoot, 'core/cli.mjs'),
-          '--base',
-          base,
-          ...analyzers.flatMap((name) => ['--analyzer', name]),
-          ...extraArguments,
-          '--output',
-          outputRoot,
-        ],
-        { cwd: root, encoding: 'utf8', env: { ...process.env, ...environment } },
-      );
-      const json = (name) => JSON.parse(readFileSync(path.join(outputRoot, name), 'utf8'));
-      const enforceable = () =>
-        json('new-findings.json')
-          .filter(({ classification }) => classification === 'enforceable')
-          .map(({ tool, rule, path: file }) => `${tool} ${rule} ${file}`);
-      return { exitCode: result.status, text: result.stdout + result.stderr, json, enforceable };
+    gate(branch, options) {
+      return runGate({ project, branch, options });
     },
     remove() {
       rmSync(root, { recursive: true, force: true });
