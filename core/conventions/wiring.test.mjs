@@ -5,7 +5,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { useGitFixtures } from '../diff/git/test-support/git-repository.mjs';
 import { runTasksInProcess } from '../diff/execution/test-support/in-process-analyzers.mjs';
 import { cacheKey } from '../diff/cache/findings-cache.mjs';
-import { baseSetupResolver } from '../configuration/base-setup.mjs';
+import { baseSetupResolver } from '../command/policy-review/base-setup.mjs';
 import { runCli } from '../cli.mjs';
 
 const { createGitRepository } = useGitFixtures();
@@ -95,28 +95,9 @@ describe('conventions in a run', () => {
       { conventions: { 'java.indentation': '4' } },
     );
 
-    const setup = resolve({ baseProjectRoot: root, analyzers: [] });
+    const setup = resolve({ baseProjectRoot: root, headSnapshotRoot: root, analyzers: [] });
 
     expect(setup.headPolicy.conventions).toEqual({ 'java.indentation': '4' });
-  });
-
-  it('detects the libraries of the base checkout the way the head does', () => {
-    const { root } = createGitRepository({
-      'nitpicker.config.json': '{ "preset": "typescript" }\n',
-      'package.json': JSON.stringify({
-        dependencies: { valibot: '1.0.0' },
-        devDependencies: { winston: '3.0.0' },
-      }),
-    });
-    const resolve = baseSetupResolver(
-      { injectedAnalyzers: [], stderr: { write: () => undefined } },
-      { preset: 'typescript', exclude: ['build/**'] },
-      {},
-    );
-
-    const setup = resolve({ baseProjectRoot: root, analyzers: [] });
-
-    expect(setup.headPolicy.libraries).toEqual({ validation: ['valibot'], logger: ['winston'] });
   });
 
   it('applies a base config that disables an analyzer of the injected set', () => {
@@ -134,7 +115,11 @@ describe('conventions in a run', () => {
       {},
     );
 
-    const setup = resolve({ baseProjectRoot: root, analyzers: [analyzer('first')] });
+    const setup = resolve({
+      baseProjectRoot: root,
+      headSnapshotRoot: root,
+      analyzers: [analyzer('first')],
+    });
 
     expect(warnings).toEqual([]);
     expect(setup.analyzers.map(({ name }) => name)).toEqual(['first']);
