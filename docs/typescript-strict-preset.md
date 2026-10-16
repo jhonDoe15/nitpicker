@@ -159,13 +159,15 @@ Math` and `Math['random']()` are caught; `process`, `fetch`, `setTimeout`, `setI
   is slop. A `catch` that falls through, or returns a non-object such as `undefined` or `[]`, is
   reported. A deliberately dropped error needs an exception in the config file.
 - `nitpicker/no-unvalidated-schema-field` (all production code): no `z.unknown()` or `z.any()`
-  (also with `.optional()`, `.nullable()`, `.default()` and similar wrappers) as a field of
-  `z.object`, `z.strictObject` or `z.looseObject`. A schema that only checks the shape hands the
+  (also with `.optional()`, `.nullable()`, `.default()` and similar wrappers, `z.optional(...)`,
+  `z.nullable(...)`, `z.nullish(...)` and `z.readonly(...)`) as a field of `z.object`,
+  `z.strictObject` or `z.looseObject`, or of a shape passed to `.extend`, `.safeExtend` or
+  `.augment`. A schema that only checks the shape hands the
   field on unchecked, and `domain/` then re-validates it by hand. Validate the field in the schema
   (`z.string().trim().min(1)`, `z.email()`). `z.array(z.unknown())` or `z.unknown()` as a whole
   schema, and `z.unknown().refine(...)`/`.pipe(...)`, are not reported. The check looks through
-  `z.record`, `z.array`, `z.set`, `z.map` and `z.tuple` elements (`z.record(z.string(), z.unknown())`
-  as a field is reported) and through a same-file `const` (`const anything = z.any()`). `z.custom<T>()`
+  `z.record`, `z.array`, `z.set`, `z.map` and `z.tuple` elements and `.array()`
+  (`z.record(z.string(), z.unknown())` and `z.unknown().array()` as a field are reported) and through a same-file `const` (`const anything = z.any()`). `z.custom<T>()`
   without a check function is a cast, and `z.looseObject()`, `.loose()`, `.passthrough()` and
   `.catchall(z.unknown())` let unknown keys through: use `z.object({...})` or
   `z.strictObject({...})`.

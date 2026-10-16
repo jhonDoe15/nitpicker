@@ -157,6 +157,8 @@ tester.run('no-unknown-in-domain through aliases', noUnknownInDomain, {
 
 tester.run('no-unvalidated-schema-field loose forms', noUnvalidatedSchemaField, {
   valid: [
+    'const Event = Base.extend({ payload: z.string(), tags: z.string().array() });',
+    'const options = defaults.extend({ payload: unknownThing() });',
     'const s = z.object({ a: z.string(), b: z.array(z.string()) });',
     'const s = z.object({ a: z.record(z.string(), z.number()) });',
     'const s = z.object({ a: z.custom<A>((v) => isA(v)) });',
@@ -166,6 +168,22 @@ tester.run('no-unvalidated-schema-field loose forms', noUnvalidatedSchemaField, 
     'const s = other.object({ a: other.string() }).passthrough();',
   ],
   invalid: [
+    {
+      code: 'const Base = z.object({ id: z.string() }); const Event = Base.extend({ payload: z.unknown() });',
+      errors: [{ messageId: 'unvalidatedField' }],
+    },
+    {
+      code: 'const Event = Base.safeExtend({ payload: z.any() });',
+      errors: [{ messageId: 'unvalidatedField' }],
+    },
+    {
+      code: 'const Batch = z.object({ items: z.unknown().array() });',
+      errors: [{ messageId: 'unvalidatedField' }],
+    },
+    {
+      code: 'const Opt = z.object({ extra: z.optional(z.any()), more: z.nullable(z.unknown()) });',
+      errors: [{ messageId: 'unvalidatedField' }, { messageId: 'unvalidatedField' }],
+    },
     {
       code: 'const s = z.object({ a: z.record(z.string(), z.unknown()) });',
       errors: [{ messageId: 'unvalidatedField', data: { factory: 'z.unknown' } }],
