@@ -64,7 +64,7 @@ function anchoredImport(directory, target) {
   return [path.resolve(directory, file).split(path.sep).join('/'), ...entry].join('!');
 }
 
-export function withAnchoredImports(text, directory) {
+function withAnchoredImports(text, directory) {
   return text.replaceAll(
     IMPORT,
     (_, keyword, target) => `${keyword}${anchoredImport(directory, target)}`,
