@@ -47,6 +47,12 @@ export function freshReports(directory, since) {
     : [];
 }
 
+export function testReportDirectories(module) {
+  const surefire = ['surefire', module.surefireReports];
+  const shared = path.resolve(module.failsafeReports) === path.resolve(module.surefireReports);
+  return shared ? [surefire] : [surefire, ['failsafe', module.failsafeReports]];
+}
+
 export function suiteNameOf(report) {
   return path.basename(report).replace(/^TEST-|\.xml$/gu, '');
 }
@@ -72,7 +78,9 @@ function failedCases(file) {
 }
 
 export function collectTestResults({ module, reportDir, since, isArchunit }) {
-  const reports = freshReports(module.surefireReports, since);
+  const reports = testReportDirectories(module).flatMap(([, directory]) =>
+    freshReports(directory, since),
+  );
   const archunitDir = path.join(reportDir, 'archunit');
   const failures = [];
   for (const report of reports) {
@@ -105,19 +113,27 @@ function requireArchunitRun(module, reports, isArchunit) {
   const archunitClasses = topLevelClasses(module.testOutputDirectory).filter(isArchunit);
   if (archunitClasses.length > 0 && !reports.some((report) => isArchunit(suiteNameOf(report)))) {
     throw new Error(
-      `maven-surefire-plugin ran none of the ArchUnit classes in ${module.basedir} (${archunitClasses.join(', ')}). Let surefire run them (its <includes>, no skipTests) so nitpicker can read their results`,
+      `Neither maven-surefire-plugin nor maven-failsafe-plugin ran any of the ArchUnit classes in ${module.basedir} ` +
+        `(${archunitClasses.join(', ')}). Let surefire run them (its <includes>, no skipTests) ` +
+        'so nitpicker can read their results',
     );
   }
 }
 
-export function runJacocoReport({ module, reportDir, tools, execFile, since, testsRan }) {
+export function freshExecFiles(execFiles, since) {
+  return [...new Set(execFiles)].filter(
+    (file) => existsSync(file) && statSync(file).mtimeMs >= since,
+  );
+}
+
+export function runJacocoReport({ module, reportDir, tools, execFiles, since, testsRan }) {
   const report = path.join(reportDir, 'jacoco.xml');
   if (classFiles(module.outputDirectory).length === 0) {
     writeFileSync(report, `<?xml version="1.0"?><report name="${module.coordinates}"></report>`);
     return;
   }
-  const fresh = existsSync(execFile) && statSync(execFile).mtimeMs >= since;
-  if (!fresh && testsRan) {
+  const fresh = freshExecFiles(execFiles, since);
+  if (fresh.length === 0 && testsRan) {
     throw new Error(
       `JaCoCo recorded no coverage in ${module.basedir}: the tests ran without its agent. If maven-surefire-plugin sets <argLine>, start it with @{argLine} so the agent stays attached`,
     );
@@ -128,7 +144,7 @@ export function runJacocoReport({ module, reportDir, tools, execFile, since, tes
     mainClass: 'org.jacoco.cli.internal.Main',
     args: [
       'report',
-      ...(fresh ? [execFile] : []),
+      ...fresh,
       '--classfiles',
       module.outputDirectory,
       ...module.sourceRoots

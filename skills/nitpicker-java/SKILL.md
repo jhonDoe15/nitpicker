@@ -35,7 +35,8 @@ With Spring on the classpath, also follow [spring.md](spring.md).
 
 ## Write it this way
 
-- Style is google-java-format: 2-space indent, 100 columns (Checkstyle's line length).
+- Style is google-java-format, 100 columns (Checkstyle's line length). Indent like the files around you:
+  nitpicker follows the project's majority, 2 spaces (Google style) or 4 (`--aosp`).
 - Text: `"a".equals(x)` or `a.equals(b)`, never `==` on strings or other objects. Pass a charset and
   a locale: `s.getBytes(StandardCharsets.UTF_8)`, `s.toUpperCase(Locale.ROOT)`.
 - Output: no `System.out`/`System.err` and no `printStackTrace()`. Log with
@@ -125,8 +126,8 @@ With Spring on the classpath, also follow [spring.md](spring.md).
   `@SuppressWarnings("checkstyle:...")` and `CHECKSTYLE.OFF`/`CHECKSTYLE.SUPPRESS` comments do
   nothing.
 - Code that is right despite a rule gets a reviewed `exceptions` entry in `nitpicker.config.json`
-  that names the finding as printed, for example `pmd/UnusedPrivateField`, with its paths and a
-  reason. Never add one, nor a config `exclude`, `disable`, `thresholds` or legacy entry, nor a
+  that names the finding as printed, for example `pmd/UnusedPrivateField` or
+  `checkstyle/AbbreviationAsWordInName`, with its paths and a reason. Never add one, nor a config `exclude`, `disable`, `thresholds` or legacy entry, nor a
   weaker test, to get past the gate yourself: stop and ask.
 - A violated ArchUnit rule is a finding (`archunit/<rule>`) on the offending class. Run the
   `*ArchTest` class with the build's test task to read the full violation, and fix the code.

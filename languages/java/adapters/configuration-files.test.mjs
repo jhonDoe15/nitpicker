@@ -36,6 +36,23 @@ describe('Java analyzer configuration files', () => {
     expect(hashedAmong(expected).sort()).toEqual(expected.sort());
   });
 
+  it('hash every rule, task, guard and lint file, so changing one invalidates cached findings', () => {
+    const unhashed = [
+      'languages/java/gradle/rules',
+      'languages/java/gradle/tasks',
+      'languages/java/guards',
+      'languages/java/builds/lint',
+      'languages/java/builds/classes',
+      'languages/java/builds/rulesets',
+      'languages/java/builds/tools',
+    ]
+      .flatMap((directory) => resourceFiles(directory))
+      .filter((file) => !file.endsWith('.test.mjs') && !file.includes('test-support'))
+      .filter((file) => !configurationFiles().includes(file));
+
+    expect(unhashed).toEqual([]);
+  });
+
   it('hash every module that a hashed module imports', () => {
     const hashed = configurationFiles();
     const modules = hashed.filter((file) => file.endsWith('.mjs'));

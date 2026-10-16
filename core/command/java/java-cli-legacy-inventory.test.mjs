@@ -2,12 +2,8 @@ import { describe, expect, it } from 'vitest';
 import { runCli as nitpickerCli } from '../../cli.mjs';
 import { exactText } from '../../diff/reporting/test-support/output-expectations.mjs';
 import { commit } from '../../diff/git/test-support/git-repository.mjs';
-import { useGradleFixtures } from './test-support/java-cli-harness.mjs';
+import { unusedFieldMessage, useGradleFixtures } from './test-support/java-cli-harness.mjs';
 import { writeFiles } from '../../diff/git/test-support/fixture-files.mjs';
-
-const UNUSED_FIELD_ROUTE =
-  'If it is right here, add an exception for pmd/UnusedPrivateField in nitpicker.config.json.';
-const OTHER = `Avoid unused field: other. ${UNUSED_FIELD_ROUTE}`;
 
 const { gradleRepository, run } = useGradleFixtures(nitpickerCli);
 
@@ -40,7 +36,7 @@ describe('nitpicker with "preset": "java" and a legacy inventory', () => {
 Quality gate summary
 ✖ 1 new enforceable violation
   pmd/UnusedPrivateField src/main/java/demo/A.java:5
-    ${OTHER}
+    ${unusedFieldMessage('other')}
 Full diagnostics: /tmp/nitpicker-java-out-${/[A-Za-z0-9]{6}/}/reports/report.txt
 `),
     });
@@ -50,7 +46,7 @@ Full diagnostics: /tmp/nitpicker-java-out-${/[A-Za-z0-9]{6}/}/reports/report.txt
         rule: 'UnusedPrivateField',
         path: 'src/main/java/demo/A.java',
         identity: 'fp:nitpicker/subject=Avoid unused field: other',
-        message: OTHER,
+        message: unusedFieldMessage('other'),
         classification: 'enforceable',
         location: { line: 5 },
       },

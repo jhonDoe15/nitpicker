@@ -68,21 +68,23 @@ gradle -I languages/java/gradle/nitpicker.init.gradle nitpickerJava   (per snaps
 ## Maven builds
 
 A project is built with Maven when its root has a `pom.xml` and no Gradle build file
-(`settings.gradle(.kts)`, `build.gradle(.kts)`); with both, a lone `mvnw` (no `gradlew`) picks Maven,
-anything else Gradle. Nothing is configured and the choice is never a finding: both builds are valid,
-so nitpicker follows the one the project uses (`detectJavaBuild` in
+(`settings.gradle(.kts)`, `build.gradle(.kts)`); with both, a lone `mvnw` (no `gradlew`) picks
+Maven, anything else Gradle. Nothing is configured and the choice is never a finding: both builds
+are valid, so nitpicker follows the one the project uses (`detectJavaBuild` in
 `languages/java/builds/java-build.mjs`). Maven 3.6.3 or newer is needed.
 
 The Maven side produces the same reports as the init script, one set per module in
 `<module>/target/nitpicker/`, so the same ingesters read them and the findings are identical: the
-end-to-end suite builds one source tree with Gradle and with Maven and compares the findings
-field by field. Per snapshot:
+end-to-end suite builds one source tree with Gradle and with Maven and compares the findings field
+by field. Per snapshot:
 
 1. `mvn help:effective-pom` (help plugin pinned): the modules, their source, test, resource and
    output directories (plus `build-helper-maven-plugin` `add-source`/`add-test-source` roots), the
-   surefire reports directory, a JaCoCo `destFile` the project configures, and the
-   `nitpicker.archunit.includes` property (read from the POM's `<properties>` only, not from `-D`
-   or `settings.xml`). Module directories come from following the effective `<modules>` (active
+   surefire and failsafe reports directories (an execution's `<reportsDirectory>` before the
+   plugin's), whether Failsafe runs (below), the `destFile` of every JaCoCo `prepare-agent` and
+   `prepare-agent-integration` execution the project configures, and the
+   `nitpicker.archunit.includes` property (read from the POM's `<properties>` only, not from `-D` or
+   `settings.xml`). Module directories come from following the effective `<modules>` (active
    profiles included) from the root `pom.xml`. Each module's `pom.xml` is matched to its effective
    project by `groupId:artifactId`, or, when the raw coordinates use a property, by the effective
    build directory inside the module directory. A declared module that matches nothing, a module
@@ -90,48 +92,77 @@ field by field. Per snapshot:
 2. One build: `mvn jacoco:prepare-agent test dependency:list` (JaCoCo at the init script's version,
    dependency plugin pinned), with `-Dmaven.test.failure.ignore=true` and the project's own
    Checkstyle, PMD, CPD, SpotBugs and Spotless checks skipped. `dependency:list` writes every
-   module's resolved classpath (reactor modules as their `target/classes`). Our coverage file
-   (`target/nitpicker-jacoco.exec`) and a project `destFile` inside `target` are deleted before the
-   build, so coverage never accumulates across runs.
+   module's resolved classpath (reactor modules as their `target/classes`, or as their packaged jar
+   in a `verify` build). Our coverage file (`target/nitpicker-jacoco.exec`) and every project
+   `destFile` inside `target` are deleted before the build, so coverage never accumulates across
+   runs. Maven gets 15 minutes; a build that takes longer is stopped and reported as a
+   `java/maven-failure` that names the limit and warns that its post-integration-test steps may not
+   have run.
 3. The tools resolved once from Maven Central through Maven itself (a generated tools project in
    `$XDG_CACHE_HOME/nitpicker` or `~/.cache/nitpicker`, private to the user, reused while the jars
    exist), so the project's `settings.xml` mirrors apply.
-4. Per module, outside Maven: PMD, SpotBugs, google-java-format, Checkstyle (the bundled Google checks
-   without inline suppression filters, as in the init script), `StructureMetrics.java`, jdeps, the
-   JaCoCo CLI report and PIT, with the same arguments and classpaths as the init script tasks (PMD's
-   auxiliary classpath is the main and test compile classpaths plus both class directories). The
-   versions are read from the init script's `pinned` map, so both builds always run the same tools.
+4. Per module, outside Maven: PMD, SpotBugs, google-java-format, Checkstyle (the bundled Google
+   checks without inline suppression filters, as in the init script), `StructureMetrics.java`,
+   jdeps, the JaCoCo CLI report and PIT, with the same arguments and classpaths as the init script
+   tasks (PMD's auxiliary classpath is the main and test compile classpaths plus both class
+   directories). The versions are read from the init script's `pinned` map, so both builds always
+   run the same tools.
 
+- **Integration tests.** Failsafe runs in a module whose effective POM (`<build><plugins>`, so
+  neither `<pluginManagement>` alone nor an inactive profile) binds maven-failsafe-plugin's
+  `integration-test` goal in an execution, unless the project keeps it off: a `skipITs` or
+  `skipTests` property set to `true`, `<skip>`, `<skipITs>` or `<skipTests>` set to `true` in that
+  execution's or the plugin's configuration (the execution's wins), or the execution's phase `none`.
+  When any module runs Failsafe, the build runs `verify` instead of `test`, so the project's
+  `package`, `pre-integration-test` and `post-integration-test` steps run as they normally do and
+  containers it starts are stopped again. `-Dmaven.test.failure.ignore=true` also keeps
+  `failsafe:verify` from failing the build. The `verify` build adds `-Djacoco.haltOnFailure=false`,
+  so a `jacoco:check` the project binds to `verify` only warns (`haltOnFailure` belongs to `check`
+  alone, so our `prepare-agent` is unaffected), and skips the plugins that sign, publish, need the
+  network or check a release: `-Dgpg.skip=true`, `-Dmaven.javadoc.skip=true`,
+  `-Dmaven.source.skip=true`, `-Dmaven.deploy.skip=true`, `-Djib.skip=true` (all Jib goals,
+  `dockerBuild` too), `-Ddependency-check.skip=true`, `-Drat.skip=true`, `-Dlicense.skip=true`
+  (com.mycila's license plugin), `-Dlicense.skipDownloadLicenses=true` and
+  `-Dlicense.skipAggregateDownloadLicenses=true` (the Codehaus license plugin, which has no single
+  skip property), and `-Djapicmp.skip=true`. fabric8's `docker.skip` is not set: it also skips
+  `docker:start` and `docker:stop`, which integration tests rely on. A project without Failsafe, or
+  with Failsafe kept off in every module, stays on `test`.
 - **Tests.** Failures of the ArchUnit rule classes (`*ArchTest`, `*ArchitectureTest`, or the
-  `nitpicker.archunit.includes` property in the POM) become findings; any other failing test is a
-  `java/maven-failure` tool error that names up to ten failing tests. Surefire reports older than
-  the build are ignored. Gradle runs the ArchUnit classes in their own task, but Maven only has
-  surefire's results: when a module has ArchUnit classes and surefire ran none of them (its
-  `<includes>` miss them, as they would `*Rules`, or the module skips tests), that is a tool error
-  rather than a silent pass. ArchUnit reads bytecode without running it, so running these classes in
-  the covered test run does not change coverage.
+  `nitpicker.archunit.includes` property in the POM) become findings; any other failing test, from
+  Surefire's or Failsafe's reports, is a `java/maven-failure` tool error that names up to ten
+  failing tests. Reports older than the build are ignored. Gradle runs the ArchUnit classes in their
+  own task, but Maven only has the Surefire and Failsafe results: when a module has ArchUnit classes
+  and neither plugin ran any of them (Surefire's `<includes>` miss them, as they would `*Rules`, or
+  the module skips tests), that is a tool error rather than a silent pass. ArchUnit reads bytecode
+  without running it, so running these classes in the covered test run does not change coverage.
 - **Slow-test reports.** Per module, the fresh `TEST-*.xml` files of surefire's reports directory
   (`<reportsDirectory>` of maven-surefire-plugin, default `<build directory>/surefire-reports`) are
   copied to `target/nitpicker/test-results/surefire/` and those of maven-failsafe-plugin's (its
   `<reportsDirectory>`, default `<build directory>/failsafe-reports`) to `test-results/failsafe/`,
   without the ArchUnit rule classes (as Gradle leaves out its ArchUnit task). When both plugins
-  report to the same directory, it is copied once, as `surefire`, so unit tests keep the unit budget.
-  Only files written since the build started are copied, so results left by an earlier run never
-  count. The build runs the `test` phase only, so Failsafe (`integration-test`) does not run in it
-  and `failsafe` stays empty in practice; the copy is there for a project that binds Failsafe to an
-  earlier phase.
-- **JaCoCo.** Our `prepare-agent` always runs; a project's own `prepare-agent` replaces it (the agent
-  replaces an earlier agent in `argLine`) and writes to its configured `destFile`, which is read
-  instead. A module whose tests ran but left no fresh coverage file is a tool error that points at a
-  surefire `<argLine>` without `@{argLine}`. A module whose test classes ran no test (only helpers,
-  or `*IT` classes surefire skips) gets zero coverage, as on Gradle, and a module without main
-  classes gets an empty report.
+  report to the same directory, it is copied once, as `surefire`, so unit tests keep the unit
+  budget. Only files written since the build started are copied, so results left by an earlier run
+  never count. `failsafe` counts as an integration task, so the tests Failsafe runs in a `verify`
+  build get the integration budget.
+- **JaCoCo.** Our `prepare-agent` always runs; a project's own `prepare-agent` or
+  `prepare-agent-integration` replaces it in `argLine` (the agent replaces an earlier agent there).
+  Without a configured `destFile` the project's agent still writes our file, because our
+  `-Djacoco.destFile` sets the default of both goals; a configured `destFile` is read as well. Every
+  fresh file among ours and the configured ones goes to one JaCoCo report. Failsafe reads the same
+  `argLine`, so integration tests append their coverage to the unit tests' file. A module whose
+  tests ran but left no fresh coverage file is a tool error that points at a surefire `<argLine>`
+  without `@{argLine}`. A module whose test classes ran no test (only helpers, or `*IT` classes
+  without a Failsafe that runs them) gets zero coverage, as on Gradle, and a module without main
+  classes gets an empty report. Failsafe tests the packaged jar; when that jar is shaded with
+  relocated packages, its classes no longer match `target/classes`, so the coverage integration
+  tests record for relocated classes is lost.
 - **Multi-module.** Each module (packaging other than `pom`) is analyzed on its own and its findings
   are prefixed with the module path (`core/src/main/java/...`). Coupling is computed once over all
   modules, so a dependency from one module to another counts, and file limits are evaluated once
   over every module's roots, so `exceptions` and `exclude` globs are relative to the project root
-  (`languages/java/builds/java-modules.mjs`; both builds share `builds/project-wide.mjs`). Duplicate detection runs per module, so
-  a clone between two modules is not found, as a clone between two source roots is not.
+  (`languages/java/builds/java-modules.mjs`; both builds share `builds/project-wide.mjs`). Duplicate
+  detection runs per module, so a clone between two modules is not found, as a clone between two
+  source roots is not.
 - **Module descriptors.** jdeps reads a class directory with a `module-info.class` as a module and
   must then resolve every module its descriptor `requires`; it stops on a plain jar ("Unable to
   derive module descriptor"), a missing module or a split package. Both builds run jdeps on such a
@@ -188,12 +219,13 @@ field by field. Per snapshot:
   that names these three ways. The JDK tools (`java`, `jar`, `jdeps`) come from `JAVA_HOME` when
   set, else the PATH.
 - **Not covered.** The Kotlin preset needs Gradle and says so; use the java preset for a Maven
-  project's Java sources. A surefire configuration that sets
-  `<testFailureIgnore>false</testFailureIgnore>` explicitly overrides the command line, so a
-  violated ArchUnit rule stops the build as a tool error. Maven 3 cannot resolve a `test-jar`
-  dependency on another module in the `test` phase; such reactors fail as they would with
-  `mvn test`. Gradle multi-project builds still read only the root project's reports (see
-  [Slice 1](#slice-1-what-is-deliberately-not-included)).
+  project's Java sources. A surefire or Failsafe configuration that sets
+  `<testFailureIgnore>false</testFailureIgnore>`, or a `jacoco:check` that sets
+  `<haltOnFailure>true</haltOnFailure>`, explicitly overrides the command line, so a violated
+  ArchUnit rule or coverage rule stops the build as a tool error. Maven 3 cannot resolve a
+  `test-jar` dependency on another module in the `test` phase; such reactors fail as they would with
+  `mvn test` (a `verify` build packages them first). Gradle multi-project builds still read only the
+  root project's reports (see [Slice 1](#slice-1-what-is-deliberately-not-included)).
 
 ## Slices
 
@@ -423,7 +455,10 @@ default, and their messages name it:
   code that was never written for it, but the gate is differential, so existing violations stay
   baselined and only new ones fail.
 - **Ingestion.** `ingestCheckstyle` (X6) unchanged, `tool` `checkstyle`, absolute file paths made
-  project-relative. Severities `error` and `warning` are enforceable, `info` is descriptive.
+  project-relative. Severities `error` and `warning` are enforceable, `info` is descriptive. The
+  rule is the check's short name (`checkstyle/Indentation`, not the class
+  `com.puppycrawl.tools.checkstyle.checks.indentation.IndentationCheck`), or the `id` the config
+  gives the module (`checkstyle/RightCurlySame`); see [Rule messages](#rule-messages).
 
 | Tool                      | Report         | Ingester           | Classification                                         | Identity                                                                                                                                                                                                                   |
 | ------------------------- | -------------- | ------------------ | ------------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -554,7 +589,8 @@ resolved plus a new finding, as in the TypeScript check.
   `test-results/<task>/` in each module's report directory. No extra test run. A rerun test keeps
   its slowest time. Maven builds copy Surefire's `TEST-*.xml` to `test-results/surefire/` and
   Failsafe's to `test-results/failsafe/` (see [Maven builds](#maven-builds)); `surefire` counts as
-  the `test` task, `failsafe` as an integration task.
+  the `test` task, `failsafe` as an integration task. Failsafe runs when the project binds its
+  `integration-test` goal and does not keep it off, because nitpicker then builds to `verify`.
 - **Edited or added.** Each test is keyed by class and testcase name (Gradle writes the display name,
   so a parameterized case is keyed by its `[n] ...` name; Surefire writes the method name). The test
   method is found in the source by that name (also `name()[n]` and JUnit 4's `name[n]`) or its
@@ -573,7 +609,7 @@ resolved plus a new finding, as in the TypeScript check.
   project root; a Gradle build reads from the project root and passes none.
 - **Tests.** `adapters/test-times/slow-tests.test.mjs` (sample Gradle, Surefire and Failsafe XML,
   module-path baseline), `builds/java-modules.test.mjs`, `maven/results/maven-test-results.test.mjs`
-  and the multi-module Maven e2e fixture.
+  and the multi-module and `failsafe` Maven e2e fixtures.
 
 ## Structure limits (SH5)
 
@@ -668,24 +704,24 @@ nothing. The rules read base and head the same way, so only a pattern a change a
 | `Optional.get()`; `Optional` as field, parameter or record component; `Optional<List<..>>`                                                       | `pmd/OptionalGet`, `pmd/OptionalAsFieldOrParameter`, `pmd/OptionalOfCollection`                                                                                        | `orElseThrow()`, `orElse`, `map`, `ifPresent`; return an empty collection                                                    |
 | Raw types, unchecked casts, deprecated and removed APIs, redundant casts                                                                         | `javac/rawtypes`, `javac/unchecked`, `javac/deprecation`, `javac/removal`, `javac/cast`                                                                                | Type arguments, typed APIs, the replacement the Javadoc names                                                                |
 | `instanceof` followed by a cast                                                                                                                  | `pmd/InstanceofThenCast`                                                                                                                                               | Pattern matching (`x instanceof Circle c`) or a `switch` over a sealed type                                                  |
-| Non-private fields, mutable static state, `@SneakyThrows`                                                                                        | `checkstyle/...VisibilityModifierCheck`, `pmd/NonFinalStaticField`, `pmd/MutableStaticCollection`, `pmd/SneakyThrows`                                                  | Private fields, a `record`, immutable `List.of` and `Map.of`, a declared exception                                           |
+| Non-private fields, mutable static state, `@SneakyThrows`                                                                                        | `checkstyle/VisibilityModifier`, `pmd/NonFinalStaticField`, `pmd/MutableStaticCollection`, `pmd/SneakyThrows`                                                          | Private fields, a `record`, immutable `List.of` and `Map.of`, a declared exception                                           |
 | Legacy date and time, `now()` without a `Clock`, `Thread.sleep`, `Thread.start()`, `Runtime.exec(String)`, `ObjectInputStream`                   | `forbiddenapis/legacy-date-time`, `clock-now`, `thread-sleep`, `new-thread`, `runtime-exec`, `java-deserialization`                                                    | `java.time`, an injected `Clock`, an executor, `ProcessBuilder` with a list, JSON                                            |
 | Swallowed `InterruptedException`; side effects in `forEach` and `peek`; `collect(Collectors.toList())`; an unclosed `Files.lines/list/walk/find` | `pmd/SwallowedInterruptedException`, `pmd/ForEachSideEffect`, `pmd/CollectorsToList`, `pmd/StreamResourceNotClosed`                                                    | `Thread.currentThread().interrupt()`, `map` and `collect`, `Stream.toList()`, try-with-resources                             |
 | `throws Exception`, raw `RuntimeException`                                                                                                       | `pmd/SignatureDeclareThrowsException`, `pmd/AvoidThrowingRawExceptionTypes`                                                                                            | The checked exceptions the method throws; `IllegalArgumentException`, `IllegalStateException`, a project exception           |
 | SQL built with `+` or `String.format` in JDBC calls; MD5 and SHA-1; nested-quantifier regexes; a path joined from a parameter                    | `pmd/SqlConcatenation`, `pmd/WeakHash`, `pmd/NestedQuantifierRegex`, `pmd/PathFromParameter`                                                                           | `?` parameters, SHA-256, a regex without `(a+)+`, `normalize()` and `startsWith(base)`                                       |
-| Constant names; magic numbers                                                                                                                    | `checkstyle/...ConstantNameCheck`, `checkstyle/...MagicNumberCheck`                                                                                                    | `UPPER_SNAKE_CASE` (a logger may be `log` or `logger`); a named `private static final`                                       |
+| Constant names; magic numbers                                                                                                                    | `checkstyle/ConstantName`, `checkstyle/MagicNumber`                                                                                                                    | `UPPER_SNAKE_CASE` (a logger may be `log` or `logger`); a named `private static final`                                       |
 | Unused imports                                                                                                                                   | `pmd/UnnecessaryImport`                                                                                                                                                | Remove the import                                                                                                            |
 | Duplicates with renamed names, and in test sources                                                                                               | `duplicates/duplicate-clone`                                                                                                                                           | One shared method; a helper or `@ParameterizedTest` in tests                                                                 |
 | Declared but unused dependencies                                                                                                                 | `dependencies/unused-declared-dependency`                                                                                                                              | Remove it, or declare it `testImplementation`, `runtimeOnly` or `compileOnly` (Maven: `test`, `runtime` or `provided` scope) |
 | Test honesty                                                                                                                                     | `pmd/TestSleep`, `DisabledTest`, `AssertionInControlFlow`, `TryCatchInTest`, `AssertTrueOnEquality`, `TautologicalAssertion`, `MockedValueType`, `TestOrderDependence` | See Tests below                                                                                                              |
 
-A Checkstyle rule prints as its full check class, for example
-`checkstyle/com.puppycrawl.tools.checkstyle.checks.coding.MagicNumberCheck`; the message names it.
+A Checkstyle rule prints as its check name, for example `checkstyle/MagicNumber`; see
+[Rule messages](#rule-messages).
 
 - **PMD categories.** `performance`, `multithreading` and `security` run next to `errorprone`
-  and `bestpractices`, on main and test sources. Messages that do not name the allowed form get
-  it appended (for example `StringToString`: "Remove the toString() call."), and every PMD message
-  gets the exception route, in one place: `languages/java/guards/advice/pmd-advice.mjs`. Six rules
+  and `bestpractices`, on main and test sources. Their fixes are in the PMD rule catalog
+  (`languages/java/messages/pmd.json`, for example `StringToString`: "Remove the toString()
+  call."), appended with the exception route like every catalog rule. Six rules
   are left out because they flag correct code by design, with no general recommendation behind
   them: `AvoidInstantiatingObjectsInLoops` (building result objects in a loop is the normal way
   to fill a list), `UseConcurrentHashMap` (it flags every `HashMap`, and a local map is correct),
@@ -1133,6 +1169,44 @@ decides what counts as a literal secret, and `java-spring.mjs` applies the rules
   (the other rules) and `java-reports.test.mjs`
   (glue, the `spring: true` gate).
 
+## Rule messages
+
+PMD, Checkstyle and SpotBugs messages say what is wrong, rarely how to fix it, and never how to keep
+code that is right as it is. `languages/java/messages/` holds one catalog per tool (`pmd.json`,
+`checkstyle.json`, `spotbugs.json`) with an entry for every rule the preset can report: the
+errorprone and bestpractices PMD categories plus `AvoidCatchingGenericException`, every check in
+`google_checks.xml`, and every SpotBugs pattern. Each entry has:
+
+- `fix`: one sentence, in our words, naming the allowed form (`null` when the tool's message already
+  says it);
+- `mayBeIntended`: whether the rule can fire on code a careful team keeps (a CLI printing with
+  `System.out`, a catch-all at a boundary);
+- `layout` (Checkstyle only): a layout check google-java-format fixes; the message then says to run
+  the formatter instead of a fix of its own.
+
+`readJavaFindings` passes every finding through `applyRuleMessages`
+(`languages/java/messages/rule-messages.mjs`). It shortens Checkstyle rule names, then appends the
+fix to the tool's message, and for an enforceable finding of a rule that may be intended (or one
+the catalog does not know, from a project's own config) the exception route with the finding's own
+path:
+
+```
+Usage of System.out/err. Write through a logger, or take a PrintStream as a parameter so callers
+choose the stream. If this is intended, add {"rule":"pmd/SystemPrintln","paths":["src/main/java/demo/Cli.java"],"reason":"..."}
+to "exceptions" in nitpicker.config.json.
+```
+
+The Kotlin preset, which runs the same tools on a mixed module's Java files, gets the fix but not
+the exception route: its `exceptions` only lift detekt rules. An `exceptions` entry that names a
+Checkstyle check by class (`checkstyle/com.puppycrawl...IndentationCheck`) is a config error that
+gives the name to write instead.
+
+Messages that already name `nitpicker.config.json` (the Spring rules) are left as they are, and
+identities are computed before, so neither the new text nor the short Checkstyle name moves a
+finding between base and head. `rule-catalog.e2e.test.mjs` downloads the pinned PMD, Checkstyle and
+SpotBugs jars and fails when the catalogs and the tools' rule lists differ, so a version bump
+cannot add a rule without fix text.
+
 ## Slice 1: what is deliberately not included
 
 - Nothing from the proposed slices 4 to 8 is left out: ArchUnit, CRAP, jscpd, PIT and the changed-line
@@ -1144,7 +1218,11 @@ decides what counts as a literal secret, and `java-spring.mjs` applies the rules
 
 - `languages/java/adapters/reporting/java-reports.test.mjs`: fast, always on. Report conversion, project-relative paths,
   classification, line-shift stability.
-- `languages/java/adapters/java-e2e/java-preset.e2e.test.mjs`: gated behind `NITPICKER_JAVA_E2E=1` (`npm run test:java`, which also runs `java-spring.e2e.test.mjs`, `escape-hatches.e2e.test.mjs`, `languages/java/adapters/java-e2e/pit-targets.e2e.test.mjs` and `languages/java/maven/maven-preset.e2e.test.mjs`, one file at a time because each stops the Gradle daemons when it ends). Needs Java 21, Gradle and network access to Maven Central; about 85 seconds
+- `languages/java/messages/rule-messages.test.mjs`: fast, always on. Short Checkstyle names, fix
+  text, the exception route, and the shape of every catalog entry.
+- `languages/java/messages/rule-catalog.e2e.test.mjs`: gated like the other e2e tests. The catalogs
+  name exactly the rules of the pinned tool versions.
+- `languages/java/adapters/java-e2e/java-preset.e2e.test.mjs`: gated behind `NITPICKER_JAVA_E2E=1` (`npm run test:java`, which also runs `java-spring.e2e.test.mjs`, `escape-hatches.e2e.test.mjs`, `languages/java/adapters/java-e2e/pit-targets.e2e.test.mjs`, `multi-project.e2e.test.mjs`, `languages/java/maven/maven-preset.e2e.test.mjs`, `maven-failsafe.e2e.test.mjs`, `guards.e2e.test.mjs` and `rule-catalog.e2e.test.mjs`, one file at a time because each stops the Gradle daemons when it ends). Needs Java 21, Gradle and network access to Maven Central; about 85 seconds
   warm. On a tiny Gradle project (`languages/java/adapters/fixtures/gradle-project`, one legacy PMD and
   SpotBugs violation on the base) it checks: a clean change passes; a change that only moves the
   legacy violation stays baselined; a change adding an empty catch block (PMD), a default-charset
