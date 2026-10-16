@@ -1043,7 +1043,7 @@ table:
 - line: `errorprone/IntLongMath` over `errorprone/NarrowCalculation`
 - line: `errorprone/InfiniteRecursion` over `spotbugs/IL_INFINITE_RECURSIVE_LOOP`
 - line: `errorprone/ComparisonOutOfRange` over `spotbugs/INT_BAD_COMPARISON_WITH_SIGNED_BYTE`
-- line: `errorprone/NonFinalStaticField` over `spotbugs/MS_FINAL_PKGPROTECT`, `spotbugs/MS_SHOULD_BE_FINAL`, `errorprone/FieldCanBeFinal`
+- line: `errorprone/NonFinalStaticField` over `spotbugs/MS_FINAL_PKGPROTECT`, `spotbugs/MS_SHOULD_BE_FINAL`, `errorprone/FieldCanBeFinal`, `pmd/NonFinalStaticField`
 - line: `errorprone/MutablePublicArray` over `spotbugs/MS_MUTABLE_ARRAY`, `spotbugs/MS_PKGPROTECT`
 - line: `errorprone/NullAway` over `pmd/NullAssignment`, `pmd/ReturnEmptyCollectionRatherThanNull`
 - line: `errorprone/InvalidPatternSyntax` over `spotbugs/RE_BAD_SYNTAX_FOR_REGULAR_EXPRESSION`
@@ -1098,6 +1098,9 @@ table:
 - line: `pmd/DoNotTerminateVM` over `spotbugs/DM_EXIT`
 - line: `errorprone/CatchAndPrintStackTrace` over `pmd/AvoidPrintStackTrace`, `errorprone/SystemOut`
 - line: `errorprone/SystemOut` over `pmd/SystemPrintln`
+- line: `errorprone/StreamResourceLeak` over `pmd/StreamResourceNotClosed`
+- line: `errorprone/PatternMatchingInstanceof` over `pmd/InstanceofThenCast`
+- line: `errorprone/ThrowSpecificExceptions` over `pmd/AvoidThrowingRawExceptionTypes`
 - line: `errorprone/MissingOverride` over `pmd/MissingOverride`
 - line: `pmd/DefaultLabelNotLastInSwitch` over `errorprone/SwitchDefault`
 - line: `checkstyle/JavadocMethod` over `errorprone/InvalidParam`
@@ -1757,7 +1760,7 @@ Error Prone findings are in no catalog: their allowed form comes from
 this, so
 `overlap-pairs.json` names Checkstyle checks the same short way, or by the module id
 `google_checks.xml` gives (`checkstyle/AnnotationLocationMostCases`); a unit test checks every rule
-in it against the catalogs and Error Prone's check list.
+in it against the catalogs, nitpicker's own PMD rules and Error Prone's check list.
 
 ## Slice 1: what is deliberately not included
 
