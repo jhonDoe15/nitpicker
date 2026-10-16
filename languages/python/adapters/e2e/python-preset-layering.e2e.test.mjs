@@ -71,7 +71,7 @@ describe.skipIf(!pythonE2eEnabled)(
           rule: 'duplicate-clone',
           file: 'src/shop/domain/bulk.py',
           message:
-            'This code repeats src/shop/domain/pricing.py:5 (10 lines). Keep one copy and call it from both places. If the repetition is intended, add src/shop/domain/bulk.py to "exclude" in nitpicker.config.json.',
+            'This code repeats src/shop/domain/pricing.py:5 (10 lines). Keep one copy and call it from both places. If a reviewer agrees this is intended, add {"rule":"duplicate-clone","paths":["src/shop/domain/bulk.py"],"reason":"<why this is intended>"} to "exceptions" in nitpicker.config.json.',
         },
       ]);
     });

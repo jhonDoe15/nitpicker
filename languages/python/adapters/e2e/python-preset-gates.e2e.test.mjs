@@ -141,7 +141,9 @@ describe.skipIf(!pythonE2eEnabled)('Python preset lint, type and rule gates end 
     expect(result.text).toMatch(/Declare records as `@dataclass\(frozen=True\)`/);
     expect(result.text).toMatch(/Use `pathlib\.Path`/);
     expect(result.text).toMatch(/Remove the comment and fix the code/);
-    expect(result.text).toMatch(/entry for PTH118 in nitpicker\.config\.json/);
+    expect(result.text).toMatch(
+      /add \{"rule":"PTH118","paths":\["src\/demo\/rules\.py"\],"reason":"<why this is intended>"\} to "python\.exceptions" in nitpicker\.config\.json\./,
+    );
   });
   it('passes the same code when python.exceptions lifts its rules', () => {
     const result = gate(project, 'excepted');
