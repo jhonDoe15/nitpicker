@@ -688,10 +688,15 @@ from a real caller) and the `exceptions` entry that lifts it.
   that only tests import should move to a `test-support/` folder, and modules under `test-support/`
   are not reported. A re-export (`export { x } from`, `export * from`, or an import that is only
   exported again) is not a use by itself: re-exporting a function from an entry such as
-  `src/main/main.ts` or a composition root does not clear the finding. It counts only when
-  something imports the name onward from the re-exporting module, through any number of barrels,
-  and the final importer decides: production code counts, a test does not. The one exception is
-  a re-export from a public entry of a published package (see below), which is public API.
+  `src/main/main.ts` or a composition root does not clear the finding, and the finding names the
+  re-exporting file. It counts only when something imports the name onward from the re-exporting
+  module; barrels, renames and imports that are only exported again are followed to the
+  declaration, and the importer at the end decides (production code counts, a test does not). A
+  declaration that nothing imports, tests included, is not reported. Exceptions: a re-export from a
+  public entry of a published package (see below), a re-export from a file listed in
+  `layout.entryPoints` (a handler, worker or plugin config that a host loads instead of importing
+  it), and what a framework plugin consumes from an entry. An entry that spreads a namespace
+  (`{ ...feat }`) counts as using it.
 - **Callers the check cannot see.** A component or function that is used as a value (passed as
   `component={X}`, put in a route or config object, `.call`ed, mapped over, assigned) is left alone,
   as are all exports of a module that is loaded with `import()` or `require()` (`lazy`, route
@@ -706,8 +711,8 @@ from a real caller) and the `exceptions` entry that lifts it.
   `publishConfig`); it can have callers outside the repository. Its own tests, stories and examples
   count as callers, so a new public prop or option must at least be exercised there, and its
   `test-only-export` findings are not reported, and a re-export from its public entries (the files
-  that `main`, `module`, `types`, `source` and `exports` of its `package.json` name, or else its
-  source-root `index`, and the files that `layout.entryPoints` lists inside it) counts as a use of
+  that `main`, `module`, `types`, `typings`, `source` and `exports` of its `package.json` name, or
+  else its source-root `index`, and the files that `layout.entryPoints` lists) counts as a use of
   what it re-exports, wherever that is declared. In any other package, or an app whose manifest has
   no name, only production callers count: a prop that only a test or story passes fails. Callers
   in the other packages of an npm, Yarn or pnpm workspace count for the package that declares the
@@ -765,7 +770,8 @@ from a real caller) and the `exceptions` entry that lifts it.
   not from ESLint, and take exceptions the same way; the JavaScript preset runs them too.
 - `layout.excludedGlobs`, `layout.entryPoints` and `layout.sourceRoots`/`layout.testRoots` are all valid `layout` keys. The
   roots must be directories; `excludedGlobs` are globs and replace the built-in exclusions;
-  `entryPoints` are globs added to knip's entries for files that are loaded by path, not imported;
+  `entryPoints` are globs added to knip's entries for files that are loaded by path, not imported (what
+  they re-export is not reported as `test-only-export`);
   the module-load-effects check does not apply to them, since running at load is what a script does.
 
 ## Enforcement sources

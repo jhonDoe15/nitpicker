@@ -4,43 +4,11 @@ import { createProject, removeProject } from '../test-support/project.mjs';
 import { loadPackages } from '../workspace/packages.mjs';
 import { reexportedTestOnlyEntries } from './reexported-exports.mjs';
 
-const CORE = '../../core/src/pricing';
-const PROJECT = {
-  'package.json': { name: 'repo', private: true, workspaces: ['packages/*'] },
-  'packages/core/package.json': { name: '@scope/core', private: true },
-  'packages/core/src/pricing.ts': `export const applyDiscount = 1;
-export const tallyCart = 2;
-export const weighBox = 3;
-export const sortShelf = 4;
-export const pruneVine = 5;
-export const trimHedge = 6;
-export const wiltPetal = 7;
-`,
-  'packages/core/src/use.ts':
-    "import { wiltPetal } from './pricing';\nexport const use = wiltPetal;\n",
-  'packages/lib/package.json': {
-    name: '@scope/lib',
-    types: 'dist/index.d.ts',
-    exports: { '.': './src/index.ts', './extra': { import: './src/extra.ts' } },
-  },
-  'packages/lib/src/index.ts': `export { applyDiscount } from '${CORE}';\n`,
-  'packages/lib/src/extra.ts': `export { weighBox } from '${CORE}';\n`,
-  'packages/lib/src/tools.ts': `export { sortShelf } from '${CORE}';\n`,
-  'packages/shell/package.json': { name: '@scope/shell', private: true, main: 'src/index.ts' },
-  'packages/shell/src/index.ts': `import { pruneVine, trimHedge, wiltPetal } from '${CORE}';
-export { tallyCart } from '${CORE}';
-export { pruneVine, trimHedge, wiltPetal };
-`,
-  'tests/prune.test.ts': `import { pruneVine } from '../packages/core/src/pricing';
-export const check = pruneVine;
-`,
-};
-const EXPORTED = ['applyDiscount', 'tallyCart', 'weighBox', 'sortShelf'];
-const SHELL = 'packages/shell/src/index.ts';
+const APP = { name: 'app', private: true };
 let root;
 
-function report(entries) {
-  const byFile = Map.groupBy(entries, ([file]) => file);
+function report(listed) {
+  const byFile = Map.groupBy(listed, ([file]) => file);
   return {
     issues: [...byFile].map(([file, items]) => ({
       file,
@@ -49,34 +17,18 @@ function report(entries) {
   };
 }
 
-function testOnly({ entryPoints = [] } = {}) {
-  root = createProject(PROJECT, { manifest: PROJECT['package.json'] });
-  const layout = {
-    ...resolveLayoutFor({
-      layout: { sourceRoots: ['packages/core/src', 'packages/lib/src', 'packages/shell/src'] },
-    }),
-    entryPoints,
-  };
-  const revealed = [
-    ...EXPORTED.map((name) => ['packages/core/src/pricing.ts', name]),
-    ['packages/lib/src/index.ts', 'applyDiscount'],
-    [SHELL, 'tallyCart'],
-    [SHELL, 'pruneVine'],
-    [SHELL, 'trimHedge'],
-    [SHELL, 'wiltPetal'],
-  ];
-  const runs = {
-    production: () => report(revealed),
-    normal: () => report([[SHELL, 'trimHedge']]),
-  };
-  const packagesInfo = loadPackages(root, layout);
+function reexported({ files, listed, project = '.', sourceRoots = ['src'], entryPoints = [] }) {
+  root = createProject(files, { manifest: files['package.json'] ?? APP });
+  const layout = { ...resolveLayoutFor({ layout: { sourceRoots } }), entryPoints };
+  const projectRoot = project === '.' ? root : `${root}/${project}`;
   return reexportedTestOnlyEntries({
     production: { issues: [] },
-    runs,
-    packagesInfo,
+    entryExportsRun: () => report(listed),
+    packagesInfo: loadPackages(projectRoot, layout),
     layout,
-    projectRoot: root,
-  }).map(({ file, entry }) => `${file} ${entry.name}`);
+    projectRoot,
+    entryPatterns: ['src/main.ts'],
+  }).map(({ file, entry, reexportedBy }) => `${file} ${entry.name} via ${reexportedBy}`);
 }
 
 afterEach(() => {
@@ -84,24 +36,145 @@ afterEach(() => {
 });
 
 describe('exports kept alive by a re-export from an entry', () => {
-  it('leaves what the manifest entries of a published package re-export alone, subpaths included', () => {
-    expect(testOnly()).toEqual([
-      'packages/core/src/pricing.ts tallyCart',
-      'packages/core/src/pricing.ts sortShelf',
-      'packages/core/src/pricing.ts pruneVine',
+  it('reports the declaration behind each re-export form, whatever the barrels between', () => {
+    const files = {
+      'src/main.ts': `import { renamed as third } from './one';
+export { second as final } from './one';
+export { third as thirdFinal };
+export * from './stars';
+`,
+      'src/one.ts': `import { inner as renamed } from './two';
+export { inner as second } from './two';
+export { renamed };
+`,
+      'src/two.ts': "export { inner } from './impl';\n",
+      'src/impl.ts': 'export function inner() { return 1; }\n',
+      'src/stars.ts': 'export function starred() { return 2; }\n',
+      'src/all.test.ts': `import { inner } from './impl';
+import { starred } from './stars';
+export const check = [inner, starred];
+`,
+    };
+    const listed = [
+      ['src/impl.ts', 'inner'],
+      ['src/stars.ts', 'starred'],
+      ['src/main.ts', 'final'],
+      ['src/main.ts', 'thirdFinal'],
+    ];
+
+    expect(reexported({ files, listed })).toEqual([
+      'src/impl.ts inner via src/main.ts',
+      'src/stars.ts starred via src/main.ts',
     ]);
   });
 
-  it('leaves what a layout entry point of a published package re-exports alone', () => {
-    expect(testOnly({ entryPoints: ['packages/lib/src/tools.ts'] })).toEqual([
-      'packages/core/src/pricing.ts tallyCart',
-      'packages/core/src/pricing.ts pruneVine',
-    ]);
+  it('leaves out a re-export whose own export knip does not list, because a host consumes it', () => {
+    const files = {
+      'src/main.ts': "export { GET } from './handlers';\nexport { metadata } from './meta';\n",
+      'src/handlers.ts': 'export function GET() { return 1; }\n',
+      'src/meta.ts': 'export const metadata = {};\n',
+      'src/all.test.ts': `import { GET } from './handlers';
+import { metadata } from './meta';
+export const check = [GET, metadata];
+`,
+    };
+    const listed = [
+      ['src/handlers.ts', 'GET'],
+      ['src/meta.ts', 'metadata'],
+      ['src/main.ts', 'metadata'],
+    ];
+
+    expect(reexported({ files, listed })).toEqual(['src/meta.ts metadata via src/main.ts']);
   });
 
-  it('follows an import that is only exported again, unless something else uses it', () => {
-    const followed = testOnly().filter((item) => /(?:pruneVine|trimHedge|wiltPetal)$/u.test(item));
+  it('leaves out an import that scripts or configs outside the source roots use, but not a story', () => {
+    const files = {
+      'src/main.ts': `import { fromScript, fromConfig, fromNobody } from './shared';
+export { fromScript, fromConfig, fromNobody };
+`,
+      'src/shared.ts': `export const fromScript = 1;
+export const fromConfig = 2;
+export const fromNobody = 3;
+`,
+      'scripts/seed.ts': "import { fromScript } from '../src/shared';\nconsole.log(fromScript);\n",
+      'vite.config.ts':
+        "import { fromConfig } from './src/shared';\nexport default { fromConfig };\n",
+      'src/shared.stories.ts':
+        "import { fromNobody } from './shared';\nexport default fromNobody;\n",
+      'src/shared.test.ts': `import { fromScript, fromConfig, fromNobody } from './shared';
+export const check = [fromScript, fromConfig, fromNobody];
+`,
+    };
+    const listed = [
+      ['src/main.ts', 'fromScript'],
+      ['src/main.ts', 'fromConfig'],
+      ['src/main.ts', 'fromNobody'],
+    ];
 
-    expect(followed).toEqual(['packages/core/src/pricing.ts pruneVine']);
+    expect(reexported({ files, listed })).toEqual(['src/shared.ts fromNobody via src/main.ts']);
+  });
+
+  it('leaves out what a published package or a layout entry point puts in its public surface', () => {
+    const files = {
+      'package.json': {
+        name: 'library',
+        exports: { '.': './src/main.ts', './extra': './src/extra.ts' },
+      },
+      'src/main.ts': "export { shown } from './impl';\n",
+      'src/extra.ts': "export { more } from './impl';\n",
+      'src/loaded.ts': "export { loaded } from './impl';\n",
+      'src/impl.ts': 'export const shown = 1;\nexport const more = 2;\nexport const loaded = 3;\n',
+      'src/impl.test.ts': `import { shown, more, loaded } from './impl';
+export const check = [shown, more, loaded];
+`,
+    };
+    const listed = [
+      ['src/impl.ts', 'shown'],
+      ['src/impl.ts', 'more'],
+      ['src/impl.ts', 'loaded'],
+      ['src/main.ts', 'shown'],
+      ['src/extra.ts', 'more'],
+      ['src/loaded.ts', 'loaded'],
+    ];
+    const entryPoints = ['src/loaded.ts'];
+
+    expect(reexported({ files, listed, entryPoints })).toEqual([]);
+  });
+
+  it('counts a layout entry point of a private package as used from outside as well', () => {
+    const files = {
+      'src/main.ts': "export { handler } from './impl';\n",
+      'src/impl.ts': 'export const handler = 1;\n',
+      'src/impl.test.ts': "import { handler } from './impl';\nexport const check = handler;\n",
+    };
+    const listed = [
+      ['src/impl.ts', 'handler'],
+      ['src/main.ts', 'handler'],
+    ];
+
+    expect(reexported({ files, listed })).toEqual(['src/impl.ts handler via src/main.ts']);
+    expect(reexported({ files, listed, entryPoints: ['src/main.ts'] })).toEqual([]);
+  });
+
+  it('leaves out a declaration in another package or outside the project', () => {
+    const files = {
+      'package.json': { name: 'repo', private: true, workspaces: ['packages/*'] },
+      'packages/core/package.json': { name: '@scope/core', private: true },
+      'packages/core/src/index.ts': 'export const core = 1;\n',
+      'packages/app/package.json': { name: '@scope/app', private: true },
+      'packages/app/src/main.ts': "export { core } from '../../core/src/index';\n",
+      'packages/app/src/own.ts': "export { local } from './local';\n",
+      'packages/app/src/local.ts': 'export const local = 2;\n',
+      'packages/app/src/all.test.ts': `import { core } from '../../core/src/index';
+import { local } from './local';
+export const check = [core, local];
+`,
+    };
+    const listed = [
+      ['src/index.ts', 'core'],
+      ['src/main.ts', 'core'],
+    ];
+
+    expect(reexported({ files, listed, project: 'packages/app' })).toEqual([]);
   });
 });

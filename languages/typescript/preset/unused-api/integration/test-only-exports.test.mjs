@@ -28,6 +28,20 @@ const BUILDERS_FINDING = {
   classification: 'enforceable',
   message: `Module src/main/builders.ts is only imported by tests. Move it to a test-support/ folder, or import it from production code. ${EXCEPTION('src/main/builders.ts')}`,
 };
+const DISCOUNT_FINDING = {
+  tool: 'dead-code',
+  rule: 'test-only-export',
+  path: 'src/main/features/pricing/discount.ts',
+  identity: 'exports:applyDiscount',
+  symbol: 'applyDiscount',
+  classification: 'enforceable',
+  location: { line: 1 },
+  message:
+    'Export applyDiscount is only imported by tests, and src/main/main.ts re-exports it, which is ' +
+    'not a use. Remove the re-export and `export`, or import it from production code. If a host or ' +
+    'tool loads src/main/main.ts instead of importing it, list it in "layout.entryPoints". ' +
+    EXCEPTION('src/main/features/pricing/discount.ts'),
+};
 const PRIVATE_APP = {
   name: 'app',
   private: true,
@@ -66,6 +80,55 @@ it('uses the helper', () => helper());
   'scripts/seed.ts': "import { fromScript } from '../src/main/shared';\nconsole.log(fromScript);\n",
   'vite.config.ts': `import { fromViteConfig } from './src/main/shared';
 export default { define: { value: fromViteConfig } };
+`,
+};
+
+const WORKSPACE = {
+  'package.json': {
+    name: 'repo',
+    private: true,
+    workspaces: ['packages/*'],
+    devDependencies: { vitest: '4.1.11' },
+  },
+  'packages/lib/package.json': { name: '@scope/lib', exports: { '.': './src/index.ts' } },
+  'packages/lib/src/index.ts': "export { applyDiscount } from './discount';\n",
+  'packages/lib/src/discount.ts': 'export function applyDiscount() { return 1; }\n',
+  'packages/app/package.json': { name: '@scope/app', private: true, main: 'src/index.ts' },
+  'packages/app/src/index.ts': "export { tallyCart } from './cart';\n",
+  'packages/app/src/cart.ts': 'export function tallyCart() { return 2; }\n',
+  'tests/pricing.test.ts': `import { it } from 'vitest';
+import { applyDiscount } from '../packages/lib/src/discount';
+import { tallyCart } from '../packages/app/src/cart';
+it('uses them', () => { applyDiscount(); tallyCart(); });
+`,
+};
+const NEXT_APP = {
+  name: 'app',
+  private: true,
+  dependencies: { next: '15.0.0', react: '19.0.0' },
+  devDependencies: { vitest: '4.1.11' },
+};
+const NEXT = {
+  'src/main.ts':
+    "import { shell } from './lib/shell';\nconsole.log(shell());\nexport { audit } from './lib/audit';\n",
+  'src/lib/shell.ts': 'export function shell() { return 1; }\n',
+  'src/lib/audit.ts': 'export function audit() { return 2; }\n',
+  'src/lib/meta.ts': 'export const metadata = { title: "x" };\n',
+  'src/lib/widget-handlers.ts':
+    'export function GET() { return 1; }\nexport function POST() { return 2; }\n',
+  'src/views/HomePage.tsx': 'export default function HomePage() { return null; }\n',
+  'src/app/api/widgets/route.ts': "export { GET, POST } from '../../../lib/widget-handlers';\n",
+  'src/app/layout.tsx': `import { shell } from '../lib/shell';
+export default function Layout() { return shell(); }
+export { metadata } from '../lib/meta';
+`,
+  'src/pages/index.tsx': "export { default } from '../views/HomePage';\n",
+  'src/lib/all.test.ts': `import { it } from 'vitest';
+import { GET, POST } from './widget-handlers';
+import { metadata } from './meta';
+import { audit } from './audit';
+import HomePage from '../views/HomePage';
+it('uses them', () => { GET(); POST(); HomePage(); audit(); return metadata; });
 `,
 };
 
@@ -191,35 +254,24 @@ describe('exports and modules only tests import', () => {
 describe('exports that an entry re-exports', () => {
   let reexportFindings;
 
-  function inFolder(folder) {
-    return reexportFindings.filter((finding) => finding.includes(`/features/${folder}/`));
-  }
-
   beforeAll(() => {
-    reexportFindings = symbols(deadCode({ sources: REEXPORTS }));
+    reexportFindings = deadCode({ sources: REEXPORTS });
   });
 
-  it('does not count a re-export from the entry of a private app as a use', () => {
-    expect(inFolder('pricing')).toEqual(['src/main/features/pricing/discount.ts applyDiscount']);
+  it('does not count a re-export as a use, however it is written or through whatever barrels', () => {
+    expect(symbols(reexportFindings)).toEqual([
+      'src/main/features/cloth/dye.ts dyeCloth',
+      'src/main/features/jars/lid.ts sealJar',
+      'src/main/features/pricing/discount.ts applyDiscount',
+      'src/main/features/shelves/shelf.ts stackShelf',
+      'src/main/features/tiles/glaze.ts glazeTile',
+    ]);
   });
 
-  it('follows a barrel chain to the declaration', () => {
-    expect(inFolder('tiles')).toEqual(['src/main/features/tiles/glaze.ts glazeTile']);
-  });
-
-  it('does not count `export *` or an import that is exported again', () => {
-    expect(inFolder('shelves')).toEqual(['src/main/features/shelves/shelf.ts stackShelf']);
-    expect(inFolder('cloth')).toEqual(['src/main/features/cloth/dye.ts dyeCloth']);
-  });
-
-  it('does not count another test that imports it from the entry', () => {
-    expect(inFolder('jars')).toEqual(['src/main/features/jars/lid.ts sealJar']);
-  });
-
-  it('leaves out a barrel re-export that production code imports onward, and nothing else', () => {
-    expect(inFolder('crates')).toEqual([]);
-    expect(inFolder('labels')).toEqual([]);
-    expect(reexportFindings).toHaveLength(5);
+  it('names the file that re-exports it and what lifts the finding', () => {
+    expect(reexportFindings.find(({ symbol }) => symbol === 'applyDiscount')).toEqual(
+      DISCOUNT_FINDING,
+    );
   });
 
   it('counts the re-export of a published package, whose entry is public', () => {
@@ -231,5 +283,20 @@ describe('exports that an entry re-exports', () => {
     };
 
     expect(deadCode({ sources: REEXPORTS, manifest })).toEqual([]);
+  });
+
+  it('judges the private package of a workspace and not its published one', () => {
+    const policy = { layout: { sourceRoots: ['packages/lib/src', 'packages/app/src'] } };
+    const findings = deadCode({ sources: WORKSPACE, manifest: WORKSPACE['package.json'], policy });
+
+    expect(symbols(findings)).toEqual(['packages/app/src/cart.ts tallyCart']);
+  });
+
+  it('leaves out what a framework plugin loads from an entry', () => {
+    const policy = { layout: { sourceRoots: ['src'] } };
+
+    expect(symbols(deadCode({ sources: NEXT, manifest: NEXT_APP, policy }))).toEqual([
+      'src/lib/audit.ts audit',
+    ]);
   });
 });
