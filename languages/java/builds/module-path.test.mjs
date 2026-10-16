@@ -21,12 +21,34 @@ describe('rootsScope', () => {
     expect(rootsScope([])).toEqual(['.']);
   });
 
-  it('leaves out roots outside the project and falls back to the module folder', () => {
-    expect(rootsScope(['app/src/main/java', '../shared/src/main/java'], 'app')).toEqual([
-      'app/src/main/java',
+  it('leaves out roots outside the project, and scopes nothing when none is left', () => {
+    expect(
+      rootsScope(['app/src/main/java', '../shared/src/main/java'], { moduleDir: 'app' }),
+    ).toEqual(['app/src/main/java']);
+    expect(
+      rootsScope(['../shared/src', '/opt/src', 'C:/src', '\\\\host\\src', '..'], {
+        moduleDir: 'app',
+      }),
+    ).toEqual([]);
+    expect(rootsScope(['../x/src/main/java'], { moduleDir: '../x' })).toEqual([]);
+  });
+
+  it('scopes a module without source roots to its folder when that lies in the project', () => {
+    expect(rootsScope([], { moduleDir: 'services/app' })).toEqual(['services/app']);
+    expect(rootsScope([], { moduleDir: '' })).toEqual(['.']);
+    expect(rootsScope([], { modulePath: 'platform' })).toEqual(['platform']);
+    expect(rootsScope([], { moduleDir: '/abs/module' })).toEqual([]);
+    expect(rootsScope([], { moduleDir: '../x' })).toEqual([]);
+  });
+
+  it('places module-relative roots under the module path before it filters them', () => {
+    expect(
+      rootsScope(['src/main/java', '../shared/src', '../../outside/src'], { modulePath: 'app' }),
+    ).toEqual(['app/src/main/java', 'shared/src']);
+    expect(rootsScope(['./', '..\\common\\src\\'], { modulePath: 'services/app' })).toEqual([
+      'services/app',
+      'services/common/src',
     ]);
-    expect(rootsScope(['../shared/src', '/opt/src', 'C:/src', '..'], 'app')).toEqual(['app']);
-    expect(rootsScope([], 'services/app')).toEqual(['services/app']);
-    expect(rootsScope([], '')).toEqual(['.']);
+    expect(rootsScope(['/opt/src', '../../shared/src'], { modulePath: 'platform' })).toEqual([]);
   });
 });

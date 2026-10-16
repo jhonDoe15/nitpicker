@@ -1,9 +1,21 @@
-import { cpSync, existsSync, mkdtempSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
+import {
+  cpSync,
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  readdirSync,
+  rmSync,
+  writeFileSync,
+} from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterAll, describe, expect, it } from 'vitest';
 import { collectJavaFindings, runJavaDiff } from '../adapters/java-diff.mjs';
 import { analyzeJavaSnapshot } from '../adapters/java-runner.mjs';
+import { readPinnedTools } from '../builds/java-build.mjs';
+import { readCpdFindings } from '../guards/cpd-duplicates.mjs';
+import { runCpd } from './guards/maven-pmd.mjs';
+import { resolveTools } from './maven-tools.mjs';
 import {
   commitBranch,
   GRADLE_STEP_TIMEOUT_MS,
@@ -327,5 +339,96 @@ describe.skipIf(!enabled)('Java preset on Maven builds', () => {
       );
     },
     2 * GRADLE_STEP_TIMEOUT_MS,
+  );
+});
+
+const CLASS_LITERAL_THEN_ENUM =
+  '  static final Class<?>[] TYPES = {String.class};\n  enum Kind { X }\n  void register() {}\n' +
+  '  char c = \'x\';\n  String s = "done";\n';
+const CPD_SCENARIOS = [
+  ['a 1600-character string literal', `  static final String B64 = "${'QUJD'.repeat(400)}";\n`],
+  [
+    'a 12 KB text block',
+    `  static final String SQL = """\n${'      select * from t where a = b\n'.repeat(400)}      """;\n`,
+  ],
+  ['20000 blank lines', `  int a${'\n'.repeat(20_000)}  = 1;\n`],
+  [
+    'a text block holding an apostrophe',
+    '  String json = """\n      {"name": "O\'Brien"}\n      """;\n',
+  ],
+  ['a text block holding one double quote', '  String size = """\n      a 5" screen\n      """;\n'],
+  [
+    'a line comment between a type and .class',
+    '  Class<?>[] other = {String // why\n      .class};\n  enum Mode { Y }\n',
+  ],
+  [
+    'Unicode-escaped class literals',
+    '  Class<?>[] escaped = {String\\u002Eclass, String.\\u0063lass};\n  enum Escaped { Z }\n',
+  ],
+];
+
+function cpdOver(files) {
+  const root = copyOf();
+  const sources = path.join(root, 'src/main/java');
+  for (const [name, text] of Object.entries(files)) {
+    mkdirSync(path.join(sources, 'p'), { recursive: true });
+    writeFileSync(path.join(sources, 'p', name), text);
+  }
+  const reportDir = path.join(root, 'target/nitpicker');
+  mkdirSync(reportDir, { recursive: true });
+  runCpd({
+    module: { basedir: root, sourceRoots: [sources], testSourceRoots: [] },
+    reportDir,
+    tools: resolveTools({ projectRoot: root, maven, pinned: readPinnedTools() }),
+  });
+  return {
+    outputs: readdirSync(reportDir).sort(),
+    findings: readCpdFindings(reportDir, {
+      projectRoot: root,
+      sourceRoots: ['src/main/java'],
+      testRoots: [],
+    }),
+  };
+}
+
+describe.skipIf(!enabled)('the PMD CPD launcher', () => {
+  it.each(CPD_SCENARIOS)(
+    'reports on a class literal before an enum after %s',
+    (_, body) => {
+      expect(
+        cpdOver({
+          'Reg.java': `package p;\npublic class Reg {\n${body}${CLASS_LITERAL_THEN_ENUM}}\n`,
+        }),
+      ).toEqual({ outputs: ['cpd.xml'], findings: [] });
+    },
+    GRADLE_STEP_TIMEOUT_MS,
+  );
+
+  it(
+    'lists a file PMD cannot lex among the paths it skipped',
+    () => {
+      const result = cpdOver({
+        'Reg.java': `package p;\npublic class Reg {\n${CLASS_LITERAL_THEN_ENUM}}\n`,
+        'L.java': 'package p;\npublic class L {\n  int a = 1;\n  # bad\n}\n',
+      });
+
+      expect(result).toEqual({
+        outputs: ['cpd.xml'],
+        findings: [
+          {
+            tool: 'duplicates',
+            rule: 'cpd-skipped-paths',
+            path: '.',
+            identity: 'cpd-skipped-paths',
+            message:
+              'CPD could not read or tokenize 1 path(s), so duplicated code there was not checked: ' +
+              "src/main/java/p/L.java: LexException: Lexical error in file 'src/main/java/p/L.java' " +
+              'at line 4, column 3: "#" (35), after : "" (in lexical state DEFAULT)',
+            classification: 'descriptive',
+          },
+        ],
+      });
+    },
+    GRADLE_STEP_TIMEOUT_MS,
   );
 });

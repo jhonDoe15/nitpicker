@@ -396,4 +396,60 @@ describe('a tool that produced no report on one side', () => {
       },
     ]);
   });
+
+  const legacyNotRun = `// FINDING ${JSON.stringify({
+    identity: 'not-run:legacy',
+    rule: 'not-run',
+    classification: 'descriptive',
+    toolNotRun: true,
+    notRunScope: ['src/legacy'],
+  })}\n`;
+
+  function classified(report) {
+    return report.newFindings.map(
+      ({ identity, classification }) => `${identity} ${classification}`,
+    );
+  }
+
+  it('relaxes only the moved file when one file of a not-run folder moves into another', () => {
+    const root = createRepository({
+      'src/legacy/a.mjs': filler('a'),
+      'src/legacy/b.mjs': filler('b'),
+      'src/kernel/k.mjs': filler('k'),
+      'src/notice.mjs': `${filler('n')}${legacyNotRun}`,
+    });
+    move(root, 'src/legacy/a.mjs', 'src/kernel/a.mjs');
+    write(root, {
+      'src/kernel/a.mjs': `${filler('a')}${finding('moved-site')}`,
+      'src/kernel/k.mjs': `${filler('k')}${finding('kernel-site')}`,
+    });
+    commitHead(root);
+
+    expect(classified(compare(root))).toEqual([
+      'moved-site descriptive',
+      'kernel-site enforceable',
+    ]);
+  });
+
+  it('carries the scope to the new folder when the whole not-run folder moves', () => {
+    const root = createRepository({
+      'src/legacy/a.mjs': filler('a'),
+      'src/legacy/b.mjs': filler('b'),
+      'src/kernel/k.mjs': filler('k'),
+      'src/notice.mjs': `${filler('n')}${legacyNotRun}`,
+    });
+    move(root, 'src/legacy/a.mjs', 'src/kernel/a.mjs');
+    move(root, 'src/legacy/b.mjs', 'src/kernel/b.mjs');
+    write(root, {
+      'src/kernel/k.mjs': `${filler('k')}${finding('kernel-site')}`,
+      'src/legacy/fresh.mjs': `${filler('f')}${finding('fresh-site')}`,
+      'src/notice.mjs': filler('n'),
+    });
+    commitHead(root);
+
+    expect(classified(compare(root))).toEqual([
+      'kernel-site descriptive',
+      'fresh-site enforceable',
+    ]);
+  });
 });

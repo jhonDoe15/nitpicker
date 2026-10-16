@@ -51,9 +51,6 @@ export function readModuleFindings(projectRoot, moduleDirs, options) {
       (finding) => ({
         ...finding,
         path: inModule(prefix, finding.path),
-        ...(finding.notRunScope === undefined
-          ? {}
-          : { notRunScope: finding.notRunScope.map((directory) => inModule(prefix, directory)) }),
       }),
     );
   });

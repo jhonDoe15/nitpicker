@@ -40,7 +40,7 @@ export function parseLintWarnings(text) {
   });
 }
 
-function lintNotRun(reportRoot, sourceRoots, moduleDir) {
+function lintNotRun(reportRoot, sourceRoots, module) {
   const failure = path.join(reportRoot, LINT_FAILURE);
   if (!existsSync(failure)) {
     return [];
@@ -49,6 +49,7 @@ function lintNotRun(reportRoot, sourceRoots, moduleDir) {
     readFileSync(failure, 'utf8')
       .split(/\r?\n/)
       .find((line) => /error:/.test(line)) ?? 'javac exited with an error';
+  const scope = rootsScope(sourceRoots, module);
   return [
     {
       tool: LINT_TOOL,
@@ -62,8 +63,7 @@ function lintNotRun(reportRoot, sourceRoots, moduleDir) {
         `or add an exception for ${LINT_TOOL}/${LINT_NOT_RUN} with the path "**" in nitpicker.config.json ` +
         'if the project cannot be linted that way.',
       classification: 'descriptive',
-      toolNotRun: true,
-      notRunScope: rootsScope(sourceRoots, moduleDir),
+      ...(scope.length === 0 ? {} : { toolNotRun: true, notRunScope: scope }),
     },
   ];
 }
@@ -78,10 +78,10 @@ function projectFileCheck(projectRoot) {
   };
 }
 
-export function readLintFindings(reportRoot, { projectRoot, sourceRoots = [], moduleDir }) {
+export function readLintFindings(reportRoot, { projectRoot, sourceRoots = [], module }) {
   const report = path.join(reportRoot, LINT_REPORT);
   if (!existsSync(report)) {
-    return lintNotRun(reportRoot, sourceRoots, moduleDir);
+    return lintNotRun(reportRoot, sourceRoots, module);
   }
   const unique = createIdentityCounter();
   const inProject = projectFileCheck(projectRoot);

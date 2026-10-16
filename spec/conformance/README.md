@@ -9,11 +9,11 @@ drift from it.
 
 ## Findings cases: `findings/<case>/`
 
-| File            | Content                                                               |
-| --------------- | --------------------------------------------------------------------- |
-| `base.json`     | Analyzer report (`{ "findings": [...] }`) for the base snapshot.      |
-| `head.json`     | Analyzer report for the head snapshot.                                |
-| `expected.json` | `description`, optional `renames`, then either results or an `error`. |
+| File            | Content                                                                               |
+| --------------- | ------------------------------------------------------------------------------------- |
+| `base.json`     | Analyzer report (`{ "findings": [...] }`) for the base snapshot.                      |
+| `head.json`     | Analyzer report for the head snapshot.                                                |
+| `expected.json` | `description`, optional `renames` and `keptPaths`, then either results or an `error`. |
 
 Runner contract:
 
@@ -23,15 +23,20 @@ Runner contract:
    apply to the base side only: they remap a base finding's path and every occurrence of an old path
    inside its `identity`, longest old path first.
 3. Before matching: a finding with `toolNotRun: true` covers the project directories listed in its
-   `notRunScope` (`.` is the whole project; parsing reads `./` and an empty directory as `.`), or
-   the whole project without one. A base notice also covers each of its directories moved the way
-   the renames move their folders: a rename of `a/x/F.java` to `b/x/F.java` moves `a/x` to `b/x`
-   and `a` to `b`, and when renames disagree the destination with the most renames wins. Every
-   `enforceable` head finding of the same `tool` whose `path` lies in a directory a base notice
-   covers becomes `descriptive`. A head finding with `toolNotRun: true` becomes `tool-error` (the
-   change broke the tool) unless a base notice of the same `tool` has the same key (step 4, after
-   renames) or the base notices of that `tool` together cover each of its directories; the runner
-   reports a new `tool-error` finding as a tool error.
+   `notRunScope` (`.` is the whole project; parsing reads `./` as `.` and rejects an empty string),
+   or the whole project without one. A base notice follows the renames out of each of its
+   directories: it also covers the head path of every renamed file whose base path lies in the
+   directory. When the directory's whole content moved, the notice covers the directory's new place
+   instead of the old one: a rename of `a/x/F.java` to `b/x/F.java` moves `a/x` to `b/x` and `a` to
+   `b`, and when renames disagree the destination with the most renames wins. `keptPaths` (a list
+   of base paths, other than rename sources, that the head still has) decides whether a move is
+   whole: it is when no kept path lies in the directory. Without `keptPaths` every move is partial,
+   so the notice keeps its directory. Every `enforceable` head finding of the same `tool` whose
+   `path` lies in a directory or is a file a base notice covers becomes `descriptive`. A head
+   finding with `toolNotRun: true` becomes `tool-error` (the change broke the tool) unless a base
+   notice of the same `tool` has the same key (step 4, after renames; a notice that moved whole
+   has no key) or the base notices of that `tool` together cover each of its directories; the
+   runner reports a new `tool-error` finding as a tool error.
 4. Two findings match when tool, rule, (renamed) path, symbol (empty when absent), (renamed)
    identity, classification and metric name (empty when absent) are all equal. Message and location
    are not compared. Two findings with the same key in one snapshot are an error.

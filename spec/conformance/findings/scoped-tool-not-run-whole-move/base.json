@@ -1,0 +1,14 @@
+{
+  "findings": [
+    {
+      "tool": "duplicates",
+      "rule": "cpd-not-run",
+      "path": "legacy",
+      "identity": "cpd-not-run",
+      "message": "No CPD duplicate report for legacy.",
+      "classification": "descriptive",
+      "toolNotRun": true,
+      "notRunScope": ["legacy/src/main/java", "legacy/src/test/java"]
+    }
+  ]
+}

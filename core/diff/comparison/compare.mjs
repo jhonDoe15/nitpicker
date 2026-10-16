@@ -8,6 +8,7 @@ export function compareFindings({
   headFindings,
   baseToHeadRenames = new Map(),
   baseToHeadDirectories = new Map(),
+  keptBasePaths,
   touchedCode,
 }) {
   const baseByKey = indexFindings({
@@ -19,6 +20,7 @@ export function compareFindings({
   const comparedHead = againstMissingReports(headFindings, baseFindings, {
     renames: baseToHeadRenames,
     directories: baseToHeadDirectories,
+    kept: keptBasePaths,
   });
   const headByKey = indexFindings({ findings: comparedHead, snapshot: 'head' });
   const present = classifyHeadFindings({ headByKey, baseByKey, touchedCode });

@@ -6,6 +6,7 @@ import {
   readFileSync,
   readdirSync,
   rmSync,
+  symlinkSync,
   writeFileSync,
 } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -100,6 +101,34 @@ describe.skipIf(process.platform === 'win32')('runJdeps', () => {
       classes: 'app.Main\napp.impl.Impl\n',
       graph: GRAPH,
     });
+  });
+
+  it('leaves a dangling symbolic link out of the staged copy', () => {
+    const { root, module, reportDir } = project(['module-info.class', 'app/Main.class']);
+    symlinkSync(path.join(root, 'gone'), path.join(module.outputDirectory, 'app/Gone.class'));
+
+    runJdeps(module, reportDir);
+
+    expect(read(path.join(root, 'staged.txt'))).toBe('./app/Main.class\n');
+    expect(read(path.join(reportDir, 'jdeps.txt'))).toBe(GRAPH);
+  });
+
+  it('stages in the temporary folder when the class directory holds the build directory', () => {
+    const { root, module, reportDir } = project([]);
+    const shared = { ...module, outputDirectory: module.buildDirectory };
+    for (const file of ['module-info.class', 'app/Main.class']) {
+      mkdirSync(path.dirname(path.join(shared.outputDirectory, file)), { recursive: true });
+      writeFileSync(path.join(shared.outputDirectory, file), 'class bytes');
+    }
+
+    runJdeps(shared, reportDir);
+
+    const staged = path.dirname(read(path.join(root, 'args.txt')).split('\n')[2]);
+    expect(path.dirname(staged)).toBe(tmpdir());
+    expect(path.basename(staged)).toMatch(/^nitpicker-jdeps-\w{6}$/u);
+    expect(existsSync(staged)).toBe(false);
+    expect(read(path.join(root, 'staged.txt'))).toBe('./app/Main.class\n');
+    expect(read(path.join(reportDir, 'jdeps.txt'))).toBe(GRAPH);
   });
 
   it('removes the staged copy once jdeps finishes', () => {

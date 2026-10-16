@@ -178,7 +178,7 @@ describe('readLintFindings', () => {
     expect(() => parseAnalyzerReport({ findings }, 'java')).not.toThrow();
   });
 
-  it('scopes the notice to the module folder when its source roots lie outside the project', () => {
+  it('scopes the notice of a module without source roots to the module folder', () => {
     const root = project([]);
     const reports = path.join(root, 'nothing');
     mkdirSync(reports);
@@ -186,12 +186,38 @@ describe('readLintFindings', () => {
 
     const findings = readLintFindings(reports, {
       projectRoot: root,
-      sourceRoots: ['../shared/src/main/java'],
-      moduleDir: 'app',
+      sourceRoots: [],
+      module: { moduleDir: 'app' },
     });
 
     expect(findings.map(({ notRunScope }) => notRunScope)).toEqual([['app']]);
     expect(parseAnalyzerReport({ findings }, 'java').findings).toEqual(findings);
+  });
+
+  it('keeps comparing the project when the failed module compiles only sources outside it', () => {
+    const head = project(['src/main/java/demo/Raw.java']);
+    const base = project([]);
+    const baseReports = path.join(base, 'failed');
+    mkdirSync(baseReports);
+    writeFileSync(path.join(baseReports, 'javac-lint-failed.txt'), 'A.java:3: error: boom\n');
+    const baseFindings = readLintFindings(baseReports, {
+      projectRoot: base,
+      sourceRoots: ['../../x/src/main/java'],
+      module: { moduleDir: '', modulePath: 'platform' },
+    });
+    const headFindings = readLintFindings(path.join(head, 'build/nitpicker'), {
+      projectRoot: head,
+    });
+
+    expect(baseFindings.map(({ toolNotRun, notRunScope }) => [toolNotRun, notRunScope])).toEqual([
+      [undefined, undefined],
+    ]);
+    expect(parseAnalyzerReport({ findings: baseFindings }, 'java').findings).toEqual(baseFindings);
+    expect(
+      compareFindings({ baseFindings, headFindings }).newFindings.map(
+        (finding) => finding.classification,
+      ),
+    ).toEqual(['enforceable', 'enforceable', 'enforceable', 'enforceable']);
   });
 
   it('reports head warnings as descriptive when the base lint compile failed', () => {
@@ -203,7 +229,9 @@ describe('readLintFindings', () => {
     const headFindings = readLintFindings(path.join(head, 'build/nitpicker'), {
       projectRoot: head,
     });
-    const compare = (baseFindings) => compareFindings({ baseFindings, headFindings }).newFindings;
+    function compare(baseFindings) {
+      return compareFindings({ baseFindings, headFindings }).newFindings;
+    }
 
     const uncompared = compare(readLintFindings(baseReports, { projectRoot: base }));
 
@@ -233,11 +261,12 @@ describe('readLintFindings', () => {
     const headFindings = readLintFindings(path.join(head, 'build/nitpicker'), {
       projectRoot: head,
     });
-    const compare = (sourceRoots) =>
-      compareFindings({
+    function compare(sourceRoots) {
+      return compareFindings({
         baseFindings: readLintFindings(baseReports, { projectRoot: base, sourceRoots }),
         headFindings,
       }).newFindings.map((finding) => finding.classification);
+    }
 
     expect(compare(['legacy/src/main/java'])).toEqual([
       'enforceable',

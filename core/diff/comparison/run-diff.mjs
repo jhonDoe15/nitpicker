@@ -163,6 +163,7 @@ function runAndCombine(context) {
     headRun,
     baseToHeadRenames: layout.moves.files,
     baseToHeadDirectories: layout.moves.directories,
+    keptBasePaths: layout.moves.kept,
     touchedCode: layout.touchedCode,
     comparison,
     startedAt,
