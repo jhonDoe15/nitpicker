@@ -784,10 +784,15 @@ secondary rules it stands for, with a scope:
 - `line`: the same file and line.
 - `member`: the same method, constructor or field initializer, from a scan of the source that skips
   braces in comments, strings, characters and text blocks (`java-spans.mjs`).
+- `javadoc`: the same Javadoc comment, whichever of its lines each tool names (Checkstyle's
+  `SummaryJavadoc` reports the comment's first line, Error Prone's `MissingSummary` can name a
+  later one, such as the line of an `@author` tag).
 - `class`: the same class; a nested class is its own class.
 - `field`: the same class and field name. SpotBugs names a field `pkg.Class.field` and often gives
   it no line, or the line of a write.
-- `file`: the same file.
+- `file`: the same file. Error Prone's `WildcardImport` reports a file once, at its first wildcard
+  import, and its fix replaces them all, so it stands for every Checkstyle `AvoidStarImport` in
+  the file.
 
 `withoutOverlaps` (`static-overlaps.mjs`) runs in `collectJavaFindings`, on the base and the head
 alike, after the policy's `exclude` and `exceptions` and before the legacy inventory. A secondary
@@ -879,7 +884,7 @@ table:
 - line: `errorprone/InterruptedExceptionSwallowed` over `pmd/AvoidCatchingGenericException`
 - line: `errorprone/IdentifierName` over `checkstyle/CatchParameterName`, `checkstyle/LambdaParameterName`, `checkstyle/LocalVariableName`, `checkstyle/MemberName`, `checkstyle/MethodName`, `checkstyle/ParameterName`, `checkstyle/PatternVariableName`, `checkstyle/RecordComponentName`
 - line: `errorprone/TypeParameterNaming` over `checkstyle/ClassTypeParameterName`, `checkstyle/InterfaceTypeParameterName`, `checkstyle/MethodTypeParameterName`, `checkstyle/RecordTypeParameterName`
-- line: `errorprone/WildcardImport` over `checkstyle/AvoidStarImport`
+- file: `errorprone/WildcardImport` over `checkstyle/AvoidStarImport`
 - line: `errorprone/LongLiteralLowerCaseSuffix` over `checkstyle/UpperEll`
 - line: `errorprone/MixedArrayDimensions` over `checkstyle/ArrayTypeStyle`
 - line: `errorprone/BigDecimalLiteralDouble` over `pmd/AvoidDecimalLiteralsInBigDecimalConstructor`, `spotbugs/DMI_BIGDECIMAL_CONSTRUCTED_FROM_DOUBLE`
@@ -897,7 +902,7 @@ table:
 - line: `errorprone/ReturnFromVoid` over `checkstyle/JavadocMethod`
 - line: `errorprone/NotJavadoc` over `checkstyle/InvalidJavadocPosition`
 - line: `errorprone/EmptyBlockTag` over `checkstyle/NonEmptyAtclauseDescription`
-- line: `errorprone/MissingSummary` over `checkstyle/SummaryJavadoc`
+- javadoc: `errorprone/MissingSummary` over `checkstyle/SummaryJavadoc`
 - line: `errorprone/AnnotationPosition` over `checkstyle/AnnotationLocation`
 - line: `errorprone/ClassName` over `checkstyle/OuterTypeFilename`
 - line: `errorprone/AssignmentExpression` over `pmd/AssignmentInOperand`

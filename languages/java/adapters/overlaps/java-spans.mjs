@@ -18,6 +18,7 @@ const TOKEN = new RegExp(
 );
 const LITERAL = /^(?:["']|\/\/|\/\*)/u;
 const STRING = /^"(?!"")/u;
+const JAVADOC = /^\/\*\*(?!\/)/u;
 
 function memberName(header) {
   const plain = header.replace(ANNOTATION, ' ');
@@ -79,6 +80,9 @@ const ACTIONS = new Map([
 ]);
 
 function step(state, token) {
+  if (JAVADOC.test(token)) {
+    state.spans.push({ kind: 'javadoc', start: state.line, end: state.line + newlines(token) });
+  }
   if (LITERAL.test(token)) {
     state.header += STRING.test(token) ? '""' : ' ';
     return;
@@ -115,6 +119,7 @@ export function lineLocator(text) {
   return (line) => ({
     className: innermost(spans, 'class', line)?.name,
     member: innermost(spans, 'member', line)?.name,
+    javadoc: innermost(spans, 'javadoc', line)?.start,
     field: FIELD_NAME.exec(
       withoutTypeArguments((lines[line - 1] ?? '').replace(ANNOTATION, ' ')),
     )?.[1],
