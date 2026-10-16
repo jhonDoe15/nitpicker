@@ -430,6 +430,26 @@
     "scope": "line"
   },
   {
+    "primary": ["forbiddenapis/legacy-date-time"],
+    "secondary": ["errorprone/JavaUtilDate"],
+    "scope": "line"
+  },
+  {
+    "primary": ["forbiddenapis/clock-now"],
+    "secondary": ["errorprone/JavaTimeDefaultTimeZone"],
+    "scope": "line"
+  },
+  {
+    "primary": ["forbiddenapis/thread-sleep"],
+    "secondary": ["errorprone/PreferJavaTimeOverload"],
+    "scope": "line"
+  },
+  {
+    "primary": ["forbiddenapis/java-deserialization"],
+    "secondary": ["errorprone/BanSerializableRead"],
+    "scope": "line"
+  },
+  {
     "primary": ["errorprone/MissingOverride"],
     "secondary": ["pmd/MissingOverride"],
     "scope": "line"
