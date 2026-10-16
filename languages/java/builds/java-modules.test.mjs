@@ -102,4 +102,63 @@ describe('readModuleFindings', () => {
       summary(readModuleFindings(single, [single], { reportDirectory: REPORT_DIRECTORY })),
     ).toEqual([['pmd', 'EmptyCatchBlock', 'src/main/java/demo/Main.java']]);
   });
+
+  it('gives each module its path so a slow test is compared with the base file of that module', () => {
+    const root = mavenProject();
+    const base = mkdtempSync(path.join(tmpdir(), 'nitpicker-java-modules-base-'));
+    temporaryRoots.push(base);
+    const testSource =
+      'package demo;\nclass AdderTest {\n  @Test\n  void adds() {\n    check();\n  }\n}\n';
+    const testFile = 'src/test/java/demo/AdderTest.java';
+    write(path.join(root, 'core', testFile), testSource);
+    write(path.join(base, 'core', testFile), testSource);
+    const results = path.join(root, 'core', REPORT_DIRECTORY, 'test-results/surefire');
+    write(
+      path.join(results, 'TEST-demo.AdderTest.xml'),
+      '<testsuite name="demo.AdderTest"><testcase classname="demo.AdderTest" name="adds()" time="9"/></testsuite>',
+    );
+    const manifestFile = path.join(root, 'core', REPORT_DIRECTORY, 'manifest.json');
+    write(
+      manifestFile,
+      JSON.stringify({
+        build: 'maven',
+        sourceRoots: ['src/main/java'],
+        testSourceRoots: ['src/test/java'],
+      }),
+    );
+    const slow = (baselineRoot) =>
+      readModuleFindings(root, [path.join(root, 'app'), path.join(root, 'core')], {
+        reportDirectory: REPORT_DIRECTORY,
+        baseline: { snapshot: 'head', baselineRoot },
+      })
+        .filter(({ tool }) => tool === 'test-runtime')
+        .map(({ path: file }) => file);
+
+    expect(slow(base)).toEqual([]);
+    expect(slow(undefined)).toEqual([`core/${testFile}`]);
+    write(path.join(base, 'core', testFile), testSource.replace('check()', 'other()'));
+    expect(slow(base)).toEqual([`core/${testFile}`]);
+  });
+
+  it('keeps a class of the same name in two modules apart, each on its own file', () => {
+    const root = realpathSync(mkdtempSync(path.join(tmpdir(), 'nitpicker-java-modules-')));
+    temporaryRoots.push(root);
+    writeModule(path.join(root, 'core'), { className: 'Same', lines: 5 });
+    writeModule(path.join(root, 'app'), { className: 'Same', lines: 5 });
+    write(path.join(root, 'app', REPORT_DIRECTORY, 'jdeps-classes.txt'), 'demo.Same\ndemo.Main\n');
+    write(path.join(root, 'app', REPORT_DIRECTORY, 'jdeps.txt'), '   demo.Main -> demo.Same app\n');
+
+    const coupling = readModuleFindings(root, [path.join(root, 'app'), path.join(root, 'core')], {
+      reportDirectory: REPORT_DIRECTORY,
+    })
+      .filter(
+        ({ identity, path: file }) => identity === 'module:fanIn' && file.endsWith('Same.java'),
+      )
+      .map((finding) => `${finding.path} ${String(finding.metric.value)}`);
+
+    expect(coupling.toSorted()).toEqual([
+      'app/src/main/java/demo/Same.java 1',
+      'core/src/main/java/demo/Same.java 0',
+    ]);
+  });
 });

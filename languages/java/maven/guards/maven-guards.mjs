@@ -2,7 +2,7 @@ import { existsSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { GRADLE_DIRECTORY } from '../../builds/java-build.mjs';
 import { runJava } from '../maven-command.mjs';
-import { classFiles } from '../../builds/class-file.mjs';
+import { classFiles } from '../../builds/classes/class-file.mjs';
 import { runPermits } from './class-permits.mjs';
 import { runDependencies } from './maven-dependencies.mjs';
 import { runJavacLint } from './maven-javac-lint.mjs';

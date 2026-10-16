@@ -50,7 +50,6 @@ export const FILE_LIMIT_DEFAULTS = {
   folderFiles: 6,
 };
 
-/** Seconds one test may take (Java and Kotlin), keyed by their `thresholds` name. */
 export const TEST_TIME_DEFAULTS = { unitTestSeconds: 5, integrationTestSeconds: 30 };
 
 /** Rules `exceptions` can lift for some paths in any preset (TypeScript also takes ESLint rules). */

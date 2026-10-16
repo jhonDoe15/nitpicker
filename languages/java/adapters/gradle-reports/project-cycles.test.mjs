@@ -40,7 +40,7 @@ function cycleIdentities(files) {
 describe('package cycles on a Gradle build with several projects', () => {
   it('reports one cycle through two projects, once for each of its packages', () => {
     expect(cycleIdentities(CROSS_PROJECT_LOOP).toSorted()).toEqual([
-      'lib/src/main/java/demo/b/B.java cycle:demo.b',
+      'lib/src/main/java/demo/b/B.java cycle:lib/demo.b',
       'src/main/java/demo/a/A.java cycle:demo.a',
     ]);
   });
@@ -51,9 +51,16 @@ describe('package cycles on a Gradle build with several projects', () => {
     expect(cycleIdentities(files)).toEqual([]);
   });
 
-  it('reads a permit listed by both projects like one listed once', () => {
-    const permit = 'demo.b.B -> demo.a.A\n';
-    const files = { ...CROSS_PROJECT_LOOP, 'permits.txt': permit, 'lib/permits.txt': permit };
+  it('keeps two projects with the same package names apart when neither uses the other', () => {
+    const files = {
+      'modules.txt': 'lib\n',
+      'src/main/java/demo/A.java': 'package demo;\n',
+      'lib/src/main/java/demo/A.java': 'package demo;\n',
+      'jdeps-classes.txt': 'demo.a.A\ndemo.b.B\n',
+      'jdeps.txt': '   demo.a.A -> demo.b.B app\n',
+      'lib/jdeps-classes.txt': 'demo.b.C\ndemo.a.D\n',
+      'lib/jdeps.txt': '   demo.b.C -> demo.a.D lib\n',
+    };
 
     expect(cycleIdentities(files)).toEqual([]);
   });

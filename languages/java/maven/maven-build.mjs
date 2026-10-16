@@ -22,6 +22,7 @@ import {
   runJacocoReport,
   runPit,
 } from './maven-tests.mjs';
+import { copyTestResults } from './results/maven-test-results.mjs';
 import { jacocoPlugin, MAVEN_PLUGINS, resolveTools } from './maven-tools.mjs';
 import { GRADLE_DIRECTORY, readPinnedTools } from '../builds/java-build.mjs';
 
@@ -178,6 +179,7 @@ function analyzeModule({ project, ...options }) {
   const spring = classpaths.mainCompile.some((entry) => SPRING_JAR.test(path.basename(entry)));
   const context = { ...options, reportDir, isArchunit, spring };
   const testsRan = collectTestResults({ module, reportDir, since, isArchunit });
+  copyTestResults({ module, reportDir, since, isArchunit });
   analyzeSources(context, project);
   analyzeTests(context, testsRan);
   writeManifest({ module, reportDir, pinned, spring });

@@ -1,6 +1,6 @@
 import { readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
-import { classFiles, classReader, readConstantPool } from '../../builds/class-file.mjs';
+import { classFiles, classReader, readConstantPool } from '../../builds/classes/class-file.mjs';
 
 function skipAttribute(reader) {
   reader.skip(2);
