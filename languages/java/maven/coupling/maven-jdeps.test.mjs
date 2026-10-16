@@ -4,6 +4,7 @@ import {
   mkdirSync,
   mkdtempSync,
   readFileSync,
+  readdirSync,
   rmSync,
   writeFileSync,
 } from 'node:fs';
@@ -45,7 +46,8 @@ function project(files, jdeps) {
   const reportDir = path.join(root, 'report');
   mkdirSync(reportDir);
   fakeJdeps(root, jdeps);
-  return { root, module: { basedir: root, outputDirectory }, reportDir };
+  const buildDirectory = path.join(root, 'target');
+  return { root, module: { basedir: root, buildDirectory, outputDirectory }, reportDir };
 }
 
 function read(file) {
@@ -81,13 +83,19 @@ describe.skipIf(process.platform === 'win32')('runJdeps', () => {
   });
 
   it('analyzes a copy of a modular class directory without its module descriptor', () => {
-    const result = run(['module-info.class', 'app/Main.class', 'app/impl/Impl.class']);
+    const result = run([
+      'module-info.class',
+      'app/Main.class',
+      'app/impl/Impl.class',
+      'app/messages.properties',
+      'META-INF/MANIFEST.MF',
+    ]);
 
     expect({
       ...result,
       args: result.args.replace(/\/nitpicker-jdeps-[^/]+\//u, '/<staged>/'),
     }).toEqual({
-      args: `-verbose:class\n-filter:none\n${path.join(tmpdir(), '<staged>/classes')}\n`,
+      args: '-verbose:class\n-filter:none\n<root>/target/<staged>/classes\n',
       staged: './app/Main.class\n./app/impl/Impl.class\n',
       classes: 'app.Main\napp.impl.Impl\n',
       graph: GRAPH,
@@ -95,9 +103,11 @@ describe.skipIf(process.platform === 'win32')('runJdeps', () => {
   });
 
   it('removes the staged copy once jdeps finishes', () => {
-    const result = run(['module-info.class', 'app/Main.class']);
+    const { root, module, reportDir } = project(['module-info.class', 'app/Main.class']);
 
-    expect(existsSync(result.args.split('\n')[2])).toBe(false);
+    runJdeps(module, reportDir);
+
+    expect(readdirSync(path.join(root, 'target'))).toEqual(['classes']);
   });
 
   it('writes an empty graph without running jdeps when there are no classes', () => {

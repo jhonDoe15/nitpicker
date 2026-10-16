@@ -135,12 +135,14 @@ field by field. Per snapshot:
 - **Module descriptors.** jdeps reads a class directory with a `module-info.class` as a module and
   must then resolve every module its descriptor `requires`; it stops on a plain jar ("Unable to
   derive module descriptor"), a missing module or a split package. Both builds run jdeps on such a
-  module exactly as on one without a descriptor: over a temporary copy of the main class
-  directories without `module-info.class`, with no module path
-  (`languages/java/maven/coupling/maven-jdeps.mjs`, and `nitpickerJdeps` in the init script). Only
-  the edges between the module's own classes are read, so coupling is the same. When jdeps fails,
-  the error gives its exit code and up to 10 lines of its stderr, the `Error`, `Exception` and
-  `Caused by` lines first, without the JVM's `Picked up ...` notes.
+  module exactly as on one without a descriptor, with no module path: over a temporary copy of the
+  class files of the modular class directories, without `module-info.class`, made in the build
+  directory (`target/` on Maven, Gradle's build directory) and removed afterwards
+  (`languages/java/maven/coupling/maven-jdeps.mjs`, and `tasks/jdeps-task.gradle`). A class
+  directory without a descriptor is read in place. Only the edges between the module's own classes
+  are read, so coupling is the same. When jdeps fails, the error gives its exit code and up to 10
+  lines of its stderr, the `Error`, `Exception` and `Caused by` lines first, without the JVM's
+  `Picked up ...` notes.
 - **Guards.** The [guards](#guards) run on Maven too, outside Maven and per module
   (`languages/java/maven/guards/`), writing the same reports in `target/nitpicker/`. The javac
   lint pass reads the `maven-compiler-plugin` settings from the effective POM (`release`, `source`,
@@ -731,47 +733,47 @@ A Checkstyle rule prints as its full check class, for example
   `@Value` or `@FieldDefaults(level = AccessLevel.PRIVATE)`, which Lombok makes private. These
   scopes are `SuppressionXpathSingleFilter` modules inside the
   generated config, not inline suppressions. The messages are rewritten to name the allowed form.
-- **javac lint.** The `nitpickerLint` task writes `guards-plan.json` (the main sources, the
-  compile class path, the processor path, the compiler, its release, source, target, encoding and
-  arguments, the classes directory and the generated-sources directory), and after Gradle has run
-  nitpicker compiles the main sources once more from it with
-  `-Xlint:rawtypes,unchecked,deprecation,removal,cast` and writes the warnings to
-  `javac-lint.txt` in the report directory (tool `javac`, rule = lint category). The same runner
-  serves Maven. It compiles a copy in which every `@SuppressWarnings(...)` is blanked out (same
-  lines and columns), with the project's compiler, release (or `-source`/`-target` from the source
-  and target compatibility when no release is set) and compiler arguments (without `-Werror`,
-  `-Xlint`, `-Xplugin`, processor options and class or module paths), and with the main classes on
-  the classpath, so it runs only Lombok of the annotation processors (the classes other processors
+- **javac lint.** The `nitpickerLint` task writes `guards-plan.json` (the main sources, the compile
+  class path, the processor path, the compiler, its release, source, target, encoding and arguments,
+  the classes directory and the generated-sources directory), and after Gradle has run nitpicker
+  compiles the main sources once more from it with
+  `-Xlint:rawtypes,unchecked,deprecation,removal,cast` and writes the warnings to `javac-lint.txt`
+  in the report directory (tool `javac`, rule = lint category). The same runner serves Maven. It
+  compiles a copy in which every `@SuppressWarnings(...)` is blanked out (same lines and columns),
+  with the project's compiler, release (or `-source`/`-target` from the source and target
+  compatibility when no release is set) and compiler arguments (without `-Werror`, `-Xlint`,
+  `-Xplugin`, processor options and class or module paths), and with the main classes on the
+  classpath, so it runs only Lombok of the annotation processors (the classes other processors
   generate are already compiled) and stops after flow analysis without writing classes. The copy
   keeps the sources' paths below the analysis root, with every `lombok.config` on the way from the
   root down to each source folder, so Lombok reads the project's configuration (a package folder's
-  `fluent` accessors or log field name included), and those of the folders above the root up to
-  one that sets `config.stopBubbling`; a relative `import` in a copied file is pointed at the file
-  it names. A warning javac places on a Lombok annotation (`@SuperBuilder` or `@Builder` code that
+  `fluent` accessors or log field name included), and those of the folders above the root up to one
+  that sets `config.stopBubbling`; a relative `import` in a copied file is pointed at the file it
+  names. A warning javac places on a Lombok annotation (`@SuperBuilder` or `@Builder` code that
   Lombok generates) is dropped: it is not in code the project wrote. With a `module-info.java` the
   sources compile as that module, with the modular jars of the class path on `--module-path` (and,
   if that fails, every jar), the sources other annotation processors generated (MapStruct,
   Immutables, Dagger) compiled along without their warnings being reported, and every file is
-  linted. On the head, when the base produced a lint report in the same run (kept with a
-  fingerprint of its compile inputs in `<build dir>/nitpicker-lint/` of the base checkout, Maven's
+  linted. On the head, when the base produced a lint report in the same run (kept with a fingerprint
+  of its compile inputs in `<build dir>/nitpicker-lint/` of the base checkout, Maven's
   `target/nitpicker-lint/`), the base's warnings are reused for files whose content is the same as
-  on the base, so the report matches a full lint. They are reused only when the compile inputs
-  match the base's: the javac version, the language level, the encoding, the compiler arguments
-  (the checkout's folder left out), every `lombok.config` that applies to the sources and every
-  class path and Lombok entry (a jar outside the project by name and size; a jar inside it, or a
-  classes directory such as another project's, by its content), so a dependency bump that
-  deprecates an API or a changed Lombok setting is reported in unchanged files too. An unchanged file whose classes
-  use a class of a changed file, directly or through a subclass (read from the head's class
-  files), is compiled again, so a method the change deprecated or a class the change made generic
-  is reported where it is called. A constant javac inlined leaves no trace in the class files, so
-  deprecating a `static final` constant is reported only in changed files. Without a base
-  report or with other compile inputs the head lints every file. When the lint compile fails the
-  run goes on: the report says so in a descriptive `javac/lint-not-run` notice that quotes the
-  first error, and javac warnings are not checked in that run. When only the base failed, the
-  head's javac findings under that module's main source roots are reported but do not fail the gate: with no base report, nothing tells
-  which of them the change added, and each one says so. When only the head failed, the run fails
-  with a tool error: the change broke the lint compile. The notice says to fix what the lint
-  compile reports or to add an exception for `javac/lint-not-run` (path `**`) when the project
+  on the base, so the report matches a full lint. They are reused only when the compile inputs match
+  the base's: the javac version, the language level, the encoding, the compiler arguments (the
+  checkout's folder left out), every `lombok.config` that applies to the sources and every class
+  path and Lombok entry (a jar outside the project by name and size; a jar inside it, or a classes
+  directory such as another project's, by its content), so a dependency bump that deprecates an API
+  or a changed Lombok setting is reported in unchanged files too. An unchanged file whose classes
+  use a class of a changed file, directly or through a subclass (read from the head's class files),
+  is compiled again, so a method the change deprecated or a class the change made generic is
+  reported where it is called. A constant javac inlined leaves no trace in the class files, so
+  deprecating a `static final` constant is reported only in changed files. Without a base report or
+  with other compile inputs the head lints every file. When the lint compile fails the run goes on:
+  the report says so in a descriptive `javac/lint-not-run` notice that quotes the first error, and
+  javac warnings are not checked in that run. When only the base failed, the head's javac findings
+  under that module's main source roots are reported but do not fail the gate: with no base report,
+  nothing tells which of them the change added, and each one says so. When only the head failed, the
+  run fails with a tool error: the change broke the lint compile. The notice says to fix what the
+  lint compile reports or to add an exception for `javac/lint-not-run` (path `**`) when the project
   cannot be linted this way.
 - **Run time.** Each snapshot runs in a fresh worktree with a fresh report directory, so Gradle's
   up-to-date checks do not skip these tasks; what saves time is the differential lint. Measured on
@@ -812,24 +814,33 @@ A Checkstyle rule prints as its full check class, for example
   on the stack, and the next `(` reads its null name. One file is enough (`static final Class<?>[]
   TYPES = { String.class }; enum Kind { X } void register() { }`), and the state also carries from
   one file to the next. The launcher rewrites each class literal, also with spaces or comments
-  between the dot and `class`, to `.const` before tokenizing: `const` is a Java keyword no code
-  uses, so it stays a keyword token like `class` and has the same length, and the tokens, lines
-  and paths of the report do not move (an identifier such as `c$ass` would be ignored like any
-  identifier and match `other.value`). The `codefragment` text of the report shows the rewrite;
-  nitpicker reads clone text from the source files instead. The launcher follows symbolic links;
-  a link loop, an unreadable file or directory, or a missing directory argument is skipped with a
-  line on stderr. When CPD exits with a code other than 0 or 4 or writes no XML report, both
-  builds write its exit code (or signal) and stderr to `cpd-failed.txt` instead of `cpd.xml`; on
-  Maven a `java` that cannot start or runs past the 15-minute tool timeout writes the error code
-  (such as `ETIMEDOUT`) and message there instead of failing the run. The module then gets a
-  `duplicates/cpd-not-run` tool-not-run finding that names its source roots and quotes the exit
-  and stderr (an empty or non-XML `cpd.xml` gives the same finding). Its `notRunScope` lists the
-  module's main and test source roots as project-relative directories (a root that is the project
-  folder itself becomes `.`; Maven writes each module's roots relative to the module, and the
-  reactor reader puts the module folder in front, as it does for paths). A failure on the base therefore makes only the head's `duplicates` findings in those
-  directories descriptive, jscpd clones there included, and a failure on the head is a tool error
-  unless a base notice covers each of its directories, after following renames. The
-  `javac/lint-not-run` notice is scoped the same way, to the module's main source roots.
+  around the dot, to `.const` before tokenizing; text inside comments, strings and character
+  literals is left alone, so `// values.` followed by a `class` line keeps its `class`. `const` is a
+  Java keyword no code uses, so it stays a keyword token like `class` and has the same length, and
+  the tokens, lines, columns and paths of the report do not move (an identifier such as `c$ass`
+  would be ignored like any identifier and match `other.value`). The `codefragment` text of the
+  report shows the rewrite; nitpicker reads clone text from the source files instead. The launcher
+  follows symbolic links; a link loop, an unreadable file or directory, or a missing directory
+  argument is skipped with a line on stderr and listed in `cpd-skipped.txt`, and the module then
+  gets one descriptive `duplicates/cpd-skipped-paths` notice naming those paths. When CPD exits with
+  a code other than 0 or 4 or writes no XML report, both builds write its exit code (or signal) and
+  stderr to `cpd-failed.txt` instead of `cpd.xml`; on Maven a `java` that cannot start or runs past
+  the 15-minute tool timeout writes the error code (such as `EACCES` or `ETIMEDOUT`) and message
+  there instead of failing the run. The module then gets a `duplicates/cpd-not-run` tool-not-run
+  finding that names its source roots and says how CPD ended: it exited with a code, was stopped by
+  a signal, could not run, or did not finish within the tool timeout (an empty or non-XML `cpd.xml`
+  gives the same finding). Its `notRunScope` lists the module's main and test source roots as
+  project-relative directories: a root that is the project folder itself becomes `.`, a root outside
+  the project is left out, and the module's folder stands in when no root is left. Maven writes each
+  module's roots relative to the module, and the reactor reader puts the module folder in front, as
+  it does for paths. A failure on the base makes the head's `duplicates` findings in those
+  directories descriptive, and in the directories the renames move them to. That includes jscpd's
+  clones there, although jscpd itself ran: both tools report `duplicates`, and a CPD failure is now
+  a genuine tool failure, so losing jscpd's enforcement in that one module for that one comparison
+  is the accepted cost of a simple scope. A failure on the head is a tool error unless a base notice
+  of the tool has the same identity and path or the base notices together cover each of its
+  directories. The `javac/lint-not-run` notice is scoped the same way, to the module's main source
+  roots.
 - **Cycles.** `java-coupling.mjs` already has the class graph from jdeps. Each package in a
   strongly connected set of packages is one `package-cycle` finding, identified by the package
   name and placed on its first file, so growing a legacy cycle adds a finding for the new package
