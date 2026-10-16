@@ -599,20 +599,21 @@ resolved plus a new finding, as in the TypeScript check.
   file) is reported, so an exception for the primary or a primary tool that did not run brings it
   back. The pairs, the
   scopes and what "once" covers are under "Overlaps between the tools" below.
-- **Measured** (findings on the whole project, main and test code; see the review for each check):
-  crank 130 and PetClinic 46 (68 and 41 in round 4). The rise is checks that now stand for another
-  tool's finding on the same code: on crank `LongLiteralLowerCaseSuffix` 37, `SystemOut` 17,
+- **Measured** (findings on the whole project, main and test code): 130 on a 57-file Maven
+  calculator project built with Gradle and 46 on Spring PetClinic, against 68 and 41 before the
+  overlap checks were turned back on. The rise is checks that now stand for another tool's finding
+  on the same code: on the calculator `LongLiteralLowerCaseSuffix` 37, `SystemOut` 17,
   `WildcardImport` 7 and `MissingOverride` 3 in place of Checkstyle's `UpperEll` 37 and
   `AvoidStarImport` 10 and PMD's `SystemPrintln` 14 and `MissingOverride` 3; on PetClinic
   `SystemOut` 5, `EmptyBlockTag` 4, `WildcardImport` 2, `InterruptedExceptionSwallowed` 1,
   `MissingOverride` 1 and `MissingSummary` 1 in place of their PMD and Checkstyle twins, plus
   `AnnotationPosition` 1. `MethodCanBeStatic` (2 and 7) and `ThrowsUncheckedException` (0 and 3)
-  are off. Over all tools the enforceable findings went from 2875 to 2871 on crank and from 4037
-  to 4028 on PetClinic. The `gradle-project` fixture has 1 (`UnnecessarilyFullyQualified`) and the
-  `spring-project` fixture 1 (`MissingOverride`). NullAway alone: 6, 4, 0 and 0, nearly all
+  are off. Over all tools the enforceable findings went from 2875 to 2871 on the calculator and
+  from 4037 to 4028 on PetClinic. The `gradle-project` fixture has 1 (`UnnecessarilyFullyQualified`)
+  and the `spring-project` fixture 1 (`MissingOverride`). NullAway alone: 6, 4, 0 and 0, nearly all
   `@Nullable` values returned or passed where a non-null one is declared.
-- **Cost.** A second compile of main and test sources: about 6 s on the fixtures and 30 s on crank
-  and PetClinic, most of it JVM start-up and Error Prone's own class loading.
+- **Cost.** A second compile of main and test sources: about 6 s on the fixtures and 30 s on the
+  calculator and PetClinic, most of it JVM start-up and Error Prone's own class loading.
 - **Limits.** A project whose own build already runs Error Prone gets nitpicker's run in
   addition; its Error Prone jars are taken off the processor path of the second compile.
 - **Tests.** `ingest/errorprone/errorprone.test.mjs` (sample report, schema validity, line-shift and
