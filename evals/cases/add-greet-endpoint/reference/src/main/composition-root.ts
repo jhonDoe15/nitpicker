@@ -5,6 +5,8 @@ export function main(names: readonly string[]): void {
   runGreeting(names, { write: (text) => process.stdout.write(text) });
 }
 
-export const serve = handleRequest;
+export function apiMain(url: string): void {
+  process.stdout.write(handleRequest({ method: 'GET', url }).body);
+}
 
 export { handleRequest };
