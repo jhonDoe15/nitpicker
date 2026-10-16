@@ -1,3 +1,5 @@
+const MEASURES = ['lines', 'branches'];
+
 export function isInside(inner, outer) {
   return (
     inner.start >= outer.start &&
@@ -16,90 +18,92 @@ export function ownRange(fn, candidates, siblings) {
   );
 }
 
-function sums(matches) {
-  function sum(key) {
-    return {
-      covered: matches.reduce((total, method) => total + method[key].covered, 0),
-      total: matches.reduce((total, method) => total + method[key].total, 0),
-    };
-  }
-  return { lines: sum('lines'), branches: sum('branches') };
+function sum(matches, key) {
+  return {
+    covered: matches.reduce((total, method) => total + method[key].covered, 0),
+    total: matches.reduce((total, method) => total + method[key].total, 0),
+  };
 }
 
-function percentOf({ lines, branches }) {
-  const percents = [lines, branches]
+function percentOf(measures) {
+  const percents = measures
     .filter((measure) => measure.total > 0)
     .map((measure) => (measure.covered / measure.total) * 100);
   return percents.length === 0 ? undefined : Math.min(...percents);
 }
 
-function without(own, lent) {
-  const remaining = {};
-  for (const key of ['lines', 'branches']) {
-    remaining[key] = {
-      covered: Math.max(0, own[key].covered - lent[key].covered),
-      total: Math.max(0, own[key].total - lent[key].total),
-    };
-  }
-  return remaining;
+function remainder(own, lent) {
+  return {
+    covered: Math.max(0, own.covered - lent.covered),
+    total: Math.max(0, own.total - lent.total),
+  };
 }
 
 export function lowestCoverage(matches, lentMatches = []) {
-  const own = sums(matches);
-  if (lentMatches.length === 0) {
-    return percentOf(own);
-  }
-  const remaining = without(own, sums(lentMatches));
+  const own = MEASURES.map((key) => sum(matches, key));
+  const lent = MEASURES.map((key) => sum(lentMatches, key));
+  const remaining = own.map((measure, index) => remainder(measure, lent[index]));
   return percentOf(remaining) ?? percentOf(own);
 }
 
+function selectIn(state, fn, { filePath, pool }) {
+  return state
+    .keysOf(filePath)
+    .flatMap((key) => state.selectMethods(fn, pool.get(key) ?? [], state.siblings.get(fn.file)));
+}
+
+function resolution(state, fn, filePath) {
+  const methods = fn.lineScoped ? [] : selectIn(state, fn, { filePath, pool: state.pools.methods });
+  if (methods.length > 0 || (!fn.lineScoped && fn.lineFallback !== true)) {
+    return { matches: methods, byLines: false };
+  }
+  const lineUnit = { ...fn, lineScoped: true };
+  return {
+    matches: selectIn(state, lineUnit, { filePath, pool: state.pools.lines }),
+    byLines: true,
+  };
+}
+
+function resolve(state, fn, filePath) {
+  if (!state.resolutions.has(fn)) {
+    state.resolutions.set(fn, resolution(state, fn, filePath));
+  }
+  return state.resolutions.get(fn);
+}
+
+function inlinedLambda(state, unit, filePath) {
+  return unit.lineFallback === true && resolve(state, unit, filePath).byLines;
+}
+
+function onlyInlinedBetween(state, { unit, fn, filePath }) {
+  return state.siblings
+    .get(fn.file)
+    .filter((between) => isInside(unit, between) && isInside(between, fn))
+    .every((between) => inlinedLambda(state, between, filePath));
+}
+
+function lentMatches(state, fn, filePath) {
+  return state.siblings
+    .get(fn.file)
+    .filter(
+      (unit) =>
+        isInside(unit, fn) &&
+        inlinedLambda(state, unit, filePath) &&
+        onlyInlinedBetween(state, { unit, fn, filePath }),
+    )
+    .flatMap((unit) => resolve(state, unit, filePath).matches);
+}
+
 export function coverageLookup({ pools, keysOf, selectMethods, parsed }) {
-  const siblings = Map.groupBy(parsed, (fn) => fn.file);
-  const resolutions = new Map();
-
-  function select(fn, filePath, pool) {
-    return keysOf(filePath).flatMap((key) =>
-      selectMethods(fn, pool.get(key) ?? [], siblings.get(fn.file)),
-    );
-  }
-
-  function resolve(fn, filePath) {
-    if (!resolutions.has(fn)) {
-      resolutions.set(fn, resolution(fn, filePath));
-    }
-    return resolutions.get(fn);
-  }
-
-  function resolution(fn, filePath) {
-    const methods = fn.lineScoped ? [] : select(fn, filePath, pools.methods);
-    if (methods.length > 0) {
-      return { matches: methods, byLines: false };
-    }
-    if (!fn.lineScoped && fn.lineFallback !== true) {
-      return { matches: [], byLines: false };
-    }
-    return { matches: select({ ...fn, lineScoped: true }, filePath, pools.lines), byLines: true };
-  }
-
-  function lentLines(fn, filePath) {
-    const inlined = (unit) => unit.lineFallback === true && resolve(unit, filePath).byLines;
-    return siblings
-      .get(fn.file)
-      .filter(
-        (unit) =>
-          unit.lineFallback === true &&
-          isInside(unit, fn) &&
-          inlined(unit) &&
-          siblings
-            .get(fn.file)
-            .filter((between) => isInside(unit, between) && isInside(between, fn))
-            .every((between) => between.lineFallback === true && inlined(between)),
-      )
-      .flatMap((unit) => resolve(unit, filePath).matches);
-  }
-
-  return function coverageOf(fn, filePath) {
-    const { matches, byLines } = resolve(fn, filePath);
-    return lowestCoverage(matches, byLines ? [] : lentLines(fn, filePath));
+  const state = {
+    pools,
+    keysOf,
+    selectMethods,
+    siblings: Map.groupBy(parsed, (fn) => fn.file),
+    resolutions: new Map(),
+  };
+  return (fn, filePath) => {
+    const { matches, byLines } = resolve(state, fn, filePath);
+    return lowestCoverage(matches, byLines ? [] : lentMatches(state, fn, filePath));
   };
 }
