@@ -1,8 +1,9 @@
-import { chmodSync, mkdirSync, writeFileSync } from 'node:fs';
+import { chmodSync, existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { createRequire } from 'node:module';
 import path from 'node:path';
 
 const fakeTools = path.join(import.meta.dirname, '../fixtures/fake-python-tools.cjs');
-const fastTools = path.join(import.meta.dirname, '../fixtures/fake-python-tools.sh');
+const { runFake } = createRequire(import.meta.url)(fakeTools);
 const TOOLS = [
   'ruff',
   'black',
@@ -28,11 +29,31 @@ export function installFakeToolchain(binDirectory, tools = TOOLS) {
     install(
       binDirectory,
       tool,
-      `exec /bin/sh "${fastTools}" "${process.execPath}" "${fakeTools}" ${tool.replace('python3', 'python')} "$@"`,
+      `exec "${process.execPath}" "${fakeTools}" ${tool.replace('python3', 'python')} "$@"`,
     );
   }
 }
 
 export function installFakePoetry(binDirectory, environmentDirectory) {
   install(binDirectory, 'poetry', `echo "${environmentDirectory}"`);
+}
+
+export function spawnFakeTools(realSpawn) {
+  return (command, args, options) => {
+    const tool = path.basename(command);
+    const installed =
+      path.dirname(command).endsWith(path.join('.venv', 'bin')) &&
+      existsSync(command) &&
+      readFileSync(command, 'utf8').includes(fakeTools);
+    if (!installed) {
+      return realSpawn(command, args, options);
+    }
+    const { status, stdout, stderr } = runFake({
+      tool: tool.replace('python3', 'python'),
+      args,
+      cwd: options.cwd,
+      env: options.env,
+    });
+    return { status, signal: null, stdout, stderr, error: undefined };
+  };
 }

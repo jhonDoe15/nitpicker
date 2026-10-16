@@ -1,7 +1,11 @@
 import { readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
-import { afterEach, vi } from 'vitest';
-import { installFakeToolchain } from '../../../../languages/python/adapters/test-support/fake-toolchain.mjs';
+import { afterEach, beforeEach, vi } from 'vitest';
+import { processes } from '../../../../languages/python/adapters/execution/python-process.mjs';
+import {
+  installFakeToolchain,
+  spawnFakeTools,
+} from '../../../../languages/python/adapters/test-support/fake-toolchain.mjs';
 import { runTasksInProcess } from '../../../diff/execution/test-support/in-process-analyzers.mjs';
 import { usePresetFixtures } from '../../test-support/preset-fixtures.mjs';
 
@@ -20,7 +24,12 @@ export function newFindings(result, rule) {
 }
 
 export function usePythonFixtures(runNitpickerCli) {
+  beforeEach(() => {
+    const realSpawn = processes.spawn;
+    vi.spyOn(processes, 'spawn').mockImplementation(spawnFakeTools(realSpawn));
+  });
   afterEach(() => {
+    vi.restoreAllMocks();
     vi.unstubAllEnvs();
   });
   const fixtures = usePresetFixtures({

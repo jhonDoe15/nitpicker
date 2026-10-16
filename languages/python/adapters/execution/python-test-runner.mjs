@@ -11,12 +11,11 @@ const PYTEST_DEPENDENCY = /(?:^|[\s"'=])pytest(?:\b|_)/m;
 const PYTEST_STYLE_TEST =
   /^(?:async\s+)?def test_|^(?:import|from)\s+pytest\b|^class Test\w*\s*(?:\(\s*\))?:/m;
 const TEST_FILE = /^(?:test_.*|.*_test)\.py$/;
-const PYTEST_PROBE = [
+export const PYTEST_PROBE = [
   'python',
   '-c',
   'import importlib.util as u, pytest; print(pytest.__version__, int(u.find_spec("pytest_cov") is not None), int(u.find_spec("xdist") is not None))',
 ];
-const probes = new WeakMap();
 
 function existingTestFiles(projectRoot) {
   const directories = TEST_DIRECTORIES.filter((name) => existsSync(path.join(projectRoot, name)));
@@ -56,18 +55,12 @@ export function detectTestRunner(projectRoot, setting) {
 }
 
 function probePytest(context) {
-  if (!probes.has(context)) {
-    const result = probe(context, PYTEST_PROBE);
-    const [version, coverage, xdist] =
-      result.error === undefined && result.status === 0 ? result.stdout.trim().split(' ') : [];
-    probes.set(
-      context,
-      VERSION_PATTERN.test(version ?? '')
-        ? { version, coverage: coverage === '1', xdist: xdist === '1' }
-        : undefined,
-    );
-  }
-  return probes.get(context);
+  const result = probe(context, PYTEST_PROBE);
+  const [version, coverage, xdist] =
+    result.error === undefined && result.status === 0 ? result.stdout.trim().split(' ') : [];
+  return VERSION_PATTERN.test(version ?? '')
+    ? { version, coverage: coverage === '1', xdist: xdist === '1' }
+    : undefined;
 }
 
 export function pytestLabel(context) {
@@ -86,8 +79,8 @@ export function singleProcessPytestEnvironment(context) {
 }
 
 function pytestCommand(context) {
-  const probe = probePytest(context);
-  if (probe === undefined) {
+  const pytest = probePytest(context);
+  if (pytest === undefined) {
     throw environmentError(
       `pytest is used by this project but cannot be imported in the ${context.launcher.description} environment: install it there, or set "python.testRunner" to "unittest"`,
     );
@@ -98,8 +91,8 @@ function pytestCommand(context) {
     '-q',
     '-o',
     `cache_dir=${path.join(context.reportRoot, 'pytest-cache')}`,
-    ...(probe.coverage ? ['--no-cov'] : []),
-    ...(probe.xdist ? ['-n0'] : []),
+    ...(pytest.coverage ? ['--no-cov'] : []),
+    ...(pytest.xdist ? ['-n0'] : []),
   ];
 }
 

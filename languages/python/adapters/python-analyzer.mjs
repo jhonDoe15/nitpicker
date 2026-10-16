@@ -80,7 +80,7 @@ function pythonInvocation(settings, part) {
   });
 }
 
-export function createPythonAnalyzer(settings = {}, probes = new Map()) {
+function pythonAnalyzer(settings, probes) {
   return {
     name: PYTHON_ANALYZER_NAME,
     version: UNRESOLVED_VERSION,
@@ -108,7 +108,7 @@ export function createPythonAnalyzer(settings = {}, probes = new Map()) {
   };
 }
 
-export function createMutationAnalyzer(settings = {}, probes = new Map()) {
+function mutationAnalyzer(settings, probes) {
   return {
     name: MUTATION_ANALYZER_NAME,
     version: UNRESOLVED_VERSION,
@@ -124,7 +124,15 @@ export function createMutationAnalyzer(settings = {}, probes = new Map()) {
   };
 }
 
+export function createPythonAnalyzer(settings = {}) {
+  return pythonAnalyzer(settings, new Map());
+}
+
+export function createMutationAnalyzer(settings = {}) {
+  return mutationAnalyzer(settings, new Map());
+}
+
 export function createPythonAnalyzers(settings = {}) {
   const probes = new Map();
-  return [createPythonAnalyzer(settings, probes), createMutationAnalyzer(settings, probes)];
+  return [pythonAnalyzer(settings, probes), mutationAnalyzer(settings, probes)];
 }
