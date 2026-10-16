@@ -183,4 +183,3 @@ export function importRoots(projectRoot, sourceRoots) {
 function isFile(file) {
   return existsSync(file) && statSync(file).isFile();
 }
-

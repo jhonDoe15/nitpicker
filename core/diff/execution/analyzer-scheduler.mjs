@@ -142,10 +142,6 @@ function hasFailed(outcome) {
   );
 }
 
-/**
- * A dependent task may name tools whose tool errors in its dependency do not stop it, such as
- * failing project tests that the dependent leaves out on its own.
- */
 function blockingDependency(task, dependencyOutcomes) {
   const tolerated = new Set(task.toleratedDependencyErrors ?? []);
   return dependencyOutcomes.find((outcome) => blocksDependents(outcome, tolerated));

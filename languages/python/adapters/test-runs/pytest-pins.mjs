@@ -54,7 +54,7 @@ function iniSection(text, name) {
 const SHELL_WORD = /(?:[^\s'"\\]+|\\[\s\S]?|"(?:[^"\\]|\\[\s\S])*(?:"|$)|'[^']*(?:'|$))+/gu;
 const SHELL_PIECE = /"((?:[^"\\]|\\[\s\S])*)"?|'([^']*)'?|\\([\s\S]?)/gu;
 
-function unquoted(piece, double, single, escaped) {
+function unquoted(...[, double, single, escaped]) {
   if (double !== undefined) {
     return double.replaceAll(/\\([\s\S])/gu, '$1');
   }
