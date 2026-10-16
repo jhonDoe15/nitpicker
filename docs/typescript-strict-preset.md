@@ -308,6 +308,37 @@ off (a PR that adds or removes React keeps linting on both sides); a misspelled 
   in any module: `declare module 'csstype' { interface Properties { '--progress'?: number } }`
   (needs `csstype` installed; `interface` is allowed in that augmentation). This is the default
   because inline `style` objects are the usual agent slop.
+- **No hard-coded colors** (`nitpicker/react-no-hardcoded-colors`). Every production source file
+  of the scope is checked (`.ts` and `.mjs` helpers included; tests and story files,
+  `*.stories.*` and `*.story.*`, are not; the story pattern is `storyGlobs` in
+  `eslint-config/scope-support.mjs`, shared with the i18n scope). A whole string that is a 6- or
+  8-digit hex color (`'#336699'`) or a color function with
+  literal arguments (`rgb()`, `rgba()`, `hsl()`, `hsla()`, `hwb()`, `lab()`, `lch()`, `oklab()`,
+  `oklch()`, `color(display-p3 ...)`) is reported anywhere. A 3- or 4-digit hex (`'#add'`) and a
+  named color (`red`, `gray`) are reported only in a color position, so ids, hashes and anchors
+  that happen to look like colors are left alone. The color positions are:
+  - the value of `color`, `backgroundColor`, `background`, `borderColor`, `fill`, `stroke`,
+    `outlineColor`, `textDecorationColor` or `caretColor`, as an object key or as a JSX attribute
+    (`<svg fill="red">`). A named color under such a key is reported only in a JSX attribute or in
+    a style context, so domain data such as `{ name: 'Tee', color: 'black' }` passes;
+  - a style context: the JSX `style`, `sx` and `css` attributes, an object passed to `styled`,
+    `css`, `keyframes`, `createGlobalStyle` or `StyleSheet.create`, and an object typed or
+    asserted as `CSSProperties` and similar style types. Compound values are checked there
+    (`border: '1px solid #ccc'`, `boxShadow: '0 0 4px rgba(0, 0, 0, 0.2)'`);
+  - the text of a `styled.x`, `styled(X)`, `css`, `keyframes` or `createGlobalStyle` template
+    (comments and `url(#id)` references are ignored), where a named color is reported as the
+    whole value of a color property (`color: red;`, `background-color: white !important;`);
+  - a CSS declaration in any other string or template, with a color-bearing property name at the
+    start or after `;` or `{` (`'border: 1px solid #ccc'`, `'a:1; --brand: #336699'`), so prose
+    such as `'Invalid color: #fff is not allowed'` passes, and a Tailwind arbitrary value
+    (`bg-[#336699]`, `bg-[rgb(0,0,0)]`).
+
+  Prose that mentions a color function (`'Use rgb(255, 0, 0) format'`), `rgb(var(--brand-rgb))`,
+  `transparent`, `currentColor`, `inherit`, `initial` and `unset` are fine. Take the color from the
+  theme or palette (a theme token, a CSS variable, `currentColor`). The file or folder that
+  defines the palette gets one exception for the rule (`src/theme/**`); there is no filename
+  heuristic.
+
 - **Accessibility** (`jsx-a11y/*`): the recommended `eslint-plugin-jsx-a11y` rule set, as errors.
 - **`null` for refs and contexts.** `null` stays banned, except as the argument and the type
   argument of `useRef` and `createContext` (`useRef<HTMLDivElement>(null)`,

@@ -3,6 +3,11 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { lintWithOxlint } from './oxlint-runner.mjs';
+import {
+  lintProject,
+  messagesOf as oxlintMessagesOf,
+  removeProject,
+} from './test-support/oxlint-project.mjs';
 
 const POLICY = `import tseslint from ${JSON.stringify(import.meta.resolve('typescript-eslint'))};
 
@@ -47,36 +52,18 @@ const SOURCES = {
   'src/bom.ts': '\uFEFFconst x = 1; debugger;\nexport { x };\n',
 };
 
-let root;
-let results;
+let project;
 
 function messagesOf(relativePath) {
-  const result = results.find((entry) => entry.filePath === path.join(root, relativePath));
-  return (result?.messages ?? []).map(({ ruleId, line, column }) => ({ ruleId, line, column }));
+  return oxlintMessagesOf(project, relativePath, ['ruleId', 'line', 'column']);
 }
 
 beforeAll(() => {
-  root = realpathSync(mkdtempSync(path.join(tmpdir(), 'nitpicker-oxlint-test-')));
-  writeFileSync(path.join(root, 'policy.mjs'), POLICY);
-  for (const [relativePath, text] of Object.entries(SOURCES)) {
-    mkdirSync(path.dirname(path.join(root, relativePath)), { recursive: true });
-    writeFileSync(path.join(root, relativePath), text);
-  }
-  results = lintWithOxlint({
-    options: { projectRoot: root, patterns: ['src/**/*.ts'] },
-    environment: {
-      ...process.env,
-      NITPICKER_DIFF_ESLINT_POLICY_CONFIG: path.join(root, 'policy.mjs'),
-      NITPICKER_DIFF_ESLINT_PROJECT_ROOT: root,
-    },
-    runEslintCli: () => {
-      throw new Error('no rule needs ESLint here');
-    },
-  });
+  project = lintProject({ policy: POLICY, sources: SOURCES });
 });
 
 afterAll(() => {
-  rmSync(root, { recursive: true, force: true });
+  removeProject(project);
 });
 
 describe('lintWithOxlint', () => {
@@ -93,12 +80,8 @@ describe('lintWithOxlint', () => {
   });
 
   it('reports the message id the ESLint rule used', () => {
-    const locked = results.find(
-      (entry) => entry.filePath === path.join(root, 'src/strict/locked.ts'),
-    );
-    expect(locked.messages.find((message) => message.ruleId === 'local/no-foo').messageId).toBe(
-      'foo',
-    );
+    const locked = oxlintMessagesOf(project, 'src/strict/locked.ts', ['ruleId', 'messageId']);
+    expect(locked.find((message) => message.ruleId === 'local/no-foo').messageId).toBe('foo');
   });
 
   it('applies disable comments to rules loaded from ESLint plugins', () => {
