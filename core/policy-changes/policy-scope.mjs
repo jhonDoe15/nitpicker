@@ -4,6 +4,7 @@ import { globToRegExp } from '../../shared/glob.mjs';
 import { runGit } from '../diff/git/repository/command.mjs';
 import { detectSourceRoots } from '../../languages/python/adapters/execution/python-project.mjs';
 import { resolveLayout } from '../../languages/typescript/preset/layout.mjs';
+import { projectChecksJavascript } from '../../languages/typescript/preset/modules/tsconfig-files.mjs';
 import { presetToDeclare } from '../configuration/project-checks/preset-detection.mjs';
 
 const GRADLE_EXTENSIONS = ['java', 'kt', 'kts'];
@@ -63,6 +64,15 @@ function basePathResolver({ files = new Map(), directories = new Map() } = {}, f
   };
 }
 
+function checkJsOf(headConfig, baseProjectRoot, headProjectRoot) {
+  return usesLayout(headConfig) && headConfig.preset !== 'javascript'
+    ? {
+        before: projectChecksJavascript(baseProjectRoot),
+        after: projectChecksJavascript(headProjectRoot),
+      }
+    : undefined;
+}
+
 export function createPolicyScope({
   files,
   baseRoots,
@@ -71,6 +81,7 @@ export function createPolicyScope({
   moves,
   presetRequired = false,
   existsInBase = () => true,
+  checkJs,
 }) {
   const extensions = new Set(extensionsOf(headConfig));
   const code = files.filter((file) => extensions.has(file.slice(file.lastIndexOf('.') + 1)));
@@ -88,6 +99,7 @@ export function createPolicyScope({
     basePathOf: basePathResolver(moves, folders),
     presetRequired,
     existsInBase,
+    checkJs,
   };
 }
 
@@ -107,5 +119,6 @@ export function readPolicyScope({
     moves,
     presetRequired: presetToDeclare(headConfig, headProjectRoot) !== undefined,
     existsInBase: (file) => existsSync(path.join(baseProjectRoot, file)),
+    checkJs: checkJsOf(headConfig, baseProjectRoot, headProjectRoot),
   });
 }

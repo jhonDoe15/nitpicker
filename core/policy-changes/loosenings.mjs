@@ -101,3 +101,11 @@ export function listedChanges(baseConfig, headConfig) {
     analyzerChanges(baseConfig.analyzers, headConfig.analyzers),
   ];
 }
+
+export function checkJsChanges(checkJs) {
+  if (checkJs === undefined || checkJs.before === checkJs.after) {
+    return { loosened: [], changed: [] };
+  }
+  const text = `tsconfig.json checkJs: ${String(checkJs.before)} -> ${String(checkJs.after)}`;
+  return checkJs.before ? { loosened: [text], changed: [] } : { loosened: [], changed: [text] };
+}

@@ -329,6 +329,20 @@ describe('a change that adopts or keeps the policy', () => {
     expect(summary.notices).toEqual([]);
   });
 
+  it('fails a change that turns checkJs off in the project tsconfig', () => {
+    const tsconfig = (checkJs) => JSON.stringify({ compilerOptions: { allowJs: true, checkJs } });
+    const { exitCode, summary } = runWithHeadConfig({
+      headConfig: {},
+      projectFiles: { ...TYPESCRIPT_FILES, 'tsconfig.json': tsconfig(true) },
+      headFiles: { 'tsconfig.json': tsconfig(false) },
+    });
+
+    expect([exitCode, summary.policyLoosenings]).toEqual([
+      1,
+      ['tsconfig.json checkJs: true -> false'],
+    ]);
+  });
+
   it('fails a test root added over production code, and code added under one the base had', () => {
     const testRoots = ['test', 'tests', 'src/legacy'];
     const added = runWithHeadConfig({ headConfig: { layout: { testRoots } } });

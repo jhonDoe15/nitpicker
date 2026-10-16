@@ -10,7 +10,6 @@ import { applyRuleExceptions } from '../eslint-config/exceptions.mjs';
 import {
   applyJavascriptDialect,
   scriptRuleEntries,
-  untypedScriptEntries,
 } from '../../../javascript/preset/eslint-dialect.mjs';
 import { reactRuleIds, reactTestRuleIds } from '../eslint-config/react/react-rules.mjs';
 import {
@@ -21,7 +20,6 @@ import {
 import { i18nRuleIds } from '../eslint-config/i18n/i18n-rules.mjs';
 import { i18nScopeConfigFor, isI18nProject } from '../eslint-config/i18n/i18n-scope.mjs';
 import { readHeadPolicy, readLayout } from '../head-policy.mjs';
-import { projectChecksJavascript } from '../modules/tsconfig-files.mjs';
 import {
   testEnvironmentConfigFor,
   testEnvironmentsFromVariables,
@@ -142,7 +140,6 @@ const presetConfig = defineConfig(
     rules: { 'nitpicker/no-external-executables-in-unit-tests': 'error' },
   },
   ...testEnvironmentConfigFor(layout, testEnvironmentsFromVariables()),
-  ...untypedScriptEntries(policy, projectChecksJavascript(analyzedProjectRoot())),
 );
 
 const inactiveRuleIds = [

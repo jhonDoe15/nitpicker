@@ -5,10 +5,8 @@ import { defaultResolvedLayout } from '../../typescript/preset/layout.mjs';
 import {
   JAVASCRIPT_ONLY_RULES,
   JSDOC_RULE_OPTIONS,
-  UNTYPED_VALUE_RULES,
   applyJavascriptDialect,
   scriptRuleEntries,
-  untypedScriptEntries,
 } from './eslint-dialect.mjs';
 
 const javascript = { preset: 'javascript' };
@@ -209,23 +207,5 @@ describe('scriptRuleEntries', () => {
     expect(scriptRuleEntries(['src/**/*.js'])).toEqual([
       { files: ['src/**/*.js'], rules: JAVASCRIPT_ONLY_RULES },
     ]);
-  });
-});
-
-describe('untypedScriptEntries', () => {
-  const offForScripts = [
-    {
-      files: ['**/*.{js,mjs,cjs,jsx}'],
-      rules: Object.fromEntries(UNTYPED_VALUE_RULES.map((rule) => [rule, 'off'])),
-    },
-  ];
-
-  it('turns the unsafe-value rules off for JavaScript files in a TypeScript project', () => {
-    expect(untypedScriptEntries({}, false)).toEqual(offForScripts);
-  });
-
-  it('keeps them when the JavaScript is type-checked', () => {
-    expect(untypedScriptEntries(javascript, false)).toEqual([]);
-    expect(untypedScriptEntries({}, true)).toEqual([]);
   });
 });
