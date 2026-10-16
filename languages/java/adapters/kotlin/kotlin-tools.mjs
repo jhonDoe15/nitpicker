@@ -193,7 +193,7 @@ function styleProperties(tools, conventions) {
   ];
 }
 
-function detektProperties(tools, conventions, projectRoot, configRoot) {
+function detektProperties(tools, conventions, configRoot) {
   const conventionLayer = detektConventionLayer(conventions);
   const layers = detektLayers({
     conventionLayer,
@@ -218,6 +218,6 @@ export function kotlinGradleArguments(projectRoot, options) {
     `-Pnitpicker.kotlin.ktfmtStyle=${tools.ktfmtStyle}`,
     ...(tools.ktfmtEditorconfig ? ['-Pnitpicker.kotlin.ktfmtEditorconfig=true'] : []),
     ...styleProperties(tools, conventions),
-    ...detektProperties(tools, conventions, projectRoot, options?.policyRoot ?? projectRoot),
+    ...detektProperties(tools, conventions, options?.policyRoot ?? projectRoot),
   ];
 }

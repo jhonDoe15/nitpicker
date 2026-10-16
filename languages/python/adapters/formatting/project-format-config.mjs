@@ -73,13 +73,15 @@ export function readRuffConfig(start) {
   return file === undefined ? undefined : { file, set: ruffSettingsOf(file) };
 }
 
+const BLACK_QUOTES = { true: 'preserve', false: 'normalize' };
+
 function blackSettings(table) {
   const normalization = table['skip-string-normalization'] ?? table.skip_string_normalization;
   const lineLength = table['line-length'] ?? table.line_length;
   return Object.fromEntries(
     Object.entries({
       lineLength,
-      quotes: normalization === undefined ? undefined : normalization ? 'preserve' : 'normalize',
+      quotes: BLACK_QUOTES[normalization],
     }).filter(([, value]) => value !== undefined),
   );
 }

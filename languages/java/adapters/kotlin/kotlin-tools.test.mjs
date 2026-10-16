@@ -132,8 +132,8 @@ describe('detekt config', () => {
   it('leaves the project file out unless it is listed', () => {
     expect(toolsOf({ 'detekt.yml': '' }).detektConfig).toBeUndefined();
     expect(
-      toolsOf({ 'detekt.yml': '' }, { toolPrecedence: { detekt: ['nitpicker'] } }),
-    ).toMatchObject({ detektConfig: undefined });
+      toolsOf({ 'detekt.yml': '' }, { toolPrecedence: { detekt: ['nitpicker'] } }).detektConfig,
+    ).toBeUndefined();
   });
 
   it('prefers the more specific location and asks for a file when the project is listed', () => {

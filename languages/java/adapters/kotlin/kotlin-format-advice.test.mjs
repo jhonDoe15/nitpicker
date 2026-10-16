@@ -43,7 +43,10 @@ describe('the advice on a ktlint finding', () => {
   });
 
   it('says it runs with ktlint defaults when nothing is followed', () => {
-    expect(kotlinFormatAdvice({}, {}).ktlint(RULE)).toContain("ktlint with ktlint's defaults and");
+    expect(kotlinFormatAdvice({}, {}).ktlint(RULE)).toBe(
+      "Nitpicker runs ktlint with ktlint's defaults and ignores your .editorconfig. " +
+        `To lift this rule, set ${RULE} = disabled in .editorconfig and add ${OPT_IN('ktlint')}.`,
+    );
   });
 
   it('reads the .editorconfig once the project is listed', () => {

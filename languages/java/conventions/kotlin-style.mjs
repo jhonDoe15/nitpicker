@@ -79,21 +79,23 @@ function unusedFor(formatter) {
   };
 }
 
+function projectWins(tools, tool) {
+  const layers = precedenceLayers(tools[tool]?.precedence);
+  return layers.usesProject && !layers.nitpickerFirst;
+}
+
 export function kotlinStyle({ config, projectRoot }) {
   const tools = config.tools ?? {};
-  const wins = (tool) => {
-    const layers = precedenceLayers(tools[tool]?.precedence);
-    return layers.usesProject && !layers.nitpickerFirst;
-  };
   const configured = config.kotlin?.detektConfig;
   const formatter = kotlinFormatterOf(projectRoot, config.kotlin?.formatter);
-  const detektListed = wins('detekt') || (configured !== undefined && tools.detekt === undefined);
+  const detektListed =
+    projectWins(tools, 'detekt') || (configured !== undefined && tools.detekt === undefined);
   return {
     unused: unusedFor(formatter),
     project: {
       ...(detektListed ? detektChoices(projectRoot, configured) : {}),
-      ...(formatter === 'ktfmt' && wins('ktfmt') ? ktfmtChoices(projectRoot) : {}),
-      ...(formatter === 'ktlint' && wins('ktlint') ? ktlintChoices(projectRoot) : {}),
+      ...(formatter === 'ktfmt' && projectWins(tools, 'ktfmt') ? ktfmtChoices(projectRoot) : {}),
+      ...(formatter === 'ktlint' && projectWins(tools, 'ktlint') ? ktlintChoices(projectRoot) : {}),
     },
     note: () => undefined,
   };
