@@ -16,7 +16,11 @@ export function pythonUsable() {
 
 function writeFiles(root, files) {
   for (const [file, content] of Object.entries(files)) {
-    writeFileSync(path.join(root, file), content);
+    const target = path.resolve(root, file);
+    if (!target.startsWith(`${root}${path.sep}`)) {
+      throw new Error(`${file} is outside ${root}`);
+    }
+    writeFileSync(target, content);
   }
 }
 
