@@ -111,9 +111,15 @@ function commentEnd(text, start) {
   return undefined;
 }
 
-function leadingCommentHeader(text, from = 0) {
-  const next = commentEnd(text, skipWhitespace(text, from));
-  return next === undefined ? text.slice(0, from) : leadingCommentHeader(text, next);
+function leadingCommentHeader(text) {
+  const ends = [0];
+  for (const from of ends) {
+    const next = commentEnd(text, skipWhitespace(text, from));
+    if (next !== undefined) {
+      ends.push(next);
+    }
+  }
+  return text.slice(0, ends.at(-1));
 }
 
 function exclusionReason(file, relative, userRules) {
