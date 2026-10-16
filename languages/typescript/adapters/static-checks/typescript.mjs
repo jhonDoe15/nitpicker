@@ -10,6 +10,7 @@ import {
   loadTypeScript,
   preEmitDiagnostics,
 } from '../typecheck/typescript-program.mjs';
+import { withAssetImportHint } from '../typecheck/asset-import-hint.mjs';
 
 export async function runTypecheck(options) {
   const ts = loadTypeScript(options.liveProjectRoot);
@@ -75,7 +76,7 @@ export function normalizeTypeScriptDiagnostics({
         `symbol:${symbol ?? ''}`,
         `occurrence:${String(occurrence)}`,
       ].join('|'),
-      message: display,
+      message: withAssetImportHint(diagnostic.code, display),
       classification: 'enforceable',
     };
     if (symbol !== undefined) {

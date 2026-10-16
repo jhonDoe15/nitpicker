@@ -198,7 +198,7 @@ is visible in review.
 | `exclude`         | string[]                                                           | Globs relative to the project root (`**`, `*`, `?`, `{a,b}`), added to the built-in exclusions (`dist`, `build`, `generated`, `node_modules`, `coverage`, `reports`, `target` and `*.d.ts`). Excluded files are skipped by every analyzer and are absent from the dependency graph. With the Java and Python presets the built-in list does not apply and findings whose path matches a glob are dropped (Python also keeps those files away from ruff and black).                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             |
 | `layout`          | object                                                             | Both the TypeScript and JavaScript presets; a config error with `java`, `kotlin` and `python`. `sourceRoots` (default `["src"]`) and `testRoots` (default `["test", "tests"]`): non-empty arrays of directories inside the project, with no absolute paths, `..` or globs. `excludedGlobs`: an array of globs that replaces the built-in exclusions. `entryPoints`: an array of globs of files that are started or loaded by path (a spawned script, a worker, a config read by another tool) and so are never imported; the dead-code check treats them as entries and the module-load-effects check skips them. Other keys are an error. The strict preset puts features under `<sourceRoot>/main/features/`.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                |
 | `exceptions`      | object[]                                                           | The TypeScript, JavaScript, Java and Kotlin presets; with `python`, only for the file limits (`file-lines-limit`, `folder-files-limit` and `line-length-limit`), and `python` has `python.exceptions` for its other rules. Lifts a strict rule for some paths: `{ "rule", "paths", "reason" }`, all required. `rule` must be a rule the preset configures (with `java`: the finding as printed, `<tool>/<rule>`; with `kotlin`: one of the one-way rules, see [Kotlin preset](#kotlin-preset)) or one of the file limits `file-lines-limit` and `folder-files-limit` (the TypeScript preset also takes `component-story-missing` and the reuse rules `shared-used-by-one-feature`, `duplicate-definition`, `exported-name-collision`, `redefined-library-component` and `new-icon-asset`, and a `domain-*` architecture rule, whose `paths` are the importing files); with the other presets also `line-length-limit`; `paths` a non-empty glob array, `reason` a non-empty text. A file matching a file-limit exception is not checked and not counted in its folder; a `folder-files-limit` path may also name the folder itself. Each exception is listed in the report and changes the policy hash. See [The strict preset](#the-strict-preset).                                                                           |
-| `react`           | object                                                             | TypeScript and JavaScript presets. The React rule scope; see [React](#react). `enabled` (`true` or `false`) forces it on or off; without it the scope is on when `react` is in the project's `package.json` `dependencies` or `devDependencies`. `styling` (`"class-names"`, `"css-in-js"` or `"inline-style"`; inferred from `package.json` when unset) is the one styling approach the project uses. Other keys are an error.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                |
+| `react`           | object                                                             | TypeScript and JavaScript presets. The React rule scope; see [React](#react). `enabled` (`true` or `false`) forces it on or off; without it the scope is on when `react` is in the project's `package.json` `dependencies` or `devDependencies`. `styling` (`"class-names"`, `"css-in-js"`, `"inline-style"` or `"style-sheet"`; inferred from what the source files use when unset) is the one styling approach the project uses. Other keys are an error.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    |
 | `i18n`            | object                                                             | TypeScript preset. The i18n rule scope for `react-intl`; see [Internationalized messages](#internationalized-messages). `enabled` (`true` or `false`) forces it on or off; without it the scope is on when `react-intl` or `@formatjs/intl` is in the head checkout's `package.json` `dependencies` or `devDependencies`. `functionNames` and `componentNames` (string arrays) name wrappers of `formatMessage` and `FormattedMessage` that are checked too. Other keys are an error.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          |
 | `python`          | object                                                             | Python preset only: `environment`, `formatter`, `testRunner`, `typeChecker` and `sourceRoots` overrides for what nitpicker detects, and `exceptions` (the Python counterpart of `exceptions`); see [Python preset](#python-preset).                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            |
 | `kotlin`          | object                                                             | Kotlin preset only. `formatter`: `"ktlint"`, `"ktfmt"` or `"none"`, the format check to run; detected from the build files and `.editorconfig` when absent. `detektConfig`: path of the detekt config inside the project; detected when absent. See [Kotlin preset](#kotlin-preset).                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           |
@@ -218,20 +218,33 @@ two, `python` and `mutation`.
 
 A TypeScript project with `react` in `dependencies` or `devDependencies` gets a React rule scope on
 top of the strict preset: function components only, the rules of hooks and exhaustive dependencies,
-no state derived from props or state in an effect, no data fetching in an effect, no array index as a
-`key`, one styling approach, the `jsx-a11y` accessibility rules and Testing Library rules for
+no state derived from props or state in an effect, no data fetching or async work in an effect, no
+array index (or random value) as a `key`, no mutated state, impure render or nested component, labelled
+form fields, no `dangerouslySetInnerHTML`, cleanup for listeners and timers, one styling approach, the
+`jsx-a11y` accessibility rules and Testing Library rules for
 component tests (query by role, `userEvent` over `fireEvent`, no implementation details). Detection
 reads the package.json of the head checkout once and uses the result for both sides, so a pull
 request that adds React does not turn the whole project into new findings.
 Set `"react": { "enabled": true }` to force the scope on (a monorepo whose manifest is elsewhere) or
 `false` to turn it off. `react.styling` picks the approach: `class-names` flags inline `style`
-objects and CSS-in-JS imports, `css-in-js` flags stylesheet imports and inline `style` objects,
-`inline-style` flags stylesheet imports and CSS-in-JS imports. Unset, it is `css-in-js` when
-`package.json` lists styled-components, Emotion or another CSS-in-JS library, else `class-names`. A
+objects of fixed values and CSS-in-JS imports, `css-in-js` flags stylesheet imports and inline
+`style` objects of fixed values, `inline-style` flags stylesheet imports and CSS-in-JS imports,
+`style-sheet` (React Native) flags everything but `StyleSheet.create` styles and `style` values
+computed at runtime. Unset, it is the approach most source files of the head checkout already use
+(stylesheet imports and `className`, CSS-in-JS imports, `StyleSheet.create`, inline `style`); only a
+project with no styling yet falls back to `package.json` (`css-in-js` for styled-components,
+Emotion or another CSS-in-JS library, `style-sheet` for `react-native` or `expo`, else
+`class-names`). The React major, the styling approach, whether Testing Library cleans up by itself
+(Vitest `globals: true`), the framework files that need a default export (Next.js routes and
+metadata files, React Router and Remix route modules, Storybook stories, Expo Router screens) and
+the Vite entry are detected from the head checkout too, and React files outside React Native get
+the browser globals, with the confusing ones (`event`, `name`, `status`, ...) restricted to
+`window.<name>`. A
 rule that flags legitimate code is lifted for some paths with an entry in `exceptions` (for example
 `react-hooks/exhaustive-deps`); an exception that names a React rule is skipped while the scope is
 off, so adding or removing React in a PR does not break either side of the comparison. The rules and
-their allowed forms are in [The strict preset](typescript-strict-preset.md#react).
+their allowed forms, and the Vite entry point, CSS Module typing and framework file conventions,
+are in [The strict preset](typescript-strict-preset.md#react).
 
 ### Internationalized messages
 
@@ -375,15 +388,14 @@ CRAP is measured on `.js`, `.mjs`, `.cjs` and `.ts` files like on TypeScript one
 
 Set `"preset": "python"` in `nitpicker.config.json` to gate a Python project the same way: ruff, a
 format check (ruff format or black, whichever the project uses), a strict type check (mypy or
-pyright, whichever the project uses), a few small checks of nitpicker's own, the test suite under
+pyright or basedpyright, whichever the project uses), a few small checks of nitpicker's own, the test suite under
 coverage.py, function size limits (lines, statements, control nesting, parameters) and the CRAP
-score (lizard at the version pinned in languages/java/gradle/nitpicker.init.gradle, plus per-function coverage; it must be installed
-as `lizard` in the environment or on the `PATH`, or named by `NITPICKER_LIZARD`; nothing is downloaded) run on the merge base and on head, inside the project's own environment, and only new
+score (cyclomatic complexity computed from Python's own syntax tree, plus per-function coverage; nothing extra to install) run on the merge base and on head, inside the project's own environment, and only new
 enforceable findings fail. Exit codes, console summary, `new-findings.json`, `report.sarif` and
 `report.junit.xml` are the same as for TypeScript. If a tool fails on either snapshot (no
 environment, failing tests, a crashing tool), the failure is reported as a tool error of the
 analyzer that ran it, never thrown: `python` for `ruff-failed`, `format-failed`, `tests-failed`,
-`coverage-failed`, `types-failed`, `rules-failed`, `structure-failed`, `lizard-failed` or a plain one when the environment is missing, and `mutation` for
+`coverage-failed`, `types-failed`, `rules-failed`, `structure-failed` or a plain one when the environment is missing, and `mutation` for
 `mutation-failed` (exit 2 when there are no new findings). A mutation failure keeps the lint,
 format and coverage findings, and mutation testing is skipped when the `python` analyzer had a tool
 error.
@@ -392,7 +404,7 @@ The environment is detected: `uv.lock` (also the one of a uv workspace above a m
 tools with `uv run --no-sync`, `poetry.lock` uses the environment poetry reports, a `.venv/`
 directory is used as is, otherwise the tools come from the `PATH`; `python.environment` can also be
 an absolute virtualenv directory. The environment has to exist already (`uv sync`, `poetry install`, or your CI's
-install step) and needs `coverage`, a type checker (`mypy` or `pyright`) and `pytest`, and `mutmut` unless mutation is disabled (mutmut runs every suite with pytest, which also runs `unittest` tests); `ruff` (or `black`) may come
+install step) and needs `coverage`, a type checker (`mypy`, `pyright` or `basedpyright`) and `pytest`, and `mutmut` unless mutation is disabled (mutmut runs every suite with pytest, which also runs `unittest` tests); `ruff` (or `black`) may come
 from the `PATH`. The base snapshot runs against the same environment with its own sources first on
 `PYTHONPATH`, so an editable install does not make base tests exercise head code.
 
@@ -412,18 +424,18 @@ under the globs are dropped), `legacyInventory` (same format as the Java one; `s
 finding's `identity`) and `python`, whose keys all override a detection: `environment` (`"uv"`,
 `"poetry"`, `"path"` or a virtualenv directory in the project), `formatter` (`"ruff"` or
 `"black"`), `testRunner` (`"pytest"` or `"unittest"`; default `pytest` when the project uses it),
-`typeChecker` (`"mypy"` or `"pyright"`), `importLinter` (`true` or `false`; by default the import-linter
+`typeChecker` (`"mypy"`, `"pyright"` or `"basedpyright"`), `importLinter` (`true` or `false`; by default the import-linter
 contracts run when the project configures them) and `sourceRoots` (default `src`, else the top-level
 packages). The gate also reports new duplicates (`duplicates/duplicate-clone`), package coupling
-(`coupling/stability-direction`) and broken import-linter contracts (`import-linter/contract-broken`);
+(`coupling/stability-direction`; an import under `if TYPE_CHECKING:` is never the reported dependency, though it still counts toward instability) and broken import-linter contracts (`import-linter/contract-broken`);
 their messages name the file to add to `exclude` when the repetition or dependency is intended.
 `layout` describes TypeScript and stays a config error; the top-level `exceptions` is accepted only
 for the file limits (`file-lines-limit`, `line-length-limit`, `folder-files-limit`).
 
-The one-way rules (pathlib, f-strings, no mutable defaults, no bare or swallowing `except`, no
+The one-way rules (pathlib, f-strings, no mutable defaults, no bare `except`, no `except` that only passes, continues, returns or assigns a constant, no `contextlib.suppress(Exception)`, no
 `import *`, logging instead of `print`, frozen dataclasses, pydantic only in `adapters/`, enums
 instead of string constants) and the strict type check name the allowed form in every failure
-message. Inline `# type: ignore`, `# noqa`, `# pyright: ignore` and `# fmt: off` are findings themselves, and so are `@no_type_check`, `if not TYPE_CHECKING:` and a `.pyi` beside its `.py`. A project's own mypy or pyright config cannot weaken the check. The way out of a finding that flags legitimate code (including a comment, with the rule `no-inline-suppression`) is `python.exceptions`; a rule id that nitpicker does not report is a config error. Code
+message. Inline `# type: ignore`, `# noqa`, `# pyright: ignore` and `# fmt: off` are findings themselves, and so are `@no_type_check`, `if not TYPE_CHECKING:` and a `.pyi` beside its `.py`. A project's own mypy, pyright or basedpyright config cannot weaken the check. The way out of a finding that flags legitimate code (including a comment, with the rule `no-inline-suppression`) is `python.exceptions`; a rule id that nitpicker does not report is a config error. Code
 that is legitimately outside a rule is lifted with `python.exceptions`, the Python counterpart of
 `exceptions` and of the same shape (`rule`, `paths`, `reason`, all required):
 
@@ -499,7 +511,13 @@ new and touched code must comply.
   inside such a region. An unformatted new file or newly unformatted lines fail the run.
 - **Exceptions**: a team that cannot adopt a rule yet adds an entry to `exceptions` in
   `nitpicker.config.json`. It is the only way out; inline disables are errors. Because
-  `no-restricted-syntax` is one rule, an exception for it lifts all the syntax bans for those paths.
+  `no-restricted-syntax` is one rule, an exception for it lifts all the syntax bans for those paths;
+  default exports, `null` and promise chains have their own rules (`nitpicker/no-default-export`,
+  `nitpicker/no-null`, `nitpicker/no-promise-chain`) so a framework convention lifts only one of them.
+  When upgrading, an existing `no-restricted-syntax` exception no longer lifts those three bans or
+  the UI framework ban in `domain/`: add an entry for `nitpicker/no-default-export`,
+  `nitpicker/no-null`, `nitpicker/no-promise-chain` or `nitpicker/no-ui-framework-in-domain` with
+  the same paths.
 - **Layout overrides**: `layout.sourceRoots` moves the whole structure (`<root>/main/features/...`).
 
 A small project that follows all of this is kept in `languages/typescript/preset/fixtures/strict-clean` of the nitpicker

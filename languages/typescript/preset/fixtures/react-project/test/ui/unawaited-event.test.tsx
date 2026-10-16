@@ -4,7 +4,8 @@ import { it } from 'vitest';
 import { Counter } from '../../src/main/ui/allowed';
 
 it('clicks without waiting for the event', () => {
+  const user = userEvent.setup();
   render(<Counter items={[{ id: 'a', label: 'Add' }]} />);
 
-  userEvent.click(screen.getByRole('button', { name: 'Add' }));
+  user.click(screen.getByRole('button', { name: 'Add' }));
 });
