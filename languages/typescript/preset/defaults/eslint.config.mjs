@@ -18,6 +18,10 @@ import {
   reactScopeConfigFor,
 } from '../eslint-config/react/react-scope.mjs';
 import { readHeadPolicy, readLayout } from '../head-policy.mjs';
+import {
+  testEnvironmentConfigFor,
+  testEnvironmentsFromVariables,
+} from '../test-environment/test-environment-config.mjs';
 
 const policy = readHeadPolicy();
 
@@ -123,6 +127,7 @@ const presetConfig = defineConfig(
     files: unitTestGlobs,
     rules: { 'nitpicker/no-external-executables-in-unit-tests': 'error' },
   },
+  ...testEnvironmentConfigFor(layout, testEnvironmentsFromVariables()),
 );
 
 const applicableExceptions = react

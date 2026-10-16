@@ -2,7 +2,7 @@ import { mkdirSync, mkdtempSync, rmSync, symlinkSync, writeFileSync } from 'node
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterAll, describe, expect, it } from 'vitest';
-import { packageNameOf, resolveModuleSpecifier } from './module-resolution.mjs';
+import { packageNameOf, reachableModules, resolveModuleSpecifier } from './module-resolution.mjs';
 
 const roots = [];
 const PINNED = { types: [], lib: ['ES2022'] };
@@ -222,5 +222,69 @@ describe('bundler aliases', () => {
       kind: 'package',
       name: 'other-tool',
     });
+  });
+});
+
+describe('reachableModules', () => {
+  const root = project({
+    'tsconfig.json': JSON.stringify({
+      compilerOptions: compilerOptions({ paths: { '@/*': ['src/*'] } }),
+    }),
+    'src/entry.ts': 'export {};\n',
+    'src/a.ts': 'export {};\n',
+    'src/b.ts': 'export {};\n',
+    'src/c.ts': 'export {};\n',
+  });
+  const graph = new Map([
+    ['src/entry.ts', ['@/a', './b']],
+    ['src/a.ts', ['./b', './entry']],
+    ['src/b.ts', ['./c']],
+    ['src/c.ts', ['./a']],
+  ]);
+  const specifiersOf = (file) => graph.get(path.relative(root, file)) ?? [];
+  const walk = (limits) =>
+    [...reachableModules(path.join(root, 'src/entry.ts'), specifiersOf, limits)].map((step) =>
+      step.truncated === true
+        ? 'truncated'
+        : `${path.relative(root, step.file)}@${String(step.depth)}`,
+    );
+
+  it('visits each module once, breadth first, through aliases and cycles', () => {
+    expect(walk({ maxDepth: 8, maxFiles: 200 })).toEqual([
+      'src/a.ts@1',
+      'src/b.ts@1',
+      'src/c.ts@2',
+    ]);
+  });
+
+  it('ends with a truncation step when a limit leaves modules unvisited', () => {
+    expect(walk({ maxDepth: 1, maxFiles: 200 })).toEqual(['src/a.ts@1', 'src/b.ts@1', 'truncated']);
+    expect(walk({ maxDepth: 8, maxFiles: 2 })).toEqual(['truncated']);
+    expect(walk({ maxDepth: 2, maxFiles: 4 })).toEqual(['src/a.ts@1', 'src/b.ts@1', 'src/c.ts@2']);
+  });
+
+  it('follows bundler aliases and linked workspace packages', () => {
+    const linked = project({
+      'src/entry.ts': 'export {};\n',
+      'src/a.ts': 'export {};\n',
+      'packages/kit/package.json': JSON.stringify({ name: 'kit', main: 'index.ts' }),
+      'packages/kit/index.ts': 'export {};\n',
+    });
+    mkdirSync(path.join(linked, 'node_modules'), { recursive: true });
+    symlinkSync('../packages/kit', path.join(linked, 'node_modules/kit'));
+    const imports = new Map([['src/entry.ts', ['~/a', 'kit', 'vitest']]]);
+    const steps = reachableModules(
+      path.join(linked, 'src/entry.ts'),
+      (file) => imports.get(path.relative(linked, file)) ?? [],
+      {
+        maxDepth: 8,
+        maxFiles: 200,
+        aliases: [{ find: '~', replacement: path.join(linked, 'src') }],
+      },
+    );
+    expect([...steps].map((step) => path.relative(linked, step.file))).toEqual([
+      'src/a.ts',
+      'packages/kit/index.ts',
+    ]);
   });
 });
