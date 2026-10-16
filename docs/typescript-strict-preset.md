@@ -360,6 +360,22 @@ off (a PR that adds or removes React keeps linting on both sides); a misspelled 
   `stateNode`, `memoizedState`) and no `spyOn(React, 'useState')`; assert what the user sees. An
   element with no role or accessible name needs an exception. A project with
   `@testing-library/react-native` keeps `testID` queries, the idiom there.
+- **Use the library's component** (`redefined-library-component`, reported by the `structure`
+  check). A component definition (a top-level PascalCase function, or `const` arrow function,
+  function expression, `memo` or `forwardRef`, in a `.tsx` or `.jsx` file) whose name is one that
+  production files render from a package is reported, for example a second `Card` when `<Card />`
+  from `@acme/ui` is rendered in several files. A name counts only when the package is listed in the
+  `package.json` of the file (or the project root), so a bundler alias such as `@components/Button`
+  is not a package, and only when the project uses it as a JSX element, so a `Request` or an ORM
+  `Table` that is never rendered does not. Names come from named imports rendered as a top-level
+  element (the imported name, not the local alias) and a default import of a deep path whose last
+  segment is the local name (`import Button from '@mui/material/Button'`); a namespace member
+  (`<Tabs.List />`) and the icon packages of `scopePackages.icons` (an imported `Search` icon) do
+  not count. Relative imports, `tsconfig.json` aliases such as `@/` and `~/`, and type-only imports
+  are not packages. A file that imports anything from a package that exports the name, directly or
+  through project modules that re-export it (a `../ui` barrel over `@acme/ui`), is not reported: it
+  is a wrapper. A workspace package counts as a library, but its own components are not reported
+  against it. Use the library's component, compose it under a different name, or rename the new one.
 The plugins are `eslint-plugin-react-hooks`, `eslint-plugin-react-x` (from eslint-react),
 `eslint-plugin-jsx-a11y-x` and `eslint-plugin-testing-library` (whose peer range includes ESLint 10). `eslint-plugin-react` and `eslint-plugin-jsx-a11y` declare no ESLint 10
 support, so their maintained, ESLint 10 compatible counterparts are used.

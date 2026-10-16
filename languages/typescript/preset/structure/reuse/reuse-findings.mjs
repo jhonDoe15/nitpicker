@@ -1,5 +1,9 @@
 import path from 'node:path';
 import { exceptionMatcher } from '../../../../../shared/rules/file-limits.mjs';
+import {
+  hasScopePackage,
+  readDependencyNames,
+} from '../../eslint-config/scope-support.mjs';
 import { readHeadPolicy, readLayout } from '../../head-policy.mjs';
 import { resolveModuleSpecifier } from '../../modules/module-resolution.mjs';
 import { resolvedDefinitions } from './definition-facts.mjs';
@@ -7,6 +11,7 @@ import { uniqueFindings } from './finding.mjs';
 import { productionFacts } from './project-files.mjs';
 import { projectPathOf } from './reuse-paths.mjs';
 import { duplicateDefinitionFindings } from './rules/duplicate-definitions.mjs';
+import { redefinedLibraryComponentFindings } from './rules/library-components.mjs';
 import { exportedNameCollisionFindings } from './rules/name-collisions.mjs';
 
 const IGNORED = { kind: 'ignored' };
@@ -26,14 +31,41 @@ function projectResolver(projectRoot) {
   };
 }
 
+function dependencyReader(projectRoot) {
+  const known = new Map();
+  return (packageRoot) => {
+    if (!known.has(packageRoot)) {
+      known.set(
+        packageRoot,
+        new Set([
+          ...readDependencyNames(path.join(projectRoot, packageRoot)),
+          ...readDependencyNames(projectRoot),
+        ]),
+      );
+    }
+    return known.get(packageRoot);
+  };
+}
+
+function reactFindings({ facts, context, projectRoot, layout, react }) {
+  return [
+    ...redefinedLibraryComponentFindings(facts, {
+      ...context,
+      dependenciesOf: dependencyReader(projectRoot),
+    }),
+  ];
+}
+
 export function reuseFindings(projectRoot, analyzerName, environment = process.env) {
-  const { exceptions } = readHeadPolicy(environment);
+  const { exceptions, react } = readHeadPolicy(environment);
   const layout = readLayout(environment);
   const resolve = projectResolver(projectRoot);
   const facts = resolvedDefinitions(productionFacts(projectRoot, layout), resolve);
   const context = { analyzerName, isExcepted: exceptionMatcher(exceptions), resolve };
+  const inReactScope = react.enabled ?? hasScopePackage(projectRoot, 'react');
   return uniqueFindings([
     ...duplicateDefinitionFindings(facts, context),
     ...exportedNameCollisionFindings(facts, context),
+    ...(inReactScope ? reactFindings({ facts, context, projectRoot, layout, react }) : []),
   ]);
 }
