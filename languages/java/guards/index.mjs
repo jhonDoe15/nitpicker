@@ -3,14 +3,13 @@ import { readDependencyFindings } from './dependencies.mjs';
 import { readForbiddenApiFindings } from './forbidden-apis.mjs';
 import { readLintFindings } from './javac-lint.mjs';
 
-export function readGuardFindings({ reportRoot, jscpdRoot, projectRoot, manifest, locate }) {
+export function readGuardFindings({ reportRoot, projectRoot, manifest, locate }) {
   return [
     ...readLintFindings(reportRoot, { projectRoot }),
     ...readForbiddenApiFindings(reportRoot, { locate, projectRoot }),
     ...readCpdFindings(reportRoot, {
       projectRoot,
       testRoots: manifest.testSourceRoots ?? [],
-      jscpdRoot,
     }),
     ...readDependencyFindings(reportRoot),
   ];
