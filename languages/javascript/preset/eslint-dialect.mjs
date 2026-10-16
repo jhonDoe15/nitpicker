@@ -1,8 +1,3 @@
-import path from 'node:path';
-import {
-  parsedTsconfig,
-  PROJECT_TSCONFIG,
-} from '../../typescript/preset/modules/tsconfig-files.mjs';
 import {
   isJavascriptPolicy,
   JAVASCRIPT_EXTENSIONS,
@@ -123,10 +118,6 @@ export function applyJavascriptDialect(entries, policy) {
 
 export function scriptRuleEntries(files) {
   return [{ files, rules: JAVASCRIPT_ONLY_RULES }];
-}
-
-export function projectChecksJavascript(projectRoot) {
-  return parsedTsconfig(path.join(projectRoot, PROJECT_TSCONFIG)).options.checkJs === true;
 }
 
 export function untypedScriptEntries(policy, checksJavascript) {

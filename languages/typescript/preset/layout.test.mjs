@@ -99,6 +99,17 @@ describe('generated files', () => {
   );
 });
 
+describe('layout.isGeneratedPath', () => {
+  it('also counts output folders below the project root, which are still source', () => {
+    const layout = resolveLayout();
+
+    expect(layout.isGeneratedPath('src/generated/service.ts')).toBe(true);
+    expect(layout.isGeneratedPath('src/dist/b.svg')).toBe(true);
+    expect(isSourceFile('src/generated/service.ts')).toBe(true);
+    expect(layout.isGeneratedPath('src/generator.ts')).toBe(false);
+  });
+});
+
 describe('layout.isTestPath', () => {
   it('recognizes any file under a test folder, whatever its extension', () => {
     const layout = resolveLayout();

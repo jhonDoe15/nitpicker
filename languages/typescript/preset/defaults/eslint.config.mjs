@@ -9,7 +9,6 @@ import { strictPresetConfig } from '../eslint-config/strict.mjs';
 import { applyRuleExceptions } from '../eslint-config/exceptions.mjs';
 import {
   applyJavascriptDialect,
-  projectChecksJavascript,
   scriptRuleEntries,
   untypedScriptEntries,
 } from '../../../javascript/preset/eslint-dialect.mjs';
@@ -22,6 +21,7 @@ import {
 import { i18nRuleIds } from '../eslint-config/i18n/i18n-rules.mjs';
 import { i18nScopeConfigFor, isI18nProject } from '../eslint-config/i18n/i18n-scope.mjs';
 import { readHeadPolicy, readLayout } from '../head-policy.mjs';
+import { projectChecksJavascript } from '../modules/tsconfig-files.mjs';
 import {
   testEnvironmentConfigFor,
   testEnvironmentsFromVariables,

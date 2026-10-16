@@ -1,6 +1,3 @@
-import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
-import path from 'node:path';
 import { Linter } from 'eslint';
 import { describe, expect, it } from 'vitest';
 import { strictPresetConfig } from '../../typescript/preset/eslint-config/strict.mjs';
@@ -10,7 +7,6 @@ import {
   JSDOC_RULE_OPTIONS,
   UNTYPED_VALUE_RULES,
   applyJavascriptDialect,
-  projectChecksJavascript,
   scriptRuleEntries,
   untypedScriptEntries,
 } from './eslint-dialect.mjs';
@@ -231,16 +227,5 @@ describe('untypedScriptEntries', () => {
   it('keeps them when the JavaScript is type-checked', () => {
     expect(untypedScriptEntries(javascript, false)).toEqual([]);
     expect(untypedScriptEntries({}, true)).toEqual([]);
-  });
-
-  it('reads checkJs through the project tsconfig and what it extends', () => {
-    const root = mkdtempSync(path.join(tmpdir(), 'nitpicker-check-js-'));
-    writeFileSync(path.join(root, 'base.json'), '{ "compilerOptions": { "checkJs": true } }');
-    const checked = projectChecksJavascript(root);
-    writeFileSync(path.join(root, 'tsconfig.json'), '{ "extends": "./base.json" }');
-    const extended = projectChecksJavascript(root);
-    rmSync(root, { recursive: true, force: true });
-
-    expect([checked, extended]).toEqual([false, true]);
   });
 });
