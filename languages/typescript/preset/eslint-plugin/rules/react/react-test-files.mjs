@@ -1,7 +1,8 @@
-import { readFileSync, statSync } from 'node:fs';
+import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import ts from 'typescript';
 import { resolveModuleSpecifier } from '../../../modules/module-resolution.mjs';
+import { readStamped } from '../../../modules/stamped-file-cache.mjs';
 
 const reactTestModule = /^(?:@testing-library\/.+|react(?:-[^/]+)?(?:\/.*)?|enzyme(?:\/.*)?)$/;
 const projectTestUtilsModule = /^\.{1,2}\/(?:.*\/)?[^/]*test-utils[^/]*$/;
@@ -19,11 +20,6 @@ function moduleNameOf(file) {
   return base === 'index' ? path.basename(path.dirname(file)) : base;
 }
 
-function fileStamp(file) {
-  const stats = statSync(file, { throwIfNoEntry: false });
-  return stats === undefined ? undefined : `${String(stats.mtimeMs)}:${String(stats.size)}`;
-}
-
 function scannedReexports(file) {
   const source = ts.createSourceFile(file, readFileSync(file, 'utf8'), ts.ScriptTarget.Latest);
   return source.statements
@@ -34,26 +30,31 @@ function scannedReexports(file) {
 }
 
 function reexportsOf(file) {
-  const stamp = fileStamp(file);
-  if (stamp === undefined) return [];
-  const cached = reexportCache.get(file);
-  if (cached?.stamp === stamp) return cached.specifiers;
-  const specifiers = scannedReexports(file);
-  reexportCache.set(file, { stamp, specifiers });
-  return specifiers;
+  return readStamped(reexportCache, file, scannedReexports) ?? [];
 }
 
-function reachesReactTestModule(source, containingFile, visited) {
-  if (isReactTestModule(source)) return true;
-  const target = resolveModuleSpecifier(source, containingFile).path;
-  if (target === undefined || visited.has(target) || visited.size >= MAX_FOLLOWED_MODULES) {
-    return false;
+function isTestUtilsModule(file) {
+  return moduleNameOf(file).includes(TEST_UTILS_NAME);
+}
+
+function unvisitedTarget(source, from, visited) {
+  const target = resolveModuleSpecifier(source, from).path;
+  const fresh = target !== undefined && !visited.has(target);
+  return fresh && visited.size < MAX_FOLLOWED_MODULES ? target : undefined;
+}
+
+function reachesReactTestModule(sources, filename) {
+  const visited = new Set();
+  const pending = sources.map((source) => ({ source, from: filename }));
+  for (const { source, from } of pending) {
+    const target = unvisitedTarget(source, from, visited);
+    if (target === undefined) continue;
+    visited.add(target);
+    const reexported = reexportsOf(target);
+    if (isTestUtilsModule(target) || reexported.some(isReactTestModule)) return true;
+    pending.push(...reexported.map((next) => ({ source: next, from: target })));
   }
-  visited.add(target);
-  return (
-    moduleNameOf(target).includes(TEST_UTILS_NAME) ||
-    reexportsOf(target).some((reexported) => reachesReactTestModule(reexported, target, visited))
-  );
+  return false;
 }
 
 function requiredSource(node) {
@@ -87,9 +88,7 @@ function importsReactTestModule(program, filename) {
     .flatMap(statementSources)
     .filter((source) => typeof source === 'string');
   if (sources.some(isReactTestModule)) return true;
-  if (!path.isAbsolute(filename)) return false;
-  const visited = new Set();
-  return sources.some((source) => reachesReactTestModule(source, filename, visited));
+  return path.isAbsolute(filename) && reachesReactTestModule(sources, filename);
 }
 
 export function inReactTestFilesOnly(create) {

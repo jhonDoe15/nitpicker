@@ -73,7 +73,7 @@ describe('accessibility rules beyond the plugin recommendation', () => {
     expect(ruleIdsFor('<input type="text" />')).toEqual(['nitpicker/react-field-has-label']);
   });
 
-  it('requires focus and blur handlers next to hover-only enter and leave handlers', async () => {
+  it('requires focus and blur handlers next to hover-only enter and leave handlers', () => {
     const [, entry] = config;
     const flagged = (attributes) =>
       lintFixture({
