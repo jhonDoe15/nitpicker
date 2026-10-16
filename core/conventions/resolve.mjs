@@ -1,7 +1,7 @@
 import { conventionChoices, detectConventions } from '../../shared/conventions/detect.mjs';
 import { describeConventions } from '../../shared/conventions/settings.mjs';
 import { resolveHeadPolicy } from '../../languages/typescript/preset/head-policy.mjs';
-import { excludedGlobs } from '../../languages/typescript/preset/layout.mjs';
+import { excludedGlobs as builtInExcludedGlobs } from '../../languages/typescript/preset/layout.mjs';
 import { conventionDefinitions } from './definitions.mjs';
 import { commitSource, headCommit, workingTreeSource } from './sources.mjs';
 
@@ -40,7 +40,7 @@ function followConventions({ config, projectRoot, headPolicy, commit, stdout }) 
   const detected = detect({
     definitions,
     pinned: config.conventions ?? {},
-    exclude: [...(headPolicy.layout?.excludedGlobs ?? excludedGlobs), ...headPolicy.exclude],
+    exclude: [...(headPolicy.layout?.excludedGlobs ?? builtInExcludedGlobs), ...headPolicy.exclude],
     projectRoot,
     commit,
   });

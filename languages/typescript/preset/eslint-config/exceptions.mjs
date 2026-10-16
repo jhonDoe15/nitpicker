@@ -1,14 +1,22 @@
 import { TYPESCRIPT_SIZE_RULES } from '../../../../shared/policy-size.mjs';
-import { SHARED_EXCEPTION_RULES } from '../../../../shared/policy.mjs';
+import {
+  SHARED_EXCEPTION_RULES,
+  TYPESCRIPT_PROJECT_EXCEPTION_RULES,
+} from '../../../../shared/policy.mjs';
+
+/** The nitpicker rules `exceptions` can name that are not ESLint rules, so no config entry has them. */
+const NITPICKER_EXCEPTION_RULES = [
+  ...SHARED_EXCEPTION_RULES,
+  ...TYPESCRIPT_PROJECT_EXCEPTION_RULES,
+  ...TYPESCRIPT_SIZE_RULES,
+];
 
 export function applyRuleExceptions(configEntries, allExceptions = []) {
-  const exceptions = allExceptions.filter(
-    ({ rule }) => !SHARED_EXCEPTION_RULES.includes(rule) && !TYPESCRIPT_SIZE_RULES.includes(rule),
-  );
+  const exceptions = allExceptions.filter(({ rule }) => !NITPICKER_EXCEPTION_RULES.includes(rule));
   const unknown = exceptions.filter(({ rule }) => !isKnownRule(configEntries, rule));
   if (unknown.length > 0) {
     throw new Error(
-      `nitpicker.config.json "exceptions" name unknown rules: ${unknown.map(({ rule }) => rule).join(', ')}`,
+      `nitpicker.config.json "exceptions" name unknown rules: ${unknown.map(({ rule }) => rule).join(', ')}. Only rules nitpicker runs can be lifted: check the spelling.`,
     );
   }
   return [

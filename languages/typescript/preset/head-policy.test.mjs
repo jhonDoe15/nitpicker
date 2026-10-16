@@ -69,6 +69,7 @@ describe('head policy reader', () => {
       exceptions: [],
       thresholds: {},
       react: {},
+      i18n: {},
       tools: {},
     });
   });
@@ -86,6 +87,7 @@ describe('head policy reader', () => {
         exceptions: [],
         thresholds: { crapLimit: 12 },
         react: {},
+        i18n: {},
         tools: {},
       });
     });
@@ -218,6 +220,7 @@ describe('head policy delivery', () => {
         exceptions: [],
         thresholds: { crapLimit: 12 },
         react: {},
+        i18n: {},
         tools: {},
       });
     }
