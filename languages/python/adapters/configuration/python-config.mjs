@@ -12,7 +12,7 @@ import { canonicalRule } from '../../../../shared/exceptions/rule-names.mjs';
 const ENVIRONMENTS = ['uv', 'poetry', 'path'];
 const FORMATTERS = ['ruff', 'black'];
 const TEST_RUNNERS = ['pytest', 'unittest'];
-const TYPE_CHECKERS = ['mypy', 'pyright'];
+const TYPE_CHECKERS = ['mypy', 'pyright', 'basedpyright'];
 const SETTING_KEYS = [
   'environment',
   'formatter',

@@ -24,7 +24,7 @@ describe('python config validation', () => {
       validate({ preset: 'python', python: { environment: '/opt/venv' } });
       validate({
         preset: 'python',
-        python: { typeChecker: 'pyright' },
+        python: { typeChecker: 'basedpyright' },
         exceptions: [{ rule: 'T201', paths: ['scripts/**'], reason: 'command line scripts' }],
       });
     }).not.toThrow();
@@ -41,12 +41,17 @@ describe('python config validation', () => {
     'frozen-dataclass',
     'no-inline-suppression',
     'stub-beside-source',
+    'swallowed-exception',
+    'blind-suppress',
     'arg-type',
     'import-not-found',
     'reportReturnType',
     'function-lines-limit',
     'structure/function-lines-limit',
     'folder-files-limit',
+    'reportAny',
+    'reportImplicitOverride',
+    'reportUnusedCallResult',
   ])('accepts the exception rule %s', (rule) => {
     expect(() => {
       validate({
@@ -92,7 +97,7 @@ describe('python config validation', () => {
     ],
     [{ formatter: 'yapf' }, '"python.formatter" must be one of: ruff, black'],
     [{ testRunner: 'nose' }, '"python.testRunner" must be one of: pytest, unittest'],
-    [{ typeChecker: 'pytype' }, '"python.typeChecker" must be one of: mypy, pyright'],
+    [{ typeChecker: 'pytype' }, '"python.typeChecker" must be one of: mypy, pyright, basedpyright'],
     [{ importLinter: 'yes' }, '"python.importLinter" must be true or false'],
     [{ environment: '' }, '"python.environment" must be a non-empty string'],
     [{ environment: '../outside' }, '"python.environment" must be a path inside the project'],
@@ -112,6 +117,10 @@ describe('python config validation', () => {
     ],
     [{ rule: 'E501', paths: ['a'], reason: 'r' }, 'names no rule nitpicker reports: "E501"'],
     [{ rule: 'B008', paths: ['a'], reason: 'r' }, 'names no rule nitpicker reports: "B008"'],
+    [
+      { rule: 'S110', paths: ['a'], reason: 'r' },
+      'names no rule nitpicker reports: "S110"; ruff S110 was replaced by "swallowed-exception": rename the entry to "swallowed-exception"',
+    ],
     [
       { rule: 'Frozen', paths: ['a'], reason: 'r' },
       '"exceptions[1].rule" names no rule nitpicker reports: "Frozen"',

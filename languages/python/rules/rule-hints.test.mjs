@@ -69,6 +69,8 @@ describe('every message names the allowed form', () => {
     ['mypy', 'import-untyped'],
     ['pyright', 'reportMissingImports'],
     ['pyright', 'reportMissingModuleSource'],
+    ['basedpyright', 'reportMissingImports'],
+    ['basedpyright', 'reportMissingModuleSource'],
   ])('sends the missing import %s %s to installing the package', (tool, rule) => {
     expect(withHint(sample({ tool, rule })).message).toBe(
       `The base message. Install the package, or its \`types-\` stubs, in the project environment. ${routeFor(rule)}`,
@@ -125,6 +127,7 @@ describe('hints', () => {
   it('cover every rule of the type checkers', () => {
     expect(hintFor(sample({ tool: 'mypy', rule: 'anything' }))).toBeDefined();
     expect(hintFor(sample({ tool: 'pyright', rule: 'reportAnything' }))).toBeDefined();
+    expect(hintFor(sample({ tool: 'basedpyright', rule: 'reportAny' }))).toBeDefined();
   });
 
   it('leave findings of other tools and descriptive findings untouched', () => {

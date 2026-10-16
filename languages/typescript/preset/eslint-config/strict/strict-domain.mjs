@@ -191,6 +191,7 @@ export const strictDomainConfig = [
       'no-restricted-syntax': ['error', ...domainRestrictedSyntax],
       'nitpicker/no-self-recursion': 'error',
       'nitpicker/no-throw': 'error',
+      'nitpicker/no-ui-framework-in-domain': 'error',
       'nitpicker/no-unknown-in-domain': 'error',
     },
   },

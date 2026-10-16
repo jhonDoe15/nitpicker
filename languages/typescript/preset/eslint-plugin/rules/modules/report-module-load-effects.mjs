@@ -1,9 +1,14 @@
+import { stylesheetSpecifier } from '../../../layout.mjs';
 import { ancestorsOf } from '../analysis/ancestry.mjs';
 import { importedCalleeName, moduleBindings } from '../analysis/subprocess-calls.mjs';
 
 const SYNC_MODULES = new Set(
   ['fs', 'child_process', 'crypto', 'zlib'].flatMap((name) => [name, `node:${name}`]),
 );
+
+const ENTRY_HINT =
+  " Move the work into a function that the app entry calls. The entry (the module script in Vite's index.html, else src/main.tsx) is detected; for another entry file, list it under `layout.entryPoints` in nitpicker.config.json.";
+
 const TOP_LEVEL_CONTROL = new Set([
   'BlockStatement',
   'DoWhileStatement',
@@ -137,11 +142,11 @@ export const rule = {
       },
     ],
     messages: {
-      sideEffectImport: 'Side-effect-only import executes code during module loading.',
+      sideEffectImport: `Side-effect-only import executes code during module loading.${ENTRY_HINT}`,
       staticBlock: 'Static initialization block executes during module loading.',
-      topLevelAwait: 'Top-level await delays and executes work during module loading.',
-      topLevelControl: 'Top-level {{kind}} executes control flow during module loading.',
-      topLevelExpression: 'Top-level expression executes work during module loading.',
+      topLevelAwait: `Top-level await delays and executes work during module loading.${ENTRY_HINT}`,
+      topLevelControl: `Top-level {{kind}} executes control flow during module loading.${ENTRY_HINT}`,
+      topLevelExpression: `Top-level expression executes work during module loading.${ENTRY_HINT}`,
       importTimeEffect:
         '`{{call}}` runs when the module is imported. Move it into a function and call that from the composition root, passing the result in. An exception fits only when it must run at import.',
     },
@@ -151,7 +156,7 @@ export const rule = {
     const syncBindings = moduleBindings(context.sourceCode.ast, SYNC_MODULES);
     return {
       ImportDeclaration(node) {
-        if (node.specifiers.length === 0) {
+        if (node.specifiers.length === 0 && !stylesheetSpecifier.test(node.source.value)) {
           context.report({ node, messageId: 'sideEffectImport' });
         }
       },

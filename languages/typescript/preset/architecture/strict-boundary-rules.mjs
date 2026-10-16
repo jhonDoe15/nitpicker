@@ -2,6 +2,12 @@ import { globToRegExpSource } from '../../../../shared/glob.mjs';
 import { readHeadPolicy, readLayout } from '../head-policy.mjs';
 import { layoutFeatures } from './strict-layout.mjs';
 import { isTypeOnlyDependency } from '../dependency-graph/cruise.mjs';
+import {
+  idAndRandomLibraries,
+  loggers,
+  networkAndDatabaseClients,
+  resolvedPackagePattern,
+} from './domain-packages.mjs';
 
 const layout = readLayout();
 const sourceRoot = `(?:${layout.sourceRoots.join('|')})`;
@@ -31,39 +37,6 @@ const pureNodeModules = [
   'punycode',
   'querystring',
 ];
-const idAndRandomLibraries = [
-  'uuid',
-  'nanoid',
-  'cuid',
-  '@paralleldrive/cuid2',
-  'ulid',
-  '@faker-js/faker',
-  'faker',
-];
-const networkAndDatabaseClients = [
-  'axios',
-  'node-fetch',
-  'undici',
-  'got',
-  'ky',
-  'ws',
-  'pg',
-  'mysql',
-  'mysql2',
-  'mongodb',
-  'mongoose',
-  'redis',
-  'ioredis',
-  'sqlite3',
-  'better-sqlite3',
-  'knex',
-  'sequelize',
-  'typeorm',
-  'drizzle-orm',
-  '@prisma/client',
-  '@aws-sdk/[^/]+',
-];
-const loggers = ['pino', 'winston', 'bunyan', 'log4js', 'loglevel', 'consola', 'debug'];
 
 const pureNodeModulePattern = `^(?:node:)?(?:${pureNodeModules.join('|')})(?:/(?:posix|win32|strict|types))?$`;
 
@@ -87,13 +60,9 @@ const nodeIoModules = [
   'zlib',
 ];
 
-function npmPackagePattern(names) {
-  return `(?:^|(?:^|/)node_modules/)(?:${names.join('|')})(?:/|$)`;
-}
-
 const reachableIoPatterns = [
   `^(?:node:)?(?:${nodeIoModules.join('|')})(?:$|/)`,
-  npmPackagePattern([...networkAndDatabaseClients, ...loggers]),
+  resolvedPackagePattern([...networkAndDatabaseClients, ...loggers]),
 ];
 
 const domain = { path: `${feature}/domain/` };
@@ -157,7 +126,7 @@ const baseBoundaryRules = [
     comment:
       'domain/ may not import network or database clients. Call the client from adapters/ and pass the data into domain/ as a parameter.',
     from: domain,
-    to: { path: npmPackagePattern(networkAndDatabaseClients) },
+    to: { path: resolvedPackagePattern(networkAndDatabaseClients) },
   },
   {
     name: 'domain-does-not-import-the-logger',
@@ -167,7 +136,7 @@ const baseBoundaryRules = [
     from: domain,
     to: {
       path: [
-        npmPackagePattern(loggers),
+        resolvedPackagePattern(loggers),
         `(?:^|/)(?:logger|logging|log)(?:/index)?${codeFile}`,
         '(?:^|/)(?:logger|logging)/',
       ],
@@ -189,7 +158,7 @@ const baseBoundaryRules = [
     comment:
       'domain/ may not import ID or random-data libraries (uuid, nanoid, cuid, ulid, faker). Take the ID as a parameter from adapters/.',
     from: domain,
-    to: { path: npmPackagePattern(idAndRandomLibraries) },
+    to: { path: resolvedPackagePattern(idAndRandomLibraries) },
   },
   {
     name: 'domain-does-not-reach-io-through-shared',

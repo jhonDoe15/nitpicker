@@ -39,6 +39,7 @@ describe('Python analyzer', () => {
       'coverage',
       'mypy',
       'pyright',
+      'basedpyright',
       'structure',
       'crap',
       'python-rules',
