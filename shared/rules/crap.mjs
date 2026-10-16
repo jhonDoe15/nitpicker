@@ -14,7 +14,6 @@ import { positiveInteger } from './finding-helpers.mjs';
 // identity includes the function's source hash); this rule decides:
 //   `crap-coverage-unknown` (enforceable) when `crap` is not a finite number;
 //   `crap-score-limit` (enforceable) when `crap` >= `limit`.
-// `endLine`, when given, is its last line: an edit inside the function then counts as touching it.
 // `ratchetKey` names the function without its source hash. With it, a function that was already
 // over the limit on the base and was edited fails only when its score rose (see the ratchet in
 // core/diff/comparison/compare.mjs); without it, every edit of an over-limit function is a new finding.

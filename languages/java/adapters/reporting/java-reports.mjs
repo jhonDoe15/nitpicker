@@ -54,10 +54,7 @@ export function readJavaFindings(
     lintedRoots: lintedRoots(manifest),
     roots: projectRoots(projectRoot),
     kotlin,
-    jacoco:
-      manifest.testsFailed === true
-        ? undefined
-        : readFileSync(path.join(reportRoot, 'jacoco.xml'), 'utf8'),
+    jacoco: readJacoco(manifest, reportRoot),
   };
   const { jacoco } = context;
   return {
@@ -81,6 +78,12 @@ export function readJavaFindings(
       { preset },
     ),
   };
+}
+
+function readJacoco(manifest, reportRoot) {
+  return manifest.testsFailed === true
+    ? undefined
+    : readFileSync(path.join(reportRoot, 'jacoco.xml'), 'utf8');
 }
 
 function ifTested(jacoco, build) {
