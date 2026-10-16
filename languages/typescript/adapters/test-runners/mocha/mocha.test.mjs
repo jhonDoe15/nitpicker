@@ -46,6 +46,29 @@ describe('coverage on a Mocha project', () => {
     expect(findings[0].message).toMatch(/test\/pick\.test\.ts > pick answers: AssertionError/u);
   });
 
+  it('names the test file that Mocha could not load', async () => {
+    const root = mochaProject({
+      'test/pick.test.ts': testFile('yes'),
+      'test/broken.test.ts': "import { missing } from 'not-installed';\nmissing();\n",
+    });
+
+    const findings = await runArea('coverage', root);
+
+    expect(findings).toEqual([
+      {
+        tool: 'coverage',
+        rule: 'tests-failed',
+        path: 'test/broken.test.ts',
+        identity: 'tests-failed',
+        message:
+          '1 test fails, so coverage, CRAP and mutation were skipped. Fix the tests and rerun:\n' +
+          '  test/broken.test.ts > could not run: Error [ERR_MODULE_NOT_FOUND]: ' +
+          `Cannot find package 'not-installed' imported from ${root}/test/broken.test.ts`,
+        classification: 'tool-error',
+      },
+    ]);
+  });
+
   it('keeps the spec and requires of the test script', async () => {
     const findings = await runArea(
       'coverage',
