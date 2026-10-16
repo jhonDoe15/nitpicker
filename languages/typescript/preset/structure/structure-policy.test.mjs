@@ -41,6 +41,28 @@ describe('structural metrics report', () => {
     });
   });
 
+  it('counts an else if chain as one level and an if inside an else block or a branch as one deeper', () => {
+    const nestingOf = (body) =>
+      analyzeSource(`function f(a: number, b: number): number {\n${body}\n  return 0;\n}\n`, 'f.ts')
+        .functions[0].maxControlNesting;
+
+    expect(nestingOf('if (a === 1) { return 1; }')).toBe(1);
+    expect(
+      nestingOf(
+        'if (a === 1) { return 1; } else if (a === 2) { return 2; } else if (a === 3) { return 3; } else { return 4; }',
+      ),
+    ).toBe(1);
+    expect(nestingOf('if (a === 1) { return 1; } else { if (b) { return 2; } }')).toBe(2);
+    expect(nestingOf('if (a === 1) { return 1; } else if (a === 2) { if (b) { return 2; } }')).toBe(
+      2,
+    );
+    expect(
+      nestingOf(
+        'for (;;) { if (a === 1) { break; } else if (a === 2) { break; } else if (b) { break; } }',
+      ),
+    ).toBe(2);
+  });
+
   it('reports independent size, nesting, statement, and parameter signals', () => {
     const report = analyzeProductionFiles(fixtureRoot, 'fixture/src/main');
     const complex = report.functions.find((entry) => entry.function === 'coordinate');
