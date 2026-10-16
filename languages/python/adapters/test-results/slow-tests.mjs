@@ -2,6 +2,7 @@ import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { RULE_IDS, TEST_TIME_DEFAULTS } from '../../../../shared/policy.mjs';
 import { exceptionSentence } from '../../rules/rule-hints.mjs';
+import { PYTEST_REPORT } from '../execution/python-test-step.mjs';
 import { testFunction, testPath } from './test-functions.mjs';
 
 export const TEST_RUN_TOOL = 'test-runtime';
@@ -10,8 +11,8 @@ const INTEGRATION_FILE = /(?:^|_)(?:integration|e2e)(?:_|\.py$)/i;
 const INTEGRATION_MARKERS = new Set(['integration', 'e2e']);
 const MOVE_ADVICE = ', or mark it `@pytest.mark.integration` if it is one';
 
-export function readPytestReport(reportRoot, name) {
-  const file = path.join(reportRoot, name);
+export function readPytestReport(reportRoot) {
+  const file = path.join(reportRoot, PYTEST_REPORT);
   return existsSync(file) ? JSON.parse(readFileSync(file, 'utf8')) : { tests: [], entries: [] };
 }
 
@@ -21,10 +22,15 @@ export function projectRelative(projectRoot, file) {
 }
 
 function readOptional(root, file) {
-  const absolute = root === undefined ? undefined : path.join(root, file);
-  return absolute !== undefined && existsSync(absolute)
-    ? readFileSync(absolute, 'utf8')
-    : undefined;
+  if (root === undefined) {
+    return undefined;
+  }
+  const base = path.resolve(root);
+  const absolute = path.resolve(base, file);
+  if (!absolute.startsWith(`${base}${path.sep}`)) {
+    return undefined;
+  }
+  return existsSync(absolute) ? readFileSync(absolute, 'utf8') : undefined;
 }
 
 function slowestRuns(tests, projectRoot) {

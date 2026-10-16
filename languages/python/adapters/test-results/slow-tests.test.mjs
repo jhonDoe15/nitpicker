@@ -162,7 +162,7 @@ class TestCart:
   });
 
   it('reads a missing report as empty and paths outside the project as the project', () => {
-    expect(readPytestReport(directoryWith({}), 'pytest-report.json')).toEqual({
+    expect(readPytestReport(directoryWith({}))).toEqual({
       tests: [],
       entries: [],
     });

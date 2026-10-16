@@ -16,44 +16,36 @@ function headerPattern(name, isLast) {
 
 function blockEnd(lines, header) {
   const indent = indentOf(lines[header]);
-  let end = header + 1;
-  while (end < lines.length) {
-    const line = lines[end];
-    const inside = isBlank(line) || indentOf(line) > indent || CLOSING_LINE.test(line);
-    if (!inside) {
-      break;
-    }
-    end += 1;
-  }
-  while (end > header + 1 && isBlank(lines[end - 1])) {
-    end -= 1;
-  }
-  return end;
+  const outside = lines
+    .slice(header + 1)
+    .findIndex((line) => !isBlank(line) && indentOf(line) <= indent && !CLOSING_LINE.test(line));
+  const end = outside === -1 ? lines.length : header + 1 + outside;
+  const body = lines.slice(header + 1, end);
+  const trailingBlank = body.length - 1 - body.findLastIndex((line) => !isBlank(line));
+  return end - Math.min(trailingBlank, body.length);
 }
 
 function decoratorStart(lines, header) {
   const indent = indentOf(lines[header]);
   let start = header;
-  for (let index = header - 1; index >= 0 && !isBlank(lines[index]); index -= 1) {
-    const line = lines[index];
-    if (indentOf(line) === indent && line.trim().startsWith('@')) {
-      start = index;
-    } else if (indentOf(line) <= indent && !CLOSING_LINE.test(line)) {
+  for (const [offset, line] of lines.slice(0, header).toReversed().entries()) {
+    const isDecorator = indentOf(line) === indent && line.trim().startsWith('@');
+    if (isBlank(line) || (!isDecorator && indentOf(line) <= indent && !CLOSING_LINE.test(line))) {
       break;
+    }
+    if (isDecorator) {
+      start = header - 1 - offset;
     }
   }
   return start;
 }
 
 function findHeader(lines, { from, to }, pattern) {
-  const body = lines.slice(from, to).find((line) => !isBlank(line));
+  const block = lines.slice(from, to);
+  const body = block.find((line) => !isBlank(line));
   const childIndent = body === undefined ? 0 : indentOf(body);
-  for (let index = from; index < to; index += 1) {
-    if (pattern.test(lines[index]) && indentOf(lines[index]) === childIndent) {
-      return index;
-    }
-  }
-  return undefined;
+  const found = block.findIndex((line) => pattern.test(line) && indentOf(line) === childIndent);
+  return found === -1 ? undefined : from + found;
 }
 
 export function testFunction(text, path) {

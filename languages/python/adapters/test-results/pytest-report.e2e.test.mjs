@@ -2,7 +2,7 @@ import { mkdirSync, mkdtempSync, realpathSync, rmSync, writeFileSync } from 'nod
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
-import { PYTEST_REPORT, test } from '../execution/python-test-step.mjs';
+import { test } from '../execution/python-test-step.mjs';
 import { createToolContext } from '../python-tools.mjs';
 import { pythonE2eEnabled } from '../e2e/test-support/python-e2e-support.mjs';
 import { readPytestReport } from './slow-tests.mjs';
@@ -30,7 +30,7 @@ function pytestReport(files) {
     reportRoot,
   });
   test(context, {});
-  return { root, report: readPytestReport(reportRoot, PYTEST_REPORT) };
+  return { root, report: readPytestReport(reportRoot) };
 }
 
 const SHOP_TEST = `import logging

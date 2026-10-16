@@ -12,7 +12,7 @@ const SCAN_SCRIPT = path.join(fileURLToPath(new URL('../', import.meta.url)), 'i
 const TEST_DIRECTORIES = ['tests', 'test'];
 const TEST_FILE = /^(?:test_.+|.+_test|conftest)\.py$/;
 
-export function isTestFile(file) {
+function isTestFile(file) {
   const parts = file.split('/');
   return (
     TEST_FILE.test(parts.at(-1)) ||
@@ -20,7 +20,7 @@ export function isTestFile(file) {
   );
 }
 
-export function factsFiles(projectRoot, sourceRoots) {
+function factsFiles(projectRoot, sourceRoots) {
   const modules = listProductionModules(projectRoot, sourceRoots);
   const roots = [...sourceRoots, ...TEST_DIRECTORIES, '.'];
   const tests = pythonSourceFiles(projectRoot, roots).filter(isTestFile);

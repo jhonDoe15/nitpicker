@@ -154,7 +154,7 @@ export const NOISY_TEST = [
   '',
   '',
   'def test_clamp_limits():',
-  '    print("clamping above the limit", file=sys.stderr)',
+  '    sys.stderr.write("clamping above the limit\\n")',
   '    assert clamp(30) == 10',
   '',
 ].join('\n');

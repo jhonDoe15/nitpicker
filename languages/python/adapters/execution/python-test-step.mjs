@@ -20,8 +20,17 @@ const UNTESTABLE_LINES = [
 const TEST_FILES = ['test_*.py', '*_test.py', 'conftest.py', '*/tests/*', '*/test/*'];
 const EMPTY_COVERAGE_REPORT = '{"files":{}}';
 
+function existsInside(projectRoot, root) {
+  const base = path.resolve(projectRoot);
+  const full = `${path.resolve(base, root)}${path.sep}`;
+  if (!full.startsWith(`${base}${path.sep}`)) {
+    return false;
+  }
+  return existsSync(full);
+}
+
 function coverageSources({ projectRoot, project }) {
-  return project.sourceRoots.filter((root) => existsSync(path.join(projectRoot, root)));
+  return project.sourceRoots.filter((root) => existsInside(projectRoot, root));
 }
 
 function indented(entries) {
