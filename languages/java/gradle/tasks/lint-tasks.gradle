@@ -44,6 +44,7 @@ tasks.register('nitpickerForbiddenApis', JavaExec) {
 }
 
 def analysisRoot = project.ext.nitpickerAnalysisRoot
+def compilerOf = project.ext.nitpickerCompilerOf
 def pathsOf = { Collection<File> files -> files.collect { it.absolutePath } }
 
 tasks.register('nitpickerLint') {
@@ -68,13 +69,7 @@ tasks.register('nitpickerLint') {
                 classpath       : pathsOf(compile.classpath.files),
                 processorPath   : pathsOf(compile.options.annotationProcessorPath?.files ?: []),
                 javac           : javac.absolutePath,
-                compiler        : [
-                    release : compile.options.release.orNull?.toString(),
-                    source  : compile.sourceCompatibility,
-                    target  : compile.targetCompatibility,
-                    encoding: compile.options.encoding,
-                    args    : compile.options.allCompilerArgs.collect { it.toString() },
-                ],
+                compiler        : compilerOf(compile),
                 workDirectory   : new File(lintDirectory, 'work').absolutePath,
                 cacheDirectory  : lintDirectory.absolutePath,
             ],
