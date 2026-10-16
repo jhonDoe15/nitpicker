@@ -54,7 +54,7 @@ function namesLogging(name) {
   return wordsOf(name ?? '').some((word) => LOG_WORDS.has(word));
 }
 
-export function isLoggingCall(call) {
+function isLoggingCall(call) {
   const { callee } = call;
   if (callee.type !== MEMBER) return namesLogging(nameOf(callee));
   const method = nameOf(callee.property);

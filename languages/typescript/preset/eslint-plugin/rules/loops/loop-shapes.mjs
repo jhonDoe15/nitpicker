@@ -19,6 +19,7 @@ const ITERATION_METHODS = new Set([
   'find',
   'findIndex',
 ]);
+const IDENTIFIER = 'Identifier';
 const ARITHMETIC_OPERATORS = new Set(['+', '-', '*', '/', '%', '**']);
 const LOOP_EXITS = new Set(['ThrowStatement', 'ReturnStatement', 'BreakStatement']);
 const BREAK_TARGETS = new Set([...LOOPS, 'SwitchStatement']);
@@ -113,7 +114,7 @@ function isArithmeticSelfUpdate({ operator, left, right }) {
   return (
     right.type === 'BinaryExpression' &&
     ARITHMETIC_OPERATORS.has(right.operator) &&
-    [right.left, right.right].some((side) => side.type === 'Identifier' && side.name === left.name)
+    [right.left, right.right].some((side) => side.type === IDENTIFIER && side.name === left.name)
   );
 }
 
@@ -122,13 +123,13 @@ export function isPagingLoop(loop, visitorKeys) {
   if (loop.type === 'ForOfStatement' || loop.type === 'ForInStatement') return false;
   const tested = new Set(
     descendants(loop.test, visitorKeys, (node) => FUNCTIONS.has(node.type))
-      .filter((node) => node.type === 'Identifier')
+      .filter((node) => node.type === IDENTIFIER)
       .map(({ name }) => name),
   );
   return descendants(loop.body, visitorKeys, (node) => FUNCTIONS.has(node.type)).some(
     (node) =>
       node.type === 'AssignmentExpression' &&
-      node.left.type === 'Identifier' &&
+      node.left.type === IDENTIFIER &&
       tested.has(node.left.name) &&
       !isArithmeticSelfUpdate(node),
   );
