@@ -731,7 +731,7 @@ and CRAP rules.
   (`languages/python/ingest/fixtures/mutmut-run.json`); the reuse check runs against real work trees
   of a repository and a real `python3` for the import scan; the fake `mutmut` writes a `mutants/`
   directory from a `mutants-data.json` in the project and logs which result files it found there.
-- `languages/python/adapters/e2e/python-preset-red-base.e2e.test.mjs`: gated behind `NITPICKER_PYTHON_E2E=1`
+- `languages/python/adapters/e2e/red-base/python-preset-red-base.e2e.test.mjs`: gated behind `NITPICKER_PYTHON_E2E=1`
   too. A base whose test fails and a head that repairs it passes with a note; a new violation or an
   edited untested legacy function still fails next to the red base.
 - `languages/python/adapters/e2e/*.e2e.test.mjs`: gated behind `NITPICKER_PYTHON_E2E=1`

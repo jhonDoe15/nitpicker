@@ -70,7 +70,7 @@ describe('CRAP reporting in the quality-area analyzers', () => {
           'value has CRAP 9.00; score must be below 9. Test its uncovered branches, or split a branchy part into its own function.',
         classification: 'enforceable',
         symbol: 'value',
-        location: { line: 1 },
+        location: { line: 1, endLine: 3 },
         ratchet: {
           key: 'function:value:occurrence:1:crap',
           value: 9,
@@ -146,7 +146,7 @@ describe('CRAP reporting in the quality-area analyzers', () => {
           'value has unknown coverage and no CRAP score: no test runs it. Add a test that calls it; for inline composition-root wiring, move it to a named function in adapters/ and test that.',
         classification: 'enforceable',
         symbol: 'value',
-        location: { line: 1 },
+        location: { line: 1, endLine: 3 },
       },
       {
         tool: 'crap',
@@ -170,7 +170,7 @@ describe('CRAP reporting in the quality-area analyzers', () => {
           'value has unknown coverage and no CRAP score: no test runs it. Add a test that calls it; for inline composition-root wiring, move it to a named function in adapters/ and test that.',
         classification: 'enforceable',
         symbol: 'value',
-        location: { line: 1 },
+        location: { line: 1, endLine: 3 },
       },
       {
         tool: 'crap',
@@ -284,7 +284,7 @@ describe('CRAP reporting in the quality-area analyzers', () => {
           'value has CRAP 12.00; score must be below 12. Test its uncovered branches, or split a branchy part into its own function.',
         classification: 'enforceable',
         symbol: 'value',
-        location: { line: 1 },
+        location: { line: 1, endLine: 3 },
         ratchet: {
           key: 'function:value:occurrence:1:crap',
           value: 12,

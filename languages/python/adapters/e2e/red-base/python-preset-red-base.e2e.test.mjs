@@ -4,12 +4,13 @@ import path from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import {
   commitBranch,
+  commitBranchFrom,
   fixture,
-  gate,
+  gateAgainst,
   git,
   installPackages,
   pythonE2eEnabled,
-} from './test-support/python-e2e-support.mjs';
+} from '../test-support/python-e2e-support.mjs';
 
 // End-to-end test of a change that repairs a base whose tests fail, with real tools. It needs
 // python3, uv and network access to PyPI, so it only runs with NITPICKER_PYTHON_E2E=1
@@ -40,15 +41,14 @@ describe.skipIf(!pythonE2eEnabled)('Python preset on a base whose tests fail', (
     git(project, 'commit', '-q', '-m', 'main');
     installPackages(project, ['-e', '.', 'coverage', 'mutmut', 'pytest', 'mypy']);
     commitBranch(project, 'red-base', { [TEST_PATH]: FAILING_TEST });
-    commitBranch(project, 'repaired', { [TEST_PATH]: PASSING_TEST }, 'red-base');
-    commitBranch(project, 'repaired-with-violation', { 'src/demo/bad.py': VIOLATION }, 'repaired');
-    commitBranch(project, 'still-red', { 'src/demo/extra.py': 'EXTRA = 1\n' }, 'red-base');
-    commitBranch(
-      project,
-      'repaired-legacy-edit',
-      { 'src/demo/legacy.py': LEGACY_EDIT },
-      'repaired',
-    );
+    const root = project;
+    function from(name, files, parent) {
+      commitBranchFrom({ root, name, files, from: parent });
+    }
+    from('repaired', { [TEST_PATH]: PASSING_TEST }, 'red-base');
+    from('repaired-with-violation', { 'src/demo/bad.py': VIOLATION }, 'repaired');
+    from('still-red', { 'src/demo/extra.py': 'EXTRA = 1\n' }, 'red-base');
+    from('repaired-legacy-edit', { 'src/demo/legacy.py': LEGACY_EDIT }, 'repaired');
   });
 
   afterAll(() => {
@@ -56,7 +56,7 @@ describe.skipIf(!pythonE2eEnabled)('Python preset on a base whose tests fail', (
   });
 
   it('passes a change that repairs the tests, with the failing base as a note and the untested legacy code unchanged', () => {
-    const result = gate(project, 'repaired', [], 'red-base');
+    const result = gateAgainst({ root: project, branch: 'repaired', base: 'red-base' });
 
     expect(result.exitCode, result.text).toBe(0);
     expect(result.json('tool-errors.json')).toEqual([]);
@@ -75,7 +75,11 @@ describe.skipIf(!pythonE2eEnabled)('Python preset on a base whose tests fail', (
   });
 
   it('still fails a new violation next to a failing base', () => {
-    const result = gate(project, 'repaired-with-violation', [], 'red-base');
+    const result = gateAgainst({
+      root: project,
+      branch: 'repaired-with-violation',
+      base: 'red-base',
+    });
 
     expect(result.exitCode, result.text).toBe(1);
     expect(enforceable(result)).toEqual([
@@ -87,14 +91,14 @@ describe.skipIf(!pythonE2eEnabled)('Python preset on a base whose tests fail', (
   });
 
   it('fails the untested lines of an edited legacy function', () => {
-    const result = gate(project, 'repaired-legacy-edit', [], 'red-base');
+    const result = gateAgainst({ root: project, branch: 'repaired-legacy-edit', base: 'red-base' });
 
     expect(result.exitCode, result.text).toBe(1);
     expect(enforceable(result)).toEqual(Array(3).fill('mutmut mutant-nocoverage'));
   });
 
   it('still fails when the head fails its tests too', () => {
-    const result = gate(project, 'still-red', [], 'red-base');
+    const result = gateAgainst({ root: project, branch: 'still-red', base: 'red-base' });
 
     expect(result.exitCode, result.text).toBe(2);
     expect(result.json('notes.json')).toEqual([]);
