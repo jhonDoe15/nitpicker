@@ -73,7 +73,7 @@ function locate(entity) {
   return { file: entity.module.moduleId, test: entity.fullName };
 }
 
-export default function TestConsoleReporter() {
+export default function testConsoleReporter() {
   const entries = [];
   let vitest;
   return {

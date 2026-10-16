@@ -18,6 +18,8 @@ const NUMBER_PATTERN =
 
 const PLACEHOLDER_PATTERN = /<(?:time|hex|uuid|id|n|root|tmp|home)>/gu;
 
+const MIN_SPECIFIC_CHARACTERS = 3;
+
 const MAX_MESSAGE_LENGTH = 300;
 
 function lastSegment(match) {
@@ -38,8 +40,8 @@ export function normalizeConsoleMessage(line) {
 }
 
 export function hasSpecificText(text) {
-  return (
-    normalizeConsoleMessage(text).replaceAll(PLACEHOLDER_PATTERN, '').replaceAll(/\s/gu, '')
-      .length >= 3
-  );
+  const remaining = normalizeConsoleMessage(text)
+    .replaceAll(PLACEHOLDER_PATTERN, '')
+    .replaceAll(/\s/gu, '');
+  return remaining.length >= MIN_SPECIFIC_CHARACTERS;
 }

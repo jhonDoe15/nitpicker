@@ -7,12 +7,13 @@ import {
   readVitestReport,
   readCoverageFindings,
   toolErrorFinding,
+  COVERAGE_REPORT_PATH,
+  TEST_CONSOLE_REPORT_PATH,
 } from '../reporting/vitest.mjs';
 import { readLayout } from '../../../preset/head-policy.mjs';
 import { TESTS_FAILED_SKIPPED_RULE } from '../../../../../shared/rules/finding-helpers.mjs';
 import { normalizeCrap } from '../reporting/tests.mjs';
 import { withFunctionSourceHashes } from '../reporting/source-hashes.mjs';
-import { COVERAGE_REPORT_PATH, TEST_CONSOLE_REPORT_PATH } from '../reporting/vitest.mjs';
 import { REPORT_VARIABLE } from '../../../preset/test-console/vitest-reporter.config.mjs';
 
 export function runPolicyTests(options) {

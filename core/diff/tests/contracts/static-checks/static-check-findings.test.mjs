@@ -139,6 +139,47 @@ describe('static differential adapters', () => {
     expect(first[0].path).toBe(second[0].path);
     expect(first[0].path).toBe('src/main/a.ts');
   });
+  it('reports dependencies on modules outside the analyzed snapshot', () => {
+    const from = 'src/main/features/greeting/domain/stamp.ts';
+    const findings = normalizeArchitectureViolations(
+      {
+        modules: [
+          { source: from, dependencies: [{ resolved: '../libs/shared/clock.ts' }] },
+          { source: '../libs/shared/clock.ts', dependencies: [{ resolved: 'fs' }] },
+        ],
+        summary: {
+          violations: [
+            {
+              type: 'reachability',
+              from,
+              to: 'fs',
+              rule: { name: 'domain-does-not-reach-io-through-shared', severity: 'error' },
+              via: [{ name: '../libs/shared/clock.ts' }, { name: 'fs' }],
+            },
+            {
+              from,
+              to: '../node_modules/pg/lib/index.js',
+              rule: {
+                name: 'domain-does-not-import-network-or-database-clients',
+                severity: 'error',
+              },
+            },
+          ],
+        },
+      },
+      'dependency-architecture',
+    );
+    const [cycle] = normalizeArchitectureViolations(
+      architectureReport(['../libs/a.ts', 'src/main/b.ts'], 'src/main/b.ts'),
+      'dependency-architecture',
+    );
+
+    expect(findings.map(({ message }) => message)).toEqual([
+      `${from} must not depend on fs through ../libs/shared/clock.ts`,
+      `${from} must not depend on ../node_modules/pg/lib/index.js`,
+    ]);
+    expect(cycle.path).toBe('src/main/b.ts');
+  });
   it.each([['single-command', packageAnalyzers]])(
     'includes all deterministic static checks in the %s analyzer catalog',
     (_dial, analyzers) => {
