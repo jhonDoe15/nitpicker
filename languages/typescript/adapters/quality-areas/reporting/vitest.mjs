@@ -1,7 +1,6 @@
 import { TESTS_FAILED_RULE } from '../../../../../shared/rules/finding-helpers.mjs';
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
-import { stripAnsi } from '../../../preset/test-console/ansi.mjs';
 
 export const COVERAGE_REPORT_PATH = 'reports/quality/coverage/coverage-final.json';
 
@@ -10,6 +9,8 @@ export const TEST_CONSOLE_REPORT_PATH = 'reports/quality/test-console/report.jso
 import { normalizeCoverage } from './tests.mjs';
 
 import { withBranchSourceHashes } from './source-hashes.mjs';
+
+import { firstLine, missingSetupHints } from './failure-lines.mjs';
 
 export function coverageFailureFindings(options, report, result) {
   const [firstFailure] = vitestFailures(report, options.projectRoot);
@@ -63,8 +64,6 @@ export function toolErrorFinding(options, { rule, path: findingPath = '.', messa
 
 const MAX_LISTED_FAILURES = 5;
 
-const MAX_ASSERTION_LINE_LENGTH = 200;
-
 function vitestFailures(report, projectRoot) {
   const failures = [];
   const testResults = Array.isArray(report?.testResults) ? report.testResults : [];
@@ -101,22 +100,6 @@ function findingPath(file) {
   return file.startsWith('<') || file.startsWith('..') || path.isAbsolute(file) ? '.' : file;
 }
 
-function firstLine(message) {
-  const line =
-    typeof message === 'string'
-      ? stripAnsi(message)
-          .split('\n')
-          .map((candidate) => candidate.trim())
-          .find((candidate) => candidate.length > 0)
-      : undefined;
-  if (line === undefined) {
-    return '';
-  }
-  return line.length > MAX_ASSERTION_LINE_LENGTH
-    ? `${line.slice(0, MAX_ASSERTION_LINE_LENGTH)}…`
-    : line;
-}
-
 export function formatVitestFailures(report, projectRoot) {
   const failures = vitestFailures(report, projectRoot);
   const failedCount = Number.isInteger(report?.numFailedTests)
@@ -137,6 +120,7 @@ export function formatVitestFailures(report, projectRoot) {
     `${headline}:`,
     ...listed,
     ...(omitted > 0 ? [`  … and ${String(omitted)} more`] : []),
+    ...missingSetupHints(failures),
   ].join('\n');
 }
 

@@ -12,6 +12,8 @@ PYDANTIC_ROOTS = {"pydantic", "pydantic_settings"}
 MIN_CLASS_CONSTANTS = 2
 MIN_MODULE_CONSTANTS = 3
 TYPE_CHECKING_NAMES = {"typing.TYPE_CHECKING", "typing_extensions.TYPE_CHECKING"}
+OPTIONAL_IMPORT_ERRORS = {"ImportError", "ModuleNotFoundError"}
+BLIND_ERRORS = {"Exception", "BaseException", "builtins.Exception", "builtins.BaseException"}
 CONSTANT_NAME = re.compile(r"[A-Z][A-Z0-9_]*")
 SUPPRESSION = re.compile(
     r"#\s*(?:type:\s*ignore"
@@ -23,6 +25,47 @@ SUPPRESSION = re.compile(
     r"|mypy:\s*(?!strict\b)\S)",
     re.IGNORECASE,
 )
+
+
+def is_constant(node):
+    if isinstance(node, ast.Constant):
+        return True
+    if isinstance(node, ast.UnaryOp):
+        return is_constant(node.operand)
+    if isinstance(node, (ast.Tuple, ast.List, ast.Set)):
+        return all(is_constant(element) for element in node.elts)
+    if isinstance(node, ast.Dict):
+        return all(
+            key is not None and is_constant(key) and is_constant(value)
+            for key, value in zip(node.keys, node.values)
+        )
+    return False
+
+
+def is_optional_import(handler):
+    caught = handler.type.elts if isinstance(handler.type, ast.Tuple) else [handler.type]
+    names = {node.id for node in caught if isinstance(node, ast.Name)}
+    return len(names) == len(caught) and names <= OPTIONAL_IMPORT_ERRORS
+
+
+def is_inert(statement, optional_import):
+    if isinstance(statement, ast.Return):
+        return statement.value is None or is_constant(statement.value)
+    if isinstance(statement, ast.Expr):
+        return isinstance(statement.value, ast.Constant)
+    if isinstance(statement, (ast.Assign, ast.AnnAssign)):
+        return not optional_import and statement.value is not None and is_constant(statement.value)
+    return isinstance(statement, (ast.Pass, ast.Continue))
+
+
+def type_text(node):
+    if isinstance(node, ast.Name):
+        return node.id
+    if isinstance(node, ast.Attribute):
+        return f"{type_text(node.value)}.{node.attr}"
+    if isinstance(node, ast.Tuple):
+        return "(" + ", ".join(type_text(element) for element in node.elts) + ")"
+    return "expression"
 
 
 def is_test_path(path):
@@ -163,6 +206,23 @@ class Collector(ast.NodeVisitor):
             for part in ast.walk(node.test)
         ):
             self.add("not-type-checking", "if not TYPE_CHECKING", node)
+        self.generic_visit(node)
+
+    def visit_ExceptHandler(self, node):
+        optional_import = node.type is not None and is_optional_import(node)
+        if all(is_inert(statement, optional_import) for statement in node.body):
+            caught = type_text(node.type) if node.type else ""
+            self.add("swallowed-exception", f"except {caught}".strip(), node)
+        self.generic_visit(node)
+
+    def visit_Call(self, node):
+        name = dotted_name(node.func, self.aliases)
+        if name == "contextlib.suppress" and (
+            not node.args
+            or any(dotted_name(argument, self.aliases) in BLIND_ERRORS for argument in node.args)
+        ):
+            arguments = ", ".join(type_text(argument) for argument in node.args)
+            self.add("blind-suppress", f"{name}({arguments})", node)
         self.generic_visit(node)
 
     visit_FunctionDef = visit_scope

@@ -59,7 +59,6 @@ describe('layout-aware tsconfig', () => {
     expect(layered.compilerOptions).not.toHaveProperty('jsx');
     expect(layered.include).toEqual(['lib/**/*', 'spec/**/*', 'vitest*.ts']);
     expect([...new Set(layered.exclude)].sort()).toEqual([
-      '**/*.d.ts',
       '**/build/**',
       '**/coverage/**',
       '**/dist/**',

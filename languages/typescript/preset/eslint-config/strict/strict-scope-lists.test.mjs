@@ -23,17 +23,6 @@ const commonBans = [
       'Do not use the non-null assertion `!`. Check for `undefined` and return early, or make the type non-optional at its source.',
   },
   {
-    selector:
-      "Literal[raw='null']:not(BinaryExpression[operator=/^[!=]==$/] > Literal):not(CallExpression[callee.object.name='JSON'][callee.property.name='stringify'] > Literal)",
-    message:
-      'Use `undefined` for an absent value. `null` is only for strict comparison with a library value and the `JSON.stringify` replacer argument.',
-  },
-  {
-    selector: 'TSNullKeyword',
-    message:
-      'Use `undefined` for an absent value. `null` is only for strict comparison with a library value and the `JSON.stringify` replacer argument. Type it as optional with `undefined`.',
-  },
-  {
     selector: 'TSEnumDeclaration',
     message:
       "Do not declare an `enum`. Use a union of string literals: `type Mode = 'read' | 'write'`.",
@@ -81,16 +70,6 @@ const commonBans = [
       'Use a `type` instead of an `interface`: `type Shape = { size: number }`. Only a `declare module` or `declare global` augmentation may declare an `interface`.',
   },
   {
-    selector: 'ExportDefaultDeclaration',
-    message:
-      'Use a named export (`export function name() {}` or `export const name = ...`). Default exports are only allowed in config files.',
-  },
-  {
-    selector: "ExportSpecifier[exported.name='default']",
-    message:
-      'Use a named export (`export { name }`). Default exports are only allowed in config files.',
-  },
-  {
     selector: 'ExportAllDeclaration',
     message:
       "List the public names: `export { name } from './module.js'`. `export *` makes every internal export public. If it is deliberate, add an exception for this rule in nitpicker.config.json.",
@@ -120,12 +99,7 @@ const loopBans = [
   },
 ];
 
-const promiseBans = [
-  {
-    selector: 'CallExpression[callee.property.name=/^(then|catch|finally)$/]',
-    message:
-      'Use async/await (with try/catch) instead of promise chains, and Promise.all for concurrent work.',
-  },
+const promiseMisuseBans = [
   {
     selector:
       "ExpressionStatement > AwaitExpression > CallExpression[callee.object.name='Promise'][callee.property.name='allSettled']",
@@ -270,9 +244,14 @@ describe('no-restricted-syntax lists per scope', () => {
   it('gives every scope the complete list of the scopes it is nested in', () => {
     const { source, domain, adapters } = restrictedSyntaxByScope;
 
-    expect(domain).toEqual([...commonBans, ...promiseBans, ...domainOnlyBans]);
-    expect(adapters).toEqual([...commonBans, ...loopBans, ...promiseBans, ...adaptersOnlyBans]);
-    expect(source).toEqual([...commonBans, ...loopBans, ...promiseBans]);
+    expect(domain).toEqual([...commonBans, ...promiseMisuseBans, ...domainOnlyBans]);
+    expect(adapters).toEqual([
+      ...commonBans,
+      ...loopBans,
+      ...promiseMisuseBans,
+      ...adaptersOnlyBans,
+    ]);
+    expect(source).toEqual([...commonBans, ...loopBans, ...promiseMisuseBans]);
     expect(domain.length).toBeGreaterThan(source.length);
     expect(adapters.length).toBeGreaterThan(source.length);
   });
