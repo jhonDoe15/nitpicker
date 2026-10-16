@@ -17,12 +17,32 @@ function isolatedCache() {
   return { NITPICKER_CACHE_DIR: makeTemporaryRoot('nitpicker-cli-cache-') };
 }
 
+function fixOrderObserver() {
+  const operations = [];
+  const operationsAtInvocations = [];
+  const analyzer = fakeAnalyzer();
+  return {
+    operationsAtInvocations,
+    analyzer: {
+      ...analyzer,
+      createInvocation: (settings) => {
+        operationsAtInvocations.push([...operations]);
+        return analyzer.createInvocation(settings);
+      },
+    },
+    executeFixCommand: ({ operation }) => {
+      operations.push(operation);
+    },
+  };
+}
+
 describe('nitpicker CLI', () => {
   it('fixes changed ESLint and Prettier violations before comparing without touching unchanged files or the index', () => {
     const repository = createRepository({
+      'quality-policy.json': policy(),
       'src/main/changed.ts': 'export const changed = 1;\n',
       'src/main/format.mjs': 'export const format = 1;\n',
-      'src/main/unchanged.ts': 'export const unchanged=1\n',
+      'src/main/unchanged.ts': 'export let unchanged = 1;\n',
       'tests/placeholder.ts': 'export const placeholder = true;\n',
     });
     symlinkSync(
@@ -41,18 +61,13 @@ describe('nitpicker CLI', () => {
     const indexBefore = fixtureGit(repository.root, ['ls-files', '--stage']);
     const output = captureOutput();
     const outputRoot = makeOutputRoot();
+    const observer = fixOrderObserver();
     const exitCode = runCli({
-      arguments_: [
-        '--fix',
-        '--base',
-        repository.baseRef,
-        '--analyzer',
-        'prettier-format',
-        '--output',
-        outputRoot,
-      ],
+      arguments_: ['--fix', '--base', repository.baseRef, '--output', outputRoot],
       currentProjectRoot: repository.root,
       environment: isolatedCache(),
+      analyzers: [observer.analyzer],
+      executeFixCommand: observer.executeFixCommand,
       stdout: output.stdout,
       stderr: output.stderr,
     });
@@ -64,7 +79,7 @@ describe('nitpicker CLI', () => {
       'export const format = 2;\n',
     );
     expect(readFileSync(path.join(repository.root, 'src/main/unchanged.ts'), 'utf8')).toBe(
-      'export const unchanged=1\n',
+      'export let unchanged = 1;\n',
     );
     expect(fixtureGit(repository.root, ['ls-files', '--stage'])).toBe(indexBefore);
     expect(output.stdoutText).toBe(`Fixed files:
@@ -77,6 +92,8 @@ Base: ${repository.baseRef} (argument)
 \u001b[2mFull diagnostics: ${outputRoot}/report.txt\u001b[0m
 `);
     expect(output.stderrText).toBe('');
+    const fixOrder = ['eslint-fix', 'prettier-base-check', 'prettier-fix'];
+    expect(observer.operationsAtInvocations).toEqual([fixOrder, fixOrder]);
   });
   it('continues remaining fixers and comparison when a fixer fails', () => {
     const repository = createRepository({
