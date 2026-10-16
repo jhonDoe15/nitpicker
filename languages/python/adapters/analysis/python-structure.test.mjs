@@ -94,7 +94,7 @@ describe('reading the structure report', () => {
         rule: 'function-control-nesting-limit',
         symbol: 'Service.run',
         message:
-          'Service.run nests control flow 3 deep (limit 2). Return early instead of nesting. An elif chain counts one level per branch; use match, a dict lookup or a helper function.',
+          'Service.run nests control flow 3 deep (limit 2). Return early instead of nesting. An if/elif chain counts as one level; use match, a dict lookup or a helper function for what nests inside a branch.',
       },
     ]);
     expect(
