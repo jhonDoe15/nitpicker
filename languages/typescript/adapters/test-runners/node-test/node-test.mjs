@@ -1,7 +1,8 @@
-import { spawnSync } from 'node:child_process';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { withoutOptions } from '../../../preset/test-runner/script-command.mjs';
+import { RUNNER_NAMES } from '../../../preset/test-runner/runners.mjs';
+import { spawnNodeTool } from '../../quality-areas/runners/tooling.mjs';
 import { startV8Coverage } from '../v8-coverage/v8-coverage-run.mjs';
 import {
   MAX_WORKERS,
@@ -12,13 +13,18 @@ import {
   temporaryProjectPath,
 } from '../test-run.mjs';
 
-const MAX_OUTPUT_BYTES = 100 * 1024 * 1024;
 const REPORTER = pathToFileURL(path.join(import.meta.dirname, 'node-test-reporter.mjs')).href;
 const TYPESCRIPT_FILE = /\.[cm]?ts$/u;
 const SCRIPT_EXTENSIONS = '{cjs,mjs,js,cts,mts,ts}';
-const LOADER_OPTIONS = new Set(['--import', '--require', '-r', '--loader', '--experimental-loader']);
+const LOADER_OPTIONS = new Set([
+  '--import',
+  '--require',
+  '-r',
+  '--loader',
+  '--experimental-loader',
+]);
 
-export const NODE_DEFAULT_PATTERNS = [
+const NODE_DEFAULT_PATTERNS = [
   `**/*.test.${SCRIPT_EXTENSIONS}`,
   `**/*-test.${SCRIPT_EXTENSIONS}`,
   `**/*_test.${SCRIPT_EXTENSIONS}`,
@@ -56,17 +62,15 @@ const VALUED_NODE_OPTIONS = new Set([
   '--test-skip-pattern',
 ]);
 
-function splitArguments(arguments_) {
+function splitArguments(tokens) {
   const options = [];
   const patterns = [];
   const pending = { value: false };
-  for (const token of arguments_) {
-    if (pending.value) {
+  for (const token of tokens) {
+    const isOptionValue = pending.value;
+    pending.value = !isOptionValue && VALUED_NODE_OPTIONS.has(token);
+    if (isOptionValue || token.startsWith('-')) {
       options.push(token);
-      pending.value = false;
-    } else if (token.startsWith('-')) {
-      options.push(token);
-      pending.value = VALUED_NODE_OPTIONS.has(token);
     } else {
       patterns.push(token);
     }
@@ -115,15 +119,16 @@ export async function runNodeTest(options, command) {
   const reportPath = temporaryProjectPath(options, 'node-test-report.json');
   const coverage = startV8Coverage(options, command);
   try {
-    const result = spawnSync(process.execPath, testArguments(options, command, reportPath), {
-      cwd: options.projectRoot,
-      env: { ...process.env, ...coverage.environment },
-      encoding: 'utf8',
-      maxBuffer: MAX_OUTPUT_BYTES,
+    const result = spawnNodeTool({
+      options,
+      nodeArguments: [...coverage.nodeArguments, ...testArguments(options, command, reportPath)],
+      environment: coverage.environment,
+      arguments_: [],
     });
-    if (result.error !== undefined) throw result.error;
-    const run = readRun({ reportPath, result, runnerName: 'node:test' });
-    if (!run.failed) await coverage.write();
+    const run = readRun({ reportPath, result, runnerName: RUNNER_NAMES.node });
+    if (!run.failed) {
+      await coverage.write();
+    }
     return run;
   } finally {
     removeTemporary(reportPath);

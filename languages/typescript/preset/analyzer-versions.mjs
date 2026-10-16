@@ -54,23 +54,28 @@ function resolveEslintPluginVersions(resolve) {
 
 function testRunnerVersion(liveProjectRoot, resolve, configuredRunner) {
   const { runner } = testRunnerFor(liveProjectRoot, configuredRunner);
-  if (runner === 'node') return `node@${process.versions.node}`;
+  if (runner === 'node') {
+    return `node@${process.versions.node}`;
+  }
   const name = RUNNER_PACKAGES[runner];
   return `${name}@${resolve(name, { projectRoot: liveProjectRoot }).version}`;
 }
 
-export function resolveAnalyzerVersion(
+export function testRunnerAnalyzerVersion(
   analyzerName,
   liveProjectRoot,
-  resolve = resolveTool,
-  configuredRunner,
+  { resolve = resolveTool, configuredRunner } = {},
 ) {
+  const runnerVersion = testRunnerVersion(liveProjectRoot, resolve, configuredRunner);
   if (analyzerName === 'coverage') {
-    return testRunnerVersion(liveProjectRoot, resolve, configuredRunner);
+    return runnerVersion;
   }
-  if (analyzerName === 'mutation') {
-    const stryker = resolve('@stryker-mutator/core', { projectRoot: liveProjectRoot }).version;
-    return `${stryker};${testRunnerVersion(liveProjectRoot, resolve, configuredRunner)}`;
+  return `${resolve('@stryker-mutator/core', { projectRoot: liveProjectRoot }).version};${runnerVersion}`;
+}
+
+export function resolveAnalyzerVersion(analyzerName, liveProjectRoot, resolve = resolveTool) {
+  if (analyzerName === 'coverage' || analyzerName === 'mutation') {
+    return testRunnerAnalyzerVersion(analyzerName, liveProjectRoot, { resolve });
   }
   const toolName = analyzerName.startsWith('eslint-') ? 'eslint' : TOOL_BY_ANALYZER[analyzerName];
   if (toolName === undefined) {

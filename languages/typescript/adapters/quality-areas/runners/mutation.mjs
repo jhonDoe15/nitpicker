@@ -32,16 +32,23 @@ const DRY_RUN_TYPECHECK_FAILED_PATTERN = /Typescript error\(s\) found in dry run
 
 export async function runMutation(options) {
   const targets = mutationTargets(options, readLayout());
-  if (targets?.length === 0) return [];
+  if (targets?.length === 0) {
+    return [];
+  }
   const sourceConfig = (
     await importPolicyModule(options, STRYKER_CONFIG_PATH, `?run=${Date.now().toString()}`)
   ).default;
   const configPath = path.join(options.projectRoot, '.nitpicker-diff-stryker.config.mjs');
   const createdFiles = [];
-  const testRunner = projectTestRunner(options.projectRoot);
   try {
-    writeStrykerConfig({ options, sourceConfig, targets, configPath, createdFiles, testRunner });
-    const skippedFindings = runStrykerOrExplainSkip(options, configPath, testRunner.command);
+    const command = writeStrykerConfig({
+      options,
+      sourceConfig,
+      targets,
+      configPath,
+      createdFiles,
+    });
+    const skippedFindings = runStrykerOrExplainSkip(options, configPath, command);
     if (skippedFindings !== undefined) {
       return skippedFindings;
     }
@@ -80,7 +87,8 @@ function runnerConfig({ options, sourceConfig, createdFiles, testRunner }) {
   });
 }
 
-function writeStrykerConfig({ options, sourceConfig, targets, configPath, createdFiles, testRunner }) {
+function writeStrykerConfig({ options, sourceConfig, targets, configPath, createdFiles }) {
+  const testRunner = projectTestRunner(options.projectRoot);
   const config = {
     ...runnerConfig({ options, sourceConfig, createdFiles, testRunner }),
     ...(targets === undefined ? {} : { mutate: targets }),
@@ -92,6 +100,7 @@ function writeStrykerConfig({ options, sourceConfig, targets, configPath, create
     `export default ${JSON.stringify(config, null, 2)};\n`,
     createdFiles,
   );
+  return testRunner.command;
 }
 
 const SKIP_MESSAGES = {

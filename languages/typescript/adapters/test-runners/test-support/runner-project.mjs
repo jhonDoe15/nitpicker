@@ -5,22 +5,34 @@ import { PACKAGE_ROOT } from '../../../../../core/tooling/tool-resolution.mjs';
 import { parseArguments } from '../../quality-areas/arguments.mjs';
 import { runQualityArea } from '../../quality-areas-runner.mjs';
 
-const parents = [];
-
-export function removeRunnerProjects() {
-  for (const parent of parents.splice(0)) rmSync(parent, { recursive: true, force: true });
+function writeProjectFile(root, file, text) {
+  const target = path.resolve(root, file);
+  if (!target.startsWith(`${root}${path.sep}`)) {
+    throw new Error(`Test project file is outside the project: ${file}`);
+  }
+  mkdirSync(path.dirname(target), { recursive: true });
+  writeFileSync(target, typeof text === 'string' ? text : JSON.stringify(text));
 }
 
-export function runnerProject(files) {
-  const parent = realpathSync(mkdtempSync(path.join(tmpdir(), 'nitpicker-diff-')));
-  parents.push(parent);
-  const root = path.join(parent, 'head');
-  for (const [file, text] of Object.entries(files)) {
-    mkdirSync(path.dirname(path.join(root, file)), { recursive: true });
-    writeFileSync(path.join(root, file), typeof text === 'string' ? text : JSON.stringify(text));
-  }
-  symlinkSync(path.join(PACKAGE_ROOT, 'node_modules'), path.join(root, 'node_modules'), 'dir');
-  return root;
+export function createRunnerProjects() {
+  const parents = [];
+  return {
+    project(files) {
+      const parent = realpathSync(mkdtempSync(path.join(tmpdir(), 'nitpicker-diff-')));
+      parents.push(parent);
+      const root = path.join(parent, 'head');
+      for (const [file, text] of Object.entries(files)) {
+        writeProjectFile(root, file, text);
+      }
+      symlinkSync(path.join(PACKAGE_ROOT, 'node_modules'), path.join(root, 'node_modules'), 'dir');
+      return root;
+    },
+    remove() {
+      for (const parent of parents.splice(0)) {
+        rmSync(parent, { recursive: true, force: true });
+      }
+    },
+  };
 }
 
 export function runArea(kind, projectRoot) {

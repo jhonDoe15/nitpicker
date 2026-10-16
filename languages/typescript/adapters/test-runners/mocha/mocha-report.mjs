@@ -1,7 +1,9 @@
 import path from 'node:path';
 
 function errorMessage(error) {
-  if (error === undefined || Object.keys(error).length === 0) return undefined;
+  if (error === undefined || Object.keys(error).length === 0) {
+    return undefined;
+  }
   return typeof error.stack === 'string' ? error.stack : String(error.message ?? 'failed');
 }
 

@@ -12,7 +12,9 @@ const SOURCE_MAP = { version: 3, sources: ['sign.ts'], names: [], mappings: 'AAA
 const roots = [];
 
 afterEach(() => {
-  for (const root of roots.splice(0)) rmSync(root, { recursive: true, force: true });
+  for (const root of roots.splice(0)) {
+    rmSync(root, { recursive: true, force: true });
+  }
 });
 
 function sourceFile() {
@@ -24,7 +26,11 @@ function sourceFile() {
 }
 
 const ranThrough = (code) => [
-  { functionName: '', isBlockCoverage: true, ranges: [{ startOffset: 0, endOffset: code.length, count: 1 }] },
+  {
+    functionName: '',
+    isBlockCoverage: true,
+    ranges: [{ startOffset: 0, endOffset: code.length, count: 1 }],
+  },
 ];
 
 describe('the code a test process ran', () => {
@@ -32,7 +38,9 @@ describe('the code a test process ran', () => {
     const file = sourceFile();
     const ran = `${STRIPPED}\n\n//# sourceURL=file://${file}`;
 
-    expect(executedScript({ file, functions: ranThrough(ran), loaded: [ran] })).toEqual({ code: ran });
+    expect(executedScript({ file, functions: ranThrough(ran), loaded: [ran] })).toEqual({
+      code: ran,
+    });
     expect(executedScript({ file, functions: ranThrough(STRIPPED) })).toEqual({ code: STRIPPED });
   });
 
@@ -46,8 +54,12 @@ describe('the code a test process ran', () => {
       sourceMap: SOURCE_MAP,
     });
     expect(
-      executedScript({ file, functions: ranThrough(REWRITTEN), loaded: [REWRITTEN], cachedSourceMap: SOURCE_MAP })
-        .sourceMap,
+      executedScript({
+        file,
+        functions: ranThrough(REWRITTEN),
+        loaded: [REWRITTEN],
+        cachedSourceMap: SOURCE_MAP,
+      }).sourceMap,
     ).toEqual(SOURCE_MAP);
   });
 
@@ -57,7 +69,9 @@ describe('the code a test process ran', () => {
     expect(() => executedScript({ file, functions: ranThrough(REWRITTEN) })).toThrow(
       `the code that ran (${String(REWRITTEN.length)} characters) is not the file (${String(STRIPPED.length)} characters), and no copy of it was recorded`,
     );
-    expect(() => executedScript({ file, functions: ranThrough(REWRITTEN), loaded: [REWRITTEN] })).toThrow(
+    expect(() =>
+      executedScript({ file, functions: ranThrough(REWRITTEN), loaded: [REWRITTEN] }),
+    ).toThrow(
       'a loader rewrote it without a source map, so its coverage cannot be mapped back to the file',
     );
   });

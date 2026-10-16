@@ -33,15 +33,23 @@ function runnerInCommand(command) {
   return hits.toSorted((left, right) => left.index - right.index)[0]?.runner;
 }
 
-function scriptRunner(scripts, name, seen = new Set()) {
-  const command = scripts[name];
-  if (typeof command !== 'string' || seen.has(name)) return undefined;
-  const direct = runnerInCommand(command);
-  if (direct !== undefined) return { runner: direct, command };
-  const reference = SCRIPT_REFERENCE.exec(command.trim())?.groups?.name;
-  return reference === undefined
-    ? undefined
-    : scriptRunner(scripts, reference, new Set([...seen, name]));
+function scriptRunner(scripts, name) {
+  const pending = [name];
+  for (const current of pending) {
+    const command = scripts[current];
+    if (typeof command !== 'string') {
+      return undefined;
+    }
+    const runner = runnerInCommand(command);
+    if (runner !== undefined) {
+      return { runner, command };
+    }
+    const reference = SCRIPT_REFERENCE.exec(command.trim())?.groups?.name;
+    if (reference !== undefined && !pending.includes(reference)) {
+      pending.push(reference);
+    }
+  }
+  return undefined;
 }
 
 function runnerFromScripts(scripts) {
@@ -61,12 +69,20 @@ function configFileNames(runner) {
   return runner === 'mocha' ? [...names, ...MOCHA_CONFIG_EXTRA] : names;
 }
 
+function hasProjectFile(projectRoot, name) {
+  const file = path.resolve(projectRoot, name);
+  if (!file.startsWith(`${projectRoot}${path.sep}`)) {
+    return false;
+  }
+  return existsSync(file);
+}
+
 function runnerFromConfigFiles(projectRoot, manifest) {
   return CONFIG_FILES.map(([runner]) => runner)
     .map((runner) => ({
       runner,
       file:
-        configFileNames(runner).find((name) => existsSync(path.join(projectRoot, name))) ??
+        configFileNames(runner).find((name) => hasProjectFile(projectRoot, name)) ??
         (manifest[runner] === undefined ? undefined : `package.json "${runner}"`),
     }))
     .find(({ file }) => file !== undefined);
@@ -93,7 +109,9 @@ export function detectTestRunner(projectRoot) {
     };
   }
   const config = runnerFromConfigFiles(projectRoot, manifest);
-  if (config !== undefined) return { runner: config.runner, evidence: config.file };
+  if (config !== undefined) {
+    return { runner: config.runner, evidence: config.file };
+  }
   const dependency = runnerFromDependencies(manifest);
   if (dependency !== undefined) {
     return { runner: dependency, evidence: `the ${RUNNER_PACKAGES[dependency]} dependency` };

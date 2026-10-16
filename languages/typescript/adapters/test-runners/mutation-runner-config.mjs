@@ -34,24 +34,38 @@ function relativeFiles(options, files) {
   );
 }
 
-function optionValue(arguments_, index) {
-  const token = arguments_[index];
-  return token.includes('=') ? token.slice(token.indexOf('=') + 1) : arguments_[index + 1];
+function optionValue(tokens, index) {
+  const token = tokens[index];
+  return token.includes('=') ? token.slice(token.indexOf('=') + 1) : tokens[index + 1];
+}
+
+function mochaOption(tokens, index) {
+  const token = tokens[index];
+  const name = token.split('=')[0];
+  const key = MOCHA_LIST_OPTIONS.get(name) ?? MOCHA_VALUE_OPTIONS.get(name);
+  return key === undefined
+    ? undefined
+    : {
+        key,
+        value: optionValue(tokens, index),
+        isList: MOCHA_LIST_OPTIONS.has(name),
+        valueIndex: token.includes('=') ? index : index + 1,
+      };
 }
 
 function mochaOptions(command, testFiles) {
   const result = { spec: [] };
   const consumed = new Set();
   for (const [index, token] of command.arguments_.entries()) {
-    if (consumed.has(index)) continue;
-    const name = token.split('=')[0];
-    const key = MOCHA_LIST_OPTIONS.get(name) ?? MOCHA_VALUE_OPTIONS.get(name);
-    if (key !== undefined) {
-      const value = optionValue(command.arguments_, index);
-      if (!token.includes('=')) consumed.add(index + 1);
-      result[key] = MOCHA_LIST_OPTIONS.has(name) ? [...(result[key] ?? []), value] : value;
-    } else if (!token.startsWith('-')) {
+    const option = consumed.has(index) ? undefined : mochaOption(command.arguments_, index);
+    if (option === undefined && !consumed.has(index) && !token.startsWith('-')) {
       result.spec.push(token);
+    }
+    if (option !== undefined) {
+      consumed.add(option.valueIndex);
+      result[option.key] = option.isList
+        ? [...(result[option.key] ?? []), option.value]
+        : option.value;
     }
   }
   return { ...result, spec: [...result.spec, ...testFiles] };
@@ -69,7 +83,9 @@ function jestOptions(command) {
 }
 
 function runnerOptions({ options, runner, command, testFiles }) {
-  if (runner === 'jest') return { jest: jestOptions(command), disableTypeChecks: true };
+  if (runner === 'jest') {
+    return { jest: jestOptions(command), disableTypeChecks: true };
+  }
   if (runner === 'mocha') {
     return { mochaOptions: mochaOptions(command, relativeFiles(options, testFiles)) };
   }
@@ -85,8 +101,13 @@ function runnerOptions({ options, runner, command, testFiles }) {
 
 export function mutationRunnerConfig({ options, runner, command, testFiles, sourceConfig }) {
   const { vitest, ...withoutVitest } = sourceConfig;
-  const plugins = [pluginPath(RUNNER_PLUGINS[runner]), pluginPath('@stryker-mutator/typescript-checker')];
-  if (runner === 'vitest') return { ...withoutVitest, vitest, plugins };
+  const plugins = [
+    pluginPath(RUNNER_PLUGINS[runner]),
+    pluginPath('@stryker-mutator/typescript-checker'),
+  ];
+  if (runner === 'vitest') {
+    return { ...withoutVitest, vitest, plugins };
+  }
   return {
     ...withoutVitest,
     plugins,

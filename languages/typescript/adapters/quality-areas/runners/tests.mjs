@@ -2,6 +2,7 @@ import { runNodeTool, parseReportJson } from './tooling.mjs';
 import path from 'node:path';
 import { existsSync, readFileSync, rmSync } from 'node:fs';
 import {
+  COVERAGE_REPORT_PATH,
   coverageFailureFindings,
   readCoverageFindings,
   toolErrorFinding,
@@ -15,7 +16,6 @@ import {
 } from '../../../../../shared/rules/finding-helpers.mjs';
 import { normalizeCrap } from '../reporting/tests.mjs';
 import { withFunctionSourceHashes } from '../reporting/source-hashes.mjs';
-import { COVERAGE_REPORT_PATH } from '../reporting/test-report.mjs';
 
 export function runPolicyTests(options) {
   if (options.snapshot === 'base') {

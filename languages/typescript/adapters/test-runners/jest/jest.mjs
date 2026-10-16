@@ -10,6 +10,7 @@ import {
   temporaryProjectPath,
 } from '../test-run.mjs';
 import path from 'node:path';
+import { RUNNER_NAMES } from '../../../preset/test-runner/runners.mjs';
 
 const OPTIONS_NITPICKER_SETS = {
   flags: [
@@ -75,7 +76,7 @@ export function runJest(options, command) {
         `--maxWorkers=${String(MAX_WORKERS)}`,
       ],
     });
-    return readRun({ reportPath, result, runnerName: 'Jest' });
+    return readRun({ reportPath, result, runnerName: RUNNER_NAMES.jest });
   } finally {
     removeTemporary(reportPath);
   }

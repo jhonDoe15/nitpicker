@@ -30,10 +30,22 @@ function recordLoadedSources() {
   process.on('exit', () => {
     for (const [scriptId, url] of scripts) {
       session.post('Debugger.getScriptSource', { scriptId }, (error, result) => {
-        if (error === null) saveSource(url, result.scriptSource);
+        if (error === null) {
+          saveSource(url, result.scriptSource);
+        }
       });
     }
   });
 }
 
-if (directory !== undefined) recordLoadedSources();
+function loadInChildProcesses() {
+  const nodeOptions = process.env.NODE_OPTIONS ?? '';
+  if (!nodeOptions.includes(import.meta.url)) {
+    process.env.NODE_OPTIONS = `${nodeOptions} --import=${import.meta.url}`.trim();
+  }
+}
+
+if (directory !== undefined) {
+  loadInChildProcesses();
+  recordLoadedSources();
+}

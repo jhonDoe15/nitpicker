@@ -2,16 +2,19 @@ import { afterEach, describe, expect, it } from 'vitest';
 import {
   PICK_SOURCE,
   UNCOVERED_ELSE,
-  removeRunnerProjects,
   rulesOf,
   runArea,
-  runnerProject,
+  createRunnerProjects,
 } from '../test-support/runner-project.mjs';
 
-const TSCONFIG = { compilerOptions: { strict: true, esModuleInterop: true, types: ['jest', 'node'] } };
+const projects = createRunnerProjects();
+
+const TSCONFIG = {
+  compilerOptions: { strict: true, esModuleInterop: true, types: ['jest', 'node'] },
+};
 
 function jestProject(testText, jest = { preset: 'ts-jest', testEnvironment: 'node' }) {
-  return runnerProject({
+  return projects.project({
     'package.json': { name: 'p', private: true, scripts: { test: 'jest' }, jest },
     'tsconfig.json': TSCONFIG,
     'src/main/pick.ts': PICK_SOURCE,
@@ -19,7 +22,7 @@ function jestProject(testText, jest = { preset: 'ts-jest', testEnvironment: 'nod
   });
 }
 
-afterEach(removeRunnerProjects);
+afterEach(projects.remove);
 
 describe('coverage on a Jest project', () => {
   it('runs the tests with Jest and reports the arm no test takes', async () => {
@@ -44,7 +47,9 @@ describe('coverage on a Jest project', () => {
     );
 
     expect(rulesOf(findings)).toEqual(['tool-error:tests-failed']);
-    expect(findings[0].message).toMatch(/test\/pick\.test\.ts > says no: .*expect\(received\)\.toBe/u);
+    expect(findings[0].message).toMatch(
+      /test\/pick\.test\.ts > says no: .*expect\(received\)\.toBe/u,
+    );
   });
 
   it('says so when the Jest config finds none of the test files', async () => {
@@ -57,11 +62,17 @@ describe('coverage on a Jest project', () => {
     );
 
     expect(findings).toEqual([
-      expect.objectContaining({
+      {
+        tool: 'coverage',
         rule: 'tests-failed',
         path: 'test/pick.test.ts',
-        message: expect.stringMatching(/^Jest ran no tests, but nitpicker sees test files such as test\/pick\.test\.ts\./u),
-      }),
+        identity: 'tests-failed',
+        message:
+          'Jest ran no tests, but nitpicker sees test files such as test/pick.test.ts. ' +
+          'Make the project\'s Jest config find them, or set "tools.tests.runner" in ' +
+          'nitpicker.config.json to the runner they are written for.',
+        classification: 'tool-error',
+      },
     ]);
   });
 });

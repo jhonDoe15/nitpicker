@@ -7,14 +7,18 @@ import { detectTestRunner, testRunnerFor } from './detect-runner.mjs';
 const roots = [];
 
 afterEach(() => {
-  for (const root of roots.splice(0)) rmSync(root, { recursive: true, force: true });
+  for (const root of roots.splice(0)) {
+    rmSync(root, { recursive: true, force: true });
+  }
 });
 
 function project(manifest, files = []) {
   const root = mkdtempSync(path.join(tmpdir(), 'nitpicker-runner-'));
   roots.push(root);
   writeFileSync(path.join(root, 'package.json'), JSON.stringify(manifest));
-  for (const file of files) writeFileSync(path.join(root, file), '');
+  for (const file of files) {
+    writeFileSync(path.join(root, file), '');
+  }
   return root;
 }
 
@@ -44,15 +48,20 @@ describe('the test runner a project uses', () => {
   it('follows a test script that runs another script', () => {
     const root = project({ scripts: { test: 'npm run test:unit', 'test:unit': 'jest' } });
 
-    expect(detectTestRunner(root)).toMatchObject({ runner: 'jest', command: 'jest' });
+    expect(detectTestRunner(root)).toEqual({
+      runner: 'jest',
+      evidence: 'package.json script "test"',
+      command: 'jest',
+    });
   });
 
   it('reads another test script when the test script names no runner', () => {
     const root = project({ scripts: { test: 'echo none', 'test:node': 'node --test' } });
 
-    expect(detectTestRunner(root)).toMatchObject({
+    expect(detectTestRunner(root)).toEqual({
       runner: 'node',
       evidence: 'package.json script "test:node"',
+      command: 'node --test',
     });
   });
 
@@ -93,6 +102,10 @@ describe('the test runner a project uses', () => {
       evidence: 'nitpicker.config.json "tools.tests.runner"',
       command: 'jest --runInBand',
     });
-    expect(testRunnerFor(root, 'node')).toMatchObject({ runner: 'node', command: undefined });
+    expect(testRunnerFor(root, 'node')).toEqual({
+      runner: 'node',
+      evidence: 'nitpicker.config.json "tools.tests.runner"',
+      command: undefined,
+    });
   });
 });

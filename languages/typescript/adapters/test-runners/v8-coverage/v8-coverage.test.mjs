@@ -18,7 +18,9 @@ const SOURCE = [
 const roots = [];
 
 afterEach(() => {
-  for (const root of roots.splice(0)) rmSync(root, { recursive: true, force: true });
+  for (const root of roots.splice(0)) {
+    rmSync(root, { recursive: true, force: true });
+  }
 });
 
 function scriptCoverage(file, count) {
@@ -28,7 +30,11 @@ function scriptCoverage(file, count) {
   return {
     url: pathToFileURL(file).href,
     functions: [
-      { functionName: '', isBlockCoverage: true, ranges: [{ startOffset: 0, endOffset: SOURCE.length, count: 1 }] },
+      {
+        functionName: '',
+        isBlockCoverage: true,
+        ranges: [{ startOffset: 0, endOffset: SOURCE.length, count: 1 }],
+      },
       {
         functionName: 'pick',
         isBlockCoverage: true,
@@ -54,7 +60,9 @@ function projectWith(processes) {
   for (const [index, count] of processes.entries()) {
     writeFileSync(
       path.join(root, 'v8', `coverage-${String(index)}.json`),
-      JSON.stringify({ result: [scriptCoverage(covered, count), { url: 'node:fs', functions: [] }] }),
+      JSON.stringify({
+        result: [scriptCoverage(covered, count), { url: 'node:fs', functions: [] }],
+      }),
     );
   }
   return { root, covered, untouched, view: path.join(root, 'src/view.tsx') };
@@ -77,7 +85,15 @@ describe('V8 coverage as istanbul coverage', () => {
     const coverage = await coverageOf(project);
 
     expect(coverage[project.covered].b).toEqual({ 0: [1, 0] });
-    expect(coverage[project.covered].branchMap[0]).toMatchObject({ type: 'if', loc: { start: { line: 2 } } });
+    expect(coverage[project.covered].branchMap[0]).toEqual({
+      loc: { start: { line: 2, column: 2 }, end: { line: 4, column: null } },
+      type: 'if',
+      locations: [
+        { start: { line: 2, column: 2 }, end: { line: 4, column: null } },
+        { start: {}, end: {} },
+      ],
+      line: 2,
+    });
   });
 
   it('adds up the counts of a file that several test processes loaded', async () => {

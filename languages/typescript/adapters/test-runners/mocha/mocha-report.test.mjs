@@ -1,7 +1,13 @@
 import { describe, expect, it } from 'vitest';
 import { reportFromMocha } from './mocha-report.mjs';
 
-const passed = { title: 'adds', fullTitle: 'math adds', file: '/p/test/a.js', duration: 3, err: {} };
+const passed = {
+  title: 'adds',
+  fullTitle: 'math adds',
+  file: '/p/test/a.js',
+  duration: 3,
+  err: {},
+};
 const failed = {
   title: 'subtracts',
   fullTitle: 'math subtracts',

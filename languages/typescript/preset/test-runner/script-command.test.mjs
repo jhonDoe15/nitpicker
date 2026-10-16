@@ -54,7 +54,18 @@ describe('test script commands', () => {
   it('drops options nitpicker sets itself, in either spelling, with their values', () => {
     expect(
       withoutOptions(
-        ['--watch', '--output-file', 'a.json', '--outputFile=b.json', '--runInBand', 'src', '-R', 'dot', '-r', 'setup.js'],
+        [
+          '--watch',
+          '--output-file',
+          'a.json',
+          '--outputFile=b.json',
+          '--runInBand',
+          'src',
+          '-R',
+          'dot',
+          '-r',
+          'setup.js',
+        ],
         { flags: ['--watch'], valued: ['--outputFile', '-R'] },
       ),
     ).toEqual(['--runInBand', 'src', '-r', 'setup.js']);

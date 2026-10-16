@@ -13,12 +13,24 @@ export async function runQualityArea(options) {
   if (options.kind !== 'policy-tests') {
     const layout = readLayout();
     const files = layout.projectCodeFiles(options.projectRoot);
-    if (files.length === 0) return [];
-    if (['coupling', 'crap', 'mutation'].includes(options.kind) && !files.some(layout.isSourceFile))
+    if (files.length === 0) {
       return [];
-    if (options.kind === 'test-runtime' && !files.some(layout.isRunnableTestFile)) return [];
-    if (['coverage', 'mutation'].includes(options.kind) && !hasProjectTests(options, layout, files))
+    }
+    if (
+      ['coupling', 'crap', 'mutation'].includes(options.kind) &&
+      !files.some(layout.isSourceFile)
+    ) {
       return [];
+    }
+    if (options.kind === 'test-runtime' && !files.some(layout.isRunnableTestFile)) {
+      return [];
+    }
+    if (
+      ['coverage', 'mutation'].includes(options.kind) &&
+      !hasProjectTests(options, layout, files)
+    ) {
+      return [];
+    }
   }
   return await runner(options);
 }
