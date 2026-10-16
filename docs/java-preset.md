@@ -141,8 +141,8 @@ field by field. Per snapshot:
   encoding. The runner is the one the Gradle side uses (`languages/java/builds/lint/`), so staging,
   the differential lint and the Lombok handling below are the same on both builds; the annotation
   processors' generated sources for a module with a descriptor come from
-  `target/generated-sources/annotations`. A POM that sets no release, source or target is linted as Java 8, the compiler
-  plugin's default. Sources under a root outside the module directory (a `build-helper` root such
+  `target/generated-sources/annotations`. A POM that sets no release, source or target is linted
+  as Java 8, the compiler plugin's default. Sources under a root outside the module directory (a `build-helper` root such
   as `../shared/src`) are not linted; their classes are on the class path, except in a module with
   a `module-info.java`, where such a root can make the lint compile fail (`javac/lint-not-run`). In
   a module with a descriptor, jars that are modules go on `--module-path` and the rest on `-cp`,
