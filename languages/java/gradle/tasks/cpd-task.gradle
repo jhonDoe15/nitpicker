@@ -6,6 +6,7 @@ tasks.register('nitpickerCpd', JavaExec) {
     mainClass = 'net.sourceforge.pmd.cli.PmdCli'
     ignoreExitValue = true
     def report = reportDir.map { it.file('cpd.xml') }
+    def failure = reportDir.map { it.file('cpd-failed.txt') }
     def errors = new ByteArrayOutputStream()
     def sourceDirectories = {
         sourceSets.collectMany { it.allJava.sourceDirectories.files }.unique().findAll { it.exists() }
@@ -15,6 +16,7 @@ tasks.register('nitpickerCpd', JavaExec) {
     outputs.file(report).withPropertyName('report')
     doFirst {
         reportDir.get().asFile.mkdirs()
+        failure.get().asFile.delete()
         standardOutput = new FileOutputStream(report.get().asFile)
         errorOutput = errors
         args(['cpd', '--minimum-tokens', '100', '--ignore-identifiers', '--ignore-literals', '--language', 'java',
@@ -23,8 +25,10 @@ tasks.register('nitpickerCpd', JavaExec) {
     }
     doLast {
         def code = executionResult.get().exitValue
-        if (!(code in [0, 4])) {
-            throw new GradleException("PMD CPD failed with exit code ${code}: ${errors.toString('UTF-8').trim()}")
+        def output = report.get().asFile
+        if (!(code in [0, 4]) || !(output.text =~ /<pmd-cpd[\s\/>]/)) {
+            failure.get().asFile.text = "${code}\n${errors.toString('UTF-8')}"
+            output.delete()
         }
     }
 }

@@ -6,6 +6,11 @@ import { childrenNamed, parseXml } from '../ingest/common.mjs';
 import { exceptionRoute } from './advice/exception-route.mjs';
 
 const CPD_REPORT = 'cpd.xml';
+const CPD_FAILURE = 'cpd-failed.txt';
+const CPD_NOT_RUN = 'cpd-not-run';
+const CPD_ROOT = /<pmd-cpd[\s/>]/u;
+const JVM_NOTE = /^(?:NOTE: )?Picked up \w+/u;
+const MAX_ERROR_LINES = 10;
 const JSCPD_REPORT = 'duplicates.json';
 const DUPLICATES_TOOL = 'duplicates';
 const TEST_ADVICE =
@@ -153,13 +158,57 @@ function withTestAdvice(finding, testFiles) {
     : finding;
 }
 
-export function readCpdFindings(reportRoot, { projectRoot, testRoots, jscpdRoot = reportRoot }) {
+function cpdFailure(reportRoot) {
+  const [status, ...stderr] = readFileSync(path.join(reportRoot, CPD_FAILURE), 'utf8').split(
+    /\r?\n/u,
+  );
+  const errors = stderr.filter((line) => line.trim() !== '' && !JVM_NOTE.test(line));
+  const detail = errors.slice(0, MAX_ERROR_LINES).join('\n') || 'no error output';
+  return {
+    kind: 'failed',
+    reason: `PMD CPD exited with code ${status} and wrote no report: ${detail}`,
+  };
+}
+
+function readCpdReport(reportRoot) {
+  if (existsSync(path.join(reportRoot, CPD_FAILURE))) {
+    return cpdFailure(reportRoot);
+  }
   const report = path.join(reportRoot, CPD_REPORT);
   if (!existsSync(report)) {
+    return { kind: 'missing' };
+  }
+  const xml = readFileSync(report, 'utf8');
+  return CPD_ROOT.test(xml)
+    ? { kind: 'report', xml }
+    : {
+        kind: 'failed',
+        reason: `PMD CPD wrote ${xml.trim() === '' ? 'an empty' : 'a non-XML'} ${CPD_REPORT}`,
+      };
+}
+
+function cpdNotRun(reason) {
+  return {
+    tool: DUPLICATES_TOOL,
+    rule: CPD_NOT_RUN,
+    path: '.',
+    identity: CPD_NOT_RUN,
+    message: `No CPD duplicate report, so duplicated code was not checked: ${reason}`,
+    classification: 'descriptive',
+    toolNotRun: true,
+  };
+}
+
+export function readCpdFindings(reportRoot, { projectRoot, testRoots, jscpdRoot = reportRoot }) {
+  const read = readCpdReport(reportRoot);
+  if (read.kind === 'missing') {
     return [];
   }
+  if (read.kind === 'failed') {
+    return [cpdNotRun(read.reason)];
+  }
   const known = jscpdRanges(jscpdRoot);
-  const clones = distinctClones(cpdClones(readFileSync(report, 'utf8'), projectRoot)).filter(
+  const clones = distinctClones(cpdClones(read.xml, projectRoot)).filter(
     (clone) => !isBoilerplate(clone) && !known.some((other) => sameClone(clone, other)),
   );
   function inTests(file) {

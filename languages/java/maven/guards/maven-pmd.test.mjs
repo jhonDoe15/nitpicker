@@ -11,7 +11,7 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { GRADLE_DIRECTORY } from '../../builds/java-build.mjs';
-import { javaRelease, runPmd, scopedRuleset } from './maven-pmd.mjs';
+import { javaRelease, runCpd, runPmd, scopedRuleset } from './maven-pmd.mjs';
 
 const roots = [];
 const RULESET = 'http://pmd.sourceforge.net/ruleset/2.0.0';
@@ -336,5 +336,56 @@ describe.skipIf(process.platform === 'win32')('runPmd rulesets', () => {
         ref: HONESTY_RULES,
       }),
     );
+  });
+});
+
+const CPD_XML =
+  '<?xml version="1.0" encoding="UTF-8"?>\n<pmd-cpd pmdVersion="7.7.0">\n</pmd-cpd>\n';
+const CPD_CRASH =
+  '[main] ERROR net.sourceforge.pmd.cli - Exception while running CPD: NullPointerException';
+
+function fakeCpdJava({ stdout, stderr, status }) {
+  const root = mkdtempSync(path.join(tmpdir(), 'nitpicker-cpd-'));
+  roots.push(root);
+  const java = path.join(root, 'jdk/bin/java');
+  mkdirSync(path.dirname(java), { recursive: true });
+  writeFileSync(path.join(root, 'stdout'), stdout);
+  writeFileSync(path.join(root, 'stderr'), stderr);
+  const script = [`cat '${root}/stdout'`, `cat '${root}/stderr' >&2`, `exit ${String(status)}`];
+  writeFileSync(java, ['#!/bin/sh', ...script].join('\n'));
+  chmodSync(java, 0o755);
+  vi.stubEnv('JAVA_HOME', path.join(root, 'jdk'));
+  return root;
+}
+
+function cpd(run) {
+  const root = fakeCpdJava(run);
+  const basedir = path.join(root, 'app');
+  const reportDir = path.join(basedir, 'target/nitpicker');
+  mkdirSync(path.join(basedir, 'src/main/java'), { recursive: true });
+  mkdirSync(reportDir, { recursive: true });
+  runCpd({
+    module: { basedir, sourceRoots: [path.join(basedir, 'src/main/java')], testSourceRoots: [] },
+    reportDir,
+    tools: { pmd: ['/tools/pmd.jar'] },
+  });
+  return ['cpd.xml', 'cpd-failed.txt'].map((name) =>
+    existsSync(path.join(reportDir, name))
+      ? readFileSync(path.join(reportDir, name), 'utf8')
+      : undefined,
+  );
+}
+
+describe.skipIf(process.platform === 'win32')('runCpd', () => {
+  it.each([0, 4])('writes the XML report when CPD exits %i', (status) => {
+    expect(cpd({ stdout: CPD_XML, stderr: '', status })).toEqual([CPD_XML, undefined]);
+  });
+
+  it.each([
+    ['a crash that exits 0 with no report', { stdout: '', stderr: `${CPD_CRASH}\n`, status: 0 }],
+    ['an exit code other than 0 or 4', { stdout: CPD_XML, stderr: `${CPD_CRASH}\n`, status: 1 }],
+    ['output that is not a CPD report', { stdout: 'oops', stderr: `${CPD_CRASH}\n`, status: 4 }],
+  ])('records the exit code and stderr instead of a report for %s', (_, run) => {
+    expect(cpd(run)).toEqual([undefined, `${String(run.status)}\n${CPD_CRASH}\n`]);
   });
 });

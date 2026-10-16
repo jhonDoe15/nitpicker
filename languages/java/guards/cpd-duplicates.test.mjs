@@ -326,4 +326,60 @@ describe('readCpdFindings', () => {
 
     expect(findings.map((finding) => finding.path)).toEqual(['src/main/java/demo/Gone.java']);
   });
+
+  const NPE =
+    '[main] ERROR net.sourceforge.pmd.cli - Exception while running CPD: Cannot invoke ' +
+    '"String.equals(Object)" because "java.util.Deque.peek().name" is null';
+
+  function notRun(reason) {
+    return [
+      {
+        tool: 'duplicates',
+        rule: 'cpd-not-run',
+        path: '.',
+        identity: 'cpd-not-run',
+        message: `No CPD duplicate report, so duplicated code was not checked: ${reason}`,
+        classification: 'descriptive',
+        toolNotRun: true,
+      },
+    ];
+  }
+
+  it.each([
+    [
+      'a crash that exited 0',
+      `0\nPicked up JAVA_TOOL_OPTIONS: -Dx=y\n${NPE}\n`,
+      `PMD CPD exited with code 0 and wrote no report: ${NPE}`,
+    ],
+    [
+      'a failure without error output',
+      '1\n',
+      'PMD CPD exited with code 1 and wrote no report: no error output',
+    ],
+  ])('reports %s as CPD not run, naming the exit code and stderr', (_, failure, reason) => {
+    const { root, reportRoot } = project({});
+    writeFileSync(path.join(reportRoot, 'cpd-failed.txt'), failure);
+
+    const findings = readCpdFindings(reportRoot, options(root));
+
+    expect(findings).toEqual(notRun(reason));
+    expect(() => parseAnalyzerReport({ findings }, 'java')).not.toThrow();
+  });
+
+  it.each([
+    ['', 'PMD CPD wrote an empty cpd.xml'],
+    ['  \n', 'PMD CPD wrote an empty cpd.xml'],
+    ['Exception in thread "main"', 'PMD CPD wrote a non-XML cpd.xml'],
+  ])('reports a cpd.xml of %j as CPD not run', (content, reason) => {
+    const { root, reportRoot } = project({});
+    writeFileSync(path.join(reportRoot, 'cpd.xml'), content);
+
+    expect(readCpdFindings(reportRoot, options(root))).toEqual(notRun(reason));
+  });
+
+  it('reports nothing when CPD did not run on the module', () => {
+    const { root, reportRoot } = project({});
+
+    expect(readCpdFindings(reportRoot, options(root))).toEqual([]);
+  });
 });

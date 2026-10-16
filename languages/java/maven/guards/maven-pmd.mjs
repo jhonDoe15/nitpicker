@@ -9,7 +9,8 @@ import { GRADLE_DIRECTORY } from '../../builds/java-build.mjs';
 const PATTERN_MATCHING_RULES = ['InstanceofThenCast', 'CollectorsToList'];
 const PATTERN_MATCHING_RELEASE = 16;
 const MAVEN_DEFAULT_RELEASE = 8;
-const CPD_FINDINGS_EXIT = 4;
+const CPD_EXITS = new Set([0, 4]);
+const CPD_ROOT = /<pmd-cpd[\s/>]/u;
 const TEST_CLASS_PATTERN = [
   String.raw`^(?:.*\.)?Test[^\.]*$`,
   String.raw`^(?:.*\.)?.*(?<!Arch|Architecture)Tests?$`,
@@ -187,6 +188,12 @@ export function runPmd(context) {
   });
 }
 
+function cpdOutcome(result) {
+  return CPD_EXITS.has(result.status) && CPD_ROOT.test(result.stdout)
+    ? { kind: 'report', xml: result.stdout }
+    : { kind: 'failed', status: result.status, stderr: result.stderr };
+}
+
 export function runCpd({ module, reportDir, tools }) {
   const directories = [...module.sourceRoots, ...module.testSourceRoots].filter((root) =>
     existsSync(root),
@@ -212,7 +219,14 @@ export function runCpd({ module, reportDir, tools }) {
       ...directories.flatMap((directory) => ['--dir', directory]),
     ],
     cwd: module.basedir,
-    accept: ({ status }) => status === 0 || status === CPD_FINDINGS_EXIT,
   });
-  writeFileSync(path.join(reportDir, 'cpd.xml'), result.stdout);
+  const outcome = cpdOutcome(result);
+  if (outcome.kind === 'report') {
+    writeFileSync(path.join(reportDir, 'cpd.xml'), outcome.xml);
+    return;
+  }
+  writeFileSync(
+    path.join(reportDir, 'cpd-failed.txt'),
+    `${String(outcome.status)}\n${outcome.stderr}`,
+  );
 }
