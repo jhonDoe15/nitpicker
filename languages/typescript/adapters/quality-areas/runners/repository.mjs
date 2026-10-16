@@ -21,6 +21,7 @@ import { typescriptFileLimitFindings } from '../../../preset/structure/file-limi
 import { layoutJscpdConfig, layoutKnipConfig } from '../../../preset/tool-configs.mjs';
 import { trackTemporaryPath } from '../../../../../core/tooling/temporary-files.mjs';
 import { normalizeDuplicates } from '../../../preset/duplicates/normalize.mjs';
+import { runTestOnlyExports, runUnusedApi } from './unused-api.mjs';
 import { spawnedEntryFiles } from '../../dependency-graph/spawned-entries.mjs';
 
 export async function runCodingStandards(options) {
@@ -125,6 +126,7 @@ export async function runStructure(options) {
   return [
     ...functionFindings,
     ...typescriptFileLimitFindings(options.projectRoot, options.analyzerName),
+    ...(await runUnusedApi(options)),
   ];
 }
 
@@ -189,28 +191,10 @@ function withSpawnedEntries(config, projectRoot) {
   return { ...config, entry: [...config.entry, ...spawnedEntryFiles(projectRoot)] };
 }
 
-export function runDeadCode(options) {
+function knipReport(options, config) {
   const configPath = path.join(options.projectRoot, '.nitpicker-diff-knip.json');
   trackTemporaryPath(configPath);
-  writeFileSync(
-    configPath,
-    `${JSON.stringify(
-      withSpawnedEntries(
-        layoutKnipConfig(
-          parseReportJson(
-            readFileSync(
-              path.join(options.policyRoot, 'languages/typescript/preset/defaults/knip.json'),
-              'utf8',
-            ),
-          ),
-          readLayout(),
-        ),
-        options.projectRoot,
-      ),
-      null,
-      2,
-    )}\n`,
-  );
+  writeFileSync(configPath, `${JSON.stringify(config, null, 2)}\n`);
   try {
     const result = runNodeTool({
       options,
@@ -218,11 +202,35 @@ export function runDeadCode(options) {
       arguments_: ['--config', configPath, '--reporter', 'json'],
       acceptedStatuses: [0, 1],
     });
-    return normalizeDeadCode(
-      withDeadCodeSourceHashes(JSON.parse(result.stdout), options.projectRoot),
-      options.analyzerName,
-    );
+    return JSON.parse(result.stdout);
   } finally {
     unlinkSync(configPath);
   }
+}
+
+export function runDeadCode(options) {
+  const config = withSpawnedEntries(
+    layoutKnipConfig(
+      parseReportJson(
+        readFileSync(
+          path.join(options.policyRoot, 'languages/typescript/preset/defaults/knip.json'),
+          'utf8',
+        ),
+      ),
+      readLayout(),
+    ),
+    options.projectRoot,
+  );
+  const normal = knipReport(options, config);
+  return [
+    ...normalizeDeadCode(
+      withDeadCodeSourceHashes(normal, options.projectRoot),
+      options.analyzerName,
+    ),
+    ...runTestOnlyExports(options, {
+      config,
+      normal,
+      knip: (productionConfig) => knipReport(options, productionConfig),
+    }),
+  ];
 }

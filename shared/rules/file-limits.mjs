@@ -78,7 +78,8 @@ export function evaluateFileLimits(files, options) {
   ];
 }
 
-function exceptionMatcher(exceptions) {
+/** `(rule, ...candidates)`: whether an `exceptions` entry for the rule matches a candidate path. */
+export function exceptionMatcher(exceptions) {
   const matchers = exceptions.map(({ rule, paths, glob }) => ({
     rule,
     patterns: (paths ?? [glob]).map((pattern) => globToRegExp(pattern)),
@@ -91,7 +92,8 @@ function exceptionMatcher(exceptions) {
     );
 }
 
-function exceptionText(rule, glob) {
+/** The `exceptions` entry, as JSON, that a failure message tells the author to add. */
+export function exceptionText(rule, glob) {
   return JSON.stringify({ rule, paths: [glob], reason: '...' });
 }
 

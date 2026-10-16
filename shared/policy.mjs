@@ -2,8 +2,11 @@
 // default limits, failure-message templates and the languages that enforce each rule. Every
 // language adapter reads it, and `spec/checks.md` is generated from it (`npm run gen:checks`).
 //
-// Language-neutral: no imports, so any entry point can load it. Nothing under `shared/` may
-// import from `core/`, `languages/` or a tool package (shared/import-direction.test.mjs).
+// Language-neutral: it imports only other modules under `shared/`, so any entry point can load it.
+// Nothing under `shared/` may import from `core/`, `languages/` or a tool package
+// (shared/import-direction.test.mjs).
+
+import { UNUSED_API_RULES, UNUSED_API_RULE_IDS } from './unused-api/unused-api-policy.mjs';
 
 export const LANGUAGES = ['typescript', 'java', 'python', 'kotlin'];
 
@@ -21,6 +24,7 @@ export const RULE_IDS = {
   stabilityDirection: 'stability-direction',
   baselineExpansion: 'baseline-expansion',
   publicAlternativeBypass: 'public-alternative-bypass',
+  ...UNUSED_API_RULE_IDS,
   noProductionRuntime: 'no-production-runtime',
   typeOnlyProductionDependency: 'type-only-production-dependency',
   fileLines: 'file-lines-limit',
@@ -103,6 +107,10 @@ export const MESSAGES = {
   crapCoverageUnknownPlain:
     '{name} has unknown coverage and no CRAP score: no test runs it. Add a test that calls it.',
   changedBranchCoverage: 'Branch coverage is {percent}%; minimum is {minimum}%',
+  unusedProp: `Prop {name} is never passed. Remove it, or pass it from a real caller ({scope}). ${EXCEPTION_HINT}`,
+  unusedOption: `Option {name} is never set. Remove it, or set it from a real call ({scope}). ${EXCEPTION_HINT}`,
+  testOnlyExport: `Export {name} is only imported by tests. Remove \`export\`, or import it from production code. ${EXCEPTION_HINT}`,
+  testOnlyModule: `Module {name} is only imported by tests. Move it to a test-support/ folder, or import it from production code. ${EXCEPTION_HINT}`,
   fileLines: `File has {value} lines (limit {limit}). Split it into files by responsibility. ${EXCEPTION_HINT}`,
   lineLength: `Line is {value} characters (limit {limit}). Break it up or extract a named value. ${EXCEPTION_HINT}`,
   folderFiles: `Folder has {value} {kind} files directly in it (limit {limit}). Group related files into subfolders (packages in Java). ${EXCEPTION_HINT}`,
@@ -250,6 +258,7 @@ export const RULES = [
     limit: 'none: importing around a public entry point fails',
     enforcedBy: withKotlin(TYPESCRIPT_ONLY, false),
   },
+  ...UNUSED_API_RULES,
   {
     id: RULE_IDS.fileLines,
     check: 'structure',
