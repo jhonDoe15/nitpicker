@@ -1,6 +1,6 @@
 import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
-import { createIdentityCounter, hashIdentity } from '../ingest/common.mjs';
+import { createLineIdentity } from '../ingest/common.mjs';
 import { exceptionRoute } from './advice/exception-route.mjs';
 
 const FORBIDDEN_APIS_TOOL = 'forbiddenapis';
@@ -105,16 +105,19 @@ function located(use, source) {
   return { ...use, line };
 }
 
-function useFinding(use, file, unique) {
+function useFinding(use, file, identity) {
   const declared =
     use.declaration === undefined ? [] : [use.declaration.kind, use.declaration.member];
+  const owner = use.className.split('.').at(-1);
   return {
     tool: FORBIDDEN_APIS_TOOL,
     rule: use.rule,
     path: file,
-    identity: unique(
-      hashIdentity('forbidden', [use.rule, file, use.className, use.signature, ...declared]),
-    ),
+    identity: identity({
+      file,
+      line: use.line,
+      parts: [use.rule, owner, use.signature, ...declared],
+    }),
     message: `${use.text} Found: ${shortName(use.signature)}. ${exceptionRoute(FORBIDDEN_APIS_TOOL, use.rule)}`,
     classification: 'enforceable',
     ...(use.line === undefined ? {} : { location: { line: use.line } }),
@@ -165,7 +168,7 @@ export function readForbiddenApiFindings(reportRoot, { locate, projectRoot }) {
   if (!existsSync(report)) {
     return [];
   }
-  const unique = createIdentityCounter();
+  const identity = createLineIdentity('forbidden', projectRoot);
   const source = sourceReader(projectRoot);
   const uses = parseForbiddenApiUses(readFileSync(report, 'utf8')).flatMap((use) => {
     const packageDirectory = use.className.split('.').slice(0, -1).join('/');
@@ -175,5 +178,5 @@ export function readForbiddenApiFindings(reportRoot, { locate, projectRoot }) {
       ? []
       : [{ ...placed, file }];
   });
-  return withoutRepeatedDeclarations(uses).map((use) => useFinding(use, use.file, unique));
+  return withoutRepeatedDeclarations(uses).map((use) => useFinding(use, use.file, identity));
 }
