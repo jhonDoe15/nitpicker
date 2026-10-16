@@ -12,6 +12,8 @@ export const POLICY_FILES = [
   'languages/typescript/preset/eslint-config/exceptions.mjs',
   'languages/typescript/preset/eslint-config/policies/error-wrapping-policy.mjs',
   'languages/typescript/preset/eslint-config/strict.mjs',
+  'languages/typescript/preset/eslint-config/strict/strict-control-flow.mjs',
+  'languages/typescript/preset/eslint-config/policy/production-policy.mjs',
   'languages/typescript/preset/eslint-config/strict-adapters.mjs',
   'languages/typescript/preset/eslint-config/strict/strict-declarations.mjs',
   'languages/typescript/preset/eslint-config/strict/strict-domain.mjs',
@@ -29,6 +31,8 @@ export const POLICY_FILES = [
   'languages/typescript/preset/eslint-plugin/index.mjs',
   'languages/typescript/preset/eslint-plugin/type-identity/functional-plugin.mjs',
   'languages/typescript/preset/eslint-plugin/rules/analysis/ancestry.mjs',
+  'languages/typescript/preset/eslint-plugin/rules/analysis/narrowing/instanceof-guards.mjs',
+  'languages/typescript/preset/eslint-plugin/rules/analysis/subprocess-calls.mjs',
   'languages/typescript/preset/eslint-plugin/rules/boundaries/composition-root-files.mjs',
   'languages/typescript/preset/eslint-plugin/rules/boundaries/no-branch-in-composition-root.mjs',
   'languages/typescript/preset/eslint-plugin/rules/modules/no-comments.mjs',
@@ -82,6 +86,14 @@ export const POLICY_FILES = [
   'languages/typescript/preset/eslint-plugin/rules/testing/lifecycle/no-uninjectable-delay.mjs',
   'languages/typescript/preset/eslint-plugin/rules/modules/no-process-globals-outside-main-guard.mjs',
   'languages/typescript/preset/eslint-plugin/rules/testing/types/test-tsconfig-pins-lib-and-types.mjs',
+  'languages/typescript/preset/eslint-plugin/rules/guards/no-module-level-mutable-state.mjs',
+  'languages/typescript/preset/eslint-plugin/rules/guards/no-process-access-outside-composition-root.mjs',
+  'languages/typescript/preset/eslint-plugin/rules/guards/no-shell-string-command.mjs',
+  'languages/typescript/preset/eslint-plugin/rules/guards/no-unknown-main-folder.mjs',
+  'languages/typescript/preset/eslint-plugin/rules/guards/no-unsafe-path-join.mjs',
+  'languages/typescript/preset/eslint-plugin/rules/wrapped/no-magic-numbers.mjs',
+  'languages/typescript/preset/eslint-plugin/rules/wrapped/naming-convention.mjs',
+  'languages/typescript/preset/eslint-plugin/rules/wrapped/report-filter.mjs',
 ];
 
 export const DEPENDENCY_GRAPH_FILES = [
