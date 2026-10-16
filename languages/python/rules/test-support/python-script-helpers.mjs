@@ -24,7 +24,7 @@ export function createScripts() {
     }
   }
 
-  function findingsOf(files) {
+  function reportOf(files) {
     const root = realpathSync(mkdtempSync(path.join(tmpdir(), 'nitpicker-rules-script-')));
     const reportRoot = realpathSync(mkdtempSync(path.join(tmpdir(), 'nitpicker-rules-report-')));
     roots.push(root, reportRoot);
@@ -36,7 +36,11 @@ export function createScripts() {
       reportRoot,
     });
     checkRules(context);
-    return JSON.parse(readFileSync(path.join(reportRoot, RULES_REPORT), 'utf8')).map(
+    return JSON.parse(readFileSync(path.join(reportRoot, RULES_REPORT), 'utf8'));
+  }
+
+  function findingsOf(files) {
+    return reportOf(files).map(
       ({ rule, path: file, subject, line }) => `${rule} ${file}:${String(line)} ${subject}`,
     );
   }
@@ -45,5 +49,5 @@ export function createScripts() {
     return findingsOf({ [file]: code });
   }
 
-  return { cleanup, findingsOf, single };
+  return { cleanup, findingsOf, reportOf, single };
 }

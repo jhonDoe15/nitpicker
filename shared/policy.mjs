@@ -318,12 +318,13 @@ export const RULES = [
 
 /**
  * Project-level TypeScript checks that take `exceptions` entries although no ESLint rule has their
- * id: the rules only the TypeScript structure, coupling and dead-code checks enforce.
+ * id: the rules of the TypeScript structure, coupling and dead-code checks that Java does not
+ * share. Python lifts its own findings with `python.exceptions`, so it does not matter here.
  */
 export const TYPESCRIPT_PROJECT_EXCEPTION_RULES = RULES.filter(
-  ({ check, enforcedBy }) =>
+  ({ id, check, enforcedBy }) =>
     ['structure', 'coupling', 'dead-code'].includes(check) &&
     enforcedBy.typescript &&
     !enforcedBy.java &&
-    !enforcedBy.python,
+    !SHARED_EXCEPTION_RULES.includes(id),
 ).map(({ id }) => id);

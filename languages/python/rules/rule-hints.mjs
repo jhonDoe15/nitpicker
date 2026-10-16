@@ -7,6 +7,14 @@ const HANDLE_EXCEPTION =
   'Catch the specific exception and handle it, log it with `logger.exception(...)` or re-raise it; `contextlib.suppress(SpecificError)` ignores one expected error.';
 const FIX_TYPE = 'Fix the type; inline ignores are banned.';
 const INSTALL_PACKAGE = 'Install the package, or its `types-` stubs, in the project environment.';
+function ownerOf(subject) {
+  return subject.slice(0, subject.lastIndexOf('.'));
+}
+
+const UNUSED_OPTION_SCOPES = {
+  private: 'tests do not count',
+  published: "this package's own tests count",
+};
 
 export const RULE_HINTS = [
   {
@@ -100,6 +108,62 @@ export const RULE_HINTS = [
       'Remove the comment and fix the code. If it must stay, add a "python.exceptions" entry for no-inline-suppression for this path.',
     exception: false,
   },
+  {
+    tool: RULES_TOOL,
+    rules: ['fixed-sleep'],
+    describe: (subject) => `\`${subject}\` in a test waits a fixed wall-clock time`,
+    allowed:
+      "Wait for the condition instead: poll it in a loop until a deadline (`while not ready():` with a `time.monotonic()` check and a short sleep), or use the library's wait helper, such as Playwright's `expect(locator).to_be_visible()`.",
+  },
+  {
+    tool: RULES_TOOL,
+    rules: ['restating-docstring'],
+    describe: (subject) => `The docstring of \`${subject}\` only restates its name`,
+    allowed: 'Delete it, or say what the name cannot: a unit, a limit, an edge case or why.',
+  },
+  {
+    tool: RULES_TOOL,
+    rules: ['long-docstring'],
+    describe: (subject, { lines, limit }) =>
+      `The docstring of \`${subject}\` has ${String(lines)} description lines (limit ${String(limit)})`,
+    allowed:
+      'Keep the non-obvious point (a unit, a limit, an edge case) and put the rest in names and types; `Args:`, `Returns:` and `:param x:` sections do not count.',
+  },
+  {
+    tool: RULES_TOOL,
+    rules: ['singular-and-plural-field'],
+    describe: (subject, { singular, plural, kind }) =>
+      `Optional ${kind} \`${singular}\` and \`${plural}\` of \`${ownerOf(subject)}\` are two ways to pass the same data`,
+    allowed: 'Keep the plural one and pass a single item as a one-element list.',
+  },
+  {
+    tool: RULES_TOOL,
+    rules: ['exhaustive-enum-predicate'],
+    describe: (_subject, { union, every }) => {
+      const name = union === 'the Literal' ? union : `\`${union}\``;
+      return every
+        ? `These comparisons list every member of ${name}, so they are always true and a member added later is silently left out`
+        : `These comparisons list only some members of ${name}, so a member added later is silently classified as the default`;
+    },
+    allowed:
+      'Classify every member with a `match` that ends in `case _: assert_never(value)` (or an `if`/`elif` chain that ends in `else: assert_never(value)`), so the type checker fails when a member is added.',
+  },
+  {
+    tool: RULES_TOOL,
+    rules: ['forwarding-wrapper'],
+    describe: (subject, { target }) =>
+      `\`${subject}\` only forwards its parameters to \`${target}\`, with the same parameter and return types`,
+    allowed:
+      'Call the target directly and delete the wrapper; to keep the name, import the target under it (`from module import target as name`) or bind it (`name = target`).',
+  },
+  {
+    tool: RULES_TOOL,
+    rules: ['unused-option'],
+    describe: (subject, { scope }) =>
+      `Keyword parameter \`${subject}\` is never passed (${UNUSED_OPTION_SCOPES[scope]})`,
+    allowed:
+      'Remove the parameter and use its default inside the function, or pass it from a real call.',
+  },
   { tool: 'mypy', rules: ['import-not-found', 'import-untyped'], allowed: INSTALL_PACKAGE },
   ...['pyright', 'basedpyright'].map((tool) => ({
     tool,
@@ -130,9 +194,10 @@ export function exceptionSentence(rule) {
   return `To allow it for some paths, add a "python.exceptions" entry for ${rule} in nitpicker.config.json.`;
 }
 
-export function describeRuleFinding(rule, subject) {
+export function describeRuleFinding(rule, subject, data = {}) {
   return RULE_HINTS.find((hint) => hint.tool === RULES_TOOL && hint.rules.includes(rule)).describe(
     subject,
+    data,
   );
 }
 

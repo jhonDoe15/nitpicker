@@ -263,6 +263,12 @@ through the real tools.
 | an `enum.Enum` / `StrEnum`                      | a plain class of two string constants, or three `X_*`                  | `enum-string-constants`                                    |
 | fixing the code                                 | `# type: ignore`, `# noqa`, `# pyright: ignore`, ...                   | `no-inline-suppression`                                    |
 | annotated code the checkers read                | `@no_type_check`, `if not TYPE_CHECKING:`, a stub beside               | `no-type-check`, `not-type-checking`, `stub-beside-source` |
+| a poll with a deadline, a library wait helper   | `time.sleep(n)`, `asyncio.sleep(n)`, `wait_for_timeout` in a test      | `fixed-sleep`                                              |
+| a docstring that says what the name cannot      | a docstring that restates the name, or over 5 lines                    | `restating-docstring`, `long-docstring`                    |
+| one plural input, a one-element list            | optional `tag` beside optional `tags: list[...]`                       | `singular-and-plural-field`                                |
+| `match` or `if`/`elif` ending in `assert_never` | `x == E.A or x == E.B` over some (or all) members of an enum           | `exhaustive-enum-predicate`                                |
+| calling (or importing) the target directly      | a module-level function that only forwards to another                  | `forwarding-wrapper`                                       |
+| a parameter some real call passes               | a keyword parameter with a default that no call passes                 | `unused-option`                                            |
 
 Details that are decisions rather than the table:
 
@@ -318,6 +324,69 @@ Details that are decisions rather than the table:
   not checked. The message points to naming the expected exception, or handling or logging the
   error, and to the `python.exceptions` entry for `blind-suppress`.
 - `ruff check` runs with `--ignore-noqa`, so a `noqa` never hides a finding either.
+
+### Rules from code review
+
+These carry over checks the TypeScript preset added from review findings, with the same decisions
+where Python allows it. Each message names the allowed form and the `python.exceptions` entry that
+lifts the rule for some paths. The per-file rules live in `languages/python/rules/nitpicker_checks/`
+and the project-wide ones, which resolve imports across files, in `nitpicker_checks/project/`.
+
+- `fixed-sleep` (TypeScript: `nitpicker/no-fixed-sleep-synchronization`), in test files only (the
+  same test paths as above, `conftest.py` included): `time.sleep`, `asyncio.sleep`, `trio.sleep`,
+  `anyio.sleep` and `gevent.sleep` with a delay other than a literal `0` (`asyncio.sleep(0)` only
+  yields), through any import alias, and Playwright's `wait_for_timeout`. A sleep inside a `for` or
+  `while` loop of the same function is the allowed form, polling until a deadline, so it is not
+  reported; `wait_for_timeout` is reported in a loop too, because Playwright's `expect` already
+  polls. The message names polling with a deadline and the library's wait helper.
+- `restating-docstring` and `long-docstring` (TypeScript: the `no-comments` doc-comment checks).
+  The Python preset does not ban comments or docstrings; only these two contents are checked, on
+  the docstring of every function, method and class (not modules). A docstring restates the name
+  when every word of its description, apart from filler words (`the`, `returns`, `function`,
+  `class`, ...), is a word of the name or a plural, `-ed` or `-ing` form of one (`load_users`:
+  "Returns the loaded user."). The description ends at the first `:param`-style field, Google
+  section (`Args:`, `Returns:`, `Raises:`, `Examples:`, ...), numpy section (a title over a `---`
+  line) or doctest line (`>>>`); a docstring whose description has more than 5 non-empty lines is
+  reported with its count. The subject is the qualified name, so a growing docstring keeps its
+  identity.
+- `singular-and-plural-field` (TypeScript: `nitpicker/no-singular-and-plural-prop`): an optional
+  `tag: T` beside an optional `tags` whose element type is `T` (`list`, `Sequence`, `set`,
+  `frozenset`, `Iterable`, `tuple[T, ...]` and the `typing` names; `Optional`, `| None`,
+  `NotRequired` and `Annotated` are looked through; `-es` and `-ies` plurals count). Optional means
+  a default value in a `@dataclass`, attrs `@define` class, pydantic `BaseModel` or `BaseSettings`
+  and `NamedTuple`, `total=False` or `NotRequired` in a `TypedDict`, and a default in a function's
+  parameters. Unannotated parameters are not compared.
+- `exhaustive-enum-predicate` (TypeScript: `nitpicker/exhaustive-union-predicate`): an `or` chain of
+  `==` or `is`, an `and` chain of `!=` or `is not`, or an `in` / `not in` tuple, list or set, that
+  compares one plain reference (`status`, `self.status`) with two or more members of one project
+  enum (a class of the project that derives from `Enum`, `IntEnum` or `StrEnum`, resolved through
+  imports, with at least 3 members) or with values of a `Literal` alias the parameter is annotated
+  with. Only a value is checked (a `return`, an assignment, a lambda body, also inside `not`, a
+  conditional expression or another `and`/`or`), never an `if` or `while` condition, and not in a
+  function that returns `TypeGuard` or `TypeIs`. Some members fail because a member added later
+  falls into the default silently; every member fails as well, because the test is always true.
+  Enums from libraries are not checked. The allowed form is a `match` with `case _:
+assert_never(value)`, or an `if`/`elif` chain ending in `else: assert_never(value)`.
+- `forwarding-wrapper` (TypeScript: `nitpicker/no-forwarding-wrapper`): an undecorated, non-async
+  module-level function whose body (after a docstring) is `return target(...)` passing its own
+  parameters in order (`*args` and `**kwargs` as spreads, keyword-only ones as `name=name`), where
+  `target` is a single undecorated function of the project (same module, imported or reached
+  through a module) with the same parameter names, annotations and defaults and the same return
+  annotation. Unannotated functions, methods and library targets are not checked. The message says
+  to call the target directly, or to import or bind it under the old name.
+- `unused-option` (TypeScript: the same rule of the `structure` check): a parameter with a default
+  of an undecorated module-level function in production code that no call passes, by keyword, by
+  position, or through `*args` (positional parameters) or `**kwargs` (all). Calls are resolved
+  through imports, aliases, module attributes and package re-exports (`from .pricing import total`
+  in an `__init__.py`), using the module names the coupling check uses. A function nothing calls is
+  not judged, nor one used as a value (passed, stored, decorating), one a star import exposes, one
+  called from an `if __name__ == "__main__":` block, or one a `[project.scripts]`,
+  `[project.gui-scripts]` or `[tool.poetry.scripts]` entry names. Tests do not count as callers,
+  unless the project is a published package (a `[project]` or poetry `name`, a
+  `[build-system] build-backend`, no `Private :: Do Not Upload` classifier and no
+  `package-mode = false`): then its own tests count, as in the TypeScript preset. The subject is
+  `function.parameter`, so the finding is new only when the change adds the parameter or removes
+  its last caller.
 
 ## Slice 1: tools, reports and identities
 
