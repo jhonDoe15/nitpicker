@@ -164,3 +164,28 @@ export function resolveModuleSpecifier(written, containingFile, { aliases = [] }
   const isPackage = !isLocal && !isPattern && isPackageSpecifier(specifier);
   return isPackage ? packageResult(resolver, specifier, containingFile) : IGNORED;
 }
+
+function followedFilesOf(file, specifiersOf, aliases) {
+  return specifiersOf(file)
+    .map((specifier) => resolveModuleSpecifier(specifier, file, { aliases }).path)
+    .filter((target) => target !== undefined);
+}
+
+export function* reachableModules(entryFile, specifiersOf, { maxDepth, maxFiles, aliases = [] }) {
+  const visited = new Set([entryFile]);
+  const queue = [{ file: entryFile, depth: 0 }];
+  for (const { file, depth } of queue) {
+    if (depth > 0) yield { file, depth };
+    const followed = new Set(followedFilesOf(file, specifiersOf, aliases));
+    const fresh = [...followed].filter((candidate) => !visited.has(candidate));
+    const room = depth < maxDepth ? Math.max(0, maxFiles - visited.size) : 0;
+    if (fresh.length > room) {
+      yield { truncated: true };
+      return;
+    }
+    for (const target of fresh) {
+      visited.add(target);
+      queue.push({ file: target, depth: depth + 1 });
+    }
+  }
+}

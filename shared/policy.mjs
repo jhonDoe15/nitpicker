@@ -33,6 +33,7 @@ export const RULE_IDS = {
   exportedNameCollision: 'exported-name-collision',
   redefinedLibraryComponent: 'redefined-library-component',
   newIconAsset: 'new-icon-asset',
+  componentStoryMissing: 'component-story-missing',
 };
 
 /** Per-function structure limits, keyed by the metric name the TypeScript analyzer reports. */
@@ -60,15 +61,6 @@ export const SHARED_EXCEPTION_RULES = [
   RULE_IDS.fileLines,
   RULE_IDS.lineLength,
   RULE_IDS.folderFiles,
-];
-
-export const ANALYZER_EXCEPTION_RULES = [
-  ...SHARED_EXCEPTION_RULES,
-  RULE_IDS.sharedUsedByOneFeature,
-  RULE_IDS.duplicateDefinition,
-  RULE_IDS.exportedNameCollision,
-  RULE_IDS.redefinedLibraryComponent,
-  RULE_IDS.newIconAsset,
 ];
 
 /** The shared rules the Java preset leaves to its own tools (Checkstyle checks line length). */
@@ -127,6 +119,8 @@ export const MESSAGES = {
   exportedNameCollision: `{name} is also exported by {others}; {importer} imports both. {fix} ${EXCEPTION_HINT}`,
   redefinedLibraryComponent: `{name} is already rendered from {package} in {count}. Use that one. ${EXCEPTION_HINT}`,
   newIconAsset: `Use an icon from {package} instead of adding {path}. ${EXCEPTION_HINT}`,
+  componentStoryMissing: `Most components in this project have a story. Add {story} for {name}. ${EXCEPTION_HINT}`,
+  componentStoryMissingUnenforced: `{name} has no story. Add {story}. Not enforced until more than half of the components have one. ${EXCEPTION_HINT}`,
 };
 
 export function renderMessage(template, values) {
@@ -290,4 +284,23 @@ export const RULES = [
     enforcedBy: withKotlin(ALL, true),
   },
   ...reuseRules(RULE_IDS, withKotlin(TYPESCRIPT_ONLY, false)),
+  {
+    id: RULE_IDS.componentStoryMissing,
+    check: 'structure',
+    limit:
+      'a component file without a story, in a package that has Storybook; enforced when more than half of its component files have one, reported otherwise',
+    enforcedBy: withKotlin(TYPESCRIPT_ONLY, false),
+  },
 ];
+
+/**
+ * Project-level TypeScript checks that take `exceptions` entries although no ESLint rule has their
+ * id: the rules only the TypeScript structure and coupling checks enforce.
+ */
+export const TYPESCRIPT_PROJECT_EXCEPTION_RULES = RULES.filter(
+  ({ check, enforcedBy }) =>
+    ['structure', 'coupling'].includes(check) &&
+    enforcedBy.typescript &&
+    !enforcedBy.java &&
+    !enforcedBy.python,
+).map(({ id }) => id);

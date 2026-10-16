@@ -1,9 +1,21 @@
+import { readHeadPolicy, readLayout } from '../head-policy.mjs';
+import { componentStoryFindings } from './component-stories.mjs';
 import { typescriptFileLimitFindings } from './file-limits.mjs';
 import { reuseFindings } from './reuse/reuse-findings.mjs';
 
-export function structureProjectFindings(projectRoot, analyzerName, environment = process.env) {
+export function typescriptStructureProjectFindings(
+  { projectRoot, liveProjectRoot, analyzerName },
+  environment = process.env,
+) {
   return [
     ...typescriptFileLimitFindings(projectRoot, analyzerName, environment),
+    ...componentStoryFindings({
+      projectRoot,
+      liveProjectRoot,
+      analyzerName,
+      layout: readLayout(environment),
+      exceptions: readHeadPolicy(environment).exceptions,
+    }),
     ...reuseFindings(projectRoot, analyzerName, environment),
   ];
 }

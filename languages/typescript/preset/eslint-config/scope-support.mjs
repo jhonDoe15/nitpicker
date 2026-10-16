@@ -31,7 +31,7 @@ const scopePackages = {
   ],
 };
 
-const storySuffixes = ['stories', 'story'];
+export const storySuffixes = ['stories', 'story'];
 export const storyGlobs = [`**/*.{${storySuffixes.join(',')}}.${codeExtensions}`];
 
 function readManifest(projectRoot) {

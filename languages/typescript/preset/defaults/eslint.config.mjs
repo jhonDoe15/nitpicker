@@ -20,6 +20,10 @@ import {
 import { i18nRuleIds } from '../eslint-config/i18n/i18n-rules.mjs';
 import { i18nScopeConfigFor, isI18nProject } from '../eslint-config/i18n/i18n-scope.mjs';
 import { readHeadPolicy, readLayout } from '../head-policy.mjs';
+import {
+  testEnvironmentConfigFor,
+  testEnvironmentsFromVariables,
+} from '../test-environment/test-environment-config.mjs';
 
 const policy = readHeadPolicy();
 
@@ -56,6 +60,10 @@ const presetConfig = defineConfig(
         { disallowTypeAnnotations: false, fixStyle: 'separate-type-imports' },
       ],
       'nitpicker/cognitive-complexity': ['error', 15],
+      '@typescript-eslint/ban-ts-comment': [
+        'error',
+        { 'ts-expect-error': true, 'ts-ignore': true, 'ts-nocheck': true, 'ts-check': false },
+      ],
     },
   },
   {
@@ -117,6 +125,10 @@ const presetConfig = defineConfig(
       'nitpicker/no-wait-for-with-fake-timers': 'error',
       'nitpicker/no-partial-output-assertion': 'error',
       'nitpicker/test-must-use-production-runtime': 'error',
+      'vitest/expect-expect': [
+        'error',
+        { assertFunctionNames: ['expect', 'assert', 'expectTypeOf', 'assertType'] },
+      ],
       'vitest/no-conditional-in-test': 'error',
       'vitest/valid-expect': ['error', { maxArgs: 2 }],
       'vitest/require-awaited-expect-poll': 'error',
@@ -127,6 +139,7 @@ const presetConfig = defineConfig(
     files: unitTestGlobs,
     rules: { 'nitpicker/no-external-executables-in-unit-tests': 'error' },
   },
+  ...testEnvironmentConfigFor(layout, testEnvironmentsFromVariables()),
 );
 
 const inactiveRuleIds = [
