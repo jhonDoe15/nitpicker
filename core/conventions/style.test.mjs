@@ -91,6 +91,30 @@ describe('Python conventions with the ruff config of the project', () => {
   });
 });
 
+describe('Python type checker configs of the project', () => {
+  const fixed = `Format with ruff: ruff format --isolated --target-version py38 --line-length 88 --config 'format.quote-style = "double"' --config 'indent-width = 4' .\n`;
+  const optIn = (tool) => `"tools": { "${tool}": { "precedence": ["project", "nitpicker"] } }`;
+
+  it('says once that a pyright file is ignored, and stops after the opt-in', () => {
+    const files = { 'pyrightconfig.json': '{ "reportAny": false }', 'a.py': DOUBLE_QUOTED };
+
+    expect(follow({ preset: 'python' }, files).printed).toBe(
+      `${fixed}Ignoring pyrightconfig.json; opt in with ${optIn('pyright')}\n`,
+    );
+    expect(
+      follow({ preset: 'python', tools: { pyright: { precedence: LISTED } } }, files).printed,
+    ).toBe(fixed);
+  });
+
+  it('names the pyproject table of basedpyright under the pyright opt-in', () => {
+    const files = { 'pyproject.toml': '[tool.basedpyright]\nreportAny = false\n' };
+
+    expect(follow({ preset: 'python' }, files).printed).toBe(
+      `${fixed}Ignoring [tool.basedpyright] in pyproject.toml; opt in with ${optIn('pyright')}\n`,
+    );
+  });
+});
+
 describe('Python conventions that black can apply', () => {
   const black = { preset: 'python', python: { formatter: 'black' } };
 

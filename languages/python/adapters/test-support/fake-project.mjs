@@ -24,7 +24,7 @@ export function createFakeProjects() {
     return root;
   }
 
-  function contextFor(root, settings = {}, exclude = []) {
+  function contextFor(root, settings = {}, exclude = [], extra = {}) {
     const reportRoot = temporaryRoot();
     return {
       context: createToolContext({
@@ -33,6 +33,7 @@ export function createFakeProjects() {
         settings,
         reportRoot,
         exclude,
+        ...extra,
       }),
       reportRoot,
     };

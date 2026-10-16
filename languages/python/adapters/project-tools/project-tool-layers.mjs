@@ -1,0 +1,31 @@
+import { createRequire } from 'node:module';
+import {
+  missingProjectConfig,
+  precedenceLayers,
+} from '../../../../shared/conventions/tool-precedence.mjs';
+
+export function parseToml(text) {
+  return createRequire(import.meta.url)('smol-toml').parse(text);
+}
+
+export function toolLayers(context, tool) {
+  const layers = precedenceLayers(context.toolPrecedence?.[tool]);
+  return {
+    optedIn: layers.usesProject,
+    nitpickerFirst: layers.nitpickerFirst,
+    configRoot: layers.usesProject
+      ? (context.policyRoot ?? context.projectRoot)
+      : context.projectRoot,
+  };
+}
+
+export function requireProjectConfig(found, { tool, looked, configRoot }) {
+  if (found === undefined) {
+    throw new Error(missingProjectConfig(tool, `${looked} (searched ${configRoot})`));
+  }
+  return found;
+}
+
+export function unique(values) {
+  return [...new Set(values)];
+}

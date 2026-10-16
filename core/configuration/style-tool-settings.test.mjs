@@ -25,6 +25,21 @@ describe('tool precedence of the formatters and detekt', () => {
     );
   });
 
+  it('names the type checkers and mutmut with the python preset, and not basedpyright', () => {
+    const tools = {
+      pyright: { precedence: ['project', 'nitpicker'] },
+      mypy: { precedence: ['project'] },
+      mutmut: { precedence: ['nitpicker', 'project'] },
+    };
+
+    expect(validateConfig({ preset: 'python', tools }).tools).toEqual(tools);
+    expect(() =>
+      validateConfig({ preset: 'python', tools: { basedpyright: { precedence: ['project'] } } }),
+    ).toThrow(
+      '"tools" names unknown tool "basedpyright". Supported tools with this preset: ruff, black, pyright, mypy, mutmut',
+    );
+  });
+
   it.each([['ktlint'], ['ktfmt']])(
     'asks for the project first with %s, which reads .editorconfig itself',
     (tool) => {
