@@ -2,7 +2,7 @@ import { mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSync } from '
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
-import { createJavaAnalyzer } from '../java-analyzer.mjs';
+import { configurationFiles, createJavaAnalyzer } from '../java-analyzer.mjs';
 import { analyzeJavaSnapshot, readRunnerPolicy } from '../java-runner.mjs';
 import { javaStyle, javaStyleProperties } from './java-style.mjs';
 
@@ -107,6 +107,15 @@ describe('the analyzer hash', () => {
 
   it('does not depend on the style, which is read at run time', () => {
     expect(hashWith({ 'java.indentation': '4' })).toEqual(hashWith({ 'java.indentation': '2' }));
+  });
+
+  it('covers the style code and the Checkstyle suppressions it relies on', () => {
+    expect(configurationFiles()).toEqual(
+      expect.arrayContaining([
+        'languages/java/adapters/style/java-style.mjs',
+        'languages/java/gradle/checkstyle-suppressions.xml',
+      ]),
+    );
   });
 });
 

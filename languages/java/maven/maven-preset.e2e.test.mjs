@@ -102,6 +102,8 @@ function lineCoverage(text, value) {
   };
 }
 
+const MESSY = 'src/main/java/demo/Messy.java';
+
 const comparable = (findings) => findings.map((finding) => JSON.stringify(finding)).sort();
 
 afterAll(() => {
@@ -140,6 +142,40 @@ describe.skipIf(!enabled)('Java preset on Maven builds', () => {
         'spotbugs',
         'structure',
       ]);
+    },
+    2 * GRADLE_STEP_TIMEOUT_MS,
+  );
+
+  it(
+    'formats a 4-space project with --aosp and reports no layout, on Gradle and on Maven',
+    () => {
+      const gradleProject = copyOf(gradleFixture);
+      const mavenProject = copyOf(gradleFixture, path.join(fixtures, 'single'));
+      for (const name of ['build.gradle', 'settings.gradle']) {
+        rmSync(path.join(mavenProject, name));
+      }
+      for (const root of [gradleProject, mavenProject]) {
+        for (const file of readdirSync(path.join(root, 'src'), { recursive: true })) {
+          const source = path.join(root, 'src', file);
+          if (source.endsWith('.java')) {
+            writeFileSync(source, readFileSync(source, 'utf8').replaceAll(/^( +)/gmu, '$1$1'));
+          }
+        }
+        writeFileSync(path.join(root, MESSY), 'package demo;\n\nclass Messy {\n  int a;\n}\n');
+      }
+      const policy = { javaStyle: 'aosp' };
+      const layout = (findings) =>
+        findings
+          .filter(
+            ({ tool, rule }) =>
+              tool === 'google-java-format' || (tool === 'checkstyle' && rule === 'Indentation'),
+          )
+          .map(({ tool, rule, path: file }) => `${tool} ${rule} ${file}`);
+
+      const messy = [`google-java-format format ${MESSY}`];
+
+      expect(layout(collectJavaFindings(gradleProject, { gradle, policy }))).toEqual(messy);
+      expect(layout(collectJavaFindings(mavenProject, { maven, policy }))).toEqual(messy);
     },
     2 * GRADLE_STEP_TIMEOUT_MS,
   );
