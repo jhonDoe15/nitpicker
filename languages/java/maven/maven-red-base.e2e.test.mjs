@@ -113,7 +113,11 @@ describe.skipIf(process.env.NITPICKER_JAVA_E2E !== '1')(
         expect({ failed: result.failed, newEnforceable: summarize(result.newEnforceable) }).toEqual(
           {
             failed: true,
-            newEnforceable: [],
+            newEnforceable: [
+              'errorprone DefaultCharset Bad.java',
+              'errorprone EmptyCatch Bad.java',
+              'pit mutant-nocoverage Bad.java',
+            ],
           },
         );
       },
