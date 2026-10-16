@@ -2,7 +2,11 @@ import { rmSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import { createScratch } from '../test-support/scratch.mjs';
-import { readBlackConfig, readRuffConfig } from './project-format-config.mjs';
+import {
+  projectFormatConfigFiles,
+  readBlackConfig,
+  readRuffConfig,
+} from './project-format-config.mjs';
 
 const scratch = createScratch();
 
@@ -173,5 +177,40 @@ describe('the black config the project has', () => {
       targetVersions: ['py39', 'py310'],
       requiresPython: true,
     });
+  });
+});
+
+describe('the files the format config cache key covers', () => {
+  it('lists the config files the formatters read', () => {
+    const root = project({
+      'ruff.toml': 'extend = "base.toml"\n',
+      'base.toml': 'line-length = 100\n',
+    });
+
+    expect(projectFormatConfigFiles(root)).toEqual([
+      path.join(root, 'ruff.toml'),
+      path.join(root, 'base.toml'),
+    ]);
+  });
+
+  it('still lists a config file that does not parse, so editing it changes the key', () => {
+    const root = project({ 'ruff.toml': 'line-length = \n', 'pyproject.toml': '[tool.black]\n' });
+
+    expect(projectFormatConfigFiles(root)).toEqual([
+      path.join(root, 'ruff.toml'),
+      path.join(root, 'pyproject.toml'),
+    ]);
+  });
+
+  it('lists a broken file that a config extends', () => {
+    const root = project({
+      'ruff.toml': 'extend = "base.toml"\n',
+      'base.toml': 'line-length = \n',
+    });
+
+    expect(projectFormatConfigFiles(root)).toEqual([
+      path.join(root, 'ruff.toml'),
+      path.join(root, 'base.toml'),
+    ]);
   });
 });
