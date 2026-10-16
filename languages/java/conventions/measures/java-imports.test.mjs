@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { JAVA_CONVENTIONS } from './java-conventions.mjs';
+import { JAVA_CONVENTIONS } from '../java-conventions.mjs';
 import { isTestSource } from './java-imports.mjs';
 
 const measures = Object.fromEntries(JAVA_CONVENTIONS.map(({ id, measure }) => [id, measure]));

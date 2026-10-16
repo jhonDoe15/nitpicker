@@ -2,7 +2,7 @@ import {
   JAVA_TEST_STATIC_IMPORTS,
   JAVA_WILDCARD_IMPORTS,
 } from '../../conventions/java-conventions.mjs';
-import { isTestSource } from '../../conventions/java-imports.mjs';
+import { isTestSource } from '../../conventions/measures/java-imports.mjs';
 
 const STAR_IMPORT_RULES = new Set(['checkstyle/AvoidStarImport', 'errorprone/WildcardImport']);
 const STATIC_IMPORT = /^\s*import\s+static\b/;

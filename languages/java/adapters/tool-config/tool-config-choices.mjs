@@ -1,10 +1,15 @@
 import { existsSync } from 'node:fs';
 import path from 'node:path';
 import { precedenceLayers } from '../../../../shared/conventions/tool-precedence.mjs';
+import { JAVA_ASSERTION_HELPERS } from '../../conventions/java-conventions.mjs';
 import { PROJECT_TOOL_CONFIGS } from '../gradle-presets.mjs';
 import { pmdLayerFiles } from './layer-files.mjs';
 
-export function toolConfigChoices(projectRoot, { toolPrecedence = {}, policyRoot } = {}) {
+export function toolConfigChoices(projectRoot, policy = {}) {
+  const { toolPrecedence = {}, policyRoot } = policy;
+  const assertionHelpers = (policy.conventions?.[JAVA_ASSERTION_HELPERS] ?? '')
+    .split(',')
+    .filter(Boolean);
   return Object.fromEntries(
     [...PROJECT_TOOL_CONFIGS].map(([tool, file]) => {
       const precedence = toolPrecedence[tool] ?? ['nitpicker'];
@@ -18,6 +23,7 @@ export function toolConfigChoices(projectRoot, { toolPrecedence = {}, policyRoot
         {
           project: layers.usesProject ? projectConfig : undefined,
           projectWins: !layers.nitpickerFirst,
+          ...(tool === 'pmd' ? { assertionHelpers } : {}),
         },
       ];
     }),

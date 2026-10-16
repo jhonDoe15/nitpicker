@@ -70,6 +70,21 @@ describe('the Gradle properties of the project tool configs', () => {
     ]);
   });
 
+  it("adds the project's measured assertion helpers to nitpicker's PMD ruleset without a project file", () => {
+    const root = projectWith({});
+    const directory = path.join(root, 'layers');
+
+    const properties = toolConfigProperties(
+      root,
+      { conventions: { 'java.assertionHelpers': 'expectOk,mustBe' } },
+      directory,
+    );
+
+    expect(properties).toEqual([
+      `-Pnitpicker.pmd.nitpickerRuleset=${path.join(directory, 'pmd-nitpicker.xml')}`,
+    ]);
+  });
+
   it('tells Gradle when nitpicker is first', () => {
     const head = projectWith({ 'config/checkstyle/checkstyle.xml': CHECKSTYLE });
 

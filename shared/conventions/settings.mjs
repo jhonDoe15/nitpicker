@@ -1,5 +1,7 @@
 import { configError, isPlainObject } from '../config.mjs';
 
+const NAMES = /^(?:[A-Za-z_$][\w$]*(?:,[A-Za-z_$][\w$]*)*)?$/;
+
 export function validateConventions(value, definitions) {
   if (!isPlainObject(value)) {
     throw configError('"conventions" must be an object');
@@ -12,7 +14,13 @@ export function validateConventions(value, definitions) {
         `unknown convention "${id}". Allowed conventions: ${[...known.keys()].join(', ') || '(none for this preset)'}`,
       );
     }
-    if (!definition.options.includes(choice)) {
+    if (definition.kind === 'names') {
+      if (typeof choice !== 'string' || !NAMES.test(choice)) {
+        throw configError(
+          `"conventions.${id}" must be a comma separated list of method names, or an empty string`,
+        );
+      }
+    } else if (!definition.options.includes(choice)) {
       throw configError(
         `"conventions.${id}" must be one of: ${definition.options.map((option) => `"${option}"`).join(', ')}`,
       );
@@ -24,7 +32,18 @@ export function describeConventions(detected, definitions, note = () => undefine
   return definitions.map((definition) => describeOne(definition, detected[definition.id], note));
 }
 
-function describeOne(definition, { choice, source, counts, from, overrides }, note) {
+function describeNames(definition, { choice, source, files }) {
+  const list = choice.split(',').join(', ');
+  return source === 'pinned'
+    ? `${definition.label}: ${list} (set in nitpicker.config.json)`
+    : `${definition.label}: ${list} (the last call of at least ${String(definition.minFiles)} of ${String(files)} measured files)`;
+}
+
+function describeOne(definition, detectedEntry, note) {
+  if (definition.kind === 'names') {
+    return describeNames(definition, detectedEntry);
+  }
+  const { choice, source, counts, from, overrides } = detectedEntry;
   const extra = note(definition.id, choice);
   const option = definition.optionLabels[choice] ?? choice;
   const label = `${definition.label}: ${option}${extra === undefined ? '' : `, ${extra}`}`;
