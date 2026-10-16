@@ -2,22 +2,11 @@ import path from 'node:path';
 import { MESSAGES, renderMessage } from '../../../../../shared/policy.mjs';
 import { exceptionText } from '../../../../../shared/rules/exceptions.mjs';
 import { UNUSED_API_RULE_IDS } from '../../../../../shared/unused-api/unused-api-policy.mjs';
+import { entriesOf, keyOf } from './knip-report.mjs';
+import { reexportedTestOnlyEntries } from './reexported-exports.mjs';
 
-const CATEGORIES = ['exports', 'types', 'files'];
 const TEST_SUPPORT = /(?:^|\/)test-support\//u;
 const RULE = UNUSED_API_RULE_IDS.testOnlyExport;
-
-function entriesOf(report) {
-  return (report.issues ?? []).flatMap((issue) =>
-    CATEGORIES.flatMap((category) =>
-      (issue[category] ?? []).map((entry) => ({ file: issue.file, category, entry })),
-    ),
-  );
-}
-
-function keyOf({ file, category, entry }) {
-  return `${file}\0${category}\0${entry.name}`;
-}
 
 function finding({ file, category, entry }, analyzerName) {
   const isModule = category === 'files';
@@ -56,13 +45,29 @@ function isJudged(item, { packagesInfo, context }) {
 
 /**
  * The exports, types and modules that knip reports once tests are left out but not in its normal
- * run: nothing in production code imports them, and a test does. Modules under `test-support/`
- * are meant for tests, and a published package's own tests count as callers, so neither is judged.
+ * run: nothing in production code imports them, and a test does. A re-export from an entry module
+ * is no use by itself, so the exports it keeps alive count too. Modules under `test-support/` are
+ * meant for tests, and a published package's own tests count as callers, so neither is judged.
  */
-export function testOnlyExportFindings({ normal, production, packagesInfo, context }) {
+export function testOnlyExportFindings({
+  normal,
+  production,
+  entryExportRuns,
+  packagesInfo,
+  context,
+}) {
   const unusedEverywhere = new Set(entriesOf(normal).map(keyOf));
-  return entriesOf(production)
-    .filter((item) => !unusedEverywhere.has(keyOf(item)))
+  const reexported = reexportedTestOnlyEntries({
+    production,
+    runs: entryExportRuns,
+    packagesInfo,
+    layout: context.layout,
+    projectRoot: context.projectRoot,
+  });
+  return [
+    ...entriesOf(production).filter((item) => !unusedEverywhere.has(keyOf(item))),
+    ...reexported,
+  ]
     .filter((item) => isJudged(item, { packagesInfo, context }))
     .map((item) => finding(item, context.analyzerName));
 }
