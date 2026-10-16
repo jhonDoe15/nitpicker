@@ -15,6 +15,8 @@ import { validateKotlinOptions } from '../../languages/java/adapters/kotlin/kotl
 import { validatePythonConfig } from '../../languages/python/adapters/configuration/python-config.mjs';
 import { SHARED_EXCEPTION_RULES } from '../../shared/policy.mjs';
 import { validateTools } from './tool-settings.mjs';
+import { conventionDefinitions } from '../conventions/definitions.mjs';
+import { validateConventions } from '../../shared/conventions/settings.mjs';
 import { stylingApproaches } from '../../languages/typescript/preset/eslint-config/react/react-rules.mjs';
 import { i18nRuleIds } from '../../languages/typescript/preset/eslint-config/i18n/i18n-rules.mjs';
 import path from 'node:path';
@@ -36,6 +38,7 @@ export const KEYS = [
   'python',
   'tools',
   'kotlin',
+  'conventions',
 ];
 
 const LAYOUT_KEYS = ['sourceRoots', 'testRoots', 'excludedGlobs', 'entryPoints'];
@@ -58,6 +61,7 @@ export function validateConfig(config) {
   validateReact(config.react);
   validateI18n(config.i18n);
   validateOptional(config);
+  validateProjectConventions(config);
   return config;
 }
 
@@ -86,6 +90,12 @@ function validateScalars(config) {
       ? TYPESCRIPT_ONLY_KEYS.filter((key) => key !== 'exceptions')
       : TYPESCRIPT_ONLY_KEYS,
   );
+}
+
+function validateProjectConventions({ conventions, preset }) {
+  if (conventions !== undefined) {
+    validateConventions(conventions, conventionDefinitions(preset));
+  }
 }
 
 function validateDisable(disable) {

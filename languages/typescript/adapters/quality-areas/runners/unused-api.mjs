@@ -1,6 +1,6 @@
 import path from 'node:path';
 import { linkPolicyFile } from '../../../../../core/tooling/policy-links.mjs';
-import { exceptionMatcher } from '../../../../../shared/rules/file-limits.mjs';
+import { exceptionMatcher } from '../../../../../shared/rules/exceptions.mjs';
 import { readHeadPolicy, readLayout } from '../../../preset/head-policy.mjs';
 import { layoutTransformFor } from '../../../preset/tool-configs.mjs';
 import { layoutKnipProductionConfig } from '../../../preset/unused-api/test-only/production-config.mjs';

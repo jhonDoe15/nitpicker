@@ -1,6 +1,6 @@
 import path from 'node:path';
 import { MESSAGES, renderMessage } from '../../../../../shared/policy.mjs';
-import { exceptionText } from '../../../../../shared/rules/file-limits.mjs';
+import { exceptionText } from '../../../../../shared/rules/exceptions.mjs';
 import { UNUSED_API_RULE_IDS } from '../../../../../shared/unused-api/unused-api-policy.mjs';
 
 const CATEGORIES = ['exports', 'types', 'files'];

@@ -1,5 +1,5 @@
 import { MESSAGES, renderMessage } from '../../../../shared/policy.mjs';
-import { exceptionText } from '../../../../shared/rules/file-limits.mjs';
+import { exceptionText } from '../../../../shared/rules/exceptions.mjs';
 import { nextOccurrence } from '../../../../shared/rules/finding-helpers.mjs';
 import {
   UNUSED_API_RULE_IDS,

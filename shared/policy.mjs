@@ -2,11 +2,12 @@
 // default limits, failure-message templates and the languages that enforce each rule. Every
 // language adapter reads it, and `spec/checks.md` is generated from it (`npm run gen:checks`).
 //
-// Language-neutral: it imports only other modules under `shared/`, so any entry point can load it.
-// Nothing under `shared/` may import from `core/`, `languages/` or a tool package
-// (shared/import-direction.test.mjs).
+// Language-neutral: imports only from shared/rules and shared/unused-api, so any entry point can load it. Nothing
+// under `shared/` may import from `core/`, `languages/` or a tool package (shared/import-direction.test.mjs).
 
 import { UNUSED_API_RULES, UNUSED_API_RULE_IDS } from './unused-api/unused-api-policy.mjs';
+
+import { reuseRules } from './rules/reuse-rules.mjs';
 
 export const LANGUAGES = ['typescript', 'java', 'python', 'kotlin'];
 
@@ -30,6 +31,12 @@ export const RULE_IDS = {
   fileLines: 'file-lines-limit',
   lineLength: 'line-length-limit',
   folderFiles: 'folder-files-limit',
+  sharedUsedByOneFeature: 'shared-used-by-one-feature',
+  duplicateDefinition: 'duplicate-definition',
+  exportedNameCollision: 'exported-name-collision',
+  redefinedLibraryComponent: 'redefined-library-component',
+  newIconAsset: 'new-icon-asset',
+  componentStoryMissing: 'component-story-missing',
 };
 
 /** Per-function structure limits, keyed by the metric name the TypeScript analyzer reports. */
@@ -114,6 +121,13 @@ export const MESSAGES = {
   fileLines: `File has {value} lines (limit {limit}). Split it into files by responsibility. ${EXCEPTION_HINT}`,
   lineLength: `Line is {value} characters (limit {limit}). Break it up or extract a named value. ${EXCEPTION_HINT}`,
   folderFiles: `Folder has {value} {kind} files directly in it (limit {limit}). Group related files into subfolders (packages in Java). ${EXCEPTION_HINT}`,
+  sharedUsedByOneFeature: `{path} is used only by feature {feature}. Move it into {directory}. ${EXCEPTION_HINT}`,
+  duplicateDefinition: `{name} is also defined with {same} in {others}. {fix} ${EXCEPTION_HINT}`,
+  exportedNameCollision: `{name} is also exported by {others}; {importer} imports both. {fix} ${EXCEPTION_HINT}`,
+  redefinedLibraryComponent: `{name} is already rendered from {package} in {count}. Use that one. ${EXCEPTION_HINT}`,
+  newIconAsset: `Use an icon from {package} instead of adding {path}. ${EXCEPTION_HINT}`,
+  componentStoryMissing: `Most components in this project have a story. Add {story} for {name}. ${EXCEPTION_HINT}`,
+  componentStoryMissingUnenforced: `{name} has no story. Add {story}. Not enforced until more than half of the components have one. ${EXCEPTION_HINT}`,
 };
 
 export function renderMessage(template, values) {
@@ -277,4 +291,24 @@ export const RULES = [
     limit: `more than ${String(FILE_LIMIT_DEFAULTS.folderFiles)} source files, or test files, directly in one folder; override with \`thresholds.folderFiles\``,
     enforcedBy: withKotlin(ALL, true),
   },
+  ...reuseRules(RULE_IDS, withKotlin(TYPESCRIPT_ONLY, false)),
+  {
+    id: RULE_IDS.componentStoryMissing,
+    check: 'structure',
+    limit:
+      'a component file without a story, in a package that has Storybook; enforced when more than half of its component files have one, reported otherwise',
+    enforcedBy: withKotlin(TYPESCRIPT_ONLY, false),
+  },
 ];
+
+/**
+ * Project-level TypeScript checks that take `exceptions` entries although no ESLint rule has their
+ * id: the rules only the TypeScript structure, coupling and dead-code checks enforce.
+ */
+export const TYPESCRIPT_PROJECT_EXCEPTION_RULES = RULES.filter(
+  ({ check, enforcedBy }) =>
+    ['structure', 'coupling', 'dead-code'].includes(check) &&
+    enforcedBy.typescript &&
+    !enforcedBy.java &&
+    !enforcedBy.python,
+).map(({ id }) => id);

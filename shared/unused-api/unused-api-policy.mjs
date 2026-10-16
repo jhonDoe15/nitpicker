@@ -4,9 +4,6 @@ export const UNUSED_API_RULE_IDS = {
   testOnlyExport: 'test-only-export',
 };
 
-/** Rules whose `exceptions` entries the analyzers (not ESLint) apply, in the TypeScript preset. */
-export const UNUSED_API_EXCEPTION_RULES = Object.values(UNUSED_API_RULE_IDS);
-
 export const UNUSED_API_SCOPES = {
   private: 'tests and stories do not count',
   published: 'tests, stories and examples of this package count',
