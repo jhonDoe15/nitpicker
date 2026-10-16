@@ -34,14 +34,29 @@ const UNIT_BUILDERS = new Set([
   'invokeOnCompletion',
 ]);
 
-const sourceKey = ({ className, sourceFile }) =>
-  [...className.split('.').slice(0, -1), sourceFile].join('/');
-const isConditional = ({ mutatorName }) => CONDITIONALS.has(mutatorName);
-const isReturn = ({ mutatorName }) => mutatorName.includes('Return');
-const isSuspendContext = ({ method, methodDescription }) =>
-  method === 'invokeSuspend' || methodDescription.endsWith(SUSPEND_METHOD_END);
-const unmangled = (method) => method.replace(/-[\w]{7}$/, '');
-const accessorName = (prefix, name) => `${prefix}${name[0].toUpperCase()}${name.slice(1)}`;
+function sourceKey({ className, sourceFile }) {
+  return [...className.split('.').slice(0, -1), sourceFile].join('/');
+}
+
+function isConditional({ mutatorName }) {
+  return CONDITIONALS.has(mutatorName);
+}
+
+function isReturn({ mutatorName }) {
+  return mutatorName.includes('Return');
+}
+
+function isSuspendContext({ method, methodDescription }) {
+  return method === 'invokeSuspend' || methodDescription.endsWith(SUSPEND_METHOD_END);
+}
+
+function unmangled(method) {
+  return method.replace(/-[\w]{7}$/, '');
+}
+
+function accessorName(prefix, name) {
+  return `${prefix}${name[0].toUpperCase()}${name.slice(1)}`;
+}
 
 function accessorsOf(property) {
   const getters = property.name.startsWith('is')
@@ -60,11 +75,11 @@ function writtenNames(entry) {
   const names = new Set(entry.functions);
   for (const property of entry.properties) {
     const { getters, setters } = accessorsOf(property);
-    if (property.getter) {
-      getters.forEach((name) => names.add(name));
+    for (const name of property.getter ? getters : []) {
+      names.add(name);
     }
-    if (property.setter) {
-      setters.forEach((name) => names.add(name));
+    for (const name of property.setter ? setters : []) {
+      names.add(name);
     }
   }
   return names;

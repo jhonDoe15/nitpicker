@@ -6,7 +6,9 @@ import { kotlinGeneratedFilter } from './kotlin-reports.mjs';
 
 const roots = [];
 afterEach(() => {
-  roots.splice(0).forEach((root) => rmSync(root, { recursive: true, force: true }));
+  for (const root of roots.splice(0)) {
+    rmSync(root, { recursive: true, force: true });
+  }
 });
 
 function project(generatedRoots) {

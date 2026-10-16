@@ -44,23 +44,23 @@ function groupMutants(mutants, { resolvePath, generated }) {
       continue;
     }
     statusCounts.set(status, (statusCounts.get(status) ?? 0) + 1);
-    if (status === 'Killed') {
-      continue;
+    if (status !== 'Killed' && filePath !== undefined) {
+      addToGroup(groups, { mutant, status, filePath });
     }
-    if (filePath === undefined) {
-      continue;
-    }
-    const key = [
-      mutant.className,
-      `${mutant.method}${mutant.methodDescription}`,
-      mutator(mutant.mutator),
-      mutant.description,
-    ].join('|');
-    const group = groups.get(`${status}\0${key}`) ?? [];
-    group.push({ mutant, status, key, filePath });
-    groups.set(`${status}\0${key}`, group);
   }
   return { groups, statusCounts, leftOut };
+}
+
+function addToGroup(groups, { mutant, status, filePath }) {
+  const key = [
+    mutant.className,
+    `${mutant.method}${mutant.methodDescription}`,
+    mutator(mutant.mutator),
+    mutant.description,
+  ].join('|');
+  const group = groups.get(`${status}\0${key}`) ?? [];
+  group.push({ mutant, status, key, filePath });
+  groups.set(`${status}\0${key}`, group);
 }
 
 function neutralMutants(groups) {

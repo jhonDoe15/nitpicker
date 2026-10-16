@@ -40,7 +40,9 @@ export function gradleClasspath({ gradle, project, workspace }) {
   );
   expect(result.status, result.stderr).toBe(0);
   const lines = result.stdout.split('\n');
-  const valueOf = (key) => lines.find((line) => line.startsWith(`${key}=`)).slice(key.length + 1);
+  function valueOf(key) {
+    return lines.find((line) => line.startsWith(`${key}=`)).slice(key.length + 1);
+  }
   return { javaHome: valueOf('JAVA_HOME'), classpath: valueOf('CLASSPATH') };
 }
 
