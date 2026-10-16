@@ -1,8 +1,8 @@
 import { projectTestRunner } from '../../preset/test-runner/project-runner.mjs';
-import { runJest } from './jest.mjs';
+import { runJest } from './jest/jest.mjs';
 import { runMocha } from './mocha/mocha.mjs';
 import { runNodeTest } from './node-test/node-test.mjs';
-import { runVitest } from './vitest.mjs';
+import { runVitest } from './vitest/vitest.mjs';
 
 const ADAPTERS = {
   vitest: runVitest,

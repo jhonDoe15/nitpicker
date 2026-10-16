@@ -3,6 +3,7 @@ import { readLayout } from '../preset/head-policy.mjs';
 import { pathToFileURL } from 'node:url';
 import path from 'node:path';
 import { parseArguments } from './quality-areas/arguments.mjs';
+import { hasProjectTests } from './test-runners/test-run.mjs';
 
 export async function runQualityArea(options) {
   const runner = QUALITY_AREA_RUNNERS.get(options.kind);
@@ -15,10 +16,8 @@ export async function runQualityArea(options) {
     if (files.length === 0) return [];
     if (['coupling', 'crap', 'mutation'].includes(options.kind) && !files.some(layout.isSourceFile))
       return [];
-    if (
-      ['test-runtime', 'coverage', 'mutation'].includes(options.kind) &&
-      !files.some(layout.isRunnableTestFile)
-    )
+    if (options.kind === 'test-runtime' && !files.some(layout.isRunnableTestFile)) return [];
+    if (['coverage', 'mutation'].includes(options.kind) && !hasProjectTests(options, layout, files))
       return [];
   }
   return await runner(options);

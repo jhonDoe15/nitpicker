@@ -10,7 +10,7 @@ const SCRIPT_PATTERNS = [
   ['vitest', new RegExp(`${BOUNDARY}vitest${END}`, 'u')],
   ['jest', new RegExp(`${BOUNDARY}(?:jest|react-scripts\\s+test|craco\\s+test)${END}`, 'u')],
   ['mocha', new RegExp(`${BOUNDARY}mocha${END}`, 'u')],
-  ['node', new RegExp(`${BOUNDARY}(?:node\\b[^&;|]*\\s--test|borp)${END}`, 'u')],
+  ['node', new RegExp(`${BOUNDARY}(?:(?:node|tsx)\\b[^&;|]*\\s--test|borp)${END}`, 'u')],
 ];
 
 const SCRIPT_REFERENCE = /^(?:npm|pnpm|yarn|bun)\s+(?:run\s+)?(?<name>[\w:-]+)\s*$/u;

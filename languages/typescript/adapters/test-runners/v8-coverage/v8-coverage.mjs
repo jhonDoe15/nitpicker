@@ -1,34 +1,12 @@
 import { mkdirSync, readFileSync, readdirSync, writeFileSync } from 'node:fs';
-import { stripTypeScriptTypes } from 'node:module';
 import path from 'node:path';
-import { fileURLToPath } from 'node:url';
 import { parse } from 'acorn';
 import { convert } from 'ast-v8-to-istanbul';
+import { executedScript, readLoadedSources, scriptFile } from './executed-script.mjs';
+import { unmappedNodeFilter } from './mapped-nodes.mjs';
 
-const TYPESCRIPT_FILE = /\.[cm]?ts$/u;
 const NODE_RUNNABLE_FILE = /\.[cm]?[jt]s$/u;
 const COMMONJS_FILE = /\.c[jt]s$/u;
-
-function withoutWarnings(operation) {
-  const { emitWarning } = process;
-  process.emitWarning = () => {};
-  try {
-    return operation();
-  } finally {
-    process.emitWarning = emitWarning;
-  }
-}
-
-export function executedCode(file, source) {
-  return TYPESCRIPT_FILE.test(file)
-    ? withoutWarnings(() => stripTypeScriptTypes(source, { mode: 'strip' }))
-    : source;
-}
-
-function scriptFile(url) {
-  if (url.startsWith('file://')) return fileURLToPath(url.split('?')[0]);
-  return path.isAbsolute(url) ? url : undefined;
-}
 
 function parseExecuted(file, code) {
   const options = { ecmaVersion: 'latest', locations: true, allowHashBang: true };
@@ -53,16 +31,27 @@ function untouchedFunctions(code) {
   ];
 }
 
-async function fileCoverage(file, functions) {
-  const code = executedCode(file, readFileSync(file, 'utf8'));
+function coverageOfFile(file, data) {
+  const entries = Object.entries(data);
+  const [, coverage] =
+    entries.find(([key]) => path.resolve(key) === file) ?? (entries.length === 1 ? entries[0] : []);
+  return coverage === undefined ? undefined : { ...coverage, path: file };
+}
+
+async function fileCoverage(script) {
+  const { file, functions } = script;
   try {
+    const { code, sourceMap } = executedScript(script);
     const data = await convert({
       code,
       ast: parseExecuted(file, code),
       wrapperLength: 0,
+      ...(sourceMap === undefined
+        ? {}
+        : { sourceMap, ignoreNode: unmappedNodeFilter(code, sourceMap) }),
       coverage: { url: `file://${file}`, functions: functions ?? untouchedFunctions(code) },
     });
-    return Object.values(data)[0];
+    return coverageOfFile(file, data);
   } catch (error) {
     throw new Error(
       `Could not read the coverage of ${file}: ${error instanceof Error ? error.message : String(error)}`,
@@ -92,26 +81,42 @@ function merged(known, next) {
   };
 }
 
-function loadedScripts(coverageDirectory, isCovered) {
+function coverageScripts(coverage) {
+  const sourceMaps = coverage['source-map-cache'] ?? {};
+  return coverage.result.map((script) => ({
+    file: scriptFile(script.url),
+    functions: script.functions,
+    cachedSourceMap: sourceMaps[script.url]?.data,
+  }));
+}
+
+function loadedScripts(coverageDirectory, sourcesDirectory, isCovered) {
+  const loaded = readLoadedSources(sourcesDirectory);
   return readdirSync(coverageDirectory)
     .filter((name) => name.endsWith('.json'))
-    .flatMap((name) => JSON.parse(readFileSync(path.join(coverageDirectory, name), 'utf8')).result)
-    .map((script) => ({ file: scriptFile(script.url), functions: script.functions }))
-    .filter(({ file }) => file !== undefined && isCovered(file));
+    .flatMap((name) => coverageScripts(JSON.parse(readFileSync(path.join(coverageDirectory, name), 'utf8'))))
+    .filter(({ file }) => file !== undefined && isCovered(file))
+    .map((script) => ({ ...script, loaded: loaded.get(script.file) }));
 }
 
 async function convertedCoverage(scripts) {
   const coverage = new Map();
-  for (const { file, functions } of scripts) {
-    coverage.set(file, merged(coverage.get(file), await fileCoverage(file, functions)));
+  for (const script of scripts) {
+    const data = await fileCoverage(script);
+    if (data !== undefined) coverage.set(script.file, merged(coverage.get(script.file), data));
   }
   return coverage;
 }
 
-export async function writeV8Coverage({ coverageDirectory, sourceFiles, outputFile }) {
+export async function writeV8Coverage({
+  coverageDirectory,
+  sourcesDirectory,
+  sourceFiles,
+  outputFile,
+}) {
   const wanted = new Set(sourceFiles);
   const coverage = await convertedCoverage(
-    loadedScripts(coverageDirectory, (file) => wanted.has(file)),
+    loadedScripts(coverageDirectory, sourcesDirectory, (file) => wanted.has(file)),
   );
   const untouched = sourceFiles
     .filter((file) => !coverage.has(file) && NODE_RUNNABLE_FILE.test(file))

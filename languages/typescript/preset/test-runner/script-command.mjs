@@ -57,13 +57,18 @@ function nodeFlagsBefore(segment, runnerIndex) {
     : segment.slice(nodeIndex + 1, runnerIndex).filter((token) => token.startsWith('-'));
 }
 
+const NODE_WRAPPER_ARGUMENTS = { node: [], tsx: ['--import', 'tsx'] };
+
 function nodeTestCommand(segment) {
-  const nodeIndex = segment.findIndex((token) => binaryName(token) === 'node');
+  const nodeIndex = segment.findIndex((token) => Object.hasOwn(NODE_WRAPPER_ARGUMENTS, binaryName(token)));
   const testIndex = segment.indexOf('--test', nodeIndex + 1);
   if (nodeIndex === -1 || testIndex === -1) return undefined;
   return {
     environment: leadingEnvironment(segment),
-    nodeArguments: segment.slice(nodeIndex + 1, testIndex),
+    nodeArguments: [
+      ...NODE_WRAPPER_ARGUMENTS[binaryName(segment[nodeIndex])],
+      ...segment.slice(nodeIndex + 1, testIndex),
+    ],
     arguments_: segment.slice(testIndex + 1),
   };
 }
@@ -88,7 +93,8 @@ export function runnerCommand(command, runner) {
 }
 
 function optionName(token) {
-  return token.split('=')[0].replaceAll('-', '').toLowerCase();
+  const name = token.split('=')[0];
+  return name.startsWith('--') ? name.replaceAll('-', '').toLowerCase() : name;
 }
 
 function droppedIndexes(token, index, valued) {

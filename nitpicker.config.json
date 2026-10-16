@@ -11,6 +11,8 @@
       "languages/typescript/adapters/eslint-wrapper.config.mjs",
       "languages/typescript/adapters/oxlint/oxlint-bridge.mjs",
       "languages/typescript/adapters/oxlint/oxlint-plan.mjs",
+      "languages/typescript/adapters/test-runners/node-test/node-test-reporter.mjs",
+      "languages/typescript/adapters/test-runners/v8-coverage/loaded-sources.mjs",
       "languages/typescript/preset/*/report.mjs",
       "languages/typescript/preset/defaults/crap.config.mjs",
       "languages/typescript/preset/defaults/stryker.config.mjs",

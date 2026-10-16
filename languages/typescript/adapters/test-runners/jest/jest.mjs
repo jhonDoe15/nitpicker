@@ -1,5 +1,5 @@
-import { spawnNodeTool } from '../quality-areas/runners/tooling.mjs';
-import { withoutOptions } from '../../preset/test-runner/script-command.mjs';
+import { spawnNodeTool } from '../../quality-areas/runners/tooling.mjs';
+import { withoutOptions } from '../../../preset/test-runner/script-command.mjs';
 import {
   MAX_WORKERS,
   TEST_TIMEOUT_MS,
@@ -8,7 +8,7 @@ import {
   readRun,
   removeTemporary,
   temporaryProjectPath,
-} from './test-run.mjs';
+} from '../test-run.mjs';
 import path from 'node:path';
 
 const OPTIONS_NITPICKER_SETS = {
