@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { conventionChoices, detectConventions } from '../../../shared/conventions/detect.mjs';
 import {
   FILE_NAME_CONVENTION,
-  fileNameCasingOption,
+  fileNameRuleOptions,
   fileNameComplies,
   fittingCasings,
   folderCasing,
@@ -157,8 +157,16 @@ describe('file name casing compliance', () => {
   });
 
   it('falls back to kebab-case until a convention is followed', () => {
-    expect(fileNameCasingOption()).toBe('kebab-case');
-    expect(fileNameCasingOption({ 'typescript.fileNames': 'camelCase' })).toBe('camelCase');
+    expect(fileNameRuleOptions()).toEqual({ casing: 'kebab-case' });
+    expect(fileNameRuleOptions({ conventions: { 'typescript.fileNames': 'camelCase' } })).toEqual({
+      casing: 'camelCase',
+    });
+  });
+
+  it('marks a casing pinned in the config, even when it is the default', () => {
+    expect(
+      fileNameRuleOptions({ conventionPins: { 'typescript.fileNames': 'kebab-case' } }),
+    ).toEqual({ casing: 'kebab-case', pinned: true });
   });
 });
 

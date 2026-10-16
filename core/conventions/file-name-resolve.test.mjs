@@ -78,6 +78,37 @@ describe('file name casing in the head policy', () => {
   });
 });
 
+describe('pinned conventions in the head policy', () => {
+  function policyFor(config) {
+    const { root } = createGitRepository({ 'src/kebab-one.ts': 'export const a = 1;\n' });
+    commitFeature(root);
+    return comparisonPolicy(
+      {
+        config,
+        currentProjectRoot: root,
+        headPolicy: resolveHeadPolicy(config, root),
+        repositoryRoot: root,
+        base: { baseRef: 'main' },
+      },
+      resolveComparison,
+    );
+  }
+
+  it('records a pin even when it equals the default, so the rule can skip the folder majority', () => {
+    const policy = policyFor({
+      preset: 'typescript',
+      conventions: { 'typescript.fileNames': 'kebab-case' },
+    });
+
+    expect(policy.conventionPins).toEqual({ 'typescript.fileNames': 'kebab-case' });
+    expect(policy.conventions).toBeUndefined();
+  });
+
+  it('leaves the pins out of the policy when nothing is pinned', () => {
+    expect(policyFor({ preset: 'typescript' }).conventionPins).toBeUndefined();
+  });
+});
+
 describe('conventions per preset', () => {
   const nonPrettierIds = (preset) =>
     conventionDefinitions(preset)

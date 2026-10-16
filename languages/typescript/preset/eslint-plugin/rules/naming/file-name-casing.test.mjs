@@ -58,6 +58,11 @@ ruleTester.run('file-name-casing', rule, {
     { code, filename: path.join(snakeFolder, 'g_h.ts') },
     { code, filename: path.join(smallFolder, 'e-f.ts') },
     { code, filename: path.join(tiedFolder, 'i-j.ts') },
+    {
+      code,
+      filename: path.join(snakeFolder, 'g-h.ts'),
+      options: [{ casing: 'kebab-case', pinned: true }],
+    },
   ],
   invalid: [
     {
@@ -86,6 +91,12 @@ ruleTester.run('file-name-casing', rule, {
       errors: [
         { messageId: 'folderCasing', data: { name: 'g-h.ts', casing: 'snake_case' }, line: 1 },
       ],
+    },
+    {
+      code,
+      filename: path.join(snakeFolder, 'g_h.ts'),
+      options: [{ casing: 'kebab-case', pinned: true }],
+      errors: [{ messageId: 'casing', data: { name: 'g_h.ts', casing: 'kebab-case' } }],
     },
     {
       code,

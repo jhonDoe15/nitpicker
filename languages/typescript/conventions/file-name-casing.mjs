@@ -38,8 +38,11 @@ export const FILE_NAME_CONVENTION = {
   measure: fileNameVote,
 };
 
-export function fileNameCasingOption(conventions = {}) {
-  return conventions[FILE_NAME_CONVENTION.id] ?? FILE_NAME_CONVENTION.fallback;
+export function fileNameRuleOptions({ conventions = {}, conventionPins = {} } = {}) {
+  return {
+    casing: conventions[FILE_NAME_CONVENTION.id] ?? FILE_NAME_CONVENTION.fallback,
+    ...(conventionPins[FILE_NAME_CONVENTION.id] === undefined ? {} : { pinned: true }),
+  };
 }
 
 export function fileNameParts(file) {
