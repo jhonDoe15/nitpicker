@@ -1,5 +1,5 @@
 import { spawnSync } from 'node:child_process';
-import { existsSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import {
   isTestResultFinding,
@@ -15,6 +15,7 @@ import { gradleTarget } from './gradle-wrapper/gradle-command.mjs';
 import { runJavaDuplicates } from './metrics/java-duplicates.mjs';
 import { runKotlinDuplicates } from './kotlin/kotlin-duplicates.mjs';
 import { applyJavaPolicy } from './java-policy.mjs';
+import { withoutOverlaps } from './overlaps/static-overlaps.mjs';
 import { PROJECT_TOOL_CONFIGS } from './gradle-presets.mjs';
 import { REPORT_DIRECTORY, requireGradleReports } from './reporting/java-reports.mjs';
 import { MAVEN_REPORT_DIRECTORY, runMavenPreset } from '../maven/maven-build.mjs';
@@ -150,10 +151,17 @@ export function collectJavaFindings(root, options = {}) {
     },
     preset,
   );
-  const policed = applyJavaPolicy(findings, options.policy);
+  const policed = applyJavaPolicy(findings, options.policy, (reported) =>
+    withoutOverlaps(reported, { readSource: (file) => sourceText(projectRoot, file) }),
+  );
   return testsFailure === undefined
     ? policed
     : [...policed, testsFailedFinding(preset, testsFailure.detail)];
+}
+
+function sourceText(projectRoot, file) {
+  const absolute = path.join(projectRoot, file);
+  return existsSync(absolute) ? readFileSync(absolute, 'utf8') : undefined;
 }
 
 function collectSides({ repositoryRoot, projectRelativePath, comparison, options }) {
