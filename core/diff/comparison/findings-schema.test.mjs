@@ -380,6 +380,24 @@ describe('spec/findings.schema.json', () => {
     expect(validate({ findings: [empty] })).not.toEqual([]);
   });
 
+  it('accepts tokens and rejects an empty one', () => {
+    const finding = {
+      tool: 'tool',
+      rule: 'rule',
+      path: 'src/a.ts',
+      identity: 'id',
+      message: 'message',
+      classification: 'enforceable',
+      tokens: ['a', 'b', 'c'],
+    };
+    const empty = { ...finding, tokens: ['a', ''] };
+
+    expect(parseFinding(finding)).toEqual(finding);
+    expect(validate({ findings: [finding] })).toEqual([]);
+    expect(() => parseFinding(empty)).toThrow(TypeError);
+    expect(validate({ findings: [empty] })).not.toEqual([]);
+  });
+
   it('is exercised by a validator that covers every keyword the schema uses', () => {
     expect(() => validate({ findings: [] })).not.toThrow();
     expect(() => validate({ findings: [] }, { oneOf: [] })).toThrow(/does not support/);

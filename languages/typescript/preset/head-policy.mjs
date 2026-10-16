@@ -143,6 +143,7 @@ export function readHeadPolicy(environment = process.env) {
     tools: policy.tools ?? {},
     conventions: policy.conventions,
     frameworks: { defaultExports: [], entryPoints: [], ...policy.frameworks },
+    testConsole: policy.testConsole ?? {},
   };
 }
 
