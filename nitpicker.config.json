@@ -73,6 +73,7 @@
         "languages/java/adapters/java-e2e/java-preset.e2e.test.mjs",
         "languages/java/adapters/spring/java-spring.e2e.test.mjs",
         "languages/java/adapters/suppressions/escape-hatches.e2e.test.mjs",
+        "languages/java/adapters/java-e2e/multi-project.e2e.test.mjs",
         "languages/java/adapters/java-e2e/pit-targets.e2e.test.mjs",
         "languages/java/maven/maven-preset.e2e.test.mjs",
         "languages/java/adapters/errorprone/error-prone.e2e.test.mjs",
@@ -82,6 +83,17 @@
         "languages/java/messages/rule-catalog.e2e.test.mjs"
       ],
       "reason": "Opt-in end-to-end suite that runs Gradle and Maven builds (minutes per step); it cannot be made faster and is skipped unless NITPICKER_JAVA_E2E=1."
+    },
+    {
+      "rule": "nitpicker/no-unsafe-path-join",
+      "paths": [
+        "languages/java/adapters/gradle-reports/report-modules.mjs",
+        "languages/java/adapters/jpa/jpa-source-filters.mjs",
+        "languages/java/adapters/reporting/java-reports.mjs",
+        "languages/java/adapters/test-times/slow-tests.mjs",
+        "languages/java/builds/project-wide.mjs"
+      ],
+      "reason": "These readers join the report directory nitpicker itself created, the file names the build tools wrote into it, and the source roots the build reported for the project under analysis; none of them comes from user input or from the code under analysis."
     },
     {
       "rule": "nitpicker/no-raised-test-timeout",

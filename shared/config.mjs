@@ -15,7 +15,11 @@ export const THRESHOLD_KEYS = [
   'testFileLines',
   'lineLength',
   'folderFiles',
+  'unitTestSeconds',
+  'integrationTestSeconds',
 ];
+const TEST_TIME_KEYS = ['unitTestSeconds', 'integrationTestSeconds'];
+const TEST_TIME_PRESETS = new Set(['java', 'kotlin']);
 const WHOLE_NUMBER_THRESHOLD_KEYS = new Set([
   'fileLines',
   'testFileLines',
@@ -52,9 +56,15 @@ export function validateStringArray(value, name) {
   }
 }
 
-export function validateThresholds(thresholds) {
+export function validateThresholds(thresholds, preset) {
   if (!isPlainObject(thresholds)) {
     throw configError('"thresholds" must be an object');
+  }
+  const testTime = TEST_TIME_KEYS.find((key) => thresholds[key] !== undefined);
+  if (testTime !== undefined && !TEST_TIME_PRESETS.has(preset)) {
+    throw configError(
+      `"thresholds.${testTime}" is supported only with "preset": "java" or "kotlin"`,
+    );
   }
   for (const [key, value] of Object.entries(thresholds)) {
     if (!THRESHOLD_KEYS.includes(key)) {
