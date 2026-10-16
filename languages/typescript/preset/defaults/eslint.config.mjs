@@ -6,6 +6,10 @@ import tseslint from 'typescript-eslint';
 import { nitpickerRules } from '../eslint-plugin/index.mjs';
 import { errorWrappingPolicy } from '../eslint-config/policies/error-wrapping-policy.mjs';
 import { strictPresetConfig } from '../eslint-config/strict.mjs';
+import {
+  usesRouteHandlerFramework,
+  productionLayoutConfigFor,
+} from '../eslint-config/policy/production-policy.mjs';
 import { applyRuleExceptions } from '../eslint-config/exceptions.mjs';
 import {
   applyJavascriptDialect,
@@ -17,6 +21,7 @@ import {
   isReactProject,
   reactScopeConfigFor,
 } from '../eslint-config/react/react-scope.mjs';
+import { readDependencyNames } from '../eslint-config/scope-support.mjs';
 import { i18nRuleIds } from '../eslint-config/i18n/i18n-rules.mjs';
 import { i18nScopeConfigFor, isI18nProject } from '../eslint-config/i18n/i18n-scope.mjs';
 import { readHeadPolicy, readLayout } from '../head-policy.mjs';
@@ -31,6 +36,7 @@ const policy = readHeadPolicy();
 
 const layout = readLayout();
 const react = isReactProject({ projectRoot: analyzedProjectRoot(), react: policy.react });
+const routeHandlers = usesRouteHandlerFramework(readDependencyNames(analyzedProjectRoot()));
 const i18n = isI18nProject({ projectRoot: analyzedProjectRoot(), i18n: policy.i18n });
 const { sourceGlobs, testGlobs, excludedGlobs, unitTestGlobs } = layout;
 const parserOptions = {
@@ -80,7 +86,8 @@ const presetConfig = defineConfig(
       'nitpicker/preserve-error-cause': ['error', errorWrappingPolicy],
     },
   },
-  ...strictPresetConfig(layout, parserOptions, { react }),
+  ...strictPresetConfig(layout, parserOptions, { react, routeHandlers }),
+  ...productionLayoutConfigFor(layout, { react }),
   ...(react ? await reactScopeConfigFor(layout, policy.react) : []),
   ...(i18n ? await i18nScopeConfigFor(layout, policy.i18n) : []),
   {
