@@ -90,6 +90,7 @@ function expectedViolations(root) {
 function isGuard({ tool, rule, classification }) {
   return (
     classification === 'enforceable' &&
+    tool !== 'errorprone' &&
     (GUARD_TOOLS.has(tool) || GUARD_RULES.has(rule)) &&
     !(tool === 'coupling' && rule !== 'package-cycle') &&
     !(tool === 'duplicates' && rule !== 'duplicate-clone')

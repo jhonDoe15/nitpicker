@@ -77,7 +77,8 @@
     "secondary": [
       "spotbugs/MS_FINAL_PKGPROTECT",
       "spotbugs/MS_SHOULD_BE_FINAL",
-      "errorprone/FieldCanBeFinal"
+      "errorprone/FieldCanBeFinal",
+      "pmd/NonFinalStaticField"
     ],
     "scope": "line"
   },
@@ -411,6 +412,21 @@
   {
     "primary": ["errorprone/SystemOut"],
     "secondary": ["pmd/SystemPrintln"],
+    "scope": "line"
+  },
+  {
+    "primary": ["errorprone/StreamResourceLeak"],
+    "secondary": ["pmd/StreamResourceNotClosed"],
+    "scope": "line"
+  },
+  {
+    "primary": ["errorprone/PatternMatchingInstanceof"],
+    "secondary": ["pmd/InstanceofThenCast"],
+    "scope": "line"
+  },
+  {
+    "primary": ["errorprone/ThrowSpecificExceptions"],
+    "secondary": ["pmd/AvoidThrowingRawExceptionTypes"],
     "scope": "line"
   },
   {
