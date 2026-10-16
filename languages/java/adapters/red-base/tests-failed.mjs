@@ -3,9 +3,9 @@ import { TESTS_FAILED_RULE } from '../../../../shared/rules/finding-helpers.mjs'
 const TEST_TASK_FAILED = /Execution failed for task '[^']*:test'/u;
 const MAX_MESSAGE_LENGTH = 4000;
 
-export function gradleFailure(projectRoot, detail) {
+export function gradleFailure(projectRoot, detail, raw = detail) {
   return Object.assign(new Error(`Java preset failed in ${projectRoot}: ${detail}`), {
-    testsFailed: TEST_TASK_FAILED.test(detail),
+    testsFailed: TEST_TASK_FAILED.test(raw),
     detail,
   });
 }

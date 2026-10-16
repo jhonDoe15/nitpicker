@@ -16,12 +16,14 @@ export type ParsedLine =
 
 type Columns = readonly [string, string, string, string];
 
+const COLUMN_COUNT = 4;
+
 function failed(reason: string): ParsedLine {
   return { kind: 'failure', reason };
 }
 
 function hasFourColumns(fields: readonly string[]): fields is Columns {
-  return fields.length === 4;
+  return fields.length === COLUMN_COUNT;
 }
 
 function parseColumns(columns: Columns, today: string): ParsedLine {

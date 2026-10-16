@@ -21,7 +21,7 @@ const jscpdVersion = 'unresolved';
 const knipVersion = 'unresolved';
 
 const ARCHITECTURE_EXCLUSION =
-  '(^|/)(node_modules|dist|build|generated|coverage|reports|target)(/|$)';
+  '(?<!node_modules/.*)(^|/)(dist|build|generated|coverage|reports|target)(/|$)';
 
 export function createQualityChecks(layout = resolveLayout()) {
   const exclusions = checkExclusions(layout);
@@ -146,7 +146,7 @@ function typeAndArchitectureChecksFor(layout) {
       kind: 'typecheck',
       version: typeScriptVersion,
       patterns: [],
-      exclusions: ['**/dist/**', '**/*.d.ts', ...layout.exclude],
+      exclusions: ['**/dist/**', ...layout.exclude],
       configRelativePath: 'languages/typescript/preset/defaults/tsconfig.quality.json',
       shardWeight: 9,
       configurationFiles: [
@@ -171,6 +171,7 @@ function typeAndArchitectureChecksFor(layout) {
         'languages/typescript/preset/head-policy.mjs',
         ARCHITECTURE_CONFIG,
         'languages/typescript/preset/architecture/strict-boundary-rules.mjs',
+        'languages/typescript/preset/architecture/domain-packages.mjs',
         'languages/typescript/preset/architecture/strict-layout.mjs',
         'languages/typescript/preset/defaults/tsconfig.quality.json',
       ],

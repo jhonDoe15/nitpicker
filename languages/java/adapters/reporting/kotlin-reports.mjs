@@ -2,7 +2,6 @@ import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { ingestFormatCheck } from '../../ingest/formatting/format-check.mjs';
 import { ingestSarif } from '../../ingest/sarif.mjs';
-import { readKotlinDuplicateFindings } from '../kotlin/kotlin-duplicates.mjs';
 import {
   readKotlinCrapFindings,
   readKotlinMetrics,
@@ -85,7 +84,6 @@ export function readKotlinFindings(context, crapLimit) {
     ...(jacoco === undefined
       ? []
       : readKotlinCrapFindings(metrics, { projectRoot, jacoco, crapLimit })),
-    ...readKotlinDuplicateFindings(reportRoot),
   ];
 }
 
