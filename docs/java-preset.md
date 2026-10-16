@@ -1101,10 +1101,7 @@ errorprone and bestpractices categories without `UnitTestAssertionsShouldInclude
 plus design's `AvoidCatchingGenericException` (no `catch (Exception e)`, `RuntimeException` or
 `NullPointerException`; errorprone already covers `Throwable`), as the TypeScript and Python presets
 forbid broad catches. A test with no assertion still fails (`UnitTestShouldIncludeAssert`, which
-counts every `assert*`, `check*`, `verify*` (Mockito `verify`, Reactor `StepVerifier` `verifyComplete`
-and friends) and `fail` call, plus MockMvc's `andExpect` and `andExpectAll`, the AssertJ and Mockito
-BDD `then(...)`, `thenThrownBy`, `thenCode`, `thenNoException` and `should`, and WebTestClient's
-`expectStatus`, `expectBody`, `expectHeader` and `expectCookie`), and a class named like a test but without test methods fails
+also counts MockMvc's `andExpect`), and a class named like a test but without test methods fails
 (`TestClassWithoutTestCases`), except `*ArchTest` and `*ArchitectureTest` classes, which hold
 ArchUnit rules. The Spring rule set reads main sources only: the init script wraps it in
 `build/nitpicker/pmd-spring-main.xml` with an exclude pattern per test source directory, since
