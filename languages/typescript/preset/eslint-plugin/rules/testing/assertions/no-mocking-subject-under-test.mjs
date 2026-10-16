@@ -1,6 +1,7 @@
 import path from 'node:path';
 import { readLayout } from '../../../../head-policy.mjs';
-import { createRunnerApis, moduleMockSource, runnerApiVisitors } from '../runners/runner-apis.mjs';
+import { moduleMocks } from '../runners/module-mocks.mjs';
+import { createRunnerApis, runnerApiVisitors } from '../runners/runner-apis.mjs';
 
 const layout = readLayout();
 
@@ -24,13 +25,6 @@ function isProductionModule(filename, source) {
     sourceRoot !== undefined &&
     !layout.isTestFile(resolved.slice(resolved.indexOf(`/${sourceRoot}/`) + 1))
   );
-}
-
-function mockedSource(apis, node) {
-  const firstArgument = moduleMockSource(apis, node);
-  return firstArgument?.type === 'Literal' && typeof firstArgument.value === 'string'
-    ? firstArgument.value
-    : undefined;
 }
 
 export const rule = {
@@ -66,9 +60,10 @@ export const rule = {
         }
       },
       CallExpression(node) {
-        const source = mockedSource(apis, node);
-        if (source !== undefined) {
-          mocks.push({ node, source });
+        for (const { name } of moduleMocks(apis, node)) {
+          if (name !== undefined) {
+            mocks.push({ node, source: name });
+          }
         }
       },
       'Program:exit'() {

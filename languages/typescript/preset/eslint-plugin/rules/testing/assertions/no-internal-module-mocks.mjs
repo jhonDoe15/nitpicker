@@ -1,8 +1,23 @@
 import path from 'node:path';
 import { readLayout } from '../../../../head-policy.mjs';
-import { createRunnerApis, moduleMockSource, runnerApiVisitors } from '../runners/runner-apis.mjs';
+import { moduleMocks } from '../runners/module-mocks.mjs';
+import { createRunnerApis, runnerApiVisitors } from '../runners/runner-apis.mjs';
 
 const layout = readLayout();
+
+function isInternalModule(filename, source) {
+  if (typeof source !== 'string') {
+    return false;
+  }
+  const resolved = source.startsWith('.')
+    ? path.resolve(path.dirname(filename), source).replaceAll('\\\\', '/')
+    : source;
+  const sourceRoot = layout.sourceRootOf(resolved);
+  return (
+    sourceRoot !== undefined &&
+    !layout.isTestFile(resolved.slice(resolved.indexOf(`/${sourceRoot}/`) + 1))
+  );
+}
 
 export const rule = {
   meta: {
@@ -18,19 +33,11 @@ export const rule = {
     return {
       ...runnerApiVisitors(apis),
       CallExpression(node) {
-        const target = moduleMockSource(apis, node);
-        const source = target?.type === 'ImportExpression' ? target.source.value : target?.value;
-        if (typeof source !== 'string') return;
-        const resolved = source.startsWith('.')
-          ? path.resolve(path.dirname(context.filename), source).replaceAll('\\\\', '/')
-          : source;
-        const sourceRoot = layout.sourceRootOf(resolved);
-        if (
-          sourceRoot === undefined ||
-          layout.isTestFile(resolved.slice(resolved.indexOf(`/${sourceRoot}/`) + 1))
-        )
-          return;
-        context.report({ node, messageId: 'internalMock', data: { source } });
+        for (const { name } of moduleMocks(apis, node)) {
+          if (isInternalModule(context.filename, name)) {
+            context.report({ node, messageId: 'internalMock', data: { source: name } });
+          }
+        }
       },
     };
   },
