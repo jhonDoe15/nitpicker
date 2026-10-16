@@ -106,7 +106,11 @@ sum + x, 0)`), `Object.fromEntries`, and `Object.groupBy`. No loops, `forEach`, 
   `{ ok: false, error }`, `{ status: 'error' }`, `Result.err(...)`), when it answers with an HTTP
   error (`res.status(500)`, `reply.code(503)`, `Response.json(body, { status: 500 })`), when it
   shows the error to the user (`setError(...)`, `setStatus('error')`, `toast.error(...)`), or
-  when it ends the process (`process.exitCode = 1`, `process.exit(1)`). A `catch` that only logs
+  when it ends the process (`process.exitCode = 1`, `process.exit(1)`). A call whose name says
+  logging is a log, not a hand-off: a function named with the word `log` or `logger` (`log(error)`,
+  `logError(error)`, `logger(error)`), any `console.*` call, and a method named `trace`, `debug`,
+  `info`, `warn`, `error`, `fatal` or `log` or with the word `log` in it, whatever its receiver
+  (`getLogger().warn(error)`, `this.logFailure(error)`). A `catch` that only logs
   the error, drops it (`void error`, `ignore(error)`, an alias nobody uses), or returns a default
   or a success shape (`undefined`, `''`, `[]`, `{}`, `{ ok: true, items: [] }`) and carries on is
   reported, and so is `.catch(() => undefined)`. A deliberately dropped error needs an exception
@@ -157,9 +161,12 @@ sum + x, 0)`), `Object.fromEntries`, and `Object.groupBy`. No loops, `forEach`, 
   `repository`, `dao`, `db`, `prisma`, `client`, `pool`, `api`, `gateway` and similar
   (`userRepository`, `httpClient`, not `platform` or `queryClient.getQueryData`). Batch it: fetch
   or write all items at once, or run the calls together with `Promise.all(items.map(...))`, which
-  is the allowed form when there is no batch API. Paging, cursor and polling loops (the loop
-  condition reads a variable the body assigns, as in `do { page = await repo.findPage(cursor);
-cursor = page.next; } while (cursor)`) and retries (a `try` directly in the loop body that
+  is the allowed form when there is no batch API; so are a `const` holding `items.map(...)` that
+  is only passed to `Promise.all`, `allSettled`, `any` or `race`, and an array the loop only
+  `push`es un-awaited calls into before passing it to one of them. Paging, cursor and polling
+  loops (the loop condition reads a variable the body assigns, as in
+  `do { page = await repo.findPage(cursor); cursor = page.next; } while (cursor)`; stepping an
+  index with `i += 1`, `i++` or `i = i + 1` does not count) and retries (a `try` directly in the loop body that
   returns or breaks on success, with a `catch` that lets the loop go on) are not reported.
 - `nitpicker/no-accumulator-spread-in-reduce` (all production code): `reduce` callbacks do not
   spread their accumulator (`{ ...acc, [id]: x }`, `[...acc, x]`): each step copies it, so the work
@@ -225,9 +232,10 @@ cursor = page.next; } while (cursor)`) and retries (a `try` directly in the loop
 - `undefined` only for absent values. `null` only where a library or JSON requires it.
 - No comments, except doc comments (`/** ... */`) on exported declarations and the members of
   exported types. They are allowed there, never required; the Java preset follows the same rule for
-  Javadoc. A `TODO` or `FIXME` (in any case at the start of a line) or `XXX` or `HACK` not
-  directly followed by an issue (`TODO(#123)`, `TODO(PROJ-123)`, `TODO PROJ-123`, a link; `SHA-256`
-  is not an issue) and commented-out code (an assignment, call, `return` or block opening, not
+  Javadoc. A task marker, an uppercase `TODO`, `FIXME`, `XXX` or `HACK` as a whole word at the
+  start of a comment line or followed by `:` or `(`, not directly followed by an issue (`TODO(#123)`, `TODO(PROJ-123)`, `TODO PROJ-123`, a link; `SHA-256`
+  is not an issue; prose such as "Todo item" and a format such as `XXX-XXX-XXXX` are not markers)
+  and commented-out code (an assignment, call, `return` or block opening, not
   prose) are reported even in a doc comment; code in an `@example` block or a fenced block is
   documentation. Tool directives are allowed, except suppressions: ESLint's `noInlineConfig` blocks
   inline disables, and `@typescript-eslint/ban-ts-comment` bans `@ts-ignore`, `@ts-expect-error`
