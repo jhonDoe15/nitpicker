@@ -72,7 +72,8 @@ field by field. Per snapshot:
 
 1. `mvn help:effective-pom` (help plugin pinned): the modules, their source, test, resource and
    output directories (plus `build-helper-maven-plugin` `add-source`/`add-test-source` roots), the
-   surefire reports directory, a JaCoCo `destFile` the project configures, and the
+   surefire and failsafe reports directories, whether maven-failsafe-plugin binds its
+   `integration-test` goal in an execution, a JaCoCo `destFile` the project configures, and the
    `nitpicker.archunit.includes` property (read from the POM's `<properties>` only, not from `-D`
    or `settings.xml`). Module directories come from following the effective `<modules>` (active
    profiles included) from the root `pom.xml`. Each module's `pom.xml` is matched to its effective
@@ -81,8 +82,15 @@ field by field. Per snapshot:
    outside the project root, or two modules in one directory is a tool error.
 2. One build: `mvn jacoco:prepare-agent test dependency:list` (JaCoCo at the init script's version,
    dependency plugin pinned), with `-Dmaven.test.failure.ignore=true` and the project's own
-   Checkstyle, PMD, CPD, SpotBugs and Spotless checks skipped. `dependency:list` writes every
-   module's resolved classpath (reactor modules as their `target/classes`). Our coverage file
+   Checkstyle, PMD, CPD, SpotBugs and Spotless checks skipped. When any module binds Failsafe's
+   `integration-test` goal, the build runs `verify` instead of `test`, with `-DskipITs=false` and
+   `-Djacoco.haltOnFailure=false`: the project's `package`, `pre-integration-test` and
+   `post-integration-test` steps run as they normally do (containers it starts are stopped again),
+   `-Dmaven.test.failure.ignore=true` also keeps `failsafe:verify` from failing the build, and a
+   `jacoco:check` the project binds to `verify` only warns (`haltOnFailure` belongs to `check` alone,
+   so our `prepare-agent` is unaffected). A project without Failsafe keeps the `test` phase.
+   `dependency:list` writes every module's resolved classpath (reactor modules as their
+   `target/classes`, or their packaged jar in a `verify` build). Our coverage file
    (`target/nitpicker-jacoco.exec`) and a project `destFile` inside `target` are deleted before the
    build, so coverage never accumulates across runs.
 3. The tools resolved once from Maven Central through Maven itself (a generated tools project in
@@ -96,8 +104,8 @@ field by field. Per snapshot:
 
 - **Tests.** Failures of the ArchUnit rule classes (`*ArchTest`, `*ArchitectureTest`, or the
   `nitpicker.archunit.includes` property in the POM) become findings; any other failing test is a
-  `java/maven-failure` tool error that names up to ten failing tests. Surefire reports older than
-  the build are ignored. Gradle runs the ArchUnit classes in their own task, but Maven only has
+  `java/maven-failure` tool error that names up to ten failing tests, from Surefire's and Failsafe's
+  reports alike. Reports older than the build are ignored. Gradle runs the ArchUnit classes in their own task, but Maven only has
   surefire's results: when a module has ArchUnit classes and surefire ran none of them (its
   `<includes>` miss them, as they would `*Rules`, or the module skips tests), that is a tool error
   rather than a silent pass. ArchUnit reads bytecode without running it, so running these classes in
@@ -109,12 +117,13 @@ field by field. Per snapshot:
   without the ArchUnit rule classes (as Gradle leaves out its ArchUnit task). When both plugins
   report to the same directory, it is copied once, as `surefire`, so unit tests keep the unit budget.
   Only files written since the build started are copied, so results left by an earlier run never
-  count. The build runs the `test` phase only, so Failsafe (`integration-test`) does not run in it
-  and `failsafe` stays empty in practice; the copy is there for a project that binds Failsafe to an
-  earlier phase.
+  count. Failsafe runs because the build runs `verify` whenever a module binds its
+  `integration-test` goal; `failsafe` counts as an integration task, so its tests get the
+  integration budget.
 - **JaCoCo.** Our `prepare-agent` always runs; a project's own `prepare-agent` replaces it (the agent
   replaces an earlier agent in `argLine`) and writes to its configured `destFile`, which is read
-  instead. A module whose tests ran but left no fresh coverage file is a tool error that points at a
+  instead. Failsafe reads the same `argLine`, so integration tests append their coverage to the same
+  file as the unit tests. A module whose tests ran but left no fresh coverage file is a tool error that points at a
   surefire `<argLine>` without `@{argLine}`. A module whose test classes ran no test (only helpers,
   or `*IT` classes surefire skips) gets zero coverage, as on Gradle, and a module without main
   classes gets an empty report.
@@ -133,7 +142,10 @@ field by field. Per snapshot:
   `<testFailureIgnore>false</testFailureIgnore>` explicitly overrides the command line, so a
   violated ArchUnit rule stops the build as a tool error. Maven 3 cannot resolve a `test-jar`
   dependency on another module in the `test` phase; such reactors fail as they would with
-  `mvn test`. Gradle multi-project builds still read only the root project's reports (see
+  `mvn test` (a `verify` build packages them first). A Failsafe or `jacoco:check` configuration
+  that sets `<testFailureIgnore>`, `<skipITs>` or `<haltOnFailure>` explicitly overrides the
+  command line too. A project `prepare-agent-integration` replaces our agent for the integration
+  tests, and its file is not read. Gradle multi-project builds still read only the root project's reports (see
   [Slice 1](#slice-1-what-is-deliberately-not-included)).
 
 ## Slices
@@ -492,7 +504,8 @@ resolved plus a new finding, as in the TypeScript check.
   `test-results/<task>/` in each module's report directory. No extra test run. A rerun test keeps
   its slowest time. Maven builds copy Surefire's `TEST-*.xml` to `test-results/surefire/` and
   Failsafe's to `test-results/failsafe/` (see [Maven builds](#maven-builds)); `surefire` counts as
-  the `test` task, `failsafe` as an integration task.
+  the `test` task, `failsafe` as an integration task. Failsafe runs when the project binds its
+  `integration-test` goal, because nitpicker then builds to `verify`.
 - **Edited or added.** Each test is keyed by class and testcase name (Gradle writes the display name,
   so a parameterized case is keyed by its `[n] ...` name; Surefire writes the method name). The test
   method is found in the source by that name or its `@DisplayName`, with its annotations; a test is
@@ -506,7 +519,7 @@ resolved plus a new finding, as in the TypeScript check.
   project root; a Gradle build reads from the project root and passes none.
 - **Tests.** `adapters/test-times/slow-tests.test.mjs` (sample Gradle, Surefire and Failsafe XML,
   module-path baseline), `builds/java-modules.test.mjs`, `maven/results/maven-test-results.test.mjs`
-  and the multi-module Maven e2e fixture.
+  and the multi-module and `failsafe` Maven e2e fixtures.
 
 ## Structure limits (SH5)
 

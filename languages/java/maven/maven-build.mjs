@@ -12,7 +12,12 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { javaCommand, runJava, runMaven } from './maven-command.mjs';
 import { runCheckstyle, runFormat, runPmd, runSpotbugs } from './maven-lint.mjs';
-import { moduleClasspaths, parseDependencyList, readReactor } from './maven-project.mjs';
+import {
+  lifecycleArgs,
+  moduleClasspaths,
+  parseDependencyList,
+  readReactor,
+} from './maven-project.mjs';
 import {
   archunitMatcher,
   collectTestResults,
@@ -54,7 +59,7 @@ function dependencyFile(work, module) {
   return path.join(work, 'dependencies', groupId, `${artifactId}.txt`);
 }
 
-function buildAndTest({ projectRoot, maven, work, pinned }) {
+function buildAndTest({ projectRoot, maven, work, pinned, modules }) {
   runMaven({
     projectRoot,
     maven,
@@ -62,7 +67,7 @@ function buildAndTest({ projectRoot, maven, work, pinned }) {
       '--quiet',
       `${jacocoPlugin(pinned)}:prepare-agent`,
       `-Djacoco.destFile=\${project.build.directory}/${OWN_JACOCO_EXEC}`,
-      'test',
+      ...lifecycleArgs(modules),
       `${MAVEN_PLUGINS.dependency}:list`,
       `-DoutputFile=${path.join(work, 'dependencies', '${project.groupId}', '${project.artifactId}.txt')}`,
       '-DoutputAbsoluteArtifactFilename=true',
@@ -216,7 +221,7 @@ export function runMavenPreset(projectRoot, { maven, policy = {}, configs }) {
   try {
     const modules = readModules(projectRoot, maven, work);
     const since = Date.now() - 2000;
-    buildAndTest({ projectRoot, maven, work, pinned });
+    buildAndTest({ projectRoot, maven, work, pinned, modules });
     const analyzed = modules.map((module) => ({
       module,
       classpaths: readClasspaths(work, module),

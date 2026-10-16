@@ -9,6 +9,7 @@ const BUILD_HELPER = 'org.codehaus.mojo:build-helper-maven-plugin';
 const JACOCO = 'org.jacoco:jacoco-maven-plugin';
 const SUREFIRE = 'org.apache.maven.plugins:maven-surefire-plugin';
 const FAILSAFE = 'org.apache.maven.plugins:maven-failsafe-plugin';
+const FAILSAFE_BUILD = ['verify', '-DskipITs=false', '-Djacoco.haltOnFailure=false'];
 
 function child(element, ...names) {
   return names.reduce((current, name) => current && childrenNamed(current, name)[0], element);
@@ -41,6 +42,10 @@ function executionsWithGoal(plugin, goal) {
   return all(plugin, 'executions', 'execution').filter((execution) =>
     all(execution, 'goals', 'goal').some((element) => element.text === goal),
   );
+}
+
+function bindsGoal(plugin, goal) {
+  return plugin !== undefined && executionsWithGoal(plugin, goal).length > 0;
 }
 
 function helperRoots(plugin, goal, basedir) {
@@ -107,6 +112,7 @@ function describeModule(project, basedir) {
       basedir,
       failsafeReports ?? path.join(buildDirectory, 'failsafe-reports'),
     ),
+    runsFailsafe: bindsGoal(plugins.get(FAILSAFE), 'integration-test'),
     jacocoDestFile: destFile === undefined ? undefined : path.resolve(basedir, destFile),
     archunitIncludes: textAt(project, 'properties', 'nitpicker.archunit.includes'),
   };
@@ -183,6 +189,10 @@ export function readReactor(projectRoot, effectivePom) {
     pending.push(...children.filter((file) => !pending.includes(file)));
   }
   return modules;
+}
+
+export function lifecycleArgs(modules) {
+  return modules.some((module) => module.runsFailsafe) ? FAILSAFE_BUILD : ['test'];
 }
 
 export function parseDependencyList(text) {
