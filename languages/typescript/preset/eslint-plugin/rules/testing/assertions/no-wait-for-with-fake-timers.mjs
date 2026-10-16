@@ -48,7 +48,9 @@ function governingChange(changes, wait) {
 }
 
 function isFakeWait(wait, change) {
-  if (!change?.fake) return false;
+  if (!change?.fake) {
+    return false;
+  }
   return wait.kind === 'vitest' ? change.kind === 'vitest' : change.kind !== 'vitest';
 }
 
@@ -71,9 +73,13 @@ export const rule = {
       ...runnerApiVisitors(apis),
       CallExpression(node) {
         const kind = waitKind(apis, node);
-        if (kind !== undefined) waits.push({ node, kind });
+        if (kind !== undefined) {
+          waits.push({ node, kind });
+        }
         const change = fakeTimerChange(apis, node);
-        if (change === undefined || isInTeardown(node)) return;
+        if (change === undefined || isInTeardown(node)) {
+          return;
+        }
         changes.push({ node, owner: owner(node), ...change });
       },
       'Program:exit'() {

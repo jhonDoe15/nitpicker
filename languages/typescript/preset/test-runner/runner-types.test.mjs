@@ -46,13 +46,13 @@ describe('runnerTypes', () => {
 
 describe('withRunnerTypes', () => {
   const shipped = JSON.stringify({
-    compilerOptions: { strict: true, types: ['node', 'vitest/globals'] },
+    compilerOptions: { lib: ['ES2022'], types: ['node', 'vitest/globals'] },
   });
 
   it('swaps the Vitest globals for the runner types, keeping the other options', () => {
     const text = JSON.stringify({
       extends: './base.json',
-      compilerOptions: { strict: true, types: ['node', 'vitest/globals', 'react'] },
+      compilerOptions: { lib: ['ES2022'], types: ['node', 'vitest/globals', 'react'] },
     });
 
     const result = JSON.parse(
@@ -61,7 +61,7 @@ describe('withRunnerTypes', () => {
 
     expect(result).toEqual({
       extends: './base.json',
-      compilerOptions: { strict: true, types: ['node', 'jest', 'react'] },
+      compilerOptions: { lib: ['ES2022'], types: ['node', 'jest', 'react'] },
     });
   });
 

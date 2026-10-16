@@ -2,141 +2,200 @@ import { ESLint } from 'eslint';
 import { mkdirSync, mkdtempSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
-import { describe, expect, it } from 'vitest';
+import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { lintWithOxlint } from '../../../adapters/oxlint/oxlint-runner.mjs';
 
-function policyFor(runner) {
-  return `import tseslint from ${JSON.stringify(import.meta.resolve('typescript-eslint'))};
+const RUNNERS = ['vitest', 'jest', 'node', 'mocha'];
+
+const POLICY = `import tseslint from ${JSON.stringify(import.meta.resolve('typescript-eslint'))};
 import { nitpickerRules } from ${JSON.stringify(import.meta.resolve('../../eslint-plugin/index.mjs'))};
 import { testRunnerLintConfig } from ${JSON.stringify(import.meta.resolve('./runner-rules.mjs'))};
 
-const config = await testRunnerLintConfig(${JSON.stringify(runner)});
-
-export default [
-  { languageOptions: { parser: tseslint.parser } },
-  {
-    files: ['**/*.test.mjs'],
+function blockFor(runner) {
+  const config = testRunnerLintConfig(runner);
+  return {
+    files: ['src/' + runner + '/**/*.test.mjs'],
     plugins: { ...config.plugins, nitpicker: nitpickerRules },
     settings: config.settings,
     languageOptions: { globals: config.globals },
     rules: {
       ...config.rules,
-      'nitpicker/no-fixed-sleep-synchronization': ['error', { runner: ${JSON.stringify(runner)} }],
-      'nitpicker/no-interval-polling-in-tests': ['error', { runner: ${JSON.stringify(runner)} }],
+      'nitpicker/no-fixed-sleep-synchronization': ['error', { runner }],
+      'nitpicker/no-interval-polling-in-tests': ['error', { runner }],
     },
-  },
-];
-`;
+  };
 }
 
-const NODE_HEAD = "import test from 'node:test';\nimport assert from 'node:assert';\n";
+export default [
+  { languageOptions: { parser: tseslint.parser } },
+  ...${JSON.stringify(RUNNERS)}.map(blockFor),
+];
+`;
 
-const SOURCES = {
-  vitest: [
+const NODE_HEAD = ["import test from 'node:test';", "import assert from 'node:assert';"];
+
+const SLEEP = 'await new Promise((resolve) => setTimeout(resolve, 100));';
+
+const FILES = {
+  'vitest/sample.test.mjs': [
     "import { it, expect, vi } from 'vitest';",
     "it('a', () => {});",
     "it.only('b', () => { expect(1).toBe(1); });",
     "it('b', () => { expect(1).toBe(1); });",
-    "it('c', async () => { await new Promise((resolve) => setTimeout(resolve, 100)); expect(1).toBe(1); });",
+    `it('c', async () => { ${SLEEP} expect(1).toBe(1); });`,
     "it('d', () => { setInterval(() => {}, 5); expect(vi).toBeDefined(); });",
   ],
-  jest: [
+  'jest/sample.test.mjs': [
     "it('a', () => {});",
     "it.only('b', () => { expect(1).toBe(1); });",
     "it('b', () => { expect(1).toBe(1); });",
-    "it('c', async () => { await new Promise((resolve) => setTimeout(resolve, 100)); expect(1).toBe(1); });",
+    `it('c', async () => { ${SLEEP} expect(1).toBe(1); });`,
     "it('d', () => { setInterval(() => {}, 5); expect(1).toBe(1); });",
   ],
-  node: [
-    NODE_HEAD,
+  'node/sample.test.mjs': [
+    ...NODE_HEAD,
     "test('a', () => {});",
     "test.only('b', () => { assert.ok(1); });",
     "test('b', () => { assert.ok(1); });",
-    "test('c', async () => { await new Promise((resolve) => setTimeout(resolve, 100)); assert.ok(1); });",
+    `test('c', async () => { ${SLEEP} assert.ok(1); });`,
     "test('d', () => { setInterval(() => {}, 5); assert.ok(1); });",
   ],
-  mocha: [
+  'node/named.test.mjs': [
+    "import { describe, it } from 'node:test';",
+    "import assert from 'node:assert';",
+    "describe('suite', () => {",
+    "  it('a', () => {});",
+    "  it('b', () => { assert.ok(1); });",
+    "  it('b', () => { assert.ok(1); });",
+    '});',
+  ],
+  'mocha/sample.test.mjs': [
     "it('a', () => {});",
     "it.only('b', () => { assert.ok(1); });",
     "it('b', () => { assert.ok(1); });",
-    "it('c', async () => { await new Promise((resolve) => setTimeout(resolve, 100)); assert.ok(1); });",
+    `it('c', async () => { ${SLEEP} assert.ok(1); });`,
     "it('d', () => { setInterval(() => {}, 5); assert.ok(1); });",
   ],
 };
 
-const NODE_NAMED = [
-  "import { describe, it } from 'node:test';",
-  "import assert from 'node:assert';",
-  "describe('suite', () => {",
-  "  it('a', () => {});",
-  "  it('b', () => { assert.ok(1); });",
-  "  it('b', () => { assert.ok(1); });",
-  '});',
-];
+let root = '';
+let eslintFindings = {};
+let oxlintFindings = {};
 
-function located(messages) {
-  return messages.map(
-    ({ ruleId, line, column, message }) => `${ruleId}@${String(line)}:${String(column)} ${message}`,
-  );
+function located(results) {
+  const byFile = {};
+  for (const { filePath, messages } of results) {
+    const relative = path.relative(path.join(root, 'src'), filePath);
+    byFile[relative] = messages.map(
+      ({ ruleId, line, column, message }) =>
+        `${ruleId}@${String(line)}:${String(column)} ${message}`,
+    );
+  }
+  return byFile;
 }
 
-function writeProject(root, runner, lines) {
-  mkdirSync(path.join(root, 'src'), { recursive: true });
-  writeFileSync(path.join(root, 'policy.mjs'), policyFor(runner));
-  writeFileSync(path.join(root, 'src/sample.test.mjs'), `${lines.join('\n')}\n`);
-}
-
-async function bothEngines(runner, lines) {
-  const root = realpathSync(mkdtempSync(path.join(tmpdir(), 'nitpicker-runner-engines-')));
-  try {
-    writeProject(root, runner, lines);
-    const oxlint = lintWithOxlint({
-      options: { projectRoot: root, patterns: ['src/**/*.test.mjs'] },
-      environment: {
-        ...process.env,
-        NITPICKER_DIFF_ESLINT_POLICY_CONFIG: path.join(root, 'policy.mjs'),
-        NITPICKER_DIFF_ESLINT_PROJECT_ROOT: root,
-      },
-      runEslintCli: () => {
-        throw new Error('no rule needs ESLint here');
-      },
-    });
-    const eslint = await new ESLint({
-      cwd: root,
-      overrideConfigFile: path.join(root, 'policy.mjs'),
-    }).lintFiles(['src/**/*.test.mjs']);
-    const file = path.join(root, 'src/sample.test.mjs');
-    const messagesOf = (results) => results.find((entry) => entry.filePath === file)?.messages;
-    return { eslint: located(messagesOf(eslint) ?? []), oxlint: located(messagesOf(oxlint) ?? []) };
-  } finally {
-    rmSync(root, { recursive: true, force: true });
+function writeProject() {
+  writeFileSync(path.join(root, 'policy.mjs'), POLICY);
+  for (const [name, lines] of Object.entries(FILES)) {
+    const file = path.join(root, 'src', name);
+    mkdirSync(path.dirname(file), { recursive: true });
+    writeFileSync(file, `${lines.join('\n')}\n`);
   }
 }
 
+function runOxlint() {
+  return lintWithOxlint({
+    options: { projectRoot: root, patterns: ['src/**/*.test.mjs'] },
+    environment: {
+      ...process.env,
+      NITPICKER_DIFF_ESLINT_POLICY_CONFIG: path.join(root, 'policy.mjs'),
+      NITPICKER_DIFF_ESLINT_PROJECT_ROOT: root,
+    },
+    runEslintCli: () => {
+      throw new Error('no rule needs ESLint here');
+    },
+  });
+}
+
+beforeAll(() => {
+  root = realpathSync(mkdtempSync(path.join(tmpdir(), 'nitpicker-runner-engines-')));
+  writeProject();
+});
+
+beforeAll(async () => {
+  const eslint = new ESLint({ cwd: root, overrideConfigFile: path.join(root, 'policy.mjs') });
+  eslintFindings = located(await eslint.lintFiles(['src/**/*.test.mjs']));
+});
+
+beforeAll(() => {
+  oxlintFindings = located(runOxlint());
+});
+
+afterAll(() => {
+  rmSync(root, { recursive: true, force: true });
+});
+
+function rulesOf(findings, name) {
+  return (findings[name] ?? []).map((entry) => entry.split(' ')[0]);
+}
+
+function sleepsOf(findings, name) {
+  return (findings[name] ?? [])
+    .filter((entry) => entry.startsWith('nitpicker/no-fixed-sleep-synchronization@'))
+    .map((entry) => entry.slice(entry.indexOf(' ') + 1));
+}
+
 describe('the test file rules report the same on both lint engines', () => {
-  it.each(Object.keys(SOURCES))('for a %s project', async (runner) => {
-    const { eslint, oxlint } = await bothEngines(runner, SOURCES[runner]);
-
-    expect(eslint.length).toBeGreaterThanOrEqual(4);
-    expect(oxlint).toEqual(eslint);
+  it.each(Object.keys(FILES))('for %s', (name) => {
+    expect(eslintFindings[name]?.length).toBeGreaterThanOrEqual(2);
+    expect(oxlintFindings[name]).toEqual(eslintFindings[name]);
   });
 
-  it('for node:test named imports and a describe block', async () => {
-    const { eslint, oxlint } = await bothEngines('node', NODE_NAMED);
+  it.each([
+    ['jest/sample.test.mjs', 'waitFor from Testing Library or jest.advanceTimersByTimeAsync'],
+    ['node/sample.test.mjs', 'an awaited event or promise, or mock.timers.tick'],
+  ])('with a message in %s that names the call of the runner: %s', (name, advice) => {
+    const message = `Fixed sleeps are non-deterministic; wait on a condition with ${advice}. If a real wait is unavoidable, add an exception for nitpicker/no-fixed-sleep-synchronization in nitpicker.config.json.`;
 
-    expect(eslint.map((entry) => entry.split(' ')[0])).toEqual([
-      'node-test/expect-expect@4:3',
-      'node-test/no-identical-title@6:6',
-    ]);
-    expect(oxlint).toEqual(eslint);
+    expect(sleepsOf(oxlintFindings, name)).toEqual([message]);
+    expect(sleepsOf(eslintFindings, name)).toEqual([message]);
   });
 
-  it('with messages that name the runner of the project', async () => {
-    const jest = await bothEngines('jest', SOURCES.jest);
-    const node = await bothEngines('node', SOURCES.node);
+  it('with the rules of each runner located where the test goes wrong', () => {
+    const located = Object.fromEntries(
+      Object.keys(FILES).map((name) => [name, rulesOf(eslintFindings, name)]),
+    );
 
-    expect(jest.oxlint.join('\n')).toContain('Testing Library or jest.advanceTimersByTimeAsync');
-    expect(node.oxlint.join('\n')).toContain('mock.timers.tick');
-    expect(jest.oxlint.join('\n') + node.oxlint.join('\n')).not.toContain('vi.');
+    expect(located).toEqual({
+      'vitest/sample.test.mjs': [
+        'vitest/expect-expect@2:1',
+        'vitest/no-focused-tests@3:4',
+        'vitest/no-identical-title@4:1',
+        'nitpicker/no-fixed-sleep-synchronization@5:23',
+        'nitpicker/no-interval-polling-in-tests@6:17',
+      ],
+      'jest/sample.test.mjs': [
+        'jest/expect-expect@1:1',
+        'jest/no-focused-tests@2:4',
+        'jest/no-identical-title@3:4',
+        'nitpicker/no-fixed-sleep-synchronization@4:23',
+        'nitpicker/no-interval-polling-in-tests@5:17',
+      ],
+      'node/sample.test.mjs': [
+        'node-test/expect-expect@3:1',
+        'node-test/no-focused-tests@4:6',
+        'node-test/no-identical-title@5:6',
+        'nitpicker/no-fixed-sleep-synchronization@6:25',
+        'nitpicker/no-interval-polling-in-tests@7:19',
+      ],
+      'node/named.test.mjs': ['node-test/expect-expect@4:3', 'node-test/no-identical-title@6:6'],
+      'mocha/sample.test.mjs': [
+        'mocha/expect-expect@1:1',
+        'mocha/no-focused-tests@2:4',
+        'mocha/no-identical-title@3:4',
+        'nitpicker/no-fixed-sleep-synchronization@4:23',
+        'nitpicker/no-interval-polling-in-tests@5:17',
+      ],
+    });
   });
 });

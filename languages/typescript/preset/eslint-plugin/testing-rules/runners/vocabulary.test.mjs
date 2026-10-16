@@ -27,29 +27,42 @@ function messagesFor(rules, code, runner) {
 
 const sleepRules = { 'no-fixed-sleep': noFixedSleep };
 const intervalRules = { 'no-interval-polling': noIntervalPolling };
+const EXCEPTION =
+  'If a real wait is unavoidable, add an exception for nitpicker/no-fixed-sleep-synchronization in nitpicker.config.json.';
+
+const sleepMessage = (advice) =>
+  `Fixed sleeps are non-deterministic; wait on a condition with ${advice}. ${EXCEPTION}`;
+const absenceMessage = (advance) =>
+  `Do not assert absence by letting a wait time out: \`.rejects\` passes only after the full timeout, so the test is slow and depends on the delay. Advance fake timers past the delay (\`${advance}\`) and assert absence at once, such as \`expect(screen.queryByRole('tooltip')).toBeNull()\`. ${EXCEPTION}`;
+const intervalMessage = (advice) => `Prefer ${advice} over setInterval polling in tests.`;
+
+const ADVICE = {
+  vitest: 'vi.waitFor or expect.poll',
+  jest: 'waitFor from Testing Library or jest.advanceTimersByTimeAsync',
+  node: 'an awaited event or promise, or mock.timers.tick',
+  mocha: 'an awaited event or promise, or a fake clock advanced with clock.tickAsync',
+};
+const POLL = { ...ADVICE, vitest: 'vi.waitFor / expect.poll' };
+const ADVANCE = {
+  vitest: 'vi.advanceTimersByTime',
+  jest: 'jest.advanceTimersByTime',
+  node: 'mock.timers.tick',
+  mocha: 'clock.tick',
+};
 
 describe('rule messages name the API of the project runner', () => {
-  it('say vi.waitFor or expect.poll for Vitest, and by default', () => {
-    expect(messagesFor(sleepRules, SLEEP, 'vitest')[0]).toContain('vi.waitFor or expect.poll');
-    expect(messagesFor(sleepRules, SLEEP)[0]).toContain('vi.waitFor or expect.poll');
-    expect(messagesFor(intervalRules, INTERVAL)[0]).toBe(
-      'Prefer vi.waitFor / expect.poll over setInterval polling in tests.',
-    );
-  });
+  it.each(TEST_RUNNERS)(
+    'say the %s call for a fixed sleep, a poll and a timed-out wait',
+    (runner) => {
+      expect(messagesFor(sleepRules, SLEEP, runner)).toEqual([sleepMessage(ADVICE[runner])]);
+      expect(messagesFor(intervalRules, INTERVAL, runner)).toEqual([intervalMessage(POLL[runner])]);
+      expect(messagesFor(sleepRules, ABSENCE, runner)).toEqual([absenceMessage(ADVANCE[runner])]);
+    },
+  );
 
-  it.each([
-    ['jest', 'waitFor from Testing Library or jest.advanceTimersByTimeAsync'],
-    ['node', 'an awaited event or promise, or mock.timers.tick'],
-    ['mocha', 'a fake clock advanced with clock.tickAsync'],
-  ])('point a %s project at %s', (runner, advice) => {
-    expect(messagesFor(sleepRules, SLEEP, runner)[0]).toContain(advice);
-    expect(messagesFor(intervalRules, INTERVAL, runner)[0]).toContain(advice);
-  });
-
-  it('name the fake-timer call of the runner when asking for an immediate absence check', () => {
-    expect(messagesFor(sleepRules, ABSENCE, 'jest')[0]).toContain('`jest.advanceTimersByTime`');
-    expect(messagesFor(sleepRules, ABSENCE, 'node')[0]).toContain('`mock.timers.tick`');
-    expect(messagesFor(sleepRules, ABSENCE, 'vitest')[0]).toContain('`vi.advanceTimersByTime`');
+  it('speak Vitest when the project runner is not given', () => {
+    expect(messagesFor(sleepRules, SLEEP)).toEqual([sleepMessage(ADVICE.vitest)]);
+    expect(messagesFor(intervalRules, INTERVAL)).toEqual([intervalMessage(POLL.vitest)]);
   });
 
   it.each(['jest', 'node', 'mocha'])('keep the vi namespace out of the %s messages', (runner) => {

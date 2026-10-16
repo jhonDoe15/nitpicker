@@ -120,7 +120,9 @@ function stringArgument(node) {
 }
 
 function isNodeTestModuleMock(callee) {
-  if (!ts.isPropertyAccessExpression(callee) || callee.name.text !== 'module') return false;
+  if (!ts.isPropertyAccessExpression(callee) || callee.name.text !== 'module') {
+    return false;
+  }
   const receiver = callee.expression;
   return ts.isIdentifier(receiver)
     ? receiver.text === 'mock'
