@@ -138,6 +138,18 @@ sum + x, 0)`), `Object.fromEntries`, and `Object.groupBy`. No loops, `forEach`, 
   mutation ignore comments (`istanbul ignore`, `c8 ignore`, `v8 ignore`, `Stryker disable`) are
   suppressions too: `nitpicker/no-comments` reports them, and code that truly cannot be tested
   gets a reviewed exception for that rule in `nitpicker.config.json`.
+- A doc comment has to say something the name does not. `nitpicker/no-comments` reports a doc
+  comment on an exported declaration or exported type member whose description only restates the
+  name: it splits the name into words (camelCase, PascalCase, snake_case, kebab-case, digits),
+  drops stopwords (`the`, `a`, `of`, `get`, `returns`, `component`, `value`...), and reports when
+  every remaining description word, with a crude `ing`/`ed`/`es`/`s` stem, is a word of the name
+  (`/** Gets the user name. */ getUserName`, `/** The order id */ orderId`, `/** Button component */
+Button`). `@param`, `@returns` and other tag lines are not part of the description. Write the
+  unit, the limit, the edge case or the reason (`/** Price in cents, rounded down. */`). A
+  description longer than 5 lines, tag lines and blank lines not counted (an `@example` block is a
+  tag), is reported too: keep the non-obvious point and move the rest into names and types. Both
+  checks are skipped in the JavaScript preset's JSDoc mode, which already bans JSDoc prose, and a
+  doc comment that is needed as written gets an exception for the rule.
 
 ## Inside tests
 
