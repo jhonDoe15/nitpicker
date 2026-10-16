@@ -1,4 +1,4 @@
-import { createRuleTester } from './rule-tester.mjs';
+import { createRuleTester } from './test-support/rule-tester.mjs';
 import { rule as noBranchInCompositionRoot } from '../boundaries/no-branch-in-composition-root.mjs';
 import { rule as noHandwrittenBoundaryGuard } from '../boundaries/no-handwritten-boundary-guard.mjs';
 import { rule as noManagedResource } from '../boundaries/no-managed-resource-construction-outside-composition-roots.mjs';
@@ -84,6 +84,8 @@ tester.run('no-self-recursion through references and cycles', noSelfRecursion, {
     'function watch() { emitter.on("change", () => watch()); }',
     'function start() { window.addEventListener("load", function onLoad() { start(); }); }',
     'function outer() { const run = () => helper(); return run; } function helper() { return outer(); }',
+    'function poll() { const timer = setTimeout(() => poll(), 1000); return timer; }',
+    'function later() { schedule(() => later()); }',
   ],
   invalid: [
     {
@@ -122,6 +124,14 @@ tester.run('no-self-recursion through references and cycles', noSelfRecursion, {
     {
       code: 'function outer() { const run = () => helper(); return run(); } function helper() { return outer(); }',
       errors: [{ messageId: 'mutualRecursion', data: { name: 'outer', other: 'run' } }],
+    },
+    {
+      code: 'async function crawl(url) { const links = await fetchLinks(url); return Promise.all(links.map((link) => limit(() => crawl(link)))); }',
+      errors: [{ messageId: 'recursion', data: { name: 'crawl' } }],
+    },
+    {
+      code: 'async function retry(job) { return await withLock(() => retry(job)); }',
+      errors: [{ messageId: 'recursion', data: { name: 'retry' } }],
     },
   ],
 });
