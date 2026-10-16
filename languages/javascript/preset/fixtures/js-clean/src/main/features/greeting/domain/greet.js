@@ -15,22 +15,6 @@ export function greet(name) {
 }
 
 /**
- * @param {readonly string[]} names
- * @returns {readonly GreetResult[]}
- */
-export function greetAll(names) {
-  return names.map((name) => greet(name));
-}
-
-/**
- * @param {readonly string[]} names
- * @returns {number}
- */
-export function totalLength(names) {
-  return names.reduce((sum, name) => sum + name.length, 0);
-}
-
-/**
  * @param {GreetResult} result
  * @returns {string}
  */
