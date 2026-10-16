@@ -57,7 +57,13 @@ function followConventions({ config, projectRoot, headPolicy, commit, stdout }) 
     const lines = describeConventions(detected, followed).map((line) => `  ${line}\n`);
     stdout.write(`Following this project's conventions:\n${lines.join('')}`);
   }
-  return Object.keys(conventions).length === 0 ? headPolicy : { ...headPolicy, conventions };
+  return {
+    ...headPolicy,
+    ...(Object.keys(conventions).length === 0 ? {} : { conventions }),
+    ...(Object.keys(config.conventions ?? {}).length === 0
+      ? {}
+      : { conventionPins: config.conventions }),
+  };
 }
 
 function layoutFilter(config, headPolicy) {

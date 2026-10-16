@@ -82,12 +82,12 @@ describe('@typescript-eslint/ban-ts-comment', () => {
   });
 });
 
-async function ruleSettings(conventions) {
+async function ruleSettings(policy) {
   const root = mkdtempSync(path.join(tmpdir(), 'nitpicker-convention-rules-'));
   temporaryRoots.push(root);
-  if (conventions !== undefined) {
+  if (policy !== undefined) {
     const policyFile = path.join(root, 'policy.json');
-    writeFileSync(policyFile, JSON.stringify({ conventions }));
+    writeFileSync(policyFile, JSON.stringify(policy));
     vi.stubEnv('NITPICKER_POLICY', policyFile);
   }
   importCount += 1;
@@ -113,12 +113,19 @@ describe('rules configured from the followed conventions', () => {
   it('follows inline type imports and the project file name casing', async () => {
     expect(
       await ruleSettings({
-        'typescript.typeImports': 'inline',
-        'typescript.fileNames': 'snake_case',
+        conventions: { 'typescript.typeImports': 'inline', 'typescript.fileNames': 'snake_case' },
       }),
     ).toEqual({
       typeImports: ['error', { disallowTypeAnnotations: false, fixStyle: 'inline-type-imports' }],
       fileNames: ['error', { casing: 'snake_case' }],
     });
+  });
+
+  it('marks a pinned file name casing so the folder majority does not apply', async () => {
+    const { fileNames } = await ruleSettings({
+      conventionPins: { 'typescript.fileNames': 'kebab-case' },
+    });
+
+    expect(fileNames).toEqual(['error', { casing: 'kebab-case', pinned: true }]);
   });
 });

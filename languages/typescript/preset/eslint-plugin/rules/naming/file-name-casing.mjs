@@ -33,7 +33,7 @@ export const rule = {
     schema: [
       {
         type: 'object',
-        properties: { casing: { enum: FILE_NAME_CASINGS } },
+        properties: { casing: { enum: FILE_NAME_CASINGS }, pinned: { type: 'boolean' } },
         additionalProperties: false,
       },
     ],
@@ -48,7 +48,9 @@ export const rule = {
     return {
       Program() {
         const file = projectFile(context);
-        const folder = folderCasing(file, siblingNames(context.filename));
+        const folder = context.options[0]?.pinned
+          ? undefined
+          : folderCasing(file, siblingNames(context.filename));
         const casing = folder ?? projectCasing;
         if (!fileNameComplies(file, casing)) {
           context.report({
