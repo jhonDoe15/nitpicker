@@ -1,4 +1,4 @@
-import { readFileSync, writeFileSync } from 'node:fs';
+import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { execute } from '../execution/python-process.mjs';
@@ -9,7 +9,6 @@ export const RUFF_CONFIG = path.resolve(
 );
 const FILTERED_CONFIG = 'nitpicker-ruff.toml';
 const SELECTED_RULE = /^\s*"(RUF\d+)",\n/gm;
-const configs = new WeakMap();
 
 function parseRules(text) {
   try {
@@ -54,8 +53,6 @@ function filteredConfig(context) {
 }
 
 export function ruffConfigFor(context) {
-  if (!configs.has(context)) {
-    configs.set(context, filteredConfig(context));
-  }
-  return configs.get(context);
+  const alreadyFiltered = path.join(context.reportRoot, FILTERED_CONFIG);
+  return existsSync(alreadyFiltered) ? alreadyFiltered : filteredConfig(context);
 }

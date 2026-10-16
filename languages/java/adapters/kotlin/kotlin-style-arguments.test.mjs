@@ -5,7 +5,7 @@ import { afterEach, describe, expect, it } from 'vitest';
 import { INIT_SCRIPT } from '../../builds/java-build.mjs';
 import { collectJavaFindings } from '../java-diff.mjs';
 import { kotlinGradleArguments } from './kotlin-tools.mjs';
-import { project, removeKotlinProjects } from './test-support/kotlin-project.mjs';
+import { kotlinProjects } from './test-support/kotlin-project.mjs';
 
 const fakeGradle = path.join(
   fileURLToPath(new URL('../', import.meta.url)),
@@ -18,7 +18,9 @@ const FOLLOWED = {
 };
 const ISOLATED_EDITORCONFIG = encodeURIComponent('root = true\n');
 
-afterEach(removeKotlinProjects);
+const { project, remove } = kotlinProjects();
+
+afterEach(remove);
 
 function decoded(args) {
   return args.map((argument) => decodeURIComponent(argument));

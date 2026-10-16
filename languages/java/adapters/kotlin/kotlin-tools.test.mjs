@@ -1,8 +1,10 @@
 import { afterEach, describe, expect, it } from 'vitest';
 import { resolveKotlinTools } from './kotlin-tools.mjs';
-import { project, removeKotlinProjects } from './test-support/kotlin-project.mjs';
+import { kotlinProjects } from './test-support/kotlin-project.mjs';
 
-afterEach(removeKotlinProjects);
+const { project, remove } = kotlinProjects();
+
+afterEach(remove);
 
 const PROJECT_KTFMT = { ktfmt: ['project', 'nitpicker'] };
 const toolsOf = (files, options) => resolveKotlinTools(project(files), options);

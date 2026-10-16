@@ -1,7 +1,8 @@
 import { createHash } from 'node:crypto';
-import { existsSync, readdirSync, readFileSync } from 'node:fs';
+import { existsSync, readdirSync } from 'node:fs';
 import path from 'node:path';
 import { globToRegExp } from '../../../shared/glob.mjs';
+import { readInside } from '../../../shared/read-inside.mjs';
 import {
   applyInventoryToFindings,
   readOptionalInventory,
@@ -10,9 +11,9 @@ import {
 import { configError, TYPESCRIPT_ONLY_KEYS } from '../../../shared/config.mjs';
 import {
   JAVA_TOOLS,
-  PROJECT_STYLE_FILES,
+  projectStyleFilesOf,
   PROJECT_TOOL_CONFIGS,
-  STYLE_TOOL_NAMES,
+  styleToolNames,
 } from './gradle-presets.mjs';
 import { JAVA_NATIVE_RULES, SHARED_EXCEPTION_RULES } from '../../../shared/policy.mjs';
 import { evaluateBaselineExpansions } from '../../../shared/rules/baseline-expansion.mjs';
@@ -86,7 +87,7 @@ function javaAdapterArguments({
     ),
     ...(kotlin.formatter === undefined ? [] : ['--kotlin-formatter', kotlin.formatter]),
     ...(kotlin.detektConfig === undefined ? [] : ['--kotlin-detekt-config', kotlin.detektConfig]),
-    ...[...PROJECT_TOOL_CONFIGS.keys(), ...STYLE_TOOL_NAMES]
+    ...[...PROJECT_TOOL_CONFIGS.keys(), ...styleToolNames()]
       .filter((tool) => tools[tool] !== undefined)
       .flatMap((tool) => [`--${tool}-precedence`, tools[tool].precedence.join(',')]),
   ];
@@ -102,9 +103,13 @@ export function configureJavaAnalyzer(analyzer, options) {
   const projectConfigDirectories = [...PROJECT_TOOL_CONFIGS]
     .filter(([tool]) => tools[tool]?.precedence.includes('project'))
     .map(([, file]) => path.dirname(file));
-  const projectStyleFiles = [...PROJECT_STYLE_FILES]
-    .filter(([tool]) => tools[tool]?.precedence.includes('project'))
-    .flatMap(([, files]) => files);
+  const projectStyleFiles = [
+    ...new Set(
+      styleToolNames()
+        .filter((tool) => tools[tool]?.precedence.includes('project'))
+        .flatMap(projectStyleFilesOf),
+    ),
+  ];
   const configured = {
     ...analyzer,
     configurationHash,
@@ -149,13 +154,15 @@ function isLifted(finding, lifted) {
 
 function hashWithProjectConfigs(configurationHash, policyRoot, { directories, files }) {
   const hash = createHash('sha256').update(configurationHash);
-  const present = files.filter((file) => existsSync(path.join(policyRoot, file)));
-  for (const file of [
+  const relatives = [
     ...directories.flatMap((directory) => filesUnder(policyRoot, directory)),
-    ...present,
-  ]) {
-    const content = readFileSync(path.join(policyRoot, file));
-    hash.update(`${file}\0${String(content.length)}\0`).update(content);
+    ...files,
+  ];
+  for (const file of relatives) {
+    const content = readInside(policyRoot, file);
+    if (content !== undefined) {
+      hash.update(`${file}\0${String(content.length)}\0`).update(content);
+    }
   }
   return hash.digest('hex');
 }

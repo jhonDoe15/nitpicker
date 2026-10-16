@@ -2,9 +2,8 @@ import { realpathSync } from 'node:fs';
 import { readHeadPolicyFile } from '../../../shared/head-policy.mjs';
 import { collectJavaFindings } from './java-diff.mjs';
 import { detectJavaBuild } from '../builds/java-build.mjs';
-import { GRADLE_PRESETS } from './gradle-presets.mjs';
 import { EXCEPTION_SEPARATOR } from './java-policy.mjs';
-import { PROJECT_TOOL_CONFIGS, STYLE_TOOL_NAMES } from './gradle-presets.mjs';
+import { GRADLE_PRESETS, PROJECT_TOOL_CONFIGS, styleToolNames } from './gradle-presets.mjs';
 import { KOTLIN_FORMATTERS } from './kotlin/kotlin-options.mjs';
 
 export const GRADLE_FAILURE_RULE = 'gradle-failure';
@@ -131,7 +130,7 @@ function toolPrecedence(values) {
       );
 }
 
-const PRECEDENCE_TOOLS = [...PROJECT_TOOL_CONFIGS.keys(), ...STYLE_TOOL_NAMES];
+const PRECEDENCE_TOOLS = [...PROJECT_TOOL_CONFIGS.keys(), ...styleToolNames()];
 
 const REPEATED_OPTIONS = ['--exclude', '--exception'];
 

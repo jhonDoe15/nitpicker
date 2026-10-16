@@ -1,5 +1,4 @@
-import { readFileSync } from 'node:fs';
-import path from 'node:path';
+import { readInside } from '../../../shared/read-inside.mjs';
 import { precedenceLayers } from '../../../shared/tool-precedence.mjs';
 import { projectEditorconfig } from '../adapters/kotlin/kotlin-style-files.mjs';
 import {
@@ -58,10 +57,8 @@ function ktfmtChoices(root) {
 
 function detektChoices(root, configured) {
   const file = detektConfigOf(root, configured, 'head');
-  const active =
-    file === undefined
-      ? undefined
-      : detektWildcardActive(readFileSync(path.join(root, file), 'utf8'));
+  const text = file === undefined ? undefined : readInside(root, file, 'utf8');
+  const active = text === undefined ? undefined : detektWildcardActive(text);
   return choicesFrom('your detekt config', {
     [KOTLIN_WILDCARD_IMPORTS]: DETEKT_WILDCARD_CHOICES[active],
   });
