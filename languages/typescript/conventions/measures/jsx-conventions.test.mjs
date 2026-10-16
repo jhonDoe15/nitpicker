@@ -28,7 +28,7 @@ describe('JSX conventions', () => {
       it(`reads ${convention.id} = ${option} from code Prettier formatted that way`, async () => {
         const text = await formatted(prettierConventionOptions({ [convention.id]: option }));
 
-        expect(convention.measure(text)).toBe(option);
+        expect(convention.measure(text, 'a.jsx')).toBe(option);
       });
     }
   }
@@ -49,14 +49,33 @@ describe('JSX conventions', () => {
       'double',
     ],
     ['prettier.jsxQuotes', '<a title={"x"} data-a=\'q"r\'>y</a>;\n', undefined],
-    ['prettier.jsxQuotes', 'const a = "x";\nconst b = { c: "d" };\nf(a = "z");\n', undefined],
-    ['prettier.jsxQuotes', '// <a href="x">\n/* b="c" */\nconst a = 1;\n', undefined],
+    ['prettier.jsxQuotes', 'const a = "x";\nlet b="y";\nf(c = "z");\n', undefined],
+    [
+      'prettier.jsxQuotes',
+      'const s = \'<a href="x" id="y">\';\nconst t = "<b c=\'d\'>";\n',
+      undefined,
+    ],
+    ['prettier.jsxQuotes', 'const t = `<a href="x" id="y">`;\nconst u = <i />;\n', undefined],
+    ['prettier.jsxQuotes', '// <a href="x">\n/* <b c="d"> */\nconst a = 1;\n', undefined],
     ['prettier.jsxQuotes', "<a href='x' id='y'>z</a>;\n", 'single'],
     ['prettier.jsxQuotes', '<a href="x" id=\'y\'>z</a>;\n', undefined],
+    ['prettier.jsxQuotes', 'export const value = 1;\n', undefined],
     ['prettier.bracketSameLine', '<A\n  b="1"\n  c="2"\n/>;\n', undefined],
     ['prettier.bracketSameLine', '<A\n  b="1"\n  c={2}\n>\n  x\n</A>;\n', 'newLine'],
     ['prettier.bracketSameLine', '<A\n  b="1"\n  c={2}>\n  x\n</A>;\n', 'sameLine'],
     ['prettier.bracketSameLine', '<A\n  {...props}>\n  x\n</A>;\n', 'sameLine'],
+    ['prettier.bracketSameLine', '<A b="1" c={2}>\n  x\n</A>;\n', undefined],
+    ['prettier.bracketSameLine', '<A>\n  x\n</A>;\n', undefined],
+    [
+      'prettier.bracketSameLine',
+      '<A\n  b="1"\n  style={{\n    c: 1,\n  }}>\n  x\n</A>;\n',
+      'sameLine',
+    ],
+    [
+      'prettier.bracketSameLine',
+      '<A\n  b="1"\n  style={{\n    c: 1,\n  }}\n>\n  x\n</A>;\n',
+      'newLine',
+    ],
     [
       'prettier.bracketSameLine',
       'type T = Map<\n  string,\n  number\n>;\nconst a = b > c;\n',
@@ -65,6 +84,6 @@ describe('JSX conventions', () => {
     ['prettier.bracketSameLine', 'f(\n  a=1,\n  b,\n);\nx = y =>\n  y;\n', undefined],
     ['prettier.bracketSameLine', '<A\n  b="1"\n  onClick={() => run()}>\n  x\n</A>;\n', 'sameLine'],
   ])('%s on %j', (id, text, expected) => {
-    expect(measures[id](text)).toBe(expected);
+    expect(measures[id](text, 'a.tsx')).toBe(expected);
   });
 });

@@ -76,8 +76,11 @@ describe('data conventions', () => {
 });
 
 describe('data conventions in the Prettier layers', () => {
-  async function optionsFor(relativePath, precedence) {
+  async function optionsFor(relativePath, precedence, projectConfig) {
     const directory = mkdtempSync(path.join(tmpdir(), 'nitpicker-data-conventions-'));
+    if (projectConfig !== undefined) {
+      writeFileSync(path.join(directory, '.prettierrc.json'), JSON.stringify(projectConfig));
+    }
     const policyFile = path.join(directory, 'policy.json');
     writeFileSync(
       policyFile,
@@ -112,5 +115,18 @@ describe('data conventions in the Prettier layers', () => {
     ['README.md', ['nitpicker'], { singleQuote: true }],
   ])('%s under %j gets %j', async (relativePath, precedence, expected) => {
     expect(await optionsFor(relativePath, precedence)).toEqual(expected);
+  });
+
+  it.each([
+    ['package.json', { tabWidth: 3 }, { useTabs: false, tabWidth: 3 }],
+    ['ci.yml', { tabWidth: 3 }, { useTabs: false, tabWidth: 3 }],
+    ['package.json', { useTabs: true }, { useTabs: true, tabWidth: 4 }],
+    ['ci.yml', { semi: false }, { semi: false, useTabs: false, tabWidth: 4 }],
+  ])('%s with a project config %j under ["project"] gets %j', async (file, project, expected) => {
+    expect(await optionsFor(file, ['project'], project)).toEqual(expected);
+    expect(await optionsFor(file, ['project', 'nitpicker'], project)).toEqual({
+      singleQuote: true,
+      ...expected,
+    });
   });
 });

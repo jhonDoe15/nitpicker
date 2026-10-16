@@ -48,7 +48,7 @@ export const rule = {
           ? undefined
           : folderCasing(file, siblingNames(context.filename));
         const casing = folder ?? projectCasing;
-        if (!fileNameComplies(file, casing)) {
+        if (!fileNameComplies(file, casing, context.sourceCode.text)) {
           context.report({
             loc: { line: 1, column: 0 },
             messageId: folder === undefined ? 'casing' : 'folderCasing',

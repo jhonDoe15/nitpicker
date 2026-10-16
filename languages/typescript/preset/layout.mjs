@@ -43,6 +43,17 @@ export const GENERATED_PATH = new RegExp(
   ].join('|'),
 );
 
+export const FIXTURE_PATH = /(?:^|\/)(?:fixtures|__fixtures__)\//;
+
+export function prettierPatterns(layout) {
+  const code = layout.formatExtensions.join(',');
+  return [
+    ...layout.sourceRoots.map((root) => `${root}/**/*.{${code},json,yaml,yml}`),
+    ...layout.testRoots.map((root) => `${root}/**/*.{${code},json}`),
+    `*.{${code},json}`,
+  ];
+}
+
 function normalizeRoot(root) {
   return root.replaceAll('\\', '/').replace(/^\.\//, '').replace(/\/$/, '');
 }
@@ -118,6 +129,7 @@ function createClassifiers({ sourceRoots, testRoots, exclude, patterns }) {
     isExcluded,
     isTestFile,
     isGeneratedPath: (file) => GENERATED_PATH.test(toPosix(file)),
+    isFixturePath: (file) => FIXTURE_PATH.test(toPosix(file)),
     isTestPath: (file) => patterns.testPattern.test(toPosix(file)),
     isRunnableTestFile: (file) => isTestFile(file) && patterns.runnableTestPattern.test(file),
     isSourceFile,

@@ -61,13 +61,6 @@ describe('file name casing votes', () => {
     expect(vote(file)).toBeUndefined();
   });
 
-  it.each(['src/useAuth.ts', 'src/hooks/useSession.tsx', 'src/useAuth.test.ts', 'src/useX.ts'])(
-    '%s is a React hook file and gives no vote',
-    (file) => {
-      expect(vote(file)).toBeUndefined();
-    },
-  );
-
   it.each([
     'dist/chunk-3f9a1c2b.js',
     'src/main.3f9a1c2b.js',
@@ -125,8 +118,6 @@ describe('file name casing compliance', () => {
     'src/UserProfile.ts',
     'src/UserProfile.tsx',
     'src/Button.js',
-    'src/useAuth.ts',
-    'src/hooks/useSession.tsx',
     'dist/chunk-3f9a1c2b.js',
     'src/main.3f9a1c2b.js',
     'src/__generated__/UserQuery.graphql.ts',
@@ -181,6 +172,39 @@ describe('file name casing compliance', () => {
   });
 });
 
+describe('hook files', () => {
+  const hook = (name) => `export function ${name}() {\n  return 1;\n}\n`;
+  const measure = (file, text) => FILE_NAME_CONVENTION.measure(text, file);
+
+  it.each([
+    ['src/useAuth.ts', hook('useAuth')],
+    ['src/hooks/useSession.tsx', 'export const useSession = () => 1;\n'],
+    ['src/useAuth.test.ts', hook('useAuth')],
+    ['src/useAuth.ts', 'function useAuth() {}\nexport { useAuth };\n'],
+    ['src/useAuth.ts', 'export default function useAuth() {}\n'],
+    ['src/useAuth.ts', 'const useAuth = () => 1;\nexport default useAuth;\n'],
+    ['src/useAuth.ts', 'export async function useAuth() {}\n'],
+    ['src/useAuth.ts', undefined],
+  ])('%s gives no vote and passes with %j', (file, text) => {
+    expect(measure(file, text)).toBeUndefined();
+    for (const casing of ['kebab-case', 'camelCase', 'snake_case']) {
+      expect(fileNameComplies(file, casing, text), casing).toBe(true);
+    }
+  });
+
+  it.each([
+    ['src/useCase.ts', 'export const build = () => 1;\n'],
+    ['src/useCase.ts', hook('useCaseBuilder')],
+    ['src/useCase.ts', 'const useCase = 1;\n'],
+    ['src/useCase.ts', '// export function useCase() {}\nexport const a = 1;\n'],
+    ['src/useAuth.ts', hook('useSession')],
+  ])('%s votes camelCase and is flagged in a kebab-case project with %j', (file, text) => {
+    expect(measure(file, text)).toBe('camelCase');
+    expect(fileNameComplies(file, 'kebab-case', text)).toBe(false);
+    expect(fileNameComplies(file, 'camelCase', text)).toBe(true);
+  });
+});
+
 describe('folder casing', () => {
   it('follows the plurality of at least three other voting files', () => {
     expect(folderCasing('src/a.ts', ['a-b.ts', 'c_d.ts', 'e_f.ts', 'g_h.ts'])).toBe('snake_case');
@@ -201,13 +225,13 @@ describe('folder casing', () => {
 });
 
 describe('file name casing detection', () => {
-  function detect(names, accepts) {
+  function detect(names, accepts, texts = {}) {
     const source = {
       paths: ({ unreadable = false } = {}) =>
         unreadable ? names : names.filter((name) => !name.includes('huge')),
       readMany: (paths) => {
-        expect(paths).toEqual([]);
-        return new Map();
+        expect(paths).toEqual(Object.keys(texts));
+        return new Map(paths.map((file) => [file, texts[file]]));
       },
     };
     return detectConventions({ definitions: [FILE_NAME_CONVENTION], source, accepts })[
@@ -250,6 +274,20 @@ describe('file name casing detection', () => {
 
     expect(detected.choice).toBe('kebab-case');
     expect(detected.files).toBe(1);
+  });
+
+  it('reads only hook-named files, to see whether they export the hook', () => {
+    const detected = detect(
+      ['src/useCase.ts', 'src/useAuth.ts', 'src/huge_hook.ts', 'src/useHuge.ts', 'src/a-b.ts'],
+      undefined,
+      {
+        'src/useAuth.ts': 'export function useAuth() {}\n',
+        'src/useCase.ts': 'export const build = 1;\n',
+        'src/useHuge.ts': undefined,
+      },
+    );
+
+    expect(detected.counts).toEqual({ 'kebab-case': 1, camelCase: 1, snake_case: 1 });
   });
 
   it('keeps the default when only ambiguous names exist', () => {

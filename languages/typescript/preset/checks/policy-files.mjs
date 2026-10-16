@@ -78,6 +78,7 @@ export const POLICY_FILES = [
   'languages/typescript/conventions/file-name-casing.mjs',
   'languages/typescript/conventions/type-import-style.mjs',
   'languages/typescript/conventions/measures/assertion-helpers.mjs',
+  'languages/typescript/conventions/measures/typescript-syntax.mjs',
   'languages/typescript/preset/eslint-plugin/rules/errors/no-silent-catch.mjs',
   'languages/typescript/preset/eslint-plugin/rules/modules/report-module-load-effects.mjs',
   'languages/typescript/preset/eslint-plugin/rules/errors/structured-catch-logging.mjs',
