@@ -112,6 +112,49 @@ describe('the React test file detection', () => {
     expect(runsIn(root, code)).toBe(false);
   });
 
+  it.each([
+    [
+      'a component spec that drives a browser',
+      'src/ui/login.spec.tsx',
+      "import { test } from '@playwright/test';",
+    ],
+    [
+      'a component file under the e2e root',
+      'e2e/login.spec.tsx',
+      "import { login } from './steps';",
+    ],
+  ])('skips the rule for %s', (_name, file, code) => {
+    const root = projectWith({});
+    const linter = new Linter({ cwd: root });
+    const config = [
+      {
+        files: ['**/*.{ts,tsx}'],
+        languageOptions: { parser: tseslint.parser },
+        plugins: { demo: { rules: { probe } } },
+        rules: { 'demo/probe': 'error' },
+      },
+    ];
+
+    expect(linter.verify(code, config, path.join(root, file))).toEqual([]);
+  });
+
+  it('runs the rule for a component test outside the e2e root', () => {
+    const root = projectWith({});
+    const linter = new Linter({ cwd: root });
+    const config = [
+      {
+        files: ['**/*.{ts,tsx}'],
+        languageOptions: { parser: tseslint.parser },
+        plugins: { demo: { rules: { probe } } },
+        rules: { 'demo/probe': 'error' },
+      },
+    ];
+
+    expect(
+      linter.verify("import { a } from './a';", config, path.join(root, 'src/ui/a.test.tsx')),
+    ).toHaveLength(1);
+  });
+
   it('treats the helper import as the Testing Library module for the wrapped rule', async () => {
     const { testingLibraryPlugin } = await import('../../../eslint-config/react/react-plugins.mjs');
     const root = projectWith({ 'src/test/render.tsx': renderHelper });

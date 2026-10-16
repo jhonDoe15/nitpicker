@@ -1,14 +1,16 @@
 import globals from 'globals';
 import tseslint from 'typescript-eslint';
 import { nitpickerRules } from '../../eslint-plugin/index.mjs';
-import { cssInJsSource } from '../../eslint-plugin/rules/react/react-single-styling-approach.mjs';
 import { codeExtensions } from '../../layout.mjs';
 import {
   defaultStylingApproach,
   reactNativeTestingPackage,
   reactTestRuleIds,
+  restrictedBrowserGlobals,
   testingLibrarySettings,
 } from './react-rules.mjs';
+import { domainGlobsFor } from '../strict/strict-domain.mjs';
+import { stylingApproachFor } from './react-styling.mjs';
 import { nitpickerReactRuleIds } from './rules/nitpicker-rules.mjs';
 import {
   react19RuleIds,
@@ -21,6 +23,7 @@ import {
   reactMajorOf,
   readDependencyNames,
   storyGlobs,
+  testsCleanUpAutomatically,
 } from '../scope-support.mjs';
 
 export { isReactProject } from '../scope-support.mjs';
@@ -35,15 +38,8 @@ function ruleIdsForReact(major) {
   return untypedThirdPartyRuleIds.filter((id) => !before19 || !react19RuleIds.includes(id));
 }
 
-function inferredStylingApproach(dependencies) {
-  if (dependencies.some((name) => cssInJsSource.test(name))) {
-    return 'css-in-js';
-  }
-  return dependencies.some(isReactNativePackage) ? 'style-sheet' : defaultStylingApproach;
-}
-
-export function stylingApproachFor({ projectRoot, react = {} }) {
-  return react.styling ?? inferredStylingApproach(readDependencyNames(projectRoot));
+function scannableLayout(layout) {
+  return typeof layout.projectCodeFiles === 'function' ? layout : undefined;
 }
 
 export function analyzedProjectRoot(environment = process.env) {
@@ -65,6 +61,18 @@ function reactVersionSettings(major) {
 
 function platformGlobals(react) {
   return react.nativeApp ? {} : { languageOptions: { globals: globals.browser } };
+}
+
+function browserGlobalEntries(layout, react) {
+  return react.nativeApp
+    ? []
+    : [
+        {
+          files: [...layout.sourceGlobs, ...testScope(layout).files],
+          ignores: domainGlobsFor(layout.sourceRoots ?? []),
+          rules: { 'no-restricted-globals': restrictedBrowserGlobals },
+        },
+      ];
 }
 
 export async function reactSyntaxConfigFor(layout, react = {}) {
@@ -102,6 +110,7 @@ export async function reactSyntaxConfigFor(layout, react = {}) {
       rules: {
         ...Object.fromEntries(reactTestRuleIds.map((id) => [id, 'error'])),
         ...(react.reactNative ? { 'testing-library/no-test-id-queries': 'off' } : {}),
+        ...(react.autoCleanup === false ? { 'testing-library/no-manual-cleanup': 'off' } : {}),
       },
     },
   ];
@@ -142,14 +151,16 @@ export async function reactScopeConfigFor(layout, react = {}, projectRoot = anal
   const dependencies = readDependencyNames(projectRoot);
   const scope = {
     ...react,
-    styling: stylingApproachFor({ projectRoot, react }),
+    styling: stylingApproachFor({ projectRoot, react, layout: scannableLayout(layout) }),
     reactNative: dependencies.includes(reactNativeTestingPackage),
     nativeApp: dependencies.some(isReactNativePackage),
     major: react.major ?? reactMajorOf(projectRoot),
+    autoCleanup: react.autoCleanup ?? testsCleanUpAutomatically(projectRoot),
   };
   return [
     ...(await reactSyntaxConfigFor(layout, scope)),
     ...storyConfigFor(),
     ...(await reactTypedConfigFor(layout)),
+    ...browserGlobalEntries(layout, scope),
   ];
 }

@@ -64,8 +64,22 @@ for (const [file, source] of Object.entries(projectFiles)) {
   writeFileSync(path.join(root, file), `${source.join('\n')}\n`);
 }
 
+const baseUrlRoot = mkdtempSync(path.join(tmpdir(), 'nitpicker-base-url-helper-'));
+const baseUrlFiles = {
+  'src/main/ui/app.tsx': 'export function App() { return <main />; }',
+  'test/support/render-app.tsx': `${renderLine}\nimport { App } from 'main/ui/app';\nexport function renderApp() { return render(<App />); }`,
+  'tsconfig.json': JSON.stringify({
+    compilerOptions: { types: [], lib: ['ES2022'], baseUrl: './src' },
+  }),
+};
+for (const [file, source] of Object.entries(baseUrlFiles)) {
+  mkdirSync(path.dirname(path.join(baseUrlRoot, file)), { recursive: true });
+  writeFileSync(path.join(baseUrlRoot, file), `${source}\n`);
+}
+
 afterAll(() => {
   rmSync(root, { recursive: true, force: true });
+  rmSync(baseUrlRoot, { recursive: true, force: true });
 });
 
 const testFile = path.join(root, 'test/ui/app.test.tsx');
@@ -89,6 +103,10 @@ new RuleTester({
     throughHelper('chain.js'),
     throughHelper('aliased.js'),
     { filename: testFile, code: "import { App } from '@/main/ui/app.js';\nApp();" },
+    {
+      filename: path.join(baseUrlRoot, 'test/ui/app.test.tsx'),
+      code: "import { renderApp } from '../support/render-app';\nrenderApp();",
+    },
   ],
   invalid: [
     { ...throughHelper('library-only.js'), errors: [{ messageId: 'missingRuntime' }] },

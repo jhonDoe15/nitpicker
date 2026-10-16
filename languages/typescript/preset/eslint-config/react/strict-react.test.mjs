@@ -6,7 +6,7 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { failureMessagesFor } from '../../failure-messages/test-support/harness.mjs';
 import { defaultResolvedLayout } from '../../layout.mjs';
-import { reactRuleIds, reactTestRuleIds } from './react-rules.mjs';
+import { reactRuleIds, reactTestRuleIds, restrictedBrowserGlobals } from './react-rules.mjs';
 import { restrictedSyntaxFor, strictSyntaxConfig, strictSyntaxConfigFor } from '../strict.mjs';
 
 const presetConfigUrl = pathToFileURL(
@@ -237,6 +237,25 @@ describe('the preset config', () => {
     expect(await severity('src/main/features/x/adapters/page.tsx')).toBe(2);
   });
 
+  it('lets a setup file call cleanup when Testing Library does not unmount on its own', async () => {
+    const severityWith = async (autoCleanup) => {
+      const config = await presetConfigFor({
+        manifest: reactManifest,
+        policy: { react: { enabled: true, autoCleanup } },
+      });
+      const eslint = new ESLint({
+        cwd: path.resolve(fileURLToPath(new URL('../', import.meta.url)), '../defaults'),
+        overrideConfigFile: true,
+        overrideConfig: config,
+      });
+      const { rules } = await eslint.calculateConfigForFile('test/setup.test.tsx');
+      return rules['testing-library/no-manual-cleanup'][0];
+    };
+
+    expect(await severityWith(false)).toBe(0);
+    expect(await severityWith(true)).toBe(2);
+  });
+
   it('gives JSX files browser globals unless the project is a React Native app', async () => {
     const globalsOf = async (manifest) => {
       const eslint = new ESLint({
@@ -251,6 +270,31 @@ describe('the preset config', () => {
 
     expect(Object.hasOwn(await globalsOf(reactManifest), 'document')).toBe(true);
     expect(Object.hasOwn(await globalsOf(native), 'document')).toBe(false);
+  });
+
+  it('restricts the confusing browser globals wherever it enables browser globals', async () => {
+    const restrictedOf = async (manifest, file) => {
+      const eslint = new ESLint({
+        cwd: path.resolve(fileURLToPath(new URL('../', import.meta.url)), '../defaults'),
+        overrideConfigFile: true,
+        overrideConfig: await presetConfigFor({ manifest }),
+      });
+      const setting = (await eslint.calculateConfigForFile(file)).rules['no-restricted-globals'];
+      return (setting ?? []).slice(1).map((entry) => entry.name);
+    };
+    const native = { dependencies: { react: '19.0.0', 'react-native': '0.81.0' } };
+    const pickerNames = await restrictedOf(reactManifest, 'src/main/ui/picker.jsx');
+
+    expect(pickerNames).toEqual(restrictedBrowserGlobals.slice(1).map((entry) => entry.name));
+    expect(pickerNames).toHaveLength(58);
+    expect(restrictedBrowserGlobals.find((entry) => entry.name === 'event').message).toBe(
+      '`event` here is the browser global, not a local value. Write `window.event` when you mean the global; otherwise take the value as a parameter (`onClick={(event) => ...}`) or declare it. If this is intentional, add an exception for this rule in nitpicker.config.json.',
+    );
+    expect(await restrictedOf(reactManifest, 'test/picker.test.tsx')).toEqual(pickerNames);
+    expect(await restrictedOf(native, 'src/main/ui/picker.jsx')).toEqual([]);
+    expect(
+      await restrictedOf(reactManifest, 'src/main/features/billing/domain/total.ts'),
+    ).not.toContain('name');
   });
 
   it('hands the configured styling approach to the styling rule', async () => {

@@ -42,6 +42,8 @@ export const rule = {
     messages: {
       uiFramework:
         'domain/ does not import a UI framework or UI state library (`{{source}}`): components, hooks and stores live in adapters/ (or shared/ui) and call the logic in domain/, which takes and returns plain values. If a framework requires this file in domain/, add an exception for this rule for those paths in nitpicker.config.json.',
+      jsxInDomain:
+        'domain/ does not render: JSX belongs to a component in adapters/ (or shared/ui), which calls the logic in domain/ and renders its plain result. If a framework requires this file in domain/, add an exception for this rule for those paths in nitpicker.config.json.',
       uiFrameworkThroughShared:
         'domain/ does not import a UI framework or UI state library, here `{{framework}}` through `{{source}}`: components, hooks and stores live in adapters/ (or shared/ui) and call the logic in domain/, which takes and returns plain values. If a framework requires this file in domain/, add an exception for this rule for those paths in nitpicker.config.json.',
     },
@@ -67,7 +69,14 @@ export const rule = {
         });
       }
     }
+    function checkJsx(node) {
+      if (!node.parent.type.startsWith('JSX')) {
+        context.report({ node, messageId: 'jsxInDomain' });
+      }
+    }
     return {
+      JSXElement: checkJsx,
+      JSXFragment: checkJsx,
       ImportDeclaration: check,
       ImportExpression: check,
       ExportNamedDeclaration: check,

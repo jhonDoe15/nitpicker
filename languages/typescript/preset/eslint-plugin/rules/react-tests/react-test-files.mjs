@@ -1,7 +1,10 @@
 import path from 'node:path';
 import { reachableModules } from '../../../modules/module-resolution.mjs';
 import { moduleSourcesOf, statementSources } from '../../../modules/module-sources.mjs';
+import { readLayout } from '../../../head-policy.mjs';
+import { isBrowserEndToEndTest, mockedModuleSource } from '../analysis/test-code-analysis.mjs';
 
+const layout = readLayout();
 const REACT_PACKAGE = 'react';
 const reactTestModule = /^(?:@testing-library\/.+|react(?:-[^/]+)?(?:\/.*)?|enzyme(?:\/.*)?)$/u;
 const projectTestUtilsModule = /^\.{1,2}\/(?:.*\/)?[^/]*test-utils[^/]*$/u;
@@ -9,7 +12,6 @@ const testingLibraryModule =
   /^(?:@testing-library\/.+|enzyme(?:\/.*)?|react-test-renderer(?:\/.*)?)$/u;
 const testingLibraryQueryModule = /^@testing-library\/(?!user-event$|jest-dom(?:\/|$)).+$/u;
 const componentFile = /\.[cm]?[jt]sx$/u;
-const browserTestModule = /^(?:@playwright\/|cypress(?:\/|$))/u;
 const TEST_UTILS_NAME = 'test-utils';
 const LIMITS = { maxDepth: 4, maxFiles: 50 };
 const UTILS_MODULE_SETTING = 'testing-library/utils-module';
@@ -45,26 +47,10 @@ function reachesTestHelper(source, filename) {
   return false;
 }
 
-const mockRunners = new Set(['vi', 'jest']);
-const mockMethods = new Set(['mock', 'doMock']);
-
-function mockedSource(node) {
-  const isMock =
-    node?.type === 'CallExpression' &&
-    node.callee.type === 'MemberExpression' &&
-    node.callee.object.type === 'Identifier' &&
-    mockRunners.has(node.callee.object.name) &&
-    !node.callee.computed &&
-    mockMethods.has(node.callee.property.name);
-  const [argument] = isMock ? node.arguments : [];
-  const source = argument?.type === 'ImportExpression' ? argument.source : argument;
-  return source?.type === 'Literal' ? source.value : undefined;
-}
-
 function topLevelSources(program) {
   return program.body.flatMap((statement) => [
     ...statementSources(statement),
-    ...(statement.type === 'ExpressionStatement' ? [mockedSource(statement.expression)] : []),
+    ...(statement.type === 'ExpressionStatement' ? [mockedModuleSource(statement.expression)] : []),
   ]);
 }
 
@@ -81,9 +67,10 @@ function reactTestScope(context) {
     (source) => typeof source === 'string',
   );
   const helper = testHelperOf(sources, context.filename);
+  const projectFile = path.relative(context.cwd, context.filename).replaceAll('\\', '/');
   const component =
     componentFile.test(context.filename) &&
-    !sources.some((source) => browserTestModule.test(source));
+    !isBrowserEndToEndTest({ sources, projectFile, layout });
   const direct = sources.some((source) => testingLibraryQueryModule.test(source));
   return {
     inScope: component || helper !== undefined || sources.some(isReactTestModule),

@@ -39,12 +39,19 @@ config file is an exception like any other.
 - `features/<name>/adapters/` performs I/O and calls `domain/`. A feature with neither I/O nor UI
   has no `adapters/` folder. React components and hooks live in `adapters/` (the UI is I/O with the
   user), or in `shared/ui/` when several features use them. `domain/` may not import a UI
-  framework or UI state package: `react`, `react-*`, `@*/react` and `@*/react-*` (TanStack Query,
-  Redux Toolkit), `preact`, `next` and `next/*`, `expo` and `expo-*`, `zustand`, `jotai`, `valtio`,
-  `mobx`, `recoil` or `swr`, also through `require`, `import = require` or a `shared/` module that
-  imports or re-exports one (`nitpicker/no-ui-framework-in-domain`, so an exception lifts only this
-  ban). The list is `uiFrameworks` in `architecture/domain-packages.mjs`, beside the network,
-  database, logger and ID packages the dependency rules keep out of `domain/`.
+  framework or UI state package: `react`, `react-*`, `*-react` (`lucide-react`), `@*/react` and
+  `@*/react-*` (TanStack Query), `preact` and `@preact/*` (`@preact/signals`), `next` and `next/*`,
+  `expo`, `expo-*` and `@expo/*`, `vue`, `svelte`, `solid-js`, `@angular/*`, `redux` and
+  `@reduxjs/*`, `zustand`, `jotai`, `valtio`, `mobx`, `recoil`, `swr`, `motion` and
+  `framer-motion`, `styled-components` and `@emotion/*`, the component kits (`@mui/*`,
+  `@chakra-ui/*`, `@mantine/*`, `@radix-ui/*`, `@headlessui/*`, `antd`, `@ant-design/*`) and the
+  icon packages (`@fortawesome/*`, `@iconify/*`, `@mdi/*`), also through `require`,
+  `import = require` or a `shared/` module that imports or re-exports one. JSX is not written in
+  `domain/` at all, even with the automatic runtime and no import: a component that renders the
+  domain's result lives in `adapters/` or `shared/ui` (`nitpicker/no-ui-framework-in-domain`, so
+  an exception lifts only this ban). The list is `uiFrameworks` in
+  `architecture/domain-packages.mjs`, beside the network, database, logger and ID packages the
+  dependency rules keep out of `domain/`.
 - Shared code does not import features. Features do not import the composition root. Import cycles
   are not allowed.
 - Code under `src/main/` lives in `features/`, `shared/` or the composition root
@@ -113,7 +120,9 @@ config file is an exception like any other.
   loops, and `||` with a literal, object, array or call on its right (`env['PORT'] || 3000`, the
   `??` swap), inside functions and at module level, except the main guard (an `if` whose condition
   uses `import.meta` or `require.main`, as for `no-process-globals-outside-main-guard`) and
-  branches in its condition. `&&` and `||` between plain values, and `try`/`catch`, are not
+  branches in its condition, and a guard that only throws (an `if` with no `else` whose body is a
+  single `throw`): `if (container === null) { throw new Error('#root is missing'); }` before
+  `createRoot(container)` is how the entry file checks its mount node. `&&` and `||` between plain values, and `try`/`catch`, are not
   reported. A lookup or missing-value
   check moves into the feature's `adapters/` (or `domain/`). Existing branches are baselined, and a
   function that gains one fails; a branch that belongs in the root needs an exception for this
@@ -578,6 +587,13 @@ end of this list cover test files. Each rule names the allowed form in its messa
 to add an exception for the rule in `nitpicker.config.json`. An exception that names a React rule is skipped while the scope is
 off (a PR that adds or removes React keeps linting on both sides); a misspelled rule is still an error.
 
+- **Browser globals by name** (`no-restricted-globals`). Outside a React Native app the scope
+  declares the browser globals for source and test files, so the confusing ones (`event`, `name`,
+  `status`, `length`, `close`, `open`, `top`, `parent`, `origin` and the rest of the standard
+  confusing-browser-globals list) are restricted wherever those globals apply, `domain/` aside:
+  `onPick(name)` with no `name` in scope is a missing parameter, not `window.name`. Write
+  `window.name` when the global is meant; otherwise take the value as a parameter
+  (`onClick={(event) => ...}`) or declare it.
 - **Function components only** (`react-x/no-class-component`). Class components are flagged; error
   boundaries, which React only supports as classes, are allowed. The "classes only for `Error`
   subclasses" ban leaves classes that extend `Component` or `PureComponent` to this rule in a React
@@ -587,7 +603,11 @@ off (a PR that adds or removes React keeps linting on both sides); a misspelled 
   exception for `react-hooks/exhaustive-deps`.
 - **No derived state in effects** (`nitpicker/react-no-effect-derived-state`). A state setter called
   in the body of a `useEffect` or `useLayoutEffect` callback, whose dependency array is not `[]`, is
-  flagged: compute the value during render (`useMemo` when it is costly) or reset state with a `key`.
+  flagged: compute the value during render (`useMemo` when it is costly). Each case has its own
+  message: a setter given a fixed value (`setDraft('')`, `[]`, `{}`, `undefined`) on a dependency
+  change is a reset, so render the component with that prop as its `key` (`<Form key={userId} />`);
+  a setter fed from `localStorage` or `sessionStorage` reads the store during render with
+  `useSyncExternalStore`.
   The hooks are resolved through their `react` import (`import { useEffect as onEffect }` and
   `import * as R from 'react'` count; a hook of the same name from another module does not), and
   the setter can be `const [x, setX] = useState()` or `useState()[1]` kept in a variable. A function
@@ -598,22 +618,25 @@ off (a PR that adds or removes React keeps linting on both sides); a misspelled 
   measuring the DOM in `useLayoutEffect` is the usual legitimate exception.
 - **No data fetching or async work in effects** (`nitpicker/react-no-effect-data-fetching`).
   `fetch` (also `window.fetch` and `globalThis.fetch`), `axios`, `ky` and `new XMLHttpRequest`
-  anywhere inside an effect callback are flagged: use a data-fetching library (TanStack Query
+  in work the effect itself does are flagged: use a data-fetching library (TanStack Query
   `useQuery`, SWR `useSWR`) or the framework (a route loader, a Server Component). Beyond the
-  names, an effect whose own callback contains an `await`, or calls a function whose type returns
-  a promise (found through the type checker, so a loader declared outside the effect counts), is
-  flagged once, at its first async step. An async helper or IIFE declared inside the effect and
-  called by it counts as the effect's own work; a handler the effect only registers
-  (`addEventListener('keydown', async () => ...)`, a timer callback) does not, and neither does a
-  `void`-discarded `Promise<void>` (`void ref.current?.play()`), which syncs with an external
-  system. Wrappers like `api.get(...)` are caught when they are typed to
-  return a promise; with no type information only `await` is seen. The message names the form for
-  each kind of work: data through `useQuery` or a route loader, an action (a save, a clipboard
-  write) in the event handler that causes it, a redirect by rendering `<Navigate />`.
+  names, async work is flagged when its result flows into state: a state setter (`setX`) called
+  after an `await`, inside a `.then` callback or passed to `.then` (`load(id).then(setUser)`). It is
+  reported once per effect, at its first async step. The effect's own work is its callback, a
+  helper or IIFE declared in it and called by it, and the callbacks it hands to `setTimeout`,
+  `setInterval` or `requestAnimationFrame`; a handler the effect only registers
+  (`addEventListener('pagehide', ...)`, where a `keepalive` beacon belongs) is not. A promise whose
+  result stays out of state is syncing with an external system and passes: an animation
+  (`animate(scope.current, ...)`), `void changeLanguage(locale)`, `void ref.current?.play()`. The
+  rule needs no type information. The message names the form for each kind of work: data through
+  `useQuery` or a route loader, an action (a save, a clipboard write) in the event handler that
+  causes it, a redirect by rendering `<Navigate />`.
 - **No prop callbacks called from effects** (`nitpicker/react-no-effect-event-handling`). An
-  effect that calls a prop callback (`onSave(value)`, `props.onChange()`, or one destructured with
-  `const { onChange } = props`, also renamed as `{ onChange: report }`) reacts to a change instead
-  of to an event: call the callback in the handler that causes the change. An effect with no
+  effect that calls a prop callback (`onSave(value)`, `notify(value)`, `props.onChange()`, one
+  destructured with `const { onChange } = props`, also renamed as `{ onChange: report }`, or one
+  held in a ref, `const latest = useRef(onChange); latest.current(value)`) reacts to a change
+  instead of to an event: call the callback in the handler that causes the change. Any prop of a
+  component counts, whatever its name; a custom hook's parameters count when named `on*`. An effect with no
   dependency array runs after every render and is reported too. A call inside a nested function (a
   subscription, a timer) and an effect with `[]` are left alone; an effect that synchronizes with
   an external system needs an exception.
@@ -623,10 +646,14 @@ off (a PR that adds or removes React keeps linting on both sides); a misspelled 
   `new Date()`, `performance.now()`, `crypto.randomUUID()` (also through `window.` or
   `globalThis.`), a generator imported from `uuid`, `nanoid`, `cuid`, `@paralleldrive/cuid2`,
   `ulid` or `short-uuid` under any local name, or `randomUUID` from `node:crypto`, directly, inside
-  a template or expression, or through a `const` declared in the component
-  (`const id = crypto.randomUUID(); key={id}`), is flagged (`nitpicker/react-no-random-key`): it
-  changes on every render and remounts the row. `react-x/purity` leaves a call inside a `key` to
-  this rule, so it is reported once.
+  a template or expression, through a `const` declared in the component
+  (`const id = crypto.randomUUID(); key={id}`), or through a helper that returns one (a function in
+  the same file, `function makeKey() { return Math.random(); }`, or an exported function of a
+  project module the file imports, `genId()` from `../shared/ids`; one level deep), is flagged
+  (`nitpicker/react-no-random-key`): it changes on every render and remounts the row.
+  `react-x/purity` leaves a call inside a `key` to this rule, and the `Math.random` restriction of
+  `no-restricted-properties` is dropped where this rule reports the same call, so it is reported
+  once.
 - **Pure render, no mutation.** State, props and hook results are not mutated
   (`react-x/immutability`: `setList([...list, item])`, `items.toSorted()`); render does not call
   `Date.now()`, `Math.random()` or storage, read or write refs, or set state
@@ -659,10 +686,13 @@ off (a PR that adds or removes React keeps linting on both sides); a misspelled 
   disconnected in the returned cleanup. Fetching in an effect is covered by the data-fetching rule
   above.
 - **No direct DOM changes in components** (`nitpicker/react-no-direct-dom`), in files that render
-  JSX, files under `ui/` and hook files (`use*`). `document.getElementById`/`querySelector`/
-  `querySelectorAll` and `getElementsBy*` (also through `window.document`, `globalThis.document`
-  or a `const` alias of `document`), assignments to `.innerHTML`, `.outerHTML`, `.innerText` or
-  `.textContent`, `insertAdjacentHTML` and `insertAdjacentText`, and `.className`, `.style.*`,
+  JSX, files under `ui/`, `shared/` and `lib/` (the helpers UI code imports) and hook files
+  (`use*`). `document.getElementById`/`querySelector`/`querySelectorAll` and `getElementsBy*`
+  (also through `window.document`, `globalThis.document`, an alias of `window` or `document` in a
+  `const` or a `let` that is never reassigned, or an element's `ownerDocument`), assignments to
+  `.innerHTML`, `.outerHTML`, `.innerText` or `.textContent`, `insertAdjacentHTML`,
+  `insertAdjacentText`, `setHTMLUnsafe`, `createContextualFragment` and `document.write`/`writeln`,
+  and `.className`, `.style.*`,
   `style.setProperty`/`removeProperty`, `Object.assign(el.style, ...)` or `classList.add`,
   `remove`, `toggle`, `replace` on anything but a ref (`ref.current`, or a const read from it),
   `document.documentElement` or `document.body` are flagged: state and props drive the DOM.
@@ -674,7 +704,8 @@ off (a PR that adds or removes React keeps linting on both sides); a misspelled 
   `hydrateRoot` or `createPortal` may look up its container. Glue for a third-party widget or a
   file download needs an exception.
 - **Form fields** (`nitpicker/react-field-has-label`, `nitpicker/react-controlled-input`). An
-  `<input>`, `<textarea>` or `<select>` has a label: wrapped in `<label>`, an `id` that a
+  `<input>`, `<textarea>` or `<select>` has a label: wrapped in `<label>` or in a label component
+  (any component named `Label` or ending in `Label`: `<FormLabel>`, `<Form.Label>`), an `id` that a
   `<label htmlFor>` or a label component with `htmlFor` (`<Label htmlFor="email">`, `<Form.Label>`)
   in the same file points to (a computed `id` is accepted), `aria-label` or
   `aria-labelledby` (hidden, submit, reset, button and image inputs, and fields with spread props,
@@ -686,21 +717,26 @@ off (a PR that adds or removes React keeps linting on both sides); a misspelled 
   classes; inline `style` objects and CSS-in-JS libraries are flagged), `css-in-js` (styled-components,
   Emotion, Stitches, goober, Linaria; stylesheet imports and inline `style` objects are flagged) or
   `inline-style` (`style` objects; stylesheet imports and CSS-in-JS libraries are flagged) or
-  `style-sheet` (React Native `StyleSheet.create` styles; inline `style` objects, stylesheet imports
-  and CSS-in-JS libraries are flagged, and a runtime value joins as `style={[styles.bar, { width }]}`).
-  Unset, the approach is `css-in-js` when `package.json` lists one of those libraries, `style-sheet`
-  when it lists `react-native` or `expo`, else `class-names`.
-  A `style` object is flagged when it is written inline, bound to a `const` in the same file
-  (also `style={styles.box}` and `styles['box']` on a `const styles = { box: {...} }`),
-  or reached through `?:`, `&&`, `??`, `satisfies` or `as`; `css=` and `sx=` props and `style` inside
-  spread props are not checked. A `style` object whose keys are all CSS custom properties
-  (`'--progress': percent`) is allowed, as is a `style` value that is not an object literal
-  (`style={style}`), so a runtime value reaches class-based CSS. Type the custom property once,
-  in a `.d.ts` file under the source root (for example `src/main/shared/css-properties.d.ts`; the
-  dead-code check leaves `.d.ts` files alone, which a `.ts` module nothing imports is not):
-  `declare module 'csstype' { interface Properties { '--progress'?: number } }` (needs `csstype`
-  installed; `interface` is allowed in that augmentation). This is the default
-  because inline `style` objects are the usual agent slop.
+  `style-sheet` (React Native `StyleSheet.create` styles; inline `style` objects of fixed values,
+  stylesheet imports and CSS-in-JS libraries are flagged). Unset, the approach is the one most
+  source files of the head checkout use: files that import a stylesheet or pass `className`, files
+  that import a CSS-in-JS library, files that call `StyleSheet.create` and files with inline
+  `style` objects are counted, and the largest group wins (ties in that order). Only with no
+  styling in the code yet does `package.json` decide: `css-in-js` when it lists one of those
+  libraries, `style-sheet` when it lists `react-native` or `expo`, else `class-names`. The approach
+  is resolved once into the head policy (`react.styling`) and both sides are linted with it, so a
+  pull request that adds MUI and Emotion does not turn every CSS Modules file into a finding.
+  A `style` object is flagged only when all its values are fixed (literals, or arrays and objects
+  of literals): a value computed at runtime (`style={{ width: progress }}`,
+  `<Animated.View style={{ opacity: fade }} />`, `{ paddingTop: insets.top }`) is the allowed use
+  of `style` under every approach, and the message names the form for fixed values (a class with
+  `className={styles.title}`, a styled component, or a module-level `StyleSheet.create`). The
+  object is checked when it is written inline, bound to a `const` in the same file (also
+  `style={styles.box}` and `styles['box']` on a `const styles = { box: {...} }`), or reached
+  through `?:`, `&&`, `??`, `satisfies` or `as`; `css=` and `sx=` props, `style` inside spread
+  props and a `style` value that is not an object literal (`style={style}`) are not checked. An
+  object of only CSS custom properties (`'--progress': percent`) is allowed. This is the default
+  because inline `style` objects of fixed values are the usual agent slop.
 - **No hard-coded colors** (`nitpicker/react-no-hardcoded-colors`). Every production source file
   of the scope is checked (`.ts` and `.mjs` helpers included; tests and story files,
   `*.stories.*` and `*.story.*`, are not; the story pattern is `storyGlobs` in
@@ -812,7 +848,9 @@ off (a PR that adds or removes React keeps linting on both sides); a misspelled 
   `queryBy*` (`testing-library/prefer-presence-queries`). Do not wrap `render` or `user` calls
   in `act` (`testing-library/no-unnecessary-act`), leave `screen.debug()` and other debug
   output in (`testing-library/no-debugging-utils`) or call `cleanup` yourself
-  (`testing-library/no-manual-cleanup`). Do not test implementation details
+  (`testing-library/no-manual-cleanup`, on when the project's Vitest config sets
+  `globals: true` or the project has no Vitest; with `globals` unset or false, Testing Library
+  cannot register its own cleanup, so the `afterEach(cleanup)` a setup file needs passes). Do not test implementation details
   (`nitpicker/react-test-no-implementation-details`): no `.instance()`, no `.state()` or `.setState()` on
   an enzyme or test-renderer wrapper (a store's `setState` is fine), no test-renderer
   `findByType`/`findByProps`, no React fiber internals (`_reactInternals`,
@@ -835,9 +873,10 @@ off (a PR that adds or removes React keeps linting on both sides); a misspelled 
   `@testing-library/react-native` keeps `testID` queries, the idiom there.
 - **Component test setup.** A Vitest project needs four things before the first component
   test passes: `test.environment: 'jsdom'` (or `happy-dom`) in the Vitest config;
-  `test.globals: true`, so Testing Library registers its `cleanup` after each test (without it
-  the second test that renders sees the first one's DOM; a setup file that calls
-  `afterEach(cleanup)` instead needs an exception for `testing-library/no-manual-cleanup`);
+  either `test.globals: true`, so Testing Library registers its `cleanup` after each test, or
+  `afterEach(cleanup)` in a setup file (without one of them the second test that renders sees the
+  first one's DOM; `testing-library/no-manual-cleanup` follows the project's choice, read into the
+  head policy as `react.autoCleanup`);
   `import '@testing-library/jest-dom/vitest'` in a file listed in `test.setupFiles`, for
   `toBeInTheDocument()` and the other DOM matchers; and the named import
   `import { userEvent } from '@testing-library/user-event'`, because the default import has no
@@ -897,11 +936,15 @@ off (a PR that adds or removes React keeps linting on both sides); a misspelled 
 - **Default exports.** The framework files that need `export default` are detected from the head
   checkout and allowed: with `next` in `package.json` (or a `next.config.*`), the App Router files
   `page`, `layout`, `loading`, `error`, `global-error`, `not-found`, `template`, `default` and
-  `route` under `app/` or `src/app/`, every file under `pages/` or `src/pages/`, and `middleware`;
-  with `@storybook/*` or `storybook` (or a `.storybook/` folder), `*.stories.*` and `*.story.*`;
-  with `expo-router`, every file under `app/` or `src/app/`. The detected globs and entry points
-  are written into the head policy (`frameworks`) for both sides. Other framework files, such as
-  React Router route modules, take an exception scoped to those paths:
+  `route`, `forbidden` and `unauthorized` and the metadata routes `sitemap`, `robots`, `manifest`,
+  `icon`, `apple-icon`, `opengraph-image` and `twitter-image` under `app/` or `src/app/`, every
+  file under `pages/` or `src/pages/`, and `middleware` or `proxy` (Next 16) at the root or in
+  `src/`; with `@react-router/dev`, an `@remix-run/*` package or a `react-router.config.*` file,
+  the route modules: `app/root.*`, `app/routes.*`, `app/entry.client.*`, `app/entry.server.*` and
+  every file under `app/routes/`; with `@storybook/*` or `storybook` (or a `.storybook/` folder),
+  `*.stories.*` and `*.story.*`; with `expo-router`, every file under `app/` or `src/app/`. The
+  detected globs and entry points are written into the head policy (`frameworks`) for both sides.
+  Other framework files take an exception scoped to those paths:
   `"exceptions": [{ "rule": "nitpicker/no-default-export", "paths": ["src/routes/**"], "reason": "framework file convention" }]`.
   The default-export ban is its own rule, so the exception lifts nothing else for those paths.
 - **Lazy components.** The standard `lazy(() => import('./x').then(...))` is a promise chain. Use

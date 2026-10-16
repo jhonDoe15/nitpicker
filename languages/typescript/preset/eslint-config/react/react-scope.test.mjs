@@ -115,7 +115,7 @@ describe('the React scope config', () => {
 
   it('registers an implementation for every plugin rule it configures', async () => {
     for (const entry of await reactScopeConfigFor(layout)) {
-      for (const id of Object.keys(entry.rules)) {
+      for (const id of Object.keys(entry.rules).filter((ruleId) => ruleId.includes('/'))) {
         const [pluginName, ...rest] = id.split('/');
         expect(entry.plugins[pluginName].rules[rest.join('/')], id).toBeDefined();
       }
@@ -123,7 +123,7 @@ describe('the React scope config', () => {
   });
 
   it('runs every rule as an error, except the ones story files switch off', async () => {
-    const entries = await reactScopeConfigFor(layout);
+    const entries = await reactScopeConfigFor(layout, { autoCleanup: true });
     for (const entry of entries.filter(({ files }) => files !== storyGlobs)) {
       for (const [id, setting] of Object.entries(entry.rules)) {
         expect([setting].flat()[0], id).toBe('error');

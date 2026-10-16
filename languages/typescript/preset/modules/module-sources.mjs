@@ -45,25 +45,51 @@ export function statementSources(statement) {
     .filter((source) => source !== undefined);
 }
 
-function scriptKindOf(file) {
+export function scriptKindOf(file) {
   return /\.[jt]sx$/u.test(file) ? ts.ScriptKind.TSX : ts.ScriptKind.Unknown;
 }
 
-function nodeSource(node) {
-  if (ts.isImportDeclaration(node) || ts.isExportDeclaration(node)) {
-    return node.moduleSpecifier;
+function importsAtRuntime(clause) {
+  const named = clause?.namedBindings;
+  if (clause === undefined || named === undefined || clause.name !== undefined) {
+    return clause?.isTypeOnly !== true;
+  }
+  return (
+    !clause.isTypeOnly &&
+    (ts.isNamespaceImport(named) ||
+      named.elements.length === 0 ||
+      named.elements.some((element) => !element.isTypeOnly))
+  );
+}
+
+function exportsAtRuntime(statement) {
+  const clause = statement.exportClause;
+  return (
+    !statement.isTypeOnly &&
+    (clause === undefined ||
+      !ts.isNamedExports(clause) ||
+      clause.elements.some((element) => !element.isTypeOnly))
+  );
+}
+
+function nodeReference(node) {
+  if (ts.isImportDeclaration(node)) {
+    return { source: node.moduleSpecifier, runtime: importsAtRuntime(node.importClause) };
+  }
+  if (ts.isExportDeclaration(node)) {
+    return { source: node.moduleSpecifier, runtime: exportsAtRuntime(node), reexport: true };
   }
   if (ts.isImportEqualsDeclaration(node) && ts.isExternalModuleReference(node.moduleReference)) {
-    return node.moduleReference.expression;
+    return { source: node.moduleReference.expression, runtime: !node.isTypeOnly };
   }
   const isLoad =
     ts.isCallExpression(node) &&
     (node.expression.kind === ts.SyntaxKind.ImportKeyword ||
       (ts.isIdentifier(node.expression) && node.expression.text === 'require'));
-  return isLoad ? node.arguments[0] : undefined;
+  return isLoad ? { source: node.arguments[0], runtime: true } : undefined;
 }
 
-function scannedSources(file) {
+function scannedReferences(file) {
   const sourceFile = ts.createSourceFile(
     file,
     readFileSync(file, 'utf8'),
@@ -71,20 +97,28 @@ function scannedSources(file) {
     true,
     scriptKindOf(file),
   );
-  const sources = [];
+  const references = [];
   function visit(node) {
-    const source = nodeSource(node);
-    if (source !== undefined && ts.isStringLiteralLike(source)) {
-      sources.push(source.text);
+    const reference = nodeReference(node);
+    if (reference?.source !== undefined && ts.isStringLiteralLike(reference.source)) {
+      references.push({
+        source: reference.source.text,
+        runtime: reference.runtime,
+        reexport: reference.reexport === true,
+      });
     }
     ts.forEachChild(node, visit);
   }
   visit(sourceFile);
-  return sources;
+  return references;
 }
 
 const scanCache = new Map();
 
+export function moduleReferencesOf(file) {
+  return readStamped(scanCache, file, scannedReferences) ?? [];
+}
+
 export function moduleSourcesOf(file) {
-  return readStamped(scanCache, file, scannedSources) ?? [];
+  return moduleReferencesOf(file).map(({ source }) => source);
 }

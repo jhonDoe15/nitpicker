@@ -1,3 +1,5 @@
+import { ancestorsOf } from '../analysis/ancestry.mjs';
+
 const fieldElements = new Set(['input', 'textarea', 'select']);
 const buttonLikeInputTypes = new Set(['button', 'hidden', 'image', 'reset', 'submit']);
 const fixedValueInputTypes = new Set([...buttonLikeInputTypes, 'checkbox', 'radio']);
@@ -38,4 +40,9 @@ export function literalValueOf(attribute) {
   }
   const expression = value?.type === 'JSXExpressionContainer' ? value.expression : undefined;
   return expression?.type === 'Literal' ? expression.value : undefined;
+}
+
+export function inKeyAttribute(node) {
+  const owner = ancestorsOf(node).find(({ type }) => type === 'JSXAttribute');
+  return owner !== undefined && attributeNamed(owner.parent, 'key') === owner;
 }

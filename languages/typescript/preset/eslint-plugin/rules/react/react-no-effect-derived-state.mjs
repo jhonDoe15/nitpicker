@@ -2,6 +2,8 @@ import { variableNamed } from '../analysis/ancestry.mjs';
 import { enclosingFunction, hookName, isEffectCallback } from './react-effects.mjs';
 
 const SETTER_INDEX = 1;
+const storageNames = new Set(['localStorage', 'sessionStorage']);
+const globalObjects = new Set(['window', 'globalThis', 'self']);
 
 function runsOnce(effectCall) {
   const dependencies = effectCall.arguments[1];
@@ -92,6 +94,63 @@ function owningEffect(sourceCode, fn) {
     : undefined;
 }
 
+function isFixedValue(node) {
+  switch (node?.type) {
+    case 'Literal':
+      return true;
+    case 'TemplateLiteral':
+      return node.expressions.length === 0;
+    case 'ArrayExpression':
+      return node.elements.length === 0;
+    case 'ObjectExpression':
+      return node.properties.length === 0;
+    case 'Identifier':
+      return node.name === 'undefined';
+    case 'UnaryExpression':
+      return node.argument.type === 'Literal';
+    default:
+      return false;
+  }
+}
+
+function isStorage(sourceCode, node) {
+  if (node.type === 'Identifier') {
+    return storageNames.has(node.name) && (variableNamed(sourceCode, node)?.defs.length ?? 0) === 0;
+  }
+  return (
+    node.type === 'MemberExpression' &&
+    !node.computed &&
+    storageNames.has(node.property.name) &&
+    node.object.type === 'Identifier' &&
+    globalObjects.has(node.object.name)
+  );
+}
+
+function readsStorage(sourceCode, root) {
+  const pending = root === undefined ? [] : [root];
+  for (const node of pending) {
+    if (isStorage(sourceCode, node)) {
+      return true;
+    }
+    pending.push(
+      ...Object.entries(node)
+        .filter(([field]) => field !== 'parent')
+        .flatMap(([, value]) => [value].flat())
+        .filter((value) => typeof value?.type === 'string'),
+    );
+  }
+  return false;
+}
+
+function messageIdFor(sourceCode, call, effectCall) {
+  const [value] = call.arguments;
+  if (readsStorage(sourceCode, value)) {
+    return 'storageState';
+  }
+  const hasDependencyList = effectCall.arguments[1]?.type === 'ArrayExpression';
+  return hasDependencyList && isFixedValue(value) ? 'resetState' : 'derivedState';
+}
+
 export const rule = {
   meta: {
     type: 'problem',
@@ -103,6 +162,10 @@ export const rule = {
     messages: {
       derivedState:
         'Do not set state from an effect to mirror props or state. Compute the value during render (`const total = price * quantity;`). If this effect synchronizes with an external system, add an exception for this rule in nitpicker.config.json.',
+      resetState:
+        'Do not reset state from an effect when a prop changes: render the component with that prop as its `key` (`<Form key={userId} />`), so React starts it with fresh state. If this effect synchronizes with an external system, add an exception for this rule in nitpicker.config.json.',
+      storageState:
+        'Do not copy browser storage into state from an effect: read it during render with `useSyncExternalStore(subscribe, () => localStorage.getItem(key))`, which also follows changes from other tabs. If this effect synchronizes with an external system, add an exception for this rule in nitpicker.config.json.',
     },
   },
   create(context) {
@@ -115,7 +178,7 @@ export const rule = {
         const fn = enclosingFunction(node);
         const effect = fn === undefined ? undefined : owningEffect(sourceCode, fn);
         if (effect !== undefined && !runsOnce(effect.parent)) {
-          context.report({ node, messageId: 'derivedState' });
+          context.report({ node, messageId: messageIdFor(sourceCode, node, effect.parent) });
         }
       },
     };

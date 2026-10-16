@@ -1,7 +1,7 @@
 import { mkdirSync, mkdtempSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
-import { afterAll, describe, expect, it } from 'vitest';
+import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { lintWithOxlint } from '../oxlint-runner.mjs';
 
 const packageRoot = path.resolve(import.meta.dirname, '../../../../..');
@@ -77,9 +77,12 @@ for (const [file, lines] of Object.entries(files)) {
   writeFileSync(path.join(root, file), `${lines.join('\n')}\n`);
 }
 
+const OXLINT_TIMEOUT_MS = 30_000;
 describe('the React test rules under the oxlint engine', () => {
-  it('follow helpers, mocks of react, enzyme-only state checks and namespace user-event', () => {
-    const results = lintWithOxlint({
+  let results;
+
+  beforeAll(() => {
+    results = lintWithOxlint({
       options: { projectRoot: root, patterns: ['test/**/*.ts', 'test/**/*.tsx'] },
       environment: {
         ...process.env,
@@ -88,7 +91,9 @@ describe('the React test rules under the oxlint engine', () => {
       },
       runEslintCli: () => [],
     });
+  }, OXLINT_TIMEOUT_MS);
 
+  it('follow helpers, mocks of react, enzyme-only state checks and namespace user-event', () => {
     expect(
       results.flatMap(({ filePath, messages }) =>
         messages

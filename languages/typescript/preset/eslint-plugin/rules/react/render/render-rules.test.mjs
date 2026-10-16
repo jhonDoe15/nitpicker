@@ -137,6 +137,10 @@ tester.run('react-no-direct-dom', reactNoDirectDom, {
     ),
     inPanel('const a = document.createElement("a"); a.href = url; a.click();'),
     inPanel('function f(document) { document.querySelector("a"); }'),
+    inPanel('let doc = document; doc = other; doc.querySelector("a");'),
+    inPanel('const w = frames[0]; w.document.querySelector("a");'),
+    inPanel('const window = frame; window.document.querySelector("a");'),
+    inPanel('writer.write(html); stream.writeln(line);'),
     inPanel('Object.assign(target, { color });'),
     "const target = document.getElementById('modal'); export const Modal = ({ children }) => createPortal(children, target);",
   ]
@@ -147,6 +151,10 @@ tester.run('react-no-direct-dom', reactNoDirectDom, {
         "export function readRoot() { return document.querySelector('#root'); }",
         "export const el = document.getElementById('app'); el.innerHTML = '';",
       ].map((code) => ({ filename: '/repo/src/main/domain/dom.ts', code })),
+      {
+        filename: '/repo/src/main/features/x/shared-state.ts',
+        code: "document.getElementById('root');",
+      },
     ),
   invalid: [
     invalid(inPanel("document.getElementById('banner');"), { messageId: 'directDom' }),
@@ -208,7 +216,22 @@ tester.run('react-no-direct-dom', reactNoDirectDom, {
       code,
       errors: [{ messageId: 'directDom' }],
     })),
-    ...['/repo/src/main/ui/banner.ts', '/repo/src/main/adapters/use-banner.ts'].map((path) => ({
+    ...[
+      inPanel("let doc = document; doc.getElementById('x');"),
+      inPanel("const w = window; w.document.querySelector('.x');"),
+      inPanel("const w = globalThis; const doc = w.document; doc.querySelector('.x');"),
+      inPanel("ref.current?.ownerDocument.querySelector('.x')?.remove();"),
+      inPanel('document.write(html);'),
+      inPanel('window.document.writeln(html);'),
+      inPanel('ref.current?.setHTMLUnsafe(html);'),
+      inPanel('const frag = document.createRange().createContextualFragment(html);'),
+    ].map((code) => invalid(code, { messageId: 'directDom' })),
+    ...[
+      '/repo/src/main/ui/banner.ts',
+      '/repo/src/main/adapters/use-banner.ts',
+      '/repo/src/shared/banner.ts',
+      '/repo/src/lib/dom/banner.ts',
+    ].map((path) => ({
       filename: path,
       code: "export function hide() { document.querySelector('.banner')?.remove(); }",
       errors: [{ messageId: 'directDom' }],
@@ -237,8 +260,10 @@ tester.run('react-no-effect-event-handling', reactNoEffectEventHandling, {
     inPanel('useEffect(() => { store.onSave(); }, [items]);'),
     inPanel('useEffect(() => { onSave; }, [items]);'),
     inPanel('useCustom(() => { onSave(); }, [items]);'),
-    'export function Panel({ onChange: report, save }) { useEffect(() => { save(); }, [report]); return <div />; }',
-    'export function Panel({ value, report }) { useEffect(() => { report(value); }, [value]); return <div />; }',
+    'function useThing(load, id) { useEffect(() => { load(id); }, [id]); }',
+    'export function Panel({ value }) { const latest = useRef(null); useEffect(() => { latest.current(value); }, [value]); return <div />; }',
+    'export function Panel({ value, onChange }) { const ref = useRef(onChange); useEffect(() => { ref.current(value); }, []); return <div />; }',
+    'export function Panel({ value }) { const ref = useRef(notify); useEffect(() => { ref.current(value); }, [value]); return <div />; }',
     'export function Panel(props) { const { onSave } = store; useEffect(() => { onSave(); }, [props.value]); return <div />; }',
     'export function Panel(props) { const onSave = props.onSave ?? noop; useEffect(() => { onSave(); }, [props.value]); return <div />; }',
   ].map(valid),
@@ -291,6 +316,22 @@ tester.run('react-no-effect-event-handling', reactNoEffectEventHandling, {
     invalid(
       'export function Panel(props) { const { onChange: report } = props; useEffect(() => { report(); }, [props.value]); return <div />; }',
       { messageId: 'effectEvent', data: { name: 'report' } },
+    ),
+    invalid(
+      'export function Panel({ onChange: report, save }) { useEffect(() => { save(); }, [report]); return <div />; }',
+      { messageId: 'effectEvent', data: { name: 'save' } },
+    ),
+    invalid(
+      'export function Panel({ value, notify }) { useEffect(() => { notify(value); }, [value, notify]); return <div />; }',
+      { messageId: 'effectEvent', data: { name: 'notify' } },
+    ),
+    invalid(
+      'export function Panel({ value, onChange }) { const latest = useRef(onChange); useEffect(() => { latest.current(value); }, [value]); return <div />; }',
+      { messageId: 'effectEvent', data: { name: 'onChange' } },
+    ),
+    invalid(
+      'export function Panel(props) { const latest = React.useRef(props.onChange); useEffect(() => { latest.current?.(props.value); }, [props.value]); return <div />; }',
+      { messageId: 'effectEvent', data: { name: 'onChange' } },
     ),
   ],
 });

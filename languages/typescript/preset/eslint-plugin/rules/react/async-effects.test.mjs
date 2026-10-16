@@ -9,132 +9,142 @@ import { rule } from './react-no-effect-data-fetching.mjs';
 const root = mkdtempSync(path.join(tmpdir(), 'nitpicker-async-effects-'));
 const ruleName = 'nitpicker/react-no-effect-data-fetching';
 
-function eslintFor(languageOptions) {
-  return new ESLint({
-    cwd: root,
-    overrideConfigFile: true,
-    overrideConfig: [
-      {
-        files: ['**/*.tsx'],
-        languageOptions: { parser: tseslint.parser, ...languageOptions },
-        plugins: { nitpicker: { rules: { 'react-no-effect-data-fetching': rule } } },
-        rules: { [ruleName]: 'error' },
-      },
-    ],
-  });
-}
-
-const typed = eslintFor({
-  parserOptions: {
-    projectService: { allowDefaultProject: ['src/*.tsx'] },
-    tsconfigRootDir: root,
-  },
+const eslint = new ESLint({
+  cwd: root,
+  overrideConfigFile: true,
+  overrideConfig: [
+    {
+      files: ['**/*.tsx'],
+      languageOptions: { parser: tseslint.parser },
+      plugins: { nitpicker: { rules: { 'react-no-effect-data-fetching': rule } } },
+      rules: { [ruleName]: 'error' },
+    },
+  ],
 });
-const untyped = eslintFor({});
+
+const typed = new ESLint({
+  cwd: root,
+  overrideConfigFile: true,
+  overrideConfig: [
+    {
+      files: ['**/*.tsx'],
+      languageOptions: {
+        parser: tseslint.parser,
+        parserOptions: {
+          projectService: { allowDefaultProject: ['src/*.tsx'] },
+          tsconfigRootDir: root,
+        },
+      },
+      plugins: { nitpicker: { rules: { 'react-no-effect-data-fetching': rule } } },
+      rules: { [ruleName]: 'error' },
+    },
+  ],
+});
 
 afterAll(() => {
   rmSync(root, { recursive: true, force: true });
 });
 
-async function messageIds(eslint, body, extra = '') {
-  const code = `import { useEffect } from 'react';\n${extra}\nexport function Panel({ id }: { id: string }) { useEffect(() => { ${body} }, [id]); return <div />; }`;
+async function lint(body) {
+  const code = `import { useEffect, useState } from 'react';\nexport function Panel({ id }: { id: string }) {\n  const [name, setName] = useState('');\n  useEffect(() => {\n    ${body}\n  }, [id]);\n  return <div>{name}</div>;\n}`;
   const [result] = await eslint.lintText(code, { filePath: path.join(root, 'src/panel.tsx') });
-  return result.messages.map((message) => message.messageId);
+  return result.messages;
 }
 
-const load =
-  'async function load(id: string): Promise<string> { return id; }\nfunction sync(id: string): string { return id; }\nconst maybe = (id: string): Promise<string> | undefined => undefined;\nconst nothing = (id: string): undefined => undefined;';
+async function messageIds(body) {
+  return (await lint(body)).map((message) => message.messageId);
+}
 
 describe('async work in an effect', () => {
-  it('reports a promise-returning function called from the effect, with types', async () => {
-    expect(await messageIds(typed, 'void load(id);', load)).toEqual(['asyncInEffect']);
-  });
-
-  it('reports a function that may return a promise', async () => {
-    expect(await messageIds(typed, 'void maybe(id);', load)).toEqual(['asyncInEffect']);
-  });
-
-  it('reports the loader-in-a-helper form that moves the await out of sight', async () => {
-    expect(
-      await messageIds(typed, 'const run = async () => { await load(id); }; void run();', load),
-    ).toEqual(['asyncInEffect']);
-  });
-
-  it('reports a new Promise that settles with a value', async () => {
-    expect(await messageIds(typed, 'void new Promise<string>(() => undefined);')).toEqual([
-      'asyncInEffect',
-    ]);
+  it.each([
+    [
+      'an await in a helper the effect calls',
+      'async function run() { setName(await load(id)); } void run();',
+    ],
+    ['an async IIFE', 'void (async () => { const user = await load(id); setName(user); })();'],
+    ['a then callback', 'void load(id).then((user) => { if (user) { setName(user); } });'],
+    ['a setter passed to then', 'void load(id).then(setName);'],
+    [
+      'an async timer callback the effect starts',
+      'const timer = setTimeout(async () => { setName(await load(id)); }, 300); return () => { clearTimeout(timer); };',
+    ],
+    [
+      'a timer inside an awaiting IIFE',
+      'void (async () => { await ready(); requestAnimationFrame(() => { setName(id); }); })();',
+    ],
+  ])('reports %s whose result reaches state', async (_name, body) => {
+    expect(await messageIds(body)).toEqual(['asyncInEffect']);
   });
 
   it.each([
-    ['a discarded Promise<void>', 'void ref.current?.play();'],
-    ['a discarded new Promise<void>', 'void new Promise<void>(() => undefined);'],
+    ['a fire-and-forget promise', 'void load(id);'],
+    ['an animation started by the effect', 'animate(scope.current, { opacity: 1 });'],
+    ['a language switch', 'void changeLanguage(id);'],
+    ['an await whose result stays outside state', 'void (async () => { await track(id); })();'],
     [
-      'an await in a listener the effect only registers',
-      'async function onKey() { await load(id); } window.addEventListener("keydown", onKey); return () => { window.removeEventListener("keydown", onKey); };',
+      'a setter that runs before the await',
+      'void (async () => { setName(""); await track(id); })();',
     ],
     [
-      'an await in a callback handed to another call',
-      'setTimeout(async () => { await load(id); }, 10);',
+      'a listener the effect only registers',
+      'async function onKey() { setName(await load(id)); } window.addEventListener("keydown", onKey); return () => { window.removeEventListener("keydown", onKey); };',
     ],
+    ['a synchronous setter', 'setName(id);'],
   ])('lets %s through, which syncs with an external system', async (_name, body) => {
-    const extra = `${load}\nconst ref: { current: { play(): Promise<void> } | null } = { current: null };`;
-
-    expect(await messageIds(typed, body, extra)).toEqual([]);
-  });
-
-  it.each([
-    ['an async helper the effect calls', 'async function run() { await load(id); } void run();'],
-    ['an async IIFE', 'void (async () => { await load(id); })();'],
-  ])('reports %s', async (_name, body) => {
-    expect(await messageIds(typed, body, load)).toEqual(['asyncInEffect']);
+    expect(await messageIds(body)).toEqual([]);
   });
 
   it('reports one finding for an effect, at its first async step', async () => {
-    const [result] = await typed.lintText(
-      `import { useEffect } from 'react';\n${load}\nexport function Panel({ id }: { id: string }) {\n  useEffect(() => {\n    void load(id);\n    void load(id);\n  }, [id]);\n  return <div />;\n}`,
-      { filePath: path.join(root, 'src/panel.tsx') },
+    const messages = await lint(
+      'void load(id).then(setName);\n    void (async () => { setName(await load(id)); })();',
     );
 
-    expect(result.messages.map(({ line }) => line)).toEqual([8]);
-  });
-
-  it('lets synchronous calls and non-promise results through', async () => {
-    expect(await messageIds(typed, 'sync(id); nothing(id);', load)).toEqual([]);
-  });
-
-  it('reports an await without type information', async () => {
-    expect(
-      await messageIds(
-        untyped,
-        'const run = async () => { await Promise.resolve(); }; void run();',
-      ),
-    ).toEqual(['asyncInEffect']);
-  });
-
-  it('does not guess about calls without type information', async () => {
-    expect(await messageIds(untyped, 'void load(id);', load)).toEqual([]);
+    expect(messages.map(({ line }) => line)).toEqual([5]);
   });
 
   it('lets async work outside an effect through', async () => {
-    const code = `import { useEffect } from 'react';\n${load}\nexport function Panel({ id }: { id: string }) { const save = async () => { await load(id); }; useEffect(() => { sync(id); }, [id]); return <button onClick={save}>save</button>; }`;
-    const [result] = await typed.lintText(code, { filePath: path.join(root, 'src/panel.tsx') });
+    const code = `import { useState } from 'react';\nexport function Panel({ id }: { id: string }) { const [name, setName] = useState(''); const save = async () => { setName(await load(id)); }; return <button onClick={save}>{name}</button>; }`;
+    const [result] = await eslint.lintText(code, { filePath: path.join(root, 'src/panel.tsx') });
 
     expect(result.messages).toEqual([]);
   });
 
-  it('names the handler and the redirect form next to the query for an action', async () => {
-    const code = `import { useEffect } from 'react';\nexport function Copy({ text }: { text: string }) { useEffect(() => { void navigator.clipboard.readText(); }, [text]); return <div />; }`;
-    const [result] = await typed.lintText(code, { filePath: path.join(root, 'src/copy.tsx') });
+  it('names the handler and the redirect form next to the query', async () => {
+    const [message] = await lint('void load(id).then(setName);');
 
-    expect(result.messages.map(({ message }) => message)).toEqual([
-      'Do not run async work in `useEffect` (`await` or a call that returns a promise): it races the render and nothing caches the result. Load data with `useQuery` or a route loader; run an action (a save, a clipboard write) in the event handler that causes it; redirect by rendering `<Navigate />`. If this effect only synchronizes with an external system, add an exception for this rule in nitpicker.config.json.',
-    ]);
+    expect(message.message).toBe(
+      'Do not load state asynchronously in `useEffect` (a state setter after `await` or in a `.then` callback): it races the render and nothing caches the result. Load data with `useQuery` or a route loader; run an action (a save, a clipboard write) in the event handler that causes it; redirect by rendering `<Navigate />`. If this effect only synchronizes with an external system, add an exception for this rule in nitpicker.config.json.',
+    );
+  });
+});
+
+describe('requests in an effect', () => {
+  it.each([
+    [
+      'a request in the effect',
+      'void (async () => { setName(await (await fetch(`/x/${id}`)).text()); })();',
+    ],
+    [
+      'a request in a timer the effect starts',
+      'const timer = setTimeout(() => { void fetch("/x"); }, 10); return () => { clearTimeout(timer); };',
+    ],
+  ])('reports %s once, as a request', async (_name, body) => {
+    expect(await messageIds(body)).toEqual(['fetchInEffect']);
   });
 
-  it('leaves a request to the fetch finding and does not add a second one', async () => {
-    expect(
-      await messageIds(typed, 'const run = async () => { await fetch(`/x/${id}`); }; void run();'),
-    ).toEqual(['fetchInEffect']);
+  it('lets a beacon in a handler the effect only registers through', async () => {
+    const body =
+      'function onLeave() { void fetch("/beacon", { method: "POST", keepalive: true }); } window.addEventListener("pagehide", onLeave); return () => { window.removeEventListener("pagehide", onLeave); };';
+
+    expect(await messageIds(body)).toEqual([]);
+  });
+});
+
+describe('promise-returning calls with type information', () => {
+  it('lets an animation and a language switch through, though both return promises', async () => {
+    const code = `import { useEffect } from 'react';\ndeclare function changeLanguage(locale: string): Promise<string>;\ndeclare function animate(target: unknown, to: object): Promise<void> & { stop(): void };\nexport function Panel({ id }: { id: string }) { useEffect(() => { void changeLanguage(id); void animate(id, { opacity: 1 }); }, [id]); return <div />; }`;
+    const [result] = await typed.lintText(code, { filePath: path.join(root, 'src/locale.tsx') });
+
+    expect(result.messages).toEqual([]);
   });
 });
