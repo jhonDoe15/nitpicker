@@ -1,7 +1,12 @@
 import { describe, expect, it } from 'vitest';
 import { RULES } from '../../policy.mjs';
 import { sharedFactFindings } from './evaluate.mjs';
-import { FACT_RULE_LANGUAGES, FACT_RULE_LISTS, registeredFactRules } from './registry.mjs';
+import {
+  FACT_RULE_LANGUAGES,
+  FACT_RULE_LISTS,
+  registeredFactRules,
+  sharedFactExceptionRules,
+} from './registry.mjs';
 import { exception, fixtureFindings, rows } from './test-support/fact-fixtures.mjs';
 
 const CONSOLE = 'test-console-output';
@@ -41,6 +46,17 @@ describe('the shared fact rules', () => {
         { language: 'cobol', analyzerName: 'facts', rules: [CONSOLE] },
       ),
     ).toThrow(/test-console-output is not registered for cobol/u);
+  });
+
+  it('lets every preset lift a rule once a language besides TypeScript registers it', () => {
+    expect(sharedFactExceptionRules()).toEqual([]);
+    FACT_RULE_LANGUAGES[CONSOLE].push('java');
+    try {
+      expect(sharedFactExceptionRules()).toEqual([CONSOLE]);
+      expect(registeredFactRules('java')).toEqual([CONSOLE]);
+    } finally {
+      FACT_RULE_LANGUAGES[CONSOLE].pop();
+    }
   });
 
   it('runs nothing for a language that registers nothing', () => {
