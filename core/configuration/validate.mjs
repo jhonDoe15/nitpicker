@@ -7,6 +7,7 @@ import {
   validateStringArray,
   validateThresholds,
   validateExceptions,
+  TYPESCRIPT_ONLY_KEYS,
   validateProjectRelativePath,
 } from '../../shared/config.mjs';
 import { validateJavaConfig } from '../../languages/java/adapters/java-policy.mjs';
@@ -15,11 +16,10 @@ import { validatePythonConfig } from '../../languages/python/adapters/configurat
 import { SHARED_EXCEPTION_RULES } from '../../shared/policy.mjs';
 import { validateTools } from './tool-settings.mjs';
 import { stylingApproaches } from '../../languages/typescript/preset/eslint-config/react/react-rules.mjs';
+import { i18nRuleIds } from '../../languages/typescript/preset/eslint-config/i18n/i18n-rules.mjs';
 import path from 'node:path';
 
 export const SUPPORTED_PRESETS = ['typescript', 'javascript', ...GRADLE_PRESETS, 'python'];
-
-const TYPESCRIPT_ONLY_KEYS = ['layout', 'exceptions', 'react', 'tools'];
 
 export const KEYS = [
   'base',
@@ -30,6 +30,7 @@ export const KEYS = [
   'layout',
   'exceptions',
   'react',
+  'i18n',
   'analyzers',
   'legacyInventory',
   'python',
@@ -43,6 +44,8 @@ const GLOB_LAYOUT_KEYS = ['excludedGlobs', 'entryPoints'];
 
 const REACT_KEYS = ['enabled', 'styling'];
 
+const I18N_KEYS = ['enabled', 'functionNames', 'componentNames'];
+
 const CUSTOM_ANALYZER_KEYS = ['name', 'command', 'args'];
 
 export function validateConfig(config) {
@@ -53,6 +56,7 @@ export function validateConfig(config) {
   validateScalars(config);
   validateDisable(config.disable);
   validateReact(config.react);
+  validateI18n(config.i18n);
   validateOptional(config);
   return config;
 }
@@ -106,6 +110,7 @@ function validateOptional(config) {
   }
   if (config.exceptions !== undefined) {
     validateExceptions(config.exceptions);
+    validateI18nExceptions(config.exceptions, config.preset);
   }
   if (config.legacyInventory !== undefined) {
     validateProjectRelativePath(config.legacyInventory, 'legacyInventory');
@@ -118,23 +123,49 @@ function validateOptional(config) {
   }
 }
 
-function validateReact(react) {
-  if (react === undefined) {
+function validateScope(name, scope, keys) {
+  if (scope === undefined) {
     return;
   }
-  if (!isPlainObject(react)) {
-    throw configError('"react" must be an object');
+  if (!isPlainObject(scope)) {
+    throw configError(`"${name}" must be an object`);
   }
-  for (const key of Object.keys(react)) {
-    if (!REACT_KEYS.includes(key)) {
-      throw configError(`unknown react key "${key}". Allowed react keys: ${REACT_KEYS.join(', ')}`);
+  for (const key of Object.keys(scope)) {
+    if (!keys.includes(key)) {
+      throw configError(`unknown ${name} key "${key}". Allowed ${name} keys: ${keys.join(', ')}`);
     }
   }
-  if (react.enabled !== undefined && typeof react.enabled !== 'boolean') {
-    throw configError('"react.enabled" must be true or false');
+  if (scope.enabled !== undefined && typeof scope.enabled !== 'boolean') {
+    throw configError(`"${name}.enabled" must be true or false`);
   }
-  if (react.styling !== undefined && !stylingApproaches.includes(react.styling)) {
+}
+
+function validateReact(react) {
+  validateScope('react', react, REACT_KEYS);
+  if (react?.styling !== undefined && !stylingApproaches.includes(react.styling)) {
     throw configError(`"react.styling" must be one of: ${stylingApproaches.join(', ')}`);
+  }
+}
+
+function validateI18n(i18n) {
+  validateScope('i18n', i18n, I18N_KEYS);
+  for (const key of ['functionNames', 'componentNames']) {
+    if (i18n?.[key] !== undefined) {
+      validateStringArray(i18n[key], `i18n.${key}`);
+    }
+  }
+}
+
+function validateI18nExceptions(exceptions, preset) {
+  if (!['typescript', 'javascript', undefined].includes(preset)) {
+    return;
+  }
+  for (const [index, { rule }] of exceptions.entries()) {
+    if (rule.startsWith('formatjs/') && !i18nRuleIds.includes(rule)) {
+      throw configError(
+        `"exceptions[${String(index)}].rule" names ${rule}, which nitpicker does not run. The i18n rules it runs: ${i18nRuleIds.join(', ')}`,
+      );
+    }
   }
 }
 

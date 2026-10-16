@@ -86,6 +86,7 @@
     "@vitest/eslint-plugin": "1.6.27",
     "dependency-cruiser": "18.2.0",
     "eslint": "10.9.1",
+    "eslint-plugin-formatjs": "8.1.1",
     "eslint-plugin-functional": "10.0.1",
     "eslint-plugin-jsx-a11y-x": "0.2.0",
     "eslint-plugin-react-hooks": "7.1.1",

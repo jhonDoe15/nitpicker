@@ -3,13 +3,8 @@ import hooks from 'eslint-plugin-react-hooks';
 import reactX from 'eslint-plugin-react-x';
 import testingLibrary from 'eslint-plugin-testing-library';
 import { inReactTestFilesOnly } from '../../eslint-plugin/rules/react/react-test-files.mjs';
-import {
-  accessibilityRuleNames,
-  EXCEPTION_HINT,
-  GENERAL_HINT,
-  testingLibraryHints,
-} from './react-rules.mjs';
-import { withHint, withoutFixes } from '../rule-hints.mjs';
+import { accessibilityRuleNames, testingLibraryHints } from './react-rules.mjs';
+import { EXCEPTION_HINT, GENERAL_HINT, withHint, withoutFixes } from '../rule-hints.mjs';
 
 const accessibilityRulePrefix = 'jsx-a11y-x';
 
