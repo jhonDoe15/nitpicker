@@ -56,6 +56,33 @@ export function total(lines: readonly Line[]) {
     expect(ruleIds).toEqual(['nitpicker/no-unknown-in-domain']);
   });
 
+  it('reports the clock and I/O reached through the global object or a renamed date library', () => {
+    const cases = [
+      'export const now = () => globalThis.Date.now();',
+      'export const now = () => window.Date.now();',
+      'export const label = () => Date();',
+      'export const today = () => new globalThis.Date();',
+      'export const roll = () => self.Math.random();',
+      'export const load = (url: string) => globalThis.fetch(url);',
+      "export const load = (url: string) => globalThis['fetch'](url);",
+      "export const env = () => globalThis.process.env['A'];",
+      "import d from 'dayjs'; export const today = () => d();",
+      "import * as m from 'moment'; export const today = () => m();",
+    ];
+    for (const code of cases) {
+      expect(messagesFor(domainFile, code), code).not.toEqual([]);
+    }
+    expect(
+      messagesFor(
+        domainFile,
+        "import dayjs from 'dayjs'; export const parse = (s: string) => dayjs(s);",
+      ),
+    ).toEqual([]);
+    expect(
+      messagesFor(domainFile, 'export const at = (ms: number) => new Date(ms).getUTCHours();'),
+    ).toEqual([]);
+  });
+
   it('does not apply outside domain/', () => {
     const code = 'let n = 1; for (const x of [1]) { n += x; } class A {}';
     expect(messagesFor('src/main/features/billing/adapters/db.ts', code)).toEqual([]);
