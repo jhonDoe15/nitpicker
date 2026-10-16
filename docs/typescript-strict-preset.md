@@ -128,13 +128,51 @@ sum + x, 0)`), `Object.fromEntries`, and `Object.groupBy`. No loops, `forEach`, 
 - Named exports only; config files are exempt.
 - Early returns; no `else` after a `return`; no nested ternaries.
 - A `switch` over a discriminated union must handle every case.
+- `nitpicker/exhaustive-union-predicate` (type-aware): no `||` chain of `===` (or `&&` chain of
+  `!==`) that compares one plain reference (`kind`, `props.kind`) with some string or number
+  literals of a union that has at least three members, when the chain is a predicate's value: an
+  arrow body, a `return`, or a value stored in a variable or assigned (also inside `!`, another
+  `&&`/`||` or a ternary branch). A chain used as the condition of an `if`, `while`, `for` or
+  ternary is ordinary narrowing and is not reported, and neither is a call argument. Allowed forms: a `switch` over the union with no `default`, or a
+  `Record<Union, boolean>` lookup, so adding a member fails to compile. A subset check such as
+  `status === 'open' || status === 'pending'` on a project union of three or more members is the
+  case this reports. The message names the union by its alias (`Kind`) when the value's declared type
+  has one, also after the value was narrowed or when it is `Kind | undefined`; an inline union is
+  reported as "the union". It is not reported when the union comes from a library (its alias, or the
+  property it is read from, is declared in `node_modules` or the default library, including a local
+  binding or destructured parameter that holds a library value), when the comparison is on a
+  property of a union-typed object (`event.type === 'a' || event.type === 'b'`, which narrows a
+  discriminated union), or inside a function whose return type is a type predicate (`kind is
+'a' | 'b'`), which names the subset in its type. The type is read at the first comparison, so an
+  earlier guard that already narrowed the union can shrink it below three members. Add an exception
+  for the rule when a partial test is intended.
+- `nitpicker/no-forwarding-wrapper` (type-aware): a module-level named function or `const` arrow
+  whose body is one `return` (or an expression body) of a call that passes exactly its own
+  parameters, in order, unchanged (`export const loadUser = (id: string) => fetchUser(id)`) is
+  flagged when its parameter types and return type are identical to the callee's, so a wrapper that
+  brands, narrows or widens a type passes. The callee must be a module-level binding or an import
+  that the file could re-export or the caller could import directly. Not flagged: member callees
+  (`repo.find(id)`, `Math.abs(x)`, `api.get(url)`), callees that are parameters or closure variables
+  (injected dependencies), functions declared inside a component, factory or other function,
+  overload implementations, type-predicate and `asserts` functions (on either side), parameters
+  whose optional or rest form differs from the callee's (`b?: number` over `b: number | undefined`),
+  methods, `async` and generator functions, functions with type
+  parameters, calls with type arguments, optional calls, PascalCase names (components), functions
+  without parameters, default, destructured or transformed parameters, and a `const` with a type
+  annotation. A wrapper around a hook (`useUser(key)` over an imported `useQuery(key)`) is reported
+  like any other when the callee is module-level. For an exported wrapper (an `export` declaration,
+  `export default`, or an export list) the message gives the re-export under the exported name,
+  `export { fetchUser as loadUser }` or `export { fetchUser as default }`; for a local one it says to
+  call the callee directly and delete the wrapper.
 - No `as`, `any`, or non-null assertions.
 - `undefined` only for absent values. `null` only where a library or JSON requires it.
 - No comments, except doc comments (`/** ... */`) on exported declarations and the members of
   exported types. They are allowed there, never required; the Java preset follows the same rule for
   Javadoc. Tool directives are allowed, except suppressions: ESLint's `noInlineConfig` blocks
-  inline disables, and `@typescript-eslint/ban-ts-comment` bans `@ts-ignore`, `@ts-expect-error`,
-  and `@ts-nocheck`. `noInlineConfig` alone does not cover TypeScript suppressions. Coverage and
+  inline disables, and `@typescript-eslint/ban-ts-comment` bans `@ts-ignore`, `@ts-expect-error`
+  (with or without a description) and `@ts-nocheck`. `noInlineConfig` alone does not cover
+  TypeScript suppressions. A test that a type rejects a value asserts it with Vitest's
+  `expectTypeOf(fn).parameter(0).not.toExtend<Value>()`, which counts as an assertion. Coverage and
   mutation ignore comments (`istanbul ignore`, `c8 ignore`, `v8 ignore`, `Stryker disable`) are
   suppressions too: `nitpicker/no-comments` reports them, and code that truly cannot be tested
   gets a reviewed exception for that rule in `nitpicker.config.json`.
@@ -210,6 +248,39 @@ alone.
   for the setup, reports show that test as slow, and test order matters. Compute it in
   `beforeAll`. Constants, `new` expressions and calls on `path`, `Math`, `Object`, `JSON` and
   similar built-ins are not reported. A deliberate memo needs an exception in the config file.
+- `nitpicker/no-unused-dom-environment` (not strict: a finding counts only when new in the diff): a
+  runnable test file (`*.test.*`, `*.spec.*`) that runs in `jsdom` or `happy-dom` must use the DOM.
+  Keep `node` as the project's environment and put `/** @vitest-environment jsdom */` only on the
+  files that render. It reports once per file, on the directive when the file has one.
+  - Environment: the file's own `@vitest-environment` or `@jest-environment` directive (found in
+    the file text, as Vitest finds it), else the project's. nitpicker loads the project's
+    `vitest.config.*` or `vite.config.*` once per snapshot in a short-lived child process, with the
+    project's own `vite`, and reads `test.environment` (default `node`), inline `test.projects`
+    (`include`, `exclude`, `root`/`dir`, `environment`, `extends: true`) and the `resolve.alias` /
+    `test.alias` entries. A file in several projects counts as DOM if any of them is. When the
+    config cannot be read, sets `test.browser.enabled`, `test.environmentMatchGlobs` or
+    `test.workspace`, or a project is named by path, those files have no known default and only
+    directives are checked. An unreadable config is also reported as one report-only finding on
+    the config file.
+  - Uses the DOM, so nothing is reported: the file, or any project module it reaches through
+    imports, re-exports, `require`, dynamic `import()`, `vi.mock`/`vi.importActual`/`vi.doMock`,
+    `tsconfig`/`jsconfig` `paths`, Vite aliases, workspace packages linked into `node_modules` and
+    barrels: imports a DOM testing package (`@testing-library/*`, `@*/testing-library`,
+    `react-dom`, `enzyme`, `@vue/test-utils`, `@storybook/test`, `jest-axe` and similar) or a
+    Storybook `composeStories`; imports a `.tsx`, `.jsx`, `.vue` or `.svelte` module; or reads a
+    browser-only global (names from the `globals` package's `browser` set that Node does not have;
+    `navigator` only beyond `userAgent`, `language(s)`, `platform` and `hardwareConcurrency`).
+    Type-only imports and type annotations do not count, nor do `react-test-renderer`,
+    `react-dom/server` or `jsdom` imported as a library. When the imports reach deeper than 8
+    modules or more than 200 files, or a reached module loads a computed path (`import(name)`,
+    `require(name)`), the file is not reported.
+  - Setup files: when the project's environment is DOM and one of its `test.setupFiles` (or a
+    project module it imports) reads a browser-only global, every file in that project counts as
+    using the DOM. Importing a DOM testing package such as `@testing-library/jest-dom` in a setup
+    file does not count, since it also loads under `node`.
+  - Not seen: DOM use that only shows at run time, or behind a module nitpicker cannot resolve.
+    Adding `@vitest-environment jsdom` to such a file does not clear the finding; the only way out
+    is an exception for the rule in the config file.
 - `nitpicker/no-uninjectable-delay` (production code, not tests): `setTimeout`/`setInterval`
   (global, `globalThis`, or from `node:timers`/`node:timers/promises`) whose delay is a module-level
   `const` of 500 ms or more, inside an exported top-level function that has no parameter which
@@ -339,6 +410,42 @@ off (a PR that adds or removes React keeps linting on both sides); a misspelled 
   defines the palette gets one exception for the rule (`src/theme/**`); there is no filename
   heuristic.
 
+- **One optional input per concept** (`nitpicker/no-singular-and-plural-prop`). A component's props
+  type (or an exported `*Props` type) that declares both `tag?: string` and `tags?: string[]` offers
+  two ways to pass the same data. The rule reports the plural when both props are optional and the
+  plural is an array (`T[]`, `readonly T[]`, `Array<T>`, `ReadonlyArray<T>`) of the singular's type;
+  keep the plural and pass a single item as a one-element array. Props that differ in type, a
+  required prop, a prop typed `never` in a discriminated union and props in different union branches
+  are not reported. Aliases and interfaces in the same file are followed; types imported from other
+  files are not.
+- **Exclusive props are a type, not a check** (`nitpicker/no-runtime-exclusive-props-check`). An
+  `if` in a component body whose condition tests two or more of its own props the same way (`a && b`,
+  `!a && !b`, `a !== undefined && b !== undefined`, `a != null && b != null`, only `&&` chains of
+  props with nothing else in them) and whose branch rejects, by `throw`, `console.error(...)` or
+  `console.warn(...)`, is flagged: make the props a discriminated union
+  (`{ icon: Icon; image?: never } | { image: string; icon?: never }`) so the compiler rejects the
+  combination. Props are the destructured parameter names or `props.name`. A branch that renders a
+  fallback, returns `null`, logs at another level or sets state is not flagged, and neither is a check
+  inside a nested function or a hook callback.
+- **A story for every component, where Storybook is used** (`component-story-missing`, a check of
+  the `structure` analyzer, not an ESLint rule). A package whose nearest `package.json` lists
+  `storybook` or an `@storybook/*` package is checked: each source file in it that exports a real
+  component (a function returning JSX, a `memo` or `forwardRef` result or a class extending
+  `Component` or `PureComponent`; not objects, arrays or tables holding JSX) needs a story. The
+  story is `<Name>.stories.<ext>` or `<Name>.story.<ext>` (any code extension, the story pattern
+  the i18n scope uses), anywhere under the source roots of the same package (beside the component,
+  in a `__stories__` folder or in a top-level `src/stories/` as Storybook's setup creates it), named
+  after any component the file exports, after the file, or after the folder for an `index.*` file
+  (`Card/index.tsx` with `Card/Card.stories.tsx`). MDX docs pages do not count, because they hold
+  no stories. Story files and files under `__stories__` or `stories` are not components. Each
+  component of a file without a story is its own finding, located at its declaration, so a second
+  component added to a file that has none is a new finding. A finding is enforced when more than half of the checked
+  components have a story, and only reported (`descriptive`) otherwise, so a project adopting
+  stories is not failed on every old component. That decision, and whether Storybook is present, are
+  read from the head checkout on both sides of a comparison, so a pull request that adds Storybook or
+  crosses the half mark does not turn untouched components into new findings. An exception lists the
+  file; the message carries the exact entry:
+  `{"rule":"component-story-missing","paths":["src/Card.tsx"],"reason":"..."}`.
 - **Accessibility** (`jsx-a11y/*`): the recommended `eslint-plugin-jsx-a11y` rule set, as errors.
   `jsx-a11y/mouse-events-have-key-events` is configured beyond the recommended default, which only
   checks `onMouseOver`/`onMouseOut`: `onMouseEnter` also needs `onFocus` and `onMouseLeave` also
@@ -363,7 +470,15 @@ off (a PR that adds or removes React keeps linting on both sides); a misspelled 
   (`nitpicker/react-test-no-implementation-details`): no `.instance()`, `.state()`, `.setState()` or
   test-renderer `findByType`/`findByProps`, no React fiber internals (`_reactInternals`,
   `stateNode`, `memoizedState`) and no `spyOn(React, 'useState')`; assert what the user sees. An
-  element with no role or accessible name needs an exception. A project with
+  element with no role or accessible name needs an exception. A test file that hovers
+  (`user.hover`, `userEvent.hover`, `fireEvent.mouseEnter` or `mouseOver`, or a `user.pointer` call
+  that only moves to a `target`) must also exercise the keyboard path somewhere in the same file:
+  `user.tab()`, `user.keyboard(...)`, `user.type(...)` with a `{Enter}`-style key token, `.focus()`,
+  `fireEvent.focus`, `focusIn`, `keyDown`, `keyUp` or `keyPress`, a `press`, `down` or `up` call
+  (`locator.press('Enter')`), or any call through a `keyboard` object (`page.keyboard.press('Tab')`).
+  `nitpicker/hover-test-needs-keyboard`
+  reports the first hover when none appears: add a test that tabs to the element and asserts the
+  same state. A hover-only control gets an exception. A project with
   `@testing-library/react-native` keeps `testID` queries, the idiom there.
 
 The plugins are `eslint-plugin-react-hooks`, `eslint-plugin-react-x` (from eslint-react),

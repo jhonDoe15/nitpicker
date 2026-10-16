@@ -14,6 +14,7 @@ import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 import ts from 'typescript';
 import { materializedDirectory } from './oxlint-inline-config.mjs';
+import { baseUrlFreeOptions } from './oxlint-paths.mjs';
 
 const STAGE_DIRECTORY = '.nitpicker-oxlint';
 
@@ -63,12 +64,19 @@ function lintTypeScriptConfig(projectConfigPath) {
   if (error !== undefined) {
     throw new Error(`Lint TypeScript config ${projectConfigPath} is not valid JSON`);
   }
-  return JSON.stringify({
+  const rebased = {
     ...config,
     ...(config.extends === undefined
       ? {}
       : { extends: rebasedExtends(config.extends, path.dirname(projectConfigPath)) }),
-    compilerOptions: { ...config.compilerOptions, noEmit: true },
+  };
+  return JSON.stringify({
+    ...rebased,
+    compilerOptions: {
+      ...config.compilerOptions,
+      ...baseUrlFreeOptions(rebased, projectConfigPath),
+      noEmit: true,
+    },
   });
 }
 

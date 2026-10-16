@@ -1,13 +1,7 @@
-import { mkdirSync, mkdtempSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
+import { rmSync } from 'node:fs';
 import path from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { lintWithOxlint } from './oxlint-runner.mjs';
-import {
-  lintProject,
-  messagesOf as oxlintMessagesOf,
-  removeProject,
-} from './test-support/oxlint-project.mjs';
+import { createProject, lintProject, TYPED_POLICY } from './test-support/oxlint-project.mjs';
 
 const POLICY = `import tseslint from ${JSON.stringify(import.meta.resolve('typescript-eslint'))};
 
@@ -52,18 +46,21 @@ const SOURCES = {
   'src/bom.ts': '\uFEFFconst x = 1; debugger;\nexport { x };\n',
 };
 
-let project;
+let root;
+let results;
 
 function messagesOf(relativePath) {
-  return oxlintMessagesOf(project, relativePath, ['ruleId', 'line', 'column']);
+  const result = results.find((entry) => entry.filePath === path.join(root, relativePath));
+  return (result?.messages ?? []).map(({ ruleId, line, column }) => ({ ruleId, line, column }));
 }
 
 beforeAll(() => {
-  project = lintProject({ policy: POLICY, sources: SOURCES });
+  root = createProject('nitpicker-oxlint-test-', { 'policy.mjs': POLICY, ...SOURCES });
+  results = lintProject({ root, patterns: ['src/**/*.ts'] });
 });
 
 afterAll(() => {
-  removeProject(project);
+  rmSync(root, { recursive: true, force: true });
 });
 
 describe('lintWithOxlint', () => {
@@ -80,8 +77,12 @@ describe('lintWithOxlint', () => {
   });
 
   it('reports the message id the ESLint rule used', () => {
-    const locked = oxlintMessagesOf(project, 'src/strict/locked.ts', ['ruleId', 'messageId']);
-    expect(locked.find((message) => message.ruleId === 'local/no-foo').messageId).toBe('foo');
+    const locked = results.find(
+      (entry) => entry.filePath === path.join(root, 'src/strict/locked.ts'),
+    );
+    expect(locked.messages.find((message) => message.ruleId === 'local/no-foo').messageId).toBe(
+      'foo',
+    );
   });
 
   it('applies disable comments to rules loaded from ESLint plugins', () => {
@@ -107,21 +108,6 @@ describe('lintWithOxlint', () => {
   });
 });
 
-const TYPED_POLICY = `import tseslint from ${JSON.stringify(import.meta.resolve('typescript-eslint'))};
-
-export default [
-  {
-    files: ['src/**/*.ts'],
-    languageOptions: {
-      parser: tseslint.parser,
-      parserOptions: { project: './tsconfig.json', tsconfigRootDir: import.meta.dirname },
-    },
-    plugins: { '@typescript-eslint': tseslint.plugin },
-    rules: { '@typescript-eslint/no-unnecessary-type-assertion': 'error' },
-  },
-];
-`;
-
 const TYPED_SOURCE =
   'declare const maybe: string | null;\nexport const needed = maybe as string;\ndeclare const sure: string;\nexport const redundant = sure as string;\n';
 
@@ -130,8 +116,7 @@ describe('lintWithOxlint with type-aware rules', () => {
   let typedResults;
 
   beforeAll(() => {
-    typedRoot = realpathSync(mkdtempSync(path.join(tmpdir(), 'nitpicker-oxlint-typed-test-')));
-    const files = {
+    typedRoot = createProject('nitpicker-oxlint-typed-test-', {
       'policy.mjs': TYPED_POLICY,
       'tsconfig.nitpicker.json': JSON.stringify({
         compilerOptions: { strict: true, skipLibCheck: true, types: [], lib: ['ES2022'] },
@@ -142,24 +127,11 @@ describe('lintWithOxlint with type-aware rules', () => {
       }),
       'src/top.ts': TYPED_SOURCE,
       'src/sub/nested.ts': TYPED_SOURCE,
-    };
-    for (const [relativePath, text] of Object.entries(files)) {
-      mkdirSync(path.dirname(path.join(typedRoot, relativePath)), { recursive: true });
-      writeFileSync(path.join(typedRoot, relativePath), text);
-    }
-    const projectConfigPath = path.join(typedRoot, 'tsconfig.nitpicker.json');
-    typedResults = lintWithOxlint({
-      options: { projectRoot: typedRoot, patterns: ['src/**/*.ts'] },
-      projectConfigPath,
-      environment: {
-        ...process.env,
-        NITPICKER_DIFF_ESLINT_POLICY_CONFIG: path.join(typedRoot, 'policy.mjs'),
-        NITPICKER_DIFF_ESLINT_PROJECT_ROOT: typedRoot,
-        NITPICKER_DIFF_ESLINT_PROJECT_CONFIG: projectConfigPath,
-      },
-      runEslintCli: () => {
-        throw new Error('no rule needs ESLint here');
-      },
+    });
+    typedResults = lintProject({
+      root: typedRoot,
+      patterns: ['src/**/*.ts'],
+      projectConfigName: 'tsconfig.nitpicker.json',
     });
   });
 
