@@ -120,6 +120,9 @@ describe('running pytest', () => {
       `cache_dir=${path.join(reportRoot, 'pytest-cache')}`,
       '--no-cov',
       '-n0',
+      `--junitxml=${path.join(reportRoot, 'test-times.xml')}`,
+      '-o',
+      'junit_family=xunit1',
     ]);
   });
   it('is an environment error naming the override when pytest is indicated but not importable', () => {

@@ -169,6 +169,16 @@ describe('config file', () => {
       );
     });
 
+    it('accepts the bare slow-test exception with every preset', () => {
+      const slowTest = { ...exception, rule: 'slow-test' };
+      for (const preset of ['typescript', 'javascript', 'python', 'java', 'kotlin']) {
+        expect(validateConfig({ preset, exceptions: [slowTest] })).toEqual({
+          preset,
+          exceptions: [slowTest],
+        });
+      }
+    });
+
     it('names the rules that can be lifted when the rule is another detekt rule', () => {
       const other = { ...exception, rule: 'detekt.style.MagicNumber' };
 
@@ -189,8 +199,12 @@ describe('config file', () => {
     expect(() => validateConfig({ preset: 'java', thresholds: { crapLimit: 0 } })).toThrow(
       /positive number/,
     );
-    expect(() => validateConfig({ preset: 'python', thresholds: { unitTestSeconds: 2 } })).toThrow(
-      '"thresholds.unitTestSeconds" is supported only with "preset": "java" or "kotlin"',
+    for (const preset of ['typescript', 'javascript', 'python', 'java', 'kotlin']) {
+      const thresholds = { unitTestSeconds: 2, integrationTestSeconds: 20 };
+      expect(validateConfig({ preset, thresholds })).toEqual({ preset, thresholds });
+    }
+    expect(() => validateConfig({ preset: 'python', thresholds: { unitTestSeconds: 0 } })).toThrow(
+      '"thresholds.unitTestSeconds" must be a positive number',
     );
     expect(() => validateConfig({ preset: 'java', legacyInventory: '../x.json' })).toThrow(
       /inside the project/,
@@ -363,7 +377,7 @@ describe('tool precedence', () => {
     );
     expect(() => validateConfig({ preset: 'python', tools })).toThrow(
       new Error(
-        'nitpicker.config.json: "tools" is not supported with "preset": "python": it describes the TypeScript source layout and ESLint rules, which the Python preset does not have. Not supported with python: layout, exceptions, react, i18n, tools, except exceptions for file-lines-limit, line-length-limit, folder-files-limit. Shared by all presets: thresholds, exclude, legacyInventory',
+        'nitpicker.config.json: "tools" is not supported with "preset": "python": it describes the TypeScript source layout and ESLint rules, which the Python preset does not have. Not supported with python: layout, exceptions, react, i18n, tools, except exceptions for file-lines-limit, line-length-limit, folder-files-limit, slow-test. Shared by all presets: thresholds, exclude, legacyInventory',
       ),
     );
   });

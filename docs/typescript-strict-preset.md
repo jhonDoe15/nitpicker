@@ -578,6 +578,39 @@ Vitest's worker count in CI is a CI setting, not code. It belongs in the CI work
 of the project's CI files, not in these rules. That check would need its own analyzer (a runner
 kind, a version entry, a check definition and project-level findings) and is not built yet.
 
+## Slow tests
+
+- **Rule.** `slow-test` fails a test the change adds or edits when it takes more than 5 s as a unit
+  test, or more than 30 s as an integration test (`thresholds.unitTestSeconds` and
+  `thresholds.integrationTestSeconds`), the same rule, message shape and budgets as for
+  [Java and Kotlin](java-preset.md#slow-tests). The message names the budget, the measured time, the
+  fixes (fake timers instead of waits, fakes for network, database and disk, or moving the test to
+  an integration test) and the exception. It is reported by the `coverage` analyzer, which already
+  runs the tests, so a failing test run reports `tests-failed` and no slow tests. TypeScript,
+  JavaScript and React share it.
+- **Measurement.** Head only, from the per-test `duration` of the report the project's runner
+  writes for the coverage run (Vitest and Jest JSON, the `node:test` reporter, Mocha JSON); there is
+  no extra run. A test that ran more than once keeps its slowest time. The run times a test out at
+  10 000 ms and `nitpicker/no-raised-test-timeout` bans longer timeouts, so the integration budget
+  only matters for a suite that has an exception for that rule.
+- **Unit or integration.** A test is an integration test when its file is under the `e2e/` test
+  root, or has a folder named `integration`, `integrations`, `e2e`, `end-to-end`, `functional`,
+  `acceptance` or `system` (also `integration-tests` and `__integration__`) in its path, or is named
+  `*.integration.test.*`, `*.e2e.test.*`, `*.int.test.*` or `*.it.test.*` (also `.spec.`). Every
+  other test is a unit test.
+- **Edited or added.** A test is found in its file by its full name (the `describe` titles and the
+  test title joined by spaces, the way the runners report it); `it.each` and `describe.each` titles
+  (`%s`, `%i`, `$name`), template titles and concatenated titles match as patterns, and a title the
+  source does not spell out matches any name. A test counts when its call text (whitespace
+  collapsed) differs from the base file's call with the same titles, or the file is new. A reported
+  test no call names counts when its file differs from the base. Slow tests the change does not
+  touch stay baselined, and the base snapshot reports none.
+- **Exception.** `{ "rule": "slow-test", "paths": ["test/db/**"], "reason": "..." }` in the
+  top-level `exceptions`, as printed in the message.
+- **Tests.** `languages/typescript/adapters/slow-tests/` (fake runner reports with a temporary
+  project and baseline, the title patterns, the path rules) and `slow-tests-runners.test.mjs`
+  (a test that really waits, on each of the four runners, asserting only that the rule fires).
+
 ## React
 
 The React scope turns on when `react` is in the analyzed project's `dependencies` or
@@ -1159,7 +1192,7 @@ from a real caller) and the `exceptions` entry that lifts it.
   (`nitpicker/no-ui-framework-in-domain`), used to be `no-restricted-syntax` selectors. An existing
   `no-restricted-syntax` exception no longer lifts them; add an entry for the new rule id with the
   same paths.
-- The file limits (`file-lines-limit`, `line-length-limit`, `folder-files-limit`) take exceptions the
+- The file limits (`file-lines-limit`, `line-length-limit`, `folder-files-limit`) and `slow-test` take exceptions the
   same way; each failure message spells out the entry that would lift it.
 - The reuse rules (`shared-used-by-one-feature`, `duplicate-definition`, `exported-name-collision`,
   `redefined-library-component`, `new-icon-asset`) come from the `coupling` and `structure` checks,

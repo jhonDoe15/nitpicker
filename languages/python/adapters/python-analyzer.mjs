@@ -92,6 +92,7 @@ export function createPythonAnalyzer(settings = {}) {
       'duplicates',
       'coupling',
       'import-linter',
+      'test-runtime',
     ],
     timeoutMs: ANALYZER_TIMEOUT_MS,
     createInvocation: pythonInvocation(settings, PYTHON_ANALYZER_NAME),

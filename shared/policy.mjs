@@ -62,11 +62,28 @@ export const FILE_LIMIT_DEFAULTS = {
 
 export const TEST_TIME_DEFAULTS = { unitTestSeconds: 5, integrationTestSeconds: 30 };
 
-/** Rules `exceptions` can lift for some paths in any preset (TypeScript also takes ESLint rules). */
+/** The `{fix}` of `MESSAGES.slowTest` per language; `{move}` is filled with that language's move advice. */
+export const SLOW_TEST_FIXES = {
+  java: 'Remove Thread.sleep and other waits, start a smaller Spring context or a test slice{move}',
+  typescript:
+    'Remove fixed sleeps and real timers (use fake timers) and mock network, database and disk access{move}',
+  python:
+    'Remove time.sleep and other waits (patch the clock) and fake network, database and disk access{move}',
+};
+
+export const SLOW_TEST_MOVES = {
+  typescript:
+    ', or move it to an integration test (an integration or e2e folder, or *.integration.test.*) if it is one',
+  python:
+    ', or move it to an integration test (an integration or e2e folder, or @pytest.mark.integration) if it is one',
+};
+
+/** Rules `exceptions` can lift for some paths in any preset: the file limits and slow tests (TypeScript also takes ESLint rules). */
 export const SHARED_EXCEPTION_RULES = [
   RULE_IDS.fileLines,
   RULE_IDS.lineLength,
   RULE_IDS.folderFiles,
+  RULE_IDS.slowTest,
 ];
 
 /** The shared rules the Java preset leaves to its own tools (Checkstyle checks line length). */
@@ -128,7 +145,7 @@ export const MESSAGES = {
   fileLines: `File has {value} lines (limit {limit}). Split it into files by responsibility. ${EXCEPTION_HINT}`,
   lineLength: `Line is {value} characters (limit {limit}). Break it up or extract a named value. ${EXCEPTION_HINT}`,
   folderFiles: `Folder has {value} {kind} files directly in it (limit {limit}). Group related files into subfolders (packages in Java). ${EXCEPTION_HINT}`,
-  slowTest: `{name} took {seconds} s; {kind} test may take {limit} s. Remove Thread.sleep and other waits, start a smaller Spring context or a test slice{move}. ${EXCEPTION_HINT}`,
+  slowTest: `{name} took {seconds} s; {kind} test may take {limit} s. {fix}. ${EXCEPTION_HINT}`,
   sharedUsedByOneFeature: `{path} is used only by feature {feature}. Move it into {directory}. ${EXCEPTION_HINT}`,
   duplicateDefinition: `{name} is also defined with {same} in {others}. {fix} ${EXCEPTION_HINT}`,
   exportedNameCollision: `{name} is also exported by {others}; {importer} imports both. {fix} ${EXCEPTION_HINT}`,
@@ -180,7 +197,6 @@ export const HELD_MESSAGES = {
     'Folder: {value} {kind} files (limit {limit}), allowed because base was {base}; any increase fails.',
 };
 
-const BOTH = { typescript: true, java: true, python: false };
 const ALL = { typescript: true, java: true, python: true };
 const TYPESCRIPT_ONLY = { typescript: true, java: false, python: false };
 const withKotlin = (enforcedBy, kotlin) => ({ ...enforcedBy, kotlin });
@@ -305,7 +321,7 @@ export const RULES = [
     id: RULE_IDS.slowTest,
     check: 'test-runtime',
     limit: `a test the change adds or edits taking more than ${String(TEST_TIME_DEFAULTS.unitTestSeconds)} s (unit) or ${String(TEST_TIME_DEFAULTS.integrationTestSeconds)} s (integration); override with \`thresholds.unitTestSeconds\` and \`thresholds.integrationTestSeconds\``,
-    enforcedBy: withKotlin({ ...BOTH, typescript: false }, true),
+    enforcedBy: withKotlin(ALL, true),
   },
   {
     id: RULE_IDS.componentStoryMissing,
