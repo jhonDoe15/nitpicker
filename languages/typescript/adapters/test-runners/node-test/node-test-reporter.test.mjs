@@ -92,4 +92,37 @@ describe('the node:test report', () => {
       },
     ]);
   });
+
+  it('names the hook that failed for the tests a failing before hook cancelled', () => {
+    const cancelled = {
+      type: 'test',
+      error: {
+        failureType: 'cancelledByParent',
+        cause: { message: 'test did not finish before its parent and was cancelled' },
+      },
+    };
+    const report = reportFromEvents([
+      event('test:fail', 'first', 1, cancelled),
+      event('test:fail', 'second', 1, cancelled),
+      event('test:fail', 'suite', 0, {
+        type: 'suite',
+        error: {
+          failureType: 'hookFailed',
+          message: 'failed running before hook',
+          cause: { message: 'no database' },
+        },
+      }),
+    ]);
+
+    expect(
+      report.testResults[0].assertionResults.map(({ fullName, status, failureMessages }) => [
+        fullName,
+        status,
+        failureMessages,
+      ]),
+    ).toEqual([
+      ['suite first', 'failed', ['failed running before hook: no database']],
+      ['suite second', 'failed', ['failed running before hook: no database']],
+    ]);
+  });
 });

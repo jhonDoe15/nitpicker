@@ -1,3 +1,4 @@
+import { globSync } from 'node:fs';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { withoutOptions } from '../../../preset/test-runner/script-command.mjs';
@@ -23,6 +24,8 @@ const LOADER_OPTIONS = new Set([
   '--loader',
   '--experimental-loader',
 ]);
+
+const SKIPPED_DIRECTORY = /^(?:node_modules|\.nitpicker-diff-.*)$/u;
 
 const NODE_DEFAULT_PATTERNS = [
   `**/*.test.${SCRIPT_EXTENSIONS}`,
@@ -86,6 +89,18 @@ function typeStrippingArguments(nodeArguments, files) {
     : [];
 }
 
+function matchedFiles(projectRoot, patterns) {
+  return globSync(patterns, {
+    cwd: projectRoot,
+    exclude: (entry) => SKIPPED_DIRECTORY.test(path.basename(entry.name ?? entry)),
+  }).map((file) => path.resolve(projectRoot, file));
+}
+
+function selectedTestFiles(options, patterns, files) {
+  const selected = [...new Set([...matchedFiles(options.projectRoot, patterns), ...files])];
+  return selected.length === 0 ? patterns : selected;
+}
+
 export function nodeTestSelection(options, command) {
   const { options: scriptOptions, patterns } = splitArguments(
     withoutOptions(command.arguments_, OPTIONS_NITPICKER_SETS),
@@ -97,7 +112,11 @@ export function nodeTestSelection(options, command) {
       ...typeStrippingArguments(command.nodeArguments, files),
     ],
     scriptOptions,
-    testFiles: [...(patterns.length === 0 ? NODE_DEFAULT_PATTERNS : patterns), ...files],
+    testFiles: selectedTestFiles(
+      options,
+      patterns.length === 0 ? NODE_DEFAULT_PATTERNS : patterns,
+      files,
+    ),
   };
 }
 

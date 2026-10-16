@@ -1,9 +1,11 @@
 import { mkdirSync, readFileSync, readdirSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
+import { pathToFileURL } from 'node:url';
 import { parse } from 'acorn';
 import { convert } from 'ast-v8-to-istanbul';
 import { executedScript, readLoadedSources, scriptFile } from './executed-script.mjs';
 import { unmappedNodeFilter } from './mapped-nodes.mjs';
+import { mergedCoverage } from './merge-coverage.mjs';
 
 const NODE_RUNNABLE_FILE = /\.[cm]?[jt]s$/u;
 const COMMONJS_FILE = /\.c[jt]s$/u;
@@ -44,14 +46,15 @@ async function fileCoverage(script) {
   const { file, functions } = script;
   try {
     const { code, sourceMap } = executedScript(script);
+    const ast = parseExecuted(file, code);
     const data = await convert({
       code,
-      ast: parseExecuted(file, code),
+      ast,
       wrapperLength: 0,
       ...(sourceMap === undefined
         ? {}
-        : { sourceMap, ignoreNode: unmappedNodeFilter(code, sourceMap) }),
-      coverage: { url: `file://${file}`, functions: functions ?? untouchedFunctions(code) },
+        : { sourceMap, ignoreNode: unmappedNodeFilter({ code, ast, sourceMap }) }),
+      coverage: { url: pathToFileURL(file).href, functions: functions ?? untouchedFunctions(code) },
     });
     return coverageOfFile(file, data);
   } catch (error) {
@@ -60,29 +63,6 @@ async function fileCoverage(script) {
       { cause: error },
     );
   }
-}
-
-function sumCounts(left, right) {
-  return Object.fromEntries(
-    Object.entries(left).map(([key, value]) => [
-      key,
-      Array.isArray(value)
-        ? value.map((count, index) => count + (right[key]?.[index] ?? 0))
-        : value + (right[key] ?? 0),
-    ]),
-  );
-}
-
-function merged(known, next) {
-  if (known === undefined) {
-    return next;
-  }
-  return {
-    ...known,
-    s: sumCounts(known.s, next.s),
-    f: sumCounts(known.f, next.f),
-    b: sumCounts(known.b, next.b),
-  };
 }
 
 function coverageScripts(coverage) {
@@ -112,7 +92,7 @@ async function convertedCoverage(scripts) {
   for (const script of scripts) {
     const data = await fileCoverage(script);
     if (data !== undefined) {
-      coverage.set(script.file, merged(coverage.get(script.file), data));
+      coverage.set(script.file, mergedCoverage(coverage.get(script.file), data));
     }
   }
   return coverage;
