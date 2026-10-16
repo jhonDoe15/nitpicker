@@ -271,28 +271,37 @@ output. It does not see:
 - output printed after a test file has finished, such as a dangling timer that fires later;
 - the output of a failing run: `coverage` fails first and `test-console` is skipped, as `crap` is.
 
-From each console call the check keeps every line that has a letter or digit and joins them with
-single spaces, so an object dump or an error with a `[cause]` is compared whole. It drops stack
-frames and React component stacks (indented lines that start with `at` or `in`), blank lines and
-lines that are only brackets. When Vitest reports several calls in one flush, each block that starts
-at an unindented line counts as one call. The text is normalized before it is compared: a path is
-replaced by its last segment, the project, temporary and home directories by `<root>`, `<tmp>` and
-`<home>`, every number with its unit (`0.766s`, `12 ms`, `3 MB`, `45%`) by `<n>`, ISO timestamps by
-`<time>`, `0x` addresses by `<hex>`, UUIDs by `<uuid>`, mixed letter-and-digit tokens of six or more
-characters (a random id) by `<id>`, and runs of spaces by one space. It is cut at 300 characters.
+Each console call becomes one message. A call is a block that starts at an unindented line, so a
+call gives the same message alone or batched with others in one flush. The message is every line of
+the block joined by single spaces, except lines with no letter or digit (blank lines, lines that are
+only brackets), stack frames and React component stacks (indented lines that start with `at` or
+`in`). An object dump or an error with a `[cause]` is compared whole. The text is normalized before
+it is compared: a path is replaced by its last segment, the project, temporary and home directories
+by `<root>`, `<tmp>` and `<home>`, every number with its unit (`0.766s`, `12 ms`, `3 MB`, `45%`) by
+`<n>`, ISO timestamps by `<time>`, `0x` addresses by `<hex>`, UUIDs by `<uuid>`, mixed
+letter-and-digit tokens of six or more characters (a random id) by `<id>`, and runs of spaces by one
+space. It is cut at 300 characters.
 
-Three limits follow, and the check accepts them on purpose: numbers become `<n>`, so a status code
-that changes from 404 to 500 is the same message; one differing word is tolerated, so an id made of
-letters only, or a changed word in a longer message, is not a new message; and paths collapse to
-their last segment, so the same file name in another directory is the same message. The one-word
-tolerance applies to messages of three or more words and to one message of the base for each message
-of the head. A message with two differing words, or a different number of words, is new.
+Three limits follow, and the check accepts them on purpose:
 
-The finding is keyed by the test file and the normalized message (with the tolerance above), so moving a warning to another
-line, renaming the test or printing it twice does not make it new, and a message that moves to
-another test file is new there. The message names the test that printed it. Three routes: fix the
-cause, allow a known third-party message in `testConsole.allow`, or lift the rule for a test file
-with `exceptions`. `exceptions` lifts files; `allow` lifts one known message wherever it appears:
+- Numbers become `<n>`, so a status code that changes from 404 to 500 is the same message.
+- Paths collapse to their last segment, so the same file name in another directory is the same
+  message.
+- A random value is tolerated: a message of three or more words matches a message of the base for
+  the same test file when exactly one word differs and both versions of that word look like an
+  opaque random value. Both must be lowercase letters and digits of five or more characters, and at
+  least one must have a run of four consonants, almost no vowels, or letters mixed with digits. A
+  capitalized, camelCase or UPPERCASE word, a name in backticks and a word of ordinary text such as
+  `key` and `ref` or `List` and `Table` make a new message. Each base message matches at most one
+  head message. A random word that looks like ordinary text, such as an id made of letters that
+  happen to read as a word, still makes a new message.
+
+The finding is keyed by the test file and the normalized message (with the tolerance above), so
+moving a warning to another line, renaming the test or printing it twice does not make it new, and a
+message that moves to another test file is new there. The message names the test that printed it.
+Three routes: fix the cause, allow a known third-party message in `testConsole.allow`, or lift the
+rule for a test file with `exceptions`. `exceptions` lifts files; `allow` lifts one known message
+wherever it appears:
 
 ```json
 {
@@ -311,8 +320,9 @@ with `exceptions`. `exceptions` lifts files; `allow` lifts one known message whe
 An `allow` entry has `contains`, a fragment that is normalized like a message (so `waited 250 ms`
 matches every `waited <n>`) and must keep at least three characters besides spaces and placeholders
 (`404` alone, or text that is only colors, is refused), an optional non-empty
-`paths` list of test file globs, and a required `reason`. There are no regular expressions. Both
-routes apply to the base and the head run. The base run does not need to be clean: only messages
+`paths` list of test file globs, and a required `reason`. The fragment is matched against the
+whole message of a call, so it can match any line of the call. There are no regular expressions.
+Both routes apply to the base and the head run. The base run does not need to be clean: only messages
 the base did not print can fail. The check follows the project's Vitest, the only runner the presets
 support (see the [JavaScript preset](#javascript-preset) for Jest and `node:test`).
 

@@ -382,7 +382,7 @@ alone.
   usually a bug, and warnings in a suite hide the next real one. The allowed forms are fixing the
   cause (cancel the timer or subscription in the cleanup), a `testConsole.allow` entry for a known
   third-party message, or an `exceptions` entry for the test file. Messages are compared by their
-  normalized first line, per test file, so an old warning that only moved is not new. See
+  normalized text, per test file, so an old warning that only moved is not new. See
   [Console output from tests](usage.md#console-output-from-tests).
 
 Left out, from the same write-up: recomputing one expensive result in every test, and running the
