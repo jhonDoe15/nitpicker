@@ -15,9 +15,9 @@ import {
 import path from 'node:path';
 import { existsSync, readFileSync, writeFileSync, realpathSync, unlinkSync } from 'node:fs';
 import { existingRoots } from '../../../preset/layout.mjs';
-import { readLayout } from '../../../preset/head-policy.mjs';
+import { readHeadPolicy, readLayout } from '../../../preset/head-policy.mjs';
 import { withFunctionSourceHashes, withDeadCodeSourceHashes } from '../reporting/source-hashes.mjs';
-import { typescriptFileLimitFindings } from '../../../preset/structure/file-limits.mjs';
+import { typescriptStructureProjectFindings } from '../../../preset/structure/project-findings.mjs';
 import { layoutJscpdConfig, layoutKnipConfig } from '../../../preset/tool-configs.mjs';
 import { trackTemporaryPath } from '../../../../../core/tooling/temporary-files.mjs';
 import { normalizeDuplicates } from '../../../preset/duplicates/normalize.mjs';
@@ -83,8 +83,13 @@ export async function runCoupling(options) {
     options,
     'languages/typescript/preset/coupling/analyze.mjs',
   );
+  const { exceptions } = readHeadPolicy();
   return perSourceRoot(options, layout, (root) =>
-    normalizeCoupling(analyzeCoupling(graph, root, { layout }), options.analyzerName),
+    normalizeCoupling(
+      analyzeCoupling(graph, root, { layout, projectRoot: options.projectRoot }),
+      options.analyzerName,
+      exceptions,
+    ),
   );
 }
 
@@ -125,7 +130,7 @@ export async function runStructure(options) {
   );
   return [
     ...functionFindings,
-    ...typescriptFileLimitFindings(options.projectRoot, options.analyzerName),
+    ...typescriptStructureProjectFindings(options),
     ...(await runUnusedApi(options)),
   ];
 }

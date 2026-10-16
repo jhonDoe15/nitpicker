@@ -8,7 +8,7 @@ import {
   reactTestRuleIds,
   testingLibrarySettings,
 } from './react-rules.mjs';
-import { productionScope, readDependencyNames } from '../scope-support.mjs';
+import { productionScope, readDependencyNames, storyGlobs } from '../scope-support.mjs';
 
 export { isReactProject } from '../scope-support.mjs';
 
@@ -47,8 +47,11 @@ export async function reactSyntaxConfigFor(layout, react = {}) {
         'react-x/no-class-component': 'error',
         'react-x/no-array-index-key': 'error',
         ...accessibilityRuleOptions,
+        'nitpicker/no-runtime-exclusive-props-check': 'error',
+        'nitpicker/no-singular-and-plural-prop': 'error',
         'nitpicker/react-no-effect-derived-state': 'error',
         'nitpicker/react-no-effect-data-fetching': 'error',
+        'nitpicker/react-no-hardcoded-colors': 'error',
         'nitpicker/react-single-styling-approach': [
           'error',
           { approach: react.styling ?? defaultStylingApproach },
@@ -63,6 +66,16 @@ export async function reactSyntaxConfigFor(layout, react = {}) {
         ...Object.fromEntries(reactTestRuleIds.map((id) => [id, 'error'])),
         ...(react.reactNative ? { 'testing-library/no-test-id-queries': 'off' } : {}),
       },
+    },
+  ];
+}
+
+function storyConfigFor() {
+  return [
+    {
+      files: storyGlobs,
+      plugins: { nitpicker: nitpickerRules },
+      rules: { 'nitpicker/react-no-hardcoded-colors': 'off' },
     },
   ];
 }
@@ -87,6 +100,7 @@ export async function reactScopeConfigFor(layout, react = {}, projectRoot = anal
   const reactNative = readDependencyNames(projectRoot).includes(reactNativeTestingPackage);
   return [
     ...(await reactSyntaxConfigFor(layout, { ...react, styling, reactNative })),
+    ...storyConfigFor(),
     ...reactTypedConfigFor(layout),
   ];
 }

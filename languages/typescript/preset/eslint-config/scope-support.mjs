@@ -5,9 +5,33 @@ import { codeExtensions } from '../layout.mjs';
 const scopePackages = {
   react: ['react'],
   i18n: ['react-intl', '@formatjs/intl'],
+  icons: [
+    'lucide-react',
+    'react-icons',
+    '@heroicons/react',
+    '@mui/icons-material',
+    '@tabler/icons-react',
+    '@phosphor-icons/react',
+    'phosphor-react',
+    '@radix-ui/react-icons',
+    '@fortawesome/react-fontawesome',
+    '@fortawesome/free-solid-svg-icons',
+    '@iconify/react',
+    'react-feather',
+    '@ant-design/icons',
+    '@chakra-ui/icons',
+    '@primer/octicons-react',
+    '@carbon/icons-react',
+    '@fluentui/react-icons',
+    '@remixicon/react',
+    '@mdi/js',
+    '@mdi/react',
+    '@expo/vector-icons',
+    'react-native-vector-icons',
+  ],
 };
 
-const storySuffixes = ['stories', 'story'];
+export const storySuffixes = ['stories', 'story'];
 export const storyGlobs = [`**/*.{${storySuffixes.join(',')}}.${codeExtensions}`];
 
 export function readManifest(projectRoot) {
@@ -26,8 +50,16 @@ export function readDependencyNames(projectRoot) {
   ];
 }
 
+export function isScopePackage(scope, name) {
+  return scopePackages[scope].includes(name);
+}
+
+export function scopePackage(projectRoot, scope) {
+  return readDependencyNames(projectRoot).find((name) => scopePackages[scope].includes(name));
+}
+
 export function hasScopePackage(projectRoot, scope) {
-  return readDependencyNames(projectRoot).some((name) => scopePackages[scope].includes(name));
+  return scopePackage(projectRoot, scope) !== undefined;
 }
 
 export function isReactProject({ projectRoot, react = {} }) {

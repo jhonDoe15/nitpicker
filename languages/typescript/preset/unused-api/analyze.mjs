@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import ts from 'typescript';
-import { exceptionMatcher } from '../../../../shared/rules/file-limits.mjs';
+import { exceptionMatcher } from '../../../../shared/rules/exceptions.mjs';
 import { isReactProject } from '../eslint-config/scope-support.mjs';
 import { readHeadPolicy, readLayout } from '../head-policy.mjs';
 import { createContext, isTypeScriptFile } from './context.mjs';
