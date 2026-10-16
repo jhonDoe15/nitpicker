@@ -50,13 +50,15 @@ describe('layout-aware tsconfig', () => {
       noImplicitReturns: true,
       noFallthroughCasesInSwitch: true,
       noUncheckedIndexedAccess: true,
+      exactOptionalPropertyTypes: true,
+      noPropertyAccessFromIndexSignature: true,
+      noUncheckedSideEffectImports: true,
       forceConsistentCasingInFileNames: true,
     });
     expect(layered.compilerOptions).not.toHaveProperty('module');
     expect(layered.compilerOptions).not.toHaveProperty('jsx');
     expect(layered.include).toEqual(['lib/**/*', 'spec/**/*', 'vitest*.ts']);
     expect([...new Set(layered.exclude)].sort()).toEqual([
-      '**/*.d.ts',
       '**/build/**',
       '**/coverage/**',
       '**/dist/**',
