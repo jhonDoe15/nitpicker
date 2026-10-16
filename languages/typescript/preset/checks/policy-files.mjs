@@ -47,6 +47,8 @@ export const POLICY_FILES = [
   'languages/typescript/preset/eslint-plugin/rules/react/react-effects.mjs',
   'languages/typescript/preset/eslint-plugin/rules/react/react-no-effect-data-fetching.mjs',
   'languages/typescript/preset/eslint-plugin/rules/react/react-no-effect-derived-state.mjs',
+  'languages/typescript/preset/eslint-plugin/rules/react/theme/react-no-hardcoded-colors.mjs',
+  'languages/typescript/preset/eslint-plugin/rules/react/theme/color-text.mjs',
   'languages/typescript/preset/eslint-plugin/rules/react/react-single-styling-approach.mjs',
   'languages/typescript/preset/eslint-plugin/rules/testing/assertions/no-partial-output-assertion.mjs',
   'languages/typescript/preset/eslint-plugin/rules/react/react-test-files.mjs',

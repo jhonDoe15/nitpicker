@@ -35,6 +35,7 @@ import { rule as noPartialOutputAssertion } from './rules/testing/assertions/no-
 import { rule as noProcessGlobalsOutsideMainGuard } from './rules/modules/no-process-globals-outside-main-guard.mjs';
 import { rule as testTsconfigPinsLibAndTypes } from './rules/testing/types/test-tsconfig-pins-lib-and-types.mjs';
 import { rule as reactNoEffectDataFetching } from './rules/react/react-no-effect-data-fetching.mjs';
+import { rule as reactNoHardcodedColors } from './rules/react/theme/react-no-hardcoded-colors.mjs';
 import { rule as reactNoEffectDerivedState } from './rules/react/react-no-effect-derived-state.mjs';
 import { rule as reactSingleStylingApproach } from './rules/react/react-single-styling-approach.mjs';
 import { rule as reactTestNoImplementationDetails } from './rules/react/react-test-no-implementation-details.mjs';
@@ -84,6 +85,7 @@ export const nitpickerRules = {
     'test-tsconfig-pins-lib-and-types': testTsconfigPinsLibAndTypes,
     'react-no-effect-data-fetching': reactNoEffectDataFetching,
     'react-no-effect-derived-state': reactNoEffectDerivedState,
+    'react-no-hardcoded-colors': reactNoHardcodedColors,
     'react-single-styling-approach': reactSingleStylingApproach,
     'react-test-no-implementation-details': reactTestNoImplementationDetails,
   },

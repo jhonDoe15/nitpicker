@@ -288,6 +288,25 @@ describe('the React scope config', () => {
     ],
     [
       'an unrelated helper',
+  it('checks colors in every production source file, but not in tests or stories', async () => {
+    const entries = await reactScopeConfigFor(layout);
+    const severityOf = async (file) =>
+      (await calculatedConfig(entries, file))?.rules?.['nitpicker/react-no-hardcoded-colors']?.[0];
+
+    for (const file of ['src/ui/panel.tsx', 'src/map/geometry.ts', 'src/map/geometry.mjs']) {
+      expect(await severityOf(file), file).toBe(2);
+    }
+    for (const file of [
+      'src/ui/panel.test.tsx',
+      'test/panel.tsx',
+      'src/ui/__tests__/panel.tsx',
+      'src/ui/panel.stories.tsx',
+      'src/ui/panel.stories.ts',
+    ]) {
+      expect(await severityOf(file), file).not.toBe(2);
+    }
+  });
+
       "import { helper } from './helpers'; fireEvent.click(helper()); screen.getByTestId('a');",
     ],
   ])('reports nothing in %s that imports no React test module', async (_name, code) => {

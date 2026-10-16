@@ -49,6 +49,16 @@ const reactSyntaxCases = [
   ],
   ['conditional hook names the same call order', panel('if (a) { useState(1); }'), 'same order'],
   [
+    'hard-coded color names the theme',
+    "export const Dot = () => <svg fill='#336699' />;",
+    'theme or design-system palette',
+  ],
+  [
+    'hard-coded color names the config exception',
+    "export const Dot = () => <svg fill='#336699' />;",
+    'nitpicker/react-no-hardcoded-colors in nitpicker.config.json',
+  ],
+  [
     'conditional hook names the config exception',
     panel('if (a) { useState(1); }'),
     'nitpicker.config.json',
