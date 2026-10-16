@@ -1,4 +1,5 @@
 def reportDir = project.ext.nitpickerReportDir
+def toolCommand = project.ext.nitpickerToolCommand
 
 tasks.register('nitpickerCpd', JavaExec) {
     group = 'nitpicker'
@@ -7,6 +8,7 @@ tasks.register('nitpickerCpd', JavaExec) {
     ignoreExitValue = true
     def report = reportDir.map { it.file('cpd.xml') }
     def errors = new ByteArrayOutputStream()
+    def command = null
     def sourceDirectories = {
         sourceSets.collectMany { it.allJava.sourceDirectories.files }.unique().findAll { it.exists() }
     }
@@ -17,13 +19,12 @@ tasks.register('nitpickerCpd', JavaExec) {
         reportDir.get().asFile.mkdirs()
         standardOutput = new FileOutputStream(report.get().asFile)
         errorOutput = errors
-        args(['cpd', '--minimum-tokens', '100', '--ignore-identifiers', '--ignore-literals', '--language', 'java',
-              '--format', 'xml', '--no-fail-on-error'] +
-            sourceDirectories().collectMany { ['--dir', it.absolutePath] })
+        command = toolCommand('cpd', [directories: sourceDirectories()*.absolutePath])
+        args(command.args)
     }
     doLast {
         def code = executionResult.get().exitValue
-        if (!(code in [0, 4])) {
+        if (!command.accepts(code)) {
             throw new GradleException("PMD CPD failed with exit code ${code}: ${errors.toString('UTF-8').trim()}")
         }
     }

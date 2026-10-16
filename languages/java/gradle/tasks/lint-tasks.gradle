@@ -1,5 +1,6 @@
 def pinned = project.ext.nitpickerPinned
 def reportDir = project.ext.nitpickerReportDir
+def toolCommand = project.ext.nitpickerToolCommand
 def rulesDir = new File(buildscript.sourceFile.parentFile, '../rules')
 def javaHome = new File(System.getProperty('java.home'))
 
@@ -22,6 +23,7 @@ tasks.register('nitpickerForbiddenApis', JavaExec) {
         .withPropertyName('classes')
     outputs.file(report).withPropertyName('report')
     def log = new ByteArrayOutputStream()
+    def command = null
     onlyIf { analyzedClassDirs().any { it.exists() && it.list()?.length } }
     doFirst {
         reportDir.get().asFile.mkdirs()
@@ -29,15 +31,17 @@ tasks.register('nitpickerForbiddenApis', JavaExec) {
         errorOutput = log
         def classDirs = analyzedClassDirs().findAll { it.exists() }
         def libraries = sourceSets.main.compileClasspath.files.findAll { it.exists() }
-        args(classDirs.collectMany { ['-d', it.absolutePath] } +
-            ['-c', libraries.collect { it.absolutePath }.join(File.pathSeparator),
-             '-f', new File(rulesDir, 'forbidden-apis.txt').absolutePath,
-             '--allowmissingclasses'])
+        command = toolCommand('forbiddenapis', [
+            classDirectories: classDirs*.absolutePath,
+            libraries       : libraries*.absolutePath,
+            signatures      : new File(rulesDir, 'forbidden-apis.txt').absolutePath,
+        ])
+        args(command.args)
     }
     doLast {
         def code = executionResult.get().exitValue
         report.get().asFile.text = log.toString('UTF-8')
-        if (!(code in [0, 1])) {
+        if (!command.accepts(code)) {
             throw new GradleException("forbiddenapis failed with exit code ${code}: ${log.toString('UTF-8').trim()}")
         }
     }

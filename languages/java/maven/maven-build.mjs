@@ -25,6 +25,7 @@ import {
 import { copyTestResults } from './results/maven-test-results.mjs';
 import { jacocoPlugin, MAVEN_PLUGINS, resolveTools } from './maven-tools.mjs';
 import { GRADLE_DIRECTORY, readPinnedTools } from '../builds/java-build.mjs';
+import { toolCommand } from '../builds/tools/tool-commands.mjs';
 
 export const MAVEN_REPORT_DIRECTORY = 'target/nitpicker';
 const OWN_JACOCO_EXEC = 'nitpicker-jacoco.exec';
@@ -114,16 +115,13 @@ function runJdeps(module, reportDir) {
     writeFileSync(path.join(reportDir, 'jdeps.txt'), '');
     return;
   }
-  const result = spawnSync(
-    javaCommand('jdeps'),
-    ['-verbose:class', '-filter:none', module.outputDirectory],
-    {
-      cwd: module.basedir,
-      encoding: 'utf8',
-      maxBuffer: 50 * 1024 * 1024,
-    },
-  );
-  if (result.error !== undefined || result.status !== 0) {
+  const command = toolCommand('jdeps', { classDirectories: [module.outputDirectory] });
+  const result = spawnSync(javaCommand('jdeps'), command.args, {
+    cwd: module.basedir,
+    encoding: 'utf8',
+    maxBuffer: 50 * 1024 * 1024,
+  });
+  if (result.error !== undefined || !command.accepts(result.status)) {
     throw new Error(
       `jdeps failed with exit code ${String(result.status)}: ${result.error?.message ?? result.stderr}`,
     );
