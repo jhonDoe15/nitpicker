@@ -4,7 +4,7 @@ import { writeMypyConfig } from './configuration/mypy-config.mjs';
 import { execute, run } from './execution/python-process.mjs';
 import { importRoots } from './execution/python-project.mjs';
 import { mypyLayers } from './project-tools/mypy-layers.mjs';
-import { pyrightConfig } from './project-tools/pyright-config.mjs';
+import { pyrightConfig } from './project-tools/pyright/pyright-config.mjs';
 
 export const TYPES_REPORT = 'type-check.json';
 const TYPES_FAILED_RULE = 'types-failed';

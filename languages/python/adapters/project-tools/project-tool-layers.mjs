@@ -8,10 +8,15 @@ export function parseToml(text) {
   return createRequire(import.meta.url)('smol-toml').parse(text);
 }
 
+export function stringifyToml(value) {
+  return createRequire(import.meta.url)('smol-toml').stringify(value);
+}
+
 export function toolLayers(context, tool) {
   const layers = precedenceLayers(context.toolPrecedence?.[tool]);
   return {
     optedIn: layers.usesProject,
+    appliesProject: layers.usesProject && !layers.nitpickerFirst,
     nitpickerFirst: layers.nitpickerFirst,
     configRoot: layers.usesProject
       ? (context.policyRoot ?? context.projectRoot)

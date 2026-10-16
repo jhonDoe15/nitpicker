@@ -145,6 +145,34 @@ describe('Python mypy config of the project', () => {
   });
 });
 
+describe('Python mutmut config of the project', () => {
+  const fixed = `Format with ruff: ruff format --isolated --target-version py38 --line-length 88 --config 'format.quote-style = "double"' --config 'indent-width = 4' .\n`;
+  const notice = (what) =>
+    `Ignoring ${what}; opt in with "tools": { "mutmut": { "precedence": ["project", "nitpicker"] } }\n`;
+  const table = '[tool.mutmut]\ndo_not_mutate = ["src/*"]\n';
+
+  it('names the table that is ignored, until the project is listed', () => {
+    expect(follow({ preset: 'python' }, { 'pyproject.toml': table }).printed).toBe(
+      fixed + notice('[tool.mutmut] in pyproject.toml'),
+    );
+    expect(
+      follow({ preset: 'python' }, { 'setup.cfg': '[mutmut]\nsource_paths=app\n' }).printed,
+    ).toBe(fixed + notice('[mutmut] in setup.cfg'));
+    expect(
+      follow(
+        { preset: 'python', tools: { mutmut: { precedence: LISTED } } },
+        { 'pyproject.toml': table },
+      ).printed,
+    ).toBe(fixed);
+  });
+
+  it('says nothing when mutation testing is off', () => {
+    const config = { preset: 'python', disable: ['mutation'] };
+
+    expect(follow(config, { 'pyproject.toml': table }).printed).toBe(fixed);
+  });
+});
+
 describe('Python conventions that black can apply', () => {
   const black = { preset: 'python', python: { formatter: 'black' } };
 

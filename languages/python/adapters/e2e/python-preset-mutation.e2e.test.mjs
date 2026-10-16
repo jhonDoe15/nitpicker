@@ -1,3 +1,5 @@
+import { readFileSync } from 'node:fs';
+import path from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import {
   LEGACY_WEAKER,
@@ -8,6 +10,7 @@ import {
 } from './test-support/python-preset-data.mjs';
 import {
   commitBranch,
+  fixture,
   fixtureRepository,
   gate,
   initializeRepository,
@@ -18,6 +21,12 @@ import {
   write,
 } from './test-support/python-e2e-support.mjs';
 
+const SHRUNK = `${readFileSync(path.join(fixture, 'pyproject.toml'), 'utf8')}\n[tool.mutmut]\ndo_not_mutate = ["src/*"]\n`;
+const mutantFindings = (result) =>
+  result
+    .json('new-findings.json')
+    .filter(({ tool, rule }) => tool === 'mutmut' && rule !== 'mutation-summary');
+
 describe.skipIf(!pythonE2eEnabled)('Python preset mutation gates end to end', () => {
   let project;
   beforeAll(() => {
@@ -26,6 +35,17 @@ describe.skipIf(!pythonE2eEnabled)('Python preset mutation gates end to end', ()
     commitBranch(project, 'survivors', {
       'src/demo/pricing.py': PRICING_WITH_UNUSED,
       'tests/test_pricing.py': PRICING_TEST,
+    });
+    const pricing = {
+      'src/demo/pricing.py': PRICING_WITH_UNUSED,
+      'tests/test_pricing.py': PRICING_TEST,
+      'pyproject.toml': SHRUNK,
+    };
+    commitBranch(project, 'shrunk', pricing);
+    commitBranch(project, 'shrunk-listed', {
+      ...pricing,
+      'nitpicker.config.json':
+        '{ "preset": "python", "tools": { "mutmut": { "precedence": ["project", "nitpicker"] } } }\n',
     });
     commitBranch(project, 'killed', {
       'src/demo/pricing.py': PRICING,
@@ -57,6 +77,20 @@ describe.skipIf(!pythonE2eEnabled)('Python preset mutation gates end to end', ()
       symbol: 'discount',
       location: { line: 2 },
     });
+  });
+  it('keeps mutating the files a do_not_mutate of the project config would skip', () => {
+    const result = gate(project, 'shrunk');
+
+    expect(result.exitCode, result.text).toBe(1);
+    expect(new Set(mutantFindings(result).map(({ path: file }) => file))).toEqual(
+      new Set(['src/demo/pricing.py']),
+    );
+  });
+  it('takes the do_not_mutate of the project config when the project is listed', () => {
+    const result = gate(project, 'shrunk-listed');
+
+    expect(result.exitCode, result.text).toBe(0);
+    expect(mutantFindings(result)).toEqual([]);
   });
   it('passes new code whose mutants are all killed', () => {
     const result = gate(project, 'killed');

@@ -77,7 +77,7 @@ function readIniLine(line, sections, state) {
   startOption(line, state);
 }
 
-function parseIni(text) {
+export function parseIni(text) {
   const sections = new Map();
   const state = { options: undefined, key: undefined };
   for (const raw of text.split(/\r?\n/)) {
