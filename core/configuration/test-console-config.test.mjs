@@ -34,10 +34,18 @@ describe('testConsole config', () => {
     [{ testConsole: { allow: [{ ...allowed, paths: 'test/**' }] } }, /paths" must be an array/],
     [{ testConsole: { allow: [{ contains: 'abc' }] } }, /reason" is required/],
     [{ testConsole: { allow: [{ contains: 'abc', reason: ' ' }] } }, /reason" is required/],
-    [{ preset: 'python', testConsole: { allow: [allowed] } }, /"testConsole" is not supported/],
   ])('rejects %j', (config, message) => {
     expect(() => validateConfig(config)).toThrow(message);
   });
+
+  it.each([['python'], ['java'], ['kotlin'], ['javascript']])(
+    'is valid with the %s preset',
+    (preset) => {
+      const config = { preset, testConsole: { allow: [allowed] } };
+
+      expect(validateConfig(config)).toEqual(config);
+    },
+  );
 
   it('reaches every analyzer through the head policy and changes the policy hash', () => {
     const testConsole = { allow: [allowed] };
