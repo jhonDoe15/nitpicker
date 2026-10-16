@@ -144,13 +144,13 @@
     "primary": ["errorprone/UnnecessarySemicolon"],
     "secondary": [
       "spotbugs/UCF_USELESS_CONTROL_FLOW_NEXT_LINE",
-      "checkstyle/com.puppycrawl.tools.checkstyle.checks.blocks.NeedBracesCheck",
+      "checkstyle/NeedBraces",
       "errorprone/MissingBraces"
     ],
     "scope": "line"
   },
   {
-    "primary": ["checkstyle/com.puppycrawl.tools.checkstyle.checks.blocks.NeedBracesCheck"],
+    "primary": ["checkstyle/NeedBraces"],
     "secondary": ["errorprone/MissingBraces"],
     "scope": "line"
   },
@@ -258,7 +258,7 @@
     "secondary": [
       "pmd/NonExhaustiveSwitch",
       "errorprone/MissingDefault",
-      "checkstyle/com.puppycrawl.tools.checkstyle.checks.coding.MissingSwitchDefaultCheck",
+      "checkstyle/MissingSwitchDefault",
       "spotbugs/SF_SWITCH_NO_DEFAULT"
     ],
     "scope": "line"
@@ -267,74 +267,58 @@
     "primary": ["pmd/NonExhaustiveSwitch"],
     "secondary": [
       "errorprone/MissingDefault",
-      "checkstyle/com.puppycrawl.tools.checkstyle.checks.coding.MissingSwitchDefaultCheck",
+      "checkstyle/MissingSwitchDefault",
       "spotbugs/SF_SWITCH_NO_DEFAULT"
     ],
     "scope": "line"
   },
   {
     "primary": ["errorprone/MissingDefault"],
-    "secondary": [
-      "checkstyle/com.puppycrawl.tools.checkstyle.checks.coding.MissingSwitchDefaultCheck",
-      "spotbugs/SF_SWITCH_NO_DEFAULT"
-    ],
+    "secondary": ["checkstyle/MissingSwitchDefault", "spotbugs/SF_SWITCH_NO_DEFAULT"],
     "scope": "line"
   },
   {
-    "primary": [
-      "checkstyle/com.puppycrawl.tools.checkstyle.checks.coding.MissingSwitchDefaultCheck"
-    ],
+    "primary": ["checkstyle/MissingSwitchDefault"],
     "secondary": ["spotbugs/SF_SWITCH_NO_DEFAULT"],
     "scope": "line"
   },
   {
     "primary": ["errorprone/FallThrough"],
-    "secondary": [
-      "pmd/ImplicitSwitchFallThrough",
-      "checkstyle/com.puppycrawl.tools.checkstyle.checks.coding.FallThroughCheck"
-    ],
+    "secondary": ["pmd/ImplicitSwitchFallThrough", "checkstyle/FallThrough"],
     "scope": "line"
   },
   {
     "primary": ["pmd/ImplicitSwitchFallThrough"],
-    "secondary": ["checkstyle/com.puppycrawl.tools.checkstyle.checks.coding.FallThroughCheck"],
+    "secondary": ["checkstyle/FallThrough"],
     "scope": "line"
   },
   {
     "primary": [
       "errorprone/FallThrough",
       "pmd/ImplicitSwitchFallThrough",
-      "checkstyle/com.puppycrawl.tools.checkstyle.checks.coding.FallThroughCheck"
+      "checkstyle/FallThrough"
     ],
     "secondary": ["spotbugs/SF_SWITCH_FALLTHROUGH"],
     "scope": "member"
   },
   {
     "primary": ["errorprone/EmptyCatch"],
-    "secondary": [
-      "pmd/EmptyCatchBlock",
-      "checkstyle/com.puppycrawl.tools.checkstyle.checks.blocks.EmptyCatchBlockCheck"
-    ],
+    "secondary": ["pmd/EmptyCatchBlock", "checkstyle/EmptyCatchBlock"],
     "scope": "line"
   },
   {
     "primary": ["pmd/EmptyCatchBlock"],
-    "secondary": ["checkstyle/com.puppycrawl.tools.checkstyle.checks.blocks.EmptyCatchBlockCheck"],
+    "secondary": ["checkstyle/EmptyCatchBlock"],
     "scope": "line"
   },
   {
     "primary": ["errorprone/MultiVariableDeclaration"],
-    "secondary": [
-      "pmd/OneDeclarationPerLine",
-      "checkstyle/com.puppycrawl.tools.checkstyle.checks.coding.MultipleVariableDeclarationsCheck"
-    ],
+    "secondary": ["pmd/OneDeclarationPerLine", "checkstyle/MultipleVariableDeclarations"],
     "scope": "line"
   },
   {
     "primary": ["pmd/OneDeclarationPerLine"],
-    "secondary": [
-      "checkstyle/com.puppycrawl.tools.checkstyle.checks.coding.MultipleVariableDeclarationsCheck"
-    ],
+    "secondary": ["checkstyle/MultipleVariableDeclarations"],
     "scope": "line"
   },
   {
@@ -345,40 +329,40 @@
   {
     "primary": ["errorprone/IdentifierName"],
     "secondary": [
-      "checkstyle/com.puppycrawl.tools.checkstyle.checks.naming.CatchParameterNameCheck",
-      "checkstyle/com.puppycrawl.tools.checkstyle.checks.naming.LambdaParameterNameCheck",
-      "checkstyle/com.puppycrawl.tools.checkstyle.checks.naming.LocalVariableNameCheck",
-      "checkstyle/com.puppycrawl.tools.checkstyle.checks.naming.MemberNameCheck",
-      "checkstyle/com.puppycrawl.tools.checkstyle.checks.naming.MethodNameCheck",
-      "checkstyle/com.puppycrawl.tools.checkstyle.checks.naming.ParameterNameCheck",
-      "checkstyle/com.puppycrawl.tools.checkstyle.checks.naming.PatternVariableNameCheck",
-      "checkstyle/com.puppycrawl.tools.checkstyle.checks.naming.RecordComponentNameCheck"
+      "checkstyle/CatchParameterName",
+      "checkstyle/LambdaParameterName",
+      "checkstyle/LocalVariableName",
+      "checkstyle/MemberName",
+      "checkstyle/MethodName",
+      "checkstyle/ParameterName",
+      "checkstyle/PatternVariableName",
+      "checkstyle/RecordComponentName"
     ],
     "scope": "line"
   },
   {
     "primary": ["errorprone/TypeParameterNaming"],
     "secondary": [
-      "checkstyle/com.puppycrawl.tools.checkstyle.checks.naming.ClassTypeParameterNameCheck",
-      "checkstyle/com.puppycrawl.tools.checkstyle.checks.naming.InterfaceTypeParameterNameCheck",
-      "checkstyle/com.puppycrawl.tools.checkstyle.checks.naming.MethodTypeParameterNameCheck",
-      "checkstyle/com.puppycrawl.tools.checkstyle.checks.naming.RecordTypeParameterNameCheck"
+      "checkstyle/ClassTypeParameterName",
+      "checkstyle/InterfaceTypeParameterName",
+      "checkstyle/MethodTypeParameterName",
+      "checkstyle/RecordTypeParameterName"
     ],
     "scope": "line"
   },
   {
     "primary": ["errorprone/WildcardImport"],
-    "secondary": ["checkstyle/com.puppycrawl.tools.checkstyle.checks.imports.AvoidStarImportCheck"],
+    "secondary": ["checkstyle/AvoidStarImport"],
     "scope": "file"
   },
   {
     "primary": ["errorprone/LongLiteralLowerCaseSuffix"],
-    "secondary": ["checkstyle/com.puppycrawl.tools.checkstyle.checks.UpperEllCheck"],
+    "secondary": ["checkstyle/UpperEll"],
     "scope": "line"
   },
   {
     "primary": ["errorprone/MixedArrayDimensions"],
-    "secondary": ["checkstyle/com.puppycrawl.tools.checkstyle.checks.ArrayTypeStyleCheck"],
+    "secondary": ["checkstyle/ArrayTypeStyle"],
     "scope": "line"
   },
   {
@@ -440,44 +424,41 @@
     "scope": "line"
   },
   {
-    "primary": ["checkstyle/com.puppycrawl.tools.checkstyle.checks.javadoc.JavadocMethodCheck"],
+    "primary": ["checkstyle/JavadocMethod"],
     "secondary": ["errorprone/InvalidParam"],
     "scope": "line"
   },
   {
     "primary": ["errorprone/ReturnFromVoid"],
-    "secondary": ["checkstyle/com.puppycrawl.tools.checkstyle.checks.javadoc.JavadocMethodCheck"],
+    "secondary": ["checkstyle/JavadocMethod"],
     "scope": "line"
   },
   {
     "primary": ["errorprone/NotJavadoc"],
-    "secondary": [
-      "checkstyle/com.puppycrawl.tools.checkstyle.checks.javadoc.InvalidJavadocPositionCheck"
-    ],
+    "secondary": ["checkstyle/InvalidJavadocPosition"],
     "scope": "line"
   },
   {
     "primary": ["errorprone/EmptyBlockTag"],
-    "secondary": [
-      "checkstyle/com.puppycrawl.tools.checkstyle.checks.javadoc.NonEmptyAtclauseDescriptionCheck"
-    ],
+    "secondary": ["checkstyle/NonEmptyAtclauseDescription"],
     "scope": "line"
   },
   {
     "primary": ["errorprone/MissingSummary"],
-    "secondary": ["checkstyle/com.puppycrawl.tools.checkstyle.checks.javadoc.SummaryJavadocCheck"],
+    "secondary": ["checkstyle/SummaryJavadoc"],
     "scope": "javadoc"
   },
   {
     "primary": ["errorprone/AnnotationPosition"],
     "secondary": [
-      "checkstyle/com.puppycrawl.tools.checkstyle.checks.annotation.AnnotationLocationCheck"
+      "checkstyle/AnnotationLocationMostCases",
+      "checkstyle/AnnotationLocationVariables"
     ],
     "scope": "line"
   },
   {
     "primary": ["errorprone/ClassName"],
-    "secondary": ["checkstyle/com.puppycrawl.tools.checkstyle.checks.OuterTypeFilenameCheck"],
+    "secondary": ["checkstyle/OuterTypeFilename"],
     "scope": "line"
   },
   {
@@ -598,18 +579,16 @@
   },
   {
     "primary": ["errorprone/Finalize"],
-    "secondary": ["checkstyle/com.puppycrawl.tools.checkstyle.checks.coding.NoFinalizerCheck"],
+    "secondary": ["checkstyle/NoFinalizer"],
     "scope": "member"
   },
   {
     "primary": ["errorprone/UngroupedOverloads"],
-    "secondary": [
-      "checkstyle/com.puppycrawl.tools.checkstyle.checks.coding.OverloadMethodsDeclarationOrderCheck"
-    ],
+    "secondary": ["checkstyle/OverloadMethodsDeclarationOrder"],
     "scope": "class"
   },
   {
-    "primary": ["checkstyle/com.puppycrawl.tools.checkstyle.checks.design.OneTopLevelClassCheck"],
+    "primary": ["checkstyle/OneTopLevelClass"],
     "secondary": ["errorprone/MultipleTopLevelClasses"],
     "scope": "file"
   },

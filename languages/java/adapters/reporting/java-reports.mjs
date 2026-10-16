@@ -19,6 +19,7 @@ import { ingestJacoco } from '../../ingest/coverage-reports/jacoco.mjs';
 import { ingestPit } from '../../ingest/pit.mjs';
 import { ingestJacocoBranches } from '../../ingest/coverage-reports/jacoco-branches.mjs';
 import { ingestSarif, prepareSarif, projectRelative } from '../../ingest/sarif.mjs';
+import { applyRuleMessages } from '../../messages/rule-messages.mjs';
 import { kotlinModules, readKotlinMetrics } from '../kotlin/kotlin-metrics.mjs';
 import {
   jacocoSourceRoots,
@@ -57,23 +58,26 @@ export function readJavaFindings(
     jacoco: readFileSync(path.join(reportRoot, 'jacoco.xml'), 'utf8'),
   };
   return {
-    findings: [
-      ...sarifFindings(context),
-      ...readErrorProneFindings(context),
-      ...formatFindings(context),
-      ...checkstyleFindings(context),
-      ...readDuplicateFindings(reportRoot),
-      ...jacocoFindings(context, context.jacoco),
-      ...archunitFindings(context),
-      ...crapFindings(context, context.jacoco, crapLimit),
-      ...pitFindings(context),
-      ...readJavaStructureFindings(reportRoot, projectRoot),
-      ...(projectWide ? projectWideFindings(context, { fileLimits, exclude, exceptions }) : []),
-      ...branchFindings(context, context.jacoco),
-      ...(kotlin ? readKotlinFindings(context, crapLimit) : []),
-      ...readInlineSuppressionFindings(projectRoot, context.lintedRoots),
-      ...springFindings(context),
-    ],
+    findings: applyRuleMessages(
+      [
+        ...sarifFindings(context),
+        ...readErrorProneFindings(context),
+        ...formatFindings(context),
+        ...checkstyleFindings(context),
+        ...readDuplicateFindings(reportRoot),
+        ...jacocoFindings(context, context.jacoco),
+        ...archunitFindings(context),
+        ...crapFindings(context, context.jacoco, crapLimit),
+        ...pitFindings(context),
+        ...readJavaStructureFindings(reportRoot, projectRoot),
+        ...(projectWide ? projectWideFindings(context, { fileLimits, exclude, exceptions }) : []),
+        ...branchFindings(context, context.jacoco),
+        ...(kotlin ? readKotlinFindings(context, crapLimit) : []),
+        ...readInlineSuppressionFindings(projectRoot, context.lintedRoots),
+        ...springFindings(context),
+      ],
+      { preset },
+    ),
   };
 }
 

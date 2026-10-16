@@ -15,16 +15,15 @@
 
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
-import { globToRegExp } from '../glob.mjs';
 import {
   FILE_LIMIT_DEFAULTS,
   GREW_MESSAGES,
   HELD_MESSAGES,
   MESSAGES,
   RULE_IDS,
-  exceptionEntry,
   renderMessage,
 } from '../policy.mjs';
+import { exceptionMatcher, exceptionText } from './exceptions.mjs';
 import { hash, nextOccurrence } from './finding-helpers.mjs';
 
 export const FILE_LIMIT_CHECKS = ['fileLines', 'lineLength', 'folderFiles'];
@@ -79,19 +78,6 @@ export function evaluateFileLimits(files, options) {
   ];
 }
 
-function exceptionMatcher(exceptions) {
-  const matchers = exceptions.map(({ rule, paths, glob }) => ({
-    rule,
-    patterns: (paths ?? [glob]).map((pattern) => globToRegExp(pattern)),
-  }));
-  return (rule, ...candidates) =>
-    matchers.some(
-      (matcher) =>
-        matcher.rule === rule &&
-        matcher.patterns.some((pattern) => candidates.some((candidate) => pattern.test(candidate))),
-    );
-}
-
 function lineCount(text) {
   const lines = text.split(/\r?\n/u);
   return lines.at(-1) === '' ? lines.length - 1 : lines.length;
@@ -103,7 +89,7 @@ function fileLineFindings(file, context) {
   if (value <= limit || context.isExcepted(RULE_IDS.fileLines, file.path)) {
     return [];
   }
-  const exception = exceptionEntry(RULE_IDS.fileLines, file.path);
+  const exception = exceptionText(RULE_IDS.fileLines, file.path);
   return [
     ratchetedFinding(context, {
       rule: RULE_IDS.fileLines,
@@ -121,7 +107,7 @@ function lineFindings(file, context) {
   if (context.isExcepted(RULE_IDS.lineLength, file.path)) {
     return [];
   }
-  const exception = exceptionEntry(RULE_IDS.lineLength, file.path);
+  const exception = exceptionText(RULE_IDS.lineLength, file.path);
   const occurrences = new Map();
   return file.text.split(/\r?\n/u).flatMap((text, index) => {
     const value = [...text].length;
@@ -172,7 +158,7 @@ function folderFindings(files, context) {
 function folderFinding(context, { key, value, limit }) {
   const [folder, kind] = key.split('\0');
   const glob = folder === '.' ? '*' : `${folder}/*`;
-  const exception = exceptionEntry(RULE_IDS.folderFiles, glob);
+  const exception = exceptionText(RULE_IDS.folderFiles, glob);
   return ratchetedFinding(context, {
     rule: RULE_IDS.folderFiles,
     path: folder,

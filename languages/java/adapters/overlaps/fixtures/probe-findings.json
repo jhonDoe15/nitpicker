@@ -1160,193 +1160,193 @@
     },
     {
       "tool": "checkstyle",
-      "rule": "com.puppycrawl.tools.checkstyle.checks.naming.MemberNameCheck",
+      "rule": "MemberName",
       "path": "src/main/java/probe/P2Eq.java",
       "line": 4
     },
     {
       "tool": "checkstyle",
-      "rule": "com.puppycrawl.tools.checkstyle.checks.coding.MissingSwitchDefaultCheck",
+      "rule": "MissingSwitchDefault",
       "path": "src/main/java/probe/C4Switches.java",
       "line": 6
     },
     {
       "tool": "checkstyle",
-      "rule": "com.puppycrawl.tools.checkstyle.checks.coding.FallThroughCheck",
+      "rule": "FallThrough",
       "path": "src/main/java/probe/C4Switches.java",
       "line": 22
     },
     {
       "tool": "checkstyle",
-      "rule": "com.puppycrawl.tools.checkstyle.checks.blocks.EmptyCatchBlockCheck",
+      "rule": "EmptyCatchBlock",
       "path": "src/main/java/probe/C4Switches.java",
       "line": 34
     },
     {
       "tool": "checkstyle",
-      "rule": "com.puppycrawl.tools.checkstyle.checks.coding.MultipleVariableDeclarationsCheck",
+      "rule": "MultipleVariableDeclarations",
       "path": "src/main/java/probe/C4Switches.java",
       "line": 39
     },
     {
       "tool": "checkstyle",
-      "rule": "com.puppycrawl.tools.checkstyle.checks.naming.MemberNameCheck",
+      "rule": "MemberName",
       "path": "src/main/java/probe/EqOnly.java",
       "line": 4
     },
     {
       "tool": "checkstyle",
-      "rule": "com.puppycrawl.tools.checkstyle.checks.naming.MemberNameCheck",
+      "rule": "MemberName",
       "path": "src/main/java/probe/BadEquals.java",
       "line": 4
     },
     {
       "tool": "checkstyle",
-      "rule": "com.puppycrawl.tools.checkstyle.checks.coding.OverloadMethodsDeclarationOrderCheck",
+      "rule": "OverloadMethodsDeclarationOrder",
       "path": "src/main/java/probe/BadEquals.java",
       "line": 15
     },
     {
       "tool": "checkstyle",
-      "rule": "com.puppycrawl.tools.checkstyle.checks.naming.MemberNameCheck",
+      "rule": "MemberName",
       "path": "src/main/java/probe/C7Names.java",
       "line": 6
     },
     {
       "tool": "checkstyle",
-      "rule": "com.puppycrawl.tools.checkstyle.checks.naming.MethodNameCheck",
+      "rule": "MethodName",
       "path": "src/main/java/probe/C7Names.java",
       "line": 17
     },
     {
       "tool": "checkstyle",
-      "rule": "com.puppycrawl.tools.checkstyle.checks.naming.MemberNameCheck",
+      "rule": "MemberName",
       "path": "src/main/java/probe/SelfAssign.java",
       "line": 4
     },
     {
       "tool": "checkstyle",
-      "rule": "com.puppycrawl.tools.checkstyle.checks.blocks.NeedBracesCheck",
+      "rule": "NeedBraces",
       "path": "src/main/java/probe/P2Strings.java",
       "line": 16
     },
     {
       "tool": "checkstyle",
-      "rule": "com.puppycrawl.tools.checkstyle.checks.naming.MemberNameCheck",
+      "rule": "MemberName",
       "path": "src/main/java/probe/C8Equals.java",
       "line": 4
     },
     {
       "tool": "checkstyle",
-      "rule": "com.puppycrawl.tools.checkstyle.checks.naming.MemberNameCheck",
+      "rule": "MemberName",
       "path": "src/main/java/probe/Eqs.java",
       "line": 4
     },
     {
       "tool": "checkstyle",
-      "rule": "com.puppycrawl.tools.checkstyle.checks.naming.MemberNameCheck",
+      "rule": "MemberName",
       "path": "src/main/java/probe/Fields.java",
       "line": 5
     },
     {
       "tool": "checkstyle",
-      "rule": "com.puppycrawl.tools.checkstyle.checks.naming.MethodNameCheck",
+      "rule": "MethodName",
       "path": "src/main/java/probe/Fields.java",
       "line": 7
     },
     {
       "tool": "checkstyle",
-      "rule": "com.puppycrawl.tools.checkstyle.checks.naming.MethodNameCheck",
+      "rule": "MethodName",
       "path": "src/main/java/probe/Recur.java",
       "line": 4
     },
     {
       "tool": "checkstyle",
-      "rule": "com.puppycrawl.tools.checkstyle.checks.javadoc.JavadocMethodCheck",
+      "rule": "JavadocMethod",
       "path": "src/main/java/probe/Misc.java",
       "line": 16
     },
     {
       "tool": "checkstyle",
-      "rule": "com.puppycrawl.tools.checkstyle.checks.naming.MethodNameCheck",
+      "rule": "MethodName",
       "path": "src/main/java/probe/Misc.java",
       "line": 18
     },
     {
       "tool": "checkstyle",
-      "rule": "com.puppycrawl.tools.checkstyle.checks.naming.MethodNameCheck",
+      "rule": "MethodName",
       "path": "src/main/java/probe/Dead.java",
       "line": 4
     },
     {
       "tool": "checkstyle",
-      "rule": "com.puppycrawl.tools.checkstyle.checks.imports.AvoidStarImportCheck",
+      "rule": "AvoidStarImport",
       "path": "src/main/java/probe/V1Style.java",
       "line": 4
     },
     {
       "tool": "checkstyle",
-      "rule": "com.puppycrawl.tools.checkstyle.checks.naming.ClassTypeParameterNameCheck",
+      "rule": "ClassTypeParameterName",
       "path": "src/main/java/probe/V1Style.java",
       "line": 7
     },
     {
       "tool": "checkstyle",
-      "rule": "com.puppycrawl.tools.checkstyle.checks.UpperEllCheck",
+      "rule": "UpperEll",
       "path": "src/main/java/probe/V1Style.java",
       "line": 9
     },
     {
       "tool": "checkstyle",
-      "rule": "com.puppycrawl.tools.checkstyle.checks.ArrayTypeStyleCheck",
+      "rule": "ArrayTypeStyle",
       "path": "src/main/java/probe/V1Style.java",
       "line": 10
     },
     {
       "tool": "checkstyle",
-      "rule": "com.puppycrawl.tools.checkstyle.checks.naming.MethodTypeParameterNameCheck",
+      "rule": "MethodTypeParameterName",
       "path": "src/main/java/probe/V1Style.java",
       "line": 64
     },
     {
       "tool": "checkstyle",
-      "rule": "com.puppycrawl.tools.checkstyle.checks.coding.NoFinalizerCheck",
+      "rule": "NoFinalizer",
       "path": "src/main/java/probe/V1Style.java",
       "line": 77
     },
     {
       "tool": "checkstyle",
-      "rule": "com.puppycrawl.tools.checkstyle.checks.design.OneTopLevelClassCheck",
+      "rule": "OneTopLevelClass",
       "path": "src/main/java/probe/V1Style.java",
       "line": 123
     },
     {
       "tool": "checkstyle",
-      "rule": "com.puppycrawl.tools.checkstyle.checks.naming.MemberNameCheck",
+      "rule": "MemberName",
       "path": "src/main/java/probe/Volatile.java",
       "line": 4
     },
     {
       "tool": "checkstyle",
-      "rule": "com.puppycrawl.tools.checkstyle.checks.javadoc.JavadocMethodCheck",
+      "rule": "JavadocMethod",
       "path": "src/main/java/probe/V2Docs.java",
       "line": 8
     },
     {
       "tool": "checkstyle",
-      "rule": "com.puppycrawl.tools.checkstyle.checks.javadoc.NonEmptyAtclauseDescriptionCheck",
+      "rule": "NonEmptyAtclauseDescription",
       "path": "src/main/java/probe/V2Docs.java",
       "line": 10
     },
     {
       "tool": "checkstyle",
-      "rule": "com.puppycrawl.tools.checkstyle.checks.javadoc.InvalidJavadocPositionCheck",
+      "rule": "InvalidJavadocPosition",
       "path": "src/main/java/probe/V2Docs.java",
       "line": 18
     },
     {
       "tool": "checkstyle",
-      "rule": "com.puppycrawl.tools.checkstyle.checks.coding.MissingSwitchDefaultCheck",
+      "rule": "MissingSwitchDefault",
       "path": "src/main/java/probe/V2Docs.java",
       "line": 28
     },

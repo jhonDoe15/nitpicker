@@ -2,6 +2,7 @@ import { mkdirSync, mkdtempSync, realpathSync, rmSync, writeFileSync } from 'nod
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterAll, describe, expect, it } from 'vitest';
+import { exceptionHint } from '../../../../shared/rules/exceptions.mjs';
 import { collectJavaFindings } from '../java-diff.mjs';
 import { GRADLE_STEP_TIMEOUT_MS } from '../test-support/gradle-e2e.mjs';
 
@@ -180,10 +181,15 @@ describe.skipIf(!enabled)('Error Prone on a Lombok project', () => {
         'settings.gradle': "rootProject.name = 'shop'\n",
         'build.gradle': BUILD_GRADLE,
       });
+      const findings = collectJavaFindings(root, { gradle, policy: {} });
+      const [ignored] = findings.filter(({ tool }) => tool === 'errorprone');
+      const hint = exceptionHint('errorprone/ReturnValueIgnored', 'src/main/java/shop/Basket.java');
 
-      expect(errorProneAndToolErrors(collectJavaFindings(root, { gradle, policy: {} }))).toEqual(
-        ONLY_THE_WRITTEN_CODE,
-      );
+      expect(errorProneAndToolErrors(findings)).toEqual(ONLY_THE_WRITTEN_CODE);
+      expect(ignored.message.split(hint)).toEqual([
+        expect.not.stringContaining('nitpicker.config.json'),
+        '',
+      ]);
     },
     GRADLE_STEP_TIMEOUT_MS,
   );
