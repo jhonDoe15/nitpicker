@@ -36,6 +36,19 @@ describe('detectConventions', () => {
     });
   });
 
+  it('hands the path of the file to measure', () => {
+    const byFolder = {
+      ...indentation,
+      measure: (_text, file) => (file.startsWith('tests/') ? '4' : '2'),
+    };
+    const result = detectConventions({
+      definitions: [byFolder],
+      source: sourceOf({ 'tests/a.demo': 'x', 'tests/b.demo': 'x', 'src/c.demo': 'x' }),
+    });
+
+    expect(result['demo.indentation'].counts).toEqual({ 2: 1, 4: 2 });
+  });
+
   it('falls back to the preset default on a tie or with nothing to measure', () => {
     expect(detect({ 'a.demo': '{\n    x\n}', 'b.demo': '{\n  y\n}' })['demo.indentation']).toEqual({
       choice: '2',

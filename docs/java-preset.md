@@ -415,6 +415,17 @@ default, and their messages name it:
 Messages that embed a measured value (for example "found 120" in a line-length violation) change
 identity when the value changes: editing such a line counts as a resolved plus a new finding.
 
+- **Wildcard imports follow the project.** Wildcard and explicit imports are both valid, so
+  the `java.wildcardImports` convention (`explicit` or `wildcard`, default `explicit`) marks a file
+  `wildcard` when it has any wildcard import except a static one in a test source set, and the plurality
+  of files wins. With `wildcard`, `checkstyle/AvoidStarImport` and `errorprone/WildcardImport` are
+  dropped on Gradle and on Maven alike (the Kotlin preset's Java files too); PMD and google-java-format
+  have no such rule. Static wildcards in test sources (`import static org.assertj.core.api.Assertions.*;`)
+  are their own convention, `java.testStaticImports`, measured over the test source sets
+  (`src/test`, `src/integrationTest`, ...): with `wildcard`, only star findings on a
+  `import static` line of a test file are dropped, and the ban stays everywhere else. Pin either in
+  `conventions` (see [Configuration](usage.md#configuration)).
+
 ## Slice 5: CRAP
 
 - **Complexity source.** `StructureMetrics.java` (the `nitpickerStructure` task, see
