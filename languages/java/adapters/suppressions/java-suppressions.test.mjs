@@ -272,6 +272,17 @@ describe('fileFindings for Error Prone', () => {
       ['errorprone', `${ERROR_PRONE_MESSAGE} Found: "NullAway".`],
     ]);
   });
+
+  it('leaves "unused", which PMD also honors, to the PMD finding alone', () => {
+    const source = 'class A {\n  @SuppressWarnings({"unused", "dep-ann"}) void a() {}\n}\n';
+
+    expect(
+      fileFindings(source, 'A.java').map((finding) => [finding.tool, finding.message]),
+    ).toEqual([
+      ['pmd', `${MESSAGE} Found: "unused".`],
+      ['errorprone', `${ERROR_PRONE_MESSAGE} Found: "dep-ann".`],
+    ]);
+  });
 });
 
 describe('fileFindings identities', () => {

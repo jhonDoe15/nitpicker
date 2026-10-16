@@ -10,7 +10,9 @@ def reportDir = project.ext.nitpickerReportDir
 def workDir = reportDir.map { it.dir('errorprone') }
 def reportFile = reportDir.map { it.file('errorprone.json') }
 def compilerPackages = ['api', 'file', 'main', 'model', 'parser', 'processing', 'tree', 'util', 'code', 'comp']
-def jvmFlags = compilerPackages.collect { "--add-exports=jdk.compiler/com.sun.tools.javac.${it}=ALL-UNNAMED".toString() } +
+def jvmFlags = compilerPackages.collect {
+    "--add-exports=jdk.compiler/com.sun.tools.javac.${it}=ALL-UNNAMED".toString()
+} +
     ['code', 'comp'].collect { "--add-opens=jdk.compiler/com.sun.tools.javac.${it}=ALL-UNNAMED".toString() }
 
 // A detached configuration, so a dependency-management plugin of the project cannot move Error Prone's
@@ -23,7 +25,8 @@ def errorProneClasspath = {
     configuration.attributes {
         attribute(Usage.USAGE_ATTRIBUTE, project.objects.named(Usage, Usage.JAVA_RUNTIME))
         attribute(Category.CATEGORY_ATTRIBUTE, project.objects.named(Category, Category.LIBRARY))
-        attribute(LibraryElements.LIBRARY_ELEMENTS_ATTRIBUTE, project.objects.named(LibraryElements, LibraryElements.JAR))
+        attribute(LibraryElements.LIBRARY_ELEMENTS_ATTRIBUTE,
+            project.objects.named(LibraryElements, LibraryElements.JAR))
         attribute(Bundling.BUNDLING_ATTRIBUTE, project.objects.named(Bundling, Bundling.EXTERNAL))
         attribute(TargetJvmEnvironment.TARGET_JVM_ENVIRONMENT_ATTRIBUTE,
             project.objects.named(TargetJvmEnvironment, TargetJvmEnvironment.STANDARD_JVM))
@@ -65,7 +68,8 @@ def writeArguments = { String name, JavaCompile compile, Collection<File> errorP
 
 tasks.register('nitpickerErrorProne') {
     group = 'nitpicker'
-    description = 'Compiles the main and test Java sources with Error Prone into build/nitpicker/errorprone; findings go to build/nitpicker/errorprone.json.'
+    description = 'Compiles the main and test Java sources with Error Prone into build/nitpicker/errorprone; ' +
+        'findings go to build/nitpicker/errorprone.json.'
     dependsOn tasks.named('classes'), tasks.named('testClasses')
     def runner = new File(scriptDir, 'ErrorProneReport.java')
     doLast {
@@ -79,7 +83,9 @@ tasks.register('nitpickerErrorProne') {
             return
         }
         def errorProne = errorProneClasspath()
-        def argumentFiles = compiles.collect { name, compile -> writeArguments(name, compile, errorProne, name == 'test') }
+        def argumentFiles = compiles.collect { name, compile ->
+            writeArguments(name, compile, errorProne, name == 'test')
+        }
             .findAll { it != null }
         def java = new File(System.getProperty('java.home'), 'bin/java').absolutePath
         def mainClasses = sourceSets.main.output.classesDirs.files*.absolutePath.join(File.pathSeparator)
