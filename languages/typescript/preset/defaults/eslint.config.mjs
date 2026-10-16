@@ -32,7 +32,7 @@ const parserOptions = {
   tsconfigRootDir: import.meta.dirname,
 };
 const productionFiles = sourceGlobs;
-const testFiles = testGlobs;
+const testFiles = [...testGlobs, ...layout.sourceTestDirectoryGlobs];
 const selectedFiles = [...productionFiles, ...testFiles];
 
 const presetConfig = defineConfig(
@@ -81,7 +81,7 @@ const presetConfig = defineConfig(
   },
   {
     files: productionFiles,
-    ignores: [...testFiles, ...layout.sourceTestDirectoryGlobs],
+    ignores: testFiles,
     rules: {
       '@typescript-eslint/no-explicit-any': 'off',
       '@typescript-eslint/no-non-null-assertion': 'off',
