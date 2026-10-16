@@ -113,6 +113,7 @@ describe.skipIf(!enabled)('Java preset on Maven builds', () => {
         'checkstyle',
         'coupling',
         'crap',
+        'forbiddenapis',
         'google-java-format',
         'jacoco',
         'pit',
@@ -159,7 +160,7 @@ describe.skipIf(!enabled)('Java preset on Maven builds', () => {
   );
 
   it(
-    'lints modules with a javac plug-in, preview features or a module descriptor, and an older release',
+    'lints modules with a javac plug-in, preview features, a module descriptor or a source root outside them, and an older release',
     () => {
       const project = withoutGradle(
         copyOf(
@@ -178,6 +179,7 @@ describe.skipIf(!enabled)('Java preset on Maven builds', () => {
         'plugged/src/main/java/plugged/Names.java:7 rawtypes',
         'preview/src/main/java/preview/Names.java:7 rawtypes',
         'modular/src/main/java/modular/shapes/Shape.java:10 rawtypes',
+        'outside/src/main/java/outside/Names.java:7 rawtypes',
       ]);
       expect(
         findings
