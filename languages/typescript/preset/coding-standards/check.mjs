@@ -43,7 +43,12 @@ function resultSignals(root, result) {
 
 function messageSignal(file, lines, message) {
   if (!message.ruleId) throw new Error(message.message);
-  return { file, rule: message.ruleId, source: messageSource(lines, message) };
+  return {
+    file,
+    rule: message.ruleId,
+    source: messageSource(lines, message),
+    message: message.message,
+  };
 }
 
 function messageSource(lines, message) {
