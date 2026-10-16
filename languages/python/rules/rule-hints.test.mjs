@@ -4,6 +4,7 @@ import { describe, expect, it } from 'vitest';
 import { RULE_CASES } from './test-support/python-rule-cases.mjs';
 import {
   applyRuleHints,
+  behaviorsOf,
   describeRuleFinding,
   exceptionSentence,
   hintFor,
@@ -156,5 +157,83 @@ describe('hints', () => {
 
   it('describe a custom rule finding by its subject', () => {
     expect(describeRuleFinding('frozen-dataclass', 'Order')).toBe('Dataclass Order is not frozen');
+  });
+});
+
+describe('hints that follow the libraries of the project', () => {
+  const rulesSample = (rule) => sample({ tool: 'python-rules', rule });
+  const sentence = (text, rule) => `The base message. ${text} ${exceptionSentence(rule)}`;
+
+  it('name pydantic as the validation library when nothing is detected', () => {
+    expect(withHint(rulesSample('pydantic-boundary')).message).toBe(
+      sentence(
+        'Use pydantic only in an `adapters/` package to parse untrusted input (`Model.model_validate(data)`), and pass frozen dataclasses on from there.',
+        'pydantic-boundary',
+      ),
+    );
+  });
+
+  it('name every detected validation library and the call of the first', () => {
+    const behaviors = behaviorsOf({ validation: ['marshmallow', 'msgspec'], logger: [] });
+
+    expect(withHint(rulesSample('pydantic-boundary'), behaviors).message).toBe(
+      sentence(
+        'Use marshmallow or msgspec only in an `adapters/` package to parse untrusted input (`Schema().load(data)`), and pass frozen dataclasses on from there.',
+        'pydantic-boundary',
+      ),
+    );
+  });
+
+  it.each([
+    [
+      'logging',
+      undefined,
+      'Use `logging`: `logger = logging.getLogger(__name__)`, then `logger.info(...)`.',
+    ],
+    [
+      'structlog',
+      ['structlog'],
+      'Use `structlog`: `logger = structlog.get_logger()`, then `logger.info("event", key=value)`.',
+    ],
+    ['loguru', ['loguru'], 'Use `loguru`: `from loguru import logger`, then `logger.info(...)`.'],
+  ])('send a print to the %s logger', (_name, logger, expected) => {
+    const behaviors = behaviorsOf({ validation: [], logger });
+
+    expect(withHint(sample({ tool: 'ruff', rule: 'T201' }), behaviors).message).toBe(
+      sentence(expected, 'T201'),
+    );
+  });
+
+  it.each([
+    [
+      undefined,
+      'Pass the caught exception to the logger: `logger.exception("message")`, or `logger.error("message", exc_info=True)`.',
+    ],
+    [
+      ['structlog'],
+      'Pass the caught exception to the logger: `logger.exception("event")`, or `logger.error("event", exc_info=True)`.',
+    ],
+    [
+      ['loguru'],
+      'Pass the caught exception to the logger: `logger.exception("message")`, or `logger.opt(exception=error).error("message")`.',
+    ],
+  ])(
+    'tell a caught error log to pass the exception the way the %s logger does',
+    (logger, expected) => {
+      const behaviors = behaviorsOf({ validation: [], logger });
+
+      expect(withHint(rulesSample('catch-log-without-exception'), behaviors).message).toBe(
+        sentence(expected, 'catch-log-without-exception'),
+      );
+    },
+  );
+
+  it('describe the new rules by their subject', () => {
+    expect(describeRuleFinding('catch-log-without-exception', 'logger.error(...)')).toBe(
+      '`logger.error(...)` logs a caught error without passing the exception',
+    );
+    expect(describeRuleFinding('test-without-assertion', 'TestOrders.test_total')).toBe(
+      'Test `TestOrders.test_total` has no assertion',
+    );
   });
 });

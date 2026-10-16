@@ -1,8 +1,10 @@
+import { loggerBehavior, validationBehavior } from '../libraries/project-libraries.mjs';
+
 export const RULES_TOOL = 'python-rules';
 const TYPE_CHECK_TOOLS = ['mypy', 'pyright', 'basedpyright'];
 const HINTED_TOOLS = ['ruff', ...TYPE_CHECK_TOOLS, RULES_TOOL];
 
-const LOGGING = 'Use `logging`: `logger = logging.getLogger(__name__)`, then `logger.info(...)`.';
+const LOGGING = ({ logger }) => logger.setup;
 const HANDLE_EXCEPTION =
   'Catch the specific exception and handle it, log it with `logger.exception(...)` or re-raise it; `contextlib.suppress(SpecificError)` ignores one expected error.';
 const FIX_TYPE = 'Fix the type; inline ignores are banned.';
@@ -63,8 +65,21 @@ export const RULE_HINTS = [
     tool: RULES_TOOL,
     rules: ['pydantic-boundary'],
     describe: (subject) => `${subject} is imported outside an adapters/ package`,
+    allowed: ({ validation }) =>
+      `Use ${validation.names.join(' or ')} only in an \`adapters/\` package to parse untrusted input (\`${validation.primary.call}\`), and pass frozen dataclasses on from there.`,
+  },
+  {
+    tool: RULES_TOOL,
+    rules: ['catch-log-without-exception'],
+    describe: (subject) => `\`${subject}\` logs a caught error without passing the exception`,
+    allowed: ({ logger }) => logger.caught,
+  },
+  {
+    tool: RULES_TOOL,
+    rules: ['test-without-assertion'],
+    describe: (subject) => `Test \`${subject}\` has no assertion`,
     allowed:
-      'Use pydantic only in an `adapters/` package to parse untrusted input, and pass frozen dataclasses on from there.',
+      'Assert the outcome: `assert result == expected`, `with pytest.raises(SomeError):`, or call one of the assertion helpers the project tests use.',
   },
   {
     tool: RULES_TOOL,
@@ -130,10 +145,23 @@ export function exceptionSentence(rule) {
   return `To allow it for some paths, add a "python.exceptions" entry for ${rule} in nitpicker.config.json.`;
 }
 
-export function describeRuleFinding(rule, subject) {
+export function defaultBehaviors() {
+  return { validation: validationBehavior(undefined), logger: loggerBehavior(undefined) };
+}
+
+export function behaviorsOf(libraries) {
+  return { validation: validationBehavior(libraries), logger: loggerBehavior(libraries) };
+}
+
+export function describeRuleFinding(rule, subject, behaviors = defaultBehaviors()) {
   return RULE_HINTS.find((hint) => hint.tool === RULES_TOOL && hint.rules.includes(rule)).describe(
     subject,
+    behaviors,
   );
+}
+
+function allowedText(hint, behaviors) {
+  return typeof hint.allowed === 'function' ? hint.allowed(behaviors) : hint.allowed;
 }
 
 export const PYTHON_RULES_IDS = RULE_HINTS.filter(({ tool }) => tool === RULES_TOOL).flatMap(
@@ -149,19 +177,19 @@ function canBeLifted(finding) {
   );
 }
 
-export function withHint(finding) {
+export function withHint(finding, behaviors = defaultBehaviors()) {
   const hint = hintFor(finding);
   if (hint === undefined && !canBeLifted(finding)) {
     return finding;
   }
   const sentences = [
     `${finding.message.replace(/\.$/, '')}.`,
-    ...(hint === undefined ? [] : [hint.allowed]),
+    ...(hint === undefined ? [] : [allowedText(hint, behaviors)]),
     ...(hint?.exception === false ? [] : [exceptionSentence(finding.rule)]),
   ];
   return { ...finding, message: sentences.join(' ') };
 }
 
-export function applyRuleHints(findings) {
-  return findings.map(withHint);
+export function applyRuleHints(findings, behaviors = defaultBehaviors()) {
+  return findings.map((finding) => withHint(finding, behaviors));
 }

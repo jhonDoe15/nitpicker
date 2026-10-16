@@ -1,0 +1,51 @@
+export const VALIDATION_LIBRARIES = [
+  {
+    id: 'pydantic',
+    packages: ['pydantic', 'pydantic-settings'],
+    importRoots: ['pydantic', 'pydantic_settings'],
+    call: 'Model.model_validate(data)',
+    example: 'Model.model_validate(data) or TypeAdapter(Model).validate_python(data)',
+  },
+  {
+    id: 'attrs',
+    packages: ['attrs', 'attr', 'cattrs'],
+    importRoots: ['cattrs'],
+    call: 'cattrs.structure(data, Model)',
+    example: 'cattrs.structure(data, Model)',
+  },
+  {
+    id: 'marshmallow',
+    packages: ['marshmallow', 'marshmallow-dataclass', 'marshmallow-enum'],
+    importRoots: ['marshmallow', 'marshmallow_dataclass'],
+    call: 'Schema().load(data)',
+    example: 'Schema().load(data) or Schema().validate(data)',
+  },
+  {
+    id: 'msgspec',
+    packages: ['msgspec'],
+    importRoots: ['msgspec'],
+    call: 'msgspec.convert(data, Model)',
+    example: 'msgspec.convert(data, Model) or msgspec.json.decode(raw, type=Model)',
+  },
+  {
+    id: 'dataclasses-json',
+    packages: ['dataclasses-json'],
+    importRoots: ['dataclasses_json'],
+    call: 'Model.from_dict(data)',
+    example: 'Model.from_dict(data) or Model.from_json(raw)',
+  },
+  {
+    id: 'voluptuous',
+    packages: ['voluptuous'],
+    importRoots: ['voluptuous'],
+    call: 'Schema(spec)(data)',
+    example: 'Schema(spec)(data)',
+  },
+  {
+    id: 'cerberus',
+    packages: ['cerberus'],
+    importRoots: ['cerberus'],
+    call: 'Validator(schema).validate(data)',
+    example: 'Validator(schema).validate(data)',
+  },
+];

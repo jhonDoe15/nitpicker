@@ -5,6 +5,7 @@ import { TESTS_FAILED_RULE } from '../../../shared/rules/finding-helpers.mjs';
 import { scanImports } from './analysis/python-coupling.mjs';
 import { runDuplicates } from './analysis/python-duplicates.mjs';
 import { detectEnvironment, openEnvironment } from './execution/python-environment.mjs';
+import { detectPythonLibraries } from '../libraries/project-libraries.mjs';
 import { checkRules } from './analysis/python-ast-rules.mjs';
 import { importLinterEnabled, runImportLinter } from './analysis/python-import-linter.mjs';
 import { MUTMUT_VERSION_PROBE } from './mutation/python-mutation.mjs';
@@ -130,6 +131,7 @@ export function runPythonTools(context) {
       formatterDetected: context.project.formatterDetected,
       sourceRoots: context.project.sourceRoots,
       testsRan: outcome.testsRan,
+      libraries: detectPythonLibraries(context.projectRoot),
     }),
   );
   return failures;
