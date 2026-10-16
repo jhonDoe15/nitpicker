@@ -52,7 +52,9 @@ function reexportTargets(entry, name) {
   return entry.reexports.flatMap(({ to, names }) =>
     names
       .filter((entryName) =>
-        entryName.name === '*' ? entryName.alias === undefined : (entryName.alias ?? entryName.name) === name,
+        entryName.name === '*'
+          ? entryName.alias === undefined
+          : (entryName.alias ?? entryName.name) === name,
       )
       .map((entryName) => ({ path: to, name: entryName.name === '*' ? name : entryName.name })),
   );

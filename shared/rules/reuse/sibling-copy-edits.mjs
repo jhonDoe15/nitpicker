@@ -78,7 +78,9 @@ export function siblingCopyEditFindings(
   }
   const baselineOf = memoized(baselineFile);
   const cache = createSimilarityCache();
-  const grouped = acrossPackages ? modules.map((module) => ({ ...module, packageRoot: '' })) : modules;
+  const grouped = acrossPackages
+    ? modules.map((module) => ({ ...module, packageRoot: '' }))
+    : modules;
   return copyGroups(grouped, {
     rule: RULE_IDS.siblingCopyEdit,
     isExcepted,

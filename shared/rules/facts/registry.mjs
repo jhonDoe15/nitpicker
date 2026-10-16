@@ -45,7 +45,10 @@ export function withLanguageColumns(rule, languages) {
   );
   return {
     ...rule,
-    enforcedBy: { ...enforcedBy, javascript: JAVASCRIPT_DIFFERENCES[rule.id] ?? enforcedBy.javascript },
+    enforcedBy: {
+      ...enforcedBy,
+      javascript: JAVASCRIPT_DIFFERENCES[rule.id] ?? enforcedBy.javascript,
+    },
   };
 }
 

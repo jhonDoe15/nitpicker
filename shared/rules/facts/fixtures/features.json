@@ -1,0 +1,80 @@
+{
+  "modules": [
+    {
+      "file": "src/main/java/com/acme/shared/Money.java",
+      "role": "production"
+    },
+    {
+      "file": "src/main/java/com/acme/shared/InvoiceNumbers.java",
+      "role": "production"
+    },
+    {
+      "file": "src/main/java/com/acme/shared/Ids.java",
+      "role": "production"
+    },
+    {
+      "file": "src/main/java/com/acme/features/billing/Invoice.java",
+      "role": "production"
+    },
+    {
+      "file": "src/main/java/com/acme/features/orders/Cart.java",
+      "role": "production"
+    },
+    {
+      "file": "src/test/java/com/acme/features/orders/CartTest.java",
+      "role": "test"
+    }
+  ],
+  "imports": [
+    {
+      "from": "src/main/java/com/acme/features/billing/Invoice.java",
+      "to": "src/main/java/com/acme/shared/Money.java",
+      "names": [
+        {
+          "name": "Money"
+        }
+      ],
+      "role": "production"
+    },
+    {
+      "from": "src/main/java/com/acme/features/orders/Cart.java",
+      "to": "src/main/java/com/acme/shared/Money.java",
+      "names": [
+        {
+          "name": "Money"
+        }
+      ],
+      "role": "production"
+    },
+    {
+      "from": "src/main/java/com/acme/features/billing/Invoice.java",
+      "to": "src/main/java/com/acme/shared/InvoiceNumbers.java",
+      "names": [
+        {
+          "name": "InvoiceNumbers"
+        }
+      ],
+      "role": "production"
+    },
+    {
+      "from": "src/main/java/com/acme/shared/InvoiceNumbers.java",
+      "to": "src/main/java/com/acme/shared/Ids.java",
+      "names": [
+        {
+          "name": "Ids"
+        }
+      ],
+      "role": "production"
+    },
+    {
+      "from": "src/test/java/com/acme/features/orders/CartTest.java",
+      "to": "src/main/java/com/acme/shared/InvoiceNumbers.java",
+      "names": [
+        {
+          "name": "InvoiceNumbers"
+        }
+      ],
+      "role": "test"
+    }
+  ]
+}

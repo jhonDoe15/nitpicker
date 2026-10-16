@@ -1,0 +1,233 @@
+{
+  "modules": [
+    {
+      "file": "lib/core.py",
+      "role": "production"
+    },
+    {
+      "file": "lib/helpers.py",
+      "role": "production"
+    },
+    {
+      "file": "lib/__init__.py",
+      "role": "production"
+    },
+    {
+      "file": "lib/main.py",
+      "role": "production",
+      "entry": true
+    },
+    {
+      "file": "lib/types.py",
+      "role": "production"
+    },
+    {
+      "file": "tests/conftest.py",
+      "role": "test"
+    },
+    {
+      "file": "tests/test_core.py",
+      "role": "test"
+    },
+    {
+      "file": "pkg/util.py",
+      "role": "production"
+    }
+  ],
+  "packages": [
+    {
+      "root": "",
+      "published": false
+    },
+    {
+      "root": "pkg",
+      "published": true
+    }
+  ],
+  "definitions": [
+    {
+      "file": "lib/core.py",
+      "name": "compute",
+      "kind": "function",
+      "line": 1,
+      "exported": true,
+      "tokens": ["def", "compute", "(", ")", ":", "pass"]
+    },
+    {
+      "file": "lib/core.py",
+      "name": "debug_dump",
+      "kind": "function",
+      "line": 5,
+      "exported": true,
+      "tokens": ["def", "debug_dump", "(", ")", ":", "pass"]
+    },
+    {
+      "file": "lib/core.py",
+      "name": "make",
+      "kind": "function",
+      "line": 9,
+      "exported": true,
+      "tokens": ["def", "make", "(", ")", ":", "pass"]
+    },
+    {
+      "file": "lib/core.py",
+      "name": "_private",
+      "kind": "function",
+      "line": 12,
+      "exported": false,
+      "tokens": ["def", "_private", "(", ")", ":", "pass"]
+    },
+    {
+      "file": "lib/helpers.py",
+      "name": "fake_clock",
+      "kind": "function",
+      "line": 1,
+      "exported": true,
+      "tokens": ["def", "fake_clock", "(", ")", ":", "pass"]
+    },
+    {
+      "file": "lib/types.py",
+      "name": "Shape",
+      "kind": "interface",
+      "line": 1,
+      "exported": true,
+      "tokens": ["class", "Shape", "(", "Protocol", ")", ":", "..."]
+    },
+    {
+      "file": "lib/types.py",
+      "name": "Point",
+      "kind": "class",
+      "line": 4,
+      "exported": true,
+      "tokens": ["class", "Point", ":", "..."]
+    },
+    {
+      "file": "pkg/util.py",
+      "name": "fmt",
+      "kind": "function",
+      "line": 1,
+      "exported": true,
+      "tokens": ["def", "fmt", "(", ")", ":", "pass"]
+    },
+    {
+      "file": "tests/conftest.py",
+      "name": "client",
+      "kind": "function",
+      "line": 1,
+      "exported": true,
+      "tokens": ["def", "client", "(", ")", ":", "pass"]
+    }
+  ],
+  "imports": [
+    {
+      "from": "lib/main.py",
+      "to": "lib/core.py",
+      "names": [
+        {
+          "name": "compute"
+        }
+      ],
+      "role": "production"
+    },
+    {
+      "from": "lib/main.py",
+      "to": "lib/__init__.py",
+      "names": [],
+      "role": "production"
+    },
+    {
+      "from": "lib/main.py",
+      "to": "lib/types.py",
+      "names": [
+        {
+          "name": "Point"
+        }
+      ],
+      "role": "production"
+    },
+    {
+      "from": "lib/__init__.py",
+      "to": "lib/core.py",
+      "names": [
+        {
+          "name": "make"
+        }
+      ],
+      "reexport": true,
+      "role": "production"
+    },
+    {
+      "from": "tests/test_core.py",
+      "to": "lib/core.py",
+      "names": [
+        {
+          "name": "debug_dump"
+        },
+        {
+          "name": "compute"
+        }
+      ],
+      "role": "test"
+    },
+    {
+      "from": "tests/test_core.py",
+      "to": "lib/__init__.py",
+      "names": [
+        {
+          "name": "make"
+        }
+      ],
+      "role": "test"
+    },
+    {
+      "from": "tests/test_core.py",
+      "to": "lib/helpers.py",
+      "names": [
+        {
+          "name": "fake_clock"
+        }
+      ],
+      "role": "test"
+    },
+    {
+      "from": "tests/test_core.py",
+      "to": "lib/types.py",
+      "names": [
+        {
+          "name": "Shape"
+        }
+      ],
+      "role": "test"
+    },
+    {
+      "from": "tests/test_core.py",
+      "to": "lib/main.py",
+      "names": [
+        {
+          "name": "*"
+        }
+      ],
+      "role": "test"
+    },
+    {
+      "from": "tests/test_core.py",
+      "to": "pkg/util.py",
+      "names": [
+        {
+          "name": "fmt"
+        }
+      ],
+      "role": "test"
+    },
+    {
+      "from": "tests/test_core.py",
+      "to": "tests/conftest.py",
+      "names": [
+        {
+          "name": "client"
+        }
+      ],
+      "role": "test"
+    }
+  ]
+}

@@ -38,5 +38,12 @@ export const STRUCTURE_CHECK_FILES = [
   'shared/unused-api/unused-api-policy.mjs',
   'shared/rules/file-limits.mjs',
   'shared/rules/finding-helpers.mjs',
+  'shared/rules/facts/reuse-modules.mjs',
+  'shared/rules/reuse/copy-groups.mjs',
+  'shared/rules/reuse/duplicate-definitions.mjs',
+  'shared/rules/reuse/name-collisions.mjs',
+  'shared/rules/reuse/reuse-finding.mjs',
+  'shared/rules/reuse/sibling-copy-edits.mjs',
+  'shared/rules/reuse/token-similarity.mjs',
   'shared/glob.mjs',
 ];
