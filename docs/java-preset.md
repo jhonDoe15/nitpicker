@@ -197,9 +197,11 @@ for jscpd, a long-running PIT) and each is expensive enough to deserve its own r
 
 - **What runs.** The project's own ArchUnit rules, executed as JUnit tests by the init script's
   `nitpickerArchunit` task (a `Test` task on the project's test classes and runtime classpath,
-  JUnit Platform, `ignoreFailures`). The project must have `archunit-junit5` (or any ArchUnit
-  setup running on the JUnit Platform) on its test classpath; Nitpicker adds no dependency and so
-  pins no ArchUnit version (the version map is unchanged). Test classes named `*ArchTest` or
+  `ignoreFailures`). It runs on the test framework of the project's own `test` task: JUnit 4 when
+  `test` runs JUnit 4 (Gradle's default), for `archunit-junit4` rules (`@RunWith(ArchUnitRunner.class)`),
+  and the JUnit Platform otherwise, for `archunit-junit5`. The project must have one of the two on
+  its test classpath; Nitpicker adds no dependency and so pins no ArchUnit version (the version map
+  is unchanged). Test classes named `*ArchTest` or
   `*ArchitectureTest` are selected; `-Pnitpicker.archunit.includes=<Gradle class patterns,
 comma-separated>` changes that. Those classes are excluded from the regular `test` task in
   Nitpicker runs, so a violated rule produces findings instead of failing the JaCoCo step. No
@@ -245,7 +247,10 @@ comma-separated>` changes that. Those classes are excluded from the regular `tes
   requires a green test run: a failing test suite fails the task, which is a Gradle failure
   (`tool-error` on the CLI path). Projects without main classes produce no report and no findings.
   The `pitest-junit5-plugin` and the launcher are added only when the project's test runtime has
-  `junit-platform-engine`; a JUnit 4 project runs PIT's built-in JUnit 4 support.
+  `junit-platform-engine`; a JUnit 4 project runs PIT's built-in JUnit 4 support. When the test
+  runtime has a `testng` jar, the pinned `pitest-testng-plugin` (1.0.0) is added too, without a
+  TestNG of its own: PIT refuses to run a TestNG project without it. Maven builds put the same
+  plugins on PIT's classpath on the same conditions. See [Test frameworks](#test-frameworks).
 - **Equivalent mutants.** A survived mutant's message names the common equivalent cases (a
   `compareTo` boundary, a discarded lambda return) and the way out: simplify the code, or add an
   exception for `pit/mutant-survived`.
@@ -269,6 +274,40 @@ comma-separated>` changes that. Those classes are excluded from the regular `tes
 - **Tests.** `ingesters.test.mjs` (sample report `fixtures/pit-mutations.xml`), `java-reports.test.mjs`
   (glue), and gated e2e cases: a tested change with a surviving boundary mutant fails; the clean
   change now adds a test for its new method, because new untested code is a new `mutant-nocoverage`.
+
+## Test frameworks
+
+Coverage (JaCoCo), mutation testing (PIT), ArchUnit and the slow-test check work with these test
+frameworks, on Gradle and on Maven. Nitpicker detects the framework from the project's test runtime
+classpath and its `test` task, and adds no test library to the project.
+
+| Framework | Coverage | Mutation                                                    | ArchUnit                                                                 | Slow tests                                     |
+| --------- | -------- | ----------------------------------------------------------- | ------------------------------------------------------------------------ | ---------------------------------------------- |
+| JUnit 4   | yes      | PIT's built-in JUnit 4 support                              | `archunit-junit4`, run on JUnit 4                                        | method by name                                 |
+| JUnit 5   | yes      | `pitest-junit5-plugin` and a launcher of the engine version | `archunit-junit5`, run on the JUnit Platform                             | method by name or `@DisplayName`               |
+| TestNG    | yes      | `pitest-testng-plugin`                                      | `archunit-junit5`, on the JUnit Platform (ArchUnit has no TestNG runner) | method by name                                 |
+| Spock 2   | yes      | `pitest-junit5-plugin` (Spock runs on the JUnit Platform)   | `archunit-junit5`                                                        | feature by its quoted name, in `.groovy` files |
+| Kotest    | yes      | `pitest-junit5-plugin` (Kotest runs on the JUnit Platform)  | `archunit-junit5`                                                        | the spec file, no method line                  |
+
+- **Coverage.** JaCoCo's agent records whatever test framework the build's own test task runs, so
+  coverage needs nothing per framework.
+- **Mutation.** PIT needs a plugin per framework family: its JUnit 4 support is built in, JUnit
+  Platform engines (Jupiter, Spock 2, Kotest, the vintage engine) run through `pitest-junit5-plugin`,
+  and TestNG through `pitest-testng-plugin`. Each plugin is added only when its framework is on the
+  test runtime, so a JUnit 4 project does not get the JUnit 5 plugin, which fails without the JUnit
+  Platform. Kotest needs no `kotest-extensions-pitest`: through the JUnit Platform PIT already
+  tells killed, survived and uncovered mutants apart per Kotest test (pinned by the Kotest
+  end-to-end test, Kotest 6.0 and checked with 5.9).
+- **ArchUnit.** ArchUnit has runners for JUnit 4 and the JUnit Platform only. On Gradle
+  `nitpickerArchunit` follows the framework of the project's `test` task; on Maven Surefire runs the
+  rule classes with the provider it picks for the project.
+- **Slow tests.** Specifications are found under every test source root, `.groovy` files included:
+  Gradle's `allJava` source directories cover `src/test/groovy`, and on Maven the GMavenPlus test
+  sources (its `testSources`, default `src/test/groovy`) are test source roots.
+- **Tests.** `adapters/java-e2e/test-frameworks.e2e.test.mjs` runs a JUnit 4 project with
+  `archunit-junit4` rules, a TestNG project and a Spock project on Gradle and on Maven (fixtures in
+  `adapters/fixtures/test-frameworks/`); `adapters/kotlin-e2e/kotest.e2e.test.mjs` runs a Kotest
+  project under the Kotlin preset.
 
 ## Slice 2: CLI and reporter integration
 
