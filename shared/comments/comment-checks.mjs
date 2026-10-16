@@ -1,5 +1,5 @@
-const UPPER_TAG = /\b(?:TODO|FIXME|XXX|HACK)\b/g;
-const LEADING_TAG = /^(?:todo|fixme)\b/i;
+const TASK_MARKER = /(?<![\w./-])(?:TODO|FIXME|XXX|HACK)(?![\w-])(?![./]\w)/g;
+const MARKER_FOLLOWER = /^[:(]/;
 const REFERENCE = '#\\d+|[A-Z][A-Z0-9]+-\\d+|https?:\\/\\/\\S+';
 const DIRECT_REFERENCE = new RegExp(`^(?:\\(\\s*(${REFERENCE})\\s*\\)|:?\\s+(${REFERENCE}))`);
 const NOT_ISSUE_KEYS = new Set([
@@ -50,11 +50,10 @@ export function bodyLines(commentText) {
 }
 
 function tagPositions(line) {
-  const upper = [...line.matchAll(UPPER_TAG)].map((match) => match.index + match[0].length);
-  const leading = LEADING_TAG.exec(line);
-  return leading === null || upper.includes(leading[0].length)
-    ? upper
-    : [...upper, leading[0].length];
+  return [...line.matchAll(TASK_MARKER)]
+    .map((match) => ({ start: match.index, end: match.index + match[0].length }))
+    .filter(({ start, end }) => start === 0 || MARKER_FOLLOWER.test(line.slice(end)))
+    .map(({ end }) => end);
 }
 
 function isReferenced(rest) {
