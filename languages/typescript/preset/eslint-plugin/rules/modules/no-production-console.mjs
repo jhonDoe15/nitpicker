@@ -10,13 +10,23 @@ function memberName(member) {
   return member.property.type === 'Literal' ? String(member.property.value) : undefined;
 }
 
-function isConsoleCall(callee) {
-  return (
+export function consoleMethodOf(call) {
+  const { callee } = call;
+  const isConsoleMember =
     callee.type === 'MemberExpression' &&
+    !callee.computed &&
     callee.object.type === 'Identifier' &&
     callee.object.name === 'console' &&
-    memberName(callee) !== undefined
-  );
+    callee.property.type === 'Identifier';
+  return isConsoleMember ? callee.property.name : undefined;
+}
+
+function consoleCallMethod(callee) {
+  const isConsole =
+    callee.type === 'MemberExpression' &&
+    callee.object.type === 'Identifier' &&
+    callee.object.name === 'console';
+  return isConsole ? memberName(callee) : undefined;
 }
 
 function isStandardStreamWrite(callee) {
@@ -47,12 +57,9 @@ export const rule = {
   create(context) {
     return {
       CallExpression(node) {
-        if (isConsoleCall(node.callee)) {
-          context.report({
-            node,
-            messageId: 'consoleCall',
-            data: { method: memberName(node.callee) },
-          });
+        const method = consoleCallMethod(node.callee);
+        if (method !== undefined) {
+          context.report({ node, messageId: 'consoleCall', data: { method } });
         } else if (isStandardStreamWrite(node.callee) && !isCompositionRootFile(context)) {
           context.report({
             node,
