@@ -4,6 +4,7 @@ import path from 'node:path';
 import { GRADLE_DIRECTORY } from '../../builds/java-build.mjs';
 import { runJava } from '../maven-command.mjs';
 import { javaFiles } from '../maven-lint.mjs';
+import { requireErrorProneJdk } from './maven-jdk.mjs';
 
 const RUNNER_DIRECTORY = path.join(GRADLE_DIRECTORY, 'errorprone');
 const COMPILER_PACKAGES = [
@@ -37,7 +38,17 @@ function processorPath(classpath, compiler, tools) {
   return found.filter((entry) => !OWN_JARS.test(path.basename(entry)));
 }
 
-function writeArguments(work, { name, roots, classpath, processors, compiler, test }) {
+function levelLines(compiler) {
+  if (compiler.release !== undefined) {
+    return [`--release=${compiler.release}`];
+  }
+  return [
+    ...(compiler.source === undefined ? [] : [`--source=${compiler.source}`]),
+    ...(compiler.target === undefined ? [] : [`--target=${compiler.target}`]),
+  ];
+}
+
+function writeArguments(work, { name, roots, classpath, own, processors, compiler, test }) {
   const sources = javaFiles(roots).filter((file) => path.basename(file) !== 'module-info.java');
   if (sources.length === 0) {
     return [];
@@ -51,15 +62,16 @@ function writeArguments(work, { name, roots, classpath, processors, compiler, te
     ...['-processorpath', processors.join(path.delimiter)],
     ...['-XDcompilePolicy=simple', '-XDaddTypeAnnotationsToSymbol=true'],
     ...['--should-stop=ifError=FLOW', '-Xmaxwarns', '1000000', '-Xmaxerrs', '1000000'],
+    `--own-classes=${own.join(path.delimiter)}`,
     ...compiler.compilerArgs.map((argument) => `--project-arg=${argument}`),
-    ...(compiler.release === undefined ? [] : [`--target-release=${compiler.release}`]),
+    ...levelLines(compiler),
     ...(compiler.encoding === undefined ? [] : ['-encoding', compiler.encoding]),
     ...(test ? ['--test-only'] : []),
     '--sources',
     ...sources,
   ];
   const file = path.join(work, `${name}.args`);
-  writeFileSync(file, lines.map((line) => `${line}\n`).join(''));
+  writeFileSync(file, lines.map((line) => `${line}\n`).join(''), 'utf8');
   return [file];
 }
 
@@ -68,10 +80,21 @@ export function runErrorProne({ module, reportDir, tools, classpaths }) {
   const work = path.join(reportDir, 'errorprone');
   rmSync(work, { recursive: true, force: true });
   const { compiler } = module;
-  const testClasspath = [module.outputDirectory, ...classpaths.testCompile];
   const sets = [
-    { name: 'main', roots: module.sourceRoots, classpath: classpaths.mainCompile, test: false },
-    { name: 'test', roots: module.testSourceRoots, classpath: testClasspath, test: true },
+    {
+      name: 'main',
+      roots: module.sourceRoots,
+      classpath: [...classpaths.mainCompile, module.outputDirectory],
+      own: [module.outputDirectory],
+      test: false,
+    },
+    {
+      name: 'test',
+      roots: module.testSourceRoots,
+      classpath: [module.outputDirectory, ...classpaths.testCompile],
+      own: [module.outputDirectory, module.testOutputDirectory],
+      test: true,
+    },
   ];
   const argumentFiles = sets.flatMap((set) =>
     writeArguments(work, {
@@ -84,6 +107,7 @@ export function runErrorProne({ module, reportDir, tools, classpaths }) {
     writeFileSync(report, '[]\n');
     return;
   }
+  requireErrorProneJdk();
   runJava({
     tool: 'Error Prone',
     jvmArgs: JVM_FLAGS,
@@ -91,7 +115,6 @@ export function runErrorProne({ module, reportDir, tools, classpaths }) {
       path.join(RUNNER_DIRECTORY, 'ErrorProneReport.java'),
       report,
       path.join(RUNNER_DIRECTORY, 'checks.json'),
-      module.outputDirectory,
       ...argumentFiles,
     ],
     cwd: module.basedir,

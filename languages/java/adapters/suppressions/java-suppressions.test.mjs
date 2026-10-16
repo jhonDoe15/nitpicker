@@ -2,6 +2,7 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
+import { ERROR_PRONE_MESSAGE } from './errorprone/errorprone-escapes.mjs';
 import { fileFindings, readInlineSuppressionFindings } from './java-suppressions.mjs';
 
 const roots = [];
@@ -228,9 +229,6 @@ describe('fileFindings for SpotBugs', () => {
 });
 
 describe('fileFindings for Error Prone', () => {
-  const ERROR_PRONE_MESSAGE =
-    'Do not silence Error Prone or NullAway inline: fix the finding (for NullAway, annotate what may be null with @Nullable), or add an exception for errorprone/<check> in nitpicker.config.json.';
-
   it('reports @SuppressWarnings naming NullAway or a check nitpicker runs, by name or alternative name', () => {
     const source = [
       'class A {',

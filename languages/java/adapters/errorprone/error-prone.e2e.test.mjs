@@ -50,10 +50,93 @@ public final class Jobs {
 
 const JOBS_CHECK = `package demo;
 
+import demo.samples.Samples;
+
 final class JobsCheck {
   void run(Jobs jobs) {
     jobs.count();
+    Samples.make();
+    new Jobs(null).start();
   }
+}
+`;
+
+const SAMPLES = `package demo.samples;
+
+public final class Samples {
+  private Samples() {}
+
+  public static int make() {
+    return 1;
+  }
+}
+`;
+
+const WIRED = `package demo;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
+
+public class Wired {
+  @Autowired private Jobs jobs;
+
+  @Value("\${jobs.name}")
+  private String name;
+
+  public String describe() {
+    return name + jobs.count();
+  }
+}
+`;
+
+const OWNER = `package demo;
+
+import jakarta.persistence.Entity;
+import jakarta.persistence.Id;
+
+@Entity
+public class Owner {
+  @Id private Long id;
+  private String name;
+
+  public Long getId() {
+    return id;
+  }
+
+  public String getName() {
+    return name;
+  }
+
+  public void setName(String name) {
+    this.name = name;
+  }
+
+  public String nickname() {
+    return null;
+  }
+}
+`;
+
+const BEAN = `package demo;
+
+public class Bean {
+  private String name;
+
+  public String getName() {
+    return name;
+  }
+
+  public void setName(String name) {
+    this.name = name;
+  }
+}
+`;
+
+const DEPENDENCIES = `
+repositories { mavenCentral() }
+dependencies {
+    compileOnly 'org.springframework:spring-context:6.2.10'
+    compileOnly 'jakarta.persistence:jakarta.persistence-api:3.1.0'
 }
 `;
 
@@ -63,24 +146,78 @@ tasks.named('nitpickerErrorProne') {
 }
 `;
 
+const LEVEL_FORMS = [
+  [
+    '--enable-preview with --release',
+    `tasks.withType(JavaCompile).configureEach {
+    options.release = JavaVersion.current().majorVersion as int
+    options.compilerArgs += ['--enable-preview']
+}
+`,
+    {},
+  ],
+  [
+    'an --add-exports of a JDK module',
+    `tasks.withType(JavaCompile).configureEach {
+    options.compilerArgs += ['--add-exports', 'java.base/sun.nio.ch=ALL-UNNAMED']
+}
+`,
+    {
+      'src/main/java/demo/Buffers.java': `package demo;
+
+final class Buffers {
+  static boolean direct(Object buffer) {
+    return buffer instanceof sun.nio.ch.DirectBuffer;
+  }
+}
+`,
+    },
+  ],
+  [
+    '-source and -target 8',
+    `java {
+    sourceCompatibility = JavaVersion.VERSION_1_8
+    targetCompatibility = JavaVersion.VERSION_1_8
+}
+`,
+    {},
+  ],
+];
+
+const NULLAWAY_FORM =
+  'Annotate what may be null with the @Nullable the project already uses ' +
+  "(JSpecify's org.jspecify.annotations.Nullable if it uses none) and check it before use; " +
+  'otherwise give it a non-null value.';
 const projects = [];
 const hint = (check, file) =>
   `If this is intended, add {"rule":"errorprone/${check}","paths":["${file}"],"reason":"..."} to "exceptions" in nitpicker.config.json.`;
 
-function project(extraBuild = '') {
+const FULL_PROJECT = {
+  'src/main/java/demo/Wired.java': WIRED,
+  'src/main/java/demo/Owner.java': OWNER,
+  'src/main/java/demo/Bean.java': BEAN,
+  'src/test/java/demo/JobsCheck.java': JOBS_CHECK,
+  'src/test/java/demo/samples/Samples.java': SAMPLES,
+};
+
+function writeProject(build, sources) {
   const root = realpathSync(mkdtempSync(path.join(tmpdir(), 'nitpicker-errorprone-e2e-')));
   projects.push(root);
   const files = {
     'settings.gradle': "rootProject.name = 'jobs'\n",
-    'build.gradle': `plugins {\n    id 'java'\n}\n${extraBuild}`,
+    'build.gradle': `plugins {\n    id 'java'\n}\n${build}`,
     'src/main/java/demo/Jobs.java': JOBS,
-    'src/test/java/demo/JobsCheck.java': JOBS_CHECK,
+    ...sources,
   };
   for (const [file, content] of Object.entries(files)) {
     mkdirSync(path.dirname(path.join(root, file)), { recursive: true });
     writeFileSync(path.join(root, file), content);
   }
   return root;
+}
+
+function project(extraBuild = '') {
+  return writeProject(`${DEPENDENCIES}${extraBuild}`, FULL_PROJECT);
 }
 
 function runGradle(root, ...tasks) {
@@ -110,7 +247,7 @@ describe.skipIf(!enabled)('Error Prone through the init script', () => {
     for (const directory of projects.splice(0)) rmSync(directory, { recursive: true, force: true });
   });
 
-  it('reports an ignored Future, an ignored result of an own method in test code and a returned null, and honors @SuppressWarnings', () => {
+  it('reports ignored results in main and test code, and nulls in main code only, not framework-set fields', () => {
     expect(run.status).toBe(0);
     const findings = readErrorProneFindings({
       reportRoot: path.join(root, 'build/nitpicker'),
@@ -129,6 +266,13 @@ describe.skipIf(!enabled)('Error Prone through the init script', () => {
     ).toEqual([
       [
         'errorprone',
+        'NullAway',
+        'src/main/java/demo/Bean.java',
+        4,
+        `@NonNull field 'name' not initialized. ${NULLAWAY_FORM} ${hint('NullAway', 'src/main/java/demo/Bean.java')}`,
+      ],
+      [
+        'errorprone',
         'FutureReturnValueIgnored',
         'src/main/java/demo/Jobs.java',
         13,
@@ -139,14 +283,32 @@ describe.skipIf(!enabled)('Error Prone through the init script', () => {
         'NullAway',
         'src/main/java/demo/Jobs.java',
         26,
-        `returning @Nullable expression from method with @NonNull return type. Annotate what may be null with the @Nullable the project already uses (JSpecify's org.jspecify.annotations.Nullable if it uses none) and check it before use; otherwise give it a non-null value. ${hint('NullAway', 'src/main/java/demo/Jobs.java')}`,
+        'returning @Nullable expression from method with @NonNull return type. ' +
+          `${NULLAWAY_FORM} ${hint('NullAway', 'src/main/java/demo/Jobs.java')}`,
+      ],
+      [
+        'errorprone',
+        'NullAway',
+        'src/main/java/demo/Owner.java',
+        24,
+        'returning @Nullable expression from method with @NonNull return type. ' +
+          `${NULLAWAY_FORM} ${hint('NullAway', 'src/main/java/demo/Owner.java')}`,
       ],
       [
         'errorprone',
         'CheckReturnValue',
         'src/test/java/demo/JobsCheck.java',
-        5,
-        "The result of `count()` must be used. Did you mean 'var unused = jobs.count();' or to remove this line?",
+        7,
+        "The result of `count()` must be used. Did you mean 'var unused = jobs.count();' or to " +
+          `remove this line? ${hint('CheckReturnValue', 'src/test/java/demo/JobsCheck.java')}`,
+      ],
+      [
+        'errorprone',
+        'CheckReturnValue',
+        'src/test/java/demo/JobsCheck.java',
+        8,
+        "The result of `make()` must be used. Did you mean 'var unused = Samples.make();' or to " +
+          `remove this line? ${hint('CheckReturnValue', 'src/test/java/demo/JobsCheck.java')}`,
       ],
     ]);
   });
@@ -170,6 +332,22 @@ describe.skipIf(!enabled)('Error Prone through the init script', () => {
         `${path.join(broken, 'src/main/java/demo/Broken.java')}:1: incompatible types: java.lang.String cannot be converted to int`,
       );
       expect(existsSync(path.join(broken, 'build/nitpicker/errorprone.json'))).toBe(false);
+    },
+    GRADLE_STEP_TIMEOUT_MS,
+  );
+
+  it.each(LEVEL_FORMS)(
+    'compiles a project built with %s in the same form',
+    (_, build, files) => {
+      const levelRoot = writeProject(build, files);
+      const result = runGradle(levelRoot, 'nitpickerErrorProne');
+      const rules = readErrorProneFindings({
+        reportRoot: path.join(levelRoot, 'build/nitpicker'),
+        roots: [levelRoot],
+        lintedRoots: ['src/main/java'],
+      }).map((finding) => finding.rule);
+
+      expect([result.status, rules.includes('FutureReturnValueIgnored')]).toStrictEqual([0, true]);
     },
     GRADLE_STEP_TIMEOUT_MS,
   );

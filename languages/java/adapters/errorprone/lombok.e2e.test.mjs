@@ -46,6 +46,31 @@ public class Basket {
   }
 }
 `,
+  'src/main/java/shop/Wild.java': `package shop;
+
+import lombok.*;
+
+@Getter
+@RequiredArgsConstructor
+public class Wild {
+  private final int count;
+
+  @Deprecated
+  private int legacy() {
+    return 1;
+  }
+
+  @SneakyThrows
+  private int helper() {
+    return 2;
+  }
+
+  @Override
+  public String toString() {
+    return "w" + count + legacy() + helper();
+  }
+}
+`,
   'src/test/java/shop/BasketTest.java': `package shop;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -138,8 +163,9 @@ const errorProneAndToolErrors = (findings) =>
     .filter((finding) => finding.tool === 'errorprone' || finding.classification === 'tool-error')
     .map(({ tool, rule, path: file, location }) => [tool, rule, file, location?.line]);
 
-const ONLY_THE_WRITTEN_BUG = [
+const ONLY_THE_WRITTEN_CODE = [
   ['errorprone', 'ReturnValueIgnored', 'src/main/java/shop/Basket.java', 19],
+  ['errorprone', 'MethodCanBeStatic', 'src/main/java/shop/Wild.java', 10],
 ];
 
 describe.skipIf(!enabled)('Error Prone on a Lombok project', () => {
@@ -156,7 +182,23 @@ describe.skipIf(!enabled)('Error Prone on a Lombok project', () => {
       });
 
       expect(errorProneAndToolErrors(collectJavaFindings(root, { gradle, policy: {} }))).toEqual(
-        ONLY_THE_WRITTEN_BUG,
+        ONLY_THE_WRITTEN_CODE,
+      );
+    },
+    GRADLE_STEP_TIMEOUT_MS,
+  );
+
+  it(
+    'does the same with lombok.addSuppressWarnings = false, turning off the checks that fail on generated code',
+    () => {
+      const root = project({
+        'settings.gradle': "rootProject.name = 'shop'\n",
+        'build.gradle': BUILD_GRADLE,
+        'lombok.config': 'config.stopBubbling = true\nlombok.addSuppressWarnings = false\n',
+      });
+
+      expect(errorProneAndToolErrors(collectJavaFindings(root, { gradle, policy: {} }))).toEqual(
+        ONLY_THE_WRITTEN_CODE,
       );
     },
     GRADLE_STEP_TIMEOUT_MS,
@@ -168,7 +210,7 @@ describe.skipIf(!enabled)('Error Prone on a Lombok project', () => {
       const root = project({ 'pom.xml': POM });
 
       expect(errorProneAndToolErrors(collectJavaFindings(root, { maven, policy: {} }))).toEqual(
-        ONLY_THE_WRITTEN_BUG,
+        ONLY_THE_WRITTEN_CODE,
       );
     },
     GRADLE_STEP_TIMEOUT_MS,

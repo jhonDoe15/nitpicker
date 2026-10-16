@@ -7,7 +7,14 @@ const SENTENCE_END = /[.?!:]$/;
 const ALLOWED_FORMS = new Map([
   [
     'NullAway',
-    "Annotate what may be null with the @Nullable the project already uses (JSpecify's org.jspecify.annotations.Nullable if it uses none) and check it before use; otherwise give it a non-null value.",
+    'Annotate what may be null with the @Nullable the project already uses ' +
+      "(JSpecify's org.jspecify.annotations.Nullable if it uses none) and check it before use; " +
+      'otherwise give it a non-null value.',
+  ],
+  [
+    'SuppressWarningsWithoutExplanation',
+    'Explain this existing suppression in a comment next to it, saying why the warning is safe ' +
+      'to ignore. This is not a reason to add suppressions: fix new warnings instead.',
   ],
 ]);
 
@@ -38,7 +45,7 @@ function finding({ tool, filePath, parsed, diagnostic, unique }) {
     rule: parsed.check,
     path: filePath,
     identity: unique(
-      hashIdentity('errorprone', [parsed.check, parsed.message.replace(LINE_NUMBER, 'line')]),
+      hashIdentity('errorprone', [parsed.check, parsed.summary.replace(LINE_NUMBER, 'line')]),
     ),
     message: parsed.message,
     classification: 'enforceable',
@@ -60,14 +67,18 @@ function parseMessage(text) {
   const suggestionStart = lines.findIndex((line) => SUGGESTION.test(line));
   if (suggestionStart === -1) {
     const allowedForm = ALLOWED_FORMS.get(check);
-    return { check, message: allowedForm ? `${sentence(summary)} ${allowedForm}` : summary };
+    return {
+      check,
+      summary,
+      message: allowedForm ? `${sentence(summary)} ${allowedForm}` : summary,
+    };
   }
   const suggestion = lines
     .slice(suggestionStart)
     .map((line) => line.trim())
     .filter(Boolean)
     .join(' ');
-  return { check, message: `${sentence(summary)} ${suggestion}` };
+  return { check, summary, message: `${sentence(summary)} ${suggestion}` };
 }
 
 function sentence(text) {

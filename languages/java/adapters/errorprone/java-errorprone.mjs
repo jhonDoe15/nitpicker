@@ -3,6 +3,7 @@ import path from 'node:path';
 import { exceptionHint } from '../../../../shared/policy.mjs';
 import { normalizeReportPath } from '../../ingest/common.mjs';
 import { ingestErrorProne } from '../../ingest/errorprone/errorprone.mjs';
+import { isLombokGenerated } from './lombok/lombok-generated.mjs';
 
 const ERROR_PRONE_REPORT = 'errorprone.json';
 const SENTENCE_END = /[.?!:]$/u;
@@ -16,10 +17,30 @@ export function readErrorProneFindings({ reportRoot, roots, lintedRoots, kotlin 
   if (!existsSync(reportPath)) {
     return [];
   }
-  const { findings } = ingestErrorProne(readFileSync(reportPath, 'utf8'), {
+  const { findings } = ingestErrorProne(withoutLombokCode(readFileSync(reportPath, 'utf8')), {
     resolvePath: (file) => lintedPath(file, roots, lintedRoots),
   });
   return kotlin ? findings : findings.map((finding) => withExceptionRoute(finding));
+}
+
+function withoutLombokCode(json) {
+  const diagnostics = JSON.parse(json);
+  if (!Array.isArray(diagnostics)) {
+    return json;
+  }
+  const texts = new Map();
+  function textOf(file) {
+    if (!texts.has(file)) {
+      texts.set(
+        file,
+        typeof file === 'string' && existsSync(file) ? readFileSync(file, 'utf8') : '',
+      );
+    }
+    return texts.get(file);
+  }
+  return JSON.stringify(
+    diagnostics.filter((diagnostic) => !isLombokGenerated(diagnostic, textOf(diagnostic.file))),
+  );
 }
 
 function withExceptionRoute(finding) {

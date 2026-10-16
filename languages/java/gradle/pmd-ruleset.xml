@@ -3,7 +3,9 @@
      design, run over main and test sources. Two test rules are left out because they set an
      assertion style the TypeScript preset does not have: a message on every assertion, and one
      assertion per test. A test without any assertion still fails (UnitTestShouldIncludeAssert),
-     and mutation testing catches weak ones. -->
+     and mutation testing catches weak ones. The rules Error Prone or SpotBugs already report on
+     the same code are left out too, so each issue is reported once (docs/java-preset.md, "Overlaps
+     with PMD and SpotBugs"). -->
 <ruleset name="nitpicker"
          xmlns="http://pmd.sourceforge.net/ruleset/2.0.0"
          xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
@@ -11,6 +13,13 @@
   <description>Nitpicker's PMD categories for main and test sources.</description>
   <rule ref="category/java/errorprone.xml">
     <exclude name="TestClassWithoutTestCases"/>
+    <exclude name="AssignmentToNonFinalStatic"/>
+    <exclude name="DontImportSun"/>
+    <exclude name="IdempotentOperations"/>
+    <exclude name="ReturnEmptyCollectionRatherThanNull"/>
+    <exclude name="SimpleDateFormatNeedsLocale"/>
+    <exclude name="SuspiciousEqualsMethodName"/>
+    <exclude name="UselessOperationOnImmutable"/>
   </rule>
   <rule ref="category/java/errorprone.xml/TestClassWithoutTestCases">
     <properties>
@@ -22,6 +31,9 @@
     <exclude name="UnitTestAssertionsShouldIncludeMessage"/>
     <exclude name="UnitTestContainsTooManyAsserts"/>
     <exclude name="UnitTestShouldIncludeAssert"/>
+    <exclude name="ReplaceEnumerationWithIterator"/>
+    <exclude name="ReplaceHashtableWithMap"/>
+    <exclude name="ReplaceVectorWithList"/>
   </rule>
   <rule ref="category/java/bestpractices.xml/UnitTestShouldIncludeAssert">
     <properties>
