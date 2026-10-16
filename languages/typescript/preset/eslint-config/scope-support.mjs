@@ -54,8 +54,12 @@ export function isScopePackage(scope, name) {
   return scopePackages[scope].includes(name);
 }
 
+export function scopePackage(projectRoot, scope) {
+  return readDependencyNames(projectRoot).find((name) => scopePackages[scope].includes(name));
+}
+
 export function hasScopePackage(projectRoot, scope) {
-  return readDependencyNames(projectRoot).some((name) => scopePackages[scope].includes(name));
+  return scopePackage(projectRoot, scope) !== undefined;
 }
 
 export function productionScope(layout) {

@@ -1,7 +1,9 @@
 import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import ts from 'typescript';
-import { isReuseProductionPath } from './reuse-paths.mjs';
+import { filesUnder } from '../../../../../shared/filesystem.mjs';
+import { existingRoots } from '../../layout.mjs';
+import { isNonProductionFolder, isReuseProductionPath } from './reuse-paths.mjs';
 import { fileDefinitions } from './syntax/definitions.mjs';
 import { fileDynamicImports, fileExports, fileImports } from './syntax/module-facts.mjs';
 import { jsxTagNames, referencePositions } from './syntax/references.mjs';
@@ -58,4 +60,53 @@ export function productionFacts(projectRoot, layout) {
     .projectCodeFiles(projectRoot, layout.sourceRoots)
     .filter((file) => layout.isSourceFile(file) && isReuseProductionPath(file))
     .map((file) => fileFacts(projectRoot, file, packageRootOf(file)));
+}
+
+const SVG_TAG = /<svg\b[^>]*>/iu;
+const SVG_HEAD_BYTES = 4096;
+
+function attributeNumbers(tag, name) {
+  const value = new RegExp(`\\s${name}\\s*=\\s*["']([^"']*)["']`, 'iu').exec(tag)?.[1];
+  return value === undefined
+    ? []
+    : value
+        .split(/[\s,]+/u)
+        .map((part) => Number.parseFloat(part))
+        .filter((number) => !Number.isNaN(number));
+}
+
+function svgSize(text) {
+  const tag = SVG_TAG.exec(text.slice(0, SVG_HEAD_BYTES))?.[0] ?? '';
+  const [, , boxWidth, boxHeight] = attributeNumbers(tag, 'viewBox');
+  const [width] = attributeNumbers(tag, 'width');
+  const [height] = attributeNumbers(tag, 'height');
+  return boxWidth === undefined ? { width, height } : { width: boxWidth, height: boxHeight };
+}
+
+function relativePath(projectRoot, absolute) {
+  return path.relative(projectRoot, absolute).split(path.sep).join('/');
+}
+
+export function svgFiles(projectRoot, layout) {
+  function isSkipped(relative) {
+    return (
+      layout.isExcluded(relative) ||
+      layout.isTestPath(relative) ||
+      layout.isGeneratedPath(relative) ||
+      isNonProductionFolder(relative)
+    );
+  }
+  return existingRoots(projectRoot, layout.sourceRoots)
+    .flatMap((root) => [
+      ...filesUnder(path.join(projectRoot, root), {
+        skipDirectory: (absolute) => isSkipped(relativePath(projectRoot, absolute)),
+      }),
+    ])
+    .map((absolute) => relativePath(projectRoot, absolute))
+    .filter((relative) => /\.svg$/iu.test(relative) && !isSkipped(relative))
+    .toSorted()
+    .map((relative) => ({
+      path: relative,
+      size: svgSize(readFileSync(path.join(projectRoot, relative), 'utf8')),
+    }));
 }

@@ -376,6 +376,20 @@ off (a PR that adds or removes React keeps linting on both sides); a misspelled 
   through project modules that re-export it (a `../ui` barrel over `@acme/ui`), is not reported: it
   is a wrapper. A workspace package counts as a library, but its own components are not reported
   against it. Use the library's component, compose it under a different name, or rename the new one.
+- **Use the icon library** (`new-icon-asset`, reported by the `structure` check). An icon-sized
+  `.svg` file (a `viewBox`, or without one a `width` and `height`, of 48 or less in both dimensions;
+  logos and illustrations are larger, and a sprite sheet with neither is not an icon) under the
+  source roots is reported when `package.json` lists an icon package, one of the names in
+  `scopePackages.icons` in `languages/typescript/preset/eslint-config/scope-support.mjs`
+  (`lucide-react`, `react-icons`, `@heroicons/react`, `@mui/icons-material`, `@tabler/icons-react`,
+  `@phosphor-icons/react`, ...). The framework favicon conventions (`icon.svg`, `favicon.svg`,
+  `apple-icon.svg`), names with `logo` or `brand` in them, and generated, test, excluded,
+  `__mocks__/`, `__fixtures__/`, `fixtures/` and `stories/` folders are skipped, and the extension
+  matches in any case. Both the React scope and the icon package are read once from the head
+  checkout and written into the head policy for both sides, like `react.enabled`, so a pull request
+  that adopts an icon package does not report every old svg. Existing files are baselined by path. A
+  new icon or illustration that is a design decision needs an exception for the file.
+
 The plugins are `eslint-plugin-react-hooks`, `eslint-plugin-react-x` (from eslint-react),
 `eslint-plugin-jsx-a11y-x` and `eslint-plugin-testing-library` (whose peer range includes ESLint 10). `eslint-plugin-react` and `eslint-plugin-jsx-a11y` declare no ESLint 10
 support, so their maintained, ESLint 10 compatible counterparts are used.
