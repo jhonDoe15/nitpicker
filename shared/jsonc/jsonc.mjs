@@ -1,4 +1,4 @@
-const BOM = '﻿';
+const BOM = '\uFEFF';
 const COMMENT_OR_STRING = /"(?:[^"\\]|\\[\s\S])*"?|\/\/[^\n]*|\/\*[\s\S]*?(?:\*\/|$)/gu;
 const COMMA_OR_STRING = /"(?:[^"\\]|\\[\s\S])*"?|,(?=\s*[\]}])/gu;
 
