@@ -125,6 +125,7 @@ function checkType(value, node, errors, at) {
     string: typeof value === 'string',
     number: typeof value === 'number' && Number.isFinite(value),
     integer: Number.isInteger(value),
+    boolean: typeof value === 'boolean',
   };
   if (node.type !== undefined && !checks[node.type]) {
     errors.push(`${at} must be ${node.type}`);

@@ -100,6 +100,10 @@
         "pathIsFolder": {
           "description": "When true, `path` is a folder: a base finding with no match at its own path is held at the folder most of its files were renamed to.",
           "type": "boolean"
+        },
+        "divisible": {
+          "description": "When true, the base value is shared: several head findings with the same key are held while their values add up to no more than one unmatched base finding's value (a legacy clone split in two).",
+          "type": "boolean"
         }
       }
     },

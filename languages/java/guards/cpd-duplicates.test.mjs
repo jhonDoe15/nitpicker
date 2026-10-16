@@ -4,6 +4,7 @@ import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import { parseAnalyzerReport } from '../../../core/diff/comparison/finding-schema.mjs';
 import {
+  coveredByCpd,
   cpdClones,
   isAccessorOnly,
   isDataTable,
@@ -40,7 +41,7 @@ const LOGIC = Array.from(
 const sourceWith = (name) =>
   `class ${name} {\n  int run(int rate) {\n    int total = 0;\n${LOGIC}\n    return total;\n  }\n}\n`;
 
-function project(files, { jscpd } = {}) {
+function project(files) {
   const root = mkdtempSync(path.join(tmpdir(), 'nitpicker-cpd-'));
   roots.push(root);
   const reportRoot = path.join(root, 'build/nitpicker');
@@ -48,9 +49,6 @@ function project(files, { jscpd } = {}) {
   for (const [file, text] of Object.entries(files)) {
     mkdirSync(path.dirname(path.join(root, file)), { recursive: true });
     writeFileSync(path.join(root, file), text);
-  }
-  if (jscpd !== undefined) {
-    writeFileSync(path.join(reportRoot, 'duplicates.json'), JSON.stringify(jscpd));
   }
   return { root, reportRoot };
 }
@@ -115,6 +113,14 @@ describe('isDataTable', () => {
       true,
       false,
     ]);
+  });
+
+  it('needs a number or a literal on each row, so a run of calls is code', () => {
+    const rows = ['{1, 2},', '{"a", 3}', '});', '0.5, 1.5,'];
+    const calls = ['validate();', 'repository.flush();', 'LOG.info("saved order");', 'count++;'];
+
+    expect(isDataTable(rows.join('\n'))).toBe(true);
+    expect(calls.map((line) => isDataTable(line))).toEqual([false, false, false, false]);
   });
 });
 
@@ -185,6 +191,7 @@ describe('readCpdFindings', () => {
         identity: expect.stringMatching(/^cpd:pair:/),
         location: { line: 2 },
         classification: 'enforceable',
+        ratchet: { key: `cpd:pair:${MAIN_A}|${MAIN_B}:clone`, value: 120, divisible: true },
         message:
           `This code repeats ${MAIN_B}:2 (8 lines). Keep one copy and call it from both places. ` +
           'If it is right here, add an exception for duplicates/duplicate-clone in nitpicker.config.json.',
@@ -246,62 +253,34 @@ describe('readCpdFindings', () => {
     );
   });
 
-  it('skips a clone the exact-match duplicate report already has, in either order', () => {
-    const jscpd = (first, second) => ({
-      runs: [
-        {
-          root: '.',
-          report: {
-            duplicates: [
-              {
-                firstFile: { name: first, start: 3 },
-                secondFile: { name: second, start: 3 },
-                lines: 6,
-                tokens: 80,
-              },
-            ],
-          },
-        },
-      ],
-    });
-    const files = { [MAIN_A]: sourceWith('A'), [MAIN_B]: sourceWith('B') };
-    const cpd = report(
-      duplication(8, [
-        [MAIN_A, 2, 9],
-        [MAIN_B, 2, 9],
-      ]),
+  it('keeps the identity of one clone when another clone between the same files goes or comes', () => {
+    const second = Array.from(
+      { length: 12 },
+      (_, index) => `    if (rate > ${String(index)}) {\n      rate--;\n    }`,
     );
+    const text = `${sourceWith('A')}\nclass Extra {\n  void slow(int rate) {\n${second.join('\n')}\n  }\n}\n`;
+    const { root, reportRoot } = project({ [MAIN_A]: text, [MAIN_B]: text });
+    const logic = duplication(8, [
+      [MAIN_A, 2, 9],
+      [MAIN_B, 2, 9],
+    ]);
+    const branches = duplication(30, [
+      [MAIN_A, 21, 50],
+      [MAIN_B, 21, 50],
+    ]);
+    const identities = (...duplications) => {
+      writeFileSync(path.join(reportRoot, 'cpd.xml'), report(...duplications));
+      return readCpdFindings(reportRoot, options(root)).map((finding) => finding.identity);
+    };
 
-    for (const known of [jscpd(MAIN_A, MAIN_B), jscpd(MAIN_B, MAIN_A)]) {
-      const { root, reportRoot } = project(files, { jscpd: known });
-      writeFileSync(path.join(reportRoot, 'cpd.xml'), cpd);
-      expect(readCpdFindings(reportRoot, options(root))).toEqual([]);
-    }
+    const both = identities(logic, branches);
+
+    expect(new Set(both).size).toBe(2);
+    expect([...identities(logic), ...identities(branches)].sort()).toEqual([...both].sort());
   });
 
-  it('keeps a clone the exact-match report has in other places', () => {
-    const { root, reportRoot } = project(
-      { [MAIN_A]: sourceWith('A'), [MAIN_B]: sourceWith('B') },
-      {
-        jscpd: {
-          runs: [
-            {
-              root: '.',
-              report: {
-                duplicates: [
-                  {
-                    firstFile: { name: MAIN_A, start: 40 },
-                    secondFile: { name: MAIN_B, start: 40 },
-                    lines: 6,
-                    tokens: 80,
-                  },
-                ],
-              },
-            },
-          ],
-        },
-      },
-    );
+  it('marks a jscpd clone of the same lines as covered, in either order', () => {
+    const { root, reportRoot } = project({ [MAIN_A]: sourceWith('A'), [MAIN_B]: sourceWith('B') });
     writeFileSync(
       path.join(reportRoot, 'cpd.xml'),
       report(
@@ -311,8 +290,19 @@ describe('readCpdFindings', () => {
         ]),
       ),
     );
+    const jscpd = (first, second, start) => ({
+      first: { file: first, line: start },
+      second: { file: second, line: start },
+      lines: 6,
+    });
 
-    expect(readCpdFindings(reportRoot, options(root))).toHaveLength(1);
+    const covered = coveredByCpd([{ reportRoot }], root);
+
+    expect(
+      [jscpd(MAIN_A, MAIN_B, 3), jscpd(MAIN_B, MAIN_A, 3), jscpd(MAIN_A, MAIN_B, 40)].map((clone) =>
+        covered(clone),
+      ),
+    ).toEqual([true, true, false]);
   });
 
   it('skips accessor-only clones and a missing report', () => {

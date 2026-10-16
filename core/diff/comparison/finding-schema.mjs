@@ -105,7 +105,7 @@ function parseMetric(value, context) {
 }
 
 const RATCHET_TEXT_FIELDS = ['worseMessage', 'growthAdvice', 'heldMessage'];
-const RATCHET_FLAGS = ['existingCodeOnly', 'pathIsFolder'];
+const RATCHET_FLAGS = ['existingCodeOnly', 'pathIsFolder', 'divisible'];
 
 function parseRatchet(value, context) {
   if (!isRecord(value)) {
