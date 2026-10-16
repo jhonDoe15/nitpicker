@@ -292,6 +292,15 @@ off (a PR that adds or removes React keeps linting on both sides); a misspelled 
   required prop, a prop typed `never` in a discriminated union and props in different union branches
   are not reported. Aliases and interfaces in the same file are followed; types imported from other
   files are not.
+- **Exclusive props are a type, not a check** (`nitpicker/no-runtime-exclusive-props-check`). An
+  `if` in a component body whose condition tests two or more of its own props the same way (`a && b`,
+  `!a && !b`, `a !== undefined && b !== undefined`, `a != null && b != null`, only `&&` chains of
+  props with nothing else in them) and whose branch rejects, by `throw`, `console.error(...)` or
+  `console.warn(...)`, is flagged: make the props a discriminated union
+  (`{ icon: Icon; image?: never } | { image: string; icon?: never }`) so the compiler rejects the
+  combination. Props are the destructured parameter names or `props.name`. A branch that renders a
+  fallback, returns `null`, logs at another level or sets state is not flagged, and neither is a check
+  inside a nested function or a hook callback.
 - **Accessibility** (`jsx-a11y/*`): the recommended `eslint-plugin-jsx-a11y` rule set, as errors.
 - **`null` for refs and contexts.** `null` stays banned, except as the argument and the type
   argument of `useRef` and `createContext` (`useRef<HTMLDivElement>(null)`,

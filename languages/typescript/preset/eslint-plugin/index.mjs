@@ -34,6 +34,7 @@ import { rule as noRaisedTestTimeout } from './rules/testing/assertions/no-raise
 import { rule as noPartialOutputAssertion } from './rules/testing/assertions/no-partial-output-assertion.mjs';
 import { rule as noProcessGlobalsOutsideMainGuard } from './rules/modules/no-process-globals-outside-main-guard.mjs';
 import { rule as testTsconfigPinsLibAndTypes } from './rules/testing/types/test-tsconfig-pins-lib-and-types.mjs';
+import { rule as noRuntimeExclusivePropsCheck } from './rules/react-props/no-runtime-exclusive-props-check.mjs';
 import { rule as noSingularAndPluralProp } from './rules/react-props/no-singular-and-plural-prop.mjs';
 import { rule as reactNoEffectDataFetching } from './rules/react/react-no-effect-data-fetching.mjs';
 import { rule as reactNoEffectDerivedState } from './rules/react/react-no-effect-derived-state.mjs';
@@ -83,6 +84,7 @@ export const nitpickerRules = {
     'no-partial-output-assertion': noPartialOutputAssertion,
     'no-process-globals-outside-main-guard': noProcessGlobalsOutsideMainGuard,
     'test-tsconfig-pins-lib-and-types': testTsconfigPinsLibAndTypes,
+    'no-runtime-exclusive-props-check': noRuntimeExclusivePropsCheck,
     'no-singular-and-plural-prop': noSingularAndPluralProp,
     'react-no-effect-data-fetching': reactNoEffectDataFetching,
     'react-no-effect-derived-state': reactNoEffectDerivedState,
