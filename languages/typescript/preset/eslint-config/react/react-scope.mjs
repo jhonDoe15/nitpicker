@@ -28,8 +28,10 @@ export { isReactProject } from '../scope-support.mjs';
 const typedRuleIds = typedReactXRules.map((name) => `react-x/${name}`);
 const untypedThirdPartyRuleIds = thirdPartyReactRuleIds.filter((id) => !typedRuleIds.includes(id));
 
+const REACT_19_MAJOR = 19;
+
 function ruleIdsForReact(major) {
-  const before19 = major !== undefined && major < 19;
+  const before19 = major !== undefined && major < REACT_19_MAJOR;
   return untypedThirdPartyRuleIds.filter((id) => !before19 || !react19RuleIds.includes(id));
 }
 

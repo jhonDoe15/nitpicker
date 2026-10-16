@@ -1,4 +1,4 @@
-import { existsSync, readFileSync } from 'node:fs';
+import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { codeExtensions } from '../layout.mjs';
 import { readJsonc } from '../modules/tsconfig-files.mjs';
@@ -57,18 +57,18 @@ const expoRouterGlobs = [`{app,src/app}/**/*.${codeExtensions}`];
 const moduleScript = /<script\b([^>]*)>/giu;
 const moduleType = /\btype\s*=\s*["']module["']/iu;
 const scriptSource = /\bsrc\s*=\s*["']([^"']+)["']/iu;
-const conventionalViteEntries = ['tsx', 'ts', 'jsx', 'js'].map(
-  (extension) => `src/main.${extension}`,
-);
+const conventionalViteEntries = ['tsx', 'ts', 'jsx', 'js'].map((extension) => `main.${extension}`);
 
 export function isStorybookPackage(name) {
   return storybookPackage.test(name);
 }
 
-function hasConfigFile(projectRoot, stem) {
-  return configExtensions.some((extension) =>
-    existsSync(path.join(projectRoot, `${stem}.${extension}`)),
-  );
+function directoryEntries(directory) {
+  return new Set(existsSync(directory) ? readdirSync(directory) : []);
+}
+
+function hasConfigFile(entries, stem) {
+  return configExtensions.some((extension) => entries.has(`${stem}.${extension}`));
 }
 
 function readText(file) {
@@ -89,18 +89,17 @@ function viteEntryPoints(projectRoot) {
   if (declared.length > 0) {
     return declared;
   }
-  const conventional = conventionalViteEntries.find((file) =>
-    existsSync(path.join(projectRoot, file)),
-  );
-  return conventional === undefined ? [] : [conventional];
+  const sourceEntries = directoryEntries(path.join(projectRoot, 'src'));
+  const conventional = conventionalViteEntries.find((file) => sourceEntries.has(file));
+  return conventional === undefined ? [] : [`src/${conventional}`];
 }
 
 export function frameworkConventions(projectRoot) {
   const names = readDependencyNames(projectRoot);
-  const next = names.includes('next') || hasConfigFile(projectRoot, 'next.config');
-  const storybook =
-    names.some(isStorybookPackage) || existsSync(path.join(projectRoot, '.storybook'));
-  const vite = names.includes('vite') || hasConfigFile(projectRoot, 'vite.config');
+  const entries = directoryEntries(projectRoot);
+  const next = names.includes('next') || hasConfigFile(entries, 'next.config');
+  const storybook = names.some(isStorybookPackage) || entries.has('.storybook');
+  const vite = names.includes('vite') || hasConfigFile(entries, 'vite.config');
   return {
     defaultExports: [
       ...(next ? nextConventionGlobs : []),

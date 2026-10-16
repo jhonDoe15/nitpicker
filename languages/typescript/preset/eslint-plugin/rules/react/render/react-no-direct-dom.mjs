@@ -36,7 +36,9 @@ const MAX_ALIASES = 8;
 function unwrapped(node) {
   const chain = [node];
   for (const current of chain) {
-    if (wrappers.has(current.type)) chain.push(current.expression);
+    if (wrappers.has(current.type)) {
+      chain.push(current.expression);
+    }
   }
   return chain.at(-1);
 }
@@ -60,7 +62,9 @@ function aliasChain(sourceCode, node) {
   const chain = [unwrapped(node)];
   for (const current of chain) {
     const alias = chain.length <= MAX_ALIASES ? constInitOf(sourceCode, current) : undefined;
-    if (alias !== undefined) chain.push(alias);
+    if (alias !== undefined) {
+      chain.push(alias);
+    }
   }
   return chain;
 }

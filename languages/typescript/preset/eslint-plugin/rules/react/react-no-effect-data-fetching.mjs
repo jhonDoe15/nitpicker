@@ -1,4 +1,5 @@
 import ts from 'typescript';
+import { depthFirst } from '../../../../../../shared/traversal.mjs';
 import { ancestorsOf } from '../analysis/ancestry.mjs';
 import { enclosingFunction, isEffectCallback } from './react-effects.mjs';
 
@@ -75,7 +76,9 @@ function owningEffect(sourceCode, node) {
 }
 
 function isThenable(type) {
-  return type.getProperty('then') !== undefined || (type.types?.some(isThenable) ?? false);
+  return [...depthFirst(type, (member) => member.types ?? [])].some(
+    (member) => member.getProperty('then') !== undefined,
+  );
 }
 
 const settledWithoutValue = ts.TypeFlags.Void | ts.TypeFlags.Undefined;

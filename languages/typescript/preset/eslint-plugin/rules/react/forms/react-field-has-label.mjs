@@ -1,9 +1,9 @@
 import { ancestorsOf } from '../../analysis/ancestry.mjs';
 import {
   attributeNamed,
-  buttonLikeInputTypes,
+  isButtonLikeInputType,
   elementName,
-  fieldElements,
+  isFieldElement,
   hasSpread,
   literalValueOf,
 } from '../jsx.mjs';
@@ -13,7 +13,7 @@ const ariaLabels = ['aria-label', 'aria-labelledby'];
 function isButtonLike(opening) {
   return (
     elementName(opening) === 'input' &&
-    buttonLikeInputTypes.has(literalValueOf(attributeNamed(opening, 'type')))
+    isButtonLikeInputType(literalValueOf(attributeNamed(opening, 'type')))
   );
 }
 
@@ -74,7 +74,7 @@ export const rule = {
     return {
       JSXOpeningElement(node) {
         recordLabelTarget(node, labelTargets);
-        if (fieldElements.has(elementName(node))) {
+        if (isFieldElement(elementName(node))) {
           fieldsToCheck.push(node);
         }
       },

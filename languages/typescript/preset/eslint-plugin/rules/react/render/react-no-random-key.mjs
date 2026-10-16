@@ -30,7 +30,9 @@ const globalObjects = new Set(['window', 'globalThis', 'self']);
 function memberChain(node) {
   const pending = [node];
   for (const current of pending) {
-    if (current.type === 'MemberExpression' && !current.computed) pending.push(current.object);
+    if (current.type === 'MemberExpression' && !current.computed) {
+      pending.push(current.object);
+    }
   }
   return pending.at(-1).type === 'Identifier'
     ? pending.toReversed().map((part) => (part.type === 'Identifier' ? part : part.property))
