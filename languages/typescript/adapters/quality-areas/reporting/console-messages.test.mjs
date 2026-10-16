@@ -34,6 +34,11 @@ describe('console message normalization', () => {
       '<n> listeners added to emitter, <n> sockets',
     ],
     ['sizes and percentages', 'read 3 MB of 12KB at 45%', 'read <n> of <n> at <n>'],
+    [
+      'ids joined by underscores and hyphens',
+      'job V1StGXR8_Z5jdHi6B-myTqq9Lxw failed',
+      'job <id>_<id>-<id> failed',
+    ],
     ['a random identifier in an object', "{ id: 'k3j2h1', ok: true }", "{ id: '<id>', ok: true }"],
     [
       'an ISO timestamp, a hex address and a UUID',
