@@ -3,14 +3,13 @@ import { withoutOptions } from '../../../preset/test-runner/script-command.mjs';
 import {
   MAX_WORKERS,
   TEST_TIMEOUT_MS,
-  coverageGlobs,
-  coverageOutputFile,
   readRun,
   removeTemporary,
   temporaryProjectPath,
 } from '../test-run.mjs';
-import path from 'node:path';
 import { RUNNER_NAMES } from '../../../preset/test-runner/runners.mjs';
+import { assertSourcesCovered, coverageArguments, shownRootDir } from './jest-coverage.mjs';
+import { jestTool } from './jest-launcher.mjs';
 
 const OPTIONS_NITPICKER_SETS = {
   flags: [
@@ -24,6 +23,12 @@ const OPTIONS_NITPICKER_SETS = {
     '--passWithNoTests',
     '--onlyChanged',
     '-o',
+    '--onlyFailures',
+    '-f',
+    '--lastCommit',
+    '--changedFilesWithAncestor',
+    '--findRelatedTests',
+    '--showConfig',
   ],
   valued: [
     '--outputFile',
@@ -37,46 +42,60 @@ const OPTIONS_NITPICKER_SETS = {
     '--maxWorkers',
     '-w',
     '--changedSince',
+    '--shard',
+    '--testNamePattern',
+    '-t',
   ],
 };
 
-function coverageArguments(options) {
-  const { include, exclude } = coverageGlobs();
+const SERIAL_OPTIONS = new Set(['--runInBand', '-i']);
+
+export function jestArguments(command, nitpickerArguments, { leading, trailing }) {
   return [
-    '--coverage',
-    '--coverageProvider=babel',
-    '--coverageReporters=json',
-    `--coverageDirectory=${path.dirname(coverageOutputFile(options))}`,
-    '--coverageThreshold={}',
-    ...[...include, ...exclude.map((glob) => `!${glob}`)].map(
-      (glob) => `--collectCoverageFrom=${glob}`,
-    ),
+    ...leading,
+    ...withoutOptions(command.arguments_, OPTIONS_NITPICKER_SETS),
+    ...nitpickerArguments,
+    ...trailing,
   ];
 }
 
+function workerArguments(tokens) {
+  const serial = tokens.some((token) => SERIAL_OPTIONS.has(token.split('=')[0]));
+  return serial ? [] : [`--maxWorkers=${String(MAX_WORKERS)}`];
+}
+
+function spawnJest(options, command, nitpickerArguments) {
+  const launch = jestTool(options, command.launcher);
+  return spawnNodeTool({
+    options,
+    ...launch.tool,
+    nodeArguments: command.nodeArguments,
+    environment: command.environment,
+    arguments_: jestArguments(command, nitpickerArguments, launch),
+  });
+}
+
 export function runJest(options, command) {
+  const rootDir = shownRootDir(spawnJest(options, command, ['--showConfig']));
   const reportPath = temporaryProjectPath(options, 'jest-report.json');
   try {
-    const result = spawnNodeTool({
-      options,
-      relativeToolPath: 'jest/bin/jest.js',
-      nodeArguments: command.nodeArguments,
-      environment: command.environment,
-      arguments_: [
-        ...withoutOptions(command.arguments_, OPTIONS_NITPICKER_SETS),
-        '--ci',
-        '--no-watchman',
-        '--passWithNoTests',
-        ...coverageArguments(options),
-        '--json',
-        `--outputFile=${reportPath}`,
-        '--testLocationInResults',
-        `--testTimeout=${String(TEST_TIMEOUT_MS)}`,
-        '--restoreMocks',
-        `--maxWorkers=${String(MAX_WORKERS)}`,
-      ],
-    });
-    return readRun({ reportPath, result, runnerName: RUNNER_NAMES.jest });
+    const result = spawnJest(options, command, [
+      '--ci',
+      '--no-watchman',
+      '--passWithNoTests',
+      ...coverageArguments(options, rootDir),
+      '--json',
+      `--outputFile=${reportPath}`,
+      '--testLocationInResults',
+      `--testTimeout=${String(TEST_TIMEOUT_MS)}`,
+      '--restoreMocks',
+      ...workerArguments(command.arguments_),
+    ]);
+    const run = readRun({ reportPath, result, runnerName: RUNNER_NAMES.jest });
+    if (!run.failed && run.report.numTotalTests > 0) {
+      assertSourcesCovered(options, rootDir);
+    }
+    return run;
   } finally {
     removeTemporary(reportPath);
   }
