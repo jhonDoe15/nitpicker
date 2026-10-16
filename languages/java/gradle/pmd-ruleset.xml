@@ -106,6 +106,5 @@
       </property>
     </properties>
   </rule>
-  <rule ref="category/java/design.xml/AvoidCatchingGenericException"
-        message="Catch the specific exceptions this code can handle, not Exception, RuntimeException or NullPointerException. If a boundary must catch everything, add an exception for pmd/AvoidCatchingGenericException in nitpicker.config.json."/>
+  <rule ref="category/java/design.xml/AvoidCatchingGenericException"/>
 </ruleset>

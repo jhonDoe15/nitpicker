@@ -6,8 +6,9 @@ import {
   resolveHeadPolicy as resolveSharedHeadPolicy,
 } from '../../../shared/head-policy.mjs';
 import { isJavascriptPolicy } from '../../javascript/preset/javascript-preset.mjs';
-import { hasScopePackage } from './eslint-config/scope-support.mjs';
+import { hasScopePackage, scopePackage } from './eslint-config/scope-support.mjs';
 import { excludedGlobs, resolveLayout, sourceRoots, testRoots } from './layout.mjs';
+import { prettierConventionOptions } from '../conventions/prettier-conventions.mjs';
 
 export { headPolicyEnvironment, withHeadPolicyFile } from '../../../shared/head-policy.mjs';
 
@@ -61,12 +62,17 @@ function withProjectFacts(policy, config, projectRoot) {
 }
 
 function detectedScopes(policy, projectRoot) {
-  return Object.fromEntries(
+  const scopes = Object.fromEntries(
     ['react', 'i18n'].map((scope) => [
       scope,
       { ...policy[scope], enabled: policy[scope]?.enabled ?? hasScopePackage(projectRoot, scope) },
     ]),
   );
+  const iconPackage = scopePackage(projectRoot, 'icons');
+  return {
+    ...scopes,
+    react: { ...scopes.react, ...(iconPackage === undefined ? {} : { iconPackage }) },
+  };
 }
 
 function projectFilesDigest(projectRoot) {
@@ -78,7 +84,7 @@ function projectFilesDigest(projectRoot) {
   return hash.digest('hex');
 }
 
-export function usesProjectConfig(precedence) {
+function usesProjectConfig(precedence) {
   return precedence.includes('project');
 }
 
@@ -88,6 +94,14 @@ export function typecheckEngine(environment = process.env) {
 
 export function prettierPrecedence(environment = process.env) {
   return readHeadPolicy(environment).tools.prettier?.precedence ?? ['nitpicker'];
+}
+
+export function usesLayeredPrettier(environment = process.env) {
+  const policy = readHeadPolicy(environment);
+  return (
+    usesProjectConfig(policy.tools.prettier?.precedence ?? []) ||
+    Object.keys(prettierConventionOptions(policy.conventions)).length > 0
+  );
 }
 
 export function readHeadPolicy(environment = process.env) {
@@ -101,6 +115,7 @@ export function readHeadPolicy(environment = process.env) {
     i18n: policy.i18n ?? {},
     preset: policy.preset,
     tools: policy.tools ?? {},
+    conventions: policy.conventions,
   };
 }
 

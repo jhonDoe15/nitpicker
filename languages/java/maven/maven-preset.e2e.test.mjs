@@ -313,11 +313,9 @@ describe.skipIf(!enabled)('Java preset on Maven builds', () => {
       );
 
       expect(failing).toEqual(
-        [
-          'checkstyle com.puppycrawl.tools.checkstyle.checks.blocks.EmptyCatchBlockCheck',
-          'pit mutant-nocoverage',
-          'pmd EmptyCatchBlock',
-        ].map((finding) => `${finding} app/src/main/java/demo/app/Parser.java`),
+        ['checkstyle EmptyCatchBlock', 'pit mutant-nocoverage', 'pmd EmptyCatchBlock'].map(
+          (finding) => `${finding} app/src/main/java/demo/app/Parser.java`,
+        ),
       );
     },
     2 * GRADLE_STEP_TIMEOUT_MS,

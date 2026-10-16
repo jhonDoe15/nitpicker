@@ -2,8 +2,10 @@
 // default limits, failure-message templates and the languages that enforce each rule. Every
 // language adapter reads it, and `spec/checks.md` is generated from it (`npm run gen:checks`).
 //
-// Language-neutral: no imports, so any entry point can load it. Nothing under `shared/` may
+// Language-neutral: imports only from shared/rules, so any entry point can load it. Nothing under `shared/` may
 // import from `core/`, `languages/` or a tool package (shared/import-direction.test.mjs).
+
+import { reuseRules } from './rules/reuse-rules.mjs';
 
 export const LANGUAGES = ['typescript', 'java', 'python', 'kotlin'];
 
@@ -27,6 +29,11 @@ export const RULE_IDS = {
   lineLength: 'line-length-limit',
   folderFiles: 'folder-files-limit',
   slowTest: 'slow-test',
+  sharedUsedByOneFeature: 'shared-used-by-one-feature',
+  duplicateDefinition: 'duplicate-definition',
+  exportedNameCollision: 'exported-name-collision',
+  redefinedLibraryComponent: 'redefined-library-component',
+  newIconAsset: 'new-icon-asset',
   componentStoryMissing: 'component-story-missing',
 };
 
@@ -63,7 +70,7 @@ export const SHARED_EXCEPTION_RULES = [
 export const JAVA_NATIVE_RULES = [RULE_IDS.lineLength];
 
 /** `{exception}` is the `exceptions` entry that would lift the finding, as JSON. */
-const EXCEPTION_HINT =
+export const EXCEPTION_HINT =
   'If this is intended, add {exception} to "exceptions" in nitpicker.config.json.';
 
 /** A CRAP score at or above this fails (`QUALITY_CRAP_SCORE_LIMIT` / `thresholds.crapLimit` override it). */
@@ -115,6 +122,11 @@ export const MESSAGES = {
   lineLength: `Line is {value} characters (limit {limit}). Break it up or extract a named value. ${EXCEPTION_HINT}`,
   folderFiles: `Folder has {value} {kind} files directly in it (limit {limit}). Group related files into subfolders (packages in Java). ${EXCEPTION_HINT}`,
   slowTest: `{name} took {seconds} s; {kind} test may take {limit} s. Remove Thread.sleep and other waits, start a smaller Spring context or a test slice{move}. ${EXCEPTION_HINT}`,
+  sharedUsedByOneFeature: `{path} is used only by feature {feature}. Move it into {directory}. ${EXCEPTION_HINT}`,
+  duplicateDefinition: `{name} is also defined with {same} in {others}. {fix} ${EXCEPTION_HINT}`,
+  exportedNameCollision: `{name} is also exported by {others}; {importer} imports both. {fix} ${EXCEPTION_HINT}`,
+  redefinedLibraryComponent: `{name} is already rendered from {package} in {count}. Use that one. ${EXCEPTION_HINT}`,
+  newIconAsset: `Use an icon from {package} instead of adding {path}. ${EXCEPTION_HINT}`,
   componentStoryMissing: `Most components in this project have a story. Add {story} for {name}. ${EXCEPTION_HINT}`,
   componentStoryMissingUnenforced: `{name} has no story. Add {story}. Not enforced until more than half of the components have one. ${EXCEPTION_HINT}`,
 };
@@ -279,6 +291,7 @@ export const RULES = [
     limit: `more than ${String(FILE_LIMIT_DEFAULTS.folderFiles)} source files, or test files, directly in one folder; override with \`thresholds.folderFiles\``,
     enforcedBy: withKotlin(ALL, true),
   },
+  ...reuseRules(RULE_IDS, withKotlin(TYPESCRIPT_ONLY, false)),
   {
     id: RULE_IDS.slowTest,
     check: 'test-runtime',
@@ -296,9 +309,12 @@ export const RULES = [
 
 /**
  * Project-level TypeScript checks that take `exceptions` entries although no ESLint rule has their
- * id: the rules only the TypeScript structure check enforces.
+ * id: the rules only the TypeScript structure and coupling checks enforce.
  */
 export const TYPESCRIPT_PROJECT_EXCEPTION_RULES = RULES.filter(
   ({ check, enforcedBy }) =>
-    check === 'structure' && enforcedBy.typescript && !enforcedBy.java && !enforcedBy.python,
+    ['structure', 'coupling'].includes(check) &&
+    enforcedBy.typescript &&
+    !enforcedBy.java &&
+    !enforcedBy.python,
 ).map(({ id }) => id);
