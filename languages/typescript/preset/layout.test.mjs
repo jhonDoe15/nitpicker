@@ -88,6 +88,37 @@ describe('repo-root test folders', () => {
   });
 });
 
+describe('generated files', () => {
+  it.each([
+    'src/api.generated.ts',
+    'src/schema.gen.tsx',
+    'src/__generated__/types.ts',
+    'src/generated/service.ts',
+    'src/proto/user_pb.js',
+    'src/proto/user_grpc_pb.ts',
+    'src/proto/user.pb.ts',
+  ])('are not source: %s', (file) => {
+    expect(isSourceFile(file)).toBe(false);
+  });
+
+  it.each(['src/generator.ts', 'src/gen.ts', 'src/generated-names.ts', 'src/pb.ts', 'src/web.ts'])(
+    'does not treat a similar name as generated: %s',
+    (file) => {
+      expect(isSourceFile(file)).toBe(true);
+    },
+  );
+});
+
+describe('layout.isTestPath', () => {
+  it('recognizes any file under a test folder, whatever its extension', () => {
+    const layout = resolveLayout();
+
+    expect(layout.isTestPath('src/ui/__tests__/logo.svg')).toBe(true);
+    expect(layout.isTestPath('tests/logo.svg')).toBe(true);
+    expect(layout.isTestPath('src/ui/logo.svg')).toBe(false);
+  });
+});
+
 describe('layout.excludedGlobs', () => {
   it('replaces the built-in excluded globs and keeps the config exclude globs', () => {
     const layout = resolveLayout({ excludedGlobs: ['**/vendor/**'] }, ['legacy/**']);

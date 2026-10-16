@@ -7,6 +7,7 @@ import { domainFailureMessageCases } from './domain-cases.mjs';
 import { strictDomainConfig } from '../../eslint-config/strict/strict-domain.mjs';
 import { adapterFailureMessageCases, adapterSyntaxFailureMessageCases } from './adapter-cases.mjs';
 import { productionPolicyConfig } from '../../eslint-config/policies/base.mjs';
+import { i18nFailureMessageCases } from '../../eslint-config/i18n/test-support/i18n-cases.mjs';
 import { reactFailureMessageCases } from './react-cases.mjs';
 import { testFailureMessageCases } from './test-cases.mjs';
 
@@ -159,6 +160,30 @@ export const failureMessageCases = [
       "type Shape = { kind: 'a' } | { kind: 'b' };\nexport function read(shape: Shape) { switch (shape.kind) { case 'a': return 1; } return 0; }",
     allowed: 'exhaustive',
   },
+  ...[
+    ['partial union test names the switch', 'switch'],
+    ['partial union test names the Record lookup', 'Record<Union, boolean>'],
+    ['partial union test names the config exception', 'nitpicker.config.json'],
+  ].map(([name, allowed]) => ({
+    name,
+    config: typedStrictConfig,
+    filename: path.resolve('src/fixture.ts'),
+    banned:
+      "type Kind = 'a' | 'b' | 'c';\nexport const isEarly = (kind: Kind) => kind === 'a' || kind === 'b';",
+    allowed,
+  })),
+  ...[
+    ['forwarding wrapper names the direct call', 'call `fetchOne` directly'],
+    ['forwarding wrapper names the re-export', 'export { fetchOne as readOne }'],
+    ['forwarding wrapper names the config exception', 'nitpicker.config.json'],
+  ].map(([name, allowed]) => ({
+    name,
+    config: typedStrictConfig,
+    filename: path.resolve('src/fixture.ts'),
+    banned:
+      'export function fetchOne(id: string): string { return id; }\nexport function readOne(id: string): string { return fetchOne(id); }',
+    allowed,
+  })),
   ...domainFailureMessageCases,
   {
     name: 'domain recursion names flatMap',
@@ -235,4 +260,5 @@ export const failureMessageCases = [
     allowed: 'exception for this rule in nitpicker.config.json',
   },
   ...reactFailureMessageCases,
+  ...i18nFailureMessageCases,
 ];

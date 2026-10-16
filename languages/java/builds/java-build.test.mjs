@@ -53,6 +53,8 @@ describe('readPinnedTools', () => {
       'ktlint',
       'ktfmt',
       'kotlinCompiler',
+      'errorProne',
+      'nullAway',
     ]);
   });
 
