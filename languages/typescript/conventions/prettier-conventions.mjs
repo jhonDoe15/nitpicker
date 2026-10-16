@@ -94,6 +94,14 @@ export function prettierConventionOptions(conventions = {}) {
   };
 }
 
+export function followedPrettierOptions(conventions = {}) {
+  return prettierConventionOptions(
+    Object.fromEntries(
+      PRETTIER_CONVENTIONS.map(({ id, fallback }) => [id, conventions[id] ?? fallback]),
+    ),
+  );
+}
+
 function chooser(conventions) {
   return function chosen(id, mapping) {
     return conventions[id] === undefined ? {} : mapping(conventions[id]);

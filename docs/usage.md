@@ -549,7 +549,7 @@ sets the precedence for that tool. It lists `"project"` and `"nitpicker"`, highe
 | `precedence`               | Config used                                                          |
 | -------------------------- | -------------------------------------------------------------------- |
 | `["nitpicker"]` (default)  | nitpicker's only                                                     |
-| `["project"]`              | the project's only                                                   |
+| `["project"]`              | the project's, with the measured conventions under it                |
 | `["project", "nitpicker"]` | both merged; the project's value wins where both set the same option |
 | `["nitpicker", "project"]` | both merged; nitpicker's value wins where both set the same option   |
 
@@ -565,7 +565,9 @@ leaves out keeps the value from the next layer. With `["project", "nitpicker"]` 
 nitpicker's own, whose options under `conventions` are measured from the project's files (the
 project's Prettier config is never what they are measured from), so a project config that only sets
 `semi: false` still gets the measured quote style, indentation and width. Listing only `"project"`
-leaves Prettier's own defaults for the options the project's config omits. Without a `tools` entry
+works the same way without nitpicker's other options: the eight convention options the project's
+config omits take the measured (or pinned, or default) choice, and any other option it omits is
+Prettier's own default. Without a `tools` entry
 the same measured conventions apply on their own, so a project written with double quotes or
 without semicolons isn't told to switch. They apply to code files; JSON and YAML keep nitpicker's
 settings. A `.editorconfig` counts as the project's Prettier config, so it is read only when
