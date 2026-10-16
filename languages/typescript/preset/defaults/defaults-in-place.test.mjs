@@ -36,6 +36,7 @@ const POLICY_PATHS = [
   'languages/typescript/conventions/print-width.mjs',
   'languages/typescript/preset/layout.mjs',
   'languages/typescript/preset/head-policy.mjs',
+  'languages/typescript/preset/libraries',
   'languages/typescript/preset/tool-configs.mjs',
   'languages/typescript/preset/architecture/strict-boundary-rules.mjs',
   'languages/typescript/preset/architecture/strict-layout.mjs',

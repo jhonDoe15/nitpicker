@@ -2,10 +2,12 @@
 <!-- Nitpicker's PMD rules: the errorprone and bestpractices categories plus a catch rule from
      design, run over main and test sources. Two test rules are left out because they set an
      assertion style the TypeScript preset does not have: a message on every assertion, and one
-     assertion per test. A test without any assertion still fails (UnitTestShouldIncludeAssert),
-     and mutation testing catches weak ones. Rules that report the same code as Error Prone,
-     SpotBugs or Checkstyle stay on: a rule whose finding repeats another tool's on the same code is
-     dropped after policy only while that other finding is reported
+     assertion per test. A test without any assertion still fails (UnitTestShouldIncludeAssert,
+     which already counts assert*, check*, verify* and fail calls, so Mockito verify and Reactor
+     StepVerifier verify* are covered; extraAssertMethodNames adds MockMvc, AssertJ and Mockito BDD
+     then(...) and WebTestClient calls), and mutation testing catches weak ones. Rules that report
+     the same code as Error Prone, SpotBugs or Checkstyle stay on: a rule whose finding repeats
+     another tool's on the same code is dropped after policy only while that other finding is reported
      (languages/java/adapters/overlaps/overlap-pairs.json, docs/java-preset.md "Overlaps"). -->
 <ruleset name="nitpicker"
          xmlns="http://pmd.sourceforge.net/ruleset/2.0.0"
@@ -28,7 +30,8 @@
   </rule>
   <rule ref="category/java/bestpractices.xml/UnitTestShouldIncludeAssert">
     <properties>
-      <property name="extraAssertMethodNames" value="andExpect"/>
+      <property name="extraAssertMethodNames"
+                value="andExpect,andExpectAll,then,thenThrownBy,thenCode,thenNoException,should,expectStatus,expectBody,expectHeader,expectCookie"/>
     </properties>
   </rule>
   <rule ref="category/java/design.xml/AvoidCatchingGenericException"/>

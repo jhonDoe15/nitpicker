@@ -1101,7 +1101,10 @@ errorprone and bestpractices categories without `UnitTestAssertionsShouldInclude
 plus design's `AvoidCatchingGenericException` (no `catch (Exception e)`, `RuntimeException` or
 `NullPointerException`; errorprone already covers `Throwable`), as the TypeScript and Python presets
 forbid broad catches. A test with no assertion still fails (`UnitTestShouldIncludeAssert`, which
-also counts MockMvc's `andExpect`), and a class named like a test but without test methods fails
+counts every `assert*`, `check*`, `verify*` (Mockito `verify`, Reactor `StepVerifier` `verifyComplete`
+and friends) and `fail` call, plus MockMvc's `andExpect` and `andExpectAll`, the AssertJ and Mockito
+BDD `then(...)`, `thenThrownBy`, `thenCode`, `thenNoException` and `should`, and WebTestClient's
+`expectStatus`, `expectBody`, `expectHeader` and `expectCookie`), and a class named like a test but without test methods fails
 (`TestClassWithoutTestCases`), except `*ArchTest` and `*ArchitectureTest` classes, which hold
 ArchUnit rules. The Spring rule set reads main sources only: the init script wraps it in
 `build/nitpicker/pmd-spring-main.xml` with an exclude pattern per test source directory, since
@@ -1169,8 +1172,16 @@ decides what counts as a literal secret, and `java-spring.mjs` applies the rules
   YAML, a `#---` or `!---` document in a properties file. The plain `application.*` main document has
   none. The expression is split on `, | & ! ( )` and spaces. A document is exempt from a rule only
   when it has at least one profile, every positive token is exempt for that rule, and the expression
-  has no `!`. Test profiles are `test` or a name starting with `test`, `it` and `integration-test`;
-  local profiles are `local`, `dev` and `development`.
+  has no `!`. Test profiles are `test`, a name starting with `test`, any name with a `test`, `tests`,
+  `it` or `integration` word (words split on `-`, `_` and `.`, so `integration-test` and `ci-test`),
+  and every profile the project's tests use: the names of `application-<profile>.(properties|yml|yaml)`
+  files and `spring.profiles.active` values under test resources (`src/test/resources`, the sibling
+  `resources` of each test source root), and the `@ActiveProfiles` strings and
+  `spring.profiles.active=` values in the test sources (`src/test/java`, `src/test/kotlin` or the
+  manifest's `testSourceRoots`). A detected name with a `prod`, `production` or `live` word is never a
+  test profile. Local profiles are names with a `local`, `dev` or `development` word, so `local-dev`
+  counts. A profile built from a constant (`@ActiveProfiles(Profiles.TEST)`) cannot be read; name it
+  with a literal or add an exception for the rule.
 - **True.** Wherever a rule needs `true`, Spring's spellings `true`, `on`, `yes` and `1` count, in
   any case.
 - **Rules**, all enforceable. Each message ends with the exception line to add to
@@ -1210,8 +1221,8 @@ decides what counts as a literal secret, and `java-spring.mjs` applies the rules
   its nesting, but `<<: *b` merges and `*ref` values are not expanded. A flow map or sequence that
   continues on later lines (`include: [` ... `]`), multi-line quoted or plain scalars (their
   continuation lines are skipped) and `? ` complex keys are not read; a YAML list of maps is
-  skipped. Profile groups, `spring.config.import` files and `spring.profiles.active` are not
-  followed.
+  skipped. Profile groups and `spring.config.import` files are not followed, and
+  `spring.profiles.active` is read only to learn the profiles the tests use.
 - **Tests.** `spring-config-parser.test.mjs` (properties and YAML parsing, line endings, byte
   order mark, continuations, escapes, indexes, flow collections, anchors), `spring-secrets.test.mjs`
   (key words, value judgement), `java-spring.test.mjs` (relaxed keys, open-in-view, ddl-auto,

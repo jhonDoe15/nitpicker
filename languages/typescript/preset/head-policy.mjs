@@ -7,6 +7,7 @@ import {
 } from '../../../shared/head-policy.mjs';
 import { isJavascriptPolicy } from '../../javascript/preset/javascript-preset.mjs';
 import { hasScopePackage, scopePackage } from './eslint-config/scope-support.mjs';
+import { detectLibraries } from './libraries/project-libraries.mjs';
 import { excludedGlobs, resolveLayout, sourceRoots, testRoots } from './layout.mjs';
 import { prettierConventionOptions } from '../conventions/prettier-conventions.mjs';
 
@@ -49,7 +50,9 @@ function withProjectFacts(policy, config, projectRoot) {
   const prettier = policy.tools?.prettier;
   return {
     ...policy,
-    ...(SCOPED_PRESETS.includes(config.preset) ? detectedScopes(policy, projectRoot) : {}),
+    ...(SCOPED_PRESETS.includes(config.preset)
+      ? { ...detectedScopes(policy, projectRoot), libraries: detectLibraries(projectRoot) }
+      : {}),
     ...(usesProjectConfig(prettier?.precedence ?? [])
       ? {
           tools: {
@@ -116,6 +119,7 @@ export function readHeadPolicy(environment = process.env) {
     preset: policy.preset,
     tools: policy.tools ?? {},
     conventions: policy.conventions,
+    libraries: policy.libraries,
   };
 }
 

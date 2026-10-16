@@ -50,8 +50,8 @@ Before you change code other modules use or fix a bug, read
   `/** @typedef {import('./domain/tally.js').Invoice} Invoice */` in `invoices/index.js`, then
   `/** @import { Invoice } from '../../invoices/index.js' */` in the other feature. Never copy a
   type: import it, or derive it from a function you call (`Parameters<typeof runGreeting>[1]`).
-- `adapters/` does I/O and parses untrusted input (files, HTTP bodies, JSON) once, with zod (add it
-  if it isn't a dependency). Field rules and conversions live in the schema
+- `adapters/` does I/O and parses untrusted input (files, HTTP bodies, JSON) once, with the project's
+  validation library (zod if it has none; add it then). Field rules and conversions live in the schema
   (`z.string().trim().min(1)`, `z.email()`, `z.iso.date()`, `.transform(toCents)`), never
   `z.unknown()` fields plus hand checks. A JSON list is `z.array(recordSchema)`; the issues'
   `path` (`[index, field]`) names the bad record: `issues.map((issue) => issue.path.join('.'))`.
@@ -86,7 +86,7 @@ line) is a finding.
 - Bring a type in with `@import { Invoice } from '../domain/tally.js'`; there is no `import type`.
 - A value whose type can't be inferred gets a one-line `/** @type {string[]} */` above its `const`.
   A literal that must stay narrow is `/** @type {const} */ ([...])`; that is the one allowed cast.
-- No cast `/** @type {T} */ (value)`, the JSDoc `as`. Narrow with checks, parse with zod, or type the
+- No cast `/** @type {T} */ (value)`, the JSDoc `as`. Narrow with checks, parse with the project's validation library, or type the
   value correctly where it is made. There is no `!`.
 - No `any`, `*` or a bare `?` in a type. No `null`, `?T` or `T?`: absent is `undefined`
   (`{ readonly note: string | undefined }`).
@@ -144,7 +144,7 @@ line) is a finding.
   with `@returns {Total}` and pass it: `statuses.map((status) => totalFor(xs, status))`. A reducer is
   the same: `xs.reduce(addInvoice, none)`, with `addInvoice` taking and returning the readonly type.
   Return readonly results as they are; don't spread-copy them.
-- No module-level `RegExp` or zod schema (both are mutable): write the regex literal inside the
+- No module-level `RegExp` or schema object (both are mutable): write the regex literal inside the
   function; schemas live in `adapters/`. Dedupe with `[...new Set(xs)]` or a `ReadonlySet`.
 - A `Date` is mutable: use it in one expression (`new Date(ms).getUTCHours()`) or type it
   `Readonly<Date>`.

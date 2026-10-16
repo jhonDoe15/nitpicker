@@ -269,6 +269,7 @@ function repositoryChecksFor(exclusions) {
         'languages/typescript/preset/layout.mjs',
         'languages/typescript/preset/head-policy.mjs',
         'languages/typescript/preset/eslint-config/scope-support.mjs',
+        'languages/typescript/preset/libraries/project-libraries.mjs',
         'languages/typescript/preset/unused-api/test-only/production-config.mjs',
         'languages/typescript/preset/unused-api/test-only/test-only-exports.mjs',
         'languages/typescript/preset/unused-api/workspace/packages.mjs',

@@ -125,7 +125,11 @@ export function requireGradleReports(projectRoot, preset) {
 
 function springFindings({ projectRoot, manifest, sourceRoots }) {
   return manifest.spring === true
-    ? readSpringConfigFindings(projectRoot, { sourceRoots, resourceRoots: manifest.resourceRoots })
+    ? readSpringConfigFindings(projectRoot, {
+        sourceRoots,
+        resourceRoots: manifest.resourceRoots,
+        testSourceRoots: manifest.testSourceRoots,
+      })
     : [];
 }
 
