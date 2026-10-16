@@ -43,6 +43,7 @@ export function spawnNodeTool({
   relativeToolPath,
   absoluteToolPath,
   arguments_,
+  nodeArguments = [],
   cwd = options.projectRoot,
   environment = {},
 }) {
@@ -53,7 +54,7 @@ export function spawnNodeTool({
       projectRoot: options.liveProjectRoot,
       bin: relativeToolPath.slice(name.length + 1),
     }).binPath;
-  const result = spawnSync(process.execPath, [toolPath, ...arguments_], {
+  const result = spawnSync(process.execPath, [...nodeArguments, toolPath, ...arguments_], {
     cwd,
     env: { ...process.env, ...environment },
     encoding: 'utf8',

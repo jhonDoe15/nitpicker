@@ -1,18 +1,20 @@
 import { runNodeTool, parseReportJson } from './tooling.mjs';
 import path from 'node:path';
-import { existsSync, writeFileSync, readFileSync, rmSync } from 'node:fs';
-import { trackTemporaryPath } from '../../../../../core/tooling/temporary-files.mjs';
+import { existsSync, readFileSync, rmSync } from 'node:fs';
 import {
   coverageFailureFindings,
-  readVitestReport,
   readCoverageFindings,
   toolErrorFinding,
-} from '../reporting/vitest.mjs';
+} from '../reporting/test-report.mjs';
+import { runProjectTests } from '../../test-runners/run-project-tests.mjs';
 import { readLayout } from '../../../preset/head-policy.mjs';
-import { TESTS_FAILED_SKIPPED_RULE } from '../../../../../shared/rules/finding-helpers.mjs';
+import {
+  TESTS_FAILED_RULE,
+  TESTS_FAILED_SKIPPED_RULE,
+} from '../../../../../shared/rules/finding-helpers.mjs';
 import { normalizeCrap } from '../reporting/tests.mjs';
 import { withFunctionSourceHashes } from '../reporting/source-hashes.mjs';
-import { COVERAGE_REPORT_PATH } from '../reporting/vitest.mjs';
+import { COVERAGE_REPORT_PATH } from '../reporting/test-report.mjs';
 
 export function runPolicyTests(options) {
   if (options.snapshot === 'base') {
@@ -28,50 +30,26 @@ export function runPolicyTests(options) {
   return [];
 }
 
-export function runCoverage(options) {
-  const configPath = path.join(options.projectRoot, '.nitpicker-diff-vitest.config.ts');
-  const testReportPath = path.join(options.projectRoot, '.nitpicker-diff-vitest-report.json');
-  if (existsSync(testReportPath)) {
-    throw new Error(`Temporary coverage report already exists: ${testReportPath}`);
+export async function runCoverage(options) {
+  const run = await runProjectTests(options);
+  if (run.failed) {
+    rmSync(path.join(options.projectRoot, COVERAGE_REPORT_PATH), { force: true });
+    return coverageFailureFindings(options, run);
   }
-  trackTemporaryPath(configPath);
-  trackTemporaryPath(testReportPath);
-  writeFileSync(
-    configPath,
-    readFileSync(
-      path.join(
-        options.policyRoot,
-        'languages/typescript/preset/defaults/vitest.quality.config.ts',
-      ),
-      'utf8',
-    ),
-  );
-  try {
-    const result = runNodeTool({
-      options,
-      relativeToolPath: 'vitest/vitest.mjs',
-      arguments_: [
-        'run',
-        '--config',
-        configPath,
-        '--coverage',
-        '--testTimeout',
-        '10000',
-        '--reporter',
-        'json',
-        '--outputFile',
-        testReportPath,
-      ],
-      acceptedStatuses: [0, 1],
-    });
-    if (result.status !== 0) {
-      return coverageFailureFindings(options, readVitestReport(testReportPath, result), result);
-    }
-    return readCoverageFindings(options, testReportPath);
-  } finally {
-    rmSync(testReportPath, { force: true });
-    rmSync(configPath, { force: true });
+  if (run.report.numTotalTests === 0) {
+    rmSync(path.join(options.projectRoot, COVERAGE_REPORT_PATH), { force: true });
+    return [noTestsRanFinding(options, run.runnerName)];
   }
+  return readCoverageFindings(options, run.report);
+}
+
+function noTestsRanFinding(options, runnerName) {
+  const layout = readLayout();
+  const [first] = layout.projectCodeFiles(options.projectRoot).filter(layout.isRunnableTestFile);
+  return toolErrorFinding(options, {
+    rule: TESTS_FAILED_RULE,
+    message: `${runnerName} ran no tests, but nitpicker sees test files such as ${first}. Make the project's ${runnerName} config find them, or set "tools.tests.runner" in nitpicker.config.json to the runner they are written for.`,
+  });
 }
 
 function hasRunnableTests(options) {

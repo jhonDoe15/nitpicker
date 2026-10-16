@@ -3,16 +3,19 @@ import {
   PROJECT_TOOL_CONFIGS,
 } from '../../languages/java/adapters/gradle-presets.mjs';
 import { configError, isPlainObject } from '../../shared/config.mjs';
+import { TEST_RUNNERS } from '../../languages/typescript/preset/test-runner/runners.mjs';
 
 const TOOL_SETTING_KEYS = new Map([
   ['prettier', ['precedence']],
   ['eslint', ['engine']],
   ['typescript', ['engine']],
+  ['tests', ['runner']],
 ]);
 const ENGINES = new Map([
   [
     'eslint',
     {
+      key: 'engine',
       values: ['oxlint', 'eslint'],
       meaning: '"oxlint" runs the lint rules on oxlint (the default); "eslint" runs them on ESLint',
     },
@@ -20,9 +23,19 @@ const ENGINES = new Map([
   [
     'typescript',
     {
+      key: 'engine',
       values: ['native', 'project'],
       meaning:
         '"native" type checks with TypeScript 7 (the default); "project" uses the project\'s own TypeScript',
+    },
+  ],
+  [
+    'tests',
+    {
+      key: 'runner',
+      values: TEST_RUNNERS,
+      meaning:
+        'It names the runner that runs the project\'s tests; without it nitpicker uses the runner the project\'s test script, config files or dependencies name',
     },
   ],
 ]);
@@ -62,7 +75,7 @@ function validateToolSettings(name, settings, toolSettingKeys) {
     );
   }
   if (ENGINES.has(name)) {
-    validateEngine(name, settings.engine);
+    validateEngine(name, settings[ENGINES.get(name).key]);
     return;
   }
   validatePrecedence(settings.precedence, name);
@@ -74,10 +87,15 @@ function validateToolSettings(name, settings, toolSettingKeys) {
 }
 
 function validateEngine(name, engine) {
-  const { values, meaning } = ENGINES.get(name);
+  const { key, values, meaning } = ENGINES.get(name);
   if (engine !== undefined && !values.includes(engine)) {
-    throw configError(`"tools.${name}.engine" must be "${values.join('" or "')}". ${meaning}`);
+    throw configError(`"tools.${name}.${key}" must be ${choiceList(values)}. ${meaning}`);
   }
+}
+
+function choiceList(values) {
+  const quoted = values.map((value) => `"${value}"`);
+  return `${quoted.slice(0, -1).join(', ')} or ${quoted.at(-1)}`;
 }
 
 function validatePrecedence(precedence, name) {

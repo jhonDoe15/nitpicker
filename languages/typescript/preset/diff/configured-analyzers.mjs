@@ -145,6 +145,22 @@ export function applyLayout(analyzers, headPolicy) {
   );
 }
 
+const TEST_RUNNER_ANALYZERS = new Set(['coverage', 'mutation']);
+
+export function applyTestRunner(analyzers, headPolicy = {}) {
+  const configured = headPolicy.tools?.tests?.runner;
+  if (configured === undefined) return analyzers;
+  return analyzers.map((analyzer) =>
+    analyzer.policyFromPackage === true && TEST_RUNNER_ANALYZERS.has(analyzer.name)
+      ? {
+          ...analyzer,
+          resolveVersion: (projectRoot) =>
+            resolveAnalyzerVersion(analyzer.name, projectRoot, undefined, configured),
+        }
+      : analyzer,
+  );
+}
+
 export function applyThresholds(analyzers, thresholds = {}, headPolicy = {}) {
   const crapCheck = createQualityChecks(resolveLayoutFor(headPolicy)).qualityAreaChecks.find(
     ({ name }) => name === 'crap',

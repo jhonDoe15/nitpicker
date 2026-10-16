@@ -1,6 +1,8 @@
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { PACKAGE_ROOT, resolveTool } from '../../../core/tooling/tool-resolution.mjs';
+import { testRunnerFor } from './test-runner/detect-runner.mjs';
+import { RUNNER_PACKAGES } from './test-runner/runners.mjs';
 
 const TOOL_BY_ANALYZER = {
   'entry-points': 'dependency-cruiser',
@@ -14,9 +16,7 @@ const TOOL_BY_ANALYZER = {
   structure: 'typescript',
   duplicates: 'jscpd',
   'dead-code': 'knip',
-  coverage: 'vitest',
   crap: '@barney-media/crap-typescript-core',
-  mutation: '@stryker-mutator/core',
 };
 const TYPESCRIPT_CONSUMERS = new Set([
   'coding-standards',
@@ -52,7 +52,26 @@ function resolveEslintPluginVersions(resolve) {
   return [...plugins, `nitpicker-plugin@${String(nitpickerVersion)}`].join(',');
 }
 
-export function resolveAnalyzerVersion(analyzerName, liveProjectRoot, resolve = resolveTool) {
+function testRunnerVersion(liveProjectRoot, resolve, configuredRunner) {
+  const { runner } = testRunnerFor(liveProjectRoot, configuredRunner);
+  if (runner === 'node') return `node@${process.versions.node}`;
+  const name = RUNNER_PACKAGES[runner];
+  return `${name}@${resolve(name, { projectRoot: liveProjectRoot }).version}`;
+}
+
+export function resolveAnalyzerVersion(
+  analyzerName,
+  liveProjectRoot,
+  resolve = resolveTool,
+  configuredRunner,
+) {
+  if (analyzerName === 'coverage') {
+    return testRunnerVersion(liveProjectRoot, resolve, configuredRunner);
+  }
+  if (analyzerName === 'mutation') {
+    const stryker = resolve('@stryker-mutator/core', { projectRoot: liveProjectRoot }).version;
+    return `${stryker};${testRunnerVersion(liveProjectRoot, resolve, configuredRunner)}`;
+  }
   const toolName = analyzerName.startsWith('eslint-') ? 'eslint' : TOOL_BY_ANALYZER[analyzerName];
   if (toolName === undefined) {
     throw new Error(`No tool is configured for analyzer ${analyzerName}`);

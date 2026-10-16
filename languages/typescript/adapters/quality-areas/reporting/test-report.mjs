@@ -8,27 +8,26 @@ import { normalizeCoverage } from './tests.mjs';
 
 import { withBranchSourceHashes } from './source-hashes.mjs';
 
-export function coverageFailureFindings(options, report, result) {
-  const [firstFailure] = vitestFailures(report, options.projectRoot);
+export function coverageFailureFindings(options, { report, result, runnerName }) {
+  const [firstFailure] = testFailures(report, options.projectRoot);
   if (firstFailure === undefined) {
     throw new Error(
-      `Vitest exited ${String(result.status)} without naming a failing test${formatProcessOutput(result)}`,
+      `${runnerName} exited ${String(result.status)} without naming a failing test${formatProcessOutput(result)}`,
     );
   }
   return [
     toolErrorFinding(options, {
       rule: TESTS_FAILED_RULE,
       path: findingPath(firstFailure.file),
-      message: formatVitestFailures(report, options.projectRoot),
+      message: formatTestFailures(report, options.projectRoot),
     }),
   ];
 }
 
-export function readCoverageFindings(options, testReportPath) {
+export function readCoverageFindings(options, testReport) {
   const report = JSON.parse(
     readFileSync(path.join(options.projectRoot, COVERAGE_REPORT_PATH), 'utf8'),
   );
-  const testReport = JSON.parse(readFileSync(testReportPath, 'utf8'));
   return normalizeCoverage(
     withBranchSourceHashes(report, options.projectRoot),
     options.analyzerName,
@@ -36,12 +35,12 @@ export function readCoverageFindings(options, testReportPath) {
   );
 }
 
-export function readVitestReport(reportPath, result) {
+export function readTestReport(reportPath, result, runnerName) {
   try {
     return JSON.parse(readFileSync(reportPath, 'utf8'));
   } catch (error) {
     throw new Error(
-      `Vitest exited ${String(result.status)} without a readable test report: ${error instanceof Error ? error.message : String(error)}${formatProcessOutput(result)}`,
+      `${runnerName} exited ${String(result.status)} without a readable test report: ${error instanceof Error ? error.message : String(error)}${formatProcessOutput(result)}`,
       { cause: error },
     );
   }
@@ -66,7 +65,7 @@ const ESCAPE_CHARACTER = String.fromCodePoint(0x1b);
 
 const ANSI_PATTERN = new RegExp(`${ESCAPE_CHARACTER}\\[[0-9;]*m`, 'gu');
 
-function vitestFailures(report, projectRoot) {
+function testFailures(report, projectRoot) {
   const failures = [];
   const testResults = Array.isArray(report?.testResults) ? report.testResults : [];
   for (const testResult of testResults) {
@@ -77,7 +76,7 @@ function vitestFailures(report, projectRoot) {
     for (const assertion of failedAssertions) {
       failures.push({
         file,
-        name: vitestAssertionName(assertion),
+        name: assertionName(assertion),
         assertion: firstLine(
           assertion.failureMessages?.find((message) => typeof message === 'string'),
         ),
@@ -119,8 +118,8 @@ function firstLine(message) {
     : line;
 }
 
-export function formatVitestFailures(report, projectRoot) {
-  const failures = vitestFailures(report, projectRoot);
+export function formatTestFailures(report, projectRoot) {
+  const failures = testFailures(report, projectRoot);
   const failedCount = Number.isInteger(report?.numFailedTests)
     ? Math.max(report.numFailedTests, failures.length)
     : failures.length;
@@ -142,7 +141,7 @@ export function formatVitestFailures(report, projectRoot) {
   ].join('\n');
 }
 
-function vitestAssertionName(assertion) {
+function assertionName(assertion) {
   if (typeof assertion.fullName === 'string') {
     return assertion.fullName;
   }
@@ -152,7 +151,7 @@ function vitestAssertionName(assertion) {
   return '<unknown test>';
 }
 
-function formatProcessOutput(result) {
+export function formatProcessOutput(result) {
   const output = [result.stderr, result.stdout]
     .filter((value) => typeof value === 'string' && value.trim().length > 0)
     .map((value) => value.trim())
