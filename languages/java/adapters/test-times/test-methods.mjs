@@ -12,6 +12,11 @@ const TEMPLATE_ANNOTATION = /@(?:ParameterizedTest|RepeatedTest|TestFactory|Test
 const ANNOTATION_LINE = /^\s*@/u;
 const BRACES_OUTSIDE_LITERALS = /"(?:\\.|[^"\\\n])*"|'(?:\\.|[^'\\\n])*'|[{}]/gu;
 const BRACE_DEPTH = { '{': 1, '}': -1 };
+const SPOCK_DECLARATION = /^def\s/u;
+const ITERATION_SUFFIX = / \[[^\]]*#\d+\]$/u;
+const PLACEHOLDER = /#[\p{L}_$][\p{L}\p{N}_$.]*(?:\(\))?/gu;
+const REGEXP_SPECIAL = /[.*+?^${}()|[\]\\]/gu;
+const WHERE_BLOCK = /^where:/mu;
 
 function quoted(text) {
   return JSON.stringify(text).slice(1, -1);
@@ -65,7 +70,11 @@ function scopeOf(text, className) {
 function declarations(text, scope) {
   const nested = scope.classBody ? outermostClasses(text, scope) : [];
   return [...text.slice(scope.start, scope.end).matchAll(DECLARATION)]
-    .map((match) => ({ name: match[1].replace(NAME_QUOTES, ''), index: scope.start + match.index }))
+    .map((match) => ({
+      name: match[1].replace(NAME_QUOTES, ''),
+      index: scope.start + match.index,
+      spock: SPOCK_DECLARATION.test(match[0]),
+    }))
     .filter(({ index }) => !nested.some((range) => range.start < index && index < range.end));
 }
 
@@ -74,6 +83,17 @@ function namedByDisplayName(text, { name, scope, found }) {
   return annotation < 0 || annotation > scope.end
     ? undefined
     : found.find((declaration) => declaration.index > annotation);
+}
+
+function unrolledFrom(declaration, testName) {
+  if (!declaration.spock) {
+    return false;
+  }
+  const pattern = declaration.name
+    .split(PLACEHOLDER)
+    .map((part) => part.replace(REGEXP_SPECIAL, String.raw`\$&`))
+    .join('.*');
+  return new RegExp(`^${pattern}$`, 'u').test(testName.replace(ITERATION_SUFFIX, ''));
 }
 
 function methodBlock(text, declaration) {
@@ -107,6 +127,7 @@ export function testMethod(text, testName, className) {
   const candidates = [CALL.exec(testName)?.[1], INDEXED.exec(testName)?.[1], testName];
   const declaration =
     found.find((entry) => candidates.includes(entry.name)) ??
+    found.find((entry) => unrolledFrom(entry, testName)) ??
     namedByDisplayName(text, { name: testName, scope, found });
   return declaration === undefined ? undefined : methodBlock(text, declaration);
 }
@@ -114,9 +135,13 @@ export function testMethod(text, testName, className) {
 export function templateMethods(text, className) {
   const scope = scopeOf(text, className) ?? { start: 0, end: text.length, classBody: false };
   const found = declarations(text, scope);
-  return [...text.slice(scope.start, scope.end).matchAll(TEMPLATE_ANNOTATION)]
+  const annotated = [...text.slice(scope.start, scope.end).matchAll(TEMPLATE_ANNOTATION)]
     .map((match) => found.find((declaration) => declaration.index > scope.start + match.index))
     .filter((declaration) => declaration !== undefined)
+    .map((declaration) => methodBlock(text, declaration).text);
+  const dataDriven = found
+    .filter((declaration) => declaration.spock)
     .map((declaration) => methodBlock(text, declaration).text)
-    .join('\n');
+    .filter((block) => WHERE_BLOCK.test(block));
+  return [...annotated, ...dataDriven].join('\n');
 }

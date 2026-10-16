@@ -3,7 +3,7 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterAll, describe, expect, it } from 'vitest';
 import { readSlowTestFindings, testCasesOf } from './slow-tests.mjs';
-import { testMethod } from './test-methods.mjs';
+import { templateMethods, testMethod } from './test-methods.mjs';
 
 const TEST_ROOT = 'src/test/java';
 const ORDER_TEST = `${TEST_ROOT}/shop/OrderTest.java`;
@@ -11,6 +11,33 @@ const WAITS = 'Remove Thread.sleep and other waits, start a smaller Spring conte
 const EXCEPTIONS = 'to "exceptions" in nitpicker.config.json.';
 const FAILSAFE_ADVICE = 'or make it an integration test that Failsafe runs (*IT) if it is one';
 const temporaryRoots = [];
+const GROOVY_ROOT = 'src/test/groovy';
+const ADDS_SPEC = `package shop
+
+class AddsSpec extends Specification {
+  def "adds #a and #b"() {
+    expect:
+    a + b == c
+
+    where:
+    a | b | c
+    1 | 2 | 3
+  }
+
+  def "max"() {
+    expect:
+    Math.max(a, b) == c
+
+    where:
+    a | b | c
+    1 | 2 | 2
+  }
+
+  def helper(x) {
+    x
+  }
+}
+`;
 
 const ORDER_SOURCE = `package shop;
 
@@ -177,6 +204,51 @@ describe('testMethod', () => {
       { line: 2, text: 'def "ships an order"() {\nexpect: true\n}' },
       { line: 6, text: "def 'cancels an order'() {\nexpect: true\n}" },
     ]);
+  });
+});
+
+describe('Spock unrolled features', () => {
+  it('matches an iteration to its feature by placeholders or the default iteration suffix', () => {
+    expect(
+      ['adds 1 and 2', 'max [a: 1, b: 2, c: 2, #0]', 'adds #a and #b [a: 1, b: 2, #0]'].map(
+        (name) => testMethod(ADDS_SPEC, name)?.line,
+      ),
+    ).toEqual([4, 13, 4]);
+  });
+
+  it('matches no helper and no Java method to an unrolled name', () => {
+    const java = 'class AddsTest {\n  @Test\n  void max() {}\n}\n';
+
+    expect([
+      testMethod(ADDS_SPEC, 'helper 1'),
+      testMethod(ADDS_SPEC, 'subtracts 1 and 2'),
+      testMethod(java, 'max [a: 1, #0]'),
+    ]).toEqual([undefined, undefined, undefined]);
+  });
+
+  it('treats features with a where: block as templates, and no helper or Java label', () => {
+    const java =
+      'class Scan {\n  void scan() {\n    where:\n    for (;;) { break where; }\n  }\n}\n';
+
+    expect(templateMethods(ADDS_SPEC, 'shop.AddsSpec')).toBe(
+      [
+        'def "adds #a and #b"() {',
+        'expect:',
+        'a + b == c',
+        'where:',
+        'a | b | c',
+        '1 | 2 | 3',
+        '}',
+        'def "max"() {',
+        'expect:',
+        'Math.max(a, b) == c',
+        'where:',
+        'a | b | c',
+        '1 | 2 | 2',
+        '}',
+      ].join('\n'),
+    );
+    expect(templateMethods(java, 'Scan')).toBe('');
   });
 });
 
@@ -350,6 +422,57 @@ describe('readSlowTestFindings', () => {
         classification: 'enforceable',
       },
     ]);
+  });
+
+  it('counts a Spock iteration named after no feature when its file is new or a where: table changed', () => {
+    const spec = `${GROOVY_ROOT}/shop/AddsSpec.groovy`;
+    const results = { test: suite('shop.AddsSpec', [['one plus two', '9']]) };
+    const run = (source) =>
+      findingsFor({
+        sources: { [spec]: source },
+        results,
+        base: { [spec]: ADDS_SPEC },
+        testRoots: [GROOVY_ROOT],
+      });
+
+    expect(run(ADDS_SPEC.replace('    x\n', '    x + 0\n'))).toEqual([]);
+    expect(
+      run(ADDS_SPEC.replace('1 | 2 | 3', '2 | 2 | 4')).map(({ identity }) => identity),
+    ).toEqual(['test:shop.AddsSpec#one plus two']);
+  });
+
+  it('counts a Kotest test, which names no method, when its spec file changed, without a line', () => {
+    const kotlinRoot = 'src/test/kotlin';
+    const spec = `${kotlinRoot}/shop/CalcSpec.kt`;
+    const source = (value) =>
+      `package shop\n\nclass CalcSpec : FunSpec({\n  test("doubles") { Calc().twice(3) shouldBe ${value} }\n})\n`;
+    const results = { test: suite('shop.CalcSpec', [['doubles', '9']]) };
+    const run = (value) =>
+      findingsFor({
+        sources: { [spec]: source(value) },
+        results,
+        base: { [spec]: source('6') },
+        testRoots: [kotlinRoot],
+      });
+
+    expect(run('6')).toEqual([]);
+    expect(
+      run('7').map(({ path: file, identity, location }) => ({ file, identity, location })),
+    ).toEqual([{ file: spec, identity: 'test:shop.CalcSpec#doubles', location: undefined }]);
+  });
+
+  it('gives Spock integration specifications the integration budget', () => {
+    const findings = findingsFor({
+      results: {
+        test: [
+          suite('shop.OrderIntegrationSpec', [['ships', '29']]),
+          suite('shop.OrderISpec', [['ships', '29']]),
+          suite('shop.OrderSpec', [['ships', '29']]),
+        ],
+      },
+    });
+
+    expect(findings.map(({ identity }) => identity)).toEqual(['test:shop.OrderSpec#ships']);
   });
 
   it('reports a test whose source is missing on the project root path', () => {

@@ -15,7 +15,7 @@ import { templateMethods, testMethod } from './test-methods.mjs';
 const SLOW_TEST_TOOL = 'test-runtime';
 export const TEST_RESULTS_DIRECTORY = 'test-results';
 const UNIT_TEST_TASKS = new Set(['test', 'surefire']);
-const INTEGRATION_CLASS = /(?:IT|ITCase|IntegrationTests?)$/u;
+const INTEGRATION_CLASS = /(?:IT|ITCase|IntegrationTests?|IntegrationSpec|ISpec)$/u;
 const MOVE_ADVICE = {
   gradle: ', or move it to an integration test source set if it is one',
   maven: ', or make it an integration test that Failsafe runs (*IT) if it is one',
@@ -84,15 +84,19 @@ function isIntegration(testCase, text, context) {
   );
 }
 
+function unnamedCaseChanged(baseText, text, className) {
+  const baseTemplates = templateMethods(baseText, className);
+  const templates = templateMethods(text, className);
+  return baseTemplates === '' && templates === '' ? baseText !== text : baseTemplates !== templates;
+}
+
 function isChanged({ testCase, source, text, method, modulePath }, baselineRoot) {
   const baseText = readOptional(baselineRoot, source && inModule(modulePath, source));
   if (baseText === undefined || text === undefined) {
     return baseText !== text;
   }
   if (method === undefined) {
-    return (
-      templateMethods(baseText, testCase.className) !== templateMethods(text, testCase.className)
-    );
+    return unnamedCaseChanged(baseText, text, testCase.className);
   }
   return testMethod(baseText, testCase.name, testCase.className)?.text !== method.text;
 }
