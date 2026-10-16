@@ -193,6 +193,15 @@ describe('ruff with the project listed', () => {
     ]);
   });
 
+  it('reads the config of the policy root when the snapshot being run does not have it', () => {
+    const head = project({ 'ruff.toml': 'line-length = 120\n' });
+    const base = project({ 'a.py': '' });
+
+    expect(
+      ruffPlan(base, { policyRoot: head, precedence, conventions: {} }).options.slice(0, 2),
+    ).toEqual(['--config', path.join(head, 'ruff.toml')]);
+  });
+
   it('fails when the project has no ruff config, saying how to fix it', () => {
     const root = project({ 'pyproject.toml': '[tool.black]\nline-length = 100\n' });
 
