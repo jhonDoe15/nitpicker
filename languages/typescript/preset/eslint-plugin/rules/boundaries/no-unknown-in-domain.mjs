@@ -176,7 +176,9 @@ function createVisitors(context, rootLibraries) {
   const validation = validationBehavior(librariesForFile(context.filename, rootLibraries));
   const data = { phrase: validation.phrase };
   const visitors = {
-    TSUnknownKeyword: (node) => reportUnknown(context, node, data),
+    TSUnknownKeyword(node) {
+      reportUnknown(context, node, data);
+    },
     TSTypeReference(node) {
       if (referencesUnknown(context.sourceCode, node, context.sourceCode.parserServices)) {
         reportUnknown(context, node, data);
