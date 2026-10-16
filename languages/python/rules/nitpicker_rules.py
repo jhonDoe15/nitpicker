@@ -6,14 +6,24 @@ import re
 import sys
 import tokenize
 
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+
+import assertion_rules  # noqa: E402
+import catch_logging  # noqa: E402
+
 TEST_DIRECTORIES = {"tests", "test"}
 BOUNDARY_DIRECTORY = "adapters"
-PYDANTIC_ROOTS = {"pydantic", "pydantic_settings"}
+DEFAULT_BOUNDARY_ROOTS = ["pydantic", "pydantic_settings"]
 MIN_CLASS_CONSTANTS = 2
 MIN_MODULE_CONSTANTS = 3
 TYPE_CHECKING_NAMES = {"typing.TYPE_CHECKING", "typing_extensions.TYPE_CHECKING"}
 OPTIONAL_IMPORT_ERRORS = {"ImportError", "ModuleNotFoundError"}
-BLIND_ERRORS = {"Exception", "BaseException", "builtins.Exception", "builtins.BaseException"}
+BLIND_ERRORS = {
+    "Exception",
+    "BaseException",
+    "builtins.Exception",
+    "builtins.BaseException",
+}
 CONSTANT_NAME = re.compile(r"[A-Z][A-Z0-9_]*")
 SUPPRESSION = re.compile(
     r"#\s*(?:type:\s*ignore"
@@ -43,7 +53,9 @@ def is_constant(node):
 
 
 def is_optional_import(handler):
-    caught = handler.type.elts if isinstance(handler.type, ast.Tuple) else [handler.type]
+    caught = (
+        handler.type.elts if isinstance(handler.type, ast.Tuple) else [handler.type]
+    )
     names = {node.id for node in caught if isinstance(node, ast.Name)}
     return len(names) == len(caught) and names <= OPTIONAL_IMPORT_ERRORS
 
@@ -54,7 +66,11 @@ def is_inert(statement, optional_import):
     if isinstance(statement, ast.Expr):
         return isinstance(statement.value, ast.Constant)
     if isinstance(statement, (ast.Assign, ast.AnnAssign)):
-        return not optional_import and statement.value is not None and is_constant(statement.value)
+        return (
+            not optional_import
+            and statement.value is not None
+            and is_constant(statement.value)
+        )
     return isinstance(statement, (ast.Pass, ast.Continue))
 
 
@@ -77,6 +93,13 @@ def is_test_path(path):
         or name.endswith("_test.py")
         or name == "conftest.py"
     )
+
+
+def log_call_text(func):
+    receiver = func.value
+    if isinstance(receiver, (ast.Name, ast.Attribute)):
+        return f"{type_text(receiver)}.{func.attr}(...)"
+    return f"logger.{func.attr}(...)"
 
 
 def is_boundary_path(path):
@@ -167,9 +190,12 @@ def is_plain_class(node):
 
 
 class Collector(ast.NodeVisitor):
-    def __init__(self, path, aliases):
+    def __init__(self, path, tree, settings):
         self.path = path
-        self.aliases = aliases
+        self.aliases = import_aliases(tree)
+        self.boundary_roots = set(settings["boundary_roots"])
+        self.assertion_helpers = settings["assertion_helpers"]
+        self.catch_logging = catch_logging.CatchLogging(tree, self.aliases, dotted_name)
         self.scope = []
         self.findings = []
         self.tests = is_test_path(path)
@@ -213,13 +239,18 @@ class Collector(ast.NodeVisitor):
         if all(is_inert(statement, optional_import) for statement in node.body):
             caught = type_text(node.type) if node.type else ""
             self.add("swallowed-exception", f"except {caught}".strip(), node)
+        for call in catch_logging.uncaught_calls(node, self.catch_logging):
+            self.add("catch-log-without-exception", log_call_text(call.func), call)
         self.generic_visit(node)
 
     def visit_Call(self, node):
         name = dotted_name(node.func, self.aliases)
         if name == "contextlib.suppress" and (
             not node.args
-            or any(dotted_name(argument, self.aliases) in BLIND_ERRORS for argument in node.args)
+            or any(
+                dotted_name(argument, self.aliases) in BLIND_ERRORS
+                for argument in node.args
+            )
         ):
             arguments = ", ".join(type_text(argument) for argument in node.args)
             self.add("blind-suppress", f"{name}({arguments})", node)
@@ -264,8 +295,16 @@ class Collector(ast.NodeVisitor):
 
     def check_pydantic(self, module, node):
         outside = not (self.boundary or self.tests)
-        if outside and module.split(".")[0] in PYDANTIC_ROOTS:
+        if outside and module.split(".")[0] in self.boundary_roots:
             self.add("pydantic-boundary", module, node)
+
+    def check_tests(self, tree):
+        if not assertion_rules.is_test_file(self.path):
+            return
+        for subject, function in assertion_rules.unasserted_tests(
+            tree, self.assertion_helpers
+        ):
+            self.add("test-without-assertion", subject, function)
 
     def check_module_constants(self, tree):
         groups = {}
@@ -317,27 +356,62 @@ def stub_findings(path):
     ]
 
 
-def check_file(path):
-    stubs = stub_findings(path)
+def read_source(path):
     try:
         with tokenize.open(path) as handle:
             text = handle.read()
-        tree = ast.parse(text)
+        return text, ast.parse(text)
     except (OSError, SyntaxError, UnicodeDecodeError, ValueError):
+        return None
+
+
+def check_file(path, source, settings):
+    stubs = stub_findings(path)
+    if source is None:
         return stubs
-    collector = Collector(path, import_aliases(tree))
+    text, tree = source
+    collector = Collector(path, tree, settings)
     collector.visit(tree)
     collector.check_module_constants(tree)
+    collector.check_tests(tree)
     return stubs + collector.findings + suppression_findings(path, text)
 
 
+def load_settings(arguments):
+    if len(arguments) < 3:
+        return {}
+    with open(arguments[2], encoding="utf-8") as handle:
+        return json.load(handle)
+
+
+def project_settings(sources, configured):
+    trees = {path: source[1] for path, source in sources.items() if source is not None}
+    test_trees = [
+        tree for path, tree in trees.items() if assertion_rules.is_test_file(path)
+    ]
+    support_trees = [
+        tree
+        for path, tree in trees.items()
+        if assertion_rules.is_support_file(path, is_test_path)
+    ]
+    return {
+        "boundary_roots": configured.get("boundary_roots", DEFAULT_BOUNDARY_ROOTS),
+        "assertion_helpers": assertion_rules.assertion_helpers(
+            test_trees, support_trees
+        ),
+    }
+
+
 def main(arguments):
-    list_file, out_file = arguments
+    list_file, out_file = arguments[:2]
+    configured = load_settings(arguments)
     with open(list_file, encoding="utf-8") as handle:
         paths = [line.strip() for line in handle if line.strip()]
+    sources = {path: read_source(path) for path in paths}
+    settings = project_settings(sources, configured)
     findings = []
     for path in paths:
-        findings.extend(check_file(path))
+        findings.extend(check_file(path, sources[path], settings))
     findings.sort(
         key=lambda item: (item["path"], item["line"], item["rule"], item["subject"])
     )

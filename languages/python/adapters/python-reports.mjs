@@ -11,7 +11,7 @@ import { PYTHON_ANALYZER_NAME } from './python-analyzer.mjs';
 import { withoutLineNumbers } from '../ingest/identities.mjs';
 import { ingestRulesReport } from '../ingest/rules-report.mjs';
 import { ingestMypy, ingestPyright } from '../ingest/type-check.mjs';
-import { applyRuleHints } from '../rules/rule-hints.mjs';
+import { applyRuleHints, behaviorsOf } from '../rules/rule-hints.mjs';
 import { RULES_REPORT } from './analysis/python-ast-rules.mjs';
 import { readCouplingFindings } from './analysis/python-coupling.mjs';
 import { readPythonCrapFindings } from './mutation/python-crap.mjs';
@@ -40,31 +40,35 @@ export function readPythonFindings({ projectRoot, reportRoot, crapLimit, policy 
   const manifest = JSON.parse(readReport(reportRoot, MANIFEST_REPORT));
   const roots = [...new Set([path.resolve(projectRoot), realpathSync(projectRoot)])];
   const coverage = readReport(reportRoot, COVERAGE_REPORT);
+  const behaviors = behaviorsOf(manifest.libraries);
   return {
-    findings: applyRuleHints([
-      ...ruffFindings(JSON.parse(readReport(reportRoot, RUFF_REPORT)), { roots, projectRoot }),
-      ...formatFindings(readReport(reportRoot, FORMAT_REPORT), { roots, manifest }),
-      ...typeFindings(JSON.parse(readReport(reportRoot, TYPES_REPORT)), roots),
-      ...ingestRulesReport(readReport(reportRoot, RULES_REPORT)),
-      ...ingestCoverageJson(coverage, { roots }).findings,
-      ...readPythonStructureFindings(reportRoot, projectRoot),
-      ...pythonFileLimitFindings(projectRoot, policy),
-      ...readPythonCrapFindings({
-        functions: readPythonFunctions(reportRoot),
-        coverage,
-        projectRoot,
-        roots,
-        crapLimit,
-      }),
-      ...(manifest.testsRan === false ? [noTestsFinding()] : []),
-      ...ingestCoverageBranches(readReport(reportRoot, COVERAGE_REPORT), {
-        roots,
-        sourceText: (file) => readSource(projectRoot, file),
-      }).findings,
-      ...readDuplicateFindings(reportRoot),
-      ...readCouplingFindings(reportRoot),
-      ...readImportLinterFindings(reportRoot),
-    ]),
+    findings: applyRuleHints(
+      [
+        ...ruffFindings(JSON.parse(readReport(reportRoot, RUFF_REPORT)), { roots, projectRoot }),
+        ...formatFindings(readReport(reportRoot, FORMAT_REPORT), { roots, manifest }),
+        ...typeFindings(JSON.parse(readReport(reportRoot, TYPES_REPORT)), roots),
+        ...ingestRulesReport(readReport(reportRoot, RULES_REPORT), behaviors),
+        ...ingestCoverageJson(coverage, { roots }).findings,
+        ...readPythonStructureFindings(reportRoot, projectRoot),
+        ...pythonFileLimitFindings(projectRoot, policy),
+        ...readPythonCrapFindings({
+          functions: readPythonFunctions(reportRoot),
+          coverage,
+          projectRoot,
+          roots,
+          crapLimit,
+        }),
+        ...(manifest.testsRan === false ? [noTestsFinding()] : []),
+        ...ingestCoverageBranches(readReport(reportRoot, COVERAGE_REPORT), {
+          roots,
+          sourceText: (file) => readSource(projectRoot, file),
+        }).findings,
+        ...readDuplicateFindings(reportRoot),
+        ...readCouplingFindings(reportRoot),
+        ...readImportLinterFindings(reportRoot),
+      ],
+      behaviors,
+    ),
   };
 }
 

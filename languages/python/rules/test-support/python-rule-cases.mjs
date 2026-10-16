@@ -133,6 +133,20 @@ export const RULE_CASES = [
     mention: 'adapters/',
   },
   {
+    name: 'logging only the text of a caught error names logger.exception',
+    fixture: 'catch-log-without-exception',
+    tool: 'python-rules',
+    rule: 'catch-log-without-exception',
+    mention: 'logger.exception',
+  },
+  {
+    name: 'a test without an assertion names assert',
+    fixture: 'test-without-assertion',
+    tool: 'python-rules',
+    rule: 'test-without-assertion',
+    mention: 'assert result == expected',
+  },
+  {
     name: 'constants class names an enum',
     fixture: 'enum-class',
     tool: 'python-rules',

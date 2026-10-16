@@ -87,6 +87,7 @@ describe('running the tools', () => {
       formatterDetected: true,
       sourceRoots: ['src'],
       testsRan: true,
+      libraries: { validation: [], logger: [] },
     });
     expect(readReport(reportRoot, 'coveragerc')).toBe(coverageRc('src'));
   });

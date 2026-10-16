@@ -154,6 +154,30 @@ describe('analyzing a Python snapshot', () => {
     ]);
   });
 
+  it('words the logging and validation hints after the libraries the project declares', () => {
+    const root = project({
+      'requirements.txt': 'loguru\nmarshmallow\n',
+      'violations.txt': 'T201|src/demo/a.py|`print` found\n',
+      'rules.json': JSON.stringify([
+        { rule: 'pydantic-boundary', path: 'src/demo/a.py', subject: 'marshmallow', line: 1 },
+        {
+          rule: 'catch-log-without-exception',
+          path: 'src/demo/a.py',
+          subject: 'logger.error(...)',
+          line: 9,
+        },
+      ]),
+    });
+
+    const findings = withoutCoupling(analyze(root));
+
+    expect(findings.map(({ message }) => message)).toEqual([
+      '`print` found. Use `loguru`: `from loguru import logger`, then `logger.info(...)`. To allow it for some paths, add a "python.exceptions" entry for T201 in nitpicker.config.json.',
+      'marshmallow is imported outside an adapters/ package. Use marshmallow only in an `adapters/` package to parse untrusted input (`Schema().load(data)`), and pass frozen dataclasses on from there. To allow it for some paths, add a "python.exceptions" entry for pydantic-boundary in nitpicker.config.json.',
+      '`logger.error(...)` logs a caught error without passing the exception. Pass the caught exception to the logger: `logger.exception("message")`, or `logger.opt(exception=error).error("message")`. To allow it for some paths, add a "python.exceptions" entry for catch-log-without-exception in nitpicker.config.json.',
+    ]);
+  });
+
   it('lifts a rule for the paths of a python exception and nothing else', () => {
     const root = project({
       'violations.txt': 'T201|scripts/run.py|`print` found\nT201|src/demo/a.py|`print` found\n',
