@@ -10,16 +10,11 @@ import {
 } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
-import { escapeRegExp } from '../../../shared/glob.mjs';
 import { javaCommand, runJava } from './maven-command.mjs';
 import { GRADLE_DIRECTORY } from '../builds/java-build.mjs';
-import { escapeXml } from '../adapters/tool-config/xml-write.mjs';
+import { writeRulesets } from './maven-pmd-rulesets.mjs';
 import { layerCheckstyle } from '../adapters/tool-config/checkstyle/checkstyle-layers.mjs';
-import {
-  NITPICKER_RULESET,
-  pmdLayerFiles,
-  TEST_RULESET,
-} from '../adapters/tool-config/layer-files.mjs';
+import { NITPICKER_RULESET } from '../adapters/tool-config/layer-files.mjs';
 
 const EMPTY_SARIF = '{"version":"2.1.0","runs":[]}';
 const INLINE_CHECKSTYLE_FILTERS = [
@@ -46,22 +41,6 @@ export function javaFiles(roots) {
     .sort();
 }
 
-function rulesetExcluding({ name, description, rules, roots }) {
-  const excludes = roots.map(
-    (root) =>
-      `  <exclude-pattern>${escapeXml(`${escapeRegExp(root + path.sep)}.*`)}</exclude-pattern>`,
-  );
-  return [
-    '<?xml version="1.0" encoding="UTF-8"?>',
-    `<ruleset name="${name}" xmlns="http://pmd.sourceforge.net/ruleset/2.0.0">`,
-    `  <description>${description}</description>`,
-    ...excludes,
-    `  <rule ref="${escapeXml(rules)}"/>`,
-    '</ruleset>',
-    '',
-  ].join('\n');
-}
-
 function writeAuxClasspath({ module, reportDir, classpaths }) {
   const file = path.join(reportDir, 'pmd-aux-classpath.txt');
   const entries = new Set([
@@ -72,31 +51,6 @@ function writeAuxClasspath({ module, reportDir, classpaths }) {
   ]);
   writeFileSync(file, [...entries].filter((entry) => existsSync(entry)).join('\n'));
   return file;
-}
-
-function writeRulesets({ module, reportDir, configs }) {
-  const springRuleset = path.join(reportDir, 'pmd-spring-main.xml');
-  writeFileSync(
-    springRuleset,
-    rulesetExcluding({
-      name: 'nitpicker-spring-main',
-      description: "Nitpicker's Spring rules on main sources only.",
-      rules: path.join(GRADLE_DIRECTORY, 'spring-ruleset.xml'),
-      roots: module.testSourceRoots,
-    }),
-  );
-  const layers = pmdLayerFiles({ ...configs.pmd, directory: reportDir });
-  const testsRuleset = path.join(reportDir, 'pmd-tests.xml');
-  writeFileSync(
-    testsRuleset,
-    rulesetExcluding({
-      name: 'nitpicker-tests',
-      description: "Nitpicker's test-only rules on test sources only.",
-      rules: layers.tests ?? TEST_RULESET,
-      roots: module.sourceRoots,
-    }),
-  );
-  return { springRuleset, testsRuleset, layers };
 }
 
 export function runPmd({ module, reportDir, tools, classpaths, configs, spring }) {
