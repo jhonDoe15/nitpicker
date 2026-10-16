@@ -22,6 +22,7 @@ import { detectJavaBuild, INIT_SCRIPT } from '../builds/java-build.mjs';
 import { moduleReport, readModuleFindings } from '../builds/java-modules.mjs';
 import { kotlinGradleArguments } from './kotlin/kotlin-tools.mjs';
 import { isJavaTouchedRule } from './touched-rules.mjs';
+import { markLombokGeneratedCode } from './generated-code/lombok-config.mjs';
 
 const GRADLE_TIMEOUT_MS = 15 * 60 * 1000;
 const MAX_OUTPUT_BYTES = 50 * 1024 * 1024;
@@ -165,6 +166,7 @@ function mavenFindings(projectRoot, options) {
 
 export function collectJavaFindings(root, options = {}) {
   const projectRoot = path.resolve(root);
+  markLombokGeneratedCode(projectRoot);
   const findings =
     detectJavaBuild(projectRoot) === 'maven'
       ? mavenFindings(projectRoot, options)

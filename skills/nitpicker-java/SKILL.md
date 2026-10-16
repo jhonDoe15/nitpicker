@@ -104,6 +104,10 @@ With Spring on the classpath, also follow [spring.md](spring.md).
   (`mutant-survived`, `mutant-nocoverage`) fails. If no input can kill a mutant, the code is
   redundant: delete or simplify it. A `compareTo` boundary or an ignored lambda result that truly
   cannot be told apart takes an exception for `pit/mutant-survived`.
+- Lombok-generated members (`equals`, `hashCode`, `toString`, builders, accessors) are left out of
+  coverage and mutation testing: nitpicker sets `lombok.addLombokGeneratedAnnotation = true` in the
+  `lombok.config` files of its own copy of the project, which older Lombok needs. Test the code you
+  wrote, not the annotations.
 - Plan tests to be fast (`test-runtime/slow-test`): a fake clock instead of `Thread.sleep`, a test
   slice instead of `@SpringBootTest`.
 - Tests get the same PMD, Checkstyle, Error Prone and formatter checks as main code, plus the file

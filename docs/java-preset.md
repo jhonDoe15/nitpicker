@@ -471,6 +471,30 @@ identity when the value changes: editing such a line counts as a resolved plus a
   report through `build.gradle`. JaCoCo and PIT still skip code annotated `@Generated`; on
   hand-written code that annotation is the `pmd/GeneratedOnHandWrittenCode` finding. Only violations are findings; the
   per-function metric findings of the TypeScript check are not produced.
+- **Lombok-generated code.** JaCoCo and PIT skip a member only when it carries `@Generated`, and
+  Lombok writes `@lombok.Generated` only when `lombok.addLombokGeneratedAnnotation = true`, a
+  setting it reads from `lombok.config` files alone (no system property or compiler option sets
+  it). Its default became `true` in 1.18.34; up to 1.18.32 every `@Data`, `@Value`, `@Builder` and
+  `@Getter` member counted, so `equals`, `hashCode`, `canEqual`, `toString`, builders and accessors
+  showed as uncovered branches and as `mutant-survived` or `mutant-nocoverage` findings nobody can
+  fix with a test. `collectJavaFindings` therefore calls `markLombokGeneratedCode`
+  (`languages/java/adapters/generated-code/lombok-config.mjs`) on the tree it analyzes, which is
+  always a temporary snapshot or worktree, never the working copy: when a `lombok.config` or a
+  build file (`pom.xml`, `*.gradle`, `*.gradle.kts`, `*.versions.toml`) mentions Lombok, it sets
+  `lombok.addLombokGeneratedAnnotation = true` in every `lombok.config` there (replacing the
+  project's own value for that key, `clear` lines included) and creates one in the root when there
+  is none, so a nearer file cannot undo it. A project without Lombok is untouched. Gradle and
+  Maven share the step, because both compile the same tree. Measured on jasypt-spring-boot's core
+  module with Lombok pinned to 1.18.30: 1146 mutants and 118 lines with missed branches without
+  the setting, 573 and 113 with it, the same as with Lombok 1.18.38 (453 of the 1030 non-killed
+  mutants were `equals`, `hashCode`, `canEqual` and `toString` of one `@Data` class). Records,
+  enums, string and enum `switch`, `for-each` and try-with-resources need no step of ours:
+  JaCoCo 0.8.12 and PIT 1.17.4 filter their compiler-generated code, and on the MCP Java SDK
+  (records, enums, sealed types, lambdas) JaCoCo reported no missed branch on a record or enum
+  declaration line and CRAP had no generated entry, because it is built from the parsed source
+  methods. The Kotlin preset has its own mutant filter (a separate change); this one is kept
+  self-contained and shaped like it, a function over the project tree that returns what it
+  changed, so the two can share their walk and their tests later.
 - **Identity.** `function:<signature>`, for example `function:Calc.classify(int, int, String)`:
   enclosing classes, method and parameter types (`signature` in `structure.json`), never a line.
   Repeats (anonymous classes) get `#2`, `#3` in report order. The path
@@ -798,6 +822,9 @@ resolved plus a new finding, as in the TypeScript check.
   compile), `adapters/errorprone/lombok.e2e.test.mjs` (a Lombok project on Gradle, on Gradle with
   `lombok.addSuppressWarnings = false`, and on Maven runs the whole preset with no tool error and
   only the findings in written code, `import lombok.*;` with a `@Deprecated` method included),
+  `adapters/generated-code/lombok-config.test.mjs` and `lombok-generated.e2e.test.mjs` (a Lombok 1.18.30
+  project on Gradle, and on Maven with a `lombok.config` that turns the annotation off, reports no
+  coverage or mutant finding for the `@Data` and `@Builder` class and still reports the method nobody tests),
   `adapters/errorprone/checks/checks-catalog.e2e.test.mjs` (loads the pinned jar's checks: the
   reviewed set is the jar's, `enable` names off-by-default checks and `disable` on-by-default ones,
   `certainBugs` plus the documented ERROR checks are exactly the enabled ERROR checks,
