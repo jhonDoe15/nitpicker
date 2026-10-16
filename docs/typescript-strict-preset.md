@@ -584,8 +584,9 @@ off (a PR that adds or removes React keeps linting on both sides); a misspelled 
 - **Component tests** (test files only: the test roots, `*.test.*` and `*.spec.*` files under the
   source roots, and `__tests__` directories). They need no particular test runner (Vitest or
   Jest), and report only in a test file that imports `@testing-library/*`, `react`, `react-dom`
-  or another `react-*` package, `enzyme`, `react-test-renderer`, or a relative `test-utils`
-  module, so Playwright and domain tests in the same roots are left alone. Query by accessible
+  or another `react-*` package, `enzyme`, `react-test-renderer`, or a project `test-utils`
+  module (relative, through a tsconfig `paths` alias such as `@/test-utils`, or re-exported by a
+  barrel), so Playwright and domain tests in the same roots are left alone. Query by accessible
   role, not test ids (`testing-library/no-test-id-queries`) or DOM traversal, class selectors and
   `container` queries (`testing-library/no-node-access`): `screen.getByRole('button', { name: 'Save' })`,
   or `toHaveFocus()` for focus. Drive the component with `userEvent`, not `fireEvent`
