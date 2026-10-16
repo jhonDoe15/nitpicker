@@ -117,7 +117,7 @@ describe.skipIf(!kotlinE2eEnabled)('Kotlin preset coverage and structure end to 
   afterAll(() => {
     removeProject(project);
   });
-  it('fails a changed Kotlin branch that no test takes and only reports its mutants', () => {
+  it('fails a changed Kotlin branch that no test takes together with its surviving mutant', () => {
     const result = diffOf(project, 'one-sided-branch');
 
     expect(result.failed).toBe(true);
@@ -129,13 +129,7 @@ describe.skipIf(!kotlinE2eEnabled)('Kotlin preset coverage and structure end to 
         .filter(({ tool }) => tool === 'jacoco')
         .map(({ message, location }) => ({ message, location })),
     ).toEqual([{ message: 'Branch coverage is 50.00%; minimum is 95%', location: { line: 4 } }]);
-    expect(fromTool(result.newEnforceable, 'pit')).toEqual([]);
-    expect(
-      result.newFindings.filter(
-        ({ tool, rule, path: file }) =>
-          tool === 'pit' && rule === 'mutant-survived' && file.endsWith('Label.kt'),
-      ),
-    ).not.toEqual([]);
+    expect(fromTool(result.newEnforceable, 'pit')).toEqual(['pit mutant-survived Label.kt']);
   });
   it('fails the untested branches of a statement that spans lines and of a file outside its package directory', () => {
     const result = diffOf(project, 'multiline-branch');
