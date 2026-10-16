@@ -172,7 +172,10 @@ describe.skipIf(!enabled)('Java preset on Maven builds', () => {
         fromMaven
           .filter((finding) => finding.rule === 'TestClassWithoutTestCases')
           .map(({ path: file, location }) => `${file}:${String(location.line)}`),
-      ).toEqual(['src/test/java/guards/GreetingFixturesTest.java:3']);
+      ).toEqual([
+        'src/test/java/guards/GreetingFixturesTest.java:3',
+        'src/test/java/guards/HelpersTest.java:3',
+      ]);
     },
     2 * GRADLE_STEP_TIMEOUT_MS,
   );

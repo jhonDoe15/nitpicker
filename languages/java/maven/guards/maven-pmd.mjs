@@ -1,15 +1,13 @@
-import { existsSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { existsSync, rmSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { runJava } from '../maven-command.mjs';
 import { writePmdRulesets } from '../../builds/rulesets/pmd-rulesets.mjs';
 import { EMPTY_SARIF } from '../maven-lint.mjs';
-import { GRADLE_DIRECTORY } from '../../builds/java-build.mjs';
+import { toolCommand } from '../../builds/tools/tool-commands.mjs';
 
-const CPD_EXITS = new Set([0, 4]);
 const CPD_REPORT = 'cpd.xml';
 const CPD_FAILURE = 'cpd-failed.txt';
 const CPD_SKIPPED = 'cpd-skipped.txt';
-const CPD_ROOT = /<pmd-cpd[\s/>]/u;
 
 function writeAuxClasspath({ module, reportDir, classpaths }) {
   const entries = new Set([
@@ -45,52 +43,34 @@ export function runPmd(context) {
     writeFileSync(report, EMPTY_SARIF);
     return;
   }
-  const auxClasspath = writeAuxClasspath(context);
+  const command = toolCommand('pmd', {
+    report,
+    rulesets: pmdRulesets(context),
+    auxClasspath: writeAuxClasspath(context),
+    directories: linted,
+  });
   runJava({
     tool: 'PMD',
     classpath: tools.pmd,
     mainClass: 'net.sourceforge.pmd.cli.PmdCli',
-    args: [
-      'check',
-      '--no-cache',
-      '--no-progress',
-      '--format',
-      'sarif',
-      '--report-file',
-      report,
-      '--rulesets',
-      pmdRulesets(context).join(','),
-      '--aux-classpath',
-      `file:${auxClasspath}`,
-      '--suppress-marker',
-      'NITPICKER-NO-INLINE-SUPPRESSION',
-      '--dir',
-      linted.join(','),
-    ],
+    args: command.args,
     cwd: module.basedir,
-    accept: () => existsSync(report),
+    accept: ({ status }) => command.accepts(status),
   });
 }
 
-function launchCpd({ module, tools }, report, directories) {
+function launchCpd({ module, tools }, command) {
   try {
     return runJava({
       tool: 'PMD CPD',
       classpath: tools.pmd,
-      args: [path.join(GRADLE_DIRECTORY, 'CpdReport.java'), report, ...directories],
+      mainClass: command.launcher,
+      args: command.args,
       cwd: module.basedir,
     });
   } catch (error) {
     return { signal: error.code ?? error.name, stderr: error.message };
   }
-}
-
-function wroteReport(result, report) {
-  return (
-    CPD_EXITS.has(result.status) &&
-    existsSync(report) &&
-    CPD_ROOT.test(readFileSync(report, 'utf8'))
-  );
 }
 
 export function runCpd({ module, reportDir, tools }) {
@@ -105,8 +85,9 @@ export function runCpd({ module, reportDir, tools }) {
   if (directories.length === 0) {
     return;
   }
-  const result = launchCpd({ module, tools }, report, directories);
-  if (!wroteReport(result, report)) {
+  const command = toolCommand('cpd', { report, directories });
+  const result = launchCpd({ module, tools }, command);
+  if (!command.accepts(result.status)) {
     rmSync(report, { force: true });
     writeFileSync(failure, `${String(result.status ?? result.signal)}\n${result.stderr}`);
   }

@@ -38,7 +38,7 @@ gradle -Pnitpicker.kotlin=true -I languages/java/gradle/nitpicker.init.gradle ni
 ```
 
 The consumer build is not edited. In modules that apply the Kotlin plugin, the init script
-registers `nitpickerDetekt`, `nitpickerKtlint` and `nitpickerKtfmt`, each running from its own
+applies `languages/java/gradle/tasks/kotlin/kotlin-tasks.gradle`, which registers `nitpickerDetekt`, `nitpickerKtlint` and `nitpickerKtfmt`, each running from its own
 Gradle configuration (`nitpickerDetekt` and so on) so nothing touches the consumer's classpath,
 and makes `nitpickerJava` depend on them. The tool versions are in the same pinned map as the
 Java ones: detekt 1.23.8, ktlint 1.8.0, ktfmt 0.64. `manifest.json` gains `kotlin: true`,
@@ -483,7 +483,7 @@ The Java sources of a mixed module get their complexity from `StructureMetrics.j
 The shared duplicates rule runs on Kotlin: jscpd (the version of the TypeScript preset, mode `mild`)
 with `--format kotlin` over each Kotlin source root from the manifest, ignoring `build`, `generated`,
 `target` and `out`. Any new clone fails with `duplicate-clone`, tool `duplicates`, identity from the file pair,
-the cloned text and the n-th occurrence, never a line. Clones are found within one source root and
+the cloned text and the n-th occurrence of that text in the pair, never a line. Clones are found within one source root and
 within the Kotlin files; a clone between a `.kt` and a `.java` file, or between two source roots, is not
 (the same as for several Java roots).
 

@@ -5,7 +5,7 @@ import { afterEach, describe, expect, it } from 'vitest';
 import { configurationFiles, createJavaAnalyzer } from './java-analyzer.mjs';
 import { JAVA_TOOLS } from './gradle-presets.mjs';
 import { applyJavaPolicy, configureJavaAnalyzer } from './java-policy.mjs';
-import { lintBaselineRoot, toolConfigProperties } from './java-diff.mjs';
+import { lintBaselineProperties, toolConfigProperties } from './java-diff.mjs';
 import { parseRunnerArguments } from './java-runner.mjs';
 
 const roots = [];
@@ -247,12 +247,14 @@ describe('project tool configs', () => {
   });
 });
 
-describe('lintBaselineRoot', () => {
-  it('hands the base project to the differential lint on the head side only', () => {
-    expect(lintBaselineRoot({ snapshot: 'head', baselineRoot: '/base/app' })).toBe('/base/app');
-    expect(lintBaselineRoot({ snapshot: 'base', baselineRoot: '/base/app' })).toBeUndefined();
-    expect(lintBaselineRoot({ snapshot: 'head' })).toBeUndefined();
-    expect(lintBaselineRoot()).toBeUndefined();
+describe('lintBaselineProperties', () => {
+  it('passes the base project root to the head run only', () => {
+    expect(lintBaselineProperties({ snapshot: 'head', baselineRoot: '/base/app' })).toEqual([
+      '-Pnitpicker.lintBaseline=/base/app',
+    ]);
+    expect(lintBaselineProperties({ snapshot: 'base', baselineRoot: '/base/app' })).toEqual([]);
+    expect(lintBaselineProperties({ snapshot: 'head' })).toEqual([]);
+    expect(lintBaselineProperties()).toEqual([]);
   });
 });
 
@@ -479,6 +481,7 @@ describe('createJavaAnalyzer', () => {
       'languages/java/builds/lint',
       'languages/java/builds/classes',
       'languages/java/builds/rulesets',
+      'languages/java/builds/tools',
     ]
       .flatMap((directory) =>
         readdirSync(path.join(packageRoot, directory), { recursive: true, withFileTypes: true })

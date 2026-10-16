@@ -1,5 +1,5 @@
 import { execFileSync } from 'node:child_process';
-import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { chmodSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { zipOf } from '../test-support/zip-writer.mjs';
@@ -149,6 +149,26 @@ describe('runJavacLint', () => {
         '}',
         '^',
         '1 error',
+        '',
+      ],
+    });
+  });
+
+  it('writes a failure report when javac counts warnings it printed in a form it cannot read', () => {
+    const head = temporary();
+    writeFiles(head, {
+      'src/main/java/demo/A.java': RAW_NAMES,
+      'bin/javac':
+        "#!/bin/sh\nprintf 'A.java:3:5: compiler.warn.raw.class.use: java.util.List\\n1 warning\\n' >&2\n",
+    });
+    chmodSync(path.join(head, 'bin/javac'), 0o755);
+
+    expect(lint(javaPlan(head, { javac: path.join(head, 'bin/javac') }), undefined)).toEqual({
+      report: undefined,
+      failure: [
+        'error: javac printed warnings in a form nitpicker cannot read',
+        'A.java:3:5: compiler.warn.raw.class.use: java.util.List',
+        '1 warning',
         '',
       ],
     });

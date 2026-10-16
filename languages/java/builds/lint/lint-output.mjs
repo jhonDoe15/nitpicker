@@ -2,6 +2,9 @@ import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 
 const WARNING = /^(.+\.java):\d+: warning: \[/u;
+const SOURCE_HEADER = /^.+?\.java(?=:\d+: )/gmu;
+const WARNING_COUNT = /^\d+ warnings?$/mu;
+const PRINTED_WARNING = /^(?:.+\.java:\d+: )?warning: /mu;
 const BLOCK_END = /^\d+ warnings?$|^Note: /u;
 const ANNOTATION = /^@\s*([\w.]+)/u;
 const LOMBOK_IMPORT = /^\s*import\s+(lombok(?:\.\w+)*)\.(\w+|\*)\s*;/gmu;
@@ -52,20 +55,34 @@ function importReader() {
   };
 }
 
+function posixPath(file) {
+  return file.replaceAll('\\', '/');
+}
+
 export function relocated(log, { staged, from, to }) {
-  const fromPrefix = path.join(staged, from) + path.sep;
-  return log.replaceAll(fromPrefix, to === '' ? '' : `${to}/`);
+  const fromPrefix = `${posixPath(path.join(staged, from))}/`;
+  const target = to === '' ? '' : `${to}/`;
+  return log
+    .replaceAll(SOURCE_HEADER, (file) => {
+      const posix = posixPath(file);
+      return posix.startsWith(fromPrefix) ? target + posix.slice(fromPrefix.length) : file;
+    })
+    .replaceAll(path.join(staged, from) + path.sep, target);
 }
 
 export function lintedWarnings(log, context) {
   const importsOf = importReader();
-  const stagedPrefix = `${context.staged}${path.sep}`;
+  const stagedPrefix = `${posixPath(context.staged)}/`;
   const kept = blocks(log).filter((block) => {
     const warning = WARNING.exec(block[0]);
     return (
       warning === null ||
-      (warning[1].startsWith(stagedPrefix) && !lombokAnnotationAt(block, importsOf))
+      (posixPath(warning[1]).startsWith(stagedPrefix) && !lombokAnnotationAt(block, importsOf))
     );
   });
   return relocated(kept.flat().join(''), context);
+}
+
+export function hasUnreadWarnings(log) {
+  return WARNING_COUNT.test(log) && !PRINTED_WARNING.test(log);
 }
