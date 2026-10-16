@@ -16,6 +16,7 @@ import {
   junitLauncherVersion,
   pitTargets,
   pitTests,
+  freshExecFiles,
   runJacocoReport,
 } from './maven-tests.mjs';
 
@@ -119,7 +120,7 @@ describe('collectTestResults', () => {
     const reportDir = tree({});
 
     collectTestResults({
-      module: { basedir: '/m', surefireReports: reports },
+      module: { basedir: '/m', surefireReports: reports, failsafeReports: reports },
       reportDir,
       since,
       isArchunit: archunitMatcher(),
@@ -142,7 +143,7 @@ describe('collectTestResults', () => {
 
     expect(() => {
       collectTestResults({
-        module: { basedir: '/m', surefireReports: reports },
+        module: { basedir: '/m', surefireReports: reports, failsafeReports: reports },
         reportDir: tree({}),
         since,
         isArchunit: archunitMatcher(),
@@ -158,10 +159,42 @@ describe('collectTestResults', () => {
     );
   });
 
+  it('fails on failing Failsafe tests as on Surefire ones, reading a shared directory once', () => {
+    const surefire = tree({
+      'TEST-shop.OrderTest.xml': suite('shop.OrderTest', [['totals', 'no']]),
+    });
+    const failsafe = tree({ 'TEST-shop.OrderIT.xml': suite('shop.OrderIT', [['stores', 'gone']]) });
+    const run = (failsafeReports) => () => {
+      collectTestResults({
+        module: { basedir: '/m', surefireReports: surefire, failsafeReports },
+        reportDir: tree({}),
+        since,
+        isArchunit: archunitMatcher(),
+      });
+    };
+    const failing = (...lines) =>
+      new Error(
+        [
+          'Tests fail in /m; nitpicker needs a passing test suite for coverage and mutation testing:',
+          ...lines,
+        ].join('\n'),
+      );
+
+    expect(run(failsafe)).toThrow(
+      failing('  shop.OrderTest.totals: no', '  shop.OrderIT.stores: gone'),
+    );
+    expect(run(`${surefire}/.`)).toThrow(failing('  shop.OrderTest.totals: no'));
+  });
+
   it('reports whether any test ran', () => {
     const run = (files) =>
       collectTestResults({
-        module: { basedir: '/m', surefireReports: tree(files), testOutputDirectory: tree({}) },
+        module: {
+          basedir: '/m',
+          surefireReports: tree(files),
+          failsafeReports: '/missing',
+          testOutputDirectory: tree({}),
+        },
         reportDir: tree({}),
         since,
         isArchunit: archunitMatcher(),
@@ -180,7 +213,7 @@ describe('collectTestResults', () => {
 
     expect(
       collectTestResults({
-        module: { basedir: '/m', surefireReports: reports },
+        module: { basedir: '/m', surefireReports: reports, failsafeReports: tree({}) },
         reportDir: tree({}),
         since,
         isArchunit: archunitMatcher(),
@@ -190,21 +223,6 @@ describe('collectTestResults', () => {
       testsRan: true,
       testsFailure: 'Tests fail in /m:\n  shop.OrderTest.totals: expected 3',
     });
-  });
-
-  it('reads the failures of integration tests too', () => {
-    const failsafe = tree({
-      'TEST-shop.OrderIT.xml': suite('shop.OrderIT', [['places', 'expected 1']]),
-    });
-
-    expect(() => {
-      collectTestResults({
-        module: { basedir: '/m', surefireReports: tree({}), failsafeReports: failsafe },
-        reportDir: tree({}),
-        since,
-        isArchunit: archunitMatcher(),
-      });
-    }).toThrow(/shop\.OrderIT\.places: expected 1/u);
   });
 
   it('fails when surefire ran none of the ArchUnit classes', () => {
@@ -217,6 +235,7 @@ describe('collectTestResults', () => {
           surefireReports: tree({
             'TEST-shop.OrderTest.xml': suite('shop.OrderTest', [['totals']]),
           }),
+          failsafeReports: '/missing',
           testOutputDirectory: testClasses,
         },
         reportDir: tree({}),
@@ -225,14 +244,51 @@ describe('collectTestResults', () => {
       });
     }).toThrow(
       new Error(
-        'maven-surefire-plugin ran none of the ArchUnit classes in /m (shop.LayerRules). ' +
+        'Neither maven-surefire-plugin nor maven-failsafe-plugin ran any of the ArchUnit classes in /m ' +
+          '(shop.LayerRules). ' +
           'Let surefire run them (its <includes>, no skipTests) so nitpicker can read their results',
       ),
     );
   });
 });
 
+describe('freshExecFiles', () => {
+  it('keeps every coverage file written since the build started, once each', () => {
+    const target = tree({ 'unit.exec': 'u', 'it.exec': 'i', 'old.exec': 'o' });
+    const file = (name) => path.join(target, name);
+    utimesSync(file('old.exec'), new Date(2020, 0, 1), new Date(2020, 0, 1));
+
+    expect(
+      freshExecFiles(
+        ['unit.exec', 'it.exec', 'unit.exec', 'old.exec', 'missing.exec'].map(file),
+        Date.now() - 1000,
+      ),
+    ).toEqual([file('unit.exec'), file('it.exec')]);
+  });
+});
+
 describe('runJacocoReport', () => {
+  it('fails when tests ran but no coverage file is fresh', () => {
+    const reportDir = tree({ 'classes/demo/A.class': '' });
+    const module = { basedir: '/m', outputDirectory: path.join(reportDir, 'classes') };
+
+    expect(() => {
+      runJacocoReport({
+        module,
+        reportDir,
+        tools: {},
+        execFiles: ['/m/none.exec', '/m/none-it.exec'],
+        since: 0,
+        testsRan: true,
+      });
+    }).toThrow(
+      new Error(
+        'JaCoCo recorded no coverage in /m: the tests ran without its agent. If maven-surefire-plugin ' +
+          'sets <argLine>, start it with @{argLine} so the agent stays attached',
+      ),
+    );
+  });
+
   it('writes an empty report for a module without main classes', () => {
     const reportDir = tree({});
     const module = {
@@ -245,7 +301,7 @@ describe('runJacocoReport', () => {
       module,
       reportDir,
       tools: {},
-      execFile: '/m/none.exec',
+      execFiles: ['/m/none.exec'],
       since: 0,
       testsRan: true,
     });

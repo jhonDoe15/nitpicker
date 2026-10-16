@@ -1,3 +1,5 @@
+import { SYNTAX_EXCEPTION_HINT } from '../rule-hints.mjs';
+
 const nonErrorSuperclass =
   ':not([superClass.name=/Error$/]):not([superClass.property.name=/Error$/])';
 const nonComponentSuperclass =
@@ -66,13 +68,19 @@ export function declarationSelectorsFor({ react = false } = {}) {
 export const defaultExportSelectors = [
   {
     selector: 'ExportDefaultDeclaration',
-    message:
-      'Use a named export (`export function name() {}` or `export const name = ...`). Default exports are only allowed in config files.',
+    message: `Use a named export (\`export function name() {}\` or \`export const name = ...\`). Default exports are only allowed in config files and in the framework files that need one (Next.js routes, Storybook stories, Expo Router screens).${SYNTAX_EXCEPTION_HINT}`,
   },
   {
     selector: "ExportSpecifier[exported.name='default']",
+    message: `Use a named export (\`export { name }\`). Default exports are only allowed in config files and in the framework files that need one (Next.js routes, Storybook stories, Expo Router screens).${SYNTAX_EXCEPTION_HINT}`,
+  },
+];
+
+export const moduleSurfaceSelectors = [
+  {
+    selector: 'ExportAllDeclaration',
     message:
-      'Use a named export (`export { name }`). Default exports are only allowed in config files.',
+      "List the public names: `export { name } from './module.js'`. `export *` makes every internal export public. If it is deliberate, add an exception for this rule in nitpicker.config.json.",
   },
 ];
 

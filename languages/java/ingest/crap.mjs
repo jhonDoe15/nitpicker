@@ -1,6 +1,15 @@
-import { DEFAULT_CRAP_SCORE_LIMIT } from '../../../shared/policy.mjs';
+import { DEFAULT_CRAP_SCORE_LIMIT, MESSAGES } from '../../../shared/policy.mjs';
 import { crapFindings } from '../../../shared/rules/crap.mjs';
+import { nextOccurrence } from '../../../shared/rules/finding-helpers.mjs';
+import {
+  descriptorTypes,
+  sameConstructor,
+  simpleClassName,
+} from './constructors/constructor-match.mjs';
 import { childrenNamed, createIdentityCounter, normalizeReportPath, parseXml } from './common.mjs';
+import { jacocoLineUnits } from './coverage-reports/jacoco-lines.mjs';
+
+const FULL_COVERAGE = 100;
 
 export function calculateCrap(complexity, coveragePercent) {
   const uncovered = 1 - coveragePercent / 100;
@@ -8,12 +17,19 @@ export function calculateCrap(complexity, coveragePercent) {
 }
 
 export function ingestCrap(structure, jacocoXml, options = {}) {
-  return ingestCrapFunctions(structureFunctions(structure), jacocoXml, options);
+  return ingestCrapFunctions(structureFunctions(structure), jacocoXml, {
+    unknownMessage: MESSAGES.crapCoverageUnknownJava,
+    ...options,
+  });
 }
 
 export function ingestCrapFunctions(parsed, jacocoXml, options = {}) {
+  const report = parseJacocoReport(jacocoXml);
   const coverageOf = coverageLookup({
-    methods: jacocoMethods(jacocoXml),
+    pools: {
+      methods: jacocoMethods(report),
+      lines: parsed.some((fn) => fn.lineScoped) ? jacocoLineUnits(report) : new Map(),
+    },
     keysOf: options.jacocoKeys ?? rootRelativeKeys(options.sourceRoots ?? ['']),
     selectMethods: options.selectMethods ?? selectNamedMethods,
     parsed,
@@ -26,35 +42,60 @@ export function ingestCrapFunctions(parsed, jacocoXml, options = {}) {
 export function ingestCrapRows(parsed, options, resolve) {
   const tool = options.tool ?? 'crap';
   const limit = options.limit ?? DEFAULT_CRAP_SCORE_LIMIT;
-  const counters = new Map();
-  const functions = [];
-
-  for (const fn of parsed) {
+  const state = { options, limit, resolve, counters: new Map(), sameSourceByFile: new Map() };
+  const functions = parsed.flatMap((fn) => {
     const filePath = normalizeReportPath(fn.file, options.root);
-    if (filePath === undefined) {
-      continue;
-    }
-    const { coverage, name = fn.longName } = resolve(fn, filePath);
-    const unique = counters.get(filePath) ?? createIdentityCounter();
-    counters.set(filePath, unique);
-    const key = unique(`function:${name}`);
-    const sourceHash =
-      coverage === undefined
-        ? undefined
-        : options.sourceHash?.({ file: filePath, start: fn.start, end: fn.end });
-    functions.push({
-      path: filePath,
-      name,
-      identity: sourceHash === undefined ? key : `${key}:source:${sourceHash}`,
-      ratchetKey: `${key}:crap`,
-      line: fn.start,
-      endLine: fn.end,
-      crap: coverage === undefined ? undefined : calculateCrap(fn.ccn, coverage),
-    });
-  }
+    return filePath === undefined ? [] : [crapRow(fn, filePath, state)];
+  });
   return {
     findings: crapFindings(functions, { tool, limit, unknownMessage: options.unknownMessage }),
   };
+}
+
+function crapRow(fn, filePath, { options, limit, resolve, counters, sameSourceByFile }) {
+  const { coverage, name = fn.longName } = resolve(fn, filePath);
+  const crap = coverage === undefined ? undefined : calculateCrap(fn.ccn, coverage);
+  const sourceHash =
+    coverage === undefined
+      ? undefined
+      : options.sourceHash?.({ file: filePath, start: fn.start, end: fn.end });
+  const key =
+    fn.numberedAmongSameSource === true
+      ? keyAmongSameSource(
+          perFile(sameSourceByFile, filePath, () => new Map()),
+          {
+            name,
+            sourceHash,
+            over: crap === undefined || crap >= limit,
+          },
+        )
+      : perFile(counters, filePath, createIdentityCounter)(`function:${name}`);
+  return {
+    path: filePath,
+    name,
+    identity: sourceHash === undefined ? key : `${key}:source:${sourceHash}`,
+    ratchetKey: `${key}:crap`,
+    line: fn.start,
+    endLine: fn.end,
+    crap,
+    covered: coverage !== undefined && coverage >= FULL_COVERAGE,
+  };
+}
+
+function perFile(byFile, filePath, create) {
+  if (!byFile.has(filePath)) {
+    byFile.set(filePath, create());
+  }
+  return byFile.get(filePath);
+}
+
+function keyAmongSameSource(seen, { name, sourceHash, over }) {
+  const base = `function:${name}`;
+  if (!over) {
+    return base;
+  }
+  const occurrence = nextOccurrence(seen, `${base}\0${String(sourceHash)}`);
+  return occurrence === 1 ? base : `${base}#${String(occurrence)}`;
 }
 
 function structureFunctions(entries) {
@@ -72,6 +113,7 @@ function structureFunctions(entries) {
         file: entry.file,
         name: entry.name.split('.').at(-1),
         longName: entry.signature,
+        parameterTypes: entry.parameterTypes,
         start: entry.start,
         end: entry.end,
       };
@@ -134,11 +176,15 @@ function splitCsvLine(line) {
   return [...state.fields, state.current];
 }
 
-function jacocoMethods(xml) {
+function parseJacocoReport(xml) {
   const report = parseXml(xml);
   if (report.name !== 'report') {
     throw new TypeError('JaCoCo report root element must be <report>');
   }
+  return report;
+}
+
+function jacocoMethods(report) {
   const byFile = new Map();
   const classes = childrenNamed(report, 'package').flatMap((pkg) =>
     childrenNamed(pkg, 'class').map((cls) => ({ pkg, cls })),
@@ -160,7 +206,9 @@ function counter(element, type) {
 
 function selectNamedMethods(fn, candidates) {
   return candidates.filter(
-    (method) => method.name === fn.name && method.line >= fn.start && method.line <= fn.end,
+    (method) =>
+      method.name === fn.name &&
+      ((method.line >= fn.start && method.line <= fn.end) || sameConstructor(method, fn)),
   );
 }
 
@@ -172,12 +220,13 @@ function rootRelativeKeys(sourceRoots) {
     });
 }
 
-function coverageLookup({ methods, keysOf, selectMethods, parsed }) {
+function coverageLookup({ pools, keysOf, selectMethods, parsed }) {
   const siblings = Map.groupBy(parsed, (fn) => fn.file);
 
   function coverageOf(fn, filePath) {
+    const pool = fn.lineScoped ? pools.lines : pools.methods;
     const matches = keysOf(filePath).flatMap((key) =>
-      selectMethods(fn, methods.get(key) ?? [], siblings.get(fn.file)),
+      selectMethods(fn, pool.get(key) ?? [], siblings.get(fn.file)),
     );
     return lowestCoverage(matches);
   }
@@ -198,27 +247,28 @@ function lowestCoverage(matches) {
   return percents.length === 0 ? undefined : Math.min(...percents);
 }
 
+function jacocoMethod(method, cls) {
+  const line = Number.parseInt(method.attrs.line, 10);
+  if (!Number.isInteger(line)) {
+    return [];
+  }
+  const constructor = method.attrs.name === '<init>';
+  return [
+    {
+      name: constructor ? simpleClassName(cls.attrs.name ?? '') : method.attrs.name,
+      constructorTypes: constructor ? descriptorTypes(method.attrs.desc) : undefined,
+      className: cls.attrs.name ?? '',
+      line,
+      lines: counter(method, 'LINE'),
+      branches: counter(method, 'BRANCH'),
+    },
+  ];
+}
+
 function addClassMethods({ pkg, cls }, byFile) {
   const file = [pkg.attrs.name, cls.attrs.sourcefilename].filter(Boolean).join('/');
-  const simpleName = (cls.attrs.name ?? '')
-    .split('/')
-    .at(-1)
-    .split('$')
-    .at(-1)
-    .replace(/^\d+/u, '');
-  const methods = childrenNamed(cls, 'method')
-    .map((method) => ({ method, line: Number.parseInt(method.attrs.line, 10) }))
-    .filter(({ line }) => Number.isInteger(line));
-  for (const { method, line } of methods) {
-    byFile.set(file, [
-      ...(byFile.get(file) ?? []),
-      {
-        name: method.attrs.name === '<init>' ? simpleName : method.attrs.name,
-        className: cls.attrs.name ?? '',
-        line,
-        lines: counter(method, 'LINE'),
-        branches: counter(method, 'BRANCH'),
-      },
-    ]);
+  const methods = childrenNamed(cls, 'method').flatMap((method) => jacocoMethod(method, cls));
+  if (methods.length > 0) {
+    byFile.set(file, [...(byFile.get(file) ?? []), ...methods]);
   }
 }
