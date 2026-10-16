@@ -1,3 +1,14 @@
+export function consoleMethodOf(call) {
+  const { callee } = call;
+  const isConsoleMember =
+    callee.type === 'MemberExpression' &&
+    !callee.computed &&
+    callee.object.type === 'Identifier' &&
+    callee.object.name === 'console' &&
+    callee.property.type === 'Identifier';
+  return isConsoleMember ? callee.property.name : undefined;
+}
+
 export const rule = {
   meta: {
     type: 'problem',
@@ -12,18 +23,9 @@ export const rule = {
   create(context) {
     return {
       CallExpression(node) {
-        if (
-          node.callee.type === 'MemberExpression' &&
-          !node.callee.computed &&
-          node.callee.object.type === 'Identifier' &&
-          node.callee.object.name === 'console' &&
-          node.callee.property.type === 'Identifier'
-        ) {
-          context.report({
-            node,
-            messageId: 'consoleCall',
-            data: { method: node.callee.property.name },
-          });
+        const method = consoleMethodOf(node);
+        if (method !== undefined) {
+          context.report({ node, messageId: 'consoleCall', data: { method } });
         }
       },
     };

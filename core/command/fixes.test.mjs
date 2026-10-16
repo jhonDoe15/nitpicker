@@ -20,6 +20,7 @@ function isolatedCache() {
 describe('nitpicker CLI', () => {
   it('fixes changed ESLint and Prettier violations before comparing without touching unchanged files or the index', () => {
     const repository = createRepository({
+      'quality-policy.json': policy(),
       'src/main/changed.ts': 'export const changed = 1;\n',
       'src/main/format.mjs': 'export const format = 1;\n',
       'src/main/unchanged.ts': 'export const unchanged=1\n',
@@ -41,19 +42,10 @@ describe('nitpicker CLI', () => {
     const indexBefore = fixtureGit(repository.root, ['ls-files', '--stage']);
     const output = captureOutput();
     const exitCode = runCli({
-      arguments_: [
-        '--fix',
-        '--base',
-        repository.baseRef,
-        '--analyzer',
-        'eslint-lint',
-        '--analyzer',
-        'prettier-format',
-        '--output',
-        makeOutputRoot(),
-      ],
+      arguments_: ['--fix', '--base', repository.baseRef, '--output', makeOutputRoot()],
       currentProjectRoot: repository.root,
       environment: isolatedCache(),
+      analyzers: [fakeAnalyzer()],
       stdout: output.stdout,
       stderr: output.stderr,
     });

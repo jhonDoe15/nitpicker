@@ -19,19 +19,26 @@ import {
   isReactProject,
   reactScopeConfigFor,
 } from '../eslint-config/react/react-scope.mjs';
+import { i18nRuleIds } from '../eslint-config/i18n/i18n-rules.mjs';
+import { i18nScopeConfigFor, isI18nProject } from '../eslint-config/i18n/i18n-scope.mjs';
 import { readHeadPolicy, readLayout } from '../head-policy.mjs';
+import {
+  testEnvironmentConfigFor,
+  testEnvironmentsFromVariables,
+} from '../test-environment/test-environment-config.mjs';
 
 const policy = readHeadPolicy();
 
 const layout = readLayout();
 const react = isReactProject({ projectRoot: analyzedProjectRoot(), react: policy.react });
+const i18n = isI18nProject({ projectRoot: analyzedProjectRoot(), i18n: policy.i18n });
 const { sourceGlobs, testGlobs, excludedGlobs, unitTestGlobs } = layout;
 const parserOptions = {
   project: './tsconfig.quality.json',
   tsconfigRootDir: import.meta.dirname,
 };
 const productionFiles = sourceGlobs;
-const testFiles = testGlobs;
+const testFiles = [...testGlobs, ...layout.sourceTestDirectoryGlobs];
 const selectedFiles = [...productionFiles, ...testFiles];
 
 const presetConfig = defineConfig(
@@ -55,6 +62,10 @@ const presetConfig = defineConfig(
         { disallowTypeAnnotations: false, fixStyle: 'separate-type-imports' },
       ],
       'nitpicker/cognitive-complexity': ['error', 15],
+      '@typescript-eslint/ban-ts-comment': [
+        'error',
+        { 'ts-expect-error': true, 'ts-ignore': true, 'ts-nocheck': true, 'ts-check': false },
+      ],
     },
   },
   {
@@ -70,6 +81,7 @@ const presetConfig = defineConfig(
   },
   ...strictPresetConfig(layout, parserOptions, { react }),
   ...(react ? await reactScopeConfigFor(layout, policy.react) : []),
+  ...(i18n ? await i18nScopeConfigFor(layout, policy.i18n) : []),
   {
     // eslint-errors reports this rule for all production code; reporting it here too lists every
     files: productionFiles,
@@ -79,7 +91,7 @@ const presetConfig = defineConfig(
   },
   {
     files: productionFiles,
-    ignores: [...testFiles, ...layout.sourceTestDirectoryGlobs],
+    ignores: testFiles,
     rules: {
       '@typescript-eslint/no-explicit-any': 'off',
       '@typescript-eslint/no-non-null-assertion': 'off',
@@ -115,6 +127,10 @@ const presetConfig = defineConfig(
       'nitpicker/no-wait-for-with-fake-timers': 'error',
       'nitpicker/no-partial-output-assertion': 'error',
       'nitpicker/test-must-use-production-runtime': 'error',
+      'vitest/expect-expect': [
+        'error',
+        { assertFunctionNames: ['expect', 'assert', 'expectTypeOf', 'assertType'] },
+      ],
       'vitest/no-conditional-in-test': 'error',
       'vitest/valid-expect': ['error', { maxArgs: 2 }],
       'vitest/require-awaited-expect-poll': 'error',
@@ -125,14 +141,17 @@ const presetConfig = defineConfig(
     files: unitTestGlobs,
     rules: { 'nitpicker/no-external-executables-in-unit-tests': 'error' },
   },
+  ...testEnvironmentConfigFor(layout, testEnvironmentsFromVariables()),
   ...untypedScriptEntries(policy, projectChecksJavascript(analyzedProjectRoot())),
 );
 
-const applicableExceptions = react
-  ? policy.exceptions
-  : policy.exceptions.filter(
-      ({ rule }) => !reactRuleIds.includes(rule) && !reactTestRuleIds.includes(rule),
-    );
+const inactiveRuleIds = [
+  ...(react ? [] : [...reactRuleIds, ...reactTestRuleIds]),
+  ...(i18n ? [] : i18nRuleIds),
+];
+const applicableExceptions = policy.exceptions.filter(
+  ({ rule }) => !inactiveRuleIds.includes(rule),
+);
 
 export default applyRuleExceptions(
   applyJavascriptDialect([...presetConfig, ...scriptRuleEntries(selectedFiles)], policy),
