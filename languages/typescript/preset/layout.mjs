@@ -29,8 +29,12 @@ const builtInExcludedGlobs = [
   '**/target/**',
   '**/*.d.ts',
 ];
-const GENERATED_DIRECTORY =
-  /(?:^|\/)(?:dist|build|generated|node_modules|coverage|reports|target)(?:\/|$)/;
+const GENERATED_PATH = new RegExp(
+  [
+    '(?:^|/)(?:dist|build|generated|__generated__|node_modules|coverage|reports|target)(?:/|$)',
+    '(?:\\.(?:generated|gen|pb)|_pb)\\.[^/]+$',
+  ].join('|'),
+);
 
 function normalizeRoot(root) {
   return root.replaceAll('\\', '/').replace(/^\.\//, '').replace(/\/$/, '');
@@ -66,7 +70,7 @@ function unitTestGlobsFor({ sourceRoots, testRoots, javascript, extensionGlob })
   ];
 }
 
-function toPosix(file) {
+export function toPosix(file) {
   return file.replaceAll('\\', '/');
 }
 
@@ -98,7 +102,7 @@ function createClassifiers({ sourceRoots, testRoots, exclude, patterns }) {
     return (
       patterns.sourcePattern.test(normalized) &&
       !isTestFile(normalized) &&
-      !GENERATED_DIRECTORY.test(normalized) &&
+      !GENERATED_PATH.test(normalized) &&
       !normalized.endsWith('.d.ts') &&
       !isExcluded(normalized)
     );
@@ -106,6 +110,8 @@ function createClassifiers({ sourceRoots, testRoots, exclude, patterns }) {
   return {
     isExcluded,
     isTestFile,
+    isGeneratedPath: (file) => GENERATED_PATH.test(toPosix(file)),
+    isTestPath: (file) => patterns.testPattern.test(toPosix(file)),
     isRunnableTestFile: (file) => isTestFile(file) && patterns.runnableTestPattern.test(file),
     isSourceFile,
     isSourceUnderRoot: sourceUnderRootClassifier({
@@ -116,7 +122,10 @@ function createClassifiers({ sourceRoots, testRoots, exclude, patterns }) {
     sourceRootOf: (file) => sourceRoots.find((root) => file.includes(`/${root}/`)),
     isTestFixture: (file, name = '') => {
       const normalized = toPosix(file);
-      return testRoots.some((root) => normalized.includes(`/${root}/fixtures/${name}`));
+      return (
+        normalized.includes(`/__tests__/fixtures/${name}`) ||
+        testRoots.some((root) => normalized.includes(`/${root}/fixtures/${name}`))
+      );
     },
   };
 }
@@ -188,7 +197,7 @@ function codeFilesUnderRoot(layout, projectRoot, root) {
   for (const relative of pending) {
     const entries = readdirSync(path.join(projectRoot, relative), { withFileTypes: true })
       .map((entry) => ({ entry, name: relative ? `${relative}/${entry.name}` : entry.name }))
-      .filter(({ name }) => !GENERATED_DIRECTORY.test(name));
+      .filter(({ name }) => !GENERATED_PATH.test(name));
     pending.push(...entries.filter(({ entry }) => entry.isDirectory()).map(({ name }) => name));
     files.push(...entries.filter((item) => isCodeFile(layout, item)).map(({ name }) => name));
   }

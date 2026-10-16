@@ -107,6 +107,7 @@ describe('the react-project fixture', () => {
           'jsx-a11y/no-noninteractive-element-interactions',
         ],
         'index-key': ['react-x/no-array-index-key'],
+        'hard-coded-color': ['nitpicker/react-no-hardcoded-colors'],
         'inline-style': ['nitpicker/react-single-styling-approach'],
         'missing-dependency': ['react-hooks/exhaustive-deps'],
       });
@@ -127,9 +128,20 @@ describe('the react-project fixture', () => {
       }),
     );
 
+    const folder = 'nitpicker/no-unknown-main-folder';
+    const naming = 'nitpicker/naming-convention';
     expect(rulesByFile(findings)).toEqual({
-      allowed: ['@typescript-eslint/no-misused-promises', 'no-restricted-syntax'],
-      'class-component': ['no-restricted-syntax'],
+      allowed: ['@typescript-eslint/no-misused-promises', naming, folder, 'no-restricted-syntax'],
+      'class-component': [folder, 'no-restricted-syntax'],
+      'conditional-hook': [naming, folder],
+      'css-properties.ts': [folder],
+      'derived-state': [naming, folder],
+      'effect-fetch': [naming, folder],
+      'hard-coded-color': [naming, folder],
+      inaccessible: [naming, folder],
+      'index-key': [naming, folder],
+      'inline-style': [naming, folder],
+      'missing-dependency': [naming, folder],
     });
   });
 
