@@ -1,8 +1,8 @@
 import { existsSync, readFileSync, statSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { childrenNamed, parseXml } from '../../ingest/common.mjs';
-import { classFiles } from '../../builds/class-file.mjs';
-import { referencedNames, usesArchive } from '../../builds/class-references.mjs';
+import { classFiles } from '../../builds/classes/class-file.mjs';
+import { referencedNames, usesArchive } from '../../builds/classes/class-references.mjs';
 
 const COMPILE_SCOPE = 'compile';
 

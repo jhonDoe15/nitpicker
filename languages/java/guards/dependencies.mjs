@@ -1,7 +1,7 @@
 import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { exceptionRoute } from './advice/exception-route.mjs';
-import { referencedNames, usesArchive } from '../builds/class-references.mjs';
+import { referencedNames, usesArchive } from '../builds/classes/class-references.mjs';
 
 const DEPENDENCIES_TOOL = 'dependencies';
 const UNUSED_RULE = 'unused-declared-dependency';
