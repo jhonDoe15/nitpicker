@@ -1,5 +1,6 @@
 import { existsSync } from 'node:fs';
 import path from 'node:path';
+import { createRequire } from 'node:module';
 import {
   JAVASCRIPT_COMPILER_OPTIONS,
   JAVASCRIPT_JSCPD_FORMAT,
