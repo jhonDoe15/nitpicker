@@ -5,7 +5,7 @@ import path from 'node:path';
 export function temporaryProjects() {
   const roots = [];
   return {
-    projectWith(manifest) {
+    projectWith: (manifest) => {
       const root = mkdtempSync(path.join(tmpdir(), 'nitpicker-react-scope-'));
       roots.push(root);
       if (manifest !== undefined) {
@@ -13,7 +13,7 @@ export function temporaryProjects() {
       }
       return root;
     },
-    removeProjects() {
+    removeProjects: () => {
       for (const root of roots.splice(0)) {
         rmSync(root, { recursive: true, force: true });
       }

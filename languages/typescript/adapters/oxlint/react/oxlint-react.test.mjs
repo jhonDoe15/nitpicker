@@ -2,9 +2,9 @@ import { mkdirSync, mkdtempSync, realpathSync, rmSync, writeFileSync } from 'nod
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterAll, describe, expect, it } from 'vitest';
-import { lintWithOxlint } from './oxlint-runner.mjs';
+import { lintWithOxlint } from '../oxlint-runner.mjs';
 
-const packageRoot = path.resolve(import.meta.dirname, '../../../..');
+const packageRoot = path.resolve(import.meta.dirname, '../../../../..');
 const root = realpathSync(mkdtempSync(path.join(tmpdir(), 'nitpicker-oxlint-react-')));
 const adapters = 'src/main/features/profile/adapters';
 const domain = 'src/main/features/profile/domain';

@@ -2,6 +2,7 @@ import { readFileSync, statSync } from 'node:fs';
 import path from 'node:path';
 import ts from 'typescript';
 import { readLayout } from '../../../../head-policy.mjs';
+import { readStamped } from '../../../../modules/stamped-file-cache.mjs';
 
 const layout = readLayout();
 const { testRoots } = layout;
@@ -34,11 +35,7 @@ function fileFor(target) {
   ].find(isFile);
 }
 
-function readPaths(directory) {
-  const configFile = ts.findConfigFile(directory, (file) => ts.sys.fileExists(file));
-  if (configFile === undefined) {
-    return { paths: {}, base: directory };
-  }
+function readPaths(configFile) {
   const { config } = ts.readConfigFile(configFile, (file) => ts.sys.readFile(file));
   const configDirectory = path.dirname(configFile);
   const { options } = ts.parseJsonConfigFileContent(config ?? {}, configHost, configDirectory);
@@ -49,8 +46,10 @@ function readPaths(directory) {
 
 function aliasTargets(fromFile, source) {
   const directory = path.dirname(fromFile);
-  if (!pathsCache.has(directory)) pathsCache.set(directory, readPaths(directory));
-  const { paths, base } = pathsCache.get(directory);
+  const configFile = ts.findConfigFile(directory, (file) => ts.sys.fileExists(file));
+  const config =
+    configFile === undefined ? undefined : readStamped(pathsCache, configFile, readPaths);
+  const { paths, base } = config ?? { paths: {}, base: directory };
   return Object.entries(paths).flatMap(([pattern, targets]) => {
     const [prefix, suffix = ''] = pattern.split('*');
     const wildcard = pattern.includes('*');
@@ -144,10 +143,7 @@ function parseReferences(file) {
 }
 
 function referencesOf(file) {
-  if (!moduleCache.has(file)) {
-    moduleCache.set(file, parseReferences(file));
-  }
-  return moduleCache.get(file);
+  return readStamped(moduleCache, file, parseReferences) ?? [];
 }
 
 function helperReaches(testFile, source, matches) {
