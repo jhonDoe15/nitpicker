@@ -5,4 +5,6 @@ export function main(names: readonly string[]): void {
   runGreeting(names, { write: (text) => process.stdout.write(text) });
 }
 
+export const serve = handleRequest;
+
 export { handleRequest };
