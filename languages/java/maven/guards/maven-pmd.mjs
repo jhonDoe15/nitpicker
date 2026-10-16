@@ -1,4 +1,4 @@
-import { existsSync, writeFileSync } from 'node:fs';
+import { existsSync, rmSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { escapeRegExp } from '../../../../shared/glob.mjs';
 import { runJava } from '../maven-command.mjs';
@@ -10,6 +10,8 @@ const PATTERN_MATCHING_RULES = ['InstanceofThenCast', 'CollectorsToList'];
 const PATTERN_MATCHING_RELEASE = 16;
 const MAVEN_DEFAULT_RELEASE = 8;
 const CPD_EXITS = new Set([0, 4]);
+const CPD_REPORT = 'cpd.xml';
+const CPD_FAILURE = 'cpd-failed.txt';
 const CPD_ROOT = /<pmd-cpd[\s/>]/u;
 const TEST_CLASS_PATTERN = [
   String.raw`^(?:.*\.)?Test[^\.]*$`,
@@ -191,42 +193,30 @@ export function runPmd(context) {
 function cpdOutcome(result) {
   return CPD_EXITS.has(result.status) && CPD_ROOT.test(result.stdout)
     ? { kind: 'report', xml: result.stdout }
-    : { kind: 'failed', status: result.status, stderr: result.stderr };
+    : { kind: 'failed', exit: result.status ?? result.signal, stderr: result.stderr };
 }
 
 export function runCpd({ module, reportDir, tools }) {
+  for (const stale of [CPD_REPORT, CPD_FAILURE]) {
+    rmSync(path.join(reportDir, stale), { force: true });
+  }
   const directories = [...module.sourceRoots, ...module.testSourceRoots].filter((root) =>
     existsSync(root),
   );
   if (directories.length === 0) {
     return;
   }
-  const result = runJava({
-    tool: 'PMD CPD',
-    classpath: tools.pmd,
-    mainClass: 'net.sourceforge.pmd.cli.PmdCli',
-    args: [
-      'cpd',
-      '--minimum-tokens',
-      '100',
-      '--ignore-identifiers',
-      '--ignore-literals',
-      '--language',
-      'java',
-      '--format',
-      'xml',
-      '--no-fail-on-error',
-      ...directories.flatMap((directory) => ['--dir', directory]),
-    ],
-    cwd: module.basedir,
-  });
-  const outcome = cpdOutcome(result);
+  const outcome = cpdOutcome(
+    runJava({
+      tool: 'PMD CPD',
+      classpath: tools.pmd,
+      args: [path.join(GRADLE_DIRECTORY, 'CpdReport.java'), ...directories],
+      cwd: module.basedir,
+    }),
+  );
   if (outcome.kind === 'report') {
-    writeFileSync(path.join(reportDir, 'cpd.xml'), outcome.xml);
+    writeFileSync(path.join(reportDir, CPD_REPORT), outcome.xml);
     return;
   }
-  writeFileSync(
-    path.join(reportDir, 'cpd-failed.txt'),
-    `${String(outcome.status)}\n${outcome.stderr}`,
-  );
+  writeFileSync(path.join(reportDir, CPD_FAILURE), `${String(outcome.exit)}\n${outcome.stderr}`);
 }

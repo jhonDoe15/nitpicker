@@ -1,0 +1,48 @@
+{
+  "findings": [
+    {
+      "tool": "duplicates",
+      "rule": "cpd-not-run",
+      "path": ".",
+      "identity": "cpd-not-run@core",
+      "message": "No CPD duplicate report for core/src/main/java.",
+      "classification": "descriptive",
+      "toolNotRun": true,
+      "notRunScope": ["cpd:pair:core/src/main/java/"]
+    },
+    {
+      "tool": "duplicates",
+      "rule": "cpd-not-run",
+      "path": ".",
+      "identity": "cpd-not-run@app",
+      "message": "No CPD duplicate report for app/src/main/java.",
+      "classification": "descriptive",
+      "toolNotRun": true,
+      "notRunScope": ["cpd:pair:app/src/main/java/"]
+    },
+    {
+      "tool": "duplicates",
+      "rule": "duplicate-clone",
+      "path": "core/src/main/java/A.java",
+      "identity": "cpd:pair:core/src/main/java/A.java|core/src/main/java/B.java:occurrence:1",
+      "message": "This code repeats core/src/main/java/B.java.",
+      "classification": "enforceable"
+    },
+    {
+      "tool": "duplicates",
+      "rule": "duplicate-clone",
+      "path": "core/src/main/java/A.java",
+      "identity": "pair:core/src/main/java/A.java|core/src/main/java/B.java:occurrence:1",
+      "message": "This code repeats core/src/main/java/B.java.",
+      "classification": "enforceable"
+    },
+    {
+      "tool": "duplicates",
+      "rule": "duplicate-clone",
+      "path": "lib/src/main/java/C.java",
+      "identity": "cpd:pair:lib/src/main/java/C.java|lib/src/main/java/D.java:occurrence:1",
+      "message": "This code repeats lib/src/main/java/D.java.",
+      "classification": "enforceable"
+    }
+  ]
+}

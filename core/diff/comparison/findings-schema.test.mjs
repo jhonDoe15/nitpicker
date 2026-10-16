@@ -337,6 +337,9 @@ describe('spec/findings.schema.json', () => {
       { ...valid, metric: { name: 'm', value: 1 } },
       { ...valid, toolNotRun: true },
       { ...valid, classification: 'descriptive', toolNotRun: false },
+      { ...valid, classification: 'descriptive', notRunScope: ['cpd:'] },
+      { ...valid, classification: 'descriptive', toolNotRun: true, notRunScope: [''] },
+      { ...valid, classification: 'descriptive', toolNotRun: true, notRunScope: 'cpd:' },
     ];
 
     for (const finding of malformed) {
@@ -391,6 +394,22 @@ describe('spec/findings.schema.json', () => {
       message: 'No javac lint report.',
       classification: 'descriptive',
       toolNotRun: true,
+    };
+
+    expect(parseFinding(finding)).toEqual(finding);
+    expect(validate({ findings: [finding] })).toEqual([]);
+  });
+
+  it('accepts a tool-not-run notice scoped to identity prefixes', () => {
+    const finding = {
+      tool: 'duplicates',
+      rule: 'cpd-not-run',
+      path: '.',
+      identity: 'cpd-not-run',
+      message: 'No CPD duplicate report.',
+      classification: 'descriptive',
+      toolNotRun: true,
+      notRunScope: ['cpd:pair:src/main/java/', 'cpd:pair:src/test/java/'],
     };
 
     expect(parseFinding(finding)).toEqual(finding);

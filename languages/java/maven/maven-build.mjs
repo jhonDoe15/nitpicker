@@ -1,19 +1,11 @@
-import { spawnSync } from 'node:child_process';
-import {
-  mkdirSync,
-  mkdtempSync,
-  readdirSync,
-  readFileSync,
-  rmSync,
-  writeFileSync,
-  existsSync,
-} from 'node:fs';
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync, existsSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
-import { javaCommand, runJava, runMaven } from './maven-command.mjs';
+import { runJava, runMaven } from './maven-command.mjs';
 import { runCheckstyle, runFormat, runSpotbugs } from './maven-lint.mjs';
 import { runGuards } from './guards/maven-guards.mjs';
 import { runPmd } from './guards/maven-pmd.mjs';
+import { runJdeps } from './coupling/maven-jdeps.mjs';
 import { moduleClasspaths, parseDependencyList, readReactor } from './maven-project.mjs';
 import {
   archunitMatcher,
@@ -92,60 +84,6 @@ function runStructure(module, reportDir) {
     cwd: module.basedir,
     accept: (result) => result.status === 0,
   });
-}
-
-function jdepsModulePath(module, classpaths) {
-  if (!existsSync(path.join(module.outputDirectory, 'module-info.class'))) {
-    return [];
-  }
-  const modulePath = classpaths.mainCompile.filter((entry) => existsSync(entry));
-  const release = module.compiler.release ?? module.compiler.target;
-  return [
-    ...(modulePath.length === 0 ? [] : ['--module-path', modulePath.join(path.delimiter)]),
-    ...(release === undefined ? [] : ['--multi-release', release]),
-  ];
-}
-
-function runJdeps(module, reportDir, classpaths) {
-  const classes = existsSync(module.outputDirectory)
-    ? readdirSync(module.outputDirectory, { recursive: true, withFileTypes: true })
-        .filter((entry) => entry.isFile() && entry.name.endsWith('.class'))
-        .filter((entry) => !['module-info.class', 'package-info.class'].includes(entry.name))
-        .map((entry) =>
-          relativeTo(module.outputDirectory, path.join(entry.parentPath, entry.name))
-            .replace(/\.class$/u, '')
-            .replaceAll('/', '.'),
-        )
-        .sort()
-    : [];
-  writeFileSync(
-    path.join(reportDir, 'jdeps-classes.txt'),
-    classes.map((name) => `${name}\n`).join(''),
-  );
-  if (classes.length === 0) {
-    writeFileSync(path.join(reportDir, 'jdeps.txt'), '');
-    return;
-  }
-  const result = spawnSync(
-    javaCommand('jdeps'),
-    [
-      '-verbose:class',
-      '-filter:none',
-      ...jdepsModulePath(module, classpaths),
-      module.outputDirectory,
-    ],
-    {
-      cwd: module.basedir,
-      encoding: 'utf8',
-      maxBuffer: 50 * 1024 * 1024,
-    },
-  );
-  if (result.error !== undefined || result.status !== 0) {
-    throw new Error(
-      `jdeps failed with exit code ${String(result.status)}: ${result.error?.message ?? result.stderr}`,
-    );
-  }
-  writeFileSync(path.join(reportDir, 'jdeps.txt'), result.stdout);
 }
 
 function relativeRoots(module, roots) {

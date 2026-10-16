@@ -1,34 +1,34 @@
 def reportDir = project.ext.nitpickerReportDir
+def cpdSource = new File(buildscript.sourceFile.parentFile, '../CpdReport.java').canonicalFile
 
-tasks.register('nitpickerCpd', JavaExec) {
+tasks.register('nitpickerCpd') {
     group = 'nitpicker'
-    classpath = configurations.nitpickerPmd
-    mainClass = 'net.sourceforge.pmd.cli.PmdCli'
-    ignoreExitValue = true
     def report = reportDir.map { it.file('cpd.xml') }
     def failure = reportDir.map { it.file('cpd-failed.txt') }
-    def errors = new ByteArrayOutputStream()
     def sourceDirectories = {
         sourceSets.collectMany { it.allJava.sourceDirectories.files }.unique().findAll { it.exists() }
     }
-    onlyIf { !sourceDirectories().isEmpty() }
     inputs.files({ sourceSets*.allJava }).withPropertyName('sources')
+    inputs.files(configurations.nitpickerPmd).withPropertyName('pmd')
+    inputs.file(cpdSource).withPropertyName('launcher')
     outputs.file(report).withPropertyName('report')
-    doFirst {
-        reportDir.get().asFile.mkdirs()
-        failure.get().asFile.delete()
-        standardOutput = new FileOutputStream(report.get().asFile)
-        errorOutput = errors
-        args(['cpd', '--minimum-tokens', '100', '--ignore-identifiers', '--ignore-literals', '--language', 'java',
-              '--format', 'xml', '--no-fail-on-error'] +
-            sourceDirectories().collectMany { ['--dir', it.absolutePath] })
-    }
     doLast {
-        def code = executionResult.get().exitValue
-        def output = report.get().asFile
-        if (!(code in [0, 4]) || !(output.text =~ /<pmd-cpd[\s\/>]/)) {
-            failure.get().asFile.text = "${code}\n${errors.toString('UTF-8')}"
-            output.delete()
+        reportDir.get().asFile.mkdirs()
+        report.get().asFile.delete()
+        failure.get().asFile.delete()
+        def directories = sourceDirectories()
+        if (directories.isEmpty()) {
+            return
+        }
+        def java = new File(System.getProperty('java.home'), 'bin/java').absolutePath
+        def process = new ProcessBuilder([java, '-cp', configurations.nitpickerPmd.asPath, cpdSource.absolutePath] +
+            directories.collect { it.absolutePath })
+            .directory(projectDir).redirectOutput(report.get().asFile).start()
+        def errors = process.errorStream.getText('UTF-8')
+        def code = process.waitFor()
+        if (!(code in [0, 4]) || !(report.get().asFile.text =~ /<pmd-cpd[\s\/>]/)) {
+            failure.get().asFile.text = "${code}\n${errors}"
+            report.get().asFile.delete()
         }
     }
 }

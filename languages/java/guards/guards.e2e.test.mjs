@@ -1,5 +1,5 @@
 import { spawnSync } from 'node:child_process';
-import { cpSync, mkdtempSync, readdirSync, readFileSync, rmSync } from 'node:fs';
+import { cpSync, existsSync, mkdtempSync, readdirSync, readFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
@@ -8,6 +8,7 @@ import { runJavaDuplicates } from '../adapters/metrics/java-duplicates.mjs';
 import { readJavaFindings } from '../adapters/reporting/java-reports.mjs';
 import { readReportModules } from '../adapters/gradle-reports/report-modules.mjs';
 import { readCouplingFindings } from '../adapters/metrics/java-coupling.mjs';
+import { readCpdFindings } from './cpd-duplicates.mjs';
 import { readLintFindings } from './javac-lint.mjs';
 
 const enabled = process.env.NITPICKER_JAVA_E2E === '1';
@@ -151,6 +152,7 @@ describe.skipIf(!enabled)('Java guards on a fixture project', () => {
           ':legacy:nitpickerPmd',
           ':modular:nitpickerJdeps',
           ':modular:nitpickerPermits',
+          ':legacy:nitpickerCpd',
         ]),
       );
     },
@@ -225,5 +227,20 @@ describe.skipIf(!enabled)('Java guards on a fixture project', () => {
         'impl/Square.java instability 0.5',
       ].map((line) => `modular/src/main/java/modular/shapes/${line}`),
     );
+  });
+
+  it('runs CPD over class literals followed by a declaration without modifiers', () => {
+    const reportRoot = path.join(roots[1], 'legacy', 'build', 'nitpicker');
+
+    expect(
+      readCpdFindings(reportRoot, {
+        projectRoot: roots[1],
+        sourceRoots: ['legacy/src/main/java'],
+        testRoots: [],
+      }),
+    ).toEqual([]);
+    expect(
+      ['cpd.xml', 'cpd-failed.txt'].map((name) => existsSync(path.join(reportRoot, name))),
+    ).toEqual([true, false]);
   });
 });

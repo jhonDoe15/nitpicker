@@ -331,6 +331,8 @@ describe('readCpdFindings', () => {
     '[main] ERROR net.sourceforge.pmd.cli - Exception while running CPD: Cannot invoke ' +
     '"String.equals(Object)" because "java.util.Deque.peek().name" is null';
 
+  const moduleRoots = { sourceRoots: ['core/src/main/java'], testRoots: ['core/src/test/java'] };
+
   function notRun(reason) {
     return [
       {
@@ -338,9 +340,12 @@ describe('readCpdFindings', () => {
         rule: 'cpd-not-run',
         path: '.',
         identity: 'cpd-not-run',
-        message: `No CPD duplicate report, so duplicated code was not checked: ${reason}`,
+        message:
+          'No CPD duplicate report for core/src/main/java, core/src/test/java, so duplicated code ' +
+          `there was not checked: ${reason}`,
         classification: 'descriptive',
         toolNotRun: true,
+        notRunScope: ['cpd:pair:core/src/main/java/', 'cpd:pair:core/src/test/java/'],
       },
     ];
   }
@@ -360,7 +365,7 @@ describe('readCpdFindings', () => {
     const { root, reportRoot } = project({});
     writeFileSync(path.join(reportRoot, 'cpd-failed.txt'), failure);
 
-    const findings = readCpdFindings(reportRoot, options(root));
+    const findings = readCpdFindings(reportRoot, { projectRoot: root, ...moduleRoots });
 
     expect(findings).toEqual(notRun(reason));
     expect(() => parseAnalyzerReport({ findings }, 'java')).not.toThrow();
@@ -374,12 +379,31 @@ describe('readCpdFindings', () => {
     const { root, reportRoot } = project({});
     writeFileSync(path.join(reportRoot, 'cpd.xml'), content);
 
-    expect(readCpdFindings(reportRoot, options(root))).toEqual(notRun(reason));
+    expect(readCpdFindings(reportRoot, { projectRoot: root, ...moduleRoots })).toEqual(
+      notRun(reason),
+    );
   });
 
   it('reports nothing when CPD did not run on the module', () => {
     const { root, reportRoot } = project({});
 
     expect(readCpdFindings(reportRoot, options(root))).toEqual([]);
+  });
+
+  it('scopes a project whose sources sit at its root to every CPD clone', () => {
+    const { root, reportRoot } = project({});
+    writeFileSync(path.join(reportRoot, 'cpd-failed.txt'), '1\n');
+
+    expect(
+      readCpdFindings(reportRoot, { projectRoot: root, sourceRoots: ['.'], testRoots: [] }).map(
+        ({ message, notRunScope }) => [message, notRunScope],
+      ),
+    ).toEqual([
+      [
+        'No CPD duplicate report for ., so duplicated code there was not checked: ' +
+          'PMD CPD exited with code 1 and wrote no report: no error output',
+        ['cpd:pair:'],
+      ],
+    ]);
   });
 });
