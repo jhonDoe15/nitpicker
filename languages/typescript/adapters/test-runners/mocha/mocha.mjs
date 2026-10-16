@@ -1,6 +1,7 @@
 import { readTestReport } from '../../quality-areas/reporting/test-report.mjs';
 import { spawnNodeTool } from '../../quality-areas/runners/tooling.mjs';
 import { withoutOptions } from '../../../preset/test-runner/script-command.mjs';
+import { RUNNER_NAMES } from '../../../preset/test-runner/runners.mjs';
 import { startV8Coverage } from '../v8-coverage/v8-coverage-run.mjs';
 import {
   TEST_TIMEOUT_MS,
@@ -33,7 +34,7 @@ export async function runMocha(options, command) {
     const result = spawnNodeTool({
       options,
       relativeToolPath: 'mocha/bin/mocha.js',
-      nodeArguments: command.nodeArguments,
+      nodeArguments: [...coverage.nodeArguments, ...command.nodeArguments],
       environment: coverage.environment,
       arguments_: [
         ...withoutOptions(command.arguments_, OPTIONS_NITPICKER_SETS),
@@ -47,11 +48,16 @@ export async function runMocha(options, command) {
       ],
     });
     const run = finishedRun({
-      report: reportFromMocha(readTestReport(mochaReportPath, result, 'Mocha'), options.projectRoot),
+      report: reportFromMocha(
+        readTestReport(mochaReportPath, result, RUNNER_NAMES.mocha),
+        options.projectRoot,
+      ),
       result,
-      runnerName: 'Mocha',
+      runnerName: RUNNER_NAMES.mocha,
     });
-    if (!run.failed) await coverage.write();
+    if (!run.failed) {
+      await coverage.write();
+    }
     return run;
   } finally {
     removeTemporary(mochaReportPath);

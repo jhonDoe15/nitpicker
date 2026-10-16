@@ -5,7 +5,9 @@ const MAX_STDERR_LENGTH = 2000;
 
 function fileState(files, file) {
   const known = files.get(file);
-  if (known !== undefined) return known;
+  if (known !== undefined) {
+    return known;
+  }
   const created = { pending: [], loadFailures: [], stderr: '' };
   files.set(file, created);
   return created;
@@ -18,7 +20,9 @@ function failureMessage(error) {
 }
 
 function statusOf(failed, data) {
-  if (data.skip !== undefined || data.todo !== undefined) return 'pending';
+  if (data.skip !== undefined || data.todo !== undefined) {
+    return 'pending';
+  }
   return failed ? 'failed' : 'passed';
 }
 
@@ -52,12 +56,13 @@ function isFileItself(data) {
 
 function record(state, type, data) {
   if (isFileItself(data)) {
-    if (type === 'test:fail') state.loadFailures.push(failureMessage(data.details?.error));
+    if (type === 'test:fail') {
+      state.loadFailures.push(failureMessage(data.details?.error));
+    }
     return;
   }
   const firstChild = state.pending.findIndex(({ nesting }) => nesting > data.nesting);
-  const children =
-    firstChild === -1 ? [] : prefixed(data.name, state.pending.splice(firstChild));
+  const children = firstChild === -1 ? [] : prefixed(data.name, state.pending.splice(firstChild));
   const lifted = children.map((child) => ({ ...child, nesting: data.nesting }));
   const isSuite = data.details?.type === 'suite';
   const subtestsOnly = data.details?.error?.failureType === 'subtestsFailed';
@@ -95,12 +100,16 @@ function testResult(file, state) {
 export function reportFromEvents(events) {
   const files = new Map();
   for (const { type, data } of events) {
-    if (data?.file === undefined) continue;
+    if (data?.file === undefined) {
+      continue;
+    }
     const state = fileState(files, path.resolve(data.file));
     if (type === 'test:stderr' && state.stderr.length < MAX_STDERR_LENGTH) {
       state.stderr = `${state.stderr}${String(data.message)}`.slice(0, MAX_STDERR_LENGTH);
     }
-    if (RESULT_EVENTS.has(type)) record(state, type, data);
+    if (RESULT_EVENTS.has(type)) {
+      record(state, type, data);
+    }
   }
   const testResults = [...files].map(([file, state]) => testResult(file, state));
   const assertions = testResults.flatMap(({ assertionResults }) => assertionResults);

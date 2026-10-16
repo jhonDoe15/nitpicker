@@ -24,8 +24,11 @@ export function tokenize(command) {
 function segments(tokens) {
   const result = [[]];
   for (const token of tokens) {
-    if (typeof token === 'string') result.at(-1).push(token);
-    else result.push([]);
+    if (typeof token === 'string') {
+      result.at(-1).push(token);
+    } else {
+      result.push([]);
+    }
   }
   return result;
 }
@@ -42,9 +45,13 @@ function isRunnerToken(runner, token) {
 function leadingEnvironment(segment) {
   const environment = {};
   for (const token of segment) {
-    if (ENV_WRAPPERS.has(token)) continue;
+    if (ENV_WRAPPERS.has(token)) {
+      continue;
+    }
     const match = ENV_ASSIGNMENT.exec(token);
-    if (match === null) break;
+    if (match === null) {
+      break;
+    }
     environment[match.groups.name] = match.groups.value;
   }
   return environment;
@@ -60,9 +67,13 @@ function nodeFlagsBefore(segment, runnerIndex) {
 const NODE_WRAPPER_ARGUMENTS = { node: [], tsx: ['--import', 'tsx'] };
 
 function nodeTestCommand(segment) {
-  const nodeIndex = segment.findIndex((token) => Object.hasOwn(NODE_WRAPPER_ARGUMENTS, binaryName(token)));
+  const nodeIndex = segment.findIndex((token) =>
+    Object.hasOwn(NODE_WRAPPER_ARGUMENTS, binaryName(token)),
+  );
   const testIndex = segment.indexOf('--test', nodeIndex + 1);
-  if (nodeIndex === -1 || testIndex === -1) return undefined;
+  if (nodeIndex === -1 || testIndex === -1) {
+    return undefined;
+  }
   return {
     environment: leadingEnvironment(segment),
     nodeArguments: [
@@ -73,23 +84,28 @@ function nodeTestCommand(segment) {
   };
 }
 
-export function runnerCommand(command, runner) {
-  if (typeof command !== 'string') return undefined;
-  for (const segment of segments(tokenize(command))) {
-    if (runner === 'node') {
-      const nodeCommand = nodeTestCommand(segment);
-      if (nodeCommand !== undefined) return nodeCommand;
-      continue;
-    }
-    const runnerIndex = segment.findIndex((token) => isRunnerToken(runner, token));
-    if (runnerIndex === -1) continue;
-    return {
-      environment: leadingEnvironment(segment),
-      nodeArguments: nodeFlagsBefore(segment, runnerIndex),
-      arguments_: segment.slice(runnerIndex + 1),
-    };
+function segmentCommand(segment, runner) {
+  if (runner === 'node') {
+    return nodeTestCommand(segment);
   }
-  return undefined;
+  const runnerIndex = segment.findIndex((token) => isRunnerToken(runner, token));
+  if (runnerIndex === -1) {
+    return undefined;
+  }
+  return {
+    environment: leadingEnvironment(segment),
+    nodeArguments: nodeFlagsBefore(segment, runnerIndex),
+    arguments_: segment.slice(runnerIndex + 1),
+  };
+}
+
+export function runnerCommand(command, runner) {
+  if (typeof command !== 'string') {
+    return undefined;
+  }
+  return segments(tokenize(command))
+    .map((segment) => segmentCommand(segment, runner))
+    .find((found) => found !== undefined);
 }
 
 function optionName(token) {
@@ -98,17 +114,19 @@ function optionName(token) {
 }
 
 function droppedIndexes(token, index, valued) {
-  if (!token.startsWith('-') || !valued.has(optionName(token))) return [];
+  if (!token.startsWith('-') || !valued.has(optionName(token))) {
+    return [];
+  }
   return token.includes('=') ? [index] : [index, index + 1];
 }
 
-export function withoutOptions(arguments_, { flags = [], valued = [] }) {
+export function withoutOptions(tokens, { flags = [], valued = [] }) {
   const valuedNames = new Set(valued.map(optionName));
   const flagNames = new Set(flags.map(optionName));
   const dropped = new Set(
-    arguments_.flatMap((token, index) => droppedIndexes(token, index, valuedNames)),
+    tokens.flatMap((token, index) => droppedIndexes(token, index, valuedNames)),
   );
-  return arguments_.filter(
+  return tokens.filter(
     (token, index) =>
       !dropped.has(index) && !(token.startsWith('-') && flagNames.has(optionName(token))),
   );

@@ -2,23 +2,24 @@ import { afterEach, describe, expect, it } from 'vitest';
 import {
   PICK_SOURCE,
   UNCOVERED_ELSE,
-  removeRunnerProjects,
   rulesOf,
   runArea,
-  runnerProject,
+  createRunnerProjects,
 } from '../test-support/runner-project.mjs';
+
+const projects = createRunnerProjects();
 
 const IMPORTS = "import { it } from 'node:test';\nimport assert from 'node:assert/strict';\n";
 
 function nodeTestProject(files, test = 'node --test') {
-  return runnerProject({
+  return projects.project({
     'package.json': { name: 'p', type: 'module', scripts: { test } },
     'src/main/pick.ts': PICK_SOURCE,
     ...files,
   });
 }
 
-afterEach(removeRunnerProjects);
+afterEach(projects.remove);
 
 describe('coverage on a node:test project', () => {
   it('runs the tests with node:test, then CRAP reads the coverage it wrote', async () => {

@@ -16,14 +16,12 @@ export function startV8Coverage(options, command) {
   const sourcesDirectory = temporaryProjectPath(options, 'loaded-sources');
   mkdirSync(coverageDirectory);
   mkdirSync(sourcesDirectory);
-  const nodeOptions = command.environment.NODE_OPTIONS ?? process.env.NODE_OPTIONS ?? '';
   return {
+    nodeArguments: ['--import', LOADED_SOURCES],
     environment: {
-      NODE_ENV: process.env.NODE_ENV ?? 'test',
       ...command.environment,
       NODE_V8_COVERAGE: coverageDirectory,
       NITPICKER_LOADED_SOURCES: sourcesDirectory,
-      NODE_OPTIONS: `${nodeOptions} --import=${LOADED_SOURCES}`.trim(),
     },
     write: () =>
       writeV8Coverage({
@@ -32,6 +30,8 @@ export function startV8Coverage(options, command) {
         sourceFiles: coverageSourceFiles(options),
         outputFile: coverageOutputFile(options),
       }),
-    remove: () => removeTemporary(coverageDirectory, sourcesDirectory),
+    remove: () => {
+      removeTemporary(coverageDirectory, sourcesDirectory);
+    },
   };
 }

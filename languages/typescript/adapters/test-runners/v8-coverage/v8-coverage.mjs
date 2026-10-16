@@ -8,17 +8,19 @@ import { unmappedNodeFilter } from './mapped-nodes.mjs';
 const NODE_RUNNABLE_FILE = /\.[cm]?[jt]s$/u;
 const COMMONJS_FILE = /\.c[jt]s$/u;
 
+const PARSE_OPTIONS = { ecmaVersion: 'latest', locations: true, allowHashBang: true };
+
 function parseExecuted(file, code) {
-  const options = { ecmaVersion: 'latest', locations: true, allowHashBang: true };
-  try {
-    return parse(code, {
-      ...options,
-      sourceType: COMMONJS_FILE.test(file) ? 'script' : 'module',
-      allowReturnOutsideFunction: true,
-    });
-  } catch {
-    return parse(code, { ...options, sourceType: 'script', allowReturnOutsideFunction: true });
+  const sourceTypes = COMMONJS_FILE.test(file) ? ['script'] : ['module', 'script'];
+  const errors = [];
+  for (const sourceType of sourceTypes) {
+    try {
+      return parse(code, { ...PARSE_OPTIONS, sourceType, allowReturnOutsideFunction: true });
+    } catch (error) {
+      errors.push(error);
+    }
   }
+  throw new AggregateError(errors, `it parses neither as ${sourceTypes.join(' nor as ')}`);
 }
 
 function untouchedFunctions(code) {
@@ -72,7 +74,9 @@ function sumCounts(left, right) {
 }
 
 function merged(known, next) {
-  if (known === undefined) return next;
+  if (known === undefined) {
+    return next;
+  }
   return {
     ...known,
     s: sumCounts(known.s, next.s),
@@ -94,7 +98,11 @@ function loadedScripts(coverageDirectory, sourcesDirectory, isCovered) {
   const loaded = readLoadedSources(sourcesDirectory);
   return readdirSync(coverageDirectory)
     .filter((name) => name.endsWith('.json'))
-    .flatMap((name) => coverageScripts(JSON.parse(readFileSync(path.join(coverageDirectory, name), 'utf8'))))
+    .flatMap((name) =>
+      coverageScripts(
+        JSON.parse(readFileSync(path.join(coverageDirectory, path.basename(name)), 'utf8')),
+      ),
+    )
     .filter(({ file }) => file !== undefined && isCovered(file))
     .map((script) => ({ ...script, loaded: loaded.get(script.file) }));
 }
@@ -103,7 +111,9 @@ async function convertedCoverage(scripts) {
   const coverage = new Map();
   for (const script of scripts) {
     const data = await fileCoverage(script);
-    if (data !== undefined) coverage.set(script.file, merged(coverage.get(script.file), data));
+    if (data !== undefined) {
+      coverage.set(script.file, merged(coverage.get(script.file), data));
+    }
   }
   return coverage;
 }

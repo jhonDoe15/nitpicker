@@ -74,15 +74,22 @@ describe('the node:test report', () => {
 
   it('reports a test file that could not load with the error it printed', () => {
     const report = reportFromEvents([
-      { type: 'test:stderr', data: { file: 'test/a.test.ts', message: 'boot\nError: Cannot find package "x"\n' } },
+      {
+        type: 'test:stderr',
+        data: { file: 'test/a.test.ts', message: 'boot\nError: Cannot find package "x"\n' },
+      },
       event('test:fail', 'test/a.test.ts', 0, failure('test failed')),
     ]);
 
     expect(report.numFailedTests).toBe(0);
-    expect(report.testResults[0]).toMatchObject({
-      status: 'failed',
-      assertionResults: [],
-    });
-    expect(report.testResults[0].message.split('\n')[0]).toBe('Error: Cannot find package "x"');
+    expect(report.testResults).toEqual([
+      {
+        name: file,
+        status: 'failed',
+        message:
+          'Error: Cannot find package "x"\ntest failed\nboot\nError: Cannot find package "x"\n',
+        assertionResults: [],
+      },
+    ]);
   });
 });

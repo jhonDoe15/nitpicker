@@ -18,7 +18,10 @@ export function coverageOutputFile(options) {
 }
 
 export function temporaryProjectPath(options, name) {
-  const filePath = path.join(options.projectRoot, `.nitpicker-diff-${name}`);
+  const filePath = path.resolve(options.projectRoot, `.nitpicker-diff-${name}`);
+  if (!filePath.startsWith(`${options.projectRoot}${path.sep}`)) {
+    throw new Error(`Temporary test file is outside the project: ${filePath}`);
+  }
   if (existsSync(filePath)) {
     throw new Error(`Temporary test file already exists: ${filePath}`);
   }
@@ -85,7 +88,11 @@ function isFailing(report) {
 }
 
 export function readRun({ reportPath, result, runnerName }) {
-  return finishedRun({ report: readTestReport(reportPath, result, runnerName), result, runnerName });
+  return finishedRun({
+    report: readTestReport(reportPath, result, runnerName),
+    result,
+    runnerName,
+  });
 }
 
 export function finishedRun({ report, result, runnerName }) {

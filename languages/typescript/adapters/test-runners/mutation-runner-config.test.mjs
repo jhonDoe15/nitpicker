@@ -35,19 +35,25 @@ describe('the Stryker runner for each test runner', () => {
   it('runs Jest with its own config and leaves type errors to the checker', () => {
     const config = configFor('jest', ['--config', 'jest.unit.js'], ['--experimental-vm-modules']);
 
-    expect(config).toMatchObject({
+    expect({
+      ...config,
+      plugins: config.plugins.map((plugin) => plugin.split('/').at(-4)),
+    }).toEqual({
+      mutate: ['src/**/*.ts'],
+      plugins: ['jest-runner', 'typescript-checker'],
       testRunner: 'jest',
-      disableTypeChecks: true,
+      checkers: ['typescript'],
+      tsconfigFile: '.nitpicker-diff-tsconfig.stryker.json',
       testRunnerNodeArgs: ['--experimental-vm-modules'],
       jest: { projectType: 'custom', enableFindRelatedTests: false, configFile: 'jest.unit.js' },
-      tsconfigFile: '.nitpicker-diff-tsconfig.stryker.json',
+      disableTypeChecks: true,
     });
-    expect(config.vitest).toBeUndefined();
-    expect(config.plugins[0]).toMatch(/jest-runner/u);
   });
 
   it('gives Mocha the specs and requires of the test script plus the test files', () => {
-    expect(configFor('mocha', ['--require=test/env.js', '-r', 'x', '--ui', 'tdd', 'test/']).mochaOptions).toEqual({
+    expect(
+      configFor('mocha', ['--require=test/env.js', '-r', 'x', '--ui', 'tdd', 'test/']).mochaOptions,
+    ).toEqual({
       require: ['test/env.js', 'x'],
       ui: 'tdd',
       spec: ['test/', 'test/a.test.ts'],

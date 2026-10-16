@@ -35,7 +35,7 @@ const ENGINES = new Map([
       key: 'runner',
       values: TEST_RUNNERS,
       meaning:
-        'It names the runner that runs the project\'s tests; without it nitpicker uses the runner the project\'s test script, config files or dependencies name',
+        "It names the runner that runs the project's tests; without it nitpicker uses the runner the project's test script, config files or dependencies name",
     },
   ],
 ]);

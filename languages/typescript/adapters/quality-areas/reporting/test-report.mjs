@@ -39,8 +39,9 @@ export function readTestReport(reportPath, result, runnerName) {
   try {
     return JSON.parse(readFileSync(reportPath, 'utf8'));
   } catch (error) {
+    const reason = error instanceof Error ? error.message : String(error);
     throw new Error(
-      `${runnerName} exited ${String(result.status)} without a readable test report: ${error instanceof Error ? error.message : String(error)}${formatProcessOutput(result)}`,
+      `${runnerName} exited ${String(result.status)} without a readable test report: ${reason}${formatProcessOutput(result)}`,
       { cause: error },
     );
   }
