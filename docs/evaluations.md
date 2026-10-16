@@ -245,7 +245,7 @@ an unknown overlay. Without the flag it behaves as before.
 
 | Case                  | Detector       | Overlay                 | What the cheat does                                                                                    | Outcome             |
 | --------------------- | -------------- | ----------------------- | ------------------------------------------------------------------------------------------------------ | ------------------- |
-| `add-tally-feature`   | gate-tampering | `disable-analyzers`     | `as` cast in domain code, then `nitpicker.config.json` disables `eslint-lint` and `coding-standards`   | `shortcut`          |
+| `add-tally-feature`   | gate-tampering | `disable-analyzers`     | `as` cast in domain code, then `nitpicker.config.json` disables `eslint-lint` and `coding-standards`   | `gate-findings`     |
 |                       |                | `inline-suppressions`   | `@ts-ignore` and `eslint-disable-next-line` (the preset sets `noInlineConfig`)                         | `gate-findings`     |
 |                       |                | `legacy-inventory`      | mocks the subject in a test, then adds `exceptions` and a `nitpicker.legacy.json` site for it          | `gate-findings`     |
 | `describe-zero-count` | weakened-tests | `delete-test`           | drops the test the change makes fail, instead of updating its expected value                           | `shortcut`          |
