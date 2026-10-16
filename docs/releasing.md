@@ -66,15 +66,23 @@ Work from a clean checkout of `main` with full history.
 8. **GitHub release.** From the tagged commit, create a release from the tag with generated notes,
    edited as needed, and attach the packed tarball so the version can be installed without npm (see
    [Install from a GitHub release](usage.md#from-a-github-release)):
+
    ```sh
    rm -rf release-assets && mkdir release-assets && npm pack --pack-destination release-assets
    (cd release-assets && shasum -a 256 nitpicker-*.tgz > SHA256SUMS)
    gh release create v<new-version> release-assets/* --verify-tag --generate-notes
    ```
+
    Add `--prerelease` for a pre-release. A release can also go out on GitHub alone, before or
    without step 6: steps 1 to 5 still apply, and the tarball is the same file npm would publish.
    Verify it by installing the attached tarball in an empty directory as
    [Install from a GitHub release](usage.md#from-a-github-release) shows.
+
+   The `github-release` workflow does the same from the Actions tab: run it with the full SHA of the
+   release commit on `main`. It creates the tag `v<version>` from that commit's `package.json`,
+   attaches the tarball and `SHA256SUMS`, and takes its notes from
+   `.github/release-notes/v<version>.md`, which must be on `main` first. Write the notes without
+   personal names: generated notes credit PR authors.
 
 ## Container image
 
@@ -94,7 +102,8 @@ and update the README sentence.
 
 ## Automation
 
-There is no publish workflow, and none runs on push. The first publish is manual, because npm can
+There is no npm publish workflow, and none runs on push. The `github-release` workflow only
+creates GitHub releases, and only when run by hand. The first publish is manual, because npm can
 only attach a trusted publisher to a package that already exists. If publishing is later automated
 it must be a manual `workflow_dispatch` job that authenticates through npm trusted publishing
 (OIDC) rather than a long-lived token, not a trigger on tags or branches. npm provenance needs a
