@@ -1,26 +1,34 @@
 import { existsSync, readdirSync, readFileSync, realpathSync } from 'node:fs';
 import path from 'node:path';
-import { readCouplingFindings } from '../metrics/java-coupling.mjs';
 import { ingestCheckstyle } from '../../ingest/formatting/checkstyle.mjs';
 import { ingestArchunit } from '../../ingest/archunit.mjs';
 import { ingestCrap } from '../../ingest/crap.mjs';
 import { readDuplicateFindings } from '../metrics/java-duplicates.mjs';
+import { readKotlinDuplicateFindings } from '../kotlin/kotlin-duplicates.mjs';
+import {
+  dropEntityAssociations,
+  dropInheritedVersions,
+  withExposureAdvice,
+} from '../jpa/jpa-source-filters.mjs';
+import {
+  isEmptyModule,
+  readMainCheckstyle,
+  readModuleJacoco,
+  readReportModules,
+} from '../gradle-reports/report-modules.mjs';
 import { readErrorProneFindings } from '../errorprone/java-errorprone.mjs';
 import { readInlineSuppressionFindings } from '../suppressions/java-suppressions.mjs';
 import { readSpringConfigFindings } from '../spring/java-spring.mjs';
-import {
-  methodText,
-  readJavaFileLimitFindings,
-  readJavaStructureFindings,
-} from '../metrics/java-structure.mjs';
+import { methodText, readJavaStructureFindings } from '../metrics/java-structure.mjs';
 import { hash } from '../../../../shared/rules/finding-helpers.mjs';
 import { ingestFormatCheck } from '../../ingest/formatting/format-check.mjs';
+import { readSlowTestFindings } from '../test-times/slow-tests.mjs';
 import { ingestJacoco } from '../../ingest/coverage-reports/jacoco.mjs';
 import { ingestPit } from '../../ingest/pit.mjs';
 import { ingestJacocoBranches } from '../../ingest/coverage-reports/jacoco-branches.mjs';
 import { ingestSarif, prepareSarif, projectRelative } from '../../ingest/sarif.mjs';
+import { projectWideFindings } from '../../builds/project-wide.mjs';
 import { applyRuleMessages } from '../../messages/rule-messages.mjs';
-import { kotlinModules, readKotlinMetrics } from '../kotlin/kotlin-metrics.mjs';
 import {
   jacocoSourceRoots,
   readKotlinFindings,
@@ -29,127 +37,155 @@ import {
   sourceLocator,
 } from './kotlin-reports.mjs';
 
-export const REPORT_DIRECTORY = 'build/nitpicker';
 const LINE_NUMBER = /\bline \d+\b/g;
+const CHECKSTYLE_SOURCE_SET_REPORT = /^checkstyle-.+\.xml$/u;
+const MODULE_IDENTITY_SEPARATOR = '@';
+const ROOT_MODULE = 'root';
+const PROJECT_REPORTS = 'project';
 
-export function readJavaFindings(
-  projectRoot,
-  {
-    crapLimit,
-    preset = 'java',
-    fileLimits,
-    exclude,
-    exceptions,
-    reportDirectory = REPORT_DIRECTORY,
-    projectWide = true,
-  } = {},
-) {
-  const kotlin = preset === 'kotlin';
-  const reportRoot = path.join(projectRoot, reportDirectory);
-  const manifest = readManifest(projectRoot, { reportDirectory, preset });
-  const context = {
-    projectRoot,
-    reportRoot,
-    manifest,
-    sourceRoots: manifest.sourceRoots ?? [],
-    lintedRoots: lintedRoots(manifest),
-    roots: projectRoots(projectRoot),
-    kotlin,
-    jacoco: readJacoco(manifest, reportRoot),
-  };
-  const { jacoco } = context;
+export function readJavaFindings(projectRoot, options = {}) {
+  const { reportBase, report, preset = 'java', projectWide = true } = options;
+  const kotlinPreset = preset === 'kotlin';
+  const { modules, manifest } = report ?? readReportModules(reportBase, preset);
+  if (kotlinPreset) {
+    requireKotlinManifest(manifest);
+  }
+  const moduleFindings = modules
+    .filter((module) => !isEmptyModule(projectRoot, module))
+    .flatMap((module) =>
+      withModuleIdentity(moduleContextFindings(projectRoot, module, { manifest, options }), module),
+    );
   return {
     findings: applyRuleMessages(
       [
-        ...sarifFindings(context),
-        ...readErrorProneFindings(context),
-        ...formatFindings(context),
-        ...checkstyleFindings(context),
-        ...readDuplicateFindings(reportRoot),
-        ...ifTested(jacoco, (report) => jacocoFindings(context, report)),
-        ...archunitFindings(context),
-        ...ifTested(jacoco, (report) => crapFindings(context, report, crapLimit)),
-        ...pitFindings(context),
-        ...readJavaStructureFindings(reportRoot, projectRoot),
-        ...(projectWide ? projectWideFindings(context, { fileLimits, exclude, exceptions }) : []),
-        ...ifTested(jacoco, (report) => branchFindings(context, report)),
-        ...(kotlin ? readKotlinFindings(context, crapLimit) : []),
-        ...readInlineSuppressionFindings(projectRoot, context.lintedRoots),
-        ...springFindings(context),
+        ...moduleFindings,
+        ...readDuplicateFindings(reportBase),
+        ...(kotlinPreset ? readKotlinDuplicateFindings(reportBase) : []),
+        ...(projectWide
+          ? projectWideFindings(projectRoot, {
+              projects: modules.map((module) => ({
+                reportRoot: module.reportRoot,
+                qualifier: module.key === ROOT_MODULE ? '' : module.dir,
+                sourceRoots: module.manifest.sourceRoots ?? [],
+              })),
+              mergedRoot: path.join(reportBase, PROJECT_REPORTS),
+              manifest,
+              kotlin: kotlinPreset,
+              policy: options,
+            })
+          : []),
+        ...readInlineSuppressionFindings(projectRoot, lintedRoots(manifest)),
+        ...springFindings(projectRoot, manifest),
       ],
       { preset },
     ),
   };
 }
 
-function readJacoco(manifest, reportRoot) {
-  return manifest.testsFailed === true
-    ? undefined
-    : readFileSync(path.join(reportRoot, 'jacoco.xml'), 'utf8');
+function moduleContextFindings(projectRoot, module, { manifest, options }) {
+  const preset = options.preset ?? 'java';
+  return readModuleFindings(
+    {
+      projectRoot,
+      roots: projectRoots(projectRoot),
+      reportRoot: module.reportRoot,
+      manifest: module.manifest,
+      sourceRoots: module.manifest.sourceRoots ?? [],
+      lintedRoots: lintedRoots(module.manifest),
+      allSourceRoots: manifest.sourceRoots,
+      kotlin: preset === 'kotlin' && module.manifest.kotlin === true,
+      jacoco: module.manifest.testsFailed === true ? undefined : readModuleJacoco(module, preset),
+      mainCheckstyle: readMainCheckstyle(projectRoot, module, preset),
+      testTimes: {
+        limits: options.testSeconds,
+        baseline: options.baseline,
+        modulePath: options.modulePath,
+      },
+    },
+    options.crapLimit,
+  );
 }
 
 function ifTested(jacoco, build) {
   return jacoco === undefined ? [] : build(jacoco);
 }
 
-function readManifest(projectRoot, { reportDirectory, preset }) {
-  if (reportDirectory === REPORT_DIRECTORY) {
-    requireGradleReports(projectRoot, preset);
-  }
-  const manifest = JSON.parse(
-    readFileSync(path.join(projectRoot, reportDirectory, 'manifest.json'), 'utf8'),
-  );
-  if (preset === 'kotlin') {
-    requireKotlinManifest(manifest);
-  }
-  return manifest;
-}
-
-function projectWideFindings(context, { fileLimits, exclude, exceptions }) {
-  const { projectRoot, reportRoot, manifest, kotlin } = context;
+function readModuleFindings(context, crapLimit) {
+  const { reportRoot, projectRoot, kotlin, jacoco } = context;
   return [
-    ...readJavaFileLimitFindings(projectRoot, {
-      manifest,
-      kotlin,
-      policy: { thresholds: fileLimits, exclude, exceptions },
-    }),
-    ...readCouplingFindings(reportRoot, {
+    ...sarifFindings(context),
+    ...readErrorProneFindings(context),
+    ...formatFindings(context),
+    ...checkstyleFindings(context),
+    ...ifTested(jacoco, (report) => jacocoFindings(context, report)),
+    ...archunitFindings(context),
+    ...ifTested(jacoco, (report) => crapFindings(context, report, crapLimit)),
+    ...pitFindings(context),
+    ...readJavaStructureFindings(reportRoot, projectRoot),
+    ...ifTested(jacoco, (report) => branchFindings(context, report)),
+    ...(kotlin ? readKotlinFindings(context, crapLimit) : []),
+    ...readSlowTestFindings({
+      reportRoot,
       projectRoot,
-      sourceRoots: context.sourceRoots,
-      kotlin: kotlin ? kotlinModules(readKotlinMetrics(reportRoot)) : undefined,
+      testRoots: [
+        ...(context.manifest.testSourceRoots ?? []),
+        ...(context.manifest.kotlinTestSourceRoots ?? []),
+      ],
+      ...context.testTimes,
     }),
   ];
+}
+
+function withModuleIdentity(findings, module) {
+  return module.key === ROOT_MODULE
+    ? findings
+    : findings.map((finding) =>
+        finding.path === '.'
+          ? {
+              ...finding,
+              identity: `${finding.identity}${MODULE_IDENTITY_SEPARATOR}${module.path}`,
+            }
+          : finding,
+      );
 }
 
 function lintedRoots({ sourceRoots = [], testSourceRoots = [] }) {
   return [...new Set([...sourceRoots, ...testSourceRoots])];
 }
 
-export function requireGradleReports(projectRoot, preset) {
-  if (!existsSync(path.join(projectRoot, REPORT_DIRECTORY, 'manifest.json'))) {
-    const plugin = preset === 'kotlin' ? 'org.jetbrains.kotlin.jvm' : 'java';
-    throw new Error(
-      `The ${preset} preset found no Gradle reports in ${REPORT_DIRECTORY}: the root project must apply the ${plugin} plugin. Reports of submodules are not read`,
-    );
-  }
-}
-
-function springFindings({ projectRoot, manifest, sourceRoots }) {
+function springFindings(projectRoot, manifest) {
   return manifest.spring === true
-    ? readSpringConfigFindings(projectRoot, { sourceRoots, resourceRoots: manifest.resourceRoots })
+    ? readSpringConfigFindings(projectRoot, {
+        sourceRoots: manifest.sourceRoots,
+        resourceRoots: manifest.resourceRoots,
+      })
     : [];
 }
 
-function sarifFindings({ reportRoot, roots, sourceRoots, projectRoot }) {
-  const findings = [];
-  function sarif(file, tool, identityKey) {
-    const log = JSON.parse(readFileSync(path.join(reportRoot, file), 'utf8'));
-    const normalized = prepareSarif(log, { roots, sourceRoots, projectRoot, identityKey });
-    findings.push(...ingestSarif(normalized, { tool }).findings);
-  }
-  sarif('pmd.sarif', 'pmd', (result) => result.message?.text?.replace(LINE_NUMBER, 'line'));
-  sarif('spotbugs.sarif', 'spotbugs', (result) => spotbugsSubject(result));
-  return findings;
+function preparedReport(file, { reportRoot, roots, sourceRoots, projectRoot }, identityKey) {
+  return prepareSarif(JSON.parse(readFileSync(path.join(reportRoot, file), 'utf8')), {
+    roots,
+    sourceRoots,
+    projectRoot,
+    identityKey,
+  });
+}
+
+function sarifFindings(context) {
+  const { allSourceRoots, projectRoot } = context;
+  const pmd = preparedReport('pmd.sarif', context, (result) =>
+    result.message?.text?.replace(LINE_NUMBER, 'line'),
+  );
+  const spotbugs = preparedReport('spotbugs.sarif', context, spotbugsSubject);
+  return [
+    ...dropInheritedVersions(ingestSarif(pmd, { tool: 'pmd' }).findings, {
+      projectRoot,
+      sourceRoots: allSourceRoots,
+    }),
+    ...ingestSarif(dropEntityAssociations(spotbugs, projectRoot), {
+      tool: 'spotbugs',
+    }).findings.map(withExposureAdvice),
+  ];
 }
 
 function formatFindings({ reportRoot, roots }) {
@@ -162,19 +198,20 @@ function formatFindings({ reportRoot, roots }) {
   }).findings;
 }
 
-function checkstyleFindings({ reportRoot, roots, projectRoot }) {
-  const testReport = path.join(reportRoot, 'checkstyle-test.xml');
-  return [
-    path.join(reportRoot, 'checkstyle.xml'),
-    ...(existsSync(testReport) ? [testReport] : []),
-  ].flatMap((report) => {
-    const checkstyle = readFileSync(report, 'utf8');
-    return roots.flatMap((root) =>
-      ingestCheckstyle(checkstyle, { root }).findings.filter((finding) =>
-        existsSync(path.join(projectRoot, finding.path)),
+function checkstyleFindings({ reportRoot, roots, projectRoot, mainCheckstyle }) {
+  const sourceSetReports = readdirSync(reportRoot)
+    .filter((name) => CHECKSTYLE_SOURCE_SET_REPORT.test(name))
+    .sort()
+    .map((name) => readFileSync(path.join(reportRoot, name), 'utf8'));
+  return [mainCheckstyle, ...sourceSetReports]
+    .filter(Boolean)
+    .flatMap((checkstyle) =>
+      roots.flatMap((root) =>
+        ingestCheckstyle(checkstyle, { root }).findings.filter((finding) =>
+          existsSync(path.join(projectRoot, finding.path)),
+        ),
       ),
     );
-  });
 }
 
 function jacocoFindings(context, jacoco) {

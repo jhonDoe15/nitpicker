@@ -1,5 +1,6 @@
 import { spawnSync } from 'node:child_process';
-import { existsSync, readFileSync } from 'node:fs';
+import { existsSync, mkdtempSync, readFileSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
 import path from 'node:path';
 import {
   isTestResultFinding,
@@ -12,21 +13,24 @@ import { readChangedLines } from '../../../core/diff/git/patches/changed-lines.m
 import { readRenameMap } from '../../../core/diff/git/patches/project-moves.mjs';
 import { withTemporaryWorktree } from '../../../core/diff/git/repository/worktree.mjs';
 import { gradleTarget } from './gradle-wrapper/gradle-command.mjs';
+import { condenseFailure } from './gradle-wrapper/failure-text.mjs';
 import { runJavaDuplicates } from './metrics/java-duplicates.mjs';
 import { runKotlinDuplicates } from './kotlin/kotlin-duplicates.mjs';
 import { applyJavaPolicy } from './java-policy.mjs';
 import { withoutOverlaps } from './overlaps/static-overlaps.mjs';
 import { PROJECT_TOOL_CONFIGS } from './gradle-presets.mjs';
-import { REPORT_DIRECTORY, requireGradleReports } from './reporting/java-reports.mjs';
-import { MAVEN_REPORT_DIRECTORY, runMavenPreset } from '../maven/maven-build.mjs';
+import { readJavaFindings } from './reporting/java-reports.mjs';
+import { readReportModules } from './gradle-reports/report-modules.mjs';
+import { runMavenPreset, MAVEN_REPORT_DIRECTORY } from '../maven/maven-build.mjs';
 import { detectJavaBuild, INIT_SCRIPT } from '../builds/java-build.mjs';
-import { readModuleFindings } from '../builds/java-modules.mjs';
+import { moduleReport, readModuleFindings } from '../builds/java-modules.mjs';
 import { kotlinGradleArguments } from './kotlin/kotlin-tools.mjs';
 import { gradleFailure, isBaseTestFailure, testsFailedFinding } from './red-base/tests-failed.mjs';
 import { isJavaTouchedRule } from './touched-rules.mjs';
 
 const GRADLE_TIMEOUT_MS = 15 * 60 * 1000;
 const MAX_OUTPUT_BYTES = 50 * 1024 * 1024;
+const MAX_FAILURE_LENGTH = 3500;
 
 function kotlinProperties(projectRoot, { preset, kotlinFormatter, kotlinDetektConfig, snapshot }) {
   return preset === 'kotlin'
@@ -68,7 +72,7 @@ export function toolConfigProperties(projectRoot, policy = {}) {
 
 function runJavaPreset(
   projectRoot,
-  { gradle, initScript = INIT_SCRIPT, policy = {}, testsFailed = false } = {},
+  { gradle, initScript = INIT_SCRIPT, policy = {}, reportBase, testsFailed = false } = {},
 ) {
   const target = gradleTarget({
     projectRoot,
@@ -77,6 +81,7 @@ function runJavaPreset(
       '--console=plain',
       '--quiet',
       '--no-configuration-cache',
+      `-Pnitpicker.reportDir=${reportBase}`,
       ...(testsFailed ? ['-Pnitpicker.testsFailed=true'] : []),
       ...kotlinProperties(projectRoot, policy),
       ...toolConfigProperties(projectRoot, policy),
@@ -96,8 +101,9 @@ function runJavaPreset(
     throw result.error;
   }
   if (result.status !== 0) {
-    const detail = result.stderr.trim() || result.stdout.trim() || 'no diagnostic output';
-    throw gradleFailure(projectRoot, detail);
+    const raw = result.stderr.trim() === '' ? result.stdout : result.stderr;
+    const detail = condenseFailure(raw, MAX_FAILURE_LENGTH) || 'no diagnostic output';
+    throw gradleFailure(projectRoot, detail, raw);
   }
 }
 
@@ -114,49 +120,84 @@ function runGradleOrNoteFailingTests(projectRoot, options) {
   }
 }
 
-function buildModules(projectRoot, options) {
-  if (detectJavaBuild(projectRoot) === 'maven') {
-    const { moduleDirs, testsFailure } = runMavenPreset(projectRoot, {
-      maven: options.maven,
-      policy: options.policy,
-      configs: toolConfigChoices(projectRoot, options.policy),
-    });
-    return {
-      moduleDirs,
-      reportDirectory: MAVEN_REPORT_DIRECTORY,
-      testsFailure: testsFailure === undefined ? undefined : { detail: testsFailure },
-    };
+function withoutReportBase(error, reportBase) {
+  return error instanceof Error && error.message.includes(reportBase)
+    ? new Error(error.message.replaceAll(reportBase, '<report directory>'), { cause: error })
+    : error;
+}
+
+function readOptions(policy = {}) {
+  return {
+    crapLimit: policy.crapLimit,
+    preset: policy.preset ?? 'java',
+    fileLimits: policy.fileLimits,
+    exclude: policy.exclude,
+    exceptions: policy.exceptions,
+    testSeconds: policy.testSeconds,
+    baseline: { snapshot: policy.snapshot, baselineRoot: policy.baselineRoot },
+  };
+}
+
+function gradleFindings(projectRoot, options, reportBase) {
+  const preset = options.policy?.preset ?? 'java';
+  const testsFailure = runGradleOrNoteFailingTests(projectRoot, { ...options, reportBase });
+  const report = readReportModules(reportBase, preset);
+  runJavaDuplicates(projectRoot, { reportRoot: reportBase, manifest: report.manifest });
+  if (preset === 'kotlin') {
+    runKotlinDuplicates(projectRoot, { reportRoot: reportBase, manifest: report.manifest });
   }
-  const testsFailure = runGradleOrNoteFailingTests(projectRoot, options);
-  requireGradleReports(projectRoot, options.policy?.preset ?? 'java');
-  return { moduleDirs: [projectRoot], reportDirectory: REPORT_DIRECTORY, testsFailure };
+  return {
+    findings: readJavaFindings(projectRoot, { ...readOptions(options.policy), reportBase, report })
+      .findings,
+    testsFailure,
+  };
+}
+
+function withGradleReports(projectRoot, options) {
+  const reportBase =
+    options.reportDirectory ?? mkdtempSync(path.join(tmpdir(), 'nitpicker-java-reports-'));
+  try {
+    return gradleFindings(projectRoot, options, reportBase);
+  } catch (error) {
+    throw withoutReportBase(error, reportBase);
+  } finally {
+    if (options.reportDirectory === undefined) {
+      rmSync(reportBase, { recursive: true, force: true });
+    }
+  }
+}
+
+function mavenFindings(projectRoot, options) {
+  const { moduleDirs, testsFailure } = runMavenPreset(projectRoot, {
+    maven: options.maven,
+    policy: options.policy,
+    configs: toolConfigChoices(projectRoot, options.policy),
+  });
+  for (const moduleDir of moduleDirs) {
+    const { reportBase, report } = moduleReport(moduleDir, MAVEN_REPORT_DIRECTORY);
+    runJavaDuplicates(moduleDir, { reportRoot: reportBase, manifest: report.manifest });
+  }
+  return {
+    findings: readModuleFindings(projectRoot, moduleDirs, {
+      ...readOptions(options.policy),
+      reportDirectory: MAVEN_REPORT_DIRECTORY,
+    }),
+    testsFailure: testsFailure === undefined ? undefined : { detail: testsFailure },
+  };
 }
 
 export function collectJavaFindings(root, options = {}) {
   const projectRoot = path.resolve(root);
+  const { findings, testsFailure } =
+    detectJavaBuild(projectRoot) === 'maven'
+      ? mavenFindings(projectRoot, options)
+      : withGradleReports(projectRoot, options);
   const preset = options.policy?.preset ?? 'java';
-  const { moduleDirs, reportDirectory, testsFailure } = buildModules(projectRoot, options);
-  for (const moduleDir of moduleDirs) {
-    runJavaDuplicates(moduleDir, { reportDirectory });
-  }
-  if (preset === 'kotlin') {
-    runKotlinDuplicates(projectRoot);
-  }
-  const { findings } = parseAnalyzerReport(
-    {
-      findings: readModuleFindings(projectRoot, moduleDirs, {
-        reportDirectory,
-        crapLimit: options.policy?.crapLimit,
-        preset,
-        fileLimits: options.policy?.fileLimits,
-        exclude: options.policy?.exclude,
-        exceptions: options.policy?.exceptions,
-      }),
-    },
-    preset,
-  );
-  const policed = applyJavaPolicy(findings, options.policy, (reported) =>
-    withoutOverlaps(reported, { readSource: (file) => sourceText(projectRoot, file) }),
+  const policed = applyJavaPolicy(
+    parseAnalyzerReport({ findings }, preset).findings,
+    options.policy,
+    (reported) =>
+      withoutOverlaps(reported, { readSource: (file) => sourceText(projectRoot, file) }),
   );
   return testsFailure === undefined
     ? policed

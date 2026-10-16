@@ -14,10 +14,11 @@ import { ingestMypy, ingestPyright } from '../ingest/type-check.mjs';
 import { applyRuleHints } from '../rules/rule-hints.mjs';
 import { RULES_REPORT } from './analysis/python-ast-rules.mjs';
 import { readCouplingFindings } from './analysis/python-coupling.mjs';
-import { LIZARD_REPORT, readPythonCrapFindings } from './mutation/python-crap.mjs';
+import { readPythonCrapFindings } from './mutation/python-crap.mjs';
 import { readImportLinterFindings } from './analysis/python-import-linter.mjs';
 import {
   pythonFileLimitFindings,
+  readPythonFunctions,
   readPythonStructureFindings,
 } from './analysis/python-structure.mjs';
 import { COVERAGE_REPORT, FORMAT_REPORT, MANIFEST_REPORT, RUFF_REPORT } from './python-tools.mjs';
@@ -40,7 +41,7 @@ function testResultFindings({ reportRoot, projectRoot, roots, crapLimit, manifes
   return [
     ...ingestCoverageJson(coverage, { roots }).findings,
     ...readPythonCrapFindings({
-      lizard: readReport(reportRoot, LIZARD_REPORT),
+      functions: readPythonFunctions(reportRoot),
       coverage,
       projectRoot,
       roots,
@@ -91,10 +92,14 @@ export function ruffFindings(log, { roots, projectRoot }) {
   return ingestSarif(prepared, { tool: 'ruff' }).findings;
 }
 
-const TYPE_INGESTERS = { mypy: ingestMypy, pyright: ingestPyright };
+const TYPE_INGESTERS = {
+  mypy: (output, roots) => ingestMypy(output, { roots }),
+  pyright: (output, roots) => ingestPyright(output, { roots }),
+  basedpyright: (output, roots) => ingestPyright(output, { roots, tool: 'basedpyright' }),
+};
 
 export function typeFindings({ checker, output }, roots) {
-  return TYPE_INGESTERS[checker](output, { roots });
+  return TYPE_INGESTERS[checker](output, roots);
 }
 
 function noTestsFinding() {

@@ -4,9 +4,9 @@ const TEST_TASK_FAILED =
   /Execution failed for task '[^']*:test'|Execution failed for task '[^']*'\.\s+> There were failing tests/u;
 const MAX_MESSAGE_LENGTH = 4000;
 
-export function gradleFailure(projectRoot, detail) {
+export function gradleFailure(projectRoot, detail, raw = detail) {
   return Object.assign(new Error(`Java preset failed in ${projectRoot}: ${detail}`), {
-    testsFailed: TEST_TASK_FAILED.test(detail),
+    testsFailed: TEST_TASK_FAILED.test(raw),
     detail,
   });
 }

@@ -38,7 +38,7 @@ function classFiles(directory) {
     : [];
 }
 
-function freshReports(directory, since) {
+export function freshReports(directory, since) {
   return existsSync(directory)
     ? readdirSync(directory)
         .filter((name) => /^TEST-.*\.xml$/u.test(name))
@@ -47,13 +47,13 @@ function freshReports(directory, since) {
     : [];
 }
 
-function reportsOf(module, since) {
-  return [module.surefireReports, module.failsafeReports]
-    .filter((directory) => directory !== undefined)
-    .flatMap((directory) => freshReports(directory, since));
+export function testReportDirectories(module) {
+  const surefire = ['surefire', module.surefireReports];
+  const shared = path.resolve(module.failsafeReports) === path.resolve(module.surefireReports);
+  return shared ? [surefire] : [surefire, ['failsafe', module.failsafeReports]];
 }
 
-function suiteNameOf(report) {
+export function suiteNameOf(report) {
   return path.basename(report).replace(/^TEST-|\.xml$/gu, '');
 }
 
@@ -86,7 +86,7 @@ function listedFailures(failures) {
   return [...listed, ...more];
 }
 
-function failuresOf({ module, reports, reportDir, isArchunit }) {
+function failuresOf({ reports, reportDir, isArchunit }) {
   const archunitDir = path.join(reportDir, 'archunit');
   return reports.flatMap((report) => {
     if (!isArchunit(suiteNameOf(report))) {
@@ -99,8 +99,10 @@ function failuresOf({ module, reports, reportDir, isArchunit }) {
 }
 
 export function collectTestResults({ module, reportDir, since, isArchunit, tolerateFailures }) {
-  const reports = reportsOf(module, since);
-  const failures = failuresOf({ module, reports, reportDir, isArchunit });
+  const reports = testReportDirectories(module).flatMap(([, directory]) =>
+    freshReports(directory, since),
+  );
+  const failures = failuresOf({ reports, reportDir, isArchunit });
   requireArchunitRun(module, reports, isArchunit);
   const testsRan = reports.length > 0;
   if (failures.length === 0) {
@@ -124,19 +126,27 @@ function requireArchunitRun(module, reports, isArchunit) {
   const archunitClasses = topLevelClasses(module.testOutputDirectory).filter(isArchunit);
   if (archunitClasses.length > 0 && !reports.some((report) => isArchunit(suiteNameOf(report)))) {
     throw new Error(
-      `maven-surefire-plugin ran none of the ArchUnit classes in ${module.basedir} (${archunitClasses.join(', ')}). Let surefire run them (its <includes>, no skipTests) so nitpicker can read their results`,
+      `Neither maven-surefire-plugin nor maven-failsafe-plugin ran any of the ArchUnit classes in ${module.basedir} ` +
+        `(${archunitClasses.join(', ')}). Let surefire run them (its <includes>, no skipTests) ` +
+        'so nitpicker can read their results',
     );
   }
 }
 
-export function runJacocoReport({ module, reportDir, tools, execFile, since, testsRan }) {
+export function freshExecFiles(execFiles, since) {
+  return [...new Set(execFiles)].filter(
+    (file) => existsSync(file) && statSync(file).mtimeMs >= since,
+  );
+}
+
+export function runJacocoReport({ module, reportDir, tools, execFiles, since, testsRan }) {
   const report = path.join(reportDir, 'jacoco.xml');
   if (classFiles(module.outputDirectory).length === 0) {
     writeFileSync(report, `<?xml version="1.0"?><report name="${module.coordinates}"></report>`);
     return;
   }
-  const fresh = existsSync(execFile) && statSync(execFile).mtimeMs >= since;
-  if (!fresh && testsRan) {
+  const fresh = freshExecFiles(execFiles, since);
+  if (fresh.length === 0 && testsRan) {
     throw new Error(
       `JaCoCo recorded no coverage in ${module.basedir}: the tests ran without its agent. If maven-surefire-plugin sets <argLine>, start it with @{argLine} so the agent stays attached`,
     );
@@ -147,7 +157,7 @@ export function runJacocoReport({ module, reportDir, tools, execFile, since, tes
     mainClass: 'org.jacoco.cli.internal.Main',
     args: [
       'report',
-      ...(fresh ? [execFile] : []),
+      ...fresh,
       '--classfiles',
       module.outputDirectory,
       ...module.sourceRoots

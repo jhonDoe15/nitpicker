@@ -2,7 +2,12 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
-import { moduleClasspaths, parseDependencyList, readReactor } from './maven-project.mjs';
+import {
+  lifecycleArgs,
+  moduleClasspaths,
+  parseDependencyList,
+  readReactor,
+} from './maven-project.mjs';
 
 const roots = [];
 
@@ -61,6 +66,13 @@ function effective(root) {
           <artifactId>maven-surefire-plugin</artifactId>
           <configuration><reportsDirectory>${root}/core/out/tests</reportsDirectory></configuration>
         </plugin>
+        <plugin>
+          <artifactId>maven-failsafe-plugin</artifactId>
+          <configuration><reportsDirectory>${root}/core/out/it-tests</reportsDirectory></configuration>
+          <executions>
+            <execution><goals><goal>integration-test</goal><goal>verify</goal></goals></execution>
+          </executions>
+        </plugin>
       </plugins>
     </build>
   </project>
@@ -97,7 +109,8 @@ function defaultModule(basedir, coordinates, packaging) {
     resourceRoots: [],
     surefireReports: path.join(target, 'surefire-reports'),
     failsafeReports: path.join(target, 'failsafe-reports'),
-    jacocoDestFile: undefined,
+    runsFailsafe: false,
+    jacocoDestFiles: [],
     archunitIncludes: undefined,
     compiler: NO_COMPILER_SETTINGS,
   };
@@ -130,8 +143,9 @@ describe('readReactor', () => {
       testSourceRoots: [`${root}/core/src/test/java`],
       resourceRoots: [`${root}/core/src/main/resources`],
       surefireReports: `${root}/core/out/tests`,
-      failsafeReports: `${root}/core/out/failsafe-reports`,
-      jacocoDestFile: `${root}/core/out/mine.exec`,
+      failsafeReports: `${root}/core/out/it-tests`,
+      runsFailsafe: true,
+      jacocoDestFiles: [`${root}/core/out/mine.exec`],
       archunitIncludes: '**/*Rules.class',
       compiler: NO_COMPILER_SETTINGS,
     });
@@ -203,6 +217,157 @@ describe('readReactor', () => {
     ].join('');
 
     expect(() => readReactor(root, effectivePom)).toThrow(new Error(message(root)));
+  });
+});
+
+const IT_GOAL = '<goals><goal>integration-test</goal></goals>';
+
+function soloModule(inner) {
+  const root = reactor({ 'pom.xml': raw('solo') });
+  const [module] = readReactor(
+    root,
+    `<project><groupId>demo</groupId><artifactId>solo</artifactId>${inner}</project>`,
+  );
+  return module;
+}
+
+function plugin(artifactId, body, groupId = 'org.apache.maven.plugins') {
+  return `<plugin><groupId>${groupId}</groupId><artifactId>${artifactId}</artifactId>${body}</plugin>`;
+}
+
+function failsafe(executions, configuration = '') {
+  return plugin(
+    'maven-failsafe-plugin',
+    `<configuration>${configuration}</configuration><executions>${executions}</executions>`,
+  );
+}
+
+const inBuild = (plugins) => `<build><plugins>${plugins}</plugins></build>`;
+
+describe('lifecycleArgs', () => {
+  it('runs verify, with release, publishing and network plugins and JaCoCo checks off, when Failsafe runs', () => {
+    const module = soloModule(inBuild(failsafe(`<execution>${IT_GOAL}</execution>`)));
+
+    expect(module.runsFailsafe).toBe(true);
+    expect(lifecycleArgs([{ runsFailsafe: false }, module])).toEqual([
+      'verify',
+      '-Djacoco.haltOnFailure=false',
+      '-Dgpg.skip=true',
+      '-Dmaven.javadoc.skip=true',
+      '-Dmaven.source.skip=true',
+      '-Dmaven.deploy.skip=true',
+      '-Djib.skip=true',
+      '-Ddependency-check.skip=true',
+      '-Drat.skip=true',
+      '-Dlicense.skip=true',
+      '-Dlicense.skipDownloadLicenses=true',
+      '-Dlicense.skipAggregateDownloadLicenses=true',
+      '-Djapicmp.skip=true',
+    ]);
+  });
+
+  it('lets an execution turn Failsafe back on that its plugin configuration skips', () => {
+    const execution = `<execution>${IT_GOAL}<configuration><skipITs>false</skipITs></configuration></execution>`;
+
+    expect(soloModule(inBuild(failsafe(execution, '<skipITs>true</skipITs>'))).runsFailsafe).toBe(
+      true,
+    );
+  });
+
+  it.each([
+    ['no Failsafe plugin', ''],
+    ['Failsafe without executions', inBuild(failsafe(''))],
+    [
+      'only the verify goal',
+      inBuild(failsafe('<execution><goals><goal>verify</goal></goals></execution>')),
+    ],
+    [
+      'the skipITs property',
+      `<properties><skipITs>true</skipITs></properties>${inBuild(failsafe(`<execution>${IT_GOAL}</execution>`))}`,
+    ],
+    [
+      'the skipTests property',
+      `<properties><skipTests>TRUE</skipTests></properties>${inBuild(failsafe(`<execution>${IT_GOAL}</execution>`))}`,
+    ],
+    [
+      'skip in the execution',
+      inBuild(
+        failsafe(
+          `<execution>${IT_GOAL}<configuration><skip>true</skip></configuration></execution>`,
+        ),
+      ),
+    ],
+    [
+      'skipTests in the execution',
+      inBuild(
+        failsafe(
+          `<execution>${IT_GOAL}<configuration><skipTests>true</skipTests></configuration></execution>`,
+        ),
+      ),
+    ],
+    [
+      'skip in the plugin',
+      inBuild(failsafe(`<execution>${IT_GOAL}</execution>`, '<skip>true</skip>')),
+    ],
+    [
+      'skipITs in the plugin',
+      inBuild(failsafe(`<execution>${IT_GOAL}</execution>`, '<skipITs>true</skipITs>')),
+    ],
+    ['the phase none', inBuild(failsafe(`<execution><phase>none</phase>${IT_GOAL}</execution>`))],
+    [
+      'Failsafe only under pluginManagement',
+      `<build><pluginManagement><plugins>${failsafe(`<execution>${IT_GOAL}</execution>`)}` +
+        '</plugins></pluginManagement></build>',
+    ],
+    [
+      'Failsafe only in an inactive profile',
+      `<profiles><profile><id>it</id>${inBuild(failsafe(`<execution>${IT_GOAL}</execution>`))}</profile></profiles>`,
+    ],
+  ])('stays on test with %s', (_, inner) => {
+    const module = soloModule(inner);
+
+    expect([module.runsFailsafe, lifecycleArgs([module])]).toEqual([false, ['test']]);
+  });
+});
+
+describe('describeModule plugin configuration', () => {
+  it('reads report directories from the test execution before the plugin configuration', () => {
+    const surefire = plugin(
+      'maven-surefire-plugin',
+      '<configuration><reportsDirectory>plugin-unit</reportsDirectory></configuration>' +
+        '<executions><execution><goals><goal>test</goal></goals>' +
+        '<configuration><reportsDirectory>execution-unit</reportsDirectory></configuration></execution></executions>',
+    );
+    const execution =
+      `<execution>${IT_GOAL}<configuration>` +
+      '<reportsDirectory>execution-it</reportsDirectory></configuration></execution>';
+    const module = soloModule(
+      inBuild(surefire + failsafe(execution, '<reportsDirectory>plugin-it</reportsDirectory>')),
+    );
+
+    expect([module.surefireReports, module.failsafeReports]).toEqual([
+      path.join(module.basedir, 'execution-unit'),
+      path.join(module.basedir, 'execution-it'),
+    ]);
+  });
+
+  it('reads the destFile of every JaCoCo agent execution, the execution before the plugin', () => {
+    const jacoco = plugin(
+      'jacoco-maven-plugin',
+      '<configuration><destFile>target/unit.exec</destFile></configuration><executions>' +
+        '<execution><goals><goal>prepare-agent</goal></goals></execution>' +
+        '<execution><goals><goal>prepare-agent-integration</goal></goals>' +
+        '<configuration><destFile>target/it.exec</destFile></configuration></execution>' +
+        '<execution><id>again</id><goals><goal>prepare-agent</goal></goals></execution>' +
+        '</executions>',
+      'org.jacoco',
+    );
+    const module = soloModule(inBuild(jacoco));
+
+    expect(module.jacocoDestFiles).toEqual([
+      path.join(module.basedir, 'target/unit.exec'),
+      path.join(module.basedir, 'target/it.exec'),
+    ]);
   });
 });
 

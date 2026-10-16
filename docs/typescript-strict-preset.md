@@ -24,14 +24,83 @@ config file is an exception like any other.
   imports a feature only through that file. A new feature is a new directory, not a new branch in a
   shared entry point.
 - `features/<name>/domain/` holds pure logic: functional core, imperative shell, using hexagonal
-  architecture's folder names. It may not import `adapters/`, Node I/O modules, network or database
-  clients, the logger, or module state. Time, IDs, and randomness arrive as parameters.
-- `features/<name>/adapters/` performs I/O and calls `domain/`. A feature with no I/O has no
-  `adapters/` folder.
+  architecture's folder names. It may not import `adapters/`, Node I/O modules (the pure ones
+  `path`, `url`, `util`, `assert`, `buffer`, `events`, `string_decoder`, `punycode`, `querystring`
+  and subpaths like `path/posix` and `assert/strict` are fine), network or database clients, the
+  logger, module state, or ID and random-data libraries (`uuid`, `nanoid`, `cuid`, `ulid`, `faker`).
+  Date libraries (`dayjs`, `luxon`, `date-fns`) are fine for arithmetic on a given value; reading
+  the clock through them (`dayjs()`, `dayjs.utc()`, `moment()`, `DateTime.now()`, `Temporal.Now`,
+  `.fromNow()`, and date-fns `isToday`, `isPast`, `startOfToday` or `formatDistanceToNow`) is reported
+  like `Date.now()`.
+  It may not reach Node I/O or a client through a `shared/` module it imports
+  (`domain-does-not-reach-io-through-shared`; an `import type` does not count). Time, IDs, and randomness arrive as parameters. A
+  dependency-cruiser rule that flags legitimate code is lifted with an `exceptions` entry that names
+  the rule (for example `domain-does-not-import-node-io`), where `paths` are the importing files.
+- `features/<name>/adapters/` performs I/O and calls `domain/`. A feature with neither I/O nor UI
+  has no `adapters/` folder. React components and hooks live in `adapters/` (the UI is I/O with the
+  user), or in `shared/ui/` when several features use them. `domain/` may not import a UI
+  framework or UI state package: `react`, `react-*`, `*-react` (`lucide-react`), `@*/react` and
+  `@*/react-*` (TanStack Query), `preact` and `@preact/*` (`@preact/signals`), `next` and `next/*`,
+  `expo`, `expo-*` and `@expo/*`, `vue`, `svelte`, `solid-js`, `@angular/*`, `redux` and
+  `@reduxjs/*`, `zustand`, `jotai`, `valtio`, `mobx`, `recoil`, `swr`, `motion` and
+  `framer-motion`, `styled-components` and `@emotion/*`, the component kits (`@mui/*`,
+  `@chakra-ui/*`, `@mantine/*`, `@radix-ui/*`, `@headlessui/*`, `antd`, `@ant-design/*`) and the
+  icon packages (`@fortawesome/*`, `@iconify/*`, `@mdi/*`), also through `require`,
+  `import = require` or a `shared/` module that imports or re-exports one. JSX is not written in
+  `domain/` at all, even with the automatic runtime and no import: a component that renders the
+  domain's result lives in `adapters/` or `shared/ui` (`nitpicker/no-ui-framework-in-domain`, so
+  an exception lifts only this ban). The list is `uiFrameworks` in
+  `architecture/domain-packages.mjs`, beside the network, database, logger and ID packages the
+  dependency rules keep out of `domain/`.
 - Shared code does not import features. Features do not import the composition root. Import cycles
   are not allowed.
+- Code under `src/main/` lives in `features/`, `shared/` or the composition root
+  (`nitpicker/no-unknown-main-folder`): a `services/`, `utils/` or `models/` folder there is
+  reported on every file, with the layout in the message, and so is a file directly in `src/main/`
+  other than the composition root and `index.ts` (`src/main/helpers.ts`). Inside
+  `features/<name>/` only `domain/`, `adapters/` and the public `index.ts` are allowed
+  (`features/auth/services/` and `features/auth/helpers.ts` are reported). Put the code in the
+  feature that uses it (`domain/` for pure logic, `adapters/` for I/O) or in `shared/` when several
+  features need it. A React project may also have UI folders directly under `src/main/` (`ui/`,
+  `components/`, `pages/`, `app/`, `routes/`, `views/`, `layouts/`, `screens/`, `hooks/`, `styles/`,
+  `assets/`) and `App.tsx`, and a `ui/` folder in a feature; any other folder, such as
+  `src/main/services/`, is reported there too. The rule reports on line 1,
+  so it is not strict: editing a legacy file in `utils/` does not fail, only a new file does.
 - Objects are constructed only in the composition root. Dependencies are passed explicitly. No
-  module-level `let`.
+  module-level `let`, and no module-level collection or object that the module mutates
+  (`nitpicker/no-module-level-mutable-state`: `const cache = new Map()` with `cache.set(...)`,
+  `const state = { count: 0 }` with `state.count++` or `state.items.push(x)`, a `Set`, `WeakMap`,
+  typed array or `Object.create(null)` that is written to, an array with `push`, and
+  `Object.assign`, `Object.defineProperty` or `Reflect.set` onto it, also through a `const`
+  alias such as `const registry = cache`). An exported `Map`, `Set`, `WeakMap`, `WeakSet`, typed
+  array or `Object.create(null)` is reported where it is declared, since another module can
+  mutate it, unless it is annotated with a readonly type (`ReadonlySet<T>`, `ReadonlyMap<K, V>`,
+  `readonly number[]`). Build a lookup table inside a
+  function and return it; create a store in the composition root and pass it in. `domain/` is
+  covered by `functional/prefer-immutable-types` instead.
+- The composition root is `src/main/composition-root.ts`, `src/main/main.ts`,
+  `src/main/server.ts`, `src/main.ts`, `src/server.ts` or `src/composition-root.ts` (any
+  TypeScript or JavaScript extension) or a file under `src/main/composition-root/`. A `server.ts`
+  or `main.ts` in another folder is not a root. The `compositionRootPattern` option
+  adds roots to this list.
+- `nitpicker/no-managed-resource-construction-outside-composition-roots` reports `new` on names
+  that end in `Service`, `Client`, `Pool`, `Cache`, `Store`, `Scheduler`, `Transport`, `Adapter`,
+  `Server`, `Worker`, `Connection`, `Queue`, `Producer`, `Consumer`, `Broker`, `Gateway`, `Database`
+  or `Emitter`, on `Redis`, `Stripe`, `Octokit`, `OpenAI`, `Socket` and `WebSocket`, and the factory
+  calls `createServer`, `createClient`, `createPool`, `createConnection`, `createWorker` and
+  `axios.create`. Value types (`Map`, `Set`, `URL`, `Date`, `Error`, `RegExp`, `*Request`,
+  `*Response`, `*Command`) are fine anywhere.
+- `nitpicker/no-process-access-outside-composition-root`: environment variables (`process.env`,
+  `import.meta.env`, `Deno.env`) are read only in the composition root, parsed once with a zod
+  schema, and the typed config is passed down. `process.exit` is called only in the composition
+  root or a main guard. However `process` is reached, it counts: `import { env }` from
+  `node:process`, a namespace, default or `require` import, `const { env, exit } = process`, a
+  `const` alias and `globalThis.process`. Entry scripts listed in `layout.entryPoints` and config
+  files (`*.config.*`, `.*rc.*`) are exempt. In a React project `import.meta.env` is allowed
+  anywhere: Vite replaces it with public build-time values (`import.meta.env.DEV`, `VITE_*`). So
+  are `process.env.NODE_ENV`, `process.env.NEXT_PUBLIC_*`, `process.env.EXPO_PUBLIC_*` and
+  `process.env.REACT_APP_*` written exactly that way, which Next.js, Expo and Create React App
+  replace the same way.
 - `shared-used-by-one-feature` (the `coupling` check): `src/main/shared/` holds code that two or
   more features use. A production module there that exactly one feature reaches, directly or through
   other shared modules only, and that nothing else imports, is reported on the module with the
@@ -47,10 +116,14 @@ config file is an exception like any other.
 - `nitpicker/no-branch-in-composition-root`: the composition root (`composition-root.ts`, `main.ts`,
   `server.ts`, plus the `compositionRootPattern` option shared with
   `no-managed-resource-construction-outside-composition-roots`) only wires features with named
-  functions that pass things in. It reports `if`, `?:`, `switch`, `??` and optional chaining (`?.`),
-  inside functions and at module level, except the main guard (an `if` whose condition uses
-  `import.meta` or `require.main`, as for `no-process-globals-outside-main-guard`) and branches in its
-  condition. `&&` and `||` are not reported. A lookup or missing-value
+  functions that pass things in. It reports `if`, `?:`, `switch`, `??`, optional chaining (`?.`),
+  loops, and `||` with a literal, object, array or call on its right (`env['PORT'] || 3000`, the
+  `??` swap), inside functions and at module level, except the main guard (an `if` whose condition
+  uses `import.meta` or `require.main`, as for `no-process-globals-outside-main-guard`) and
+  branches in its condition, and a guard that only throws (an `if` with no `else` whose body is a
+  single `throw`): `if (container === null) { throw new Error('#root is missing'); }` before
+  `createRoot(container)` is how the entry file checks its mount node. `&&` and `||` between plain values, and `try`/`catch`, are not
+  reported. A lookup or missing-value
   check moves into the feature's `adapters/` (or `domain/`). Existing branches are baselined, and a
   function that gains one fails; a branch that belongs in the root needs an exception for this
   rule in `nitpicker.config.json`.
@@ -64,7 +137,16 @@ config file is an exception like any other.
 - Transforms use `map`, `filter`, `flatMap`, `reduce` with an initial value (`xs.reduce((sum, x) =>
 sum + x, 0)`), `Object.fromEntries`, and `Object.groupBy`. No loops, `forEach`, `reduce` without
   an initial value, or `reduceRight`.
-- No classes and no `this`.
+- No classes and no `this`. No reassigning a parameter (`no-param-reassign`).
+- No clock, randomness or I/O, however it is written: `Date.now`, `Math.random` and
+  `performance.now` are reported as properties, so `const now = Date.now`, `const { random } =
+Math` and `Math['random']()` are caught; `process`, `fetch`, `setTimeout`, `setInterval`,
+  `setImmediate`, `queueMicrotask`, `performance`, `XMLHttpRequest`, `WebSocket`, `localStorage`
+  and `sessionStorage` are restricted globals, also read through `globalThis`, `window`, `self`
+  or `global` (`globalThis.fetch(url)`, `globalThis.Date.now()`); `Date()` without `new` reads the
+  clock too; `dayjs` and `moment` are imported under their own names so `dayjs()` stays visible;
+  `Reflect.set` and its mutating siblings are
+  restricted like `Object.assign`.
 - Expected failures are returned as discriminated unions, never thrown. TypeScript has no checked
   exceptions, so a result type is the only way the compiler forces every caller to handle a new
   failure case, which is the gate steering the author. It also keeps `domain/` pure. The cost is
@@ -73,7 +155,12 @@ sum + x, 0)`), `Object.fromEntries`, and `Object.groupBy`. No loops, `forEach`, 
 - `nitpicker/no-unknown-in-domain`: no `unknown` in a parameter or property type (including inside
   `readonly unknown[]`, `Record<string, unknown>` and index signatures). `domain/` receives values
   already parsed and typed; the zod schema that parses untrusted input lives in `adapters/`, and
-  `domain/` types the value as `z.infer<typeof schema>` or a hand-written type. `unknown` as a
+  `domain/` writes its own readonly type for the value. Do not write `z.infer<typeof schema>`
+  in `domain/`: importing the schema type from `adapters/` breaks the layer rule, and a schema
+  defined in `domain/` is itself mutable. A zod output is assignable to the readonly type, so
+  `adapters/` parses and passes the result in. An alias that is or contains `unknown`
+  (`type Raw = unknown`, `type JsonObject = Readonly<Record<string, unknown>>`), also one imported
+  from another file, is reported like `unknown`. `unknown` as a
   generic bound or default (`<T extends unknown>`, `<T = unknown>`), a return type, a variable or a
   `catch (error: unknown)` is not reported, and neither is a bare `cause: unknown` or `error: unknown`
   that carries a caught error through a failure result. An opaque value needs an exception in the
@@ -92,11 +179,23 @@ sum + x, 0)`), `Object.fromEntries`, and `Object.groupBy`. No loops, `forEach`, 
   by a type parameter. Aliasing `Object` or `Reflect` itself is not followed.
   `functional/immutable-data` is not enabled because it reported the same sites a second time with
   a less helpful message.
+- When `functional/prefer-immutable-types` flags something, its message names the annotation that
+  fixes it: a callback that returns an object or array literal gets a return type
+  (`items.map((item): Summary => ({ ... }))`, `lines.map((line): readonly string[] => ...)`); a
+  module-level object literal gets a type with readonly fields; an `Object.groupBy` result is typed
+  `Readonly<Partial<Record<Key, readonly T[]>>>`; an `Error` field is typed `unknown` (as `error` or
+  `cause`) or replaced by `message: string`; a generic bound is written with readonly fields
+  (`<T extends { readonly id: string }>`).
 
 ## Inside `adapters/`
 
 - Throw only for unexpected failures, using `Error` subclasses that preserve `cause`. Convert
-  library exceptions into domain results at the boundary.
+  library exceptions into domain results at the boundary. `nitpicker/preserve-error-cause` checks
+  `Error` and every class whose name ends in `Error`: one thrown in a `catch` is reported unless
+  it passes `{ cause: error }` as an option or the caught value itself as an argument (also inside
+  an array, as in `new AggregateError([error, closeError], message)`, or through a
+  `const cause = error`), whether or not it mentions the caught value (`throw new AppError('range')` and
+  `new AppError(String(error))` are both reported).
 - `nitpicker/no-silent-catch`: a `catch` must hand the failure on. It passes when it uses the
   caught value (rethrow an `Error` subclass with `{ cause: error }`, log it, or return it in a
   result) or when it returns a failure result object (`catch { return { kind: 'malformed-json' } }`).
@@ -104,28 +203,109 @@ sum + x, 0)`), `Object.fromEntries`, and `Object.groupBy`. No loops, `forEach`, 
   is slop. A `catch` that falls through, or returns a non-object such as `undefined` or `[]`, is
   reported. A deliberately dropped error needs an exception in the config file.
 - `nitpicker/no-unvalidated-schema-field` (all production code): no `z.unknown()` or `z.any()`
-  (also with `.optional()`, `.nullable()`, `.default()` and similar wrappers) as a field of
-  `z.object`, `z.strictObject` or `z.looseObject`. A schema that only checks the shape hands the
+  (also with `.optional()`, `.nullable()`, `.default()` and similar wrappers, `z.optional(...)`,
+  `z.nullable(...)`, `z.nullish(...)` and `z.readonly(...)`) as a field of `z.object`,
+  `z.strictObject` or `z.looseObject`, or of a shape passed to `.extend`, `.safeExtend` or
+  `.augment`. A schema that only checks the shape hands the
   field on unchecked, and `domain/` then re-validates it by hand. Validate the field in the schema
   (`z.string().trim().min(1)`, `z.email()`). `z.array(z.unknown())` or `z.unknown()` as a whole
-  schema, and `z.unknown().refine(...)`/`.pipe(...)`, are not reported.
+  schema, and `z.unknown().refine(...)`/`.pipe(...)`, are not reported. The check looks through
+  `z.record`, `z.array`, `z.set`, `z.map` and `z.tuple` elements and `.array()`
+  (`z.record(z.string(), z.unknown())` and `z.unknown().array()` as a field are reported) and through a same-file `const` (`const anything = z.any()`). `z.custom<T>()`
+  without a check function is a cast, and `z.looseObject()`, `.loose()`, `.passthrough()` and
+  `.catchall(z.unknown())` let unknown keys through: use `z.object({...})` or
+  `z.strictObject({...})`.
 - Untrusted input is parsed once, at the boundary, with zod. Hand-written type guards for external
-  data are not allowed.
+  data are not allowed (`nitpicker/no-handwritten-boundary-guard`, in `adapters/`, `shared/` and
+  the other layers outside `domain/`): a predicate whose parameter is `unknown`, `any`, `object`,
+  `{}` or `Record<string, unknown>`, an `unknown` value narrowed inline with `typeof x ===
+'object'` or `'key' in x`, and an overload whose implementation returns `unknown` or `any`. A
+  predicate over a union (`(result): result is Ok => result.kind === 'ok'`) is fine, and so is
+  `error instanceof Error` (or another class named `...Error` or `...Exception`, such as
+  `z.ZodError`) on a caught value, including the checks it narrows: later in the same `&&` chain,
+  inside the `if` or `?:` it guards, or after an earlier `if (!(error instanceof Error))` exit
+  (`error instanceof Error && 'code' in error`). `instanceof Object` or any other class does not
+  count as a guard.
+  `JSON.parse(JSON.stringify(value))` as a copy is reported: use `structuredClone(value)`.
 
 ## Everywhere
 
-- `nitpicker/no-self-recursion`: no function that calls itself, in all production code (`domain/`,
-  `adapters/`, the composition root and shared code), not in tests. Allowed forms: a retry or poll
+- `nitpicker/no-self-recursion`: no function that calls itself or refers to itself
+  (`xs.flatMap(flatten)` inside `flatten`), and no functions of one file that call each other
+  (`evens` and `odds`), in all production code (`domain/`, `adapters/`, the composition root and
+  shared code), not in tests. A reference counts when it is called, constructed or passed to an
+  array method (`map`, `flatMap`, `forEach`, `filter`, `reduce`, `sort` and the like); a
+  component that renders itself in JSX, `setTimeout(poll)` and an event handler that removes
+  itself are not reported. A call inside a callback counts as the enclosing function's call when
+  the callback is an array-method callback or is passed to a call whose result is used
+  (`await limit(() => crawl(link))`); a callback handed to a timer or an event registration
+  (`setTimeout`, `on`, `addEventListener`, `subscribe` and the like) or to a call written as a bare
+  statement is its own function. Allowed forms: a retry or poll
   is a `for...of` over attempt numbers with `await` inside the loop; a tree walk (directories, AST,
   JSON) is a `for...of` over a worklist that each step pushes the node's children onto
   (`for (const node of pending) { pending.push(...children) }`); flat data uses `map`, `filter`,
-  `flatMap` or `Object.fromEntries`. `domain/` has no loops, so a walk there uses `map`/`flatMap` or
-  moves to `adapters/`.
+  `flatMap` or `Object.fromEntries`. `domain/` has no loops and no recursion, so a walk over a tree
+  of unknown depth moves to `adapters/`, which passes `domain/` the flat result.
 - `for...of` is the only loop, in all production code (not just `adapters/`). No `forEach`,
   `for(;;)`, `for...in`, `while`, or `do...while`. `domain/` is stricter and has no loops at all.
 - `async`/`await` and `Promise.all`. No `.then()`, `.catch()` or `.finally()` chains, and no promise
-  left without being awaited (`@typescript-eslint/no-floating-promises`).
-- `===` and `!==` only (`eqeqeq`).
+  left without being awaited (`@typescript-eslint/no-floating-promises`). Deliberate
+  fire-and-forget is written `void job();`, typescript-eslint's own form; `.then()` and `.catch()`
+  do not count. `await Promise.allSettled(...)` with its result dropped hides every rejection, and
+  `new Promise((resolve) => resolve(value))` wraps a value that `Promise.resolve(value)` or an
+  async function returns directly.
+- `===` and `!==` only (`eqeqeq`). Braces on every `if`, `else` and loop body (`curly`). One import
+  statement per module (`no-duplicate-imports`; a separate `import type` is fine).
+- Identifier casing (`nitpicker/naming-convention`, which wraps
+  `@typescript-eslint/naming-convention`): types and type parameters in PascalCase; functions,
+  variables and parameters in camelCase; constants may be UPPER_CASE; a leading underscore is
+  allowed. A schema constant may be PascalCase when its initializer starts from a binding imported
+  from `zod`, `valibot` or `yup`, under any name (`const Order = z.object(...)`, then
+  `type Order = z.infer<typeof Order>`, or a bare `object({...})` imported from valibot), or from
+  another schema constant (`const CreateOrder = Order.omit({ id: true })`), or from an imported
+  PascalCase binding through a schema method such as `.extend`, `.omit`, `.pick` or `.array`
+  (`const Event = BaseEvent.extend({...})`), and so may a parameter typed as a component
+  (`ComponentType`, `FC`, `ElementType`) or named `*Component`. PascalCase functions and variables
+  are allowed in a React project. When the project depends on a framework with file-based route
+  handlers (`next`, `@sveltejs/kit`, `astro`, `@solidjs/start`), an exported function named
+  `GET`, `HEAD`, `POST`, `PUT`, `PATCH`, `DELETE` or `OPTIONS` is allowed. Names a destructuring
+  takes from external data are not checked.
+- Exported production functions declare their return type
+  (`@typescript-eslint/explicit-module-boundary-types`): `export function total(rows: readonly Row[]): number`;
+  a React component returns `ReactElement`. A function typed by its variable
+  (`export const handler: Handler = ...`) counts as typed. Tests and JavaScript files are exempt.
+- No magic numbers (`nitpicker/no-magic-numbers`, which wraps
+  `@typescript-eslint/no-magic-numbers`): name the number with a module-level constant; any number
+  in its initializer is allowed (`const SECONDS_PER_DAY = 24 * 60 * 60;`,
+  `const RETRY_STATUSES = [429, 503] as const;`). `-1`, `0`, `1`, `2`, `10`, `100` and `1000`
+  (so `Math.round(x * 100) / 100`), an HTTP status code in the status argument of a response or
+  error call (the first argument of `status`, `sendStatus`, `code`, `writeHead` and a bare `error` or
+  `fail`, the second of `text`, `json`, `body` and `html`, either of `redirect`, `throw` and a
+  callee named `...Error` or `...Exception`: `res.status(404)`, `c.json(body, 201)`,
+  `new HttpException('gone', 410)`), the digits of `toFixed(2)` and `toPrecision(3)`, default parameter values, array indexes, numeric literal types
+  and object property values are allowed. `x % 7` is reported: name the divisor. Tests are exempt.
+- Security: no `eval` (`no-eval`); no regular expression with nested or overlapping quantifiers
+  that backtracks super-linearly (`regexp/no-super-linear-backtracking`, from `eslint-plugin-regexp`);
+  no shell command built from a variable or template (`nitpicker/no-shell-string-command`: `exec`
+  and `execSync`, also through `promisify(exec)`, take a string literal or a `const` holding one,
+  otherwise `execFile(program, [args])`; `shell: true` is reported, also in a `const` options
+  object or a spread of one, and so is `sh`, `bash`, `zsh` or `cmd` run through
+  `spawn`/`execFile` with `-c` (`/c`) and a command that is not a string literal); no
+  `Math.random` for ids
+  or tokens (use `crypto.randomUUID()` or `crypto.randomInt()`, or take the value as a parameter);
+  no `fs` call on a path built from a parameter after its first segment (`path.join`,
+  `path.resolve`, a template literal `` `${dir}/${name}` `` or `+`, also inside
+  `path.normalize`/`path.resolve`, through a `const` or `let` variable, or a call on a parameter
+  such as `c.req.param('file')` or `req.query.name`) unless the function checks containment on
+  the variable in an `if` that returns, throws, `continue`s or `break`s before the call, or wraps
+  the call in the `if`'s passing branch (`nitpicker/no-unsafe-path-join`:
+  `const full = path.resolve(base, name); if (!full.startsWith(base + path.sep)) return ...`, or
+  `if (path.relative(base, full).startsWith('..')) throw ...`). The prefix must end in a
+  separator (`base + path.sep`, `` `${base}/` ``, `'/srv/'`): `full.startsWith(base)` also
+  accepts `/srv-other`. A parameter as the first segment is the base and is fine
+  (`path.join(dir, 'package.json')`).
+- Named exports list their names: no `export *`, which makes every internal export of a feature's
+  `index.ts` public (`export { name } from './domain/x.js'`).
 - Cognitive complexity of at most 15 per function, tests included (`nitpicker/cognitive-complexity`).
   Each `if`, ternary, `switch`, loop and `catch` costs 1 plus its nesting level; `else`, `else if`,
   labelled `break`/`continue` and each run of like `&&`/`||` cost 1. Unlike the published algorithm,
@@ -133,6 +313,14 @@ sum + x, 0)`), `Object.fromEntries`, and `Object.groupBy`. No loops, `forEach`, 
   outside any function is not scored. A function that must stay complex gets an exception for the
   rule in `nitpicker.config.json`.
 - Config files are exempt from the loop, `forEach` and promise-chain bans; `eqeqeq` still applies.
+- `nitpicker/report-module-load-effects` also reports work done by a module-level `const`
+  initialiser (`Date.now()`, `performance.now()`, `Math.random()`, `crypto.randomUUID()`, `fetch`,
+  timers, a `...Sync` call from `fs`, `child_process`, `crypto` or `zlib` such as `readFileSync`
+  (a project's own `buildTableSync()` is fine), any `process.*` call, `new Date()` with no
+  argument, `new Worker`, `new WebSocket`) and any top-level `await`. Pure initialisers
+  (`z.object(...)`, `new RegExp(...)`, `path.dirname(...)`) are fine.
+- `nitpicker/no-production-console` also reports `console['error']` and, outside the composition
+  root, `process.stdout.write` and `process.stderr.write`.
 - Named functions use the `function` keyword; arrow functions only as callbacks.
 - `type`, never `interface`, except in a `declare module` or `declare global` augmentation, which
   can only merge interfaces. No `enum` (use unions of string literals) and no `namespace`.
@@ -255,6 +443,11 @@ that defines a named function (a copied helper: keep one in a non-test file such
 `test/support/` and import it). Repeated expected values and assertions between tests are left
 alone.
 
+Every runnable test imports production code at runtime
+(`nitpicker/test-must-use-production-runtime`), directly or through a relative test helper that
+does, such as a `renderWithProviders` in `test/support/` that imports the app. The rule follows one
+hop, and type-only imports do not count.
+
 - `nitpicker/no-git-repository-per-test`: no `git init` or `git clone` per test. This covers direct
   `child_process`/`execa` calls and same-file wrappers such as `git(root, ['init'])` or
   `run('git', ['init'])`. Build a template repository once in `beforeAll` and `cpSync` it per test.
@@ -362,8 +555,9 @@ alone.
   needs an exception in the config file.
 - `no-restricted-syntax` bans the same constructs as in production code, with the same messages:
   `for(;;)`, `for...in`, `while` and `do...while` (use `for...of`, or `it.each` for one test per
-  case), `forEach`, `.then()`/`.catch()`/`.finally()` chains, `as` (except `as const`) and
-  `<Type>value`. `any` and non-null `!` are already reported in test files by
+  case), `forEach`, `as` (except `as const`) and
+  `<Type>value`; `.then()`/`.catch()`/`.finally()` chains are `nitpicker/no-promise-chain`. `any`
+  and non-null `!` are already reported in test files by
   typescript-eslint's `no-explicit-any` and `no-non-null-assertion`. Like the other bans, these are
   strict rules: a finding on a line a change edits, or in a new test file, fails the run. An exception for
   `no-restricted-syntax` lifts all the syntax bans for those paths.
@@ -393,6 +587,13 @@ end of this list cover test files. Each rule names the allowed form in its messa
 to add an exception for the rule in `nitpicker.config.json`. An exception that names a React rule is skipped while the scope is
 off (a PR that adds or removes React keeps linting on both sides); a misspelled rule is still an error.
 
+- **Browser globals by name** (`no-restricted-globals`). Outside a React Native app the scope
+  declares the browser globals for source and test files, so the confusing ones (`event`, `name`,
+  `status`, `length`, `close`, `open`, `top`, `parent`, `origin` and the rest of the standard
+  confusing-browser-globals list) are restricted wherever those globals apply, `domain/` aside:
+  `onPick(name)` with no `name` in scope is a missing parameter, not `window.name`. Write
+  `window.name` when the global is meant; otherwise take the value as a parameter
+  (`onClick={(event) => ...}`) or declare it.
 - **Function components only** (`react-x/no-class-component`). Class components are flagged; error
   boundaries, which React only supports as classes, are allowed. The "classes only for `Error`
   subclasses" ban leaves classes that extend `Component` or `PureComponent` to this rule in a React
@@ -402,7 +603,11 @@ off (a PR that adds or removes React keeps linting on both sides); a misspelled 
   exception for `react-hooks/exhaustive-deps`.
 - **No derived state in effects** (`nitpicker/react-no-effect-derived-state`). A state setter called
   in the body of a `useEffect` or `useLayoutEffect` callback, whose dependency array is not `[]`, is
-  flagged: compute the value during render (`useMemo` when it is costly) or reset state with a `key`.
+  flagged: compute the value during render (`useMemo` when it is costly). Each case has its own
+  message: a setter given a fixed value (`setDraft('')`, `[]`, `{}`, `undefined`) on a dependency
+  change is a reset, so render the component with that prop as its `key` (`<Form key={userId} />`);
+  a setter fed from `localStorage` or `sessionStorage` reads the store during render with
+  `useSyncExternalStore`.
   The hooks are resolved through their `react` import (`import { useEffect as onEffect }` and
   `import * as R from 'react'` count; a hook of the same name from another module does not), and
   the setter can be `const [x, setX] = useState()` or `useState()[1]` kept in a variable. A function
@@ -411,27 +616,127 @@ off (a PR that adds or removes React keeps linting on both sides); a misspelled 
   flagged, and neither is `[]` (the mounted-flag pattern) or a function declared outside the effect.
   Subscribing to an external store (`matchMedia`) is better written with `useSyncExternalStore`;
   measuring the DOM in `useLayoutEffect` is the usual legitimate exception.
-- **No data fetching in effects** (`nitpicker/react-no-effect-data-fetching`). `fetch` (also
-  `window.fetch` and `globalThis.fetch`), `axios`, `ky` and `new XMLHttpRequest` anywhere inside an
-  effect callback are flagged: use a data-fetching library (TanStack Query `useQuery`, SWR
-  `useSWR`) or the framework (a route loader, a Server Component). The check is by name: wrappers
-  (`api.get`, `got`, `$.ajax`), aliased imports (`import http from 'axios'`) and a function declared
-  outside the effect and only called inside it are not followed.
-- **No array index as `key`** (`react-x/no-array-index-key`): use a stable id from the item.
+- **No data fetching or async work in effects** (`nitpicker/react-no-effect-data-fetching`).
+  `fetch` (also `window.fetch` and `globalThis.fetch`), `axios`, `ky` and `new XMLHttpRequest`
+  in work the effect itself does are flagged: use a data-fetching library (TanStack Query
+  `useQuery`, SWR `useSWR`) or the framework (a route loader, a Server Component). Beyond the
+  names, async work is flagged when its result flows into state: a state setter (`setX`) called
+  after an `await`, inside a `.then` callback or passed to `.then` (`load(id).then(setUser)`). It is
+  reported once per effect, at its first async step. The effect's own work is its callback, a
+  helper or IIFE declared in it and called by it, and the callbacks it hands to `setTimeout`,
+  `setInterval` or `requestAnimationFrame`; a handler the effect only registers
+  (`addEventListener('pagehide', ...)`, where a `keepalive` beacon belongs) is not. A promise whose
+  result stays out of state is syncing with an external system and passes: an animation
+  (`animate(scope.current, ...)`), `void changeLanguage(locale)`, `void ref.current?.play()`. The
+  rule needs no type information. The message names the form for each kind of work: data through
+  `useQuery` or a route loader, an action (a save, a clipboard write) in the event handler that
+  causes it, a redirect by rendering `<Navigate />`.
+- **No prop callbacks called from effects** (`nitpicker/react-no-effect-event-handling`). An
+  effect that calls a prop callback (`onSave(value)`, `notify(value)`, `props.onChange()`, one
+  destructured with `const { onChange } = props`, also renamed as `{ onChange: report }`, or one
+  held in a ref, `const latest = useRef(onChange); latest.current(value)`) reacts to a change
+  instead of to an event: call the callback in the handler that causes the change. Any prop of a
+  component counts, whatever its name; a custom hook's parameters count when named `on*`. An effect with no
+  dependency array runs after every render and is reported too. A call inside a nested function (a
+  subscription, a timer) and an effect with `[]` are left alone; an effect that synchronizes with
+  an external system needs an exception.
+- **No array index as `key`** (`react-x/no-array-index-key`): use a stable id from the item. Every
+  element rendered from a list has a `key` (`react-x/no-missing-key`) and siblings do not repeat
+  one (`react-x/no-duplicate-key`). A `key` built from `Math.random()`, `Date.now()`,
+  `new Date()`, `performance.now()`, `crypto.randomUUID()` (also through `window.` or
+  `globalThis.`), a generator imported from `uuid`, `nanoid`, `cuid`, `@paralleldrive/cuid2`,
+  `ulid` or `short-uuid` under any local name, or `randomUUID` from `node:crypto`, directly, inside
+  a template or expression, through a `const` declared in the component
+  (`const id = crypto.randomUUID(); key={id}`), or through a helper that returns one (a function in
+  the same file, `function makeKey() { return Math.random(); }`, or an exported function of a
+  project module the file imports, `genId()` from `../shared/ids`; one level deep), is flagged
+  (`nitpicker/react-no-random-key`): it changes on every render and remounts the row.
+  `react-x/purity` leaves a call inside a `key` to this rule, and the `Math.random` restriction of
+  `no-restricted-properties` is dropped where this rule reports the same call, so it is reported
+  once.
+- **Pure render, no mutation.** State, props and hook results are not mutated
+  (`react-x/immutability`: `setList([...list, item])`, `items.toSorted()`); render does not call
+  `Date.now()`, `Math.random()` or storage, read or write refs, or set state
+  (`react-x/purity`, `react-x/refs`, `react-x/set-state-in-render`). A lazy `useState(() => ...)`
+  initialiser is the place for a one-time read; a ref may be lazily initialised in render
+  (`if (ref.current === null) ref.current = new Player()`), but its value is read in handlers and
+  effects. These rules come from the React Compiler's
+  analysis and can flag legitimate code, so each message names the exception.
+- **Components are declared at module level** (`react-x/no-nested-component-definitions`,
+  `react-x/static-components`, `react-x/no-nested-lazy-component-declarations`): a component
+  declared inside another remounts, and loses its state, on every render. A nested function or
+  class is reported by the first rule; `static-components` reports only a component built by a
+  call during render (`const Themed = withTheme(Panel)`), so each case gets one message.
+- **One form per construct.** `{count && <p />}` renders `0` for a number, so compare
+  (`count > 0 && ...`) or use a ternary (`react-x/no-leaked-conditional-rendering`, needs type
+  information). A context value, and a default prop, that is an object, array or function literal
+  is a new value on every render: hoist it or wrap it in `useMemo`
+  (`react-x/no-unstable-context-value`, `react-x/no-unstable-default-props`). `ref` is a plain prop
+  and `<Context value={...}>` is the provider (`react-x/no-forward-ref`,
+  `react-x/no-context-provider`); both are off when the installed `react` (or, when none is
+  installed, the declared range) of the head checkout is older than 19. The major is read once into
+  the head policy (`react.major`) and passed to the React plugins as their React version, so a pull
+  request that upgrades React to 19 reports no existing `forwardRef` as new.
+- **Browser APIs** (`eslint-plugin-react-dom`): no `dangerouslySetInnerHTML` (render JSX; sanitised
+  and reviewed HTML needs an exception for `react-dom/no-dangerously-set-innerhtml`), an explicit
+  `type` on every `<button>`, `rel="noreferrer noopener"` next to `target="_blank"`, no
+  `javascript:` URLs. Effects clean up after themselves (`eslint-plugin-react-web-api`): an
+  `addEventListener` is paired with `removeEventListener` of the same named function, and a
+  `setInterval`, `setTimeout`, `ResizeObserver` or `IntersectionObserver` is cleared or
+  disconnected in the returned cleanup. Fetching in an effect is covered by the data-fetching rule
+  above.
+- **No direct DOM changes in components** (`nitpicker/react-no-direct-dom`), in files that render
+  JSX, files under `ui/`, `shared/` and `lib/` (the helpers UI code imports) and hook files
+  (`use*`). `document.getElementById`/`querySelector`/`querySelectorAll` and `getElementsBy*`
+  (also through `window.document`, `globalThis.document`, an alias of `window` or `document` in a
+  `const` or a `let` that is never reassigned, or an element's `ownerDocument`), assignments to
+  `.innerHTML`, `.outerHTML`, `.innerText` or `.textContent`, `insertAdjacentHTML`,
+  `insertAdjacentText`, `setHTMLUnsafe`, `createContextualFragment` and `document.write`/`writeln`,
+  and `.className`, `.style.*`,
+  `style.setProperty`/`removeProperty`, `Object.assign(el.style, ...)` or `classList.add`,
+  `remove`, `toggle`, `replace` on anything but a ref (`ref.current`, or a const read from it),
+  `document.documentElement` or `document.body` are flagged: state and props drive the DOM.
+  `setAttribute`, `removeAttribute` and `toggleAttribute`, and inserting nodes (`append`,
+  `appendChild`, `prepend`, `insertBefore`, `replaceChildren`, ...) are flagged on a queried or
+  created element and on `document.head`; `documentElement` and `body` may change their attributes,
+  and a ref may receive children. Render into another node with `createPortal`. Files under
+  `adapters/` are checked even without JSX. The file that mounts the app with `createRoot`,
+  `hydrateRoot` or `createPortal` may look up its container. Glue for a third-party widget or a
+  file download needs an exception.
+- **Form fields** (`nitpicker/react-field-has-label`, `nitpicker/react-controlled-input`). An
+  `<input>`, `<textarea>` or `<select>` has a label: wrapped in `<label>` or in a label component
+  (any component named `Label` or ending in `Label`: `<FormLabel>`, `<Form.Label>`), an `id` that a
+  `<label htmlFor>` or a label component with `htmlFor` (`<Label htmlFor="email">`, `<Form.Label>`)
+  in the same file points to (a computed `id` is accepted), `aria-label` or
+  `aria-labelledby` (hidden, submit, reset, button and image inputs, and fields with spread props,
+  are left alone). A field is either controlled (`value` or `checked` with `onChange`, `readOnly`
+  or `disabled`) or uncontrolled (`defaultValue`), never `value` with `defaultValue`; a form library
+  that needs otherwise takes an exception.
 - **One styling approach** (`nitpicker/react-single-styling-approach`), chosen with
   `react.styling`: `class-names` (`className` with CSS Modules, plain stylesheets or utility
   classes; inline `style` objects and CSS-in-JS libraries are flagged), `css-in-js` (styled-components,
   Emotion, Stitches, goober, Linaria; stylesheet imports and inline `style` objects are flagged) or
-  `inline-style` (`style` objects; stylesheet imports and CSS-in-JS libraries are flagged). Unset,
-  the approach is `css-in-js` when `package.json` lists one of those libraries, else `class-names`.
-  A `style` object is flagged when it is written inline, bound to a `const` in the same file,
-  or reached through `?:`, `&&`, `??`, `satisfies` or `as`; `css=` and `sx=` props and `style` inside
-  spread props are not checked. A `style` object whose keys are all CSS custom properties
-  (`'--progress': percent`) is allowed, as is a `style` value that is not an object literal
-  (`style={style}`), so a runtime value reaches class-based CSS. Type the custom property once,
-  in any module: `declare module 'csstype' { interface Properties { '--progress'?: number } }`
-  (needs `csstype` installed; `interface` is allowed in that augmentation). This is the default
-  because inline `style` objects are the usual agent slop.
+  `inline-style` (`style` objects; stylesheet imports and CSS-in-JS libraries are flagged) or
+  `style-sheet` (React Native `StyleSheet.create` styles; inline `style` objects of fixed values,
+  stylesheet imports and CSS-in-JS libraries are flagged). Unset, the approach is the one most
+  source files of the head checkout use: files that import a stylesheet or pass `className`, files
+  that import a CSS-in-JS library, files that call `StyleSheet.create` and files with inline
+  `style` objects are counted, and the largest group wins (ties in that order). Only with no
+  styling in the code yet does `package.json` decide: `css-in-js` when it lists one of those
+  libraries, `style-sheet` when it lists `react-native` or `expo`, else `class-names`. The approach
+  is resolved once into the head policy (`react.styling`) and both sides are linted with it, so a
+  pull request that adds MUI and Emotion does not turn every CSS Modules file into a finding.
+  A `style` object is flagged only when all its values are fixed (literals, or arrays and objects
+  of literals): a value computed at runtime (`style={{ width: progress }}`,
+  `<Animated.View style={{ opacity: fade }} />`, `{ paddingTop: insets.top }`) is the allowed use
+  of `style` under every approach, and the message names the form for fixed values (a class with
+  `className={styles.title}`, a styled component, or a module-level `StyleSheet.create`). The
+  object is checked when it is written inline, bound to a `const` in the same file (also
+  `style={styles.box}` and `styles['box']` on a `const styles = { box: {...} }`), or reached
+  through `?:`, `&&`, `??`, `satisfies` or `as`; `css=` and `sx=` props, `style` inside spread
+  props and a `style` value that is not an object literal (`style={style}`) are not checked. An
+  object of only CSS custom properties (`'--progress': percent`) is allowed. This is the default
+  because inline `style` objects of fixed values are the usual agent slop.
 - **No hard-coded colors** (`nitpicker/react-no-hardcoded-colors`). Every production source file
   of the scope is checked (`.ts` and `.mjs` helpers included; tests and story files,
   `*.stories.*` and `*.story.*`, are not; the story pattern is `storyGlobs` in
@@ -499,31 +804,64 @@ off (a PR that adds or removes React keeps linting on both sides); a misspelled 
   crosses the half mark does not turn untouched components into new findings. An exception lists the
   file; the message carries the exact entry:
   `{"rule":"component-story-missing","paths":["src/Card.tsx"],"reason":"..."}`.
-- **Accessibility** (`jsx-a11y/*`): the recommended `eslint-plugin-jsx-a11y` rule set, as errors.
+- **Accessibility** (`jsx-a11y/*`): the recommended `eslint-plugin-jsx-a11y` rule set plus
+  `control-has-associated-label` (buttons, links and roles need text or `aria-label`; form fields
+  are covered by the field rule above), `anchor-ambiguous-text` (no "click here"),
+  `no-aria-hidden-on-focusable` and `prefer-tag-over-role`, as errors. `<label>Name <TextField /></label>`
+  counts as a labelled control for any capitalised component.
   `jsx-a11y/mouse-events-have-key-events` is configured beyond the recommended default, which only
   checks `onMouseOver`/`onMouseOut`: `onMouseEnter` also needs `onFocus` and `onMouseLeave` also
-  needs `onBlur`, so hover-only cards are caught.
+  needs `onBlur`, so hover-only cards are caught. Each jsx-a11y message ends with the allowed form
+  where one exists (`accessibilityHints` in `eslint-config/react/rules/accessibility-rules.mjs`,
+  for example "Give it visible text (`<button>Close</button>`) or `aria-label="Close"`; `title` is
+  not a label.") and with the exception route.
 - **`null` for refs and contexts.** `null` stays banned, except as the argument and the type
   argument of `useRef` and `createContext` (`useRef<HTMLDivElement>(null)`,
   `createContext<Theme | null>(null)`), where React's types need it.
 - `@typescript-eslint/no-misused-promises` stops flagging `async` event handlers in JSX attributes
-  (`onClick={async () => ...}`), which is the normal React form.
-- **Component tests** (test files only: the test roots, `*.test.*` and `*.spec.*` files under the
-  source roots, and `__tests__` directories). They need no particular test runner (Vitest or
-  Jest), and report only in a test file that imports `@testing-library/*`, `react`, `react-dom`
-  or another `react-*` package, `enzyme`, `react-test-renderer`, or a relative `test-utils`
-  module, so Playwright and domain tests in the same roots are left alone. Query by accessible
+  (`onClick={async () => ...}`), which is the normal React form. `no-confusing-void-expression`
+  stops flagging a shorthand arrow whose contextual type returns `void`
+  (`onChange={(event) => setTitle(event.target.value)}`).
+- **Component tests** (test files only: the test roots, which default to `test`, `tests`,
+  `__tests__` and `e2e` at the repo root, `*.test.*` and `*.spec.*` files under the source roots,
+  and `__tests__` directories under them). They need no particular test runner (Vitest or
+  Jest), and report in every `.tsx` and `.jsx` test (except Playwright and Cypress component
+  tests), in a test that imports `@testing-library/*`, `react`, `react-dom` or another `react-*`
+  package, `enzyme`, `react-test-renderer`, or a project `test-utils` module (relative, through a
+  tsconfig `paths` alias such as `@/test-utils`, or re-exported by a barrel), in a test that mocks
+  `react` or `react-dom` with `vi.mock`/`jest.mock`, and in a test that imports a project helper
+  that imports `@testing-library/*`, `enzyme` or `react-test-renderer` (`@/test/render` exporting
+  its own `renderApp`, also through a barrel such as `@support`; followed up to four imports deep),
+  so Playwright and domain tests in the same roots are left alone. An import of such a helper counts
+  as the Testing Library import, so queries on what it returns are checked. Query by accessible
   role, not test ids (`testing-library/no-test-id-queries`) or DOM traversal, class selectors and
   `container` queries (`testing-library/no-node-access`): `screen.getByRole('button', { name: 'Save' })`,
-  or `toHaveFocus()` for focus. Drive the component with `userEvent`, not `fireEvent`
+  or `toHaveFocus()` for focus. Query through `screen`, not through queries destructured from
+  `render(...)` (`testing-library/prefer-screen-queries`, in Testing Library's own React
+  recommendations); `within(element)` scopes a query to part of the page. Drive the component with `userEvent`, not `fireEvent`
   (`testing-library/prefer-user-event`), and `await` every `userEvent` call, `findBy*` query and
   `waitFor` (`testing-library/await-async-events`, `await-async-queries`, `await-async-utils`);
   a project on user-event v13, whose calls are synchronous, needs an exception for
-  `await-async-events`. Do not test implementation details
-  (`nitpicker/react-test-no-implementation-details`): no `.instance()`, `.state()`, `.setState()` or
-  test-renderer `findByType`/`findByProps`, no React fiber internals (`_reactInternals`,
-  `stateNode`, `memoizedState`) and no `spyOn(React, 'useState')`; assert what the user sees. An
-  element with no role or accessible name needs an exception. A test file that hovers
+  `await-async-events`. Create the user with `const user = userEvent.setup()`
+  (`testing-library/prefer-user-event-setup`, for the default and the named `userEvent`
+  import alike). Check presence with `getBy*` and absence with
+  `queryBy*` (`testing-library/prefer-presence-queries`). Do not wrap `render` or `user` calls
+  in `act` (`testing-library/no-unnecessary-act`), leave `screen.debug()` and other debug
+  output in (`testing-library/no-debugging-utils`) or call `cleanup` yourself
+  (`testing-library/no-manual-cleanup`, on when the project's Vitest config sets
+  `globals: true` or the project has no Vitest; with `globals` unset or false, Testing Library
+  cannot register its own cleanup, so the `afterEach(cleanup)` a setup file needs passes). Do not test implementation details
+  (`nitpicker/react-test-no-implementation-details`): no `.instance()`, no `.state()` or `.setState()` on
+  an enzyme or test-renderer wrapper (a store's `setState` is fine), no test-renderer
+  `findByType`/`findByProps`, no React fiber internals (`_reactInternals`,
+  `stateNode`, `memoizedState`) and no `spyOn` on a React hook (`vi.spyOn(React, 'useState')`,
+  `jest.spyOn(R, 'useEffect')`, `vi.spyOn(require('react'), 'useState')`, with `React` or any
+  binding of `react`: a default, namespace, `{ default as R }`, `import = require`, `require`
+  (anywhere in the file), `await import('react')` or `vi.importActual('react')` binding, or an
+  alias such as `const R = React`), and no `vi.mock('react', ...)` or `jest.mock('react', ...)`
+  (nor a `react-dom` mock that replaces a hook); Testing Library's guiding principle is to
+  test the way the software is used, so assert what the user sees, or test a custom hook with
+  `renderHook`. An element with no role or accessible name needs an exception. A test file that hovers
   (`user.hover`, `userEvent.hover`, `fireEvent.mouseEnter` or `mouseOver`, or a `user.pointer` call
   that only moves to a `target`) must also exercise the keyboard path somewhere in the same file:
   `user.tab()`, `user.keyboard(...)`, `user.type(...)` with a `{Enter}`-style key token, `.focus()`,
@@ -533,6 +871,23 @@ off (a PR that adds or removes React keeps linting on both sides); a misspelled 
   reports the first hover when none appears: add a test that tabs to the element and asserts the
   same state. A hover-only control gets an exception. A project with
   `@testing-library/react-native` keeps `testID` queries, the idiom there.
+- **Component test setup.** A Vitest project needs four things before the first component
+  test passes: `test.environment: 'jsdom'` (or `happy-dom`) in the Vitest config;
+  either `test.globals: true`, so Testing Library registers its `cleanup` after each test, or
+  `afterEach(cleanup)` in a setup file (without one of them the second test that renders sees the
+  first one's DOM; `testing-library/no-manual-cleanup` follows the project's choice, read into the
+  head policy as `react.autoCleanup`);
+  `import '@testing-library/jest-dom/vitest'` in a file listed in `test.setupFiles`, for
+  `toBeInTheDocument()` and the other DOM matchers; and the named import
+  `import { userEvent } from '@testing-library/user-event'`, because the default import has no
+  `setup()` under `module: NodeNext`. When a test fails with `document is not defined`,
+  `Invalid Chai property: toBeInTheDocument` or `afterEach is not defined`, the `tests-failed`
+  message ends with a hint that names the missing setup line
+  (`adapters/quality-areas/reporting/failure-lines.mjs`).
+- **Snapshot-only tests are allowed.** No rule bans a test whose only assertion is
+  `toMatchSnapshot()` or `toMatchInlineSnapshot()`. A snapshot can pin a rendered structure
+  deliberately, and there is no general recommendation against it nor a weird pattern with a
+  standard alternative. The bans above still apply inside such a test.
 - **Use the library's component** (`redefined-library-component`, reported by the `structure`
   check). A component definition (a top-level PascalCase function, or `const` arrow function,
   function expression, `memo` or `forwardRef`, in a `.tsx` or `.jsx` file) whose name is one that
@@ -563,7 +918,46 @@ off (a PR that adds or removes React keeps linting on both sides); a misspelled 
   that adopts an icon package does not report every old svg. Existing files are baselined by path. A
   new icon or illustration that is a design decision needs an exception for the file.
 
-The plugins are `eslint-plugin-react-hooks`, `eslint-plugin-react-x` (from eslint-react),
+### Vite, Next.js and other framework conventions
+
+- **App entry.** The file that mounts the app runs work at import time on purpose. When
+  `package.json` lists `vite` (or a `vite.config.*` exists), the module scripts of `index.html`
+  (`<script type="module" src="/src/main.tsx">`), else the first of `src/main.tsx`, `src/main.ts`,
+  `src/main.jsx` and `src/main.js` that exists, are detected as entry points and the module-load
+  rule skips them. List another entry file yourself:
+  `"layout": { "entryPoints": ["src/main/main.tsx"] }`. Side-effect imports of stylesheets
+  (`import './index.css'`, also `.scss`, `.sass`, `.less`, `.styl`, `.pcss`) are not module-load
+  effects.
+- **CSS Modules and assets.** `import styles from './panel.module.css'` and image imports need
+  types. Add `vite/client` to `types` in `tsconfig.json`, or put
+  `/// <reference types="vite/client" />` in a `.d.ts` under `src/` (what `create-vite` generates as
+  `vite-env.d.ts`), or declare the module in a `.d.ts`. Hand-written `.d.ts` files under the source
+  roots are part of the type-check program, so these declarations take effect.
+- **Default exports.** The framework files that need `export default` are detected from the head
+  checkout and allowed: with `next` in `package.json` (or a `next.config.*`), the App Router files
+  `page`, `layout`, `loading`, `error`, `global-error`, `not-found`, `template`, `default` and
+  `route`, `forbidden` and `unauthorized` and the metadata routes `sitemap`, `robots`, `manifest`,
+  `icon`, `apple-icon`, `opengraph-image` and `twitter-image` under `app/` or `src/app/`, every
+  file under `pages/` or `src/pages/`, and `middleware` or `proxy` (Next 16) at the root or in
+  `src/`; with `@react-router/dev`, an `@remix-run/*` package or a `react-router.config.*` file,
+  the route modules: `app/root.*`, `app/routes.*`, `app/entry.client.*`, `app/entry.server.*` and
+  every file under `app/routes/`; with `@storybook/*` or `storybook` (or a `.storybook/` folder),
+  `*.stories.*` and `*.story.*`; with `expo-router`, every file under `app/` or `src/app/`. The
+  detected globs and entry points are written into the head policy (`frameworks`) for both sides.
+  Other framework files take an exception scoped to those paths:
+  `"exceptions": [{ "rule": "nitpicker/no-default-export", "paths": ["src/routes/**"], "reason": "framework file convention" }]`.
+  The default-export ban is its own rule, so the exception lifts nothing else for those paths.
+- **Lazy components.** The standard `lazy(() => import('./x').then(...))` is a promise chain. Use
+  `lazy(async () => ({ default: (await import('./badge.js')).Badge }))`.
+- **`null`.** `useRef<HTMLDivElement>(null)` and `createContext<T | null>(null)` are allowed. Anything
+  else a library forces is an exception for `nitpicker/no-null` on those paths (promise chains a
+  library forces: `nitpicker/no-promise-chain`).
+
+`eslint-plugin-regexp` (MIT) supplies `regexp/no-super-linear-backtracking` in every project, React
+or not.
+
+The plugins are `eslint-plugin-react-hooks`, `eslint-plugin-react-x`, `eslint-plugin-react-dom` and
+`eslint-plugin-react-web-api` (the last three are eslint-react, MIT, pinned to one version),
 `eslint-plugin-jsx-a11y-x` and `eslint-plugin-testing-library` (whose peer range includes ESLint 10). `eslint-plugin-react` and `eslint-plugin-jsx-a11y` declare no ESLint 10
 support, so their maintained, ESLint 10 compatible counterparts are used.
 
@@ -722,8 +1116,11 @@ from a real caller) and the `exceptions` entry that lifts it.
 - `no-restricted-syntax` is one rule with one list per scope. ESLint flat config replaces a rule's
   options when several config objects match the same file, so each scope carries the complete list:
   `restrictedSyntaxByScope` in `eslint-config/strict.mjs` has `source`, `configFile`, `domain` and `adapters`, and
-  the `domain` and `adapters` lists contain the `source` list plus their own selectors. The
-  control-flow selectors live in `strict-control-flow.mjs` and are part of `source`; `domain` drops
+  the `domain` and `adapters` lists contain the `source` list plus their own selectors. Default
+  exports, `null`, promise chains and the domain/ UI-framework ban left these lists for rules of
+  their own (`nitpicker/no-default-export`, `nitpicker/no-null`, `nitpicker/no-promise-chain`,
+  `nitpicker/no-ui-framework-in-domain`). The loop and `forEach` selectors live in
+  `strict-control-flow.mjs` and are part of `source`; `domain` drops
   the loop and `forEach` ones because its own selectors report those nodes with a stricter message. Add a
   selector to the list of its scope; a test proves that a file under `features/x/domain/` gets both
   the global and the domain bans.
@@ -736,7 +1133,8 @@ from a real caller) and the `exceptions` entry that lifts it.
   which `strictPresetConfig()` includes. They follow the layout's test roots and are strict rules,
   so the differential gate holds touched test code to them. The test `no-restricted-syntax` list
   (`testRestrictedSyntax`) reuses the `as` selectors of `strict-escape-hatches.mjs` and the
-  control-flow selectors of `strict-control-flow.mjs`, whose loop message also names `it.each`.
+  loop and `forEach` selectors of `strict-control-flow.mjs`, whose loop message also names
+  `it.each`; promise chains in tests are `nitpicker/no-promise-chain`.
   `evals/detectors/gate-agreement.test.mjs` checks that the evaluation harness's code-shortcuts
   detector and this list report the same constructs in a test file.
 - `domain/` and `adapters/` rules are scoped by the globs `<sourceRoot>/main/features/*/domain/**`
@@ -747,18 +1145,41 @@ from a real caller) and the `exceptions` entry that lifts it.
   points, since nothing imports the composition root.
 - Touched code is enforced by the diff engine (see "How touched code is detected").
 - Exceptions go through `exceptions` in `nitpicker.config.json`. An exception names one rule id and
-  turns that rule off for the listed paths. `no-restricted-syntax` is a single rule id, so an
+  turns that rule off for the listed paths. For a dependency-cruiser boundary rule (the `domain-*`
+  rules, for example `domain-does-not-import-node-io`), the rule id is the rule's name and the paths
+  are the importing files. `no-restricted-syntax` is a single rule id, so an
   exception for it lifts every selector (all the syntax bans) for those paths; prefer fixing the
-  code, and keep such exceptions narrow.
+  code, and keep such exceptions narrow. The bans that frameworks and libraries legitimately need
+  lifted have their own rule ids, `nitpicker/no-default-export`, `nitpicker/no-null` and
+  `nitpicker/no-promise-chain`, built from the same `{ selector, message }` lists, so an exception
+  for one of them leaves the other bans on.
+- Upgrade note: these three bans, and the UI framework ban in `domain/`
+  (`nitpicker/no-ui-framework-in-domain`), used to be `no-restricted-syntax` selectors. An existing
+  `no-restricted-syntax` exception no longer lifts them; add an entry for the new rule id with the
+  same paths.
 - The file limits (`file-lines-limit`, `line-length-limit`, `folder-files-limit`) take exceptions the
   same way; each failure message spells out the entry that would lift it.
 - The reuse rules (`shared-used-by-one-feature`, `duplicate-definition`, `exported-name-collision`,
   `redefined-library-component`, `new-icon-asset`) come from the `coupling` and `structure` checks,
   not from ESLint, and take exceptions the same way; the JavaScript preset runs them too.
 - `layout.excludedGlobs`, `layout.entryPoints` and `layout.sourceRoots`/`layout.testRoots` are all valid `layout` keys. The
-  roots must be directories; `excludedGlobs` are globs and replace the built-in exclusions;
+  default `testRoots` are `test`, `tests`, `__tests__` and `e2e` (repo-root folders only, so
+  `src/crypto/e2e/` stays production code; a missing one is ignored). Type checking, duplicate
+  detection, dead-code analysis and the test-file lint scopes cover all four. The roots must be
+  directories; `excludedGlobs` are globs and replace the built-in exclusions;
   `entryPoints` are globs added to knip's entries for files that are loaded by path, not imported;
   the module-load-effects check does not apply to them, since running at load is what a script does.
+- A root `e2e/` of Playwright or Cypress specs needs no exception. Its specs need no production
+  import (`nitpicker/test-must-use-production-runtime` and the `test-runtime` analysis skip it, as
+  they skip `contract/`), `async ({}, use)` fixtures are allowed there, and the folder is never
+  mutated. The type check adds the DOM lib when the folder exists, so `document` and `window` inside
+  `page.evaluate` compile (the lib then applies to every file in that check). The default quality
+  test run does not run `e2e`, since end-to-end runners start those tests themselves; a `testRoots`
+  you list yourself is always run, so list `e2e` to keep a vitest or supertest suite there.
+- A Jest project with tests in a root `__tests__/` gets them run by Vitest in the quality test run,
+  and they fail on `jest.*` (Jest support is issue #162). Either list `layout.testRoots` without
+  `__tests__`, or add `"__tests__/**"` to `exclude`, which also leaves the folder out of the other
+  tools.
 
 ## Enforcement sources
 
