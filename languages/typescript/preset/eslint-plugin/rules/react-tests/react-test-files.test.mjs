@@ -53,14 +53,14 @@ function lintIn(root, code, plugin, rules) {
   const linter = new Linter({ cwd: root });
   const config = [
     {
-      files: ['**/*.tsx'],
+      files: ['**/*.{ts,tsx}'],
       languageOptions: { parser: tseslint.parser },
       plugins: { demo: plugin },
       settings: { 'testing-library/utils-module': 'test-utils' },
       rules,
     },
   ];
-  return linter.verify(code, config, path.join(root, 'test/ui/a.test.tsx'));
+  return linter.verify(code, config, path.join(root, 'test/ui/a.test.ts'));
 }
 
 function runsIn(root, code) {

@@ -19,10 +19,10 @@ function rulesByFile(findings, directory = 'src/') {
   return rules;
 }
 
-function testRulesByFile(findings) {
+function testRulesByFile(findings, directory = 'test/') {
   return rulesByFile(
     findings.filter(({ rule }) => testRulePattern.test(rule)),
-    'test/',
+    directory,
   );
 }
 
@@ -72,12 +72,30 @@ describe('the react-project fixture', () => {
 
       expect(testRulesByFile(findings)).toEqual({
         'container-query.test': ['testing-library/no-node-access'],
+        'destructured-query.test': ['testing-library/prefer-screen-queries'],
         'fire-event.test': ['testing-library/prefer-user-event'],
+        'hook-spy.test': ['nitpicker/react-test-no-implementation-details'],
         'internals.test': ['nitpicker/react-test-no-implementation-details'],
         'test-id.test': ['testing-library/no-test-id-queries'],
         'unawaited-event.test': ['testing-library/await-async-events'],
         'wrapper-container.test': ['testing-library/no-node-access'],
       });
+      expect(testRulesByFile(findings, '__tests__/')).toEqual({
+        'root-fire-event.test': ['testing-library/prefer-user-event'],
+      });
+      expect(testRulesByFile(findings, 'e2e/')).toEqual({
+        'root-test-id.test': ['testing-library/no-test-id-queries'],
+      });
+      expect(
+        findings.filter(
+          ({ path: file, rule }) =>
+            [
+              'test/ui/snapshot.test.tsx',
+              'e2e/root-playwright.spec.ts',
+              'e2e/fixtures.ts',
+            ].includes(file) && /^(?:testing-library\/|nitpicker\/|no-empty-pattern$)/.test(rule),
+        ),
+      ).toEqual([]);
       expect(rulesByFile(findings)).toEqual({
         'class-component': ['react-x/no-class-component'],
         'conditional-hook': ['react-hooks/rules-of-hooks'],

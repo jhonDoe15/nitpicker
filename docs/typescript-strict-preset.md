@@ -434,6 +434,11 @@ that defines a named function (a copied helper: keep one in a non-test file such
 `test/support/` and import it). Repeated expected values and assertions between tests are left
 alone.
 
+Every runnable test imports production code at runtime
+(`nitpicker/test-must-use-production-runtime`), directly or through a relative test helper that
+does, such as a `renderWithProviders` in `test/support/` that imports the app. The rule follows one
+hop, and type-only imports do not count.
+
 - `nitpicker/no-git-repository-per-test`: no `git init` or `git clone` per test. This covers direct
   `child_process`/`execa` calls and same-file wrappers such as `git(root, ['init'])` or
   `run('git', ['init'])`. Build a template repository once in `beforeAll` and `cpSync` it per test.
@@ -781,26 +786,44 @@ off (a PR that adds or removes React keeps linting on both sides); a misspelled 
   (`onClick={async () => ...}`), which is the normal React form. `no-confusing-void-expression`
   stops flagging a shorthand arrow whose contextual type returns `void`
   (`onChange={(event) => setTitle(event.target.value)}`).
-- **Component tests** (test files only: the test roots, `*.test.*` and `*.spec.*` files under the
-  source roots, and `__tests__` directories). They need no particular test runner (Vitest or
-  Jest), and report only in a test file that imports `@testing-library/*`, `react`, `react-dom`
-  or another `react-*` package, `enzyme`, `react-test-renderer`, or a project `test-utils`
-  module (relative, through a tsconfig `paths` alias such as `@/test-utils`, or re-exported by a
-  barrel), or a project helper that imports `@testing-library/*` (`@/test/render` exporting its own
-  `renderApp`, also through a barrel such as `@support`; followed up to four imports deep), so
-  Playwright and domain tests in the same roots are left alone. An import of such a helper counts as
-  the Testing Library import, so queries on what it returns are checked. Query by accessible
+- **Component tests** (test files only: the test roots, which default to `test`, `tests`,
+  `__tests__` and `e2e` at the repo root, `*.test.*` and `*.spec.*` files under the source roots,
+  and `__tests__` directories under them). They need no particular test runner (Vitest or
+  Jest), and report in every `.tsx` and `.jsx` test (except Playwright and Cypress component
+  tests), in a test that imports `@testing-library/*`, `react`, `react-dom` or another `react-*`
+  package, `enzyme`, `react-test-renderer`, or a project `test-utils` module (relative, through a
+  tsconfig `paths` alias such as `@/test-utils`, or re-exported by a barrel), in a test that mocks
+  `react` or `react-dom` with `vi.mock`/`jest.mock`, and in a test that imports a project helper
+  that imports `@testing-library/*`, `enzyme` or `react-test-renderer` (`@/test/render` exporting
+  its own `renderApp`, also through a barrel such as `@support`; followed up to four imports deep),
+  so Playwright and domain tests in the same roots are left alone. An import of such a helper counts
+  as the Testing Library import, so queries on what it returns are checked. Query by accessible
   role, not test ids (`testing-library/no-test-id-queries`) or DOM traversal, class selectors and
   `container` queries (`testing-library/no-node-access`): `screen.getByRole('button', { name: 'Save' })`,
-  or `toHaveFocus()` for focus. Drive the component with `userEvent`, not `fireEvent`
+  or `toHaveFocus()` for focus. Query through `screen`, not through queries destructured from
+  `render(...)` (`testing-library/prefer-screen-queries`, in Testing Library's own React
+  recommendations); `within(element)` scopes a query to part of the page. Drive the component with `userEvent`, not `fireEvent`
   (`testing-library/prefer-user-event`), and `await` every `userEvent` call, `findBy*` query and
   `waitFor` (`testing-library/await-async-events`, `await-async-queries`, `await-async-utils`);
   a project on user-event v13, whose calls are synchronous, needs an exception for
-  `await-async-events`. Do not test implementation details
-  (`nitpicker/react-test-no-implementation-details`): no `.instance()`, `.state()`, `.setState()` or
-  test-renderer `findByType`/`findByProps`, no React fiber internals (`_reactInternals`,
-  `stateNode`, `memoizedState`) and no `spyOn(React, 'useState')`; assert what the user sees. An
-  element with no role or accessible name needs an exception. A test file that hovers
+  `await-async-events`. Create the user with `const user = userEvent.setup()`
+  (`testing-library/prefer-user-event-setup`, for the default and the named `userEvent`
+  import alike). Check presence with `getBy*` and absence with
+  `queryBy*` (`testing-library/prefer-presence-queries`). Do not wrap `render` or `user` calls
+  in `act` (`testing-library/no-unnecessary-act`), leave `screen.debug()` and other debug
+  output in (`testing-library/no-debugging-utils`) or call `cleanup` yourself
+  (`testing-library/no-manual-cleanup`). Do not test implementation details
+  (`nitpicker/react-test-no-implementation-details`): no `.instance()`, no `.state()` or `.setState()` on
+  an enzyme or test-renderer wrapper (a store's `setState` is fine), no test-renderer
+  `findByType`/`findByProps`, no React fiber internals (`_reactInternals`,
+  `stateNode`, `memoizedState`) and no `spyOn` on a React hook (`vi.spyOn(React, 'useState')`,
+  `jest.spyOn(R, 'useEffect')`, `vi.spyOn(require('react'), 'useState')`, with `React` or any
+  binding of `react`: a default, namespace, `{ default as R }`, `import = require`, `require`
+  (anywhere in the file), `await import('react')` or `vi.importActual('react')` binding, or an
+  alias such as `const R = React`), and no `vi.mock('react', ...)` or `jest.mock('react', ...)`
+  (nor a `react-dom` mock that replaces a hook); Testing Library's guiding principle is to
+  test the way the software is used, so assert what the user sees, or test a custom hook with
+  `renderHook`. An element with no role or accessible name needs an exception. A test file that hovers
   (`user.hover`, `userEvent.hover`, `fireEvent.mouseEnter` or `mouseOver`, or a `user.pointer` call
   that only moves to a `target`) must also exercise the keyboard path somewhere in the same file:
   `user.tab()`, `user.keyboard(...)`, `user.type(...)` with a `{Enter}`-style key token, `.focus()`,
@@ -810,6 +833,22 @@ off (a PR that adds or removes React keeps linting on both sides); a misspelled 
   reports the first hover when none appears: add a test that tabs to the element and asserts the
   same state. A hover-only control gets an exception. A project with
   `@testing-library/react-native` keeps `testID` queries, the idiom there.
+- **Component test setup.** A Vitest project needs four things before the first component
+  test passes: `test.environment: 'jsdom'` (or `happy-dom`) in the Vitest config;
+  `test.globals: true`, so Testing Library registers its `cleanup` after each test (without it
+  the second test that renders sees the first one's DOM; a setup file that calls
+  `afterEach(cleanup)` instead needs an exception for `testing-library/no-manual-cleanup`);
+  `import '@testing-library/jest-dom/vitest'` in a file listed in `test.setupFiles`, for
+  `toBeInTheDocument()` and the other DOM matchers; and the named import
+  `import { userEvent } from '@testing-library/user-event'`, because the default import has no
+  `setup()` under `module: NodeNext`. When a test fails with `document is not defined`,
+  `Invalid Chai property: toBeInTheDocument` or `afterEach is not defined`, the `tests-failed`
+  message ends with a hint that names the missing setup line
+  (`adapters/quality-areas/reporting/failure-lines.mjs`).
+- **Snapshot-only tests are allowed.** No rule bans a test whose only assertion is
+  `toMatchSnapshot()` or `toMatchInlineSnapshot()`. A snapshot can pin a rendered structure
+  deliberately, and there is no general recommendation against it nor a weird pattern with a
+  standard alternative. The bans above still apply inside such a test.
 - **Use the library's component** (`redefined-library-component`, reported by the `structure`
   check). A component definition (a top-level PascalCase function, or `const` arrow function,
   function expression, `memo` or `forwardRef`, in a `.tsx` or `.jsx` file) whose name is one that
@@ -1081,9 +1120,23 @@ from a real caller) and the `exceptions` entry that lifts it.
   `redefined-library-component`, `new-icon-asset`) come from the `coupling` and `structure` checks,
   not from ESLint, and take exceptions the same way; the JavaScript preset runs them too.
 - `layout.excludedGlobs`, `layout.entryPoints` and `layout.sourceRoots`/`layout.testRoots` are all valid `layout` keys. The
-  roots must be directories; `excludedGlobs` are globs and replace the built-in exclusions;
+  default `testRoots` are `test`, `tests`, `__tests__` and `e2e` (repo-root folders only, so
+  `src/crypto/e2e/` stays production code; a missing one is ignored). Type checking, duplicate
+  detection, dead-code analysis and the test-file lint scopes cover all four. The roots must be
+  directories; `excludedGlobs` are globs and replace the built-in exclusions;
   `entryPoints` are globs added to knip's entries for files that are loaded by path, not imported;
   the module-load-effects check does not apply to them, since running at load is what a script does.
+- A root `e2e/` of Playwright or Cypress specs needs no exception. Its specs need no production
+  import (`nitpicker/test-must-use-production-runtime` and the `test-runtime` analysis skip it, as
+  they skip `contract/`), `async ({}, use)` fixtures are allowed there, and the folder is never
+  mutated. The type check adds the DOM lib when the folder exists, so `document` and `window` inside
+  `page.evaluate` compile (the lib then applies to every file in that check). The default quality
+  test run does not run `e2e`, since end-to-end runners start those tests themselves; a `testRoots`
+  you list yourself is always run, so list `e2e` to keep a vitest or supertest suite there.
+- A Jest project with tests in a root `__tests__/` gets them run by Vitest in the quality test run,
+  and they fail on `jest.*` (Jest support is issue #162). Either list `layout.testRoots` without
+  `__tests__`, or add `"__tests__/**"` to `exclude`, which also leaves the folder out of the other
+  tools.
 
 ## Enforcement sources
 

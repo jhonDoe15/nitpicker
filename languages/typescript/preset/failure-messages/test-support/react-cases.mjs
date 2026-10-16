@@ -25,7 +25,7 @@ function reactCase([name, banned, allowed, styling = 'class-names']) {
 
 const testFilename = 'test/ui/panel.test.tsx';
 const testingLibraryImport = [
-  "import { render, screen, fireEvent, waitFor } from '@testing-library/react';",
+  "import { act, render, screen, fireEvent, waitFor } from '@testing-library/react';",
   "import userEvent from '@testing-library/user-event';",
   '',
 ].join('\n');
@@ -232,12 +232,12 @@ const reactTestCases = [
   ],
   [
     'component state names what the user sees',
-    'expect(wrapper.state()).toEqual({});',
+    "import { mount } from 'enzyme'; const wrapper = mount(Panel); expect(wrapper.state()).toEqual({});",
     'what the user sees',
   ],
   [
     'component state names the config exception',
-    'expect(wrapper.state()).toEqual({});',
+    "import { mount } from 'enzyme'; const wrapper = mount(Panel); expect(wrapper.state()).toEqual({});",
     'nitpicker.config.json',
   ],
   [
@@ -251,6 +251,64 @@ const reactTestCases = [
     'nitpicker.config.json',
   ],
   ['hook spy names renderHook', "vi.spyOn(React, 'useState');", '`renderHook`'],
+  ['hook spy names what the user sees', "vi.spyOn(React, 'useState');", 'what the user sees'],
+  ['hook spy names the config exception', "vi.spyOn(React, 'useState');", 'nitpicker.config.json'],
+  [
+    'hook spy on a namespace import names renderHook',
+    "import * as R from 'react'; jest.spyOn(R, 'useEffect');",
+    '`renderHook`',
+  ],
+  [
+    'destructured query names screen',
+    "const { getByRole } = render(<Panel />); getByRole('button');",
+    'screen.getByRole',
+  ],
+  [
+    'destructured query names within',
+    "const { getByRole } = render(<Panel />); getByRole('button');",
+    'within(element)',
+  ],
+  [
+    'destructured query names the config exception',
+    "const { getByRole } = render(<Panel />); getByRole('button');",
+    'nitpicker.config.json',
+  ],
+  [
+    'react module mock names renderHook',
+    "vi.mock('react', () => ({ useState: vi.fn() }));",
+    '`renderHook`',
+  ],
+  [
+    'act around render names a direct call',
+    'act(() => { render(<Panel />); });',
+    'Call them directly',
+  ],
+  ['debug output names an assertion', 'screen.debug();', 'assert what you were looking for'],
+  [
+    'manual cleanup names Vitest globals',
+    "import { cleanup } from '@testing-library/react'; afterEach(cleanup);",
+    '`test.globals: true`',
+  ],
+  [
+    'manual cleanup names the setup file exception',
+    "import { cleanup } from '@testing-library/react'; afterEach(cleanup);",
+    'If a setup file must call it, add an exception',
+  ],
+  [
+    'queryBy for presence names getBy',
+    "expect(screen.queryByText('Saved')).toBeInTheDocument();",
+    "expect(screen.getByText('Saved')).toBeInTheDocument()",
+  ],
+  [
+    'getBy for absence names queryBy',
+    "expect(screen.getByText('Error')).not.toBeInTheDocument();",
+    "expect(screen.queryByText('Error')).not.toBeInTheDocument()",
+  ],
+  [
+    'userEvent without setup names the named import',
+    "await userEvent.click(screen.getByRole('button'));",
+    "import { userEvent } from '@testing-library/user-event'",
+  ],
 ].map(reactTestCase);
 
 export const reactFailureMessageCases = [
