@@ -1,3 +1,5 @@
+import { symlinkSync } from 'node:fs';
+import path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { resolveLayoutFor } from '../../layout.mjs';
 import { codeFilesUnder } from '../program.mjs';
@@ -33,8 +35,12 @@ function reexportedItems({
   sourceRoots = ['src'],
   entryPoints = [],
   entryPatterns = ['src/main.ts'],
+  links = {},
 }) {
   root = createProject(files, { manifest: files['package.json'] ?? APP });
+  for (const [link, target] of Object.entries(links)) {
+    symlinkSync(`${root}/${target}`, `${root}/${link}`);
+  }
   const layout = { ...resolveLayoutFor({ layout: { sourceRoots } }), entryPoints };
   const projectRoot = project === '.' ? root : `${root}/${project}`;
   return reexportedTestOnlyEntries({
@@ -271,5 +277,138 @@ export const check = [core, local];
       'src/other.ts other via src/main.ts',
     ]);
     expect(walked).toEqual([root]);
+  });
+});
+
+describe('an alias that the entry passes onward', () => {
+  const api = {
+    'src/api.ts': 'export function handle() { return 1; }\n',
+    'src/api.test.ts': "import { handle } from './api';\nexport const check = handle;\n",
+  };
+  const forms = [
+    ['as the default export', 'export default serve;', "import used from './main';", 'default'],
+    [
+      'under another name',
+      'export { serve as run };',
+      "import { run as used } from './main';",
+      'run',
+    ],
+    [
+      'as another alias',
+      'export const wrapped = serve;',
+      "import { wrapped as used } from './main';",
+      'wrapped',
+    ],
+  ];
+
+  function filesOf({ onward, reader }) {
+    return {
+      ...api,
+      'src/main.ts': `import { handle } from './api';\nexport const serve = handle;\n${onward}\n`,
+      ...(reader === undefined
+        ? {}
+        : { 'src/runner.ts': `${reader}\nexport const go = () => used();\n` }),
+    };
+  }
+
+  it.each(forms)('follows production that imports the onward name (%s)', (...form) => {
+    const [, onward, reader, name] = form;
+    const listed = [
+      ['src/main.ts', 'serve'],
+      ['src/main.ts', name],
+    ];
+
+    expect(reexported({ files: filesOf({ onward, reader }), listed })).toEqual([]);
+    expect(reexported({ files: filesOf({ onward }), listed })).toEqual([
+      'src/api.ts handle via src/main.ts',
+    ]);
+  });
+});
+
+describe('a namespace that an entry exports with export * as', () => {
+  const files = {
+    'src/main.ts': "export * as api from './api';\n",
+    'src/api.ts': 'export function handle() { return 1; }\nexport function other() { return 2; }\n',
+    'src/api.test.ts': `import { handle, other } from './api';
+export const check = [handle, other];
+`,
+  };
+  const listed = [
+    ['src/api.ts', 'handle'],
+    ['src/api.ts', 'other'],
+  ];
+  const reader = (body) => ({
+    ...files,
+    'src/runner.ts': `import { api } from './main';\n${body}\n`,
+  });
+
+  it('counts production that uses it as a whole value as using every member', () => {
+    const passed =
+      'function use(value: object) { return value; }\nexport const run = () => use(api);';
+
+    expect(
+      reexported({ files: reader('export const run = () => Object.keys(api);'), listed }),
+    ).toEqual([]);
+    expect(reexported({ files: reader(passed), listed })).toEqual([]);
+  });
+
+  it('keeps member access per member', () => {
+    expect(reexported({ files: reader('export const run = () => api.handle();'), listed })).toEqual(
+      ['src/api.ts other via src/main.ts'],
+    );
+  });
+
+  it('counts a whole value passed on through a barrel the entry re-exports from', () => {
+    const viaBarrel = {
+      ...files,
+      'src/barrel.ts': "export * as api from './api';\n",
+      'src/main.ts': "export { api } from './barrel';\n",
+      'src/runner.ts': `import { api } from './barrel';
+function use(value: object) { return value; }
+export const run = () => use(api);
+`,
+    };
+
+    expect(reexported({ files: viaBarrel, listed: [['src/main.ts', 'api'], ...listed] })).toEqual(
+      [],
+    );
+  });
+});
+
+describe('the entries found near a glob', () => {
+  const impl = {
+    'src/impl.ts': 'export function impl() { return 1; }\n',
+    'src/impl.test.ts': "import { impl } from './impl';\nexport const check = impl;\n",
+  };
+  const skipped = [
+    ['a dot directory', '.hidden/*.ts', '.hidden/entry.ts', {}],
+    ['a dist directory', 'dist/*.ts', 'dist/entry.ts', {}],
+    ['a build directory', 'build/entry.ts', 'build/entry.ts', {}],
+    ['a generated directory', 'generated/*.ts', 'generated/entry.ts', {}],
+    ['a symlinked directory', 'linked/*.ts', 'linked/entry.ts', { linked: 'real' }],
+  ];
+
+  function found({ pattern, file, links }) {
+    const [link, target] = Object.entries(links)[0] ?? [];
+    const written = link === undefined ? file : file.replace(`${link}/`, `${target}/`);
+    const toImpl = path.posix.relative(path.posix.dirname(written), 'src/impl');
+    const files = { ...impl, [written]: `export { impl } from '${toImpl}';\n` };
+    const listed = [
+      [file, 'impl'],
+      ['src/impl.ts', 'impl'],
+    ];
+    return reexported({ files, listed, entryPatterns: [pattern], links });
+  }
+
+  it.each(skipped)('leaves out a file in %s, as the walk of the whole project does', (...args) => {
+    const [, pattern, file, links] = args;
+
+    expect(found({ pattern, file, links })).toEqual([]);
+  });
+
+  it('finds the same files in a place the walk reaches', () => {
+    expect(found({ pattern: 'src/entries/*.ts', file: 'src/entries/entry.ts', links: {} })).toEqual(
+      ['src/impl.ts impl via src/entries/entry.ts'],
+    );
   });
 });

@@ -1,6 +1,12 @@
 import ts from 'typescript';
 import { describe, expect, it } from 'vitest';
-import { declaredNames, jsxTagNames, referencePositions, referencedNames } from './references.mjs';
+import {
+  declaredNames,
+  jsxTagNames,
+  referenceMembers,
+  referencePositions,
+  referencedNames,
+} from './references.mjs';
 
 function parse(text, fileName = 'a.tsx') {
   return ts.createSourceFile(fileName, text, ts.ScriptTarget.Latest, true);
@@ -29,6 +35,25 @@ describe('referenced names', () => {
     );
 
     expect([...referencedNames([file])].toSorted()).toEqual(['Ns', 'o']);
+  });
+
+  it('list the members of a name that is only ever read through member access', () => {
+    const file = parse(
+      [
+        'api.handle(); api?.other; api["quoted"]; type T = api.Shape;',
+        'use(whole); whole.part;',
+        'const { x } = spread; spread.y;',
+      ].join('\n'),
+    );
+
+    expect(referenceMembers([file])).toEqual(
+      new Map([
+        ['api', ['Shape', 'handle', 'other', 'quoted']],
+        ['use', undefined],
+        ['whole', undefined],
+        ['spread', undefined],
+      ]),
+    );
   });
 
   it('list where each name is read in the file', () => {

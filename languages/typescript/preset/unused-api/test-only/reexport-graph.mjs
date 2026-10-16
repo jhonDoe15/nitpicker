@@ -7,6 +7,10 @@ function nodeKey({ file, name }) {
   return `${file}\0${name}`;
 }
 
+function visitKey(node) {
+  return `${nodeKey(node)}\0${node.members?.join(',') ?? ''}`;
+}
+
 function bindingsOf(imports) {
   return new Map(
     imports.flatMap(({ specifier, defaultName, namespaceName, named }) => [
@@ -20,13 +24,41 @@ function bindingsOf(imports) {
 }
 
 function usedNames({ aliases, referenced }) {
-  const readThroughAlias = aliases
-    .filter(({ exported }) => referenced.has(exported))
-    .map(({ local }) => local);
-  return new Set([...referenced, ...readThroughAlias]);
+  const used = new Set(referenced);
+  for (const name of used) {
+    const locals = aliases.filter(({ exported }) => exported === name).map(({ local }) => local);
+    for (const local of locals) {
+      used.add(local);
+    }
+  }
+  return used;
 }
 
-export function moduleLinks({ imports, dynamicImports, exports, referenced }) {
+function rootOf(name, aliases) {
+  const chain = [name];
+  for (const current of chain) {
+    const alias = aliases.find(({ exported }) => exported === current);
+    if (alias !== undefined && !chain.includes(alias.local)) {
+      chain.push(alias.local);
+    }
+  }
+  return chain.at(-1);
+}
+
+function onwardEdges({ exports, bindings, used }) {
+  return [...exports.locals, ...exports.aliases]
+    .map(({ local, exported }) => ({ exported, root: rootOf(local, exports.aliases) }))
+    .filter(({ root }) => bindings.has(root) && !used.has(root))
+    .map(({ exported, root }) => ({ exported, ...bindings.get(root), viaImport: true }));
+}
+
+function readMembers(local, binding, { exports, members }) {
+  const escapes = [...exports.locals, ...exports.aliases].some((link) => link.local === local);
+  const only = escapes || binding.imported === EVERYTHING ? undefined : members.get(local);
+  return only === undefined ? binding : { ...binding, members: only };
+}
+
+export function moduleLinks({ imports, dynamicImports, exports, referenced, members = new Map() }) {
   const bindings = bindingsOf(imports);
   const used = usedNames({ aliases: exports.aliases, referenced });
   const edges = [
@@ -41,32 +73,39 @@ export function moduleLinks({ imports, dynamicImports, exports, referenced }) {
       namespace: true,
       specifier,
     })),
-    ...[...exports.locals, ...exports.aliases]
-      .filter(({ local }) => bindings.has(local) && !used.has(local))
-      .map(({ local, exported }) => ({ exported, ...bindings.get(local), viaImport: true })),
+    ...onwardEdges({ exports, bindings, used }),
   ];
   const references = [
-    ...[...bindings.entries()].filter(([local]) => used.has(local)).map(([, binding]) => binding),
+    ...[...bindings.entries()]
+      .filter(([local]) => used.has(local))
+      .map(([local, binding]) => readMembers(local, binding, { exports, members })),
     ...dynamicImports.map((specifier) => ({ specifier, imported: EVERYTHING })),
   ];
   return { edges, references };
 }
 
-function nextNode(node, link) {
-  return {
-    file: link.source,
-    name: link.imported,
-    viaImport: node.viaImport || link.viaImport === true,
-  };
+function nextNodes(node, link) {
+  const viaImport = node.viaImport || link.viaImport === true;
+  if (link.imported === EVERYTHING && node.members !== undefined) {
+    return node.members.map((name) => ({ file: link.source, name, viaImport }));
+  }
+  return [
+    {
+      file: link.source,
+      name: link.imported,
+      viaImport,
+      ...(node.members === undefined ? {} : { members: node.members }),
+    },
+  ];
 }
 
 function expandWildcard(node, links) {
   const next = links
     .filter((link) => !(node.name === NAMED_EXPORTS && link.exported === 'default'))
-    .map((link) =>
+    .flatMap((link) =>
       link.star
-        ? { file: link.source, name: NAMED_EXPORTS, viaImport: node.viaImport }
-        : nextNode(node, link),
+        ? [{ file: link.source, name: NAMED_EXPORTS, viaImport: node.viaImport }]
+        : nextNodes(node, link),
     );
   return { isDeclaration: true, next };
 }
@@ -77,12 +116,21 @@ function expand(node, links) {
   }
   const named = links.filter((link) => !link.star && link.exported === node.name);
   if (named.length > 0) {
-    return { isDeclaration: false, next: named.map((link) => nextNode(node, link)) };
+    return { isDeclaration: false, next: named.flatMap((link) => nextNodes(node, link)) };
   }
   const stars = node.name === 'default' ? [] : links.filter((link) => link.star);
   return {
     isDeclaration: true,
-    next: stars.map((link) => ({ file: link.source, name: node.name, viaImport: node.viaImport })),
+    next: stars.map((link) => ({ ...node, file: link.source })),
+  };
+}
+
+function referenceStart({ source, imported, members }) {
+  return {
+    file: source,
+    name: imported,
+    viaImport: false,
+    ...(members === undefined ? {} : { members }),
   };
 }
 
@@ -100,11 +148,11 @@ export function reexportGraph(moduleOf) {
     const pending = [start];
     const found = [];
     for (const node of pending) {
-      const unseen = !seen.has(nodeKey(node));
+      const unseen = !seen.has(visitKey(node));
       const { isDeclaration, next } = unseen
         ? expand(node, moduleOf(node.file).edges)
         : { isDeclaration: false, next: [] };
-      seen.add(nodeKey(node));
+      seen.add(visitKey(node));
       if (isDeclaration) {
         found.push(node);
       }
@@ -115,9 +163,7 @@ export function reexportGraph(moduleOf) {
 
   function usedBy(references) {
     return new Set(
-      references.flatMap(({ source, imported }) =>
-        declarationsFrom({ file: source, name: imported, viaImport: false }).map(nodeKey),
-      ),
+      references.flatMap((reference) => declarationsFrom(referenceStart(reference)).map(nodeKey)),
     );
   }
 

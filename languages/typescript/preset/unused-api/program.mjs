@@ -1,4 +1,4 @@
-import { existsSync, readdirSync } from 'node:fs';
+import { existsSync, lstatSync, readdirSync } from 'node:fs';
 import path from 'node:path';
 import ts from 'typescript';
 import { filesUnder } from '../../../../shared/filesystem.mjs';
@@ -63,6 +63,40 @@ export function codeFilesUnder(directories, layout) {
       }),
     ])
     .filter((file) => isCodeFile(file));
+}
+
+function isInside(root, target) {
+  const relative = path.relative(root, target);
+  return relative !== '..' && !relative.startsWith(`..${path.sep}`) && !path.isAbsolute(relative);
+}
+
+export function walkRules({ projectRoot, layout }) {
+  const root = path.resolve(projectRoot);
+  const plain = new Map();
+  function isPlainDirectory(directory) {
+    if (!plain.has(directory)) {
+      const entry = lstatSync(directory, { throwIfNoEntry: false });
+      const skipped = isSkippedDirectory(directory, { name: path.basename(directory) }, layout);
+      plain.set(directory, entry?.isDirectory() === true && !skipped);
+    }
+    return plain.get(directory);
+  }
+  function isWalkedDirectory(directory) {
+    const segments = path.relative(root, directory).split(path.sep).filter(Boolean);
+    return (
+      isInside(root, directory) &&
+      segments
+        .map((_, index) => path.join(root, ...segments.slice(0, index + 1)))
+        .every((ancestor) => isPlainDirectory(ancestor))
+    );
+  }
+  return {
+    isDirectory: (directory) => isWalkedDirectory(path.resolve(directory)),
+    isFile: (file) =>
+      isCodeFile(file) &&
+      lstatSync(file, { throwIfNoEntry: false })?.isFile() === true &&
+      isWalkedDirectory(path.dirname(path.resolve(file))),
+  };
 }
 
 function compilerOptions({ parsed, packages, projectRoot, layout }) {

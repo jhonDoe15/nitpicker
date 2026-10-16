@@ -58,13 +58,39 @@ export function declaredNames(nodes) {
   );
 }
 
-export function referencedNames(nodes, ignored = []) {
+function readIdentifiers(nodes, ignored) {
   const skipped = new Set(ignored);
-  return new Set(
-    descendants(nodes)
-      .filter(ts.isIdentifier)
-      .filter((node) => isReference(node) && !skipped.has(node))
-      .map(({ text }) => text),
+  return descendants(nodes)
+    .filter(ts.isIdentifier)
+    .filter((node) => isReference(node) && !skipped.has(node));
+}
+
+export function referencedNames(nodes, ignored = []) {
+  return new Set(readIdentifiers(nodes, ignored).map(({ text }) => text));
+}
+
+function memberOf(node) {
+  const parent = node.parent;
+  if (ts.isPropertyAccessExpression(parent) && parent.expression === node) {
+    return parent.name.text;
+  }
+  if (
+    ts.isElementAccessExpression(parent) &&
+    parent.expression === node &&
+    ts.isStringLiteralLike(parent.argumentExpression)
+  ) {
+    return parent.argumentExpression.text;
+  }
+  return ts.isQualifiedName(parent) && parent.left === node ? parent.right.text : undefined;
+}
+
+export function referenceMembers(nodes, ignored = []) {
+  const reads = Map.groupBy(readIdentifiers(nodes, ignored), ({ text }) => text);
+  return new Map(
+    [...reads].map(([name, identifiers]) => {
+      const members = identifiers.map(memberOf);
+      return [name, members.includes(undefined) ? undefined : [...new Set(members)].toSorted()];
+    }),
   );
 }
 
