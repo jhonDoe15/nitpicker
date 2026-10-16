@@ -821,10 +821,12 @@ A Checkstyle rule prints as its full check class, for example
   does not matter, and the identity hashes the clone's token shape (its punctuation and
   operators, without names, literals and comments), so editing a name or a literal in a legacy
   copy keeps its identity. A legacy clone that shrinks (a statement inserted in one copy) or
-  that jscpd splits in two is held at its base size, for jscpd and CPD alike, while each of its
-  two copies keeps a line the change did not add or edit: a new clone between the same two files
-  fails when one of its copies is made only of added or edited lines, or when it, with the other
-  new clones of that pair, has more tokens than a base clone of the pair that no longer matches.
+  that jscpd splits in two is held at its base size, for jscpd and CPD alike, while most of each
+  of its two copies is unchanged code that was part of that base clone: a new clone between the
+  same two files fails when either copy is mostly added or edited lines, or lines that were not
+  in a base clone of the pair (a pasted copy, or code joined by deleting what was between), or
+  when it, with the other new clones of that pair, has more tokens than the base clone it came
+  from.
   Both tools hold against the same pair (`pair:<a>|<b>:clone`, counted in tokens), so a legacy CPD
   clone that shrinks below CPD's 100 tokens and is then reported by jscpd is held too. Findings use
   the same tool and rule as jscpd (`duplicates/duplicate-clone`), with identities starting `cpd:` so

@@ -1,15 +1,9 @@
-import { LITERAL_OR_COMMENT } from '../cpd-duplicates.mjs';
-
 const ANNOTATION_START = /@(?!interface\b)[\w.]+\s*/g;
 const TYPE_DECLARATION = /\b(?:class|interface|enum|record)\s+([\w$]+)/g;
 const PARAMETER = /([\w.$]+)\s*((?:\[\s*\]\s*)*)\s+[\w$]+\s*((?:\[\s*\]\s*)*)$/;
 
 function spaces(text) {
   return text.replaceAll(/[^\n]/g, ' ');
-}
-
-export function blanked(source) {
-  return source.replace(LITERAL_OR_COMMENT, spaces);
 }
 
 export function closing(text, open, [opening, closingCharacter] = '()') {

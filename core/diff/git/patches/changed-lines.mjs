@@ -71,7 +71,7 @@ function sectionIsInside(section, projectRelativePath) {
   return filePath === undefined || normalizeGitPath(filePath).startsWith(`${projectRelativePath}/`);
 }
 
-const HUNK_HEADER = /^@@ -\d+(?:,(\d+))? \+(\d+)(?:,(\d+))? @@/;
+const HUNK_HEADER = /^@@ -(\d+)(?:,(\d+))? \+(\d+)(?:,(\d+))? @@/;
 
 export function parseChangedLines(diffText, projectRelativePath = '.') {
   const changed = new Map();
@@ -96,6 +96,7 @@ function parseFileSection(section, projectRelativePath) {
     added: /^new file mode/m.test(header),
     ranges: [],
     inserted: [],
+    hunks: [],
   };
   const read = hunks.map((hunk) => recordHunk(file, hunk));
   const added = read.flatMap((hunk) => hunk.added);
@@ -119,9 +120,15 @@ function recordHunk(file, hunkText) {
   if (hunk === null) {
     return NO_LINES;
   }
-  const removedCount = hunk[1] === undefined ? 1 : Number(hunk[1]);
-  const start = Number(hunk[2]);
-  const count = hunk[3] === undefined ? 1 : Number(hunk[3]);
+  const removedCount = hunk[2] === undefined ? 1 : Number(hunk[2]);
+  const start = Number(hunk[3]);
+  const count = hunk[4] === undefined ? 1 : Number(hunk[4]);
+  file.hunks.push({
+    oldStart: Number(hunk[1]),
+    oldCount: removedCount,
+    newStart: start,
+    newCount: count,
+  });
   if (count > 0) {
     file.ranges.push([start, start + count - 1]);
   }
