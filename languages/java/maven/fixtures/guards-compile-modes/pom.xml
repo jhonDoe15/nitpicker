@@ -15,5 +15,6 @@
     <module>plugged</module>
     <module>preview</module>
     <module>modular</module>
+    <module>outside</module>
   </modules>
 </project>
