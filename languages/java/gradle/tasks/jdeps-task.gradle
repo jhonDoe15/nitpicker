@@ -1,4 +1,5 @@
 def reportDir = project.ext.nitpickerReportDir
+def toolCommand = project.ext.nitpickerToolCommand
 
 tasks.register('nitpickerJdeps') {
     group = 'nitpicker'
@@ -23,11 +24,11 @@ tasks.register('nitpickerJdeps') {
             return
         }
         def jdeps = new File(System.getProperty('java.home'), 'bin/jdeps')
-        def process = new ProcessBuilder([jdeps.absolutePath, '-verbose:class', '-filter:none'] +
-            classDirs.collect { it.absolutePath }).directory(projectDir)
+        def command = toolCommand('jdeps', [classDirectories: classDirs*.absolutePath])
+        def process = new ProcessBuilder([jdeps.absolutePath] + command.args).directory(projectDir)
             .redirectError(ProcessBuilder.Redirect.DISCARD).start()
         def output = process.inputStream.getText('UTF-8')
-        if (process.waitFor() != 0) {
+        if (!command.accepts(process.waitFor())) {
             throw new GradleException("jdeps failed (${jdeps}) with exit code ${process.exitValue()}")
         }
         graph.text = output
