@@ -413,7 +413,7 @@ default, and their messages name it:
   `nitpickerCheckstyle` configuration, so a project that declares its own Checkstyle version in
   `checkstyle` (Spring PetClinic declares 12.3.1) still gets the pinned version and its config.
   A project config chosen by policy (`tools.checkstyle.precedence` lists `"project"`) is merged
-  into this one module by module (`adapters/tool-config/checkstyle-layers.mjs`, run by
+  into this one module by module (`adapters/tool-config/checkstyle/checkstyle-layers.mjs`, run by
   `checkstyle-merge-cli.mjs` in the Gradle task and in-process for Maven): the project's property
   values win for the modules both configs name, the modules only one names stay, so nitpicker's
   checks are never dropped, and the merged file still runs on the pinned Checkstyle. Decision to review: google_checks is noisy on

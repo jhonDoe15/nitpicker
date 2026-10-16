@@ -154,7 +154,7 @@ allprojects {
                     // The project's modules are laid over nitpicker's by languages/java/adapters/tool-config
                     // (the same code the Maven build runs): a property the project sets wins, every other
                     // module and property stays nitpicker's.
-                    def mergeScript = new File(initScriptDir, '../adapters/tool-config/checkstyle-merge-cli.mjs').canonicalFile
+                    def mergeScript = new File(initScriptDir, '../adapters/tool-config/checkstyle/checkstyle-merge-cli.mjs').canonicalFile
                     def merge = new ProcessBuilder([nitpickerArgument('nitpicker.node'), mergeScript.absolutePath,
                             target.absolutePath, projectCheckstyleConfig.toString(),
                             mergedCheckstyleConfig.get().asFile.absolutePath] +

@@ -14,7 +14,7 @@ import { escapeRegExp } from '../../../shared/glob.mjs';
 import { javaCommand, runJava } from './maven-command.mjs';
 import { GRADLE_DIRECTORY } from '../builds/java-build.mjs';
 import { escapeXml } from '../adapters/tool-config/xml-write.mjs';
-import { layerCheckstyle } from '../adapters/tool-config/checkstyle-layers.mjs';
+import { layerCheckstyle } from '../adapters/tool-config/checkstyle/checkstyle-layers.mjs';
 import { NITPICKER_RULESET, pmdLayerFiles } from '../adapters/tool-config/layer-files.mjs';
 
 const EMPTY_SARIF = '{"version":"2.1.0","runs":[]}';

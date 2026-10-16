@@ -18,14 +18,9 @@ export function testAndSupportGlobs(extension) {
   ];
 }
 
-const nitpickerNames = new Map();
-
 export function nitpickerAssertionNames() {
-  if (!nitpickerNames.has('names')) {
-    const ruleset = readFileSync(path.join(GRADLE_DIRECTORY, 'pmd-ruleset.xml'), 'utf8');
-    nitpickerNames.set('names', (EXTRA_NAMES.exec(ruleset)?.[1] ?? '').split(',').filter(Boolean));
-  }
-  return nitpickerNames.get('names');
+  const ruleset = readFileSync(path.join(GRADLE_DIRECTORY, 'pmd-ruleset.xml'), 'utf8');
+  return (EXTRA_NAMES.exec(ruleset)?.[1] ?? '').split(',').filter(Boolean);
 }
 
 function usedAtTheEnd(text, language, extra) {
