@@ -333,7 +333,6 @@ describe('a config that changed between base and head', () => {
     const comparedWithDefaults = {
       policyChanges: ['exclude added: src/vendor/**'],
       policyLoosenings: ['exclude added: src/vendor/**'],
-      notices: [],
     };
 
     expect(

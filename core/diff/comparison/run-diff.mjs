@@ -110,7 +110,6 @@ function compareSnapshots(context) {
     configOverrides: settings.configOverrides,
     policyChanges: [],
     policyLoosenings: [],
-    notices: [],
     ...settings.resolveBaseSetup?.({
       ...roots,
       moves: layout.moves,
@@ -175,10 +174,7 @@ function runAndCombine(context) {
     policyLoosenings: context.baseSetup.policyLoosenings,
     acceptPolicyChange: settings.acceptPolicyChange,
     reportsPolicy: settings.reportsPolicy !== false,
-    notices: [
-      ...(settings.describeNotices?.([...layout.touchedCode.changedLines.keys()]) ?? []),
-      ...context.baseSetup.notices,
-    ],
+    notices: settings.describeNotices?.([...layout.touchedCode.changedLines.keys()]) ?? [],
   });
 }
 
