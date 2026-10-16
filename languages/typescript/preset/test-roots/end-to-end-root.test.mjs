@@ -27,10 +27,20 @@ new RuleTester({
       filename: projectFile('src/crypto/e2e/encrypt.test.ts'),
       code: "import { encrypt } from './encrypt.js'; encrypt();",
     },
+    { filename: projectFile('test/e2e/login.spec.ts'), code: playwrightSpec },
+    { filename: projectFile('src/ui/login.spec.ts'), code: playwrightSpec },
+    {
+      filename: projectFile('tests/checkout.cy.test.ts'),
+      code: "import { mount } from 'cypress/react'; mount(null);",
+    },
   ],
   invalid: [
-    { filename: projectFile('test/e2e/login.spec.ts'), code: playwrightSpec, errors: 1 },
-    { filename: projectFile('tests/login.spec.ts'), code: playwrightSpec, errors: 1 },
+    {
+      filename: projectFile('test/e2e/login.spec.ts'),
+      code: "import { expect } from 'vitest'; expect(1).toBe(1);",
+      errors: 1,
+    },
+    { filename: projectFile('tests/login.spec.ts'), code: 'export {};', errors: 1 },
   ],
 });
 

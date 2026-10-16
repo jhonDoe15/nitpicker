@@ -85,11 +85,23 @@ export function total(lines: readonly Line[]) {
       ],
       ['expo-router', "import { Link } from 'expo-router'; export const y = Link;"],
       ['jotai', "import { atom } from 'jotai'; export const y = atom;"],
+      ...[
+        '@reduxjs/toolkit',
+        'redux',
+        'lucide-react',
+        '@tabler/icons-react',
+        'motion/react',
+        'framer-motion',
+        '@mui/material',
+        'styled-components',
+        '@emotion/styled',
+        '@preact/signals-react',
+      ].map((source) => [source, `import { x } from '${source}'; export const y = x;`]),
     ];
     expect(banned.map(([, code]) => messagesFor(domainFile, code))).toEqual(
       banned.map(([source]) => [messageFor(source)]),
     );
-    for (const allowed of ['reactive-x', 'nextra-utils', '@acme/reactor', 'zod']) {
+    for (const allowed of ['reactive-x', 'nextra-utils', '@acme/reactor', 'zod', 'motion-utils']) {
       expect(
         messagesFor(domainFile, `import { x } from '${allowed}'; export const y = x;`),
       ).toEqual([]);
@@ -97,6 +109,29 @@ export function total(lines: readonly Line[]) {
     expect(messagesFor('src/main/features/billing/adapters/view.ts', "import 'react';")).toEqual(
       [],
     );
+  });
+
+  it('keeps JSX out of domain/, also with the automatic runtime and no import', () => {
+    const jsx = new Linter().verify(
+      'export const Badge = () => <span><b>{1}</b></span>;\nexport const List = () => <>{[]}</>;',
+      [
+        {
+          files: ['**/*.tsx'],
+          languageOptions: {
+            parser: tseslint.parser,
+            parserOptions: { ecmaFeatures: { jsx: true } },
+          },
+          plugins: { nitpicker: nitpickerRules },
+          rules: { 'nitpicker/no-ui-framework-in-domain': 'error' },
+        },
+      ],
+      'src/main/features/billing/domain/badge.tsx',
+    );
+
+    expect(jsx.map(({ line, message }) => `${line} ${message.slice(0, 24)}`)).toEqual([
+      '1 domain/ does not render:',
+      '2 domain/ does not render:',
+    ]);
   });
 
   it('follows imports through shared/ to a UI framework', () => {

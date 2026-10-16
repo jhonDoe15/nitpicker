@@ -97,14 +97,9 @@ export const componentTestCases = [
   ],
   ['debug output names an assertion', 'screen.debug();', 'assert what you were looking for'],
   [
-    'manual cleanup names Vitest globals',
+    'manual cleanup names the removal',
     "import { cleanup } from '@testing-library/react'; afterEach(cleanup);",
-    '`test.globals: true`',
-  ],
-  [
-    'manual cleanup names the setup file exception',
-    "import { cleanup } from '@testing-library/react'; afterEach(cleanup);",
-    'If a setup file must call it, add an exception',
+    'remove the call',
   ],
   [
     'queryBy for presence names getBy',

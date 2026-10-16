@@ -2,6 +2,7 @@ import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { codeExtensions } from '../layout.mjs';
 import { readJsonc } from '../modules/tsconfig-files.mjs';
+import { projectConfigFile } from '../test-environment/config-files.mjs';
 
 const scopePackages = {
   react: ['react'],
@@ -47,12 +48,26 @@ const nextRouteFiles = [
   'template',
   'default',
   'route',
+  'forbidden',
+  'unauthorized',
+  'sitemap',
+  'robots',
+  'manifest',
+  'icon',
+  'apple-icon',
+  'opengraph-image',
+  'twitter-image',
 ];
 const nextConventionGlobs = [
   `{app,src/app}/**/{${nextRouteFiles.join(',')}}.${codeExtensions}`,
   `{pages,src/pages}/**/*.${codeExtensions}`,
-  `{middleware,src/middleware}.${codeExtensions}`,
+  `{middleware,src/middleware,proxy,src/proxy}.${codeExtensions}`,
 ];
+const reactRouterGlobs = [
+  `app/{root,routes,entry.client,entry.server}.${codeExtensions}`,
+  `app/routes/**/*.${codeExtensions}`,
+];
+const reactRouterPackage = /^(?:@react-router\/dev|@remix-run\/.+)$/u;
 const expoRouterGlobs = [`{app,src/app}/**/*.${codeExtensions}`];
 const moduleScript = /<script\b([^>]*)>/giu;
 const moduleType = /\btype\s*=\s*["']module["']/iu;
@@ -100,11 +115,15 @@ export function frameworkConventions(projectRoot) {
   const next = names.includes('next') || hasConfigFile(entries, 'next.config');
   const storybook = names.some(isStorybookPackage) || entries.has('.storybook');
   const vite = names.includes('vite') || hasConfigFile(entries, 'vite.config');
+  const reactRouter =
+    names.some((name) => reactRouterPackage.test(name)) ||
+    hasConfigFile(entries, 'react-router.config');
   return {
     defaultExports: [
       ...(next ? nextConventionGlobs : []),
       ...(storybook ? storyGlobs : []),
       ...(names.includes('expo-router') ? expoRouterGlobs : []),
+      ...(reactRouter ? reactRouterGlobs : []),
     ],
     entryPoints: vite ? viteEntryPoints(projectRoot) : [],
   };
@@ -124,6 +143,16 @@ export function readDependencyNames(projectRoot) {
     ...Object.keys(manifest?.dependencies ?? {}),
     ...Object.keys(manifest?.devDependencies ?? {}),
   ];
+}
+
+const vitestGlobals = /\bglobals\s*:\s*true\b/u;
+
+export function testsCleanUpAutomatically(projectRoot) {
+  if (!readDependencyNames(projectRoot).includes('vitest')) {
+    return true;
+  }
+  const configFile = projectConfigFile(projectRoot);
+  return configFile !== undefined && vitestGlobals.test(readText(configFile));
 }
 
 export function isReactNativePackage(name) {

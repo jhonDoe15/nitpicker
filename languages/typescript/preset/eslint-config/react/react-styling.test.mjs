@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it } from 'vitest';
 import { resolveLayout } from '../../layout.mjs';
-import { reactScopeConfigFor, stylingApproachFor } from './react-scope.mjs';
+import { reactScopeConfigFor } from './react-scope.mjs';
+import { stylingApproachFor } from './react-styling.mjs';
 import { manifestWith, temporaryProjects } from './test-support/react-projects.mjs';
 
 const layout = resolveLayout();

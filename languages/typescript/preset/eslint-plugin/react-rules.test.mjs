@@ -98,11 +98,24 @@ tester.run('react-no-effect-derived-state', reactNoEffectDerivedState, {
       "import { useEffect as onEffect, useState as useValue } from 'react'; function Panel({ a }) { const [x, setX] = useValue(0); onEffect(() => { setX(a); }, [a]); return <div />; }",
       "import * as R from 'react'; function Panel({ a }) { const [x, setX] = R.useState(0); R.useEffect(() => { setX(a); }, [a]); return <div />; }",
       "import React from 'react'; function Panel({ a }) { const [x, setX] = React['useState'](0); React['useLayoutEffect'](() => { setX(a); }, [a]); return <div />; }",
+      withState('useEffect(() => { setX(localStore.read(a)); }, [a]);'),
     ].map((code) => ({
       filename,
       code,
       errors: [{ messageId: 'derivedState' }],
     })),
+    ...[
+      withState("useEffect(() => { setX(''); }, [a]);"),
+      withState('useEffect(() => { setX([]); }, [a]);'),
+      withState('useEffect(() => { setX({}); }, [a]);'),
+      withState('useEffect(() => { setX(undefined); }, [a]);'),
+      withState('useEffect(() => { setX(-1); }, [a]);'),
+      withState('useEffect(() => { setX(`none`); }, [a]);'),
+    ].map((code) => ({ filename, code, errors: [{ messageId: 'resetState' }] })),
+    ...[
+      withState("useEffect(() => { setX(localStorage.getItem(a) ?? ''); }, [a]);"),
+      withState('useEffect(() => { setX(JSON.parse(window.sessionStorage.getItem(a))); }, [a]);'),
+    ].map((code) => ({ filename, code, errors: [{ messageId: 'storageState' }] })),
   ],
 });
 
@@ -151,15 +164,13 @@ const classNamesAllowed = '`className` with CSS Modules or utility classes';
 const cssInJsAllowed = 'styled components (styled-components or Emotion)';
 const inlineStyleObject = '<div style={{ color: "red" }} />';
 
+const fixedValueForms = {
+  [classNamesAllowed]: 'put them in a class and pass `className={styles.title}`',
+  [cssInJsAllowed]: 'put them in a styled component, `const Title = styled.h1({ fontSize: 18 })`',
+};
+
 function inlineStyleError(allowed) {
-  return {
-    messageId: 'inlineStyle',
-    data: {
-      allowed,
-      example: "style={{ '--progress': percent }}",
-      typing: "declare module 'csstype' { interface Properties { '--progress'?: number } }",
-    },
-  };
+  return { messageId: 'inlineStyle', data: { allowed, form: fixedValueForms[allowed] } };
 }
 
 function otherApproachError(allowed, found) {
@@ -175,6 +186,13 @@ tester.run('react-single-styling-approach: class names by default', reactSingleS
     jsx('<div className="panel" />'),
     jsx('<div style={{ "--progress": percent }} />'),
     jsx('<div style={{ "--a": 1, "--b": 2 }} />'),
+    jsx('<div style={{ "--progress": percent, color: "red" }} />'),
+    jsx('<div style={{ ...base }} />'),
+    'const styles = { box: { width: 1 } }; export function Panel() { return <div style={{ ...styles.box, width }} />; }',
+    jsx('<div style={{ [name]: 1 }} />'),
+    jsx('<div style={{ "--a": 1, ...base }} />'),
+    jsx('<div style={{ width: progress, color: "red" }} />'),
+    jsx('<div style={{ transform: `scale(${zoom})` }} />'),
     jsx('<div style={{}} />'),
     jsx('<div style={style} />'),
     'export function Panel({ style }) { return <div style={style} />; }',
@@ -204,10 +222,9 @@ tester.run('react-single-styling-approach: class names by default', reactSingleS
   invalid: [
     { code: jsx(inlineStyleObject), errors: [inlineStyleError(classNamesAllowed)] },
     {
-      code: jsx('<div style={{ "--progress": percent, color: "red" }} />'),
+      code: jsx('<div style={{ margin: -1, inset: [0, `0`], border: { width: 1 } }} />'),
       errors: [inlineStyleError(classNamesAllowed)],
     },
-    { code: jsx('<div style={{ ...base }} />'), errors: [inlineStyleError(classNamesAllowed)] },
     ...[
       'const shared = { color: "red" }; export function Panel() { return <div style={shared} />; }',
       'const shared: CSSProperties = { color: "red" }; export function Panel() { return <div style={shared} />; }',
@@ -225,16 +242,10 @@ tester.run('react-single-styling-approach: class names by default', reactSingleS
       'const styles = { "box": { width: 1 } }; export function Panel() { return <div style={styles.box} />; }',
       'const styles = { box: { width: 1 } } as const; export function Panel() { return <div style={styles.box} />; }',
       'const styles = { box: { width: 1 } }; export function Panel({ on }) { return <div style={on ? styles.box : undefined} />; }',
-      'const styles = { box: { width: 1 } }; export function Panel() { return <div style={{ ...styles.box }} />; }',
       'const styles = { box: { width: 1 } }; const alias = styles; export function Panel() { return <div style={alias.box} />; }',
       'const styles = { box: { width: 1 }, other: 1 }; export function Panel() { return <div style={styles.box} />; }',
     ].map((code) => ({ code, errors: [inlineStyleError(classNamesAllowed)] })),
-    { code: jsx('<div style={{ [name]: 1 }} />'), errors: [inlineStyleError(classNamesAllowed)] },
     { code: jsx('<div style={{ 1: "a" }} />'), errors: [inlineStyleError(classNamesAllowed)] },
-    {
-      code: jsx('<div style={{ "--a": 1, ...base }} />'),
-      errors: [inlineStyleError(classNamesAllowed)],
-    },
     ...[
       'styled-components',
       '@emotion/styled',
@@ -295,6 +306,8 @@ tester.run('react-single-styling-approach: React Native style sheets', reactSing
   valid: [
     "import { StyleSheet } from 'react-native'; const styles = StyleSheet.create({ title: { fontSize: 18 } }); export const A = () => <Text style={styles.title} />;",
     'export const A = ({ width }) => <View style={[styles.bar, { width }]} />;',
+    'export const A = ({ fade }) => <Animated.View style={{ opacity: fade }} />;',
+    'export const A = () => <View style={{ paddingTop: insets.top }} />;',
   ].map((code) => ({ filename, code, options: [{ approach: 'style-sheet' }] })),
   invalid: [
     {

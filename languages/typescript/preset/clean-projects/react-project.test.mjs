@@ -1,6 +1,6 @@
 import { rmSync } from 'node:fs';
 import path from 'node:path';
-import { afterEach, beforeAll, describe, expect, it } from 'vitest';
+import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { createGitTemplate } from '../../../../core/diff/git/test-support/git-repository.mjs';
 import { createCleanProject, readReport, runNitpicker } from './test-support/clean-project.mjs';
 
@@ -32,19 +32,9 @@ function messageOf(findings, rule) {
 
 describe('the react-project fixture', () => {
   const temporaryRoots = [];
-  let gitTemplateRoot;
+  const runs = {};
 
-  beforeAll(() => {
-    gitTemplateRoot = createGitTemplate();
-  });
-
-  afterEach(() => {
-    for (const root of temporaryRoots.splice(0)) {
-      rmSync(root, { recursive: true, force: true });
-    }
-  });
-
-  function commitProject({ manifest, config }) {
+  function commitProject(gitTemplateRoot, { manifest, config }) {
     const files = {
       ...(manifest === undefined ? {} : { 'package.json': JSON.stringify(manifest) }),
       ...(config === undefined ? {} : { 'nitpicker.config.json': JSON.stringify(config) }),
@@ -65,60 +55,11 @@ describe('the react-project fixture', () => {
     return { exitCode, findings: readReport(root, 'reports/snapshot/findings.json') };
   }
 
-  it(
-    'flags each banned form with its rule, passes the allowed file and leaves tests without React alone',
-    () => {
-      const { exitCode, findings } = lintFindings(commitProject({}));
-
-      expect(testRulesByFile(findings)).toEqual({
-        'container-query.test': ['testing-library/no-node-access'],
-        'destructured-query.test': ['testing-library/prefer-screen-queries'],
-        'fire-event.test': ['testing-library/prefer-user-event'],
-        'hook-spy.test': ['nitpicker/react-test-no-implementation-details'],
-        'internals.test': ['nitpicker/react-test-no-implementation-details'],
-        'test-id.test': ['testing-library/no-test-id-queries'],
-        'unawaited-event.test': ['testing-library/await-async-events'],
-        'wrapper-container.test': ['testing-library/no-node-access'],
-      });
-      expect(testRulesByFile(findings, '__tests__/')).toEqual({
-        'root-fire-event.test': ['testing-library/prefer-user-event'],
-      });
-      expect(testRulesByFile(findings, 'e2e/')).toEqual({
-        'root-test-id.test': ['testing-library/no-test-id-queries'],
-      });
-      expect(
-        findings.filter(
-          ({ path: file, rule }) =>
-            [
-              'test/ui/snapshot.test.tsx',
-              'e2e/root-playwright.spec.ts',
-              'e2e/fixtures.ts',
-            ].includes(file) && /^(?:testing-library\/|nitpicker\/|no-empty-pattern$)/.test(rule),
-        ),
-      ).toEqual([]);
-      expect(rulesByFile(findings)).toEqual({
-        'class-component': ['react-x/no-class-component'],
-        'conditional-hook': ['react-hooks/rules-of-hooks'],
-        'derived-state': ['nitpicker/react-no-effect-derived-state'],
-        'effect-fetch': ['nitpicker/react-no-effect-data-fetching'],
-        inaccessible: [
-          'jsx-a11y/alt-text',
-          'jsx-a11y/click-events-have-key-events',
-          'jsx-a11y/no-noninteractive-element-interactions',
-        ],
-        'index-key': ['react-x/no-array-index-key'],
-        'hard-coded-color': ['nitpicker/react-no-hardcoded-colors'],
-        'inline-style': ['nitpicker/react-single-styling-approach'],
-        'missing-dependency': ['react-hooks/exhaustive-deps'],
-      });
-      expect(exitCode).toBe(1);
-    },
-    FIXTURE_TIMEOUT_MS,
-  );
-
-  it('applies no React rule to a project that does not depend on react, whatever the exceptions say', () => {
-    const { findings } = lintFindings(
-      commitProject({
+  beforeAll(() => {
+    const gitTemplateRoot = createGitTemplate();
+    runs.defaults = lintFindings(commitProject(gitTemplateRoot, {}));
+    runs.withoutReact = lintFindings(
+      commitProject(gitTemplateRoot, {
         manifest: { private: true },
         config: {
           exceptions: [
@@ -127,6 +68,64 @@ describe('the react-project fixture', () => {
         },
       }),
     );
+    runs.cssInJs = lintFindings(
+      commitProject(gitTemplateRoot, { config: { react: { styling: 'css-in-js' } } }),
+    );
+  }, FIXTURE_TIMEOUT_MS);
+
+  afterAll(() => {
+    for (const root of temporaryRoots.splice(0)) {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  it('flags each banned form with its rule, passes the allowed file and leaves tests without React alone', () => {
+    const { exitCode, findings } = runs.defaults;
+
+    expect(testRulesByFile(findings)).toEqual({
+      'container-query.test': ['testing-library/no-node-access'],
+      'destructured-query.test': ['testing-library/prefer-screen-queries'],
+      'fire-event.test': ['testing-library/prefer-user-event'],
+      'hook-spy.test': ['nitpicker/react-test-no-implementation-details'],
+      'internals.test': ['nitpicker/react-test-no-implementation-details'],
+      'test-id.test': ['testing-library/no-test-id-queries'],
+      'unawaited-event.test': ['testing-library/await-async-events'],
+      'wrapper-container.test': ['testing-library/no-node-access'],
+    });
+    expect(testRulesByFile(findings, '__tests__/')).toEqual({
+      'root-fire-event.test': ['testing-library/prefer-user-event'],
+    });
+    expect(testRulesByFile(findings, 'e2e/')).toEqual({
+      'root-test-id.test': ['testing-library/no-test-id-queries'],
+    });
+    expect(
+      findings.filter(
+        ({ path: file, rule }) =>
+          ['test/ui/snapshot.test.tsx', 'e2e/root-playwright.spec.ts', 'e2e/fixtures.ts'].includes(
+            file,
+          ) && /^(?:testing-library\/|nitpicker\/|no-empty-pattern$)/.test(rule),
+      ),
+    ).toEqual([]);
+    expect(rulesByFile(findings)).toEqual({
+      'class-component': ['react-x/no-class-component'],
+      'conditional-hook': ['react-hooks/rules-of-hooks'],
+      'derived-state': ['nitpicker/react-no-effect-derived-state'],
+      'effect-fetch': ['nitpicker/react-no-effect-data-fetching'],
+      inaccessible: [
+        'jsx-a11y/alt-text',
+        'jsx-a11y/click-events-have-key-events',
+        'jsx-a11y/no-noninteractive-element-interactions',
+      ],
+      'index-key': ['react-x/no-array-index-key'],
+      'hard-coded-color': ['nitpicker/react-no-hardcoded-colors'],
+      'inline-style': ['nitpicker/react-single-styling-approach'],
+      'missing-dependency': ['react-hooks/exhaustive-deps'],
+    });
+    expect(exitCode).toBe(1);
+  });
+
+  it('applies no React rule to a project that does not depend on react, whatever the exceptions say', () => {
+    const { findings } = runs.withoutReact;
 
     const folder = 'nitpicker/no-unknown-main-folder';
     const naming = 'nitpicker/naming-convention';
@@ -145,23 +144,16 @@ describe('the react-project fixture', () => {
     });
   });
 
-  it(
-    'names the configured styling approach',
-    () => {
-      const { findings } = lintFindings(
-        commitProject({ config: { react: { styling: 'css-in-js' } } }),
-      );
+  it('names the configured styling approach', () => {
+    const { findings } = runs.cssInJs;
 
-      expect(messageOf(findings, 'nitpicker/react-single-styling-approach')).toBe(
-        [
-          'Style with styled components (styled-components or Emotion), not an inline `style` object.',
-          "Pass a runtime value as a CSS custom property, `style={{ '--progress': percent }}`,",
-          'typed once in a `.d.ts` file under src/ with',
-          "`declare module 'csstype' { interface Properties { '--progress'?: number } }`.",
-          'For a one-off, add an exception for this rule in nitpicker.config.json.',
-        ].join(' '),
-      );
-    },
-    FIXTURE_TIMEOUT_MS,
-  );
+    expect(messageOf(findings, 'nitpicker/react-single-styling-approach')).toBe(
+      [
+        'Style with styled components (styled-components or Emotion), not an inline `style` object of fixed values:',
+        'put them in a styled component, `const Title = styled.h1({ fontSize: 18 })`.',
+        'A `style` object stays for values computed at runtime, such as `{ width: progress }`.',
+        'For a one-off, add an exception for this rule in nitpicker.config.json.',
+      ].join(' '),
+    );
+  });
 });

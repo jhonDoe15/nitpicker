@@ -1,8 +1,11 @@
-import { readFileSync, statSync } from 'node:fs';
 import path from 'node:path';
-import ts from 'typescript';
 import { readLayout } from '../../../../head-policy.mjs';
-import { readStamped } from '../../../../modules/stamped-file-cache.mjs';
+import {
+  reachableModules,
+  resolveModuleSpecifier,
+} from '../../../../modules/module-resolution.mjs';
+import { moduleReferencesOf, statementSources } from '../../../../modules/module-sources.mjs';
+import { isBrowserEndToEndTest } from '../../analysis/test-code-analysis.mjs';
 
 const layout = readLayout();
 const { testRoots } = layout;
@@ -14,157 +17,40 @@ const TEST_SUPPORT = new RegExp(
 );
 
 const relativeModule = /^\.{1,2}\//u;
-const compiledExtension = /\.(?:[cm]?js|jsx)$/u;
-const componentFile = /\.[cm]?[jt]sx$/u;
-const scriptExtensions = ['.ts', '.tsx', '.mts', '.cts', '.js', '.jsx', '.mjs', '.cjs'];
 const MAX_REEXPORT_DEPTH = 3;
-const moduleCache = new Map();
-const pathsCache = new Map();
-const configHost = { ...ts.sys, readDirectory: () => [] };
-
-function isFile(candidate) {
-  return statSync(candidate, { throwIfNoEntry: false })?.isFile() === true;
-}
-
-function fileFor(target) {
-  const stem = target.replace(compiledExtension, '');
-  return [
-    target,
-    ...scriptExtensions.map((extension) => `${stem}${extension}`),
-    ...scriptExtensions.map((extension) => path.join(target, `index${extension}`)),
-  ].find(isFile);
-}
-
-function readPaths(configFile) {
-  const { config } = ts.readConfigFile(configFile, (file) => ts.sys.readFile(file));
-  const configDirectory = path.dirname(configFile);
-  const { options } = ts.parseJsonConfigFileContent(config ?? {}, configHost, configDirectory);
-  const baseUrl = config?.compilerOptions?.baseUrl;
-  const base = typeof baseUrl === 'string' ? path.resolve(configDirectory, baseUrl) : undefined;
-  return { paths: options.paths ?? {}, base: base ?? options.pathsBasePath ?? configDirectory };
-}
-
-function aliasTargets(fromFile, source) {
-  const directory = path.dirname(fromFile);
-  const configFile = ts.findConfigFile(directory, (file) => ts.sys.fileExists(file));
-  const config =
-    configFile === undefined ? undefined : readStamped(pathsCache, configFile, readPaths);
-  const { paths, base } = config ?? { paths: {}, base: directory };
-  return Object.entries(paths).flatMap(([pattern, targets]) => {
-    const [prefix, suffix = ''] = pattern.split('*');
-    const wildcard = pattern.includes('*');
-    const matches = wildcard
-      ? source.length >= prefix.length + suffix.length &&
-        source.startsWith(prefix) &&
-        source.endsWith(suffix)
-      : source === pattern;
-    const captured = wildcard ? source.slice(prefix.length, source.length - suffix.length) : '';
-    return matches
-      ? targets.map((target) => path.resolve(base, target.replace('*', captured)))
-      : [];
-  });
-}
+const MAX_REEXPORTED_FILES = 50;
 
 function resolveModule(fromFile, source) {
-  if (relativeModule.test(source)) {
-    return fileFor(path.resolve(path.dirname(fromFile), source));
-  }
-  return aliasTargets(fromFile, source)
-    .map(fileFor)
-    .find((file) => file !== undefined);
+  const resolved = resolveModuleSpecifier(source, fromFile);
+  return resolved.kind === 'file' ? resolved.path : undefined;
 }
 
-function importsAtRuntime(clause) {
-  const named = clause?.namedBindings;
-  if (clause === undefined || named === undefined || clause.name !== undefined) {
-    return clause?.isTypeOnly !== true;
-  }
+function reexportSources(file) {
+  return moduleReferencesOf(file)
+    .filter(({ reexport }) => reexport)
+    .map(({ source }) => source);
+}
+
+function helperFiles(helper) {
+  const reexported = [
+    ...reachableModules(helper, reexportSources, {
+      maxDepth: MAX_REEXPORT_DEPTH,
+      maxFiles: MAX_REEXPORTED_FILES,
+    }),
+  ];
+  return [helper, ...reexported.map(({ file }) => file).filter(Boolean)];
+}
+
+function helperReaches(testFile, source) {
+  const helper = resolveModule(testFile, source);
   return (
-    !clause.isTypeOnly &&
-    (ts.isNamespaceImport(named) ||
-      named.elements.length === 0 ||
-      named.elements.some((element) => !element.isTypeOnly))
+    helper !== undefined &&
+    helperFiles(helper).some((file) =>
+      moduleReferencesOf(file).some(
+        (reference) => reference.runtime && isProductionModule(file, reference.source),
+      ),
+    )
   );
-}
-
-function exportsAtRuntime(statement) {
-  const clause = statement.exportClause;
-  return (
-    !statement.isTypeOnly &&
-    (clause === undefined ||
-      !ts.isNamedExports(clause) ||
-      clause.elements.some((element) => !element.isTypeOnly))
-  );
-}
-
-function loadedSource(node) {
-  const isLoader =
-    node.expression.kind === ts.SyntaxKind.ImportKeyword ||
-    (ts.isIdentifier(node.expression) && node.expression.text === 'require');
-  const [argument] = node.arguments;
-  return isLoader && argument !== undefined && ts.isStringLiteral(argument)
-    ? argument.text
-    : undefined;
-}
-
-function moduleReference(node) {
-  if (ts.isImportDeclaration(node) && ts.isStringLiteral(node.moduleSpecifier)) {
-    const { text } = node.moduleSpecifier;
-    return { source: text, runtime: importsAtRuntime(node.importClause), reexport: false };
-  }
-  if (
-    ts.isExportDeclaration(node) &&
-    node.moduleSpecifier &&
-    ts.isStringLiteral(node.moduleSpecifier)
-  ) {
-    return { source: node.moduleSpecifier.text, runtime: exportsAtRuntime(node), reexport: true };
-  }
-  if (ts.isImportEqualsDeclaration(node) && ts.isExternalModuleReference(node.moduleReference)) {
-    const { expression } = node.moduleReference;
-    const source = ts.isStringLiteral(expression) ? expression.text : undefined;
-    return source === undefined
-      ? undefined
-      : { source, runtime: !node.isTypeOnly, reexport: false };
-  }
-  const loaded = ts.isCallExpression(node) ? loadedSource(node) : undefined;
-  return loaded === undefined ? undefined : { source: loaded, runtime: true, reexport: false };
-}
-
-function parseReferences(file) {
-  const kind = componentFile.test(file) ? ts.ScriptKind.TSX : ts.ScriptKind.TS;
-  const text = readFileSync(file, 'utf8');
-  const nodes = [ts.createSourceFile(file, text, ts.ScriptTarget.Latest, false, kind)];
-  for (const node of nodes) {
-    ts.forEachChild(node, (child) => {
-      nodes.push(child);
-    });
-  }
-  return nodes.map(moduleReference).filter((reference) => reference !== undefined);
-}
-
-function referencesOf(file) {
-  return readStamped(moduleCache, file, parseReferences) ?? [];
-}
-
-function helperReaches(testFile, source, matches) {
-  const pending = [{ file: resolveModule(testFile, source), depth: 0 }];
-  const seen = new Set();
-  for (const { file, depth } of pending) {
-    const references = file === undefined || seen.has(file) ? [] : referencesOf(file);
-    seen.add(file);
-    if (references.some((reference) => matches(file, reference))) {
-      return true;
-    }
-    const reexports =
-      depth < MAX_REEXPORT_DEPTH ? references.filter(({ reexport }) => reexport) : [];
-    pending.push(
-      ...reexports.map((reference) => ({
-        file: resolveModule(file, reference.source),
-        depth: depth + 1,
-      })),
-    );
-  }
-  return false;
 }
 
 function isRuntimeImport(node) {
@@ -203,11 +89,7 @@ function reachesProduction(filename, source) {
   if (isProductionModule(filename, source)) {
     return true;
   }
-  return helperReaches(
-    filename,
-    source,
-    (helper, reference) => reference.runtime && isProductionModule(helper, reference.source),
-  );
+  return helperReaches(filename, source);
 }
 
 function isProductionRequire(filename, node) {
@@ -218,6 +100,20 @@ function isProductionRequire(filename, node) {
     argument?.type === 'Literal' &&
     typeof argument.value === 'string' &&
     reachesProduction(filename, argument.value)
+  );
+}
+
+function isExemptTest(context, filename) {
+  const exemptTest = new RegExp(context.options[0]?.exemptPattern ?? DEFAULT_EXEMPT_PATTERN);
+  const projectFile = path.relative(context.cwd, filename).replaceAll('\\', '/');
+  return (
+    !RUNNABLE_TEST.test(filename) ||
+    exemptTest.test(filename) ||
+    isBrowserEndToEndTest({
+      sources: context.sourceCode.ast.body.flatMap(statementSources),
+      projectFile,
+      layout,
+    })
   );
 }
 
@@ -243,13 +139,7 @@ export const rule = {
   },
   create(context) {
     const filename = context.filename.replaceAll('\\', '/');
-    const exemptTest = new RegExp(context.options[0]?.exemptPattern ?? DEFAULT_EXEMPT_PATTERN);
-    const projectFile = path.relative(context.cwd, filename).replaceAll('\\', '/');
-    if (
-      !RUNNABLE_TEST.test(filename) ||
-      exemptTest.test(filename) ||
-      layout.isEndToEndTest(projectFile)
-    ) {
+    if (isExemptTest(context, filename)) {
       return {};
     }
 

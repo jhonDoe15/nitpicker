@@ -10,7 +10,13 @@ const queryMethods = new Set([
 ]);
 const creationMethods = new Set(['createElement', 'createElementNS']);
 const contentProperties = new Set(['innerHTML', 'innerText', 'outerHTML', 'textContent']);
-const contentMethods = new Set(['insertAdjacentHTML', 'insertAdjacentText']);
+const contentMethods = new Set([
+  'createContextualFragment',
+  'insertAdjacentHTML',
+  'insertAdjacentText',
+  'setHTMLUnsafe',
+]);
+const writeMethods = new Set(['write', 'writeln']);
 const attributeMethods = new Set(['setAttribute', 'removeAttribute', 'toggleAttribute']);
 const styleMethods = new Set(['setProperty', 'removeProperty']);
 const insertionMethods = new Set([
@@ -26,11 +32,12 @@ const insertionMethods = new Set([
 ]);
 const classListMethods = new Set(['add', 'remove', 'toggle', 'replace']);
 const globalObjects = new Set(['window', 'globalThis', 'self']);
+const documentNames = new Set(['document']);
 const pageElements = new Set(['documentElement', 'body', 'head']);
 const changeablePageElements = new Set(['documentElement', 'body']);
 const rootMounts = new Set(['createRoot', 'hydrateRoot', 'createPortal']);
 const wrappers = new Set(['ChainExpression', 'TSNonNullExpression', 'TSAsExpression']);
-const uiFile = /(?:^|\/)(?:ui\/|adapters\/|use(?:[A-Z]|-)[^/]*$)/u;
+const uiFile = /(?:^|\/)(?:ui\/|adapters\/|shared\/|lib\/|use(?:[A-Z]|-)[^/]*$)/u;
 const MAX_ALIASES = 8;
 
 function unwrapped(node) {
@@ -47,15 +54,22 @@ function propertyName(member) {
   return member.type === 'MemberExpression' && !member.computed ? member.property.name : undefined;
 }
 
+function isNeverReassigned(variable, definition) {
+  return (
+    definition.parent.kind === 'const' ||
+    variable.references.every((reference) => !reference.isWrite() || reference.init)
+  );
+}
+
 function constInitOf(sourceCode, node) {
   const variable = node.type === 'Identifier' ? variableNamed(sourceCode, node) : undefined;
   const [definition] = variable?.defs ?? [];
-  const isConst =
+  const isConstant =
     variable?.defs.length === 1 &&
     definition.type === 'Variable' &&
-    definition.parent.kind === 'const' &&
-    definition.node.id.type === 'Identifier';
-  return isConst && definition.node.init ? unwrapped(definition.node.init) : undefined;
+    definition.node.id.type === 'Identifier' &&
+    isNeverReassigned(variable, definition);
+  return isConstant && definition.node.init ? unwrapped(definition.node.init) : undefined;
 }
 
 function aliasChain(sourceCode, node) {
@@ -69,19 +83,25 @@ function aliasChain(sourceCode, node) {
   return chain;
 }
 
+function isGlobal(sourceCode, node, names) {
+  const target = aliasChain(sourceCode, node).at(-1);
+  const definitions =
+    target.type === 'Identifier' ? (variableNamed(sourceCode, target)?.defs ?? []) : [];
+  return target.type === 'Identifier' && names.has(target.name) && definitions.length === 0;
+}
+
 function isDocument(sourceCode, node) {
   const target = aliasChain(sourceCode, node).at(-1);
   if (constInitOf(sourceCode, target) !== undefined) {
     return false;
   }
   if (target.type === 'Identifier') {
-    const definitions = variableNamed(sourceCode, target)?.defs ?? [];
-    return target.name === 'document' && definitions.length === 0;
+    return isGlobal(sourceCode, target, documentNames);
   }
+  const name = propertyName(target);
   return (
-    propertyName(target) === 'document' &&
-    target.object.type === 'Identifier' &&
-    globalObjects.has(target.object.name)
+    name === 'ownerDocument' ||
+    (name === 'document' && isGlobal(sourceCode, target.object, globalObjects))
   );
 }
 
@@ -161,6 +181,7 @@ function isMethodChange(sourceCode, call) {
   const owner = callee.object;
   return (
     contentMethods.has(name) ||
+    (writeMethods.has(name) && isDocument(sourceCode, owner)) ||
     isStyleAssign(sourceCode, call) ||
     isClassListChange(sourceCode, name, owner) ||
     (styleMethods.has(name) && isOutsideStyle(sourceCode, owner)) ||

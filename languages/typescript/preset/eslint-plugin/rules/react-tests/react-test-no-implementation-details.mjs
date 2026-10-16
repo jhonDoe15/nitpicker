@@ -4,6 +4,7 @@ import {
   isReactExpression,
   reactBindingNames,
 } from './react-test-files.mjs';
+import { mockedModuleSource } from '../analysis/test-code-analysis.mjs';
 
 const instanceMethods = new Set([
   'instance',
@@ -32,8 +33,6 @@ const fiberKeyPrefix = '__react';
 const globalReactNames = ['React', 'react'];
 const REACT_MODULE = 'react';
 const hookNamePattern = /^use[A-Z]/;
-const mockRunners = new Set(['vi', 'jest']);
-const mockMethods = new Set(['mock', 'doMock']);
 const mockedModules = new Set(['react', 'react-dom']);
 
 function literalTypeName(node) {
@@ -74,16 +73,8 @@ function spiedHook(node, reactNames) {
 }
 
 function mockedModule(node) {
-  const { callee } = node;
-  const isMock =
-    callee.type === 'MemberExpression' &&
-    callee.object.type === 'Identifier' &&
-    mockRunners.has(callee.object.name) &&
-    mockMethods.has(memberName(callee));
-  const [target] = node.arguments;
-  const source = target?.type === 'ImportExpression' ? target.source : target;
-  const name = source?.type === 'Literal' ? source.value : undefined;
-  return isMock && mockedModules.has(name) ? name : undefined;
+  const name = mockedModuleSource(node);
+  return mockedModules.has(name) ? name : undefined;
 }
 
 function mockedHooks(node, visitorKeys) {

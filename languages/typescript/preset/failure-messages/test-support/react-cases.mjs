@@ -128,14 +128,9 @@ const reactSyntaxCases = [
     '`className`',
   ],
   [
-    'inline style names a CSS custom property',
+    'inline style names the runtime-value form',
     "export const Box = () => <div style={{ color: 'red' }} />;",
-    'CSS custom property',
-  ],
-  [
-    'inline style names the typed custom property',
-    "export const Box = () => <div style={{ color: 'red' }} />;",
-    "declare module 'csstype'",
+    'values computed at runtime',
   ],
   [
     'inline style names the config exception',

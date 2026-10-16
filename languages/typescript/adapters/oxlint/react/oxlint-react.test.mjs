@@ -1,7 +1,7 @@
 import { mkdirSync, mkdtempSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
-import { afterAll, describe, expect, it } from 'vitest';
+import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { lintWithOxlint } from '../oxlint-runner.mjs';
 
 const packageRoot = path.resolve(import.meta.dirname, '../../../../..');
@@ -12,7 +12,6 @@ const ui = 'src/main/features/profile/ui';
 const typedRules = new Set([
   'nitpicker/no-unknown-in-domain',
   'react-x/no-leaked-conditional-rendering',
-  'nitpicker/react-no-effect-data-fetching',
 ]);
 
 afterAll(() => {
@@ -130,24 +129,25 @@ function lintedWithResidualRun() {
   return { results, residualRuns };
 }
 
-const runs = new Map();
-
-function oxlintRun() {
-  if (!runs.has('project')) runs.set('project', lintedWithResidualRun());
-  return runs.get('project');
-}
-
-function findingsOf(rule) {
-  return oxlintRun().results.flatMap(({ filePath, messages }) =>
-    messages
-      .filter(({ ruleId }) => ruleId === rule)
-      .map(({ line }) => `${path.relative(root, filePath)}:${String(line)}`),
-  );
-}
+const OXLINT_TIMEOUT_MS = 30_000;
 
 describe('the React rules under the oxlint engine', () => {
+  let run;
+
+  beforeAll(() => {
+    run = lintedWithResidualRun();
+  }, OXLINT_TIMEOUT_MS);
+
+  function findingsOf(rule) {
+    return run.results.flatMap(({ filePath, messages }) =>
+      messages
+        .filter(({ ruleId }) => ruleId === rule)
+        .map(({ line }) => `${path.relative(root, filePath)}:${String(line)}`),
+    );
+  }
+
   it('send the typed rules to the residual ESLint pass and never crash oxlint', () => {
-    const { results, residualRuns } = oxlintRun();
+    const { results, residualRuns } = run;
 
     expect(
       results.flatMap(({ messages }) => messages.filter(({ ruleId }) => ruleId === null)),

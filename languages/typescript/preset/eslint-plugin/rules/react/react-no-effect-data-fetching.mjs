@@ -1,6 +1,3 @@
-import ts from 'typescript';
-import { depthFirst } from '../../../../../../shared/traversal.mjs';
-import { ancestorsOf } from '../analysis/ancestry.mjs';
 import { enclosingFunction, isEffectCallback } from './react-effects.mjs';
 
 const requestFunctions = new Set(['fetch', 'axios', 'ky']);
@@ -31,13 +28,36 @@ function sendsRequest(node) {
   );
 }
 
-function effectCallbackOf(sourceCode, node) {
-  return ancestorsOf(node).find((ancestor) => isEffectCallback(sourceCode, ancestor));
+const timerFunctions = new Set(['setTimeout', 'setInterval', 'requestAnimationFrame']);
+const promiseCallbacks = new Set(['then', 'catch', 'finally']);
+const stateSetter = /^set[A-Z]/u;
+const MAX_OWNERS = 8;
+
+function calleeName(call) {
+  const { callee } = call;
+  if (callee.type === 'Identifier') {
+    return callee.name;
+  }
+  return callee.type === 'MemberExpression' && !callee.computed ? callee.property.name : undefined;
 }
 
-function effectOfCall(sourceCode, call) {
-  const caller = enclosingFunction(call);
-  return caller !== undefined && isEffectCallback(sourceCode, caller) ? caller : undefined;
+function isTimerCallback(fn) {
+  const call = fn.parent;
+  return (
+    call.type === 'CallExpression' &&
+    call.arguments[0] === fn &&
+    timerFunctions.has(calleeName(call))
+  );
+}
+
+function isPromiseCallback(fn) {
+  const call = fn.parent;
+  return (
+    call.type === 'CallExpression' &&
+    call.arguments.includes(fn) &&
+    call.callee.type === 'MemberExpression' &&
+    promiseCallbacks.has(calleeName(call))
+  );
 }
 
 function bindingOf(fn) {
@@ -64,48 +84,112 @@ function directCallsOf(sourceCode, fn) {
     .map((identifier) => identifier.parent);
 }
 
-function owningEffect(sourceCode, node) {
-  const fn = enclosingFunction(node);
-  if (fn === undefined || isEffectCallback(sourceCode, fn)) {
-    return fn;
+function startingFunction(sourceCode, fn) {
+  const outer = enclosingFunction(fn);
+  if (outer === undefined) {
+    return undefined;
   }
-  const outer = ancestorsOf(fn);
-  return directCallsOf(sourceCode, fn)
-    .map((call) => effectOfCall(sourceCode, call))
-    .find((effect) => effect !== undefined && outer.includes(effect));
-}
-
-function isThenable(type) {
-  return [...depthFirst(type, (member) => member.types ?? [])].some(
-    (member) => member.getProperty('then') !== undefined,
-  );
-}
-
-const settledWithoutValue = ts.TypeFlags.Void | ts.TypeFlags.Undefined;
-
-function isDiscarded(node) {
-  const outer = node.parent.type === 'ChainExpression' ? node.parent.parent : node.parent;
-  return outer.type === 'UnaryExpression' && outer.operator === 'void';
-}
-
-function isDiscardedVoidPromise(checker, node, type) {
-  const awaited = checker.getAwaitedType(type);
-  const settled = awaited?.types ?? (awaited === undefined ? [] : [awaited]);
-  return (
-    isDiscarded(node) &&
-    settled.length > 0 &&
-    settled.every((member) => (member.flags & settledWithoutValue) !== 0)
-  );
-}
-
-function startsAsyncWork(context, node) {
-  const services = context.sourceCode.parserServices;
-  if (!services?.program) {
-    return false;
+  if (isTimerCallback(fn) || isPromiseCallback(fn)) {
+    return outer;
   }
-  const checker = services.program.getTypeChecker();
-  const type = checker.getTypeAtLocation(services.esTreeNodeToTSNodeMap.get(node));
-  return isThenable(type) && !isDiscardedVoidPromise(checker, node, type);
+  const calledHere = directCallsOf(sourceCode, fn).some(
+    (call) => enclosingFunction(call) === outer,
+  );
+  return calledHere ? outer : undefined;
+}
+
+function ownerChain(sourceCode, node) {
+  const chain = [enclosingFunction(node)];
+  for (const fn of chain) {
+    if (fn === undefined || isEffectCallback(sourceCode, fn)) {
+      break;
+    }
+    if (chain.length > MAX_OWNERS) {
+      return [];
+    }
+    chain.push(startingFunction(sourceCode, fn));
+  }
+  const effect = chain.at(-1);
+  return effect !== undefined && isEffectCallback(sourceCode, effect) ? chain : [];
+}
+
+function isStateSetter(node) {
+  return node?.type === 'Identifier' && stateSetter.test(node.name);
+}
+
+function promiseOrigin(callback) {
+  const call = callback.parent;
+  return call.callee.object;
+}
+
+function asyncOrigin({ chain, anchor, awaitsIn }) {
+  for (const [index, fn] of chain.entries()) {
+    const before = index === 0 ? anchor : chain[index - 1];
+    const awaited = (awaitsIn.get(fn) ?? []).find((node) => node.range[0] < before.range[1]);
+    if (awaited !== undefined) {
+      return awaited;
+    }
+    if (isPromiseCallback(fn)) {
+      return promiseOrigin(fn);
+    }
+  }
+  return undefined;
+}
+
+function entryFor(state, effect) {
+  if (!state.effects.has(effect)) {
+    state.effects.set(effect, { requested: false, firstAsync: undefined });
+  }
+  return state.effects.get(effect);
+}
+
+function recordAsync(state, chain, origin) {
+  const entry = entryFor(state, chain.at(-1));
+  if (entry.firstAsync === undefined || origin.range[0] < entry.firstAsync.range[0]) {
+    entry.firstAsync = origin;
+  }
+}
+
+function checkSetterUse(state, chain, node) {
+  if (isStateSetter(node.callee)) {
+    state.setterCalls.push({ chain, anchor: node });
+  }
+  const passesSetter =
+    promiseCallbacks.has(calleeName(node)) &&
+    node.arguments.some(isStateSetter) &&
+    node.callee.type === 'MemberExpression';
+  if (passesSetter) {
+    recordAsync(state, chain, node.callee.object);
+  }
+}
+
+function checkCall(context, state, node) {
+  const chain = ownerChain(context.sourceCode, node);
+  if (chain.length === 0) {
+    return;
+  }
+  if (sendsRequest(node)) {
+    entryFor(state, chain.at(-1)).requested = true;
+    context.report({ node, messageId: 'fetchInEffect' });
+    return;
+  }
+  if (node.type === 'CallExpression') {
+    checkSetterUse(state, chain, node);
+  }
+}
+
+function reportAsyncWork(context, state) {
+  for (const setter of state.setterCalls) {
+    const origin = asyncOrigin({ ...setter, awaitsIn: state.awaitsIn });
+    if (origin !== undefined) {
+      recordAsync(state, setter.chain, origin);
+    }
+  }
+  for (const { requested, firstAsync } of state.effects.values()) {
+    if (!requested && firstAsync !== undefined) {
+      context.report({ node: firstAsync, messageId: 'asyncInEffect' });
+    }
+  }
 }
 
 export const rule = {
@@ -113,56 +197,30 @@ export const rule = {
     type: 'problem',
     docs: {
       description: 'Disallow fetching data inside useEffect',
-      requiresTypeChecking: true,
     },
     schema: [],
     messages: {
       fetchInEffect:
         'Do not fetch data in `useEffect`: it races and caches nothing. Use `useQuery` or a route loader. If this request is not data for rendering (an analytics beacon), add an exception for this rule in nitpicker.config.json.',
       asyncInEffect:
-        'Do not run async work in `useEffect` (`await` or a call that returns a promise): it races the render and nothing caches the result. Load data with `useQuery` or a route loader; run an action (a save, a clipboard write) in the event handler that causes it; redirect by rendering `<Navigate />`. If this effect only synchronizes with an external system, add an exception for this rule in nitpicker.config.json.',
+        'Do not load state asynchronously in `useEffect` (a state setter after `await` or in a `.then` callback): it races the render and nothing caches the result. Load data with `useQuery` or a route loader; run an action (a save, a clipboard write) in the event handler that causes it; redirect by rendering `<Navigate />`. If this effect only synchronizes with an external system, add an exception for this rule in nitpicker.config.json.',
     },
   },
   create(context) {
-    const effects = new Map();
-
-    function entryFor(effect) {
-      if (!effects.has(effect)) {
-        effects.set(effect, { requested: false, firstAsync: undefined });
-      }
-      return effects.get(effect);
-    }
-
-    function checkAsync(node) {
-      const effect = owningEffect(context.sourceCode, node);
-      if (effect === undefined || entryFor(effect).firstAsync !== undefined) {
-        return;
-      }
-      if (node.type === 'AwaitExpression' || startsAsyncWork(context, node)) {
-        entryFor(effect).firstAsync = node;
-      }
-    }
-
-    function check(node) {
-      const effect = effectCallbackOf(context.sourceCode, node);
-      if (effect !== undefined && sendsRequest(node)) {
-        entryFor(effect).requested = true;
-        context.report({ node, messageId: 'fetchInEffect' });
-      } else {
-        checkAsync(node);
-      }
-    }
-
+    const state = { awaitsIn: new Map(), setterCalls: [], effects: new Map() };
     return {
-      CallExpression: check,
-      NewExpression: check,
-      AwaitExpression: checkAsync,
+      CallExpression(node) {
+        checkCall(context, state, node);
+      },
+      NewExpression(node) {
+        checkCall(context, state, node);
+      },
+      AwaitExpression(node) {
+        const fn = enclosingFunction(node);
+        state.awaitsIn.set(fn, [...(state.awaitsIn.get(fn) ?? []), node]);
+      },
       'Program:exit'() {
-        for (const { requested, firstAsync } of effects.values()) {
-          if (!requested && firstAsync !== undefined) {
-            context.report({ node: firstAsync, messageId: 'asyncInEffect' });
-          }
-        }
+        reportAsyncWork(context, state);
       },
     };
   },

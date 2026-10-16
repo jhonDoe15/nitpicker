@@ -17,10 +17,17 @@ function isButtonLike(opening) {
   );
 }
 
+const labelComponent = /^[A-Z]\w*Label$|^Label$/u;
+
+function isLabelElement(opening) {
+  const { name } = opening;
+  const lastName = name.type === 'JSXMemberExpression' ? name.property.name : elementName(opening);
+  return lastName === 'label' || (lastName !== undefined && labelComponent.test(lastName));
+}
+
 function isInsideLabel(opening) {
   return ancestorsOf(opening).some(
-    (ancestor) =>
-      ancestor.type === 'JSXElement' && elementName(ancestor.openingElement) === 'label',
+    (ancestor) => ancestor.type === 'JSXElement' && isLabelElement(ancestor.openingElement),
   );
 }
 

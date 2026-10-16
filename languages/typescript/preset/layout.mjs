@@ -19,6 +19,8 @@ export const stylesheetSpecifier = new RegExp(
   `\\.(?:${stylesheetExtensionNames.join('|')})(?:\\?.*)?$`,
   'u',
 );
+export const cssInJsSource =
+  /^(?:styled-components(?:\/|$)|@emotion\/|@stitches\/react$|goober$|@linaria\/)/u;
 const javascriptProjectExtensionNames = [
   ...TYPESCRIPT_EXTENSIONS_IN_JAVASCRIPT_PROJECT,
   ...JAVASCRIPT_EXTENSIONS,
