@@ -12,6 +12,7 @@ const TEST_CLASS_PATTERN = [
   String.raw`^(?:.*\.)?.*(?&lt;!Arch|Architecture)Tests?$`,
   String.raw`^(?:.*\.)?.*TestCase$`,
 ].join('|');
+const RULE_END = '  </rule>';
 const SPRING_DATA_OVERRIDES = [{ rule: 'IoCallInLoop', properties: { springData: true } }];
 const TEST_CLASS_RULE = [
   '  <rule ref="category/java/errorprone.xml/TestClassWithoutTestCases">',
@@ -19,7 +20,7 @@ const TEST_CLASS_RULE = [
   '      <property name="testClassPattern"',
   `                value="${TEST_CLASS_PATTERN}"/>`,
   '    </properties>',
-  '  </rule>',
+  RULE_END,
 ];
 
 function escapeXml(text) {
@@ -42,7 +43,7 @@ function ruleReference(ruleset, skipped) {
     : [
         `  <rule ref="${ref}">`,
         ...skipped.map((name) => `    <exclude name="${name}"/>`),
-        '  </rule>',
+        RULE_END,
       ];
 }
 
@@ -54,7 +55,7 @@ function propertyOverride(ruleset, { rule, properties }) {
       ([name, value]) => `      <property name="${name}" value="${escapeXml(String(value))}"/>`,
     ),
     '    </properties>',
-    '  </rule>',
+    RULE_END,
   ];
 }
 

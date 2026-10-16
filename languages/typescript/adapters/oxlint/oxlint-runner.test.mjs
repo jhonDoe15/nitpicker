@@ -273,8 +273,6 @@ export default [
 ];
 `;
 
-const SCREENED_LINT_TIMEOUT_MS = 60_000;
-
 describe('lintWithOxlint with type-aware rules whose types only exempt', () => {
   const typed = { ruleId: 'local/no-foo-typed', line: 1, column: 1, message: 'Typed foo.' };
   let screenedRoot;
@@ -298,6 +296,9 @@ describe('lintWithOxlint with type-aware rules whose types only exempt', () => {
         return [{ filePath: path.join(screenedRoot, 'src/candidate.ts'), messages: [typed] }];
       },
     });
+  });
+
+  beforeAll(() => {
     cleanRuns = [];
     cleanLint = lintProject({
       root: screenedRoot,
@@ -307,7 +308,7 @@ describe('lintWithOxlint with type-aware rules whose types only exempt', () => {
         return [];
       },
     });
-  }, SCREENED_LINT_TIMEOUT_MS);
+  });
 
   afterAll(() => {
     rmSync(screenedRoot, { recursive: true, force: true });
