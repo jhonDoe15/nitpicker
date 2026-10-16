@@ -71,7 +71,7 @@ describe('Kotlin analyzer', () => {
     ]);
   });
 });
-describe('a root project without Nitpicker reports', () => {
+describe('a build without a project that applies the plugin', () => {
   it.each([
     ['kotlin', 'org.jetbrains.kotlin.jvm'],
     ['java', 'java'],
@@ -87,7 +87,7 @@ describe('a root project without Nitpicker reports', () => {
         rule: 'gradle-failure',
         path: '.',
         identity: 'gradle-failure',
-        message: `The ${preset} preset found no Gradle reports in build/nitpicker: the root project must apply the ${plugin} plugin. Reports of submodules are not read`,
+        message: `The ${preset} preset found no Gradle project that applies the ${plugin} plugin`,
         classification: 'tool-error',
       },
     ]);
