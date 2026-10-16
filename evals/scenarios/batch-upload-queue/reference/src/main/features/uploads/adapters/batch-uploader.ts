@@ -24,6 +24,10 @@ type UploadOptions = {
   readonly signal: AbortSignal;
 };
 
+type BatchUploader = {
+  readonly uploadAll: (items: readonly Item[], options: UploadOptions) => Promise<UploadSummary>;
+};
+
 type RunContext = { readonly deps: UploadDeps; readonly signal: AbortSignal };
 
 type Attempt = { readonly kind: 'ok' } | { readonly kind: 'rejected'; readonly reason: string };
@@ -68,7 +72,7 @@ async function runWorker(
   return finished;
 }
 
-export function createBatchUploader(deps: UploadDeps) {
+export function createBatchUploader(deps: UploadDeps): BatchUploader {
   async function uploadAll(items: readonly Item[], options: UploadOptions): Promise<UploadSummary> {
     const verdict = checkOptions(options);
     if (verdict.kind === 'invalid') {
