@@ -13,8 +13,8 @@ backstop. It fails only on findings your change adds, so leave code the task doe
 1. Run the project's tests with its own runner (pytest or unittest). Failing tests stop coverage,
    CRAP and mutation from running.
 2. When the change is complete, run `npx nitpicker` as a background command you wait on, without a
-   pipe: you need its exit code. It has no `--fix` for Python; format with the ruff or black command
-   a format finding names (the gate does not read the project's formatter config). It takes minutes and prints a progress line for each slow analyzer.
+   pipe: you need its exit code. It has no `--fix` for Python; format with the "Format with ..." command
+   printed at the start of the run (the gate does not read the project's formatter config). It takes minutes and prints a progress line for each slow analyzer.
 3. Act on the exit code:
    - 0: done.
    - 1: fix every new finding and any tool error listed below them, then rerun.

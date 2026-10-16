@@ -1,6 +1,7 @@
-import { leadingSpaces, majorityStep } from '../../../shared/conventions/lines.mjs';
+import { majorityStep } from '../../../shared/conventions/lines.mjs';
 
 const MIN_STRINGS = 3;
+const SPACE_STEPS = [2, 4];
 const TOKEN =
   /#[^\n]*|('''|""")(?:\\[\s\S]|(?!\1)[\s\S])*(?:\1|$)|(["'])((?:\\.|(?!\2)[^\\\n])*)\2/g;
 const BLOCK_OPENER =
@@ -27,18 +28,28 @@ export function stringQuotes(text) {
   return single > double ? 'single' : 'double';
 }
 
+function blockStep(opener, next) {
+  const indent = /^[ \t]*/.exec(opener)[0];
+  const deeper = /^[ \t]*/.exec(next)[0];
+  if (!deeper.startsWith(indent)) {
+    return undefined;
+  }
+  const added = deeper.slice(indent.length);
+  return added === '\t' ? 'tab' : added.length;
+}
+
 function blockSteps(lines) {
   return lines
     .slice(0, -1)
-    .flatMap((line, index) =>
-      BLOCK_OPENER.test(line) ? [leadingSpaces(lines[index + 1]) - leadingSpaces(line)] : [],
-    );
+    .flatMap((line, index) => (BLOCK_OPENER.test(line) ? [blockStep(line, lines[index + 1])] : []));
 }
 
 export function indentationWidth(text) {
-  const lines = text.split(/\r?\n/);
-  if (lines.some((line) => line.startsWith('\t'))) {
-    return undefined;
+  const steps = blockSteps(text.split(/\r?\n/).filter((line) => !COMMENT_OR_BLANK.test(line)));
+  const tabs = steps.filter((step) => step === 'tab').length;
+  const spaces = majorityStep(steps);
+  if (spaces === undefined) {
+    return tabs > 0 && !SPACE_STEPS.some((step) => steps.includes(step)) ? 'tab' : undefined;
   }
-  return majorityStep(blockSteps(lines.filter((line) => !COMMENT_OR_BLANK.test(line))));
+  return steps.filter((step) => step === Number(spaces)).length > tabs ? spaces : undefined;
 }

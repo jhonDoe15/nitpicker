@@ -40,11 +40,18 @@ function rejectUnusedPins(pinned, unused) {
   }
 }
 
-function fromProject(detected, project) {
+function fromProject(detected, project, pinned = {}) {
   return Object.fromEntries(
     Object.entries(detected).map(([id, entry]) => [
       id,
-      project[id] === undefined ? entry : { ...entry, source: 'project', from: project[id].from },
+      project[id] === undefined
+        ? entry
+        : {
+            ...entry,
+            source: 'project',
+            from: project[id].from,
+            overrides: pinned[id] !== project[id].choice ? pinned[id] : undefined,
+          },
     ]),
   );
 }
@@ -81,16 +88,24 @@ function followConventions({ config, projectRoot, headPolicy, commit, stdout }) 
       commit,
     }),
     style.project,
+    config.conventions,
   );
   const conventions = appliedChoices(detected, definitions);
   const followed = definitions.filter(
     ({ id }) => conventions[id] !== undefined || style.project[id] !== undefined,
   );
-  if (stdout !== undefined && followed.length > 0) {
-    const lines = describeConventions(detected, followed, style.note).map((line) => `  ${line}\n`);
-    stdout.write(`Following this project's conventions:\n${lines.join('')}`);
+  const report = conventionsReport({ detected, followed, style, conventions });
+  if (stdout !== undefined && report !== '') {
+    stdout.write(report);
   }
   return Object.keys(conventions).length === 0 ? headPolicy : { ...headPolicy, conventions };
+}
+
+function conventionsReport({ detected, followed, style, conventions }) {
+  const lines = describeConventions(detected, followed, style.note).map((line) => `  ${line}\n`);
+  const notes = (style.summary?.(conventions) ?? []).map((line) => `${line}\n`);
+  const heading = followed.length === 0 ? '' : "Following this project's conventions:\n";
+  return `${heading}${lines.join('')}${notes.join('')}`;
 }
 
 function detect({ definitions, pinned, exclude, projectRoot, commit }) {

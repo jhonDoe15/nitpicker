@@ -1,11 +1,13 @@
-import { readInside } from '../../../shared/read-inside.mjs';
-import { precedenceLayers } from '../../../shared/tool-precedence.mjs';
-import { projectEditorconfig } from '../adapters/kotlin/kotlin-style-files.mjs';
+import { readInside } from '../../../shared/conventions/read-inside.mjs';
+import { precedenceLayers } from '../../../shared/conventions/tool-precedence.mjs';
+import { projectEditorconfig } from '../adapters/kotlin/style/kotlin-style-files.mjs';
 import {
   declaredKtfmtStyle,
   detektConfigOf,
   kotlinFormatterOf,
+  resolveKotlinTools,
 } from '../adapters/kotlin/kotlin-tools.mjs';
+import { kotlinSummary } from '../adapters/kotlin/style/kotlin-format-advice.mjs';
 import { detektWildcardActive, kotlinEditorconfigValues } from './editorconfig-values.mjs';
 import {
   KOTLIN_INDENTATION,
@@ -81,6 +83,25 @@ function projectWins(tools, tool) {
   return layers.usesProject && !layers.nitpickerFirst;
 }
 
+function summaryLines({ config, projectRoot }, conventions) {
+  try {
+    const toolPrecedence = Object.fromEntries(
+      Object.entries(config.tools ?? {}).map(([tool, { precedence }]) => [tool, precedence]),
+    );
+    const tools = resolveKotlinTools(projectRoot, {
+      formatter: config.kotlin?.formatter,
+      detektConfig: config.kotlin?.detektConfig,
+      snapshot: 'head',
+      conventions,
+      policyRoot: projectRoot,
+      toolPrecedence,
+    });
+    return kotlinSummary(tools, conventions);
+  } catch {
+    return [];
+  }
+}
+
 export function kotlinStyle({ config, projectRoot }) {
   const tools = config.tools ?? {};
   const configured = config.kotlin?.detektConfig;
@@ -95,5 +116,6 @@ export function kotlinStyle({ config, projectRoot }) {
       ...(formatter === 'ktlint' && projectWins(tools, 'ktlint') ? ktlintChoices(projectRoot) : {}),
     },
     note: () => undefined,
+    summary: (conventions) => summaryLines({ config, projectRoot }, conventions),
   };
 }

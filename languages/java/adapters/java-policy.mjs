@@ -1,20 +1,14 @@
 import { createHash } from 'node:crypto';
-import { existsSync, readdirSync } from 'node:fs';
+import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { globToRegExp } from '../../../shared/glob.mjs';
-import { readInside } from '../../../shared/read-inside.mjs';
 import {
   applyInventoryToFindings,
   readOptionalInventory,
   withLegacyInventory,
 } from '../../../shared/legacy-inventory.mjs';
 import { configError, TYPESCRIPT_ONLY_KEYS } from '../../../shared/config.mjs';
-import {
-  JAVA_TOOLS,
-  projectStyleFilesOf,
-  PROJECT_TOOL_CONFIGS,
-  styleToolNames,
-} from './gradle-presets.mjs';
+import { JAVA_TOOLS, PROJECT_TOOL_CONFIGS, styleToolNames } from './gradle-presets.mjs';
 import { JAVA_NATIVE_RULES, SHARED_EXCEPTION_RULES } from '../../../shared/policy.mjs';
 import { evaluateBaselineExpansions } from '../../../shared/rules/baseline-expansion.mjs';
 import { checkstyleRuleName } from '../messages/rule-messages.mjs';
@@ -94,7 +88,7 @@ function javaAdapterArguments({
 }
 
 export function configureJavaAnalyzer(analyzer, options) {
-  const { exceptions = [], legacyInventory, tools = {} } = options;
+  const { exceptions = [], legacyInventory, tools = {}, styleFiles } = options;
   const adapterArguments = javaAdapterArguments(options);
   if (adapterArguments.length === 0 && exceptions.length === 0 && legacyInventory === undefined) {
     return analyzer;
@@ -103,23 +97,16 @@ export function configureJavaAnalyzer(analyzer, options) {
   const projectConfigDirectories = [...PROJECT_TOOL_CONFIGS]
     .filter(([tool]) => tools[tool]?.precedence.includes('project'))
     .map(([, file]) => path.dirname(file));
-  const projectStyleFiles = [
-    ...new Set(
-      styleToolNames()
-        .filter((tool) => tools[tool]?.precedence.includes('project'))
-        .flatMap(projectStyleFilesOf),
-    ),
-  ];
   const configured = {
     ...analyzer,
     configurationHash,
-    ...(projectConfigDirectories.length + projectStyleFiles.length === 0
+    ...(projectConfigDirectories.length === 0 && styleFiles === undefined
       ? {}
       : {
           resolveConfigurationHash: (policyRoot) =>
             hashWithProjectConfigs(configurationHash, policyRoot, {
               directories: projectConfigDirectories,
-              files: projectStyleFiles,
+              files: styleFiles?.(policyRoot) ?? [],
             }),
         }),
     createInvocation: (context) => {
@@ -154,13 +141,14 @@ function isLifted(finding, lifted) {
 
 function hashWithProjectConfigs(configurationHash, policyRoot, { directories, files }) {
   const hash = createHash('sha256').update(configurationHash);
-  const relatives = [
+  const named = [
     ...directories.flatMap((directory) => filesUnder(policyRoot, directory)),
-    ...files,
+    ...files.map((file) => path.relative(policyRoot, file)),
   ];
-  for (const file of relatives) {
-    const content = readInside(policyRoot, file);
-    if (content !== undefined) {
+  for (const file of named) {
+    const absolute = path.resolve(policyRoot, file);
+    if (existsSync(absolute)) {
+      const content = readFileSync(absolute);
       hash.update(`${file}\0${String(content.length)}\0`).update(content);
     }
   }

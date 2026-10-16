@@ -39,6 +39,36 @@ function ruffSettings(table) {
   );
 }
 
+function patternsOf(value, directory) {
+  return Array.isArray(value)
+    ? value
+        .filter((pattern) => typeof pattern === 'string')
+        .map((pattern) => ({ pattern, directory }))
+    : undefined;
+}
+
+function ruffScope(table, directory) {
+  return {
+    exclude: patternsOf(table.exclude, directory),
+    extendExclude: patternsOf(table['extend-exclude'], directory) ?? [],
+    forceExclude: table['force-exclude'],
+    targetVersion: table['target-version'],
+  };
+}
+
+function firstDefined(scopes, key) {
+  return scopes.map((scope) => scope[key]).find((value) => value !== undefined);
+}
+
+function mergedRuffScope(scopes) {
+  return {
+    exclude: firstDefined(scopes, 'exclude'),
+    extendExclude: scopes.flatMap((scope) => scope.extendExclude),
+    forceExclude: firstDefined(scopes, 'forceExclude'),
+    targetVersion: firstDefined(scopes, 'targetVersion'),
+  };
+}
+
 function extendedFile(file, table) {
   return typeof table.extend === 'string'
     ? path.resolve(path.dirname(file), table.extend)
@@ -57,38 +87,79 @@ function extensionChain(file) {
   return queue;
 }
 
-function ruffSettingsOf(file) {
-  return extensionChain(file)
-    .toReversed()
-    .reduce((merged, current) => {
-      const table = ruffTable(current);
-      return table === undefined ? merged : { ...merged, ...ruffSettings(table) };
-    }, {});
+function ruffConfigOf(file) {
+  const files = extensionChain(file);
+  const tables = files
+    .map((current) => [current, ruffTable(current)])
+    .filter(([, table]) => table !== undefined);
+  return {
+    file,
+    files,
+    set: Object.assign({}, ...tables.toReversed().map(([, table]) => ruffSettings(table))),
+    scope: mergedRuffScope(
+      tables.map(([current, table]) => ruffScope(table, path.dirname(current))),
+    ),
+  };
 }
 
 export function readRuffConfig(start) {
   const file = directoriesUp(start)
     .flatMap((directory) => RUFF_FILES.map((name) => path.join(directory, name)))
     .find((candidate) => existsSync(candidate) && ruffTable(candidate) !== undefined);
-  return file === undefined ? undefined : { file, set: ruffSettingsOf(file) };
+  return file === undefined ? undefined : ruffConfigOf(file);
 }
 
 const BLACK_QUOTES = { true: 'preserve', false: 'normalize' };
 
+function blackKey(table, name) {
+  return table[name] ?? table[name.replaceAll('-', '_')];
+}
+
 function blackSettings(table) {
-  const normalization = table['skip-string-normalization'] ?? table.skip_string_normalization;
-  const lineLength = table['line-length'] ?? table.line_length;
   return Object.fromEntries(
     Object.entries({
-      lineLength,
-      quotes: BLACK_QUOTES[normalization],
+      lineLength: blackKey(table, 'line-length'),
+      quotes: BLACK_QUOTES[blackKey(table, 'skip-string-normalization')],
     }).filter(([, value]) => value !== undefined),
   );
+}
+
+function blackScope(parsed) {
+  const table = parsed.tool?.black ?? {};
+  return {
+    exclude: blackKey(table, 'exclude'),
+    extendExclude: blackKey(table, 'extend-exclude'),
+    forceExclude: blackKey(table, 'force-exclude'),
+    targetVersions: blackKey(table, 'target-version'),
+    requiresPython: parsed.project?.['requires-python'] !== undefined,
+  };
 }
 
 export function readBlackConfig(start) {
   const file = directoriesUp(start)
     .map((directory) => path.join(directory, PYPROJECT))
-    .find((candidate) => existsSync(candidate) && parseToml(candidate).tool?.black !== undefined);
-  return file === undefined ? undefined : { file, set: blackSettings(parseToml(file).tool.black) };
+    .find((candidate) => existsSync(candidate));
+  if (file === undefined) {
+    return undefined;
+  }
+  const parsed = parseToml(file);
+  return {
+    file,
+    files: [file],
+    hasTable: parsed.tool?.black !== undefined,
+    set: blackSettings(parsed.tool?.black ?? {}),
+    scope: blackScope(parsed),
+  };
+}
+
+function filesOf(read, start) {
+  try {
+    return read(start)?.files ?? [];
+  } catch {
+    return [];
+  }
+}
+
+export function projectFormatConfigFiles(start) {
+  return [...new Set([...filesOf(readRuffConfig, start), ...filesOf(readBlackConfig, start)])];
 }

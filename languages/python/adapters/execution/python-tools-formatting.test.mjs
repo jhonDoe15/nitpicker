@@ -183,11 +183,14 @@ describe('formatter arguments from the conventions followed', () => {
       '--check',
       '--config',
       path.join(reportRoot, 'nitpicker-black.toml'),
+      '--line-length',
+      '100',
+      '--skip-string-normalization',
+      '--target-version',
+      'py38',
       '.',
     ]);
-    expect(readReport(reportRoot, 'nitpicker-black.toml')).toBe(
-      '[tool.black]\nline-length = 100\nskip-string-normalization = true\n',
-    );
+    expect(readReport(reportRoot, 'nitpicker-black.toml')).toBe('');
   });
   it('keeps the project ruff config out unless it is listed', () => {
     const calls = callsLog();
@@ -223,6 +226,8 @@ describe('formatter arguments from the conventions followed', () => {
       '--no-cache',
       '--config',
       path.join(root, 'pyproject.toml'),
+      '--target-version',
+      'py38',
       '--config',
       'indent-width = 2',
       '.',

@@ -4,13 +4,13 @@ import { validateConfig } from './validate.mjs';
 describe('tool precedence of the formatters and detekt', () => {
   it('names ruff and black with the python preset, and the formatters with the kotlin preset', () => {
     const python = {
-      ruff: { precedence: ['project', 'nitpicker'] },
+      ruff: { precedence: ['nitpicker', 'project'] },
       black: { precedence: ['project'] },
     };
     const kotlin = {
       ktlint: { precedence: ['project', 'nitpicker'] },
-      ktfmt: { precedence: ['nitpicker', 'project'] },
-      detekt: { precedence: ['project'] },
+      ktfmt: { precedence: ['project'] },
+      detekt: { precedence: ['nitpicker', 'project'] },
     };
 
     expect(validateConfig({ preset: 'python', tools: python }).tools).toEqual(python);
@@ -25,15 +25,35 @@ describe('tool precedence of the formatters and detekt', () => {
     );
   });
 
-  it('asks for the project first with ktlint, which reads .editorconfig itself', () => {
+  it.each([['ktlint'], ['ktfmt']])(
+    'asks for the project first with %s, which reads .editorconfig itself',
+    (tool) => {
+      expect(() =>
+        validateConfig({
+          preset: 'kotlin',
+          tools: { [tool]: { precedence: ['nitpicker', 'project'] } },
+        }),
+      ).toThrow(`"tools.${tool}.precedence" must list "project" first`);
+      expect(
+        validateConfig({ preset: 'kotlin', tools: { [tool]: { precedence: ['nitpicker'] } } }),
+      ).toBeDefined();
+    },
+  );
+
+  it('asks for the project first with black, which cannot switch string normalization on', () => {
     expect(() =>
       validateConfig({
-        preset: 'kotlin',
-        tools: { ktlint: { precedence: ['nitpicker', 'project'] } },
+        preset: 'python',
+        tools: { black: { precedence: ['nitpicker', 'project'] } },
       }),
-    ).toThrow('"tools.ktlint.precedence" must list "project" first');
+    ).toThrow(
+      '"tools.black.precedence" must list "project" first: black has no flag that switches string normalization back on',
+    );
     expect(
-      validateConfig({ preset: 'kotlin', tools: { ktlint: { precedence: ['nitpicker'] } } }),
+      validateConfig({
+        preset: 'python',
+        tools: { black: { precedence: ['project', 'nitpicker'] } },
+      }),
     ).toBeDefined();
   });
 });

@@ -35,7 +35,8 @@ describe('Python conventions with the ruff config of the project', () => {
       printed:
         HEADER +
         '  Python quotes: single quotes (from your ruff config)\n' +
-        '  Python line length: 120 columns (from your ruff config)\n',
+        '  Python line length: 120 columns (from your ruff config)\n' +
+        "Format with ruff: ruff format --config ruff.toml --target-version py38 --config 'indent-width = 4' .\n",
     });
   });
 
@@ -51,20 +52,42 @@ describe('Python conventions with the ruff config of the project', () => {
       printed:
         HEADER +
         '  Python quotes: single quotes (set in nitpicker.config.json)\n' +
-        '  Python line length: 100 columns (from your ruff config)\n',
+        '  Python line length: 100 columns (from your ruff config, overriding the pin of 79 columns in nitpicker.config.json)\n' +
+        `Format with ruff: ruff format --config ruff.toml --target-version py38 --config 'format.quote-style = "single"' --config 'indent-width = 4' .\n`,
     });
   });
 
-  it('ignores the config unless the project is listed or when nitpicker is listed first', () => {
+  it('ignores the config unless the project is listed, and says so once', () => {
     const files = { 'ruff.toml': ruffToml, 'a.py': DOUBLE_QUOTED };
 
-    expect(follow({ preset: 'python' }, files)).toEqual({ conventions: undefined, printed: '' });
+    expect(follow({ preset: 'python' }, files)).toEqual({
+      conventions: undefined,
+      printed:
+        `Format with ruff: ruff format --isolated --target-version py38 --line-length 88 --config 'format.quote-style = "double"' --config 'indent-width = 4' .\n` +
+        'Ignoring ruff.toml; opt in with "tools": { "ruff": { "precedence": ["project", "nitpicker"] } }\n',
+    });
     expect(
-      follow(
-        { preset: 'python', tools: { ruff: { precedence: ['nitpicker', 'project'] } } },
-        files,
-      ),
-    ).toEqual({ conventions: undefined, printed: '' });
+      follow({ preset: 'python' }, { 'pyproject.toml': '[tool.ruff]\nline-length = 99\n' }).printed,
+    ).toBe(
+      `Format with ruff: ruff format --isolated --target-version py38 --line-length 88 --config 'format.quote-style = "double"' --config 'indent-width = 4' .\n` +
+        'Ignoring [tool.ruff] in pyproject.toml; opt in with "tools": { "ruff": { "precedence": ["project", "nitpicker"] } }\n',
+    );
+    expect(follow({ preset: 'python' }, { 'a.py': DOUBLE_QUOTED }).printed).not.toContain(
+      'Ignoring',
+    );
+  });
+
+  it('measures the files and lets the conventions win when nitpicker is listed first', () => {
+    const config = { preset: 'python', tools: { ruff: { precedence: ['nitpicker', 'project'] } } };
+
+    expect(follow(config, { 'ruff.toml': ruffToml, 'a.py': SINGLE_QUOTED })).toEqual({
+      conventions: { 'python.quotes': 'single', 'python.indentation': '2' },
+      printed:
+        HEADER +
+        '  Python quotes: single quotes (used by 1 of 1 measured files)\n' +
+        '  Python indentation: 2 spaces (used by 1 of 1 measured files)\n' +
+        `Format with ruff: ruff format --config ruff.toml --target-version py38 --line-length 88 --config 'format.quote-style = "single"' --config 'indent-width = 2' .\n`,
+    });
   });
 });
 
@@ -76,7 +99,8 @@ describe('Python conventions that black can apply', () => {
       conventions: { 'python.quotes': 'single' },
       printed:
         HEADER +
-        '  Python quotes: single quotes, black accepts both quote styles (used by 1 of 1 measured files)\n',
+        '  Python quotes: single quotes, black accepts both quote styles (used by 1 of 1 measured files)\n' +
+        'Format with black: black --config <empty file> --line-length 88 --skip-string-normalization --target-version py38 .\n',
     });
   });
 
@@ -97,7 +121,8 @@ describe('Python conventions that black can apply', () => {
       printed:
         HEADER +
         '  Python quotes: single quotes, black accepts both quote styles (from your black config)\n' +
-        '  Python line length: 100 columns (from your black config)\n',
+        '  Python line length: 100 columns (from your black config)\n' +
+        'Format with black: black --config pyproject.toml --target-version py38 .\n',
     });
   });
 });
@@ -108,7 +133,10 @@ describe('Kotlin conventions that the formatter can apply', () => {
 
     expect(follow({ preset: 'kotlin' }, files)).toEqual({
       conventions: { 'kotlin.indentation': '2' },
-      printed: HEADER + '  Kotlin indentation: 2 spaces (used by 2 of 2 measured files)\n',
+      printed:
+        HEADER +
+        '  Kotlin indentation: 2 spaces (used by 2 of 2 measured files)\n' +
+        'Format with ktfmt: ktfmt --meta-style <Kotlin files>\n',
     });
     expect(() =>
       follow({ preset: 'kotlin', conventions: { 'kotlin.trailingCommas': 'never' } }, files),
@@ -154,7 +182,8 @@ describe('Kotlin conventions that the formatter can apply', () => {
         HEADER +
         '  Kotlin indentation: 4 spaces (from your .editorconfig)\n' +
         '  Kotlin trailing commas: required in wrapped lists (from your .editorconfig)\n' +
-        '  Kotlin imports: wildcards allowed (from your detekt config)\n',
+        '  Kotlin imports: wildcards allowed (from your detekt config)\n' +
+        'ktlint reads your .editorconfig files, and uses indent_size = 4, ktlint_standard_no-wildcard-imports = disabled where they set nothing\n',
     });
   });
 });

@@ -4,8 +4,14 @@ import { indentationWidth, stringQuotes } from './python-measures.mjs';
 const PYTHON_FILES = ['**/*.py'];
 
 export const PYTHON_QUOTES = 'python.quotes';
-export const PYTHON_LINE_LENGTH = 'python.lineLength';
+const PYTHON_LINE_LENGTH = 'python.lineLength';
 export const PYTHON_INDENTATION = 'python.indentation';
+
+export const PYTHON_SETTING_IDS = {
+  lineLength: PYTHON_LINE_LENGTH,
+  quotes: PYTHON_QUOTES,
+  indentation: PYTHON_INDENTATION,
+};
 
 export const PYTHON_CONVENTIONS = [
   {
@@ -29,8 +35,8 @@ export const PYTHON_CONVENTIONS = [
   {
     id: PYTHON_INDENTATION,
     label: 'Python indentation',
-    options: ['4', '2'],
-    optionLabels: { 4: '4 spaces', 2: '2 spaces' },
+    options: ['4', '2', 'tab'],
+    optionLabels: { 4: '4 spaces', 2: '2 spaces', tab: 'tabs' },
     fallback: '4',
     files: PYTHON_FILES,
     measure: indentationWidth,

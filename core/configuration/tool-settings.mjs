@@ -29,7 +29,20 @@ const ENGINES = new Map([
 ]);
 const PRECEDENCE_KEYS = ['precedence'];
 const SINGLE_CONFIG_TOOLS = ['checkstyle'];
-const PROJECT_FIRST_TOOLS = ['ktlint'];
+const NITPICKER_FIRST_REJECTED = new Map([
+  [
+    'ktlint',
+    "ktlint reads the project's .editorconfig natively, which always wins over nitpicker's measured conventions",
+  ],
+  [
+    'ktfmt',
+    "ktfmt reads the project's .editorconfig natively, which always wins over nitpicker's measured conventions",
+  ],
+  [
+    'black',
+    "black has no flag that switches string normalization back on, so nitpicker's quote style cannot win over the project's skip-string-normalization",
+  ],
+]);
 const ORDERED_PRECEDENCE_TOOLS = ['prettier'];
 const PRECEDENCE_LAYERS = ['project', 'nitpicker'];
 
@@ -85,12 +98,12 @@ function validatePrecedenceOrder(precedence, name) {
     );
   }
   if (
-    PROJECT_FIRST_TOOLS.includes(name) &&
+    NITPICKER_FIRST_REJECTED.has(name) &&
     precedence[0] === 'nitpicker' &&
     precedence.length > 1
   ) {
     throw configError(
-      `"tools.${name}.precedence" must list "project" first: ${name} reads the project's .editorconfig natively, which always wins over nitpicker's measured conventions`,
+      `"tools.${name}.precedence" must list "project" first: ${NITPICKER_FIRST_REJECTED.get(name)}`,
     );
   }
 }

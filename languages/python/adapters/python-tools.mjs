@@ -130,7 +130,6 @@ export function runPythonTools(context) {
     JSON.stringify({
       formatter: context.project.formatter,
       formatterDetected: context.project.formatterDetected,
-      formatAdvice: outcome.formatAdvice,
       sourceRoots: context.project.sourceRoots,
       testsRan: outcome.testsRan,
     }),
@@ -176,10 +175,9 @@ export function onlyUnparsableFiles(formatter, { status, stdout, stderr }) {
   return errors.length > 0 && errors.every((line) => PARSE_ERROR[formatter].test(line));
 }
 
-function format(context, outcome) {
+function format(context) {
   const { formatter } = context.project;
-  const { command, advice } = formatCommand(context);
-  outcome.formatAdvice = advice;
+  const command = formatCommand(context);
   const result = execute(context, command);
   const tolerated = [0, 1].includes(result.status) || onlyUnparsableFiles(formatter, result);
   if (result.error !== undefined || !tolerated) {

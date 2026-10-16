@@ -30,18 +30,24 @@
 //   build/nitpicker/kotlin-metrics.json per-function lines, statements, control nesting, parameters and complexity, and the
 //                                       JVM class names of each file (languages/java/gradle/KotlinMetrics.java)
 // and manifest.json gains kotlin, kotlinSourceRoots, kotlinTestSourceRoots and kotlinFormatter. The Nitpicker side decides
-// the formatter, the ktfmt style and the style files and passes them as properties; text values are URL-encoded.
+// the formatter, the ktfmt style and the style files and passes them as properties; the texts travel in a JSON file
+// (a long text on the command line runs into the argument limits of Windows and into the .bat wrapper of Gradle).
 //   nitpicker.kotlin.formatter           ktlint, ktfmt or none
 //   nitpicker.kotlin.ktfmtStyle          kotlinlang, google or meta
-//   nitpicker.kotlin.ktfmtEditorconfig   true: ktfmt reads the workspace .editorconfig (--enable-editorconfig)
-//   nitpicker.kotlin.workspaceEditorconfig  the .editorconfig at the root of the mirror of the Kotlin sources that
-//                                        ktlint and ktfmt run in: `root = true` alone keeps every .editorconfig of the
-//                                        project and of its parent folders out, the project's own text follows it
-//                                        only when the project is listed in tools.<tool>.precedence
-//   nitpicker.kotlin.ktlintDefaults      an .editorconfig of the conventions followed, handed to ktlint as --editorconfig
-//                                        (defaults that the workspace .editorconfig overrides)
+//   nitpicker.kotlin.ktfmtEditorconfig   true: ktfmt reads the workspace .editorconfig files (--enable-editorconfig)
+//   nitpicker.kotlin.styleFile           the absolute path of a JSON file with
+//                                          offset          the folder of this build in the repository (the mirror below
+//                                                          keeps it, so path-qualified .editorconfig sections still match)
+//                                          editorconfigs   [{path, text}], .editorconfig files at their repository
+//                                                          relative paths; the top one starts with `root = true`, which
+//                                                          keeps the .editorconfig files above the repository out
+//                                          ktlintDefaults  an .editorconfig of the conventions followed, handed to
+//                                                          ktlint as --editorconfig (defaults that the files override)
+//                                          detektConventions  the conventions followed as a detekt YAML layer
+//                                        ktlint, and ktfmt with --enable-editorconfig, run in a mirror of the Kotlin sources
+//                                        with these files; ktfmt without it runs in the project
 //   nitpicker.kotlin.detektLayers        comma-separated detekt layers below the Nitpicker rules, last wins:
-//                                        conventions (nitpicker.kotlin.detektConventions, a YAML text) and project
+//                                        conventions (detektConventions of the style file) and project
 //                                        (nitpicker.kotlin.detektConfig, an absolute path); none by default
 // PMD and SpotBugs then only see the Java sources and classes; JaCoCo, PIT and jdeps cover both languages.
 //
@@ -75,9 +81,9 @@ def initScriptDir = buildscript.sourceFile.parentFile
 // END SH5 structure metrics
 
 def nitpickerArgument = { String name -> gradle.startParameter.projectProperties[name] }
-def nitpickerText = { String name ->
-    def value = nitpickerArgument(name)
-    value == null ? null : java.net.URLDecoder.decode(value.toString(), 'UTF-8')
+def nitpickerStyle = {
+    def file = nitpickerArgument('nitpicker.kotlin.styleFile')
+    file == null ? [:] : new groovy.json.JsonSlurper().parse(new File(file.toString()), 'UTF-8')
 }
 
 def springOnMainSources = { File springRuleset, Collection<File> testDirectories ->
@@ -543,7 +549,7 @@ allprojects {
                     ext.layersFile = layersFile
                     doLast {
                         def conventions = new File(temporaryDir, 'followed-conventions.yml')
-                        conventions.text = nitpickerText('nitpicker.kotlin.detektConventions') ?: ''
+                        conventions.text = nitpickerStyle().detektConventions ?: ''
                         def paths = [conventions: conventions.absolutePath,
                                      project    : nitpickerArgument('nitpicker.kotlin.detektConfig')]
                         def names = (nitpickerArgument('nitpicker.kotlin.detektLayers') ?: '').toString()
@@ -591,26 +597,44 @@ allprojects {
                     }
                 }
 
-                // ktlint and ktfmt run in a mirror of the Kotlin sources, so the project's .editorconfig files and
-                // the ones above the checkout cannot reach them: the mirror has its own root .editorconfig.
+                // ktlint, and ktfmt when it reads .editorconfig files, run in a mirror of the Kotlin sources: the
+                // .editorconfig files above the checkout and the ones the project did not list cannot reach them. The
+                // mirror has the .editorconfig files of the style file at their repository relative paths and the
+                // sources of this module below the folder of the build, so a section such as [src/**/*.kt] of any of
+                // them matches the same files as in the repository. ktfmt without .editorconfig runs in the project.
+                def styleMirrorNeeded = {
+                    kotlinFormatter() == 'ktlint' ||
+                        (kotlinFormatter() == 'ktfmt' && nitpickerArgument('nitpicker.kotlin.ktfmtEditorconfig') == 'true')
+                }
                 tasks.register('nitpickerKotlinStyleWorkspace') {
                     group = 'nitpicker'
                     def workspace = new File(temporaryDir, 'workspace')
                     ext.workspace = workspace
+                    ext.moduleWorkspace = workspace
                     ext.defaultsFile = new File(temporaryDir, 'ktlint-defaults.editorconfig')
-                    onlyIf { kotlinFormatter() in ['ktlint', 'ktfmt'] && !kotlinFiles().isEmpty() }
+                    onlyIf { styleMirrorNeeded() && !kotlinFiles().isEmpty() }
                     doLast {
                         project.delete(workspace)
                         workspace.mkdirs()
+                        def style = nitpickerStyle()
+                        def inBuild = rootProject.projectDir.toPath().relativize(projectDir.toPath()).toString().replace('\\', '/')
+                        def modulePath = [style.offset ?: '', inBuild].findAll { it }.join('/')
+                        ext.moduleWorkspace = modulePath ? new File(workspace, modulePath) : workspace
+                        (style.editorconfigs ?: [[path: '.editorconfig', text: 'root = true\n']]).each { entry ->
+                            def target = new File(workspace, entry.path.toString())
+                            if (!target.canonicalPath.startsWith(workspace.canonicalPath + File.separator)) {
+                                throw new GradleException("The style file names ${entry.path}, which is outside the mirror")
+                            }
+                            target.parentFile.mkdirs()
+                            target.text = entry.text
+                        }
                         kotlinFiles().each { file ->
-                            def target = new File(workspace, relative(file))
+                            def target = new File(ext.moduleWorkspace, relative(file))
                             target.parentFile.mkdirs()
                             target.bytes = file.bytes
                         }
-                        new File(workspace, '.editorconfig').text =
-                            nitpickerText('nitpicker.kotlin.workspaceEditorconfig') ?: 'root = true\n'
                         ext.defaultsFile.delete()
-                        def defaults = nitpickerText('nitpicker.kotlin.ktlintDefaults')
+                        def defaults = style.ktlintDefaults
                         if (defaults) {
                             ext.defaultsFile.text = defaults
                         }
@@ -632,7 +656,7 @@ allprojects {
                         errorOutput = log
                         report.get().asFile.delete()
                         def styleWorkspace = tasks.named('nitpickerKotlinStyleWorkspace').get()
-                        workingDir = styleWorkspace.ext.workspace
+                        workingDir = styleWorkspace.ext.moduleWorkspace
                         def defaultsArguments = styleWorkspace.ext.defaultsFile.exists()
                             ? ["--editorconfig=${styleWorkspace.ext.defaultsFile.absolutePath}".toString()] : []
                         args(['--relative', "--reporter=sarif,output=${report.get().asFile.absolutePath}".toString()] +
@@ -657,7 +681,7 @@ allprojects {
                     doFirst {
                         standardOutput = changed
                         errorOutput = errors
-                        workingDir = tasks.named('nitpickerKotlinStyleWorkspace').get().ext.workspace
+                        workingDir = styleMirrorNeeded() ? tasks.named('nitpickerKotlinStyleWorkspace').get().ext.moduleWorkspace : projectDir
                         def style = "--${nitpickerArgument('nitpicker.kotlin.ktfmtStyle') ?: 'meta'}-style".toString()
                         def argumentFile = new File(temporaryDir, 'ktfmt.args')
                         argumentFile.text = ([style, '--dry-run'] +

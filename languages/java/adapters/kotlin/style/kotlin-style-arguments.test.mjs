@@ -1,14 +1,14 @@
-import { readFileSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { afterEach, describe, expect, it } from 'vitest';
-import { INIT_SCRIPT } from '../../builds/java-build.mjs';
-import { collectJavaFindings } from '../java-diff.mjs';
-import { kotlinGradleArguments } from './kotlin-tools.mjs';
-import { kotlinProjects } from './test-support/kotlin-project.mjs';
+import { INIT_SCRIPT } from '../../../builds/java-build.mjs';
+import { collectJavaFindings } from '../../java-diff.mjs';
+import { kotlinGradleArguments, kotlinStyleFile, resolveKotlinTools } from '../kotlin-tools.mjs';
+import { kotlinProjects } from '../test-support/kotlin-project.mjs';
 
 const fakeGradle = path.join(
-  fileURLToPath(new URL('../', import.meta.url)),
+  fileURLToPath(new URL('../../', import.meta.url)),
   'fixtures/fake-gradle.mjs',
 );
 const FOLLOWED = {
@@ -16,18 +16,17 @@ const FOLLOWED = {
   'kotlin.trailingCommas': 'never',
   'kotlin.wildcardImports': 'wildcard',
 };
-const ISOLATED_EDITORCONFIG = encodeURIComponent('root = true\n');
+const ISOLATED = { offset: '', editorconfigs: [{ path: '.editorconfig', text: 'root = true\n' }] };
 
 const { project, remove } = kotlinProjects();
 
 afterEach(remove);
 
-function decoded(args) {
-  return args.map((argument) => decodeURIComponent(argument));
-}
+const styleOf = (root, options = {}) =>
+  kotlinStyleFile(resolveKotlinTools(root, options), options.conventions ?? {});
 
 describe('what runs without the project', () => {
-  it('passes the isolated defaults for ktfmt: no build style, no editorconfig, no detekt file', () => {
+  it('passes the isolated defaults for ktfmt: no build style, no editorconfig, no mirror, no detekt file', () => {
     const root = project({
       'build.gradle.kts': 'ktfmt { googleStyle() }',
       '.editorconfig': 'indent_size = 8\n',
@@ -38,92 +37,93 @@ describe('what runs without the project', () => {
       '-Pnitpicker.kotlin=true',
       '-Pnitpicker.kotlin.formatter=ktfmt',
       '-Pnitpicker.kotlin.ktfmtStyle=meta',
-      `-Pnitpicker.kotlin.workspaceEditorconfig=${ISOLATED_EDITORCONFIG}`,
     ]);
+    expect(styleOf(root)).toBeUndefined();
   });
 
-  it('passes the conventions followed as ktlint defaults, a ktfmt style and a detekt layer', () => {
+  it('puts the conventions followed into the style file: ktlint defaults and a detekt layer', () => {
     const root = project({ 'build.gradle.kts': 'ktlint', '.editorconfig': 'indent_size = 8\n' });
+    const options = { conventions: FOLLOWED };
 
-    expect(decoded(kotlinGradleArguments(root, { conventions: FOLLOWED }))).toEqual([
+    expect(kotlinGradleArguments(root, { ...options, styleFile: '/tmp/style.json' })).toEqual([
       '-Pnitpicker.kotlin=true',
       '-Pnitpicker.kotlin.formatter=ktlint',
       '-Pnitpicker.kotlin.ktfmtStyle=kotlinlang',
-      '-Pnitpicker.kotlin.workspaceEditorconfig=root = true\n',
-      '-Pnitpicker.kotlin.ktlintDefaults=' +
-        [
-          '[*.{kt,kts}]',
-          'indent_size = 4',
-          'ij_kotlin_allow_trailing_comma = false',
-          'ij_kotlin_allow_trailing_comma_on_call_site = false',
-          'ktlint_standard_no-wildcard-imports = disabled',
-          '',
-        ].join('\n'),
+      '-Pnitpicker.kotlin.styleFile=/tmp/style.json',
       '-Pnitpicker.kotlin.detektLayers=conventions',
-      '-Pnitpicker.kotlin.detektConventions=style:\n  WildcardImport:\n    active: false\n',
     ]);
+    expect(styleOf(root, options)).toEqual({
+      ...ISOLATED,
+      ktlintDefaults: [
+        '[*.{kt,kts}]',
+        'indent_size = 4',
+        'ij_kotlin_allow_trailing_comma = false',
+        'ij_kotlin_allow_trailing_comma_on_call_site = false',
+        'ktlint_standard_no-wildcard-imports = disabled',
+        '',
+      ].join('\n'),
+      detektConventions: 'style:\n  WildcardImport:\n    active: false\n',
+    });
   });
 
   it('passes no defaults for the conventions that match what the tools do already', () => {
     const root = project({ 'build.gradle.kts': 'ktlint' });
     const conventions = { 'kotlin.trailingCommas': 'always', 'kotlin.wildcardImports': 'explicit' };
 
-    expect(kotlinGradleArguments(root, { conventions })).toEqual([
-      '-Pnitpicker.kotlin=true',
-      '-Pnitpicker.kotlin.formatter=ktlint',
-      '-Pnitpicker.kotlin.ktfmtStyle=meta',
-      `-Pnitpicker.kotlin.workspaceEditorconfig=${ISOLATED_EDITORCONFIG}`,
-    ]);
+    expect(styleOf(root, { conventions })).toEqual(ISOLATED);
   });
 
-  it('copies no sources for a project without a formatter', () => {
+  it('copies no sources and writes no style file for a project without a formatter', () => {
     expect(kotlinGradleArguments(project({}), {})).toEqual([
       '-Pnitpicker.kotlin=true',
       '-Pnitpicker.kotlin.formatter=none',
       '-Pnitpicker.kotlin.ktfmtStyle=meta',
     ]);
+    expect(styleOf(project({}))).toBeUndefined();
   });
 });
 
 describe('what runs with the project listed', () => {
-  it('puts the .editorconfig of the head checkout into the ktlint workspace', () => {
+  it('puts the .editorconfig files of the head checkout into the ktlint style file', () => {
     const base = project({ 'build.gradle.kts': 'ktlint', '.editorconfig': 'indent_size = 2\n' });
-    const head = project({ 'build.gradle.kts': 'ktlint', '.editorconfig': 'indent_size = 8\n' });
+    const head = project({
+      'build.gradle.kts': 'ktlint',
+      '.editorconfig': 'indent_size = 8\n',
+      'src/main/kotlin/.editorconfig': '[*.kt]\nindent_size = 2\n',
+    });
 
-    const args = decoded(
-      kotlinGradleArguments(base, {
-        policyRoot: head,
-        toolPrecedence: { ktlint: ['project', 'nitpicker'] },
-        conventions: { 'kotlin.indentation': '4' },
-      }),
-    );
+    const style = styleOf(base, {
+      policyRoot: head,
+      toolPrecedence: { ktlint: ['project', 'nitpicker'] },
+      conventions: { 'kotlin.indentation': '4' },
+    });
 
-    expect(args.slice(3)).toEqual([
-      '-Pnitpicker.kotlin.workspaceEditorconfig=root = true\n\nindent_size = 8\n',
-      '-Pnitpicker.kotlin.ktlintDefaults=[*.{kt,kts}]\nindent_size = 4\n',
-    ]);
+    expect(style).toEqual({
+      offset: '',
+      editorconfigs: [
+        { path: '.editorconfig', text: 'root = true\n\nindent_size = 8\n' },
+        { path: 'src/main/kotlin/.editorconfig', text: '[*.kt]\nindent_size = 2\n' },
+      ],
+      ktlintDefaults: '[*.{kt,kts}]\nindent_size = 4\n',
+    });
   });
 
-  it('turns on ktfmt editorconfig support and the build style, from the head checkout', () => {
+  it('turns on ktfmt editorconfig support, the build style and the mirror, from the head checkout', () => {
     const base = project({ 'build.gradle.kts': 'ktfmt()' });
     const head = project({
       'build.gradle.kts': 'ktfmt { kotlinLangStyle() }',
       '.editorconfig': 'max_line_length = 100\n',
     });
+    const options = { policyRoot: head, toolPrecedence: { ktfmt: ['project', 'nitpicker'] } };
 
-    const args = decoded(
-      kotlinGradleArguments(base, {
-        policyRoot: head,
-        toolPrecedence: { ktfmt: ['project', 'nitpicker'] },
-      }),
-    );
-
-    expect(args).toEqual([
+    expect(kotlinGradleArguments(base, options)).toEqual([
       '-Pnitpicker.kotlin=true',
       '-Pnitpicker.kotlin.formatter=ktfmt',
       '-Pnitpicker.kotlin.ktfmtStyle=kotlinlang',
       '-Pnitpicker.kotlin.ktfmtEditorconfig=true',
-      '-Pnitpicker.kotlin.workspaceEditorconfig=root = true\n\nmax_line_length = 100\n',
+    ]);
+    expect(styleOf(base, options).editorconfigs).toEqual([
+      { path: '.editorconfig', text: 'root = true\n\nmax_line_length = 100\n' },
     ]);
   });
 
@@ -150,6 +150,18 @@ describe('what runs with the project listed', () => {
     ]);
   });
 
+  it('makes the detekt conventions win over the project file when nitpicker is first, wildcards allowed or not', () => {
+    const root = project({ 'detekt.yml': '' });
+    const toolPrecedence = { detekt: ['nitpicker', 'project'] };
+
+    expect(styleOf(root, { toolPrecedence }).detektConventions).toBe(
+      'style:\n  WildcardImport:\n    active: true\n',
+    );
+    expect(styleOf(root, { toolPrecedence, conventions: FOLLOWED }).detektConventions).toBe(
+      'style:\n  WildcardImport:\n    active: false\n',
+    );
+  });
+
   it('uses the project detekt file alone when no convention needs a layer', () => {
     const root = project({ 'detekt.yml': '' });
 
@@ -167,8 +179,10 @@ describe('the Gradle hand-off', () => {
     collectJavaFindings(root, { gradle: fakeGradle, policy });
     return JSON.parse(readFileSync(path.join(root, 'build/nitpicker/gradle-args.json'), 'utf8'));
   };
+  const styleFileOf = (root) =>
+    JSON.parse(readFileSync(path.join(root, 'build/nitpicker/style-file.json'), 'utf8'));
 
-  it('hands the conventions of the policy to Gradle', () => {
+  it('hands the style of the policy to Gradle in a file, which is gone once the run ends', () => {
     const root = project({ 'build.gradle.kts': 'ktlint' });
 
     const args = argumentsOf(root, {
@@ -176,13 +190,17 @@ describe('the Gradle hand-off', () => {
       conventions: { 'kotlin.indentation': '2' },
     });
 
-    expect(decoded(args).slice(3, 8)).toEqual([
+    const file = args.find((argument) => argument.startsWith('-Pnitpicker.kotlin.styleFile='));
+    expect(args.slice(3, 6)).toEqual([
       '-Pnitpicker.kotlin=true',
       '-Pnitpicker.kotlin.formatter=ktlint',
       '-Pnitpicker.kotlin.ktfmtStyle=meta',
-      '-Pnitpicker.kotlin.workspaceEditorconfig=root = true\n',
-      '-Pnitpicker.kotlin.ktlintDefaults=[*.{kt,kts}]\nindent_size = 2\n',
     ]);
+    expect(styleFileOf(root)).toEqual({
+      ...ISOLATED,
+      ktlintDefaults: '[*.{kt,kts}]\nindent_size = 2\n',
+    });
+    expect(existsSync(file.slice(file.indexOf('=') + 1))).toBe(false);
   });
 
   it('runs Gradle without the configuration cache, for both presets', () => {
