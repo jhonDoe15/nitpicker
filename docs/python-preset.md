@@ -14,7 +14,8 @@ and converting them into findings.
 The purpose is the same as everywhere else: narrow a flexible language to roughly one allowed way
 of doing each thing. That "one way" lives in the code and architecture rules (slices 2 to 5), not in
 which tools a project uses, so the preset detects the tools a project already has (uv, poetry or a
-plain virtualenv; ruff or black; pytest or unittest) and never makes adoption depend on switching.
+plain virtualenv; ruff or black; pytest, unittest, Django's `manage.py test` or nose2) and never makes
+adoption depend on switching.
 
 ## How it works
 
@@ -22,7 +23,7 @@ plain virtualenv; ruff or black; pytest or unittest) and never makes adoption de
 node languages/python/adapters/python-runner.mjs --part python     (analyzer python, per snapshot)
   -> ruff check  --config nitpicker-ruff.toml      -> ruff.sarif
   -> ruff format --check --diff | black --check    -> format.txt
-  -> coverage run --branch -m pytest | unittest    -> coverage.json  (coverage.py JSON report)
+  -> coverage run -m pytest | unittest | nose2, or manage.py test -> coverage.json (coverage.py JSON)
   -> mypy --strict | pyright | basedpyright (strict) -> type-check.json
   -> python -I nitpicker_rules.py                  -> rules.json     (the small AST checks)
   -> python structure_metrics.py                    -> structure.json  (slice 3; also the CRAP input)
@@ -77,8 +78,9 @@ is called, so a missing `.venv` is an error and not an empty environment created
 A virtualenv outside the project (a shared `/opt/venv`, an activated CI environment) is used with
 an absolute `python.environment`. A tool that is
 not installed in the environment but is on the `PATH` (typically `ruff`, which many projects use
-from `pipx` or `uvx`) is used from the `PATH`. `coverage` and `pytest` must be in the environment,
-since pytest imports the project's code and dependencies; the error says so.
+from `pipx` or `uvx`) is used from the `PATH`. `coverage` and the test runner (pytest, Django or
+nose2) must be in the environment, since the runner imports the project's code and dependencies;
+the error says so.
 
 ### The base snapshot has no environment of its own
 
@@ -139,15 +141,15 @@ top-level `exceptions` is accepted only for the file limits shared by every lang
 }
 ```
 
-| Key            | Values                                 | Default                                                                              |
-| -------------- | -------------------------------------- | ------------------------------------------------------------------------------------ |
-| `environment`  | `uv`, `poetry`, `path`, or a directory | detected, see above                                                                  |
-| `formatter`    | `ruff`, `black`                        | `black` if the project declares it (see below) and not ruff's formatter, else `ruff` |
-| `testRunner`   | `pytest`, `unittest`                   | `pytest` if the project uses it (see below), else `unittest`                         |
-| `typeChecker`  | `mypy`, `pyright`, `basedpyright`      | detected from the project, see below                                                 |
-| `importLinter` | `true`, `false`                        | run when the project has an import-linter config (see slice 5), else not             |
-| `sourceRoots`  | non-empty array of project directories | `src`, else the top-level packages (directories with `__init__.py`), else `.`        |
-| `exceptions`   | array of `{ rule, paths, reason }`     | none; see [Exceptions](#exceptions)                                                  |
+| Key            | Values                                  | Default                                                                              |
+| -------------- | --------------------------------------- | ------------------------------------------------------------------------------------ |
+| `environment`  | `uv`, `poetry`, `path`, or a directory  | detected, see above                                                                  |
+| `formatter`    | `ruff`, `black`                         | `black` if the project declares it (see below) and not ruff's formatter, else `ruff` |
+| `testRunner`   | `pytest`, `unittest`, `django`, `nose2` | detected from the project (see below), else `unittest`                               |
+| `typeChecker`  | `mypy`, `pyright`, `basedpyright`       | detected from the project, see below                                                 |
+| `importLinter` | `true`, `false`                         | run when the project has an import-linter config (see slice 5), else not             |
+| `sourceRoots`  | non-empty array of project directories  | `src`, else the top-level packages (directories with `__init__.py`), else `.`        |
+| `exceptions`   | array of `{ rule, paths, reason }`      | none; see [Exceptions](#exceptions)                                                  |
 
 The type checker is the one the project uses: `mypy` when it has a `[tool.mypy]` table (or
 `[mypy]` in `mypy.ini`, `setup.cfg` or `tox.ini`), `pyright` when it has `pyrightconfig.json` or a
@@ -188,8 +190,9 @@ handed to ruff or black either. The rules most likely to flag code that is right
 each item) and `F401` (an `__init__.py` that re-exports): lift them for the path with
 `python.exceptions`, or `exclude` the path, for example
 `"exclude": ["src/demo/cli.py", "**/__init__.py"]`. The project's own ruff configuration
-(`[tool.ruff]`, `ruff.toml`) and `[tool.coverage]` are not read for linting and coverage, so the
-result means the same on every project; there is no override key for them (the coverage settings that are dropped are listed under the test step below).
+(`[tool.ruff]`, `ruff.toml`) is not read for linting, and of the coverage configuration only the
+settings that say how the tests run are kept (see the test step below), so the result means the
+same on every project; there is no override key for them.
 
 The formatter is `black` when `pyproject.toml`, `setup.cfg`, `tox.ini`, `Pipfile`,
 `.pre-commit-config.yaml` or a requirements file (`requirements*.txt`, `requirements/*.txt`) has a
@@ -201,12 +204,32 @@ formatter configuration (line length and so on); only the lint rules are nitpick
 finding from a detected formatter says so and names `python.formatter`, the setting that changes
 it.
 
-The test runner is `pytest` when the project shows it uses it: a `[tool.pytest.ini_options]`,
-`[pytest]` or `[tool:pytest]` section, `pytest.ini`, `pytest` or a pytest plugin as a dependency or
-tox command, a `conftest.py`, or test files with top-level `def test_` functions, `import pytest`
-or `Test` classes without a base. It is decided from the project, not from what the environment
-can import, so an environment without pytest is an error (`environment-failed`, naming
-`python.testRunner`) and not a silent run of `unittest` that finds none of the tests.
+The test runner is the first of these the project shows it uses:
+
+1. `pytest`: a `[tool.pytest.ini_options]`, `[pytest]` or `[tool:pytest]` section, `pytest.ini`, or
+   `pytest` or a pytest plugin (`pytest-django` too) as a dependency or tox command.
+2. `django`: a `manage.py` next to a Django dependency, or a `manage.py` that imports `django`.
+3. `nose2`: a `nose2.cfg`, a `unittest.cfg` whose `[unittest]` section lists `plugins`, or `nose2`
+   as a dependency or tox command.
+4. `pytest`: a `conftest.py`, or test files with top-level `def test_` functions, `import pytest` or
+   `Test` classes without a base.
+5. `unittest` otherwise.
+
+It is decided from the project, not from what the environment can import, so an environment
+without the runner is an error (`environment-failed`, naming `python.testRunner`) and not a silent
+run of `unittest` that finds none of the tests (or, for Django, fails them all without the
+project's settings). `python.testRunner` overrides the detection.
+
+| Runner     | Tests run as                                             | Coverage and CRAP need | Mutation testing needs                   |
+| ---------- | -------------------------------------------------------- | ---------------------- | ---------------------------------------- |
+| `pytest`   | `coverage run -m pytest -q`                              | coverage, pytest       | mutmut, pytest                           |
+| `unittest` | `coverage run -m unittest discover`                      | coverage               | mutmut, pytest                           |
+| `django`   | `coverage run manage.py test --noinput`                  | coverage, Django       | mutmut, pytest, pytest-django and Django |
+| `nose2`    | `coverage run -m nose2` (its own config picks the tests) | coverage, nose2        | mutmut, pytest                           |
+
+mutmut 3 runs every suite with pytest (see slice 6), which also runs `unittest.TestCase` classes and
+nose2's test functions; Django's test cases need the pytest-django plugin, and the settings module
+is taken from `manage.py` unless the pytest configuration names one.
 
 ## Slice 2: type checking and the one-way rules
 
@@ -342,18 +365,25 @@ Details that are decisions rather than the table:
   skipped, because ruff already reports it as an `invalid-syntax` finding; any other formatter
   failure is a tool error.
 - **Tests under coverage.** `coverage run --rcfile <nitpicker> -m pytest -q -o cache_dir=<report
-directory>` or `-m unittest discover` (with `-s tests` or `-s test` when that directory exists,
-  and `-t .` when it is a package), then `coverage json`. The project's pytest configuration keeps
+directory>`, `-m unittest discover` (with `-s tests` or `-s test` when that directory exists,
+  and `-t .` when it is a package), `manage.py test --noinput` (the project's own settings, from
+  `manage.py`) or `-m nose2`, then `coverage json`. The project's pytest configuration keeps
   working: `--no-cov` and `-n0` are added only when pytest-cov or xdist is installed, so
   `--cov=pkg` or `-n 2` in `addopts` cannot replace the outer coverage run or fork it away, and
   `--lf` or `--sw` find their cache in the report directory. The coverage settings are nitpicker's,
   written to the report directory: branch coverage on, `parallel` off, `source` the source roots
   that exist in the snapshot, test files left out of measurement (`test_*.py`, `*_test.py`,
-  `conftest.py`, `*/tests/*`, `*/test/*`), and a fixed `exclude_lines` of the idioms that cannot be
-  tested (see Exceptions under slice 4). The project's own coverage configuration (`.coveragerc`, `setup.cfg`,
-  `tox.ini`, `[tool.coverage]`) is not read, so its `exclude_lines`, `exclude_also`,
-  `partial_branches`, `omit`, plugins and subprocess measurement are all dropped and the gate
-  measures every project the same way. Exit status 5 (no tests collected) is accepted; any other
+  `tests.py`, `conftest.py`, `*/tests/*`, `*/test/*`), and a fixed `exclude_lines` of the idioms that
+  cannot be tested (see Exceptions under slice 4). From the project's own coverage configuration
+  (the first of `.coveragerc`, `setup.cfg` `[coverage:run]`, `tox.ini` `[coverage:run]` and
+  `[tool.coverage.run]` that has coverage settings, the order coverage.py reads them in) the run
+  settings that decide what code gets measured at all are kept: `concurrency` (multiprocessing,
+  gevent, eventlet, ...), `patch` (subprocesses), `plugins`, and `omit`, added to the test files.
+  When they make coverage.py write one data file per process, the files are combined before the
+  report. Its `exclude_lines`, `exclude_also`, `partial_branches`, `branch` and `source` are
+  dropped, so the gate judges every project's code the same way. Test files are not scored for
+  CRAP either, and a source file the project omits has unknown coverage
+  (`crap-coverage-unknown`). Exit status 5 (no tests collected) is accepted; any other
   non-zero status is a tool error. A snapshot where no test ran has an enforceable
   `python/no-tests-ran` finding: it is new, and so fails, only when the change removed the last
   tests, and a project that has none on both sides is unaffected. coverage.py 7.6 or newer is
@@ -533,7 +563,7 @@ or remove it if it can't happen. To exempt a file, add it to exclude in nitpicke
   test changes which branches are covered on head.
 - **Exceptions.** `# pragma: no cover` and `# pragma: no branch` are not honored (the generated
   `exclude_lines` does not list them and `partial_branches` is empty), and the project's own
-  coverage settings are ignored, so the one measurement is the same everywhere. Only idioms that are
+  report settings are ignored, so the one measurement is the same everywhere. Only idioms that are
   never testable are excluded, with the same list on every coverage.py version: `if TYPE_CHECKING:`
   (also `typing.TYPE_CHECKING`), `if __name__ == "__main__":`, `@overload` (also `typing.overload`)
   and `raise NotImplementedError`. Anything else that legitimately cannot be tested is lifted with
@@ -656,11 +686,15 @@ location.
   analyzer and only when it had no tool error (a failing test run is already `tests-failed`, and
   mutmut starts with a clean run of the same tests). When pytest-xdist is installed the run gets
   `PYTEST_ADDOPTS=-n0` (merged after any value the environment already has), because mutmut runs
-  pytest itself and cannot collect which tests cover which function under `-n`. The snapshot is a
+  pytest itself and cannot collect which tests cover which function under `-n`. When the runner is
+  not pytest, `-o python_files=test*.py` is added the same way, the test file pattern of unittest,
+  Django and nose2, so pytest collects a `tests.py` or `testcalc.py` it would skip by default. The snapshot is a
   disposable work tree; mutmut writes its `mutants/` directory into it. On head the directory is
   removed afterwards. On base it stays, because head reads its results (see below). Keep `mutants/`
-  out of version control in your project, like `.venv/`. A project whose tests collect no test
-  gets no mutation findings (`python/no-tests-ran` already says it).
+  out of version control in your project, like `.venv/`. When pytest collects no test in mutmut's
+  copy of the project ("runner returned 5") the run has no results, and that is a descriptive
+  `mutation-skipped` finding (`no-tests-collected`) naming the file pattern and `also_copy`, never
+  an empty result.
 - **Configuration.** mutmut reads `[tool.mutmut]` in `pyproject.toml` (or `[mutmut]` in
   `setup.cfg`). If the project has one, it is used as it is: `source_paths`, `also_copy`,
   `do_not_mutate`, `pytest_add_cli_args` and the rest stay the project's decision, and `exclude`
@@ -668,7 +702,7 @@ location.
   `pyproject.toml` (never to your checkout, and it creates the file if the project has none, so
   that file is the one thing besides `mutants/` the preset writes into the snapshot):
   `source_paths` is the source roots and `do_not_mutate` skips the test files (`tests/`,
-  `test_*.py`, `*_test.py`, `conftest.py`) and the `exclude` globs, so an excluded file that mutmut
+  `test_*.py`, `*_test.py`, `tests.py`, `conftest.py`) and the `exclude` globs, so an excluded file that mutmut
   cannot parse (a Python 2 leftover) does not fail the run. Source roots of `.` are an error in
   that case, since mutmut would copy the whole project: set `python.sourceRoots` or
   `[tool.mutmut]`. A test that reads a file outside the copied sources fails mutmut's first run
@@ -678,9 +712,15 @@ location.
   killed by any test. The ways out are in the configuration, not in the code: list the path in
   `exclude` (the mutants of the file are dropped), or, with a `[tool.mutmut]` of your own, list it
   in `do_not_mutate`, which also saves the run time.
-- **pytest.** mutmut 3 runs the suite with pytest, which also runs `unittest.TestCase` classes. A
-  project whose runner is `unittest` therefore needs pytest installed for mutation testing; set
-  `"testRunner": "unittest"` if you want coverage.py to keep running `unittest discover`.
+- **pytest.** mutmut 3 runs the suite with pytest, which also runs `unittest.TestCase` classes and
+  nose2's test functions. Every project therefore needs pytest installed for mutation testing,
+  whatever runner coverage.py uses; without it the `mutation` analyzer fails with a
+  `mutation-failed` error that says to install it. A Django project also needs pytest-django:
+  without it mutmut is not run and a descriptive `mutation-skipped` finding (`pytest-django`) says
+  so; with it `DJANGO_SETTINGS_MODULE` is taken from `manage.py` unless the environment or the
+  pytest configuration sets it. Whenever pytest-django is installed (a pytest project that uses it
+  too), `-o django_find_project=false` keeps it from putting the real project (where `manage.py`
+  is) ahead of mutmut's copy on `sys.path`, which would test the unmutated code. Whether pytest-django is installed is part of the cache key.
 - **Windows.** mutmut forks processes (`os.fork`), so it does not run on native Windows: run
   nitpicker inside WSL. On Windows the `mutation` analyzer does not run mutmut; it reports a
   descriptive `mutation-skipped` finding that says so (the other analyzer is unaffected).

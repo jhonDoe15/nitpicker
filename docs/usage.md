@@ -412,7 +412,7 @@ The environment is detected: `uv.lock` (also the one of a uv workspace above a m
 tools with `uv run --no-sync`, `poetry.lock` uses the environment poetry reports, a `.venv/`
 directory is used as is, otherwise the tools come from the `PATH`; `python.environment` can also be
 an absolute virtualenv directory. The environment has to exist already (`uv sync`, `poetry install`, or your CI's
-install step) and needs `coverage`, a type checker (`mypy`, `pyright` or `basedpyright`) and `pytest`, and `mutmut` unless mutation is disabled (mutmut runs every suite with pytest, which also runs `unittest` tests); `ruff` (or `black`) may come
+install step) and needs `coverage`, a type checker (`mypy`, `pyright` or `basedpyright`) and the project's test runner (pytest, Django or nose2), and `mutmut` and `pytest` unless mutation is disabled (mutmut runs every suite with pytest, which also runs `unittest` and nose2 tests; a Django project also needs `pytest-django`); `ruff` (or `black`) may come
 from the `PATH`. The base snapshot runs against the same environment with its own sources first on
 `PYTHONPATH`, so an editable install does not make base tests exercise head code.
 
@@ -431,7 +431,7 @@ Config keys with this preset: `base`, `disable` (`python` and `mutation` are the
 under the globs are dropped), `legacyInventory` (same format as the Java one; `source` is the
 finding's `identity`) and `python`, whose keys all override a detection: `environment` (`"uv"`,
 `"poetry"`, `"path"` or a virtualenv directory in the project), `formatter` (`"ruff"` or
-`"black"`), `testRunner` (`"pytest"` or `"unittest"`; default `pytest` when the project uses it),
+`"black"`), `testRunner` (`"pytest"`, `"unittest"`, `"django"` for `manage.py test` or `"nose2"`; detected from the project),
 `typeChecker` (`"mypy"`, `"pyright"` or `"basedpyright"`), `importLinter` (`true` or `false`; by default the import-linter
 contracts run when the project configures them) and `sourceRoots` (default `src`, else the top-level
 packages). The gate also reports new duplicates (`duplicates/duplicate-clone`), package coupling

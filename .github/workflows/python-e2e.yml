@@ -25,8 +25,8 @@ jobs:
   python-e2e:
     if: github.event_name != 'pull_request' || github.event.label.name == 'run-ci'
     runs-on: ubuntu-latest
-    # The suite installs pytest, mutmut and import-linter into throwaway environments and runs mutation
-    # testing; it takes 8 to 25 minutes.
+    # The suite installs pytest, mutmut, import-linter, Django, pytest-django and nose2 into throwaway
+    # environments and runs mutation testing; it takes 8 to 25 minutes.
     timeout-minutes: 45
     env:
       # The suite's own `uv pip install` calls resolve to these versions too.
