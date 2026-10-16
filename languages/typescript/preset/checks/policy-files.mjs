@@ -36,6 +36,7 @@ export const POLICY_FILES = [
   'languages/typescript/preset/eslint-plugin/rules/boundaries/no-branch-in-composition-root.mjs',
   'languages/typescript/preset/eslint-plugin/rules/modules/no-comments.mjs',
   'languages/typescript/preset/eslint-plugin/rules/modules/doc-comment-content.mjs',
+  'shared/rules/doc-comments/doc-comments.mjs',
   'languages/typescript/preset/eslint-plugin/rules/boundaries/no-handwritten-boundary-guard.mjs',
   'languages/typescript/preset/eslint-plugin/rules/control/no-self-recursion.mjs',
   'languages/typescript/preset/eslint-plugin/rules/errors/no-throw.mjs',
