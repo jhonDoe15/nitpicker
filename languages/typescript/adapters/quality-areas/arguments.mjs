@@ -43,6 +43,7 @@ export function parseArguments(arguments_) {
     policyRoot: validatedSnapshotRoot(requiredValue(values, '--policy-root'), '--policy-root'),
     toolRoot,
     liveProjectRoot: optionalValue(values.get('--live-project-root'), realpathSync, PACKAGE_ROOT),
+    runnerProjectRoot: optionalValue(values.get('--live-project-root'), realpathSync, projectRoot),
     snapshot,
     legacyInventory: values.get('--legacy-inventory') ?? DEFAULT_LEGACY_INVENTORY,
     crapScoreLimit: optionalValue(
