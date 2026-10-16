@@ -75,6 +75,12 @@ public final class Loops {
     ids.forEach(orders::delete); // violation: IoCallInLoop
   }
 
+  public void chunked(List<List<String>> chunks) {
+    for (List<String> chunk : chunks) {
+      orders.saveAll(chunk);
+    }
+  }
+
   public String loaded(String id) {
     return Optional.of(id).map(orders::findById).orElse("");
   }

@@ -161,6 +161,7 @@ return (
 let $ioTypes := '(Repository|Dao|DAO|Client|EntityManager|JdbcTemplate|RestTemplate|Connection|Statement)$',
     $ioNames := //(FieldDeclaration | LocalVariableDeclaration | FormalParameter)[ClassType[matches(@SimpleName, $ioTypes)]]//VariableId/@Name,
     $writes := ('save', 'saveAndFlush', 'delete', 'deleteById', 'persist', 'merge', 'remove'),
+    $batches := ('saveAll', 'saveAllAndFlush', 'deleteAll', 'deleteAllById', 'deleteAllInBatch', 'findAllById'),
     $loops := (//ForeachStatement | //ForStatement | //WhileStatement | //DoStatement),
     $bodies := (
       //ForeachStatement/*[last()] | //ForStatement/*[last()] | //WhileStatement/*[last()] | //DoStatement/*[1]
@@ -202,7 +203,7 @@ return
     self::ConstructorCall[ClassType[@SimpleName = ('FileReader', 'FileInputStream', 'FileWriter', 'FileOutputStream', 'RandomAccessFile')]]
     or self::MethodCall[*[1][self::TypeExpression][ClassType[@SimpleName = 'Files']]]
          [not(@MethodName = ('exists', 'notExists', 'isDirectory', 'isRegularFile', 'isReadable', 'isWritable', 'isExecutable', 'isSymbolicLink', 'isHidden', 'isSameFile'))]
-    or self::MethodCall[not(@MethodName = ('hashCode', 'toString', 'equals', 'getClass', 'close', 'clear'))]
+    or self::MethodCall[not(@MethodName = ('hashCode', 'toString', 'equals', 'getClass', 'close', 'clear', $batches))]
          [not(matches(@MethodName, '^(is|has|get)[A-Z]') and not(matches(@MethodName, '^get(By|All|One|Reference|For)')))]
          [*[1][(self::VariableAccess or self::FieldAccess) and @Name = $ioNames]
             or *[1][pmd-java:typeIs('org.springframework.data.repository.Repository')
@@ -214,7 +215,7 @@ return
             or pmd-java:typeIs('org.springframework.web.client.RestClient')
             or pmd-java:typeIs('org.springframework.web.reactive.function.client.WebClient')
             or pmd-java:typeIs('java.net.http.HttpClient')]]
-    or self::MethodCall[matches(@MethodName, '^(find|load|read|query|select|insert|update|delete|exists|count|execute|fetch|list|write)([A-Z0-9_]|$)|^(get|send|post|put|patch|exchange|retrieve|save)$')]
+    or self::MethodCall[not(@MethodName = $batches)][matches(@MethodName, '^(find|load|read|query|select|insert|update|delete|exists|count|execute|fetch|list|write)([A-Z0-9_]|$)|^(get|send|post|put|patch|exchange|retrieve|save)$')]
          [*[1][matches(@Name, '^(repo|repository|dao|jdbc|jdbcTemplate|restTemplate|client|webClient|httpClient|connection|statement|entityManager|gateway|api)$|(Repo|Repository|Dao|DAO|Client|Connection|Statement|EntityManager|Gateway|Api|API|Template)$')]]
   ]
   |

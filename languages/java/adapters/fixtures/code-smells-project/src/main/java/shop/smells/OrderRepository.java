@@ -10,4 +10,6 @@ public interface OrderRepository {
   void save(String id);
 
   void delete(String id);
+
+  void saveAll(List<String> ids);
 }
