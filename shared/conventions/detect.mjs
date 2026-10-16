@@ -27,9 +27,7 @@ export function detectConventions({
     measured.length === 0
       ? new Map()
       : source.readMany([
-          ...new Set(
-            measured.filter(({ nameOnly }) => !nameOnly).flatMap(({ id }) => samples.get(id)),
-          ),
+          ...new Set(measured.flatMap((definition) => filesToRead(definition, samples))),
         ]);
   return Object.fromEntries(
     definitions.map((definition) => [
@@ -51,11 +49,19 @@ export function conventionChoices(detected, definitions) {
   );
 }
 
+function filesToRead(definition, samples) {
+  const sample = samples.get(definition.id);
+  if (!definition.nameOnly) {
+    return sample;
+  }
+  return definition.needsText === undefined ? [] : sample.filter(definition.needsText);
+}
+
 function sampleFor(definition, candidates, accepts) {
   const files = definition.files.map(globToRegExp);
   return evenSample(
     candidates.filter((file) => files.some((glob) => glob.test(file)) && accepts(definition, file)),
-    SAMPLE_LIMIT,
+    definition.sampleLimit ?? SAMPLE_LIMIT,
   );
 }
 
@@ -68,9 +74,10 @@ function measureNames(definition, sample, texts) {
       counts[name] = (counts[name] ?? 0) + 1;
     }
   }
-  const choice = Object.keys(counts)
-    .filter((name) => counts[name] >= definition.minFiles)
-    .sort();
+  const choice = (
+    definition.choose?.(counts, definition) ??
+    Object.keys(counts).filter((name) => counts[name] >= definition.minFiles)
+  ).sort();
   return choice.length === 0
     ? { choice: definition.fallback, source: 'default', counts, files: sample.length }
     : { choice, source: 'majority', counts, files: sample.length };

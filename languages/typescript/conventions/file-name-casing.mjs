@@ -1,10 +1,10 @@
-import { GENERATED_PATH } from '../preset/layout.mjs';
+import { escapeRegExp } from '../../../shared/glob.mjs';
+import { FIXTURE_PATH, GENERATED_PATH } from '../preset/layout.mjs';
 
 const SOURCE_FILES = ['**/*.{ts,tsx,mts,cts,js,jsx,mjs,cjs}'];
 const SOURCE_FILE = /\.(?:[cm]?[jt]s|[jt]sx)$/;
 const FRAMEWORK_PREFIX = /^[_+$@(#~]/;
 const ROUTE_SYNTAX = /[[\]]|_$/;
-const FIXTURE_PATH = /(?:^|\/)(?:fixtures|__fixtures__)\//;
 const GENERATED_NAME = /\.(?:graphql|gql)\.[^/]+$/;
 const HOOK_NAME = /^use[A-Z]/;
 const PASCAL_CASE = /^[A-Z][a-zA-Z0-9]*$/;
@@ -35,6 +35,7 @@ export const FILE_NAME_CONVENTION = {
   fallback: 'kebab-case',
   files: SOURCE_FILES,
   nameOnly: true,
+  needsText: (file) => HOOK_NAME.test(fileNameParts(file).base),
   scope: 'layout',
   measure: fileNameVote,
 };
@@ -65,7 +66,22 @@ function isExemptPath(file) {
   return GENERATED_PATH.test(posix) || GENERATED_NAME.test(posix) || FIXTURE_PATH.test(posix);
 }
 
-function isExemptName(file) {
+function exportsName(text, hookName) {
+  const name = escapeRegExp(hookName);
+  const code = text.replaceAll(/\/\*[\s\S]*?\*\/|\/\/.*$/gm, '');
+  const declaration = new RegExp(
+    `\\bexport\\s+(?:default\\s+)?(?:(?:async\\s+)?function\\s*\\*?\\s*|(?:const|let|var)\\s+)${name}\\b`,
+  );
+  const listed = new RegExp(`\\bexport\\s*\\{[^}]*\\b${name}\\b[^}]*\\}`);
+  const defaulted = new RegExp(`\\bexport\\s+default\\s+${name}\\b`);
+  return declaration.test(code) || listed.test(code) || defaulted.test(code);
+}
+
+function isHookFile(base, text) {
+  return HOOK_NAME.test(base) && (text === undefined || exportsName(text, base));
+}
+
+function isExemptName(file, text) {
   const { base, stem } = fileNameParts(file);
   return (
     base === '' ||
@@ -74,22 +90,22 @@ function isExemptName(file) {
     RESERVED_BASES.has(base) ||
     stem.slice(1).includes('config') ||
     PASCAL_CASE.test(base) ||
-    HOOK_NAME.test(base) ||
+    isHookFile(base, text) ||
     LOCALE_CODE.test(base) ||
     stem.some(isGeneratedSegment)
   );
 }
 
-export function fileNameComplies(file, casing) {
+export function fileNameComplies(file, casing, text) {
   return (
     isExemptPath(file) ||
-    isExemptName(file) ||
+    isExemptName(file, text) ||
     fittingCasings(fileNameParts(file).base).includes(casing)
   );
 }
 
 function fileNameVote(text, file) {
-  if (file === undefined || isExemptPath(file) || isExemptName(file)) {
+  if (file === undefined || isExemptPath(file) || isExemptName(file, text)) {
     return undefined;
   }
   const fitting = fittingCasings(fileNameParts(file).base);

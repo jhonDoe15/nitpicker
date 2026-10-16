@@ -1,6 +1,6 @@
 import { configError, isPlainObject } from '../config.mjs';
 
-const NAME = /^[A-Za-z_$][\w$]*$/;
+const NAME = /^[A-Za-z_]\w*$/;
 
 export function validateConventions(value, definitions) {
   if (!isPlainObject(value)) {

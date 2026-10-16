@@ -4,6 +4,8 @@ import { isJavascriptPolicy } from '../../languages/javascript/preset/javascript
 import { resolveHeadPolicy } from '../../languages/typescript/preset/head-policy.mjs';
 import {
   excludedGlobs as builtInExcludedGlobs,
+  globToRegExp,
+  prettierPatterns,
   resolveLayout,
 } from '../../languages/typescript/preset/layout.mjs';
 import { conventionDefinitions } from './definitions.mjs';
@@ -66,17 +68,20 @@ function followConventions({ config, projectRoot, headPolicy, commit, stdout }) 
   };
 }
 
+const TEST_SUPPORT_PATH = /(?:^|\/)(?:test-support|test-utils|testing|testkit)\//;
+
 function layoutFilter(config, headPolicy) {
   const layout = resolveLayout(headPolicy.layout, headPolicy.exclude, {
     javascript: isJavascriptPolicy(config),
   });
-  const roots = [...layout.sourceRoots, ...layout.testRoots];
+  const formatted = prettierPatterns(layout).map(globToRegExp);
   const scopes = {
     layout: (file) => layout.isSourceFile(file) || layout.isTestFile(file),
-    tests: (file) => layout.isTestFile(file),
+    'test-code': (file) => layout.isTestFile(file) || TEST_SUPPORT_PATH.test(file),
     'formatted-data': (file) =>
-      (!file.includes('/') || roots.some((root) => file.startsWith(`${root}/`))) &&
-      !layout.isGeneratedPath(file),
+      formatted.some((pattern) => pattern.test(file)) &&
+      !layout.isGeneratedPath(file) &&
+      !layout.isFixturePath(file),
   };
   return function accepts({ scope }, file) {
     return scope === undefined || (scopes[scope](file) && !layout.isExcluded(file));

@@ -88,4 +88,14 @@ describe('conventions per preset', () => {
       'typescript.assertionHelpers',
     ]);
   });
+
+  it('offers the JSX conventions to the typescript preset only', () => {
+    const jsxIds = (preset) =>
+      conventionDefinitions(preset)
+        .map(({ id }) => id)
+        .filter((id) => id.startsWith('prettier.jsx') || id === 'prettier.bracketSameLine');
+
+    expect(jsxIds('typescript')).toEqual(['prettier.jsxQuotes', 'prettier.bracketSameLine']);
+    expect(jsxIds('javascript')).toEqual([]);
+  });
 });
