@@ -55,9 +55,15 @@ describe('test-console analyzer and disable', () => {
     );
   });
 
-  it('keeps coverage on while test-console depends on it', () => {
+  it('names every dependent of coverage at once', () => {
+    expect(() => applyDisable(analyzers, { disable: ['coverage'] })).toThrow(
+      '"disable" cannot disable coverage because crap and test-console depend on it; add them to "disable" too',
+    );
+  });
+
+  it('names the one dependent left', () => {
     expect(() => applyDisable(analyzers, { disable: ['coverage', 'crap'] })).toThrow(
-      'cannot disable coverage because test-console depends on it',
+      '"disable" cannot disable coverage because test-console depends on it; add it to "disable" too',
     );
   });
 

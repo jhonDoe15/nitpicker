@@ -43,6 +43,19 @@ function describePythonOverrides({ exceptions = [], ...settings }) {
   ];
 }
 
+function dependentsOf(name, analyzers) {
+  return analyzers
+    .filter((analyzer) => (analyzer.dependencies ?? []).includes(name))
+    .map((analyzer) => analyzer.name)
+    .toSorted();
+}
+
+function blockMessage(name, dependents) {
+  const [verb, pronoun] = dependents.length > 1 ? ['depend', 'them'] : ['depends', 'it'];
+  const names = dependents.join(' and ');
+  return `cannot disable ${name} because ${names} ${verb} on it; add ${pronoun} to "disable" too`;
+}
+
 export function applyDisable(analyzers, config) {
   const disabled = config.disable ?? [];
   if (disabled.length === 0) {
@@ -56,13 +69,11 @@ export function applyDisable(analyzers, config) {
     );
   }
   const remaining = analyzers.filter(({ name }) => !disabled.includes(name));
-  for (const analyzer of remaining) {
-    const blocked = (analyzer.dependencies ?? []).filter((name) => disabled.includes(name));
-    if (blocked.length > 0) {
-      throw configError(
-        `"disable" cannot disable ${blocked.join(', ')} because ${analyzer.name} depends on it`,
-      );
-    }
+  const blockers = disabled.filter((name) => dependentsOf(name, remaining).length > 0);
+  if (blockers.length > 0) {
+    throw configError(
+      `"disable" ${blockers.map((name) => blockMessage(name, dependentsOf(name, remaining))).join('; ')}`,
+    );
   }
   return remaining;
 }
