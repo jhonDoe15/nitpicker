@@ -1,6 +1,6 @@
 import { configError, isPlainObject } from '../config.mjs';
 
-const NAMES = /^(?:[A-Za-z_$][\w$]*(?:,[A-Za-z_$][\w$]*)*)?$/;
+const NAME = /^[A-Za-z_]\w*$/;
 
 export function validateConventions(value, definitions) {
   if (!isPlainObject(value)) {
@@ -15,10 +15,11 @@ export function validateConventions(value, definitions) {
       );
     }
     if (definition.kind === 'names') {
-      if (typeof choice !== 'string' || !NAMES.test(choice)) {
-        throw configError(
-          `"conventions.${id}" must be a comma separated list of method names, or an empty string`,
-        );
+      if (
+        !Array.isArray(choice) ||
+        !choice.every((name) => typeof name === 'string' && NAME.test(name))
+      ) {
+        throw configError(`"conventions.${id}" must be a list of function names`);
       }
     } else if (!definition.options.includes(choice)) {
       throw configError(
@@ -33,10 +34,10 @@ export function describeConventions(detected, definitions, note = () => undefine
 }
 
 function describeNames(definition, { choice, source, files }) {
-  const list = choice.split(',').join(', ');
+  const names = `${definition.label}: ${choice.join(', ')}`;
   return source === 'pinned'
-    ? `${definition.label}: ${list} (set in nitpicker.config.json)`
-    : `${definition.label}: ${list} (the last call of at least ${String(definition.minFiles)} of ${String(files)} measured files)`;
+    ? `${names} (set in nitpicker.config.json)`
+    : `${names} (final call of at least ${String(definition.minFiles)} of ${String(files)} measured files)`;
 }
 
 function describeOne(definition, detectedEntry, note) {

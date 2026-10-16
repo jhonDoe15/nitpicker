@@ -102,6 +102,11 @@ describe('kotlin.lineLength', () => {
       `import ${'a'.repeat(130)}\n// ${'b'.repeat(130)}\nval u = "https://${'c'.repeat(130)}"\n${fits(60)}`,
       undefined,
     ],
+    [
+      'a long backticked test name, which nothing can break',
+      `class T {\n    @Test\n    fun \`${'does a thing '.repeat(9)}\`() {}\n    @Test\n    fun \`${'and then it '.repeat(9)}\`() {}\n}\n${fits(60)}`,
+      undefined,
+    ],
     ['a raw string', `val t = """\n${'x = ('.repeat(30)}\n"""\n${fits(60)}`, undefined],
     ['tab indentation', `fun a() {\n\t${fits(125)}}\n`, undefined],
   ])('reads %s', (_name, text, expected) => {

@@ -1,24 +1,26 @@
 const CALLED = /([A-Za-z_]\w*)\s*(?=[({])/g;
-const IDENTIFIER = /[A-Za-z_]\w*/g;
-const JAVA_BUILT_IN = /^(?:assert|check|verify)|^(?:fail|failWith)$/;
+const KOTLIN_CALLED = /([A-Za-z_]\w*)\s*(?:<[^<>]*(?:<[^<>]*>[^<>]*)*>\s*)?(?=[({])/g;
+const INFIX = /[\w)\]"}]\s+(should(?:[A-Z]\w*)?)\s+(?=[\w"'([{-])/g;
+const JAVA_BUILT_IN = /^(?:assert|check|verify)(?:[A-Z]\w*)?$|^(?:fail|failWith)$/;
 const KOTLIN_BUILT_IN =
-  /^(?:assert|check|verify|coVerify|confirmVerified|expect|should|andExpect|forAll)|^fail$/;
+  /^(?:assert|check|verify|coVerify|expect|should)(?:[A-Z]\w*)?$|^(?:confirmVerified|fail|andExpect|forAll)$/;
 const VOCABULARY =
   /^(?:expect|ensure|must|should|require|validate|confirm|andExpect|await|until|statusCode|is[A-Z]|has[A-Z])/;
 
-export function calledNames(body) {
+export function calledNames(body, language = 'java') {
+  if (language === 'kotlin') {
+    return [
+      ...[...body.matchAll(KOTLIN_CALLED)].map((match) => match[1]),
+      ...[...body.matchAll(INFIX)].map((match) => match[1]),
+    ];
+  }
   return [...body.matchAll(CALLED)].map((match) => match[1]);
-}
-
-export function identifiers(body) {
-  return body.match(IDENTIFIER) ?? [];
 }
 
 export function hasAssertion({ body, language, extra = [] }) {
   const known = new Set(extra);
   const builtIn = language === 'kotlin' ? KOTLIN_BUILT_IN : JAVA_BUILT_IN;
-  const names = language === 'kotlin' ? identifiers(body) : calledNames(body);
-  return names.some((name) => builtIn.test(name) || known.has(name));
+  return calledNames(body, language).some((name) => builtIn.test(name) || known.has(name));
 }
 
 export function isHelperName(name) {

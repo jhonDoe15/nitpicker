@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { testMethods } from './test-methods.mjs';
+import { definedFunctions, testMethods } from './test-methods.mjs';
 
 describe('testMethods in Java', () => {
   it('returns the name and body of every annotated test method', () => {
@@ -68,6 +68,68 @@ describe('testMethods in Kotlin', () => {
         body: '\n    account.withdraw(-1)\n    verify(exactly = 1) { audit.log() }',
       },
       { name: 'single', body: ' check(true)' },
+    ]);
+  });
+});
+
+describe('disabled tests', () => {
+  it('skips tests marked @Disabled or @Ignore, before or after @Test', () => {
+    const java = [
+      'class T {',
+      '  @Disabled("later")',
+      '  @Test',
+      '  void skippedFirst() { run(); }',
+      '  @Test',
+      '  @org.junit.jupiter.api.Disabled',
+      '  void skippedAfter() { run(); }',
+      '  @Test',
+      '  void kept() { run(); }',
+      '}',
+    ].join('\n');
+    const kotlin = [
+      'class T {',
+      '  @Ignore @Test fun skipped() { run() }',
+      '  @Test @Ignore("flaky") fun skippedToo() { run() }',
+      '  @Test fun kept() { run() }',
+      '}',
+    ].join('\n');
+
+    expect(testMethods(java, 'java').map(({ name }) => name)).toEqual(['kept']);
+    expect(testMethods(kotlin, 'kotlin').map(({ name }) => name)).toEqual(['kept']);
+  });
+});
+
+describe('definedFunctions', () => {
+  it('lists Java methods with bodies, not control statements, calls or constructors with new', () => {
+    const text = [
+      'class H {',
+      '  static void assertOk(Result r) throws Exception {',
+      '    if (r.failed()) { throw new AssertionError("x"); }',
+      '  }',
+      '  <T> T pick(List<T> items) { return items.get(0); }',
+      '  void use() { run(new Foo() { void inner() { } }); }',
+      '}',
+    ].join('\n');
+
+    expect(definedFunctions(text, 'java').map(({ name }) => name)).toEqual([
+      'assertOk',
+      'pick',
+      'use',
+      'inner',
+    ]);
+  });
+
+  it('lists Kotlin functions with block and expression bodies', () => {
+    const text = [
+      'fun assertOk(r: Result) { if (r.failed) throw AssertionError("x") }',
+      'private fun <T> pick(items: List<T>): T = items.first()',
+      'fun String.shouldLookOk() = assertTrue(isNotEmpty())',
+    ].join('\n');
+
+    expect(definedFunctions(text, 'kotlin').map(({ name }) => name)).toEqual([
+      'assertOk',
+      'pick',
+      'shouldLookOk',
     ]);
   });
 });

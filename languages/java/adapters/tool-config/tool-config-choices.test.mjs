@@ -83,7 +83,7 @@ describe('the Gradle properties of the project tool configs', () => {
 
     const properties = toolConfigProperties(
       root,
-      { conventions: { 'java.assertionHelpers': 'expectOk,mustBe' } },
+      { conventions: { 'java.assertionHelpers': ['expectOk', 'mustBe'] } },
       directory,
     );
 

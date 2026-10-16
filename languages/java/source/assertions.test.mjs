@@ -1,11 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import {
-  calledNames,
-  hasAssertion,
-  identifiers,
-  isHelperName,
-  terminalCall,
-} from './assertions.mjs';
+import { calledNames, hasAssertion, isHelperName, terminalCall } from './assertions.mjs';
 
 describe('hasAssertion', () => {
   it.each([
@@ -17,6 +11,30 @@ describe('hasAssertion', () => {
     ['a Kotest matcher', 'result shouldBe 3', 'kotlin', true],
     ['a MockK verification', 'coVerify { repo.save(any()) }', 'kotlin', true],
     ['a Kotlin test that only calls', 'service.run()', 'kotlin', false],
+    ['a variable named like an assertion', 'val expected = 3\nuse(expected)', 'kotlin', false],
+    [
+      'a variable named expectedValue',
+      'val expectedValue = 3\nuse(expectedValue)',
+      'kotlin',
+      false,
+    ],
+    [
+      'a call on a receiver that starts like an assertion',
+      'checkoutService.run()',
+      'kotlin',
+      false,
+    ],
+    ['a Java call on a receiver that starts like a check', 'checkoutService.run();', 'java', false],
+    [
+      'an assertion that ends in a capital',
+      'assertFailsWith<IOException> { read() }',
+      'kotlin',
+      true,
+    ],
+    ['a Kotest should matcher call', 'shouldThrow<IOException> { read() }', 'kotlin', true],
+    ['a Strikt expectThat', 'expectThat(x).isEqualTo(1)', 'kotlin', true],
+    ['a name that only starts with verify', 'verifyingStuff(x);', 'java', false],
+    ['a variable named should', 'val shouldRetry = true\nuse(shouldRetry)', 'kotlin', false],
   ])('%s', (_name, body, language, expected) => {
     expect(hasAssertion({ body, language })).toBe(expected);
   });
@@ -45,9 +63,10 @@ describe('terminalCall', () => {
 });
 
 describe('names', () => {
-  it('lists called names and identifiers', () => {
+  it('lists called names, with generics and infix calls in Kotlin', () => {
     expect(calledNames('a(1); b.c { d }')).toEqual(['a', 'c']);
-    expect(identifiers('x shouldBe 3')).toEqual(['x', 'shouldBe']);
+    expect(calledNames('x shouldBe 3', 'kotlin')).toEqual(['shouldBe']);
+    expect(calledNames('f<T>(a) { g }', 'kotlin')).toEqual(['f']);
   });
 
   it('recognises assertion vocabulary', () => {

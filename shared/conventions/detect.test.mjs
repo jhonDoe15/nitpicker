@@ -126,12 +126,12 @@ describe('conventions that collect names', () => {
     label: 'Demo helpers',
     kind: 'names',
     minFiles: 2,
-    fallback: '',
+    fallback: [],
     files: ['**/*.demo'],
     measure: (text) => text.split(' ').filter((word) => word.startsWith('check')),
   };
-  const detectNames = (files) =>
-    detectConventions({ definitions: [helpers], source: sourceOf(files) })['demo.helpers'];
+  const detectNames = (files, definition = helpers) =>
+    detectConventions({ definitions: [definition], source: sourceOf(files) })[definition.id];
 
   it('keeps the names found in at least minFiles files, sorted', () => {
     expect(
@@ -141,7 +141,7 @@ describe('conventions that collect names', () => {
         'c.demo': 'checkC',
       }),
     ).toEqual({
-      choice: 'checkA,checkB',
+      choice: ['checkA', 'checkB'],
       source: 'majority',
       counts: { checkA: 2, checkB: 2, checkC: 1 },
       files: 3,
@@ -150,36 +150,69 @@ describe('conventions that collect names', () => {
 
   it('falls back to no names when none is common enough', () => {
     expect(detectNames({ 'a.demo': 'checkA', 'b.demo': 'checkB' })).toEqual({
-      choice: '',
+      choice: [],
       source: 'default',
       counts: { checkA: 1, checkB: 1 },
       files: 2,
     });
   });
 
-  it('is carried to the policy only when names were found, and described by its list', () => {
-    const found = {
-      'demo.helpers': { choice: 'checkA,checkB', source: 'majority', counts: {}, files: 3 },
+  it('lets the convention choose among the counted evidence and sample more files', () => {
+    const proven = {
+      ...helpers,
+      sampleLimit: 3,
+      choose: (counts) =>
+        Object.keys(counts).filter((name) => counts[name] >= 2 && name === 'checkA'),
     };
 
-    expect(conventionChoices(found, [helpers])).toEqual({ 'demo.helpers': 'checkA,checkB' });
+    expect(
+      detectNames(
+        {
+          'a.demo': 'checkA checkB',
+          'b.demo': 'checkA checkB',
+          'c.demo': 'checkA',
+          'd.demo': 'checkA',
+        },
+        proven,
+      ),
+    ).toEqual({
+      choice: ['checkA'],
+      source: 'majority',
+      counts: { checkA: 3, checkB: 2 },
+      files: 3,
+    });
+  });
+
+  it('is carried to the policy only when names were found, and described by its list', () => {
+    const found = {
+      'demo.helpers': { choice: ['checkA', 'checkB'], source: 'majority', counts: {}, files: 3 },
+    };
+
+    expect(conventionChoices(found, [helpers])).toEqual({ 'demo.helpers': ['checkA', 'checkB'] });
+    expect(
+      conventionChoices({ 'demo.helpers': { choice: [], source: 'default' } }, [helpers]),
+    ).toEqual({});
     expect(describeConventions(found, [helpers])).toEqual([
-      'Demo helpers: checkA, checkB (the last call of at least 2 of 3 measured files)',
+      'Demo helpers: checkA, checkB (final call of at least 2 of 3 measured files)',
     ]);
     expect(
-      describeConventions({ 'demo.helpers': { choice: 'checkA', source: 'pinned', counts: {} } }, [
-        helpers,
-      ]),
+      describeConventions(
+        { 'demo.helpers': { choice: ['checkA'], source: 'pinned', counts: {} } },
+        [helpers],
+      ),
     ).toEqual(['Demo helpers: checkA (set in nitpicker.config.json)']);
   });
 
-  it('validates a pin as a comma separated list of names', () => {
+  it('validates a pin as a list of names', () => {
     expect(() =>
-      validateConventions({ 'demo.helpers': 'checkA,check_b' }, [helpers]),
+      validateConventions({ 'demo.helpers': ['checkA', 'check_b'] }, [helpers]),
     ).not.toThrow();
-    expect(() => validateConventions({ 'demo.helpers': '' }, [helpers])).not.toThrow();
-    expect(() => validateConventions({ 'demo.helpers': 'a, b' }, [helpers])).toThrow(
-      /"conventions.demo.helpers" must be a comma separated list of method names, or an empty string/,
+    expect(() => validateConventions({ 'demo.helpers': [] }, [helpers])).not.toThrow();
+    expect(() => validateConventions({ 'demo.helpers': ['a b'] }, [helpers])).toThrow(
+      '"conventions.demo.helpers" must be a list of function names',
+    );
+    expect(() => validateConventions({ 'demo.helpers': 'checkA' }, [helpers])).toThrow(
+      '"conventions.demo.helpers" must be a list of function names',
     );
   });
 });

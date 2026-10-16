@@ -3,7 +3,7 @@ import { bracketGroups, indentOf } from '../../../../shared/conventions/lines.mj
 const WIDTHS = [100, 120, 140];
 const MIN_BEYOND = 2;
 const UNBREAKABLE_LINE =
-  /:\/\/|^\s*(?:import|package)\b|\/\/|\/\*|^\s*\*|"[^"]{30,}|^[^(){}[\];=,]*$/;
+  /:\/\/|^\s*(?:import|package)\b|\/\/|\/\*|^\s*\*|"[^"]{30,}|`[^`]+`|^[^(){}[\];=,]*$/;
 const GROUP_OPENER = /\(\s*$/;
 const GROUP_CLOSER = /^\s*\)/;
 const INNER_SKIP = /[({]\s*$|^\s*(?:\/\/|\/\*|\*)/;
