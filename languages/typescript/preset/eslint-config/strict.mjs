@@ -35,7 +35,7 @@ import {
   strictAdaptersTypedConfig,
 } from './strict-adapters.mjs';
 import { strictTestConfigFor } from './strict-tests.mjs';
-import { productionPolicyConfigFor } from './policy/production-policy.mjs';
+import { configFileGlobsFor, productionPolicyConfigFor } from './policy/production-policy.mjs';
 
 export function restrictedSyntaxFor(options = {}) {
   const everywhereSelectors = [
@@ -63,10 +63,6 @@ export function restrictedSyntaxFor(options = {}) {
 }
 
 export const restrictedSyntaxByScope = restrictedSyntaxFor();
-
-function configFileGlobsFor(layout) {
-  return layout.sourceRoots.flatMap((root) => [`${root}/**/*.config.*`, `${root}/**/.*rc.*`]);
-}
 
 function productionScope(layout) {
   return { ignores: [...layout.testGlobs, ...layout.sourceTestDirectoryGlobs] };

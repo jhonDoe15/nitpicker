@@ -92,7 +92,7 @@ function productionGuardRules({ react }) {
   };
 }
 
-function configFileGlobsFor(layout) {
+export function configFileGlobsFor(layout) {
   return layout.sourceRoots.flatMap((root) => [`${root}/**/*.config.*`, `${root}/**/.*rc.*`]);
 }
 

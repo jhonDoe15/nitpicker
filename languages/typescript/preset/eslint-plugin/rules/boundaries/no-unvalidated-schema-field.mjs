@@ -1,4 +1,4 @@
-import { variableNamed } from '../analysis/ancestry.mjs';
+import { constantInitializer } from '../analysis/ancestry.mjs';
 
 const OBJECT_SCHEMA_FACTORIES = new Set(['object', 'strictObject', 'looseObject']);
 const CONTAINER_FACTORIES = new Set([
@@ -61,13 +61,6 @@ function isZodCall(sourceCode, node, names) {
     node.callee.object.type === 'Identifier' &&
     isZod(sourceCode, node.callee.object)
   );
-}
-
-function constantInitializer(sourceCode, identifier) {
-  const definition = variableNamed(sourceCode, identifier)?.defs.at(0);
-  return definition?.type === 'Variable' && definition.parent.kind === 'const'
-    ? (definition.node.init ?? undefined)
-    : undefined;
 }
 
 function withoutNonValidatingCalls(sourceCode, expression) {

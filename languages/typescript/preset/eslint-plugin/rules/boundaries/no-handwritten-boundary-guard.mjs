@@ -1,5 +1,5 @@
 import { ancestorsOf, variableNamed } from '../analysis/ancestry.mjs';
-import { isNarrowedByInstanceof } from '../analysis/instanceof-guards.mjs';
+import { isNarrowedByInstanceof } from '../analysis/narrowing/instanceof-guards.mjs';
 import {
   jsdocOptionSchema,
   typePredicateTags,

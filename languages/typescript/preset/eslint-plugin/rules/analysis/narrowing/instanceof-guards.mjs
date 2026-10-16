@@ -1,4 +1,4 @@
-import { ancestorsOf, variableNamed } from './ancestry.mjs';
+import { ancestorsOf, constantInitializer } from '../ancestry.mjs';
 
 const EXIT_STATEMENTS = new Set([
   'ReturnStatement',
@@ -26,13 +26,6 @@ function isInstanceofOf(expression, name) {
     expression.left.name === name &&
     ERROR_CLASS.test(className(expression.right) ?? '')
   );
-}
-
-function constantInitializer(sourceCode, identifier) {
-  const definition = variableNamed(sourceCode, identifier)?.defs.at(0);
-  return definition?.type === 'Variable' && definition.parent.kind === 'const'
-    ? (definition.node.init ?? undefined)
-    : undefined;
 }
 
 function isInstanceofTest(guard, expression) {
