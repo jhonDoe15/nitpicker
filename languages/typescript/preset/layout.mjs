@@ -28,7 +28,7 @@ const builtInExcludedGlobs = [
   '**/target/**',
   '**/*.d.ts',
 ];
-const GENERATED_PATH = new RegExp(
+export const GENERATED_PATH = new RegExp(
   [
     '(?:^|/)(?:dist|build|generated|__generated__|node_modules|coverage|reports|target)(?:/|$)',
     '(?:\\.(?:generated|gen|pb)|_pb)\\.[^/]+$',

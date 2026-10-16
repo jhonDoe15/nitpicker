@@ -1,7 +1,11 @@
 import { conventionChoices, detectConventions } from '../../shared/conventions/detect.mjs';
 import { describeConventions } from '../../shared/conventions/settings.mjs';
+import { isJavascriptPolicy } from '../../languages/javascript/preset/javascript-preset.mjs';
 import { resolveHeadPolicy } from '../../languages/typescript/preset/head-policy.mjs';
-import { excludedGlobs as builtInExcludedGlobs } from '../../languages/typescript/preset/layout.mjs';
+import {
+  excludedGlobs as builtInExcludedGlobs,
+  resolveLayout,
+} from '../../languages/typescript/preset/layout.mjs';
 import { conventionDefinitions } from './definitions.mjs';
 import { commitSource, headCommit, workingTreeSource } from './sources.mjs';
 
@@ -41,6 +45,9 @@ function followConventions({ config, projectRoot, headPolicy, commit, stdout }) 
     definitions,
     pinned: config.conventions ?? {},
     exclude: [...(headPolicy.layout?.excludedGlobs ?? builtInExcludedGlobs), ...headPolicy.exclude],
+    accepts: definitions.some(({ scope }) => scope === 'layout')
+      ? layoutFilter(config, headPolicy)
+      : undefined,
     projectRoot,
     commit,
   });
@@ -53,11 +60,23 @@ function followConventions({ config, projectRoot, headPolicy, commit, stdout }) 
   return Object.keys(conventions).length === 0 ? headPolicy : { ...headPolicy, conventions };
 }
 
-function detect({ definitions, pinned, exclude, projectRoot, commit }) {
+function layoutFilter(config, headPolicy) {
+  const layout = resolveLayout(headPolicy.layout, headPolicy.exclude, {
+    javascript: isJavascriptPolicy(config),
+  });
+  return function accepts({ scope }, file) {
+    return (
+      scope !== 'layout' ||
+      ((layout.isSourceFile(file) || layout.isTestFile(file)) && !layout.isExcluded(file))
+    );
+  };
+}
+
+function detect({ definitions, pinned, exclude, accepts, projectRoot, commit }) {
   if (definitions.every(({ id }) => pinned[id] !== undefined)) {
     return detectConventions({ definitions, pinned, exclude, source: undefined });
   }
-  const settings = { pinned, exclude };
+  const settings = { pinned, exclude, accepts };
   if (commit === undefined) {
     return detectConventions({ ...settings, definitions, source: workingTreeSource(projectRoot) });
   }

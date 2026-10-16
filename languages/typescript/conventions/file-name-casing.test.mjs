@@ -5,60 +5,146 @@ import {
   fileNameCasingOption,
   fileNameComplies,
   fittingCasings,
+  folderCasing,
 } from './file-name-casing.mjs';
 
-const vote = (file) => FILE_NAME_CONVENTION.measure('', file);
+const vote = (file) => FILE_NAME_CONVENTION.measure(undefined, file);
 
 describe('file name casing votes', () => {
   it.each([
     ['src/user-profile.ts', 'kebab-case'],
     ['src/userProfile.ts', 'camelCase'],
-    ['src/UserProfile.ts', 'PascalCase'],
     ['src/user_profile.ts', 'snake_case'],
     ['src/user-profile.test.ts', 'kebab-case'],
     ['src/userProfile.spec.mjs', 'camelCase'],
-    ['src/Button.ts', 'PascalCase'],
-    ['src/index.ts', undefined],
-    ['src/utils.ts', undefined],
-    ['src/v2.ts', undefined],
-    ['src/404.ts', undefined],
-    ['src/user-Profile.ts', undefined],
-    ['src/UserProfile.tsx', undefined],
-    ['src/UserProfile.test.tsx', undefined],
-    ['src/UserProfile.jsx', undefined],
     ['src/use-session.tsx', 'kebab-case'],
     ['src/useSession.tsx', 'camelCase'],
-    ['vite.config.ts', undefined],
-    ['lintStaged.config.mjs', undefined],
-    ['app/routes/[id].tsx', undefined],
-    ['app/routes/_layout.tsx', undefined],
-    ['app/routes/+page.server.ts', undefined],
-    ['app/routes/$postId.tsx', undefined],
-    ['src/.eslintrc.js', undefined],
+    ['src/user-Profile.ts', undefined],
   ])('%s votes %s', (file, expected) => {
     expect(vote(file)).toBe(expected);
+  });
+
+  it.each([
+    'src/index.ts',
+    'src/utils.ts',
+    'src/main.ts',
+    'src/v2.ts',
+    'src/2019.ts',
+    'src/404.tsx',
+    'src/500.tsx',
+    'src/fr-CA.ts',
+    'src/en_US.ts',
+    'src/pt-br.ts',
+    'src/foo.min.js',
+    'src/x.test.ts',
+    'src/y.d.ts',
+    'app/page.tsx',
+    'app/layout.tsx',
+    'app/route.ts',
+    'app/not-found.tsx',
+    'app/global-error.tsx',
+    'src/middleware.ts',
+  ])('%s gives no vote', (file) => {
+    expect(vote(file)).toBeUndefined();
+  });
+
+  it.each([
+    'src/UserProfile.ts',
+    'src/UserProfile.tsx',
+    'src/UserProfile.test.tsx',
+    'src/Button.ts',
+    'src/Button.js',
+    'src/ALLCAPS.ts',
+  ])('%s is PascalCase and gives no vote', (file) => {
+    expect(vote(file)).toBeUndefined();
+  });
+
+  it.each([
+    'dist/chunk-3f9a1c2b.js',
+    'src/main.3f9a1c2b.js',
+    'src/vendor_9f8e7d6c5b.js',
+    'src/__generated__/UserQuery.graphql.ts',
+    'src/__generated__/user_query.ts',
+    'src/api/user_pb.ts',
+    'src/api/user.pb.ts',
+    'src/schema.generated.ts',
+    'src/queries/user_query.graphql.ts',
+    'tests/fixtures/some_file.ts',
+    'src/__fixtures__/other_file.ts',
+  ])('%s is generated or a fixture and gives no vote', (file) => {
+    expect(vote(file)).toBeUndefined();
+  });
+
+  it.each([
+    'vite.config.ts',
+    'lintStaged.config.mjs',
+    'app/routes/[id].tsx',
+    'app/routes/[...slug].tsx',
+    'app/routes/posts_.$id.tsx',
+    'app/routes/sitemap[.]xml.ts',
+    'app/routes/_layout.tsx',
+    'app/routes/+page.server.ts',
+    'app/routes/$postId.tsx',
+    'src/.eslintrc.js',
+  ])('%s is framework syntax and gives no vote', (file) => {
+    expect(vote(file)).toBeUndefined();
   });
 });
 
 describe('file name casing compliance', () => {
+  const options = ['kebab-case', 'camelCase', 'snake_case'];
+
   it.each([
-    ['src/index.ts', 'kebab-case', true],
-    ['src/index.ts', 'PascalCase', false],
-    ['src/utils.ts', 'camelCase', true],
-    ['src/utils.ts', 'snake_case', true],
+    'src/index.ts',
+    'src/utils.ts',
+    'src/2019.ts',
+    'src/404.tsx',
+    'src/500.tsx',
+    'src/fr-CA.ts',
+    'src/en_US.ts',
+    'src/pt-br.ts',
+    'src/foo.min.js',
+    'src/x.test.ts',
+    'src/y.d.ts',
+    'app/page.tsx',
+    'app/layout.tsx',
+    'app/route.ts',
+    'app/not-found.tsx',
+    'app/global-error.tsx',
+    'src/middleware.ts',
+    'src/main.ts',
+    'src/UserProfile.ts',
+    'src/UserProfile.tsx',
+    'src/Button.js',
+    'dist/chunk-3f9a1c2b.js',
+    'src/main.3f9a1c2b.js',
+    'src/__generated__/UserQuery.graphql.ts',
+    'src/__generated__/user_query.ts',
+    'src/api/user_pb.ts',
+    'src/schema.generated.ts',
+    'tests/fixtures/some_file.ts',
+    'vite.config.ts',
+    'app/routes/[id].tsx',
+    'app/routes/posts_.$id.tsx',
+    'app/routes/sitemap[.]xml.ts',
+    'app/routes/_app.tsx',
+    'app/+layout.ts',
+    'app/$id.ts',
+  ])('%s complies with every casing', (file) => {
+    for (const casing of options) {
+      expect(fileNameComplies(file, casing), casing).toBe(true);
+    }
+  });
+
+  it.each([
     ['src/user-profile.ts', 'kebab-case', true],
     ['src/user-profile.ts', 'camelCase', false],
+    ['src/user-profile.ts', 'snake_case', false],
     ['src/userProfile.ts', 'kebab-case', false],
-    ['src/UserProfile.ts', 'kebab-case', false],
-    ['src/UserProfile.tsx', 'kebab-case', true],
-    ['src/UserProfile.stories.tsx', 'camelCase', true],
-    ['src/user-profile.tsx', 'PascalCase', false],
+    ['src/userProfile.ts', 'camelCase', true],
+    ['src/user_profile.ts', 'snake_case', true],
+    ['src/user_profile.ts', 'kebab-case', false],
     ['src/user-Profile.ts', 'kebab-case', false],
-    ['vite.config.ts', 'PascalCase', true],
-    ['app/[id].tsx', 'kebab-case', true],
-    ['app/_app.tsx', 'kebab-case', true],
-    ['app/+layout.ts', 'camelCase', true],
-    ['app/$id.ts', 'snake_case', true],
     ['src\\userProfile.ts', 'camelCase', true],
   ])('%s under %s is %s', (file, casing, expected) => {
     expect(fileNameComplies(file, casing)).toBe(expected);
@@ -66,7 +152,7 @@ describe('file name casing compliance', () => {
 
   it('lists every casing a name fits', () => {
     expect(fittingCasings('utils')).toEqual(['kebab-case', 'camelCase', 'snake_case']);
-    expect(fittingCasings('Utils')).toEqual(['PascalCase']);
+    expect(fittingCasings('2019')).toEqual(['kebab-case', 'camelCase', 'snake_case']);
     expect(fittingCasings('user-Profile')).toEqual([]);
   });
 
@@ -76,34 +162,75 @@ describe('file name casing compliance', () => {
   });
 });
 
+describe('folder casing', () => {
+  it('follows the plurality of at least three other voting files', () => {
+    expect(folderCasing('src/a.ts', ['a-b.ts', 'c_d.ts', 'e_f.ts', 'g_h.ts'])).toBe('snake_case');
+    expect(folderCasing('src/a-b.ts', ['a-b.ts', 'c_d.ts', 'e_f.ts'])).toBeUndefined();
+  });
+
+  it('ignores names that give no vote and files that are not code', () => {
+    const names = ['index.ts', 'Button.tsx', 'a_b.ts', 'c_d.ts', 'e_f.json', 'g_h.md'];
+
+    expect(folderCasing('src/x.ts', names)).toBeUndefined();
+  });
+
+  it('leaves a tie to the project casing', () => {
+    expect(
+      folderCasing('src/x.ts', ['a-b.ts', 'c-d.ts', 'e_f.ts', 'g_h.ts', 'iJ.ts', 'kL.ts']),
+    ).toBeUndefined();
+  });
+});
+
 describe('file name casing detection', () => {
-  const detect = (names) =>
-    detectConventions({
-      definitions: [FILE_NAME_CONVENTION],
-      source: {
-        paths: () => names,
-        readMany: (paths) => new Map(paths.map((file) => [file, ''])),
+  function detect(names, accepts) {
+    const source = {
+      paths: ({ unreadable = false } = {}) =>
+        unreadable ? names : names.filter((name) => !name.includes('huge')),
+      readMany: (paths) => {
+        expect(paths).toEqual([]);
+        return new Map();
       },
-    })[FILE_NAME_CONVENTION.id];
+    };
+    return detectConventions({ definitions: [FILE_NAME_CONVENTION], source, accepts })[
+      FILE_NAME_CONVENTION.id
+    ];
+  }
 
   it('follows the casing most files use and ignores names that fit several', () => {
-    const detected = detect([
-      'src/user-profile.ts',
-      'src/userProfile.ts',
-      'src/orderHistory.ts',
-      'src/orderHistory.test.ts',
-      'src/index.ts',
-      'src/utils.ts',
-      'src/Button.tsx',
-      'vite.config.ts',
-    ]);
-
-    expect(detected).toEqual({
+    expect(
+      detect([
+        'src/user-profile.ts',
+        'src/userProfile.ts',
+        'src/orderHistory.ts',
+        'src/orderHistory.test.ts',
+        'src/index.ts',
+        'src/utils.ts',
+        'src/Button.tsx',
+        'vite.config.ts',
+      ]),
+    ).toEqual({
       choice: 'camelCase',
       source: 'majority',
-      counts: { 'kebab-case': 1, camelCase: 3, PascalCase: 0, snake_case: 0 },
+      counts: { 'kebab-case': 1, camelCase: 3, snake_case: 0 },
       files: 8,
     });
+  });
+
+  it('counts files too large to read, since a name needs no text', () => {
+    const detected = detect(['src/a-b.ts', 'src/huge_one.ts', 'src/huge_two.ts']);
+
+    expect(detected.choice).toBe('snake_case');
+    expect(detected.counts).toEqual({ 'kebab-case': 1, camelCase: 0, snake_case: 2 });
+  });
+
+  it('measures only the files the caller accepts', () => {
+    const detected = detect(
+      ['src/a-b.ts', 'scripts/c_d.ts', 'scripts/e_f.ts'],
+      (definition, file) => file.startsWith('src/'),
+    );
+
+    expect(detected.choice).toBe('kebab-case');
+    expect(detected.files).toBe(1);
   });
 
   it('keeps the default when only ambiguous names exist', () => {

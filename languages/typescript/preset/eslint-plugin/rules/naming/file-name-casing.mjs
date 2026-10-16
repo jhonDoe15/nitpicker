@@ -1,10 +1,28 @@
+import { existsSync, readdirSync } from 'node:fs';
+import path from 'node:path';
 import {
   FILE_NAME_CASINGS,
   fileNameComplies,
   fileNameParts,
+  folderCasing,
 } from '../../../../conventions/file-name-casing.mjs';
 
-const FIRST_LINE = { line: 1, column: 0 };
+const PIN_EXAMPLE = '"conventions": { "typescript.fileNames": "camelCase" }';
+const listings = new Map();
+
+function siblingNames(filename) {
+  const directory = path.dirname(filename);
+  if (!listings.has(directory)) {
+    listings.set(directory, existsSync(directory) ? readdirSync(directory) : []);
+  }
+  return listings.get(directory);
+}
+
+function projectFile(context) {
+  const relative = path.relative(context.cwd ?? process.cwd(), context.filename);
+  const inside = relative !== '' && !relative.startsWith('..') && !path.isAbsolute(relative);
+  return (inside ? relative : fileNameParts(context.filename).name).replaceAll('\\', '/');
+}
 
 export const rule = {
   meta: {
@@ -20,19 +38,23 @@ export const rule = {
       },
     ],
     messages: {
-      casing:
-        'File name "{{name}}" is not {{casing}}, which this project uses for file names. Rename it, pin a different casing with "conventions": { "typescript.fileNames": "camelCase" } in nitpicker.config.json, or add an "exceptions" entry for nitpicker/file-name-casing.',
+      casing: `File name "{{name}}" is not {{casing}}, which this project uses for file names. Rename it, pin a different casing with ${PIN_EXAMPLE} in nitpicker.config.json, or add an "exceptions" entry for nitpicker/file-name-casing.`,
+      folderCasing:
+        'File name "{{name}}" is not {{casing}}, which most other files in this folder use. Rename it, or add an "exceptions" entry for nitpicker/file-name-casing.',
     },
   },
   create(context) {
-    const casing = context.options[0]?.casing ?? 'kebab-case';
+    const projectCasing = context.options[0]?.casing ?? 'kebab-case';
     return {
       Program() {
-        if (!fileNameComplies(context.filename, casing)) {
+        const file = projectFile(context);
+        const folder = folderCasing(file, siblingNames(context.filename));
+        const casing = folder ?? projectCasing;
+        if (!fileNameComplies(file, casing)) {
           context.report({
-            loc: FIRST_LINE,
-            messageId: 'casing',
-            data: { name: fileNameParts(context.filename).name, casing },
+            loc: { line: 1, column: 0 },
+            messageId: folder === undefined ? 'casing' : 'folderCasing',
+            data: { name: fileNameParts(file).name, casing },
           });
         }
       },
