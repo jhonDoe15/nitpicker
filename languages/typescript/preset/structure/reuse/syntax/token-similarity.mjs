@@ -35,29 +35,29 @@ function sharedPrefixLength(left, right) {
   return differing === -1 ? left.length : differing;
 }
 
-function matchLength(left, right, x, y) {
+function matchLength(left, right, { x, y }) {
   if (x >= left.length || y >= right.length || left[x] !== right[y]) return 0;
   const rest = Math.min(left.length - x, right.length - y);
   const mismatch = left.subarray(x, x + rest).findIndex((id, offset) => id !== right[y + offset]);
   return mismatch === -1 ? rest : mismatch;
 }
 
+function extendPath({ left, right, furthest, limit }, edits, diagonal) {
+  const slot = limit + 1 + diagonal;
+  const down =
+    diagonal === -edits || (diagonal !== edits && furthest[slot - 1] < furthest[slot + 1]);
+  const start = down ? furthest[slot + 1] : furthest[slot - 1] + 1;
+  const end = start + matchLength(left, right, { x: start, y: start - diagonal });
+  furthest[slot] = end;
+  return end >= left.length && end - diagonal >= right.length;
+}
+
 function editDistance(left, right, limit) {
-  const furthest = new Int32Array(2 * limit + 3);
+  const search = { left, right, limit, furthest: new Int32Array(2 * limit + 3) };
   const steps = Uint32Array.from({ length: limit + 1 }, (_, index) => index);
-  for (const edits of steps) {
-    for (const step of steps.subarray(0, edits + 1)) {
-      const diagonal = 2 * step - edits;
-      const slot = limit + 1 + diagonal;
-      const down =
-        diagonal === -edits || (diagonal !== edits && furthest[slot - 1] < furthest[slot + 1]);
-      const start = down ? furthest[slot + 1] : furthest[slot - 1] + 1;
-      const end = start + matchLength(left, right, start, start - diagonal);
-      furthest[slot] = end;
-      if (end >= left.length && end - diagonal >= right.length) return edits;
-    }
-  }
-  return undefined;
+  return steps.find((edits) =>
+    steps.subarray(0, edits + 1).some((step) => extendPath(search, edits, 2 * step - edits)),
+  );
 }
 
 function middleDistance(left, right, limit) {
