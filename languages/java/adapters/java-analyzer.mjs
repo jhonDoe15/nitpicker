@@ -25,6 +25,7 @@ const RESOURCE_FILES = [
   'languages/java/gradle/rules/test-honesty-ruleset.xml',
   'languages/java/gradle/tasks/cpd-task.gradle',
   'languages/java/gradle/tasks/dependency-tasks.gradle',
+  'languages/java/gradle/tasks/jdeps-task.gradle',
   'languages/java/gradle/tasks/lint-tasks.gradle',
   'languages/java/gradle/StructureMetrics.java',
   'languages/java/gradle/KotlinMetrics.java',
