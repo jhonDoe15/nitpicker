@@ -85,19 +85,26 @@ function schemaDeclarator(identifier) {
     : undefined;
 }
 
-function isSchemaConstant(identifier, sourceCode, depth = 0) {
-  const init = schemaDeclarator(identifier)?.init ?? null;
-  const root = init === null ? undefined : chainRoot(init);
-  if (root?.type !== 'Identifier' || depth > MAX_SCHEMA_DEPTH) {
-    return false;
+function isSchemaConstant(identifier, sourceCode) {
+  const pending = [identifier];
+  for (const current of pending) {
+    const init = schemaDeclarator(current)?.init;
+    const root = init === undefined || init === null ? undefined : chainRoot(init);
+    if (root?.type !== 'Identifier' || pending.length > MAX_SCHEMA_DEPTH) {
+      return false;
+    }
+    if (isSchemaLibraryBinding(sourceCode, root)) {
+      return true;
+    }
+    const base = variableNamed(sourceCode, root)?.defs.find(({ type }) => type === 'Variable');
+    if (base === undefined) {
+      return importedSchemaDerivation(sourceCode, root);
+    }
+    if (base.parent.kind === 'const' && !pending.includes(base.name)) {
+      pending.push(base.name);
+    }
   }
-  if (isSchemaLibraryBinding(sourceCode, root)) {
-    return true;
-  }
-  const base = variableNamed(sourceCode, root)?.defs.find(({ type }) => type === 'Variable');
-  return base === undefined
-    ? importedSchemaDerivation(sourceCode, root)
-    : base.parent.kind === 'const' && isSchemaConstant(base.name, sourceCode, depth + 1);
+  return false;
 }
 
 function typeName(annotation) {

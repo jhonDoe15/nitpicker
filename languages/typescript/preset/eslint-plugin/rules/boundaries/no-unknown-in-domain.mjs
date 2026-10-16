@@ -85,11 +85,10 @@ function containsUnknown(sourceCode, root, services) {
     if (isUnknownMember(current)) {
       return true;
     }
-    const local = current.type === 'TSTypeReference' ? aliasedType(sourceCode, current) : undefined;
-    if (current.type === 'TSTypeReference' && local === undefined) {
-      if (importedAliasHasUnknown(current, services)) {
-        return true;
-      }
+    const reference = current.type === 'TSTypeReference';
+    const local = reference ? aliasedType(sourceCode, current) : undefined;
+    if (reference && local === undefined && importedAliasHasUnknown(current, services)) {
+      return true;
     }
     const next = [...childNodes(sourceCode, current), ...(local === undefined ? [] : [local])];
     pending.push(...next.filter((child) => !pending.includes(child)));

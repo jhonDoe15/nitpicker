@@ -19,18 +19,17 @@ function withReactFormat(formats, react) {
   return react ? [...formats, 'PascalCase'] : formats;
 }
 
-export const ROUTE_HANDLER_FRAMEWORKS = new Set([
-  'next',
-  '@sveltejs/kit',
-  'astro',
-  '@solidjs/start',
-]);
+const ROUTE_HANDLER_FRAMEWORKS = new Set(['next', '@sveltejs/kit', 'astro', '@solidjs/start']);
+
+export function usesRouteHandlerFramework(dependencyNames) {
+  return dependencyNames.some((name) => ROUTE_HANDLER_FRAMEWORKS.has(name));
+}
 
 const routeHandlerNames = {
   selector: 'function',
   modifiers: ['exported'],
   filter: { regex: '^(?:GET|HEAD|POST|PUT|PATCH|DELETE|OPTIONS)$', match: true },
-  format: null,
+  format: ['UPPER_CASE'],
 };
 
 function namingConvention({ react, routeHandlers }) {
