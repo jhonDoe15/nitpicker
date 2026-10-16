@@ -53,6 +53,14 @@ import { rule as reactNoEffectEventHandling } from './rules/react/render/react-n
 import { rule as reactNoRandomKey } from './rules/react/render/react-no-random-key.mjs';
 import { rule as reactTestNoImplementationDetails } from './rules/react-tests/react-test-no-implementation-details.mjs';
 
+import { rule as noModuleLevelMutableState } from './rules/guards/no-module-level-mutable-state.mjs';
+import { rule as noProcessAccessOutsideCompositionRoot } from './rules/guards/no-process-access-outside-composition-root.mjs';
+import { rule as noShellStringCommand } from './rules/guards/no-shell-string-command.mjs';
+import { rule as noUnknownMainFolder } from './rules/guards/no-unknown-main-folder.mjs';
+import { rule as noUnsafePathJoin } from './rules/guards/no-unsafe-path-join.mjs';
+import { rule as noMagicNumbers } from './rules/wrapped/no-magic-numbers.mjs';
+import { rule as namingConvention } from './rules/wrapped/naming-convention.mjs';
+
 export const nitpickerRules = {
   meta: {
     name: 'nitpicker',
@@ -77,6 +85,13 @@ export const nitpickerRules = {
     'no-managed-resource-construction-outside-composition-roots':
       noManagedResourceConstructionOutsideCompositionRoots,
     'no-module-level-let': noModuleLevelLet,
+    'no-module-level-mutable-state': noModuleLevelMutableState,
+    'no-process-access-outside-composition-root': noProcessAccessOutsideCompositionRoot,
+    'no-shell-string-command': noShellStringCommand,
+    'no-unknown-main-folder': noUnknownMainFolder,
+    'no-magic-numbers': noMagicNumbers,
+    'naming-convention': namingConvention,
+    'no-unsafe-path-join': noUnsafePathJoin,
     'no-mocking-subject-under-test': noMockingSubjectUnderTest,
     'cognitive-complexity': cognitiveComplexity,
     'no-comments': noComments,

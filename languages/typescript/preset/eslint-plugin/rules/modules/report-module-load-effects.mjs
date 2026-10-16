@@ -1,5 +1,10 @@
 import { stylesheetSpecifier } from '../../../layout.mjs';
 import { ancestorsOf } from '../analysis/ancestry.mjs';
+import { importedCalleeName, moduleBindings } from '../analysis/subprocess-calls.mjs';
+
+const SYNC_MODULES = new Set(
+  ['fs', 'child_process', 'crypto', 'zlib'].flatMap((name) => [name, `node:${name}`]),
+);
 
 const ENTRY_HINT =
   " Move the work into a function that the app entry calls. The entry (the module script in Vite's index.html, else src/main.tsx) is detected; for another entry file, list it under `layout.entryPoints` in nitpicker.config.json.";
@@ -54,6 +59,56 @@ function memberPath(node) {
   return chain.map(segmentName).reverse();
 }
 
+const EFFECT_CALLEES = new Set([
+  'fetch',
+  'setTimeout',
+  'setInterval',
+  'setImmediate',
+  'queueMicrotask',
+  'randomUUID',
+  'randomBytes',
+  'randomInt',
+  'getRandomValues',
+  'addEventListener',
+]);
+const GLOBAL_OBJECTS = new Set(['globalThis', 'window', 'self', 'crypto']);
+const EFFECT_MEMBER_CALLS = new Set(['Date.now', 'performance.now', 'Math.random']);
+const EFFECT_CONSTRUCTORS = new Set(['Worker', 'WebSocket', 'XMLHttpRequest', 'EventSource']);
+
+function isModuleLevelDeclaration(node) {
+  return (
+    node.type === 'VariableDeclaration' &&
+    (node.parent.type === 'Program' ||
+      (node.parent.type === 'ExportNamedDeclaration' && node.parent.parent.type === 'Program'))
+  );
+}
+
+function calleeText(callee) {
+  const path = memberPath(callee);
+  return path.every((segment) => segment !== undefined) ? path.join('.') : undefined;
+}
+
+function isNodeSyncCall(node, syncBindings) {
+  return importedCalleeName(node.callee, syncBindings)?.endsWith('Sync') === true;
+}
+
+function importTimeEffect(node, syncBindings) {
+  if (node.type === 'NewExpression') {
+    const name = calleeText(node.callee);
+    const isClock = name === 'Date' && node.arguments.length === 0;
+    return isClock || EFFECT_CONSTRUCTORS.has(name) ? `new ${name}()` : undefined;
+  }
+  const text = calleeText(node.callee);
+  const name = text?.split('.').at(-1);
+  const root = text?.split('.')[0];
+  const isEffect =
+    (EFFECT_CALLEES.has(name) && (text === name || GLOBAL_OBJECTS.has(root))) ||
+    EFFECT_MEMBER_CALLS.has(text) ||
+    isNodeSyncCall(node, syncBindings) ||
+    text?.startsWith('process.');
+  return isEffect ? `${text}()` : undefined;
+}
+
 function isCommonJsExport(expression) {
   if (expression.type !== 'AssignmentExpression' || expression.operator !== '=') {
     return false;
@@ -62,6 +117,15 @@ function isCommonJsExport(expression) {
   return (
     (path[0] === 'module' && path[1] === 'exports') || (path[0] === 'exports' && path.length > 1)
   );
+}
+
+function importTimeEffectAtLoad(node, syncBindings) {
+  const call = importTimeEffect(node, syncBindings);
+  return call !== undefined &&
+    executesAtModuleLoad(node) &&
+    ancestorsOf(node).some(isModuleLevelDeclaration)
+    ? call
+    : undefined;
 }
 
 export const rule = {
@@ -83,28 +147,40 @@ export const rule = {
       topLevelAwait: `Top-level await delays and executes work during module loading.${ENTRY_HINT}`,
       topLevelControl: `Top-level {{kind}} executes control flow during module loading.${ENTRY_HINT}`,
       topLevelExpression: `Top-level expression executes work during module loading.${ENTRY_HINT}`,
+      importTimeEffect:
+        '`{{call}}` runs when the module is imported. Move it into a function and call that from the composition root, passing the result in. If it must run at import, add an exception for this rule in nitpicker.config.json.',
     },
   },
   create(context) {
     const commonJsExports = context.options[0]?.commonJsExports === true;
+    const syncBindings = moduleBindings(context.sourceCode.ast, SYNC_MODULES);
     return {
       ImportDeclaration(node) {
         if (node.specifiers.length === 0 && !stylesheetSpecifier.test(node.source.value)) {
           context.report({ node, messageId: 'sideEffectImport' });
         }
       },
+      AwaitExpression(node) {
+        if (executesAtModuleLoad(node)) {
+          context.report({ node, messageId: 'topLevelAwait' });
+        }
+      },
+      'NewExpression, CallExpression'(node) {
+        const call = importTimeEffectAtLoad(node, syncBindings);
+        if (call !== undefined) {
+          context.report({ node, messageId: 'importTimeEffect', data: { call } });
+        }
+      },
       ExpressionStatement(node) {
-        if (node.parent.type !== 'Program' || isDirective(node)) {
+        if (
+          node.parent.type !== 'Program' ||
+          isDirective(node) ||
+          node.expression.type === 'AwaitExpression' ||
+          (commonJsExports && isCommonJsExport(node.expression))
+        ) {
           return;
         }
-        if (commonJsExports && isCommonJsExport(node.expression)) {
-          return;
-        }
-        context.report({
-          node,
-          messageId:
-            node.expression.type === 'AwaitExpression' ? 'topLevelAwait' : 'topLevelExpression',
-        });
+        context.report({ node, messageId: 'topLevelExpression' });
       },
       StaticBlock(node) {
         if (executesAtModuleLoad(node)) {

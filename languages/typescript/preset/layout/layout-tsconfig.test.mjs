@@ -50,6 +50,9 @@ describe('layout-aware tsconfig', () => {
       noImplicitReturns: true,
       noFallthroughCasesInSwitch: true,
       noUncheckedIndexedAccess: true,
+      exactOptionalPropertyTypes: true,
+      noPropertyAccessFromIndexSignature: true,
+      noUncheckedSideEffectImports: true,
       forceConsistentCasingInFileNames: true,
     });
     expect(layered.compilerOptions).not.toHaveProperty('module');

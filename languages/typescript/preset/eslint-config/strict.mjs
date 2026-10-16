@@ -12,6 +12,7 @@ import {
 import {
   declarationSelectorsFor,
   defaultExportSelectors,
+  moduleSurfaceSelectors,
   typeDefinitionSelectors,
   typedDeclarationRules,
 } from './strict/strict-declarations.mjs';
@@ -24,6 +25,7 @@ import {
 } from './strict/strict-control-flow.mjs';
 import {
   domainFunctionalRules,
+  domainPurityRules,
   domainGlobsFor,
   domainRestrictedSyntax,
   domainTypeAwareFunctionalRules,
@@ -34,12 +36,14 @@ import {
   strictAdaptersTypedConfig,
 } from './strict-adapters.mjs';
 import { strictTestConfigFor } from './strict-tests.mjs';
+import { configFileGlobsFor, productionPolicyConfigFor } from './policy/production-policy.mjs';
 
 export function restrictedSyntaxFor(options = {}) {
   const everywhereSelectors = [...escapeHatchSelectors, ...declarationSelectorsFor(options)];
   const productionSelectors = [
     ...everywhereSelectors,
     ...typeDefinitionSelectors,
+    ...moduleSurfaceSelectors,
     ...controlFlowSelectors,
   ];
   return {
@@ -56,10 +60,6 @@ export function restrictedSyntaxFor(options = {}) {
 }
 
 export const restrictedSyntaxByScope = restrictedSyntaxFor();
-
-function configFileGlobsFor(layout) {
-  return layout.sourceRoots.flatMap((root) => [`${root}/**/*.config.*`, `${root}/**/.*rc.*`]);
-}
 
 function productionScope(layout) {
   return { ignores: [...layout.testGlobs, ...layout.sourceTestDirectoryGlobs] };
@@ -127,6 +127,7 @@ export function strictSyntaxConfigFor(layout = defaultResolvedLayout, options = 
       plugins: { functional, nitpicker: nitpickerRules },
       rules: {
         ...domainFunctionalRules,
+        ...domainPurityRules,
         'no-restricted-syntax': ['error', ...restrictedSyntax.domain],
         ...domainNitpickerRules,
       },
@@ -194,6 +195,7 @@ export const strictProductionRules = {
 
 export function strictPresetConfig(layout, parserOptions, options = {}) {
   return [
+    ...productionPolicyConfigFor(layout, options),
     ...strictSyntaxConfigFor(layout, options),
     ...strictTypedConfigFor(layout, parserOptions),
     {

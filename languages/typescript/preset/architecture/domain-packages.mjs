@@ -24,6 +24,16 @@ export const networkAndDatabaseClients = [
 
 export const loggers = ['pino', 'winston', 'bunyan', 'log4js', 'loglevel', 'consola', 'debug'];
 
+export const idAndRandomLibraries = [
+  'uuid',
+  'nanoid',
+  'cuid',
+  '@paralleldrive/cuid2',
+  'ulid',
+  '@faker-js/faker',
+  'faker',
+];
+
 export const uiFrameworks = [
   'react',
   'react-[^/]+',
@@ -46,5 +56,5 @@ export function packageSpecifierPattern(packages) {
 }
 
 export function resolvedPackagePattern(packages) {
-  return `(?:^|/)(?:node_modules/)?(?:${packages.join('|')})(?:/|$)`;
+  return `(?:^|(?:^|/)node_modules/)(?:${packages.join('|')})(?:/|$)`;
 }
