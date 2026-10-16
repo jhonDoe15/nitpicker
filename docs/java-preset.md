@@ -1011,10 +1011,16 @@ body assigns, as in `do { page = repository.findAll(pageable); ... } while (page
 index stepped with `i += 1`, `i++` or `i = i + 1` does not make a paging loop), retry loops (a
 `try` that returns or breaks on success and a `catch` that lets the loop go on), `Files.exists`
 and similar checks, and `Optional` callbacks (`Optional.map`, which runs once) are skipped. In a
-Spring project, `save`, `delete`, `persist` and similar writes on a Spring Data repository or a
-`jakarta.persistence.EntityManager` in a loop are left to `SpringDataNoSaveInLoop`, so each is
-reported once: the Spring wrapper runs `IoCallInLoop` with its `springData` property set to `true`.
-Everywhere else, and for any other receiver, `IoCallInLoop` reports them.
+Spring project, the `save`, `delete`, `persist` and similar writes that `SpringDataNoSaveInLoop`
+reports (a Spring Data repository or `jakarta.persistence.EntityManager` receiver, in a loop or a
+`forEach`, `map`, `peek` or `forEachOrdered` callback) and the flushes `SpringDataNoFlush` reports
+are left to those rules, so each is reported once: the Spring wrapper runs `IoCallInLoop` with its
+`springData` property set to `true`, and the rule holds a copy of their XPath, which
+`code-smell-rules.test.mjs` keeps identical. A write in any other callback (`filter`, `flatMap`,
+`reduce`), on any other receiver, or in a project without Spring is reported by `IoCallInLoop`.
+Writes and flushes in a JPA batch loop (one that calls `EntityManager.clear()` inside an `if`
+whose condition uses `%`, as in `if (count % 50 == 0) { em.flush(); em.clear(); }`) are the batch
+form and are reported by neither rule; `clear()` itself is never counted.
 
 **Comments.** The `comments` tool scans every Java source file, main and test, for two problems:
 `comments/TodoWithoutIssue` (a task marker, an uppercase `TODO`, `FIXME`, `XXX` or `HACK` as a
@@ -1136,8 +1142,9 @@ on interface methods are accepted, because Spring reads them for both proxy kind
 method to another with a plain `@Transactional` (same transaction). `SpringDataNoSaveInLoop` covers
 `for`, `while` and `do` loops and `forEach`, `map` and `peek` callbacks on a stream, an `Iterable`
 or a `Map`, lambdas and method references (`forEach(repository::save)`) alike; `Optional.map` and
-`ifPresent` run at most once and are not loops. It and `SpringDataNoFlush` skip a loop that also
-calls `EntityManager.clear()`, the JPA batch idiom.
+`ifPresent` run at most once and are not loops. It and `SpringDataNoFlush` skip a loop that calls
+`EntityManager.clear()` inside an `if` whose condition uses `%` (`if (count % 50 == 0)`), the JPA
+batch idiom; a loop that flushes and clears on every item is reported.
 `SpringNoSwallowedTransactionException` reports catching `Exception`, `RuntimeException`,
 `Throwable`, `DataAccessException`, `TransactionException` or `PersistenceException`, not narrower
 exceptions such as `NumberFormatException`. Layering, entities in controller signatures and test

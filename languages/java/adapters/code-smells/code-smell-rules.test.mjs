@@ -19,9 +19,20 @@ const ruleset = readFileSync(
   'utf8',
 );
 
-function ruleText(name) {
-  const start = ruleset.indexOf(`<rule name="${name}"`);
-  return ruleset.slice(start, ruleset.indexOf('</rule>', start));
+const springRuleset = readFileSync(
+  path.join(packageRoot, 'languages/java/gradle/spring-ruleset.xml'),
+  'utf8',
+);
+
+function ruleText(name, text = ruleset) {
+  const start = text.indexOf(`<rule name="${name}"`);
+  return text.slice(start, text.indexOf('</rule>', start));
+}
+
+function xpathOf(name, text) {
+  const rule = ruleText(name, text);
+  const xpath = rule.slice(rule.indexOf('<![CDATA[') + 9, rule.indexOf(']]>'));
+  return xpath.replaceAll(/\s+/g, ' ').trim();
 }
 
 function markedRules(sourceSet) {
@@ -67,6 +78,16 @@ describe('the Java code smell ruleset', () => {
       type: ruleText('GenericTypeName').split(`(${typeWords.join('|')})$`).length,
       package: ruleText('GenericPackageName').includes(`(${GENERIC_NAME_WORDS.join('|')})(`),
     }).toEqual({ catch: true, type: 3, package: true });
+  });
+
+  it('leaves to the Spring rules exactly the writes and flushes they report', () => {
+    const ioCallInLoop = xpathOf('IoCallInLoop');
+    const flushes = xpathOf('SpringDataNoFlush', springRuleset);
+
+    expect({
+      writes: ioCallInLoop.includes(xpathOf('SpringDataNoSaveInLoop', springRuleset)),
+      flushes: ioCallInLoop.includes(flushes.slice(0, flushes.indexOf(' [not('))),
+    }).toEqual({ writes: true, flushes: true });
   });
 
   it.each(rules)('$name has a marked violation in the fixture', ({ name }) => {

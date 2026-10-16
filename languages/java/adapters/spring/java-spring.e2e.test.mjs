@@ -49,22 +49,26 @@ describe.skipIf(!enabled)('Spring rules on a Spring project', () => {
   const project = gradleProject('spring-project');
 
   it('reports exactly the violations marked in the fixture sources', () => {
-    const { reported, expected } = markedViolations(project.root, 'main', (rule) =>
-      SPRING_RULE.test(rule),
+    const { reported, expected } = markedViolations(
+      project.root,
+      'main',
+      (rule) => SPRING_RULE.test(rule) || rule === 'IoCallInLoop',
     );
     expect(reported).toEqual(expected);
   });
 
-  it('reports each Spring Data write in a loop once, as SpringDataNoSaveInLoop', () => {
+  it('reports each Spring Data write or flush in a loop or stream callback once', () => {
     const linesOf = (rule) =>
       markedViolations(project.root, 'main', (reported) => reported === rule).reported.map(
         (violation) => violation.split(' ')[0],
       );
-    const writes = linesOf('SpringDataNoSaveInLoop');
+    const spring = [...linesOf('SpringDataNoSaveInLoop'), ...linesOf('SpringDataNoFlush')];
+    const loops = linesOf('IoCallInLoop');
     expect({
-      writes: writes.length,
-      twice: linesOf('IoCallInLoop').filter((line) => writes.includes(line)),
-    }).toEqual({ writes: 3, twice: [] });
+      spring: spring.length,
+      loops: loops.length,
+      twice: loops.filter((line) => spring.includes(line)),
+    }).toEqual({ spring: 6, loops: 3, twice: [] });
   });
 
   it('records the resource roots and that the project uses Spring', () => {
