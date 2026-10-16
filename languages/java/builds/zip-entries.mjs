@@ -1,49 +1,59 @@
 import { readFileSync } from 'node:fs';
 import { inflateRawSync } from 'node:zlib';
 
-const END_OF_DIRECTORY = Buffer.from([0x50, 0x4b, 0x05, 0x06]);
+const END_OF_DIRECTORY = 0x06054b50;
 const END_SIZE = 22;
 const ZIP64_LOCATOR = 0x07064b50;
 const ZIP64_LOCATOR_SIZE = 20;
 const ZIP64_END = 0x06064b50;
+const ZIP64_END_SIZE = 56;
 const DIRECTORY_ENTRY = 0x02014b50;
 const LOCAL_HEADER = 0x04034b50;
 const ZIP64_EXTRA = 0x0001;
 const MAX_COMMENT = 0xffff;
+const MAX_TRAILING = 0x10000;
 const WIDE = 0xffffffff;
 const STORED = 0;
 const DEFLATED = 8;
 
-function isEndOfDirectory(buffer, offset) {
+function endRecordFits(buffer, offset) {
   return (
-    offset + END_SIZE <= buffer.length &&
-    offset + END_SIZE + buffer.readUInt16LE(offset + 20) === buffer.length
+    buffer.readUInt32LE(offset) === END_OF_DIRECTORY &&
+    offset + END_SIZE + buffer.readUInt16LE(offset + 20) <= buffer.length
   );
 }
 
+function isEndOfDirectory(buffer, offset) {
+  return offset + END_SIZE + buffer.readUInt16LE(offset + 20) === buffer.length;
+}
+
 function endOfDirectory(buffer) {
-  const pending = [buffer.lastIndexOf(END_OF_DIRECTORY)];
-  for (const offset of pending) {
-    if (offset < 0 || offset < buffer.length - END_SIZE - MAX_COMMENT) {
-      throw new Error('not a zip archive: no end of central directory record');
-    }
-    if (isEndOfDirectory(buffer, offset)) {
-      return offset;
-    }
-    pending.push(offset === 0 ? -1 : buffer.lastIndexOf(END_OF_DIRECTORY, offset - 1));
+  const last = buffer.length - END_SIZE;
+  const window = last < 0 ? 0 : Math.min(last, MAX_COMMENT + MAX_TRAILING) + 1;
+  const candidates = Array.from({ length: window }, (_, back) => last - back).filter((offset) =>
+    endRecordFits(buffer, offset),
+  );
+  const offset =
+    candidates.find((candidate) => isEndOfDirectory(buffer, candidate)) ?? candidates[0];
+  if (offset === undefined) {
+    throw new Error('not a zip archive: no end of central directory record');
   }
-  return -1;
+  return offset;
 }
 
 function zip64Directory(buffer, locator) {
-  const zip64End = Number(buffer.readBigUInt64LE(locator + 8));
-  if (buffer.readUInt32LE(zip64End) !== ZIP64_END) {
+  const recorded = Number(buffer.readBigUInt64LE(locator + 8));
+  const zip64End = [recorded, locator - ZIP64_END_SIZE].find(
+    (offset) => offset >= 0 && offset < locator && buffer.readUInt32LE(offset) === ZIP64_END,
+  );
+  if (zip64End === undefined) {
     throw new Error('zip64 archive without a zip64 end of central directory record');
   }
+  const prefix = zip64End - recorded;
   return {
     start: Number(buffer.readBigUInt64LE(zip64End + 48)),
     count: Number(buffer.readBigUInt64LE(zip64End + 32)),
-    prefix: 0,
+    prefix,
   };
 }
 
@@ -144,4 +154,12 @@ export function readZip(file) {
       return entry === undefined ? undefined : zipEntryText(buffer, entry);
     },
   };
+}
+
+export function readZipOrFailure(file) {
+  try {
+    return { kind: 'zip', zip: readZip(file) };
+  } catch (error) {
+    return { kind: 'unreadable', error };
+  }
 }

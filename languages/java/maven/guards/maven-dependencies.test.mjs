@@ -9,8 +9,17 @@ const roots = [];
 
 function dependency(groupId, artifactId, scope) {
   const scoped = scope === undefined ? '' : `<scope>${scope}</scope>`;
-  return `<dependency><groupId>${groupId}</groupId><artifactId>${artifactId}</artifactId><version>1</version>${scoped}</dependency>`;
+  return [
+    `<dependency><groupId>${groupId}</groupId><artifactId>${artifactId}</artifactId>`,
+    `<version>1</version>${scoped}</dependency>`,
+  ].join('');
 }
+
+function pomOf(...dependencies) {
+  return `<project><artifactId>app</artifactId><dependencies>${dependencies.join('')}</dependencies></project>`;
+}
+
+const LANG_REFERENCE = 'Êþ\u0001(Lorg/apache/commons/lang3/StringUtils;)V\u0000';
 
 const POM = `<project>
   <artifactId>app</artifactId>
@@ -27,15 +36,22 @@ const POM = `<project>
   </dependencies>
 </project>`;
 
-function module(root) {
+function module(root, { pom = POM, content = LANG_REFERENCE } = {}) {
   const outputDirectory = path.join(root, 'target/classes');
   mkdirSync(path.join(outputDirectory, 'demo'), { recursive: true });
-  writeFileSync(
-    path.join(outputDirectory, 'demo/App.class'),
-    Buffer.from('Êþ\u0001(Lorg/apache/commons/lang3/StringUtils;)V\u0000', 'latin1'),
-  );
-  writeFileSync(path.join(root, 'pom.xml'), POM);
+  writeFileSync(path.join(outputDirectory, 'demo/App.class'), Buffer.from(content, 'latin1'));
+  writeFileSync(path.join(root, 'pom.xml'), pom);
   return { basedir: root, pomFile: path.join(root, 'pom.xml'), outputDirectory };
+}
+
+function workspace() {
+  const root = mkdtempSync(path.join(tmpdir(), 'nitpicker-dependencies-'));
+  roots.push(root);
+  return root;
+}
+
+function entryOf(name, { group, archives, used }) {
+  return { configuration: 'compile', group, name, archives, used };
 }
 
 function jar(root, name, entries) {
@@ -62,9 +78,8 @@ describe('declaredDependencies', () => {
 });
 
 describe('dependencyReport', () => {
-  it('marks each declared library used when a main class references its classes or it is an annotation processor', () => {
-    const root = mkdtempSync(path.join(tmpdir(), 'nitpicker-dependencies-'));
-    roots.push(root);
+  it('marks a library used when a main class references it or it is an annotation processor', () => {
+    const root = workspace();
     const lang = jar(root, 'commons-lang3-3.17.0.jar', [
       'org/apache/commons/lang3/StringUtils.class',
     ]);
@@ -118,8 +133,7 @@ describe('dependencyReport', () => {
   });
 
   it('analyzes nothing in a module without main classes', () => {
-    const root = mkdtempSync(path.join(tmpdir(), 'nitpicker-dependencies-'));
-    roots.push(root);
+    const root = workspace();
     writeFileSync(path.join(root, 'pom.xml'), POM);
 
     const report = dependencyReport({
@@ -132,7 +146,134 @@ describe('dependencyReport', () => {
       reactor: [],
     });
 
-    expect(report.analyzed).toBe(false);
-    expect(report.declared.every((entry) => entry.archives.length === 0)).toBe(true);
+    expect(report).toEqual({
+      build: 'maven',
+      buildFile: 'pom.xml',
+      analyzed: false,
+      declared: [
+        entryOf('commons-lang3', { group: 'org.apache.commons', archives: [], used: false }),
+        entryOf('commons-text', { group: 'org.apache.commons', archives: [], used: false }),
+        entryOf('core', { group: '${project.groupId}', archives: [], used: false }),
+        entryOf('mapstruct-processor', { group: 'org.mapstruct', archives: [], used: false }),
+      ],
+    });
+  });
+
+  it.each([
+    ['a bare class reference', '\u0001\u0000\u0022org/acme/widgets/Widget\u0000'],
+    ['a class reference in a descriptor', 'Êþ\u0001(Lorg/acme/widgets/Widget;)V\u0000'],
+    [
+      'a long descriptor whose length byte is a letter',
+      '\u0001\u0000ELorg/acme/widgets/Widget;\u0000',
+    ],
+  ])('finds a library through %s', (_, content) => {
+    const root = workspace();
+    const widgets = jar(root, 'widgets-1.0.jar', ['org/acme/widgets/Widget.class']);
+    const other = jar(root, 'other-1.0.jar', ['org/acme/other/Other.class']);
+    const resolved = [
+      { groupId: 'org.acme', artifactId: 'widgets', scope: 'compile', file: widgets },
+      { groupId: 'org.acme', artifactId: 'other', scope: 'compile', file: other },
+    ];
+    const pom = pomOf(dependency('org.acme', 'widgets'), dependency('org.acme', 'other'));
+
+    expect(
+      dependencyReport({ module: module(root, { pom, content }), resolved, reactor: [] }).declared,
+    ).toEqual([
+      entryOf('widgets', { group: 'org.acme', archives: ['widgets-1.0.jar'], used: true }),
+      entryOf('other', { group: 'org.acme', archives: ['other-1.0.jar'], used: false }),
+    ]);
+  });
+
+  it('takes the group of a ${project.groupId} dependency from the resolved artifact', () => {
+    const root = workspace();
+    const core = jar(root, 'core-1.0.jar', ['demo/core/Core.class']);
+    const resolved = [{ groupId: 'demo', artifactId: 'core', scope: 'compile', file: core }];
+    const pom = pomOf(dependency('${project.groupId}', 'core'));
+
+    expect(
+      dependencyReport({ module: module(root, { pom }), resolved, reactor: [] }).declared,
+    ).toEqual([entryOf('core', { group: 'demo', archives: ['core-1.0.jar'], used: false })]);
+  });
+
+  it('ignores resolved entries that are not compile scope or not an existing jar or directory', () => {
+    const root = workspace();
+    const lang = jar(root, 'commons-lang3-3.17.0.jar', [
+      'org/apache/commons/lang3/StringUtils.class',
+    ]);
+    const text = jar(root, 'commons-text-1.13.0.jar', ['org/apache/commons/text/WordUtils.class']);
+    writeFileSync(path.join(root, 'commons-lang3-3.17.0.pom'), '<project/>');
+    writeFileSync(path.join(root, 'commons-text-1.13.0-sources.zip'), 'zip');
+    const resolved = [
+      { groupId: 'org.apache.commons', artifactId: 'commons-lang3', scope: 'test', file: lang },
+      {
+        groupId: 'org.apache.commons',
+        artifactId: 'commons-lang3',
+        scope: 'compile',
+        file: path.join(root, 'commons-lang3-3.17.0.pom'),
+      },
+      {
+        groupId: 'org.apache.commons',
+        artifactId: 'commons-lang3',
+        scope: 'compile',
+        file: path.join(root, 'gone.jar'),
+      },
+      { groupId: 'org.apache.commons', artifactId: 'commons-text', scope: 'compile', file: text },
+      {
+        groupId: 'org.apache.commons',
+        artifactId: 'commons-text',
+        scope: 'compile',
+        file: path.join(root, 'commons-text-1.13.0-sources.zip'),
+      },
+      { groupId: 'org.apache.commons', artifactId: 'commons-text', scope: 'provided', file: lang },
+    ];
+    const pom = pomOf(
+      dependency('org.apache.commons', 'commons-lang3'),
+      dependency('org.apache.commons', 'commons-text'),
+    );
+
+    expect(
+      dependencyReport({ module: module(root, { pom }), resolved, reactor: [] }).declared,
+    ).toEqual([
+      entryOf('commons-lang3', { group: 'org.apache.commons', archives: [], used: false }),
+      entryOf('commons-text', {
+        group: 'org.apache.commons',
+        archives: ['commons-text-1.13.0.jar'],
+        used: false,
+      }),
+    ]);
+  });
+
+  it('reads a resolved directory as an archive of its class files', () => {
+    const root = workspace();
+    const used = path.join(root, 'used/classes');
+    const unused = path.join(root, 'unused/classes');
+    mkdirSync(path.join(used, 'org/apache/commons/lang3'), { recursive: true });
+    mkdirSync(path.join(unused, 'org/other'), { recursive: true });
+    writeFileSync(path.join(used, 'org/apache/commons/lang3/StringUtils.class'), '');
+    writeFileSync(path.join(unused, 'org/other/Other.class'), '');
+    const resolved = [
+      { groupId: 'g', artifactId: 'used', scope: 'compile', file: used },
+      { groupId: 'g', artifactId: 'unused', scope: 'compile', file: unused },
+    ];
+    const pom = pomOf(dependency('g', 'used'), dependency('g', 'unused'));
+
+    expect(
+      dependencyReport({ module: module(root, { pom }), resolved, reactor: [] }).declared,
+    ).toEqual([
+      entryOf('used', { group: 'g', archives: ['classes'], used: true }),
+      entryOf('unused', { group: 'g', archives: ['classes'], used: false }),
+    ]);
+  });
+
+  it('counts a declared dependency whose jar cannot be read as used', () => {
+    const root = workspace();
+    const broken = path.join(root, 'broken-1.0.jar');
+    writeFileSync(broken, 'this is not a zip archive');
+    const resolved = [{ groupId: 'g', artifactId: 'broken', scope: 'compile', file: broken }];
+    const pom = pomOf(dependency('g', 'broken'));
+
+    expect(
+      dependencyReport({ module: module(root, { pom }), resolved, reactor: [] }).declared,
+    ).toEqual([entryOf('broken', { group: 'g', archives: ['broken-1.0.jar'], used: true })]);
   });
 });

@@ -2,6 +2,7 @@ import { existsSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { escapeRegExp } from '../../../../shared/glob.mjs';
 import { runJava } from '../maven-command.mjs';
+import { targetRelease } from './javac-options.mjs';
 import { EMPTY_SARIF } from '../maven-lint.mjs';
 import { GRADLE_DIRECTORY } from '../../builds/java-build.mjs';
 
@@ -54,8 +55,8 @@ function majorVersion(version) {
 }
 
 export function javaRelease(compiler) {
-  const version = compiler.release ?? compiler.target;
-  return version === undefined ? MAVEN_DEFAULT_RELEASE : majorVersion(version);
+  const major = majorVersion(targetRelease(compiler));
+  return Number.isInteger(major) ? major : MAVEN_DEFAULT_RELEASE;
 }
 
 function writeRuleset(reportDir, file, content) {

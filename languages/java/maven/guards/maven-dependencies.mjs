@@ -1,7 +1,7 @@
 import { existsSync, readFileSync, statSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { childrenNamed, parseXml } from '../../ingest/common.mjs';
-import { readZip } from '../../builds/zip-entries.mjs';
+import { readZipOrFailure } from '../../builds/zip-entries.mjs';
 import { classFiles } from './class-permits.mjs';
 
 const CLASS_NAME = /[A-Za-z_$][\w$]*(?:\/[\w$]+)+/gu;
@@ -18,6 +18,7 @@ function referencedNames(classDirectory) {
     for (const [token] of readFileSync(file, 'latin1').matchAll(CLASS_NAME)) {
       names.add(`${token}.class`);
       names.add(`${token.slice(1)}.class`);
+      names.add(`${token.slice(2)}.class`);
     }
   }
   return names;
@@ -29,11 +30,16 @@ function archiveEntries(archive) {
       path.relative(archive, file).split(path.sep).join('/'),
     );
   }
-  return [...readZip(archive).names];
+  const read = readZipOrFailure(archive);
+  return read.kind === 'zip' ? [...read.zip.names] : undefined;
 }
 
 function usesArchive(archive, names) {
-  return archiveEntries(archive).some((entry) => names.has(entry) || entry === PROCESSOR_SERVICE);
+  const entries = archiveEntries(archive);
+  return (
+    entries === undefined ||
+    entries.some((entry) => names.has(entry) || entry === PROCESSOR_SERVICE)
+  );
 }
 
 export function declaredDependencies(pomText) {

@@ -37,14 +37,15 @@ function localEntry({ name, data, method }) {
   return { local, nameBytes, stored, data };
 }
 
-function directoryEntry({ nameBytes, stored, data, method }, localOffset, zip64) {
-  const extra = zip64
-    ? header([
-        [2, 1],
-        [2, 8],
-        [8, localOffset],
-      ])
-    : Buffer.alloc(0);
+function directoryEntry({ nameBytes, stored, data, method }, localOffset, { zip64, wideSizes }) {
+  const wide = [
+    ...(wideSizes ? [data.length, stored.length] : []),
+    ...(zip64 ? [localOffset] : []),
+  ];
+  const extra =
+    wide.length === 0
+      ? Buffer.alloc(0)
+      : header([[2, 1], [2, 8 * wide.length], ...wide.map((value) => [8, value])]);
   return Buffer.concat([
     header([
       [4, 0x02014b50],
@@ -54,8 +55,8 @@ function directoryEntry({ nameBytes, stored, data, method }, localOffset, zip64)
       [2, method],
       [4, 0],
       [4, 0],
-      [4, stored.length],
-      [4, data.length],
+      [4, wideSizes ? 0xffffffff : stored.length],
+      [4, wideSizes ? 0xffffffff : data.length],
       [2, nameBytes.length],
       [2, extra.length],
       [2, 0],
@@ -104,16 +105,16 @@ function endRecords({ count, size, start, zip64, comment }) {
   return Buffer.concat([record, locator, end, Buffer.from(comment)]);
 }
 
-export function zipOf(files, { zip64 = false, comment = '' } = {}) {
+export function zipOf(files, { zip64 = false, wideSizes = false, comment = '' } = {}) {
   const entries = Object.entries(files).map(([name, text], index) => ({
     name,
-    data: Buffer.from(text),
+    data: typeof text === 'string' ? Buffer.from(text) : text,
     method: index % 2 === 0 ? 8 : 0,
   }));
   const written = entries.map((entry) => ({ ...localEntry(entry), method: entry.method }));
   const offsets = written.reduce((list, { local }) => [...list, list.at(-1) + local.length], [0]);
   const central = Buffer.concat(
-    written.map((entry, index) => directoryEntry(entry, offsets[index], zip64)),
+    written.map((entry, index) => directoryEntry(entry, offsets[index], { zip64, wideSizes })),
   );
   return Buffer.concat([
     ...written.map(({ local }) => local),
