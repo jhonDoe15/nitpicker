@@ -67,7 +67,7 @@ export const SHARED_EXCEPTION_RULES = [
 export const JAVA_NATIVE_RULES = [RULE_IDS.lineLength];
 
 /** `{exception}` is the `exceptions` entry that would lift the finding, as JSON. */
-const EXCEPTION_HINT =
+export const EXCEPTION_HINT =
   'If this is intended, add {exception} to "exceptions" in nitpicker.config.json.';
 
 /** A CRAP score at or above this fails (`QUALITY_CRAP_SCORE_LIMIT` / `thresholds.crapLimit` override it). */
