@@ -39,10 +39,10 @@ Web:
 
 JPA and Spring Data:
 
-- Entities are non-final classes (not records), with a `@Version` field next to the `@Id` and
-  `GenerationType.SEQUENCE` ids. Every `@ManyToOne` and `@OneToOne` says
-  `fetch = FetchType.LAZY`; nothing is `EAGER`. `@ManyToMany` is a `Set` and never cascades `ALL`
-  or `REMOVE`.
+- Entities are non-final classes (not records), with a `@Version` field next to the `@Id` (or
+  inherited from a `@MappedSuperclass`) and `GenerationType.SEQUENCE` ids. Every `@ManyToOne` and
+  `@OneToOne` says `fetch = FetchType.LAZY`; nothing is `EAGER`. `@ManyToMany` is a `Set` and never
+  cascades `ALL` or `REMOVE`.
 - Every repository method you declare has `@Query` (JPQL in a text block for JPA) with named parameters
   (`:email`); inherited methods such as `findById` and `save` need nothing. No derived names like
   `findByEmailAndStatus`.
