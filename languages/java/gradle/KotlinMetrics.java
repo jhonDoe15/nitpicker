@@ -216,6 +216,7 @@ public final class KotlinMetrics {
           String name = (receiver == null ? "" : receiver.getText() + ".") + function.getName();
           report(function, join(owner, name), function.getBodyExpression());
           nested(function.getBodyExpression(), owner, join(owner, name), inline(function));
+          defaults(function, owner, join(owner, name));
         }
       } else if (declaration instanceof KtSecondaryConstructor) {
         KtSecondaryConstructor constructor = (KtSecondaryConstructor) declaration;
@@ -223,9 +224,16 @@ public final class KotlinMetrics {
           String className = owner.substring(owner.lastIndexOf('.') + 1);
           report(constructor, join(owner, className), constructor.getBodyExpression());
           nested(constructor.getBodyExpression(), owner, join(owner, className), false);
+          defaults(constructor, owner, join(owner, className));
         }
       } else if (declaration instanceof KtProperty) {
         property((KtProperty) declaration, owner);
+      }
+    }
+
+    private void defaults(KtDeclarationWithBody declaration, String owner, String scope) {
+      for (KtParameter parameter : declaration.getValueParameters()) {
+        nested(parameter.getDefaultValue(), owner, scope, false);
       }
     }
 
