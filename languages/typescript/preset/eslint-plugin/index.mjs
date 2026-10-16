@@ -41,6 +41,7 @@ import { rule as noForwardingWrapper } from './rules/api-shape/no-forwarding-wra
 import { rule as noRuntimeExclusivePropsCheck } from './rules/react-props/no-runtime-exclusive-props-check.mjs';
 import { rule as noSingularAndPluralProp } from './rules/react-props/no-singular-and-plural-prop.mjs';
 import { rule as reactNoEffectDataFetching } from './rules/react/react-no-effect-data-fetching.mjs';
+import { rule as reactNoHardcodedColors } from './rules/react/theme/react-no-hardcoded-colors.mjs';
 import { rule as reactNoEffectDerivedState } from './rules/react/react-no-effect-derived-state.mjs';
 import { rule as reactSingleStylingApproach } from './rules/react/react-single-styling-approach.mjs';
 import { rule as reactTestNoImplementationDetails } from './rules/react/react-test-no-implementation-details.mjs';
@@ -96,6 +97,7 @@ export const nitpickerRules = {
     'no-singular-and-plural-prop': noSingularAndPluralProp,
     'react-no-effect-data-fetching': reactNoEffectDataFetching,
     'react-no-effect-derived-state': reactNoEffectDerivedState,
+    'react-no-hardcoded-colors': reactNoHardcodedColors,
     'react-single-styling-approach': reactSingleStylingApproach,
     'react-test-no-implementation-details': reactTestNoImplementationDetails,
   },
