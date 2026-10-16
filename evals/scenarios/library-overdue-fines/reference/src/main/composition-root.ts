@@ -5,6 +5,7 @@ import { createInMemoryLoans, describeLoan } from './features/loans/index.js';
 import type { Loan } from './features/loans/index.js';
 import { createInMemoryMembers } from './features/members/index.js';
 import type { Member } from './features/members/index.js';
+export { fineCents } from './features/fines/index.js';
 
 const books: readonly Book[] = [
   { id: 'B1', title: 'Dune', category: 'novel' },

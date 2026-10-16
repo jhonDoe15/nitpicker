@@ -2,7 +2,7 @@ import { mkdtempSync, existsSync, readFileSync, rmSync } from 'node:fs';
 import { homedir, tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import TestConsoleReporter, {
+import testConsoleReporter, {
   REPORT_VARIABLE,
   consoleMessagesOf,
 } from './vitest-reporter.config.mjs';
@@ -25,7 +25,7 @@ describe('the vitest console reporter', () => {
   });
 
   function entriesFor(logs, { config = {}, entities = {} } = {}) {
-    const reporter = new TestConsoleReporter();
+    const reporter = new testConsoleReporter();
     reporter.onInit({
       config: { root: ROOT, ...config },
       state: { getReportedEntityById: (id) => entities[id] },
@@ -99,7 +99,7 @@ describe('the vitest console reporter', () => {
 
   it('writes nothing when the report variable is not set', () => {
     vi.stubEnv(REPORT_VARIABLE, '');
-    const reporter = new TestConsoleReporter();
+    const reporter = new testConsoleReporter();
     reporter.onInit({ config: { root: ROOT }, state: { getReportedEntityById: () => undefined } });
     reporter.onUserConsoleLog({ type: 'stderr', content: 'x\n' });
     reporter.onTestRunEnd();
