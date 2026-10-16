@@ -123,6 +123,29 @@ describe('Prettier conventions', () => {
       rmSync(directory, { recursive: true, force: true });
     }
   });
+
+  it('fills the options a project-only config leaves unset with the followed conventions', async () => {
+    const directory = mkdtempSync(path.join(tmpdir(), 'nitpicker-prettier-project-only-'));
+    writeFileSync(path.join(directory, '.prettierrc.json'), JSON.stringify({ semi: false }));
+    try {
+      await withConventions(directory, { 'prettier.quotes': 'double' }, async () => {
+        expect(await optionsFor(directory, 'a.ts', ['project'])).toEqual({
+          singleQuote: false,
+          semi: false,
+          useTabs: false,
+          tabWidth: 2,
+          printWidth: 100,
+          trailingComma: 'all',
+          arrowParens: 'always',
+          bracketSpacing: true,
+          endOfLine: 'lf',
+        });
+        expect(await optionsFor(directory, 'data.json', ['project'])).toEqual({ semi: false });
+      });
+    } finally {
+      rmSync(directory, { recursive: true, force: true });
+    }
+  });
 });
 
 function optionsFor(directory, relativePath, precedence) {
