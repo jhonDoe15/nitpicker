@@ -1,5 +1,11 @@
-import { assertionHelpers, MIN_FILES } from './measures/assertion-helpers.mjs';
-import { indentationStep, TEST_SOURCE_GLOB } from './java-conventions.mjs';
+import {
+  assertionEvidence,
+  followedHelpers,
+  MIN_FILES,
+  SAMPLE_LIMIT,
+  testAndSupportGlobs,
+} from './measures/assertion-helpers.mjs';
+import { indentationStep } from './java-conventions.mjs';
 import { lineLength } from './measures/kotlin-line-length.mjs';
 import { trailingCommas, wildcardImports } from './measures/kotlin-measures.mjs';
 
@@ -52,9 +58,11 @@ export const KOTLIN_CONVENTIONS = [
     id: KOTLIN_ASSERTION_HELPERS,
     label: 'Kotlin assertion helpers',
     kind: 'names',
+    fallback: [],
     minFiles: MIN_FILES,
-    fallback: '',
-    files: [`${TEST_SOURCE_GLOB}*.kt`],
-    measure: (text) => assertionHelpers(text, 'kotlin'),
+    sampleLimit: SAMPLE_LIMIT,
+    files: testAndSupportGlobs('kt'),
+    measure: (text, file) => assertionEvidence(text, file, 'kotlin'),
+    choose: followedHelpers,
   },
 ];

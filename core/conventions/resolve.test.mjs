@@ -180,7 +180,7 @@ describe('reading the measured files', () => {
         'java.indentation': '4',
         'java.wildcardImports': 'wildcard',
         'java.testStaticImports': 'wildcard',
-        'java.assertionHelpers': 'check',
+        'java.assertionHelpers': ['checkHelper'],
       };
 
       expect(snapshotPolicy(runOf({ preset: 'java', conventions }, root)).conventions).toEqual(

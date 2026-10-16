@@ -7,9 +7,7 @@ import { pmdLayerFiles } from './layer-files.mjs';
 
 export function toolConfigChoices(projectRoot, policy = {}) {
   const { toolPrecedence = {}, policyRoot } = policy;
-  const assertionHelpers = (policy.conventions?.[JAVA_ASSERTION_HELPERS] ?? '')
-    .split(',')
-    .filter(Boolean);
+  const assertionHelpers = policy.conventions?.[JAVA_ASSERTION_HELPERS] ?? [];
   return Object.fromEntries(
     [...PROJECT_TOOL_CONFIGS].map(([tool, file]) => {
       const precedence = toolPrecedence[tool] ?? ['nitpicker'];

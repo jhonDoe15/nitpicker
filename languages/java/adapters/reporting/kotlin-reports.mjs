@@ -84,9 +84,7 @@ export function readKotlinFindings(context, crapLimit) {
   const { reportRoot, manifest, projectRoot, jacoco, formatAdvice = DEFAULT_ADVICE } = context;
   const metrics = readKotlinMetrics(reportRoot);
   const testRoots = manifest.kotlinTestSourceRoots ?? [];
-  const helpers = (context.conventions?.['kotlin.assertionHelpers'] ?? '')
-    .split(',')
-    .filter(Boolean);
+  const helpers = context.conventions?.['kotlin.assertionHelpers'] ?? [];
   return [
     ...detektFindings(reportRoot, formatAdvice),
     ...readSuppressionFindings(projectRoot, manifest.kotlinSourceRoots),

@@ -244,15 +244,16 @@ checked, and a catch of `_`, `ignored...`, `expected...` or `unused...` is left 
 sources are scanned. One finding per log call, identified by `catch-log:<receiver>.<level>`.
 
 **`test-without-assertion`.** A test method (`@Test`, `@ParameterizedTest`, `@RepeatedTest`,
-`@TestTemplate`, block or expression body, backtick names) that calls no assertion. These count:
-anything starting with `assert` (kotlin.test, JUnit, AssertJ, Hamcrest `assertThat`,
-`assertFailsWith`, `assertThrows`), `check`, `verify` and `coVerify`/`confirmVerified` (MockK,
-Mockito), `expect` (Strikt, `expectThat`), `should...` (Kotest matchers: `x shouldBe y`,
-`shouldThrow`), `fail`, `andExpect` and `forAll`. A test that is `@Test(expected = ...)` is skipped.
-The project's own helpers are learned: the convention `kotlin.assertionHelpers` lists the names that
-end the last statement of tests without a known assertion in at least two test files and read like
-an assertion (`ensure...`, `must...`, `validate...`, `is...`, `has...`, `await...`); pin it in
-`conventions` to set the list yourself. Kotest specs written as `"name" { ... }` have no `@Test`
+`@TestTemplate`, block or expression body, backtick names) that calls no assertion. A call counts when its
+name is `assert`, `check`, `verify`, `coVerify`, `expect` or `should` alone or followed by a capital
+(`assertEquals`, `assertFailsWith`, `assertThrows`, `verifyOrder`, `expectThat`, `shouldThrow`; Kotest infix
+`x shouldBe y` too), or `confirmVerified`, `fail`, `andExpect` or `forAll`. Variables (`expected`) and calls on
+a receiver (`checkoutService.run()`) do not count. A test that is `@Test(expected = ...)` is skipped.
+The project's own helpers are learned: the convention `kotlin.assertionHelpers` lists the names that end
+the last statement of enabled tests without a known assertion in at least three test files, read like
+an assertion (`ensure...`, `must...`, `validate...`, `is...`, `has...`, `await...`) and are defined in a test
+or test-support source as a function whose body asserts or throws; pin a list of names in `conventions`
+to set it yourself. `@Disabled` and `@Ignore` tests are skipped. Kotest specs written as `"name" { ... }` have no `@Test`
 and are not scanned. The test sources are the Kotlin directories of the `test` source set.
 One finding per test, identified by `test:<name>`.
 

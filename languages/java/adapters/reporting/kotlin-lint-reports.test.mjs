@@ -177,7 +177,7 @@ describe('readJavaFindings with the kotlin preset: detekt, ktlint and ktfmt', ()
       ['test-without-assertion', test, 'test:helper'],
       ['test-without-assertion', test, 'test:forgot'],
     ]);
-    expect(rules({ conventions: { 'kotlin.assertionHelpers': 'ensureReady' } })).toEqual([
+    expect(rules({ conventions: { 'kotlin.assertionHelpers': ['ensureReady'] } })).toEqual([
       ['catch-log-without-exception', bad, 'catch-log:log.error'],
       ['test-without-assertion', test, 'test:forgot'],
     ]);

@@ -27,7 +27,9 @@ export function detectConventions({ definitions, source, pinned = {}, exclude = 
 export function conventionChoices(detected, definitions) {
   return Object.fromEntries(
     definitions
-      .filter(({ id, fallback }) => detected[id].choice !== fallback)
+      .filter(
+        ({ id, fallback }) => JSON.stringify(detected[id].choice) !== JSON.stringify(fallback),
+      )
       .map(({ id }) => [id, detected[id].choice]),
   );
 }
@@ -36,7 +38,7 @@ function sampleFor(definition, candidates) {
   const files = definition.files.map(globToRegExp);
   return evenSample(
     candidates.filter((file) => files.some((glob) => glob.test(file))),
-    SAMPLE_LIMIT,
+    definition.sampleLimit ?? SAMPLE_LIMIT,
   );
 }
 
@@ -65,16 +67,18 @@ function measureNames(definition, sample, texts) {
   const counts = {};
   for (const file of sample) {
     const text = texts.get(file);
-    for (const name of new Set(text === undefined ? [] : definition.measure(text, file))) {
+    const names = text === undefined ? [] : definition.measure(text, file);
+    for (const name of new Set(names)) {
       counts[name] = (counts[name] ?? 0) + 1;
     }
   }
-  const names = Object.keys(counts)
-    .filter((name) => counts[name] >= definition.minFiles)
-    .sort();
-  return names.length === 0
+  const choice = (
+    definition.choose?.(counts, definition) ??
+    Object.keys(counts).filter((name) => counts[name] >= definition.minFiles)
+  ).sort();
+  return choice.length === 0
     ? { choice: definition.fallback, source: 'default', counts, files: sample.length }
-    : { choice: names.join(','), source: 'majority', counts, files: sample.length };
+    : { choice, source: 'majority', counts, files: sample.length };
 }
 
 function pluralityOf(counts) {
