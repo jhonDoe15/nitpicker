@@ -14,6 +14,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { exceptionHint } from '../../../../shared/rules/exceptions.mjs';
 import { GRADLE_DIRECTORY, INIT_SCRIPT } from '../../builds/java-build.mjs';
 import { GRADLE_STEP_TIMEOUT_MS } from '../test-support/gradle-e2e.mjs';
+import { applyRuleMessages } from '../../messages/rule-messages.mjs';
 import { readErrorProneFindings } from './java-errorprone.mjs';
 
 const enabled = process.env.NITPICKER_JAVA_E2E === '1';
@@ -295,11 +296,13 @@ describe.skipIf(!enabled)('Error Prone through the init script', () => {
 
   it('reports ignored results, main-code nulls and utility classes, but not framework fields or Spring config', () => {
     expect(run.status).toBe(0);
-    const findings = readErrorProneFindings({
-      reportRoot: path.join(root, 'build/nitpicker'),
-      roots: [root],
-      lintedRoots: ['src/main/java', 'src/test/java'],
-    });
+    const findings = applyRuleMessages(
+      readErrorProneFindings({
+        reportRoot: path.join(root, 'build/nitpicker'),
+        roots: [root],
+        lintedRoots: ['src/main/java', 'src/test/java'],
+      }),
+    );
 
     expect(
       findings.map(({ tool, rule, path: file, location, message }) => [

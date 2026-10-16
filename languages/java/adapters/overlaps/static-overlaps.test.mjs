@@ -5,8 +5,17 @@ import { CATALOG_TOOLS, readCatalog } from '../../messages/rule-messages.mjs';
 import { OVERLAP_PAIRS, matchesRule, withoutOverlaps } from './static-overlaps.mjs';
 
 const CHECKS = path.resolve(import.meta.dirname, '../../gradle/errorprone/checks.json');
+const OWN_PMD_RULESETS = ['pmd-ruleset.xml', 'rules/guards-ruleset.xml'];
+const OWN_PMD_RULE = /<rule (?:name="(\w+)"|ref="category\/java\/\w+\.xml\/(\w+)")/gu;
 const KNOWN_RULES = [
   'errorprone/NullAway',
+  ...OWN_PMD_RULESETS.flatMap((file) =>
+    [
+      ...readFileSync(path.resolve(import.meta.dirname, '../../gradle', file), 'utf8').matchAll(
+        OWN_PMD_RULE,
+      ),
+    ].map(([, name, ref]) => `pmd/${name ?? ref}`),
+  ),
   ...JSON.parse(readFileSync(CHECKS, 'utf8')).suppressible.map((check) => `errorprone/${check}`),
   ...CATALOG_TOOLS.flatMap((tool) =>
     Object.keys(readCatalog(tool)).map((rule) => `${tool}/${rule}`),
@@ -92,7 +101,7 @@ describe('overlap pairs', () => {
     expect(rules.filter((rule) => reaches(rule, rule))).toStrictEqual([]);
   });
 
-  it('name rules as the findings print them: Checkstyle module ids, catalog rules, Error Prone checks', () => {
+  it('name rules as the findings print them: Checkstyle module ids, catalog and own PMD rules, Error Prone checks', () => {
     const rules = OVERLAP_PAIRS.flatMap(({ primary, secondary }) => [...primary, ...secondary]);
 
     expect(
