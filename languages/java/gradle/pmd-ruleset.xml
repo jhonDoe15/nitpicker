@@ -173,5 +173,37 @@
       </property>
     </properties>
   </rule>
+  <rule name="SingularAndPluralMember" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
+        message="A member and its plural (tag and tags) are two ways to pass the same data. Keep the plural and pass one item as a one-element list. If both are intended, add an exception for pmd/SingularAndPluralMember in nitpicker.config.json.">
+    <priority>3</priority>
+    <properties>
+      <property name="xpath">
+        <value><![CDATA[
+(
+  //RecordDeclaration/RecordComponentList/RecordComponent
+  | //ClassDeclaration[ModifierList/Annotation[pmd-java:typeIs('org.springframework.boot.context.properties.ConfigurationProperties')]]
+      /ClassBody/FieldDeclaration[not(pmd-java:modifiers() = 'static')]
+)
+  [let $boxes := map { 'boolean': 'Boolean', 'byte': 'Byte', 'char': 'Character', 'short': 'Short',
+                       'int': 'Integer', 'long': 'Long', 'float': 'Float', 'double': 'Double' },
+       $type := (ClassType | ArrayType | PrimitiveType)[1],
+       $element := if ($type[self::ArrayType]) then $type/*[1]
+                   else $type[self::ClassType][@SimpleName = ('List', 'Set', 'Collection', 'Iterable', 'SortedSet')]
+                          /TypeArguments[count(*) = 1]/*[1],
+       $plural := (VariableId | VariableDeclarator/VariableId)[1]/@Name
+   return exists($element)
+     and (some $other in ../(RecordComponent | FieldDeclaration[not(pmd-java:modifiers() = 'static')])
+          satisfies
+            let $name := ($other/VariableId | $other/VariableDeclarator/VariableId)[1]/@Name,
+                $own := ($other/ClassType | $other/ArrayType | $other/PrimitiveType)[1],
+                $ownName := if ($own[self::PrimitiveType]) then $boxes($own/@Kind) else $own/@SimpleName,
+                $elementName := if ($element[self::PrimitiveType]) then $boxes($element/@Kind) else $element/@SimpleName
+            return $plural = ($name || 's', $name || 'es',
+                              if (matches($name, '[^aeiou]y$')) then substring($name, 1, string-length($name) - 1) || 'ies' else ())
+              and $own[self::ClassType or self::PrimitiveType] and $ownName = $elementName)]
+]]></value>
+      </property>
+    </properties>
+  </rule>
   <rule ref="category/java/design.xml/AvoidCatchingGenericException"/>
 </ruleset>
