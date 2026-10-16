@@ -2,7 +2,8 @@ import { cpSync, mkdtempSync, readdirSync, readFileSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { collectJavaFindings } from '../java-diff.mjs';
+import { collectJavaFindings, runJavaDiff } from '../java-diff.mjs';
+import { commitBranch, runGitIn } from '../test-support/gradle-e2e.mjs';
 
 const enabled = process.env.NITPICKER_JAVA_E2E === '1';
 const gradle = process.env.NITPICKER_GRADLE ?? 'gradle';
@@ -19,6 +20,21 @@ const REVIEW_RULES = new Set([
   'test-only-export',
 ]);
 const roots = [];
+const RECEIPT_TEST = `package shop;
+
+import static org.assertj.core.api.Assertions.assertThat;
+
+import java.util.List;
+import org.junit.jupiter.api.Test;
+
+class ReceiptTest {
+  @Test
+  void printsTheDrift() {
+    System.err.println("receipt total drifted by 3 cents");
+    assertThat(Prices.sum(List.of(1L, 2L))).isEqualTo(3L);
+  }
+}
+`;
 
 function copyWithout(...left) {
   const root = path.join(mkdtempSync(path.join(tmpdir(), 'nitpicker-review-rules-')), 'shop');
@@ -100,5 +116,43 @@ describe.skipIf(!enabled)('Review rules on Gradle and Maven builds of a Spring p
       'src/main/java/shop/SampleOrders.java:5',
     ]);
     expect(testOnly(runs.maven)).toEqual(testOnly(runs.gradle));
+  });
+});
+
+function consoleChange(build, ...left) {
+  const repository = copyWithout(...left);
+  runGitIn(repository, 'init', '-q', '-b', 'main');
+  runGitIn(repository, 'add', '-A');
+  runGitIn(repository, 'commit', '-q', '-m', 'base');
+  const filterTest = path.join(repository, 'src/test/java/shop/FilterTest.java');
+  commitBranch(repository, 'receipt', {
+    'src/test/java/shop/ReceiptTest.java': RECEIPT_TEST,
+    'src/test/java/shop/FilterTest.java': readFileSync(filterTest, 'utf8').replace('42', '43'),
+  });
+  const result = runJavaDiff({ repositoryRoot: repository, requestedBaseRef: 'main', ...build });
+  return result.newFindings.filter(({ rule }) => rule === 'test-console-output');
+}
+
+describe.skipIf(!enabled)('New console output of tests on Gradle and Maven builds', () => {
+  const runs = {};
+
+  beforeAll(() => {
+    runs.gradle = consoleChange({ gradle, policy: {} }, 'pom.xml');
+    runs.maven = consoleChange({ maven, policy: {} }, 'build.gradle', 'settings.gradle');
+  });
+
+  afterAll(() => {
+    for (const root of roots.splice(0)) {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  it('reports only the line the change adds, not Spring startup, logged warnings or renumbered output', () => {
+    expect(
+      runs.gradle.map(({ path: file, message }) => `${file} ${message.split('. Fix')[0]}`),
+    ).toEqual([
+      '. Tests print new console output: "receipt total drifted by <n> cents" (src/test/java/shop/ReceiptTest.java, test "printsTheDrift")',
+    ]);
+    expect(comparable(runs.maven)).toEqual(comparable(runs.gradle));
   });
 });

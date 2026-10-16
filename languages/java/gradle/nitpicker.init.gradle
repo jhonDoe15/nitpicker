@@ -260,6 +260,7 @@ allprojects {
             .toString().split(',')*.trim().findAll { it }
 
         tasks.named('test') { exclude archunitIncludes }
+        tasks.withType(Test).configureEach { reports.junitXml.outputPerTestCase = true }
 
         tasks.register('nitpickerArchunit', Test) {
             group = 'nitpicker'
