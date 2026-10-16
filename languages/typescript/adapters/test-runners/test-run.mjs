@@ -48,9 +48,7 @@ export function runnableTestFiles(options) {
 
 export function projectTestFiles(options, layout, files) {
   const isTest =
-    projectTestRunner(options.projectRoot).runner === 'vitest'
-      ? layout.isRunnableTestFile
-      : layout.isTestFile;
+    projectTestRunner(options).runner === 'vitest' ? layout.isRunnableTestFile : layout.isTestFile;
   return files.filter(isTest);
 }
 

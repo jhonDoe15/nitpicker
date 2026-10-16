@@ -8,7 +8,10 @@ import { normalizeCoverage } from './tests.mjs';
 
 import { withBranchSourceHashes } from './source-hashes.mjs';
 
-export function coverageFailureFindings(options, { report, result, runnerName }) {
+export function coverageFailureFindings(
+  options,
+  { report, result, runnerName, precedingCommands },
+) {
   const [firstFailure] = testFailures(report, options.projectRoot);
   if (firstFailure === undefined) {
     throw new Error(
@@ -19,7 +22,7 @@ export function coverageFailureFindings(options, { report, result, runnerName })
     toolErrorFinding(options, {
       rule: TESTS_FAILED_RULE,
       path: findingPath(firstFailure.file),
-      message: formatTestFailures(report, options.projectRoot),
+      message: formatTestFailures(report, options.projectRoot, precedingCommands),
     }),
   ];
 }
@@ -119,7 +122,23 @@ function firstLine(message) {
     : line;
 }
 
-export function formatTestFailures(report, projectRoot) {
+function precedingNote(precedingCommands) {
+  if (!Array.isArray(precedingCommands) || precedingCommands.length === 0) {
+    return [];
+  }
+  const steps = precedingCommands.map((command) => `"${command}"`).join(', ');
+  const which = precedingCommands.length === 1 ? 'that step' : 'those steps';
+  return [
+    `The test script runs ${steps} before the tests; nitpicker runs only the test command, ` +
+      `so run ${which} first if the tests need it.`,
+  ];
+}
+
+export function formatTestFailures(report, projectRoot, precedingCommands) {
+  return [failureText(report, projectRoot), ...precedingNote(precedingCommands)].join('\n');
+}
+
+function failureText(report, projectRoot) {
   const failures = testFailures(report, projectRoot);
   const failedCount = Number.isInteger(report?.numFailedTests)
     ? Math.max(report.numFailedTests, failures.length)

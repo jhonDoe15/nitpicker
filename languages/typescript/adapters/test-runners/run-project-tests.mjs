@@ -12,6 +12,10 @@ const ADAPTERS = {
 };
 
 export async function runProjectTests(options) {
-  const { runner, command } = projectTestRunner(options.projectRoot);
-  return { runner, ...(await ADAPTERS[runner](options, command)) };
+  const { runner, command } = projectTestRunner(options);
+  return {
+    runner,
+    precedingCommands: command.precedingCommands,
+    ...(await ADAPTERS[runner](options, command)),
+  };
 }

@@ -14,3 +14,26 @@ export const RUNNER_PACKAGES = {
   jest: 'jest',
   mocha: 'mocha',
 };
+
+export const NODE_TEST_OPTIONS_NITPICKER_SETS = {
+  flags: [
+    '--watch',
+    '--watch-preserve-output',
+    '--test-only',
+    '--experimental-test-coverage',
+    '--test-update-snapshots',
+  ],
+  valued: [
+    '--watch-path',
+    '--test-reporter',
+    '--test-reporter-destination',
+    '--test-concurrency',
+    '--test-timeout',
+    '--test-shard',
+    '--test-coverage-include',
+    '--test-coverage-exclude',
+    '--test-coverage-branches',
+    '--test-coverage-functions',
+    '--test-coverage-lines',
+  ],
+};

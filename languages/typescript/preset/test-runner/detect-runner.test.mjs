@@ -35,6 +35,10 @@ describe('the test runner a project uses', () => {
     ['c8 node --import tsx --test "test/**/*.test.ts"', 'node'],
     ['borp --coverage', 'node'],
     ['tsc && vitest run', 'vitest'],
+    ['node --experimental-vm-modules node_modules/jest/bin/jest.js', 'jest'],
+    ['node ./node_modules/.bin/_mocha', 'mocha'],
+    ['ts-mocha -p tsconfig.json test/**/*.ts', 'mocha'],
+    ['craco test', 'jest'],
   ])('reads the test script %j as %s', (command, runner) => {
     const root = project({ scripts: { test: command }, devDependencies: { jest: '30' } });
 
@@ -52,6 +56,18 @@ describe('the test runner a project uses', () => {
       runner: 'jest',
       evidence: 'package.json script "test"',
       command: 'jest',
+    });
+  });
+
+  it('follows a script run after other steps and keeps those steps and the forwarded arguments', () => {
+    const root = project({
+      scripts: { test: 'npm run build && npm run test:unit -- --ci', 'test:unit': 'jest -i' },
+    });
+
+    expect(detectTestRunner(root)).toEqual({
+      runner: 'jest',
+      evidence: 'package.json script "test"',
+      command: 'npm run build && jest -i --ci',
     });
   });
 
@@ -106,6 +122,26 @@ describe('the test runner a project uses', () => {
       runner: 'node',
       evidence: 'nitpicker.config.json "tools.tests.runner"',
       command: undefined,
+    });
+  });
+
+  it('takes the command of the configured runner from whichever test script runs it', () => {
+    const root = project({
+      scripts: {
+        test: 'node --test && npm run test:browser',
+        'test:browser': 'cross-env CI=1 node node_modules/jest/bin/jest.js --ci',
+      },
+    });
+
+    expect(testRunnerFor(root, 'jest')).toEqual({
+      runner: 'jest',
+      evidence: 'nitpicker.config.json "tools.tests.runner"',
+      command: 'node --test && cross-env CI=1 node node_modules/jest/bin/jest.js --ci',
+    });
+    expect(testRunnerFor(root, 'node')).toEqual({
+      runner: 'node',
+      evidence: 'nitpicker.config.json "tools.tests.runner"',
+      command: 'node --test && npm run test:browser',
     });
   });
 });
