@@ -1,9 +1,9 @@
 import { writeFileSync } from 'node:fs';
 import path from 'node:path';
-import { escapeRegExp } from '../../../shared/glob.mjs';
-import { GRADLE_DIRECTORY } from '../builds/java-build.mjs';
-import { escapeXml } from '../adapters/tool-config/xml-write.mjs';
-import { pmdLayerFiles, TEST_RULESET } from '../adapters/tool-config/layer-files.mjs';
+import { escapeRegExp } from '../../../../shared/glob.mjs';
+import { GRADLE_DIRECTORY } from '../../builds/java-build.mjs';
+import { escapeXml } from './xml-write.mjs';
+import { pmdLayerFiles, TEST_RULESET } from './layer-files.mjs';
 
 function rulesetExcluding({ name, description, rules, roots }) {
   const excludes = roots.map(
