@@ -1,3 +1,6 @@
+import { existsSync } from 'node:fs';
+import path from 'node:path';
+import { filesUnder } from '../../../../shared/filesystem.mjs';
 import { readManifest } from '../eslint-config/scope-support.mjs';
 import { LOGGER_LIBRARIES } from './logger-libraries.mjs';
 import { VALIDATION_LIBRARIES } from './validation-libraries.mjs';
@@ -17,7 +20,7 @@ function groupOf(names) {
   };
 }
 
-export function manifestLibraries(manifest) {
+function manifestLibraries(manifest) {
   return {
     production: groupOf([
       ...Object.keys(manifest?.dependencies ?? {}),
@@ -41,8 +44,48 @@ export function mergeLibraries(manifests) {
   return { validation: ordered(manifests, 'validation'), logger: ordered(manifests, 'logger') };
 }
 
-export function detectLibraries(projectRoot) {
-  return mergeLibraries([manifestLibraries(readManifest(projectRoot))]);
+export const ROOT_PACKAGE = '.';
+const SKIPPED_FOLDERS = new Set(['node_modules', '.git']);
+
+function hasLibraries({ production, development }) {
+  return [production, development].some((group) =>
+    Object.values(group).some((ids) => ids.length > 0),
+  );
+}
+
+function packageDirectories(projectRoot, isExcluded) {
+  function relativeOf(absolute) {
+    return path.relative(projectRoot, absolute).split(path.sep).join('/');
+  }
+  return [
+    ROOT_PACKAGE,
+    ...[
+      ...filesUnder(projectRoot, {
+        skipDirectory: (absolute, entry) =>
+          SKIPPED_FOLDERS.has(entry.name) || isExcluded(`${relativeOf(absolute)}/package.json`),
+      }),
+    ]
+      .map(relativeOf)
+      .filter((file) => file.endsWith('/package.json') && !isExcluded(file))
+      .map((file) => path.posix.dirname(file)),
+  ].toSorted();
+}
+
+export function detectLibraries(projectRoot, isExcluded = () => false) {
+  const packages = Object.fromEntries(
+    existsSync(projectRoot)
+      ? packageDirectories(projectRoot, isExcluded)
+          .map((directory) => [
+            directory,
+            manifestLibraries(readManifest(path.join(projectRoot, directory))),
+          ])
+          .filter(([, libraries]) => hasLibraries(libraries))
+      : [],
+  );
+  return {
+    ...mergeLibraries(packages[ROOT_PACKAGE] === undefined ? [] : [packages[ROOT_PACKAGE]]),
+    packages,
+  };
 }
 
 export function validationBehavior(libraries) {

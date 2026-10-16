@@ -1,35 +1,25 @@
 import path from 'node:path';
-import { analyzedProjectRoot, readManifest } from '../eslint-config/scope-support.mjs';
-import { manifestLibraries, mergeLibraries } from './project-libraries.mjs';
-
-const manifestsByDirectory = new Map();
-
-function directoryLibraries(directory) {
-  if (!manifestsByDirectory.has(directory)) {
-    manifestsByDirectory.set(directory, manifestLibraries(readManifest(directory)));
-  }
-  return manifestsByDirectory.get(directory);
-}
+import { mergeLibraries, ROOT_PACKAGE } from './project-libraries.mjs';
 
 function directoriesToRoot(filename, projectRoot) {
-  if (typeof filename !== 'string' || !path.isAbsolute(filename)) {
+  if (typeof filename !== 'string' || !path.isAbsolute(filename) || !projectRoot) {
     return [];
   }
-  const root = path.resolve(projectRoot);
-  const relative = path.relative(root, path.dirname(filename));
+  const relative = path.relative(path.resolve(projectRoot), path.dirname(filename));
   if (relative.startsWith('..') || path.isAbsolute(relative)) {
     return [];
   }
   const segments = relative === '' ? [] : relative.split(path.sep);
   return [
-    root,
-    ...segments.map((_, index) => path.join(root, ...segments.slice(0, index + 1))),
+    ROOT_PACKAGE,
+    ...segments.map((_, index) => segments.slice(0, index + 1).join('/')),
   ].reverse();
 }
 
-export function librariesForFile(filename, fallback, projectRoot = analyzedProjectRoot()) {
-  const directories = directoriesToRoot(filename, projectRoot);
-  return directories.length === 0
-    ? fallback
-    : mergeLibraries(directories.map((directory) => directoryLibraries(directory)));
+export function librariesForFile({ filename, cwd }, libraries) {
+  const packages = libraries?.packages ?? {};
+  const found = directoriesToRoot(filename, cwd)
+    .map((directory) => packages[directory])
+    .filter((entry) => entry !== undefined);
+  return found.length === 0 ? libraries : mergeLibraries(found);
 }

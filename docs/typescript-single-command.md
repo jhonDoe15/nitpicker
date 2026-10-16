@@ -76,10 +76,7 @@ JSON file and one environment variable.
   package-owned configs in `languages/typescript/preset/defaults/`) already spawn with `{ ...process.env }`, so the
   variable reaches all of them without per-runner plumbing.
 - One reader, `readHeadPolicy()` in `languages/typescript/preset/head-policy.mjs`, is the only code that parses the
-  file. A few rules also read facts of the checkout they lint at lint time: the `package.json`
-  nearest each file (validation and logger libraries, see "Libraries follow the project" in
-  [`typescript-strict-preset.md`](typescript-strict-preset.md)). The reader returns
-  `{ exclude, layout, thresholds }` and the other keys, with `layout` merged over the defaults
+  file. It returns `{ exclude, layout, thresholds }`, with `layout` merged over the defaults
   exported by `languages/typescript/preset/layout.mjs`. With no variable (a runner started by hand, or no config) the
   defaults apply. A variable that points at an unreadable or malformed file throws; it never
   falls back to a weaker policy.

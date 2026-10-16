@@ -2,7 +2,7 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
-import { resolveHeadPolicy } from '../head-policy.mjs';
+import { resolveHeadPolicy, withHeadCheckoutFacts } from '../head-policy.mjs';
 import { librariesForFile } from './file-libraries.mjs';
 import { detectLibraries, loggerShapes, validationBehavior } from './project-libraries.mjs';
 
@@ -36,6 +36,12 @@ describe('library detection', () => {
     expect(detectLibraries(root)).toEqual({
       validation: ['valibot', 'zod', 'yup'],
       logger: ['winston', 'pino'],
+      packages: {
+        '.': {
+          production: { validation: ['valibot'], logger: ['winston'] },
+          development: { validation: ['zod', 'yup'], logger: ['pino'] },
+        },
+      },
     });
   });
 
@@ -43,6 +49,7 @@ describe('library detection', () => {
     expect(detectLibraries(path.join(tmpdir(), 'nitpicker-no-such-project'))).toEqual({
       validation: [],
       logger: [],
+      packages: {},
     });
   });
 
@@ -52,31 +59,64 @@ describe('library detection', () => {
     expect(resolveHeadPolicy({}, root).libraries).toEqual({
       validation: ['joi'],
       logger: ['pino'],
+      packages: {
+        '.': {
+          production: { validation: ['joi'], logger: ['pino'] },
+          development: { validation: [], logger: [] },
+        },
+      },
     });
+  });
+});
+
+describe('libraries of the base run', () => {
+  it('takes the libraries of every package from the head checkout', () => {
+    const root = projectWith({
+      '.': { dependencies: { joi: '17.0.0' } },
+      'packages/api': { dependencies: { valibot: '1.0.0' } },
+    });
+    const head = resolveHeadPolicy({}, root);
+    const base = withHeadCheckoutFacts({ libraries: { validation: [], logger: [] } }, head);
+
+    expect(base.libraries).toEqual(head.libraries);
+    expect(Object.keys(base.libraries.packages)).toEqual(['.', 'packages/api']);
   });
 });
 
 describe('libraries of the manifest nearest a file', () => {
   const fallback = { validation: ['zod'], logger: [] };
+  const monorepo = {
+    '.': { dependencies: { joi: '17.0.0' } },
+    'packages/api': { dependencies: { valibot: '1.0.0' }, devDependencies: { yup: '1.0.0' } },
+    'packages/api/src': {},
+    'packages/node_modules/dep': { dependencies: { arktype: '2.0.0' } },
+    'dist/lib': { dependencies: { zod: '4.0.0' } },
+  };
 
   it('lists the nearest package first, then the ones above it up to the root', () => {
-    const root = projectWith({
-      '.': { dependencies: { joi: '17.0.0' } },
-      'packages/api': { dependencies: { valibot: '1.0.0' }, devDependencies: { yup: '1.0.0' } },
-      'packages/api/src': {},
-    });
+    const root = projectWith(monorepo);
+    const libraries = detectLibraries(root, (file) => file.startsWith('dist/'));
     const file = path.join(root, 'packages/api/src/handler.ts');
 
-    expect(librariesForFile(file, fallback, root)).toEqual({
+    expect(librariesForFile({ filename: file, cwd: root }, libraries)).toEqual({
       validation: ['valibot', 'joi', 'yup'],
       logger: [],
     });
   });
 
+  it('records every package directory that declares libraries, except dependencies and excluded folders', () => {
+    const root = projectWith(monorepo);
+
+    expect(Object.keys(detectLibraries(root, (file) => file.startsWith('dist/')).packages)).toEqual(
+      ['.', 'packages/api'],
+    );
+  });
+
   it('reads the root manifest for a file at the root', () => {
     const root = projectWith({ '.': { dependencies: { arktype: '2.0.0' } } });
+    const filename = path.join(root, 'index.ts');
 
-    expect(librariesForFile(path.join(root, 'index.ts'), fallback, root)).toEqual({
+    expect(librariesForFile({ filename, cwd: root }, detectLibraries(root))).toEqual({
       validation: ['arktype'],
       logger: [],
     });
@@ -84,9 +124,16 @@ describe('libraries of the manifest nearest a file', () => {
 
   it('uses the policy libraries for a file outside the project or a relative file name', () => {
     const root = projectWith({ '.': { dependencies: { arktype: '2.0.0' } } });
+    const libraries = { ...fallback, packages: detectLibraries(root).packages };
 
-    expect(librariesForFile('/elsewhere/x.ts', fallback, root)).toBe(fallback);
-    expect(librariesForFile('<input>', fallback, root)).toBe(fallback);
+    expect(librariesForFile({ filename: '/elsewhere/x.ts', cwd: root }, libraries)).toBe(libraries);
+    expect(librariesForFile({ filename: '<input>', cwd: root }, libraries)).toBe(libraries);
+  });
+
+  it('uses the policy libraries when the policy lists no packages', () => {
+    const filename = path.join(tmpdir(), 'x.ts');
+
+    expect(librariesForFile({ filename, cwd: tmpdir() }, fallback)).toBe(fallback);
   });
 });
 

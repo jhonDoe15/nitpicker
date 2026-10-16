@@ -15,6 +15,7 @@ import {
 } from './eslint-config/scope-support.mjs';
 import {
   builtInExcludedGlobs,
+  globToRegExp,
   resolveLayout,
   resolveLayoutFor,
   sourceRoots,
@@ -65,7 +66,10 @@ function withProjectFacts(policy, config, projectRoot) {
   return {
     ...policy,
     ...(SCOPED_PRESETS.includes(config.preset)
-      ? { ...withDetectedScopes(policy, projectRoot), libraries: detectLibraries(projectRoot) }
+      ? {
+          ...withDetectedScopes(policy, projectRoot),
+          libraries: detectLibraries(projectRoot, excludedPathMatcher(policy)),
+        }
       : {}),
     ...(usesProjectConfig(prettier?.precedence ?? [])
       ? {
@@ -76,6 +80,11 @@ function withProjectFacts(policy, config, projectRoot) {
         }
       : {}),
   };
+}
+
+function excludedPathMatcher(policy) {
+  const matchers = resolveLayoutFor(policy).excludedGlobs.map(globToRegExp);
+  return (file) => matchers.some((matcher) => matcher.test(file));
 }
 
 function withDetectedScopes(policy, projectRoot) {
