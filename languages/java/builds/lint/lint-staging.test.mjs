@@ -2,7 +2,7 @@ import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
-import { blankSuppressions, stageSources } from './lint-staging.mjs';
+import { blankSuppressions, stagedRoot, stageSources } from './lint-staging.mjs';
 
 const roots = [];
 
@@ -55,6 +55,7 @@ describe('stageSources', () => {
       'app/src/test/lombok.config': 'lombok.accessors.chain = true\n',
     });
     const staged = path.join(root, 'app/build/nitpicker-lint/work/sources');
+    const base = stagedRoot(staged, root);
     const sources = ['app/src/main/java/demo/A.java', 'app/src/main/java/other/B.java'];
 
     const files = stageSources({
@@ -63,54 +64,74 @@ describe('stageSources', () => {
       staged,
     });
 
-    expect(files).toEqual(sources.map((file) => path.join(staged, file)));
+    expect(files).toEqual(sources.map((file) => path.join(base, file)));
     expect(readFileSync(files[0], 'utf8')).toBe(`package demo;\n${' '.repeat(24)} class A {}\n`);
     expect(readFileSync(path.join(staged, 'lombok.config'), 'utf8')).toBe(
-      'lombok.addLombokGeneratedAnnotation = true\nconfig.stopBubbling = true\n',
+      'config.stopBubbling = true\n',
     );
-    expect(readFileSync(path.join(staged, 'app/lombok.config'), 'utf8')).toBe(
+    expect(
+      ['lombok.config', 'app/lombok.config', 'app/src/main/java/demo/lombok.config'].map((file) =>
+        readFileSync(path.join(base, file), 'utf8'),
+      ),
+    ).toEqual([
+      'lombok.addLombokGeneratedAnnotation = true',
       'lombok.log.fieldName = LOG\n',
-    );
-    expect(readFileSync(path.join(staged, 'app/src/main/java/demo/lombok.config'), 'utf8')).toBe(
       'lombok.accessors.fluent = true\n',
-    );
-    expect(existsSync(path.join(staged, 'app/src/test/lombok.config'))).toBe(false);
+    ]);
+    expect(existsSync(path.join(base, 'app/src/test/lombok.config'))).toBe(false);
   });
 
-  it('writes the configuration the root inherits from its parents, up to one that stops bubbling', () => {
-    const outer = temporary();
+  it('copies the lombok.config of the parent folders up to the nearest one that stops bubbling', () => {
+    const top = temporary();
+    const outer = path.join(top, 'outer');
     const root = path.join(outer, 'repo/app');
-    writeFiles(outer, {
-      'lombok.config': 'config.stopBubbling = true\nlombok.log.fieldName = LOG',
-      'repo/lombok.config': 'lombok.accessors.fluent = true',
-      'repo/app/lombok.config': 'lombok.accessors.chain = true',
-      'repo/app/src/main/java/demo/A.java': 'package demo;\nclass A {}\n',
+    writeFiles(top, {
+      'lombok.config': 'lombok.accessors.prefix += m_',
+      'outer/lombok.config': 'config.stopBubbling = true\nlombok.log.fieldName = LOG',
+      'outer/repo/lombok.config': 'lombok.accessors.fluent = true',
+      'outer/repo/app/src/main/java/demo/A.java': 'package demo;\nclass A {}\n',
     });
     const staged = path.join(root, 'build/nitpicker-lint/work/sources');
 
     stageSources({ root, sources: [path.join(root, 'src/main/java/demo/A.java')], staged });
 
-    expect(readFileSync(path.join(staged, 'lombok.config'), 'utf8')).toBe(
-      [
-        'config.stopBubbling = true',
-        'lombok.log.fieldName = LOG',
-        'lombok.accessors.fluent = true',
-        'lombok.accessors.chain = true',
-        'config.stopBubbling = true',
-        '',
-      ].join('\n'),
+    expect(readFileSync(path.join(stagedRoot(staged, outer), 'lombok.config'), 'utf8')).toBe(
+      'config.stopBubbling = true\nlombok.log.fieldName = LOG',
     );
+    expect(readFileSync(path.join(stagedRoot(staged, outer), 'repo/lombok.config'), 'utf8')).toBe(
+      'lombok.accessors.fluent = true',
+    );
+    expect(existsSync(path.join(stagedRoot(staged, top), 'lombok.config'))).toBe(false);
   });
 
-  it('stops the configuration lookup at the staged root when the project has no root lombok.config', () => {
+  it('points relative imports of a copied lombok.config at the files they name', () => {
     const root = temporary();
-    writeFiles(root, { 'src/main/java/demo/A.java': 'package demo;\nclass A {}\n' });
+    writeFiles(root, {
+      'lombok.config': [
+        'import ../shared/base.config',
+        'import /etc/lombok/base.config',
+        'import ~/lombok.config',
+        'import <HOME>/lombok.config',
+        'import config/models.jar!lombok/models.config',
+        'lombok.accessors.chain = true',
+        '',
+      ].join('\n'),
+      'src/main/java/demo/A.java': 'package demo;\nclass A {}\n',
+    });
     const staged = path.join(root, 'build/nitpicker-lint/work/sources');
 
     stageSources({ root, sources: [path.join(root, 'src/main/java/demo/A.java')], staged });
 
-    expect(readFileSync(path.join(staged, 'lombok.config'), 'utf8')).toBe(
-      'config.stopBubbling = true\n',
+    expect(readFileSync(path.join(stagedRoot(staged, root), 'lombok.config'), 'utf8')).toBe(
+      [
+        `import ${path.join(path.dirname(root), 'shared/base.config')}`,
+        'import /etc/lombok/base.config',
+        'import ~/lombok.config',
+        'import <HOME>/lombok.config',
+        `import ${path.join(root, 'config/models.jar')}!lombok/models.config`,
+        'lombok.accessors.chain = true',
+        '',
+      ].join('\n'),
     );
   });
 });
