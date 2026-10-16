@@ -40,17 +40,16 @@ describe('nitpicker CLI', () => {
     });
     const indexBefore = fixtureGit(repository.root, ['ls-files', '--stage']);
     const output = captureOutput();
+    const outputRoot = makeOutputRoot();
     const exitCode = runCli({
       arguments_: [
         '--fix',
         '--base',
         repository.baseRef,
         '--analyzer',
-        'eslint-lint',
-        '--analyzer',
         'prettier-format',
         '--output',
-        makeOutputRoot(),
+        outputRoot,
       ],
       currentProjectRoot: repository.root,
       environment: isolatedCache(),
@@ -68,9 +67,16 @@ describe('nitpicker CLI', () => {
       'export const unchanged=1\n',
     );
     expect(fixtureGit(repository.root, ['ls-files', '--stage'])).toBe(indexBefore);
-    expect(output.stdoutText).toMatch(
-      /Fixed files:\nsrc\/main\/changed.ts\nsrc\/main\/format.mjs\nBase:/,
-    );
+    expect(output.stdoutText).toBe(`Fixed files:
+src/main/changed.ts
+src/main/format.mjs
+Base: ${repository.baseRef} (argument)
+
+\u001b[1m\u001b[32mQuality gate summary\u001b[0m
+\u001b[32m✓ No new enforceable violations\u001b[0m
+\u001b[2mFull diagnostics: ${outputRoot}/report.txt\u001b[0m
+`);
+    expect(output.stderrText).toBe('');
   });
   it('continues remaining fixers and comparison when a fixer fails', () => {
     const repository = createRepository({
