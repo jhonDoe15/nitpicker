@@ -1011,7 +1011,12 @@ clearest message: usually the Error Prone check with its fix over a SpotBugs pat
 check over the general one (`OptionalEquality` or `BoxedPrimitiveEquality` over
 `ReferenceEquality`, over PMD's `CompareObjectsWithEquals` and SpotBugs `ES_COMPARING_*`), and the fullest switch check over the
 rest (`MissingCasesInEnumSwitch` over `NonExhaustiveSwitch`, `MissingDefault`, Checkstyle's
-`MissingSwitchDefault` and `SF_SWITCH_NO_DEFAULT`).
+`MissingSwitchDefault` and `SF_SWITCH_NO_DEFAULT`). A forbiddenapis signature stands over the
+Error Prone check on the same call: its message names the allowed form at least as clearly
+(`legacy-date-time` lists the java.time classes and the `toInstant()` conversion, where
+`JavaUtilDate` names only `Instant` or `LocalDate`), and its fix also settles the check, which the
+check's own fix does not (`LocalDate.now(zone)` for `JavaTimeDefaultTimeZone` is still a
+`clock-now` call, `Thread.sleep(Duration)` for `PreferJavaTimeOverload` still a `thread-sleep`).
 
 Where the primary covers only some of the secondary's cases, both stay on and the secondary is
 dropped only in the scope the two share: `RV_RETURN_VALUE_IGNORED` on a method Error Prone's
@@ -1105,6 +1110,10 @@ table:
 - line: `errorprone/StreamResourceLeak` over `pmd/StreamResourceNotClosed`
 - line: `errorprone/PatternMatchingInstanceof` over `pmd/InstanceofThenCast`
 - line: `errorprone/ThrowSpecificExceptions` over `pmd/AvoidThrowingRawExceptionTypes`
+- line: `forbiddenapis/legacy-date-time` over `errorprone/JavaUtilDate`
+- line: `forbiddenapis/clock-now` over `errorprone/JavaTimeDefaultTimeZone`
+- line: `forbiddenapis/thread-sleep` over `errorprone/PreferJavaTimeOverload`
+- line: `forbiddenapis/java-deserialization` over `errorprone/BanSerializableRead`
 - line: `errorprone/MissingOverride` over `pmd/MissingOverride`
 - line: `pmd/DefaultLabelNotLastInSwitch` over `errorprone/SwitchDefault`
 - line: `checkstyle/JavadocMethod` over `errorprone/InvalidParam`
@@ -1764,7 +1773,8 @@ Error Prone findings are in no catalog: their allowed form comes from
 this, so
 `overlap-pairs.json` names Checkstyle checks the same short way, or by the module id
 `google_checks.xml` gives (`checkstyle/AnnotationLocationMostCases`); a unit test checks every rule
-in it against the catalogs, nitpicker's own PMD rules and Error Prone's check list.
+in it against the catalogs, nitpicker's own PMD rules, Error Prone's check list and the
+`@defaultMessage` tags of `forbidden-apis.txt` (`forbiddenapis/legacy-date-time`).
 
 ## Slice 1: what is deliberately not included
 
