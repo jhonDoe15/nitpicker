@@ -41,6 +41,9 @@ function panel(body) {
   return `export function Panel({ a }) { ${body} return <div />; }`;
 }
 
+const exclusivePair =
+  'export function Panel({ a, b }) { if (a && b) { throw new Error("both"); } return <div />; }';
+
 const reactSyntaxCases = [
   [
     'class component names function components',
@@ -73,6 +76,18 @@ const reactSyntaxCases = [
     panel('useEffect(() => { log(a); }, []);'),
     'nitpicker.config.json',
   ],
+  [
+    'singular and plural props name the one-element array',
+    'export type PanelProps = { tag?: string; tags?: string[] };',
+    'one-element array',
+  ],
+  [
+    'singular and plural props name the config exception',
+    'export type PanelProps = { tag?: string; tags?: string[] };',
+    'nitpicker.config.json',
+  ],
+  ['exclusive props check names the discriminated union', exclusivePair, 'discriminated union'],
+  ['exclusive props check names the config exception', exclusivePair, 'nitpicker.config.json'],
   [
     'index key names a stable id',
     'export const List = ({ items }) => <ul>{items.map((item, index) => <li key={index}>{item}</li>)}</ul>;',
@@ -220,6 +235,16 @@ const reactTestCases = [
   [
     'component state names the config exception',
     'expect(wrapper.state()).toEqual({});',
+    'nitpicker.config.json',
+  ],
+  [
+    'hover test names tabbing to the element',
+    "await userEvent.hover(screen.getByRole('button'));",
+    'await user.tab()',
+  ],
+  [
+    'hover test names the config exception',
+    "await userEvent.hover(screen.getByRole('button'));",
     'nitpicker.config.json',
   ],
   ['hook spy names renderHook', "vi.spyOn(React, 'useState');", '`renderHook`'],

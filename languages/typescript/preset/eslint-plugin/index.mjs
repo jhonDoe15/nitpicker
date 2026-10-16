@@ -31,9 +31,15 @@ import { rule as hermeticGitInTests } from './rules/testing/processes/hermetic-g
 import { rule as noNodeProcessPerTest } from './rules/testing/processes/no-node-process-per-test.mjs';
 import { rule as noServerOrWorkerPerTest } from './rules/testing/processes/no-server-or-worker-per-test.mjs';
 import { rule as noRaisedTestTimeout } from './rules/testing/assertions/no-raised-test-timeout.mjs';
+import { rule as noUnusedDomEnvironment } from './rules/testing/environment/no-unused-dom-environment.mjs';
 import { rule as noPartialOutputAssertion } from './rules/testing/assertions/no-partial-output-assertion.mjs';
 import { rule as noProcessGlobalsOutsideMainGuard } from './rules/modules/no-process-globals-outside-main-guard.mjs';
 import { rule as testTsconfigPinsLibAndTypes } from './rules/testing/types/test-tsconfig-pins-lib-and-types.mjs';
+import { rule as exhaustiveUnionPredicate } from './rules/api-shape/exhaustive-union-predicate.mjs';
+import { rule as hoverTestNeedsKeyboard } from './rules/react-tests/hover-test-needs-keyboard.mjs';
+import { rule as noForwardingWrapper } from './rules/api-shape/no-forwarding-wrapper.mjs';
+import { rule as noRuntimeExclusivePropsCheck } from './rules/react-props/no-runtime-exclusive-props-check.mjs';
+import { rule as noSingularAndPluralProp } from './rules/react-props/no-singular-and-plural-prop.mjs';
 import { rule as reactNoEffectDataFetching } from './rules/react/react-no-effect-data-fetching.mjs';
 import { rule as reactNoHardcodedColors } from './rules/react/theme/react-no-hardcoded-colors.mjs';
 import { rule as reactNoEffectDerivedState } from './rules/react/react-no-effect-derived-state.mjs';
@@ -81,8 +87,14 @@ export const nitpickerRules = {
     'no-server-or-worker-per-test': noServerOrWorkerPerTest,
     'no-raised-test-timeout': noRaisedTestTimeout,
     'no-partial-output-assertion': noPartialOutputAssertion,
+    'no-unused-dom-environment': noUnusedDomEnvironment,
     'no-process-globals-outside-main-guard': noProcessGlobalsOutsideMainGuard,
     'test-tsconfig-pins-lib-and-types': testTsconfigPinsLibAndTypes,
+    'exhaustive-union-predicate': exhaustiveUnionPredicate,
+    'hover-test-needs-keyboard': hoverTestNeedsKeyboard,
+    'no-forwarding-wrapper': noForwardingWrapper,
+    'no-runtime-exclusive-props-check': noRuntimeExclusivePropsCheck,
+    'no-singular-and-plural-prop': noSingularAndPluralProp,
     'react-no-effect-data-fetching': reactNoEffectDataFetching,
     'react-no-effect-derived-state': reactNoEffectDerivedState,
     'react-no-hardcoded-colors': reactNoHardcodedColors,

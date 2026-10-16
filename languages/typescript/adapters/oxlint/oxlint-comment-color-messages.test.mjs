@@ -1,12 +1,10 @@
+import { rmSync } from 'node:fs';
+import path from 'node:path';
 import { afterAll, describe, expect, it } from 'vitest';
 import { rule as noComments } from '../../preset/eslint-plugin/rules/modules/no-comments.mjs';
 import { rule as noFixedSleep } from '../../preset/eslint-plugin/rules/testing/lifecycle/no-fixed-sleep-synchronization.mjs';
 import { rule as noHardcodedColors } from '../../preset/eslint-plugin/rules/react/theme/react-no-hardcoded-colors.mjs';
-import {
-  lintProject,
-  messagesOf as oxlintMessagesOf,
-  removeProject,
-} from './test-support/oxlint-project.mjs';
+import { createProject, lintProject } from './test-support/oxlint-project.mjs';
 
 const POLICY = `import tseslint from ${JSON.stringify(import.meta.resolve('typescript-eslint'))};
 import { nitpickerRules } from ${JSON.stringify(import.meta.resolve('../../preset/eslint-plugin/index.mjs'))};
@@ -58,25 +56,24 @@ const EXPECTED = {
   ),
 };
 
-const projects = [];
+const roots = [];
 
 afterAll(() => {
-  for (const project of projects.splice(0)) removeProject(project);
+  for (const root of roots.splice(0)) rmSync(root, { recursive: true, force: true });
 });
 
 describe('nitpicker rule messages through the oxlint engine', () => {
   it('keeps the doc comment, hard-coded color and wall-clock wait messages with their data', () => {
-    const project = lintProject({
-      policy: POLICY,
-      sources: SOURCES,
-      patterns: ['src/**/*.{ts,tsx}'],
-    });
-    projects.push(project);
+    const root = createProject('nitpicker-oxlint-messages-', { 'policy.mjs': POLICY, ...SOURCES });
+    roots.push(root);
+    const results = lintProject({ root, patterns: ['src/**/*.{ts,tsx}'] });
 
     const messages = Object.fromEntries(
       Object.keys(EXPECTED).map((file) => [
         file,
-        oxlintMessagesOf(project, file, ['ruleId', 'messageId', 'message']),
+        results
+          .find((result) => result.filePath === path.join(root, file))
+          ?.messages.map(({ ruleId, messageId, message }) => ({ ruleId, messageId, message })),
       ]),
     );
 
