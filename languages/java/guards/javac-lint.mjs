@@ -40,7 +40,7 @@ export function parseLintWarnings(text) {
   });
 }
 
-function lintNotRun(reportRoot, sourceRoots) {
+function lintNotRun(reportRoot, sourceRoots, moduleDir) {
   const failure = path.join(reportRoot, LINT_FAILURE);
   if (!existsSync(failure)) {
     return [];
@@ -58,7 +58,7 @@ function lintNotRun(reportRoot, sourceRoots) {
       message: `No javac lint report: the lint compile failed (${firstError.trim()}), so raw types, unchecked operations, deprecated calls and redundant casts were not checked.`,
       classification: 'descriptive',
       toolNotRun: true,
-      notRunScope: rootsScope(sourceRoots),
+      notRunScope: rootsScope(sourceRoots, moduleDir),
     },
   ];
 }
@@ -73,10 +73,10 @@ function projectFileCheck(projectRoot) {
   };
 }
 
-export function readLintFindings(reportRoot, { projectRoot, sourceRoots = [] }) {
+export function readLintFindings(reportRoot, { projectRoot, sourceRoots = [], moduleDir }) {
   const report = path.join(reportRoot, LINT_REPORT);
   if (!existsSync(report)) {
-    return lintNotRun(reportRoot, sourceRoots);
+    return lintNotRun(reportRoot, sourceRoots, moduleDir);
   }
   const unique = createIdentityCounter();
   const inProject = projectFileCheck(projectRoot);

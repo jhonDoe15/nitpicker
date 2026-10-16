@@ -15,6 +15,7 @@ import java.util.Arrays;
 import java.util.EnumSet;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import net.sourceforge.pmd.cpd.CPDConfiguration;
 import net.sourceforge.pmd.cpd.CPDReport;
@@ -24,14 +25,23 @@ import net.sourceforge.pmd.lang.LanguageRegistry;
 import net.sourceforge.pmd.lang.document.FileId;
 
 public final class CpdReport {
-    private static final Pattern CLASS_LITERAL =
-        Pattern.compile("\\.((?:\\s|/\\*.*?\\*/|//[^\\n]*\\n)*)class(?![\\w$])", Pattern.DOTALL);
+    private static final String KEPT = "//[^\\n]*|/\\*.*?\\*/|\"(?:\\\\.|[^\"\\\\])*\"|'(?:\\\\.|[^'\\\\])*'";
+    private static final String BLOCK_COMMENT = "/\\*.*?\\*/";
+    private static final Pattern CLASS_LITERAL = Pattern.compile(
+        "(" + KEPT + ")|([\\p{javaJavaIdentifierPart}\\]>](?:\\s|" + BLOCK_COMMENT + ")*)"
+            + "\\.((?:\\s|" + BLOCK_COMMENT + "|//[^\\n]*\\n)*)class(?!\\p{javaJavaIdentifierPart})",
+        Pattern.DOTALL);
+    private static final String SKIPPED = "cpd-skipped.txt";
     private static final int MINIMUM_TOKENS = 100;
 
     private CpdReport() {
     }
 
     public static void main(String[] args) throws IOException {
+        if (args.length == 0) {
+            System.err.println("usage: CpdReport <report.xml> <source directory>...");
+            System.exit(2);
+        }
         CPDConfiguration config = new CPDConfiguration();
         config.setMinimumTileSize(MINIMUM_TOKENS);
         config.setIgnoreIdentifiers(true);
@@ -41,9 +51,13 @@ public final class CpdReport {
         Path report = Path.of(args[0]);
         XMLRenderer renderer = new XMLRenderer(config.getSourceEncoding().name());
         AtomicBoolean reported = new AtomicBoolean();
+        List<String> skipped = new ArrayList<>();
         try (CpdAnalysis cpd = CpdAnalysis.create(config)) {
-            for (Path file : sourceFiles(Arrays.copyOfRange(args, 1, args.length))) {
-                addSource(cpd, file);
+            for (Path file : sourceFiles(Arrays.copyOfRange(args, 1, args.length), skipped)) {
+                addSource(cpd, file, skipped);
+            }
+            if (!skipped.isEmpty()) {
+                Files.write(report.resolveSibling(SKIPPED), skipped, StandardCharsets.UTF_8);
             }
             cpd.performAnalysis(result -> reported.set(write(renderer, result, report)));
         }
@@ -61,7 +75,7 @@ public final class CpdReport {
         }
     }
 
-    private static List<Path> sourceFiles(String[] directories) throws IOException {
+    private static List<Path> sourceFiles(String[] directories, List<String> skipped) throws IOException {
         List<Path> files = new ArrayList<>();
         for (String directory : directories) {
             Files.walkFileTree(Path.of(directory), EnumSet.of(FileVisitOption.FOLLOW_LINKS), Integer.MAX_VALUE,
@@ -77,7 +91,7 @@ public final class CpdReport {
                     @Override
                     public FileVisitResult visitFileFailed(Path file, IOException e) {
                         String reason = e instanceof FileSystemLoopException ? "symbolic link loop" : e.toString();
-                        System.err.println("CPD skipped " + file + ": " + reason);
+                        skip(skipped, file, reason);
                         return FileVisitResult.CONTINUE;
                     }
                 });
@@ -86,13 +100,20 @@ public final class CpdReport {
         return files;
     }
 
-    private static void addSource(CpdAnalysis cpd, Path file) {
+    private static void addSource(CpdAnalysis cpd, Path file, List<String> skipped) {
         try {
             String text = new String(Files.readAllBytes(file), StandardCharsets.UTF_8);
-            String safe = CLASS_LITERAL.matcher(text).replaceAll(".$1const");
+            String safe = CLASS_LITERAL.matcher(text).replaceAll(match -> Matcher.quoteReplacement(
+                match.group(1) != null ? match.group() : match.group(2) + "." + match.group(3) + "const"));
             cpd.files().addSourceFile(FileId.fromPath(file), safe);
         } catch (IOException e) {
-            System.err.println("CPD skipped " + file + ": " + e);
+            skip(skipped, file, e.toString());
         }
+    }
+
+    private static void skip(List<String> skipped, Path file, String reason) {
+        String line = file + ": " + reason;
+        System.err.println("CPD skipped " + line);
+        skipped.add(line);
     }
 }

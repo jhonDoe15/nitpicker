@@ -12,6 +12,7 @@ const MAVEN_DEFAULT_RELEASE = 8;
 const CPD_EXITS = new Set([0, 4]);
 const CPD_REPORT = 'cpd.xml';
 const CPD_FAILURE = 'cpd-failed.txt';
+const CPD_SKIPPED = 'cpd-skipped.txt';
 const CPD_ROOT = /<pmd-cpd[\s/>]/u;
 const TEST_CLASS_PATTERN = [
   String.raw`^(?:.*\.)?Test[^\.]*$`,
@@ -214,7 +215,7 @@ function wroteReport(result, report) {
 export function runCpd({ module, reportDir, tools }) {
   const report = path.join(reportDir, CPD_REPORT);
   const failure = path.join(reportDir, CPD_FAILURE);
-  for (const stale of [report, failure]) {
+  for (const stale of [report, failure, path.join(reportDir, CPD_SKIPPED)]) {
     rmSync(stale, { force: true });
   }
   const directories = [...module.sourceRoots, ...module.testSourceRoots].filter((root) =>

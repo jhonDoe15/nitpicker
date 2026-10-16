@@ -419,6 +419,10 @@ describe('spec/findings.schema.json', () => {
 
     expect(parseFinding(finding)).toEqual(finding);
     expect(validate({ findings: [finding] })).toEqual([]);
+    expect(parseFinding({ ...finding, notRunScope: ['./', '.\\', 'core\\src/'] })).toEqual({
+      ...finding,
+      notRunScope: ['.', '.', 'core/src'],
+    });
   });
 
   it('is exercised by a validator that covers every keyword the schema uses', () => {
