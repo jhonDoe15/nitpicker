@@ -115,10 +115,10 @@ function mutator(qualifiedName) {
 
 function parseMutant(attributes, body) {
   const status = /\bstatus\s*=\s*['"]([^'"]*)['"]/.exec(attributes)?.[1];
-  const field = (name) => {
+  function field(name) {
     const match = new RegExp(`<${name}>([^<]*)</${name}>`).exec(body);
     return match === null ? undefined : decodeEntities(match[1]);
-  };
+  }
   const className = field('mutatedClass');
   const sourceFile = field('sourceFile');
   if (status === undefined || className === undefined || sourceFile === undefined) {

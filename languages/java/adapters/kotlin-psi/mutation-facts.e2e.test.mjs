@@ -2,12 +2,8 @@ import { cpSync, mkdtempSync, readdirSync, readFileSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { FACTS_EXPECTED, FACTS_SOURCE } from '../fixtures/kotlin-mutation-facts/sources.mjs';
-import { gradleClasspath, runPsiProgram, writeSources } from './psi-program.mjs';
-
-// Runs KotlinMutationFacts.java, the PSI program behind the Kotlin mutation filter, on source files.
-// It needs Java 21, Gradle and network access to Maven Central (for the Kotlin compiler the init
-// script pins), so it only runs with NITPICKER_KOTLIN_E2E=1 (`npm run test:kotlin`).
+import { FACTS_EXPECTED, FACTS_SOURCE } from './test-support/facts-sources.mjs';
+import { gradleClasspath, runPsiProgram, writeSources } from './test-support/psi-program.mjs';
 
 const enabled = process.env.NITPICKER_KOTLIN_E2E === '1';
 const gradle = process.env.NITPICKER_GRADLE ?? 'gradle';

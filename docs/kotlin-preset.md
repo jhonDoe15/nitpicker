@@ -24,15 +24,16 @@ also lets the reports say what ran: the analyzer is named `kotlin`, so a Gradle 
 `kotlin/gradle-failure` tool error and `baseline-expansion` findings carry the tool `kotlin`. What
 stays shared is everything else: `languages/java/` holds both presets, and `createJavaAnalyzer`
 takes `{ kotlin: true }`. A project whose build has no Kotlin module and sets `"preset": "kotlin"`
-fails with a tool error saying so.
+fails with a tool error saying so, and so does a Maven project (`kotlin/maven-failure`): the
+Kotlin tasks live in the Gradle init script, so a Maven project uses the java preset.
 
 ## How it works
 
 ```
 gradle -Pnitpicker.kotlin=true -I languages/java/gradle/nitpicker.init.gradle nitpickerJava   (per snapshot)
   -> everything the Java preset writes, plus build/nitpicker/{detekt.sarif, ktlint.sarif | ktfmt.txt}
-  -> readJavaFindings(root, { preset: 'kotlin' })   (languages/java/adapters/java-reports.mjs)
-       -> readKotlinFindings                         (languages/java/adapters/kotlin-reports.mjs)
+  -> readJavaFindings(root, { preset: 'kotlin' })   (languages/java/adapters/reporting/java-reports.mjs)
+       -> readKotlinFindings                         (languages/java/adapters/reporting/kotlin-reports.mjs)
   -> compareFindings(base, head, renames)
 ```
 
@@ -43,7 +44,7 @@ and makes `nitpickerJava` depend on them. The tool versions are in the same pinn
 Java ones: detekt 1.23.8, ktlint 1.8.0, ktfmt 0.64. `manifest.json` gains `kotlin: true`,
 `kotlinSourceRoots` and `kotlinFormatter`; its `sourceRoots` stay the Java source roots. Which
 formatter, ktfmt style and detekt config to use is decided on the Nitpicker side
-(`languages/java/adapters/kotlin-tools.mjs`, unit tested) and handed to the init script as Gradle
+(`languages/java/adapters/kotlin/kotlin-tools.mjs`, unit tested) and handed to the init script as Gradle
 properties.
 
 ## What runs on what
@@ -124,7 +125,7 @@ no separate build to ship), turned on and configured. Every message names the al
 form (in detekt's text, or in a sentence the gate appends when detekt's text does not name it) and
 ends with the exception route, which the gate appends to all of them. The `inline-suppression`
 message names the fix and both routes. Each rule has a banned and an allowed fixture in
-`languages/java/adapters/fixtures/kotlin-rules/cases.mjs`.
+`languages/java/adapters/kotlin/rules/test-support/kotlin-rule-cases.mjs`.
 
 | Spot              | Banned                                | Allowed                                                           | Rule (detekt)                                                            |
 | ----------------- | ------------------------------------- | ----------------------------------------------------------------- | ------------------------------------------------------------------------ |
@@ -473,8 +474,8 @@ runs Gradle, with `org.jetbrains.kotlin:kotlin-compiler-embeddable` on the class
 pinned as `kotlinCompiler` in the init script (2.4.21) and resolved from its own Gradle configuration
 (`nitpickerKotlinCompiler`), like the other tools. It uses the compiler's PSI classes, so bumping the
 pin means running `npm run test:kotlin` again; the `kotlin-e2e` GitHub Actions workflow runs it for a
-change under `languages/java`, `core` or `shared`, the package files or the workflow itself, and for no
-other change. A line-based tool cannot be the source: it has no statement count or control nesting, and
+push to `main` that changes `languages/java`, `core` or `shared`, the package files or the workflow
+itself, by hand, and on a pull request when the `run-ci` label is added. A line-based tool cannot be the source: it has no statement count or control nesting, and
 token-based readers misread ordinary Kotlin (extension functions such as `fun String.shout() = ...`,
 expression-bodied functions, the `->` of a lambda), which would attribute a complexity per function to
 the wrong lines.
@@ -615,16 +616,16 @@ fails only when it grows, and a package folder moved to a new path is matched to
 
 ## Tests
 
-- `core/java-cli.test.mjs`: the CLI with the fake `gradle`
+- `core/command/java/java-cli.test.mjs`: the CLI with the fake `gradle`
   (`languages/java/adapters/fixtures/fake-gradle.mjs`, which writes the Kotlin reports when it sees
   `-Pnitpicker.kotlin=true`, and a JaCoCo or PIT report the test provides): pass, new detekt finding,
   new unformatted file with each formatter, an uncovered changed Kotlin branch, a Kotlin mutant and a
   Java one that fail and a generated Kotlin mutant that does not, baseline expansion, Gradle failure on either snapshot.
-- `languages/java/adapters/kotlin-reports.test.mjs`: a real detekt SARIF
+- `languages/java/adapters/reporting/kotlin-*-reports.test.mjs` (lint, coverage, metrics): a real detekt SARIF
   (`languages/java/ingest/fixtures/detekt.sarif`, recorded from detekt 1.23.8) and the format list
   through `readJavaFindings`; JaCoCo roots; branch gating of Kotlin files; Kotlin and Java mutants
   being enforceable; the Java preset ignoring Kotlin reports.
-- `languages/java/ingest/kotlin-branches.test.mjs`: the generated-line filter (what it drops and the
+- `languages/java/ingest/coverage-reports/kotlin-branches.test.mjs`: the generated-line filter (what it drops and the
   lines it must keep), a JaCoCo report recorded from 0.8.12 on the measurement project
   (`fixtures/jacoco-kotlin.xml`, class elements dropped; the project is
   `fixtures/kotlin-measurement`) that yields exactly the real misses, and a recorded report of
@@ -634,26 +635,26 @@ fails only when it grows, and a package folder moved to a new path is matched to
   look-alike it keeps (`generated-filter.test.mjs`), `ingestPit` with and without the filter
   (`pit-generated.test.mjs`), and the real PIT 1.17.4 report of the measurement project with the
   facts of its sources (`kotlin-measurement.test.mjs`: 60 mutants that would fail the gate, 16 after
-  the filter, listed one by one). `languages/java/adapters/kotlin-generated-filter.test.mjs` reads
+  the filter, listed one by one). `languages/java/adapters/reporting/kotlin-generated-filter.test.mjs` reads
   the generated source directories of the manifest.
 - `languages/java/adapters/kotlin-psi/mutation-facts.e2e.test.mjs` (with `npm run test:kotlin`):
   the facts program on a source file with every construct the rules use, and on the measurement
   project, whose facts must equal the committed `kotlin-measurement-facts.json`.
-- `languages/java/adapters/kotlin-tools.test.mjs`: formatter and ktfmt style detection (Spotless
+- `languages/java/adapters/kotlin/kotlin-tools.test.mjs`: formatter and ktfmt style detection (Spotless
   blocks, comments, `.editorconfig`, the override), detekt config detection and the override, and
   the Gradle arguments (including `--no-configuration-cache`).
-- `languages/java/adapters/kotlin-metrics.test.mjs`: structure findings, the JaCoCo method selection
+- `languages/java/adapters/kotlin/kotlin-metrics.test.mjs`: structure findings, the JaCoCo method selection
   (facade, accessor, lambda, `$default`, nested function) and the CRAP score and ratchet on recorded
   data; `java-coupling.test.mjs` (Kotlin classes, file modules, stability direction) and the CLI tests
   with the fake `gradle` (structure ratchet, a clone found by jscpd).
-- `core/config.test.mjs`, `languages/java/adapters/java-policy.test.mjs`: the config keys (including
+- `core/configuration/config.test.mjs`, `languages/java/adapters/java-policy.test.mjs`: the config keys (including
   Kotlin `exceptions`) and the runner arguments.
-- `languages/java/adapters/kotlin-rules.test.mjs`, `kotlin-suppressions.test.mjs`: every case of
-  `fixtures/kotlin-rules/cases.mjs` gets its message from the recorded detekt text and must name the
+- `languages/java/adapters/kotlin/rules/kotlin-rules.test.mjs`, `kotlin-suppressions.test.mjs`: every case of
+  `kotlin/rules/test-support/kotlin-rule-cases.mjs` gets its message from the recorded detekt text and must name the
   allowed form and end with the exception route; the rule keys and pins of `nitpicker-detekt.yml`
   against `ONE_WAY_RULES`; the suppression scan, with its string and comment traps;
-  `core/java-cli.test.mjs` runs an exception through the CLI.
-- `languages/java/adapters/kotlin-preset.e2e.test.mjs`: real Gradle, behind `NITPICKER_KOTLIN_E2E=1`
+  `core/command/java/java-cli.test.mjs` runs an exception through the CLI.
+- `languages/java/adapters/kotlin-e2e/*.e2e.test.mjs`: real Gradle, behind `NITPICKER_KOTLIN_E2E=1`
   (`npm run test:kotlin`). Needs Java 21, Gradle and network access
   to Maven Central and the Gradle plugin portal. A mixed Kotlin and Java fixture project
   (`languages/java/adapters/fixtures/kotlin-project`): a tested change passes with its legacy detekt
