@@ -15,13 +15,18 @@ function overlapLength(left, right) {
   }).length;
 }
 
+function internedIds(tokens, ids) {
+  return Uint32Array.from(tokens, (token) => {
+    if (!ids.has(token)) ids.set(token, ids.size);
+    return ids.get(token);
+  });
+}
+
 function subsequenceLength(left, right) {
   const ids = new Map();
-  const toIds = (tokens) =>
-    Uint32Array.from(tokens, (token) => ids.get(token) ?? ids.set(token, ids.size).get(token));
-  const rightIds = toIds(right);
+  const rightIds = internedIds(right, ids);
   const columns = Array.from(rightIds.keys());
-  const lengths = toIds(left).reduce(
+  const lengths = internedIds(left, ids).reduce(
     (previous, id) => {
       const next = new Uint32Array(rightIds.length + 1);
       for (const index of columns) {
