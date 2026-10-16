@@ -19,6 +19,7 @@ export const strictEslintRuleIds = [
   'nitpicker/no-comments',
   'nitpicker/no-first-test-charged-setup',
   'nitpicker/no-git-repository-per-test',
+  'nitpicker/no-forwarding-wrapper',
   'nitpicker/no-handwritten-boundary-guard',
   'nitpicker/no-module-level-let',
   'nitpicker/no-mutating-method-in-domain',
