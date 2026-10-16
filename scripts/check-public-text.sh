@@ -15,7 +15,7 @@ check() {
     printf '%s\n' "$lines"
     failed=1
   fi
-  if [ -n "${DENYLIST:-}" ] && printf '%s\n' "$text" | grep -qiE "$DENYLIST"; then
+  if [ -n "${DENYLIST:-}" ] && grep -qiE "$DENYLIST" <<<"$text"; then
     echo "::error::$label contains a term from the private denylist (not shown here)."
     failed=1
   fi
