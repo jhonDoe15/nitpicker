@@ -15,6 +15,8 @@ import { runJava } from './maven-command.mjs';
 
 const DEFAULT_ARCHUNIT_INCLUDES = '**/*ArchTest.class,**/*ArchitectureTest.class';
 const MAX_LISTED_FAILURES = 10;
+const JUNIT_ENGINE_JAR = /^junit-platform-engine-.+\.jar$/u;
+const TESTNG_JAR = /^testng-\d.*\.jar$/u;
 
 export function archunitMatcher(includes = DEFAULT_ARCHUNIT_INCLUDES) {
   const patterns = includes
@@ -206,10 +208,21 @@ export function pitTests(testClassDirectory, isArchunit) {
 
 export function junitLauncherVersion(classpath) {
   const names = classpath.map((entry) => path.basename(entry));
-  const engine = names.find((name) => /^junit-platform-engine-.+\.jar$/u.test(name));
+  const engine = names.find((name) => JUNIT_ENGINE_JAR.test(name));
   return engine === undefined || names.some((name) => name.startsWith('junit-platform-launcher-'))
     ? undefined
     : engine.replace(/^junit-platform-engine-|\.jar$/gu, '');
+}
+
+export function pitClasspath(tools, testRuntime) {
+  const names = testRuntime.map((entry) => path.basename(entry));
+  const launcher = junitLauncherVersion(testRuntime);
+  return [
+    ...tools.pit,
+    ...(names.some((name) => JUNIT_ENGINE_JAR.test(name)) ? tools['pit-junit5'] : []),
+    ...(launcher === undefined ? [] : tools[`launcher-${launcher}`]),
+    ...(names.some((name) => TESTNG_JAR.test(name)) ? tools['pit-testng'] : []),
+  ];
 }
 
 export function runPit({ module, reportDir, tools, classpaths, isArchunit }) {
@@ -220,10 +233,9 @@ export function runPit({ module, reportDir, tools, classpaths, isArchunit }) {
   if (classFiles(module.outputDirectory).length === 0) {
     return;
   }
-  const launcher = junitLauncherVersion(classpaths.testRuntime);
   runJava({
     tool: 'PIT',
-    classpath: [...tools.pit, ...(launcher === undefined ? [] : tools[`launcher-${launcher}`])],
+    classpath: pitClasspath(tools, classpaths.testRuntime),
     mainClass: 'org.pitest.mutationtest.commandline.MutationCoverageReport',
     args: [
       '--reportDir',
