@@ -69,7 +69,7 @@ function unitTestGlobsFor({ sourceRoots, testRoots, javascript, extensionGlob })
   ];
 }
 
-function toPosix(file) {
+export function toPosix(file) {
   return file.replaceAll('\\', '/');
 }
 
