@@ -52,132 +52,196 @@ class Cart:
     pass
 `;
 
+const SCRIPTS =
+  '[project]\nname = "shop"\n[project.scripts]\nshop = "shop.cli:main"\n' +
+  '[build-system]\nbuild-backend = "hatchling.build"\n';
+
+const DOCUMENTED = [
+  'class Cart:',
+  '    """A cart.',
+  '',
+  '    Holds items.',
+  '    """',
+  '',
+  '    def add(self):',
+  '        """Add one.',
+  '',
+  '        Args:',
+  '            item: the item.',
+  '        """',
+  '',
+].join('\n');
+
+function statement(from, to, names, line, extra = {}) {
+  return { from, to, names, reexport: false, role: 'production', line, ...extra };
+}
+
 describe.skipIf(!pythonE2eEnabled)('the facts scan', () => {
-  it('lists production modules and test files, flagging the tests', () => {
+  it('lists production modules and test files with their role and entry flag', () => {
     const report = factsOf({
+      'pyproject.toml': SCRIPTS,
       'src/shop/__init__.py': '',
+      'src/shop/__main__.py': '',
+      'src/shop/cli.py': 'def main():\n    pass\n',
       'src/shop/pricing.py': 'X = 1\n',
+      'src/shop/tool.py': 'if __name__ == "__main__":\n    pass\n',
       'src/shop/test_inline.py': 'def test_x():\n    pass\n',
       'tests/conftest.py': '',
       'tests/unit/test_pricing.py': 'from shop.pricing import X\n',
     });
 
-    expect(report.modules.map(({ module }) => module)).toEqual(['shop', 'shop.pricing']);
-    expect(Object.entries(report.files).map(([file, { test }]) => [file, test])).toEqual([
-      ['src/shop/__init__.py', false],
-      ['src/shop/pricing.py', false],
-      ['src/shop/test_inline.py', true],
-      ['tests/conftest.py', true],
-      ['tests/unit/test_pricing.py', true],
+    expect(
+      report.modules.map(({ file, role, entry, module }) => [file, role, entry, module]),
+    ).toEqual([
+      ['src/shop/__init__.py', 'production', false, 'shop'],
+      ['src/shop/__main__.py', 'production', true, 'shop.__main__'],
+      ['src/shop/cli.py', 'production', true, 'shop.cli'],
+      ['src/shop/pricing.py', 'production', false, 'shop.pricing'],
+      ['src/shop/test_inline.py', 'test', false, undefined],
+      ['src/shop/tool.py', 'production', true, 'shop.tool'],
+      ['tests/conftest.py', 'test', false, undefined],
+      ['tests/unit/test_pricing.py', 'test', false, undefined],
+    ]);
+    expect(report.packages).toEqual([{ root: '', published: true }]);
+    expect(report.definitions.find(({ name }) => name === 'main').entry).toBe(true);
+  });
+
+  it('resolves each import statement to the project files it names', () => {
+    const { imports } = factsOf({
+      'src/shop/__init__.py': 'from .pricing import total as price\nfrom . import _private\n',
+      'src/shop/_private.py': '',
+      'src/shop/money/__init__.py': '',
+      'src/shop/money/coin.py': 'class Coin:\n    pass\n',
+      'src/shop/pricing.py': [
+        'from decimal import Decimal as D',
+        'import shop.money.coin',
+        'from shop.money import coin as c',
+        'from .money.coin import Coin',
+        '',
+        '',
+        'def total():',
+        '    pass',
+        '',
+      ].join('\n'),
+      'tests/test_pricing.py': 'from shop import price\nfrom shop.pricing import *\n',
+    });
+    const init = 'src/shop/__init__.py';
+    const pricing = 'src/shop/pricing.py';
+    const coin = 'src/shop/money/coin.py';
+    const test = { role: 'test' };
+
+    expect(
+      imports.map(({ from, to, names, reexport, role, line }) => ({
+        from,
+        to,
+        names,
+        reexport,
+        role,
+        line,
+      })),
+    ).toEqual([
+      statement(init, pricing, [{ name: 'total', alias: 'price' }], 1, { reexport: true }),
+      statement(init, 'src/shop/_private.py', [{ name: '*', alias: '_private' }], 2),
+      statement(pricing, init, [], 2),
+      statement(pricing, 'src/shop/money/__init__.py', [], 2),
+      statement(pricing, coin, [{ name: '*' }], 2),
+      statement(pricing, coin, [{ name: '*', alias: 'c' }], 3),
+      statement(pricing, coin, [{ name: 'Coin' }], 4),
+      statement('tests/test_pricing.py', init, [{ name: 'price' }], 1, test),
+      statement('tests/test_pricing.py', pricing, [{ name: '*' }], 2, test),
     ]);
   });
 
-  it('records each import with its line and aliases', () => {
-    const { imports } = factsOf({ 'src/shop/pricing.py': PRICING }).files['src/shop/pricing.py'];
-
-    expect(imports).toEqual([
-      {
-        level: 0,
-        module: 'decimal',
-        names: ['Decimal'],
-        typeOnly: false,
-        line: 2,
-        aliases: [{ name: 'Decimal', alias: 'D' }],
-      },
-      {
-        level: 0,
-        module: null,
-        names: ['shop.money'],
-        typeOnly: false,
-        line: 3,
-        aliases: [{ name: 'shop.money', alias: 'money' }],
-      },
-    ]);
-  });
-
-  it('records module-level definitions with normalized tokens and free names', () => {
-    const { definitions, qualifiedUses } = factsOf({ 'src/shop/pricing.py': PRICING }).files[
-      'src/shop/pricing.py'
-    ];
+  it('records module-level definitions with normalized tokens and text', () => {
+    const { definitions } = factsOf({ 'src/shop/pricing.py': PRICING });
     const total = definitions.find(({ name }) => name === 'total');
 
     expect(
-      definitions.map(({ name, kind, tag, line, exported, literal }) => ({
+      definitions.map(({ name, kind, line, lines, exported, literal, usedLocally }) => [
         name,
         kind,
-        tag,
         line,
+        lines,
         exported,
         literal,
-      })),
+        usedLocally,
+      ]),
     ).toEqual([
-      { name: 'RATE', kind: 'constant', tag: 'constant', line: 5, exported: true, literal: true },
-      {
-        name: '_CACHE',
-        kind: 'constant',
-        tag: 'constant',
-        line: 6,
-        exported: false,
-        literal: true,
-      },
-      { name: 'Cents', kind: 'constant', tag: 'constant', line: 7, exported: true, literal: false },
-      {
-        name: 'total',
-        kind: 'function',
-        tag: 'function',
-        line: 10,
-        exported: true,
-        literal: false,
-      },
-      { name: 'Cart', kind: 'class', tag: 'class', line: 15, exported: true, literal: false },
+      ['RATE', 'const', 5, 1, true, true, true],
+      ['_CACHE', 'const', 6, 1, false, true, false],
+      ['Cents', 'const', 7, 1, true, false, false],
+      ['total', 'function', 10, 3, true, false, false],
+      ['Cart', 'class', 15, 2, true, false, false],
     ]);
     expect(total.tokens.join(' ')).toBe(
       'def total ( amount : int , * , rate : int = RATE ) -> D : return D ( amount ) * rate',
     );
-    expect(total.lines).toBe(3);
-    expect(total.free).toEqual([
-      { name: 'D', binding: { kind: 'import', module: 'decimal', level: 0, name: 'Decimal' } },
-      { name: 'RATE', binding: { kind: 'local' } },
-    ]);
-    expect(definitions.find(({ name }) => name === 'RATE').usedLocally).toBe(true);
-    expect(definitions.find(({ name }) => name === 'Cart').usedLocally).toBe(false);
-    expect(qualifiedUses).toEqual([]);
+    expect(total.text).toBe(`function|${total.tokens.join(' ')}`);
+    expect(total.entry).toBe(false);
+  });
+
+  it('gives two copies the same key only when their free names resolve alike', () => {
+    const copy = 'def total(amount):\n    return helper(amount)\n';
+    const { definitions } = factsOf({
+      'src/shop/a.py': `from shop.money import helper\n\n\n${copy}`,
+      'src/shop/b.py': `from .money import helper\n\n\n${copy}`,
+      'src/shop/c.py': `def helper(amount):\n    return amount\n\n\n${copy}`,
+      'src/shop/money.py': 'def helper(amount):\n    return amount\n',
+    });
+    const keys = Object.fromEntries(
+      definitions.filter(({ name }) => name === 'total').map(({ file, key }) => [file, key]),
+    );
+
+    expect(keys['src/shop/a.py']).toBe(keys['src/shop/b.py']);
+    expect(keys['src/shop/c.py']).not.toBe(keys['src/shop/a.py']);
   });
 
   it('spells strings by value and reads type aliases, decorators and qualified uses', () => {
-    const { definitions, qualifiedUses } = factsOf({
-      'src/shop/a.py':
-        'import shop.money as money\nfrom typing import TypeAlias\nA = "x"\nB = \'x\'\nC: TypeAlias = int\n\n\n@money.cached\nasync def d():\n    return money.Coin\n',
-    }).files['src/shop/a.py'];
+    const report = factsOf({
+      'src/shop/a.py': [
+        'import shop.money as money',
+        'from typing import TypeAlias',
+        'A = "x"',
+        "B = 'x'",
+        'C: TypeAlias = int',
+        '',
+        '',
+        '@money.cached',
+        'async def d():',
+        '    return money.Coin',
+        '',
+      ].join('\n'),
+    });
 
-    expect(definitions.map(({ name, tag, tokens }) => [name, tag, tokens.join(' ')])).toEqual([
-      ['A', 'constant', "A = str:'x'"],
-      ['B', 'constant', "B = str:'x'"],
-      ['C', 'type', 'C : TypeAlias = int'],
-      ['d', 'function:async', '@ money . cached async def d ( ) : return money . Coin'],
+    expect(report.definitions.map(({ name, kind, text }) => [name, kind, text])).toEqual([
+      ['A', 'const', "const|A = str:'x'"],
+      ['B', 'const', "const|B = str:'x'"],
+      ['C', 'type', 'type|C : TypeAlias = int'],
+      ['d', 'function', 'function:async|@ money . cached async def d ( ) : return money . Coin'],
     ]);
-    expect(qualifiedUses).toEqual(['money.Coin', 'money.cached']);
+    expect(report.modules[0].qualifiedUses).toEqual(['money.Coin', 'money.cached']);
   });
 
-  it('records __all__ and the re-exports of a package', () => {
-    const files = factsOf({
-      'src/shop/__init__.py': 'from .pricing import total as price\nfrom . import _private\n',
-      'src/shop/api.py': 'from shop.pricing import total, Cart\n__all__ = ["total"]\n',
-      'src/shop/pricing.py': 'def total():\n    pass\n',
-    }).files;
-
-    expect(files['src/shop/__init__.py'].exports).toEqual({
-      all: null,
-      reexports: [{ name: 'price', imported: 'total', module: 'pricing', level: 1, line: 1 }],
-    });
-    expect(files['src/shop/api.py'].exports).toEqual({
-      all: ['total'],
-      reexports: [{ name: 'total', imported: 'total', module: 'shop.pricing', level: 0, line: 1 }],
-    });
-    expect(files['src/shop/pricing.py'].exports).toEqual({ all: null, reexports: [] });
+  it('records the description lines of every docstring', () => {
+    expect(factsOf({ 'src/shop/a.py': DOCUMENTED }).docComments).toEqual([
+      {
+        file: 'src/shop/a.py',
+        line: 2,
+        name: 'Cart',
+        qualifiedName: 'Cart',
+        lines: ['A cart.', 'Holds items.'],
+      },
+      {
+        file: 'src/shop/a.py',
+        line: 8,
+        name: 'add',
+        qualifiedName: 'Cart.add',
+        lines: ['Add one.'],
+      },
+    ]);
   });
 
   it('leaves out a file that does not parse', () => {
-    expect(Object.keys(factsOf({ 'src/shop/bad.py': 'def (:\n' }).files)).toEqual([]);
+    expect(factsOf({ 'src/shop/bad.py': 'def (:\n' }).modules).toEqual([]);
   });
 });

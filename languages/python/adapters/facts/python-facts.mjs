@@ -2,6 +2,8 @@ import { writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { listProductionModules, pythonSourceFiles } from '../analysis/python-sources.mjs';
+import { readPackageFacts } from '../configuration/python-package.mjs';
+import { factsBundle } from './facts-bundle.mjs';
 
 export const FACTS_REPORT = 'facts.json';
 const FACTS_FAILED_RULE = 'facts-failed';
@@ -39,12 +41,12 @@ export function collectFacts(context, run) {
       : JSON.parse(
           run(context, ['python', '-I', SCAN_SCRIPT, request], { rule: FACTS_FAILED_RULE }).stdout,
         );
-  const report = {
+  const report = factsBundle({
     modules,
-    files: Object.fromEntries(
-      Object.entries(scanned).map(([file, facts]) => [file, { test: isTestFile(file), ...facts }]),
-    ),
-  };
+    scanned,
+    isTest: isTestFile,
+    ...readPackageFacts(projectRoot),
+  });
   writeFileSync(path.join(reportRoot, FACTS_REPORT), JSON.stringify(report));
   return report;
 }

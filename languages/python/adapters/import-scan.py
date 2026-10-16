@@ -5,7 +5,8 @@ import sys
 import tokenize
 
 sys.dont_write_bytecode = True
-sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "facts"))
+HERE = os.path.dirname(os.path.abspath(__file__))
+sys.path[:0] = [os.path.join(HERE, "facts"), os.path.join(os.path.dirname(HERE), "rules")]
 
 from python_facts import decoded, facts_of
 
