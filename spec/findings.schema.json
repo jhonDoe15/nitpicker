@@ -104,6 +104,20 @@
         "divisible": {
           "description": "When true, the base value is shared: several head findings with the same key are held while their values add up to no more than one unmatched base finding's value (a legacy clone split in two).",
           "type": "boolean"
+        },
+        "mustKeepUnchangedLines": {
+          "description": "Line ranges of head files (project-relative paths) the finding spans. It is held only when every range keeps at least one line the change did not add or edit: a finding made only of changed lines in one of them is code the change wrote, so it is new.",
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["path", "startLine", "endLine"],
+            "additionalProperties": false,
+            "properties": {
+              "path": { "$ref": "#/$defs/nonEmptyString" },
+              "startLine": { "type": "integer", "minimum": 1 },
+              "endLine": { "type": "integer", "minimum": 1 }
+            }
+          }
         }
       }
     },

@@ -383,6 +383,39 @@ describe('spec/findings.schema.json', () => {
     expect(validate({ findings: [empty] })).not.toEqual([]);
   });
 
+  it('accepts line ranges a held finding must keep unchanged and rejects a reversed one', () => {
+    const finding = {
+      tool: 'duplicates',
+      rule: 'duplicate-clone',
+      path: 'a.java',
+      identity: 'id',
+      message: 'message',
+      classification: 'enforceable',
+      ratchet: {
+        key: 'pair:a.java|b.java:clone',
+        value: 60,
+        mustKeepUnchangedLines: [{ path: 'a.java', startLine: 3, endLine: 9 }],
+      },
+    };
+    const reversed = {
+      ...finding,
+      ratchet: {
+        ...finding.ratchet,
+        mustKeepUnchangedLines: [{ path: 'a.java', startLine: 9, endLine: 3 }],
+      },
+    };
+    const unnamed = {
+      ...finding,
+      ratchet: { ...finding.ratchet, mustKeepUnchangedLines: [{ startLine: 3, endLine: 9 }] },
+    };
+
+    expect(parseFinding(finding)).toEqual(finding);
+    expect(validate({ findings: [finding] })).toEqual([]);
+    expect(() => parseFinding(reversed)).toThrow(TypeError);
+    expect(() => parseFinding(unnamed)).toThrow(TypeError);
+    expect(validate({ findings: [unnamed] })).not.toEqual([]);
+  });
+
   it('accepts a tool-not-run notice on a descriptive finding', () => {
     const finding = {
       tool: 'javac',
