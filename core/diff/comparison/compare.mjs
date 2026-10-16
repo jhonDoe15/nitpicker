@@ -1,4 +1,5 @@
 import { comparisonKey } from './fingerprint.mjs';
+import { alignOccurrences } from './matching/occurrences.mjs';
 import { againstMissingReports } from './notices/missing-reports.mjs';
 import {
   holdRatchetedFindings,
@@ -14,13 +15,11 @@ export function compareFindings({
   baseToHeadDirectories = new Map(),
   touchedCode,
 }) {
-  const baseByKey = indexFindings({
-    findings: baseFindings,
+  const { baseByKey, headByKey } = indexSnapshots(baseFindings, headFindings, {
     renames: baseToHeadRenames,
     directories: baseToHeadDirectories,
-    snapshot: 'base',
+    touchedCode,
   });
-  const headByKey = indexFindings({ findings: headFindings, snapshot: 'head' });
   const present = classifyHeadFindings({ headByKey, baseByKey, touchedCode });
   const unmatchedBase = [...baseByKey]
     .filter(([key]) => !headByKey.has(key))
@@ -50,6 +49,17 @@ export function compareFindings({
     resolvedFindings: sortFindings(resolvedFindings),
     unchangedFindings: sortFindings(present.unchangedFindings),
     changedMetrics: present.changedMetrics.sort(compareDisplayOrder),
+  };
+}
+
+function indexSnapshots(baseFindings, headFindings, context) {
+  const { renames, directories } = context;
+  return {
+    baseByKey: indexFindings({ findings: baseFindings, renames, directories, snapshot: 'base' }),
+    headByKey: indexFindings({
+      findings: alignOccurrences(baseFindings, headFindings, context),
+      snapshot: 'head',
+    }),
   };
 }
 

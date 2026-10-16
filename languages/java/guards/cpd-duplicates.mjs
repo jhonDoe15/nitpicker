@@ -2,6 +2,7 @@ import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { evaluateDuplicates } from '../../../shared/rules/duplicates.mjs';
 import { childrenNamed, parseXml } from '../ingest/common.mjs';
+import { LITERAL_OR_COMMENT } from '../ingest/source-text.mjs';
 import { exceptionRoute } from './advice/exception-route.mjs';
 import { CPD_IDENTITY_PREFIX, cpdNotRun, readCpdReport, skippedPaths } from './cpd/cpd-report.mjs';
 
@@ -24,8 +25,6 @@ const BOILERPLATE_LINES = [
 ];
 
 const STRING_LITERAL = /"(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*'/g;
-export const LITERAL_OR_COMMENT =
-  /"""[\s\S]*?"""|"(?:[^"\\\n]|\\.)*"|'(?:[^'\\\n]|\\.)*'|\/\*[\s\S]*?\*\/|\/\/[^\n]*/g;
 const NUMBER = /(?:\b\d|\.\d)(?:[eEpP][+-]|[\w.])*/g;
 const WORD = /[\w$]+/g;
 const DATA_LINES = [

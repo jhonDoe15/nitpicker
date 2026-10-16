@@ -81,6 +81,11 @@ describe('changed line ranges', () => {
         [22, 22],
       ],
       inserted: [[4, 5]],
+      hunks: [
+        { oldStart: 3, oldCount: 0, newStart: 4, newCount: 2 },
+        { oldStart: 20, oldCount: 2, newStart: 22, newCount: 1 },
+        { oldStart: 30, oldCount: 3, newStart: 31, newCount: 0 },
+      ],
     });
     expect(changed.get('src/main/a.ts').inserted).toEqual([[4, 5]]);
     expect(changed.get('src/main/b.ts')).toEqual({
@@ -88,6 +93,7 @@ describe('changed line ranges', () => {
       added: true,
       ranges: [[1, 4]],
       inserted: [[1, 4]],
+      hunks: [{ oldStart: 0, oldCount: 0, newStart: 1, newCount: 4 }],
     });
     expect(changed.has('src/main/gone.ts')).toBe(false);
     expect(changed.get('src/main/with space.ts')).toEqual({
@@ -95,6 +101,7 @@ describe('changed line ranges', () => {
       added: false,
       ranges: [[1, 1]],
       inserted: [],
+      hunks: [{ oldStart: 1, oldCount: 1, newStart: 1, newCount: 1 }],
     });
   });
 
@@ -119,6 +126,11 @@ describe('changed line ranges', () => {
         [33, 33],
       ],
       inserted: [[7, 8]],
+      hunks: [
+        { oldStart: 5, oldCount: 2, newStart: 5, newCount: 4 },
+        { oldStart: 20, oldCount: 3, newStart: 22, newCount: 2 },
+        { oldStart: 30, oldCount: 1, newStart: 33, newCount: 1 },
+      ],
     });
   });
 
@@ -140,6 +152,7 @@ describe('changed line ranges', () => {
       added: false,
       ranges: [[43, 44]],
       inserted: [[43, 43]],
+      hunks: [{ oldStart: 43, oldCount: 1, newStart: 43, newCount: 2 }],
     });
   });
 
@@ -161,6 +174,10 @@ describe('changed line ranges', () => {
       added: false,
       ranges: [[30, 30]],
       inserted: [],
+      hunks: [
+        { oldStart: 12, oldCount: 1, newStart: 11, newCount: 0 },
+        { oldStart: 30, oldCount: 0, newStart: 30, newCount: 1 },
+      ],
     });
   });
 
@@ -181,6 +198,7 @@ describe('changed line ranges', () => {
       added: false,
       ranges: [[7, 7]],
       inserted: [[7, 7]],
+      hunks: [{ oldStart: 7, oldCount: 1, newStart: 7, newCount: 1 }],
     });
   });
 
@@ -235,12 +253,14 @@ describe('changed line ranges', () => {
       added: false,
       ranges: [[6, 6]],
       inserted: [],
+      hunks: [{ oldStart: 6, oldCount: 1, newStart: 6, newCount: 1 }],
     });
     expect(changed.get('src/fresh.ts')).toEqual({
       path: 'src/fresh.ts',
       added: true,
       ranges: [[1, 1]],
       inserted: [[1, 1]],
+      hunks: [{ oldStart: 0, oldCount: 0, newStart: 1, newCount: 1 }],
     });
     expect(changed.has('src/renamed.ts')).toBe(false);
     expect(changed.has('src/moved.ts')).toBe(false);

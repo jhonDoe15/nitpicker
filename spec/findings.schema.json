@@ -124,7 +124,7 @@
           "type": "boolean"
         },
         "mustKeepUnchangedLines": {
-          "description": "Line ranges of head files (project-relative paths) the finding spans. It is held only when every range keeps at least one line the change did not add or edit: a finding made only of changed lines in one of them is code the change wrote, so it is new.",
+          "description": "Line ranges the finding spans (project-relative paths), on the base finding and on the head one. A head finding is held against a base finding with the same ratchet key only when, in each range, more than half of the lines are lines the change did not add or edit that map back (through the diff hunks) into the base finding's range of the same file; without a base range or a line map, only the majority of unchanged lines is checked.",
           "type": "array",
           "items": {
             "type": "object",
