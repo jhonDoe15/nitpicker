@@ -165,7 +165,7 @@ const errorProneAndToolErrors = (findings) =>
 
 const ONLY_THE_WRITTEN_CODE = [
   ['errorprone', 'ReturnValueIgnored', 'src/main/java/shop/Basket.java', 19],
-  ['errorprone', 'MethodCanBeStatic', 'src/main/java/shop/Wild.java', 10],
+  ['errorprone', 'WildcardImport', 'src/main/java/shop/Wild.java', 3],
 ];
 
 describe.skipIf(!enabled)('Error Prone on a Lombok project', () => {
@@ -200,6 +200,29 @@ describe.skipIf(!enabled)('Error Prone on a Lombok project', () => {
       expect(errorProneAndToolErrors(collectJavaFindings(root, { gradle, policy: {} }))).toEqual(
         ONLY_THE_WRITTEN_CODE,
       );
+    },
+    GRADLE_STEP_TIMEOUT_MS,
+  );
+
+  it(
+    'keeps every check on the sources a lombok.addSuppressWarnings = false config does not govern',
+    () => {
+      const root = project({
+        'settings.gradle': "rootProject.name = 'shop'\n",
+        'build.gradle': BUILD_GRADLE,
+        'src/main/java/shop/legacy/lombok.config': 'lombok.addSuppressWarnings = false\n',
+        'src/main/java/shop/legacy/Old.java':
+          'package shop.legacy;\n\n@lombok.Data\npublic class Old {\n  private String label = "";\n}\n',
+        'src/main/java/shop/Plain.java':
+          'package shop;\n\nimport java.util.List;\n\npublic class Plain {\n' +
+          '  public java.util.List<String> names() {\n    return List.of("a");\n  }\n}\n',
+      });
+
+      expect(errorProneAndToolErrors(collectJavaFindings(root, { gradle, policy: {} }))).toEqual([
+        ONLY_THE_WRITTEN_CODE[0],
+        ['errorprone', 'UnnecessarilyFullyQualified', 'src/main/java/shop/Plain.java', 6],
+        ONLY_THE_WRITTEN_CODE[1],
+      ]);
     },
     GRADLE_STEP_TIMEOUT_MS,
   );

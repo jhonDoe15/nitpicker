@@ -1,68 +1,100 @@
 import { describe, expect, it } from 'vitest';
-import { withoutOverlaps } from './static-overlaps.mjs';
+import { OVERLAP_PAIRS, matchesRule, withoutOverlaps } from './static-overlaps.mjs';
 
-const NEED_BRACES = 'com.puppycrawl.tools.checkstyle.checks.blocks.NeedBracesCheck';
-const at = (tool, rule, line, extra = {}) => ({
-  tool,
-  rule,
-  path: 'src/main/java/demo/A.java',
-  location: { line },
-  message: `${rule} message`,
-  ...extra,
-});
-const kept = (findings) =>
-  withoutOverlaps(findings).map(({ tool, rule, location }) => `${tool}/${rule}:${location.line}`);
+const TOOLS =
+  /^(?:(?:pmd|spotbugs|errorprone)\/|checkstyle\/com\.puppycrawl\.tools\.checkstyle\.checks\.)/u;
+const SOURCE = [
+  'package demo;',
+  'public class A {',
+  '  private int f;',
+  '  void m() {',
+  '    f = 1;',
+  '    f = 2;',
+  '  }',
+  '  void n() {',
+  '    f = 3;',
+  '  }',
+  '}',
+  'class B {',
+  '  private int f;',
+  '}',
+].join('\n');
 
-describe('overlaps between the static tools', () => {
-  it.each([
-    ['errorprone', 'IntLongMath', 'errorprone', 'NarrowCalculation'],
-    ['errorprone', 'UnnecessarySemicolon', 'checkstyle', NEED_BRACES],
-    ['errorprone', 'DoubleCheckedLocking', 'spotbugs', 'IS2_INCONSISTENT_SYNC'],
-    ['errorprone', 'NonFinalStaticField', 'errorprone', 'FieldCanBeFinal'],
-  ])(
-    'keeps %s/%s alone on a line both flag, and both on lines only one flags',
-    (tool, rule, otherTool, other) => {
+function at(printedRule, line, extra = {}) {
+  const [tool, ...rule] = printedRule.replace('*', 'X').split('/');
+  return {
+    tool,
+    rule: rule.join('/'),
+    path: 'src/A.java',
+    ...(line === undefined ? {} : { location: { line } }),
+    ...extra,
+  };
+}
+
+const SCOPED = {
+  line: { primary: 5, covered: { line: 5 }, apart: { line: 6 } },
+  member: { primary: 5, covered: { line: 6 }, apart: { line: 9 } },
+  class: { primary: 5, covered: { line: 9 }, apart: { line: 13 } },
+  file: { primary: 5, covered: { line: 13 }, apart: { line: 5, path: 'src/Other.java' } },
+  field: { primary: 3, covered: { symbol: 'demo.A.f' }, apart: { symbol: 'demo.B.f' } },
+};
+
+function secondaryAt(rule, { line, ...extra }) {
+  return at(rule, line, extra);
+}
+
+const readSource = (file) => (file === 'src/A.java' ? SOURCE : undefined);
+const cases = OVERLAP_PAIRS.flatMap(({ primary, secondary, scope }) =>
+  secondary.map((rule) => [rule, primary[0], scope]),
+);
+
+describe('overlap pairs', () => {
+  it('name printed rules of the four tools, in known scopes, with no rule depending on itself', () => {
+    const rules = OVERLAP_PAIRS.flatMap(({ primary, secondary }) => [...primary, ...secondary]);
+    const coveredBy = (rule) =>
+      OVERLAP_PAIRS.filter(({ secondary }) => matchesRule(secondary, rule)).flatMap(
+        ({ primary }) => primary,
+      );
+    function reaches(from, target) {
+      const pending = coveredBy(from);
+      const seen = new Set();
+      for (const next of pending) {
+        if (next === target) {
+          return true;
+        }
+        if (!seen.has(next)) {
+          seen.add(next);
+          pending.push(...coveredBy(next));
+        }
+      }
+      return false;
+    }
+
+    expect(rules.filter((rule) => !TOOLS.test(rule))).toStrictEqual([]);
+    expect(OVERLAP_PAIRS.filter(({ scope }) => !(scope in SCOPED))).toStrictEqual([]);
+    expect(rules.filter((rule) => reaches(rule, rule))).toStrictEqual([]);
+  });
+
+  it.each(cases)(
+    'drops %s where %s is reported, in the same %s only',
+    (secondary, primary, scope) => {
+      const { primary: line, covered, apart } = SCOPED[scope];
+      const reported = at(primary, line);
+      const kept = secondaryAt(secondary, apart);
+
       expect(
-        kept([
-          at(otherTool, other, 3),
-          at(tool, rule, 3),
-          at(otherTool, other, 5),
-          at(tool, rule, 7),
-        ]),
-      ).toStrictEqual([`${tool}/${rule}:3`, `${otherTool}/${other}:5`, `${tool}/${rule}:7`]);
+        withoutOverlaps([reported, secondaryAt(secondary, covered), kept], { readSource }),
+      ).toStrictEqual([reported, kept]);
     },
   );
 
-  it('keeps the secondary side in another file on the same line', () => {
-    const elsewhere = {
-      ...at('errorprone', 'NarrowCalculation', 3),
-      path: 'src/main/java/demo/B.java',
-    };
-    expect(withoutOverlaps([at('errorprone', 'IntLongMath', 3), elsewhere])).toHaveLength(2);
-  });
+  it('keeps a secondary whose only primary is itself dropped', () => {
+    const findings = [
+      at('errorprone/ReturnFromVoid', 5),
+      at('checkstyle/com.puppycrawl.tools.checkstyle.checks.javadoc.JavadocMethodCheck', 5),
+      at('errorprone/InvalidParam', 5),
+    ];
 
-  it('drops SpotBugs unused and unread findings for a private field PMD already names, keeping the rest', () => {
-    const pmd = (field, line) =>
-      at('pmd', 'UnusedPrivateField', line, {
-        message: `Avoid unused private fields such as '${field}'.`,
-      });
-    const spotbugs = (rule, field, line) => ({
-      ...at('spotbugs', rule, line, { symbol: `demo.A.${field}` }),
-    });
-    expect(
-      kept([
-        pmd('unused', 4),
-        pmd('written', 6),
-        spotbugs('UUF_UNUSED_FIELD', 'unused', undefined),
-        spotbugs('URF_UNREAD_FIELD', 'written', 10),
-        spotbugs('UUF_UNUSED_FIELD', 'packageUnused', undefined),
-        spotbugs('URF_UNREAD_FIELD', 'packageWritten', 11),
-      ]),
-    ).toStrictEqual([
-      'pmd/UnusedPrivateField:4',
-      'pmd/UnusedPrivateField:6',
-      'spotbugs/UUF_UNUSED_FIELD:undefined',
-      'spotbugs/URF_UNREAD_FIELD:11',
-    ]);
+    expect(withoutOverlaps(findings, { readSource })).toStrictEqual([findings[0], findings[2]]);
   });
 });

@@ -16,16 +16,24 @@ function all(element, ...names) {
   return parent === undefined ? [] : childrenNamed(parent, names.at(-1));
 }
 
-function compilerConfigurations(project) {
-  const plugin = all(project, 'build', 'plugins', 'plugin').find(
+function compilerPlugin(project) {
+  return all(project, 'build', 'plugins', 'plugin').find(
     (candidate) => textAt(candidate, 'artifactId') === COMPILER,
   );
-  const compileExecution = all(plugin, 'executions', 'execution').find(
-    (execution) => textAt(execution, 'id') === 'default-compile',
+}
+
+function compilerConfigurations(plugin, executionId) {
+  const execution = all(plugin, 'executions', 'execution').find(
+    (candidate) => textAt(candidate, 'id') === executionId,
   );
-  return [child(compileExecution, 'configuration'), child(plugin, 'configuration')].filter(
+  return [child(execution, 'configuration'), child(plugin, 'configuration')].filter(
     (configuration) => configuration !== undefined,
   );
+}
+
+function defaultLevel(pluginVersion) {
+  const major = Number((pluginVersion ?? '3').split('.')[0]);
+  return major >= 4 ? undefined : '8';
 }
 
 function managedVersion(project, groupId, artifactId) {
@@ -68,27 +76,65 @@ function settingOf(project, configurations) {
     const configured = configurations
       .map((configuration) => textAt(configuration, name))
       .find((value) => value !== undefined);
-    return configured ?? textAt(project, 'properties', property);
+    const value = configured ?? textAt(project, 'properties', property);
+    return value === '' ? undefined : value;
   };
 }
 
-export function compilerSettings(project) {
-  const configurations = compilerConfigurations(project);
-  const setting = settingOf(project, configurations);
-  const compilerArgs = configurations
+function argumentsOf(configurations, setting) {
+  const listed = configurations
     .map((configuration) => all(configuration, 'compilerArgs', 'arg'))
     .find((args) => args.length > 0);
+  const single = configurations
+    .map((configuration) => textAt(configuration, 'compilerArgument'))
+    .find((value) => value !== undefined);
+  const preview = setting('enablePreview', 'maven.compiler.enablePreview') === 'true';
+  const args = [
+    ...(listed ?? []).map((argument) => argument.text?.trim()),
+    ...(single ?? '').split(/\s+/u),
+  ].filter((argument) => argument !== undefined && argument !== '');
+  return preview && !args.includes('--enable-preview') ? [...args, '--enable-preview'] : args;
+}
+
+function levelSetting(setting, test, name) {
+  const testName = `test${name[0].toUpperCase()}${name.slice(1)}`;
+  return (
+    (test ? setting(testName, `maven.compiler.${testName}`) : undefined) ??
+    setting(name, `maven.compiler.${name}`)
+  );
+}
+
+function levelOf(setting, test, pluginVersion) {
+  const configured = {
+    release: levelSetting(setting, test, 'release'),
+    source: levelSetting(setting, test, 'source'),
+    target: levelSetting(setting, test, 'target'),
+  };
+  if (Object.values(configured).some((value) => value !== undefined)) {
+    return configured;
+  }
+  const fallback = defaultLevel(pluginVersion);
+  return { release: undefined, source: fallback, target: fallback };
+}
+
+export function compilerSettings(project) {
+  const plugin = compilerPlugin(project);
+  const pluginVersion = textAt(plugin, 'version');
+  const configurations = compilerConfigurations(plugin, 'default-compile');
+  const setting = settingOf(project, configurations);
+  const testConfigurations = compilerConfigurations(plugin, 'default-testCompile');
+  const testSetting = settingOf(project, testConfigurations);
   return {
-    release: setting('release', 'maven.compiler.release'),
-    source: setting('source', 'maven.compiler.source'),
-    target: setting('target', 'maven.compiler.target'),
+    ...levelOf(setting, false, pluginVersion),
     encoding:
       setting('encoding', 'maven.compiler.encoding') ??
       textAt(project, 'properties', 'project.build.sourceEncoding'),
-    compilerArgs: (compilerArgs ?? [])
-      .map((argument) => argument.text?.trim())
-      .filter((argument) => argument !== undefined && argument !== ''),
+    compilerArgs: argumentsOf(configurations, setting),
     proc: setting('proc', 'maven.compiler.proc'),
     processorPaths: processorPaths(project, configurations),
+    test: {
+      ...levelOf(testSetting, true, pluginVersion),
+      compilerArgs: argumentsOf(testConfigurations, testSetting),
+    },
   };
 }

@@ -99,7 +99,7 @@ describe.skipIf(!enabled)('Spring rules on a Spring project', () => {
     });
     expect(
       findings.map(({ rule, path: file, location }) => `${file}:${location.line} ${rule}`),
-    ).toEqual(['src/main/java/shop/orders/OrderService.java:125 MethodCanBeStatic']);
+    ).toEqual(['src/main/java/shop/catalog/ProductRepository.java:11 MissingOverride']);
   });
 
   it('records the resource roots and that the project uses Spring', () => {

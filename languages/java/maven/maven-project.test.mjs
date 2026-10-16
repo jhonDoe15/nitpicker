@@ -73,12 +73,14 @@ function effective(root) {
 `;
 }
 
+const PLUGIN_DEFAULT_LEVEL = { release: undefined, source: '8', target: '8' };
 const NO_COMPILER_SETTINGS = {
-  release: undefined,
+  ...PLUGIN_DEFAULT_LEVEL,
   encoding: undefined,
   compilerArgs: [],
   proc: undefined,
   processorPaths: undefined,
+  test: { ...PLUGIN_DEFAULT_LEVEL, compilerArgs: [] },
 };
 
 function defaultModule(basedir, coordinates, packaging) {

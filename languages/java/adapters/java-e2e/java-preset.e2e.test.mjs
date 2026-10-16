@@ -107,7 +107,6 @@ const BASELINED_FINDINGS_WITHOUT_GREETER_LINE_COVERAGE = [
 const CHECKSTYLE_PREFIX = 'com.puppycrawl.tools.checkstyle.checks.';
 
 const CHECKSTYLE_ON_BAD = [
-  'blocks.EmptyCatchBlockCheck',
   'indentation.IndentationCheck',
   'regexp.RegexpSinglelineJavaCheck',
   'whitespace.EmptyLineSeparatorCheck',
@@ -196,7 +195,7 @@ describe.skipIf(!enabled)('Java preset end to end', () => {
   );
 
   it(
-    'fails new PMD, SpotBugs, Error Prone, Checkstyle and formatter violations, and untested code, as new',
+    'fails new Error Prone, Checkstyle and formatter violations, and untested code, as new, each issue once',
     () => {
       const result = diffOf('violation');
 
@@ -204,9 +203,9 @@ describe.skipIf(!enabled)('Java preset end to end', () => {
       expect(summarize(result.newEnforceable)).toEqual([
         ...CHECKSTYLE_ON_BAD.map((check) => `checkstyle ${CHECKSTYLE_PREFIX}${check} Bad.java`),
         'errorprone DefaultCharset Bad.java',
+        'errorprone EmptyCatch Bad.java',
         'google-java-format format Bad.java',
         'pit mutant-nocoverage Bad.java', // Bad.decode has no test
-        'pmd EmptyCatchBlock Bad.java',
       ]);
       expect([...new Set(summarize(result.unchangedFindings))].sort()).toEqual(BASELINED_FINDINGS);
     },
@@ -221,7 +220,7 @@ describe.skipIf(!enabled)('Java preset end to end', () => {
       expect(result.failed).toBe(true);
       expect(summarize(result.newEnforceable)).toEqual([
         ...repeated(2, 'archunit no_classes_use_legacy_date Stamp.java'),
-        ...repeated(2, 'errorprone JavaUtilDate Stamp.java'),
+        ...repeated(4, 'errorprone JavaUtilDate Stamp.java'),
         ...repeated(3, 'pit mutant-nocoverage Stamp.java'),
       ]);
       expect(

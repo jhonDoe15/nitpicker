@@ -28,8 +28,9 @@ forms below from the start; the gate is a backstop.
      cause it names and rerun. Exit 2 is never a pass. If another run is in progress, wait for
      it; never kill it.
 5. Never suppress: no `// NOPMD`, `@SuppressWarnings`, `@SuppressFBWarnings`, `CHECKSTYLE`
-   comments, config `exclude`/`disable`/`exceptions`, legacy entries, or weakened tests. If a
-   finding seems wrong, stop and ask.
+   comments, config `exclude`/`disable`/`exceptions`, legacy entries, or weakened tests. The one
+   exception is `@SuppressWarnings("PMD.SpringDataNativeQuery")` on a repository method with native
+   SQL ([spring.md](spring.md)). If a finding seems wrong, stop and ask.
 
 With Spring on the classpath, also follow [spring.md](spring.md).
 
@@ -40,7 +41,10 @@ With Spring on the classpath, also follow [spring.md](spring.md).
   a locale: `s.getBytes(StandardCharsets.UTF_8)`, `s.toUpperCase(Locale.ROOT)`.
 - Output: no `System.out`/`System.err` and no `printStackTrace()`. Log with
   `System.getLogger(Foo.class.getName())`, or the project's logger.
-- Null: return `List.of()`, not `null`. Never assign `null` (`out = null`); restructure instead.
+- Null: a method returning a collection returns an empty one (`List.of()`), never `null`. Any
+  other value that may be absent is declared `@Nullable` (the project's annotation, JSpecify's
+  `org.jspecify.annotations.Nullable` if it has none) and checked before use. Never assign `null`
+  (`out = null`); restructure instead.
 - Literals: compare against named constants (`quantity >= BULK_THRESHOLD`), not literals in an
   `if`; `0` and `-1` are fine. A string literal used 4 times in a file becomes a constant.
 - Parameters and loops: never reassign a parameter or a catch variable; copy to a local. Use

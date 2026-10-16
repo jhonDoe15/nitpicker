@@ -1,40 +1,19 @@
-import com.sun.source.tree.ClassTree;
-import com.sun.source.tree.CompilationUnitTree;
-import com.sun.source.util.JavacTask;
-import com.sun.source.util.SourcePositions;
-import com.sun.source.util.TaskEvent;
-import com.sun.source.util.TaskListener;
-import com.sun.source.util.TreePath;
-import com.sun.source.util.TreePathScanner;
-import com.sun.source.util.Trees;
+import com.sun.source.tree.*;
+import com.sun.source.util.*;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Locale;
-import java.util.Map;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
-import java.util.stream.Collectors;
-import java.util.stream.Stream;
-import javax.lang.model.element.AnnotationMirror;
-import javax.lang.model.element.Element;
-import javax.lang.model.element.TypeElement;
-import javax.tools.Diagnostic;
-import javax.tools.DiagnosticCollector;
-import javax.tools.JavaCompiler;
-import javax.tools.JavaFileObject;
-import javax.tools.StandardJavaFileManager;
-import javax.tools.ToolProvider;
+import java.nio.file.*;
+import java.util.*;
+import java.util.regex.*;
+import java.util.stream.*;
+import javax.lang.model.element.*;
+import javax.tools.*;
 
 /**
  * Compiles source sets with javac and Error Prone as its plugin, and writes the diagnostics as a JSON
  * array of {file, line, column, position, kind, message, classAnnotations}: position is the one offset
- * Error Prone reports, classAnnotations the annotations (meta-annotations included) of the innermost
- * class around it. Usage: {@code ErrorProneReport <report.json> <checks.json> <arguments file>...};
+ * Error Prone reports, classAnnotations the annotations (meta-annotations included) of every class
+ * around it, innermost first. Usage: {@code ErrorProneReport <report.json> <checks.json> <arguments file>...};
  * each arguments file holds javac arguments, then {@code --sources} and the sources, one per line.
  * The non-javac lines ({@code --test-only}, {@code --own-classes=}, {@code --release=}, {@code
  * --source=}, {@code --target=}, {@code --project-arg=}) and lombok.config handling are described in
@@ -50,7 +29,7 @@ public final class ErrorProneReport {
   private static final List<String> NULLAWAY_OPTIONS =
       List.of("ExcludedFieldAnnotations", "ExternalInitAnnotations", "CustomInitializerAnnotations");
   private static final Pattern NAME = Pattern.compile("\"([^\"]+)\"");
-  private static final Pattern JDK_MODULE = Pattern.compile("^--add-(?:exports|opens)=(?:java|jdk)\\.");
+  private static final Pattern JDK_MODULE = Pattern.compile("^--add-exports=(?:java|jdk)\\.");
   private static final Pattern ADD_SUPPRESS_WARNINGS =
       Pattern.compile("(?m)^\\s*lombok\\.addSuppressWarnings\\s*=\\s*(\\w+)");
   private static final Pattern STOP_BUBBLING =
@@ -140,8 +119,8 @@ public final class ErrorProneReport {
         options.add(line);
       }
     }
-    List<String> passed = normalized(projectArgs);
-    options.addAll(passed.stream().filter(ErrorProneReport::kept).toList());
+    List<String> passed = normalized(projectArgs).stream().filter(ErrorProneReport::kept).toList();
+    options.addAll(passed);
     String release = level.get("release");
     if (release != null && passed.stream().noneMatch(arg -> JDK_MODULE.matcher(arg).find())) {
       options.addAll(List.of("--release", release));
@@ -172,38 +151,61 @@ public final class ErrorProneReport {
         || MODULE_OPTIONS.stream().anyMatch(option -> argument.startsWith(option + "="));
   }
 
-  /** Whether the nearest lombok.config that sets it turns Lombok's @SuppressWarnings off. */
-  static boolean lombokUnsuppressed(List<String> sources) throws IOException {
-    for (Path directory :
-        sources.stream().map(source -> Path.of(source).toAbsolutePath().getParent()).distinct().toList()) {
-      for (Path current = directory; current != null; current = current.getParent()) {
-        Path config = current.resolve("lombok.config");
-        String text = Files.isRegularFile(config) ? Files.readString(config, StandardCharsets.UTF_8) : "";
-        Matcher setting = ADD_SUPPRESS_WARNINGS.matcher(text);
-        if (setting.find() && setting.group(1).equalsIgnoreCase("false")) {
-          return true;
-        } else if (setting.find(0) || STOP_BUBBLING.matcher(text).find()) {
-          break;
-        }
+  /** The sources whose nearest lombok.config that sets it turns Lombok's @SuppressWarnings off. */
+  static List<String> lombokUnsuppressed(List<String> sources) throws IOException {
+    Map<Path, Boolean> directories = new HashMap<>();
+    List<String> unsuppressed = new ArrayList<>();
+    for (String source : sources) {
+      Path directory = Path.of(source).toAbsolutePath().getParent();
+      if (!directories.containsKey(directory)) {
+        directories.put(directory, unsuppressedIn(directory));
+      }
+      if (directories.get(directory)) {
+        unsuppressed.add(source);
+      }
+    }
+    return unsuppressed;
+  }
+
+  private static boolean unsuppressedIn(Path directory) throws IOException {
+    for (Path current = directory; current != null; current = current.getParent()) {
+      Path config = current.resolve("lombok.config");
+      String text = Files.isRegularFile(config) ? Files.readString(config, StandardCharsets.UTF_8) : "";
+      Matcher setting = ADD_SUPPRESS_WARNINGS.matcher(text);
+      if (setting.find() || STOP_BUBBLING.matcher(text).find()) {
+        return setting.find(0) && setting.group(1).equalsIgnoreCase("false");
       }
     }
     return false;
   }
 
+  /** Compiles one arguments file; {@link #lombokUnsuppressed} sources apart, against the build's classes. */
   private static void compile(JavaCompiler compiler, Path argumentsFile, String checks, List<String> entries,
       List<String> errors) throws IOException {
     List<String> lines = Files.readAllLines(argumentsFile, StandardCharsets.UTF_8);
     int separator = lines.indexOf(SOURCES);
     List<String> head = lines.subList(0, separator);
     List<String> sources = lines.subList(separator + 1, lines.size());
-    if (sources.isEmpty()) {
-      return;
+    String ownClasses = head.stream().filter(line -> line.startsWith(OWN_CLASSES)).findFirst()
+        .orElse(OWN_CLASSES).substring(OWN_CLASSES.length());
+    List<String> unsuppressed = lombokUnsuppressed(sources);
+    List<String> others = sources.stream().filter(source -> !unsuppressed.contains(source)).toList();
+    for (List<String> group : Stream.of(others, unsuppressed).filter(list -> !list.isEmpty()).toList()) {
+      List<String> options = javacOptions(head);
+      if (group.size() < sources.size()) {
+        int classpath = options.indexOf("-classpath") + 1;
+        options.set(classpath, options.get(classpath) + java.io.File.pathSeparator + ownClasses);
+      }
+      options.add(pluginArgument(checks, ownPackages(ownClasses), head.contains(TEST_ONLY),
+          group == unsuppressed));
+      if (failedSilently(compiler, options, group, entries, errors)) {
+        errors.add("javac failed on " + argumentsFile + " without reporting an error");
+      }
     }
-    String ownClasses =
-        head.stream().filter(line -> line.startsWith(OWN_CLASSES)).findFirst().orElse(OWN_CLASSES);
-    List<String> options = javacOptions(head);
-    options.add(pluginArgument(checks, ownPackages(ownClasses.substring(OWN_CLASSES.length())),
-        head.contains(TEST_ONLY), lombokUnsuppressed(sources)));
+  }
+
+  private static boolean failedSilently(JavaCompiler compiler, List<String> options, List<String> sources,
+      List<String> entries, List<String> errors) throws IOException {
     DiagnosticCollector<JavaFileObject> diagnostics = new DiagnosticCollector<>();
     boolean compiled;
     Map<String, List<ClassSpan>> classes = new HashMap<>();
@@ -214,6 +216,7 @@ public final class ErrorProneReport {
       recordClasses(task, classes);
       compiled = task.call();
     }
+    int before = errors.size();
     for (Diagnostic<? extends JavaFileObject> diagnostic : diagnostics.getDiagnostics()) {
       String code = diagnostic.getCode() == null ? "" : diagnostic.getCode();
       if (code.endsWith(".error.prone") && diagnostic.getSource() != null) {
@@ -222,9 +225,7 @@ public final class ErrorProneReport {
         errors.add(location(diagnostic) + diagnostic.getMessage(Locale.ROOT));
       }
     }
-    if (!compiled && errors.isEmpty()) {
-      errors.add("javac failed on " + argumentsFile + " without reporting an error");
-    }
+    return !compiled && errors.size() == before;
   }
 
   /** Records each analyzed class's span and annotations, keyed by its source file's path. */
@@ -267,8 +268,7 @@ public final class ErrorProneReport {
   }
 
   private static String location(Diagnostic<? extends JavaFileObject> diagnostic) {
-    return diagnostic.getSource() == null
-        ? ""
+    return diagnostic.getSource() == null ? ""
         : Path.of(diagnostic.getSource().toUri()) + ":" + diagnostic.getLineNumber() + ": ";
   }
 
@@ -278,9 +278,9 @@ public final class ErrorProneReport {
     long position = diagnostic.getPosition();
     List<String> annotations = classes.getOrDefault(file, List.of()).stream()
             .filter(span -> span.start() <= position && position < span.end())
-            .max((left, right) -> Long.compare(left.start(), right.start()))
-            .map(ClassSpan::annotations)
-            .orElse(List.of());
+            .sorted((left, right) -> Long.compare(right.start(), left.start()))
+            .flatMap(span -> span.annotations().stream())
+            .distinct().toList();
     return String.format(
         "{\"file\":%s,\"line\":%d,\"column\":%d,\"position\":%d,\"kind\":%s,\"message\":%s,"
             + "\"classAnnotations\":[%s]}",

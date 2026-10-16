@@ -32,7 +32,7 @@ const diagnostic = (file) => ({
 });
 
 describe('readErrorProneFindings', () => {
-  it('keeps diagnostics in the main and test source roots, as project-relative paths', () => {
+  it('keeps main and test diagnostics as project-relative paths, with the route on every test finding', () => {
     const { projectRoot, reportRoot } = reportRootWith((root) => [
       diagnostic(path.join(root, 'src/main/java/demo/A.java')),
       diagnostic(path.join(root, 'src/test/java/demo/ATest.java')),
@@ -44,6 +44,7 @@ describe('readErrorProneFindings', () => {
       reportRoot,
       roots: [projectRoot],
       lintedRoots: ['src/main/java', 'src/test/java'],
+      manifest: { testSourceRoots: ['src/test/java'] },
     });
 
     expect(findings.map((finding) => [finding.rule, finding.path, finding.message])).toEqual([
@@ -55,7 +56,9 @@ describe('readErrorProneFindings', () => {
       [
         'DeadException',
         'src/test/java/demo/ATest.java',
-        "Exception created but not thrown. Did you mean 'throw new X();'?",
+        "Exception created but not thrown. Did you mean 'throw new X();'? If this is intended, add " +
+          '{"rule":"errorprone/DeadException","paths":["src/test/java/demo/ATest.java"],"reason":"..."} ' +
+          'to "exceptions" in nitpicker.config.json.',
       ],
     ]);
   });
@@ -84,6 +87,30 @@ describe('readErrorProneFindings', () => {
     expect(read(true)).toEqual([
       'Stack is a nonstandard class',
       "Exception created but not thrown. Did you mean 'throw new X();'?",
+    ]);
+  });
+
+  it('gives the JDK form of a Guava suggestion where the source set has no Guava', () => {
+    const { projectRoot, reportRoot } = reportRootWith((root) =>
+      ['src/main/java/demo/A.java', 'src/test/java/demo/ATest.java'].map((file) => ({
+        file: path.join(root, file),
+        line: 4,
+        message:
+          "[ThrowSpecificExceptions] Throw something specific\n  Did you mean 'throw new VerifyException('?",
+      })),
+    );
+
+    const findings = readErrorProneFindings({
+      reportRoot,
+      roots: [projectRoot],
+      lintedRoots: ['src/main/java', 'src/test/java'],
+      manifest: { testSourceRoots: ['src/test/java'], guava: false, testGuava: true },
+      kotlin: true,
+    });
+
+    expect(findings.map((finding) => finding.message)).toStrictEqual([
+      "Throw something specific. Did you mean 'throw new IllegalStateException('?",
+      "Throw something specific. Did you mean 'throw new VerifyException('?",
     ]);
   });
 

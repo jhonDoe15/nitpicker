@@ -1,3 +1,6 @@
+import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { isLombokGenerated, lombokAnnotationAt } from './lombok-generated.mjs';
 
@@ -70,6 +73,25 @@ describe('Lombok generated code', () => {
       lombokAnnotationAt(text, text.indexOf('@Data')),
       lombokAnnotationAt(text, text.indexOf('@Value')),
     ]).toStrictEqual([undefined, 'lombok.Value']);
+  });
+
+  it('lets a type of the same file or package shadow lombok.*, as javac does', () => {
+    const directory = mkdtempSync(path.join(tmpdir(), 'nitpicker-lombok-names-'));
+    try {
+      writeFileSync(
+        path.join(directory, 'Value.java'),
+        'package demo;\npublic @interface Value {}\n',
+      );
+      const file = path.join(directory, 'A.java');
+      const text = 'import lombok.*;\n@interface Data {}\n@Data @Value @Getter class A {}';
+      expect(
+        ['@Data', '@Value', '@Getter'].map((name) =>
+          lombokAnnotationAt(text, text.indexOf(`${name} `), file),
+        ),
+      ).toStrictEqual([undefined, undefined, 'lombok.Getter']);
+    } finally {
+      rmSync(directory, { recursive: true, force: true });
+    }
   });
 
   it('ignores a Lombok name in a comment and a diagnostic without a position', () => {

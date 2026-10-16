@@ -1,23 +1,10 @@
 import { createIdentityCounter, hashIdentity } from '../common.mjs';
+import { withoutClassLiteralRepeats } from './class-literals.mjs';
+import { errorProneMessage } from './messages.mjs';
 
 const CHECK = /^\[([\w.-]+)\]\s*/;
 const SUGGESTION = /^\s*Did you mean\b/;
 const LINE_NUMBER = /\bline \d+\b/g;
-const SENTENCE_END = /[.?!:]$/;
-const ALLOWED_FORMS = new Map([
-  [
-    'NullAway',
-    'Annotate what may be null with the @Nullable the project already uses ' +
-      "(JSpecify's org.jspecify.annotations.Nullable if it uses none) and check it before use; " +
-      'otherwise give it a non-null value.',
-  ],
-  [
-    'SuppressWarningsWithoutExplanation',
-    'Explain this existing suppression in a comment next to it, saying why the warning is safe ' +
-      'to ignore. This is not a reason to add suppressions: fix new warnings instead.',
-  ],
-]);
-
 export function ingestErrorProne(json, options = {}) {
   const diagnostics = JSON.parse(json);
   if (!Array.isArray(diagnostics)) {
@@ -26,7 +13,7 @@ export function ingestErrorProne(json, options = {}) {
   const tool = options.tool ?? 'errorprone';
   const resolvePath = options.resolvePath ?? ((file) => file);
   const counters = new Map();
-  const findings = distinctDiagnostics(diagnostics, resolvePath).map(
+  const findings = distinctDiagnostics(diagnostics, resolvePath, options.guava ?? (() => true)).map(
     ({ diagnostic, parsed, filePath }) => {
       const unique = counters.get(filePath) ?? createIdentityCounter();
       counters.set(filePath, unique);
@@ -36,18 +23,22 @@ export function ingestErrorProne(json, options = {}) {
   return { findings };
 }
 
-function distinctDiagnostics(diagnostics, resolvePath) {
+function distinctDiagnostics(diagnostics, resolvePath, guava) {
   const reported = new Set();
-  return [...diagnostics].sort(byPosition).flatMap((diagnostic) => {
-    const parsed = parseMessage(diagnostic.message);
-    const filePath = typeof diagnostic.file === 'string' ? resolvePath(diagnostic.file) : undefined;
-    const key = JSON.stringify([filePath, diagnostic.line, parsed?.check, parsed?.message]);
-    if (parsed === undefined || filePath === undefined || reported.has(key)) {
-      return [];
-    }
-    reported.add(key);
-    return [{ diagnostic, parsed, filePath }];
-  });
+  return withoutClassLiteralRepeats(diagnostics)
+    .sort(byPosition)
+    .flatMap((diagnostic) => {
+      const filePath =
+        typeof diagnostic.file === 'string' ? resolvePath(diagnostic.file) : undefined;
+      const parsed = parseMessage(diagnostic.message, filePath === undefined || guava(filePath));
+      const position = [filePath, diagnostic.line, diagnostic.column];
+      const key = JSON.stringify([...position, parsed?.check, parsed?.message]);
+      if (parsed === undefined || filePath === undefined || reported.has(key)) {
+        return [];
+      }
+      reported.add(key);
+      return [{ diagnostic, parsed, filePath }];
+    });
 }
 
 function finding({ tool, filePath, parsed, diagnostic, unique }) {
@@ -64,7 +55,7 @@ function finding({ tool, filePath, parsed, diagnostic, unique }) {
   };
 }
 
-function parseMessage(text) {
+function parseMessage(text, guava) {
   if (typeof text !== 'string') {
     return undefined;
   }
@@ -76,24 +67,15 @@ function parseMessage(text) {
   const check = match[1];
   const summary = lines[0].slice(match[0].length).trim() || check;
   const suggestionStart = lines.findIndex((line) => SUGGESTION.test(line));
-  if (suggestionStart === -1) {
-    const allowedForm = ALLOWED_FORMS.get(check);
-    return {
-      check,
-      summary,
-      message: allowedForm ? `${sentence(summary)} ${allowedForm}` : summary,
-    };
-  }
-  const suggestion = lines
-    .slice(suggestionStart)
-    .map((line) => line.trim())
-    .filter(Boolean)
-    .join(' ');
-  return { check, summary, message: `${sentence(summary)} ${suggestion}` };
-}
-
-function sentence(text) {
-  return SENTENCE_END.test(text) ? text : `${text}.`;
+  const suggestion =
+    suggestionStart === -1
+      ? undefined
+      : lines
+          .slice(suggestionStart)
+          .map((line) => line.trim())
+          .filter(Boolean)
+          .join(' ');
+  return { check, summary, message: errorProneMessage({ check, summary, suggestion }, { guava }) };
 }
 
 function location({ line, column }) {
