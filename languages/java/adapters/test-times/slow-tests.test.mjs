@@ -9,8 +9,7 @@ const TEST_ROOT = 'src/test/java';
 const ORDER_TEST = `${TEST_ROOT}/shop/OrderTest.java`;
 const WAITS = 'Remove Thread.sleep and other waits, start a smaller Spring context or a test slice';
 const EXCEPTIONS = 'to "exceptions" in nitpicker.config.json.';
-const FAILSAFE_ADVICE =
-  'or make it a Failsafe integration test (class name ending in IT) if it is one';
+const FAILSAFE_ADVICE = 'or make it an integration test that Failsafe runs (*IT) if it is one';
 const temporaryRoots = [];
 
 const ORDER_SOURCE = `package shop;
