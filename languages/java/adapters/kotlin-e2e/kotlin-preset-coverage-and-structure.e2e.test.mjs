@@ -224,7 +224,7 @@ describe.skipIf(!kotlinE2eEnabled)('Kotlin preset coverage and structure end to 
       {
         rule: 'stability-direction',
         identity: 'package-edge:stable2->churn2',
-        message: 'stable2 depends on less stable package churn2',
+        message: `stable2 depends on less stable package churn2. ${exceptionRoute({ rule: 'stability-direction', path: 'stable2' })}`,
       },
     ]);
     const stable = onlyTools(result.newFindings, 'coupling').find(
