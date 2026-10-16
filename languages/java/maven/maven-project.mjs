@@ -7,6 +7,8 @@ const SCOPES = new Set(['compile', 'provided', 'runtime', 'test', 'system']);
 const MAIN_COMPILE_SCOPES = new Set(['compile', 'provided', 'system']);
 const TEST_COMPILE_SCOPES = new Set([...MAIN_COMPILE_SCOPES, 'test']);
 const BUILD_HELPER = 'org.codehaus.mojo:build-helper-maven-plugin';
+const GMAVENPLUS = 'org.codehaus.gmavenplus:gmavenplus-plugin';
+const GROOVY_TEST_ROOT = 'src/test/groovy';
 const JACOCO = 'org.jacoco:jacoco-maven-plugin';
 const SUREFIRE = 'org.apache.maven.plugins:maven-surefire-plugin';
 const FAILSAFE = 'org.apache.maven.plugins:maven-failsafe-plugin';
@@ -85,6 +87,18 @@ function helperRoots(plugin, goal, basedir) {
       );
 }
 
+function groovyTestRoots(plugin, basedir) {
+  if (plugin === undefined) {
+    return [];
+  }
+  const directories = [plugin, ...childrenAt(plugin, 'executions', 'execution')]
+    .flatMap((element) => childrenAt(element, 'configuration', 'testSources', 'testSource'))
+    .map((source) => textAt(source, 'directory'))
+    .filter((directory) => directory !== undefined);
+  const roots = directories.length === 0 ? [GROOVY_TEST_ROOT] : directories;
+  return [...new Set(roots.map((root) => path.resolve(basedir, root)))];
+}
+
 function jacocoDestFiles(plugin, basedir) {
   const executions =
     plugin === undefined ? [] : AGENT_GOALS.flatMap((goal) => executionsWithGoal(plugin, goal));
@@ -128,6 +142,7 @@ function describeModule(project, basedir) {
     testSourceRoots: [
       resolvedText(build, basedir, 'testSourceDirectory') ?? path.join(basedir, 'src/test/java'),
       ...helperRoots(plugins.get(BUILD_HELPER), 'add-test-source', basedir),
+      ...groovyTestRoots(plugins.get(GMAVENPLUS), basedir),
     ],
     resourceRoots: childrenAt(build, 'resources', 'resource')
       .map((resource) => textAt(resource, 'directory'))

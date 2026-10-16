@@ -371,6 +371,29 @@ describe('describeModule plugin configuration', () => {
   });
 });
 
+describe('describeModule Groovy test sources', () => {
+  it('adds the GMavenPlus test sources, src/test/groovy unless an execution or the plugin names others', () => {
+    const gmavenplus = (inner) =>
+      soloModule(inBuild(plugin('gmavenplus-plugin', inner, 'org.codehaus.gmavenplus')));
+    const testSource = (directory) =>
+      `<configuration><testSources><testSource><directory>${directory}</directory></testSource></testSources></configuration>`;
+    const named = gmavenplus(
+      `${testSource('src/spec/groovy')}<executions><execution>${testSource('src/it/groovy')}</execution></executions>`,
+    );
+    const plain = gmavenplus('');
+
+    expect(plain.testSourceRoots).toEqual([
+      path.join(plain.basedir, 'src/test/java'),
+      path.join(plain.basedir, 'src/test/groovy'),
+    ]);
+    expect(named.testSourceRoots).toEqual(
+      ['src/test/java', 'src/spec/groovy', 'src/it/groovy'].map((root) =>
+        path.join(named.basedir, root),
+      ),
+    );
+  });
+});
+
 describe('parseDependencyList', () => {
   it('reads scope and file, with classifiers, module names, optional markers and drive letters', () => {
     const listing = [
