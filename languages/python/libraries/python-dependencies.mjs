@@ -1,20 +1,33 @@
-import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs';
-import { createRequire } from 'node:module';
+import { existsSync, readdirSync } from 'node:fs';
 import path from 'node:path';
 import { parseIni } from '../adapters/configuration/mypy-config.mjs';
-
-// The dependencies a Python project declares, and whether each is for production or development.
-// Reads pyproject.toml (PEP 621 dependencies and optional-dependencies, [dependency-groups], uv,
-// pdm, hatch environments and Poetry), Pipfile, requirements*.txt (and requirements/*.txt|in) and
-// setup.cfg. Language-preset neutral: the dependency checks and the library detection share it.
+import { isDirectory, readProjectFile, toml } from './project-files.mjs';
 
 const PYPROJECT = 'pyproject.toml';
 const PIPFILE = 'Pipfile';
 const SETUP_CFG = 'setup.cfg';
 const REQUIREMENT_DIRECTORY = 'requirements';
 const REQUIREMENT_FILE = /^requirements.*\.(?:txt|in)$/u;
-const DEV_NAME =
-  /(?:^|[-_.])(?:dev|develop|development|test|tests|testing|lint|linting|docs?|typing|types|ci|tox|check|qa|format|local)(?:$|[-_.])/u;
+const DEV_WORDS = [
+  'dev',
+  'develop',
+  'development',
+  'test',
+  'tests',
+  'testing',
+  'lint',
+  'linting',
+  'docs?',
+  'typing',
+  'types',
+  'ci',
+  'tox',
+  'check',
+  'qa',
+  'format',
+  'local',
+];
+const DEV_NAME = new RegExp(`(?:^|[-_.])(?:${DEV_WORDS.join('|')})(?:$|[-_.])`, 'u');
 const REQUIREMENT_NAME = /^\s*([A-Za-z0-9](?:[A-Za-z0-9._-]*[A-Za-z0-9])?)/u;
 const EGG_NAME = /#egg=([A-Za-z0-9._-]+)/u;
 const PYTHON_ENTRY = 'python';
@@ -24,16 +37,18 @@ export function normalizeRequirementName(name) {
   return name.toLowerCase().replaceAll(/[-_.]+/gu, '-');
 }
 
-function toml() {
-  return createRequire(import.meta.url)('smol-toml');
-}
-
 /** The distribution a requirement line names (`Django>=4 ; python_version>"3.8"` is Django). */
 export function requirementName(line) {
   const text = line.replace(/\s+#.*$/u, '').trim();
-  if (text === '' || text.startsWith('#')) return undefined;
-  if (text.startsWith('-')) return undefined;
-  if (/^[a-z+]+:\/\//iu.test(text)) return EGG_NAME.exec(text)?.[1];
+  if (text === '' || text.startsWith('#')) {
+    return undefined;
+  }
+  if (text.startsWith('-')) {
+    return undefined;
+  }
+  if (/^[a-z+]+:\/\//iu.test(text)) {
+    return EGG_NAME.exec(text)?.[1];
+  }
   return REQUIREMENT_NAME.exec(text)?.[1];
 }
 
@@ -104,18 +119,22 @@ function isDynamic(parsed) {
 }
 
 function readPyproject(projectRoot) {
-  const file = path.join(projectRoot, PYPROJECT);
-  if (!existsSync(file)) return undefined;
-  const parsed = toml().parse(readFileSync(file, 'utf8'));
+  const text = readProjectFile(projectRoot, PYPROJECT);
+  if (text === undefined) {
+    return undefined;
+  }
+  const parsed = toml().parse(text);
   const declares =
     Array.isArray(parsed.project?.dependencies) || parsed.tool?.poetry?.dependencies !== undefined;
   return { entries: pyprojectEntries(parsed, PYPROJECT), declares, dynamic: isDynamic(parsed) };
 }
 
 function readPipfile(projectRoot) {
-  const file = path.join(projectRoot, PIPFILE);
-  if (!existsSync(file)) return undefined;
-  const parsed = toml().parse(readFileSync(file, 'utf8'));
+  const text = readProjectFile(projectRoot, PIPFILE);
+  if (text === undefined) {
+    return undefined;
+  }
+  const parsed = toml().parse(text);
   const categories = Object.entries(parsed).filter(
     ([name, table]) => name.endsWith('packages') && typeof table === 'object',
   );
@@ -134,9 +153,11 @@ function lines(value) {
 }
 
 function readSetupCfg(projectRoot) {
-  const file = path.join(projectRoot, SETUP_CFG);
-  if (!existsSync(file)) return undefined;
-  const sections = parseIni(readFileSync(file, 'utf8'));
+  const text = readProjectFile(projectRoot, SETUP_CFG);
+  if (text === undefined) {
+    return undefined;
+  }
+  const sections = parseIni(text);
   const options = sections.get('options') ?? new Map();
   const extras = sections.get('options.extras_require') ?? new Map();
   return {
@@ -151,11 +172,7 @@ function readSetupCfg(projectRoot) {
   };
 }
 
-function isDirectory(directory) {
-  return existsSync(directory) && statSync(directory).isDirectory();
-}
-
-export function requirementFiles(projectRoot) {
+function requirementFiles(projectRoot) {
   const directory = path.join(projectRoot, REQUIREMENT_DIRECTORY);
   return [
     ...readdirSync(projectRoot).filter((name) => REQUIREMENT_FILE.test(name)),
@@ -178,7 +195,7 @@ function requirementGroup(file) {
 function readRequirements(projectRoot) {
   return requirementFiles(projectRoot).flatMap((file) =>
     requirementEntries(
-      readFileSync(path.join(projectRoot, file), 'utf8').split(/\r?\n/u),
+      (readProjectFile(projectRoot, file) ?? '').split(/\r?\n/u),
       requirementGroup(file),
       file,
     ),
