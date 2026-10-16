@@ -7,6 +7,7 @@ import {
   withoutAnnotations,
 } from './java-source.mjs';
 
+const CLASS_KIND = 'class';
 const DECLARATION_END = /^(?:\{|;|throws\b|default\b)/;
 const NOT_A_DECLARATION = /[=()]|\b(?:return|new|throw|record)\b/;
 
@@ -98,7 +99,7 @@ function declarationIndexes(use, text) {
   const type = escaped(simpleName(use.signature));
   const naming = new RegExp(String.raw`\b${type}\b`);
   const { kind } = use.declaration;
-  if (kind === 'class') {
+  if (kind === CLASS_KIND) {
     return classIndexes(text, use.className, naming);
   }
   return kind === 'method' ? methodIndexes(text, use, naming) : fieldIndexes(text, use, type);
@@ -119,7 +120,7 @@ function classLine(className, text) {
 }
 
 function isSynthetic(use) {
-  return use.declaration.kind !== 'class' && use.declaration.member.split('(')[0].includes('$');
+  return use.declaration.kind !== CLASS_KIND && use.declaration.member.split('(')[0].includes('$');
 }
 
 function accessorOf(use, field) {
@@ -187,7 +188,7 @@ export function placeDeclarations(uses, textOf) {
       return [use];
     }
     const text = textOf(use.file);
-    if (use.declaration.kind !== 'class' && coveredByField(use, placed, text)) {
+    if (use.declaration.kind !== CLASS_KIND && coveredByField(use, placed, text)) {
       return [];
     }
     const line = text === undefined ? undefined : classLine(use.className, text);

@@ -85,7 +85,7 @@ export function enclosingLoop(node) {
   return undefined;
 }
 
-function contains(outer, inner) {
+export function contains(outer, inner) {
   return outer.range[0] <= inner.range[0] && inner.range[1] <= outer.range[1];
 }
 

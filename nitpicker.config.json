@@ -75,7 +75,11 @@
         "languages/java/maven/guards/maven-guards.mjs",
         "languages/java/maven/guards/maven-pmd.mjs",
         "languages/java/maven/maven-lint.mjs",
-        "languages/java/maven/results/maven-test-results.mjs"
+        "languages/java/maven/results/maven-test-results.mjs",
+        "languages/java/maven/coupling/maven-jdeps.mjs",
+        "languages/java/maven/maven-tests.mjs",
+        "languages/java/guards/test-support/guard-project.mjs",
+        "languages/java/maven/test-support/maven-e2e-projects.mjs"
       ],
       "reason": "Each reads, checks, writes or copies every distinct local file or directory exactly once (report files, class files, source files, source roots, classpath entries); the file system has no batched call to use."
     },
@@ -103,6 +107,7 @@
         "languages/java/adapters/java-e2e/pit-targets.e2e.test.mjs",
         "languages/java/maven/maven-preset.e2e.test.mjs",
         "languages/java/maven/maven-failsafe.e2e.test.mjs",
+        "languages/java/maven/guards/maven-code-smells.e2e.test.mjs",
         "languages/java/guards/guards.e2e.test.mjs",
         "languages/java/messages/rule-catalog.e2e.test.mjs"
       ],

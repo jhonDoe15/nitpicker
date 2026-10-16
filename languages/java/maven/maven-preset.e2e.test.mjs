@@ -1,14 +1,4 @@
-import {
-  cpSync,
-  existsSync,
-  mkdirSync,
-  mkdtempSync,
-  readdirSync,
-  readFileSync,
-  rmSync,
-  writeFileSync,
-} from 'node:fs';
-import { tmpdir } from 'node:os';
+import { existsSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { afterAll, describe, expect, it } from 'vitest';
 import { collectJavaFindings, runJavaDiff } from '../adapters/java-diff.mjs';
@@ -22,11 +12,7 @@ import {
   GRADLE_STEP_TIMEOUT_MS,
   runGitIn,
 } from '../adapters/test-support/gradle-e2e.mjs';
-import { codeSmellRules } from '../adapters/test-support/code-smell-rules.mjs';
-import {
-  expectedViolations,
-  reportedViolations,
-} from '../adapters/test-support/violation-markers.mjs';
+import { copyOf, removeCopies, withoutGradle } from './test-support/maven-e2e-projects.mjs';
 
 const enabled = process.env.NITPICKER_JAVA_E2E === '1';
 const gradle = process.env.NITPICKER_GRADLE ?? 'gradle';
@@ -35,7 +21,6 @@ const fixtures = path.join(import.meta.dirname, 'fixtures');
 const gradleFixtures = path.join(import.meta.dirname, '../adapters/fixtures');
 const gradleFixture = path.join(gradleFixtures, 'gradle-project');
 const BUILD_FILES = new Set(['build.gradle', 'pom.xml']);
-const temporary = [];
 
 const DATED = `package demo;
 
@@ -77,25 +62,7 @@ class AdderTest {
 }
 `;
 
-function copyOf(...sources) {
-  const root = mkdtempSync(path.join(tmpdir(), 'nitpicker-maven-e2e-'));
-  temporary.push(root);
-  for (const source of sources) {
-    cpSync(source, root, { recursive: true });
-  }
-  return root;
-}
-
 const comparable = (findings) => findings.map((finding) => JSON.stringify(finding)).sort();
-
-function withoutGradle(root) {
-  for (const name of readdirSync(root, { recursive: true })) {
-    if (/(?:^|[/\\])(?:build|settings)\.gradle$/u.test(name)) {
-      rmSync(path.join(root, name));
-    }
-  }
-  return root;
-}
 
 function onEitherBuildFile(findings) {
   return findings.map((finding) =>
@@ -103,11 +70,7 @@ function onEitherBuildFile(findings) {
   );
 }
 
-afterAll(() => {
-  for (const root of temporary.splice(0)) {
-    rmSync(root, { recursive: true, force: true });
-  }
-});
+afterAll(removeCopies);
 
 describe.skipIf(!enabled)('Java preset on Maven builds', () => {
   it(
@@ -183,36 +146,6 @@ describe.skipIf(!enabled)('Java preset on Maven builds', () => {
       ]);
     },
     2 * GRADLE_STEP_TIMEOUT_MS,
-  );
-
-  it(
-    'reports exactly the code smell violations marked in main and test sources',
-    () => {
-      const project = withoutGradle(
-        copyOf(
-          path.join(gradleFixtures, 'code-smells-project'),
-          path.join(fixtures, 'code-smells'),
-        ),
-      );
-      collectJavaFindings(project, { maven, policy: {} });
-      const checked = new Set([
-        ...codeSmellRules().map(({ name }) => name),
-        'AvoidDuplicateLiterals',
-      ]);
-      const sarif = path.join(project, 'target/nitpicker/pmd.sarif');
-
-      expect(
-        ['main', 'test'].map((sourceSet) => {
-          const sourceRoot = path.join(project, 'src', sourceSet, 'java');
-          return reportedViolations(sarif, sourceRoot, (rule) => checked.has(rule));
-        }),
-      ).toEqual(
-        ['main', 'test'].map((sourceSet) =>
-          expectedViolations(path.join(project, 'src', sourceSet, 'java')),
-        ),
-      );
-    },
-    GRADLE_STEP_TIMEOUT_MS,
   );
 
   it(

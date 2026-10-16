@@ -1,10 +1,7 @@
 import { hasBoundedKeys } from '../support/checked-types.mjs';
+import { contains } from './loop-shapes.mjs';
 
 const REDUCERS = new Set(['reduce', 'reduceRight']);
-
-function contains(outer, inner) {
-  return outer.range[0] <= inner.range[0] && inner.range[1] <= outer.range[1];
-}
 
 function reducerOf(call) {
   const [callback] = call.arguments;
