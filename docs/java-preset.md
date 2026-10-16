@@ -81,9 +81,11 @@ field by field. Per snapshot:
    auxiliary classpath is the main and test compile classpaths plus both class directories). The
    versions are read from the init script's `pinned` map, so both builds always run the same tools.
    A module that uses Spring (`spring-context` or `spring-boot` on its main compile classpath) also
-   runs the Spring architecture rules: ArchUnit is resolved with the other tools, the rule classes
-   are compiled once into the same private cache directory (keyed like Gradle's) and run in one
-   extra JVM per module (`languages/java/maven/spring/maven-spring-arch.mjs`).
+   runs the Spring architecture rules: ArchUnit is resolved with the other tools, but only when some
+   module uses Spring, and the rule classes are compiled once into
+   `$XDG_CACHE_HOME/nitpicker/spring-arch/<hash>` (else `~/.cache/nitpicker/spring-arch/<hash>`, private
+   to the user; the hash is computed like Gradle's, but the cache is separate from Gradle's) and run in
+   one extra JVM per module (`languages/java/maven/spring/maven-spring-arch.mjs`).
 
 - **Tests.** Failures of the ArchUnit rule classes (`*ArchTest`, `*ArchitectureTest`, or the
   `nitpicker.archunit.includes` property in the POM) become findings; any other failing test is a

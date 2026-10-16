@@ -33,7 +33,7 @@ function dependency(coordinates, exclusions = []) {
   ].join('');
 }
 
-export function toolDependencies(pinned, launcherVersions = []) {
+export function toolDependencies(pinned, launcherVersions = [], { spring = false } = {}) {
   return {
     pmd: [
       dependency(`net.sourceforge.pmd:pmd-cli:${pinned.pmd}`),
@@ -44,7 +44,6 @@ export function toolDependencies(pinned, launcherVersions = []) {
       dependency(`com.google.googlejavaformat:google-java-format:${pinned.googleJavaFormat}`),
     ],
     checkstyle: [dependency(`com.puppycrawl.tools:checkstyle:${pinned.checkstyle}`)],
-    archunit: [dependency(`com.tngtech.archunit:archunit:${pinned.archunit}`)],
     jacoco: [dependency(`org.jacoco:org.jacoco.cli:${pinned.jacoco}:nodeps`)],
     pit: [
       dependency(`org.pitest:pitest-command-line:${pinned.pitest}`),
@@ -53,6 +52,9 @@ export function toolDependencies(pinned, launcherVersions = []) {
         JUNIT_PLATFORM_EXCLUSIONS,
       ),
     ],
+    ...(spring
+      ? { archunit: [dependency(`com.tngtech.archunit:archunit:${pinned.archunit}`)] }
+      : {}),
     ...Object.fromEntries(
       launcherVersions.map((version) => [
         `launcher-${version}`,
@@ -114,8 +116,8 @@ function cacheDirectory(key) {
   return path.join(cacheRoot(), `maven-tools-${key}`);
 }
 
-export function resolveTools({ projectRoot, maven, pinned, launcherVersions }) {
-  const tools = toolDependencies(pinned, launcherVersions);
+export function resolveTools({ projectRoot, maven, pinned, launcherVersions, spring }) {
+  const tools = toolDependencies(pinned, launcherVersions, { spring });
   const key = createHash('sha256').update(JSON.stringify(tools)).digest('hex').slice(0, 16);
   const directory = cacheDirectory(key);
   const cached = readClasspaths(directory, Object.keys(tools));

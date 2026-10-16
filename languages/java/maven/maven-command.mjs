@@ -88,6 +88,7 @@ function argumentFileToken(value) {
 
 export function runJava({
   tool,
+  executable = 'java',
   classpath,
   mainClass,
   jvmArgs = [],
@@ -105,7 +106,7 @@ export function runJava({
       ...args,
     ];
     writeFileSync(argumentFile, tokens.map(argumentFileToken).join('\n'));
-    const result = spawnSync(javaCommand('java'), [`@${argumentFile}`], {
+    const result = spawnSync(javaCommand(executable), [`@${argumentFile}`], {
       cwd,
       encoding: 'utf8',
       maxBuffer: MAX_OUTPUT_BYTES,

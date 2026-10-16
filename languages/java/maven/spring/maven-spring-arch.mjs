@@ -1,80 +1,55 @@
 import { spawnSync } from 'node:child_process';
 import { createHash, randomUUID } from 'node:crypto';
-import {
-  existsSync,
-  mkdirSync,
-  readdirSync,
-  readFileSync,
-  renameSync,
-  rmSync,
-  writeFileSync,
-} from 'node:fs';
+import { existsSync, mkdirSync, readdirSync, readFileSync, renameSync, rmSync } from 'node:fs';
 import path from 'node:path';
 import { GRADLE_DIRECTORY } from '../../builds/java-build.mjs';
-import { javaCommand } from '../maven-command.mjs';
+import { javaCommand, runJava } from '../maven-command.mjs';
 import { cacheRoot } from '../maven-tools.mjs';
 
 const RULES_DIRECTORY = path.join(GRADLE_DIRECTORY, 'archunit');
-const RULES_TIMEOUT_MS = 15 * 60 * 1000;
-const MAX_OUTPUT_BYTES = 50 * 1024 * 1024;
-
-export function springArchCacheKey({ sources, archunit, jdk }) {
-  const digest = createHash('sha256');
-  for (const source of sources) {
-    digest.update(source);
-  }
-  digest.update(`${archunit}|${jdk}`);
-  return digest.digest('hex');
-}
-
-export function argumentFileText(entries) {
-  const joined = [...new Set(entries.map((entry) => path.resolve(entry)))]
-    .join(path.delimiter)
-    .replaceAll('\\', '\\\\');
-  return `-cp\n"${joined}"\n`;
-}
-
-export function archRulesArguments({ output, mainClasses, testClasses }) {
-  return ['ArchRules', output, mainClasses.join(path.delimiter), testClasses.join(path.delimiter)];
-}
-
-export function javacArguments({ staging, argumentFile, sources }) {
-  return ['-proc:none', '-nowarn', '-d', staging, `@${argumentFile}`, ...sources];
-}
-
-function execute({ command, args, cwd }) {
-  const result = spawnSync(command, args, {
-    cwd,
-    encoding: 'utf8',
-    maxBuffer: MAX_OUTPUT_BYTES,
-    timeout: RULES_TIMEOUT_MS,
-  });
-  if (result.error !== undefined) {
-    throw result.error;
-  }
-  if (result.status !== 0) {
-    throw new Error(
-      `Spring architecture rules failed: ${`${result.stdout}${result.stderr}`.trim()}`,
-    );
-  }
-}
+const TOOL = 'Spring architecture rules';
+const identities = new Map();
 
 function jdkIdentity() {
-  const result = spawnSync(javaCommand('java'), ['-XshowSettings:properties', '-version'], {
+  const java = javaCommand('java');
+  if (identities.has(java)) {
+    return identities.get(java);
+  }
+  const result = spawnSync(java, ['-XshowSettings:properties', '-version'], {
     encoding: 'utf8',
   });
+  if (result.error !== undefined || result.status !== 0) {
+    throw new Error(
+      `${TOOL} need the JDK identity, but java -version failed: ${result.error?.message ?? result.stderr}`,
+    );
+  }
   const lines = `${result.stderr}\n${result.stdout}`.split(/\r?\n/u).map((line) => line.trim());
   function property(name) {
-    return lines.find((line) => line.startsWith(`${name} = `))?.slice(name.length + 3) ?? '';
+    const line = lines.find((candidate) => candidate.startsWith(`${name} = `));
+    if (line === undefined) {
+      throw new Error(`${TOOL} need the JDK identity, but java reported no ${name}`);
+    }
+    return line.slice(name.length + 3);
   }
-  return `${property('java.vendor')}|${property('java.version')}`;
+  const identity = `${property('java.vendor')}|${property('java.version')}`;
+  identities.set(java, identity);
+  return identity;
 }
 
-function ruleSources() {
-  return readdirSync(RULES_DIRECTORY)
+function ruleSources(rulesDirectory) {
+  return readdirSync(rulesDirectory)
     .filter((name) => name.endsWith('.java'))
     .sort()
-    .map((name) => path.join(RULES_DIRECTORY, name));
+    .map((name) => path.join(rulesDirectory, name));
+}
+
+function cacheKey({ sources, archunit }) {
+  const digest = createHash('sha256');
+  for (const source of sources) {
+    digest.update(readFileSync(source));
+  }
+  digest.update(`${archunit}|${jdkIdentity()}`);
+  return digest.digest('hex');
 }
 
 function publish(staging, classes) {
@@ -88,19 +63,21 @@ function publish(staging, classes) {
   }
 }
 
-function compileRules({ classes, sources, libraries, directory }) {
+function compileRules({ classes, sources, libraries, cwd }) {
   if (existsSync(classes)) {
     return;
   }
   const staging = `${classes}.${randomUUID()}`;
   mkdirSync(staging, { recursive: true });
-  const argumentFile = path.join(directory, 'compile.args');
-  writeFileSync(argumentFile, argumentFileText(libraries));
   try {
-    execute({
-      command: javaCommand('javac'),
-      args: javacArguments({ staging, argumentFile, sources }),
-      cwd: directory,
+    runJava({
+      tool: TOOL,
+      executable: 'javac',
+      jvmArgs: ['-proc:none', '-nowarn', '-d', staging],
+      classpath: libraries,
+      args: sources,
+      cwd,
+      accept: (result) => result.status === 0,
     });
   } catch (error) {
     rmSync(staging, { recursive: true, force: true });
@@ -109,53 +86,40 @@ function compileRules({ classes, sources, libraries, directory }) {
   publish(staging, classes);
 }
 
-function rulesDirectory({ sources, archunit }) {
-  const sourceBytes = sources.map((source) => readFileSync(source));
-  const key = springArchCacheKey({ sources: sourceBytes, archunit, jdk: jdkIdentity() });
-  const root = path.join(cacheRoot(), 'spring-arch');
-  mkdirSync(root, { recursive: true });
-  return path.join(root, key);
-}
-
 function existing(entries) {
   return entries.filter((entry) => existsSync(entry));
 }
 
-function freshDirectory(directory) {
-  rmSync(directory, { recursive: true, force: true });
-  mkdirSync(directory, { recursive: true });
-}
-
 function runRules({ module, classpaths, libraries, locations }) {
-  const { classes, directory, output } = locations;
-  const mainClasses = existing([module.outputDirectory]);
-  const testClasses = existing([module.testOutputDirectory]);
+  const { classes, output } = locations;
   const projectPath = [
-    ...mainClasses,
-    ...testClasses,
+    module.outputDirectory,
+    module.testOutputDirectory,
     ...classpaths.mainCompile,
     ...classpaths.testCompile,
   ];
-  const argumentFile = path.join(directory, 'run.args');
-  writeFileSync(argumentFile, argumentFileText([classes, ...libraries, ...existing(projectPath)]));
-  execute({
-    command: javaCommand('java'),
-    args: [`@${argumentFile}`, ...archRulesArguments({ output, mainClasses, testClasses })],
+  runJava({
+    tool: TOOL,
+    classpath: [...new Set([classes, ...libraries, ...existing(projectPath)])],
+    mainClass: 'ArchRules',
+    args: [output, module.outputDirectory, module.testOutputDirectory],
     cwd: module.basedir,
+    accept: (result) => result.status === 0,
   });
 }
 
-export function runSpringArch({ module, reportDir, tools, classpaths, pinned, spring }) {
+export function runSpringArch(options) {
+  const { module, reportDir, tools, classpaths, pinned, spring } = options;
   if (!spring) {
     return;
   }
   const output = path.join(reportDir, 'spring-arch.json');
-  const directory = path.join(reportDir, 'spring-arch');
   rmSync(output, { force: true });
-  freshDirectory(directory);
-  const sources = ruleSources();
-  const classes = rulesDirectory({ sources, archunit: pinned.archunit });
+  const sources = ruleSources(options.rules ?? RULES_DIRECTORY);
+  const root = path.join(cacheRoot(), 'spring-arch');
+  mkdirSync(root, { recursive: true });
+  const classes = path.join(root, cacheKey({ sources, archunit: pinned.archunit }));
   const libraries = existing(tools.archunit);
-  compileRules({ classes, sources, libraries, directory });
-  runRules({ module, classpaths, libraries, locations: { classes, directory, output } });
+  compileRules({ classes, sources, libraries, cwd: module.basedir });
+  runRules({ module, classpaths, libraries, locations: { classes, output } });
 }

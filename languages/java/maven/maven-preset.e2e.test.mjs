@@ -20,6 +20,36 @@ const gradleFixture = path.join(import.meta.dirname, '../adapters/fixtures/gradl
 const springFixture = path.join(import.meta.dirname, '../adapters/fixtures/spring-arch-project');
 const temporary = [];
 
+const SPRING_VIOLATIONS = [
+  'spring-controller-entity shop.orders.OrderController all:shop.orders.Order',
+  'spring-controller-entity shop.orders.OrderController create:shop.orders.Order',
+  'spring-controller-entity shop.orders.OrdersApiController list:shop.orders.Order',
+  'spring-controller-entity shop.orders.ReportController base:shop.orders.Order',
+  'spring-controller-entity shop.orders.ReportController model:shop.orders.Order',
+  'spring-controller-repository shop.customers.CustomerController shop.orders.OrderRepository',
+  'spring-controller-repository shop.orders.OrderController shop.orders.OrderRepository',
+  'spring-feature-boundary shop.billing.BillingService shop.orders.internal.Audit',
+  'spring-feature-boundary shop.billing.Invoices shop.web.internal.Formats',
+  'spring-layout shop.Helper ',
+  'spring-layout shop.service.Legacy service',
+  'spring-layout shop.util.Strings util',
+  'spring-no-dirties-context shop.OrderFlowTest ',
+  'spring-no-dirties-context shop.orders.integration.CheckoutIT ',
+  'spring-service-web shop.billing.BillingService org.springframework.http.ResponseEntity',
+  'spring-shared-pure shop.shared.Clocked ',
+  'spring-shared-pure shop.shared.Totals shop.orders.OrderDto',
+  'spring-test-placement shop.OrderFlowTest ',
+  'spring-test-placement shop.orders.ComposedTest ',
+  'spring-test-placement shop.orders.ExtendedTest ',
+  'spring-test-placement shop.orders.InheritedTest ',
+  'spring-test-placement shop.orders.RepositoryTest ',
+];
+const SPRING_LAYOUT_FINDINGS = [
+  'src/main/java/shop/Helper.java Helper',
+  'src/main/java/shop/service/Legacy.java Legacy|service',
+  'src/main/java/shop/util/Strings.java Strings|util',
+];
+
 const DATED = `package demo;
 
 import java.util.Date;
@@ -77,6 +107,10 @@ function withoutRunnableTests(root) {
       writeFileSync(file, readFileSync(file, 'utf8').replaceAll(/^\s*@Test\r?\n/gmu, ''));
     }
   }
+}
+
+function readReport(root, directory, name) {
+  return JSON.parse(readFileSync(path.join(root, directory, 'nitpicker', name), 'utf8'));
 }
 
 function runGradleTask(root, task) {
@@ -144,15 +178,19 @@ describe.skipIf(!enabled)('Java preset on Maven builds', () => {
       }
       runGradleTask(gradleProject, 'nitpickerSpringArch');
       const findings = collectJavaFindings(mavenProject, { maven, policy: {} });
-      const report = (root, directory, name) =>
-        JSON.parse(readFileSync(path.join(root, directory, 'nitpicker', name), 'utf8'));
-      const fromMaven = report(mavenProject, 'target', 'spring-arch.json');
+      const fromMaven = readReport(mavenProject, 'target', 'spring-arch.json');
+      const manifest = readReport(mavenProject, 'target', 'manifest.json');
 
-      expect(fromMaven.violations.length).toBeGreaterThan(0);
-      expect(fromMaven).toEqual(report(gradleProject, 'build', 'spring-arch.json'));
-      const manifest = report(mavenProject, 'target', 'manifest.json');
+      expect(fromMaven).toEqual(readReport(gradleProject, 'build', 'spring-arch.json'));
+      expect(
+        fromMaven.violations.map(({ rule, className, detail }) => `${rule} ${className} ${detail}`),
+      ).toEqual(SPRING_VIOLATIONS);
       expect([manifest.spring, manifest.springArch]).toEqual([true, true]);
-      expect(findings.some((finding) => finding.rule === 'spring-layout')).toBe(true);
+      expect(
+        findings
+          .filter((finding) => finding.rule === 'spring-layout')
+          .map((finding) => `${finding.path} ${finding.identity}`),
+      ).toEqual(SPRING_LAYOUT_FINDINGS);
     },
     2 * GRADLE_STEP_TIMEOUT_MS,
   );
