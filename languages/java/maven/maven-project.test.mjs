@@ -24,21 +24,6 @@ function reactor(files) {
 const raw = (artifactId, parent = '') =>
   `<project>${parent === '' ? '<groupId>demo</groupId>' : `<parent><groupId>${parent}</groupId></parent>`}<artifactId>${artifactId}</artifactId></project>`;
 
-function compilerOf(root, { properties = '', configuration = '', executions = '' }) {
-  const [module] = readReactor(
-    root,
-    `<project><groupId>demo</groupId><artifactId>solo</artifactId>
-      <properties>${properties}</properties>
-      <build><plugins><plugin>
-        <artifactId>maven-compiler-plugin</artifactId>
-        <configuration>${configuration}</configuration>
-        <executions>${executions}</executions>
-      </plugin></plugins></build>
-    </project>`,
-  );
-  return module.compiler;
-}
-
 function effective(root) {
   return `<?xml version="1.0"?>
 <!-- Effective POMs -->
@@ -202,71 +187,6 @@ describe('readReactor', () => {
     expect(modules.map((module) => [module.basedir, module.coordinates])).toEqual([
       [root, 'demo:solo'],
     ]);
-  });
-
-  it('prefers the default-compile execution and treats unresolved properties as unset', () => {
-    const root = reactor({ 'pom.xml': raw('solo') });
-    const [module] = readReactor(
-      root,
-      `<project><groupId>demo</groupId><artifactId>solo</artifactId>
-        <properties><maven.compiler.target>\${java.version}</maven.compiler.target></properties>
-        <build><plugins><plugin>
-          <artifactId>maven-compiler-plugin</artifactId>
-          <configuration>
-            <release>11</release><encoding>\${encoding}</encoding><compilerArgs><arg>-a</arg></compilerArgs>
-          </configuration>
-          <executions><execution><id>default-compile</id>
-            <configuration><release>21</release><compilerArgs><arg>-b</arg></compilerArgs></configuration>
-          </execution></executions>
-        </plugin></plugins></build>
-      </project>`,
-    );
-
-    expect(module.compiler).toEqual({
-      release: '21',
-      source: undefined,
-      target: undefined,
-      encoding: undefined,
-      args: ['-b'],
-    });
-  });
-
-  it('reads source, target and encoding from the maven.compiler properties before the sourceEncoding', () => {
-    const root = reactor({ 'pom.xml': raw('solo') });
-    const properties = [
-      '<maven.compiler.source>11</maven.compiler.source>',
-      '<maven.compiler.target>12</maven.compiler.target>',
-      '<maven.compiler.encoding>UTF-16</maven.compiler.encoding>',
-      '<project.build.sourceEncoding>ISO-8859-1</project.build.sourceEncoding>',
-    ].join('');
-
-    expect(compilerOf(root, { properties })).toEqual({
-      release: undefined,
-      source: '11',
-      target: '12',
-      encoding: 'UTF-16',
-      args: [],
-    });
-  });
-
-  it.each([
-    ['true', ['--enable-preview']],
-    ['false', []],
-  ])('turns the maven.compiler.enablePreview property %s into %j', (value, args) => {
-    const root = reactor({ 'pom.xml': raw('solo') });
-    const properties = `<maven.compiler.enablePreview>${value}</maven.compiler.enablePreview>`;
-
-    expect(compilerOf(root, { properties }).args).toEqual(args);
-  });
-
-  it('reads compilerArgument from the default-compile execution before the plugin configuration', () => {
-    const root = reactor({ 'pom.xml': raw('solo') });
-    const configuration = '<compilerArgument>-plugin</compilerArgument>';
-    const executions = `<execution><id>default-compile</id>
-      <configuration><compilerArgument>-parameters  -g</compilerArgument></configuration>
-    </execution>`;
-
-    expect(compilerOf(root, { configuration, executions }).args).toEqual(['-parameters', '-g']);
   });
 
   it('matches a module whose raw coordinates use a property by its build directory', () => {

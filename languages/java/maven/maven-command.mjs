@@ -3,6 +3,7 @@ import { existsSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { wrapperTarget } from '../adapters/gradle-wrapper/gradle-command.mjs';
+import { argumentFileToken } from '../builds/lint/javac-options.mjs';
 
 const MAVEN_TIMEOUT_MS = 15 * 60 * 1000;
 const TOOL_TIMEOUT_MS = 15 * 60 * 1000;
@@ -97,10 +98,6 @@ export function javaCommand(name) {
   return candidate !== undefined && (existsSync(candidate) || existsSync(`${candidate}.exe`))
     ? candidate
     : name;
-}
-
-export function argumentFileToken(value) {
-  return `"${String(value).replaceAll('\\', '\\\\').replaceAll('"', '\\"')}"`;
 }
 
 export function runJava({
