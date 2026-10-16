@@ -8,14 +8,10 @@ import {
 } from '../../../../conventions/file-name-casing.mjs';
 
 const PIN_EXAMPLE = '"conventions": { "typescript.fileNames": "camelCase" }';
-const listings = new Map();
 
 function siblingNames(filename) {
   const directory = path.dirname(filename);
-  if (!listings.has(directory)) {
-    listings.set(directory, existsSync(directory) ? readdirSync(directory) : []);
-  }
-  return listings.get(directory);
+  return existsSync(directory) ? readdirSync(directory) : [];
 }
 
 function projectFile(context) {
