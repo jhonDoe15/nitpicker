@@ -13,7 +13,7 @@ import { environmentsFromJestConfig } from './jest/jest-environment.mjs';
 import { jestConfigFile, readJestConfig } from './jest/read-jest-config.mjs';
 import { RESULT_MARKER } from './read-environment.mjs';
 
-export { TEST_ENVIRONMENTS_VARIABLE, TEST_ENVIRONMENT_RULE };
+export { TEST_ENVIRONMENTS_VARIABLE };
 export const LINT_CONFIG = 'languages/typescript/preset/defaults/eslint.config.mjs';
 
 const READER = path.join(import.meta.dirname, 'read-environment.mjs');
@@ -60,7 +60,9 @@ function loadJestEnvironments({ projectRoot, liveProjectRoot, timeoutMs }) {
 
 function loadViteEnvironments({ projectRoot, liveProjectRoot, timeoutMs }) {
   const configFile = projectConfigFile(projectRoot);
-  if (configFile === undefined) return { ...UNKNOWN, environment: DEFAULT_ENVIRONMENT };
+  if (configFile === undefined) {
+    return { ...UNKNOWN, environment: DEFAULT_ENVIRONMENT };
+  }
   const outcome = runReader({
     configFile,
     projectRoot,
@@ -79,7 +81,9 @@ export function loadTestEnvironments({
   runner = DEFAULT_TEST_RUNNER,
 }) {
   const options = { projectRoot, liveProjectRoot, timeoutMs };
-  if (runner === 'jest') return loadJestEnvironments(options);
+  if (runner === 'jest') {
+    return loadJestEnvironments(options);
+  }
   return runner === 'vitest'
     ? loadViteEnvironments(options)
     : { ...UNKNOWN, environment: DEFAULT_ENVIRONMENT };

@@ -36,17 +36,23 @@ function asDestructuredRequire(definition) {
 }
 
 function normalizedDefinition(definition) {
-  if (isDefaultImport(definition)) return asNamedImport(definition);
+  if (isDefaultImport(definition)) {
+    return asNamedImport(definition);
+  }
   return isWholeRequire(definition) ? asDestructuredRequire(definition) : definition;
 }
 
 function normalizedVariable(variable) {
-  if (variable === undefined) return variable;
+  if (variable === undefined) {
+    return variable;
+  }
   return Object.create(variable, { defs: { value: variable.defs.map(normalizedDefinition) } });
 }
 
 function normalizedScope(scope) {
-  if (scope === null) return scope;
+  if (scope === null) {
+    return scope;
+  }
   const set = Object.create(scope.set, {
     get: { value: (name) => normalizedVariable(scope.set.get(name)) },
   });

@@ -184,9 +184,11 @@ describe('generated knip.json', () => {
   });
 
   it('lists the Jest and Mocha config files in the shared entries, for both presets', () => {
-    expect(base.entry).toEqual(
-      expect.arrayContaining(['jest.config.{ts,mts}', '.mocharc.{js,cjs,mjs}']),
+    const runnerConfigs = base.entry.filter(
+      (entry) => entry.startsWith('jest.config') || entry.startsWith('.mocharc'),
     );
+
+    expect(runnerConfigs).toEqual(['jest.config.{ts,mts}', '.mocharc.{js,cjs,mjs}']);
   });
 
   it('does not add them for TypeScript', () => {

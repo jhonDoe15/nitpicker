@@ -93,7 +93,9 @@ function projectVocabulary() {
 }
 
 function rejectErrorsMessage({ text, relativePath }) {
-  if (!readLayout().isTestFile(relativePath)) return text;
+  if (!readLayout().isTestFile(relativePath)) {
+    return text;
+  }
   return `${text} In tests, reject with ${projectVocabulary().rejection} to use a non-Error reason.`;
 }
 
@@ -123,7 +125,9 @@ function onlyThrowErrorMessage({ text, relativePath }) {
 }
 
 function expectExpectMessage({ text }) {
-  if (text !== NO_ASSERTIONS_TEXT) return text;
+  if (text !== NO_ASSERTIONS_TEXT) {
+    return text;
+  }
   const { assertCall, assertIt } = projectVocabulary();
   return `${NO_ASSERTIONS_TEXT}. Call ${assertCall} in the test body: asserting helpers do not count, so return the value and ${assertIt} in the test.`;
 }

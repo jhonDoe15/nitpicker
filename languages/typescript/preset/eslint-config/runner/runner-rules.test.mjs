@@ -2,8 +2,8 @@ import { Linter } from 'eslint';
 import { describe, expect, it } from 'vitest';
 import { RUNNER_RULE_NAMESPACES, testRunnerLintConfig } from './runner-rules.mjs';
 
-async function findings(runner, code) {
-  const config = await testRunnerLintConfig(runner);
+function findings(runner, code) {
+  const config = testRunnerLintConfig(runner);
   const messages = new Linter().verify(code, [
     {
       files: ['**/*.js'],
@@ -32,8 +32,8 @@ describe('the test file rules follow the runner', () => {
     ['node', `${NODE_HEAD}test('a', () => {});`, 'node-test/expect-expect'],
     ['node', `${NODE_NAMED_HEAD}it('a', () => {});`, 'node-test/expect-expect'],
     ['node', "const test = require('node:test');\ntest('a', () => {});", 'node-test/expect-expect'],
-  ])('flags a test without an assertion on %s', async (runner, code, ruleId) => {
-    expect(await findings(runner, code)).toEqual([ruleId]);
+  ])('flags a test without an assertion on %s', (runner, code, ruleId) => {
+    expect(findings(runner, code)).toEqual([ruleId]);
   });
 
   it.each([
@@ -44,8 +44,8 @@ describe('the test file rules follow the runner', () => {
     ['node', `${NODE_HEAD}test('a', () => { assert.equal(1, 1); });`],
     ['node', `${NODE_HEAD}test('a', () => { assert(true); });`],
     ['node', `${NODE_NAMED_HEAD}it('a', (t) => { t.assert.ok(true); });`],
-  ])('accepts the assertions the %s project uses', async (runner, code) => {
-    expect(await findings(runner, code)).toEqual([]);
+  ])('accepts the assertions the %s project uses', (runner, code) => {
+    expect(findings(runner, code)).toEqual([]);
   });
 
   it.each([
@@ -58,49 +58,50 @@ describe('the test file rules follow the runner', () => {
       `${NODE_NAMED_HEAD}it.only('a', () => { assert.ok(1); });`,
       'node-test/no-focused-tests',
     ],
-  ])('flags a focused test on %s', async (runner, code, ruleId) => {
-    expect(await findings(runner, code)).toEqual([ruleId]);
+  ])('flags a focused test on %s', (runner, code, ruleId) => {
+    expect(findings(runner, code)).toEqual([ruleId]);
   });
 
   it.each([
     ['jest', 'jest/no-identical-title'],
     ['mocha', 'mocha/no-identical-title'],
-  ])('flags duplicate titles on %s', async (runner, ruleId) => {
+  ])('flags duplicate titles on %s', (runner, ruleId) => {
     const code = "it('a', () => { assert.ok(1); });\nit('a', () => { assert.ok(1); });";
 
-    expect(await findings(runner, code)).toEqual([ruleId]);
+    expect(findings(runner, code)).toEqual([ruleId]);
   });
 
-  it('flags duplicate titles on node:test through either import style', async () => {
+  it('flags duplicate titles on node:test through either import style', () => {
     const duplicate = "('a', () => { assert.ok(1); });\n";
     const named = `${NODE_NAMED_HEAD}it${duplicate}it${duplicate}`;
     const whole = `${NODE_HEAD}test${duplicate}test${duplicate}`;
 
-    expect(await findings('node', named)).toEqual(['node-test/no-identical-title']);
-    expect(await findings('node', whole)).toEqual(['node-test/no-identical-title']);
+    expect(findings('node', named)).toEqual(['node-test/no-identical-title']);
+    expect(findings('node', whole)).toEqual(['node-test/no-identical-title']);
   });
 
-  it('flags a conditional inside a test on every runner', async () => {
-    const body = "it('a', () => { if (x) { assert.ok(1); } });";
-
-    expect(await findings('vitest', body)).toContain('vitest/no-conditional-in-test');
-    expect(await findings('jest', body)).toContain('jest/no-conditional-in-test');
-    expect(await findings('mocha', body)).toContain('mocha/no-conditional-in-test');
-    expect(await findings('node', `${NODE_NAMED_HEAD}${body}`)).toContain(
-      'node-test/no-conditional-in-test',
-    );
+  it.each([
+    ['vitest', "it('a', () => { if (x) { assert.ok(1); } });", 'vitest'],
+    ['jest', "it('a', () => { if (x) { assert.ok(1); } });", 'jest'],
+    ['mocha', "it('a', () => { if (x) { assert.ok(1); } });", 'mocha'],
+    ['node', `${NODE_NAMED_HEAD}it('a', () => { if (x) { assert.ok(1); } });`, 'node-test'],
+  ])('flags a conditional inside a %s test', (runner, code, namespace) => {
+    expect(findings(runner, code)).toEqual([`${namespace}/no-conditional-in-test`]);
   });
 
-  it('does not treat other modules named test as node:test', async () => {
+  it('does not treat other modules named test as node:test', () => {
     const code = "import test from 'ava';\ntest('a', () => {});\ntest('a', () => {});";
 
-    expect(await findings('node', code)).toEqual([]);
+    expect(findings('node', code)).toEqual([]);
   });
 
-  it('leaves the Vitest-only rule about node:test imports to Vitest projects', async () => {
+  it('leaves the Vitest-only rule about node:test imports to Vitest projects', () => {
     const code = "import { test } from 'node:test';\ntest('a', () => { expect(1).toBe(1); });";
 
-    expect(await findings('vitest', code)).toContain('vitest/no-import-node-test');
-    expect(await findings('node', code)).toEqual([]);
+    expect(findings('vitest', code)).toEqual([
+      'vitest/no-import-node-test',
+      'vitest/no-standalone-expect',
+    ]);
+    expect(findings('node', code)).toEqual([]);
   });
 });

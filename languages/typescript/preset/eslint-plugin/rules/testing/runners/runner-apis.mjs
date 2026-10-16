@@ -33,8 +33,12 @@ const FAKE_TIMERS_ON = { vitest: ['useFakeTimers'], jest: ['useFakeTimers'], nod
 const FAKE_TIMERS_OFF = { vitest: ['useRealTimers'], jest: ['useRealTimers'], node: ['reset'] };
 
 function importedName(specifier) {
-  if (specifier.type === 'ImportDefaultSpecifier') return 'default';
-  if (specifier.type !== 'ImportSpecifier') return undefined;
+  if (specifier.type === 'ImportDefaultSpecifier') {
+    return 'default';
+  }
+  if (specifier.type !== 'ImportSpecifier') {
+    return undefined;
+  }
   const { imported } = specifier;
   return imported.type === 'Identifier' ? imported.name : imported.value;
 }
@@ -69,7 +73,9 @@ function destructuredBindings(pattern, spec) {
 
 function requireBindings(declarator, spec) {
   const { id } = declarator;
-  if (id.type === 'ObjectPattern') return destructuredBindings(id, spec);
+  if (id.type === 'ObjectPattern') {
+    return destructuredBindings(id, spec);
+  }
   return id.type === 'Identifier' && spec.names.includes('default')
     ? [{ local: id.name, kind: spec.kind }]
     : [];
@@ -84,19 +90,24 @@ export function createRunnerApis() {
 }
 
 function remember(apis, bindings) {
-  for (const { local, kind } of bindings) apis.kinds.set(local, kind);
+  for (const { local, kind } of bindings) {
+    apis.kinds.set(local, kind);
+  }
 }
 
 export function runnerApiVisitors(apis) {
   return {
     ImportDeclaration(node) {
       const spec = specFor(node.source.value);
-      if (spec !== undefined && node.importKind !== 'type')
+      if (spec !== undefined && node.importKind !== 'type') {
         remember(apis, importBindings(node, spec));
+      }
     },
     VariableDeclarator(node) {
       const spec = specFor(requireSource(node.init));
-      if (spec !== undefined) remember(apis, requireBindings(node, spec));
+      if (spec !== undefined) {
+        remember(apis, requireBindings(node, spec));
+      }
     },
   };
 }
@@ -107,7 +118,9 @@ function propertyName(callee) {
 }
 
 function kindOfObject(apis, node) {
-  if (node.type === 'Identifier') return apis.kinds.get(node.name);
+  if (node.type === 'Identifier') {
+    return apis.kinds.get(node.name);
+  }
   return propertyName(node) === 'mock' ? 'node' : undefined;
 }
 
@@ -129,13 +142,17 @@ function nodeTimerMethod(apis, callee) {
 }
 
 function fakeFlag(kind, method) {
-  if (FAKE_TIMERS_ON[kind]?.includes(method)) return true;
+  if (FAKE_TIMERS_ON[kind]?.includes(method)) {
+    return true;
+  }
   return FAKE_TIMERS_OFF[kind]?.includes(method) ? false : undefined;
 }
 
 export function fakeTimerChange(apis, call) {
   const { callee } = call;
-  if (callee.type !== 'MemberExpression') return undefined;
+  if (callee.type !== 'MemberExpression') {
+    return undefined;
+  }
   const nodeMethod = nodeTimerMethod(apis, callee);
   const kind = nodeMethod === undefined ? kindOfObject(apis, callee.object) : 'node';
   const fake = fakeFlag(kind, nodeMethod ?? propertyName(callee));

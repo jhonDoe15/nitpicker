@@ -60,16 +60,24 @@ function isChainedTimeout({ callee }) {
 }
 
 function argumentTimeouts(context, argument) {
-  if (argument === undefined || isFunction(argument)) return [];
+  if (argument === undefined || isFunction(argument)) {
+    return [];
+  }
   const properties = timeoutProperties(context, argument);
-  if (properties.length > 0) return properties.map((property) => property.value);
+  if (properties.length > 0) {
+    return properties.map((property) => property.value);
+  }
   return resolveConstant(context, argument)?.type === 'ObjectExpression' ? [] : [argument];
 }
 
 function timeoutNodes(context, node) {
   const global = globalTimeouts(context, node);
-  if (global !== undefined) return global;
-  if (isChainedTimeout(node)) return node.arguments.slice(0, 1);
+  if (global !== undefined) {
+    return global;
+  }
+  if (isChainedTimeout(node)) {
+    return node.arguments.slice(0, 1);
+  }
   const root = rootName(node.callee);
   if (
     node.callee.type === 'MemberExpression' &&
