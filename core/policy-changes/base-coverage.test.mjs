@@ -44,4 +44,30 @@ describe('baseConfigCoveringHead', () => {
       excludedGlobs: builtInExcludedGlobs.filter((glob) => glob === 'dist/**'),
     });
   });
+
+  it('measures the base with the stricter side of every listed key', () => {
+    const exception = (paths) => ({ rule: 'file-lines-limit', paths, reason: 'Legacy' });
+
+    expect(
+      baseConfigCoveringHead(
+        {
+          disable: ['mutation', 'crap'],
+          exceptions: [exception(['src/a/**', 'src/b/**']), { ...exception(['x/**']), rule: 'r' }],
+          thresholds: { fileLines: 500, crapLimit: 6 },
+          python: { typeChecker: 'mypy', exceptions: [exception(['src/a/**'])] },
+        },
+        {
+          disable: ['mutation'],
+          exceptions: [exception(['src/b/**'])],
+          thresholds: { lineLength: 100 },
+          python: { typeChecker: 'mypy' },
+        },
+      ),
+    ).toEqual({
+      disable: ['mutation'],
+      exceptions: [exception(['src/b/**'])],
+      thresholds: { fileLines: 300, crapLimit: 6, lineLength: 100 },
+      python: { typeChecker: 'mypy', exceptions: [] },
+    });
+  });
 });

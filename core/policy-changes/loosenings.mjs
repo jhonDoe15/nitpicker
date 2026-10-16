@@ -1,6 +1,6 @@
 import { DEFAULT_CRAP_SCORE_LIMIT, FILE_LIMIT_DEFAULTS } from '../../shared/policy.mjs';
 
-const THRESHOLD_DEFAULTS = { crapLimit: DEFAULT_CRAP_SCORE_LIMIT, ...FILE_LIMIT_DEFAULTS };
+export const THRESHOLD_DEFAULTS = { crapLimit: DEFAULT_CRAP_SCORE_LIMIT, ...FILE_LIMIT_DEFAULTS };
 const DEFAULT_PRESET = 'typescript';
 const STRICTER_PRESET = new Map([['javascript', 'typescript']]);
 const DEFAULT_PRECEDENCE = ['nitpicker'];
@@ -49,15 +49,21 @@ export function loosensSetting(change, scope) {
   );
 }
 
-function raisedThresholds(baseThresholds = {}, headThresholds = {}) {
+function thresholdChanges(baseThresholds = {}, headThresholds = {}) {
   const keys = [...new Set([...Object.keys(baseThresholds), ...Object.keys(headThresholds)])];
-  return keys.flatMap((key) => {
-    const before = baseThresholds[key] ?? THRESHOLD_DEFAULTS[key];
-    const after = headThresholds[key] ?? THRESHOLD_DEFAULTS[key];
-    return after > before
-      ? [`threshold ${key} raised from ${String(before)} to ${String(after)}`]
-      : [];
-  });
+  const moves = keys.map((key) => ({
+    key,
+    before: baseThresholds[key] ?? THRESHOLD_DEFAULTS[key],
+    after: headThresholds[key] ?? THRESHOLD_DEFAULTS[key],
+  }));
+  const text =
+    (verb) =>
+    ({ key, before, after }) =>
+      `threshold ${key} ${verb} from ${String(before)} to ${String(after)}`;
+  return {
+    loosened: moves.filter(({ before, after }) => after > before).map(text('raised')),
+    changed: moves.filter(({ before, after }) => after < before).map(text('lowered')),
+  };
 }
 
 function analyzerChanges(baseAnalyzers = [], headAnalyzers = []) {
@@ -80,12 +86,18 @@ function analyzerChanges(baseAnalyzers = [], headAnalyzers = []) {
 }
 
 export function listedChanges(baseConfig, headConfig) {
-  const disabled = (headConfig.disable ?? []).filter(
-    (name) => !(baseConfig.disable ?? []).includes(name),
-  );
+  const before = baseConfig.disable ?? [];
+  const after = headConfig.disable ?? [];
   return [
-    { loosened: disabled.map((name) => `analyzer disabled: ${name}`), changed: [] },
-    { loosened: raisedThresholds(baseConfig.thresholds, headConfig.thresholds), changed: [] },
+    {
+      loosened: after
+        .filter((name) => !before.includes(name))
+        .map((name) => `analyzer disabled: ${name}`),
+      changed: before
+        .filter((name) => !after.includes(name))
+        .map((name) => `analyzer enabled: ${name}`),
+    },
+    thresholdChanges(baseConfig.thresholds, headConfig.thresholds),
     analyzerChanges(baseConfig.analyzers, headConfig.analyzers),
   ];
 }

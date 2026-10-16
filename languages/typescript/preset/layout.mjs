@@ -146,6 +146,10 @@ export function resolveLayout(layout = {}, exclude = [], { javascript = false } 
   const patterns = filePatterns({ sourceRoots, testRoots, extensions });
   const globs = globsFor({ sourceRoots, testRoots, javascript, extensionGlob });
   const excludedGlobs = [...(layout.excludedGlobs ?? builtInExcludedGlobs), ...exclude];
+  const hiddenGlobs = [
+    ...(layout.excludedGlobs ?? []).filter((glob) => !builtInExcludedGlobs.includes(glob)),
+    ...exclude,
+  ];
   const resolved = {
     javascript,
     extensions,
@@ -161,8 +165,10 @@ export function resolveLayout(layout = {}, exclude = [], { javascript = false } 
     runtimeExcludedGlobs: [...excludedGlobs, ...declarationGlobs],
     ...globs,
     excludePattern:
-      exclude.length === 0 ? undefined : exclude.map((glob) => globToRegExpSource(glob)).join('|'),
-    ...createClassifiers({ sourceRoots, testRoots, exclude, patterns }),
+      hiddenGlobs.length === 0
+        ? undefined
+        : hiddenGlobs.map((glob) => globToRegExpSource(glob)).join('|'),
+    ...createClassifiers({ sourceRoots, testRoots, exclude: hiddenGlobs, patterns }),
     projectCodeFiles: (projectRoot, roots = globs.graphRoots) =>
       codeFilesUnder(resolved, projectRoot, existingRoots(projectRoot, roots)),
   };

@@ -1,5 +1,6 @@
 import { isPlainObject } from '../../shared/config.mjs';
 import { coveredPathChanges } from './covered-paths.mjs';
+import { hiddenCodeChanges } from './hidden-code.mjs';
 import { listedChanges, loosensSetting } from './loosenings.mjs';
 
 const LISTED_KEYS = new Set(['exclude', 'disable', 'exceptions', 'thresholds', 'analyzers']);
@@ -57,6 +58,7 @@ export function describePolicyChanges(baseConfig, headConfig, scope) {
   const parts = [
     ...coveredPathChanges(baseConfig, headConfig, scope),
     ...listedChanges(baseConfig, headConfig),
+    hiddenCodeChanges(baseConfig, headConfig, scope),
   ];
   return {
     loosened: [

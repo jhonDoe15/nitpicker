@@ -1,3 +1,5 @@
+import { existsSync } from 'node:fs';
+import path from 'node:path';
 import { globToRegExp } from '../../shared/glob.mjs';
 import { runGit } from '../diff/git/repository/command.mjs';
 import { detectSourceRoots } from '../../languages/python/adapters/execution/python-project.mjs';
@@ -68,6 +70,7 @@ export function createPolicyScope({
   headConfig,
   moves,
   presetRequired = false,
+  existsInBase = () => true,
 }) {
   const extensions = new Set(extensionsOf(headConfig));
   const code = files.filter((file) => extensions.has(file.slice(file.lastIndexOf('.') + 1)));
@@ -84,6 +87,7 @@ export function createPolicyScope({
     headRoots,
     basePathOf: basePathResolver(moves, folders),
     presetRequired,
+    existsInBase,
   };
 }
 
@@ -102,5 +106,6 @@ export function readPolicyScope({
     headConfig,
     moves,
     presetRequired: presetToDeclare(headConfig, headProjectRoot) !== undefined,
+    existsInBase: (file) => existsSync(path.join(baseProjectRoot, file)),
   });
 }
