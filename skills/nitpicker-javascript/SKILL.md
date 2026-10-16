@@ -17,6 +17,9 @@ follows the full TypeScript rules (no `as`, `enum`, `interface`, `any`, `!`), no
 If your change edits a function that existed before it, read
 [editing-existing-code.md](editing-existing-code.md) before you edit.
 
+Before you change code other modules use or fix a bug, read
+[beyond-the-gate.md](beyond-the-gate.md).
+
 ## Finish with the gate
 
 1. Run your tests (`npx vitest run`). Failing tests stop coverage, CRAP and mutation from running.

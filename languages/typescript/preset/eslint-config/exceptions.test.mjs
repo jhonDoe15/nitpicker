@@ -39,6 +39,11 @@ describe('strict rule exceptions', () => {
     expect(applyRuleExceptions(presetConfig, [fileLimit])).toEqual(presetConfig);
   });
 
+  it('leaves exceptions for the component story check to the structure check', () => {
+    const story = { rule: 'component-story-missing', paths: ['src/ui/Badge.tsx'], reason: 'None' };
+    expect(applyRuleExceptions(presetConfig, [story])).toEqual(presetConfig);
+  });
+
   it('fails for a rule the preset does not define', () => {
     expect(() =>
       applyRuleExceptions(presetConfig, [{ ...exception, rule: 'nitpicker/nope' }]),
