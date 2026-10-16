@@ -1,7 +1,7 @@
 import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { ingestCrapFunctions } from '../../ingest/crap.mjs';
-import { MESSAGES } from '../../../../shared/policy.mjs';
+import { MESSAGES, RULE_IDS } from '../../../../shared/policy.mjs';
 import { hash } from '../../../../shared/rules/finding-helpers.mjs';
 import { methodText, structureFindings } from '../metrics/java-structure.mjs';
 
@@ -15,8 +15,35 @@ export function readKotlinMetrics(reportRoot) {
     : { functions: [], files: [] };
 }
 
+function repeatsInClass(entry) {
+  return entry.name.endsWith('<init>');
+}
+
+const RETURN_EARLY = 'Return early instead of nesting.';
+const EXTRACT_NESTED = 'Move the nested part into its own function.';
+
+function adviseInitializers(findings, functions) {
+  const initializers = new Set(
+    functions.filter(({ initializer }) => initializer === true).map(({ name }) => name),
+  );
+  return findings.map((finding) =>
+    finding.rule === RULE_IDS.functionControlNesting && initializers.has(finding.symbol)
+      ? { ...finding, message: finding.message.replace(RETURN_EARLY, EXTRACT_NESTED) }
+      : finding,
+  );
+}
+
 export function readKotlinStructureFindings(metrics, projectRoot) {
-  return structureFindings(metrics.functions, projectRoot);
+  return adviseInitializers(
+    structureFindings(
+      metrics.functions.map((entry) => ({
+        ...entry,
+        numberedAmongSameSource: repeatsInClass(entry),
+      })),
+      projectRoot,
+    ),
+    metrics.functions,
+  );
 }
 
 export function selectKotlinMethods(fn, candidates, siblings) {
@@ -70,6 +97,8 @@ export function readKotlinCrapFindings(metrics, { projectRoot, jacoco, crapLimit
       longName: entry.name,
       start: entry.start,
       end: entry.end,
+      lineScoped: entry.initializer === true,
+      numberedAmongSameSource: repeatsInClass(entry),
     }));
   return ingestCrapFunctions(functions, jacoco, {
     jacocoKeys: jacocoKeys(metrics),
