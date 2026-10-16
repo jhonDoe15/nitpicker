@@ -663,13 +663,13 @@ Which formatter applies which convention:
 The type checkers and mutmut follow the same rule as the formatters: their strictness and their scope
 are nitpicker's, so a project config cannot weaken the gate. By default only what the tool needs to
 find the code and the packages is read, and the run prints one line per ignored config, such as
-`Ignoring [tool.pyright] in pyproject.toml; opt in with "tools": { "pyright": { "precedence": ["project", "nitpicker"] } }`.
+`Ignoring [tool.pyright] in pyproject.toml except its environment keys; opt in with "tools": { "pyright": { "precedence": ["project", "nitpicker"] } }`.
 
-| Tool      | Read without the opt-in                                                                                                                                                                        | Read when `precedence` lists `"project"`                                                                                            |
-| --------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------- |
-| `pyright` | `venv`, `venvPath`, `pythonVersion`, `pythonPlatform`, `stubPath`, `typeshedPath`, `extraPaths`, and the `root`, `extraPaths`, `pythonVersion` and `pythonPlatform` of `executionEnvironments` | every key of `pyrightconfig.json` (or `[tool.pyright]`/`[tool.basedpyright]`, following `extends`) over nitpicker's strict settings |
-| `mypy`    | `plugins`, `mypy_path`, `python_version`, the namespace and typeshed options, and the `ignore_missing_imports` and `follow_imports` of sections for modules the project does not own           | every option and per-module section of `mypy.ini`, `.mypy.ini`, `[tool.mypy]` or `setup.cfg`, over `strict = true`                  |
-| `mutmut`  | `also_copy`, the process isolation options, and the source paths when `python.sourceRoots` is `.`; nitpicker writes `source_paths` and `do_not_mutate` (tests and `exclude`)                   | every key of `[tool.mutmut]` or `[mutmut]` over nitpicker's; the test files and the `exclude` globs stay in `do_not_mutate`         |
+| Tool      | Read without the opt-in                                                                                                                                                                                                                                                | Read when `precedence` lists `"project"`                                                                                            |
+| --------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------- |
+| `pyright` | `venv`, `venvPath`, `pythonVersion`, `pythonPlatform`, `stubPath`, `typeshedPath`, `extraPaths`, and the `root`, `extraPaths`, `pythonVersion` and `pythonPlatform` of `executionEnvironments`                                                                         | every key of `pyrightconfig.json` (or `[tool.pyright]`/`[tool.basedpyright]`, following `extends`) over nitpicker's strict settings |
+| `mypy`    | `plugins`, `mypy_path`, `python_version`, the namespace and typeshed options, and the `ignore_missing_imports` and `follow_imports` of sections for modules the project does not own (own: found under the source roots and `mypy_path`, as `.py`, `.pyi` or `-stubs`) | every option and per-module section of `mypy.ini`, `.mypy.ini`, `[tool.mypy]` or `setup.cfg`, over `strict = true`                  |
+| `mutmut`  | `also_copy`, the process isolation options, and the source paths when `python.sourceRoots` is `.`; nitpicker writes `source_paths` and `do_not_mutate` (tests and `exclude`)                                                                                           | every key of `[tool.mutmut]` or `[mutmut]` over nitpicker's; the test files and the `exclude` globs stay in `do_not_mutate`         |
 
 `tools.pyright` covers `pyright` and `basedpyright` alike (there is no `tools.basedpyright`). With the
 opt-in a key the project sets overrides nitpicker's and every key it leaves out stays strict, so a
@@ -679,8 +679,12 @@ apply. `["nitpicker", "project"]` keeps the unlisted behavior: only the keys in 
 read. Without the opt-in, mypy sections for the project's own modules (`[mypy-shop.*]` with
 `ignore_errors`, `follow_imports = skip` and the like) and sections whose pattern starts with `*` are
 dropped, since they silence the code under test; sections for third-party modules are kept. A project
-listed without its config is a tool error. The files are read from the head checkout and are part of
-the cache key.
+listed without its config, or with one that cannot be parsed, is a tool error. The files are read from
+the head checkout and are part of the cache key (pyright's `extends` chain included); their source
+paths are resolved against the checkout being checked, and pyright also looks in the parent
+directories up to the repository root. The project's mypy `exclude` is kept as written and nitpicker's
+is added with `--exclude`. mutmut's notice is printed only when the project's table has keys it
+ignores.
 
 ### Lint engine
 

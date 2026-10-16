@@ -45,8 +45,8 @@ backstop. It fails only on findings your change adds, so leave code the task doe
   local first. Build a list with a comprehension, not `append` in a loop.
 - Imports: name what you use. No `from module import *`.
 - Output: the project's logger (`logging.getLogger(__name__)`, structlog or loguru), never `print`. In an
-  `except` pass the exception itself to the log call (`logger.exception(...)`, `exc_info=True`), not
-  `str(error)`.
+  `except` keep the traceback with `logger.exception(...)` or `exc_info=True`, or re-raise; passing the
+  error as an argument or `str(error)` drops it.
 - Records: `@dataclass(frozen=True)`, and `dataclasses.replace` for a changed copy. The project's
   validation library (pydantic by default) only in an `adapters/` package, where untrusted input is
   parsed once; pass frozen dataclasses on from there.

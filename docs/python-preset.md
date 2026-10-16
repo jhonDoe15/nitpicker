@@ -264,8 +264,9 @@ through the real tools.
   with `tools.pyright` or `tools.mypy` (below). Only its environment settings apply. For mypy that is
   `plugins`, `mypy_path`, `python_version`, the namespace and typeshed options and, per module,
   `ignore_missing_imports` and `follow_imports` for modules the project does not own; a section for
-  one of its own packages or modules (found under the source roots), or for a pattern that starts
-  with `*`, is dropped, as are `ignore_errors`, `disable_error_code`, `exclude` and every flag that
+  one of its own packages or modules (found under the source roots and under the `mypy_path`
+  directories, as `.py` or `.pyi` files, directories and `-stubs` packages), or for a pattern that
+  starts with `*`, is dropped, as are `ignore_errors`, `disable_error_code`, `exclude` and every flag that
   weakens strict. Pyright gets a generated config in the report directory holding the project's
   environment keys (`venv`, `venvPath`, `pythonVersion`, `pythonPlatform`, `stubPath`,
   `typeshedPath`, `extraPaths` and the root, `extraPaths`, version and platform of each
@@ -278,7 +279,9 @@ through the real tools.
   two checkers report the same rules. The project config is `pyrightconfig.json` (first) or the
   `[tool.basedpyright]` / `[tool.pyright]` table (basedpyright does not read a
   `basedpyrightconfig.json`, so neither does nitpicker), and a baseline file
-  (`.basedpyright/baseline.json`) is not read. Mypy also gets the environment's
+  (`.basedpyright/baseline.json`) is not read. Mypy takes the first of `mypy.ini` and `.mypy.ini`
+  that exists, even without a `[mypy]` section (its `[mypy-...]` sections still apply, as in mypy
+  itself), then `pyproject.toml` or `setup.cfg` only with a mypy table or section. Mypy also gets the environment's
   interpreter (`--python-executable`), so packages installed there resolve. Tests are not
   type-checked unless a source root contains them. Findings are one per diagnostic: tool `mypy`, `pyright` or `basedpyright`, rule the
   error code (`arg-type`) or rule name (`reportArgumentType`), identity the message text without `on line N` / `from line N` references (ruff messages such as F811 too), with `#n` for repeats in one file. Only the first line of a pyright or basedpyright message is used, since
@@ -290,12 +293,20 @@ through the real tools.
   settings: a key the project sets wins, a key it leaves out stays strict. For mypy the generated
   config starts with `strict = true` (and `--strict` is left off the command line, since a flag would
   override the file), then the project's global options and every per-module section, own modules
-  included; its `exclude` is added to nitpicker's. For pyright the project's keys replace the generated
-  ones (`include`, `exclude` and `extraPaths` are merged instead, and each `executionEnvironments`
-  entry keeps nitpicker's import roots). The config is read from the head checkout for both sides of
-  the comparison and is part of the cache key. Naming `"project"` without a config is a tool error.
-  `["nitpicker", "project"]` reads only what the unlisted behavior reads. Without the opt-in the run prints
-  `Ignoring [tool.pyright] in pyproject.toml; opt in with ...` once. The code is in
+  included. The project's `exclude` is written as it is (an inline `(?x)` keeps working) and
+  nitpicker's `exclude` globs go to the command line as `--exclude`, which mypy adds to it. For
+  pyright the project's keys replace the generated ones (`include`, `exclude` and `extraPaths` are
+  merged instead, and each `executionEnvironments` entry keeps nitpicker's import roots). The config
+  is read from the head checkout for both sides of the comparison, and every source path in it
+  (`include`, `exclude`, `extraPaths`, `stubPath`, an environment's `root` and `extraPaths`) is
+  resolved against the checkout that is being checked, so the base run checks base files; `venv`,
+  `venvPath` and `typeshedPath` stay where the environment is. With the opt-in pyright also looks
+  for `pyrightconfig.json` or a `pyproject.toml` with the table in the parent directories up to
+  the repository root. The config files, the `extends` chain included, are part of the cache key.
+  Naming `"project"` without a config is a tool error, and so is a config that cannot be parsed (the
+  message says so and names the file). `["nitpicker", "project"]` reads only what the unlisted
+  behavior reads. Without the opt-in the run prints
+  `Ignoring [tool.pyright] in pyproject.toml except its environment keys; opt in with ...` once. The code is in
   `languages/python/adapters/project-tools/`.
 - **Lint rules.** `languages/python/ruff/nitpicker-ruff.toml` selects, besides slice 1's rules,
   `PTH`, `UP031`, `UP032`, `FLY002` and `BLE001`, and ignores `F405`
@@ -332,37 +343,50 @@ Details that are decisions rather than the table:
   adapters. `frozen=True` must be the literal `True`.
 - The validation library is the one the project declares, read from `pyproject.toml` (PEP 621
   `dependencies`, `optional-dependencies` and `dependency-groups`; Poetry, uv and pdm tables),
-  `requirements*.txt` (also under `requirements/`), `setup.cfg` and a `Pipfile`: pydantic, attrs
+  `requirements*.txt` (also under `requirements/`), `setup.cfg`, the literal `install_requires` and
+  `extras_require` of a `setup.py` and a `Pipfile`: pydantic, attrs
   with cattrs, marshmallow, msgspec, dataclasses-json, voluptuous or cerberus. Runtime
   dependencies come before development ones, and when several are declared all of them are
   guarded. `pydantic-boundary` then flags importing any of them (`cattrs` for attrs, which is also
   the domain's record library, so `import attrs` stays allowed) outside `adapters/`, and the
   message names the declared libraries and the first one's parse call (`Schema().load(data)`);
-  with none declared it guards pydantic and says so. The dependency reader is
+  with none declared it guards pydantic and says so. The requirements files follow `-r` includes
+  of any path inside the project (once each), skip constraints files, read the `.in` file next to
+  a compiled `.txt` and, for a compiled file without one, only the direct dependencies (the
+  entries `# via -r ...`), and decode a byte order mark or UTF-16. The dependency reader is
   `languages/python/libraries/python-dependencies.mjs`.
 - The logger is read the same way: `structlog` or `loguru` when declared, else the standard
   library. The `print` message and the `catch-log-without-exception` message name that logger's
   form (`structlog.get_logger()`, `from loguru import logger`).
-- `catch-log-without-exception` flags a call to a logger (`debug`, `info`, `warning`, `error`,
-  `critical`, `log`, ...) in an `except ... as name:` body that uses the caught name, or a value
-  built from it, without passing the exception itself: `logger.exception(...)`, `exc_info=`
-  (anything but `False` or `None`), loguru's `logger.opt(exception=...)`, or the bare caught name
-  as an argument (`logger.warning("failed: %s", error)`, `error=error`) are accepted, and
-  `str(error)` or an f-string with it is not. A logger is a name bound from `logging.getLogger`
-  or `structlog.get_logger`, loguru's `logger`, or a receiver called `logger`/`log`/`..._logger`;
+- `catch-log-without-exception` flags a `warning`, `warn`, `error` or `critical` call on a logger
+  in an `except ... as name:` body that uses the caught name, or a value built from it, without
+  keeping the traceback. The traceback is kept by `logger.exception(...)`, `exc_info=` (anything
+  but `False` or `None`), loguru's `logger.opt(exception=...)` and structlog's `exc_info`, and
+  by a handler that re-raises after logging (a bare `raise`, `raise error`, or
+  `raise Other(...) from error`). Passing the caught name as an argument (`logger.warning("failed:
+%s", error)`), as a field (`error=error`) or in `extra=` does not keep it, nor does
+  `str(error)` or an f-string, so those are flagged. A call in a nested handler that uses the outer
+  name is checked for the outer handler too. A logger is a name bound from `logging.getLogger` or
+  `structlog.get_logger`, loguru's `logger`, or a receiver called `logger`/`log`/`..._logger`;
   `logging.error(...)` counts too. A log call that does not use the caught name is left to
   `swallowed-exception`.
 - `test-without-assertion` flags a `test_*` function (or method of a `Test*` class or a
-  `TestCase`) in a `test_*.py` or `*_test.py` file that has no `assert`, no `raise
-AssertionError`, no `pytest.raises`/`warns`/`fail`/`skip`/`xfail`, no call whose name starts with
-  `assert` (`self.assertEqual`, `mock.assert_called_once`, `assert_that(...)`) or is `expect`, and no
-  call to one of the project's assertion helpers. Tests marked `skip`, `skipif` or `xfail` are
-  exempt. The helpers are measured, not listed: a `check_`, `verify_`, `ensure_`, `validate_`,
-  `expect_`, `should_`, `must_`, `confirm_`, `compare_` or `require_` function that ends at least two
-  tests counts, and so does any function defined in a test directory, a `test_*.py` file or a
-  `testing`/`assertions` module that asserts or calls a counted helper (followed to a fixed
-  point). A source function that merely contains an `assert` is not a helper. A smoke test that
-  deliberately asserts nothing takes a `python.exceptions` entry for `test-without-assertion`.
+  `TestCase`) in a `test_*.py` or `*_test.py` file that has no `assert`, no `raise AssertionError`,
+  no `pytest.raises`/`warns`/`fail`/`skip`/`xfail` or `self.fail`/`self.skipTest` (a bare `fail`
+  or `skip`, or another receiver, does not count), no call whose name starts with `assert` on a
+  receiver (`self.assertEqual`, `mock.assert_called_once`) or imported from a library
+  (`from assertpy import assert_that`), no imported `expect`, no pytest-check call or
+  `with check:` (when `pytest_check` is imported), and no call to one of the project's assertion
+  helpers. A function decorated with `@fixture` or `@pytest.fixture` is never a test, whatever its
+  name. Tests marked `skip`, `skipif` or `xfail` are exempt. A helper is followed only with proof:
+  it is defined as a `def` in a test directory, a `conftest.py`, a `test_*.py` file or a
+  `testing`/`assertions` module and its own body asserts (an `assert`, `self.assert*`,
+  `pytest.raises`, `pytest.fail` or a `raise`; not through a nested function or lambda), and it
+  is the last call of tests that have no other assertion in at least three test files. The name
+  alone never counts, and tests that already assert do not vote. A call counts when it is bare,
+  `self.name(...)` or qualified by a project test module (`helpers.check_total(...)`), never on an
+  arbitrary receiver. A smoke test that deliberately asserts nothing takes a `python.exceptions`
+  entry for `test-without-assertion`.
 - The boundary is a directory named `adapters` anywhere in the path (`src/shop/adapters/api.py`),
   as in the TypeScript preset; a project that keeps its models elsewhere (`schemas/`,
   `api/`) adds a `python.exceptions` entry for `pydantic-boundary` with those paths.
@@ -771,7 +795,10 @@ location.
   `use_setproctitle`) and, when the source roots are `.`, its `source_paths` (or the old
   `paths_to_mutate`). `do_not_mutate`, `only_mutate`, `mutate_only_covered_lines`,
   `max_stack_depth`, `pytest_add_cli_args` and the rest are ignored, since they can shrink the
-  mutation testing; the run prints `Ignoring [tool.mutmut] in pyproject.toml; opt in with ...`.
+  mutation testing; when the project's table holds any of them the run prints
+  `Ignoring [tool.mutmut] in pyproject.toml except also_copy and its process options; opt in with ...`.
+  The table is written with a TOML serializer, and a `pyproject.toml` that cannot be parsed is a
+  tool error that names the file.
   Source roots of `.` with no `source_paths` of the project are an error, since mutmut would copy
   the whole project: set `python.sourceRoots` or `[tool.mutmut]`. A test that reads a file outside
   the copied sources fails mutmut's first run ("failed to collect stats"); the error then adds a
