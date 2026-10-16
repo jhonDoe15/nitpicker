@@ -1,5 +1,5 @@
 import { readFileSync } from 'node:fs';
-import { exceptionHint } from '../../../shared/policy.mjs';
+import { exceptionHint } from '../../../shared/rules/exceptions.mjs';
 
 export const CATALOG_TOOLS = ['pmd', 'checkstyle', 'spotbugs'];
 export const LAYOUT_FIX = 'Run google-java-format on the file; it fixes this layout.';

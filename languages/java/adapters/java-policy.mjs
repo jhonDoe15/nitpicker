@@ -7,7 +7,7 @@ import {
   readOptionalInventory,
   withLegacyInventory,
 } from '../../../shared/legacy-inventory.mjs';
-import { configError } from '../../../shared/config.mjs';
+import { configError, TYPESCRIPT_ONLY_KEYS } from '../../../shared/config.mjs';
 import { JAVA_TOOLS, PROJECT_TOOL_CONFIGS } from './gradle-presets.mjs';
 import { JAVA_NATIVE_RULES, SHARED_EXCEPTION_RULES } from '../../../shared/policy.mjs';
 import { evaluateBaselineExpansions } from '../../../shared/rules/baseline-expansion.mjs';
@@ -15,7 +15,6 @@ import { checkstyleRuleName } from '../messages/rule-messages.mjs';
 
 export const EXCEPTION_SEPARATOR = ':';
 const FILE_LIMIT_THRESHOLDS = ['fileLines', 'testFileLines', 'lineLength', 'folderFiles'];
-const TYPESCRIPT_ONLY_KEYS = ['layout', 'exceptions', 'react', 'tools'];
 const NATIVE_LINE_LENGTH = {
   java: 'Checkstyle checks Java line length; set it in config/checkstyle/checkstyle.xml and opt in with "tools": { "checkstyle": { "precedence": ["project"] } }',
   kotlin: 'detekt checks Kotlin line length; set style>MaxLineLength in config/detekt/detekt.yml',

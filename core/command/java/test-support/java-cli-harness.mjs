@@ -3,7 +3,7 @@ import { afterEach, beforeEach, vi } from 'vitest';
 import { runTasksInProcess } from '../../../diff/execution/test-support/in-process-analyzers.mjs';
 import { usePresetFixtures } from '../../test-support/preset-fixtures.mjs';
 import { readCatalog } from '../../../../languages/java/messages/rule-messages.mjs';
-import { exceptionHint } from '../../../../shared/policy.mjs';
+import { exceptionHint } from '../../../../shared/rules/exceptions.mjs';
 
 export const fakeGradle = path.resolve(
   import.meta.dirname,
