@@ -1,3 +1,6 @@
+import { existsSync, readFileSync } from 'node:fs';
+import path from 'node:path';
+
 const PAIRED_OPTIONS = new Set([
   '-Xmaxwarns',
   '-Xmaxerrs',
@@ -103,4 +106,67 @@ export function languageLevel(compiler) {
     ...(source === undefined ? [] : ['-source', source]),
     ...(target === undefined ? [] : ['-target', target]),
   ];
+}
+
+const ESCAPES = { n: '\n', r: '\r', t: '\t', f: '\f' };
+
+function escapedStep(state, char) {
+  return /[\n\r]/u.test(char)
+    ? { ...state, escape: false, continued: true }
+    : { ...state, escape: false, token: state.token + (ESCAPES[char] ?? char) };
+}
+
+function quotedStep(state, char) {
+  if (char === '\\') {
+    return { ...state, escape: true };
+  }
+  if (char === state.quote) {
+    return { ...state, quote: undefined };
+  }
+  return { ...state, token: state.token + char };
+}
+
+function tokenStep(state, char) {
+  if (state.comment) {
+    return /[\n\r]/u.test(char) ? { ...state, comment: false } : state;
+  }
+  if (state.escape) {
+    return escapedStep(state, char);
+  }
+  if (state.continued && /\s/u.test(char)) {
+    return state;
+  }
+  if (state.quote !== undefined) {
+    return quotedStep({ ...state, continued: false }, char);
+  }
+  if (/\s/u.test(char)) {
+    return state.token === undefined
+      ? state
+      : { ...state, tokens: [...state.tokens, state.token], token: undefined };
+  }
+  if (char === '#' && state.token === undefined) {
+    return { ...state, comment: true };
+  }
+  const token = state.token ?? '';
+  return /["']/u.test(char) ? { ...state, token, quote: char } : { ...state, token: token + char };
+}
+
+export function argumentFileTokens(text) {
+  const start = { tokens: [], token: undefined, quote: undefined, comment: false };
+  const state = [...text].reduce(tokenStep, { ...start, escape: false, continued: false });
+  return state.token === undefined ? state.tokens : [...state.tokens, state.token];
+}
+
+function expandedArgument(arg, directory) {
+  if (arg.startsWith('@@')) {
+    return [arg.slice(1)];
+  }
+  const file = arg.startsWith('@') ? path.resolve(directory, arg.slice(1)) : undefined;
+  return file !== undefined && existsSync(file)
+    ? argumentFileTokens(readFileSync(file, 'utf8'))
+    : [arg];
+}
+
+export function lintCompiler({ compiler, basedir }) {
+  return { ...compiler, args: compiler.args.flatMap((arg) => expandedArgument(arg, basedir)) };
 }

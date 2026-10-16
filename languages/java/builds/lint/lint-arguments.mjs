@@ -1,7 +1,7 @@
 import { existsSync, statSync } from 'node:fs';
 import path from 'node:path';
 import { readZipOrFailure } from '../zip-entries.mjs';
-import { languageLevel, lintCompatible } from './javac-options.mjs';
+import { languageLevel, lintCompatible, lintCompiler } from './javac-options.mjs';
 
 const VERSIONED_MODULE_INFO = /^META-INF\/versions\/\d+\/module-info\.class$/u;
 const LINT_FLAGS = [
@@ -63,7 +63,7 @@ export function lintArguments(plan, { classes, modular }) {
     classes,
     ...lookupPath({ modular, classDirectory: plan.classDirectory, libraries: plan.classpath }),
     ...(lombok.length === 0 ? ['-proc:none'] : ['-processorpath', lombok.join(path.delimiter)]),
-    ...languageLevel(plan.compiler),
-    ...lintCompatible(plan.compiler.args),
+    ...languageLevel(lintCompiler(plan)),
+    ...lintCompatible(lintCompiler(plan).args),
   ];
 }
