@@ -172,16 +172,17 @@ describe.skipIf(!enabled)('Java guards on a fixture project', () => {
     ).toEqual(['OptionalGet']);
   });
 
-  it('lints a project with a javac plug-in, preview features or a module descriptor', () => {
+  it('lints a project with a javac plug-in, preview features, a module descriptor or a source root outside it', () => {
     const lint = (module) =>
       readLintFindings(path.join(roots[1], module, 'build', 'nitpicker'), {
         projectRoot: roots[1],
       }).map(({ path: file, rule, location }) => `${file}:${String(location?.line)} ${rule}`);
 
-    expect(['plugged', 'preview', 'modular'].flatMap((module) => lint(module))).toEqual([
+    expect(['plugged', 'preview', 'modular', 'outside'].flatMap((module) => lint(module))).toEqual([
       'plugged/src/main/java/plugged/Names.java:7 rawtypes',
       'preview/src/main/java/preview/Names.java:7 rawtypes',
       'modular/src/main/java/modular/shapes/Shape.java:10 rawtypes',
+      'outside/src/main/java/outside/Names.java:7 rawtypes',
     ]);
   });
 });

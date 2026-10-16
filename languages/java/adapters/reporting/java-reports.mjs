@@ -75,9 +75,10 @@ export function readJavaFindings(projectRoot, options = {}) {
   };
 }
 
-function guardFindings({ projectRoot, reportRoot, manifest }) {
+function guardFindings({ projectRoot, reportRoot, reportBase, manifest }) {
   return readGuardFindings({
     reportRoot,
+    jscpdRoot: reportBase,
     projectRoot,
     manifest,
     locate: sourceLocator(projectRoot, lintedRoots(manifest)),
@@ -91,6 +92,7 @@ function moduleContextFindings(projectRoot, module, { manifest, options }) {
       projectRoot,
       roots: projectRoots(projectRoot),
       reportRoot: module.reportRoot,
+      reportBase: options.reportBase,
       manifest: module.manifest,
       sourceRoots: module.manifest.sourceRoots ?? [],
       allSourceRoots: manifest.sourceRoots,
