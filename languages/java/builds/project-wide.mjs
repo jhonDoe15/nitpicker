@@ -107,11 +107,11 @@ function couplingFindings(projectRoot, { projects, mergedRoot, manifest, kotlin 
     return [];
   }
   const [single] = complete;
-  if (complete.length === 1) {
+  if (complete.length === 1 && single.qualifier === '') {
     return readCouplingFindings(single.reportRoot, {
       projectRoot,
       sourceRoots: manifest.sourceRoots ?? [],
-      kotlin: kotlin ? kotlinNodes([{ ...single, qualifier: '' }]) : undefined,
+      kotlin: kotlin ? kotlinNodes([single]) : undefined,
     });
   }
   const files = mergeProjects(projectRoot, complete, mergedRoot);

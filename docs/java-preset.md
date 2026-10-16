@@ -45,8 +45,9 @@ gradle -I languages/java/gradle/nitpicker.init.gradle nitpickerJava   (per snaps
   for Maven modules, so a package dependency from one project to another counts. Packages and classes
   of a project other than the root are named with its folder (`lib/demo.lib`), so two projects that
   share a package or class name stay apart, and a dependency goes to the project that declares the
-  class (its own first). The root's names and identities are as in a one-project build, which reads
-  its own jdeps reports unmerged.
+  class (its own first). A project's names depend only on its own folder, never on how many projects
+  there are: a lone subproject is named with its folder too, and the root project's names and
+  identities are as in a one-project build, which reads its own jdeps reports unmerged.
 - **Nitpicker side: `languages/java/adapters/`.** `runJavaPreset` runs the task,
   `readJavaFindings` converts the reports, `runJavaDiff` does worktrees, rename map, comparison.
   `languages/java/adapters/java-analyzer.mjs` wraps all of it as one analyzer named `java` for the CLI (slice
