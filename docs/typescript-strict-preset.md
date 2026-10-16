@@ -33,7 +33,7 @@ config file is an exception like any other.
   `.fromNow()`, and date-fns `isToday`, `isPast`, `startOfToday` or `formatDistanceToNow`) is reported
   like `Date.now()`.
   It may not reach Node I/O or a client through a `shared/` module it imports
-  (`domain-does-not-reach-io-through-shared`). Time, IDs, and randomness arrive as parameters. A
+  (`domain-does-not-reach-io-through-shared`; an `import type` does not count). Time, IDs, and randomness arrive as parameters. A
   dependency-cruiser rule that flags legitimate code is lifted with an `exceptions` entry that names
   the rule (for example `domain-does-not-import-node-io`), where `paths` are the importing files.
 - `features/<name>/adapters/` performs I/O and calls `domain/`. A feature with no I/O has no
