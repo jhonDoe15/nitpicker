@@ -206,9 +206,11 @@ describe('readModuleFindings', () => {
       );
     const main = 'app/src/main/java/demo/Main.java';
 
-    expect(classLimits([]).map(({ message }) => message)).toEqual([
-      expect.stringContaining(`{"rule":"class-methods-limit","paths":["${main}"]`),
-    ]);
+    const offered = classLimits([]).map(({ message }) =>
+      JSON.parse(/\{"rule".*?\}/u.exec(message)?.[0] ?? '{}'),
+    );
+
+    expect(offered).toEqual([{ rule: 'class-methods-limit', paths: [main], reason: '...' }]);
     expect(classLimits([{ rule: 'class-methods-limit', glob: 'app/src/**' }])).toEqual([]);
     expect(classLimits([{ rule: 'class-methods-limit', glob: 'src/**' }])).toHaveLength(1);
   });

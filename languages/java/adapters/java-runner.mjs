@@ -170,8 +170,8 @@ function realpathOptional(directory) {
   return directory === undefined ? undefined : realpathSync(directory);
 }
 
-export function readRunnerPolicy(arguments_, environment = process.env) {
-  const { projectRoot, policy } = parseRunnerArguments(arguments_);
+export function readRunnerPolicy(runnerArguments, environment = process.env) {
+  const { projectRoot, policy } = parseRunnerArguments(runnerArguments);
   const { conventions } = readHeadPolicyFile(environment);
   return { projectRoot, policy: { ...policy, javaStyle: javaStyle(conventions) } };
 }

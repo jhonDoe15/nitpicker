@@ -1,9 +1,11 @@
-import { mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import { configurationFiles, createJavaAnalyzer } from '../java-analyzer.mjs';
 import { analyzeJavaSnapshot, readRunnerPolicy } from '../java-runner.mjs';
+import { readJavaFindings as readFindings } from '../reporting/java-reports.mjs';
+import { readingFrom, reportBaseOf, writeModules } from '../test-support/report-base.mjs';
 import { javaStyle, javaStyleProperties } from './java-style.mjs';
 
 const fakeGradle = path.resolve(import.meta.dirname, '../fixtures/fake-gradle.mjs');
@@ -110,12 +112,11 @@ describe('the analyzer hash', () => {
   });
 
   it('covers the style code and the Checkstyle suppressions it relies on', () => {
-    expect(configurationFiles()).toEqual(
-      expect.arrayContaining([
-        'languages/java/adapters/style/java-style.mjs',
-        'languages/java/gradle/checkstyle-suppressions.xml',
-      ]),
-    );
+    const styleFiles = [
+      'languages/java/adapters/style/java-style.mjs',
+      'languages/java/gradle/checkstyle-suppressions.xml',
+    ];
+    expect(configurationFiles().filter((file) => styleFiles.includes(file))).toEqual(styleFiles);
   });
 });
 
@@ -139,5 +140,46 @@ describe('javaStyle', () => {
     expect(policyOf({ 'java.indentation': '2' }).javaStyle).toBe('google');
     expect(policyOf(undefined).javaStyle).toBe('google');
     expect(readRunnerPolicy(['--project-root', '/p'], {}).policy.javaStyle).toBe('google');
+  });
+});
+
+describe('the format finding', () => {
+  const unformatted = 'src/main/java/demo/A.java';
+  const emptySarif = JSON.stringify({ version: '2.1.0', runs: [] });
+
+  function projectWithFormatReport() {
+    const root = realpathSync(mkdtempSync(path.join(tmpdir(), 'nitpicker-java-format-')));
+    roots.push(root);
+    mkdirSync(path.join(root, 'src/main/java/demo'), { recursive: true });
+    writeFileSync(path.join(root, unformatted), 'package demo;\n\nclass A {}\n');
+    const reports = writeModules(root);
+    writeFileSync(path.join(reportBaseOf(root), 'duplicates.json'), JSON.stringify({ runs: [] }));
+    const files = {
+      'manifest.json': JSON.stringify({ versions: {}, sourceRoots: ['src/main/java'] }),
+      'pmd.sarif': emptySarif,
+      'spotbugs.sarif': emptySarif,
+      'format.txt': `${path.join(root, unformatted)}\n`,
+      'checkstyle.xml': '<checkstyle version="10.21.1"></checkstyle>',
+      'jacoco.xml': '<report name="demo"></report>',
+      'structure.json': '[]',
+      'classes.json': JSON.stringify({ files: {}, classes: [] }),
+    };
+    for (const [name, text] of Object.entries(files)) {
+      writeFileSync(path.join(reports, name), text);
+    }
+    return root;
+  }
+
+  it('names the aosp style when the formatter check ran with it', () => {
+    const root = projectWithFormatReport();
+    const format = (options) =>
+      readingFrom(readFindings)(root, options)
+        .findings.filter(({ tool }) => tool === 'google-java-format')
+        .map(({ path: file, message }) => [file, message]);
+
+    expect(format({})).toEqual([[unformatted, 'File is not formatted with google-java-format']]);
+    expect(format({ javaStyle: 'aosp' })).toEqual([
+      [unformatted, 'File is not formatted with google-java-format --aosp'],
+    ]);
   });
 });

@@ -218,19 +218,6 @@ describe('readJavaFindings', () => {
     ]);
   });
 
-  it('names the aosp style when the formatter check ran with it', () => {
-    const root = projectWithReports();
-    const format = (options) =>
-      readJavaFindings(root, options)
-        .findings.filter(({ tool }) => tool === 'google-java-format')
-        .map(({ message }) => message);
-
-    expect(format({})).toEqual(['File is not formatted with google-java-format']);
-    expect(format({ javaStyle: 'aosp' })).toEqual([
-      'File is not formatted with google-java-format --aosp',
-    ]);
-  });
-
   it('applies the configured CRAP limit instead of the default', () => {
     const root = projectWithReports();
     const rules = (options) =>
