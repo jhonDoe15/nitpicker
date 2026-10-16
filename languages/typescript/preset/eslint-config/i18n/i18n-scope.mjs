@@ -1,8 +1,5 @@
-import { codeExtensions } from '../../layout.mjs';
-import { hasScopePackage, productionScope } from '../scope-support.mjs';
+import { hasScopePackage, productionScope, storyGlobs } from '../scope-support.mjs';
 import { i18nRules } from './i18n-rules.mjs';
-
-const storyGlobs = [`**/*.{stories,story}.${codeExtensions}`];
 
 export function isI18nProject({ projectRoot, i18n = {} }) {
   return i18n.enabled ?? hasScopePackage(projectRoot, 'i18n');
