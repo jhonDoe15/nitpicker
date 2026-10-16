@@ -9,13 +9,7 @@ import { defaultResolvedLayout } from '../layout.mjs';
 import { functionUnits, isFunctionLike } from './function-units.mjs';
 
 function parseSource(source, filename) {
-  const sourceFile = ts.createSourceFile(
-    filename,
-    source,
-    ts.ScriptTarget.Latest,
-    true,
-    filename.endsWith('.mts') ? ts.ScriptKind.TS : ts.ScriptKind.TS,
-  );
+  const sourceFile = ts.createSourceFile(filename, source, ts.ScriptTarget.Latest, true);
   if (sourceFile.parseDiagnostics?.length > 0) {
     const diagnostics = sourceFile.parseDiagnostics
       .map((diagnostic) => ts.flattenDiagnosticMessageText(diagnostic.messageText, '\n'))

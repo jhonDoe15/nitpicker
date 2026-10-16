@@ -37,8 +37,11 @@ export const accessibilityRuleNames = [
 ];
 
 export const reactRuleIds = [
+  'nitpicker/no-runtime-exclusive-props-check',
+  'nitpicker/no-singular-and-plural-prop',
   'nitpicker/react-no-effect-data-fetching',
   'nitpicker/react-no-effect-derived-state',
+  'nitpicker/react-no-hardcoded-colors',
   'nitpicker/react-single-styling-approach',
   'react-hooks/exhaustive-deps',
   'react-hooks/rules-of-hooks',
@@ -61,6 +64,7 @@ const testingLibraryRuleIds = Object.keys(testingLibraryHints).map(
 );
 
 export const reactTestRuleIds = [
+  'nitpicker/hover-test-needs-keyboard',
   'nitpicker/react-test-no-implementation-details',
   ...testingLibraryRuleIds,
 ];
