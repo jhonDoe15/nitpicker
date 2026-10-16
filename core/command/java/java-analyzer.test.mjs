@@ -108,6 +108,8 @@ const PINNED_TOOLS = [
   'ktlint',
   'ktfmt',
   'kotlinCompiler',
+  'errorProne',
+  'nullAway',
   'jscpd',
 ];
 

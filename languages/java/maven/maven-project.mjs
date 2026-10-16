@@ -1,15 +1,7 @@
 import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
-import { childrenNamed, parseXml } from '../ingest/common.mjs';
-import { compilerSettings } from './pom/compiler-settings.mjs';
-import {
-  all,
-  child,
-  configured,
-  executionsWithGoal,
-  pluginsOf,
-  textAt,
-} from './pom/pom-elements.mjs';
+import { childAt, childrenAt, childrenNamed, parseXml } from '../ingest/common.mjs';
+import { compilerSettings } from './errorprone/maven-compiler.mjs';
 
 const SCOPES = new Set(['compile', 'provided', 'runtime', 'test', 'system']);
 const MAIN_COMPILE_SCOPES = new Set(['compile', 'provided', 'system']);
@@ -37,9 +29,32 @@ const VERIFY_BUILD = [
   '-Djapicmp.skip=true',
 ];
 
+function textAt(element, ...names) {
+  return childAt(element, ...names)?.text;
+}
+
 function coordinates(project) {
   const groupId = textAt(project, 'groupId') ?? textAt(project, 'parent', 'groupId');
   return `${groupId}:${textAt(project, 'artifactId')}`;
+}
+
+function pluginsOf(project) {
+  return new Map(
+    childrenAt(project, 'build', 'plugins', 'plugin').map((plugin) => [
+      `${textAt(plugin, 'groupId') ?? 'org.apache.maven.plugins'}:${textAt(plugin, 'artifactId')}`,
+      plugin,
+    ]),
+  );
+}
+
+function executionsWithGoal(plugin, goal) {
+  return childrenAt(plugin, 'executions', 'execution').filter((execution) =>
+    childrenAt(execution, 'goals', 'goal').some((element) => element.text === goal),
+  );
+}
+
+function configured(execution, plugin, name) {
+  return textAt(execution, 'configuration', name) ?? textAt(plugin, 'configuration', name);
 }
 
 function isTrue(text) {
@@ -64,7 +79,7 @@ function helperRoots(plugin, goal, basedir) {
   return plugin === undefined
     ? []
     : executionsWithGoal(plugin, goal).flatMap((execution) =>
-        all(execution, 'configuration', 'sources', 'source').map((source) =>
+        childrenAt(execution, 'configuration', 'sources', 'source').map((source) =>
           path.resolve(basedir, source.text ?? '.'),
         ),
       );
@@ -91,7 +106,7 @@ function reportsDirectory(plugin, goal) {
 }
 
 function describeModule(project, { basedir, pomFile }) {
-  const build = child(project, 'build');
+  const build = childAt(project, 'build');
   const plugins = pluginsOf(project);
   const buildDirectory = resolvedText(build, basedir, 'directory') ?? path.join(basedir, 'target');
   const reports = reportsDirectory(plugins.get(SUREFIRE), 'test');
@@ -115,7 +130,7 @@ function describeModule(project, { basedir, pomFile }) {
       resolvedText(build, basedir, 'testSourceDirectory') ?? path.join(basedir, 'src/test/java'),
       ...helperRoots(plugins.get(BUILD_HELPER), 'add-test-source', basedir),
     ],
-    resourceRoots: all(build, 'resources', 'resource')
+    resourceRoots: childrenAt(build, 'resources', 'resource')
       .map((resource) => textAt(resource, 'directory'))
       .filter((directory) => directory !== undefined)
       .map((directory) => path.resolve(basedir, directory)),
@@ -129,7 +144,7 @@ function describeModule(project, { basedir, pomFile }) {
     runsFailsafe: runsFailsafe(project, plugins.get(FAILSAFE)),
     jacocoDestFiles: jacocoDestFiles(plugins.get(JACOCO), basedir),
     archunitIncludes: textAt(project, 'properties', 'nitpicker.archunit.includes'),
-    compiler: compilerSettings(project, plugins),
+    compiler: compilerSettings(project),
   };
 }
 
@@ -198,7 +213,7 @@ export function readReactor(projectRoot, effectivePom) {
     const project = matchProject(pomFile, candidates);
     candidates.splice(candidates.indexOf(project), 1);
     modules.push(describeModule(project, { basedir, pomFile }));
-    const children = all(project, 'modules', 'module')
+    const children = childrenAt(project, 'modules', 'module')
       .filter((module) => module.text !== undefined)
       .map((module) => pomFileOf(basedir, module.text));
     pending.push(...children.filter((file) => !pending.includes(file)));

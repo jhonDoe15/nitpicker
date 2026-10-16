@@ -49,20 +49,20 @@ properties.
 
 ## What runs on what
 
-| Tool                                     | Java sources | Kotlin sources | Notes                                                                                                                   |
-| ---------------------------------------- | ------------ | -------------- | ----------------------------------------------------------------------------------------------------------------------- |
-| detekt                                   |              | yes            | New. SARIF through the SARIF ingester; tool `detekt`.                                                                   |
-| ktlint or ktfmt                          |              | yes            | New, when the project uses one. ktlint: one finding per violation, with its rule; ktfmt: one `format` finding per file. |
-| JaCoCo                                   | yes          | yes            | `line-coverage` and `uncovered-method` (descriptive) and the `changed-branch-coverage` gate for both languages.         |
-| PMD, Checkstyle, google-java-format      | yes          | no             | Java-only tools, with the Java preset's suppression and `tools` rules. A Kotlin-only module skips them.                 |
-| SpotBugs                                 | yes          | no             | Runs on the classes compiled from Java only; Kotlin classes are on its auxiliary classpath. See below.                  |
-| Java structure metrics (CRAP of Java)    | yes          | no             | `StructureMetrics.java`, Java sources only. Kotlin CRAP uses its own complexity, see [CRAP](#crap).                     |
-| PIT                                      | yes          | report-only    | Mutants of Kotlin classes are descriptive and never fail; see [Mutation](#mutation-report-only-for-kotlin).             |
-| Structure limits, CRAP, jscpd duplicates | yes          | yes            | Kotlin through `KotlinMetrics.java` and jscpd's `kotlin` format. See below.                                             |
-| jdeps (stability direction)              | yes          | yes            | Reads the Java and the Kotlin classes of the module together, one module per source file. See [Coupling](#coupling).    |
-| javac lint, PMD CPD                      | yes          | no             | On the module's Java files: javac lint on main ones, CPD on main and test ones. See the Java preset's Guards section.   |
-| forbiddenapis                            | yes          | no             | Reads the classes compiled from Java only, like SpotBugs.                                                               |
-| Package cycles, unused dependencies      | yes          | yes            | Read the Java and the Kotlin classes of the module together, like jdeps.                                                |
+| Tool                                                           | Java sources | Kotlin sources | Notes                                                                                                                   |
+| -------------------------------------------------------------- | ------------ | -------------- | ----------------------------------------------------------------------------------------------------------------------- |
+| detekt                                                         |              | yes            | New. SARIF through the SARIF ingester; tool `detekt`.                                                                   |
+| ktlint or ktfmt                                                |              | yes            | New, when the project uses one. ktlint: one finding per violation, with its rule; ktfmt: one `format` finding per file. |
+| JaCoCo                                                         | yes          | yes            | `line-coverage` and `uncovered-method` (descriptive) and the `changed-branch-coverage` gate for both languages.         |
+| PMD, Checkstyle, google-java-format, Error Prone with NullAway | yes          | no             | Java-only tools, with the Java preset's suppression and `tools` rules. A Kotlin-only module skips them.                 |
+| SpotBugs                                                       | yes          | no             | Runs on the classes compiled from Java only; Kotlin classes are on its auxiliary classpath. See below.                  |
+| Java structure metrics (CRAP of Java)                          | yes          | no             | `StructureMetrics.java`, Java sources only. Kotlin CRAP uses its own complexity, see [CRAP](#crap).                     |
+| PIT                                                            | yes          | report-only    | Mutants of Kotlin classes are descriptive and never fail; see [Mutation](#mutation-report-only-for-kotlin).             |
+| Structure limits, CRAP, jscpd duplicates                       | yes          | yes            | Kotlin through `KotlinMetrics.java` and jscpd's `kotlin` format. See below.                                             |
+| jdeps (stability direction)                                    | yes          | yes            | Reads the Java and the Kotlin classes of the module together, one module per source file. See [Coupling](#coupling).    |
+| javac lint, PMD CPD                                            | yes          | no             | On the module's Java files: javac lint on main ones, CPD on main and test ones. See the Java preset's Guards section.   |
+| forbiddenapis                                                  | yes          | no             | Reads the classes compiled from Java only, like SpotBugs.                                                               |
+| Package cycles, unused dependencies                            | yes          | yes            | Read the Java and the Kotlin classes of the module together, like jdeps.                                                |
 
 **PMD and SpotBugs on Kotlin (decision).** PMD has no Kotlin analysis, so nothing is lost: it
 keeps running on the Java files of a mixed module. SpotBugs analyzes bytecode, and on
