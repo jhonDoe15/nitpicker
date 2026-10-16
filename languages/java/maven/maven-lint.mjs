@@ -74,16 +74,7 @@ function writeAuxClasspath({ module, reportDir, classpaths }) {
   return file;
 }
 
-export function runPmd({ module, reportDir, tools, classpaths, configs, spring }) {
-  const report = path.join(reportDir, 'pmd.sarif');
-  const linted = [...module.sourceRoots, ...module.testSourceRoots].filter((root) =>
-    existsSync(root),
-  );
-  if (linted.length === 0) {
-    writeFileSync(report, EMPTY_SARIF);
-    return;
-  }
-  const auxClasspath = writeAuxClasspath({ module, reportDir, classpaths });
+function writeRulesets({ module, reportDir, configs }) {
   const springRuleset = path.join(reportDir, 'pmd-spring-main.xml');
   writeFileSync(
     springRuleset,
@@ -105,6 +96,20 @@ export function runPmd({ module, reportDir, tools, classpaths, configs, spring }
       roots: module.sourceRoots,
     }),
   );
+  return { springRuleset, testsRuleset, layers };
+}
+
+export function runPmd({ module, reportDir, tools, classpaths, configs, spring }) {
+  const report = path.join(reportDir, 'pmd.sarif');
+  const linted = [...module.sourceRoots, ...module.testSourceRoots].filter((root) =>
+    existsSync(root),
+  );
+  if (linted.length === 0) {
+    writeFileSync(report, EMPTY_SARIF);
+    return;
+  }
+  const auxClasspath = writeAuxClasspath({ module, reportDir, classpaths });
+  const { springRuleset, testsRuleset, layers } = writeRulesets({ module, reportDir, configs });
   const rulesets = [
     layers.nitpicker ?? NITPICKER_RULESET,
     ...(layers.project === undefined ? [] : [layers.project]),
