@@ -47,6 +47,12 @@ function freshReports(directory, since) {
     : [];
 }
 
+function reportsOf(module, since) {
+  return [module.surefireReports, module.failsafeReports]
+    .filter((directory) => directory !== undefined)
+    .flatMap((directory) => freshReports(directory, since));
+}
+
 function suiteNameOf(report) {
   return path.basename(report).replace(/^TEST-|\.xml$/gu, '');
 }
@@ -71,34 +77,47 @@ function failedCases(file) {
   );
 }
 
-export function collectTestResults({ module, reportDir, since, isArchunit }) {
-  const reports = freshReports(module.surefireReports, since);
+function listedFailures(failures) {
+  const listed = failures.slice(0, MAX_LISTED_FAILURES).map((failure) => `  ${failure}`);
+  const more =
+    failures.length > MAX_LISTED_FAILURES
+      ? [`  and ${String(failures.length - MAX_LISTED_FAILURES)} more`]
+      : [];
+  return [...listed, ...more];
+}
+
+function failuresOf({ module, reports, reportDir, isArchunit }) {
   const archunitDir = path.join(reportDir, 'archunit');
-  const failures = [];
-  for (const report of reports) {
-    if (isArchunit(suiteNameOf(report))) {
-      mkdirSync(archunitDir, { recursive: true });
-      copyFileSync(report, path.join(archunitDir, path.basename(report)));
-    } else {
-      failures.push(...failedCases(report));
+  return reports.flatMap((report) => {
+    if (!isArchunit(suiteNameOf(report))) {
+      return failedCases(report);
     }
-  }
+    mkdirSync(archunitDir, { recursive: true });
+    copyFileSync(report, path.join(archunitDir, path.basename(report)));
+    return [];
+  });
+}
+
+export function collectTestResults({ module, reportDir, since, isArchunit, tolerateFailures }) {
+  const reports = reportsOf(module, since);
+  const failures = failuresOf({ module, reports, reportDir, isArchunit });
   requireArchunitRun(module, reports, isArchunit);
-  if (failures.length > 0) {
-    const listed = failures.slice(0, MAX_LISTED_FAILURES).map((failure) => `  ${failure}`);
-    const more =
-      failures.length > MAX_LISTED_FAILURES
-        ? [`  and ${String(failures.length - MAX_LISTED_FAILURES)} more`]
-        : [];
-    throw new Error(
-      [
-        `Tests fail in ${module.basedir}; nitpicker needs a passing test suite for coverage and mutation testing:`,
-        ...listed,
-        ...more,
-      ].join('\n'),
-    );
+  const testsRan = reports.length > 0;
+  if (failures.length === 0) {
+    return { testsRan, testsFailure: undefined };
   }
-  return reports.length > 0;
+  if (tolerateFailures === true) {
+    return {
+      testsRan,
+      testsFailure: [`Tests fail in ${module.basedir}:`, ...listedFailures(failures)].join('\n'),
+    };
+  }
+  throw new Error(
+    [
+      `Tests fail in ${module.basedir}; nitpicker needs a passing test suite for coverage and mutation testing:`,
+      ...listedFailures(failures),
+    ].join('\n'),
+  );
 }
 
 function requireArchunitRun(module, reports, isArchunit) {
