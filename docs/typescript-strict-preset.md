@@ -57,8 +57,11 @@ config file is an exception like any other.
   (`nitpicker/no-module-level-mutable-state`: `const cache = new Map()` with `cache.set(...)`,
   `const state = { count: 0 }` with `state.count++` or `state.items.push(x)`, a `Set`, `WeakMap`,
   typed array or `Object.create(null)` that is written to, an array with `push`, and
-  `Object.assign` onto it). An exported `Map`, `Set`, `WeakMap`, `WeakSet`, typed array or
-  `Object.create(null)` is reported where it is declared, since another module can mutate it. Build a lookup table inside a
+  `Object.assign`, `Object.defineProperty` or `Reflect.set` onto it, also through a `const`
+  alias such as `const registry = cache`). An exported `Map`, `Set`, `WeakMap`, `WeakSet`, typed
+  array or `Object.create(null)` is reported where it is declared, since another module can
+  mutate it, unless it is annotated with a readonly type (`ReadonlySet<T>`, `ReadonlyMap<K, V>`,
+  `readonly number[]`). Build a lookup table inside a
   function and return it; create a store in the composition root and pass it in. `domain/` is
   covered by `functional/prefer-immutable-types` instead.
 - The composition root is `src/main/composition-root.ts`, `src/main/main.ts`,
@@ -76,10 +79,14 @@ config file is an exception like any other.
 - `nitpicker/no-process-access-outside-composition-root`: environment variables (`process.env`,
   `import.meta.env`, `Deno.env`) are read only in the composition root, parsed once with a zod
   schema, and the typed config is passed down. `process.exit` is called only in the composition
-  root or a main guard. Entry scripts listed in `layout.entryPoints` and config files
-  (`*.config.*`, `.*rc.*`) are exempt. In a React project `import.meta.env` is allowed anywhere:
-  Vite replaces it with public build-time values (`import.meta.env.DEV`, `VITE_*`). So are
-  `process.env.NODE_ENV` and `process.env.NEXT_PUBLIC_*`, which bundlers replace the same way.
+  root or a main guard. However `process` is reached, it counts: `import { env }` from
+  `node:process`, a namespace, default or `require` import, `const { env, exit } = process`, a
+  `const` alias and `globalThis.process`. Entry scripts listed in `layout.entryPoints` and config
+  files (`*.config.*`, `.*rc.*`) are exempt. In a React project `import.meta.env` is allowed
+  anywhere: Vite replaces it with public build-time values (`import.meta.env.DEV`, `VITE_*`). So
+  are `process.env.NODE_ENV`, `process.env.NEXT_PUBLIC_*`, `process.env.EXPO_PUBLIC_*` and
+  `process.env.REACT_APP_*` written exactly that way, which Next.js, Expo and Create React App
+  replace the same way.
 - `nitpicker/no-branch-in-composition-root`: the composition root (`composition-root.ts`, `main.ts`,
   `server.ts`, plus the `compositionRootPattern` option shared with
   `no-managed-resource-construction-outside-composition-roots`) only wires features with named
@@ -107,7 +114,10 @@ sum + x, 0)`), `Object.fromEntries`, and `Object.groupBy`. No loops, `forEach`, 
   `performance.now` are reported as properties, so `const now = Date.now`, `const { random } =
 Math` and `Math['random']()` are caught; `process`, `fetch`, `setTimeout`, `setInterval`,
   `setImmediate`, `queueMicrotask`, `performance`, `XMLHttpRequest`, `WebSocket`, `localStorage`
-  and `sessionStorage` are restricted globals; `Reflect.set` and its mutating siblings are
+  and `sessionStorage` are restricted globals, also read through `globalThis`, `window`, `self`
+  or `global` (`globalThis.fetch(url)`, `globalThis.Date.now()`); `Date()` without `new` reads the
+  clock too; `dayjs` and `moment` are imported under their own names so `dayjs()` stays visible;
+  `Reflect.set` and its mutating siblings are
   restricted like `Object.assign`.
 - Expected failures are returned as discriminated unions, never thrown. TypeScript has no checked
   exceptions, so a result type is the only way the compiler forces every caller to handle a new
@@ -198,7 +208,11 @@ Math` and `Math['random']()` are caught; `process`, `fetch`, `setTimeout`, `setI
   shared code), not in tests. A reference counts when it is called, constructed or passed to an
   array method (`map`, `flatMap`, `forEach`, `filter`, `reduce`, `sort` and the like); a
   component that renders itself in JSX, `setTimeout(poll)` and an event handler that removes
-  itself are not reported. Allowed forms: a retry or poll
+  itself are not reported. A call inside a callback counts as the enclosing function's call when
+  the callback is an array-method callback or is passed to a call whose result is used
+  (`await limit(() => crawl(link))`); a callback handed to a timer or an event registration
+  (`setTimeout`, `on`, `addEventListener`, `subscribe` and the like) or to a call written as a bare
+  statement is its own function. Allowed forms: a retry or poll
   is a `for...of` over attempt numbers with `await` inside the loop; a tree walk (directories, AST,
   JSON) is a `for...of` over a worklist that each step pushes the node's children onto
   (`for (const node of pending) { pending.push(...children) }`); flat data uses `map`, `filter`,
@@ -246,14 +260,22 @@ Math` and `Math['random']()` are caught; `process`, `fetch`, `setTimeout`, `setI
   that backtracks super-linearly (`regexp/no-super-linear-backtracking`, from `eslint-plugin-regexp`);
   no shell command built from a variable or template (`nitpicker/no-shell-string-command`: `exec`
   and `execSync`, also through `promisify(exec)`, take a string literal or a `const` holding one,
-  otherwise `execFile(program, [args])`, and `shell: true` is reported); no `Math.random` for ids
+  otherwise `execFile(program, [args])`; `shell: true` is reported, also in a `const` options
+  object or a spread of one, and so is `sh`, `bash`, `zsh` or `cmd` run through
+  `spawn`/`execFile` with `-c` (`/c`) and a command that is not a string literal); no
+  `Math.random` for ids
   or tokens (use `crypto.randomUUID()` or `crypto.randomInt()`, or take the value as a parameter);
-  no `fs` call on a `path.join`/`path.resolve` whose later segment comes from a parameter (also
-  through a `const` alias or a call on it, such as `c.req.param('file')` or `req.query.name`)
-  unless the same function checks containment on the joined variable
-  (`nitpicker/no-unsafe-path-join`: `const full = path.resolve(base, name)`, then
-  `full.startsWith(base + path.sep)` or `path.relative(base, full)`). A parameter as the first
-  segment is the base and is fine (`path.join(dir, 'package.json')`).
+  no `fs` call on a path built from a parameter after its first segment (`path.join`,
+  `path.resolve`, a template literal `` `${dir}/${name}` `` or `+`, also inside
+  `path.normalize`/`path.resolve`, through a `const` or `let` variable, or a call on a parameter
+  such as `c.req.param('file')` or `req.query.name`) unless the function checks containment on
+  the variable in an `if` that returns, throws, `continue`s or `break`s before the call, or wraps
+  the call in the `if`'s passing branch (`nitpicker/no-unsafe-path-join`:
+  `const full = path.resolve(base, name); if (!full.startsWith(base + path.sep)) return ...`, or
+  `if (path.relative(base, full).startsWith('..')) throw ...`). The prefix must end in a
+  separator (`base + path.sep`, `` `${base}/` ``, `'/srv/'`): `full.startsWith(base)` also
+  accepts `/srv-other`. A parameter as the first segment is the base and is fine
+  (`path.join(dir, 'package.json')`).
 - Named exports list their names: no `export *`, which makes every internal export of a feature's
   `index.ts` public (`export { name } from './domain/x.js'`).
 - Cognitive complexity of at most 15 per function, tests included (`nitpicker/cognitive-complexity`).

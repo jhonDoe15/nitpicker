@@ -1,4 +1,4 @@
-import { createRuleTester } from './rule-tester.mjs';
+import { createRuleTester } from './test-support/rule-tester.mjs';
 import { rule as noModuleLevelMutableState } from './no-module-level-mutable-state.mjs';
 import { rule as noProcessAccess } from './no-process-access-outside-composition-root.mjs';
 import { rule as noShellStringCommand } from './no-shell-string-command.mjs';
