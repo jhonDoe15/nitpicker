@@ -38,6 +38,7 @@ function projectConfigInWorkingDirectory() {
 
 const coverage = {
   provider: 'v8' as const,
+  experimentalAstAwareRemapping: true,
   include: sourceRoots.map((root) => `${root}/**/*.${codeExtensions}`),
   exclude: [
     ...sourceRoots.flatMap((root) => [
