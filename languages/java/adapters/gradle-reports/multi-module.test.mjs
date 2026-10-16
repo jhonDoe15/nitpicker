@@ -206,6 +206,42 @@ describe('a Gradle build with several projects', () => {
     ).toEqual(identities);
   });
 
+  it('gives a subproject the same identities whether it is the only one or not', () => {
+    const coreEdges = [
+      'demo.u1.U -> demo.s.S',
+      'demo.u2.V -> demo.s.S',
+      'demo.s.S -> demo.t.T',
+      'demo.t.T -> demo.x.X',
+      'demo.a.A -> demo.b.B',
+      'demo.b.B -> demo.a.A',
+    ];
+    const core = {
+      'mutations.xml': KILLED_MUTANT,
+      'core/jdeps-classes.txt':
+        'demo.u1.U\ndemo.u2.V\ndemo.s.S\ndemo.t.T\ndemo.x.X\ndemo.a.A\ndemo.b.B\n',
+      'core/jdeps.txt': coreEdges.map((edge) => `   ${edge} core\n`).join(''),
+    };
+    const identities = (files) =>
+      collect(project({ ...core, ...files }))
+        .filter(
+          ({ path: file, identity }) => !file.startsWith('api/') && !/api\/|@:api/u.test(identity),
+        )
+        .map((finding) => `${finding.tool} ${finding.rule} ${finding.path} ${finding.identity}`)
+        .toSorted();
+
+    const alone = identities({ 'modules.txt': 'core\n' });
+    expect(
+      alone.filter((identity) => identity.startsWith('coupling stability-direction ')),
+    ).toEqual(['coupling stability-direction . package-edge:core/demo.s->core/demo.t']);
+    expect(
+      identities({
+        'modules.txt': 'core\napi\n',
+        'api/jdeps-classes.txt': 'demo.api.Api\n',
+        'api/jdeps.txt': '   demo.api.Api -> demo.s.S core\n',
+      }),
+    ).toEqual(alone);
+  });
+
   it('skips a project with no sources and no classes, which writes no reports', () => {
     const root = project({ 'modules.txt': 'empty\n', EMPTY_MODULES: 'empty' });
     rmSync(path.join(root, 'empty'), { recursive: true });

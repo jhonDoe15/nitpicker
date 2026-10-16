@@ -42,17 +42,77 @@ function project(files) {
   return root;
 }
 
+const ADVICE = {
+  rawtypes: 'Add the type arguments, as in List<String>.',
+  unchecked:
+    'Use a typed API, a checked conversion or a generic method instead of the unchecked operation.',
+  deprecation: "Call the replacement named in the API's Javadoc.",
+  removal: "Call the replacement named in the API's Javadoc; this API is going to be removed.",
+};
+
+function lintFinding(rule, [file, line, text]) {
+  return {
+    tool: 'javac',
+    rule,
+    path: `src/main/java/demo/${file}`,
+    identity: expect.any(String),
+    classification: 'enforceable',
+    location: { line },
+    message:
+      `${text}. ${ADVICE[rule]} ` +
+      `If it is right here, add an exception for javac/${rule} in nitpicker.config.json.`,
+  };
+}
+
+const PROJECT_FINDINGS = [
+  lintFinding('rawtypes', ['Raw.java', 9, 'found raw type: List']),
+  lintFinding('unchecked', ['Raw.java', 16, 'unchecked cast']),
+  lintFinding('rawtypes', ['Raw.java', 19, 'found raw type: Map']),
+  lintFinding('rawtypes', ['Raw.java', 21, 'found raw type: Map']),
+  lintFinding('deprecation', ['Old.java', 4, 'exec(String) in Runtime has been deprecated']),
+  lintFinding('removal', [
+    'Old.java',
+    5,
+    'finalize() in Object has been deprecated and marked for removal',
+  ]),
+];
+
 describe('parseLintWarnings', () => {
   it('reads the file, line, lint category and text of each warning and skips the noise', () => {
-    const warnings = parseLintWarnings(REPORT);
-
-    expect(warnings).toHaveLength(7);
-    expect(warnings[0]).toEqual({
-      file: 'src/main/java/demo/Raw.java',
-      line: 9,
-      rule: 'rawtypes',
-      text: 'found raw type: List',
-    });
+    expect(parseLintWarnings(REPORT)).toEqual([
+      {
+        file: 'src/main/java/demo/Raw.java',
+        line: 9,
+        rule: 'rawtypes',
+        text: 'found raw type: List',
+      },
+      { file: 'src/main/java/demo/Raw.java', line: 16, rule: 'unchecked', text: 'unchecked cast' },
+      {
+        file: 'src/main/java/demo/Raw.java',
+        line: 19,
+        rule: 'rawtypes',
+        text: 'found raw type: Map',
+      },
+      {
+        file: 'src/main/java/demo/Raw.java',
+        line: 21,
+        rule: 'rawtypes',
+        text: 'found raw type: Map',
+      },
+      {
+        file: 'src/main/java/demo/Old.java',
+        line: 4,
+        rule: 'deprecation',
+        text: 'exec(String) in Runtime has been deprecated',
+      },
+      {
+        file: 'src/main/java/demo/Old.java',
+        line: 5,
+        rule: 'removal',
+        text: 'finalize() in Object has been deprecated and marked for removal',
+      },
+      { file: 'build/generated/Gen.java', line: 1, rule: 'unchecked', text: 'unchecked cast' },
+    ]);
   });
 });
 
@@ -64,25 +124,7 @@ describe('readLintFindings', () => {
 
     const findings = readLintFindings(path.join(root, 'build/nitpicker'), { projectRoot: root });
 
-    expect(findings.map(({ rule, path: file }) => `${rule} ${path.basename(file)}`)).toEqual([
-      'rawtypes Raw.java',
-      'unchecked Raw.java',
-      'rawtypes Raw.java',
-      'rawtypes Raw.java',
-      'deprecation Old.java',
-      'removal Old.java',
-    ]);
-    expect(findings[0]).toEqual({
-      tool: 'javac',
-      rule: 'rawtypes',
-      path: 'src/main/java/demo/Raw.java',
-      identity: expect.any(String),
-      classification: 'enforceable',
-      location: { line: 9 },
-      message:
-        'found raw type: List. Add the type arguments, as in List<String>. ' +
-        'If it is right here, add an exception for javac/rawtypes in nitpicker.config.json.',
-    });
+    expect(findings).toEqual(PROJECT_FINDINGS);
     expect(() => parseAnalyzerReport({ findings }, 'java')).not.toThrow();
   });
 
@@ -127,7 +169,10 @@ describe('readLintFindings', () => {
         notRunScope: ['src/main/java', 'src/main/generated'],
         message:
           'No javac lint report: the lint compile failed (src/main/java/demo/A.java:3: error: cannot find symbol), ' +
-          'so raw types, unchecked operations, deprecated calls and redundant casts were not checked.',
+          'so raw types, unchecked operations, deprecated calls and redundant casts were not checked. ' +
+          'Fix what that compile reports (the main sources, the compile class path and Lombok), ' +
+          'or add an exception for javac/lint-not-run with the path "**" in nitpicker.config.json ' +
+          'if the project cannot be linted that way.',
       },
     ]);
     expect(() => parseAnalyzerReport({ findings }, 'java')).not.toThrow();
@@ -162,16 +207,14 @@ describe('readLintFindings', () => {
 
     const uncompared = compare(readLintFindings(baseReports, { projectRoot: base }));
 
-    expect(uncompared.map((finding) => finding.classification)).toEqual([
-      'descriptive',
-      'descriptive',
-      'descriptive',
-      'descriptive',
-    ]);
-    expect(uncompared[0].message).toBe(
-      'found raw type: List. Add the type arguments, as in List<String>. ' +
-        'If it is right here, add an exception for javac/rawtypes in nitpicker.config.json. ' +
-        'Not enforced: no base javac report shows whether the change added it.',
+    expect(uncompared).toEqual(
+      [0, 2, 3, 1]
+        .map((index) => PROJECT_FINDINGS[index])
+        .map((finding) => ({
+          ...finding,
+          classification: 'descriptive',
+          message: `${finding.message} Not enforced: no base javac report shows whether the change added it.`,
+        })),
     );
     expect(compare([]).map((finding) => finding.classification)).toEqual([
       'enforceable',

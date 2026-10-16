@@ -15,7 +15,8 @@ side contributes only two things: producing reports, and converting them into fi
 
 ```
 gradle -I languages/java/gradle/nitpicker.init.gradle nitpickerJava   (per snapshot: base, head; Maven builds: see below)
-  -> <report dir>/modules.json and, per Gradle project that applies java, <report dir>/<key>/{pmd.sarif, spotbugs.sarif, format.txt, jacoco.xml, checkstyle.xml, checkstyle-<source set>.xml, archunit/*.xml, structure.json, pit/mutations.xml, jdeps.txt, jdeps-classes.txt, javac-lint.txt, forbidden-apis.txt, cpd.xml, dependencies.json, permits.txt, manifest.json}
+  -> <report dir>/modules.json and, per Gradle project that applies java, <report dir>/<key>/{pmd.sarif, spotbugs.sarif, format.txt, jacoco.xml, checkstyle.xml, checkstyle-<source set>.xml, archunit/*.xml, structure.json, pit/mutations.xml, jdeps.txt, jdeps-classes.txt, forbidden-apis.txt, cpd.xml, dependencies.json, guards-plan.json, manifest.json}
+  -> languages/java/adapters/gradle-reports/gradle-guards.mjs (runGradleGuards: javac-lint.txt and permits.txt from each guards-plan.json)
   -> languages/java/adapters/reporting/java-reports.mjs       (readJavaFindings, via the ingesters)
   -> languages/java/adapters/spring/java-spring.mjs    (spring findings read straight from application*.properties/yml, no Gradle report; only when manifest.json says spring: true)
   -> compareFindings(base, head, renames)               (languages/java/adapters/java-diff.mjs)
@@ -46,9 +47,11 @@ gradle -I languages/java/gradle/nitpicker.init.gradle nitpickerJava   (per snaps
   and a cycle through two projects is one cycle. Packages and classes of a project other than the
   root are named with its folder (`lib/demo.lib`), so two projects that share a package or class
   name stay apart, and a dependency goes to the project that declares the class (its own first).
-  The `permits.txt` of every project is merged with the same names, so a sealed type's `permits`
-  edge is left out whichever project declares it. The root's names and identities are as in a
-  one-project build, which reads its own jdeps reports unmerged.
+  A project's names depend only on its own folder, never on how many projects there are: a lone
+  subproject is named with its folder too. The `permits.txt` of every project is merged with the
+  same names, so a sealed type's `permits` edge is left out whichever project declares it. The
+  root's names and identities are as in a one-project build, which reads its own jdeps reports
+  unmerged.
 - **Nitpicker side: `languages/java/adapters/`.** `runJavaPreset` runs the task,
   `readJavaFindings` converts the reports, `runJavaDiff` does worktrees, rename map, comparison.
   `languages/java/adapters/java-analyzer.mjs` wraps all of it as one analyzer named `java` for the CLI (slice
@@ -146,14 +149,18 @@ field by field. Per snapshot:
   value still holding an unresolved `${...}` counts as unset). It compiles with the `javac` of
   `JAVA_HOME` (or the PATH), not a Maven toolchain, against the main compile classpath (compile,
   provided and system scopes), takes Lombok from it, and reads the sources in the project's
-  encoding. A POM that sets no release, source or target is linted as Java 8, the compiler
-  plugin's default. Sources under a root outside the module directory (a `build-helper` root such
-  as `../shared/src`) are not linted; their classes are on the class path, except in a module with
+  encoding. The runner is the one the Gradle side uses (`languages/java/builds/lint/`), so staging,
+  the differential lint and the Lombok handling below are the same on both builds; the annotation
+  processors' generated sources for a module with a descriptor come from
+  `target/generated-sources/annotations`. A POM that sets no release, source or target is linted
+  as Java 8, the compiler plugin's default. Sources under a root outside the module directory (a
+  `build-helper` root such as `../shared/src`) are not linted; their classes are on the class path, except in a module with
   a `module-info.java`, where such a root can make the lint compile fail (`javac/lint-not-run`). In
   a module with a descriptor, jars that are modules go on `--module-path` and the rest on `-cp`,
   as on Gradle; when that compile fails, it is retried with every jar on `--module-path`, as the
-  compiler plugin puts a plain jar there when `module-info.java` requires it. On the head it reuses
-  the base's warnings for unchanged files exactly as on Gradle. forbiddenapis reads the module's
+  compiler plugin puts a plain jar there when `module-info.java` requires it (the Gradle side
+  retries the same way). On the head it reuses the base's warnings for unchanged files exactly as
+  on Gradle. forbiddenapis reads the module's
   output directory (`target/classes` unless the POM moves it) against the main compile classpath
   and is skipped when the module has no classes; CPD, the guard and test-honesty PMD rulesets,
   `pmd-tests.xml` (`TestClassWithoutTestCases` with the main source roots excluded, after the
@@ -648,22 +655,22 @@ the dependency and cycle checks end with it too. Inline suppressions are not a r
 `@SuppressWarnings("unchecked")` and the like are blanked before `javac` lints, so they hide
 nothing. The rules read base and head the same way, so only a pattern a change adds fails.
 
-| Guard                                                                                                                                            | Rule as printed                                                                                                                                                        | Allowed form                                                                                                       |
-| ------------------------------------------------------------------------------------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------ |
-| Package cycles                                                                                                                                   | `coupling/package-cycle`                                                                                                                                               | Move shared types down, or invert one dependency behind an interface                                               |
-| `Optional.get()`; `Optional` as field, parameter or record component; `Optional<List<..>>`                                                       | `pmd/OptionalGet`, `pmd/OptionalAsFieldOrParameter`, `pmd/OptionalOfCollection`                                                                                        | `orElseThrow()`, `orElse`, `map`, `ifPresent`; return an empty collection                                          |
-| Raw types, unchecked casts, deprecated and removed APIs, redundant casts                                                                         | `javac/rawtypes`, `javac/unchecked`, `javac/deprecation`, `javac/removal`, `javac/cast`                                                                                | Type arguments, typed APIs, the replacement the Javadoc names                                                      |
-| `instanceof` followed by a cast                                                                                                                  | `pmd/InstanceofThenCast`                                                                                                                                               | Pattern matching (`x instanceof Circle c`) or a `switch` over a sealed type                                        |
-| Non-private fields, mutable static state, `@SneakyThrows`                                                                                        | `checkstyle/...VisibilityModifierCheck`, `pmd/NonFinalStaticField`, `pmd/MutableStaticCollection`, `pmd/SneakyThrows`                                                  | Private fields, a `record`, immutable `List.of` and `Map.of`, a declared exception                                 |
-| Legacy date and time, `now()` without a `Clock`, `Thread.sleep`, `new Thread`, `Runtime.exec(String)`, `ObjectInputStream`                       | `forbiddenapis/legacy-date-time`, `clock-now`, `thread-sleep`, `new-thread`, `runtime-exec`, `java-deserialization`                                                    | `java.time`, an injected `Clock`, an executor, `ProcessBuilder` with a list, JSON                                  |
-| Swallowed `InterruptedException`; side effects in `forEach` and `peek`; `collect(Collectors.toList())`; an unclosed `Files.lines/list/walk/find` | `pmd/SwallowedInterruptedException`, `pmd/ForEachSideEffect`, `pmd/CollectorsToList`, `pmd/StreamResourceNotClosed`                                                    | `Thread.currentThread().interrupt()`, `map` and `collect`, `Stream.toList()`, try-with-resources                   |
-| `throws Exception`, raw `RuntimeException`                                                                                                       | `pmd/SignatureDeclareThrowsException`, `pmd/AvoidThrowingRawExceptionTypes`                                                                                            | The checked exceptions the method throws; `IllegalArgumentException`, `IllegalStateException`, a project exception |
-| SQL built with `+` or `String.format` in JDBC calls; MD5 and SHA-1; nested-quantifier regexes; a path joined from a parameter                    | `pmd/SqlConcatenation`, `pmd/WeakHash`, `pmd/NestedQuantifierRegex`, `pmd/PathFromParameter`                                                                           | `?` parameters, SHA-256, a regex without `(a+)+`, `normalize()` and `startsWith(base)`                             |
-| Constant names; magic numbers                                                                                                                    | `checkstyle/...ConstantNameCheck`, `checkstyle/...MagicNumberCheck`                                                                                                    | `UPPER_SNAKE_CASE` (a logger may be `log` or `logger`); a named `private static final`                             |
-| Unused imports                                                                                                                                   | `pmd/UnnecessaryImport`                                                                                                                                                | Remove the import                                                                                                  |
-| Duplicates with renamed names, and in test sources                                                                                               | `duplicates/duplicate-clone`                                                                                                                                           | One shared method; a helper or `@ParameterizedTest` in tests                                                       |
-| Declared but unused dependencies                                                                                                                 | `dependencies/unused-declared-dependency`                                                                                                                              | Remove it, or declare it `runtimeOnly` or `compileOnly` (Maven: `test`, `runtime` or `provided` scope)                                                  |
-| Test honesty                                                                                                                                     | `pmd/TestSleep`, `DisabledTest`, `AssertionInControlFlow`, `TryCatchInTest`, `AssertTrueOnEquality`, `TautologicalAssertion`, `MockedValueType`, `TestOrderDependence` | See Tests below                                                                                                    |
+| Guard                                                                                                                                            | Rule as printed                                                                                                                                                        | Allowed form                                                                                                                 |
+| ------------------------------------------------------------------------------------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------- |
+| Package cycles                                                                                                                                   | `coupling/package-cycle`                                                                                                                                               | Move shared types down, or invert one dependency behind an interface                                                         |
+| `Optional.get()`; `Optional` as field, parameter or record component; `Optional<List<..>>`                                                       | `pmd/OptionalGet`, `pmd/OptionalAsFieldOrParameter`, `pmd/OptionalOfCollection`                                                                                        | `orElseThrow()`, `orElse`, `map`, `ifPresent`; return an empty collection                                                    |
+| Raw types, unchecked casts, deprecated and removed APIs, redundant casts                                                                         | `javac/rawtypes`, `javac/unchecked`, `javac/deprecation`, `javac/removal`, `javac/cast`                                                                                | Type arguments, typed APIs, the replacement the Javadoc names                                                                |
+| `instanceof` followed by a cast                                                                                                                  | `pmd/InstanceofThenCast`                                                                                                                                               | Pattern matching (`x instanceof Circle c`) or a `switch` over a sealed type                                                  |
+| Non-private fields, mutable static state, `@SneakyThrows`                                                                                        | `checkstyle/...VisibilityModifierCheck`, `pmd/NonFinalStaticField`, `pmd/MutableStaticCollection`, `pmd/SneakyThrows`                                                  | Private fields, a `record`, immutable `List.of` and `Map.of`, a declared exception                                           |
+| Legacy date and time, `now()` without a `Clock`, `Thread.sleep`, `Thread.start()`, `Runtime.exec(String)`, `ObjectInputStream`                   | `forbiddenapis/legacy-date-time`, `clock-now`, `thread-sleep`, `new-thread`, `runtime-exec`, `java-deserialization`                                                    | `java.time`, an injected `Clock`, an executor, `ProcessBuilder` with a list, JSON                                            |
+| Swallowed `InterruptedException`; side effects in `forEach` and `peek`; `collect(Collectors.toList())`; an unclosed `Files.lines/list/walk/find` | `pmd/SwallowedInterruptedException`, `pmd/ForEachSideEffect`, `pmd/CollectorsToList`, `pmd/StreamResourceNotClosed`                                                    | `Thread.currentThread().interrupt()`, `map` and `collect`, `Stream.toList()`, try-with-resources                             |
+| `throws Exception`, raw `RuntimeException`                                                                                                       | `pmd/SignatureDeclareThrowsException`, `pmd/AvoidThrowingRawExceptionTypes`                                                                                            | The checked exceptions the method throws; `IllegalArgumentException`, `IllegalStateException`, a project exception           |
+| SQL built with `+` or `String.format` in JDBC calls; MD5 and SHA-1; nested-quantifier regexes; a path joined from a parameter                    | `pmd/SqlConcatenation`, `pmd/WeakHash`, `pmd/NestedQuantifierRegex`, `pmd/PathFromParameter`                                                                           | `?` parameters, SHA-256, a regex without `(a+)+`, `normalize()` and `startsWith(base)`                                       |
+| Constant names; magic numbers                                                                                                                    | `checkstyle/...ConstantNameCheck`, `checkstyle/...MagicNumberCheck`                                                                                                    | `UPPER_SNAKE_CASE` (a logger may be `log` or `logger`); a named `private static final`                                       |
+| Unused imports                                                                                                                                   | `pmd/UnnecessaryImport`                                                                                                                                                | Remove the import                                                                                                            |
+| Duplicates with renamed names, and in test sources                                                                                               | `duplicates/duplicate-clone`                                                                                                                                           | One shared method; a helper or `@ParameterizedTest` in tests                                                                 |
+| Declared but unused dependencies                                                                                                                 | `dependencies/unused-declared-dependency`                                                                                                                              | Remove it, or declare it `testImplementation`, `runtimeOnly` or `compileOnly` (Maven: `test`, `runtime` or `provided` scope) |
+| Test honesty                                                                                                                                     | `pmd/TestSleep`, `DisabledTest`, `AssertionInControlFlow`, `TryCatchInTest`, `AssertTrueOnEquality`, `TautologicalAssertion`, `MockedValueType`, `TestOrderDependence` | See Tests below                                                                                                              |
 
 A Checkstyle rule prints as its full check class, for example
 `checkstyle/com.puppycrawl.tools.checkstyle.checks.coding.MagicNumberCheck`; the message names it.
@@ -683,13 +690,18 @@ A Checkstyle rule prints as its full check class, for example
   points at a lock, since its stock advice (a `synchronized` block) is what
   `AvoidSynchronizedStatement` forbids.
 - **Where they run.** `languages/java/gradle/pmd-ruleset.xml` holds the rules for main and test
-  sources. `rules/guards-ruleset.xml` runs on main sources only (the init script writes a wrapper
-  ruleset that excludes the test directories), `rules/test-honesty-ruleset.xml` on test sources
-  only (its wrapper excludes every file, then includes the test directories back, since PMD lets
-  an include pattern override an exclude pattern). A project's own `config/pmd/ruleset.xml`
+  sources. `rules/guards-ruleset.xml` runs on main sources only (nitpicker writes a wrapper
+  ruleset that excludes the test directories, with the same code on Gradle and Maven: the init
+  script hands the source directories and the compiler settings to
+  `languages/java/builds/rulesets/write-rules.mjs`), `rules/test-honesty-ruleset.xml` on test
+  sources only (its wrapper excludes every file, then includes the test directories back, since
+  PMD lets an include pattern override an exclude pattern). A project's own `config/pmd/ruleset.xml`
   replaces all of them unless it opts in as before. `InstanceofThenCast` and `CollectorsToList` are
-  left out when the main compile targets a release below 16 (`options.release`, else
-  `targetCompatibility`), since pattern matching and `Stream.toList()` need 16.
+  left out when the main compile targets a release below 16 (`options.release`, else the last
+  `--release` of the compiler arguments, else their last `-target`, else `targetCompatibility`,
+  on both builds), since pattern matching and `Stream.toList()` need 16. Maven modules also get
+  `pmd-tests.xml` (`TestClassWithoutTestCases` on test sources) and the Checkstyle name formats
+  below, as Gradle projects do.
 - **Narrowed rules.** `OptionalAsFieldOrParameter` skips parameters bound by Spring web
   annotations (`@RequestParam`, `@RequestHeader`, `@PathVariable`, `@CookieValue`,
   `@RequestAttribute`, `@SessionAttribute`, `@MatrixVariable`, `@RequestPart`), where an optional
@@ -699,10 +711,14 @@ A Checkstyle rule prints as its full check class, for example
   `(List<String>) o`). `CollectorsToList` reports `collect(Collectors.toList())` only, not a downstream
   `toList()` inside `groupingBy` or `mapping`. `NestedQuantifierRegex` reports a repeated group
   whose whole body is one quantified item (`(a+)+`, `(\s*)*`, `([a-z]+)*`), not a group of
-  several items such as `([A-Z][a-z]+)+`. `SignatureDeclareThrowsException` skips overriding
+  several items such as `([A-Z][a-z]+)+`. `PathFromParameter` reports non-private methods and
+  constructors only, so a private helper called with fixed names is fine.
+  `SignatureDeclareThrowsException` skips overriding
   methods, a method that takes Spring Security's `HttpSecurity`, `WebSecurity`,
   `AuthenticationConfiguration` or `AuthenticationManagerBuilder` (whose methods declare
-  `Exception`), and `getObject()` of a `FactoryBean`. `NonFinalStaticField` skips JUnit's `@TempDir`, `@Container`, `@RegisterExtension`
+  `Exception`), `getObject()` of a `FactoryBean`, `main(String[])` and the methods of a
+  `@FunctionalInterface` (a `Callable`-like type whose lambdas may throw anything).
+  `NonFinalStaticField` skips JUnit's `@TempDir`, `@Container`, `@RegisterExtension`
   and `@ClassRule` fields, Testcontainers containers and fields assigned in `@BeforeAll`;
   `MutableStaticCollection` skips a private static concurrent collection used as a cache.
 - **Checkstyle.** `rules/checkstyle-all.xml` (`ConstantName`) is added to the `google_checks.xml`
@@ -711,40 +727,66 @@ A Checkstyle rule prints as its full check class, for example
   fields allowed) for main sources only. `ConstantName` checks constants of primitive, `String`,
   boxed, `BigDecimal`, `BigInteger` and `Duration` type; a `static final` reference to an object
   such as `mapper` keeps its camel-case name. `VisibilityModifier` allows protected fields of a
-  `@MappedSuperclass`. These scopes are `SuppressionXpathSingleFilter` modules inside the
+  `@MappedSuperclass`, and fields without an access modifier in a class annotated with Lombok's
+  `@Value` or `@FieldDefaults(level = AccessLevel.PRIVATE)`, which Lombok makes private. These
+  scopes are `SuppressionXpathSingleFilter` modules inside the
   generated config, not inline suppressions. The messages are rewritten to name the allowed form.
-- **javac lint.** The `nitpickerLint` task compiles the main sources once more with
+- **javac lint.** The `nitpickerLint` task writes `guards-plan.json` (the main sources, the
+  compile class path, the processor path, the compiler, its release, source, target, encoding and
+  arguments, the classes directory and the generated-sources directory), and after Gradle has run
+  nitpicker compiles the main sources once more from it with
   `-Xlint:rawtypes,unchecked,deprecation,removal,cast` and writes the warnings to
-  `javac-lint.txt` in the report directory (tool `javac`, rule = lint category). It compiles a copy in
-  which every `@SuppressWarnings(...)` is blanked out (same lines and columns), with the project's
-  compiler, release (or `-source`/`-target` from the source and target compatibility when no
-  release is set) and compiler arguments (without `-Werror`, `-Xlint`, `-Xplugin` and processor
-  options),
-  and with the main classes on the classpath, so it runs only Lombok of the annotation processors
-  (the classes other processors generate are already compiled) and stops after flow analysis
-  without writing classes. With a `module-info.java` the sources compile as that module, with
-  the modular jars of the class path on `--module-path`, and every file is linted. On the head, when the base produced a lint report in the same run (kept in
-  `<build dir>/nitpicker-lint/javac-lint.txt` of the base checkout), only the source files
-  whose content differs from the base are compiled; the base's warnings for the unchanged files
-  are kept, so the report matches a full lint. The cost: a warning that appears in an unchanged
-  file only because a changed file changed (a method the change deprecated, called from an
-  unchanged file) is not reported. Without a base report (the base came from the findings cache,
-  or its lint failed) the head lints every file. When the lint compile fails the run goes on: the
-  report says so in a descriptive `javac/lint-not-run` notice, and javac warnings are not checked
-  in that run. When only the base failed, the head's javac findings under that module's main
-  source roots are reported but do not fail the gate: with no base report, nothing tells which of them the change added, and each one says
-  so. When only the head failed, the run fails with a tool error: the change broke the lint
-  compile.
-- **Run time.** The lint, forbiddenapis, CPD, dependency and permits tasks declare their inputs
-  and outputs, so Gradle skips them when nothing they read changed. Measured on the hx repro (31
-  main files, Lombok and MapStruct, load about 40), the lint task took 22.0 s before and 13.1 s
-  with a one-file change; on the java-base sandbox, 6.2 s before and 3.9 s. Most of what is left is
-  starting javac with the processor and class path.
+  `javac-lint.txt` in the report directory (tool `javac`, rule = lint category). The same runner
+  serves Maven. It compiles a copy in which every `@SuppressWarnings(...)` is blanked out (same
+  lines and columns), with the project's compiler, release (or `-source`/`-target` from the source
+  and target compatibility when no release is set) and compiler arguments (without `-Werror`,
+  `-Xlint`, `-Xplugin`, processor options and class or module paths), and with the main classes on
+  the classpath, so it runs only Lombok of the annotation processors (the classes other processors
+  generate are already compiled) and stops after flow analysis without writing classes. The copy
+  keeps the sources' paths below the analysis root, with every `lombok.config` on the way from the
+  root down to each source folder, so Lombok reads the project's configuration (a package folder's
+  `fluent` accessors or log field name included), and those of the folders above the root up to
+  one that sets `config.stopBubbling`; a relative `import` in a copied file is pointed at the file
+  it names. A warning javac places on a Lombok annotation (`@SuperBuilder` or `@Builder` code that
+  Lombok generates) is dropped: it is not in code the project wrote. With a `module-info.java` the
+  sources compile as that module, with the modular jars of the class path on `--module-path` (and,
+  if that fails, every jar), the sources other annotation processors generated (MapStruct,
+  Immutables, Dagger) compiled along without their warnings being reported, and every file is
+  linted. On the head, when the base produced a lint report in the same run (kept with a
+  fingerprint of its compile inputs in `<build dir>/nitpicker-lint/` of the base checkout, Maven's
+  `target/nitpicker-lint/`), the base's warnings are reused for files whose content is the same as
+  on the base, so the report matches a full lint. They are reused only when the compile inputs
+  match the base's: the javac version, the language level, the encoding, the compiler arguments
+  (the checkout's folder left out), every `lombok.config` that applies to the sources and every
+  class path and Lombok entry (a jar outside the project by name and size; a jar inside it, or a
+  classes directory such as another project's, by its content), so a dependency bump that
+  deprecates an API or a changed Lombok setting is reported in unchanged files too. An unchanged file whose classes
+  use a class of a changed file, directly or through a subclass (read from the head's class
+  files), is compiled again, so a method the change deprecated or a class the change made generic
+  is reported where it is called. A constant javac inlined leaves no trace in the class files, so
+  deprecating a `static final` constant is reported only in changed files. Without a base
+  report or with other compile inputs the head lints every file. When the lint compile fails the
+  run goes on: the report says so in a descriptive `javac/lint-not-run` notice that quotes the
+  first error, and javac warnings are not checked in that run. When only the base failed, the
+  head's javac findings under that module's main source roots are reported but do not fail the gate: with no base report, nothing tells
+  which of them the change added, and each one says so. When only the head failed, the run fails
+  with a tool error: the change broke the lint compile. The notice says to fix what the lint
+  compile reports or to add an exception for `javac/lint-not-run` (path `**`) when the project
+  cannot be linted this way.
+- **Run time.** Each snapshot runs in a fresh worktree with a fresh report directory, so Gradle's
+  up-to-date checks do not skip these tasks; what saves time is the differential lint. Measured on
+  a project with 31 main files using Lombok and MapStruct (load about 40), the lint took 22.0 s for
+  every file and 13.1 s with a one-file change; on a smaller project, 6.2 s and 3.9 s. Most of what
+  is left is starting javac with the processor and class path.
 - **forbiddenapis.** [forbiddenapis](https://github.com/policeman-tools/forbidden-apis) 3.10
   (Apache-2.0, one jar from Maven Central, pinned in the init script) reads the main bytecode
   against `rules/forbidden-apis.txt`. Each signature group has a tag that becomes the rule name
   (`thread-sleep`); the report is `forbidden-apis.txt`. Source locations come
-  from the class's debug line numbers.
+  from the class's debug line numbers; a field, parameter, return type, record component or
+  supertype of a banned type is placed on its declaration in the source. `new-thread` bans `Thread.start()`, so a `ThreadFactory`
+  or `Runtime.addShutdownHook` may still construct a `Thread`. `legacy-date-time` skips a
+  statement that converts a `Date` another API returns with `toInstant()` and does not name `Date`
+  itself (`certificate.getNotAfter().toInstant()`).
 - **Duplicates.** The jscpd check is unchanged. `nitpickerCpd` runs PMD's copy-paste detector
   (BSD-style, already inside the pinned PMD) over main and test sources with identifiers and
   literals ignored and at least 100 tokens, so a copy with renamed variables is found. A clone
@@ -753,7 +795,10 @@ A Checkstyle rule prints as its full check class, for example
   are clones made only of getters, setters, field declarations and field-assigning constructors
   or only of data rows (enum constants, `Arguments.of(...)` rows, literal lists, and constants
   built from literals with `Map.ofEntries`, `Map.of`, `List.of`, `Set.of`, `Stream.of` or
-  `Arrays.asList`). Findings use the
+  `Arrays.asList`). The files of a duplication are sorted by path, so the order CPD lists them in
+  does not matter, and the identity hashes the clone's token shape (its punctuation and
+  operators, without names, literals and comments), so editing a name or a literal in a legacy
+  copy keeps its identity. Findings use the
   same tool and rule as jscpd (`duplicates/duplicate-clone`), with identities starting `cpd:` so
   they never match a jscpd finding; between two test files the message points at a helper or a
   `@ParameterizedTest`. The message ends with the exception route for
@@ -789,8 +834,9 @@ A Checkstyle rule prints as its full check class, for example
   strongly connected set of packages is one `package-cycle` finding, identified by the package
   name and placed on its first file, so growing a legacy cycle adds a finding for the new package
   only and shrinking it resolves findings without re-reporting the rest. The edge from a sealed
-  type to the subtypes it `permits` is left out (`permits.txt` in the report directory, read from the
-  `PermittedSubclasses` attribute of the main classes), since a sealed hierarchy across packages is
+  type to the subtypes it `permits` is left out (`permits.txt` in the report directory, read by
+  nitpicker from the `PermittedSubclasses` attribute of the main classes; a class file it cannot
+  read is skipped), since a sealed hierarchy across packages is
   the intended form. Cycles between classes of one package are not reported: two-way references
   such as a parent and its children or JPA associations are normal.
 - **Dependencies.** `nitpickerDependencies` writes `dependencies.json`: each
@@ -806,11 +852,13 @@ A Checkstyle rule prints as its full check class, for example
   `TimeUnit.sleep`), `DisabledTest` (`@Disabled`, `@Ignore`), `AssertionInControlFlow` (an
   assertion or `verify` inside an `if` or `switch` of a test method; a loop over results and an
   `if` that only calls `fail` are fine),
-  `TryCatchInTest` (use `assertThrows`), `AssertTrueOnEquality` (`assertTrue(a.equals(b))`,
+  `TryCatchInTest` (use `assertThrows`; a `try` inside a lambda or an anonymous class is fine),
+  `AssertTrueOnEquality` (`assertTrue(a.equals(b))`,
   `assertTrue(a == b)`), `TautologicalAssertion` (`assertThat(true)`, `assertTrue(true)`,
   `assertEquals(1, 1)`; `assertEquals(a, a)` is a reflexivity test and is fine), `MockedValueType` (a `String`, number, date, collection, `Optional` or
-  record mocked with `mock` or `@Mock`) and `TestOrderDependence` (`@TestMethodOrder`,
-  `@FixMethodOrder`, `@Order` on a test). A test class with `static` non-final fields or a static
+  record mocked with `mock` or `@Mock`) and `TestOrderDependence` (`@TestMethodOrder` other than
+  `MethodOrderer.Random`, `@FixMethodOrder`, `@Order` on a test). A test class with `static`
+  non-final fields or a static
   collection it changes is a `pmd/NonFinalStaticField` or `pmd/MutableStaticCollection` finding
   like production code. A test with no assertion at all is still
   `pmd/UnitTestShouldIncludeAssert`. Assumptions (`assumeTrue`) and tests that only `verify` a
@@ -823,10 +871,14 @@ A Checkstyle rule prints as its full check class, for example
   a test rule's pattern in main code, the Spring Security methods that throw `Exception`, a generic
   cast after `instanceof`, a `try (lines)` on a variable, a `fail` guard and `assertEquals(a, a)`.
   The test also checks one message's exception route, and runs `guards-compile-modes`: PMD on its
-  `legacy` module, compiled for Java 11, where `InstanceofThenCast` and `CollectorsToList` must
-  not fire, and the lint on modules with a javac plug-in (`-Xplugin`), `--enable-preview` and a
-  module descriptor with a sealed type across packages. The `lint-not-run` path is unit-tested only: a source that
-  breaks the lint compile breaks `compileJava` first.
+  `legacy` module, compiled for Java 11 through `options.release`, and its `arguments` module,
+  compiled for Java 11 through `--release` in the compiler arguments, where `InstanceofThenCast`
+  and `CollectorsToList` must not fire, and the lint on modules with a javac plug-in (`-Xplugin`),
+  `--enable-preview`, a module descriptor with a sealed type across packages, a source root
+  outside the project and Lombok with a package folder's `lombok.config` and a `@SuperBuilder`
+  warning; `maven-preset.e2e.test.mjs` lints the same modules with Maven, Lombok included. The
+  `lint-not-run` path is unit-tested only: a source that breaks the lint compile breaks
+  `compileJava` first.
 - **Left out on purpose.** Lombok `@Data` (a record is the allowed form for data, but `@Data` on a
   JPA entity is common enough that blocking it needs its own decision), `java.util.Random`
   (`SecureRandom` is right for tokens, but a plain `Random` for sampling is legitimate and the
