@@ -17,8 +17,7 @@ import { ingestFormatCheck } from '../../../../shared/ingest/format-check.mjs';
 import { ingestJacoco } from '../../ingest/coverage-reports/jacoco.mjs';
 import { ingestPit } from '../../ingest/pit.mjs';
 import { ingestJacocoBranches } from '../../ingest/coverage-reports/jacoco-branches.mjs';
-import { prepareSarif, projectRelative } from '../../../../shared/ingest/prepare-sarif.mjs';
-import { ingestSarif } from '../../../../shared/ingest/sarif.mjs';
+import { ingestSarif, prepareSarif, projectRelative } from '../../../../shared/ingest/sarif.mjs';
 import { kotlinModules, readKotlinMetrics } from '../kotlin/kotlin-metrics.mjs';
 import {
   jacocoSourceRoots,
@@ -28,20 +27,24 @@ import {
   sourceLocator,
 } from './kotlin-reports.mjs';
 
-const REPORT_DIRECTORY = 'build/nitpicker';
+export const REPORT_DIRECTORY = 'build/nitpicker';
 const LINE_NUMBER = /\bline \d+\b/g;
 
 export function readJavaFindings(
   projectRoot,
-  { crapLimit, preset = 'java', fileLimits, exclude, exceptions } = {},
+  {
+    crapLimit,
+    preset = 'java',
+    fileLimits,
+    exclude,
+    exceptions,
+    reportDirectory = REPORT_DIRECTORY,
+    projectWide = true,
+  } = {},
 ) {
   const kotlin = preset === 'kotlin';
-  const reportRoot = path.join(projectRoot, REPORT_DIRECTORY);
-  requireGradleReports(projectRoot, preset);
-  const manifest = JSON.parse(readFileSync(path.join(reportRoot, 'manifest.json'), 'utf8'));
-  if (kotlin) {
-    requireKotlinManifest(manifest);
-  }
+  const reportRoot = path.join(projectRoot, reportDirectory);
+  const manifest = readManifest(projectRoot, { reportDirectory, preset });
   const context = {
     projectRoot,
     reportRoot,
@@ -63,22 +66,42 @@ export function readJavaFindings(
       ...crapFindings(context, context.jacoco, crapLimit),
       ...pitFindings(context),
       ...readJavaStructureFindings(reportRoot, projectRoot),
-      ...readJavaFileLimitFindings(projectRoot, {
-        manifest,
-        kotlin,
-        policy: { thresholds: fileLimits, exclude, exceptions },
-      }),
+      ...(projectWide ? projectWideFindings(context, { fileLimits, exclude, exceptions }) : []),
       ...branchFindings(context, context.jacoco),
-      ...readCouplingFindings(reportRoot, {
-        projectRoot,
-        sourceRoots: context.sourceRoots,
-        kotlin: kotlin ? kotlinModules(readKotlinMetrics(reportRoot)) : undefined,
-      }),
       ...(kotlin ? readKotlinFindings(context, crapLimit) : []),
       ...readInlineSuppressionFindings(projectRoot, context.lintedRoots),
       ...springFindings(context),
     ],
   };
+}
+
+function readManifest(projectRoot, { reportDirectory, preset }) {
+  if (reportDirectory === REPORT_DIRECTORY) {
+    requireGradleReports(projectRoot, preset);
+  }
+  const manifest = JSON.parse(
+    readFileSync(path.join(projectRoot, reportDirectory, 'manifest.json'), 'utf8'),
+  );
+  if (preset === 'kotlin') {
+    requireKotlinManifest(manifest);
+  }
+  return manifest;
+}
+
+function projectWideFindings(context, { fileLimits, exclude, exceptions }) {
+  const { projectRoot, reportRoot, manifest, kotlin } = context;
+  return [
+    ...readJavaFileLimitFindings(projectRoot, {
+      manifest,
+      kotlin,
+      policy: { thresholds: fileLimits, exclude, exceptions },
+    }),
+    ...readCouplingFindings(reportRoot, {
+      projectRoot,
+      sourceRoots: context.sourceRoots,
+      kotlin: kotlin ? kotlinModules(readKotlinMetrics(reportRoot)) : undefined,
+    }),
+  ];
 }
 
 function lintedRoots({ sourceRoots = [], testSourceRoots = [] }) {

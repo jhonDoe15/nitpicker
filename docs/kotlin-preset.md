@@ -24,7 +24,8 @@ also lets the reports say what ran: the analyzer is named `kotlin`, so a Gradle 
 `kotlin/gradle-failure` tool error and `baseline-expansion` findings carry the tool `kotlin`. What
 stays shared is everything else: `languages/java/` holds both presets, and `createJavaAnalyzer`
 takes `{ kotlin: true }`. A project whose build has no Kotlin module and sets `"preset": "kotlin"`
-fails with a tool error saying so.
+fails with a tool error saying so, and so does a Maven project (`kotlin/maven-failure`): the
+Kotlin tasks live in the Gradle init script, so a Maven project uses the java preset.
 
 ## How it works
 

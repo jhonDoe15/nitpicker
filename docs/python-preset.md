@@ -52,8 +52,8 @@ directory is the contract between the tool runs and the readers; later slices ad
   the configuration hash covers the Python adapter files, the nitpicker-owned ruff config and the
   `python` settings. Upgrading ruff, or editing the preset, therefore invalidates the base cache.
 - **Ingesters.** The generic ingesters live in `shared/ingest/` and are shared with the Gradle
-  presets: `sarif.mjs` (ruff), `format-check.mjs` (the format check), `common.mjs`,
-  `lizard-crap.mjs` and `prepare-sarif.mjs`.
+  presets: `sarif.mjs` (ruff, with `prepareSarif`), `format-check.mjs` (the format check), `common.mjs` and
+  `lizard-crap.mjs`.
   The one new ingester is `languages/python/ingest/coverage-reports/coverage-json.mjs` for the coverage.py JSON
   report. The legacy-inventory and `exclude` handling is `applyFindingPolicy` in
   `shared/findings/finding-policy.mjs` and Java's `configureJavaAnalyzer`, which are language-neutral and
