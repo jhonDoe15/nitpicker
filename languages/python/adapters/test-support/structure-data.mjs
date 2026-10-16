@@ -1,3 +1,5 @@
+const BODY_LINE = 5;
+
 export function fn(name, parameters, { complexity = 1, file = 'src/demo/a.py' } = {}) {
   return {
     file,
@@ -23,7 +25,7 @@ export function coverageOf(...names) {
             name,
             {
               executed_lines: [],
-              missing_lines: [5],
+              missing_lines: [BODY_LINE],
               summary: {
                 num_statements: 1,
                 covered_lines: 0,

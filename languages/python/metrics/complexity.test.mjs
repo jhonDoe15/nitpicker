@@ -1,9 +1,11 @@
 import { afterEach, describe, expect, it } from 'vitest';
-import { field, functionsOf, removeDirectories, usable } from './python-helpers.mjs';
+import { createMetrics, pythonUsable } from './python-helpers.mjs';
 
-afterEach(removeDirectories);
+const { field, functionsOf, cleanup } = createMetrics();
 
-describe.skipIf(!usable)('with python3 3.10 or newer on the PATH', () => {
+afterEach(cleanup);
+
+describe.skipIf(!pythonUsable())('with python3 3.10 or newer on the PATH', () => {
   describe('complexity', () => {
     const complexityOf = (...body) =>
       field(['def f(a, b, c):', ...body.map((line) => `    ${line}`)], 'complexity')[0];
