@@ -6,7 +6,7 @@ import { readLintFindings } from './javac-lint.mjs';
 export function readGuardFindings({ reportRoot, jscpdRoot, projectRoot, manifest, locate }) {
   return [
     ...readLintFindings(reportRoot, { projectRoot }),
-    ...readForbiddenApiFindings(reportRoot, { locate }),
+    ...readForbiddenApiFindings(reportRoot, { locate, projectRoot }),
     ...readCpdFindings(reportRoot, {
       projectRoot,
       testRoots: manifest.testSourceRoots ?? [],
