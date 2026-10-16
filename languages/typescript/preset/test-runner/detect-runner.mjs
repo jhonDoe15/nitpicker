@@ -4,8 +4,15 @@ import { readManifest } from '../eslint-config/scope-support.mjs';
 import { DEFAULT_TEST_RUNNER, RUNNER_PACKAGES } from './runners.mjs';
 import { parseTestCommand } from './script-command.mjs';
 
-const SCRIPT_REFERENCE =
-  /(?<=^|&&|\|\||;)\s*(?:npm|pnpm|yarn|bun)\s+(?:run(?:-script)?\s+)?(?<name>[\w:.-]+)(?:\s+--(?<rest>(?:\s+[^\s&;|]+)*))?\s*(?=$|&&|\|\||;)/gu;
+const SEGMENT_START = String.raw`(?<=^|&&|\|\||;)\s*`;
+const SEGMENT_END = String.raw`\s*(?=$|&&|\|\||;)`;
+const PACKAGE_MANAGER_RUN = String.raw`(?:npm|pnpm|yarn|bun)\s+(?:run(?:-script)?\s+)?`;
+const SCRIPT_NAME = String.raw`(?<name>[\w:.-]+)`;
+const FORWARDED_ARGUMENTS = String.raw`(?:\s+--(?<rest>(?:\s+[^\s&;|]+)*))?`;
+const SCRIPT_REFERENCE = new RegExp(
+  `${SEGMENT_START}${PACKAGE_MANAGER_RUN}${SCRIPT_NAME}${FORWARDED_ARGUMENTS}${SEGMENT_END}`,
+  'gu',
+);
 
 const CONFIG_EXTENSIONS = ['ts', 'mts', 'cts', 'js', 'mjs', 'cjs', 'json'];
 

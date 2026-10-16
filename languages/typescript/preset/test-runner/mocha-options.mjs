@@ -31,7 +31,10 @@ export function projectMocha(projectRoot) {
       major: Number.parseInt(require(manifestPath).version, 10),
       require,
     };
-  } catch {
+  } catch (error) {
+    if (error.code !== 'MODULE_NOT_FOUND') {
+      throw new Error(`Could not read the Mocha installed for ${projectRoot}`, { cause: error });
+    }
     return undefined;
   }
 }
