@@ -50,7 +50,7 @@ function hashConfiguration(settings, part) {
   return hash.digest('hex');
 }
 
-function resolveVersion(liveProjectRoot, settings, versions, probes) {
+function resolveVersion(liveProjectRoot, versions, { settings, probes }) {
   return versions(
     createToolContext({
       projectRoot: liveProjectRoot,
@@ -85,7 +85,7 @@ export function createPythonAnalyzer(settings = {}, probes = new Map()) {
     name: PYTHON_ANALYZER_NAME,
     version: UNRESOLVED_VERSION,
     resolveVersion: (liveProjectRoot) =>
-      resolveVersion(liveProjectRoot, settings, toolVersions, probes),
+      resolveVersion(liveProjectRoot, toolVersions, { settings, probes }),
     configurationHash: hashConfiguration(settings, PYTHON_ANALYZER_NAME),
     exclusions: [],
     reportedTools: [
@@ -113,7 +113,7 @@ export function createMutationAnalyzer(settings = {}, probes = new Map()) {
     name: MUTATION_ANALYZER_NAME,
     version: UNRESOLVED_VERSION,
     resolveVersion: (liveProjectRoot) =>
-      resolveVersion(liveProjectRoot, settings, mutationVersions, probes),
+      resolveVersion(liveProjectRoot, mutationVersions, { settings, probes }),
     configurationHash: hashConfiguration(settings, MUTATION_ANALYZER_NAME),
     exclusions: [],
     reportedTools: ['mutmut'],
