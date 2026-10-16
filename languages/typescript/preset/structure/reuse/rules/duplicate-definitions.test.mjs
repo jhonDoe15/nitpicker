@@ -361,15 +361,33 @@ describe('duplicate-definition', () => {
     ).toHaveLength(2);
   });
 
-  it('skips generated files', () => {
+  it('skips files marked generated and compares unmarked files named like generated code', () => {
     const generated = {
       'src/api.generated.ts': withLimit('a'),
       'src/schema.gen.ts': withLimit('b'),
       'src/__generated__/types.ts': withLimit('c'),
-      'src/generated/client.ts': withLimit('d'),
+    };
+    const files = { ...generated, 'src/ids.ts': withLimit('real') };
+
+    expect(duplicates(files, { generatedFiles: Object.keys(generated) })).toEqual([]);
+    expect([...new Set(rows(duplicates(files)).map(([, file]) => file))].sort()).toEqual([
+      'src/__generated__/types.ts',
+      'src/api.generated.ts',
+      'src/ids.ts',
+      'src/schema.gen.ts',
+    ]);
+  });
+
+  it('compares code in a source folder named like build output', () => {
+    const files = {
+      'src/billing/build/math.ts': withLimit('a'),
+      'src/orders/total.ts': withLimit('b'),
     };
 
-    expect(duplicates({ ...generated, 'src/ids.ts': withLimit('real') })).toEqual([]);
+    expect(rows(duplicates(files)).map(([, file]) => file)).toEqual([
+      'src/billing/build/math.ts',
+      'src/orders/total.ts',
+    ]);
   });
 
   it('compares within one package of a monorepo and not across packages', () => {

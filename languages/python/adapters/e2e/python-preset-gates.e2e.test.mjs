@@ -1,6 +1,7 @@
 import path from 'node:path';
-import { readFileSync } from 'node:fs';
+import { readdirSync, readFileSync } from 'node:fs';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { acceptedDigest } from '../../../../core/command/test-support/accepted-digest.mjs';
 import {
   GREETER_HI,
   GREETER_HI_TEST,
@@ -28,6 +29,33 @@ const enforceable = (result) =>
       .filter(({ classification }) => classification === 'enforceable'),
   );
 
+const EXCEPTING_CONFIG = JSON.stringify({
+  preset: 'python',
+  disable: ['mutation'],
+  python: {
+    exceptions: [
+      { rule: 'PTH118', paths: ['src/demo/rules.py'], reason: 'fixture' },
+      { rule: 'frozen-dataclass', paths: ['src/demo/*.py'], reason: 'fixture' },
+      { rule: 'no-inline-suppression', paths: ['src/**'], reason: 'fixture' },
+    ],
+  },
+});
+
+const EXCEPTION_LOOSENINGS = [
+  'analyzer disabled: mutation',
+  'exception added: frozen-dataclass for src/demo/*.py (fixture)',
+  'exception added: no-inline-suppression for src/** (fixture)',
+  'python.exceptions for PTH118 hide code this change adds or moves where the base config checked it: src/demo/rules.py',
+  'python.exceptions for frozen-dataclass hide code this change adds or moves where the base config checked it: src/demo/rules.py',
+  'python.exceptions for no-inline-suppression hide code this change adds or moves where the base config checked it: src/demo/rules.py',
+];
+
+function sourcePython(root) {
+  return readdirSync(path.join(root, 'src'), { recursive: true })
+    .filter((file) => file.endsWith('.py') && !file.includes('__pycache__'))
+    .map((file) => `src/${file}`);
+}
+
 const withoutMutants = (summaries) => summaries.filter((summary) => !summary.startsWith('mutmut '));
 
 describe.skipIf(!pythonE2eEnabled)('Python preset lint, type and rule gates end to end', () => {
@@ -44,17 +72,7 @@ describe.skipIf(!pythonE2eEnabled)('Python preset lint, type and rule gates end 
     commitBranch(project, 'one-way', { 'src/demo/rules.py': ONE_WAY_VIOLATIONS });
     commitBranch(project, 'excepted', {
       'src/demo/rules.py': ONE_WAY_VIOLATIONS,
-      'nitpicker.config.json': JSON.stringify({
-        preset: 'python',
-        disable: ['mutation'],
-        python: {
-          exceptions: [
-            { rule: 'PTH118', paths: ['src/demo/rules.py'], reason: 'fixture' },
-            { rule: 'frozen-dataclass', paths: ['src/demo/*.py'], reason: 'fixture' },
-            { rule: 'no-inline-suppression', paths: ['src/**'], reason: 'fixture' },
-          ],
-        },
-      }),
+      'nitpicker.config.json': EXCEPTING_CONFIG,
     });
     commitBranch(project, 'pyright', {
       'src/demo/typed.py': TYPE_ERROR,
@@ -143,8 +161,35 @@ describe.skipIf(!pythonE2eEnabled)('Python preset lint, type and rule gates end 
     expect(result.text).toMatch(/Remove the comment and fix the code/);
     expect(result.text).toMatch(/entry for PTH118 in nitpicker\.config\.json/);
   });
-  it('passes the same code when python.exceptions lifts its rules', () => {
+  it('fails the exceptions that hide checked code until a person accepts exactly those loosenings', () => {
     const result = gate(project, 'excepted');
+
+    expect(result.exitCode, result.text).toBe(1);
+    expect(
+      result
+        .json('new-findings.json')
+        .filter(({ classification }) => classification === 'enforceable')
+        .map(({ tool, rule, identity }) => ({ tool, rule, identity }))
+        .sort((left, right) => left.identity.localeCompare(right.identity)),
+    ).toEqual(
+      EXCEPTION_LOOSENINGS.toSorted((left, right) => left.localeCompare(right)).map((identity) => ({
+        tool: 'nitpicker-config',
+        rule: 'policy-loosened',
+        identity,
+      })),
+    );
+  });
+  it('passes the same code when python.exceptions lifts its rules', () => {
+    gate(project, 'excepted');
+    const digest = acceptedDigest(EXCEPTION_LOOSENINGS, {
+      'nitpicker.config.json': EXCEPTING_CONFIG,
+      ...Object.fromEntries(
+        sourcePython(project).map((file) => [file, readFileSync(path.join(project, file), 'utf8')]),
+      ),
+    });
+    const result = gate(project, 'excepted', {
+      environment: { CI: 'true', NITPICKER_ACCEPT_POLICY_CHANGE: digest },
+    });
 
     expect(result.exitCode, result.text).toBe(0);
     expect(withoutMutants(enforceable(result))).toEqual([]);

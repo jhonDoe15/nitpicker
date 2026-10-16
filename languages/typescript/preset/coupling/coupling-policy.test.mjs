@@ -61,14 +61,17 @@ describe('coupling report', () => {
       sourceRoot,
     );
 
+    const cohesive = report.packages.find((entry) => entry.name === 'cohesive');
+
     expect(report.summary).toEqual({
-      modules: 2,
+      modules: 3,
       dependencies: 1,
       runtimeDependencies: 1,
       typeOnlyDependencies: 0,
-      packages: 1,
+      packages: 2,
     });
-    expect(report.packages[0].cohesion).toEqual({
+    expect(report.packages.map((entry) => entry.name).sort()).toEqual(['build', 'cohesive']);
+    expect(cohesive.cohesion).toEqual({
       internalEdges: 1,
       edgeDensity: 0.5,
       connectedComponents: 1,
