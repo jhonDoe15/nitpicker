@@ -22,8 +22,9 @@ Before you change code other modules use or fix a bug, read
 
 ## Finish with the gate
 
-1. Run your tests (`npx vitest run`). Failing tests stop coverage, CRAP and mutation from running.
-   The gate type-checks for you. Node globals (`process`, `AbortSignal`) and `node:` imports need
+1. Run your tests with the project's runner (`npx vitest run`, `npx jest`, `node --test` or
+   `npx mocha`). Failing tests stop coverage, CRAP and mutation from running. The gate type-checks
+   for you. Node globals (`process`, `AbortSignal`) and `node:` imports need
    `@types/node` in devDependencies.
 2. When the change is complete, run `npx nitpicker --fix` as a background command you wait on,
    without a pipe: you need its exit code. It applies ESLint and Prettier fixes with its own
@@ -173,17 +174,21 @@ line) is a finding.
 
 ## Tests
 
-- Tests are Vitest files in `test/` (`*.test.js`, `.mjs`), and a test file must `import` from
-  `'vitest'`. `require('vitest')` fails, so a test is ESM even when the code it tests is CommonJS:
+- Tests are files in `test/` (`*.test.js`, `.mjs`) run by the runner the project uses, found from its
+  `test` script, a runner config file or a dependency (Vitest, Jest, `node:test` or Mocha; the
+  examples below are Vitest). In a Vitest project a test file must `import` from `'vitest'`:
+  `require('vitest')` fails, so a test is ESM even when the code it tests is CommonJS:
   `import { initials } from '../src/main/features/greeting/domain/initials.cjs';`.
 - Every branch you add needs a test: changed-branch coverage and mutation testing run on your
   change. Test each outcome of each union.
 - Test features through their `index.js` with fakes: plain functions returning
   `Promise.resolve(x)` / `Promise.reject(error)`; a non-Error rejection is
-  `vi.fn().mockRejectedValue(42)`. Read a fake's calls through a helper that throws when the call is missing, not
+  `vi.fn().mockRejectedValue(42)` (`jest.fn()` under Jest, `mock.fn(async () => { throw 42; })`
+  under `node:test`). Read a fake's calls through a helper that throws when the call is missing, not
   `calls[n]?.`. Spy on `process.stdout` only to test composition-root wiring, and give it a real temp
-  file (`mkdtemp`) rather than `vi.mock` of `node:` modules. The gate restores spies; restore fake
-  timers with `vi.useRealTimers()` in `afterEach`.
+  file (`mkdtemp`) rather than `vi.mock` of `node:` modules (`jest.mock`, `mock.module` and the other
+  runners' module mocks count too). The gate restores spies; restore fake timers with
+  `vi.useRealTimers()` in `afterEach` (`jest.useRealTimers()`, `mock.timers.reset()`).
 - Test data typed from a literal widens (`status: string`): write the array as
   `/** @type {const} */ ([...])`, or annotate the `const` with the typedef.
 - Assert whole outputs with `toEqual`/`toBe`, not `toContain`, `toMatchObject` or `expect.any`.

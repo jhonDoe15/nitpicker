@@ -1,7 +1,7 @@
 import path from 'node:path';
 import { storyGlobs } from '../../eslint-config/scope-support.mjs';
 
-const TEST_RUNNER_CONFIG = /^vitest/u;
+const TEST_RUNNER_CONFIG = /^(?:vitest|jest|\.mocharc)/u;
 const TEST_RUNNER_PLUGINS = [
   'ava',
   'cucumber',

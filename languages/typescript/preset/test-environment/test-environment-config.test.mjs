@@ -14,7 +14,9 @@ const logic = "it('adds', () => { expect(1 + 1).toBe(2); });";
 const directive = ['@vitest', 'environment'].join('-');
 const docblock = (name) => `/** ${directive} ${name} */`;
 const projectMessage = (environment) =>
-  rule.meta.messages.unusedProjectEnvironment.replaceAll('{{environment}}', environment);
+  rule.meta.messages.unusedProjectEnvironment
+    .replaceAll('{{environment}}', environment)
+    .replaceAll('{{directive}}', directive);
 const unknown = { environment: undefined, scopes: [] };
 
 function messages(projectEnvironments, filename, code = logic) {

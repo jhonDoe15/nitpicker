@@ -36,9 +36,9 @@ function nodeTestMessage() {
 }
 
 describe('node:test hint', () => {
-  it('says Vitest is the only runner, names issue #162 and the exception route', () => {
+  it('says Vitest does not collect node:test files and names the setting that switches runner', () => {
     expect(nodeTestMessage()).toBe(
-      'Import from vitest instead of node:test nitpicker runs tests with Vitest only (Jest and node:test support is tracked in issue #162). If this file must stay on node:test, add an exception for this rule in nitpicker.config.json.',
+      'Import from vitest instead of node:test nitpicker runs this project\'s tests with Vitest, which does not collect node:test files. Import from `vitest`, or, if the project runs its tests with node:test, set "tools.tests.runner" to "node" in nitpicker.config.json.',
     );
   });
 });

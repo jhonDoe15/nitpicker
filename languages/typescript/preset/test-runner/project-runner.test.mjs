@@ -3,7 +3,7 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import { PACKAGE_ROOT } from '../../../../core/tooling/tool-resolution.mjs';
-import { projectTestRunner } from './project-runner.mjs';
+import { policyTestRunner, projectTestRunner, recordedTestRunner } from './project-runner.mjs';
 
 const roots = [];
 
@@ -17,6 +17,13 @@ function project(scripts) {
   const root = mkdtempSync(path.join(tmpdir(), 'nitpicker-project-runner-'));
   roots.push(root);
   writeFileSync(path.join(root, 'package.json'), JSON.stringify({ scripts }));
+  return root;
+}
+
+function projectWith(manifest) {
+  const root = mkdtempSync(path.join(tmpdir(), 'nitpicker-project-runner-'));
+  roots.push(root);
+  writeFileSync(path.join(root, 'package.json'), JSON.stringify(manifest));
   return root;
 }
 
@@ -49,5 +56,39 @@ describe('the test runner nitpicker runs for a snapshot', () => {
     expect(projectTestRunner({ projectRoot: root, liveProjectRoot: PACKAGE_ROOT })).toEqual(
       expected,
     );
+  });
+});
+
+describe('recordedTestRunner', () => {
+  it('prefers the configured runner over the detected one', () => {
+    expect(
+      recordedTestRunner({ tools: { tests: { runner: 'mocha', detectedRunner: 'jest' } } }),
+    ).toBe('mocha');
+  });
+
+  it('falls back to the runner the head checkout was detected to use', () => {
+    expect(recordedTestRunner({ tools: { tests: { detectedRunner: 'node' } } })).toBe('node');
+  });
+
+  it.each([{}, { tools: {} }, { tools: { tests: {} } }])('has nothing for %j', (policy) => {
+    expect(recordedTestRunner(policy)).toBeUndefined();
+  });
+});
+
+describe('policyTestRunner', () => {
+  it('uses the recorded runner without reading the project', () => {
+    const policy = { tools: { tests: { detectedRunner: 'jest' } } };
+
+    expect(policyTestRunner(policy, '/does/not/exist')).toBe('jest');
+  });
+
+  it('detects the runner from the project when the policy records none', () => {
+    const root = projectWith({ scripts: { test: 'mocha' } });
+
+    expect(policyTestRunner({}, root)).toBe('mocha');
+  });
+
+  it('defaults to vitest for a project that shows no runner', () => {
+    expect(policyTestRunner({}, projectWith({}))).toBe('vitest');
   });
 });
