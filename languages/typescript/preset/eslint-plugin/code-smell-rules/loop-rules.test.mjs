@@ -42,6 +42,11 @@ ruleTester.run('no-io-in-loop', ioInLoop, {
     'let page; do { page = await repository.findPage(cursor); cursor = page.next; } while (cursor);',
     'let cursor; do { const res = await api.list({ cursor }); cursor = res.next; } while (cursor);',
     'let done = false; while (!done) { const r = await client.poll(job); done = r.finished; }',
+    'const pending = ids.map((id) => repository.findById(id)); await Promise.all(pending);',
+    'const settled = ids.map((id) => api.send(id)); await Promise.allSettled(settled);',
+    'const pending = []; for (const id of ids) { pending.push(repository.findById(id)); } await Promise.all(pending);',
+    'const sent = []; ids.forEach((id) => sent.push(api.send(id))); await Promise.allSettled(sent);',
+    'let offset = 0; while (offset < total) { const page = await api.list({ offset }); offset = page.next; }',
   ]),
   invalid: [
     ...[
@@ -69,6 +74,14 @@ ruleTester.run('no-io-in-loop', ioInLoop, {
       inLoop('await httpClient.get(id);'),
       'while (more()) { const page = await api.list(); use(page); }',
       'for (const attempt of attempts) { await repository.save(attempt); }',
+      'let index = 0; while (index < ids.length) { await repository.findById(ids[index]); index += 1; }',
+      'let index = 0; while (index < ids.length) { await repository.findById(ids[index]); index = index + 1; }',
+      'let left = ids.length; while (left > 0) { await api.send(ids[left]); left = left - 1; }',
+      'let i = 0; do { await repository.save(ids[i]); i -= -1; } while (i < ids.length);',
+      'const pending = ids.map((id) => repository.findById(id)); for (const p of pending) { use(p); }',
+      'let pending = ids.map((id) => repository.findById(id)); pending = []; await Promise.all(pending);',
+      'const pending = []; for (const id of ids) { pending.push(await repository.findById(id)); } await Promise.all(pending);',
+      'const pending = []; for (const id of ids) { pending.push(repository.findById(id)); } use(pending);',
     ].map((code) => ({ code, errors: [{ messageId: 'call' }] })),
     {
       code: inLoop('await userRepository.findById(id);'),

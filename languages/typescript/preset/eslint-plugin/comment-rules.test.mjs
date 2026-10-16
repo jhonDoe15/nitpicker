@@ -52,6 +52,8 @@ ruleTester.run('no-comments', noComments, {
       code: '/**\n * Parses a date.\n * @example\n * const date = parse(text);\n */\nexport function parse() { return 1; }',
     },
     { code: '/** Returns the total; see the pricing notes. */\nexport const total = 1;' },
+    { code: '/** Todo items are sorted by due date. */\nexport type TodoItem = { due: string };' },
+    { code: '/**\n * Formats a phone number as XXX-XXX-XXXX.\n */\nexport const phone = 1;' },
   ],
   invalid: [
     {

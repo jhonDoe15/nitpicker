@@ -1,20 +1,8 @@
 import path from 'node:path';
+import { GENERIC_NAME_WORDS } from '../../../../../../shared/naming/smell-words.mjs';
 import { wordsOf } from '../support/identifier-words.mjs';
 
-const GENERIC_WORDS = new Set([
-  'util',
-  'utils',
-  'utility',
-  'utilities',
-  'helper',
-  'helpers',
-  'manager',
-  'managers',
-  'common',
-  'commons',
-  'misc',
-  'miscellaneous',
-]);
+const GENERIC_WORDS = new Set(GENERIC_NAME_WORDS);
 const EXPORTS = new Set(['ExportNamedDeclaration', 'ExportDefaultDeclaration']);
 const DECLARATION_TYPES = new Set([
   'ClassDeclaration',
