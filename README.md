@@ -36,7 +36,7 @@ $ npx nitpicker
   eslint-errors/nitpicker/no-silent-catch src/main/features/greeting/adapters/load-names.ts:8
     This catch discards the failure. Return a failure result (`return { kind: 'malformed-json' }`), or rethrow an Error subclass with `{ cause: error }`. If dropping it is intended, add an exception for this rule in nitpicker.config.json.
   eslint-lint/nitpicker/no-handwritten-boundary-guard src/main/features/greeting/adapters/load-names.ts:6
-    Pass `JSON.parse(text)` straight into `schema.safeParse(...)` inside the same `try`. If this is legitimate, add an exception for nitpicker/no-handwritten-boundary-guard in nitpicker.config.json.
+    Pass `JSON.parse(text)` straight into `schema.safeParse(...)` inside the same `try`. If the text is trusted and already typed, add an exception for nitpicker/no-handwritten-boundary-guard in nitpicker.config.json.
   eslint-lint/no-restricted-syntax src/main/features/greeting/adapters/load-names.ts:6
     Do not assert with `as`. Narrow the value (a discriminated union check or a zod parse) or give it the correct type at its source. `as const` is allowed.
   mutation/mutant-survived src/main/features/greeting/adapters/load-names.ts:9

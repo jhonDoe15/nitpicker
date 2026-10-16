@@ -22,12 +22,18 @@ function guardRule(...validation) {
 }
 
 const PREDICATE = 'function isUser(value: unknown): value is User { return true; }';
-const EXCEPTION =
-  'If this is legitimate, add an exception for nitpicker/no-handwritten-boundary-guard in nitpicker.config.json.';
-const ZOD_PREDICATE_MESSAGE = `Do not hand-write a type guard for external data: parse it once at the boundary with a zod schema (schema.parse or schema.safeParse). ${EXCEPTION}`;
+const RULE_EXCEPTION =
+  'add an exception for nitpicker/no-handwritten-boundary-guard in nitpicker.config.json.';
+const UNION_NOTE =
+  'A predicate over a union (`(result): result is Ok => result.kind === "ok"`) is fine.';
+const predicateMessage = (how) =>
+  `Do not hand-write a type guard for unknown input: parse it once at the boundary with ${how}. ${UNION_NOTE} If the guard is genuinely needed, ${RULE_EXCEPTION}`;
+const ZOD_PREDICATE_MESSAGE = predicateMessage('a zod schema (schema.parse or schema.safeParse)');
 const unparsed = (call) => ({
-  message: `Pass \`JSON.parse(text)\` straight into \`${call}(...)\` inside the same \`try\`. ${EXCEPTION}`,
+  message: `Pass \`JSON.parse(text)\` straight into \`${call}(...)\` inside the same \`try\`. If the text is trusted and already typed, ${RULE_EXCEPTION}`,
 });
+const domainMessage = (library) =>
+  `domain/ code takes typed values, not unknown (also through a type alias). Write a readonly type for this value in domain/; adapters/ parses the input with ${library} schema and passes the result in (the parsed value is assignable to a readonly type; do not import the schema type from adapters/). A caught error may be typed unknown as \`cause\` or \`error\`. If the value is genuinely opaque, add an exception for this rule in nitpicker.config.json.`;
 
 tester.run('boundary guard with no validation library detected', guardRule(), {
   valid: ['const data = schema.parse(JSON.parse(text));'],
@@ -51,7 +57,7 @@ tester.run('boundary guard with valibot', guardRule('valibot'), {
       code: PREDICATE,
       errors: [
         {
-          message: `Do not hand-write a type guard for external data: parse it once at the boundary with a valibot schema (v.parse or v.safeParse). ${EXCEPTION}`,
+          message: predicateMessage('a valibot schema (v.parse or v.safeParse)'),
         },
       ],
     },
@@ -171,8 +177,7 @@ tester.run(
         code: DOMAIN_CODE,
         errors: [
           {
-            message:
-              'domain/ code takes typed values, not unknown. Parse the input with a valibot schema in adapters/ and give this parameter or property the parsed type (v.InferOutput<typeof schema>). A caught error may be typed unknown as `cause` or `error`. If the value is genuinely opaque, add an exception for this rule in nitpicker.config.json.',
+            message: domainMessage('a valibot'),
           },
         ],
       },
@@ -181,7 +186,7 @@ tester.run(
 );
 
 tester.run(
-  'unknown in domain without an inferred type helper',
+  'unknown in domain names a library without a type helper',
   unknownInDomainRule({ validation: ['joi'] }),
   {
     valid: [],
@@ -190,8 +195,41 @@ tester.run(
         code: DOMAIN_CODE,
         errors: [
           {
-            message:
-              'domain/ code takes typed values, not unknown. Parse the input with a joi schema in adapters/ and give this parameter or property the parsed type. A caught error may be typed unknown as `cause` or `error`. If the value is genuinely opaque, add an exception for this rule in nitpicker.config.json.',
+            message: domainMessage('a joi'),
+          },
+        ],
+      },
+    ],
+  },
+);
+
+tester.run(
+  'boundary guard keeps its narrowing, copy and overload checks with valibot',
+  guardRule('valibot'),
+  {
+    valid: ['function isOk(result: Result): result is Ok { return result.kind === "ok"; }'],
+    invalid: [
+      {
+        code: 'function read(value: unknown) { return typeof value === "object"; }',
+        errors: [
+          {
+            message: `Do not hand-narrow an \`unknown\` value with \`typeof x === "object"\` or \`"key" in x\`: parse it once at the boundary with a valibot schema (v.parse or v.safeParse). A caught error is read with \`error instanceof Error\`. If the narrowing is genuinely needed, ${RULE_EXCEPTION}`,
+          },
+        ],
+      },
+      {
+        code: 'const copy = JSON.parse(JSON.stringify(value));',
+        errors: [
+          {
+            message: `Copy a value with \`structuredClone(value)\`, not \`JSON.parse(JSON.stringify(value))\`. If it is deliberate, ${RULE_EXCEPTION}`,
+          },
+        ],
+      },
+      {
+        code: 'function pick(a: string): string;\nfunction pick(a: number): number;\nfunction pick(a: unknown): unknown { return a; }',
+        errors: [
+          {
+            message: `This overload implementation returns unknown or any, which makes its overload signatures a cast. Return a typed value, or split it into separate functions. If it is deliberate, ${RULE_EXCEPTION}`,
           },
         ],
       },

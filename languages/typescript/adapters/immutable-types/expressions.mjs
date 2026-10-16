@@ -1,5 +1,5 @@
 import ts from 'typescript';
-import { TYPE_NAME_KINDS } from './types.mjs';
+import { kindOfTypeName } from './types.mjs';
 
 const ARRAY_PRODUCING_METHODS = new Set([
   'concat',
@@ -23,7 +23,7 @@ const ARRAY_PRODUCING_STATICS = new Set([
   'Object.values',
 ]);
 
-function unwrapExpression(expression) {
+export function unwrapExpression(expression) {
   const chain = [expression];
   for (const current of chain) {
     if (
@@ -48,7 +48,7 @@ export function kindOfExpression(expression) {
     return 'regexp';
   }
   if (ts.isNewExpression(unwrapped)) {
-    return TYPE_NAME_KINDS.get(unwrapped.expression.getText());
+    return kindOfTypeName(unwrapped.expression.getText());
   }
   return ts.isCallExpression(unwrapped) ? kindOfCall(unwrapped) : undefined;
 }
@@ -62,6 +62,9 @@ function kindOfCall(call) {
   const callText = `${callee.expression.getText()}.${method}`;
   if (callText === 'Map.groupBy') {
     return 'map';
+  }
+  if (callText === 'Object.groupBy') {
+    return 'groupBy';
   }
   if (method === 'exec' || method === 'match') {
     return 'execArray';

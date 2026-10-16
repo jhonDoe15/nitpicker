@@ -9,7 +9,6 @@ function library(spec) {
     transform: [],
     factories: [],
     callable: false,
-    infer: undefined,
     ...spec,
   };
 }
@@ -23,7 +22,6 @@ export const VALIDATION_LIBRARIES = [
     namespace: PARSE_FAMILY,
     call: 'schema.safeParse',
     example: 'schema.parse or schema.safeParse',
-    infer: 'z.infer<typeof schema>',
   }),
   library({
     id: 'valibot',
@@ -34,7 +32,6 @@ export const VALIDATION_LIBRARIES = [
     factories: ['parser', 'safeParser', 'parserAsync', 'safeParserAsync'],
     call: 'v.safeParse',
     example: 'v.parse or v.safeParse',
-    infer: 'v.InferOutput<typeof schema>',
   }),
   library({
     id: 'yup',
@@ -44,7 +41,6 @@ export const VALIDATION_LIBRARIES = [
     derivedReceiver: ['validate', 'validateAt', 'validateSyncAt', 'isValid', 'isValidSync'],
     call: 'schema.validateSync',
     example: 'schema.validateSync or schema.validate',
-    infer: 'InferType<typeof schema>',
   }),
   library({
     id: 'joi',
@@ -63,7 +59,6 @@ export const VALIDATION_LIBRARIES = [
     derivedReceiver: ['validate'],
     call: 'codec.decode',
     example: 'codec.decode',
-    infer: 't.TypeOf<typeof codec>',
   }),
   library({
     id: 'arktype',
@@ -73,7 +68,6 @@ export const VALIDATION_LIBRARIES = [
     callable: true,
     call: 'schema.assert',
     example: 'schema.assert or schema(data)',
-    infer: 'typeof schema.infer',
   }),
   library({
     id: 'class-validator',
@@ -101,7 +95,6 @@ export const VALIDATION_LIBRARIES = [
     namespace: ['Parse', 'Decode', 'Assert'],
     call: 'Value.Parse',
     example: 'Value.Parse or Value.Decode',
-    infer: 'Static<typeof schema>',
   }),
   library({
     id: 'superstruct',
@@ -111,7 +104,6 @@ export const VALIDATION_LIBRARIES = [
     imported: ['assert', 'create', 'validate', 'mask', 'is'],
     call: 'create',
     example: 'create or assert',
-    infer: 'Infer<typeof struct>',
   }),
   library({
     id: 'runtypes',
@@ -120,7 +112,6 @@ export const VALIDATION_LIBRARIES = [
     derivedReceiver: ['parse', 'check', 'assert', 'guard', 'validate'],
     call: 'Type.check',
     example: 'Type.check or Type.parse',
-    infer: 'Static<typeof type>',
   }),
   library({
     id: 'typia',
@@ -144,7 +135,6 @@ export const VALIDATION_LIBRARIES = [
     ],
     call: 'Schema.decodeUnknownSync(schema)',
     example: 'Schema.decodeUnknownSync(schema)(data)',
-    infer: 'typeof schema.Type',
   }),
   library({
     id: 'valita',
@@ -153,6 +143,5 @@ export const VALIDATION_LIBRARIES = [
     derivedReceiver: ['parse', 'try'],
     call: 'schema.parse',
     example: 'schema.parse',
-    infer: 'Infer<typeof schema>',
   }),
 ];
