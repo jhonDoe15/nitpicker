@@ -20,13 +20,18 @@ function writeProject(projectRoot, files) {
   }
 }
 
-function findingsIn({ files, checker, toolPrecedence, settings }, projectRoot, reportRoot) {
+function findingsIn(
+  { files, checker, toolPrecedence, settings, exclude },
+  projectRoot,
+  reportRoot,
+) {
   writeProject(projectRoot, files);
   const context = createToolContext({
     projectRoot,
     liveRoot: projectRoot,
     settings: { environment: 'path', sourceRoots: ['src'], typeChecker: checker, ...settings },
     reportRoot,
+    exclude,
     toolPrecedence,
     policyRoot: projectRoot,
   });
@@ -37,11 +42,11 @@ function findingsIn({ files, checker, toolPrecedence, settings }, projectRoot, r
   );
 }
 
-export function realTypeFindings({ settings = {}, ...options }) {
+export function realTypeFindings({ settings = {}, exclude = [], ...options }) {
   const projectRoot = temporaryRoot();
   const reportRoot = temporaryRoot();
   try {
-    return findingsIn({ ...options, settings }, projectRoot, reportRoot);
+    return findingsIn({ ...options, settings, exclude }, projectRoot, reportRoot);
   } finally {
     rmSync(projectRoot, { recursive: true, force: true });
     rmSync(reportRoot, { recursive: true, force: true });

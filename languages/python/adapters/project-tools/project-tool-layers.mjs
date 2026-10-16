@@ -38,7 +38,10 @@ export function requireProjectConfig(found, { tool, looked, configRoot }) {
   }
   if (found.unreadable !== undefined) {
     throw new Error(
-      `The ${tool} config ${found.file} could not be parsed (${found.unreadable}): fix it, or remove "project" from tools.${tool}.precedence`,
+      [
+        `The ${tool} config ${found.file} could not be parsed (${found.unreadable}):`,
+        `fix it, or remove "project" from tools.${tool}.precedence`,
+      ].join(' '),
     );
   }
   return found;

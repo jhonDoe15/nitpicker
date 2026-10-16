@@ -62,10 +62,20 @@ function configurationContext(files = {}, overrides = {}) {
   return { projectRoot, project: { sourceRoots: ['src'] }, exclude: [], ...overrides };
 }
 
-const TEST_PATTERNS =
-  '"tests/*","test/*","*/tests/*","*/test/*","test_*.py","*/test_*.py","*_test.py","conftest.py","*/conftest.py"';
+const TEST_PATTERNS = [
+  'tests/*',
+  'test/*',
+  '*/tests/*',
+  '*/test/*',
+  'test_*.py',
+  '*/test_*.py',
+  '*_test.py',
+  'conftest.py',
+  '*/conftest.py',
+];
+const list = (items) => `[ ${items.map((item) => JSON.stringify(item)).join(', ')} ]`;
 const section = (sourcePaths, patterns = TEST_PATTERNS) =>
-  `[tool.mutmut]\nsource_paths = ${sourcePaths}\ndo_not_mutate = [${patterns}]\n`;
+  `[tool.mutmut]\nsource_paths = ${list(sourcePaths)}\ndo_not_mutate = ${list(patterns)}\n`;
 
 const read = (root, file) => readFileSync(path.join(root, file), 'utf8');
 
@@ -82,7 +92,7 @@ describe('the mutmut configuration', () => {
     ensureMutmutConfiguration(context);
 
     expect(read(context.projectRoot, 'pyproject.toml')).toBe(
-      `[project]\nname = "demo"\n\n${section('["src"]')}`,
+      `[project]\nname = "demo"\n\n${section(['src'])}`,
     );
   });
 
@@ -91,7 +101,7 @@ describe('the mutmut configuration', () => {
 
     ensureMutmutConfiguration(context);
 
-    expect(read(context.projectRoot, 'pyproject.toml')).toBe(`\n${section('["pkg","lib"]')}`);
+    expect(read(context.projectRoot, 'pyproject.toml')).toBe(`\n${section(['pkg', 'lib'])}`);
   });
 
   it('keeps mutmut away from the excluded paths, the files and the directories below them', () => {
@@ -103,7 +113,18 @@ describe('the mutmut configuration', () => {
     ensureMutmutConfiguration(context);
 
     expect(read(context.projectRoot, 'pyproject.toml')).toBe(
-      `\n${section('["src"]', `${TEST_PATTERNS},"legacy/**","legacy/**/*","src/demo/old.py","src/demo/old.py/*","vendor/","vendor/*"`)}`,
+      `\n${section(
+        ['src'],
+        [
+          ...TEST_PATTERNS,
+          'legacy/**',
+          'legacy/**/*',
+          'src/demo/old.py',
+          'src/demo/old.py/*',
+          'vendor/',
+          'vendor/*',
+        ],
+      )}`,
     );
   });
 
@@ -137,8 +158,8 @@ describe('the mutmut configuration', () => {
         '[tool.ruff]',
         'line-length = 100',
         '',
-        section('["src"]').trimEnd(),
-        'also_copy = ["data/"]',
+        section(['src']).trimEnd(),
+        'also_copy = [ "data/" ]',
         'process_isolation = "forkserver"',
         '',
       ].join('\n'),
@@ -154,7 +175,7 @@ describe('the mutmut configuration', () => {
     ensureMutmutConfiguration(context);
 
     expect(read(context.projectRoot, 'pyproject.toml')).toBe(
-      `\n${section('["src"]').trimEnd()}\nalso_copy = ["data/","fixtures/"]\n`,
+      `\n${section(['src']).trimEnd()}\nalso_copy = [ "data/", "fixtures/" ]\n`,
     );
   });
 
@@ -176,7 +197,7 @@ describe('the mutmut configuration', () => {
 
     ensureMutmutConfiguration(context);
 
-    expect(read(context.projectRoot, 'pyproject.toml')).toBe(`\n${section('["app"]')}`);
+    expect(read(context.projectRoot, 'pyproject.toml')).toBe(`\n${section(['app'])}`);
   });
 });
 
@@ -197,10 +218,7 @@ describe('the mutmut configuration with tools.mutmut listing the project', () =>
     ensureMutmutConfiguration({ ...context, ...policy(context) });
 
     expect(read(context.projectRoot, 'pyproject.toml')).toBe(
-      `\n${section(
-        '["app"]',
-        `${TEST_PATTERNS},"legacy/**","legacy/**/*","app/generated/*"`,
-      ).trimEnd()}\nmutate_only_covered_lines = true\ntimeout_multiplier = 3\n`,
+      `\n${section(['app'], [...TEST_PATTERNS, 'legacy/**', 'legacy/**/*', 'app/generated/*']).trimEnd()}\nmutate_only_covered_lines = true\ntimeout_multiplier = 3\n`,
     );
   });
 
@@ -212,7 +230,7 @@ describe('the mutmut configuration with tools.mutmut listing the project', () =>
     ensureMutmutConfiguration({ ...context, ...policy(context) });
 
     expect(read(context.projectRoot, 'pyproject.toml')).toBe(
-      `\n${section('["src"]').trimEnd()}\nmutate_only_covered_lines = true\ntimeout_multiplier = 2.5\n`,
+      `\n${section(['src']).trimEnd()}\nmutate_only_covered_lines = true\ntimeout_multiplier = 2.5\n`,
     );
   });
 
@@ -228,8 +246,34 @@ describe('the mutmut configuration with tools.mutmut listing the project', () =>
     });
 
     expect(read(context.projectRoot, 'pyproject.toml')).toBe(
-      `\n${section('["src"]').trimEnd()}\nalso_copy = ["data/"]\n`,
+      `\n${section(['src']).trimEnd()}\nalso_copy = [ "data/" ]\n`,
     );
+  });
+
+  it('reads the config of the head and writes it into the snapshot', () => {
+    const head = temporaryRoot();
+    write(head, {
+      'pyproject.toml': '[tool.mutmut]\nsource_paths = ["app"]\nmutate_only_covered_lines = true\n',
+    });
+    const context = configurationContext({ 'pyproject.toml': '[project]\nname = "base"\n' });
+
+    ensureMutmutConfiguration({ ...context, toolPrecedence: LISTED, policyRoot: head });
+
+    expect(read(context.projectRoot, 'pyproject.toml')).toBe(
+      `[project]\nname = "base"\n\n${section(['app']).trimEnd()}\nmutate_only_covered_lines = true\n`,
+    );
+  });
+
+  it('names a pyproject.toml it cannot parse, with or without the opt-in', () => {
+    const broken = { 'pyproject.toml': '[tool.mutmut\nsource_paths = 1\n' };
+    const context = configurationContext(broken);
+
+    expect(() => {
+      ensureMutmutConfiguration(context);
+    }).toThrow(/^pyproject\.toml could not be parsed \([\s\S]+\): fix it$/u);
+    expect(() => {
+      ensureMutmutConfiguration({ ...context, ...policy(context) });
+    }).toThrow(/^pyproject\.toml could not be parsed \([\s\S]+\): fix it$/u);
   });
 
   it('names the missing config', () => {
@@ -309,7 +353,7 @@ describe('running mutmut', () => {
     ]);
     expect(summaries(findings)).toEqual(['status:Survived=1', 'status:Killed=1']);
     expect(existsSync(path.join(root, 'mutants'))).toBe(false);
-    expect(read(root, 'pyproject.toml')).toBe(`\n${section('["src"]')}`);
+    expect(read(root, 'pyproject.toml')).toBe(`\n${section(['src'])}`);
   });
 
   it('runs mutmut once, from the snapshot, with the snapshot sources first on PYTHONPATH', () => {

@@ -149,6 +149,32 @@ describe('running mypy', () => {
     );
   });
 
+  it('passes nitpicker exclude as an --exclude argument when the project config is listed', () => {
+    const logFile = logged();
+    const root = fakes.project({ 'mypy.ini': '[mypy]\nexclude = (?x)(\n  ^legacy/\n  )\n' });
+    const { context, reportRoot } = fakes.contextFor(
+      root,
+      {},
+      {
+        exclude: ['src/gen/**'],
+        toolPrecedence: { mypy: ['project', 'nitpicker'] },
+        policyRoot: root,
+      },
+    );
+
+    typeCheck(context);
+
+    const [call] = fakes
+      .calls(logFile)
+      .filter(({ args }) => args.includes('--explicit-package-bases'));
+    expect(
+      call.args.slice(call.args.indexOf('--exclude'), call.args.indexOf('--exclude') + 2),
+    ).toEqual(['--exclude', '^(?:(?:src/gen/.*)(?:/.*)?/?)$']);
+    expect(readFileSync(path.join(reportRoot, 'mypy.ini'), 'utf8')).toBe(
+      '[mypy]\nstrict = true\nexclude = (?x)(\n    ^legacy/\n    )\n',
+    );
+  });
+
   it('adds the import roots to MYPYPATH before an existing value', () => {
     const logFile = logged();
     setEnvironment('MYPYPATH', '/existing');

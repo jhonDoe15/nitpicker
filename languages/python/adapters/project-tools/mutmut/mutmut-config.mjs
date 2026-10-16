@@ -1,7 +1,8 @@
 import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { parseIni } from '../../configuration/mypy-config.mjs';
-import { parseToml, stringifyToml, toolLayers, unique } from '../project-tool-layers.mjs';
+import { missingProjectConfig } from '../../../../../shared/conventions/tool-precedence.mjs';
+import { attempt, parseToml, stringifyToml, toolLayers, unique } from '../project-tool-layers.mjs';
 
 export const MUTMUT_TOOL = 'mutmut';
 const MUTMUT_LOOKED = 'a mutmut config ([tool.mutmut] in pyproject.toml, or [mutmut] in setup.cfg)';
@@ -56,7 +57,6 @@ const TEST_PATTERNS = [
   'conftest.py',
   '*/conftest.py',
 ];
-const BARE_KEY = /^[\w-]+$/u;
 
 function readOptional(file) {
   return existsSync(file) ? readFileSync(file, 'utf8') : '';
@@ -92,6 +92,10 @@ function excludedPatterns(exclude) {
   return exclude.flatMap((glob) => [glob, `${glob.replace(/\/+$/u, '')}/*`]);
 }
 
+export function ignoredMutmutKeys(table) {
+  return Object.keys(table).filter((key) => !RUN_KEYS.includes(key) && !SOURCE_KEYS.includes(key));
+}
+
 function pick(table, keys) {
   return Object.fromEntries(
     keys.filter((key) => table[key] !== undefined).map((key) => [key, table[key]]),
@@ -104,10 +108,10 @@ function sourceOf(table) {
 
 function mutmutSettings({ context, fail }) {
   const layers = toolLayers(context, MUTMUT_TOOL);
-  const found = readMutmutConfig(layers.configRoot);
+  const found = readProject(layers.configRoot, fail);
   if (layers.optedIn && found === undefined) {
     throw fail(
-      `"tools.${MUTMUT_TOOL}.precedence" lists "project" but ${MUTMUT_LOOKED} is missing (searched ${layers.configRoot}): create it, or remove "project" from tools.${MUTMUT_TOOL}.precedence`,
+      missingProjectConfig(MUTMUT_TOOL, `${MUTMUT_LOOKED} (searched ${layers.configRoot})`),
     );
   }
   const table = found?.table ?? {};
@@ -116,7 +120,10 @@ function mutmutSettings({ context, fail }) {
   const projectSource = layers.appliesProject || needsProjectSource ? sourceOf(table) : undefined;
   if (needsProjectSource && projectSource === undefined) {
     throw fail(
-      'mutmut needs the directories to mutate: set "python.sourceRoots" in nitpicker.config.json or source_paths in [tool.mutmut]',
+      [
+        'mutmut needs the directories to mutate:',
+        'set "python.sourceRoots" in nitpicker.config.json or source_paths in [tool.mutmut]',
+      ].join(' '),
     );
   }
   const nitpicker = {
@@ -134,13 +141,10 @@ function mutmutSettings({ context, fail }) {
 }
 
 function sectionText(settings) {
-  const lines = Object.entries(settings)
-    .filter(([, value]) => value !== undefined && value !== null)
-    .map(
-      ([key, value]) =>
-        `${BARE_KEY.test(key) ? key : JSON.stringify(key)} = ${JSON.stringify(value)}`,
-    );
-  return ['[tool.mutmut]', ...lines].join('\n');
+  const defined = Object.entries(settings).filter(
+    ([, value]) => value !== undefined && value !== null,
+  );
+  return stringifyToml({ tool: { mutmut: Object.fromEntries(defined) } });
 }
 
 function without(object, key) {
@@ -159,11 +163,24 @@ function withoutMutmutTable(text) {
   return rewritten.trim() === '' ? '' : rewritten;
 }
 
+function unparsable(error, fail) {
+  return fail(`${PYPROJECT} could not be parsed (${error.message}): fix it`);
+}
+
+function readProject(root, fail) {
+  const { value, error } = attempt(() => readMutmutConfig(root));
+  if (error !== undefined) {
+    throw unparsable(error, fail);
+  }
+  return value;
+}
+
 export function writeMutmutConfig({ context, fail }) {
   const settings = mutmutSettings({ context, fail });
   const pyproject = path.join(context.projectRoot, PYPROJECT);
-  writeFileSync(
-    pyproject,
-    `${withoutMutmutTable(readOptional(pyproject))}\n${sectionText(settings)}\n`,
-  );
+  const { value: kept, error } = attempt(() => withoutMutmutTable(readOptional(pyproject)));
+  if (error !== undefined) {
+    throw unparsable(error, fail);
+  }
+  writeFileSync(pyproject, `${kept}\n${sectionText(settings)}`);
 }

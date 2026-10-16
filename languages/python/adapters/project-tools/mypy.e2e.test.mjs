@@ -50,4 +50,29 @@ describe.skipIf(!pythonE2eEnabled)('mypy with the project config end to end', ()
     expect(realTypeFindings({ files, checker: 'mypy' })).toEqual(['no-untyped-def __init__.py']);
     expect(realTypeFindings({ files, checker: 'mypy', toolPrecedence: LISTED })).toEqual([]);
   });
+
+  it('keeps an inline (?x) exclude of the project working next to the nitpicker exclude', () => {
+    const files = {
+      'src/shop/core.py': UNTYPED,
+      'src/legacy/old.py': UNTYPED,
+      'src/gen/made.py': UNTYPED,
+      'mypy.ini': '[mypy]\nexclude = (?x)(\n    ^src/legacy/\n  )\n',
+    };
+
+    expect(
+      realTypeFindings({ files, checker: 'mypy', toolPrecedence: LISTED, exclude: ['src/gen/**'] }),
+    ).toEqual(['no-untyped-def core.py']);
+  });
+
+  it('keeps checking a package that only the mypy_path of the project reaches', () => {
+    const files = {
+      'src/shop/core.py': 'import vendored.impl\n\nVALUE = vendored.impl.f\n',
+      'lib/vendored/__init__.py': '',
+      'lib/vendored/impl.py': UNTYPED,
+      'mypy.ini': '[mypy]\nmypy_path = lib\n[mypy-vendored.*]\nfollow_imports = silent\n',
+    };
+
+    expect(realTypeFindings({ files, checker: 'mypy' })).toEqual(['no-untyped-def impl.py']);
+    expect(realTypeFindings({ files, checker: 'mypy', toolPrecedence: LISTED })).toEqual([]);
+  });
 });

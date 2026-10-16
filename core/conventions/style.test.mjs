@@ -99,7 +99,7 @@ describe('Python type checker configs of the project', () => {
     const files = { 'pyrightconfig.json': '{ "reportAny": false }', 'a.py': DOUBLE_QUOTED };
 
     expect(follow({ preset: 'python' }, files).printed).toBe(
-      `${fixed}Ignoring pyrightconfig.json; opt in with ${optIn('pyright')}\n`,
+      `${fixed}Ignoring pyrightconfig.json except its environment keys; opt in with ${optIn('pyright')}\n`,
     );
     expect(
       follow({ preset: 'python', tools: { pyright: { precedence: LISTED } } }, files).printed,
@@ -110,7 +110,7 @@ describe('Python type checker configs of the project', () => {
     const files = { 'pyproject.toml': '[tool.basedpyright]\nreportAny = false\n' };
 
     expect(follow({ preset: 'python' }, files).printed).toBe(
-      `${fixed}Ignoring [tool.basedpyright] in pyproject.toml; opt in with ${optIn('pyright')}\n`,
+      `${fixed}Ignoring [tool.basedpyright] in pyproject.toml except its environment keys; opt in with ${optIn('pyright')}\n`,
     );
   });
 });
@@ -118,7 +118,7 @@ describe('Python type checker configs of the project', () => {
 describe('Python mypy config of the project', () => {
   const fixed = `Format with ruff: ruff format --isolated --target-version py38 --line-length 88 --config 'format.quote-style = "double"' --config 'indent-width = 4' .\n`;
   const notice = (what) =>
-    `Ignoring ${what}; opt in with "tools": { "mypy": { "precedence": ["project", "nitpicker"] } }\n`;
+    `Ignoring ${what} except its environment keys; opt in with "tools": { "mypy": { "precedence": ["project", "nitpicker"] } }\n`;
 
   it('names the file or table that is ignored, until the project is listed', () => {
     expect(follow({ preset: 'python' }, { 'mypy.ini': '[mypy]\n' }).printed).toBe(
@@ -148,7 +148,7 @@ describe('Python mypy config of the project', () => {
 describe('Python mutmut config of the project', () => {
   const fixed = `Format with ruff: ruff format --isolated --target-version py38 --line-length 88 --config 'format.quote-style = "double"' --config 'indent-width = 4' .\n`;
   const notice = (what) =>
-    `Ignoring ${what}; opt in with "tools": { "mutmut": { "precedence": ["project", "nitpicker"] } }\n`;
+    `Ignoring ${what} except also_copy and its process options; opt in with "tools": { "mutmut": { "precedence": ["project", "nitpicker"] } }\n`;
   const table = '[tool.mutmut]\ndo_not_mutate = ["src/*"]\n';
 
   it('names the table that is ignored, until the project is listed', () => {
@@ -156,7 +156,7 @@ describe('Python mutmut config of the project', () => {
       fixed + notice('[tool.mutmut] in pyproject.toml'),
     );
     expect(
-      follow({ preset: 'python' }, { 'setup.cfg': '[mutmut]\nsource_paths=app\n' }).printed,
+      follow({ preset: 'python' }, { 'setup.cfg': '[mutmut]\ndo_not_mutate=app/x\n' }).printed,
     ).toBe(fixed + notice('[mutmut] in setup.cfg'));
     expect(
       follow(
@@ -164,6 +164,13 @@ describe('Python mutmut config of the project', () => {
         { 'pyproject.toml': table },
       ).printed,
     ).toBe(fixed);
+  });
+
+  it('says nothing when the table only holds what the run reads', () => {
+    const read =
+      '[tool.mutmut]\nalso_copy = ["data/"]\nsource_paths = ["src"]\nprocess_isolation = "forkserver"\n';
+
+    expect(follow({ preset: 'python' }, { 'pyproject.toml': read }).printed).toBe(fixed);
   });
 
   it('says nothing when mutation testing is off', () => {
