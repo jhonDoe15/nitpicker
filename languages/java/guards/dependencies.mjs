@@ -1,6 +1,5 @@
 import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
-import { exceptionRoute } from './advice/exception-route.mjs';
 import { referencedNames, usesArchive } from '../builds/classes/class-references.mjs';
 
 const DEPENDENCIES_TOOL = 'dependencies';
@@ -31,7 +30,7 @@ function unusedFinding(entry, { buildFile, build }) {
     rule: UNUSED_RULE,
     path: buildFile,
     identity: `unused:${id}`,
-    message: `Dependency ${id} ${ALTERNATIVES[build](entry)} ${exceptionRoute(DEPENDENCIES_TOOL, UNUSED_RULE)}`,
+    message: `Dependency ${id} ${ALTERNATIVES[build](entry)}`,
     classification: 'enforceable',
   };
 }

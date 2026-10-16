@@ -1,7 +1,6 @@
 import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { createLineIdentity } from '../ingest/common.mjs';
-import { exceptionRoute } from './advice/exception-route.mjs';
 import { placeDeclarations } from './forbidden/declarations.mjs';
 import { blanked } from '../ingest/source-text.mjs';
 
@@ -68,7 +67,7 @@ function useFinding(use, file, identity) {
       line: use.line,
       parts: [use.rule, owner, use.signature, ...declared],
     }),
-    message: `${use.text} Found: ${shortName(use.signature)}. ${exceptionRoute(FORBIDDEN_APIS_TOOL, use.rule)}`,
+    message: `${use.text} Found: ${shortName(use.signature)}.`,
     classification: 'enforceable',
     ...(use.line === undefined ? {} : { location: { line: use.line } }),
   };

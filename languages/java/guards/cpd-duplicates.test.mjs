@@ -200,9 +200,7 @@ describe('readCpdFindings', () => {
             { path: MAIN_B, startLine: 2, endLine: 9 },
           ],
         },
-        message:
-          `This code repeats ${MAIN_B}:2 (8 lines). Keep one copy and call it from both places. ` +
-          'If it is right here, add an exception for duplicates/duplicate-clone in nitpicker.config.json.',
+        message: `This code repeats ${MAIN_B}:2 (8 lines). Keep one copy and call it from both places.`,
       },
     ]);
     expect(() => parseAnalyzerReport({ findings }, 'java')).not.toThrow();
@@ -256,8 +254,7 @@ describe('readCpdFindings', () => {
     const [finding] = readCpdFindings(reportRoot, options(root));
 
     expect(finding.message).toBe(
-      `This code repeats ${TEST_B}:2 (8 lines). Extract a helper, or fold the cases into one @ParameterizedTest. Keep one copy and call it from both places. ` +
-        'If it is right here, add an exception for duplicates/duplicate-clone in nitpicker.config.json.',
+      `This code repeats ${TEST_B}:2 (8 lines). Extract a helper, or fold the cases into one @ParameterizedTest. Keep one copy and call it from both places.`,
     );
   });
 

@@ -2,6 +2,7 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
+import { exceptionHint } from '../../../shared/rules/exceptions.mjs';
 import { compareFindings } from '../../../core/diff/comparison/compare.mjs';
 import { parseAnalyzerReport } from '../../../core/diff/comparison/finding-schema.mjs';
 import { parseLintWarnings, readLintFindings } from './javac-lint.mjs';
@@ -64,9 +65,7 @@ function lintFinding(rule, [file, line, text]) {
     identity: expect.any(String),
     classification: 'enforceable',
     location: { line },
-    message:
-      `${text}. ${ADVICE[rule]} ` +
-      `If it is right here, add an exception for javac/${rule} in nitpicker.config.json.`,
+    message: `${text}. ${ADVICE[rule]}`,
   };
 }
 
@@ -125,7 +124,7 @@ describe('parseLintWarnings', () => {
 describe('readLintFindings', () => {
   const files = ['src/main/java/demo/Raw.java', 'src/main/java/demo/Old.java'];
 
-  it('turns each project warning into an enforceable javac finding that names the form and the exception', () => {
+  it('turns each project warning into an enforceable javac finding that names the form', () => {
     const root = project(files);
 
     const findings = readLintFindings(path.join(root, 'build/nitpicker'), { projectRoot: root });
@@ -176,9 +175,8 @@ describe('readLintFindings', () => {
         message:
           'No javac lint report from the lint compile (src/main/java/demo/A.java:3: error: cannot find symbol), ' +
           'so raw types, unchecked operations, deprecated calls and redundant casts were not checked. ' +
-          'Fix what that compile reports (the main sources, the compile class path and Lombok), ' +
-          'or add an exception for javac/lint-not-run with the path "**" in nitpicker.config.json ' +
-          'if the project cannot be linted that way.',
+          'Fix what that compile reports (the main sources, the compile class path and Lombok). ' +
+          exceptionHint('javac/lint-not-run', '**'),
       },
     ]);
     expect(() => parseAnalyzerReport({ findings }, 'java')).not.toThrow();
