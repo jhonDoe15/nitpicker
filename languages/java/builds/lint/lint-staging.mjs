@@ -4,6 +4,7 @@ import path from 'node:path';
 const SUPPRESS_WARNINGS = /@\s*(?:java\s*\.\s*lang\s*\.\s*)?SuppressWarnings\s*\([^)]*\)/gu;
 const LOMBOK_CONFIG = 'lombok.config';
 const STOP_BUBBLING = 'config.stopBubbling = true\n';
+const STOPS_BUBBLING = /^\s*config\.stopBubbling\s*=\s*true\s*$/mu;
 
 export function blankSuppressions(text) {
   return text.replaceAll(SUPPRESS_WARNINGS, (match) => match.replaceAll(/[^\n]/gu, ' '));
@@ -13,6 +14,23 @@ function directoriesUpTo(root, directory) {
   const relative = path.relative(root, directory);
   const parts = relative === '' ? [] : relative.split(path.sep);
   return parts.map((_, index) => path.join(root, ...parts.slice(0, index + 1)));
+}
+
+function ancestorsOf(directory) {
+  const { root } = path.parse(directory);
+  const parts = path.relative(root, directory).split(path.sep).filter(Boolean);
+  return parts.map((_, index) => path.join(root, ...parts.slice(0, parts.length - 1 - index)));
+}
+
+function configText(directory) {
+  const file = path.join(directory, LOMBOK_CONFIG);
+  return existsSync(file) ? `${readFileSync(file, 'latin1')}\n` : '';
+}
+
+export function rootLombokConfig(root) {
+  const texts = [root, ...ancestorsOf(root)].map((directory) => configText(directory));
+  const stop = texts.findIndex((text) => STOPS_BUBBLING.test(text));
+  return (stop < 0 ? texts : texts.slice(0, stop + 1)).reverse().join('');
 }
 
 export function lombokConfigs({ root, sources }) {
@@ -31,8 +49,11 @@ function copyLombokConfigs({ root, sources, staged }) {
   for (const config of lombokConfigs({ root, sources }).filter((file) => file !== rootConfig)) {
     copyFileSync(config, path.join(staged, path.relative(root, config)));
   }
-  const top = existsSync(rootConfig) ? `${readFileSync(rootConfig, 'latin1')}\n` : '';
-  writeFileSync(path.join(staged, LOMBOK_CONFIG), `${top}${STOP_BUBBLING}`, 'latin1');
+  writeFileSync(
+    path.join(staged, LOMBOK_CONFIG),
+    `${rootLombokConfig(root)}${STOP_BUBBLING}`,
+    'latin1',
+  );
 }
 
 export function stageSources({ root, sources, staged }) {
