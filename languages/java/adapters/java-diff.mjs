@@ -6,7 +6,7 @@ import { compareFindings } from '../../../core/diff/comparison/compare.mjs';
 import { parseAnalyzerReport } from '../../../core/diff/comparison/finding-schema.mjs';
 import { captureWorkingTree, resolveComparison } from '../../../core/diff/git/repository/git.mjs';
 import { readChangedLines } from '../../../core/diff/git/patches/changed-lines.mjs';
-import { readRenameMap } from '../../../core/diff/git/patches/project-moves.mjs';
+import { readProjectMoves } from '../../../core/diff/git/patches/project-moves.mjs';
 import { withTemporaryWorktree } from '../../../core/diff/git/repository/worktree.mjs';
 import { gradleTarget } from './gradle-wrapper/gradle-command.mjs';
 import { condenseFailure } from './gradle-wrapper/failure-text.mjs';
@@ -179,6 +179,23 @@ export function collectJavaFindings(root, options = {}) {
   return applyJavaPolicy(parseAnalyzerReport({ findings }, preset).findings, options.policy);
 }
 
+function compareAcrossMoves({ repositoryRoot, comparison, projectRelativePath }, findings) {
+  const commits = {
+    repositoryRoot,
+    mergeBaseSha: comparison.mergeBaseSha,
+    headSha: comparison.headSha,
+    projectRelativePath,
+  };
+  const moves = readProjectMoves(commits);
+  return compareFindings({
+    ...findings,
+    baseToHeadRenames: moves.files,
+    baseToHeadDirectories: moves.directories,
+    keptBasePaths: moves.kept,
+    touchedCode: { changedLines: readChangedLines(commits), isStrictRule: isJavaTouchedRule },
+  });
+}
+
 export function runJavaDiff({
   repositoryRoot,
   projectRelativePath = '.',
@@ -193,12 +210,6 @@ export function runJavaDiff({
   const comparison = includeWorkingTree
     ? { ...committed, headSha: captureWorkingTree(repositoryRoot, committed.headSha) }
     : committed;
-  const baseToHeadRenames = readRenameMap({
-    repositoryRoot,
-    mergeBaseSha: comparison.mergeBaseSha,
-    headSha: comparison.headSha,
-    projectRelativePath,
-  });
   const options = { gradle, maven, initScript, policy };
   function collectAt(sha) {
     return withTemporaryWorktree(repositoryRoot, sha, (worktreeRoot) =>
@@ -206,18 +217,13 @@ export function runJavaDiff({
     );
   }
 
-  const baseFindings = collectAt(comparison.mergeBaseSha);
-  const headFindings = collectAt(comparison.headSha);
-  const touchedCode = {
-    changedLines: readChangedLines({
-      repositoryRoot,
-      mergeBaseSha: comparison.mergeBaseSha,
-      headSha: comparison.headSha,
-      projectRelativePath,
-    }),
-    isStrictRule: isJavaTouchedRule,
-  };
-  const result = compareFindings({ baseFindings, headFindings, baseToHeadRenames, touchedCode });
+  const result = compareAcrossMoves(
+    { repositoryRoot, comparison, projectRelativePath },
+    {
+      baseFindings: collectAt(comparison.mergeBaseSha),
+      headFindings: collectAt(comparison.headSha),
+    },
+  );
   const newEnforceable = result.newFindings.filter(
     (finding) => finding.classification === 'enforceable',
   );

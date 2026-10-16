@@ -204,6 +204,21 @@ describe('readModuleFindings', () => {
       'legacy/src/main/java',
     ]);
   });
+
+  it('places the source roots of a failed Maven module under its folder before it scopes them', () => {
+    const findings = reactor({ outside: 'failed', platform: 'failed' }, (module) =>
+      module === 'outside' ? ['src/main/java', '../shared/src'] : ['../../elsewhere/src'],
+    );
+
+    expect(
+      findings
+        .filter(({ rule }) => rule === 'cpd-not-run')
+        .map(({ path: file, toolNotRun, notRunScope }) => [file, toolNotRun, notRunScope]),
+    ).toEqual([
+      ['outside', true, ['outside/src/main/java', 'shared/src']],
+      ['platform', undefined, undefined],
+    ]);
+  });
 });
 
 const LOGIC = Array.from(
@@ -238,11 +253,17 @@ function cpdModule(moduleDir, outcome) {
   write(path.join(reports, 'cpd.xml'), cpdReport(files));
 }
 
-function reactor(modules) {
+function reactor(modules, sourceRootsOf) {
   const root = realpathSync(mkdtempSync(path.join(tmpdir(), 'nitpicker-java-reactor-')));
   temporaryRoots.push(root);
   for (const [module, outcome] of Object.entries(modules)) {
     cpdModule(path.join(root, module), outcome);
+    if (sourceRootsOf !== undefined) {
+      write(
+        path.join(root, module, REPORT_DIRECTORY, 'manifest.json'),
+        JSON.stringify({ build: 'maven', sourceRoots: sourceRootsOf(module), testSourceRoots: [] }),
+      );
+    }
   }
   const moduleDirs = Object.keys(modules).map((module) => path.join(root, module));
   return readModuleFindings(root, moduleDirs, { reportDirectory: REPORT_DIRECTORY });

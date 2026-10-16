@@ -138,7 +138,10 @@ field by field. Per snapshot:
   module exactly as on one without a descriptor, with no module path: over a temporary copy of the
   class files of the modular class directories, without `module-info.class`, made in the build
   directory (`target/` on Maven, Gradle's build directory) and removed afterwards
-  (`languages/java/maven/coupling/maven-jdeps.mjs`, and `tasks/jdeps-task.gradle`). A class
+  (`languages/java/maven/coupling/maven-jdeps.mjs`, and `tasks/jdeps-task.gradle`). The copy takes
+  regular `.class` files only, so a symbolic link in the class directory is left out, and on Maven
+  it goes to the system temporary directory when the class directory is the build directory or
+  holds it, since a copy into itself is impossible. A class
   directory without a descriptor is read in place. Only the edges between the module's own classes
   are read, so coupling is the same. When jdeps fails, the error gives its exit code and up to 10
   lines of its stderr, the `Error`, `Exception` and `Caused by` lines first, without the JVM's
@@ -813,34 +816,45 @@ A Checkstyle rule prints as its full check class, for example
   without a name, the next declaration without a modifier (a bare `class`, or any `enum`) keeps it
   on the stack, and the next `(` reads its null name. One file is enough (`static final Class<?>[]
   TYPES = { String.class }; enum Kind { X } void register() { }`), and the state also carries from
-  one file to the next. The launcher rewrites each class literal, also with spaces or comments
-  around the dot, to `.const` before tokenizing; text inside comments, strings and character
-  literals is left alone, so `// values.` followed by a `class` line keeps its `class`. `const` is a
-  Java keyword no code uses, so it stays a keyword token like `class` and has the same length, and
-  the tokens, lines, columns and paths of the report do not move (an identifier such as `c$ass`
-  would be ignored like any identifier and match `other.value`). The `codefragment` text of the
-  report shows the rewrite; nitpicker reads clone text from the source files instead. The launcher
-  follows symbolic links; a link loop, an unreadable file or directory, or a missing directory
-  argument is skipped with a line on stderr and listed in `cpd-skipped.txt`, and the module then
-  gets one descriptive `duplicates/cpd-skipped-paths` notice naming those paths. When CPD exits with
-  a code other than 0 or 4 or writes no XML report, both builds write its exit code (or signal) and
-  stderr to `cpd-failed.txt` instead of `cpd.xml`; on Maven a `java` that cannot start or runs past
-  the 15-minute tool timeout writes the error code (such as `EACCES` or `ETIMEDOUT`) and message
-  there instead of failing the run. The module then gets a `duplicates/cpd-not-run` tool-not-run
-  finding that names its source roots and says how CPD ended: it exited with a code, was stopped by
-  a signal, could not run, or did not finish within the tool timeout (an empty or non-XML `cpd.xml`
+  one file to the next. The launcher runs PMD's own Java token manager over each file first and
+  overwrites every `class` token that directly follows a `.` token with `const`, at the token's
+  place in the file: comments between the two are skipped like PMD skips them, text inside
+  comments, strings, text blocks and character literals is never a token, and a Unicode-escaped
+  dot or `class` is translated as PMD translates it, so `// values.` followed by a `class` line
+  keeps its `class`. `const` is a Java keyword no code uses, so it stays a keyword token like
+  `class` and has the same length (an escaped `class` is padded with spaces), and the tokens,
+  lines, columns and paths of the report do not move (an identifier such as `c$ass` would be
+  ignored like any identifier and match `other.value`). On the PMD 7.7.0 sources of pmd-java and
+  pmd-core the report equals `PmdCli`'s apart from the timestamp and the `codefragment` text,
+  which shows the rewrite; nitpicker reads clone text from the source files instead. The launcher
+  follows symbolic links; a link loop, an unreadable file or directory, a missing directory
+  argument, or a file whose rewrite throws is skipped with a line on stderr and listed in
+  `cpd-skipped.txt`. A file PMD cannot lex (a stray `#`, or syntax PMD 7.7 does not know) is left to
+  CPD, which skips it and records an `<error>` in `cpd.xml`. The module then gets one descriptive
+  `duplicates/cpd-skipped-paths` notice naming all of those paths. When CPD exits with a code other
+  than 0 or 4 or writes no XML report, both builds write its exit code (or signal) and stderr to
+  `cpd-failed.txt` instead of `cpd.xml`; on Maven a `java` that cannot start or runs past the
+  15-minute tool timeout writes the error code (such as `EACCES` or `ETIMEDOUT`) and message there
+  instead of failing the run. The module then gets a `duplicates/cpd-not-run` tool-not-run finding
+  that names its source roots and says how CPD ended: it exited with a code, was stopped by a
+  signal, could not run, or did not finish within the tool timeout (an empty or non-XML `cpd.xml`
   gives the same finding). Its `notRunScope` lists the module's main and test source roots as
-  project-relative directories: a root that is the project folder itself becomes `.`, a root outside
-  the project is left out, and the module's folder stands in when no root is left. Maven writes each
-  module's roots relative to the module, and the reactor reader puts the module folder in front, as
-  it does for paths. A failure on the base makes the head's `duplicates` findings in those
-  directories descriptive, and in the directories the renames move them to. That includes jscpd's
-  clones there, although jscpd itself ran: both tools report `duplicates`, and a CPD failure is now
-  a genuine tool failure, so losing jscpd's enforcement in that one module for that one comparison
-  is the accepted cost of a simple scope. A failure on the head is a tool error unless a base notice
-  of the tool has the same identity and path or the base notices together cover each of its
-  directories. The `javac/lint-not-run` notice is scoped the same way, to the module's main source
-  roots.
+  project-relative directories. Maven writes each module's roots relative to the module, so the
+  module folder goes in front of each root first; then a root that is the project folder itself
+  becomes `.`, and a root that lies outside the project after that (absolute, or above the project
+  folder) is left out. A module without source roots is scoped to its folder. When no directory in
+  the project is left, the notice keeps its message but is not a tool-not-run finding: the code it
+  did not check lies outside the project, where nitpicker compares nothing. A failure on the base
+  makes the head's `duplicates` findings in those directories descriptive, and the files renamed
+  out of them. When every base file of a directory moved, the directory's new folder replaces it
+  instead, so a new module created in the old folder is checked again. That includes jscpd's clones
+  there, although jscpd itself ran: both tools report `duplicates`, and a CPD failure is now a
+  genuine tool failure, so losing jscpd's enforcement in that one module for that one comparison is
+  the accepted cost of a simple scope. A failure on the head is a tool error unless a base notice
+  of the tool has the same identity and path (and did not move whole) or the base notices together
+  cover each of its directories. One file moved into a module that ran on the base therefore does
+  not excuse that module failing on the head. The `javac/lint-not-run` notice is scoped the same
+  way, to the module's main source roots.
 - **Cycles.** `java-coupling.mjs` already has the class graph from jdeps. Each package in a
   strongly connected set of packages is one `package-cycle` finding, identified by the package
   name and placed on its first file, so growing a legacy cycle adds a finding for the new package
