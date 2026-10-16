@@ -7,6 +7,7 @@ import { finding, findingLine, policy } from '../diff/execution/test-support/ana
 import { captureOutput } from '../diff/reporting/test-support/output-capture.mjs';
 import { commit, fixtureGit } from '../diff/git/test-support/git-repository.mjs';
 import { crashingAnalyzer, fakeAnalyzer, useCliFixtures } from './test-support/cli-harness.mjs';
+import { runTasksInProcess } from '../diff/execution/test-support/in-process-analyzers.mjs';
 import { writeFiles } from '../diff/git/test-support/fixture-files.mjs';
 
 const { createRepository, makeOutputRoot, makeTemporaryRoot, runCli } =
@@ -174,6 +175,25 @@ describe('nitpicker CLI', () => {
       ].join('\n'),
     );
     expect(output.stderrText).toBe('');
+  });
+  it('checks the --all snapshot out into a directory named for its head label', () => {
+    const repository = createRepository({ 'quality-policy.json': policy() });
+    const roots = [];
+
+    runCli({
+      arguments_: ['--all', '--output', makeOutputRoot()],
+      environment: {},
+      currentProjectRoot: repository.root,
+      snapshotAnalyzers: [fakeAnalyzer()],
+      stdout: captureOutput().stdout,
+      stderr: captureOutput().stderr,
+      runTasks: (tasks, ...rest) => {
+        roots.push(...tasks.map(({ invocation }) => path.basename(invocation.args[2])));
+        return runTasksInProcess(tasks, ...rest);
+      },
+    });
+
+    expect(roots).toEqual(['head']);
   });
   it('returns a tool error for a crashing --all analyzer', () => {
     const repository = createRepository({

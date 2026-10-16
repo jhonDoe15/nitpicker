@@ -1,3 +1,4 @@
+import { existsSync, realpathSync } from 'node:fs';
 import path from 'node:path';
 
 function escaped(text) {
@@ -9,7 +10,10 @@ export function withoutSnapshotRoot(text, snapshotRoot) {
     return text;
   }
   const { projectRoot, snapshot } = snapshotRoot;
-  const spellings = [...new Set([projectRoot, projectRoot.split(path.sep).join('/')])];
+  const roots = existsSync(projectRoot) ? [projectRoot, realpathSync(projectRoot)] : [projectRoot];
+  const spellings = [
+    ...new Set(roots.flatMap((root) => [root, root.split(path.sep).join('/')])),
+  ].sort((left, right) => right.length - left.length);
   const root = new RegExp(
     `(?:${spellings.map(escaped).join('|')})(?:[\\\\/]|(?![\\w-]|\\.\\w))`,
     'gu',

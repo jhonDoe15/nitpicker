@@ -5,7 +5,7 @@ import {
   renderRuleFilterSection as renderSnapshotRuleFilterSection,
 } from '../snapshot/reporters.mjs';
 import { selectAnalyzers } from '../diff/execution/run-analyzers.mjs';
-import { withTemporaryWorktree } from '../diff/git/repository/worktree.mjs';
+import { withNamedTemporaryWorktree } from '../diff/git/repository/worktree.mjs';
 import {
   prepareSnapshotDependencies,
   removeSnapshotDependencies,
@@ -35,14 +35,17 @@ export function runSnapshotCli({
   }
 
   const { repositoryRoot, relativeProjectPath, capturedSha } = captureSnapshot(currentProjectRoot);
-  const report = withTemporaryWorktree(repositoryRoot, capturedSha, (worktreeRoot) =>
-    runInSnapshotWorktree({
-      snapshotRoot: path.join(worktreeRoot, relativeProjectPath),
-      selectedAnalyzers,
-      currentProjectRoot,
-      headPolicy,
-      runTasks,
-    }),
+  const report = withNamedTemporaryWorktree(
+    repositoryRoot,
+    { commitSha: capturedSha, directoryName: 'head' },
+    (worktreeRoot) =>
+      runInSnapshotWorktree({
+        snapshotRoot: path.join(worktreeRoot, relativeProjectPath),
+        selectedAnalyzers,
+        currentProjectRoot,
+        headPolicy,
+        runTasks,
+      }),
   );
   report.text = writeSnapshotReports(outputRoot, report);
   stdout.write(report.text);

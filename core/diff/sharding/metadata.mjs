@@ -2,7 +2,7 @@ import { analyzerName } from '../reporting/report-model.mjs';
 import { realpathSync } from 'node:fs';
 import { runGit } from '../git/repository/command.mjs';
 import path from 'node:path';
-import { withTemporaryWorktree } from '../git/repository/worktree.mjs';
+import { withNamedTemporaryWorktree } from '../git/repository/worktree.mjs';
 import { readJson } from './read-shards.mjs';
 
 function resolveEachAnalyzer(analyzers, errors, resolve) {
@@ -63,8 +63,10 @@ function withHeadProjectRoot(liveProjectRoot, headSha, operation) {
   ) {
     throw new Error('Live project root is outside its Git repository');
   }
-  return withTemporaryWorktree(repositoryRoot, headSha, (headWorktreeRoot) =>
-    operation(path.join(headWorktreeRoot, projectRelativePath)),
+  return withNamedTemporaryWorktree(
+    repositoryRoot,
+    { commitSha: headSha, directoryName: 'head' },
+    (headWorktreeRoot) => operation(path.join(headWorktreeRoot, projectRelativePath)),
   );
 }
 

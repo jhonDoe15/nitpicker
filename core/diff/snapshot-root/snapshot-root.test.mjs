@@ -1,3 +1,5 @@
+import { mkdirSync, mkdtempSync, realpathSync, rmSync, symlinkSync } from 'node:fs';
+import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { runAnalyzers } from '../execution/run-analyzers.mjs';
@@ -58,6 +60,22 @@ describe('withoutSnapshotRoot', () => {
     expect(withoutSnapshotRoot(`${slashed}/A.java in ${WORKTREE}.`, snapshotRoot)).toBe(
       'A.java in head.',
     );
+  });
+
+  it('also names the real path of a snapshot root reached through a symbolic link', () => {
+    const temporary = realpathSync(mkdtempSync(path.join(tmpdir(), 'nitpicker-snapshot-root-')));
+    const real = path.join(temporary, 'real', 'head');
+    mkdirSync(real, { recursive: true });
+    symlinkSync(path.join(temporary, 'real'), path.join(temporary, 'link'));
+    const linked = { projectRoot: path.join(temporary, 'link', 'head'), snapshot: 'head' };
+
+    try {
+      expect(withoutSnapshotRoot(`Tests fail in ${real}; see ${real}/A.java`, linked)).toBe(
+        'Tests fail in head; see A.java',
+      );
+    } finally {
+      rmSync(temporary, { recursive: true, force: true });
+    }
   });
 
   it('leaves a longer sibling path alone', () => {
