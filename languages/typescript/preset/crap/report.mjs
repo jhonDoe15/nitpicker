@@ -53,11 +53,19 @@ function scoreLine(entry) {
   return `${score}\tCC ${entry.complexity}\t${entry.source}:${entry.lines.start}\t${entry.function}\n`;
 }
 
+function resolveInsideProject(relative) {
+  const full = path.resolve(projectRoot, relative);
+  if (!full.startsWith(projectRoot + path.sep)) {
+    throw new RangeError(`${relative} is outside the project root`);
+  }
+  return full;
+}
+
 function sourceFiles() {
   return config.sourcePaths
-    .filter((sourcePath) => existsSync(path.resolve(projectRoot, sourcePath)))
+    .filter((sourcePath) => existsSync(resolveInsideProject(sourcePath)))
     .flatMap((sourcePath) =>
       layout.projectCodeFiles(projectRoot, [sourcePath]).filter(layout.isSourceFile),
     )
-    .map((file) => path.resolve(projectRoot, file));
+    .map(resolveInsideProject);
 }

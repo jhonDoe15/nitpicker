@@ -86,10 +86,33 @@ function generatedDirectoryRule(relative) {
   return undefined;
 }
 
-const LEADING_COMMENTS = /^(?:\s*(?:(?:#!|\/\/)[^\n]*|\/\*[\s\S]*?(?:\*\/|$)))*/u;
+function skipWhitespace(text, from) {
+  const whitespace = /\s*/uy;
+  whitespace.lastIndex = from;
+  whitespace.exec(text);
+  return whitespace.lastIndex;
+}
+
+function commentEnd(text, start) {
+  if (text.startsWith('/*', start)) {
+    const close = text.indexOf('*/', start + 2);
+    return close === -1 ? text.length : close + 2;
+  }
+  if (text.startsWith('//', start) || text.startsWith('#!', start)) {
+    const lineEnd = text.indexOf('\n', start);
+    return lineEnd === -1 ? text.length : lineEnd;
+  }
+  return undefined;
+}
 
 function leadingCommentHeader(text) {
-  return LEADING_COMMENTS.exec(text)?.[0] ?? '';
+  let end = 0;
+  let next = commentEnd(text, skipWhitespace(text, end));
+  while (next !== undefined) {
+    end = next;
+    next = commentEnd(text, skipWhitespace(text, end));
+  }
+  return text.slice(0, end);
 }
 
 function exclusionReason(file, relative, userRules) {
