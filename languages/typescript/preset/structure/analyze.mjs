@@ -8,13 +8,7 @@ import { isExcludedPath, normalizePath } from '../dependency-graph/cruise.mjs';
 import { defaultResolvedLayout } from '../layout.mjs';
 
 function parseSource(source, filename) {
-  const sourceFile = ts.createSourceFile(
-    filename,
-    source,
-    ts.ScriptTarget.Latest,
-    true,
-    filename.endsWith('.mts') ? ts.ScriptKind.TS : ts.ScriptKind.TS,
-  );
+  const sourceFile = ts.createSourceFile(filename, source, ts.ScriptTarget.Latest, true);
   if (sourceFile.parseDiagnostics?.length > 0) {
     const diagnostics = sourceFile.parseDiagnostics
       .map((diagnostic) => ts.flattenDiagnosticMessageText(diagnostic.messageText, '\n'))
@@ -68,20 +62,28 @@ function isControlNode(node) {
   );
 }
 
+function isElseIf(node, parent) {
+  return ts.isIfStatement(node) && ts.isIfStatement(parent) && parent.elseStatement === node;
+}
+
 function functionBodyMetrics(functionNode) {
   let statements = 0;
   let maxControlNesting = 0;
 
-  function children({ node, depth }) {
+  function opensLevel(node, parent) {
+    return node !== functionNode && isControlNode(node) && !isElseIf(node, parent);
+  }
+  function children({ node, depth, parent }) {
     if (node !== functionNode && isFunctionNode(node)) return [];
-    const nextDepth = node !== functionNode && isControlNode(node) ? depth + 1 : depth;
-    return syntaxChildren(node).map((child) => ({ node: child, depth: nextDepth }));
+    const nextDepth = opensLevel(node, parent) ? depth + 1 : depth;
+    return syntaxChildren(node).map((child) => ({ node: child, depth: nextDepth, parent: node }));
   }
   if (functionNode.body === undefined) return { statements, maxControlNesting };
-  for (const { node, depth } of depthFirst({ node: functionNode.body, depth: 0 }, children)) {
+  const root = { node: functionNode.body, depth: 0, parent: functionNode };
+  for (const { node, depth, parent } of depthFirst(root, children)) {
     if (node !== functionNode && isFunctionNode(node)) continue;
     if (node !== functionNode && ts.isStatement(node) && !ts.isBlock(node)) statements += 1;
-    const nextDepth = node !== functionNode && isControlNode(node) ? depth + 1 : depth;
+    const nextDepth = opensLevel(node, parent) ? depth + 1 : depth;
     maxControlNesting = Math.max(maxControlNesting, nextDepth);
   }
   return { statements, maxControlNesting };

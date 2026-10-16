@@ -1,6 +1,6 @@
 // The head policy: the config values that change what analyzers report (`exclude`, `layout`,
-// `exceptions`, `thresholds` and, when set, `react` and `tools`), written once to a file outside
-// both snapshots so base and head runs see the same policy. The file format and its reader are
+// `exceptions`, `thresholds` and, when set, `react`, `i18n` and `tools`), written once to a file
+// outside both snapshots so base and head runs see the same policy. The file format and its reader are
 // language-neutral; the TypeScript preset adds its layout defaults in
 // `languages/typescript/preset/head-policy.mjs`.
 //
@@ -22,6 +22,7 @@ export function resolveHeadPolicy(config = {}) {
     exceptions: config.exceptions ?? [],
     thresholds: config.thresholds ?? {},
     ...(config.react === undefined ? {} : { react: config.react }),
+    ...(config.i18n === undefined ? {} : { i18n: config.i18n }),
     ...(POLICY_PRESETS.includes(config.preset) ? { preset: config.preset } : {}),
     ...(config.tools === undefined ? {} : { tools: config.tools }),
   };
