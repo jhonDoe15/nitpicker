@@ -6,7 +6,7 @@ describe('wiring', () => {
   it('wires the greeting to standard output', () => {
     const write = vi.spyOn(process.stdout, 'write').mockImplementation(() => true);
     main(['Ada']);
-    expect(write).toHaveBeenCalledWith('Hello, Ada!\n');
+    expect(write).toHaveBeenCalledWith('A Hello, Ada!\n');
     write.mockRestore();
   });
 

@@ -1,4 +1,6 @@
+import { pad } from '../../../shared/pad.cjs';
 import { describeResult, greet } from '../domain/greet.js';
+import { initials } from '../domain/initials.cjs';
 
 /**
  * @typedef {{ readonly write: (text: string) => void }} Writer
@@ -11,6 +13,6 @@ import { describeResult, greet } from '../domain/greet.js';
  */
 export function runGreeting(names, writer) {
   for (const name of names) {
-    writer.write(`${describeResult(greet(name))}\n`);
+    writer.write(`${pad(initials(name), 1)} ${describeResult(greet(name))}\n`);
   }
 }
