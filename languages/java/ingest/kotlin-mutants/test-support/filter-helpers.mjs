@@ -54,7 +54,9 @@ export const boundary = {
   mutatorName: 'ConditionalsBoundaryMutator',
   description: 'changed conditional boundary',
 };
-export const removed = (call) => ({ description: `removed call to ${call}` });
+export function removed(call) {
+  return { description: `removed call to ${call}` };
+}
 
 export function lambda(fields) {
   return { returnLines: [], discarded: false, unitCallee: false, ...fields };
@@ -67,7 +69,6 @@ export function fn(fields) {
     inline: false,
     returnsUnit: false,
     inlineCalls: [],
-    staticIn: null,
     ...fields,
   };
 }

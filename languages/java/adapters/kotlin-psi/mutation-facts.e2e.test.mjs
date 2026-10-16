@@ -2,7 +2,8 @@ import { cpSync, mkdtempSync, readdirSync, readFileSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { FACTS_EXPECTED, FACTS_SOURCE } from './test-support/facts-sources.mjs';
+import { FACTS_EXPECTED } from './test-support/facts-expected.mjs';
+import { FACTS_SOURCE } from './test-support/facts-sources.mjs';
 import { gradleClasspath, runPsiProgram, writeSources } from './test-support/psi-program.mjs';
 
 const enabled = process.env.NITPICKER_KOTLIN_E2E === '1';

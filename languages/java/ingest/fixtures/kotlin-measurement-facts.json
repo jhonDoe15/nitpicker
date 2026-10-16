@@ -93,8 +93,7 @@
           "suspend": false,
           "inline": false,
           "returnsUnit": false,
-          "inlineCalls": [],
-          "staticIn": null
+          "inlineCalls": []
         },
         {
           "name": "reset",
@@ -104,8 +103,7 @@
           "suspend": false,
           "inline": false,
           "returnsUnit": true,
-          "inlineCalls": [],
-          "staticIn": null
+          "inlineCalls": []
         },
         {
           "name": "numbers",
@@ -115,8 +113,7 @@
           "suspend": false,
           "inline": false,
           "returnsUnit": false,
-          "inlineCalls": [],
-          "staticIn": null
+          "inlineCalls": []
         },
         {
           "name": "collected",
@@ -126,8 +123,7 @@
           "suspend": true,
           "inline": false,
           "returnsUnit": false,
-          "inlineCalls": [],
-          "staticIn": null
+          "inlineCalls": []
         },
         {
           "name": "safeFetch",
@@ -137,8 +133,7 @@
           "suspend": true,
           "inline": false,
           "returnsUnit": false,
-          "inlineCalls": [],
-          "staticIn": null
+          "inlineCalls": []
         },
         {
           "name": "parallel",
@@ -148,8 +143,7 @@
           "suspend": true,
           "inline": false,
           "returnsUnit": false,
-          "inlineCalls": [],
-          "staticIn": null
+          "inlineCalls": []
         },
         {
           "name": "grade",
@@ -159,8 +153,7 @@
           "suspend": false,
           "inline": false,
           "returnsUnit": false,
-          "inlineCalls": [],
-          "staticIn": null
+          "inlineCalls": []
         },
         {
           "name": "orDash",
@@ -170,8 +163,7 @@
           "suspend": false,
           "inline": false,
           "returnsUnit": false,
-          "inlineCalls": [],
-          "staticIn": null
+          "inlineCalls": []
         },
         {
           "name": "pairs",
@@ -181,8 +173,7 @@
           "suspend": false,
           "inline": false,
           "returnsUnit": false,
-          "inlineCalls": [],
-          "staticIn": null
+          "inlineCalls": []
         },
         {
           "name": "built",
@@ -192,8 +183,7 @@
           "suspend": false,
           "inline": false,
           "returnsUnit": false,
-          "inlineCalls": [],
-          "staticIn": null
+          "inlineCalls": []
         }
       ],
       "lambdas": [
@@ -307,8 +297,7 @@
           "suspend": true,
           "inline": false,
           "returnsUnit": false,
-          "inlineCalls": [],
-          "staticIn": null
+          "inlineCalls": []
         },
         {
           "name": "fetchAll",
@@ -318,8 +307,7 @@
           "suspend": true,
           "inline": false,
           "returnsUnit": false,
-          "inlineCalls": [],
-          "staticIn": null
+          "inlineCalls": []
         },
         {
           "name": "evens",
@@ -329,8 +317,7 @@
           "suspend": false,
           "inline": false,
           "returnsUnit": false,
-          "inlineCalls": [],
-          "staticIn": null
+          "inlineCalls": []
         },
         {
           "name": "maybe",
@@ -340,8 +327,7 @@
           "suspend": false,
           "inline": false,
           "returnsUnit": false,
-          "inlineCalls": [],
-          "staticIn": null
+          "inlineCalls": []
         },
         {
           "name": "tryUse",
@@ -351,8 +337,7 @@
           "suspend": false,
           "inline": false,
           "returnsUnit": false,
-          "inlineCalls": [],
-          "staticIn": null
+          "inlineCalls": []
         }
       ],
       "lambdas": [
@@ -495,8 +480,7 @@
           "suspend": false,
           "inline": false,
           "returnsUnit": false,
-          "inlineCalls": [],
-          "staticIn": null
+          "inlineCalls": []
         },
         {
           "name": "check",
@@ -506,8 +490,7 @@
           "suspend": false,
           "inline": false,
           "returnsUnit": false,
-          "inlineCalls": [],
-          "staticIn": null
+          "inlineCalls": []
         },
         {
           "name": "sound",
@@ -517,8 +500,7 @@
           "suspend": false,
           "inline": false,
           "returnsUnit": false,
-          "inlineCalls": [],
-          "staticIn": null
+          "inlineCalls": []
         },
         {
           "name": "sound",
@@ -528,8 +510,7 @@
           "suspend": false,
           "inline": false,
           "returnsUnit": false,
-          "inlineCalls": [],
-          "staticIn": null
+          "inlineCalls": []
         },
         {
           "name": "rangeSum",
@@ -539,8 +520,7 @@
           "suspend": false,
           "inline": false,
           "returnsUnit": false,
-          "inlineCalls": [],
-          "staticIn": null
+          "inlineCalls": []
         },
         {
           "name": "indexed",
@@ -550,8 +530,7 @@
           "suspend": false,
           "inline": false,
           "returnsUnit": false,
-          "inlineCalls": [],
-          "staticIn": null
+          "inlineCalls": []
         },
         {
           "name": "inRange",
@@ -561,8 +540,7 @@
           "suspend": false,
           "inline": false,
           "returnsUnit": false,
-          "inlineCalls": [],
-          "staticIn": null
+          "inlineCalls": []
         },
         {
           "name": "subjectless",
@@ -572,8 +550,7 @@
           "suspend": false,
           "inline": false,
           "returnsUnit": false,
-          "inlineCalls": [],
-          "staticIn": null
+          "inlineCalls": []
         },
         {
           "name": "whiles",
@@ -583,8 +560,7 @@
           "suspend": false,
           "inline": false,
           "returnsUnit": false,
-          "inlineCalls": [],
-          "staticIn": null
+          "inlineCalls": []
         },
         {
           "name": "smart",
@@ -594,8 +570,7 @@
           "suspend": false,
           "inline": false,
           "returnsUnit": false,
-          "inlineCalls": [],
-          "staticIn": null
+          "inlineCalls": []
         },
         {
           "name": "lets",
@@ -605,8 +580,7 @@
           "suspend": false,
           "inline": false,
           "returnsUnit": false,
-          "inlineCalls": [],
-          "staticIn": null
+          "inlineCalls": []
         },
         {
           "name": "applies",
@@ -616,8 +590,7 @@
           "suspend": false,
           "inline": false,
           "returnsUnit": false,
-          "inlineCalls": [],
-          "staticIn": null
+          "inlineCalls": []
         },
         {
           "name": "finals",
@@ -627,8 +600,7 @@
           "suspend": false,
           "inline": false,
           "returnsUnit": false,
-          "inlineCalls": [],
-          "staticIn": null
+          "inlineCalls": []
         },
         {
           "name": "uses",
@@ -638,8 +610,7 @@
           "suspend": false,
           "inline": false,
           "returnsUnit": false,
-          "inlineCalls": [],
-          "staticIn": null
+          "inlineCalls": []
         },
         {
           "name": "sequences",
@@ -649,8 +620,7 @@
           "suspend": false,
           "inline": false,
           "returnsUnit": false,
-          "inlineCalls": [],
-          "staticIn": null
+          "inlineCalls": []
         },
         {
           "name": "failing",
@@ -660,8 +630,7 @@
           "suspend": false,
           "inline": false,
           "returnsUnit": false,
-          "inlineCalls": [],
-          "staticIn": null
+          "inlineCalls": []
         },
         {
           "name": "unreachable",
@@ -671,8 +640,7 @@
           "suspend": false,
           "inline": false,
           "returnsUnit": false,
-          "inlineCalls": [],
-          "staticIn": null
+          "inlineCalls": []
         }
       ],
       "lambdas": [
@@ -859,8 +827,7 @@
           "suspend": false,
           "inline": false,
           "returnsUnit": false,
-          "inlineCalls": [],
-          "staticIn": null
+          "inlineCalls": []
         },
         {
           "name": "nickLength",
@@ -870,8 +837,7 @@
           "suspend": false,
           "inline": false,
           "returnsUnit": false,
-          "inlineCalls": [],
-          "staticIn": null
+          "inlineCalls": []
         },
         {
           "name": "forced",
@@ -881,8 +847,7 @@
           "suspend": false,
           "inline": false,
           "returnsUnit": false,
-          "inlineCalls": [],
-          "staticIn": null
+          "inlineCalls": []
         },
         {
           "name": "castOrNull",
@@ -892,8 +857,7 @@
           "suspend": false,
           "inline": false,
           "returnsUnit": false,
-          "inlineCalls": [],
-          "staticIn": null
+          "inlineCalls": []
         },
         {
           "name": "cast",
@@ -903,8 +867,7 @@
           "suspend": false,
           "inline": false,
           "returnsUnit": false,
-          "inlineCalls": [],
-          "staticIn": null
+          "inlineCalls": []
         },
         {
           "name": "tagged",
@@ -914,8 +877,7 @@
           "suspend": false,
           "inline": false,
           "returnsUnit": false,
-          "inlineCalls": [],
-          "staticIn": null
+          "inlineCalls": []
         },
         {
           "name": "create",
@@ -925,8 +887,7 @@
           "suspend": false,
           "inline": false,
           "returnsUnit": false,
-          "inlineCalls": [],
-          "staticIn": null
+          "inlineCalls": []
         },
         {
           "name": "increment",
@@ -936,8 +897,7 @@
           "suspend": false,
           "inline": false,
           "returnsUnit": true,
-          "inlineCalls": [],
-          "staticIn": null
+          "inlineCalls": []
         },
         {
           "name": "greet",
@@ -947,8 +907,7 @@
           "suspend": false,
           "inline": false,
           "returnsUnit": false,
-          "inlineCalls": [],
-          "staticIn": null
+          "inlineCalls": []
         },
         {
           "name": "overloaded",
@@ -958,8 +917,7 @@
           "suspend": false,
           "inline": false,
           "returnsUnit": false,
-          "inlineCalls": [],
-          "staticIn": null
+          "inlineCalls": []
         },
         {
           "name": "twice",
@@ -969,8 +927,7 @@
           "suspend": false,
           "inline": true,
           "returnsUnit": false,
-          "inlineCalls": [],
-          "staticIn": null
+          "inlineCalls": []
         },
         {
           "name": "useInline",
@@ -980,8 +937,7 @@
           "suspend": false,
           "inline": false,
           "returnsUnit": false,
-          "inlineCalls": ["twice"],
-          "staticIn": null
+          "inlineCalls": ["twice"]
         },
         {
           "name": "classify",
@@ -991,8 +947,7 @@
           "suspend": false,
           "inline": false,
           "returnsUnit": false,
-          "inlineCalls": [],
-          "staticIn": null
+          "inlineCalls": []
         },
         {
           "name": "both",
@@ -1002,8 +957,7 @@
           "suspend": false,
           "inline": false,
           "returnsUnit": false,
-          "inlineCalls": [],
-          "staticIn": null
+          "inlineCalls": []
         },
         {
           "name": "either",
@@ -1013,8 +967,7 @@
           "suspend": false,
           "inline": false,
           "returnsUnit": false,
-          "inlineCalls": [],
-          "staticIn": null
+          "inlineCalls": []
         },
         {
           "name": "loop",
@@ -1024,8 +977,7 @@
           "suspend": false,
           "inline": false,
           "returnsUnit": false,
-          "inlineCalls": [],
-          "staticIn": null
+          "inlineCalls": []
         },
         {
           "name": "safeParse",
@@ -1035,8 +987,7 @@
           "suspend": false,
           "inline": false,
           "returnsUnit": false,
-          "inlineCalls": [],
-          "staticIn": null
+          "inlineCalls": []
         }
       ],
       "lambdas": [
@@ -1148,8 +1099,7 @@
           "suspend": false,
           "inline": false,
           "returnsUnit": false,
-          "inlineCalls": [],
-          "staticIn": null
+          "inlineCalls": []
         },
         {
           "name": "hex",
@@ -1159,8 +1109,7 @@
           "suspend": false,
           "inline": false,
           "returnsUnit": false,
-          "inlineCalls": [],
-          "staticIn": null
+          "inlineCalls": []
         },
         {
           "name": "describe",
@@ -1170,8 +1119,7 @@
           "suspend": false,
           "inline": false,
           "returnsUnit": false,
-          "inlineCalls": [],
-          "staticIn": null
+          "inlineCalls": []
         },
         {
           "name": "word",
@@ -1181,8 +1129,7 @@
           "suspend": false,
           "inline": false,
           "returnsUnit": false,
-          "inlineCalls": [],
-          "staticIn": null
+          "inlineCalls": []
         }
       ],
       "lambdas": [],
