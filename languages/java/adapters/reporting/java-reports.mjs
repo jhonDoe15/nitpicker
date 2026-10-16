@@ -42,6 +42,7 @@ export function readJavaFindings(
     exceptions,
     reportDirectory = REPORT_DIRECTORY,
     projectWide = true,
+    formatAdvice,
   } = {},
 ) {
   const kotlin = preset === 'kotlin';
@@ -55,6 +56,7 @@ export function readJavaFindings(
     lintedRoots: lintedRoots(manifest),
     roots: projectRoots(projectRoot),
     kotlin,
+    formatAdvice,
     jacoco: readFileSync(path.join(reportRoot, 'jacoco.xml'), 'utf8'),
   };
   return {

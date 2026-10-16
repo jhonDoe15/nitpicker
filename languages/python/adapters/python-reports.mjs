@@ -94,9 +94,10 @@ function noTestsFinding() {
   };
 }
 
-function formatMessage({ formatter, formatterDetected }) {
+function formatMessage({ formatter, formatterDetected, formatAdvice }) {
   const base = `File is not formatted with ${formatter}`;
-  return formatterDetected ? `${base} (detected; set "python.formatter" if wrong)` : base;
+  const detected = formatterDetected ? ' (detected; set "python.formatter" if wrong)' : '';
+  return `${base}${detected}${formatAdvice === undefined ? '' : `. ${formatAdvice}`}`;
 }
 
 function formatFindings(text, { roots, manifest }) {

@@ -6,6 +6,7 @@ import { jscpdVersion } from '../../../languages/java/adapters/metrics/java-dupl
 import { commit } from '../../diff/git/test-support/git-repository.mjs';
 import { LEGACY_VIOLATION, usePythonFixtures } from './test-support/python-cli-harness.mjs';
 import { writeFiles } from '../../diff/git/test-support/fixture-files.mjs';
+import { RUFF_FORMAT_ADVICE } from '../../../languages/python/adapters/test-support/ruff-format-advice.mjs';
 
 const { callsLog, pythonRepository, run, temporaryRoot } = usePythonFixtures(nitpickerCli);
 
@@ -17,7 +18,7 @@ const FAILING_SUMMARY = [
   '  ruff/B006 src/demo/a.py:2',
   '    Do not use mutable data structures for argument defaults. Default to `None` and create the value inside the function, or use an immutable default such as a tuple. To allow it for some paths, add a "python.exceptions" entry for B006 in nitpicker.config.json.',
   '  ruff-format/format src/demo/a.py',
-  '    File is not formatted with ruff (detected; set "python.formatter" if wrong)',
+  `    File is not formatted with ruff (detected; set "python.formatter" if wrong). ${RUFF_FORMAT_ADVICE}`,
   'Full diagnostics: <path>',
   '',
 ].join('\n');
@@ -72,7 +73,7 @@ describe('nitpicker with "preset": "python"', () => {
         rule: 'format',
         path: 'src/demo/a.py',
         identity: 'format',
-        message: 'File is not formatted with ruff (detected; set "python.formatter" if wrong)',
+        message: `File is not formatted with ruff (detected; set "python.formatter" if wrong). ${RUFF_FORMAT_ADVICE}`,
         classification: 'enforceable',
       },
     ]);

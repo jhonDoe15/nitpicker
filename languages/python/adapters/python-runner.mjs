@@ -41,6 +41,8 @@ function toolContext({ projectRoot, liveRoot, settings, policy }, reportRoot) {
     snapshot: policy?.snapshot,
     baselineRoot: policy?.baselineRoot,
     conventions: policy?.conventions,
+    policyRoot: policy?.policyRoot,
+    toolPrecedence: policy?.toolPrecedence,
   });
 }
 

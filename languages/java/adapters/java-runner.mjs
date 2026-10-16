@@ -4,7 +4,7 @@ import { collectJavaFindings } from './java-diff.mjs';
 import { detectJavaBuild } from '../builds/java-build.mjs';
 import { GRADLE_PRESETS } from './gradle-presets.mjs';
 import { EXCEPTION_SEPARATOR } from './java-policy.mjs';
-import { PROJECT_TOOL_CONFIGS } from './gradle-presets.mjs';
+import { PROJECT_TOOL_CONFIGS, STYLE_TOOL_NAMES } from './gradle-presets.mjs';
 import { KOTLIN_FORMATTERS } from './kotlin/kotlin-options.mjs';
 
 export const GRADLE_FAILURE_RULE = 'gradle-failure';
@@ -49,7 +49,7 @@ const USAGE =
   'Usage: java-runner.mjs --project-root <directory> [--snapshot base|head] [--policy-root <directory>]' +
   ' [--baseline-root <directory>] [--crap-limit <number>] [--exclude <glob>]... [--exception <rule>:<glob>]... [--legacy-inventory <path>]' +
   ' [--preset java|kotlin] [--kotlin-formatter ktlint|ktfmt|none]' +
-  ' [--kotlin-detekt-config <path>] [--file-limits <json>] [--pmd-precedence <layers>] [--checkstyle-precedence <layers>]';
+  ' [--kotlin-detekt-config <path>] [--file-limits <json>] [--<tool>-precedence <layers>]...';
 
 function parseException(value) {
   const separator = value.indexOf(EXCEPTION_SEPARATOR);
@@ -123,15 +123,15 @@ export function parseRunnerArguments(arguments_) {
 }
 
 function toolPrecedence(values) {
-  const chosen = [...PROJECT_TOOL_CONFIGS.keys()].filter((tool) =>
-    values.has(`--${tool}-precedence`),
-  );
+  const chosen = PRECEDENCE_TOOLS.filter((tool) => values.has(`--${tool}-precedence`));
   return chosen.length === 0
     ? undefined
     : Object.fromEntries(
         chosen.map((tool) => [tool, values.get(`--${tool}-precedence`).split(',')]),
       );
 }
+
+const PRECEDENCE_TOOLS = [...PROJECT_TOOL_CONFIGS.keys(), ...STYLE_TOOL_NAMES];
 
 const REPEATED_OPTIONS = ['--exclude', '--exception'];
 
@@ -147,8 +147,7 @@ const RUNNER_OPTIONS = [
   '--preset',
   '--kotlin-formatter',
   '--kotlin-detekt-config',
-  '--pmd-precedence',
-  '--checkstyle-precedence',
+  ...PRECEDENCE_TOOLS.map((tool) => `--${tool}-precedence`),
   '--file-limits',
 ];
 

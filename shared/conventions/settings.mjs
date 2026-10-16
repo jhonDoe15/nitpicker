@@ -20,12 +20,17 @@ export function validateConventions(value, definitions) {
   }
 }
 
-export function describeConventions(detected, definitions) {
-  return definitions.map((definition) => describeOne(definition, detected[definition.id]));
+export function describeConventions(detected, definitions, note = () => undefined) {
+  return definitions.map((definition) => describeOne(definition, detected[definition.id], note));
 }
 
-function describeOne(definition, { choice, source, counts }) {
-  const label = `${definition.label}: ${definition.optionLabels[choice]}`;
+function describeOne(definition, { choice, source, counts, from }, note) {
+  const extra = note(definition.id, choice);
+  const option = definition.optionLabels[choice] ?? choice;
+  const label = `${definition.label}: ${option}${extra === undefined ? '' : `, ${extra}`}`;
+  if (source === 'project') {
+    return `${label} (from ${from})`;
+  }
   if (source === 'pinned') {
     return `${label} (set in nitpicker.config.json)`;
   }

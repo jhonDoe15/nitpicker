@@ -49,6 +49,7 @@ const [tool, ...args] = process.argv.slice(2);
 const cwd = process.cwd();
 const lines = (file) =>
   existsSync(file) ? readFileSync(file, 'utf8').split('\n').filter(Boolean) : [];
+const read = (file, fallback) => (existsSync(file) ? readFileSync(file, 'utf8') : fallback);
 const valueOf = (flag) => args[args.indexOf(flag) + 1];
 
 if (process.env.FAKE_PYTHON_LOG !== undefined) {
@@ -113,7 +114,7 @@ function ruff() {
       process.stderr.write('error: unrecognized subcommand\n');
       process.exit(2);
     }
-    process.stdout.write(readFileSync('ruff-rules.json', 'utf8'));
+    process.stdout.write(read('ruff-rules.json', ''));
   } else if (args.includes('--show-files')) {
     process.stdout.write(
       sources()
@@ -160,10 +161,7 @@ function coverage() {
     process.stdout.write(status === 0 ? '1 passed\n' : '1 failed: test_greet\n');
     process.exit(status);
   } else {
-    const data = existsSync('coverage-data.json')
-      ? readFileSync('coverage-data.json', 'utf8')
-      : '{"files":{}}';
-    writeFileSync(valueOf('-o'), data);
+    writeFileSync(valueOf('-o'), read('coverage-data.json', '{"files":{}}'));
   }
 }
 
@@ -172,7 +170,7 @@ function mypy() {
     process.stdout.write('mypy 1.13.0 (compiled: yes)\n');
     return;
   }
-  const report = existsSync('type-errors.txt') ? readFileSync('type-errors.txt', 'utf8') : '';
+  const report = read('type-errors.txt', '');
   process.stdout.write(report);
   process.exit(report === '' ? 0 : 1);
 }
@@ -198,17 +196,14 @@ function lintImports() {
     process.stdout.write('lint-imports, version 2.5\n');
     return;
   }
-  const report = existsSync('lint-imports.txt')
-    ? readFileSync('lint-imports.txt', 'utf8')
-    : 'Contracts: 0 kept, 0 broken.\n';
+  const report = read('lint-imports.txt', 'Contracts: 0 kept, 0 broken.\n');
   process.stdout.write(report);
   process.exit(report.includes(' BROKEN') ? 1 : 0);
 }
 
 function python() {
   if (args[1]?.endsWith('nitpicker_rules.py')) {
-    const report = existsSync('rules.json') ? readFileSync('rules.json', 'utf8') : '[]';
-    writeFileSync(args[3], report);
+    writeFileSync(args[3], read('rules.json', '[]'));
     return;
   }
   if (args[1]?.includes('sys.executable')) {
@@ -223,9 +218,7 @@ function python() {
     return;
   }
   if (args.some((argument) => argument.endsWith('import-scan.py'))) {
-    process.stdout.write(
-      existsSync('import-scan.json') ? readFileSync('import-scan.json', 'utf8') : '{}',
-    );
+    process.stdout.write(read('import-scan.json', '{}'));
     return;
   }
   if (args.some((argument) => argument.includes('"import-linter"'))) {
@@ -233,10 +226,7 @@ function python() {
     return;
   }
   if (args[0]?.endsWith('.py')) {
-    const data = existsSync('structure-data.json')
-      ? readFileSync('structure-data.json', 'utf8')
-      : '[]';
-    writeFileSync(args[1], data);
+    writeFileSync(args[1], read('structure-data.json', '[]'));
     return;
   }
   if (existsSync('no-pytest.txt')) {
@@ -249,8 +239,8 @@ function python() {
 function lizard() {
   if (args[0] === '--version') {
     process.stdout.write('1.24.1\n');
-  } else if (existsSync('lizard-data.csv')) {
-    process.stdout.write(readFileSync('lizard-data.csv', 'utf8'));
+  } else {
+    process.stdout.write(read('lizard-data.csv', ''));
   }
 }
 
@@ -286,9 +276,7 @@ function mutmut() {
   }
   const status = Number(lines('mutmut-exit.txt')[0] ?? 0);
   process.stdout.write(
-    existsSync('mutmut-output.txt')
-      ? readFileSync('mutmut-output.txt', 'utf8')
-      : (MUTMUT_MESSAGES[status] ?? 'Failed to run clean test\n'),
+    read('mutmut-output.txt', MUTMUT_MESSAGES[status] ?? 'Failed to run clean test\n'),
   );
   process.exit(status);
 }

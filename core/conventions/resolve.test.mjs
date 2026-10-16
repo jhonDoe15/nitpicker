@@ -182,6 +182,7 @@ describe('conventions of the Python and Kotlin presets', () => {
 
   it('follows the wildcard imports and two spaces of Kotlin files, and lets a pin win', () => {
     const { root } = createGitRepository({
+      'build.gradle.kts': 'plugins { id("org.jlleitschuh.gradle.ktlint") }',
       'src/A.kt': wildcardKotlin,
       'src/B.kt': wildcardKotlin,
     });

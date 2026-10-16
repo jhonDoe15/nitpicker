@@ -1,8 +1,9 @@
-import { indentOf } from '../../../shared/conventions/lines.mjs';
+import { bracketGroups } from '../../../shared/conventions/lines.mjs';
 
 const IMPORT = /^import\s+(\S+)/gm;
 const DEFAULT_ON_DEMAND = /^(?:java\.util|kotlinx\.android\.synthetic(?:\.[\w.]+)?)\.\*+$/;
 const CALL_OPENER = /[\w>]\(\s*(?:\/\/.*)?$/;
+const CALL_CLOSER = /^\s*\)/;
 const KEYWORD_LINE = /^\s*(?:\}\s*)?(?:else\s+)?(?:if|while|for|when|catch)\b/;
 const COMMENT_LINE = /^\s*(?:\/\/|\/\*|\*)/;
 const TRAILING_COMMENT = /\s+\/\/.*$/;
@@ -18,8 +19,8 @@ export function wildcardImports(text) {
 }
 
 export function trailingCommas(text) {
-  const lines = text.split(/\r?\n/);
-  const ends = lines.flatMap((line, index) => lastElementEnd(lines, index));
+  const groups = bracketGroups(text.split(/\r?\n/), { opener: CALL_OPENER, closer: CALL_CLOSER });
+  const ends = groups.flatMap(lastElementEnd);
   const withComma = ends.filter((comma) => comma).length;
   const without = ends.length - withComma;
   if (ends.length < MIN_LISTS || withComma === without) {
@@ -28,19 +29,11 @@ export function trailingCommas(text) {
   return withComma > without ? 'always' : 'never';
 }
 
-function lastElementEnd(lines, index) {
-  const line = lines[index];
-  if (!CALL_OPENER.test(line) || KEYWORD_LINE.test(line)) {
+function lastElementEnd({ opener, inner }) {
+  if (KEYWORD_LINE.test(opener)) {
     return [];
   }
-  const indent = indentOf(line);
-  const closer = lines.findIndex((other, at) => at > index && indentOf(other) <= indent);
-  if (closer <= index + 1 || indentOf(lines[closer]) !== indent || !/^\s*\)/.test(lines[closer])) {
-    return [];
-  }
-  const inner = lines
-    .slice(index + 1, closer)
-    .filter((other) => other.trim() !== '' && !COMMENT_LINE.test(other));
-  const last = inner.at(-1)?.replace(TRAILING_COMMENT, '').trimEnd();
+  const elements = inner.filter((other) => other.trim() !== '' && !COMMENT_LINE.test(other));
+  const last = elements.at(-1)?.replace(TRAILING_COMMENT, '').trimEnd();
   return last === undefined ? [] : [last.endsWith(',')];
 }

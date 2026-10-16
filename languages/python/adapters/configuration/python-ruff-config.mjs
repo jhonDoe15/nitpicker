@@ -19,15 +19,21 @@ function parseRules(text) {
   }
 }
 
+export function isStableRule(rule) {
+  return (
+    rule.preview !== true &&
+    rule.status?.Removed === undefined &&
+    rule.status?.Preview === undefined
+  );
+}
+
 function installedRules(context) {
   const result = execute(context, ['ruff', 'rule', '--all', '--output-format', 'json']);
   const parsed = result.error === undefined && result.status === 0 ? parseRules(result.stdout) : {};
   if (parsed.kind !== 'rules' || !Array.isArray(parsed.rules)) {
     return undefined;
   }
-  return new Set(
-    parsed.rules.filter((rule) => rule.status?.Removed === undefined).map((rule) => rule.code),
-  );
+  return new Set(parsed.rules.filter(isStableRule).map((rule) => rule.code));
 }
 
 function filteredConfig(context) {

@@ -1,34 +1,10 @@
-import { mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
-import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
-import { collectJavaFindings } from '../java-diff.mjs';
-import { INIT_SCRIPT } from '../../builds/java-build.mjs';
-import { kotlinGradleArguments, resolveKotlinTools } from './kotlin-tools.mjs';
-import { fileURLToPath } from 'node:url';
+import { resolveKotlinTools } from './kotlin-tools.mjs';
+import { project, removeKotlinProjects } from './test-support/kotlin-project.mjs';
 
-const fakeGradle = path.join(
-  fileURLToPath(new URL('../', import.meta.url)),
-  'fixtures/fake-gradle.mjs',
-);
-const temporaryRoots = [];
+afterEach(removeKotlinProjects);
 
-afterEach(() => {
-  for (const root of temporaryRoots.splice(0)) {
-    rmSync(root, { recursive: true, force: true });
-  }
-});
-
-function project(files = {}) {
-  const root = realpathSync(mkdtempSync(path.join(tmpdir(), 'nitpicker-kotlin-tools-')));
-  temporaryRoots.push(root);
-  for (const [relative, contents] of Object.entries(files)) {
-    mkdirSync(path.dirname(path.join(root, relative)), { recursive: true });
-    writeFileSync(path.join(root, relative), contents);
-  }
-  return root;
-}
-
+const PROJECT_KTFMT = { ktfmt: ['project', 'nitpicker'] };
 const toolsOf = (files, options) => resolveKotlinTools(project(files), options);
 const formatterOf = (files, options) => toolsOf(files, options).formatter;
 
@@ -85,12 +61,23 @@ describe('formatter detection', () => {
     expect(formatterOf(files, { formatter: 'none' })).toBe('none');
   });
 
+  it('ignores the style the build names unless the project is listed', () => {
+    const files = { 'build.gradle.kts': 'ktfmt { googleStyle() }' };
+
+    expect(toolsOf(files).ktfmtStyle).toBe('meta');
+    expect(toolsOf(files, { conventions: { 'kotlin.indentation': '4' } }).ktfmtStyle).toBe(
+      'kotlinlang',
+    );
+  });
+
   it.each([
     ['kotlinLangStyle()', 'kotlinlang'],
     ['googleStyle()', 'google'],
     ['ktfmt()', 'meta'],
-  ])('reads the ktfmt style from %s', (build, style) => {
-    expect(toolsOf({ 'build.gradle.kts': build }).ktfmtStyle).toBe(style);
+  ])('reads the ktfmt style from %s once the project is listed', (build, style) => {
+    expect(
+      toolsOf({ 'build.gradle.kts': build }, { toolPrecedence: PROJECT_KTFMT }).ktfmtStyle,
+    ).toBe(style);
   });
 
   it.each([
@@ -101,31 +88,70 @@ describe('formatter detection', () => {
     ['names meta', 'ktfmt { metaStyle() }', '4', 'meta'],
     ['names kotlinlang', 'ktfmt { kotlinLangStyle() }', '2', 'kotlinlang'],
   ])(
-    'with a build that %s and the indentation %s followed, uses ktfmt %s',
+    'with a listed project and a build that %s and the indentation %s followed, uses ktfmt %s',
     (_n, build, width, style) => {
       const conventions = width === undefined ? {} : { 'kotlin.indentation': width };
 
-      expect(toolsOf({ 'build.gradle.kts': build }, { conventions }).ktfmtStyle).toBe(style);
+      expect(
+        toolsOf({ 'build.gradle.kts': build }, { conventions, toolPrecedence: PROJECT_KTFMT })
+          .ktfmtStyle,
+      ).toBe(style);
     },
   );
+
+  it('lets the conventions win over the build when nitpicker is listed first', () => {
+    const options = { toolPrecedence: { ktfmt: ['nitpicker', 'project'] } };
+    const files = { 'build.gradle.kts': 'ktfmt { googleStyle() }' };
+
+    expect(
+      toolsOf(files, { ...options, conventions: { 'kotlin.indentation': '4' } }).ktfmtStyle,
+    ).toBe('kotlinlang');
+    expect(toolsOf(files, options).ktfmtStyle).toBe('google');
+  });
+
+  it('reads the build of the policy root, which is the head checkout', () => {
+    const base = project({ 'build.gradle.kts': 'ktfmt()' });
+    const head = project({ 'build.gradle.kts': 'ktfmt { googleStyle() }' });
+
+    expect(
+      resolveKotlinTools(base, { policyRoot: head, toolPrecedence: PROJECT_KTFMT }).ktfmtStyle,
+    ).toBe('google');
+  });
 });
 
 describe('detekt config', () => {
+  const listed = { toolPrecedence: { detekt: ['project', 'nitpicker'] } };
+
   it.each(['config/detekt/detekt.yml', 'config/detekt.yml', 'detekt.yml', 'detekt.yaml'])(
-    'finds %s',
+    'finds %s once the project is listed',
     (file) => {
-      expect(toolsOf({ [file]: 'build:\n' }).detektConfig).toBe(file);
+      expect(toolsOf({ [file]: 'build:\n' }, listed).detektConfig).toBe(file);
     },
   );
 
-  it('prefers the more specific location and finds nothing without a file', () => {
-    expect(toolsOf({ 'detekt.yml': '', 'config/detekt/detekt.yml': '' }).detektConfig).toBe(
-      'config/detekt/detekt.yml',
-    );
-    expect(toolsOf({}).detektConfig).toBeUndefined();
+  it('leaves the project file out unless it is listed', () => {
+    expect(toolsOf({ 'detekt.yml': '' }).detektConfig).toBeUndefined();
+    expect(
+      toolsOf({ 'detekt.yml': '' }, { toolPrecedence: { detekt: ['nitpicker'] } }),
+    ).toMatchObject({ detektConfig: undefined });
   });
 
-  it('uses the configured path over a detected file', () => {
+  it('prefers the more specific location and asks for a file when the project is listed', () => {
+    expect(toolsOf({ 'detekt.yml': '', 'config/detekt/detekt.yml': '' }, listed).detektConfig).toBe(
+      'config/detekt/detekt.yml',
+    );
+    expect(() => toolsOf({}, listed)).toThrow(
+      '"tools.detekt.precedence" lists "project" but its config (config/detekt/detekt.yml) is missing',
+    );
+  });
+
+  it('names the project file it leaves out so a finding can point to the opt-in', () => {
+    expect(toolsOf({ 'config/detekt.yml': '' }).detektIgnored).toBe('config/detekt.yml');
+    expect(toolsOf({}).detektIgnored).toBeUndefined();
+    expect(toolsOf({ 'detekt.yml': '' }, listed).detektIgnored).toBeUndefined();
+  });
+
+  it('uses the configured path, which also names the project file without a listing', () => {
     const files = { 'detekt.yml': '', 'tools/rules.yml': '' };
 
     expect(toolsOf(files, { detektConfig: 'tools/rules.yml' }).detektConfig).toBe(
@@ -145,93 +171,26 @@ describe('detekt config', () => {
   });
 });
 
-describe('Gradle arguments', () => {
-  it('passes what was resolved as project properties', () => {
-    const root = project({
-      'build.gradle.kts': 'ktfmt { googleStyle() }',
-      '.editorconfig': '',
-      'config/detekt.yml': '',
-    });
+describe('ktlint and ktfmt with a project .editorconfig', () => {
+  it('reads the .editorconfig only for a listed project', () => {
+    const files = { 'build.gradle.kts': 'ktlint', '.editorconfig': 'indent_size = 8\n' };
 
-    expect(kotlinGradleArguments(root, {})).toEqual([
-      '-Pnitpicker.kotlin=true',
-      '-Pnitpicker.kotlin.formatter=ktfmt',
-      '-Pnitpicker.kotlin.ktfmtStyle=google',
-      '-Pnitpicker.kotlin.editorconfig=true',
-      `-Pnitpicker.kotlin.detektConfig=${path.join(root, 'config/detekt.yml')}`,
-    ]);
+    expect(toolsOf(files).projectEditorconfig).toBeUndefined();
+    expect(toolsOf(files, { toolPrecedence: { ktlint: ['project'] } }).projectEditorconfig).toBe(
+      'indent_size = 8\n',
+    );
   });
 
-  it('passes the conventions followed for ktfmt, ktlint and detekt', () => {
-    const root = project({ 'build.gradle.kts': 'ktlint' });
-    const conventions = {
-      'kotlin.indentation': '4',
-      'kotlin.trailingCommas': 'never',
-      'kotlin.wildcardImports': 'wildcard',
-    };
-
-    expect(kotlinGradleArguments(root, { conventions })).toEqual([
-      '-Pnitpicker.kotlin=true',
-      '-Pnitpicker.kotlin.formatter=ktlint',
-      '-Pnitpicker.kotlin.ktfmtStyle=kotlinlang',
-      '-Pnitpicker.kotlin.indentSize=4',
-      '-Pnitpicker.kotlin.trailingCommas=never',
-      '-Pnitpicker.kotlin.wildcardImports=allow',
-    ]);
+  it('fails when ktlint lists the project and there is no .editorconfig', () => {
+    expect(() =>
+      toolsOf({ 'build.gradle.kts': 'ktlint' }, { toolPrecedence: { ktlint: ['project'] } }),
+    ).toThrow('"tools.ktlint.precedence" lists "project" but .editorconfig is missing');
   });
 
-  it('passes nothing for the conventions that match what the tools do already', () => {
-    const root = project({ 'build.gradle.kts': 'ktlint' });
-    const conventions = { 'kotlin.trailingCommas': 'always', 'kotlin.wildcardImports': 'explicit' };
+  it('turns ktfmt editorconfig support on only for a listed project', () => {
+    const files = { 'build.gradle.kts': 'ktfmt()', '.editorconfig': '' };
 
-    expect(kotlinGradleArguments(root, { conventions })).toEqual([
-      '-Pnitpicker.kotlin=true',
-      '-Pnitpicker.kotlin.formatter=ktlint',
-      '-Pnitpicker.kotlin.ktfmtStyle=meta',
-    ]);
-  });
-
-  it('hands the conventions of the policy to Gradle', () => {
-    const root = project({ 'build.gradle.kts': 'ktlint' });
-    const conventions = { 'kotlin.indentation': '2' };
-
-    collectJavaFindings(root, { gradle: fakeGradle, policy: { preset: 'kotlin', conventions } });
-
-    expect(
-      JSON.parse(readFileSync(path.join(root, 'build/nitpicker/gradle-args.json'), 'utf8')).slice(
-        3,
-        7,
-      ),
-    ).toEqual([
-      '-Pnitpicker.kotlin=true',
-      '-Pnitpicker.kotlin.formatter=ktlint',
-      '-Pnitpicker.kotlin.ktfmtStyle=meta',
-      '-Pnitpicker.kotlin.indentSize=2',
-    ]);
-  });
-
-  it('runs Gradle without the configuration cache, for both presets', () => {
-    const root = project({ 'build.gradle.kts': 'ktlint' });
-    const argumentsOf = (policy) => {
-      collectJavaFindings(root, { gradle: fakeGradle, policy });
-      return JSON.parse(readFileSync(path.join(root, 'build/nitpicker/gradle-args.json'), 'utf8'));
-    };
-    const common = ['--console=plain', '--quiet', '--no-configuration-cache'];
-
-    expect(argumentsOf({ preset: 'kotlin' })).toEqual([
-      ...common,
-      '-Pnitpicker.kotlin=true',
-      '-Pnitpicker.kotlin.formatter=ktlint',
-      '-Pnitpicker.kotlin.ktfmtStyle=meta',
-      '-I',
-      INIT_SCRIPT,
-      'nitpickerJava',
-    ]);
-    expect(argumentsOf({ preset: 'java' })).toEqual([
-      ...common,
-      '-I',
-      INIT_SCRIPT,
-      'nitpickerJava',
-    ]);
+    expect(toolsOf(files).ktfmtEditorconfig).toBe(false);
+    expect(toolsOf(files, { toolPrecedence: PROJECT_KTFMT }).ktfmtEditorconfig).toBe(true);
   });
 });

@@ -1,4 +1,4 @@
-import { leadingSpaces } from '../../../shared/conventions/lines.mjs';
+import { leadingSpaces, majorityStep } from '../../../shared/conventions/lines.mjs';
 
 const MIN_STRINGS = 3;
 const TOKEN =
@@ -40,11 +40,5 @@ export function indentationWidth(text) {
   if (lines.some((line) => line.startsWith('\t'))) {
     return undefined;
   }
-  const steps = blockSteps(lines.filter((line) => !COMMENT_OR_BLANK.test(line)));
-  const two = steps.filter((step) => step === 2).length;
-  const four = steps.filter((step) => step === 4).length;
-  if (two === four) {
-    return undefined;
-  }
-  return two > four ? '2' : '4';
+  return majorityStep(blockSteps(lines.filter((line) => !COMMENT_OR_BLANK.test(line))));
 }

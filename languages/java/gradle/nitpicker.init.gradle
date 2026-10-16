@@ -30,14 +30,20 @@
 //   build/nitpicker/kotlin-metrics.json per-function lines, statements, control nesting, parameters and complexity, and the
 //                                       JVM class names of each file (languages/java/gradle/KotlinMetrics.java)
 // and manifest.json gains kotlin, kotlinSourceRoots, kotlinTestSourceRoots and kotlinFormatter. The Nitpicker side decides
-// the formatter, the ktfmt style and the detekt config and passes them as the properties
-// nitpicker.kotlin.formatter (ktlint, ktfmt or none), nitpicker.kotlin.ktfmtStyle (kotlinlang,
-// google or meta), nitpicker.kotlin.editorconfig (true when the project has an .editorconfig) and
-// nitpicker.kotlin.detektConfig (an absolute path). The conventions the project follows come as
-// nitpicker.kotlin.indentSize (2 or 4), nitpicker.kotlin.trailingCommas (never) and
-// nitpicker.kotlin.wildcardImports (allow). ktlint takes them as defaults that the project's
-// .editorconfig overrides, detekt as a layer below the project's config. PMD and SpotBugs then
-// only see the Java sources and classes; JaCoCo, PIT and jdeps cover both languages.
+// the formatter, the ktfmt style and the style files and passes them as properties; text values are URL-encoded.
+//   nitpicker.kotlin.formatter           ktlint, ktfmt or none
+//   nitpicker.kotlin.ktfmtStyle          kotlinlang, google or meta
+//   nitpicker.kotlin.ktfmtEditorconfig   true: ktfmt reads the workspace .editorconfig (--enable-editorconfig)
+//   nitpicker.kotlin.workspaceEditorconfig  the .editorconfig at the root of the mirror of the Kotlin sources that
+//                                        ktlint and ktfmt run in: `root = true` alone keeps every .editorconfig of the
+//                                        project and of its parent folders out, the project's own text follows it
+//                                        only when the project is listed in tools.<tool>.precedence
+//   nitpicker.kotlin.ktlintDefaults      an .editorconfig of the conventions followed, handed to ktlint as --editorconfig
+//                                        (defaults that the workspace .editorconfig overrides)
+//   nitpicker.kotlin.detektLayers        comma-separated detekt layers below the Nitpicker rules, last wins:
+//                                        conventions (nitpicker.kotlin.detektConventions, a YAML text) and project
+//                                        (nitpicker.kotlin.detektConfig, an absolute path); none by default
+// PMD and SpotBugs then only see the Java sources and classes; JaCoCo, PIT and jdeps cover both languages.
 //
 // ArchUnit is not a Nitpicker-provided tool: the project's own ArchUnit tests (archunit-junit5 on
 // its test classpath, JUnit Platform) are run by `nitpickerArchunit`. They are the test classes
@@ -69,6 +75,10 @@ def initScriptDir = buildscript.sourceFile.parentFile
 // END SH5 structure metrics
 
 def nitpickerArgument = { String name -> gradle.startParameter.projectProperties[name] }
+def nitpickerText = { String name ->
+    def value = nitpickerArgument(name)
+    value == null ? null : java.net.URLDecoder.decode(value.toString(), 'UTF-8')
+}
 
 def springOnMainSources = { File springRuleset, Collection<File> testDirectories ->
     def escape = { String text -> groovy.xml.XmlUtil.escapeXml(text) }
@@ -527,6 +537,21 @@ allprojects {
                 // detekt 1.23 cannot read the metadata of a newer Kotlin standard library, and then every
                 // call to it stays unresolved. Libraries built with a newer Kotlin than detekt's stay
                 // unresolved too, so rules report less there. --jdk-home makes JDK types resolve.
+                tasks.register('nitpickerDetektLayers') {
+                    group = 'nitpicker'
+                    def layersFile = new File(temporaryDir, 'layers.txt')
+                    ext.layersFile = layersFile
+                    doLast {
+                        def conventions = new File(temporaryDir, 'followed-conventions.yml')
+                        conventions.text = nitpickerText('nitpicker.kotlin.detektConventions') ?: ''
+                        def paths = [conventions: conventions.absolutePath,
+                                     project    : nitpickerArgument('nitpicker.kotlin.detektConfig')]
+                        def names = (nitpickerArgument('nitpicker.kotlin.detektLayers') ?: '').toString()
+                            .split(',')*.trim().findAll { it }
+                        layersFile.text = names.collect { paths[it] }.findAll { it }.collect { it + '\n' }.join('')
+                    }
+                }
+
                 tasks.register('nitpickerDetekt', JavaExec) {
                     group = 'nitpicker'
                     classpath = configurations.nitpickerDetekt
@@ -538,28 +563,23 @@ allprojects {
                     def validationOff = new File(initScriptDir, '../detekt/detekt-validation.yml').canonicalFile
                     dependsOn 'compileJava'
                     onlyIf { !kotlinSourceDirs().isEmpty() }
+                    dependsOn 'nitpickerDetektLayers'
                     doFirst {
                         reportDir.get().asFile.mkdirs()
                         standardOutput = log
                         errorOutput = log
-                        def projectConfig = nitpickerArgument('nitpicker.kotlin.detektConfig')
                         def libraries = sourceSets.main.compileClasspath.files.findAll {
                             it.exists() && !it.name.startsWith('kotlin-stdlib')
                         }
                         def typeResolutionClasspath = (configurations.nitpickerDetektStdlib.files + analyzedClassDirs().findAll { it.exists() } + libraries)
                             .collect { it.absolutePath }.join(File.pathSeparator)
-                        def conventionConfig = new File(temporaryDir, 'followed-conventions.yml')
-                        def conventionLayers = []
-                        if (nitpickerArgument('nitpicker.kotlin.wildcardImports') == 'allow') {
-                            conventionConfig.text = 'style:\n  WildcardImport:\n    active: false\n'
-                            conventionLayers = [conventionConfig.absolutePath]
-                        }
+                        def styleLayers = tasks.named('nitpickerDetektLayers').get().ext.layersFile.readLines().findAll { it }
                         args(['--input', kotlinSourceDirs().join(','),
                               '--includes', '**/*.kt',
                               '--report', "sarif:${report.get().asFile.absolutePath}".toString(),
                               '--base-path', projectDir.absolutePath,
                               '--build-upon-default-config',
-                              '--config', (conventionLayers + [projectConfig, nitpickerConfig.absolutePath, validationOff.absolutePath]).findAll { it }.join(','),
+                              '--config', (styleLayers + [nitpickerConfig.absolutePath, validationOff.absolutePath]).join(','),
                               '--classpath', typeResolutionClasspath,
                               '--jdk-home', System.getProperty('java.home')])
                     }
@@ -571,6 +591,32 @@ allprojects {
                     }
                 }
 
+                // ktlint and ktfmt run in a mirror of the Kotlin sources, so the project's .editorconfig files and
+                // the ones above the checkout cannot reach them: the mirror has its own root .editorconfig.
+                tasks.register('nitpickerKotlinStyleWorkspace') {
+                    group = 'nitpicker'
+                    def workspace = new File(temporaryDir, 'workspace')
+                    ext.workspace = workspace
+                    ext.defaultsFile = new File(temporaryDir, 'ktlint-defaults.editorconfig')
+                    onlyIf { kotlinFormatter() in ['ktlint', 'ktfmt'] && !kotlinFiles().isEmpty() }
+                    doLast {
+                        project.delete(workspace)
+                        workspace.mkdirs()
+                        kotlinFiles().each { file ->
+                            def target = new File(workspace, relative(file))
+                            target.parentFile.mkdirs()
+                            target.bytes = file.bytes
+                        }
+                        new File(workspace, '.editorconfig').text =
+                            nitpickerText('nitpicker.kotlin.workspaceEditorconfig') ?: 'root = true\n'
+                        ext.defaultsFile.delete()
+                        def defaults = nitpickerText('nitpicker.kotlin.ktlintDefaults')
+                        if (defaults) {
+                            ext.defaultsFile.text = defaults
+                        }
+                    }
+                }
+
                 tasks.register('nitpickerKtlint', JavaExec) {
                     group = 'nitpicker'
                     classpath = configurations.nitpickerKtlint
@@ -578,30 +624,17 @@ allprojects {
                     ignoreExitValue = true
                     def log = new ByteArrayOutputStream()
                     def report = reportDir.map { it.file('ktlint.sarif') }
+                    dependsOn 'nitpickerKotlinStyleWorkspace'
                     onlyIf { kotlinFormatter() == 'ktlint' && !kotlinFiles().isEmpty() }
                     doFirst {
                         reportDir.get().asFile.mkdirs()
                         standardOutput = log
                         errorOutput = log
                         report.get().asFile.delete()
-                        def styleDefaults = []
-                        def indentSize = nitpickerArgument('nitpicker.kotlin.indentSize')
-                        if (indentSize) {
-                            styleDefaults << "indent_size = ${indentSize}".toString()
-                        }
-                        if (nitpickerArgument('nitpicker.kotlin.trailingCommas') == 'never') {
-                            styleDefaults << 'ij_kotlin_allow_trailing_comma = false'
-                            styleDefaults << 'ij_kotlin_allow_trailing_comma_on_call_site = false'
-                        }
-                        if (nitpickerArgument('nitpicker.kotlin.wildcardImports') == 'allow') {
-                            styleDefaults << 'ktlint_standard_no-wildcard-imports = disabled'
-                        }
-                        def defaultsArguments = []
-                        if (!styleDefaults.isEmpty()) {
-                            def defaultsFile = new File(temporaryDir, 'followed-conventions.editorconfig')
-                            defaultsFile.text = (['[*.{kt,kts}]'] + styleDefaults).collect { it + '\n' }.join('')
-                            defaultsArguments = ["--editorconfig=${defaultsFile.absolutePath}".toString()]
-                        }
+                        def styleWorkspace = tasks.named('nitpickerKotlinStyleWorkspace').get()
+                        workingDir = styleWorkspace.ext.workspace
+                        def defaultsArguments = styleWorkspace.ext.defaultsFile.exists()
+                            ? ["--editorconfig=${styleWorkspace.ext.defaultsFile.absolutePath}".toString()] : []
                         args(['--relative', "--reporter=sarif,output=${report.get().asFile.absolutePath}".toString()] +
                             defaultsArguments + kotlinSourceDirs().collect { "${relative(it)}/**/*.kt".toString() })
                     }
@@ -619,14 +652,16 @@ allprojects {
                     ignoreExitValue = true
                     def changed = new ByteArrayOutputStream()
                     def errors = new ByteArrayOutputStream()
+                    dependsOn 'nitpickerKotlinStyleWorkspace'
                     onlyIf { kotlinFormatter() == 'ktfmt' && !kotlinFiles().isEmpty() }
                     doFirst {
                         standardOutput = changed
                         errorOutput = errors
+                        workingDir = tasks.named('nitpickerKotlinStyleWorkspace').get().ext.workspace
                         def style = "--${nitpickerArgument('nitpicker.kotlin.ktfmtStyle') ?: 'meta'}-style".toString()
                         def argumentFile = new File(temporaryDir, 'ktfmt.args')
                         argumentFile.text = ([style, '--dry-run'] +
-                            (nitpickerArgument('nitpicker.kotlin.editorconfig') == 'true' ? ['--enable-editorconfig'] : []) +
+                            (nitpickerArgument('nitpicker.kotlin.ktfmtEditorconfig') == 'true' ? ['--enable-editorconfig'] : []) +
                             kotlinFiles().collect { relative(it) }).collect { it + '\n' }.join('')
                         args("@${argumentFile.absolutePath}".toString())
                     }
