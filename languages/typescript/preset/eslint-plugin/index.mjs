@@ -35,6 +35,7 @@ import { rule as noPartialOutputAssertion } from './rules/testing/assertions/no-
 import { rule as noProcessGlobalsOutsideMainGuard } from './rules/modules/no-process-globals-outside-main-guard.mjs';
 import { rule as testTsconfigPinsLibAndTypes } from './rules/testing/types/test-tsconfig-pins-lib-and-types.mjs';
 import { rule as exhaustiveUnionPredicate } from './rules/api-shape/exhaustive-union-predicate.mjs';
+import { rule as hoverTestNeedsKeyboard } from './rules/react-tests/hover-test-needs-keyboard.mjs';
 import { rule as noRuntimeExclusivePropsCheck } from './rules/react-props/no-runtime-exclusive-props-check.mjs';
 import { rule as noSingularAndPluralProp } from './rules/react-props/no-singular-and-plural-prop.mjs';
 import { rule as reactNoEffectDataFetching } from './rules/react/react-no-effect-data-fetching.mjs';
@@ -86,6 +87,7 @@ export const nitpickerRules = {
     'no-process-globals-outside-main-guard': noProcessGlobalsOutsideMainGuard,
     'test-tsconfig-pins-lib-and-types': testTsconfigPinsLibAndTypes,
     'exhaustive-union-predicate': exhaustiveUnionPredicate,
+    'hover-test-needs-keyboard': hoverTestNeedsKeyboard,
     'no-runtime-exclusive-props-check': noRuntimeExclusivePropsCheck,
     'no-singular-and-plural-prop': noSingularAndPluralProp,
     'react-no-effect-data-fetching': reactNoEffectDataFetching,

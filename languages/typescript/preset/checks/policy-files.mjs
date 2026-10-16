@@ -49,6 +49,7 @@ export const POLICY_FILES = [
   'languages/typescript/preset/eslint-plugin/rules/react-props/react-components.mjs',
   'languages/typescript/preset/eslint-plugin/rules/react-props/no-runtime-exclusive-props-check.mjs',
   'languages/typescript/preset/eslint-plugin/rules/react-props/no-singular-and-plural-prop.mjs',
+  'languages/typescript/preset/eslint-plugin/rules/react-tests/hover-test-needs-keyboard.mjs',
   'languages/typescript/preset/eslint-plugin/rules/react/react-effects.mjs',
   'languages/typescript/preset/eslint-plugin/rules/react/react-no-effect-data-fetching.mjs',
   'languages/typescript/preset/eslint-plugin/rules/react/react-no-effect-derived-state.mjs',

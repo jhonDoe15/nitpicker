@@ -16,12 +16,14 @@ const POLICY = `import tseslint from ${JSON.stringify(import.meta.resolve('types
 import { rule as singularAndPlural } from ${ruleUrl('react-props/no-singular-and-plural-prop.mjs')};
 import { rule as exclusiveProps } from ${ruleUrl('react-props/no-runtime-exclusive-props-check.mjs')};
 import { rule as unionPredicate } from ${ruleUrl('api-shape/exhaustive-union-predicate.mjs')};
+import { rule as hoverNeedsKeyboard } from ${ruleUrl('react-tests/hover-test-needs-keyboard.mjs')};
 
 const nitpicker = {
   rules: {
     'no-singular-and-plural-prop': singularAndPlural,
     'no-runtime-exclusive-props-check': exclusiveProps,
     'exhaustive-union-predicate': unionPredicate,
+    'hover-test-needs-keyboard': hoverNeedsKeyboard,
   },
 };
 
@@ -34,6 +36,7 @@ export default [
       'nitpicker/no-singular-and-plural-prop': 'error',
       'nitpicker/no-runtime-exclusive-props-check': 'error',
       'nitpicker/exhaustive-union-predicate': 'error',
+      'nitpicker/hover-test-needs-keyboard': 'error',
     },
   },
 ];
@@ -47,6 +50,11 @@ const SOURCES = {
     '  return <div />;',
     '}',
   ].join('\n'),
+  'src/Tip.test.tsx': [
+    "import { render } from '@testing-library/react';",
+    "import userEvent from '@testing-library/user-event';",
+    "it('shows', async () => { render(null); await userEvent.hover(document.body); });",
+  ].join('\n'),
 };
 
 const EXPECTED = {
@@ -58,6 +66,12 @@ const EXPECTED = {
     [
       'nitpicker/no-runtime-exclusive-props-check',
       `Props \`icon\`, \`image\` are checked together at runtime. Make the props a discriminated union (\`{ icon: Icon; image?: never } | { image: string; icon?: never }\`) so the compiler rejects the combination. If a runtime check is still needed, ${EXCEPTION}`,
+    ],
+  ],
+  'src/Tip.test.tsx': [
+    [
+      'nitpicker/hover-test-needs-keyboard',
+      `Every hover behavior needs a keyboard equivalent. Add a test that tabs to the element (\`await user.tab()\`) and asserts the same state. If this element is hover-only by design, ${EXCEPTION}`,
     ],
   ],
 };
