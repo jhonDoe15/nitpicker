@@ -6,7 +6,9 @@ tasks.register('nitpickerDependencies') {
     dependsOn tasks.named('classes')
     inputs.files(sourceSets.main.output.classesDirs, configurations.compileClasspath).withPropertyName('classes')
     inputs.property('declared', providers.provider { declaredConfigurations.collectMany { name ->
-        configurations.findByName(name)?.dependencies?.collect { "${name} ${it.group}:${it.name}:${it.version}".toString() } ?: []
+        configurations.findByName(name)?.dependencies?.collect {
+            "${name} ${it.group}:${it.name}:${it.version}".toString()
+        } ?: []
     } })
     outputs.file(reportDir.map { it.file('dependencies.json') }).withPropertyName('report')
     doLast {

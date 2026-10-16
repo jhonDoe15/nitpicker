@@ -1,2 +1,2 @@
 rootProject.name = 'guards-compile-modes'
-include 'legacy', 'plugin', 'plugged', 'preview', 'modular', 'outside'
+include 'legacy', 'arguments', 'plugin', 'plugged', 'preview', 'modular', 'outside', 'lombok'
