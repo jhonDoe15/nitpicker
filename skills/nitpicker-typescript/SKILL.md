@@ -44,8 +44,8 @@ Before you change code other modules use, fix a bug, or add a UI state, read
 - Export only what another module imports; an exported type nobody imports fails dead-code.
   Callers in another feature derive result types: `Awaited<ReturnType<typeof importContacts>>`;
   inside a feature, extend the named type (`TransitionResult | { kind: 'blank-reason' }`).
-- `adapters/` does I/O and parses untrusted input (files, HTTP bodies, JSON) once, with zod (add it
-  if it isn't a dependency). Field rules and conversions live in the schema
+- `adapters/` does I/O and parses untrusted input (files, HTTP bodies, JSON) once, with the project's
+  validation library (zod if it has none; add it then). Field rules and conversions live in the schema
   (`z.string().trim().min(1)`, `z.email()`, `z.iso.date()`, `.transform(toCents)`), never
   `z.unknown()` fields plus hand checks. A JSON list is `z.array(recordSchema)`; the first issue's
   `path` (`[index, field]`) names the bad record.
@@ -95,7 +95,7 @@ Before you change code other modules use, fix a bug, or add a UI state, read
   `Date` instead of calling `add`, `set` or `setHours`. Give a callback that returns an object or
   array literal a readonly return type. Return readonly results as they are; don't spread-copy
   them.
-- No module-level `RegExp` or zod schema (both are mutable): write the regex literal inside the
+- No module-level `RegExp` or schema object (both are mutable): write the regex literal inside the
   function; schemas live in `adapters/`. Dedupe with `[...new Set(xs)]` or a `ReadonlySet`.
 - A `Date` is mutable: use it in one expression (`new Date(ms).getUTCHours()`) or type it
   `Readonly<Date>`.

@@ -23,7 +23,7 @@ function attempt(action) {
   }
 }
 
-function valueOr(fallback, action) {
+export function valueOr(fallback, action) {
   const result = attempt(action);
   return result.ok ? result.value : fallback;
 }

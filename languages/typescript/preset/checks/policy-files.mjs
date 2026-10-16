@@ -18,6 +18,7 @@ export const POLICY_FILES = [
   'languages/typescript/preset/eslint-config/strict/strict-escape-hatches.mjs',
   'languages/typescript/preset/eslint-config/strict-tests.mjs',
   'languages/typescript/preset/eslint-config/scope-support.mjs',
+  'languages/typescript/preset/libraries/project-libraries.mjs',
   'languages/typescript/preset/eslint-config/i18n/i18n-filters.mjs',
   'languages/typescript/preset/eslint-config/i18n/i18n-plugin.mjs',
   'languages/typescript/preset/eslint-config/i18n/i18n-rules.mjs',

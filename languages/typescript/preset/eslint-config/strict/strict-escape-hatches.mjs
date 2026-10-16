@@ -1,3 +1,7 @@
+import { readHeadPolicy } from '../../head-policy.mjs';
+import { validationBehavior } from '../../libraries/project-libraries.mjs';
+
+const validationName = validationBehavior(readHeadPolicy().libraries).name;
 const nullLiteral = "Literal[raw='null']";
 const strictEqualityOperand = 'BinaryExpression[operator=/^[!=]==$/] > Literal';
 const jsonStringifyArgument =
@@ -14,13 +18,11 @@ function nullMessageFor({ react }) {
 export const typeAssertionSelectors = [
   {
     selector: "TSAsExpression:not([typeAnnotation.typeName.name='const'])",
-    message:
-      'Do not assert with `as`. Narrow the value (a discriminated union check or a zod parse) or give it the correct type at its source. `as const` is allowed.',
+    message: `Do not assert with \`as\`. Narrow the value (a discriminated union check or a ${validationName} parse) or give it the correct type at its source. \`as const\` is allowed.`,
   },
   {
     selector: 'TSTypeAssertion',
-    message:
-      'Do not assert with `<Type>value`. Narrow the value (a discriminated union check or a zod parse) or give it the correct type at its source.',
+    message: `Do not assert with \`<Type>value\`. Narrow the value (a discriminated union check or a ${validationName} parse) or give it the correct type at its source.`,
   },
 ];
 
@@ -41,8 +43,7 @@ export function escapeHatchSelectorsFor({ react = false } = {}) {
     ...typeAssertionSelectors,
     {
       selector: 'TSAnyKeyword',
-      message:
-        'Use `unknown` and parse it into a specific type at the boundary with zod, or write the specific type.',
+      message: `Use \`unknown\` and parse it into a specific type at the boundary with ${validationName}, or write the specific type.`,
     },
     {
       selector: 'TSNonNullExpression',

@@ -109,8 +109,31 @@ sum + x, 0)`), `Object.fromEntries`, and `Object.groupBy`. No loops, `forEach`, 
   field on unchecked, and `domain/` then re-validates it by hand. Validate the field in the schema
   (`z.string().trim().min(1)`, `z.email()`). `z.array(z.unknown())` or `z.unknown()` as a whole
   schema, and `z.unknown().refine(...)`/`.pipe(...)`, are not reported.
-- Untrusted input is parsed once, at the boundary, with zod. Hand-written type guards for external
-  data are not allowed.
+- Untrusted input is parsed once, at the boundary, with a schema library. Hand-written type guards for
+  external data are not allowed.
+
+### Libraries follow the project
+
+The rules keep their reason (validate at the boundary, keep the caught error on the log call) and
+only the library follows the project. Nitpicker reads the root `package.json` `dependencies` and
+`devDependencies` once per run (presence, not a vote over files) and records the result in the head
+policy as `libraries: { validation: [...], logger: [...] }`.
+
+- **Validation library.** Recognised: zod, valibot, yup, joi (and `@hapi/joi`), io-ts, arktype,
+  class-validator (with class-transformer), ajv and typebox. With none installed the preset behaves as
+  before and names zod. `nitpicker/no-handwritten-boundary-guard` then accepts the calls of every
+  detected library as the parse (zod `schema.parse`/`safeParse`, valibot `v.parse`/`safeParse`, yup
+  `validate`/`validateSync`, joi `validate`/`attempt`, io-ts `decode`, arktype `assert`,
+  class-validator `validate`/`validateOrReject`/`plainToInstance`, ajv `validate`, typebox
+  `Value.Parse`/`Decode`), and its message, the `as`/`any`/JSDoc-cast messages and the `domain/`
+  `unknown` message name the detected library (the first one found, zod first). A hand-written type
+  guard, an unparsed `JSON.parse` and `unknown` in `domain/` stay reported with any library.
+  `nitpicker/no-unvalidated-schema-field` only looks at zod schemas, so it stays silent without zod.
+- **Logger.** `nitpicker/structured-catch-logging` (`logger.<level>({ err: error }, message)`) is
+  Pino's, and bunyan's, convention. It stays on when pino, nestjs-pino, pino-http or bunyan is
+  installed, or when no logger library is found; when the project only has another logger (winston,
+  log4js, loglevel, consola, tslog, roarr, signale) that field name is not its convention and the rule
+  stays silent. `nitpicker/no-production-console` and `no-silent-catch` stay on for every logger.
 
 ## Everywhere
 
@@ -791,7 +814,7 @@ consumer install a package nitpicker does not use, and would break installs for 
 choose to have no external-input boundary. The `strict` ESLint rule that would check this works on
 syntax (a hand-written type guard on external data), not on which library parses it. Document in the
 preset README that adapters are expected to use zod, and have the rule message name zod as the
-allowed form. Revisit as a peer dependency (optional, via `peerDependenciesMeta`) only if a rule
+allowed form (the library named is the project's own, see "Libraries follow the project"). Revisit as a peer dependency (optional, via `peerDependenciesMeta`) only if a rule
 needs to import from zod at lint time.
 
 ### Does nitpicker's own code follow the preset
