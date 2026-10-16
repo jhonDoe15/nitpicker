@@ -1,6 +1,6 @@
 import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
-import { parseIni } from '../../configuration/mypy-config.mjs';
+import { parseIni } from '../../configuration/ini-parser.mjs';
 import { missingProjectConfig } from '../../../../../shared/conventions/tool-precedence.mjs';
 import { attempt, parseToml, stringifyToml, toolLayers, unique } from '../project-tool-layers.mjs';
 
