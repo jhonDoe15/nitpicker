@@ -2,7 +2,7 @@ import { conventionChoices, detectConventions } from '../../shared/conventions/d
 import { configError } from '../../shared/config.mjs';
 import { describeConventions } from '../../shared/conventions/settings.mjs';
 import { resolveHeadPolicy } from '../../languages/typescript/preset/head-policy.mjs';
-import { excludedGlobs as builtInExcludedGlobs } from '../../languages/typescript/preset/layout.mjs';
+import { builtInExcludedGlobs } from '../../languages/typescript/preset/layout.mjs';
 import { conventionDefinitions, conventionStyle } from './definitions.mjs';
 import { commitSource, headCommit, workingTreeSource } from './sources.mjs';
 
