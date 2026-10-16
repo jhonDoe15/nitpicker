@@ -4,6 +4,7 @@ import { headPolicyEnvironment } from '../../../languages/typescript/preset/head
 import { analyzerName } from '../reporting/report-model.mjs';
 import { validateAnalyzer, validateInvocation } from './validation/analyzers.mjs';
 import { PACKAGE_ROOT } from '../../tooling/tool-resolution.mjs';
+import { namedReports, namedToolErrors } from '../snapshot-root/snapshot-root.mjs';
 import { fileURLToPath } from 'node:url';
 
 const MAX_ANALYZER_OUTPUT_BYTES = 50 * 1024 * 1024;
@@ -80,10 +81,15 @@ export function runAnalyzers({
   });
 
   const scheduled = scheduleTasks(tasks, { runTasks, headPolicyFile, snapshot });
+  return namedRun(scheduled, toolErrors, { projectRoot, liveProjectRoot, snapshot });
+}
+
+function namedRun(scheduled, toolErrors, { projectRoot, liveProjectRoot, snapshot }) {
+  const snapshotRoot = projectRoot === liveProjectRoot ? undefined : { projectRoot, snapshot };
   return {
-    reports: scheduled.reports,
+    reports: namedReports(scheduled.reports, snapshotRoot),
     timings: scheduled.timings,
-    toolErrors: [...toolErrors, ...scheduled.toolErrors],
+    toolErrors: namedToolErrors([...toolErrors, ...scheduled.toolErrors], snapshotRoot),
     skipped: scheduled.skipped,
   };
 }
