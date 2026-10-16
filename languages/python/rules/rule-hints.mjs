@@ -4,7 +4,7 @@ export const RULES_TOOL = 'python-rules';
 const TYPE_CHECK_TOOLS = ['mypy', 'pyright', 'basedpyright'];
 const HINTED_TOOLS = ['ruff', ...TYPE_CHECK_TOOLS, RULES_TOOL];
 
-function LOGGING({ logger }) {
+function loggerSetup({ logger }) {
   return logger.setup;
 }
 const HANDLE_EXCEPTION =
@@ -36,7 +36,7 @@ export const RULE_HINTS = [
     rules: ['F403'],
     allowed: 'Import the names you use: `from module import name`.',
   },
-  { tool: 'ruff', rules: ['T201', 'T203'], allowed: LOGGING },
+  { tool: 'ruff', rules: ['T201', 'T203'], allowed: loggerSetup },
   {
     tool: 'ruff',
     rules: ['PERF203'],

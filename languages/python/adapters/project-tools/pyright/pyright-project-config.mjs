@@ -67,14 +67,17 @@ function parentOf(file, config) {
 
 function chainOf(first, checker) {
   const chain = [];
-  let file = first;
-  for (let depth = 0; file !== undefined && depth <= MAXIMUM_EXTENDS_DEPTH; depth += 1) {
+  const pending = [first];
+  for (const file of pending) {
     const read = readFileConfig(file, checker);
     if (read === undefined) {
       break;
     }
     chain.push({ file, table: read.table, config: absolutized(read.config, path.dirname(file)) });
-    file = parentOf(file, read.config);
+    const parent = parentOf(file, read.config);
+    if (parent !== undefined && chain.length <= MAXIMUM_EXTENDS_DEPTH) {
+      pending.push(parent);
+    }
   }
   return chain;
 }
