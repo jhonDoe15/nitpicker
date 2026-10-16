@@ -4,15 +4,14 @@ import {
   TYPESCRIPT_PROJECT_EXCEPTION_RULES,
 } from '../../../../shared/policy.mjs';
 
-/** The nitpicker rules `exceptions` can name that are not ESLint rules, so no config entry has them. */
-const NITPICKER_EXCEPTION_RULES = [
+const NON_ESLINT_EXCEPTION_RULES = [
   ...SHARED_EXCEPTION_RULES,
   ...TYPESCRIPT_PROJECT_EXCEPTION_RULES,
   ...TYPESCRIPT_SIZE_RULES,
 ];
 
 export function applyRuleExceptions(configEntries, allExceptions = []) {
-  const exceptions = allExceptions.filter(({ rule }) => !NITPICKER_EXCEPTION_RULES.includes(rule));
+  const exceptions = allExceptions.filter(({ rule }) => !NON_ESLINT_EXCEPTION_RULES.includes(rule));
   const unknown = exceptions.filter(({ rule }) => !isKnownRule(configEntries, rule));
   if (unknown.length > 0) {
     throw new Error(

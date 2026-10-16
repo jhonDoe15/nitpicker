@@ -2,7 +2,7 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { headPolicyEnvironment, withHeadPolicyFile } from '../head-policy.mjs';
+import { headPolicyEnvironment, withHeadPolicyFile } from '../../head-policy.mjs';
 import { typescriptFileLimitFindings } from './file-limits.mjs';
 
 let projectRoot;

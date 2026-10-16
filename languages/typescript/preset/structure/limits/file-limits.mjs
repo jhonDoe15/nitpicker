@@ -1,5 +1,5 @@
-import { collectFileLimitFindings } from '../../../../shared/rules/file-limits.mjs';
-import { readHeadPolicy, readLayout } from '../head-policy.mjs';
+import { collectFileLimitFindings } from '../../../../../shared/rules/file-limits.mjs';
+import { readHeadPolicy, readLayout } from '../../head-policy.mjs';
 import { typescriptFolderDepthFindings } from './folder-depth.mjs';
 
 export function typescriptFileLimitFindings(projectRoot, analyzerName, environment = process.env) {
