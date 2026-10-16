@@ -42,10 +42,21 @@ const PROJECT_CHECKSTYLE_CONFIG = `<?xml version="1.0"?>
 <!DOCTYPE module PUBLIC "-//Checkstyle//DTD Checkstyle Configuration 1.3//EN"
   "https://checkstyle.org/dtds/configuration_1_3.dtd">
 <module name="Checker">
+  <module name="SuppressionFilter">
+    <property name="file" value="\${config_loc}/suppressions.xml"/>
+  </module>
   <module name="LineLength">
     <property name="max" value="200"/>
   </module>
 </module>
+`;
+
+const PROJECT_CHECKSTYLE_SUPPRESSIONS = `<?xml version="1.0"?>
+<!DOCTYPE suppressions PUBLIC "-//Checkstyle//DTD SuppressionFilter Configuration 1.2//EN"
+  "https://checkstyle.org/dtds/suppressions_1_2.dtd">
+<suppressions>
+  <suppress checks="NoSuchCheck" files="Nothing\\.java"/>
+</suppressions>
 `;
 
 const GRADLE_PROPERTIES_OPT_IN = [
@@ -98,6 +109,7 @@ describe.skipIf(!enabled)('Java preset escape hatches', () => {
       'src/main/java/demo/Bad.java': SUPPRESSED,
       'config/pmd/ruleset.xml': PROJECT_PMD_RULESET,
       'config/checkstyle/checkstyle.xml': PROJECT_CHECKSTYLE_CONFIG,
+      'config/checkstyle/suppressions.xml': PROJECT_CHECKSTYLE_SUPPRESSIONS,
       'gradle.properties': GRADLE_PROPERTIES_OPT_IN,
       'src/test/java/demo/SwallowingTest.java': SWALLOWING_TEST,
     });

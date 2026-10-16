@@ -50,7 +50,14 @@ describe('the Gradle properties of the project tool configs', () => {
       `-Pnitpicker.node=${process.execPath}`,
     ]);
     expect(readFileSync(path.join(directory, 'pmd-project.xml'), 'utf8')).toBe(
-      '<?xml version="1.0" encoding="UTF-8"?>\n<ruleset name="project" xmlns="http://pmd.sourceforge.net/ruleset/2.0.0">\n  <description>p</description>\n  <rule ref="category/java/performance.xml/AvoidArrayLoops"/>\n</ruleset>\n',
+      [
+        '<?xml version="1.0" encoding="UTF-8"?>',
+        '<ruleset name="project" xmlns="http://pmd.sourceforge.net/ruleset/2.0.0">',
+        '  <description>p</description>',
+        '  <rule ref="category/java/performance.xml/AvoidArrayLoops"/>',
+        '</ruleset>',
+        '',
+      ].join('\n'),
     );
   });
 

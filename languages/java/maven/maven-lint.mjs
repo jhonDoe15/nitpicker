@@ -24,6 +24,7 @@ const INLINE_CHECKSTYLE_FILTERS = [
   'SuppressionCommentFilter',
   'SuppressWithNearbyCommentFilter',
   'SuppressWithNearbyTextFilter',
+  'SuppressWithPlainTextCommentFilter',
   'SuppressionXpathFilter',
 ];
 const JAVAC_EXPORTS = ['api', 'file', 'parser', 'tree', 'util', 'code'].map(

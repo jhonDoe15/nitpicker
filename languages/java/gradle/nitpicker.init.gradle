@@ -114,6 +114,7 @@ allprojects {
         jacoco { toolVersion = pinned.jacoco }
         def inlineCheckstyleFilters = ['SuppressWarningsFilter', 'SuppressWarningsHolder',
             'SuppressionCommentFilter', 'SuppressWithNearbyCommentFilter', 'SuppressWithNearbyTextFilter',
+            'SuppressWithPlainTextCommentFilter',
             'SuppressionXpathFilter']
         def nitpickerCheckstyleConfig = layout.buildDirectory.file('nitpicker-checkstyle/checkstyle.xml')
         def projectCheckstyleConfig = nitpickerArgument('nitpicker.checkstyle.projectConfig')
@@ -175,6 +176,11 @@ allprojects {
                 dependsOn writeCheckstyleConfig
                 checkstyleClasspath = configurations.nitpickerCheckstyle
                 configFile = (projectCheckstyleConfig ? mergedCheckstyleConfig : nitpickerCheckstyleConfig).get().asFile
+                if (projectCheckstyleConfig) {
+                    // ${config_loc} in the project's config (its suppressions file, for one) is read from the head
+                    // checkout that holds the policy, as the Maven build does, also when this run is the base snapshot.
+                    configDirectory = layout.dir(providers.provider { new File(projectCheckstyleConfig.toString()).parentFile })
+                }
                 configProperties = ['org.checkstyle.google.suppressionfilter.config':
                     new File(initScriptDir, 'checkstyle-suppressions.xml').absolutePath]
             }
