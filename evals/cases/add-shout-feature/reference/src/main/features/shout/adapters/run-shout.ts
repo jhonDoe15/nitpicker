@@ -1,6 +1,6 @@
 import { runGreeting } from '../../greeting/index.js';
 
-export type Writer = { readonly write: (text: string) => void };
+export type Writer = Parameters<typeof runGreeting>[1];
 
 export function runShout(names: readonly string[], writer: Writer): void {
   runGreeting(names, {
