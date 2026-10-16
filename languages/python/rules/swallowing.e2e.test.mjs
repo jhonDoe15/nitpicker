@@ -33,12 +33,28 @@ describe.skipIf(!enabled)('swallowed-exception', () => {
     ['assign None', '            result = None'],
     ['assign a constant to an attribute', '            self.cache = False'],
     ['assign an annotated constant', '            result: int = 0'],
+    ['log the error', '            logger.exception("bad")'],
+    ['log a warning', '            logger.warning("bad %s", item)'],
+    ['log through logging', '            logging.error("bad")'],
+    ['log through a getLogger call', '            logging.getLogger(__name__).exception("bad")'],
+    ['log then pass', '            logger.warning("bad")\n            pass'],
+    ['log then continue', '            logger.warning("bad")\n            continue'],
+    ['log then return None', '            logger.warning("bad")\n            return None'],
+    ['print the error', '            print("bad")'],
+    ['warn', '            warnings.warn("bad")'],
+    ['print the traceback', '            traceback.print_exc()'],
   ])('flags a handler that only does %s', (_name, body) => {
     expect(single(inHandler(body))).toEqual(['swallowed-exception src/mod.py:5 except ValueError']);
   });
 
   it.each([
-    ['logs the error', '            logger.exception("bad")'],
+    ['logs and re-raises', '            logger.exception("bad")\n            raise'],
+    [
+      'logs and returns a named default',
+      '            logger.warning("bad")\n            return fallback',
+    ],
+    ['logs and calls a handler', '            logger.warning("bad")\n            report(item)'],
+    ['logs and counts', '            logger.warning("bad")\n            counter += 1'],
     ['re-raises', '            raise'],
     ['raises another error', '            raise OtherError(item) from error'],
     ['uses the bound name', '            return str(error)'],
@@ -48,7 +64,6 @@ describe.skipIf(!enabled)('swallowed-exception', () => {
     ['assigns a computed value', '            result = default(item)'],
     ['returns a list holding a name', '            return [fallback]'],
     ['returns a dict holding a call', '            return {"error": str(item)}'],
-    ['passes after logging', '            logger.warning("bad")\n            pass'],
     ['handles then continues', '            counter += 1\n            continue'],
     ['breaks', '            break'],
   ])('allows a handler that %s', (_name, body) => {

@@ -17,5 +17,55 @@ select = [
   "UP032",
   "FLY002",
   "BLE001",
+  "G",
+  "N",
+  "PLR2004",
+  "PLW0602",
+  "PLW0603",
+  "ERA",
+  "ARG",
+  "FBT001",
+  "FBT002",
+  "PT",
+  "S",
+  "TRY",
 ]
-ignore = ["B008", "F405", "RUF001", "RUF002", "RUF003", "RUF012", "RUF100", "SIM105"]
+ignore = [
+  "B008",
+  "F405",
+  "RUF001",
+  "RUF002",
+  "RUF003",
+  "RUF012",
+  "RUF100",
+  "SIM105",
+  "S101",
+  "S103",
+  "S104",
+  "S105",
+  "S106",
+  "S107",
+  "S110",
+  "S112",
+  "S310",
+  "S311",
+  "S601",
+  "S603",
+  "S606",
+  "S607",
+  "TRY003",
+  "TRY300",
+  "TRY301",
+  "PT009",
+  "PT027",
+]
+
+[lint.pep8-naming]
+classmethod-decorators = ["pydantic.validator", "pydantic.root_validator"]
+
+[lint.per-file-ignores]
+"**/tests/**" = ["ARG", "FBT", "PLR2004", "S"]
+"**/test/**" = ["ARG", "FBT", "PLR2004", "S"]
+"**/test_*.py" = ["ARG", "FBT", "PLR2004", "S"]
+"**/*_test.py" = ["ARG", "FBT", "PLR2004", "S"]
+"**/conftest.py" = ["ARG", "FBT", "PLR2004", "S"]

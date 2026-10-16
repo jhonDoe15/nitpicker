@@ -12,6 +12,7 @@ import { withoutLineNumbers } from '../ingest/identities.mjs';
 import { ingestRulesReport } from '../ingest/rules-report.mjs';
 import { ingestMypy, ingestPyright } from '../ingest/type-check.mjs';
 import { applyRuleHints } from '../rules/rule-hints.mjs';
+import { withoutAllowedForms } from '../rules/filters/ruff-allowed-forms.mjs';
 import { RULES_REPORT } from './analysis/python-ast-rules.mjs';
 import { readCouplingFindings } from './analysis/python-coupling.mjs';
 import { readPythonCrapFindings } from './mutation/python-crap.mjs';
@@ -75,7 +76,7 @@ export function ruffFindings(log, { roots, projectRoot }) {
     projectRoot,
     identityKey: (result) => withoutLineNumbers(result.message?.text ?? ''),
   });
-  return ingestSarif(prepared, { tool: 'ruff' }).findings;
+  return withoutAllowedForms(ingestSarif(prepared, { tool: 'ruff' }).findings);
 }
 
 const TYPE_INGESTERS = {

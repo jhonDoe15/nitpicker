@@ -4,10 +4,12 @@ import { normalizeReportPath } from '../../../java/ingest/common.mjs';
 import { run } from '../execution/python-process.mjs';
 import { RUFF_CONFIG } from '../configuration/python-ruff-config.mjs';
 import { fileURLToPath } from 'node:url';
+import { readPythonFiles } from '../configuration/pytest-collection.mjs';
 
 export const RULES_REPORT = 'rules.json';
 const RULES_FAILED_RULE = 'rules-failed';
 const FILE_LIST = 'python-files.txt';
+const OPTIONS_FILE = 'rule-options.json';
 const RULES_SCRIPT = path.resolve(
   fileURLToPath(new URL('../', import.meta.url)),
   '../rules/nitpicker_rules.py',
@@ -28,8 +30,19 @@ export function pythonSources(context) {
 
 export function checkRules(context) {
   const list = path.join(context.reportRoot, FILE_LIST);
+  const options = path.join(context.reportRoot, OPTIONS_FILE);
   writeFileSync(list, pythonSources(context).join('\n'));
-  run(context, ['python', '-I', RULES_SCRIPT, list, path.join(context.reportRoot, RULES_REPORT)], {
-    rule: RULES_FAILED_RULE,
-  });
+  writeFileSync(
+    options,
+    JSON.stringify({
+      sourceRoots: context.project.sourceRoots,
+      testRunner: context.project.testRunner,
+      pythonFiles: readPythonFiles(context.projectRoot),
+    }),
+  );
+  run(
+    context,
+    ['python', '-I', RULES_SCRIPT, list, path.join(context.reportRoot, RULES_REPORT), options],
+    { rule: RULES_FAILED_RULE },
+  );
 }

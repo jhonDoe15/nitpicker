@@ -58,7 +58,13 @@ describe('running the rules script', () => {
       expect.stringMatching(/rules\/nitpicker_rules\.py$/),
       path.join(reportRoot, 'python-files.txt'),
       path.join(reportRoot, 'rules.json'),
+      path.join(reportRoot, 'rule-options.json'),
     ]);
+    expect(JSON.parse(readFileSync(path.join(reportRoot, 'rule-options.json'), 'utf8'))).toEqual({
+      sourceRoots: context.project.sourceRoots,
+      testRunner: context.project.testRunner,
+      pythonFiles: ['test_*.py', '*_test.py'],
+    });
     expect(readFileSync(path.join(reportRoot, 'python-files.txt'), 'utf8')).toBe('src/demo/a.py');
     expect(readFileSync(path.join(reportRoot, 'rules.json'), 'utf8')).toBe('[{"rule":"x"}]');
   });
