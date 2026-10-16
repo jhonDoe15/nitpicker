@@ -33,9 +33,12 @@ function nitpickerConfig({ projectRoot, reportRoot, project, exclude }) {
 
 function projectKeys(context, checker) {
   const { optedIn, nitpickerFirst, configRoot } = toolLayers(context, PYRIGHT_TOOL);
-  const found = readProjectPyright(configRoot, checker);
+  const found = readProjectPyright(configRoot, checker, {
+    upward: optedIn,
+    projectRoot: context.projectRoot,
+  });
   if (!optedIn) {
-    return found === undefined ? {} : environmentOf(found.config);
+    return found?.config === undefined ? {} : environmentOf(found.config);
   }
   const { config } = requireProjectConfig(found, {
     tool: PYRIGHT_TOOL,

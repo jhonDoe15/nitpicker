@@ -6,7 +6,8 @@ import { attempt, parseToml } from '../project-tool-layers.mjs';
 export const PYRIGHT_JSON = 'pyrightconfig.json';
 const PYPROJECT = 'pyproject.toml';
 const TABLES = { pyright: ['pyright'], basedpyright: ['basedpyright', 'pyright'] };
-const PATH_KEYS = ['venvPath', 'stubPath', 'typeshedPath'];
+const ENVIRONMENT_PATH_KEYS = ['venvPath', 'typeshedPath'];
+const SOURCE_PATH_KEYS = ['stubPath'];
 const PATH_LIST_KEYS = ['extraPaths', 'include', 'exclude', 'ignore', 'strict'];
 const ENVIRONMENT_KEYS = ['venv', 'venvPath', 'pythonVersion', 'pythonPlatform', 'stubPath'];
 const ENVIRONMENT_ROOT_KEYS = ['root', 'extraPaths', 'pythonVersion', 'pythonPlatform'];
@@ -30,27 +31,32 @@ function absolute(directory, entry) {
   return typeof entry === 'string' ? path.resolve(directory, entry) : entry;
 }
 
-function absolutized(config, directory) {
+function absolutized(config, { original, source }) {
   const result = { ...config };
-  for (const key of PATH_KEYS) {
+  for (const key of ENVIRONMENT_PATH_KEYS) {
     if (result[key] !== undefined) {
-      result[key] = absolute(directory, result[key]);
+      result[key] = absolute(original, result[key]);
+    }
+  }
+  for (const key of SOURCE_PATH_KEYS) {
+    if (result[key] !== undefined) {
+      result[key] = absolute(source, result[key]);
     }
   }
   for (const key of PATH_LIST_KEYS) {
     if (Array.isArray(result[key])) {
-      result[key] = result[key].map((entry) => absolute(directory, entry));
+      result[key] = result[key].map((entry) => absolute(source, entry));
     }
   }
   if (result.venv !== undefined && result.venvPath === undefined) {
-    result.venvPath = directory;
+    result.venvPath = original;
   }
   if (Array.isArray(result.executionEnvironments)) {
     result.executionEnvironments = result.executionEnvironments.map((environment) => ({
       ...environment,
-      root: absolute(directory, environment.root ?? '.'),
+      root: absolute(source, environment.root ?? '.'),
       ...(Array.isArray(environment.extraPaths)
-        ? { extraPaths: environment.extraPaths.map((entry) => absolute(directory, entry)) }
+        ? { extraPaths: environment.extraPaths.map((entry) => absolute(source, entry)) }
         : {}),
     }));
   }
@@ -65,51 +71,93 @@ function parentOf(file, config) {
   return parent !== undefined && existsSync(parent) ? parent : undefined;
 }
 
-function chainOf(first, checker) {
-  const chain = [];
+function chainOf(first, checker, rebase) {
+  const links = [];
+  const files = [];
   const pending = [first];
   for (const file of pending) {
-    const read = readFileConfig(file, checker);
+    files.push(file);
+    const { value: read, error } = attempt(() => readFileConfig(file, checker));
+    if (error !== undefined) {
+      return { links, files, unreadable: error.message };
+    }
     if (read === undefined) {
       break;
     }
-    chain.push({ file, table: read.table, config: absolutized(read.config, path.dirname(file)) });
+    const original = path.dirname(file);
+    const config = absolutized(read.config, { original, source: rebase(original) });
+    links.push({ file, table: read.table, config });
     const parent = parentOf(file, read.config);
-    if (parent !== undefined && chain.length <= MAXIMUM_EXTENDS_DEPTH) {
+    if (parent !== undefined && links.length <= MAXIMUM_EXTENDS_DEPTH) {
       pending.push(parent);
     }
   }
-  return chain;
+  return { links, files };
 }
 
-function locate(projectRoot, checker) {
-  const json = path.join(projectRoot, PYRIGHT_JSON);
+function hasMarker(directory) {
+  return existsSync(path.join(directory, '.git'));
+}
+
+function searchedDirectories(root) {
+  const parts = root.split(path.sep);
+  const ancestors = parts.map(
+    (_, index) => parts.slice(0, parts.length - index).join(path.sep) || path.sep,
+  );
+  const top = ancestors.findIndex(hasMarker);
+  return top === -1 ? [root] : ancestors.slice(0, top + 1);
+}
+
+function locateIn(directory, checker) {
+  const json = path.join(directory, PYRIGHT_JSON);
   if (existsSync(json)) {
     return json;
   }
-  const pyproject = path.join(projectRoot, PYPROJECT);
-  return existsSync(pyproject) && readTable(pyproject, checker) !== undefined
-    ? pyproject
-    : undefined;
+  const pyproject = path.join(directory, PYPROJECT);
+  if (!existsSync(pyproject)) {
+    return undefined;
+  }
+  const { value, error } = attempt(() => readTable(pyproject, checker));
+  return value !== undefined || error !== undefined ? pyproject : undefined;
 }
 
-function loadProjectPyright(projectRoot, checker) {
-  const file = locate(projectRoot, checker);
+function locate(directories, checker) {
+  return directories
+    .map((directory) => locateIn(directory, checker))
+    .find((file) => file !== undefined);
+}
+
+function rebaser(root, directories, projectRoot) {
+  const ceiling = directories.at(-1);
+  return (directory) => {
+    const relative = path.relative(ceiling, directory);
+    const inside = relative === '' || (!relative.startsWith('..') && !path.isAbsolute(relative));
+    return inside ? path.join(projectRoot, path.relative(root, directory)) : directory;
+  };
+}
+
+function loadProjectPyright(root, checker, options) {
+  const directories = options.upward ? searchedDirectories(root) : [root];
+  const file = locate(directories, checker);
   if (file === undefined) {
     return undefined;
   }
-  const chain = chainOf(file, checker);
-  const merged = Object.assign({}, ...chain.toReversed().map((link) => link.config));
+  const rebase = rebaser(root, directories, options.projectRoot ?? root);
+  const { links, files, unreadable } = chainOf(file, checker, rebase);
+  if (unreadable !== undefined) {
+    return { file, files, unreadable, table: undefined };
+  }
+  const merged = Object.assign({}, ...links.toReversed().map((link) => link.config));
   return {
     file,
-    files: chain.map((link) => link.file),
-    table: chain[0].table,
+    files,
+    table: links[0].table,
     config: Object.fromEntries(Object.entries(merged).filter(([key]) => key !== 'extends')),
   };
 }
 
-export function readProjectPyright(projectRoot, checker) {
-  return attempt(() => loadProjectPyright(projectRoot, checker)).value;
+export function readProjectPyright(root, checker, options = {}) {
+  return attempt(() => loadProjectPyright(root, checker, options)).value;
 }
 
 export function pyrightConfigLabel(found, projectRoot) {
