@@ -191,7 +191,15 @@ describe('readCpdFindings', () => {
         identity: expect.stringMatching(/^cpd:pair:/),
         location: { line: 2 },
         classification: 'enforceable',
-        ratchet: { key: `cpd:pair:${MAIN_A}|${MAIN_B}:clone`, value: 120, divisible: true },
+        ratchet: {
+          key: `cpd:pair:${MAIN_A}|${MAIN_B}:clone`,
+          value: 120,
+          divisible: true,
+          mustKeepUnchangedLines: [
+            { path: MAIN_A, startLine: 2, endLine: 9 },
+            { path: MAIN_B, startLine: 2, endLine: 9 },
+          ],
+        },
         message:
           `This code repeats ${MAIN_B}:2 (8 lines). Keep one copy and call it from both places. ` +
           'If it is right here, add an exception for duplicates/duplicate-clone in nitpicker.config.json.',

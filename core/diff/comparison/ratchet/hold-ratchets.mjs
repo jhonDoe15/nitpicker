@@ -106,8 +106,28 @@ function holdCandidatesFor(headFinding, baseByRatchet, touchedCode) {
   const isNeverHeld =
     headFinding.ratchet === undefined ||
     isInTouchedCode(headFinding, touchedCode) ||
-    isOnAddedLine(headFinding, touchedCode);
+    isOnAddedLine(headFinding, touchedCode) ||
+    !keepsUnchangedLines(headFinding.ratchet, touchedCode);
   return isNeverHeld ? undefined : baseByRatchet.get(ratchetKey(headFinding, new Map(), new Map()));
+}
+
+function keepsUnchangedLines({ mustKeepUnchangedLines = [] }, touchedCode) {
+  return mustKeepUnchangedLines.every((range) =>
+    hasUnchangedLine(range, touchedCode?.changedLines.get(range.path)),
+  );
+}
+
+function hasUnchangedLine({ startLine, endLine }, changed) {
+  if (changed === undefined) {
+    return true;
+  }
+  const changedCount = changed.added
+    ? endLine - startLine + 1
+    : changed.ranges
+        .map(([start, end]) => Math.min(end, endLine) - Math.max(start, startLine) + 1)
+        .filter((count) => count > 0)
+        .reduce((total, count) => total + count, 0);
+  return changedCount <= endLine - startLine;
 }
 
 function grewFinding(headFinding, baseValue) {
