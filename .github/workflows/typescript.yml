@@ -47,6 +47,10 @@ jobs:
           cache: npm
           cache-dependency-path: package-lock.json
       - run: npm ci
+      # The dependency hook tests install fixtures with the real pnpm, Yarn and Bun; a manager that
+      # is missing is skipped, so these steps keep that coverage on.
+      - run: corepack enable
+      - uses: oven-sh/setup-bun@v2
       # The StructureMetrics unit test runs Java on Java 21 sources, the version the Java preset needs.
       - uses: actions/setup-java@v4
         with:

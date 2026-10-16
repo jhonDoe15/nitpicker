@@ -48,7 +48,8 @@
     "languages/typescript/preset/duplicates/fixtures/**",
     "languages/typescript/preset/entry-points/fixtures/**",
     "languages/typescript/preset/structure/fixtures/**",
-    "languages/typescript/preset/test-runtime/fixtures/**"
+    "languages/typescript/preset/test-runtime/fixtures/**",
+    "languages/typescript/adapters/dependency-graph/package-managers/fixtures/**"
   ],
   "disable": ["typescript-typecheck", "coverage", "crap", "mutation"],
   "exceptions": [

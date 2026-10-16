@@ -12,8 +12,12 @@ Add nitpicker as a dev dependency, together with the peers it needs from your pr
 npm install --save-dev nitpicker vitest @vitest/coverage-v8 typescript @types/node
 ```
 
-Requirements: Node.js 22.14 or newer, a Git repository, and a single-package npm project (the
-tested setup). nitpicker brings its own pinned ESLint, Prettier, dependency-cruiser, knip, jscpd,
+`pnpm add --save-dev`, `yarn add --dev` and `bun add --dev` take the same packages; run nitpicker
+with `npx nitpicker`, `pnpm exec nitpicker`, `yarn nitpicker` or `bunx nitpicker`.
+
+Requirements: Node.js 22.14 or newer, a Git repository, and an npm, pnpm, Yarn (classic or 2+) or
+Bun project with its dependencies installed in `node_modules` (Yarn Plug'n'Play is not supported:
+set `nodeLinker: node-modules`). nitpicker brings its own pinned ESLint, Prettier, dependency-cruiser, knip, jscpd,
 Stryker and CRAP tooling and loads them from its own package, so neither side of the comparison can
 choose them. `vitest` and `@vitest/coverage-v8` (4.1.11 or newer, or 5) and `typescript` come from
 your project; if one is missing or incompatible, the tool that needs it fails and the report shows a
@@ -85,6 +89,28 @@ The base ref is the first match of:
 5. `origin/main`, then `origin/master`
 
 In CI, fetch enough history to contain the merge base (for example `fetch-depth: 0`).
+
+**Dependencies of the base.** The base is checked out in a temporary worktree. When its
+`package.json` and lockfiles equal the head's, it shares your `node_modules` (including the
+`node_modules` of workspace packages). When any of `package.json`, `package-lock.json`,
+`npm-shrinkwrap.json`, `pnpm-lock.yaml`, `pnpm-workspace.yaml`, `yarn.lock`, `bun.lock` or
+`bun.lockb` differs, the base gets its own frozen install with scripts disabled, run with the
+package manager the base uses: the `packageManager` field of its `package.json`, else its lockfile
+(`pnpm-lock.yaml`, `yarn.lock`, `bun.lock` or `bun.lockb`, `package-lock.json` or
+`npm-shrinkwrap.json`), else npm. The install commands are:
+
+| Manager | Command                                                                                                             |
+| ------- | ------------------------------------------------------------------------------------------------------------------- |
+| npm     | `npm ci --ignore-scripts`                                                                                           |
+| pnpm    | `pnpm install --frozen-lockfile --ignore-scripts`                                                                   |
+| Yarn 1  | `yarn install --frozen-lockfile --ignore-scripts`                                                                   |
+| Yarn 2+ | `yarn install --immutable --mode=skip-build` (with `YARN_ENABLE_SCRIPTS=false` and `YARN_NODE_LINKER=node-modules`) |
+| Bun     | `bun install --frozen-lockfile --ignore-scripts`                                                                    |
+
+Workspaces install from the repository root, as the manager does by default. A missing manager is
+a tool error that names how to get it (`corepack enable pnpm`, `corepack enable yarn`,
+`npm install --global bun`); a lockfile that does not match its `package.json` fails the frozen
+install and the tool error carries the manager's message.
 
 ### Reports
 
