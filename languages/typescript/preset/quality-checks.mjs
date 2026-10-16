@@ -130,6 +130,8 @@ function prettierCheckFor(layout, exclusions) {
     configurationFiles: [
       'languages/typescript/adapters/prettier/prettier-layers.mjs',
       'languages/typescript/conventions/prettier-conventions.mjs',
+      'languages/typescript/conventions/measures/jsx-conventions.mjs',
+      'languages/typescript/conventions/measures/data-conventions.mjs',
       'languages/typescript/preset/layout.mjs',
       'languages/typescript/preset/head-policy.mjs',
       JAVASCRIPT_PRESET_FILE,

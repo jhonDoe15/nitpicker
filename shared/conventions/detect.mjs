@@ -44,7 +44,9 @@ export function detectConventions({
 export function conventionChoices(detected, definitions) {
   return Object.fromEntries(
     definitions
-      .filter(({ id, fallback }) => detected[id].choice !== fallback)
+      .filter(
+        ({ id, fallback }) => JSON.stringify(detected[id].choice) !== JSON.stringify(fallback),
+      )
       .map(({ id }) => [id, detected[id].choice]),
   );
 }
@@ -57,7 +59,27 @@ function sampleFor(definition, candidates, accepts) {
   );
 }
 
+function measureNames(definition, sample, texts) {
+  const counts = {};
+  for (const file of sample) {
+    const text = texts.get(file);
+    const names = text === undefined ? [] : definition.measure(text, file);
+    for (const name of new Set(names)) {
+      counts[name] = (counts[name] ?? 0) + 1;
+    }
+  }
+  const choice = Object.keys(counts)
+    .filter((name) => counts[name] >= definition.minFiles)
+    .sort();
+  return choice.length === 0
+    ? { choice: definition.fallback, source: 'default', counts, files: sample.length }
+    : { choice, source: 'majority', counts, files: sample.length };
+}
+
 function measureConvention(definition, sample, texts) {
+  if (definition.kind === 'names') {
+    return measureNames(definition, sample, texts);
+  }
   const counts = Object.fromEntries(definition.options.map((option) => [option, 0]));
   for (const file of sample) {
     const text = texts.get(file);

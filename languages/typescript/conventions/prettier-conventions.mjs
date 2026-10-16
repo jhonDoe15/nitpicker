@@ -9,6 +9,7 @@ import {
   semicolonStyle,
   winner,
 } from './layout-measures.mjs';
+import { JSX_CONVENTIONS, jsxConventionOptions } from './measures/jsx-conventions.mjs';
 import { printWidth } from './print-width.mjs';
 
 const SOURCE_FILES = ['**/*.{ts,tsx,mts,cts,js,jsx,mjs,cjs}'];
@@ -91,15 +92,23 @@ export function prettierConventionOptions(conventions = {}) {
     ...chosen('prettier.arrowParens', (value) => ({ arrowParens: value })),
     ...chosen('prettier.bracketSpacing', (value) => ({ bracketSpacing: value === 'spaced' })),
     ...chosen('prettier.endOfLine', (value) => ({ endOfLine: value })),
+    ...jsxConventionOptions(chosen),
   };
 }
 
 export function followedPrettierOptions(conventions = {}) {
   return prettierConventionOptions(
     Object.fromEntries(
-      PRETTIER_CONVENTIONS.map(({ id, fallback }) => [id, conventions[id] ?? fallback]),
+      [...PRETTIER_CONVENTIONS, ...JSX_CONVENTIONS].map(({ id, fallback }) => [
+        id,
+        conventions[id] ?? fallback,
+      ]),
     ),
   );
+}
+
+export function hasPrettierConventions(conventions = {}) {
+  return Object.keys(conventions).some((id) => id.startsWith('prettier.'));
 }
 
 function chooser(conventions) {

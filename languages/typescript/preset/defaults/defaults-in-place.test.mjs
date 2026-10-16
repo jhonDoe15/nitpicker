@@ -33,6 +33,7 @@ const POLICY_PATHS = [
   'languages/javascript/preset/eslint-dialect.mjs',
   'languages/typescript/conventions/file-name-casing.mjs',
   'languages/typescript/conventions/layout-measures.mjs',
+  'languages/typescript/conventions/measures',
   'languages/typescript/conventions/prettier-conventions.mjs',
   'languages/typescript/conventions/print-width.mjs',
   'languages/typescript/conventions/type-import-style.mjs',

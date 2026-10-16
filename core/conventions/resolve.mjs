@@ -45,7 +45,7 @@ function followConventions({ config, projectRoot, headPolicy, commit, stdout }) 
     definitions,
     pinned: config.conventions ?? {},
     exclude: [...(headPolicy.layout?.excludedGlobs ?? builtInExcludedGlobs), ...headPolicy.exclude],
-    accepts: definitions.some(({ scope }) => scope === 'layout')
+    accepts: definitions.some(({ scope }) => scope !== undefined)
       ? layoutFilter(config, headPolicy)
       : undefined,
     projectRoot,
@@ -70,11 +70,16 @@ function layoutFilter(config, headPolicy) {
   const layout = resolveLayout(headPolicy.layout, headPolicy.exclude, {
     javascript: isJavascriptPolicy(config),
   });
+  const roots = [...layout.sourceRoots, ...layout.testRoots];
+  const scopes = {
+    layout: (file) => layout.isSourceFile(file) || layout.isTestFile(file),
+    tests: (file) => layout.isTestFile(file),
+    'formatted-data': (file) =>
+      (!file.includes('/') || roots.some((root) => file.startsWith(`${root}/`))) &&
+      !layout.isGeneratedPath(file),
+  };
   return function accepts({ scope }, file) {
-    return (
-      scope !== 'layout' ||
-      ((layout.isSourceFile(file) || layout.isTestFile(file)) && !layout.isExcluded(file))
-    );
+    return scope === undefined || (scopes[scope](file) && !layout.isExcluded(file));
   };
 }
 

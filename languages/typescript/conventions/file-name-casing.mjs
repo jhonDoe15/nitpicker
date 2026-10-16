@@ -6,6 +6,7 @@ const FRAMEWORK_PREFIX = /^[_+$@(#~]/;
 const ROUTE_SYNTAX = /[[\]]|_$/;
 const FIXTURE_PATH = /(?:^|\/)(?:fixtures|__fixtures__)\//;
 const GENERATED_NAME = /\.(?:graphql|gql)\.[^/]+$/;
+const HOOK_NAME = /^use[A-Z]/;
 const PASCAL_CASE = /^[A-Z][a-zA-Z0-9]*$/;
 const LOCALE_CODE = /^(?:[a-z]{2,3}[-_][A-Z]{2}|[a-z]{2}[-_][a-z]{2})$/;
 const GENERATED_SEGMENT = /^(?=.*\d)[a-z0-9]{8,}$/;
@@ -73,6 +74,7 @@ function isExemptName(file) {
     RESERVED_BASES.has(base) ||
     stem.slice(1).includes('config') ||
     PASCAL_CASE.test(base) ||
+    HOOK_NAME.test(base) ||
     LOCALE_CODE.test(base) ||
     stem.some(isGeneratedSegment)
   );

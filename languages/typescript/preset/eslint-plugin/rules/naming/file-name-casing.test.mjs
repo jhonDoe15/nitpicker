@@ -39,6 +39,8 @@ ruleTester.run('file-name-casing', rule, {
     { code, filename: 'src/user_profile.ts', options: [{ casing: 'snake_case' }] },
     { code, filename: 'src/UserProfile.tsx' },
     { code, filename: 'src/UserProfile.ts', options: [{ casing: 'camelCase' }] },
+    { code, filename: 'src/useAuth.ts' },
+    { code, filename: 'src/hooks/useSession.tsx', options: [{ casing: 'snake_case' }] },
     { code, filename: 'src/404.tsx', options: [{ casing: 'camelCase' }] },
     { code, filename: 'app/not-found.tsx', options: [{ casing: 'snake_case' }] },
     { code, filename: 'src/fr-CA.ts', options: [{ casing: 'camelCase' }] },

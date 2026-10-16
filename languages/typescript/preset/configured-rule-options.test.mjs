@@ -99,6 +99,7 @@ async function ruleSettings(policy) {
   return {
     typeImports: settingOf('@typescript-eslint/consistent-type-imports'),
     fileNames: settingOf('nitpicker/file-name-casing'),
+    assertFunctionNames: settingOf('vitest/expect-expect')[1].assertFunctionNames,
   };
 }
 
@@ -107,17 +108,30 @@ describe('rules configured from the followed conventions', () => {
     expect(await ruleSettings()).toEqual({
       typeImports: ['error', { disallowTypeAnnotations: false, fixStyle: 'separate-type-imports' }],
       fileNames: ['error', { casing: 'kebab-case' }],
+      assertFunctionNames: ['expect', 'assert', 'expectTypeOf', 'assertType'],
     });
   });
 
   it('follows inline type imports and the project file name casing', async () => {
     expect(
       await ruleSettings({
-        conventions: { 'typescript.typeImports': 'inline', 'typescript.fileNames': 'snake_case' },
+        conventions: {
+          'typescript.typeImports': 'inline',
+          'typescript.fileNames': 'snake_case',
+          'typescript.assertionHelpers': ['assertOk', 'verifyCalled'],
+        },
       }),
     ).toEqual({
       typeImports: ['error', { disallowTypeAnnotations: false, fixStyle: 'inline-type-imports' }],
       fileNames: ['error', { casing: 'snake_case' }],
+      assertFunctionNames: [
+        'expect',
+        'assert',
+        'expectTypeOf',
+        'assertType',
+        'assertOk',
+        'verifyCalled',
+      ],
     });
   });
 
