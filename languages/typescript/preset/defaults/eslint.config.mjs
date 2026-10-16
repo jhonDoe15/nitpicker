@@ -89,6 +89,14 @@ const presetConfig = defineConfig(
     frameworkDefaultExports: policy.frameworks.defaultExports,
   }),
   ...productionLayoutConfigFor(layout, { react }),
+  ...(layout.endToEndGlobs.length === 0
+    ? []
+    : [
+        {
+          files: layout.endToEndGlobs,
+          rules: { 'no-empty-pattern': ['error', { allowObjectPatternsAsParameters: true }] },
+        },
+      ]),
   ...(react ? await reactScopeConfigFor(layout, policy.react) : []),
   ...(i18n ? await i18nScopeConfigFor(layout, policy.i18n) : []),
   {

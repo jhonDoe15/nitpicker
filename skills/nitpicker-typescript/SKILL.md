@@ -140,6 +140,8 @@ Before you change code other modules use, fix a bug, or add a UI state, read
   not loops. The rules above (`for...of` only, no `.then()`, no `as`) apply to tests too.
 - A shared helper (stdout capture) lives once, in a non-test file such as `test/support/stdout.ts`.
   When an existing test defines the same helper, make it import the shared one.
+- Test roots are `test/`, `tests/`, `__tests__/` and `e2e/` at the repo root. A Playwright or Cypress
+  spec in `e2e/` imports no production code and is not mutated; a Jest `__tests__/` goes in `exclude`.
 - A surviving mutant no input can kill means the code is redundant: delete or restructure it.
   Don't pin call order or messages just to kill it. If an input can kill it, add that test; never
   delete a schema rule to silence it.
@@ -151,5 +153,5 @@ Applies when `react` is in `package.json`. Every React finding names the allowed
 exception route in the message: write that form, don't work around the rule.
 
 - Reset a component's state by rendering it with a new `key`.
-- Component tests assert what the user sees (text, roles, focus), never component state, instances
-  or hook internals.
+- Component tests query through `screen` and assert what the user sees (text, roles, focus), never
+  component state, instances or hook internals.

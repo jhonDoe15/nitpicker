@@ -297,7 +297,13 @@ describe('the React scope config', () => {
       const config = await calculatedConfig(entries, file);
       expect(config.rules['react-hooks/rules-of-hooks'], file).toBeDefined();
     }
-    for (const file of ['src/ui/panel.test.tsx', 'test/panel.tsx', 'src/ui/__tests__/panel.tsx']) {
+    for (const file of [
+      'src/ui/panel.test.tsx',
+      'test/panel.tsx',
+      '__tests__/panel.tsx',
+      'e2e/panel.tsx',
+      'src/ui/__tests__/panel.tsx',
+    ]) {
       const config = await calculatedConfig(entries, file);
       expect(config?.rules?.['react-hooks/rules-of-hooks'], file).toBeUndefined();
     }
@@ -330,6 +336,8 @@ describe('the React scope config', () => {
       'src/ui/panel.spec.jsx',
       'test/panel.tsx',
       'tests/ui/panel.tsx',
+      '__tests__/ui/panel.tsx',
+      'e2e/ui/panel.tsx',
       'src/ui/__tests__/panel.tsx',
     ]) {
       const config = await calculatedConfig(entries, file);
@@ -362,7 +370,7 @@ describe('the React scope config', () => {
       ...(await reactSyntaxConfigFor(layout)),
     ];
 
-    expect(lintFixture({ config, filename: 'test/ui/a.test.tsx', code })).toEqual([]);
+    expect(lintFixture({ config, filename: 'test/ui/a.test.ts', code })).toEqual([]);
   });
 
   it.each([
@@ -371,7 +379,6 @@ describe('the React scope config', () => {
     ['react-dom', "import { flushSync } from 'react-dom';"],
     ['enzyme', "import { mount } from 'enzyme';"],
     ['react-test-renderer', "import renderer from 'react-test-renderer';"],
-    ['a project test-utils module', "import { renderWithProviders } from '../utils/test-utils';"],
   ])('reports in a test that imports %s', async (_name, importLine) => {
     const config = [
       { languageOptions: { parser: tseslint.parser } },
@@ -380,11 +387,65 @@ describe('the React scope config', () => {
 
     const rules = lintFixture({
       config,
-      filename: 'test/ui/a.test.tsx',
-      code: `${importLine} wrapper.state();`,
+      filename: 'test/ui/a.test.ts',
+      code: `${importLine} wrapper.instance();`,
     }).map(({ ruleId }) => ruleId);
 
     expect(rules).toEqual(['nitpicker/react-test-no-implementation-details']);
+  });
+
+  it.each([
+    ['a destructured query', "const { getByRole } = render(<A />); getByRole('button');", 1],
+    ['a query on the render result', "render(<A />).getByRole('button');", 1],
+    [
+      'a query through a project test-utils wrapper',
+      "import { renderWithProviders } from '../utils/test-utils'; const { getByRole } = renderWithProviders(<A />); getByRole('button');",
+      1,
+    ],
+    ['a screen query', "render(<A />); screen.getByRole('button');", 0],
+    ['a within query', "render(<A />); within(screen.getByRole('list')).getByRole('listitem');", 0],
+    ['an unrelated render result use', 'const { rerender } = render(<A />); rerender(<A />);', 0],
+  ])('prefers screen queries: %s', async (_name, code, count) => {
+    const config = [
+      { languageOptions: { parser: tseslint.parser } },
+      ...(await reactSyntaxConfigFor(layout)),
+    ];
+
+    const rules = lintFixture({
+      config,
+      filename: 'test/ui/a.test.tsx',
+      code: `import { render, screen, within } from '@testing-library/react'; ${code}`,
+    }).filter(({ ruleId }) => ruleId === 'testing-library/prefer-screen-queries');
+
+    expect(rules).toHaveLength(count);
+  });
+
+  it.each([
+    [
+      'toMatchSnapshot on a query',
+      "render(<A />); expect(screen.getByRole('list')).toMatchSnapshot();",
+    ],
+    [
+      'toMatchInlineSnapshot on a query',
+      "render(<A />); expect(screen.getByRole('list')).toMatchInlineSnapshot();",
+    ],
+    [
+      'toMatchSnapshot on asFragment',
+      'const { asFragment } = render(<A />); expect(asFragment()).toMatchSnapshot();',
+    ],
+  ])('allows a snapshot-only test: %s', async (_name, body) => {
+    const config = [
+      { languageOptions: { parser: tseslint.parser } },
+      ...(await reactSyntaxConfigFor(layout)),
+    ];
+
+    expect(
+      lintFixture({
+        config,
+        filename: 'test/ui/a.test.tsx',
+        code: `import { render, screen } from '@testing-library/react'; it('renders', () => { ${body} });`,
+      }),
+    ).toEqual([]);
   });
 
   it('reaches container queries made through a project test-utils wrapper', async () => {
@@ -450,8 +511,10 @@ describe('the React scope config', () => {
     const [result] = await eslint.lintText(code, { filePath: path.join(root, 'test/a.test.tsx') });
 
     expect(result.messages.map(({ ruleId }) => ruleId)).toEqual([
+      'testing-library/prefer-user-event-setup',
       'testing-library/await-async-events',
       'testing-library/await-async-events',
+      'testing-library/prefer-user-event-setup',
       'testing-library/await-async-events',
     ]);
     expect(result.messages.every(({ fix, suggestions }) => !fix && !suggestions)).toBe(true);

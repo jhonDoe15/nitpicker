@@ -82,8 +82,96 @@ export const accessibilityRuleOptions = Object.fromEntries(
   ]),
 );
 
+const USER_EVENT_MODULE = '@testing-library/user-event';
+
+function userEventImports(program) {
+  return program.body.filter(
+    (statement) =>
+      statement.type === 'ImportDeclaration' && statement.source.value === USER_EVENT_MODULE,
+  );
+}
+
+function namedUserEvent(declaration) {
+  return declaration.specifiers.find(
+    (specifier) =>
+      specifier.type === 'ImportSpecifier' &&
+      specifier.imported.type === 'Identifier' &&
+      specifier.imported.name === 'userEvent',
+  )?.local.name;
+}
+
+function namespaceUserEvent(declaration) {
+  return declaration.specifiers.find(({ type }) => type === 'ImportNamespaceSpecifier')?.local.name;
+}
+
+const namespaceMembers = new Set(['userEvent', 'default']);
+
+function isUserEventReceiver(node, locals) {
+  if (node.type === 'Identifier') {
+    return node.name === locals.named;
+  }
+  return (
+    node.type === 'MemberExpression' &&
+    !node.computed &&
+    node.object.type === 'Identifier' &&
+    node.object.name === locals.namespace &&
+    namespaceMembers.has(node.property.name)
+  );
+}
+
+function directCall(node, locals) {
+  const { callee } = node;
+  return callee.type === 'MemberExpression' &&
+    !callee.computed &&
+    isUserEventReceiver(callee.object, locals) &&
+    callee.property.name !== 'setup'
+    ? callee
+    : undefined;
+}
+
+function withNamedUserEventImport(rule) {
+  return {
+    ...rule,
+    create(context) {
+      const upstream = rule.create(context);
+      const imports = userEventImports(context.sourceCode.ast);
+      const hasDefault = imports.some((declaration) =>
+        declaration.specifiers.some(({ type }) => type === 'ImportDefaultSpecifier'),
+      );
+      const locals = {
+        named: imports.map(namedUserEvent).find((name) => name !== undefined),
+        namespace: imports.map(namespaceUserEvent).find((name) => name !== undefined),
+      };
+      if (hasDefault || (locals.named === undefined && locals.namespace === undefined)) {
+        return upstream;
+      }
+      return {
+        ...upstream,
+        CallExpression(node) {
+          upstream.CallExpression?.(node);
+          const callee = directCall(node, locals);
+          if (callee !== undefined) {
+            context.report({
+              node: callee,
+              messageId: 'preferUserEventSetup',
+              data: { method: callee.property.name },
+            });
+          }
+        },
+      };
+    },
+  };
+}
+
+const extendedTestingLibraryRules = {
+  'prefer-user-event-setup': withNamedUserEventImport(
+    testingLibrary.rules['prefer-user-event-setup'],
+  ),
+};
+
 function testingLibraryRule(name, hint) {
-  const rule = withoutFixes(withHint(testingLibrary.rules[name], hint));
+  const upstream = extendedTestingLibraryRules[name] ?? testingLibrary.rules[name];
+  const rule = withoutFixes(withHint(upstream, hint));
   return { ...rule, create: inReactTestFilesOnly(rule.create) };
 }
 
