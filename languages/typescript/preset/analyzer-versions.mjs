@@ -15,6 +15,7 @@ const TOOL_BY_ANALYZER = {
   duplicates: 'jscpd',
   'dead-code': 'knip',
   coverage: 'vitest',
+  'test-console': 'vitest',
   crap: '@barney-media/crap-typescript-core',
   mutation: '@stryker-mutator/core',
 };

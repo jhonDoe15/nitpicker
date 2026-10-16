@@ -129,6 +129,8 @@ Before you change code other modules use, fix a bug, or add a UI state, read
 
 - Every branch you add needs a test: changed-branch coverage and mutation testing run on your
   change. Test each outcome of each union.
+- A test run that prints new `console.error` or `console.warn` output fails
+  (`test-console-output`): cancel the timer or subscription in the cleanup.
 - Test features through their `index.ts` with fakes: plain functions returning
   `Promise.resolve(x)` / `Promise.reject(error)`; a non-Error rejection is
   `vi.fn().mockRejectedValue(42)`, a non-Error throw is `const value: unknown = 7; throw value;`.

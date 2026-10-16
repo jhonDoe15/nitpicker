@@ -33,6 +33,7 @@ describe('configureAnalyzers', () => {
       'mutation',
       'prettier-format',
       'structure',
+      'test-console',
       'test-runtime',
       'typescript-typecheck',
     ]);
@@ -89,7 +90,7 @@ describe('configureAnalyzers', () => {
 
     expect(configure(['mutation']).map(({ name }) => name)).toEqual(['python']);
     expect(() => configure(['python'])).toThrow(
-      '"disable" cannot disable python because mutation depends on it',
+      '"disable" cannot disable python because mutation depends on it; add it to "disable" too',
     );
   });
 });
