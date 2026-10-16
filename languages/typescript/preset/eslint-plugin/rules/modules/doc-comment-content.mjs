@@ -27,7 +27,9 @@ export function docCommentContentReports(comment, node) {
     name: declaredName(node),
     lines: descriptionLines(comment.value, JSDOC),
   });
-  if (problem === undefined) return [];
+  if (problem === undefined) {
+    return [];
+  }
   const { kind, ...data } = problem;
   return [{ messageId: MESSAGE_IDS[kind], data }];
 }
