@@ -62,18 +62,26 @@ function derivedParents(sourceCode, node, packages) {
   }
 }
 
+function firstVisit(seen, node) {
+  if (node === null || node === undefined || seen.has(node)) {
+    return false;
+  }
+  seen.add(node);
+  return true;
+}
+
 function isDerived({ sourceCode }, start, packages) {
   const pending = [start];
   const seen = new Set();
   for (const node of pending) {
-    if (node !== null && node !== undefined && !seen.has(node)) {
-      seen.add(node);
-      const parents = derivedParents(sourceCode, node, packages);
-      if (parents === true) {
-        return true;
-      }
-      pending.push(...parents);
+    if (!firstVisit(seen, node)) {
+      continue;
     }
+    const parents = derivedParents(sourceCode, node, packages);
+    if (parents === true) {
+      return true;
+    }
+    pending.push(...parents);
   }
   return false;
 }
@@ -91,7 +99,7 @@ function isNamespaceReceiver({ sourceCode }, receiver, packages) {
   );
 }
 
-function isMethodOn(ctx, receiver, method, library) {
+function isMethodOn(ctx, { receiver, method }, library) {
   const { packages } = library;
   return (
     library.anyReceiver.includes(method) ||
@@ -103,7 +111,7 @@ function isMethodOn(ctx, receiver, method, library) {
 
 function isMemberParse(ctx, member, library) {
   const method = methodNameOf(member);
-  return method !== undefined && isMethodOn(ctx, member.object, method, library);
+  return method !== undefined && isMethodOn(ctx, { receiver: member.object, method }, library);
 }
 
 function isFactoryCall(ctx, call, library) {
@@ -153,7 +161,7 @@ function isIdentifierParse(ctx, callee, library) {
   return (
     (init?.type === 'CallExpression' &&
       (isFactoryCall(ctx, init, library) || isBoundParse(ctx, init, library))) ||
-    (method !== undefined && isMethodOn(ctx, method.receiver, method.method, library)) ||
+    (method !== undefined && isMethodOn(ctx, method, library)) ||
     isCallableSchema(ctx, callee, library)
   );
 }
@@ -185,7 +193,7 @@ function isTransformCall({ sourceCode }, call, libraries) {
   });
 }
 
-function isPipeInto(ctx, call, expression, libraries) {
+function isPipeInto(ctx, { call, expression }, libraries) {
   return (
     call.callee.type === 'Identifier' &&
     call.callee.name === 'pipe' &&
@@ -215,7 +223,10 @@ function flowTargets(ctx, expression, libraries) {
     return [parent];
   }
   if (parent.type === 'CallExpression' && parent.arguments.includes(expression)) {
-    if (isParseCall(ctx, parent, libraries) || isPipeInto(ctx, parent, expression, libraries)) {
+    if (
+      isParseCall(ctx, parent, libraries) ||
+      isPipeInto(ctx, { call: parent, expression }, libraries)
+    ) {
       return true;
     }
     return isTransformCall(ctx, parent, libraries) ? [parent] : [];
@@ -238,14 +249,14 @@ export function isParsedBySchema(ctx, expression, libraries) {
   const pending = [expression];
   const seen = new Set();
   for (const node of pending) {
-    if (!seen.has(node)) {
-      seen.add(node);
-      const targets = flowTargets(ctx, node, libraries);
-      if (targets === true) {
-        return true;
-      }
-      pending.push(...targets);
+    if (!firstVisit(seen, node)) {
+      continue;
     }
+    const targets = flowTargets(ctx, node, libraries);
+    if (targets === true) {
+      return true;
+    }
+    pending.push(...targets);
   }
   return false;
 }
