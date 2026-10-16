@@ -275,8 +275,49 @@ tester.run('no-unknown-main-folder', noUnknownMainFolder, {
     { filename: '/repo/lib/main/utils/strings.ts', code: 'export const a = 1;' },
     { filename: '/repo/src/main/server.ts', code: 'export const a = 1;' },
     { filename: '/repo/src/main/main.tsx', code: 'export const a = 1;' },
+    { filename: '/repo/src/main/features/a/domain/deep/b.ts', code: 'export const a = 1;' },
+    { filename: '/repo/src/main/features/a/adapters/b.ts', code: 'export const a = 1;' },
+    { filename: '/repo/src/main/features/a/index.tsx', code: 'export const a = 1;' },
+    {
+      filename: '/repo/src/main/features/a/ui/panel.tsx',
+      code: 'export const a = 1;',
+      options: [{ react: true }],
+    },
+    {
+      filename: '/repo/src/main/components/panel.tsx',
+      code: 'export const a = 1;',
+      options: [{ react: true }],
+    },
+    { filename: '/repo/src/main/App.tsx', code: 'export const a = 1;', options: [{ react: true }] },
   ],
   invalid: [
+    {
+      filename: '/repo/src/main/features/auth/services/login.ts',
+      code: 'export const a = 1;',
+      errors: [{ messageId: 'unknownFeatureFolder', data: { folder: 'services' } }],
+    },
+    {
+      filename: '/repo/src/main/features/auth/helpers.ts',
+      code: 'export const a = 1;',
+      errors: [{ messageId: 'looseFeatureFile', data: { folder: 'helpers.ts' } }],
+    },
+    {
+      filename: '/repo/src/main/features/auth/ui/panel.tsx',
+      code: 'export const a = 1;',
+      errors: [{ messageId: 'unknownFeatureFolder', data: { folder: 'ui' } }],
+    },
+    {
+      filename: '/repo/src/main/services/api.ts',
+      code: 'export const a = 1;',
+      options: [{ react: true }],
+      errors: [{ messageId: 'unknownFolder', data: { folder: 'services' } }],
+    },
+    {
+      filename: '/repo/src/main/features/auth/components/panel.tsx',
+      code: 'export const a = 1;',
+      options: [{ react: true }],
+      errors: [{ messageId: 'unknownFeatureFolder', data: { folder: 'components' } }],
+    },
     {
       filename: '/repo/src/main/helpers.ts',
       code: 'export const a = 1;',
