@@ -11,7 +11,9 @@
 //   unparsable.txt       one path per line: files the formatter cannot parse (it exits like the real
 //                        formatter does and names them on stderr)
 //   no-pytest.txt        `python -c "import pytest"` fails
-//   pytest-cov.txt, xdist.txt  the pytest probe reports that plugin as installed
+//   no-<name>.txt        the version probe of that distribution (Django, nose2) fails; it prints
+//                        5.1.0 otherwise
+//   pytest-cov.txt, xdist.txt, pytest-django.txt  the pytest probe reports that plugin as installed
 //   sources.txt          one path per line: what `ruff check --show-files` lists (default: every
 //                        .py file below the project, except .venv)
 //   type-errors.txt      printed by mypy as its report (exit 1 when not empty)
@@ -32,7 +34,7 @@
 //                        exit status is 1 when the text says BROKEN
 // `python -c` with `sys.executable` prints `$VIRTUAL_ENV/bin/python` and always works.
 // When FAKE_PYTHON_LOG is set, every call appends a JSON line with the tool, arguments, cwd,
-// PYTHONPATH, MYPYPATH and PYTEST_ADDOPTS.
+// PYTHONPATH, MYPYPATH, PYTEST_ADDOPTS and DJANGO_SETTINGS_MODULE.
 import {
   appendFileSync,
   existsSync,
@@ -59,6 +61,9 @@ if (process.env.FAKE_PYTHON_LOG !== undefined) {
       pythonPath: process.env.PYTHONPATH ?? '',
       ...(process.env.MYPYPATH === undefined ? {} : { mypyPath: process.env.MYPYPATH }),
       pytestAddopts: process.env.PYTEST_ADDOPTS,
+      ...(process.env.DJANGO_SETTINGS_MODULE === undefined
+        ? {}
+        : { djangoSettings: process.env.DJANGO_SETTINGS_MODULE }),
     })}\n`,
   );
 }
@@ -229,6 +234,14 @@ function python() {
     process.stdout.write('2.5\n');
     return;
   }
+  const distribution = /m\.version\("([\w-]+)"\)/.exec(args.join(' '))?.[1];
+  if (distribution !== undefined) {
+    if (existsSync(`no-${distribution}.txt`)) {
+      process.exit(1);
+    }
+    process.stdout.write('5.1.0\n');
+    return;
+  }
   if (args[0]?.endsWith('.py')) {
     const data = existsSync('structure-data.json')
       ? readFileSync('structure-data.json', 'utf8')
@@ -240,7 +253,9 @@ function python() {
     process.exit(1);
   }
   const flag = (file) => (existsSync(file) ? 1 : 0);
-  process.stdout.write(`8.3.1 ${flag('pytest-cov.txt')} ${flag('xdist.txt')}\n`);
+  process.stdout.write(
+    `8.3.1 ${flag('pytest-cov.txt')} ${flag('xdist.txt')} ${flag('pytest-django.txt')}\n`,
+  );
 }
 
 const MUTMUT_MESSAGES = {

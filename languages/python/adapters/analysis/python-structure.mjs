@@ -4,6 +4,7 @@ import { globToRegExp } from '../../../../shared/glob.mjs';
 import { collectFileLimitFindings } from '../../../../shared/rules/file-limits.mjs';
 import { readStructureFindings } from '../../../java/adapters/metrics/java-structure.mjs';
 import { run } from '../execution/python-process.mjs';
+import { TEST_PATH } from '../execution/python-project.mjs';
 import { functionText, writeSourceListing } from './python-sources.mjs';
 import { fileURLToPath } from 'node:url';
 
@@ -54,7 +55,6 @@ const SKIPPED_DIRECTORIES = new Set([
   'build',
   'dist',
 ]);
-const TEST_FILE = /(?:^|\/)(?:tests?\/|test_[^/]*\.py$|[^/]*_test\.py$|conftest\.py$)/u;
 
 function directoryEntries(projectRoot, directory) {
   return readdirSync(path.join(projectRoot, directory), { withFileTypes: true }).map((entry) => ({
@@ -92,7 +92,7 @@ export function pythonFileLimitFindings(
     .filter((file) => !excluders.some((matcher) => matcher.test(file)))
     .map((file) => ({
       path: file,
-      kind: TEST_FILE.test(file) ? 'test' : 'source',
+      kind: TEST_PATH.test(file) ? 'test' : 'source',
       countsInFolder: path.posix.basename(file) !== '__init__.py',
     }));
   return collectFileLimitFindings(projectRoot, entries, {

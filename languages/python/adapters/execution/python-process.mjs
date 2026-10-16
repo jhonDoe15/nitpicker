@@ -6,12 +6,27 @@ const MILLISECONDS_PER_MINUTE = 60000;
 const MESSAGE_TAIL_LENGTH = 3000;
 export const VERSION_PATTERN = /\d+(?:\.\d+)+\S*/;
 
-export function execute(context, command, { timeout = TOOL_TIMEOUT_MS, env = {} } = {}) {
+function withAppended(inherited, additions) {
+  const appended = Object.entries(additions).map(([name, value]) => [
+    name,
+    [inherited[name], value].filter(Boolean).join(' '),
+  ]);
+  return { ...inherited, ...Object.fromEntries(appended) };
+}
+
+export function execute(
+  context,
+  command,
+  { timeout = TOOL_TIMEOUT_MS, env = {}, defaultEnv = {}, appendEnv = {} } = {},
+) {
   const [tool, ...args] = command;
   const launch = context.launcher.launch(tool, args);
   return spawnSync(launch.command, launch.args, {
     cwd: context.projectRoot,
-    env: { ...process.env, ...launch.env, ...context.env, ...env },
+    env: withAppended(
+      { ...defaultEnv, ...process.env, ...launch.env, ...context.env, ...env },
+      appendEnv,
+    ),
     encoding: 'utf8',
     maxBuffer: MAX_OUTPUT_BYTES,
     timeout,
@@ -25,9 +40,9 @@ function isAccepted(accepted, result) {
 export function run(
   context,
   command,
-  { accepted = [0], rule, timeoutMs = TOOL_TIMEOUT_MS, env, notFoundHint = '' },
+  { accepted = [0], rule, timeoutMs = TOOL_TIMEOUT_MS, notFoundHint = '', ...environment },
 ) {
-  const result = execute(context, command, { timeout: timeoutMs, env });
+  const result = execute(context, command, { timeout: timeoutMs, ...environment });
   if (result.error !== undefined || !isAccepted(accepted, result)) {
     throw failure({ context, command, result, rule, timeoutMs, notFoundHint });
   }

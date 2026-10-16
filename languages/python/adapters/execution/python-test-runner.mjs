@@ -1,22 +1,31 @@
 import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { environmentError } from './python-environment.mjs';
-import { execute, VERSION_PATTERN } from './python-process.mjs';
-import { readProjectHints } from './python-project.mjs';
+import { execute, probeVersion, VERSION_PATTERN } from './python-process.mjs';
+import { readOptional, readProjectHints } from './python-project.mjs';
 
 export const NO_TESTS_EXIT = 5;
+const PYTEST_PROBE = [
+  'python',
+  '-c',
+  'import importlib.util as u, pytest; print(pytest.__version__, *(int(u.find_spec(m) is not None) for m in ("pytest_cov", "xdist", "pytest_django")))',
+];
+const UNITTEST_FILES = 'python_files=test*.py';
+const RUNNER_DISTRIBUTIONS = { django: 'Django', nose2: 'nose2' };
+const probes = new WeakMap();
+
 const TEST_DIRECTORIES = ['tests', 'test'];
+const DJANGO_SCRIPT = 'manage.py';
 const PYTEST_CONFIGURATION = /^\s*\[(?:tool\.pytest(?:\.ini_options)?|pytest|tool:pytest)\]/m;
 const PYTEST_DEPENDENCY = /(?:^|[\s"'=])pytest(?:\b|_)/m;
 const PYTEST_STYLE_TEST =
   /^(?:async\s+)?def test_|^(?:import|from)\s+pytest\b|^class Test\w*\s*(?:\(\s*\))?:/m;
-const TEST_FILE = /^(?:test_.*|.*_test)\.py$/;
-const PYTEST_PROBE = [
-  'python',
-  '-c',
-  'import importlib.util as u, pytest; print(pytest.__version__, int(u.find_spec("pytest_cov") is not None), int(u.find_spec("xdist") is not None))',
-];
-const probes = new WeakMap();
+const TEST_FILE = /^(?:test_.*|.*_test|tests)\.py$/;
+const DJANGO_DEPENDENCY = /(?:^|[\s"'=])django(?![\w.-])/im;
+const DJANGO_IMPORT = /^\s*(?:from|import)\s+django\b/m;
+const NOSE2_DEPENDENCY = /(?:^|[\s"'=])nose2(?![\w.-])/m;
+const NOSE2_SECTION = '[unittest]';
+const DJANGO_SETTINGS = /DJANGO_SETTINGS_MODULE["']\s*,\s*["']([\w.]+)["']/;
 
 function existingTestFiles(projectRoot) {
   const directories = TEST_DIRECTORIES.filter((name) => existsSync(path.join(projectRoot, name)));
@@ -42,28 +51,68 @@ function hasPytestFile(projectRoot) {
   );
 }
 
+function declaresPytest(projectRoot, hints) {
+  return (
+    PYTEST_CONFIGURATION.test(hints) ||
+    PYTEST_DEPENDENCY.test(hints) ||
+    existsSync(path.join(projectRoot, 'pytest.ini'))
+  );
+}
+
+function usesDjango(projectRoot, hints) {
+  const script = path.join(projectRoot, DJANGO_SCRIPT);
+  return (
+    existsSync(script) &&
+    (DJANGO_DEPENDENCY.test(hints) || DJANGO_IMPORT.test(readOptional(script)))
+  );
+}
+
+function listsNose2Plugins(text) {
+  const lines = text.split(/\r?\n/).map((line) => line.trim());
+  const start = lines.indexOf(NOSE2_SECTION);
+  if (start === -1) {
+    return false;
+  }
+  const section = lines.slice(start + 1);
+  const end = section.findIndex((line) => line.startsWith('['));
+  return section.slice(0, end === -1 ? undefined : end).some((line) => /^plugins\s*=/.test(line));
+}
+
+function usesNose2(projectRoot, hints) {
+  return (
+    existsSync(path.join(projectRoot, 'nose2.cfg')) ||
+    listsNose2Plugins(readOptional(path.join(projectRoot, 'unittest.cfg'))) ||
+    NOSE2_DEPENDENCY.test(hints)
+  );
+}
+
 export function detectTestRunner(projectRoot, setting) {
   if (setting !== undefined) {
     return setting;
   }
   const hints = readProjectHints(projectRoot);
-  const indicated =
-    PYTEST_CONFIGURATION.test(hints) ||
-    PYTEST_DEPENDENCY.test(hints) ||
-    existsSync(path.join(projectRoot, 'pytest.ini')) ||
-    hasPytestFile(projectRoot);
-  return indicated ? 'pytest' : 'unittest';
+  const signals = [
+    ['pytest', () => declaresPytest(projectRoot, hints)],
+    ['django', () => usesDjango(projectRoot, hints)],
+    ['nose2', () => usesNose2(projectRoot, hints)],
+    ['pytest', () => hasPytestFile(projectRoot)],
+  ];
+  return signals.find(([, applies]) => applies())?.[0] ?? 'unittest';
 }
 
-function probePytest(context) {
+export function djangoSettingsModule(projectRoot) {
+  return DJANGO_SETTINGS.exec(readOptional(path.join(projectRoot, DJANGO_SCRIPT)))?.[1];
+}
+
+export function probePytest(context) {
   if (!probes.has(context)) {
     const result = execute(context, PYTEST_PROBE);
-    const [version, coverage, xdist] =
+    const [version, coverage, xdist, django] =
       result.error === undefined && result.status === 0 ? result.stdout.trim().split(' ') : [];
     probes.set(
       context,
       VERSION_PATTERN.test(version ?? '')
-        ? { version, coverage: coverage === '1', xdist: xdist === '1' }
+        ? { version, coverage: coverage === '1', xdist: xdist === '1', django: django === '1' }
         : undefined,
     );
   }
@@ -74,15 +123,31 @@ export function pytestLabel(context) {
   return `pytest@${probePytest(context)?.version ?? 'missing'}`;
 }
 
-export function testRunnerLabel(context) {
-  const { testRunner } = context.project;
-  return testRunner === 'pytest' ? pytestLabel(context) : testRunner;
+function runnerVersion(context, runner) {
+  return probeVersion(context, [
+    'python',
+    '-c',
+    `import importlib.metadata as m; print(m.version("${RUNNER_DISTRIBUTIONS[runner]}"))`,
+  ]);
 }
 
-export function singleProcessPytestEnvironment(context) {
-  return probePytest(context)?.xdist
-    ? { PYTEST_ADDOPTS: [process.env.PYTEST_ADDOPTS, '-n0'].filter(Boolean).join(' ') }
-    : {};
+export function testRunnerLabel(context) {
+  const { testRunner } = context.project;
+  if (testRunner === 'unittest') {
+    return testRunner;
+  }
+  return testRunner === 'pytest'
+    ? pytestLabel(context)
+    : `${testRunner}@${runnerVersion(context, testRunner)}`;
+}
+
+export function mutationPytestOptions(context) {
+  const probe = probePytest(context);
+  return [
+    ...(probe?.xdist ? ['-n0'] : []),
+    ...(context.project.testRunner === 'pytest' ? [] : ['-o', UNITTEST_FILES]),
+    ...(probe?.django ? ['-o', 'django_find_project=false'] : []),
+  ];
 }
 
 function pytestCommand(context) {
@@ -114,10 +179,33 @@ function unittestCommand(context) {
   return ['-m', 'unittest', 'discover', '-s', directory, ...(packaged ? ['-t', '.'] : [])];
 }
 
+function requireRunner(context, runner) {
+  if (runnerVersion(context, runner) === 'missing') {
+    throw environmentError(
+      `${RUNNER_DISTRIBUTIONS[runner]} runs the tests of this project but is not installed in the ${context.launcher.description} environment: install it there, or set "python.testRunner" to the runner the tests use`,
+    );
+  }
+}
+
+function djangoCommand(context) {
+  requireRunner(context, 'django');
+  return [DJANGO_SCRIPT, 'test', '--noinput'];
+}
+
+function nose2Command(context) {
+  requireRunner(context, 'nose2');
+  return ['-m', 'nose2'];
+}
+
+const COMMANDS = {
+  pytest: pytestCommand,
+  unittest: unittestCommand,
+  django: djangoCommand,
+  nose2: nose2Command,
+};
+
 export function testCommand(context) {
-  return context.project.testRunner === 'pytest'
-    ? pytestCommand(context)
-    : unittestCommand(context);
+  return COMMANDS[context.project.testRunner](context);
 }
 
 export function testsRan({ status, stderr }) {

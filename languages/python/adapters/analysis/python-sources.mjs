@@ -92,12 +92,13 @@ const COMMON_HIDDEN_DIRECTORIES = [
   '.ruff_cache',
   '.pytest_cache',
 ];
-const TEST_FILE = /^(?:test_.+|.+_test|conftest)\.py$/;
+const TEST_FILE = /^(?:test_.+|.+_test|tests|conftest)\.py$/;
 
 export const NON_PRODUCTION_GLOBS = [
   ...[...EXCLUDED_DIRECTORIES, ...COMMON_HIDDEN_DIRECTORIES].map((name) => `**/${name}/**`),
   '**/test_*.py',
   '**/*_test.py',
+  '**/tests.py',
   '**/conftest.py',
 ];
 

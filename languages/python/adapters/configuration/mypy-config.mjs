@@ -20,7 +20,7 @@ const INI_SECTION = /^\[([^\]]+)\]\s*$/;
 const INI_OPTION = /^([^\s=:][^=:]*?)\s*[=:]\s*(.*)$/;
 const INI_COMMENT = /\s+[#;].*$/;
 
-function toml() {
+export function toml() {
   return createRequire(import.meta.url)('smol-toml');
 }
 
@@ -69,7 +69,7 @@ function readIniLine(line, sections, state) {
   startOption(line, state);
 }
 
-function parseIni(text) {
+export function parseIni(text) {
   const sections = new Map();
   const state = { options: undefined, key: undefined };
   for (const raw of text.split(/\r?\n/)) {

@@ -70,6 +70,7 @@ describe('listing production modules', () => {
       'app/test/helper.py',
       'app/test_keep.py',
       'app/keep_test.py',
+      'app/tests.py',
       'app/conftest.py',
       'app/.hidden/secret.py',
       'app/__pycache__/keep.py',
@@ -160,6 +161,7 @@ describe('listing production modules', () => {
       '**/.pytest_cache/**',
       '**/test_*.py',
       '**/*_test.py',
+      '**/tests.py',
       '**/conftest.py',
     ]);
   });

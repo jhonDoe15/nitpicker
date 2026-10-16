@@ -2,8 +2,21 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
-import { detectTestRunner, testCommand, testsRan } from './python-test-runner.mjs';
+import {
+  detectTestRunner,
+  djangoSettingsModule,
+  testCommand,
+  testsRan,
+} from './python-test-runner.mjs';
 
+const DJANGO_MANAGE = [
+  'import os',
+  '',
+  'from django.core.management import execute_from_command_line',
+  '',
+  'os.environ.setdefault("DJANGO_SETTINGS_MODULE", "site.settings")',
+  '',
+].join('\n');
 const roots = [];
 
 function project(files) {
@@ -39,6 +52,12 @@ describe('test runner detection', () => {
     ['a test function', { 'tests/unit/test_a.py': 'def test_a():\n    assert True\n' }],
     ['an import of pytest', { 'test_a.py': 'import pytest\n' }],
     ['a test class without a base', { 'tests/a_test.py': 'class TestA:\n    pass\n' }],
+    ['a tests.py with a test function', { 'tests.py': 'def test_a():\n    assert True\n' }],
+    [
+      'pytest-django next to manage.py',
+      { 'manage.py': DJANGO_MANAGE, 'requirements.txt': 'django\npytest-django\n' },
+    ],
+    ['a pytest dependency next to nose2', { 'requirements.txt': 'nose2\npytest\n' }],
   ])('chooses pytest from %s', (_, files) => {
     expect(detectTestRunner(project(files))).toBe('pytest');
   });
@@ -53,16 +72,57 @@ describe('test runner detection', () => {
     ],
     ['no tests', {}],
     ['a package named like a plugin', { 'requirements.txt': 'pytestify-not-a-plugin_x\n' }],
+    ['a Django dependency without manage.py', { 'requirements.txt': 'django\n' }],
+    [
+      'a manage.py of another framework',
+      { 'manage.py': 'import flask\n', 'requirements.txt': 'django-environ\n' },
+    ],
+    ['a unittest.cfg without plugins', { 'unittest.cfg': '[unittest]\nstart-dir = tests\n' }],
+    ['a package named like nose2', { 'requirements.txt': 'nose2-html-report\n' }],
   ])('chooses unittest for %s', (_, files) => {
     expect(detectTestRunner(project(files))).toBe('unittest');
+  });
+
+  it.each([
+    ['a Django dependency', { 'manage.py': '', 'requirements.txt': 'Django==5.1\n' }],
+    [
+      'a poetry dependency',
+      { 'manage.py': '', 'pyproject.toml': '[tool.poetry.dependencies]\ndjango = "^5"\n' },
+    ],
+    ['a manage.py that imports Django', { 'manage.py': DJANGO_MANAGE }],
+    [
+      'test functions Django would not run',
+      { 'manage.py': DJANGO_MANAGE, 'tests/test_a.py': 'def test_a():\n    pass\n' },
+    ],
+  ])('chooses django for manage.py with %s', (_, files) => {
+    expect(detectTestRunner(project(files))).toBe('django');
+  });
+
+  it.each([
+    ['nose2.cfg', { 'nose2.cfg': '[unittest]\n' }],
+    [
+      'unittest.cfg with plugins',
+      { 'unittest.cfg': '[unittest]\nstart-dir = tests\nplugins = nose2.plugins.mp\n' },
+    ],
+    ['a dependency', { 'requirements-dev.txt': 'nose2>=0.14\n' }],
+    ['a tox command', { 'tox.ini': '[testenv]\ncommands = nose2 -v\n' }],
+    ['test functions', { 'nose2.cfg': '', 'tests/test_a.py': 'def test_a():\n    pass\n' }],
+  ])('chooses nose2 from %s', (_, files) => {
+    expect(detectTestRunner(project(files))).toBe('nose2');
   });
 
   it('prefers the setting over every signal', () => {
     expect(detectTestRunner(project({ 'conftest.py': '' }), 'unittest')).toBe('unittest');
     expect(detectTestRunner(project({}), 'pytest')).toBe('pytest');
+    expect(detectTestRunner(project({ 'nose2.cfg': '' }), 'django')).toBe('django');
+  });
+
+  it('reads the settings module from manage.py', () => {
+    expect(djangoSettingsModule(project({ 'manage.py': DJANGO_MANAGE }))).toBe('site.settings');
+    expect(djangoSettingsModule(project({ 'manage.py': 'import django\n' }))).toBeUndefined();
+    expect(djangoSettingsModule(project({}))).toBeUndefined();
   });
 });
-
 describe('unittest command', () => {
   const contextFor = (root) => ({ projectRoot: root, project: { testRunner: 'unittest' } });
 
