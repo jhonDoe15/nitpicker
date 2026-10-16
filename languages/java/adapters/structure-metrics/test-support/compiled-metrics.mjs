@@ -7,25 +7,30 @@ import path from 'node:path';
 const HASH_LENGTH = 16;
 const METRICS_SOURCE = path.resolve(import.meta.dirname, '../../../gradle/StructureMetrics.java');
 
+function placeCompiled(staging, classes) {
+  try {
+    renameSync(staging, classes);
+  } catch (error) {
+    rmSync(staging, { recursive: true, force: true });
+    if (!existsSync(classes)) {
+      throw new Error(`could not place the compiled metrics at ${classes}`, { cause: error });
+    }
+  }
+}
+
 export function compiledMetrics() {
   const source = readFileSync(METRICS_SOURCE);
   const hash = createHash('sha256').update(source).digest('hex').slice(0, HASH_LENGTH);
   const classes = path.join(tmpdir(), `nitpicker-structure-metrics-${hash}`);
-  if (!existsSync(classes)) {
-    const staging = mkdtempSync(`${classes}-`);
-    const compiled = spawnSync('javac', ['-d', staging, METRICS_SOURCE], { encoding: 'utf8' });
-    if (compiled.status !== 0) {
-      throw new Error(`javac failed: ${compiled.stderr}`);
-    }
-    try {
-      renameSync(staging, classes);
-    } catch (error) {
-      rmSync(staging, { recursive: true, force: true });
-      if (!existsSync(classes)) {
-        throw new Error(`could not place the compiled metrics at ${classes}`, { cause: error });
-      }
-    }
+  if (existsSync(classes)) {
+    return classes;
   }
+  const staging = mkdtempSync(`${classes}-`);
+  const compiled = spawnSync('javac', ['-d', staging, METRICS_SOURCE], { encoding: 'utf8' });
+  if (compiled.status !== 0) {
+    throw new Error(`javac failed: ${compiled.stderr}`);
+  }
+  placeCompiled(staging, classes);
   return classes;
 }
 
