@@ -1,10 +1,14 @@
-const MAX_DEPTH = 8;
+const MAX_NODES = 24;
 
 function variableOf(sourceCode, identifier) {
-  for (let scope = sourceCode.getScope(identifier); scope !== null; scope = scope.upper) {
+  const scopes = [sourceCode.getScope(identifier)];
+  for (const scope of scopes) {
     const variable = scope.set.get(identifier.name);
     if (variable !== undefined) {
       return variable;
+    }
+    if (scope.upper !== null) {
+      scopes.push(scope.upper);
     }
   }
   return undefined;
@@ -36,32 +40,43 @@ function initializer(variable) {
     : undefined;
 }
 
-function isDerived(sourceCode, node, packages, depth = 0) {
-  if (node === null || node === undefined || depth > MAX_DEPTH) {
-    return false;
-  }
+function derivedParents(sourceCode, node, packages) {
   switch (node.type) {
     case 'Identifier': {
       const variable = variableOf(sourceCode, node);
-      return (
-        importDefinition(variable, packages) !== undefined ||
-        isDerived(sourceCode, initializer(variable), packages, depth + 1)
-      );
+      return importDefinition(variable, packages) === undefined ? [initializer(variable)] : true;
     }
     case 'MemberExpression':
-      return isDerived(sourceCode, node.object, packages, depth + 1);
+      return [node.object];
     case 'CallExpression':
     case 'NewExpression':
-      return isDerived(sourceCode, node.callee, packages, depth + 1);
+      return [node.callee];
     case 'AwaitExpression':
-      return isDerived(sourceCode, node.argument, packages, depth + 1);
+      return [node.argument];
     default:
-      return false;
+      return [];
   }
 }
 
-function isImportedFunction(sourceCode, callee, library, names) {
-  const definition = importDefinition(variableOf(sourceCode, callee), library.packages);
+function isDerived(sourceCode, start, packages) {
+  const pending = [start];
+  for (const node of pending) {
+    if (pending.length > MAX_NODES) {
+      return false;
+    }
+    if (node !== null && node !== undefined) {
+      const parents = derivedParents(sourceCode, node, packages);
+      if (parents === true) {
+        return true;
+      }
+      pending.push(...parents);
+    }
+  }
+  return false;
+}
+
+function isImportedFunction(sourceCode, callee, { packages, names }) {
+  const definition = importDefinition(variableOf(sourceCode, callee), packages);
   return definition !== undefined && names.includes(importedName(definition));
 }
 
@@ -92,8 +107,10 @@ function isParseCall(sourceCode, call, libraries) {
   return libraries.some((library) => {
     if (callee.type === 'Identifier') {
       return (
-        isImportedFunction(sourceCode, callee, library, library.imported) ||
-        isCallableSchema(sourceCode, callee, library)
+        isImportedFunction(sourceCode, callee, {
+          packages: library.packages,
+          names: library.imported,
+        }) || isCallableSchema(sourceCode, callee, library)
       );
     }
     return callee.type === 'MemberExpression' && isMethodParse(sourceCode, callee, library);
@@ -104,22 +121,21 @@ function isTransformCall(sourceCode, call, libraries) {
   return (
     call.callee.type === 'Identifier' &&
     libraries.some((library) =>
-      isImportedFunction(sourceCode, call.callee, library, library.transform),
+      isImportedFunction(sourceCode, call.callee, {
+        packages: library.packages,
+        names: library.transform,
+      }),
     )
   );
 }
 
-function flowsIntoParse(sourceCode, expression, libraries, depth) {
+function flowTargets(sourceCode, expression, libraries) {
   const parent = expression.parent;
-  if (depth > MAX_DEPTH) {
-    return false;
-  }
   if (parent.type === 'CallExpression' && parent.arguments.includes(expression)) {
-    return (
-      isParseCall(sourceCode, parent, libraries) ||
-      (isTransformCall(sourceCode, parent, libraries) &&
-        flowsIntoParse(sourceCode, parent, libraries, depth + 1))
-    );
+    if (isParseCall(sourceCode, parent, libraries)) {
+      return true;
+    }
+    return isTransformCall(sourceCode, parent, libraries) ? [parent] : [];
   }
   if (
     parent.type === 'VariableDeclarator' &&
@@ -128,17 +144,24 @@ function flowsIntoParse(sourceCode, expression, libraries, depth) {
   ) {
     return sourceCode
       .getDeclaredVariables(parent)
-      .some((variable) =>
-        variable.references.some(
-          (reference) =>
-            reference.identifier !== parent.id &&
-            flowsIntoParse(sourceCode, reference.identifier, libraries, depth + 1),
-        ),
-      );
+      .flatMap((variable) => variable.references)
+      .map((reference) => reference.identifier)
+      .filter((identifier) => identifier !== parent.id);
   }
-  return false;
+  return [];
 }
 
 export function isParsedBySchema(sourceCode, expression, libraries) {
-  return flowsIntoParse(sourceCode, expression, libraries, 0);
+  const pending = [expression];
+  for (const node of pending) {
+    if (pending.length > MAX_NODES) {
+      return false;
+    }
+    const targets = flowTargets(sourceCode, node, libraries);
+    if (targets === true) {
+      return true;
+    }
+    pending.push(...targets);
+  }
+  return false;
 }
