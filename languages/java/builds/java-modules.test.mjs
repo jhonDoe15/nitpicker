@@ -161,4 +161,26 @@ describe('readModuleFindings', () => {
       'core/src/main/java/demo/Same.java 0',
     ]);
   });
+
+  it('gives a module the same coupling identities whether it is the only one or not', () => {
+    const root = mavenProject();
+    const coupling = (modules) =>
+      readModuleFindings(
+        root,
+        modules.map((name) => path.join(root, name)),
+        { reportDirectory: REPORT_DIRECTORY },
+      )
+        .filter(
+          ({ tool, path: file, identity }) =>
+            tool === 'coupling' && !file.startsWith('app/') && !identity.includes('app/'),
+        )
+        .map(({ path: file, identity }) => `${file} ${identity}`)
+        .toSorted();
+
+    const alone = coupling(['core']);
+    expect(alone.filter((identity) => identity.endsWith('demo:modules'))).toEqual([
+      '. package:core/demo:modules',
+    ]);
+    expect(coupling(['app', 'core'])).toEqual(alone);
+  });
 });
