@@ -63,6 +63,12 @@ JPA and Spring Data:
 - Native SQL only when JPQL can't express it, marked on that one method with
   `@SuppressWarnings("PMD.SpringDataNativeQuery")`.
 
+Tests:
+
+- `@SpringBootTest` is for integration and component tests that use the context (an injected bean,
+  `MockMvc`, `WebTestClient`, `TestRestTemplate`). Unit-test a class by creating it with `new`, and
+  test one layer with a slice such as `@WebMvcTest` or `@DataJpaTest` (`SpringUnusedContext`).
+
 `application*.properties` and `application*.yml` (findings `spring/<rule>`; test profiles, and
 local or dev ones where noted, are exempt):
 
