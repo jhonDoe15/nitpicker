@@ -1,12 +1,7 @@
 import path from 'node:path';
 import { RULE_IDS } from '../../policy.mjs';
-import {
-  TEST_DATA_FOLDER,
-  exceptionMatcher,
-  exceptionText,
-  messagesFor,
-  ratchetedFinding,
-} from '../file-limits.mjs';
+import { exceptionMatcher, exceptionText } from '../exceptions.mjs';
+import { TEST_DATA_FOLDER, messagesFor, ratchetedFinding } from '../file-limits.mjs';
 
 export function folderDepthFindings(files, options) {
   const isExcepted = exceptionMatcher(options.exceptions ?? []);

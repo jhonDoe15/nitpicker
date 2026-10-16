@@ -36,6 +36,7 @@ export const RULE_IDS = {
   lineLength: 'line-length-limit',
   folderFiles: 'folder-files-limit',
   ...SIZE_RULE_IDS,
+  componentStoryMissing: 'component-story-missing',
 };
 
 /** Per-function structure limits, keyed by the metric name the TypeScript analyzer reports. */
@@ -114,6 +115,8 @@ export const MESSAGES = {
   lineLength: `Line is {value} characters (limit {limit}). Break it up or extract a named value. ${EXCEPTION_HINT}`,
   folderFiles: `Folder has {value} {kind} files directly in it (limit {limit}). Group related files into subfolders (packages in Java). ${EXCEPTION_HINT}`,
   ...sizeMessages(EXCEPTION_HINT),
+  componentStoryMissing: `Most components in this project have a story. Add {story} for {name}. ${EXCEPTION_HINT}`,
+  componentStoryMissingUnenforced: `{name} has no story. Add {story}. Not enforced until more than half of the components have one. ${EXCEPTION_HINT}`,
 };
 
 export function renderMessage(template, values) {
@@ -279,4 +282,20 @@ export const RULES = [
     enforcedBy: withKotlin(ALL, true),
   },
   ...sizeRules({ both: BOTH, withKotlin }),
+  {
+    id: RULE_IDS.componentStoryMissing,
+    check: 'structure',
+    limit:
+      'a component file without a story, in a package that has Storybook; enforced when more than half of its component files have one, reported otherwise',
+    enforcedBy: withKotlin(TYPESCRIPT_ONLY, false),
+  },
 ];
+
+/**
+ * Project-level TypeScript checks that take `exceptions` entries although no ESLint rule has their
+ * id: the rules only the TypeScript structure check enforces.
+ */
+export const TYPESCRIPT_PROJECT_EXCEPTION_RULES = RULES.filter(
+  ({ check, enforcedBy }) =>
+    check === 'structure' && enforcedBy.typescript && !enforcedBy.java && !enforcedBy.python,
+).map(({ id }) => id);

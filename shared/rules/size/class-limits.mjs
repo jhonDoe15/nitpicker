@@ -1,7 +1,8 @@
 import { CLASS_LIMIT_DEFAULTS } from '../../policy-size.mjs';
 import { RULE_IDS } from '../../policy.mjs';
 import { nextOccurrence } from '../finding-helpers.mjs';
-import { exceptionMatcher, exceptionText, messagesFor, ratchetedFinding } from '../file-limits.mjs';
+import { exceptionMatcher, exceptionText } from '../exceptions.mjs';
+import { messagesFor, ratchetedFinding } from '../file-limits.mjs';
 
 const LIMITS = [
   { metric: 'methods', threshold: 'classMethods', messages: 'classMethods' },

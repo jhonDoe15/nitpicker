@@ -119,6 +119,7 @@ over limit" and does not fail.
 | `class-methods-limit`             | `structure`        | more than 20 methods in a class of the main Java sources; override with `thresholds.classMethods`                                                                                                                                | not enforced | enforced     | not enforced | enforced     |
 | `class-fields-limit`              | `structure`        | more than 10 instance fields in a class of the main Java sources; override with `thresholds.classFields`                                                                                                                         | not enforced | enforced     | not enforced | enforced     |
 | `inheritance-depth-limit`         | `structure`        | a class more than 3 superclasses deep in the main Java sources; override with `thresholds.inheritanceDepth`                                                                                                                      | not enforced | enforced     | not enforced | enforced     |
+| `component-story-missing`         | `structure`        | a component file without a story, in a package that has Storybook; enforced when more than half of its component files have one, reported otherwise                                                                              | enforced     | not enforced | not enforced | not enforced |
 
 <!-- generated:custom-rules end -->
 

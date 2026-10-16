@@ -7,7 +7,7 @@ import {
   readOptionalInventory,
   withLegacyInventory,
 } from '../../../shared/legacy-inventory.mjs';
-import { configError } from '../../../shared/config.mjs';
+import { configError, TYPESCRIPT_ONLY_KEYS } from '../../../shared/config.mjs';
 import { JAVA_TOOLS, PROJECT_TOOL_CONFIGS } from './gradle-presets.mjs';
 import { JAVA_LINE_LENGTH, JAVA_SIZE_RULES } from '../../../shared/policy-size.mjs';
 import { SHARED_EXCEPTION_RULES } from '../../../shared/policy.mjs';
@@ -24,7 +24,6 @@ const FILE_LIMIT_THRESHOLDS = [
   'classFields',
   'inheritanceDepth',
 ];
-const TYPESCRIPT_ONLY_KEYS = ['layout', 'exceptions', 'react', 'tools'];
 const NATIVE_LINE_LENGTH = {
   java: `Java keeps ${String(JAVA_LINE_LENGTH)} characters per line, where google-java-format wraps; lift the rule for some paths with an exception for "line-length-limit"`,
   kotlin: `detekt checks Kotlin line length (set style>MaxLineLength in config/detekt/detekt.yml); the Java files keep ${String(JAVA_LINE_LENGTH)} characters per line, and an exception for "line-length-limit" lifts that for some paths`,
