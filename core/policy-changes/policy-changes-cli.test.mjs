@@ -38,6 +38,8 @@ function fakeAnalyzer(name = 'fake-quality-analyzer') {
   };
 }
 
+const ALLOWED_FORM =
+  'Write new code as production code under the source roots, where the gate checks it';
 const TYPESCRIPT_FILES = {
   'src/a.ts': 'export {};\n',
   'src/legacy/old.ts': 'export {};\n',
@@ -304,29 +306,58 @@ describe('a change that adopts or keeps the policy', () => {
     expect([exitCode, summary.policyLoosenings]).toEqual([1, ['exclude added: src/legacy/**']]);
   });
 
-  it('fails code the change adds or moves under an exclude or exception the base already had', () => {
+  it('fails code the change adds or moves under a kept exclude, exception or test root that covers no base code', () => {
     const config = {
-      exclude: ['src/vendor/**'],
-      exceptions: [{ rule: 'file-lines-limit', paths: ['src/later/**'], reason: 'Generated' }],
+      exclude: ['src/later/**'],
+      exceptions: [{ rule: 'file-lines-limit', paths: ['src/next/**'], reason: 'Generated' }],
+      layout: { testRoots: ['test', 'tests', 'src/spare'] },
     };
     const { exitCode, summary } = runWithHeadConfig({
       baseConfig: config,
       headConfig: config,
-      headMoves: [['src/a.ts', 'src/vendor/a.ts']],
       headFiles: {
-        'src/later/big.ts': 'export {};\n',
-        'src/vendor/lib.ts': 'export const a = 1;\n',
+        'src/later/a.ts': 'export {};\n',
+        'src/next/big.ts': 'export {};\n',
+        'src/spare/c.ts': 'export {};\n',
       },
     });
 
     expect([exitCode, summary.policyLoosenings]).toEqual([
       1,
       [
-        'exclude src/vendor/** hides code this change adds or moves: src/vendor/a.ts. Keep new code where the gate checks it',
-        'exception file-lines-limit for src/later/** hides code this change adds or moves: src/later/big.ts. Keep new code where the gate checks it',
+        `exclude src/later/** covers no code of the base and hides code this change adds or moves: src/later/a.ts. ${ALLOWED_FORM}`,
+        `exception file-lines-limit for src/next/** covers no code of the base and hides code this change adds or moves: src/next/big.ts. ${ALLOWED_FORM}`,
+        `layout.testRoots src/spare covers no code of the base and hides code this change adds or moves: src/spare/c.ts. ${ALLOWED_FORM}`,
       ],
     ]);
     expect(summary.notices).toEqual([]);
+  });
+
+  it('fails code added or moved under an exclude or test root that covers base code only when production code imports it', () => {
+    const config = {
+      exclude: ['src/vendor/**'],
+      layout: { testRoots: ['test', 'tests', 'src/legacy'] },
+    };
+    const { exitCode, summary } = runWithHeadConfig({
+      baseConfig: config,
+      headConfig: config,
+      headMoves: [['src/a.ts', 'src/vendor/a.ts']],
+      headFiles: {
+        'src/feature.ts': "import './vendor/a';\nimport './legacy/helper';\n",
+        'src/legacy/fixture.ts': "import '../vendor/only-vendored';\n",
+        'src/vendor/b.ts': "import './only-vendored';\n",
+        'src/vendor/only-vendored.ts': 'export {};\n',
+        'src/legacy/helper.ts': 'export {};\n',
+      },
+    });
+
+    expect([exitCode, summary.policyLoosenings]).toEqual([
+      1,
+      [
+        `exclude src/vendor/** hides code this change adds or moves that production code imports: src/vendor/a.ts (imported by src/feature.ts). ${ALLOWED_FORM}`,
+        `layout.testRoots src/legacy hides code this change adds or moves that production code imports: src/legacy/helper.ts (imported by src/feature.ts). ${ALLOWED_FORM}`,
+      ],
+    ]);
   });
 
   it('passes code added under an exception that already covered code in the base', () => {
@@ -357,20 +388,13 @@ describe('a change that adopts or keeps the policy', () => {
     ]);
   });
 
-  it('fails a test root added over production code, and code added under one the base had', () => {
-    const testRoots = ['test', 'tests', 'src/legacy'];
-    const added = runWithHeadConfig({ headConfig: { layout: { testRoots } } });
-    const kept = runWithHeadConfig({
-      baseConfig: { layout: { testRoots } },
-      headConfig: { layout: { testRoots } },
-      headFiles: { 'src/legacy/big.ts': 'export {};\n' },
+  it('fails a test root added over production code', () => {
+    const { summary } = runWithHeadConfig({
+      headConfig: { layout: { testRoots: ['test', 'tests', 'src/legacy'] } },
     });
 
-    expect(added.summary.policyLoosenings).toEqual([
+    expect(summary.policyLoosenings).toEqual([
       'layout.testRoots added: src/legacy (production code under it becomes test code)',
-    ]);
-    expect(kept.summary.policyLoosenings).toEqual([
-      'layout.testRoots src/legacy hides code this change adds or moves: src/legacy/big.ts. Keep new code where the gate checks it',
     ]);
   });
 });

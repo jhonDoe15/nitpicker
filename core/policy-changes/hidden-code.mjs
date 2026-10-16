@@ -4,6 +4,8 @@ import { isUnder } from './policy-scope.mjs';
 
 const LISTED_FILES = 3;
 const TEST_ROOTS = 'layout.testRoots';
+const ALLOWED_FORM =
+  'Write new code as production code under the source roots, where the gate checks it';
 
 function kept(baseGlobs = [], headGlobs = []) {
   return headGlobs.filter((glob) => baseGlobs.includes(glob));
@@ -15,7 +17,7 @@ function globHiders(label, globs) {
     function covers(file) {
       return matcher.test(file);
     }
-    return { label: `${label} ${glob}`, covers, coveredInBase: covers };
+    return { label: `${label} ${glob}`, covers, coveredInBase: covers, hidesFromImporters: true };
   });
 }
 
@@ -26,14 +28,15 @@ function coversBaseCode(hider, scope) {
   });
 }
 
-function dormantExceptionHiders(label, [baseExceptions = [], headExceptions = []], scope) {
+function exceptionHiders(label, [baseExceptions = [], headExceptions = []]) {
   return headExceptions.flatMap(({ rule, paths }) => {
     const basePaths = baseExceptions
       .filter((entry) => entry.rule === rule)
       .flatMap((entry) => entry.paths);
-    return globHiders(`${label} ${rule} for`, kept(basePaths, paths)).filter(
-      (hider) => !coversBaseCode(hider, scope),
-    );
+    return globHiders(`${label} ${rule} for`, kept(basePaths, paths)).map((hider) => ({
+      ...hider,
+      hidesFromImporters: false,
+    }));
   });
 }
 
@@ -57,6 +60,7 @@ function testRootHiders(baseConfig, headConfig, scope) {
         covers: (file) =>
           isUnder(file, root) && !head.isSourceFile(file) && without.isSourceFile(file),
         coveredInBase: (basePath) => isUnder(basePath, root),
+        hidesFromImporters: true,
       };
     });
 }
@@ -66,10 +70,35 @@ function isNewlyHidden(hider, file, scope) {
   return basePath === file ? !scope.existsInBase(file) : !hider.coveredInBase(basePath);
 }
 
-function described(label, files) {
-  const listed = files.slice(0, LISTED_FILES).join(', ');
-  const more = files.length > LISTED_FILES ? `, and ${files.length - LISTED_FILES} more` : '';
-  return `${label} hides code this change adds or moves: ${listed}${more}. Keep new code where the gate checks it`;
+function listed(entries) {
+  const more = entries.length > LISTED_FILES ? `, and ${entries.length - LISTED_FILES} more` : '';
+  return `${entries.slice(0, LISTED_FILES).join(', ')}${more}`;
+}
+
+function dormantChange(label, files) {
+  const hidden = `hides code this change adds or moves: ${listed(files)}`;
+  return `${label} covers no code of the base and ${hidden}. ${ALLOWED_FORM}`;
+}
+
+function importedChange(label, files, imports) {
+  const entries = files.map((file) => `${file} (imported by ${imports.get(file)})`);
+  const hidden = `hides code this change adds or moves that production code imports: ${listed(entries)}`;
+  return `${label} ${hidden}. ${ALLOWED_FORM}`;
+}
+
+function hiderChanges(hider, scope) {
+  const files = scope.checked
+    .filter((file) => hider.covers(file) && isNewlyHidden(hider, file, scope))
+    .toSorted();
+  if (files.length === 0) {
+    return [];
+  }
+  if (!coversBaseCode(hider, scope)) {
+    return [dormantChange(hider.label, files)];
+  }
+  const imports = scope.productionImports();
+  const imported = hider.hidesFromImporters ? files.filter((file) => imports.has(file)) : [];
+  return imported.length === 0 ? [] : [importedChange(hider.label, imported, imports)];
 }
 
 export function hiddenCodeChanges(baseConfig, headConfig, scope) {
@@ -82,21 +111,12 @@ export function hiddenCodeChanges(baseConfig, headConfig, scope) {
         resolveLayout(headConfig.layout).excludedGlobs,
       ),
     ),
-    ...dormantExceptionHiders('exception', [baseConfig.exceptions, headConfig.exceptions], scope),
-    ...dormantExceptionHiders(
-      'python.exceptions',
-      [baseConfig.python?.exceptions, headConfig.python?.exceptions],
-      scope,
-    ),
+    ...exceptionHiders('exception', [baseConfig.exceptions, headConfig.exceptions]),
+    ...exceptionHiders('python.exceptions', [
+      baseConfig.python?.exceptions,
+      headConfig.python?.exceptions,
+    ]),
     ...testRootHiders(baseConfig, headConfig, scope),
   ];
-  return {
-    loosened: hiders.flatMap((hider) => {
-      const files = scope.checked
-        .filter((file) => hider.covers(file) && isNewlyHidden(hider, file, scope))
-        .toSorted();
-      return files.length === 0 ? [] : [described(hider.label, files)];
-    }),
-    changed: [],
-  };
+  return { loosened: hiders.flatMap((hider) => hiderChanges(hider, scope)), changed: [] };
 }
