@@ -154,7 +154,12 @@ describe('Gradle arguments', () => {
         (argument) => !argument.startsWith('-Pnitpicker.reportDir='),
       );
     };
-    const common = ['--console=plain', '--quiet', '--no-configuration-cache'];
+    const common = [
+      '--console=plain',
+      '--quiet',
+      '--no-configuration-cache',
+      `-Pnitpicker.node=${process.execPath}`,
+    ];
 
     expect(argumentsOf({ preset: 'kotlin' })).toEqual([
       ...common,
