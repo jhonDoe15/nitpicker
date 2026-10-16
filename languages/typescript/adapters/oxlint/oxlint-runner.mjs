@@ -1,5 +1,4 @@
 import { rmSync } from 'node:fs';
-import { tmpdir } from 'node:os';
 import path from 'node:path';
 import {
   trackTemporaryPath,
@@ -72,7 +71,7 @@ export function lintWithOxlint({ options, environment, projectConfigPath, runEsl
 
 function nativeRules(environment) {
   const listed = spawnJson([oxlintBinary(), '--rules', '--format', 'json'], {
-    cwd: tmpdir(),
+    cwd: import.meta.dirname,
     env: environment,
     context: 'oxlint rule listing',
   });
