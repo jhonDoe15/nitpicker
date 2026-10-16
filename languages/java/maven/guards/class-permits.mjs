@@ -22,29 +22,29 @@ function skipMembers(reader) {
   Array.from({ length: reader.u2() }).reduce(skipMember, reader);
 }
 
-function readPermitted(reader, pool) {
+function readPermitted(reader, constants) {
   return Array.from({ length: reader.u2() }).flatMap(() => {
-    const name = pool.utf.get(reader.u2());
+    const name = constants.utf.get(reader.u2());
     const length = reader.u4();
     if (name !== 'PermittedSubclasses') {
       reader.skip(length);
       return [];
     }
-    return Array.from({ length: reader.u2() }, () => pool.className(reader.u2()));
+    return Array.from({ length: reader.u2() }, () => constants.className(reader.u2()));
   });
 }
 
 export function permittedSubclasses(buffer) {
   const reader = classReader(buffer);
   reader.skip(8);
-  const pool = readConstantPool(reader);
+  const constants = readConstantPool(reader);
   reader.skip(2);
-  const self = pool.className(reader.u2());
+  const self = constants.className(reader.u2());
   reader.skip(2);
   reader.skip(2 * reader.u2());
   skipMembers(reader);
   skipMembers(reader);
-  return readPermitted(reader, pool).map(
+  return readPermitted(reader, constants).map(
     (subclass) => `${self.replaceAll('/', '.')} -> ${subclass.replaceAll('/', '.')}`,
   );
 }

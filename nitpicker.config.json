@@ -55,9 +55,21 @@
       "rule": "nitpicker/no-io-in-loop",
       "paths": [
         "languages/java/adapters/comments/java-comments.mjs",
-        "languages/java/adapters/test-support/violation-markers.mjs"
+        "languages/java/adapters/test-support/violation-markers.mjs",
+        "languages/java/adapters/gradle-reports/report-modules.mjs",
+        "languages/java/adapters/jpa/jpa-source-filters.mjs",
+        "languages/java/adapters/reporting/java-reports.mjs",
+        "languages/java/adapters/test-times/slow-tests.mjs",
+        "languages/java/adapters/test-times/spring-boot-tests.mjs",
+        "languages/java/builds/project-wide.mjs",
+        "languages/java/maven/guards/class-permits.mjs",
+        "languages/java/maven/guards/maven-guards.mjs",
+        "languages/java/maven/guards/maven-javac-lint.mjs",
+        "languages/java/maven/guards/maven-pmd.mjs",
+        "languages/java/maven/maven-lint.mjs",
+        "languages/java/maven/results/maven-test-results.mjs"
       ],
-      "reason": "Each reads or checks every distinct local file exactly once; the file system has no batched read to use."
+      "reason": "Each reads, checks, writes or copies every distinct local file or directory exactly once (report files, class files, source files, source roots, classpath entries); the file system has no batched call to use."
     },
     {
       "rule": "nitpicker/no-node-process-per-test",

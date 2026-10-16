@@ -10,6 +10,8 @@ const JACOCO = 'org.jacoco:jacoco-maven-plugin';
 const SUREFIRE = 'org.apache.maven.plugins:maven-surefire-plugin';
 const COMPILER = 'org.apache.maven.plugins:maven-compiler-plugin';
 const FAILSAFE = 'org.apache.maven.plugins:maven-failsafe-plugin';
+const CONFIGURATION = 'configuration';
+const PROPERTIES = 'properties';
 
 function child(element, ...names) {
   return names.reduce((current, name) => current && childrenNamed(current, name)[0], element);
@@ -48,7 +50,7 @@ function helperRoots(plugin, goal, basedir) {
   return plugin === undefined
     ? []
     : executionsWithGoal(plugin, goal).flatMap((execution) =>
-        all(execution, 'configuration', 'sources', 'source').map((source) =>
+        all(execution, CONFIGURATION, 'sources', 'source').map((source) =>
           path.resolve(basedir, source.text ?? '.'),
         ),
       );
@@ -59,8 +61,7 @@ function jacocoDestFile(plugin) {
     plugin === undefined ? undefined : executionsWithGoal(plugin, 'prepare-agent')[0];
   return execution === undefined
     ? undefined
-    : (textAt(execution, 'configuration', 'destFile') ??
-        textAt(plugin, 'configuration', 'destFile'));
+    : (textAt(execution, CONFIGURATION, 'destFile') ?? textAt(plugin, CONFIGURATION, 'destFile'));
 }
 
 function resolvedText(build, basedir, name) {
@@ -76,13 +77,13 @@ function compilerConfigurations(plugin) {
   const compile = all(plugin, 'executions', 'execution').find(
     (execution) => textAt(execution, 'id') === 'default-compile',
   );
-  return [child(compile, 'configuration'), child(plugin, 'configuration')];
+  return [child(compile, CONFIGURATION), child(plugin, CONFIGURATION)];
 }
 
 function setting({ project, configurations }, name, property) {
   return [
     ...configurations.map((configuration) => textAt(configuration, name)),
-    textAt(project, 'properties', property),
+    textAt(project, PROPERTIES, property),
   ]
     .map((value) => resolved(value))
     .find((value) => value !== undefined);
@@ -109,7 +110,7 @@ function compilerSettings(project, plugins) {
     target: setting(settings, 'target', 'maven.compiler.target'),
     encoding:
       setting(settings, 'encoding', 'maven.compiler.encoding') ??
-      resolved(textAt(project, 'properties', 'project.build.sourceEncoding')),
+      resolved(textAt(project, PROPERTIES, 'project.build.sourceEncoding')),
     args: [
       ...compilerArgs(settings.configurations),
       ...(setting(settings, 'enablePreview', 'maven.compiler.enablePreview') === 'true'
@@ -120,7 +121,7 @@ function compilerSettings(project, plugins) {
 }
 
 function reportsDirectory(plugin) {
-  return plugin && textAt(plugin, 'configuration', 'reportsDirectory');
+  return plugin && textAt(plugin, CONFIGURATION, 'reportsDirectory');
 }
 
 function describeModule(project, { basedir, pomFile }) {
@@ -161,7 +162,7 @@ function describeModule(project, { basedir, pomFile }) {
       failsafeReports ?? path.join(buildDirectory, 'failsafe-reports'),
     ),
     jacocoDestFile: destFile === undefined ? undefined : path.resolve(basedir, destFile),
-    archunitIncludes: textAt(project, 'properties', 'nitpicker.archunit.includes'),
+    archunitIncludes: textAt(project, PROPERTIES, 'nitpicker.archunit.includes'),
     compiler: compilerSettings(project, plugins),
   };
 }

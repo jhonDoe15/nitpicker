@@ -112,7 +112,10 @@ export function zipOf(files, { zip64 = false, wideSizes = false, comment = '' } 
     method: index % 2 === 0 ? 8 : 0,
   }));
   const written = entries.map((entry) => ({ ...localEntry(entry), method: entry.method }));
-  const offsets = written.reduce((list, { local }) => [...list, list.at(-1) + local.length], [0]);
+  const offsets = [0];
+  for (const { local } of written) {
+    offsets.push(offsets.at(-1) + local.length);
+  }
   const central = Buffer.concat(
     written.map((entry, index) => directoryEntry(entry, offsets[index], { zip64, wideSizes })),
   );
