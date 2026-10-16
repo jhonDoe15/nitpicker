@@ -29,6 +29,8 @@ import { copyTestResults } from './results/maven-test-results.mjs';
 import { jacocoPlugin, MAVEN_PLUGINS, resolveTools } from './maven-tools.mjs';
 import { processorTool, runErrorProne } from './errorprone/maven-errorprone.mjs';
 import { GRADLE_DIRECTORY, readPinnedTools } from '../builds/java-build.mjs';
+import { analyzeKotlinModule } from './kotlin/kotlin-module.mjs';
+import { kotlinSetup } from './kotlin/kotlin-options.mjs';
 
 export const MAVEN_REPORT_DIRECTORY = 'target/nitpicker';
 const OWN_JACOCO_EXEC = 'nitpicker-jacoco.exec';
@@ -40,6 +42,8 @@ const PROJECT_CHECKS_OFF = [
   '-Dcpd.skip=true',
   '-Dspotbugs.skip=true',
   '-Dspotless.check.skip=true',
+  '-Dktlint.skip=true',
+  '-Ddetekt.skip=true',
 ];
 
 function relativeTo(basedir, file) {
@@ -144,7 +148,7 @@ function hasGuava(classpath) {
   return classpath.some((entry) => GUAVA_JAR.test(path.basename(entry)));
 }
 
-function writeManifest({ module, reportDir, pinned, spring, classpaths }) {
+function writeManifest({ module, reportDir, pinned, spring, classpaths, kotlinManifest }) {
   writeFileSync(
     path.join(reportDir, 'manifest.json'),
     JSON.stringify({
@@ -156,6 +160,7 @@ function writeManifest({ module, reportDir, pinned, spring, classpaths }) {
       spring,
       guava: hasGuava(classpaths.mainCompile),
       testGuava: hasGuava(classpaths.testCompile),
+      ...kotlinManifest,
     }),
   );
 }
@@ -167,29 +172,43 @@ function readClasspaths(work, module) {
   );
 }
 
-function analyzeModule({ module, classpaths, tools, pinned, configs, since }) {
+function analyzeModule({ module, classpaths, tools, pinned, configs, since, kotlinOptions }) {
   const reportDir = path.join(module.basedir, MAVEN_REPORT_DIRECTORY);
   const isArchunit = archunitMatcher(module.archunitIncludes);
   const spring = classpaths.mainCompile.some((entry) => SPRING_JAR.test(path.basename(entry)));
   const testsRan = collectTestResults({ module, reportDir, since, isArchunit });
   copyTestResults({ module, reportDir, since, isArchunit });
+  const kotlin = analyzeKotlinModule({
+    module,
+    reportDir,
+    tools,
+    classpaths,
+    pinned,
+    options: kotlinOptions,
+    spring,
+  });
   runPmd({ module, reportDir, tools, classpaths, configs, spring });
-  runSpotbugs({ module, reportDir, tools });
+  runSpotbugs({
+    module: kotlin.spotbugsModule,
+    reportDir,
+    tools,
+    auxClasspath: kotlin.auxClasspath,
+  });
   runErrorProne({ module, reportDir, tools, classpaths });
   runFormat({ module, reportDir, tools });
   runCheckstyle({ module, reportDir, tools, configs, pinned });
   runStructure(module, reportDir);
   runJdeps(module, reportDir);
   runJacocoReport({
-    module,
+    module: kotlin.coverageModule,
     reportDir,
     tools,
     execFiles: jacocoExecFiles(module),
     since,
     testsRan,
   });
-  runPit({ module, reportDir, tools, classpaths, isArchunit });
-  writeManifest({ module, reportDir, pinned, spring, classpaths });
+  runPit({ module: kotlin.coverageModule, reportDir, tools, classpaths, isArchunit });
+  writeManifest({ module, reportDir, pinned, spring, classpaths, kotlinManifest: kotlin.manifest });
 }
 
 function jacocoExecFiles(module) {
@@ -206,7 +225,8 @@ function staleOutputs(module) {
 }
 
 function readModules(projectRoot, maven, work) {
-  const modules = readReactor(projectRoot, readEffectivePom(projectRoot, maven, work)).filter(
+  const effectivePom = readEffectivePom(projectRoot, maven, work);
+  const modules = readReactor(projectRoot, effectivePom).filter(
     (module) => module.packaging !== 'pom',
   );
   if (modules.length === 0) {
@@ -220,7 +240,7 @@ function readModules(projectRoot, maven, work) {
   for (const module of modules) {
     mkdirSync(path.join(module.basedir, MAVEN_REPORT_DIRECTORY), { recursive: true });
   }
-  return modules;
+  return { modules, effectivePom };
 }
 
 function missingLauncherVersions(analyzed) {
@@ -229,15 +249,11 @@ function missingLauncherVersions(analyzed) {
 }
 
 export function runMavenPreset(projectRoot, { maven, policy = {}, configs }) {
-  if (policy.preset === 'kotlin') {
-    throw new Error(
-      'The kotlin preset needs a Gradle build, and this project builds with Maven. Use the java preset for its Java sources',
-    );
-  }
   const pinned = readPinnedTools();
   const work = mkdtempSync(path.join(tmpdir(), 'nitpicker-maven-'));
   try {
-    const modules = readModules(projectRoot, maven, work);
+    const { modules, effectivePom } = readModules(projectRoot, maven, work);
+    const kotlin = kotlinSetup({ projectRoot, policy, modules, effectivePom, work, pinned });
     const since = Date.now() - 2000;
     buildAndTest({ projectRoot, maven, work, pinned, modules });
     const analyzed = modules.map((module) => ({
@@ -249,10 +265,21 @@ export function runMavenPreset(projectRoot, { maven, policy = {}, configs }) {
       maven,
       pinned,
       launcherVersions: missingLauncherVersions(analyzed),
-      extraTools: modules.map((module) => processorTool(module.compiler)).filter(Boolean),
+      extraTools: [
+        ...modules.map((module) => processorTool(module.compiler)).filter(Boolean),
+        ...kotlin.extraTools,
+      ],
     });
     for (const { module, classpaths } of analyzed) {
-      analyzeModule({ module, classpaths, tools, pinned, configs, since });
+      analyzeModule({
+        module,
+        classpaths,
+        tools,
+        pinned,
+        configs,
+        since,
+        kotlinOptions: kotlin.options,
+      });
     }
     return modules.map((module) => module.basedir);
   } finally {

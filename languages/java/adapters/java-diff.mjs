@@ -156,6 +156,9 @@ function mavenFindings(projectRoot, options) {
   for (const moduleDir of moduleDirs) {
     const { reportBase, report } = moduleReport(moduleDir, MAVEN_REPORT_DIRECTORY);
     runJavaDuplicates(moduleDir, { reportRoot: reportBase, manifest: report.manifest });
+    if (report.manifest.kotlin === true) {
+      runKotlinDuplicates(moduleDir, { reportRoot: reportBase, manifest: report.manifest });
+    }
   }
   return readModuleFindings(projectRoot, moduleDirs, {
     ...readOptions(options.policy),

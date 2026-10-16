@@ -2,6 +2,7 @@ import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { childAt, childrenAt, childrenNamed, parseXml } from '../ingest/common.mjs';
 import { compilerSettings } from './errorprone/maven-compiler.mjs';
+import { kotlinRoots } from './kotlin/kotlin-roots.mjs';
 
 const SCOPES = new Set(['compile', 'provided', 'runtime', 'test', 'system']);
 const MAIN_COMPILE_SCOPES = new Set(['compile', 'provided', 'system']);
@@ -147,6 +148,10 @@ function describeModule(project, basedir) {
   };
 }
 
+function withKotlin(project, module) {
+  return { ...module, kotlin: kotlinRoots(project, module) };
+}
+
 function rawCoordinates(pomFile) {
   return existsSync(pomFile) ? coordinates(parseXml(readFileSync(pomFile, 'utf8'))) : undefined;
 }
@@ -211,7 +216,7 @@ export function readReactor(projectRoot, effectivePom) {
     const basedir = moduleDirectory(projectRoot, pomFile, modules);
     const project = matchProject(pomFile, candidates);
     candidates.splice(candidates.indexOf(project), 1);
-    modules.push(describeModule(project, basedir));
+    modules.push(withKotlin(project, describeModule(project, basedir)));
     const children = childrenAt(project, 'modules', 'module')
       .filter((module) => module.text !== undefined)
       .map((module) => pomFileOf(basedir, module.text));

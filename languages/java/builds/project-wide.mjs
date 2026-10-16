@@ -7,6 +7,7 @@ import {
 } from '../adapters/metrics/java-coupling.mjs';
 import { readJavaFileLimitFindings } from '../adapters/metrics/java-structure.mjs';
 import { kotlinModules, readKotlinMetrics } from '../adapters/kotlin/kotlin-metrics.mjs';
+import { inModule } from './module-path.mjs';
 
 const JDEPS_REPORT = 'jdeps.txt';
 const JDEPS_CLASSES = 'jdeps-classes.txt';
@@ -58,7 +59,7 @@ function kotlinNodes(projects) {
       moduleOf.set(qualified(project.qualifier, className), qualified(project.qualifier, node));
     }
     for (const [node, file] of nodes.fileOf) {
-      fileOf.set(qualified(project.qualifier, node), file);
+      fileOf.set(qualified(project.qualifier, node), inModule(project.filePrefix, file));
     }
   }
   return { moduleOf, fileOf };

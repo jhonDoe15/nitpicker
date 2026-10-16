@@ -4,6 +4,13 @@ import { readJavaFindings } from '../adapters/reporting/java-reports.mjs';
 import { inModule } from './module-path.mjs';
 import { projectWideFindings } from './project-wide.mjs';
 
+const MODULE_ROOT_LISTS = [
+  'sourceRoots',
+  'testSourceRoots',
+  'kotlinSourceRoots',
+  'kotlinTestSourceRoots',
+];
+
 function prefixOf(projectRoot, moduleDir) {
   return path.relative(projectRoot, moduleDir).replaceAll('\\', '/');
 }
@@ -24,19 +31,19 @@ export function moduleReport(moduleDir, reportDirectory) {
 function readModule(moduleDir, options) {
   return readJavaFindings(moduleDir, {
     ...options,
+    requireKotlin: false,
     ...moduleReport(moduleDir, options.reportDirectory),
   }).findings;
 }
 
 function mergedRoots(projectRoot, moduleDirs, reportDirectory) {
-  const roots = { sourceRoots: [], testSourceRoots: [] };
+  const roots = Object.fromEntries(MODULE_ROOT_LISTS.map((list) => [list, []]));
   for (const moduleDir of moduleDirs) {
     const prefix = prefixOf(projectRoot, moduleDir);
     const manifest = readManifest(moduleDir, reportDirectory);
-    roots.sourceRoots.push(...(manifest.sourceRoots ?? []).map((root) => inModule(prefix, root)));
-    roots.testSourceRoots.push(
-      ...(manifest.testSourceRoots ?? []).map((root) => inModule(prefix, root)),
-    );
+    for (const list of MODULE_ROOT_LISTS) {
+      roots[list].push(...(manifest[list] ?? []).map((root) => inModule(prefix, root)));
+    }
   }
   return roots;
 }
@@ -61,13 +68,14 @@ export function readModuleFindings(projectRoot, moduleDirs, options) {
       projects: moduleDirs.map((moduleDir) => ({
         reportRoot: path.join(moduleDir, options.reportDirectory),
         qualifier: prefixOf(projectRoot, moduleDir),
+        filePrefix: prefixOf(projectRoot, moduleDir),
         sourceRoots: (readManifest(moduleDir, options.reportDirectory).sourceRoots ?? []).map(
           (root) => inModule(prefixOf(projectRoot, moduleDir), root),
         ),
       })),
       mergedRoot: path.join(projectRoot, options.reportDirectory),
       manifest: roots,
-      kotlin: false,
+      kotlin: options.preset === 'kotlin',
       policy: options,
     }),
   ];

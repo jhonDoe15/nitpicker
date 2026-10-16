@@ -132,24 +132,6 @@ describe.skipIf(process.platform === 'win32')('Maven failures', () => {
       },
     ]);
   });
-
-  it('asks for a Gradle build under the kotlin preset', () => {
-    const root = project({ 'pom.xml': {} });
-
-    expect(
-      analyzeJavaSnapshot(root, { maven: '/unused', policy: { preset: 'kotlin' } }).findings,
-    ).toEqual([
-      {
-        tool: 'kotlin',
-        rule: 'maven-failure',
-        path: '.',
-        identity: 'maven-failure',
-        message:
-          'The kotlin preset needs a Gradle build, and this project builds with Maven. Use the java preset for its Java sources',
-        classification: 'tool-error',
-      },
-    ]);
-  });
 });
 
 describe('mavenErrorSummary', () => {

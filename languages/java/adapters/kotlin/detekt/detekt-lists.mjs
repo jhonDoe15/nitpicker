@@ -50,14 +50,17 @@ export function mergeForbiddenMethods(nitpickerEntries, projectEntries) {
   return { merged: [...nitpickerEntries, ...added.values()], added: added.size };
 }
 
-export function writeDetektLists(projectRoot, projectConfigPath) {
+export function writeDetektLists(
+  projectRoot,
+  projectConfigPath,
+  target = path.join(projectRoot, LISTS_FILE),
+) {
   const nitpicker = forbiddenMethodsOf(readFileSync(NITPICKER_CONFIG, 'utf8'));
   const project = forbiddenMethodsOf(readFileSync(projectConfigPath, 'utf8'));
   const { merged, added } = mergeForbiddenMethods(nitpicker, project);
   if (added === 0) {
     return undefined;
   }
-  const target = path.join(projectRoot, LISTS_FILE);
   mkdirSync(path.dirname(target), { recursive: true });
   writeFileSync(target, yaml().stringify({ [RULESET]: { [RULE]: { [LIST]: merged } } }));
   return target;

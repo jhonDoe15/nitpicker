@@ -14,6 +14,7 @@ const DETEKT_CONFIGS = ['config/detekt/detekt', 'config/detekt', 'detekt'].flatM
   `${base}.yaml`,
 ]);
 const EDITORCONFIG = '.editorconfig';
+const MAVEN_STYLE = /<style>\s*(kotlinlang|google)\s*<\/style>/u;
 const SPOTLESS_SCRIPT_BLOCK = 'kotlinGradle';
 const BRACE_DELTA = { '{': 1, '}': -1 };
 
@@ -73,7 +74,10 @@ function ktfmtStyle(build) {
   if (build.includes('kotlinlangstyle')) {
     return 'kotlinlang';
   }
-  return build.includes('googlestyle') ? 'google' : 'meta';
+  if (build.includes('googlestyle')) {
+    return 'google';
+  }
+  return MAVEN_STYLE.exec(build)?.[1] ?? 'meta';
 }
 
 function detektConfigOf(projectRoot, configured, snapshot) {
@@ -89,8 +93,11 @@ function detektConfigOf(projectRoot, configured, snapshot) {
   return configured;
 }
 
-export function resolveKotlinTools(projectRoot, { formatter, detektConfig, snapshot } = {}) {
-  const build = buildText(projectRoot);
+export function resolveKotlinTools(
+  projectRoot,
+  { formatter, detektConfig, snapshot, effectivePom } = {},
+) {
+  const build = effectivePom === undefined ? buildText(projectRoot) : effectivePom.toLowerCase();
   const editorconfig = readIfExists(projectRoot, EDITORCONFIG);
   return {
     formatter: formatter ?? detectFormatter({ build, editorconfig }),

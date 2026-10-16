@@ -688,12 +688,34 @@ allprojects {
                         }
                     }
                 }
+                // Syntax trees of the Kotlin sources that use Spring or JPA, for the Kotlin Spring rules
+                // (languages/java/adapters/kotlin/spring). Same compiler, same single-file source mode.
+                tasks.register('nitpickerKotlinSyntax') {
+                    group = 'nitpicker'
+                    onlyIf { usesSpring() && !kotlinFiles().isEmpty() }
+                    def syntaxSource = new File(initScriptDir, 'KotlinSyntax.java')
+                    doLast {
+                        reportDir.get().asFile.mkdirs()
+                        def output = reportDir.get().file('kotlin-syntax.json').asFile
+                        def roots = kotlinSourceDirs().collect { relative(it) }
+                        def java = new File(System.getProperty('java.home'), 'bin/java').absolutePath
+                        def process = new ProcessBuilder([java, '-Djava.awt.headless=true',
+                                "-Dnitpicker.kotlinCompiler=${pinned.kotlinCompiler}".toString(), '-cp',
+                                configurations.nitpickerKotlinCompiler.asPath, syntaxSource.absolutePath,
+                                output.absolutePath, analysisRoot.absolutePath] + roots)
+                            .directory(projectDir).redirectErrorStream(true).start()
+                        def log = process.inputStream.getText('UTF-8')
+                        if (process.waitFor() != 0) {
+                            throw new GradleException("KotlinSyntax failed: ${log.trim()}")
+                        }
+                    }
+                }
                 // --- end kotlin structure ---
 
                 // Reports a skipped tool would have written, so the Nitpicker side reads the same files for
                 // every module; and the Kotlin entries of the manifest. The Java source roots stay Java-only.
                 tasks.named('nitpickerJava') {
-                    dependsOn 'nitpickerDetekt', 'nitpickerKtlint', 'nitpickerKtfmt', 'nitpickerKotlinMetrics'
+                    dependsOn 'nitpickerDetekt', 'nitpickerKtlint', 'nitpickerKtfmt', 'nitpickerKotlinMetrics', 'nitpickerKotlinSyntax'
                     doLast {
                         def directory = reportDir.get().asFile
                         def emptySarif = '{"version":"2.1.0","runs":[]}'
