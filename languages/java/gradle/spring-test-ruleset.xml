@@ -7,4 +7,38 @@
          xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
          xsi:schemaLocation="http://pmd.sourceforge.net/ruleset/2.0.0 https://pmd.sourceforge.io/ruleset_2_0_0.xsd">
   <description>Nitpicker Spring rules for test sources.</description>
+  <rule name="SpringUnusedContext" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
+        message="This @SpringBootTest starts the whole application context but uses nothing from it: no injected or mock bean, no MockMvc, WebTestClient or TestRestTemplate. Make it a unit test that creates the class with new, or use a slice such as @WebMvcTest for one layer; @SpringBootTest is for integration and component tests. If the context is needed, add an exception for pmd/SpringUnusedContext in nitpicker.config.json.">
+    <priority>2</priority>
+    <properties><property name="xpath"><value><![CDATA[
+//ClassDeclaration[not(ExtendsList)]
+  [ModifierList/Annotation[pmd-java:typeIs('org.springframework.boot.test.context.SpringBootTest')]
+    [not(.//MemberValuePair[@Name = 'webEnvironment']//FieldAccess[@Name = ('RANDOM_PORT', 'DEFINED_PORT')])]]
+  [let $injection := (
+         'org.springframework.beans.factory.annotation.Autowired',
+         'org.springframework.beans.factory.annotation.Value',
+         'org.springframework.beans.factory.annotation.Qualifier',
+         'jakarta.inject.Inject', 'javax.inject.Inject', 'jakarta.annotation.Resource', 'javax.annotation.Resource',
+         'jakarta.persistence.PersistenceContext',
+         'org.springframework.boot.test.mock.mockito.MockBean', 'org.springframework.boot.test.mock.mockito.SpyBean',
+         'org.springframework.test.context.bean.override.mockito.MockitoBean',
+         'org.springframework.test.context.bean.override.mockito.MockitoSpyBean',
+         'org.springframework.test.context.bean.override.convention.TestBean',
+         'org.springframework.boot.test.web.server.LocalServerPort',
+         'org.springframework.boot.test.web.server.LocalManagementPort'),
+       $clients := (
+         'org.springframework.test.web.servlet.MockMvc',
+         'org.springframework.test.web.servlet.assertj.MockMvcTester',
+         'org.springframework.test.web.reactive.server.WebTestClient',
+         'org.springframework.boot.test.web.client.TestRestTemplate',
+         'org.springframework.context.ApplicationContext')
+   return not(.//(FieldDeclaration | FormalParameter)/ModifierList/Annotation
+                [some $type in $injection satisfies pmd-java:typeIs($type)])
+     and not(.//(FieldDeclaration | FormalParameter)/ClassType
+                [some $type in $clients satisfies pmd-java:typeIs($type)])]
+  [not(.//ConstructorDeclaration[FormalParameters/@Size > 0])]
+  [.//MethodDeclaration[ModifierList/Annotation[@SimpleName = ('Test', 'ParameterizedTest', 'RepeatedTest')]]
+     [Block/*]]
+]]></value></property></properties>
+  </rule>
 </ruleset>
