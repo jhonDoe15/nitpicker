@@ -449,7 +449,8 @@
     <properties><property name="xpath"><value><![CDATA[
 //MethodCall[@MethodName = ('save', 'saveAndFlush', 'delete', 'deleteById', 'persist', 'merge', 'remove')]
   [*[1][pmd-java:typeIs('org.springframework.data.repository.Repository') or pmd-java:typeIs('jakarta.persistence.EntityManager')]]
-  [ancestor::*[self::ForStatement or self::ForeachStatement or self::WhileStatement or self::DoStatement][not(.//MethodCall[@MethodName = 'clear'][*[1][pmd-java:typeIs('jakarta.persistence.EntityManager')]])]
+  [ancestor::*[self::ForStatement or self::ForeachStatement or self::WhileStatement or self::DoStatement]
+     [not(.//IfStatement[*[1]//InfixExpression[@Operator = '%']]//MethodCall[@MethodName = 'clear'][*[1][pmd-java:typeIs('jakarta.persistence.EntityManager')]])]
    or ancestor::LambdaExpression[parent::ArgumentList/parent::MethodCall[@MethodName = ('forEach', 'map', 'peek', 'forEachOrdered')]
      [*[1][pmd-java:typeIs('java.util.stream.BaseStream') or pmd-java:typeIs('java.lang.Iterable') or pmd-java:typeIs('java.util.Map')]]]]
 |
@@ -466,7 +467,8 @@
     <properties><property name="xpath"><value><![CDATA[
 //MethodCall[@MethodName = ('saveAndFlush', 'saveAllAndFlush', 'flush')]
   [*[1][pmd-java:typeIs('org.springframework.data.repository.Repository') or pmd-java:typeIs('jakarta.persistence.EntityManager')]]
-  [not(ancestor::*[self::ForStatement or self::ForeachStatement or self::WhileStatement or self::DoStatement][1]//MethodCall[@MethodName = 'clear'][*[1][pmd-java:typeIs('jakarta.persistence.EntityManager')]])]
+  [not(ancestor::*[self::ForStatement or self::ForeachStatement or self::WhileStatement or self::DoStatement][1]
+    [.//IfStatement[*[1]//InfixExpression[@Operator = '%']]//MethodCall[@MethodName = 'clear'][*[1][pmd-java:typeIs('jakarta.persistence.EntityManager')]]])]
 ]]></value></property></properties>
   </rule>
 

@@ -177,13 +177,24 @@ let $ioTypes := '(Repository|Dao|DAO|Client|EntityManager|JdbcTemplate|RestTempl
           return not(@Operator = ('+=', '-=', '*=', '/=', '%=')
             or *[2][self::InfixExpression][@Operator = ('+', '-', '*', '/', '%')][VariableAccess/@Name = $target])])]
       //(MethodCall | ConstructorCall),
-    $springStreams := //MethodCall[@MethodName = ('forEach', 'map', 'peek', 'forEachOrdered')]
-      [*[1][pmd-java:typeIs('java.util.stream.BaseStream') or pmd-java:typeIs('java.lang.Iterable') or pmd-java:typeIs('java.util.Map')]],
-    $springWrites := (if ($springData) then (//MethodCall | //MethodReference)[@MethodName = $writes]
-      [*[1][pmd-java:typeIs('org.springframework.data.repository.Repository') or pmd-java:typeIs('jakarta.persistence.EntityManager')]]
-      [self::MethodReference[parent::ArgumentList/parent::MethodCall intersect $springStreams]
-       or self::MethodCall[ancestor::*[self::ForStatement or self::ForeachStatement or self::WhileStatement or self::DoStatement]
-         or ancestor::LambdaExpression[parent::ArgumentList/parent::MethodCall intersect $springStreams]]] else ()),
+    $springWrites := (if ($springData) then (
+      //MethodCall[@MethodName = ('save', 'saveAndFlush', 'delete', 'deleteById', 'persist', 'merge', 'remove')]
+        [*[1][pmd-java:typeIs('org.springframework.data.repository.Repository') or pmd-java:typeIs('jakarta.persistence.EntityManager')]]
+        [ancestor::*[self::ForStatement or self::ForeachStatement or self::WhileStatement or self::DoStatement]
+           [not(.//IfStatement[*[1]//InfixExpression[@Operator = '%']]//MethodCall[@MethodName = 'clear'][*[1][pmd-java:typeIs('jakarta.persistence.EntityManager')]])]
+         or ancestor::LambdaExpression[parent::ArgumentList/parent::MethodCall[@MethodName = ('forEach', 'map', 'peek', 'forEachOrdered')]
+           [*[1][pmd-java:typeIs('java.util.stream.BaseStream') or pmd-java:typeIs('java.lang.Iterable') or pmd-java:typeIs('java.util.Map')]]]]
+      |
+      //MethodCall[@MethodName = ('forEach', 'map', 'peek', 'forEachOrdered')]
+        [*[1][pmd-java:typeIs('java.util.stream.BaseStream') or pmd-java:typeIs('java.lang.Iterable') or pmd-java:typeIs('java.util.Map')]]/ArgumentList
+        /MethodReference[@MethodName = ('save', 'saveAndFlush', 'delete', 'deleteById', 'persist', 'merge', 'remove')]
+        [*[1][pmd-java:typeIs('org.springframework.data.repository.Repository') or pmd-java:typeIs('jakarta.persistence.EntityManager')]]
+    ) else ()),
+    $springFlushes := (if ($springData) then //MethodCall[@MethodName = ('saveAndFlush', 'saveAllAndFlush', 'flush')]
+      [*[1][pmd-java:typeIs('org.springframework.data.repository.Repository') or pmd-java:typeIs('jakarta.persistence.EntityManager')]] else ()),
+    $batchedWrites := (//ForStatement | //ForeachStatement | //WhileStatement | //DoStatement)
+      [.//IfStatement[*[1]//InfixExpression[@Operator = '%']]//MethodCall[@MethodName = 'clear'][*[1][pmd-java:typeIs('jakarta.persistence.EntityManager') or pmd-java:typeIs('javax.persistence.EntityManager')]]]
+      //MethodCall[@MethodName = ($writes, 'flush')],
     $calls := ($bodies//(MethodCall | ConstructorCall) except $attempts) except $paging
 return
 (
@@ -191,7 +202,7 @@ return
     self::ConstructorCall[ClassType[@SimpleName = ('FileReader', 'FileInputStream', 'FileWriter', 'FileOutputStream', 'RandomAccessFile')]]
     or self::MethodCall[*[1][self::TypeExpression][ClassType[@SimpleName = 'Files']]]
          [not(@MethodName = ('exists', 'notExists', 'isDirectory', 'isRegularFile', 'isReadable', 'isWritable', 'isExecutable', 'isSymbolicLink', 'isHidden', 'isSameFile'))]
-    or self::MethodCall[not(@MethodName = ('hashCode', 'toString', 'equals', 'getClass', 'close'))]
+    or self::MethodCall[not(@MethodName = ('hashCode', 'toString', 'equals', 'getClass', 'close', 'clear'))]
          [not(matches(@MethodName, '^(is|has|get)[A-Z]') and not(matches(@MethodName, '^get(By|All|One|Reference|For)')))]
          [*[1][(self::VariableAccess or self::FieldAccess) and @Name = $ioNames]
             or *[1][pmd-java:typeIs('org.springframework.data.repository.Repository')
@@ -211,7 +222,7 @@ return
     /ArgumentList/MethodReference
     [*[1][@Name = $ioNames or pmd-java:typeIs('org.springframework.data.repository.Repository') or pmd-java:typeIs('java.sql.Statement') or pmd-java:typeIs('java.sql.Connection')]]
     [not(@MethodName = ('hashCode', 'toString', 'equals'))]
-) except $springWrites
+) except ($springWrites | $springFlushes | $batchedWrites)
 ]]></value></property></properties>
   </rule>
 </ruleset>
