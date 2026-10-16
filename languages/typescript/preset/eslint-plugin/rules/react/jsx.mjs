@@ -1,6 +1,18 @@
-export const fieldElements = new Set(['input', 'textarea', 'select']);
-export const buttonLikeInputTypes = new Set(['button', 'hidden', 'image', 'reset', 'submit']);
-export const fixedValueInputTypes = new Set([...buttonLikeInputTypes, 'checkbox', 'radio']);
+const fieldElements = new Set(['input', 'textarea', 'select']);
+const buttonLikeInputTypes = new Set(['button', 'hidden', 'image', 'reset', 'submit']);
+const fixedValueInputTypes = new Set([...buttonLikeInputTypes, 'checkbox', 'radio']);
+
+export function isFieldElement(name) {
+  return fieldElements.has(name);
+}
+
+export function isButtonLikeInputType(type) {
+  return buttonLikeInputTypes.has(type);
+}
+
+export function isFixedValueInputType(type) {
+  return fixedValueInputTypes.has(type);
+}
 
 export function elementName(opening) {
   return opening.name.type === 'JSXIdentifier' ? opening.name.name : undefined;

@@ -30,15 +30,21 @@ function reachesTestHelper(source, filename) {
     return file === filename ? [source] : moduleSourcesOf(file);
   }
   for (const step of reachableModules(filename, specifiersOf, LIMITS)) {
-    if (step.truncated === true) return false;
-    if (isTestHelperModule(step.file)) return true;
+    if (step.truncated === true) {
+      return false;
+    }
+    if (isTestHelperModule(step.file)) {
+      return true;
+    }
   }
   return false;
 }
 
 function reactTestImportOf(program, filename) {
   const sources = program.body.flatMap(statementSources);
-  if (sources.some(isReactTestModule)) return { direct: true };
+  if (sources.some(isReactTestModule)) {
+    return { direct: true };
+  }
   const helper = path.isAbsolute(filename)
     ? sources.find((source) => reachesTestHelper(source, filename))
     : undefined;
@@ -53,7 +59,9 @@ function withUtilsModule(context, helper) {
 export function inReactTestFilesOnly(create) {
   return (context) => {
     const found = reactTestImportOf(context.sourceCode.ast, context.filename);
-    if (found === undefined) return {};
+    if (found === undefined) {
+      return {};
+    }
     return create(found.direct ? context : withUtilsModule(context, found.helper));
   };
 }

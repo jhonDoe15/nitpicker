@@ -33,7 +33,7 @@ export function withEngineHint(detail) {
   return detail.includes(CONFIG_FILE_NAME) ? detail : `${detail}\n${ENGINE_HINT}`;
 }
 
-export function withCompileCache(environment = process.env) {
+export function withCompileCache(environment) {
   return {
     NODE_COMPILE_CACHE: path.join(tmpdir(), 'nitpicker-node-compile-cache'),
     ...environment,

@@ -256,7 +256,7 @@ const reactTestCases = [
 export const reactFailureMessageCases = [
   ...reactSyntaxCases,
   ...reactTestCases,
-  ...correctnessCases,
-  ...browserCases,
+  ...correctnessCases.map(reactCase),
+  ...browserCases.map(reactCase),
   ...exceptionHintCases,
 ];

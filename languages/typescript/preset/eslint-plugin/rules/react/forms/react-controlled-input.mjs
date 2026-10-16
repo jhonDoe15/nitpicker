@@ -1,8 +1,8 @@
 import {
   attributeNamed,
   elementName,
-  fieldElements,
-  fixedValueInputTypes,
+  isFieldElement,
+  isFixedValueInputType,
   hasSpread,
   literalValueOf,
 } from '../jsx.mjs';
@@ -13,7 +13,7 @@ function valueNeedsHandler(opening) {
   const isInput = elementName(opening) === 'input';
   const type = literalValueOf(attributeNamed(opening, 'type'));
   return (
-    attributeNamed(opening, 'value') !== undefined && !(isInput && fixedValueInputTypes.has(type))
+    attributeNamed(opening, 'value') !== undefined && !(isInput && isFixedValueInputType(type))
   );
 }
 
@@ -39,7 +39,7 @@ export const rule = {
   create(context) {
     return {
       JSXOpeningElement(node) {
-        if (!fieldElements.has(elementName(node)) || hasSpread(node)) {
+        if (!isFieldElement(elementName(node)) || hasSpread(node)) {
           return;
         }
         if (

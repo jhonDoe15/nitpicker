@@ -70,14 +70,8 @@ function staticKey(node, computed) {
   return node.type === 'Identifier' && !computed ? node.name : undefined;
 }
 
-function memberValues(sourceCode, member) {
-  const key = staticKey(member.property, member.computed);
-  if (key === undefined || member.object.type !== 'Identifier') {
-    return [];
-  }
-  return initializersOf(sourceCode, member.object)
-    .flatMap((initializer) => objectLiteralsIn(sourceCode, initializer))
-    .flatMap((object) => object.properties)
+function propertyValues(object, key) {
+  return object.properties
     .filter(
       (property) =>
         property.type === 'Property' && staticKey(property.key, property.computed) === key,
@@ -95,25 +89,38 @@ function innerExpressions(sourceCode, expression) {
   if (expression.type === 'LogicalExpression') {
     return [expression.left, expression.right];
   }
-  if (expression.type === 'MemberExpression') {
-    return memberValues(sourceCode, expression);
-  }
   return expression.type === 'Identifier' ? initializersOf(sourceCode, expression) : [];
 }
 
+function nextLookups(sourceCode, { expression, keys }) {
+  if (expression.type === 'ObjectExpression') {
+    return propertyValues(expression, keys.at(-1)).map((value) => ({
+      expression: value,
+      keys: keys.slice(0, -1),
+    }));
+  }
+  if (expression.type === 'MemberExpression') {
+    const key = staticKey(expression.property, expression.computed);
+    return key === undefined ? [] : [{ expression: expression.object, keys: [...keys, key] }];
+  }
+  return innerExpressions(sourceCode, expression).map((inner) => ({ expression: inner, keys }));
+}
+
 function objectLiteralsIn(sourceCode, start) {
-  const pending = [start];
-  const seen = new Set();
+  const pending = [{ expression: start, keys: [] }];
+  const seen = new Map();
   const objects = [];
-  for (const expression of pending) {
-    if (seen.has(expression)) {
+  for (const lookup of pending) {
+    const path = lookup.keys.join('.');
+    const paths = seen.get(lookup.expression) ?? new Set();
+    if (paths.has(path)) {
       continue;
     }
-    seen.add(expression);
-    if (expression.type === 'ObjectExpression') {
-      objects.push(expression);
+    seen.set(lookup.expression, paths.add(path));
+    if (lookup.expression.type === 'ObjectExpression' && lookup.keys.length === 0) {
+      objects.push(lookup.expression);
     } else {
-      pending.push(...innerExpressions(sourceCode, expression));
+      pending.push(...nextLookups(sourceCode, lookup));
     }
   }
   return objects;

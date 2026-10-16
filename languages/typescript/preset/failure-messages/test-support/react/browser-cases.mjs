@@ -1,4 +1,4 @@
-import { exceptionCase, reactCase } from './react-case.mjs';
+import { exceptionCase } from './react-case.mjs';
 
 const cases = [
   [
@@ -105,4 +105,4 @@ const exceptionRoutes = [
   ['value without onChange', 'export const P = ({ v }) => <input aria-label="n" value={v} />;'],
 ];
 
-export const browserCases = [...cases, ...exceptionRoutes.map(exceptionCase)].map(reactCase);
+export const browserCases = [...cases, ...exceptionRoutes.map(exceptionCase)];

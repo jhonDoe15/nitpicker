@@ -1,4 +1,4 @@
-import { exceptionCase, panel, reactCase } from './react-case.mjs';
+import { exceptionCase, panel } from './react-case.mjs';
 
 function listPanel(row) {
   return `export const List = ({ items }) => <ul>{items.map((item) => ${row})}</ul>;`;
@@ -75,4 +75,4 @@ const exceptionRoutes = [
   ['forwardRef', 'export const P = forwardRef((props, ref) => <div ref={ref} />);'],
 ];
 
-export const correctnessCases = [...cases, ...exceptionRoutes.map(exceptionCase)].map(reactCase);
+export const correctnessCases = [...cases, ...exceptionRoutes.map(exceptionCase)];

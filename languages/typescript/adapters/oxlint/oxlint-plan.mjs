@@ -11,11 +11,7 @@ const wrapperConfigPath = path.join(import.meta.dirname, '..', 'eslint-wrapper.c
 const MAX_LISTING_BYTES = 64 * 1024 * 1024;
 
 try {
-  const [nativeRules, plan] = await Promise.all([
-    listedNativeRules(),
-    lintPlan(projectRoot, patterns),
-  ]);
-  process.stdout.write(`${JSON.stringify({ ...plan, nativeRules })}\n`);
+  process.stdout.write(`${JSON.stringify(await lintPlan(projectRoot, patterns))}\n`);
 } catch (error) {
   process.stderr.write(
     `oxlint planning failed: ${error instanceof Error ? error.message : String(error)}\n`,
@@ -33,6 +29,11 @@ async function listedNativeRules() {
 }
 
 async function lintPlan(root, globs) {
+  const [nativeRules, plan] = await Promise.all([listedNativeRules(), filePlan(root, globs)]);
+  return { ...plan, nativeRules };
+}
+
+async function filePlan(root, globs) {
   const eslint = new ESLint({ cwd: root, overrideConfigFile: wrapperConfigPath });
   const plan = {
     groups: new Map(),
@@ -42,7 +43,9 @@ async function lintPlan(root, globs) {
   };
   for (const file of candidateFiles(root, globs)) {
     const config = await lintedConfig(eslint, file);
-    if (config !== undefined) addFile(plan, file, config);
+    if (config !== undefined) {
+      addFile(plan, file, config);
+    }
   }
   return {
     groups: [...plan.groups.values()],

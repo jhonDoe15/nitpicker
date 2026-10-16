@@ -89,7 +89,9 @@ function frameworkFileEntries(files = []) {
       ];
 }
 
-const domainNitpickerRules = {
+const domainRules = {
+  ...domainFunctionalRules,
+  ...domainPurityRules,
   'nitpicker/no-throw': 'error',
   'nitpicker/no-ui-framework-in-domain': 'error',
   'nitpicker/no-unknown-in-domain': 'error',
@@ -125,12 +127,7 @@ export function strictSyntaxConfigFor(layout = defaultResolvedLayout, options = 
       files: domainGlobsFor(layout.sourceRoots),
       ...productionScope(layout),
       plugins: { functional, nitpicker: nitpickerRules },
-      rules: {
-        ...domainFunctionalRules,
-        ...domainPurityRules,
-        'no-restricted-syntax': ['error', ...restrictedSyntax.domain],
-        ...domainNitpickerRules,
-      },
+      rules: { ...domainRules, 'no-restricted-syntax': ['error', ...restrictedSyntax.domain] },
     },
     {
       files: adapterGlobsFor(layout.sourceRoots),
