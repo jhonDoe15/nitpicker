@@ -1,0 +1,64 @@
+import { afterEach, describe, expect, it } from 'vitest';
+import { createFakeProjects } from '../test-support/fake-project.mjs';
+import { readPackageFacts } from './python-package.mjs';
+
+const fakes = createFakeProjects();
+const BACKEND = '[build-system]\nbuild-backend = "hatchling.build"\n';
+
+afterEach(() => {
+  fakes.cleanup();
+});
+
+function factsOf(pyproject) {
+  return readPackageFacts(
+    fakes.project(pyproject === undefined ? {} : { 'pyproject.toml': pyproject }),
+  );
+}
+
+describe('whether the project is a published package', () => {
+  it.each([
+    ['a named [project] with a build backend', `[project]\nname = "shop"\n${BACKEND}`, true],
+    [
+      'a named poetry package with a build backend',
+      `[tool.poetry]\nname = "shop"\n${BACKEND}`,
+      true,
+    ],
+    ['no build backend', '[project]\nname = "shop"\n', false],
+    ['no name', `[project]\nversion = "1"\n${BACKEND}`, false],
+    [
+      'the classifier that blocks uploads',
+      `[project]\nname = "shop"\nclassifiers = ["Private :: Do Not Upload"]\n${BACKEND}`,
+      false,
+    ],
+    [
+      'a poetry project in non-package mode',
+      `[tool.poetry]\nname = "shop"\npackage-mode = false\n${BACKEND}`,
+      false,
+    ],
+    ['no pyproject.toml', undefined, false],
+  ])('%s', (_name, pyproject, published) => {
+    expect(factsOf(pyproject).published).toBe(published);
+  });
+});
+
+describe('the entry points the package declares', () => {
+  it('reads console, GUI and poetry scripts, without extras', () => {
+    const pyproject = [
+      '[project]',
+      'name = "shop"',
+      '[project.scripts]',
+      'shop = "shop.cli:main"',
+      '[project.gui-scripts]',
+      'shop-gui = "shop.gui:run [ui]"',
+      '[tool.poetry.scripts]',
+      'legacy = "shop.legacy:start"',
+      'broken = "no colon"',
+    ].join('\n');
+
+    expect(factsOf(pyproject).entryPoints).toEqual([
+      'shop.cli:main',
+      'shop.gui:run',
+      'shop.legacy:start',
+    ]);
+  });
+});

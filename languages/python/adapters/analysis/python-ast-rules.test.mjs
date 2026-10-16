@@ -58,9 +58,29 @@ describe('running the rules script', () => {
       expect.stringMatching(/rules\/nitpicker_rules\.py$/),
       path.join(reportRoot, 'python-files.txt'),
       path.join(reportRoot, 'rules.json'),
+      path.join(reportRoot, 'rules-options.json'),
     ]);
     expect(readFileSync(path.join(reportRoot, 'python-files.txt'), 'utf8')).toBe('src/demo/a.py');
     expect(readFileSync(path.join(reportRoot, 'rules.json'), 'utf8')).toBe('[{"rule":"x"}]');
+  });
+
+  it('hands it the production modules and the package facts', () => {
+    const root = fakes.project({
+      'pyproject.toml':
+        '[project]\nname = "shop"\n[project.scripts]\nshop = "shop.cli:main"\n[build-system]\nbuild-backend = "hatchling.build"\n',
+      'src/shop/__init__.py': '',
+      'src/shop/cli.py': '',
+      'tests/test_cli.py': '',
+    });
+    const { context, reportRoot } = fakes.contextFor(root);
+
+    checkRules(context);
+
+    expect(JSON.parse(readFileSync(path.join(reportRoot, 'rules-options.json'), 'utf8'))).toEqual({
+      modules: { 'src/shop/__init__.py': 'shop', 'src/shop/cli.py': 'shop.cli' },
+      published: true,
+      entryPoints: ['shop.cli:main'],
+    });
   });
 
   it('fails with the rules-failed rule when python fails', () => {

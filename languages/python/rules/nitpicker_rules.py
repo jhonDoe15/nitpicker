@@ -1,12 +1,34 @@
 import ast
-import io
 import json
 import os
-import re
 import sys
 import tokenize
 
-TEST_DIRECTORIES = {"tests", "test"}
+sys.dont_write_bytecode = True
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+
+from nitpicker_checks.common import (
+    decorator_name,
+    dotted_name,
+    import_aliases,
+    is_test_path,
+    scoped_definitions,
+)
+from nitpicker_checks.constants import (
+    common_prefix,
+    is_enum_group,
+    is_plain_class,
+    string_constants,
+)
+from nitpicker_checks.docstrings import docstring_findings
+from nitpicker_checks.fields import field_findings
+from nitpicker_checks.project.enum_predicates import enum_predicate_findings
+from nitpicker_checks.project.forwarding import forwarding_findings
+from nitpicker_checks.project.index import ProjectIndex
+from nitpicker_checks.project.unused_options import unused_option_findings
+from nitpicker_checks.sleeps import fixed_sleep_findings
+from nitpicker_checks.suppressions import stub_findings, suppression_findings
+
 BOUNDARY_DIRECTORY = "adapters"
 PYDANTIC_ROOTS = {"pydantic", "pydantic_settings"}
 MIN_CLASS_CONSTANTS = 2
@@ -14,17 +36,6 @@ MIN_MODULE_CONSTANTS = 3
 TYPE_CHECKING_NAMES = {"typing.TYPE_CHECKING", "typing_extensions.TYPE_CHECKING"}
 OPTIONAL_IMPORT_ERRORS = {"ImportError", "ModuleNotFoundError"}
 BLIND_ERRORS = {"Exception", "BaseException", "builtins.Exception", "builtins.BaseException"}
-CONSTANT_NAME = re.compile(r"[A-Z][A-Z0-9_]*")
-SUPPRESSION = re.compile(
-    r"#\s*(?:type:\s*ignore"
-    r"|noqa\b"
-    r"|(?:ruff|flake8):\s*noqa"
-    r"|pyright:\s*(?:ignore|basic|standard|off)\b"
-    r"|pyright:\s*report\w+\s*=\s*(?:false|none|warning|information)"
-    r"|fmt:\s*(?:off|skip)\b"
-    r"|mypy:\s*(?!strict\b)\S)",
-    re.IGNORECASE,
-)
 
 
 def is_constant(node):
@@ -68,48 +79,8 @@ def type_text(node):
     return "expression"
 
 
-def is_test_path(path):
-    parts = path.split("/")
-    name = parts[-1]
-    return (
-        bool(TEST_DIRECTORIES.intersection(parts[:-1]))
-        or name.startswith("test_")
-        or name.endswith("_test.py")
-        or name == "conftest.py"
-    )
-
-
 def is_boundary_path(path):
     return BOUNDARY_DIRECTORY in path.split("/")[:-1]
-
-
-def import_aliases(tree):
-    names, modules = {}, {}
-    for node in ast.walk(tree):
-        if isinstance(node, ast.ImportFrom) and node.module:
-            for alias in node.names:
-                names[alias.asname or alias.name] = f"{node.module}.{alias.name}"
-        elif isinstance(node, ast.Import):
-            for alias in node.names:
-                if alias.asname:
-                    modules[alias.asname] = alias.name
-    return names, modules
-
-
-def dotted_name(node, aliases):
-    names, modules = aliases
-    if isinstance(node, ast.Name):
-        return names.get(node.id) or modules.get(node.id) or node.id
-    if isinstance(node, ast.Attribute):
-        base = dotted_name(node.value, aliases)
-        return f"{base}.{node.attr}" if base else None
-    return None
-
-
-def decorator_name(decorator, aliases):
-    target = decorator.func if isinstance(decorator, ast.Call) else decorator
-    name = dotted_name(target, aliases)
-    return name.rsplit(".", 1)[-1] if name else None
 
 
 def is_frozen(decorator):
@@ -119,51 +90,6 @@ def is_frozen(decorator):
         and keyword.value.value is True
         for keyword in decorator.keywords
     )
-
-
-def string_constants(body):
-    constants = []
-    for statement in body:
-        if isinstance(statement, ast.Assign) and len(statement.targets) == 1:
-            target, value = statement.targets[0], statement.value
-        elif isinstance(statement, ast.AnnAssign):
-            target, value = statement.target, statement.value
-        else:
-            continue
-        if (
-            isinstance(target, ast.Name)
-            and CONSTANT_NAME.fullmatch(target.id)
-            and isinstance(value, ast.Constant)
-            and isinstance(value.value, str)
-        ):
-            constants.append((target.id, value.value))
-    return constants
-
-
-def common_prefix(names):
-    prefix = os.path.commonprefix(names)
-    return prefix[: prefix.rfind("_") + 1]
-
-
-def normalized(text):
-    return text.lower().replace("-", "_").replace(" ", "_")
-
-
-def is_enum_like(name, value, prefix):
-    return normalized(value) in (normalized(name), normalized(name[len(prefix) :]))
-
-
-def is_enum_group(constants, prefix):
-    return all(is_enum_like(name, value, prefix) for name, value in constants)
-
-
-def is_plain_class(node):
-    bases = [
-        base
-        for base in node.bases
-        if not (isinstance(base, ast.Name) and base.id == "object")
-    ]
-    return not bases and not node.keywords and not node.decorator_list
 
 
 class Collector(ast.NodeVisitor):
@@ -284,63 +210,54 @@ class Collector(ast.NodeVisitor):
                 self.add("enum-string-constants", prefix + "_*", members[0][0])
 
 
-def suppression_findings(path, text):
-    findings = []
-    try:
-        for token in tokenize.generate_tokens(io.StringIO(text).readline):
-            if token.type == tokenize.COMMENT and SUPPRESSION.search(token.string):
-                subject = " ".join(token.string.lstrip("#").split())
-                findings.append(
-                    {
-                        "rule": "no-inline-suppression",
-                        "path": path,
-                        "subject": subject,
-                        "line": token.start[0],
-                    }
-                )
-    except (tokenize.TokenError, SyntaxError):
-        return findings
-    return findings
+def parse(path):
+    with tokenize.open(path) as handle:
+        text = handle.read()
+    return text, ast.parse(text)
 
 
-def stub_findings(path):
-    stub = path[: -len(".py")] + ".pyi" if path.endswith(".py") else None
-    if stub is None or not os.path.isfile(stub):
-        return []
-    return [
-        {
-            "rule": "stub-beside-source",
-            "path": path,
-            "subject": os.path.basename(stub),
-            "line": 1,
-        }
-    ]
-
-
-def check_file(path):
-    stubs = stub_findings(path)
-    try:
-        with tokenize.open(path) as handle:
-            text = handle.read()
-        tree = ast.parse(text)
-    except (OSError, SyntaxError, UnicodeDecodeError, ValueError):
-        return stubs
-    collector = Collector(path, import_aliases(tree))
+def check_file(path, text, tree):
+    aliases = import_aliases(tree)
+    collector = Collector(path, aliases)
     collector.visit(tree)
     collector.check_module_constants(tree)
-    return stubs + collector.findings + suppression_findings(path, text)
+    scoped = scoped_definitions(tree)
+    tests_only = fixed_sleep_findings(path, tree, aliases) if is_test_path(path) else []
+    return (
+        collector.findings
+        + suppression_findings(path, text)
+        + tests_only
+        + docstring_findings(path, scoped)
+        + field_findings(path, scoped, aliases)
+    )
+
+
+def read_options(arguments):
+    if len(arguments) < 3:
+        return {}
+    with open(arguments[2], encoding="utf-8") as handle:
+        return json.load(handle)
 
 
 def main(arguments):
-    list_file, out_file = arguments
+    list_file, out_file = arguments[:2]
+    options = read_options(arguments)
     with open(list_file, encoding="utf-8") as handle:
         paths = [line.strip() for line in handle if line.strip()]
-    findings = []
+    findings, trees = [], {}
     for path in paths:
-        findings.extend(check_file(path))
-    findings.sort(
-        key=lambda item: (item["path"], item["line"], item["rule"], item["subject"])
-    )
+        findings.extend(stub_findings(path))
+        try:
+            text, tree = parse(path)
+        except (OSError, SyntaxError, UnicodeDecodeError, ValueError, RecursionError):
+            continue
+        trees[path] = tree
+        findings.extend(check_file(path, text, tree))
+    index = ProjectIndex(trees, options.get("modules", {}))
+    findings.extend(forwarding_findings(index))
+    findings.extend(enum_predicate_findings(index))
+    findings.extend(unused_option_findings(index, options))
+    findings.sort(key=lambda item: (item["path"], item["line"], item["rule"], item["subject"]))
     with open(out_file, "w", encoding="utf-8") as handle:
         json.dump(findings, handle)
 
