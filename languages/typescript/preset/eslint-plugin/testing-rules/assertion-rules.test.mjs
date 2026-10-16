@@ -116,6 +116,15 @@ ruleTester.run('no-mocking-subject-under-test', noMockingSubjectUnderTest, {
       code: "import { execute } from '../feature.js'; import { vi } from 'vitest'; vi.mock('../feature.js'); execute();",
       errors: [{ messageId: 'mockedSubject', data: { source: '../feature.js' } }],
     },
+    ...[
+      "vi.mock(import('../feature.js'), () => ({ execute: vi.fn() }));",
+      "jest.mock('../feature.js');",
+      "vi['doMock']('../feature.js');",
+    ].map((mock) => ({
+      filename: '/repo/src/main/feature/__tests__/feature.test.ts',
+      code: `import { execute } from '../feature.js'; ${mock} execute();`,
+      errors: [{ messageId: 'mockedSubject', data: { source: '../feature.js' } }],
+    })),
   ],
 });
 ruleTester.run('integration-test-uses-approved-harness', integrationTestUsesApprovedHarness, {

@@ -8,6 +8,7 @@ const TOOLS = [
   'coverage',
   'mypy',
   'pyright',
+  'basedpyright',
   'python',
   'python3',
   'mutmut',
