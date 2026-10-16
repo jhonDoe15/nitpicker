@@ -2,8 +2,10 @@ import { writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import { parseAnalyzerReport } from '../../../../core/diff/comparison/finding-schema.mjs';
-import { readJavaFindings } from './java-reports.mjs';
 import {
+  readJavaFindings,
+  rootReports,
+  reportBaseOf,
   projectWithKotlinReports,
   removeTemporaryProjects,
   temporaryProjectRoot,
@@ -15,7 +17,7 @@ describe('readJavaFindings with the kotlin preset: metrics and errors', () => {
   const bad = 'src/main/kotlin/demo/Bad.kt';
   it('turns the Kotlin metrics and clones into structure, CRAP and duplicate findings', () => {
     const root = projectWithKotlinReports();
-    const reports = path.join(root, 'build/nitpicker');
+    const reports = rootReports(root);
     writeFileSync(
       path.join(reports, 'kotlin-metrics.json'),
       JSON.stringify({
@@ -36,7 +38,7 @@ describe('readJavaFindings with the kotlin preset: metrics and errors', () => {
       }),
     );
     writeFileSync(
-      path.join(reports, 'kotlin-duplicates.json'),
+      path.join(reportBaseOf(root), 'kotlin-duplicates.json'),
       JSON.stringify({
         runs: [
           {
@@ -90,7 +92,7 @@ describe('readJavaFindings with the kotlin preset: metrics and errors', () => {
       const root = temporaryProjectRoot();
 
       expect(() => readJavaFindings(root, { preset })).toThrow(
-        `The ${preset} preset found no Gradle reports in build/nitpicker: the root project must apply the`,
+        `The ${preset} preset found no Gradle project that applies the`,
       );
     },
   );
