@@ -31,8 +31,8 @@
     <priority>3</priority>
     <properties><property name="xpath"><value><![CDATA[
 //*[self::ClassDeclaration or self::InterfaceDeclaration or self::EnumDeclaration or self::RecordDeclaration]
-  [matches(@SimpleName, '(^|[a-z0-9])(Utils?|Utility|Utilities|Helpers?|Managers?|Commons?|Misc|Miscellaneous)$')]
-  [let $suffix := replace(@SimpleName, '^.*?(Utils?|Utility|Utilities|Helpers?|Managers?|Commons?|Misc|Miscellaneous)$', '$1')
+  [matches(@SimpleName, '(^|[A-Za-z0-9])(Util|Utils|Utility|Utilities|Helper|Helpers|Manager|Managers|Common|Commons|Misc|Miscellaneous)$')]
+  [let $suffix := replace(@SimpleName, '^.*?(Util|Utils|Utility|Utilities|Helper|Helpers|Manager|Managers|Common|Commons|Misc|Miscellaneous)$', '$1')
    return not((ExtendsList | ImplementsList)/ClassType[ends-with(@SimpleName, $suffix)])]
   [not(matches(@SimpleName, '(Authentication|Transaction|Cache|Entity|Session|Connection|Lock|Resource)Manager$'))]
 ]]></value></property></properties>
@@ -42,7 +42,7 @@
         message="Name this package for what it holds, not utils, helpers, common or misc. Pure logic shared between features goes in the shared package under a name that says what it does.">
     <priority>3</priority>
     <properties><property name="xpath"><value><![CDATA[
-//PackageDeclaration[matches(@Name, '(^|\.)(utils?|utility|utilities|helpers?|managers?|commons?|misc|miscellaneous)(\.|$)')]
+//PackageDeclaration[matches(@Name, '(^|\.)(util|utils|utility|utilities|helper|helpers|manager|managers|common|commons|misc|miscellaneous)(\.|$)')]
 ]]></value></property></properties>
   </rule>
 
@@ -51,11 +51,18 @@
     <priority>1</priority>
     <properties><property name="xpath"><value><![CDATA[
 let $secret := '(password|passwd|pwd|passphrase|secret|token|credentials?|apikey|privatekey|accesskey|secretkey|authkey|signingkey|encryptionkey)$',
-    $values := (
+    $assigned := (
       //VariableDeclarator[matches(lower-case(replace(VariableId/@Name, '[^A-Za-z]', '')), $secret)]/*[2]
       | //AssignmentExpression[matches(lower-case(replace((VariableAccess | FieldAccess)[1]/@Name, '[^A-Za-z]', '')), $secret)]/*[2]
       | //MethodCall[@MethodName = ('of', 'entry', 'put', 'setProperty', 'addProperty')]/ArgumentList
           /*[preceding-sibling::*[1][self::StringLiteral][matches(lower-case(replace(@ConstValue, '[^A-Za-z0-9]', '')), $secret)]]
+    ),
+    $values := (
+      $assigned
+      | $assigned/self::ConditionalExpression/*[position() > 1]
+      | $assigned/self::MethodCall[@MethodName = ('orElse', 'getOrDefault', 'requireNonNullElse')]/ArgumentList/*[last()]
+      | $assigned/self::MethodCall[@MethodName = 'getProperty'][count(ArgumentList/*) = 2]/ArgumentList/*[last()]
+      | $assigned/self::MethodCall[@MethodName = 'orElseGet']/ArgumentList/LambdaExpression/*[last()]
     )
 return (
   $values[self::StringLiteral]
@@ -110,12 +117,22 @@ return (
   [not(parent::TryStatement[Block[1]//(ReturnStatement | BreakStatement)]
     /parent::Block/parent::*[self::ForeachStatement or self::ForStatement or self::WhileStatement or self::DoStatement])]
   [not(Block//MethodCall[@MethodName = ('status', 'internalServerError', 'badRequest', 'notFound', 'unprocessableEntity', 'sendError', 'exit')])]
-  [let $name := CatchParameter/VariableId/@Name
-   return not(Block//VariableAccess[@Name = $name]
+  [let $name := CatchParameter/VariableId/@Name,
+       $logged := Block//MethodCall
+         [@MethodName = ('trace', 'debug', 'info', 'warn', 'error', 'fatal', 'log')
+          or matches(@MethodName, '(^l|[a-z0-9]L)og(ger)?([A-Z0-9_]|$)')
+          or (@MethodName = ('severe', 'warning', 'fine', 'finer', 'finest', 'println', 'print', 'printf')
+            and *[1][matches(@Name, '(^|\.)(log|logger|out|err)$', 'i') or pmd-java:typeIs('java.util.logging.Logger') or pmd-java:typeIs('java.io.PrintStream')])],
+       $wrappers := ('valueOf', 'format', 'formatted', 'toString'),
+       $direct := Block//LocalVariableDeclaration/VariableDeclarator/*[2]/descendant-or-self::VariableAccess[@Name = $name]
+         [empty(ancestor::ArgumentList[parent::MethodCall[not(@MethodName = $wrappers)]] intersect ancestor::VariableDeclarator[1]//ArgumentList)],
+       $names := ($name, $direct/ancestor::VariableDeclarator[1]/VariableId/@Name),
+       $carrying := Block//LocalVariableDeclaration/VariableDeclarator/*[2]/descendant-or-self::VariableAccess[@Name = $names]
+         [empty(ancestor::ArgumentList[parent::MethodCall[not(@MethodName = $wrappers)]] intersect ancestor::VariableDeclarator[1]//ArgumentList)],
+       $aliases := ($names, $carrying/ancestor::VariableDeclarator[1]/VariableId/@Name)
+   return not((Block//VariableAccess[@Name = $aliases] except $carrying)
      [not(parent::MethodCall[@MethodName = 'printStackTrace'])]
-     [not(ancestor::MethodCall
-       [@MethodName = ('trace', 'debug', 'info', 'warn', 'error', 'fatal', 'log', 'severe', 'warning', 'fine', 'finer', 'finest', 'println', 'print', 'printf')]
-       [*[1][matches(@Name, '(^|\.)(log|logger|out|err)$', 'i') or pmd-java:typeIs('org.slf4j.Logger') or pmd-java:typeIs('java.util.logging.Logger') or pmd-java:typeIs('org.apache.logging.log4j.Logger') or pmd-java:typeIs('java.io.PrintStream')]])])]
+     [empty(ancestor::MethodCall intersect $logged)])]
 ]]></value></property></properties>
   </rule>
 
@@ -135,24 +152,38 @@ return (
   </rule>
 
   <rule name="IoCallInLoop" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
-        message="This calls a database, HTTP, file or repository API once per loop item (one query or request per item). Batch it: fetch or write all items at once (findAllById, WHERE id IN (...), one batched request). Paging, polling and retry loops are fine.">
+        message="This calls a database, HTTP, file or repository API once per loop item (one query or request per item). Batch it: fetch or write all items at once (findAllById, saveAll, deleteAll, WHERE id IN (...), one batched request). Paging, polling and retry loops are fine.">
     <priority>2</priority>
-    <properties><property name="xpath"><value><![CDATA[
+    <properties>
+      <property name="springData" type="Boolean" value="false"
+                description="SpringDataNoSaveInLoop runs and reports Spring Data and JPA writes in a loop"/>
+      <property name="xpath"><value><![CDATA[
 let $ioTypes := '(Repository|Dao|DAO|Client|EntityManager|JdbcTemplate|RestTemplate|Connection|Statement)$',
     $ioNames := //(FieldDeclaration | LocalVariableDeclaration | FormalParameter)[ClassType[matches(@SimpleName, $ioTypes)]]//VariableId/@Name,
-    $repositoryNames := //(FieldDeclaration | LocalVariableDeclaration | FormalParameter)[ClassType[matches(@SimpleName, '(Repository|EntityManager)$')]]//VariableId/@Name,
+    $writes := ('save', 'saveAndFlush', 'delete', 'deleteById', 'persist', 'merge', 'remove'),
     $loops := (//ForeachStatement | //ForStatement | //WhileStatement | //DoStatement),
     $bodies := (
       //ForeachStatement/*[last()] | //ForStatement/*[last()] | //WhileStatement/*[last()] | //DoStatement/*[1]
-      | //LambdaExpression[parent::ArgumentList/parent::MethodCall[@MethodName = ('forEach', 'forEachOrdered', 'map', 'flatMap', 'filter', 'peek', 'reduce', 'anyMatch', 'allMatch', 'noneMatch', 'mapToObj', 'mapToInt', 'mapToLong', 'collect')]]),
+      | //LambdaExpression[parent::ArgumentList/parent::MethodCall[@MethodName = ('forEach', 'forEachOrdered', 'map', 'flatMap', 'filter', 'peek', 'reduce', 'anyMatch', 'allMatch', 'noneMatch', 'mapToObj', 'mapToInt', 'mapToLong', 'collect')]
+          [not(*[1][pmd-java:typeIs('java.util.Optional')])]]),
     $attempts := $loops/Block/TryStatement
       [Block[1]//(ReturnStatement | BreakStatement)]
       [CatchClause[not(Block/(ThrowStatement | ReturnStatement | BreakStatement))]]
       /Block[1]//(MethodCall | ConstructorCall),
     $paging := (//WhileStatement | //DoStatement)
       [let $tested := *[not(self::Block)]//VariableAccess/@Name
-       return exists(Block//AssignmentExpression[*[1][self::VariableAccess][@Name = $tested]])]
+       return exists(Block//AssignmentExpression[*[1][self::VariableAccess][@Name = $tested]]
+         [let $target := *[1]/@Name
+          return not(@Operator = ('+=', '-=', '*=', '/=', '%=')
+            or *[2][self::InfixExpression][@Operator = ('+', '-', '*', '/', '%')][VariableAccess/@Name = $target])])]
       //(MethodCall | ConstructorCall),
+    $springStreams := //MethodCall[@MethodName = ('forEach', 'map', 'peek', 'forEachOrdered')]
+      [*[1][pmd-java:typeIs('java.util.stream.BaseStream') or pmd-java:typeIs('java.lang.Iterable') or pmd-java:typeIs('java.util.Map')]],
+    $springWrites := (if ($springData) then (//MethodCall | //MethodReference)[@MethodName = $writes]
+      [*[1][pmd-java:typeIs('org.springframework.data.repository.Repository') or pmd-java:typeIs('jakarta.persistence.EntityManager')]]
+      [self::MethodReference[parent::ArgumentList/parent::MethodCall intersect $springStreams]
+       or self::MethodCall[ancestor::*[self::ForStatement or self::ForeachStatement or self::WhileStatement or self::DoStatement]
+         or ancestor::LambdaExpression[parent::ArgumentList/parent::MethodCall intersect $springStreams]]] else ()),
     $calls := ($bodies//(MethodCall | ConstructorCall) except $attempts) except $paging
 return
 (
@@ -174,13 +205,13 @@ return
             or pmd-java:typeIs('java.net.http.HttpClient')]]
     or self::MethodCall[matches(@MethodName, '^(find|load|read|query|select|insert|update|delete|exists|count|execute|fetch|list|write)([A-Z0-9_]|$)|^(get|send|post|put|patch|exchange|retrieve|save)$')]
          [*[1][matches(@Name, '^(repo|repository|dao|jdbc|jdbcTemplate|restTemplate|client|webClient|httpClient|connection|statement|entityManager|gateway|api)$|(Repo|Repository|Dao|DAO|Client|Connection|Statement|EntityManager|Gateway|Api|API|Template)$')]]
-  ][not(self::MethodCall[@MethodName = ('save', 'saveAndFlush', 'delete', 'deleteById', 'persist', 'merge', 'remove')]
-        [*[1][pmd-java:typeIs('org.springframework.data.repository.Repository') or pmd-java:typeIs('jakarta.persistence.EntityManager') or @Name = $repositoryNames]])]
+  ]
   |
-  //MethodCall[@MethodName = ('forEach', 'forEachOrdered', 'map', 'flatMap', 'filter', 'peek')]/ArgumentList/MethodReference
+  //MethodCall[@MethodName = ('forEach', 'forEachOrdered', 'map', 'flatMap', 'filter', 'peek')][not(*[1][pmd-java:typeIs('java.util.Optional')])]
+    /ArgumentList/MethodReference
     [*[1][@Name = $ioNames or pmd-java:typeIs('org.springframework.data.repository.Repository') or pmd-java:typeIs('java.sql.Statement') or pmd-java:typeIs('java.sql.Connection')]]
-    [not(@MethodName = ('save', 'saveAndFlush', 'delete', 'deleteById', 'hashCode', 'toString', 'equals'))]
-)
+    [not(@MethodName = ('hashCode', 'toString', 'equals'))]
+) except $springWrites
 ]]></value></property></properties>
   </rule>
 </ruleset>

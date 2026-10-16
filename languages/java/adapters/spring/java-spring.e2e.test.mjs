@@ -55,6 +55,18 @@ describe.skipIf(!enabled)('Spring rules on a Spring project', () => {
     expect(reported).toEqual(expected);
   });
 
+  it('reports each Spring Data write in a loop once, as SpringDataNoSaveInLoop', () => {
+    const linesOf = (rule) =>
+      markedViolations(project.root, 'main', (reported) => reported === rule).reported.map(
+        (violation) => violation.split(' ')[0],
+      );
+    const writes = linesOf('SpringDataNoSaveInLoop');
+    expect({
+      writes: writes.length,
+      twice: linesOf('IoCallInLoop').filter((line) => writes.includes(line)),
+    }).toEqual({ writes: 3, twice: [] });
+  });
+
   it('records the resource roots and that the project uses Spring', () => {
     const manifest = JSON.parse(
       readFileSync(path.join(project.root, 'build', 'nitpicker', 'manifest.json'), 'utf8'),

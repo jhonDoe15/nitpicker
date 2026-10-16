@@ -14,6 +14,38 @@ public final class Catches {
     }
   }
 
+  public int aliased(String text) {
+    try {
+      return Integer.parseInt(text);
+    } catch (NumberFormatException e) { // violation: CatchOnlyLogsOrReturnsDefault
+      String message = e.getMessage();
+      log.warning(message);
+      return -1;
+    }
+  }
+
+  public int handedToLogger(String text) {
+    try {
+      return Integer.parseInt(text);
+    } catch (NumberFormatException e) { // violation: CatchOnlyLogsOrReturnsDefault
+      logFailure(e);
+      return -1;
+    }
+  }
+
+  public String aliasReturned(String text) {
+    try {
+      return String.valueOf(Integer.parseInt(text));
+    } catch (NumberFormatException e) {
+      String reason = e.getMessage();
+      return reason;
+    }
+  }
+
+  private void logFailure(RuntimeException failure) {
+    log.warning(failure.getMessage());
+  }
+
   public int rethrown(String text) {
     try {
       return Integer.parseInt(text);
