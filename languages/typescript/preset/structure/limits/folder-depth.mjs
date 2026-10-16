@@ -1,6 +1,6 @@
-import { escapeRegExp } from '../../../../shared/glob.mjs';
-import { FOLDER_DEPTH_DEFAULTS } from '../../../../shared/policy-size.mjs';
-import { folderDepthFindings } from '../../../../shared/rules/size/folder-depth.mjs';
+import { escapeRegExp } from '../../../../../shared/glob.mjs';
+import { FOLDER_DEPTH_DEFAULTS } from '../../../../../shared/policy-size.mjs';
+import { folderDepthFindings } from '../../../../../shared/rules/size/folder-depth.mjs';
 
 const WORDING = {
   subject: 'Folder',
