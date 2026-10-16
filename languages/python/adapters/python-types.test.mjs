@@ -4,7 +4,8 @@ import { afterEach, describe, expect, it } from 'vitest';
 import { jscpdVersion } from '../../java/adapters/metrics/java-duplicates.mjs';
 import { createFakeProjects } from './test-support/fake-project.mjs';
 import { toolVersions } from './python-tools.mjs';
-import { pyrightConfig, resolveTypeChecker, typeCheck } from './python-types.mjs';
+import { pyrightConfig } from './project-tools/pyright-config.mjs';
+import { resolveTypeChecker, typeCheck } from './python-types.mjs';
 
 const fakes = createFakeProjects();
 const saved = new Map();
@@ -244,42 +245,12 @@ describe('running basedpyright', () => {
     });
   });
 
-  it('extends the project file or the pyproject table it reads', () => {
-    const configOf = (files) => {
-      const root = fakes.project(files);
-      return [root, pyrightConfig(fakes.contextFor(root).context, 'basedpyright').extends];
-    };
-    const [fileRoot, fromFile] = configOf({
-      'pyrightconfig.json': '{}',
-      'pyproject.toml': '[tool.basedpyright]\n',
-    });
-    const [ignoredRoot, fromIgnored] = configOf({
-      'basedpyrightconfig.json': '{}',
-      'pyproject.toml': '[tool.basedpyright]\n',
-    });
-    const [tableRoot, fromTable] = configOf({ 'pyproject.toml': '[tool.basedpyright]\n' });
-    const [sharedRoot, fromShared] = configOf({ 'pyproject.toml': '[tool.pyright]\n' });
-    const [, fromNothing] = configOf({ 'pyproject.toml': '[tool.black]\n' });
-
-    expect(fromFile).toBe(path.join(fileRoot, 'pyrightconfig.json'));
-    expect(fromIgnored).toBe(path.join(ignoredRoot, 'pyproject.toml'));
-    expect(fromTable).toBe(path.join(tableRoot, 'pyproject.toml'));
-    expect(fromShared).toBe(path.join(sharedRoot, 'pyproject.toml'));
-    expect(fromNothing).toBeUndefined();
-  });
-
   it('names its version in the tool versions', () => {
     const root = fakes.project({ 'conftest.py': '' });
 
     expect(toolVersions(fakes.contextFor(root, { typeChecker: 'basedpyright' }).context)).toBe(
       `ruff@0.9.9;basedpyright@1.40.2;coverage@7.6.1;pytest@8.3.1;jscpd@${jscpdVersion()}`,
     );
-  });
-
-  it('leaves pyright alone with a basedpyright-only table', () => {
-    const root = fakes.project({ 'pyproject.toml': '[tool.basedpyright]\n' });
-
-    expect(pyrightConfig(fakes.contextFor(root).context)).not.toHaveProperty('extends');
   });
 });
 
@@ -307,44 +278,6 @@ describe('running pyright', () => {
       ignore: [],
       executionEnvironments: [],
       exclude: ['**/node_modules', '**/__pycache__', '**/.*'],
-      include: [path.relative(reportRoot, path.join(root, 'src'))],
-      extraPaths: [path.join(root, 'src')],
-    });
-  });
-
-  it('extends the project pyright file, or its pyproject section', () => {
-    const withFile = fakes.project({
-      'pyrightconfig.json': '{}',
-      'pyproject.toml': '[tool.pyright]\n',
-    });
-    const withSection = fakes.project({ 'pyproject.toml': '[tool.pyright]\nreportX = false\n' });
-    const without = fakes.project({ 'pyproject.toml': '[tool.black]\n' });
-    const configOf = (root) => pyrightConfig(fakes.contextFor(root).context);
-
-    expect(configOf(withFile).extends).toBe(path.join(withFile, 'pyrightconfig.json'));
-    expect(configOf(withSection).extends).toBe(path.join(withSection, 'pyproject.toml'));
-    expect(configOf(without)).not.toHaveProperty('extends');
-  });
-
-  it('replaces the project ignore and exclude with the nitpicker exclude', () => {
-    const root = fakes.project({
-      'pyproject.toml': '[ tool.pyright ]\nignore = ["src"]\nexclude = ["src"]\n',
-    });
-    const { context, reportRoot } = fakes.contextFor(root, {}, ['src/gen/**', '**/*_pb2.py']);
-
-    expect(pyrightConfig(context)).toEqual({
-      extends: path.join(root, 'pyproject.toml'),
-      typeCheckingMode: 'strict',
-      enableTypeIgnoreComments: false,
-      ignore: [],
-      executionEnvironments: [],
-      exclude: [
-        '**/node_modules',
-        '**/__pycache__',
-        '**/.*',
-        path.relative(reportRoot, path.join(root, 'src/gen/**')),
-        path.relative(reportRoot, path.join(root, '**/*_pb2.py')),
-      ],
       include: [path.relative(reportRoot, path.join(root, 'src'))],
       extraPaths: [path.join(root, 'src')],
     });
