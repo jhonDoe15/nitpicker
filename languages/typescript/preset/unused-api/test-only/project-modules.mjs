@@ -9,7 +9,7 @@ import {
   fileExports,
   fileImports,
 } from '../../syntax/module-facts.mjs';
-import { referencedNames } from '../../syntax/references.mjs';
+import { referenceMembers } from '../../syntax/references.mjs';
 import { codeExtensionNames } from '../../layout.mjs';
 import { workspacePaths } from '../workspace/entries.mjs';
 import { moduleLinks } from './reexport-graph.mjs';
@@ -69,11 +69,13 @@ function readModule(file, resolve) {
     return NO_LINKS;
   }
   const sourceFile = parse(file);
+  const members = referenceMembers([sourceFile], fileAliasReads(sourceFile));
   const links = moduleLinks({
     imports: fileImports(sourceFile),
     dynamicImports: fileDynamicImports(sourceFile),
     exports: fileExports(sourceFile),
-    referenced: referencedNames([sourceFile], fileAliasReads(sourceFile)),
+    referenced: new Set(members.keys()),
+    members,
   });
   const references = lazily(() => resolveSources(links.references, file, resolve));
   return {

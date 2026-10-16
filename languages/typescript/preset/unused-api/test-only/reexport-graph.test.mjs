@@ -112,12 +112,13 @@ describe('the links of one module', () => {
   const NO_EXPORTS = { aliases: [], locals: [], namespaces: [], reexports: [] };
   const IMPORTS = [{ specifier: './api', named: [{ local: 'handle', imported: 'handle' }] }];
 
-  function linksOf({ exports = {}, referenced = [] }) {
+  function linksOf({ exports = {}, referenced = [], members = new Map(), imports = IMPORTS }) {
     return moduleLinks({
-      imports: IMPORTS,
+      imports,
       dynamicImports: [],
       exports: { ...NO_EXPORTS, ...exports },
       referenced: new Set(referenced),
+      members,
     });
   }
 
@@ -147,5 +148,91 @@ describe('the links of one module', () => {
       edges: [],
       references: [{ specifier: './api', imported: 'handle' }],
     });
+  });
+
+  it('follows an alias that the file passes onward as further aliases of the same import', () => {
+    const exports = {
+      aliases: [
+        { local: 'handle', exported: 'serve' },
+        { local: 'serve', exported: 'wrapped' },
+      ],
+      locals: [
+        { local: 'serve', exported: 'default' },
+        { local: 'serve', exported: 'run' },
+      ],
+    };
+    const edge = (exported) => ({
+      exported,
+      imported: 'handle',
+      specifier: './api',
+      viaImport: true,
+    });
+
+    expect(
+      linksOf({ exports }).edges.toSorted((a, b) => a.exported.localeCompare(b.exported)),
+    ).toEqual(['default', 'run', 'serve', 'wrapped'].map(edge));
+  });
+
+  it('keeps the import a reference when the file reads a name further along an alias chain', () => {
+    const exports = {
+      aliases: [
+        { local: 'handle', exported: 'serve' },
+        { local: 'serve', exported: 'wrapped' },
+      ],
+      locals: [{ local: 'serve', exported: 'default' }],
+    };
+
+    expect(linksOf({ exports, referenced: ['wrapped'] })).toEqual({
+      edges: [],
+      references: [{ specifier: './api', imported: 'handle' }],
+    });
+  });
+
+  it('stops on aliases that point at each other', () => {
+    const exports = {
+      aliases: [
+        { local: 'second', exported: 'first' },
+        { local: 'first', exported: 'second' },
+      ],
+    };
+
+    expect(linksOf({ exports }).edges).toEqual([]);
+  });
+
+  it('limits a reference to the members read, unless the module also passes the import on', () => {
+    const members = new Map([['handle', ['run']]]);
+    const passedOn = { locals: [{ local: 'handle', exported: 'handle' }] };
+
+    expect(linksOf({ referenced: ['handle'], members }).references).toEqual([
+      { specifier: './api', imported: 'handle', members: ['run'] },
+    ]);
+    expect(linksOf({ referenced: ['handle'], members, exports: passedOn }).references).toEqual([
+      { specifier: './api', imported: 'handle' },
+    ]);
+  });
+});
+
+describe('the declarations a reference reaches', () => {
+  const modules = {
+    '/main.ts': [named('api', '/api.ts', EVERYTHING, { namespace: true })],
+    '/barrel.ts': [named('api', '/main.ts')],
+  };
+
+  function reached(reference) {
+    const used = graphOf(modules).usedBy([reference]);
+    return ['handle', 'other'].filter((name) => isCovered(used, { file: '/api.ts', name }));
+  }
+
+  it('takes every member of a namespace that is read as a whole', () => {
+    expect(reached({ source: '/main.ts', imported: 'api' })).toEqual(['handle', 'other']);
+  });
+
+  it('takes only the members read through a namespace, also through a barrel', () => {
+    expect(reached({ source: '/main.ts', imported: 'api', members: ['handle'] })).toEqual([
+      'handle',
+    ]);
+    expect(reached({ source: '/barrel.ts', imported: 'api', members: ['other'] })).toEqual([
+      'other',
+    ]);
   });
 });

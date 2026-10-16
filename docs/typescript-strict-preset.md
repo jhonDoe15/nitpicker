@@ -862,12 +862,18 @@ from a real caller) and the `exceptions` entry that lifts it.
   what the normal run does not list is used only by tests. That covers whole modules too: a module
   that only tests import should move to a `test-support/` folder, and modules under `test-support/`
   are not reported. A re-export (`export { x } from`, `export * from`, `export * as ns from`, an import that is only
-  exported again, or `export const y = x` for an import the file does not otherwise read) is not a use by itself: re-exporting a function from an entry such as
+  exported again, or `export const y = x` for an import the file does not otherwise read, which
+  `export default y`, `export { y as z }` and `export const w = y` pass onward as further aliases of
+  the same import) is not a use by itself: re-exporting a function from an entry such as
   `src/main/main.ts` or a composition root does not clear the finding, and the finding names the
   re-exporting file. It counts only when something imports the name onward from the re-exporting
   module; barrels, renames and imports that are only exported again are followed to the
   declaration, and the importer at the end decides (production code counts, a test does not). A
-  declaration that nothing imports, tests included, is not reported. Exceptions: a re-export from a
+  declaration that nothing imports, tests included, is not reported. Production that uses an
+  `export * as ns` of an entry as a whole value (`use(ns)`, `Object.keys(ns)`) uses every member;
+  `ns.member` uses only that member. Entries are found by the same walk as the rest of the project,
+  so a file in a dot, `dist`, `build`, `generated` or `node_modules` directory, a symlink or a
+  declaration file is not an entry here either. Exceptions: a re-export from a
   public entry of a published package (see below), a re-export from a file listed in
   `layout.entryPoints` (a handler, worker or plugin config that a host loads instead of importing
   it), and what a framework plugin consumes from an entry. An entry that spreads a namespace

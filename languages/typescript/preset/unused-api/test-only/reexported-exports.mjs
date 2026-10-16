@@ -1,7 +1,6 @@
-import { statSync } from 'node:fs';
 import path from 'node:path';
 import { globToRegExp, toPosix } from '../../layout.mjs';
-import { codeFilesUnder } from '../program.mjs';
+import { codeFilesUnder, walkRules } from '../program.mjs';
 import { publicEntryGlobs } from '../workspace/entries.mjs';
 import { entriesOf, keyOf } from './knip-report.mjs';
 import { layoutProductionMatcher } from './production-config.mjs';
@@ -29,18 +28,14 @@ function staticBase(glob) {
     : { path: segments.slice(0, dynamic).join('/'), isFile: false };
 }
 
-function isOnDisk(file, kind) {
-  return statSync(file, { throwIfNoEntry: false })?.[kind]() === true;
-}
-
-function filesNear(globs, layout, walk) {
+function filesNear(globs, { layout, walk, rules }) {
   const bases = globs.map(staticBase);
   const named = bases.filter(({ isFile }) => isFile).map(({ path: file }) => file);
   const directories = new Set(bases.filter(({ isFile }) => !isFile).map(({ path: dir }) => dir));
   return [
-    ...named.filter((file) => isOnDisk(file, 'isFile')),
+    ...named.filter((file) => rules.isFile(file)),
     ...walk(
-      [...directories].filter((dir) => isOnDisk(dir, 'isDirectory')),
+      [...directories].filter((dir) => rules.isDirectory(dir)),
       layout,
     ).map(toPosix),
   ];
@@ -52,7 +47,8 @@ function entryFilesOf({ projectRoot, entryPatterns, packagesInfo, layout }, walk
     toPosix(path.join(projectRoot, glob)),
   );
   const globs = [...configured, ...manifestGlobs.map(toPosix)];
-  return filesMatching(filesNear(globs, layout, walk), globs);
+  const rules = walkRules({ projectRoot, layout });
+  return filesMatching(filesNear(globs, { layout, walk, rules }), globs);
 }
 
 function publicFilesOf({ files, projectRoot, packagesInfo, layout }) {
@@ -157,6 +153,10 @@ function projectOf({ layout, projectRoot }, walk) {
   };
 }
 
+function needsProductionCheck(group) {
+  return group[0].item === undefined || group.some(({ chain }) => chain.node.name === EVERYTHING);
+}
+
 function survivors(groups, { project, graph, moduleOf, testUsed, known, options }) {
   const { files, productionFiles } = project;
   const { projectRoot, packagesInfo } = options;
@@ -169,7 +169,7 @@ function survivors(groups, { project, graph, moduleOf, testUsed, known, options 
     .filter((group) => isInsideOnePackage(group, { projectRoot, packagesInfo }))
     .filter((group) => !isCovered(surface, group[0]))
     .filter((group) => isCovered(testUsed, group[0]))
-    .filter((group) => group[0].item !== undefined || !isCovered(productionUsed(), group[0]));
+    .filter((group) => !needsProductionCheck(group) || !isCovered(productionUsed(), group[0]));
 }
 
 export function reexportedTestOnlyEntries(options) {

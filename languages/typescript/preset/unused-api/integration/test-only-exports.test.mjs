@@ -209,6 +209,33 @@ it('seals', () => sealJar());
 `,
 };
 
+const PASSED_ON = {
+  'src/main/main.ts': `import { run } from './runner';
+import { handle } from './features/serve/handle';
+export const serve = handle;
+export default serve;
+export * as shelf from './features/shelf/shelf';
+export * as cart from './features/cart/cart';
+run();
+`,
+  'src/main/runner.ts': `import served, { cart, shelf } from './main';
+export function run() { return [served(), Object.keys(shelf), cart.add()]; }
+`,
+  'src/main/features/serve/handle.ts': 'export function handle() { return 1; }\n',
+  'src/main/features/shelf/shelf.ts': `export function stack() { return 2; }
+export function unstack() { return 3; }
+`,
+  'src/main/features/cart/cart.ts': `export function add() { return 4; }
+export function drop() { return 5; }
+`,
+  'src/main/features/passed-on.test.ts': `import { it } from 'vitest';
+import { handle } from './serve/handle';
+import { stack, unstack } from './shelf/shelf';
+import { add, drop } from './cart/cart';
+it('uses them', () => [handle(), stack(), unstack(), add(), drop()]);
+`,
+};
+
 let privateFindings;
 
 beforeAll(() => {
@@ -314,6 +341,12 @@ describe('exports that an entry re-exports', () => {
 
     expect(symbols(deadCode({ sources: NEXT, manifest: NEXT_APP, policy }))).toEqual([
       'src/lib/audit.ts audit',
+    ]);
+  });
+
+  it('follows aliases and namespaces that production reads on, member by member', () => {
+    expect(symbols(deadCode({ sources: PASSED_ON }))).toEqual([
+      'src/main/features/cart/cart.ts drop',
     ]);
   });
 });
