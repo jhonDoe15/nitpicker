@@ -26,6 +26,29 @@ export function memberName(node) {
     : undefined;
 }
 
+const mockRunnerNames = new Set(['vi', 'jest']);
+const moduleMockMethods = new Set(['mock', 'doMock']);
+
+export function mockedModuleSource(node, runners = mockRunnerNames) {
+  const callee = node?.type === 'CallExpression' ? node.callee : undefined;
+  const isMock =
+    callee?.type === 'MemberExpression' &&
+    callee.object.type === 'Identifier' &&
+    runners.has(callee.object.name) &&
+    moduleMockMethods.has(memberName(callee));
+  const [argument] = isMock ? node.arguments : [];
+  const source = argument?.type === 'ImportExpression' ? argument.source : argument;
+  return source?.type === 'Literal' && typeof source.value === 'string' ? source.value : undefined;
+}
+
+const browserTestModule = /^(?:@playwright\/|cypress(?:\/|$))/u;
+
+export function isBrowserEndToEndTest({ sources, projectFile, layout }) {
+  return (
+    sources.some((source) => browserTestModule.test(source)) || layout.isEndToEndTest(projectFile)
+  );
+}
+
 export function propertyKeyName(property) {
   const { key } = property;
   if (key.type === 'Identifier' && !property.computed) return key.name;
