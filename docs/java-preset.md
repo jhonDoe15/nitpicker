@@ -577,12 +577,14 @@ resolved plus a new finding, as in the TypeScript check.
   (`languages/java/adapters/overlaps/static-overlaps.mjs`).
 - **Measured** (findings on the whole project, main and test code; see the review for each check):
   crank 68 (79 before round 3: `Varifier` 14 off, NullAway 2 in test code gone,
-  `PrivateConstructorForUtilityClass` 5 new), PetClinic 43 (98: `Varifier` 51 off, NullAway 4 in
-  test code gone, `InterruptedExceptionSwallowed` 1 off, `PrivateConstructorForUtilityClass` 2 new
-  on the `@SpringBootApplication` classes), the `gradle-project` fixture 2 (the new one is
-  `PrivateConstructorForUtilityClass` on an ArchUnit test class) and the `spring-project` fixture 6
-  (`FieldCanBeFinal` 5 on initialized JPA entity fields, which take an exception). NullAway alone:
-  6, 4, 0 and 0, nearly all `@Nullable` values returned or passed where a non-null one is declared.
+  `PrivateConstructorForUtilityClass` 5 new on real utility classes), PetClinic 41 (98: `Varifier`
+  51 off, NullAway 4 in test code gone, `InterruptedExceptionSwallowed` 1 off), the
+  `gradle-project` fixture 1 (`UnnecessarilyFullyQualified`) and the `spring-project` fixture 1
+  (`MethodCanBeStatic`). The class exemptions removed `PrivateConstructorForUtilityClass` on
+  PetClinic's 2 `@SpringBootApplication` classes and the ArchUnit test class, and `FieldCanBeFinal`
+  5 on the Spring fixture's JPA entities; the dedupe and the partial-overlap rule changed nothing on
+  crank or PetClinic. NullAway alone: 6, 4, 0 and 0, nearly all `@Nullable` values returned or
+  passed where a non-null one is declared.
 - **Cost.** A second compile of main and test sources: about 6 s on the fixtures and 30 s on crank
   and PetClinic, most of it JVM start-up and Error Prone's own class loading.
 - **Limits.** A project whose own build already runs Error Prone gets nitpicker's run in
