@@ -1,23 +1,16 @@
 import { spawnSync } from 'node:child_process';
-import { mkdtempSync, writeFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
+import { writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import {
   readPythonStructureFindings,
   STRUCTURE_REPORT,
 } from '../adapters/analysis/python-structure.mjs';
-import {
-  directories,
-  field,
-  functionsOf,
-  metricsOf,
-  removeDirectories,
-  script,
-  usable,
-} from './python-helpers.mjs';
+import { createMetrics, pythonUsable, script } from './python-helpers.mjs';
 
-afterEach(removeDirectories);
+const { directory: scratchDirectory, cleanup, field, functionsOf, metricsOf } = createMetrics();
+
+afterEach(cleanup);
 
 const SAMPLE_SOURCE = [
   'import functools',
@@ -81,7 +74,7 @@ const SAMPLE_SOURCE = [
   '',
 ].join('\n');
 
-describe.skipIf(!usable)('with python3 3.10 or newer on the PATH', () => {
+describe.skipIf(!pythonUsable())('with python3 3.10 or newer on the PATH', () => {
   describe('the structure metrics script', () => {
     it('counts lines, statements, control nesting, parameters and complexity the way the shared limits mean them', () => {
       const metrics = metricsOf({ 'sample.py': SAMPLE_SOURCE });
@@ -333,8 +326,7 @@ describe.skipIf(!usable)('with python3 3.10 or newer on the PATH', () => {
 
   describe('the structure findings of the report', () => {
     function findingsOf(source) {
-      const directory = mkdtempSync(path.join(tmpdir(), 'nitpicker-structure-findings-'));
-      directories.push(directory);
+      const directory = scratchDirectory('nitpicker-structure-findings-');
       writeFileSync(path.join(directory, 'sample.py'), `${source.join('\n')}\n`);
       writeFileSync(path.join(directory, 'listing.txt'), 'sample.py');
       const output = path.join(directory, STRUCTURE_REPORT);
