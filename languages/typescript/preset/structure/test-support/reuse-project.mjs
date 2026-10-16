@@ -77,12 +77,12 @@ export function bothSides(baseFiles, headFiles, config = {}) {
   });
 }
 
-export function changeFindings(baseFiles, headFiles, config = {}) {
+export function changeFindings(baseFiles, headFiles, { config = {}, baselinePaths } = {}) {
   return withFiles(headFiles, (headRoot) =>
     withFiles(baseFiles, (baselineRoot) =>
       withHeadPolicyFile(resolveHeadPolicy(config, headRoot), (policyFile) =>
         reuseFindings(
-          { projectRoot: headRoot, analyzerName: 'structure', baselineRoot },
+          { projectRoot: headRoot, analyzerName: 'structure', baselineRoot, baselinePaths },
           headPolicyEnvironment(policyFile),
         ),
       ),

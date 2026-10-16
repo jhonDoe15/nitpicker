@@ -4,7 +4,7 @@ import { typescriptFileLimitFindings } from './file-limits.mjs';
 import { reuseFindings } from './reuse/reuse-findings.mjs';
 
 export function typescriptStructureProjectFindings(
-  { projectRoot, liveProjectRoot, analyzerName, snapshot, baselineRoot },
+  { projectRoot, liveProjectRoot, analyzerName, snapshot, baselineRoot, baselinePaths },
   environment = process.env,
 ) {
   return [
@@ -17,7 +17,12 @@ export function typescriptStructureProjectFindings(
       exceptions: readHeadPolicy(environment).exceptions,
     }),
     ...reuseFindings(
-      { projectRoot, analyzerName, baselineRoot: snapshot === 'head' ? baselineRoot : undefined },
+      {
+        projectRoot,
+        analyzerName,
+        baselineRoot: snapshot === 'head' ? baselineRoot : undefined,
+        baselinePaths,
+      },
       environment,
     ),
   ];
