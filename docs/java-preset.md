@@ -590,7 +590,11 @@ resolved plus a new finding, as in the TypeScript check.
   shared matcher that tolerates one random-looking word.
 - **Limits.** Output a test prints from a thread after it ends is attributed by the build to
   whatever runs then. A line printed only in some runs (a timing-dependent warning) shows up as new
-  in the run that has it; allow it in `testConsole.allow` with the reason.
+  in the run that has it; allow it in `testConsole.allow` with the reason. Surefire runs the ArchUnit
+  rule classes in the same JVM as the tests, so output their libraries print while JUnit discovers
+  them (SLF4J's "no providers" notice) lands on the first test, while Gradle runs them in
+  `nitpickerArchunit`, whose output is not read. Base and head print it alike, so it stays
+  baselined.
 - **Tests.** `adapters/test-times/console-output.test.mjs`, `console-findings.test.mjs`,
   `maven/results/maven-test-results.test.mjs`, and `java-e2e/review-rules.e2e.test.mjs`, which
   commits a test that prints a new line on top of the Spring fixture and asserts, on Gradle and on
