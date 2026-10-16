@@ -17,7 +17,7 @@ tested setup). nitpicker brings its own pinned ESLint, Prettier, dependency-crui
 Stryker and CRAP tooling and loads them from its own package, so neither side of the comparison can
 choose them. `typescript` and the project's test runner come from your project: Vitest, Jest,
 `node:test` or Mocha (see [Test runners](#test-runners)). A Vitest project also needs
-`@vitest/coverage-v8` at its Vitest version (4.1.11 or newer, or 5). If a peer is missing or
+`@vitest/coverage-v8` at its Vitest version (3.2 or newer). If a peer is missing or
 incompatible, the tool that needs it fails and the report shows a tool error.
 
 ### From a GitHub release
@@ -326,10 +326,6 @@ have one. `typescript` and `vitest` are peers as for TypeScript.
 
 What the preset does not support:
 
-- **Test runner lint.** Coverage, CRAP and mutation run the project's own runner, as for
-  TypeScript (see [Test runners](#test-runners)), but the lint rules for test files are still
-  Vitest's: `vitest/no-import-node-test` fails a `node:test` import (its message points to an
-  exception for that rule, which silences the lint finding only).
 - **CommonJS tests.** Production code may be CommonJS. A Vitest test file must `import` Vitest,
   because `require('vitest')` fails at run time, so import `.cjs` production code from an ESM test,
   as the fixture does. Jest, `node:test` and Mocha run CommonJS tests as they are.
@@ -693,6 +689,13 @@ source map; a loader that writes no source map is a tool error. Coverage from ch
 workers is merged. A `ts-node` target below ES2022 is raised to ES2022 for the coverage run (class
 field semantics kept), so `??` and `?.` are not counted as extra branches. A `.tsx` file no test
 loaded is not reported.
+
+Lint follows the runner too: test files get the same strictness under every runner, through
+`@vitest/eslint-plugin` for Vitest and `eslint-plugin-jest`'s structural rules for Jest (`jest/`),
+`node:test` (`node-test/`) and Mocha (`mocha/`). nitpicker's own test rules know each runner's
+mocks, fake timers and timeouts, and their messages name that runner's API. Type checks use the
+runner's globals (`@types/jest` or `@types/mocha` when installed), and Jest's `testEnvironment`
+decides which tests run in the DOM.
 
 With Jest, `node:test` and Mocha any file under the test roots counts as a test when nitpicker
 decides whether coverage runs; with Vitest only `*.test.*` and `*.spec.*` files do. A runner that
