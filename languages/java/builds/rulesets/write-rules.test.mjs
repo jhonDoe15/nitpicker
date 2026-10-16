@@ -1,13 +1,11 @@
-import { execFileSync } from 'node:child_process';
 import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import { GRADLE_DIRECTORY } from '../java-build.mjs';
 import { scopedRuleset } from './pmd-rulesets.mjs';
-import { writeRules } from './write-rules.mjs';
+import { main, writeRules } from './write-rules.mjs';
 
-const WRITER = path.join(import.meta.dirname, 'write-rules.mjs');
 const roots = [];
 
 afterEach(() => {
@@ -34,7 +32,7 @@ describe('write-rules', () => {
       }),
     );
 
-    execFileSync(process.execPath, [WRITER, 'pmd', plan]);
+    main(['pmd', plan]);
 
     expect(readFileSync(path.join(reportDir, 'pmd-rulesets.txt'), 'utf8').split(',')).toEqual([
       path.join(GRADLE_DIRECTORY, 'pmd-ruleset.xml'),
@@ -54,8 +52,8 @@ describe('write-rules', () => {
   });
 
   it('rejects an unknown kind', () => {
-    expect(() => writeRules('spotbugs', {})).toThrow(
-      new Error('unknown rule configuration kind: spotbugs'),
-    );
+    expect(() => {
+      writeRules('spotbugs', {});
+    }).toThrow(new Error('unknown rule configuration kind: spotbugs'));
   });
 });
