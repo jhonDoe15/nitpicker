@@ -1,0 +1,14 @@
+{
+  "findings": [
+    {
+      "tool": "duplicates",
+      "rule": "cpd-not-run",
+      "path": ".",
+      "identity": "cpd-not-run@core",
+      "message": "No CPD duplicate report for core/src/main/java.",
+      "classification": "descriptive",
+      "toolNotRun": true,
+      "notRunScope": ["cpd:pair:core/src/main/java/"]
+    }
+  ]
+}

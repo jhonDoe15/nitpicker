@@ -61,10 +61,18 @@ function parseOptionalFields(value, classification, context) {
   if (value.ratchet !== undefined) {
     fields.ratchet = parseRatchet(value.ratchet, `${context}.ratchet`);
   }
+
+  return { ...fields, ...parseNotRunFields(value, classification, context) };
+}
+
+function parseNotRunFields(value, classification, context) {
+  const fields = {};
   if (value.toolNotRun !== undefined) {
     fields.toolNotRun = parseToolNotRun(value.toolNotRun, classification, context);
   }
-
+  if (value.notRunScope !== undefined) {
+    fields.notRunScope = parseNotRunScope(value.notRunScope, fields.toolNotRun, context);
+  }
   return fields;
 }
 
@@ -73,6 +81,19 @@ function parseToolNotRun(value, classification, context) {
     throw new TypeError(`${context}.toolNotRun must be true on a descriptive finding`);
   }
   return true;
+}
+
+function parseNotRunScope(value, toolNotRun, context) {
+  const prefixes = Array.isArray(value) ? value : [undefined];
+  if (
+    toolNotRun !== true ||
+    prefixes.some((prefix) => typeof prefix !== 'string' || prefix === '')
+  ) {
+    throw new TypeError(
+      `${context}.notRunScope must be a list of identity prefixes on a toolNotRun finding`,
+    );
+  }
+  return [...prefixes];
 }
 
 function parseLocation(value, context) {

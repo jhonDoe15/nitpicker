@@ -1,6 +1,7 @@
 import { comparisonKey } from './fingerprint.mjs';
 import { normalizeGitPath } from '../git/normalize.mjs';
 import { folderMoves, mainDestination } from '../git/patches/renames.mjs';
+import { againstMissingReports } from './notices/missing-reports.mjs';
 
 export function compareFindings({
   baseFindings,
@@ -43,31 +44,6 @@ export function compareFindings({
     unchangedFindings: sortFindings(present.unchangedFindings),
     changedMetrics: present.changedMetrics.sort(compareDisplayOrder),
   };
-}
-
-const BROKEN_ON_HEAD = 'The base produced this {tool} report, so the change broke it.';
-const NOT_COMPARED = 'Not enforced: no base {tool} report shows whether the change added it.';
-
-function reclassified(finding, classification, sentence) {
-  return {
-    ...Object.fromEntries(Object.entries(finding).filter(([field]) => field !== 'toolNotRun')),
-    classification,
-    message: `${finding.message} ${sentence.replace('{tool}', finding.tool)}`,
-  };
-}
-
-function againstMissingReports(headFindings, baseFindings) {
-  const missingOnBase = new Set(
-    baseFindings.filter((finding) => finding.toolNotRun === true).map((finding) => finding.tool),
-  );
-  return headFindings.map((finding) => {
-    if (finding.toolNotRun === true && !missingOnBase.has(finding.tool)) {
-      return reclassified(finding, 'tool-error', BROKEN_ON_HEAD);
-    }
-    return finding.classification === 'enforceable' && missingOnBase.has(finding.tool)
-      ? reclassified(finding, 'descriptive', NOT_COMPARED)
-      : finding;
-  });
 }
 
 function classifyHeadFindings({ headByKey, baseByKey, touchedCode }) {

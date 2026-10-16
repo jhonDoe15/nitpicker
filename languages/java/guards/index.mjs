@@ -9,6 +9,7 @@ export function readGuardFindings({ reportRoot, jscpdRoot, projectRoot, manifest
     ...readForbiddenApiFindings(reportRoot, { locate }),
     ...readCpdFindings(reportRoot, {
       projectRoot,
+      sourceRoots: manifest.sourceRoots ?? [],
       testRoots: manifest.testSourceRoots ?? [],
       jscpdRoot,
     }),

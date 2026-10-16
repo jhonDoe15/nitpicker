@@ -130,11 +130,19 @@ field by field. Per snapshot:
   (`languages/java/builds/java-modules.mjs`; both builds share `builds/project-wide.mjs`). Duplicate detection runs per module, so
   a clone between two modules is not found, as a clone between two source roots is not.
 - **Module descriptors.** jdeps reads a module with a `module-info.class` as that module, so it
-  must find every module the descriptor `requires`: there it also gets the main compile classpath
-  on `--module-path` and `--multi-release` with the module's `release` (else `target`), as jars
-  such as commons-lang3 keep their descriptor under `META-INF/versions/9/`. The init script's
-  `nitpickerJdeps` passes the same two options. Only the edges between the module's own classes
-  are read, so coupling is the same as without a descriptor.
+  must find every module the descriptor `requires`. There it also gets `--module-path` with the
+  main compile classpath entries jdeps can read as modules: a directory with a `module-info.class`,
+  a `.jmod`, or a `.jar` with a `module-info.class` (also under `META-INF/versions/<n>/`), or with
+  a legal automatic module name (its `Automatic-Module-Name`, else the one derived from the file
+  name) and no class outside a legal package. jdeps stops with "Unable to derive module
+  descriptor" on any other jar and "Module format not recognized" on a `.pom` or `.zip`, so
+  those, and directories without a descriptor, are left out. It also gets `--multi-release` with
+  the release (`languages/java/maven/coupling/maven-jdeps.mjs` reads it as the PMD rules do, from
+  `release`, `--release`, `-target` or `target`), at least 9, or the running JDK's version when
+  the POM sets none, as jars such as commons-lang3 keep their descriptor under
+  `META-INF/versions/9/`. The init script's `nitpickerJdeps` passes the same options with the same
+  entry rules. Only the edges between the module's own classes are read, so coupling is the same
+  as without a descriptor.
 - **Guards.** The [guards](#guards) run on Maven too, outside Maven and per module
   (`languages/java/maven/guards/`), writing the same reports in `target/nitpicker/`. The javac
   lint pass reads the `maven-compiler-plugin` settings from the effective POM (`release`, `source`,
@@ -754,16 +762,23 @@ A Checkstyle rule prints as its full check class, for example
   same tool and rule as jscpd (`duplicates/duplicate-clone`), with identities starting `cpd:` so
   they never match a jscpd finding; between two test files the message points at a helper or a
   `@ParameterizedTest`. The message ends with the exception route for
-  `duplicates/duplicate-clone`. When CPD exits with a code other than 0 or 4, or prints no XML
-  report, both builds write its exit code and stderr to `cpd-failed.txt` instead of `cpd.xml`,
-  and the module gets a `duplicates/cpd-not-run` tool-not-run finding that quotes them (an empty
-  or non-XML `cpd.xml` gives the same finding). PMD 7.7.0 to 7.28.0 can crash here with
-  `Deque.peek().name is null` and still exit 0: one CPD lexer serves every file, and its
-  constructor detector keeps its state from file to file. A `X.class` literal followed only by
-  closing braces leaves a nameless type on its stack; when the next file starts with a bare
-  `class` (no modifier or annotation) the stack is not cleaned, and the first `(` reached with
-  that type on top, such as a later file's `@Annotation(...)`, throws. The guards fixture's
-  `GreetingFixturesTest` is `final` for this reason.
+  `duplicates/duplicate-clone`. Both builds run CPD through `languages/java/gradle/CpdReport.java`
+  (single-file source mode, with the pinned PMD on the class path) instead of `PmdCli cpd`, with
+  the same settings and the same XML report. PMD 7.7.0 to 7.28.0 crash on common code with
+  `Deque.peek().name is null`, and `PmdCli` still exits 0 without a report: the Java CPD lexer's
+  constructor detector pushes a type on every `class` keyword, a class literal (`String.class`)
+  followed by `}` leaves that type without a name, the next declaration without a modifier (a
+  bare `class`, or any `enum`) keeps it on the stack, and the next `(` reads its null name. One
+  file is enough (`static final Class<?>[] TYPES = { String.class }; enum Kind { X } void
+  register() { }`), and the state also carries from one file to the next. The launcher rewrites
+  each `.class` literal to the same-length identifier `.c$ass` before tokenizing; identifiers are
+  ignored anyway, so the tokens, lines and paths of the report do not move. When CPD still exits
+  with a code other than 0 or 4, or prints no XML report, both builds write its exit code (or
+  signal) and stderr to `cpd-failed.txt` instead of `cpd.xml`, and the module gets a
+  `duplicates/cpd-not-run` tool-not-run finding that names the module's source roots and quotes
+  them (an empty or non-XML `cpd.xml` gives the same finding). Its `notRunScope` holds the CPD
+  identity prefixes of those roots (`cpd:pair:<root>/`), so a failure on the base leaves jscpd
+  clones and other modules' CPD clones enforced.
 - **Cycles.** `java-coupling.mjs` already has the class graph from jdeps. Each package in a
   strongly connected set of packages is one `package-cycle` finding, identified by the package
   name and placed on its first file, so growing a legacy cycle adds a finding for the new package

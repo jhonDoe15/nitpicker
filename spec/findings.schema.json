@@ -47,6 +47,11 @@
         "toolNotRun": {
           "description": "Marks a descriptive notice that this snapshot has no report from `tool`. When the base carries one, the comparison reports the head's enforceable findings of that tool as descriptive, since nothing tells which of them the change added.",
           "const": true
+        },
+        "notRunScope": {
+          "description": "Narrows a toolNotRun notice to the findings of `tool` whose identity starts with one of these prefixes, such as one module's clones of one detector. Without it the notice covers every finding of `tool`. A scoped notice on the head counts as broken by the change unless the base has a notice of the same tool and identity.",
+          "type": "array",
+          "items": { "$ref": "#/$defs/nonEmptyString" }
         }
       },
       "allOf": [
@@ -61,6 +66,10 @@
           "then": {
             "properties": { "classification": { "const": "descriptive" } }
           }
+        },
+        {
+          "if": { "required": ["notRunScope"] },
+          "then": { "required": ["toolNotRun"] }
         }
       ]
     },

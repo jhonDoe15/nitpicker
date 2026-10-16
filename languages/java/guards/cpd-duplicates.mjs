@@ -187,25 +187,32 @@ function readCpdReport(reportRoot) {
       };
 }
 
-function cpdNotRun(reason) {
+function clonePrefix(root) {
+  return root === '.' ? 'cpd:pair:' : `cpd:pair:${root}/`;
+}
+
+function cpdNotRun(reason, roots) {
+  const place = roots.length === 0 ? 'this module' : roots.join(', ');
   return {
     tool: DUPLICATES_TOOL,
     rule: CPD_NOT_RUN,
     path: '.',
     identity: CPD_NOT_RUN,
-    message: `No CPD duplicate report, so duplicated code was not checked: ${reason}`,
+    message: `No CPD duplicate report for ${place}, so duplicated code there was not checked: ${reason}`,
     classification: 'descriptive',
     toolNotRun: true,
+    notRunScope: roots.length === 0 ? ['cpd:'] : roots.map((root) => clonePrefix(root)),
   };
 }
 
-export function readCpdFindings(reportRoot, { projectRoot, testRoots, jscpdRoot = reportRoot }) {
+export function readCpdFindings(reportRoot, options) {
+  const { projectRoot, sourceRoots = [], testRoots, jscpdRoot = reportRoot } = options;
   const read = readCpdReport(reportRoot);
   if (read.kind === 'missing') {
     return [];
   }
   if (read.kind === 'failed') {
-    return [cpdNotRun(read.reason)];
+    return [cpdNotRun(read.reason, [...new Set([...sourceRoots, ...testRoots])])];
   }
   const known = jscpdRanges(jscpdRoot);
   const clones = distinctClones(cpdClones(read.xml, projectRoot)).filter(

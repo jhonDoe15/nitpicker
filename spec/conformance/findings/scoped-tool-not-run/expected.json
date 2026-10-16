@@ -1,0 +1,44 @@
+{
+  "description": "A toolNotRun finding with notRunScope covers only the findings of its tool whose identity starts with one of the prefixes. On the base it makes the head's CPD clones of that module descriptive, while the jscpd clone and another module's CPD clone of the same tool stay enforceable. On the head, a scoped notice the base also has (same tool and identity) stays descriptive, and one the base lacks is a tool-error.",
+  "new": [
+    {
+      "tool": "duplicates",
+      "rule": "cpd-not-run",
+      "path": ".",
+      "identity": "cpd-not-run@app",
+      "classification": "tool-error"
+    },
+    {
+      "tool": "duplicates",
+      "rule": "duplicate-clone",
+      "path": "core/src/main/java/A.java",
+      "identity": "cpd:pair:core/src/main/java/A.java|core/src/main/java/B.java:occurrence:1",
+      "classification": "descriptive"
+    },
+    {
+      "tool": "duplicates",
+      "rule": "duplicate-clone",
+      "path": "core/src/main/java/A.java",
+      "identity": "pair:core/src/main/java/A.java|core/src/main/java/B.java:occurrence:1",
+      "classification": "enforceable"
+    },
+    {
+      "tool": "duplicates",
+      "rule": "duplicate-clone",
+      "path": "lib/src/main/java/C.java",
+      "identity": "cpd:pair:lib/src/main/java/C.java|lib/src/main/java/D.java:occurrence:1",
+      "classification": "enforceable"
+    }
+  ],
+  "resolved": [],
+  "unchanged": [
+    {
+      "tool": "duplicates",
+      "rule": "cpd-not-run",
+      "path": ".",
+      "identity": "cpd-not-run@core",
+      "classification": "descriptive"
+    }
+  ],
+  "changedMetrics": []
+}
