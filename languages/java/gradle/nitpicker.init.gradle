@@ -15,10 +15,7 @@ def pinned = [
     kotlinCompiler  : '2.4.21',
 ]
 
-// BEGIN SH5 structure metrics
-// The directory of this script, where languages/java/gradle/StructureMetrics.java lives.
 def initScriptDir = buildscript.sourceFile.parentFile
-// END SH5 structure metrics
 
 def nitpickerArgument = { String name -> gradle.startParameter.projectProperties[name] }
 
@@ -459,30 +456,6 @@ allprojects {
             }
         }
 
-        // BEGIN SH5 structure metrics
-        // Per-method lines, statements, control nesting, parameters and cyclomatic complexity for the
-        // shared structure rule and the CRAP check. languages/java/gradle/StructureMetrics.java parses
-        // the main sources with the JDK's own compiler tree API in single-file source mode, run by the
-        // JVM that runs Gradle: no extra dependency and no version to pin beyond the JDK.
-        tasks.register('nitpickerStructure') {
-            group = 'nitpicker'
-            def metricsSource = new File(initScriptDir, 'StructureMetrics.java')
-            doLast {
-                reportDir.get().asFile.mkdirs()
-                def roots = mainSources.files.findAll { it.exists() }.collect { relativeToRoot(it) }
-                def output = reportDir.get().file('structure.json').asFile
-                def java = new File(System.getProperty('java.home'), 'bin/java').absolutePath
-                def process = new ProcessBuilder([java, metricsSource.absolutePath,
-                        output.absolutePath, analysisRoot.absolutePath] + roots)
-                    .directory(projectDir).redirectErrorStream(true).start()
-                def log = process.inputStream.getText('UTF-8')
-                if (process.waitFor() != 0) {
-                    throw new GradleException("StructureMetrics failed: ${log.trim()}")
-                }
-            }
-        }
-        // END SH5 structure metrics
-
         tasks.register('nitpickerJava') {
             group = 'nitpicker'
             description = 'Runs PMD, SpotBugs, the formatter check, JaCoCo, Checkstyle, ArchUnit rule tests, ' +
@@ -514,7 +487,8 @@ allprojects {
             }
         }
 
-        ['jdeps-task.gradle', 'lint-tasks.gradle', 'cpd-task.gradle', 'dependency-tasks.gradle'].each {
+        ['structure-task.gradle', 'jdeps-task.gradle', 'lint-tasks.gradle', 'cpd-task.gradle',
+         'dependency-tasks.gradle'].each {
             project.apply from: new File(initScriptDir, "tasks/${it}")
         }
 
