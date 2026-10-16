@@ -22,8 +22,18 @@ tester.run('preserve-error-cause for Error subclasses', preserveErrorCause, {
     'try { run(); } catch (error) { return Promise.reject(new AppError("failed", { cause: error })); }',
     'try { run(); } catch (error) { const failure = new AppError("failed"); return failure; }',
     'try { run(); } catch (error) { throw new Wrapper(String(error)); }',
+    'try { run(); } catch (error) { throw new AggregateError([error, other], "run and close failed"); }',
+    'try { run(); } catch (error) { const cause = error; throw new AppError("bad", { cause }); }',
   ],
   invalid: [
+    {
+      code: 'try { run(); } catch (error) { throw new AggregateError([other], "failed"); }',
+      errors: [{ messageId: 'lostCause' }],
+    },
+    {
+      code: 'try { run(); } catch (error) { const cause = String(error); throw new AppError("bad", { cause: other }); }',
+      errors: [{ messageId: 'lostCause' }],
+    },
     {
       code: 'try { run(); } catch (error) { throw new AppError(String(error)); }',
       errors: [{ messageId: 'lostCause' }],

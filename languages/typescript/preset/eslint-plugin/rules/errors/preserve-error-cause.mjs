@@ -43,15 +43,40 @@ function hasCauseProperty(options, caughtVariables) {
   );
 }
 
+function isCaughtValue(argument, caughtVariables) {
+  const values = argument.type === 'ArrayExpression' ? argument.elements : [argument];
+  return values.some(
+    (value) => value?.type === 'Identifier' && referencesCatch(caughtVariables, value),
+  );
+}
+
 function preservesCause(wrapper, node, caughtVariables) {
   if (wrapper.optionsIndex !== undefined) {
     return hasCauseProperty(node.arguments[wrapper.optionsIndex], caughtVariables);
   }
   return node.arguments.some(
     (argument) =>
-      hasCauseProperty(argument, caughtVariables) ||
-      (argument.type === 'Identifier' && referencesCatch(caughtVariables, argument)),
+      hasCauseProperty(argument, caughtVariables) || isCaughtValue(argument, caughtVariables),
   );
+}
+
+function constAlias(sourceCode, { identifier }) {
+  const declarator = identifier.parent;
+  return declarator.type === 'VariableDeclarator' &&
+    declarator.init === identifier &&
+    declarator.parent.kind === 'const' &&
+    declarator.id.type === 'Identifier'
+    ? sourceCode.getDeclaredVariables(declarator)
+    : [];
+}
+
+function withAliases(sourceCode, caughtVariables) {
+  return [
+    ...caughtVariables,
+    ...caughtVariables.flatMap((variable) =>
+      variable.references.flatMap((reference) => constAlias(sourceCode, reference)),
+    ),
+  ];
 }
 
 function isPromiseReject(call) {
@@ -89,7 +114,7 @@ function isThrown(sourceCode, node) {
 }
 
 function causeReport(sourceCode, { wrapper, node, handler }) {
-  const caughtVariables = sourceCode.getDeclaredVariables(handler);
+  const caughtVariables = withAliases(sourceCode, sourceCode.getDeclaredVariables(handler));
   const thrown = isThrown(sourceCode, node);
   if (thrown && handler.param === null) {
     return 'bindingLess';
