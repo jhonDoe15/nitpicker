@@ -49,8 +49,9 @@
           "const": true
         },
         "notRunScope": {
-          "description": "Narrows a toolNotRun notice to the findings of `tool` whose identity starts with one of these prefixes, such as one module's clones of one detector. Without it the notice covers every finding of `tool`. A scoped notice on the head counts as broken by the change unless the base has a notice of the same tool and identity.",
+          "description": "Narrows a toolNotRun notice to the findings of `tool` whose `path` lies in one of these project-relative directories (`.` is the whole project), such as one module's source roots. Without it the notice covers the whole project. On the base, the directories follow the renames and folder moves to the head before they are matched. On the head, a notice counts as broken by the change unless a base notice of the same tool covers each of its directories.",
           "type": "array",
+          "minItems": 1,
           "items": { "$ref": "#/$defs/nonEmptyString" }
         }
       },

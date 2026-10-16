@@ -36,6 +36,7 @@ const SUPPORTED_KEYWORDS = new Set([
   'properties',
   'additionalProperties',
   'items',
+  'minItems',
   'enum',
   'const',
   'minLength',
@@ -106,15 +107,18 @@ function validate(value, node = schema, errors = [], at = '$') {
   if (isRecord(value)) {
     checkObject(value, node, errors, at);
   }
-  if (Array.isArray(value) && node.items !== undefined) {
-    validateItems(value, node.items, errors, at);
+  if (Array.isArray(value)) {
+    checkArray(value, node, errors, at);
   }
   return errors;
 }
 
-function validateItems(items, node, errors, at) {
-  for (const [index, item] of items.entries()) {
-    validate(item, node, errors, `${at}[${String(index)}]`);
+function checkArray(items, node, errors, at) {
+  if (node.minItems !== undefined && items.length < node.minItems) {
+    errors.push(`${at} has fewer than ${String(node.minItems)} items`);
+  }
+  for (const [index, item] of node.items === undefined ? [] : items.entries()) {
+    validate(item, node.items, errors, `${at}[${String(index)}]`);
   }
 }
 
@@ -337,9 +341,10 @@ describe('spec/findings.schema.json', () => {
       { ...valid, metric: { name: 'm', value: 1 } },
       { ...valid, toolNotRun: true },
       { ...valid, classification: 'descriptive', toolNotRun: false },
-      { ...valid, classification: 'descriptive', notRunScope: ['cpd:'] },
+      { ...valid, classification: 'descriptive', notRunScope: ['core'] },
+      { ...valid, classification: 'descriptive', toolNotRun: true, notRunScope: [] },
       { ...valid, classification: 'descriptive', toolNotRun: true, notRunScope: [''] },
-      { ...valid, classification: 'descriptive', toolNotRun: true, notRunScope: 'cpd:' },
+      { ...valid, classification: 'descriptive', toolNotRun: true, notRunScope: 'core' },
     ];
 
     for (const finding of malformed) {
@@ -409,7 +414,7 @@ describe('spec/findings.schema.json', () => {
       message: 'No CPD duplicate report.',
       classification: 'descriptive',
       toolNotRun: true,
-      notRunScope: ['cpd:pair:src/main/java/', 'cpd:pair:src/test/java/'],
+      notRunScope: ['core/src/main/java', 'core/src/test/java'],
     };
 
     expect(parseFinding(finding)).toEqual(finding);

@@ -22,10 +22,15 @@ Runner contract:
 2. Compare with `renames` (an object mapping base paths to head paths; empty when absent). Renames
    apply to the base side only: they remap a base finding's path and every occurrence of an old path
    inside its `identity`, longest old path first.
-3. Before matching: when the base has a finding with `toolNotRun: true`, every `enforceable` head
-   finding of the same `tool` becomes `descriptive`. A head finding with `toolNotRun: true` whose
-   `tool` has no such finding on the base becomes `tool-error` (the change broke the tool); the
-   runner reports a new `tool-error` finding as a tool error.
+3. Before matching: a finding with `toolNotRun: true` covers the project directories listed in its
+   `notRunScope` (`.` is the whole project), or the whole project without one. A base notice's
+   directories first move the way the renames move their folders: a rename of `a/x/F.java` to
+   `b/x/F.java` moves `a/x` to `b/x` and `a` to `b`, and when renames disagree the destination with
+   the most renames wins.
+   Every `enforceable` head finding of the same `tool` whose `path` lies in a directory a base
+   notice covers becomes `descriptive`. A head finding with `toolNotRun: true` becomes `tool-error`
+   (the change broke the tool) unless a base notice of the same `tool` covers each of its
+   directories; the runner reports a new `tool-error` finding as a tool error.
 4. Two findings match when tool, rule, (renamed) path, symbol (empty when absent), (renamed)
    identity, classification and metric name (empty when absent) are all equal. Message and location
    are not compared. Two findings with the same key in one snapshot are an error.

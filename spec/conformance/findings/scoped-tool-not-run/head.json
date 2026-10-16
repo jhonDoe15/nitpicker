@@ -4,21 +4,31 @@
       "tool": "duplicates",
       "rule": "cpd-not-run",
       "path": ".",
-      "identity": "cpd-not-run@core",
+      "identity": "cpd-not-run@:core",
       "message": "No CPD duplicate report for core/src/main/java.",
       "classification": "descriptive",
       "toolNotRun": true,
-      "notRunScope": ["cpd:pair:core/src/main/java/"]
+      "notRunScope": ["core/src/main/java"]
     },
     {
       "tool": "duplicates",
       "rule": "cpd-not-run",
       "path": ".",
-      "identity": "cpd-not-run@app",
+      "identity": "cpd-not-run@:app",
       "message": "No CPD duplicate report for app/src/main/java.",
       "classification": "descriptive",
       "toolNotRun": true,
-      "notRunScope": ["cpd:pair:app/src/main/java/"]
+      "notRunScope": ["app/src/main/java"]
+    },
+    {
+      "tool": "duplicates",
+      "rule": "cpd-not-run",
+      "path": ".",
+      "identity": "cpd-not-run@:kernel",
+      "message": "No CPD duplicate report for kernel/src/main/java.",
+      "classification": "descriptive",
+      "toolNotRun": true,
+      "notRunScope": ["kernel/src/main/java"]
     },
     {
       "tool": "duplicates",
@@ -34,6 +44,22 @@
       "path": "core/src/main/java/A.java",
       "identity": "pair:core/src/main/java/A.java|core/src/main/java/B.java:occurrence:1",
       "message": "This code repeats core/src/main/java/B.java.",
+      "classification": "enforceable"
+    },
+    {
+      "tool": "duplicates",
+      "rule": "duplicate-clone",
+      "path": "core/src/test/java/T.java",
+      "identity": "cpd:pair:core/src/test/java/T.java|core/src/test/java/U.java:occurrence:1",
+      "message": "This code repeats core/src/test/java/U.java.",
+      "classification": "enforceable"
+    },
+    {
+      "tool": "duplicates",
+      "rule": "duplicate-clone",
+      "path": "kernel/src/main/java/p/E.java",
+      "identity": "cpd:pair:kernel/src/main/java/p/E.java|kernel/src/main/java/p/F.java:occurrence:1",
+      "message": "This code repeats kernel/src/main/java/p/F.java.",
       "classification": "enforceable"
     },
     {

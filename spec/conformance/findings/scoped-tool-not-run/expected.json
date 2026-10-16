@@ -1,12 +1,22 @@
 {
-  "description": "A toolNotRun finding with notRunScope covers only the findings of its tool whose identity starts with one of the prefixes. On the base it makes the head's CPD clones of that module descriptive, while the jscpd clone and another module's CPD clone of the same tool stay enforceable. On the head, a scoped notice the base also has (same tool and identity) stays descriptive, and one the base lacks is a tool-error.",
+  "description": "A toolNotRun finding with notRunScope covers only the findings of its tool whose path lies in one of the listed project directories. The base notice for core/src/main/java makes the head's clones there descriptive, both the CPD clone and the jscpd clone of the same tool, while the clone under core/src/test/java and the one in lib stay enforceable. The base notice for legacy/src/main/java follows the rename into kernel/src/main/java, so it covers the kernel clone and the head's kernel notice. A head notice whose directories no base notice of the tool covers (app) is a tool-error.",
+  "renames": {
+    "legacy/src/main/java/p/E.java": "kernel/src/main/java/p/E.java"
+  },
   "new": [
     {
       "tool": "duplicates",
       "rule": "cpd-not-run",
       "path": ".",
-      "identity": "cpd-not-run@app",
+      "identity": "cpd-not-run@:app",
       "classification": "tool-error"
+    },
+    {
+      "tool": "duplicates",
+      "rule": "cpd-not-run",
+      "path": ".",
+      "identity": "cpd-not-run@:kernel",
+      "classification": "descriptive"
     },
     {
       "tool": "duplicates",
@@ -20,7 +30,21 @@
       "rule": "duplicate-clone",
       "path": "core/src/main/java/A.java",
       "identity": "pair:core/src/main/java/A.java|core/src/main/java/B.java:occurrence:1",
+      "classification": "descriptive"
+    },
+    {
+      "tool": "duplicates",
+      "rule": "duplicate-clone",
+      "path": "core/src/test/java/T.java",
+      "identity": "cpd:pair:core/src/test/java/T.java|core/src/test/java/U.java:occurrence:1",
       "classification": "enforceable"
+    },
+    {
+      "tool": "duplicates",
+      "rule": "duplicate-clone",
+      "path": "kernel/src/main/java/p/E.java",
+      "identity": "cpd:pair:kernel/src/main/java/p/E.java|kernel/src/main/java/p/F.java:occurrence:1",
+      "classification": "descriptive"
     },
     {
       "tool": "duplicates",
@@ -30,13 +54,21 @@
       "classification": "enforceable"
     }
   ],
-  "resolved": [],
+  "resolved": [
+    {
+      "tool": "duplicates",
+      "rule": "cpd-not-run",
+      "path": ".",
+      "identity": "cpd-not-run@:legacy",
+      "classification": "descriptive"
+    }
+  ],
   "unchanged": [
     {
       "tool": "duplicates",
       "rule": "cpd-not-run",
       "path": ".",
-      "identity": "cpd-not-run@core",
+      "identity": "cpd-not-run@:core",
       "classification": "descriptive"
     }
   ],

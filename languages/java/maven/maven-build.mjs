@@ -116,7 +116,7 @@ function analyzeSources(context, project) {
   runFormat({ module, reportDir, tools });
   runCheckstyle({ module, reportDir, tools, configs, pinned });
   runStructure(module, reportDir);
-  runJdeps(module, reportDir, classpaths);
+  runJdeps(module, reportDir);
   runGuards({ module, reportDir, tools, classpaths }, project);
 }
 

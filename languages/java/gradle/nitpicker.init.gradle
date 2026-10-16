@@ -508,49 +508,38 @@ allprojects {
                     return
                 }
                 def jdeps = new File(System.getProperty('java.home'), 'bin/jdeps')
-                def legalName = { String name -> javax.lang.model.SourceVersion.isName(name) }
-                def jarModule = { File jar ->
-                    new java.util.jar.JarFile(jar).withCloseable { archive ->
-                        def names = archive.entries().collect { it.name }
-                        if (names.any { it == 'module-info.class' || it ==~ /META-INF\/versions\/\d+\/module-info\.class/ }) {
-                            return true
+                def staged = File.createTempDir('nitpicker-jdeps-', '')
+                try {
+                    def analyzed = classDirs.withIndex().collect { dir, index ->
+                        if (!new File(dir, 'module-info.class').isFile()) {
+                            return dir
                         }
-                        def base = jar.name - ~/\.jar$/
-                        def version = base =~ /-(\d+(\.|$))/
-                        def derived = (version.find() ? base.substring(0, version.start()) : base)
-                            .replaceAll(/[^A-Za-z0-9]/, '.').replaceAll(/\.{2,}/, '.').replaceAll(/^\.|\.$/, '')
-                        def name = archive.manifest?.mainAttributes?.getValue('Automatic-Module-Name') ?: derived
-                        legalName(name) && names.findAll { it.endsWith('.class') && !it.startsWith('META-INF/') }
-                            .every { it.contains('/') && legalName(it.substring(0, it.lastIndexOf('/')).replace('/', '.')) }
+                        def copy = new File(staged, index.toString())
+                        dir.eachFileRecurse(groovy.io.FileType.FILES) { file ->
+                            if (file.name != 'module-info.class') {
+                                def target = copy.toPath().resolve(dir.toPath().relativize(file.toPath()))
+                                java.nio.file.Files.createDirectories(target.parent)
+                                java.nio.file.Files.copy(file.toPath(), target)
+                            }
+                        }
+                        copy
                     }
-                }
-                def readableJarModule = { File jar ->
-                    try {
-                        jarModule(jar)
-                    } catch (IOException unreadable) {
-                        logger.info("nitpicker: ${jar} left off the jdeps module path: ${unreadable.message}")
-                        false
+                    def process = new ProcessBuilder([jdeps.absolutePath, '-verbose:class', '-filter:none'] +
+                        analyzed.collect { it.absolutePath }).directory(projectDir).start()
+                    def stdout = new ByteArrayOutputStream()
+                    def stderr = new ByteArrayOutputStream()
+                    process.waitForProcessOutput(stdout, stderr)
+                    if (process.exitValue() != 0) {
+                        def jvmNoise = ~/^(?:Picked up (?:JAVA_TOOL_OPTIONS|_JAVA_OPTIONS|JDK_JAVA_OPTIONS)|NOTE: Picked up)/
+                        def lines = stderr.toString('UTF-8').readLines().findAll { it.trim() && !(it =~ jvmNoise) }
+                        def errors = lines.findAll { it =~ /Error|Exception|Caused by/ }
+                        def detail = (errors ?: lines).take(10).join('\n')
+                        throw new GradleException("jdeps failed (${jdeps}) with exit code ${process.exitValue()}: ${detail}")
                     }
+                    graph.text = stdout.toString('UTF-8')
+                } finally {
+                    staged.deleteDir()
                 }
-                def moduleEntry = { File entry ->
-                    entry.isDirectory() ? new File(entry, 'module-info.class').isFile()
-                        : entry.name.endsWith('.jmod') || (entry.name.endsWith('.jar') && readableJarModule(entry))
-                }
-                def modular = classDirs.any { new File(it, 'module-info.class').isFile() }
-                def modulePath = modular ? sourceSets.main.compileClasspath.files.findAll { it.exists() && moduleEntry(it) } : []
-                def moduleArgs = (modulePath.isEmpty() ? [] : ['--module-path', modulePath.join(File.pathSeparator)]) +
-                    (modular ? ['--multi-release', Math.max(9, javaRelease() as int).toString()] : [])
-                def process = new ProcessBuilder([jdeps.absolutePath, '-verbose:class', '-filter:none'] + moduleArgs +
-                    classDirs.collect { it.absolutePath }).directory(projectDir).start()
-                def stdout = new ByteArrayOutputStream()
-                def stderr = new ByteArrayOutputStream()
-                process.waitForProcessOutput(stdout, stderr)
-                def output = stdout.toString('UTF-8')
-                if (process.exitValue() != 0) {
-                    def detail = stderr.toString('UTF-8').readLines().take(10).join('\n')
-                    throw new GradleException("jdeps failed (${jdeps}) with exit code ${process.exitValue()}: ${detail}")
-                }
-                graph.text = output
             }
         }
         tasks.named('nitpickerJava') { dependsOn 'nitpickerJdeps' }

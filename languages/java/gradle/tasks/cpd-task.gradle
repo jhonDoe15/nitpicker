@@ -21,12 +21,13 @@ tasks.register('nitpickerCpd') {
             return
         }
         def java = new File(System.getProperty('java.home'), 'bin/java').absolutePath
-        def process = new ProcessBuilder([java, '-cp', configurations.nitpickerPmd.asPath, cpdSource.absolutePath] +
-            directories.collect { it.absolutePath })
-            .directory(projectDir).redirectOutput(report.get().asFile).start()
+        def launch = [java, '-cp', configurations.nitpickerPmd.asPath, cpdSource.absolutePath, report.get().asFile.absolutePath]
+        def process = new ProcessBuilder(launch + directories.collect { it.absolutePath })
+            .directory(projectDir).redirectOutput(ProcessBuilder.Redirect.DISCARD).start()
         def errors = process.errorStream.getText('UTF-8')
         def code = process.waitFor()
-        if (!(code in [0, 4]) || !(report.get().asFile.text =~ /<pmd-cpd[\s\/>]/)) {
+        def written = report.get().asFile.isFile() ? report.get().asFile.text : ''
+        if (!(code in [0, 4]) || !(written =~ /<pmd-cpd[\s\/>]/)) {
             failure.get().asFile.text = "${code}\n${errors}"
             report.get().asFile.delete()
         }

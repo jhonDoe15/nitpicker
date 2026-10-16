@@ -2,6 +2,7 @@ import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { createIdentityCounter, hashIdentity } from '../ingest/common.mjs';
 import { exceptionRoute } from './advice/exception-route.mjs';
+import { rootsScope } from '../builds/module-path.mjs';
 
 const LINT_TOOL = 'javac';
 const LINT_REPORT = 'javac-lint.txt';
@@ -39,7 +40,7 @@ export function parseLintWarnings(text) {
   });
 }
 
-function lintNotRun(reportRoot) {
+function lintNotRun(reportRoot, sourceRoots) {
   const failure = path.join(reportRoot, LINT_FAILURE);
   if (!existsSync(failure)) {
     return [];
@@ -57,6 +58,7 @@ function lintNotRun(reportRoot) {
       message: `No javac lint report: the lint compile failed (${firstError.trim()}), so raw types, unchecked operations, deprecated calls and redundant casts were not checked.`,
       classification: 'descriptive',
       toolNotRun: true,
+      notRunScope: rootsScope(sourceRoots),
     },
   ];
 }
@@ -71,10 +73,10 @@ function projectFileCheck(projectRoot) {
   };
 }
 
-export function readLintFindings(reportRoot, { projectRoot }) {
+export function readLintFindings(reportRoot, { projectRoot, sourceRoots = [] }) {
   const report = path.join(reportRoot, LINT_REPORT);
   if (!existsSync(report)) {
-    return lintNotRun(reportRoot);
+    return lintNotRun(reportRoot, sourceRoots);
   }
   const unique = createIdentityCounter();
   const inProject = projectFileCheck(projectRoot);

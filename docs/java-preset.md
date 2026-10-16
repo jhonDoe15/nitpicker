@@ -129,20 +129,15 @@ field by field. Per snapshot:
   over every module's roots, so `exceptions` and `exclude` globs are relative to the project root
   (`languages/java/builds/java-modules.mjs`; both builds share `builds/project-wide.mjs`). Duplicate detection runs per module, so
   a clone between two modules is not found, as a clone between two source roots is not.
-- **Module descriptors.** jdeps reads a module with a `module-info.class` as that module, so it
-  must find every module the descriptor `requires`. There it also gets `--module-path` with the
-  main compile classpath entries jdeps can read as modules: a directory with a `module-info.class`,
-  a `.jmod`, or a `.jar` with a `module-info.class` (also under `META-INF/versions/<n>/`), or with
-  a legal automatic module name (its `Automatic-Module-Name`, else the one derived from the file
-  name) and no class outside a legal package. jdeps stops with "Unable to derive module
-  descriptor" on any other jar and "Module format not recognized" on a `.pom` or `.zip`, so
-  those, and directories without a descriptor, are left out. It also gets `--multi-release` with
-  the release (`languages/java/maven/coupling/maven-jdeps.mjs` reads it as the PMD rules do, from
-  `release`, `--release`, `-target` or `target`), at least 9, or the running JDK's version when
-  the POM sets none, as jars such as commons-lang3 keep their descriptor under
-  `META-INF/versions/9/`. The init script's `nitpickerJdeps` passes the same options with the same
-  entry rules. Only the edges between the module's own classes are read, so coupling is the same
-  as without a descriptor.
+- **Module descriptors.** jdeps reads a class directory with a `module-info.class` as a module and
+  must then resolve every module its descriptor `requires`; it stops on a plain jar ("Unable to
+  derive module descriptor"), a missing module or a split package. Both builds run jdeps on such a
+  module exactly as on one without a descriptor: over a temporary copy of the main class
+  directories without `module-info.class`, with no module path
+  (`languages/java/maven/coupling/maven-jdeps.mjs`, and `nitpickerJdeps` in the init script). Only
+  the edges between the module's own classes are read, so coupling is the same. When jdeps fails,
+  the error gives its exit code and up to 10 lines of its stderr, the `Error`, `Exception` and
+  `Caused by` lines first, without the JVM's `Picked up ...` notes.
 - **Guards.** The [guards](#guards) run on Maven too, outside Maven and per module
   (`languages/java/maven/guards/`), writing the same reports in `target/nitpicker/`. The javac
   lint pass reads the `maven-compiler-plugin` settings from the effective POM (`release`, `source`,
@@ -736,8 +731,8 @@ A Checkstyle rule prints as its full check class, for example
   unchanged file) is not reported. Without a base report (the base came from the findings cache,
   or its lint failed) the head lints every file. When the lint compile fails the run goes on: the
   report says so in a descriptive `javac/lint-not-run` notice, and javac warnings are not checked
-  in that run. When only the base failed, the head's javac findings are reported but do not fail
-  the gate: with no base report, nothing tells which of them the change added, and each one says
+  in that run. When only the base failed, the head's javac findings under that module's main
+  source roots are reported but do not fail the gate: with no base report, nothing tells which of them the change added, and each one says
   so. When only the head failed, the run fails with a tool error: the change broke the lint
   compile.
 - **Run time.** The lint, forbiddenapis, CPD, dependency and permits tasks declare their inputs
@@ -764,21 +759,32 @@ A Checkstyle rule prints as its full check class, for example
   `@ParameterizedTest`. The message ends with the exception route for
   `duplicates/duplicate-clone`. Both builds run CPD through `languages/java/gradle/CpdReport.java`
   (single-file source mode, with the pinned PMD on the class path) instead of `PmdCli cpd`, with
-  the same settings and the same XML report. PMD 7.7.0 to 7.28.0 crash on common code with
-  `Deque.peek().name is null`, and `PmdCli` still exits 0 without a report: the Java CPD lexer's
-  constructor detector pushes a type on every `class` keyword, a class literal (`String.class`)
-  followed by `}` leaves that type without a name, the next declaration without a modifier (a
-  bare `class`, or any `enum`) keeps it on the stack, and the next `(` reads its null name. One
-  file is enough (`static final Class<?>[] TYPES = { String.class }; enum Kind { X } void
-  register() { }`), and the state also carries from one file to the next. The launcher rewrites
-  each `.class` literal to the same-length identifier `.c$ass` before tokenizing; identifiers are
-  ignored anyway, so the tokens, lines and paths of the report do not move. When CPD still exits
-  with a code other than 0 or 4, or prints no XML report, both builds write its exit code (or
-  signal) and stderr to `cpd-failed.txt` instead of `cpd.xml`, and the module gets a
-  `duplicates/cpd-not-run` tool-not-run finding that names the module's source roots and quotes
-  them (an empty or non-XML `cpd.xml` gives the same finding). Its `notRunScope` holds the CPD
-  identity prefixes of those roots (`cpd:pair:<root>/`), so a failure on the base leaves jscpd
-  clones and other modules' CPD clones enforced.
+  the same settings and the same XML report, which it writes to the path given as its first
+  argument. PMD 7.7.0 to 7.28.0 crash on common code with `Deque.peek().name is null`, and
+  `PmdCli` still exits 0 without a report: the Java CPD lexer's constructor detector pushes a type
+  on every `class` keyword, a class literal (`String.class`) followed by `}` leaves that type
+  without a name, the next declaration without a modifier (a bare `class`, or any `enum`) keeps it
+  on the stack, and the next `(` reads its null name. One file is enough (`static final Class<?>[]
+  TYPES = { String.class }; enum Kind { X } void register() { }`), and the state also carries from
+  one file to the next. The launcher rewrites each class literal, also with spaces or comments
+  between the dot and `class`, to `.const` before tokenizing: `const` is a Java keyword no code
+  uses, so it stays a keyword token like `class` and has the same length, and the tokens, lines
+  and paths of the report do not move (an identifier such as `c$ass` would be ignored like any
+  identifier and match `other.value`). The `codefragment` text of the report shows the rewrite;
+  nitpicker reads clone text from the source files instead. The launcher follows symbolic links;
+  a link loop, an unreadable file or directory, or a missing directory argument is skipped with a
+  line on stderr. When CPD exits with a code other than 0 or 4 or writes no XML report, both
+  builds write its exit code (or signal) and stderr to `cpd-failed.txt` instead of `cpd.xml`; on
+  Maven a `java` that cannot start or runs past the 15-minute tool timeout writes the error code
+  (such as `ETIMEDOUT`) and message there instead of failing the run. The module then gets a
+  `duplicates/cpd-not-run` tool-not-run finding that names its source roots and quotes the exit
+  and stderr (an empty or non-XML `cpd.xml` gives the same finding). Its `notRunScope` lists the
+  module's main and test source roots as project-relative directories (a root that is the project
+  folder itself becomes `.`; Maven writes each module's roots relative to the module, and the
+  reactor reader puts the module folder in front, as it does for paths). A failure on the base therefore makes only the head's `duplicates` findings in those
+  directories descriptive, jscpd clones there included, and a failure on the head is a tool error
+  unless a base notice covers each of its directories, after following renames. The
+  `javac/lint-not-run` notice is scoped the same way, to the module's main source roots.
 - **Cycles.** `java-coupling.mjs` already has the class graph from jdeps. Each package in a
   strongly connected set of packages is one `package-cycle` finding, identified by the package
   name and placed on its first file, so growing a legacy cycle adds a finding for the new package

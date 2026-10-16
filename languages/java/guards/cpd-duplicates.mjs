@@ -4,6 +4,7 @@ import { jscpdClones } from '../../../core/tooling/jscpd-clones.mjs';
 import { evaluateDuplicates } from '../../../shared/rules/duplicates.mjs';
 import { childrenNamed, parseXml } from '../ingest/common.mjs';
 import { exceptionRoute } from './advice/exception-route.mjs';
+import { rootsScope } from '../builds/module-path.mjs';
 
 const CPD_REPORT = 'cpd.xml';
 const CPD_FAILURE = 'cpd-failed.txt';
@@ -164,10 +165,10 @@ function cpdFailure(reportRoot) {
   );
   const errors = stderr.filter((line) => line.trim() !== '' && !JVM_NOTE.test(line));
   const detail = errors.slice(0, MAX_ERROR_LINES).join('\n') || 'no error output';
-  return {
-    kind: 'failed',
-    reason: `PMD CPD exited with code ${status} and wrote no report: ${detail}`,
-  };
+  const ending = /^\d+$/u.test(status)
+    ? `exited with code ${status}`
+    : `did not finish (${status})`;
+  return { kind: 'failed', reason: `PMD CPD ${ending} and wrote no report: ${detail}` };
 }
 
 function readCpdReport(reportRoot) {
@@ -187,32 +188,33 @@ function readCpdReport(reportRoot) {
       };
 }
 
-function clonePrefix(root) {
-  return root === '.' ? 'cpd:pair:' : `cpd:pair:${root}/`;
-}
-
 function cpdNotRun(reason, roots) {
-  const place = roots.length === 0 ? 'this module' : roots.join(', ');
+  const scope = rootsScope(roots);
+  const place = scope
+    .map((directory) => (directory === '.' ? 'the module root' : directory))
+    .join(', ');
   return {
     tool: DUPLICATES_TOOL,
     rule: CPD_NOT_RUN,
     path: '.',
     identity: CPD_NOT_RUN,
-    message: `No CPD duplicate report for ${place}, so duplicated code there was not checked: ${reason}`,
+    message: `No CPD duplicate report for this module, so duplicated code in ${place} was not checked: ${reason}`,
     classification: 'descriptive',
     toolNotRun: true,
-    notRunScope: roots.length === 0 ? ['cpd:'] : roots.map((root) => clonePrefix(root)),
+    notRunScope: scope,
   };
 }
 
-export function readCpdFindings(reportRoot, options) {
-  const { projectRoot, sourceRoots = [], testRoots, jscpdRoot = reportRoot } = options;
+export function readCpdFindings(
+  reportRoot,
+  { projectRoot, sourceRoots = [], testRoots, jscpdRoot = reportRoot },
+) {
   const read = readCpdReport(reportRoot);
   if (read.kind === 'missing') {
     return [];
   }
   if (read.kind === 'failed') {
-    return [cpdNotRun(read.reason, [...new Set([...sourceRoots, ...testRoots])])];
+    return [cpdNotRun(read.reason, [...sourceRoots, ...testRoots])];
   }
   const known = jscpdRanges(jscpdRoot);
   const clones = distinctClones(cpdClones(read.xml, projectRoot)).filter(
