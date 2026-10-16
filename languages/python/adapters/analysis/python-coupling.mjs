@@ -11,6 +11,7 @@ const COUPLING_TOOL = 'coupling';
 const SCAN_SCRIPT = path.join(fileURLToPath(new URL('../', import.meta.url)), 'import-scan.py');
 const SCAN_REQUEST = 'import-scan-request.json';
 const ROOT_PACKAGE = '(root)';
+const TYPE_ONLY = 'type-only';
 
 export function collectImports(context, run) {
   const { projectRoot, reportRoot } = context;
@@ -76,10 +77,15 @@ function importedModules(importer, statement, known) {
 export function importEdges(modules, imports) {
   const known = new Set(modules.map(({ module }) => module));
   return modules.flatMap((importer) =>
-    (imports[importer.file] ?? [])
-      .flatMap((statement) => importedModules(importer, statement, known))
-      .filter((target) => target !== undefined)
-      .map((target) => ({ source: importer.module, target })),
+    (imports[importer.file] ?? []).flatMap((statement) =>
+      importedModules(importer, statement, known)
+        .filter((target) => target !== undefined)
+        .map((target) => ({
+          source: importer.module,
+          target,
+          kind: statement.typeOnly === true ? TYPE_ONLY : 'runtime',
+        })),
+    ),
   );
 }
 

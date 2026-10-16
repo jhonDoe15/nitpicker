@@ -7,6 +7,7 @@ import {
   isCustomLayout,
   layoutJscpdConfig,
   layoutKnipConfig,
+  layoutStrykerTsconfig,
   layoutTransformFor,
   layoutTsconfig,
 } from '../tool-configs.mjs';
@@ -82,8 +83,8 @@ describe('resolveLayout', () => {
   it('keeps the default layout identical to the previous fixed roots', () => {
     const layout = resolveLayout();
     expect(layout.sourceRoots).toEqual(['src']);
-    expect(layout.testRoots).toEqual(['test', 'tests']);
-    expect(layout.graphIncludeOnly).toBe('^(src|test|tests)(?:/|$)');
+    expect(layout.testRoots).toEqual(['test', 'tests', '__tests__', 'e2e']);
+    expect(layout.graphIncludeOnly).toBe('^(src|test|tests|__tests__|e2e)(?:/|$)');
   });
 });
 describe('globToRegExp', () => {
@@ -110,9 +111,13 @@ describe('layout-aware tool configurations', () => {
   const sorted = (values) => [...values].sort();
   const defaultLayout = resolveLayout();
   it('reproduce the shipped JSON configurations for the default layout', () => {
-    for (const name of ['tsconfig.quality.json', 'tsconfig.stryker.json']) {
+    const rewrites = {
+      'tsconfig.quality.json': layoutTsconfig,
+      'tsconfig.stryker.json': layoutStrykerTsconfig,
+    };
+    for (const [name, rewrite] of Object.entries(rewrites)) {
       const base = readDefault(name);
-      const rewritten = layoutTsconfig(base, defaultLayout);
+      const rewritten = rewrite(base, defaultLayout);
       expect(sorted(rewritten.include)).toEqual(sorted(base.include));
       expect(rewritten.exclude).toEqual(base.exclude);
     }
@@ -135,7 +140,6 @@ describe('layout-aware tool configurations', () => {
     const tsconfig = layoutTsconfig(readDefault('tsconfig.quality.json'), customLayout);
     expect(tsconfig.include).toEqual(['lib/**/*', 'spec/**/*', 'vitest*.ts']);
     expect([...new Set(tsconfig.exclude)].sort()).toEqual([
-      '**/*.d.ts',
       '**/build/**',
       '**/coverage/**',
       '**/dist/**',

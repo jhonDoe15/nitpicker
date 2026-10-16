@@ -47,10 +47,10 @@ export function ingestMypy(text, { roots }) {
     });
 }
 
-function jsonObject(text) {
+function jsonObject(text, tool) {
   const start = text.indexOf('{');
   if (start === -1) {
-    throw new SyntaxError('pyright printed no JSON report');
+    throw new SyntaxError(`${tool} printed no JSON report`);
   }
   return JSON.parse(text.slice(start));
 }
@@ -74,8 +74,8 @@ function pyrightFinding(diagnostic, { roots, build }) {
   ];
 }
 
-export function ingestPyright(text, { roots }) {
-  const build = createFindingBuilder('pyright');
-  const { generalDiagnostics = [] } = jsonObject(text);
+export function ingestPyright(text, { roots, tool = 'pyright' }) {
+  const build = createFindingBuilder(tool);
+  const { generalDiagnostics = [] } = jsonObject(text, tool);
   return generalDiagnostics.flatMap((diagnostic) => pyrightFinding(diagnostic, { roots, build }));
 }

@@ -1,4 +1,4 @@
-import { readdirSync } from 'node:fs';
+import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { globToRegExp } from '../../../../shared/glob.mjs';
 import { collectFileLimitFindings } from '../../../../shared/rules/file-limits.mjs';
@@ -14,7 +14,7 @@ const METRICS_SCRIPT = path.resolve(
 export const STRUCTURE_REPORT = 'structure.json';
 const STRUCTURE_HINTS = {
   maxControlNesting:
-    'An elif chain counts one level per branch; use match, a dict lookup or a helper function.',
+    'An if/elif chain counts as one level; use match, a dict lookup or a helper function for what nests inside a branch.',
 };
 
 export function structure(context) {
@@ -37,6 +37,11 @@ export function readPythonStructureFindings(reportRoot, projectRoot) {
     textOf: functionText,
     hints: STRUCTURE_HINTS,
   });
+}
+
+export function readPythonFunctions(reportRoot) {
+  const report = path.join(reportRoot, STRUCTURE_REPORT);
+  return existsSync(report) ? JSON.parse(readFileSync(report, 'utf8')) : [];
 }
 
 const SKIPPED_DIRECTORIES = new Set([

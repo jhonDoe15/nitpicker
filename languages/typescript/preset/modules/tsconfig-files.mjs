@@ -23,3 +23,15 @@ export function isSolutionTsconfig(config) {
     (config.files ?? []).length === 0
   );
 }
+
+const LIB_FILE = /^lib\.(.+)\.d\.ts$/u;
+
+export function projectLibs(projectDirectory, configName) {
+  const typescript = createRequire(import.meta.url)('typescript');
+  const { options } = typescript.parseJsonConfigFileContent(
+    readJsonc(path.join(projectDirectory, configName)),
+    typescript.sys,
+    projectDirectory,
+  );
+  return options.lib?.map((lib) => path.basename(lib).replace(LIB_FILE, '$1'));
+}

@@ -1,0 +1,92 @@
+[
+  {
+    "file": "m.py",
+    "name": "A.m.inner",
+    "start": 6,
+    "definition": 6,
+    "bodyStart": 7,
+    "end": 9,
+    "complexity": 2
+  },
+  {
+    "file": "m.py",
+    "name": "A.m",
+    "start": 5,
+    "definition": 5,
+    "bodyStart": 6,
+    "end": 11,
+    "complexity": 2
+  },
+  {
+    "file": "m.py",
+    "name": "A.p",
+    "start": 14,
+    "definition": 14,
+    "bodyStart": 15,
+    "end": 15,
+    "complexity": 3
+  },
+  {
+    "file": "m.py",
+    "name": "A.decorated",
+    "start": 18,
+    "definition": 18,
+    "bodyStart": 19,
+    "end": 19,
+    "complexity": 1
+  },
+  {
+    "file": "m.py",
+    "name": "A.unused",
+    "start": 21,
+    "definition": 21,
+    "bodyStart": 22,
+    "end": 22,
+    "complexity": 1
+  },
+  {
+    "file": "m.py",
+    "name": "top",
+    "start": 25,
+    "definition": 25,
+    "bodyStart": 26,
+    "end": 27,
+    "complexity": 3
+  },
+  {
+    "file": "m.py",
+    "name": "top",
+    "start": 30,
+    "definition": 30,
+    "bodyStart": 31,
+    "end": 31,
+    "complexity": 1
+  },
+  {
+    "file": "never.py",
+    "name": "B.go",
+    "start": 2,
+    "definition": 2,
+    "bodyStart": 3,
+    "end": 5,
+    "complexity": 2
+  },
+  {
+    "file": "never.py",
+    "name": "coro",
+    "start": 8,
+    "definition": 8,
+    "bodyStart": 9,
+    "end": 9,
+    "complexity": 1
+  },
+  {
+    "file": "never.py",
+    "name": "stub",
+    "start": 12,
+    "definition": 12,
+    "bodyStart": 13,
+    "end": 13,
+    "complexity": 1
+  }
+]

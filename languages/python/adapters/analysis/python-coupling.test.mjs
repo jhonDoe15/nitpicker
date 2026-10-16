@@ -49,8 +49,8 @@ describe('resolving imports to modules', () => {
   it('links the longest known module of a plain import', () => {
     expect(edgesOf(modules, 'app.core', plain('app.sub.leaf.Thing', 'os.path', 'app.sub'))).toEqual(
       [
-        { source: 'app.core', target: 'app.sub.leaf' },
-        { source: 'app.core', target: 'app.sub' },
+        { source: 'app.core', target: 'app.sub.leaf', kind: 'runtime' },
+        { source: 'app.core', target: 'app.sub', kind: 'runtime' },
       ],
     );
   });
@@ -59,9 +59,9 @@ describe('resolving imports to modules', () => {
     expect(
       edgesOf(modules, 'app.core', absolute('app.sub', 'leaf', 'helper'), absolute('app', '*')),
     ).toEqual([
-      { source: 'app.core', target: 'app.sub.leaf' },
-      { source: 'app.core', target: 'app.sub' },
-      { source: 'app.core', target: 'app' },
+      { source: 'app.core', target: 'app.sub.leaf', kind: 'runtime' },
+      { source: 'app.core', target: 'app.sub', kind: 'runtime' },
+      { source: 'app.core', target: 'app', kind: 'runtime' },
     ]);
   });
 
@@ -83,11 +83,11 @@ describe('resolving imports to modules', () => {
         relative(1, null, 'missing'),
       ),
     ).toEqual([
-      { source: 'app.sub.leaf', target: 'app.sub.other' },
-      { source: 'app.sub.leaf', target: 'app.sub.other' },
-      { source: 'app.sub.leaf', target: 'app.core' },
-      { source: 'app.sub.leaf', target: 'app.core' },
-      { source: 'app.sub.leaf', target: 'app.sub' },
+      { source: 'app.sub.leaf', target: 'app.sub.other', kind: 'runtime' },
+      { source: 'app.sub.leaf', target: 'app.sub.other', kind: 'runtime' },
+      { source: 'app.sub.leaf', target: 'app.core', kind: 'runtime' },
+      { source: 'app.sub.leaf', target: 'app.core', kind: 'runtime' },
+      { source: 'app.sub.leaf', target: 'app.sub', kind: 'runtime' },
     ]);
   });
 
@@ -95,8 +95,8 @@ describe('resolving imports to modules', () => {
     expect(
       edgesOf(modules, 'app.sub', relative(1, 'leaf', 'Thing'), relative(2, null, 'core')),
     ).toEqual([
-      { source: 'app.sub', target: 'app.sub.leaf' },
-      { source: 'app.sub', target: 'app.core' },
+      { source: 'app.sub', target: 'app.sub.leaf', kind: 'runtime' },
+      { source: 'app.sub', target: 'app.core', kind: 'runtime' },
     ]);
   });
 
@@ -108,7 +108,23 @@ describe('resolving imports to modules', () => {
     const flat = [module('script'), module('helpers')];
 
     expect(edgesOf(flat, 'script', relative(1, null, 'helpers'))).toEqual([
-      { source: 'script', target: 'helpers' },
+      { source: 'script', target: 'helpers', kind: 'runtime' },
+    ]);
+  });
+
+  it('marks the edges of imports under if TYPE_CHECKING as type-only', () => {
+    expect(
+      edgesOf(
+        modules,
+        'app.core',
+        { ...absolute('app.sub', 'leaf'), typeOnly: true },
+        { ...plain('app.sub.other'), typeOnly: false },
+        absolute('app', '*'),
+      ),
+    ).toEqual([
+      { source: 'app.core', target: 'app.sub.leaf', kind: 'type-only' },
+      { source: 'app.core', target: 'app.sub.other', kind: 'runtime' },
+      { source: 'app.core', target: 'app', kind: 'runtime' },
     ]);
   });
 
@@ -174,6 +190,68 @@ describe('analyzing the import graph', () => {
     expect(report.stabilityDirection.map(({ source, target }) => `${source}>${target}`)).toEqual([
       'base>other',
     ]);
+  });
+
+  describe('imports under if TYPE_CHECKING', () => {
+    const inversion = [
+      module('base', { isPackage: true }),
+      module('base.core'),
+      module('feature', { isPackage: true }),
+      module('feature.a'),
+      module('feature.b'),
+      module('other', { isPackage: true }),
+      module('other.o'),
+    ];
+    const importsWith = (...baseImports) => ({
+      'src/feature/a.py': [absolute('base', 'core')],
+      'src/feature/b.py': [absolute('base', 'core')],
+      'src/base/core.py': baseImports,
+      'src/other/o.py': [absolute('feature', 'a')],
+    });
+    const typeOnly = { ...absolute('other', 'o'), typeOnly: true };
+    const stabilityEdges = (imports) =>
+      analyzePythonCoupling({ modules: inversion, imports }).stabilityDirection.map(
+        ({ source, target }) => `${source}>${target}`,
+      );
+
+    it('does not make the stability rule see a dependency only the type checker needs', () => {
+      expect(stabilityEdges(importsWith(typeOnly))).toEqual([]);
+    });
+
+    it('still flags the dependency when the same module is also imported at run time', () => {
+      expect(stabilityEdges(importsWith(typeOnly, absolute('other', 'o')))).toEqual(['base>other']);
+    });
+
+    it('keeps the type-only dependency in the report-only metrics', () => {
+      const withTypeOnly = analyzePythonCoupling({
+        modules: inversion,
+        imports: importsWith(typeOnly),
+      });
+      const without = analyzePythonCoupling({ modules: inversion, imports: importsWith() });
+
+      expect(withTypeOnly.summary.dependencies).toBe(without.summary.dependencies + 1);
+      expect(withTypeOnly.modules.find(({ file }) => file === 'src/base/core.py')).toEqual({
+        file: 'src/base/core.py',
+        fanIn: 2,
+        fanOut: 1,
+        totalCoupling: 3,
+        instability: 0.3333,
+      });
+    });
+
+    it('reports no enforceable finding', () => {
+      const reportRoot = temporaryRoot();
+      writeFileSync(
+        path.join(reportRoot, 'imports.json'),
+        JSON.stringify({ modules: inversion, imports: importsWith(typeOnly) }),
+      );
+
+      expect(
+        readCouplingFindings(reportRoot).filter(
+          ({ classification }) => classification === 'enforceable',
+        ),
+      ).toEqual([]);
+    });
   });
 
   it('reports a stability inversion on the source package with the way to lift it', () => {
