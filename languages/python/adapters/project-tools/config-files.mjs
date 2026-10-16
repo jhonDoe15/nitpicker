@@ -16,7 +16,9 @@ export function pythonConfigFiles(root) {
     ...new Set([
       ...projectFormatConfigFiles(root),
       ...existing(root, TYPE_CONFIG_FILES),
-      ...PYRIGHT_CHECKERS.flatMap((checker) => readProjectPyright(root, checker)?.files ?? []),
+      ...PYRIGHT_CHECKERS.flatMap(
+        (checker) => readProjectPyright(root, checker, { upward: true })?.files ?? [],
+      ),
     ]),
   ];
 }
