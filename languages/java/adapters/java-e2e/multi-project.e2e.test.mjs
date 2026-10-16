@@ -59,6 +59,17 @@ describe.skipIf(!enabled)('a Gradle build of two projects and an extra source se
     ).toEqual([[], [], ['app/src/main/java/demo/app/Settings.java']]);
   });
 
+  it('counts the dependency of app on lib once, across the two projects', () => {
+    expect(
+      findings
+        .filter(
+          (finding) => finding.rule === 'package-coupling' && finding.identity.endsWith(':fanIn'),
+        )
+        .map((finding) => `${finding.identity} ${String(finding.metric.value)}`)
+        .toSorted(),
+    ).toEqual(['package:app/demo.app:fanIn 0', 'package:lib/demo.lib:fanIn 1']);
+  });
+
   it('lints the integrationTest source set with the test rules', () => {
     expect(located(findings, 'pmd', 'SystemPrintln')).toEqual([
       'app/src/integrationTest/java/demo/app/GreeterRun.java',

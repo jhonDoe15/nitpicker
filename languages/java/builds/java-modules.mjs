@@ -58,7 +58,13 @@ export function readModuleFindings(projectRoot, moduleDirs, options) {
   return [
     ...moduleFindings,
     ...projectWideFindings(projectRoot, {
-      reportRoots: moduleDirs.map((moduleDir) => path.join(moduleDir, options.reportDirectory)),
+      projects: moduleDirs.map((moduleDir) => ({
+        reportRoot: path.join(moduleDir, options.reportDirectory),
+        qualifier: prefixOf(projectRoot, moduleDir),
+        sourceRoots: (readManifest(moduleDir, options.reportDirectory).sourceRoots ?? []).map(
+          (root) => inModule(prefixOf(projectRoot, moduleDir), root),
+        ),
+      })),
       mergedRoot: path.join(projectRoot, options.reportDirectory),
       manifest: roots,
       kotlin: false,

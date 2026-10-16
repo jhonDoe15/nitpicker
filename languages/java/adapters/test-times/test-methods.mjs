@@ -1,24 +1,19 @@
 const CALL = /^(.+?)\((?:[^()]|\([^()]*\))*\)(?:\[\d+\])?$/u;
+const INDEXED = /^([\p{L}_$][\p{L}\p{N}_$]*)\[\d+\]$/u;
 const DECLARED_NAME = String.raw`(\x60[^\x60]+\x60|[\p{L}_$][\p{L}\p{N}_$]*)`;
-const DECLARATION = new RegExp(String.raw`\b(?:void|fun)\s+${DECLARED_NAME}\s*\(`, 'gu');
+const DYNAMIC_TYPE = String.raw`(?:[\w.]+\s*<[^;{}()]*Dynamic\w*\s*>|Dynamic\w*(?:\[\])?)`;
+const DECLARATION = new RegExp(
+  String.raw`(?:\b(?:void|fun)|${DYNAMIC_TYPE})\s+${DECLARED_NAME}\s*\(`,
+  'gu',
+);
+const CLASS_DECLARATION = /\bclass\s+([\p{L}_$][\p{L}\p{N}_$]*)/gu;
+const TEMPLATE_ANNOTATION = /@(?:ParameterizedTest|RepeatedTest|TestFactory|TestTemplate)\b/gu;
 const ANNOTATION_LINE = /^\s*@/u;
 const BRACES_OUTSIDE_LITERALS = /"(?:\\.|[^"\\\n])*"|'(?:\\.|[^'\\\n])*'|[{}]/gu;
 const BRACE_DEPTH = { '{': 1, '}': -1 };
 
 function quoted(text) {
   return JSON.stringify(text).slice(1, -1);
-}
-
-function declarations(text) {
-  return [...text.matchAll(DECLARATION)].map((match) => ({
-    name: match[1].replaceAll('`', ''),
-    index: match.index,
-  }));
-}
-
-function namedByDisplayName(text, name, found) {
-  const annotation = text.indexOf(`@DisplayName("${quoted(name)}")`);
-  return annotation < 0 ? undefined : found.find((declaration) => declaration.index > annotation);
 }
 
 function closingBrace(text, from) {
@@ -34,6 +29,50 @@ function closingBrace(text, from) {
     }
   }
   return text.length - 1;
+}
+
+function classesIn(text, scope) {
+  return [...text.slice(scope.start, scope.end).matchAll(CLASS_DECLARATION)].map((match) => {
+    const index = scope.start + match.index;
+    return { name: match[1], start: text.indexOf('{', index), end: closingBrace(text, index) };
+  });
+}
+
+function outermostClasses(text, scope) {
+  const classes = classesIn(text, scope).filter(({ start }) => start >= 0);
+  return classes.filter(
+    (inner) =>
+      !classes.some(
+        (outer) => outer !== inner && outer.start < inner.start && inner.end < outer.end,
+      ),
+  );
+}
+
+function scopeOf(text, className) {
+  const names = (className ?? '').split('.').pop().split('$');
+  let scope = { start: 0, end: text.length, classBody: false };
+  for (const [index, name] of names.entries()) {
+    const body = outermostClasses(text, scope).find((range) => range.name === name);
+    if (body === undefined && index > 0) {
+      return undefined;
+    }
+    scope = body === undefined ? scope : { start: body.start + 1, end: body.end, classBody: true };
+  }
+  return scope;
+}
+
+function declarations(text, scope) {
+  const nested = scope.classBody ? outermostClasses(text, scope) : [];
+  return [...text.slice(scope.start, scope.end).matchAll(DECLARATION)]
+    .map((match) => ({ name: match[1].replaceAll('`', ''), index: scope.start + match.index }))
+    .filter(({ index }) => !nested.some((range) => range.start < index && index < range.end));
+}
+
+function namedByDisplayName(text, { name, scope, found }) {
+  const annotation = text.indexOf(`@DisplayName("${quoted(name)}")`, scope.start);
+  return annotation < 0 || annotation > scope.end
+    ? undefined
+    : found.find((declaration) => declaration.index > annotation);
 }
 
 function methodBlock(text, declaration) {
@@ -58,11 +97,25 @@ function methodBlock(text, declaration) {
   };
 }
 
-export function testMethod(text, testName) {
-  const found = declarations(text);
-  const candidates = [CALL.exec(testName)?.[1], testName].filter(Boolean);
+export function testMethod(text, testName, className) {
+  const scope = scopeOf(text, className);
+  if (scope === undefined) {
+    return undefined;
+  }
+  const found = declarations(text, scope);
+  const candidates = [CALL.exec(testName)?.[1], INDEXED.exec(testName)?.[1], testName];
   const declaration =
     found.find((entry) => candidates.includes(entry.name)) ??
-    namedByDisplayName(text, testName, found);
+    namedByDisplayName(text, { name: testName, scope, found });
   return declaration === undefined ? undefined : methodBlock(text, declaration);
+}
+
+export function templateMethods(text, className) {
+  const scope = scopeOf(text, className) ?? { start: 0, end: text.length, classBody: false };
+  const found = declarations(text, scope);
+  return [...text.slice(scope.start, scope.end).matchAll(TEMPLATE_ANNOTATION)]
+    .map((match) => found.find((declaration) => declaration.index > scope.start + match.index))
+    .filter((declaration) => declaration !== undefined)
+    .map((declaration) => methodBlock(text, declaration).text)
+    .join('\n');
 }
