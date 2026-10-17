@@ -63,7 +63,7 @@ function configurationContext(files = {}, overrides = {}) {
 }
 
 const TEST_PATTERNS =
-  '"tests/*","test/*","*/tests/*","*/test/*","test_*.py","*/test_*.py","*_test.py","conftest.py","*/conftest.py"';
+  '"tests/*","test/*","*/tests/*","*/test/*","test_*.py","*/test_*.py","*_test.py","*_tests.py","tests.py","*/tests.py","tests_*.py","*/tests_*.py","conftest.py","*/conftest.py"';
 const section = (sourcePaths, patterns = TEST_PATTERNS) =>
   `[tool.mutmut]\nsource_paths = ${sourcePaths}\ndo_not_mutate = [${patterns}]\n`;
 

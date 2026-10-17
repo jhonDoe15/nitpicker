@@ -118,6 +118,40 @@ describe('Python dependency findings', () => {
       ),
     ).toEqual([]);
   });
+  it('counts a package the detected framework loads for the project as use, as knip plugins do', () => {
+    const scan = {
+      ...SCAN,
+      modules: { django: ['Django'], PIL: ['pillow'], argon2: ['argon2-cffi'], redis: ['redis'] },
+    };
+    const declared = '[project]\ndependencies = ["django", "pillow", "argon2-cffi", "redis"]\n';
+    const models =
+      'from django.db import models\n\n\nclass Photo(models.Model):\n    image = models.ImageField(upload_to="photos/")\n';
+    const settings = 'PASSWORD_HASHERS = ["django.contrib.auth.hashers.Argon2PasswordHasher"]\n';
+    const run = (files) => {
+      const projectRoot = directory({ 'pyproject.toml': declared, ...files });
+      const imports = {
+        modules: Object.keys(files).map((file) => ({
+          file,
+          module: file.slice(0, -3).replace('/', '.'),
+          isPackage: false,
+        })),
+        others: [],
+        imports: { 'shop/models.py': [from('django.db', ['models'])] },
+      };
+      return readDependencyFindings(reports(projectRoot, { scan, imports })).map(
+        ({ message }) => message.split(':')[0],
+      );
+    };
+
+    expect(run({ 'shop/models.py': models, 'site/settings.py': settings })).toEqual([
+      'Unused dependency redis',
+    ]);
+    expect(run({ 'shop/models.py': 'from django.db import models\n' })).toEqual([
+      'Unused dependency pillow',
+      'Unused dependency argon2-cffi',
+      'Unused dependency redis',
+    ]);
+  });
   it('checks nothing when the declaration is incomplete, and skips alone on Python before 3.10', () => {
     const incomplete = directory({ 'setup.py': 'setup()\n' });
     expect(readDependencyFindings(reports(incomplete, { imports: IMPORTS }))).toEqual([]);

@@ -21,7 +21,16 @@ const UNTESTABLE_LINES = [
   String.raw`^\s*@(typing\.)?overload\b`,
   String.raw`^\s*raise NotImplementedError\b`,
 ];
-const TEST_FILES = ['test_*.py', '*_test.py', 'conftest.py', '*/tests/*', '*/test/*'];
+const TEST_FILES = [
+  'test_*.py',
+  '*_test.py',
+  '*_tests.py',
+  '*/tests.py',
+  '*/tests_*.py',
+  'conftest.py',
+  '*/tests/*',
+  '*/test/*',
+];
 const EMPTY_COVERAGE_REPORT = '{"files":{}}';
 
 function coverageSources({ projectRoot, project }) {

@@ -555,7 +555,9 @@ resolved plus a new finding, as in the TypeScript check.
   `@DisplayName`, with its annotations, inside the class the report names: a `@Nested` test
   (`CalcTest$WhenFull`) is looked up in that nested class, and named `CalcTest.WhenFull` in the
   message. `void` and `fun` methods count, and `@TestFactory` methods that return dynamic tests. A
-  test is counted when its method text differs from the base, or the file is new. A name that maps
+  test is counted when its method text differs from the base, or the file is new. A file the base
+  does not have at that path is first looked up by its file name anywhere under the base test
+  roots, so a test file moved to another package with the test unchanged reports nothing. A name that maps
   to no method (a default `[1] 1` or custom parameterized name, a dynamic test) is counted when the
   file is new or one of its class's `@ParameterizedTest`, `@RepeatedTest`, `@TestFactory` or
   `@TestTemplate` methods changed. Slow tests the change does not touch stay baselined, and the base

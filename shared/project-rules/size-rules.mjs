@@ -104,7 +104,7 @@ function fileRules(enforcedBy) {
 
 const TYPESCRIPT_DEPTH = `code more than ${String(FOLDER_DEPTH_DEFAULTS.typescript)} folder below \`features/<feature>/<layer>/\` (TypeScript)`;
 const JAVA_DEPTH = `more than ${String(FOLDER_DEPTH_DEFAULTS.java)} packages below the root package (Java, Kotlin)`;
-const PYTHON_DEPTH = `more than ${String(FOLDER_DEPTH_DEFAULTS.python)} packages below the top-level package (Python)`;
+const PYTHON_DEPTH = `more than ${String(FOLDER_DEPTH_DEFAULTS.python)} packages below the root package (Python)`;
 
 const JAVA_AND_PYTHON = { typescript: false, java: true, python: true };
 

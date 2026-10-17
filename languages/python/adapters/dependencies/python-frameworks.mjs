@@ -15,6 +15,17 @@ const FRAMEWORK_MODULES = new Map([
   ['fastapi', 'fastapi'],
   ['flask', 'flask'],
 ]);
+const IMPLIED_DISTRIBUTIONS = [
+  { framework: 'django', marker: /\bImageField\b/u, names: ['pillow'] },
+  { framework: 'django', marker: /\bRedisCache\b/u, names: ['redis', 'hiredis'] },
+  { framework: 'django', marker: /\bPyMemcacheCache\b/u, names: ['pymemcache'] },
+  { framework: 'django', marker: /\bPyLibMCCache\b/u, names: ['pylibmc'] },
+  { framework: 'django', marker: /\bArgon2PasswordHasher\b/u, names: ['argon2-cffi'] },
+  { framework: 'django', marker: /\bBCrypt(?:SHA256)?PasswordHasher\b/u, names: ['bcrypt'] },
+  { framework: 'fastapi', marker: /\b(?:Form|File|UploadFile)\b/u, names: ['python-multipart'] },
+  { framework: 'flask', marker: /^/u, names: ['python-dotenv'] },
+  { marker: /\b(?:EmailStr|NameEmail)\b/u, names: ['email-validator'] },
+];
 const SETTINGS_ENTRY_FILES = ['manage.py', 'wsgi.py', 'asgi.py'];
 const SETTINGS_MODULE = /DJANGO_SETTINGS_MODULE["']\s*,\s*["']([\w.]+)["']/gu;
 const SETTINGS_NAME = /(?:^|\.)settings(?:\.|$)/u;
@@ -115,5 +126,19 @@ export function withoutFrameworkForms(findings, projectRoot, imports) {
   return findings.filter(
     (finding) =>
       !allowed.some(({ rules, files }) => rules.has(finding.rule) && files.has(finding.path)),
+  );
+}
+
+export function impliedDistributions(projectRoot, imports) {
+  const frameworks = detectFrameworks(projectRoot, imports);
+  const texts = [...imports.modules, ...(imports.others ?? [])].map(
+    ({ file }) => readProjectFile(projectRoot, file) ?? '',
+  );
+  return new Set(
+    IMPLIED_DISTRIBUTIONS.filter(
+      ({ framework, marker }) =>
+        (framework === undefined || frameworks.has(framework)) &&
+        texts.some((text) => marker.test(text)),
+    ).flatMap(({ names }) => names),
   );
 }

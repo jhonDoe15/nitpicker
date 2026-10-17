@@ -546,8 +546,10 @@ Details that are decisions rather than the table:
   skipped, because ruff already reports it as an `invalid-syntax` finding; any other formatter
   failure is a tool error.
 - **Tests under coverage.** `coverage run --rcfile <nitpicker> -m pytest -q -o cache_dir=<report
-directory>` or `-m unittest discover` (with `-s tests` or `-s test` when that directory exists,
-  and `-t .` when it is a package), then `coverage json`. The project's pytest configuration keeps
+directory>` or `test-runs/unittest_timings.py <report> discover` (unittest's own `discover`, with
+  `-s tests` or `-s test` when that directory exists and `-t .` when it is a package, through a
+  `TextTestRunner` whose result records each test's time and writes the JUnit report), then
+  `coverage json`. The project's pytest configuration keeps
   working: `--no-cov` and `-n0` are added only when pytest-cov or xdist is installed, so
   `--cov=pkg` or `-n 2` in `addopts` cannot replace the outer coverage run or fork it away, and
   `--lf` or `--sw` find their cache in the report directory. The coverage settings are nitpicker's,
@@ -985,13 +987,21 @@ What the Python preset does the way the TypeScript and Java presets do (`parity/
   ids, as Java's `tests/tests-failed` (`test-runs/test-failures.mjs`). unittest failures are read
   from its `FAIL:`/`ERROR:` lines. A run that exits 1 without naming a test stays
   `python/tests-failed`.
-- **Slow tests.** `test-runtime/slow-test`, as for Java and Kotlin: a test the change adds or edits
-  (no identical block of the same name in the base file) over 5 s, or 30 s for an integration test,
-  from the JUnit times (`test-runs/slow-tests.mjs`); a parametrized test counts its slowest case.
-  A test is an integration test under an `integration`, `integration_tests`, `e2e` or `end_to_end`
-  folder, or with `@pytest.mark.integration` or `@pytest.mark.e2e` on the function, its class or
-  the module's `pytestmark`. `thresholds.unitTestSeconds` and `integrationTestSeconds` change the
-  limits. Base snapshots report none.
+- **Slow tests.** `test-runtime/slow-test`, as for Java and Kotlin, for pytest and unittest
+  projects alike: a test the change adds or edits over 5 s, or 30 s for an integration test, from
+  the JUnit times (`test-runs/slow-tests.mjs`); a parametrized test counts its slowest case. A test
+  is its decorators, its signature and its body, read by logical line (`test-runs/python-blocks.mjs`:
+  brackets, strings and continuations, so a wrapped signature or decorator is one line); it counts
+  as edited when no identical block of the same name is in the base file, or in any base test file
+  when it moved (a file moved unchanged reports nothing). pytest times only the call phase
+  (`-o junit_duration_report=call`), so a session or module fixture's setup is not charged to the
+  first test that uses it; unittest times each test from `startTest` to `stopTest` (its `setUp`
+  and `tearDown`, not `setUpClass` or `setUpModule`). A test is an integration test under an
+  `integration`, `integration_tests`, `e2e` or `end_to_end` folder, or with
+  `@pytest.mark.integration` or `@pytest.mark.e2e` on the function (however its decorators wrap),
+  its classes (decorators or a `pytestmark` in the class body) or the module's `pytestmark`; the
+  unittest message names only the folder. `thresholds.unitTestSeconds` and
+  `integrationTestSeconds` change the limits. Base snapshots report none.
 - **Pinned runner options.** Options that let a failing run pass are taken out of the project's
   pytest `addopts` (read from the first of `pytest.toml`, `.pytest.toml`, `pytest.ini`,
   `.pytest.ini`, `pyproject.toml`, `tox.ini`, `setup.cfg`, as pytest does) with `-o addopts=...`,
@@ -1000,12 +1010,24 @@ What the Python preset does the way the TypeScript and Java presets do (`parity/
   `--reruns`, `--only-rerun` and the other rerun and retry options, and `-p no:` for the
   plugins that collect or report results; with pytest-rerunfailures installed `-o reruns=0` is
   added. A run that collects no test is `python/no-tests-ran`, as before.
-- **Size.** `folder-depth-limit` (a package more than 4 levels below its top-level package),
-  `class-methods-limit` (20, not counting `__init__`), `class-fields-limit` (10: annotated class
-  attributes that are not `ClassVar`, plus `self.x` assignments) and `inheritance-depth-limit` (3
-  project base classes deep; `object`, `ABC`, `Generic` and `Protocol` are not counted, bases are
-  followed through imports and aliases) with Java's thresholds, from the classes report of
-  `structure_metrics.py` (`size/python-size.mjs`).
+- **Size.** `folder-depth-limit` (a package more than 4 levels below the root package, as for Java:
+  the common package prefix of the production modules, on the base when there is one, after
+  leading namespace folders without `__init__.py`; test packages are measured the same way, with
+  `tests`/`test` folders and the source root left out, against the production root),
+  `class-methods-limit` (20, not counting `__init__` or `@overload` stubs), `class-fields-limit`
+  (10: annotated class attributes that are not `ClassVar`, plus `self.x` assignments in the
+  class's own methods, not in a class nested in them; a `Protocol` and an `ABC` with only abstract
+  methods have no fields, as Java skips interfaces; a dataclass, attrs class, `NamedTuple` or
+  `TypedDict` is a record and gets Java's record wording) and `inheritance-depth-limit` (at most 3
+  project base classes above it: an external base such as `Exception` or `models.Model` adds no
+  level, and neither does a `Protocol` or interface link; bases are followed through imports and
+  aliases, each class once) with Java's thresholds, from the classes report of
+  `structure_metrics.py` and `class_metrics.py` (`size/python-size.mjs`). Generated files
+  (`*_pb2.py`, `*_pb2_grpc.py` and their `.pyi`, or a generator marker such as `DO NOT EDIT` or
+  `@generated` in the first five lines, `libraries/generated-files.mjs`) are left out of every size
+  and structure limit, as Java's generated sources are. Test files are the files pytest collects
+  (the project's `python_files`, plus `tests.py`, `tests_*.py` and `*_tests.py`, so a Django app's
+  `tests.py` is a test), `conftest.py` and everything under `tests/` or `test/`.
 - **Import structure.** From the import scan (`imports/python-import-rules.mjs`):
   `coupling/package-cycle` with Java's message, on each package of a cycle (a package `__init__`
   importing its own submodules is a re-export, not a dependency); `coupling/no-production-cycles`
@@ -1022,8 +1044,12 @@ What the Python preset does the way the TypeScript and Java presets do (`parity/
   `importlib.metadata.packages_distributions()` in the project environment
   (`dependencies/distribution-scan.py`). Test imports are checked only when the project declares
   dev dependencies; a package is unused only when no import, entry point, optional backend of a
-  declared package, string reference (`"psycopg2"`, `"postgresql://"`) or known loaded-by-name
-  package (database drivers, `tzdata`, `setuptools`) uses it; dynamic or `setup.py`-only
+  declared package, string reference (`"psycopg2"`, `"postgresql://"`), known loaded-by-name
+  package (database drivers, `tzdata`, `setuptools`) or package the detected framework loads for
+  the project, as knip's plugins do for TypeScript, uses it (Django: `pillow` with an `ImageField`,
+  `redis` with `RedisCache`, `pymemcache`, `pylibmc`, `argon2-cffi` and `bcrypt` for the cache
+  backends and password hashers named in settings; FastAPI: `python-multipart` with `Form`, `File`
+  or `UploadFile`; Flask: `python-dotenv`; pydantic: `email-validator` with `EmailStr`); dynamic or `setup.py`-only
   dependencies switch the checks off. On Python before 3.10 the checks are one
   `dependencies/tool-skipped` tool error and the other analyzers still run.
 - **Frameworks.** Django, FastAPI and Flask are detected from the dependencies or the production

@@ -4,6 +4,7 @@ import { fileURLToPath } from 'node:url';
 import { readProjectFile } from '../../libraries/project-files.mjs';
 import { readImportsReport } from '../analysis/python-coupling.mjs';
 import { snapshotScope } from '../test-runs/test-failures.mjs';
+import { impliedDistributions } from './python-frameworks.mjs';
 import {
   normalizeRequirementName,
   readPythonDependencies,
@@ -178,6 +179,9 @@ function usedDistributions(state) {
   for (const name of optionalOfDeclared(state)) {
     used.add(normalizeRequirementName(name));
   }
+  for (const name of state.implied) {
+    used.add(normalizeRequirementName(name));
+  }
   return used;
 }
 
@@ -236,7 +240,11 @@ export function readDependencyFindings({ reportRoot, projectRoot, snapshot }) {
   if (!declared.complete) {
     return [];
   }
-  const state = dependencyState(dependencies, readImportsReport(reportRoot));
+  const imports = readImportsReport(reportRoot);
+  const state = {
+    ...dependencyState(dependencies, imports),
+    implied: impliedDistributions(projectRoot, imports),
+  };
   const tests = (state.imports.others ?? []).filter(({ kind }) => kind === 'test');
   return [
     ...state.imports.modules.flatMap((entry) => importFindings(state, entry, true)),
