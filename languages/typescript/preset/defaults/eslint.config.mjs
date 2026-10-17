@@ -28,6 +28,7 @@ import { withRunnerTestPaths } from '../layout.mjs';
 import { testRunnerLintConfig } from '../eslint-config/runner/runner-rules.mjs';
 import { policyTestRunner } from '../test-runner/project-runner.mjs';
 import {
+  domProductionConfigFor,
   testEnvironmentConfigFor,
   testEnvironmentsFromVariables,
 } from '../test-environment/test-environment-config.mjs';
@@ -40,6 +41,7 @@ const layout = withRunnerTestPaths(readLayout(), analyzedProjectRoot());
 const react = isReactProject({ projectRoot: analyzedProjectRoot(), react: policy.react });
 const routeHandlers = usesRouteHandlerFramework(readDependencyNames(analyzedProjectRoot()));
 const i18n = isI18nProject({ projectRoot: analyzedProjectRoot(), i18n: policy.i18n });
+const testEnvironments = testEnvironmentsFromVariables();
 const { sourceGlobs, testGlobs, excludedGlobs, unitTestGlobs } = layout;
 const parserOptions = {
   project: './tsconfig.quality.json',
@@ -154,7 +156,8 @@ const presetConfig = defineConfig(
     files: unitTestGlobs,
     rules: { 'nitpicker/no-external-executables-in-unit-tests': 'error' },
   },
-  ...testEnvironmentConfigFor(layout, testEnvironmentsFromVariables(), testRunner),
+  ...testEnvironmentConfigFor(layout, testEnvironments, testRunner),
+  ...(react ? [] : domProductionConfigFor(layout, testEnvironments)),
 );
 
 const inactiveRuleIds = [
