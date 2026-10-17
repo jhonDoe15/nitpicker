@@ -1,6 +1,7 @@
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { acceptedDigest } from '../../../../core/command/test-support/accepted-digest.mjs';
 import {
   LEGACY_WEAKER,
   PRICING,
@@ -20,6 +21,10 @@ import {
   repository,
   write,
 } from './test-support/python-e2e-support.mjs';
+
+const MUTMUT_LISTED_CONFIG =
+  '{ "preset": "python", "tools": { "mutmut": { "precedence": ["project", "nitpicker"] } } }\n';
+const MUTMUT_LISTED = 'tools.mutmut.precedence: not set -> ["project","nitpicker"]';
 
 const SHRUNK = `${readFileSync(path.join(fixture, 'pyproject.toml'), 'utf8')}\n[tool.mutmut]\ndo_not_mutate = ["src/*"]\n`;
 const mutantFindings = (result) =>
@@ -44,8 +49,7 @@ describe.skipIf(!pythonE2eEnabled)('Python preset mutation gates end to end', ()
     commitBranch(project, 'shrunk', pricing);
     commitBranch(project, 'shrunk-listed', {
       ...pricing,
-      'nitpicker.config.json':
-        '{ "preset": "python", "tools": { "mutmut": { "precedence": ["project", "nitpicker"] } } }\n',
+      'nitpicker.config.json': MUTMUT_LISTED_CONFIG,
     });
     commitBranch(project, 'killed', {
       'src/demo/pricing.py': PRICING,
@@ -86,8 +90,13 @@ describe.skipIf(!pythonE2eEnabled)('Python preset mutation gates end to end', ()
       new Set(['src/demo/pricing.py']),
     );
   });
-  it('takes the do_not_mutate of the project config when the project is listed', () => {
-    const result = gate(project, 'shrunk-listed');
+  it('takes the do_not_mutate of the project config once a person accepts listing the project', () => {
+    const digest = acceptedDigest([MUTMUT_LISTED], {
+      'nitpicker.config.json': MUTMUT_LISTED_CONFIG,
+    });
+    const result = gate(project, 'shrunk-listed', {
+      environment: { CI: 'true', NITPICKER_ACCEPT_POLICY_CHANGE: digest },
+    });
 
     expect(result.exitCode, result.text).toBe(0);
     expect(mutantFindings(result)).toEqual([]);
