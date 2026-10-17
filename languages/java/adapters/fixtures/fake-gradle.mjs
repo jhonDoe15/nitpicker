@@ -125,6 +125,7 @@ export function runFakeGradle({ args, cwd }) {
       writeFileSync(report('pit/mutations.xml'), readBytes('mutations.xml'));
     }
     writeFileSync(report('structure.json'), '[]');
+    writeFileSync(report('classes.json'), '{"files":{},"classes":[]}');
   }
 
   const modules = exists('NO_REPORTS')

@@ -20,6 +20,7 @@ import { readErrorProneFindings } from '../errorprone/java-errorprone.mjs';
 import { readInlineSuppressionFindings } from '../suppressions/java-suppressions.mjs';
 import { readSpringConfigFindings } from '../spring/java-spring.mjs';
 import { methodText, readJavaStructureFindings } from '../metrics/java-structure.mjs';
+import { readClassLimitFindings } from '../size/class-limits.mjs';
 import { hash } from '../../../../shared/rules/finding-helpers.mjs';
 import { ingestFormatCheck } from '../../ingest/formatting/format-check.mjs';
 import { readSlowTestFindings } from '../test-times/slow-tests.mjs';
@@ -75,7 +76,7 @@ export function readJavaFindings(projectRoot, options = {}) {
             })
           : []),
         ...readInlineSuppressionFindings(projectRoot, lintedRoots(manifest)),
-        ...springFindings(projectRoot, manifest),
+        ...springFindings(projectRoot, manifest, options),
       ],
       { preset },
     ),
@@ -94,6 +95,12 @@ function moduleContextFindings(projectRoot, module, { manifest, options }) {
       lintedRoots: lintedRoots(module.manifest),
       allSourceRoots: manifest.sourceRoots,
       kotlin: preset === 'kotlin' && module.manifest.kotlin === true,
+      javaStyle: options.javaStyle,
+      classLimits: {
+        thresholds: options.fileLimits,
+        exceptions: options.exceptions,
+        modulePath: options.modulePath,
+      },
       jacoco: readModuleJacoco(module, preset),
       mainCheckstyle: readMainCheckstyle(projectRoot, module, preset),
       testTimes: {
@@ -118,6 +125,7 @@ function readModuleFindings(context, crapLimit) {
     ...crapFindings(context, jacoco, crapLimit),
     ...pitFindings(context),
     ...readJavaStructureFindings(reportRoot, projectRoot),
+    ...readClassLimitFindings(reportRoot, context.classLimits),
     ...branchFindings(context, jacoco),
     ...(kotlin ? readKotlinFindings(context, crapLimit) : []),
     ...readSlowTestFindings({
@@ -149,11 +157,19 @@ function lintedRoots({ sourceRoots = [], testSourceRoots = [] }) {
   return [...new Set([...sourceRoots, ...testSourceRoots])];
 }
 
-function springFindings(projectRoot, manifest) {
+function baselineRootOf({ baseline, modulePath }) {
+  return baseline?.snapshot === 'head' && baseline.baselineRoot !== undefined
+    ? path.join(baseline.baselineRoot, modulePath ?? '')
+    : undefined;
+}
+
+function springFindings(projectRoot, manifest, options) {
   return manifest.spring === true
     ? readSpringConfigFindings(projectRoot, {
         sourceRoots: manifest.sourceRoots,
         resourceRoots: manifest.resourceRoots,
+        testSourceRoots: manifest.testSourceRoots,
+        baselineRoot: baselineRootOf(options),
       })
     : [];
 }
@@ -184,13 +200,13 @@ function sarifFindings(context) {
   ];
 }
 
-function formatFindings({ reportRoot, roots }) {
+function formatFindings({ reportRoot, roots, javaStyle }) {
   const formatLines = readFileSync(path.join(reportRoot, 'format.txt'), 'utf8')
     .split(/\r?\n/)
     .map((line) => projectRelative(line.trim(), roots) ?? line);
   return ingestFormatCheck(formatLines.join('\n'), {
     tool: 'google-java-format',
-    message: 'File is not formatted with google-java-format',
+    message: `File is not formatted with google-java-format${javaStyle === 'aosp' ? ' --aosp' : ''}`,
   }).findings;
 }
 

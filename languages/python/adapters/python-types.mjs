@@ -20,6 +20,8 @@ const PYRIGHT_FAMILY = {
   },
 };
 const PYRIGHT_DEFAULT_EXCLUDE = ['**/node_modules', '**/__pycache__', '**/.*'];
+const DEPRECATED_CODE_SINCE = { major: 1, minor: 14 };
+const MYPY_VERSION = /^mypy (\d+)\.(\d+)/;
 const EXECUTABLE_PROBE = ['python', '-c', 'import sys; print(sys.executable)'];
 
 function typesError(message) {
@@ -44,6 +46,18 @@ function mypyPath(context) {
     .join(path.delimiter);
 }
 
+function mypyReportsDeprecations(context) {
+  const match = MYPY_VERSION.exec(probe(context, ['mypy', '--version']).stdout);
+  if (match === null) {
+    return false;
+  }
+  const [major, minor] = match.slice(1).map(Number);
+  return (
+    major > DEPRECATED_CODE_SINCE.major ||
+    (major === DEPRECATED_CODE_SINCE.major && minor >= DEPRECATED_CODE_SINCE.minor)
+  );
+}
+
 function runMypy(context) {
   return run(
     context,
@@ -54,6 +68,7 @@ function runMypy(context) {
       '--python-executable',
       environmentPython(context),
       '--strict',
+      ...(mypyReportsDeprecations(context) ? ['--enable-error-code', 'deprecated'] : []),
       '--explicit-package-bases',
       '--show-error-codes',
       '--no-error-summary',
@@ -91,6 +106,7 @@ export function pyrightConfig({ projectRoot, reportRoot, project, exclude }, che
   return {
     ...(inherited === undefined ? {} : { extends: inherited }),
     typeCheckingMode: 'strict',
+    reportDeprecated: 'error',
     enableTypeIgnoreComments: false,
     ignore: [],
     executionEnvironments: [],
