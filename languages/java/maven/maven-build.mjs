@@ -64,7 +64,7 @@ function buildAndTest({ projectRoot, maven, work, pinned, modules }) {
     maven,
     args: [
       '--quiet',
-      `${jacocoPlugin(pinned)}:prepare-agent`,
+      `${jacocoPlugin(pinned, modules)}:prepare-agent`,
       `-Djacoco.destFile=\${project.build.directory}/${OWN_JACOCO_EXEC}`,
       ...lifecycleArgs(modules),
       `${MAVEN_PLUGINS.dependency}:list`,

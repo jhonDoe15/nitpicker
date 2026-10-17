@@ -15,8 +15,9 @@ const JUNIT_PLATFORM_EXCLUSIONS = [
   'org.apiguardian',
 ];
 
-export function jacocoPlugin(pinned) {
-  return `org.jacoco:jacoco-maven-plugin:${pinned.jacoco}`;
+export function jacocoPlugin(pinned, modules = []) {
+  const own = modules.map((module) => module.jacocoAgentVersion).find(Boolean);
+  return `org.jacoco:jacoco-maven-plugin:${own ?? pinned.jacoco}`;
 }
 
 function dependency(coordinates, exclusions = []) {

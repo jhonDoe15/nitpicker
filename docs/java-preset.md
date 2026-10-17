@@ -239,7 +239,11 @@ by field. Per snapshot:
   never count. `failsafe` counts as an integration task, so the tests Failsafe runs in a `verify`
   build get the integration budget.
 - **JaCoCo.** Our `prepare-agent` always runs; a project's own `prepare-agent` or
-  `prepare-agent-integration` replaces it in `argLine` (the agent replaces an earlier agent there).
+  `prepare-agent-integration` replaces it in `argLine` (the agent replaces an earlier agent of the
+  same jar there). Two JaCoCo agents of different versions cannot share a JVM (the second fails to
+  define `java.lang.$JaCoCo` and the forked test JVM aborts), so when the project binds its own
+  agent with a version, our `prepare-agent` runs at that version instead of the pinned one; the
+  pinned JaCoCo CLI still writes the report.
   Without a configured `destFile` the project's agent still writes our file, because our
   `-Djacoco.destFile` sets the default of both goals; a configured `destFile` is read as well. Every
   fresh file among ours and the configured ones goes to one JaCoCo report. Failsafe reads the same

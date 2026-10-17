@@ -81,6 +81,15 @@ function jacocoDestFiles(plugin, basedir) {
   return [...new Set(files.map((file) => path.resolve(basedir, file)))];
 }
 
+function jacocoAgentVersion(plugin) {
+  const version = plugin === undefined ? undefined : textAt(plugin, 'version')?.trim();
+  const agents =
+    plugin === undefined ? [] : AGENT_GOALS.flatMap((goal) => executionsWithGoal(plugin, goal));
+  return agents.length === 0 || version === undefined || version.includes('${')
+    ? undefined
+    : version;
+}
+
 function resolvedText(build, basedir, name) {
   const value = textAt(build, name);
   return value === undefined ? undefined : path.resolve(basedir, value);
@@ -130,6 +139,7 @@ function describeModule(project, { basedir, pomFile }) {
     ),
     runsFailsafe: runsFailsafe(project, plugins.get(FAILSAFE)),
     jacocoDestFiles: jacocoDestFiles(plugins.get(JACOCO), basedir),
+    jacocoAgentVersion: jacocoAgentVersion(plugins.get(JACOCO)),
     archunitIncludes: textAt(project, PROPERTIES, 'nitpicker.archunit.includes'),
     compiler: compilerSettings(project, plugins),
   };

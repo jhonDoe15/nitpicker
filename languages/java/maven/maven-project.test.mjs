@@ -2,6 +2,7 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
+import { jacocoPlugin } from './maven-tools.mjs';
 import {
   lifecycleArgs,
   moduleClasspaths,
@@ -125,6 +126,7 @@ function defaultModule(basedir, { coordinates, packaging, pomFile = 'pom.xml' })
     failsafeReports: path.join(target, 'failsafe-reports'),
     runsFailsafe: false,
     jacocoDestFiles: [],
+    jacocoAgentVersion: undefined,
     archunitIncludes: undefined,
     compiler: NO_COMPILER_SETTINGS,
   };
@@ -161,6 +163,7 @@ describe('readReactor', () => {
       failsafeReports: `${root}/core/out/it-tests`,
       runsFailsafe: true,
       jacocoDestFiles: [`${root}/core/out/mine.exec`],
+      jacocoAgentVersion: undefined,
       archunitIncludes: '**/*Rules.class',
       compiler: {
         release: '17',
@@ -404,6 +407,30 @@ describe('describeModule plugin configuration', () => {
       path.join(module.basedir, 'target/unit.exec'),
       path.join(module.basedir, 'target/it.exec'),
     ]);
+  });
+
+  it('runs the JaCoCo agent of the version the project binds, since two agents cannot share a JVM', () => {
+    const agent =
+      '<executions><execution><goals><goal>prepare-agent</goal></goals></execution></executions>';
+    const versioned = (version, body) =>
+      soloModule(
+        inBuild(
+          plugin('jacoco-maven-plugin', `<version>${version}</version>${body}`, 'org.jacoco'),
+        ),
+      );
+    const own = versioned('0.8.12', agent);
+    const pinned = { jacoco: '0.8.14' };
+
+    expect(
+      [own, versioned('0.8.12', ''), versioned('${jacoco.version}', agent)].map((module) =>
+        jacocoPlugin(pinned, [module]),
+      ),
+    ).toEqual([
+      'org.jacoco:jacoco-maven-plugin:0.8.12',
+      'org.jacoco:jacoco-maven-plugin:0.8.14',
+      'org.jacoco:jacoco-maven-plugin:0.8.14',
+    ]);
+    expect(own.jacocoAgentVersion).toBe('0.8.12');
   });
 });
 
