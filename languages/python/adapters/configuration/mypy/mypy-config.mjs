@@ -1,17 +1,17 @@
 import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import path from 'node:path';
-import { parseIni } from './ini-parser.mjs';
-import { missingProjectConfig } from '../../../../shared/conventions/tool-precedence.mjs';
-import { globToRegExpSource } from '../../../../shared/glob.mjs';
+import { parseIni } from '../ini-parser.mjs';
+import { missingProjectConfig } from '../../../../../shared/conventions/tool-precedence.mjs';
+import { globToRegExpSource } from '../../../../../shared/glob.mjs';
 import {
   isOwnModulePattern,
   MYPY_LOOKED,
   MYPY_TOOL,
   mypyLayers,
   mypyOwnModules,
-} from '../project-tools/mypy-layers.mjs';
-import { attempt } from '../project-tools/project-tool-layers.mjs';
+} from '../../project-tools/mypy-layers.mjs';
+import { attempt } from '../../project-tools/project-tool-layers.mjs';
 
 const MYPY_CONFIG = 'mypy.ini';
 const GLOBAL_OPTIONS = [

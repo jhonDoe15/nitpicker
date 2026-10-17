@@ -131,9 +131,14 @@ describe('the libraries a project uses', () => {
     });
     const setup = project({ 'setup.cfg': '[options]\ninstall_requires =\n    voluptuous\n' });
 
-    expect(detectLibraries(poetry)).toMatchObject({ logging: 'loguru', validators: ['msgspec'] });
-    expect(detectLibraries(setup)).toMatchObject({
+    expect(detectLibraries(poetry)).toEqual({
+      logging: 'loguru',
+      validator: 'msgspec',
+      validators: ['msgspec'],
+    });
+    expect(detectLibraries(setup)).toEqual({
       logging: 'logging',
+      validator: 'voluptuous',
       validators: ['voluptuous'],
     });
   });

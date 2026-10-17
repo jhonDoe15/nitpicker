@@ -13,12 +13,14 @@ export const DEFAULT_LIBRARIES = Object.freeze({
   validators: Object.freeze([DEFAULT_VALIDATOR]),
 });
 
+function foundIn(table, names) {
+  return table
+    .filter(({ packages }) => packages.some((name) => names.includes(name)))
+    .map(({ name }) => name);
+}
+
 function declared(table, { runtime, development }) {
-  const found = (names) =>
-    table
-      .filter(({ packages }) => packages.some((name) => names.includes(name)))
-      .map(({ name }) => name);
-  return [...new Set([...found(runtime), ...found(development)])];
+  return [...new Set([...foundIn(table, runtime), ...foundIn(table, development)])];
 }
 
 export function dependencyNames(projectRoot) {

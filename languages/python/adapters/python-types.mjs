@@ -1,6 +1,6 @@
 import { writeFileSync } from 'node:fs';
 import path from 'node:path';
-import { mypyExcludeArguments, writeMypyConfig } from './configuration/mypy-config.mjs';
+import { mypyExcludeArguments, writeMypyConfig } from './configuration/mypy/mypy-config.mjs';
 import { execute, run } from './execution/python-process.mjs';
 import { importRoots } from './execution/python-project.mjs';
 import { mypyLayers } from './project-tools/mypy-layers.mjs';
