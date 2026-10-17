@@ -47,6 +47,7 @@ function testCaseOf(testCase) {
   return {
     file: relative,
     qualifiedClass: classname,
+    ...(testCase.attrs.unittest_id === undefined ? {} : { runtimeId: testCase.attrs.unittest_id }),
     ...marksOf(testCase),
     line: line === undefined ? undefined : Number(line) + 1,
     className,

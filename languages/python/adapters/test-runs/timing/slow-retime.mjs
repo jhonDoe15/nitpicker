@@ -6,7 +6,7 @@ import { slowCandidates } from '../slow-tests.mjs';
 function selection(context, { testCase }) {
   return context.project.testRunner === 'pytest'
     ? [testCase.id]
-    : ['-k', `${testCase.qualifiedClass}.${testCase.functionName}`];
+    : ['-k', testCase.runtimeId ?? `${testCase.qualifiedClass}.${testCase.functionName}`];
 }
 
 export function rerunCommand(context, runs) {
