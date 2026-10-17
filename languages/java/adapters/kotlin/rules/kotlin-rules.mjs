@@ -32,7 +32,7 @@ export const ONE_WAY_RULES = [
     name: 'SwallowedException',
     ruleset: 'exceptions',
     allowed:
-      'Log it with the exception as the last argument, rethrow it or pass it on as the cause (`throw AppError("x", e)`), or return a named default or a value built from the error. In a test, use `assertFailsWith`.',
+      'Rethrow it with its cause (`throw AppError("x", e)`), return a failure result that carries the error (`return Result.failure(e)`), or collect it for the caller (`errors.add(e)`); logging alone is not handling.',
   },
   { name: 'GlobalCoroutineUsage', ruleset: 'coroutines' },
   { name: 'ForbiddenMethodCall', ruleset: 'style' },

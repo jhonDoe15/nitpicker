@@ -4,11 +4,17 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 public class Lookup {
   private static final int DEFAULT_PORT = 80;
+  private static final Logger log = Logger.getLogger("lookup");
+  private final List<String> errors = new ArrayList<>();
+  private Throwable lastError;
   private boolean present;
   private String label;
+  private int failures;
 
   public int port(String text) {
     try {
@@ -70,6 +76,59 @@ public class Lookup {
     }
   }
 
+  public int portOrDefault(String text) {
+    try {
+      return Integer.parseInt(text);
+    } catch (NumberFormatException e) {
+      return DEFAULT_PORT;
+    }
+  }
+
+  public int logAndReturn(String text) {
+    try {
+      return Integer.parseInt(text);
+    } catch (NumberFormatException e) {
+      log.warning("not a number");
+      return -1;
+    }
+  }
+
+  public void logOnly(String text) {
+    try {
+      Integer.parseInt(text);
+    } catch (NumberFormatException e) {
+      log.log(Level.WARNING, "not a number", e);
+    }
+  }
+
+  public int nested(String text) {
+    try {
+      return Integer.parseInt(text);
+    } catch (NumberFormatException e) {
+      if (text == null) {
+        return 0;
+      }
+      return 1;
+    }
+  }
+
+  public boolean isNumber(String text) {
+    try {
+      Integer.parseInt(text);
+      return true;
+    } catch (NumberFormatException e) {
+      return false;
+    }
+  }
+
+  public void count(String text) {
+    try {
+      Integer.parseInt(text);
+    } catch (NumberFormatException e) {
+      failures++;
+    }
+  }
+
   public void check(String name) {
     try {
       Class.forName(name);
@@ -79,16 +138,17 @@ public class Lookup {
     }
   }
 
-  public boolean present() {
-    return present;
+  public boolean exists(String name) {
+    try {
+      Class.forName(name);
+      return true;
+    } catch (ClassNotFoundException e) {
+      return false;
+    }
   }
 
-  public int portOrDefault(String text) {
-    try {
-      return Integer.parseInt(text);
-    } catch (NumberFormatException e) {
-      return DEFAULT_PORT;
-    }
+  public boolean present() {
+    return present;
   }
 
   public int portOrLength(String text) {
@@ -107,15 +167,87 @@ public class Lookup {
     }
   }
 
-  public Optional<Integer> parseOrFallback(String text) {
+  public int portOrLogAndRethrow(String text) {
+    try {
+      return Integer.parseInt(text);
+    } catch (NumberFormatException e) {
+      log.log(Level.WARNING, "not a number", e);
+      throw e;
+    }
+  }
+
+  public Optional<Integer> portOrFailure(String text) {
     try {
       return Optional.of(Integer.parseInt(text));
     } catch (NumberFormatException e) {
-      return Optional.of(DEFAULT_PORT);
+      return Optional.of(describe(e));
     }
+  }
+
+  public void collect(String text) {
+    try {
+      Integer.parseInt(text);
+    } catch (NumberFormatException e) {
+      errors.add(e.getMessage());
+    }
+  }
+
+  public void keep(String text) {
+    try {
+      Integer.parseInt(text);
+    } catch (NumberFormatException e) {
+      lastError = e;
+    }
+  }
+
+  public void pause() {
+    try {
+      Thread.sleep(1);
+    } catch (InterruptedException e) {
+      Thread.currentThread().interrupt();
+    }
+  }
+
+  public int firstNumber(List<String> items) {
+    for (String item : items) {
+      try {
+        return Integer.parseInt(item);
+      } catch (NumberFormatException e) {
+        break;
+      }
+    }
+    return 0;
+  }
+
+  public List<String> errors() {
+    return errors;
+  }
+
+  public Throwable lastError() {
+    return lastError;
+  }
+
+  private int describe(Throwable error) {
+    return error.getMessage().length();
   }
 }
 `;
+
+export const FLAGGED_LOOKUP_METHODS = [
+  'port',
+  'label',
+  'parse',
+  'split',
+  'words',
+  'total',
+  'remember',
+  'portOrDefault',
+  'logAndReturn',
+  'logOnly',
+  'nested',
+  'isNumber',
+  'count',
+];
 
 export const LOOKUP_TEST = `package shop;
 
@@ -138,10 +270,18 @@ class LookupTest {
     assertEquals(-1, lookup.port("x"));
     assertEquals(80, lookup.portOrDefault("x"));
     assertEquals(1, lookup.portOrLength("x"));
-    assertEquals(Optional.of(80), lookup.parseOrFallback("x"));
     assertEquals(Optional.empty(), lookup.parse("x"));
     assertEquals(Optional.of(3), lookup.parse("3"));
+    assertEquals(Optional.of(0), lookup.portOrFailure("x"));
     assertThrows(IllegalArgumentException.class, () -> lookup.portOrWrap("x"));
+    assertThrows(NumberFormatException.class, () -> lookup.portOrLogAndRethrow("x"));
+    assertEquals(-1, lookup.logAndReturn("x"));
+    lookup.logOnly("x");
+    assertEquals(0, lookup.nested(null));
+    assertEquals(1, lookup.nested("x"));
+    assertFalse(lookup.isNumber("x"));
+    assertTrue(lookup.isNumber("1"));
+    lookup.count("x");
   }
 
   @Test
@@ -159,6 +299,19 @@ class LookupTest {
     assertTrue(lookup.present());
     lookup.check("shop.Missing");
     assertFalse(lookup.present());
+    assertTrue(lookup.exists("shop.Lookup"));
+    assertFalse(lookup.exists("shop.Missing"));
+  }
+
+  @Test
+  void keepsTheErrors() {
+    lookup.collect("x");
+    lookup.keep("x");
+    lookup.pause();
+    assertEquals(1, lookup.firstNumber(List.of("1", "x")));
+    assertEquals(0, lookup.firstNumber(List.of("x", "1")));
+    assertEquals(1, lookup.errors().size());
+    assertEquals(NumberFormatException.class, lookup.lastError().getClass());
   }
 
   @Test

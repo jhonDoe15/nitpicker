@@ -220,11 +220,11 @@
     "mayBeIntended": false
   },
   "DE_MIGHT_DROP": {
-    "fix": "Handle the exception: log it, return a failure value, or rethrow wrapped as new IllegalStateException(msg, e).",
+    "fix": "Rethrow it with the cause (new IllegalStateException(msg, e)), return a result that carries it, or collect it (errors.add(e)); logging alone is not handling.",
     "mayBeIntended": false
   },
   "DE_MIGHT_IGNORE": {
-    "fix": "Handle the exception: log it, return a failure value, or rethrow wrapped as new IllegalStateException(msg, e).",
+    "fix": "Rethrow it with the cause (new IllegalStateException(msg, e)), return a result that carries it, or collect it (errors.add(e)); logging alone is not handling.",
     "mayBeIntended": false
   },
   "DLS_DEAD_LOCAL_INCREMENT_IN_RETURN": {

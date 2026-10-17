@@ -3,9 +3,9 @@
      design and a swallowed-exception rule of our own, run over main and test sources. Two test
      rules are left out because they set an assertion style the TypeScript preset does not have: a
      message on every assertion, and one assertion per test. A test without any assertion still
-     fails (UnitTestShouldIncludeAssert), and mutation testing catches weak ones. Rules that report the same code as Error Prone,
-     SpotBugs or Checkstyle stay on: a rule whose finding repeats another tool's on the same code is
-     dropped after policy only while that other finding is reported
+     fails (UnitTestShouldIncludeAssert), and mutation testing catches weak ones. Rules that report
+     the same code as Error Prone, SpotBugs or Checkstyle stay on: a rule whose finding repeats
+     another tool's on the same code is dropped after policy only while that other finding is reported
      (languages/java/adapters/overlaps/overlap-pairs.json, docs/java-preset.md "Overlaps"). -->
 <ruleset name="nitpicker"
          xmlns="http://pmd.sourceforge.net/ruleset/2.0.0"
@@ -110,33 +110,72 @@
     </properties>
   </rule>
   <rule name="SwallowedException" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
-        message="This catch block swallows the error: it only continues, returns, or assigns a constant such as null, false, 0, a string or an empty collection or Optional. Log it, rethrow it with the cause, or use it; or return a named default or a value built from the error. In a test, use assertThrows. If it is right here, add an exception for pmd/SwallowedException in nitpicker.config.json.">
+        message="This catch block swallows the error: it only logs it, returns a constant or default, or carries on. Rethrow it with its cause (`throw new DomainException(&quot;why&quot;, e)`), return a failure result that carries the error (`return Result.failed(e)`), or collect it for the caller (`errors.add(e)`); logging alone is not handling. In a test, use assertThrows. If it is intended, add an exception for pmd/SwallowedException in nitpicker.config.json.">
     <priority>3</priority>
     <properties>
       <property name="xpath">
         <value><![CDATA[
-let $constant := function($value as node()?) as xs:boolean {
-  exists($value[self::NullLiteral or self::BooleanLiteral or self::NumericLiteral or self::StringLiteral or self::CharLiteral
-    or (self::UnaryExpression and *[1][self::NumericLiteral])
-    or (self::ArrayAllocation and not(.//ArrayInitializer) and not(.//ArrayDimExpr/*[not(self::NumericLiteral)]))
-    or (self::ConstructorCall and ArgumentList[@Size = 0] and not(AnonymousClassDeclaration)
-        and (pmd-java:typeIs('java.util.Collection') or pmd-java:typeIs('java.util.Map')))
-    or (self::MethodCall and ArgumentList[@Size = 0]
-        and ((@MethodName = 'empty' and (pmd-java:typeIs('java.util.Optional') or pmd-java:typeIs('java.util.OptionalInt')
-              or pmd-java:typeIs('java.util.OptionalLong') or pmd-java:typeIs('java.util.OptionalDouble')
-              or pmd-java:typeIs('java.util.stream.BaseStream')))
-          or (@MethodName = 'of' and (pmd-java:typeIs('java.util.Collection') or pmd-java:typeIs('java.util.Map')))
-          or (@MethodName = ('emptyList', 'emptySet', 'emptyMap', 'emptySortedSet', 'emptySortedMap', 'emptyNavigableSet', 'emptyNavigableMap')
-              and (pmd-java:typeIs('java.util.Collection') or pmd-java:typeIs('java.util.Map')))))])
-}
+let $logMethods := ('trace', 'debug', 'info', 'warn', 'warning', 'error', 'fatal', 'severe', 'fine', 'finer', 'finest', 'log', 'print', 'println', 'printf', 'printStackTrace'),
+    $tallyMethods := ('add', 'addAll', 'addFirst', 'addLast', 'put', 'putAll', 'putIfAbsent', 'offer', 'offerFirst', 'offerLast', 'push', 'append', 'insert'),
+    $loggerNamed := function($node as node()?) as xs:boolean {
+      exists($node[self::VariableAccess or self::FieldAccess or self::MethodCall]
+        [matches(@Name, '^(log|logger|logging|out|err)$', 'i') or matches(@Name, '[a-z0-9]Log(ger)?$') or matches(@Name, '_LOG(GER)?$')
+         or @MethodName = 'getLogger'])
+    },
+    $report := function($call as node()) as xs:boolean {
+      exists($call[self::MethodCall][@MethodName = $logMethods]
+        [@MethodName = 'printStackTrace'
+         or exists((*[1], *[1]/*[1], *[1]/*[1]/*[1], *[1]/*[1]/*[1]/*[1])[$loggerNamed(.)])])
+    },
+    $emptyValue := function($value as node()) as xs:boolean {
+      exists($value[
+           (self::ConstructorCall and ArgumentList[@Size = 0] and not(AnonymousClassDeclaration)
+            and (pmd-java:typeIs('java.util.Collection') or pmd-java:typeIs('java.util.Map')))
+        or (self::MethodCall and ArgumentList[@Size = 0]
+            and ((@MethodName = 'empty' and (pmd-java:typeIs('java.util.Optional') or pmd-java:typeIs('java.util.OptionalInt')
+                  or pmd-java:typeIs('java.util.OptionalLong') or pmd-java:typeIs('java.util.OptionalDouble')
+                  or pmd-java:typeIs('java.util.stream.BaseStream')))
+              or (@MethodName = 'of' and (pmd-java:typeIs('java.util.Collection') or pmd-java:typeIs('java.util.Map')))
+              or (@MethodName = ('emptyList', 'emptySet', 'emptyMap', 'emptySortedSet', 'emptySortedMap', 'emptyNavigableSet', 'emptyNavigableMap')
+                  and (pmd-java:typeIs('java.util.Collection') or pmd-java:typeIs('java.util.Map')))))])
+    },
+    $computes := function($value as node()?) as xs:boolean {
+      exists($value/descendant-or-self::*[self::MethodCall or self::ConstructorCall][not($emptyValue(.))])
+    }
 return
 //CatchClause[Block/*]
-  [every $statement in Block/* satisfies (
-       $statement[self::EmptyStatement or self::ContinueStatement]
-    or $statement[self::ReturnStatement][not(*) or $constant(*[1])]
-    or $statement[self::ExpressionStatement]/AssignmentExpression[@Operator = '='][$constant(*[2])]
-         [not(every $type in ancestor::CatchClause[1]/CatchParameter//ClassType
-              satisfies $type/@SimpleName = ('ClassNotFoundException', 'NoClassDefFoundError'))])]
+  [let $handler := .,
+       $block := Block,
+       $probe := every $type in CatchParameter//ClassType satisfies $type/@SimpleName = ('ClassNotFoundException', 'NoClassDefFoundError'),
+       $live := $block//*[not($report(.))]
+         [not(ancestor::*[ancestor::*[. is $block]][self::LambdaExpression or self::AnonymousClassDeclaration or self::ClassDeclaration or $report(.)])],
+       $first := string(CatchParameter/VariableId/@Name),
+       $second := distinct-values(($first,
+         $live[self::VariableDeclarator][.//VariableAccess/@Name = $first]/VariableId/@Name,
+         $live[self::AssignmentExpression][@Operator = '='][*[1][self::VariableAccess]][*[2]/descendant-or-self::VariableAccess/@Name = $first]/*[1]/@Name)),
+       $names := distinct-values(($second,
+         $live[self::VariableDeclarator][.//VariableAccess/@Name = $second]/VariableId/@Name,
+         $live[self::AssignmentExpression][@Operator = '='][*[1][self::VariableAccess]][*[2]/descendant-or-self::VariableAccess/@Name = $second]/*[1]/@Name)),
+       $carries := function($node as node()?) as xs:boolean { exists($node/descendant-or-self::VariableAccess[@Name = $names]) },
+       $enclosing := function($node as node()) as node()* {
+         $node/ancestor::*[self::MethodDeclaration or self::ConstructorDeclaration or self::Initializer or self::LambdaExpression][1]
+       },
+       $evidence := (
+         $live[self::ThrowStatement or self::BreakStatement],
+         $live[self::MethodCall][parent::ExpressionStatement][not(@MethodName = $tallyMethods)],
+         $live[self::ConstructorCall][parent::ExpressionStatement],
+         $live[self::MethodCall or self::ConstructorCall][not($emptyValue(.))][$carries(ArgumentList)],
+         $live[self::ReturnStatement][$computes(*[1]) or $carries(*[1]) or ($probe and *[1][self::BooleanLiteral])],
+         $live[self::AssignmentExpression][@Operator != '='][$carries(*[2])],
+         $live[self::AssignmentExpression][@Operator = '='][$carries(*[2])]
+           [not(*[1][self::VariableAccess]) or (let $target := string(*[1]/@Name) return empty($enclosing(.)//VariableId[@Name = $target]))],
+         $live[self::AssignmentExpression][@Operator = '='][$carries(*[2])][*[1][self::VariableAccess]]
+           [let $target := string(*[1]/@Name)
+            return exists($enclosing(.)//VariableAccess[@Name = $target][@AccessType = 'READ'][not(ancestor::*[. is $handler])])],
+         $live[self::AssignmentExpression][@Operator = '='][not($carries(*[2]))][$computes(*[2]) or $probe],
+         $live[self::VariableDeclarator][not($carries(*[last()]))][$computes(*[last()])]
+       )
+   return empty($evidence)]
 ]]></value>
       </property>
     </properties>

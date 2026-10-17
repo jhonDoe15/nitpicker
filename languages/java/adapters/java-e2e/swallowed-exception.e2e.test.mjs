@@ -3,7 +3,11 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterAll, describe, expect, it } from 'vitest';
 import { collectJavaFindings } from '../java-diff.mjs';
-import { LOOKUP, LOOKUP_TEST } from './test-support/swallowed-exception-data.mjs';
+import {
+  FLAGGED_LOOKUP_METHODS,
+  LOOKUP,
+  LOOKUP_TEST,
+} from './test-support/swallowed-exception-data.mjs';
 
 const enabled = process.env.NITPICKER_JAVA_E2E === '1';
 const gradle = process.env.NITPICKER_GRADLE ?? 'gradle';
@@ -51,18 +55,19 @@ const POM = `<project xmlns="http://maven.apache.org/POM/4.0.0">
 
 const MAIN = 'src/main/java/shop/Lookup.java';
 const TEST = 'src/test/java/shop/LookupTest.java';
-const SWALLOWING_CATCHES = [
-  [MAIN, 16],
-  [MAIN, 24],
-  [MAIN, 32],
-  [MAIN, 40],
-  [MAIN, 48],
-  [MAIN, 58],
-  [MAIN, 68],
-  [TEST, 49],
-];
 const MESSAGE =
-  'This catch block swallows the error: it only continues, returns, or assigns a constant such as null, false, 0, a string or an empty collection or Optional. Log it, rethrow it with the cause, or use it; or return a named default or a value built from the error. In a test, use assertThrows. If it is right here, add an exception for pmd/SwallowedException in nitpicker.config.json.';
+  'This catch block swallows the error: it only logs it, returns a constant or default, or carries on. Rethrow it with its cause (`throw new DomainException("why", e)`), return a failure result that carries the error (`return Result.failed(e)`), or collect it for the caller (`errors.add(e)`); logging alone is not handling. In a test, use assertThrows. If it is intended, add an exception for pmd/SwallowedException in nitpicker.config.json.';
+
+function catchLineOf(source, method) {
+  const lines = source.split('\n');
+  const start = lines.findIndex((line) => new RegExp(`^ {2}\\S.* ${method}\\(`, 'u').test(line));
+  return start + 1 + lines.slice(start).findIndex((line) => line.includes('catch ('));
+}
+
+const SWALLOWING_CATCHES = [
+  ...FLAGGED_LOOKUP_METHODS.map((method) => [MAIN, catchLineOf(LOOKUP, method)]),
+  [TEST, catchLineOf(LOOKUP_TEST, 'ignoresTheError')],
+];
 
 const roots = [];
 
@@ -93,7 +98,7 @@ describe.skipIf(!enabled)('PMD SwallowedException', () => {
     for (const directory of roots.splice(0)) rmSync(directory, { recursive: true, force: true });
   });
 
-  it('reports a catch that only returns, continues or assigns a constant on Gradle, in tests too', () => {
+  it('reports a catch that only logs, returns a constant or carries on, and no catch that handles the error, on Gradle, in tests too', () => {
     const root = project({
       'settings.gradle': "rootProject.name = 'shop'\n",
       'build.gradle': BUILD_GRADLE,

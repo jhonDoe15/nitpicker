@@ -114,6 +114,22 @@ describe('rule catalogs', () => {
     expect(malformed).toEqual([]);
   });
 
+  it('advise the same handling for a swallowed catch as pmd/SwallowedException does', () => {
+    const fixes = [
+      ['pmd', 'EmptyCatchBlock'],
+      ['checkstyle', 'EmptyCatchBlock'],
+      ['spotbugs', 'DE_MIGHT_DROP'],
+      ['spotbugs', 'DE_MIGHT_IGNORE'],
+    ].map(([tool, rule]) => readCatalog(tool)[rule].fix);
+
+    expect(fixes.map((fix) => fix.split(/ In tests/u)[0])).toEqual([
+      'Rethrow it with the cause (new IllegalStateException(msg, e)), return a result that carries it, or collect it (errors.add(e)); logging alone is not handling.',
+      'Rethrow it with the cause, return a result that carries it, or collect it (errors.add(e)); logging alone is not handling.',
+      'Rethrow it with the cause (new IllegalStateException(msg, e)), return a result that carries it, or collect it (errors.add(e)); logging alone is not handling.',
+      'Rethrow it with the cause (new IllegalStateException(msg, e)), return a result that carries it, or collect it (errors.add(e)); logging alone is not handling.',
+    ]);
+  });
+
   it('are part of the configuration hash, with the code that applies them', () => {
     const files = readdirSync(import.meta.dirname)
       .filter((name) => !name.includes('.test.'))

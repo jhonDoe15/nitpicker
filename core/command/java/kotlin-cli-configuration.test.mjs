@@ -60,6 +60,37 @@ describe('nitpicker with "preset": "kotlin" configuration', () => {
 
       expect(result.exitCode, result.text).toBe(1);
     });
+    it.each([
+      'pmd/SwallowedException',
+      'pmd/GeneratedOnHandWrittenCode',
+      'checkstyle/EmptyCatchBlock',
+    ])('accepts an exception for %s, a rule of the Java files of the module', (rule) => {
+      const root = kotlinRepository({
+        'nitpicker.config.json': withExceptions([
+          { ...exception, rule, paths: ['src/main/java/**'] },
+        ]),
+      });
+
+      const result = run(root);
+
+      expect(result.exitCode, result.text).toBe(0);
+    });
+    it('lifts a PMD finding on a Java file with an exception for its rule', () => {
+      const violation = {
+        rule: 'pmd/UnusedPrivateField',
+        paths: ['src/main/java/demo/A.java'],
+        reason: 'The field is read by reflection.',
+      };
+      const files = { 'violations.txt': 'Avoid unused field: added\n' };
+      const failing = kotlinRepository();
+      writeFiles(failing, files);
+      commit(failing, 'add an unused field');
+      const lifted = kotlinRepository({ 'nitpicker.config.json': withExceptions([violation]) });
+      writeFiles(lifted, files);
+      commit(lifted, 'add an unused field');
+
+      expect([run(failing).exitCode, run(lifted).exitCode]).toEqual([1, 0]);
+    });
     it('rejects an exception for a rule that is not a one-way rule', () => {
       const root = kotlinRepository({
         'nitpicker.config.json': withExceptions([
@@ -71,7 +102,7 @@ describe('nitpicker with "preset": "kotlin" configuration', () => {
 
       expect(result.exitCode).toBe(2);
       expect(result.output.err).toBe(
-        `nitpicker failed: nitpicker.config.json: "exceptions[0].rule" is "detekt.style.MagicNumber", which is not a rule with exceptions. Rules with exceptions for the kotlin preset: ${KOTLIN_EXCEPTION_RULES.join(', ')}. Tune any other detekt rule in config/detekt/detekt.yml\n`,
+        `nitpicker failed: nitpicker.config.json: "exceptions[0].rule" is "detekt.style.MagicNumber", which is not a rule with exceptions. Rules with exceptions for the kotlin preset: ${KOTLIN_EXCEPTION_RULES.join(', ')}, and "<tool>/<rule>" as findings print it for the Java files of the module (tools: pmd, checkstyle, spotbugs, errorprone). Tune any other detekt rule in config/detekt/detekt.yml\n`,
       );
     });
   });
