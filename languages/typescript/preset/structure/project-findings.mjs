@@ -1,6 +1,6 @@
 import { readHeadPolicy, readLayout } from '../head-policy.mjs';
 import { componentStoryFindings } from './component-stories.mjs';
-import { typescriptFileLimitFindings } from './file-limits.mjs';
+import { typescriptFileLimitFindings } from './limits/file-limits.mjs';
 import { javascriptFileFindings } from './sources/javascript-files.mjs';
 import { reuseFindings } from './reuse/reuse-findings.mjs';
 

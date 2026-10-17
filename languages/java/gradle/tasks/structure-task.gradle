@@ -10,9 +10,10 @@ tasks.register('nitpickerStructure') {
         def roots = sourceSets.main.allJava.sourceDirectories.files.findAll { it.exists() }
             .collect { relativeToRoot(it) }
         def output = reportDir.get().file('structure.json').asFile
+        def classesOutput = reportDir.get().file('classes.json').asFile
         def java = new File(System.getProperty('java.home'), 'bin/java').absolutePath
         def process = new ProcessBuilder([java, metricsSource.canonicalPath,
-                output.absolutePath, analysisRoot.absolutePath] + roots)
+                output.absolutePath, classesOutput.absolutePath, analysisRoot.absolutePath] + roots)
             .directory(projectDir).redirectErrorStream(true).start()
         def log = process.inputStream.getText('UTF-8')
         if (process.waitFor() != 0) {

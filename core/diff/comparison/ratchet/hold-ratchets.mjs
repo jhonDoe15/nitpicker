@@ -96,7 +96,7 @@ function movedFolderKey(finding, moves) {
   const destinations = moves.get(normalizeGitPath(finding.path));
   const destination = mainDestination(destinations);
   const movedFiles = destination === undefined ? 0 : destinations.get(destination);
-  return movedFiles * 2 > finding.ratchet.value
+  return movedFiles * 2 > (finding.ratchet.folderFiles ?? finding.ratchet.value)
     ? ratchetKey({ ...finding, path: destination }, new Map(), new Map())
     : undefined;
 }
