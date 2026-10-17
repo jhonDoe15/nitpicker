@@ -1,4 +1,5 @@
 import {
+  DYNAMIC,
   FRAGMENT_BEFORE_VALUE,
   LOOSE_STATEMENT,
   STRONG_STATEMENT,
@@ -7,7 +8,7 @@ import {
 import { depthFirst } from '../../../../../../../shared/traversal.mjs';
 import { stringValue } from '../../analysis/constant-resolution.mjs';
 import { memberName, unwrapped } from '../security-values.mjs';
-import { classify, DYNAMIC } from './sql-inert.mjs';
+import { classify } from './sql-inert.mjs';
 
 function isPlus(node) {
   return node.type === 'BinaryExpression' && node.operator === '+';

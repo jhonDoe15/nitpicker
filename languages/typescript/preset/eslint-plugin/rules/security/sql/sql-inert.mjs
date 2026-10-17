@@ -1,4 +1,5 @@
 import ts from 'typescript';
+import { DYNAMIC } from '../../../../../../../shared/rules/security/sql-text.mjs';
 import { stringValue } from '../../analysis/constant-resolution.mjs';
 import { leafValues, memberName, typeServices, unwrapped } from '../security-values.mjs';
 import { arrayObligations, arrayOf, isIndexParameter, textOf } from './sql-arrays.mjs';
@@ -21,8 +22,6 @@ const TEXT_BUILDERS = new Set([
 const INERT_LITERAL = /^[\w. ]*$/u;
 const PRIMITIVE_FLAGS =
   ts.TypeFlags.NumberLike | ts.TypeFlags.BooleanLike | ts.TypeFlags.BigIntLike;
-
-export const DYNAMIC = '\u0000';
 
 function literalText(leaf) {
   const text = stringValue(leaf);

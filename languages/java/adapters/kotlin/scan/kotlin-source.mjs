@@ -109,24 +109,30 @@ function openLiteral(state, start, mode) {
   return start + width;
 }
 
-function readQuotes(state, start, end) {
-  if (start >= end) {
-    return;
+function quoteStep(state, from, end) {
+  if (from >= end) {
+    return [];
   }
   const { mode } = state.stack.at(-1);
   if (mode === 'raw') {
-    if (end - start >= RAW_QUOTES.length) {
+    if (end - from >= RAW_QUOTES.length) {
       closeLiteral(state, end - RAW_QUOTES.length, end);
     }
-    return;
+    return [];
   }
   if (mode === 'string') {
-    closeLiteral(state, start, start + 1);
-    readQuotes(state, start + 1, end);
-    return;
+    closeLiteral(state, from, from + 1);
+    return [from + 1];
   }
-  const raw = end - start >= RAW_QUOTES.length;
-  readQuotes(state, openLiteral(state, start, raw ? 'raw' : 'string'), end);
+  const raw = end - from >= RAW_QUOTES.length;
+  return [openLiteral(state, from, raw ? 'raw' : 'string')];
+}
+
+function readQuotes(state, start, end) {
+  const pending = [start];
+  for (const from of pending) {
+    pending.push(...quoteStep(state, from, end));
+  }
 }
 
 function readLiteralToken(state, index, text) {

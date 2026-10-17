@@ -43,6 +43,21 @@ describe('readKotlinClassLimitFindings', () => {
     });
   });
 
+  it('takes the class limits from the thresholds config', () => {
+    const types = [type('Orders', { methods: 25, fields: 4 })];
+
+    expect(readKotlinClassLimitFindings(metrics(types), { classMethods: 30 })).toEqual([]);
+    expect(
+      readKotlinClassLimitFindings(metrics(types), { classFields: 3 }).map(({ rule, message }) => [
+        rule,
+        message.split('.')[0],
+      ]),
+    ).toEqual([
+      ['class-methods-limit', 'Class Orders has 25 methods (limit 20)'],
+      ['class-fields-limit', 'Class Orders has 4 fields (limit 3)'],
+    ]);
+  });
+
   it('reports fields over the limit and passes classes at the limits', () => {
     const findings = readKotlinClassLimitFindings(
       metrics([

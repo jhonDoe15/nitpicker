@@ -1,15 +1,31 @@
 import {
+  DYNAMIC,
   FRAGMENT_BEFORE_VALUE,
   LOOSE_STATEMENT,
   STRONG_STATEMENT,
 } from '../../../../../../shared/rules/security/sql-text.mjs';
 import { closingIndex, literalAt, splitArguments } from '../kotlin-source.mjs';
-import { classifiedPieces, DYNAMIC, templatePieces } from './sql-values.mjs';
+import { classifiedPieces, templatePieces } from './sql-values.mjs';
 
-const SQL_SINK =
-  /^(?:query\w*|execute\w*|exec|prepareStatement|prepareCall|createQuery|createNativeQuery|createSQLQuery|nativeQuery|rawQuery|execSQL|addBatch|batchUpdate|sql)$/;
+const SINK_NAMES = [
+  String.raw`query\w*`,
+  String.raw`execute\w*`,
+  'exec',
+  'prepareStatement',
+  'prepareCall',
+  'createQuery',
+  'createNativeQuery',
+  'createSQLQuery',
+  'nativeQuery',
+  'rawQuery',
+  'execSQL',
+  'addBatch',
+  'batchUpdate',
+  'sql',
+];
+const SQL_SINK = new RegExp(`^(?:${SINK_NAMES.join('|')})$`);
 const UPDATE_RECEIVER = /jdbc|template|statement/i;
-const CALL_BEFORE = /(?:([A-Za-z_]\w*)\s*\??\.\s*)?([A-Za-z_]\w*)\s*(?:<[^<>()]*>)?\s*\($/;
+const CALL_BEFORE = /(?:([A-Za-z_]\w*)\s*\??\.\s*)?([A-Za-z_]\w*)\s*(?:<[^<>()]*>\s*)?\($/;
 const ASSIGNED_BEFORE = /\b(?:val|var)\s+([A-Za-z_]\w*)\s*(?::\s*String\s*)?=\s*$/;
 const PLUS_AFTER = /^\s*\+(?![+=])\s*/;
 const PLUS_BEFORE = /(?<![+=])\+\s*$/;
@@ -17,7 +33,7 @@ const NAME_BEFORE = /([A-Za-z_][\w.]*)\s*(?<![+=])\+\s*$/;
 const PRIMARY = /^[A-Za-z_]\w*(?:\s*(?:\?\.|\.)\s*[A-Za-z_]\w*|!!)*/;
 const FORMAT_CALL = /\bString\s*\.\s*format\s*\(/g;
 const FORMAT_AFTER = /^\s*\.\s*format\s*\(/;
-const CONVERSION = /%(?:\d+\$)?[-#+ 0,(]*\d*(?:\.\d+)?([a-zA-Z%])/g;
+const CONVERSION = /%(?:\d+\$)?[-#+ 0,(]*(?:[1-9]\d*)?(?:\.\d+)?([a-zA-Z%])/g;
 const PARENS = /[()]/g;
 
 export const SQL_MESSAGES = {
@@ -43,7 +59,10 @@ function isSinkCall(receiver, name) {
 
 function callSink(code, offset) {
   const open = enclosingParen(code, offset);
-  const call = open === -1 ? null : CALL_BEFORE.exec(code.slice(0, open + 1));
+  if (open === -1) {
+    return false;
+  }
+  const call = CALL_BEFORE.exec(code.slice(0, open + 1));
   return call !== null && isSinkCall(call[1], call[2]);
 }
 
@@ -87,37 +106,55 @@ function looksLikeSql(pieces, sink) {
   );
 }
 
-function primaryEnd(code, at) {
-  const name = PRIMARY.exec(code.slice(at));
+function segment(code, from) {
+  const name = PRIMARY.exec(code.slice(from));
   if (name === null) {
-    return at;
+    return { end: from };
   }
-  const end = at + name[0].length;
+  const end = from + name[0].length;
   const call = /^\s*[([]/.exec(code.slice(end));
   if (call === null) {
-    return end;
+    return { end };
   }
   const close = closingIndex(code, end + call[0].length - 1) + 1;
   const member = /^\s*\??\.\s*/.exec(code.slice(close));
-  return member === null ? close : primaryEnd(code, close + member[0].length);
+  return member === null ? { end: close } : { end: close, next: close + member[0].length };
 }
 
-function operandsAfter(scanned, end, operands) {
+function primaryEnd(code, at) {
+  const segments = [segment(code, at)];
+  for (const { next } of segments) {
+    if (next !== undefined) {
+      segments.push(segment(code, next));
+    }
+  }
+  return segments.at(-1).end;
+}
+
+function nextOperand(scanned, end) {
   const plus = PLUS_AFTER.exec(scanned.code.slice(end));
   if (plus === null) {
-    return { end, operands };
+    return undefined;
   }
   const at = end + plus[0].length;
   const literal = literalAt(scanned, at);
   if (literal !== undefined) {
-    return operandsAfter(scanned, literal.end, [...operands, { literal }]);
+    return { operand: { literal }, end: literal.end };
   }
   const operandEnd = primaryEnd(scanned.code, at);
-  if (operandEnd === at) {
-    return { end, operands };
-  }
   const expression = scanned.source.slice(at, operandEnd).trim();
-  return operandsAfter(scanned, operandEnd, [...operands, { expression }]);
+  return operandEnd === at ? undefined : { operand: { expression }, end: operandEnd };
+}
+
+function operandsAfter(scanned, start, first) {
+  const steps = [{ operand: first, end: start }];
+  for (const { end } of steps) {
+    const next = nextOperand(scanned, end);
+    if (next !== undefined) {
+      steps.push(next);
+    }
+  }
+  return { end: steps.at(-1).end, operands: steps.map(({ operand }) => operand) };
 }
 
 function literalPieces(literal) {
@@ -132,7 +169,7 @@ function concatenation(scanned, literal) {
   ) {
     return undefined;
   }
-  const { end, operands } = operandsAfter(scanned, literal.end, [{ literal }]);
+  const { end, operands } = operandsAfter(scanned, literal.end, { literal });
   const leading = NAME_BEFORE.exec(before);
   const lead = PLUS_BEFORE.test(before) ? [{ expression: leading?.[1] ?? '()' }] : [];
   if (operands.length === 1 && lead.length === 0) {

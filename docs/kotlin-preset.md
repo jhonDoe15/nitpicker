@@ -334,8 +334,6 @@ with `fun main`, the `@SpringBootApplication` class or a Ktor module) may read `
 `runApplication<App>(*args)` and `SpringApplication.run(App::class.java, *args)` are not
 `SpreadOperator` findings in a Spring project; JPA and Spring Data entities are not asked to become
 data classes; parameters with an annotation (`@RequestParam`, `@PathVariable`) are not boolean flags.
-The ArchUnit Spring layout rules read the compiled classes, so they cover Kotlin classes; a Kotlin
-fixture for them is `languages/java/adapters/fixtures/spring-arch-kotlin-project`.
 
 ## Format check: ktlint, ktfmt or none
 

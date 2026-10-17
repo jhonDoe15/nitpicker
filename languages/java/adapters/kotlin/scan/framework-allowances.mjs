@@ -1,5 +1,6 @@
 import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
+import { pathInside } from '../../../../../shared/filesystem.mjs';
 import { listEntriesOf, MERGED_LISTS } from '../detekt/detekt-lists.mjs';
 import { isCompositionRoot } from './kotlin-scan.mjs';
 import { lineText, scanKotlinSource } from './kotlin-source.mjs';
@@ -49,11 +50,9 @@ function sourceReader(projectRoot) {
   const scans = new Map();
   return (file) => {
     if (!scans.has(file)) {
-      const absolute = path.join(projectRoot, file);
-      scans.set(
-        file,
-        existsSync(absolute) ? scanKotlinSource(readFileSync(absolute, 'utf8')) : undefined,
-      );
+      const absolute = pathInside(projectRoot, file);
+      const exists = absolute !== undefined && existsSync(absolute);
+      scans.set(file, exists ? scanKotlinSource(readFileSync(absolute, 'utf8')) : undefined);
     }
     return scans.get(file);
   };

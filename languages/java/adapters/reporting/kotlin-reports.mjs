@@ -98,7 +98,7 @@ export function readKotlinFindings(context, crapLimit) {
     ...readSuppressionFindings(projectRoot, kotlinLintedRoots(manifest)),
     ...formatterFindings(reportRoot, manifest.kotlinFormatter),
     ...readKotlinStructureFindings(metrics, projectRoot),
-    ...readKotlinClassLimitFindings(metrics),
+    ...readKotlinClassLimitFindings(metrics, context.classLimits?.thresholds),
     ...readKotlinCrapFindings(metrics, {
       projectRoot,
       jacoco,

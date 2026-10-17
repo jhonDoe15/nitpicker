@@ -2,6 +2,7 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
+import { exceptionHint } from '../../../../../shared/rules/exceptions.mjs';
 import { parseCompilerWarnings, readCompilerFindings } from './kotlin-compiler.mjs';
 
 const roots = [];
@@ -78,14 +79,14 @@ describe('readCompilerFindings', () => {
     });
 
     expect(readCompilerFindings(path.join(root, 'reports'), ['src/main/kotlin'])).toEqual([
-      expect.objectContaining({
+      {
         tool: 'kotlinc',
         rule: 'lint-not-run',
+        path: '.',
+        identity: 'lint-not-run',
+        message: `No kotlinc lint report from the lint compile (src/main/kotlin/demo/A.kt:3:1: error: [UNRESOLVED_REFERENCE] Unresolved reference 'serializer'.), so unchecked casts, deprecated calls and redundant casts were not checked. Fix what that compile reports (the main sources, the compile class path and the compiler plugins). ${exceptionHint('kotlinc/lint-not-run', '**')}`,
         classification: 'descriptive',
-        message: expect.stringContaining(
-          "(src/main/kotlin/demo/A.kt:3:1: error: [UNRESOLVED_REFERENCE] Unresolved reference 'serializer'.)",
-        ),
-      }),
+      },
     ]);
   });
 

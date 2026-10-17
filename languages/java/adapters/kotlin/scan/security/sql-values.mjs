@@ -1,6 +1,6 @@
+import { DYNAMIC } from '../../../../../../shared/rules/security/sql-text.mjs';
 import { literalAt, splitArguments } from '../kotlin-source.mjs';
 
-export const DYNAMIC = '\u0000';
 const TEMPLATE_TOKEN = /\\[\s\S]|\$\{|\$[A-Za-z_]\w*|[{}]/g;
 const RAW_TEMPLATE_TOKEN = /\$\{|\$[A-Za-z_]\w*|[{}]/g;
 const ESCAPES = { n: '\n', t: '\t', r: '\r', b: '\b' };
@@ -10,18 +10,16 @@ const MEASURE = /\.\s*(?:size|length|ordinal|lastIndex|count\s*\(\s*\))$/;
 const ARITHMETIC = /^[A-Za-z_]\w*\s*[-+*/%]\s*\d+$/;
 const PLAIN_LITERAL = /^"([^"$\\]*)"$|^'(?:\\.|[^'\\])'$/;
 const PLACEHOLDER_TEXT = /^[?,\s()]+$/;
-const SEPARATOR = String.raw`(?:\(\s*(?:"[^"$\\]*"\s*)?\))?`;
+const SEPARATOR = String.raw`(?:\(\s*(?:"[^"$\\]*"\s*)?\)\s*)?`;
 const PLACEHOLDER_FORMS = [
-  new RegExp(
-    String.raw`\.\s*joinToString\s*${SEPARATOR}\s*\{\s*(?:[\w\s,]+->\s*)?"([^"$\\]*)"\s*\}$`,
-  ),
+  new RegExp(String.raw`\.\s*joinToString\s*${SEPARATOR}\{(?:[\w\s,]+->)?\s*"([^"$\\]*)"\s*\}$`),
   new RegExp(
     String.raw`^List\s*\([^()]*\)\s*\{\s*"([^"$\\]*)"\s*\}\s*\.\s*joinToString\s*${SEPARATOR}$`,
   ),
   /^"([^"$\\]*)"\s*\.\s*repeat\s*\([^()]*\)(?:\s*\.\s*(?:dropLast|removeSuffix|trimEnd)\s*\([^()]*\))*$/,
 ];
 const JOINED = /^([A-Za-z_]\w*)\s*\.\s*joinToString\s*\(\s*"[^"$\\]*"\s*\)$/;
-const LITERAL_LIST = /^(?:mutableListOf|arrayListOf)\s*(?:<\s*String\s*>)?\s*\(/;
+const LITERAL_LIST = /^(?:mutableListOf|arrayListOf)\s*(?:<\s*String\s*>\s*)?\(/;
 const LIST_USE = /^\s*(?:\.\s*(?:add\s*\(|joinToString\b|isEmpty\b|isNotEmpty\b|size\b)|\+=)/;
 const CONDITIONAL_LITERAL = /^if\s*\(.*\)\s*"\s*"\s*else\s*"\s*"$/;
 const INERT_TYPES = new Set([
@@ -53,33 +51,44 @@ function unescaped(text, raw) {
     : text.replaceAll(/\\([\s\S])/g, (_, character) => ESCAPES[character] ?? character);
 }
 
-export function templatePieces(literal) {
-  const { text, raw } = literal;
-  const pieces = [];
-  const state = { cursor: 0, open: -1, depth: 0 };
-  function pushText(end) {
-    pieces.push({ text: unescaped(text.slice(state.cursor, end), raw) });
+function pushText(state, end) {
+  state.pieces.push({ text: unescaped(state.text.slice(state.cursor, end), state.raw) });
+}
+
+function insideTemplate(state, index, token) {
+  if (token === '}' && state.depth === 0) {
+    state.pieces.push({ expression: state.text.slice(state.open, index).trim() });
+    state.cursor = index + 1;
+    state.open = -1;
+  } else if (token === '}' || token === '{' || token === '${') {
+    state.depth += token === '}' ? -1 : 1;
   }
+}
+
+function outsideTemplate(state, index, token) {
+  if (!token.startsWith('$')) {
+    return;
+  }
+  pushText(state, index);
+  if (token === '${') {
+    state.open = index + 2;
+    return;
+  }
+  state.pieces.push({ expression: token.slice(1) });
+  state.cursor = index + token.length;
+}
+
+export function templatePieces({ text, raw }) {
+  const state = { text, raw, pieces: [], cursor: 0, open: -1, depth: 0 };
   for (const { index, 0: token } of text.matchAll(raw ? RAW_TEMPLATE_TOKEN : TEMPLATE_TOKEN)) {
-    if (state.open !== -1) {
-      if (token === '}' && state.depth === 0) {
-        pieces.push({ expression: text.slice(state.open, index).trim() });
-        state.cursor = index + 1;
-        state.open = -1;
-      } else if (token === '}' || token === '{' || token === '${') {
-        state.depth += token === '}' ? -1 : 1;
-      }
-    } else if (token === '${') {
-      pushText(index);
-      state.open = index + 2;
-    } else if (token.startsWith('$')) {
-      pushText(index);
-      pieces.push({ expression: token.slice(1) });
-      state.cursor = index + token.length;
+    if (state.open === -1) {
+      outsideTemplate(state, index, token);
+    } else {
+      insideTemplate(state, index, token);
     }
   }
-  pushText(text.length);
-  return pieces;
+  pushText(state, text.length);
+  return state.pieces;
 }
 
 export function kotlinDeclarations(scannedFiles) {
@@ -114,7 +123,18 @@ function initializerAt(scanned, offset) {
   };
 }
 
-function isInertInitializer(scanned, offset, context) {
+function isInertValue(expression) {
+  return (
+    NUMBER.test(expression) ||
+    PLAIN_LITERAL.test(expression) ||
+    CONSTANT.test(expression) ||
+    MEASURE.test(expression) ||
+    ARITHMETIC.test(expression) ||
+    placeholders(expression)
+  );
+}
+
+function isInertInitializer(scanned, offset) {
   const initializer = initializerAt(scanned, offset);
   const { literal } = initializer;
   if (literal !== undefined && initializer.code.length === literal.end - literal.start) {
@@ -123,7 +143,7 @@ function isInertInitializer(scanned, offset, context) {
   if (CONDITIONAL_LITERAL.test(initializer.code.replaceAll(/"[^"]*"/g, '""'))) {
     return initializer.source.match(/"[^"]*"/g).every((text) => !text.includes('$'));
   }
-  return isInertExpression(initializer.source, scanned, context);
+  return isInertValue(initializer.source);
 }
 
 function nameDeclarations(scanned, name) {
@@ -147,12 +167,7 @@ function isInertName(name, scanned, context) {
   }
   return (
     assigned.length > 0 &&
-    assigned.every((match) =>
-      isInertInitializer(scanned, match.index + match[0].length, {
-        ...context,
-        seen: [...context.seen, name],
-      }),
-    )
+    assigned.every((match) => isInertInitializer(scanned, match.index + match[0].length))
   );
 }
 
@@ -209,28 +224,20 @@ function isInertMember(expression, context) {
   );
 }
 
-export function isInertExpression(expression, scanned, context) {
-  const shared = { ...context, scanned, seen: context.seen ?? [] };
+function isInertExpression(expression, scanned, context) {
   const joined = JOINED.exec(expression);
-  if (
-    NUMBER.test(expression) ||
-    PLAIN_LITERAL.test(expression) ||
-    CONSTANT.test(expression) ||
-    MEASURE.test(expression) ||
-    ARITHMETIC.test(expression) ||
-    placeholders(expression)
-  ) {
+  if (isInertValue(expression)) {
     return true;
   }
   if (joined !== null) {
     return isLiteralList(joined[1], scanned);
   }
   if (/^[A-Za-z_]\w*$/.test(expression)) {
-    return !shared.seen.includes(expression) && isInertName(expression, scanned, shared);
+    return isInertName(expression, scanned, context);
   }
   return (
     /^[A-Za-z_]\w*(?:\s*\??\.\s*[A-Za-z_]\w*)+$/.test(expression) &&
-    isInertMember(expression, shared)
+    isInertMember(expression, { ...context, scanned })
   );
 }
 
