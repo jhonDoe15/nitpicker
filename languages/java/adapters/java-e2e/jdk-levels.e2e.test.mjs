@@ -251,14 +251,7 @@ const REPORTED = [
   'pmd CatchOnlyLogsOrReturnsDefault Shapes.java',
 ];
 
-const EXPECTED_ON_EACH_LEVEL = {
-  toolErrors: [TESTS_FAILED],
-  reported: [
-    'checkstyle LeftCurlyEol Messy.java',
-    'checkstyle RightCurlyAlone Messy.java',
-    ...REPORTED,
-  ],
-};
+const EXPECTED_ON_EACH_LEVEL = { toolErrors: [TESTS_FAILED], reported: REPORTED };
 const EXPECTED = { 17: EXPECTED_ON_EACH_LEVEL, 25: EXPECTED_ON_EACH_LEVEL };
 
 describe.skipIf(!enabled)('the Java preset on each supported JDK level', () => {

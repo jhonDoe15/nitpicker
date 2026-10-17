@@ -163,8 +163,9 @@ toolchain), and javac options, `--release` handling and the class readers accept
   project with a JDK 17 toolchain on Gradle running on JDK 17, a Gradle project with a JDK 25
   toolchain on Gradle running on JDK 21, and Maven projects at release 17 and 25 on JDKs 17 and 25.
   Each has a failing test and an unformatted file, and the test pins every finding: Error Prone,
-  forbiddenapis, google-java-format, JaCoCo, PIT (with the failing class left out), PMD, and
-  Checkstyle on both. The release-25 sources use a module import, statements
+  forbiddenapis, google-java-format, JaCoCo, PIT (with the failing class left out) and PMD; the
+  unformatted file's brace layout is the formatter's finding only, since the layout checks of
+  Checkstyle are suppressed, so Checkstyle runs on both levels and reports nothing. The release-25 sources use a module import, statements
   before `super()`, an unnamed catch parameter and record patterns. A level without an installed
   JDK is skipped. With `NITPICKER_GRADLE_ON_JDK25` set to a Gradle that runs on JDK 25 (9.1 or
   newer), the JDK 25 Gradle project also runs with Gradle itself on JDK 25.
