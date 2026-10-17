@@ -745,6 +745,9 @@ public final class KotlinFacts {
         out.append('{');
         boolean first = true;
         for (Map.Entry<?, ?> entry : map.entrySet()) {
+          if (entry.getValue() == null) {
+            continue;
+          }
           out.append(first ? "" : ",");
           first = false;
           quote(out, String.valueOf(entry.getKey()));

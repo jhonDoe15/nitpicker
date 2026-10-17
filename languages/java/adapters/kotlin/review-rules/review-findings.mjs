@@ -42,6 +42,9 @@ export function readKotlinReviewFindings({ reportRoot, projectRoot, manifest }) 
     ...enumPredicateFindings(files, { finding, projectRoot }),
     ...forwardingWrapperFindings(files, { finding }),
     ...singularPluralFindings(files, { finding }),
-    ...unusedOptionFindings(files, { finding, mentionedInJava: javaMentions(projectRoot, manifest) }),
+    ...unusedOptionFindings(files, {
+      finding,
+      mentionedInJava: javaMentions(projectRoot, manifest),
+    }),
   ];
 }

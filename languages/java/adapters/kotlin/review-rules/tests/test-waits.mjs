@@ -1,7 +1,7 @@
+import { FIXED_SLEEP_RULE } from '../../../../messages/wait-advice.mjs';
 import { importsFrom, insideClass } from '../kotlin-facts.mjs';
 import { exceptionSentence } from '../review-finding.mjs';
 
-export const FIXED_SLEEP_RULE = 'FixedSleepInTest';
 export const NEGATIVE_WAIT_RULE = 'NegativeWaitInTest';
 
 const SLEEP_MESSAGE =
@@ -42,23 +42,37 @@ const SPARED_HOSTS = new Set([
 const VIRTUAL_TIME_HOSTS = new Set(['runTest', 'runBlockingTest']);
 const THREAD_TYPES = new Set(['Thread', 'Runnable']);
 const NEGATIVE_FOLLOWERS = new Set(['never', 'atMost', 'atMostOnce']);
-const CLOCK = /nanoTime|currentTimeMillis|Instant\.now|markNow|elapsedNow|TimeSource|Clock\b|measureTime/u;
+const CLOCK =
+  /nanoTime|currentTimeMillis|Instant\.now|markNow|elapsedNow|TimeSource|Clock\b|measureTime/u;
 const THREAD_QUALIFIER = /^(?:java\.lang\.)?Thread$/u;
 const TIME_UNIT_QUALIFIER = /(?:^|\.)TimeUnit\.[A-Z]+$/u;
 const LOCK_SUPPORT = /(?:^|\.)LockSupport$/u;
 const BOUNDARIES = new Set(['loop', 'lambda', 'fun', 'init']);
 const TYPE_FRAMES = new Set(['class', 'object']);
-const TEST_ANNOTATIONS = new Set(['Test', 'ParameterizedTest', 'RepeatedTest', 'TestFactory', 'TestTemplate']);
+const TEST_ANNOTATIONS = new Set([
+  'Test',
+  'ParameterizedTest',
+  'RepeatedTest',
+  'TestFactory',
+  'TestTemplate',
+]);
 const SLEEP_ARGUMENTS = 2;
-const SINGLE_ARGUMENT = 1;
 
-function importedNameOf(file, wait) {
+function fixed(kind, exemptable = false) {
+  return { rule: FIXED_SLEEP_RULE, kind, exemptable };
+}
+const negative = { rule: NEGATIVE_WAIT_RULE, kind: 'negative', exemptable: false };
+
+function contextOf(file, wait, declared) {
   return {
     mockito: importsFrom(file, 'org.mockito'),
     awaitility: importsFrom(file, 'org.awaitility'),
     kotest: importsFrom(file, 'io.kotest'),
     playwright: importsFrom(file, 'com.microsoft.playwright'),
-    timeUnit: importsFrom(file, 'java.util.concurrent.TimeUnit') && /^[A-Z]+$/u.test(wait.qualifier ?? ''),
+    timeUnit:
+      importsFrom(file, 'java.util.concurrent.TimeUnit') && /^[A-Z]+$/u.test(wait.qualifier ?? ''),
+    unqualified: wait.qualifier === undefined,
+    shadowed: wait.qualifier === undefined && declared.has(wait.name),
   };
 }
 
@@ -66,57 +80,43 @@ function isZeroTimes(outer) {
   return outer?.name === 'times' && outer.arguments.length === 1 && outer.arguments[0].text === '0';
 }
 
-function classify(wait, file, declared) {
-  const imports = importedNameOf(file, wait);
-  const unqualified = wait.qualifier === null;
-  const shadowed = unqualified && declared.has(wait.name);
-  switch (wait.name) {
-    case 'sleep':
-      return wait.arguments.length <= SLEEP_ARGUMENTS &&
-        (THREAD_QUALIFIER.test(wait.qualifier ?? '') ||
-          TIME_UNIT_QUALIFIER.test(wait.qualifier ?? '') ||
-          imports.timeUnit)
-        ? { rule: FIXED_SLEEP_RULE, kind: 'sleep', exemptable: true }
-        : undefined;
-    case 'parkNanos':
-      return LOCK_SUPPORT.test(wait.qualifier ?? '')
-        ? { rule: FIXED_SLEEP_RULE, kind: 'sleep', exemptable: true }
-        : undefined;
-    case 'join':
-      return wait.arguments.length === SINGLE_ARGUMENT && wait.statement && !shadowed
-        ? { rule: FIXED_SLEEP_RULE, kind: 'timed', exemptable: true }
-        : undefined;
-    case 'wait':
-      return wait.arguments.length >= SINGLE_ARGUMENT && !shadowed
-        ? { rule: FIXED_SLEEP_RULE, kind: 'timed', exemptable: true }
-        : undefined;
-    case 'delay':
-      return unqualified && !shadowed
-        ? { rule: FIXED_SLEEP_RULE, kind: 'delay', exemptable: true }
-        : undefined;
-    case 'after':
-      return imports.mockito && !shadowed
-        ? {
-            rule:
-              NEGATIVE_FOLLOWERS.has(wait.outer?.name) || isZeroTimes(wait.outer)
-                ? NEGATIVE_WAIT_RULE
-                : FIXED_SLEEP_RULE,
-            kind: 'sleep',
-          }
-        : undefined;
-    case 'waitForTimeout':
-      return imports.playwright ? { rule: FIXED_SLEEP_RULE, kind: 'sleep' } : undefined;
-    case 'until':
-      return imports.awaitility && wait.lambda === 'true'
-        ? { rule: FIXED_SLEEP_RULE, kind: 'sleep' }
-        : undefined;
-    case 'during':
-      return imports.awaitility ? { rule: NEGATIVE_WAIT_RULE, kind: 'negative' } : undefined;
-    case 'continually':
-      return imports.kotest && unqualified ? { rule: NEGATIVE_WAIT_RULE, kind: 'negative' } : undefined;
-    default:
+function isNegativeFollower(outer) {
+  return NEGATIVE_FOLLOWERS.has(outer?.name) || isZeroTimes(outer);
+}
+
+function threadSleep(wait, context) {
+  const qualifier = wait.qualifier ?? '';
+  const known =
+    THREAD_QUALIFIER.test(qualifier) || TIME_UNIT_QUALIFIER.test(qualifier) || context.timeUnit;
+  return wait.arguments.length <= SLEEP_ARGUMENTS && known ? fixed('sleep', true) : undefined;
+}
+
+const CLASSIFIERS = {
+  sleep: threadSleep,
+  parkNanos: (wait) => (LOCK_SUPPORT.test(wait.qualifier ?? '') ? fixed('sleep', true) : undefined),
+  join: (wait, context) =>
+    wait.arguments.length === 1 && wait.statement && !context.shadowed
+      ? fixed('timed', true)
+      : undefined,
+  wait: (wait, context) =>
+    wait.arguments.length >= 1 && !context.shadowed ? fixed('timed', true) : undefined,
+  delay: (_wait, context) =>
+    context.unqualified && !context.shadowed ? fixed('delay', true) : undefined,
+  after: (wait, context) => {
+    if (!context.mockito || context.shadowed) {
       return undefined;
-  }
+    }
+    return isNegativeFollower(wait.outer) ? negative : fixed('sleep');
+  },
+  waitForTimeout: (_wait, context) => (context.playwright ? fixed('sleep') : undefined),
+  until: (wait, context) =>
+    context.awaitility && wait.lambda === 'true' ? fixed('sleep') : undefined,
+  during: (_wait, context) => (context.awaitility ? negative : undefined),
+  continually: (_wait, context) => (context.kotest && context.unqualified ? negative : undefined),
+};
+
+function classify(wait, file, declared) {
+  return CLASSIFIERS[wait.name]?.(wait, contextOf(file, wait, declared));
 }
 
 function isPolling(loop) {
@@ -155,7 +155,11 @@ function isSpared(wait, file, isProduction) {
   if (boundary?.k === 'lambda' && SPARED_HOSTS.has(boundary.host)) {
     return true;
   }
-  if (boundary?.k === 'fun' && boundary.name === 'run' && owner?.supers.some((name) => THREAD_TYPES.has(name))) {
+  if (
+    boundary?.k === 'fun' &&
+    boundary.name === 'run' &&
+    owner?.supers.some((name) => THREAD_TYPES.has(name))
+  ) {
     return true;
   }
   return (
@@ -165,7 +169,8 @@ function isSpared(wait, file, isProduction) {
   );
 }
 
-function messageOf(found, rule) {
+export function waitMessage(found) {
+  const { rule } = found;
   const tail = exceptionSentence(rule);
   if (rule === NEGATIVE_WAIT_RULE) {
     return `${NEGATIVE_MESSAGE}${tail}`;
@@ -184,14 +189,14 @@ function projectFunctionNames(files) {
   return new Set(files.flatMap((file) => file.functions.map(({ name }) => name)));
 }
 
-function isReported(found, wait, file, isProduction) {
+function isReported(found, wait, context) {
   if (found === undefined) {
     return false;
   }
   if (found.kind === 'delay' && !runsInRunBlocking(wait)) {
     return false;
   }
-  return !(found.exemptable === true && isSpared(wait, file, isProduction));
+  return !(found.exemptable && isSpared(wait, context.file, context.isProduction));
 }
 
 export function testWaitFindings(files, { isProduction, finding }) {
@@ -201,7 +206,7 @@ export function testWaitFindings(files, { isProduction, finding }) {
     .flatMap((file) =>
       file.waits.flatMap((wait) => {
         const found = classify(wait, file, declared);
-        if (!isReported(found, wait, file, isProduction)) {
+        if (!isReported(found, wait, { file, isProduction })) {
           return [];
         }
         const symbol = symbolOf(wait);
@@ -212,7 +217,7 @@ export function testWaitFindings(files, { isProduction, finding }) {
             line: wait.line,
             symbol,
             key: `${symbol}:${wait.name}`,
-            message: messageOf(found, found.rule),
+            message: waitMessage(found),
           }),
         ];
       }),

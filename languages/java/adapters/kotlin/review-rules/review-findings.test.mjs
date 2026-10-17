@@ -7,7 +7,16 @@ import { KOTLIN_EXCEPTION_RULES, validateKotlinOptions } from '../kotlin-options
 import { readKotlinFacts } from './kotlin-facts.mjs';
 import { readKotlinReviewFindings } from './review-findings.mjs';
 import { KOTLIN_REVIEW_EXCEPTION_RULES } from './review-rules.mjs';
-import { call, file, fn, klass, parameter, testFile, testMethod, wait } from './test-support/facts.mjs';
+import {
+  call,
+  file,
+  fn,
+  klass,
+  parameter,
+  testFile,
+  testMethod,
+  wait,
+} from './test-support/facts.mjs';
 
 const temporaryRoots = [];
 
@@ -37,14 +46,21 @@ describe('readKotlinReviewFindings', () => {
     expect(
       readKotlinReviewFindings({ ...missing, projectRoot: missing.root, manifest: {} }),
     ).toEqual([]);
-    expect(readKotlinReviewFindings({ ...empty, projectRoot: empty.root, manifest: {} })).toEqual([]);
+    expect(readKotlinReviewFindings({ ...empty, projectRoot: empty.root, manifest: {} })).toEqual(
+      [],
+    );
   });
 
   it('reads every rule from one facts report and produces findings the schema accepts', () => {
     const facts = {
       files: [
         file({
-          classes: [klass('Mailer', { visibility: 'internal', primaryParameters: [parameter('retries', 'Int', { default: true })] })],
+          classes: [
+            klass('Mailer', {
+              visibility: 'internal',
+              primaryParameters: [parameter('retries', 'Int', { default: true })],
+            }),
+          ],
           calls: [call('Mailer')],
         }),
         testFile({
@@ -79,12 +95,13 @@ describe('Kotlin exception rules for the review rules', () => {
     ]);
     for (const rule of KOTLIN_REVIEW_EXCEPTION_RULES) {
       expect(KOTLIN_EXCEPTION_RULES).toContain(rule);
-      expect(() =>
-        validateKotlinOptions({
-          preset: 'kotlin',
-          exceptions: [{ rule, paths: ['src/**'], reason: 'intended' }],
-        }),
-      ).not.toThrow();
+      const config = {
+        preset: 'kotlin',
+        exceptions: [{ rule, paths: ['src/**'], reason: 'intended' }],
+      };
+      expect(() => {
+        validateKotlinOptions(config);
+      }).not.toThrow();
     }
   });
 });

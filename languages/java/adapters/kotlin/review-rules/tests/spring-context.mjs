@@ -59,22 +59,24 @@ function hasInjectionAnnotation(annotations) {
 }
 
 function injectsInto(file, klass) {
-  const owned = (owner) => insideClass(owner, klass.qualified);
-  const classes = file.classes.filter(({ qualified }) => owned(qualified));
-  const functions = file.functions.filter(({ owner }) => owned(owner));
+  const classes = file.classes.filter(({ qualified }) => insideClass(qualified, klass.qualified));
+  const functions = file.functions.filter(({ owner }) => insideClass(owner, klass.qualified));
   const parameters = [
     ...classes.flatMap(({ primaryParameters }) => primaryParameters),
     ...functions.flatMap(({ parameters: list }) => list),
   ];
-  const properties = file.properties.filter(({ owner }) => owned(owner));
+  const properties = file.properties.filter(({ owner }) => insideClass(owner, klass.qualified));
   return (
     classes.some(({ primaryParameters }) => primaryParameters.length > 0) ||
     functions.some(
-      (fn) => (fn.name === '<init>' && fn.parameters.length > 0) || hasInjectionAnnotation(fn.annotations),
+      (fn) =>
+        (fn.name === '<init>' && fn.parameters.length > 0) ||
+        hasInjectionAnnotation(fn.annotations),
     ) ||
     parameters.some(
       (parameter) =>
-        hasInjectionAnnotation(parameter.annotations) || CLIENTS.has(simpleTypeName(parameter.type)),
+        hasInjectionAnnotation(parameter.annotations) ||
+        CLIENTS.has(simpleTypeName(parameter.type)),
     ) ||
     properties.some(
       (property) =>
@@ -111,7 +113,10 @@ export function springContextFindings(files, { finding }) {
     .filter(({ test }) => test)
     .flatMap((file) =>
       file.classes
-        .filter((klass) => springTest(file, klass) && !injectsInto(file, klass) && hasTestBody(file, klass))
+        .filter(
+          (klass) =>
+            springTest(file, klass) && !injectsInto(file, klass) && hasTestBody(file, klass),
+        )
         .map((klass) =>
           finding({
             rule: SPRING_UNUSED_CONTEXT_RULE,

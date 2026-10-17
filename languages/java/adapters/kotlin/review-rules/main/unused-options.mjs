@@ -7,7 +7,15 @@ export const UNUSED_OPTION_TOOL = 'structure';
 
 const SCOPE = 'private and internal declarations only; calls in tests count';
 const LIMITED = new Set(['private', 'internal']);
-const SKIPPED_MODIFIERS = new Set(['override', 'open', 'abstract', 'operator', 'infix', 'actual', 'expect']);
+const SKIPPED_MODIFIERS = new Set([
+  'override',
+  'open',
+  'abstract',
+  'operator',
+  'infix',
+  'actual',
+  'expect',
+]);
 const CONSTRUCTOR = '<init>';
 const CALLABLE_KINDS = new Set(['class']);
 
@@ -41,10 +49,7 @@ function functionUnits(file, classes) {
 
 function eligibleClass(klass) {
   return (
-    CALLABLE_KINDS.has(klass.kind) &&
-    !klass.local &&
-    !klass.open &&
-    klass.annotations.length === 0
+    CALLABLE_KINDS.has(klass.kind) && !klass.local && !klass.open && klass.annotations.length === 0
   );
 }
 
@@ -64,7 +69,9 @@ function constructorUnits(file, classes) {
       line: klass.line,
     }));
   const secondary = file.functions
-    .filter((fn) => fn.name === CONSTRUCTOR && LIMITED.has(fn.visibility) && hasOptions(fn.parameters))
+    .filter(
+      (fn) => fn.name === CONSTRUCTOR && LIMITED.has(fn.visibility) && hasOptions(fn.parameters),
+    )
     .filter((fn) => classes.has(fn.owner) && eligibleClass(classes.get(fn.owner)))
     .map((fn) => ({
       file: file.file,
@@ -81,7 +88,7 @@ function callsByName(files) {
   for (const file of files) {
     const aliases = new Map(
       file.imports
-        .filter(({ alias }) => alias !== null)
+        .filter(({ alias }) => alias !== undefined)
         .map(({ alias, path }) => [alias, path.split('.').at(-1)]),
     );
     for (const call of file.calls) {
@@ -104,12 +111,12 @@ function isCompatible(call, unit) {
   );
 }
 
-function fills(call, parameter, index, count) {
+function fills(call, { parameter, index, last }) {
   return (
     call.spread ||
     call.named.includes(parameter.name) ||
     call.positional > index ||
-    (call.lambda && index === count - 1)
+    (call.lambda && index === last)
   );
 }
 
@@ -119,12 +126,12 @@ function unusedParameters(unit, calls) {
     return [];
   }
   return unit.parameters
-    .map((parameter, index) => ({ parameter, index }))
+    .map((parameter, index) => ({ parameter, index, last: unit.parameters.length - 1 }))
     .filter(
-      ({ parameter, index }) =>
-        parameter.default &&
-        !parameter.vararg &&
-        !compatible.some((call) => fills(call, parameter, index, unit.parameters.length)),
+      (slot) =>
+        slot.parameter.default &&
+        !slot.parameter.vararg &&
+        !compatible.some((call) => fills(call, slot)),
     )
     .map(({ parameter }) => parameter);
 }

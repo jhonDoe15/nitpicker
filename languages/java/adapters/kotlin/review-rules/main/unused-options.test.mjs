@@ -1,5 +1,14 @@
 import { describe, expect, it } from 'vitest';
-import { call, file, fn, klass, parameter, run, summary, testFile } from '../test-support/facts.mjs';
+import {
+  call,
+  file,
+  fn,
+  klass,
+  parameter,
+  run,
+  summary,
+  testFile,
+} from '../test-support/facts.mjs';
 import { UNUSED_OPTION_RULE, UNUSED_OPTION_TOOL, unusedOptionFindings } from './unused-options.mjs';
 
 const options = [parameter('value', 'Int'), parameter('pad', 'Int', { default: true, line: 8 })];
@@ -18,9 +27,17 @@ describe('unused option in Kotlin', () => {
     ]);
 
     expect(summary(findings)).toEqual([`${UNUSED_OPTION_RULE} format.pad 8`]);
-    expect(findings[0]).toMatchObject({ tool: UNUSED_OPTION_TOOL, classification: 'enforceable' });
-    expect(findings[0].message).toContain('Option format.pad is never set');
-    expect(findings[0].message).toContain('"rule":"unused-option"');
+    expect(findings[0]).toEqual({
+      tool: UNUSED_OPTION_TOOL,
+      rule: UNUSED_OPTION_RULE,
+      path: 'src/main/kotlin/demo/Sample.kt',
+      identity: 'unused-option:format.pad',
+      symbol: 'format.pad',
+      location: { line: 8 },
+      message:
+        'Option format.pad is never set. Remove it, or set it from a real call (private and internal declarations only; calls in tests count). If this is intended, add {"rule":"unused-option","paths":["src/main/kotlin/demo/Sample.kt"],"reason":"..."} to "exceptions" in nitpicker.config.json.',
+      classification: 'enforceable',
+    });
   });
 
   it.each([
@@ -28,7 +45,9 @@ describe('unused option in Kotlin', () => {
     ['a named argument', call('format', { positional: 1, named: ['pad'] })],
     ['a spread argument', call('format', { positional: 0, spread: true })],
   ])('allows a parameter set by %s', (_name, filling) => {
-    const files = [file({ functions: [helper()], calls: [call('format', { positional: 1 }), filling] })];
+    const files = [
+      file({ functions: [helper()], calls: [call('format', { positional: 1 }), filling] }),
+    ];
 
     expect(findingsFor(files)).toEqual([]);
   });
@@ -41,12 +60,24 @@ describe('unused option in Kotlin', () => {
       calls: [call('fmt', { positional: 2 })],
     });
 
-    expect(findingsFor([file({ functions: [helper()], calls: [call('format', { positional: 1 })] }), inTest])).toEqual([]);
-    expect(findingsFor([file({ functions: [helper()], calls: [call('format', { positional: 1 })] }), aliased])).toEqual([]);
+    expect(
+      findingsFor([
+        file({ functions: [helper()], calls: [call('format', { positional: 1 })] }),
+        inTest,
+      ]),
+    ).toEqual([]);
+    expect(
+      findingsFor([
+        file({ functions: [helper()], calls: [call('format', { positional: 1 })] }),
+        aliased,
+      ]),
+    ).toEqual([]);
   });
 
   it('reports only the parameters that the call leaves out', () => {
-    const wide = helper({ parameters: [...options, parameter('mark', 'Char', { default: true, line: 9 })] });
+    const wide = helper({
+      parameters: [...options, parameter('mark', 'Char', { default: true, line: 9 })],
+    });
     const files = [
       file({ functions: [wide], calls: [call('format', { positional: 1, named: ['mark'] })] }),
     ];
@@ -60,7 +91,9 @@ describe('unused option in Kotlin', () => {
     });
 
     expect(
-      findingsFor([file({ functions: [withLambda], calls: [call('format', { positional: 1, lambda: true })] })]),
+      findingsFor([
+        file({ functions: [withLambda], calls: [call('format', { positional: 1, lambda: true })] }),
+      ]),
     ).toEqual([]);
   });
 
@@ -70,7 +103,9 @@ describe('unused option in Kotlin', () => {
     ['an annotated function', { annotations: ['JvmOverloads'] }],
     ['an open function', { modifiers: ['open'] }],
   ])('leaves %s alone', (_name, overrides) => {
-    const files = [file({ functions: [helper(overrides)], calls: [call('format', { positional: 1 })] })];
+    const files = [
+      file({ functions: [helper(overrides)], calls: [call('format', { positional: 1 })] }),
+    ];
 
     expect(findingsFor(files)).toEqual([]);
   });
@@ -79,7 +114,11 @@ describe('unused option in Kotlin', () => {
     expect(findingsFor([file({ functions: [helper()] })])).toEqual([]);
     expect(
       findingsFor([
-        file({ functions: [helper()], calls: [call('format', { positional: 1 })], references: ['format'] }),
+        file({
+          functions: [helper()],
+          calls: [call('format', { positional: 1 })],
+          references: ['format'],
+        }),
       ]),
     ).toEqual([]);
     expect(
@@ -103,22 +142,38 @@ describe('unused option in Kotlin', () => {
 
     expect(summary(findingsFor(files))).toEqual([`${UNUSED_OPTION_RULE} Mailer.retries 4`]);
     expect(
-      findingsFor([file({ classes: [mailer], calls: [call('Mailer', { positional: 1, named: ['retries'] })] })]),
+      findingsFor([
+        file({ classes: [mailer], calls: [call('Mailer', { positional: 1, named: ['retries'] })] }),
+      ]),
     ).toEqual([]);
   });
 
   it('leaves public, annotated and open classes alone, and a subclass call counts', () => {
     const base = {
       visibility: 'internal',
-      primaryParameters: [parameter('host', 'String'), parameter('retries', 'Int', { default: true })],
+      primaryParameters: [
+        parameter('host', 'String'),
+        parameter('retries', 'Int', { default: true }),
+      ],
     };
     const calls = [call('Mailer', { positional: 1 })];
 
-    expect(findingsFor([file({ classes: [klass('Mailer', { ...base, visibility: 'public' })], calls })])).toEqual([]);
     expect(
-      findingsFor([file({ classes: [klass('Mailer', { ...base, annotations: [{ name: 'Entity', text: '@Entity' }] })], calls })]),
+      findingsFor([file({ classes: [klass('Mailer', { ...base, visibility: 'public' })], calls })]),
     ).toEqual([]);
-    expect(findingsFor([file({ classes: [klass('Mailer', { ...base, open: true })], calls })])).toEqual([]);
+    expect(
+      findingsFor([
+        file({
+          classes: [
+            klass('Mailer', { ...base, annotations: [{ name: 'Entity', text: '@Entity' }] }),
+          ],
+          calls,
+        }),
+      ]),
+    ).toEqual([]);
+    expect(
+      findingsFor([file({ classes: [klass('Mailer', { ...base, open: true })], calls })]),
+    ).toEqual([]);
     expect(
       findingsFor([
         file({ classes: [klass('Mailer', base)], calls: [call('Mailer', { positional: 2 })] }),
@@ -132,9 +187,18 @@ describe('unused option in Kotlin', () => {
       owner: 'Mailer',
       visibility: 'private',
       line: 6,
-      parameters: [parameter('host', 'String'), parameter('retries', 'Int', { default: true, line: 6 })],
+      parameters: [
+        parameter('host', 'String'),
+        parameter('retries', 'Int', { default: true, line: 6 }),
+      ],
     });
-    const files = [file({ classes: [mailer], functions: [secondary], calls: [call('Mailer', { positional: 1 })] })];
+    const files = [
+      file({
+        classes: [mailer],
+        functions: [secondary],
+        calls: [call('Mailer', { positional: 1 })],
+      }),
+    ];
 
     expect(summary(findingsFor(files))).toEqual([`${UNUSED_OPTION_RULE} Mailer.retries 6`]);
   });
