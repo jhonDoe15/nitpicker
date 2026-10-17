@@ -29,7 +29,8 @@ export function coverageTestOmits(django) {
 
 export function mutmutTestPatterns(django) {
   return [
-    ...TEST_DIRECTORIES.flatMap((directory) => [`${directory}/*`, `*/${directory}/*`]),
+    ...TEST_DIRECTORIES.map((directory) => `${directory}/*`),
+    ...TEST_DIRECTORIES.map((directory) => `*/${directory}/*`),
     ...testFileGlobs(django).flatMap((glob) => [glob, `*/${glob}`]),
   ];
 }

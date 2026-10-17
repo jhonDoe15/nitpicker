@@ -14,11 +14,11 @@ import {
   temporaryRoot,
 } from '../execution/test-support/python-tools-project.mjs';
 import {
-  ensureMutmutConfiguration,
   MUTATION_FAILED_RULE,
   mutationFindings,
 } from './python-mutation.mjs';
 import { MUTATION_SKIPPED_RULE } from './test-run/python-mutation-runner.mjs';
+import { section } from './test-support/mutmut-section.mjs';
 
 afterEach(restoreTemporaryState);
 
@@ -35,88 +35,7 @@ const NOTHING_COLLECTED = {
   'mutmut-output.txt': 'no tests ran in 0.08s\nfailed to collect stats. runner returned 5\n',
 };
 
-function configurationContext(files = {}, overrides = {}) {
-  const projectRoot = temporaryRoot();
-  write(projectRoot, files);
-  return { projectRoot, project: { sourceRoots: ['src'] }, ...overrides };
-}
-
-const TEST_PATTERNS =
-  '"tests/*","*/tests/*","test/*","*/test/*","test_*.py","*/test_*.py","*_test.py","*/*_test.py","conftest.py","*/conftest.py"';
-const section = (sourcePaths, patterns = TEST_PATTERNS) =>
-  `[tool.mutmut]\nsource_paths = ${sourcePaths}\ndo_not_mutate = [${patterns}]\n`;
-
 const read = (root, file) => readFileSync(path.join(root, file), 'utf8');
-
-describe('the mutmut configuration', () => {
-  it('adds the source roots and the test patterns when the project has no mutmut configuration', () => {
-    const context = configurationContext({ 'pyproject.toml': '[project]\nname = "demo"\n' });
-
-    ensureMutmutConfiguration(context);
-
-    expect(read(context.projectRoot, 'pyproject.toml')).toBe(
-      `[project]\nname = "demo"\n\n${section('["src"]')}`,
-    );
-  });
-
-  it('keeps mutmut away from the Django test module names in a Django project', () => {
-    const context = configurationContext({ 'manage.py': '' });
-
-    ensureMutmutConfiguration(context);
-
-    expect(read(context.projectRoot, 'pyproject.toml')).toBe(
-      `\n${section('["src"]', `${TEST_PATTERNS},"tests.py","*/tests.py","tests_*.py","*/tests_*.py","*_tests.py","*/*_tests.py"`)}`,
-    );
-  });
-
-  it('creates pyproject.toml when the project has none', () => {
-    const context = configurationContext({}, { project: { sourceRoots: ['pkg', 'lib'] } });
-
-    ensureMutmutConfiguration(context);
-
-    expect(read(context.projectRoot, 'pyproject.toml')).toBe(`\n${section('["pkg","lib"]')}`);
-  });
-
-  it('keeps mutmut away from the excluded paths, the files and the directories below them', () => {
-    const context = configurationContext(
-      {},
-      { exclude: ['legacy/**', 'src/demo/old.py', 'vendor/'] },
-    );
-
-    ensureMutmutConfiguration(context);
-
-    expect(read(context.projectRoot, 'pyproject.toml')).toBe(
-      `\n${section('["src"]', `${TEST_PATTERNS},"legacy/**","legacy/**/*","src/demo/old.py","src/demo/old.py/*","vendor/","vendor/*"`)}`,
-    );
-  });
-
-  it('keeps the [tool.mutmut] table of the project', () => {
-    const own = '[tool.mutmut]\nsource_paths = ["app"]\n';
-    const context = configurationContext({ 'pyproject.toml': own }, { exclude: ['legacy/**'] });
-
-    ensureMutmutConfiguration(context);
-
-    expect(read(context.projectRoot, 'pyproject.toml')).toBe(own);
-  });
-
-  it('keeps the [mutmut] section of setup.cfg', () => {
-    const context = configurationContext({ 'setup.cfg': '[mutmut]\nsource_paths=app\n' });
-
-    ensureMutmutConfiguration(context);
-
-    expect(existsSync(path.join(context.projectRoot, 'pyproject.toml'))).toBe(false);
-  });
-
-  it('asks for the directories to mutate instead of copying the whole project', () => {
-    const context = configurationContext({}, { project: { sourceRoots: ['.'] } });
-
-    expect(() => {
-      ensureMutmutConfiguration(context);
-    }).toThrow(
-      /set "python.sourceRoots" in nitpicker.config.json or source_paths in \[tool.mutmut\]/,
-    );
-  });
-});
 
 const summaries = (findings) =>
   findings
@@ -144,7 +63,7 @@ describe('running mutmut', () => {
     ]);
     expect(summaries(findings)).toEqual(['status:Survived=1', 'status:Killed=1']);
     expect(existsSync(path.join(root, 'mutants'))).toBe(false);
-    expect(read(root, 'pyproject.toml')).toBe(`\n${section('["src"]')}`);
+    expect(read(root, 'pyproject.toml')).toBe(`\n${section(['src'])}`);
   });
 
   it('runs mutmut once, from the snapshot, with the snapshot sources first on PYTHONPATH', () => {

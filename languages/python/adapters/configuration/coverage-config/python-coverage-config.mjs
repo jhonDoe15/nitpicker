@@ -2,7 +2,7 @@ import { writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { readFileEntries } from '../../execution/python-project.mjs';
 import { toml } from '../../../libraries/project-files.mjs';
-import { parseIni } from '../mypy-config.mjs';
+import { parseIni } from '../ini-parser.mjs';
 import { coverageTestOmits } from '../../execution/python-test-files.mjs';
 import { isDjangoProject } from '../pytest/collection-options.mjs';
 

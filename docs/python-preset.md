@@ -209,10 +209,52 @@ The formatter is `black` when `pyproject.toml`, `setup.cfg`, `tox.ini`, `Pipfile
 `[tool.black]` table, `black` as a dependency (a requirements line, a poetry key or an entry of any
 TOML dependency array), a `tox` command, or the `psf/black` or `black-pre-commit-mirror` repository
 or the `black` hook id, and none of them configures ruff's formatter (`[tool.ruff.format]`, a
-`[format]` table in `ruff.toml`, the `ruff-format` hook). The format check uses the project's own
-formatter configuration (line length and so on); only the lint rules are nitpicker's. A format
-finding from a detected formatter says so and names `python.formatter`, the setting that changes
-it.
+`[format]` table in `ruff.toml`, the `ruff-format` hook).
+
+**The format check follows the project's code, not its formatter config.** A project whose
+`[tool.ruff]`, `ruff.toml` or `[tool.black]` set the line length, quote style or indentation is
+checked with the settings nitpicker measures from the code (below), which may differ from that
+config, until the project opts in. By default `ruff format` runs with `--isolated` and always gets
+`--target-version`, `--line-length`, `--config 'format.quote-style = "..."'` and
+`--config 'indent-width = N'` (or `--config 'format.indent-style = "tab"'`); `black` runs with
+`--config` pointing at an empty file nitpicker writes and the same options as flags
+(`--line-length`, `--skip-string-normalization` for single quotes, `--target-version`). The values
+are `python.quotes` (double), `python.lineLength` (88) and `python.indentation` (4) when the code
+has no clear majority; `python.indentation` is `4`, `2` or `tab` (ruff only).
+
+The project's scope still applies without the opt-in, so a generated file the project excludes gets
+no format finding: `exclude`, `extend-exclude` and `force-exclude` of the ruff or black config are
+forwarded (patterns are resolved against the config file that sets them, and nitpicker's own
+`python.exclude` is added), and so is the target version (`target-version` or, for black, `target-version`
+and `project.requires-python` of the nearest `pyproject.toml`), so both formatters infer the same
+target. The keys that change how code is formatted but that nitpicker does not measure
+(`skip-magic-trailing-comma`, `line-ending`, `docstring-code-format`, `preview`) are dropped and take
+effect only with the opt-in.
+
+The run prints, once at the start, the command that formats the code the way nitpicker checks it
+(for example `Format with ruff: ruff format --isolated --target-version py38 --line-length 88 --config 'format.quote-style = "double"' --config 'indent-width = 4' .`;
+black prints `<empty file>` for the config it writes), and one line when a project config is
+ignored: `Ignoring [tool.ruff] in pyproject.toml; opt in with "tools": { "ruff": { "precedence":
+["project", "nitpicker"] } }`. Each format finding refers to the command and names
+`python.formatter` (when detected), the setting that changes the formatter.
+
+**Opt-in.** `"tools": { "ruff": { "precedence": ["project", "nitpicker"] } }` (or `black`) reads the
+project's own config: `.ruff.toml`, then `ruff.toml`, then `pyproject.toml`, the first found from
+the project root up to the repository root, following `extend` (for black, the nearest
+`pyproject.toml`, where black stops searching, with or without a `[tool.black]` table). A key the
+config sets wins, and a pin in `nitpicker.config.json` that it overrides is named in the conventions
+line; the measured or pinned convention fills the rest. `["nitpicker", "project"]` lets the
+conventions win instead for ruff; it is a config error for black, whose flags cannot switch string
+normalization back on. Listing `"project"` with no config file is a tool error that says to create it
+or remove `"project"` from `tools.<tool>.precedence`. The file is read from the head checkout for
+both sides of the comparison and passed to the formatter as `--config <file>`; the whole `extend`
+chain and the located files are part of the cache key. Which formatter applies which convention:
+ruff format applies all three; black applies `python.lineLength` and `python.quotes` (it keeps single
+quotes as written, so it accepts both styles) and has no indentation option, so `python.indentation`
+is neither measured nor printed with black, and pinning it is a config error. A file votes a line
+length only from a call or bracket that the formatter left wrapped without a trailing comma (joined,
+it would have fit any wider limit), or 120 when two lines pass 100. The run prints the source of each
+convention: the files it measured, the pin in `nitpicker.config.json`, or "from your ruff config".
 
 The test runner is the first of these the project shows it uses:
 
@@ -257,26 +299,54 @@ through the real tools.
 
 - **Type checking.** `mypy --strict`, `pyright` or `basedpyright` with `typeCheckingMode: strict`, on the source
   roots. Strict is not configurable: a project that cannot pass yet baselines its existing errors
-  (they only count when new), and a project's config cannot switch the check off. Only its
-  environment settings apply. For mypy that is `plugins`, `mypy_path`, `python_version`, the
-  namespace and typeshed options and, per module, `ignore_missing_imports` and `follow_imports`;
-  `ignore_errors`, `disable_error_code`, `exclude` and every flag that weakens strict are dropped.
-  Pyright gets a generated config that `extends` the project's (for `extraPaths`, `pythonVersion`
-  and the like), then forces strict, `enableTypeIgnoreComments: false`, `ignore: []`, `executionEnvironments: []`, the source
-  roots and nitpicker's `exclude` in place of the project's. basedpyright runs the same way, with the
+  (they only count when new), and a project's config cannot switch the check off unless it opts in
+  with `tools.pyright` or `tools.mypy` (below). Only its environment settings apply. For mypy that is
+  `plugins`, `mypy_path`, `python_version`, the namespace and typeshed options and, per module,
+  `ignore_missing_imports` and `follow_imports` for modules the project does not own; a section for
+  one of its own packages or modules (found under the source roots and under the `mypy_path`
+  directories, as `.py` or `.pyi` files, directories and `-stubs` packages), or for a pattern that
+  starts with `*`, is dropped, as are `ignore_errors`, `disable_error_code`, `exclude` and every flag that
+  weakens strict. Pyright gets a generated config in the report directory holding the project's
+  environment keys (`venv`, `venvPath`, `pythonVersion`, `pythonPlatform`, `stubPath`,
+  `typeshedPath`, `extraPaths` and the root, `extraPaths`, version and platform of each
+  `executionEnvironments` entry, paths made absolute, following `extends`), then forces strict,
+  `enableTypeIgnoreComments: false`, `ignore: []`, the source roots and nitpicker's `exclude`; its
+  `report*` overrides, `include`, `exclude`, `ignore` and `strict` are never read. basedpyright runs the same way, with the
   same generated config, and the same strict mode: it names its modes `off`, `basic`, `standard`,
   `strict`, `recommended` and `all`, and nitpicker forces `strict` (not `all`, whose extra rules such as
   `reportAny` and `reportUnusedCallResult` are style opinions, nor `recommended`, its default), so the
-  two checkers report the same rules. A project's `[tool.basedpyright]` or `[tool.pyright]` table,
-  `pyrightconfig.json` is the one that `extends` (the file first, else the pyproject table; basedpyright
-  does not read a `basedpyrightconfig.json`, so neither does nitpicker), and a baseline file (`.basedpyright/baseline.json`) is not read, since the
-  generated config lives in the report directory. Mypy also gets the environment's
+  two checkers report the same rules. The project config is `pyrightconfig.json` (first) or the
+  `[tool.basedpyright]` / `[tool.pyright]` table (basedpyright does not read a
+  `basedpyrightconfig.json`, so neither does nitpicker), and a baseline file
+  (`.basedpyright/baseline.json`) is not read. Mypy takes the first of `mypy.ini` and `.mypy.ini`
+  that exists, even without a `[mypy]` section (its `[mypy-...]` sections still apply, as in mypy
+  itself), then `pyproject.toml` or `setup.cfg` only with a mypy table or section. Mypy also gets the environment's
   interpreter (`--python-executable`), so packages installed there resolve. Tests are not
   type-checked unless a source root contains them. Findings are one per diagnostic: tool `mypy`, `pyright` or `basedpyright`, rule the
   error code (`arg-type`) or rule name (`reportArgumentType`), identity the message text without `on line N` / `from line N` references (ruff messages such as F811 too), with `#n` for repeats in one file. Only the first line of a pyright or basedpyright message is used, since
   the detail lines vary with surrounding code. A checker that exits other than 0 or 1 is a
   `types-failed` tool error. The checker runs in the project's environment like pytest, so it must
   be installed there (or on the `PATH`).
+- **Opting in to the project's checker config.** `"tools": { "pyright": { "precedence": ["project", "nitpicker"] } }`
+  (it covers basedpyright) or `"mypy"` lays the whole project config over nitpicker's strict
+  settings: a key the project sets wins, a key it leaves out stays strict. For mypy the generated
+  config starts with `strict = true` (and `--strict` is left off the command line, since a flag would
+  override the file), then the project's global options and every per-module section, own modules
+  included. The project's `exclude` is written as it is (an inline `(?x)` keeps working) and
+  nitpicker's `exclude` globs go to the command line as `--exclude`, which mypy adds to it. For
+  pyright the project's keys replace the generated ones (`include`, `exclude` and `extraPaths` are
+  merged instead, and each `executionEnvironments` entry keeps nitpicker's import roots). The config
+  is read from the head checkout for both sides of the comparison, and every source path in it
+  (`include`, `exclude`, `extraPaths`, `stubPath`, an environment's `root` and `extraPaths`) is
+  resolved against the checkout that is being checked, so the base run checks base files; `venv`,
+  `venvPath` and `typeshedPath` stay where the environment is. With the opt-in pyright also looks
+  for `pyrightconfig.json` or a `pyproject.toml` with the table in the parent directories up to
+  the repository root. The config files, the `extends` chain included, are part of the cache key.
+  Naming `"project"` without a config is a tool error, and so is a config that cannot be parsed (the
+  message says so and names the file). `["nitpicker", "project"]` reads only what the unlisted
+  behavior reads. Without the opt-in the run prints
+  `Ignoring [tool.pyright] in pyproject.toml except its environment keys; opt in with ...` once. The code is in
+  `languages/python/adapters/project-tools/`.
 - **Lint rules.** `languages/python/ruff/nitpicker-ruff.toml` selects, besides slice 1's rules,
   `PTH`, `UP031`, `UP032`, `FLY002` and `BLE001`, and ignores `F405`
   (the star import itself is `F403`), `SIM105` (the `swallowed-exception` rule below covers that
@@ -292,14 +362,28 @@ through the real tools.
   without the codes that the installed ruff does not know or lists as preview or removed
   (`ruff rule --all --output-format json`), which lets ruff 0.9 up to 0.16 run the same selection;
   a prefix such as `E4` or `T20` stays when a known rule starts with it. Test files are the ones
-  pytest collects (the `python_files` patterns, `conftest.py`, any `tests` or `test` folder,
-  `test_*.py`, `*_test.py`, and the Django names in a Django project, see
+  pytest collects (the `python_files` patterns, `testpaths`, `conftest.py`, any `tests` or `test`
+  folder, `test_*.py`, `*_test.py`, and the Django names in a Django project, see
   [runner parity](#runner-parity)): ruff's `ARG`, `FBT`, `PLR2004` and `S` findings in them are
-  dropped after ruff runs (`rules/filters/ruff-allowed-forms.mjs`).
+  dropped after ruff runs (`rules/filters/ruff-allowed-forms.mjs`). Security findings (ruff `S` and the
+  `sql-string-formatting`, `tls-verification-off`, `weak-hmac`, `http-without-timeout` and
+  `unsafe-deserialization` rules) are also dropped in test support that pytest does not collect, as in the
+  TypeScript preset. Test support is every file under a test root (the configured pytest `testpaths`, and
+  any `tests` or `test` folder) and `conftest.py`; a `testing`, `test_support`, `test-support`, `test_utils`,
+  `test_helpers`, `testutils`, `test_fixtures`, `fixtures`, `__fixtures__`, `mocks`, `__mocks__`, `fakes` or
+  `stubs` folder, or a file named `testing.py`, `testutils.py` or `fixtures.py`, counts only inside a test
+  root or when no production module imports it (directly or through other support files). A production
+  `testing/` or `fixtures/` package that the application imports keeps its findings. The rules script
+  decides the support files (`security/support.py`) and lists them in `rules-allowances.json` beside its
+  report, where `rules/filters/test-support.mjs` reads them for ruff's findings.
 - **AST rules.** `languages/python/rules/nitpicker_rules.py` runs with `python -I` (standard
   library only, never importing project code) over the files `ruff check --show-files` lists, so
   it sees exactly the files ruff lints, honoring `.gitignore`. Findings have tool `python-rules`.
-  Files that do not parse are left to ruff's syntax errors.
+  Files that do not parse are left to ruff's syntax errors. The script needs Python 3.10 or newer (every
+  Python still supported upstream); on an older project interpreter it runs no check and reports one
+  `python-rules/rules-skipped` tool error that names the version it needs and the one it found. A security
+  check that fails on a file is reported as a `python-rules/rules-check-failed` tool error naming the check
+  and the file; that file has no findings of that check, and every other check and file still runs.
 
 | Allowed form                                   | Banned form                                                                  | Rule                                                       |
 | ---------------------------------------------- | ---------------------------------------------------------------------------- | ---------------------------------------------------------- |
@@ -310,9 +394,11 @@ through the real tools.
 | re-raise, return a failure value or a default  | `except X:` that only passes, continues, logs, returns or assigns a constant | `swallowed-exception`                                      |
 | `contextlib.suppress(SpecificError)`           | `contextlib.suppress(Exception)`, `BaseException` or no argument             | `blind-suppress`                                           |
 | explicit imports                               | `from module import *`                                                       | ruff `F403`                                                |
-| `logging`                                      | `print`, `pprint`                                                            | ruff `T201`, `T203`                                        |
+| `logging` (or the project's structlog, loguru) | `print`, `pprint`                                                            | ruff `T201`, `T203`                                        |
+| log the caught exception itself                | logging only `str(error)` or an f-string with it in an `except`              | `catch-log-without-exception`                              |
+| a test that asserts                            | a test function with no assertion                                            | `test-without-assertion`                                   |
 | `@dataclass(frozen=True)`                      | `@dataclass` without `frozen=True`, outside tests                            | `frozen-dataclass`                                         |
-| pydantic in `adapters/` only                   | importing `pydantic` or `pydantic_settings` elsewhere                        | `pydantic-boundary`                                        |
+| the validation library in `adapters/` only     | importing pydantic (or the declared library) elsewhere                       | `pydantic-boundary`                                        |
 | an `enum.Enum` / `StrEnum`                     | a plain class of two string constants, or three `X_*`                        | `enum-string-constants`                                    |
 | fixing the code                                | `# type: ignore`, `# noqa`, `# pyright: ignore`, ...                         | `no-inline-suppression`                                    |
 | annotated code the checkers read               | `@no_type_check`, `if not TYPE_CHECKING:`, a stub beside                     | `no-type-check`, `not-type-checking`, `stub-beside-source` |
@@ -322,8 +408,58 @@ Details that are decisions rather than the table:
 - `frozen-dataclass` and `pydantic-boundary` do not apply to test files (a `tests` or `test`
   directory, `test_*.py`, `*_test.py`, `tests.py`, `conftest.py`), where fakes mutate and tests exercise the
   adapters. `frozen=True` must be the literal `True`.
+- The validation library is the one the project declares, read from `pyproject.toml` (PEP 621
+  `dependencies`, `optional-dependencies` and `dependency-groups`; Poetry, uv and pdm tables),
+  `requirements*.txt` (also under `requirements/`), `setup.cfg`, the literal `install_requires` and
+  `extras_require` of a `setup.py` and a `Pipfile`: pydantic, attrs
+  with cattrs, marshmallow, msgspec, dataclasses-json, voluptuous or cerberus. Runtime
+  dependencies come before development ones, and when several are declared all of them are
+  guarded. `pydantic-boundary` then flags importing any of them (`cattrs` for attrs, which is also
+  the domain's record library, so `import attrs` stays allowed) outside `adapters/`, and the
+  message names the declared libraries and the first one's parse call (`Schema().load(data)`);
+  with none declared it guards pydantic and says so. The requirements files follow `-r` includes
+  of any path inside the project (once each), skip constraints files, read the `.in` file next to
+  a compiled `.txt` and, for a compiled file without one, only the direct dependencies (the
+  entries `# via -r ...`), and decode a byte order mark or UTF-16. The detection is
+  `languages/python/rules/libraries/project-libraries.mjs` over the dependency reader
+  `languages/python/libraries/python-dependencies.mjs`; the rules step hands the import roots it
+  guards to the script as `boundaryRoots`.
+- The logger is read the same way: `structlog` or `loguru` when declared, else the standard
+  library. The `print` message and the `catch-log-without-exception` message name that logger's
+  form (`structlog.get_logger()`, `from loguru import logger`).
+- `catch-log-without-exception` flags a `warning`, `warn`, `error` or `critical` call on a logger
+  in an `except ... as name:` body that uses the caught name, or a value built from it, without
+  keeping the traceback. The traceback is kept by `logger.exception(...)`, `exc_info=` (anything
+  but `False` or `None`), loguru's `logger.opt(exception=...)` and structlog's `exc_info`, and
+  by a handler that re-raises after logging (a bare `raise`, `raise error`, or
+  `raise Other(...) from error`). Passing the caught name as an argument (`logger.warning("failed:
+%s", error)`), as a field (`error=error`) or in `extra=` does not keep it, nor does
+  `str(error)` or an f-string, so those are flagged. A call in a nested handler that uses the outer
+  name is checked for the outer handler too. A logger is a name bound from `logging.getLogger` or
+  `structlog.get_logger`, loguru's `logger`, or a receiver called `logger`/`log`/`..._logger`;
+  `logging.error(...)` counts too. A handler that does nothing but log is reported once, as
+  `swallowed-exception` (logging alone is not handling), so `catch-log-without-exception` looks only
+  at handlers that handle the error some other way, and a log call that does not use the caught
+  name is not its concern.
+- `test-without-assertion` flags a `test_*` function (or method of a `Test*` class or a
+  `TestCase`) in a test file pytest collects (the files of `testFiles`) that has no `assert`, no `raise AssertionError`,
+  no `pytest.raises`/`warns`/`fail`/`skip`/`xfail` or `self.fail`/`self.skipTest` (a bare `fail`
+  or `skip`, or another receiver, does not count), no call whose name starts with `assert` on a
+  receiver (`self.assertEqual`, `mock.assert_called_once`) or imported from a library
+  (`from assertpy import assert_that`), no imported `expect`, no pytest-check call or
+  `with check:` (when `pytest_check` is imported), and no call to one of the project's assertion
+  helpers. A function decorated with `@fixture` or `@pytest.fixture` is never a test, whatever its
+  name. Tests marked `skip`, `skipif` or `xfail` are exempt. A helper is followed only with proof:
+  it is defined as a `def` in a test directory, a `conftest.py`, a `test_*.py` file or a
+  `testing`/`assertions` module and its own body asserts (an `assert`, `self.assert*`,
+  `pytest.raises`, `pytest.fail` or a `raise`; not through a nested function or lambda), and it
+  is the last call of tests that have no other assertion in at least three test files. The name
+  alone never counts, and tests that already assert do not vote. A call counts when it is bare,
+  `self.name(...)` or qualified by a project test module (`helpers.check_total(...)`), never on an
+  arbitrary receiver. A smoke test that deliberately asserts nothing takes a `python.exceptions`
+  entry for `test-without-assertion`.
 - The boundary is a directory named `adapters` anywhere in the path (`src/shop/adapters/api.py`),
-  as in the TypeScript preset; a project that keeps its pydantic models elsewhere (`schemas/`,
+  as in the TypeScript preset; a project that keeps its models elsewhere (`schemas/`,
   `api/`) adds a `python.exceptions` entry for `pydantic-boundary` with those paths.
 - `enum-string-constants` flags a class with no bases or decorators whose body assigns at least two
   `UPPER_CASE` names to string literals, and module-level `UPPER_CASE` string constants where at
@@ -386,32 +522,36 @@ under `languages/python/rules/`: `checks`, `boundary`, `smells`, `honesty`); the
 rules. Rules that are not enforced because they flag idiomatic code with no clean alternative
 are listed at the end.
 
-| Concern                  | Allowed form                                                                                           | Rule                                                                                                                                                 |
-| ------------------------ | ------------------------------------------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Logging                  | `logger.info("Loaded %s", count)`, `logger.warning`, `logger.exception` (structlog, loguru: see below) | ruff `G001`-`G004`, `G010`, `G101`, `G201`, `G202`, `TRY400`, `TRY401`                                                                               |
-| Environment              | read once in a composition root, pass values in                                                        | `process-env-access` (script)                                                                                                                        |
-| Shell                    | a list: `subprocess.run(["git", "status"], check=True)`                                                | `shell-command` (script), ruff `S602`, `S604`, `S605`, `S609`                                                                                        |
-| SQL                      | parameters: `cursor.execute("select * from t where id = %s", (id,))`                                   | `sql-string-formatting` (script)                                                                                                                     |
-| Path traversal           | `target = (base / name).resolve()`, then `target.is_relative_to(base)`                                 | `unsafe-path-join` (script)                                                                                                                          |
-| Magic numbers            | a named constant                                                                                       | ruff `PLR2004`                                                                                                                                       |
-| Naming                   | PEP 8: `CapWords`, `snake_case`, `UPPER_SNAKE_CASE`, `...Error`                                        | ruff `N`                                                                                                                                             |
-| Boundary                 | parse untrusted data once with the project's validator (pydantic by default) in `adapters/`            | `handwritten-boundary-guard` (script)                                                                                                                |
-| Types in the domain      | real types, `Protocol`, frozen dataclasses                                                             | `any-in-domain`, `pydantic-any-field`, `pydantic-extra-allow` (script)                                                                               |
-| Pure domain              | clock, ids and random values passed in; ports implemented in `adapters/`                               | `clock-now`, `random-in-domain`, `io-in-domain` (script)                                                                                             |
-| Module state             | state in an object made in the composition root                                                        | `module-level-mutable-state` (script), ruff `PLW0602`, `PLW0603`                                                                                     |
-| Risky APIs               | JSON instead of pickle or marshal, a specific exception class                                          | ruff `S301`, `S302`, `TRY002`, `TRY004`, `TRY201`, `TRY203`                                                                                          |
-| Deprecated APIs          | the replacement the deprecation notice names                                                           | mypy `deprecated`, pyright and basedpyright `reportDeprecated`                                                                                       |
-| Repeated strings         | a constant or enum member                                                                              | `repeated-string-literal` (script)                                                                                                                   |
-| Unused arguments         | remove the argument, or prefix it with `_` when the signature is fixed                                 | ruff `ARG001`-`ARG005`                                                                                                                               |
-| Generic names            | a name for the job (`price_rounding.py`, `OrderRepository`)                                            | `generic-name` (script)                                                                                                                              |
-| Secrets                  | read from the environment; log only that a secret is set                                               | `hardcoded-secret`, `credential-shape`, `secret-in-log` (script)                                                                                     |
-| Boolean flags            | keyword-only (`def send(message, *, urgent=False)`) or two functions                                   | ruff `FBT001`, `FBT002`                                                                                                                              |
-| Input or output per item | one batch call, or `asyncio.gather`                                                                    | `io-in-loop` (script)                                                                                                                                |
-| Task markers             | `# TODO(#123): ...` with an issue                                                                      | `todo-without-issue` (script)                                                                                                                        |
-| Commented-out code       | delete it                                                                                              | ruff `ERA001`                                                                                                                                        |
-| Security sinks           | parameterized queries, `sha256`, verified TLS, a timeout, `yaml.safe_load`, `defusedxml`               | ruff `S` (see below)                                                                                                                                 |
-| Test honesty             | a reason on every skip, no sleeping, no tautologies, fixed time and seeded random values, no network   | ruff `PT`, `skipped-test-without-reason`, `sleep-in-test`, `tautological-assert`, `real-clock-in-test`, `random-in-test`, `network-in-test` (script) |
-| Test layout              | tests in files pytest collects; helpers in the tests folder                                            | `uncollected-tests`, `test-helper-in-source` (script)                                                                                                |
+| Concern                  | Allowed form                                                                                                                                     | Rule                                                                                                                                                 |
+| ------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Logging                  | `logger.info("Loaded %s", count)`, `logger.warning`, `logger.exception` (structlog, loguru: see below)                                           | ruff `G001`-`G004`, `G010`, `G101`, `G201`, `G202`, `TRY400`, `TRY401`                                                                               |
+| Environment              | read once in a composition root, pass values in                                                                                                  | `process-env-access` (script)                                                                                                                        |
+| Shell                    | a list: `subprocess.run(["git", "status"], check=True)`                                                                                          | `shell-command` (script), ruff `S602`, `S604`, `S605`, `S609`                                                                                        |
+| SQL                      | parameters: `cursor.execute("select * from t where id = %s", (id,))`; placeholder lists, fixed lookups, `Literal`/`Enum` names, `sql.Identifier` | `sql-string-formatting` (script), ruff `S610`, `S611`                                                                                                |
+| Path traversal           | `target = (base / name).resolve()`, then `target.is_relative_to(base)`                                                                           | `unsafe-path-join` (script)                                                                                                                          |
+| Magic numbers            | a named constant                                                                                                                                 | ruff `PLR2004`                                                                                                                                       |
+| Naming                   | PEP 8: `CapWords`, `snake_case`, `UPPER_SNAKE_CASE`, `...Error`                                                                                  | ruff `N`                                                                                                                                             |
+| Boundary                 | parse untrusted data once with the project's validator (pydantic by default) in `adapters/`                                                      | `handwritten-boundary-guard` (script)                                                                                                                |
+| Types in the domain      | real types, `Protocol`, frozen dataclasses                                                                                                       | `any-in-domain`, `pydantic-any-field`, `pydantic-extra-allow` (script)                                                                               |
+| Pure domain              | clock, ids and random values passed in; ports implemented in `adapters/`                                                                         | `clock-now`, `random-in-domain`, `io-in-domain` (script)                                                                                             |
+| Module state             | state in an object made in the composition root                                                                                                  | `module-level-mutable-state` (script), ruff `PLW0602`, `PLW0603`                                                                                     |
+| Risky APIs               | JSON instead of pickle or marshal, `copy.deepcopy` to clone, a specific exception class                                                          | ruff `S301`, `S302`, `TRY002`, `TRY004`, `TRY201`, `TRY203`                                                                                          |
+| Deserialization          | `yaml.safe_load`, `torch.load(path, weights_only=True)`, `numpy.load` without `allow_pickle`                                                     | ruff `S506`, `unsafe-deserialization` (script)                                                                                                       |
+| Deprecated APIs          | the replacement the deprecation notice names                                                                                                     | mypy `deprecated`, pyright and basedpyright `reportDeprecated`                                                                                       |
+| Repeated strings         | a constant or enum member                                                                                                                        | `repeated-string-literal` (script)                                                                                                                   |
+| Unused arguments         | remove the argument, or prefix it with `_` when the signature is fixed                                                                           | ruff `ARG001`-`ARG005`                                                                                                                               |
+| Generic names            | a name for the job (`price_rounding.py`, `OrderRepository`)                                                                                      | `generic-name` (script)                                                                                                                              |
+| Secrets                  | read from the environment; log only that a secret is set                                                                                         | `hardcoded-secret`, `credential-shape`, `secret-in-log` (script)                                                                                     |
+| Boolean flags            | keyword-only (`def send(message, *, urgent=False)`) or two functions                                                                             | ruff `FBT001`, `FBT002`                                                                                                                              |
+| Input or output per item | one batch call, or `asyncio.gather`                                                                                                              | `io-in-loop` (script)                                                                                                                                |
+| Task markers             | `# TODO(#123): ...` with an issue                                                                                                                | `todo-without-issue` (script)                                                                                                                        |
+| Commented-out code       | delete it                                                                                                                                        | ruff `ERA001`                                                                                                                                        |
+| Security sinks           | parameterized queries, `sha256`, verified TLS, a timeout, `yaml.safe_load`, `defusedxml`                                                         | ruff `S` (see below)                                                                                                                                 |
+| TLS                      | verification on in every environment; a CA bundle (`verify=ca_path`, `cafile=`, `tlsCAFile=`)                                                    | ruff `S501`, `S323`, `tls-verification-off` (script)                                                                                                 |
+| Signatures               | `hmac.new(key, message, hashlib.sha256)`; HMAC-SHA1 where a protocol fixes it                                                                    | ruff `S324`, `S303`, `weak-hmac` (script)                                                                                                            |
+| Timeouts                 | `timeout=10` on every request, `urlopen` and plain `requests.Session` call; never `timeout=None`                                                 | ruff `S113`, `http-without-timeout` (script)                                                                                                         |
+| Test honesty             | a reason on every skip, no sleeping, no tautologies, fixed time and seeded random values, no network                                             | ruff `PT`, `skipped-test-without-reason`, `sleep-in-test`, `tautological-assert`, `real-clock-in-test`, `random-in-test`, `network-in-test` (script) |
+| Test layout              | tests in files pytest collects; helpers in the tests folder                                                                                      | `uncollected-tests`, `test-helper-in-source` (script)                                                                                                |
 
 Details that are decisions rather than the table:
 
@@ -440,11 +580,112 @@ Details that are decisions rather than the table:
   `os.exec*`, `os.spawn*`, `pty.spawn` and `asyncio.create_subprocess_*` calls (also
   `create_subprocess_shell`). A list of arguments, or a fixed command string that ruff already
   accepts, is the allowed form. Not in tests.
-- `sql-string-formatting` reports an f-string, `%`, `+` or `.format` that builds SQL text (a
-  `select ... from`, `insert ... values`, `update ... set` or `delete from`) and reaches
-  `execute`, `executemany`, `text`, `raw`, `RawSQL`, `extra` or a pandas `read_sql*` call, directly or
-  through a local variable. It replaces ruff's `S608`, which flags every string that looks like SQL;
-  a formatted query that is not passed to one of those calls is not reported.
+- `sql-string-formatting` reports SQL text built at run time that reaches a query call. A value is
+  built when an f-string, `%`, `+`, `+=`, `.format`, `.format_map`, `string.Template(...).substitute` or
+  `.join` puts a piece into it that is not provably inert, followed through local names, parameter
+  defaults, module constants, class attributes and `self.x` set in the class (or a dataclass field),
+  attributes of a project module (`settings.TABLE`), constants and helper functions imported from other
+  project modules (with the call's arguments bound to the helper's parameters), comprehensions and lists
+  filled by `append`/`extend`. Inert pieces are literals, numbers (`int(x)`, `len(ids)`), placeholder
+  lists built from placeholders alone (`", ".join(["%s"] * len(ids))`, `"?" * n`, `("%s" for _ in ids)`,
+  rows such as `"(%s, %s)"`), optional filters whose every `append` is constant text
+  (`conditions.append("name = %s")` joined with `" AND "`), a subscript or `.get` of a dict, tuple or list of
+  constant names (`COLUMNS[key]`), a loop over such a tuple or over the keys or values of a constant dict
+  (also `MappingProxyType`, `frozenset` and `sorted` of one), the counter of `enumerate` (`f"${n}"`), a name
+  checked against a constant collection before use (`if column not in ALLOWED: raise ...`, also `return`,
+  `continue` or `break`, an enclosing `if column in ALLOWED:` and a comprehension filter), a parameter or a
+  pydantic or dataclass field annotated `Literal[...]`, `int` or an `Enum`/`StrEnum` class of the project
+  (and `.value`; a union counts only when every member does), a Django `_meta.db_table`, `get_field(...)`
+  and `concrete_fields` columns, SQLAlchemy metadata (`__tablename__`, `Table("name", ...)` and its `.name`,
+  `.c`, `.columns`, `metadata.tables`, `sorted_tables`, `inspect(Model).columns`), quoting calls
+  (`quote_name`, `quote_ident`, `escape_identifier`, `dialect.identifier_preparer.quote`), psycopg
+  `sql.Identifier`, `sql.Literal` and `sql.Placeholder`, and rows from `cursor.mogrify`; anything else,
+  including a parameter or an unknown call, is not. The query calls are matched by name, as in the
+  TypeScript rule: any name containing `query`, `sql` or `execute` (`execute`, `executemany`, `run_sql`,
+  `read_sql`, `exec_driver_sql`, but not `execute_command` or `to_sql`), a name starting with `fetch`,
+  `prepare`, `mogrify`, `raw`, `text`, `exec` and the `copy_*` calls, also through an alias
+  (`run = cursor.execute`), `getattr(cursor, "execute")` and `functools.partial`, plus psycopg2
+  `execute_values`/`execute_batch`. The static text must look like SQL: a statement (`SELECT`, `INSERT`,
+  `UPDATE`, `DELETE`, `WITH`, `MERGE`, and DDL: `CREATE`, `ALTER`, `DROP`, `TRUNCATE`), or a clause in SQL
+  shape (`WHERE name =`, `ORDER BY`, `LIMIT`, `SET x =`); a lone upper-case `AND`, `OR`, `IN` or `ON`, as in
+  a search query, is not SQL. The raw builders of query libraries
+  report any built piece, since their argument is SQL by definition: SQLAlchemy `text` and `literal_column`
+  (also inside `.where(...)`, `.order_by(...)`), peewee `SQL` and psycopg `sql.SQL` (and `sql.SQL(value)` as
+  an argument of `sql.SQL(...).format`, while `.format` on a `sql.SQL` with `sql.Identifier`/`sql.Literal`
+  is the safe composition). A project function or method that passes one of its parameters (positional or
+  keyword-only) straight to a query call is a wrapper, and its call sites are checked too (two levels). The
+  advice names the placeholder style of the project's driver, read from its dependencies: `$1` for asyncpg,
+  `?` for aiosqlite, `:name` for `databases`, `%s` otherwise. Django `.extra` and `RawSQL` are left to
+  ruff `S610` and `S611`, which report them already. Prose, log and exception text with SQL words never
+  reaches a query call and passes. It replaces ruff's `S608`, which flags every string that looks like SQL.
+- `tls-verification-off` reports what ruff `S501` and `S323` miss: `verify=` on `requests`, `httpx`,
+  `boto3`, `aiohttp` and session or client calls when the value can be `False` (a condition such as
+  `verify=not DEBUG`, a comparison with the environment such as `os.environ.get("X") != "0"`, `bool(...)`,
+  `strtobool`, `env.bool`, a conditional expression with a `False` branch, an `or` whose last operand can be
+  `False` or an `and` whose operands can, or a name, parameter default, class attribute or imported
+  constant bound to one of those; `ca or True` and `env or certifi.where()` cannot be `False` and pass),
+  also through an options dict (a literal, `dict(...)`, one built in steps, `**options`) and
+  `functools.partial`, and a literal `False` on calls `S501` does not cover (a session, `boto3`);
+  `session.verify = False` and the same conditions; `ssl._create_default_https_context =
+ssl._create_unverified_context`; `check_hostname = False` and `verify_mode = ssl.CERT_NONE` on a client
+  context (also `ssl.VerifyMode.CERT_NONE` and `0`, and through `setattr`); urllib3 `cert_reqs="CERT_NONE"`
+  and `assert_hostname=False`; `cert_reqs`/`ssl_cert_reqs` set to `CERT_NONE` (and redis
+  `ssl_cert_reqs=None`) in calls and option dicts (websocket `sslopt`); aiohttp `ssl=False` (also a name
+  bound to it) and `verify_ssl=False`; Elasticsearch and OpenSearch `verify_certs=False` and
+  `ssl_assert_hostname=False`, kafka `ssl_check_hostname=False`, ldap3 `Tls(validate=CERT_NONE)`, docker
+  `TLSConfig(verify=False)` and minio `cert_check=False`; Playwright `ignore_https_errors=True`, Selenium
+  `acceptInsecureCerts` (a capability or `accept_insecure_certs = True`) and the browser flag
+  `--ignore-certificate-errors`; MongoDB `tlsAllowInvalidCertificates`, `tlsAllowInvalidHostnames`,
+  `tlsInsecure` set to a value that can be `True`, also in a connection URI, including one built with an
+  f-string or `+`; and environment switches set in code or for child processes (`PYTHONHTTPSVERIFY=0`, an
+  empty `CURL_CA_BUNDLE` or `REQUESTS_CA_BUNDLE`, `NODE_TLS_REJECT_UNAUTHORIZED=0`, `GIT_SSL_NO_VERIFY`). A
+  switch behind an explicit command-line flag (`verify=not args.insecure`) is reported too; a project that
+  wants such a flag lifts the rule for its path with `python.exceptions`. A server context
+  (`ssl.Purpose.CLIENT_AUTH`, `PROTOCOL_TLS_SERVER`, `server_side=True`, also held on `self.context`, and
+  uvicorn and similar servers) and a server option dict (one that sets `certfile`,
+  `keyfile`, `ssl_certfile` or `ssl_keyfile`) pass: a server that asks for optional client certificates
+  sets `CERT_OPTIONAL`, which is never reported. A literal `verify=False` on a
+  module-level `requests` or `httpx` call is left to `S501`, so one site gives one finding. A `verify=`
+  read from an attribute (`settings.CA_BUNDLE`) is not reported, since it can be a path. Text that mentions
+  the settings (a warning, help text) is not read.
+- `weak-hmac` reports HMAC with MD5 (or MD4, MD2): `hmac.new`, `hmac.HMAC` and `hmac.digest` with
+  `hashlib.md5`, `"md5"`, a lambda returning one, `hashlib.new("md5")`, an import alias, a parameter default,
+  a class attribute or a constant bound to one, also from another module and through `functools.partial`,
+  pycryptodome `HMAC.new(..., digestmod=MD5)` and cryptography `hmac.HMAC(key, hashes.MD5())`. HMAC-SHA1 passes: its
+  security does not rest on collision resistance, and TOTP, HOTP and OAuth 1.0a fix it. Ruff's `S324`
+  does not look into `hmac`, and `hashlib.md5(..., usedforsecurity=False)` passes `S324` already; ruff's
+  `S303` reports `hashes.SHA1()` and `hashes.MD5()` inside a cryptography `HMAC(...)`, so those findings are
+  dropped after ruff runs, leaving HMAC-SHA1 allowed and HMAC-MD5 reported once, with the HMAC message. The
+  rules script finds those sites from the syntax tree (an aliased `HMAC`, a hash held in a variable) and
+  lists them in `rules-allowances.json`; it also lists SHA-1 in RSA-OAEP and `MGF1`
+  (`padding.OAEP(mgf=padding.MGF1(algorithm=hashes.SHA1()), algorithm=hashes.SHA1(), ...)`), which rests on
+  no collision resistance either. `hashes.Hash(hashes.SHA1())` stays an `S303` finding.
+- `http-without-timeout` reports what ruff `S113` (module-level `requests` and `httpx` calls) misses:
+  `urllib.request.urlopen` and an opener's `open` without a timeout, `http.client.HTTPConnection` and
+  `HTTPSConnection` without one, a call on a plain `requests.Session()` (a local, a `with` target, a chain, a
+  class attribute, a `self.` attribute set or annotated in the class, a dataclass field, or a module
+  attribute of a project module) without `timeout=`, `timeout=None` (also through a constant such as
+  `TIMEOUT = None`) on such a session or an httpx client, `getattr(session, method)(...)`,
+  `functools.partial(requests.get, ...)` without a timeout, a urllib3 `PoolManager` or `urllib3.request`
+  without one (urllib3 has no default), and an `aiohttp.ClientTimeout` that bounds nothing (no `total`,
+  `connect`, `sock_read` or `sock_connect`, or each of them `None`, as in `ClientTimeout(total=None)`). `httpx` without a timeout passes: it has a 5 second default, and
+  `S113` reports only an explicit `None`. `aiohttp.ClientSession` passes: its default `ClientTimeout` ends a
+  request after 5 minutes. A project factory or `Session` subclass passes only when it sets a timeout: it
+  mounts a timeout adapter on that same session in the same scope (a plain `HTTPAdapter` sets none),
+  overrides `request` or `send` to set one, or binds `request` with `functools.partial(..., timeout=...)`.
+  A call with `**kwargs` whose keys are unknown is not reported; `urlopen` is not reported when production
+  code calls `socket.setdefaulttimeout` with a number.
+- `unsafe-deserialization` reports what ruff `S301`, `S302` and `S506` miss: `yaml.unsafe_load`,
+  `yaml.full_load` and their `_all` forms, `yaml.load_all` without a safe loader (`SafeLoader`, `CSafeLoader`,
+  `BaseLoader` or a project class deriving from one at any depth; `S506` covers `yaml.load` only, and its
+  finding is dropped when the loader is such a class), ruamel `YAML(typ="unsafe")` (also `y.typ = "unsafe"`
+  set afterwards), `torch.load` without `weights_only` bound to `True` (a literal or a constant; torch 2.6
+  made it the default, and the explicit form holds on every version), `numpy.load(..., allow_pickle=True)`,
+  the pickle-based `joblib.load`, `cloudpickle.load` and `cloudpickle.loads`, keras and `tf.keras`
+  `load_model(..., safe_mode=False)` and lxml `XMLParser(resolve_entities=True)` or `no_network=False`,
+  also through an options dict or `functools.partial`. `jsonpickle.decode`,
+  `dill`, `shelve` and `pandas.read_pickle` are `S301` findings already. A pickle round trip used to copy a
+  value is an `S301` finding whose advice names `copy.deepcopy(value)`.
 - `clock-now`, `random-in-domain`, `io-in-domain` and `any-in-domain` apply to a directory named
   `domain` anywhere in the path (not tests). `io-in-domain` reports `open`, `input`, `time.sleep`,
   `os.system` and imports of `subprocess`, `socket`, `requests`, `httpx`, `urllib.request`,
@@ -923,28 +1164,43 @@ location.
   `mutation-skipped` finding (`no-tests-collected`) naming the file pattern and `also_copy`, never
   an empty result.
 - **Configuration.** mutmut reads `[tool.mutmut]` in `pyproject.toml` (or `[mutmut]` in
-  `setup.cfg`). If the project has one, it is used as it is: `source_paths`, `also_copy`,
-  `do_not_mutate`, `pytest_add_cli_args` and the rest stay the project's decision, and `exclude`
-  then only drops findings afterwards. If it has none, nitpicker adds one to the snapshot's
-  `pyproject.toml` (never to your checkout, and it creates the file if the project has none, so
-  that file is the one thing besides `mutants/` the preset writes into the snapshot):
-  `source_paths` is the source roots and `do_not_mutate` skips the test files (`tests/`,
-  `test_*.py`, `*_test.py`, `tests.py`, `conftest.py`) and the `exclude` globs, so an excluded file that mutmut
-  cannot parse (a Python 2 leftover) does not fail the run. Source roots of `.` are an error in
-  that case, since mutmut would copy the whole project: set `python.sourceRoots` or
-  `[tool.mutmut]`. A test that reads a file outside the copied sources fails mutmut's first run
-  ("failed to collect stats"); the error then adds a line to list the file under `also_copy` in
-  `[tool.mutmut]`.
+  `setup.cfg`). nitpicker always writes its own `[tool.mutmut]` into the snapshot's `pyproject.toml`
+  (never into your checkout; it creates the file if the project has none, and a table the project
+  had is removed from the snapshot's copy, so that file is the one thing besides `mutants/` the
+  preset writes into the snapshot): `source_paths` is the source roots and `do_not_mutate` skips the
+  test files (`tests/`, `test_*.py`, `*_test.py`, `conftest.py`, and `tests.py`, `tests_*.py` and
+  `*_tests.py` in a Django project) and the `exclude` globs, so an
+  excluded file that mutmut cannot parse (a Python 2 leftover) does not fail the run. From the
+  project's table only what the run needs is kept: `also_copy`, the process isolation options
+  (`process_isolation`, `forkserver_warmup`, `preload_modules_file`, `max_forkserver_restarts`,
+  `use_setproctitle`) and, when the source roots are `.`, its `source_paths` (or the old
+  `paths_to_mutate`). `do_not_mutate`, `only_mutate`, `mutate_only_covered_lines`,
+  `max_stack_depth`, `pytest_add_cli_args` and the rest are ignored, since they can shrink the
+  mutation testing; when the project's table holds any of them the run prints
+  `Ignoring [tool.mutmut] in pyproject.toml except also_copy and its process options; opt in with ...`.
+  The table is written with a TOML serializer, and a `pyproject.toml` that cannot be parsed is a
+  tool error that names the file.
+  Source roots of `.` with no `source_paths` of the project are an error, since mutmut would copy
+  the whole project: set `python.sourceRoots` or `[tool.mutmut]`. A test that reads a file outside
+  the copied sources fails mutmut's first run ("failed to collect stats"); the error then adds a
+  line to list the file under `also_copy` in `[tool.mutmut]`.
+  With `"tools": { "mutmut": { "precedence": ["project", "nitpicker"] } }` every key of the
+  project's table (or `setup.cfg` section, with its values typed) overrides nitpicker's, except that
+  the test patterns and the `exclude` globs stay in `do_not_mutate` (the project's own `do_not_mutate`
+  patterns still count as `mutant-ignored`, listed or not); `["nitpicker", "project"]` is the
+  unlisted behavior. A project listed without a table is a tool error.
 - **Equivalent mutants.** mutmut also mutates strings and logging, so some survivors cannot be
   killed by any test. The way out is a `python.exceptions` entry for `mutant-survived` (or
-  `mutant-ignored`, below) with the path, or `exclude`.
+  `mutant-ignored`, below) with the path, or `exclude` (the mutants of the file are dropped).
 - **Code hidden from mutmut.** Like a Stryker disable comment in the TypeScript preset, what hides
   production code from mutmut is an enforceable `mutmut/mutant-ignored` finding
   (`languages/python/adapters/mutation/mutation-markers.mjs`): each `# pragma: no mutate`
   (also its `block`, `start`, `end`, `class` and `function` forms) at its line, each production
   file a `do_not_mutate` pattern of the project's own `[tool.mutmut]` (or setup.cfg `[mutmut]`)
   matches, and `mutate_only_covered_lines = true` on the config file. The comment or pattern is not
-  an exception route; the finding's `python.exceptions` sentence for `mutant-ignored` is.
+  an exception route; the finding's `python.exceptions` sentence for `mutant-ignored` is. The
+  project's own table is read whether or not `tools.mutmut` opts it in, before nitpicker writes
+  its table.
 - **pytest.** mutmut 3 runs the suite with pytest, which also runs `unittest.TestCase` classes and
   plain test functions; nose2's own test kinds (generators, layers, parameterized tests) do not run
   under pytest, so their mutants are reported as not covered. Every project therefore needs pytest
@@ -1217,6 +1473,10 @@ and CRAP rules.
   the one-way rules and `python.exceptions` end to end; `languages/python/adapters/e2e/` holds the
   basedpyright e2e (a configured and a weakened `[tool.basedpyright]` table) and the `if TYPE_CHECKING:`
   one (no stability inversion, import-linter still sees it), which share `helpers.mjs` with the preset e2e.
+- `languages/python/ruff/ruff-rules.e2e.test.mjs`: gated behind `NITPICKER_PYTHON_E2E=1` (the ruff
+  from the `PATH`, or `NITPICKER_RUFF`). Every stable `RUF` rule of the installed ruff must be
+  selected or ignored in `nitpicker-ruff.toml`, so a new stable rule fails the test until someone
+  reviews it.
 - `core/pack-contents.test.mjs` checks that the Python files, including the ruff config and the
   rules script, are in the npm package.
 - Slice 5 unit tests: `python-sources.test.mjs` (module naming, exclusions), `python-coupling.test.mjs`
