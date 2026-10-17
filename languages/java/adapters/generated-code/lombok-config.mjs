@@ -14,18 +14,22 @@ const SKIPPED_DIRECTORIES = new Set([
   'target',
 ]);
 
+function sortEntry(entry, directory, found) {
+  const file = path.join(directory, entry.name);
+  if (entry.isDirectory() && !SKIPPED_DIRECTORIES.has(entry.name)) {
+    found.directories.push(file);
+  } else if (entry.isFile() && entry.name === CONFIG_FILE) {
+    found.configs.push(file);
+  } else if (entry.isFile() && BUILD_FILE.test(entry.name)) {
+    found.builds.push(file);
+  }
+}
+
 function walk(projectRoot) {
-  const found = { configs: [], builds: [] };
-  const pending = [projectRoot];
-  for (const directory of pending) {
+  const found = { directories: [projectRoot], configs: [], builds: [] };
+  for (const directory of found.directories) {
     for (const entry of readdirSync(directory, { withFileTypes: true })) {
-      if (entry.isDirectory() && !SKIPPED_DIRECTORIES.has(entry.name)) {
-        pending.push(path.join(directory, entry.name));
-      } else if (entry.isFile() && entry.name === CONFIG_FILE) {
-        found.configs.push(path.join(directory, entry.name));
-      } else if (entry.isFile() && BUILD_FILE.test(entry.name)) {
-        found.builds.push(path.join(directory, entry.name));
-      }
+      sortEntry(entry, directory, found);
     }
   }
   return found;
