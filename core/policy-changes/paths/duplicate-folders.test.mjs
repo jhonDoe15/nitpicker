@@ -118,3 +118,35 @@ describe('duplicate folder scope and movement', () => {
     ]);
   });
 });
+
+describe.each([
+  ['typescript', 'coverage', 'coverage/a.ts'],
+  ['javascript', 'reports', 'reports/a.js'],
+  ['typescript', 'node_modules', 'src/node_modules/a.ts'],
+  ['typescript', 'legacy', 'src/legacy/a.d.ts'],
+  ['typescript', '.stryker-tmp', 'src/.stryker-tmp/a.ts'],
+  ['python', 'venv', 'src/venv/a.py'],
+  ['python', 'legacy', 'src/legacy/test_a.py'],
+  ['python', 'legacy', 'src/legacy/a_test.py'],
+  ['python', 'legacy', 'src/legacy/conftest.py'],
+])('permanent duplicate exclusions for %s', (preset, folder, file) => {
+  const base = policy({ preset }, []);
+  const head = policy(base, [folder]);
+
+  it('does not count files already hidden by a permanent ignore as newly hidden', () => {
+    expect(changes(base, head, { files: [file] }).policyLoosenings).toEqual([]);
+    expect(changes(base, head, { files: [file], baseFiles: [] }).policyLoosenings).toEqual([]);
+  });
+
+  it('keeps permanent ignores established even when their folder override is removed', () => {
+    expect(changes(head, base, { files: [file], baseFiles: [] }).policyLoosenings).toEqual([]);
+  });
+});
+
+describe('root-only permanent script exclusions', () => {
+  it('still requires acceptance for a newly hidden nested coverage folder', () => {
+    expect(
+      changes({}, policy({}, ['coverage']), { files: ['src/coverage/a.ts'] }).policyLoosenings,
+    ).toEqual(['duplicates.skippedFolders added: **/coverage/**']);
+  });
+});
