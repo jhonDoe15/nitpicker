@@ -31,7 +31,7 @@ export const UNUSED_API_RULES = [
     id: UNUSED_API_RULE_IDS.testOnlyExport,
     check: 'dead-code',
     limit:
-      'an export or module that only tests import (a published package counts its own tests as callers, so it is not judged)',
+      'an export or module that only tests import; a re-export is not an import (a published package counts its own tests as callers, so it is not judged)',
     enforcedBy: TYPESCRIPT_ONLY,
   },
 ];

@@ -1,7 +1,7 @@
 import ast
 
-from nitpicker_checks.common import scoped_definitions
-from nitpicker_checks.docstrings import description_lines
+from review.common import scoped_definitions
+from review.docstrings import description_lines
 
 
 def doc_comments(tree):

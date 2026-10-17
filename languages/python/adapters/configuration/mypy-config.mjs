@@ -2,7 +2,7 @@ import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import path from 'node:path';
 import { globToRegExpSource } from '../../../../shared/glob.mjs';
-import { parseToml } from './python-package.mjs';
+import { parseToml, tomlProblem } from './project-files.mjs';
 
 const MYPY_CONFIG = 'mypy.ini';
 const GLOBAL_OPTIONS = [
@@ -104,11 +104,12 @@ function iniModel(sections) {
 }
 
 function tomlModel(text, name) {
-  const { value, problem } = parseToml(text);
-  if (problem !== undefined) {
+  const parsed = parseToml(text);
+  if (parsed.kind === 'invalid') {
+    const problem = tomlProblem(parsed.error);
     throw new Error(`${name} is not valid TOML, so the mypy settings cannot be read: ${problem}`);
   }
-  const { tool = {} } = value;
+  const { tool = {} } = parsed.table;
   const { mypy, ...others } = tool;
   if (mypy === undefined) {
     return undefined;

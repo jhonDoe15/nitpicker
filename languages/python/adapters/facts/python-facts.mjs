@@ -2,7 +2,7 @@ import { writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { listProductionModules, pythonSourceFiles } from '../analysis/python-sources.mjs';
-import { readPackageFacts } from '../configuration/python-package.mjs';
+import { readPackageFacts } from '../../rules/libraries/package-facts.mjs';
 import { isTestPath, ROOT_TEST_DIRECTORIES } from '../execution/python-project.mjs';
 import { factsBundle } from './facts-bundle.mjs';
 

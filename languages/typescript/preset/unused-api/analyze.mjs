@@ -36,7 +36,7 @@ export function analyzeUnusedApi({
 }) {
   const { exceptions, react: reactPolicy } = readHeadPolicy(environment);
   const layout = readLayout(environment);
-  const react = isReactProject({ projectRoot, react: reactPolicy });
+  const react = isReactProject({ projectRoot, react: reactPolicy, javascript: layout.javascript });
   if (!hasCheckableDeclarations({ projectRoot, layout, react })) return [];
   const packagesInfo = loadPackages(projectRoot, layout);
   const program = createProjectProgram({ projectRoot, configPath, packagesInfo, layout });

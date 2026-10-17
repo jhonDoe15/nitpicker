@@ -1,5 +1,5 @@
 import { readHeadPolicyFile } from '../../../../shared/head-policy.mjs';
-import { testConsoleFindings } from '../../../typescript/adapters/quality-areas/reporting/console/console-findings.mjs';
+import { testConsoleFindings } from '../../../../shared/console/console-findings.mjs';
 import { projectRelative } from './slow-tests.mjs';
 
 export const TEST_CONSOLE_TOOL = 'test-console';
