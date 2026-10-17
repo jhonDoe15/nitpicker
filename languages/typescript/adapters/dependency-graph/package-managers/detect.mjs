@@ -88,7 +88,9 @@ function yarnMajor(root, declaredVersion) {
     return majorFromVersion(declaredVersion);
   }
   const lockfile = readProjectText(root, 'yarn.lock');
-  const metadata = /^__metadata:\s*\n\s+version:\s*(?<version>\d+)/mu.exec(lockfile)?.groups;
+  const metadata = /^__metadata:[ \t]*\n[ \t]+version:[ \t]*(?<version>\d+)/mu.exec(
+    lockfile,
+  )?.groups;
   if (metadata !== undefined) {
     return Number(metadata.version) <= BERRY_LOCKFILE_VERSION_BY_YARN_2
       ? FIRST_BERRY_MAJOR

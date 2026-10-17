@@ -116,13 +116,17 @@ function linkDependencies(options, dependencyHook) {
     throw new Error(`Refusing to replace existing dependencies at ${linkPath}`);
   }
   symlinkSync(dependencyRoot, linkPath, 'dir');
-  const memberPaths = linkMembersOrUnlink(snapshotRoot, liveProjectRoot, dependencyHook, linkPath);
+  const memberPaths = linkMembersOrUnlink({
+    snapshotRoot,
+    liveRoot: dependencyHook.dependencyRoot(liveProjectRoot),
+    linkPath,
+  });
   return { kind: 'linked', dependencyPath: linkPath, dependencyRoot, memberPaths };
 }
 
-function linkMembersOrUnlink(snapshotRoot, liveProjectRoot, dependencyHook, linkPath) {
+function linkMembersOrUnlink({ snapshotRoot, liveRoot, linkPath }) {
   try {
-    return linkMemberDependencies(snapshotRoot, dependencyHook.dependencyRoot(liveProjectRoot));
+    return linkMemberDependencies(snapshotRoot, liveRoot);
   } catch (error) {
     unlinkSync(linkPath);
     throw error;
