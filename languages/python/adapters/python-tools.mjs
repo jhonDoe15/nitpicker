@@ -106,6 +106,7 @@ export function runPythonTools(context) {
       formatter: context.project.formatter,
       formatterDetected: context.project.formatterDetected,
       sourceRoots: context.project.sourceRoots,
+      testRunner: context.project.testRunner,
       testsRan: outcome.testsRan,
     }),
   );

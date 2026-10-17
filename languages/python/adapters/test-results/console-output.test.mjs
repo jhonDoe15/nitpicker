@@ -75,4 +75,14 @@ describe('Python console output', () => {
       { file: '', test: '', messages: ['y'] },
     ]);
   });
+
+  it.fails('gives a temporary directory the same message whatever its random name', () => {
+    const identityOf = (name) =>
+      findingsFor([
+        { file: `${ROOT}/tests/test_io.py`, test: 'test_io', messages: [`saved to /tmp/${name}`] },
+      ])[0].identity;
+    const names = ['tmpaeiouaei', 'tmp_x8y2k3j', 'tmpk2j_8xq1', 'tmp4kq9zw2r'];
+
+    expect(new Set(names.map(identityOf)).size).toBe(1);
+  });
 });

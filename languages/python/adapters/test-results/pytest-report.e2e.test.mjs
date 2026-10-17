@@ -1,3 +1,4 @@
+import { spawnSync } from 'node:child_process';
 import { mkdirSync, mkdtempSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
@@ -15,22 +16,28 @@ afterEach(() => {
   }
 });
 
-function pytestReport(files) {
-  const root = realpathSync(mkdtempSync(path.join(tmpdir(), 'nitpicker-pytest-report-')));
-  const reportRoot = realpathSync(mkdtempSync(path.join(tmpdir(), 'nitpicker-pytest-out-')));
-  roots.push(root, reportRoot);
-  for (const [file, content] of Object.entries({ 'pyproject.toml': '', ...files })) {
+function directoryWith(prefix, files) {
+  const root = realpathSync(mkdtempSync(path.join(tmpdir(), prefix)));
+  roots.push(root);
+  for (const [file, content] of Object.entries(files)) {
     mkdirSync(path.dirname(path.join(root, file)), { recursive: true });
     writeFileSync(path.join(root, file), content);
   }
+  return root;
+}
+
+function pytestReport(files, base) {
+  const root = directoryWith('nitpicker-pytest-report-', { 'pyproject.toml': '', ...files });
+  const reportRoot = directoryWith('nitpicker-pytest-out-', {});
   const context = createToolContext({
     projectRoot: root,
     liveRoot: root,
     settings: { environment: 'path', testRunner: 'pytest', sourceRoots: ['src'] },
     reportRoot,
+    baselineRoot: base === undefined ? undefined : directoryWith('nitpicker-pytest-base-', base),
   });
   test(context, {});
-  return { root, report: readPytestReport(reportRoot) };
+  return { root, report: readPytestReport(reportRoot).report };
 }
 
 const SHOP_TEST = `import logging
@@ -143,5 +150,112 @@ def test_printed():
         ],
       },
     ]);
+  });
+
+  it('charges a test its call and function fixtures, not a shared fixture', () => {
+    const { report } = pytestReport({
+      'tests/conftest.py': `import time
+
+import pytest
+
+
+@pytest.fixture(scope="session")
+def database():
+    time.sleep(0.6)
+    yield
+    time.sleep(0.6)
+
+
+@pytest.fixture
+def cart():
+    time.sleep(0.3)
+    yield
+    time.sleep(0.3)
+`,
+      'tests/test_a.py':
+        'def test_first(database):\n    pass\n\n\ndef test_last(database, cart):\n    pass\n',
+    });
+    const seconds = Object.fromEntries(report.tests.map(({ test, seconds }) => [test, seconds]));
+
+    expect(seconds.test_first).toBeLessThan(0.3);
+    expect(seconds.test_last).toBeGreaterThanOrEqual(0.55);
+    expect(seconds.test_last).toBeLessThan(1);
+  });
+
+  it('finds each test by its source range and compares it with the base', () => {
+    const query = (limit) =>
+      `def test_query():\n    sql = """\nSELECT id\nFROM orders\n"""\n    assert len(sql) < ${String(limit)}\n`;
+    const cart = (body) =>
+      `import pytest\n\n\nclass TestCart:\n    @pytest.mark.parametrize("n", [1])\n    def test_add(self, n):\n        ${body}\n`;
+    const { report } = pytestReport(
+      { 'tests/test_sql.py': query(99), 'tests/test_cart.py': cart('assert n') },
+      { 'tests/test_sql.py': query(50), 'tests/test_cart.py': cart('assert n') },
+    );
+
+    expect(
+      report.tests.map(({ test, source }) => [test, source.line, source.changed]).toSorted(),
+    ).toEqual([
+      ['TestCart::test_add[1]', 6, false],
+      ['test_query', 1, true],
+    ]);
+  });
+
+  it('reports a logger that prints to stderr once', () => {
+    const { report } = pytestReport({
+      'tests/test_log.py': `import logging
+import sys
+
+LOG = logging.getLogger("shop")
+LOG.addHandler(logging.StreamHandler(sys.stderr))
+
+
+def test_logged():
+    LOG.warning("cache is cold")
+`,
+    });
+
+    expect(report.entries.map(({ messages }) => messages)).toEqual([['cache is cold']]);
+  });
+
+  it('records stderr printed while a test file is imported', () => {
+    const { root, report } = pytestReport({
+      'tests/test_import.py':
+        'import sys\n\nprint("loading fixtures", file=sys.stderr)\n\n\ndef test_x():\n    pass\n',
+    });
+
+    expect(report.entries).toEqual([
+      { file: path.join(root, 'tests/test_import.py'), test: '', messages: ['loading fixtures'] },
+    ]);
+  });
+
+  it('still captures stderr when the project turns capture off', () => {
+    const { report } = pytestReport({
+      'pyproject.toml': '[tool.pytest.ini_options]\naddopts = "-s"\n',
+      'tests/test_e.py':
+        'import sys\n\n\ndef test_e():\n    print("disk almost full", file=sys.stderr)\n',
+    });
+
+    expect(report.entries.map(({ messages }) => messages)).toEqual([['disk almost full']]);
+  });
+
+  it('keeps a warning path on another drive absolute', () => {
+    const result = spawnSync(
+      'python',
+      [
+        '-B',
+        '-c',
+        [
+          'import ntpath, sys, types',
+          `sys.path.insert(0, ${JSON.stringify(import.meta.dirname)})`,
+          'import nitpicker_pytest_report as plugin',
+          'plugin.os = types.SimpleNamespace(path=ntpath)',
+          'plugin.STATE["root"] = "C:\\\\work"',
+          'print(plugin.relative_to_root("D:\\\\cache\\\\mod.py"))',
+        ].join('\n'),
+      ],
+      { encoding: 'utf8' },
+    );
+
+    expect(result.stdout.trim()).toBe(String.raw`D:\cache\mod.py`);
   });
 });

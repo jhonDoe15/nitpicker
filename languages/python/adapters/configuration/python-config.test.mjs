@@ -77,12 +77,11 @@ describe('python config validation', () => {
     }).toThrow('only supported with "preset": "python"');
   });
 
-  it('accepts testConsole, which every preset shares', () => {
+  it('accepts test-console-output in python.exceptions', () => {
+    const exceptions = [{ rule: 'test-console-output', paths: ['tests/legacy/**'], reason: 'r' }];
+
     expect(() => {
-      validatePythonConfig({ preset: 'python', testConsole: { allow: [] } }, [
-        ...TYPESCRIPT_ONLY,
-        'testConsole',
-      ]);
+      validate({ preset: 'python', python: { exceptions } });
     }).not.toThrow();
   });
 
@@ -126,10 +125,6 @@ describe('python config validation', () => {
     [
       { exceptions: [{ rule: 'folder-files-limit', paths: ['a'], reason: 'r' }] },
       'a file limit shared by every preset: lift it in the top-level "exceptions" instead',
-    ],
-    [
-      { exceptions: [{ rule: 'test-console-output', paths: ['a'], reason: 'r' }] },
-      '"test-console-output", a check shared by every preset: lift it in the top-level "exceptions"',
     ],
     [
       { exceptions: [{ rule: 'E501', paths: ['a'], reason: 'r' }] },

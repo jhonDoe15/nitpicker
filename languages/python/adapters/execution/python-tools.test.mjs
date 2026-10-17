@@ -86,6 +86,7 @@ describe('running the tools', () => {
       formatter: 'ruff',
       formatterDetected: true,
       sourceRoots: ['src'],
+      testRunner: 'unittest',
       testsRan: true,
     });
     expect(readReport(reportRoot, 'coveragerc')).toBe(coverageRc('src'));

@@ -36,8 +36,9 @@ function directoryWith(files) {
   return root;
 }
 
-function run(projectRoot, file, test, seconds, markers = []) {
-  return { nodeid: `${file}::${test}`, file: path.join(projectRoot, file), test, seconds, markers };
+function run(projectRoot, file, test, seconds, { markers = [], source } = {}) {
+  const found = { nodeid: `${file}::${test}`, file: path.join(projectRoot, file), test, seconds };
+  return { ...found, markers, ...(source === undefined ? {} : { source }) };
 }
 
 function findingsFor({ sources = { [ORDER_TEST]: ORDER_SOURCE }, runs, base, policy = {} }) {
@@ -50,11 +51,11 @@ function findingsFor({ sources = { [ORDER_TEST]: ORDER_SOURCE }, runs, base, pol
 }
 
 describe('Python slow tests', () => {
-  it('reports a unit test over 5 s at its def line', () => {
+  it('reports a unit test over 5 s at the def line the plugin found', () => {
     const findings = findingsFor({
       runs: (root) => [
-        run(root, ORDER_TEST, 'test_total', 5.4),
-        run(root, ORDER_TEST, 'TestCart::test_empty', 0.1),
+        run(root, ORDER_TEST, 'test_total', 5.4, { source: { line: 4 } }),
+        run(root, ORDER_TEST, 'TestCart::test_empty', 0.1, { source: { line: 9 } }),
       ],
     });
 
@@ -82,7 +83,7 @@ describe('Python slow tests', () => {
       runs: (root) => [
         run(root, 'tests/integration/test_api.py', 'test_call', 29),
         run(root, 'tests/test_db_integration.py', 'test_query', 31),
-        run(root, ORDER_TEST, 'test_total', 20, ['integration']),
+        run(root, ORDER_TEST, 'test_total', 20, { markers: ['integration'] }),
       ],
     });
 
@@ -110,25 +111,12 @@ describe('Python slow tests', () => {
     ]);
   });
 
-  it('reports only tests the change adds or edits', () => {
-    const base = {
-      [ORDER_TEST]: `import time
-
-
-def test_total():
-    assert 1 + 2 == 3
-
-
-class TestCart:
-    def test_empty(self):
-        assert not []
-`,
-    };
+  it('reports only tests the plugin found changed against the base', () => {
     const findings = findingsFor({
-      base,
+      base: { [ORDER_TEST]: ORDER_SOURCE },
       runs: (root) => [
-        run(root, ORDER_TEST, 'test_total', 9),
-        run(root, ORDER_TEST, 'TestCart::test_empty', 9),
+        run(root, ORDER_TEST, 'test_total', 9, { source: { line: 4, changed: false } }),
+        run(root, ORDER_TEST, 'TestCart::test_empty', 9, { source: { line: 9, changed: true } }),
       ],
     });
 
@@ -137,19 +125,23 @@ class TestCart:
     ]);
   });
 
-  it('counts a test of a new file, and a test it cannot find when its file changed', () => {
-    const findings = findingsFor({
+  it('compares the whole file when the plugin found no function for the test', () => {
+    const changed = findingsFor({
+      base: { [ORDER_TEST]: `${ORDER_SOURCE}\n# edited\n` },
+      runs: (root) => [run(root, ORDER_TEST, 'test_generated', 9)],
+    });
+    const unchanged = findingsFor({
+      base: { [ORDER_TEST]: ORDER_SOURCE },
+      runs: (root) => [run(root, ORDER_TEST, 'test_generated', 9)],
+    });
+    const added = findingsFor({
       base: { 'tests/test_other.py': '' },
-      runs: (root) => [
-        run(root, ORDER_TEST, 'test_total', 9),
-        run(root, ORDER_TEST, 'test_generated', 9),
-      ],
+      runs: (root) => [run(root, ORDER_TEST, 'test_generated', 9)],
     });
 
-    expect(findings.map(({ identity, location }) => [identity, location])).toEqual([
-      [`test:${ORDER_TEST}::test_total`, { line: 4 }],
-      [`test:${ORDER_TEST}::test_generated`, undefined],
-    ]);
+    expect(
+      [changed, unchanged, added].map((found) => found.map(({ location }) => location)),
+    ).toEqual([[undefined], [], [undefined]]);
   });
 
   it('reports nothing on the base snapshot', () => {
@@ -161,11 +153,32 @@ class TestCart:
     ).toEqual([]);
   });
 
-  it('reads a missing report as empty and paths outside the project as the project', () => {
-    expect(readPytestReport(directoryWith({}))).toEqual({
-      tests: [],
-      entries: [],
+  it('reads a missing report as empty, and a tool error when pytest ran tests', () => {
+    const empty = { tests: [], entries: [] };
+    const root = directoryWith({});
+
+    expect(readPytestReport(root, { testRunner: 'unittest', testsRan: true })).toEqual({
+      report: empty,
+      findings: [],
     });
+    expect(readPytestReport(root, { testRunner: 'pytest', testsRan: false }).findings).toEqual([]);
+    expect(readPytestReport(root, { testRunner: 'pytest', testsRan: true })).toEqual({
+      report: empty,
+      findings: [
+        {
+          tool: 'test-runtime',
+          rule: 'pytest-report-missing',
+          path: '.',
+          identity: 'pytest-report-missing',
+          message:
+            "Slow tests and test console output were not checked: the pytest run left no pytest-report.json. A test that ends the process (os._exit) or a plugin that stops pytest early keeps nitpicker's report plugin from writing it.",
+          classification: 'tool-error',
+        },
+      ],
+    });
+  });
+
+  it('reads paths outside the project as the project', () => {
     expect(projectRelative('/work/app', '/work/app/tests/test_a.py')).toBe('tests/test_a.py');
     expect(projectRelative('/work/app', '/elsewhere/test_a.py')).toBe('.');
     expect(projectRelative('/work/app', '')).toBe('.');

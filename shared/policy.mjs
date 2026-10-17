@@ -321,7 +321,8 @@ export const RULES = [
 /**
  * Project-level TypeScript checks that take `exceptions` entries although no ESLint rule has their
  * id: the rules of the TypeScript structure, coupling, dead-code and test-console checks that Java
- * does not share. Python lifts its own findings with `python.exceptions`, so it does not matter here.
+ * does not share. The Python preset validates its own: it takes `test-console-output` both in the
+ * top-level `exceptions` and in `python.exceptions` (`PYTHON_TOP_LEVEL_EXCEPTION_RULES`).
  */
 export const TYPESCRIPT_PROJECT_EXCEPTION_RULES = RULES.filter(
   ({ id, check, enforcedBy }) =>

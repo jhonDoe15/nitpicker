@@ -35,7 +35,14 @@ describe('testConsole config', () => {
     [{ testConsole: { allow: [{ ...allowed, paths: 'test/**' }] } }, /paths" must be an array/],
     [{ testConsole: { allow: [{ contains: 'abc' }] } }, /reason" is required/],
     [{ testConsole: { allow: [{ contains: 'abc', reason: ' ' }] } }, /reason" is required/],
-    [{ preset: 'java', testConsole: { allow: [allowed] } }, /"testConsole" is not supported/],
+    [
+      { preset: 'java', testConsole: { allow: [allowed] } },
+      'nitpicker.config.json: "testConsole" is not supported with "preset": "java". Supported with: typescript, javascript, python',
+    ],
+    [
+      { preset: 'kotlin', testConsole: {} },
+      '"testConsole" is not supported with "preset": "kotlin"',
+    ],
   ])('rejects %j', (config, message) => {
     expect(() => validateConfig(config)).toThrow(message);
   });

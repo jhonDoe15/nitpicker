@@ -117,8 +117,18 @@ Config keys with this preset: `base`, `disable` (the analyzer names are `python`
 below. `layout` describes TypeScript source roots and stays a config error with this preset. The
 top-level `exceptions` is accepted only for the file limits shared by every language
 (`file-lines-limit`, `line-length-limit`, `folder-files-limit`) and `test-console-output`, whose
-check every preset shares; the Python equivalent of
+check the TypeScript preset shares; the Python equivalent of
 `exceptions` for every other rule is `python.exceptions`. `python` is an error with any other preset.
+Where each kind of finding is lifted for some paths:
+
+| Findings                                                                                     | Lifted by                                                       |
+| -------------------------------------------------------------------------------------------- | --------------------------------------------------------------- |
+| ruff codes (or a prefix such as `PTH`), mypy codes, pyright and basedpyright `report*` rules | `python.exceptions`                                             |
+| `python-rules` ids (`fixed-sleep`, `unused-option`, `no-inline-suppression`, ...)            | `python.exceptions`                                             |
+| `test-runtime/slow-test`                                                                     | `python.exceptions`                                             |
+| `test-console/test-console-output`                                                           | top-level `exceptions` or `python.exceptions` (the same filter) |
+| one third-party console message                                                              | `testConsole.allow`                                             |
+| `file-lines-limit`, `line-length-limit`, `folder-files-limit`                                | top-level `exceptions` only                                     |
 
 ```json
 {
@@ -270,13 +280,15 @@ through the real tools.
 | one plural input, a one-element list            | optional `tag` beside optional `tags: list[...]`                       | `singular-and-plural-field`                                |
 | `match` or `if`/`elif` ending in `assert_never` | `x == E.A or x == E.B` over some (or all) members of an enum           | `exhaustive-enum-predicate`                                |
 | calling (or importing) the target directly      | a module-level function that only forwards to another                  | `forwarding-wrapper`                                       |
-| a parameter some real call passes               | a keyword parameter with a default that no call passes                 | `unused-option`                                            |
+| a parameter some real call passes               | an optional parameter (with a default) that no call passes             | `unused-option`                                            |
 
 Details that are decisions rather than the table:
 
-- `frozen-dataclass` and `pydantic-boundary` do not apply to test files (a `tests` or `test`
-  directory, `test_*.py`, `*_test.py`, `conftest.py`), where fakes mutate and tests exercise the
-  adapters. `frozen=True` must be the literal `True`.
+- `frozen-dataclass` and `pydantic-boundary` do not apply to test files, where fakes mutate and
+  tests exercise the adapters. Test files are the same everywhere in this preset: `test_*.py`,
+  `*_test.py`, a Django-style `tests.py`, `conftest.py`, and anything under a `tests`, `test` or
+  `testing` directory (`TEST_DIRECTORIES`, `TEST_FILE_GLOBS` and `isTestPath` in
+  `execution/python-project.mjs`; the rules script gets the list of test files from it). `frozen=True` must be the literal `True`.
 - The boundary is a directory named `adapters` anywhere in the path (`src/shop/adapters/api.py`),
   as in the TypeScript preset; a project that keeps its pydantic models elsewhere (`schemas/`,
   `api/`) adds a `python.exceptions` entry for `pydantic-boundary` with those paths.
@@ -335,21 +347,33 @@ lifts the rule for some paths. The per-file rules live in `languages/python/rule
 and the project-wide ones, which resolve imports across files, in `nitpicker_checks/project/`.
 
 - `fixed-sleep` (TypeScript: `nitpicker/no-fixed-sleep-synchronization`), in test files only (the
-  same test paths as above, `conftest.py` included): `time.sleep`, `asyncio.sleep`, `trio.sleep`,
-  `anyio.sleep` and `gevent.sleep` with a delay other than a literal `0` (`asyncio.sleep(0)` only
-  yields), through any import alias, and Playwright's `wait_for_timeout`. A sleep inside a `for` or
-  `while` loop of the same function is the allowed form, polling until a deadline, so it is not
-  reported; `wait_for_timeout` is reported in a loop too, because Playwright's `expect` already
-  polls. The message names polling with a deadline and the library's wait helper.
+  test files above, `conftest.py` and helpers in a test folder included): `time.sleep`,
+  `asyncio.sleep`, `trio.sleep`, `anyio.sleep` and `gevent.sleep` with a delay other than a literal
+  `0` (`asyncio.sleep(0)` only yields), through any import alias or a star import
+  (`from time import *`), and Playwright's `wait_for_timeout`. A poll is the allowed form, so a
+  sleep is not reported in the body of a `while` loop of the same function, or of a `for` loop
+  whose body leaves early under a condition (a `break` of that loop or a `return` inside an `if`,
+  `try` or `match`, as in `for _ in range(50): if ready(): break`). A `for` loop that only repeats
+  the wait (`for _ in range(10): time.sleep(1)`), the `else` of a loop and a comprehension (which
+  cannot leave early) are reported. A sleep looked up on its module (`time.sleep(5)`) inside
+  `with mock.patch("time.sleep"):` or `with mock.patch.object(time, "sleep"):`, or in a function
+  decorated with that patch, does not wait and is not reported; a name imported before the patch
+  (`from time import sleep`) still is. `wait_for_timeout` is reported in a loop too, because
+  Playwright's `expect` already polls. The message names polling with a deadline and the library's
+  wait helper.
 - `restating-docstring` and `long-docstring` (TypeScript: the `no-comments` doc-comment checks).
   The Python preset does not ban comments or docstrings; only these two contents are checked, on
   the docstring of every function, method and class (not modules). A docstring restates the name
   when every word of its description, apart from filler words (`the`, `returns`, `function`,
   `class`, ...), is a word of the name or a plural, `-ed` or `-ing` form of one (`load_users`:
-  "Returns the loaded user."). The description ends at the first `:param`-style field, Google
-  section (`Args:`, `Returns:`, `Raises:`, `Examples:`, ...), numpy section (a title over a `---`
-  line) or doctest line (`>>>`); a docstring whose description has more than 5 non-empty lines is
-  reported with its count. The subject is the qualified name, so a growing docstring keeps its
+  "Returns the loaded user."), and nothing else in the docstring says more: a section, field or
+  example with text, a bullet list or a literal block keeps it. The description ends at the first
+  `:param`-style field, Google section (`Args:`, `Returns:`, `Raises:`, `Examples:`, ..., also a
+  single-line one such as `Returns: the id`, `Raises ValueError: ...` or `Note: ...`), numpy section
+  (a title over a `---` line) or doctest line (`>>>`). A docstring whose description has more than
+  5 non-empty lines of prose is reported with its count; bullet items (`-`, `*`, `+`, `1.`, `1)`)
+  with their continuation lines, a reST literal block after a line ending in `::`, the body of a
+  directive such as `.. code-block::` and fenced code are not prose and do not count. The subject is the qualified name, so a growing docstring keeps its
   identity.
 - `singular-and-plural-field` (TypeScript: `nitpicker/no-singular-and-plural-prop`): an optional
   `tag: T` beside an optional `tags` whose element type is `T` (`list`, `Sequence`, `set`,
@@ -357,10 +381,12 @@ and the project-wide ones, which resolve imports across files, in `nitpicker_che
   `NotRequired` and `Annotated` are looked through; `-es` and `-ies` plurals count). Optional means
   a default value in a `@dataclass`, attrs `@define` class, pydantic `BaseModel` or `BaseSettings`
   and `NamedTuple`, `total=False` or `NotRequired` in a `TypedDict`, and a default in a function's
-  parameters. Unannotated parameters are not compared.
+  parameters. Unannotated parameters are not compared. Common irregular plurals of the last word
+  count (`child`/`children`, `index`/`indices`, `person`/`people`, `sub_index`/`sub_indices`), and
+  a string annotation (`tags: "list[str]"`) is read as the annotation it spells.
 - `exhaustive-enum-predicate` (TypeScript: `nitpicker/exhaustive-union-predicate`): an `or` chain of
   `==` or `is`, an `and` chain of `!=` or `is not`, or an `in` / `not in` tuple, list or set, that
-  compares one plain reference (`status`, `self.status`) with two or more members of one project
+  compares one plain reference (`status`, `self.status`) with two or more distinct members of one project
   enum (a class of the project that derives from `Enum`, `IntEnum` or `StrEnum`, resolved through
   imports, with at least 3 members) or with values of a `Literal` alias the parameter is annotated
   with. Only a value is checked (a `return`, an assignment, a lambda body, also inside `not`, a
@@ -382,13 +408,21 @@ assert_never(value)`, or an `if`/`elif` chain ending in `else: assert_never(valu
   through imports, aliases, module attributes and package re-exports (`from .pricing import total`
   in an `__init__.py`), using the module names the coupling check uses. A function nothing calls is
   not judged, nor one used as a value (passed, stored, decorating), one a star import exposes, one
-  called from an `if __name__ == "__main__":` block, or one a `[project.scripts]`,
-  `[project.gui-scripts]` or `[tool.poetry.scripts]` entry names. Tests do not count as callers,
+  called from an `if __name__ == "__main__":` block or a `__main__.py`, or one an entry point
+  names: `[project.scripts]`, `[project.gui-scripts]`, any `[project.entry-points.<group>]` and
+  `[tool.poetry.scripts]` (read by `configuration/python-package.mjs`), the
+  `[options.entry_points]` of `setup.cfg`, and the `entry_points` of a `setup()` call in `setup.py`
+  when it is a literal or a module-level name bound to one (`project/entry_points.py` parses it
+  with `ast` and never runs it). Tests do not count as callers,
   unless the project is a published package (a `[project]` or poetry `name`, a
   `[build-system] build-backend`, no `Private :: Do Not Upload` classifier and no
   `package-mode = false`): then its own tests count, as in the TypeScript preset. The subject is
   `function.parameter`, so the finding is new only when the change adds the parameter or removes
   its last caller.
+
+A file with an expression too deep for Python's recursion limit (a sum of 900 terms) does not stop
+the run: the checks that fail on it are skipped for that file and reported as a descriptive
+`python-rules/rules-skipped` note that does not fail the gate.
 
 ### Slow tests
 
@@ -403,13 +437,28 @@ assert_never(value)`, or an `if`/`elif` chain ending in `else: assert_never(valu
   `integration` marker if it is one) and the `python.exceptions` entry for `slow-test`.
 - **Measurement.** Head only, from the same pytest run that measures coverage, with no extra run:
   nitpicker loads its own plugin (`-p nitpicker_pytest_report`, from
-  `languages/python/adapters/test-results/`), which adds the setup, call and teardown time of each
-  test and writes them to a report. A parametrized test is one test, timed by its slowest case.
-  `unittest` runs are not timed.
-- **Edited or added.** The test function is found in the file by its pytest name (`Class::method`,
-  nested classes included) with its decorators, and counted when its text differs from the base, or
-  the file is new. A test whose function is not found (a generated test) is counted when its file
-  changed. Slow tests the change does not touch stay baselined, and the base snapshot reports none.
+  `languages/python/adapters/test-results/`), which writes each test's time to a report. A test is
+  charged its call and the setup and teardown of its function-scoped fixtures. A module, class,
+  package or session fixture is timed on its own (its setup in `pytest_fixture_setup`, its teardown
+  up to `pytest_fixture_post_finalizer`) and not charged, so the first test that uses a costly
+  shared fixture, or the last one before it is torn down, is not slow because of it. A parametrized
+  test is one test, timed by its slowest case. `unittest` runs are not timed.
+- **Coverage.** The times come from the coverage run, so they include coverage.py's tracing, which
+  makes Python code roughly two to three times slower with branch coverage on. The budgets apply to
+  that run. The Java and Kotlin presets do the same: their slow-test times come from the test tasks
+  that run with the JaCoCo agent, whose overhead is smaller. The TypeScript preset has no slow-test
+  rule.
+- **Edited or added.** The plugin finds the test's function from its code object (its file and
+  `__qualname__`, through `functools.wraps` wrappers), reads its line range with `ast` from the first
+  decorator to `end_lineno`, and compares those lines, stripped and without blank ones, with the same
+  function in the base file at the same path; the range comes from the parser, so a triple-quoted
+  string with lines at column 0 inside the test is part of it. A test is counted when that text
+  differs, the function is new, or the file is new. A test whose function is not found (a generated
+  test, a function defined inside another function) is counted when its file changed. Slow tests the
+  change does not touch stay baselined, and the base snapshot reports none.
+- **Missing report.** When pytest ran tests but left no report (a test called `os._exit`, or a
+  plugin stopped pytest before it finished), the run gets a `test-runtime/pytest-report-missing`
+  tool error instead of passing unchecked. A `unittest` run writes no report and gets no error.
 
 ### New console output from tests
 
@@ -420,20 +469,25 @@ assert_never(value)`, or an `if`/`elif` chain ending in `else: assert_never(valu
   logged at `WARNING` or above (through any logger; the exception's type and message are added for
   `logger.exception`), or raised as a warning (`DeprecationWarning: ...`). Standard output
   (`print`) never counts, and neither does a log record of a test that takes the `caplog` fixture,
-  because that test asserts on its logs. A warning raised while pytest collects a file is given to
-  that file with no test name.
+  because that test asserts on its logs. A logger with its own handler on standard error is reported
+  once, from standard error. A warning raised, or standard error printed, while pytest imports and
+  collects a file is given to that file with no test name.
 - **Matching.** The same as TypeScript, with the same code: a stderr traceback is one message
   without its frames and source lines, numbers, paths, times and ids are normalized, each message is
   reported once per test file, and a message that differs from a base message by one random-looking
   word matches it. `testConsole.allow` drops a third-party message the project cannot fix
   (`{ "contains": "old client is deprecated", "paths": ["tests/legacy/**"], "reason": "..." }`), and
-  the top-level `exceptions` entry for `test-console-output` lifts the rule for some test files;
-  `python.exceptions` refuses it, so there is one place for it in every preset. The message names
-  both.
+  an `exceptions` entry for `test-console-output` lifts the rule for some test files, in the
+  top-level `exceptions` as with TypeScript or in `python.exceptions` with the other Python rules.
+  The message names `testConsole.allow` and the top-level route.
 - **Measurement.** The pytest plugin of [slow tests](#slow-tests) records the messages in the run
-  that measures coverage, on both snapshots. Standard error is read from pytest's capture, so a
-  project that turns capture off (`-s` in `addopts`) shows only its log records and warnings.
-  `unittest` runs are not checked.
+  that measures coverage, on both snapshots. Standard error is read from pytest's capture. When the
+  project turns capture off (`-s` or `--capture=no` in `addopts` or `PYTEST_ADDOPTS`), the plugin
+  switches nitpicker's run back to `--capture=fd` before pytest starts capturing. That is safe for
+  the run: nitpicker shows no live test output anyway, and the only change a test can notice is that
+  reading standard input raises pytest's "reading from stdin while output is captured" error instead
+  of reaching the end of input. `--capture=sys` and `tee-sys` are left as they are. `unittest` runs
+  are not checked.
 
 ## Slice 1: tools, reports and identities
 
@@ -465,7 +519,7 @@ directory>` or `-m unittest discover` (with `-s tests` or `-s test` when that di
   `--lf` or `--sw` find their cache in the report directory. The coverage settings are nitpicker's,
   written to the report directory: branch coverage on, `parallel` off, `source` the source roots
   that exist in the snapshot, test files left out of measurement (`test_*.py`, `*_test.py`,
-  `conftest.py`, `*/tests/*`, `*/test/*`), and a fixed `exclude_lines` of the idioms that cannot be
+  `tests.py`, `conftest.py`, `*/tests/*`, `*/test/*`, `*/testing/*`), and a fixed `exclude_lines` of the idioms that cannot be
   tested (see Exceptions under slice 4). The project's own coverage configuration (`.coveragerc`, `setup.cfg`,
   `tox.ini`, `[tool.coverage]`) is not read, so its `exclude_lines`, `exclude_also`,
   `partial_branches`, `omit`, plugins and subprocess measurement are all dropped and the gate
@@ -496,7 +550,7 @@ directory>` or `-m unittest discover` (with `-s tests` or `-s test` when that di
 
 - **File limits.** The shared file-limit rule (`shared/rules/file-limits.mjs`) checks every `.py`
   file outside dot, virtualenv (`venv`, `env`), build, `migrations` and `__pycache__` folders: 300 lines per module, 500 per test
-  module (`test_*.py`, `*_test.py`, `conftest.py`, or anything under a `test` or `tests` folder),
+  module (a test file as defined under the rules),
   120 characters per line, and 6 modules (and separately 6 test modules) directly in one folder, where an `__init__.py` is checked but not counted. A
   file or folder already over a limit fails only when it grows, and a folder moved to a new path is
   matched to its old path.
@@ -546,7 +600,7 @@ directory>` or `-m unittest discover` (with `-s tests` or `-s test` when that di
 - **Which files.** The `.py` files under the source roots (see `sourceRoots`), skipping hidden
   directories, `__pycache__`, `node_modules` and `site-packages`. When the source root is the whole
   project (`.`: no `src/` and no top-level package), the directories source root detection never
-  treats as packages (`tests`, `test`, `docs`, `doc`, `examples`, `scripts`, `build`, `dist`, `env`,
+  treats as packages (`tests`, `test`, `testing`, `docs`, `doc`, `examples`, `scripts`, `build`, `dist`, `env`,
   `venv`; one list in `python-project.mjs`) and `conftest.py` are skipped too, so tests, build
   copies and virtualenvs are not gated. Node lists the files once per snapshot
   (`python-files.txt`) and hands the list to the metrics script. Tests are
@@ -665,8 +719,8 @@ or remove it if it can't happen. To exempt a file, add it to exclude in nitpicke
 ## Slice 5: duplicates, coupling and import contracts
 
 All three read only the production sources under `python.sourceRoots`. A file is not production
-code when it is `test_*.py`, `*_test.py` or `conftest.py`, or sits under a directory named `tests`,
-`test`, `migrations`, `build`, `dist`, `venv`, `site-packages`, `node_modules`, `__pycache__` or a
+code when it is `test_*.py`, `*_test.py`, `tests.py` or `conftest.py`, or sits under a directory
+named `tests`, `test`, `testing`, `migrations`, `build`, `dist`, `venv`, `site-packages`, `node_modules`, `__pycache__` or a
 hidden one such as `.venv`; the same list feeds jscpd's `--ignore`, the import scan and the module
 list. When the source root is `.` (a flat project without packages, or `python.sourceRoots`
 saying so), the top-level `docs`, `doc`, `examples` and `scripts` directories are skipped too, as
@@ -783,8 +837,8 @@ location.
   then only drops findings afterwards. If it has none, nitpicker adds one to the snapshot's
   `pyproject.toml` (never to your checkout, and it creates the file if the project has none, so
   that file is the one thing besides `mutants/` the preset writes into the snapshot):
-  `source_paths` is the source roots and `do_not_mutate` skips the test files (`tests/`,
-  `test_*.py`, `*_test.py`, `conftest.py`) and the `exclude` globs, so an excluded file that mutmut
+  `source_paths` is the source roots and `do_not_mutate` skips the test files (`tests/`, `test/`,
+  `testing/`, `test_*.py`, `*_test.py`, `tests.py`, `conftest.py`) and the `exclude` globs, so an excluded file that mutmut
   cannot parse (a Python 2 leftover) does not fail the run. Source roots of `.` are an error in
   that case, since mutmut would copy the whole project: set `python.sourceRoots` or
   `[tool.mutmut]`. A test that reads a file outside the copied sources fails mutmut's first run
@@ -846,7 +900,7 @@ results when that is safe: the `mutants/*.meta` files of the base work tree are 
 head work tree before `mutmut run`, and mutmut re-tests the mutants of the functions whose code
 changed and the ones it has no result for. This happens when every file changed between the base
 commit and head is an added or modified `.py` file under a source root that is not a test
-(`tests/`, `test/`, `test_*.py`, `*_test.py`, `conftest.py`). Anything else (a test, a dependency
+(a test file as defined under the rules). Anything else (a test, a dependency
 file, a deleted or renamed file, a file outside the project) runs every mutant. When the base side
 comes from the findings cache, there are no base results to copy and head runs every mutant.
 

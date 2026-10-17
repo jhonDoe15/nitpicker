@@ -51,10 +51,15 @@ backstop. It fails only on findings your change adds, so leave code the task doe
   not `STATUS_ACTIVE = "active"` constants or a class holding them. Settings like `DB_HOST` are fine.
 - Tests: use the project's runner (pytest or unittest). Every branch you add needs a test, and a
   surviving mutant fails: assert the exact value, so a changed line breaks a test.
+- A test you add or edit must stay fast (`slow-test`, 5 s per unit test by default): wait for a
+  condition instead of sleeping, and give a costly fixture a wider scope.
+- A test run that writes new output to stderr, logs a warning or raises a warning fails
+  (`test-console-output`): stop the thread or task, or fix the deprecated call, in the test.
 - A finding that flags legitimate code (a command line entry point that prints) is lifted in
-  `nitpicker.config.json`, under `python.exceptions`, with an entry such as
+  `nitpicker.config.json` with an entry such as
   `{ "rule": "T201", "paths": ["src/cli/**"], "reason": "..." }`, the rule being the id in the
-  message. Don't add one to get past the gate: stop and ask.
+  message, under the key the message names: `python.exceptions` for most rules, the top-level
+  `exceptions` for the file limits. Don't add one to get past the gate: stop and ask.
 
 ## Size
 

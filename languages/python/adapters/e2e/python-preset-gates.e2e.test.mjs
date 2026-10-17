@@ -95,6 +95,20 @@ describe.skipIf(!pythonE2eEnabled)('Python preset lint, type and rule gates end 
         },
       }),
     });
+    commitBranch(project, 'test-run-python-lifted', {
+      ...testFiles,
+      'nitpicker.config.json': JSON.stringify({
+        ...testRun,
+        testConsole: { allow: [{ contains: 'cache is cold', reason: 'fixture' }] },
+        python: {
+          exceptions: [
+            { rule: 'test-console-output', paths: ['tests/test_noisy.py'], reason: 'fixture' },
+            { rule: 'slow-test', paths: ['tests/**'], reason: 'fixture' },
+            { rule: 'fixed-sleep', paths: ['tests/**'], reason: 'fixture' },
+          ],
+        },
+      }),
+    });
   });
   afterAll(removeRepositories);
   it('passes a change that alters behaviour: base tests run against base code, not the editable head install', () => {
@@ -224,9 +238,11 @@ describe.skipIf(!pythonE2eEnabled)('Python preset lint, type and rule gates end 
       /"WARNING demo: cache is cold for key <n>" \(test "test_value_is_cached"\)/,
     );
     expect(result.text).toMatch(/test_value_is_cached took 0\.\d s; a unit test may take 0\.2 s/);
-    const lifted = gate(project, 'test-run-lifted');
-    expect(lifted.exitCode, lifted.text).toBe(0);
-    expect(enforceable(lifted)).toEqual([]);
+    for (const branch of ['test-run-lifted', 'test-run-python-lifted']) {
+      const lifted = gate(project, branch);
+      expect(lifted.exitCode, lifted.text).toBe(0);
+      expect(enforceable(lifted)).toEqual([]);
+    }
   });
   it('reports line coverage as a descriptive finding', () => {
     const result = gate(project, 'violation');
