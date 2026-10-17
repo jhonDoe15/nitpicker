@@ -78,7 +78,7 @@ jobs:
       - run: npm ci
       # The CLI takes the base from GITHUB_BASE_REF on a pull request and origin/main on a manual run;
       # policy is nitpicker.config.json.
-      # A loosening of nitpicker.config.json passes only when the repository owner sets the Actions
+      # A loosening of nitpicker.config.json passes only when a repository admin sets the Actions
       # variable NITPICKER_ACCEPT_POLICY_CHANGE to the digest the finding names.
       - name: nitpicker on itself
         run: node core/cli.mjs --output reports/nitpicker
