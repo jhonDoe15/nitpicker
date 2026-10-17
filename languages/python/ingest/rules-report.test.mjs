@@ -62,11 +62,7 @@ describe('rules script report', () => {
     ],
     ['random-in-domain', 'random.random', '`random.random()` draws randomness in domain code'],
     ['io-in-domain', 'requests', '`requests` does input or output in domain code'],
-    [
-      'module-level-mutable-state',
-      'ITEMS',
-      'The module-level collection `ITEMS` is changed by a function',
-    ],
+    ['module-level-mutable-state', 'ITEMS', '`ITEMS` changes a module-level collection'],
     [
       'unsafe-path-join',
       'read',
