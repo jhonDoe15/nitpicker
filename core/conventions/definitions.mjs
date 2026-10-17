@@ -3,11 +3,14 @@ import { KOTLIN_CONVENTIONS } from '../../languages/java/conventions/kotlin-conv
 import { kotlinStyle } from '../../languages/java/conventions/kotlin-style.mjs';
 import { PYTHON_CONVENTIONS } from '../../languages/python/conventions/python-conventions.mjs';
 import { pythonStyle } from '../../languages/python/conventions/python-style.mjs';
-import { PRETTIER_CONVENTIONS } from '../../languages/typescript/conventions/prettier-conventions.mjs';
+import {
+  JAVASCRIPT_CONVENTIONS,
+  TYPESCRIPT_CONVENTIONS,
+} from '../../languages/typescript/conventions/typescript-conventions.mjs';
 
 const BY_PRESET = new Map([
-  ['typescript', PRETTIER_CONVENTIONS],
-  ['javascript', PRETTIER_CONVENTIONS],
+  ['typescript', TYPESCRIPT_CONVENTIONS],
+  ['javascript', JAVASCRIPT_CONVENTIONS],
   ['java', JAVA_CONVENTIONS],
   ['kotlin', [...JAVA_CONVENTIONS, ...KOTLIN_CONVENTIONS]],
   ['python', PYTHON_CONVENTIONS],

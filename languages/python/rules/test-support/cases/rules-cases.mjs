@@ -2,6 +2,13 @@ import { rulesCases } from './define.mjs';
 
 export const RULES_CASES = [
   ...rulesCases('sql-queries', [['sql-string-formatting', 'query parameters']]),
+  ...rulesCases('tls-verification', [['tls-verification-off', 'trust the certificate authority']]),
+  ...rulesCases('security-support-rules', [
+    ['tls-verification-off', 'verify_mode = ssl.cert_optional'],
+  ]),
+  ...rulesCases('weak-hmac', [['weak-hmac', 'hashlib.sha256']]),
+  ...rulesCases('http-client-timeout', [['http-without-timeout', 'timeout=10']]),
+  ...rulesCases('unsafe-model-loading', [['unsafe-deserialization', 'yaml.safe_load']]),
   ...rulesCases('shell-command-forms', [['shell-command', 'shell=false']]),
   ...rulesCases('env-access', [['process-env-access', 'composition root']]),
   ...rulesCases('domain-clock', [['clock-now', 'datetime.now(tz=utc)']]),

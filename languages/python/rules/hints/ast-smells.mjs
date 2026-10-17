@@ -78,13 +78,6 @@ export const SMELL_HINTS = [
   },
   {
     tool: RULES_TOOL,
-    rules: ['sql-string-formatting'],
-    describe: (subject) => `\`${subject}\` runs a query built by formatting a string`,
-    allowed:
-      'Pass the values as query parameters: `cursor.execute("SELECT * FROM users WHERE id = %s", (user_id,))`, or `session.execute(text("SELECT * FROM users WHERE id = :id"), {"id": user_id})` in SQLAlchemy.',
-  },
-  {
-    tool: RULES_TOOL,
     rules: ['repeated-string-literal'],
     describe: (subject) => `The string "${subject}" is repeated three times or more`,
     allowed:
