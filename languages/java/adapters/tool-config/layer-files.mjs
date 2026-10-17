@@ -4,7 +4,7 @@ import { GRADLE_DIRECTORY } from '../../builds/java-build.mjs';
 import { layerPmdRulesets } from './pmd-layers.mjs';
 
 export const NITPICKER_RULESET = path.join(GRADLE_DIRECTORY, 'pmd-ruleset.xml');
-export const TEST_RULESET = path.join(GRADLE_DIRECTORY, 'pmd-test-only.xml');
+export const TEST_RULESET = path.join(GRADLE_DIRECTORY, 'pmd-test-ruleset.xml');
 
 export function pmdLayerFiles({ project, projectWins = true, assertionHelpers = [], directory }) {
   if (project === undefined && assertionHelpers.length === 0) {

@@ -79,6 +79,7 @@ function javaAdapterArguments({
   exceptions = [],
   kotlin = {},
   tools = {},
+  testConsole = {},
 }) {
   const fileLimits = chosenThresholds(thresholds, FILE_LIMIT_THRESHOLDS);
   const testSeconds = chosenThresholds(thresholds, TEST_TIME_THRESHOLDS);
@@ -87,6 +88,9 @@ function javaAdapterArguments({
     ...exclude.flatMap((glob) => ['--exclude', glob]),
     ...(fileLimits === undefined ? [] : ['--file-limits', JSON.stringify(fileLimits)]),
     ...(testSeconds === undefined ? [] : ['--test-seconds', JSON.stringify(testSeconds)]),
+    ...(testConsole.allow === undefined
+      ? []
+      : ['--test-console-allow', JSON.stringify(testConsole.allow)]),
     ...exceptions.flatMap(({ rule, paths }) =>
       paths.flatMap((glob) => ['--exception', `${rule}${EXCEPTION_SEPARATOR}${glob}`]),
     ),
