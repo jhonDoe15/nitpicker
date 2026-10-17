@@ -10,6 +10,7 @@ import {
   renderMessage,
 } from '../../../../shared/policy.mjs';
 import { isSpringBootTest } from './spring-boot-tests.mjs';
+import { inheritedMethod, superclassOf } from './inherited-tests.mjs';
 import { templateMethods, testMethod } from './test-methods.mjs';
 
 const SLOW_TEST_TOOL = 'test-runtime';
@@ -84,24 +85,64 @@ function isIntegration(testCase, text, context) {
   );
 }
 
-function unnamedCaseChanged(baseText, text, className) {
+function sameUnnamedCase(baseText, text, className) {
   const baseTemplates = templateMethods(baseText, className);
   const templates = templateMethods(text, className);
-  return baseTemplates === '' && templates === '' ? baseText !== text : baseTemplates !== templates;
+  return baseTemplates === '' && templates === '' ? baseText === text : baseTemplates === templates;
 }
 
-function isChanged({ testCase, source, text, method, modulePath }, baselineRoot) {
+function sameTest(baseText, { testCase, method }) {
+  if (method === undefined) {
+    return sameUnnamedCase(baseText, testCase.text, testCase.className);
+  }
+  return testMethod(baseText, testCase.name, testCase.className)?.text === method.text;
+}
+
+function movedFrom(baselineRoot, { source, modulePath, testRoots, projectRoot }) {
+  const name = path.basename(source);
+  return testRoots.flatMap((root) => {
+    const directory = path.join(baselineRoot, inModule(modulePath, root));
+    return existsSync(directory)
+      ? readdirSync(directory, { recursive: true })
+          .filter((entry) => path.basename(entry) === name)
+          .filter((entry) => !existsSync(path.join(projectRoot, root, entry)))
+          .map((entry) => readFileSync(path.join(directory, entry), 'utf8'))
+      : [];
+  });
+}
+
+function inheritedChanged(slow, baselineRoot) {
+  const { declaring, method, modulePath, testCase, text } = slow;
+  const baseText = readOptional(baselineRoot, inModule(modulePath, slow.source));
+  const owners = baseText === undefined ? movedFrom(baselineRoot, slow) : [baseText];
+  const baseDeclaring = readOptional(baselineRoot, inModule(modulePath, declaring.source));
+  return (
+    !owners.some(
+      (owner) => superclassOf(owner, testCase.className) === superclassOf(text, testCase.className),
+    ) ||
+    baseDeclaring === undefined ||
+    testMethod(baseDeclaring, testCase.name, declaring.className)?.text !== method.text
+  );
+}
+
+function isChanged(slow, baselineRoot) {
+  const { source, text, modulePath } = slow;
+  if (slow.declaring !== undefined) {
+    return inheritedChanged(slow, baselineRoot);
+  }
   const baseText = readOptional(baselineRoot, source && inModule(modulePath, source));
-  if (baseText === undefined || text === undefined) {
+  if (text === undefined) {
     return baseText !== text;
   }
-  if (method === undefined) {
-    return unnamedCaseChanged(baseText, text, testCase.className);
+  const compared = { testCase: { ...slow.testCase, text }, method: slow.method };
+  if (baseText !== undefined) {
+    return !sameTest(baseText, compared);
   }
-  return testMethod(baseText, testCase.name, testCase.className)?.text !== method.text;
+  return !movedFrom(baselineRoot, slow).some((moved) => sameTest(moved, compared));
 }
 
-function slowTestFinding({ testCase, source, method, limit, integration, modulePath }) {
+function slowTestFinding({ testCase, method, limit, integration, modulePath, ...slow }) {
+  const source = slow.declaring?.source ?? slow.source;
   const exception = JSON.stringify({
     rule: `${SLOW_TEST_TOOL}/${RULE_IDS.slowTest}`,
     paths: [inModule(modulePath, source ?? '.')],
@@ -137,9 +178,15 @@ export function readSlowTestFindings(options) {
     const text = readOptional(projectRoot, source);
     const integration = isIntegration(testCase, text, { locate, projectRoot });
     const limit = integration ? budget.integrationTestSeconds : budget.unitTestSeconds;
-    const method =
+    const own =
       text === undefined ? undefined : testMethod(text, testCase.name, testCase.className);
-    const slow = { testCase, source, text, method, limit, integration, modulePath };
+    const declaring =
+      own === undefined && text !== undefined
+        ? inheritedMethod({ text, testCase, locate, projectRoot })
+        : undefined;
+    const method = own ?? declaring?.method;
+    const slow = { testCase, source, text, method, declaring, limit, integration, modulePath };
+    Object.assign(slow, { testRoots, projectRoot });
     const counted = baseline?.baselineRoot === undefined || isChanged(slow, baseline.baselineRoot);
     return testCase.seconds > limit && counted ? [slowTestFinding(slow)] : [];
   });

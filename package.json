@@ -52,6 +52,8 @@
     "!**/fixtures/**",
     "!**/test-support/**",
     "!**/README.md",
+    "!**/__pycache__/**",
+    "!**/*.pyc",
     "skills/**"
   ],
   "exports": {
