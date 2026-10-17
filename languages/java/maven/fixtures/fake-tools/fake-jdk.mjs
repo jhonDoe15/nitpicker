@@ -66,6 +66,7 @@ function java() {
     process.stderr.write('openjdk version "21.0.1" 2023-10-17\n');
   } else if (script?.endsWith('StructureMetrics.java')) {
     put(tokens[tokens.indexOf(script) + 1], '[]');
+    put(tokens[tokens.indexOf(script) + 2], '{"files":{},"classes":[]}');
   } else if (script?.endsWith('ErrorProneReport.java')) {
     put(tokens[tokens.indexOf(script) + 1], '[]\n');
   } else {

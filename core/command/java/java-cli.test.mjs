@@ -230,22 +230,30 @@ Full diagnostics: /tmp/nitpicker-java-out-${/[A-Za-z0-9]{6}/}/reports/report.txt
   });
   it('lets an exception entry for the rule and path allow a new finding', () => {
     const root = repository();
+    const config = `${JSON.stringify({
+      preset: 'java',
+      exceptions: [
+        {
+          rule: 'pmd/UnusedPrivateField',
+          paths: ['src/main/java/demo/A.java'],
+          reason: 'generated holder',
+        },
+      ],
+    })}\n`;
     writeFiles(root, {
-      'nitpicker.config.json': `${JSON.stringify({
-        preset: 'java',
-        exceptions: [
-          {
-            rule: 'pmd/UnusedPrivateField',
-            paths: ['src/main/java/demo/A.java'],
-            reason: 'generated holder',
-          },
-        ],
-      })}\n`,
+      'nitpicker.config.json': config,
       'violations.txt': 'Avoid unused field: legacy\nAvoid unused field: added\n',
     });
     commit(root, 'add a violation with an exception');
 
-    const result = run(root);
+    const digest = acceptedDigest(
+      ['exception added: pmd/UnusedPrivateField for src/main/java/demo/A.java (generated holder)'],
+      {
+        'nitpicker.config.json': config,
+        'src/main/java/demo/A.java': 'package demo;\n\npublic final class A {}\n',
+      },
+    );
+    const result = run(root, [`--accept-policy-change=${digest}`], { interactive: true });
 
     expect(result.exitCode, result.text).toBe(0);
     expect(result.json('new-findings.json')).toEqual([]);
