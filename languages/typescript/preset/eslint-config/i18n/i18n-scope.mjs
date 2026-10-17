@@ -1,7 +1,10 @@
 import { hasScopePackage, productionScope, storyGlobs } from '../scope-support.mjs';
 import { i18nRules } from './i18n-rules.mjs';
 
-export function isI18nProject({ projectRoot, i18n = {} }) {
+export function isI18nProject({ projectRoot, i18n = {}, javascript = false }) {
+  if (javascript) {
+    return false;
+  }
   return i18n.enabled ?? hasScopePackage(projectRoot, 'i18n');
 }
 

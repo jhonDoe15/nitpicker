@@ -65,6 +65,16 @@ describe('i18n detection', () => {
     expect(isI18nProject({ projectRoot: projectWith(manifest) })).toBe(false);
   });
 
+  it('stays off for the JavaScript preset whatever package.json or the config says', () => {
+    const withIntl = projectWith(manifestWith({ dependencies: { 'react-intl': '7.0.0' } }));
+
+    expect(isI18nProject({ projectRoot: withIntl, javascript: true })).toBe(false);
+    expect(
+      isI18nProject({ projectRoot: withIntl, i18n: { enabled: true }, javascript: true }),
+    ).toBe(false);
+    expect(isI18nProject({ projectRoot: withIntl, javascript: false })).toBe(true);
+  });
+
   it('lets the config switch the scope on or off whatever package.json says', () => {
     const withIntl = projectWith(manifestWith({ dependencies: { 'react-intl': '7.0.0' } }));
     const withoutIntl = projectWith(manifestWith({}));

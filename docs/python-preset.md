@@ -13,9 +13,8 @@ and converting them into findings.
 
 The purpose is the same as everywhere else: narrow a flexible language to roughly one allowed way
 of doing each thing. That "one way" lives in the code and architecture rules (slices 2 to 5), not in
-which tools a project uses, so the preset detects the tools a project already has (uv, poetry or a
-plain virtualenv; ruff or black; pytest, unittest, Django's `manage.py test` or nose2) and never makes
-adoption depend on switching.
+which tools a project uses, so the preset detects the tools a project already has (uv, poetry,
+pipenv, hatch, conda or a plain virtualenv; ruff or black; pytest, unittest, Django's `manage.py test` or nose2) and never makes adoption depend on switching.
 
 ## How it works
 
@@ -63,18 +62,30 @@ directory is the contract between the tool runs and the readers; later slices ad
 The tools run inside the environment the project already has, detected in this order (the first
 that applies wins):
 
-| Order | Detected by                 | The tools run as                                                                                             |
-| ----- | --------------------------- | ------------------------------------------------------------------------------------------------------------ |
-| 0     | `python.environment` is set | `uv`, `poetry` or `path` as named; any other value is a virtualenv directory, inside the project or absolute |
-| 1     | `uv.lock`                   | `uv run --project <checkout> --no-sync -- <tool>`; needs `uv sync` to have run (or `UV_PROJECT_ENVIRONMENT`) |
-| 2     | `poetry.lock`               | the virtualenv `poetry env info --path` reports, first on `PATH`; needs `poetry install` to have run         |
-| 3     | a uv workspace root above   | as 1: an ancestor with a `uv.lock` and a `[tool.uv.workspace]` table; its `.venv` is the environment         |
-| 4     | a `.venv/` directory        | `.venv/bin` first on `PATH`, `VIRTUAL_ENV` set                                                               |
-| 5     | nothing                     | `ruff`, `black`, `coverage`, `mypy`, `pyright`, `basedpyright` and `python3` from the `PATH`                 |
+| Order | Detected by                                                   | The tools run as                                                                                                                                               |
+| ----- | ------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 0     | `python.environment` is set                                   | `uv`, `poetry`, `pipenv`, `hatch`, `conda` or `path` as named; any other value is a virtualenv directory, inside the project or absolute                       |
+| 1     | `uv.lock`                                                     | `uv run --project <checkout> --no-sync -- <tool>`; needs `uv sync` to have run (or `UV_PROJECT_ENVIRONMENT`)                                                   |
+| 2     | `poetry.lock`                                                 | the virtualenv `poetry env info --path` reports, first on `PATH`; needs `poetry install` to have run                                                           |
+| 3     | a uv workspace root above                                     | as 1: an ancestor with a `uv.lock` and a `[tool.uv.workspace]` table; its `.venv` is the environment                                                           |
+| 4     | a `Pipfile` or `Pipfile.lock`                                 | the virtualenv `pipenv --venv` reports, first on `PATH`; needs `pipenv install --dev` to have run                                                              |
+| 5     | `[tool.hatch.envs...]` in `pyproject.toml`, or a `hatch.toml` | the environment `hatch env find` reports (the default one), first on `PATH`; needs `hatch env create`                                                          |
+| 6     | an `environment.yml` or `environment.yaml`                    | the `prefix:` it declares, else the environment `conda env list` finds under its `name:`; tools run by their path in that environment, with `CONDA_PREFIX` set |
+| 7     | a `.venv/` directory                                          | `.venv/bin` first on `PATH`, `VIRTUAL_ENV` set                                                                                                                 |
+| 8     | nothing                                                       | `ruff`, `black`, `coverage`, `mypy`, `pyright`, `basedpyright` and `python3` from the `PATH`                                                                   |
 
-The environment is always the one of the live checkout (the head work tree you run `nitpicker` in).
-It is never created or synced by nitpicker: the uv environment is checked before `uv run --no-sync`
-is called, so a missing `.venv` is an error and not an empty environment created in your checkout.
+An activated conda environment of a project without an `environment.yml` is already served by the
+last row: its `bin` is first on the `PATH`. For pipenv, hatch and conda found by detection, a missing manager command is not an error: the
+detection goes on with the next row, because the tools may be on the `PATH` (a CI job that installed
+them with `pip`). When the manager runs and has no environment for the project, or the setting names
+it and it is not installed, the run stops with an `environment-failed` error that says how to create
+it and how to install the manager (`uv`, `poetry`, `pipenv`, `hatch`, `conda`).
+
+The environment of the head is always the one of the live checkout (the head work tree you run
+`nitpicker` in). It is never created or synced by nitpicker: the uv environment is checked before
+`uv run --no-sync` is called, so a missing `.venv` is an error and not an empty environment created
+in your checkout. The base snapshot gets an environment of its own only when its dependency files
+differ from the head's (next section).
 A virtualenv outside the project (a shared `/opt/venv`, an activated CI environment) is used with
 an absolute `python.environment`. A tool that is
 not installed in the environment but is on the `PATH` (typically `ruff`, which many projects use
@@ -82,7 +93,7 @@ from `pipx` or `uvx`) is used from the `PATH`. `coverage` and the test runner (p
 nose2) must be in the environment, since the runner imports the project's code and dependencies;
 the error says so.
 
-### The base snapshot has no environment of its own
+### The base snapshot and its environment
 
 The base side is a separate git work tree of the merge base, and it has no virtualenv. Running the
 live checkout's environment there would normally import the wrong code: the project is usually
@@ -96,14 +107,36 @@ before the `.pth` files and import hooks editable installs use, so the snapshot'
 Tests run with the snapshot as working directory (a Django project's from the directory of its
 `manage.py`), so `tests/`, `tests.py` and `conftest.py` are the snapshot's too, and coverage only measures the snapshot's source roots.
 
-Why not the dependency hook (`languages/typescript/adapters/dependency-graph/dependency-hooks.mjs`)? A hook installs
-a directory into the snapshot (`npm ci` for `node_modules`) and removes it afterwards. For Python
-that means building a second environment per snapshot: minutes of work, network access, and the
-base would be analyzed with the base's pinned tool versions while head uses head's, so every
-upgrade of ruff would show up as new findings. One environment for both sides keeps the tool
-versions identical, which is what a differential gate needs. The cost is that base is analyzed
-with head's dependencies; a change that needs a new dependency to even import its base sources is
-rare, and the CI job that runs the gate has the head environment installed anyway.
+When the change touches the dependencies, the base would still import head's packages, so the base
+snapshot gets its own environment. nitpicker compares the dependency files of the base snapshot
+with the head's: `uv.lock`, `poetry.lock`, `pdm.lock`, `Pipfile`, `Pipfile.lock`, the
+`requirements*.txt` and `constraints*.txt` files at the root and the `*.txt` files of a
+`requirements/` folder (byte for byte), and the dependency tables of `pyproject.toml`
+(`project.dependencies`, `optional-dependencies`, `requires-python`, `dependency-groups`,
+`build-system`, `tool.poetry` dependencies, groups and extras, `tool.uv`, `tool.pdm`
+dev-dependencies and resolution; any other setting is ignored). If nothing differs, the base uses the head's
+environment, as above. If something differs, the project's own tool builds `.venv` inside the
+snapshot, which is deleted with it, and the base tools run from it:
+
+| The base snapshot has | Command run in the snapshot                                                                                  | Skips                                                                    |
+| --------------------- | ------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------ |
+| `uv.lock`             | `uv sync --frozen --no-install-project --no-install-workspace`                                               | the project and its workspace members                                    |
+| `poetry.lock`         | `poetry install --no-root --no-interaction`                                                                  | the project                                                              |
+| `pdm.lock`            | `pdm sync --no-self`                                                                                         | the project                                                              |
+| `Pipfile.lock`        | `pipenv sync --dev`                                                                                          | refused when the lock has editable or path packages                      |
+| `requirements*.txt`   | `python3 -m venv .venv`, then `.venv/bin/python -m pip install --prefer-binary -r <copy> [-c <constraints>]` | `-e`, paths, `file:` URLs, includes and constraints outside the snapshot |
+
+`python.environment` picks the tool when it is `uv`, `poetry` or `pipenv`; with it unset the first
+lock file in the order above wins, and requirements files are used when no lock file is there and
+the project declares no pipenv, hatch or conda environment. `path`, `hatch`, `conda`, a directory and an
+absolute path keep the head's environment for the base, because those are environments nitpicker
+cannot rebuild from files. The commands never run the base's own setup code: the project itself is
+not installed, and the requirements copy drops editable and local entries. The packages the
+lock file lists are installed as the tool would install them, so their own build steps run.
+If the install fails, or the tool is not installed, the run stops with an `environment-failed`
+error that names the command and how to install the tool. A tool that the project's dev
+dependencies provide (`ruff`, `mypy`, `pytest`) runs in the base at the version the base locks, so
+a change that upgrades one of them compares the new version's findings against the old version's.
 
 Limits: compiled extension modules of the project itself that are built into the environment are
 not rebuilt for base; and a project whose code does not live under the detected source roots must
@@ -144,16 +177,16 @@ the Python equivalent of
 }
 ```
 
-| Key            | Values                                  | Default                                                                              |
-| -------------- | --------------------------------------- | ------------------------------------------------------------------------------------ |
-| `environment`  | `uv`, `poetry`, `path`, or a directory  | detected, see above                                                                  |
-| `formatter`    | `ruff`, `black`                         | `black` if the project declares it (see below) and not ruff's formatter, else `ruff` |
-| `testRunner`   | `pytest`, `unittest`, `django`, `nose2` | detected from the project (see below), else `unittest`                               |
-| `typeChecker`  | `mypy`, `pyright`, `basedpyright`       | detected from the project, see below                                                 |
-| `importLinter` | `true`, `false`                         | run when the project has an import-linter config (see slice 5), else not             |
-| `sourceRoots`  | non-empty array of project directories  | `src`, else the top-level packages (directories with `__init__.py`), else `.`        |
-| `entryPoints`  | array of project-relative globs         | none; see [Composition roots](#the-shared-one-way-rules)                             |
-| `exceptions`   | array of `{ rule, paths, reason }`      | none; see [Exceptions](#exceptions)                                                  |
+| Key            | Values                                                             | Default                                                                              |
+| -------------- | ------------------------------------------------------------------ | ------------------------------------------------------------------------------------ |
+| `environment`  | `uv`, `poetry`, `pipenv`, `hatch`, `conda`, `path`, or a directory | detected, see above                                                                  |
+| `formatter`    | `ruff`, `black`                                                    | `black` if the project declares it (see below) and not ruff's formatter, else `ruff` |
+| `testRunner`   | `pytest`, `unittest`, `django`, `nose2`                            | `pytest` if the project uses it (see below), else `unittest`                         |
+| `typeChecker`  | `mypy`, `pyright`, `basedpyright`                                  | detected from the project, see below                                                 |
+| `importLinter` | `true`, `false`                                                    | run when the project has an import-linter config (see slice 5), else not             |
+| `sourceRoots`  | non-empty array of project directories                             | `src`, else the top-level packages (directories with `__init__.py`), else `.`        |
+| `entryPoints`  | array of project-relative globs                                    | none; see [Composition roots](#the-shared-one-way-rules)                             |
+| `exceptions`   | array of `{ rule, paths, reason }`                                 | none; see [Exceptions](#exceptions)                                                  |
 
 `python.entryPoints` lists the files that start the program, such as a job runner or a worker that
 reads its settings from the environment (see the composition roots below). Adding a file there
@@ -501,7 +534,7 @@ Details that are decisions rather than the table:
   survive edits above; repeats in a file are numbered. The message says to re-raise it with its
   cause (`raise DomainError(...) from error`), return a failure value built from it or a named
   default, that logging alone is not handling, that `contextlib.suppress(SpecificError)` ignores
-  one expected error, and the `python.exceptions` entry for `swallowed-exception` for a handler that
+  one expected error, that a test uses `pytest.raises(SpecificError)` (`self.assertRaises` in unittest), and the `python.exceptions` entry for `swallowed-exception` for a handler that
   must stay (a lookup that answers `False` for bad input, say). Untested `except` handlers are not
   gated by branch coverage either, since coverage.py emits no arcs for them.
 - `blind-suppress` closes the way around the rule above: `contextlib.suppress(Exception)`,
@@ -510,7 +543,7 @@ Details that are decisions rather than the table:
   stands for. The subject is the call as written with the resolved name, for example
   `contextlib.suppress(Exception)`; a `suppress` imported from anywhere other than `contextlib` is
   not checked. The message points to naming the expected exception, or handling or logging the
-  error, and to the `python.exceptions` entry for `blind-suppress`.
+  error, to `pytest.raises` in a test, and to the `python.exceptions` entry for `blind-suppress`.
 - `ruff check` runs with `--ignore-noqa`, so a `noqa` never hides a finding either.
 
 ### The shared one-way rules
@@ -888,8 +921,10 @@ directory>` or `test-runs/unittest_timings.py <report> discover` (unittest's own
   and writes one object per function to `structure.json`. It is run by the project's own Python
   (`python <script> <output> <project> <file list>`), so it needs no dependency and no pin, and it
   parses with the grammar of the interpreter the project uses; a file that does not parse is
-  skipped, as is a file too deeply nested for the parser (`RecursionError`, `MemoryError`); ruff's
-  `E9` rules already report a syntax error. The four limit metrics and the cyclomatic complexity
+  skipped, since ruff's `E9` rules already report a syntax error; a file too deeply nested for the
+  parser (`RecursionError`, `MemoryError`) stops the run with a `structure-failed` tool error that
+  names the file, as an unparsable TypeScript file does, because no other tool reports it and
+  skipping it would leave it outside the structure gate unnoticed. The four limit metrics and the cyclomatic complexity
   (the CRAP input) all come from this one script, like `StructureMetrics.java` for Java; no
   external tool is involved.
 - **Definitions** (the TypeScript analyzer's, applied to Python syntax). Unit: every `def` and
@@ -933,8 +968,10 @@ directory>` or `test-runs/unittest_timings.py <report> discover` (unittest's own
   outside the default source roots, so they are not gated.
 - **Findings.** Same as Java: `languages/python/adapters/analysis/python-structure.mjs` gives the metrics to
   `evaluateStructure` and keeps the enforceable limit findings (tool `structure`; the descriptive
-  per-function metrics are not emitted). Identity: qualified name, occurrence among equal names in
-  the file, and a hash of the function text with the common indentation removed, so moving or
+  per-function metrics are not emitted). Identity: qualified name, occurrence among the functions of that name and the same text
+  that are over the same limit (so a property getter and setter, or a function defined in two
+  branches, do not renumber each other when another of that name is added above; the CRAP identity
+  numbers the same way, and so do the TypeScript structure and CRAP findings), and a hash of the function text with the common indentation removed, so moving or
   re-indenting a whole function keeps it baselined while changing the nesting of a statement inside
   it counts as an edit (Java trims every line, which would hide that in Python).
 - **Cyclomatic complexity** (`complexity`, the CRAP input). Computed by the same script from the
