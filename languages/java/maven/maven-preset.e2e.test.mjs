@@ -311,9 +311,10 @@ describe.skipIf(!enabled)('Java preset on Maven builds', () => {
           )
           .map(({ tool, rule, path: file }) => `${tool} ${rule} ${file}`),
       ).toEqual([
+        'jacoco line-coverage core/src/main/java/demo/core/Adder.java',
         'errorprone PrivateConstructorForUtilityClass app/src/main/java/demo/app/Main.java',
         'errorprone SystemOut app/src/main/java/demo/app/Main.java',
-        'jacoco line-coverage core/src/main/java/demo/core/Adder.java',
+        'jacoco line-coverage app/src/main/java/demo/app/Main.java',
       ]);
     },
     GRADLE_STEP_TIMEOUT_MS,
