@@ -76,7 +76,7 @@ export function readJavaFindings(projectRoot, options = {}) {
             })
           : []),
         ...readInlineSuppressionFindings(projectRoot, lintedRoots(manifest)),
-        ...springFindings(projectRoot, manifest),
+        ...springFindings(projectRoot, manifest, options),
       ],
       { preset },
     ),
@@ -157,11 +157,19 @@ function lintedRoots({ sourceRoots = [], testSourceRoots = [] }) {
   return [...new Set([...sourceRoots, ...testSourceRoots])];
 }
 
-function springFindings(projectRoot, manifest) {
+function baselineRootOf({ baseline, modulePath }) {
+  return baseline?.snapshot === 'head' && baseline.baselineRoot !== undefined
+    ? path.join(baseline.baselineRoot, modulePath ?? '')
+    : undefined;
+}
+
+function springFindings(projectRoot, manifest, options) {
   return manifest.spring === true
     ? readSpringConfigFindings(projectRoot, {
         sourceRoots: manifest.sourceRoots,
         resourceRoots: manifest.resourceRoots,
+        testSourceRoots: manifest.testSourceRoots,
+        baselineRoot: baselineRootOf(options),
       })
     : [];
 }

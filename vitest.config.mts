@@ -15,5 +15,6 @@ export default defineConfig({
     },
     include: ['{core,shared,languages,scripts}/**/*.test.mjs', 'evals/**/*.test.mjs'],
     testTimeout: 30_000,
+    hookTimeout: 30_000,
   },
 });
