@@ -1,78 +1,31 @@
 import { ancestorsOf } from '../../analysis/ancestry.mjs';
 import { findVariable } from '../../analysis/constant-resolution.mjs';
-import {
-  bindingsOf,
-  importedFunction,
-  leafValues,
-  memberName,
-  unwrapped,
-} from '../security-values.mjs';
-import {
-  classify,
-  compositionKind,
-  hasRuntimeValue,
-  looksLikeSql,
-  piecesOf,
-} from './sql-composition.mjs';
+import { bindingsOf, importedFunction } from '../imported-names.mjs';
+import { compositionKind, hasRuntimeValue, looksLikeSql, piecesOf } from './sql-composition.mjs';
+import { classify } from './sql-inert.mjs';
+import { sinkFor, variableSink } from './sql-sinks.mjs';
 
-const SQL_CALL_NAME =
-  /^(?:\$?(?:query|execute|exec|raw|run|all|get|each|prepare|unsafe|batch)\w*|\w*(?:query|sql|execute)\w*)$/iu;
 const FORMAT_MODULES = new Set(['util', 'node:util', 'sprintf-js']);
 const FORMAT_FUNCTIONS = new Set(['format', 'sprintf']);
-const WRAPPERS = new Set(['Property', 'ObjectExpression', 'ArrayExpression']);
 const COMPOSITION_TYPES = new Set(['BinaryExpression', 'TemplateLiteral', 'CallExpression']);
+const EXAMPLE = 'SELECT * FROM users WHERE id = ${id}';
+const TAGGED_TEMPLATES = new Map([
+  ['@prisma/client', `\`prisma.$queryRaw\`${EXAMPLE}\`\` (Prisma)`],
+  ['drizzle-orm', `\`sql\`${EXAMPLE}\`\` from drizzle-orm`],
+  ['kysely', `\`sql\`${EXAMPLE}\`\` from kysely`],
+  ['postgres', `\`sql\`${EXAMPLE}\`\` (postgres)`],
+  ['slonik', `\`sql.unsafe\`${EXAMPLE}\`\` from slonik`],
+  ['@databases/pg', `\`sql\`${EXAMPLE}\`\` from @databases/pg`],
+  ['sql-template-strings', `\`SQL\`${EXAMPLE}\`\` from sql-template-strings`],
+]);
+const ANY_TAGGED_TEMPLATE =
+  'a tagged template where the driver has one (`sql`... ${id}`` in drizzle-orm, kysely or postgres, `prisma.$queryRaw`...``), or ';
 
-function calleeName(context, callee) {
-  const target = unwrapped(callee);
-  if (target.type === 'MemberExpression') {
-    return memberName(target);
-  }
-  if (target.type !== 'Identifier') {
-    return undefined;
-  }
-  const alias = leafValues(context, target).find((leaf) => leaf.type === 'MemberExpression');
-  return alias === undefined ? target.name : memberName(alias);
-}
+export const SQL_LIBRARIES = [...TAGGED_TEMPLATES.keys()];
 
-function isSqlCall(context, call) {
-  const name = call.type === 'CallExpression' ? calleeName(context, call.callee) : undefined;
-  return name !== undefined && SQL_CALL_NAME.test(name);
-}
-
-function consumingCall(node) {
-  const owners = ancestorsOf(node);
-  const call = owners.find((owner) => !WRAPPERS.has(owner.type));
-  return call?.type === 'CallExpression' && call.callee !== node ? call : undefined;
-}
-
-function assignedTarget(node) {
-  const holder = node.parent;
-  if (holder.type === 'VariableDeclarator' && holder.init === node) {
-    return holder.id;
-  }
-  return holder.type === 'AssignmentExpression' && holder.right === node ? holder.left : undefined;
-}
-
-function variableOf(context, node) {
-  const target = assignedTarget(node);
-  return target?.type === 'Identifier' ? findVariable(context, target, target.name) : undefined;
-}
-
-function variableReachesSqlCall(context, variable) {
-  return (
-    variable?.references.some((reference) => {
-      const call = consumingCall(reference.identifier);
-      return reference.isRead() && call !== undefined && isSqlCall(context, call);
-    }) === true
-  );
-}
-
-function reachesSqlCall(context, node) {
-  const direct = consumingCall(node);
-  return (
-    (direct !== undefined && isSqlCall(context, direct)) ||
-    variableReachesSqlCall(context, variableOf(context, node))
-  );
+export function taggedForm(library) {
+  const form = TAGGED_TEMPLATES.get(library);
+  return form === undefined ? ANY_TAGGED_TEMPLATE : `${form}, or `;
 }
 
 function initialPieces(context, identifier, isFormatCall) {
@@ -91,25 +44,36 @@ export const rule = {
   meta: {
     type: 'problem',
     docs: { description: 'Disallow SQL text built from runtime values' },
-    schema: [],
+    schema: [
+      {
+        type: 'object',
+        properties: { sqlLibrary: { type: 'string' } },
+        additionalProperties: false,
+      },
+    ],
     messages: {
       sqlBuilt:
-        'SQL text built by {{kind}} lets a runtime value change the statement (SQL injection). Pass values as bind parameters: `pool.query("SELECT * FROM users WHERE id = $1", [id])` (pg), `?` with an array (mysql2, sqlite, knex.raw), `:name` (sequelize, typeorm); a list of ids is `ids.map(() => "?").join(",")`; a table or column name comes from a fixed lookup (`const COLUMNS = { name: "name" } as const; COLUMNS[key]`). If the value is trusted and cannot be written that way, add an exception for this rule in nitpicker.config.json.',
+        'SQL text built by {{kind}} lets a runtime value change the statement (SQL injection). Use {{tagged}}bind parameters: `pool.query("SELECT * FROM users WHERE id = $1", [id])` (pg), `?` with an array (mysql2, sqlite, knex.raw, knex.whereRaw), `:name` (sequelize, typeorm `.where("user.id = :id", { id })`). Placeholder lists are built from placeholders alone: `ids.map(() => "?").join(",")`, rows as `rows.map(() => "(?, ?)").join(", ")`, `$${i + 1}`, and optional filters as `conditions.push("name = ?")` joined with `" AND "`. A table or column name comes from a fixed lookup (`const COLUMNS = { name: "name" } as const; COLUMNS[key]`) or a value typed as a union of literal names (`table: "users" | "orders"`). If the value is trusted and cannot be written that way, add an exception for this rule in nitpicker.config.json.',
     },
   },
   create(context) {
     const reported = new Set();
+    const tagged = taggedForm(context.options[0]?.sqlLibrary);
     let formatters = bindingsOf({ body: [] }, FORMAT_MODULES);
 
     function isFormatCall(call) {
       return FORMAT_FUNCTIONS.has(importedFunction(context, call.callee, formatters));
     }
 
-    function check(node, pieces, inSqlCall) {
+    function check(node, pieces, sink) {
       const covered = ancestorsOf(node).some((owner) => reported.has(owner));
-      if (!covered && hasRuntimeValue(pieces) && looksLikeSql(pieces, inSqlCall)) {
+      if (!covered && hasRuntimeValue(pieces) && looksLikeSql(pieces, sink)) {
         reported.add(node);
-        context.report({ node, messageId: 'sqlBuilt', data: { kind: compositionKind(node) } });
+        context.report({
+          node,
+          messageId: 'sqlBuilt',
+          data: { kind: compositionKind(node), tagged },
+        });
       }
     }
 
@@ -123,7 +87,7 @@ export const rule = {
           node.parent.type === 'BinaryExpression' &&
           node.parent.operator === '+';
         if (isComposition(node) && !joined) {
-          check(node, piecesOf(context, node, isFormatCall), reachesSqlCall(context, node));
+          check(node, piecesOf(context, node, isFormatCall), sinkFor(context, node));
         }
       },
       AssignmentExpression(node) {
@@ -133,7 +97,7 @@ export const rule = {
             classify(context, node.right),
           ];
           const variable = findVariable(context, node.left, node.left.name);
-          check(node, pieces, variableReachesSqlCall(context, variable));
+          check(node, pieces, variableSink(context, variable));
         }
       },
     };

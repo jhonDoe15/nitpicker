@@ -1,105 +1,18 @@
-import ts from 'typescript';
-import { depthFirst, objectChildren } from '../../../../../../../shared/traversal.mjs';
+import { depthFirst } from '../../../../../../../shared/traversal.mjs';
 import { stringValue } from '../../analysis/constant-resolution.mjs';
-import { leafValues, memberName, unwrapped } from '../security-values.mjs';
-
-const NUMERIC_FUNCTIONS = new Set(['Number', 'parseInt', 'parseFloat', 'BigInt', 'Boolean']);
-const ESCAPE_FUNCTIONS = new Set(['escape', 'escapeId', 'escapeLiteral', 'escapeIdentifier']);
-const NUMERIC_PROPERTIES = new Set(['length', 'size', 'byteLength']);
-const PLACEHOLDER = /^[?$:@]\w*$/u;
-const PLACEHOLDER_BUILDERS = new Set(['join', 'repeat']);
-const INERT_LITERAL = /^[\w. ]*$/u;
-const PRIMITIVE_FLAGS =
-  ts.TypeFlags.NumberLike | ts.TypeFlags.BooleanLike | ts.TypeFlags.BigIntLike;
-const DYNAMIC = '\u0000';
+import { memberName, unwrapped } from '../security-values.mjs';
+import { classify, DYNAMIC } from './sql-inert.mjs';
 
 const STATEMENT =
   '(?:SELECT\\b[\\s\\S]*?\\bFROM\\b|INSERT\\s+INTO\\b|UPDATE\\s+\\S+\\s+SET\\b|DELETE\\s+FROM\\b|REPLACE\\s+INTO\\b|MERGE\\s+INTO\\b|TRUNCATE\\s+TABLE\\b|DROP\\s+(?:TABLE|INDEX|VIEW|DATABASE|SCHEMA)\\b|ALTER\\s+TABLE\\b|CREATE\\s+(?:UNIQUE\\s+)?(?:TABLE|INDEX|VIEW|DATABASE|SCHEMA)\\b|WITH\\s+\\S+\\s+AS\\s*\\()';
-const STRONG_STATEMENT = new RegExp(`^\\s*${STATEMENT}`, 'u');
+const COMPARISON = '\\s*(?:=|<>|!=|<=|>=|<|>|\\bLIKE\\b|\\bIN\\b|\\bNOT\\s+IN\\b|\\bIS\\b)';
+const CLAUSE = `(?:(?:WHERE|AND|OR|HAVING|ON)\\s+[\\w."\`[\\]]+${COMPARISON}|(?:ORDER|GROUP)\\s+BY\\b|LIMIT\\b|OFFSET\\b|VALUES\\s*\\()`;
+const STRONG_STATEMENT = new RegExp(`^\\s*(?:${STATEMENT}|${CLAUSE})`, 'u');
 const LOOSE_STATEMENT = new RegExp(`^\\s*${STATEMENT}`, 'iu');
 const FRAGMENT_BEFORE_VALUE =
   /(?:\b(?:where|and|or|having|on)\s+[\w."`[\]]+\s*(?:=|<>|!=|<=|>=|<|>|\blike\b|\bin\b|\bnot\s+in\b)\s*(?:\(\s*)?['"%]*|\b(?:order|group)\s+by\s+|\b(?:limit|offset)\s+)$/iu;
-
-function literalText(leaf) {
-  const text = stringValue(leaf);
-  if (text !== undefined) {
-    return text;
-  }
-  const isPrimitive =
-    leaf.type === 'Literal' && ['number', 'boolean', 'bigint'].includes(typeof leaf.value);
-  return isPrimitive ? String(leaf.value) : undefined;
-}
-
-function isPlaceholderChain(node) {
-  const isBuilder =
-    node.type === 'CallExpression' &&
-    node.callee.type === 'MemberExpression' &&
-    PLACEHOLDER_BUILDERS.has(memberName(node.callee));
-  return (
-    isBuilder &&
-    [...depthFirst(node, objectChildren)].some((child) => {
-      const text =
-        child.type === 'TemplateLiteral'
-          ? child.quasis.map((quasi) => quasi.value.cooked).join('')
-          : stringValue(child);
-      return text !== undefined && PLACEHOLDER.test(text);
-    })
-  );
-}
-
-function isInertCall(node) {
-  const callee = node.callee;
-  if (callee.type === 'Identifier') {
-    return NUMERIC_FUNCTIONS.has(callee.name);
-  }
-  const name = callee.type === 'MemberExpression' ? memberName(callee) : undefined;
-  const onMath = callee.object?.type === 'Identifier' && callee.object.name === 'Math';
-  return onMath || ESCAPE_FUNCTIONS.has(name) || ['getTime', 'now', 'toFixed'].includes(name);
-}
-
-function isInertShape(node) {
-  const target = unwrapped(node);
-  switch (target.type) {
-    case 'UnaryExpression':
-      return ['+', '-', '!', 'typeof'].includes(target.operator);
-    case 'BinaryExpression':
-      return target.operator !== '+';
-    case 'MemberExpression':
-      return NUMERIC_PROPERTIES.has(memberName(target));
-    case 'CallExpression':
-      return isInertCall(target) || isPlaceholderChain(target);
-    default:
-      return false;
-  }
-}
-
-function isInertType(services, node) {
-  const type = services.getTypeAtLocation(node);
-  const members = type.isUnion() ? type.types : [type];
-  return members.every(
-    (member) =>
-      (member.flags & PRIMITIVE_FLAGS) !== 0 ||
-      (member.isStringLiteral() && INERT_LITERAL.test(member.value)),
-  );
-}
-
-function hasTypes(context) {
-  const services = context.sourceCode.parserServices;
-  return services?.program === undefined || services.program === null ? undefined : services;
-}
-
-export function classify(context, node) {
-  const leaves = leafValues(context, node);
-  const texts = leaves.map((leaf) => literalText(leaf));
-  if (texts.length > 0 && texts.every((text) => text !== undefined)) {
-    return { text: texts[0] };
-  }
-  const services = hasTypes(context);
-  const inert =
-    leaves.every((leaf) => literalText(leaf) !== undefined || isInertShape(leaf)) ||
-    (services !== undefined && isInertType(services, node));
-  return inert ? { text: DYNAMIC } : { node };
-}
+const VALUE_POSITION =
+  /(?:=|<>|!=|<=|>=|<|>|\blike|\bin|\bnot\s+in|\bbetween|\band)\s*(?:\(\s*)?['"%]*$/iu;
 
 function isPlus(node) {
   return node.type === 'BinaryExpression' && node.operator === '+';
@@ -166,22 +79,38 @@ export function hasRuntimeValue(pieces) {
   return pieces?.some((piece) => piece.node !== undefined) === true;
 }
 
-function fragmentBeforeValue(pieces) {
-  const prefix = [];
-  for (const piece of pieces) {
-    if (piece.node !== undefined && FRAGMENT_BEFORE_VALUE.test(prefix.join(''))) {
-      return true;
-    }
-    prefix.push(piece.text ?? DYNAMIC);
-  }
-  return false;
+function runtimePrefixes(pieces) {
+  return pieces.flatMap((piece, index) =>
+    piece.node === undefined
+      ? []
+      : [
+          {
+            before: pieces
+              .slice(0, index)
+              .map((part) => part.text ?? DYNAMIC)
+              .join(''),
+            after: pieces[index + 1]?.text ?? '',
+          },
+        ],
+  );
 }
 
-export function looksLikeSql(pieces, inSqlCall) {
+const SINK_TESTS = {
+  raw: () => true,
+  clause: (text, prefixes) =>
+    prefixes.some(
+      ({ before }) => VALUE_POSITION.test(before) || FRAGMENT_BEFORE_VALUE.test(before),
+    ),
+  order: (text, prefixes) => prefixes.some(({ after }) => !after.startsWith('.')),
+  query: (text, prefixes) =>
+    LOOSE_STATEMENT.test(text) || prefixes.some(({ before }) => FRAGMENT_BEFORE_VALUE.test(before)),
+};
+
+export function looksLikeSql(pieces, sink) {
   const text = pieces.map((piece) => piece.text ?? DYNAMIC).join('');
+  const sinkTest = SINK_TESTS[sink];
   return (
     STRONG_STATEMENT.test(text) ||
-    fragmentBeforeValue(pieces) ||
-    (inSqlCall && LOOSE_STATEMENT.test(text))
+    (sinkTest !== undefined && sinkTest(text, runtimePrefixes(pieces)))
   );
 }

@@ -1,4 +1,4 @@
-import { createRuleTester } from '../guards/test-support/rule-tester.mjs';
+import { createRuleTester } from '../../guards/test-support/rule-tester.mjs';
 import { rule as requireHttpTimeout } from './require-http-timeout.mjs';
 
 const tester = createRuleTester();

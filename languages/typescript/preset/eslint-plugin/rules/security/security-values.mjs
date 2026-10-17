@@ -1,9 +1,9 @@
 import { findVariable, resolveConstant, stringValue } from '../analysis/constant-resolution.mjs';
-import { importedCalleeName, moduleBindings } from '../analysis/subprocess-calls.mjs';
+import { declaredMemberValue } from './member-values.mjs';
 
 const MAX_DEPTH = 8;
-const DEPTHS = Array.from({ length: MAX_DEPTH }, (_, index) => index);
-const TYPE_WRAPPERS = new Set([
+export const DEPTHS = Array.from({ length: MAX_DEPTH }, (_, index) => index);
+export const TYPE_WRAPPERS = new Set([
   'TSAsExpression',
   'TSSatisfiesExpression',
   'TSNonNullExpression',
@@ -23,7 +23,7 @@ export function unwrapped(node) {
 }
 
 export function staticKey(property) {
-  if (property.type !== 'Property') {
+  if (property.type !== 'Property' && property.type !== 'PropertyDefinition') {
     return undefined;
   }
   if (!property.computed && property.key.type === 'Identifier') {
@@ -35,8 +35,23 @@ export function staticKey(property) {
   );
 }
 
+function isFreeze(node) {
+  const callee = node?.type === 'CallExpression' ? node.callee : undefined;
+  return (
+    callee?.type === 'MemberExpression' &&
+    callee.object.type === 'Identifier' &&
+    callee.object.name === 'Object' &&
+    memberName(callee) === 'freeze'
+  );
+}
+
+export function resolvedValue(context, node) {
+  const value = unwrapped(resolveConstant(context, unwrapped(node)));
+  return isFreeze(value) ? resolvedValue(context, value.arguments[0]) : value;
+}
+
 function objectProperties(context, node) {
-  const object = unwrapped(resolveConstant(context, unwrapped(node)));
+  const object = resolvedValue(context, node);
   return object?.type === 'ObjectExpression' ? object.properties : undefined;
 }
 
@@ -83,10 +98,64 @@ function writtenValues(context, identifier) {
   return [...new Set([...defaults, ...writes])];
 }
 
+function lookupValues(context, object) {
+  const resolved = resolvedValue(context, object);
+  if (resolved?.type === 'ArrayExpression') {
+    const elements = resolved.elements;
+    return elements.every((element) => element !== null && element.type !== 'SpreadElement')
+      ? elements
+      : undefined;
+  }
+  const entries = resolved?.type === 'ObjectExpression' ? flattenedProperties(context, object) : [];
+  const plain = entries.length > 0 && entries.every((entry) => entry.type === 'Property');
+  return plain ? entries.map((entry) => entry.value) : undefined;
+}
+
+function declaredExpansion(context, resolved, name) {
+  const declared = declaredMemberValue(context, resolved, name);
+  if (declared === undefined) {
+    return { leaves: [resolved], next: [] };
+  }
+  return { leaves: declared.fixed ? [] : [resolved], next: [declared.value] };
+}
+
 function memberExpansion(context, resolved) {
   const name = memberName(resolved);
   const target = name === undefined ? undefined : propertyNamed(context, resolved.object, name);
-  return target === undefined ? { leaves: [resolved], next: [] } : { leaves: [], next: [target] };
+  if (target !== undefined) {
+    return { leaves: [], next: [target] };
+  }
+  const values =
+    resolved.computed && name === undefined ? lookupValues(context, resolved.object) : undefined;
+  if (values !== undefined) {
+    return { leaves: [], next: values };
+  }
+  return name === undefined
+    ? { leaves: [resolved], next: [] }
+    : declaredExpansion(context, resolved, name);
+}
+
+function forOfElements(context, identifier) {
+  const definition = findVariable(context, identifier, identifier.name)?.defs[0];
+  const declaration = definition?.type === 'Variable' ? definition.parent : undefined;
+  const loop = declaration?.parent;
+  const direct = definition?.node?.id?.type === 'Identifier';
+  if (
+    loop?.type !== 'ForOfStatement' ||
+    loop.left !== declaration ||
+    !direct ||
+    declaration.kind !== 'const'
+  ) {
+    return undefined;
+  }
+  return lookupValues(context, loop.right);
+}
+
+function identifierExpansion(context, resolved) {
+  const elements = forOfElements(context, resolved);
+  return elements === undefined
+    ? { leaves: [resolved], next: writtenValues(context, resolved) }
+    : { leaves: [], next: elements };
 }
 
 function callExpansion(resolved) {
@@ -103,7 +172,7 @@ function expansionOf(context, resolved) {
     case 'LogicalExpression':
       return { leaves: [], next: [resolved.left, resolved.right] };
     case 'Identifier':
-      return { leaves: [resolved], next: writtenValues(context, resolved) };
+      return identifierExpansion(context, resolved);
     case 'MemberExpression':
       return memberExpansion(context, resolved);
     case 'CallExpression':
@@ -126,75 +195,4 @@ export function leafValues(context, node) {
     pending.push(...expansion.next.map((child) => ({ node: child, depth: item.depth + 1 })));
   }
   return leaves;
-}
-
-export function bindingsOf(program, modules) {
-  return { ...moduleBindings(program, modules), modules };
-}
-
-function isRequireOfModule(node, modules) {
-  return (
-    node?.type === 'CallExpression' &&
-    node.callee.type === 'Identifier' &&
-    node.callee.name === 'require' &&
-    modules.has(stringValue(node.arguments[0]))
-  );
-}
-
-function isBindCall(node) {
-  return (
-    node?.type === 'CallExpression' &&
-    node.callee.type === 'MemberExpression' &&
-    memberName(node.callee) === 'bind'
-  );
-}
-
-function unaliased(context, node) {
-  return unwrapped(resolveConstant(context, unwrapped(node))) ?? node;
-}
-
-function aliasTarget(context, callee) {
-  const start = unaliased(context, callee);
-  return DEPTHS.reduce(
-    (current) => (isBindCall(current) ? unaliased(context, current.callee.object) : current),
-    start,
-  );
-}
-
-function destructuredName(context, node, bindings) {
-  if (node.type !== 'Identifier') {
-    return undefined;
-  }
-  const definition = findVariable(context, node, node.name)?.defs[0];
-  const pattern = definition?.node?.id;
-  const init = unwrapped(definition?.node?.init);
-  const fromModule =
-    init?.type === 'Identifier'
-      ? bindings.namespaces.has(init.name)
-      : isRequireOfModule(init, bindings.modules);
-  if (definition?.type !== 'Variable' || pattern?.type !== 'ObjectPattern' || !fromModule) {
-    return undefined;
-  }
-  const property = pattern.properties.find(
-    (entry) =>
-      entry.type === 'Property' &&
-      (entry.value.name === node.name || entry.value.left?.name === node.name),
-  );
-  return property === undefined ? undefined : staticKey(property);
-}
-
-function requiredMemberName(target, bindings) {
-  const isMember = target.type === 'MemberExpression' && !target.computed;
-  return isMember && isRequireOfModule(target.object, bindings.modules)
-    ? memberName(target)
-    : undefined;
-}
-
-export function importedFunction(context, callee, bindings) {
-  const target = unwrapped(aliasTarget(context, callee));
-  return (
-    importedCalleeName(target, bindings) ??
-    destructuredName(context, target, bindings) ??
-    requiredMemberName(target, bindings)
-  );
 }
