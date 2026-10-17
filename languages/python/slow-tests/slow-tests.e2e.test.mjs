@@ -100,12 +100,7 @@ describe.skipIf(!pythonE2eEnabled)('Python slow test gate end to end', () => {
     const result = gate(project, 'slow-unittest');
 
     expect(slowTests(result)).toEqual([
-      [
-        'test-runtime',
-        'tests/test_slow.py',
-        'test:test_slow.TestSlow#test_slow',
-        'enforceable',
-      ],
+      ['test-runtime', 'tests/test_slow.py', 'test:test_slow.TestSlow#test_slow', 'enforceable'],
     ]);
   });
 

@@ -40,7 +40,7 @@ function locate(projectRoot, className) {
   return Array.from({ length: parts.length }, (_, index) => parts.length - index)
     .flatMap((count) =>
       TEST_ROOTS.map((folder) => ({
-        file: `${path.posix.join(folder, ...parts.slice(0, count))}.py`,
+        file: `${[folder, ...parts.slice(0, count)].filter(Boolean).join('/')}.py`,
         classes: parts.slice(count),
       })),
     )

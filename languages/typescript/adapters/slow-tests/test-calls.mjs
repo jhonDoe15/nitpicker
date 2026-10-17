@@ -15,15 +15,19 @@ function innerExpression(node) {
 }
 
 function calleeNames(expression) {
-  const names = [];
-  let current = expression;
-  while (current !== undefined && !ts.isIdentifier(current)) {
-    if (ts.isPropertyAccessExpression(current)) {
-      names.unshift(current.name.text);
+  const chain = [expression];
+  for (const node of chain) {
+    const next = innerExpression(node);
+    if (next !== undefined) {
+      chain.push(next);
     }
-    current = innerExpression(current);
   }
-  return current === undefined ? undefined : [current.text, ...names];
+  const root = chain.at(-1);
+  if (!ts.isIdentifier(root)) {
+    return undefined;
+  }
+  const names = chain.filter((node) => ts.isPropertyAccessExpression(node));
+  return [root.text, ...names.map((node) => node.name.text).reverse()];
 }
 
 function isEachTable(call) {
@@ -34,20 +38,19 @@ function literalPattern(text, each) {
   return each ? text.split(FORMAT_TOKEN).map(escapeRegExp).join(ANY) : escapeRegExp(text);
 }
 
+function operands(node) {
+  if (ts.isParenthesizedExpression(node)) {
+    return [node.expression];
+  }
+  return isPlus(node) ? [node.left, node.right] : [];
+}
+
 function titleLeaves(node) {
   const pending = [node];
-  const leaves = [];
-  while (pending.length > 0) {
-    const current = pending.shift();
-    if (current !== undefined && ts.isParenthesizedExpression(current)) {
-      pending.unshift(current.expression);
-    } else if (current !== undefined && isPlus(current)) {
-      pending.unshift(current.left, current.right);
-    } else {
-      leaves.push(current);
-    }
+  for (const current of pending) {
+    pending.push(...operands(current));
   }
-  return leaves;
+  return pending.filter((leaf) => operands(leaf).length === 0).sort((a, b) => a.pos - b.pos);
 }
 
 function isPlus(node) {
@@ -55,10 +58,10 @@ function isPlus(node) {
 }
 
 function leafPattern(node, each) {
-  if (node !== undefined && ts.isStringLiteralLike(node)) {
+  if (ts.isStringLiteralLike(node)) {
     return literalPattern(node.text, each);
   }
-  if (node !== undefined && ts.isTemplateExpression(node)) {
+  if (ts.isTemplateExpression(node)) {
     return [
       literalPattern(node.head.text, each),
       ...node.templateSpans.map((span) => `${ANY}${literalPattern(span.literal.text, each)}`),
@@ -68,6 +71,9 @@ function leafPattern(node, each) {
 }
 
 function titlePattern(node, each) {
+  if (node === undefined) {
+    return ANY;
+  }
   return titleLeaves(node)
     .map((leaf) => leafPattern(leaf, each))
     .join('');
