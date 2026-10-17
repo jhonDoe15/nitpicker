@@ -95,11 +95,25 @@ function validateScalars(config) {
   );
 }
 
+const JAVASCRIPT_UNSUPPORTED_KEYS = [
+  [
+    'react',
+    'React and JSX belong to the TypeScript preset, so remove the key, or use "preset": "typescript" for a React project',
+  ],
+  [
+    'i18n',
+    'the message rules check react-intl messages and the text in JSX, which belong to the TypeScript preset, so remove the key, or use "preset": "typescript" for a project with translated messages',
+  ],
+];
+
 function validateJavascriptConfig(config) {
-  if (config.preset === 'javascript' && config.react !== undefined) {
-    throw configError(
-      '"react" is not supported with "preset": "javascript": React and JSX belong to the TypeScript preset, so remove the key, or use "preset": "typescript" for a React project',
-    );
+  if (config.preset !== 'javascript') {
+    return;
+  }
+  for (const [key, reason] of JAVASCRIPT_UNSUPPORTED_KEYS) {
+    if (config[key] !== undefined) {
+      throw configError(`"${key}" is not supported with "preset": "javascript": ${reason}`);
+    }
   }
 }
 
