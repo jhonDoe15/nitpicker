@@ -1,0 +1,49 @@
+{
+  "findings": [
+    {
+      "tool": "t",
+      "rule": "r",
+      "path": "test/a.test.ts",
+      "identity": "h1",
+      "message": "Error: boom xvbnrt",
+      "classification": "enforceable",
+      "tokens": ["Error:", "boom", "xvbnrt"]
+    },
+    {
+      "tool": "t",
+      "rule": "r",
+      "path": "test/a.test.ts",
+      "identity": "h2",
+      "message": "Warning: unique key Table.",
+      "classification": "enforceable",
+      "tokens": ["Warning:", "unique", "key", "Table."]
+    },
+    {
+      "tool": "t",
+      "rule": "r",
+      "path": "test/a.test.ts",
+      "identity": "h3",
+      "message": "E: kqzmwa qwrtpl",
+      "classification": "enforceable",
+      "tokens": ["E:", "kqzmwa", "qwrtpl"]
+    },
+    {
+      "tool": "t",
+      "rule": "r",
+      "path": "test/a.test.ts",
+      "identity": "h4",
+      "message": "E: kqzmwa hjklmn",
+      "classification": "enforceable",
+      "tokens": ["E:", "kqzmwa", "hjklmn"]
+    },
+    {
+      "tool": "t",
+      "rule": "r",
+      "path": "test/a.test.ts",
+      "identity": "h5",
+      "message": "short xvbnrt",
+      "classification": "enforceable",
+      "tokens": ["short", "xvbnrt"]
+    }
+  ]
+}

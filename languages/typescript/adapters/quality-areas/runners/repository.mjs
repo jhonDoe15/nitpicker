@@ -23,6 +23,7 @@ import { trackTemporaryPath } from '../../../../../core/tooling/temporary-files.
 import { normalizeDuplicates } from '../../../preset/duplicates/normalize.mjs';
 import { runTestOnlyExports, runUnusedApi } from './unused-api.mjs';
 import { spawnedEntryFiles } from '../../dependency-graph/spawned-entries.mjs';
+import { baselinePathsOf } from '../base-paths.mjs';
 
 export async function runCodingStandards(options) {
   const checker = await importPolicyModule(
@@ -130,7 +131,7 @@ export async function runStructure(options) {
   );
   return [
     ...functionFindings,
-    ...typescriptStructureProjectFindings(options),
+    ...typescriptStructureProjectFindings({ ...options, baselinePaths: baselinePathsOf(options) }),
     ...(await runUnusedApi(options)),
   ];
 }

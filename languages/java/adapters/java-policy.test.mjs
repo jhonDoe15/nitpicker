@@ -5,7 +5,6 @@ import { afterEach, describe, expect, it } from 'vitest';
 import { createJavaAnalyzer } from './java-analyzer.mjs';
 import { JAVA_TOOLS } from './gradle-presets.mjs';
 import { applyJavaPolicy, configureJavaAnalyzer, validateJavaConfig } from './java-policy.mjs';
-import { toolConfigProperties } from './java-diff.mjs';
 import { parseRunnerArguments } from './java-runner.mjs';
 
 const roots = [];
@@ -152,6 +151,7 @@ describe('configureJavaAnalyzer', () => {
       'errorprone',
       'google-java-format',
       'jacoco',
+      'palantir-java-format',
       'pit',
       'pmd',
       'spotbugs',
@@ -223,39 +223,6 @@ describe('project tool configs', () => {
     writeFileSync(path.join(root, 'config/pmd/ruleset.xml'), '<ruleset name="edited"/>');
 
     expect(configured.resolveConfigurationHash(root)).not.toBe(before);
-  });
-
-  it("uses only nitpicker's configs by default, and the head project's files when opted in", () => {
-    const head = projectWith({
-      'config/pmd/ruleset.xml': '<ruleset/>',
-      'config/checkstyle/checkstyle.xml': '<module/>',
-    });
-
-    expect(toolConfigProperties('/base', { policyRoot: head })).toEqual([]);
-    expect(
-      toolConfigProperties('/base', {
-        policyRoot: head,
-        toolPrecedence: { pmd: ['nitpicker', 'project'], checkstyle: ['project'] },
-      }),
-    ).toEqual([
-      `-Pnitpicker.pmd.projectConfig=${path.join(head, 'config/pmd/ruleset.xml')}`,
-      `-Pnitpicker.checkstyle.projectConfig=${path.join(head, 'config/checkstyle/checkstyle.xml')}`,
-      '-Pnitpicker.checkstyle.nitpickerConfig=false',
-    ]);
-    expect(
-      toolConfigProperties('/base', { policyRoot: head, toolPrecedence: { pmd: ['project'] } }),
-    ).toEqual([
-      `-Pnitpicker.pmd.projectConfig=${path.join(head, 'config/pmd/ruleset.xml')}`,
-      '-Pnitpicker.pmd.nitpickerConfig=false',
-    ]);
-  });
-
-  it('fails with the missing file when the project layer is chosen without one', () => {
-    expect(() =>
-      toolConfigProperties(projectWith({}), { toolPrecedence: { pmd: ['project'] } }),
-    ).toThrow(
-      new Error('"tools.pmd.precedence" lists "project" but config/pmd/ruleset.xml is missing'),
-    );
   });
 });
 

@@ -1,0 +1,168 @@
+import { importEdges } from '../analysis/python-coupling.mjs';
+
+const COUPLING_TOOL = 'coupling';
+const PACKAGE_CYCLE_RULE = 'package-cycle';
+const MODULE_CYCLE_RULE = 'no-production-cycles';
+const OUTSIDE_ROOTS_RULE = 'no-import-outside-roots';
+const LISTED_MEMBERS = 5;
+
+function packageOf(entry) {
+  if (entry.isPackage) {
+    return entry.module;
+  }
+  return entry.module.includes('.')
+    ? entry.module.slice(0, entry.module.lastIndexOf('.'))
+    : '(root)';
+}
+
+function isInside(name, owner) {
+  return name === owner || name.startsWith(`${owner}.`);
+}
+
+function adjacency(nodes, edges) {
+  const next = new Map(nodes.map((node) => [node, new Set()]));
+  for (const { source, target } of edges.filter((edge) => next.has(edge.target))) {
+    next.get(source)?.add(target);
+  }
+  return next;
+}
+
+function reachable(start, next, within) {
+  const seen = new Set([start]);
+  for (const node of seen) {
+    const targets = [...(next.get(node) ?? [])].filter((target) => within?.has(target) ?? true);
+    for (const target of targets) {
+      seen.add(target);
+    }
+  }
+  return seen;
+}
+
+/** Each component is what a node reaches and is reached by; components of one are left out. */
+export function stronglyConnected(nodes, edges) {
+  const next = adjacency(nodes, edges);
+  const previous = adjacency(
+    nodes,
+    edges.map(({ source, target }) => ({ source: target, target: source })),
+  );
+  const assigned = new Set();
+  const components = [];
+  for (const node of [...nodes].sort()) {
+    if (assigned.has(node)) {
+      continue;
+    }
+    const component = [...reachable(node, previous, reachable(node, next))].sort();
+    for (const member of component) {
+      assigned.add(member);
+    }
+    components.push(component);
+  }
+  return components.filter((component) => component.length > 1);
+}
+
+function listed(members) {
+  const shown = members.slice(0, LISTED_MEMBERS).join(', ');
+  return members.length > LISTED_MEMBERS
+    ? `${shown} and ${String(members.length - LISTED_MEMBERS)} more`
+    : shown;
+}
+
+function runtimeEdges({ modules, imports }) {
+  return importEdges(modules, imports).filter(
+    ({ source, target, kind }) => kind === 'runtime' && source !== target,
+  );
+}
+
+function reExports(byName, source, target) {
+  return byName.get(source).isPackage && isInside(target, source);
+}
+
+function packageCycles(modules, edges) {
+  const byName = new Map(modules.map((entry) => [entry.module, entry]));
+  const packaged = edges
+    .filter(({ source, target }) => !reExports(byName, source, target))
+    .map(({ source, target }) => ({
+      source: packageOf(byName.get(source)),
+      target: packageOf(byName.get(target)),
+    }))
+    .filter(({ source, target }) => source !== target);
+  const anchor = new Map();
+  for (const entry of [...modules].sort((left, right) => left.file.localeCompare(right.file))) {
+    if (!anchor.has(packageOf(entry)) || entry.module === packageOf(entry)) {
+      anchor.set(packageOf(entry), entry.file);
+    }
+  }
+  return stronglyConnected([...anchor.keys()], packaged).flatMap((members) =>
+    members.map((member) => ({
+      tool: COUPLING_TOOL,
+      rule: PACKAGE_CYCLE_RULE,
+      path: anchor.get(member),
+      identity: `cycle:${member}`,
+      message: `Package ${member} is in a dependency cycle with ${listed(members.filter((other) => other !== member))}. Move the shared types down into one of them, or invert one dependency behind an interface`,
+      classification: 'enforceable',
+    })),
+  );
+}
+
+function moduleCycles(modules, edges) {
+  const byName = new Map(modules.map((entry) => [entry.module, entry]));
+  const samePackage = edges.filter(
+    ({ source, target }) =>
+      !reExports(byName, source, target) &&
+      packageOf(byName.get(source)) === packageOf(byName.get(target)),
+  );
+  return stronglyConnected([...byName.keys()], samePackage).flatMap((members) =>
+    members.map((member) => ({
+      tool: COUPLING_TOOL,
+      rule: MODULE_CYCLE_RULE,
+      path: byName.get(member).file,
+      identity: `module-cycle:${member}`,
+      message: `Module ${member} is in an import cycle with ${listed(members.filter((other) => other !== member))}. Move what they share into a module both import, or pass it in instead of importing it back`,
+      classification: 'enforceable',
+    })),
+  );
+}
+
+export function cycleFindings(report) {
+  const edges = runtimeEdges(report);
+  return [...packageCycles(report.modules, edges), ...moduleCycles(report.modules, edges)];
+}
+
+function outsideTarget(statement, outside) {
+  if (statement.level !== 0) {
+    return [];
+  }
+  const names =
+    statement.module === null
+      ? statement.names
+      : [statement.module, ...statement.names.map((name) => `${statement.module}.${name}`)];
+  const found = names.flatMap((name) => {
+    const parts = name.split('.');
+    return parts
+      .map((_, index) => parts.slice(0, parts.length - index).join('.'))
+      .filter((candidate) => outside.has(candidate));
+  });
+  return found.length === 0 ? [] : [found.sort((left, right) => right.length - left.length)[0]];
+}
+
+export function outsideRootsFindings({ modules, others = [], imports }) {
+  const production = new Set(modules.map(({ module }) => module.split('.')[0]));
+  const outside = new Map(
+    others
+      .filter(({ inRoots, module }) => !inRoots && !production.has(module.split('.')[0]))
+      .map((entry) => [entry.module, entry]),
+  );
+  return modules.flatMap((importer) => {
+    const targets = (imports[importer.file] ?? []).flatMap((statement) =>
+      outsideTarget(statement, outside),
+    );
+    return [...new Set(targets)].map((target) => ({
+      tool: COUPLING_TOOL,
+      rule: OUTSIDE_ROOTS_RULE,
+      path: importer.file,
+      identity: `outside-roots:${target}`,
+      message: `${importer.module} imports ${target} from ${outside.get(target).file}, outside the source roots. Production code imports only from python.sourceRoots: move the imported code under a source root, or add its folder to "python.sourceRoots" so the gate checks it`,
+      classification: 'enforceable',
+    }));
+  });
+}

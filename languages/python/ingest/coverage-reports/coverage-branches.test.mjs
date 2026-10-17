@@ -31,19 +31,19 @@ describe('ingestCoverageBranches', () => {
     expect(findings.map((finding) => [finding.location.line, finding.message])).toEqual([
       [
         2,
-        "Branch coverage is 50.00%; minimum is 95%. Not taken: the branch to line 3. Test it, or remove it if it can't happen. To exempt a file, add it to exclude in nitpicker.config.json.",
+        "Branch coverage is 50.00%; minimum is 95%. Not taken: the branch to line 3. Test it, or remove it if it can't happen.",
       ],
       [
         5,
-        "Branch coverage is 50.00%; minimum is 95%. Not taken: the branch to line 6. Test it, or remove it if it can't happen. To exempt a file, add it to exclude in nitpicker.config.json.",
+        "Branch coverage is 50.00%; minimum is 95%. Not taken: the branch to line 6. Test it, or remove it if it can't happen.",
       ],
       [
         7,
-        "Branch coverage is 50.00%; minimum is 95%. Not taken: the branch to line 8. Test it, or remove it if it can't happen. To exempt a file, add it to exclude in nitpicker.config.json.",
+        "Branch coverage is 50.00%; minimum is 95%. Not taken: the branch to line 8. Test it, or remove it if it can't happen.",
       ],
       [
         13,
-        "Branch coverage is 0.00%; minimum is 95%. Not taken: the branch to line 14; the branch to line 15. Test it, or remove it if it can't happen. To exempt a file, add it to exclude in nitpicker.config.json.",
+        "Branch coverage is 0.00%; minimum is 95%. Not taken: the branch to line 14; the branch to line 15. Test it, or remove it if it can't happen.",
       ],
     ]);
     expect(
@@ -67,7 +67,7 @@ describe('ingestCoverageBranches', () => {
     const [finding] = ingest({}, reportOf([[2, 3]], [[2, -1]]));
 
     expect(finding.message).toBe(
-      "Branch coverage is 50.00%; minimum is 95%. Not taken: the exit from the enclosing scope. Test it, or remove it if it can't happen. To exempt a file, add it to exclude in nitpicker.config.json.",
+      "Branch coverage is 50.00%; minimum is 95%. Not taken: the exit from the enclosing scope. Test it, or remove it if it can't happen.",
     );
   });
 

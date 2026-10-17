@@ -8,6 +8,13 @@ RUN apt-get update \
     && apt-get install -y --no-install-recommends git ca-certificates \
     && rm -rf /var/lib/apt/lists/*
 
+# The base dependency install runs the package manager the project uses: Corepack serves pnpm and
+# Yarn, Bun comes from npm. The Corepack cache is writable for any user (docker run --user).
+ENV COREPACK_HOME=/opt/corepack
+RUN corepack enable \
+    && mkdir -m 1777 /opt/corepack \
+    && npm install --global bun@1.4.2
+
 # Install the package from the repo source with its locked dependencies.
 COPY package.json package-lock.json .npmrc LICENSE README.md /opt/nitpicker/
 COPY core/ /opt/nitpicker/core/

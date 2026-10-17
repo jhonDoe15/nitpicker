@@ -6,4 +6,8 @@ final class GreeterRun {
   static void run() {
     System.out.println("run");
   }
+
+  static void pause() throws InterruptedException {
+    Thread.sleep(1);
+  }
 }

@@ -9,6 +9,10 @@ export const kotlinE2eEnabled = process.env.NITPICKER_KOTLIN_E2E === '1';
 export const gradle = process.env.NITPICKER_GRADLE ?? 'gradle';
 
 export const kotlinPolicy = { preset: 'kotlin' };
+export const kotlinPolicyWithProjectDetekt = {
+  preset: 'kotlin',
+  toolPrecedence: { detekt: ['project', 'nitpicker'] },
+};
 
 export const kotlinSources = 'src/main/kotlin/demo';
 

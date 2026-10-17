@@ -45,6 +45,9 @@ const SWITCH_NOT_EXHAUSTIVE_TEXT = 'Switch is not exhaustive';
 const SWITCH_NOT_EXHAUSTIVE_HINT =
   '. If this function is already over a size limit, adding cases will fail the size check: extract an exhaustive helper instead (e.g. a `Record<Union, number>` lookup).';
 
+const EXPECT_THROWS_HINT =
+  ' In a test, assert a failure with `expect(() => run()).toThrow(Specific)` or `await expect(promise).rejects.toThrow(Specific)` instead of asserting inside a `catch`.';
+
 const NODE_TEST_HINT =
   ' nitpicker runs this project\'s tests with Vitest, which does not collect node:test files. Import from `vitest`, or, if the project runs its tests with node:test, set "tools.tests.runner" to "node" in nitpicker.config.json.';
 
@@ -175,6 +178,7 @@ const MESSAGE_REWRITERS = new Map([
   ['jest/expect-expect', expectExpectMessage],
   ['node-test/expect-expect', expectExpectMessage],
   ['mocha/expect-expect', expectExpectMessage],
+  ['vitest/no-conditional-expect', appendHint(EXPECT_THROWS_HINT)],
   ['@typescript-eslint/no-duplicate-type-constituents', duplicateConstituentsMessage],
   ['@typescript-eslint/switch-exhaustiveness-check', switchExhaustivenessMessage],
   ['@typescript-eslint/no-invalid-void-type', invalidVoidMessage],

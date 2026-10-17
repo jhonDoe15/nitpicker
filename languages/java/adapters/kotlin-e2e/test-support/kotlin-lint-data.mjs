@@ -5,6 +5,15 @@ class Farewell {
 }
 `;
 
+export const GREETER_WITH_FAREWELL = `package demo
+
+class Greeter {
+    fun greet(name: String): String = "Hello, $name!"
+
+    fun farewell(name: String): String = Farewell().goodbye(name)
+}
+`;
+
 export const FAREWELL_TEST = `package demo
 
 import kotlin.test.Test
@@ -13,7 +22,7 @@ import kotlin.test.assertEquals
 class FarewellTest {
     @Test
     fun saysFarewell() {
-        assertEquals("Goodbye, Ada.", Farewell().goodbye("Ada"))
+        assertEquals("Goodbye, Ada.", Greeter().farewell("Ada"))
     }
 }
 `;

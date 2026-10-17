@@ -8,7 +8,19 @@ import { unusedFieldMessage, useGradleFixtures } from './test-support/java-cli-h
 import { writeFiles } from '../../diff/git/test-support/fixture-files.mjs';
 import { acceptedDigest } from '../test-support/accepted-digest.mjs';
 
-const { gradleRepository, run, runCli, temporaryRoot } = useGradleFixtures(nitpickerCli);
+const { gradleRepository, kotlinRepository, run, runCli, temporaryRoot } =
+  useGradleFixtures(nitpickerCli);
+const EXCEPTION_ENTRY = /\{"rule":"[^"]+","paths":\[[^\]]+\],"reason":"\.\.\."\}/u;
+const TEST_REPORTS = {
+  'src/test/java/demo/ATest.java': 'package demo;\n\nfinal class ATest {}\n',
+  'jdeps/jdeps-classes.txt': 'demo.A\n',
+  'jdeps/jdeps.txt': '',
+  'jdeps/jdeps-test.txt': '   demo.ATest -> demo.A   classes\n',
+  'test-results/test/TEST-demo.ATest.xml':
+    '<testsuite name="demo.ATest"><testcase classname="demo.ATest" name="works">' +
+    '<system-err>Connection pool leaked a worker thread</system-err></testcase></testsuite>\n',
+};
+const LIFTABLE_RULES = ['test-only-export', 'test-console-output'];
 const addedField = unusedFieldMessage('added');
 const xmlText = (text) =>
   text.replaceAll('&', '&amp;').replaceAll('"', '&quot;').replaceAll("'", '&apos;');
@@ -249,5 +261,41 @@ Full diagnostics: /tmp/nitpicker-java-out-${/[A-Za-z0-9]{6}/}/reports/report.txt
         '',
       ].join('\n'),
     );
+  });
+});
+
+describe.each([
+  ['java', gradleRepository],
+  ['kotlin', kotlinRepository],
+])('the exception a %s finding message suggests', (preset, repository) => {
+  function liftableFindings(root) {
+    writeFiles(root, TEST_REPORTS);
+    commit(root, 'add a test-only class and console output');
+    const result = run(root);
+    return {
+      result,
+      found: result.json('new-findings.json').filter(({ rule }) => LIFTABLE_RULES.includes(rule)),
+    };
+  }
+  it('is accepted by the preset and lifts the finding', () => {
+    const { found } = liftableFindings(repository());
+    const exceptions = found.map(({ message }) => ({
+      ...JSON.parse(EXCEPTION_ENTRY.exec(message)[0]),
+      reason: 'Loaded by name from a plugin descriptor of another build.',
+    }));
+    const config = JSON.parse(readFileSync(path.join(repository(), 'nitpicker.config.json')));
+
+    const { result, found: lifted } = liftableFindings(
+      repository({
+        'nitpicker.config.json': `${JSON.stringify({ ...config, exceptions })}\n`,
+      }),
+    );
+
+    expect(found.map(({ rule }) => rule).toSorted()).toEqual(LIFTABLE_RULES.toSorted());
+    expect({ exitCode: result.exitCode, lifted }, result.text).toEqual({
+      exitCode: 0,
+      lifted: [],
+    });
+    expect(preset).toBe(config.preset);
   });
 });

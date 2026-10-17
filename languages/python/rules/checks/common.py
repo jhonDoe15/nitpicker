@@ -135,9 +135,10 @@ def last_name(node):
 def is_log_call(node, aliases):
     if not isinstance(node, ast.Call) or not isinstance(node.func, ast.Attribute):
         return False
-    if node.func.attr not in LOG_METHODS:
-        return False
-    owner = node.func.value
+    return node.func.attr in LOG_METHODS and is_log_owner(node.func.value, aliases)
+
+
+def is_log_owner(owner, aliases):
     if isinstance(owner, ast.Call):
         return (dotted_name(owner.func, aliases) or "").rsplit(".", 1)[
             -1

@@ -26,7 +26,7 @@ export async function runQualityArea(options) {
       return [];
     }
     if (
-      ['coverage', 'mutation'].includes(options.kind) &&
+      ['coverage', 'test-console', 'mutation'].includes(options.kind) &&
       !hasProjectTests(options, layout, files)
     ) {
       return [];

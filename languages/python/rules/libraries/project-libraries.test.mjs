@@ -2,7 +2,12 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
-import { dependencyNames, detectLibraries } from './project-libraries.mjs';
+import {
+  boundaryRoots,
+  dependencyNames,
+  detectLibraries,
+  validatorsOf,
+} from './project-libraries.mjs';
 
 const roots = [];
 
@@ -45,9 +50,8 @@ describe('the dependencies a project declares', () => {
       'marshmallow',
       'msgspec',
       'pytest',
-      'python',
       'structlog',
-      'typing_extensions',
+      'typing-extensions',
     ]);
   });
 
@@ -58,18 +62,37 @@ describe('the dependencies a project declares', () => {
       Pipfile: '[packages]\nloguru = "*"\n',
     });
 
-    expect(dependencyNames(root)).toEqual(new Set(['structlog', 'pydantic_settings', 'loguru']));
+    expect(dependencyNames(root)).toEqual(new Set(['structlog', 'pydantic-settings', 'loguru']));
   });
 
-  it('stay empty for a project without dependency files or with a broken one', () => {
+  it('stay empty for a project without dependency files and fail on a broken one', () => {
     expect(dependencyNames(project({}))).toEqual(new Set());
-    expect(dependencyNames(project({ 'pyproject.toml': '[project\n' }))).toEqual(new Set());
+    expect(() => dependencyNames(project({ 'pyproject.toml': '[project\n' }))).toThrow(
+      /Invalid TOML document/,
+    );
   });
 });
 
 describe('the libraries a project uses', () => {
-  it('default to logging and pydantic', () => {
-    expect(detectLibraries(project({}))).toEqual({ logging: 'logging', validator: 'pydantic' });
+  it('default to %s placeholders, logging and pydantic', () => {
+    expect(detectLibraries(project({}))).toEqual({
+      database: 'format',
+      logging: 'logging',
+      validator: 'pydantic',
+      validators: ['pydantic'],
+    });
+  });
+
+  it.each([
+    ['asyncpg', 'asyncpg>=0.29', 'asyncpg'],
+    ['psycopg', 'psycopg[binary]>=3', 'format'],
+    ['PyMySQL', 'PyMySQL', 'format'],
+    ['databases', 'databases[postgresql]', 'named'],
+    ['aiosqlite', 'aiosqlite', 'sqlite'],
+  ])('name the placeholder style of %s', (_name, requirement, expected) => {
+    const root = project({ 'requirements.txt': `${requirement}\n` });
+
+    expect(detectLibraries(root).database).toBe(expected);
   });
 
   it.each([
@@ -84,11 +107,72 @@ describe('the libraries a project uses', () => {
   it.each([
     ['msgspec', 'msgspec', 'msgspec'],
     ['cattrs', 'cattrs', 'cattrs'],
-    ['marshmallow', 'marshmallow>=3', 'marshmallow'],
+    ['attrs', 'attrs', 'cattrs'],
+    ['marshmallow', 'marshmallow-dataclass', 'marshmallow'],
     ['pydantic', 'pydantic>=2', 'pydantic'],
+    ['pydantic-settings', 'pydantic-settings', 'pydantic'],
+    ['dataclasses-json', 'dataclasses_json', 'dataclasses-json'],
+    ['voluptuous', 'voluptuous', 'voluptuous'],
+    ['cerberus', 'Cerberus', 'cerberus'],
   ])('name %s for validation', (_name, requirement, expected) => {
     const root = project({ 'requirements.txt': `${requirement}\n` });
 
     expect(detectLibraries(root).validator).toBe(expected);
+  });
+
+  it('puts the runtime libraries before the development ones', () => {
+    const root = project({
+      'pyproject.toml': [
+        '[project]',
+        'dependencies = ["marshmallow"]',
+        '[dependency-groups]',
+        'dev = ["pydantic", "loguru"]',
+        '',
+      ].join('\n'),
+      'requirements.txt': 'structlog\n',
+    });
+
+    expect(detectLibraries(root)).toEqual({
+      database: 'format',
+      logging: 'structlog',
+      validator: 'marshmallow',
+      validators: ['marshmallow', 'pydantic'],
+    });
+  });
+
+  it('reads Poetry and setup.cfg manifests', () => {
+    const poetry = project({
+      'pyproject.toml':
+        '[tool.poetry.dependencies]\npython = "^3.10"\nmsgspec = "*"\nloguru = "*"\n',
+    });
+    const setup = project({ 'setup.cfg': '[options]\ninstall_requires =\n    voluptuous\n' });
+
+    expect(detectLibraries(poetry)).toEqual({
+      database: 'format',
+      logging: 'loguru',
+      validator: 'msgspec',
+      validators: ['msgspec'],
+    });
+    expect(detectLibraries(setup)).toEqual({
+      database: 'format',
+      logging: 'logging',
+      validator: 'voluptuous',
+      validators: ['voluptuous'],
+    });
+  });
+});
+
+describe('the import roots the validation boundary guards', () => {
+  it('are the ones of pydantic when no library is declared', () => {
+    expect(boundaryRoots(undefined)).toEqual(['pydantic', 'pydantic_settings']);
+    expect(validatorsOf(undefined)).toEqual(['pydantic']);
+  });
+
+  it('are the ones of every declared library', () => {
+    expect(boundaryRoots({ validators: ['marshmallow', 'cattrs'] })).toEqual([
+      'marshmallow',
+      'marshmallow_dataclass',
+      'cattrs',
+    ]);
   });
 });
