@@ -16,6 +16,7 @@ import { validateKotlinOptions } from '../../languages/java/adapters/kotlin/kotl
 import { validatePythonConfig } from '../../languages/python/adapters/configuration/python-config.mjs';
 import { SHARED_EXCEPTION_RULES } from '../../shared/policy.mjs';
 import { validateTools } from './tool-settings.mjs';
+import { rejectHeadBase } from './project-checks/project-config.mjs';
 import { conventionDefinitions } from '../conventions/definitions.mjs';
 import { validateConventions } from '../../shared/conventions/settings.mjs';
 import { stylingApproaches } from '../../languages/typescript/preset/eslint-config/react/react-rules.mjs';
@@ -80,6 +81,7 @@ function validateScalars(config) {
   if (config.base !== undefined && !isNonEmptyString(config.base)) {
     throw configError('"base" must be a non-empty string');
   }
+  rejectHeadBase(config.base);
   if (config.preset !== undefined && !SUPPORTED_PRESETS.includes(config.preset)) {
     throw configError(`"preset" must be one of: ${SUPPORTED_PRESETS.join(', ')}`);
   }

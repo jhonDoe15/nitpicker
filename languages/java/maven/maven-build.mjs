@@ -84,6 +84,7 @@ function runStructure(module, reportDir) {
     args: [
       path.join(GRADLE_DIRECTORY, 'StructureMetrics.java'),
       path.join(reportDir, 'structure.json'),
+      path.join(reportDir, 'classes.json'),
       module.basedir,
       ...roots,
     ],
@@ -135,7 +136,7 @@ function readClasspaths(work, module) {
   );
 }
 
-function analyzeModule({ module, classpaths, tools, pinned, configs, since }) {
+function analyzeModule({ module, classpaths, tools, pinned, configs, since, javaStyle }) {
   const reportDir = path.join(module.basedir, MAVEN_REPORT_DIRECTORY);
   const isArchunit = archunitMatcher(module.archunitIncludes);
   const spring = classpaths.mainCompile.some((entry) => SPRING_JAR.test(path.basename(entry)));
@@ -144,7 +145,7 @@ function analyzeModule({ module, classpaths, tools, pinned, configs, since }) {
   runPmd({ module, reportDir, tools, classpaths, configs, spring });
   runSpotbugs({ module, reportDir, tools });
   runErrorProne({ module, reportDir, tools, classpaths });
-  runFormat({ module, reportDir, tools });
+  runFormat({ module, reportDir, tools, javaStyle });
   runCheckstyle({ module, reportDir, tools, configs, pinned });
   runStructure(module, reportDir);
   runJdeps(module, reportDir);
@@ -220,7 +221,15 @@ export function runMavenPreset(projectRoot, { maven, policy = {}, configs }) {
       extraTools: modules.map((module) => processorTool(module.compiler)).filter(Boolean),
     });
     for (const { module, classpaths } of analyzed) {
-      analyzeModule({ module, classpaths, tools, pinned, configs, since });
+      analyzeModule({
+        module,
+        classpaths,
+        tools,
+        pinned,
+        configs,
+        since,
+        javaStyle: policy.javaStyle,
+      });
     }
     return modules.map((module) => module.basedir);
   } finally {
