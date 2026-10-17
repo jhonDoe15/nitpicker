@@ -65,7 +65,7 @@ export const STYLE_CASES = [
     ['PT024', 'remove `@pytest.mark.asyncio`'],
     ['PT025', 'usefixtures'],
   ]),
-  ...ruffCases('pytest-style-project', [['PT001', 'with parentheses']]),
+  ...ruffCases('pytest-style-project', [['PT001', 'parentheses']]),
   ...ruffCases('pytest-parametrize', [
     ['PT006', 'tuple'],
     ['PT007', 'list of tuples'],

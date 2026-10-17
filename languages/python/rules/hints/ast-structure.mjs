@@ -3,6 +3,17 @@ import { RULES_TOOL } from './tool.mjs';
 const HANDLE_EXCEPTION =
   'Catch the specific exception and handle it, or re-raise it with its cause (`raise DomainError(...) from error`); `contextlib.suppress(SpecificError)` ignores one expected error.';
 
+const VALIDATOR_FORMS = {
+  pydantic: 'pydantic (`Model.model_validate(data)`)',
+  msgspec: 'msgspec (`msgspec.json.decode(raw, type=Model)`)',
+  cattrs: 'cattrs (`cattrs.structure(data, Model)`)',
+  marshmallow: 'marshmallow (`Schema().load(data)`)',
+};
+
+function boundaryAdvice(validator) {
+  return `Parse untrusted input once at the boundary with ${VALIDATOR_FORMS[validator]} in an \`adapters/\` package, not with \`isinstance\` checks or a \`TypeGuard\`.`;
+}
+
 export const STRUCTURE_HINTS = [
   { tool: 'ruff', rules: ['E722', 'BLE001'], allowed: HANDLE_EXCEPTION },
   {
@@ -107,9 +118,9 @@ export const STRUCTURE_HINTS = [
   {
     tool: RULES_TOOL,
     rules: ['module-level-mutable-state'],
-    describe: (subject) => `The module-level collection \`${subject}\` is changed by a function`,
+    describe: (subject) => `\`${subject}\` changes a module-level collection`,
     allowed:
-      'Keep the state in an object that is created in the composition root and passed in, or build a new immutable value and return it.',
+      'Keep the state in an object that is created in the composition root and passed in, or build a new immutable value and return it. A registry filled once at import time (a decorator that adds the function to a table) is not run-time state: add an exception for that path.',
   },
   {
     tool: RULES_TOOL,
@@ -123,8 +134,7 @@ export const STRUCTURE_HINTS = [
     tool: RULES_TOOL,
     rules: ['handwritten-boundary-guard'],
     describe: (subject) => `\`${subject}\` checks untrusted data by hand`,
-    allowed:
-      'Parse untrusted input once at the boundary with pydantic (`Model.model_validate(data)`) in an `adapters/` package, not with `isinstance` checks or a `TypeGuard`.',
+    allowed: (_subject, libraries) => boundaryAdvice(libraries?.validator ?? 'pydantic'),
   },
   {
     tool: RULES_TOOL,

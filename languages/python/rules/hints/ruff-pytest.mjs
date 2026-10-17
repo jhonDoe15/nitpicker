@@ -28,8 +28,9 @@ function parametrizeValues(_subject, libraries) {
   const style = styleOf(libraries);
   const values = style['parametrize-values-type'] ?? 'list';
   const row = style['parametrize-values-row-type'] ?? 'tuple';
-  const example = values === 'list' ? `[(1, 2), (3, 4)]` : `((1, 2), (3, 4))`;
-  const rows = row === 'tuple' ? example : example.replaceAll('(', '[').replaceAll(')', ']');
+  const [open, close] = row === 'tuple' ? ['(', ')'] : ['[', ']'];
+  const [outerOpen, outerClose] = values === 'list' ? ['[', ']'] : ['(', ')'];
+  const rows = `${outerOpen}${open}1, 2${close}, ${open}3, 4${close}${outerClose}`;
   return `Pass the values as a ${values} of ${row}s: \`${rows}\`, or a ${values} for one name.`;
 }
 

@@ -1,3 +1,5 @@
+import torch.nn.functional as F
+from sqlalchemy.orm import declared_attr
 from vendor import CONSTANT
 from vendor import Widget
 from vendor import tool
@@ -26,3 +28,13 @@ def load_orders(order_id):
 
 class OrderFailedError(Exception):
     pass
+
+
+class Model:
+    @declared_attr
+    def created_by(cls):
+        return cls
+
+    def fit(self, X, y):
+        X_train = X
+        return F, X_train, y
