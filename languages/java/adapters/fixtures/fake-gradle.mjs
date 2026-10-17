@@ -137,6 +137,15 @@ const modules = existsSync('NO_REPORTS')
 mkdirSync(reportBase, { recursive: true });
 mkdirSync('build', { recursive: true });
 writeFileSync('build/gradle-args.json', JSON.stringify(process.argv.slice(2)));
+const styleFileArgument = process.argv.find((argument) =>
+  argument.startsWith('-Pnitpicker.kotlin.styleFile='),
+);
+if (styleFileArgument !== undefined) {
+  writeFileSync(
+    'build/style-file.json',
+    readFileSync(styleFileArgument.slice(styleFileArgument.indexOf('=') + 1)),
+  );
+}
 writeFileSync(path.join(reportBase, 'modules.json'), JSON.stringify(modules));
 for (const module of modules) {
   writeModule(module);

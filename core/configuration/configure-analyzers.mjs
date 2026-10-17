@@ -6,6 +6,11 @@ import {
   PYTHON_ANALYZER_NAME,
 } from '../../languages/python/adapters/python-analyzer.mjs';
 import { configureJavaAnalyzer } from '../../languages/java/adapters/java-policy.mjs';
+import { kotlinStyleFiles } from '../../languages/java/adapters/kotlin/kotlin-tools.mjs';
+import {
+  mutationConfigFiles,
+  pythonConfigFiles,
+} from '../../languages/python/adapters/project-tools/config-files.mjs';
 import {
   applyLayout,
   applyLegacyInventory,
@@ -30,6 +35,16 @@ export function configureAnalyzers(analyzers, config, headPolicy) {
   );
 }
 
+function styleFilesOf(config, analyzerName) {
+  if (config.preset === 'kotlin') {
+    return (policyRoot) => kotlinStyleFiles(config, policyRoot);
+  }
+  if (config.preset !== 'python') {
+    return undefined;
+  }
+  return analyzerName === PYTHON_ANALYZER_NAME ? pythonConfigFiles : mutationConfigFiles;
+}
+
 function applyJavaConfig(analyzers, config) {
   const names = [
     ...GRADLE_PRESETS,
@@ -42,6 +57,7 @@ function applyJavaConfig(analyzers, config) {
           kotlin: config.kotlin,
           tools: config.tools,
           testConsole: config.testConsole,
+          styleFiles: styleFilesOf(config, analyzer.name),
           exclude: config.exclude,
           legacyInventory: config.legacyInventory ?? DEFAULT_LEGACY_INVENTORY,
           ...(analyzer.name === MUTATION_ANALYZER_NAME

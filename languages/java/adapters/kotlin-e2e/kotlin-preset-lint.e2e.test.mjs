@@ -22,6 +22,7 @@ import {
   initializeProject,
   kotlinE2eEnabled,
   kotlinPolicy,
+  kotlinPolicyWithProjectDetekt,
   kotlinSources,
   ktlintOf,
   ktlintRules,
@@ -141,8 +142,13 @@ describe.skipIf(!kotlinE2eEnabled)('Kotlin preset detekt, ktlint and ktfmt end t
       ),
     ).toEqual([]);
   });
-  it("runs detekt with the project's config laid over the defaults", () => {
+  it("leaves the project's detekt config out unless the project is listed", () => {
     const result = diffOf(project, 'detekt-config');
+
+    expect(fromTool(result.newEnforceable, 'detekt')).toEqual([...BAD_DETEKT_FINDINGS].sort());
+  });
+  it("runs detekt with the project's config laid over the defaults when the project is listed", () => {
+    const result = diffOf(project, 'detekt-config', { policy: kotlinPolicyWithProjectDetekt });
 
     expect(fromTool(result.newEnforceable, 'detekt')).toEqual([
       'detekt detekt.style.UnusedPrivateProperty Bad.kt',

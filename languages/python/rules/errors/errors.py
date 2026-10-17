@@ -2,6 +2,7 @@ import ast
 
 from checks.common import dotted_name, finding, type_text
 from errors.handling import is_handled
+from errors.logged_errors import logged_findings
 
 OPTIONAL_IMPORT_ERRORS = {"ImportError", "ModuleNotFoundError"}
 BLIND_ERRORS = {
@@ -39,6 +40,7 @@ class Errors(ast.NodeVisitor):
         self.scopes = [context.tree]
         self.tuples = module_tuples(context.tree)
         self.findings = []
+        self.reported = set()
 
     def visit_scope(self, node):
         self.scopes.append(node)
@@ -50,7 +52,9 @@ class Errors(ast.NodeVisitor):
 
     def visit_ExceptHandler(self, node):
         optional_import = node.type is not None and is_optional_import(node)
-        if not is_handled(node, self.context, self.scopes[-1], optional_import):
+        if is_handled(node, self.context, self.scopes[-1], optional_import):
+            self.findings.extend(logged_findings(node, self.context, self.reported))
+        else:
             caught = type_text(node.type) if node.type else ""
             subject = f"except {caught}".strip()
             self.findings.append(
