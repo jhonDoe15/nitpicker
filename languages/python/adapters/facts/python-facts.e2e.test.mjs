@@ -257,6 +257,19 @@ describe.skipIf(!pythonE2eEnabled)('the facts scan', () => {
     ]);
   });
 
+  it.each([
+    ['carriage returns', '\r'],
+    ['carriage return line feeds', '\r\n'],
+  ])('reads a file whose lines end in %s like one that uses line feeds', (_name, ending) => {
+    const lines = ['X = 1', '', '', 'def total():', '    return X', ''];
+    const { definitions } = factsOf({ 'src/shop/a.py': lines.join(ending) });
+
+    expect(definitions.map(({ name, line, text }) => [name, line, text])).toEqual([
+      ['X', 1, 'const|X = 1'],
+      ['total', 4, 'function|def total ( ) : return X'],
+    ]);
+  });
+
   it('leaves out a file that does not parse', () => {
     expect(factsOf({ 'src/shop/bad.py': 'def (:\n' }).modules).toEqual([]);
   });

@@ -224,7 +224,7 @@ def reexports_of(tree, relative, exported_names):
 
 
 def facts_of(relative, tree, text, imports):
-    lines = io.StringIO(text).readlines()
+    lines = [line.rstrip("\r\n") + "\n" for line in io.StringIO(text, newline="").readlines()]
     bindings = import_bindings(tree)
     exported_names = all_names(tree)
     return {
