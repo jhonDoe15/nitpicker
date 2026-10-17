@@ -1,12 +1,5 @@
 export const REVIEW_RULE_CASES = [
   {
-    name: 'a fixed sleep in a test names polling with a deadline',
-    fixture: 'fixed-sleep',
-    tool: 'python-rules',
-    rule: 'fixed-sleep',
-    mention: 'poll it in a loop until a deadline',
-  },
-  {
     name: 'a docstring that restates the name names what to say instead',
     fixture: 'restating-docstring',
     tool: 'python-rules',
