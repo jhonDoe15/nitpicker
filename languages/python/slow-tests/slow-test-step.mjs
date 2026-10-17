@@ -97,7 +97,7 @@ function recordOf({ test, head, base, roots }) {
 }
 
 function slowTests(context, xml) {
-  const budget = slowTestBudget(context.settings.testSeconds);
+  const budget = slowTestBudget(context.testSeconds);
   const floor = Math.min(budget.unitTestSeconds, budget.integrationTestSeconds);
   const slowest = slowestRuns(
     testCasesOf(xml).filter((testCase) => testCase.seconds > floor),
