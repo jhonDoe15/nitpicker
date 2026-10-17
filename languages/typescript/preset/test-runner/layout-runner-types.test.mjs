@@ -5,7 +5,7 @@ import { afterAll, afterEach, describe, expect, it, vi } from 'vitest';
 import { resolveHeadPolicy } from '../head-policy.mjs';
 import { resolveLayout } from '../layout.mjs';
 import { layoutTransformFor } from '../tool-configs.mjs';
-import { defaults } from './test-support/layout-config-helpers.mjs';
+import { defaults } from '../layout/test-support/layout-config-helpers.mjs';
 
 const roots = [];
 const layout = resolveLayout();

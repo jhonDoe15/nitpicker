@@ -182,6 +182,7 @@ describe('the shared module a domain file reaches I/O through', () => {
 
 describe('the test files of each runner in domain/', () => {
   const fixture = path.join(fixturesRoot, 'domain-runner-tests');
+  const domain = 'src/main/features/auth/domain';
   const BASE_PATTERNS = [
     '^(?:test|tests|__tests__|e2e)/',
     '(?:^|/)(?:src)/.*/__tests__/',
@@ -200,7 +201,7 @@ describe('the test files of each runner in domain/', () => {
     );
     return cruiseWithConfig(
       { ...strictConfig, forbidden },
-      { baseDir: fixture, paths: ['src'], outputType: 'err-long' },
+      { baseDir: fixture, paths: ['src'], outputType: 'json' },
     );
   }
 
@@ -225,16 +226,21 @@ describe('the test files of each runner in domain/', () => {
     expect(patternsFor(defaultTestFiles(runner))).toEqual(BASE_PATTERNS);
   });
 
-  it('leaves the node:test files out of the domain rules', async () => {
-    const result = await cruiseWith(patternsFor(defaultTestFiles('node')));
+  async function violationsWith(patterns) {
+    const report = JSON.parse((await cruiseWith(patterns)).output);
+    return report.summary.violations.map(({ from, to, rule }) => [from, to, rule.name]).sort();
+  }
 
-    expect(result.exitCode, result.output).toBe(0);
+  it('leaves the node:test files out of the domain rules', async () => {
+    expect(await violationsWith(patternsFor(defaultTestFiles('node')))).toEqual([]);
   });
 
   it('holds the same files to the domain rules when the runner does not run them', async () => {
-    const result = await cruiseWith(patternsFor(defaultTestFiles('vitest')));
-
-    expect(result.output.replaceAll(/\s+/g, ' ')).toContain('domain-does-not-import-node-io');
-    expect(result.exitCode).not.toBe(0);
+    expect(await violationsWith(patternsFor(defaultTestFiles('vitest')))).toEqual([
+      [`${domain}/login-test.ts`, 'fs', 'domain-does-not-import-node-io'],
+      [`${domain}/login-test.ts`, 'fs', 'domain-does-not-reach-io-through-shared'],
+      [`${domain}/login-test.ts`, 'node:test', 'domain-does-not-import-node-io'],
+      [`${domain}/test/login.ts`, 'node:test', 'domain-does-not-import-node-io'],
+    ]);
   });
 });
