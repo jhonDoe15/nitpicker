@@ -73,7 +73,7 @@ backstop. It fails only on findings your change adds, so leave code the task doe
   function must stay below 9.
 - Each `elif` and `except` adds a nesting level: `if`/`elif`/`elif` is already too deep. Return
   early, look the value up in a dict, or move a branch into a helper.
-- A new clone of at least 5 lines and 50 tokens (`duplicate-clone`) fails: extract a function. A
+- A new clone of at least 5 lines and 50 tokens (`duplicate-clone`) fails: extract a function, also when the copy has other names and literals. A
   package must not depend on a less stable one (`stability-direction`).
 - A class has at most 20 methods and 10 fields, and at most 3 project base classes above it
   (`Exception` or `models.Model` add none). A package sits at most 4 levels below the root package. Modules and packages must not import

@@ -81,7 +81,7 @@ Before you change code other modules use, fix a bug, or add a UI state, read
 - A file stays within 300 lines (a test file 500) and a line within 120 characters. A folder holds
   at most 6 source files and 6 test files directly: group the rest into subfolders by what they do.
 - A new clone of at least 5 lines and 50 tokens (`duplicate-clone`), in source or tests, fails:
-  extract a function.
+  extract a function, also when the copy has other names and literals.
 - Up to 3 parameters stay positional. Past 3, group related values into one object. A factory's
   inner functions count toward its 50 lines: put helpers at module level and pass `deps` in.
 - `async`/`await`, never `.then()`. No floating promises.
