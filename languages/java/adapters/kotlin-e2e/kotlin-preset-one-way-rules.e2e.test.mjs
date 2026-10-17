@@ -110,7 +110,7 @@ describe.skipIf(!kotlinE2eEnabled)('Kotlin preset one-way rules end to end', () 
 
     expect(missing).toEqual([]);
   });
-  it('finds runBlocking behind a wildcard import and fully qualified, and does not ask a mutable holder class to become a data class', () => {
+  it('finds runBlocking behind a wildcard import and fully qualified and a forbidden call in a class the project config lists in ignoreAnnotated, and does not ask a mutable holder class to become a data class', () => {
     const extras = hostileConfigResult.newEnforceable.filter(({ path: file }) =>
       file.includes('/demo/extras/'),
     );
@@ -120,8 +120,40 @@ describe.skipIf(!kotlinE2eEnabled)('Kotlin preset one-way rules end to end', () 
         .filter(({ rule }) => rule === 'detekt.style.ForbiddenMethodCall')
         .map(({ path: file }) => path.basename(file))
         .sort(),
-    ).toEqual(['Qualified.kt', 'Wildcard.kt']);
+    ).toEqual(['Annotated.kt', 'Printer.kt', 'Qualified.kt', 'Sleeper.kt', 'Wildcard.kt']);
     expect(extras.some(({ rule }) => rule === 'detekt.style.UseDataClass')).toBe(false);
+  });
+  it('adds the forbidden calls a project lists to the preset ones, and keeps the preset reason of a call both list', () => {
+    const forbidden = hostileConfigResult.newEnforceable.filter(
+      ({ rule, path: file }) =>
+        rule === 'detekt.style.ForbiddenMethodCall' &&
+        (file.includes('/demo/extras/') || file.includes('/demo/scopeRun/')),
+    );
+
+    const exception =
+      ' To allow it on specific paths, add an "exceptions" entry for rule detekt.style.ForbiddenMethodCall in nitpicker.config.json.';
+    const runBlocking =
+      'The method `kotlinx.coroutines.runBlocking` has been forbidden: Make the caller `suspend` (`suspend fun main()` for an entry point) and use `coroutineScope { ... }` for concurrent work. In a test, use `runTest`.';
+
+    const run =
+      'The method `kotlin.run` has been forbidden: Use `let` to name a value for a block (`value?.let { ... }` for null), or call the code directly.';
+
+    expect(
+      forbidden.map(({ path: file, message }) => [path.basename(file), message]).sort(),
+    ).toEqual([
+      ['Annotated.kt', `${run}${exception}`],
+      ['Banned.kt', `${run}${exception}`],
+      [
+        'Printer.kt',
+        `The method \`kotlin.io.println\` has been forbidden in the detekt config.${exception}`,
+      ],
+      ['Qualified.kt', `${runBlocking}${exception}`],
+      [
+        'Sleeper.kt',
+        `The method \`java.lang.Thread.sleep\` has been forbidden: Use a scheduler or a test clock instead of sleeping.${exception}`,
+      ],
+      ['Wildcard.kt', `${runBlocking}${exception}`],
+    ]);
   });
   it('does not analyze a Kotlin script among the sources', () => {
     const result = hostileConfigResult;

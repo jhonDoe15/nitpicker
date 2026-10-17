@@ -23,10 +23,9 @@ node languages/python/adapters/python-runner.mjs --part python     (analyzer pyt
   -> ruff check  --config nitpicker-ruff.toml      -> ruff.sarif
   -> ruff format --check --diff | black --check    -> format.txt
   -> coverage run --branch -m pytest | unittest    -> coverage.json  (coverage.py JSON report)
-  -> mypy --strict | pyright (strict)              -> type-check.json
+  -> mypy --strict | pyright | basedpyright (strict) -> type-check.json
   -> python -I nitpicker_rules.py                  -> rules.json     (the small AST checks)
-  -> python structure_metrics.py                    -> structure.json  (slice 3)
-  -> lizard --csv -l python                         -> lizard.csv      (slice 3)
+  -> python structure_metrics.py                    -> structure.json  (slice 3; also the CRAP input)
   -> jscpd --format python (all source roots at once) -> duplicates.json
   -> python import-scan.py (stdlib ast)            -> imports.json    (modules and their imports)
   -> lint-imports (only with an import-linter config) -> import-linter.txt
@@ -44,7 +43,7 @@ directory is the contract between the tool runs and the readers; later slices ad
   auto-detection of `pyproject.toml`. `nitpicker` finds the project from the nearest directory with
   a `package.json` or a `nitpicker.config.json`, so a Python project needs no `package.json`.
 - **Two analyzers.** `python` carries the findings of the tools named `ruff`, `ruff-format` or
-  `black`, `coverage`, `mypy` or `pyright`, and `python-rules`; `mutation` (slice 6) carries those of `mutmut` and depends on `python`,
+  `black`, `coverage`, `mypy`, `pyright` or `basedpyright`, and `python-rules`; `mutation` (slice 6) carries those of `mutmut` and depends on `python`,
   so it runs after it and is skipped when it had a tool error. They are separate so that a missing
   or crashing mutmut costs only the mutation results, and `"disable": ["mutation"]` turns it off.
   `python` cannot be disabled alone, because `mutation` depends on it. The version is the versions of the tools in the
@@ -70,7 +69,7 @@ that applies wins):
 | 2     | `poetry.lock`               | the virtualenv `poetry env info --path` reports, first on `PATH`; needs `poetry install` to have run         |
 | 3     | a uv workspace root above   | as 1: an ancestor with a `uv.lock` and a `[tool.uv.workspace]` table; its `.venv` is the environment         |
 | 4     | a `.venv/` directory        | `.venv/bin` first on `PATH`, `VIRTUAL_ENV` set                                                               |
-| 5     | nothing                     | `ruff`, `black`, `coverage`, `mypy`, `pyright` and `python3` from the `PATH`                                 |
+| 5     | nothing                     | `ruff`, `black`, `coverage`, `mypy`, `pyright`, `basedpyright` and `python3` from the `PATH`                 |
 
 The environment is always the one of the live checkout (the head work tree you run `nitpicker` in).
 It is never created or synced by nitpicker: the uv environment is checked before `uv run --no-sync`
@@ -111,13 +110,15 @@ set `python.sourceRoots`.
 ## Configuration
 
 Config keys with this preset: `base`, `disable` (the analyzer names are `python` and `mutation`), `analyzers`, the keys shared by all languages,
-`thresholds` (`crapLimit`, enforced from slice 3, and the file limits `fileLines`, `testFileLines`,
-`lineLength` and `folderFiles`), `exclude` (findings under the globs are dropped) and
+`thresholds` (`crapLimit`, enforced from slice 3, the file limits `fileLines`, `testFileLines`,
+`lineLength` and `folderFiles`, the size limits `folderDepth`, `classMethods`, `classFields` and
+`inheritanceDepth`, and the test time limits `unitTestSeconds` and `integrationTestSeconds`), `exclude` (findings under the globs are dropped) and
 `legacyInventory` (same format and `baseline-expansion` rule as for Java), and the `python` object
 below. `layout` describes TypeScript source roots and stays a config error with this preset. The
-top-level `exceptions` is accepted only for the rules shared by every language: the file limits
-(`file-lines-limit`, `line-length-limit`, `folder-files-limit`) and the
-[dependency and repository checks](usage.md#dependency-and-repository-checks); the Python equivalent of
+top-level `exceptions` is accepted only for the file and size limits shared with the other languages
+(`file-lines-limit`, `line-length-limit`, `folder-files-limit`, `folder-depth-limit`,
+`class-methods-limit`, `class-fields-limit`, `inheritance-depth-limit`), whose messages name it, and
+the [dependency and repository checks](usage.md#dependency-and-repository-checks); the Python equivalent of
 `exceptions` for every other rule is `python.exceptions`. `python` is an error with any other preset.
 
 ```json
@@ -146,18 +147,29 @@ top-level `exceptions` is accepted only for the rules shared by every language: 
 | `environment`  | `uv`, `poetry`, `path`, or a directory | detected, see above                                                                  |
 | `formatter`    | `ruff`, `black`                        | `black` if the project declares it (see below) and not ruff's formatter, else `ruff` |
 | `testRunner`   | `pytest`, `unittest`                   | `pytest` if the project uses it (see below), else `unittest`                         |
-| `typeChecker`  | `mypy`, `pyright`                      | detected from the project, see below                                                 |
+| `typeChecker`  | `mypy`, `pyright`, `basedpyright`      | detected from the project, see below                                                 |
 | `importLinter` | `true`, `false`                        | run when the project has an import-linter config (see slice 5), else not             |
 | `sourceRoots`  | non-empty array of project directories | `src`, else the top-level packages (directories with `__init__.py`), else `.`        |
+| `entryPoints`  | array of project-relative globs        | none; see [Composition roots](#the-shared-one-way-rules)                             |
 | `exceptions`   | array of `{ rule, paths, reason }`     | none; see [Exceptions](#exceptions)                                                  |
+
+`python.entryPoints` lists the files that start the program, such as a job runner or a worker that
+reads its settings from the environment (see the composition roots below). Adding a file there
+loosens `process-env-access`, so the policy-change list reports it as a loosening and a removal as
+a change, like `layout.entryPoints`; the base snapshot is measured with the entry points both
+sides declare.
 
 The type checker is the one the project uses: `mypy` when it has a `[tool.mypy]` table (or
 `[mypy]` in `mypy.ini`, `setup.cfg` or `tox.ini`), `pyright` when it has `pyrightconfig.json` or a
-`[tool.pyright]` table (`[ tool.pyright ]` too). Failing that, whichever it declares as a
+`[tool.pyright]` table (`[ tool.pyright ]` too), `basedpyright` when it has a `[tool.basedpyright]`
+table. Failing that, whichever it declares as a
 dependency (a requirements line, a quoted entry anywhere in a pyproject dependency array, the
-`mirrors-mypy` or `pyright-python` hook). When both score the same, or neither does, nitpicker
-runs `mypy --version` and then `pyright --version` in the environment and takes the first that
-runs; `python.typeChecker` overrides all of it. The choice is read from the checkout you run `nitpicker` in, so base and head use the same
+`mirrors-mypy`, `pyright-python` or `basedpyright-pre-commit-mirror` hook). basedpyright also reads
+`pyrightconfig.json` and `[tool.pyright]`, so once the project declares or configures
+basedpyright those two no longer count for pyright: a project with a `[tool.pyright]` table and a
+`basedpyright` dependency runs basedpyright. When two score the same, or none does, nitpicker
+runs `mypy --version`, then `pyright --version`, then `basedpyright --version` in the environment and
+takes the first that runs; `python.typeChecker` overrides all of it. The choice is read from the checkout you run `nitpicker` in, so base and head use the same
 checker; a change that switches checker makes every finding of the new one new.
 
 Existing violations are baselined with the legacy inventory, where `source` is the finding's
@@ -175,7 +187,7 @@ shape: `rule` (the id printed in the finding, for example `T201`, `PTH118`, `fro
 and `reason` (required text). It lifts that rule for those paths, in the base and in the head
 snapshot alike, and every exception is listed in the report's config overrides. The id is checked
 when the config loads: a ruff code (or a prefix such as `PTH`, which covers every `PTH` code), a
-`python-rules` id, a mypy error code or a pyright `report*` rule; a typo such as `T210` is a config
+`python-rules` id, a mypy error code or a pyright or basedpyright `report*` rule; a typo such as `T210` is a config
 error, not a silent no-op. Prefer fixing the code; an exception is for code that is
 legitimately outside the rule, such as a command line entry point that prints or a module that
 must keep a mutable dataclass.
@@ -210,48 +222,71 @@ can import, so an environment without pytest is an error (`environment-failed`, 
 
 The purpose of this slice is the "one way" for each construct. Every finding message names the
 allowed form, and, because any rule can flag legitimate code, ends with how to add the exception.
-Every enforceable finding of ruff, the type checkers and the rules ends with the `python.exceptions` sentence, except the two whose own advice differs (`no-inline-suppression`, mypy `unused-ignore`). The wording lives in `languages/python/rules/rule-hints.mjs`; a test checks that each rule's message
+Every enforceable finding of ruff, the type checkers, the rules, coverage, duplicates, coupling, import-linter, the dependency checks, the test times and mutmut ends with the one `python.exceptions` sentence (`To allow it for some paths, add a "python.exceptions" entry for <rule> in nitpicker.config.json.`), except mypy `unused-ignore` (delete the comment), `no-import-outside-roots` (whose way out is `python.sourceRoots`), findings on `.` and the shared file and size limits, whose message names the top-level `exceptions` entry instead. The allowed forms live in `languages/python/rules/hints/` and the route in one place, `exceptionSentence` in `languages/python/rules/rule-hints.mjs`, which assembles them and applies them to both analyzers' findings with `applyRuleHints`; `languages/python/rules/exception-sentences.test.mjs` fails on any other Python file that writes a route of its own, and a test checks that each rule's message
 names its allowed form, and an opt-in test runs a banned and an allowed fixture of every rule
 through the real tools.
 
-- **Type checking.** `mypy --strict` or `pyright` with `typeCheckingMode: strict`, on the source
+- **Type checking.** `mypy --strict`, `pyright` or `basedpyright` with `typeCheckingMode: strict`, on the source
   roots. Strict is not configurable: a project that cannot pass yet baselines its existing errors
   (they only count when new), and a project's config cannot switch the check off. Only its
   environment settings apply. For mypy that is `plugins`, `mypy_path`, `python_version`, the
   namespace and typeshed options and, per module, `ignore_missing_imports` and `follow_imports`;
   `ignore_errors`, `disable_error_code`, `exclude` and every flag that weakens strict are dropped.
   Pyright gets a generated config that `extends` the project's (for `extraPaths`, `pythonVersion`
-  and the like), then forces strict, `enableTypeIgnoreComments: false`, `ignore: []`, the source
-  roots and nitpicker's `exclude` in place of the project's. Mypy also gets the environment's
+  and the like), then forces strict, `enableTypeIgnoreComments: false`, `ignore: []`, `executionEnvironments: []`, the source
+  roots and nitpicker's `exclude` in place of the project's. basedpyright runs the same way, with the
+  same generated config, and the same strict mode: it names its modes `off`, `basic`, `standard`,
+  `strict`, `recommended` and `all`, and nitpicker forces `strict` (not `all`, whose extra rules such as
+  `reportAny` and `reportUnusedCallResult` are style opinions, nor `recommended`, its default), so the
+  two checkers report the same rules. A project's `[tool.basedpyright]` or `[tool.pyright]` table,
+  `pyrightconfig.json` is the one that `extends` (the file first, else the pyproject table; basedpyright
+  does not read a `basedpyrightconfig.json`, so neither does nitpicker), and a baseline file (`.basedpyright/baseline.json`) is not read, since the
+  generated config lives in the report directory. Mypy also gets the environment's
   interpreter (`--python-executable`), so packages installed there resolve. Tests are not
-  type-checked unless a source root contains them. Findings are one per diagnostic: tool `mypy` or `pyright`, rule the
-  error code (`arg-type`) or rule name (`reportArgumentType`), identity the message text without `on line N` / `from line N` references (ruff messages such as F811 too), with `#n` for repeats in one file. Only the first line of a pyright message is used, since
+  type-checked unless a source root contains them. Findings are one per diagnostic: tool `mypy`, `pyright` or `basedpyright`, rule the
+  error code (`arg-type`) or rule name (`reportArgumentType`), identity the message text without `on line N` / `from line N` references (ruff messages such as F811 too), with `#n` for repeats in one file. Only the first line of a pyright or basedpyright message is used, since
   the detail lines vary with surrounding code. A checker that exits other than 0 or 1 is a
   `types-failed` tool error. The checker runs in the project's environment like pytest, so it must
   be installed there (or on the `PATH`).
 - **Lint rules.** `languages/python/ruff/nitpicker-ruff.toml` selects, besides slice 1's rules,
-  `PTH`, `UP031`, `UP032`, `FLY002`, `BLE001`, `S110` and `S112`, turns on
-  `check-typed-exception` (so `except ValueError: pass` is swallowing too) and ignores `F405`
-  (the star import itself is `F403`), `SIM105` (it recommends the swallowing form `S110` bans)
-  and `RUF100` (every `noqa` is already a finding).
+  `PTH`, `UP031`, `UP032`, `FLY002` and `BLE001`, and ignores `F405`
+  (the star import itself is `F403`), `SIM105` (the `swallowed-exception` rule below covers that
+  form) and `RUF100` (every `noqa` is already a finding). `S110` and `S112` are not selected:
+  `swallowed-exception` reports what they did, and more, once and under one id. The shared
+  one-way rules add the groups `G` (logging calls), `N` (PEP 8 naming), `ERA` (commented-out
+  code), `ARG` (unused arguments), `PT` (pytest style), `S` (security) and `TRY` (exceptions), and
+  the single rules `PLR2004`, `PLW0602`, `PLW0603`, `FBT001` and `FBT002`; the last section of this
+  slice lists each one with its allowed form and the rules of those groups that are left off.
+  The groups `RUF`, `G`, `N`, `PT`, `S` and `TRY` are selected by listing their stable codes, not
+  by prefix, so a later ruff cannot add a rule (or a preview rule) to the gate. `ruffConfigFor`
+  (`adapters/configuration/python-ruff-config.mjs`) writes the toml into the report directory
+  without the codes that the installed ruff does not know or lists as preview or removed
+  (`ruff rule --all --output-format json`), which lets ruff 0.9 up to 0.16 run the same selection;
+  a prefix such as `E4` or `T20` stays when a known rule starts with it. Test files are the ones
+  pytest collects (the `python_files` patterns, `conftest.py`, any `tests` or `test` folder,
+  `test_*.py`, `*_test.py`, and the Django names in a Django project, see
+  [runner parity](#runner-parity)): ruff's `ARG`, `FBT`, `PLR2004` and `S` findings in them are
+  dropped after ruff runs (`rules/filters/ruff-allowed-forms.mjs`).
 - **AST rules.** `languages/python/rules/nitpicker_rules.py` runs with `python -I` (standard
   library only, never importing project code) over the files `ruff check --show-files` lists, so
   it sees exactly the files ruff lints, honoring `.gitignore`. Findings have tool `python-rules`.
   Files that do not parse are left to ruff's syntax errors.
 
-| Allowed form                                    | Banned form                                              | Rule                                                       |
-| ----------------------------------------------- | -------------------------------------------------------- | ---------------------------------------------------------- |
-| `pathlib.Path`                                  | `os.path`, `open()`, `os.getcwd()`, ...                  | ruff `PTH*`                                                |
-| f-strings                                       | `"...".format()`, `"..." % x`, `"".join` of a fixed list | ruff `UP031`, `UP032`, `FLY002`                            |
-| `None` default, value built in the function     | a mutable default argument                               | ruff `B006`                                                |
-| catch, handle, log or re-raise a specific error | bare `except:`, `except Exception:`, `except X: pass`    | ruff `E722`, `BLE001`, `S110`, `S112`                      |
-| explicit imports                                | `from module import *`                                   | ruff `F403`                                                |
-| `logging`                                       | `print`, `pprint`                                        | ruff `T201`, `T203`                                        |
-| `@dataclass(frozen=True)`                       | `@dataclass` without `frozen=True`, outside tests        | `frozen-dataclass`                                         |
-| pydantic in `adapters/` only                    | importing `pydantic` or `pydantic_settings` elsewhere    | `pydantic-boundary`                                        |
-| an `enum.Enum` / `StrEnum`                      | a plain class of two string constants, or three `X_*`    | `enum-string-constants`                                    |
-| fixing the code                                 | `# type: ignore`, `# noqa`, `# pyright: ignore`, ...     | `no-inline-suppression`                                    |
-| annotated code the checkers read                | `@no_type_check`, `if not TYPE_CHECKING:`, a stub beside | `no-type-check`, `not-type-checking`, `stub-beside-source` |
+| Allowed form                                   | Banned form                                                                  | Rule                                                       |
+| ---------------------------------------------- | ---------------------------------------------------------------------------- | ---------------------------------------------------------- |
+| `pathlib.Path`                                 | `os.path`, `open()`, `os.getcwd()`, ...                                      | ruff `PTH*`                                                |
+| f-strings                                      | `"...".format()`, `"..." % x`, `"".join` of a fixed list                     | ruff `UP031`, `UP032`, `FLY002`                            |
+| `None` default, value built in the function    | a mutable default argument                                                   | ruff `B006`                                                |
+| catch and handle a specific error, or re-raise | bare `except:`, `except Exception:`                                          | ruff `E722`, `BLE001`                                      |
+| re-raise, return a failure value or a default  | `except X:` that only passes, continues, logs, returns or assigns a constant | `swallowed-exception`                                      |
+| `contextlib.suppress(SpecificError)`           | `contextlib.suppress(Exception)`, `BaseException` or no argument             | `blind-suppress`                                           |
+| explicit imports                               | `from module import *`                                                       | ruff `F403`                                                |
+| `logging`                                      | `print`, `pprint`                                                            | ruff `T201`, `T203`                                        |
+| `@dataclass(frozen=True)`                      | `@dataclass` without `frozen=True`, outside tests                            | `frozen-dataclass`                                         |
+| pydantic in `adapters/` only                   | importing `pydantic` or `pydantic_settings` elsewhere                        | `pydantic-boundary`                                        |
+| an `enum.Enum` / `StrEnum`                     | a plain class of two string constants, or three `X_*`                        | `enum-string-constants`                                    |
+| fixing the code                                | `# type: ignore`, `# noqa`, `# pyright: ignore`, ...                         | `no-inline-suppression`                                    |
+| annotated code the checkers read               | `@no_type_check`, `if not TYPE_CHECKING:`, a stub beside                     | `no-type-check`, `not-type-checking`, `stub-beside-source` |
 
 Details that are decisions rather than the table:
 
@@ -281,17 +316,223 @@ Details that are decisions rather than the table:
   from the checkers: `@no_type_check` on a function or class, an `if not TYPE_CHECKING:` branch,
   and a `.pyi` beside a `.py` of the same stem in the sources (mypy then ignores the `.py` body).
   `typing.cast` is allowed.
+- `swallowed-exception` flags an `except` handler whose body does nothing with the error: every
+  statement is `pass`, `...` or another constant expression such as a docstring, `continue`, an
+  assignment of a constant (`result = None`, `ok = False`), `return` with no value or a constant
+  (`None`, `False`, `0`, `-1`, a string, or an empty or constant-only tuple, list, set or dict such
+  as `[]`, `()` or `{}`), or only reports the error: a call on a logger (`logger.exception(...)`,
+  `logging.warning(...)`, `logging.getLogger(...).error(...)`), `print`, `warnings.warn` or
+  `traceback.print_exc`. Logging alone is not handling: the failure disappears from the caller's
+  point of view, as in the TypeScript `nitpicker/no-silent-catch` and the Java preset. A handler that raises, calls anything
+  else, assigns or returns a name or computed value (a failure value built from the error, or a
+  named default) is allowed, with or without a log call next to it, and so is one that uses the
+  bound name (`except E as error: ...`) in a way that is not a log call. The one exception
+  inside the list is the optional-dependency idiom: a handler that catches only `ImportError` or
+  `ModuleNotFoundError` may assign constants (`except ImportError: yaml = None` or
+  `HAS_YAML = False`); an `except ImportError:` that only passes or returns is still flagged. It replaces ruff's
+  `S110` (`pass`) and `S112` (`continue`), which missed `return None`, `...` and the rest, and applies to
+  test files too. `break` is not in the list, since it ends the loop rather than ignoring one item.
+  The subject is `except <type>` (`except (A, B)`, plain `except` for a bare one), so identities
+  survive edits above; repeats in a file are numbered. The message says to re-raise it with its
+  cause (`raise DomainError(...) from error`), return a failure value built from it or a named
+  default, that logging alone is not handling, that `contextlib.suppress(SpecificError)` ignores
+  one expected error, and the `python.exceptions` entry for `swallowed-exception` for a handler that
+  must stay (a lookup that answers `False` for bad input, say). Untested `except` handlers are not
+  gated by branch coverage either, since coverage.py emits no arcs for them.
+- `blind-suppress` closes the way around the rule above: `contextlib.suppress(Exception)`,
+  `suppress(BaseException)` (also `builtins.Exception`, an import alias, and a list holding either
+  of them) and `suppress()` with no argument ignore every error, as the bare `except Exception:` it
+  stands for. The subject is the call as written with the resolved name, for example
+  `contextlib.suppress(Exception)`; a `suppress` imported from anywhere other than `contextlib` is
+  not checked. The message points to naming the expected exception, or handling or logging the
+  error, and to the `python.exceptions` entry for `blind-suppress`.
 - `ruff check` runs with `--ignore-noqa`, so a `noqa` never hides a finding either.
+
+### The shared one-way rules
+
+These rules bring the Python preset to the rules the TypeScript and Java presets enforce. Each
+finding names the allowed form first and ends with the usual `python.exceptions` sentence. The
+rules marked "script" are `python-rules` findings of `nitpicker_rules.py` (one module per concern
+under `languages/python/rules/`: `checks`, `boundary`, `smells`, `honesty`); the others are ruff
+rules. Rules that are not enforced because they flag idiomatic code with no clean alternative
+are listed at the end.
+
+| Concern                  | Allowed form                                                                                           | Rule                                                                                                                                                 |
+| ------------------------ | ------------------------------------------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Logging                  | `logger.info("Loaded %s", count)`, `logger.warning`, `logger.exception` (structlog, loguru: see below) | ruff `G001`-`G004`, `G010`, `G101`, `G201`, `G202`, `TRY400`, `TRY401`                                                                               |
+| Environment              | read once in a composition root, pass values in                                                        | `process-env-access` (script)                                                                                                                        |
+| Shell                    | a list: `subprocess.run(["git", "status"], check=True)`                                                | `shell-command` (script), ruff `S602`, `S604`, `S605`, `S609`                                                                                        |
+| SQL                      | parameters: `cursor.execute("select * from t where id = %s", (id,))`                                   | `sql-string-formatting` (script)                                                                                                                     |
+| Path traversal           | `target = (base / name).resolve()`, then `target.is_relative_to(base)`                                 | `unsafe-path-join` (script)                                                                                                                          |
+| Magic numbers            | a named constant                                                                                       | ruff `PLR2004`                                                                                                                                       |
+| Naming                   | PEP 8: `CapWords`, `snake_case`, `UPPER_SNAKE_CASE`, `...Error`                                        | ruff `N`                                                                                                                                             |
+| Boundary                 | parse untrusted data once with the project's validator (pydantic by default) in `adapters/`            | `handwritten-boundary-guard` (script)                                                                                                                |
+| Types in the domain      | real types, `Protocol`, frozen dataclasses                                                             | `any-in-domain`, `pydantic-any-field`, `pydantic-extra-allow` (script)                                                                               |
+| Pure domain              | clock, ids and random values passed in; ports implemented in `adapters/`                               | `clock-now`, `random-in-domain`, `io-in-domain` (script)                                                                                             |
+| Module state             | state in an object made in the composition root                                                        | `module-level-mutable-state` (script), ruff `PLW0602`, `PLW0603`                                                                                     |
+| Risky APIs               | JSON instead of pickle or marshal, a specific exception class                                          | ruff `S301`, `S302`, `TRY002`, `TRY004`, `TRY201`, `TRY203`                                                                                          |
+| Deprecated APIs          | the replacement the deprecation notice names                                                           | mypy `deprecated`, pyright and basedpyright `reportDeprecated`                                                                                       |
+| Repeated strings         | a constant or enum member                                                                              | `repeated-string-literal` (script)                                                                                                                   |
+| Unused arguments         | remove the argument, or prefix it with `_` when the signature is fixed                                 | ruff `ARG001`-`ARG005`                                                                                                                               |
+| Generic names            | a name for the job (`price_rounding.py`, `OrderRepository`)                                            | `generic-name` (script)                                                                                                                              |
+| Secrets                  | read from the environment; log only that a secret is set                                               | `hardcoded-secret`, `credential-shape`, `secret-in-log` (script)                                                                                     |
+| Boolean flags            | keyword-only (`def send(message, *, urgent=False)`) or two functions                                   | ruff `FBT001`, `FBT002`                                                                                                                              |
+| Input or output per item | one batch call, or `asyncio.gather`                                                                    | `io-in-loop` (script)                                                                                                                                |
+| Task markers             | `# TODO(#123): ...` with an issue                                                                      | `todo-without-issue` (script)                                                                                                                        |
+| Commented-out code       | delete it                                                                                              | ruff `ERA001`                                                                                                                                        |
+| Security sinks           | parameterized queries, `sha256`, verified TLS, a timeout, `yaml.safe_load`, `defusedxml`               | ruff `S` (see below)                                                                                                                                 |
+| Test honesty             | a reason on every skip, no sleeping, no tautologies, fixed time and seeded random values, no network   | ruff `PT`, `skipped-test-without-reason`, `sleep-in-test`, `tautological-assert`, `real-clock-in-test`, `random-in-test`, `network-in-test` (script) |
+| Test layout              | tests in files pytest collects; helpers in the tests folder                                            | `uncollected-tests`, `test-helper-in-source` (script)                                                                                                |
+
+Details that are decisions rather than the table:
+
+- `PLR2004` allows the same numbers as the TypeScript `no-magic-numbers` (`-1`, `0`, `1`, `2`, `10`,
+  `100`, `1000`): findings for them are dropped after ruff runs (`rules/filters/ruff-allowed-forms.mjs`),
+  because ruff has no setting for it. Ruff already allows strings and bytes.
+- `S602`, `S604` and `S605` with a command that is a plain string literal are dropped too (ruff
+  marks them "seems safe"): a fixed command cannot be injected. A command built from a variable or
+  an f-string is reported. `S603` and `S607` (a subprocess call at all) and `S606` are not
+  selected: running a program with a list of arguments is the allowed form.
+- `process-env-access` reports `os.environ`, `os.getenv`, `os.putenv` and the related names (`posix.environ`,
+  `dotenv_values`, `getattr(os, "environ")`), also through `from os import environ` and import
+  aliases, once per site in every non-test file that is not a composition root. A composition root
+  is a file the program starts from or wires together: named `main`, `__main__`, `server`,
+  `composition_root`, `manage`, `wsgi`, `asgi`, `cli`, `app`, `application`, `celery`, `bootstrap` or
+  `worker`; named like a configuration module (`config`, `settings`, `conf`, `*_config`, `*_settings`,
+  `settings_*`); `tasks`, `fabfile`, `noxfile`, `setup` or `conftest` at the top level; in a
+  `composition_root`, `settings`, `config` or `conf` folder; an alembic `env.py` (a `script.py.mako`
+  beside it); a file that defines `create_app`, `make_app`, `build_app` or a similar factory; a
+  module named by a script or plugin entry point of `pyproject.toml` (`[project.scripts]`,
+  `[project.entry-points]`, poetry, flit) or `setup.cfg`; or a file matched by `python.entryPoints`.
+  Nothing under a `domain` folder is a composition root.
+- `shell-command` reports running a command through a shell: `shell=True` or a `shell=` value that
+  is not a literal (also from `**{"shell": True}`), a list starting with `sh`, `bash`, `cmd`,
+  `powershell` and the other shells followed by `-c`, `/c` or a similar flag, and the `subprocess`,
+  `os.exec*`, `os.spawn*`, `pty.spawn` and `asyncio.create_subprocess_*` calls (also
+  `create_subprocess_shell`). A list of arguments, or a fixed command string that ruff already
+  accepts, is the allowed form. Not in tests.
+- `sql-string-formatting` reports an f-string, `%`, `+` or `.format` that builds SQL text (a
+  `select ... from`, `insert ... values`, `update ... set` or `delete from`) and reaches
+  `execute`, `executemany`, `text`, `raw`, `RawSQL`, `extra` or a pandas `read_sql*` call, directly or
+  through a local variable. It replaces ruff's `S608`, which flags every string that looks like SQL;
+  a formatted query that is not passed to one of those calls is not reported.
+- `clock-now`, `random-in-domain`, `io-in-domain` and `any-in-domain` apply to a directory named
+  `domain` anywhere in the path (not tests). `io-in-domain` reports `open`, `input`, `time.sleep`,
+  `os.system` and imports of `subprocess`, `socket`, `requests`, `httpx`, `urllib.request`,
+  database and cloud clients and similar.
+- `module-level-mutable-state` reports a module-level `dict`, `list`, `set` or `collections`
+  container that a function changes (item assignment, `del`, `append`, `update`, ...), once, at its
+  definition; a collection that is only read, a local of the same name and a module-level change
+  are fine. `PLW0603` covers rebinding with `global`.
+- `unsafe-path-join` follows the parameters of a function through `/`, `Path(...)`,
+  `os.path.join`, `joinpath` and f-strings into file operations (`open`, `read_text`, `unlink`,
+  `shutil.*`, `send_file`, ...). It stays quiet when the function checks containment
+  (`is_relative_to`, `relative_to`, `startswith`, `commonpath`) in an `if`, or in a `try` whose
+  handler exits; for values converted with `int`, `uuid.UUID`, `secure_filename` or `basename`,
+  or reduced to `.name`; and for parameters annotated `Literal`.
+- `handwritten-boundary-guard` reports `isinstance` on a value that came from `json`, `yaml` or
+  `tomllib` parsing, `.json()` or an `Any` parameter, and `TypeGuard` or `TypeIs` functions over
+  `Any` or `object`. `pydantic-any-field` and `pydantic-extra-allow` look at classes deriving from
+  `BaseModel`, `BaseSettings` or `RootModel` anywhere (v1 `Config` and `Extra.allow` too).
+- `repeated-string-literal` counts a string of five characters or more used three times or more in
+  a file (not tests) and reports it at its first use. Annotations, f-string parts, dictionary keys,
+  docstrings and bare strings, `Literal[...]` subscripts and translation calls are not counted.
+- `generic-name` reports a file, a folder or a top-level class whose last word is `util`, `utils`,
+  `helper`, `helpers`, `manager`, `common`, `misc` and the like; a class that extends a type with the
+  same ending (`class SessionManager(CacheManager)`) is not reported.
+- `hardcoded-secret` reports a secret-looking string (six characters or more with letters and
+  digits, or three character classes) assigned to a name ending in `password`, `token`, `secret`,
+  `api_key`, `credentials` and similar, also as a parameter default, keyword argument, dictionary
+  entry or `os.getenv` fallback; `credential-shape` reports strings shaped like an AWS key, a GitHub
+  or Slack token, a private key header, a URL with `user:password@` or a `Bearer` value anywhere;
+  `secret-in-log` reports such a name passed to a logger call. Placeholders, environment variable
+  names, header names and URLs are not secrets.
+- `io-in-loop` reports an HTTP, database or repository call once per item of a `for`, `while` or
+  comprehension; `asyncio.gather` over a comprehension, a paging loop (the condition reads a
+  variable the body assigns) and a retry (a `try` in the loop that returns on success) are not.
+- `todo-without-issue` reports `TODO`, `FIXME`, `XXX` and `HACK` as a whole word at the start of a
+  comment or followed by `:` or `(`, not directly followed by `#123`, `PROJ-123` or a link. `TD` and
+  `FIX` from ruff are not used, because they ask for an author and a date, which the TypeScript and
+  Java presets do not.
+- `ERA001` finds commented-out code by a heuristic: a comment that parses as a statement. Prose
+  that happens to parse is reported too; reword it.
+- The `S` group is selected by code, without the rules left off below; `S324`, `S501`,
+  `S113`, `S301`, `S302`, `S506`, `S307`, `S102`, `S202`, `S201`, `S306`, `S108`, the XML rules
+  `S313`-`S319`, the TLS rules `S323`, `S502`-`S505`, `S507`-`S509`, `S701`, `S702`, `S704`, `S308`
+  and the legacy protocol rules `S312`, `S321` each carry the safe form. The XML fix, `defusedxml`,
+  is a dependency, and strict mypy wants `types-defusedxml` next to it.
+- `S` rules left off (they flag idiomatic code): `S101` (`assert`, used by the tests that nitpicker
+  requires), `S608` (replaced by `sql-string-formatting`), `S103` and `S104` (file modes and binding `0.0.0.0` in a server), `S105`-`S107` (the
+  `hardcoded-secret` rule above does the same with fewer false positives), `S310` (`urlopen` of a
+  fixed URL), `S311` (`random` for non-crypto use, which the domain rule covers), `S601`, `S603`,
+  `S606` and `S607` (see above), and `S110`/`S112` (replaced by `swallowed-exception`).
+- Other rules of the selected groups that are left off: `TRY003` (long messages in `raise`),
+  `TRY300` and `TRY301` (`else` after `try`, `raise` inside `try`), `FBT003` (a boolean argument at
+  the call site) and, for `PT`, `PT009` and `PT027` (`unittest` assertions, which `unittest`
+  projects use by design). `PT011` and `PT030` ask for a `match` or a more specific class.
+- The advice follows the project when two forms are valid. Pytest style: the parentheses of
+  `@pytest.fixture` (`PT001`) and marks (`PT023`) and the shape of `parametrize` (`PT006`,
+  `PT007`) are read from the project's `[tool.ruff.lint.flake8-pytest-style]` table (`pyproject.toml`,
+  `ruff.toml`), and where it sets nothing from the majority of the project's own test code
+  (`rules/libraries/pytest-style.mjs`); a tie leaves ruff's default. Ruff gets the result as
+  `--config` flags, so the gate and the advice agree. Logging and validation: `project-libraries.mjs`
+  reads the dependencies (`pyproject.toml`, `Pipfile`, `requirements*.txt`) and words the logging
+  advice for structlog (`logger = structlog.get_logger()`, `logger.info("loaded", count=count)`) or
+  loguru (`logger.info("Loaded {}", count)`), and the boundary advice for pydantic (`model_validate`),
+  msgspec, cattrs or marshmallow. The rules stay the same for every project: `%s` arguments
+  rather than an f-string, and a validator in `adapters/`; only the example differs. The same
+  module is the place to swap in the conventions work's library detection.
+- Pytest-specific rules read the project: `uncollected-tests` applies when the test runner is
+  pytest and reads the whole collection configuration from `pytest.ini`, `pyproject.toml`
+  (`[tool.pytest.ini_options]`), `tox.ini` or `setup.cfg`: `python_files`, `python_classes`,
+  `python_functions`, `testpaths`, `norecursedirs`, and `--ignore`, `--ignore-glob`, `--deselect`
+  and `-k` in `addopts`; a `collect_ignore` in `conftest.py` counts as well. It reports a test
+  that pytest will not run and says why: a file that matches no `python_files` pattern, a file or
+  folder excluded by `norecursedirs`, `--ignore` or `collect_ignore`, a class that matches no
+  `python_classes` pattern or has an `__init__`, a function that matches no `python_functions`
+  pattern, a test deselected by `--deselect` or `-k`. For `unittest` it reports a file named like
+  a test file (`tests.py`, `*_test.py`) that its default `test*.py` discovery does not find. `test-helper-in-source` reports `testing.py`, `testutils.py`,
+  `fixtures.py` and the folders `testing/`, `testutils/`, `test_utils/`, `test_helpers/`,
+  `test_support/`, `test_fixtures/` and `fixtures/` inside a source root.
+- `skipped-test-without-reason` reports a test that silently does not run: `@pytest.mark.skip`,
+  `skipif` and `xfail` without a reason (a `reason=` keyword, or the positional message of `skip`;
+  a reason that is an empty string does not count), `pytestmark = ...` the same way,
+  `pytest.skip()` and `pytest.xfail()` without a message, `@unittest.skip*` and
+  `@unittest.expectedFailure` without a reason, `self.skipTest()` and `raise SkipTest` without a
+  message, and a test that opens with `if condition: return`. The subject names the form, so the
+  message says which one to fix. `sleep-in-test` ignores
+  `asyncio.sleep(0)` and tests that patch the sleep or freeze the clock; it also follows the
+  project's own helpers that call `time.sleep`. `real-clock-in-test` and `random-in-test` skip a
+  file that uses `freezegun`, `time_machine`, a patched clock, a seed or a `random.Random(...)`, and
+  look at the fake per test function, not per file. `network-in-test` skips files that use
+  `responses`, `respx`, `requests_mock` and similar or patch the client, and tests under
+  `integration`, `e2e` and the like. `tautological-assert` covers `assert True`, `assert x == x`,
+  `assert 1`, `assertTrue(True)`, `assertEqual(x, x)`, `assertGreaterEqual(x, x)`,
+  `assertIsInstance(x, object)` and the like: asserts that cannot fail.
+- A test function with no assertion is not checked here; the conventions work owns it, together
+  with the detection of the project's own assertion helpers.
+- Touched code: a new finding is reported per site, and the rules in `touched-rules.mjs` (every
+  `python-rules` id, and ruff's `BLE001`, `ERA001`, `PLR2004`, `PLW0602`, `PLW0603`, `S102`, `S307`,
+  `S602`, `S604`, `S605`, `T201`, `T203`) are strict: a finding on a line the change adds or edits
+  is new even when the base had a finding of the same rule in that file, so code that is touched
+  is held to the rule while untouched legacy stays baselined. The repeats of one subject in a file
+  are numbered `#2`, `#3`, so a new site never hides behind an old one.
+- Deprecation: mypy runs with `--enable-error-code deprecated` when it is version 1.14 or later (the
+  code does not exist before), and the generated pyright config sets `reportDeprecated` to
+  `error`, so using an API marked `@deprecated` is a finding in each checker.
 
 ## Slice 1: tools, reports and identities
 
-- **Lint: ruff.** `ruff check --config languages/python/ruff/nitpicker-ruff.toml --ignore-noqa
---no-cache --output-format sarif`. The rule set is nitpicker's, not the project's, so the gate
-  means the same on every project: pyflakes (`F`), the error rules of pycodestyle that are not
-  formatting (`E4`, `E7`, `E9`), bugbear (`B`), comprehensions (`C4`), `SIM`, `PIE`, `RET`, `PERF`,
-  `RUF` and `T20` (no `print`), without `B008` (a call in an argument default, which the web
-  frameworks need) and `RUF001`, `RUF002`, `RUF003` and `RUF012` (non-ASCII text and mutable class
-  attributes, both common in correct code). The target version follows the project's
+- **Lint: ruff.** `ruff check --config <report dir>/nitpicker-ruff.toml --ignore-noqa
+--no-cache --output-format sarif`, where the toml is `languages/python/ruff/nitpicker-ruff.toml`
+  without the codes the installed ruff lacks (`ruffConfigFor`). The rule set is nitpicker's, not
+  the project's, so the gate means the same on every project: pyflakes (`F`), the error rules of
+  pycodestyle that are not formatting (`E4`, `E7`, `E9`), bugbear (`B`), comprehensions (`C4`),
+  `SIM`, `PIE`, `RET`, `PERF`, a list of the stable `RUF` rules (without `RUF001`, `RUF002`,
+  `RUF003` and `RUF012`: non-ASCII text and mutable class attributes, both common in correct
+  code) and `T20` (no `print`), without `B008` (a call in an argument default, which the web
+  frameworks need). Slice 2 adds the shared one-way groups `G`, `N`, `ERA`, `ARG`, `PT`, `S`, `TRY`,
+  `PLR2004` and `FBT`. The target version follows the project's
   `requires-python` (or poetry's `python`, or `python_requires`): its lowest version, never lower
   than 3.8, and 3.8 when none is declared, so a rule that exists only on newer versions (`B905`,
   `zip(strict=)`) cannot flag code that must run on an older one. The SARIF goes through the existing generic ingester; identity is the
@@ -306,8 +547,10 @@ Details that are decisions rather than the table:
   skipped, because ruff already reports it as an `invalid-syntax` finding; any other formatter
   failure is a tool error.
 - **Tests under coverage.** `coverage run --rcfile <nitpicker> -m pytest -q -o cache_dir=<report
-directory>` or `-m unittest discover` (with `-s tests` or `-s test` when that directory exists,
-  and `-t .` when it is a package), then `coverage json`. The project's pytest configuration keeps
+directory>` or `test-runs/unittest_timings.py <report> discover` (unittest's own `discover`, with
+  `-s tests` or `-s test` when that directory exists and `-t .` when it is a package, through a
+  `TextTestRunner` whose result records each test's time and writes the JUnit report), then
+  `coverage json`. The project's pytest configuration keeps
   working: `--no-cov` and `-n0` are added only when pytest-cov or xdist is installed, so
   `--cov=pkg` or `-n 2` in `addopts` cannot replace the outer coverage run or fork it away, and
   `--lf` or `--sw` find their cache in the report directory. The coverage settings are nitpicker's,
@@ -329,8 +572,9 @@ directory>` or `-m unittest discover` (with `-s tests` or `-s test` when that di
   (`executed_branches`, `missing_branches`) those slices need, which is why it was chosen over lcov.
   Paths are made project-relative.
 - **Tool failures.** Anything that goes wrong on either snapshot becomes a `tool-error` finding with
-  the analyzer as tool (`python`, or `mutation` for `mutation-failed`) and path `.`, never a throw from the CLI: `ruff-failed`, `format-failed`, `tests-failed` (the project's own
-  tests fail, the same rule the TypeScript preset uses), `coverage-failed`, `types-failed` and `rules-failed` (slice 2), `structure-failed`, `lizard-failed`, `environment-failed`,
+  the analyzer as tool (`python`, or `mutation` for `mutation-failed`) and path `.`, never a throw from the CLI: `ruff-failed`, `format-failed`, `tests-failed` (the test run
+  exited 1 without naming a failing test; failing tests themselves are the `tests/tests-failed`
+  error of [Runner parity](#runner-parity), which keeps the other findings), `coverage-failed`, `types-failed` and `rules-failed` (slice 2), `structure-failed`, `environment-failed`,
   `duplicates-failed`, `coupling-failed`, `import-linter-failed` (slice 5), `mutation-failed` (slice 6)
   and `python-failed` for anything unexpected. An environment that cannot be found at all (no
   `.venv` at the configured directory, no `uv sync`, poetry has none) is caught earlier, while the
@@ -364,8 +608,9 @@ directory>` or `-m unittest discover` (with `-s tests` or `-s test` when that di
   (`python <script> <output> <project> <file list>`), so it needs no dependency and no pin, and it
   parses with the grammar of the interpreter the project uses; a file that does not parse is
   skipped, as is a file too deeply nested for the parser (`RecursionError`, `MemoryError`); ruff's
-  `E9` rules already report a syntax error. lizard has no statement count or control nesting,
-  so all four metrics come from this one script, like `StructureMetrics.java` for Java.
+  `E9` rules already report a syntax error. The four limit metrics and the cyclomatic complexity
+  (the CRAP input) all come from this one script, like `StructureMetrics.java` for Java; no
+  external tool is involved.
 - **Definitions** (the TypeScript analyzer's, applied to Python syntax). Unit: every `def` and
   `async def` with a body, methods and nested functions alike; named `Outer.method` and
   `outer.inner`, the qualified names coverage.py uses. `lines`: last line - first line + 1, from the
@@ -373,15 +618,17 @@ directory>` or `-m unittest discover` (with `-s tests` or `-s test` when that di
   a long legacy function does not make it grow; TypeScript counts comments, Python has no comment
   node to leave out).
   `statements`: every statement in the body, compound statements counting once plus their bodies:
-  `if`/`elif` (an `elif` is a nested `if` statement, as `else if` is in TypeScript), `for`, `while`,
+  `if`/`elif` (an `elif` is a nested `if` statement in the syntax tree, as `else if` is in
+  TypeScript), `for`, `while`,
   `try`, `with`, `match`, `return`, `pass`, assignments, a nested `def` or `class` (but not its
   body); not counted: the docstring, `else`/`finally` themselves, `except` clauses and `case`
   clauses (only their bodies). `maxControlNesting`: the deepest nesting of `if`/`elif`, `for`,
   `async for`, `while`, `match` and `except`; `try`, `with` and comprehensions do not nest. An
-  `elif` chain nests one level per branch, like `else if` in TypeScript and Java, so an
-  `if`/`elif`/`elif` chain is already three deep: use early returns, `match`, a dict lookup or a
-  helper function (the finding says so). Counting a whole `elif` chain as one level would differ
-  from TypeScript and Java, so it is a cross-language decision, not made here.
+  `if`/`elif`/`else` chain nests one level, like an `else if` chain in TypeScript and Java; an `elif`
+  is the same level as the `if` it continues, and a statement nested in a branch is one level
+  deeper. An `else:` block that holds an `if` is nested, as an `else { if }` block is in TypeScript and Java. The
+  finding says so. A `match` is one level, whatever its number of `case` clauses; a statement in a
+  `case` is one level deeper.
   `parameters`: positional-only, positional, keyword-only, `*args` and `**kwargs`, one each; the
   `/` and `*` markers are not parameters. The first positional parameter of a method (`self`,
   `cls`, or whatever it is called) is not counted, because the caller does not pass it: a function
@@ -394,7 +641,7 @@ directory>` or `-m unittest discover` (with `-s tests` or `-s test` when that di
   treats as packages (`tests`, `test`, `docs`, `doc`, `examples`, `scripts`, `build`, `dist`, `env`,
   `venv`; one list in `python-project.mjs`) and `conftest.py` are skipped too, so tests, build
   copies and virtualenvs are not gated. Node lists the files once per snapshot
-  (`python-files.txt`) and hands the same list to the metrics script and to lizard. Tests are
+  (`python-files.txt`) and hands the list to the metrics script. Tests are
   outside the default source roots, so they are not gated.
 - **Findings.** Same as Java: `languages/python/adapters/analysis/python-structure.mjs` gives the metrics to
   `evaluateStructure` and keeps the enforceable limit findings (tool `structure`; the descriptive
@@ -402,48 +649,59 @@ directory>` or `-m unittest discover` (with `-s tests` or `-s test` when that di
   the file, and a hash of the function text with the common indentation removed, so moving or
   re-indenting a whole function keeps it baselined while changing the nesting of a statement inside
   it counts as an edit (Java trims every line, which would hide that in Python).
-- **CRAP.** lizard `--csv -l python -f <file list>` gives the cyclomatic complexity per function
-  (the file list, not directories, because lizard silently skips files whose content is identical
-  to another file when it walks a directory). It is pinned to the version in
-  `languages/java/gradle/nitpicker.init.gradle`, the same one Java uses (the pin file is in the
-  configuration hash). Resolution, like Java: the executable named by `NITPICKER_LIZARD` (only that
-  one), else `lizard` from the project environment or the `PATH`. Nothing is downloaded at run
-  time. A lizard that is missing or reports another version is the tool error `lizard-failed`,
-  which names the pinned version and the install commands (`pip install lizard==<pin>` or
-  `uv tool install lizard==<pin>`). It is not installed for the project.
+- **Cyclomatic complexity** (`complexity`, the CRAP input). Computed by the same script from the
+  syntax tree, with no external tool: 1 plus one for each decision point in the function's own
+  body. Decision points: `if` and `elif`, a conditional expression (`a if b else c`), `for` and
+  `async for`, `while`, each `except` handler, each `case` of a `match` (a `case _:` without a
+  guard is the `default` of a `switch` and does not count), each extra operand of `and` and `or`
+  (`a and b and c` is two), and in a comprehension or generator expression each `for`/`async for`
+  clause and each `if` clause. The decision points are the McCabe ones of the other presets
+  (ESLint's `complexity` rule for TypeScript, the Java and Kotlin metrics programs all
+  count `if`, loops, `case` but not `default`, `catch`, `&&`, `||` and `?:`), with two differences
+  in scope: a lambda counts towards the function around it, as in Java and Kotlin but unlike
+  TypeScript, which scores every arrow function and function expression on its own; and each `for`
+  and `if` clause of a comprehension counts, which has no equivalent in the other languages.
+  Not counted: `else`, `finally`, the `else` of a loop or a `try`, `with`, `assert`, `try` itself.
+  Lambdas and comprehensions are part of the function around them; nested functions and the
+  methods of nested classes have their own entry and do not count towards it. An
+  `@overload` stub (however the decorator is spelled: `overload`, `typing.overload`, `t.overload`)
+  gets no CRAP score, and neither does a function whose first body statement starts on the `def`
+  line (`def f(): return 1`): its only statement shares a line with the definition, which
+  runs when the module is imported, so its coverage cannot be told apart. The script writes `complexity`, `definition` (the `def` line, which differs from
+  `start` when the function is decorated) and `bodyStart` (the line of the first body statement)
+  next to the limit metrics, and the CRAP step reads them from `structure.json`; a failing
+  structure step is the only failure, `structure-failed`, and CRAP then has nothing to score.
 - **Coverage join.** `languages/python/ingest/crap.mjs` takes the per-function entries of the
   coverage.py JSON report PY1 already produces (`files.<path>.functions`, coverage.py 7.6 or newer)
-  and joins each lizard function to the entry with the same trailing name whose lines
-  (`executed_lines`, `missing_lines`, `excluded_lines`) lie inside the lizard line range; lizard
-  names carry no class (`m`, `m.inner`), coverage.py names do (`A.m`, `A.m.inner`), so the joined
-  entry also gives the display name. `start_line` is not used, because only recent coverage.py
+  and joins each function to the entry with the same qualified name (`A.m`, `A.m.inner`, the
+  names coverage.py reports) whose lines (`executed_lines`, `missing_lines`, `excluded_lines`) lie
+  inside the range from the `def` line to the last line of the function. `start_line` is not used, because only recent coverage.py
   versions report it. Coverage of a function is the lower of its line and branch percentage, as for
   JaCoCo, and CRAP is `ccn^2 * (1 - coverage)^3 + ccn`, shared with Java
   (`ingestCrapRows` in `languages/java/ingest/crap.mjs`). A function with no statements and no
-  branches (a docstring-only stub) counts as fully covered. Definitions that share a name in a
-  scope (a `@property` getter and its `@x.setter`, `@singledispatch` registrations all named `_`,
-  conditional definitions) collapse into one coverage.py entry, which keeps only the last one. A
-  lizard function that no entry's lines lie inside is therefore scored from the file's own
-  per-line data (`executed_lines`, `missing_lines`, `executed_branches`, `missing_branches`) over
-  its own line range: after its `def` line and without the lines of functions nested in it. A file
-  coverage.py did not report (outside the source roots), or a range without a statement, has
-  unknown coverage and fails with `crap-coverage-unknown`; nothing is guessed. `# pragma: no cover` keeps its coverage.py meaning (excluded lines are not statements).
+  branches counts as fully covered: a docstring-only stub, and a function whose lines coverage.py
+  excludes (`# pragma: no cover`, `if TYPE_CHECKING:`, a multi-line `@overload` stub). Definitions
+  that share a name in a scope (a `@property` getter and its `@x.setter`, `@singledispatch`
+  registrations all named `_`, conditional definitions) collapse into one coverage.py entry, which
+  keeps only the last one, so an entry is used only for the function whose lines lie inside it. Any
+  other function is scored from the file's own per-line data (`executed_lines`, `missing_lines`,
+  `executed_branches`, `missing_branches`) over its own line range: after its `def` line and
+  without the lines of functions nested in it; a docstring-only definition therefore cannot lend
+  its empty entry to a branchy one with the same name. A file coverage.py did not report (outside
+  the source roots) has unknown coverage and fails with `crap-coverage-unknown`; nothing is
+  guessed. `# pragma: no cover` keeps its coverage.py meaning (excluded lines are not statements).
   Identity: qualified name plus the same function-text hash, ratchet key the name, so an edited
   function over the limit fails only when its score rises.
 - **Cache invalidation.** The metrics script, the new adapters, the shared structure and CRAP rule
-  files, `shared/policy.mjs` and the pinned-version file (`languages/java/gradle/nitpicker.init.gradle`,
-  added by name because the analyzer reads it with a pattern, not an import) are in the Python
-  analyzer's configuration hash.
-- **Tests.** `ingest/crap.test.mjs` (the join, on a real lizard CSV and coverage.py report),
-  `python-structure.test.mjs`, `python-crap.test.mjs` (lizard resolution and failures) and
-  `python-sources.test.mjs`, all with the fake toolchain; `core/command/python/python-cli-*.test.mjs` drives the CLI
+  files and `shared/policy.mjs` are in the Python analyzer's configuration hash.
+- **Tests.** `ingest/crap.test.mjs` (the join, on structure entries and a coverage.py report),
+  `python-structure.test.mjs`, `python-crap.test.mjs`, `python-sources.test.mjs` (all with the fake
+  toolchain) and `metrics/structure-metrics.test.mjs` (the script itself, on the real `python3`:
+  the limit metrics, the nesting of `elif` chains and `match`, and each kind of decision point); `core/command/python/python-cli-*.test.mjs` drives the CLI
   in two runs: new structure, CRAP-score and unknown-coverage findings next to a touched legacy
   function that is held, then the legacy function grown under a raised `thresholds.crapLimit`; the
-  `lizard-failed` error is covered by `python-crap.test.mjs` (the runner passes any step's rule
-  through to the tool error). The gated e2e adds real branches for each
-  (nested loops with four parameters, a legacy function edited and then grown, an untested branchy
-  function) and runs the metrics script on a sample covering methods, decorators, `async`,
-  `match`, `elif` chains and a file that does not parse.
+  gated e2e adds real branches for each (nested loops with four parameters, a legacy function
+  edited and then grown, an untested branchy function).
 
 ## Slice 4: gate on changed branch coverage
 
@@ -471,7 +729,7 @@ directory>` or `-m unittest discover` (with `-s tests` or `-s test` when that di
   matters only when the branch line itself is also changed.
   Editing the line changes both the identity and the changed range, so it is new.
 - **Message.** `Branch coverage is 50.00%; minimum is 95%. Not taken: the branch to line 7. Test it,
-or remove it if it can't happen. To exempt a file, add it to exclude in nitpicker.config.json.` It
+or remove it if it can't happen. To allow it for some paths, add a "python.exceptions" entry for changed-branch-coverage in nitpicker.config.json.` It
   names where the untaken outcomes lead; those line numbers are only in the message, never in the
   identity.
 - **Granularity and limits.** A line with several outcomes (`while`, `for`, `if`/`else` chains,
@@ -522,12 +780,20 @@ the source root detection already does.
 - **Coupling.** `python -I languages/python/adapters/import-scan.py` (the project's interpreter,
   standard library only) parses every production file with `ast` and prints each file's `import`
   and `from ... import` statements, including those inside functions and `if TYPE_CHECKING:`
-  blocks. Everything else is JavaScript (`python-coupling.mjs`) so it is unit-tested without Python:
+  blocks, which it marks `typeOnly` (the body of an `if TYPE_CHECKING:`, where the flag is `TYPE_CHECKING`
+  imported from `typing` or `typing_extensions` (also under an alias or as `typing.TYPE_CHECKING`) or
+  the module-level `TYPE_CHECKING = False` idiom, alone or in an `and` condition; any other
+  `TYPE_CHECKING`, such as `foo.TYPE_CHECKING` or one imported from another module, is an ordinary name; its `else` branch is runtime code, and the `else` branch of `if not TYPE_CHECKING:` is type-only). Everything else is JavaScript (`python-coupling.mjs`) so it is unit-tested without Python:
   a module is a `.py` file named relative to its import root (`a/b.py` is `a.b`, `a/__init__.py` is
   `a`), a package is the module's containing package (a package's `__init__` belongs to the package
   itself, a top-level module to `(root)`), relative imports are resolved against the importing
   module, and an import is an edge to the longest module the sources define (`import a.b.c.Thing`
-  links `a.b.c`; `from a import b` links `a.b` when that is a module, else `a`). Imports of anything
+  links `a.b.c`; `from a import b` links `a.b` when that is a module, else `a`). An edge is type-only
+  when every import that makes it is under `if TYPE_CHECKING:`. Type-only edges count in every
+  metric (fan-in, fan-out, instability, package cohesion and the dependency count), but the
+  enforceable `stability-direction` rule never reports one as the inverted dependency, so a stable
+  package that imports an unstable one only for annotations is not an inversion. TypeScript
+  applies the same rule to `import type` edges. Imports of anything
   outside the sources (the standard library, third-party packages) are not edges. The graph goes to
   the shared `buildCouplingReport`, which the Java preset now uses too, and then `evaluateCoupling`:
   report-only `coupling`, `module-coupling`, `package-coupling`, `stability-direction-metric`, and
@@ -540,6 +806,10 @@ the source root detection already does.
   (`a.b` and `a.b.c` are different packages) and fan-in and fan-out count distinct files. A file
   that does not parse with the interpreter is left out of the graph (ruff already reports syntax
   errors), so one legacy Python 2 file does not break the gate.
+- **import-linter and `TYPE_CHECKING`.** import-linter counts imports under `if TYPE_CHECKING:` as
+  imports unless the project's contract config sets `exclude_type_checking_imports = True` in its
+  `[importlinter]` section. Nitpicker does not override the project's
+  contracts, so set it there when type-only imports should not break a contract.
 - **grimp or an `ast` scan?** An `ast` scan, shipped with nitpicker. grimp must be installed into
   the project's environment, which nitpicker never modifies, needs the root packages to be
   importable (editable installs and `PYTHONPATH` become part of the contract), and would add a
@@ -564,7 +834,7 @@ the source root detection already does.
   version; both are read. Items of contract types that do not print import chains (acyclic
   siblings) are reported by their text, and a broken contract with nothing readable is one finding
   for the contract; these have path `.`, so their message says only to remove the import. Findings
-  on a file say how to except it: `exclude` in `nitpicker.config.json`. A run that checked no
+  on a file end with the `python.exceptions` sentence for `contract-broken`. A run that checked no
   contract (missing config file, `lint-imports` not installed in the environment, which the
   message answers with `"python": { "importLinter": false }`) is an `import-linter-failed` tool
   error, as `duplicates-failed` and `coupling-failed` are for the other two steps.
@@ -591,8 +861,16 @@ location.
   The version in the cache key is read from the package metadata (`mutmut --version` fails in a
   project where mutmut cannot guess its source directory).
 - **What runs.** `mutmut run` in the snapshot, as the `mutation` analyzer, after the `python`
-  analyzer and only when it had no tool error (a failing test run is already `tests-failed`, and
-  mutmut starts with a clean run of the same tests). When pytest-xdist is installed the run gets
+  analyzer and only when it had no tool error other than failing tests, a skipped dependency check
+  or a test time error (`toleratedDependencyErrors` of the analyzer: `tests`, `dependencies`,
+  `test-runtime`). When mutmut's first run fails on the project's tests ("failed to collect
+  stats", "Failed to run clean test"), nitpicker runs pytest once with a JUnit report, and runs
+  mutmut again with `--ignore=<module>` in `PYTEST_ADDOPTS` for each failing or uncollectable test
+  module, the Python counterpart of PIT's `--excludedTestClasses`; the `tests/tests-failed` error
+  names those modules. When no test module is left, the run is a `mutmut/tests-failed-skipped`
+  tool error instead. A project environment on Python before 3.10, which mutmut 3 does not
+  support, gets one `mutmut/tool-skipped` tool error and nothing else of this analyzer. The
+  pinned `PYTEST_ADDOPTS` of [Runner parity](#runner-parity) apply here too. When pytest-xdist is installed the run gets
   `PYTEST_ADDOPTS=-n0` (merged after any value the environment already has), because mutmut runs
   pytest itself and cannot collect which tests cover which function under `-n`. The snapshot is a
   disposable work tree; mutmut writes its `mutants/` directory into it. On head the directory is
@@ -613,9 +891,15 @@ location.
   ("failed to collect stats"); the error then adds a line to list the file under `also_copy` in
   `[tool.mutmut]`.
 - **Equivalent mutants.** mutmut also mutates strings and logging, so some survivors cannot be
-  killed by any test. The ways out are in the configuration, not in the code: list the path in
-  `exclude` (the mutants of the file are dropped), or, with a `[tool.mutmut]` of your own, list it
-  in `do_not_mutate`, which also saves the run time.
+  killed by any test. The way out is a `python.exceptions` entry for `mutant-survived` (or
+  `mutant-ignored`, below) with the path, or `exclude`.
+- **Code hidden from mutmut.** Like a Stryker disable comment in the TypeScript preset, what hides
+  production code from mutmut is an enforceable `mutmut/mutant-ignored` finding
+  (`languages/python/adapters/mutation/mutation-markers.mjs`): each `# pragma: no mutate`
+  (also its `block`, `start`, `end`, `class` and `function` forms) at its line, each production
+  file a `do_not_mutate` pattern of the project's own `[tool.mutmut]` (or setup.cfg `[mutmut]`)
+  matches, and `mutate_only_covered_lines = true` on the config file. The comment or pattern is not
+  an exception route; the finding's `python.exceptions` sentence for `mutant-ignored` is.
 - **pytest.** mutmut 3 runs the suite with pytest, which also runs `unittest.TestCase` classes. A
   project whose runner is `unittest` therefore needs pytest installed for mutation testing; set
   `"testRunner": "unittest"` if you want coverage.py to keep running `unittest discover`.
@@ -693,6 +977,117 @@ stays "survived" after a test that kills it was added, and a killed mutant stays
 test was weakened, so a test change cannot reuse anything. Stryker re-tests the mutants covered by
 a changed test; mutmut has no such step yet, hence source-only.
 
+## Runner parity
+
+What the Python preset does the way the TypeScript and Java presets do (`parity/python-runner`).
+
+- **Failing tests.** pytest runs with `--junitxml` (xunit1, so each case has its file and line) and
+  `--continue-on-collection-errors`; exit status 1 with failing cases is no longer a failure of
+  the analyzer. The static analyzers run as usual, coverage and CRAP come from the tests that ran,
+  and the failing tests are one `tests/tests-failed` tool error per snapshot, listing up to 20 test
+  ids, as Java's `tests/tests-failed` (`test-runs/test-failures.mjs`). unittest failures are read
+  from its `FAIL:`/`ERROR:` lines. A run that exits 1 without naming a test stays
+  `python/tests-failed`.
+- **Slow tests.** `test-runtime/slow-test`, as for Java and Kotlin, for pytest and unittest
+  projects alike: a test the change adds or edits over 5 s, or 30 s for an integration test, from
+  the JUnit times (`test-runs/slow-tests.mjs`); a parametrized test counts its slowest case over
+  that case's own budget. A test is its decorators, its signature and its body, read by logical
+  line (`test-runs/python-blocks.mjs`: brackets, strings and continuations, so a wrapped signature
+  or decorator is one line), in the file and at the line where it is defined, inside the classes
+  that enclose it. It counts as edited when the base file has no identical block in the same
+  classes; a block that is only in a base test file the change removed or renamed counts as moved,
+  so a test copied next to an original that still exists is new. An inherited test (a mixin or base
+  class in another module, as the usual unittest and Django way to share tests) is also counted
+  when the class that collects it is new or its `class` line changed; a test built by a factory
+  (`test_import = make_case(6)`) when a line that names it is new or changed. pytest runs through
+  `test-runs/pytest_timings.py`, which times the call phase plus the setup of function-scoped
+  fixtures (`setup_method` is one), so a session, module or class fixture's setup (`setup_class`
+  too) is not charged to the first test that uses it, and records each case's marks; unittest
+  times each test from `startTest` to `stopTest` (its `setUp` and `tearDown`, not `setUpClass` or
+  `setUpModule`), as JUnit charges `@BeforeEach` and not `@BeforeAll`. A test is an integration
+  test under an `integration`, `integration_tests`, `e2e` or `end_to_end` folder, or with
+  `@pytest.mark.integration` or `@pytest.mark.e2e` on that case, as pytest applies it (decorators,
+  classes, `pytestmark`, conftest hooks, or `pytest.param(..., marks=...)` for that case only); the
+  unittest message names only the folder. `thresholds.unitTestSeconds` and
+  `integrationTestSeconds` change the limits. Base snapshots report none.
+- **Pinned runner options.** Options that let a failing run pass are taken out of the project's
+  pytest `addopts` (read from the first of `pytest.toml`, `.pytest.toml`, `pytest.ini`,
+  `.pytest.ini`, `pyproject.toml`, `tox.ini`, `setup.cfg`, as pytest does) with `-o addopts=...`,
+  and out of `PYTEST_ADDOPTS`: `-x`/`--exitfirst` (also inside `-vx`), `--maxfail`, `--sw`,
+  `--stepwise`, `--collect-only`, `--setup-only`, `--setup-plan`, `-k`, `--deselect`,
+  `--reruns`, `--only-rerun` and the other rerun and retry options, and `-p no:` for the
+  plugins that collect or report results; with pytest-rerunfailures installed `-o reruns=0` is
+  added. A run that collects no test is `python/no-tests-ran`, as before.
+- **Size.** `folder-depth-limit` (a package more than 4 levels below the root package, as for Java:
+  the common package prefix of the production modules, on the base when there is one, after
+  the leading namespace folders without `__init__.py` of each top-level tree, up to its shallowest
+  package and never past the folders all its modules share, counted on the base for a tree the
+  base has, so a new `__init__.py` deep in a namespace tree moves no root; test packages are measured the same way, with
+  `tests`/`test` folders and the source root left out, against the production root),
+  `class-methods-limit` (20, not counting `__init__` or `@overload` stubs), `class-fields-limit`
+  (10: annotated class attributes that are not `ClassVar`, plus `self.x` assignments in the
+  class's own methods, not in a class nested in them; a `Protocol` and an `ABC` with only abstract
+  methods have no fields, as Java skips interfaces; a dataclass, attrs class, `NamedTuple` or
+  `TypedDict` is a record and gets Java's record wording) and `inheritance-depth-limit` (at most 3
+  project base classes above it: an external base such as `Exception` or `models.Model` adds no
+  level, and neither does a `Protocol` or interface link; bases are followed through imports and
+  aliases, each class once; `class Client(Client)` resolves its base through the import, as Python
+  binds the name only after the class body, and classes in an unresolvable cycle are measured from
+  their parents outside it) with Java's thresholds, from the classes report of
+  `structure_metrics.py` and `class_metrics.py` (`size/python-size.mjs`). Generated files
+  (`libraries/generated-files.mjs`) are left out of every size and structure limit, as Java's
+  generated sources are: `*_pb2.py`, `*_pb2_grpc.py` and their `.pyi`; a file whose leading
+  comments or module docstring carry the header a known generator writes (protoc, gRPC Python,
+  datamodel-codegen's `# generated by datamodel-codegen:`, OpenAPI Generator's `Generated by OpenAPI
+  Generator (https://openapi-generator.tech)`, Thrift, or `Code generated by <tool>. DO NOT
+  EDIT.`); and a file under a `generated/`, `_generated/` or `__generated__/` folder or named
+  `*_generated.py` with a generic marker such as `DO NOT EDIT` or `@generated` in its first five
+  lines, as TypeScript gates the same markers on the file name. A docstring that only mentions
+  generated code, or `# DO NOT EDIT` in a normally named module, exempts nothing, and neither does
+  `# Generated by Django` (migrations are edited by hand; `migrations/` is skipped as before).
+  sqlacodegen writes no header, so its output goes in `exclude`. Test files are the files pytest collects
+  (`test_*.py`, `*_test.py` and the project's `python_files`), `conftest.py` and everything under
+  `tests/` or `test/`. In a Django project (a `django`, `pytest-django` or `djangorestframework`
+  dependency, a `manage.py` at the root, or `DJANGO_SETTINGS_MODULE` in the pytest configuration)
+  `tests.py`, `tests_*.py` and `*_tests.py` are tests too, in the size limits, the coverage
+  `omit`, mutmut's `do_not_mutate` and the duplicate scan; elsewhere a `lab_tests.py` is
+  production code, as pytest does not collect it. A `python_files` pattern that matches every
+  file (`*.py`) is left out: the files under the `testpaths` folders are the tests then, so the
+  production modules keep their checks.
+- **Import structure.** From the import scan (`imports/python-import-rules.mjs`):
+  `coupling/package-cycle` with Java's message, on each package of a cycle (a package `__init__`
+  importing its own submodules is a re-export, not a dependency); `coupling/no-production-cycles`
+  for module cycles inside one package; `coupling/no-import-outside-roots` when production code
+  imports a project module outside `python.sourceRoots` (scripts, a top-level `tests/` package).
+  Type-only imports do not count.
+- **Dependencies.** `dependencies/unused-dependency`, `unlisted-dependency` and
+  `no-dev-dependency-in-production`, with the TypeScript (knip) messages. The declared
+  dependencies come from `languages/python/libraries/python-dependencies.mjs`, a standalone reader
+  of `pyproject.toml` (PEP 621 dependencies and extras, `[dependency-groups]`, uv, pdm, hatch
+  environments, Poetry dependencies and groups), `Pipfile`, `requirements*.txt` and
+  `requirements/*.txt|in`, and `setup.cfg`, that returns `{ runtime, development }` names and each
+  declaration with its group. The installed distributions come from
+  `importlib.metadata.packages_distributions()` in the project environment
+  (`dependencies/distribution-scan.py`). Test imports are checked only when the project declares
+  dev dependencies; a package is unused only when no import, entry point, optional backend of a
+  declared package, string reference (`"psycopg2"`, `"postgresql://"`), known loaded-by-name
+  package (database drivers, `tzdata`, `setuptools`) or package the detected framework loads for
+  the project, as knip's plugins do for TypeScript, uses it (Django: `pillow` with an `ImageField`,
+  `redis` with `RedisCache`, `pymemcache`, `pylibmc`, `argon2-cffi` and `bcrypt` for the cache
+  backends and password hashers named in settings; FastAPI: `python-multipart` with `Form`, `File`
+  or `UploadFile`; Flask: `python-dotenv`; pydantic: `email-validator` with `EmailStr`); dynamic or `setup.py`-only
+  dependencies switch the checks off. On Python before 3.10 the checks are one
+  `dependencies/tool-skipped` tool error and the other analyzers still run.
+- **Frameworks.** Django, FastAPI and Flask are detected from the dependencies or the production
+  imports (`dependencies/python-frameworks.mjs`). Django settings modules (named `settings`, or
+  named by `DJANGO_SETTINGS_MODULE` in `manage.py`, `wsgi.py` or `asgi.py`) may read the
+  environment and use `from x import *`; `manage.py`, `wsgi.py` and `asgi.py` may read the
+  environment and have no test. FastAPI routers (modules that import `fastapi`) and the modules
+  they import directly may use pydantic. Flask needs no allowance yet.
+- **Feature folders.** Not applied to Python: the TypeScript feature layout lives under
+  `<root>/main/`, and Python has no such convention, so the rule would flag ordinary Django apps and
+  FastAPI packages.
+
 ## Slices
 
 Each slice is one PR, adds one concern, and changes the Python adapters, ingesters or rules, tests,
@@ -703,7 +1098,7 @@ exclude and legacy-inventory policy (`applyJavaPolicy`) serve more than one lang
 | --- | --------------------------------------------------------- | ---------------------------- | -------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------- | ------ |
 | PY1 | [#168](https://github.com/jhonDoe15/nitpicker/issues/168) | Base runner and CLI          | ruff, ruff format or black, pytest or unittest under coverage.py     | lint and format findings, `line-coverage`, `uncovered-function`, `tool-error`                     | done   |
 | PY2 | [#169](https://github.com/jhonDoe15/nitpicker/issues/169) | Type checking, one-way rules | mypy or pyright; ruff rules and import rules for the one allowed way | type errors; one-way rules with their failure messages; the Python skill                          | done   |
-| PY3 | [#170](https://github.com/jhonDoe15/nitpicker/issues/170) | Structure limits and CRAP    | `ast` metrics script; lizard joined with the coverage report         | `function-*-limit` rules as for TypeScript and Java; `crap-score-limit`, `crap-coverage-unknown`  | done   |
+| PY3 | [#170](https://github.com/jhonDoe15/nitpicker/issues/170) | Structure limits and CRAP    | `ast` metrics script and complexity, joined with the coverage report | `function-*-limit` rules as for TypeScript and Java; `crap-score-limit`, `crap-coverage-unknown`  | done   |
 | PY4 | [#171](https://github.com/jhonDoe15/nitpicker/issues/171) | Changed-branch coverage      | the coverage JSON branch data and the changed lines from git         | `changed-branch-coverage`                                                                         | done   |
 | PY5 | [#172](https://github.com/jhonDoe15/nitpicker/issues/172) | Duplicates and coupling      | jscpd with the `python` format; import graph for stability           | `duplicate-clone`, `duplicate-clone-size`; `stability-direction`; import-linter `contract-broken` | done   |
 | PY6 | [#173](https://github.com/jhonDoe15/nitpicker/issues/173) | Mutation testing             | mutmut 3 run data, per docs/mutation-testing                         | `mutant-survived`, `mutant-nocoverage` (new surviving mutants fail)                               | done   |
@@ -733,8 +1128,13 @@ and CRAP rules.
   of a repository and a real `python3` for the import scan; the fake `mutmut` writes a `mutants/`
   directory from a `mutants-data.json` in the project and logs which result files it found there.
 - `languages/python/adapters/e2e/*.e2e.test.mjs`: gated behind `NITPICKER_PYTHON_E2E=1`
-  (`npm run test:python`). Needs python3, uv, ruff, black and network access to PyPI; about 2
-  minutes. On `languages/python/adapters/fixtures/python-project` (one legacy ruff violation on the
+  (`npm run test:python`). Needs python3 3.10 or newer, uv, ruff, black, mypy, pyright, coverage and
+  pytest on the `PATH` and network access to PyPI (it installs pytest, pytest-cov, pytest-xdist,
+  coverage, mypy, mutmut, black and import-linter into throwaway environments); 8 to 25 minutes
+  with mutation testing; no lizard. CI runs it in `.github/workflows/python-e2e.yml` only for changes
+  under `core/`, `shared/`, `languages/python/`, `languages/java/ingest/`, `languages/java/adapters/`
+  or the package files, with every tool version pinned in `.github/python-e2e-constraints.txt`
+  (also given to the suite's own `uv pip install` calls as `UV_CONSTRAINT`). On `languages/python/adapters/fixtures/python-project` (one legacy ruff violation on the
   base, editable install in a `.venv`) it checks: a change that alters behaviour and updates its
   tests passes, which only works when base tests run against base code; a moved legacy violation
   stays baselined; a new unused import and an unformatted file fail in every report format;
@@ -754,16 +1154,20 @@ and CRAP rules.
   exception route; `type-check.test.mjs`, `rules-report.test.mjs`, `python-types.test.mjs`,
   `python-ast-rules.test.mjs` and `python-exceptions.test.mjs` cover the ingesters, the two new
   steps and the exception filter with the fake toolchain.
-- `languages/python/rules/rule-cases.e2e.test.mjs` and `nitpicker-rules.e2e.test.mjs`: gated behind
-  `NITPICKER_PYTHON_E2E=1` too. The first runs the banned and the allowed fixture of every rule
-  (`languages/python/rules/fixtures/<case>/{banned,allowed}`) through the real ruff, python3, mypy
-  and pyright from the `PATH`; the second drives `nitpicker_rules.py` over edge cases (test files,
-  nested classes, comment forms). The preset e2e test also gates type errors with mypy and pyright,
-  the one-way rules and `python.exceptions` end to end.
+- `languages/python/rules/rule-cases.e2e.test.mjs`, `nitpicker-rules.e2e.test.mjs` and
+  `rules/e2e/<group>/*.e2e.test.mjs` (`boundary`, `environment`, `honesty` and `smells`, each case a code
+  snippet and the findings it must produce): gated behind `NITPICKER_PYTHON_E2E=1` too. The first runs the banned and the allowed fixture of every rule
+  (`languages/python/rules/fixtures/<case>/{banned,allowed}`) through the real ruff, python3, mypy,
+  pyright and basedpyright from the `PATH`; the second drives `nitpicker_rules.py` over edge cases (test files,
+  nested classes, comment forms), and `swallowing.e2e.test.mjs` does the same for `swallowed-exception` and `blind-suppress`. The preset e2e test also gates type errors with mypy and pyright,
+  the one-way rules and `python.exceptions` end to end; `languages/python/adapters/e2e/` holds the
+  basedpyright e2e (a configured and a weakened `[tool.basedpyright]` table) and the `if TYPE_CHECKING:`
+  one (no stability inversion, import-linter still sees it), which share `helpers.mjs` with the preset e2e.
 - `core/pack-contents.test.mjs` checks that the Python files, including the ruff config and the
   rules script, are in the npm package.
 - Slice 5 unit tests: `python-sources.test.mjs` (module naming, exclusions), `python-coupling.test.mjs`
-  (import resolution, packages, stability direction, the scan step with a fake interpreter),
+  (import resolution, packages, stability direction, type-only edges, the scan step with a fake
+  interpreter), `e2e/import-scan.e2e.test.mjs` (the real scan script over the `if TYPE_CHECKING:` forms, and files with a 1100-branch `elif` chain or a 2500-term expression, which the iterative scan still reads),
   `python-duplicates.test.mjs` (real jscpd on small projects), `python-import-linter.test.mjs`
   (config detection, the run, failures), `ingest/import-linter.test.mjs` (real import-linter 2.15
   output in `ingest/fixtures`), `shared/rules/coupling-report.test.mjs`, and CLI cases in

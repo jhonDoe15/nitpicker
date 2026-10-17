@@ -10,6 +10,7 @@ import {
 import { MUTATION_ANALYZER_NAME, PYTHON_ANALYZER_NAME } from './python-analyzer.mjs';
 import { applyPythonExceptions } from './configuration/python-exceptions.mjs';
 import { mutationFindings } from './mutation/python-mutation.mjs';
+import { applyRuleHints } from '../rules/rule-hints.mjs';
 import { readPythonFindings } from './python-reports.mjs';
 import { createToolContext, runPythonTools } from './python-tools.mjs';
 
@@ -39,6 +40,7 @@ function toolContext({ projectRoot, liveRoot, settings, policy }, reportRoot) {
     exclude: policy?.exclude,
     snapshot: policy?.snapshot,
     baselineRoot: policy?.baselineRoot,
+    pytestAddopts: process.env.PYTEST_ADDOPTS,
   });
 }
 
@@ -54,9 +56,13 @@ function withReportRoot(step) {
 
 function collectMutationFindings(options) {
   return withReportRoot((reportRoot) =>
-    applyJavaPolicy(mutationFindings(toolContext(options, reportRoot)), {
-      exclude: options.policy?.exclude,
-    }),
+    applyJavaPolicy(
+      applyPythonExceptions(
+        applyRuleHints(mutationFindings(toolContext(options, reportRoot))),
+        options.settings?.exceptions,
+      ),
+      { exclude: options.policy?.exclude },
+    ),
   );
 }
 

@@ -31,7 +31,7 @@ Kotlin tasks live in the Gradle init script, so a Maven project uses the java pr
 
 ```
 gradle -Pnitpicker.kotlin=true -I languages/java/gradle/nitpicker.init.gradle nitpickerJava   (per snapshot)
-  -> everything the Java preset writes, plus build/nitpicker/{detekt.sarif, ktlint.sarif | ktfmt.txt}
+  -> everything the Java preset writes, plus {detekt.sarif, ktlint.sarif | ktfmt.txt} in each project's report directory
   -> readJavaFindings(root, { preset: 'kotlin' })   (languages/java/adapters/reporting/java-reports.mjs)
        -> readKotlinFindings                         (languages/java/adapters/reporting/kotlin-reports.mjs)
   -> compareFindings(base, head, renames)
@@ -49,17 +49,17 @@ properties.
 
 ## What runs on what
 
-| Tool                                     | Java sources | Kotlin sources | Notes                                                                                                                   |
-| ---------------------------------------- | ------------ | -------------- | ----------------------------------------------------------------------------------------------------------------------- |
-| detekt                                   |              | yes            | New. SARIF through the SARIF ingester; tool `detekt`.                                                                   |
-| ktlint or ktfmt                          |              | yes            | New, when the project uses one. ktlint: one finding per violation, with its rule; ktfmt: one `format` finding per file. |
-| JaCoCo                                   | yes          | yes            | `line-coverage` and `uncovered-method` (descriptive) and the `changed-branch-coverage` gate for both languages.         |
-| PMD, Checkstyle, google-java-format      | yes          | no             | Java-only tools, with the Java preset's suppression and `tools` rules. A Kotlin-only module skips them.                 |
-| SpotBugs                                 | yes          | no             | Runs on the classes compiled from Java only; Kotlin classes are on its auxiliary classpath. See below.                  |
-| Java structure metrics (CRAP of Java)    | yes          | no             | `StructureMetrics.java`, Java sources only. Kotlin CRAP uses its own complexity, see [CRAP](#crap).                     |
-| PIT                                      | yes          | report-only    | Mutants of Kotlin classes are descriptive and never fail; see [Mutation](#mutation-report-only-for-kotlin).             |
-| Structure limits, CRAP, jscpd duplicates | yes          | yes            | Kotlin through `KotlinMetrics.java` and jscpd's `kotlin` format. See below.                                             |
-| jdeps (stability direction)              | yes          | yes            | Reads the Java and the Kotlin classes of the module together, one module per source file. See [Coupling](#coupling).    |
+| Tool                                                           | Java sources | Kotlin sources | Notes                                                                                                                   |
+| -------------------------------------------------------------- | ------------ | -------------- | ----------------------------------------------------------------------------------------------------------------------- |
+| detekt                                                         |              | yes            | New. SARIF through the SARIF ingester; tool `detekt`.                                                                   |
+| ktlint or ktfmt                                                |              | yes            | New, when the project uses one. ktlint: one finding per violation, with its rule; ktfmt: one `format` finding per file. |
+| JaCoCo                                                         | yes          | yes            | `line-coverage` and `uncovered-method` (descriptive) and the `changed-branch-coverage` gate for both languages.         |
+| PMD, Checkstyle, google-java-format, Error Prone with NullAway | yes          | no             | Java-only tools, with the Java preset's suppression and `tools` rules. A Kotlin-only module skips them.                 |
+| SpotBugs                                                       | yes          | no             | Runs on the classes compiled from Java only; Kotlin classes are on its auxiliary classpath. See below.                  |
+| Java structure metrics (CRAP of Java)                          | yes          | no             | `StructureMetrics.java`, Java sources only. Kotlin CRAP uses its own complexity, see [CRAP](#crap).                     |
+| PIT                                                            | yes          | report-only    | Mutants of Kotlin classes are descriptive and never fail; see [Mutation](#mutation-report-only-for-kotlin).             |
+| Structure limits, CRAP, jscpd duplicates                       | yes          | yes            | Kotlin through `KotlinMetrics.java` and jscpd's `kotlin` format. See below.                                             |
+| jdeps (stability direction)                                    | yes          | yes            | Reads the Java and the Kotlin classes of the module together, one module per source file. See [Coupling](#coupling).    |
 
 **PMD and SpotBugs on Kotlin (decision).** PMD has no Kotlin analysis, so nothing is lost: it
 keeps running on the Java files of a mixed module. SpotBugs analyzes bytecode, and on
@@ -71,14 +71,21 @@ Kotlin classes (see [Mutation](#mutation-report-only-for-kotlin)), and jdeps rea
 
 ## detekt
 
-- **Run.** The detekt CLI jar (`detekt-cli:1.23.8:all`) with `--input` the main Kotlin source
+- **Run.** The detekt CLI jar (`detekt-cli:1.23.8:all`) with `--input` the main and test Kotlin source
   directories and `--includes '**/*.kt'` (a `.kts` script under the source directories, for example a
   precompiled Gradle script plugin, crashes detekt's type resolution), `--report sarif:...` and `--base-path` the project directory. Exit code 2 (findings)
   and 0 are success; any other exit code, or a missing report, fails the Gradle task. Source
   directories under the build directory (code generated by OpenAPI, protobuf or KSP and added with
   `srcDir`) or outside the project are not analyzed: nobody edits generated code, and the findings
-  would be new for every regeneration. Only the main source set is analyzed, as the Java preset's
-  PMD and Checkstyle only read main.
+  would be new for every regeneration. Test sources (the `test` source set, which `compileTestJava` and the
+  test compile classpath belong to) are analyzed like main ones, as the Java preset's PMD and
+  Checkstyle do. What differs for tests is detekt's own default config, which excludes a rule from
+  `**/test/**` where it is noise in tests: `MagicNumber`, `StringLiteralDuplication`, `TooManyFunctions`,
+  `LateinitUsage`, `SpreadOperator`, `FunctionNaming`, `ForEachOnRange`, `InstanceOfCheckForException`,
+  `ThrowingExceptionsWithoutMessageOrCause`, the `KDocReferencesNonPublicProperty` and `Undocumented*` rules. These stay
+  off for tests. The [one-way rules](#one-way-rules) are pinned with `excludes: []`, so they apply
+  in tests too (`!!`, `GlobalScope`, `runBlocking`, scope functions, the broad catch). A legacy finding in a test
+  file is baselined like one in main code, because both snapshots are analyzed with the same init script.
 - **Config.** The project's detekt config is found at `config/detekt/detekt.yml`,
   `config/detekt.yml` or `detekt.yml` in the project (also with the `.yaml` extension, in that order)
   and set explicitly with `"kotlin": { "detektConfig": "path/inside/the/project.yml" }`, which wins.
@@ -94,7 +101,9 @@ Kotlin classes (see [Mutation](#mutation-report-only-for-kotlin)), and jdeps rea
   (`languages/java/detekt/detekt-validation.yml`): a config may configure rulesets of detekt plugins,
   for example `formatting:` of detekt-formatting, that the CLI run does not load, and validation
   would end the run on them. The price is that a misspelled key is not reported.
-- **Type resolution.** The task passes `--classpath` and `--jdk-home`, so rules that need types run:
+- **Type resolution.** The task passes `--classpath` and `--jdk-home`, so rules that need types run.
+  `--jdk-home` is the JDK of the project's Gradle Java toolchain (`java.toolchain`, `kotlin { jvmToolchain(17) }`)
+  when it declares one, otherwise the JDK that runs Gradle. The classpath is
   the module's compile classpath, its compiled Java classes, and the Kotlin standard library that
   detekt itself embeds (2.0.21, pinned as `detektKotlin`), in place of the project's own. detekt 1.23
   cannot read the metadata of a newer standard library, and then no call to it resolves, so
@@ -133,12 +142,16 @@ message names the fix and both routes. Each rule has a banned and an allowed fix
 |                   | `value as String` on a nullable value | handle null first, or `as?`                                       | `potential-bugs.CastNullableToNonNullableType`                           |
 |                   | `if (x == null) null else ...`        | `x?.let { ... }`                                                  | `style.UseLet`                                                           |
 | Coroutines        | `GlobalScope`                         | `coroutineScope { launch { ... } }`, or a scope its owner cancels | `coroutines.GlobalCoroutineUsage`                                        |
-|                   | `runBlocking`                         | a `suspend` caller (`suspend fun main()`)                         | `style.ForbiddenMethodCall` (`kotlinx.coroutines.runBlocking`)           |
+|                   | `runBlocking`                         | a `suspend` caller (`suspend fun main()`); `runTest` in a test    | `style.ForbiddenMethodCall` (`kotlinx.coroutines.runBlocking`)           |
+| Exceptions        | `catch (e: Exception)`, `Throwable`   | catch the specific exception type; `assertFailsWith` in a test    | `exceptions.TooGenericExceptionCaught`                                   |
 | Records           | a class that only holds `val`s        | `data class`                                                      | `style.UseDataClass` (`allowVars: true`)                                 |
 |                   | a `data class` with a `var`           | `val` and `copy(...)`                                             | `style.DataClassShouldBeImmutable`                                       |
 
-Rule ids in findings are `detekt.<ruleset>.<Rule>`. Only main source sets are analyzed, so
-`runBlocking` in tests is not seen.
+Rule ids in findings are `detekt.<ruleset>.<Rule>`. Test sources are analyzed with the same rules, so
+`runBlocking` in a test is a finding too; its message points to `runTest`. A broad catch in a test
+(`catch (error: Exception)`) is a finding as well: assert on the specific exception with
+`assertFailsWith`, or catch the specific type. No variable name lifts the rule (`catch (ignored:
+Exception)` is a finding too); the only exit is an `exceptions` entry with a reason.
 
 **Why these allowed forms (decision).** One function per job: `let` binds a value to a name for a
 block (and is the null-handling form), `apply` configures an object and returns it. `run` and `with`
@@ -146,13 +159,22 @@ are `let` with `this`, and `also` is `apply` with `it`, so each is a second way 
 `let` and `apply` are the ones that cover the other three.
 
 **Owned by Nitpicker.** The file is laid over the project's detekt config. For each of its rulesets
-and rules it sets `active: true`, `excludes: []` and `includes: []`, and for each rule
-`severity: warning`, so a project cannot switch these rules off, lower them to `info` (which the
-gate reads as descriptive) or skip paths in `detekt.yml`; paths are lifted only by `exceptions`. A
+and rules it sets `active: true`, `excludes: []`, `includes: []` and `ignoreAnnotated: []`, and for
+each rule `severity: warning`, so a project cannot switch these rules off, lower them to `info`
+(which the gate reads as descriptive) or skip paths or annotated classes in `detekt.yml`; paths are
+lifted only by `exceptions`. A
 test keeps the rule keys of the file equal to the rules the gate knows. Other rules and keys in the
-project's config work as before, with one limit: a list the file sets replaces the project's, so a
-project's own `ForbiddenMethodCall.methods` entries are ignored while the preset is on (detekt does
-not merge lists, and nitpicker does not read the project's file). The one narrowing that stays with
+project's config work as before. The one list the preset sets, `ForbiddenMethodCall.methods`, is
+merged: detekt replaces a list instead of merging it, so Nitpicker reads the project's detekt file
+and the effective list is the preset's four calls followed by the project's own entries (strings or
+`value`/`reason` entries; a call both list keeps the preset's reason). A project can add forbidden
+calls, for example `java.lang.Thread.sleep`, but never drop one of ours. An entry is a method name
+with an optional parameter list (`java.lang.Thread.sleep` or `java.lang.Thread.sleep(long)`); an
+entry of any other shape, a `methods` key that is not a list or a file that does not parse adds
+nothing. Findings for a
+project's own entry have the rule `detekt.style.ForbiddenMethodCall` as well, so they are one-way
+and an exception lifts them the same way. `ForbiddenImport` is not set by the preset, so a project's
+own `ForbiddenImport.imports` works as it does in detekt. The one narrowing that stays with
 the project is detekt's own `excludeAnnotatedClasses` for `UseDataClass`, for example
 `excludeAnnotatedClasses: ['Entity']` for JPA entities, whose equality must not become value equality.
 `UseDataClass` has `allowVars: true`, because `DataClassShouldBeImmutable` bans the `var` in a data
@@ -200,8 +222,6 @@ not a rule with `exceptions`.
   is why `let` is not limited to `?.let` (detekt cannot tell the two apart), `takeIf`, `takeUnless`,
   `lateinit` and unstructured `CoroutineScope(...)` are not covered. `GlobalScope` imported under
   another name (`import kotlinx.coroutines.GlobalScope as G`) is not seen by detekt's rule.
-- Detekt does not merge lists: the project's `ForbiddenMethodCall.methods` is replaced by the
-  preset's, see [Owned by Nitpicker](#one-way-rules).
 - Type resolution reports less where a library is built with a newer Kotlin than detekt's (above);
   `!!` on a value of such a type is not seen.
 
@@ -382,7 +402,7 @@ mutation reports for now. Enforcing it needs a filter validated on real projects
 that is a follow-up, and flipping it is the single `reportOnlyKotlinMutants` call in
 `languages/java/adapters/reporting/java-reports.mjs`. To reproduce the numbers: run
 `gradle -Pnitpicker.kotlin=true -I <nitpicker>/languages/java/gradle/nitpicker.init.gradle nitpickerPit`
-in that project and read `build/nitpicker/pit/mutations.xml`.
+in that project and read `pit/mutations.xml` in the report directory.
 
 ## Structure limits
 
@@ -400,37 +420,49 @@ there are no inline disables.
 
 **Metric source (decision).** `languages/java/gradle/KotlinMetrics.java` parses the Kotlin sources
 (parse only, no compilation) with the PSI parser of the Kotlin compiler and writes
-`build/nitpicker/kotlin-metrics.json`. It runs in Java's single-file source mode in the JVM that
+`kotlin-metrics.json` in the report directory. It runs in Java's single-file source mode in the JVM that
 runs Gradle, with `org.jetbrains.kotlin:kotlin-compiler-embeddable` on the class path. The version is
 pinned as `kotlinCompiler` in the init script (2.4.21) and resolved from its own Gradle configuration
 (`nitpickerKotlinCompiler`), like the other tools. It uses the compiler's PSI classes, so bumping the
-pin means running `npm run test:kotlin` again. A line-based tool cannot be the source: it has no
-statement count or control nesting, and token-based readers misread ordinary Kotlin (extension
-functions such as `fun String.shout() = ...`, expression-bodied functions, the `->` of a lambda), which
-would attribute a complexity per function to the wrong lines.
+pin means running `npm run test:kotlin` again; the `kotlin-e2e` GitHub Actions workflow runs it for a
+push to `main` that changes `languages/java`, `core` or `shared`, the package files or the workflow
+itself, by hand, and on a pull request when the `run-ci` label is added. A line-based tool cannot be the source: it has no statement count or control nesting, and
+token-based readers misread ordinary Kotlin (extension functions such as `fun String.shout() = ...`,
+expression-bodied functions, the `->` of a lambda), which would attribute a complexity per function to
+the wrong lines.
 
 **What is measured, all from the one parse, with the definitions of the other languages.**
 
-| Metric              | Definition                                                                                                                                                                                               |
-| ------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `lines`             | Last line minus first line plus 1; annotations and modifiers count, KDoc and comments do not.                                                                                                            |
-| `statements`        | Every element of a block (declarations, expressions, `return`), plus the unbraced body of an `if`, `else`, loop or `when` branch that is itself a statement, plus 1 for an expression body.              |
-| `maxControlNesting` | Deepest nesting of `if`, `for`, `while`, `do`, `when` (like Java's `switch`) and `catch`; an `else if` nests one level deeper, as in TypeScript and Java. `try` itself and lambdas are not control flow. |
-| `parameters`        | Declared value parameters. An extension receiver is not one; a parameter with a default value is.                                                                                                        |
-| complexity          | 1 plus each `if`, `for`, `while`, `do`, `when` branch other than `else`, `catch`, `&&`, `\|\|` and `?:`. It is the CRAP input, below.                                                                    |
+| Metric              | Definition                                                                                                                                                                                                                                                                                            |
+| ------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `lines`             | Last line minus first line plus 1; annotations and modifiers count, KDoc and comments do not.                                                                                                                                                                                                         |
+| `statements`        | Every element of a block (declarations, expressions, `return`), plus the unbraced body of an `if`, `else`, loop or `when` branch that is itself a statement, plus 1 for an expression body.                                                                                                           |
+| `maxControlNesting` | Deepest nesting of `if`, `for`, `while`, `do`, `when` (like Java's `switch`) and `catch`; a flat `if` / `else if` / `else` chain is one level, whatever its length, while an `if` inside an `else { }` block or inside a branch body nests one deeper. `try` itself and lambdas are not control flow. |
+| `parameters`        | Declared value parameters. An extension receiver is not one; a parameter with a default value is.                                                                                                                                                                                                     |
+| complexity          | 1 plus each `if`, `for`, `while`, `do`, `when` branch other than `else`, `catch`, `&&`, `\|\|` and `?:`. It is the CRAP input, below.                                                                                                                                                                 |
 
 A unit is a function with a body, a property accessor with a body, a secondary constructor with a
-block body, or a property whose initializer is a lambda or an anonymous function or whose delegate
-takes a lambda (`val handler = { x -> ... }`, `val f = fun(x: Int) { ... }`, `val v by lazy { ... }`),
+block body, an `init` block with statements, or a property whose initializer is a lambda or an
+anonymous function or whose delegate takes a lambda (`val handler = { x -> ... }`,
+`val f = fun(x: Int) { ... }`, `val v by lazy { ... }`, `val o by Delegates.observable(0) { ... }`),
 the way an arrow-function constant is a unit in TypeScript; the body is the lambda's and the unit is
-named after the property. Lambdas and local functions inside a function count towards the function
-that contains them; members of nested, local and anonymous classes and objects are units of their
-own. Init blocks, other property initializers (`val x = run { ... }`), primary constructors and
-functions without a body (abstract, interface, `expect`) are not units, as initializer blocks are
-not in the Java preset. Names are `function` (top level), `Class.function`,
+named after the property. Any other property initializer is a unit when it holds a block (a lambda
+such as `run { ... }` or `map { ... }`, or the braces of `if`, `try` and `when`) or branches
+(`if`, `when`, `&&`, `?:` and the like); `val x = a + 1` and `val s = "text"` are not. Each `init`
+block is a unit named after its class, `Class.<init>` (an empty block is not a unit). A class's
+blocks share the name, so a finding on one is numbered only among the blocks of that class with the
+same text that are over the same limit: inserting, deleting or reordering other blocks, or adding
+an empty `init {}`, never makes a legacy block new. An edited block is held by that rule's ratchet like any function. A message on an
+`init` block or a property initializer says to move the nested part into its own function, because
+neither can `return` early. To accept such a unit, drop its file with `exclude`, as for any structure
+or CRAP finding; the unit name (`Class.<init>`, `Class.property`) is the one that a per-function
+exception would name. Lambdas and local functions inside a function count towards
+the function that contains them; members of nested, local and anonymous classes and objects are
+units of their own. Primary constructors and functions without a body (abstract, interface,
+`expect`) are not units. Names are `function` (top level), `Class.function`,
 `Class.Receiver.function` for an extension, `Class.property.get` for an accessor, `Class.property`
-for a lambda property, `Class.Class` for a secondary constructor and `<anonymous>` for an object
-expression. Script files (`.kts`) are not read. Source directories are the ones Gradle reports
+for a property unit, `Class.<init>` for an `init` block, `Class.Class` for a secondary
+constructor and `<anonymous>` for an object expression. Script files (`.kts`) are not read. Source directories are the ones Gradle reports
 (generated code under the build directory is already left out), so a package named `build`, `out`
 or `target` is measured like any other.
 
@@ -459,6 +491,11 @@ of a class declared in the function). So the getter `getDoubled` belongs to `val
 the lambda `bump$lambda$0` and a local function belong to the function that declares them, and their
 lines and branches are summed into its coverage. The synthetic `name$default` method that Kotlin
 generates for default arguments is ignored: it has no source of its own and delegates to the function.
+An `init` block and a property initializer that is not a lambda or delegate lambda run inside the
+class constructor or the static initializer, whose JaCoCo method starts on the class line, outside
+the unit. Their coverage is therefore read from the source lines of the unit in JaCoCo's per-file
+line data (covered lines, covered branches), minus the lines of a unit nested in them; the lower of
+the two percentages is used as everywhere else.
 A `@JvmStatic` companion function, which compiles to the function and a static method that delegates
 to it on the same line, is counted once, through the method that holds the code. The score of a
 function whose range holds no instrumented method is unknown, which is a finding
@@ -515,16 +552,30 @@ the comparison and exiting with 2. Nothing is silently skipped and nothing throw
 (legacy inventory sources are the findings' `identity`, for example
 `fp:nitpicker/subject=This expression contains a magic number. ...`). `kotlin.formatter` and
 `kotlin.detektConfig` are new and valid only with this preset. `exceptions` lifts the
-[one-way rules](#one-way-rules), the file limits `file-lines-limit` and `folder-files-limit` and the
+[one-way rules](#one-way-rules), the file limits `file-lines-limit` and `folder-files-limit`,
+`test-runtime/slow-test` and the
 [dependency and repository checks](usage.md#dependency-and-repository-checks) per path. `layout` is a config error.
+
+## Slow tests
+
+As for Java ([slow tests](java-preset.md#slow-tests)): a test the change adds or edits fails over 5 s
+as a unit test or 30 s as an integration test (`thresholds.unitTestSeconds`,
+`thresholds.integrationTestSeconds`), measured on head from the JUnit XML of the test tasks. A Kotlin
+test named with backticks is found by its name.
 
 ## File limits
 
 The shared file-limit rule (`shared/rules/file-limits.mjs`) checks the `.kt` and `.java` files of the
 Kotlin and Java source roots, main and test (roots under `build/` are generated and skipped): 300
 lines per file, 500 per test file, and 6 files (and separately 6 test files) directly in one package
-folder. The thresholds are `fileLines`, `testFileLines` and `folderFiles`. Line length stays with
-detekt's `MaxLineLength` (120 by default, set in `config/detekt/detekt.yml`), so
+folder. The thresholds are `fileLines`, `testFileLines` and `folderFiles`. Packages more than 4 levels
+below the root package (the longest package prefix all the code shares) fail `folder-depth-limit`,
+`thresholds.folderDepth` and an exception for that rule change it. The Java class limits
+(`class-methods-limit`, `class-fields-limit`, `inheritance-depth-limit`) apply to the `.java` files of a
+Kotlin project, with `classMethods`, `classFields` and `inheritanceDepth`; Kotlin classes are not measured. The `java.indentation` convention (`"4"`) switches the Java sources' format check
+to 4 spaces. The Kotlin files' line length is
+detekt's `MaxLineLength` (120 by default, set in `config/detekt/detekt.yml`), the `.java` files keep
+nitpicker's fixed 100 characters (`line-length-limit`, which an exception lifts for some paths), and
 `thresholds.lineLength` is a config error with this preset. A file or folder already over a limit
 fails only when it grows, and a package folder moved to a new path is matched to its old path.
 
@@ -559,7 +610,7 @@ fails only when it grows, and a package folder moved to a new path is matched to
   allowed form and end with the exception route; the rule keys and pins of `nitpicker-detekt.yml`
   against `ONE_WAY_RULES`; the suppression scan, with its string and comment traps;
   `core/command/java/java-cli.test.mjs` runs an exception through the CLI.
-- `languages/java/adapters/kotlin-e2e/*.e2e.test.mjs`: real Gradle, behind `NITPICKER_KOTLIN_E2E=1`
+- `languages/java/adapters/kotlin-e2e/**/*.e2e.test.mjs`: real Gradle, behind `NITPICKER_KOTLIN_E2E=1`
   (`npm run test:kotlin`). Needs Java 21, Gradle and network access
   to Maven Central and the Gradle plugin portal. A mixed Kotlin and Java fixture project
   (`languages/java/adapters/fixtures/kotlin-project`): a tested change passes with its legacy detekt
@@ -575,7 +626,11 @@ fails only when it grows, and a package folder moved to a new path is matched to
   fails with the recorded message and the allowed one passes; a project detekt config cannot switch
   a one-way rule off, lower its severity or exclude paths, and a config with the `formatting` and
   `compose` rulesets still runs; a `.kts` script in the source directory does not crash detekt;
-  `runBlocking` behind a wildcard import is caught; an exception lifts one rule for one path; a new
+  `runBlocking` behind a wildcard import is caught; an exception lifts one rule for one path; Kotlin test sources
+  (`kotlin-e2e/test-sources/kotlin-test-sources.e2e.test.mjs`) are linted: a legacy broad catch in a test stays baselined when its line
+  moves, a new `!!`, `lateinit`, `runBlocking` and misindented line in a test are checked against the
+  rules detekt excludes for tests, an inline suppression in a test file is reported, and an exception lifts the
+  broad-catch ban for a test path; a new
   function over the nesting limit fails and a
   moved legacy function stays baselined; a legacy function that grows past a limit, or whose CRAP
   score rises, fails and one edited without getting worse passes; CRAP over a file facade, a class
@@ -599,21 +654,17 @@ fails only when it grows, and a package folder moved to a new path is matched to
 
 ## Known limits
 
-- Multi-module builds: every module with the Kotlin plugin gets the tasks, but Nitpicker reads the
-  root project's `build/nitpicker`, as for Java. A root project that does not apply the Kotlin plugin
-  (an aggregator with the code in submodules) writes no reports, which is a tool error saying so; and
-  when the root and a submodule both have Kotlin, the submodule's reports are not read. Aggregating
-  per-module reports is not done for either preset yet.
-- Kotlin is linted in main sources only; Java files are linted in main and test sources, as in the
-  Java preset. Generated sources under the build directory are skipped.
+- Multi-module builds: every project with the Kotlin plugin is analyzed and its findings carry
+  the project's folder, as for Java. A build where no project applies the Kotlin plugin is a tool
+  error saying so.
+- Kotlin and Java files are linted in main and test sources, as in the Java preset. Generated
+  sources under the build directory are skipped.
 - The Kotlin metrics step needs network access to Maven Central for `kotlin-compiler-embeddable`
   (about 60 MB, cached by Gradle) on the first run. It parses with the pinned compiler, so syntax newer
   than that version ends the run with an error naming the file and the version. A version that the
   project forces on `org.jetbrains.kotlin` (a `resolutionStrategy` rule, Spring's dependency
   management) does not reach that compiler: the pin is applied last.
 - `inline` functions are not measured by CRAP (see [CRAP](#crap)); their structure limits still apply.
-- `init` blocks and other property initializers (`val x = run { ... }`) are not units: logic moved
-  into one is not measured.
 - Kotlin Multiplatform and Android modules are not covered (`org.jetbrains.kotlin.jvm` only).
 - detekt's type resolution uses detekt's own Kotlin standard library (see [detekt](#detekt)), so its
   results can differ from a project's own detekt run, and a library built with a newer Kotlin stays

@@ -1,18 +1,18 @@
 {
-  "path": ["src", "test", "tests"],
+  "path": ["src", "test", "tests", "__tests__", "e2e"],
   "format": ["typescript", "tsx"],
   "mode": "mild",
   "reporters": ["console", "json"],
   "output": "reports/quality/duplicates",
   "ignore": [
+    "dist/**",
+    "build/**",
+    "generated/**",
+    "coverage/**",
+    "reports/**",
+    "target/**",
     "**/node_modules/**",
-    "**/dist/**",
-    "**/build/**",
-    "**/generated/**",
     "**/*.d.ts",
-    "**/coverage/**",
-    "**/reports/**",
-    "**/target/**",
     "**/.stryker-tmp/**"
   ]
 }

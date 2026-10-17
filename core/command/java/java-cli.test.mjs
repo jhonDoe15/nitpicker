@@ -4,17 +4,21 @@ import { describe, expect, it, vi } from 'vitest';
 import { runCli as nitpickerCli } from '../../cli.mjs';
 import { exactText } from '../../diff/reporting/test-support/output-expectations.mjs';
 import { commit, fixtureGit } from '../../diff/git/test-support/git-repository.mjs';
-import { useGradleFixtures } from './test-support/java-cli-harness.mjs';
+import { unusedFieldMessage, useGradleFixtures } from './test-support/java-cli-harness.mjs';
 import { writeFiles } from '../../diff/git/test-support/fixture-files.mjs';
+import { acceptedDigest } from '../test-support/accepted-digest.mjs';
 
 const { gradleRepository, run, runCli, temporaryRoot } = useGradleFixtures(nitpickerCli);
+const addedField = unusedFieldMessage('added');
+const xmlText = (text) =>
+  text.replaceAll('&', '&amp;').replaceAll('"', '&quot;').replaceAll("'", '&apos;');
 
 const addedFieldOutput = expect.stringMatching(exactText`Base: comparison-base (argument)
 
 Quality gate summary
 ✖ 1 new enforceable violation
   pmd/UnusedPrivateField src/main/java/demo/A.java:4
-    Avoid unused field: added
+    ${addedField}
 Full diagnostics: /tmp/nitpicker-java-out-${/[A-Za-z0-9]{6}/}/reports/report.txt
 `);
 
@@ -54,7 +58,7 @@ describe('nitpicker with "preset": "java"', () => {
         rule: 'UnusedPrivateField',
         path: 'src/main/java/demo/A.java',
         identity: 'fp:nitpicker/subject=Avoid unused field: added',
-        message: 'Avoid unused field: added',
+        message: addedField,
         classification: 'enforceable',
         location: { line: 4 },
       },
@@ -88,7 +92,7 @@ describe('nitpicker with "preset": "java"', () => {
           "ruleId": "pmd/UnusedPrivateField",
           "level": "error",
           "message": {
-            "text": "Avoid unused field: added"
+            "text": ${JSON.stringify(addedField)}
           },
           "locations": [
             {
@@ -117,7 +121,7 @@ describe('nitpicker with "preset": "java"', () => {
 <testsuite name="quality.diff" tests="3" failures="1" errors="0" time="${/[0-9]+(?:\.[0-9]+)?/}">
   <testcase classname="quality.diff" name="java" time="${/[0-9]+(?:\.[0-9]+)?/}"></testcase>
   <testcase classname="quality.diff" name="repository-hygiene" time="${/[0-9]+(?:\.[0-9]+)?/}"></testcase>
-  <testcase classname="quality.diff.new-findings" name="pmd/UnusedPrivateField src/main/java/demo/A.java:4" time="${/[0-9]+(?:\.[0-9]+)?/}"><failure message="Avoid unused field: added" type="pmd/UnusedPrivateField">Avoid unused field: added</failure></testcase>
+  <testcase classname="quality.diff.new-findings" name="pmd/UnusedPrivateField src/main/java/demo/A.java:4" time="${/[0-9]+(?:\.[0-9]+)?/}"><failure message="${xmlText(addedField)}" type="pmd/UnusedPrivateField">${xmlText(addedField)}</failure></testcase>
 </testsuite>
 `),
     );
@@ -130,7 +134,11 @@ describe('nitpicker with "preset": "java"', () => {
     });
     commit(root, 'add violation in an excluded path');
 
-    const result = run(root);
+    const digest = acceptedDigest(['exclude added: src/main/java/demo/**'], {
+      'nitpicker.config.json': '{ "preset": "java", "exclude": ["src/main/java/demo/**"] }\n',
+      'src/main/java/demo/A.java': 'package demo;\n\npublic final class A {}\n',
+    });
+    const result = run(root, [`--accept-policy-change=${digest}`], { interactive: true });
 
     expect(result.exitCode, result.text).toBe(0);
     expect(result.json('new-findings.json')).toEqual([]);
@@ -194,9 +202,7 @@ Full diagnostics: /tmp/nitpicker-java-out-${/[A-Za-z0-9]{6}/}/reports/report.txt
         snapshot: 'head',
         rule: 'gradle-failure',
         path: '.',
-        message: expect.stringMatching(
-          exactText`Java preset failed in /tmp/nitpicker-diff-${/[A-Za-z0-9]{6}/}/head: Execution failed for task :compileJava`,
-        ),
+        message: 'Java preset failed in head: Execution failed for task :compileJava',
       },
     ]);
   });
@@ -244,7 +250,7 @@ Full diagnostics: /tmp/nitpicker-java-out-${/[A-Za-z0-9]{6}/}/reports/report.txt
         'repository-hygiene: total=0 enforceable=0 descriptive=0',
         '',
         'Enforceable findings:',
-        'pmd/UnusedPrivateField src/main/java/demo/A.java:3 Avoid unused field: legacy',
+        `pmd/UnusedPrivateField src/main/java/demo/A.java:3 ${unusedFieldMessage('legacy')}`,
         '',
       ].join('\n'),
     );
