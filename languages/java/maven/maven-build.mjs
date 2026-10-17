@@ -85,6 +85,7 @@ function runStructure(module, reportDir) {
     args: [
       path.join(GRADLE_DIRECTORY, 'StructureMetrics.java'),
       path.join(reportDir, 'structure.json'),
+      path.join(reportDir, 'classes.json'),
       module.basedir,
       ...roots,
     ],
@@ -123,11 +124,11 @@ function readClasspaths(work, module) {
 }
 
 function analyzeSources(context, project) {
-  const { module, reportDir, tools, classpaths, configs, pinned } = context;
+  const { module, reportDir, tools, classpaths, configs, pinned, javaStyle } = context;
   runPmd({ module, reportDir, tools, classpaths, configs, spring: context.spring });
   runSpotbugs({ module, reportDir, tools });
   runErrorProne({ module, reportDir, tools, classpaths });
-  runFormat({ module, reportDir, tools });
+  runFormat({ module, reportDir, tools, javaStyle });
   runCheckstyle({ module, reportDir, tools, configs, pinned });
   runStructure(module, reportDir);
   runJdeps(module, reportDir);
@@ -225,7 +226,16 @@ export function runMavenPreset(projectRoot, { maven, policy = {}, configs }) {
       reactor: modules.map((module) => module.coordinates),
     };
     for (const { module, classpaths } of analyzed) {
-      analyzeModule({ module, classpaths, tools, pinned, configs, since, project });
+      analyzeModule({
+        module,
+        classpaths,
+        tools,
+        pinned,
+        configs,
+        since,
+        project,
+        javaStyle: policy.javaStyle,
+      });
     }
     return modules.map((module) => module.basedir);
   } finally {

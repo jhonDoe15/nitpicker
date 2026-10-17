@@ -136,6 +136,11 @@
               "endLine": { "type": "integer", "minimum": 1 }
             }
           }
+        },
+        "folderFiles": {
+          "description": "With `pathIsFolder`: the number of files in the folder, when `value` is not that number. A base finding is held at a new path when more than half of these files were renamed there.",
+          "type": "integer",
+          "minimum": 1
         }
       }
     },
