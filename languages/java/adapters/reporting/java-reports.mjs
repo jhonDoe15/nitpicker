@@ -42,7 +42,6 @@ const LINE_NUMBER = /\bline \d+\b/g;
 const CHECKSTYLE_SOURCE_SET_REPORT = /^checkstyle-.+\.xml$/u;
 const MODULE_IDENTITY_SEPARATOR = '@';
 const ROOT_MODULE = 'root';
-const PROJECT_REPORTS = 'project';
 
 export function readJavaFindings(projectRoot, options = {}) {
   const { reportBase, report, preset = 'java', projectWide = true } = options;
@@ -69,14 +68,14 @@ export function readJavaFindings(projectRoot, options = {}) {
                 qualifier: module.key === ROOT_MODULE ? '' : module.dir,
                 sourceRoots: module.manifest.sourceRoots ?? [],
               })),
-              mergedRoot: path.join(reportBase, PROJECT_REPORTS),
+              mergedRoot: path.join(reportBase, 'project'),
               manifest,
               kotlin: kotlinPreset,
               policy: options,
             })
           : []),
         ...readInlineSuppressionFindings(projectRoot, lintedRoots(manifest)),
-        ...springFindings(projectRoot, manifest),
+        ...springFindings(projectRoot, manifest, options),
       ],
       { preset, javaStyle: options.javaStyle },
     ),
@@ -85,6 +84,7 @@ export function readJavaFindings(projectRoot, options = {}) {
 
 function moduleContextFindings(projectRoot, module, { manifest, options }) {
   const preset = options.preset ?? 'java';
+  const { fileLimits: thresholds, exceptions, modulePath } = options;
   return readModuleFindings(
     {
       projectRoot,
@@ -98,17 +98,13 @@ function moduleContextFindings(projectRoot, module, { manifest, options }) {
       formatAdvice: options.formatAdvice,
       conventions: options.conventions,
       javaStyle: options.javaStyle,
-      classLimits: {
-        thresholds: options.fileLimits,
-        exceptions: options.exceptions,
-        modulePath: options.modulePath,
-      },
+      classLimits: { thresholds, exceptions, modulePath },
       jacoco: readModuleJacoco(module, preset),
       mainCheckstyle: readMainCheckstyle(projectRoot, module, preset),
       testTimes: {
         limits: options.testSeconds,
         baseline: options.baseline,
-        modulePath: options.modulePath,
+        modulePath,
       },
     },
     options.crapLimit,
@@ -159,11 +155,19 @@ function lintedRoots({ sourceRoots = [], testSourceRoots = [] }) {
   return [...new Set([...sourceRoots, ...testSourceRoots])];
 }
 
-function springFindings(projectRoot, manifest) {
+function baselineRootOf({ baseline, modulePath }) {
+  return baseline?.snapshot === 'head' && baseline.baselineRoot !== undefined
+    ? path.join(baseline.baselineRoot, modulePath ?? '')
+    : undefined;
+}
+
+function springFindings(projectRoot, manifest, options) {
   return manifest.spring === true
     ? readSpringConfigFindings(projectRoot, {
         sourceRoots: manifest.sourceRoots,
         resourceRoots: manifest.resourceRoots,
+        testSourceRoots: manifest.testSourceRoots,
+        baselineRoot: baselineRootOf(options),
       })
     : [];
 }

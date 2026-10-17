@@ -5,9 +5,12 @@ import {
   typePredicateTags,
   withJsdoc,
 } from '../../../../../javascript/preset/documentation/jsdoc.mjs';
+import { readHeadPolicy } from '../../../head-policy.mjs';
+import { librariesForFile } from '../../../libraries/file-libraries.mjs';
+import { validationBehavior } from '../../../libraries/project-libraries.mjs';
+import { isParsedBySchema, schemaContext } from '../../../libraries/schema-calls.mjs';
 
 const UNTYPED_KEYWORDS = new Set(['TSUnknownKeyword', 'TSAnyKeyword', 'TSObjectKeyword']);
-const SCHEMA_PARSE_METHODS = new Set(['parse', 'safeParse', 'parseAsync', 'safeParseAsync']);
 
 function isJsonParse(node) {
   return (
@@ -28,21 +31,6 @@ function isJsonCopy(node) {
     argument.callee.object.name === 'JSON' &&
     argument.callee.property.name === 'stringify'
   );
-}
-
-function isSchemaParseCall(node) {
-  return (
-    node.type === 'CallExpression' &&
-    node.callee.type === 'MemberExpression' &&
-    !node.callee.computed &&
-    node.callee.property.type === 'Identifier' &&
-    SCHEMA_PARSE_METHODS.has(node.callee.property.name)
-  );
-}
-
-function isSchemaParseArgument(expression) {
-  const parent = expression.parent;
-  return isSchemaParseCall(parent) && parent.arguments.includes(expression);
 }
 
 function recordValueType(type) {
@@ -133,83 +121,75 @@ function isOverloadCast(node) {
   );
 }
 
-function isParsedBySchema(sourceCode, call) {
-  if (isSchemaParseArgument(call)) {
-    return true;
-  }
-  const declarator = call.parent;
-  if (
-    declarator.type !== 'VariableDeclarator' ||
-    declarator.init !== call ||
-    declarator.id.type !== 'Identifier'
-  ) {
-    return false;
-  }
-  return sourceCode
-    .getDeclaredVariables(declarator)
-    .some((variable) =>
-      variable.references.some(
-        (reference) =>
-          reference.identifier !== declarator.id && isSchemaParseArgument(reference.identifier),
-      ),
-    );
+function isHandNarrowing(sourceCode, node) {
+  const identifier = narrowedIdentifier(node);
+  return (
+    identifier?.type === 'Identifier' &&
+    !isInsidePredicate(node) &&
+    !isNarrowedByInstanceof(sourceCode, node, identifier.name) &&
+    declaredType(variableNamed(sourceCode, identifier))?.type === 'TSUnknownKeyword'
+  );
 }
 
-export const rule = {
-  meta: {
-    type: 'problem',
-    docs: {
-      description:
-        'Require external data in adapters to be parsed with a zod schema instead of a hand-written type guard',
+function createVisitors(context, rootLibraries) {
+  const { sourceCode } = context;
+  const validation = validationBehavior(librariesForFile(context, rootLibraries));
+  const schema = schemaContext(context);
+  const data = { phrase: validation.phrase, example: validation.example };
+  const visitors = {
+    TSTypePredicate(node) {
+      if (isUntypedInput(predicateInputType(node))) {
+        context.report({ node, messageId: 'typePredicate', data });
+      }
     },
-    schema: jsdocOptionSchema,
-    messages: {
-      typePredicate:
-        'Do not hand-write a type guard for unknown input: parse it once at the boundary with a zod schema (schema.parse or schema.safeParse). A predicate over a union (`(result): result is Ok => result.kind === "ok"`) is fine. If the guard is genuinely needed, add an exception for this rule in nitpicker.config.json.',
-      inlineNarrowing:
-        'Do not hand-narrow an `unknown` value with `typeof x === "object"` or `"key" in x`: parse it once at the boundary with a zod schema (schema.safeParse). A caught error is read with `error instanceof Error`. If the narrowing is genuinely needed, add an exception for this rule in nitpicker.config.json.',
-      overloadCast:
-        'This overload implementation returns unknown or any, which makes its overload signatures a cast. Return a typed value, or split it into separate functions. If it is deliberate, add an exception for this rule in nitpicker.config.json.',
-      unparsedJson:
-        'Pass `JSON.parse(text)` straight into `schema.safeParse(...)` inside the same `try`. If the text is trusted and already typed, add an exception for this rule in nitpicker.config.json.',
-      jsonCopy:
-        'Copy a value with `structuredClone(value)`, not `JSON.parse(JSON.stringify(value))`. If it is deliberate, add an exception for this rule in nitpicker.config.json.',
+    BinaryExpression(node) {
+      if (isHandNarrowing(sourceCode, node)) {
+        context.report({ node, messageId: 'inlineNarrowing', data });
+      }
     },
-  },
-  create(context) {
-    const sourceCode = context.sourceCode;
+    FunctionDeclaration(node) {
+      if (isOverloadCast(node)) {
+        context.report({ node, messageId: 'overloadCast' });
+      }
+    },
+    CallExpression(node) {
+      if (isJsonParse(node) && !isParsedBySchema(schema, node, validation.accepted)) {
+        const messageId = isJsonCopy(node) ? 'jsonCopy' : 'unparsedJson';
+        context.report({ node, messageId, data: { ...data, call: validation.call } });
+      }
+    },
+  };
+  return withJsdoc(context, visitors, {
+    selectTags: typePredicateTags,
+    messageId: 'typePredicate',
+    data,
+  });
+}
 
-    const visitors = {
-      TSTypePredicate(node) {
-        if (isUntypedInput(predicateInputType(node))) {
-          context.report({ node, messageId: 'typePredicate' });
-        }
+export function boundaryGuardRule(rootLibraries) {
+  return {
+    meta: {
+      type: 'problem',
+      docs: {
+        description:
+          'Require external data in adapters to be parsed with a schema instead of a hand-written type guard',
       },
-      BinaryExpression(node) {
-        const identifier = narrowedIdentifier(node);
-        if (
-          identifier?.type === 'Identifier' &&
-          !isInsidePredicate(node) &&
-          !isNarrowedByInstanceof(sourceCode, node, identifier.name) &&
-          declaredType(variableNamed(sourceCode, identifier))?.type === 'TSUnknownKeyword'
-        ) {
-          context.report({ node, messageId: 'inlineNarrowing' });
-        }
+      schema: jsdocOptionSchema,
+      messages: {
+        typePredicate:
+          'Do not hand-write a type guard for unknown input: parse it once at the boundary with {{phrase}} ({{example}}). A predicate over a union (`(result): result is Ok => result.kind === "ok"`) is fine. If the guard is genuinely needed, add an exception for nitpicker/no-handwritten-boundary-guard in nitpicker.config.json.',
+        inlineNarrowing:
+          'Do not hand-narrow an `unknown` value with `typeof x === "object"` or `"key" in x`: parse it once at the boundary with {{phrase}} ({{example}}). A caught error is read with `error instanceof Error`. If the narrowing is genuinely needed, add an exception for nitpicker/no-handwritten-boundary-guard in nitpicker.config.json.',
+        overloadCast:
+          'This overload implementation returns unknown or any, which makes its overload signatures a cast. Return a typed value, or split it into separate functions. If it is deliberate, add an exception for nitpicker/no-handwritten-boundary-guard in nitpicker.config.json.',
+        unparsedJson:
+          'Pass `JSON.parse(text)` straight into `{{call}}(...)` inside the same `try`. If the text is trusted and already typed, add an exception for nitpicker/no-handwritten-boundary-guard in nitpicker.config.json.',
+        jsonCopy:
+          'Copy a value with `structuredClone(value)`, not `JSON.parse(JSON.stringify(value))`. If it is deliberate, add an exception for nitpicker/no-handwritten-boundary-guard in nitpicker.config.json.',
       },
-      FunctionDeclaration(node) {
-        if (isOverloadCast(node)) {
-          context.report({ node, messageId: 'overloadCast' });
-        }
-      },
-      CallExpression(node) {
-        if (isJsonParse(node) && !isParsedBySchema(sourceCode, node)) {
-          context.report({ node, messageId: isJsonCopy(node) ? 'jsonCopy' : 'unparsedJson' });
-        }
-      },
-    };
-    return withJsdoc(context, visitors, {
-      selectTags: typePredicateTags,
-      messageId: 'typePredicate',
-    });
-  },
-};
+    },
+    create: (context) => createVisitors(context, rootLibraries),
+  };
+}
+
+export const rule = boundaryGuardRule(readHeadPolicy().libraries);
