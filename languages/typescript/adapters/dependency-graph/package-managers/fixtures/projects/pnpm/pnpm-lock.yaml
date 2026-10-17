@@ -1,0 +1,19 @@
+lockfileVersion: '9.0'
+
+settings:
+  autoInstallPeers: true
+  excludeLinksFromLockfile: false
+
+importers:
+  .:
+    dependencies:
+      fixture-lib:
+        specifier: file:vendor/fixture-lib
+        version: file:vendor/fixture-lib
+
+packages:
+  fixture-lib@file:vendor/fixture-lib:
+    resolution: { directory: vendor/fixture-lib, type: directory }
+
+snapshots:
+  fixture-lib@file:vendor/fixture-lib: {}

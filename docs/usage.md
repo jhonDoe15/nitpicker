@@ -12,8 +12,13 @@ Add nitpicker as a dev dependency, together with the peers it needs from your pr
 npm install --save-dev nitpicker vitest @vitest/coverage-v8 typescript @types/node
 ```
 
-Requirements: Node.js 22.14 or newer, a Git repository, and a single-package npm project (the
-tested setup). nitpicker brings its own pinned ESLint, Prettier, dependency-cruiser, knip, jscpd,
+`pnpm add --save-dev`, `yarn add --dev` and `bun add --dev` take the same packages; run nitpicker
+with `npx nitpicker`, `pnpm exec nitpicker`, `yarn nitpicker` or `bunx nitpicker`.
+
+Requirements: Node.js 22.14 or newer, a Git repository, and a project whose dependencies are
+installed in `node_modules` by npm, pnpm, Yarn (Yarn Plug'n'Play is not supported: set
+`nodeLinker: node-modules`) or Bun. The base's own install supports all four managers; nitpicker
+itself is tested end to end with npm projects. nitpicker brings its own pinned ESLint, Prettier, dependency-cruiser, knip, jscpd,
 Stryker and CRAP tooling and loads them from its own package, so neither side of the comparison can
 choose them. `vitest` and `@vitest/coverage-v8` (4.1.11 or newer, or 5) and `typescript` come from
 your project; if one is missing or incompatible, the tool that needs it fails and the report shows a
@@ -85,6 +90,39 @@ The base ref is the first match of:
 5. `origin/main`, then `origin/master`
 
 In CI, fetch enough history to contain the merge base (for example `fetch-depth: 0`).
+
+**Dependencies of the base.** The base is checked out in a temporary worktree. The package
+manager's folder is the nearest folder from the project up to the repository root that holds a
+lockfile (the project folder itself in a single-package project; the workspace root when the project
+is a member). When `package.json`, a lockfile (`package-lock.json`, `npm-shrinkwrap.json`,
+`pnpm-lock.yaml`, `yarn.lock`, `bun.lock` or `bun.lockb`), `pnpm-workspace.yaml` or a manager
+config (`.npmrc`, `.yarnrc`, `.yarnrc.yml`, `bunfig.toml`) there equals the head's, the base shares
+your `node_modules`; the `node_modules` of workspace packages are linked too, with workspace
+siblings pointing at the base's copy. Otherwise the base gets its own frozen install with scripts
+disabled, run in that folder with the manager the base uses: the `packageManager` field of its
+`package.json`, else its lockfile (pnpm, Yarn, Bun, npm, in that order), else npm. The commands,
+without the flags that only quiet or speed up the run (`--no-audit`, `--no-fund`,
+`--prefer-offline`, `--non-interactive`):
+
+| Manager | Command                                                             |
+| ------- | ------------------------------------------------------------------- |
+| npm     | `npm ci --ignore-scripts`                                           |
+| pnpm    | `pnpm install --frozen-lockfile --ignore-scripts --ignore-pnpmfile` |
+| Yarn 1  | `yarn install --frozen-lockfile --ignore-scripts`                   |
+| Yarn 2  | `yarn install --immutable --skip-builds`                            |
+| Yarn 3+ | `yarn install --immutable --mode=skip-build`                        |
+| Bun     | `bun install --frozen-lockfile --ignore-scripts`                    |
+
+The install does not run code from the base's repository: pnpm ignores `.pnpmfile.cjs`, Yarn runs
+with `YARN_IGNORE_PATH=1` (it ignores `yarn-path` and `yarnPath` and uses the Yarn that Corepack or
+`PATH` provides, not the release committed in the repository), and a base whose `.yarnrc.yml`
+lists `plugins` fails with an error, since Yarn runs plugins during an install. A project without a
+`packageManager` field uses the version Corepack or `PATH` provides. A missing manager is a tool
+error that names how to get it (`corepack enable pnpm` or `npm install --global pnpm`,
+`npm install --global bun`; Node.js no longer bundles Corepack from version 25, so install it
+first there). A lockfile that does not match its `package.json` fails the frozen install and the
+tool error carries the manager's message. Installing the base is not supported on native Windows
+(run nitpicker in WSL).
 
 ### Reports
 
@@ -910,7 +948,10 @@ owned by another user works. Arguments after the image name are nitpicker's argu
 codes are the same (0, 1, 2). Your project must have its dependencies installed in `node_modules`
 (`vitest`, `@vitest/coverage-v8` and `typescript` are resolved from the project, as with `npx`), and
 its history must contain the merge base. Reports are written under the mount, owned by the
-container user; add `--user "$(id -u):$(id -g)"` to own them yourself.
+container user; add `--user "$(id -u):$(id -g)"` to own them yourself, together with
+`-e HOME=/tmp` so that the package managers have a writable cache. The image carries Corepack
+(pnpm and Yarn, downloaded on first use) and Bun 1.4.2 for the base's dependency install; a project
+that pins another Bun needs its own image.
 
 GitHub Actions:
 
