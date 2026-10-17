@@ -88,7 +88,7 @@ describe('every message names the allowed form', () => {
     ['ruff', 'BLE001'],
   ])('tells a test to use pytest.raises for %s %s', (tool, rule) => {
     expect(withHint(sample({ tool, rule })).message).toBe(
-      `The base message. Catch the specific exception and handle it, log it with \`logger.exception(...)\` or re-raise it; \`contextlib.suppress(SpecificError)\` ignores one expected error. In a test, use \`pytest.raises(SpecificError)\` (\`self.assertRaises\` in unittest). ${exceptionSentence(rule)}`,
+      `The base message. Catch the specific exception and handle it, or re-raise it with its cause (\`raise DomainError(...) from error\`); \`contextlib.suppress(SpecificError)\` ignores one expected error. In a test, use \`pytest.raises(SpecificError)\` (\`self.assertRaises\` in unittest). ${exceptionSentence(rule)}`,
     );
   });
 
