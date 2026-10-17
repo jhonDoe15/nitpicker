@@ -1,14 +1,32 @@
 import { spawnSync } from 'node:child_process';
 import { readdirSync } from 'node:fs';
-import { resolveTool } from '../../../../../core/tooling/tool-resolution.mjs';
+import { createRequire } from 'node:module';
+import path from 'node:path';
+import { jestArguments } from '../../../adapters/test-runners/jest/jest-arguments.mjs';
+import { jestTool } from '../../../adapters/test-runners/jest/jest-launcher.mjs';
 
 const CONFIG_NAMES = ['ts', 'mts', 'cts', 'js', 'mjs', 'cjs', 'json'].map(
   (extension) => `jest.config.${extension}`,
 );
+const CONFIG_OPTIONS = new Set(['-c', '--config']);
 const MAX_OUTPUT_BYTES = 10 * 1024 * 1024;
 const OUTPUT_START = '{\n  "configs"';
+const NO_COMMAND = { environment: {}, nodeArguments: [], arguments_: [] };
 
-export function jestConfigFile(projectRoot) {
+function configArgument(tokens) {
+  const index = tokens.findIndex((token) => CONFIG_OPTIONS.has(token.split('=')[0]));
+  if (index === -1) {
+    return undefined;
+  }
+  const [, ...value] = tokens[index].split('=');
+  return value.length > 0 ? value.join('=') : tokens[index + 1];
+}
+
+export function jestConfigFile(projectRoot, command = NO_COMMAND) {
+  const configured = configArgument(command.arguments_);
+  if (configured !== undefined && !configured.trimStart().startsWith('{')) {
+    return path.normalize(configured);
+  }
   const present = new Set(readdirSync(projectRoot));
   const found = CONFIG_NAMES.find((name) => present.has(name));
   return found ?? 'package.json';
@@ -18,12 +36,25 @@ function jestBinary(projectRoot, liveProjectRoot) {
   const failures = [];
   for (const root of new Set([liveProjectRoot, projectRoot])) {
     try {
-      return { binary: resolveTool('jest', { projectRoot: root, bin: 'bin/jest.js' }).binPath };
+      const manifest = createRequire(path.join(root, 'package.json')).resolve('jest/package.json');
+      return { binary: path.join(path.dirname(manifest), 'bin/jest.js') };
     } catch (error) {
       failures.push(error instanceof Error ? error.message : String(error));
     }
   }
   return { failure: `jest could not be resolved from the project (${failures.join('; ')})` };
+}
+
+function jestLaunch({ projectRoot, liveProjectRoot }, launcher) {
+  if (launcher === undefined) {
+    return { ...jestBinary(projectRoot, liveProjectRoot), launch: jestTool({}) };
+  }
+  try {
+    const launch = jestTool({ liveProjectRoot }, launcher);
+    return { binary: launch.tool.absoluteToolPath, launch };
+  } catch (error) {
+    return { failure: error instanceof Error ? error.message : String(error) };
+  }
 }
 
 function errorSummary(result) {
@@ -48,13 +79,24 @@ function parsedConfig(result) {
   }
 }
 
-export function readJestConfig({ projectRoot, liveProjectRoot, timeoutMs }) {
-  const { binary, failure } = jestBinary(projectRoot, liveProjectRoot);
+export function readJestConfig({
+  projectRoot,
+  liveProjectRoot = projectRoot,
+  timeoutMs,
+  command = NO_COMMAND,
+  parentEnvironment = process.env,
+}) {
+  const { binary, launch, failure } = jestLaunch(
+    { projectRoot, liveProjectRoot },
+    command.launcher,
+  );
   if (binary === undefined) {
     return { failure };
   }
-  const result = spawnSync(process.execPath, [binary, '--showConfig', '--no-watchman'], {
+  const shown = jestArguments(command, ['--showConfig', '--no-watchman'], launch);
+  const result = spawnSync(process.execPath, [...command.nodeArguments, binary, ...shown], {
     cwd: projectRoot,
+    env: { ...parentEnvironment, ...command.environment },
     encoding: 'utf8',
     input: '',
     maxBuffer: MAX_OUTPUT_BYTES,

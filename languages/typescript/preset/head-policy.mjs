@@ -23,6 +23,8 @@ import {
 import { stylingApproachFor } from './eslint-config/react/react-styling.mjs';
 import { prettierConventionOptions } from '../conventions/prettier-conventions.mjs';
 import { detectTestRunner } from './test-runner/detect-runner.mjs';
+import { runnerTestFiles } from './test-runner/test-files/runner-test-files.mjs';
+import { policyTestFiles } from './test-runner/test-files/test-file-patterns.mjs';
 
 export { headPolicyEnvironment, withHeadPolicyFile } from '../../../shared/head-policy.mjs';
 
@@ -76,6 +78,7 @@ function detectedTools(policy, scoped, projectRoot) {
           tests: {
             ...policy.tools?.tests,
             detectedRunner: detectTestRunner(projectRoot).runner,
+            testFiles: runnerTestFiles(projectRoot, policy.tools?.tests?.runner),
           },
         }
       : {}),
@@ -163,6 +166,7 @@ export function readLayout(environment = process.env) {
   return {
     ...resolveLayout(readHeadPolicyFile(environment).layout, policy.exclude, {
       javascript: isJavascriptPolicy(policy),
+      testFiles: policyTestFiles(policy.tools.tests),
     }),
     entryPoints: [...(policy.layout.entryPoints ?? []), ...policy.frameworks.entryPoints],
   };

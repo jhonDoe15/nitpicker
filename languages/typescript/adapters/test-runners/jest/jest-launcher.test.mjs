@@ -5,7 +5,8 @@ import { PACKAGE_ROOT } from '../../../../../core/tooling/tool-resolution.mjs';
 import { TEST_TIMEOUT_MS } from '../test-run.mjs';
 import { createRunnerProjects } from '../test-support/runner-project.mjs';
 import { coverageArguments } from './jest-coverage.mjs';
-import { jestArguments, runJest } from './jest.mjs';
+import { jestArguments } from './jest-arguments.mjs';
+import { runJest } from './jest.mjs';
 
 const projects = createRunnerProjects();
 

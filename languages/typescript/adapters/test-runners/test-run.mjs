@@ -1,7 +1,7 @@
 import { existsSync, rmSync } from 'node:fs';
 import path from 'node:path';
 import { trackTemporaryPath } from '../../../../core/tooling/temporary-files.mjs';
-import { readLayout } from '../../preset/head-policy.mjs';
+import { readHeadPolicy, readLayout } from '../../preset/head-policy.mjs';
 import { projectTestRunner } from '../../preset/test-runner/project-runner.mjs';
 import { TEST_TIMEOUT_CEILING_MS } from '../../preset/eslint-plugin/rules/testing/assertions/no-raised-test-timeout.mjs';
 import {
@@ -46,10 +46,16 @@ export function runnableTestFiles(options) {
   );
 }
 
+function knowsRunnableTests(options) {
+  return (
+    readHeadPolicy().tools.tests?.testFiles !== undefined ||
+    projectTestRunner(options).runner === 'vitest'
+  );
+}
+
 export function projectTestFiles(options, layout, files) {
-  const isTest =
-    projectTestRunner(options).runner === 'vitest' ? layout.isRunnableTestFile : layout.isTestFile;
-  return files.filter(isTest);
+  const isTest = knowsRunnableTests(options) ? layout.isRunnableTestFile : layout.isTestFile;
+  return files.filter((file) => isTest(file));
 }
 
 export function hasProjectTests(options, layout, files) {
@@ -71,6 +77,7 @@ export function coverageGlobs() {
     exclude: [
       ...layout.sourceTestDirectoryGlobs,
       ...layout.sourceRoots.map((root) => `${root}/**/*.{test,spec}.*`),
+      ...layout.runnerSourceTestGlobs,
       '**/*.d.ts',
       ...layout.excludedGlobs,
     ],
