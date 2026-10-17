@@ -62,12 +62,13 @@ function formattingLines({ formatter, precedence, conventions, projectRoot }) {
   }
 }
 
-export function pythonStyle({ config, projectRoot }) {
-  const formatter = detectFormatter(projectRoot, config.python?.formatter);
+export function pythonStyle({ config, projectRoot, configRoot }) {
+  const root = configRoot === undefined ? projectRoot : configRoot().path;
+  const formatter = detectFormatter(root, config.python?.formatter);
   const precedence = config.tools?.[formatter]?.precedence;
   const layers = precedenceLayers(precedence);
   const read = formatter === 'black' ? readBlackConfig : readRuffConfig;
-  const project = layers.usesProject && !layers.nitpickerFirst ? read(projectRoot) : undefined;
+  const project = layers.usesProject && !layers.nitpickerFirst ? read(root) : undefined;
   return {
     unused:
       formatter === 'black' ? { [PYTHON_INDENTATION]: 'black has no indentation setting' } : {},

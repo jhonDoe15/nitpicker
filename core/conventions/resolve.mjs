@@ -4,6 +4,7 @@ import { describeConventions, isValidChoice } from '../../shared/conventions/set
 import { resolveHeadPolicy } from '../../languages/typescript/preset/head-policy.mjs';
 import { builtInExcludedGlobs } from '../../languages/typescript/preset/layout.mjs';
 import { conventionDefinitions, conventionStyle } from './definitions.mjs';
+import { lazyConfigRoot } from './style-snapshot.mjs';
 import { globToRegExp } from '../../shared/glob.mjs';
 import {
   commitSource,
@@ -85,31 +86,31 @@ function conventionSources(projectRoot, commit) {
   };
 }
 
-function projectStyleSource({ base, head }, { exclude, definitions }) {
-  const excluded = exclude.map(globToRegExp);
+function baseHoldsSources(base, definitions) {
   const sourceFiles = definitions.flatMap(({ files }) => files).map(globToRegExp);
+  return () =>
+    base !== undefined && base.paths().some((file) => sourceFiles.some((glob) => glob.test(file)));
+}
+
+function projectStyleSource({ base, head }, { exclude, useBase }) {
+  const excluded = exclude.map(globToRegExp);
   function accepts(file) {
     return !excluded.some((glob) => glob.test(file));
   }
-  function holdsSources(source) {
-    return source.paths().some((file) => sourceFiles.some((glob) => glob.test(file)));
-  }
-  return lazySource(() =>
-    filteredSource(base !== undefined && holdsSources(base) ? base : head, accepts),
-  );
+  return lazySource(() => filteredSource(useBase() ? base : head, accepts));
 }
 
-function conventionContext({ config, projectRoot, headPolicy, commit }) {
+function conventionContext({ config, projectRoot, headPolicy, sources, configRoot }) {
   const exclude = [
     ...(headPolicy.layout?.excludedGlobs ?? builtInExcludedGlobs),
     ...headPolicy.exclude,
   ];
-  const sources = conventionSources(projectRoot, commit);
   const all = conventionDefinitions(config.preset);
   const style = conventionStyle(config.preset, {
     config,
     projectRoot,
-    source: projectStyleSource(sources, { exclude, definitions: all }),
+    source: projectStyleSource(sources, { exclude, useBase: baseHoldsSources(sources.base, all) }),
+    configRoot: configRoot.get,
   });
   rejectUnusedPins(config.conventions ?? {}, style.unused);
   return {
@@ -138,21 +139,31 @@ function detectedConventions(config, { style, sources, exclude, definitions }) {
 }
 
 function followConventions({ config, projectRoot, headPolicy, commit, stdout }) {
-  const context = conventionContext({ config, projectRoot, headPolicy, commit });
-  const { style, definitions } = context;
-  if (definitions.length === 0) {
-    return headPolicy;
+  const sources = conventionSources(projectRoot, commit);
+  const configRoot = lazyConfigRoot({
+    projectRoot,
+    commit,
+    useBase: baseHoldsSources(sources.base, conventionDefinitions(config.preset)),
+  });
+  try {
+    const context = conventionContext({ config, projectRoot, headPolicy, sources, configRoot });
+    const { style, definitions } = context;
+    if (definitions.length === 0) {
+      return headPolicy;
+    }
+    const detected = detectedConventions(config, context);
+    const conventions = appliedChoices(detected, definitions);
+    const followed = definitions.filter(
+      ({ id }) => conventions[id] !== undefined || style.project[id] !== undefined,
+    );
+    const report = conventionsReport({ detected, followed, style, conventions });
+    if (stdout !== undefined && report !== '') {
+      stdout.write(report);
+    }
+    return Object.keys(conventions).length === 0 ? headPolicy : { ...headPolicy, conventions };
+  } finally {
+    configRoot.dispose();
   }
-  const detected = detectedConventions(config, context);
-  const conventions = appliedChoices(detected, definitions);
-  const followed = definitions.filter(
-    ({ id }) => conventions[id] !== undefined || style.project[id] !== undefined,
-  );
-  const report = conventionsReport({ detected, followed, style, conventions });
-  if (stdout !== undefined && report !== '') {
-    stdout.write(report);
-  }
-  return Object.keys(conventions).length === 0 ? headPolicy : { ...headPolicy, conventions };
 }
 
 function conventionsReport({ detected, followed, style, conventions }) {
