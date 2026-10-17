@@ -4,7 +4,7 @@ import path from 'node:path';
 import { containedPath } from '../contained-path.mjs';
 
 const FIXTURES = containedPath(path.resolve(import.meta.dirname, '..'), 'fixtures');
-const PROBE_TIMEOUT_MS = 120_000;
+const PROBE_TIMEOUT_MS = 20_000;
 
 export function copyProjectFixture(name, destination) {
   cpSync(containedPath(FIXTURES, `projects/${name}`), destination, { recursive: true });

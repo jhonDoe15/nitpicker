@@ -1,73 +1,69 @@
-import { spawnSync } from 'node:child_process';
 import { existsSync, lstatSync, rmSync } from 'node:fs';
-import { DEPENDENCY_MANIFESTS, detectPackageManager } from './package-managers/detect.mjs';
-import { installCommand } from './package-managers/commands.mjs';
+import {
+  DEPENDENCY_MANIFESTS,
+  detectPackageManager,
+  managerRoot,
+} from './package-managers/detect.mjs';
 import { containedPath } from './package-managers/contained-path.mjs';
+import {
+  ensureDependencyFolder,
+  failureMessage,
+  installDependencies,
+} from './package-managers/install.mjs';
 import { memberDependencyDirectories } from './package-managers/members.mjs';
 
-const MAX_OUTPUT_BYTES = 50 * 1024 * 1024;
-const DEPENDENCY_INSTALL_TIMEOUT_MS = 4 * 60 * 1000;
 const DEPENDENCY_DIRECTORY = 'node_modules';
 
-function runInstall(projectRoot, packageManager) {
-  const { command, args, installHint } = installCommand(packageManager);
-  const result = spawnSync(command, args, {
-    cwd: projectRoot,
-    encoding: 'utf8',
-    maxBuffer: MAX_OUTPUT_BYTES,
-    timeout: DEPENDENCY_INSTALL_TIMEOUT_MS,
-  });
-  if (result.error?.code === 'ENOENT') {
-    throw new Error(
-      `Failed to install merge-base dependencies: this project uses ${packageManager.name}, which is not installed. ${installHint}`,
-    );
-  }
-  return result;
+function absoluteMembers(root, relatives) {
+  return relatives.map((relative) => containedPath(root, relative));
 }
 
-function assertInstalled(result, dependencyPath, packageManager) {
-  if (result.error === undefined && result.status === 0) {
-    return;
+function removeInstalled(dependencyPath, memberPaths) {
+  for (const memberPath of memberPaths) {
+    rmSync(memberPath, { recursive: true, force: true });
   }
   rmSync(dependencyPath, { recursive: true, force: true });
-  if (result.error !== undefined) {
-    throw result.error;
-  }
-  const detail = result.stderr.trim() || result.stdout.trim() || 'no diagnostic output';
-  throw new Error(
-    `Failed to install merge-base dependencies with ${packageManager.name}: ${detail}`,
-  );
 }
 
-function assertRegularDirectory(dependencyPath, packageManager) {
-  if (!existsSync(dependencyPath)) {
-    throw new Error(
-      `Failed to install merge-base dependencies with ${packageManager.name}: the install created no ${DEPENDENCY_DIRECTORY} folder (Yarn Plug'n'Play is not supported: set \`nodeLinker: node-modules\`).`,
-    );
-  }
+function assertRegularDirectory(dependencyPath) {
   const entry = lstatSync(dependencyPath);
   if (!entry.isDirectory() || entry.isSymbolicLink()) {
-    rmSync(dependencyPath, { recursive: true, force: true });
     throw new Error('Installed merge-base dependencies are not a regular directory');
   }
+}
+
+function installedMembers(root, existingMembers) {
+  return absoluteMembers(
+    root,
+    memberDependencyDirectories(root).filter((relative) => !existingMembers.has(relative)),
+  );
 }
 
 const nodeDependencyHook = {
   language: 'typescript',
   manifests: DEPENDENCY_MANIFESTS,
   directory: DEPENDENCY_DIRECTORY,
+  dependencyRoot: managerRoot,
   install(projectRoot) {
-    const dependencyPath = containedPath(projectRoot, DEPENDENCY_DIRECTORY);
+    const packageManager = detectPackageManager(projectRoot);
+    const dependencyPath = containedPath(packageManager.root, DEPENDENCY_DIRECTORY);
     if (existsSync(dependencyPath)) {
       throw new Error(`Refusing to replace existing dependencies at ${dependencyPath}`);
     }
-    const packageManager = detectPackageManager(projectRoot);
-    assertInstalled(runInstall(projectRoot, packageManager), dependencyPath, packageManager);
-    assertRegularDirectory(dependencyPath, packageManager);
-    const memberPaths = memberDependencyDirectories(projectRoot).map((relative) =>
-      containedPath(projectRoot, relative),
-    );
-    return { kind: 'installed', dependencyPath, memberPaths };
+    const existingMembers = new Set(memberDependencyDirectories(packageManager.root));
+    const memberPaths = () => installedMembers(packageManager.root, existingMembers);
+    try {
+      const outcome = installDependencies(packageManager);
+      if (!outcome.ok) {
+        throw new Error(failureMessage(packageManager, outcome.detail));
+      }
+      ensureDependencyFolder(packageManager, dependencyPath);
+      assertRegularDirectory(dependencyPath);
+    } catch (error) {
+      removeInstalled(dependencyPath, memberPaths());
+      throw error;
+    }
+    return { kind: 'installed', dependencyPath, memberPaths: memberPaths() };
   },
 };
 

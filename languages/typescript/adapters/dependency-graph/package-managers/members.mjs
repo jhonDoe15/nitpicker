@@ -1,37 +1,35 @@
-import { existsSync, lstatSync, readdirSync } from 'node:fs';
+import { spawnSync } from 'node:child_process';
+import { existsSync, lstatSync } from 'node:fs';
 import path from 'node:path';
 import { containedPath } from './contained-path.mjs';
 
-const MAX_MEMBER_DEPTH = 4;
 const DEPENDENCY_DIRECTORY = 'node_modules';
+const MAX_LISTING_BYTES = 64 * 1024 * 1024;
 
-function childDirectories(directory) {
-  return readdirSync(directory, { withFileTypes: true })
+function manifestDirectories(root) {
+  const result = spawnSync(
+    'git',
+    ['ls-files', '--cached', '--others', '--exclude-standard', '-z', '--', '*package.json'],
+    { cwd: root, encoding: 'utf8', maxBuffer: MAX_LISTING_BYTES },
+  );
+  if (result.error !== undefined || result.status !== 0) {
+    return [];
+  }
+  return result.stdout
+    .split('\0')
+    .filter((file) => path.basename(file) === 'package.json')
+    .map((file) => path.dirname(file))
     .filter(
-      (entry) =>
-        entry.isDirectory() && entry.name !== DEPENDENCY_DIRECTORY && !entry.name.startsWith('.'),
-    )
-    .map((entry) => containedPath(directory, entry.name));
+      (directory) => directory !== '.' && !directory.split('/').includes(DEPENDENCY_DIRECTORY),
+    );
 }
 
-function hasRealDependencyDirectory(directory) {
-  const candidate = containedPath(directory, DEPENDENCY_DIRECTORY);
+function isRealDirectory(candidate) {
   return existsSync(candidate) && lstatSync(candidate).isDirectory();
 }
 
 export function memberDependencyDirectories(root) {
-  const found = [{ directory: root, depth: 0 }];
-  for (const { directory, depth } of found) {
-    if (depth < MAX_MEMBER_DEPTH) {
-      found.push(
-        ...childDirectories(directory).map((child) => ({ directory: child, depth: depth + 1 })),
-      );
-    }
-  }
-  return found
-    .slice(1)
-    .map(({ directory }) => directory)
-    .filter((directory) => existsSync(containedPath(directory, 'package.json')))
-    .filter(hasRealDependencyDirectory)
-    .map((directory) => path.relative(root, containedPath(directory, DEPENDENCY_DIRECTORY)));
+  return [...new Set(manifestDirectories(root))]
+    .map((directory) => path.join(directory, DEPENDENCY_DIRECTORY))
+    .filter((relative) => isRealDirectory(containedPath(root, relative)));
 }
