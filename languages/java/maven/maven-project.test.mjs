@@ -110,6 +110,7 @@ function defaultModule(basedir, coordinates, packaging) {
     surefireReports: path.join(target, 'surefire-reports'),
     failsafeReports: path.join(target, 'failsafe-reports'),
     runsFailsafe: false,
+    published: false,
     jacocoDestFiles: [],
     archunitIncludes: undefined,
     compiler: NO_COMPILER_SETTINGS,
@@ -145,6 +146,7 @@ describe('readReactor', () => {
       surefireReports: `${root}/core/out/tests`,
       failsafeReports: `${root}/core/out/it-tests`,
       runsFailsafe: true,
+      published: false,
       jacocoDestFiles: [`${root}/core/out/mine.exec`],
       archunitIncludes: '**/*Rules.class',
       compiler: NO_COMPILER_SETTINGS,
@@ -428,6 +430,42 @@ describe('describeModule test roots of other compilers and outside the module', 
       path.join(module.basedir, 'src/test/java'),
       path.join(module.basedir, 'src/it/java'),
     ]);
+  });
+});
+
+describe('describeModule publishing', () => {
+  const DISTRIBUTION =
+    '<distributionManagement><repository><id>releases</id><url>https://repo.example.com</url>' +
+    '</repository></distributionManagement>';
+
+  it('counts a module with distributionManagement as published unless deploy is skipped', () => {
+    const skippedByProperty = `${DISTRIBUTION}<properties><maven.deploy.skip>true</maven.deploy.skip></properties>`;
+    const skippedByPlugin =
+      DISTRIBUTION +
+      inBuild(plugin('maven-deploy-plugin', '<configuration><skip>true</skip></configuration>'));
+
+    expect(
+      [DISTRIBUTION, skippedByProperty, skippedByPlugin, ''].map(
+        (inner) => soloModule(inner).published,
+      ),
+    ).toEqual([true, false, false, false]);
+  });
+
+  it('counts a library jar a publishing plugin deploys, but not a war or a pom', () => {
+    const central = inBuild(
+      plugin('central-publishing-maven-plugin', '', 'org.sonatype.central') +
+        plugin('maven-surefire-plugin', ''),
+    );
+
+    expect(
+      [
+        central,
+        inBuild(plugin('nexus-staging-maven-plugin', '', 'org.sonatype.plugins')),
+        `<packaging>war</packaging>${DISTRIBUTION}`,
+        `<packaging>pom</packaging>${DISTRIBUTION}`,
+        `<packaging>bundle</packaging>${DISTRIBUTION}`,
+      ].map((inner) => soloModule(inner).published),
+    ).toEqual([true, true, false, false, true]);
   });
 });
 
