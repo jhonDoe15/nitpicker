@@ -1,30 +1,40 @@
 import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { environmentError } from './python-environment.mjs';
 import { execute, VERSION_PATTERN } from './python-process.mjs';
-import { isTestFileName, readProjectHints, ROOT_TEST_DIRECTORIES } from './python-project.mjs';
+import { readProjectHints, ROOT_TEST_DIRECTORIES } from './python-project.mjs';
+import { JUNIT_REPORT } from '../test-runs/junit-results.mjs';
+import { pinnedEnvironmentAddopts, pinnedPytestArguments } from '../test-runs/pytest-pins.mjs';
 
 export const NO_TESTS_EXIT = 5;
 const PYTEST_CONFIGURATION = /^\s*\[(?:tool\.pytest(?:\.ini_options)?|pytest|tool:pytest)\]/m;
 const PYTEST_DEPENDENCY = /(?:^|[\s"'=])pytest(?:\b|_)/m;
 const PYTEST_STYLE_TEST =
   /^(?:async\s+)?def test_|^(?:import|from)\s+pytest\b|^class Test\w*\s*(?:\(\s*\))?:/m;
+const TEST_FILE = /^(?:tests?_.*|.*_tests?|tests)\.py$/u;
 const PYTEST_PROBE = [
   'python',
   '-c',
-  'import importlib.util as u, pytest; print(pytest.__version__, int(u.find_spec("pytest_cov") is not None), int(u.find_spec("xdist") is not None))',
+  'import importlib.util as u, pytest; print(pytest.__version__, *(int(u.find_spec(m) is not None) for m in ("pytest_cov", "xdist", "pytest_rerunfailures")))',
 ];
 const probes = new WeakMap();
+export const UNITTEST_SCRIPT = fileURLToPath(
+  new URL('../test-runs/unittest_timings.py', import.meta.url),
+);
+export const PYTEST_SCRIPT = fileURLToPath(
+  new URL('../test-runs/pytest_timings.py', import.meta.url),
+);
 
 function existingTestFiles(projectRoot) {
   const directories = ROOT_TEST_DIRECTORIES.filter((name) =>
     existsSync(path.join(projectRoot, name)),
   );
   return [
-    ...readdirSync(projectRoot).filter((name) => isTestFileName(name)),
+    ...readdirSync(projectRoot).filter((name) => TEST_FILE.test(name)),
     ...directories.flatMap((directory) =>
       readdirSync(path.join(projectRoot, directory), { recursive: true })
-        .filter((name) => isTestFileName(path.basename(name)))
+        .filter((name) => TEST_FILE.test(path.basename(name)))
         .map((name) => path.join(directory, name)),
     ),
   ];
@@ -58,12 +68,17 @@ export function detectTestRunner(projectRoot, setting) {
 function probePytest(context) {
   if (!probes.has(context)) {
     const result = execute(context, PYTEST_PROBE);
-    const [version, coverage, xdist] =
+    const [version, coverage, xdist, rerunfailures] =
       result.error === undefined && result.status === 0 ? result.stdout.trim().split(' ') : [];
     probes.set(
       context,
       VERSION_PATTERN.test(version ?? '')
-        ? { version, coverage: coverage === '1', xdist: xdist === '1' }
+        ? {
+            version,
+            coverage: coverage === '1',
+            xdist: xdist === '1',
+            rerunfailures: rerunfailures === '1',
+          }
         : undefined,
     );
   }
@@ -79,13 +94,21 @@ export function testRunnerLabel(context) {
   return testRunner === 'pytest' ? pytestLabel(context) : testRunner;
 }
 
-export function singleProcessPytestEnvironment(context) {
-  return probePytest(context)?.xdist
-    ? { PYTEST_ADDOPTS: [process.env.PYTEST_ADDOPTS, '-n0'].filter(Boolean).join(' ') }
-    : {};
+/** PYTEST_ADDOPTS for the pytest runs mutmut starts: pinned, single-process, `ignored` left out. */
+export function mutmutPytestEnvironment(context, ignored = []) {
+  const inherited = context.pytestAddopts;
+  const pinned = pinnedEnvironmentAddopts(inherited).PYTEST_ADDOPTS ?? inherited;
+  const options = [
+    pinned,
+    ...(probePytest(context)?.xdist ? ['-n0'] : []),
+    ...ignored.map((file) => `--ignore=${file}`),
+  ].filter(Boolean);
+  return options.length === 0 || options.join(' ') === inherited
+    ? {}
+    : { PYTEST_ADDOPTS: options.join(' ') };
 }
 
-function pytestCommand(context) {
+export function pytestCommand(context) {
   const probe = probePytest(context);
   if (probe === undefined) {
     throw environmentError(
@@ -93,25 +116,38 @@ function pytestCommand(context) {
     );
   }
   return [
-    '-m',
-    'pytest',
+    PYTEST_SCRIPT,
     '-q',
     '-o',
     `cache_dir=${path.join(context.reportRoot, 'pytest-cache')}`,
     ...(probe.coverage ? ['--no-cov'] : []),
     ...(probe.xdist ? ['-n0'] : []),
+    '--continue-on-collection-errors',
+    `--junitxml=${path.join(context.reportRoot, JUNIT_REPORT)}`,
+    '-o',
+    'junit_family=xunit1',
+    '-o',
+    'junit_duration_report=call',
+    ...pinnedPytestArguments(context.projectRoot, probe),
   ];
 }
 
+export function testEnvironment(context) {
+  return context.project.testRunner === 'pytest'
+    ? pinnedEnvironmentAddopts(context.pytestAddopts)
+    : {};
+}
+
 function unittestCommand(context) {
+  const timed = [UNITTEST_SCRIPT, path.join(context.reportRoot, JUNIT_REPORT), 'discover'];
   const directory = ROOT_TEST_DIRECTORIES.find((name) =>
     existsSync(path.join(context.projectRoot, name)),
   );
   if (directory === undefined) {
-    return ['-m', 'unittest', 'discover'];
+    return timed;
   }
   const packaged = existsSync(path.join(context.projectRoot, directory, '__init__.py'));
-  return ['-m', 'unittest', 'discover', '-s', directory, ...(packaged ? ['-t', '.'] : [])];
+  return [...timed, '-s', directory, ...(packaged ? ['-t', '.'] : [])];
 }
 
 export function testCommand(context) {

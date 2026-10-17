@@ -27,7 +27,10 @@ export function commitSource({ repositoryRoot, commitSha, projectRoot }) {
     }
   }
   return {
-    paths: () => [...blobs.keys()],
+    paths: ({ unreadable = false } = {}) =>
+      [...blobs.values()]
+        .filter(({ size }) => unreadable || size <= MAX_FILE_BYTES)
+        .map(({ file }) => file),
     readMany: (files) =>
       readBlobs(
         repositoryRoot,
@@ -72,13 +75,7 @@ function parseTreeEntry(entry, prefix) {
   const tab = entry.indexOf('\t');
   const [mode, type, oid, size] = entry.slice(0, tab).split(/ +/);
   const file = entry.slice(tab + 1);
-  if (
-    tab < 0 ||
-    type !== 'blob' ||
-    !BLOB_MODES.has(mode) ||
-    Number(size) > MAX_FILE_BYTES ||
-    !file.startsWith(prefix)
-  ) {
+  if (tab < 0 || type !== 'blob' || !BLOB_MODES.has(mode) || !file.startsWith(prefix)) {
     return undefined;
   }
   return { file: file.slice(prefix.length), oid, size: Number(size) };

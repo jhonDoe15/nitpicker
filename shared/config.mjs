@@ -25,10 +25,10 @@ export const THRESHOLD_KEYS = [
 const TEST_TIME_KEYS = ['unitTestSeconds', 'integrationTestSeconds'];
 const TEST_TIME_PRESETS = new Set(['java', 'kotlin', 'python']);
 const THRESHOLD_PRESETS = {
-  folderDepth: ['typescript', 'javascript', 'java', 'kotlin'],
-  classMethods: ['java', 'kotlin'],
-  classFields: ['java', 'kotlin'],
-  inheritanceDepth: ['java', 'kotlin'],
+  folderDepth: ['typescript', 'javascript', 'java', 'kotlin', 'python'],
+  classMethods: ['java', 'kotlin', 'python'],
+  classFields: ['java', 'kotlin', 'python'],
+  inheritanceDepth: ['java', 'kotlin', 'python'],
 };
 const WHOLE_NUMBER_THRESHOLD_KEYS = new Set([
   'fileLines',

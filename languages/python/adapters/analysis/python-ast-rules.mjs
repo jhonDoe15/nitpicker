@@ -2,16 +2,16 @@ import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { normalizeReportPath } from '../../../java/ingest/common.mjs';
 import { run } from '../execution/python-process.mjs';
-import { isTestPath } from '../execution/python-project.mjs';
 import { readPackageFacts } from '../../rules/libraries/package-facts.mjs';
 import { ruffConfigFor } from '../configuration/python-ruff-config.mjs';
-import { listProductionModules } from './python-sources.mjs';
 import { fileURLToPath } from 'node:url';
-import { collectionOptions, isTestFile } from '../configuration/pytest/collection-options.mjs';
+import { collectionOptions } from '../configuration/pytest/collection-options.mjs';
 import { readPytestConfig } from '../configuration/pytest/pytest-config.mjs';
+import { listProductionModules, testFileMatcher } from './python-sources.mjs';
 import { entryFilesOf, readEntryModules } from '../../rules/libraries/entry-modules.mjs';
 
 export const RULES_REPORT = 'rules.json';
+export const ALLOWANCES_REPORT = 'rules-allowances.json';
 const RULES_FAILED_RULE = 'rules-failed';
 const FILE_LIST = 'python-files.txt';
 const OPTIONS_FILE = 'rule-options.json';
@@ -23,6 +23,12 @@ const RULES_SCRIPT = path.resolve(
 export function readTestFiles(reportRoot) {
   const file = path.join(reportRoot, OPTIONS_FILE);
   return existsSync(file) ? (JSON.parse(readFileSync(file, 'utf8')).testFiles ?? []) : [];
+}
+
+export function readAllowances(reportRoot) {
+  const file = path.join(reportRoot, ALLOWANCES_REPORT);
+  const read = existsSync(file) ? JSON.parse(readFileSync(file, 'utf8')) : {};
+  return { supportFiles: read.supportFiles ?? [], allowed: read.allowed ?? [] };
 }
 
 export function pythonSources(context) {
@@ -44,7 +50,7 @@ function rulesOptions({ projectRoot, project }, sources, collection) {
     sourceRoots: project.sourceRoots,
     testRunner: project.testRunner,
     ...collection,
-    testFiles: sources.filter((file) => isTestFile(file, collection) || isTestPath(file)),
+    testFiles: sources.filter(testFileMatcher(projectRoot)),
     entryFiles: entryFilesOf(sources, project.entryPoints),
     entryModules: readEntryModules(projectRoot),
     modules: Object.fromEntries(modules.map(({ file, module }) => [file, module])),

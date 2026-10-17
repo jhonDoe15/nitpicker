@@ -306,6 +306,7 @@ describe.skipIf(!enabled)('unused-option', () => {
   it('does not count a Django tests.py or a top-level testing folder as callers', () => {
     expect(
       unused({
+        'manage.py': '',
         'shop/app.py': 'from shop.pricing import total\ntotal(1)\n',
         'shop/tests.py': 'from shop.pricing import total\ntotal(1, rate=2)\n',
         'testing/helpers.py': 'from shop.pricing import total\ntotal(1, cents=True)\n',
@@ -377,7 +378,7 @@ describe.skipIf(!enabled)('an expression too deep for the recursion limit', () =
         'shop/users.py': 'def load_user():\n    """Load the user."""\n',
       }),
     ).toEqual([
-      { rule: 'rules-skipped', path: 'shop/sums.py', subject: 'file', line: 1 },
+      { rule: 'rules-too-deep', path: 'shop/sums.py', subject: 'file', line: 1 },
       { rule: 'restating-docstring', path: 'shop/users.py', subject: 'load_user', line: 2 },
     ]);
   });
@@ -386,7 +387,7 @@ describe.skipIf(!enabled)('an expression too deep for the recursion limit', () =
     const sum = `total = ${Array.from({ length: 30000 }, () => '1').join(' + ')}\n`;
 
     expect(reportOf({ 'shop/sums.py': sum })).toEqual([
-      { rule: 'rules-skipped', path: 'shop/sums.py', subject: 'all', line: 1 },
+      { rule: 'rules-too-deep', path: 'shop/sums.py', subject: 'all', line: 1 },
     ]);
   });
 });

@@ -106,3 +106,36 @@ describe('test-console analyzer and disable', () => {
     );
   });
 });
+
+describe('config keys the python preset shares', () => {
+  it('names what python does not support and what it shares', () => {
+    expect(() => validateConfig({ preset: 'python', layout: {} })).toThrow(
+      new Error(
+        'nitpicker.config.json: "layout" is not supported with "preset": "python": it describes the TypeScript source layout and ESLint rules, which the Python preset does not have. Not supported with python: layout, exceptions, react, i18n, tools, except exceptions for file-lines-limit, line-length-limit, folder-files-limit, folder-depth-limit, class-methods-limit, class-fields-limit, inheritance-depth-limit, test-console-output. Shared by all presets: thresholds, exclude, legacyInventory; shared with TypeScript: testConsole',
+      ),
+    );
+  });
+
+  it('lifts test-console-output in the top-level exceptions, beside the file limits', () => {
+    const exceptions = [
+      { rule: 'line-length-limit', paths: ['src/urls.py'], reason: 'URL table' },
+      { rule: 'test-console-output', paths: ['tests/legacy/**'], reason: 'Old client warns' },
+    ];
+    const testConsole = { allow: [{ contains: 'old client', reason: 'Vendored client' }] };
+
+    expect(validateConfig({ preset: 'python', exceptions, testConsole })).toEqual({
+      preset: 'python',
+      exceptions,
+      testConsole,
+    });
+    expect(() =>
+      validateConfig({
+        preset: 'python',
+        exceptions: [
+          { rule: 'test-console-output', paths: ['a'], reason: 'r' },
+          { rule: 'T201', paths: ['a'], reason: 'r' },
+        ],
+      }),
+    ).toThrow('"exceptions" is not supported with "preset": "python"');
+  });
+});

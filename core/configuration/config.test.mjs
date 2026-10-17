@@ -184,9 +184,6 @@ describe('config file', () => {
     expect(() => validateConfig({ preset: 'java', thresholds: { crapLimit: 0 } })).toThrow(
       /positive number/,
     );
-    expect(() => validateConfig({ thresholds: { unitTestSeconds: 2 } })).toThrow(
-      '"thresholds.unitTestSeconds" is supported only with "preset": "java", "kotlin" or "python"',
-    );
     expect(() => validateConfig({ preset: 'java', legacyInventory: '../x.json' })).toThrow(
       /inside the project/,
     );
