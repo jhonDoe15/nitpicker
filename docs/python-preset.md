@@ -613,9 +613,9 @@ assert_never(value)`, or an `if`/`elif` chain ending in `else: assert_never(valu
   not judged, nor one used as a value (passed, stored, decorating), one a star import exposes, one
   called from an `if __name__ == "__main__":` block or a `__main__.py`, or one an entry point
   names: `[project.scripts]`, `[project.gui-scripts]`, any `[project.entry-points.<group>]` and
-  `[tool.poetry.scripts]` (read by `configuration/python-package.mjs`), the
+  `[tool.poetry.scripts]` (read by `rules/libraries/package-facts.mjs`), the
   `[options.entry_points]` of `setup.cfg`, and the `entry_points` of a `setup()` call in `setup.py`
-  when it is a literal or a module-level name bound to one (`project/entry_points.py` parses it
+  when it is a literal or a module-level name bound to one (`review/project/entry_points.py` parses it
   with `ast` and never runs it). Tests do not count as callers,
   unless the project is a published package (a `[project]` or poetry `name`, a
   `[build-system] build-backend`, no `Private :: Do Not Upload` classifier and no
