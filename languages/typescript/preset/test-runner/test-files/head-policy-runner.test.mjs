@@ -191,7 +191,7 @@ describe('the test files of the head policy', () => {
     ];
 
     for (const files of projects) {
-      expect(testsOf(files).domEnvironment).toBe(true);
+      expect(testsOf(files).domEnvironment, JSON.stringify(files)).toBe(true);
     }
     expect(testsOf({ 'package.json': '{"scripts":{"test":"jest"}}' }).domEnvironment).toBe(
       undefined,

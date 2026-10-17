@@ -15,13 +15,15 @@ import {
 } from './eslint-config/scope-support.mjs';
 import {
   builtInExcludedGlobs,
+  globToRegExp,
   resolveLayout,
   resolveLayoutFor,
   sourceRoots,
   testRoots,
 } from './layout.mjs';
+import { detectLibraries } from './libraries/project-libraries.mjs';
 import { stylingApproachFor } from './eslint-config/react/react-styling.mjs';
-import { prettierConventionOptions } from '../conventions/prettier-conventions.mjs';
+import { hasPrettierConventions } from '../conventions/prettier-conventions.mjs';
 import { markedGeneratedFiles } from './layout/generated-files.mjs';
 import { detectedRunnerFact } from './test-runner/detect-runner.mjs';
 import { policyTestFiles } from './test-runner/test-files/test-file-patterns.mjs';
@@ -63,7 +65,15 @@ export function resolveHeadPolicy(config = {}, projectRoot) {
 
 function withProjectFacts(policy, config, projectRoot) {
   const scoped = SCOPED_PRESETS.includes(config.preset);
-  const withScopes = { ...policy, ...(scoped ? withDetectedScopes(policy, projectRoot) : {}) };
+  const withScopes = {
+    ...policy,
+    ...(scoped
+      ? {
+          ...withDetectedScopes(policy, projectRoot),
+          libraries: detectLibraries(projectRoot, excludedPathMatcher(policy)),
+        }
+      : {}),
+  };
   const withTools = { ...withScopes, ...detectedTools(withScopes, scoped, projectRoot) };
   return withTools.react?.enabled === true && scoped
     ? withAutoCleanup(withTools, projectRoot)
@@ -102,6 +112,11 @@ function detectedTools(policy, scoped, projectRoot) {
   return Object.keys(facts).length === 0 ? {} : { tools: { ...policy.tools, ...facts } };
 }
 
+function excludedPathMatcher(policy) {
+  const matchers = resolveLayoutFor(policy).excludedGlobs.map(globToRegExp);
+  return (file) => matchers.some((matcher) => matcher.test(file));
+}
+
 function withDetectedScopes(policy, projectRoot) {
   const generatedFiles = markedGeneratedFiles(projectRoot);
   return { generatedFiles, ...detectedScopes({ ...policy, generatedFiles }, projectRoot) };
@@ -133,7 +148,13 @@ function detectedScopes(policy, projectRoot) {
   };
 }
 
-const HEAD_CHECKOUT_FACTS = ['conventions', 'generatedFiles', 'frameworks'];
+const HEAD_CHECKOUT_FACTS = [
+  'conventions',
+  'conventionPins',
+  'generatedFiles',
+  'frameworks',
+  'libraries',
+];
 const SCOPE_FACTS = [
   ['react', ['enabled', 'iconPackage', 'major', 'styling', 'autoCleanup']],
   ['i18n', ['enabled']],
@@ -192,7 +213,7 @@ export function usesLayeredPrettier(environment = process.env) {
   const policy = readHeadPolicy(environment);
   return (
     usesProjectConfig(policy.tools.prettier?.precedence ?? []) ||
-    Object.keys(prettierConventionOptions(policy.conventions)).length > 0
+    hasPrettierConventions(policy.conventions)
   );
 }
 
@@ -208,7 +229,10 @@ export function readHeadPolicy(environment = process.env) {
     preset: policy.preset,
     tools: policy.tools ?? {},
     conventions: policy.conventions,
+    testConsole: policy.testConsole ?? {},
+    conventionPins: policy.conventionPins,
     generatedFiles: policy.generatedFiles ?? [],
+    libraries: policy.libraries,
     frameworks: { defaultExports: [], entryPoints: [], ...policy.frameworks },
   };
 }

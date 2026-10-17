@@ -185,11 +185,18 @@ const CONFIGS = {
   mocha: mochaConfig,
 };
 
-export function testRunnerLintConfig(runner) {
+export function testRunnerLintConfig(runner, assertionHelpers = []) {
   const config = CONFIGS[runner]();
   return {
     typedRules: {},
     ...config,
-    rules: { ...config.rules, ...wrongRunnerImports(runner) },
+    rules: {
+      ...config.rules,
+      ...wrongRunnerImports(runner),
+      [`${NAMESPACES[runner]}/expect-expect`]: [
+        'error',
+        { assertFunctionNames: [...new Set([...ASSERTION_NAMES[runner], ...assertionHelpers])] },
+      ],
+    },
   };
 }

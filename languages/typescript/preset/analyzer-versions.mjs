@@ -16,6 +16,7 @@ const TOOL_BY_ANALYZER = {
   structure: 'typescript',
   duplicates: 'jscpd',
   'dead-code': 'knip',
+  'test-console': 'vitest',
   crap: 'typescript',
 };
 const PACKAGE_ANALYZERS = new Set(['structure', 'crap']);

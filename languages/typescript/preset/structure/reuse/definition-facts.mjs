@@ -18,7 +18,7 @@ function importUses(fact) {
       ],
     })),
     ...fact.dynamicImports.map((specifier) => ({ specifier, names: ['*'] })),
-    ...fact.exports.namespaces.map((specifier) => ({ specifier, names: ['*'] })),
+    ...fact.exports.namespaces.map(({ specifier }) => ({ specifier, names: ['*'] })),
     ...fact.exports.reexports.map(({ specifier, star, names }) => ({
       specifier,
       names: star ? ['*'] : names.map(({ imported }) => imported),
@@ -80,6 +80,7 @@ export function resolvedDefinitions(facts, resolve) {
         return {
           ...definition,
           exported: exportNames.length > 0,
+          exportNames,
           key: keyOf(definition, fact, resolve),
           used:
             definition.usedLocally || names.has('*') || exportNames.some((name) => names.has(name)),

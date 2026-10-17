@@ -6,7 +6,11 @@ import { runCacheCommand } from './command/cache.mjs';
 import { parseArguments, USAGE_TEXT } from './command/arguments.mjs';
 import { resolveProjectRoot } from './tooling/tool-resolution.mjs';
 import { realpathSync } from 'node:fs';
-import { loadConfig, describeConfigOverrides } from './configuration/config.mjs';
+import {
+  describeConfigOverrides,
+  describeDisableCascade,
+  loadConfig,
+} from './configuration/config.mjs';
 import { resolveHeadPolicy } from '../languages/typescript/preset/head-policy.mjs';
 import { withProjectTestFiles } from '../languages/typescript/preset/test-runner/test-files/project-test-files.mjs';
 import { configureAnalyzers } from './configuration/configure-analyzers.mjs';
@@ -99,12 +103,9 @@ function runConfigured(cli) {
       ? resolveProjectRoot()
       : realpathSync(cli.currentProjectRoot);
   const config = loadConfig(currentProjectRoot);
+  const presetSet = presetAnalyzers(config, options.all ? cli.snapshotAnalyzers : cli.analyzers);
   function configure(policy) {
-    return configureAnalyzers(
-      presetAnalyzers(config, options.all ? cli.snapshotAnalyzers : cli.analyzers),
-      config,
-      policy,
-    );
+    return configureAnalyzers(presetSet, config, policy);
   }
   const detectedPolicy = resolveHeadPolicy(config, currentProjectRoot);
   const headPolicy = withProjectTestFiles(detectedPolicy, {
@@ -113,6 +114,9 @@ function runConfigured(cli) {
     analyzers: requestedAnalyzers(options, configure(detectedPolicy)),
   });
   const analyzers = configure(headPolicy);
+  for (const note of describeDisableCascade(presetSet, config)) {
+    cli.stderr.write(`nitpicker: ${note}\n`);
+  }
   return withRunLock({ projectRoot: currentProjectRoot, stderr: cli.stderr }, () => {
     if (options.all) {
       for (const notice of policyNotices(headPolicy)) {
