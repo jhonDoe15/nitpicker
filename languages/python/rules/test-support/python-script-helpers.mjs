@@ -30,12 +30,20 @@ function rawFindingsOf(roots, files, settings = {}) {
   return JSON.parse(readFileSync(path.join(reportRoot, RULES_REPORT), 'utf8'));
 }
 
+function specFiles(spec) {
+  if (typeof spec === 'string') {
+    return [['mod.py', spec]];
+  }
+  return spec.files === undefined
+    ? [[spec.file ?? 'mod.py', spec.code]]
+    : Object.entries(spec.files);
+}
+
 function caseFiles(cases) {
   return Object.fromEntries(
-    Object.values(cases).map((spec, index) => {
-      const { file = 'mod.py', code } = typeof spec === 'string' ? { code: spec } : spec;
-      return [`k${String(index)}/${file}`, code];
-    }),
+    Object.values(cases).flatMap((spec, index) =>
+      specFiles(spec).map(([file, code]) => [`k${String(index)}/${file}`, code]),
+    ),
   );
 }
 

@@ -231,7 +231,7 @@ describe.skipIf(!enabled)('io-in-loop', () => {
       ],
       [
         'a retry loop',
-        'import requests\n\n\ndef f(url):\n    for attempt in range(3):\n        try:\n            return requests.get(url)\n        except OSError as error:\n            last = error\n',
+        'import requests\n\n\ndef f(url):\n    for attempt in range(3):\n        try:\n            return requests.get(url)\n        except OSError as error:\n            last = error\n    raise last\n',
         [],
       ],
       [

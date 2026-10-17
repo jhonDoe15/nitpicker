@@ -1,7 +1,7 @@
 import ast
 
 from checks.common import dotted_name, finding, type_text
-from checks.handling import is_handled
+from errors.handling import is_handled
 
 OPTIONAL_IMPORT_ERRORS = {"ImportError", "ModuleNotFoundError"}
 BLIND_ERRORS = {

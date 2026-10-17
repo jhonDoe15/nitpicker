@@ -6,6 +6,7 @@ import { RUFF_CONFIG } from '../configuration/python-ruff-config.mjs';
 import { fileURLToPath } from 'node:url';
 import { collectionOptions, isTestFile } from '../configuration/pytest/collection-options.mjs';
 import { readPytestConfig } from '../configuration/pytest/pytest-config.mjs';
+import { entryFilesOf, readEntryModules } from '../../rules/libraries/entry-modules.mjs';
 
 export const RULES_REPORT = 'rules.json';
 const RULES_FAILED_RULE = 'rules-failed';
@@ -43,6 +44,8 @@ export function checkRules(context) {
       testRunner,
       ...collection,
       testFiles: sources.filter((file) => isTestFile(file, collection)),
+      entryFiles: entryFilesOf(sources, context.project.entryPoints),
+      entryModules: readEntryModules(context.projectRoot),
     }),
   );
   run(
