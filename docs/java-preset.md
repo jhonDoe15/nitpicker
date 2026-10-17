@@ -197,9 +197,13 @@ for jscpd, a long-running PIT) and each is expensive enough to deserve its own r
 
 - **What runs.** The project's own ArchUnit rules, executed as JUnit tests by the init script's
   `nitpickerArchunit` task (a `Test` task on the project's test classes and runtime classpath,
-  JUnit Platform, `ignoreFailures`). The project must have `archunit-junit5` (or any ArchUnit
-  setup running on the JUnit Platform) on its test classpath; Nitpicker adds no dependency and so
-  pins no ArchUnit version (the version map is unchanged). Test classes named `*ArchTest` or
+  `ignoreFailures`). It runs on the framework the declared ArchUnit library needs: JUnit 4 for
+  `archunit-junit4` rules (`@RunWith(ArchUnitRunner.class)`), the JUnit Platform for
+  `archunit-junit5`; with both or neither declared, on the framework of the project's `test` task.
+  When the test classes hold ArchUnit classes and none of them produced a report, the task fails
+  (a Gradle failure, `tool-error`), as Maven does, instead of passing without findings. The
+  project must have one of the two libraries on its test classpath; Nitpicker adds no dependency
+  and so pins no ArchUnit version (the version map is unchanged). Test classes named `*ArchTest` or
   `*ArchitectureTest` are selected; `-Pnitpicker.archunit.includes=<Gradle class patterns,
 comma-separated>` changes that. Those classes are excluded from the regular `test` task in
   Nitpicker runs, so a violated rule produces findings instead of failing the JaCoCo step. No
@@ -236,8 +240,9 @@ comma-separated>` changes that. Those classes are excluded from the regular `tes
   `org.example` targets `org.example.*`. PIT refuses `org.*` because it matches PIT's own classes,
   so classes directly in `org` are named one by one), against the project's own tests. The only
   profile can produce enforceable findings.
-- **What runs.** `nitpickerPit` runs the pinned `pitest-command-line` (1.17.4) with the
-  `pitest-junit5-plugin` (1.2.1), default mutators, XML output, two threads, to
+- **What runs.** `nitpickerPit` runs the pinned `pitest-command-line` (1.17.4) with the test
+  plugins the project's framework needs (`pitest-junit5-plugin` 1.2.1, `pitest-testng-plugin`
+  1.0.0, both pinned, added on the conditions below), default mutators, XML output, two threads, to
   `pit/mutations.xml` in the report directory. Tests are named class by class (`--targetTests`), and
   `--mutableCodePaths` limits mutation to the main classes. The JUnit Platform is not pinned by
   Nitpicker: the plugin's own platform dependencies are excluded and the project's are used, with a
@@ -248,7 +253,10 @@ comma-separated>` changes that. Those classes are excluded from the regular `tes
   names up to ten of them with the same text as on Maven (`Tests fail in <project>; nitpicker needs
 a passing test suite ...`) instead of Gradle's own failure output. Projects without main classes produce no report and no findings.
   The `pitest-junit5-plugin` and the launcher are added only when the project's test runtime has
-  `junit-platform-engine`; a JUnit 4 project runs PIT's built-in JUnit 4 support.
+  `junit-platform-engine`; a JUnit 4 project runs PIT's built-in JUnit 4 support. When the test
+  runtime has a `testng` jar, the pinned `pitest-testng-plugin` (1.0.0) is added too, without a
+  TestNG of its own: PIT refuses to run a TestNG project without it. Maven builds put the same
+  plugins on PIT's classpath on the same conditions. See [Test frameworks](#test-frameworks).
 - **Equivalent mutants.** A survived mutant's message names the common equivalent cases (a
   `compareTo` boundary, a discarded lambda return) and the way out: simplify the code, or add an
   exception for `pit/mutant-survived`.
@@ -272,6 +280,56 @@ a passing test suite ...`) instead of Gradle's own failure output. Projects with
 - **Tests.** `ingesters.test.mjs` (sample report `fixtures/pit-mutations.xml`), `java-reports.test.mjs`
   (glue), and gated e2e cases: a tested change with a surviving boundary mutant fails; the clean
   change now adds a test for its new method, because new untested code is a new `mutant-nocoverage`.
+
+## Test frameworks
+
+Coverage (JaCoCo), mutation testing (PIT), ArchUnit and the slow-test check work with these test
+frameworks, on Gradle and on Maven. Nitpicker detects the framework from the project's test runtime
+classpath and its `test` task, and adds no test library to the project.
+
+| Framework | Coverage | Mutation                                                    | ArchUnit                                                                                                                  | Slow tests                                                       |
+| --------- | -------- | ----------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------- |
+| JUnit 4   | yes      | PIT's built-in JUnit 4 support                              | `archunit-junit4`, run on JUnit 4                                                                                         | method by name                                                   |
+| JUnit 5   | yes      | `pitest-junit5-plugin` and a launcher of the engine version | `archunit-junit5`, run on the JUnit Platform                                                                              | method by name or `@DisplayName`                                 |
+| TestNG    | yes      | `pitest-testng-plugin`                                      | Gradle: `archunit-junit5` on the JUnit Platform. Maven: a tool error without `org.junit.support:testng-engine`, see below | method by name                                                   |
+| Spock 2   | yes      | `pitest-junit5-plugin` (Spock runs on the JUnit Platform)   | `archunit-junit5`, run on the JUnit Platform                                                                              | feature by name, an unrolled iteration by its feature; see below |
+| Kotest    | yes      | `pitest-junit5-plugin` (Kotest runs on the JUnit Platform)  | `archunit-junit5`, run on the JUnit Platform                                                                              | the spec file, no line; counted when the file changed            |
+
+- **Coverage.** JaCoCo's agent records whatever test framework the build's own test task runs, so
+  coverage needs nothing per framework.
+- **Mutation.** PIT needs a plugin per framework family: its JUnit 4 support is built in, JUnit
+  Platform engines (Jupiter, Spock 2, Kotest, the vintage engine) run through `pitest-junit5-plugin`,
+  and TestNG through `pitest-testng-plugin`. Each plugin is added only when its framework is on the
+  test runtime, so a JUnit 4 project does not get the JUnit 5 plugin, which fails without the JUnit
+  Platform. Kotest needs no `kotest-extensions-pitest`: through the JUnit Platform PIT already
+  tells killed, survived and uncovered mutants apart per Kotest test (pinned by the Kotest 6.0
+  end-to-end test).
+- **ArchUnit.** ArchUnit has runners for JUnit 4 and the JUnit Platform only. On Gradle
+  `nitpickerArchunit` takes the framework of the declared ArchUnit library (see
+  [Slice 4](#slice-4-archunit)); on Maven Surefire runs the rule classes with the provider it picks
+  for the project. A violation in a Kotlin or Groovy class is anchored at its `.kt` or `.groovy`
+  file, found under the Kotlin source roots too. A TestNG project on Maven with `archunit-junit5` gets the JUnit Platform on its
+  test classpath, and Surefire then picks its JUnit Platform provider, which runs TestNG tests only
+  through `org.junit.support:testng-engine`: the project's own `mvn test` skips them too. When the
+  TestNG engine is missing and Surefire ran none of a module's tests but the ArchUnit classes,
+  nitpicker stops with a `java/maven-failure` that names the cause and the two ways out (add the
+  TestNG engine, or run TestNG in a Surefire execution of its own) instead of reporting 0% coverage.
+- **Slow tests.** Specifications are found under every test source root, `.groovy` files included:
+  Gradle's `allJava` source directories cover `src/test/groovy`; on Maven the GMavenPlus test
+  sources (its `testSources`, default `src/test/groovy`) and an existing `src/test/groovy` (as
+  groovy-eclipse-compiler builds it) are test source roots, and roots that lie outside the module
+  are dropped. A Spock feature is found by its quoted name (`def "ships an order"()`); an unrolled
+  iteration by its feature, its `#placeholders` read as wildcards (`adds 1 and 2` for
+  `def "adds #a and #b"()`) and the default iteration suffix (` [a: 1, b: 2, #0]`) ignored. A
+  feature with a `where:` block counts as a template, like a `@ParameterizedTest`. A test that
+  names no method (a Kotest test, a custom unroll name) in a file without templates is counted when
+  its file changed. `*IntegrationSpec` and `*ISpec` classes get the integration budget.
+- **Tests.** `adapters/java-e2e/test-frameworks.e2e.test.mjs` runs a JUnit 4 project with
+  `archunit-junit4` rules, a TestNG project and a Spock project, both with `archunit-junit5` rules,
+  on Gradle and on Maven (fixtures in `adapters/fixtures/test-frameworks/`), JUnit 4 tests with
+  `archunit-junit5` rules and an ArchUnit class no runner picks up on Gradle;
+  `adapters/kotlin-e2e/kotest.e2e.test.mjs` runs a Kotest project with `archunit-junit5` rules
+  under the Kotlin preset.
 
 ## Slice 2: CLI and reporter integration
 
@@ -585,7 +643,7 @@ resolved plus a new finding, as in the TypeScript check.
 - **Rule.** `test-runtime/slow-test` fails a test the change adds or edits when it takes more than 5 s
   as a unit test, or more than 30 s as an integration test (`thresholds.unitTestSeconds` and
   `thresholds.integrationTestSeconds`). Integration tests are those of a test task other than `test`
-  (Maven's `surefire` counts as `test`), classes named `*IT`, `*ITCase` or `*IntegrationTest(s)`, and
+  (Maven's `surefire` counts as `test`), classes named `*IT`, `*ITCase`, `*IntegrationTest(s)`, `*IntegrationSpec` or `*ISpec`, and
   classes annotated `@SpringBootTest`, also through a superclass or an annotation of their own that
   carries it, when that type's source is in a test root.
   The message names the budget, the measured time, the fixes (no `Thread.sleep` or other waits, a
