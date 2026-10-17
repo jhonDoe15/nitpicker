@@ -10,6 +10,7 @@ import {
 } from '../kotlin/kotlin-metrics.mjs';
 import { addOneWayHint } from '../kotlin/rules/kotlin-rules.mjs';
 import { readSuppressionFindings } from '../kotlin/rules/kotlin-suppressions.mjs';
+import { readKotlinReviewFindings } from '../kotlin/review-rules/review-findings.mjs';
 
 const DETEKT_TOOL = 'detekt';
 const DETEKT_REPORT = 'detekt.sarif';
@@ -85,6 +86,7 @@ export function readKotlinFindings(context, crapLimit) {
     ...detektFindings(reportRoot),
     ...readSuppressionFindings(projectRoot, kotlinLintedRoots(manifest)),
     ...formatterFindings(reportRoot, manifest.kotlinFormatter),
+    ...readKotlinReviewFindings({ reportRoot, projectRoot, manifest }),
     ...readKotlinStructureFindings(metrics, projectRoot),
     ...readKotlinCrapFindings(metrics, {
       projectRoot,
