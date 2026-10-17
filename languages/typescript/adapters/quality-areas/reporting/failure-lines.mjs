@@ -92,7 +92,9 @@ function blockMessage(block) {
   if (line === undefined) {
     return '';
   }
-  return line.length > MAX_ASSERTION_LINE_LENGTH ? `${line.slice(0, MAX_ASSERTION_LINE_LENGTH)}…` : line;
+  return line.length > MAX_ASSERTION_LINE_LENGTH
+    ? `${line.slice(0, MAX_ASSERTION_LINE_LENGTH)}…`
+    : line;
 }
 
 export function unhandledErrors(output) {

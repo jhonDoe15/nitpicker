@@ -1,4 +1,4 @@
-import { createHash } from 'node:crypto';
+import { hash } from '../../../../../shared/rules/finding-helpers.mjs';
 import { exceptionMatcher } from '../../../../../shared/rules/exceptions.mjs';
 import { mutationTargets } from '../runners/mutation-scope.mjs';
 import { sourceLineShifts } from './line-shifts.mjs';
@@ -14,11 +14,15 @@ import {
 const NAMED_SKIPS = 5;
 
 async function weakenedTestsFindings(options, { headReport, mutationScope, mutationReport }) {
-  if (!hasWeakeningCandidates(headReport, mutationScope)) return [];
+  if (!hasWeakeningCandidates(headReport, mutationScope)) {
+    return [];
+  }
   const scope = { ...mutationScope, lineShifts: sourceLineShifts(options) };
   const baseOptions = { ...options, projectRoot: options.baselineRoot, snapshot: 'base' };
   const base = await mutationReport(baseOptions, baseMutationTargets(headReport, scope));
-  if (base.skipped !== undefined) return base.skipped;
+  if (base.skipped !== undefined) {
+    return base.skipped;
+  }
   return weakenedTestFindings({
     headReport,
     baseReport: base.report,
@@ -28,11 +32,13 @@ async function weakenedTestsFindings(options, { headReport, mutationScope, mutat
 }
 
 function skippedModulesNotice(analyzerName, skipped) {
-  if (skipped.length === 0) return [];
+  if (skipped.length === 0) {
+    return [];
+  }
   const named = skipped.slice(0, NAMED_SKIPS).join(', ');
   const rest = skipped.length - NAMED_SKIPS;
   const more = rest > 0 ? ` and ${String(rest)} more` : '';
-  const digest = createHash('sha256').update(skipped.join('\n')).digest('hex').slice(0, 24);
+  const digest = hash(skipped.join('\n'));
   const reach = `The changed tests reach more than ${String(MAX_TESTED_MODULES)} production modules`;
   return [
     {
@@ -52,13 +58,17 @@ export async function runScopedMutation(
 ) {
   const targets = mutationTargets(options, layout);
   const tested = testedSourceModules(options, layout);
-  if (targets?.length === 0 && tested.modules.length === 0) return [];
+  if (targets?.length === 0 && tested.modules.length === 0) {
+    return [];
+  }
   const mutationScope = { targets: targets ?? [], testedModules: tested.modules };
   const head = await mutationReport(
     options,
     targets && mutationTargetsWithTestedModules(targets, tested.modules),
   );
-  if (head.skipped !== undefined) return head.skipped;
+  if (head.skipped !== undefined) {
+    return head.skipped;
+  }
   const isExcepted = exceptionMatcher(exceptions);
   const weakened = await weakenedTestsFindings(options, {
     headReport: head.report,

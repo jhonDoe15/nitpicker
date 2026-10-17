@@ -1,9 +1,13 @@
 import { callbackOwner, enclosingFunction, isSuiteCall } from './test-calls.mjs';
 
 function declaresSharedState(declaration) {
-  if (declaration.kind !== 'let') return false;
+  if (declaration.kind !== 'let') {
+    return false;
+  }
   const owner = enclosingFunction(declaration);
-  if (owner === undefined) return true;
+  if (owner === undefined) {
+    return true;
+  }
   const call = callbackOwner(owner);
   return call !== undefined && isSuiteCall(call) && owner.body === declaration.parent;
 }
@@ -30,9 +34,13 @@ export const rule = {
   create(context) {
     return {
       VariableDeclaration(node) {
-        if (node.kind !== 'let' || !isTopLevelOrSuiteLevel(node)) return;
+        if (node.kind !== 'let' || !isTopLevelOrSuiteLevel(node)) {
+          return;
+        }
         for (const declarator of node.declarations) {
-          if (declarator.init === null || declarator.id.type !== 'Identifier') continue;
+          if (declarator.init === null || declarator.id.type !== 'Identifier') {
+            continue;
+          }
           context.report({
             node: declarator,
             messageId: 'sharedState',

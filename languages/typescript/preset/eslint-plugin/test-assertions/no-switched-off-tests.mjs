@@ -21,9 +21,13 @@ export const rule = {
   create(context) {
     return {
       MemberExpression(node) {
-        if (node.computed || !isTestFunctionChain(node.object)) return;
+        if (node.computed || !isTestFunctionChain(node.object)) {
+          return;
+        }
         const messageId = TOKEN_MESSAGES.get(node.property.name);
-        if (messageId !== undefined) context.report({ node: node.property, messageId });
+        if (messageId !== undefined) {
+          context.report({ node: node.property, messageId });
+        }
       },
       CallExpression(node) {
         const callee = node.callee;

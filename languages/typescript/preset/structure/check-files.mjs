@@ -16,6 +16,7 @@ export const STRUCTURE_CHECK_FILES = [
   'languages/typescript/preset/modules/tsconfig-files.mjs',
   'shared/project-rules/source-rules.mjs',
   'languages/typescript/preset/syntax/children.mjs',
+  'languages/typescript/preset/syntax/property-names.mjs',
   'languages/typescript/preset/syntax/component-names.mjs',
   'languages/typescript/preset/syntax/exported-components.mjs',
   'languages/typescript/preset/eslint-config/scope-support.mjs',

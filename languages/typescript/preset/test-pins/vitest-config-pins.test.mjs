@@ -36,7 +36,7 @@ async function resolvedConfig(projectFiles) {
   const previous = process.cwd();
   process.chdir(root);
   try {
-    return await qualityConfig({ command: 'serve', mode: 'test' });
+    return await Promise.resolve(qualityConfig({ command: 'serve', mode: 'test' }));
   } finally {
     process.chdir(previous);
   }

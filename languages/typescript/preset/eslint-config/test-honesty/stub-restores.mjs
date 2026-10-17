@@ -1,19 +1,12 @@
-import { existsSync, globSync, readdirSync, readFileSync, statSync } from 'node:fs';
+import { globSync, readdirSync, readFileSync, statSync } from 'node:fs';
 import path from 'node:path';
 import ts from 'typescript';
+import { firstFileIn } from '../../../../../shared/filesystem.mjs';
+import { propertyName } from '../../syntax/property-names.mjs';
+import { VITEST_CONFIG_NAMES } from './setup-files.mjs';
 
-const CONFIG_NAMES = ['vitest', 'vite'].flatMap((name) =>
-  ['ts', 'mts', 'cts', 'js', 'mjs', 'cjs'].map((extension) => `${name}.config.${extension}`),
-);
 const RESTORE_FLAGS = { unstubGlobals: 'globals', unstubEnvs: 'envs' };
 const PROJECT_CONFIG_FILE = /^vite(?:st)?(?:\.[\w-]+)?\.config\./u;
-
-function propertyName(node) {
-  return ts.isPropertyAssignment(node) &&
-    (ts.isIdentifier(node.name) || ts.isStringLiteral(node.name))
-    ? node.name.text
-    : undefined;
-}
 
 function literalProperty(objectNode, name) {
   const found = objectNode?.properties.find((property) => propertyName(property) === name);
@@ -31,13 +24,15 @@ function flagScope(flag, base) {
 
 function nodesOf(sourceFile) {
   const nodes = [sourceFile];
-  for (const node of nodes) nodes.push(...node.getChildren(sourceFile));
+  for (const node of nodes) {
+    nodes.push(...node.getChildren(sourceFile));
+  }
   return nodes;
 }
 
 function directoryConfig(directory) {
   const files = new Set(readdirSync(directory));
-  const name = CONFIG_NAMES.find((candidate) => files.has(candidate));
+  const name = VITEST_CONFIG_NAMES.find((candidate) => files.has(candidate));
   return name === undefined ? undefined : path.join(directory, name);
 }
 
@@ -85,13 +80,12 @@ function restoresInConfigs(projectRoot, rootConfig) {
 }
 
 export function stubRestoresIn(projectRoot) {
-  const configName = CONFIG_NAMES.find((name) => existsSync(path.join(projectRoot, name)));
-  if (configName === undefined) return [];
+  const configPath = firstFileIn(projectRoot, VITEST_CONFIG_NAMES);
+  if (configPath === undefined) {
+    return [];
+  }
   const scopes = new Map();
-  for (const { scope, restores } of restoresInConfigs(
-    projectRoot,
-    path.join(projectRoot, configName),
-  )) {
+  for (const { scope, restores } of restoresInConfigs(projectRoot, configPath)) {
     scopes.set(scope, {
       scope,
       globals: false,

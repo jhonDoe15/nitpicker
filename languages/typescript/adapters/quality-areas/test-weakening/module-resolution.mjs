@@ -1,6 +1,7 @@
 import { existsSync, readFileSync, realpathSync, statSync } from 'node:fs';
 import path from 'node:path';
 import ts from 'typescript';
+import { pathInside } from '../../../../../shared/filesystem.mjs';
 
 const PROJECT_CONFIG_NAMES = ['tsconfig.json', 'jsconfig.json'];
 const MAX_RE_EXPORT_DEPTH = 3;
@@ -30,7 +31,9 @@ function withResolutionDefaults(options) {
 
 export function projectCompilerOptions(root) {
   const configPath = PROJECT_CONFIG_NAMES.map((name) => path.join(root, name)).find(isFile);
-  if (configPath === undefined) return [withResolutionDefaults({})];
+  if (configPath === undefined) {
+    return [withResolutionDefaults({})];
+  }
   const parsed = parsedConfig(configPath);
   const referenced = (parsed.projectReferences ?? [])
     .map((reference) => ts.resolveProjectReferencePath(reference))
@@ -40,7 +43,9 @@ export function projectCompilerOptions(root) {
 }
 
 function projectRelative(realRoot, resolved) {
-  if (resolved === undefined || resolved.isExternalLibraryImport === true) return undefined;
+  if (resolved === undefined || resolved.isExternalLibraryImport === true) {
+    return undefined;
+  }
   const relative = path.relative(realRoot, realpathSync(resolved.resolvedFileName));
   return relative.startsWith('..') || path.isAbsolute(relative)
     ? undefined
@@ -61,7 +66,11 @@ export function resolveProjectModule({ root, compilerOptions, fromFile }, specif
 }
 
 function reExportSpecifiers(root, modulePath) {
-  const text = readFileSync(path.join(root, modulePath), 'utf8');
+  const full = pathInside(root, modulePath);
+  if (full === undefined) {
+    return [];
+  }
+  const text = readFileSync(full, 'utf8');
   return ts
     .createSourceFile(modulePath, text, ts.ScriptTarget.Latest)
     .statements.filter(
@@ -77,7 +86,9 @@ export function withReExportedModules({ root, compilerOptions }, modulePaths, is
   const found = new Set(modulePaths);
   const pending = modulePaths.map((modulePath) => ({ modulePath, depth: 0 }));
   for (const { modulePath, depth } of pending) {
-    if (depth >= MAX_RE_EXPORT_DEPTH) continue;
+    if (depth >= MAX_RE_EXPORT_DEPTH) {
+      continue;
+    }
     const context = { root, compilerOptions, fromFile: modulePath };
     const reExported = reExportSpecifiers(root, modulePath)
       .map((specifier) => resolveProjectModule(context, specifier))

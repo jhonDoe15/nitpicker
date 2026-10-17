@@ -183,6 +183,16 @@ function endToEndFor(layout, testRoots, extensionGlob) {
   };
 }
 
+function excludedGlobsFor(layout, exclude) {
+  return {
+    excludedGlobs: [...(layout.excludedGlobs ?? builtInExcludedGlobs), ...exclude],
+    hiddenGlobs: [
+      ...(layout.excludedGlobs ?? []).filter((glob) => !builtInExcludedGlobs.includes(glob)),
+      ...exclude,
+    ],
+  };
+}
+
 export function resolveLayout(
   layout = {},
   exclude = [],
@@ -195,11 +205,7 @@ export function resolveLayout(
   const colocatedTests = layout.colocatedTests === true;
   const patterns = filePatterns({ sourceRoots, testRoots, extensions, colocatedTests });
   const globs = globsFor({ sourceRoots, testRoots, javascript, extensionGlob, colocatedTests });
-  const excludedGlobs = [...(layout.excludedGlobs ?? builtInExcludedGlobs), ...exclude];
-  const hiddenGlobs = [
-    ...(layout.excludedGlobs ?? []).filter((glob) => !builtInExcludedGlobs.includes(glob)),
-    ...exclude,
-  ];
+  const { excludedGlobs, hiddenGlobs } = excludedGlobsFor(layout, exclude);
   const resolved = {
     javascript,
     colocatedTests,

@@ -18,7 +18,9 @@ export const rule = {
     },
   },
   create(context) {
-    if (RUNNABLE_NAME.test(context.filename)) return {};
+    if (RUNNABLE_NAME.test(context.filename)) {
+      return {};
+    }
     return {
       Program(program) {
         const [first] = program.body.filter(
@@ -27,7 +29,9 @@ export const rule = {
             statement.expression.type === 'CallExpression' &&
             isTestFunctionChain(statement.expression.callee),
         );
-        if (first !== undefined) context.report({ node: first, messageId: 'neverRuns' });
+        if (first !== undefined) {
+          context.report({ node: first, messageId: 'neverRuns' });
+        }
       },
     };
   },

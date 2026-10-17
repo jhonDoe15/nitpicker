@@ -18,7 +18,9 @@ export const rule = {
   },
   create(context) {
     function check(node, source) {
-      if (productionModulePath(source, context.filename) === undefined) return;
+      if (productionModulePath(source, context.filename) === undefined) {
+        return;
+      }
       context.report({ node, messageId: 'productionImport', data: { source } });
     }
     return {
@@ -29,7 +31,9 @@ export const rule = {
         check(node, node.source.value);
       },
       ExportNamedDeclaration(node) {
-        if (node.source) check(node, node.source.value);
+        if (node.source) {
+          check(node, node.source.value);
+        }
       },
       ImportExpression(node) {
         check(node, node.source.value);

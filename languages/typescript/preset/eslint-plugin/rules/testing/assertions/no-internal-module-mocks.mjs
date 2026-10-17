@@ -9,7 +9,9 @@ function isVitestAlias(specifier) {
 }
 
 function trackVitestAliases(aliases, node) {
-  for (const specifier of node.specifiers.filter(isVitestAlias)) aliases.add(specifier.local.name);
+  for (const specifier of node.specifiers.filter(isVitestAlias)) {
+    aliases.add(specifier.local.name);
+  }
 }
 
 function trackNamespaces(namespaces, node) {
@@ -38,8 +40,9 @@ export const rule = {
     const productionNamespaces = new Map();
     return {
       ImportDeclaration(node) {
-        if (node.source.value === 'vitest') trackVitestAliases(aliases, node);
-        else if (productionModulePath(node.source.value, context.filename) !== undefined) {
+        if (node.source.value === 'vitest') {
+          trackVitestAliases(aliases, node);
+        } else if (productionModulePath(node.source.value, context.filename) !== undefined) {
           trackNamespaces(productionNamespaces, node);
         }
       },
@@ -47,12 +50,15 @@ export const rule = {
         const callee = node.callee;
         if (isVitestMember(aliases, callee) && callee.property.name === 'spyOn') {
           const source = productionNamespaces.get(node.arguments[0]?.name);
-          if (source !== undefined)
+          if (source !== undefined) {
             context.report({ node, messageId: 'internalSpy', data: { source } });
+          }
           return;
         }
         const source = mockedModuleSource(node, aliases);
-        if (productionModulePath(source, context.filename) === undefined) return;
+        if (productionModulePath(source, context.filename) === undefined) {
+          return;
+        }
         context.report({ node, messageId: 'internalMock', data: { source } });
       },
     };

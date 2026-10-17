@@ -25,7 +25,7 @@ export const strictTestHelperRules = {
   'nitpicker/no-process-globals-outside-main-guard': 'error',
 };
 
-function testAreaGlobsFor(layout) {
+export function testAreaGlobsFor(layout) {
   return [...layout.testGlobs, ...layout.sourceTestDirectoryGlobs];
 }
 
