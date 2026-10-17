@@ -107,6 +107,6 @@ export function applyJavascriptDialect(entries, policy) {
   return isJavascriptPolicy(policy) ? entries.flatMap(dialectEntries) : entries;
 }
 
-export function javascriptRuleEntries(policy, files) {
-  return isJavascriptPolicy(policy) ? [{ files, rules: JAVASCRIPT_ONLY_RULES }] : [];
+export function scriptRuleEntries(files) {
+  return [{ files, rules: JAVASCRIPT_ONLY_RULES }];
 }
