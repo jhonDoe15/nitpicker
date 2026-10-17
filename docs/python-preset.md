@@ -47,7 +47,7 @@ directory is the contract between the tool runs and the readers; later slices ad
   `black`, `coverage`, `mypy`, `pyright` or `basedpyright`, and `python-rules`; `mutation` (slice 6) carries those of `mutmut` and depends on `python`,
   so it runs after it and is skipped when it had a tool error. They are separate so that a missing
   or crashing mutmut costs only the mutation results, and `"disable": ["mutation"]` turns it off.
-  `python` cannot be disabled alone, because `mutation` depends on it. The version is the versions of the tools in the
+  Disabling `python` turns `mutation` off too, because `mutation` depends on it. The version is the versions of the tools in the
   project's environment (`ruff@0.9.9;mypy@1.13.0;coverage@7.6.1;pytest@8.3.1`), read from the live checkout, and
   the configuration hash covers the Python adapter files, the nitpicker-owned ruff config and the
   `python` settings. Upgrading ruff, or editing the preset, therefore invalidates the base cache.
