@@ -80,6 +80,30 @@ describe('crap runner without a coverage report', () => {
   });
 });
 
+describe('test-console runner without a console report', () => {
+  it('says the coverage run left no report instead of blaming the tests', async () => {
+    const projectRoot = snapshotWith({
+      'package.json': '{"name":"p","type":"module"}\n',
+      'src/main/a.ts': 'export function a(): number {\n  return 1;\n}\n',
+      'test/a.test.ts': "import { it } from 'vitest';\nit('x', () => {});\n",
+    });
+
+    const findings = await runKind('test-console', projectRoot);
+
+    expect(findings).toEqual([
+      {
+        tool: 'test-console',
+        rule: 'test-console-report-missing',
+        path: '.',
+        identity: 'test-console-report-missing',
+        message:
+          'Test console output was not checked: the coverage run left no reports/quality/test-console/report.json.',
+        classification: 'tool-error',
+      },
+    ]);
+  });
+});
+
 describe('coverage runner invoked as a script', () => {
   const originalArguments = process.argv;
   const originalExitCode = process.exitCode;
@@ -131,6 +155,28 @@ describe('coverage runner invoked as a script', () => {
       { rule: 'tests-failed', classification: 'tool-error' },
     ]);
     expect(findings[0].message).toMatch(/returns two/u);
+  });
+});
+
+describe('coverage run in a project that configures its own reporters', () => {
+  it('writes the test report where nitpicker reads it', async () => {
+    const projectRoot = snapshotWith({
+      'package.json': '{"name":"p","type":"module"}\n',
+      'vitest.config.ts':
+        "export default { test: { reporters: [['json', { outputFile: 'mine.json' }]], outputFile: { json: 'mine.json' } } };\n",
+      'src/main/a.ts': 'export function a(): number {\n  return 1;\n}\n',
+      'test/a.test.ts':
+        "import { expect, it } from 'vitest';\nimport { a } from '../src/main/a';\nit('returns one', () => {\n  expect(a()).toBe(1);\n});\n",
+    });
+    symlinkSync(
+      path.join(PACKAGE_ROOT, 'node_modules'),
+      path.join(projectRoot, 'node_modules'),
+      'dir',
+    );
+
+    const findings = await runKind('coverage', projectRoot);
+
+    expect(findings.filter(({ classification }) => classification === 'tool-error')).toEqual([]);
   });
 });
 
