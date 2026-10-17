@@ -9,14 +9,14 @@ import {
   unwrapped,
 } from '../security-values.mjs';
 import {
-  HMAC_PACKAGES,
+  hmacPackageAlgorithm,
   isHmacArgument,
   isHmacCall,
   isHmacOptions,
   isMessageDigest,
   isWeak,
+  isWeakPackage,
   packageSource,
-  WEAK_PACKAGES,
   weakNamedImports,
 } from './hash-sources.mjs';
 
@@ -39,8 +39,12 @@ const SUBTLE_METHODS = new Set([
   'deriveBits',
   'deriveKey',
 ]);
-const HASH_CALL_NAME =
-  /(?:hash|digest|checksum|hmac|fingerprint)(?:es|ed|With\w*|Of|For|Sync|Async|File|Text|String|Buffer|Bytes|Hex|Base64|Stream)?$/iu;
+const HASH_SUFFIX =
+  'es|ed|With\\w*|Of|For|Sync|Async|File|Text|String|Buffer|Bytes|Hex|Base64|Stream';
+const HASH_CALL_NAME = new RegExp(
+  `(?:hash|digest|checksum|hmac|fingerprint)(?:${HASH_SUFFIX})?$`,
+  'iu',
+);
 const PREDICATE_NAME = /^(?:is|has|assert|reject|supports?|check|validate|ensure|allow)[A-Z_]/u;
 const HASH_PROPERTY =
   /^(?:(?:hash|digest|checksum|signature|hmac)-?(?:algorithm|alg|function|name|type)?|algorithm|alg)$/iu;
@@ -150,7 +154,7 @@ function reportedAtProperty(scope, leaf) {
   return owner?.value === leaf && isHashProperty(owner) && !isCheckedArgument(scope, owner);
 }
 
-function report({ context }, node, algorithm, hmac) {
+function report({ context }, node, { algorithm, hmac }) {
   if (hmac && !isMessageDigest(algorithm)) {
     return;
   }
@@ -162,17 +166,18 @@ function reportFinding(scope, node, finding) {
   const kept = finding.leaves.filter((leaf) => !reportedAtProperty(scope, leaf));
   const names = [...(finding.names ?? []), ...kept.map((leaf) => stringValue(leaf))];
   for (const algorithm of new Set(names)) {
-    report(scope, node, algorithm, finding.hmac);
+    report(scope, node, { algorithm, hmac: finding.hmac });
   }
 }
 
 function checkPackage(scope, node) {
   const source = packageSource(node);
-  if (WEAK_PACKAGES.has(source)) {
+  if (isWeakPackage(source)) {
     scope.context.report({ node, messageId: 'weakPackage', data: { name: source } });
   }
-  if (HMAC_PACKAGES.has(source)) {
-    report(scope, node, HMAC_PACKAGES.get(source), true);
+  const hmacAlgorithm = hmacPackageAlgorithm(source);
+  if (hmacAlgorithm !== undefined) {
+    report(scope, node, { algorithm: hmacAlgorithm, hmac: true });
   }
 }
 
@@ -184,7 +189,8 @@ function checkNamedImports(scope, node) {
     const uses = variable?.references ?? [];
     const hmac = uses.length > 0 && uses.every((use) => isHmacArgument(use.identifier));
     if (weak.has(imported) && hmac) {
-      report(scope, specifier, imported.replace(/^create/u, '').toLowerCase(), true);
+      const algorithm = imported.replace(/^create/u, '').toLowerCase();
+      report(scope, specifier, { algorithm, hmac: true });
     } else if (weak.has(imported)) {
       const name = `${imported} from ${node.source.value}`;
       scope.context.report({ node: specifier, messageId: 'weakPackage', data: { name } });
@@ -212,7 +218,7 @@ function checkCryptoJsAlgo(scope, node) {
     memberName(owner) === 'algo' &&
     isModuleValue(scope.context, owner.object, scope.cryptoJs);
   if (isAlgo) {
-    report(scope, node, algorithm, isCryptoJsHmacKey(node));
+    report(scope, node, { algorithm, hmac: isCryptoJsHmacKey(node) });
   }
 }
 
@@ -222,7 +228,7 @@ function checkProperty(scope, node) {
     for (const algorithm of new Set(
       weakLeaves(scope.context, node.value).map((leaf) => stringValue(leaf)),
     )) {
-      report(scope, node, algorithm, hmac);
+      report(scope, node, { algorithm, hmac });
     }
   }
 }

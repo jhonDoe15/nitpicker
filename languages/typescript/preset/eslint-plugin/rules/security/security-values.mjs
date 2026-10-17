@@ -1,9 +1,10 @@
+import { chainOf } from '../analysis/ancestry.mjs';
 import { findVariable, resolveConstant, stringValue } from '../analysis/constant-resolution.mjs';
 import { declaredMemberValue } from './member-values.mjs';
 
 const MAX_DEPTH = 8;
 export const DEPTHS = Array.from({ length: MAX_DEPTH }, (_, index) => index);
-export const TYPE_WRAPPERS = new Set([
+const TYPE_WRAPPERS = new Set([
   'TSAsExpression',
   'TSSatisfiesExpression',
   'TSNonNullExpression',
@@ -11,6 +12,23 @@ export const TYPE_WRAPPERS = new Set([
   'ChainExpression',
 ]);
 const TEXT_PRESERVING_METHODS = new Set(['toLowerCase', 'toUpperCase', 'trim', 'toString']);
+
+export function isTypeWrapper(node) {
+  return TYPE_WRAPPERS.has(node?.type);
+}
+
+export function typeServices(context) {
+  const services = context.sourceCode.parserServices;
+  return services?.program === undefined || services.program === null ? undefined : services;
+}
+
+export function callName(call) {
+  const callee = unwrapped(call.callee);
+  if (callee.type === 'Identifier') {
+    return callee.name;
+  }
+  return callee.type === 'MemberExpression' ? memberName(callee) : undefined;
+}
 
 export function unwrapped(node) {
   const chain = [node];
@@ -45,9 +63,15 @@ function isFreeze(node) {
   );
 }
 
+function constantValue(context, node) {
+  return unwrapped(resolveConstant(context, unwrapped(node)));
+}
+
 export function resolvedValue(context, node) {
-  const value = unwrapped(resolveConstant(context, unwrapped(node)));
-  return isFreeze(value) ? resolvedValue(context, value.arguments[0]) : value;
+  const start = constantValue(context, node);
+  return chainOf(start, (value) =>
+    isFreeze(value) ? constantValue(context, value.arguments[0]) : undefined,
+  ).at(-1);
 }
 
 function objectProperties(context, node) {

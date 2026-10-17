@@ -1,10 +1,16 @@
 import { ancestorsOf } from '../../analysis/ancestry.mjs';
-import { memberName, TYPE_WRAPPERS, unwrapped } from '../security-values.mjs';
+import { callName, isTypeWrapper, memberName } from '../security-values.mjs';
 
 const ENV_TEXT = /NODE_TLS_REJECT_UNAUTHORIZED=0/u;
 const ENV_ASSIGNMENT = /^\s*NODE_TLS_REJECT_UNAUTHORIZED=0\s*$/u;
-const URL_TEXT =
-  /[?&](?:sslmode=no-verify|tlsAllowInvalidCertificates=true|tlsAllowInvalidHostnames=true|tlsInsecure=true|sslValidate=false)(?:&|$|#)/iu;
+const INSECURE_PARAMETERS = [
+  'sslmode=no-verify',
+  'tlsAllowInvalidCertificates=true',
+  'tlsAllowInvalidHostnames=true',
+  'tlsInsecure=true',
+  'sslValidate=false',
+];
+const URL_TEXT = new RegExp(`[?&](?:${INSECURE_PARAMETERS.join('|')})(?:&|$|#)`, 'iu');
 const FLAG_TEXT = /^(?:--)?ignore-certificate-errors(?![-\w])(?:=\S*)?$/u;
 const LAUNCHER =
   /^(?:exec|execSync|execFile|execFileSync|spawn|spawnSync|fork|execa|execaSync|execaCommand|execaCommandSync|\$)$/u;
@@ -26,7 +32,6 @@ const PASSTHROUGH = new Set([
   'SpreadElement',
   'ConditionalExpression',
   'LogicalExpression',
-  ...TYPE_WRAPPERS,
 ]);
 
 function textParts(node) {
@@ -47,18 +52,11 @@ function consumer(node) {
   const index = owners.findIndex(
     (owner) =>
       !PASSTHROUGH.has(owner.type) &&
+      !isTypeWrapper(owner) &&
       !(owner.type === 'BinaryExpression' && owner.operator === '+'),
   );
   const owner = owners[index];
   return { owner, holder: index === 0 ? node : owners[index - 1] };
-}
-
-function calleeName(call) {
-  const callee = unwrapped(call.callee);
-  if (callee.type === 'Identifier') {
-    return callee.name;
-  }
-  return callee.type === 'MemberExpression' ? memberName(callee) : undefined;
 }
 
 function isLookup({ owner, holder }) {
@@ -71,14 +69,14 @@ function isLookup({ owner, holder }) {
     case 'NewExpression':
       return COLLECTIONS.has(owner.callee.name);
     case 'CallExpression':
-      return owner.callee !== holder && LOOKUPS.has(calleeName(owner));
+      return owner.callee !== holder && LOOKUPS.has(callName(owner));
     default:
       return false;
   }
 }
 
 function reachesLauncher({ owner }) {
-  return owner?.type === 'CallExpression' && LAUNCHER.test(calleeName(owner) ?? '');
+  return owner?.type === 'CallExpression' && LAUNCHER.test(callName(owner) ?? '');
 }
 
 export function hasInsecureText(node) {

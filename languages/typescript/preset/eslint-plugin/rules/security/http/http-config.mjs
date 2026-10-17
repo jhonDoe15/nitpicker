@@ -6,18 +6,19 @@ import {
   resolveFunction,
   stringValue,
 } from '../../analysis/constant-resolution.mjs';
-import { leafValues, memberName, propertyNamed, unwrapped } from '../security-values.mjs';
+import {
+  leafValues,
+  memberName,
+  propertyNamed,
+  typeServices,
+  unwrapped,
+} from '../security-values.mjs';
 
 const NO_VALUE = new Set(['undefined', 'null']);
 const CALLBACK_NAME =
   /^(?:resolve|reject|cb|callback|done|next|handler|listener|on[A-Z]\w*|handle\w*)$/u;
 const LOCAL_URL = /^(?:data|blob):/iu;
 const LOCAL_URL_NAME = /^(?:data|blob|object)(?:Url|Uri|URL|URI)$/u;
-
-function hasTypes(context) {
-  const services = context.sourceCode.parserServices;
-  return services?.program === undefined || services.program === null ? undefined : services;
-}
 
 export function isAbsent(context, node) {
   const leaves = leafValues(context, node);
@@ -30,7 +31,7 @@ export function isAbsent(context, node) {
 }
 
 function isUrlType(context, node) {
-  const services = hasTypes(context);
+  const services = typeServices(context);
   if (services === undefined) {
     return false;
   }
@@ -39,12 +40,12 @@ function isUrlType(context, node) {
 }
 
 export function typeNamed(context, node, name) {
-  const services = hasTypes(context);
+  const services = typeServices(context);
   return services !== undefined && services.getTypeAtLocation(node).getSymbol()?.getName() === name;
 }
 
 function hasCallSignature(context, node) {
-  const services = hasTypes(context);
+  const services = typeServices(context);
   return services !== undefined && services.getTypeAtLocation(node).getCallSignatures().length > 0;
 }
 

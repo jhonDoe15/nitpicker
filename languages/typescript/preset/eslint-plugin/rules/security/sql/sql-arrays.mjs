@@ -1,9 +1,8 @@
 import ts from 'typescript';
 import { depthFirst } from '../../../../../../../shared/traversal.mjs';
 import { findVariable, isFunctionNode } from '../../analysis/constant-resolution.mjs';
-import { memberName, resolvedValue, unwrapped } from '../security-values.mjs';
+import { memberName, resolvedValue, typeServices, unwrapped } from '../security-values.mjs';
 
-const MAX_DEPTH = 8;
 const MAPPERS = new Set(['map', 'flatMap']);
 const PRESERVING = new Set([
   'filter',
@@ -22,6 +21,14 @@ const ADDERS = new Map([
 const INDEX_CALLBACKS = new Set(['map', 'flatMap', 'forEach', 'filter', 'some', 'every', 'find']);
 const NUMERIC_MAPPERS = new Set(['Number', 'parseInt', 'parseFloat', 'BigInt']);
 const NUMERIC_FLAGS = ts.TypeFlags.NumberLike | ts.TypeFlags.BigIntLike | ts.TypeFlags.BooleanLike;
+
+export function textOf(node) {
+  return { kind: 'text', node };
+}
+
+export function arrayOf(node) {
+  return { kind: 'array', node };
+}
 
 function isArrayFrom(call) {
   const callee = call.callee;
@@ -53,22 +60,24 @@ function functionChildren(node) {
     .filter((value) => typeof value?.type === 'string' && !isFunctionNode(value));
 }
 
-function returnsInert(callback, isInert) {
+function callbackObligations(callback) {
   if (!isFunctionNode(callback)) {
-    return callback?.type === 'Identifier' && NUMERIC_MAPPERS.has(callback.name);
+    const numeric = callback?.type === 'Identifier' && NUMERIC_MAPPERS.has(callback.name);
+    return numeric ? [] : undefined;
   }
   if (callback.body.type !== 'BlockStatement') {
-    return isInert(callback.body);
+    return [textOf(callback.body)];
   }
   const returns = [...depthFirst(callback.body, functionChildren)].filter(
     (node) => node.type === 'ReturnStatement',
   );
-  return returns.length > 0 && returns.every((node) => node.argument && isInert(node.argument));
+  const valued = returns.length > 0 && returns.every((node) => node.argument);
+  return valued ? returns.map((node) => textOf(node.argument)) : undefined;
 }
 
 function hasNumericElements(context, node) {
-  const services = context.sourceCode.parserServices;
-  if (services?.program === undefined || services.program === null) {
+  const services = typeServices(context);
+  if (services === undefined) {
     return false;
   }
   const checker = services.program.getTypeChecker();
@@ -81,93 +90,75 @@ function hasNumericElements(context, node) {
   return members.every((member) => member !== undefined && (member.flags & NUMERIC_FLAGS) !== 0);
 }
 
-function elementsInert(context, elements, isInert, depth) {
-  return elements.every(
-    (element) =>
-      element !== null &&
-      (element.type === 'SpreadElement'
-        ? inertArray(context, element.argument, isInert, depth + 1)
-        : isInert(element)),
+function elementObligations(elements) {
+  if (elements.some((element) => element === null)) {
+    return undefined;
+  }
+  return elements.map((element) =>
+    element.type === 'SpreadElement' ? arrayOf(element.argument) : textOf(element),
   );
 }
 
-function addedValuesInert(context, call, position, isInert, depth) {
-  return elementsInert(context, call.arguments.slice(position), isInert, depth);
-}
-
-function referenceKeepsInert(context, reference, isInert, depth) {
+function referenceObligations(reference) {
   if (reference.isWrite()) {
-    return reference.init === true || inertArray(context, reference.writeExpr, isInert, depth + 1);
+    return reference.init === true ? [] : [arrayOf(reference.writeExpr)];
   }
   const member = reference.identifier.parent;
   if (member?.type !== 'MemberExpression' || member.object !== reference.identifier) {
-    return false;
+    return undefined;
   }
   const owner = member.parent;
-  const call = owner?.type === 'CallExpression' && owner.callee === member ? owner : undefined;
   const name = memberName(member);
-  if (call !== undefined && ADDERS.has(name)) {
-    return addedValuesInert(context, call, ADDERS.get(name), isInert, depth);
+  if (owner?.type === 'CallExpression' && owner.callee === member && ADDERS.has(name)) {
+    return elementObligations(owner.arguments.slice(ADDERS.get(name)));
   }
-  const assigned = owner?.type === 'AssignmentExpression' && owner.left === member;
-  return assigned ? member.computed && isInert(owner.right) : name !== 'fill';
+  if (owner?.type === 'AssignmentExpression' && owner.left === member) {
+    return member.computed ? [textOf(owner.right)] : undefined;
+  }
+  return name === 'fill' ? undefined : [];
 }
 
-function localArrayInert(context, identifier, isInert, depth) {
+function localArrayObligations(context, identifier) {
   const variable = findVariable(context, identifier, identifier.name);
   const definition = variable?.defs.length === 1 ? variable.defs[0] : undefined;
   const declarator = definition?.type === 'Variable' ? definition.node : undefined;
   if (declarator?.id.type !== 'Identifier' || !declarator.init) {
-    return false;
+    return undefined;
   }
-  return (
-    inertArray(context, declarator.init, isInert, depth + 1) &&
-    variable.references.every((reference) =>
-      referenceKeepsInert(context, reference, isInert, depth),
-    )
-  );
+  const parts = variable.references.map((reference) => referenceObligations(reference));
+  return parts.includes(undefined) ? undefined : [arrayOf(declarator.init), ...parts.flat()];
 }
 
-function methodArrayInert(context, call, isInert, depth) {
+function methodObligations(call) {
   const name = memberName(call.callee);
-  const [first] = call.arguments;
+  const [first, second] = call.arguments;
   if (isArrayFrom(call)) {
-    return call.arguments.length > 1
-      ? returnsInert(call.arguments[1], isInert)
-      : inertArray(context, first, isInert, depth + 1);
+    return second === undefined ? [arrayOf(first)] : callbackObligations(second);
   }
   if (MAPPERS.has(name)) {
-    return returnsInert(first, isInert);
+    return callbackObligations(first);
   }
   if (name === 'fill') {
-    return first !== undefined && isInert(first);
+    return first === undefined ? undefined : [textOf(first)];
   }
-  if (name === 'concat') {
-    return (
-      inertArray(context, call.callee.object, isInert, depth + 1) &&
-      call.arguments.every(
-        (argument) => inertArray(context, argument, isInert, depth + 1) || isInert(argument),
-      )
-    );
-  }
-  return PRESERVING.has(name) && inertArray(context, call.callee.object, isInert, depth + 1);
+  return PRESERVING.has(name) ? [arrayOf(call.callee.object)] : undefined;
 }
 
-export function inertArray(context, node, isInert, depth = 0) {
+export function arrayObligations(context, node) {
   const start = unwrapped(node);
-  if (depth > MAX_DEPTH || start === undefined || start === null) {
-    return false;
+  if (start === undefined || start === null) {
+    return undefined;
   }
   if (hasNumericElements(context, start)) {
-    return true;
+    return [];
   }
   if (start.type === 'Identifier') {
-    return localArrayInert(context, start, isInert, depth);
+    return localArrayObligations(context, start);
   }
   const target = resolvedValue(context, start);
   if (target?.type === 'ArrayExpression') {
-    return elementsInert(context, target.elements, isInert, depth);
+    return elementObligations(target.elements);
   }
   const isMethod = target?.type === 'CallExpression' && target.callee.type === 'MemberExpression';
-  return isMethod && methodArrayInert(context, target, isInert, depth);
+  return isMethod ? methodObligations(target) : undefined;
 }

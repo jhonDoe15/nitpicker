@@ -1,13 +1,15 @@
 import { stringValue } from '../../analysis/constant-resolution.mjs';
-import { memberName, staticKey, unwrapped } from '../security-values.mjs';
+import { callName, staticKey } from '../security-values.mjs';
 
-const WEAK_NAME =
-  /^(?:(?:rsa|dsa|ecdsa)-(?:with-)?)?(?:md[245]|sha-?1|ripemd-?160|rmd-?160)(?:-?with-?(?:rsa|dsa)?-?encryption|-?with-?rsa)?$/u;
+const SIGNATURE_PREFIX = '(?:(?:rsa|dsa|ecdsa)-(?:with-)?)?';
+const WEAK_DIGEST = '(?:md[245]|sha-?1|ripemd-?160|rmd-?160)';
+const SIGNATURE_SUFFIX = '(?:-?with-?(?:rsa|dsa)?-?encryption|-?with-?rsa)?';
+const WEAK_NAME = new RegExp(`^${SIGNATURE_PREFIX}${WEAK_DIGEST}${SIGNATURE_SUFFIX}$`, 'u');
 const MD_NAME = /^(?:hmac)?md[245]$/iu;
 const HMAC_CALL = /hmac/iu;
 const OTP_KEYS = new Set(['digits', 'period', 'step', 'counter', 'window', 'secret', 'issuer']);
 
-export const WEAK_PACKAGES = new Set([
+const WEAK_PACKAGES = new Set([
   'md5',
   'md5.js',
   'js-md5',
@@ -19,7 +21,7 @@ export const WEAK_PACKAGES = new Set([
   'crypto-js/md5',
   'crypto-js/sha1',
 ]);
-export const HMAC_PACKAGES = new Map([
+const HMAC_PACKAGES = new Map([
   ['crypto-js/hmac-md5', 'md5'],
   ['crypto-js/hmac-sha1', 'sha1'],
 ]);
@@ -44,6 +46,14 @@ const NAMED_SOURCES = new Map([
   ['hash-wasm', HASH_WASM_WEAK],
 ]);
 
+export function isWeakPackage(source) {
+  return WEAK_PACKAGES.has(source);
+}
+
+export function hmacPackageAlgorithm(source) {
+  return HMAC_PACKAGES.get(source);
+}
+
 export function isWeak(text) {
   return WEAK_NAME.test(text.toLowerCase().replaceAll(/[\s_]/gu, '-'));
 }
@@ -67,16 +77,8 @@ export function packageSource(node) {
   return isRequire ? stringValue(node.arguments[0]) : undefined;
 }
 
-function calleeName(call) {
-  const callee = unwrapped(call.callee);
-  if (callee.type === 'Identifier') {
-    return callee.name;
-  }
-  return callee.type === 'MemberExpression' ? memberName(callee) : undefined;
-}
-
 export function isHmacCall(call) {
-  return HMAC_CALL.test(calleeName(call) ?? '');
+  return HMAC_CALL.test(callName(call) ?? '');
 }
 
 export function isHmacArgument(identifier) {

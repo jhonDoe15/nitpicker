@@ -41,8 +41,8 @@ describe('security facts', () => {
 
       expect(facts.browser).toBe(true);
       expect(
-        securityRules({ react: false, security: facts })['nitpicker/require-http-timeout'][1],
-      ).toMatchObject({ fetch: false });
+        securityRules({ react: false, security: facts })['nitpicker/require-http-timeout'][1].fetch,
+      ).toBe(false);
     },
   );
 
@@ -63,7 +63,9 @@ describe('security facts', () => {
       'node_modules/js-yaml/package.json': { version: '3.14.1' },
     });
 
-    expect(securityFactsFor(root, production)).toMatchObject({
+    const { yamlMajor, nodeFetchTimeout, sqlLibrary } = securityFactsFor(root, production);
+
+    expect({ yamlMajor, nodeFetchTimeout, sqlLibrary }).toEqual({
       yamlMajor: 3,
       nodeFetchTimeout: false,
       sqlLibrary: 'drizzle-orm',
