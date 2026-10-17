@@ -8,7 +8,7 @@ import {
   validateThresholds,
   validateExceptions,
   TYPESCRIPT_ONLY_KEYS,
-  PRESET_KEYS,
+  validatePresetKeys,
   validateProjectRelativePath,
 } from '../../shared/config.mjs';
 import { validateJavaConfig } from '../../languages/java/adapters/java-policy.mjs';
@@ -81,14 +81,7 @@ function validateKeys(config) {
       throw configError(`unknown key "${key}". Allowed keys: ${KEYS.join(', ')}`);
     }
   }
-  const preset = config.preset ?? 'typescript';
-  for (const [key, presets] of Object.entries(PRESET_KEYS)) {
-    if (config[key] !== undefined && !presets.includes(preset)) {
-      throw configError(
-        `"${key}" is not supported with "preset": "${preset}". Supported with: ${presets.join(', ')}`,
-      );
-    }
-  }
+  validatePresetKeys(config);
 }
 
 function validateScalars(config) {
