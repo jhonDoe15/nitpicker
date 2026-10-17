@@ -6,6 +6,7 @@
 
 import path from 'node:path';
 import { hasSpecificText } from './rules/console/console-messages.mjs';
+import { FACT_RULE_SETTINGS, factRuleSettings } from './rules/facts/registry.mjs';
 
 export const CONFIG_FILE_NAME = 'nitpicker.config.json';
 
@@ -33,6 +34,8 @@ const EXCEPTION_KEYS = ['rule', 'paths', 'reason'];
 const TEST_CONSOLE_KEYS = ['allow'];
 
 const ALLOW_KEYS = ['contains', 'paths', 'reason'];
+
+export const FEATURE_LAYOUT_KEYS = ['sharedRoots', 'featureRoots'];
 
 export const TYPESCRIPT_ONLY_KEYS = ['exceptions', 'react', 'i18n', 'tools'];
 
@@ -94,16 +97,16 @@ export function validateProjectRelativePath(value, name) {
   }
 }
 
-export function validateExceptions(exceptions, name = 'exceptions') {
+export function validateExceptions(exceptions, name = 'exceptions', matchesOwnGlobs = () => true) {
   if (!Array.isArray(exceptions)) {
     throw configError(`"${name}" must be an array`);
   }
   for (const [index, entry] of exceptions.entries()) {
-    validateException(entry, `${name}[${String(index)}]`);
+    validateException(entry, `${name}[${String(index)}]`, matchesOwnGlobs);
   }
 }
 
-function validateException(entry, label) {
+function validateException(entry, label, matchesOwnGlobs) {
   if (!isPlainObject(entry)) {
     throw configError(`"${label}" must be an object`);
   }
@@ -120,6 +123,9 @@ function validateException(entry, label) {
   validateStringArray(entry.paths, `${label}.paths`);
   if (entry.paths.length === 0) {
     throw configError(`"${label}.paths" needs at least one path glob`);
+  }
+  if (matchesOwnGlobs(entry.rule)) {
+    validateGlobs(entry.paths, `${label}.paths`, filesFix);
   }
   if (!isNonEmptyString(entry.reason) || entry.reason.trim().length === 0) {
     throw configError(`"${label}.reason" is required: say why the rule is lifted for these paths`);
@@ -172,13 +178,61 @@ function validateAllowEntry(entry, label) {
     if (entry.paths.length === 0) {
       throw configError(`"${label}.paths" needs at least one path glob`);
     }
+    validateGlobs(entry.paths, `${label}.paths`, filesFix);
   }
   if (!isNonEmptyString(entry.reason) || entry.reason.trim().length === 0) {
     throw configError(`"${label}.reason" is required: say which library prints this and why`);
   }
 }
 
+function hasUnclosedBrace(glob) {
+  let depth = 0;
+  for (const character of glob) {
+    if (character === '{') {
+      depth += 1;
+    }
+    if (character === '}' && depth > 0) {
+      depth -= 1;
+    }
+  }
+  return depth > 0;
+}
+
+const GLOB_PROBLEMS = [
+  [(glob) => glob.startsWith('./'), 'drop the leading "./": globs match from the project root'],
+  [(glob) => glob.endsWith('/'), 'drop the trailing "/": write {fix}'],
+  [
+    (glob) => /[[\]]/u.test(glob),
+    'character classes such as [a-z] are not supported: list the alternatives in braces, such as {a,b}',
+  ],
+  [
+    (glob) => glob.includes('(?'),
+    'regular expression flags such as (?i) are not supported: globs match case-sensitively, so list each spelling in braces, such as {README,readme}.md',
+  ],
+  [hasUnclosedBrace, 'a "{" is never closed'],
+];
+
+function validateGlobs(globs, label, fix) {
+  for (const glob of globs) {
+    const [, problem] = GLOB_PROBLEMS.find(([matches]) => matches(glob)) ?? [];
+    if (problem !== undefined) {
+      throw configError(
+        `"${label}" glob ${JSON.stringify(glob)} can never match: ${problem.replace('{fix}', fix(glob))}`,
+      );
+    }
+  }
+}
+
+function folderFix(glob) {
+  return JSON.stringify(glob.replace(/\/+$/u, ''));
+}
+
+function filesFix(glob) {
+  return JSON.stringify(`${glob}**`);
+}
+
 export function validateFolderGlobs(key, globs) {
+  validateGlobs(globs, `layout.${key}`, folderFix);
   for (const glob of globs) {
     const normalized = glob.replaceAll('\\', '/');
     if (
@@ -191,4 +245,27 @@ export function validateFolderGlobs(key, globs) {
       );
     }
   }
+}
+
+function usedFactSettings(config) {
+  const layout = isPlainObject(config.layout) ? config.layout : {};
+  return [
+    ...(config.testConsole === undefined ? [] : ['testConsole']),
+    ...FEATURE_LAYOUT_KEYS.filter((key) => layout[key] !== undefined).map((key) => `layout.${key}`),
+  ];
+}
+
+export function validateFactRuleSettings(config) {
+  const language = config.preset ?? 'typescript';
+  const accepted = factRuleSettings(language);
+  const unsupported = usedFactSettings(config).find((setting) => !accepted.includes(setting));
+  if (unsupported === undefined) {
+    return;
+  }
+  const [rule] = Object.entries(FACT_RULE_SETTINGS).find(([, settings]) =>
+    settings.includes(unsupported),
+  );
+  throw configError(
+    `"${unsupported}" is not supported with "preset": "${language}": it configures ${rule}, which the ${language} preset does not run yet. Remove it`,
+  );
 }

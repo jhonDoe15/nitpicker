@@ -24,7 +24,12 @@ function isShared({ kind, literal, exported }) {
 
 function isComparable(definition) {
   const comparesByText = definition.kind === 'function' || isShared(definition);
-  return definition.used && comparesByText && !isLargeEnoughForDuplicatesAnalyzer(definition);
+  return (
+    definition.used &&
+    definition.tokens.length > 0 &&
+    comparesByText &&
+    !isLargeEnoughForDuplicatesAnalyzer(definition)
+  );
 }
 
 function fixFor(exported, otherCopies) {
@@ -32,22 +37,24 @@ function fixFor(exported, otherCopies) {
     .filter(({ definition }) => definition.exported)
     .map(({ path: other }) => other)
     .toSorted();
-  if (exported) return FIX.exported;
+  if (exported) {
+    return FIX.exported;
+  }
   return exportedOther === undefined ? FIX.private : `Import it from ${exportedOther} instead.`;
 }
 
 function copyFinding({ copy, copies, analyzerName }) {
-  const { name, kind, line, exported } = copy.definition;
+  const { name, qualifier = name, kind, line, exported } = copy.definition;
   const otherCopies = copies.filter(({ path: other }) => other !== copy.path);
   const others = otherCopies.map(({ path: p }) => p).toSorted();
   return reuseFinding(analyzerName, {
     key: 'duplicateDefinition',
     path: copy.path,
-    identity: `duplicate:${name}`,
+    identity: `duplicate:${qualifier}`,
     symbol: name,
     line,
     values: {
-      name,
+      name: qualifier,
       same: SAME[kind],
       others: listPaths(others),
       fix: fixFor(exported, otherCopies),

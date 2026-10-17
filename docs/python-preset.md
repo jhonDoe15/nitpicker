@@ -113,7 +113,8 @@ Config keys with this preset: `base`, `disable` (the analyzer names are `python`
 `thresholds` (`crapLimit`, enforced from slice 3, and the file limits `fileLines`, `testFileLines`,
 `lineLength` and `folderFiles`), `exclude` (findings under the globs are dropped) and
 `legacyInventory` (same format and `baseline-expansion` rule as for Java), and the `python` object
-below. `layout` describes TypeScript source roots and stays a config error with this preset. The
+below. `layout` and `testConsole` stay a config error with this preset until it runs the rules
+that read them (`shared-used-by-one-feature`, `test-console-output`). The
 top-level `exceptions` is accepted only for the file limits shared by every language
 (`file-lines-limit`, `line-length-limit`, `folder-files-limit`); the Python equivalent of
 `exceptions` for every other rule is `python.exceptions`. `python` is an error with any other preset.

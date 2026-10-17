@@ -1,5 +1,11 @@
 import { describe, expect, it } from 'vitest';
-import { exception, fixtureFindings, rows } from '../facts/test-support/fact-fixtures.mjs';
+import { exceptionHint } from '../exceptions.mjs';
+import {
+  exception,
+  findingsOf,
+  fixtureFindings,
+  rows,
+} from '../facts/test-support/fact-fixtures.mjs';
 import { descriptionLines, docCommentProblem } from './doc-comments.mjs';
 
 const RULE = 'doc-comment-content';
@@ -16,7 +22,9 @@ describe('doc-comment-content over facts', () => {
   it('says how to fix it and where the finding is', () => {
     const [finding] = fixtureFindings('doc-comments', [RULE]);
 
-    expect(finding.message).toContain('This doc comment only restates parse_rows.');
+    expect(finding.message).toBe(
+      `This doc comment only restates parse_rows. Delete it, or say what the name cannot: a unit, a limit, an edge case or why. ${exceptionHint(RULE, 'app/legacy.py')}`,
+    );
     expect(finding.location).toEqual({ line: 3 });
   });
 
@@ -26,6 +34,29 @@ describe('doc-comment-content over facts', () => {
     expect(rows(fixtureFindings('doc-comments', [RULE], { policy }))).toEqual([
       [RULE, 'app/legacy.py', 'doc-comment:parse_rows:restating'],
     ]);
+  });
+});
+
+describe('doc-comment-content identity', () => {
+  it('keeps two same-named comments in one file apart by qualifier', () => {
+    const comment = { file: 'app/Money.java', name: 'of', lines: ['Of.'] };
+    const docComments = [
+      { ...comment, line: 3, qualifier: 'Money.of(int)' },
+      { ...comment, line: 9, qualifier: 'Money.of(long)' },
+    ];
+
+    expect(rows(findingsOf({ docComments }, [RULE]))).toEqual([
+      [RULE, 'app/Money.java', 'doc-comment:Money.of(int):restating'],
+      [RULE, 'app/Money.java', 'doc-comment:Money.of(long):restating'],
+    ]);
+  });
+
+  it('reads an inline tag in linear time', () => {
+    const lines = [`${'{@a'.repeat(50_000)} x`];
+    const started = performance.now();
+
+    expect(docCommentProblem({ name: 'x', lines })).toEqual({ kind: 'restating', name: 'x' });
+    expect(performance.now() - started).toBeLessThan(1000);
   });
 });
 

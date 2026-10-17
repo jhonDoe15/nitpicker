@@ -33,6 +33,7 @@
       "role": "test"
     }
   ],
+  "packages": [],
   "definitions": [
     {
       "file": "app/orders/pricing.py",
@@ -236,8 +237,7 @@
         {
           "name": "round_total"
         }
-      ],
-      "role": "production"
+      ]
     },
     {
       "from": "app/billing/invoice.py",
@@ -249,8 +249,7 @@
         {
           "name": "round_total"
         }
-      ],
-      "role": "production"
+      ]
     },
     {
       "from": "app/report.py",
@@ -259,8 +258,7 @@
         {
           "name": "format"
         }
-      ],
-      "role": "production"
+      ]
     },
     {
       "from": "app/report.py",
@@ -270,8 +268,7 @@
           "name": "format",
           "alias": "billing_format"
         }
-      ],
-      "role": "production"
+      ]
     }
   ]
 }

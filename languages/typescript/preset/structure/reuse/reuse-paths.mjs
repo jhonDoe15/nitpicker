@@ -1,10 +1,10 @@
 import { existsSync, realpathSync } from 'node:fs';
 import path from 'node:path';
-import { globToRegExp } from '../../../../../shared/glob.mjs';
+import { globMatcher } from '../../../../../shared/glob.mjs';
 import { storyGlobs } from '../../eslint-config/scope-support.mjs';
 
 const NON_PRODUCTION_FOLDERS = new Set(['__mocks__', '__fixtures__', 'fixtures', 'stories']);
-const STORY_FILES = storyGlobs.map(globToRegExp);
+const STORY_FILES = storyGlobs.map(globMatcher);
 
 export function isNonProductionFolder(file) {
   return file.split('/').some((segment) => NON_PRODUCTION_FOLDERS.has(segment));

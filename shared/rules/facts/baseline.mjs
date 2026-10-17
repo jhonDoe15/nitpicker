@@ -1,4 +1,5 @@
 import { readFileSync } from 'node:fs';
+import { groupBy } from './fact-graph.mjs';
 
 export function readMovesFile(movesFile) {
   return movesFile === undefined ? new Map() : new Map(JSON.parse(readFileSync(movesFile, 'utf8')));
@@ -12,11 +13,13 @@ export function baselinePathsOf({ snapshot, baselineMovesFile }) {
 }
 
 export function baselineFromFacts(baseFacts, baselinePaths = new Map()) {
-  const byFile = new Map();
-  for (const definition of baseFacts.definitions ?? []) {
-    const text = definition.text ?? definition.tokens.join(' ');
-    byFile.set(definition.file, [...(byFile.get(definition.file) ?? []), { ...definition, text }]);
-  }
+  const byFile = groupBy(
+    (baseFacts.definitions ?? []).map((definition) => ({
+      ...definition,
+      text: definition.text ?? definition.tokens.join(' '),
+    })),
+    ({ file }) => file,
+  );
   return (file) => ({
     unchanged: false,
     definitions: byFile.get(baselinePaths.get(file) ?? file) ?? [],

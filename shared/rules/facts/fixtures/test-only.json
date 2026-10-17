@@ -126,14 +126,12 @@
         {
           "name": "compute"
         }
-      ],
-      "role": "production"
+      ]
     },
     {
       "from": "lib/main.py",
       "to": "lib/__init__.py",
-      "names": [],
-      "role": "production"
+      "names": []
     },
     {
       "from": "lib/main.py",
@@ -142,8 +140,7 @@
         {
           "name": "Point"
         }
-      ],
-      "role": "production"
+      ]
     },
     {
       "from": "lib/__init__.py",
@@ -153,8 +150,7 @@
           "name": "make"
         }
       ],
-      "reexport": true,
-      "role": "production"
+      "reexport": true
     },
     {
       "from": "tests/test_core.py",
@@ -166,8 +162,7 @@
         {
           "name": "compute"
         }
-      ],
-      "role": "test"
+      ]
     },
     {
       "from": "tests/test_core.py",
@@ -176,8 +171,7 @@
         {
           "name": "make"
         }
-      ],
-      "role": "test"
+      ]
     },
     {
       "from": "tests/test_core.py",
@@ -186,8 +180,7 @@
         {
           "name": "fake_clock"
         }
-      ],
-      "role": "test"
+      ]
     },
     {
       "from": "tests/test_core.py",
@@ -196,8 +189,7 @@
         {
           "name": "Shape"
         }
-      ],
-      "role": "test"
+      ]
     },
     {
       "from": "tests/test_core.py",
@@ -206,8 +198,7 @@
         {
           "name": "*"
         }
-      ],
-      "role": "test"
+      ]
     },
     {
       "from": "tests/test_core.py",
@@ -216,8 +207,7 @@
         {
           "name": "fmt"
         }
-      ],
-      "role": "test"
+      ]
     },
     {
       "from": "tests/test_core.py",
@@ -226,8 +216,7 @@
         {
           "name": "client"
         }
-      ],
-      "role": "test"
+      ]
     }
   ]
 }

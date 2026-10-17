@@ -13,7 +13,7 @@ const SUFFIXES = [
 ];
 const MIN_STEM_LENGTH = 3;
 const CODE_FENCE = /^(?:```|~~~)/u;
-const INLINE_TAG = /\{@\w+\s*([^}]*)\}/gu;
+const INLINE_TAG = /\{@\w+(?!\w)\s*((?:[^\s}][^}]*)?)\}/gu;
 
 const MAX_DESCRIPTION_LINES = 5;
 
@@ -45,15 +45,26 @@ export function descriptionLines(text, { blockTag, marker = /^/u }) {
   let insideFence = false;
   for (const raw of text.split('\n')) {
     const line = raw.replace(marker, '').trim();
-    if (CODE_FENCE.test(line)) insideFence = !insideFence;
-    if (!insideFence && blockTag.test(line)) break;
-    if (line !== '') description.push(line);
+    if (CODE_FENCE.test(line)) {
+      insideFence = !insideFence;
+    }
+    if (!insideFence && blockTag.test(line)) {
+      break;
+    }
+    if (line !== '') {
+      description.push(line);
+    }
   }
   return description;
 }
 
+function withoutInlineTags(text) {
+  const end = text.lastIndexOf('}') + 1;
+  return text.slice(0, end).replace(INLINE_TAG, ' $1 ') + text.slice(end);
+}
+
 function restatesName(lines, name) {
-  const description = wordsOf(lines.join(' ').replace(INLINE_TAG, ' $1 '));
+  const description = wordsOf(withoutInlineTags(lines.join(' ')));
   const nameStems = new Set(wordsOf(name).flatMap(stemVariants));
   return (
     description.length > 0 &&
@@ -79,7 +90,7 @@ function findingOf(comment, problem, analyzerName) {
     tool: analyzerName,
     rule,
     path: comment.file,
-    identity: `doc-comment:${comment.name}:${problem.kind}`,
+    identity: `doc-comment:${comment.qualifier ?? comment.name}:${problem.kind}`,
     message: renderMessage(restating ? MESSAGES.restatingDocComment : MESSAGES.longDocComment, {
       ...problem,
       exception: exceptionText(rule, comment.file),

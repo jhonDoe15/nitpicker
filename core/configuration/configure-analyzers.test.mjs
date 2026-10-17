@@ -3,7 +3,6 @@ import { configuredAnalyzers } from '../../languages/typescript/preset/diff/conf
 import { resolveHeadPolicy } from '../../languages/typescript/preset/head-policy.mjs';
 import { createPythonAnalyzers } from '../../languages/python/adapters/python-analyzer.mjs';
 import { createJavaAnalyzer } from '../../languages/java/adapters/java-analyzer.mjs';
-import { parseRunnerArguments } from '../../languages/java/adapters/java-runner.mjs';
 import { configureAnalyzers } from './configure-analyzers.mjs';
 
 const packageAnalyzers = configuredAnalyzers();
@@ -107,30 +106,32 @@ describe('the baseline moves file', () => {
     baselineRoot: '/base',
     baselineMovesFile: '/tmp/moves.json',
   };
-  const movesArgument = (analyzer) => {
-    const { args } = analyzer.createInvocation(context);
-    return args[args.indexOf('--baseline-moves-file') + 1];
-  };
+
+  function configuredArguments(preset, analyzers, name) {
+    const config = { preset };
+    const configured = configureAnalyzers(analyzers, config, resolveHeadPolicy(config));
+    return configured.find((analyzer) => analyzer.name === name).createInvocation(context).args;
+  }
+
+  it('reaches the TypeScript structure analyzer, whose sibling-copy-edit reads the base', () => {
+    const args = configuredArguments('typescript', packageAnalyzers, 'structure');
+
+    expect(args.slice(-4)).toEqual([
+      '--baseline-root',
+      '/base',
+      '--baseline-moves-file',
+      '/tmp/moves.json',
+    ]);
+  });
 
   it.each([
-    ['typescript', () => packageAnalyzers, 'structure'],
     ['python', () => createPythonAnalyzers(), 'python'],
     ['java', () => [createJavaAnalyzer()], 'java'],
     ['kotlin', () => [createJavaAnalyzer({ kotlin: true })], 'kotlin'],
-  ])('reaches the %s analyzer', (preset, analyzers, name) => {
-    const config = { preset };
-    const configured = configureAnalyzers(analyzers(), config, resolveHeadPolicy(config));
-
-    expect(movesArgument(configured.find((analyzer) => analyzer.name === name))).toBe(
-      '/tmp/moves.json',
-    );
-  });
-
-  it('is read by the Java and Python runner', () => {
-    const config = { preset: 'java' };
-    const [java] = configureAnalyzers([createJavaAnalyzer()], config, resolveHeadPolicy(config));
-    const { args } = java.createInvocation({ ...context, baselineRoot: undefined });
-
-    expect(parseRunnerArguments(args.slice(1)).policy.baselineMovesFile).toBe('/tmp/moves.json');
-  });
+  ])(
+    'is not passed to the %s runner, which runs no rule that reads it yet',
+    (preset, analyzers, name) => {
+      expect(configuredArguments(preset, analyzers(), name)).not.toContain('--baseline-moves-file');
+    },
+  );
 });

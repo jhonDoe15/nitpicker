@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { RULES } from '../../policy.mjs';
+import { LANGUAGES, RULES } from '../../policy.mjs';
+import { exceptionHint } from '../exceptions.mjs';
 import { sharedFactFindings } from './evaluate.mjs';
 import {
   FACT_RULE_LANGUAGES,
@@ -7,7 +8,12 @@ import {
   registeredFactRules,
   sharedFactExceptionRules,
 } from './registry.mjs';
-import { exception, fixtureFindings, rows } from './test-support/fact-fixtures.mjs';
+import {
+  exception,
+  fixtureFindings,
+  rows,
+  withLanguageRegistered,
+} from './test-support/fact-fixtures.mjs';
 
 const CONSOLE = 'test-console-output';
 
@@ -21,22 +27,23 @@ describe('the shared fact rules', () => {
     );
   });
 
-  it('states each registered language in the checks table', () => {
+  it('is the one source of the checks table columns for a registered rule', () => {
     for (const [rule, languages] of Object.entries(FACT_RULE_LANGUAGES)) {
-      const { enforcedBy } = RULES.find(({ id }) => id === rule);
-      for (const language of languages) expect(enforcedBy[language], rule).toBeTruthy();
+      expect(Object.keys(languages).toSorted(), rule).toEqual(LANGUAGES.toSorted());
+      expect(RULES.find(({ id }) => id === rule).enforcedBy, rule).toEqual(languages);
     }
   });
 
   it('runs every rule registered for a language', () => {
     expect(registeredFactRules('typescript')).toEqual(Object.keys(FACT_RULE_LANGUAGES));
+    expect(registeredFactRules('javascript')).toEqual(Object.keys(FACT_RULE_LANGUAGES));
     expect(registeredFactRules('cobol')).toEqual([]);
   });
 
   it('fails when a registered rule has no facts to read', () => {
     expect(() =>
       sharedFactFindings({ console: [] }, { language: 'typescript', analyzerName: 'facts' }),
-    ).toThrow(/duplicate-definition needs "definitions"/u);
+    ).toThrow(/duplicate-definition needs "modules"; duplicate-definition needs "packages"/u);
   });
 
   it('fails for a rule the language does not register', () => {
@@ -48,19 +55,55 @@ describe('the shared fact rules', () => {
     ).toThrow(/test-console-output is not registered for cobol/u);
   });
 
-  it('lets every preset lift a rule once a language besides TypeScript registers it', () => {
-    expect(sharedFactExceptionRules()).toEqual([]);
-    FACT_RULE_LANGUAGES[CONSOLE].push('java');
-    try {
-      expect(sharedFactExceptionRules()).toEqual([CONSOLE]);
-      expect(registeredFactRules('java')).toEqual([CONSOLE]);
-    } finally {
-      FACT_RULE_LANGUAGES[CONSOLE].pop();
-    }
+  it.each([['python'], ['java'], ['kotlin'], ['typscript']])(
+    'fails for %s, which registers no rule yet, instead of finding nothing',
+    (language) => {
+      expect(() => sharedFactFindings({}, { language, analyzerName: 'facts' })).toThrow(
+        `No fact rule is registered for language "${language}" in FACT_RULE_LANGUAGES (shared/rules/facts/registry.mjs)`,
+      );
+    },
+  );
+
+  it('fails for an empty rule list instead of finding nothing', () => {
+    expect(() =>
+      sharedFactFindings({ console: [] }, { language: 'typescript', analyzerName: 'f', rules: [] }),
+    ).toThrow('"rules" must name at least one registered fact rule, or be left out');
   });
 
-  it('runs nothing for a language that registers nothing', () => {
-    expect(sharedFactFindings({}, { language: 'cobol', analyzerName: 'facts' })).toEqual([]);
+  it.each([
+    ['x', 'policy must be an object'],
+    [{ exceptions: 'x' }, 'policy.exceptions must be an array of { rule, paths } entries'],
+    [
+      { exceptions: [{ rule: 'test-console-output' }] },
+      'policy.exceptions must be an array of { rule, paths } entries',
+    ],
+    [
+      { testConsole: { allow: [{ contains: 5 }] } },
+      'policy.testConsole.allow must be an array of { contains, paths? } entries',
+    ],
+    [
+      { layout: { sharedRoots: 'x' } },
+      'policy.layout.sharedRoots must be an array of folder globs',
+    ],
+    [
+      { layout: { featureRoots: [1] } },
+      'policy.layout.featureRoots must be an array of folder globs',
+    ],
+  ])('names the bad policy field in %j', (policy, message) => {
+    expect(() =>
+      sharedFactFindings(
+        { console: [] },
+        { language: 'typescript', analyzerName: 'facts', rules: [CONSOLE], policy },
+      ),
+    ).toThrow(new TypeError(`${message}: pass the head policy (readHeadPolicyFile())`));
+  });
+
+  it('lets every preset lift a rule once a language besides TypeScript registers it', () => {
+    expect(sharedFactExceptionRules()).toEqual([]);
+    withLanguageRegistered(CONSOLE, 'java', () => {
+      expect(sharedFactExceptionRules()).toEqual([CONSOLE]);
+      expect(registeredFactRules('java')).toEqual([CONSOLE]);
+    });
   });
 });
 
@@ -76,8 +119,8 @@ describe('test-console-output over facts', () => {
   it('normalizes numbers and names the test', () => {
     const [finding] = fixtureFindings('console', [CONSOLE]);
 
-    expect(finding.message).toContain(
-      '"WARN c.a.Cart - stock for item <n> is negative" (test "addsItem")',
+    expect(finding.message).toBe(
+      `Tests print new console output: "WARN c.a.Cart - stock for item <n> is negative" (test "addsItem"). Fix the cause (for example a timer that outlives the test), or allow a third-party message in "testConsole.allow" of nitpicker.config.json. ${exceptionHint(CONSOLE, 'src/test/java/com/acme/CartTest.java')}`,
     );
     expect(finding.tokens).toEqual([
       'WARN',

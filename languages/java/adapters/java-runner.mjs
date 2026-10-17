@@ -46,7 +46,7 @@ export function analyzeJavaSnapshot(
 
 const USAGE =
   'Usage: java-runner.mjs --project-root <directory> [--snapshot base|head] [--policy-root <directory>]' +
-  ' [--baseline-root <directory>] [--baseline-moves-file <file>] [--crap-limit <number>] [--exclude <glob>]... [--exception <rule>:<glob>]... [--legacy-inventory <path>]' +
+  ' [--baseline-root <directory>] [--crap-limit <number>] [--exclude <glob>]... [--exception <rule>:<glob>]... [--legacy-inventory <path>]' +
   ' [--preset java|kotlin] [--kotlin-formatter ktlint|ktfmt|none]' +
   ' [--kotlin-detekt-config <path>] [--file-limits <json>] [--test-seconds <json>] [--pmd-precedence <layers>] [--checkstyle-precedence <layers>]';
 
@@ -113,7 +113,6 @@ export function parseRunnerArguments(arguments_) {
       legacyInventory: values.get('--legacy-inventory'),
       policyRoot: realpathOptional(values.get('--policy-root')),
       baselineRoot: realpathOptional(values.get('--baseline-root')),
-      baselineMovesFile: values.get('--baseline-moves-file'),
       snapshot: values.get('--snapshot') ?? 'head',
       preset,
       kotlinFormatter,
@@ -141,7 +140,6 @@ const RUNNER_OPTIONS = [
   '--snapshot',
   '--policy-root',
   '--baseline-root',
-  '--baseline-moves-file',
   '--crap-limit',
   '--exclude',
   '--exception',

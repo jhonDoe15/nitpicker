@@ -2,7 +2,7 @@ import { mkdirSync, mkdtempSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterAll, describe, expect, it } from 'vitest';
-import { globToRegExp, resolveLayout } from '../layout.mjs';
+import { globMatcher, resolveLayout } from '../layout.mjs';
 import {
   isCustomLayout,
   layoutJscpdConfig,
@@ -87,7 +87,7 @@ describe('resolveLayout', () => {
     expect(layout.graphIncludeOnly).toBe('^(src|test|tests|__tests__|e2e)(?:/|$)');
   });
 });
-describe('globToRegExp', () => {
+describe('globMatcher', () => {
   it.each([
     ['lib/legacy/**', 'lib/legacy/a/b.ts', true],
     ['lib/legacy/**', 'lib/legacy', false],
@@ -103,7 +103,7 @@ describe('globToRegExp', () => {
     ['a?.ts', 'ab.ts', true],
     ['a.b/**', 'aXb/c.ts', false],
   ])('%s against %s is %s and agrees with path.matchesGlob', (glob, value, expected) => {
-    expect(globToRegExp(glob).test(value)).toBe(expected);
+    expect(globMatcher(glob).test(value)).toBe(expected);
     expect(path.posix.matchesGlob(value, glob)).toBe(expected);
   });
 });

@@ -439,8 +439,10 @@ for a file takes that file out of the rule, so a pair of copies that must both s
   rename detection: at least 50% of the content kept, within git's rename limit of 20000 files) is
   read at its old path, so a moved copy counts as edited or untouched like any other; a rename that
   detection misses leaves the copy new. The token comparison stops as soon as 80% can no longer be
-  reached, so large functions with scattered small edits are compared; a pair is skipped only when
-  what lies between its shared start and shared end is more than 20,000 tokens in the two together.
+  reached, so large functions with scattered small edits are compared. A pair is skipped when what
+  lies between its shared start and shared end is more than 20,000 tokens in the two together, or
+  when it is large enough to be costly and its comparison passes a per-pair work cap or the run's work
+  budget; a pair of up to about 2,000 tokens a side is always compared in full.
   Only the edited copy is reported, naming the untouched ones, so copies that are all edited, in the
   same way or differently, report nothing. Only the head snapshot reports it, as it reads the base
   checkout; the identity is the name and file. It covers the same files as `duplicate-definition`,
@@ -450,7 +452,9 @@ for a file takes that file out of the rule, so a pair of copies that must both s
   module that aliases every colliding import (`import { handler as getUser }`, `import type`,
   `export { x as y }`) is not reported. Both defining modules are reported. Re-exports
   (`export { x } from`, `export *`, an imported name exported again) resolve to the module that
-  defines the name, so a feature's `index.ts` is not a second definition. Imports resolve through relative paths,
+  defines the name, so a feature's `index.ts` is not a second definition. That includes a default
+  export re-exported under a name (`export { default as Button } from './button'`): two such
+  `Button`s a module imports are two different exports and are reported. Imports resolve through relative paths,
   `tsconfig.json` `paths` and `baseUrl`, and a workspace package linked into `node_modules` resolves
   to its source; installed packages are skipped. Rename one, or alias both imports.
 

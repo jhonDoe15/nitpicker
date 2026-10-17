@@ -1,5 +1,6 @@
 import { readFileSync } from 'node:fs';
 import { sharedFactFindings } from '../evaluate.mjs';
+import { FACT_RULE_LANGUAGES } from '../registry.mjs';
 
 export function factFixture(name) {
   return JSON.parse(readFileSync(new URL(`../fixtures/${name}.json`, import.meta.url), 'utf8'));
@@ -24,4 +25,14 @@ export function rows(findings) {
 
 export function exception(rule, path) {
   return { rule, paths: [path], reason: 'test' };
+}
+
+export function withLanguageRegistered(rule, language, run) {
+  const before = FACT_RULE_LANGUAGES[rule][language];
+  FACT_RULE_LANGUAGES[rule][language] = true;
+  try {
+    return run();
+  } finally {
+    FACT_RULE_LANGUAGES[rule][language] = before;
+  }
 }

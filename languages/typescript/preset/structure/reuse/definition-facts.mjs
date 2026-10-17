@@ -100,10 +100,15 @@ function neutralDefinition(definition, fact, resolve) {
 }
 
 export function neutralReuseFacts(facts, resolve) {
+  const files = new Set(facts.map(({ path: file }) => file));
   return {
+    modules: facts.map(({ path: file }) => ({ file, role: 'production' })),
+    packages: [],
     definitions: facts.flatMap((fact) =>
       fact.definitions.map((definition) => neutralDefinition(definition, fact, resolve)),
     ),
-    imports: facts.flatMap((fact) => neutralImports(fact, resolve)),
+    imports: facts
+      .flatMap((fact) => neutralImports(fact, resolve))
+      .filter(({ to }) => files.has(to)),
   };
 }

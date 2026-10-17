@@ -1,13 +1,13 @@
 import { existsSync, readdirSync } from 'node:fs';
 import path from 'node:path';
-import { escapeRegExp, globToRegExp, globToRegExpSource } from '../../../shared/glob.mjs';
+import { escapeRegExp, globMatcher, globToRegExpSource } from '../../../shared/glob.mjs';
 import {
   isJavascriptPolicy,
   JAVASCRIPT_EXTENSIONS,
   TYPESCRIPT_EXTENSIONS_IN_JAVASCRIPT_PROJECT,
 } from '../../javascript/preset/javascript-preset.mjs';
 
-export { globToRegExp };
+export { globMatcher };
 
 const defaultSourceRoots = ['src'];
 export const END_TO_END_ROOT = 'e2e';
@@ -94,7 +94,7 @@ function sourceUnderRootClassifier({ sourceRoot, isSourceFile, isExcluded }) {
 }
 
 function createClassifiers({ sourceRoots, testRoots, exclude, patterns }) {
-  const excludeMatchers = exclude.map(globToRegExp);
+  const excludeMatchers = exclude.map(globMatcher);
   function isExcluded(file) {
     const normalized = toPosix(file);
     return excludeMatchers.some((matcher) => matcher.test(normalized));

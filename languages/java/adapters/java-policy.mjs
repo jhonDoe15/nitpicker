@@ -1,7 +1,7 @@
 import { createHash } from 'node:crypto';
 import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import path from 'node:path';
-import { globToRegExp } from '../../../shared/glob.mjs';
+import { globMatcher } from '../../../shared/glob.mjs';
 import {
   applyInventoryToFindings,
   readOptionalInventory,
@@ -126,9 +126,6 @@ export function configureJavaAnalyzer(analyzer, options) {
             ? []
             : ['--policy-root', context.projectPolicyRoot]),
           ...(context.baselineRoot === undefined ? [] : ['--baseline-root', context.baselineRoot]),
-          ...(context.baselineMovesFile === undefined
-            ? []
-            : ['--baseline-moves-file', context.baselineMovesFile]),
         ],
       };
     },
@@ -196,8 +193,8 @@ export function applyJavaPolicy(
   } = {},
   resolveOverlaps = (reported) => reported,
 ) {
-  const excluders = exclude.map((glob) => globToRegExp(glob));
-  const lifted = exceptions.map(({ rule, glob }) => ({ rule, matcher: globToRegExp(glob) }));
+  const excluders = exclude.map((glob) => globMatcher(glob));
+  const lifted = exceptions.map(({ rule, glob }) => ({ rule, matcher: globMatcher(glob) }));
   const kept = resolveOverlaps(
     findings.filter(
       (finding) =>

@@ -1,3 +1,4 @@
+import { groupBy, reexportSteps } from '../facts/fact-graph.mjs';
 import { packageLookup, roleLookup } from '../facts/reuse-modules.mjs';
 import { NEUTRAL_TEST_ONLY_MESSAGES, testOnlyFindings } from './test-only-judgement.mjs';
 
@@ -19,24 +20,17 @@ function moduleExports(definitions) {
   return byFile;
 }
 
-function reexportsByFile(imports) {
-  const byFile = new Map();
-  for (const record of imports.filter(({ reexport }) => reexport)) {
-    byFile.set(record.from, [...(byFile.get(record.from) ?? []), record]);
+function recordStep(graph, step, role) {
+  addRole(graph.loaded, step.file, role);
+  const local = graph.exports.get(step.file)?.get(step.name);
+  if (step.name === '*') {
+    addRole(graph.starred, step.file, role);
   }
-  return byFile;
-}
-
-function nextSteps(reexports, name) {
-  return reexports.flatMap(({ to, names }) =>
-    names
-      .filter((entry) =>
-        name === '*' || (entry.name === '*' && entry.alias === undefined)
-          ? true
-          : (entry.alias ?? entry.name) === name,
-      )
-      .map((entry) => ({ file: to, name: name !== '*' && entry.name === '*' ? name : entry.name })),
-  );
+  if (local !== undefined) {
+    addRole(graph.named, `${step.file}\0${local}`, role);
+    return [];
+  }
+  return reexportSteps(graph.reexports.get(step.file) ?? [], step.name);
 }
 
 function recordUses(graph, start, role) {
@@ -46,12 +40,7 @@ function recordUses(graph, start, role) {
     const visit = `${step.file}\0${step.name}`;
     if (!seen.has(visit)) {
       seen.add(visit);
-      addRole(graph.loaded, step.file, role);
-      const local = graph.exports.get(step.file)?.get(step.name);
-      if (step.name === '*') addRole(graph.starred, step.file, role);
-      if (local !== undefined) addRole(graph.named, `${step.file}\0${local}`, role);
-      if (local === undefined)
-        pending.push(...nextSteps(graph.reexports.get(step.file) ?? [], step.name));
+      pending.push(...recordStep(graph, step, role));
     }
   }
 }
@@ -59,15 +48,19 @@ function recordUses(graph, start, role) {
 function usesOf({ definitions, imports }) {
   const graph = {
     exports: moduleExports(definitions),
-    reexports: reexportsByFile(imports),
+    reexports: groupBy(
+      imports.filter(({ reexport }) => reexport),
+      ({ from }) => from,
+    ),
     loaded: new Map(),
     starred: new Map(),
     named: new Map(),
   };
   for (const record of imports.filter(({ reexport }) => !reexport)) {
-    const role = record.role ?? 'production';
-    addRole(graph.loaded, record.to, role);
-    for (const { name } of record.names) recordUses(graph, { file: record.to, name }, role);
+    addRole(graph.loaded, record.to, record.role);
+    for (const { name } of record.names) {
+      recordUses(graph, { file: record.to, name }, record.role);
+    }
   }
   return graph;
 }
@@ -90,17 +83,9 @@ function definitionCandidates(file, definitions, graph) {
     }));
 }
 
-function definitionsByFile(definitions) {
-  const byFile = new Map();
-  for (const definition of definitions) {
-    byFile.set(definition.file, [...(byFile.get(definition.file) ?? []), definition]);
-  }
-  return byFile;
-}
-
 function testOnlyCandidates({ modules, definitions, imports }) {
   const graph = usesOf({ definitions, imports });
-  const byFile = definitionsByFile(definitions);
+  const byFile = groupBy(definitions, ({ file }) => file);
   const production = modules.filter(({ role }) => role !== 'test');
   return production.flatMap(({ file, entry }) => {
     if (entry !== true && isTestOnly(graph.loaded.get(file))) {
