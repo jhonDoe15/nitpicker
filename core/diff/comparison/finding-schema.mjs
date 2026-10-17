@@ -151,7 +151,18 @@ function parseRatchet(value, context) {
   if (typeof value.value !== 'number' || !Number.isFinite(value.value)) {
     throw new TypeError(`${context}.value must be a finite number`);
   }
-  const ratchet = { key: requiredString(value.key, `${context}.key`), value: value.value };
+  return {
+    key: requiredString(value.key, `${context}.key`),
+    value: value.value,
+    ...parseRatchetOptions(value, context),
+  };
+}
+
+function parseRatchetOptions(value, context) {
+  const ratchet = {};
+  if (value.folderFiles !== undefined) {
+    ratchet.folderFiles = positiveInteger(value.folderFiles, `${context}.folderFiles`);
+  }
   for (const name of RATCHET_TEXT_FIELDS) {
     if (value[name] !== undefined) {
       ratchet[name] = requiredString(value[name], `${context}.${name}`);

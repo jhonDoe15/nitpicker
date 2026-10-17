@@ -22,6 +22,7 @@ import { detectJavaBuild, INIT_SCRIPT } from '../builds/java-build.mjs';
 import { moduleReport, readModuleFindings } from '../builds/java-modules.mjs';
 import { kotlinGradleArguments } from './kotlin/kotlin-tools.mjs';
 import { isJavaTouchedRule } from './touched-rules.mjs';
+import { javaStyleProperties } from './style/java-style.mjs';
 
 const GRADLE_TIMEOUT_MS = 15 * 60 * 1000;
 const MAX_OUTPUT_BYTES = 50 * 1024 * 1024;
@@ -87,6 +88,7 @@ function runJavaPreset(
       ...lintBaselineProperties(policy),
       ...kotlinProperties(projectRoot, policy),
       ...toolConfigProperties(projectRoot, policy),
+      ...javaStyleProperties(policy.javaStyle),
       '-I',
       initScript,
       'nitpickerJava',
@@ -125,6 +127,8 @@ function readOptions(policy = {}) {
     exclude: policy.exclude,
     exceptions: policy.exceptions,
     testSeconds: policy.testSeconds,
+    javaStyle: policy.javaStyle,
+    baselineRoot: policy.baselineRoot,
     baseline: { snapshot: policy.snapshot, baselineRoot: policy.baselineRoot },
   };
 }

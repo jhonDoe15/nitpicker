@@ -15,16 +15,30 @@ export const THRESHOLD_KEYS = [
   'testFileLines',
   'lineLength',
   'folderFiles',
+  'folderDepth',
+  'classMethods',
+  'classFields',
+  'inheritanceDepth',
   'unitTestSeconds',
   'integrationTestSeconds',
 ];
 const TEST_TIME_KEYS = ['unitTestSeconds', 'integrationTestSeconds'];
 const TEST_TIME_PRESETS = new Set(['java', 'kotlin']);
+const THRESHOLD_PRESETS = {
+  folderDepth: ['typescript', 'javascript', 'java', 'kotlin'],
+  classMethods: ['java', 'kotlin'],
+  classFields: ['java', 'kotlin'],
+  inheritanceDepth: ['java', 'kotlin'],
+};
 const WHOLE_NUMBER_THRESHOLD_KEYS = new Set([
   'fileLines',
   'testFileLines',
   'lineLength',
   'folderFiles',
+  'folderDepth',
+  'classMethods',
+  'classFields',
+  'inheritanceDepth',
 ]);
 
 const EXCEPTION_KEYS = ['rule', 'paths', 'reason'];
@@ -49,7 +63,7 @@ export function validateStringArray(value, name) {
   }
 }
 
-export function validateThresholds(thresholds, preset) {
+export function validateThresholds(thresholds, preset = 'typescript') {
   if (!isPlainObject(thresholds)) {
     throw configError('"thresholds" must be an object');
   }
@@ -63,6 +77,11 @@ export function validateThresholds(thresholds, preset) {
     if (!THRESHOLD_KEYS.includes(key)) {
       throw configError(
         `unknown threshold "${key}". Allowed thresholds: ${THRESHOLD_KEYS.join(', ')}`,
+      );
+    }
+    if (THRESHOLD_PRESETS[key] !== undefined && !THRESHOLD_PRESETS[key].includes(preset)) {
+      throw configError(
+        `"thresholds.${key}" is only supported with "preset": ${THRESHOLD_PRESETS[key].map((name) => `"${name}"`).join(', ')}`,
       );
     }
     if (typeof value !== 'number' || !Number.isFinite(value) || value <= 0) {

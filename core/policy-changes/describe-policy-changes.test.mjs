@@ -110,6 +110,27 @@ describe('describePolicyChanges', () => {
     ]);
   });
 
+  it('counts a python entry point that hides more files, and lists a removed one', () => {
+    const python = (entryPoints) => ({
+      preset: 'python',
+      python: { sourceRoots: ['src'], entryPoints },
+    });
+    const files = ['src/shop/jobs.py', 'src/shop/billing.py'];
+
+    expect(changes(python([]), python(['src/shop/jobs.py']), files)).toEqual({
+      loosened: ['python.entryPoints added: src/shop/jobs.py'],
+      changed: [],
+    });
+    expect(changes(python(['src/shop/jobs.py']), python([]), files)).toEqual({
+      loosened: [],
+      changed: ['python.entryPoints removed: src/shop/jobs.py'],
+    });
+    expect(changes(python(['src/shop/jobs.py']), python(['src/shop/jobs.py']), files)).toEqual({
+      loosened: [],
+      changed: [],
+    });
+  });
+
   it('counts a threshold raised above the base or the default, or dropped back to a looser default', () => {
     expect(
       loosened(
