@@ -1,4 +1,5 @@
 const MEASURES = ['lines', 'branches'];
+const LAMBDA_OWNER_SEGMENT = -2;
 
 function isInside(inner, outer) {
   return (
@@ -10,14 +11,15 @@ function isInside(inner, outer) {
 
 function ownName(fn) {
   const parts = fn.name.split('.');
-  return fn.lambda ? parts.at(-2) : parts.at(-1);
+  return fn.lambda ? parts.at(LAMBDA_OWNER_SEGMENT) : parts.at(-1);
 }
 
 export function ownRange(fn, candidates, siblings) {
   const inner = siblings.filter((other) => other !== fn && isInside(other, fn));
   const name = ownName(fn);
-  const held = (method) =>
-    inner.some((other) => method.line >= other.start && method.line <= other.end);
+  function held(method) {
+    return inner.some((other) => method.line >= other.start && method.line <= other.end);
+  }
   return candidates.filter(
     (method) =>
       method.line >= fn.start &&
