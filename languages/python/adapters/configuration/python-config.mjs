@@ -90,7 +90,7 @@ function validateRuleIds(exceptions) {
   for (const [index, { rule }] of exceptions.entries()) {
     if (PYTHON_TOP_LEVEL_EXCEPTION_RULES.includes(rule)) {
       throw configError(
-        `"python.exceptions[${String(index)}].rule" is "${rule}", a file limit shared by every preset: lift it in the top-level "exceptions" instead`,
+        `"python.exceptions[${String(index)}].rule" is "${rule}", a rule shared by every preset: lift it in the top-level "exceptions" instead`,
       );
     }
     const problem = ruleIdProblem(rule);
