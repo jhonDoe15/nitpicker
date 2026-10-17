@@ -115,7 +115,6 @@
     {
       "rule": "nitpicker/no-raised-test-timeout",
       "paths": [
-        "core/diff/tests/policy/base-red/ts-red-base.test.mjs",
         "languages/javascript/preset/clean-project/js-clean.test.mjs",
         "languages/typescript/preset/clean-projects/react-project.test.mjs",
         "languages/typescript/preset/clean-projects/strict-clean.test.mjs"

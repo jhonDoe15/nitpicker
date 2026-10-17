@@ -11,26 +11,30 @@ import {
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 
-const HERMETIC_GIT = { GIT_CONFIG_GLOBAL: '/dev/null', GIT_CONFIG_NOSYSTEM: '1' };
 const TSCONFIG =
   '{"compilerOptions":{"target":"ES2022","module":"ESNext","moduleResolution":"Bundler","strict":true,"lib":["ES2022"],"types":[]},"include":["src","test"]}\n';
 
 function run(command, args, cwd) {
-  const result = spawnSync(command, args, {
-    cwd,
-    encoding: 'utf8',
-    env: { ...process.env, ...HERMETIC_GIT },
-  });
+  const result = spawnSync(command, args, { cwd, encoding: 'utf8' });
   if (command === 'git' && result.status !== 0) {
     throw new Error(`git ${args.join(' ')} failed: ${result.stderr}`);
   }
   return { status: result.status, text: result.stdout + result.stderr };
 }
 
+function contained(base, name) {
+  const full = path.resolve(base, name);
+  if (!full.startsWith(base + path.sep)) {
+    throw new Error(`${name} is outside ${base}`);
+  }
+  return full;
+}
+
 function writeFiles(root, files) {
   for (const [file, content] of Object.entries(files)) {
-    mkdirSync(path.dirname(path.join(root, file)), { recursive: true });
-    writeFileSync(path.join(root, file), content);
+    const full = contained(root, file);
+    mkdirSync(path.dirname(full), { recursive: true });
+    writeFileSync(full, content);
   }
 }
 
@@ -46,7 +50,7 @@ function commitOnBranch({ root, name, files, from }) {
 }
 
 function readReport(outputRoot, name) {
-  return JSON.parse(readFileSync(path.join(outputRoot, name), 'utf8'));
+  return JSON.parse(readFileSync(contained(outputRoot, name), 'utf8'));
 }
 
 function enforceableFindings(outputRoot) {
@@ -56,7 +60,7 @@ function enforceableFindings(outputRoot) {
 }
 
 function runGate({ project, branch, options }) {
-  const { base, analyzers = ['coverage', 'crap'], extraArguments = [], environment = {} } = options;
+  const { base, analyzers = ['coverage', 'crap'], extraArguments = [] } = options;
   git(project.root, 'checkout', '-q', branch);
   const outputRoot = path.join(project.output, `${branch}-${base}-${extraArguments.length}`);
   const analyzerArguments = analyzers.flatMap((name) => ['--analyzer', name]);
@@ -66,7 +70,7 @@ function runGate({ project, branch, options }) {
       path.join(project.packageRoot, 'core/cli.mjs'),
       ...['--base', base, ...analyzerArguments, ...extraArguments, '--output', outputRoot],
     ],
-    { cwd: project.root, encoding: 'utf8', env: { ...process.env, ...environment } },
+    { cwd: project.root, encoding: 'utf8' },
   );
   return {
     exitCode: result.status,
