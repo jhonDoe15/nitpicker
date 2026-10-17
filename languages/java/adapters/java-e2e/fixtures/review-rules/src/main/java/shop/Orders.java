@@ -5,6 +5,7 @@ import static shop.Status.SHIPPED;
 
 import java.util.Collection;
 import java.util.EnumSet;
+import java.util.Iterator;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 
@@ -63,6 +64,10 @@ public final class Orders {
     return status == Status.NEW || status == Status.PAID // violation: ExhaustiveEnumPredicate
         ? "open"
         : "closed";
+  }
+
+  public static boolean startsOpen(Iterator<Status> statuses) {
+    return statuses.next() == Status.NEW || statuses.next() == Status.PAID;
   }
 
   public static boolean isEitherNew(Delivery first, Delivery second) {

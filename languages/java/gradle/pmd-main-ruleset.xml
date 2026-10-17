@@ -33,7 +33,11 @@
                [(* except $constants)[self::VariableAccess or self::FieldAccess[ThisExpression]
                   or self::MethodCall[ArgumentList/@Size = 0]
                     [*[1][self::ArgumentList or self::VariableAccess or self::ThisExpression
-                          or self::FieldAccess[ThisExpression]]]]])
+                          or self::FieldAccess[ThisExpression]]]
+                    [matches(@MethodName, '^(get|is)[A-Z]')
+                     or *[1][not(self::ArgumentList)][pmd-java:typeIs('java.lang.Record')]
+                     or (*[1][self::ArgumentList or self::ThisExpression]
+                         and @MethodName = ancestor::RecordDeclaration[1]/RecordComponentList/RecordComponent/VariableId/@Name)]]])
          and count(distinct-values(for $s in $subjects return
                if ($s[self::MethodCall])
                then string-join(($s/*[1][self::VariableAccess or self::FieldAccess]/@Name, $s/@MethodName), '.') || '()'
