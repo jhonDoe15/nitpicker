@@ -72,6 +72,12 @@ Before you change code other modules use or fix a bug, read
 - Follow neighbouring signatures (parameter order, naming) and reuse helpers that exist. Match the
   module format of the files around you (ESM `import`/`export`, or CommonJS where the project is).
 
+## Dependencies and files
+
+- The gate fails unlisted, unused and unresolved dependencies, production imports of a
+  `devDependency`, and committed secrets, binaries, build output and files over 1 MB; each message
+  names the fix. Don't add an `exceptions` entry to get past one: stop and ask.
+
 ## Types are JSDoc
 
 JSDoc holds types only, never prose. Allowed tags: `@param`, `@property` (`@prop`), `@typedef`,
