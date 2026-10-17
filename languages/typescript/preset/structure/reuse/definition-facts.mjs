@@ -18,7 +18,7 @@ function importUses(fact) {
       ],
     })),
     ...fact.dynamicImports.map((specifier) => ({ specifier, names: ['*'] })),
-    ...fact.exports.namespaces.map((specifier) => ({ specifier, names: ['*'] })),
+    ...fact.exports.namespaces.map(({ specifier }) => ({ specifier, names: ['*'] })),
     ...fact.exports.reexports.map(({ specifier, star, names }) => ({
       specifier,
       names: star ? ['*'] : names.map(({ imported }) => imported),
