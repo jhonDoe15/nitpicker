@@ -130,3 +130,7 @@ export function compilerSettings(project, plugins = pluginsOf(project)) {
     },
   };
 }
+
+export function guardCompiler({ release, source, target, encoding, args }) {
+  return { release, source, target, encoding, args };
+}

@@ -1,8 +1,9 @@
 import { readFileSync } from 'node:fs';
-import { classFiles, classReader, readConstantPool } from './class-file.mjs';
+import { CLASS_HEADER_BYTES, classFiles, classReader, readConstantPool } from './class-file.mjs';
 
 const DESCRIPTOR_NAME = /L([\w$]+(?:\/[\w$]+)*);/gu;
 const NO_SUPERCLASS = 0;
+const MEMBER_HEADER_BYTES = 6;
 
 function skipAttribute(reader) {
   reader.skip(2);
@@ -11,7 +12,7 @@ function skipAttribute(reader) {
 }
 
 function skipMember(reader) {
-  reader.skip(6);
+  reader.skip(MEMBER_HEADER_BYTES);
   Array.from({ length: reader.u2() }).reduce(skipAttribute, reader);
   return reader;
 }
@@ -52,7 +53,7 @@ function referencesOf(pool) {
 
 export function classSummary(buffer) {
   const reader = classReader(buffer);
-  reader.skip(8);
+  reader.skip(CLASS_HEADER_BYTES);
   const pool = readConstantPool(reader);
   reader.skip(2);
   const name = pool.className(reader.u2());

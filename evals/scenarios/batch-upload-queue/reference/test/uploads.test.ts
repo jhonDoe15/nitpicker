@@ -1,12 +1,12 @@
 import { describe, expect, it } from 'vitest';
 import { createBatchUploader } from '../src/main/features/uploads/index.js';
 import {
-  makeItems,
-  settle,
-  harness,
   callAt,
-  waitForCalls,
+  harness,
+  makeItems,
   options,
+  settle,
+  waitForCalls,
 } from './support/upload-harness.js';
 
 describe('option validation', () => {

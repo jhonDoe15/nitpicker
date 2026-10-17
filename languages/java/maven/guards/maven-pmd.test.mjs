@@ -56,7 +56,7 @@ function pmd(root, { release = '17', tests: testDirectories, pmdConfig, spring =
       testSourceRoots,
       outputDirectory: path.join(basedir, 'target/classes'),
       testOutputDirectory: path.join(basedir, 'target/test-classes'),
-      compiler: { release, args: [] },
+      compiler: { release, compilerArgs: [] },
     },
     reportDir,
     tools: { pmd: ['/tools/pmd.jar'] },
@@ -80,7 +80,7 @@ function pmd(root, { release = '17', tests: testDirectories, pmdConfig, spring =
 
 const TEST_DIRECTORY = [['src/test/java', true]];
 
-function ruleset({ name, patterns, ref, skipped = [] }) {
+function ruleset({ name, patterns, ref, skipped = [], overridden = [] }) {
   return [
     '<?xml version="1.0" encoding="UTF-8"?>',
     `<ruleset name="${name}" xmlns="${RULESET}">`,
@@ -93,6 +93,7 @@ function ruleset({ name, patterns, ref, skipped = [] }) {
           ...skipped.map((rule) => `    <exclude name="${rule}"/>`),
           '  </rule>',
         ]),
+    ...overridden,
     '</ruleset>',
     '',
   ].join('\n');
@@ -154,6 +155,14 @@ describe.skipIf(process.platform === 'win32')('runPmd rulesets', () => {
         name: 'nitpicker-code-smells-main',
         patterns: [`  <exclude-pattern>${run.testSourceRoots[0]}/.*</exclude-pattern>`],
         ref: SMELLS_RULES,
+        skipped: ['IoCallInLoop'],
+        overridden: [
+          `  <rule ref="${SMELLS_RULES}/IoCallInLoop">`,
+          '    <properties>',
+          '      <property name="springData" value="true"/>',
+          '    </properties>',
+          '  </rule>',
+        ],
       }),
     );
     expect(run.text('pmd-code-smells-test.xml')).toBe(

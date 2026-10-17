@@ -15,7 +15,7 @@ side contributes only two things: producing reports, and converting them into fi
 
 ```
 gradle -I languages/java/gradle/nitpicker.init.gradle nitpickerJava   (per snapshot: base, head; Maven builds: see below)
-  -> <report dir>/modules.json and, per Gradle project that applies java, <report dir>/<key>/{pmd.sarif, spotbugs.sarif, errorprone.json, format.txt, jacoco.xml, checkstyle.xml, checkstyle-<source set>.xml, archunit/*.xml, structure.json, pit/mutations.xml, jdeps.txt, jdeps-classes.txt, forbidden-apis.txt, cpd.xml, dependencies.json, guards-plan.json, javac-lint.txt, permits.txt, manifest.json}
+  -> <report dir>/modules.json and, per Gradle project that applies java, <report dir>/<key>/{pmd.sarif, spotbugs.sarif, errorprone.json, format.txt, jacoco.xml, checkstyle.xml, checkstyle-<source set>.xml, archunit/*.xml, structure.json, classes.json, pit/mutations.xml, jdeps.txt, jdeps-classes.txt, forbidden-apis.txt, cpd.xml, dependencies.json, guards-plan.json, javac-lint.txt, permits.txt, manifest.json}
      (nitpickerLint runs node languages/java/adapters/gradle-reports/gradle-guards.mjs on its guards-plan.json)
   -> languages/java/adapters/reporting/java-reports.mjs       (readJavaFindings, via the ingesters)
   -> languages/java/adapters/spring/java-spring.mjs    (spring findings read straight from application*.properties/yml, no Gradle report; only when manifest.json says spring: true)
@@ -437,11 +437,15 @@ comma-separated>` changes that. Those classes are excluded from the regular `tes
 
 ## Slice 2: CLI and reporter integration
 
-- **Selection.** Explicit only: `"preset": "java"` in `nitpicker.config.json`. There is no
-  auto-detection of `build.gradle`: a repository with both a `package.json` and a Gradle build
-  would otherwise change meaning silently. Without the key, nitpicker runs the TypeScript preset as
-  before. The key is read from the head checkout and applies to both snapshots, like the rest of
-  the config.
+- **Selection.** Explicit only: `"preset": "java"` in `nitpicker.config.json`. A Gradle or Maven
+  build is never picked up silently, because a repository with both a `package.json` and a Gradle
+  build would otherwise change meaning. Without the key, nitpicker runs the TypeScript preset, unless
+  the project has a Java build file and no TypeScript or JavaScript sources under its source roots
+  (bundled assets such as `src/main/resources/static/*.js` do not count): then it
+  stops with a config error that names `"preset": "java"` (`rejectUndeclaredPreset`, best-effort, see
+  [Using nitpicker](usage.md#configuration)). The head is measured with the head's config and the
+  base with its own (widened to the head's roots), and a change to `preset` is listed under "Policy
+  changed in this change"; declaring `java` on a project that had no preset is not a loosening.
 - **One analyzer, several tools.** The preset is a single analyzer, `java` (one Gradle run per
   snapshot), whose findings carry the tool names `pmd`, `spotbugs`, `errorprone` (Error Prone and NullAway, below), `google-java-format`, `jacoco`,
   `checkstyle` (slice 3), `archunit` (slice 4), `crap` (slice 5), `duplicates` (slice 6), `pit` (slice 7), `spring` (configuration files, below) and `comments` (TODOs and commented-out code, in the code smell rules section). The analyzer declares them as
@@ -470,8 +474,13 @@ comma-separated>` changes that. Those classes are excluded from the regular `tes
   part of the analyzer's configuration hash:
   - `thresholds.crapLimit` replaces the default CRAP limit (from `shared/policy.mjs`), and
     `fileLines`, `testFileLines` and `folderFiles` the file limits, which count the `.java` files of
-    the main and test source sets (branch coverage and duplicates have fixed limits). Line length
-    is Checkstyle's; `thresholds.lineLength` is a config error. `unitTestSeconds` and
+    the main and test source sets (branch coverage and duplicates have fixed limits). `classMethods`
+    (20), `classFields` (10), `inheritanceDepth` (3) and `folderDepth` (4) replace the limits
+    described under [Class and package size limits](#class-and-package-size-limits). Line length
+    is 100 characters, where google-java-format wraps; nitpicker's own `line-length-limit` rule
+    checks it (string literal text, text blocks, imports and URLs do not count, an old long line is
+    held and fails only when it grows) and takes an `exceptions` entry; `thresholds.lineLength` is a
+    config error, not the general 120. `unitTestSeconds` and
     `integrationTestSeconds` are the [slow test](#slow-tests) budgets.
   - `exclude` drops findings whose project-relative path matches a glob (`**`, `*`, `?`, `{a,b}`);
     the tools still run on those files.
@@ -483,7 +492,8 @@ comma-separated>` changes that. Those classes are excluded from the regular `tes
   - `exceptions` lifts one rule for some paths: `{ "rule", "paths", "reason" }`, where `rule` is the
     finding as printed, `<tool>/<rule>` (for example `pmd/UnusedPrivateField`), and `tool` is one of
     the tools the Java analyzer reports. Matching findings are dropped on both snapshots. The shared
-    `file-lines-limit` and `folder-files-limit` rules are named as they are. Each exception is listed
+    `file-lines-limit`, `folder-files-limit`, `folder-depth-limit`, `class-methods-limit`,
+    `class-fields-limit` and `inheritance-depth-limit` rules are named as they are. Each exception is listed
     in the report and changes the configuration hash.
   - `layout` and `tools` configure TypeScript source roots and tool configs; they have no Java
     meaning and stay a config error with `"preset": "java"` instead of being ignored.
@@ -557,7 +567,7 @@ default, and their messages name it:
   sources) and `checkstyle-<source set>.xml` (`checkstyle-test.xml`, `checkstyle-integration.xml`,
   ...) in the report directory; the HTML report is off.
 - **Configuration.** The preset uses `google_checks.xml` from the pinned
-  Checkstyle jar, which matches google-java-format, with `MissingJavadocMethod` and
+  Checkstyle jar, with the layout checks the formatter owns (see [Style](#style)) and `MissingJavadocMethod` and
   `MissingJavadocType` suppressed (`languages/java/gradle/checkstyle-suppressions.xml`): Javadoc is
   allowed on public API but not required, the same rule as the TypeScript preset. Field and method
   names may be a single lowercase letter (`x`, `y`), as record components can: `MethodName` gets
@@ -761,8 +771,12 @@ resolved plus a new finding, as in the TypeScript check.
   NullAway resolve from a detached configuration with their versions pinned in the init script's
   map, so a dependency-management plugin of the project cannot move them. A compile error in this
   second compile fails the task with javac's errors (a `tool-error` on the CLI path); it never
-  becomes an empty report. `module-info.java` is left out, so the sources compile in the unnamed
-  module. Kotlin preset: Java sources only, like PMD and SpotBugs.
+  becomes an empty report. Main sources with a `module-info.java` compile as that module on both
+  builds: jars and class directories that are modules (`module-info.class`, also under
+  `META-INF/versions/`, or an `Automatic-Module-Name`) go on `--module-path`, the rest on the class
+  path, and when that compile fails it is retried with every library on `--module-path`, so a sealed
+  type may permit classes in another package. Test sources compile on the class path, without the
+  descriptor. Kotlin preset: Java sources only, like PMD and SpotBugs.
 - **Which JDK.** Error Prone needs JDK 21 or newer. On Gradle the runner uses the JVM that runs
   Gradle when it is at least 21 and at least the JDK of every compile task's toolchain; otherwise
   it asks Gradle's toolchain service for a launcher of the version it needs (found locally or
@@ -823,8 +837,8 @@ resolved plus a new finding, as in the TypeScript check.
   file as the path). Only findings in main sources of the checks in `certainBugs` in `checks.json` go without it: a
   curated list of ERROR checks whose finding in main code is a bug, not a severity filter (the
   ERROR checks left out, and why, are listed below). Findings in test sources always keep the
-  route, since a test can build the broken case on purpose. The route is added after the identity is computed, so it
-  does not change it. Diagnostics outside the main and test source roots (annotation-processor
+  route, since a test can build the broken case on purpose. `applyRuleMessages` adds the route
+  after the identity is computed, so it does not change it. Diagnostics outside the main and test source roots (annotation-processor
   output) are dropped. Diagnostics with the same check, file, line, column and message are one
   finding, and the `class is an internal JDK API` diagnostic `SunApi` adds at the `.class` of a
   literal it already reported is dropped; different columns or messages on a line stay apart. Identity: a hash of the check and the
@@ -1147,7 +1161,12 @@ forbiddenapis `legacy-date-time` signature, which names every java.time replacem
 `ReplaceJavaUtilCalendar` (and `JavaUtilDate` for `ReplaceJavaUtilDate` where forbiddenapis names
 another line); `pmd/InlineSuppression`, which names the one accepted marker, stands for PMD's
 `UnnecessaryWarningSuppression` on the same annotation; and `comments/TodoWithoutIssue`, which names
-the reference forms, stands for Checkstyle's `TodoFormat` on the same comment line.
+the reference forms, stands for Checkstyle's `TodoFormat` on the same comment line. A forbiddenapis signature stands
+over the Error Prone check on the same call: its message names the allowed form at least as clearly
+(`legacy-date-time` lists the java.time classes and the `toInstant()` conversion, where
+`JavaUtilDate` names only `Instant` or `LocalDate`), and its fix also settles the check, which the
+check's own fix does not (`LocalDate.now(zone)` for `JavaTimeDefaultTimeZone` is still a
+`clock-now` call, `Thread.sleep(Duration)` for `PreferJavaTimeOverload` still a `thread-sleep`).
 
 Where the primary covers only some of the secondary's cases, both stay on and the secondary is
 dropped only in the scope the two share: `RV_RETURN_VALUE_IGNORED` on a method Error Prone's
@@ -1183,7 +1202,7 @@ table:
 - line: `errorprone/IntLongMath` over `errorprone/NarrowCalculation`
 - line: `errorprone/InfiniteRecursion` over `spotbugs/IL_INFINITE_RECURSIVE_LOOP`
 - line: `errorprone/ComparisonOutOfRange` over `spotbugs/INT_BAD_COMPARISON_WITH_SIGNED_BYTE`
-- line: `errorprone/NonFinalStaticField` over `spotbugs/MS_FINAL_PKGPROTECT`, `spotbugs/MS_SHOULD_BE_FINAL`, `errorprone/FieldCanBeFinal`
+- line: `errorprone/NonFinalStaticField` over `spotbugs/MS_FINAL_PKGPROTECT`, `spotbugs/MS_SHOULD_BE_FINAL`, `errorprone/FieldCanBeFinal`, `pmd/NonFinalStaticField`
 - line: `errorprone/MutablePublicArray` over `spotbugs/MS_MUTABLE_ARRAY`, `spotbugs/MS_PKGPROTECT`
 - line: `errorprone/NullAway` over `pmd/NullAssignment`, `pmd/ReturnEmptyCollectionRatherThanNull`
 - line: `errorprone/InvalidPatternSyntax` over `spotbugs/RE_BAD_SYNTAX_FOR_REGULAR_EXPRESSION`
@@ -1238,6 +1257,13 @@ table:
 - line: `pmd/DoNotTerminateVM` over `spotbugs/DM_EXIT`
 - line: `errorprone/CatchAndPrintStackTrace` over `pmd/AvoidPrintStackTrace`, `errorprone/SystemOut`
 - line: `errorprone/SystemOut` over `pmd/SystemPrintln`
+- line: `errorprone/StreamResourceLeak` over `pmd/StreamResourceNotClosed`
+- line: `errorprone/PatternMatchingInstanceof` over `pmd/InstanceofThenCast`
+- line: `errorprone/ThrowSpecificExceptions` over `pmd/AvoidThrowingRawExceptionTypes`
+- line: `forbiddenapis/legacy-date-time` over `errorprone/JavaUtilDate`
+- line: `forbiddenapis/clock-now` over `errorprone/JavaTimeDefaultTimeZone`
+- line: `forbiddenapis/thread-sleep` over `errorprone/PreferJavaTimeOverload`
+- line: `forbiddenapis/java-deserialization` over `errorprone/BanSerializableRead`
 - line: `errorprone/MissingOverride` over `pmd/MissingOverride`, `checkstyle/MissingOverrideOnRecordAccessor`
 - line: `pmd/DefaultLabelNotLastInSwitch` over `errorprone/SwitchDefault`
 - line: `checkstyle/JavadocMethod` over `errorprone/InvalidParam`
@@ -1334,6 +1360,76 @@ table:
 - **Tests.** `java-structure.test.mjs` (fast: limits, messages, identity stability);
   the gated e2e adds a branch with a method over the parameter limit (fails) and keeps a legacy
   oversize method baselined.
+
+## Class and package size limits
+
+Three limits on classes of the main sources and one on package depth, all failing only when the
+change makes them worse (the same ratchet as the file limits): a class already over a limit is
+held at its value and fails when it grows, and a new class over a limit fails. Each message names
+the allowed form and the `exceptions` entry that lifts it.
+
+| Rule                      | Default limit                                                                            | Threshold          |
+| ------------------------- | ---------------------------------------------------------------------------------------- | ------------------ |
+| `class-methods-limit`     | 20 methods per class; getters and setters count, constructors do not                     | `classMethods`     |
+| `class-fields-limit`      | 10 instance fields per class; record components count, statics and enum constants do not | `classFields`      |
+| `inheritance-depth-limit` | 3 superclasses; a superclass outside the project counts as one level                     | `inheritanceDepth` |
+| `folder-depth-limit`      | 4 package levels below the root package (test sources too)                               | `folderDepth`      |
+
+- **Classes.** `languages/java/gradle/StructureMetrics.java` (the Gradle task `nitpickerStructure`,
+  and the structure step of the Maven run for each module) writes `classes.json` next to
+  `structure.json` in the same parse, so each module's sources are parsed once. Gradle and Maven
+  projects get the same limits. Member and
+  local classes, interfaces, enums, records and annotation types are measured on their own;
+  anonymous classes are not. Tests are not measured: a test class legitimately holds many methods.
+  The inheritance chain is resolved from the source text (same package, imports, wildcard imports,
+  nested names, names in full), not compiled, so a superclass that only the compiler can find counts
+  as one level and ends the chain, so a hierarchy that continues in another module or a library is
+  undercounted. A record over `classFields` gets its own message (components, not fields). A kotlin-preset project gets the class limits for its `.java`
+  files; Kotlin classes are not measured.
+- **Package depth.** The root package is the longest package prefix all main and test code of the
+  base shares, so adding a package outside it (`db/migration`, the default package) moves nothing:
+  the head run reads the root from the base snapshot, and a project with no base code uses its
+  own. A package with code in it that lies more than four levels below the root fails once per
+  kind of file (source, test); a package outside the root counts its own levels. Packages are the
+  folders under the source roots.
+- **A missing report is an error.** If `classes.json` is absent the run fails with a tool error
+  naming the structure step (`StructureMetrics.java`), so a build that skipped it cannot silently
+  drop the limits.
+- **Allowed form.** Split a class by responsibility, group fields into a record, prefer composition
+  to a deep hierarchy, and keep packages flat: group by responsibility instead of nesting.
+- **Exceptions.** A class limit is lifted for the file the class is in
+  (`{ "rule": "class-methods-limit", "paths": ["src/main/java/app/Mapper.java"], "reason": "..." }`);
+  `folder-depth-limit` for the package folder (`"paths": ["src/main/java/app/a/b/c/d/e/**"]`).
+
+## Style
+
+google-java-format owns layout. The default is its Google style: 2 spaces, 4 for a continuation
+line, lines of at most 100 characters. A project that indents with 4 spaces gets google-java-format
+with `--aosp` (4 spaces, 8 for a continuation line, still wrapping at 100): nitpicker follows the
+`java.indentation` convention (`"2"` or `"4"`), which it takes from the Java files of the base
+snapshot, or from `"conventions": { "java.indentation": "4" }` in `nitpicker.config.json`; a tie or
+no Java files keeps Google. The run prints the choice. The convention applies to the Java sources
+of a kotlin-preset project too. It comes from the head policy file at run time, and the function
+`javaStyle()` in `languages/java/adapters/style/java-style.mjs` turns it into the style
+(`google` or `aosp`).
+
+A badly formatted file is one `google-java-format` finding, not hundreds: the Checkstyle checks that
+only restate the formatter's layout are suppressed in both styles (`Indentation`,
+`CommentsIndentation`, `WhitespaceAround`, `WhitespaceAfter`, `GenericWhitespace`, `MethodParamPad`,
+`ParenPad`, `NoWhitespaceBefore`, `OperatorWrap`, `SeparatorWrap`, `NoLineWrap`, `CustomImportOrder`,
+`EmptyLineSeparator`, `LeftCurly`, `RightCurly`, `AnnotationLocation`, `FileTabCharacter` and the
+empty-block spacing regex), in `languages/java/gradle/checkstyle-suppressions.xml`. Checkstyle keeps
+everything that is not layout: naming, `NeedBraces`, `AvoidStarImport`, empty catch blocks, the
+Javadoc rules, `OneStatementPerLine` and the rest. Checkstyle's `LineLength` is suppressed too: the
+line-length rule above replaces it. A project's own
+Checkstyle config (`tools.checkstyle.precedence`) is used as written, layout checks included.
+
+The style reaches Gradle as the command-line property `-Pnitpicker.java.style=aosp`, never through
+`gradle.properties`. The runner reads the convention from the head policy file at run time, like the
+other policy values, so it is not part of the analyzer's configuration hash; the base run gets the
+same policy file, so a change of style in the same pull request does not fail the files it makes
+differ. Format failures name the style (`File is not formatted with
+google-java-format --aosp`).
 
 ## Coupling and stability (ticket SH6)
 
@@ -1667,36 +1763,50 @@ A Checkstyle rule prints as its check name, for example `checkstyle/MagicNumber`
 own PMD rules for patterns coding agents repeat. They run on main sources, with or without Spring
 (`languages/java/builds/rulesets/pmd-rulesets.mjs`, which both the init script and the Maven PMD
 run use, wraps them like the guard rules: test directories excluded); test sources get `code-smells-test-ruleset.xml` instead (PMD's `AvoidDuplicateLiterals` and its
-private-method `UnusedFormalParameter`, with nitpicker's messages). The Java preset is the only Gradle preset with these
+private-method `UnusedFormalParameter`, with nitpicker's messages; annotation values such as
+`@Tag("slow")` are not counted as duplicate literals). The Java preset is the only Gradle preset with these
 rules for now: the Kotlin preset does not run them. Each message names the allowed form and ends
 with the exception to add when the code is right: `{ "rule": "pmd/<rule>", "paths": [...], "reason": "..." }`.
 Like every PMD finding, they fail a change only when it adds one.
 
-| Rule                            | Reports                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             | Allowed form                                                                    |
-| ------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------- |
-| `RepeatedStringLiteral`         | a string literal of 5+ characters used three times or more in a file, from the third use (annotation values, `case` labels and message keys passed to `getMessage`/`getString` are skipped)                                                                                                                                                                                                                                                                                                                                         | one `private static final String` constant                                      |
-| `UnusedFormalParameter`         | an unused parameter of any method or constructor, not only private ones; overrides, `main`, methods with a framework annotation (`@ExceptionHandler`, `@EventListener`, `@GetMapping`, `@Bean`, `@JsonCreator`, ...) and names starting `ignored` or `unused` are skipped                                                                                                                                                                                                                                                           | remove it, or use it                                                            |
-| `GenericTypeName`               | a class, interface, enum or record whose name ends in `Util`, `Utils`, `Utility`, `Utilities`, `Helper`, `Manager`, `Common`, `Commons` or `Misc`; a type that extends or implements a type with the same ending (`OrderCacheManager implements CacheManager`) and framework roles such as `AuthenticationManager` or `TransactionManager` are skipped                                                                                                                                                                              | a name for the job (`PriceRounder`)                                             |
-| `GenericPackageName`            | a package with a segment `util`, `utils`, `utility`, `helpers`, `manager`, `common`, `commons` or `misc`                                                                                                                                                                                                                                                                                                                                                                                                                            | a package named for what it holds; pure shared logic goes in a `shared` package |
-| `HardcodedSecret`               | a secret-looking string (6+ characters with letters and digits, or three character classes) assigned to a variable, field or map key named `*password`, `*secret`, `*token`, `*credentials`, `*apiKey`, `*privateKey` and similar, also through `"...".toCharArray()`, `String.valueOf("...")`, `new String("...")`, a concatenation of literals, `Map.of("password", "...")` or `setProperty("db.password", "...")`; placeholders, environment variable names, URLs and names such as `X-CSRF-TOKEN` or `access_token` are skipped | read it from the environment or a secrets manager                               |
-| `CredentialLiteral`             | a string shaped like an AWS access key, a GitHub or Slack token, a `sk_live_`, `sk_test_` or `sk-proj-` key, a private key header, a URL with `user:password@`, a JDBC URL with `password=`, or a `Bearer` or `Basic` header value                                                                                                                                                                                                                                                                                                  | the same                                                                        |
-| `SecretInLog`                   | a secret-named variable, field or getter (`getPassword()`) passed to a logger or `System.out`/`System.err` call, directly or in a `+` concatenation; `secret != null`, `token.length()` and `hasToken` are fine                                                                                                                                                                                                                                                                                                                     | log that it is set, or a masked tail                                            |
-| `CatchOnlyLogsOrReturnsDefault` | a `catch` that neither throws, nor uses the exception (passes it on, wraps it, returns something made from it), nor answers with an error response (`ResponseEntity.status(...)`, `sendError`); log calls and `printStackTrace` do not count as using it. An `InterruptedException` catch that calls `Thread.currentThread().interrupt()` and the catch of a retry loop are skipped                                                                                                                                                 | rethrow with the cause, or return a failure result that carries the exception   |
-| `BooleanFlagParameter`          | a `boolean` or `Boolean` parameter of a public method of a public type that selects between two behaviors (it is the condition of an `if` or `?:`); constructors, setters, `with*` builders, `of`/`from`/`valueOf` factories, overrides and annotated parameters are skipped                                                                                                                                                                                                                                                        | two methods named for each behavior, an enum, or a record                       |
-| `IoCallInLoop`                  | a repository, JDBC, `EntityManager`, HTTP client (`RestTemplate`, `WebClient`, `HttpClient`) or `Files` read or write, or a `new FileReader(...)`, inside a `for`, `while` or `do` body or a stream callback (`forEach`, `map`, `filter` and similar)                                                                                                                                                                                                                                                                               | fetch or write all items at once (`findAllById`, `WHERE id IN (...)`)           |
+| Rule                            | Reports                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   | Allowed form                                                                                  |
+| ------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------- |
+| `RepeatedStringLiteral`         | a string literal of 5+ characters used three times or more in a file, from the third use (annotation values, `case` labels and message keys passed to `getMessage`/`getString` are skipped)                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               | one `private static final String` constant                                                    |
+| `UnusedFormalParameter`         | an unused parameter of any method or constructor, not only private ones; overrides, `main`, methods with a framework annotation (`@ExceptionHandler`, `@EventListener`, `@GetMapping`, `@Bean`, `@JsonCreator`, ...) and names starting `ignored` or `unused` are skipped                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 | remove it, or use it                                                                          |
+| `GenericTypeName`               | a class, interface, enum or record whose name ends in `Util`, `Utils`, `Utility`, `Utilities`, `Helper`, `Manager`, `Common`, `Commons` or `Misc`, also after an acronym (`IOUtils`, `JSONHelper`); a type that extends or implements a type with the same ending (`OrderCacheManager implements CacheManager`) and framework roles such as `AuthenticationManager` or `TransactionManager` are skipped                                                                                                                                                                                                                                                                                                                                                   | a name for the job (`PriceRounder`)                                                           |
+| `GenericPackageName`            | a package with a segment `util`, `utils`, `utility`, `helpers`, `manager`, `common`, `commons` or `misc`                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  | a package named for what it holds; pure shared logic goes in a `shared` package               |
+| `HardcodedSecret`               | a secret-looking string (6+ characters with letters and digits, or three character classes) assigned to a variable, field or map key named `*password`, `*secret`, `*token`, `*credentials`, `*apiKey`, `*privateKey` and similar, also through `"...".toCharArray()`, `String.valueOf("...")`, `new String("...")`, a concatenation of literals, `Map.of("password", "...")` or `setProperty("db.password", "...")`, or as the fallback of an environment read (`orElse("...")`, `orElseGet(() -> "...")`, `getOrDefault(key, "...")`, `System.getProperty(key, "...")`, `Objects.requireNonNullElse(..., "...")`, either branch of `?:`); placeholders, environment variable names, URLs and names such as `X-CSRF-TOKEN` or `access_token` are skipped | read it from the environment or a secrets manager                                             |
+| `CredentialLiteral`             | a string shaped like an AWS access key, a GitHub or Slack token, a `sk_live_`, `sk_test_` or `sk-proj-` key, a private key header, a URL with `user:password@`, a JDBC URL with `password=`, or a `Bearer` or `Basic` header value                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        | the same                                                                                      |
+| `SecretInLog`                   | a secret-named variable, field or getter (`getPassword()`) passed to a logger or `System.out`/`System.err` call, directly or in a `+` concatenation; `secret != null`, `token.length()` and `hasToken` are fine                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           | log that it is set, or a masked tail                                                          |
+| `CatchOnlyLogsOrReturnsDefault` | a `catch` that neither throws, nor uses the exception (passes it on, wraps it, returns something made from it), nor answers with an error response (`ResponseEntity.status(...)`, `sendError`); log calls and `printStackTrace` do not count as using it, and neither does a local copy of the exception or its message (`String message = e.getMessage()`) that only reaches a log call. A log call is a method named `trace`, `debug`, `info`, `warn`, `error`, `fatal` or `log` or with the word `log` in it (`logFailure(e)`), or a `java.util.logging` level or `print` method on a logger or `System.out`/`System.err`. An `InterruptedException` catch that calls `Thread.currentThread().interrupt()` and the catch of a retry loop are skipped   | rethrow with the cause, or return a failure result that carries the exception                 |
+| `BooleanFlagParameter`          | a `boolean` or `Boolean` parameter of a public method of a public type that selects between two behaviors (it is the condition of an `if` or `?:`); constructors, setters, `with*` builders, `of`/`from`/`valueOf` factories, overrides and annotated parameters are skipped                                                                                                                                                                                                                                                                                                                                                                                                                                                                              | two methods named for each behavior, an enum, or a record                                     |
+| `IoCallInLoop`                  | a repository, JDBC, `EntityManager`, HTTP client (`RestTemplate`, `WebClient`, `HttpClient`) or `Files` read or write, or a `new FileReader(...)`, inside a `for`, `while` or `do` body or a stream callback (`forEach`, `map`, `filter` and similar)                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     | fetch or write all items at once (`findAllById`, `saveAll`, `deleteAll`, `WHERE id IN (...)`) |
 
 `IoCallInLoop` matches a receiver by its type when the class is on the compile classpath, by its
 declared type name (`*Repository`, `*Dao`, `*Client`, `EntityManager`, `JdbcTemplate`,
 `RestTemplate`, `Connection`, `Statement`), or by its name as a whole word (`orderRepository`,
 `client`, `gateway`, `api`). Paging and polling loops (the loop condition reads a variable the
-body assigns, as in `do { page = repository.findAll(pageable); ... } while (page.hasNext())`),
-retry loops (a `try` that returns or breaks on success and a `catch` that lets the loop go on),
-`Files.exists` and similar checks, and Spring Data `save`/`delete`, which `SpringDataNoSaveInLoop`
-reports, are skipped.
+body assigns, as in `do { page = repository.findAll(pageable); ... } while (page.hasNext())`; an
+index stepped with `i += 1`, `i++` or `i = i + 1` does not make a paging loop), retry loops (a
+`try` that returns or breaks on success and a `catch` that lets the loop go on), `Files.exists`
+and similar checks, the batch forms (`saveAll`, `deleteAll`, `deleteAllById`, `findAllById` and
+similar, called once per chunk) and `Optional` callbacks (`Optional.map`, which runs once) are
+skipped. In a
+Spring project, the `save`, `delete`, `persist` and similar writes that `SpringDataNoSaveInLoop`
+reports (a Spring Data repository or `jakarta.persistence.EntityManager` receiver, in a loop or a
+`forEach`, `map`, `peek` or `forEachOrdered` callback) and the flushes `SpringDataNoFlush` reports
+are left to those rules, so each is reported once: the Spring wrapper runs `IoCallInLoop` with its
+`springData` property set to `true`, and the rule holds a copy of their XPath, which
+`code-smell-rules.test.mjs` keeps identical. A write in any other callback (`filter`, `flatMap`,
+`reduce`), on any other receiver, or in a project without Spring is reported by `IoCallInLoop`.
+Writes and flushes in a JPA batch loop (one that calls `EntityManager.clear()` inside an `if`
+whose condition uses `%`, as in `if (count % 50 == 0) { em.flush(); em.clear(); }`) are the batch
+form and are reported by neither rule; `clear()` itself is never counted.
 
 **Comments.** The `comments` tool scans every Java source file, main and test, for two problems:
-`comments/TodoWithoutIssue` (a `TODO` or `FIXME`, in any case at the start of a line, or `XXX`
-or `HACK`, not directly followed by an issue: `TODO(#123)`, `TODO(PROJ-123)`, `TODO PROJ-123` or
+`comments/TodoWithoutIssue` (a task marker, an uppercase `TODO`, `FIXME`, `XXX` or `HACK` as a
+whole word at the start of a comment line or followed by `:` or `(`, not directly followed by an
+issue; prose such as "Todo item" and a format such as `XXX-XXX-XXXX` are not markers: `TODO(#123)`, `TODO(PROJ-123)`, `TODO PROJ-123` or
 a link) and `comments/CommentedOutCode` (a `//` or `/* */` comment with a statement in it, such
 as `// int total = compute(items);`, reported at the line the comment starts; a run of `//` lines
 counts once). Javadoc is documentation and is only checked for TODOs. Delete the code, or give the
@@ -1706,7 +1816,7 @@ TODO an issue.
 rule, each violation marked `// violation: <rule>`. `code-smell-rules.test.mjs` checks that every
 rule is documented here, names its exception route and has a marked sample, and that the PMD
 rulesets both builds run scope both rule sets; the gated `spring/java-spring.e2e.test.mjs` also
-runs the fixture through Gradle, and `maven/maven-preset.e2e.test.mjs` through Maven, and both
+runs the fixture through Gradle, and `maven/guards/maven-code-smells.e2e.test.mjs` through Maven, and both
 expect exactly the marked findings in main and test sources.
 
 ## Spring rules
@@ -1813,8 +1923,9 @@ on interface methods are accepted, because Spring reads them for both proxy kind
 method to another with a plain `@Transactional` (same transaction). `SpringDataNoSaveInLoop` covers
 `for`, `while` and `do` loops and `forEach`, `map` and `peek` callbacks on a stream, an `Iterable`
 or a `Map`, lambdas and method references (`forEach(repository::save)`) alike; `Optional.map` and
-`ifPresent` run at most once and are not loops. It and `SpringDataNoFlush` skip a loop that also
-calls `EntityManager.clear()`, the JPA batch idiom.
+`ifPresent` run at most once and are not loops. It and `SpringDataNoFlush` skip a loop that calls
+`EntityManager.clear()` inside an `if` whose condition uses `%` (`if (count % 50 == 0)`), the JPA
+batch idiom; a loop that flushes and clears on every item is reported.
 `SpringNoSwallowedTransactionException` reports catching `Exception`, `RuntimeException`,
 `Throwable`, `DataAccessException`, `TransactionException` or `PersistenceException`, not narrower
 exceptions such as `NumberFormatException`. Layering, entities in controller signatures and test
@@ -1922,8 +2033,9 @@ errorprone and bestpractices PMD categories plus `AvoidCatchingGenericException`
 (`languages/java/messages/rule-messages.mjs`). It shortens Checkstyle rule names, then appends the
 fix to the tool's message, and for an enforceable finding of a rule that may be intended (or one
 the catalog does not know, from a project's own config) the exception route with the finding's own
-path. The guard tools (`javac`, `forbiddenapis`, `duplicates`, `coupling`, `dependencies`), `spring`
-and `pit` get the same route; no rule message, ruleset or guard writes its own, and
+path. Error Prone, the guard tools (`javac`, `forbiddenapis`, `duplicates`, `coupling`,
+`dependencies`), `spring` and `pit` get the same route; no rule message, ruleset, guard or reader
+writes its own, and
 `messages/exception-sentences.test.mjs` fails on one that does:
 
 ```
@@ -1943,12 +2055,14 @@ finding between base and head. `rule-catalog.e2e.test.mjs` downloads the pinned 
 SpotBugs jars and fails when the catalogs and the tools' rule lists differ, so a version bump
 cannot add a rule without fix text.
 
-Error Prone findings are in no catalog and pass through unchanged: their allowed form and exception
-route come from `ingest/errorprone/messages.mjs` and `adapters/errorprone/java-errorprone.mjs`, so
-they carry one exception route, not two. The overlap step runs after this, so
+Error Prone findings are in no catalog: their allowed form comes from
+`ingest/errorprone/messages.mjs`, and `applyRuleMessages` adds the route, except to a finding of a
+`certainBugs` check outside the test source roots of `manifest.json`. The overlap step runs after
+this, so
 `overlap-pairs.json` names Checkstyle checks the same short way, or by the module id
 `google_checks.xml` gives (`checkstyle/AnnotationLocationMethodsAndCtors`); a unit test checks every rule
-in it against the catalogs and Error Prone's check list.
+in it against the catalogs, nitpicker's own PMD rules, Error Prone's check list and the
+`@defaultMessage` tags of `forbidden-apis.txt` (`forbiddenapis/legacy-date-time`).
 
 ## Slice 1: what is deliberately not included
 

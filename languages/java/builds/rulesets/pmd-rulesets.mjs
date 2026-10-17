@@ -12,13 +12,15 @@ const TEST_CLASS_PATTERN = [
   String.raw`^(?:.*\.)?.*(?&lt;!Arch|Architecture)Tests?$`,
   String.raw`^(?:.*\.)?.*TestCase$`,
 ].join('|');
+const RULE_END = '  </rule>';
+const SPRING_DATA_OVERRIDES = [{ rule: 'IoCallInLoop', properties: { springData: true } }];
 const TEST_CLASS_RULE = [
   '  <rule ref="category/java/errorprone.xml/TestClassWithoutTestCases">',
   '    <properties>',
   '      <property name="testClassPattern"',
   `                value="${TEST_CLASS_PATTERN}"/>`,
   '    </properties>',
-  '  </rule>',
+  RULE_END,
 ];
 
 function escapeXml(text) {
@@ -41,8 +43,20 @@ function ruleReference(ruleset, skipped) {
     : [
         `  <rule ref="${ref}">`,
         ...skipped.map((name) => `    <exclude name="${name}"/>`),
-        '  </rule>',
+        RULE_END,
       ];
+}
+
+function propertyOverride(ruleset, { rule, properties }) {
+  return [
+    `  <rule ref="${escapeXml(`${ruleset}/${rule}`)}">`,
+    '    <properties>',
+    ...Object.entries(properties).map(
+      ([name, value]) => `      <property name="${name}" value="${escapeXml(String(value))}"/>`,
+    ),
+    '    </properties>',
+    RULE_END,
+  ];
 }
 
 function rulesetXml(name, { patterns, rules }) {
@@ -57,14 +71,18 @@ function rulesetXml(name, { patterns, rules }) {
   ].join('\n');
 }
 
-export function scopedRuleset(name, ruleset, { directories, onlyThere = false, skipped = [] }) {
+export function scopedRuleset(name, ruleset, options) {
+  const { directories, onlyThere = false, skipped = [], overrides = [] } = options;
   const kind = onlyThere ? 'include' : 'exclude';
   return rulesetXml(name, {
     patterns: [
       ...(onlyThere ? ['  <exclude-pattern>.*</exclude-pattern>'] : []),
       ...directories.map((directory) => directoryPattern(kind, directory)),
     ],
-    rules: ruleReference(ruleset, skipped),
+    rules: [
+      ...ruleReference(ruleset, [...skipped, ...overrides.map(({ rule }) => rule)]),
+      ...overrides.flatMap((override) => propertyOverride(ruleset, override)),
+    ],
   });
 }
 
@@ -79,7 +97,7 @@ export function javaRelease(compiler) {
 }
 
 function written(reportDir, file, content) {
-  const target = path.join(reportDir, file);
+  const target = path.join(reportDir, path.basename(file));
   writeFileSync(target, content);
   return target;
 }
@@ -116,7 +134,7 @@ function nitpickerExtras({ reportDir, mainDirectories, testDirectories, compiler
   const smells = scopedRuleset(
     'nitpicker-code-smells-main',
     path.join(GRADLE_DIRECTORY, 'code-smells-ruleset.xml'),
-    { directories: testDirectories },
+    { directories: testDirectories, overrides: spring ? SPRING_DATA_OVERRIDES : [] },
   );
   const tests = rulesetXml('nitpicker-tests', {
     patterns: mainDirectories.map((directory) => directoryPattern('exclude', directory)),

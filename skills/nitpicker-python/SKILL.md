@@ -22,21 +22,21 @@ backstop. It fails only on findings your change adds, so leave code the task doe
      tool missing from the environment) and rerun. Exit 2 is never a pass. If it says another run
      is in progress, wait for that run; never kill it.
 4. Never suppress: no `# noqa`, `# type: ignore`, config `exclude`/`disable`, legacy entries, or
-   weakened tests. If a finding seems wrong, stop and ask.
+   weakened tests. If a finding seems wrong, stop and ask. Never pass `--accept-policy-change` or set
+   `NITPICKER_ACCEPT_POLICY_CHANGE`: a `nitpicker-config/policy-loosened` finding is for a person to
+   accept.
 
 ## Write it this way
 
-- Types: annotate every function, method and parameter; strict mypy or pyright (the project's own
+- Types: annotate every function, method and parameter; strict mypy, pyright or basedpyright (the project's own
   choice) checks the source roots. Fix the type. `# type: ignore`, `# noqa` and `# pyright: ignore`
   are findings themselves, so never write them, nor `# fmt: off`, `@no_type_check`, `if not TYPE_CHECKING:`
   around code, or a `.pyi` beside its `.py`.
 - Paths: `pathlib.Path` with `/`, `.read_text()`, `.exists()`. No `os.path`, no `open(path)`.
 - Strings: f-strings only. No `.format()` and no `%`.
 - Defaults: `None`, then build the value inside the function. No mutable default arguments.
-- Errors: catch the specific exception and handle it, log it with `logger.exception(...)`, or
-  re-raise. A new exception raised inside `except` keeps the cause: `raise ParseError(text) from err`
-  (or `from None`). No bare `except:`, `except Exception:` or `except X: pass`;
-  one expected error that is deliberately ignored is `with contextlib.suppress(SpecificError):`.
+- Errors: catch the specific exception and handle it, or re-raise it with its cause:
+  `raise ParseError(text) from err`. No bare `except:` or `except Exception:`, and no `raise Exception(...)`.
 - A `try` inside a loop is flagged (PERF203): move it out, or extract the loop body into a function.
 - Flow: no `else` after a `return`, and return an expression directly instead of assigning it to a
   local first. Build a list with a comprehension, not `append` in a loop.
@@ -46,6 +46,8 @@ backstop. It fails only on findings your change adds, so leave code the task doe
   an `adapters/` package, where untrusted input is parsed once; pass frozen dataclasses on from there.
 - Constants: a fixed set of strings is an `enum.StrEnum` (`class X(str, Enum)` before Python 3.11),
   not `STATUS_ACTIVE = "active"` constants or a class holding them. Settings like `DB_HOST` are fine.
+- Every other rule (logging, naming, environment access, the domain, paths, secrets, shell and SQL,
+  test honesty) reports the allowed form in its message: follow the form the message names.
 - Tests: use the project's runner (pytest or unittest). Every branch you add needs a test, and a
   surviving mutant fails: assert the exact value, so a changed line breaks a test.
 - A finding that flags legitimate code (a command line entry point that prints) is lifted in

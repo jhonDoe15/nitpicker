@@ -88,6 +88,7 @@ function runStructure(module, reportDir) {
   const { java, problem } = toolJava(STRUCTURE_METRICS);
   if (problem !== undefined) {
     writeFileSync(path.join(reportDir, 'structure.json'), '[]\n');
+    writeFileSync(path.join(reportDir, 'classes.json'), '{"files":{},"classes":[]}\n');
     writeFileSync(skipped, `${problem}\n`);
     return;
   }
@@ -97,6 +98,7 @@ function runStructure(module, reportDir) {
     args: [
       path.join(GRADLE_DIRECTORY, 'StructureMetrics.java'),
       path.join(reportDir, 'structure.json'),
+      path.join(reportDir, 'classes.json'),
       module.basedir,
       ...roots,
     ],
@@ -135,11 +137,11 @@ function readClasspaths(work, module) {
 }
 
 function analyzeSources(context, project) {
-  const { module, reportDir, tools, classpaths, configs, pinned } = context;
+  const { module, reportDir, tools, classpaths, configs, pinned, javaStyle } = context;
   runPmd({ module, reportDir, tools, classpaths, configs, spring: context.spring });
   runSpotbugs({ module, reportDir, tools });
   runErrorProne({ module, reportDir, tools, classpaths });
-  runFormat({ module, reportDir, tools });
+  runFormat({ module, reportDir, tools, javaStyle });
   runCheckstyle({ module, reportDir, tools, configs, pinned });
   runStructure(module, reportDir);
   runJdeps(module, reportDir);
@@ -148,8 +150,11 @@ function analyzeSources(context, project) {
 
 function analyzeTests(context, { ran, failedClasses }) {
   const { module, reportDir, tools, classpaths, since, isArchunit } = context;
-  const execFiles = [path.join(module.buildDirectory, OWN_JACOCO_EXEC), ...module.jacocoDestFiles];
-  runJacocoReport({ module, reportDir, tools, execFiles, since, testsRan: ran });
+  runJacocoReport({
+    ...{ module, reportDir, tools, since },
+    execFiles: jacocoExecFiles(module),
+    testsRan: ran,
+  });
   const skipped = runPit({
     ...{ module, reportDir, tools, classpaths, isArchunit },
     excludedTestClasses: failedClasses,
@@ -178,11 +183,16 @@ function analyzeModule({ project, ...options }) {
   writeManifest({ module, reportDir, pinned, spring, classpaths });
 }
 
+function jacocoExecFiles(module) {
+  return [path.join(module.buildDirectory, OWN_JACOCO_EXEC), ...module.jacocoDestFiles];
+}
+
 function staleOutputs(module) {
-  const execFiles = [path.join(module.buildDirectory, OWN_JACOCO_EXEC), ...module.jacocoDestFiles];
   return [
     path.join(module.basedir, MAVEN_REPORT_DIRECTORY),
-    ...execFiles.filter((file) => file.startsWith(`${module.buildDirectory}${path.sep}`)),
+    ...jacocoExecFiles(module).filter((file) =>
+      file.startsWith(`${module.buildDirectory}${path.sep}`),
+    ),
   ];
 }
 
@@ -238,7 +248,16 @@ export function runMavenPreset(projectRoot, { maven, policy = {}, configs }) {
       reactor: modules.map((module) => module.coordinates),
     };
     for (const { module, classpaths } of analyzed) {
-      analyzeModule({ module, classpaths, tools, pinned, configs, since, project });
+      analyzeModule({
+        module,
+        classpaths,
+        tools,
+        pinned,
+        configs,
+        since,
+        project,
+        javaStyle: policy.javaStyle,
+      });
     }
     return modules.map((module) => module.basedir);
   } finally {

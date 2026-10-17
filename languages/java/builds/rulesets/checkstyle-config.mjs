@@ -77,7 +77,7 @@ export function nitpickerCheckstyleConfig(bundled) {
 }
 
 function checkstyleRuleModules(file) {
-  const text = readFileSync(path.join(GRADLE_DIRECTORY, 'rules', file), 'utf8');
+  const text = readFileSync(path.join(GRADLE_DIRECTORY, 'rules', path.basename(file)), 'utf8');
   return /<modules>([\s\S]*)<\/modules>/u.exec(text)[1];
 }
 

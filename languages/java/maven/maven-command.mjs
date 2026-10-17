@@ -9,6 +9,7 @@ const MAVEN_TIMEOUT_MS = 15 * 60 * 1000;
 const TOOL_TIMEOUT_MS = 15 * 60 * 1000;
 const MAX_OUTPUT_BYTES = 50 * 1024 * 1024;
 const MAX_ERROR_LINES = 40;
+const MILLISECONDS_PER_MINUTE = 60_000;
 const MINIMUM_MAVEN = '3.6.3';
 const OLD_MAVEN = /Unrecognized option: --no-transfer-progress|requires Maven version/u;
 const MAVEN_FLAGS = ['--batch-mode', '--no-transfer-progress', '-Dstyle.color=never'];
@@ -56,8 +57,8 @@ function missingMaven(error, command) {
 }
 
 function duration(milliseconds) {
-  return milliseconds % 60_000 === 0
-    ? `${String(milliseconds / 60_000)} minutes`
+  return milliseconds % MILLISECONDS_PER_MINUTE === 0
+    ? `${String(milliseconds / MILLISECONDS_PER_MINUTE)} minutes`
     : `${String(milliseconds / 1000)} s`;
 }
 

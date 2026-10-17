@@ -49,6 +49,8 @@ ruleTester.run('no-generic-names', genericNames, {
     ...[
       ['export class OrderManager {}', 'OrderManager'],
       ['export class StringUtils {}', 'StringUtils'],
+      ['export class IOUtils {}', 'IOUtils'],
+      ['export class JSONHelper {}', 'JSONHelper'],
       ['export class SessionManager implements Cache {}', 'SessionManager'],
       ['export type PriceCommons = { a: number };', 'PriceCommons'],
       ['class OrderMisc {}\nexport { OrderMisc };', 'OrderMisc'],

@@ -4,9 +4,9 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { INIT_SCRIPT } from '../../builds/java-build.mjs';
+import { readErrorProneFindings } from '../errorprone/java-errorprone.mjs';
 import { codeSmellRules } from '../test-support/code-smell-rules.mjs';
 import { expectedViolations, reportedViolations } from '../test-support/violation-markers.mjs';
-import { readErrorProneFindings } from '../errorprone/java-errorprone.mjs';
 
 const enabled = process.env.NITPICKER_JAVA_E2E === '1';
 const gradle = process.env.NITPICKER_GRADLE ?? 'gradle';
@@ -51,10 +51,26 @@ describe.skipIf(!enabled)('Spring rules on a Spring project', () => {
   const project = gradleProject('spring-project');
 
   it('reports exactly the violations marked in the fixture sources', () => {
-    const { reported, expected } = markedViolations(project.root, 'main', (rule) =>
-      SPRING_RULE.test(rule),
+    const { reported, expected } = markedViolations(
+      project.root,
+      'main',
+      (rule) => SPRING_RULE.test(rule) || rule === 'IoCallInLoop',
     );
     expect(reported).toEqual(expected);
+  });
+
+  it('reports each Spring Data write or flush in a loop or stream callback once', () => {
+    const linesOf = (rule) =>
+      markedViolations(project.root, 'main', (reported) => reported === rule).reported.map(
+        (violation) => violation.split(' ')[0],
+      );
+    const spring = [...linesOf('SpringDataNoSaveInLoop'), ...linesOf('SpringDataNoFlush')];
+    const loops = linesOf('IoCallInLoop');
+    expect({
+      spring: spring.length,
+      loops: loops.length,
+      twice: loops.filter((line) => spring.includes(line)),
+    }).toEqual({ spring: 6, loops: 3, twice: [] });
   });
 
   it('runs the pinned Checkstyle with the bundled config even when the project declares its own', () => {

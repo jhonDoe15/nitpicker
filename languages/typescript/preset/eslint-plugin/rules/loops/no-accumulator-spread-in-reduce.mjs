@@ -35,15 +35,21 @@ export const rule = {
     return {
       CallExpression(node) {
         const reducer = reducerOf(node);
-        if (reducer !== undefined) reducers.push(reducer);
+        if (reducer !== undefined) {
+          reducers.push(reducer);
+        }
       },
       SpreadElement(node) {
         const reducer = reducers.findLast((candidate) => contains(candidate, node));
         const accumulator = reducer?.params[0].name;
-        if (node.argument.type !== 'Identifier' || node.argument.name !== accumulator) return;
+        if (node.argument.type !== 'Identifier' || node.argument.name !== accumulator) {
+          return;
+        }
         const isFixedRecord =
           node.parent.type === 'ObjectExpression' && hasBoundedKeys(context, node.argument);
-        if (!isFixedRecord) context.report({ node, messageId: 'spread' });
+        if (!isFixedRecord) {
+          context.report({ node, messageId: 'spread' });
+        }
       },
     };
   },

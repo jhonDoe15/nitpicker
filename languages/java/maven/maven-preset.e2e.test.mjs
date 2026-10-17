@@ -11,7 +11,8 @@ import {
   GRADLE_STEP_TIMEOUT_MS,
   runGitIn,
 } from '../adapters/test-support/gradle-e2e.mjs';
-import { copyOf, removeCopies, withoutGradle } from './test-support/maven-e2e-projects.mjs';
+import { temporaryCopies, withoutGradle } from './test-support/maven-e2e-projects.mjs';
+import { DATED, EMPTY_CATCH, FAILING_TEST } from './test-support/maven-e2e-sources.mjs';
 
 const enabled = process.env.NITPICKER_JAVA_E2E === '1';
 const gradle = process.env.NITPICKER_GRADLE ?? 'gradle';
@@ -21,57 +22,19 @@ const gradleFixtures = path.join(import.meta.dirname, '../adapters/fixtures');
 const gradleFixture = path.join(gradleFixtures, 'gradle-project');
 const BUILD_FILES = new Set(['build.gradle', 'pom.xml']);
 
-const DATED = `package demo;
-
-import java.util.Date;
-
-public class Dated {
-    public Date now(int a, int b, int c, int d) {
-        if (a > 0) { if (b > 0) { if (c > 0) { if (d > 0) { return new Date(); } } } }
-        try { Integer.parseInt("x"); } catch (NumberFormatException e) { }
-        return new Date(new String(new byte[] {1}).length());
-    }
-
-    public String shout(String text) {
-        return text.toUpperCase();
-    }
-}
-`;
-
-const EMPTY_CATCH = `package demo.app;
-
-public final class Parser {
-  public int parse(String text) {
-    try {
-      return Integer.parseInt(text);
-    } catch (NumberFormatException e) {
-    }
-    return 0;
-  }
-}
-`;
-
-const FAILING_TEST = `package demo.core;
-
-import static org.junit.jupiter.api.Assertions.assertEquals;
-
-import org.junit.jupiter.api.Test;
-
-class AdderTest {
-  @Test
-  void adds() {
-    assertEquals(4, new Adder().add(1, 2));
-  }
-}
-`;
+const MESSY = 'src/main/java/demo/Messy.java';
 
 const comparable = (findings) => findings.map((finding) => JSON.stringify(finding)).sort();
 
-function onEitherBuildFile(findings) {
-  return findings.map((finding) =>
-    BUILD_FILES.has(finding.path) ? { ...finding, path: 'build file', message: '' } : finding,
-  );
+function acrossBuilds(findings) {
+  return findings
+    .filter(({ tool, rule }) => `${tool}/${rule}` !== 'test-runtime/slow-test')
+    .map((finding) =>
+      BUILD_FILES.has(finding.path) ? { ...finding, path: 'build file', message: '' } : finding,
+    );
 }
+
+const { copyOf, removeCopies } = temporaryCopies();
 
 afterAll(removeCopies);
 
@@ -111,7 +74,7 @@ describe.skipIf(!enabled)('Java preset on Maven builds', () => {
   );
 
   it(
-    'finds exactly the guard findings the Gradle build of the same sources finds',
+    'finds exactly the guard findings the Gradle build of the same sources finds, test times aside (they vary by run)',
     () => {
       const guards = path.join(gradleFixtures, 'guards-project');
       const gradleProject = copyOf(guards);
@@ -119,9 +82,7 @@ describe.skipIf(!enabled)('Java preset on Maven builds', () => {
       const fromGradle = collectJavaFindings(gradleProject, { gradle, policy: {} });
       const fromMaven = collectJavaFindings(mavenProject, { maven, policy: {} });
 
-      expect(comparable(onEitherBuildFile(fromMaven))).toEqual(
-        comparable(onEitherBuildFile(fromGradle)),
-      );
+      expect(comparable(acrossBuilds(fromMaven))).toEqual(comparable(acrossBuilds(fromGradle)));
       expect(
         fromMaven
           .filter((finding) => finding.tool === 'dependencies')
@@ -206,6 +167,40 @@ describe.skipIf(!enabled)('Java preset on Maven builds', () => {
       );
     },
     GRADLE_STEP_TIMEOUT_MS,
+  );
+
+  it(
+    'formats a 4-space project with --aosp and reports no layout, on Gradle and on Maven',
+    () => {
+      const gradleProject = copyOf(gradleFixture);
+      const mavenProject = copyOf(gradleFixture, path.join(fixtures, 'single'));
+      for (const name of ['build.gradle', 'settings.gradle']) {
+        rmSync(path.join(mavenProject, name));
+      }
+      for (const root of [gradleProject, mavenProject]) {
+        for (const file of readdirSync(path.join(root, 'src'), { recursive: true })) {
+          const source = path.join(root, 'src', file);
+          if (source.endsWith('.java')) {
+            writeFileSync(source, readFileSync(source, 'utf8').replaceAll(/^( +)/gmu, '$1$1'));
+          }
+        }
+        writeFileSync(path.join(root, MESSY), 'package demo;\n\nclass Messy {\n  int a;\n}\n');
+      }
+      const policy = { javaStyle: 'aosp' };
+      const layout = (findings) =>
+        findings
+          .filter(
+            ({ tool, rule }) =>
+              tool === 'google-java-format' || (tool === 'checkstyle' && rule === 'Indentation'),
+          )
+          .map(({ tool, rule, path: file }) => `${tool} ${rule} ${file}`);
+
+      const messy = [`google-java-format format ${MESSY}`];
+
+      expect(layout(collectJavaFindings(gradleProject, { gradle, policy }))).toEqual(messy);
+      expect(layout(collectJavaFindings(mavenProject, { maven, policy }))).toEqual(messy);
+    },
+    2 * GRADLE_STEP_TIMEOUT_MS,
   );
 
   it(

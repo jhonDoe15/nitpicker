@@ -124,6 +124,7 @@ function writeModule({ key, dir }) {
     writeFileSync(report('pit/mutations.xml'), readFileSync('mutations.xml'));
   }
   writeFileSync(report('structure.json'), '[]');
+  writeFileSync(report('classes.json'), '{"files":{},"classes":[]}');
 }
 
 const modules = existsSync('NO_REPORTS')

@@ -25,7 +25,10 @@ describe('TODO comments', () => {
     ['// TODO PROJ-123 fix', []],
     ['// FIXME https://tracker.example.com/issues/9', []],
     ['// TODOS are listed elsewhere', []],
-    ['// todo: lower case', ['TodoWithoutIssue:1']],
+    ['// todo: lower case', []],
+    ['/** Todo item stored per user. */', []],
+    ['// Phone numbers are formatted as XXX-XXX-XXXX.', []],
+    ['// Drop the column after the migration, TODO: issue', ['TodoWithoutIssue:1']],
     ['// TODO SHA-256 hashing', ['TodoWithoutIssue:1']],
   ])('%s', (source, expected) => {
     expect(summary(`${source}\nclass A {}`)).toEqual(expected);

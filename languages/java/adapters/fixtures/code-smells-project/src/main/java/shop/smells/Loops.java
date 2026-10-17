@@ -5,6 +5,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 
 public final class Loops {
   private final OrderRepository orders;
@@ -50,6 +51,38 @@ public final class Loops {
       }
     }
     throw new IllegalStateException("unavailable");
+  }
+
+  public List<String> indexed(List<String> ids) {
+    List<String> found = new ArrayList<>();
+    int index = 0;
+    while (index < ids.size()) {
+      found.add(orders.findById(ids.get(index))); // violation: IoCallInLoop
+      index += 1;
+    }
+    int next = 0;
+    while (next < ids.size()) {
+      found.add(orders.findById(ids.get(next))); // violation: IoCallInLoop
+      next = next + 1;
+    }
+    return found;
+  }
+
+  public void saves(List<String> ids) {
+    for (String id : ids) {
+      orders.save(id); // violation: IoCallInLoop
+    }
+    ids.forEach(orders::delete); // violation: IoCallInLoop
+  }
+
+  public void chunked(List<List<String>> chunks) {
+    for (List<String> chunk : chunks) {
+      orders.saveAll(chunk);
+    }
+  }
+
+  public String loaded(String id) {
+    return Optional.of(id).map(orders::findById).orElse("");
   }
 
   public int lengths(List<String> ids) {

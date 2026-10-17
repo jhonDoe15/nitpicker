@@ -49,8 +49,35 @@ def classDirectories = { Collection<File> directories ->
     "--own-classes=${directories*.absolutePath.join(File.pathSeparator)}".toString()
 }
 
-def writeArguments = { String name, JavaCompile compile, Collection<File> errorProne, boolean test ->
-    def sources = compile.source.files.findAll { it.name != 'module-info.java' }.sort()
+def paths = { Collection<File> files -> files*.absolutePath.join(File.pathSeparator) }
+
+def isJavaModule = { File file ->
+    if (file.isDirectory()) {
+        return new File(file, 'module-info.class').isFile()
+    }
+    if (!file.name.endsWith('.jar') || !file.isFile()) {
+        return false
+    }
+    try {
+        new java.util.jar.JarFile(file).withCloseable { jar ->
+            jar.getEntry('module-info.class') != null ||
+                jar.manifest?.mainAttributes?.getValue('Automatic-Module-Name') != null ||
+                jar.entries().toList().any { it.name ==~ /META-INF\/versions\/\d+\/module-info\.class/ }
+        }
+    } catch (IOException ignored) {
+        false
+    }
+}
+
+def lookupLines = { Collection<File> classpath, Collection<File> own, String mode ->
+    def libraries = classpath.findAll { !(it in own) && it.exists() }
+    def modules = mode == 'plain' ? [] : libraries.findAll { mode == 'all' || isJavaModule(it) }
+    def plain = classpath.findAll { !(it in modules) }
+    (modules ? ['--module-path', paths(modules)] : []) + ['-classpath', paths(plain)]
+}
+
+def writeArguments = { String name, JavaCompile compile, Collection<File> errorProne, boolean test, String mode ->
+    def sources = compile.source.files.findAll { mode != 'plain' || it.name != 'module-info.java' }.sort()
     def processors = (compile.options.annotationProcessorPath?.files ?: []).findAll {
         !(it.name.startsWith('error_prone_') || it.name.startsWith('nullaway-'))
     }
@@ -58,11 +85,11 @@ def writeArguments = { String name, JavaCompile compile, Collection<File> errorP
     def generated = workDir.get().dir("generated/${name}").asFile
     [classes, generated]*.mkdirs()
     def own = sourceSets.main.output.classesDirs.files + (test ? sourceSets.test.output.classesDirs.files : [])
-    def lines = ['-d', classes.absolutePath, '-s', generated.absolutePath,
-                 '-classpath', compile.classpath.files.collect { it.absolutePath }.join(File.pathSeparator),
-                 '-processorpath', (errorProne + processors).collect { it.absolutePath }.join(File.pathSeparator),
-                 '-XDcompilePolicy=simple', '-XDaddTypeAnnotationsToSymbol=true', '--should-stop=ifError=FLOW',
-                 '-Xmaxwarns', '1000000', '-Xmaxerrs', '1000000', classDirectories(own)] +
+    def lines = ['-d', classes.absolutePath, '-s', generated.absolutePath] +
+        lookupLines(compile.classpath.files, own, mode) +
+        ['-processorpath', paths(errorProne + processors),
+         '-XDcompilePolicy=simple', '-XDaddTypeAnnotationsToSymbol=true', '--should-stop=ifError=FLOW',
+         '-Xmaxwarns', '1000000', '-Xmaxerrs', '1000000', classDirectories(own)] +
         projectOptions(compile) + (test ? ['--test-only'] : []) + ['--sources'] + sources*.absolutePath
     def file = workDir.get().file("${name}.args").asFile
     file.setText(lines.collect { it + '\n' }.join(''), 'UTF-8')
@@ -87,24 +114,35 @@ tasks.register('nitpickerErrorProne') {
             return
         }
         def errorProne = errorProneClasspath()
-        def argumentFiles = compiles.collect { name, compile ->
-            writeArguments(name, compile, errorProne, name == 'test')
-        }
-            .findAll { it != null }
         def chosen = project.ext.nitpickerToolJava('Error Prone', 21, project.ext.nitpickerJavaCompiles())
         if (chosen.skipped) {
             report.text = '[]\n'
             skippedFile.get().asFile.text = "${chosen.skipped}\n"
             return
         }
-        def process = new ProcessBuilder([chosen.java] + jvmFlags + [runner.absolutePath, report.absolutePath,
-                checks.absolutePath] + argumentFiles*.absolutePath)
-            .directory(projectDir).redirectErrorStream(true).start()
-        // The JVM's own "Picked up JAVA_TOOL_OPTIONS" notice is not part of the cause.
-        def log = process.inputStream.getText('UTF-8').readLines().findAll { !it.startsWith('Picked up ') }
-        if (process.waitFor() != 0 || !report.exists()) {
-            report.delete()
-            throw new GradleException("Error Prone could not compile the sources: ${log.join('\n').trim()}")
+        def modular = compiles.main.source.files.any { it.name == 'module-info.java' }
+        def run = { String mode ->
+            def argumentFiles = compiles.collect { name, compile ->
+                writeArguments(name, compile, errorProne, name == 'test', name == 'main' ? mode : 'plain')
+            }
+                .findAll { it != null }
+            def process = new ProcessBuilder([chosen.java] + jvmFlags + [runner.absolutePath, report.absolutePath,
+                    checks.absolutePath] + argumentFiles*.absolutePath)
+                .directory(projectDir).redirectErrorStream(true).start()
+            // The JVM's own "Picked up JAVA_TOOL_OPTIONS" notice is not part of the cause.
+            def log = process.inputStream.getText('UTF-8').readLines().findAll { !it.startsWith('Picked up ') }
+            def compiled = process.waitFor() == 0 && report.exists()
+            if (!compiled) {
+                report.delete()
+            }
+            compiled ? null : log.join('\n').trim()
+        }
+        def failure = run(modular ? 'modules' : 'plain')
+        if (failure != null && modular) {
+            failure = run('all')
+        }
+        if (failure != null) {
+            throw new GradleException("Error Prone could not compile the sources: ${failure}")
         }
     }
 }

@@ -8,6 +8,7 @@ import { runPermits } from '../../builds/classes/class-permits.mjs';
 import { runJavacLint } from '../../builds/lint/javac-lint-runner.mjs';
 import { runDependencies } from './maven-dependencies.mjs';
 import { runCpd } from './maven-pmd.mjs';
+import { guardCompiler } from '../pom/compiler-settings.mjs';
 import { toolCommand } from '../../builds/tools/tool-commands.mjs';
 
 function runForbiddenApis({ module, reportDir, tools, classpaths }) {
@@ -43,7 +44,7 @@ function lintPlan({ module, classpaths }, projectRoot) {
     classpath: classpaths.mainCompile,
     processorPath: classpaths.mainCompile,
     javac: javaCommand('javac'),
-    compiler: module.compiler,
+    compiler: guardCompiler(module.compiler),
     workDirectory: path.join(lintDirectory, 'work'),
     cacheDirectory: lintDirectory,
   };

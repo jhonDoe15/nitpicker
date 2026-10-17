@@ -4,6 +4,7 @@ import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
+import java.util.stream.Stream;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.ApplicationContext;
@@ -86,11 +87,33 @@ public class OrderService {
     for (List<Product> page : List.of(incoming)) {
       products.saveAll(page);
     }
+    int persisted = 0;
     for (Product product : incoming) {
       entityManager.persist(product);
-      entityManager.flush();
+      persisted += 1;
+      if (persisted % 50 == 0) {
+        entityManager.flush();
+        entityManager.clear();
+      }
+    }
+  }
+
+  @Transactional
+  public void restockEach(List<Product> incoming) {
+    for (Product product : incoming) {
+      entityManager.persist(product); // violation: SpringDataNoSaveInLoop
+      entityManager.flush(); // violation: SpringDataNoFlush
       entityManager.clear();
     }
+  }
+
+  @Transactional
+  public long importStreamed(List<Product> incoming) {
+    long kept = incoming.stream().filter(product -> products.save(product) != null).count(); // violation: IoCallInLoop
+    long mapped = incoming.stream().flatMap(product -> Stream.of(products.save(product))).count(); // violation: IoCallInLoop
+    Product last =
+        incoming.stream().reduce(null, (previous, product) -> products.save(product), (a, b) -> b); // violation: IoCallInLoop
+    return kept + mapped + (last == null ? 0 : 1);
   }
 
   @Transactional
@@ -124,7 +147,7 @@ public class OrderService {
 
   @Transactional
   public void touch(Long id) {
-    products.findById(id).map(products::save);
+    var unused = products.findById(id).map(products::save);
     products.findById(id).ifPresent(product -> products.save(product));
   }
 

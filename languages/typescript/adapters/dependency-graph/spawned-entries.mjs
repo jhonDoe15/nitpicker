@@ -2,15 +2,17 @@ import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 
 const SOURCE_FILE = /\.(?:[cm]?[jt]s|[jt]sx)$/u;
-const SKIPPED_DIRECTORIES = new Set(['node_modules', '.git', 'dist', 'coverage', 'reports']);
+const SKIPPED_DIRECTORIES = new Set(['node_modules', '.git']);
+const ROOT_OUTPUT_DIRECTORIES = new Set(['dist', 'coverage', 'reports']);
 const DIRNAME_JOIN =
   /path\.(?:join|resolve)\(\s*(?:import\.meta\.dirname|__dirname)\s*,\s*(['"])([^'"\n]+)\1\s*\)/gu;
 const URL_PATTERN = /new URL\(\s*(['"])(\.{1,2}\/[^'"\n]+)\1\s*,\s*import\.meta\.url\s*\)/gu;
 
-function isTraversable(entry) {
+function isTraversable(entry, atProjectRoot) {
   return (
     entry.isDirectory() &&
     !SKIPPED_DIRECTORIES.has(entry.name) &&
+    !(atProjectRoot && ROOT_OUTPUT_DIRECTORIES.has(entry.name)) &&
     !entry.name.startsWith('.nitpicker')
   );
 }
@@ -19,8 +21,11 @@ function* sourceFiles(directory) {
   const directories = [directory];
   for (const current of directories) {
     const entries = readdirSync(current, { withFileTypes: true });
+    const atProjectRoot = current === directory;
     directories.push(
-      ...entries.filter(isTraversable).map((entry) => path.join(current, entry.name)),
+      ...entries
+        .filter((entry) => isTraversable(entry, atProjectRoot))
+        .map((entry) => path.join(current, entry.name)),
     );
     for (const entry of entries.filter(isSourceFile)) yield path.join(current, entry.name);
   }

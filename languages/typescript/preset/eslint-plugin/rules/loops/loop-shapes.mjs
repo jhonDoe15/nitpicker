@@ -1,3 +1,5 @@
+import { isConcurrentBatch } from './concurrent-batches.mjs';
+
 const LOOPS = new Set([
   'ForOfStatement',
   'ForInStatement',
@@ -17,7 +19,8 @@ const ITERATION_METHODS = new Set([
   'find',
   'findIndex',
 ]);
-const CONCURRENT_COMBINATORS = new Set(['all', 'allSettled', 'any', 'race']);
+const IDENTIFIER = 'Identifier';
+const ARITHMETIC_OPERATORS = new Set(['+', '-', '*', '/', '%', '**']);
 const LOOP_EXITS = new Set(['ThrowStatement', 'ReturnStatement', 'BreakStatement']);
 const BREAK_TARGETS = new Set([...LOOPS, 'SwitchStatement']);
 
@@ -42,7 +45,9 @@ function descendants(root, visitorKeys, isBoundary) {
   const pending = [root];
   for (const node of pending) {
     found.push(node);
-    if (node === root || !isBoundary(node)) pending.push(...childrenOf(node, visitorKeys));
+    if (node === root || !isBoundary(node)) {
+      pending.push(...childrenOf(node, visitorKeys));
+    }
   }
   return found;
 }
@@ -61,23 +66,14 @@ function isIterationCallback(fn) {
   );
 }
 
-function isConcurrentBatch(callback) {
-  const outer = callback.parent.parent;
-  const { callee } = outer ?? {};
-  return (
-    outer?.type === 'CallExpression' &&
-    callee.type === 'MemberExpression' &&
-    callee.object.name === 'Promise' &&
-    CONCURRENT_COMBINATORS.has(callee.property.name)
-  );
-}
-
-export function enclosingLoop(node) {
+export function enclosingLoop(node, sourceCode) {
   let child = node;
   for (const parent of ancestorsOf(node)) {
-    if (LOOPS.has(parent.type) && isLoopBody(parent, child)) return { loop: parent, child };
+    if (LOOPS.has(parent.type) && isLoopBody(parent, child)) {
+      return { loop: parent, child };
+    }
     if (FUNCTIONS.has(parent.type)) {
-      const sequential = isIterationCallback(parent) && !isConcurrentBatch(parent);
+      const sequential = isIterationCallback(parent) && !isConcurrentBatch(parent, sourceCode);
       return sequential ? { callback: parent } : undefined;
     }
     child = parent;
@@ -112,23 +108,41 @@ function retryingTry(loop, call) {
 export function isRetryAttempt(call, loop, visitorKeys) {
   const attempt = loop === undefined ? undefined : retryingTry(loop, call);
   const handler = attempt?.handler;
-  if (handler === undefined || handler === null) return false;
+  if (handler === undefined || handler === null) {
+    return false;
+  }
   const continues = !handler.body.body.some((statement) => LOOP_EXITS.has(statement.type));
   return continues && exitsLoop(attempt.block, visitorKeys);
 }
 
+function isArithmeticSelfUpdate({ operator, left, right }) {
+  if (operator !== '=') {
+    return ARITHMETIC_OPERATORS.has(operator.slice(0, -1));
+  }
+  return (
+    right.type === 'BinaryExpression' &&
+    ARITHMETIC_OPERATORS.has(right.operator) &&
+    [right.left, right.right].some((side) => side.type === IDENTIFIER && side.name === left.name)
+  );
+}
+
 export function isPagingLoop(loop, visitorKeys) {
-  if (loop === undefined || loop.test === null || loop.test === undefined) return false;
-  if (loop.type === 'ForOfStatement' || loop.type === 'ForInStatement') return false;
+  if (loop === undefined || loop.test === null || loop.test === undefined) {
+    return false;
+  }
+  if (loop.type === 'ForOfStatement' || loop.type === 'ForInStatement') {
+    return false;
+  }
   const tested = new Set(
     descendants(loop.test, visitorKeys, (node) => FUNCTIONS.has(node.type))
-      .filter((node) => node.type === 'Identifier')
+      .filter((node) => node.type === IDENTIFIER)
       .map(({ name }) => name),
   );
   return descendants(loop.body, visitorKeys, (node) => FUNCTIONS.has(node.type)).some(
     (node) =>
       node.type === 'AssignmentExpression' &&
-      node.left.type === 'Identifier' &&
-      tested.has(node.left.name),
+      node.left.type === IDENTIFIER &&
+      tested.has(node.left.name) &&
+      !isArithmeticSelfUpdate(node),
   );
 }

@@ -3,6 +3,7 @@ import path from 'node:path';
 import { runJava } from '../maven-command.mjs';
 import { writePmdRulesets } from '../../builds/rulesets/pmd-rulesets.mjs';
 import { EMPTY_SARIF } from '../maven-lint.mjs';
+import { guardCompiler } from '../pom/compiler-settings.mjs';
 import { toolCommand } from '../../builds/tools/tool-commands.mjs';
 
 const CPD_REPORT = 'cpd.xml';
@@ -26,7 +27,7 @@ function pmdRulesets({ module, reportDir, configs, spring }) {
     reportDir,
     mainDirectories: module.sourceRoots,
     testDirectories: module.testSourceRoots,
-    compiler: module.compiler,
+    compiler: guardCompiler(module.compiler),
     spring,
     nitpicker: configs.pmd.nitpicker,
     project: configs.pmd.project,

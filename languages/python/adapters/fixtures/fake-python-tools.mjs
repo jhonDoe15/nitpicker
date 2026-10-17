@@ -15,12 +15,12 @@
 //   sources.txt          one path per line: what `ruff check --show-files` lists (default: every
 //                        .py file below the project, except .venv)
 //   type-errors.txt      printed by mypy as its report (exit 1 when not empty)
-//   pyright.json         { generalDiagnostics } printed by pyright as its report, relative files made
-//                        absolute (exit 1 when it has diagnostics)
+//   mypy-version.txt     the version mypy prints for --version (default 1.13.0)
+//   pyright.json         { generalDiagnostics } printed by pyright and basedpyright as their
+//                        report, relative files made absolute (exit 1 when it has diagnostics)
 //   rules.json           written by the nitpicker rules script (default: no findings)
 //   structure-data.json  written as the structure metrics report of `python structure_metrics.py`
 //                        (default: no functions)
-//   lizard-data.csv      printed by `lizard --csv` (default: no functions); `lizard --version` is 1.24.1
 //   no-mutmut.txt        the mutmut version probe fails
 //   mutmut-version.txt   the version the mutmut probe prints (default 3.8.0)
 //   mutants-data.json    { "<source path>": { "exitCodes": {...}, "mutated": "<text>" } }: what
@@ -162,7 +162,7 @@ function coverage() {
 
 function mypy() {
   if (args[0] === '--version') {
-    process.stdout.write('mypy 1.13.0 (compiled: yes)\n');
+    process.stdout.write(`mypy ${lines('mypy-version.txt')[0] ?? '1.13.0'} (compiled: yes)\n`);
     return;
   }
   const report = existsSync('type-errors.txt') ? readFileSync('type-errors.txt', 'utf8') : '';
@@ -170,9 +170,14 @@ function mypy() {
   process.exit(report === '' ? 0 : 1);
 }
 
+const PYRIGHT_VERSIONS = {
+  pyright: 'pyright 1.1.390\n',
+  basedpyright: 'basedpyright 1.40.2\nbased on pyright 1.1.414\n',
+};
+
 function pyright() {
   if (args[0] === '--version') {
-    process.stdout.write('pyright 1.1.390\n');
+    process.stdout.write(PYRIGHT_VERSIONS[tool]);
     return;
   }
   const { generalDiagnostics = [] } = existsSync('pyright.json')
@@ -239,14 +244,6 @@ function python() {
   process.stdout.write(`8.3.1 ${flag('pytest-cov.txt')} ${flag('xdist.txt')}\n`);
 }
 
-function lizard() {
-  if (args[0] === '--version') {
-    process.stdout.write('1.24.1\n');
-  } else if (existsSync('lizard-data.csv')) {
-    process.stdout.write(readFileSync('lizard-data.csv', 'utf8'));
-  }
-}
-
 const MUTMUT_MESSAGES = {
   0: '',
   1: 'Stopping early, because we could not find any test case for any mutant.\n',
@@ -292,8 +289,8 @@ const tools = {
   coverage,
   mypy,
   pyright,
+  basedpyright: pyright,
   python,
-  lizard,
   mutmut,
   'lint-imports': lintImports,
 };

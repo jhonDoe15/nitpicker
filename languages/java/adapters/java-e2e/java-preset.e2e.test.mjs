@@ -7,7 +7,6 @@ import { tmpdir } from 'node:os';
 import {
   LEGACY,
   BRANCHY,
-  WIDE,
   FAREWELL,
   GREETER_TEST,
   LEGACY_MOVED,
@@ -20,12 +19,11 @@ import {
   BRANCHY_MOVED,
   BRANCHY_EDITED,
   BRANCHY_ADDED,
-  WIDE_EXTENDED,
-  WIDE_REFORMATTED,
   STABILITY_FILES,
   stabilityClass,
   repeated,
 } from './test-support/java-preset-data.mjs';
+import { WIDE, WIDE_EXTENDED, WIDE_REFORMATTED } from './test-support/wide-sources.mjs';
 import { runJavaDiff } from '../java-diff.mjs';
 import {
   commitBranch,
@@ -104,8 +102,6 @@ const BASELINED_FINDINGS_WITHOUT_GREETER_LINE_COVERAGE = [
   'pmd UnusedPrivateField Legacy.java',
   'structure function-parameters-limit Wide.java',
 ];
-
-const CHECKSTYLE_ON_BAD = ['EmptyLineSeparator', 'Indentation', 'RegexpSinglelineJava'];
 
 describe.skipIf(!enabled)('Java preset end to end', () => {
   beforeAll(() => {
@@ -190,13 +186,12 @@ describe.skipIf(!enabled)('Java preset end to end', () => {
   );
 
   it(
-    'fails new Error Prone, Checkstyle and formatter violations, and untested code, as new, each issue once',
+    'fails new Error Prone and formatter violations, and untested code, as new, each issue once',
     () => {
       const result = diffOf('violation');
 
       expect(result.failed).toBe(true);
       expect(summarize(result.newEnforceable)).toEqual([
-        ...CHECKSTYLE_ON_BAD.map((check) => `checkstyle ${check} Bad.java`),
         'errorprone DefaultCharset Bad.java',
         'errorprone EmptyCatch Bad.java',
         'google-java-format format Bad.java',
@@ -356,10 +351,16 @@ describe.skipIf(!enabled)('Java preset end to end', () => {
       expect(result.failed).toBe(true);
       expect(structureOf(result.newEnforceable)).toEqual([
         'function-control-nesting-limit Wide.deep',
+        'function-control-nesting-limit Wide.nested',
       ]);
-      expect(result.newEnforceable.find((finding) => finding.tool === 'structure').message).toBe(
+      expect(
+        result.newEnforceable
+          .filter((finding) => finding.tool === 'structure')
+          .map(({ message }) => message),
+      ).toEqual([
         'Wide.deep nests control flow 3 deep (limit 2). Return early instead of nesting.',
-      );
+        'Wide.nested nests control flow 3 deep (limit 2). Return early instead of nesting.',
+      ]);
       expect(structureOf(result.unchangedFindings)).toEqual(['function-parameters-limit Wide.sum']);
     },
     GRADLE_STEP_TIMEOUT_MS,

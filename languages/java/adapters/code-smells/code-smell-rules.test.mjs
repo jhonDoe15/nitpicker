@@ -9,10 +9,31 @@ import { expectedViolations } from '../test-support/violation-markers.mjs';
 import { codeSmellRules } from '../test-support/code-smell-rules.mjs';
 import { withRuleMessage } from '../../messages/rule-messages.mjs';
 import { exceptionHint } from '../../../../shared/rules/exceptions.mjs';
+import { GENERIC_NAME_WORDS, LOG_LEVEL_METHODS } from '../../../../shared/naming/smell-words.mjs';
 
 const packageRoot = path.resolve(import.meta.dirname, '../../../..');
 const fixture = path.join(import.meta.dirname, '..', 'fixtures', 'code-smells-project', 'src');
 const rules = codeSmellRules();
+const ruleset = readFileSync(
+  path.join(packageRoot, 'languages/java/gradle/code-smells-ruleset.xml'),
+  'utf8',
+);
+
+const springRuleset = readFileSync(
+  path.join(packageRoot, 'languages/java/gradle/spring-ruleset.xml'),
+  'utf8',
+);
+
+function ruleText(name, text = ruleset) {
+  const start = text.indexOf(`<rule name="${name}"`);
+  return text.slice(start, text.indexOf('</rule>', start));
+}
+
+function xpathOf(name, text) {
+  const rule = ruleText(name, text);
+  const xpath = rule.slice(rule.indexOf('<![CDATA[') + 9, rule.indexOf(']]>'));
+  return xpath.replaceAll(/\s+/g, ' ').trim();
+}
 
 function markedRules(sourceSet) {
   return new Set(
@@ -47,6 +68,27 @@ describe('the Java code smell ruleset', () => {
       ]);
     },
   );
+
+  it('names the log levels and generic names the TypeScript rules use', () => {
+    const levels = `@MethodName = (${LOG_LEVEL_METHODS.map((name) => `'${name}'`).join(', ')})`;
+    const typeWords = GENERIC_NAME_WORDS.map((word) => word[0].toUpperCase() + word.slice(1));
+
+    expect({
+      catch: ruleText('CatchOnlyLogsOrReturnsDefault').includes(levels),
+      type: ruleText('GenericTypeName').split(`(${typeWords.join('|')})$`).length,
+      package: ruleText('GenericPackageName').includes(`(${GENERIC_NAME_WORDS.join('|')})(`),
+    }).toEqual({ catch: true, type: 3, package: true });
+  });
+
+  it('leaves to the Spring rules exactly the writes and flushes they report', () => {
+    const ioCallInLoop = xpathOf('IoCallInLoop');
+    const flushes = xpathOf('SpringDataNoFlush', springRuleset);
+
+    expect({
+      writes: ioCallInLoop.includes(xpathOf('SpringDataNoSaveInLoop', springRuleset)),
+      flushes: ioCallInLoop.includes(flushes.slice(0, flushes.indexOf(' [not('))),
+    }).toEqual({ writes: true, flushes: true });
+  });
 
   it.each(rules)('$name has a marked violation in the fixture', ({ name }) => {
     expect(markedRules('main').has(name)).toBe(true);

@@ -1,12 +1,21 @@
+import { TYPESCRIPT_SIZE_RULES } from '../../../../shared/project-rules/size-rules.mjs';
 import {
   SHARED_EXCEPTION_RULES,
   TYPESCRIPT_PROJECT_EXCEPTION_RULES,
 } from '../../../../shared/policy.mjs';
+import { strictBoundaryRules } from '../architecture/strict-boundary-rules.mjs';
+
+const boundaryRuleNames = strictBoundaryRules.map(({ name }) => name);
+
+const NON_ESLINT_EXCEPTION_RULES = [
+  ...SHARED_EXCEPTION_RULES,
+  ...TYPESCRIPT_PROJECT_EXCEPTION_RULES,
+  ...TYPESCRIPT_SIZE_RULES,
+];
 
 export function applyRuleExceptions(configEntries, allExceptions = []) {
   const exceptions = allExceptions.filter(
-    ({ rule }) =>
-      !SHARED_EXCEPTION_RULES.includes(rule) && !TYPESCRIPT_PROJECT_EXCEPTION_RULES.includes(rule),
+    ({ rule }) => !NON_ESLINT_EXCEPTION_RULES.includes(rule) && !boundaryRuleNames.includes(rule),
   );
   const unknown = exceptions.filter(({ rule }) => !isKnownRule(configEntries, rule));
   if (unknown.length > 0) {

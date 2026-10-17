@@ -97,6 +97,7 @@ plugins.withId('org.jetbrains.kotlin.jvm') {
             standardOutput = log
             errorOutput = log
             def projectConfig = nitpickerArgument('nitpicker.kotlin.detektConfig')
+            def mergedLists = nitpickerArgument('nitpicker.kotlin.detektLists')
             def libraries = sourceSets.main.compileClasspath.files.findAll {
                 it.exists() && !it.name.startsWith('kotlin-stdlib')
             }
@@ -108,7 +109,7 @@ plugins.withId('org.jetbrains.kotlin.jvm') {
                   '--report', "sarif:${report.get().asFile.absolutePath}".toString(),
                   '--base-path', analysisRoot.absolutePath,
                   '--build-upon-default-config',
-                  '--config', [projectConfig, nitpickerConfig.absolutePath, validationOff.absolutePath]
+                  '--config', [projectConfig, nitpickerConfig.absolutePath, mergedLists, validationOff.absolutePath]
                       .findAll { it }.join(','),
                   '--classpath', typeResolutionClasspath,
                   '--jdk-home', project.ext.nitpickerProjectJavaHome()])

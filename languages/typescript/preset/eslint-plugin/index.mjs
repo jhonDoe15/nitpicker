@@ -10,6 +10,8 @@ import { rule as noModuleLevelLet } from './rules/modules/no-module-level-let.mj
 import { rule as noMockingSubjectUnderTest } from './rules/testing/assertions/no-mocking-subject-under-test.mjs';
 import { rule as cognitiveComplexity } from './rules/analysis/cognitive-complexity.mjs';
 import { rule as noComments } from './rules/modules/no-comments.mjs';
+import { rule as noUiFrameworkInDomain } from './rules/syntax/no-ui-framework-in-domain.mjs';
+import { noDefaultExport, noNull, noPromiseChain } from './rules/syntax/syntax-bans.mjs';
 import { rule as noProductionConsole } from './rules/modules/no-production-console.mjs';
 import { rule as noSelfRecursion } from './rules/control/no-self-recursion.mjs';
 import { rule as noSilentCatch } from './rules/errors/no-silent-catch.mjs';
@@ -44,7 +46,25 @@ import { rule as reactNoEffectDataFetching } from './rules/react/react-no-effect
 import { rule as reactNoHardcodedColors } from './rules/react/theme/react-no-hardcoded-colors.mjs';
 import { rule as reactNoEffectDerivedState } from './rules/react/react-no-effect-derived-state.mjs';
 import { rule as reactSingleStylingApproach } from './rules/react/react-single-styling-approach.mjs';
-import { rule as reactTestNoImplementationDetails } from './rules/react/react-test-no-implementation-details.mjs';
+import { rule as reactControlledInput } from './rules/react/forms/react-controlled-input.mjs';
+import { rule as reactFieldHasLabel } from './rules/react/forms/react-field-has-label.mjs';
+import { rule as reactNoDirectDom } from './rules/react/render/react-no-direct-dom.mjs';
+import { rule as reactNoEffectEventHandling } from './rules/react/render/react-no-effect-event-handling.mjs';
+import { rule as reactNoRandomKey } from './rules/react/render/react-no-random-key.mjs';
+import { rule as reactTestNoImplementationDetails } from './rules/react-tests/react-test-no-implementation-details.mjs';
+
+import { rule as noModuleLevelMutableState } from './rules/guards/no-module-level-mutable-state.mjs';
+import { rule as noProcessAccessOutsideCompositionRoot } from './rules/guards/no-process-access-outside-composition-root.mjs';
+import { rule as noShellStringCommand } from './rules/guards/no-shell-string-command.mjs';
+import { rule as noDisabledTlsVerification } from './rules/security/tls/no-disabled-tls-verification.mjs';
+import { rule as noSqlStringBuilding } from './rules/security/sql/no-sql-string-building.mjs';
+import { rule as noUnsafeDeserialization } from './rules/security/deserialization/no-unsafe-deserialization.mjs';
+import { rule as noWeakHash } from './rules/security/hash/no-weak-hash.mjs';
+import { rule as requireHttpTimeout } from './rules/security/http/require-http-timeout.mjs';
+import { rule as noUnknownMainFolder } from './rules/guards/no-unknown-main-folder.mjs';
+import { rule as noUnsafePathJoin } from './rules/guards/no-unsafe-path-join.mjs';
+import { rule as noMagicNumbers } from './rules/wrapped/no-magic-numbers.mjs';
+import { rule as namingConvention } from './rules/wrapped/naming-convention.mjs';
 import { rule as noDuplicateStringLiterals } from './rules/code-smells/duplicate-string-literals.mjs';
 import { rule as noGenericNames } from './rules/code-smells/generic-names.mjs';
 import { rule as noHardcodedSecret } from './rules/code-smells/hardcoded-secret.mjs';
@@ -58,6 +78,10 @@ export const nitpickerRules = {
     version: '0.1.0',
   },
   rules: {
+    'no-default-export': noDefaultExport,
+    'no-ui-framework-in-domain': noUiFrameworkInDomain,
+    'no-null': noNull,
+    'no-promise-chain': noPromiseChain,
     'container-pause-requires-finally-unpause': containerPauseRequiresFinallyUnpause,
     'bounded-container-teardown': boundedContainerTeardown,
     'no-fixed-sleep-synchronization': noFixedSleepSynchronization,
@@ -72,6 +96,18 @@ export const nitpickerRules = {
     'no-managed-resource-construction-outside-composition-roots':
       noManagedResourceConstructionOutsideCompositionRoots,
     'no-module-level-let': noModuleLevelLet,
+    'no-module-level-mutable-state': noModuleLevelMutableState,
+    'no-process-access-outside-composition-root': noProcessAccessOutsideCompositionRoot,
+    'no-shell-string-command': noShellStringCommand,
+    'no-disabled-tls-verification': noDisabledTlsVerification,
+    'no-sql-string-building': noSqlStringBuilding,
+    'no-unsafe-deserialization': noUnsafeDeserialization,
+    'no-weak-hash': noWeakHash,
+    'require-http-timeout': requireHttpTimeout,
+    'no-unknown-main-folder': noUnknownMainFolder,
+    'no-magic-numbers': noMagicNumbers,
+    'naming-convention': namingConvention,
+    'no-unsafe-path-join': noUnsafePathJoin,
     'no-mocking-subject-under-test': noMockingSubjectUnderTest,
     'cognitive-complexity': cognitiveComplexity,
     'no-comments': noComments,
@@ -105,6 +141,11 @@ export const nitpickerRules = {
     'react-no-effect-derived-state': reactNoEffectDerivedState,
     'react-no-hardcoded-colors': reactNoHardcodedColors,
     'react-single-styling-approach': reactSingleStylingApproach,
+    'react-controlled-input': reactControlledInput,
+    'react-field-has-label': reactFieldHasLabel,
+    'react-no-direct-dom': reactNoDirectDom,
+    'react-no-effect-event-handling': reactNoEffectEventHandling,
+    'react-no-random-key': reactNoRandomKey,
     'react-test-no-implementation-details': reactTestNoImplementationDetails,
     'no-duplicate-string-literals': noDuplicateStringLiterals,
     'no-generic-names': noGenericNames,

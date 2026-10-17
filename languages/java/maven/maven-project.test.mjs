@@ -108,6 +108,8 @@ const NO_COMPILER_SETTINGS = {
   processorPaths: undefined,
   test: { ...PLUGIN_DEFAULT_LEVEL, args: [] },
 };
+const CORE_LEVEL = { release: '17', source: '17', target: undefined };
+const CORE_ARGS = ['-Xlint:all', '-Xplugin:Noop', '-parameters', '--enable-preview'];
 
 function defaultModule(basedir, { coordinates, packaging, pomFile = 'pom.xml' }) {
   const target = path.join(basedir, 'target');
@@ -166,19 +168,12 @@ describe('readReactor', () => {
       jacocoAgentVersion: undefined,
       archunitIncludes: '**/*Rules.class',
       compiler: {
-        release: '17',
-        source: '17',
-        target: undefined,
+        ...CORE_LEVEL,
         encoding: 'ISO-8859-1',
-        args: ['-Xlint:all', '-Xplugin:Noop', '-parameters', '--enable-preview'],
+        args: CORE_ARGS,
         proc: undefined,
         processorPaths: undefined,
-        test: {
-          release: '17',
-          source: '17',
-          target: undefined,
-          args: ['-Xlint:all', '-Xplugin:Noop', '-parameters', '--enable-preview'],
-        },
+        test: { ...CORE_LEVEL, args: CORE_ARGS },
       },
     });
     expect(app).toEqual(

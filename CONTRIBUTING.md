@@ -16,9 +16,9 @@ One npm package (`nitpicker`) serves every language; the package root is the rep
 - `languages/java/`: the Gradle init script and `StructureMetrics.java` (`gradle/`), the Java
   analyzer (`adapters/`) and the report ingesters (`ingest/`). The Kotlin preset is the same code
   with Kotlin tools added (`kotlin-*.mjs`).
-- `languages/python/`: the nitpicker-owned ruff config (`ruff/`), the Python analyzer (`adapters/`)
-  and the coverage.py report ingester (`ingest/`); it reuses the generic ingesters in
-  `languages/java/ingest/`.
+- `languages/python/`: the nitpicker-owned ruff config (`ruff/`), the Python analyzer (`adapters/`),
+  the coverage.py report ingester (`ingest/`) and the `ast`-based structure and complexity script
+  (`metrics/`); it reuses the generic ingesters in `languages/java/ingest/`.
 - `spec/`, `docs/`, `evals/` and `scripts/`: the language-neutral contract, documentation,
   agent evaluations and maintenance scripts. Not shipped.
 
@@ -43,7 +43,9 @@ uses 24) and Java 21 for the structure-metrics test. It checks your working tree
 untracked files included, while CI checks the pull request merged into its target branch, so commit
 everything and merge or rebase on the latest `main` before the final run. A change to a language's
 end-to-end behaviour also needs that language's suite (`npm run test:java`, `test:kotlin` or
-`test:python`), which needs the language's toolchain and does not run in CI.
+`test:python`), which needs the language's toolchain. CI runs only the Kotlin and Python ones, in the
+`kotlin-e2e` and `python-e2e` workflows, which follow the same triggers as the `typescript` workflow
+below (pushes to `main` that touch the paths they list, a manual run, and the `run-ci` label).
 
 CI (the `typescript` workflow) runs:
 
@@ -54,5 +56,22 @@ CI (the `typescript` workflow) runs:
 
 GitHub does not start a pull request run while the pull request has a merge conflict, so resolve it
 before adding the label.
+
+When a pull request loosens `nitpicker.config.json` (for example an exception, exclude or entry
+point that covers a new code file; see the policy changes in [docs/usage.md](docs/usage.md)), the
+self-gate fails with a `nitpicker-config/policy-loosened` finding that names a 12-character digest.
+A repository admin who agrees with the loosening copies the digest from that CI run's log (a local
+run can give another digest, since CI checks the pull request merged into `main`), sets the
+repository variable `NITPICKER_ACCEPT_POLICY_CHANGE` to exactly that value (Settings > Secrets and
+variables > Actions > Variables), and runs the self-gate again by removing and re-adding the
+`run-ci` label. The digest covers those loosenings and the content of the files they hide, so a
+different loosening needs a new digest. Delete the variable once the pull request is merged. The
+self-gate runs the pull request's own code and workflow, so changes to `.github/workflows/`,
+`core/`, `package.json` and `nitpicker.config.json` need a careful review whatever the gate says.
+
+`npm test` runs `languages/python/metrics/structure_metrics.py` on a real `python3`, so it needs
+`python3` 3.10 or newer on the `PATH` (that test file is skipped, with its reason in the name,
+without one). The Python end-to-end suite (`npm run test:python`) needs more tools and the
+network; see [docs/python-preset.md](docs/python-preset.md).
 
 To cut a release, see [docs/releasing.md](docs/releasing.md).
