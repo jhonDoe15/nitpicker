@@ -1,11 +1,11 @@
 import { describe, expect, it } from 'vitest';
-import { resolveComparison } from '../diff/git/repository/git.mjs';
-import { branchOff } from '../diff/git/test-support/branch-off.mjs';
-import { useGitFixtures } from '../diff/git/test-support/git-repository.mjs';
-import { wrappedCall } from '../../languages/java/conventions/measures/test-support/wrapped-call.mjs';
-import { resolveHeadPolicy } from '../../languages/typescript/preset/head-policy.mjs';
-import { snapshotPolicy } from './resolve.mjs';
-import { comparedConventions } from './test-support/compare-policy.mjs';
+import { resolveComparison } from '../../diff/git/repository/git.mjs';
+import { branchOff } from '../../diff/git/test-support/branch-off.mjs';
+import { useGitFixtures } from '../../diff/git/test-support/git-repository.mjs';
+import { wrappedCall } from '../../../languages/java/conventions/measures/test-support/wrapped-call.mjs';
+import { resolveHeadPolicy } from '../../../languages/typescript/preset/head-policy.mjs';
+import { snapshotPolicy } from '../resolve.mjs';
+import { comparedConventions } from '../test-support/compare-policy.mjs';
 
 const { createGitRepository } = useGitFixtures();
 const HEADER = "Following this project's conventions:\n";
