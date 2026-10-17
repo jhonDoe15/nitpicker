@@ -22,6 +22,7 @@ import {
   gradle,
   initializeProject,
   kotlinPolicy,
+  kotlinPolicyWithProjectDetekt,
   kotlinE2eEnabled,
   removeProject,
   summarize,
@@ -57,7 +58,9 @@ describe.skipIf(!kotlinE2eEnabled)('Kotlin preset one-way rules end to end', () 
     bannedResult = diffOf(project, 'one-way-banned');
     testSourceResult = diffOf(project, 'one-way-test-source');
     allowedResult = diffOf(project, 'one-way-allowed');
-    hostileConfigResult = diffOf(project, 'one-way-hostile-config');
+    hostileConfigResult = diffOf(project, 'one-way-hostile-config', {
+      policy: kotlinPolicyWithProjectDetekt,
+    });
   });
   afterAll(() => {
     removeProject(project);

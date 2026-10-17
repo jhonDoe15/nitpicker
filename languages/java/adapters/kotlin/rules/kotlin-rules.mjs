@@ -68,7 +68,7 @@ export function isBannedSuppression(token) {
   return DETEKT_RULESETS.has(token) || BANNED_SUPPRESSIONS.some((banned) => banned.test(token));
 }
 
-function appendSentence(message, sentence) {
+export function appendSentence(message, sentence) {
   return `${message.replace(/\.?\s*$/, '')}. ${sentence}`;
 }
 

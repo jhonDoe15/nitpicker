@@ -19,10 +19,9 @@ describe('size limits in the config', () => {
   });
 
   it.each([
-    ['classMethods', ['typescript', 'javascript', 'python']],
-    ['classFields', ['typescript', 'python']],
-    ['inheritanceDepth', ['typescript', 'python']],
-    ['folderDepth', ['python']],
+    ['classMethods', ['typescript', 'javascript']],
+    ['classFields', ['typescript']],
+    ['inheritanceDepth', ['typescript']],
   ])('rejects thresholds.%s where the preset does not enforce it', (key, presets) => {
     for (const preset of presets) {
       expect(() => validateConfig({ preset, thresholds: { [key]: 3 } })).toThrow(
@@ -31,8 +30,8 @@ describe('size limits in the config', () => {
     }
   });
 
-  it('takes folderDepth with the typescript, javascript and kotlin presets, and by default', () => {
-    for (const preset of [undefined, 'typescript', 'javascript', 'kotlin']) {
+  it('takes folderDepth with the typescript, javascript, kotlin and python presets, and by default', () => {
+    for (const preset of [undefined, 'typescript', 'javascript', 'kotlin', 'python']) {
       const config = {
         ...(preset === undefined ? {} : { preset }),
         thresholds: { folderDepth: 2 },
@@ -56,5 +55,7 @@ describe('size limits in the config', () => {
     expect(lifts('typescript', 'folder-depth-limit').preset).toBe('typescript');
     expect(lifts('kotlin', 'class-methods-limit').preset).toBe('kotlin');
     expect(lifts('kotlin', 'inheritance-depth-limit').preset).toBe('kotlin');
+    expect(lifts('python', 'folder-depth-limit').preset).toBe('python');
+    expect(lifts('python', 'class-fields-limit').preset).toBe('python');
   });
 });

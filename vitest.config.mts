@@ -1,8 +1,10 @@
 import { defineConfig } from 'vitest/config';
+import { createDurationSequencer } from './scripts/test-shards/sequencer.mjs';
 
 export default defineConfig({
   test: {
     environment: 'node',
+    sequence: { sequencer: createDurationSequencer },
     // Tests start their own vitest runs (eval acceptance tests, Stryker mutants). Clearing the step
     // summary path keeps those nested runs, some of which fail on purpose, out of the CI job's
     // "Vitest Test Report"; the suite's own report is written by this process, which keeps it.
@@ -11,7 +13,8 @@ export default defineConfig({
       GITHUB_STEP_SUMMARY: '',
       NITPICKER_SHARED_BUILD_DIRECTORY: '',
     },
-    include: ['{core,shared,languages}/**/*.test.mjs', 'evals/**/*.test.mjs'],
+    include: ['{core,shared,languages,scripts}/**/*.test.mjs', 'evals/**/*.test.mjs'],
     testTimeout: 30_000,
+    hookTimeout: 30_000,
   },
 });

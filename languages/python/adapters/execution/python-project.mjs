@@ -1,5 +1,6 @@
 import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs';
 import path from 'node:path';
+import { isDirectory } from '../../libraries/project-files.mjs';
 
 const HINT_FILES = [
   'pyproject.toml',
@@ -181,8 +182,4 @@ export function importRoots(projectRoot, sourceRoots) {
 
 function isFile(file) {
   return existsSync(file) && statSync(file).isFile();
-}
-
-function isDirectory(directory) {
-  return existsSync(directory) && statSync(directory).isDirectory();
 }

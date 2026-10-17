@@ -64,6 +64,9 @@ describe('a project without "preset"', () => {
     expect(message({ 'pyproject.toml': '', 'src/demo/app.py': '' })).toBe(
       expected('Python', 'pyproject.toml', 'python'),
     );
+    expect(message({ 'requirements.txt': 'flask\n', 'app.py': '' })).toBe(
+      expected('Python', 'requirements.txt', 'python'),
+    );
   });
 
   it('runs the TypeScript preset when the source roots hold TypeScript or JavaScript', () => {

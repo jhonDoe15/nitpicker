@@ -36,7 +36,7 @@ describe('nitpicker with "preset": "python" and mutation testing', () => {
         path: 'src/demo/a.py',
         identity: 'value|1→3#1',
         message:
-          'Survived number: replacing `1` with `3` fails no test. Add an assertion that would. If no input can tell the two apart, simplify the code so this mutant disappears.',
+          'Survived number: replacing `1` with `3` fails no test. Add an assertion that would. If no input can tell the two apart, simplify the code so this mutant disappears. To allow it for some paths, add a "python.exceptions" entry for mutant-survived in nitpicker.config.json.',
         classification: 'enforceable',
         symbol: 'value',
         location: { line: 5 },
@@ -57,7 +57,8 @@ describe('nitpicker with "preset": "python" and mutation testing', () => {
         rule: 'mutant-nocoverage',
         path: 'src/demo/a.py',
         identity: 'value|1→3#1',
-        message: 'NoCoverage number: no test runs this code. Add a test that reaches it.',
+        message:
+          'NoCoverage number: no test runs this code. Add a test that reaches it. To allow it for some paths, add a "python.exceptions" entry for mutant-nocoverage in nitpicker.config.json.',
         classification: 'enforceable',
         symbol: 'value',
         location: { line: 5 },

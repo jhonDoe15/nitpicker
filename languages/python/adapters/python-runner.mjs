@@ -1,6 +1,7 @@
 import { mkdtempSync, realpathSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
+import { readHeadPolicyFile } from '../../../shared/head-policy.mjs';
 import { applyJavaPolicy } from '../../java/adapters/java-policy.mjs';
 import { parseRunnerArguments } from '../../java/adapters/java-runner.mjs';
 import {
@@ -10,6 +11,7 @@ import {
 import { MUTATION_ANALYZER_NAME, PYTHON_ANALYZER_NAME } from './python-analyzer.mjs';
 import { applyPythonExceptions } from './configuration/python-exceptions.mjs';
 import { mutationFindings } from './mutation/python-mutation.mjs';
+import { applyRuleHints } from '../rules/rule-hints.mjs';
 import { readPythonFindings } from './python-reports.mjs';
 import { createToolContext, runPythonTools } from './python-tools.mjs';
 
@@ -39,6 +41,10 @@ function toolContext({ projectRoot, liveRoot, settings, policy }, reportRoot) {
     exclude: policy?.exclude,
     snapshot: policy?.snapshot,
     baselineRoot: policy?.baselineRoot,
+    conventions: policy?.conventions,
+    policyRoot: policy?.policyRoot,
+    toolPrecedence: policy?.toolPrecedence,
+    pytestAddopts: process.env.PYTEST_ADDOPTS,
   });
 }
 
@@ -54,9 +60,13 @@ function withReportRoot(step) {
 
 function collectMutationFindings(options) {
   return withReportRoot((reportRoot) =>
-    applyJavaPolicy(mutationFindings(toolContext(options, reportRoot)), {
-      exclude: options.policy?.exclude,
-    }),
+    applyJavaPolicy(
+      applyPythonExceptions(
+        applyRuleHints(mutationFindings(toolContext(options, reportRoot))),
+        options.settings?.exceptions,
+      ),
+      { exclude: options.policy?.exclude },
+    ),
   );
 }
 
@@ -131,12 +141,13 @@ export function parsePythonArguments(arguments_) {
 
 function main(arguments_) {
   const { part, projectRoot, liveRoot, settings, policy } = parsePythonArguments(arguments_);
+  const conventions = readHeadPolicyFile().conventions;
   const report = analyzePythonSnapshot({
     part,
     projectRoot: realpathSync(projectRoot),
     liveRoot: realpathSync(liveRoot),
     settings,
-    policy,
+    policy: { ...policy, conventions },
   });
   process.stdout.write(`${JSON.stringify(report)}\n`);
 }

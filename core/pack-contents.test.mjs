@@ -6,10 +6,10 @@ import { PACKAGE_ROOT } from './tooling/tool-resolution.mjs';
 
 const root = PACKAGE_ROOT;
 
-const TEST_ONLY_PATH = /(?:^|\/)(?:fixtures|test-support)\/|\.test\.mjs$/u;
+const NOT_SHIPPED_PATH = /(?:^|\/)(?:fixtures|test-support|__pycache__)\/|\.test\.mjs$|\.pyc$/u;
 
-function isTestOnly(relative) {
-  return TEST_ONLY_PATH.test(relative);
+function isNotShipped(relative) {
+  return NOT_SHIPPED_PATH.test(relative);
 }
 
 function sourceFiles(directory) {
@@ -17,7 +17,7 @@ function sourceFiles(directory) {
     withFileTypes: true,
   }).flatMap((entry) => {
     const relative = `${directory}/${entry.name}`;
-    if (isTestOnly(`${relative}${entry.isDirectory() ? '/' : ''}`)) return [];
+    if (isNotShipped(`${relative}${entry.isDirectory() ? '/' : ''}`)) return [];
     if (entry.isDirectory()) {
       return sourceFiles(relative);
     }
@@ -62,7 +62,7 @@ describe('npm package contents', () => {
       assertRuntimeFiles(files);
     }).toThrow('missing runtime file');
   });
-  it('classifies test-only paths by folder and file name', () => {
+  it('classifies test-only paths and Python bytecode by folder and file name', () => {
     expect(
       [
         'core/cli.mjs',
@@ -71,15 +71,18 @@ describe('npm package contents', () => {
         'core/command/test-support/cli-harness.mjs',
         'languages/java/adapters/fixtures/fake-gradle.mjs',
         'core/diff/execution/analyzer-scheduler.mjs',
-      ].filter(isTestOnly),
+        'languages/python/metrics/__pycache__/class_metrics.cpython-313.pyc',
+        'languages/python/metrics/class_metrics.py',
+      ].filter(isNotShipped),
     ).toEqual([
       'core/cli.test.mjs',
       'core/diff/fixtures/fake-eslint-cli.mjs',
       'core/command/test-support/cli-harness.mjs',
       'languages/java/adapters/fixtures/fake-gradle.mjs',
+      'languages/python/metrics/__pycache__/class_metrics.cpython-313.pyc',
     ]);
   });
-  it('ships the complete runtime tree without tests, fixtures, test support, or the lockfile', () => {
+  it('ships the complete runtime tree without tests, fixtures, test support, bytecode or the lockfile', () => {
     assertRuntimeFiles(packedFiles);
     expect(packedFiles.has('core/fix/run-fix.mjs')).toBe(true);
     expect(packedFiles.has('languages/java/gradle/nitpicker.init.gradle')).toBe(true);
@@ -97,7 +100,7 @@ describe('npm package contents', () => {
     expect(packedFiles.has('languages/java/gradle/spring-ruleset.xml')).toBe(true);
     expect(packedFiles.has('languages/java/gradle/pmd-ruleset.xml')).toBe(true);
     expect(
-      [...packedFiles].filter((file) => isTestOnly(file) || file === 'package-lock.json'),
+      [...packedFiles].filter((file) => isNotShipped(file) || file === 'package-lock.json'),
     ).toEqual([]);
   });
 });

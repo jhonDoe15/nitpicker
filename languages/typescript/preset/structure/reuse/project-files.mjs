@@ -5,8 +5,8 @@ import { filesUnder } from '../../../../../shared/filesystem.mjs';
 import { existingRoots } from '../../layout.mjs';
 import { isNonProductionFolder, isReuseProductionPath } from './reuse-paths.mjs';
 import { fileDefinitions } from './syntax/definitions.mjs';
-import { fileDynamicImports, fileExports, fileImports } from './syntax/module-facts.mjs';
-import { jsxTagNames, referencePositions } from './syntax/references.mjs';
+import { fileDynamicImports, fileExports, fileImports } from '../../syntax/module-facts.mjs';
+import { jsxTagNames, referencePositions } from '../../syntax/references.mjs';
 
 function manifestDirectory(projectRoot, file) {
   const directory = path.posix.dirname(file);

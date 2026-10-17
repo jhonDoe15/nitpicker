@@ -1,13 +1,11 @@
+import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { acceptedDigest } from '../../../../core/command/test-support/accepted-digest.mjs';
-import {
-  GREETER_HI_TEST,
-  NO_MUTATION,
-  SAME_NAME_SOURCES,
-} from './test-support/python-preset-data.mjs';
+import { NO_MUTATION, SAME_NAME_SOURCES, VIOLATION } from './test-support/python-preset-data.mjs';
 import {
   commitBranch,
+  fixture,
   fixtureRepository,
   gate,
   pythonE2eEnabled,
@@ -28,34 +26,67 @@ describe.skipIf(!pythonE2eEnabled)(
     beforeAll(() => {
       project = fixtureRepository(['coverage', 'mutmut', 'pytest', 'mypy']);
       commitBranch(project, 'failing-tests', {
-        'tests/test_greeter.py': GREETER_HI_TEST,
+        'pyproject.toml': `${readFileSync(path.join(fixture, 'pyproject.toml'), 'utf8')}\n[tool.pytest.ini_options]\naddopts = "-x"\n`,
+        'tests/test_more.py':
+          'def test_one():\n    assert 1 == 2\n\n\ndef test_two():\n    assert 2 == 3\n',
+        'src/demo/bad.py': VIOLATION,
+      });
+      commitBranch(project, 'project-shape', {
+        ...NO_MUTATION,
+        'tests/test_slow.py':
+          'import time\n\nimport pytest\n\n\n@pytest.fixture\ndef client(seconds):\n    time.sleep(seconds)\n    return seconds\n\n\n@pytest.mark.parametrize(\n    "seconds", [pytest.param(0, marks=pytest.mark.integration), 5.2]\n)\ndef test_waits(client):\n    assert client >= 0\n',
+        'src/demo/cyc_a.py': 'from demo import cyc_b\n\n\ndef a():\n    return cyc_b.b()\n',
+        'src/demo/cyc_b.py':
+          'from demo import cyc_a\n\n\ndef b():\n    return 1\n\n\ndef c():\n    return cyc_a.a()\n',
+        'src/demo/report.py':
+          'import coverage\n\n\ndef version():\n    return coverage.__version__\n',
       });
       commitBranch(project, 'broken-environment', {
         'nitpicker.config.json': '{ "preset": "python", "python": { "environment": "nowhere" } }\n',
       });
     });
     afterAll(removeRepositories);
-    it('reports failing tests on head as a tool error with exit 2, never a throw', () => {
+    it('keeps every other finding when tests fail, runs all tests despite -x, and mutates against the passing modules', () => {
       const result = gate(project, 'failing-tests');
 
-      expect(result.exitCode, result.text).toBe(2);
+      expect(result.exitCode, result.text).toBe(1);
       expect(result.json('tool-errors.json')).toEqual([
         {
-          tool: 'python',
+          tool: 'tests',
           snapshot: 'head',
           rule: 'tests-failed',
           path: '.',
-          message: expect.stringMatching(
-            new RegExp(
-              [
-                '^coverage run exited 1 in the virtualenv environment:\\n',
-                "[\\s\\S]*assert 'Hello, Ada!' == 'Hi, Ada!'",
-                '[\\s\\S]*1 failed, 2 passed in [\\d.]+s$',
-              ].join(''),
-              '',
-            ),
-          ),
+          message: [
+            'Tests fail in the head snapshot. Make each failing test pass:',
+            '  tests/test_more.py::test_one',
+            '  tests/test_more.py::test_two',
+            'The static analyzers ran as usual; coverage and CRAP come from the tests that ran.',
+            'Mutation testing (mutmut) leaves out the test modules tests/test_more.py.',
+          ].join('\n'),
         },
+      ]);
+      expect(
+        result
+          .json('new-findings.json')
+          .filter(({ tool, path: file }) => tool === 'ruff' && file === 'src/demo/bad.py')
+          .map(({ rule }) => rule),
+      ).toEqual(['F401']);
+    });
+    it('reports a slow new test (its fixture setup counted, one unit case of an integration-marked parametrization), an import cycle and a dev-only package in production code', () => {
+      const result = gate(project, 'project-shape', MUTATION_DISABLED);
+
+      expect(result.exitCode, result.text).toBe(1);
+      const shape = result
+        .json('new-findings.json')
+        .filter(({ rule }) =>
+          ['slow-test', 'no-production-cycles', 'no-dev-dependency-in-production'].includes(rule),
+        )
+        .map(({ tool, rule, path: file }) => `${tool} ${rule} ${file}`);
+      expect(shape).toEqual([
+        'coupling no-production-cycles src/demo/cyc_a.py',
+        'coupling no-production-cycles src/demo/cyc_b.py',
+        'dependencies no-dev-dependency-in-production src/demo/report.py',
+        'test-runtime slow-test tests/test_slow.py',
       ]);
     });
     it('reports a missing environment as a tool error', () => {
