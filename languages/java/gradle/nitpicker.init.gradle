@@ -42,6 +42,12 @@ gradle.projectsEvaluated {
         def modules = new File(reportBase.toString(), 'modules.json')
         modules.parentFile.mkdirs()
         modules.text = groovy.json.JsonOutput.toJson(javaModules)
+        def testResults = gradle.rootProject.allprojects.collectMany { project ->
+            project.tasks.withType(Test).findAll { it.name != 'nitpickerArchunit' }.collect {
+                it.reports.junitXml.outputLocation.get().asFile.absolutePath
+            }
+        }
+        new File(reportBase.toString(), 'test-results.json').text = groovy.json.JsonOutput.toJson(testResults)
     }
 }
 
@@ -57,14 +63,17 @@ def rulesetExcluding = { String name, String description, List<String> rules, Co
         + excludes + rules + ['</ruleset>', '']).join('\n')
 }
 
-def springOnMainSources = { File springRuleset, Collection<File> testDirectories ->
-    rulesetExcluding('nitpicker-spring-main', "Nitpicker's Spring rules on main sources only.",
-        ["  <rule ref=\"${escapeXml(springRuleset.absolutePath)}\"/>"], testDirectories)
+def mainRulesOnMainSources = { File rulesetDir, boolean spring, Collection<File> testDirectories ->
+    def rulesets = ['pmd-main-ruleset.xml'] + (spring ? ['spring-ruleset.xml'] : [])
+    rulesetExcluding('nitpicker-main', "Nitpicker's main-only rules on main sources only.",
+        rulesets.collect { "  <rule ref=\"${escapeXml(new File(rulesetDir, it).absolutePath)}\"/>".toString() },
+        testDirectories)
 }
 
-def testRulesOnTestSources = { File testRules, Collection<File> mainDirectories ->
+def testRulesOnTestSources = { File testRules, File rulesetDir, boolean spring, Collection<File> mainDirectories ->
+    def rules = [testRules] + (spring ? [new File(rulesetDir, 'spring-test-ruleset.xml')] : [])
     rulesetExcluding('nitpicker-tests', "Nitpicker's test-only rules on test sources only.",
-        ["  <rule ref=\"${escapeXml(testRules.absolutePath)}\"/>"], mainDirectories)
+        rules.collect { "  <rule ref=\"${escapeXml(it.absolutePath)}\"/>".toString() }, mainDirectories)
 }
 
 allprojects {
@@ -217,11 +226,21 @@ allprojects {
         }
 
         def mainSources = sourceSets.main.allJava.sourceDirectories
+        def testSourceSets = {
+            def testClassDirs = tasks.withType(Test).collectMany { it.testClassesDirs.files }
+            sourceSets.findAll { sourceSet ->
+                sourceSet.name != 'main' && (sourceSet.name.toLowerCase().contains('test')
+                    || sourceSet.output.classesDirs.files.any { testClassDirs.contains(it) })
+            }
+        }
+        project.ext.nitpickerTestSourceSets = testSourceSets
         def testSourceDirectories = {
-            sourceSets.findAll { it.name != 'main' }.collectMany { it.allJava.sourceDirectories.files }.unique()
+            testSourceSets().collectMany { it.allJava.sourceDirectories.files }.unique()
         }
         def lintedSources = { (mainSources.files + testSourceDirectories()).findAll { it.exists() } }
-        def allClassesTasks = { sourceSets.collect { tasks.named(it.classesTaskName) } }
+        def lintedClassesTasks = {
+            [tasks.named('classes')] + testSourceSets().collect { tasks.named(it.classesTaskName) }
+        }
         def analyzedClassDirs = {
             kotlinPreset ? [tasks.named('compileJava').get().destinationDirectory.get().asFile]
                 : sourceSets.main.output.classesDirs.files
@@ -233,10 +252,11 @@ allprojects {
             sourceSets.main.compileClasspath.files.any { it.name ==~ /spring-(context|boot)-.*\.jar/ }
         }
         def hasGuava = { sourceSet -> sourceSet.compileClasspath.files.any { it.name ==~ /guava-\d.*\.jar/ } }
+        def hasAwaitility = { sourceSets.test.compileClasspath.files.any { it.name ==~ /awaitility-\d.*\.jar/ } }
 
         tasks.register('nitpickerPmd', JavaExec) {
             group = 'nitpicker'
-            dependsOn allClassesTasks
+            dependsOn lintedClassesTasks
             classpath = configurations.nitpickerPmd
             mainClass = 'net.sourceforge.pmd.cli.PmdCli'
             ignoreExitValue = true // PMD exits 4 when it finds violations
@@ -245,7 +265,7 @@ allprojects {
             // project's ruleset without the rules nitpicker already has.
             def nitpickerRuleset = nitpickerArgument('nitpicker.pmd.nitpickerRuleset') ?: new File(initScriptDir, 'pmd-ruleset.xml').absolutePath
             def projectRuleset = nitpickerArgument('nitpicker.pmd.projectConfig')
-            def testRules = new File(nitpickerArgument('nitpicker.pmd.testRules') ?: new File(initScriptDir, 'pmd-test-only.xml').absolutePath)
+            def testRules = new File(nitpickerArgument('nitpicker.pmd.testRules') ?: new File(initScriptDir, 'pmd-test-ruleset.xml').absolutePath)
             def ruleset = ([nitpickerRuleset] + (projectRuleset ? [projectRuleset] : [])).join(',')
             doFirst {
                 reportDir.get().asFile.mkdirs()
@@ -253,13 +273,14 @@ allprojects {
                 // main one only) and the main and test classes, so rules can match annotation and
                 // supertype names exactly.
                 def auxClasspath = reportDir.get().file('pmd-aux-classpath.txt').asFile
-                auxClasspath.text = (sourceSets.collectMany { it.compileClasspath.files + it.output.classesDirs.files })
+                auxClasspath.text = (([sourceSets.main] + testSourceSets())
+                    .collectMany { it.compileClasspath.files + it.output.classesDirs.files })
                     .findAll { it.exists() }.unique().collect { it.absolutePath }.join('\n')
-                def springMainRuleset = reportDir.get().file('pmd-spring-main.xml').asFile
-                springMainRuleset.text = springOnMainSources(new File(initScriptDir, 'spring-ruleset.xml'), testSourceDirectories())
+                def mainRuleset = reportDir.get().file('pmd-main.xml').asFile
+                mainRuleset.text = mainRulesOnMainSources(initScriptDir, usesSpring(), testSourceDirectories())
                 def testRuleset = reportDir.get().file('pmd-tests.xml').asFile
-                testRuleset.text = testRulesOnTestSources(testRules, mainSources.files)
-                def nitpickerExtras = [testRuleset] + (usesSpring() ? [springMainRuleset] : [])
+                testRuleset.text = testRulesOnTestSources(testRules, initScriptDir, usesSpring(), mainSources.files)
+                def nitpickerExtras = [testRuleset, mainRuleset]
                 def rulesets = ([ruleset] + nitpickerExtras.collect { it.absolutePath }).join(',')
                 args 'check', '--no-cache', '--no-progress', '--format', 'sarif',
                     '--report-file', reportDir.get().file('pmd.sarif').asFile.absolutePath,
@@ -288,6 +309,7 @@ allprojects {
                     (auxiliary.isEmpty() ? [] : ['-auxclasspath', auxiliary.join(File.pathSeparator)]) +
                     classDirs.collect { it.absolutePath })
             }
+            onlyIf { analyzedClassDirs().any { it.exists() && it.list()?.length } }
         }
 
         tasks.register('nitpickerFormat', JavaExec) {
@@ -312,6 +334,7 @@ allprojects {
             .toString().split(',')*.trim().findAll { it }
 
         tasks.named('test') { exclude archunitIncludes }
+        tasks.withType(Test).configureEach { reports.junitXml.outputPerTestCase = true }
 
         tasks.register('nitpickerArchunit', Test) {
             group = 'nitpicker'
@@ -507,7 +530,10 @@ allprojects {
                 'ArchUnit rule tests, structure metrics and PIT; reports go to build/nitpicker.'
             dependsOn 'nitpickerPmd', 'nitpickerSpotbugs', 'nitpickerErrorProne', 'nitpickerFormat',
                 'nitpickerJacoco', 'nitpickerArchunit', 'nitpickerStructure', 'nitpickerPit'
-            dependsOn { tasks.withType(Checkstyle) }
+            dependsOn {
+                ([sourceSets.main] + testSourceSets())
+                    .collect { tasks.findByName(it.getTaskName('checkstyle', null)) }.findAll { it != null }
+            }
             doLast {
                 def formatReport = reportDir.get().file('format.txt').asFile
                 if (javaStyle == 'none' || !formatReport.exists()) {
@@ -518,6 +544,10 @@ allprojects {
                         from(testTask.reports.junitXml.outputLocation) { include 'TEST-*.xml' }
                         into reportDir.get().dir("test-results/${testTask.name}")
                     }
+                }
+                def spotbugsReport = reportDir.get().file('spotbugs.sarif').asFile
+                if (!spotbugsReport.exists() || spotbugsReport.length() == 0) {
+                    spotbugsReport.text = '{"version":"2.1.0","runs":[]}'
                 }
                 def roots = mainSources.files.collect { relativeToRoot(it) }
                 def testRoots = testSourceDirectories().collect { relativeToRoot(it) }
@@ -531,40 +561,64 @@ allprojects {
                     spring         : usesSpring(),
                     guava          : hasGuava(sourceSets.main),
                     testGuava      : hasGuava(sourceSets.test),
+                    testAwaitility : hasAwaitility(),
+                    published      : project.extensions.findByName('publishing')?.publications?.isEmpty() == false,
                 ])
             }
         }
 
-        // --- coupling (SH6): package dependency graph from the JDK's jdeps over the main classes ---
-        // The coupling metrics and stability-direction findings are computed on the Nitpicker side
-        // from these two files. jdeps ships with the JDK that runs Gradle; it is not a pinned download.
+        // --- coupling (SH6): class dependency graph from one jdeps run over the main and test classes ---
+        // The coupling metrics, stability-direction and test-only-export findings are computed on the
+        // Nitpicker side from these files. jdeps ships with the JDK that runs Gradle; it is not a
+        // pinned download.
+        def classNamesIn = { Collection<File> classDirs ->
+            classDirs.collectMany { dir ->
+                fileTree(dir) { include '**/*.class'; exclude '**/module-info.class', '**/package-info.class' }.files.collect {
+                    dir.toPath().relativize(it.toPath()).toString().replace('\\', '/')
+                        .replaceAll(/\.class$/, '').replace('/', '.')
+                }
+            }.unique().sort()
+        }
+        def runJdeps = { Collection<File> classDirs, Closure onLine ->
+            def jdeps = new File(System.getProperty('java.home'), 'bin/jdeps')
+            def process = new ProcessBuilder([jdeps.absolutePath, '-verbose:class', '-filter:none'] +
+                classDirs.collect { it.absolutePath }).directory(projectDir)
+                .redirectError(ProcessBuilder.Redirect.DISCARD).start()
+            process.inputStream.withReader('UTF-8') { reader -> reader.eachLine { onLine(it) } }
+            if (process.waitFor() != 0) {
+                throw new GradleException("jdeps failed (${jdeps}) with exit code ${process.exitValue()}")
+            }
+        }
         tasks.register('nitpickerJdeps') {
             group = 'nitpicker'
-            dependsOn tasks.named('classes')
+            dependsOn { [tasks.named('classes')] + testSourceSets().collect { tasks.named(it.classesTaskName) } }
             doLast {
                 reportDir.get().asFile.mkdirs()
-                def classDirs = sourceSets.main.output.classesDirs.files.findAll { it.exists() }
-                def classNames = classDirs.collectMany { dir ->
-                    fileTree(dir) { include '**/*.class'; exclude '**/module-info.class', '**/package-info.class' }.files.collect {
-                        dir.toPath().relativize(it.toPath()).toString().replace('\\', '/')
-                            .replaceAll(/\.class$/, '').replace('/', '.')
+                def mainDirs = sourceSets.main.output.classesDirs.files.findAll { it.exists() }
+                def testDirs = testSourceSets().collectMany { it.output.classesDirs.files }
+                    .findAll { it.exists() && !mainDirs.contains(it) }.unique()
+                def mainClasses = classNamesIn(mainDirs)
+                def mainClassSet = mainClasses as Set
+                def testClassSet = classNamesIn(testDirs) as Set
+                def analyzed = (mainDirs + testDirs).findAll { !classNamesIn([it]).isEmpty() }
+                def sourceOf = { String line -> line.trim().split(/\s+/)[0] }
+                reportDir.get().file('jdeps.txt').asFile.withWriter('UTF-8') { mainEdges ->
+                    reportDir.get().file('jdeps-test.txt').asFile.withWriter('UTF-8') { testEdges ->
+                        if (!analyzed.isEmpty()) {
+                            runJdeps(analyzed) { String line ->
+                                if (line ==~ /^\s+\S+\s+->\s+\S+.*/) {
+                                    def source = sourceOf(line)
+                                    if (mainClassSet.contains(source)) {
+                                        mainEdges.write(line + '\n')
+                                    } else if (testClassSet.contains(source)) {
+                                        testEdges.write(line + '\n')
+                                    }
+                                }
+                            }
+                        }
                     }
-                }.unique().sort()
-                reportDir.get().file('jdeps-classes.txt').asFile.text = classNames.collect { it + '\n' }.join('')
-                def graph = reportDir.get().file('jdeps.txt').asFile
-                if (classNames.isEmpty()) {
-                    graph.text = ''
-                    return
                 }
-                def jdeps = new File(System.getProperty('java.home'), 'bin/jdeps')
-                def process = new ProcessBuilder([jdeps.absolutePath, '-verbose:class', '-filter:none'] +
-                    classDirs.collect { it.absolutePath }).directory(projectDir)
-                    .redirectError(ProcessBuilder.Redirect.DISCARD).start()
-                def output = process.inputStream.getText('UTF-8')
-                if (process.waitFor() != 0) {
-                    throw new GradleException("jdeps failed (${jdeps}) with exit code ${process.exitValue()}")
-                }
-                graph.text = output
+                reportDir.get().file('jdeps-classes.txt').asFile.text = mainClasses.collect { it + '\n' }.join('')
             }
         }
         tasks.named('nitpickerJava') { dependsOn 'nitpickerJdeps' }

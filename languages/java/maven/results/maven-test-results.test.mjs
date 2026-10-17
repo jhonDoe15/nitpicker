@@ -97,6 +97,24 @@ describe('copyTestResults', () => {
     expect(copied(reportDir, 'surefire')).toEqual(['TEST-shop.OrderTest.xml']);
   });
 
+  it('copies the output files of redirected test output, except stale and ArchUnit ones', () => {
+    const surefire = tree({
+      'TEST-shop.OrderTest.xml': '<a/>',
+      'shop.OrderTest-output.txt': 'WARN late',
+      'shop.OldTest-output.txt': 'old',
+      'shop.ArchTest-output.txt': 'rules',
+    });
+    stale(surefire, 'shop.OldTest-output.txt');
+    const reportDir = tree({});
+
+    copy({ surefireReports: surefire, failsafeReports: path.join(reportDir, 'none') }, reportDir);
+
+    expect(copied(reportDir, 'surefire')).toEqual([
+      'TEST-shop.OrderTest.xml',
+      'shop.OrderTest-output.txt',
+    ]);
+  });
+
   it('writes nothing when no report directory exists', () => {
     const reportDir = tree({});
 

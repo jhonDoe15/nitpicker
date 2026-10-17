@@ -15,20 +15,23 @@ function rulesetExcluding({ name, description, rules, roots }) {
     `<ruleset name="${name}" xmlns="http://pmd.sourceforge.net/ruleset/2.0.0">`,
     `  <description>${description}</description>`,
     ...excludes,
-    `  <rule ref="${escapeXml(rules)}"/>`,
+    ...rules.map((file) => `  <rule ref="${escapeXml(file)}"/>`),
     '</ruleset>',
     '',
   ].join('\n');
 }
 
-export function writeRulesets({ module, reportDir, configs }) {
-  const springRuleset = path.join(reportDir, 'pmd-spring-main.xml');
+export function writeRulesets({ module, reportDir, configs, spring }) {
+  const mainRuleset = path.join(reportDir, 'pmd-main.xml');
   writeFileSync(
-    springRuleset,
+    mainRuleset,
     rulesetExcluding({
-      name: 'nitpicker-spring-main',
-      description: "Nitpicker's Spring rules on main sources only.",
-      rules: path.join(GRADLE_DIRECTORY, 'spring-ruleset.xml'),
+      name: 'nitpicker-main',
+      description: "Nitpicker's main-only rules on main sources only.",
+      rules: [
+        path.join(GRADLE_DIRECTORY, 'pmd-main-ruleset.xml'),
+        ...(spring ? [path.join(GRADLE_DIRECTORY, 'spring-ruleset.xml')] : []),
+      ],
       roots: module.testSourceRoots,
     }),
   );
@@ -39,9 +42,12 @@ export function writeRulesets({ module, reportDir, configs }) {
     rulesetExcluding({
       name: 'nitpicker-tests',
       description: "Nitpicker's test-only rules on test sources only.",
-      rules: layers.tests ?? TEST_RULESET,
+      rules: [
+        layers.tests ?? TEST_RULESET,
+        ...(spring ? [path.join(GRADLE_DIRECTORY, 'spring-test-ruleset.xml')] : []),
+      ],
       roots: module.sourceRoots,
     }),
   );
-  return { springRuleset, testsRuleset, layers };
+  return { mainRuleset, testsRuleset, layers };
 }
