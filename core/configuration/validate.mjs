@@ -22,6 +22,7 @@ import { conventionDefinitions } from '../conventions/definitions.mjs';
 import { validateConventions } from '../../shared/conventions/settings.mjs';
 import { stylingApproaches } from '../../languages/typescript/preset/eslint-config/react/react-rules.mjs';
 import { i18nRuleIds } from '../../languages/typescript/preset/eslint-config/i18n/i18n-rules.mjs';
+import { validateScope, validateTestConsole } from './scopes/scope-settings.mjs';
 import path from 'node:path';
 
 export const SUPPORTED_PRESETS = ['typescript', 'javascript', ...GRADLE_PRESETS, 'python'];
@@ -40,6 +41,7 @@ export const KEYS = [
   'legacyInventory',
   'python',
   'tools',
+  'testConsole',
   'kotlin',
   'conventions',
 ];
@@ -63,6 +65,7 @@ export function validateConfig(config) {
   validateDisable(config.disable);
   validateReact(config.react);
   validateI18n(config.i18n);
+  validateTestConsole(config.testConsole, config.preset);
   validateOptional(config);
   validateProjectConventions(config);
   return config;
@@ -92,16 +95,30 @@ function validateScalars(config) {
   validatePythonConfig(
     config,
     liftsOnlyRules(config.exceptions, PYTHON_TOP_LEVEL_EXCEPTION_RULES)
-      ? TYPESCRIPT_ONLY_KEYS.filter((key) => key !== 'exceptions')
-      : TYPESCRIPT_ONLY_KEYS,
+      ? TYPESCRIPT_ONLY_KEYS.filter((key) => !['exceptions', 'tools'].includes(key))
+      : TYPESCRIPT_ONLY_KEYS.filter((key) => key !== 'tools'),
   );
 }
 
+const JAVASCRIPT_UNSUPPORTED_KEYS = [
+  [
+    'react',
+    'React and JSX belong to the TypeScript preset, so remove the key, or use "preset": "typescript" for a React project',
+  ],
+  [
+    'i18n',
+    'the message rules check react-intl messages and the text in JSX, which belong to the TypeScript preset, so remove the key, or use "preset": "typescript" for a project with translated messages',
+  ],
+];
+
 function validateJavascriptConfig(config) {
-  if (config.preset === 'javascript' && config.react !== undefined) {
-    throw configError(
-      '"react" is not supported with "preset": "javascript": React and JSX belong to the TypeScript preset, so remove the key, or use "preset": "typescript" for a React project',
-    );
+  if (config.preset !== 'javascript') {
+    return;
+  }
+  for (const [key, reason] of JAVASCRIPT_UNSUPPORTED_KEYS) {
+    if (config[key] !== undefined) {
+      throw configError(`"${key}" is not supported with "preset": "javascript": ${reason}`);
+    }
   }
 }
 
@@ -143,23 +160,6 @@ function validateOptional(config) {
   }
   if (config.tools !== undefined) {
     validateTools(config.tools, config.preset);
-  }
-}
-
-function validateScope(name, scope, keys) {
-  if (scope === undefined) {
-    return;
-  }
-  if (!isPlainObject(scope)) {
-    throw configError(`"${name}" must be an object`);
-  }
-  for (const key of Object.keys(scope)) {
-    if (!keys.includes(key)) {
-      throw configError(`unknown ${name} key "${key}". Allowed ${name} keys: ${keys.join(', ')}`);
-    }
-  }
-  if (scope.enabled !== undefined && typeof scope.enabled !== 'boolean') {
-    throw configError(`"${name}.enabled" must be true or false`);
   }
 }
 

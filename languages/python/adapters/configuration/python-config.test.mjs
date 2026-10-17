@@ -89,7 +89,7 @@ describe('python config validation', () => {
       'unknown key "interpreter" in "python". Allowed keys: environment',
     ],
     [{ formatter: 'yapf' }, '"python.formatter" must be one of: ruff, black'],
-    [{ testRunner: 'nose' }, '"python.testRunner" must be one of: pytest, unittest'],
+    [{ testRunner: 'nose' }, '"python.testRunner" must be one of: pytest, unittest, django, nose2'],
     [{ typeChecker: 'pytype' }, '"python.typeChecker" must be one of: mypy, pyright, basedpyright'],
     [{ exceptions: {} }, '"python.exceptions" must be an array'],
     [{ exceptions: ['T201'] }, '"python.exceptions[0]" must be an object'],

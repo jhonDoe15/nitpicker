@@ -15,8 +15,8 @@ it with `npx skills add jhonDoe15/nitpicker --skill nitpicker-java`.
 1. Run the project's tests (`./gradlew test`). Failing tests stop coverage, CRAP and mutation from
    running.
 2. When the change is complete, run `npx nitpicker` as a background command you wait on, without a
-   pipe: you need its exit code. It has no `--fix` for Kotlin; format with the project's ktlint or
-   ktfmt. It runs Gradle on the merge base and on head, with the project's `./gradlew` when there
+   pipe: you need its exit code. It has no `--fix` for Kotlin; format with the command and notes
+   printed at the start of the run. It runs Gradle on the merge base and on head, with the project's `./gradlew` when there
    is one, otherwise `gradle` from the PATH (`NITPICKER_GRADLE` overrides both). It takes minutes
    and prints a progress line for each slow analyzer.
 3. Act on the exit code:
@@ -50,8 +50,8 @@ it with `npx skills add jhonDoe15/nitpicker --skill nitpicker-java`.
   instead of catching `Exception`, whatever the variable is called.
 - detekt's defaults stay on. In main sources: lines of at most 120 characters, named constants
   instead of numbers other than -1, 0, 1 and 2 (`MagicNumber`), at most 2 `return` and 2 `throw`
-  per function, conditions of at most 3 `&&`/`||` parts, no wildcard imports, and no `TODO:` or
-  `FIXME:` comments. Catch and throw specific exceptions, never `Exception`, `RuntimeException` or
+  per function, conditions of at most 3 `&&`/`||` parts, no wildcard imports unless most of the project's files
+  already use them, and no `TODO:` or `FIXME:` comments. Catch and throw specific exceptions, never `Exception`, `RuntimeException` or
   `Throwable` (also in tests: `TooGenericExceptionCaught`), and pass the caught exception on as the cause (`SwallowedException`). Use
   `require(...)` and `check(...)` instead of throwing `IllegalArgumentException` and
   `IllegalStateException`; a top-level `val` holding a literal is `const val`. Remove unused private
@@ -67,9 +67,9 @@ it with `npx skills add jhonDoe15/nitpicker --skill nitpicker-java`.
 ## Size and tests
 
 - A function stays within 50 lines, 15 statements, 2 levels of control nesting and 3 parameters;
-  past 3 parameters, pass a data class. `init` blocks (`Class.<init>`) and property
-  initializers that hold a block or a branch (`val x = run { ... }`, `val y = if (...) ... else ...`) count as
-  functions with the same limits. An `init` block cannot return early: move the nested part into
+  past 3 parameters, pass a data class. Each lambda, anonymous function and local function is a function
+  with the same limits, counted on its own and not towards the function around it; so are `init` blocks
+  (`Class.<init>`) and property initializers that branch (`val y = if (...) ... else ...`). An `init` block cannot return early: move the nested part into
   a function. Complex code needs tests: the CRAP score of a function must
   stay below 9.
 - A new clone of at least 5 lines and 50 tokens in main sources (`duplicate-clone`) fails: extract

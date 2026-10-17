@@ -48,10 +48,16 @@ export function createQualityAreaAnalyzer({
   };
 }
 
-function optionalRootArguments({ liveProjectRoot, projectPolicyRoot, baselineRoot }) {
+function optionalRootArguments({
+  liveProjectRoot,
+  projectPolicyRoot,
+  baselineRoot,
+  baselineMovesFile,
+}) {
   return [
     ...(liveProjectRoot === undefined ? [] : ['--live-project-root', liveProjectRoot]),
     ...(projectPolicyRoot === undefined ? [] : ['--project-policy-root', projectPolicyRoot]),
     ...(baselineRoot === undefined ? [] : ['--baseline-root', baselineRoot]),
+    ...(baselineMovesFile === undefined ? [] : ['--baseline-moves-file', baselineMovesFile]),
   ];
 }
