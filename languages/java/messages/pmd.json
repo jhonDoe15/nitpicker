@@ -40,7 +40,7 @@
     "mayBeIntended": false
   },
   "AvoidCatchingGenericException": {
-    "fix": "Catch the specific exception types the call throws, e.g. NumberFormatException, and keep the try around that one call.",
+    "fix": "Catch the specific exception types the call throws, e.g. NumberFormatException, and keep the try around that one call; in a test, use assertThrows.",
     "mayBeIntended": true
   },
   "AvoidCatchingNPE": {
