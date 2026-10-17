@@ -48,6 +48,10 @@ function productionMessages(root, environments, filename, code) {
   return failureMessagesFor({ config, filename, code });
 }
 
+function directive(runner, environment) {
+  return `/** @${runner}-environment ${environment} */\n`;
+}
+
 describe('the browser globals of production code in a DOM-tested project', () => {
   it('covers the production files the DOM tests import, directly or through other files', () => {
     expect(domTestedProductionFiles(layout, jsdom, projectWith(browserProject))).toEqual([
@@ -76,7 +80,7 @@ describe('the browser globals of production code in a DOM-tested project', () =>
       'src/cli/run.js': SERVER,
       'tests/ui/render.test.js': DOM_TEST.replace('../src', '../../src'),
       'tests/serve.test.js': "import '../src/server/serve.js';\nit('a', () => {});\n",
-      'tests/run.test.js': "/** @jest-environment jsdom */\nimport '../src/cli/run.js';\n",
+      'tests/run.test.js': `${directive('jest', 'jsdom')}import '../src/cli/run.js';\n`,
     };
 
     expect(domTestedProductionFiles(layout, scoped, projectWith(files))).toEqual([
@@ -122,7 +126,7 @@ describe('DOM environment directives in test files', () => {
     expect(
       hasDomDirectiveTests(
         layout,
-        projectWith({ 'tests/a.test.js': '/** @vitest-environment happy-dom */\n' }),
+        projectWith({ 'tests/a.test.js': directive('vitest', 'happy-dom') }),
       ),
     ).toBe(true);
     expect(
