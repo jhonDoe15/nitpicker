@@ -62,10 +62,9 @@
       "paths": [
         "core/cli-bin.test.mjs",
         "core/diff/execution/analyzer-process.test.mjs",
-        "core/diff/sharding/aggregate-cli.test.mjs",
-        "languages/python/adapters/python-runner-process.test.mjs"
+        "core/diff/sharding/aggregate-cli.test.mjs"
       ],
-      "reason": "These files test the process boundary itself: the bin entry guard under a symlinked launch; the environment a spawned analyzer receives, the force-kill of an analyzer that ignores SIGTERM, and the analyzer scheduler's exit code and cancelled queue under SIGINT and SIGTERM; that shard aggregation starts with a fresh module graph that loads no development dependency; and that the Python runner started as a program keeps its entry guard, its exit code 2, its single JSON line and the snapshot as working directory. None of that is observable in-process."
+      "reason": "These files test the process boundary itself: the bin entry guard under a symlinked launch; the environment a spawned analyzer receives, the force-kill of an analyzer that ignores SIGTERM, and the analyzer scheduler's exit code and cancelled queue under SIGINT and SIGTERM; and that shard aggregation starts with a fresh module graph that loads no development dependency. None of that is observable in-process."
     },
     {
       "rule": "nitpicker/no-raised-test-timeout",

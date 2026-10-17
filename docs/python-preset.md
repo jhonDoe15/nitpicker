@@ -786,7 +786,7 @@ and CRAP rules.
   CLI tests do. They cover clean and failing changes in every report format, a change that removes
   every test, tool errors (failing tests, no environment), `--all`, rejected TypeScript-only keys,
   and that base and head each run with their own sources on `PYTHONPATH`. One test per behaviour
-  that no unit test below covers. `python-runner.test.mjs` also starts the runner as a program, and
+  that no unit test below covers. The Python end-to-end suite starts the runner as a program, and
   the wrapper scripts in a `.venv/bin` start the fake as one, for the tests that do not use the seam.
 - Unit tests next to the code: environment (including uv, poetry and workspace launchers), formatter,
   test runner, target version and source root detection, the tool steps (arguments, long output,
