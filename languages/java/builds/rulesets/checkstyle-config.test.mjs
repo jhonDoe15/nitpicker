@@ -40,6 +40,23 @@ const SCOPED = [
   `<property name="query" value="//VARIABLE_DEF/IDENT[matches(@text, '^[a-z]$')]"/></module>`,
 ].join('');
 const METHOD_NAME = '<module name="MethodName"><property name="format" value="x"/></module>';
+const FIELD_RULE = 'GoogleNonConstantFieldName';
+const FIELD_NAME = `<module name="${FIELD_RULE}"/>`;
+const ACCEPTED = [true, true];
+const REJECTED = [false, false];
+const DIGIT_UNDERSCORE = (check) =>
+  `<module name="${check}"><property name="id" value="GoogleNonConstantFieldName"/>` +
+  '<property name="format" value="^[^_]*$|(?&lt;!\\d)_|_(?!\\d)"/>' +
+  `<message key="name.invalidPattern" value="Non-constant field name ''{0}'' must be lowerCamelCase, ` +
+  'with no underscore, not even between digits."/></module>';
+const FIELD_NAMES = [
+  '<module name="GoogleNonConstantFieldName"><message key="google.non.constant.field.name.format" ',
+  `value="Non-constant field name ''{0}'' must be lowerCamelCase: start lowercase, be at least 2 `,
+  'chars, avoid a single lowercase letter followed by uppercase, and contain only letters and ',
+  'digits."/></module>',
+  DIGIT_UNDERSCORE('MemberName'),
+  DIGIT_UNDERSCORE('StaticVariableName'),
+].join('');
 const TODO = [
   '<module name="TodoComment">',
   '  <property name="id" value="TodoFormat"/>',
@@ -58,6 +75,7 @@ describe('nitpickerCheckstyleConfig', () => {
       '  <module name="TreeWalker"><module name="SuppressWarningsHolder" />',
       '  <module name="TextBlockGoogleStyleFormatting"/>',
       `  ${METHOD_NAME}`,
+      `  ${FIELD_NAME}`,
       TODO,
       '</module>',
       '</module>',
@@ -71,6 +89,7 @@ describe('nitpickerCheckstyleConfig', () => {
         `  <module name="TreeWalker">\n${SCOPED}`,
         '  ',
         `  <module name="MethodName"><property name="format" value="${CAMEL_CASE}"/></module>`,
+        `  ${FIELD_NAMES}`,
         TODO_FORMAT,
         '</module>',
         '</module>',
@@ -79,13 +98,31 @@ describe('nitpickerCheckstyleConfig', () => {
   });
 
   it.each([
-    ['MethodName', `<module name="TreeWalker">${TODO}</module>`],
-    ['TodoFormat', `<module name="TreeWalker">${METHOD_NAME}</module>`],
-    ['TreeWalker', `<module name="Checker">${METHOD_NAME}${TODO}</module>`],
+    ['MethodName', `<module name="TreeWalker">${FIELD_NAME}${TODO}</module>`],
+    ['GoogleNonConstantFieldName', `<module name="TreeWalker">${METHOD_NAME}${TODO}</module>`],
+    ['TodoFormat', `<module name="TreeWalker">${METHOD_NAME}${FIELD_NAME}</module>`],
+    ['TreeWalker', `<module name="Checker">${METHOD_NAME}${FIELD_NAME}${TODO}</module>`],
   ])('fails when the bundled checks have no %s to adapt', (name, bundled) => {
     expect(() => nitpickerCheckstyleConfig(bundled)).toThrow(
       new Error(`nitpicker could not find ${name} in google_checks.xml`),
     );
+  });
+
+  it('flags the underscore between digits that GoogleNonConstantFieldName accepts, in every field', () => {
+    const bundled = `<module name="TreeWalker">${METHOD_NAME}${FIELD_NAME}${TODO}</module>`;
+    const strict = parseXml(nitpickerCheckstyleConfig(bundled)).children.filter((element) =>
+      ['MemberName', 'StaticVariableName'].includes(element.attrs?.name),
+    );
+    const settings = strict.map((element) =>
+      Object.fromEntries(
+        childrenNamed(element, 'property').map(({ attrs }) => [attrs.name, attrs.value]),
+      ),
+    );
+    const accepted = (name) => settings.map(({ format }) => new RegExp(format, 'u').test(name));
+
+    expect(settings.map(({ id }) => id)).toEqual([FIELD_RULE, FIELD_RULE]);
+    expect(['version1_2', 'count10_20', 'a1_2b'].map(accepted)).toEqual(Array(3).fill(REJECTED));
+    expect(['version12', 'userId', 'x', 'user_id'].map(accepted)).toEqual(Array(4).fill(ACCEPTED));
   });
 });
 
@@ -155,6 +192,7 @@ describe('writeCheckstyleConfigs', () => {
       '<module name="Checker">',
       '<module name="TreeWalker">',
       METHOD_NAME,
+      FIELD_NAME,
       TODO,
       '</module>',
       '</module>',
@@ -178,6 +216,9 @@ describe('writeCheckstyleConfigs', () => {
       'SuppressionXpathSingleFilter',
       'SuppressionXpathSingleFilter',
       'MethodName',
+      'GoogleNonConstantFieldName',
+      'MemberName',
+      'StaticVariableName',
       'TodoComment',
     ]);
     expect(names(written.test).map((module) => module.name)).toEqual([
@@ -186,6 +227,9 @@ describe('writeCheckstyleConfigs', () => {
       'SuppressionXpathSingleFilter',
       'SuppressionXpathSingleFilter',
       'MethodName',
+      'GoogleNonConstantFieldName',
+      'MemberName',
+      'StaticVariableName',
       'TodoComment',
     ]);
   });

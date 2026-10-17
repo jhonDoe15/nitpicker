@@ -585,7 +585,7 @@ default, and their messages name it:
   `JavadocContentLocation`, `JavadocLeadingAsteriskAlign`, `JavadocMissingLeadingAsterisk`,
   `OperatorWrapEOL`, `OperatorWrapNL` and `singleLineCommentStartWithSpace`. Four are one-way
   rules with a fix of their own: `GoogleNonConstantFieldName` (lowerCamelCase fields, replacing
-  `MemberName`; an underscore is allowed only between digits, `version1_2`), `MissingOverrideOnRecordAccessor`
+  `MemberName`), `MissingOverrideOnRecordAccessor`
   (`@Override` on an explicit record accessor), `BoxComments` (no rows of `*`, `=` or `#`) and
   `TodoFormat`, whose format nitpicker narrows to the case of the tag (`todo`, `Todo`), because
   the bundled one also flags the issue-reference forms the comment guard asks for
@@ -598,6 +598,12 @@ default, and their messages name it:
   text block (`//TEXT_BLOCK_LITERAL_END`), where the formatter's placement is flagged in 10.21.1 and
   13.5.0 alike. The 3 removed checks (`MemberName`, `OperatorWrap`, `AnnotationLocationMostCases`)
   left the catalog and the overlap pairs, which now name their successors.
+  `GoogleNonConstantFieldName` accepts an underscore between two digits (`version1_2`), which the
+  old `MemberName` format rejected; nitpicker keeps the stricter rule: the generated config adds
+  `MemberName` (instance fields) and `StaticVariableName` (static fields that are not final), both
+  with the id `GoogleNonConstantFieldName`, so their findings carry that rule, and a format that
+  fails only a name whose every underscore stands between digits (any other underscore is already
+  the bundled check's finding). The bundled check's message no longer says underscores are allowed.
 - **Ingestion.** `ingestCheckstyle` (X6) unchanged, `tool` `checkstyle`, absolute file paths made
   project-relative. Severities `error` and `warning` are enforceable, `info` is descriptive. The
   rule is the check's short name (`checkstyle/Indentation`, not the class

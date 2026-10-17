@@ -24,6 +24,16 @@ const TODO_CASE =
   '<module name="TodoComment"><property name="id" value="TodoFormat"/>' +
   '<property name="format" value="^[ \\t]*(?!TODO\\b)(?i:TODO)\\b"/>' +
   '<message key="todo.match" value="The TODO tag must be written in capitals."/></module>';
+const NON_CONSTANT_FIELD_NAME = /<module name="GoogleNonConstantFieldName"\s*\/>/u;
+const FIELD_RULE = 'GoogleNonConstantFieldName';
+const NO_DIGIT_UNDERSCORE = '^[^_]*$|(?&lt;!\\d)_|_(?!\\d)';
+const FIELD_MESSAGE =
+  "Non-constant field name ''{0}'' must be lowerCamelCase: start lowercase, be at least 2 " +
+  'chars, avoid a single lowercase letter followed by uppercase, and contain only letters and ' +
+  'digits.';
+const DIGIT_UNDERSCORE_MESSAGE =
+  "Non-constant field name ''{0}'' must be lowerCamelCase, with no underscore, not even between " +
+  'digits.';
 const SCOPED_CHECKS = [
   ['Indentation', '//TEXT_BLOCK_LITERAL_END'],
   ['GoogleNonConstantFieldName', "//VARIABLE_DEF/IDENT[matches(@text, '^[a-z]$')]"],
@@ -57,6 +67,19 @@ function scopedChecks() {
   ).join('\n');
 }
 
+function fieldNameModules() {
+  const strict = (check) =>
+    `<module name="${check}"><property name="id" value="${FIELD_RULE}"/>` +
+    `<property name="format" value="${NO_DIGIT_UNDERSCORE}"/>` +
+    `<message key="name.invalidPattern" value="${DIGIT_UNDERSCORE_MESSAGE}"/></module>`;
+  return [
+    `<module name="${FIELD_RULE}">`,
+    `<message key="google.non.constant.field.name.format" value="${FIELD_MESSAGE}"/></module>`,
+    strict('MemberName'),
+    strict('StaticVariableName'),
+  ].join('');
+}
+
 export function nitpickerCheckstyleConfig(bundled) {
   const filtered = withoutModules(bundled, [...INLINE_CHECKSTYLE_FILTERS, ...FORMATTER_CONFLICTS]);
   const named = replaced(filtered, {
@@ -64,7 +87,12 @@ export function nitpickerCheckstyleConfig(bundled) {
     replacement: (_, before, after) => `${before}${CAMEL_CASE_FORMAT}${after}`,
     name: 'MethodName',
   });
-  const todo = replaced(named, {
+  const fields = replaced(named, {
+    pattern: NON_CONSTANT_FIELD_NAME,
+    replacement: fieldNameModules,
+    name: FIELD_RULE,
+  });
+  const todo = replaced(fields, {
     pattern: TODO_FORMAT,
     replacement: () => TODO_CASE,
     name: 'TodoFormat',

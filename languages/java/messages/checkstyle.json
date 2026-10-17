@@ -83,7 +83,7 @@
     "mayBeIntended": false
   },
   "GoogleNonConstantFieldName": {
-    "fix": "Name fields lowerCamelCase with a lowercase or digit second character: userId, not uId or user_id; an underscore goes only between digits, as in version1_2.",
+    "fix": "Name fields lowerCamelCase with a lowercase or digit second character and no underscore: userId, not uId or user_id; version12, not version1_2.",
     "mayBeIntended": false
   },
   "IllegalTokenText": {
