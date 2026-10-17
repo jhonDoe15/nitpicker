@@ -326,8 +326,21 @@ describe('hints for the production policy rules', () => {
       'Unsafe quantifier.',
       'without nested or overlapping quantifiers',
     ],
+    [
+      '@typescript-eslint/no-deprecated',
+      '`parse` is deprecated. Use the WHATWG URL API instead.',
+      'Call the replacement that the deprecation names',
+    ],
   ])('rewrites %s', (ruleId, text, expected) => {
     expect(hint(ruleId, text)).toContain(expected);
+  });
+
+  it('keeps the deprecation text and names the exception route after it', () => {
+    expect(
+      hint('@typescript-eslint/no-deprecated', '`Buffer` is deprecated. Use `Buffer.from`.'),
+    ).toBe(
+      `\`Buffer\` is deprecated. Use \`Buffer.from\`. Call the replacement that the deprecation names instead of the deprecated API. If it names none and the API cannot be avoided, ${ROUTE}.`,
+    );
   });
 
   it.each([
