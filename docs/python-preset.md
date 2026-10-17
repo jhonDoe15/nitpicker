@@ -1107,8 +1107,9 @@ the source root detection already does.
   `runJscpd` and `evaluateDuplicates` the Java preset uses, so the findings are identical in shape:
   `duplicate-clone` (enforceable, one per clone) and `duplicate-clone-size` (descriptive `lines` and
   `tokens`), tool name `duplicates`. Identity is the sorted file pair, a hash of the cloned text and
-  the n-th occurrence of that pair, never a line, so moving a legacy clone within its files keeps it
-  baselined. Clones that consist only of import statements or `__all__` re-export lists are dropped
+  the n-th occurrence of that text in the pair, never a line, so moving a legacy clone within its
+  files keeps it baselined; a legacy clone that shrank or split is held at its base token count while most of each copy
+  is unchanged code that was part of that base clone. Clones that consist only of import statements or `__all__` re-export lists are dropped
   (`importsOnly`); a clone that also carries code is still reported. The finding is on the first
   file of the pair, and its message tells to add that file to `exclude` when the repetition is
   intended. A source root of `.` is supported.

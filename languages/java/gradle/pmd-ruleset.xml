@@ -1,17 +1,9 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<!-- Nitpicker's PMD rules: the errorprone and bestpractices categories plus a catch rule from
-     design, run over main and test sources. Two test rules are left out because they set an
-     assertion style the TypeScript preset does not have: a message on every assertion, and one
-     assertion per test. A test without any assertion still fails (UnitTestShouldIncludeAssert),
-     and mutation testing catches weak ones. Rules that report the same code as Error Prone,
-     SpotBugs or Checkstyle stay on: a rule whose finding repeats another tool's on the same code is
-     dropped after policy only while that other finding is reported
-     (languages/java/adapters/overlaps/overlap-pairs.json, docs/java-preset.md "Overlaps"). -->
 <ruleset name="nitpicker"
          xmlns="http://pmd.sourceforge.net/ruleset/2.0.0"
          xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
          xsi:schemaLocation="http://pmd.sourceforge.net/ruleset/2.0.0 https://pmd.sourceforge.io/ruleset_2_0_0.xsd">
-  <description>Nitpicker's PMD categories for main and test sources.</description>
+  <description>Nitpicker's PMD rules for main and test sources.</description>
   <rule ref="category/java/errorprone.xml">
     <exclude name="TestClassWithoutTestCases"/>
     <exclude name="AvoidFieldNameMatchingMethodName"/>
@@ -19,7 +11,7 @@
     <exclude name="AssignmentInOperand"/>
   </rule>
   <rule ref="category/java/errorprone.xml/AvoidFieldNameMatchingMethodName"
-        message="Field {0} has the same name as a method. Rename one of them; a method named exactly like its field with at most one parameter (an accessor, a fluent setter or builder step) is allowed. If it is right here, add an exception for pmd/AvoidFieldNameMatchingMethodName in nitpicker.config.json.">
+        message="Field {0} has the same name as a method; a method named exactly like its field with at most one parameter (an accessor, a fluent setter or builder step) is allowed.">
     <properties>
       <property name="xpath">
         <value><![CDATA[
@@ -32,14 +24,14 @@
     </properties>
   </rule>
   <rule ref="category/java/errorprone.xml/AvoidLiteralsInIfCondition"
-        message="Use a named constant instead of this literal in the condition (-1, 0, 1 and 2 are allowed). If it is not a magic number, add an exception for pmd/AvoidLiteralsInIfCondition in nitpicker.config.json.">
+        message="This literal in the condition is a magic number; -1, 0, 1 and 2 are allowed.">
     <properties>
       <property name="ignoreMagicNumbers" value="-1,0,1,2"/>
       <property name="violationSuppressXPath" value=".[self::StringLiteral or self::CharLiteral]"/>
     </properties>
   </rule>
   <rule ref="category/java/errorprone.xml/AssignmentInOperand"
-        message="Assign first, then use the variable. An assignment in a while condition is allowed. If it is right here, add an exception for pmd/AssignmentInOperand in nitpicker.config.json.">
+        message="This operand assigns a variable; an assignment in a while condition is allowed.">
     <properties>
       <property name="allowWhile" value="true"/>
     </properties>
@@ -64,7 +56,7 @@
     </properties>
   </rule>
   <rule ref="category/java/bestpractices.xml/GuardLogStatement"
-        message="Pass values as placeholders (LOG.debug(&quot;user '{'}&quot;, user)) and compute nothing in the arguments; guard the call with isDebugEnabled() only when an argument must be computed. If it is right here, add an exception for pmd/GuardLogStatement in nitpicker.config.json.">
+        message="This log call computes its arguments even when its level is off.">
     <properties>
       <property name="logLevels" value="trace,debug,finest,finer,fine"/>
       <property name="guardsMethods" value="isTraceEnabled,isDebugEnabled,isLoggable"/>
@@ -81,7 +73,7 @@
     </properties>
   </rule>
   <rule name="LogStringConcatenation" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
-        message="Pass values as placeholders (LOG.info(&quot;user '{'}&quot;, user); '{'0} in System.Logger and java.util.logging), not a message built with + or String.format. If it is right here, add an exception for pmd/LogStringConcatenation in nitpicker.config.json.">
+        message="Pass values as placeholders (LOG.info(&quot;user '{'}&quot;, user); '{'0} in System.Logger and java.util.logging), not a message built with + or String.format.">
     <priority>3</priority>
     <properties>
       <property name="xpath">
@@ -98,7 +90,7 @@
     </properties>
   </rule>
   <rule name="GeneratedOnHandWrittenCode" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
-        message="JaCoCo and PIT skip code annotated @Generated, so this is not measured. Remove the annotation from hand-written code. If this file is generated, add an exception for pmd/GeneratedOnHandWrittenCode in nitpicker.config.json.">
+        message="JaCoCo and PIT skip code annotated @Generated, so this is not measured. Remove the annotation from hand-written code.">
     <priority>2</priority>
     <properties>
       <property name="xpath">
@@ -108,6 +100,52 @@
 ]]></value>
       </property>
     </properties>
+  </rule>
+  <rule ref="category/java/performance.xml">
+    <exclude name="AvoidInstantiatingObjectsInLoops"/>
+    <exclude name="InsufficientStringBufferDeclaration"/>
+    <exclude name="TooFewBranchesForSwitch"/>
+  </rule>
+  <rule ref="category/java/multithreading.xml">
+    <exclude name="AvoidSynchronizedAtMethodLevel"/>
+    <exclude name="AvoidUsingVolatile"/>
+    <exclude name="DoNotUseThreads"/>
+    <exclude name="UseConcurrentHashMap"/>
+  </rule>
+  <rule ref="category/java/multithreading.xml/AvoidSynchronizedAtMethodLevel"
+        message="Use a ReentrantLock, an atomic or a concurrent collection instead of a synchronized method."/>
+  <rule ref="category/java/security.xml"/>
+  <rule ref="category/java/codestyle.xml/UnnecessaryImport"/>
+  <rule name="NonFinalStaticField" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
+        message="Make this static field final, or keep the state in an instance. Mutable static state is shared by every caller and every test.">
+    <description>A non-final static field is global mutable state.</description>
+    <priority>3</priority>
+    <properties><property name="xpath"><value><![CDATA[
+//FieldDeclaration[pmd-java:modifiers() = 'static'][not(pmd-java:modifiers() = 'final')]
+  [not(ModifierList/Annotation[@SimpleName = ('TempDir', 'Container', 'RegisterExtension', 'ClassRule')])]
+  [not(pmd-java:typeIs('org.testcontainers.lifecycle.Startable'))]
+  [let $name := VariableDeclarator/VariableId/@Name return
+    not(ancestor::ClassBody[1]/MethodDeclaration[ModifierList/Annotation[@SimpleName = ('BeforeAll', 'BeforeClass')]]
+      //AssignmentExpression/*[1][self::VariableAccess or self::FieldAccess][@Name = $name])]
+]]></value></property></properties>
+  </rule>
+  <rule name="MutableStaticCollection" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
+        message="Do not mutate a static collection or expose a mutable one. Build it once as an immutable List.of, Map.of or Map.copyOf, or keep the state in an instance.">
+    <description>A static final collection that is public or changed after class loading is global mutable state.</description>
+    <priority>3</priority>
+    <properties><property name="xpath"><value><![CDATA[
+//FieldDeclaration[pmd-java:modifiers() = 'static'][pmd-java:modifiers() = 'final']
+  [VariableDeclarator/ConstructorCall[pmd-java:typeIs('java.util.Collection') or pmd-java:typeIs('java.util.Map')]]
+  [not(pmd-java:modifiers() = 'private' and VariableDeclarator/ConstructorCall[pmd-java:typeIs('java.util.concurrent.ConcurrentMap')
+      or pmd-java:typeIs('java.util.concurrent.CopyOnWriteArrayList') or pmd-java:typeIs('java.util.concurrent.CopyOnWriteArraySet')
+      or pmd-java:typeIs('java.util.concurrent.ConcurrentLinkedQueue') or pmd-java:typeIs('java.util.concurrent.ConcurrentLinkedDeque')
+      or pmd-java:typeIs('java.util.concurrent.ConcurrentSkipListSet')])]
+  [let $name := VariableDeclarator/VariableId/@Name return
+    pmd-java:modifiers() = 'public'
+    or ancestor::ClassBody[1]//MethodCall[@MethodName = ('add', 'addAll', 'put', 'putAll', 'putIfAbsent', 'remove', 'clear', 'merge', 'compute', 'computeIfAbsent', 'offer', 'push', 'poll', 'pop', 'addFirst', 'addLast', 'removeIf', 'replaceAll', 'sort')]
+        [*[1][self::VariableAccess or self::FieldAccess]/@Name = $name]
+        [ancestor::MethodDeclaration or ancestor::ConstructorDeclaration]]
+]]></value></property></properties>
   </rule>
   <rule ref="category/java/design.xml/AvoidCatchingGenericException"/>
 </ruleset>

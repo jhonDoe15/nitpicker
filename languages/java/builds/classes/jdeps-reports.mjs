@@ -1,6 +1,9 @@
+import { tmpdir } from 'node:os';
 import { spawnSync } from 'node:child_process';
 import {
   closeSync,
+  cpSync,
+  mkdtempSync,
   existsSync,
   fstatSync,
   openSync,
@@ -52,7 +55,7 @@ export function splitJdepsEdges(text, { mainClasses, testClasses }) {
   };
 }
 
-function runJdeps({ command, cwd, directories, outputFile }) {
+function runJdepsCommand({ command, cwd, directories, outputFile }) {
   const output = openSync(outputFile, 'w');
   try {
     const result = spawnSync(command, ['-verbose:class', '-filter:none', ...directories], {
@@ -67,6 +70,28 @@ function runJdeps({ command, cwd, directories, outputFile }) {
     }
   } finally {
     closeSync(output);
+  }
+}
+
+function runJdeps(context) {
+  if (
+    !context.directories.some((directory) => existsSync(path.join(directory, 'module-info.class')))
+  ) {
+    return runJdepsCommand(context);
+  }
+  const staged = mkdtempSync(path.join(tmpdir(), 'nitpicker-jdeps-'));
+  try {
+    const directories = context.directories.map((directory, index) => {
+      const target = path.join(staged, String(index));
+      cpSync(directory, target, {
+        recursive: true,
+        filter: (file) => path.basename(file) !== 'module-info.class',
+      });
+      return target;
+    });
+    return runJdepsCommand({ ...context, directories });
+  } finally {
+    rmSync(staged, { recursive: true, force: true });
   }
 }
 

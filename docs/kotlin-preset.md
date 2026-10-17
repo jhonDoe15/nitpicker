@@ -38,7 +38,7 @@ gradle -Pnitpicker.kotlin=true -I languages/java/gradle/nitpicker.init.gradle ni
 ```
 
 The consumer build is not edited. In modules that apply the Kotlin plugin, the init script
-registers `nitpickerDetekt`, `nitpickerKtlint` and `nitpickerKtfmt`, each running from its own
+applies `languages/java/gradle/tasks/kotlin/kotlin-tasks.gradle`, which registers `nitpickerDetekt`, `nitpickerKtlint` and `nitpickerKtfmt`, each running from its own
 Gradle configuration (`nitpickerDetekt` and so on) so nothing touches the consumer's classpath,
 and makes `nitpickerJava` depend on them. The tool versions are in the same pinned map as the
 Java ones: detekt 1.23.8, ktlint 1.8.0, ktfmt 0.64. `manifest.json` gains `kotlin: true`,
@@ -63,6 +63,9 @@ path is the property `nitpicker.kotlin.styleFile`, and only written out by the i
 | PIT                                                            | yes          | report-only    | Mutants of Kotlin classes are descriptive and never fail; see [Mutation](#mutation-report-only-for-kotlin).             |
 | Structure limits, CRAP, jscpd duplicates                       | yes          | yes            | Kotlin through `KotlinMetrics.java` and jscpd's `kotlin` format. See below.                                             |
 | jdeps (stability direction)                                    | yes          | yes            | Reads the Java and the Kotlin classes of the module together, one module per source file. See [Coupling](#coupling).    |
+| javac lint, PMD CPD                                            | yes          | no             | On the module's Java files: javac lint on main ones, CPD on main and test ones. See the Java preset's Guards section.   |
+| forbiddenapis                                                  | yes          | no             | Reads the classes compiled from Java only, like SpotBugs.                                                               |
+| Package cycles, unused dependencies                            | yes          | yes            | Read the Java and the Kotlin classes of the module together, like jdeps.                                                |
 
 **PMD and SpotBugs on Kotlin (decision).** PMD has no Kotlin analysis, so nothing is lost: it
 keeps running on the Java files of a mixed module. SpotBugs analyzes bytecode, and on
@@ -617,7 +620,7 @@ The Java sources of a mixed module get their complexity from `StructureMetrics.j
 The shared duplicates rule runs on Kotlin: jscpd (the version of the TypeScript preset, mode `mild`)
 with `--format kotlin` over each Kotlin source root from the manifest, ignoring `build`, `generated`,
 `target` and `out`. Any new clone fails with `duplicate-clone`, tool `duplicates`, identity from the file pair,
-the cloned text and the n-th occurrence, never a line. Clones are found within one source root and
+the cloned text and the n-th occurrence of that text in the pair, never a line. Clones are found within one source root and
 within the Kotlin files; a clone between a `.kt` and a `.java` file, or between two source roots, is not
 (the same as for several Java roots).
 
@@ -627,7 +630,9 @@ The stability-direction rule runs on Kotlin. `nitpickerJdeps` runs the JDK's `jd
 class directory (the Java and the Kotlin one, so references in both directions between the languages
 count) and the Nitpicker side builds the package graph as for Java (see the
 [Java preset](java-preset.md#coupling-and-stability-ticket-sh6)): a package depending on a less stable
-package fails with `stability-direction`, with the report-only coupling metrics beside it.
+package fails with `stability-direction`, with the report-only coupling metrics beside it. Packages
+in a dependency cycle fail with `package-cycle`, one finding per package, from the same graph (see the
+Java preset's Guards section).
 
 **Module and package (decisions).** A module is a source file, as in Java and TypeScript. The Kotlin
 metrics step lists the JVM class names of each file: its top-level classes, objects and interfaces and

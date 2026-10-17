@@ -8,7 +8,9 @@
   "properties": {
     "findings": {
       "type": "array",
-      "items": { "$ref": "#/$defs/finding" }
+      "items": {
+        "$ref": "#/$defs/finding"
+      }
     }
   },
   "$defs": {
@@ -22,37 +24,123 @@
       "required": ["tool", "rule", "path", "identity", "message", "classification"],
       "additionalProperties": false,
       "properties": {
-        "tool": { "$ref": "#/$defs/nonEmptyString" },
-        "rule": { "$ref": "#/$defs/nonEmptyString" },
+        "tool": {
+          "$ref": "#/$defs/nonEmptyString"
+        },
+        "rule": {
+          "$ref": "#/$defs/nonEmptyString"
+        },
         "path": {
           "description": "Git-style relative path that stays within the analyzed project: not absolute, no drive letter, no leading '..'.",
           "allOf": [
-            { "$ref": "#/$defs/nonEmptyString" },
-            { "not": { "pattern": "^(/|[A-Za-z]:[/\\\\]|\\.\\.([/\\\\]|$))" } }
+            {
+              "$ref": "#/$defs/nonEmptyString"
+            },
+            {
+              "not": {
+                "pattern": "^(/|[A-Za-z]:[/\\\\]|\\.\\.([/\\\\]|$))"
+              }
+            }
           ]
         },
         "identity": {
           "description": "Stable identity used to match a finding between base and head snapshots.",
           "$ref": "#/$defs/nonEmptyString"
         },
-        "message": { "$ref": "#/$defs/nonEmptyString" },
+        "message": {
+          "$ref": "#/$defs/nonEmptyString"
+        },
         "classification": {
           "description": "enforceable findings fail the gate when new; descriptive findings are report-only; tool-error findings mark an analyzer failure.",
           "enum": ["enforceable", "descriptive", "tool-error"]
         },
-        "symbol": { "$ref": "#/$defs/nonEmptyString" },
-        "location": { "$ref": "#/$defs/location" },
-        "metric": { "$ref": "#/$defs/metric" },
-        "ratchet": { "$ref": "#/$defs/ratchet" },
+        "symbol": {
+          "$ref": "#/$defs/nonEmptyString"
+        },
+        "location": {
+          "$ref": "#/$defs/location"
+        },
+        "metric": {
+          "$ref": "#/$defs/metric"
+        },
+        "ratchet": {
+          "$ref": "#/$defs/ratchet"
+        },
+        "toolNotRun": {
+          "description": "Marks a descriptive notice that this snapshot has no report from `tool`. When the base carries one, the comparison reports the head's enforceable findings of that tool as descriptive, since nothing tells which of them the change added.",
+          "const": true
+        },
+        "notRunScope": {
+          "description": "Narrows a toolNotRun notice to the findings of `tool` whose `path` lies in one of these project-relative directories (`.` is the whole project), such as one module's source roots. Without it the notice covers the whole project. On the base, the notice also covers the head path of each file renamed out of these directories; the directories themselves never follow a move. On the head, a notice counts as broken by the change unless a base notice of the same tool has the same comparison key or the base notices of the tool together cover each of its directories.",
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "$ref": "#/$defs/nonEmptyString"
+          }
+        },
+        "notRunIdentityPrefix": {
+          "description": "Narrows a toolNotRun notice further, to the findings of `tool` whose `identity` starts with this prefix, such as `cpd:` when PMD CPD did not run while jscpd, which reports the same tool, did. On the head, a notice counts as covered only by base notices with the same prefix.",
+          "$ref": "#/$defs/nonEmptyString"
+        },
         "tokens": {
           "description": "The words of the message. A new finding of three or more tokens counts as already present when the base has an unmatched finding with the same tool, rule, path and classification, the same number of tokens and at most one differing token.",
           "type": "array",
-          "items": { "$ref": "#/$defs/nonEmptyString" }
+          "items": {
+            "$ref": "#/$defs/nonEmptyString"
+          }
         }
       },
-      "if": { "required": ["metric"] },
+      "allOf": [
+        {
+          "if": {
+            "required": ["metric"]
+          },
+          "then": {
+            "properties": {
+              "classification": {
+                "const": "descriptive"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "required": ["toolNotRun"]
+          },
+          "then": {
+            "properties": {
+              "classification": {
+                "const": "descriptive"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "required": ["notRunScope"]
+          },
+          "then": {
+            "required": ["toolNotRun"]
+          }
+        },
+        {
+          "if": {
+            "required": ["notRunIdentityPrefix"]
+          },
+          "then": {
+            "required": ["toolNotRun"]
+          }
+        }
+      ],
+      "if": {
+        "required": ["metric"]
+      },
       "then": {
-        "properties": { "classification": { "const": "descriptive" } }
+        "properties": {
+          "classification": {
+            "const": "descriptive"
+          }
+        }
       }
     },
     "location": {
@@ -60,8 +148,14 @@
       "required": ["line"],
       "additionalProperties": false,
       "properties": {
-        "line": { "type": "integer", "minimum": 1 },
-        "column": { "type": "integer", "minimum": 1 }
+        "line": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "column": {
+          "type": "integer",
+          "minimum": 1
+        }
       }
     },
     "ratchet": {
@@ -70,8 +164,12 @@
       "required": ["key", "value"],
       "additionalProperties": false,
       "properties": {
-        "key": { "$ref": "#/$defs/nonEmptyString" },
-        "value": { "type": "number" },
+        "key": {
+          "$ref": "#/$defs/nonEmptyString"
+        },
+        "value": {
+          "type": "number"
+        },
         "worseMessage": {
           "description": "Message to report instead of `message` when the finding is new only because its value grew past the base value; `{base}` is replaced with the base value.",
           "$ref": "#/$defs/nonEmptyString"
@@ -92,6 +190,32 @@
           "description": "When true, `path` is a folder: a base finding with no match at its own path is held at the folder most of its files were renamed to.",
           "type": "boolean"
         },
+        "divisible": {
+          "description": "When true, the base value is shared: several head findings with the same key are held while their values add up to no more than one unmatched base finding's value (a legacy clone split in two).",
+          "type": "boolean"
+        },
+        "mustKeepUnchangedLines": {
+          "description": "Line ranges the finding spans (project-relative paths), on the base finding and on the head one. A head finding is held against a base finding with the same ratchet key only when, in each range, more than half of the lines are lines the change did not add or edit that map back (through the diff hunks) into the base finding's range of the same file; without a base range or a line map, only the majority of unchanged lines is checked.",
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["path", "startLine", "endLine"],
+            "additionalProperties": false,
+            "properties": {
+              "path": {
+                "$ref": "#/$defs/nonEmptyString"
+              },
+              "startLine": {
+                "type": "integer",
+                "minimum": 1
+              },
+              "endLine": {
+                "type": "integer",
+                "minimum": 1
+              }
+            }
+          }
+        },
         "folderFiles": {
           "description": "With `pathIsFolder`: the number of files in the folder, when `value` is not that number. A base finding is held at a new path when more than half of these files were renamed there.",
           "type": "integer",
@@ -105,8 +229,12 @@
       "required": ["name", "value"],
       "additionalProperties": false,
       "properties": {
-        "name": { "$ref": "#/$defs/nonEmptyString" },
-        "value": { "type": "number" }
+        "name": {
+          "$ref": "#/$defs/nonEmptyString"
+        },
+        "value": {
+          "type": "number"
+        }
       }
     }
   }

@@ -11,13 +11,15 @@ const enabled = process.env.NITPICKER_JAVA_E2E === '1';
 const gradle = process.env.NITPICKER_GRADLE ?? 'gradle';
 const roots = [];
 
-const RULE_FILES = [
-  'category/java/errorprone.xml',
-  'category/java/bestpractices.xml',
-  'google_checks.xml',
-  'findbugs.xml',
-];
-const EXTRA_PMD_RULES = ['AvoidCatchingGenericException'];
+const PMD_CATEGORIES = [
+  'errorprone',
+  'bestpractices',
+  'performance',
+  'multithreading',
+  'security',
+].map((category) => `category/java/${category}.xml`);
+const RULE_FILES = [...PMD_CATEGORIES, 'google_checks.xml', 'findbugs.xml'];
+const EXTRA_PMD_RULES = ['AvoidCatchingGenericException', 'UnnecessaryImport'];
 const EXTRA_CHECKSTYLE_RULES = ['UnusedImports'];
 const CHECKSTYLE_INFRASTRUCTURE = /^(?:Checker|TreeWalker)$|Filter$|^Suppress/u;
 
@@ -100,8 +102,7 @@ describe.skipIf(!enabled)('Java rule catalogs', () => {
         spotbugs: catalogRules('spotbugs'),
       }).toEqual({
         pmd: sorted([
-          ...pmdRules(read('category/java/errorprone.xml')),
-          ...pmdRules(read('category/java/bestpractices.xml')),
+          ...PMD_CATEGORIES.flatMap((file) => pmdRules(read(file))),
           ...EXTRA_PMD_RULES,
         ]),
         checkstyle: sorted([

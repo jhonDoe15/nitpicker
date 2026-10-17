@@ -6,7 +6,7 @@ import { compareFindings } from '../../../core/diff/comparison/compare.mjs';
 import { parseAnalyzerReport } from '../../../core/diff/comparison/finding-schema.mjs';
 import { captureWorkingTree, resolveComparison } from '../../../core/diff/git/repository/git.mjs';
 import { readChangedLines } from '../../../core/diff/git/patches/changed-lines.mjs';
-import { readRenameMap } from '../../../core/diff/git/patches/project-moves.mjs';
+import { readProjectMoves } from '../../../core/diff/git/patches/project-moves.mjs';
 import { withTemporaryWorktree } from '../../../core/diff/git/repository/worktree.mjs';
 import { gradleTarget } from './gradle-wrapper/gradle-command.mjs';
 import { condenseFailure } from './gradle-wrapper/failure-text.mjs';
@@ -32,6 +32,12 @@ const MAX_OUTPUT_BYTES = 50 * 1024 * 1024;
 const MAX_FAILURE_LENGTH = 3500;
 const CLOCK_SLACK_MS = 2000;
 const CHECKSTYLE_EXPORT = 'checkstyle-nitpicker.xml';
+
+export function lintBaselineProperties({ snapshot, baselineRoot } = {}) {
+  return snapshot === 'head' && baselineRoot !== undefined
+    ? [`-Pnitpicker.lintBaseline=${baselineRoot}`]
+    : [];
+}
 
 function assertSucceeded(result, projectRoot, { reportBase, since }) {
   if (result.error !== undefined) {
@@ -201,6 +207,20 @@ function sourceText(projectRoot, file) {
   return existsSync(absolute) ? readFileSync(absolute, 'utf8') : undefined;
 }
 
+function compareAcrossMoves({ repositoryRoot, comparison, projectRelativePath }, findings) {
+  const commits = {
+    repositoryRoot,
+    mergeBaseSha: comparison.mergeBaseSha,
+    headSha: comparison.headSha,
+    projectRelativePath,
+  };
+  return compareFindings({
+    ...findings,
+    baseToHeadRenames: readProjectMoves(commits).files,
+    touchedCode: { changedLines: readChangedLines(commits), isStrictRule: isJavaTouchedRule },
+  });
+}
+
 function collectBothSnapshots({
   repositoryRoot,
   projectRelativePath,
@@ -216,13 +236,19 @@ function collectBothSnapshots({
         policy: { ...policy, snapshot, policyRoot },
       });
     }
-    const headFindings = collectIn(headWorktree, 'head');
-    const baseFindings = withTemporaryWorktree(
-      repositoryRoot,
-      comparison.mergeBaseSha,
-      (baseWorktree) => collectIn(baseWorktree, 'base'),
-    );
-    return { baseFindings, headFindings };
+    return withTemporaryWorktree(repositoryRoot, comparison.mergeBaseSha, (baseWorktree) => {
+      const baseFindings = collectIn(baseWorktree, 'base');
+      const headFindings = collectJavaFindings(policyRoot, {
+        ...options,
+        policy: {
+          ...policy,
+          snapshot: 'head',
+          policyRoot,
+          baselineRoot: path.join(baseWorktree, projectRelativePath),
+        },
+      });
+      return { baseFindings, headFindings };
+    });
   });
 }
 
@@ -240,12 +266,6 @@ export function runJavaDiff({
   const comparison = includeWorkingTree
     ? { ...committed, headSha: captureWorkingTree(repositoryRoot, committed.headSha) }
     : committed;
-  const baseToHeadRenames = readRenameMap({
-    repositoryRoot,
-    mergeBaseSha: comparison.mergeBaseSha,
-    headSha: comparison.headSha,
-    projectRelativePath,
-  });
   const { baseFindings, headFindings } = collectBothSnapshots({
     repositoryRoot,
     projectRelativePath,
@@ -253,18 +273,15 @@ export function runJavaDiff({
     options: { gradle, maven, initScript },
     policy,
   });
-  const touchedCode = {
-    changedLines: readChangedLines({
-      repositoryRoot,
-      mergeBaseSha: comparison.mergeBaseSha,
-      headSha: comparison.headSha,
-      projectRelativePath,
-    }),
-    isStrictRule: isJavaTouchedRule,
-  };
-  const result = compareFindings({ baseFindings, headFindings, baseToHeadRenames, touchedCode });
+  const result = compareAcrossMoves(
+    { repositoryRoot, comparison, projectRelativePath },
+    { baseFindings, headFindings },
+  );
   const newEnforceable = result.newFindings.filter(
     (finding) => finding.classification === 'enforceable',
   );
-  return { comparison, ...result, newEnforceable, failed: newEnforceable.length > 0 };
+  const failed =
+    newEnforceable.length > 0 ||
+    result.newFindings.some((finding) => finding.classification === 'tool-error');
+  return { comparison, ...result, newEnforceable, failed };
 }

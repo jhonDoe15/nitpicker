@@ -2,12 +2,7 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
-import {
-  lifecycleArgs,
-  moduleClasspaths,
-  parseDependencyList,
-  readReactor,
-} from './maven-project.mjs';
+import { lifecycleArgs, readReactor } from './maven-project.mjs';
 
 const roots = [];
 
@@ -37,7 +32,11 @@ function effective(root) {
   <project>
     <parent><groupId>demo</groupId></parent>
     <artifactId>core</artifactId>
-    <properties><nitpicker.archunit.includes>**/*Rules.class</nitpicker.archunit.includes></properties>
+    <properties>
+      <nitpicker.archunit.includes>**/*Rules.class</nitpicker.archunit.includes>
+      <maven.compiler.release>17</maven.compiler.release>
+      <project.build.sourceEncoding>ISO-8859-1</project.build.sourceEncoding>
+    </properties>
     <build>
       <sourceDirectory>${root}/core/src/main/java</sourceDirectory>
       <testSourceDirectory>${root}/core/src/test/java</testSourceDirectory>
@@ -61,6 +60,15 @@ function effective(root) {
           <artifactId>jacoco-maven-plugin</artifactId>
           <configuration><destFile>${root}/core/out/mine.exec</destFile></configuration>
           <executions><execution><goals><goal>prepare-agent</goal></goals></execution></executions>
+        </plugin>
+        <plugin>
+          <artifactId>maven-compiler-plugin</artifactId>
+          <configuration>
+            <source>17</source>
+            <compilerArgs><arg>-Xlint:all</arg><arg>-Xplugin:Noop</arg></compilerArgs>
+            <compilerArgument>-parameters</compilerArgument>
+            <enablePreview>true</enablePreview>
+          </configuration>
         </plugin>
         <plugin>
           <artifactId>maven-surefire-plugin</artifactId>
@@ -94,11 +102,14 @@ const NO_COMPILER_SETTINGS = {
   processorPaths: undefined,
   test: { ...PLUGIN_DEFAULT_LEVEL, compilerArgs: [] },
 };
+const CORE_LEVEL = { release: '17', source: '17', target: undefined };
+const CORE_ARGS = ['-Xlint:all', '-Xplugin:Noop', '-parameters', '--enable-preview'];
 
-function defaultModule(basedir, coordinates, packaging) {
+function defaultModule(basedir, { coordinates, packaging, pomFile = 'pom.xml' }) {
   const target = path.join(basedir, 'target');
   return {
     basedir,
+    pomFile: path.join(basedir, pomFile),
     coordinates,
     packaging,
     buildDirectory: target,
@@ -132,9 +143,10 @@ describe('readReactor', () => {
     });
     const [parent, core, app] = readReactor(root, effective(root));
 
-    expect(parent).toEqual(defaultModule(root, 'demo:parent', 'pom'));
+    expect(parent).toEqual(defaultModule(root, { coordinates: 'demo:parent', packaging: 'pom' }));
     expect(core).toEqual({
       basedir: path.join(root, 'core'),
+      pomFile: path.join(root, 'core/pom.xml'),
       coordinates: 'demo:core',
       packaging: 'jar',
       buildDirectory: `${root}/core/out`,
@@ -149,9 +161,22 @@ describe('readReactor', () => {
       published: false,
       jacocoDestFiles: [`${root}/core/out/mine.exec`],
       archunitIncludes: '**/*Rules.class',
-      compiler: NO_COMPILER_SETTINGS,
+      compiler: {
+        ...CORE_LEVEL,
+        encoding: 'ISO-8859-1',
+        compilerArgs: CORE_ARGS,
+        proc: undefined,
+        processorPaths: undefined,
+        test: { ...CORE_LEVEL, compilerArgs: CORE_ARGS },
+      },
     });
-    expect(app).toEqual(defaultModule(path.join(root, 'tools'), 'demo:app', 'war'));
+    expect(app).toEqual(
+      defaultModule(path.join(root, 'tools'), {
+        coordinates: 'demo:app',
+        packaging: 'war',
+        pomFile: 'app-pom.xml',
+      }),
+    );
   });
 
   it('reads a single-module effective POM', () => {
@@ -165,6 +190,7 @@ describe('readReactor', () => {
       [root, 'demo:solo'],
     ]);
   });
+
   it('matches a module whose raw coordinates use a property by its build directory', () => {
     const root = reactor({
       'pom.xml': raw('parent'),
@@ -406,50 +432,5 @@ describe('describeModule publishing', () => {
         `<packaging>bundle</packaging>${DISTRIBUTION}`,
       ].map((inner) => soloModule(inner).published),
     ).toEqual([true, true, false, false, true]);
-  });
-});
-
-describe('parseDependencyList', () => {
-  it('reads scope and file, with classifiers, module names, optional markers and drive letters', () => {
-    const listing = [
-      '',
-      'The following files have been resolved:',
-      '   org.junit.jupiter:junit-jupiter-api:jar:5.11.0:test:/m2/junit-jupiter-api-5.11.0.jar -- module org.junit.jupiter.api',
-      '   demo:core:jar:tests:1.0:test:/work/core/target/test-classes',
-      '   demo:shared:jar:1.0:compile:C:\\work\\shared\\target\\classes (optional)',
-      '   demo:z:jar:runtime:1.0:compile:/m2/z-1.0-runtime.jar',
-      '   none',
-    ].join('\n');
-
-    expect(parseDependencyList(listing)).toEqual([
-      { scope: 'test', file: '/m2/junit-jupiter-api-5.11.0.jar' },
-      { scope: 'test', file: '/work/core/target/test-classes' },
-      { scope: 'compile', file: 'C:\\work\\shared\\target\\classes' },
-      { scope: 'compile', file: '/m2/z-1.0-runtime.jar' },
-    ]);
-  });
-});
-
-describe('moduleClasspaths', () => {
-  it('keeps compile scopes for main code, adds test for test code, and everything at test runtime', () => {
-    const module = { outputDirectory: '/m/classes', testOutputDirectory: '/m/test-classes' };
-    const dependencies = ['compile', 'provided', 'runtime', 'test', 'system'].map((scope) => ({
-      scope,
-      file: `${scope}.jar`,
-    }));
-
-    expect(moduleClasspaths(module, dependencies)).toEqual({
-      mainCompile: ['compile.jar', 'provided.jar', 'system.jar'],
-      testCompile: ['compile.jar', 'provided.jar', 'test.jar', 'system.jar'],
-      testRuntime: [
-        '/m/test-classes',
-        '/m/classes',
-        'compile.jar',
-        'provided.jar',
-        'runtime.jar',
-        'test.jar',
-        'system.jar',
-      ],
-    });
   });
 });

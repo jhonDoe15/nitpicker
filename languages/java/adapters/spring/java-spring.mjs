@@ -196,7 +196,7 @@ function buildFinding({ rule, document, entry, key, message, occurrences }) {
     rule,
     path: document.path,
     identity: occurrence === 1 ? key : `${key}#${String(occurrence)}`,
-    message: `${message} ${allowance(rule)}`,
+    message,
     classification: 'enforceable',
     ...(entry === undefined ? {} : { location: { line: entry.line } }),
   };

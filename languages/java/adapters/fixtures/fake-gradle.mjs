@@ -124,7 +124,7 @@ function writeModule({ key, dir }) {
   if (existsSync('MAIN_CLASSES')) {
     writeFileSync(report('jdeps-classes.txt'), 'demo.A\n');
   }
-  for (const name of ['jdeps.txt', 'jdeps-classes.txt', 'jdeps-test.txt']) {
+  for (const name of ['jdeps.txt', 'jdeps-classes.txt', 'jdeps-test.txt', 'permits.txt']) {
     const source = [inside(name), inside(`jdeps/${name}`)].find((file) => existsSync(file));
     if (source !== undefined) {
       writeFileSync(report(name), readFileSync(source));

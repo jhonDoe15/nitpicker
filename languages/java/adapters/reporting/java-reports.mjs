@@ -3,7 +3,8 @@ import path from 'node:path';
 import { ingestCheckstyle } from '../../ingest/formatting/checkstyle.mjs';
 import { ingestArchunit } from '../../ingest/archunit.mjs';
 import { ingestCrap } from '../../ingest/crap.mjs';
-import { readDuplicateFindings } from '../metrics/java-duplicates.mjs';
+import { DUPLICATES_REPORT, readDuplicateFindings } from '../metrics/java-duplicates.mjs';
+import { coveredByCpd } from '../../guards/cpd-duplicates.mjs';
 import { readKotlinDuplicateFindings } from '../kotlin/kotlin-duplicates.mjs';
 import {
   isEmptyModule,
@@ -14,6 +15,7 @@ import {
 import { readErrorProneFindings } from '../errorprone/java-errorprone.mjs';
 import { readInlineSuppressionFindings } from '../suppressions/java-suppressions.mjs';
 import { readSpringConfigFindings } from '../spring/java-spring.mjs';
+import { readGuardFindings } from '../../guards/index.mjs';
 import { methodText, readJavaStructureFindings } from '../metrics/java-structure.mjs';
 import { readClassLimitFindings } from '../size/class-limits.mjs';
 import { hash } from '../../../../shared/rules/finding-helpers.mjs';
@@ -54,7 +56,9 @@ export function readJavaFindings(projectRoot, options = {}) {
     findings: applyRuleMessages(
       [
         ...moduleFindings,
-        ...readDuplicateFindings(reportBase),
+        ...readDuplicateFindings(reportBase, DUPLICATES_REPORT, {
+          skip: coveredByCpd(modules, projectRoot),
+        }),
         ...(kotlinPreset ? readKotlinDuplicateFindings(reportBase) : []),
         ...(projectWide
           ? projectWideFindings(projectRoot, {
@@ -74,7 +78,7 @@ export function readJavaFindings(projectRoot, options = {}) {
         ...readInlineSuppressionFindings(projectRoot, lintedRoots(manifest)),
         ...springFindings(projectRoot, manifest, options),
       ],
-      { preset, javaStyle: options.javaStyle },
+      { preset, testRoots: manifest.testSourceRoots ?? [], javaStyle: options.javaStyle },
     ),
   };
 }
@@ -88,6 +92,7 @@ function moduleContextFindings(projectRoot, module, { manifest, options }) {
       roots: projectRoots(projectRoot),
       reportRoot: module.reportRoot,
       manifest: module.manifest,
+      module: { moduleDir: module.dir, modulePath: options.modulePath },
       sourceRoots: module.manifest.sourceRoots ?? [],
       lintedRoots: lintedRoots(module.manifest),
       allSourceRoots: manifest.sourceRoots,
@@ -134,6 +139,10 @@ function readModuleFindings(context, crapLimit) {
     ...readClassLimitFindings(reportRoot, context.classLimits),
     ...branchFindings(context, jacoco),
     ...(kotlin ? readKotlinFindings(context, crapLimit) : []),
+    ...readGuardFindings({
+      ...context,
+      locate: sourceLocator(projectRoot, lintedRoots(context.manifest)),
+    }),
     ...readSlowTestFindings({ reportRoot, projectRoot, testRoots, ...context.testTimes }),
     ...readTestConsoleFindings({ reportRoot, projectRoot, testRoots }, context.testConsole),
   ];

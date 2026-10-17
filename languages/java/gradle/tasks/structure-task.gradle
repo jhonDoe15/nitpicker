@@ -1,0 +1,23 @@
+def reportDir = project.ext.nitpickerReportDir
+def relativeToRoot = project.ext.nitpickerRelativeToRoot
+def analysisRoot = project.ext.nitpickerAnalysisRoot
+def metricsSource = new File(buildscript.sourceFile.parentFile, '../StructureMetrics.java')
+
+tasks.register('nitpickerStructure') {
+    group = 'nitpicker'
+    doLast {
+        reportDir.get().asFile.mkdirs()
+        def roots = sourceSets.main.allJava.sourceDirectories.files.findAll { it.exists() }
+            .collect { relativeToRoot(it) }
+        def output = reportDir.get().file('structure.json').asFile
+        def classesOutput = reportDir.get().file('classes.json').asFile
+        def java = new File(System.getProperty('java.home'), 'bin/java').absolutePath
+        def process = new ProcessBuilder([java, metricsSource.canonicalPath,
+                output.absolutePath, classesOutput.absolutePath, analysisRoot.absolutePath] + roots)
+            .directory(projectDir).redirectErrorStream(true).start()
+        def log = process.inputStream.getText('UTF-8')
+        if (process.waitFor() != 0) {
+            throw new GradleException("StructureMetrics failed: ${log.trim()}")
+        }
+    }
+}

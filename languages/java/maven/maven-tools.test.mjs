@@ -71,6 +71,7 @@ describe('toolDependencies', () => {
   it('carries no formatter of its own, so a style that does not need one resolves none', () => {
     expect(Object.keys(toolDependencies(pinned))).toEqual([
       'pmd',
+      'forbiddenapis',
       'spotbugs',
       'checkstyle',
       'errorprone',
@@ -79,6 +80,7 @@ describe('toolDependencies', () => {
     ]);
     expect(Object.keys(toolDependencies(pinned, [], formatTool('palantir', pinned)))).toEqual([
       'pmd',
+      'forbiddenapis',
       'spotbugs',
       'checkstyle',
       'errorprone',
@@ -90,7 +92,7 @@ describe('toolDependencies', () => {
 });
 
 describe.skipIf(process.platform === 'win32')('resolveTools', () => {
-  const common = ['pmd', 'spotbugs', 'checkstyle', 'errorprone', 'jacoco', 'pit'];
+  const common = ['pmd', 'forbiddenapis', 'spotbugs', 'checkstyle', 'errorprone', 'jacoco', 'pit'];
 
   it('resolves the google jar for google, the palantir jar for palantir and no formatter for none', () => {
     expect(resolvedWith('google')).toEqual([...common, 'format']);

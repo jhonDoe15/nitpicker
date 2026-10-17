@@ -108,6 +108,15 @@ describe('nitpicker with "preset": "python" and function structure', () => {
           'This code repeats src/demo/b.py:1 (10 lines). Keep one copy and call it from both places. To allow it for some paths, add a "python.exceptions" entry for duplicate-clone in nitpicker.config.json.',
         classification: 'enforceable',
         location: { line: 1 },
+        ratchet: {
+          key: 'pair:src/demo/a.py|src/demo/b.py:clone',
+          value: 59,
+          divisible: true,
+          mustKeepUnchangedLines: [
+            { path: 'src/demo/a.py', startLine: 1, endLine: 10 },
+            { path: 'src/demo/b.py', startLine: 1, endLine: 10 },
+          ],
+        },
       },
     ]);
 

@@ -125,7 +125,7 @@ function reportsDirectory(plugin, goal) {
     : configured(executionsWithGoal(plugin, goal)[0], plugin, 'reportsDirectory');
 }
 
-function describeModule(project, basedir) {
+function describeModule(project, { basedir, pomFile }) {
   const build = childAt(project, 'build');
   const plugins = pluginsOf(project);
   const buildDirectory = resolvedText(build, basedir, 'directory') ?? path.join(basedir, 'target');
@@ -133,6 +133,7 @@ function describeModule(project, basedir) {
   const failsafeReports = reportsDirectory(plugins.get(FAILSAFE), 'integration-test');
   return {
     basedir,
+    pomFile,
     coordinates: coordinates(project),
     packaging: textAt(project, 'packaging') ?? 'jar',
     buildDirectory,
@@ -232,7 +233,7 @@ export function readReactor(projectRoot, effectivePom) {
     const basedir = moduleDirectory(projectRoot, pomFile, modules);
     const project = matchProject(pomFile, candidates);
     candidates.splice(candidates.indexOf(project), 1);
-    modules.push(describeModule(project, basedir));
+    modules.push(describeModule(project, { basedir, pomFile }));
     const children = childrenAt(project, 'modules', 'module')
       .filter((module) => module.text !== undefined)
       .map((module) => pomFileOf(basedir, module.text));
@@ -261,7 +262,15 @@ export function parseDependencyList(text) {
       );
       return index === undefined
         ? []
-        : [{ scope: parts[index], file: parts.slice(index + 1).join(':') }];
+        : [
+            {
+              groupId: parts[0],
+              artifactId: parts[1],
+              type: parts[2],
+              scope: parts[index],
+              file: parts.slice(index + 1).join(':'),
+            },
+          ];
     });
 }
 

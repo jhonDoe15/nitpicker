@@ -8,6 +8,7 @@ import {
 } from './project-rules/size-rules.mjs';
 import { UNUSED_API_RULES, UNUSED_API_RULE_IDS } from './unused-api/unused-api-policy.mjs';
 import { reuseRules } from './rules/reuse-rules.mjs';
+import { couplingRules } from './project-rules/coupling-rules.mjs';
 import { testConsoleRule } from './rules/test-runtime.mjs';
 import { SOURCE_RULE_IDS, sourceRuleMessages, sourceRules } from './project-rules/source-rules.mjs';
 import { HYGIENE_EXCEPTION_RULES, HYGIENE_RULES } from './project-rules/hygiene-rules.mjs';
@@ -28,6 +29,7 @@ export const RULE_IDS = {
   mutantNoCoverage: 'mutant-nocoverage',
   duplicateClone: 'duplicate-clone',
   stabilityDirection: 'stability-direction',
+  packageCycle: 'package-cycle',
   baselineExpansion: 'baseline-expansion',
   publicAlternativeBypass: 'public-alternative-bypass',
   ...UNUSED_API_RULE_IDS,
@@ -234,13 +236,10 @@ export const RULES = [
     limit: `jscpd in \`${DUPLICATES_MODE}\` mode; any new clone fails`,
     enforcedBy: withKotlin(ALL, true),
   },
-  {
-    id: RULE_IDS.stabilityDirection,
-    check: 'coupling',
-    limit:
-      'a package depending on a less stable package; an import that exists only for the type checker (`import type`, `if TYPE_CHECKING:`) is never the reported dependency, but still counts toward instability',
-    enforcedBy: withKotlin(ALL, true),
-  },
+  ...couplingRules(RULE_IDS, {
+    everyLanguage: withKotlin(ALL, true),
+    javaOnly: withKotlin({ typescript: false, java: true, python: false }, true),
+  }),
   {
     id: RULE_IDS.noProductionRuntime,
     check: 'test-runtime',

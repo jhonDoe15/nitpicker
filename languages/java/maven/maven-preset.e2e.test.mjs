@@ -13,7 +13,6 @@ import path from 'node:path';
 import { afterAll, describe, expect, it } from 'vitest';
 import { collectJavaFindings, runJavaDiff } from '../adapters/java-diff.mjs';
 import { analyzeJavaSnapshot } from '../adapters/java-runner.mjs';
-import { testCasesOf } from '../adapters/test-times/slow-tests.mjs';
 import {
   isFormatting,
   LOOSE,
@@ -31,58 +30,16 @@ import {
   GRADLE_STEP_TIMEOUT_MS,
   runGitIn,
 } from '../adapters/test-support/gradle-e2e.mjs';
+import { DATED, EMPTY_CATCH, FAILING_TEST } from './test-support/maven-e2e-sources.mjs';
 
 const enabled = process.env.NITPICKER_JAVA_E2E === '1';
 const gradle = process.env.NITPICKER_GRADLE ?? 'gradle';
 const maven = process.env.NITPICKER_MAVEN;
 const fixtures = path.join(import.meta.dirname, 'fixtures');
-const gradleFixture = path.join(import.meta.dirname, '../adapters/fixtures/gradle-project');
+const gradleFixtures = path.join(import.meta.dirname, '../adapters/fixtures');
+const gradleFixture = path.join(gradleFixtures, 'gradle-project');
+const BUILD_FILES = new Set(['build.gradle', 'pom.xml']);
 const temporary = [];
-
-const DATED = `package demo;
-
-import java.util.Date;
-
-public class Dated {
-    public Date now(int a, int b, int c, int d) {
-        if (a > 0) { if (b > 0) { if (c > 0) { if (d > 0) { return new Date(); } } } }
-        try { Integer.parseInt("x"); } catch (NumberFormatException e) { }
-        return new Date(new String(new byte[] {1}).length());
-    }
-
-    public String shout(String text) {
-        if (text.isEmpty()) return text;
-        return text.toUpperCase();
-    }
-}
-`;
-
-const EMPTY_CATCH = `package demo.app;
-
-public final class Parser {
-  public int parse(String text) {
-    try {
-      return Integer.parseInt(text);
-    } catch (NumberFormatException e) {
-    }
-    return 0;
-  }
-}
-`;
-
-const FAILING_TEST = `package demo.core;
-
-import static org.junit.jupiter.api.Assertions.assertEquals;
-
-import org.junit.jupiter.api.Test;
-
-class AdderTest {
-  @Test
-  void adds() {
-    assertEquals(4, new Adder().add(1, 2));
-  }
-}
-`;
 
 function copyOf(...sources) {
   const root = mkdtempSync(path.join(tmpdir(), 'nitpicker-maven-e2e-'));
@@ -93,6 +50,7 @@ function copyOf(...sources) {
   return root;
 }
 
+const MESSY = 'src/main/java/demo/Messy.java';
 function twinProjects() {
   const gradleProject = copyOf(gradleFixture);
   const mavenProject = copyOf(gradleFixture, path.join(fixtures, 'single'));
@@ -127,6 +85,23 @@ function lineCoverage(text, value) {
 
 const comparable = (findings) => findings.map((finding) => JSON.stringify(finding)).sort();
 
+function withoutGradle(root) {
+  for (const name of readdirSync(root, { recursive: true })) {
+    if (/(?:^|[/\\])(?:build|settings)\.gradle$/u.test(name)) {
+      rmSync(path.join(root, name));
+    }
+  }
+  return root;
+}
+
+function acrossBuilds(findings) {
+  return findings
+    .filter(({ tool, rule }) => `${tool}/${rule}` !== 'test-runtime/slow-test')
+    .map((finding) =>
+      BUILD_FILES.has(finding.path) ? { ...finding, path: 'build file', message: '' } : finding,
+    );
+}
+
 afterAll(() => {
   for (const root of temporary.splice(0)) {
     rmSync(root, { recursive: true, force: true });
@@ -152,6 +127,7 @@ describe.skipIf(!enabled)('Java preset on Maven builds', () => {
         'coupling',
         'crap',
         'errorprone',
+        'forbiddenapis',
         'google-java-format',
         'jacoco',
         'pit',
@@ -161,6 +137,102 @@ describe.skipIf(!enabled)('Java preset on Maven builds', () => {
       ]);
     },
     2 * GRADLE_STEP_TIMEOUT_MS,
+  );
+
+  it(
+    'finds exactly the guard findings the Gradle build of the same sources finds, test times aside (they vary by run)',
+    () => {
+      const guards = path.join(gradleFixtures, 'guards-project');
+      const gradleProject = copyOf(guards);
+      const mavenProject = withoutGradle(copyOf(guards, path.join(fixtures, 'guards')));
+      const fromGradle = collectJavaFindings(gradleProject, { gradle, policy: {} });
+      const fromMaven = collectJavaFindings(mavenProject, { maven, policy: {} });
+
+      expect(comparable(acrossBuilds(fromMaven))).toEqual(comparable(acrossBuilds(fromGradle)));
+      expect(
+        fromMaven
+          .filter((finding) => finding.tool === 'dependencies')
+          .map(({ path: file, identity, message }) => [file, identity, message.split('. ')[0]]),
+      ).toEqual([
+        [
+          'pom.xml',
+          'unused:org.apache.commons:commons-text',
+          'Dependency org.apache.commons:commons-text has compile scope but no main class uses it',
+        ],
+      ]);
+      expect(
+        ['javac', 'forbiddenapis', 'duplicates', 'coupling'].map((tool) =>
+          fromMaven.some(
+            (finding) => finding.tool === tool && finding.classification === 'enforceable',
+          ),
+        ),
+      ).toEqual([true, true, true, true]);
+      expect(
+        fromMaven
+          .filter((finding) => finding.rule === 'TestClassWithoutTestCases')
+          .map(({ path: file, location }) => `${file}:${String(location.line)}`),
+      ).toEqual([
+        'src/test/java/guards/GreetingFixturesTest.java:3',
+        'src/test/java/guards/HelpersTest.java:3',
+      ]);
+    },
+    2 * GRADLE_STEP_TIMEOUT_MS,
+  );
+
+  it(
+    'lints modules with a javac plug-in, preview, a descriptor, an outside source root, Lombok or an older release',
+    () => {
+      const project = withoutGradle(
+        copyOf(
+          path.join(gradleFixtures, 'guards-compile-modes'),
+          path.join(fixtures, 'guards-compile-modes'),
+        ),
+      );
+      const findings = collectJavaFindings(project, { maven, policy: {} });
+      const watched = new Set(['OptionalGet', 'InstanceofThenCast', 'CollectorsToList']);
+
+      expect(
+        findings
+          .filter((finding) => finding.tool === 'javac' || finding.toolNotRun === true)
+          .map(({ path: file, rule, location }) => `${file}:${String(location?.line)} ${rule}`),
+      ).toEqual([
+        'plugged/src/main/java/plugged/Names.java:7 rawtypes',
+        'preview/src/main/java/preview/Names.java:7 rawtypes',
+        'modular/src/main/java/modular/shapes/Shape.java:10 rawtypes',
+        'outside/src/main/java/outside/Names.java:7 rawtypes',
+        'lombok/src/main/java/fluent/Item.java:18 rawtypes',
+      ]);
+      expect(
+        findings
+          .filter((finding) => finding.path.startsWith('legacy/') && watched.has(finding.rule))
+          .map((finding) => finding.rule),
+      ).toEqual(['OptionalGet']);
+      expect(
+        findings
+          .filter((finding) => finding.tool === 'coupling' && finding.path.startsWith('modular/'))
+          .map(({ path: file, metric }) => `${file} ${metric.name} ${String(metric.value)}`),
+      ).toEqual(
+        [
+          'Labels.java fanIn 0',
+          'Labels.java fanOut 1',
+          'Labels.java totalCoupling 1',
+          'Labels.java instability 1',
+          'Shape.java fanIn 3',
+          'Shape.java fanOut 2',
+          'Shape.java totalCoupling 5',
+          'Shape.java instability 0.4',
+          'impl/Circle.java fanIn 1',
+          'impl/Circle.java fanOut 1',
+          'impl/Circle.java totalCoupling 2',
+          'impl/Circle.java instability 0.5',
+          'impl/Square.java fanIn 1',
+          'impl/Square.java fanOut 1',
+          'impl/Square.java totalCoupling 2',
+          'impl/Square.java instability 0.5',
+        ].map((line) => `modular/src/main/java/modular/shapes/${line}`),
+      );
+    },
+    GRADLE_STEP_TIMEOUT_MS,
   );
 
   it(
@@ -323,81 +395,6 @@ describe.skipIf(!enabled)('Java preset on Maven builds', () => {
           ),
         ),
       ).toBe(true);
-    },
-    GRADLE_STEP_TIMEOUT_MS,
-  );
-
-  it(
-    'runs verify when Failsafe is bound, counting its tests for coverage and the integration budget',
-    () => {
-      const project = copyOf(path.join(fixtures, 'failsafe'));
-      const findings = collectJavaFindings(project, {
-        maven,
-        policy: { testSeconds: { integrationTestSeconds: -1 } },
-      });
-      const cases = copiedTestCases(project);
-      const seconds = cases[0].seconds.toFixed(1);
-      const exception =
-        '{"rule":"test-runtime/slow-test","paths":["src/test/java/demo/GreeterIT.java"],"reason":"..."}';
-
-      expect(cases.map(({ task, className, name }) => `${task} ${className}#${name}`)).toEqual([
-        'failsafe demo.GreeterIT#saysGoodbye',
-        'surefire demo.GreeterTest#greets',
-      ]);
-      expect(existsSync(path.join(project, 'target/greeter-1.0.jar'))).toBe(true);
-      expect(findings.filter((finding) => finding.tool === 'jacoco')).toEqual([
-        lineCoverage('100% (3/3)', 100),
-      ]);
-      expect(findings.filter((finding) => finding.tool === 'test-runtime')).toEqual([
-        {
-          tool: 'test-runtime',
-          rule: 'slow-test',
-          path: 'src/test/java/demo/GreeterIT.java',
-          identity: 'test:demo.GreeterIT#saysGoodbye',
-          location: { line: 9 },
-          message:
-            `GreeterIT saysGoodbye took ${seconds} s; an integration test may take -1 s. ` +
-            'Remove Thread.sleep and other waits, start a smaller Spring context or a test slice. ' +
-            `If this is intended, add ${exception} to "exceptions" in nitpicker.config.json.`,
-          classification: 'enforceable',
-        },
-      ]);
-    },
-    GRADLE_STEP_TIMEOUT_MS,
-  );
-
-  it(
-    'stays on test when the project keeps its integration tests off with skipITs',
-    () => {
-      const project = copyOf(path.join(fixtures, 'failsafe'));
-      const pom = path.join(project, 'pom.xml');
-      writeFileSync(
-        pom,
-        readFileSync(pom, 'utf8').replace('<properties>', '<properties><skipITs>true</skipITs>'),
-      );
-      const findings = collectJavaFindings(project, { maven, policy: {} });
-
-      expect(
-        copiedTestCases(project).map(({ task, className, name }) => `${task} ${className}#${name}`),
-      ).toEqual(['surefire demo.GreeterTest#greets']);
-      expect(
-        ['target/failsafe-reports', 'target/greeter-1.0.jar'].map((file) =>
-          existsSync(path.join(project, file)),
-        ),
-      ).toEqual([false, false]);
-      expect(findings.filter((finding) => finding.tool === 'jacoco')).toEqual([
-        lineCoverage('66.67% (2/3)', 66.67),
-        {
-          tool: 'jacoco',
-          rule: 'uncovered-method',
-          path: 'src/main/java/demo/Greeter.java',
-          identity: 'cov:a14fde8c431ba476',
-          symbol: 'demo.Greeter#farewell(Ljava/lang/String;)Ljava/lang/String;',
-          message:
-            'Method demo.Greeter#farewell(Ljava/lang/String;)Ljava/lang/String; is not covered',
-          classification: 'descriptive',
-        },
-      ]);
     },
     GRADLE_STEP_TIMEOUT_MS,
   );

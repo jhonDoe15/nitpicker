@@ -56,6 +56,7 @@ export function toolDependencies(pinned, launcherVersions = [], extraTools = [])
       dependency(`net.sourceforge.pmd:pmd-cli:${pinned.pmd}`),
       dependency(`net.sourceforge.pmd:pmd-java:${pinned.pmd}`),
     ],
+    forbiddenapis: [dependency(`de.thetaphi:forbiddenapis:${pinned.forbiddenapis}`)],
     spotbugs: [dependency(`com.github.spotbugs:spotbugs:${pinned.spotbugs}`)],
     checkstyle: [dependency(`com.puppycrawl.tools:checkstyle:${pinned.checkstyle}`)],
     errorprone: [

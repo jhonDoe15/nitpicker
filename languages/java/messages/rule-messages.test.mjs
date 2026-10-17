@@ -103,15 +103,39 @@ describe('withRuleMessage', () => {
     ).toBe(`Usage of System.out/err. ${readCatalog('pmd').SystemPrintln.fix}`);
   });
 
+  it('gives findings of the guard tools the same exception route, in the java preset only', () => {
+    const lint = finding('javac', 'rawtypes', 'found raw type: List. Add the type arguments.');
+    const cycle = finding(
+      'coupling',
+      'package-cycle',
+      'Package a is in a dependency cycle with b.',
+    );
+    const stability = finding('coupling', 'stability-direction', 'a depends on less stable b');
+
+    expect(
+      [
+        applyRuleMessages([lint, cycle, stability]),
+        applyRuleMessages([lint], { preset: 'kotlin' }),
+      ].map((findings) => findings.map(({ message }) => message)),
+    ).toEqual([
+      [
+        `${lint.message} ${hint('javac/rawtypes')}`,
+        `${cycle.message} ${hint('coupling/package-cycle')}`,
+        stability.message,
+      ],
+      [lint.message],
+    ]);
+  });
+
   it('keeps messages that already name the config file, and findings of other tools', () => {
     const spring = finding(
       'pmd',
       'SpringConstructorInjection',
       'Inject through the constructor. If it is right here, add an exception for pmd/SpringConstructorInjection in nitpicker.config.json.',
     );
-    const pit = finding('pit', 'mutant-survived', 'Survived');
+    const archunit = finding('archunit', 'layers', 'Layer violated');
 
-    expect(applyRuleMessages([spring, pit])).toEqual([spring, pit]);
+    expect(applyRuleMessages([spring, archunit])).toEqual([spring, archunit]);
   });
 });
 

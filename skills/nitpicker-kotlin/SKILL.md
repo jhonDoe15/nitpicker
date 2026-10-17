@@ -77,8 +77,8 @@ it with `npx skills add jhonDoe15/nitpicker --skill nitpicker-java`.
   (`Class.<init>`) and property initializers that branch (`val y = if (...) ... else ...`). An `init` block cannot return early: move the nested part into
   a function. Complex code needs tests: the CRAP score of a function must
   stay below 9.
-- A new clone of at least 5 lines and 50 tokens in main sources (`duplicate-clone`) fails: extract
-  a function. A package must not depend on a less stable one (`stability-direction`).
+- Copied code fails (`duplicate-clone`): extract a function; in tests, a helper or one
+  parameterized test. A package must not depend on a less stable one (`stability-direction`).
 - A file stays within 300 lines (a test file 500). A package folder holds at most 6 files and 6
   test files directly: group the rest into subpackages by what they do. Java sources follow the
   `nitpicker-java` rules.

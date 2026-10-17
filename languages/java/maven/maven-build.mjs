@@ -2,7 +2,9 @@ import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync, existsSync
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { javaCommand, runJava, runMaven } from './maven-command.mjs';
-import { runCheckstyle, runFormat, runPmd, runSpotbugs } from './maven-lint.mjs';
+import { runCheckstyle, runFormat, runSpotbugs, runPmd } from './maven-lint.mjs';
+import { runGuards } from './guards/maven-guards.mjs';
+import { runJdeps as runGuardJdeps } from './coupling/maven-jdeps.mjs';
 import {
   lifecycleArgs,
   moduleClasspaths,
@@ -21,7 +23,7 @@ import { copyTestResults } from './results/maven-test-results.mjs';
 import { formatTool, jacocoPlugin, MAVEN_PLUGINS, resolveTools } from './maven-tools.mjs';
 import { processorTool, runErrorProne } from './errorprone/maven-errorprone.mjs';
 import { GRADLE_DIRECTORY, readPinnedTools } from '../builds/java-build.mjs';
-import { writeJdepsReports } from '../builds/jdeps-reports.mjs';
+import { writeJdepsReports } from '../builds/classes/jdeps-reports.mjs';
 
 export const MAVEN_REPORT_DIRECTORY = 'target/nitpicker';
 const OWN_JACOCO_EXEC = 'nitpicker-jacoco.exec';
@@ -131,25 +133,25 @@ function writeManifest({ module, reportDir, pinned, spring, classpaths }) {
 }
 
 function readClasspaths(work, module) {
-  return moduleClasspaths(
-    module,
-    parseDependencyList(readFileSync(dependencyFile(work, module), 'utf8')),
-  );
+  const dependencies = parseDependencyList(readFileSync(dependencyFile(work, module), 'utf8'));
+  return { ...moduleClasspaths(module, dependencies), dependencies };
 }
 
-function analyzeModule({ module, classpaths, tools, pinned, configs, since, style }) {
-  const reportDir = path.join(module.basedir, MAVEN_REPORT_DIRECTORY);
-  const isArchunit = archunitMatcher(module.archunitIncludes);
-  const spring = classpaths.mainCompile.some((entry) => SPRING_JAR.test(path.basename(entry)));
-  const testsRan = collectTestResults({ module, reportDir, since, isArchunit });
-  copyTestResults({ module, reportDir, since, isArchunit });
-  runPmd({ module, reportDir, tools, classpaths, configs, spring });
+function analyzeSources(context, project) {
+  const { module, reportDir, tools, classpaths, configs, pinned, style } = context;
+  runPmd({ module, reportDir, tools, classpaths, configs, spring: context.spring });
   runSpotbugs({ module, reportDir, tools });
   runErrorProne({ module, reportDir, tools, classpaths });
   runFormat({ module, reportDir, tools, javaStyle: style.javaStyle });
   runCheckstyle({ module, reportDir, tools, configs, pinned, style });
   runStructure(module, reportDir);
   runJdeps(module, reportDir);
+  runGuardJdeps(module, reportDir);
+  runGuards({ module, reportDir, tools, classpaths }, project);
+}
+
+function analyzeTests(context, testsRan) {
+  const { module, reportDir, tools, classpaths, since, isArchunit } = context;
   runJacocoReport({
     module,
     reportDir,
@@ -159,6 +161,18 @@ function analyzeModule({ module, classpaths, tools, pinned, configs, since, styl
     testsRan,
   });
   runPit({ module, reportDir, tools, classpaths, isArchunit });
+}
+
+function analyzeModule({ project, ...options }) {
+  const { module, classpaths, since, pinned } = options;
+  const reportDir = path.join(module.basedir, MAVEN_REPORT_DIRECTORY);
+  const isArchunit = archunitMatcher(module.archunitIncludes);
+  const spring = classpaths.mainCompile.some((entry) => SPRING_JAR.test(path.basename(entry)));
+  const context = { ...options, reportDir, isArchunit, spring };
+  const testsRan = collectTestResults({ module, reportDir, since, isArchunit });
+  copyTestResults({ module, reportDir, since, isArchunit });
+  analyzeSources(context, project);
+  analyzeTests(context, testsRan);
   writeManifest({ module, reportDir, pinned, spring, classpaths });
 }
 
@@ -224,6 +238,7 @@ export function runMavenPreset(projectRoot, { maven, policy = {}, configs }) {
         ...formatTool(policy.javaStyle, pinned),
       ],
     });
+    const project = guardProject(projectRoot, policy, modules);
     for (const { module, classpaths } of analyzed) {
       analyzeModule({
         module,
@@ -232,6 +247,7 @@ export function runMavenPreset(projectRoot, { maven, policy = {}, configs }) {
         pinned,
         configs,
         since,
+        project,
         style: {
           javaStyle: policy.javaStyle,
           indentation: checkstyleIndentation(policy.conventions),
@@ -242,4 +258,12 @@ export function runMavenPreset(projectRoot, { maven, policy = {}, configs }) {
   } finally {
     rmSync(work, { recursive: true, force: true });
   }
+}
+
+function guardProject(projectRoot, policy, modules) {
+  return {
+    projectRoot,
+    baselineRoot: policy.snapshot === 'head' ? policy.baselineRoot : undefined,
+    reactor: modules.map((module) => module.coordinates),
+  };
 }

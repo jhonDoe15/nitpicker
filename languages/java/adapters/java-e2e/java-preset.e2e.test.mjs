@@ -2,6 +2,7 @@ import { spawnSync } from 'node:child_process';
 import path from 'node:path';
 import { writeFileSync, mkdtempSync, cpSync, rmSync } from 'node:fs';
 import { describe, beforeAll, afterAll, it, expect } from 'vitest';
+import { exceptionHint } from '../../../../shared/rules/exceptions.mjs';
 import { tmpdir } from 'node:os';
 import {
   LEGACY,
@@ -216,7 +217,7 @@ describe.skipIf(!enabled)('Java preset end to end', () => {
       expect(result.failed).toBe(true);
       expect(summarize(result.newEnforceable)).toEqual([
         ...repeated(2, 'archunit no_classes_use_legacy_date Stamp.java'),
-        ...repeated(4, 'errorprone JavaUtilDate Stamp.java'),
+        ...repeated(4, 'forbiddenapis legacy-date-time Stamp.java'),
         ...repeated(3, 'pit mutant-nocoverage Stamp.java'),
       ]);
       expect(
@@ -304,14 +305,18 @@ describe.skipIf(!enabled)('Java preset end to end', () => {
   );
 
   it(
-    'fails a new clone found by jscpd',
+    'fails a new clone between two files, and the repeated blocks PMD CPD finds inside each copy',
     () => {
       const result = diffOf('clone');
 
       expect(result.failed).toBe(true);
       expect(
         summarize(result.newEnforceable.filter((finding) => finding.tool === 'duplicates')),
-      ).toEqual(['duplicates duplicate-clone Left.java']);
+      ).toEqual([
+        'duplicates duplicate-clone Left.java',
+        'duplicates duplicate-clone Left.java',
+        'duplicates duplicate-clone Right.java',
+      ]);
     },
     GRADLE_STEP_TIMEOUT_MS,
   );
@@ -326,8 +331,10 @@ describe.skipIf(!enabled)('Java preset end to end', () => {
         'coupling test-only-export Calc.java',
         'pit mutant-survived Calc.java',
       ]);
-      expect(survivor.newEnforceable.find((finding) => finding.tool === 'pit').message).toEqual(
-        'Survived ConditionalsBoundaryMutator: changed conditional boundary: no test fails when this code changes. Add an assertion that would. If no input can tell the two apart (a compareTo boundary, a discarded lambda return), simplify the code so this mutant disappears, or add an exception for pit/mutant-survived in nitpicker.config.json.',
+      const mutant = survivor.newEnforceable.find((finding) => finding.tool === 'pit');
+      expect(mutant.message).toEqual(
+        'Survived ConditionalsBoundaryMutator: changed conditional boundary: no test fails when this code changes. Add an assertion that would. If no input can tell the two apart (a compareTo boundary, a discarded lambda return), simplify the code so this mutant disappears. ' +
+          exceptionHint('pit/mutant-survived', mutant.path),
       );
       // The legacy uncovered mutants (Greeter.shout, Legacy.value) stay baselined.
       expect([...new Set(summarize(survivor.unchangedFindings))].sort()).toEqual(
