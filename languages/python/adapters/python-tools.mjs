@@ -4,7 +4,7 @@ import { jscpdVersion } from '../../java/adapters/metrics/java-duplicates.mjs';
 import { scanImports } from './analysis/python-coupling.mjs';
 import { scanDependencies } from './dependencies/dependency-findings.mjs';
 import { runDuplicates } from './analysis/python-duplicates.mjs';
-import { detectEnvironment, openEnvironment } from './execution/python-environment.mjs';
+import { openSnapshotEnvironment } from './execution/python-environment.mjs';
 import { checkRules } from './analysis/python-ast-rules.mjs';
 import { pytestStyle, pytestStyleFlags } from '../rules/libraries/pytest-style.mjs';
 import { importLinterEnabled, runImportLinter } from './analysis/python-import-linter.mjs';
@@ -49,7 +49,11 @@ export function createToolContext({
   toolPrecedence,
   pytestAddopts,
 }) {
-  const launcher = openEnvironment(detectEnvironment(liveRoot, settings.environment), liveRoot);
+  const launcher = openSnapshotEnvironment({
+    projectRoot,
+    liveRoot,
+    setting: settings.environment,
+  });
   const sourceRoots = detectSourceRoots(projectRoot, settings.sourceRoots);
   const pythonPath = [...importRoots(projectRoot, sourceRoots), process.env.PYTHONPATH]
     .filter((entry) => entry !== undefined && entry !== '')

@@ -1,6 +1,5 @@
 import { ingestCrapRows } from '../../java/ingest/crap.mjs';
 import { normalizeReportPath } from '../../java/ingest/common.mjs';
-import { repeatsInSource } from '../../../shared/rules/finding-helpers.mjs';
 
 const FULLY_COVERED = 100;
 
@@ -17,7 +16,7 @@ function scoredFunctions(entries) {
       end: entry.end,
       lambda: entry.lambda === true,
       statementLine: entry.statementLine,
-      numberedAmongSameSource: repeatsInSource(entry.name),
+      numberedAmongSameSource: true,
     }));
 }
 
