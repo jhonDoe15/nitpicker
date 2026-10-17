@@ -171,13 +171,18 @@ describe('the message of a function that got worse', () => {
   it('has a message for every limited metric', () => {
     expect(Object.keys(METRIC_START).sort()).toEqual(Object.keys(FUNCTION_STRUCTURE_LIMITS).sort());
     expect([...new Set(Object.keys(GREW_MESSAGES))].sort()).toEqual([
+      'classFields',
+      'classMethods',
       'crap',
       'fileLines',
+      'folderDepth',
       'folderFiles',
+      'inheritanceDepth',
       'lineLength',
       'lines',
       'maxControlNesting',
       'parameters',
+      'recordComponents',
       'statements',
     ]);
   });
