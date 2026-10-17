@@ -26,6 +26,7 @@ const EXPECTED_ANALYZER_NAMES = [
   'duplicates',
   'dead-code',
   'coverage',
+  'test-console',
   'crap',
   'mutation',
 ];
