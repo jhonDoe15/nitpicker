@@ -2,8 +2,8 @@ import { mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSy
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
-import { writeMutmutConfig } from '../project-tools/mutmut/mutmut-config.mjs';
-import { section, TEST_PATTERNS } from './test-support/mutmut-section.mjs';
+import { writeMutmutConfig } from './mutmut-config.mjs';
+import { section, TEST_PATTERNS } from '../../mutation/test-support/mutmut-section.mjs';
 
 const roots = [];
 
