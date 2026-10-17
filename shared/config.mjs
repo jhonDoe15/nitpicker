@@ -1,9 +1,3 @@
-// The project config (`nitpicker.config.json`) rules that do not depend on a language: the file
-// name, the keys every preset honours (`testConsole`, the feature folders of `layout`) and their
-// validation. `core/configuration/validate.mjs` adds the TypeScript-only keys and the preset gate.
-//
-// Language-neutral: no imports from `core/`, `languages/` or tool packages.
-
 import path from 'node:path';
 import { hasSpecificText } from './rules/console/console-messages.mjs';
 import { FACT_RULE_SETTINGS, factRuleSettings } from './rules/facts/registry.mjs';

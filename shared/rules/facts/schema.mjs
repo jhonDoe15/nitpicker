@@ -125,7 +125,7 @@ function itemProblem(list, item, index) {
   if (field === undefined) {
     return undefined;
   }
-  const value = JSON.stringify(item[field]) ?? 'missing';
+  const value = item[field] === undefined ? 'missing' : JSON.stringify(item[field]);
   const hint = PATH_CHECKS.has(check) && isString(item[field]) ? `: ${PATH_RULE}` : '';
   return `facts.${list}[${String(index)}].${field} is ${value}${hint}`;
 }

@@ -55,25 +55,31 @@ function globToken(glob, index) {
   return { kind: 'one', test: (other) => other === character, length: 1 };
 }
 
-function parseAt(open, glob, index) {
+function parseBrace(open, character) {
   const group = open.at(-1);
-  const character = glob[index];
   if (character === '{') {
     const child = { kind: 'group', branches: [[]] };
     group.branches.at(-1).push(child);
     open.push(child);
-    return 1;
+    return true;
   }
   if (character === '}' && open.length > 1) {
     open.pop();
-    return 1;
+    return true;
   }
   if (character === ',' && open.length > 1) {
     group.branches.push([]);
+    return true;
+  }
+  return false;
+}
+
+function parseAt(open, glob, index) {
+  if (parseBrace(open, glob[index])) {
     return 1;
   }
   const token = globToken(glob, index);
-  group.branches.at(-1).push(token);
+  open.at(-1).branches.at(-1).push(token);
   return token.length;
 }
 
@@ -92,10 +98,16 @@ function parseGlob(glob) {
   return root.branches[0];
 }
 
-function compileNode(states, node, next) {
+function compileGroup({ states, tasks }, node, next) {
+  const group = states.push({ split: [] }) - 1;
+  tasks.push(...node.branches.map((sequence, slot) => ({ sequence, next, group, slot })));
+  return group;
+}
+
+function compileNode(program, node, next) {
+  const { states } = program;
   if (node.kind === 'group') {
-    states.push({ split: node.branches.map((branch) => compileSequence(states, branch, next)) });
-    return states.length - 1;
+    return compileGroup(program, node, next);
   }
   if (node.kind === 'one') {
     states.push({ test: node.test, next });
@@ -112,8 +124,16 @@ function compileNode(states, node, next) {
   return states.push({ split: [next, loop] }) - 1;
 }
 
-function compileSequence(states, sequence, next) {
-  return sequence.reduceRight((after, node) => compileNode(states, node, after), next);
+function compileSequences(states, nodes) {
+  const program = { states, tasks: [] };
+  const start = compileGroup(program, { branches: [nodes] }, 0);
+  for (const { sequence, next, group, slot } of program.tasks) {
+    states[group].split[slot] = sequence.reduceRight(
+      (after, node) => compileNode(program, node, after),
+      next,
+    );
+  }
+  return start;
 }
 
 function closure(states, starts) {
@@ -149,7 +169,7 @@ function move(automaton, current, character) {
 
 function compileGlob(glob) {
   const states = [{ match: true }];
-  const start = compileSequence(states, parseGlob(glob), 0);
+  const start = compileSequences(states, parseGlob(glob));
   const automaton = { states, known: new Map() };
   const initial = automatonState(automaton, closure(states, [start]));
   return (value) => {

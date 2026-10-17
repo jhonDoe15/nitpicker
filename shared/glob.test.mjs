@@ -2,26 +2,38 @@ import { describe, expect, it } from 'vitest';
 import { globMatcher, globToRegExpSource } from './glob.mjs';
 
 const CASES = [
-  ['**/*.test.{ts,tsx}', ['a/b.test.ts', 'b.test.tsx'], ['a/b.test.js', 'a/btest.ts']],
-  ['src/**/shared', ['src/shared', 'src/a/b/shared'], ['src/shared/x', 'lib/shared']],
-  ['src/**', ['src/a', 'src/a/b'], ['srcx/a', 'lib/src/a']],
-  ['a/*/c', ['a/b/c'], ['a/b/x/c', 'a/c']],
-  ['a?c', ['abc'], ['a/c', 'ac']],
-  ['{a,{b,c}}/x', ['a/x', 'c/x'], ['d/x']],
-  ['a}b,c', ['a}b,c'], ['ab']],
-  ['$x.(1)', ['$x.(1)'], ['ax.(1)']],
+  {
+    glob: '**/*.test.{ts,tsx}',
+    matching: ['a/b.test.ts', 'b.test.tsx'],
+    other: ['a/b.test.js', 'a/btest.ts'],
+  },
+  {
+    glob: 'src/**/shared',
+    matching: ['src/shared', 'src/a/b/shared'],
+    other: ['src/shared/x', 'lib/shared'],
+  },
+  { glob: 'src/**', matching: ['src/a', 'src/a/b'], other: ['srcx/a', 'lib/src/a'] },
+  { glob: 'a/*/c', matching: ['a/b/c'], other: ['a/b/x/c', 'a/c'] },
+  { glob: 'a?c', matching: ['abc'], other: ['a/c', 'ac'] },
+  { glob: '{a,{b,c}}/x', matching: ['a/x', 'c/x'], other: ['d/x'] },
+  { glob: 'a}b,c', matching: ['a}b,c'], other: ['ab'] },
+  { glob: '$x.(1)', matching: ['$x.(1)'], other: ['ax.(1)'] },
 ];
 
 describe('globMatcher', () => {
-  it.each(CASES)('matches %s like its regular expression source', (glob, matching, other) => {
-    const pattern = new RegExp(globToRegExpSource(glob));
-    const matcher = globMatcher(glob);
+  it.each(CASES)(
+    'matches $glob like its regular expression source',
+    ({ glob, matching, other }) => {
+      const pattern = new RegExp(globToRegExpSource(glob));
+      const matcher = globMatcher(glob);
+      const paths = matching.concat(other);
 
-    expect([...matching, ...other].map((path) => matcher.test(path))).toEqual(
-      [...matching, ...other].map((path) => pattern.test(path)),
-    );
-    expect(matching.map((path) => matcher.test(path))).toEqual(matching.map(() => true));
-  });
+      expect(paths.map((path) => matcher.test(path))).toEqual(
+        paths.map((path) => pattern.test(path)),
+      );
+      expect(matching.map((path) => matcher.test(path))).toEqual(matching.map(() => true));
+    },
+  );
 
   it('is linear in the path however many ** segments the glob has', () => {
     const glob = `${Array.from({ length: 10 }, () => '**/d').join('/')}/x`;

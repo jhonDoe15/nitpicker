@@ -14,7 +14,9 @@ function moduleExports(definitions) {
   const byFile = new Map();
   for (const { file, name, exported, exportNames = exported ? [name] : [] } of definitions) {
     const names = byFile.get(file) ?? new Map();
-    for (const exportName of exportNames) names.set(exportName, name);
+    for (const exportName of exportNames) {
+      names.set(exportName, name);
+    }
     byFile.set(file, names);
   }
   return byFile;

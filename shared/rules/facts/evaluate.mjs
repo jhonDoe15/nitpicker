@@ -1,3 +1,4 @@
+import { isPlainObject } from '../../config.mjs';
 import { testConsoleFindings } from '../console/console-findings.mjs';
 import { docCommentFindings } from '../doc-comments/doc-comments.mjs';
 import { exceptionMatcher } from '../exceptions.mjs';
@@ -99,10 +100,6 @@ function selectedRules(language, rules) {
     throw new Error(`${unregistered.join(', ')} is not registered for ${language} in ${REGISTRY}`);
   }
   return rules ?? registered;
-}
-
-function isPlainObject(value) {
-  return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
 
 function isGlobs(value) {

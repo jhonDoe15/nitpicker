@@ -118,10 +118,6 @@ const ALL = { typescript: true, java: true, python: true };
 const TYPESCRIPT_ONLY = { typescript: true, java: false, python: false };
 const withKotlin = (enforcedBy, kotlin) => ({ ...enforcedBy, kotlin });
 
-/**
- * The catalog of custom rules for `spec/checks.md`. `limit` is the human text of the default
- * threshold; `enforcedBy` says which languages enforce the rule today.
- */
 const CATALOG = [
   {
     id: RULE_IDS.functionLines,
