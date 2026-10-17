@@ -38,12 +38,12 @@ npm run check
 
 `npm run check` runs the self-gate (nitpicker checks your change against the remote's default
 branch) and then the full test suite, and fails if either fails. Arguments after `--` go to vitest,
-so `npm run check -- --maxWorkers=2` matches CI's worker count. It needs Node.js 22.14 or newer (CI
+so `npm run check -- --shard=2/8` runs only what one CI test shard runs. It needs Node.js 22.14 or newer (CI
 uses 24) and Java 21 for the structure-metrics test. It checks your working tree, uncommitted and
 untracked files included, while CI checks the pull request merged into its target branch, so commit
 everything and merge or rebase on the latest `main` before the final run. A change to a language's
 end-to-end behaviour also needs that language's suite (`npm run test:java`, `test:kotlin` or
-`test:python`), which needs the language's toolchain. CI runs only the Kotlin and Python ones, in the
+`test:python`), which needs the language's toolchain. CI runs all three, in the `java-e2e`,
 `kotlin-e2e` and `python-e2e` workflows, which follow the same triggers as the `typescript` workflow
 below (pushes to `main` that touch the paths they list, a manual run, and the `run-ci` label).
 
@@ -68,6 +68,17 @@ variables > Actions > Variables), and runs the self-gate again by removing and r
 different loosening needs a new digest. Delete the variable once the pull request is merged. The
 self-gate runs the pull request's own code and workflow, so changes to `.github/workflows/`,
 `core/`, `package.json` and `nitpicker.config.json` need a careful review whatever the gate says.
+
+CI splits the test files into shards that run as parallel jobs, and the required `test` check passes
+only when every shard passed. `scripts/test-shards/sequencer.mjs` gives each shard about the same
+total time, from the per-file times in `scripts/test-shards/durations.json`; a file that is not
+listed counts as one second. The split never drops a file, it only gets less even as the times drift.
+After adding or reshaping slow tests, record the times again: the script runs the suite (vitest
+arguments pass through) and rewrites the times of the files it ran.
+
+```sh
+node scripts/test-shards/record-durations.mjs --maxWorkers=100%
+```
 
 `npm test` runs `languages/python/metrics/structure_metrics.py` on a real `python3`, so it needs
 `python3` 3.10 or newer on the `PATH` (that test file is skipped, with its reason in the name,

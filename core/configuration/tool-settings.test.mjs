@@ -41,7 +41,7 @@ describe('tool settings in the config file', () => {
   it.each(['java', 'kotlin'])('rejects the test runner tool under the %s preset', (preset) => {
     expect(() => validateConfig({ preset, tools: { tests: { runner: 'jest' } } })).toThrow(
       new Error(
-        'nitpicker.config.json: "tools" names unknown tool "tests". Supported tools with this preset: pmd, checkstyle',
+        `nitpicker.config.json: "tools" names unknown tool "tests". Supported tools with this preset: pmd, checkstyle${preset === 'kotlin' ? ', ktlint, ktfmt, detekt' : ''}`,
       ),
     );
   });
@@ -51,7 +51,7 @@ describe('tool settings in the config file', () => {
       validateConfig({ preset: 'python', tools: { tests: { runner: 'jest' } } }),
     ).toThrow(
       new Error(
-        'nitpicker.config.json: "tools" is not supported with "preset": "python": it describes the TypeScript source layout and ESLint rules, which the Python preset does not have. Not supported with python: layout, exceptions, react, i18n, tools, except exceptions for file-lines-limit, line-length-limit, folder-files-limit. Shared by all presets: thresholds, exclude, legacyInventory',
+        'nitpicker.config.json: "tools" names unknown tool "tests". Supported tools with this preset: ruff, black, pyright, mypy, mutmut',
       ),
     );
   });

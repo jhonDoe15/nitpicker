@@ -28,6 +28,9 @@ import { readHeadPolicy, readLayout } from '../head-policy.mjs';
 import { withRunnerTestPaths } from '../test-runner/test-files/test-file-patterns.mjs';
 import { testRunnerLintConfig } from '../eslint-config/runner/runner-rules.mjs';
 import { policyTestRunner } from '../test-runner/project-runner.mjs';
+import { fileNameRuleOptions } from '../../conventions/file-name-casing.mjs';
+import { assertionFunctionNames } from '../../conventions/measures/assertion-helpers.mjs';
+import { typeImportFixStyle } from '../../conventions/type-import-style.mjs';
 import {
   testEnvironmentConfigFor,
   testEnvironmentsFromVariables,
@@ -36,7 +39,7 @@ import { domProductionConfigFor } from '../test-environment/dom-code/dom-code.mj
 
 const policy = readHeadPolicy();
 const testRunner = policyTestRunner(policy, analyzedProjectRoot());
-const runnerConfig = testRunnerLintConfig(testRunner);
+const runnerConfig = testRunnerLintConfig(testRunner, assertionFunctionNames(policy.conventions));
 
 const layout = withRunnerTestPaths(readLayout(), analyzedProjectRoot());
 const react = isReactProject({
@@ -45,7 +48,11 @@ const react = isReactProject({
   javascript: layout.javascript,
 });
 const routeHandlers = usesRouteHandlerFramework(readDependencyNames(analyzedProjectRoot()));
-const i18n = isI18nProject({ projectRoot: analyzedProjectRoot(), i18n: policy.i18n });
+const i18n = isI18nProject({
+  projectRoot: analyzedProjectRoot(),
+  i18n: policy.i18n,
+  javascript: layout.javascript,
+});
 const testEnvironments = testEnvironmentsFromVariables();
 const security = securityFactsFor(analyzedProjectRoot(), (file) => layout.isSourceFile(file));
 const { sourceGlobs, testGlobs, excludedGlobs, unitTestGlobs } = layout;
@@ -75,8 +82,9 @@ const presetConfig = defineConfig(
     rules: {
       '@typescript-eslint/consistent-type-imports': [
         'error',
-        { disallowTypeAnnotations: false, fixStyle: 'separate-type-imports' },
+        { disallowTypeAnnotations: false, fixStyle: typeImportFixStyle(policy.conventions) },
       ],
+      'nitpicker/file-name-casing': ['error', fileNameRuleOptions(policy)],
       'nitpicker/cognitive-complexity': ['error', 15],
       '@typescript-eslint/ban-ts-comment': [
         'error',

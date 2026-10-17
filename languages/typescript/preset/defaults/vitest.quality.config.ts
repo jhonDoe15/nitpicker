@@ -97,6 +97,8 @@ async function layeredOnProjectConfig(projectConfigFile: string) {
       ],
       exclude: [...(project.test?.exclude ?? []), ...nitpickerExclude],
       dir: undefined,
+      reporters: [],
+      outputFile: undefined,
       maxWorkers: 4,
       restoreMocks: true,
       coverage,

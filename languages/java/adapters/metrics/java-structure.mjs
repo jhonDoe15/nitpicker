@@ -2,10 +2,11 @@ import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { globToRegExp } from '../../../../shared/glob.mjs';
 import { collectFileLimitFindings } from '../../../../shared/rules/file-limits.mjs';
-import { hash } from '../../../../shared/rules/finding-helpers.mjs';
+import { hash, repeatsInSource } from '../../../../shared/rules/finding-helpers.mjs';
 import { evaluateStructure } from '../../../../shared/rules/structure.mjs';
 import { javaFolderDepthFindings } from '../size/folder-depth.mjs';
 import { javaLineLengthFindings } from '../size/line-length.mjs';
+import { javaLineLength } from '../style/java-style.mjs';
 
 const STRUCTURE_REPORT = 'structure.json';
 const STRUCTURE_TOOL = 'structure';
@@ -22,11 +23,17 @@ export function readStructureFindings(reportRoot, projectRoot, options) {
   return structureFindings(JSON.parse(readFileSync(report, 'utf8')), projectRoot, options);
 }
 
-export function structureFindings(entries, projectRoot, { textOf = methodText, hints } = {}) {
+export function structureFindings(
+  entries,
+  projectRoot,
+  { textOf = methodText, hints, numberedAmongSameSource } = {},
+) {
   const sources = new Map();
   const functions = entries.map((entry) => ({
     ...entry,
     sourceHash: hash(textOf(sources, projectRoot, entry)),
+    numberedAmongSameSource:
+      numberedAmongSameSource ?? entry.numberedAmongSameSource ?? repeatsInSource(entry.name),
   }));
   return evaluateStructure({ functions }, STRUCTURE_TOOL, { hints }).filter(
     (finding) => finding.classification === 'enforceable',
@@ -87,7 +94,10 @@ export function readJavaFileLimitFindings(projectRoot, { manifest, kotlin = fals
       ...options,
       checks: ['fileLines', 'folderFiles'],
     }),
-    ...javaLineLengthFindings(javaFiles(projectRoot, entries), options),
+    ...javaLineLengthFindings(javaFiles(projectRoot, entries), {
+      ...options,
+      lineLength: javaLineLength(policy.conventions),
+    }),
     ...javaFolderDepthFindings(entries, { ...options, rootEntries }),
   ];
 }

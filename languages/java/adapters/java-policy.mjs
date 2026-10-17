@@ -8,7 +8,7 @@ import {
   withLegacyInventory,
 } from '../../../shared/legacy-inventory.mjs';
 import { configError, TYPESCRIPT_ONLY_KEYS } from '../../../shared/config.mjs';
-import { JAVA_TOOLS, PROJECT_TOOL_CONFIGS } from './gradle-presets.mjs';
+import { JAVA_TOOLS, PROJECT_TOOL_CONFIGS, styleToolNames } from './gradle-presets.mjs';
 import { JAVA_LINE_LENGTH, JAVA_SIZE_RULES } from '../../../shared/project-rules/size-rules.mjs';
 import { SHARED_EXCEPTION_RULES } from '../../../shared/policy.mjs';
 import { evaluateBaselineExpansions } from '../../../shared/rules/baseline-expansion.mjs';
@@ -27,8 +27,8 @@ const FILE_LIMIT_THRESHOLDS = [
 ];
 const TEST_TIME_THRESHOLDS = ['unitTestSeconds', 'integrationTestSeconds'];
 const NATIVE_LINE_LENGTH = {
-  java: `Java keeps ${String(JAVA_LINE_LENGTH)} characters per line, where google-java-format wraps; lift the rule for some paths with an exception for "line-length-limit"`,
-  kotlin: `detekt checks Kotlin line length (set style>MaxLineLength in config/detekt/detekt.yml); the Java files keep ${String(JAVA_LINE_LENGTH)} characters per line, and an exception for "line-length-limit" lifts that for some paths`,
+  java: `Java line length follows the formatter (google-java-format wraps at ${String(JAVA_LINE_LENGTH)}, palantir-java-format at 120); with the "conventions" key "java.formatter" set to "none", "java.lineLength" (any number of columns) sets it, as does max on LineLength in config/checkstyle/checkstyle.xml once "tools": { "checkstyle": { "precedence": ["project"] } } opts in, and an exception for "line-length-limit" lifts the rule for some paths`,
+  kotlin: `the "conventions" key "kotlin.lineLength" (any number of columns) sets it for ktlint, ktfmt and detekt when a formatter runs; otherwise set style>MaxLineLength in config/detekt/detekt.yml and opt in with "tools": { "detekt": { "precedence": ["project"] } }; the Java files follow "java.lineLength" (${String(JAVA_LINE_LENGTH)} by default, or max on LineLength in config/checkstyle/checkstyle.xml once "tools": { "checkstyle": { "precedence": ["project"] } } opts in), and an exception for "line-length-limit" lifts that for some paths`,
 };
 const JAVA_EXCEPTION_RULES = [...SHARED_EXCEPTION_RULES, ...JAVA_SIZE_RULES];
 
@@ -79,6 +79,7 @@ function javaAdapterArguments({
   exceptions = [],
   kotlin = {},
   tools = {},
+  testConsole = {},
 }) {
   const fileLimits = chosenThresholds(thresholds, FILE_LIMIT_THRESHOLDS);
   const testSeconds = chosenThresholds(thresholds, TEST_TIME_THRESHOLDS);
@@ -87,19 +88,22 @@ function javaAdapterArguments({
     ...exclude.flatMap((glob) => ['--exclude', glob]),
     ...(fileLimits === undefined ? [] : ['--file-limits', JSON.stringify(fileLimits)]),
     ...(testSeconds === undefined ? [] : ['--test-seconds', JSON.stringify(testSeconds)]),
+    ...(testConsole.allow === undefined
+      ? []
+      : ['--test-console-allow', JSON.stringify(testConsole.allow)]),
     ...exceptions.flatMap(({ rule, paths }) =>
       paths.flatMap((glob) => ['--exception', `${rule}${EXCEPTION_SEPARATOR}${glob}`]),
     ),
     ...(kotlin.formatter === undefined ? [] : ['--kotlin-formatter', kotlin.formatter]),
     ...(kotlin.detektConfig === undefined ? [] : ['--kotlin-detekt-config', kotlin.detektConfig]),
-    ...[...PROJECT_TOOL_CONFIGS.keys()]
+    ...[...PROJECT_TOOL_CONFIGS.keys(), ...styleToolNames()]
       .filter((tool) => tools[tool] !== undefined)
       .flatMap((tool) => [`--${tool}-precedence`, tools[tool].precedence.join(',')]),
   ];
 }
 
 export function configureJavaAnalyzer(analyzer, options) {
-  const { exceptions = [], legacyInventory, tools = {} } = options;
+  const { exceptions = [], legacyInventory, tools = {}, styleFiles } = options;
   const adapterArguments = javaAdapterArguments(options);
   if (adapterArguments.length === 0 && exceptions.length === 0 && legacyInventory === undefined) {
     return analyzer;
@@ -111,15 +115,14 @@ export function configureJavaAnalyzer(analyzer, options) {
   const configured = {
     ...analyzer,
     configurationHash,
-    ...(projectConfigDirectories.length === 0
+    ...(projectConfigDirectories.length === 0 && styleFiles === undefined
       ? {}
       : {
           resolveConfigurationHash: (policyRoot) =>
-            hashWithProjectConfigDirectories(
-              configurationHash,
-              policyRoot,
-              projectConfigDirectories,
-            ),
+            hashWithProjectConfigs(configurationHash, policyRoot, {
+              directories: projectConfigDirectories,
+              files: styleFiles?.(policyRoot) ?? [],
+            }),
         }),
     createInvocation: (context) => {
       const invocation = analyzer.createInvocation(context);
@@ -151,11 +154,18 @@ function isLifted(finding, lifted) {
   );
 }
 
-function hashWithProjectConfigDirectories(configurationHash, policyRoot, directories) {
+function hashWithProjectConfigs(configurationHash, policyRoot, { directories, files }) {
   const hash = createHash('sha256').update(configurationHash);
-  for (const file of directories.flatMap((directory) => filesUnder(policyRoot, directory))) {
-    const content = readFileSync(path.join(policyRoot, file));
-    hash.update(`${file}\0${String(content.length)}\0`).update(content);
+  const named = [
+    ...directories.flatMap((directory) => filesUnder(policyRoot, directory)),
+    ...files.map((file) => path.relative(policyRoot, file)),
+  ];
+  for (const file of named) {
+    const absolute = path.resolve(policyRoot, file);
+    if (existsSync(absolute)) {
+      const content = readFileSync(absolute);
+      hash.update(`${file}\0${String(content.length)}\0`).update(content);
+    }
   }
   return hash.digest('hex');
 }

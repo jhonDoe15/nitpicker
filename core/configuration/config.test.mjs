@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { applyDisable, describeConfigOverrides } from './config.mjs';
+import { describeConfigOverrides } from './config.mjs';
 import { validateConfig } from './validate.mjs';
 import { policyHash } from '../diff/reporting/report-model.mjs';
 
@@ -160,7 +160,7 @@ describe('config file', () => {
         exceptions: [fileLimit, lineLength, slowTest],
       });
       expect(() => validateConfig({ preset: 'kotlin', thresholds: { lineLength: 140 } })).toThrow(
-        'detekt checks Kotlin line length',
+        '"kotlin.lineLength" (any number of columns) sets it for ktlint, ktfmt and detekt',
       );
     });
 
@@ -183,9 +183,6 @@ describe('config file', () => {
     expect(validateConfig({ preset: 'typescript', ...shared })).toBeDefined();
     expect(() => validateConfig({ preset: 'java', thresholds: { crapLimit: 0 } })).toThrow(
       /positive number/,
-    );
-    expect(() => validateConfig({ preset: 'python', thresholds: { unitTestSeconds: 2 } })).toThrow(
-      '"thresholds.unitTestSeconds" is supported only with "preset": "java" or "kotlin"',
     );
     expect(() => validateConfig({ preset: 'java', legacyInventory: '../x.json' })).toThrow(
       /inside the project/,
@@ -246,7 +243,7 @@ describe('config file', () => {
     ]);
     expect(() => validateConfig({ preset: 'java', thresholds: { lineLength: 140 } })).toThrow(
       new Error(
-        'nitpicker.config.json: "thresholds.lineLength" is not supported with "preset": "java": Java keeps 100 characters per line, where google-java-format wraps; lift the rule for some paths with an exception for "line-length-limit"',
+        'nitpicker.config.json: "thresholds.lineLength" is not supported with "preset": "java": Java line length follows the formatter (google-java-format wraps at 100, palantir-java-format at 120); with the "conventions" key "java.formatter" set to "none", "java.lineLength" (any number of columns) sets it, as does max on LineLength in config/checkstyle/checkstyle.xml once "tools": { "checkstyle": { "precedence": ["project"] } } opts in, and an exception for "line-length-limit" lifts the rule for some paths',
       ),
     );
   });
@@ -276,13 +273,6 @@ describe('config file', () => {
       'base: "main"',
       'thresholds: {"crapLimit":12}',
     ]);
-  });
-
-  it('refuses to disable an analyzer that another enabled analyzer depends on', () => {
-    const analyzers = [{ name: 'coverage' }, { name: 'crap', dependencies: ['coverage'] }];
-
-    expect(() => applyDisable(analyzers, { disable: ['coverage'] })).toThrow(/depends on it/);
-    expect(applyDisable(analyzers, { disable: ['coverage', 'crap'] })).toEqual([]);
   });
 
   it('keeps the zero-config policy hash and changes it for any override', () => {
@@ -333,21 +323,20 @@ describe('tool precedence', () => {
   });
 
   it.each(['java', 'kotlin'])(
-    'names PMD and Checkstyle with the %s preset, where Checkstyle runs one config',
+    'names PMD and Checkstyle with the %s preset, and accepts both layers for each',
     (preset) => {
       const tools = {
         pmd: { precedence: ['project', 'nitpicker'] },
         checkstyle: { precedence: ['project'] },
       };
+      const layered = { checkstyle: { precedence: ['nitpicker', 'project'] } };
       expect(validateConfig({ preset, tools })).toEqual({ preset, tools });
+      expect(validateConfig({ preset, tools: layered })).toEqual({ preset, tools: layered });
       expect(() =>
         validateConfig({ preset, tools: { prettier: { precedence: ['project'] } } }),
       ).toThrow(
-        '"tools" names unknown tool "prettier". Supported tools with this preset: pmd, checkstyle',
+        `"tools" names unknown tool "prettier". Supported tools with this preset: pmd, checkstyle${preset === 'kotlin' ? ', ktlint, ktfmt, detekt' : ''}`,
       );
-      expect(() =>
-        validateConfig({ preset, tools: { checkstyle: { precedence: ['nitpicker', 'project'] } } }),
-      ).toThrow('"tools.checkstyle.precedence" must be ["nitpicker"] or ["project"]');
     },
   );
 
@@ -360,7 +349,7 @@ describe('tool precedence', () => {
     );
     expect(() => validateConfig({ preset: 'python', tools })).toThrow(
       new Error(
-        'nitpicker.config.json: "tools" is not supported with "preset": "python": it describes the TypeScript source layout and ESLint rules, which the Python preset does not have. Not supported with python: layout, exceptions, react, i18n, tools, except exceptions for file-lines-limit, line-length-limit, folder-files-limit. Shared by all presets: thresholds, exclude, legacyInventory',
+        'nitpicker.config.json: "tools" names unknown tool "pmd". Supported tools with this preset: ruff, black, pyright, mypy, mutmut',
       ),
     );
   });

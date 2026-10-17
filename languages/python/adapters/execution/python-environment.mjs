@@ -1,22 +1,25 @@
 import { spawnSync } from 'node:child_process';
 import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
+import { baseEnvironment } from './environments/base/base-environment.mjs';
+import { environmentError, OVERRIDE_HINT } from './environments/environment-error.mjs';
+import { INSTALL_HINTS, isMissing } from './environments/install-hints.mjs';
+import {
+  declaredManagedEnvironment,
+  MANAGED_ENVIRONMENTS,
+  openManagedEnvironment,
+} from './environments/managed.mjs';
 
-const NAMED_ENVIRONMENTS = ['uv', 'poetry', 'path'];
+export { environmentError };
+
+const NAMED_ENVIRONMENTS = ['uv', 'poetry', 'path', ...MANAGED_ENVIRONMENTS];
 const LOCKFILE_ENVIRONMENTS = [
   ['uv.lock', 'uv'],
   ['poetry.lock', 'poetry'],
 ];
 const VENV_DIRECTORY = '.venv';
 const UV_WORKSPACE_TABLE = /^\s*\[tool\.uv\.workspace\]/m;
-const OVERRIDE_HINT = 'or set "python.environment"';
 const POETRY_TIMEOUT_MS = 60 * 1000;
-const ENVIRONMENT_FAILED_RULE = 'environment-failed';
-
-export function environmentError(message) {
-  return Object.assign(new Error(message), { rule: ENVIRONMENT_FAILED_RULE });
-}
-
 export function detectEnvironment(projectRoot, setting) {
   if (NAMED_ENVIRONMENTS.includes(setting)) {
     return { kind: setting };
@@ -31,8 +34,23 @@ export function detectEnvironment(projectRoot, setting) {
   if (uvWorkspaceRoot(projectRoot) !== undefined) {
     return { kind: 'uv' };
   }
+  const declared = declaredManagedEnvironment(projectRoot);
+  if (declared !== undefined) {
+    return { kind: declared, detected: true };
+  }
+  return unmanagedEnvironment(projectRoot);
+}
+
+function unmanagedEnvironment(projectRoot) {
   const directory = path.join(projectRoot, VENV_DIRECTORY);
   return existsSync(directory) ? { kind: 'venv', directory } : { kind: 'path' };
+}
+
+export function openSnapshotEnvironment({ projectRoot, liveRoot, setting }) {
+  return (
+    baseEnvironment({ projectRoot, liveRoot, setting, virtualenv: venvLauncher }) ??
+    openEnvironment(detectEnvironment(liveRoot, setting), liveRoot)
+  );
 }
 
 export function openEnvironment(environment, projectRoot) {
@@ -45,7 +63,26 @@ export function openEnvironment(environment, projectRoot) {
   if (environment.kind === 'venv') {
     return venvLauncher(environment.directory, 'virtualenv');
   }
+  if (MANAGED_ENVIRONMENTS.includes(environment.kind)) {
+    const launcher = openManagedEnvironment(environment.kind, {
+      projectRoot,
+      virtualenv: venvLauncher,
+    });
+    return launcher ?? fallbackLauncher(environment, projectRoot);
+  }
   return pathLauncher();
+}
+
+function fallbackLauncher(environment, projectRoot) {
+  if (environment.detected !== true) {
+    throw environmentError(
+      `No ${environment.kind} environment found for ${projectRoot}: ${INSTALL_HINTS[environment.kind]} or activate the environment, ${OVERRIDE_HINT}`,
+    );
+  }
+  const unmanaged = unmanagedEnvironment(projectRoot);
+  return unmanaged.kind === 'venv'
+    ? venvLauncher(unmanaged.directory, 'virtualenv')
+    : pathLauncher();
 }
 
 function pathLauncher() {
@@ -80,7 +117,7 @@ function uvLauncher(projectRoot) {
   const environment = uvEnvironmentDirectory(uvWorkspaceRoot(projectRoot) ?? projectRoot);
   if (!existsSync(environment)) {
     throw environmentError(
-      `uv has no environment at ${environment}: run \`uv sync\` first (or set UV_PROJECT_ENVIRONMENT, ${OVERRIDE_HINT})`,
+      `uv has no environment at ${environment}: run \`uv sync\` first (or set UV_PROJECT_ENVIRONMENT, ${OVERRIDE_HINT})${isMissing('uv') ? `; uv is not installed, ${INSTALL_HINTS.uv}` : ''}`,
     );
   }
   return {
@@ -130,6 +167,11 @@ function poetryDirectory(projectRoot) {
     encoding: 'utf8',
     timeout: POETRY_TIMEOUT_MS,
   });
+  if (result.error?.code === 'ENOENT') {
+    throw environmentError(
+      `poetry is not installed, so its environment for ${projectRoot} cannot be found: ${INSTALL_HINTS.poetry}, ${OVERRIDE_HINT}`,
+    );
+  }
   if (result.error !== undefined) {
     throw environmentError(`poetry could not run for ${projectRoot}: ${result.error.message}`);
   }

@@ -1,8 +1,10 @@
+import { nitpickerCheckstyleConfig } from './configuration/checkstyle-config.mjs';
 import { chmodSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { javaFiles, nitpickerCheckstyleConfig, runFormat } from './maven-lint.mjs';
+import { GRADLE_DIRECTORY } from '../builds/java-build.mjs';
+import { javaFiles, runFormat, writeCheckstyleSetup } from './maven-lint.mjs';
 import { toolDependencies } from './maven-tools.mjs';
 import { readPinnedTools } from '../builds/java-build.mjs';
 
@@ -20,6 +22,15 @@ afterEach(() => {
   }
 });
 
+const nameModule = (name, format) =>
+  `<module name="${name}"><property name="format" value="${format}"/></module>`;
+const NAME_MODULES =
+  nameModule('MemberName', '^[a-z][a-z0-9][a-zA-Z0-9]*$') +
+  nameModule('MethodName', '^[a-z][a-z0-9][a-zA-Z0-9_]*$');
+const RELAXED_NAME_MODULES =
+  nameModule('MemberName', '^[a-z]([a-z0-9][a-zA-Z0-9]*)?$') +
+  nameModule('MethodName', '^[a-z]([a-z0-9][a-zA-Z0-9]*)?$');
+
 describe('nitpickerCheckstyleConfig', () => {
   it('drops every inline suppression filter from the bundled Google checks', () => {
     const bundled = [
@@ -29,6 +40,7 @@ describe('nitpickerCheckstyleConfig', () => {
       '    <property name="commentFormat" value="x"/>',
       '  </module>',
       '  <module name="TreeWalker"><module name="SuppressWarningsHolder" /></module>',
+      NAME_MODULES,
       '</module>',
     ].join('\n');
 
@@ -38,9 +50,101 @@ describe('nitpickerCheckstyleConfig', () => {
         '  ',
         '  ',
         '  <module name="TreeWalker"></module>',
+        RELAXED_NAME_MODULES,
         '</module>',
       ].join('\n'),
     );
+  });
+
+  it('relaxes the member and method name patterns to the ones of the Gradle run', () => {
+    expect(() => nitpickerCheckstyleConfig('<module name="Checker"/>')).toThrow(
+      'nitpicker could not find MemberName in google_checks.xml',
+    );
+  });
+});
+
+describe('writeCheckstyleSetup', () => {
+  const checker = (max, check) =>
+    `<module name="Checker"><module name="LineLength"><property name="max" value="${max}"/></module>` +
+    `<module name="TreeWalker"><module name="${check}"/></module></module>`;
+  const nitpickerConfig = checker(100, 'AvoidStarImport');
+  const projectConfig = checker(140, 'MagicNumber');
+  const suppressions = [
+    'org.checkstyle.google.suppressionfilter.config',
+    `${GRADLE_DIRECTORY}/checkstyle-suppressions.xml`,
+  ].join('=');
+  const doctype = [
+    '<!DOCTYPE module PUBLIC "-//Checkstyle//DTD Checkstyle Configuration 1.3//EN"',
+    '"https://checkstyle.org/dtds/configuration_1_3.dtd">',
+  ].join(' ');
+  const header = `<?xml version="1.0" encoding="UTF-8"?>\n${doctype}\n`;
+  const merged = (max) => `${header}<module name="Checker">
+  <module name="LineLength">
+    <property name="max" value="${max}"/>
+  </module>
+  <module name="TreeWalker">
+    <module name="AvoidStarImport"/>
+    <module name="MagicNumber"/>
+  </module>
+</module>
+`;
+
+  function projectSetup(options = {}) {
+    const root = mkdtempSync(path.join(tmpdir(), 'nitpicker-checkstyle-setup-'));
+    roots.push(root);
+    const project = path.join(root, 'config', 'checkstyle.xml');
+    mkdirSync(path.dirname(project), { recursive: true });
+    writeFileSync(project, projectConfig);
+    const setup = writeCheckstyleSetup({
+      directory: path.join(root, 'out'),
+      nitpickerConfig,
+      project,
+      ...options,
+    });
+    return { project, setup };
+  }
+
+  it('writes only the nitpicker checks when the project has no config', () => {
+    const root = mkdtempSync(path.join(tmpdir(), 'nitpicker-checkstyle-setup-'));
+    roots.push(root);
+
+    const setup = writeCheckstyleSetup({ directory: path.join(root, 'out'), nitpickerConfig });
+
+    expect(readFileSync(setup.config, 'utf8')).toBe(nitpickerConfig);
+    expect(readFileSync(setup.properties, 'utf8')).toBe(suppressions);
+  });
+
+  it('points the suppression filter at the file that keeps the checks both formatters agree on', () => {
+    const root = mkdtempSync(path.join(tmpdir(), 'nitpicker-checkstyle-setup-'));
+    roots.push(root);
+
+    const setup = writeCheckstyleSetup({
+      directory: path.join(root, 'out'),
+      nitpickerConfig,
+      suppressions: 'checkstyle-suppressions-unformatted.xml',
+    });
+
+    expect(readFileSync(setup.properties, 'utf8')).toBe(
+      suppressions.replace(
+        'checkstyle-suppressions.xml',
+        'checkstyle-suppressions-unformatted.xml',
+      ),
+    );
+  });
+
+  it('lays the project config over the nitpicker checks and points config_loc at it', () => {
+    const { project, setup } = projectSetup({ projectWins: true });
+
+    expect(readFileSync(setup.config, 'utf8')).toBe(merged(140));
+    expect(readFileSync(setup.properties, 'utf8')).toBe(
+      `config_loc=${path.dirname(project)}\n${suppressions}`,
+    );
+  });
+
+  it('keeps the values nitpicker sets when nitpicker is listed first', () => {
+    const { setup } = projectSetup({ projectWins: false });
+
+    expect(readFileSync(setup.config, 'utf8')).toBe(merged(100));
   });
 });
 
@@ -94,7 +198,7 @@ describe('maven tools', () => {
 });
 
 describe('runFormat', () => {
-  function formatArguments(javaStyle) {
+  function formatTokens(javaStyle, keep) {
     const root = mkdtempSync(path.join(tmpdir(), 'nitpicker-maven-format-'));
     roots.push(root);
     const java = path.join(root, 'jdk/bin/java');
@@ -108,16 +212,39 @@ describe('runFormat', () => {
     const reportDir = path.join(root, 'report');
     mkdirSync(reportDir);
     const module = { basedir: root, sourceRoots: [path.dirname(source)], testSourceRoots: [] };
-    runFormat({ module, reportDir, tools: { format: ['format.jar'] }, javaStyle });
-    return readFileSync(path.join(reportDir, 'format.txt'), 'utf8')
-      .split('\n')
-      .filter((token) => token.startsWith('"--'))
-      .filter((token) => !token.startsWith('"--add-exports'));
+    const tools = { format: ['google.jar'], 'format-palantir': ['palantir.jar'] };
+    runFormat({ module, reportDir, tools, javaStyle });
+    return readFileSync(path.join(reportDir, 'format.txt'), 'utf8').split('\n').filter(keep);
+  }
+
+  function formatArguments(javaStyle) {
+    return formatTokens(
+      javaStyle,
+      (token) => token.startsWith('"--') && !token.startsWith('"--add-exports'),
+    );
   }
 
   it('runs google-java-format with --aosp for the 4-space style and without it otherwise', () => {
     expect(formatArguments('aosp')).toEqual(['"--aosp"', '"--dry-run"']);
     expect(formatArguments('google')).toEqual(['"--dry-run"']);
     expect(formatArguments(undefined)).toEqual(['"--dry-run"']);
+  });
+
+  it('runs palantir-java-format from its own jar, and nothing when no formatter runs', () => {
+    const run = (style) =>
+      formatTokens(style, (token) => /^"--(?:palantir|dry-run)"$|\.jar|\.Main"/.test(token));
+
+    expect(run('palantir')).toEqual([
+      '"palantir.jar"',
+      '"com.palantir.javaformat.java.Main"',
+      '"--palantir"',
+      '"--dry-run"',
+    ]);
+    expect(run('google')).toEqual([
+      '"google.jar"',
+      '"com.google.googlejavaformat.java.Main"',
+      '"--dry-run"',
+    ]);
+    expect(run('none')).toEqual([]);
   });
 });

@@ -46,6 +46,7 @@ export function normalizeStructure(report, analyzerName) {
       functions: report.functions?.map(({ source, function: name, ...metrics }) => ({
         file: source,
         name,
+        numberedAmongSameSource: true,
         ...metrics,
       })),
       classes: report.classes?.map(({ source, class: name, ...metrics }) => ({
