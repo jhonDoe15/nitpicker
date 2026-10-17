@@ -1,0 +1,15 @@
+{
+  "lockfileVersion": 2,
+  "configVersion": 1,
+  "workspaces": {
+    "": {
+      "name": "pm-fixture",
+      "dependencies": {
+        "fixture-lib": "file:vendor/fixture-lib",
+      },
+    },
+  },
+  "packages": {
+    "fixture-lib": ["fixture-lib@file:vendor/fixture-lib", {}],
+  }
+}
