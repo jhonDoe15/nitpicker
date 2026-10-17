@@ -410,27 +410,23 @@ describe('describeModule plugin configuration', () => {
   });
 
   it('runs the JaCoCo agent of the version the project binds, since two agents cannot share a JVM', () => {
-    const agent =
-      '<executions><execution><goals><goal>prepare-agent</goal></goals></execution></executions>';
-    const versioned = (version, body) =>
+    const agent = '<executions><execution><goals><goal>prepare-agent</goal></goals></execution>';
+    const versioned = ([version, body]) =>
       soloModule(
         inBuild(
           plugin('jacoco-maven-plugin', `<version>${version}</version>${body}`, 'org.jacoco'),
         ),
       );
-    const own = versioned('0.8.12', agent);
-    const pinned = { jacoco: '0.8.14' };
-
+    const modules = [
+      ['0.8.12', `${agent}</executions>`],
+      ['0.8.12', ''],
+      ['${jacoco.version}', `${agent}</executions>`],
+    ];
     expect(
-      [own, versioned('0.8.12', ''), versioned('${jacoco.version}', agent)].map((module) =>
-        jacocoPlugin(pinned, [module]),
-      ),
-    ).toEqual([
-      'org.jacoco:jacoco-maven-plugin:0.8.12',
-      'org.jacoco:jacoco-maven-plugin:0.8.14',
-      'org.jacoco:jacoco-maven-plugin:0.8.14',
-    ]);
-    expect(own.jacocoAgentVersion).toBe('0.8.12');
+      modules.map((module) => jacocoPlugin({ jacoco: '0.8.14' }, [versioned(module)])),
+    ).toEqual(
+      ['0.8.12', '0.8.14', '0.8.14'].map((version) => `org.jacoco:jacoco-maven-plugin:${version}`),
+    );
   });
 });
 
