@@ -46,9 +46,11 @@ def is_config_name(stem):
 
 def is_migration_environment(path):
     directory = os.path.dirname(path)
-    return stem_of(path) == "env" and os.path.isfile(
-        os.path.join(directory, "script.py.mako")
+    markers = (
+        os.path.join(directory, "script.py.mako"),
+        os.path.join(os.path.dirname(directory), "alembic.ini"),
     )
+    return stem_of(path) == "env" and any(os.path.isfile(m) for m in markers)
 
 
 def defines_factory(tree):

@@ -112,6 +112,12 @@ describe.skipIf(!enabled)('process-env-access in the roots of the common framewo
     expect(findingsOf(files)).toEqual(['process-env-access other/env.py:3 os.environ']);
   });
 
+  it('exempts the migration environment of a folder below alembic.ini', () => {
+    const files = { 'app/db/env.py': READ, 'app/alembic.ini': '', 'other/env.py': READ };
+
+    expect(findingsOf(files)).toEqual(['process-env-access other/env.py:3 os.environ']);
+  });
+
   it('exempts the modules the project lists as entry points', () => {
     const files = {
       'src/shop/jobs.py': READ,
