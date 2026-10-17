@@ -175,6 +175,13 @@ function firstRunner(tokens) {
     .toSorted((left, right) => left.index - right.index)[0];
 }
 
+export function commandRunners(command) {
+  const runners = segments(command)
+    .map(({ tokens }) => firstRunner(tokens)?.runner)
+    .filter((runner) => runner !== undefined);
+  return [...new Set(runners)];
+}
+
 export function parseTestCommand(command, runner) {
   if (typeof command !== 'string') {
     return undefined;

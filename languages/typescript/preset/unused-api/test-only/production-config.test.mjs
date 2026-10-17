@@ -38,7 +38,7 @@ describe('the knip config without tests', () => {
     expect(config.entry).toEqual(['src/main/main.ts']);
   });
 
-  it('keeps the non-test entries and the rest of the config and leaves tests and stories out', () => {
+  it('keeps the other entries and config and leaves tests, stories and runner configs out', () => {
     const layout = resolveLayoutFor({ layout: { sourceRoots: ['src/main'] } });
     const config = layoutKnipProductionConfig(
       {
@@ -62,6 +62,10 @@ describe('the knip config without tests', () => {
         `!src/main/**/*.{test,spec}.${CODE}`,
         '!src/main/**/__tests__/**',
         `!**/*.{stories,story}.${CODE}`,
+        '!**/jest*.config.*',
+        '!**/vitest*.config.*',
+        '!**/vitest.workspace.*',
+        '!**/.mocharc.*',
       ],
       ignore: ['x'],
       vite: true,
