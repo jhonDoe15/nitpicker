@@ -5,6 +5,9 @@ import {
 } from '../../../../../javascript/preset/documentation/jsdoc.mjs';
 import ts from 'typescript';
 import { ancestorsOf, variableNamed } from '../analysis/ancestry.mjs';
+import { readHeadPolicy } from '../../../head-policy.mjs';
+import { librariesForFile } from '../../../libraries/file-libraries.mjs';
+import { validationBehavior } from '../../../libraries/project-libraries.mjs';
 
 const PARAMETER_WRAPPERS = new Set(['AssignmentPattern', 'RestElement', 'TSParameterProperty']);
 
@@ -154,45 +157,57 @@ function importedAliasHasUnknown(reference, services) {
   return alias !== undefined && tsContainsUnknown(checker, alias.type);
 }
 
-export const rule = {
-  meta: {
-    type: 'problem',
-    docs: {
-      description: 'Disallow the unknown type in parameter and property types of domain code',
-      requiresTypeChecking: true,
+function reportUnknown(context, node, data) {
+  const chain = [node, ...ancestorsOf(node)];
+  const memberAt = chain.findIndex(
+    (current) => current.type === 'TSTypeAnnotation' && isAnnotatedMember(current),
+  );
+  const typeParameterAt = chain.findIndex((current) => current.type === 'TSTypeParameter');
+  if (
+    memberAt !== -1 &&
+    (typeParameterAt === -1 || memberAt < typeParameterAt) &&
+    !isCaughtErrorSlot(node, chain[memberAt])
+  ) {
+    context.report({ node, messageId: 'unknownType', data });
+  }
+}
+
+function createVisitors(context, rootLibraries) {
+  const validation = validationBehavior(librariesForFile(context, rootLibraries));
+  const data = { phrase: validation.phrase };
+  const visitors = {
+    TSUnknownKeyword(node) {
+      reportUnknown(context, node, data);
     },
-    schema: jsdocOptionSchema,
-    messages: {
-      unknownType:
-        'domain/ code takes typed values, not unknown (also through a type alias). Write a readonly type for this value in domain/; adapters/ parses the input with a zod schema and passes the result in (a zod output is assignable to a readonly type; do not import the schema type from adapters/). A caught error may be typed unknown as `cause` or `error`. An exception fits only when the value is genuinely opaque.',
-    },
-  },
-  create(context) {
-    function check(node) {
-      const chain = [node, ...ancestorsOf(node)];
-      const memberAt = chain.findIndex(
-        (current) => current.type === 'TSTypeAnnotation' && isAnnotatedMember(current),
-      );
-      const typeParameterAt = chain.findIndex((current) => current.type === 'TSTypeParameter');
-      if (
-        memberAt !== -1 &&
-        (typeParameterAt === -1 || memberAt < typeParameterAt) &&
-        !isCaughtErrorSlot(node, chain[memberAt])
-      ) {
-        context.report({ node, messageId: 'unknownType' });
+    TSTypeReference(node) {
+      if (referencesUnknown(context.sourceCode, node, context.sourceCode.parserServices)) {
+        reportUnknown(context, node, data);
       }
-    }
-    const visitors = {
-      TSUnknownKeyword: check,
-      TSTypeReference(node) {
-        if (referencesUnknown(context.sourceCode, node, context.sourceCode.parserServices)) {
-          check(node);
-        }
+    },
+  };
+  return withJsdoc(context, visitors, {
+    selectTags: unknownMemberTags,
+    messageId: 'unknownType',
+    data,
+  });
+}
+
+export function unknownInDomainRule(rootLibraries) {
+  return {
+    meta: {
+      type: 'problem',
+      docs: {
+        description: 'Disallow the unknown type in parameter and property types of domain code',
+        requiresTypeChecking: true,
       },
-    };
-    return withJsdoc(context, visitors, {
-      selectTags: unknownMemberTags,
-      messageId: 'unknownType',
-    });
-  },
-};
+      schema: jsdocOptionSchema,
+      messages: {
+        unknownType:
+          'domain/ code takes typed values, not unknown (also through a type alias). Write a readonly type for this value in domain/; adapters/ parses the input with {{phrase}} and passes the result in (the parsed value is assignable to a readonly type; do not import the schema type from adapters/). A caught error may be typed unknown as `cause` or `error`. An exception fits only when the value is genuinely opaque.',
+      },
+    },
+    create: (context) => createVisitors(context, rootLibraries),
+  };
+}
+
+export const rule = unknownInDomainRule(readHeadPolicy().libraries);
