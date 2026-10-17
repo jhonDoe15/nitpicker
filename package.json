@@ -86,7 +86,6 @@
     }
   },
   "dependencies": {
-    "@barney-media/crap-typescript-core": "0.5.3",
     "@eslint/js": "10.0.1",
     "@jridgewell/trace-mapping": "0.3.31",
     "@stryker-mutator/core": "10.0.0",
