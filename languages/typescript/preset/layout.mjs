@@ -44,6 +44,17 @@ export function mayBeGenerated(file) {
   return GENERATED_CANDIDATE.test(toPosix(file)) && !DEPENDENCY_PATH.test(toPosix(file));
 }
 
+export const FIXTURE_PATH = /(?:^|\/)(?:fixtures|__fixtures__)\//;
+
+export function prettierPatterns(layout) {
+  const code = layout.formatExtensions.join(',');
+  return [
+    ...layout.sourceRoots.map((root) => `${root}/**/*.{${code},json,yaml,yml}`),
+    ...layout.testRoots.map((root) => `${root}/**/*.{${code},json}`),
+    `*.{${code},json}`,
+  ];
+}
+
 function normalizeRoot(root) {
   return root.replaceAll('\\', '/').replace(/^\.\//, '').replace(/\/$/, '');
 }
@@ -130,6 +141,7 @@ function createClassifiers({ sourceRoots, testRoots, exclude, patterns, generate
   return {
     isExcluded,
     isTestFile,
+    isFixturePath: (file) => FIXTURE_PATH.test(toPosix(file)),
     isGeneratedPath,
     isTestPath: (file) => patterns.testPattern.test(toPosix(file)),
     isRunnableTestFile: (file) => isTestFile(file) && patterns.runnableTestPattern.test(file),

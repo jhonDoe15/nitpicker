@@ -2,7 +2,7 @@ import { readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { RULE_IDS } from '../../../../shared/policy.mjs';
 import { buildCouplingReport, evaluateCoupling } from '../../../../shared/rules/coupling.mjs';
-import { listProductionModules } from './python-sources.mjs';
+import { listOtherModules, listProductionModules } from './python-sources.mjs';
 import { fileURLToPath } from 'node:url';
 
 const IMPORTS_REPORT = 'imports.json';
@@ -16,19 +16,18 @@ const TYPE_ONLY = 'type-only';
 export function collectImports(context, run) {
   const { projectRoot, reportRoot } = context;
   const modules = listProductionModules(projectRoot, context.project.sourceRoots);
+  const others = listOtherModules(projectRoot, context.project.sourceRoots, modules);
   let imports = {};
-  if (modules.length > 0) {
+  if (modules.length + others.length > 0) {
     const request = path.join(reportRoot, SCAN_REQUEST);
-    writeFileSync(
-      request,
-      JSON.stringify({ root: projectRoot, files: modules.map(({ file }) => file) }),
-    );
+    const files = [...modules, ...others].map(({ file }) => file);
+    writeFileSync(request, JSON.stringify({ root: projectRoot, files }));
     const result = run(context, ['python', '-I', SCAN_SCRIPT, request], {
       rule: COUPLING_FAILED_RULE,
     });
     imports = JSON.parse(result.stdout);
   }
-  return { modules, imports };
+  return { modules, others, imports };
 }
 
 export function scanImports(context, run) {
@@ -115,7 +114,7 @@ function packageAnchors(modules) {
   return anchors;
 }
 
-function withStabilityRoute(findings, { report, modules }) {
+function withStabilityAnchor(findings, { report, modules }) {
   const anchors = packageAnchors(modules);
   const sources = new Map(
     report.stabilityDirection.map((direction) => [
@@ -133,7 +132,7 @@ function withStabilityRoute(findings, { report, modules }) {
     return {
       ...finding,
       path: file,
-      message: `${finding.message}. Depend on an abstraction in a more stable package instead, or, if the inversion is intended, add ${file} to "exclude" in nitpicker.config.json.`,
+      message: `${finding.message}. Depend on an abstraction in a more stable package instead.`,
     };
   });
 }
@@ -145,7 +144,7 @@ export function readImportsReport(reportRoot) {
 export function readCouplingFindings(reportRoot) {
   const imports = readImportsReport(reportRoot);
   const report = analyzePythonCoupling(imports);
-  return withStabilityRoute(evaluateCoupling(report, COUPLING_TOOL), {
+  return withStabilityAnchor(evaluateCoupling(report, COUPLING_TOOL), {
     report,
     modules: imports.modules,
   });
