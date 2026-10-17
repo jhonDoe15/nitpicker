@@ -76,6 +76,34 @@ function projectScope(project, root, projectRoot) {
   return [withSetupFiles(scope, [...inherited, ...own])];
 }
 
+function projectTestFiles(project, projectRoot) {
+  const prefix = isRecord(project?.test) ? projectPrefix(project, projectRoot) : undefined;
+  if (prefix === undefined) {
+    return { include: [], exclude: [] };
+  }
+  return {
+    include: prefixed(prefix, stringList(project.test.include)),
+    exclude: prefixed(prefix, stringList(project.test.exclude)),
+  };
+}
+
+export function testFilesFromConfig(config, projectRoot) {
+  const testOptions = isRecord(config) ? config.test : undefined;
+  if (!isRecord(testOptions)) {
+    return { include: [], exclude: [] };
+  }
+  const projects = Array.isArray(testOptions.projects) ? testOptions.projects : [];
+  const scoped = projects.map((project) => projectTestFiles(project, projectRoot));
+  return {
+    include: [...stringList(testOptions.include), ...scoped.flatMap(({ include }) => include)],
+    exclude: [...stringList(testOptions.exclude), ...scoped.flatMap(({ exclude }) => exclude)],
+  };
+}
+
+export function isDomEnvironment(environment) {
+  return DOM_ENVIRONMENTS.has(environment);
+}
+
 export function domLast(scopes) {
   function isDom(scope) {
     return DOM_ENVIRONMENTS.has(scope.environment);

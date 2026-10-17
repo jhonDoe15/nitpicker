@@ -2,9 +2,20 @@ import { mkdirSync, mkdtempSync, rmSync, symlinkSync, writeFileSync } from 'node
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterAll, describe, expect, it } from 'vitest';
+import { runnerCommand } from '../../test-runner/script-command.mjs';
 import { jestConfigFile, readJestConfig } from './read-jest-config.mjs';
 
 const repositoryJest = path.join(import.meta.dirname, '../../../../../node_modules/jest');
+const FAKE_REACT_SCRIPTS = [
+  "const { spawnSync } = require('node:child_process');",
+  "const path = require('node:path');",
+  `const jest = ${JSON.stringify(path.join(repositoryJest, 'bin/jest.js'))};`,
+  "const setup = ['--setupFilesAfterEnv', path.join(process.cwd(), 'src/setupTests.js')];",
+  'const tokens = process.argv.slice(3);',
+  "const result = spawnSync(process.execPath, [jest, ...setup, ...tokens], { stdio: 'inherit' });",
+  'process.exit(result.status);',
+  '',
+].join('\n');
 const roots = [];
 
 afterAll(() => {
@@ -38,6 +49,51 @@ describe('jestConfigFile', () => {
 });
 
 describe('readJestConfig', () => {
+  it('runs the test script, with the config it names and the options it passes', () => {
+    const root = projectWith({
+      'package.json': JSON.stringify({ name: 'p' }),
+      'config/custom.config.cjs':
+        "module.exports = { rootDir: '..', setupFiles: ['<rootDir>/a.js'] };",
+      'a.js': '',
+    });
+    const command = runnerCommand('jest -c config/custom.config.cjs --testTimeout=1', 'jest');
+
+    const { config, failure } = readJestConfig({ projectRoot: root, timeoutMs: 20_000, command });
+
+    expect(failure).toBeUndefined();
+    expect(config.configs[0].setupFiles).toEqual([path.join(root, 'a.js')]);
+    expect(jestConfigFile(root, command)).toBe(path.normalize('config/custom.config.cjs'));
+  });
+
+  it('runs Jest through the react-scripts launcher of the test script', () => {
+    const root = projectWith({
+      'package.json': JSON.stringify({ name: 'p' }),
+      'src/setupTests.js': '',
+      'node_modules/react-scripts/package.json': JSON.stringify({ name: 'react-scripts' }),
+      'node_modules/react-scripts/bin/react-scripts.js': FAKE_REACT_SCRIPTS,
+    });
+    const command = runnerCommand('react-scripts test', 'jest');
+
+    const { config, failure } = readJestConfig({ projectRoot: root, timeoutMs: 20_000, command });
+
+    expect(failure).toBeUndefined();
+    expect(config.configs[0].setupFilesAfterEnv).toEqual([path.join(root, 'src/setupTests.js')]);
+  });
+
+  it('reports a launcher that is not installed', () => {
+    const root = projectWith({ 'package.json': JSON.stringify({ name: 'p' }) });
+
+    const { failure } = readJestConfig({
+      projectRoot: root,
+      timeoutMs: 20_000,
+      command: runnerCommand('craco test', 'jest'),
+    });
+
+    expect(failure).toMatch(
+      /^The test script runs "craco test", but @craco\/craco is not installed/u,
+    );
+  });
+
   it('returns the resolved configuration from the package.json jest key', () => {
     const root = projectWith({
       'package.json': JSON.stringify({ name: 'p', jest: { testEnvironment: 'node' } }),

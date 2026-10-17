@@ -101,6 +101,12 @@ describe('the head policy test runner check', () => {
 
     expect(resolveHeadPolicy({ tools: { tests: { runner: 'jest' } } }, root).tools.tests).toEqual({
       runner: 'jest',
+      testFiles: {
+        include: ['**/__tests__/**/*.?([mc])[jt]s?(x)', '**/?(*.)+(spec|test).?([mc])[jt]s?(x)'],
+        exclude: [],
+        includeRegexes: [],
+        excludeRegexes: ['/node_modules/'],
+      },
     });
   });
 

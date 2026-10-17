@@ -23,6 +23,8 @@ import {
 import { stylingApproachFor } from './eslint-config/react/react-styling.mjs';
 import { prettierConventionOptions } from '../conventions/prettier-conventions.mjs';
 import { detectedRunnerFact } from './test-runner/detect-runner.mjs';
+import { runnerTestFiles } from './test-runner/test-files/runner-test-files.mjs';
+import { policyTestFiles } from './test-runner/test-files/test-file-patterns.mjs';
 
 export { headPolicyEnvironment, withHeadPolicyFile } from '../../../shared/head-policy.mjs';
 
@@ -68,6 +70,14 @@ function withProjectFacts(policy, config, projectRoot) {
   };
 }
 
+function testRunnerFacts(policy, projectRoot) {
+  const options = { configured: policy.tools?.tests?.runner, layout: resolveLayoutFor(policy) };
+  return {
+    ...detectedRunnerFact(projectRoot, options),
+    testFiles: runnerTestFiles(projectRoot, options),
+  };
+}
+
 function detectedTools(policy, scoped, projectRoot) {
   const prettier = policy.tools?.prettier;
   const facts = {
@@ -75,10 +85,7 @@ function detectedTools(policy, scoped, projectRoot) {
       ? {
           tests: {
             ...policy.tools?.tests,
-            ...detectedRunnerFact(projectRoot, {
-              configured: policy.tools?.tests?.runner,
-              layout: resolveLayoutFor(policy),
-            }),
+            ...testRunnerFacts(policy, projectRoot),
           },
         }
       : {}),
@@ -166,6 +173,7 @@ export function readLayout(environment = process.env) {
   return {
     ...resolveLayout(readHeadPolicyFile(environment).layout, policy.exclude, {
       javascript: isJavascriptPolicy(policy),
+      testFiles: policyTestFiles(policy.tools.tests),
     }),
     entryPoints: [...(policy.layout.entryPoints ?? []), ...policy.frameworks.entryPoints],
   };
