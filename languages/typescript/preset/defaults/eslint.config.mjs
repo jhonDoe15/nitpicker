@@ -22,6 +22,7 @@ import {
   reactScopeConfigFor,
 } from '../eslint-config/react/react-scope.mjs';
 import { readDependencyNames } from '../eslint-config/scope-support.mjs';
+import { securityFactsFor } from '../eslint-config/policy/security-facts.mjs';
 import { i18nRuleIds } from '../eslint-config/i18n/i18n-rules.mjs';
 import { i18nScopeConfigFor, isI18nProject } from '../eslint-config/i18n/i18n-scope.mjs';
 import { readHeadPolicy, readLayout } from '../head-policy.mjs';
@@ -40,6 +41,7 @@ const react = isReactProject({
 });
 const routeHandlers = usesRouteHandlerFramework(readDependencyNames(analyzedProjectRoot()));
 const i18n = isI18nProject({ projectRoot: analyzedProjectRoot(), i18n: policy.i18n });
+const security = securityFactsFor(analyzedProjectRoot(), (file) => layout.isSourceFile(file));
 const { sourceGlobs, testGlobs, excludedGlobs, unitTestGlobs } = layout;
 const parserOptions = {
   project: './tsconfig.quality.json',
@@ -90,6 +92,7 @@ const presetConfig = defineConfig(
   ...strictPresetConfig(layout, parserOptions, {
     react,
     routeHandlers,
+    security,
     frameworkDefaultExports: policy.frameworks.defaultExports,
   }),
   ...productionLayoutConfigFor(layout, { react }),
