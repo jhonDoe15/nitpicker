@@ -102,6 +102,7 @@ export function runJest(options, command) {
       ...(options.rerun === undefined
         ? coverageArguments(options, rootDir)
         : [
+            '--coverage=false',
             '--testNamePattern',
             options.rerun.namePattern,
             '--runTestsByPath',
