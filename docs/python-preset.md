@@ -62,20 +62,20 @@ directory is the contract between the tool runs and the readers; later slices ad
 The tools run inside the environment the project already has, detected in this order (the first
 that applies wins):
 
-| Order | Detected by                                                   | The tools run as                                                                                                                                                                                 |
-| ----- | ------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| 0     | `python.environment` is set                                   | `uv`, `poetry`, `pipenv`, `hatch`, `conda` or `path` as named; any other value is a virtualenv directory, inside the project or absolute                                                         |
-| 1     | `uv.lock`                                                     | `uv run --project <checkout> --no-sync -- <tool>`; needs `uv sync` to have run (or `UV_PROJECT_ENVIRONMENT`)                                                                                     |
-| 2     | `poetry.lock`                                                 | the virtualenv `poetry env info --path` reports, first on `PATH`; needs `poetry install` to have run                                                                                             |
-| 3     | a uv workspace root above                                     | as 1: an ancestor with a `uv.lock` and a `[tool.uv.workspace]` table; its `.venv` is the environment                                                                                             |
-| 4     | a `Pipfile` or `Pipfile.lock`                                 | the virtualenv `pipenv --venv` reports, first on `PATH`; needs `pipenv install --dev` to have run                                                                                                |
-| 5     | `[tool.hatch.envs...]` in `pyproject.toml`, or a `hatch.toml` | the environment `hatch env find` reports (the default one), first on `PATH`; needs `hatch env create`                                                                                            |
-| 6     | an `environment.yml` or `environment.yaml`                    | the `prefix:` it declares, else the active conda environment when it is the one its `name:` names, else the one `conda env list` finds under that name; `CONDA_PREFIX` and `bin` first on `PATH` |
-| 7     | a `.venv/` directory                                          | `.venv/bin` first on `PATH`, `VIRTUAL_ENV` set                                                                                                                                                   |
-| 8     | an active conda environment (`CONDA_PREFIX`, not `base`)      | as 6                                                                                                                                                                                             |
-| 9     | nothing                                                       | `ruff`, `black`, `coverage`, `mypy`, `pyright`, `basedpyright` and `python3` from the `PATH`                                                                                                     |
+| Order | Detected by                                                   | The tools run as                                                                                                                                               |
+| ----- | ------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 0     | `python.environment` is set                                   | `uv`, `poetry`, `pipenv`, `hatch`, `conda` or `path` as named; any other value is a virtualenv directory, inside the project or absolute                       |
+| 1     | `uv.lock`                                                     | `uv run --project <checkout> --no-sync -- <tool>`; needs `uv sync` to have run (or `UV_PROJECT_ENVIRONMENT`)                                                   |
+| 2     | `poetry.lock`                                                 | the virtualenv `poetry env info --path` reports, first on `PATH`; needs `poetry install` to have run                                                           |
+| 3     | a uv workspace root above                                     | as 1: an ancestor with a `uv.lock` and a `[tool.uv.workspace]` table; its `.venv` is the environment                                                           |
+| 4     | a `Pipfile` or `Pipfile.lock`                                 | the virtualenv `pipenv --venv` reports, first on `PATH`; needs `pipenv install --dev` to have run                                                              |
+| 5     | `[tool.hatch.envs...]` in `pyproject.toml`, or a `hatch.toml` | the environment `hatch env find` reports (the default one), first on `PATH`; needs `hatch env create`                                                          |
+| 6     | an `environment.yml` or `environment.yaml`                    | the `prefix:` it declares, else the environment `conda env list` finds under its `name:`; tools run by their path in that environment, with `CONDA_PREFIX` set |
+| 7     | a `.venv/` directory                                          | `.venv/bin` first on `PATH`, `VIRTUAL_ENV` set                                                                                                                 |
+| 8     | nothing                                                       | `ruff`, `black`, `coverage`, `mypy`, `pyright`, `basedpyright` and `python3` from the `PATH`                                                                   |
 
-For pipenv, hatch and conda found by detection, a missing manager command is not an error: the
+An activated conda environment of a project without an `environment.yml` is already served by the
+last row: its `bin` is first on the `PATH`. For pipenv, hatch and conda found by detection, a missing manager command is not an error: the
 detection goes on with the next row, because the tools may be on the `PATH` (a CI job that installed
 them with `pip`). When the manager runs and has no environment for the project, or the setting names
 it and it is not installed, the run stops with an `environment-failed` error that says how to create

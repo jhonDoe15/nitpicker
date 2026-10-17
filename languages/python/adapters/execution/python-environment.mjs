@@ -3,10 +3,8 @@ import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { environmentError, OVERRIDE_HINT } from './environments/environment-error.mjs';
 import {
-  activeCondaEnvironment,
   declaredManagedEnvironment,
   MANAGED_ENVIRONMENTS,
-  openActiveConda,
   openManagedEnvironment,
 } from './environments/managed.mjs';
 
@@ -20,11 +18,6 @@ const LOCKFILE_ENVIRONMENTS = [
 const VENV_DIRECTORY = '.venv';
 const UV_WORKSPACE_TABLE = /^\s*\[tool\.uv\.workspace\]/m;
 const POETRY_TIMEOUT_MS = 60 * 1000;
-
-function ambientVariables() {
-  return process.env;
-}
-
 export function detectEnvironment(projectRoot, setting) {
   if (NAMED_ENVIRONMENTS.includes(setting)) {
     return { kind: setting };
@@ -48,11 +41,7 @@ export function detectEnvironment(projectRoot, setting) {
 
 function unmanagedEnvironment(projectRoot) {
   const directory = path.join(projectRoot, VENV_DIRECTORY);
-  if (existsSync(directory)) {
-    return { kind: 'venv', directory };
-  }
-  const conda = activeCondaEnvironment(ambientVariables());
-  return conda === undefined ? { kind: 'path' } : { kind: conda, detected: true };
+  return existsSync(directory) ? { kind: 'venv', directory } : { kind: 'path' };
 }
 
 export function openEnvironment(environment, projectRoot) {
@@ -66,25 +55,25 @@ export function openEnvironment(environment, projectRoot) {
     return venvLauncher(environment.directory, 'virtualenv');
   }
   if (MANAGED_ENVIRONMENTS.includes(environment.kind)) {
-    const context = { projectRoot, variables: ambientVariables(), virtualenv: venvLauncher };
-    return (
-      openManagedEnvironment(environment.kind, context) ?? fallbackLauncher(environment, context)
-    );
+    const launcher = openManagedEnvironment(environment.kind, {
+      projectRoot,
+      virtualenv: venvLauncher,
+    });
+    return launcher ?? fallbackLauncher(environment, projectRoot);
   }
   return pathLauncher();
 }
 
-function fallbackLauncher(environment, { projectRoot, variables }) {
+function fallbackLauncher(environment, projectRoot) {
   if (environment.detected !== true) {
     throw environmentError(
       `No ${environment.kind} environment found for ${projectRoot}: install ${environment.kind} or activate the environment, ${OVERRIDE_HINT}`,
     );
   }
   const unmanaged = unmanagedEnvironment(projectRoot);
-  if (unmanaged.kind === 'venv') {
-    return venvLauncher(unmanaged.directory, 'virtualenv');
-  }
-  return openActiveConda(variables) ?? pathLauncher();
+  return unmanaged.kind === 'venv'
+    ? venvLauncher(unmanaged.directory, 'virtualenv')
+    : pathLauncher();
 }
 
 function pathLauncher() {
@@ -105,10 +94,7 @@ function venvLauncher(directory, description) {
       `No Python environment at ${directory} (${bin} does not exist): create it, ${OVERRIDE_HINT}`,
     );
   }
-  const env = {
-    VIRTUAL_ENV: directory,
-    PATH: `${bin}${path.delimiter}${ambientVariables().PATH ?? ''}`,
-  };
+  const env = { VIRTUAL_ENV: directory, PATH: `${bin}${path.delimiter}${process.env.PATH ?? ''}` };
   return {
     description,
     launch: (tool, args) => {
