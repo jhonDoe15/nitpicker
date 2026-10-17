@@ -279,6 +279,7 @@ describe('head policy reader', () => {
       i18n: {},
       tools: {},
       testConsole: {},
+      generatedFiles: [],
       frameworks: { defaultExports: [], entryPoints: [] },
     });
   });
@@ -299,6 +300,7 @@ describe('head policy reader', () => {
         i18n: {},
         tools: {},
         testConsole: {},
+        generatedFiles: [],
         frameworks: { defaultExports: [], entryPoints: [] },
       });
     });
@@ -434,6 +436,7 @@ describe('head policy delivery', () => {
         i18n: {},
         tools: {},
         testConsole: {},
+        generatedFiles: [],
         frameworks: { defaultExports: [], entryPoints: [] },
       });
     }

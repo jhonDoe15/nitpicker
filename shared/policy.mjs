@@ -1,13 +1,11 @@
 // The single source for the custom checks nitpicker adds on top of third-party tools: rule ids,
 // default limits, failure-message templates and the languages that enforce each rule. Every
 // language adapter reads it, and `spec/checks.md` is generated from it (`npm run gen:checks`).
-//
-// Language-neutral: imports only from shared/rules and shared/unused-api, so any entry point can load it. Nothing
-// under `shared/` may import from `core/`, `languages/` or a tool package (shared/import-direction.test.mjs).
 
 import { UNUSED_API_RULES, UNUSED_API_RULE_IDS } from './unused-api/unused-api-policy.mjs';
 import { reuseRules } from './rules/reuse-rules.mjs';
 import { testConsoleRule } from './rules/test-runtime.mjs';
+import { SOURCE_RULE_IDS, sourceRuleMessages, sourceRules } from './project-rules/source-rules.mjs';
 
 export const LANGUAGES = ['typescript', 'java', 'python', 'kotlin'];
 
@@ -37,8 +35,8 @@ export const RULE_IDS = {
   exportedNameCollision: 'exported-name-collision',
   redefinedLibraryComponent: 'redefined-library-component',
   newIconAsset: 'new-icon-asset',
-  componentStoryMissing: 'component-story-missing',
   testConsoleOutput: 'test-console-output',
+  ...SOURCE_RULE_IDS,
 };
 
 /** Per-function structure limits, keyed by the metric name the TypeScript analyzer reports. */
@@ -135,9 +133,8 @@ export const MESSAGES = {
   exportedNameCollision: `{name} is also exported by {others}; {importer} imports both. {fix} ${EXCEPTION_HINT}`,
   redefinedLibraryComponent: `{name} is already rendered from {package} in {count}. Use that one. ${EXCEPTION_HINT}`,
   newIconAsset: `Use an icon from {package} instead of adding {path}. ${EXCEPTION_HINT}`,
-  componentStoryMissing: `Most components in this project have a story. Add {story} for {name}. ${EXCEPTION_HINT}`,
-  componentStoryMissingUnenforced: `{name} has no story. Add {story}. Not enforced until more than half of the components have one. ${EXCEPTION_HINT}`,
   testConsoleOutput: `Tests print new console output: {output}. Fix the cause (for example a timer that outlives the test), or allow a third-party message in "testConsole.allow" of nitpicker.config.json. ${EXCEPTION_HINT}`,
+  ...sourceRuleMessages(EXCEPTION_HINT),
 };
 
 export function renderMessage(template, values) {
@@ -303,18 +300,12 @@ export const RULES = [
     enforcedBy: withKotlin(ALL, true),
   },
   ...reuseRules(RULE_IDS, withKotlin(TYPESCRIPT_ONLY, false)),
+  ...sourceRules(RULE_IDS, withKotlin(TYPESCRIPT_ONLY, false)),
   {
     id: RULE_IDS.slowTest,
     check: 'test-runtime',
     limit: `a test the change adds or edits taking more than ${String(TEST_TIME_DEFAULTS.unitTestSeconds)} s (unit) or ${String(TEST_TIME_DEFAULTS.integrationTestSeconds)} s (integration); override with \`thresholds.unitTestSeconds\` and \`thresholds.integrationTestSeconds\``,
     enforcedBy: withKotlin({ ...BOTH, typescript: false }, true),
-  },
-  {
-    id: RULE_IDS.componentStoryMissing,
-    check: 'structure',
-    limit:
-      'a component file without a story, in a package that has Storybook; enforced when more than half of its component files have one, reported otherwise',
-    enforcedBy: withKotlin(TYPESCRIPT_ONLY, false),
   },
   testConsoleRule(RULE_IDS, withKotlin(TYPESCRIPT_ONLY, false)),
 ];

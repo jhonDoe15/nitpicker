@@ -104,7 +104,8 @@ export function resolveProjectRoot(cwd = process.cwd()) {
   );
   if (projectRoot !== undefined) return projectRoot;
   throw new Error(
-    `No package.json or ${CONFIG_FILE_NAME} found between ${current} and repository root ${repositoryRoot}`,
+    `No package.json or ${CONFIG_FILE_NAME} found between ${current} and repository root ${repositoryRoot}. ` +
+      `For a Java, Kotlin or Python project, create ${CONFIG_FILE_NAME} with its preset, for example {"preset": "java"}.`,
   );
 }
 
