@@ -28,6 +28,10 @@ afterEach(() => {
   fakes.cleanup();
 });
 
+function enabledErrorCodes(args) {
+  return args.filter((_arg, index) => args[index - 1] === '--enable-error-code');
+}
+
 function logged() {
   const logFile = path.join(fakes.temporaryRoot(), 'calls.jsonl');
   setEnvironment('FAKE_PYTHON_LOG', logFile);
@@ -139,10 +143,7 @@ describe('running mypy', () => {
     typeCheck(context);
 
     const [call] = fakes.calls(logFile).filter(({ args }) => args.includes('--strict'));
-    expect(call.args.includes('--enable-error-code')).toBe(asked);
-    if (asked) {
-      expect(call.args[call.args.indexOf('--enable-error-code') + 1]).toBe('deprecated');
-    }
+    expect(enabledErrorCodes(call.args)).toEqual(asked ? ['deprecated'] : []);
   });
 
   it('adds the import roots to MYPYPATH before an existing value', () => {

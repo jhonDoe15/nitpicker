@@ -1,13 +1,21 @@
-const withDefaults = (tool, fixture, rows) =>
-  rows.map(([rule, mention]) => ({
+function withDefaults(tool, fixture, rows) {
+  return rows.map(([rule, mention]) => ({
     name: `${rule} names "${mention}"`,
     fixture,
     tool,
     rule,
     mention,
   }));
+}
 
-export const ruffCases = (fixture, rows) => withDefaults('ruff', fixture, rows);
-export const rulesCases = (fixture, rows) => withDefaults('python-rules', fixture, rows);
+export function ruffCases(fixture, rows) {
+  return withDefaults('ruff', fixture, rows);
+}
 
-export const everyRule = (rules, mention) => rules.map((rule) => [rule, mention]);
+export function rulesCases(fixture, rows) {
+  return withDefaults('python-rules', fixture, rows);
+}
+
+export function everyRule(rules, mention) {
+  return rules.map((rule) => [rule, mention]);
+}

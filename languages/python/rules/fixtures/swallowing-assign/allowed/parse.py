@@ -5,9 +5,4 @@ except ImportError:
 
 
 def parse(text: str, default: int) -> int:
-    value = default
-    try:
-        value = int(text)
-    except ValueError:
-        value = default
-    return value
+    return int(text) if text.lstrip("-").isdigit() else default

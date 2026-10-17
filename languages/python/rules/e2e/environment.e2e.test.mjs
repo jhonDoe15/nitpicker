@@ -1,15 +1,15 @@
-import { afterEach, describe, it } from 'vitest';
+import { afterEach, describe, expect, it } from 'vitest';
 import { createScripts } from '../test-support/python-script-helpers.mjs';
 
 const enabled = process.env.NITPICKER_PYTHON_E2E === '1';
-const { cleanup, expectVerdicts } = createScripts();
+const { cleanup, outcomes } = createScripts();
 afterEach(cleanup);
 
 const inFile = (file, code) => ({ file, code });
 
 describe.skipIf(!enabled)('process-env-access', () => {
   it('flags every way to reach the process environment outside the composition root', () => {
-    expectVerdicts([
+    const [actual, expected] = outcomes([
       ['os.environ', 'import os\n\nURL = os.environ["URL"]\n', ['process-env-access:3 os.environ']],
       ['os.getenv', 'import os\n\nURL = os.getenv("URL")\n', ['process-env-access:3 os.getenv']],
       [
@@ -41,6 +41,7 @@ describe.skipIf(!enabled)('process-env-access', () => {
       ['another module named os', 'import osx\n\nURL = osx.environ["URL"]\n', []],
       ['a local variable called environ', 'def f(environ):\n    return environ["URL"]\n', []],
     ]);
+    expect(actual).toEqual(expected);
   });
 
   it.each([
@@ -58,7 +59,10 @@ describe.skipIf(!enabled)('process-env-access', () => {
     'noxfile.py',
     'tests/test_settings.py',
   ])('allows the composition root %s', (file) => {
-    expectVerdicts([['reads', inFile(file, 'import os\n\nURL = os.environ["URL"]\n'), []]]);
+    const [actual, expected] = outcomes([
+      ['reads', inFile(file, 'import os\n\nURL = os.environ["URL"]\n'), []],
+    ]);
+    expect(actual).toEqual(expected);
   });
 });
 
@@ -66,7 +70,7 @@ describe.skipIf(!enabled)('clock, randomness and input or output in domain code'
   const domain = (code) => inFile('domain/pricing.py', code);
 
   it('flags reading the clock', () => {
-    expectVerdicts([
+    const [actual, expected] = outcomes([
       [
         'datetime.now',
         domain('from datetime import datetime\n\nSTAMP = datetime.now()\n'),
@@ -105,10 +109,11 @@ describe.skipIf(!enabled)('clock, randomness and input or output in domain code'
         ['real-clock-in-test:3 time.time'],
       ],
     ]);
+    expect(actual).toEqual(expected);
   });
 
   it('flags drawing randomness', () => {
-    expectVerdicts([
+    const [actual, expected] = outcomes([
       [
         'random.random',
         domain('import random\n\nVALUE = random.random()\n'),
@@ -133,10 +138,11 @@ describe.skipIf(!enabled)('clock, randomness and input or output in domain code'
         [],
       ],
     ]);
+    expect(actual).toEqual(expected);
   });
 
   it('flags files, processes, the network and sleeping', () => {
-    expectVerdicts([
+    const [actual, expected] = outcomes([
       ['open', domain('def f(p):\n    return open(p)\n'), ['io-in-domain:2 open']],
       ['input', domain('NAME = input()\n'), ['io-in-domain:1 input']],
       ['time.sleep', domain('import time\n\ntime.sleep(1)\n'), ['io-in-domain:3 time.sleep']],
@@ -163,5 +169,6 @@ describe.skipIf(!enabled)('clock, randomness and input or output in domain code'
       ['outside the domain', inFile('src/app/store.py', 'import subprocess\n'), []],
       ['an adapter', inFile('adapters/store.py', 'import subprocess\n'), []],
     ]);
+    expect(actual).toEqual(expected);
   });
 });

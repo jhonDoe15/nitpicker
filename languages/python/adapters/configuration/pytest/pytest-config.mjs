@@ -1,0 +1,161 @@
+import { existsSync, readFileSync } from 'node:fs';
+import { createRequire } from 'node:module';
+import path from 'node:path';
+import { parseIni } from './ini-file.mjs';
+
+export const DEFAULT_PYTHON_FILES = ['test_*.py', '*_test.py'];
+export const DEFAULT_PYTHON_CLASSES = ['Test'];
+export const DEFAULT_PYTHON_FUNCTIONS = ['test'];
+export const DEFAULT_NORECURSEDIRS = [
+  '*.egg',
+  '.*',
+  '_darcs',
+  'build',
+  'CVS',
+  'dist',
+  'node_modules',
+  'venv',
+  '{arch}',
+];
+const OWN_TOML = ['pytest.toml', '.pytest.toml'];
+const INI_SOURCES = [
+  { file: 'pytest.ini', section: 'pytest', always: true },
+  { file: '.pytest.ini', section: 'pytest', always: true },
+  { file: 'pyproject.toml', section: undefined, always: false },
+  { file: 'tox.ini', section: 'pytest', always: false },
+  { file: 'setup.cfg', section: 'tool:pytest', always: false },
+];
+
+function readProjectFile(projectRoot, name) {
+  const root = path.resolve(projectRoot);
+  const full = path.resolve(root, name);
+  if (!full.startsWith(root + path.sep) || !existsSync(full)) {
+    return undefined;
+  }
+  return readFileSync(full, 'utf8');
+}
+
+function parseToml(text) {
+  try {
+    return { kind: 'table', table: createRequire(import.meta.url)('smol-toml').parse(text) };
+  } catch (error) {
+    return { kind: 'invalid', error };
+  }
+}
+
+function isTable(value) {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+function normalized(options) {
+  return Object.fromEntries(
+    Object.entries(options).map(([key, value]) => [
+      key,
+      Array.isArray(value) ? value.map(String) : String(value),
+    ]),
+  );
+}
+
+function pyprojectOptions(text) {
+  const parsed = parseToml(text);
+  const pytest = parsed.kind === 'table' ? parsed.table.tool?.pytest : undefined;
+  if (!isTable(pytest)) {
+    return undefined;
+  }
+  const { ini_options: legacy, ...native } = pytest;
+  return normalized({ ...(isTable(legacy) ? legacy : {}), ...native });
+}
+
+function tomlOptions(text) {
+  const parsed = parseToml(text);
+  const table = parsed.kind === 'table' ? (parsed.table.pytest ?? parsed.table) : {};
+  return normalized(isTable(table) ? table : {});
+}
+
+function iniOptions(text, section) {
+  const options = parseIni(text).get(section);
+  return options === undefined ? undefined : Object.fromEntries(options);
+}
+
+function sourceOptions(projectRoot, { file, section, always }) {
+  const text = readProjectFile(projectRoot, file);
+  if (text === undefined) {
+    return undefined;
+  }
+  const found =
+    file === 'pyproject.toml' ? pyprojectOptions(text) : iniOptions(text, section ?? 'pytest');
+  return found ?? (always ? {} : undefined);
+}
+
+function configuredOptions(projectRoot) {
+  for (const file of OWN_TOML) {
+    const text = readProjectFile(projectRoot, file);
+    if (text !== undefined) {
+      return tomlOptions(text);
+    }
+  }
+  for (const source of INI_SOURCES) {
+    const found = sourceOptions(projectRoot, source);
+    if (found !== undefined) {
+      return found;
+    }
+  }
+  return {};
+}
+
+function words(value) {
+  if (Array.isArray(value)) {
+    return value;
+  }
+  return typeof value === 'string' ? value.split(/\s+/u).filter((entry) => entry !== '') : [];
+}
+
+function listOr(value, fallback) {
+  const list = words(value);
+  return list.length === 0 ? fallback : list;
+}
+
+export function shellWords(text) {
+  const result = [];
+  let current = '';
+  let quote;
+  let started = false;
+  for (const character of text) {
+    if (quote !== undefined) {
+      if (character === quote) {
+        quote = undefined;
+      } else {
+        current += character;
+      }
+    } else if (character === '"' || character === "'") {
+      quote = character;
+      started = true;
+    } else if (/\s/u.test(character)) {
+      if (started || current !== '') {
+        result.push(current);
+      }
+      current = '';
+      started = false;
+    } else {
+      current += character;
+    }
+  }
+  return started || current !== '' ? [...result, current] : result;
+}
+
+export function readPytestConfig(projectRoot) {
+  const options = configuredOptions(projectRoot);
+  const addopts = options.addopts;
+  return {
+    pythonFiles: listOr(options.python_files, DEFAULT_PYTHON_FILES),
+    pythonClasses: listOr(options.python_classes, DEFAULT_PYTHON_CLASSES),
+    pythonFunctions: listOr(options.python_functions, DEFAULT_PYTHON_FUNCTIONS),
+    norecursedirs: listOr(options.norecursedirs, DEFAULT_NORECURSEDIRS),
+    testpaths: words(options.testpaths),
+    addopts: Array.isArray(addopts) ? addopts : shellWords(addopts ?? ''),
+  };
+}
+
+export function readPythonFiles(projectRoot) {
+  return readPytestConfig(projectRoot).pythonFiles;
+}

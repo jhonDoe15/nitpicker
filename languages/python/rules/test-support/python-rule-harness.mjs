@@ -8,7 +8,7 @@ import { RUFF_REPORT, createToolContext, lint } from '../../adapters/python-tool
 import { TYPES_REPORT, typeCheck } from '../../adapters/python-types.mjs';
 import { applyRuleHints } from '../rule-hints.mjs';
 
-const fixtures = path.join(import.meta.dirname, '../fixtures');
+const fixtures = path.resolve(import.meta.dirname, '../fixtures');
 const TYPE_CHECKERS = ['mypy', 'pyright', 'basedpyright'];
 function read(reportRoot, name) {
   return readFileSync(path.join(reportRoot, name), 'utf8');
@@ -32,13 +32,19 @@ const COLLECTORS = {
   },
 };
 
-const remembered = new Map();
+function fixtureRoot(fixture, side) {
+  const full = path.resolve(fixtures, fixture, side);
+  if (!full.startsWith(fixtures + path.sep)) {
+    throw new Error(`Fixture ${fixture} is outside the fixtures folder`);
+  }
+  return full;
+}
 
 function collectFindings({ fixture, tool }, side) {
   const projectRoot = realpathSync(mkdtempSync(path.join(tmpdir(), 'nitpicker-python-case-')));
   const reportRoot = realpathSync(mkdtempSync(path.join(tmpdir(), 'nitpicker-python-case-')));
   try {
-    cpSync(path.join(fixtures, fixture, side), projectRoot, { recursive: true });
+    cpSync(fixtureRoot(fixture, side), projectRoot, { recursive: true });
     const isTypeChecker = TYPE_CHECKERS.includes(tool);
     const context = createToolContext({
       projectRoot,
@@ -58,15 +64,7 @@ function collectFindings({ fixture, tool }, side) {
   }
 }
 
-function findingsFor(testCase, side) {
-  const key = `${testCase.tool}/${testCase.fixture}/${side}`;
-  if (!remembered.has(key)) {
-    remembered.set(key, collectFindings(testCase, side));
-  }
-  return remembered.get(key);
-}
-
-export function checkRuleCase(testCase) {
+function verdictOf(testCase, findingsFor) {
   const banned = findingsFor(testCase, 'banned').filter(({ rule }) => rule === testCase.rule);
   if (banned.length === 0) {
     return { ok: false, reason: 'banned fixture produced no finding', messages: [] };
@@ -84,4 +82,18 @@ export function checkRuleCase(testCase) {
     };
   }
   return { ok: true, messages };
+}
+
+export function createRuleChecker() {
+  const remembered = new Map();
+
+  function findingsFor(testCase, side) {
+    const key = `${testCase.tool}/${testCase.fixture}/${side}`;
+    if (!remembered.has(key)) {
+      remembered.set(key, collectFindings(testCase, side));
+    }
+    return remembered.get(key);
+  }
+
+  return (testCase) => verdictOf(testCase, findingsFor);
 }

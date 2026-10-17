@@ -1,17 +1,18 @@
-import { afterEach, describe, it } from 'vitest';
+import { afterEach, describe, expect, it } from 'vitest';
 import { createScripts } from '../test-support/python-script-helpers.mjs';
 
 const enabled = process.env.NITPICKER_PYTHON_E2E === '1';
-const { cleanup, expectVerdicts } = createScripts();
+const { cleanup, outcomes } = createScripts();
 afterEach(cleanup);
 
 const inFile = (file, code) => ({ file, code });
-const expectInAdapters = (rows) =>
-  expectVerdicts(rows.map(([name, code, found]) => [name, inFile('adapters/m.py', code), found]));
+function inAdapters(rows) {
+  return rows.map(([name, code, found]) => [name, inFile('adapters/m.py', code), found]);
+}
 
 describe.skipIf(!enabled)('module-level-mutable-state', () => {
   it('flags a module collection that a function changes, once, at its definition', () => {
-    expectVerdicts([
+    const [actual, expected] = outcomes([
       [
         'item assignment',
         'ITEMS = {}\n\n\ndef add(key, value):\n    ITEMS[key] = value\n',
@@ -66,6 +67,7 @@ describe.skipIf(!enabled)('module-level-mutable-state', () => {
         [],
       ],
     ]);
+    expect(actual).toEqual(expected);
   });
 });
 
@@ -74,7 +76,7 @@ describe.skipIf(!enabled)('unsafe-path-join', () => {
     `${head}\n\ndef read(name):\n${body}`;
 
   it('flags a path built from a parameter that reaches a file operation unchecked', () => {
-    expectVerdicts([
+    const [actual, expected] = outcomes([
       ['a slash join', read('    return (BASE / name).read_text()\n'), ['unsafe-path-join:7 read']],
       [
         'through a variable',
@@ -107,10 +109,11 @@ describe.skipIf(!enabled)('unsafe-path-join', () => {
         [],
       ],
     ]);
+    expect(actual).toEqual(expected);
   });
 
   it('accepts a resolved path that is checked to stay inside the base', () => {
-    expectVerdicts([
+    const [actual, expected] = outcomes([
       [
         'is_relative_to with a raise',
         read(
@@ -149,12 +152,13 @@ describe.skipIf(!enabled)('unsafe-path-join', () => {
         [],
       ],
     ]);
+    expect(actual).toEqual(expected);
   });
 });
 
 describe.skipIf(!enabled)('handwritten-boundary-guard', () => {
   it('flags isinstance checks on parsed data and predicates over Any', () => {
-    expectVerdicts([
+    const [actual, expected] = outcomes([
       [
         'json.loads',
         'import json\n\n\ndef parse(text):\n    data = json.loads(text)\n    if isinstance(data, dict):\n        return data\n    return {}\n',
@@ -214,12 +218,13 @@ describe.skipIf(!enabled)('handwritten-boundary-guard', () => {
         [],
       ],
     ]);
+    expect(actual).toEqual(expected);
   });
 });
 
 describe.skipIf(!enabled)('any in domain code and in pydantic models', () => {
   it('flags Any in annotations under domain/', () => {
-    expectVerdicts([
+    const [actual, expected] = outcomes([
       [
         'a parameter',
         inFile('domain/a.py', 'from typing import Any\n\n\ndef f(x: Any) -> int:\n    return 1\n'),
@@ -272,84 +277,91 @@ describe.skipIf(!enabled)('any in domain code and in pydantic models', () => {
         [],
       ],
     ]);
+    expect(actual).toEqual(expected);
   });
 
   it('flags an Any field of a pydantic model anywhere', () => {
     const model = (body, base = 'BaseModel', imports = 'from pydantic import BaseModel') =>
       `from typing import Any\n${imports}\n\n\nclass M(${base}):\n${body}`;
-    expectInAdapters([
-      ['an Any field', model('    value: Any\n'), ['pydantic-any-field:6 M.value']],
-      [
-        'an optional Any',
-        model('    value: Any | None = None\n'),
-        ['pydantic-any-field:6 M.value'],
-      ],
-      ['a list of Any', model('    value: list[Any]\n'), ['pydantic-any-field:6 M.value']],
-      [
-        'a model that extends another model',
-        `${model('    value: str\n')}\n\nclass N(M):\n    other: Any\n`,
-        ['pydantic-any-field:10 N.other'],
-      ],
-      [
-        'pydantic.BaseModel',
-        model('    value: Any\n', 'pydantic.BaseModel', 'import pydantic'),
-        ['pydantic-any-field:6 M.value'],
-      ],
-      [
-        'BaseSettings',
-        model('    value: Any\n', 'BaseSettings', 'from pydantic_settings import BaseSettings'),
-        ['pydantic-any-field:6 M.value'],
-      ],
-      ['a typed field', model('    value: str\n'), []],
-      [
-        'an Any field of a plain class',
-        'from typing import Any\n\n\nclass M:\n    value: Any\n',
-        [],
-      ],
-    ]);
+    const [actual, expected] = outcomes(
+      inAdapters([
+        ['an Any field', model('    value: Any\n'), ['pydantic-any-field:6 M.value']],
+        [
+          'an optional Any',
+          model('    value: Any | None = None\n'),
+          ['pydantic-any-field:6 M.value'],
+        ],
+        ['a list of Any', model('    value: list[Any]\n'), ['pydantic-any-field:6 M.value']],
+        [
+          'a model that extends another model',
+          `${model('    value: str\n')}\n\nclass N(M):\n    other: Any\n`,
+          ['pydantic-any-field:10 N.other'],
+        ],
+        [
+          'pydantic.BaseModel',
+          model('    value: Any\n', 'pydantic.BaseModel', 'import pydantic'),
+          ['pydantic-any-field:6 M.value'],
+        ],
+        [
+          'BaseSettings',
+          model('    value: Any\n', 'BaseSettings', 'from pydantic_settings import BaseSettings'),
+          ['pydantic-any-field:6 M.value'],
+        ],
+        ['a typed field', model('    value: str\n'), []],
+        [
+          'an Any field of a plain class',
+          'from typing import Any\n\n\nclass M:\n    value: Any\n',
+          [],
+        ],
+      ]),
+    );
+    expect(actual).toEqual(expected);
   });
 
   it('flags a pydantic model that accepts unknown fields', () => {
     const model = (body, imports = 'from pydantic import BaseModel, ConfigDict') =>
       `${imports}\n\n\nclass M(BaseModel):\n${body}`;
-    expectInAdapters([
-      [
-        'ConfigDict(extra="allow")',
-        model('    model_config = ConfigDict(extra="allow")\n'),
-        ['pydantic-extra-allow:4 M'],
-      ],
-      [
-        'a dict config',
-        model('    model_config = {"extra": "allow"}\n'),
-        ['pydantic-extra-allow:4 M'],
-      ],
-      [
-        'a class keyword',
-        'from pydantic import BaseModel\n\n\nclass M(BaseModel, extra="allow"):\n    name: str\n',
-        ['pydantic-extra-allow:4 M'],
-      ],
-      [
-        'the v1 Config class',
-        model('    class Config:\n        extra = "allow"\n'),
-        ['pydantic-extra-allow:4 M'],
-      ],
-      [
-        'Extra.allow',
-        model(
-          '    class Config:\n        extra = Extra.allow\n',
-          'from pydantic import BaseModel, Extra',
-        ),
-        ['pydantic-extra-allow:4 M'],
-      ],
-      [
-        'an annotated model_config',
-        model('    model_config: ConfigDict = ConfigDict(extra="allow")\n'),
-        ['pydantic-extra-allow:4 M'],
-      ],
-      ['extra="forbid"', model('    model_config = ConfigDict(extra="forbid")\n'), []],
-      ['extra="ignore"', model('    model_config = ConfigDict(extra="ignore")\n'), []],
-      ['no config', model('    name: str\n'), []],
-      ['a class that is no model', 'class M:\n    model_config = {"extra": "allow"}\n', []],
-    ]);
+    const [actual, expected] = outcomes(
+      inAdapters([
+        [
+          'ConfigDict(extra="allow")',
+          model('    model_config = ConfigDict(extra="allow")\n'),
+          ['pydantic-extra-allow:4 M'],
+        ],
+        [
+          'a dict config',
+          model('    model_config = {"extra": "allow"}\n'),
+          ['pydantic-extra-allow:4 M'],
+        ],
+        [
+          'a class keyword',
+          'from pydantic import BaseModel\n\n\nclass M(BaseModel, extra="allow"):\n    name: str\n',
+          ['pydantic-extra-allow:4 M'],
+        ],
+        [
+          'the v1 Config class',
+          model('    class Config:\n        extra = "allow"\n'),
+          ['pydantic-extra-allow:4 M'],
+        ],
+        [
+          'Extra.allow',
+          model(
+            '    class Config:\n        extra = Extra.allow\n',
+            'from pydantic import BaseModel, Extra',
+          ),
+          ['pydantic-extra-allow:4 M'],
+        ],
+        [
+          'an annotated model_config',
+          model('    model_config: ConfigDict = ConfigDict(extra="allow")\n'),
+          ['pydantic-extra-allow:4 M'],
+        ],
+        ['extra="forbid"', model('    model_config = ConfigDict(extra="forbid")\n'), []],
+        ['extra="ignore"', model('    model_config = ConfigDict(extra="ignore")\n'), []],
+        ['no config', model('    name: str\n'), []],
+        ['a class that is no model', 'class M:\n    model_config = {"extra": "allow"}\n', []],
+      ]),
+    );
+    expect(actual).toEqual(expected);
   });
 });

@@ -2,7 +2,7 @@ import { afterEach, describe, expect, it } from 'vitest';
 import { createScripts } from '../test-support/python-script-helpers.mjs';
 
 const enabled = process.env.NITPICKER_PYTHON_E2E === '1';
-const { cleanup, expectVerdicts, findingsOf } = createScripts();
+const { cleanup, outcomes, findingsOf } = createScripts();
 afterEach(cleanup);
 
 const test = 'def test_total():\n    assert total() == 3\n';
@@ -11,7 +11,7 @@ const withIni = (pattern) => ({ 'pytest.ini': `[pytest]\npython_files = ${patter
 
 describe.skipIf(!enabled)('uncollected-tests', () => {
   it('flags tests in a file pytest does not collect', () => {
-    expectVerdicts(
+    const [actual, expected] = outcomes(
       [
         [
           'a check file',
@@ -63,6 +63,7 @@ describe.skipIf(!enabled)('uncollected-tests', () => {
       ],
       pytest,
     );
+    expect(actual).toEqual(expected);
   });
 
   it('follows python_files of the project', () => {
@@ -80,7 +81,7 @@ describe.skipIf(!enabled)('uncollected-tests', () => {
 
 describe.skipIf(!enabled)('test-helper-in-source', () => {
   it('flags test support inside the production source roots', () => {
-    expectVerdicts(
+    const [actual, expected] = outcomes(
       [
         [
           'testing.py',
@@ -112,6 +113,7 @@ describe.skipIf(!enabled)('test-helper-in-source', () => {
       ],
       { sourceRoots: ['.'] },
     );
+    expect(actual).toEqual(expected);
   });
 
   it('looks only at the configured source roots', () => {

@@ -36,30 +36,46 @@ def load_checks():
 
 
 class FileContext:
-    def __init__(self, path, text, tree, options):
-        from checks.common import import_aliases, is_domain_path, is_test_path
+    def __init__(self, path, text, tree, project):
+        from checks.common import import_aliases, is_domain_path
 
         self.path = path
         self.text = text
         self.tree = tree
-        self.options = options
-        self.aliases = import_aliases(tree)
-        self.tests = is_test_path(path)
-        self.domain = is_domain_path(path)
+        self.project = project
+        self.options = project.options
+        self.aliases = import_aliases(tree, project, path)
+        self.tests = path in project.test_files
+        self.domain = is_domain_path(path, self.tests)
+        self.parents = {
+            id(child): parent
+            for parent in ast.walk(tree)
+            for child in ast.iter_child_nodes(parent)
+        }
 
 
-def check_file(path, options, modules):
-    from checks.comments import stub_findings
-
-    stubs = stub_findings(path)
+def parse_file(path):
     try:
         with tokenize.open(path) as handle:
             text = handle.read()
-        tree = ast.parse(text)
+        return text, ast.parse(text)
     except (OSError, SyntaxError, UnicodeDecodeError, ValueError):
-        return stubs
-    context = FileContext(path, text, tree, options)
-    return stubs + [item for module in modules for item in module.check(context)]
+        return None
+
+
+def check_all(paths, options, modules):
+    from checks.comments import stub_findings
+    from index.project import Project
+
+    project = Project(options, paths)
+    parsed = {path: parse_file(path) for path in paths}
+    for path, source in parsed.items():
+        if source is not None:
+            project.add(FileContext(path, source[0], source[1], project))
+    findings = [item for path in paths for item in stub_findings(path)]
+    for context in project.contexts.values():
+        findings.extend(item for module in modules for item in module.check(context))
+    return findings
 
 
 def read_options(arguments):
@@ -74,10 +90,7 @@ def main(arguments):
     options = read_options(arguments)
     with open(list_file, encoding="utf-8") as handle:
         paths_to_check = [line.strip() for line in handle if line.strip()]
-    modules = load_checks()
-    findings = []
-    for path in paths_to_check:
-        findings.extend(check_file(path, options, modules))
+    findings = check_all(paths_to_check, options, load_checks())
     findings.sort(
         key=lambda item: (item["path"], item["line"], item["rule"], item["subject"])
     )

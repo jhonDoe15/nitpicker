@@ -56,11 +56,11 @@ export const EXISTING_CASES = [
     mention: 'logging alone is not handling',
   },
   {
-    name: 'except returning a constant names a failure value',
+    name: 'except returning a constant names a failure result',
     fixture: 'swallowing-return-constant',
     tool: 'python-rules',
     rule: 'swallowed-exception',
-    mention: 'failure value',
+    mention: 'failure result',
   },
   {
     name: 'except with only an ellipsis names suppress',
@@ -70,18 +70,18 @@ export const EXISTING_CASES = [
     mention: 'contextlib.suppress',
   },
   {
-    name: 'except returning an empty list names a named default',
+    name: 'except returning an empty list names collecting the error',
     fixture: 'swallowing-container',
     tool: 'python-rules',
     rule: 'swallowed-exception',
-    mention: 'named default',
+    mention: 'collect it for the caller',
   },
   {
-    name: 'except assigning a constant names a value built from the error',
+    name: 'except assigning a constant names a result that carries the error',
     fixture: 'swallowing-assign',
     tool: 'python-rules',
     rule: 'swallowed-exception',
-    mention: 'built from it',
+    mention: 'carries the error',
   },
   {
     name: 'suppress of Exception names the expected exception',

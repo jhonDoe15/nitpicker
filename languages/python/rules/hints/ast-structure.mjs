@@ -8,9 +8,10 @@ export const STRUCTURE_HINTS = [
   {
     tool: RULES_TOOL,
     rules: ['swallowed-exception'],
-    describe: (subject) => `\`${subject}\` swallows the error`,
+    describe: (subject) =>
+      `\`${subject}\` swallows the error: it only logs it or returns a default, and carries on`,
     allowed:
-      'Hand the error on: re-raise it (`raise DomainError(...) from error`), return a failure value built from it, or return a named default; logging alone is not handling. `contextlib.suppress(SpecificError)` ignores one expected error.',
+      'Re-raise it with its cause (`raise DomainError(...) from error`), return a failure result that carries the error (`return Rejected(str(error))`), or collect it for the caller (`errors.append(error)`); logging alone is not handling. `contextlib.suppress(SpecificError)` ignores one expected error.',
   },
   {
     tool: RULES_TOOL,

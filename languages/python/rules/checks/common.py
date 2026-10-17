@@ -15,6 +15,8 @@ LOG_METHODS = {
     "fatal",
     "log",
 }
+ALIAS_PASSES = 3
+LOGGER_FACTORIES = {"getLogger", "get_logger", "LoggerAdapter", "wrap_logger"}
 LOG_OWNER = re.compile(
     r"^_*(?:log|logger|logging|LOG|LOGGER)$|_(?:log|logger|LOG|LOGGER)$|[a-z0-9](?:Logger|Log)$"
 )
@@ -28,40 +30,86 @@ def directories(path):
     return path.split("/")[:-1]
 
 
-def is_test_path(path):
-    parts = path.split("/")
-    name = parts[-1]
-    return (
-        bool(TEST_DIRECTORIES.intersection(parts[:-1]))
-        or name.startswith("test_")
-        or name.endswith("_test.py")
-        or name == "conftest.py"
-    )
-
-
 def is_boundary_path(path):
     return BOUNDARY_DIRECTORY in directories(path)
 
 
-def is_domain_path(path):
-    return DOMAIN_DIRECTORY in directories(path) and not is_test_path(path)
+def is_domain_path(path, tests=False):
+    return DOMAIN_DIRECTORY in directories(path) and not tests
 
 
-def import_aliases(tree):
+def import_aliases(tree, project=None, path=None):
     names, modules = {}, {}
     for node in ast.walk(tree):
-        if isinstance(node, ast.ImportFrom) and node.module and node.level == 0:
-            for alias in node.names:
-                names[alias.asname or alias.name] = f"{node.module}.{alias.name}"
+        if isinstance(node, ast.ImportFrom):
+            module = imported_module(node, project, path)
+            for alias in node.names if module else []:
+                names[alias.asname or alias.name] = f"{module}.{alias.name}"
         elif isinstance(node, ast.Import):
             for alias in node.names:
                 if alias.asname:
                     modules[alias.asname] = alias.name
-    return names, modules
+                else:
+                    root = alias.name.split(".")[0]
+                    modules.setdefault(root, root)
+    add_assigned_aliases(tree, names, modules)
+    return names, modules, logger_names(tree, names, modules)
+
+
+def imported_module(node, project, path):
+    if node.level == 0:
+        return node.module
+    return project.relative_module(path, node.level, node.module) if project else None
+
+
+def resolve_chain(node, names, modules):
+    parts = []
+    while isinstance(node, ast.Attribute):
+        parts.append(node.attr)
+        node = node.value
+    if not isinstance(node, ast.Name):
+        return None
+    root = names.get(node.id) or modules.get(node.id)
+    if root is None:
+        return None
+    return ".".join([root] + parts[::-1])
+
+
+def add_assigned_aliases(tree, names, modules):
+    assigned = {}
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Assign) and len(node.targets) == 1:
+            if isinstance(node.targets[0], ast.Name):
+                assigned.setdefault(node.targets[0].id, []).append(node.value)
+    for _ in range(ALIAS_PASSES):
+        for name, values in assigned.items():
+            target = (
+                resolve_chain(values[0], names, modules) if len(values) == 1 else None
+            )
+            if target and name not in names and name not in modules:
+                names[name] = target
+
+
+def logger_names(tree, names, modules):
+    found = set()
+    for node in ast.walk(tree):
+        value = getattr(node, "value", None)
+        targets = (
+            node.targets
+            if isinstance(node, ast.Assign)
+            else [getattr(node, "target", None)]
+        )
+        if not isinstance(node, (ast.Assign, ast.AnnAssign)) or value is None:
+            continue
+        factory = value.func if isinstance(value, ast.Call) else value
+        dotted = resolve_chain(factory, names, modules) or ""
+        if dotted.rsplit(".", 1)[-1] in LOGGER_FACTORIES or dotted == "loguru.logger":
+            found.update(filter(None, (last_name(target) for target in targets)))
+    return found
 
 
 def dotted_name(node, aliases):
-    names, modules = aliases
+    names, modules = aliases[:2]
     if isinstance(node, ast.Name):
         return names.get(node.id) or modules.get(node.id) or node.id
     if isinstance(node, ast.Attribute):
@@ -91,9 +139,17 @@ def is_log_call(node, aliases):
         return False
     owner = node.func.value
     if isinstance(owner, ast.Call):
-        return (dotted_name(owner.func, aliases) or "").endswith("getLogger")
+        return (dotted_name(owner.func, aliases) or "").rsplit(".", 1)[
+            -1
+        ] in LOGGER_FACTORIES
     name = last_name(owner)
-    return name is not None and LOG_OWNER.search(name) is not None
+    if name is None:
+        return False
+    return (
+        LOG_OWNER.search(name) is not None
+        or name in aliases[2]
+        or dotted_name(owner, aliases) == "loguru.logger"
+    )
 
 
 def string_value(node):
@@ -132,6 +188,8 @@ def type_text(node):
         return node.id
     if isinstance(node, ast.Attribute):
         return f"{type_text(node.value)}.{node.attr}"
+    if isinstance(node, ast.Starred):
+        return f"*{type_text(node.value)}"
     if isinstance(node, ast.Tuple):
         return "(" + ", ".join(type_text(element) for element in node.elts) + ")"
     return "expression"
