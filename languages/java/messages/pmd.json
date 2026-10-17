@@ -224,7 +224,7 @@
     "mayBeIntended": false
   },
   "EmptyCatchBlock": {
-    "fix": "Handle the exception: return a failure value, log it and recover, or rethrow with the cause (throw new IllegalStateException(msg, e)).",
+    "fix": "Rethrow it with the cause (new IllegalStateException(msg, e)), return a result that carries it, or collect it (errors.add(e)); logging alone is not handling.",
     "mayBeIntended": false
   },
   "EmptyFinalizer": {

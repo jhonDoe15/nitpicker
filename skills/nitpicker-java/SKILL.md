@@ -76,9 +76,14 @@ With Spring on the classpath, also follow [spring.md](spring.md).
 
 ## Errors
 
-- Never swallow: no empty `catch` (PMD `EmptyCatchBlock` and Checkstyle both fail it). A `catch`
-  returns a failure value, logs and recovers, or rethrows with the cause:
-  `throw new IllegalStateException("bad quantity " + text, e);` (`PreserveStackTrace`).
+- Never swallow: no empty `catch` (PMD `EmptyCatchBlock` and Checkstyle both fail it), and no
+  `catch` that only logs, `continue`s, `return;`s or returns or assigns a constant, a named default
+  or an empty value (`null`, `false`, `-1`, `DEFAULT_PORT`, `Optional.empty()`, an empty list): PMD
+  `SwallowedException`, also in tests, and logging alone is not handling. A `catch` rethrows with
+  the cause: `throw new IllegalStateException("bad quantity " + text, e);` (`PreserveStackTrace`),
+  returns a failure result that carries the error (`return new Invalid(text, e)`), or collects it
+  (`errors.add(e)`). In a test, `assertThrows` replaces the `catch`.
+  `catch (ClassNotFoundException e) { present = false; }` is allowed.
 - Catch the narrowest type: `catch (NumberFormatException e)`. `catch (Exception)`,
   `catch (RuntimeException)`, `catch (Throwable)` and `catch (NullPointerException)` fail. Keep
   the `try` around the one call that throws.
@@ -106,6 +111,10 @@ With Spring on the classpath, also follow [spring.md](spring.md).
   (`mutant-survived`, `mutant-nocoverage`) fails. If no input can kill a mutant, the code is
   redundant: delete or simplify it. A `compareTo` boundary or an ignored lambda result that truly
   cannot be told apart takes an exception for `pit/mutant-survived`.
+- Lombok-generated members (`equals`, `hashCode`, `toString`, builders, accessors) are left out of
+  coverage and mutation testing: nitpicker sets `lombok.addLombokGeneratedAnnotation = true` in the
+  `lombok.config` files of its own snapshot of the project (never your working copy), which older
+  Lombok needs. Test the code you wrote, not the annotations.
 - Plan tests to be fast (`test-runtime/slow-test`): a fake clock instead of `Thread.sleep`, a test
   slice instead of `@SpringBootTest`.
 - Tests get the same PMD, Checkstyle, Error Prone and formatter checks as main code, plus the file

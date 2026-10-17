@@ -52,7 +52,7 @@
     "mayBeIntended": false
   },
   "EmptyCatchBlock": {
-    "fix": "Handle the exception: return a failure value, log and recover, or rethrow with the cause; in tests use assertThrows.",
+    "fix": "Rethrow it with the cause, return a result that carries it, or collect it (errors.add(e)); logging alone is not handling. In tests use assertThrows.",
     "mayBeIntended": false
   },
   "EmptyLineSeparator": {

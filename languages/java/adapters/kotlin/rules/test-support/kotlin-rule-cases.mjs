@@ -23,6 +23,46 @@ export const kotlinRuleCases = [
     allowed: 'fun text(value: Any?): String = value as? String ?: "none"\n',
   },
   {
+    id: 'swallowedException',
+    rule: 'detekt.exceptions.SwallowedException',
+    message: 'The caught exception is swallowed. The original exception could be lost.',
+    allowedForm: 'rethrow it with its cause',
+    banned:
+      'fun parse(text: String): Int? {\n    return try {\n        text.toInt()\n    } catch (error: NumberFormatException) {\n        null\n    }\n}\n',
+    allowed:
+      'fun parse(text: String): Int {\n    return try {\n        text.toInt()\n    } catch (error: NumberFormatException) {\n        throw IllegalArgumentException("not a number", error)\n    }\n}\n',
+  },
+  {
+    id: 'swallowedExceptionConstant',
+    rule: 'detekt.exceptions.SwallowedException',
+    message: 'The caught exception is swallowed. The original exception could be lost.',
+    allowedForm: 'return a failure result that carries the error',
+    banned:
+      'const val DEFAULT_PORT = 80\n\nfun port(text: String): Int {\n    return try {\n        text.toInt()\n    } catch (error: NumberFormatException) {\n        DEFAULT_PORT\n    }\n}\n',
+    allowed:
+      'fun port(text: String): Result<Int> {\n    return try {\n        Result.success(text.toInt())\n    } catch (error: NumberFormatException) {\n        Result.failure(error)\n    }\n}\n',
+  },
+  {
+    id: 'swallowedExceptionInterrupted',
+    rule: 'detekt.exceptions.SwallowedException',
+    message: 'The caught exception is swallowed. The original exception could be lost.',
+    allowedForm: 'collect it for the caller',
+    banned:
+      'fun pause(): Int {\n    return try {\n        Thread.sleep(1)\n        1\n    } catch (error: InterruptedException) {\n        0\n    }\n}\n',
+    allowed:
+      'fun pause(errors: MutableList<Throwable>): Int {\n    return try {\n        Thread.sleep(1)\n        1\n    } catch (error: InterruptedException) {\n        errors.add(error)\n        0\n    }\n}\n',
+  },
+  {
+    id: 'swallowedExceptionIgnoredName',
+    rule: 'detekt.exceptions.SwallowedException',
+    message: 'The caught exception is swallowed. The original exception could be lost.',
+    allowedForm: 'rethrow it with its cause',
+    banned:
+      'fun parse(text: String): Int {\n    return try {\n        text.toInt()\n    } catch (ignored: NumberFormatException) {\n        0\n    }\n}\n',
+    allowed:
+      'fun parse(text: String): Int {\n    return try {\n        text.toInt()\n    } catch (ignored: NumberFormatException) {\n        throw IllegalStateException("not a number", ignored)\n    }\n}\n',
+  },
+  {
     id: 'broadCatch',
     rule: 'detekt.exceptions.TooGenericExceptionCaught',
     message:

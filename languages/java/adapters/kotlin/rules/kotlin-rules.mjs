@@ -29,6 +29,12 @@ export const ONE_WAY_RULES = [
   },
   { name: 'CastNullableToNonNullableType', ruleset: 'potential-bugs' },
   {
+    name: 'SwallowedException',
+    ruleset: 'exceptions',
+    allowed:
+      'Rethrow it with its cause (`throw AppError("x", e)`), return a failure result that carries the error (`return Result.failure(e)`), or collect it for the caller (`errors.add(e)`); logging alone is not handling. In a test, use `assertFailsWith`.',
+  },
+  {
     name: 'TooGenericExceptionCaught',
     ruleset: 'exceptions',
     allowed: 'In a test, use `assertFailsWith`.',

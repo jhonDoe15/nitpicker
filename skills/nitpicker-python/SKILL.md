@@ -38,7 +38,8 @@ backstop. It fails only on findings your change adds, so leave code the task doe
 - Strings: f-strings only. No `.format()` and no `%`.
 - Defaults: `None`, then build the value inside the function. No mutable default arguments.
 - Errors: catch the specific exception and handle it, or re-raise it with its cause:
-  `raise ParseError(text) from err`. No bare `except:` or `except Exception:`, and no `raise Exception(...)`.
+  `raise ParseError(text) from err`. Logging alone is not handling, and neither is returning a
+  default; in a test, use `with pytest.raises(ParseError):`. No bare `except:` or `except Exception:`, and no `raise Exception(...)`.
 - A `try` inside a loop is flagged (PERF203): move it out, or extract the loop body into a function.
 - Flow: no `else` after a `return`, and return an expression directly instead of assigning it to a
   local first. Build a list with a comprehension, not `append` in a loop.

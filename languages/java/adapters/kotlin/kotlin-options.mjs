@@ -16,15 +16,27 @@ export const KOTLIN_EXCEPTION_RULES = [
   'test-runtime/slow-test',
 ];
 
+const KOTLIN_JAVA_FILE_TOOLS = ['pmd', 'checkstyle', 'spotbugs', 'errorprone'];
+
+function isJavaFileRule(rule) {
+  const [tool] = rule.split('/');
+  return KOTLIN_JAVA_FILE_TOOLS.includes(tool) && rule.length > tool.length + 1;
+}
+
 function validateKotlinExceptions(config) {
   if (config.preset !== 'kotlin' || !Array.isArray(config.exceptions)) {
     return;
   }
   for (const [index, entry] of config.exceptions.entries()) {
     const rule = isPlainObject(entry) ? entry.rule : undefined;
-    if (typeof rule === 'string' && rule !== '' && !KOTLIN_EXCEPTION_RULES.includes(rule)) {
+    if (
+      typeof rule === 'string' &&
+      rule !== '' &&
+      !KOTLIN_EXCEPTION_RULES.includes(rule) &&
+      !isJavaFileRule(rule)
+    ) {
       throw configError(
-        `"exceptions[${String(index)}].rule" is "${rule}", which is not a rule with exceptions. Rules with exceptions for the kotlin preset: ${KOTLIN_EXCEPTION_RULES.join(', ')}. Tune any other detekt rule in config/detekt/detekt.yml`,
+        `"exceptions[${String(index)}].rule" is "${rule}", which is not a rule with exceptions. Rules with exceptions for the kotlin preset: ${KOTLIN_EXCEPTION_RULES.join(', ')}, and "<tool>/<rule>" as findings print it for the Java files of the module (tools: ${KOTLIN_JAVA_FILE_TOOLS.join(', ')}). Tune any other detekt rule in config/detekt/detekt.yml`,
       );
     }
   }

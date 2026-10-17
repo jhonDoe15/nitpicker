@@ -28,6 +28,14 @@ exceptions:
   excludes: []
   ignoreAnnotated: []
   includes: []
+  SwallowedException:
+    active: true
+    severity: warning
+    excludes: []
+    ignoreAnnotated: []
+    includes: []
+    ignoredExceptionTypes: []
+    allowedExceptionNameRegex: ''
   TooGenericExceptionCaught:
     active: true
     severity: warning

@@ -393,6 +393,52 @@ default, and their messages name it:
 | `GuardLogStatement`                | `trace` and `debug` (and JUL `fine` levels) with placeholders whose values are variables, fields, literals or a no-argument call on one (`order.id()`); a guard only when an argument is computed. |
 | `LogStringConcatenation` (new)     | `info`, `warn` and `error` with placeholders, for SLF4J, Log4j 2, commons-logging, JUL and `System.Logger`.                                                                                        |
 | `GeneratedOnHandWrittenCode` (new) | No `@Generated` annotation on a class, method or constructor: JaCoCo and PIT skip what it marks.                                                                                                   |
+| `SwallowedException` (new)         | A `catch` that only logs, returns a constant or default, or carries on, without rethrowing, returning or storing the failure (see below).                                                          |
+
+**`SwallowedException` (PMD XPath rule, main and test sources).** It follows the Python
+`swallowed-exception` rule (`languages/python/rules/errors/handling.py`), and the Kotlin
+`exceptions.SwallowedException` and TypeScript `nitpicker/no-silent-catch` rules ask for the same
+handling. It reports a non-empty `catch` (the empty block stays with `EmptyCatchBlock`) in which, once
+log calls are set aside, nothing handles the failure. Set aside: calls on a logger (a receiver named
+`log`, `logger`, `logging`, ending in `Log` or `Logger`, `LOG`, a `getLogger(...)` chain, or typed
+as one), `System.out`/`System.err` printing and `printStackTrace()`, so logging alone is not handling,
+even with the exception as an argument. The rest of the handler is walked, nested blocks and `if`s
+included, but not lambdas, anonymous classes or local classes. The failure is handled when the
+handler:
+
+- throws, or `break`s;
+- calls anything as a statement (`recover();`, `Thread.currentThread().interrupt();`,
+  `System.exit(1);`) other than a collection tally (`add`, `put`, `offer`, ...) that does not receive
+  the error;
+- passes the exception, or a variable derived from it (`String message = e.getMessage();`), to a call
+  or constructor, including a tally (`errors.add(e)`, `fail(e)`);
+- returns the exception, a value derived from it, or anything computed by a call or constructor
+  (`return new Failure(e)`, `return Optional.of(DEFAULT)`, `return text.length()`), except the
+  empty values `Optional.empty()`, `List.of()`, `Collections.emptyList()` and its siblings and
+  `new ArrayList<>()` with no arguments;
+- stores the exception in a field or in a variable that is read after the handler
+  (`this.last = e;`, `failure = e;` followed by `throw new X(failure)`), or adds it to a number or
+  string (`total += e.getMessage().length()`);
+- assigns or declares a value computed by a call (`label = describe(text);`).
+
+A `return` of a literal, a named constant (`DEFAULT_PORT`), `-1`, `null`, `false` or an empty
+collection, `continue`, `return;`, a counter (`failures++`), an assignment of a literal or a name,
+and an `add` of something that is not the error are all swallowing. A handler that catches only
+`ClassNotFoundException` or `NoClassDefFoundError` (the optional-class probe) may assign anything and
+return a boolean literal (`present = false;`, `return false;`). Differences from Python, kept on purpose:
+a helper that only logs counts as a call here, because a PMD rule cannot see its body, and a
+variable derived from the exception counts as read after the handler only when it is declared
+outside it. Because `catch (E ignored) { }` is `EmptyCatchBlock`'s, which allows the names `ignored`
+and `expected` as PMD ships it, only the empty block keeps that exit; a non-empty handler is
+reported whatever the variable is called. The message names the allowed forms (rethrow with the cause,
+a failure result that carries the error, collecting it), says logging alone is not handling, names
+`assertThrows` for tests and gives the exception entry for `pmd/SwallowedException`. The catalog
+texts of `EmptyCatchBlock` (PMD and Checkstyle) and SpotBugs `DE_MIGHT_DROP` and `DE_MIGHT_IGNORE`
+give the same advice, so none of them sends the author to a bare default that this rule reports.
+`languages/java/adapters/java-e2e/swallowed-exception.e2e.test.mjs` runs it on Gradle and Maven over
+13 swallowing handlers in main code, one in a test, and 10 handling ones. In the Kotlin preset the rule runs on the Java files of
+the module and its exception entry (`pmd/SwallowedException`) is accepted there like any other rule of
+a Java-file tool.
 
 ## Slice 3: Checkstyle
 
@@ -465,6 +511,39 @@ identity when the value changes: editing such a line counts as a resolved plus a
   report through `build.gradle`. JaCoCo and PIT still skip code annotated `@Generated`; on
   hand-written code that annotation is the `pmd/GeneratedOnHandWrittenCode` finding. Only violations are findings; the
   per-function metric findings of the TypeScript check are not produced.
+- **Lombok-generated code.** JaCoCo and PIT skip a member only when it carries `@Generated`, and
+  Lombok writes `@lombok.Generated` only when `lombok.addLombokGeneratedAnnotation = true`, a
+  setting it reads from `lombok.config` files alone (no system property or compiler option sets
+  it). Its default became `true` in 1.18.34; up to 1.18.32 every `@Data`, `@Value`, `@Builder` and
+  `@Getter` member counted, so `equals`, `hashCode`, `canEqual`, `toString`, builders and accessors
+  showed as uncovered branches and as `mutant-survived` or `mutant-nocoverage` findings nobody can
+  fix with a test. The runner (`analyzeJavaSnapshot`) and `runJavaDiff` therefore call
+  `markLombokGeneratedCode` (`languages/java/adapters/generated-code/lombok-config.mjs`) on the
+  temporary snapshot or worktree they analyze, never on the working copy (`collectJavaFindings`
+  itself writes nothing, and the step refuses a tree inside a live Git checkout with a note on
+  stderr): when a `lombok.config`, a build file (`pom.xml` and the poms above it, `*.gradle`,
+  `*.gradle.kts`, any `*.toml` version catalog, buildSrc scripts) or a `lombok.` import in a source
+  file shows Lombok, it sets `lombok.addLombokGeneratedAnnotation = true` in every `lombok.config`
+  there (removing the project's own lines for that key, `clear` lines included, and appending the
+  setting last) and creates one in the root when there is none, so a nearer file cannot undo it.
+  Each file is replaced by a regular file, so a symlinked `lombok.config` is copied, not written
+  through. A project without Lombok is untouched. Gradle and
+  Maven share the step, because both compile the same tree. Measured on jasypt-spring-boot's core
+  module with Lombok pinned to 1.18.30: 1146 mutants and 118 lines with missed branches without
+  the setting, 573 and 113 with it, the same as with Lombok 1.18.38 (453 of the 1030 non-killed
+  mutants were `equals`, `hashCode`, `canEqual` and `toString` of one `@Data` class). Records,
+  enums, string and enum `switch`, `for-each` and try-with-resources need no step of ours:
+  JaCoCo 0.8.12 and PIT 1.17.4 filter their compiler-generated code, and on the MCP Java SDK
+  (records, enums, sealed types, lambdas) JaCoCo reported no missed branch on a record or enum
+  declaration line and CRAP had no generated entry, because it is built from the parsed source
+  methods. The Kotlin preset has its own mutant filter (a separate change); this one is kept
+  self-contained and shaped like it, a function over the project tree that reports what it
+  changed, so the two can share their walk and their tests later.
+  Other generators are not handled: MapStruct and AutoValue mark their classes with
+  `javax.annotation.processing.Generated`, whose retention is SOURCE, so it is not in the class files
+  JaCoCo and PIT read, and nothing in nitpicker filters those classes. Treat coverage and mutants of
+  `*MapperImpl` and `AutoValue_*` classes as real until that is measured and handled (not verified
+  here); Immutables is likewise not handled.
 - **Identity.** `function:<signature>`, for example `function:Calc.classify(int, int, String)`:
   enclosing classes, method and parameter types (`signature` in `structure.json`), never a line.
   Repeats (anonymous classes) get `#2`, `#3` in report order. The path
@@ -798,6 +877,9 @@ resolved plus a new finding, as in the TypeScript check.
   compile), `adapters/errorprone/lombok.e2e.test.mjs` (a Lombok project on Gradle, on Gradle with
   `lombok.addSuppressWarnings = false`, and on Maven runs the whole preset with no tool error and
   only the findings in written code, `import lombok.*;` with a `@Deprecated` method included),
+  `adapters/generated-code/lombok-config.test.mjs` and `lombok-generated.e2e.test.mjs` (a Lombok 1.18.30
+  project on Gradle, and on Maven with a `lombok.config` that turns the annotation off, reports no
+  coverage or mutant finding for the `@Data` and `@Builder` class and still reports the method nobody tests),
   `adapters/errorprone/checks/checks-catalog.e2e.test.mjs` (loads the pinned jar's checks: the
   reviewed set is the jar's, `enable` names off-by-default checks and `disable` on-by-default ones,
   `certainBugs` plus the documented ERROR checks are exactly the enabled ERROR checks,

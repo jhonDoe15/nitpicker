@@ -145,18 +145,42 @@ ends with the exception route, which the gate appends to all of them. The `inlin
 message names the fix and both routes. Each rule has a banned and an allowed fixture in
 `languages/java/adapters/kotlin/rules/test-support/kotlin-rule-cases.mjs`.
 
-| Spot              | Banned                                | Allowed                                                           | Rule (detekt)                                                            |
-| ----------------- | ------------------------------------- | ----------------------------------------------------------------- | ------------------------------------------------------------------------ |
-| Scope functions   | `run`, `with`, `also`                 | `let` (`value?.let { ... }`) and `apply` (configure an object)    | `style.ForbiddenMethodCall` (`kotlin.run`, `kotlin.with`, `kotlin.also`) |
-|                   | `let` or `apply` that changes nothing | call the member directly                                          | `style.UnnecessaryLet`, `style.UnnecessaryApply`                         |
-| Nullable handling | `!!`                                  | `?:`, `?.let`, `checkNotNull(value) { "why" }`                    | `potential-bugs.UnsafeCallOnNullableType`                                |
-|                   | `value as String` on a nullable value | handle null first, or `as?`                                       | `potential-bugs.CastNullableToNonNullableType`                           |
-|                   | `if (x == null) null else ...`        | `x?.let { ... }`                                                  | `style.UseLet`                                                           |
-| Coroutines        | `GlobalScope`                         | `coroutineScope { launch { ... } }`, or a scope its owner cancels | `coroutines.GlobalCoroutineUsage`                                        |
-|                   | `runBlocking`                         | a `suspend` caller (`suspend fun main()`); `runTest` in a test    | `style.ForbiddenMethodCall` (`kotlinx.coroutines.runBlocking`)           |
-| Exceptions        | `catch (e: Exception)`, `Throwable`   | catch the specific exception type; `assertFailsWith` in a test    | `exceptions.TooGenericExceptionCaught`                                   |
-| Records           | a class that only holds `val`s        | `data class`                                                      | `style.UseDataClass` (`allowVars: true`)                                 |
-|                   | a `data class` with a `var`           | `val` and `copy(...)`                                             | `style.DataClassShouldBeImmutable`                                       |
+| Spot              | Banned                                                    | Allowed                                                                       | Rule (detekt)                                                            |
+| ----------------- | --------------------------------------------------------- | ----------------------------------------------------------------------------- | ------------------------------------------------------------------------ |
+| Scope functions   | `run`, `with`, `also`                                     | `let` (`value?.let { ... }`) and `apply` (configure an object)                | `style.ForbiddenMethodCall` (`kotlin.run`, `kotlin.with`, `kotlin.also`) |
+|                   | `let` or `apply` that changes nothing                     | call the member directly                                                      | `style.UnnecessaryLet`, `style.UnnecessaryApply`                         |
+| Nullable handling | `!!`                                                      | `?:`, `?.let`, `checkNotNull(value) { "why" }`                                | `potential-bugs.UnsafeCallOnNullableType`                                |
+|                   | `value as String` on a nullable value                     | handle null first, or `as?`                                                   | `potential-bugs.CastNullableToNonNullableType`                           |
+|                   | `if (x == null) null else ...`                            | `x?.let { ... }`                                                              | `style.UseLet`                                                           |
+| Coroutines        | `GlobalScope`                                             | `coroutineScope { launch { ... } }`, or a scope its owner cancels             | `coroutines.GlobalCoroutineUsage`                                        |
+|                   | `runBlocking`                                             | a `suspend` caller (`suspend fun main()`); `runTest` in a test                | `style.ForbiddenMethodCall` (`kotlinx.coroutines.runBlocking`)           |
+| Exceptions        | `catch (e: Exception)`, `Throwable`                       | catch the specific exception type; `assertFailsWith` in a test                | `exceptions.TooGenericExceptionCaught`                                   |
+| Errors            | a `catch` that only logs, returns a default or carries on | rethrow it with the cause, return a failure result carrying it, or collect it | `exceptions.SwallowedException` (no ignored types or names)              |
+| Records           | a class that only holds `val`s                            | `data class`                                                                  | `style.UseDataClass` (`allowVars: true`)                                 |
+|                   | a `data class` with a `var`                               | `val` and `copy(...)`                                                         | `style.DataClassShouldBeImmutable`                                       |
+
+`exceptions.SwallowedException` is the detekt counterpart of the Python `swallowed-exception` rule, and the Java
+preset's `pmd/SwallowedException` and TypeScript's `nitpicker/no-silent-catch` ask for the same handling: rethrow
+the error with its cause, return a failure result that carries it, or collect it for the caller; logging alone is
+not handling. The preset sets `ignoredExceptionTypes` and `allowedExceptionNameRegex` empty, so
+`catch (e: NumberFormatException) { null }`, `continue`, a constant default (`catch (e: IOException) { DEFAULT }`)
+and `catch (ignored: IOException) { 0 }` are reported like any other catch that never uses the error, in tests
+too. Where detekt is looser than the other presets: a handler that logs the exception, or reads more of it than the
+message, counts as using it, so `catch (e: IOException) { log.warn("bad", e) }` is not reported here although the
+other presets report it. detekt also reports a catch that passes only `e.message` to a `throw` (the cause is lost). The
+message names the exception route and `assertFailsWith`.
+
+Pinning these two rules means pinning the `exceptions` ruleset itself (`active: true`, `excludes: []`), because
+detekt skips every rule of a ruleset whose own `active` is false. The side effect: a project that switched the
+whole ruleset off in its detekt config gets detekt's other default-on `exceptions` rules back
+(`ExceptionRaisedInUnexpectedLocation`, `InstanceOfCheckForException`, `PrintStackTrace`,
+`RethrowCaughtException`, `ReturnFromFinally`, `ThrowingExceptionFromFinally`,
+`ThrowingExceptionsWithoutMessageOrCause`, `ThrowingNewInstanceOfSameException` and
+`TooGenericExceptionThrown`; the ruleset's remaining rules are off in detekt's defaults). They are plain
+correctness rules a catch-and-throw codebase should meet, and a project that disagrees with one switches that rule
+off by name in its detekt config (`exceptions: PrintStackTrace: active: false`), which we do not override, or
+lifts it per path with `exceptions` in `nitpicker.config.json`. A project that left the ruleset on sees no
+change, since these rules already run from detekt's defaults.
 
 Rule ids in findings are `detekt.<ruleset>.<Rule>`. Test sources are analyzed with the same rules, so
 `runBlocking` in a test is a finding too; its message points to `runTest`. A broad catch in a test
