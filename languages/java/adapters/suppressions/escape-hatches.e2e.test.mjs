@@ -48,6 +48,9 @@ const PROJECT_CHECKSTYLE_CONFIG = `<?xml version="1.0"?>
   <module name="LineLength">
     <property name="max" value="200"/>
   </module>
+  <module name="TreeWalker">
+    <module name="FinalParameters"/>
+  </module>
 </module>
 `;
 
@@ -177,11 +180,7 @@ describe.skipIf(!enabled)('Java preset escape hatches', () => {
         toolPrecedence: { checkstyle: ['project'] },
       });
 
-      expect(ofTool(result, 'checkstyle')).toEqual([
-        ...['EmptyLineSeparator', 'Indentation', 'RegexpSinglelineJava'].map(
-          (check) => `checkstyle ${check} Bad.java`,
-        ),
-      ]);
+      expect(ofTool(result, 'checkstyle')).toEqual(['checkstyle FinalParameters Bad.java']);
     },
     GRADLE_STEP_TIMEOUT_MS,
   );
