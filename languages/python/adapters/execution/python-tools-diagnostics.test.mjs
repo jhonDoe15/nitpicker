@@ -142,6 +142,46 @@ describe('running pytest', () => {
     ]);
   });
 });
+describe('running the Django and nose2 runners', () => {
+  it.each([
+    ['django', 'manage.py', '', ['manage.py', 'test', '--noinput']],
+    ['django', 'backend/manage.py', 'backend', ['manage.py', 'test', '--noinput']],
+    ['nose2', 'nose2.cfg', '', ['-m', 'nose2']],
+  ])('runs the %s tests of %s under coverage', (testRunner, file, directory, command) => {
+    const calls = callsLog();
+    const root = project({ [file]: '' });
+
+    expect(runPythonTools(contextFor(root, { testRunner }).context)).toEqual([]);
+
+    const [{ args, cwd }] = calls('coverage', 'run');
+    expect([args.slice(3), cwd]).toEqual([command, path.join(root, directory)]);
+  });
+  it.each([
+    ['django', 'Django'],
+    ['nose2', 'nose2'],
+  ])('is an environment error when %s is not installed', (testRunner, distribution) => {
+    const calls = callsLog();
+    const root = project({ [`no-${distribution}.txt`]: '', 'manage.py': '' });
+
+    expect(runPythonTools(contextFor(root, { testRunner }).context)).toEqual([
+      {
+        rule: 'environment-failed',
+        message: `${distribution} runs the tests of this project but is not installed in the virtualenv environment: install it there, or set "python.testRunner" to the runner the tests use`,
+      },
+    ]);
+    expect(calls('coverage', 'run')).toEqual([]);
+  });
+  it('names where manage.py was looked for when there is none', () => {
+    const root = project({ 'backend/settings.py': '' });
+
+    expect(runPythonTools(contextFor(root, { testRunner: 'django' }).context)).toEqual([
+      {
+        rule: 'environment-failed',
+        message: `the tests run with Django's manage.py test, but there is no manage.py at ${path.join(root, 'manage.py')} or one directory below it: add it there, or set "python.testRunner" to the runner the tests use`,
+      },
+    ]);
+  });
+});
 describe('failure messages', () => {
   it('says a tool timed out instead of quoting the system error', () => {
     const root = project();
@@ -177,7 +217,25 @@ describe('tool versions', () => {
     expect(toolVersions(contextFor(project()).context)).toBe(
       `ruff@0.9.9;mypy@1.13.0;coverage@7.6.1;unittest;${jscpd}`,
     );
-    expect(mutationVersions(contextFor(root).context)).toBe('mutmut@3.8.0;pytest@8.3.1');
+    expect(mutationVersions(contextFor(root).context)).toBe(
+      'mutmut@3.8.0;pytest@8.3.1;pytest-django@missing',
+    );
+  });
+  it('names the Django and nose2 versions, and whether pytest-django can run the mutants', () => {
+    const jscpd = `jscpd@${jscpdVersion()}`;
+    const django = (files) =>
+      contextFor(project({ 'manage.py': '', ...files }), { testRunner: 'django' }).context;
+
+    expect(toolVersions(django())).toBe(
+      `ruff@0.9.9;mypy@1.13.0;coverage@7.6.1;django@5.1.0;${jscpd}`,
+    );
+    expect(toolVersions(contextFor(project(), { testRunner: 'nose2' }).context)).toBe(
+      `ruff@0.9.9;mypy@1.13.0;coverage@7.6.1;nose2@5.1.0;${jscpd}`,
+    );
+    expect(mutationVersions(django())).toBe('mutmut@3.8.0;pytest@8.3.1;pytest-django@missing');
+    expect(mutationVersions(django({ 'pytest-django.txt': '' }))).toBe(
+      'mutmut@3.8.0;pytest@8.3.1;pytest-django@installed',
+    );
   });
   it('adds import-linter to the versions when the project has contracts', () => {
     const root = project({ '.importlinter': '[importlinter]\n', 'conftest.py': '' });
@@ -212,7 +270,9 @@ describe('tool versions', () => {
     expect(toolVersions(contextFor(root).context)).toBe(
       `ruff@missing;types@missing;coverage@missing;unittest;${jscpd}`,
     );
-    expect(mutationVersions(contextFor(root).context)).toBe('mutmut@missing;pytest@missing');
+    expect(mutationVersions(contextFor(root).context)).toBe(
+      'mutmut@missing;pytest@missing;pytest-django@missing',
+    );
   });
   it('marks a version it cannot read', () => {
     const root = project();

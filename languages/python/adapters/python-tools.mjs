@@ -21,6 +21,7 @@ import {
 import { formatCommand, ruffExclusions } from './formatting/format-command.mjs';
 import { ruffConfigFor } from './configuration/python-ruff-config.mjs';
 import { detectTestRunner, pytestLabel, testRunnerLabel } from './execution/python-test-runner.mjs';
+import { mutationRunnerLabels } from './mutation/test-run/python-mutation-runner.mjs';
 import { test } from './test-runs/test-step.mjs';
 
 import { resolveTypeChecker, typeCheck } from './python-types.mjs';
@@ -228,5 +229,9 @@ export function toolVersions(context) {
 }
 
 export function mutationVersions(context) {
-  return [`mutmut@${probeVersion(context, MUTMUT_VERSION_PROBE)}`, pytestLabel(context)].join(';');
+  return [
+    `mutmut@${probeVersion(context, MUTMUT_VERSION_PROBE)}`,
+    pytestLabel(context),
+    ...mutationRunnerLabels(context),
+  ].join(';');
 }

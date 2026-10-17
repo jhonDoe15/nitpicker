@@ -5,9 +5,8 @@ import { diffFromBase } from '../../../../core/tooling/git/base-diff.mjs';
 import { collectImports, importEdges } from '../analysis/python-coupling.mjs';
 import { META_SUFFIX, MUTANTS_DIRECTORY, metaFiles } from './python-mutation-data.mjs';
 import { run } from '../execution/python-process.mjs';
+import { TEST_PATH } from '../execution/python-test-files.mjs';
 
-const TEST_FILE = /(?:^|\/)(?:tests?_[^/]*|[^/]*_tests?|tests|conftest)\.py$/u;
-const TEST_DIRECTORY = /(?:^|\/)tests?\//u;
 const REUSABLE_STATUSES = ['M', 'A'];
 
 function parseNameStatus(listing) {
@@ -48,8 +47,7 @@ function isMutatedSourceChange({ status, file, prefix }, sourceRoots) {
   const relative = file.slice(prefix.length);
   return (
     relative.endsWith('.py') &&
-    !TEST_FILE.test(relative) &&
-    !TEST_DIRECTORY.test(relative) &&
+    !TEST_PATH.test(relative) &&
     sourceRoots.some((root) => root === '.' || relative.startsWith(`${root}/`))
   );
 }
