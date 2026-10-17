@@ -41,15 +41,18 @@ function logicalLines(text) {
   return text.replaceAll(/\\\r?\n/gu, ' ').split(/\r?\n/u);
 }
 
+function appendComment(entry, comment) {
+  if (entry !== undefined) {
+    entry.via += ` ${comment.slice(1)}`;
+  }
+}
+
 function entriesOf(text) {
   const entries = [];
   for (const line of logicalLines(text)) {
     const trimmed = line.trim();
     if (trimmed.startsWith('#')) {
-      const last = entries.at(-1);
-      if (last !== undefined) {
-        last.via += ` ${trimmed.slice(1)}`;
-      }
+      appendComment(entries.at(-1), trimmed);
     } else if (trimmed !== '') {
       entries.push({ line: trimmed, via: /\s#(.*)$/u.exec(trimmed)?.[1] ?? '' });
     }
