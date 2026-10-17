@@ -55,6 +55,17 @@ describe('container image Dockerfile', () => {
     ).toBe(true);
   });
 
+  it('provides the package managers that projects use', () => {
+    expect(instruction('ENV')).toEqual(['ENV COREPACK_HOME=/opt/corepack']);
+    expect(
+      instruction('RUN')
+        .filter((line) => line.includes('corepack enable'))
+        .map((line) => line.replace(/\s+/g, ' ')),
+    ).toEqual([
+      'RUN corepack enable && mkdir -m 1777 /opt/corepack && npm install --global bun@1.4.2',
+    ]);
+  });
+
   it('marks the workspace as a git safe.directory', () => {
     expect(instruction('RUN').some((line) => line.includes('safe.directory /work'))).toBe(true);
   });

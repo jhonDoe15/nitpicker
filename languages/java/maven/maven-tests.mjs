@@ -3,18 +3,16 @@ import {
   existsSync,
   mkdirSync,
   readdirSync,
-  readFileSync,
   rmSync,
   statSync,
   writeFileSync,
 } from 'node:fs';
 import path from 'node:path';
 import { globToRegExp } from '../../../shared/glob.mjs';
-import { childrenNamed, parseXml } from '../ingest/common.mjs';
 import { runJava } from './maven-command.mjs';
+import { failedCases, failingTestsError, freshReports } from '../builds/test-failures.mjs';
 
 const DEFAULT_ARCHUNIT_INCLUDES = '**/*ArchTest.class,**/*ArchitectureTest.class';
-const MAX_LISTED_FAILURES = 10;
 
 export function archunitMatcher(includes = DEFAULT_ARCHUNIT_INCLUDES) {
   const patterns = includes
@@ -38,15 +36,6 @@ function classFiles(directory) {
     : [];
 }
 
-export function freshReports(directory, since) {
-  return existsSync(directory)
-    ? readdirSync(directory)
-        .filter((name) => /^TEST-.*\.xml$/u.test(name))
-        .map((name) => path.join(directory, name))
-        .filter((file) => statSync(file).mtimeMs >= since)
-    : [];
-}
-
 export function testReportDirectories(module) {
   const surefire = ['surefire', module.surefireReports];
   const shared = path.resolve(module.failsafeReports) === path.resolve(module.surefireReports);
@@ -55,26 +44,6 @@ export function testReportDirectories(module) {
 
 export function suiteNameOf(report) {
   return path.basename(report).replace(/^TEST-|\.xml$/gu, '');
-}
-
-function failedCases(file) {
-  const root = parseXml(readFileSync(file, 'utf8'));
-  const suites = root.name === 'testsuites' ? childrenNamed(root, 'testsuite') : [root];
-  return suites.flatMap((suite) =>
-    childrenNamed(suite, 'testcase')
-      .filter(
-        (testCase) =>
-          childrenNamed(testCase, 'failure').length + childrenNamed(testCase, 'error').length > 0,
-      )
-      .map((testCase) => {
-        const problem = [
-          ...childrenNamed(testCase, 'failure'),
-          ...childrenNamed(testCase, 'error'),
-        ][0];
-        const message = (problem.attrs.message ?? problem.attrs.type ?? '').split('\n')[0];
-        return `${testCase.attrs.classname ?? suite.attrs.name}.${testCase.attrs.name}: ${message}`;
-      }),
-  );
 }
 
 export function collectTestResults({ module, reportDir, since, isArchunit }) {
@@ -93,18 +62,7 @@ export function collectTestResults({ module, reportDir, since, isArchunit }) {
   }
   requireArchunitRun(module, reports, isArchunit);
   if (failures.length > 0) {
-    const listed = failures.slice(0, MAX_LISTED_FAILURES).map((failure) => `  ${failure}`);
-    const more =
-      failures.length > MAX_LISTED_FAILURES
-        ? [`  and ${String(failures.length - MAX_LISTED_FAILURES)} more`]
-        : [];
-    throw new Error(
-      [
-        `Tests fail in ${module.basedir}; nitpicker needs a passing test suite for coverage and mutation testing:`,
-        ...listed,
-        ...more,
-      ].join('\n'),
-    );
+    throw failingTestsError(module.basedir, failures);
   }
   return reports.length > 0;
 }

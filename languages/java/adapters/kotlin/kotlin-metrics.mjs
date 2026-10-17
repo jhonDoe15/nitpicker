@@ -1,8 +1,9 @@
 import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { ingestCrapFunctions } from '../../ingest/crap.mjs';
+import { ownRange } from '../../ingest/units/unit-coverage.mjs';
 import { MESSAGES, RULE_IDS } from '../../../../shared/policy.mjs';
-import { hash } from '../../../../shared/rules/finding-helpers.mjs';
+import { hash, repeatsInSource } from '../../../../shared/rules/finding-helpers.mjs';
 import { methodText, structureFindings } from '../metrics/java-structure.mjs';
 
 const METRICS_REPORT = 'kotlin-metrics.json';
@@ -13,10 +14,6 @@ export function readKotlinMetrics(reportRoot) {
   return existsSync(report)
     ? JSON.parse(readFileSync(report, 'utf8'))
     : { functions: [], files: [] };
-}
-
-function repeatsInClass(entry) {
-  return entry.name.endsWith('<init>');
 }
 
 const RETURN_EARLY = 'Return early instead of nesting.';
@@ -34,33 +31,15 @@ function adviseInitializers(findings, functions) {
 }
 
 export function readKotlinStructureFindings(metrics, projectRoot) {
-  return adviseInitializers(
-    structureFindings(
-      metrics.functions.map((entry) => ({
-        ...entry,
-        numberedAmongSameSource: repeatsInClass(entry),
-      })),
-      projectRoot,
-    ),
-    metrics.functions,
-  );
+  return adviseInitializers(structureFindings(metrics.functions, projectRoot), metrics.functions);
 }
 
 export function selectKotlinMethods(fn, candidates, siblings) {
-  const inner = siblings.filter(
-    (other) =>
-      other !== fn &&
-      other.start >= fn.start &&
-      other.end <= fn.end &&
-      (other.start > fn.start || other.end < fn.end),
-  );
   return withoutStaticBridges(
-    candidates.filter(
-      (method) =>
-        !method.name.endsWith(DEFAULT_ARGUMENTS_SUFFIX) &&
-        method.line >= fn.start &&
-        method.line <= fn.end &&
-        !inner.some((other) => method.line >= other.start && method.line <= other.end),
+    ownRange(
+      fn,
+      candidates.filter((method) => !method.name.endsWith(DEFAULT_ARGUMENTS_SUFFIX)),
+      siblings,
     ),
   );
 }
@@ -98,7 +77,8 @@ export function readKotlinCrapFindings(metrics, { projectRoot, jacoco, crapLimit
       start: entry.start,
       end: entry.end,
       lineScoped: entry.initializer === true,
-      numberedAmongSameSource: repeatsInClass(entry),
+      lineFallback: entry.lambda === true,
+      numberedAmongSameSource: repeatsInSource(entry.name),
     }));
   return ingestCrapFunctions(functions, jacoco, {
     jacocoKeys: jacocoKeys(metrics),

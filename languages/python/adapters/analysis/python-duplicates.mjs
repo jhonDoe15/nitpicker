@@ -22,7 +22,7 @@ export function runDuplicates(context) {
       cwd: context.projectRoot,
       roots: existingSourceRoots(context.projectRoot, context.project.sourceRoots),
       format: 'python',
-      ignore: nonProductionGlobs(context.project.sourceRoots),
+      ignore: nonProductionGlobs(context.project.sourceRoots, context.projectRoot),
       reportRoot: context.reportRoot,
       together: true,
     });
@@ -53,19 +53,10 @@ export function importsOnly(fragment) {
   });
 }
 
-function withExceptionRoute(finding) {
-  return finding.rule === 'duplicate-clone'
-    ? {
-        ...finding,
-        message: `${finding.message} If the repetition is intended, add ${finding.path} to "exclude" in nitpicker.config.json.`,
-      }
-    : finding;
-}
-
 export function readDuplicateFindings(reportRoot) {
   const { runs } = JSON.parse(readFileSync(path.join(reportRoot, DUPLICATES_REPORT), 'utf8'));
   const clones = runs
     .flatMap(({ root, report }) => jscpdClones(report, [root]))
     .filter((clone) => !importsOnly(clone.fragment ?? ''));
-  return evaluateDuplicates(clones, DUPLICATES_TOOL).map(withExceptionRoute);
+  return evaluateDuplicates(clones, DUPLICATES_TOOL);
 }

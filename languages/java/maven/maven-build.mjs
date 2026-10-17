@@ -1,11 +1,10 @@
 import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync, existsSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
-import { runJava, runMaven } from './maven-command.mjs';
-import { runCheckstyle, runFormat, runSpotbugs } from './maven-lint.mjs';
+import { javaCommand, runJava, runMaven } from './maven-command.mjs';
+import { runCheckstyle, runFormat, runSpotbugs, runPmd } from './maven-lint.mjs';
 import { runGuards } from './guards/maven-guards.mjs';
-import { runPmd } from './guards/maven-pmd.mjs';
-import { runJdeps } from './coupling/maven-jdeps.mjs';
+import { runJdeps as runGuardJdeps } from './coupling/maven-jdeps.mjs';
 import {
   lifecycleArgs,
   moduleClasspaths,
@@ -19,15 +18,18 @@ import {
   runJacocoReport,
   runPit,
 } from './maven-tests.mjs';
+import { checkstyleIndentation } from '../adapters/style/java-style.mjs';
 import { copyTestResults } from './results/maven-test-results.mjs';
-import { jacocoPlugin, MAVEN_PLUGINS, resolveTools } from './maven-tools.mjs';
+import { formatTool, jacocoPlugin, MAVEN_PLUGINS, resolveTools } from './maven-tools.mjs';
 import { processorTool, runErrorProne } from './errorprone/maven-errorprone.mjs';
 import { GRADLE_DIRECTORY, readPinnedTools } from '../builds/java-build.mjs';
+import { writeJdepsReports } from '../builds/jdeps-reports.mjs';
 
 export const MAVEN_REPORT_DIRECTORY = 'target/nitpicker';
 const OWN_JACOCO_EXEC = 'nitpicker-jacoco.exec';
 const SPRING_JAR = /^spring-(?:context|boot)-.*\.jar$/u;
 const GUAVA_JAR = /^guava-\d.*\.jar$/u;
+const AWAITILITY_JAR = /^awaitility-\d.*\.jar$/u;
 const PROJECT_CHECKS_OFF = [
   '-Dcheckstyle.skip=true',
   '-Dpmd.skip=true',
@@ -94,12 +96,22 @@ function runStructure(module, reportDir) {
   });
 }
 
+function runJdeps(module, reportDir) {
+  writeJdepsReports({
+    command: javaCommand('jdeps'),
+    cwd: module.basedir,
+    mainDirectory: module.outputDirectory,
+    testDirectory: module.testOutputDirectory,
+    reportDir,
+  });
+}
+
 function relativeRoots(module, roots) {
   return roots.map((root) => relativeTo(module.basedir, root));
 }
 
-function hasGuava(classpath) {
-  return classpath.some((entry) => GUAVA_JAR.test(path.basename(entry)));
+function hasJar(classpath, jar) {
+  return classpath.some((entry) => jar.test(path.basename(entry)));
 }
 
 function writeManifest({ module, reportDir, pinned, spring, classpaths }) {
@@ -112,8 +124,10 @@ function writeManifest({ module, reportDir, pinned, spring, classpaths }) {
       testSourceRoots: relativeRoots(module, module.testSourceRoots),
       resourceRoots: relativeRoots(module, module.resourceRoots),
       spring,
-      guava: hasGuava(classpaths.mainCompile),
-      testGuava: hasGuava(classpaths.testCompile),
+      guava: hasJar(classpaths.mainCompile, GUAVA_JAR),
+      testGuava: hasJar(classpaths.testCompile, GUAVA_JAR),
+      testAwaitility: hasJar(classpaths.testCompile, AWAITILITY_JAR),
+      published: module.published,
     }),
   );
 }
@@ -124,14 +138,15 @@ function readClasspaths(work, module) {
 }
 
 function analyzeSources(context, project) {
-  const { module, reportDir, tools, classpaths, configs, pinned, javaStyle } = context;
+  const { module, reportDir, tools, classpaths, configs, pinned, style } = context;
   runPmd({ module, reportDir, tools, classpaths, configs, spring: context.spring });
   runSpotbugs({ module, reportDir, tools });
   runErrorProne({ module, reportDir, tools, classpaths });
-  runFormat({ module, reportDir, tools, javaStyle });
-  runCheckstyle({ module, reportDir, tools, configs, pinned });
+  runFormat({ module, reportDir, tools, javaStyle: style.javaStyle });
+  runCheckstyle({ module, reportDir, tools, configs, pinned, style });
   runStructure(module, reportDir);
   runJdeps(module, reportDir);
+  runGuardJdeps(module, reportDir);
   runGuards({ module, reportDir, tools, classpaths }, project);
 }
 
@@ -218,7 +233,10 @@ export function runMavenPreset(projectRoot, { maven, policy = {}, configs }) {
       maven,
       pinned,
       launcherVersions: missingLauncherVersions(analyzed),
-      extraTools: modules.map((module) => processorTool(module.compiler)).filter(Boolean),
+      extraTools: [
+        ...modules.map((module) => processorTool(module.compiler)).filter(Boolean),
+        ...formatTool(policy.javaStyle, pinned),
+      ],
     });
     const project = {
       projectRoot,
@@ -234,7 +252,10 @@ export function runMavenPreset(projectRoot, { maven, policy = {}, configs }) {
         configs,
         since,
         project,
-        javaStyle: policy.javaStyle,
+        style: {
+          javaStyle: policy.javaStyle,
+          indentation: checkstyleIndentation(policy.conventions),
+        },
       });
     }
     return modules.map((module) => module.basedir);

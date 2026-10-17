@@ -19,13 +19,13 @@ import { readGuardFindings } from '../../guards/index.mjs';
 import { methodText, readJavaStructureFindings } from '../metrics/java-structure.mjs';
 import { readClassLimitFindings } from '../size/class-limits.mjs';
 import { hash } from '../../../../shared/rules/finding-helpers.mjs';
-import { ingestFormatCheck } from '../../ingest/formatting/format-check.mjs';
+import { formatFindings } from './format-findings.mjs';
 import { readSlowTestFindings } from '../test-times/slow-tests.mjs';
+import { readTestConsoleFindings } from '../test-times/console-findings.mjs';
 import { ingestJacoco } from '../../ingest/coverage-reports/jacoco.mjs';
 import { ingestPit } from '../../ingest/pit.mjs';
 import { ingestJacocoBranches } from '../../ingest/coverage-reports/jacoco-branches.mjs';
-import { projectRelative } from '../../ingest/sarif.mjs';
-import { sarifFindings } from './java-sarif-reports.mjs';
+import { sarifFindings } from './sarif/sarif-reports.mjs';
 import { projectWideFindings } from '../../builds/project-wide.mjs';
 import { applyRuleMessages } from '../../messages/rule-messages.mjs';
 import {
@@ -39,7 +39,6 @@ import {
 const CHECKSTYLE_SOURCE_SET_REPORT = /^checkstyle-.+\.xml$/u;
 const MODULE_IDENTITY_SEPARATOR = '@';
 const ROOT_MODULE = 'root';
-const PROJECT_REPORTS = 'project';
 
 export function readJavaFindings(projectRoot, options = {}) {
   const { reportBase, report, preset = 'java', projectWide = true } = options;
@@ -67,23 +66,26 @@ export function readJavaFindings(projectRoot, options = {}) {
                 reportRoot: module.reportRoot,
                 qualifier: module.key === ROOT_MODULE ? '' : module.dir,
                 sourceRoots: module.manifest.sourceRoots ?? [],
+                kotlinSourceRoots: module.manifest.kotlinSourceRoots ?? [],
+                resourceRoots: module.manifest.resourceRoots ?? [],
               })),
-              mergedRoot: path.join(reportBase, PROJECT_REPORTS),
+              mergedRoot: path.join(reportBase, 'project'),
               manifest,
               kotlin: kotlinPreset,
               policy: options,
             })
           : []),
         ...readInlineSuppressionFindings(projectRoot, lintedRoots(manifest)),
-        ...springFindings(projectRoot, manifest),
+        ...springFindings(projectRoot, manifest, options),
       ],
-      { preset, testRoots: manifest.testSourceRoots ?? [] },
+      { preset, testRoots: manifest.testSourceRoots ?? [], javaStyle: options.javaStyle },
     ),
   };
 }
 
 function moduleContextFindings(projectRoot, module, { manifest, options }) {
   const preset = options.preset ?? 'java';
+  const { fileLimits: thresholds, exceptions, modulePath } = options;
   return readModuleFindings(
     {
       projectRoot,
@@ -95,26 +97,35 @@ function moduleContextFindings(projectRoot, module, { manifest, options }) {
       lintedRoots: lintedRoots(module.manifest),
       allSourceRoots: manifest.sourceRoots,
       kotlin: preset === 'kotlin' && module.manifest.kotlin === true,
+      formatAdvice: options.formatAdvice,
+      conventions: options.conventions,
       javaStyle: options.javaStyle,
-      classLimits: {
-        thresholds: options.fileLimits,
-        exceptions: options.exceptions,
-        modulePath: options.modulePath,
-      },
+      classLimits: { thresholds, exceptions, modulePath },
       jacoco: readModuleJacoco(module, preset),
       mainCheckstyle: readMainCheckstyle(projectRoot, module, preset),
       testTimes: {
         limits: options.testSeconds,
         baseline: options.baseline,
+        modulePath,
+      },
+      testConsole: {
+        allow: options.testConsoleAllow,
+        exceptions: options.exceptions,
         modulePath: options.modulePath,
+        moduleRoot: module.dir,
       },
     },
     options.crapLimit,
   );
 }
 
+function testRootsOf(manifest) {
+  return [...(manifest.testSourceRoots ?? []), ...(manifest.kotlinTestSourceRoots ?? [])];
+}
+
 function readModuleFindings(context, crapLimit) {
   const { reportRoot, projectRoot, kotlin, jacoco } = context;
+  const testRoots = testRootsOf(context.manifest);
   return [
     ...sarifFindings(context),
     ...readErrorProneFindings(context),
@@ -132,15 +143,8 @@ function readModuleFindings(context, crapLimit) {
       ...context,
       locate: sourceLocator(projectRoot, lintedRoots(context.manifest)),
     }),
-    ...readSlowTestFindings({
-      reportRoot,
-      projectRoot,
-      testRoots: [
-        ...(context.manifest.testSourceRoots ?? []),
-        ...(context.manifest.kotlinTestSourceRoots ?? []),
-      ],
-      ...context.testTimes,
-    }),
+    ...readSlowTestFindings({ reportRoot, projectRoot, testRoots, ...context.testTimes }),
+    ...readTestConsoleFindings({ reportRoot, projectRoot, testRoots }, context.testConsole),
   ];
 }
 
@@ -161,23 +165,21 @@ function lintedRoots({ sourceRoots = [], testSourceRoots = [] }) {
   return [...new Set([...sourceRoots, ...testSourceRoots])];
 }
 
-function springFindings(projectRoot, manifest) {
+function baselineRootOf({ baseline, modulePath }) {
+  return baseline?.snapshot === 'head' && baseline.baselineRoot !== undefined
+    ? path.join(baseline.baselineRoot, modulePath ?? '')
+    : undefined;
+}
+
+function springFindings(projectRoot, manifest, options) {
   return manifest.spring === true
     ? readSpringConfigFindings(projectRoot, {
         sourceRoots: manifest.sourceRoots,
         resourceRoots: manifest.resourceRoots,
+        testSourceRoots: manifest.testSourceRoots,
+        baselineRoot: baselineRootOf(options),
       })
     : [];
-}
-
-function formatFindings({ reportRoot, roots, javaStyle }) {
-  const formatLines = readFileSync(path.join(reportRoot, 'format.txt'), 'utf8')
-    .split(/\r?\n/)
-    .map((line) => projectRelative(line.trim(), roots) ?? line);
-  return ingestFormatCheck(formatLines.join('\n'), {
-    tool: 'google-java-format',
-    message: `File is not formatted with google-java-format${javaStyle === 'aosp' ? ' --aosp' : ''}`,
-  }).findings;
 }
 
 function checkstyleFindings({ reportRoot, roots, projectRoot, mainCheckstyle }) {

@@ -46,6 +46,13 @@ function pmd(root, { release = '17', tests: testDirectories, pmdConfig, spring =
   const reportDir = path.join(basedir, 'target/nitpicker');
   mkdirSync(reportDir, { recursive: true });
   writeFileSync(path.join(reportDir, 'pmd.sarif'), '');
+  if (pmdConfig.project !== undefined) {
+    pmdConfig = { ...pmdConfig, project: path.join(root, 'project-pmd.xml') };
+    writeFileSync(
+      pmdConfig.project,
+      '<ruleset xmlns="http://pmd.sourceforge.net/ruleset/2.0.0" name="project"/>',
+    );
+  }
   const testSourceRoots = testDirectories.map(([directory]) => path.join(basedir, directory));
   runPmd({
     module: {
@@ -137,12 +144,12 @@ describe.skipIf(process.platform === 'win32')('runPmd rulesets', () => {
 
     expect(run.option('--rulesets')).toBe(
       [
-        PMD_RULESET,
-        '/custom/pmd.xml',
+        path.join(run.reportDir, 'pmd-nitpicker.xml'),
+        path.join(run.reportDir, 'pmd-project.xml'),
+        path.join(run.reportDir, 'pmd-tests.xml'),
+        path.join(run.reportDir, 'pmd-main.xml'),
         path.join(run.reportDir, 'pmd-guards-main.xml'),
         path.join(run.reportDir, 'pmd-test-honesty.xml'),
-        path.join(run.reportDir, 'pmd-tests.xml'),
-        path.join(run.reportDir, 'pmd-spring-main.xml'),
       ].join(','),
     );
     expect(run.text('pmd-test-honesty.xml')).toBe(
@@ -155,13 +162,7 @@ describe.skipIf(process.platform === 'win32')('runPmd rulesets', () => {
         ref: HONESTY_RULES,
       }),
     );
-    expect(run.text('pmd-spring-main.xml')).toBe(
-      ruleset({
-        name: 'nitpicker-spring-main',
-        patterns: [`  <exclude-pattern>${run.testSourceRoots[0]}/.*</exclude-pattern>`],
-        ref: SPRING_RULES,
-      }),
-    );
+    expect(run.text('pmd-main.xml')).toContain(SPRING_RULES);
   });
 
   it('leaves the spring ruleset out when the project is not a spring project', () => {
@@ -170,26 +171,25 @@ describe.skipIf(process.platform === 'win32')('runPmd rulesets', () => {
     expect(run.option('--rulesets')).toBe(
       [
         PMD_RULESET,
+        path.join(run.reportDir, 'pmd-tests.xml'),
+        path.join(run.reportDir, 'pmd-main.xml'),
         path.join(run.reportDir, 'pmd-guards-main.xml'),
         path.join(run.reportDir, 'pmd-test-honesty.xml'),
-        path.join(run.reportDir, 'pmd-tests.xml'),
       ].join(','),
     );
   });
 
-  it.each([
-    ['a project ruleset', { nitpicker: false, project: '/custom/pmd.xml' }, '/custom/pmd.xml'],
-    ['no project ruleset', { nitpicker: false }, ''],
-  ])(
-    'adds no nitpicker rulesets or guard wrappers with %s when nitpicker is off',
-    (_, config, expected) => {
-      const run = pmd(workspace(), { tests: TEST_DIRECTORY, pmdConfig: config, spring: true });
-
-      expect(run.option('--rulesets')).toBe(expected);
-      expect(run.exists('pmd-guards-main.xml')).toBe(false);
-      expect(run.exists('pmd-test-honesty.xml')).toBe(false);
-    },
-  );
+  it('keeps guard rules with the project layer first', () => {
+    const run = pmd(workspace(), {
+      tests: TEST_DIRECTORY,
+      pmdConfig: { project: '/custom/pmd.xml', projectWins: true },
+      spring: true,
+    });
+    expect(run.option('--rulesets')).toContain(path.join(run.reportDir, 'pmd-project.xml'));
+    expect(run.exists('pmd-guards-main.xml')).toBe(true);
+    expect(run.exists('pmd-test-honesty.xml')).toBe(true);
+    expect(run.text('pmd-main.xml')).toContain(SPRING_RULES);
+  });
 
   it('writes no test honesty wrapper when no test directory exists', () => {
     const run = pmd(workspace(), {
@@ -200,8 +200,9 @@ describe.skipIf(process.platform === 'win32')('runPmd rulesets', () => {
     expect(run.option('--rulesets')).toBe(
       [
         PMD_RULESET,
-        path.join(run.reportDir, 'pmd-guards-main.xml'),
         path.join(run.reportDir, 'pmd-tests.xml'),
+        path.join(run.reportDir, 'pmd-main.xml'),
+        path.join(run.reportDir, 'pmd-guards-main.xml'),
       ].join(','),
     );
     expect(run.exists('pmd-test-honesty.xml')).toBe(false);

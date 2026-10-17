@@ -20,6 +20,7 @@ const PMD_CATEGORIES = [
 ].map((category) => `category/java/${category}.xml`);
 const RULE_FILES = [...PMD_CATEGORIES, 'google_checks.xml', 'findbugs.xml'];
 const EXTRA_PMD_RULES = ['AvoidCatchingGenericException', 'UnnecessaryImport'];
+const EXTRA_CHECKSTYLE_RULES = ['UnusedImports'];
 const CHECKSTYLE_INFRASTRUCTURE = /^(?:Checker|TreeWalker)$|Filter$|^Suppress/u;
 
 function pinnedVersion(tool) {
@@ -104,7 +105,10 @@ describe.skipIf(!enabled)('Java rule catalogs', () => {
           ...PMD_CATEGORIES.flatMap((file) => pmdRules(read(file))),
           ...EXTRA_PMD_RULES,
         ]),
-        checkstyle: sorted(checkstyleRules(read('google_checks.xml'))),
+        checkstyle: sorted([
+          ...checkstyleRules(read('google_checks.xml')),
+          ...EXTRA_CHECKSTYLE_RULES,
+        ]),
         spotbugs: sorted(spotbugsRules(read('findbugs.xml'))),
       });
     },

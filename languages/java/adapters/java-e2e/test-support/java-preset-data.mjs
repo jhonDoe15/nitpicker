@@ -241,3 +241,16 @@ export const BRANCHY_ADDED = BRANCHY.replace(
 export function repeated(count, entry) {
   return Array(count).fill(entry);
 }
+
+export const PALANTIR_MESSY = 'package demo;\n\nclass Messy {\n  int a;\n}\n';
+
+export const PALANTIR_ROOMY = `package demo;
+
+public final class Roomy {
+    private Roomy() {}
+
+    public static String describe(String firstName, String lastName, String city, String country, int age) {
+        return firstName + lastName + city + country + age;
+    }
+}
+`;
