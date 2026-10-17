@@ -65,7 +65,7 @@ export function validateConfig(config) {
   validateDisable(config.disable);
   validateReact(config.react);
   validateI18n(config.i18n);
-  validateTestConsole(config.testConsole);
+  validateTestConsole(config.testConsole, config.preset);
   validateOptional(config);
   validateProjectConventions(config);
   return config;
