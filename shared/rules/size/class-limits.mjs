@@ -1,4 +1,4 @@
-import { CLASS_LIMIT_DEFAULTS } from './size-policy.mjs';
+import { CLASS_LIMIT_DEFAULTS } from '../../project-rules/size-rules.mjs';
 import { RULE_IDS } from '../../policy.mjs';
 import { nextOccurrence } from '../finding-helpers.mjs';
 import { exceptionMatcher, exceptionText } from '../exceptions.mjs';
@@ -13,18 +13,20 @@ const LIMITS = [
 export function classLimitFindings(classes, options) {
   const limits = { ...CLASS_LIMIT_DEFAULTS, ...options.thresholds };
   const isExcepted = exceptionMatcher(options.exceptions ?? []);
+  const projectPath = options.projectPath ?? ((file) => file);
   const occurrences = new Map();
   const found = classes.flatMap((entry) => {
     const occurrence = nextOccurrence(occurrences, `${entry.file}\0${entry.name}`);
     return LIMITS.filter(({ metric, threshold, messages }) => {
       const rule = RULE_IDS[messages];
-      return entry[metric] > limits[threshold] && !isExcepted(rule, entry.file);
+      return entry[metric] > limits[threshold] && !isExcepted(rule, projectPath(entry.file));
     }).map((limit) =>
       classFinding(options.analyzerName, {
         entry,
         occurrence,
         limit,
         max: limits[limit.threshold],
+        exceptionPath: projectPath(entry.file),
       }),
     );
   });
@@ -48,7 +50,7 @@ function largestFirstPerFile(found) {
   return ordered;
 }
 
-function classFinding(analyzerName, { entry, occurrence, limit, max }) {
+function classFinding(analyzerName, { entry, occurrence, limit, max, exceptionPath }) {
   const rule = RULE_IDS[limit.messages];
   const value = entry[limit.metric];
   const messages =
@@ -68,7 +70,7 @@ function classFinding(analyzerName, { entry, occurrence, limit, max }) {
         name: label,
         value,
         limit: max,
-        exception: exceptionText(rule, entry.file),
+        exception: exceptionText(rule, exceptionPath),
         base: '{base}',
       }),
     },
