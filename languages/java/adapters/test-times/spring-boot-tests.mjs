@@ -27,11 +27,19 @@ export function qualifiedName(text, name) {
   return owner === undefined ? name : `${owner}.${name}`;
 }
 
+export function typeSource(locate, directory, simple) {
+  return (
+    locate(directory, `${simple}.java`) ??
+    locate(directory, `${simple}.kt`) ??
+    locate(directory, `${simple}.groovy`)
+  );
+}
+
 export function sourceOfType(locate, projectRoot, qualified) {
   const parts = qualified.split('.');
   const simple = parts.pop();
   const directory = parts.join('/');
-  const relative = locate(directory, `${simple}.java`) ?? locate(directory, `${simple}.kt`);
+  const relative = typeSource(locate, directory, simple);
   const file = relative === undefined ? undefined : path.join(projectRoot, relative);
   return file !== undefined && existsSync(file) ? { relative, file } : undefined;
 }
