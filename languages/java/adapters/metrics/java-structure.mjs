@@ -6,6 +6,7 @@ import { hash, repeatsInSource } from '../../../../shared/rules/finding-helpers.
 import { evaluateStructure } from '../../../../shared/rules/structure.mjs';
 import { javaFolderDepthFindings } from '../size/folder-depth.mjs';
 import { javaLineLengthFindings } from '../size/line-length.mjs';
+import { javaLineLength } from '../style/java-style.mjs';
 
 const STRUCTURE_REPORT = 'structure.json';
 const STRUCTURE_TOOL = 'structure';
@@ -88,7 +89,10 @@ export function readJavaFileLimitFindings(projectRoot, { manifest, kotlin = fals
       ...options,
       checks: ['fileLines', 'folderFiles'],
     }),
-    ...javaLineLengthFindings(javaFiles(projectRoot, entries), options),
+    ...javaLineLengthFindings(javaFiles(projectRoot, entries), {
+      ...options,
+      lineLength: javaLineLength(policy.conventions),
+    }),
     ...javaFolderDepthFindings(entries, { ...options, rootEntries }),
   ];
 }
