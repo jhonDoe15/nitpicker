@@ -201,14 +201,17 @@ describe('Python class limits', () => {
     ).toEqual(['Class Memory extends 4 classes deep']);
   });
   it('walks a deep diamond hierarchy in linear time', () => {
-    const classes = [classEntry('src/app/base.py', 'C0'), classEntry('src/app/base.py', 'D0')];
-    for (let index = 1; index <= 40; index += 1) {
-      const bases = [`C${String(index - 1)}`, `D${String(index - 1)}`];
-      classes.push(
-        classEntry('src/app/base.py', `C${String(index)}`, { bases }),
-        classEntry('src/app/base.py', `D${String(index)}`, { bases }),
+    const ladder = Array.from({ length: 40 }, (_, step) => {
+      const bases = [`C${String(step)}`, `D${String(step)}`];
+      return [`C${String(step + 1)}`, `D${String(step + 1)}`].map((name) =>
+        classEntry('src/app/base.py', name, { bases }),
       );
-    }
+    });
+    const classes = [
+      classEntry('src/app/base.py', 'C0'),
+      classEntry('src/app/base.py', 'D0'),
+      ...ladder.flat(),
+    ];
     const started = performance.now();
 
     const findings = pythonClassLimitFindings(
@@ -218,9 +221,11 @@ describe('Python class limits', () => {
     );
 
     expect(performance.now() - started).toBeLessThan(1000);
-    expect(findings.map(({ message }) => message.split(' (')[0])).toContain(
-      'Class D40 extends 40 classes deep',
-    );
+    expect(
+      findings
+        .map(({ message }) => message.split(' (')[0])
+        .filter((message) => message.startsWith('Class D40 ')),
+    ).toEqual(['Class D40 extends 40 classes deep']);
   });
   it('checks only production modules', () => {
     const report = {

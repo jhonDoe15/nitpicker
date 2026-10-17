@@ -2,9 +2,11 @@ const DEFINITION = /^\s*(?:async\s+)?def\s+(\w+)\s*\(/u;
 const CLASS = /^\s*class\s+\w+/u;
 const DECORATOR = /^\s*@/u;
 const MARKS = /^\s*pytestmark\s*[:=]/u;
-const OPENING = new Set(['(', '[', '{']);
-const CLOSING = new Set([')', ']', '}']);
-const QUOTES = new Set(['"', "'"]);
+const TOKEN = /\\.?|"""|'''|["'#()[\]{}]/gu;
+const QUOTES = new Set(['"', "'", '"""', "'''"]);
+const DEPTH = { '(': 1, '[': 1, '{': 1, ')': -1, ']': -1, '}': -1 };
+const COMMENT = '#';
+const CONTINUATION = '\\';
 
 function indentOf(line) {
   return /^\s*/u.exec(line)[0].length;
@@ -12,59 +14,45 @@ function indentOf(line) {
 
 function isBlank(line) {
   const text = line.trim();
-  return text === '' || text.startsWith('#');
+  return text === '' || text.startsWith(COMMENT);
 }
 
-function quoteAt(line, index) {
-  const tripled = line[index].repeat(3);
-  return line.startsWith(tripled, index) ? tripled : line[index];
+function inString(token, state) {
+  const closes =
+    !token.startsWith(CONTINUATION) &&
+    token.startsWith(state.quote[0]) &&
+    (state.quote.length === 1 || token === state.quote);
+  state.quote = closes ? undefined : state.quote;
 }
 
-function insideString(line, state, index) {
-  if (line[index] === '\\') {
-    return index + 2;
+function inCode(token, state, atEnd) {
+  if (QUOTES.has(token)) {
+    state.quote = token;
+    return;
   }
-  if (line.startsWith(state.quote, index)) {
-    const next = index + state.quote.length;
-    state.quote = undefined;
-    return next;
-  }
-  return index + 1;
+  state.depth = Math.max(0, state.depth + (DEPTH[token] ?? 0));
+  state.continued = token === CONTINUATION && atEnd;
 }
 
 function scanLine(line, state) {
   state.continued = false;
-  let index = 0;
-  while (index < line.length) {
+  for (const { 0: token, index } of line.matchAll(TOKEN)) {
     if (state.quote !== undefined) {
-      index = insideString(line, state, index);
-      continue;
-    }
-    const character = line[index];
-    if (character === '#') {
+      inString(token, state);
+    } else if (token === COMMENT) {
       break;
+    } else {
+      inCode(token, state, index + token.length === line.length);
     }
-    if (QUOTES.has(character)) {
-      state.quote = quoteAt(line, index);
-      index += state.quote.length;
-      continue;
-    }
-    state.depth += OPENING.has(character) ? 1 : 0;
-    state.depth = Math.max(0, state.depth - (CLOSING.has(character) ? 1 : 0));
-    state.continued = character === '\\' && index === line.length - 1;
-    index += 1;
   }
-  if (state.quote?.length === 1) {
-    state.quote = undefined;
-  }
+  state.quote = state.quote?.length === 1 ? undefined : state.quote;
 }
 
 function logicalLines(lines) {
   const state = { depth: 0, quote: undefined, continued: false };
   const logical = [];
   for (const [index, line] of lines.entries()) {
-    const continues = state.depth > 0 || state.quote !== undefined || state.continued;
-    if (continues && logical.length > 0) {
+    if (state.depth > 0 || state.quote !== undefined || state.continued) {
       logical.at(-1).last = index;
     } else {
       logical.push({ first: index, last: index, indent: indentOf(line), blank: isBlank(line) });
@@ -80,42 +68,31 @@ function textOf(lines, first, last) {
 
 function bodyEnd(logical, position) {
   const { indent } = logical[position];
-  let last = position;
-  for (let next = position + 1; next < logical.length; next += 1) {
-    if (!logical[next].blank) {
-      if (logical[next].indent <= indent) {
-        break;
-      }
-      last = next;
-    }
-  }
-  return last;
+  const rest = logical.slice(position + 1);
+  const end = rest.findIndex((entry) => !entry.blank && entry.indent <= indent);
+  const body = end === -1 ? rest : rest.slice(0, end);
+  return position + 1 + body.findLastIndex((entry) => !entry.blank);
 }
 
-function decoratorsAbove(source, position) {
-  const { logical, lines } = source;
+function decoratorsAbove({ logical, lines }, position) {
   const { indent } = logical[position];
-  let first = position;
-  for (let previous = position - 1; previous >= 0; previous -= 1) {
-    const entry = logical[previous];
-    if (!entry.blank) {
-      if (entry.indent !== indent || !DECORATOR.test(lines[entry.first])) {
-        break;
-      }
-      first = previous;
-    }
-  }
-  return first;
+  const above = logical
+    .slice(0, position)
+    .map((entry, index) => ({ entry, index }))
+    .filter(({ entry }) => !entry.blank)
+    .reverse();
+  const stop = above.findIndex(
+    ({ entry }) => entry.indent !== indent || !DECORATOR.test(lines[entry.first]),
+  );
+  return (stop === -1 ? above : above.slice(0, stop)).at(-1)?.index ?? position;
 }
 
 function ownerOf(logical, position) {
   const { indent } = logical[position];
-  for (let previous = position - 1; previous >= 0; previous -= 1) {
-    if (!logical[previous].blank && logical[previous].indent < indent) {
-      return previous;
-    }
-  }
-  return undefined;
+  const owner = logical
+    .slice(0, position)
+    .findLastIndex((entry) => !entry.blank && entry.indent < indent);
+  return owner === -1 ? undefined : owner;
 }
 
 function markLines(source, from, to) {
@@ -139,13 +116,13 @@ function decoratorText(source, position) {
 
 function classMarks(source, position) {
   const marks = [];
-  let owner = ownerOf(source.logical, position);
-  while (owner !== undefined) {
+  const owners = [ownerOf(source.logical, position)].filter((owner) => owner !== undefined);
+  for (const owner of owners) {
     if (CLASS.test(source.lines[source.logical[owner].first])) {
       const end = bodyEnd(source.logical, owner);
       marks.push(...decoratorText(source, owner), ...markLines(source, owner, end));
     }
-    owner = ownerOf(source.logical, owner);
+    owners.push(...[ownerOf(source.logical, owner)].filter((next) => next !== undefined));
   }
   return marks;
 }

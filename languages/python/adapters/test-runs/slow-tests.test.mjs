@@ -121,7 +121,7 @@ describe('slow pytest tests', () => {
   it('reads an integration mark above a wrapped decorator, and a pytestmark in the class body', () => {
     const projectRoot = directory({
       'tests/test_sync.py':
-        'import pytest\n\n\n@pytest.mark.integration\n@pytest.mark.parametrize(\n    "region",\n    ["eu", "us"],\n)\ndef test_sync(region):\n    pass\n',
+        'import pytest\n\n\n@pytest.mark.integration\n@pytest.mark.parametrize(\n    "region",  # (\n    ["eu)", \'u"s\', """\n)"""],\n)\ndef test_sync(region):\n    pass\n',
       'tests/test_orders.py':
         'import pytest\n\n\nclass TestOrders:\n    pytestmark = [\n        pytest.mark.slow,\n        pytest.mark.integration,\n    ]\n\n    def test_create(self):\n        pass\n',
     });
