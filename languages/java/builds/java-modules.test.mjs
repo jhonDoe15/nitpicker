@@ -214,9 +214,11 @@ describe('readModuleFindings', () => {
       JSON.parse(/\{"rule".*?\}/u.exec(message)?.[0] ?? '{}'),
     );
 
-    expect(offered).toEqual([{ rule: 'class-methods-limit', paths: [main], reason: '...' }]);
-    expect(classLimits([{ rule: 'class-methods-limit', glob: 'app/src/**' }])).toEqual([]);
-    expect(classLimits([{ rule: 'class-methods-limit', glob: 'src/**' }])).toHaveLength(1);
+    expect(offered).toEqual([
+      { rule: 'class-methods-limit', paths: [main], reason: '<why this is intended>' },
+    ]);
+    expect(classLimits([{ rule: 'class-methods-limit', paths: ['app/src/**'] }])).toEqual([]);
+    expect(classLimits([{ rule: 'class-methods-limit', paths: ['src/**'] }])).toHaveLength(1);
   });
 });
 

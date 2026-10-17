@@ -10,7 +10,7 @@ const WORDING = {
   advice: (limit) => `Keep it ${String(limit)} deep.`,
 };
 const HINT = (rule, glob) =>
-  `If this is intended, add {"rule":"${rule}","paths":["${glob}"],"reason":"..."} to "exceptions" in nitpicker.config.json.`;
+  `If a reviewer agrees this is intended, add {"rule":"${rule}","paths":["${glob}"],"reason":"<why this is intended>"} to "exceptions" in nitpicker.config.json.`;
 
 const depthOf = ({ path }) => path.split('/').length - 2;
 const depthFindings = (files, options = {}) =>
@@ -64,7 +64,7 @@ describe('folder depth', () => {
     expect(found.map(({ path }) => path)).toEqual(['root/a/b/c', 'root/a/b/c']);
     expect(
       depthFindings(files, {
-        exceptions: [{ rule: 'folder-depth-limit', glob: 'root/a/b/**' }],
+        exceptions: [{ rule: 'folder-depth-limit', paths: ['root/a/b/**'] }],
       }),
     ).toEqual([]);
   });
@@ -154,7 +154,7 @@ describe('class limits', () => {
     ).toEqual([]);
     expect(
       classFindings([entry(big)], {
-        exceptions: [{ rule: 'class-fields-limit', glob: 'src/main/**' }],
+        exceptions: [{ rule: 'class-fields-limit', paths: ['src/main/**'] }],
       }),
     ).toHaveLength(1);
     expect(classFindings([entry(big), entry(big)]).map(({ identity }) => identity)).toEqual([

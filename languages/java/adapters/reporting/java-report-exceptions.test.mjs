@@ -65,6 +65,7 @@ function projectWithOneComplexMethod() {
   writeFileSync(path.join(reports, 'duplicates.json'), JSON.stringify({ runs: [] }));
   writeFileSync(path.join(reports, 'jacoco.xml'), JACOCO);
   writeFileSync(path.join(reports, 'structure.json'), JSON.stringify(STRUCTURE));
+  writeFileSync(path.join(reports, 'classes.json'), '{"files":{},"classes":[]}');
   return root;
 }
 

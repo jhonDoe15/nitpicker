@@ -193,7 +193,7 @@ describe('readClassLimitFindings', () => {
       symbol: 'Deep',
       file: `${SOURCE_ROOT}/demo/Deep.java`,
       message:
-        'Class Deep extends 4 classes deep (limit 3). Hold the shared part as a field and delegate to it instead of extending. If this is intended, add {"rule":"inheritance-depth-limit","paths":["src/main/java/demo/Deep.java"],"reason":"..."} to "exceptions" in nitpicker.config.json.',
+        'Class Deep extends 4 classes deep (limit 3). Hold the shared part as a field and delegate to it instead of extending. If a reviewer agrees this is intended, add {"rule":"inheritance-depth-limit","paths":["src/main/java/demo/Deep.java"],"reason":"<why this is intended>"} to "exceptions" in nitpicker.config.json.',
     });
     expect(find(sample, { inheritanceDepth: 4 })).toEqual([]);
   });
@@ -219,7 +219,7 @@ describe('readClassLimitFindings', () => {
     ).toEqual(['class-methods-limit', 'class-fields-limit', 'class-methods-limit']);
     expect(
       find(sample, { ...wide, classMethods: 1, classFields: 2 }, [
-        { rule: 'class-methods-limit', glob: `${SOURCE_ROOT}/**` },
+        { rule: 'class-methods-limit', paths: [`${SOURCE_ROOT}/**`] },
       ]).map(({ rule }) => rule),
     ).toEqual(['class-fields-limit']);
   });
