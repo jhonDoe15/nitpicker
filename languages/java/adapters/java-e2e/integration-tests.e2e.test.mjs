@@ -10,21 +10,32 @@ const gradle = process.env.NITPICKER_GRADLE ?? 'gradle';
 const maven = process.env.NITPICKER_MAVEN;
 const fixtures = path.join(import.meta.dirname, '../fixtures');
 const failsafeFixture = path.join(import.meta.dirname, '../../maven/fixtures/failsafe');
+const policy = { testSeconds: { integrationTestSeconds: -1 } };
 const temporary = [];
 
-function copyOf(...sources) {
+function projectOf(fixture, { sources = false } = {}) {
   const root = mkdtempSync(path.join(tmpdir(), 'nitpicker-integration-e2e-'));
   temporary.push(root);
-  for (const source of sources) {
-    cpSync(source, root, { recursive: true });
+  cpSync(fixture, root, { recursive: true });
+  if (sources) {
+    cpSync(path.join(failsafeFixture, 'src'), path.join(root, 'src'), { recursive: true });
   }
   return root;
 }
 
-const withoutDurations = (findings) =>
+const comparable = (findings) =>
   findings
-    .map((finding) => JSON.stringify(finding).replaceAll(/took [\d.]+ s/gu, 'took N s'))
+    .filter(({ tool }) => tool !== 'test-runtime')
+    .map((finding) => JSON.stringify(finding))
     .sort();
+
+const slowTests = (findings) =>
+  findings
+    .filter(({ tool }) => tool === 'test-runtime')
+    .map(({ path: file, message }) => `${file}: ${message.split(' took ')[0]}`);
+
+const coverage = (findings) =>
+  findings.filter(({ tool }) => tool === 'jacoco').map(({ message }) => message);
 
 afterAll(() => {
   for (const root of temporary.splice(0)) {
@@ -34,55 +45,48 @@ afterAll(() => {
 
 describe.skipIf(!enabled)('integration tests on Gradle and Maven', () => {
   it(
-    'report what Maven reports for the same sources when a Test task is wired to check as Failsafe is to verify',
+    'give a Test task wired to check the findings Failsafe gives the same sources under verify',
     () => {
-      const gradleProject = copyOf(
-        path.join(failsafeFixture, 'src'),
-        path.join(fixtures, 'integration-tasks'),
+      const fromGradle = collectJavaFindings(
+        projectOf(path.join(fixtures, 'integration-tasks'), { sources: true }),
+        { gradle, policy },
       );
-      const mavenProject = copyOf(failsafeFixture);
-      const policy = { testSeconds: { integrationTestSeconds: -1 } };
+      const fromMaven = collectJavaFindings(projectOf(failsafeFixture), { maven, policy });
 
-      const fromGradle = collectJavaFindings(gradleProject, { gradle, policy });
-      const fromMaven = collectJavaFindings(mavenProject, { maven, policy });
-
-      expect(withoutDurations(fromGradle)).toEqual(withoutDurations(fromMaven));
-      expect(
-        fromGradle
-          .filter((finding) => ['jacoco', 'test-runtime'].includes(finding.tool))
-          .map(({ tool, rule, path: file }) => `${tool} ${rule} ${file}`),
-      ).toEqual([
-        'jacoco line-coverage src/main/java/demo/Greeter.java',
-        'test-runtime slow-test src/test/java/demo/GreeterIT.java',
+      expect(comparable(fromGradle)).toEqual(comparable(fromMaven));
+      expect(coverage(fromGradle)).toEqual(['line-coverage 100% (3/3)']);
+      expect(slowTests(fromGradle)).toEqual([
+        'src/test/java/demo/GreeterIT.java: GreeterIT saysGoodbye()',
+      ]);
+      expect(slowTests(fromMaven)).toEqual([
+        'src/test/java/demo/GreeterIT.java: GreeterIT saysGoodbye',
       ]);
     },
     2 * GRADLE_STEP_TIMEOUT_MS,
   );
 
   it(
-    'are run for a jvm-test-suite, covering code only they reach and timed against the integration budget',
+    'run for a jvm-test-suite in its own source set, covering code only they reach',
     () => {
-      const project = copyOf(
-        path.join(failsafeFixture, 'src'),
-        path.join(fixtures, 'integration-suite'),
-      );
+      const project = projectOf(path.join(fixtures, 'integration-suite'), { sources: true });
       mkdirSync(path.join(project, 'src/integrationTest/java/demo'), { recursive: true });
       renameSync(
         path.join(project, 'src/test/java/demo/GreeterIT.java'),
         path.join(project, 'src/integrationTest/java/demo/GreeterIT.java'),
       );
-      const findings = collectJavaFindings(project, {
-        gradle,
-        policy: { testSeconds: { integrationTestSeconds: -1 } },
-      });
 
+      const findings = collectJavaFindings(project, { gradle, policy });
+
+      expect(coverage(findings)).toEqual(['line-coverage 100% (3/3)']);
+      expect(slowTests(findings)).toEqual([
+        'src/integrationTest/java/demo/GreeterIT.java: GreeterIT saysGoodbye()',
+      ]);
       expect(
-        ['test', 'integrationTest'].map((task) =>
-          existsSync(path.join(project, 'build/test-results', task)),
-        ),
-      ).toEqual([true, true]);
-      expect(findings.filter((finding) => finding.tool === 'jacoco')).toEqual([]);
-      expect(findings.filter((finding) => finding.tool === 'test-runtime')).toEqual([]);
+        findings
+          .filter(({ tool }) => tool === 'pit')
+          .map(({ rule, identity }) => `${rule} ${identity}`),
+      ).toEqual(['mutation-summary status:Killed']);
+      expect(existsSync(path.join(project, 'build/test-results/integrationTest'))).toBe(true);
     },
     GRADLE_STEP_TIMEOUT_MS,
   );
