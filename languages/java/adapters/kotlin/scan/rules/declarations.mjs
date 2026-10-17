@@ -7,7 +7,7 @@ const PROPERTY_MODIFIERS =
 const PROPERTY = new RegExp(
   [
     String.raw`^[ \t]*(?:@[\w.:]+(?:\([^)\n]*\))?\s+)*(?:(?:${PROPERTY_MODIFIERS})\s+)*`,
-    String.raw`(const\s+)?(val|var)\s+(?:\`[^\`]+\`|([A-Za-z_]\w*))([^\n]*)$`,
+    String.raw`(const\s+)?(val|var)\s+(?:\`[^\`]+\`|([A-Za-z_]\w*))((?:[^\w\n][^\n]*)?)$`,
   ].join(''),
   'gm',
 );
