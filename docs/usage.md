@@ -807,8 +807,14 @@ jobs:
           fetch-depth: 0
       - run: npm ci
       - run: docker build -t nitpicker path/to/nitpicker
-      - run: docker run --rm -v "$PWD":/work -e GITHUB_BASE_REF nitpicker
+      - run: docker run --rm -v "$PWD":/work -e CI -e GITHUB_BASE_REF -e NITPICKER_ACCEPT_POLICY_CHANGE nitpicker
+        env:
+          NITPICKER_ACCEPT_POLICY_CHANGE: ${{ vars.NITPICKER_ACCEPT_POLICY_CHANGE }}
 ```
+
+`NITPICKER_ACCEPT_POLICY_CHANGE` comes from a repository variable that only an admin can set, so a
+person accepts a loosening of `nitpicker.config.json` by setting it to the digest the finding
+names; the container needs `CI` too, since the variable is honoured only in CI.
 
 ## Sharding in CI
 
