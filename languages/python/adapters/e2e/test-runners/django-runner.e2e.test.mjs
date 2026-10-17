@@ -30,7 +30,7 @@ const SETTINGS = [
   '',
 ].join('\n');
 const GRADE =
-  'def grade(score: int) -> str:\n    if score >= 50:\n        return "pass"\n    return "fail"\n';
+  'def grade(score: int) -> str:\n    if score >= 10:\n        return "pass"\n    return "fail"\n';
 const GRADE_TESTS = [
   'from django.test import SimpleTestCase',
   '',
@@ -39,13 +39,13 @@ const GRADE_TESTS = [
   '',
   'class GradeTests(SimpleTestCase):',
   '    def test_pass(self) -> None:',
-  '        self.assertEqual(grade(70), "pass")',
+  '        self.assertEqual(grade(20), "pass")',
   '',
   '    def test_boundary(self) -> None:',
-  '        self.assertEqual(grade(50), "pass")',
+  '        self.assertEqual(grade(10), "pass")',
   '',
   '    def test_fail(self) -> None:',
-  '        self.assertEqual(grade(49), "fail")',
+  '        self.assertEqual(grade(9), "fail")',
   '',
 ].join('\n');
 const WEAK_TESTS = GRADE_TESTS.split('\n    def test_boundary')[0];
