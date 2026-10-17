@@ -1,3 +1,5 @@
+import { describeConfigOverrides } from '../config.mjs';
+import { policyHash } from '../../diff/reporting/report-model.mjs';
 import { describe, expect, it } from 'vitest';
 import { validateConfig } from '../validate.mjs';
 
@@ -19,5 +21,43 @@ describe('the react key', () => {
       react,
     });
     expect(validateConfig({ react })).toEqual({ react });
+  });
+});
+
+describe('react keys', () => {
+  it('accepts enabled and every styling approach', () => {
+    for (const react of [
+      {},
+      { enabled: true },
+      { enabled: false },
+      { styling: 'class-names' },
+      { styling: 'css-in-js' },
+      { styling: 'inline-style' },
+      { enabled: true, styling: 'css-in-js' },
+    ]) {
+      expect(validateConfig({ react })).toEqual({ react });
+    }
+  });
+
+  it.each([
+    [[], /"react" must be an object/],
+    ['react', /"react" must be an object/],
+    [{ enable: true }, /unknown react key "enable". Allowed react keys: enabled, styling/],
+    [{ enabled: 'yes' }, /"react.enabled" must be true or false/],
+    [{ enabled: 1 }, /"react.enabled" must be true or false/],
+    [
+      { styling: 'tailwind' },
+      /"react.styling" must be one of: class-names, css-in-js, inline-style/,
+    ],
+  ])('rejects react %j', (react, message) => {
+    expect(() => validateConfig({ react })).toThrow(message);
+  });
+
+  it('reports the react override and changes the policy hash', () => {
+    const overrides = describeConfigOverrides({ react: { styling: 'css-in-js' } });
+    const analyzers = [{ name: 'a', version: '1', configurationHash: 'h' }];
+
+    expect(overrides).toEqual(['react: {"styling":"css-in-js"}']);
+    expect(policyHash(analyzers, overrides)).not.toBe(policyHash(analyzers, []));
   });
 });

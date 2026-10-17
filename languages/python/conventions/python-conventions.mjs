@@ -1,3 +1,4 @@
+import { COLUMNS } from '../../../shared/conventions/settings.mjs';
 import { lineLength } from './python-line-length.mjs';
 import { indentationWidth, stringQuotes } from './python-measures.mjs';
 
@@ -29,6 +30,7 @@ export const PYTHON_CONVENTIONS = [
     options: ['79', '88', '100', '120'],
     optionLabels: { 79: '79 columns', 88: '88 columns', 100: '100 columns', 120: '120 columns' },
     fallback: '88',
+    ...COLUMNS,
     files: PYTHON_FILES,
     measure: lineLength,
   },
