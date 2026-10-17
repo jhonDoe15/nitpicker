@@ -10,6 +10,7 @@ import { seedMutantsFromBase } from './python-mutation-reuse.mjs';
 import { probeVersion, run } from '../execution/python-process.mjs';
 import { mutmutPytestEnvironment } from '../execution/python-test-runner.mjs';
 import { mutationMarkerFindings } from './mutation-markers.mjs';
+import { isDjangoProject } from '../configuration/pytest/collection-options.mjs';
 import {
   everyModuleFails,
   failedOnProjectTests,
@@ -44,14 +45,10 @@ const TEST_PATTERNS = [
   'test_*.py',
   '*/test_*.py',
   '*_test.py',
-  '*_tests.py',
-  'tests.py',
-  '*/tests.py',
-  'tests_*.py',
-  '*/tests_*.py',
   'conftest.py',
   '*/conftest.py',
 ];
+const DJANGO_TEST_PATTERNS = ['*_tests.py', 'tests.py', '*/tests.py', 'tests_*.py', '*/tests_*.py'];
 
 function failure(message) {
   return Object.assign(new Error(message), { rule: MUTATION_FAILED_RULE });
@@ -85,7 +82,11 @@ export function ensureMutmutConfiguration({ projectRoot, project, exclude }) {
   const section = [
     '[tool.mutmut]',
     `source_paths = ${JSON.stringify(project.sourceRoots)}`,
-    `do_not_mutate = ${JSON.stringify([...TEST_PATTERNS, ...excludedPatterns(exclude)])}`,
+    `do_not_mutate = ${JSON.stringify([
+      ...TEST_PATTERNS,
+      ...(isDjangoProject(projectRoot) ? DJANGO_TEST_PATTERNS : []),
+      ...excludedPatterns(exclude),
+    ])}`,
   ].join('\n');
   writeFileSync(pyproject, `${readOptional(pyproject)}\n${section}\n`);
 }

@@ -263,8 +263,9 @@ through the real tools.
   without the codes that the installed ruff does not know or lists as preview or removed
   (`ruff rule --all --output-format json`), which lets ruff 0.9 up to 0.16 run the same selection;
   a prefix such as `E4` or `T20` stays when a known rule starts with it. Test files are the ones
-  pytest collects (the `python_files` patterns, `testpaths`, `conftest.py`, any `tests` or `test`
-  folder, `test_*.py`, `*_test.py`): ruff's `ARG`, `FBT`, `PLR2004` and `S` findings in them are
+  pytest collects (the `python_files` patterns, `conftest.py`, any `tests` or `test` folder,
+  `test_*.py`, `*_test.py`, and the Django names in a Django project, see
+  [runner parity](#runner-parity)): ruff's `ARG`, `FBT`, `PLR2004` and `S` findings in them are
   dropped after ruff runs (`rules/filters/ruff-allowed-forms.mjs`).
 - **AST rules.** `languages/python/rules/nitpicker_rules.py` runs with `python -I` (standard
   library only, never importing project code) over the files `ruff check --show-files` lists, so
@@ -1033,8 +1034,14 @@ What the Python preset does the way the TypeScript and Java presets do (`parity/
   (`*_pb2.py`, `*_pb2_grpc.py` and their `.pyi`, or a generator marker such as `DO NOT EDIT` or
   `@generated` in the first five lines, `libraries/generated-files.mjs`) are left out of every size
   and structure limit, as Java's generated sources are. Test files are the files pytest collects
-  (the project's `python_files`, plus `tests.py`, `tests_*.py` and `*_tests.py`, so a Django app's
-  `tests.py` is a test), `conftest.py` and everything under `tests/` or `test/`.
+  (`test_*.py`, `*_test.py` and the project's `python_files`), `conftest.py` and everything under
+  `tests/` or `test/`. In a Django project (a `django`, `pytest-django` or `djangorestframework`
+  dependency, a `manage.py` at the root, or `DJANGO_SETTINGS_MODULE` in the pytest configuration)
+  `tests.py`, `tests_*.py` and `*_tests.py` are tests too, in the size limits, the coverage
+  `omit`, mutmut's `do_not_mutate` and the duplicate scan; elsewhere a `lab_tests.py` is
+  production code, as pytest does not collect it. A `python_files` pattern that matches every
+  file (`*.py`) is left out: the files under the `testpaths` folders are the tests then, so the
+  production modules keep their checks.
 - **Import structure.** From the import scan (`imports/python-import-rules.mjs`):
   `coupling/package-cycle` with Java's message, on each package of a cycle (a package `__init__`
   importing its own submodules is a re-export, not a dependency); `coupling/no-production-cycles`
