@@ -49,6 +49,12 @@
      and not(.//(FieldDeclaration | FormalParameter)/ClassType
                 [some $type in $clients satisfies pmd-java:typeIs($type)])]
   [not(.//ConstructorDeclaration[FormalParameters/@Size > 0])]
+  [not(ModifierList/Annotation[pmd-java:typeIs('lombok.AllArgsConstructor')]
+       and ClassBody/FieldDeclaration[not(pmd-java:modifiers() = 'static')])]
+  [not(ModifierList/Annotation[pmd-java:typeIs('lombok.RequiredArgsConstructor')]
+       and ClassBody/FieldDeclaration[not(pmd-java:modifiers() = 'static')]
+             [pmd-java:modifiers() = 'final' or ModifierList/Annotation[@SimpleName = 'NonNull']]
+             [VariableDeclarator[count(*) = 1]])]
   [.//MethodDeclaration[ModifierList/Annotation[@SimpleName = ('Test', 'ParameterizedTest', 'RepeatedTest')]]
      [Block/*]]
 ]]></value></property></properties>
