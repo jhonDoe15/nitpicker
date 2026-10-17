@@ -2,8 +2,8 @@ import {
   djangoSettingsModule,
   djangoSubdirectory,
   pytestNamesDjangoSettings,
-} from '../execution/python-django.mjs';
-import { mutmutPytestEnvironment, probePytest } from '../execution/python-test-runner.mjs';
+} from '../../execution/python-django.mjs';
+import { mutmutPytestEnvironment, probePytest } from '../../execution/python-test-runner.mjs';
 
 export const MUTATION_SKIPPED_RULE = 'mutation-skipped';
 export const DISABLE_HINT =

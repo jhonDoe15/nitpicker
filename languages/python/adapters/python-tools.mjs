@@ -20,7 +20,7 @@ import {
 } from './execution/python-project.mjs';
 import { ruffConfigFor } from './configuration/python-ruff-config.mjs';
 import { detectTestRunner, pytestLabel, testRunnerLabel } from './execution/python-test-runner.mjs';
-import { mutationRunnerLabels } from './mutation/python-mutation-runner.mjs';
+import { mutationRunnerLabels } from './mutation/test-run/python-mutation-runner.mjs';
 import { test } from './test-runs/test-step.mjs';
 
 import { resolveTypeChecker, typeCheck } from './python-types.mjs';

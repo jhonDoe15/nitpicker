@@ -2,10 +2,10 @@ import { mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSy
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { installFakeToolchain } from '../test-support/fake-toolchain.mjs';
-import { createToolContext } from '../python-tools.mjs';
+import { installFakeToolchain } from '../../test-support/fake-toolchain.mjs';
+import { createToolContext } from '../../python-tools.mjs';
 import { failedOnProjectTests } from './mutation-scope.mjs';
-import { mutationFindings } from './python-mutation.mjs';
+import { mutationFindings } from '../python-mutation.mjs';
 
 const roots = [];
 afterEach(() => {
