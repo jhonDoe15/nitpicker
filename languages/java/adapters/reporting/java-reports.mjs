@@ -24,7 +24,7 @@ import { ingestJacoco } from '../../ingest/coverage-reports/jacoco.mjs';
 import { ingestPit } from '../../ingest/pit.mjs';
 import { ingestJacocoBranches } from '../../ingest/coverage-reports/jacoco-branches.mjs';
 import { projectRelative } from '../../ingest/sarif.mjs';
-import { sarifFindings } from './sarif-reports.mjs';
+import { sarifFindings } from './sarif/sarif-reports.mjs';
 import { projectWideFindings } from '../../builds/project-wide.mjs';
 import { applyRuleMessages } from '../../messages/rule-messages.mjs';
 import {

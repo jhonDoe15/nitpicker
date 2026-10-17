@@ -8,7 +8,7 @@ import {
 } from '../adapters/review-rules/java-sources.mjs';
 
 const NAMED_TYPE = /\b(?:class|record|enum)\s+[A-Za-z_$][\w$]*/gu;
-const ANONYMOUS_TYPE = /\bnew\s+([A-Za-z_$][\w$.]*)\s*(?:<[^;{}]*?>)?\s*\(/gu;
+const ANONYMOUS_TYPE = /\bnew\s+([A-Za-z_$][\w$.]*)\s*(?:<[^;{}()]*>\s*)?\(/gu;
 const GENERICS = /<(?:[^<>]|<(?:[^<>]|<[^<>]*>)*>)*>/gu;
 const WAIT_CALL = /\b(?:sleep|parkNanos|join|wait)\s*\(/u;
 const SUPERTYPES = /\b(?:extends|implements)\b([\s\S]*)$/u;
@@ -39,8 +39,8 @@ function namedTypes(text) {
 
 function anonymousTypes(text) {
   return [...text.matchAll(ANONYMOUS_TYPE)].flatMap((match) => {
-    const arguments_ = match.index + match[0].length - 1;
-    const after = closingOf(text, arguments_) + 1;
+    const argumentsStart = match.index + match[0].length - 1;
+    const after = closingOf(text, argumentsStart) + 1;
     const open = after + (/^\s*/u.exec(text.slice(after))?.[0].length ?? 0);
     return text[open] === '{' ? [{ open, supertypes: [match[1]] }] : [];
   });
