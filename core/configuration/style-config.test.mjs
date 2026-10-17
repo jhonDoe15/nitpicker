@@ -36,6 +36,12 @@ function pythonHash(config) {
   return (root) => analyzer.resolveConfigurationHash(root);
 }
 
+function mutationHash(config) {
+  const full = { preset: 'python', ...config };
+  const [, analyzer] = configureAnalyzers(createPythonAnalyzers(), full, resolveHeadPolicy(full));
+  return (root) => analyzer.resolveConfigurationHash(root);
+}
+
 function kotlinHash(config) {
   const full = { preset: 'kotlin', ...config };
   const [analyzer] = configureAnalyzers(
@@ -87,6 +93,29 @@ describe('the cache key of the Python analyzer', () => {
     expect(hash(service)).not.toBe(before);
   });
 
+  it('follows the pyright config and the base file it extends', () => {
+    const root = project({
+      'pyrightconfig.json': '{ "extends": "base/pyright.json" }',
+      'base/pyright.json': '{ "pythonVersion": "3.10" }',
+    });
+    const hash = pythonHash({});
+    const before = hash(root);
+
+    edit(root, 'base/pyright.json', '{ "pythonVersion": "3.12" }');
+
+    expect(hash(root)).not.toBe(before);
+  });
+
+  it('follows the mypy config', () => {
+    const root = project({ 'mypy.ini': '[mypy]\nplugins = a\n' });
+    const hash = pythonHash({});
+    const before = hash(root);
+
+    edit(root, 'mypy.ini', '[mypy]\nplugins = b\n');
+
+    expect(hash(root)).not.toBe(before);
+  });
+
   it('stays the same for a project with no config, and for an unrelated file', () => {
     const root = project({ 'a.py': '' });
     const hash = pythonHash({});
@@ -95,6 +124,18 @@ describe('the cache key of the Python analyzer', () => {
     edit(root, 'a.py', 'x = 1\n');
 
     expect(hash(root)).toBe(before);
+  });
+});
+
+describe('the cache key of the mutation analyzer', () => {
+  it('follows the mutmut section of the project', () => {
+    const root = project({ 'pyproject.toml': '[tool.mutmut]\npaths_to_mutate = ["src"]\n' });
+    const hash = mutationHash({});
+    const before = hash(root);
+
+    edit(root, 'pyproject.toml', '[tool.mutmut]\npaths_to_mutate = ["lib"]\n');
+
+    expect(hash(root)).not.toBe(before);
   });
 });
 
@@ -173,6 +214,21 @@ describe('tool precedence of the formatters and detekt', () => {
     );
     expect(() => validateConfig({ preset: 'python', tools: { ruff: { precedence: [] } } })).toThrow(
       '"tools.ruff.precedence" must list "project", "nitpicker" or both, each once',
+    );
+  });
+
+  it('names the type checkers and mutmut with the python preset, and not basedpyright', () => {
+    const tools = {
+      pyright: { precedence: ['project', 'nitpicker'] },
+      mypy: { precedence: ['project'] },
+      mutmut: { precedence: ['nitpicker', 'project'] },
+    };
+
+    expect(validateConfig({ preset: 'python', tools }).tools).toEqual(tools);
+    expect(() =>
+      validateConfig({ preset: 'python', tools: { basedpyright: { precedence: ['project'] } } }),
+    ).toThrow(
+      '"tools" names unknown tool "basedpyright". Supported tools with this preset: ruff, black, pyright, mypy, mutmut',
     );
   });
 

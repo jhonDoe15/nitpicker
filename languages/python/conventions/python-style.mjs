@@ -8,6 +8,7 @@ import {
   detectFormatterFromSource,
   detectTargetVersion,
 } from '../adapters/execution/python-project.mjs';
+import { ignoredProjectToolNotices } from '../adapters/project-tools/ignored-notices.mjs';
 import { formatterPlan } from '../adapters/formatting/format-command.mjs';
 import { readBlackConfig, readRuffConfig } from '../adapters/formatting/project-format-config.mjs';
 import { PYTHON_INDENTATION, PYTHON_QUOTES, PYTHON_SETTING_IDS } from './python-conventions.mjs';
@@ -97,6 +98,9 @@ export function pythonStyle({
     project: projectChoices(formatter, projectSettings({ formatter, precedence }, configRoot)),
     note: (id, choice) =>
       formatter === 'black' && id === PYTHON_QUOTES && choice === 'single' ? BLACK_NOTE : undefined,
-    summary: (conventions) => formattingLines({ formatter, precedence, conventions, projectRoot }),
+    summary: (conventions) => [
+      ...formattingLines({ formatter, precedence, conventions, projectRoot }),
+      ...ignoredProjectToolNotices({ config, projectRoot }),
+    ],
   };
 }
