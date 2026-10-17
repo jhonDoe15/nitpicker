@@ -1,14 +1,10 @@
+import { nitpickerCheckstyleConfig } from './checkstyle-config.mjs';
 import { chmodSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { GRADLE_DIRECTORY } from '../builds/java-build.mjs';
-import {
-  javaFiles,
-  nitpickerCheckstyleConfig,
-  runFormat,
-  writeCheckstyleSetup,
-} from './maven-lint.mjs';
+import { javaFiles, runFormat, writeCheckstyleSetup } from './maven-lint.mjs';
 import { toolDependencies } from './maven-tools.mjs';
 import { readPinnedTools } from '../builds/java-build.mjs';
 
