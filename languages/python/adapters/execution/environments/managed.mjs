@@ -1,14 +1,15 @@
 import { spawnSync } from 'node:child_process';
 import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
-import { condaLauncher, environmentError, OVERRIDE_HINT, venvLauncher } from './launchers.mjs';
+import { environmentError, OVERRIDE_HINT } from './environment-error.mjs';
+import { condaLauncher } from './launchers.mjs';
 
 export const MANAGED_ENVIRONMENTS = ['pipenv', 'hatch', 'conda'];
 const MANAGER_TIMEOUT_MS = 60 * 1000;
-const CONDA_FILES = ['environment.yml', 'environment.yaml'];
 const HATCH_ENVIRONMENTS_TABLE = /^\s*\[tool\.hatch\.envs[.\]]/m;
 const CONDA_NAME = /^name:\s*['"]?([^\s'"#]+)/m;
-const CONDA_PREFIX_LINE = /^prefix:\s*['"]?([^\n'"#]+?)['"]?\s*$/m;
+const CONDA_PREFIX_LINE = /^prefix:[ \t]*(\S.*)$/m;
+const QUOTES = /^['"]|['"]$/g;
 const CONDA_BASE = 'base';
 
 function declaresHatchEnvironments(projectRoot) {
@@ -20,17 +21,26 @@ function declaresHatchEnvironments(projectRoot) {
 }
 
 function condaFile(projectRoot) {
-  return CONDA_FILES.map((file) => path.join(projectRoot, file)).find((file) => existsSync(file));
+  const yml = path.join(projectRoot, 'environment.yml');
+  const yaml = path.join(projectRoot, 'environment.yaml');
+  return [yml, yaml].find((candidate) => existsSync(candidate));
 }
 
-function activeCondaPrefix() {
-  const prefix = process.env.CONDA_PREFIX;
+function activeCondaPrefix(variables) {
+  const prefix = variables.CONDA_PREFIX;
   const active = prefix !== undefined && prefix !== '';
-  return active && process.env.CONDA_DEFAULT_ENV !== CONDA_BASE ? prefix : undefined;
+  return active && variables.CONDA_DEFAULT_ENV !== CONDA_BASE ? prefix : undefined;
+}
+
+function hasPipfile(projectRoot) {
+  return (
+    existsSync(path.join(projectRoot, 'Pipfile')) ||
+    existsSync(path.join(projectRoot, 'Pipfile.lock'))
+  );
 }
 
 export function declaredManagedEnvironment(projectRoot) {
-  if (['Pipfile', 'Pipfile.lock'].some((file) => existsSync(path.join(projectRoot, file)))) {
+  if (hasPipfile(projectRoot)) {
     return 'pipenv';
   }
   if (declaresHatchEnvironments(projectRoot)) {
@@ -39,16 +49,21 @@ export function declaredManagedEnvironment(projectRoot) {
   return condaFile(projectRoot) === undefined ? undefined : 'conda';
 }
 
-export function activeCondaEnvironment() {
-  return activeCondaPrefix() === undefined ? undefined : 'conda';
+export function activeCondaEnvironment(variables) {
+  return activeCondaPrefix(variables) === undefined ? undefined : 'conda';
 }
 
-function askManager(manager, args, projectRoot) {
+export function openActiveConda(variables) {
+  const prefix = activeCondaPrefix(variables);
+  return prefix === undefined ? undefined : condaLauncher(prefix, variables);
+}
+
+function askManager(manager, args, { projectRoot, variables }) {
   const result = spawnSync(manager, args, {
     cwd: projectRoot,
     encoding: 'utf8',
     timeout: MANAGER_TIMEOUT_MS,
-    env: { ...process.env, PIPENV_VERBOSITY: '-1' },
+    env: { ...variables, PIPENV_VERBOSITY: '-1' },
   });
   if (result.error?.code === 'ENOENT') {
     return undefined;
@@ -59,29 +74,29 @@ function askManager(manager, args, projectRoot) {
   return result;
 }
 
-function pipenvLauncher(projectRoot) {
-  const result = askManager('pipenv', ['--venv'], projectRoot);
+function pipenvLauncher(context) {
+  const result = askManager('pipenv', ['--venv'], context);
   if (result === undefined) {
     return undefined;
   }
   const directory = result.stdout.trim();
   if (result.status !== 0 || directory === '') {
     throw environmentError(
-      `pipenv has no virtualenv for ${projectRoot}: run \`pipenv install --dev\` first, ${OVERRIDE_HINT} (${result.stderr.trim() || 'no environment reported'})`,
+      `pipenv has no virtualenv for ${context.projectRoot}: run \`pipenv install --dev\` first, ${OVERRIDE_HINT} (${result.stderr.trim() || 'no environment reported'})`,
     );
   }
-  return venvLauncher(directory, 'pipenv');
+  return context.virtualenv(directory, 'pipenv');
 }
 
-function hatchLauncher(projectRoot) {
-  const result = askManager('hatch', ['env', 'find'], projectRoot);
+function hatchLauncher(context) {
+  const result = askManager('hatch', ['env', 'find'], context);
   if (result === undefined) {
     return undefined;
   }
   const directory = result.stdout.trim().split(/\r?\n/).at(-1);
   if (result.status !== 0 || directory === '') {
     throw environmentError(
-      `hatch has no environment for ${projectRoot}: run \`hatch env create\` first, ${OVERRIDE_HINT} (${result.stderr.trim() || 'no environment reported'})`,
+      `hatch has no environment for ${context.projectRoot}: run \`hatch env create\` first, ${OVERRIDE_HINT} (${result.stderr.trim() || 'no environment reported'})`,
     );
   }
   if (!existsSync(directory)) {
@@ -89,11 +104,11 @@ function hatchLauncher(projectRoot) {
       `hatch has not created its environment at ${directory}: run \`hatch env create\` first, ${OVERRIDE_HINT}`,
     );
   }
-  return venvLauncher(directory, 'hatch');
+  return context.virtualenv(directory, 'hatch');
 }
 
-function condaEnvironmentNamed(name, projectRoot) {
-  const result = askManager('conda', ['env', 'list', '--json'], projectRoot);
+function condaEnvironmentNamed(name, context) {
+  const result = askManager('conda', ['env', 'list', '--json'], context);
   if (result === undefined) {
     return undefined;
   }
@@ -107,40 +122,35 @@ function condaEnvironmentNamed(name, projectRoot) {
   return found;
 }
 
-function declaredCondaPrefix(file, projectRoot) {
+function declaredCondaPrefix(file, context) {
   const text = readFileSync(file, 'utf8');
-  const declared = CONDA_PREFIX_LINE.exec(text)?.[1];
+  const declared = CONDA_PREFIX_LINE.exec(text)?.[1].trim().replaceAll(QUOTES, '');
   if (declared !== undefined) {
-    return path.resolve(projectRoot, declared);
+    return path.resolve(context.projectRoot, declared);
   }
   const name = CONDA_NAME.exec(text)?.[1];
-  const active = activeCondaPrefix();
   if (name === undefined || name === CONDA_BASE) {
     return undefined;
   }
+  const active = activeCondaPrefix(context.variables);
   return active !== undefined && path.basename(active) === name
     ? active
-    : condaEnvironmentNamed(name, projectRoot);
+    : condaEnvironmentNamed(name, context);
 }
 
-function condaPrefix(projectRoot) {
-  const file = condaFile(projectRoot);
-  return (
-    (file === undefined ? undefined : declaredCondaPrefix(file, projectRoot)) ?? activeCondaPrefix()
-  );
-}
-
-function condaOrUndefined(projectRoot) {
-  const prefix = condaPrefix(projectRoot);
-  return prefix === undefined ? undefined : condaLauncher(prefix);
+function condaOrActive(context) {
+  const file = condaFile(context.projectRoot);
+  const declared = file === undefined ? undefined : declaredCondaPrefix(file, context);
+  const prefix = declared ?? activeCondaPrefix(context.variables);
+  return prefix === undefined ? undefined : condaLauncher(prefix, context.variables);
 }
 
 const OPENERS = new Map([
   ['pipenv', pipenvLauncher],
   ['hatch', hatchLauncher],
-  ['conda', condaOrUndefined],
+  ['conda', condaOrActive],
 ]);
 
-export function openManagedEnvironment(kind, projectRoot) {
-  return OPENERS.get(kind)(projectRoot);
+export function openManagedEnvironment(kind, context) {
+  return OPENERS.get(kind)(context);
 }

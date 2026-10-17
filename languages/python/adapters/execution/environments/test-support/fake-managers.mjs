@@ -1,9 +1,8 @@
-import { chmodSync, mkdirSync, writeFileSync } from 'node:fs';
-import path from 'node:path';
+import { chmodSync, writeFileSync } from 'node:fs';
 
-export function installFakeManager(binDirectory, name, { output = '', status = 0, error = '' }) {
-  mkdirSync(binDirectory, { recursive: true });
-  const target = path.join(binDirectory, name);
+const EXECUTABLE = 0o755;
+
+export function installFakeManager(target, { output = '', status = 0, error = '' }) {
   const script = [
     '#!/bin/sh',
     `echo '${output}'`,
@@ -11,5 +10,5 @@ export function installFakeManager(binDirectory, name, { output = '', status = 0
     `exit ${String(status)}`,
   ].join('\n');
   writeFileSync(target, `${script}\n`);
-  chmodSync(target, 0o755);
+  chmodSync(target, EXECUTABLE);
 }

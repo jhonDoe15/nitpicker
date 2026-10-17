@@ -1,29 +1,6 @@
 import { existsSync } from 'node:fs';
 import path from 'node:path';
-
-export const OVERRIDE_HINT = 'or set "python.environment"';
-const ENVIRONMENT_FAILED_RULE = 'environment-failed';
-
-export function environmentError(message) {
-  return Object.assign(new Error(message), { rule: ENVIRONMENT_FAILED_RULE });
-}
-
-export function venvLauncher(directory, description) {
-  const bin = path.join(directory, process.platform === 'win32' ? 'Scripts' : 'bin');
-  if (!existsSync(bin)) {
-    throw environmentError(
-      `No Python environment at ${directory} (${bin} does not exist): create it, ${OVERRIDE_HINT}`,
-    );
-  }
-  const env = { VIRTUAL_ENV: directory, PATH: `${bin}${path.delimiter}${process.env.PATH ?? ''}` };
-  return {
-    description,
-    launch: (tool, args) => {
-      const installed = path.join(bin, tool);
-      return { command: existsSync(installed) ? installed : tool, args, env };
-    },
-  };
-}
+import { environmentError, OVERRIDE_HINT } from './environment-error.mjs';
 
 function condaBinDirectories(prefix) {
   return process.platform === 'win32'
@@ -31,8 +8,7 @@ function condaBinDirectories(prefix) {
     : [path.join(prefix, 'bin')];
 }
 
-export function condaLauncher(prefix) {
-  const directories = condaBinDirectories(prefix);
+export function condaLauncher(prefix, variables) {
   if (!existsSync(prefix)) {
     throw environmentError(
       `No conda environment at ${prefix}: create it with \`conda env create -f environment.yml\`, ${OVERRIDE_HINT}`,
@@ -40,15 +16,10 @@ export function condaLauncher(prefix) {
   }
   const env = {
     CONDA_PREFIX: prefix,
-    PATH: [...directories, process.env.PATH ?? ''].join(path.delimiter),
+    PATH: [...condaBinDirectories(prefix), variables.PATH ?? ''].join(path.delimiter),
   };
   return {
     description: 'conda',
-    launch: (tool, args) => {
-      const installed = directories
-        .map((directory) => path.join(directory, tool))
-        .find((candidate) => existsSync(candidate));
-      return { command: installed ?? tool, args, env };
-    },
+    launch: (tool, args) => ({ command: tool, args, env }),
   };
 }
