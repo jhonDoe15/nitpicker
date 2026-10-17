@@ -14,7 +14,8 @@ def load_checks():
     from checks import comments, declarations, state
     from environment import environment, purity
     from errors import errors
-    from honesty import assertions, collection, isolation, skipped
+    from discovery import helpers, uncollected
+    from honesty import assertions, isolation, skipped
     from smells import literals, loops, names, secret_logs, secrets
 
     return [
@@ -35,7 +36,8 @@ def load_checks():
         skipped,
         assertions,
         isolation,
-        collection,
+        uncollected,
+        helpers,
     ]
 
 

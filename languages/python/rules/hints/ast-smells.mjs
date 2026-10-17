@@ -24,6 +24,50 @@ function skipAllowed(subject) {
   return 'Give the reason: `@pytest.mark.skip(reason="needs the staging database")`, `pytest.skip("...")`; or fix or delete the test.';
 }
 
+const UNCOLLECTED_ADVICE = [
+  [
+    '(norecursedirs)',
+    'Move the tests out of the directory `norecursedirs` skips, or remove that directory from `norecursedirs`.',
+  ],
+  [
+    '(testpaths)',
+    'Add its folder to `testpaths` in the pytest configuration, or move the tests into a folder listed there.',
+  ],
+  [
+    '(--ignore)',
+    'Remove the `--ignore` or `--ignore-glob` option that hides the file, or delete the tests.',
+  ],
+  [
+    '(collect_ignore)',
+    'Remove the `collect_ignore` entry in `conftest.py` that hides the file, or delete the tests.',
+  ],
+  [
+    '(--deselect)',
+    'Remove the `--deselect` option, or mark the test `@pytest.mark.skip(reason="...")` so the skip is visible; delete a test you no longer want.',
+  ],
+  [
+    '(-k)',
+    'Remove the `-k` expression in `addopts` that hides the test, or mark it `@pytest.mark.skip(reason="...")` so the skip is visible.',
+  ],
+  [
+    '(python_classes)',
+    'Name the class the way `python_classes` collects it (`Test*` by default), or derive it from `unittest.TestCase`.',
+  ],
+  [
+    '(__init__)',
+    'Remove the `__init__`: pytest does not collect a test class that has one. Build the state in a fixture.',
+  ],
+  ['(unittest)', 'Name the file `test*.py` so `python -m unittest discover` finds it.'],
+];
+
+function uncollectedAllowed(subject) {
+  const advice = UNCOLLECTED_ADVICE.find(([marker]) => subject.endsWith(marker));
+  return (
+    advice?.[1] ??
+    'Name the file so pytest collects it (`test_*.py` or `*_test.py`), or add its pattern to `python_files` in the pytest configuration.'
+  );
+}
+
 export const SMELL_HINTS = [
   {
     tool: RULES_TOOL,
@@ -111,15 +155,14 @@ export const SMELL_HINTS = [
   {
     tool: RULES_TOOL,
     rules: ['uncollected-tests'],
-    describe: (subject) => `\`${subject}\` defines tests that pytest does not collect`,
-    allowed:
-      'Name the file so pytest collects it (`test_*.py` or `*_test.py`), or add its pattern to `python_files` in the pytest configuration.',
+    describe: (subject) => `\`${subject}\` defines tests that the test run does not collect`,
+    allowed: (subject) => uncollectedAllowed(subject),
   },
   {
     tool: RULES_TOOL,
     rules: ['test-helper-in-source'],
     describe: (subject) => `\`${subject}\` is test support inside the production source`,
     allowed:
-      'Move test helpers and fixtures into the tests folder (`tests/support/`, `conftest.py`) so they do not ship with the package.',
+      "Move test helpers and fixtures into the tests folder (`tests/support/`, `conftest.py`) so they do not ship with the package. A library's public `testing` module is allowed when the package `__init__.py` imports it or lists it in `__all__`.",
   },
 ];
