@@ -1,5 +1,5 @@
 import { ingestCheckstyle } from '../../ingest/formatting/checkstyle.mjs';
-import { readdirSync, readFileSync } from 'node:fs';
+import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { ingestFormatCheck } from '../../../../shared/ingest/format-check.mjs';
 import { projectRelative } from '../../../../shared/ingest/sarif.mjs';
@@ -22,7 +22,7 @@ export function checkstyleFindings({ reportRoot, roots, projectRoot, mainCheckst
   const sourceSetReports = readdirSync(reportRoot)
     .filter((name) => CHECKSTYLE_SOURCE_SET_REPORT.test(name))
     .sort()
-    .map((name) => readFileSync(path.join(reportRoot, name), 'utf8'));
+    .map((name) => readSourceSetReport(reportRoot, name));
   return [mainCheckstyle, ...sourceSetReports]
     .filter(Boolean)
     .flatMap((checkstyle) =>
@@ -32,4 +32,12 @@ export function checkstyleFindings({ reportRoot, roots, projectRoot, mainCheckst
         ),
       ),
     );
+}
+
+function readSourceSetReport(reportRoot, name) {
+  const full = path.resolve(reportRoot, name);
+  if (!full.startsWith(reportRoot + path.sep)) {
+    throw new Error(`Report path escapes its directory: ${name}`);
+  }
+  return readFileSync(full, 'utf8');
 }
