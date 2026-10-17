@@ -1020,7 +1020,9 @@ What the Python preset does the way the TypeScript and Java presets do (`parity/
   added. A run that collects no test is `python/no-tests-ran`, as before.
 - **Size.** `folder-depth-limit` (a package more than 4 levels below the root package, as for Java:
   the common package prefix of the production modules, on the base when there is one, after
-  leading namespace folders without `__init__.py`; test packages are measured the same way, with
+  the leading namespace folders without `__init__.py` of each top-level tree, up to its shallowest
+  package and never past the folders all its modules share, counted on the base for a tree the
+  base has, so a new `__init__.py` deep in a namespace tree moves no root; test packages are measured the same way, with
   `tests`/`test` folders and the source root left out, against the production root),
   `class-methods-limit` (20, not counting `__init__` or `@overload` stubs), `class-fields-limit`
   (10: annotated class attributes that are not `ClassVar`, plus `self.x` assignments in the
@@ -1029,7 +1031,9 @@ What the Python preset does the way the TypeScript and Java presets do (`parity/
   `TypedDict` is a record and gets Java's record wording) and `inheritance-depth-limit` (at most 3
   project base classes above it: an external base such as `Exception` or `models.Model` adds no
   level, and neither does a `Protocol` or interface link; bases are followed through imports and
-  aliases, each class once) with Java's thresholds, from the classes report of
+  aliases, each class once; `class Client(Client)` resolves its base through the import, as Python
+  binds the name only after the class body, and classes in an unresolvable cycle are measured from
+  their parents outside it) with Java's thresholds, from the classes report of
   `structure_metrics.py` and `class_metrics.py` (`size/python-size.mjs`). Generated files
   (`libraries/generated-files.mjs`) are left out of every size and structure limit, as Java's
   generated sources are: `*_pb2.py`, `*_pb2_grpc.py` and their `.pyi`; a file whose leading

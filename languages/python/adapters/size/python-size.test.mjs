@@ -87,6 +87,31 @@ describe('Python package depth', () => {
       ],
     ]);
   });
+  it('keeps the root when one deep package of a namespace tree gains an __init__.py', () => {
+    const modules = [
+      module('src/app/core/models.py', 'app.core.models'),
+      module('src/app/main.py', 'app.main'),
+      module(
+        'src/app/api/v1/handlers/users/admin/views.py',
+        'app.api.v1.handlers.users.admin.views',
+      ),
+    ];
+    const marked = [
+      ...modules,
+      module(
+        'src/app/api/v1/handlers/users/admin/__init__.py',
+        'app.api.v1.handlers.users.admin',
+        true,
+      ),
+    ];
+    const depth = (options) =>
+      pythonFolderDepthFindings(marked, { thresholds: {}, ...options }).map(
+        ({ message }) => message.split(' (')[0],
+      );
+
+    expect(depth({ rootModules: modules })).toEqual(['Package is 5 levels below the root package']);
+    expect(depth({})).toEqual(['Package is 5 levels below the root package']);
+  });
   it('keeps the base root, so a new top-level package does not deepen the others', () => {
     const modules = [
       module('src/app/a/b/c/d/x.py', 'app.a.b.c.d.x'),
@@ -199,6 +224,60 @@ describe('Python class limits', () => {
         ({ message }) => message.split(' (')[0],
       ),
     ).toEqual(['Class Memory extends 4 classes deep']);
+  });
+  it('resolves a class named after the base it imports to that base, not to itself', () => {
+    const versions = [
+      module('src/app/v1/client.py', 'app.v1.client'),
+      module('src/app/v2/client.py', 'app.v2.client'),
+    ];
+    const report = {
+      'src/app/v1/client.py': {
+        classes: [
+          classEntry('src/app/v1/client.py', 'Transport'),
+          classEntry('src/app/v1/client.py', 'Client', { bases: ['Transport'] }),
+        ],
+        imports: [],
+      },
+      'src/app/v2/client.py': {
+        classes: [
+          classEntry('src/app/v2/client.py', 'Client', { bases: ['Client'] }),
+          classEntry('src/app/v2/client.py', 'RetryingClient', { bases: ['Client'] }),
+          classEntry('src/app/v2/client.py', 'CachingClient', { bases: ['RetryingClient'] }),
+          classEntry('src/app/v2/client.py', 'TracingClient', { bases: ['CachingClient'] }),
+        ],
+        imports: [{ level: 0, module: 'app.v1.client', name: 'Client', asname: null }],
+      },
+    };
+
+    expect(
+      pythonClassLimitFindings(report, versions, { thresholds: {} }).map(
+        ({ message }) => message.split(' (')[0],
+      ),
+    ).toEqual([
+      'Class TracingClient extends 5 classes deep',
+      'Class CachingClient extends 4 classes deep',
+    ]);
+  });
+  it('measures the classes below an unresolvable cycle from the parents outside it', () => {
+    const report = {
+      'src/app/base.py': {
+        classes: [
+          classEntry('src/app/base.py', 'Root'),
+          classEntry('src/app/base.py', 'A', { bases: ['B', 'Root'] }),
+          classEntry('src/app/base.py', 'B', { bases: ['A'] }),
+          classEntry('src/app/base.py', 'C', { bases: ['A'] }),
+          classEntry('src/app/base.py', 'D', { bases: ['C'] }),
+          classEntry('src/app/base.py', 'E', { bases: ['D'] }),
+        ],
+        imports: [],
+      },
+    };
+
+    expect(
+      pythonClassLimitFindings(report, modules, { thresholds: {} }).map(
+        ({ message }) => message.split(' (')[0],
+      ),
+    ).toEqual(['Class E extends 4 classes deep']);
   });
   it('walks a deep diamond hierarchy in linear time', () => {
     const ladder = Array.from({ length: 40 }, (_, step) => {
