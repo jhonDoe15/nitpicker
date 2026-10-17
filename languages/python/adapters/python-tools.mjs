@@ -5,7 +5,6 @@ import { TESTS_FAILED_RULE } from '../../../shared/rules/finding-helpers.mjs';
 import { scanImports } from './analysis/python-coupling.mjs';
 import { scanDependencies } from './dependencies/dependency-findings.mjs';
 import { runDuplicates } from './analysis/python-duplicates.mjs';
-import { globToRegExpSource } from '../../../shared/glob.mjs';
 import { detectEnvironment, openEnvironment } from './execution/python-environment.mjs';
 import { checkRules } from './analysis/python-ast-rules.mjs';
 import { pytestStyle, pytestStyleFlags } from '../rules/libraries/pytest-style.mjs';
@@ -19,6 +18,7 @@ import {
   detectTypeCheckers,
   importRoots,
 } from './execution/python-project.mjs';
+import { formatCommand, ruffExclusions } from './formatting/format-command.mjs';
 import { ruffConfigFor } from './configuration/python-ruff-config.mjs';
 import { detectTestRunner, pytestLabel, testRunnerLabel } from './execution/python-test-runner.mjs';
 import { test } from './test-runs/test-step.mjs';
@@ -45,6 +45,9 @@ export function createToolContext({
   duplicateSkippedFolders,
   snapshot = 'head',
   baselineRoot,
+  conventions = {},
+  policyRoot,
+  toolPrecedence,
   pytestAddopts,
 }) {
   const launcher = openEnvironment(detectEnvironment(liveRoot, settings.environment), liveRoot);
@@ -57,6 +60,9 @@ export function createToolContext({
     reportRoot,
     snapshot,
     baselineRoot,
+    conventions,
+    policyRoot,
+    toolPrecedence,
     launcher,
     exclude,
     duplicateSkippedFolders,
@@ -146,24 +152,6 @@ export function lint(context) {
     ],
     { accepted: [0, 1], rule: 'ruff-failed' },
   );
-}
-
-function ruffExclusions({ exclude }) {
-  return exclude.flatMap((glob) => ['--extend-exclude', glob]);
-}
-
-function blackExclusions({ exclude }) {
-  if (exclude.length === 0) {
-    return [];
-  }
-  const patterns = exclude.map((glob) => `^/${globToRegExpSource(glob).slice(1, -1)}(?:/.*)?/?$`);
-  return ['--extend-exclude', patterns.join('|')];
-}
-
-function formatCommand({ project, ...context }) {
-  return project.formatter === 'black'
-    ? ['black', '--check', ...blackExclusions(context), '.']
-    : ['ruff', 'format', '--check', '--diff', '--no-cache', ...ruffExclusions(context), '.'];
 }
 
 export function unformattedPaths(formatter, { stdout, stderr }) {

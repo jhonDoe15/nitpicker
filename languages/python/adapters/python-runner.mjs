@@ -1,8 +1,10 @@
 import { mkdtempSync, realpathSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
+import { readHeadPolicyFile } from '../../../shared/head-policy.mjs';
 import { applyFindingPolicy } from '../../../shared/findings/finding-policy.mjs';
 import { parseRunnerArguments } from '../../../core/tooling/runner-arguments.mjs';
+import { precedenceToolNames } from '../../java/adapters/gradle-presets.mjs';
 import {
   trackTemporaryPath,
   untrackTemporaryPath,
@@ -41,6 +43,9 @@ function toolContext({ projectRoot, liveRoot, settings, policy }, reportRoot) {
     duplicateSkippedFolders: policy?.duplicateSkippedFolders,
     snapshot: policy?.snapshot,
     baselineRoot: policy?.baselineRoot,
+    conventions: policy?.conventions,
+    policyRoot: policy?.policyRoot,
+    toolPrecedence: policy?.toolPrecedence,
     pytestAddopts: process.env.PYTEST_ADDOPTS,
   });
 }
@@ -122,7 +127,10 @@ export function parsePythonArguments(arguments_) {
       shared.push(argument);
     }
   }
-  const { projectRoot, policy } = parseRunnerArguments(shared, { runner: 'python-runner.mjs' });
+  const { projectRoot, policy } = parseRunnerArguments(shared, {
+    runner: 'python-runner.mjs',
+    precedenceTools: precedenceToolNames(),
+  });
   const part = own.get('--part') ?? PYTHON_ANALYZER_NAME;
   if (!(part in UNEXPECTED_FAILURE_RULES)) {
     throw new Error(`--part must be one of: ${Object.keys(UNEXPECTED_FAILURE_RULES).join(', ')}`);
@@ -138,12 +146,13 @@ export function parsePythonArguments(arguments_) {
 
 function main(arguments_) {
   const { part, projectRoot, liveRoot, settings, policy } = parsePythonArguments(arguments_);
+  const conventions = readHeadPolicyFile().conventions;
   const report = analyzePythonSnapshot({
     part,
     projectRoot: realpathSync(projectRoot),
     liveRoot: realpathSync(liveRoot),
     settings,
-    policy,
+    policy: { ...policy, conventions },
   });
   process.stdout.write(`${JSON.stringify(report)}\n`);
 }

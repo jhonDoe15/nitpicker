@@ -11,8 +11,8 @@ function usageOf(runner, choices, precedenceTools) {
   const listed = Object.entries(choices).map(
     ([option, values]) => ` [${option} ${values.join('|')}]`,
   );
-  const precedence = precedenceTools.map((tool) => ` [--${tool}-precedence <layers>]`);
-  return `Usage: ${runner}${BASE_USAGE}${listed.join('')}${precedence.join('')}`;
+  const precedence = precedenceTools.length === 0 ? '' : ' [--<tool>-precedence <layers>]...';
+  return `Usage: ${runner}${BASE_USAGE}${listed.join('')}${precedence}`;
 }
 
 function parseException(value, usage) {

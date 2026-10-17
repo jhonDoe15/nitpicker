@@ -30,6 +30,12 @@ export const RULES_CASES = [
   ...rulesCases('skipped-test', [['skipped-test-without-reason', 'reason=']]),
   ...rulesCases('sleep-in-test', [['sleep-in-test', 'fake clock']]),
   ...rulesCases('tautological-assert', [['tautological-assert', 'result of the code under test']]),
+  ...rulesCases('test-without-assertion', [
+    ['test-without-assertion', 'assert result == expected'],
+  ]),
+  ...rulesCases('catch-log-without-exception', [
+    ['catch-log-without-exception', 'logger.exception'],
+  ]),
   ...rulesCases('real-clock-test', [['real-clock-in-test', 'freeze']]),
   ...rulesCases('random-test', [['random-in-test', 'seed']]),
   ...rulesCases('network-test', [['network-in-test', 'fake']]),

@@ -8,6 +8,7 @@ import { collectionOptions } from '../configuration/pytest/collection-options.mj
 import { readPytestConfig } from '../configuration/pytest/pytest-config.mjs';
 import { testFileMatcher } from './python-sources.mjs';
 import { entryFilesOf, readEntryModules } from '../../rules/libraries/entry-modules.mjs';
+import { boundaryRoots, detectLibraries } from '../../rules/libraries/project-libraries.mjs';
 
 export const RULES_REPORT = 'rules.json';
 export const ALLOWANCES_REPORT = 'rules-allowances.json';
@@ -59,6 +60,7 @@ export function checkRules(context) {
       testFiles: sources.filter(testFileMatcher(context.projectRoot)),
       entryFiles: entryFilesOf(sources, context.project.entryPoints),
       entryModules: readEntryModules(context.projectRoot),
+      boundaryRoots: boundaryRoots(detectLibraries(context.projectRoot)),
     }),
   );
   run(
