@@ -28,4 +28,4 @@ export function testFilePathPatterns(resolved, projectRoot) {
   ];
 }
 
-export const testFilePaths = testFilePathPatterns(layout, process.cwd());
+export const testFilePaths = testFilePathPatterns(layout, '.');

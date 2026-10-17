@@ -1,6 +1,9 @@
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { mochaMutationOptions, projectMocha } from '../../preset/test-runner/mocha-options.mjs';
+import {
+  mochaMutationOptions,
+  projectMocha,
+} from '../../preset/test-runner/test-files/mocha-options.mjs';
 import { RESTORE_SINON_PLUGIN } from './mocha/mocha.mjs';
 import { nodeTestSelection } from './node-test/node-test.mjs';
 import { TEST_TIMEOUT_MS } from './test-run.mjs';

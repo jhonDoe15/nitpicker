@@ -102,6 +102,19 @@ function testInputPattern(testRoots) {
     new RegExp(`(?:^|/)(?:${locations})/(?:.*/)?(?:__fixtures__|fixtures)/${escapeRegExp(name)}`);
 }
 
+function testFileClassifier(patterns, isRunnerTest) {
+  return (file) => {
+    const normalized = toPosix(file);
+    if (!patterns.codePattern.test(normalized) || normalized.endsWith('.d.ts')) {
+      return false;
+    }
+    return (
+      patterns.testPattern.test(normalized) ||
+      (patterns.sourcePattern.test(normalized) && isRunnerTest(normalized))
+    );
+  };
+}
+
 function createClassifiers({
   sourceRoots,
   testRoots,
@@ -122,16 +135,7 @@ function createClassifiers({
     const normalized = toPosix(file);
     return excludeMatchers.some((matcher) => matcher.test(normalized));
   }
-  function isTestFile(file) {
-    const normalized = toPosix(file);
-    if (!patterns.codePattern.test(normalized) || normalized.endsWith('.d.ts')) {
-      return false;
-    }
-    if (patterns.testPattern.test(normalized)) {
-      return true;
-    }
-    return patterns.sourcePattern.test(normalized) && isRunnerTest(normalized);
-  }
+  const isTestFile = testFileClassifier(patterns, isRunnerTest);
   function isSourceFile(file) {
     const normalized = toPosix(file);
     return (
@@ -175,6 +179,10 @@ function globsFor({ sourceRoots, testRoots, javascript, extensionGlob, testFiles
     graphRoots: [...sourceRoots, ...testRoots],
     graphIncludeOnly: `^(${[...sourceRoots, ...testRoots].map(escapeRegExp).join('|')})(?:/|$)`,
   };
+}
+
+function globsPattern(globs) {
+  return globs.length === 0 ? undefined : globs.map((glob) => globToRegExpSource(glob)).join('|');
 }
 
 function exactPathPattern(files) {
@@ -229,10 +237,7 @@ export function resolveLayout(
     ...globs,
     hiddenGlobs,
     ...endToEndFor(layout, testRoots, extensionGlob),
-    excludePattern:
-      hiddenGlobs.length === 0
-        ? undefined
-        : hiddenGlobs.map((glob) => globToRegExpSource(glob)).join('|'),
+    excludePattern: globsPattern(hiddenGlobs),
     generatedFilePattern: exactPathPattern(generatedFiles),
     ...createClassifiers({
       sourceRoots,

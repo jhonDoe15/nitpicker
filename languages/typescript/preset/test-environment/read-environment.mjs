@@ -1,7 +1,7 @@
 import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { chainOf } from '../../../../shared/traversal.mjs';
+import { chainOf, parentDirectory } from '../../../../shared/traversal.mjs';
 import { aliasesFromConfig } from './aliases.mjs';
 import { environmentsFromConfig, testFilesFromConfig } from './environments.mjs';
 
@@ -12,11 +12,6 @@ function entryOf(manifest) {
   const imported = entry?.import ?? entry;
   const resolved = typeof imported === 'string' ? imported : imported?.default;
   return resolved ?? manifest.module ?? manifest.main ?? 'index.js';
-}
-
-function parentDirectory(directory) {
-  const parent = path.dirname(directory);
-  return parent === directory ? undefined : parent;
 }
 
 function viteManifestFrom(root) {
