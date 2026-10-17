@@ -1,11 +1,15 @@
 import { sumToolCount, formatSeconds } from './format/text.mjs';
 import { heldFindings, heldLine } from './format/held-findings.mjs';
 import { noteSectionLines } from './format/notes.mjs';
+import { noticeSection } from './review/notices.mjs';
+import { policyChangeSection } from './review/policy-changes.mjs';
 
 export function renderTextReport(report) {
   const lines = [
     ...summaryLines(report),
     ...configOverrideLines(report.summary.configOverrides ?? []),
+    ...policyChangeSection(report.summary),
+    ...noticeSection(report.summary.notices),
     ...toolCountLines(report.summary.tools),
   ];
   appendFindingSection(lines, 'New findings', report.newFindings);

@@ -1,6 +1,7 @@
 import { heldFindings, heldLine } from './format/held-findings.mjs';
 import { noteSummaryText } from './format/notes.mjs';
 import { singleLine } from './format/text.mjs';
+import { appendReviewSummary } from './review/notices.mjs';
 import {
   TESTS_FAILED_RULE,
   TESTS_FAILED_SKIPPED_RULE,
@@ -24,6 +25,9 @@ export function renderConsoleSummary(
   ];
 
   appendViolationSummary(lines, { violations, incomplete: report.toolErrors.length > 0 }, color);
+  appendReviewSummary(lines, report.summary, (text) =>
+    style(text, [ANSI.bold, ANSI.yellow], color),
+  );
   appendHeldSummary(lines, report.unchangedFindings, color);
   appendNoteSummary(lines, report.notes, color);
   appendToolErrorSummary(lines, report.toolErrors, color);

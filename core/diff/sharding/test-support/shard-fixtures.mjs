@@ -54,6 +54,7 @@ function shardSummary(index, options) {
     policyHash: `shard-${String(index)}`,
     tools: tools.map((name) => shardTool(name, findings, { toolVersions, configurationHashes })),
     exclusions: ['generated/**'],
+    ...options.carried,
     renamedPaths: 0,
     elapsedMs: options.elapsedMs,
     overallStatus: options.overallStatus,
@@ -75,6 +76,7 @@ export function writeShard(
     configurationHashes = {},
     overallStatus = 'completed',
     elapsedMs = 10,
+    carried = {},
   },
 ) {
   const shardRoot = path.join(inputRoot, String(index));
@@ -89,6 +91,7 @@ export function writeShard(
       configurationHashes,
       elapsedMs,
       overallStatus,
+      carried,
     }),
   );
   writeJson(path.join(shardRoot, 'new-findings.json'), findings);
