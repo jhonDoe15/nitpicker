@@ -1,6 +1,6 @@
 import { globToRegExpSource } from '../../../../shared/glob.mjs';
 import { readHeadPolicy, readLayout } from '../head-policy.mjs';
-import { layoutFeatures } from './strict-layout.mjs';
+import { layoutFeatures, testFilePaths } from './strict-layout.mjs';
 import { isTypeOnlyDependency } from '../dependency-graph/cruise.mjs';
 import {
   idAndRandomLibraries,
@@ -65,7 +65,7 @@ const reachableIoPatterns = [
   resolvedPackagePattern([...networkAndDatabaseClients, ...loggers]),
 ];
 
-const domain = { path: `${feature}/domain/` };
+const domain = { path: `${feature}/domain/`, pathNot: testFilePaths };
 
 const baseBoundaryRules = [
   {

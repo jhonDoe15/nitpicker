@@ -1,12 +1,19 @@
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { cruiseStrict } from './test-support/strict-cruise.mjs';
+import { cruiseStrict, cruiseWithConfig } from './test-support/strict-cruise.mjs';
+import strictConfig from './fixtures/dependency-cruiser.strict.fixture.config.mjs';
 import {
   REACH_THROUGH_SHARED_RULE,
   sharedReachPath,
   strictBoundaryRules,
   strictBoundaryRulesFor,
 } from './strict-boundary-rules.mjs';
+import { testFilePathPatterns, testFilePaths } from './strict-layout.mjs';
+import { resolveLayout } from '../layout.mjs';
+import {
+  defaultTestFiles,
+  testFilePatterns,
+} from '../test-runner/test-files/test-file-patterns.mjs';
 
 const fixturesRoot = path.resolve(import.meta.dirname, 'fixtures/strict');
 
@@ -80,13 +87,13 @@ describe('strict boundary rules', () => {
         ({ name }) => name === 'domain-does-not-import-node-io',
       );
 
-    expect(rule([]).from.pathNot).toBeUndefined();
+    expect(rule([]).from.pathNot).toEqual(testFilePaths);
     expect(
       rule([
         { rule: 'domain-does-not-import-node-io', paths: ['src/legacy/**'], reason: 'old' },
         { rule: 'other-rule', paths: ['src/other/**'], reason: 'unrelated' },
       ]).from.pathNot,
-    ).toEqual(['^(?:src/legacy/.*)$']);
+    ).toEqual([...testFilePaths, '^(?:src/legacy/.*)$']);
   });
 
   it('defines every strict rule the fixtures exercise', () => {
@@ -170,5 +177,64 @@ describe('the shared module a domain file reaches I/O through', () => {
       'src/main/features/calc/domain/user.ts',
     ]);
     expect(paths.map(([, via]) => via)).toEqual([undefined, undefined, undefined]);
+  });
+});
+
+describe('the test files of each runner in domain/', () => {
+  const fixture = path.join(fixturesRoot, 'domain-runner-tests');
+  const BASE_PATTERNS = [
+    '^(?:test|tests|__tests__|e2e)/',
+    '(?:^|/)(?:src)/.*/__tests__/',
+    '(?:^|/)(?:src)/.*\\.(?:test|spec)\\.',
+  ];
+
+  function patternsFor(testFiles) {
+    return testFilePathPatterns(resolveLayout({}, [], { testFiles }), fixture);
+  }
+
+  function cruiseWith(patterns) {
+    const forbidden = strictConfig.forbidden.map((rule) =>
+      rule.name.startsWith('domain-')
+        ? { ...rule, from: { ...rule.from, pathNot: patterns } }
+        : rule,
+    );
+    return cruiseWithConfig(
+      { ...strictConfig, forbidden },
+      { baseDir: fixture, paths: ['src'], outputType: 'err-long' },
+    );
+  }
+
+  it('names the colocated node:test files by path', () => {
+    expect(patternsFor(defaultTestFiles('node'))).toEqual([
+      ...BASE_PATTERNS,
+      '(?:^|/)src/main/features/auth/domain/login-test\\.ts$',
+      '(?:^|/)src/main/features/auth/domain/test/login\\.ts$',
+    ]);
+  });
+
+  it('names the files a Jest test regex matches by path', () => {
+    const testFiles = testFilePatterns({ includeRegexes: ['-test\\.ts$'] });
+
+    expect(patternsFor(testFiles)).toEqual([
+      ...BASE_PATTERNS,
+      '(?:^|/)src/main/features/auth/domain/login-test\\.ts$',
+    ]);
+  });
+
+  it.each(['vitest', 'mocha'])('keeps only the shared test paths for %s', (runner) => {
+    expect(patternsFor(defaultTestFiles(runner))).toEqual(BASE_PATTERNS);
+  });
+
+  it('leaves the node:test files out of the domain rules', async () => {
+    const result = await cruiseWith(patternsFor(defaultTestFiles('node')));
+
+    expect(result.exitCode, result.output).toBe(0);
+  });
+
+  it('holds the same files to the domain rules when the runner does not run them', async () => {
+    const result = await cruiseWith(patternsFor(defaultTestFiles('vitest')));
+
+    expect(result.output.replaceAll(/\s+/g, ' ')).toContain('domain-does-not-import-node-io');
+    expect(result.exitCode).not.toBe(0);
   });
 });

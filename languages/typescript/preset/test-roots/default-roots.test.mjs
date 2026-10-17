@@ -96,7 +96,7 @@ describe('the dependency-cruiser production-to-test rule', () => {
       const url = pathToFileURL(path.join(defaults, 'dependency-cruiser.config.mjs'));
       url.search = 'default-roots';
       const { default: config } = await import(url.href);
-      return new RegExp(config.forbidden[0].to.path);
+      return new RegExp(config.forbidden[0].to.path.join('|'));
     } finally {
       if (previous !== undefined) {
         process.env.NITPICKER_POLICY = previous;
