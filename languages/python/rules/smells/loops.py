@@ -1,146 +1,12 @@
 import ast
 
-from checks.common import dotted_name, finding, words_of
+from checks.common import dotted_name, finding
+from smells.io_index import IoScope, chain_names, io_index
 
-INPUT_OUTPUT_MODULES = {
-    "requests",
-    "httpx",
-    "aiohttp",
-    "urllib3",
-    "urllib.request",
-    "http.client",
-    "sqlite3",
-    "psycopg",
-    "psycopg2",
-    "pymysql",
-    "asyncpg",
-    "pymongo",
-    "redis",
-    "boto3",
-}
-OWNER_WORDS = {
-    "repo",
-    "repository",
-    "dao",
-    "db",
-    "database",
-    "session",
-    "cursor",
-    "conn",
-    "connection",
-    "client",
-    "pool",
-    "http",
-    "api",
-    "gateway",
-    "objects",
-    "collection",
-    "redis",
-}
-METHOD_PREFIXES = {
-    "find",
-    "fetch",
-    "load",
-    "read",
-    "query",
-    "select",
-    "insert",
-    "update",
-    "upsert",
-    "delete",
-    "remove",
-    "save",
-    "create",
-    "count",
-    "execute",
-    "executemany",
-    "write",
-    "list",
-}
-GETTER_LOOKUPS = {"by", "all", "many", "one", "page"}
-METHOD_NAMES = {
-    "exists",
-    "send",
-    "post",
-    "put",
-    "patch",
-    "request",
-    "raw",
-    "run",
-    "filter",
-    "first",
-    "all",
-    "one",
-    "one_or_none",
-    "scalar",
-    "scalars",
-    "commit",
-    "refresh",
-    "get_or_create",
-    "update_or_create",
-    "bulk_create",
-    "bulk_update",
-}
 CONCURRENT_COMBINATORS = {"asyncio.gather", "asyncio.wait", "asyncio.as_completed"}
 COMPREHENSIONS = (ast.ListComp, ast.SetComp, ast.DictComp, ast.GeneratorExp)
 FUNCTIONS = (ast.FunctionDef, ast.AsyncFunctionDef, ast.Lambda)
-ARITHMETIC = (ast.Add, ast.Sub, ast.Mult, ast.Div, ast.Mod, ast.Pow, ast.FloorDiv)
-
-
-def is_input_output_method(name):
-    first, *rest = words_of(name) or [""]
-    if first == "get":
-        return not rest or rest[0] in GETTER_LOOKUPS
-    return name in METHOD_NAMES or first in METHOD_PREFIXES
-
-
-def chain_names(node):
-    names = []
-    while True:
-        if isinstance(node, ast.Await):
-            node = node.value
-        elif isinstance(node, ast.Call):
-            node = node.func
-        elif isinstance(node, ast.Attribute):
-            names.insert(0, node.attr)
-            node = node.value
-        elif isinstance(node, ast.Subscript):
-            node = node.value
-        else:
-            if isinstance(node, ast.Name):
-                names.insert(0, node.id)
-            return names
-
-
-def imported_input_output_names(tree):
-    names = set()
-    for node in ast.walk(tree):
-        if isinstance(node, ast.Import):
-            for alias in node.names:
-                if alias.name in INPUT_OUTPUT_MODULES:
-                    names.add((alias.asname or alias.name).split(".")[0])
-        elif isinstance(node, ast.ImportFrom) and node.level == 0 and node.module:
-            if node.module in INPUT_OUTPUT_MODULES:
-                names.update(alias.asname or alias.name for alias in node.names)
-    return names
-
-
-def is_input_output_call(call, imported):
-    names = chain_names(call.func)
-    if not names:
-        return False
-    if names[0] in imported:
-        return True
-    owners = names[:-1]
-    return (
-        bool(owners)
-        and is_input_output_method(names[-1])
-        and any((words_of(owner) or [""])[-1] in OWNER_WORDS for owner in owners)
-    )
-
-
-def loop_parents(tree):
-    return {id(c): p for p in ast.walk(tree) for c in ast.iter_child_nodes(p)}
+PAGING_PASSES = 3
 
 
 def ancestors(node, parents):
@@ -188,33 +54,71 @@ def is_concurrent(comprehension, parents, aliases):
     )
 
 
-def is_self_update(node, name):
-    if isinstance(node, ast.AugAssign):
-        return isinstance(node.op, ARITHMETIC)
-    return isinstance(node.value, ast.BinOp) and any(
-        isinstance(side, ast.Name) and side.id == name
-        for side in (node.value.left, node.value.right)
-    )
+def assigned_pairs(loop):
+    for node in ast.walk(loop):
+        if isinstance(node, ast.Assign):
+            yield node.targets, node.value
+        elif isinstance(node, (ast.AugAssign, ast.AnnAssign)) and node.value:
+            yield [node.target], node.value
 
 
-def is_paging_loop(loop):
+def names_in(node):
+    return {n.id for n in ast.walk(node) if isinstance(n, ast.Name)}
+
+
+def input_output_names(loop, scope):
+    found = set()
+    for _ in range(PAGING_PASSES):
+        for targets, value in assigned_pairs(loop):
+            reads_input_output = any(
+                isinstance(n, ast.Call) and scope.is_io(n) for n in ast.walk(value)
+            )
+            if reads_input_output or names_in(value) & found:
+                found.update(
+                    t.id
+                    for target in targets
+                    for t in ast.walk(target)
+                    if isinstance(t, ast.Name)
+                )
+    return found
+
+
+def tested_names(loop):
+    names = names_in(loop.test)
+    for node in ast.walk(loop):
+        if isinstance(node, ast.If) and ends_with_exit_statement(node.body):
+            names |= names_in(node.test)
+    return names
+
+
+def ends_with_exit_statement(body):
+    return bool(body) and isinstance(body[-1], (ast.Break, ast.Return))
+
+
+def is_paging_loop(loop, scope):
     if not isinstance(loop, ast.While):
         return False
-    tested = {n.id for n in ast.walk(loop.test) if isinstance(n, ast.Name)}
-    for node in ast.walk(loop):
-        targets = []
-        if isinstance(node, ast.Assign):
-            targets = node.targets
-        elif isinstance(node, (ast.AugAssign, ast.AnnAssign)):
-            targets = [node.target]
-        for target in targets:
-            if isinstance(target, ast.Name) and target.id in tested:
-                if not (
-                    isinstance(node, (ast.Assign, ast.AugAssign))
-                    and is_self_update(node, target.id)
-                ):
-                    return True
-    return False
+    return bool(tested_names(loop) & input_output_names(loop, scope))
+
+
+def loop_variables(loop):
+    targets = []
+    if isinstance(loop, (ast.For, ast.AsyncFor)):
+        targets = [loop.target]
+    elif isinstance(loop, COMPREHENSIONS):
+        targets = [g.target for g in loop.generators]
+    return {n.id for t in targets for n in ast.walk(t) if isinstance(n, ast.Name)}
+
+
+def runs_each_item(call, loop):
+    names = chain_names(call.func)
+    return (
+        bool(names)
+        and names[-1] == "execute"
+        and bool(call.args)
+        and isinstance(call.args[0], ast.Name)
+        and call.args[0].id in loop_variables(loop)
+    )
 
 
 def exits_loop(statements):
@@ -248,8 +152,8 @@ def is_retry_attempt(call, loop, parents):
 def check(context):
     if context.tests:
         return []
-    imported = imported_input_output_names(context.tree)
-    parents = loop_parents(context.tree)
+    scope = IoScope(context, io_index(context.project))
+    parents = context.parents
     found = []
     inner_calls = {
         id(node.func.value)
@@ -259,17 +163,24 @@ def check(context):
     for node in ast.walk(context.tree):
         if not isinstance(node, ast.Call) or id(node) in inner_calls:
             continue
-        if not is_input_output_call(node, imported):
+        if scope.maps_io(node):
+            callee = ".".join(chain_names(node.args[0]))
+            found.append(finding(context.path, "io-in-loop", f"{callee}()", node))
+            continue
+        if not scope.is_io(node):
             continue
         loop = enclosing_loop(node, parents)
         if loop is None:
             continue
-        container = loop
-        if isinstance(container, COMPREHENSIONS) and is_concurrent(
-            container, parents, context.aliases
+        if isinstance(loop, COMPREHENSIONS) and is_concurrent(
+            loop, parents, context.aliases
         ):
             continue
-        if is_paging_loop(container) or is_retry_attempt(node, container, parents):
+        if (
+            is_paging_loop(loop, scope)
+            or is_retry_attempt(node, loop, parents)
+            or runs_each_item(node, loop)
+        ):
             continue
         callee = ".".join(chain_names(node.func))
         found.append(finding(context.path, "io-in-loop", f"{callee}()", node))
