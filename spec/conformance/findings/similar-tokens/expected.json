@@ -1,0 +1,59 @@
+{
+  "description": "A head finding with no exact match counts as present when a base finding has the same tool, rule, path and classification, the same number (three or more) of tokens and at most one differing token, and that token pair is an opaque change. h1 differs from b1 by a random-looking word. h2 differs from b2 by a capitalized word, which is not opaque, so h2 is new and b2 resolved. h3 and h4 can each pair with b3, only h3 can also pair with b4: the maximum matching pairs h3 with b4 and h4 with b3, whatever the order. h5 has two tokens, so it is new and b5 resolved.",
+  "new": [
+    {
+      "tool": "t",
+      "rule": "r",
+      "path": "test/a.test.ts",
+      "identity": "h2",
+      "classification": "enforceable"
+    },
+    {
+      "tool": "t",
+      "rule": "r",
+      "path": "test/a.test.ts",
+      "identity": "h5",
+      "classification": "enforceable"
+    }
+  ],
+  "resolved": [
+    {
+      "tool": "t",
+      "rule": "r",
+      "path": "test/a.test.ts",
+      "identity": "b2",
+      "classification": "enforceable"
+    },
+    {
+      "tool": "t",
+      "rule": "r",
+      "path": "test/a.test.ts",
+      "identity": "b5",
+      "classification": "enforceable"
+    }
+  ],
+  "unchanged": [
+    {
+      "tool": "t",
+      "rule": "r",
+      "path": "test/a.test.ts",
+      "identity": "h1",
+      "classification": "enforceable"
+    },
+    {
+      "tool": "t",
+      "rule": "r",
+      "path": "test/a.test.ts",
+      "identity": "h3",
+      "classification": "enforceable"
+    },
+    {
+      "tool": "t",
+      "rule": "r",
+      "path": "test/a.test.ts",
+      "identity": "h4",
+      "classification": "enforceable"
+    }
+  ],
+  "changedMetrics": []
+}
