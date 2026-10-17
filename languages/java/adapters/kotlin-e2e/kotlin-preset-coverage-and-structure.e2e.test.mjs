@@ -54,6 +54,28 @@ import {
   rulesOf,
 } from './test-support/kotlin-e2e-project.mjs';
 
+const TEST_ONLY_FILES = {
+  [`${kotlinSources}/Shouting.kt`]:
+    'package demo\n\nfun shout(text: String): String = text.uppercase()\n',
+  [`${kotlinSources}/Tool.kt`]:
+    'package demo\n\nfun main() {\n    check(toolName().isNotEmpty())\n}\n\nfun toolName(): String = "tool"\n',
+  'src/test/kotlin/demo/ShoutingTest.kt': [
+    'package demo',
+    '',
+    'import kotlin.test.Test',
+    'import kotlin.test.assertEquals',
+    '',
+    'class ShoutingTest {',
+    '    @Test',
+    '    fun shouts() {',
+    '        assertEquals("HI", shout("hi"))',
+    '        assertEquals("tool", toolName())',
+    '    }',
+    '}',
+    '',
+  ].join('\n'),
+};
+
 describe.skipIf(!kotlinE2eEnabled)('Kotlin preset coverage and structure end to end', () => {
   let project;
 
@@ -73,6 +95,7 @@ describe.skipIf(!kotlinE2eEnabled)('Kotlin preset coverage and structure end to 
       'src/test/kotlin/demo/GeneratedTest.kt': GENERATED_TEST,
     });
     commitBranch(project, 'broken', { [`${kotlinSources}/Broken.kt`]: BROKEN });
+    commitBranch(project, 'test-only', TEST_ONLY_FILES);
     commitBranch(project, 'init-base', {
       [`${kotlinSources}/boxes/Box.kt`]: boxes(false),
       'src/test/kotlin/demo/boxes/BoxTest.kt': BOX_TEST,
@@ -210,11 +233,13 @@ describe.skipIf(!kotlinE2eEnabled)('Kotlin preset coverage and structure end to 
       'duplicates duplicate-clone Left.kt',
     ]);
     expect(
-      onlyTools(result.newEnforceable, 'coupling').map(({ rule, identity, message }) => ({
-        rule,
-        identity,
-        message,
-      })),
+      onlyTools(result.newEnforceable, 'coupling')
+        .filter(({ rule }) => rule === 'stability-direction')
+        .map(({ rule, identity, message }) => ({
+          rule,
+          identity,
+          message,
+        })),
     ).toEqual([
       {
         rule: 'stability-direction',
@@ -246,6 +271,15 @@ describe.skipIf(!kotlinE2eEnabled)('Kotlin preset coverage and structure end to 
 
     expect(rulesOf(result.newEnforceable, 'structure', 'crap')).toEqual([]);
     expect(rulesOf(result.unchangedFindings, 'structure', 'crap')).toEqual(legacy);
+  });
+  it('reports a Kotlin file facade only tests use and spares a file with a main function', () => {
+    const result = diffOf(project, 'test-only');
+
+    expect(
+      onlyTools(result.newEnforceable, 'coupling')
+        .filter(({ rule }) => rule === 'test-only-export')
+        .map(({ path: file, symbol, location }) => `${file}:${String(location.line)} ${symbol}`),
+    ).toEqual(['src/main/kotlin/demo/Shouting.kt:3 demo.ShoutingKt']);
   });
   it('reports a Gradle failure as a tool error instead of throwing', () => {
     git(project, 'checkout', '-q', 'broken');

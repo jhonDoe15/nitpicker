@@ -14,7 +14,7 @@ export function suppressionTokens(source) {
   );
 }
 
-function kotlinFiles(projectRoot, sourceRoot) {
+export function kotlinFiles(projectRoot, sourceRoot) {
   if (!existsSync(path.join(projectRoot, sourceRoot))) {
     return [];
   }

@@ -185,7 +185,10 @@ export function reactMajorOf(projectRoot) {
   return packageMajorOf(projectRoot, 'react');
 }
 
-export function isReactProject({ projectRoot, react = {} }) {
+export function isReactProject({ projectRoot, react = {}, javascript = false }) {
+  if (javascript) {
+    return false;
+  }
   return react.enabled ?? hasScopePackage(projectRoot, 'react');
 }
 

@@ -76,6 +76,7 @@ describe('running the rules script', () => {
       testFiles: [],
       entryFiles: [],
       entryModules: [],
+      boundaryRoots: ['pydantic', 'pydantic_settings'],
     });
     expect(readFileSync(path.join(reportRoot, 'python-files.txt'), 'utf8')).toBe('src/demo/a.py');
     expect(readFileSync(path.join(reportRoot, 'rules.json'), 'utf8')).toBe('[{"rule":"x"}]');
@@ -93,5 +94,27 @@ describe('running the rules script', () => {
         message: expect.stringContaining('no interpreter'),
       }),
     );
+  });
+
+  it('tells it which imports are the validation boundary, from the declared libraries', () => {
+    const root = fakes.project({ 'requirements.txt': 'marshmallow\nmsgspec\n' });
+    const { context, reportRoot } = fakes.contextFor(root);
+
+    checkRules(context);
+
+    expect(
+      JSON.parse(readFileSync(path.join(reportRoot, 'rule-options.json'), 'utf8')).boundaryRoots,
+    ).toEqual(['msgspec', 'marshmallow', 'marshmallow_dataclass']);
+  });
+
+  it('defaults the boundary to pydantic when no library is declared', () => {
+    const root = fakes.project();
+    const { context, reportRoot } = fakes.contextFor(root);
+
+    checkRules(context);
+
+    expect(
+      JSON.parse(readFileSync(path.join(reportRoot, 'rule-options.json'), 'utf8')).boundaryRoots,
+    ).toEqual(['pydantic', 'pydantic_settings']);
   });
 });

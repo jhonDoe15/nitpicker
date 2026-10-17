@@ -17,6 +17,15 @@ describe('definition text', () => {
     expect(keyOf("const LIMIT = ['a', 2];")).not.toBe(plain);
   });
 
+  it('expose the normalized tokens of the parameters and body that the text is made of', () => {
+    const [definition] = definitionsOf(
+      '/** sum */\nfunction sum(a: number,) {\n  return a + 1;\n}',
+    );
+
+    expect(definition.tokens.slice(0, 5)).toEqual(['a', ':', 'number', '{', 'return']);
+    expect(definition.text).toBe(`function|${definition.tokens.join(' ')}`);
+  });
+
   it('compare a function declaration and a function expression by parameters and body', () => {
     const declaration = keyOf('function total(a: number) { return a + 1; }');
     expect(keyOf('export const total = function (a: number) {\n  return a + 1;\n};')).toBe(

@@ -241,6 +241,31 @@ describe('the js-clean fixture project', () => {
       expect(exitCode).toBe(1);
     });
 
+    it(
+      'leaves the React rule scope off even when package.json lists react',
+      () => {
+        const root = createProject({
+          'package.json': JSON.stringify({
+            name: 'js-clean-fixture',
+            private: true,
+            type: 'module',
+            devDependencies: { vitest: '4.1.11' },
+            dependencies: { react: '19.0.0' },
+          }),
+          'src/main/ui/panel.js':
+            "import { Component } from 'react';\n\nexport class Panel extends Component {}\n",
+        });
+
+        const { toolErrors, findings } = runSnapshot(root, ['--analyzer', 'eslint-lint']);
+
+        expect(toolErrors).toEqual([]);
+        expect(
+          findings.filter(({ rule }) => /^react/u.test(rule)).map(({ identity }) => identity),
+        ).toEqual([]);
+      },
+      FIXTURE_TIMEOUT_MS,
+    );
+
     it('reports a failing test as a tool error instead of crashing the coverage runner', () => {
       const root = createProject({
         'test/failing.test.js': `import { expect, it } from 'vitest';

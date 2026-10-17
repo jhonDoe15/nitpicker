@@ -43,6 +43,25 @@ Runner contract:
 5. Compare the outputs with `expected.json`:
    - `new`: head findings with no base match. `resolved`: base findings with no head match.
      `unchanged`: head findings with a base match whose metric did not change.
+4. Then match by tokens. A finding may carry `tokens`, a list of strings (the words of its
+   message). A head finding with tokens and no match from step 3 is similar to a base finding with
+   tokens and no match from step 3 when tool, rule, (renamed) path and classification are equal,
+   both have the same number of tokens, that number is at least 3, and the tokens are equal except
+   at one position at most, where they form an _opaque change_. Pair similar findings with a maximum
+   bipartite matching (each finding in at most one pair), taking head findings and candidate base
+   findings in identity order. A paired head finding is `unchanged`; a paired base finding is not
+   `resolved`.
+   - An opaque change is two tokens that, without their leading and trailing characters that are
+     not letters or digits, are both lowercase letters and digits of at least 5 characters, and at
+     least one of them has a run of 4 consonants (`b-d`, `f-h`, `j-n`, `p-t`, `v-z`), fewer than
+     0.2 vowels (`aeiou`) per character, or both a letter and a digit.
+   - A token with a backtick is never part of an opaque change.
+   - A token containing `<id>`, or a letter or digit next to a `<name>` placeholder, stands for a
+     random value: it forms an opaque change with a token that is plain as defined above, and `<n>`
+     forms one with `<id>`.
+5. Compare the outputs with `expected.json`:
+   - `new`: head findings with no base match (steps 3 and 4). `resolved`: base findings with no head
+     match. `unchanged`: head findings with a base match whose metric did not change.
    - Each entry lists `tool`, `rule`, `path`, `symbol` (only if present), `identity` and
      `classification`; compare exactly those fields. The lists are ordered by tool, path, rule,
      identity.

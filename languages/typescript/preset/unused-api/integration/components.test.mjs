@@ -86,10 +86,33 @@ export const Root = () => <Tree />;
 `,
 };
 
+const REEXPORTED = {
+  'src/reexported/gauge.tsx': `export function Gauge(props: { value?: number; unit?: string }) {
+  return <i>{props.value}</i>;
+}
+`,
+  'src/reexported/dial.tsx': `export function Dial(props: { angle?: number; snap?: boolean }) {
+  return <i>{props.angle}</i>;
+}
+`,
+  'src/reexported/knob.tsx': `export function Knob(props: { grip?: number; tilt?: number }) {
+  return <i>{props.grip}</i>;
+}
+`,
+  'src/reexported/entry.ts': `import { Knob } from './knob';
+export { Gauge } from './gauge';
+export * from './dial';
+export default Knob;
+`,
+  'src/reexported/use.tsx': `import Knob, { Dial, Gauge } from './entry';
+export const Use = () => <><Gauge value={1} /><Dial angle={2} /><Knob grip={3} /></>;
+`,
+};
+
 let findings;
 
 beforeAll(() => {
-  findings = analyzeFiles({ ...WRAPPERS, ...PASSING, ...RENDERED });
+  findings = analyzeFiles({ ...WRAPPERS, ...PASSING, ...RENDERED, ...REEXPORTED });
 });
 
 describe('unused component props', () => {
@@ -114,6 +137,14 @@ describe('unused component props', () => {
   it('judges only components something renders and ignores a recursive render of an unpassed prop', () => {
     expect(findingsIn(findings, 'src/rendered')).toEqual([
       'unused-prop src/rendered/tree.tsx Tree.label',
+    ]);
+  });
+
+  it('does not take a re-export for a caller or for a value use', () => {
+    expect(findingsIn(findings, 'src/reexported')).toEqual([
+      'unused-prop src/reexported/dial.tsx Dial.snap',
+      'unused-prop src/reexported/gauge.tsx Gauge.unit',
+      'unused-prop src/reexported/knob.tsx Knob.tilt',
     ]);
   });
 

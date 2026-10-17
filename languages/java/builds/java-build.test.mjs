@@ -44,6 +44,7 @@ describe('readPinnedTools', () => {
       'forbiddenapis',
       'spotbugs',
       'googleJavaFormat',
+      'palantirJavaFormat',
       'jacoco',
       'checkstyle',
       'lizard',

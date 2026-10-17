@@ -51,8 +51,23 @@ tester.run('no-sql-string-building on prose and builders', rule, {
     script(
       'export function find(db, name) { const conditions = []; if (name) { conditions.push("name = ?"); } return db.query(`SELECT * FROM users WHERE ${conditions.join(" AND ")}`, [name]); }',
     ),
+    'const ALLOWED = new Set(["name", "created_at"]); export function f(pool: any, column: string) { if (!ALLOWED.has(column)) { throw new Error(column); } return pool.query(`SELECT * FROM users ORDER BY ${column}`); }',
+    'const ORDER = ["asc", "desc"] as const; export function f(pool: any, order: string) { if (!ORDER.includes(order as never)) return undefined; return pool.query(`SELECT * FROM users ORDER BY name ${order}`); }',
+    'const ALLOWED = ["name", "email"]; export function f(pool: any, column: string) { if (ALLOWED.includes(column)) { return pool.query(`SELECT ${column} FROM users`); } return undefined; }',
   ],
   invalid: [
+    {
+      code: 'const ALLOWED = new Set(["name"]); export function f(pool: any, column: string) { if (!ALLOWED.has(column)) { console.log(column); } return pool.query(`SELECT * FROM users ORDER BY ${column}`); }',
+      errors: template,
+    },
+    {
+      code: 'export function f(pool: any, column: string, allowed: Set<string>) { if (!allowed.has(column)) { throw new Error(column); } return pool.query(`SELECT * FROM users ORDER BY ${column}`); }',
+      errors: template,
+    },
+    {
+      code: 'const ALLOWED = new Set(["name"]); export function f(pool: any, column: string, other: string) { if (!ALLOWED.has(other)) { throw new Error(other); } return pool.query(`SELECT * FROM users ORDER BY ${column}`); }',
+      errors: template,
+    },
     {
       code: 'export function find(db: any, name: string) { const conditions: string[] = []; conditions.push(`name = \'${name}\'`); return db.query("SELECT * FROM users WHERE " + conditions.join(" AND ")); }',
       errors: concatenation,

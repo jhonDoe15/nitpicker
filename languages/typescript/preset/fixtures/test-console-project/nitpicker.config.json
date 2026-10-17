@@ -1,0 +1,18 @@
+{
+  "testConsole": {
+    "allow": [
+      {
+        "contains": "state update on an unmounted component",
+        "paths": ["test/allowed.test.ts"],
+        "reason": "A third-party widget library prints this on unmount."
+      }
+    ]
+  },
+  "exceptions": [
+    {
+      "rule": "test-console-output",
+      "paths": ["test/excepted.test.ts"],
+      "reason": "Known leak, tracked separately."
+    }
+  ]
+}

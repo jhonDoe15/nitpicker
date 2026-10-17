@@ -1,8 +1,8 @@
 import { readFileSync } from 'node:fs';
 import { exceptionHint } from '../../../shared/rules/exceptions.mjs';
+import { JAVA_FORMATTER_TOOLS, NOT_YOUR_JAVA_FORMATTER } from '../adapters/style/java-style.mjs';
 
 export const CATALOG_TOOLS = ['pmd', 'checkstyle', 'spotbugs'];
-export const LAYOUT_FIX = 'Run google-java-format on the file; it fixes this layout.';
 const CATALOGS = new Map(CATALOG_TOOLS.map((tool) => [tool, readCatalog(tool)]));
 const ERROR_PRONE_CERTAIN_BUGS = readCertainBugs();
 const ROUTED = new Set([
@@ -34,7 +34,15 @@ export function checkstyleRuleName(source) {
   return CHECKSTYLE_CHECK.exec(source)?.[1] ?? source;
 }
 
-export function withRuleMessage(finding, { preset = 'java', testRoots = [] } = {}) {
+function layoutFix(javaStyle) {
+  if (javaStyle === 'none') {
+    return 'Fix this layout by hand; no Java formatter runs.';
+  }
+  const formatter = JAVA_FORMATTER_TOOLS[javaStyle]?.label ?? 'your Java formatter';
+  return `Run ${formatter} on the file; it fixes this layout. ${NOT_YOUR_JAVA_FORMATTER}`;
+}
+
+export function withRuleMessage(finding, { preset = 'java', testRoots = [], javaStyle } = {}) {
   if (!ROUTED.has(finding.tool) && !ROUTED.has(`${finding.tool}/${finding.rule}`)) {
     return finding;
   }
@@ -46,7 +54,11 @@ export function withRuleMessage(finding, { preset = 'java', testRoots = [] } = {
     finding.classification === 'enforceable' &&
     entry?.mayBeIntended !== false &&
     !isCertainBug({ ...finding, rule }, testRoots);
-  return { ...finding, rule, message: ruleMessage({ ...finding, rule }, entry, liftable) };
+  return {
+    ...finding,
+    rule,
+    message: ruleMessage({ ...finding, rule }, entry, { liftable, javaStyle }),
+  };
 }
 
 function isCertainBug(finding, testRoots) {
@@ -61,12 +73,12 @@ export function applyRuleMessages(findings, options) {
   return findings.map((finding) => withRuleMessage(finding, options));
 }
 
-function ruleMessage(finding, entry, liftable) {
+function ruleMessage(finding, entry, { liftable, javaStyle }) {
   const message = finding.message.trim();
   if (message.includes(CONFIG_FILE)) {
     return message;
   }
-  const fix = entry?.layout === true ? LAYOUT_FIX : entry?.fix;
+  const fix = entry?.layout === true ? layoutFix(javaStyle) : entry?.fix;
   if (!CATALOGS.has(finding.tool) && !liftable) {
     return finding.message;
   }

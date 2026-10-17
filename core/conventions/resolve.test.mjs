@@ -64,7 +64,7 @@ describe('conventions in the head policy', () => {
     expect(policy.conventions).toEqual({ 'java.indentation': '4' });
     expect(stdout.text()).toBe(
       "Following this project's conventions:\n" +
-        '  Java indentation: 4 spaces (google-java-format --aosp) (used by 2 of 2 measured files)\n',
+        '  Java indentation: 4 spaces (used by 2 of 2 measured files)\n',
     );
   });
 
@@ -145,20 +145,88 @@ describe('reading the measured files', () => {
 
     expect(stdout.text()).toBe(
       "Following this project's conventions:\n" +
-        '  Java indentation: 4 spaces (google-java-format --aosp) (used by 2 of 3 measured files)\n',
+        '  Java indentation: 4 spaces (used by 2 of 3 measured files)\n',
+    );
+  });
+
+  it('follows wildcard imports in main code and static wildcards in tests apart', () => {
+    const main = (name) => `package a;\n\nimport b.*;\n\nclass ${name} {}\n`;
+    const test = (name) =>
+      `package a;\n\nimport static org.assertj.core.api.Assertions.*;\nimport b.C;\n\nclass ${name} {}\n`;
+    const { root } = createGitRepository({
+      'src/main/java/A.java': main('A'),
+      'src/main/java/B.java': main('B'),
+      'src/test/java/ATest.java': test('ATest'),
+    });
+    const stdout = output();
+
+    const policy = compare(root, { preset: 'java' }, { stdout });
+
+    expect(policy.conventions).toEqual({
+      'java.wildcardImports': 'wildcard',
+      'java.testStaticImports': 'wildcard',
+    });
+    expect(stdout.text()).toBe(
+      "Following this project's conventions:\n" +
+        '  Java imports: wildcards allowed (used by 2 of 3 measured files)\n' +
+        '  Java static imports in tests: wildcards allowed (used by 1 of 1 measured files)\n',
     );
   });
 
   it('needs no git when every convention is pinned', () => {
     const root = mkdtempSync(path.join(tmpdir(), 'nitpicker-no-git-'));
     try {
-      expect(
-        snapshotPolicy(runOf({ preset: 'java', conventions: { 'java.indentation': '4' } }, root))
-          .conventions,
-      ).toEqual({ 'java.indentation': '4' });
+      const conventions = {
+        'java.formatter': 'palantir',
+        'java.indentation': '4',
+        'java.lineLength': '120',
+        'java.wildcardImports': 'wildcard',
+        'java.testStaticImports': 'wildcard',
+        'java.assertionHelpers': ['checkHelper'],
+      };
+
+      expect(snapshotPolicy(runOf({ preset: 'java', conventions }, root)).conventions).toEqual(
+        conventions,
+      );
     } finally {
       rmSync(root, { recursive: true, force: true });
     }
+  });
+});
+
+describe('conventions of the Python and Kotlin presets', () => {
+  const singleQuoted = "a = 'a'\nb = 'b'\nc = 'c'\ndef f():\n  return 'd'\n";
+  const wildcardKotlin = 'package a\n\nimport b.*\n\nclass A {\n  fun f() {\n    run()\n  }\n}\n';
+
+  it('follows the single quotes and two spaces of Python files', () => {
+    const { root } = createGitRepository({ 'a.py': singleQuoted, 'pkg/b.py': singleQuoted });
+    const stdout = output();
+
+    const policy = compare(root, { preset: 'python' }, { stdout });
+
+    expect(policy.conventions).toEqual({ 'python.quotes': 'single', 'python.indentation': '2' });
+    expect(stdout.text()).toBe(
+      "Following this project's conventions:\n" +
+        '  Python quotes: single quotes (used by 2 of 2 measured files)\n' +
+        '  Python indentation: 2 spaces (used by 2 of 2 measured files)\n' +
+        `Format with ruff: ruff format --isolated --target-version py38 --line-length 88 --config 'format.quote-style = "single"' --config 'indent-width = 2' .\n`,
+    );
+  });
+
+  it('follows the wildcard imports and two spaces of Kotlin files, and lets a pin win', () => {
+    const { root } = createGitRepository({
+      'build.gradle.kts': 'plugins { id("org.jlleitschuh.gradle.ktlint") }',
+      'src/A.kt': wildcardKotlin,
+      'src/B.kt': wildcardKotlin,
+    });
+
+    expect(compare(root, { preset: 'kotlin' }).conventions).toEqual({
+      'kotlin.indentation': '2',
+      'kotlin.wildcardImports': 'wildcard',
+    });
+    expect(
+      compare(root, { preset: 'kotlin', conventions: { 'kotlin.indentation': '4' } }).conventions,
+    ).toEqual({ 'kotlin.indentation': '4', 'kotlin.wildcardImports': 'wildcard' });
   });
 });
 
@@ -177,7 +245,9 @@ describe('conventions config key', () => {
     ]);
     expect(() =>
       validateConfig({ preset: 'python', conventions: { 'java.indentation': '4' } }),
-    ).toThrow('unknown convention "java.indentation". Allowed conventions: (none for this preset)');
+    ).toThrow(
+      'unknown convention "java.indentation". Allowed conventions: python.quotes, python.lineLength, python.indentation',
+    );
     expect(() => validateConfig({ conventions: { 'java.indentation': '4' } })).toThrow(
       /Allowed conventions: prettier\.quotes, prettier\.semicolons/,
     );

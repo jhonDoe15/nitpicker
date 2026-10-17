@@ -98,6 +98,7 @@ const PINNED_TOOLS = [
   'forbiddenapis',
   'spotbugs',
   'googleJavaFormat',
+  'palantirJavaFormat',
   'jacoco',
   'checkstyle',
   'lizard',

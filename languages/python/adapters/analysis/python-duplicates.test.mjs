@@ -57,7 +57,7 @@ describe('duplicates in Python sources', () => {
         path: 'src/app/a.py',
         identity: 'pair:src/app/a.py|src/app/b.py:fragment:8e33a9ff56a22a94c8efc96f:occurrence:1',
         message:
-          'This code repeats src/app/b.py:1 (10 lines). Keep one copy and call it from both places. If the repetition is intended, add src/app/a.py to "exclude" in nitpicker.config.json.',
+          'This code repeats src/app/b.py:1 (10 lines). Keep one copy and call it from both places.',
         classification: 'enforceable',
         location: { line: 1 },
         ratchet: {
