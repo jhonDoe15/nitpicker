@@ -2,6 +2,7 @@ def pinned = [
     pmd             : '7.7.0',
     spotbugs        : '4.9.3',
     googleJavaFormat: '1.25.2',
+    palantirJavaFormat: '2.50.0',
     jacoco          : '0.8.12',
     checkstyle      : '10.21.1',
     lizard          : '1.24.1',
@@ -78,7 +79,7 @@ allprojects {
             javaModules << [key: moduleKey, path: project.path, dir: relativeToRoot(project.projectDir)]
         }
         def kotlinPreset = nitpickerArgument('nitpicker.kotlin') == 'true'
-        def aosp = nitpickerArgument('nitpicker.java.style') == 'aosp'
+        def javaStyle = nitpickerArgument('nitpicker.java.style') ?: 'google'
 
         configurations {
             nitpickerPmd { canBeConsumed = false }
@@ -93,7 +94,11 @@ allprojects {
             nitpickerPmd "net.sourceforge.pmd:pmd-cli:${pinned.pmd}"
             nitpickerPmd "net.sourceforge.pmd:pmd-java:${pinned.pmd}"
             nitpickerSpotbugs "com.github.spotbugs:spotbugs:${pinned.spotbugs}"
-            nitpickerFormat "com.google.googlejavaformat:google-java-format:${pinned.googleJavaFormat}"
+            if (javaStyle == 'palantir') {
+                nitpickerFormat "com.palantir.javaformat:palantir-java-format:${pinned.palantirJavaFormat}"
+            } else if (javaStyle != 'none') {
+                nitpickerFormat "com.google.googlejavaformat:google-java-format:${pinned.googleJavaFormat}"
+            }
             nitpickerCheckstyle "com.puppycrawl.tools:checkstyle:${pinned.checkstyle}"
         }
         dependencies {
@@ -260,7 +265,8 @@ allprojects {
         tasks.register('nitpickerFormat', JavaExec) {
             group = 'nitpicker'
             classpath = configurations.nitpickerFormat
-            mainClass = 'com.google.googlejavaformat.java.Main'
+            mainClass = javaStyle == 'palantir' ? 'com.palantir.javaformat.java.Main' : 'com.google.googlejavaformat.java.Main'
+            enabled = javaStyle != 'none'
             ignoreExitValue = true
             jvmArgs(['api', 'file', 'parser', 'tree', 'util', 'code'].collect {
                 "--add-exports=jdk.compiler/com.sun.tools.javac.${it}=ALL-UNNAMED".toString()
@@ -270,7 +276,7 @@ allprojects {
                 standardOutput = new FileOutputStream(reportDir.get().file('format.txt').asFile)
                 def files = (mainSources.files + testSourceDirectories()).findAll { it.exists() }
                     .collectMany { directory -> fileTree(directory) { include '**/*.java' }.files }.unique().sort()
-                args(['--dry-run'] + (aosp ? ['--aosp'] : []) + files*.absolutePath)
+                args(['--dry-run'] + ([aosp: ['--aosp'], palantir: ['--palantir']][javaStyle] ?: []) + files*.absolutePath)
             }
         }
 
@@ -445,6 +451,10 @@ allprojects {
                 'nitpickerJacoco', 'nitpickerArchunit', 'nitpickerStructure', 'nitpickerPit'
             dependsOn { tasks.withType(Checkstyle) }
             doLast {
+                def formatReport = reportDir.get().file('format.txt').asFile
+                if (!formatReport.exists()) {
+                    formatReport.text = ''
+                }
                 tasks.withType(Test).findAll { it.name != 'nitpickerArchunit' && gradle.taskGraph.hasTask(it) }.each { testTask ->
                     copy {
                         from(testTask.reports.junitXml.outputLocation) { include 'TEST-*.xml' }

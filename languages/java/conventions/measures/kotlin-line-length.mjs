@@ -2,8 +2,9 @@ import { bracketGroups, indentOf } from '../../../../shared/conventions/lines.mj
 
 const WIDTHS = [100, 120, 140];
 const MIN_BEYOND = 2;
-const UNBREAKABLE_LINE =
-  /:\/\/|^\s*(?:import|package)\b|\/\/|\/\*|^\s*\*|"[^"]{30,}|`[^`]+`|^[^(){}[\];=,]*$/;
+export const UNBREAKABLE_LINE =
+  /:\/\/|^\s*(?:import|package)\b|\/\/|\/\*|^\s*\*|"[^"]{30,}|^[^(){}[\];=,]*$/;
+const KOTLIN_UNBREAKABLE_LINE = new RegExp(`${UNBREAKABLE_LINE.source}|\`[^\`]+\``);
 const GROUP_OPENER = /\(\s*$/;
 const GROUP_CLOSER = /^\s*\)/;
 const INNER_SKIP = /[({]\s*$|^\s*(?:\/\/|\/\*|\*)/;
@@ -47,14 +48,21 @@ function beyondWidth(lengths, longest) {
 }
 
 export function lineLength(text) {
+  return measuredLineLength(text, {
+    unbreakable: KOTLIN_UNBREAKABLE_LINE,
+    joinLengths: wrappedJoinLengths,
+  });
+}
+
+export function measuredLineLength(text, { unbreakable, joinLengths }) {
   const raw = text.split(/\r?\n/);
   if (raw.some((line) => line.startsWith('\t'))) {
     return undefined;
   }
   const lines = withoutRawStrings(raw);
-  const lengths = lines.filter((line) => !UNBREAKABLE_LINE.test(line)).map((line) => line.length);
+  const lengths = lines.filter((line) => !unbreakable.test(line)).map((line) => line.length);
   const longest = lengths.reduce((most, length) => Math.max(most, length), 0);
-  const joins = wrappedJoinLengths(lines);
+  const joins = joinLengths(lines);
   if (joins.length > 0) {
     const shortestJoin = Math.min(...joins);
     const fitting = WIDTHS.filter((width) => longest <= width && width < shortestJoin);

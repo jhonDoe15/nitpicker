@@ -1217,15 +1217,35 @@ the allowed form and the `exceptions` entry that lifts it.
 
 ## Style
 
-google-java-format owns layout. The default is its Google style: 2 spaces, 4 for a continuation
-line, lines of at most 100 characters. A project that indents with 4 spaces gets google-java-format
-with `--aosp` (4 spaces, 8 for a continuation line, still wrapping at 100): nitpicker follows the
-`java.indentation` convention (`"2"` or `"4"`), which it takes from the Java files of the base
-snapshot, or from `"conventions": { "java.indentation": "4" }` in `nitpicker.config.json`; a tie or
-no Java files keeps Google. The run prints the choice. The convention applies to the Java sources
-of a kotlin-preset project too. It comes from the head policy file at run time, and the function
-`javaStyle()` in `languages/java/adapters/style/java-style.mjs` turns it into the style
-(`google` or `aosp`).
+The formatter owns layout, and nitpicker follows the formatter the project uses. The
+`java.formatter` convention is `google` (google-java-format, the default), `palantir`
+(palantir-java-format, Apache-2.0, pinned like google-java-format and resolved the same way on Gradle
+and Maven) or `none` (no format check). It comes, in this order, from a pin in
+`"conventions": { "java.formatter": "..." }`, from the build file (no opt-in needed: Spotless
+`googleJavaFormat()` or `palantirJavaFormat()` in Gradle, `spotless-maven-plugin` with
+`<googleJavaFormat>` or `<palantirJavaFormat>`, `fmt-maven-plugin`, the `com.palantir.java-format`
+plugin; palantir wins when both are named), and otherwise from the Java files of the base snapshot:
+two spaces, or four spaces wrapped at 100, read as google-java-format, four spaces wrapped at 120 as
+palantir-java-format, and tabs or 140 columns as `none`. A tie or no Java files keeps Google. An
+IntelliJ project with four spaces and 120 columns looks like palantir-java-format to the measure;
+pin `java.formatter` to `none` for it.
+
+The formatter fixes what it can: google-java-format wraps at 100 and indents with 2 spaces (4 spaces,
+8 for a continuation line, with `--aosp`, which nitpicker uses for the `java.indentation` convention
+`"4"`); palantir-java-format indents with 4 and wraps at 120. `java.indentation` and `java.lineLength`
+(`"100"`, `"120"` or `"140"`) follow the formatter and a pin that contradicts it is a config error,
+except with `java.formatter` set to `none`, where `java.lineLength` is measured from wrapped code the
+way `kotlin.lineLength` is (unbreakable lines, such as imports, URLs, string literals and text blocks,
+do not vote). `java.lineLength` sets the limit of `line-length-limit` for Java files. When
+`tools.checkstyle.precedence` lists `"project"` and `config/checkstyle/checkstyle.xml` sets `max` on
+`LineLength`, that value wins over the formatter and the files (the project overrides only what it
+sets); Checkstyle's own `LineLength` stays suppressed, so the limit is checked once, by
+`line-length-limit`. The run prints each choice and its source. The conventions apply to the Java
+sources of a kotlin-preset project too. They come from the head policy file at run time, and the
+function `javaStyle()` in `languages/java/adapters/style/java-style.mjs` turns them into the style
+(`google`, `aosp`, `palantir` or `none`), which reaches Gradle as `-Pnitpicker.java.style` and Maven
+as `javaStyle`. A formatter finding names its tool, `google-java-format` or `palantir-java-format`,
+and a `none` run writes an empty `format.txt`.
 
 A badly formatted file is one `google-java-format` finding, not hundreds: the Checkstyle checks that
 only restate the formatter's layout are suppressed in both styles (`Indentation`,

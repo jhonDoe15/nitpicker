@@ -48,6 +48,7 @@ function fromProject(detected, project, pinned = {}) {
         ? entry
         : {
             ...entry,
+            choice: project[id].choice,
             source: 'project',
             from: project[id].from,
             overrides: pinned[id] !== project[id].choice ? pinned[id] : undefined,
@@ -77,7 +78,7 @@ function followConventions({ config, projectRoot, headPolicy, commit, stdout }) 
   const projectChoices = Object.fromEntries(
     Object.entries(style.project).map(([id, { choice }]) => [id, choice]),
   );
-  const detected = fromProject(
+  const measured = fromProject(
     detect({
       definitions,
       pinned: { ...config.conventions, ...projectChoices },
@@ -91,6 +92,8 @@ function followConventions({ config, projectRoot, headPolicy, commit, stdout }) 
     style.project,
     config.conventions,
   );
+  const derived = style.derive?.(measured) ?? {};
+  const detected = fromProject(measured, derived, config.conventions);
   const conventions = appliedChoices(detected, definitions);
   const followed = definitions.filter(
     ({ id }) => conventions[id] !== undefined || style.project[id] !== undefined,
