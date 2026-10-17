@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { configuredAnalyzers } from '../../languages/typescript/preset/diff/configured-analyzers.mjs';
 import { resolveHeadPolicy } from '../../languages/typescript/preset/head-policy.mjs';
-import { applyDisable, describeConfigOverrides } from './config.mjs';
+import { applyDisable, describeConfigOverrides, describeDisableCascade } from './config.mjs';
 import { validateConfig } from './validate.mjs';
 
 const allowed = { contains: 'is no longer supported', reason: 'react 17 shim' };
@@ -69,35 +69,40 @@ describe('test-console analyzer and disable', () => {
     );
   });
 
-  it('names every dependent of coverage at once', () => {
-    expect(() => applyDisable(analyzers, { disable: ['coverage'] })).toThrow(
-      '"disable" cannot disable coverage because crap and test-console depend on it; add them to "disable" too',
+  it('drops test-console and crap when coverage is disabled', () => {
+    const names = applyDisable(analyzers, { disable: ['coverage'] }).map(({ name }) => name);
+
+    expect(names).toEqual(
+      analyzers
+        .map(({ name }) => name)
+        .filter((name) => !['coverage', 'crap', 'test-console'].includes(name)),
     );
   });
 
-  it('names the one dependent left', () => {
-    expect(() => applyDisable(analyzers, { disable: ['coverage', 'crap'] })).toThrow(
-      '"disable" cannot disable coverage because test-console depends on it; add it to "disable" too',
+  it('applies a config written before test-console existed', () => {
+    const config = validateConfig({ disable: ['coverage', 'crap'] });
+
+    const names = applyDisable(analyzers, config).map(({ name }) => name);
+
+    expect(names).toEqual(
+      analyzers
+        .map(({ name }) => name)
+        .filter((name) => !['coverage', 'crap', 'test-console'].includes(name)),
     );
+    expect(describeDisableCascade(analyzers, config)).toEqual([
+      'coverage is disabled, so test-console is off too',
+    ]);
   });
 
-  it('is turned off together with coverage and its other dependents', () => {
-    const disable = ['coverage', 'crap', 'test-console'];
-    const names = applyDisable(analyzers, { disable }).map(({ name }) => name);
+  it('keeps test-console while coverage runs', () => {
+    const names = applyDisable(analyzers, { disable: ['crap'] }).map(({ name }) => name);
 
-    expect(names).not.toContain('test-console');
+    expect(names).toEqual(analyzers.map(({ name }) => name).filter((name) => name !== 'crap'));
   });
 
-  it('lists three dependents with commas', () => {
-    const analyzers = [
-      { name: 'coverage' },
-      { name: 'crap', dependencies: ['coverage'] },
-      { name: 'mutation', dependencies: ['coverage'] },
-      { name: 'test-console', dependencies: ['coverage'] },
-    ];
-
-    expect(() => applyDisable(analyzers, { disable: ['coverage'] })).toThrow(
-      '"disable" cannot disable coverage because crap, mutation and test-console depend on it; add them to "disable" too',
+  it('still rejects an unknown name next to a cascading one', () => {
+    expect(() => applyDisable(analyzers, { disable: ['coverage', 'nope'] })).toThrow(
+      /"disable" names unknown analyzers: nope/,
     );
   });
 });

@@ -257,6 +257,20 @@ describe('reachableModules', () => {
     ]);
   });
 
+  it('starts from several entries at once and names the module each step came from', () => {
+    const steps = reachableModules(
+      [path.join(root, 'src/c.ts'), path.join(root, 'src/b.ts')],
+      specifiersOf,
+      { maxDepth: 8, maxFiles: 200 },
+    );
+
+    expect(
+      [...steps].map(
+        (step) => `${path.relative(root, step.from)}>${path.relative(root, step.file)}`,
+      ),
+    ).toEqual(['src/c.ts>src/a.ts', 'src/a.ts>src/entry.ts']);
+  });
+
   it('ends with a truncation step when a limit leaves modules unvisited', () => {
     expect(walk({ maxDepth: 1, maxFiles: 200 })).toEqual(['src/a.ts@1', 'src/b.ts@1', 'truncated']);
     expect(walk({ maxDepth: 8, maxFiles: 2 })).toEqual(['truncated']);

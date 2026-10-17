@@ -278,8 +278,9 @@ describe('head policy reader', () => {
       react: {},
       i18n: {},
       tools: {},
-      frameworks: { defaultExports: [], entryPoints: [] },
       testConsole: {},
+      generatedFiles: [],
+      frameworks: { defaultExports: [], entryPoints: [] },
     });
   });
 
@@ -298,8 +299,9 @@ describe('head policy reader', () => {
         react: {},
         i18n: {},
         tools: {},
-        frameworks: { defaultExports: [], entryPoints: [] },
         testConsole: {},
+        generatedFiles: [],
+        frameworks: { defaultExports: [], entryPoints: [] },
       });
     });
   });
@@ -433,8 +435,9 @@ describe('head policy delivery', () => {
         react: {},
         i18n: {},
         tools: {},
-        frameworks: { defaultExports: [], entryPoints: [] },
         testConsole: {},
+        generatedFiles: [],
+        frameworks: { defaultExports: [], entryPoints: [] },
       });
     }
   });
