@@ -149,6 +149,7 @@ describe('listing production modules', () => {
       '**/dist/**',
       '**/tests/**',
       '**/test/**',
+      '**/testing/**',
       '**/migrations/**',
       '**/.git/**',
       '**/.venv/**',
@@ -160,6 +161,7 @@ describe('listing production modules', () => {
       '**/.pytest_cache/**',
       '**/test_*.py',
       '**/*_test.py',
+      '**/tests.py',
       '**/conftest.py',
     ]);
   });

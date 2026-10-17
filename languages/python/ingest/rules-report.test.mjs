@@ -61,4 +61,34 @@ describe('rules script report', () => {
   it('reads an empty report', () => {
     expect(ingestRulesReport('[]')).toEqual([]);
   });
+
+  it('turns a check skipped for a too deep expression into a descriptive note', () => {
+    const report = [
+      entry({ rule: 'rules-skipped', path: 'src/sums.py', subject: 'file', line: 1 }),
+      entry({ rule: 'rules-skipped', path: '.', subject: 'unused-option', line: 1 }),
+    ];
+
+    expect(ingestRulesReport(JSON.stringify(report))).toEqual([
+      {
+        tool: 'python-rules',
+        rule: 'rules-skipped',
+        path: 'src/sums.py',
+        identity: 'file',
+        message:
+          "python-rules skipped the per-file checks here: an expression nests too deeply for Python's recursion limit. Split the expression to have it checked.",
+        classification: 'descriptive',
+        location: { line: 1 },
+      },
+      {
+        tool: 'python-rules',
+        rule: 'rules-skipped',
+        path: '.',
+        identity: 'unused-option',
+        message:
+          "python-rules skipped the unused-option checks here: an expression nests too deeply for Python's recursion limit. Split the expression to have it checked.",
+        classification: 'descriptive',
+        location: { line: 1 },
+      },
+    ]);
+  });
 });

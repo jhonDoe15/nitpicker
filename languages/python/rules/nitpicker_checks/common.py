@@ -1,19 +1,9 @@
 import ast
 
-TEST_DIRECTORIES = {"tests", "test"}
 FUNCTION_TYPES = (ast.FunctionDef, ast.AsyncFunctionDef)
 SCOPE_TYPES = (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)
-
-
-def is_test_path(path):
-    parts = path.split("/")
-    name = parts[-1]
-    return (
-        bool(TEST_DIRECTORIES.intersection(parts[:-1]))
-        or name.startswith("test_")
-        or name.endswith("_test.py")
-        or name == "conftest.py"
-    )
+OPTIONAL_NAMES = {"Optional"}
+WRAPPERS = {"NotRequired", "Required", "Annotated", "Final"}
 
 
 def import_aliases(tree):
@@ -51,6 +41,67 @@ def last_segment(node):
     if isinstance(node, ast.Attribute):
         return node.attr
     return None
+
+
+def parts_of(subscript):
+    inner = subscript.slice
+    index_type = getattr(ast, "Index", None)
+    if index_type is not None and isinstance(inner, index_type):
+        inner = inner.value
+    return inner.elts if isinstance(inner, ast.Tuple) else [inner]
+
+
+def is_none(node):
+    return isinstance(node, ast.Constant) and node.value is None
+
+
+def without_none(annotation):
+    if isinstance(annotation, ast.BinOp) and isinstance(annotation.op, ast.BitOr):
+        kept = [side for side in (annotation.left, annotation.right) if not is_none(side)]
+        return kept[0] if len(kept) == 1 else annotation
+    if isinstance(annotation, ast.Subscript) and last_segment(annotation.value) in OPTIONAL_NAMES:
+        return parts_of(annotation)[0]
+    return annotation
+
+
+def parsed_annotation(annotation):
+    if not (isinstance(annotation, ast.Constant) and isinstance(annotation.value, str)):
+        return annotation
+    try:
+        return ast.parse(annotation.value.strip(), mode="eval").body
+    except SyntaxError:
+        return annotation
+
+
+def unwrapped(annotation):
+    annotation = parsed_annotation(annotation)
+    while isinstance(annotation, ast.Subscript) and last_segment(annotation.value) in WRAPPERS:
+        annotation = parsed_annotation(parts_of(annotation)[0])
+    return parsed_annotation(without_none(annotation))
+
+
+def positional(fn):
+    return list(getattr(fn.args, "posonlyargs", [])) + list(fn.args.args)
+
+
+def every_parameter(fn):
+    return positional(fn) + list(fn.args.kwonlyargs)
+
+
+def positional_defaults(fn):
+    parameters = positional(fn)
+    defaults = list(fn.args.defaults)
+    return list(zip(parameters, [None] * (len(parameters) - len(defaults)) + defaults))
+
+
+def defaulted_parameters(fn):
+    found = [
+        (parameter, index)
+        for index, (parameter, default) in enumerate(positional_defaults(fn))
+        if default is not None
+    ]
+    keyword_only = zip(fn.args.kwonlyargs, fn.args.kw_defaults)
+    return found + [(parameter, None) for parameter, default in keyword_only if default is not None]
 
 
 def same_node(left, right):

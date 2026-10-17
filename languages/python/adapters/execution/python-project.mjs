@@ -52,9 +52,24 @@ const REQUIRES_PYTHON = [
 ];
 export const INSTALLED_DIRECTORIES = ['__pycache__', 'node_modules', 'site-packages'];
 export const DOCUMENTATION_DIRECTORIES = ['docs', 'doc', 'examples', 'scripts'];
+export const TEST_DIRECTORIES = ['tests', 'test', 'testing'];
+export const TEST_FILE_GLOBS = ['test_*.py', '*_test.py', 'tests.py', 'conftest.py'];
+const TEST_FILE_NAME = /^(?:test_.+|.+_test|tests|conftest)\.py$/;
+
+export function isTestFileName(name) {
+  return TEST_FILE_NAME.test(name);
+}
+
+export function isTestPath(file) {
+  const parts = file.split(/[\\/]/);
+  return (
+    isTestFileName(parts.at(-1)) ||
+    parts.slice(0, -1).some((part) => TEST_DIRECTORIES.includes(part))
+  );
+}
+
 export const NON_SOURCE_DIRECTORIES = new Set([
-  'tests',
-  'test',
+  ...TEST_DIRECTORIES,
   ...DOCUMENTATION_DIRECTORIES,
   'build',
   'dist',

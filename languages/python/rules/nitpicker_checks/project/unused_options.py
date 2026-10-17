@@ -1,28 +1,17 @@
 import ast
 
-from nitpicker_checks.common import FUNCTION_TYPES, finding, is_test_path
+from nitpicker_checks.common import FUNCTION_TYPES, defaulted_parameters, finding
+from nitpicker_checks.project.entry_points import declared_entry_points
 
 MAIN_GUARD = "__main__"
+MAIN_MODULE = "__main__.py"
 
 
-def positional(fn):
-    return list(getattr(fn.args, "posonlyargs", [])) + list(fn.args.args)
-
-
-def defaulted_parameters(fn):
-    parameters = positional(fn)
-    first_default = len(parameters) - len(fn.args.defaults)
-    found = [(p, index) for index, p in enumerate(parameters) if index >= first_default]
-    keyword_only = zip(fn.args.kwonlyargs, fn.args.kw_defaults)
-    return found + [(p, None) for p, default in keyword_only if default is not None]
-
-
-def is_target(path, statement):
+def is_target(statement):
     return (
         isinstance(statement, FUNCTION_TYPES)
         and not statement.decorator_list
         and not statement.name.startswith("__")
-        and not is_test_path(path)
         and bool(defaulted_parameters(statement))
     )
 
@@ -37,7 +26,9 @@ def is_main_guard(node):
     )
 
 
-def guarded_nodes(tree):
+def guarded_nodes(path, tree):
+    if path.rpartition("/")[2] == MAIN_MODULE:
+        return {id(node) for node in ast.walk(tree)}
     return {
         id(child)
         for statement in tree.body
@@ -75,12 +66,13 @@ class Usage:
     def __init__(self, index, options):
         self.index = index
         self.published = options.get("published") is True
-        self.entries = {tuple(entry.split(":", 1)) for entry in options.get("entryPoints", [])}
+        entries = options.get("entryPoints", []) + declared_entry_points()
+        self.entries = {tuple(entry.split(":", 1)) for entry in entries}
         self.calls = {}
         self.blocked = set()
 
     def counts(self, path):
-        return self.published or not is_test_path(path)
+        return self.published or path not in self.index.tests
 
     def target_key(self, path, node):
         resolved = self.index.resolve(path, node)
@@ -89,7 +81,7 @@ class Usage:
         return resolved[0], resolved[1]
 
     def record_file(self, path, tree):
-        guarded = guarded_nodes(tree)
+        guarded = guarded_nodes(path, tree)
         callees = {id(node.func) for node in ast.walk(tree) if isinstance(node, ast.Call)}
         for node in ast.walk(tree):
             if isinstance(node, ast.Call):
@@ -127,7 +119,7 @@ def unused_option_findings(index, options):
     for path, tree in index.trees.items():
         for statement in tree.body:
             key = (path, getattr(statement, "name", None))
-            if not is_target(path, statement) or not usage.judged(key):
+            if path in index.tests or not is_target(statement) or not usage.judged(key):
                 continue
             for parameter, position in defaulted_parameters(statement):
                 if not any(passes(call, parameter, position) for call in usage.calls[key]):

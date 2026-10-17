@@ -9,9 +9,9 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 from nitpicker_checks.common import (
     decorator_name,
+    finding,
     dotted_name,
     import_aliases,
-    is_test_path,
     scoped_definitions,
 )
 from nitpicker_checks.constants import (
@@ -35,6 +35,7 @@ MIN_CLASS_CONSTANTS = 2
 MIN_MODULE_CONSTANTS = 3
 TYPE_CHECKING_NAMES = {"typing.TYPE_CHECKING", "typing_extensions.TYPE_CHECKING"}
 OPTIONAL_IMPORT_ERRORS = {"ImportError", "ModuleNotFoundError"}
+TOO_DEEP_RULE = "rules-skipped"
 BLIND_ERRORS = {"Exception", "BaseException", "builtins.Exception", "builtins.BaseException"}
 
 
@@ -93,12 +94,12 @@ def is_frozen(decorator):
 
 
 class Collector(ast.NodeVisitor):
-    def __init__(self, path, aliases):
+    def __init__(self, path, aliases, tests):
         self.path = path
         self.aliases = aliases
         self.scope = []
         self.findings = []
-        self.tests = is_test_path(path)
+        self.tests = tests
         self.boundary = is_boundary_path(path)
 
     def add(self, rule, subject, node):
@@ -216,20 +217,33 @@ def parse(path):
     return text, ast.parse(text)
 
 
-def check_file(path, text, tree):
-    aliases = import_aliases(tree)
-    collector = Collector(path, aliases)
+def collected_findings(path, tree, aliases, tests):
+    collector = Collector(path, aliases, tests)
     collector.visit(tree)
     collector.check_module_constants(tree)
+    return collector.findings
+
+
+def guarded(path, name, check):
+    try:
+        return check()
+    except RecursionError:
+        return [finding(TOO_DEEP_RULE, path, name, 1)]
+
+
+def check_file(path, text, tree, tests):
+    aliases = import_aliases(tree)
     scoped = scoped_definitions(tree)
-    tests_only = fixed_sleep_findings(path, tree, aliases) if is_test_path(path) else []
-    return (
-        collector.findings
-        + suppression_findings(path, text)
-        + tests_only
-        + docstring_findings(path, scoped)
-        + field_findings(path, scoped, aliases)
-    )
+    checks = {
+        "file": lambda: collected_findings(path, tree, aliases, tests),
+        "fixed-sleep": lambda: fixed_sleep_findings(path, tree, aliases) if tests else [],
+        "docstring": lambda: docstring_findings(path, scoped),
+        "field": lambda: field_findings(path, scoped, aliases),
+    }
+    found = suppression_findings(path, text)
+    for name, check in checks.items():
+        found.extend(guarded(path, name, check))
+    return found
 
 
 def read_options(arguments):
@@ -239,11 +253,7 @@ def read_options(arguments):
         return json.load(handle)
 
 
-def main(arguments):
-    list_file, out_file = arguments[:2]
-    options = read_options(arguments)
-    with open(list_file, encoding="utf-8") as handle:
-        paths = [line.strip() for line in handle if line.strip()]
+def file_findings(paths, tests):
     findings, trees = [], {}
     for path in paths:
         findings.extend(stub_findings(path))
@@ -251,12 +261,29 @@ def main(arguments):
             text, tree = parse(path)
         except (OSError, SyntaxError, UnicodeDecodeError, ValueError, RecursionError):
             continue
+        findings.extend(check_file(path, text, tree, path in tests))
         trees[path] = tree
-        findings.extend(check_file(path, text, tree))
-    index = ProjectIndex(trees, options.get("modules", {}))
-    findings.extend(forwarding_findings(index))
-    findings.extend(enum_predicate_findings(index))
-    findings.extend(unused_option_findings(index, options))
+    return findings, trees
+
+
+def project_findings(index, options):
+    checks = {
+        "forwarding-wrapper": lambda: forwarding_findings(index),
+        "exhaustive-enum-predicate": lambda: enum_predicate_findings(index),
+        "unused-option": lambda: unused_option_findings(index, options),
+    }
+    return [found for name, check in checks.items() for found in guarded(".", name, check)]
+
+
+def main(arguments):
+    list_file, out_file = arguments[:2]
+    options = read_options(arguments)
+    with open(list_file, encoding="utf-8") as handle:
+        paths = [line.strip() for line in handle if line.strip()]
+    tests = set(options.get("tests", []))
+    findings, trees = file_findings(paths, tests)
+    index = ProjectIndex(trees, options.get("modules", {}), tests)
+    findings.extend(project_findings(index, options))
     findings.sort(key=lambda item: (item["path"], item["line"], item["rule"], item["subject"]))
     with open(out_file, "w", encoding="utf-8") as handle:
         json.dump(findings, handle)

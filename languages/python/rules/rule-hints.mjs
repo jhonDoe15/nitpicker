@@ -12,8 +12,8 @@ function ownerOf(subject) {
 }
 
 const UNUSED_OPTION_SCOPES = {
-  private: 'tests do not count',
-  published: "this package's own tests count",
+  private: 'by a call outside the tests',
+  published: "by any call, this package's own tests included",
 };
 
 export const RULE_HINTS = [
@@ -160,7 +160,7 @@ export const RULE_HINTS = [
     tool: RULES_TOOL,
     rules: ['unused-option'],
     describe: (subject, { scope }) =>
-      `Keyword parameter \`${subject}\` is never passed (${UNUSED_OPTION_SCOPES[scope]})`,
+      `Optional parameter \`${subject}\` is never passed ${UNUSED_OPTION_SCOPES[scope]}`,
     allowed:
       'Remove the parameter and use its default inside the function, or pass it from a real call.',
   },

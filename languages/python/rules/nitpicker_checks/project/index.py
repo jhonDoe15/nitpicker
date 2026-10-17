@@ -29,8 +29,9 @@ def attribute_chain(node):
 
 
 class ProjectIndex:
-    def __init__(self, trees, modules):
+    def __init__(self, trees, modules, tests=frozenset()):
         self.trees = trees
+        self.tests = tests
         self.modules = {path: module for path, module in modules.items() if path in trees}
         self.paths = {module: path for path, module in self.modules.items()}
         self.definitions = {path: module_definitions(tree) for path, tree in trees.items()}
