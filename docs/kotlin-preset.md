@@ -293,7 +293,7 @@ override there.
   only the topmost one gets `root = true`, and the conventions are ktlint defaults below them. The
   opt-in needs an `.editorconfig` at the project root or above, else it is a tool error that says to
   create one or remove `"project"`. `["nitpicker", "project"]` is a config error for ktlint, since
-  ktlint always reads its `.editorconfig` first. The conventions (`kotlin.lineLength`, `kotlin.indentation` and the others) take their values from the detekt, ktlint and ktfmt configs of the merge base in a comparison, and from the branch only when the base has no Kotlin sources, so a pull request cannot raise its own limit by editing them. The same values are enforced in the run: the followed `indent_size` and `max_line_length` are appended after the head `.editorconfig` section, and the followed detekt conventions are layered last, so an edited width in the branch changes neither the run nor the printed line. The run prints once what ktlint runs with and what
+  ktlint always reads its `.editorconfig` first. The conventions (`kotlin.lineLength`, `kotlin.indentation` and the others) take their values from the detekt, ktlint and ktfmt configs of the merge base in a comparison, and from the branch only when the base has no Kotlin sources, so a pull request cannot raise its own limit by editing them. The same values are enforced in the run: the followed `indent_size`, `max_line_length`, trailing-comma and wildcard-import values are appended after the matching section of every mirrored `.editorconfig` (nested and parent ones too) that sets them differently, and the followed detekt conventions are layered last in a file of their own, so an edited width in the branch changes neither the run nor the printed line. The run prints once what ktlint runs with and what
   to do to lift a rule, and one `Ignoring .editorconfig; opt in with ...` line when a project
   `.editorconfig` exists and is not used. Each violation is one finding: rule
   `ktlint.<ruleset>:<rule>` (for example `ktlint.standard:no-wildcard-imports`), the line, and
@@ -323,13 +323,16 @@ the project's `detekt.yml`. The scope-function rules do not change. With the pro
 project sets wins for every tool and the run prints it as "from your .editorconfig", "from your detekt
 config" or "from your build file" instead of "used by N of M measured files".
 
-- **ktfmt.** `--dry-run` lists the files that would change. By default the style is
+- **ktfmt.** `--dry-run` lists the files that would change. The style is the one the build names
+  (`kotlinLangStyle()`, `googleStyle()` or `metaStyle()`), with or without the ktfmt opt-in: which
+  formatter a project uses, and the style it declares for it, are facts about the project, like the
+  Java preset's declared formatter, so they are read from the build files at the merge base and
+  indent `kotlin.indentation` accordingly ("from your build file"). Without a named style it is
   `--kotlinlang-style` when most Kotlin files indent by 4 (`kotlin.indentation`), else ktfmt's
-  default (Meta), no `.editorconfig` is read, and it runs in the project, without a copy of the
-  sources. A build that names `kotlinLangStyle()` or `googleStyle()` and an `.editorconfig` are used
-  only with `"tools": { "ktfmt": { "precedence": ["project", "nitpicker"] } }`, which then passes the
-  build's style (read from the head checkout) and `--enable-editorconfig`, and runs in a copy of the
-  sources with the same mirrored `.editorconfig` files as ktlint. `["nitpicker", "project"]` is a
+  default (Meta). Config files are different: an `.editorconfig` is read only with
+  `"tools": { "ktfmt": { "precedence": ["project", "nitpicker"] } }`, which passes
+  `--enable-editorconfig` and runs in a copy of the sources with the same mirrored `.editorconfig`
+  files as ktlint; without it ktfmt runs in the project, without a copy of the sources. `["nitpicker", "project"]` is a
   config error for ktfmt, as ktfmt has no flag to ignore the `.editorconfig` once enabled. One
   `format` finding per file, tool `ktfmt`, identity `format`, whose message refers to the
   `Format with ktfmt` command printed at the start of the run; a file that already failed on the base
@@ -652,8 +655,8 @@ below the root package (the longest package prefix all the code shares) fail `fo
 (`class-methods-limit`, `class-fields-limit`, `inheritance-depth-limit`) apply to the `.java` files of a
 Kotlin project, with `classMethods`, `classFields` and `inheritanceDepth`; Kotlin classes are not measured. The `java.indentation` convention (`"4"`) switches the Java sources' format check
 to 4 spaces. The Kotlin files' line length is
-detekt's `MaxLineLength` (120 by default, set in `config/detekt/detekt.yml`), the `.java` files keep
-nitpicker's fixed 100 characters (`line-length-limit`, which an exception lifts for some paths), and
+detekt's `MaxLineLength` (120 by default, set in `config/detekt/detekt.yml`), the `.java` files use
+the width of the Java formatter (100 for google-java-format, 120 for palantir-java-format, or the width of the project's Checkstyle `LineLength`, see the Java preset; `line-length-limit`, which an exception lifts for some paths), and
 `thresholds.lineLength` is a config error with this preset. A file or folder already over a limit
 fails only when it grows, and a package folder moved to a new path is matched to its old path.
 

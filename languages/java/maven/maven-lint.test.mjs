@@ -26,6 +26,15 @@ afterEach(() => {
   }
 });
 
+const nameModule = (name, format) =>
+  `<module name="${name}"><property name="format" value="${format}"/></module>`;
+const NAME_MODULES =
+  nameModule('MemberName', '^[a-z][a-z0-9][a-zA-Z0-9]*$') +
+  nameModule('MethodName', '^[a-z][a-z0-9][a-zA-Z0-9_]*$');
+const RELAXED_NAME_MODULES =
+  nameModule('MemberName', '^[a-z]([a-z0-9][a-zA-Z0-9]*)?$') +
+  nameModule('MethodName', '^[a-z]([a-z0-9][a-zA-Z0-9]*)?$');
+
 describe('nitpickerCheckstyleConfig', () => {
   it('drops every inline suppression filter from the bundled Google checks', () => {
     const bundled = [
@@ -35,6 +44,7 @@ describe('nitpickerCheckstyleConfig', () => {
       '    <property name="commentFormat" value="x"/>',
       '  </module>',
       '  <module name="TreeWalker"><module name="SuppressWarningsHolder" /></module>',
+      NAME_MODULES,
       '</module>',
     ].join('\n');
 
@@ -44,8 +54,15 @@ describe('nitpickerCheckstyleConfig', () => {
         '  ',
         '  ',
         '  <module name="TreeWalker"></module>',
+        RELAXED_NAME_MODULES,
         '</module>',
       ].join('\n'),
+    );
+  });
+
+  it('relaxes the member and method name patterns to the ones of the Gradle run', () => {
+    expect(() => nitpickerCheckstyleConfig('<module name="Checker"/>')).toThrow(
+      'nitpicker could not find MemberName in google_checks.xml',
     );
   });
 });

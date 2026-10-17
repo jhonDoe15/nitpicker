@@ -27,6 +27,9 @@ export const JAVA_FORMATTER_TOOLS = {
   },
 };
 
+export const NOT_YOUR_JAVA_FORMATTER =
+  'Not your formatter: pin "conventions.java.formatter" to "google", "palantir" or "none" in nitpicker.config.json.';
+
 export function javaStyle(conventions) {
   const formatter = conventions?.[JAVA_FORMATTER] ?? DEFAULT_JAVA_STYLE;
   return formatter === DEFAULT_JAVA_STYLE

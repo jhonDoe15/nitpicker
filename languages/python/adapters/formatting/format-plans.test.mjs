@@ -152,13 +152,50 @@ describe('ruff without an opt-in and a config that does not parse', () => {
 describe('ruff with the project listed', () => {
   const precedence = ['project', 'nitpicker'];
 
+  it('enforces a followed value that equals the default over a different one in the config', () => {
+    const root = project({
+      'ruff.toml': 'line-length = 120\nindent-width = 2\n[format]\nquote-style = "single"\n',
+    });
+    const conventions = {
+      'python.lineLength': '88',
+      'python.indentation': '4',
+      'python.quotes': 'double',
+    };
+
+    expect(ruffPlan(root, { precedence, conventions }).options).toEqual([
+      '--config',
+      path.join(root, 'ruff.toml'),
+      '--target-version',
+      'py310',
+      '--line-length',
+      '88',
+      '--config',
+      'format.quote-style = "double"',
+      '--config',
+      'indent-width = 4',
+    ]);
+  });
+
+  it('leaves quote-style preserve to the config, which has no counterpart to compare', () => {
+    const root = project({ 'ruff.toml': '[format]\nquote-style = "preserve"\n' });
+
+    expect(
+      ruffPlan(root, { precedence, conventions: { 'python.quotes': 'double' } }).options.slice(
+        0,
+        3,
+      ),
+    ).toEqual(['--config', path.join(root, 'ruff.toml'), '--target-version']);
+  });
+
   it('leaves the options the project sets to its config and fills the rest', () => {
     const root = project({ 'ruff.toml': 'line-length = 120\n[format]\nquote-style = "double"\n' });
     const file = path.join(root, 'ruff.toml');
 
     expect(
-      ruffPlan(root, { precedence, conventions: { ...followed, 'python.lineLength': '120' } })
-        .options,
+      ruffPlan(root, {
+        precedence,
+        conventions: { ...followed, 'python.lineLength': '120', 'python.quotes': 'double' },
+      }).options,
     ).toEqual(['--config', file, '--target-version', 'py310', '--config', 'indent-width = 2']);
     expect(ruffPlan(root, { precedence, conventions: followed }).options).toEqual([
       '--config',
@@ -167,6 +204,8 @@ describe('ruff with the project listed', () => {
       'py310',
       '--line-length',
       '79',
+      '--config',
+      'format.quote-style = "single"',
       '--config',
       'indent-width = 2',
     ]);
@@ -310,6 +349,22 @@ describe('black with the project listed', () => {
     ).toEqual([
       '--config',
       path.join(root, 'pyproject.toml'),
+      '--skip-string-normalization',
+      '--target-version',
+      'py310',
+    ]);
+  });
+
+  it('turns string normalization off when the followed quotes are single and the table normalizes', () => {
+    const root = project({ 'pyproject.toml': '[tool.black]\nskip-string-normalization = false\n' });
+
+    expect(
+      blackPlan(root, { precedence, conventions: { 'python.quotes': 'single' } }).options,
+    ).toEqual([
+      '--config',
+      path.join(root, 'pyproject.toml'),
+      '--line-length',
+      '88',
       '--skip-string-normalization',
       '--target-version',
       'py310',

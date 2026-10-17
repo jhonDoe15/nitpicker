@@ -476,7 +476,7 @@ allprojects {
             dependsOn { tasks.withType(Checkstyle) }
             doLast {
                 def formatReport = reportDir.get().file('format.txt').asFile
-                if (!formatReport.exists()) {
+                if (javaStyle == 'none' || !formatReport.exists()) {
                     formatReport.text = ''
                 }
                 tasks.withType(Test).findAll { it.name != 'nitpickerArchunit' && gradle.taskGraph.hasTask(it) }.each { testTask ->
@@ -626,8 +626,11 @@ allprojects {
                     doLast {
                         def conventions = new File(temporaryDir, 'followed-conventions.yml')
                         conventions.text = nitpickerStyle().detektConventions ?: ''
+                        def enforced = new File(temporaryDir, 'enforced-conventions.yml')
+                        enforced.text = nitpickerStyle().detektEnforced ?: ''
                         def paths = [conventions: conventions.absolutePath,
-                                     project    : nitpickerArgument('nitpicker.kotlin.detektConfig')]
+                                     project    : nitpickerArgument('nitpicker.kotlin.detektConfig'),
+                                     enforced   : enforced.absolutePath]
                         def names = (nitpickerArgument('nitpicker.kotlin.detektLayers') ?: '').toString()
                             .split(',')*.trim().findAll { it }
                         layersFile.text = names.collect { paths[it] }.findAll { it }.collect { it + '\n' }.join('')

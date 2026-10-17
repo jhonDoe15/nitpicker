@@ -328,6 +328,24 @@ describe('open-ended values', () => {
     }
   });
 
+  it('carries a value read from an opted-in config even when it equals the fallback', () => {
+    const found = {
+      'demo.width': {
+        choice: '100',
+        source: 'project',
+        followsConfig: true,
+        from: 'your config',
+        counts: {},
+      },
+    };
+    const measured = { 'demo.width': { choice: '100', source: 'default', counts: {} } };
+
+    expect(conventionChoices(found, [{ ...width, fallback: '100' }])).toEqual({
+      'demo.width': '100',
+    });
+    expect(conventionChoices(measured, [{ ...width, fallback: '100' }])).toEqual({});
+  });
+
   it('carries such a value to the policy and describes it with its unit', () => {
     const found = {
       'demo.width': { choice: '110', source: 'project', from: 'your config', counts: {} },

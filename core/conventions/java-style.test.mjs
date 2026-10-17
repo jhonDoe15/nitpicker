@@ -281,7 +281,41 @@ describe('the Checkstyle LineLength', () => {
     });
   });
 
-  it('keeps a width a declared formatter fixes, and runs the formatter at it', () => {
+  it('does not read a LineLength module with severity ignore', () => {
+    const ignored = lineLength(
+      '<module name="LineLength"><property name="severity" value="ignore"/><property name="max" value="150"/></module>',
+    );
+
+    expect(follow(listed, { [CHECKSTYLE_PATH]: ignored, ...javaFiles(GOOGLE_CODE) })).toEqual({
+      conventions: undefined,
+      printed: '',
+    });
+  });
+
+  it.each(['5', '1000'])('says why it ignored a max of %s', (max) => {
+    const config = lineLength(
+      `<module name="LineLength"><property name="max" value="${max}"/></module>`,
+    );
+
+    expect(follow(listed, { [CHECKSTYLE_PATH]: config, ...javaFiles(GOOGLE_CODE) }).printed).toBe(
+      `Ignoring the java line length of ${max} columns from your Checkstyle config: it must be a whole number from 10 to 999\n`,
+    );
+  });
+
+  it('says which build file or config it could not parse', () => {
+    const files = {
+      [CHECKSTYLE_PATH]: '<module name="Checker">',
+      'pom.xml': '<project>',
+      ...javaFiles(GOOGLE_CODE),
+    };
+
+    expect(follow(listed, files).printed).toBe(
+      'Could not read config/checkstyle/checkstyle.xml: XML element <module> is not closed\n' +
+        'Could not read pom.xml: XML element <project> is not closed\n',
+    );
+  });
+
+  it('lets the listed Checkstyle config set the width, and keeps the declared formatter', () => {
     const files = {
       [CHECKSTYLE_PATH]: lineLength(
         '<module name="LineLength"><property name="max" value="110"/></module>',

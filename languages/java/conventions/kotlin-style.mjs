@@ -1,12 +1,14 @@
 import { readInside } from '../../../shared/conventions/read-inside.mjs';
 import { precedenceLayers } from '../../../shared/conventions/tool-precedence.mjs';
 import { projectEditorconfig } from '../adapters/kotlin/style/kotlin-style-files.mjs';
+import { detektConfigOf, resolveKotlinTools } from '../adapters/kotlin/kotlin-tools.mjs';
 import {
   declaredKtfmtStyle,
-  detektConfigOf,
-  kotlinFormatterOf,
-  resolveKotlinTools,
-} from '../adapters/kotlin/kotlin-tools.mjs';
+  detectFormatter,
+  kotlinFilesFromSource,
+  kotlinFilesOf,
+  KTFMT_STYLE_INDENTATION,
+} from '../adapters/kotlin/style/kotlin-build-text.mjs';
 import { kotlinSummary } from '../adapters/kotlin/style/kotlin-format-advice.mjs';
 import {
   detektMaxLineLength,
@@ -20,7 +22,6 @@ import {
   KOTLIN_WILDCARD_IMPORTS,
 } from './kotlin-conventions.mjs';
 
-const KTFMT_INDENTATION = { kotlinlang: '4', meta: '2', google: '2' };
 const COMMA_CHOICES = { true: 'always', false: 'never' };
 const WILDCARD_CHOICES = { disabled: 'wildcard', enabled: 'explicit' };
 const DETEKT_WILDCARD_CHOICES = { true: 'explicit', false: 'wildcard' };
@@ -54,24 +55,21 @@ function ktlintChoices(root) {
   });
 }
 
-function ktfmtChoices(root) {
-  const values = editorconfigValues(root);
-  const buildStyle =
-    values?.indent_size === undefined
-      ? choicesFrom('your build file', {
-          [KOTLIN_INDENTATION]: KTFMT_INDENTATION[declaredKtfmtStyle(root)],
-        })
-      : {};
-  return {
-    ...buildStyle,
-    ...choicesFrom('your .editorconfig', {
-      [KOTLIN_INDENTATION]: values?.indent_size,
-      [KOTLIN_LINE_LENGTH]: values?.max_line_length,
-    }),
-  };
+function ktfmtBuildChoices(build) {
+  return choicesFrom('your build file', {
+    [KOTLIN_INDENTATION]: KTFMT_STYLE_INDENTATION[declaredKtfmtStyle(build)],
+  });
 }
 
-function detektChoices({ root, snapshot }, configured) {
+function ktfmtChoices(root) {
+  const values = editorconfigValues(root);
+  return choicesFrom('your .editorconfig', {
+    [KOTLIN_INDENTATION]: values?.indent_size,
+    [KOTLIN_LINE_LENGTH]: values?.max_line_length,
+  });
+}
+
+function detektChoices({ path: root, snapshot }, configured) {
   const file = detektConfigOf(root, configured, snapshot);
   const text = file === undefined ? undefined : readInside(root, file, 'utf8');
   const active = text === undefined ? undefined : detektWildcardActive(text);
@@ -93,6 +91,12 @@ function unusedFor(formatter) {
       ? { [KOTLIN_INDENTATION]: NO_FORMATTER, [KOTLIN_LINE_LENGTH]: NO_FORMATTER }
       : {}),
   };
+}
+
+function unusedByBoth(base, head) {
+  const baseUnused = unusedFor(base);
+  const headUnused = unusedFor(head);
+  return Object.fromEntries(Object.entries(baseUnused).filter(([id]) => id in headUnused));
 }
 
 function projectWins(tools, tool) {
@@ -123,20 +127,40 @@ function headConfigRoot(projectRoot) {
   return () => ({ path: projectRoot, snapshot: 'head' });
 }
 
-export function kotlinStyle({ config, projectRoot, configRoot = headConfigRoot(projectRoot) }) {
-  const tools = config.tools ?? {};
-  const configured = config.kotlin?.detektConfig;
-  const { path: root, snapshot } = configRoot();
-  const formatter = kotlinFormatterOf(root, config.kotlin?.formatter);
+function formatterFacts(source, projectRoot) {
+  return source === undefined ? kotlinFilesOf(projectRoot) : kotlinFilesFromSource(source);
+}
+
+function projectChoices({ tools, configured, formatter, facts }, configRoot) {
   const detektListed =
     projectWins(tools, 'detekt') || (configured !== undefined && tools.detekt === undefined);
+  const ktfmtListed = formatter === 'ktfmt' && projectWins(tools, 'ktfmt');
+  const ktlintListed = formatter === 'ktlint' && projectWins(tools, 'ktlint');
+  const root = detektListed || ktfmtListed || ktlintListed ? configRoot() : undefined;
   return {
-    unused: unusedFor(formatter),
-    project: {
-      ...(detektListed ? detektChoices({ root, snapshot }, configured) : {}),
-      ...(formatter === 'ktfmt' && projectWins(tools, 'ktfmt') ? ktfmtChoices(root) : {}),
-      ...(formatter === 'ktlint' && projectWins(tools, 'ktlint') ? ktlintChoices(root) : {}),
-    },
+    ...(formatter === 'ktfmt' ? ktfmtBuildChoices(facts.build) : {}),
+    ...(detektListed ? detektChoices(root, configured) : {}),
+    ...(ktfmtListed ? ktfmtChoices(root.path) : {}),
+    ...(ktlintListed ? ktlintChoices(root.path) : {}),
+  };
+}
+
+export function kotlinStyle({
+  config,
+  projectRoot,
+  source,
+  configRoot = headConfigRoot(projectRoot),
+}) {
+  const configured = config.kotlin?.detektConfig;
+  const facts = formatterFacts(source, projectRoot);
+  const formatter = config.kotlin?.formatter ?? detectFormatter(facts);
+  const headFormatter = config.kotlin?.formatter ?? detectFormatter(kotlinFilesOf(projectRoot));
+  return {
+    unused: unusedByBoth(formatter, headFormatter),
+    project: projectChoices(
+      { tools: config.tools ?? {}, configured, formatter, facts },
+      configRoot,
+    ),
     note: () => undefined,
     summary: (conventions) => summaryLines({ config, projectRoot }, conventions),
   };

@@ -2,7 +2,11 @@ import { configError, isPlainObject } from '../config.mjs';
 
 const NAME = /^[A-Za-z_]\w*$/;
 
-export const COLUMNS = { valuePattern: /^[1-9]\d{1,2}$/, unit: 'columns' };
+export const COLUMNS = {
+  valuePattern: /^[1-9]\d{1,2}$/,
+  unit: 'columns',
+  range: 'a whole number from 10 to 999',
+};
 
 export function isValidChoice(definition, choice) {
   return (
@@ -85,4 +89,9 @@ function describeOne(definition, detectedEntry, note) {
   return source === 'majority'
     ? `${label} (used by ${String(counts[choice])} of ${String(measured)} measured files)`
     : `${label} (preset default; ${measured === 0 ? 'no files to measure' : 'no clear majority'})`;
+}
+
+export function ignoredChoiceNote(definition, { choice, from }) {
+  const allowed = definition.range ?? definition.options.map((option) => `"${option}"`).join(', ');
+  return `Ignoring the ${definition.label.toLowerCase()} of ${optionLabel(definition, choice)} from ${from}: it must be ${allowed}`;
 }

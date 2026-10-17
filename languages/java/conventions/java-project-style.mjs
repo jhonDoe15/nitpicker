@@ -12,14 +12,17 @@ const FORMATTER_NAMES = {
 const PINNED_FORMATTER = 'pinned in nitpicker.config.json';
 const DECLARED_FORMATTER = 'declared in your build file';
 
-function checkstyleChoices(source, tools) {
+function checkstyleChoices(source, tools, notes) {
   const layers = precedenceLayers(tools.checkstyle?.precedence);
   if (!layers.usesProject || layers.nitpickerFirst) {
     return {};
   }
   const file = PROJECT_TOOL_CONFIGS.get('checkstyle');
   const text = source.readMany([file]).get(file);
-  const max = text === undefined ? undefined : checkstyleLineLength(text);
+  const { max, failure } = text === undefined ? {} : checkstyleLineLength(text);
+  if (failure !== undefined) {
+    notes.push(`Could not read ${file}: ${failure}`);
+  }
   return max === undefined
     ? {}
     : { [JAVA_LINE_LENGTH_ID]: { choice: max, from: 'your Checkstyle config' } };
@@ -88,9 +91,10 @@ function formatterChoices(origin, detected) {
   throw contradictionError(origin, conflict);
 }
 
-function derivedChoices(detected, source) {
+function derivedChoices(detected, source, notes) {
   const entry = detected[JAVA_FORMATTER];
-  const declared = entry.source === 'pinned' ? undefined : declaredJavaFormatter(source);
+  const { declared, notes: found } = entry.source === 'pinned' ? {} : declaredJavaFormatter(source);
+  notes.push(...(found ?? []));
   const origin = formatterOrigin(entry, declared);
   return {
     ...(declared === undefined
@@ -101,10 +105,12 @@ function derivedChoices(detected, source) {
 }
 
 export function javaProjectStyle({ config, source }) {
+  const notes = [];
   return {
     unused: {},
-    project: checkstyleChoices(source, config.tools ?? {}),
+    project: checkstyleChoices(source, config.tools ?? {}, notes),
     note: () => undefined,
-    derive: (detected) => derivedChoices(detected, source),
+    derive: (detected) => derivedChoices(detected, source, notes),
+    summary: () => notes,
   };
 }

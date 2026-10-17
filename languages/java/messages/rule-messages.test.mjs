@@ -23,6 +23,9 @@ const finding = (tool, rule, message, classification = 'enforceable') => ({
 const hint = (rule) =>
   `If this is intended, add {"rule":"${rule}","paths":["${FILE}"],"reason":"..."} to "exceptions" in nitpicker.config.json.`;
 
+const NOT_YOUR_FORMATTER =
+  'Not your formatter: pin "conventions.java.formatter" to "google", "palantir" or "none" in nitpicker.config.json.';
+
 describe('checkstyleRuleName', () => {
   it('shortens check classes to the module name and keeps configured ids', () => {
     expect(
@@ -63,18 +66,20 @@ describe('withRuleMessage', () => {
       withRuleMessage(finding('checkstyle', source, message), options).message;
 
     expect(fix({ javaStyle: 'google' })).toBe(
-      `${message} Run google-java-format on the file; it fixes this layout.`,
+      `${message} Run google-java-format on the file; it fixes this layout. ${NOT_YOUR_FORMATTER}`,
     );
     expect(fix({ javaStyle: 'aosp' })).toBe(
-      `${message} Run google-java-format --aosp on the file; it fixes this layout.`,
+      `${message} Run google-java-format --aosp on the file; it fixes this layout. ${NOT_YOUR_FORMATTER}`,
     );
     expect(fix({ javaStyle: 'palantir' })).toBe(
-      `${message} Run palantir-java-format on the file; it fixes this layout.`,
+      `${message} Run palantir-java-format on the file; it fixes this layout. ${NOT_YOUR_FORMATTER}`,
     );
     expect(fix({ javaStyle: 'none' })).toBe(
       `${message} Fix this layout by hand; no Java formatter runs.`,
     );
-    expect(fix({})).toBe(`${message} Run your Java formatter on the file; it fixes this layout.`);
+    expect(fix({})).toBe(
+      `${message} Run your Java formatter on the file; it fixes this layout. ${NOT_YOUR_FORMATTER}`,
+    );
   });
 
   it('gives a rule the catalog does not know the exception route alone', () => {

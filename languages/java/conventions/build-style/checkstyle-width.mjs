@@ -1,4 +1,3 @@
-import { COLUMNS } from '../../../../shared/conventions/settings.mjs';
 import { childrenNamed, parseXml } from '../../ingest/common.mjs';
 
 const CHECKSTYLE_DEFAULT_MAX = '80';
@@ -26,16 +25,25 @@ function parsed(text) {
   }
 }
 
+function property(module, name) {
+  return childrenNamed(module, 'property').find(({ attrs }) => attrs.name === name)?.attrs.value;
+}
+
+function isActive(module) {
+  return property(module, 'severity')?.trim().toLowerCase() !== 'ignore';
+}
+
 export function checkstyleLineLength(text) {
-  const { root } = parsed(text);
-  const module =
-    root === undefined
-      ? undefined
-      : allModules(root).find((candidate) => moduleName(candidate) === 'LineLength');
-  if (module === undefined) {
-    return undefined;
+  const { root, failure } = parsed(text);
+  if (root === undefined) {
+    return { failure };
   }
-  const max = childrenNamed(module, 'property').find(({ attrs }) => attrs.name === 'max');
-  const value = max === undefined ? CHECKSTYLE_DEFAULT_MAX : max.attrs.value;
-  return COLUMNS.valuePattern.test(value) ? value : undefined;
+  const module = allModules(root).find(
+    (candidate) => moduleName(candidate) === 'LineLength' && isActive(candidate),
+  );
+  if (module === undefined) {
+    return {};
+  }
+  const value = property(module, 'max') ?? CHECKSTYLE_DEFAULT_MAX;
+  return /^\d+$/u.test(value) ? { max: value } : {};
 }

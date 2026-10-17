@@ -52,6 +52,7 @@ export function detektWildcardActive(text) {
   return active === undefined ? undefined : active[1] === 'true';
 }
 
+const INACTIVE = /^\s*active:\s*false\b/;
 const MAX_LENGTH = /^\s*maxLineLength:\s*(\d+)\b/;
 const MAX_LINE_LENGTH_RULE = /^\s*MaxLineLength:\s*(?:#.*)?$/;
 
@@ -65,5 +66,8 @@ export function detektMaxLineLength(text) {
   const rest = lines.slice(start + 1);
   const end = rest.findIndex((line) => line.trim() !== '' && indentOfLine(line) <= indent);
   const body = end === -1 ? rest : rest.slice(0, end);
+  if (body.some((line) => INACTIVE.test(line))) {
+    return undefined;
+  }
   return body.map((line) => MAX_LENGTH.exec(line)).find((match) => match !== null)?.[1];
 }

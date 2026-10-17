@@ -189,7 +189,11 @@ describe('Kotlin conventions that the formatter can apply', () => {
     };
 
     expect(follow(config, files)).toEqual({
-      conventions: { 'kotlin.indentation': '4', 'kotlin.wildcardImports': 'wildcard' },
+      conventions: {
+        'kotlin.indentation': '4',
+        'kotlin.trailingCommas': 'always',
+        'kotlin.wildcardImports': 'wildcard',
+      },
       printed:
         HEADER +
         '  Kotlin indentation: 4 spaces (from your .editorconfig)\n' +

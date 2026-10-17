@@ -5,6 +5,8 @@ import path from 'node:path';
 const MAX_FILE_BYTES = 512 * 1024;
 const MAX_LISTING_BYTES = 1024 * 1024 * 1024;
 const BLOB_MODES = new Set(['100644', '100755']);
+const LINK_MODE = '120000';
+const LINK_HOPS = Array.from({ length: 10 });
 
 export function commitSource({ repositoryRoot, commitSha, projectRoot }) {
   const projectRelativePath = path.relative(repositoryRoot, projectRoot);
@@ -29,11 +31,39 @@ export function commitSource({ repositoryRoot, commitSha, projectRoot }) {
   return {
     paths: () => [...blobs.keys()],
     readMany: (files) =>
-      readBlobs(
+      readResolved(
         repositoryRoot,
-        files.filter((file) => blobs.has(file)).map((file) => blobs.get(file)),
+        blobs,
+        files.filter((file) => blobs.has(file)),
       ),
   };
+}
+
+function linkTarget(blobs, linkTexts, blob) {
+  return blobs.get(path.posix.join(path.posix.dirname(blob.file), linkTexts.get(blob.file) ?? ''));
+}
+
+function resolvedBlob(blobs, linkTexts, file) {
+  const settled = LINK_HOPS.reduce(
+    (blob) => (blob?.link === true ? linkTarget(blobs, linkTexts, blob) : blob),
+    blobs.get(file),
+  );
+  return settled?.link === true ? undefined : settled;
+}
+
+function readLinkTexts(repositoryRoot, blobs, files) {
+  const requested = files.some((file) => blobs.get(file).link);
+  const links = requested ? [...blobs.values()].filter(({ link }) => link) : [];
+  return new Map([...readBlobs(repositoryRoot, links)].map(([file, text]) => [file, text.trim()]));
+}
+
+function readResolved(repositoryRoot, blobs, files) {
+  const linkTexts = readLinkTexts(repositoryRoot, blobs, files);
+  const resolved = files
+    .map((file) => [file, resolvedBlob(blobs, linkTexts, file)])
+    .filter(([, blob]) => blob !== undefined);
+  const texts = readBlobs(repositoryRoot, [...new Set(resolved.map(([, blob]) => blob))]);
+  return new Map(resolved.map(([file, blob]) => [file, texts.get(blob.file)]));
 }
 
 export function lazySource(create) {
@@ -63,6 +93,7 @@ export function headCommit(projectRoot) {
 }
 
 export function workingTreeSource(projectRoot) {
+  const root = realpathSync(projectRoot);
   const listing = git(projectRoot, [
     'ls-files',
     '-z',
@@ -79,7 +110,7 @@ export function workingTreeSource(projectRoot) {
     readMany: (files) =>
       new Map(
         files.flatMap((file) => {
-          const text = readSmallFile(path.join(projectRoot, file));
+          const text = readSmallFile(root, path.join(projectRoot, file));
           return text === undefined ? [] : [[file, text]];
         }),
       ),
@@ -93,18 +124,34 @@ function parseTreeEntry(entry, prefix) {
   if (
     tab < 0 ||
     type !== 'blob' ||
-    !BLOB_MODES.has(mode) ||
+    !(BLOB_MODES.has(mode) || mode === LINK_MODE) ||
     Number(size) > MAX_FILE_BYTES ||
     !file.startsWith(prefix)
   ) {
     return undefined;
   }
-  return { file: file.slice(prefix.length), oid, size: Number(size) };
+  return { file: file.slice(prefix.length), oid, size: Number(size), link: mode === LINK_MODE };
 }
 
-function readSmallFile(file) {
-  const stats = statSync(file, { throwIfNoEntry: false });
-  return stats?.isFile() === true && stats.size <= MAX_FILE_BYTES
+function insideTree(root, file) {
+  const resolved = realpathSync(file);
+  return resolved === root || resolved.startsWith(root + path.sep);
+}
+
+function statFile(file) {
+  try {
+    return statSync(file, { throwIfNoEntry: false });
+  } catch (error) {
+    if (error.code === 'ELOOP') {
+      return undefined;
+    }
+    throw error;
+  }
+}
+
+function readSmallFile(root, file) {
+  const stats = statFile(file);
+  return stats?.isFile() === true && stats.size <= MAX_FILE_BYTES && insideTree(root, file)
     ? readFileSync(file, 'utf8')
     : undefined;
 }

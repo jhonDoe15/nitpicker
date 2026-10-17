@@ -218,7 +218,7 @@ describe('formatter arguments from the conventions followed', () => {
     runPythonTools(
       contextWithConventions(
         root,
-        { ...followed, 'python.lineLength': '120' },
+        { ...followed, 'python.lineLength': '120', 'python.quotes': 'double' },
         { ruff: ['project', 'nitpicker'] },
       ).context,
     );

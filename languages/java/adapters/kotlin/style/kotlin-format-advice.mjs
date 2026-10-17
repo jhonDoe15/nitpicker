@@ -11,10 +11,7 @@ function ktfmtLines(tools) {
     ...(tools.ktfmtMaxWidth === undefined ? [] : [`--max-width=${tools.ktfmtMaxWidth}`]),
     ...(tools.ktfmtEditorconfig ? ['--enable-editorconfig'] : []),
   ].join(' ');
-  const ignored = [
-    ...(tools.editorconfigIgnored ? ['.editorconfig'] : []),
-    ...(tools.ktfmtBuildStyleIgnored ? ['the ktfmt style of your build file'] : []),
-  ];
+  const ignored = [...(tools.editorconfigIgnored ? ['.editorconfig'] : [])];
   return [
     `Format with ktfmt: ktfmt ${flags} <Kotlin files>`,
     ...(ignored.length === 0 ? [] : [ignoredConfigNotice(ignored.join(' and '), 'ktfmt')]),
