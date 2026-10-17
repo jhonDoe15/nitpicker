@@ -1,4 +1,9 @@
 import { policyHash, sortByToolAndPath } from '../reporting/report-model.mjs';
+import {
+  isPolicyChangeAccepted,
+  policyDigest,
+  policyFindings,
+} from '../reporting/review/policy-findings.mjs';
 import { compareAnalyzers } from './base-red/compare-analyzers.mjs';
 
 export function combineAnalyzerReports(context) {
@@ -25,8 +30,13 @@ function declaredExclusions(analyzers) {
 }
 
 function buildReport(context) {
-  const { analyzers, outcomes, toolErrors, comparison, startedAt, configOverrides } = context;
-  const newFindings = collect(outcomes, 'newFindings');
+  const { analyzers, outcomes, toolErrors, comparison, startedAt } = context;
+  const { configOverrides, policyChanges, policyLoosenings, acceptPolicyChange, notices } = context;
+  const digest = context.policyDigest ?? policyDigest({ loosenings: policyLoosenings });
+  const newFindings = [
+    ...collect(outcomes, 'newFindings'),
+    ...(context.reportsPolicy ? policyFindings(policyLoosenings, digest, acceptPolicyChange) : []),
+  ];
   return {
     summary: {
       requestedBaseRef: comparison.requestedBaseRef,
@@ -35,6 +45,14 @@ function buildReport(context) {
       headSha: comparison.headSha,
       policyHash: policyHash(analyzers, configOverrides),
       configOverrides,
+      policyChanges,
+      policyLoosenings,
+      ...(policyLoosenings.length === 0 ? {} : { policyDigest: digest }),
+      policyChangeAccepted: isPolicyChangeAccepted(policyLoosenings, digest, acceptPolicyChange),
+      ...(context.policyAcceptanceSource === undefined
+        ? {}
+        : { policyAcceptanceSource: context.policyAcceptanceSource }),
+      notices,
       tools: outcomes.map(({ tool }) => tool),
       exclusions: declaredExclusions(analyzers),
       renamedPaths: context.baseToHeadRenames.size,

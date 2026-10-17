@@ -59,17 +59,17 @@ export function commitBranch(root, name, files) {
   commitBranchFrom({ root, name, files, from: 'main' });
 }
 
-export function gate(root, branch, extra = []) {
-  return gateAgainst({ root, branch, base: 'main', extra });
+export function gate(root, branch, { extra = [], environment = {} } = {}) {
+  return gateAgainst({ root, branch, base: 'main', extra, environment });
 }
 
-export function gateAgainst({ root, branch, base, extra = [] }) {
+export function gateAgainst({ root, branch, base, extra = [], environment = {} }) {
   git(root, 'checkout', '-q', branch);
   const reports = mkdtempSync(path.join(tmpdir(), 'nitpicker-python-e2e-out-'));
   const output = { text: '' };
   const exitCode = runCli({
     arguments_: ['--base', base, '--output', reports, ...extra],
-    environment: { NO_COLOR: '1' },
+    environment: { NO_COLOR: '1', ...environment },
     currentProjectRoot: root,
     stdout: {
       write: (value) => {
