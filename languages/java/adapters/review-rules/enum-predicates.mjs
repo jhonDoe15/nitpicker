@@ -17,6 +17,7 @@ const ANNOTATION = /@[\w.]+(?:\s*\([^()]*\))?/gu;
 const IDENTIFIER = /^[A-Za-z_$][\w$]*/u;
 const DOTTED_NAME = /[A-Za-z_$][\w$]*(?:\s*\.\s*[A-Za-z_$][\w$]*)+/gu;
 const TYPE_NAME = /^[A-Z]/u;
+const TYPE_AND_CONSTANT = 2;
 const BARE_CONSTANT = /(?<![\w$.])([A-Z][A-Z0-9_]*)(?![\w$]|\s*[.(])/gu;
 
 function splitTopLevel(text) {
@@ -110,7 +111,7 @@ function qualifiedConstants(expression) {
       name
         .split('.')
         .map((part) => part.trim())
-        .slice(-2),
+        .slice(-TYPE_AND_CONSTANT),
     )
     .filter(([type]) => TYPE_NAME.test(type));
 }

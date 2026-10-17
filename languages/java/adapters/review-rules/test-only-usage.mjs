@@ -53,11 +53,18 @@ function isWiring(target) {
   return WIRING_ANNOTATIONS.has(target) || WIRING_PATTERNS.some((pattern) => pattern.test(target));
 }
 
-function grownWiring(candidates, wiring = new Set()) {
-  const added = candidates
-    .filter(({ source, target }) => !wiring.has(source) && (isWiring(target) || wiring.has(target)))
-    .map(({ source }) => source);
-  return added.length === 0 ? wiring : grownWiring(candidates, new Set([...wiring, ...added]));
+function grownWiring(candidates) {
+  const wiring = new Set();
+  const pending = candidates.filter(({ target }) => isWiring(target)).map(({ source }) => source);
+  for (const annotation of pending) {
+    if (!wiring.has(annotation)) {
+      wiring.add(annotation);
+      pending.push(
+        ...candidates.filter(({ target }) => target === annotation).map(({ source }) => source),
+      );
+    }
+  }
+  return wiring;
 }
 
 function wiringAnnotations(edges, owned) {
