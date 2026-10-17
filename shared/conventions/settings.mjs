@@ -32,18 +32,26 @@ function validateChoice(definition, choice) {
   }
 }
 
-export function describeConventions(detected, definitions) {
-  return definitions.map((definition) => describeOne(definition, detected[definition.id]));
+export function describeConventions(detected, definitions, note = () => undefined) {
+  return definitions.map((definition) => describeOne(definition, detected[definition.id], note));
 }
 
-function describeOne(definition, { choice, source, counts, files }) {
+function describeOne(definition, { choice, source, counts, files, from, overrides }, note) {
   if (Array.isArray(choice)) {
     const names = `${definition.label}: ${choice.join(', ')}`;
     return source === 'pinned'
       ? `${names} (set in nitpicker.config.json)`
       : `${names} (final call of at least ${String(definition.minFiles)} of ${String(files)} measured files)`;
   }
-  const label = `${definition.label}: ${definition.optionLabels[choice]}`;
+  const extra = note(definition.id, choice);
+  const option = definition.optionLabels[choice] ?? choice;
+  const label = `${definition.label}: ${option}${extra === undefined ? '' : `, ${extra}`}`;
+  if (source === 'project') {
+    const pin = definition.optionLabels[overrides] ?? overrides;
+    const overridden =
+      overrides === undefined ? '' : `, overriding the pin of ${pin} in nitpicker.config.json`;
+    return `${label} (from ${from}${overridden})`;
+  }
   if (source === 'pinned') {
     return `${label} (set in nitpicker.config.json)`;
   }
