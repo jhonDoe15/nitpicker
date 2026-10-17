@@ -23,13 +23,13 @@ function optionLabel(definition, choice) {
   return definition.optionLabels[choice] ?? `${choice}${unit}`;
 }
 
-function validateChoice(id, choice, definition) {
+function validateChoice(definition, choice) {
   if (definition.kind === 'names') {
     if (
       !Array.isArray(choice) ||
       !choice.every((name) => typeof name === 'string' && NAME.test(name))
     ) {
-      throw configError(`"conventions.${id}" must be a list of function names`);
+      throw configError(`"conventions.${definition.id}" must be a list of function names`);
     }
     return;
   }
@@ -37,7 +37,7 @@ function validateChoice(id, choice, definition) {
     const options = definition.options.map((option) => `"${option}"`).join(', ');
     const other =
       definition.valuePattern === undefined ? '' : `, or another number of ${definition.unit}`;
-    throw configError(`"conventions.${id}" must be one of: ${options}${other}`);
+    throw configError(`"conventions.${definition.id}" must be one of: ${options}${other}`);
   }
 }
 
@@ -53,7 +53,7 @@ export function validateConventions(value, definitions) {
         `unknown convention "${id}". Allowed conventions: ${[...known.keys()].join(', ') || '(none for this preset)'}`,
       );
     }
-    validateChoice(id, choice, definition);
+    validateChoice(definition, choice);
   }
 }
 
@@ -61,18 +61,13 @@ export function describeConventions(detected, definitions, note = () => undefine
   return definitions.map((definition) => describeOne(definition, detected[definition.id], note));
 }
 
-function describeNames(definition, { choice, source, files }) {
-  const names = `${definition.label}: ${choice.join(', ')}`;
-  return source === 'pinned'
-    ? `${names} (set in nitpicker.config.json)`
-    : `${names} (final call of at least ${String(definition.minFiles)} of ${String(files)} measured files)`;
-}
-
-function describeOne(definition, detectedEntry, note) {
-  if (definition.kind === 'names') {
-    return describeNames(definition, detectedEntry);
+function describeOne(definition, { choice, source, counts, files, from, overrides }, note) {
+  if (Array.isArray(choice)) {
+    const names = `${definition.label}: ${choice.join(', ')}`;
+    return source === 'pinned'
+      ? `${names} (set in nitpicker.config.json)`
+      : `${names} (final call of at least ${String(definition.minFiles)} of ${String(files)} measured files)`;
   }
-  const { choice, source, counts, from, overrides } = detectedEntry;
   const extra = note(definition.id, choice);
   const option = optionLabel(definition, choice);
   const label = `${definition.label}: ${option}${extra === undefined ? '' : `, ${extra}`}`;
