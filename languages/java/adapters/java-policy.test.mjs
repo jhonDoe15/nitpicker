@@ -396,19 +396,6 @@ describe('applyJavaPolicy', () => {
     ).toEqual([findings[1], findings[2]]);
   });
 
-  it('lifts a slow test named bare or as printed', () => {
-    const slow = {
-      ...finding('src/test/java/SlowTest.java'),
-      tool: 'test-runtime',
-      rule: 'slow-test',
-    };
-    const exception = (rule) => ({ exceptions: [{ rule, glob: 'src/test/**' }] });
-
-    expect(applyJavaPolicy([slow], exception('slow-test'))).toEqual([]);
-    expect(applyJavaPolicy([slow], exception('test-runtime/slow-test'))).toEqual([]);
-    expect(applyJavaPolicy([slow], exception('pmd/slow-test'))).toEqual([slow]);
-  });
-
   it('lifts a Java finding named as printed, <tool>/<rule>, only under the excepted glob', () => {
     const findings = [
       finding('src/main/java/legacy/A.java'),

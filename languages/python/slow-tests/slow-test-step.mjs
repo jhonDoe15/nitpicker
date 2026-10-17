@@ -32,7 +32,10 @@ function testCasesOf(xml) {
 function isFile(root, relative) {
   const base = path.resolve(root);
   const full = path.resolve(base, relative);
-  return full.startsWith(base + path.sep) && existsSync(full);
+  if (!full.startsWith(base + path.sep)) {
+    return false;
+  }
+  return existsSync(full);
 }
 
 function locate(projectRoot, className) {
