@@ -15,7 +15,7 @@ function referencedTypes(text) {
   ];
 }
 
-function qualifiedName(text, name) {
+export function qualifiedName(text, name) {
   if (name.includes('.')) {
     return name;
   }
@@ -27,7 +27,7 @@ function qualifiedName(text, name) {
   return owner === undefined ? name : `${owner}.${name}`;
 }
 
-function sourceOfType(locate, projectRoot, qualified) {
+export function sourceOfType(locate, projectRoot, qualified) {
   const parts = qualified.split('.');
   const simple = parts.pop();
   const directory = parts.join('/');
