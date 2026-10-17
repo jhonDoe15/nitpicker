@@ -9,6 +9,7 @@ import {
   validateExceptions,
   TYPESCRIPT_ONLY_KEYS,
   validateProjectRelativePath,
+  validateTestConsole,
 } from '../../shared/config.mjs';
 import { validateJavaConfig } from '../../languages/java/adapters/java-policy.mjs';
 import { validateKotlinOptions } from '../../languages/java/adapters/kotlin/kotlin-options.mjs';
@@ -37,6 +38,7 @@ export const KEYS = [
   'legacyInventory',
   'python',
   'tools',
+  'testConsole',
   'kotlin',
   'conventions',
 ];
@@ -60,6 +62,7 @@ export function validateConfig(config) {
   validateDisable(config.disable);
   validateReact(config.react);
   validateI18n(config.i18n);
+  validateTestConsole(config.testConsole);
   validateOptional(config);
   validateProjectConventions(config);
   return config;
