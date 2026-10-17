@@ -53,6 +53,8 @@
     "!**/fixtures/**",
     "!**/test-support/**",
     "!**/README.md",
+    "!**/__pycache__/**",
+    "!**/*.pyc",
     "skills/**"
   ],
   "exports": {
@@ -79,7 +81,6 @@
     }
   },
   "dependencies": {
-    "@barney-media/crap-typescript-core": "0.5.3",
     "@eslint/js": "10.0.1",
     "@stryker-mutator/core": "10.0.0",
     "@stryker-mutator/typescript-checker": "10.0.0",
