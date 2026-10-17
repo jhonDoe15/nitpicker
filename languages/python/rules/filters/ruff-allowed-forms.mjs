@@ -11,6 +11,7 @@ const COMMENTED_CODE_RULE = 'ERA001';
 const HASH_CLASS_RULE = 'S303';
 const HMAC_CALLEE = /\bHMAC\s*$/u;
 const LINES_BEFORE = 8;
+const PAREN_DEPTH = { ')': 1, '(': -1 };
 
 function isAllowedNumber(message) {
   const text = MAGIC_VALUE.exec(message)?.[1];
@@ -26,24 +27,21 @@ function isLabelComment({ rule, path, location }, lineOf) {
 
 function textBefore({ path, location }, lineOf) {
   const first = Math.max(1, location.line - LINES_BEFORE);
-  const lines = [];
-  for (let line = first; line < location.line; line += 1) {
-    lines.push(lineOf(path, line) ?? '');
-  }
+  const lines = Array.from(
+    { length: location.line - first },
+    (_, offset) => lineOf(path, first + offset) ?? '',
+  );
   const current = lineOf(path, location.line) ?? '';
   return [...lines, current.slice(0, Math.max(0, (location.column ?? 1) - 1))].join('\n');
 }
 
 function enclosingCallee(text) {
+  const characters = text.split('').reverse();
   let depth = 0;
-  for (let index = text.length - 1; index >= 0; index -= 1) {
-    if (text[index] === ')') {
-      depth += 1;
-    } else if (text[index] === '(') {
-      if (depth === 0) {
-        return text.slice(0, index);
-      }
-      depth -= 1;
+  for (const [offset, character] of characters.entries()) {
+    depth += PAREN_DEPTH[character] ?? 0;
+    if (depth < 0) {
+      return text.slice(0, text.length - 1 - offset);
     }
   }
   return undefined;
