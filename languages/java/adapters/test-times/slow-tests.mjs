@@ -6,10 +6,10 @@ import { sourceLocator } from '../reporting/kotlin-reports.mjs';
 import {
   MESSAGES,
   RULE_IDS,
-  SLOW_TEST_FIXES,
   TEST_TIME_DEFAULTS,
   renderMessage,
 } from '../../../../shared/policy.mjs';
+import { SLOW_TEST_FIXES } from '../../../../shared/rules/slow-tests/slow-test-fixes.mjs';
 import { isSpringBootTest } from './spring-boot-tests.mjs';
 import { templateMethods, testMethod } from './test-methods.mjs';
 

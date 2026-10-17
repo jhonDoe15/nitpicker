@@ -54,7 +54,7 @@ describe('slow test findings', () => {
   });
 
   it('gives an integration test its own budget and no move advice', () => {
-    const { line: _line, ...withoutLine } = TEST;
+    const withoutLine = { ...TEST, line: undefined };
     const limits = { integrationTestSeconds: 7 };
     expect(
       slowTestFindings({

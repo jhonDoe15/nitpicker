@@ -10,8 +10,10 @@ import { run } from '../adapters/execution/python-process.mjs';
 import { isIntegrationTest } from './integration-tests.mjs';
 import { TEST_TIMES_REPORT } from './timing-command.mjs';
 
+export { timedTestCommand } from './timing-command.mjs';
+
 export const SLOW_TESTS_REPORT = 'slow-tests.json';
-const FACTS_SCRIPT = fileURLToPath(new URL('test_facts.py', import.meta.url));
+export const FACTS_SCRIPT = fileURLToPath(new URL('test_facts.py', import.meta.url));
 const TEST_ROOTS = ['', 'tests', 'test'];
 const PARAMETERS = /\[.*$/su;
 
@@ -27,6 +29,12 @@ function testCasesOf(xml) {
   );
 }
 
+function isFile(root, relative) {
+  const base = path.resolve(root);
+  const full = path.resolve(base, relative);
+  return full.startsWith(base + path.sep) && existsSync(full);
+}
+
 function locate(projectRoot, className) {
   const parts = className.split('.');
   return Array.from({ length: parts.length }, (_, index) => parts.length - index)
@@ -36,11 +44,11 @@ function locate(projectRoot, className) {
         classes: parts.slice(count),
       })),
     )
-    .find(({ file }) => existsSync(path.join(projectRoot, file)));
+    .find(({ file }) => isFile(projectRoot, file));
 }
 
 function factsOf(context, root, files) {
-  const present = files.filter((file) => existsSync(path.join(root, file)));
+  const present = files.filter((file) => isFile(root, file));
   if (present.length === 0) {
     return {};
   }

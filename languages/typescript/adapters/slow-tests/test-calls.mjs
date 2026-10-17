@@ -7,18 +7,23 @@ const EACH = 'each';
 const FORMAT_TOKEN = /%[sdifjoOpc#%]|\$[\w#.]+/gu;
 const ANY = '.*';
 
+function innerExpression(node) {
+  if (ts.isPropertyAccessExpression(node) || ts.isCallExpression(node)) {
+    return node.expression;
+  }
+  return ts.isTaggedTemplateExpression(node) ? node.tag : undefined;
+}
+
 function calleeNames(expression) {
-  if (ts.isIdentifier(expression)) {
-    return [expression.text];
+  const names = [];
+  let current = expression;
+  while (current !== undefined && !ts.isIdentifier(current)) {
+    if (ts.isPropertyAccessExpression(current)) {
+      names.unshift(current.name.text);
+    }
+    current = innerExpression(current);
   }
-  if (ts.isPropertyAccessExpression(expression)) {
-    const base = calleeNames(expression.expression);
-    return base === undefined ? undefined : [...base, expression.name.text];
-  }
-  if (ts.isCallExpression(expression)) {
-    return calleeNames(expression.expression);
-  }
-  return ts.isTaggedTemplateExpression(expression) ? calleeNames(expression.tag) : undefined;
+  return current === undefined ? undefined : [current.text, ...names];
 }
 
 function isEachTable(call) {
@@ -29,23 +34,43 @@ function literalPattern(text, each) {
   return each ? text.split(FORMAT_TOKEN).map(escapeRegExp).join(ANY) : escapeRegExp(text);
 }
 
-function titlePattern(node, each) {
-  if (node === undefined) {
-    return ANY;
+function titleLeaves(node) {
+  const pending = [node];
+  const leaves = [];
+  while (pending.length > 0) {
+    const current = pending.shift();
+    if (current !== undefined && ts.isParenthesizedExpression(current)) {
+      pending.unshift(current.expression);
+    } else if (current !== undefined && isPlus(current)) {
+      pending.unshift(current.left, current.right);
+    } else {
+      leaves.push(current);
+    }
   }
-  if (ts.isStringLiteralLike(node)) {
+  return leaves;
+}
+
+function isPlus(node) {
+  return ts.isBinaryExpression(node) && node.operatorToken.kind === ts.SyntaxKind.PlusToken;
+}
+
+function leafPattern(node, each) {
+  if (node !== undefined && ts.isStringLiteralLike(node)) {
     return literalPattern(node.text, each);
   }
-  if (ts.isTemplateExpression(node)) {
+  if (node !== undefined && ts.isTemplateExpression(node)) {
     return [
       literalPattern(node.head.text, each),
       ...node.templateSpans.map((span) => `${ANY}${literalPattern(span.literal.text, each)}`),
     ].join('');
   }
-  if (ts.isBinaryExpression(node) && node.operatorToken.kind === ts.SyntaxKind.PlusToken) {
-    return `${titlePattern(node.left, each)}${titlePattern(node.right, each)}`;
-  }
-  return ts.isParenthesizedExpression(node) ? titlePattern(node.expression, each) : ANY;
+  return ANY;
+}
+
+function titlePattern(node, each) {
+  return titleLeaves(node)
+    .map((leaf) => leafPattern(leaf, each))
+    .join('');
 }
 
 function kindOf(root) {
