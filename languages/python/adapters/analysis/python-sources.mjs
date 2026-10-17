@@ -8,7 +8,13 @@ import {
   NON_SOURCE_DIRECTORIES,
   NON_SOURCE_FILES,
 } from '../execution/python-project.mjs';
-import { nonProductionTestGlobs, TEST_FILE_NAME } from '../execution/python-test-files.mjs';
+import { isGeneratedPython } from '../../libraries/generated-files.mjs';
+import {
+  DJANGO_TEST_FILES,
+  isDjangoProject,
+  isTestFile,
+  testFileOptions,
+} from '../configuration/pytest/collection-options.mjs';
 
 const SOURCE_LISTING = 'python-files.txt';
 const WHOLE_PROJECT = '.';
@@ -55,7 +61,9 @@ export function pythonSourceFiles(projectRoot, sourceRoots) {
 }
 
 export function writeSourceListing({ projectRoot, reportRoot, project }) {
-  const files = pythonSourceFiles(projectRoot, project.sourceRoots);
+  const files = pythonSourceFiles(projectRoot, project.sourceRoots).filter(
+    (file) => !isGeneratedPython(projectRoot, file),
+  );
   const listing = path.join(reportRoot, SOURCE_LISTING);
   writeFileSync(listing, files.join('\n'));
   return { files, listing };
@@ -96,13 +104,17 @@ const COMMON_HIDDEN_DIRECTORIES = [
 
 export const NON_PRODUCTION_GLOBS = [
   ...[...EXCLUDED_DIRECTORIES, ...COMMON_HIDDEN_DIRECTORIES].map((name) => `**/${name}/**`),
-  ...nonProductionTestGlobs(),
+  '**/test_*.py',
+  '**/*_test.py',
+  '**/conftest.py',
 ];
 
-export function nonProductionGlobs(sourceRoots) {
-  return sourceRoots.includes('.')
-    ? [...NON_PRODUCTION_GLOBS, ...DOCUMENTATION_DIRECTORIES.map((name) => `${name}/**`)]
-    : NON_PRODUCTION_GLOBS;
+export function nonProductionGlobs(sourceRoots, projectRoot) {
+  return [
+    ...NON_PRODUCTION_GLOBS,
+    ...(isDjangoProject(projectRoot) ? DJANGO_TEST_FILES.map((name) => `**/${name}`) : []),
+    ...(sourceRoots.includes('.') ? DOCUMENTATION_DIRECTORIES.map((name) => `${name}/**`) : []),
+  ];
 }
 
 export function existingSourceRoots(projectRoot, sourceRoots) {
@@ -114,7 +126,12 @@ function moduleName(importRoot, absoluteFile) {
   return parts.at(-1) === '__init__' ? parts.slice(0, -1).join('.') : parts.join('.');
 }
 
-function listDirectory(directory, skipped) {
+export function testFileMatcher(projectRoot) {
+  const options = testFileOptions(projectRoot);
+  return (file) => isTestFile(file, options);
+}
+
+function listDirectory(directory, { skipped, isTest }) {
   const entries = readdirSync(directory, { withFileTypes: true });
   function named(entry) {
     return path.join(directory, entry.name);
@@ -130,18 +147,17 @@ function listDirectory(directory, skipped) {
       )
       .map(named),
     files: entries
-      .filter(
-        (entry) => entry.isFile() && entry.name.endsWith('.py') && !TEST_FILE_NAME.test(entry.name),
-      )
+      .filter((entry) => entry.isFile() && entry.name.endsWith('.py') && !isTest(named(entry)))
       .map(named),
   };
 }
 
-function productionFiles(top, skippedAtTop) {
+function productionFiles(top, { skippedAtTop, isTest }) {
   const pending = [top];
   const files = [];
   for (const directory of pending) {
-    const listed = listDirectory(directory, directory === top ? skippedAtTop : []);
+    const skipped = directory === top ? skippedAtTop : [];
+    const listed = listDirectory(directory, { skipped, isTest });
     pending.push(...listed.directories);
     files.push(...listed.files);
   }
@@ -150,11 +166,16 @@ function productionFiles(top, skippedAtTop) {
 
 export function listProductionModules(projectRoot, sourceRoots) {
   const seen = new Set();
+  const matcher = testFileMatcher(projectRoot);
+  function isTest(absolute) {
+    return matcher(path.relative(projectRoot, absolute).split(path.sep).join('/'));
+  }
   return existingSourceRoots(projectRoot, sourceRoots).flatMap((root) => {
     const [importRoot] =
       root === '.' ? [path.resolve(projectRoot)] : importRoots(projectRoot, [root]);
     const skippedAtTop = root === '.' ? DOCUMENTATION_DIRECTORIES : [];
-    return productionFiles(path.resolve(projectRoot, root), skippedAtTop).flatMap((absolute) => {
+    const top = path.resolve(projectRoot, root);
+    return productionFiles(top, { skippedAtTop, isTest }).flatMap((absolute) => {
       const file = path.relative(projectRoot, absolute).split(path.sep).join('/');
       const module = moduleName(importRoot, absolute);
       if (seen.has(module) || module === '') {
@@ -164,4 +185,55 @@ export function listProductionModules(projectRoot, sourceRoots) {
       return [{ file, module, isPackage: path.basename(file) === '__init__.py' }];
     });
   });
+}
+
+const OUTSIDE_SKIPPED = new Set([...INSTALLED_DIRECTORIES, 'venv', 'env', 'build', 'dist']);
+
+function isUnder(file, root) {
+  return root === '.' || file === root || file.startsWith(`${root}/`);
+}
+
+function isWalked(entry) {
+  return (
+    entry.isDirectory() && !entry.name.startsWith(HIDDEN_PREFIX) && !OUTSIDE_SKIPPED.has(entry.name)
+  );
+}
+
+function projectFiles(projectRoot) {
+  const files = [];
+  const pending = [''];
+  for (const directory of pending) {
+    const entries = readdirSync(path.join(projectRoot, directory), { withFileTypes: true }).map(
+      (entry) => ({
+        entry,
+        relative: directory === '' ? entry.name : `${directory}/${entry.name}`,
+      }),
+    );
+    pending.push(...entries.filter(({ entry }) => isWalked(entry)).map(({ relative }) => relative));
+    files.push(
+      ...entries
+        .filter(({ entry }) => entry.isFile() && entry.name.endsWith('.py'))
+        .map(({ relative }) => relative),
+    );
+  }
+  return files.sort();
+}
+
+function dottedName(file) {
+  const parts = file.replace(/\.py$/u, '').split('/');
+  return (parts.at(-1) === '__init__' ? parts.slice(0, -1) : parts).join('.');
+}
+
+export function listOtherModules(projectRoot, sourceRoots, production) {
+  const known = new Set(production.map(({ file }) => file));
+  const isTest = testFileMatcher(projectRoot);
+  const roots = existingSourceRoots(projectRoot, sourceRoots).filter((root) => root !== '.');
+  return projectFiles(projectRoot)
+    .filter((file) => !known.has(file))
+    .map((file) => {
+      const inside = roots.some((root) => isUnder(file, root));
+      const kind = isTest(file) ? 'test' : 'other';
+      return { file, module: dottedName(file), kind, inRoots: inside };
+    })
+    .filter(({ module }) => module !== '');
 }

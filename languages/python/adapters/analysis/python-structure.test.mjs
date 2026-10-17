@@ -184,7 +184,7 @@ describe('Python file limits', () => {
   });
 
   it('counts the tests.py of a Django app as a test module', () => {
-    write(['polls/models.py', 'polls/views.py', 'polls/admin.py', 'polls/tests.py']);
+    write(['manage.py', 'polls/models.py', 'polls/views.py', 'polls/admin.py', 'polls/tests.py']);
 
     expect(findingsWith({ fileLimits: limits })).toEqual([
       ['folder-files-limit', 'polls', 'folder-files:source:3'],
@@ -204,6 +204,18 @@ describe('Python file limits', () => {
     expect(findingsWith({}).map(([rule, findingPath]) => [rule, findingPath])).toEqual([
       ['file-lines-limit', 'src/app/long.py'],
       ['line-length-limit', 'src/app/wide.py'],
+    ]);
+  });
+
+  it('keeps production modules when python_files matches every file, testing the testpaths folders', () => {
+    write(
+      ['pyproject.toml'],
+      '[tool.pytest.ini_options]\ntestpaths = ["tests"]\npython_files = ["*.py"]\n',
+    );
+    write(['app/service.py', 'tests/checks.py'], 'VALUE = 1\n'.repeat(480));
+
+    expect(findingsWith({}).map(([rule, findingPath]) => [rule, findingPath])).toEqual([
+      ['file-lines-limit', 'app/service.py'],
     ]);
   });
 

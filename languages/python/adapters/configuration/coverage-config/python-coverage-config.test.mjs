@@ -143,7 +143,6 @@ describe('the coverage settings of the project', () => {
         'omit =',
         '    */test_*.py',
         '    */*_test.py',
-        '    */tests.py',
         '    */conftest.py',
         '    */tests/*',
         '    */test/*',

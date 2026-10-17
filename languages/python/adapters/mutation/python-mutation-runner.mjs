@@ -3,7 +3,7 @@ import {
   djangoSubdirectory,
   pytestNamesDjangoSettings,
 } from '../execution/python-django.mjs';
-import { mutationPytestOptions, probePytest } from '../execution/python-test-runner.mjs';
+import { mutmutPytestEnvironment, probePytest } from '../execution/python-test-runner.mjs';
 
 export const MUTATION_SKIPPED_RULE = 'mutation-skipped';
 export const DISABLE_HINT =
@@ -53,10 +53,9 @@ function djangoEnvironment(context) {
   return module === undefined || configured ? {} : { DJANGO_SETTINGS_MODULE: module };
 }
 
-export function mutmutEnvironment(context) {
-  const options = mutationPytestOptions(context);
+export function mutmutEnvironment(context, ignored = []) {
   return {
-    appendEnv: options.length === 0 ? {} : { PYTEST_ADDOPTS: options.join(' ') },
+    env: mutmutPytestEnvironment(context, ignored),
     defaultEnv: context.project.testRunner === 'django' ? djangoEnvironment(context) : {},
   };
 }

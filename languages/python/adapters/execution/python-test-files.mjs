@@ -1,11 +1,13 @@
+import { DJANGO_TEST_FILES } from '../configuration/pytest/collection-options.mjs';
+
 export const TEST_DIRECTORIES = ['tests', 'test'];
-export const TEST_FILE_GLOBS = ['test_*.py', '*_test.py', 'tests.py', 'conftest.py'];
+const STANDARD_TEST_FILES = ['test_*.py', '*_test.py', 'conftest.py'];
 
 function globSource(glob) {
   return glob.replaceAll('.', String.raw`\.`).replaceAll('*', '[^/]*');
 }
 
-const NAMES = TEST_FILE_GLOBS.map(globSource).join('|');
+const NAMES = [...STANDARD_TEST_FILES, ...DJANGO_TEST_FILES].map(globSource).join('|');
 
 export const TEST_FILE_NAME = new RegExp(`^(?:${NAMES})$`, 'u');
 export const TEST_PATH = new RegExp(
@@ -13,20 +15,21 @@ export const TEST_PATH = new RegExp(
   'u',
 );
 
-export function coverageTestOmits() {
+export function testFileGlobs(django) {
+  return [...STANDARD_TEST_FILES, ...(django ? DJANGO_TEST_FILES : [])];
+}
+
+export function coverageTestOmits(django) {
   return [
-    ...TEST_FILE_GLOBS.map((glob) => `*/${glob}`),
+    ...STANDARD_TEST_FILES.map((glob) => `*/${glob}`),
     ...TEST_DIRECTORIES.map((directory) => `*/${directory}/*`),
+    ...(django ? DJANGO_TEST_FILES.map((glob) => `*/${glob}`) : []),
   ];
 }
 
-export function mutmutTestPatterns() {
+export function mutmutTestPatterns(django) {
   return [
     ...TEST_DIRECTORIES.flatMap((directory) => [`${directory}/*`, `*/${directory}/*`]),
-    ...TEST_FILE_GLOBS.flatMap((glob) => [glob, `*/${glob}`]),
+    ...testFileGlobs(django).flatMap((glob) => [glob, `*/${glob}`]),
   ];
-}
-
-export function nonProductionTestGlobs() {
-  return TEST_FILE_GLOBS.map((glob) => `**/${glob}`);
 }
