@@ -228,7 +228,7 @@ public class Lookup {
   }
 
   private int describe(Throwable error) {
-    return error.getMessage().length();
+    return error.getClass().getSimpleName().length();
   }
 }
 `;
@@ -272,7 +272,7 @@ class LookupTest {
     assertEquals(1, lookup.portOrLength("x"));
     assertEquals(Optional.empty(), lookup.parse("x"));
     assertEquals(Optional.of(3), lookup.parse("3"));
-    assertEquals(Optional.of(0), lookup.portOrFailure("x"));
+    assertEquals(Optional.of(21), lookup.portOrFailure("x"));
     assertThrows(IllegalArgumentException.class, () -> lookup.portOrWrap("x"));
     assertThrows(NumberFormatException.class, () -> lookup.portOrLogAndRethrow("x"));
     assertEquals(-1, lookup.logAndReturn("x"));
