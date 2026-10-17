@@ -1,15 +1,14 @@
-import { findPackageJSON } from 'node:module';
+import { createRequire, findPackageJSON } from 'node:module';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
-import globals from 'globals';
 import { RUNNER_NAMES } from './runners.mjs';
 
 const VITEST_GLOBALS = 'vitest/globals';
 
 const RUNNER_TYPES = {
   vitest: { types: VITEST_GLOBALS },
-  jest: { types: 'jest', installedAs: '@types/jest', globals: globals.jest },
-  mocha: { types: 'mocha', installedAs: '@types/mocha', globals: globals.mocha },
+  jest: { types: 'jest', installedAs: '@types/jest', globals: 'jest' },
+  mocha: { types: 'mocha', installedAs: '@types/mocha', globals: 'mocha' },
 };
 const TEST_RUNNER_TYPES_MISSING = new Set([2582, 2593]);
 const CANNOT_FIND_NAME = 2304;
@@ -48,14 +47,19 @@ function diagnosticName(diagnostic) {
   return file === undefined || start === undefined ? '' : file.text.slice(start, start + length);
 }
 
+function runnerGlobals(key) {
+  return createRequire(import.meta.url)('globals')[key];
+}
+
 export function isUntypedRunnerGlobal(diagnostic, runner) {
   if (TEST_RUNNER_TYPES_MISSING.has(diagnostic.code)) {
     return true;
   }
-  const runnerGlobals = RUNNER_TYPES[runner]?.globals ?? {};
-  return (
-    diagnostic.code === CANNOT_FIND_NAME && Object.hasOwn(runnerGlobals, diagnosticName(diagnostic))
-  );
+  const globalsKey = RUNNER_TYPES[runner]?.globals;
+  if (diagnostic.code !== CANNOT_FIND_NAME || globalsKey === undefined) {
+    return false;
+  }
+  return Object.hasOwn(runnerGlobals(globalsKey), diagnosticName(diagnostic));
 }
 
 export function runnerTypesNotices(runner, { projectDirectory, analyzers }) {
