@@ -1,8 +1,14 @@
 import { conventionChoices, detectConventions } from '../../shared/conventions/detect.mjs';
 import { configError } from '../../shared/config.mjs';
 import { describeConventions } from '../../shared/conventions/settings.mjs';
+import { isJavascriptPolicy } from '../../languages/javascript/preset/javascript-preset.mjs';
 import { resolveHeadPolicy } from '../../languages/typescript/preset/head-policy.mjs';
-import { builtInExcludedGlobs } from '../../languages/typescript/preset/layout.mjs';
+import {
+  builtInExcludedGlobs,
+  globToRegExp,
+  prettierPatterns,
+  resolveLayout,
+} from '../../languages/typescript/preset/layout.mjs';
 import { conventionDefinitions, conventionStyle } from './definitions.mjs';
 import { commitSource, headCommit, workingTreeSource } from './sources.mjs';
 
@@ -56,10 +62,17 @@ function fromProject(detected, project, pinned = {}) {
   );
 }
 
+function isApplicable(definition, choice) {
+  return definition.kind === 'names' || definition.options.includes(choice);
+}
+
 function appliedChoices(detected, definitions) {
   return Object.fromEntries(
     Object.entries(conventionChoices(detected, definitions)).filter(([id, choice]) =>
-      definitions.find((definition) => definition.id === id).options.includes(choice),
+      isApplicable(
+        definitions.find((definition) => definition.id === id),
+        choice,
+      ),
     ),
   );
 }
@@ -84,6 +97,9 @@ function followConventions({ config, projectRoot, headPolicy, commit, stdout }) 
         ...(headPolicy.layout?.excludedGlobs ?? builtInExcludedGlobs),
         ...headPolicy.exclude,
       ],
+      accepts: definitions.some(({ scope }) => scope !== undefined)
+        ? layoutFilter(config, headPolicy)
+        : undefined,
       projectRoot,
       commit,
     }),
@@ -98,7 +114,13 @@ function followConventions({ config, projectRoot, headPolicy, commit, stdout }) 
   if (stdout !== undefined && report !== '') {
     stdout.write(report);
   }
-  return Object.keys(conventions).length === 0 ? headPolicy : { ...headPolicy, conventions };
+  return {
+    ...headPolicy,
+    ...(Object.keys(conventions).length === 0 ? {} : { conventions }),
+    ...(Object.keys(config.conventions ?? {}).length === 0
+      ? {}
+      : { conventionPins: config.conventions }),
+  };
 }
 
 function conventionsReport({ detected, followed, style, conventions }) {
@@ -108,11 +130,32 @@ function conventionsReport({ detected, followed, style, conventions }) {
   return `${heading}${lines.join('')}${notes.join('')}`;
 }
 
-function detect({ definitions, pinned, exclude, projectRoot, commit }) {
+const TEST_SUPPORT_PATH = /(?:^|\/)(?:test-support|test-utils|testing|testkit)\//;
+
+function layoutFilter(config, headPolicy) {
+  const layout = resolveLayout(headPolicy.layout, headPolicy.exclude, {
+    javascript: isJavascriptPolicy(config),
+    generatedFiles: headPolicy.generatedFiles,
+  });
+  const formatted = prettierPatterns(layout).map(globToRegExp);
+  const scopes = {
+    layout: (file) => layout.isSourceFile(file) || layout.isTestFile(file),
+    'test-code': (file) => layout.isTestFile(file) || TEST_SUPPORT_PATH.test(file),
+    'formatted-data': (file) =>
+      formatted.some((pattern) => pattern.test(file)) &&
+      !layout.isGeneratedPath(file) &&
+      !layout.isFixturePath(file),
+  };
+  return function accepts({ scope }, file) {
+    return scope === undefined || (scopes[scope](file) && !layout.isExcluded(file));
+  };
+}
+
+function detect({ definitions, pinned, exclude, accepts, projectRoot, commit }) {
   if (definitions.every(({ id }) => pinned[id] !== undefined)) {
     return detectConventions({ definitions, pinned, exclude, source: undefined });
   }
-  const settings = { pinned, exclude };
+  const settings = { pinned, exclude, accepts };
   if (commit === undefined) {
     return detectConventions({ ...settings, definitions, source: workingTreeSource(projectRoot) });
   }

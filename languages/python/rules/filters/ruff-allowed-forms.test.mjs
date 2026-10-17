@@ -67,6 +67,59 @@ describe('test files', () => {
   });
 });
 
+describe('test support', () => {
+  const inFile = (rule, path) => ({ ...finding(rule, 'm'), path });
+  const supportFiles = ['qa/servers/fake_tls.py', 'conftest.py'];
+
+  it.each(['S501', 'S113', 'S324'])(
+    'drop %s in the support files the rules script listed',
+    (rule) => {
+      const found = supportFiles.map((path) => inFile(rule, path));
+
+      expect(withoutAllowedForms(found, { supportFiles })).toEqual([]);
+    },
+  );
+
+  it('keep other rules there and security rules in production support folders', () => {
+    const kept = [inFile('ARG001', 'conftest.py'), inFile('S501', 'shop/testing/ab_variants.py')];
+
+    expect(withoutAllowedForms(kept, { supportFiles })).toEqual(kept);
+  });
+});
+
+describe('sites the rules script allowed', () => {
+  const at = (rule, line) => ({
+    ...finding(rule, 'm'),
+    path: 'a.py',
+    location: { line, column: 5 },
+  });
+  const allowed = [
+    { rule: 'S303', path: 'a.py', line: 4 },
+    { rule: 'S506', path: 'a.py', line: 9 },
+  ];
+
+  it.each([
+    ['S303', 4],
+    ['S506', 9],
+  ])('drop %s on line %s', (rule, line) => {
+    expect(withoutAllowedForms([at(rule, line)], { allowed })).toEqual([]);
+  });
+
+  it.each([
+    ['S303', 6],
+    ['S506', 4],
+    ['S324', 4],
+  ])('keep %s on line %s', (rule, line) => {
+    expect(withoutAllowedForms([at(rule, line)], { allowed })).toEqual([at(rule, line)]);
+  });
+
+  it('keep a site in another file', () => {
+    const other = { ...at('S303', 4), path: 'b.py' };
+
+    expect(withoutAllowedForms([other], { allowed })).toEqual([other]);
+  });
+});
+
 describe('comment labels', () => {
   const era = (line) => ({
     ...finding('ERA001', 'Found commented-out code'),
