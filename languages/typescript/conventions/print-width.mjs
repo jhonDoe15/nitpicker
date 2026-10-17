@@ -1,3 +1,5 @@
+import { indentOf } from '../../../shared/conventions/lines.mjs';
+
 const WIDTHS = [80, 100, 120];
 const MAX_WIDTH = 120;
 const UNBREAKABLE_LINE =
@@ -58,8 +60,4 @@ function joinedContinuations(lines) {
       !INNER_SKIP.test(next);
     return single ? [line.trimEnd().length + 1 + next.trim().length] : [];
   });
-}
-
-function indentOf(line) {
-  return line.trim().length === 0 ? Infinity : line.length - line.trimStart().length;
 }
