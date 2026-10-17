@@ -1,4 +1,4 @@
-import { existsSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { rmSync } from 'node:fs';
 import path from 'node:path';
 import { ingestMutmut, SUPPORTED_MUTMUT } from '../../ingest/mutmut.mjs';
 import {
@@ -7,15 +7,10 @@ import {
   NO_COVERAGE_EXIT_CODE,
 } from './python-mutation-data.mjs';
 import { seedMutantsFromBase } from './python-mutation-reuse.mjs';
+import { writeMutmutConfig } from '../project-tools/mutmut/mutmut-config.mjs';
 import { probeVersion, run } from '../execution/python-process.mjs';
-import {
-  ROOT_TEST_DIRECTORIES,
-  TEST_DIRECTORIES,
-  TEST_FILE_GLOBS,
-} from '../execution/python-project.mjs';
 import { mutmutPytestEnvironment } from '../execution/python-test-runner.mjs';
 import { mutationMarkerFindings } from './mutation-markers.mjs';
-import { isDjangoProject } from '../configuration/pytest/collection-options.mjs';
 import {
   everyModuleFails,
   failedOnProjectTests,
@@ -39,55 +34,9 @@ const COPY_HINT =
 const DISABLE_HINT =
   'To run without mutation testing, add "mutation" to "disable" in nitpicker.config.json.';
 const SUPPORTED_MAJOR = /^3\./u;
-const PYPROJECT = 'pyproject.toml';
-const PYPROJECT_SECTION = /^\s*\[tool\.mutmut\]/mu;
-const SETUP_CFG_SECTION = /^\s*\[mutmut\]/mu;
-const TEST_PATTERNS = [
-  ...ROOT_TEST_DIRECTORIES.map((directory) => `${directory}/*`),
-  ...TEST_DIRECTORIES.map((directory) => `*/${directory}/*`),
-  ...TEST_FILE_GLOBS.flatMap((glob) => [glob, `*/${glob}`]),
-];
-const DJANGO_TEST_PATTERNS = ['*_tests.py', 'tests.py', '*/tests.py', 'tests_*.py', '*/tests_*.py'];
 
 function failure(message) {
   return Object.assign(new Error(message), { rule: MUTATION_FAILED_RULE });
-}
-
-function readOptional(file) {
-  return existsSync(file) ? readFileSync(file, 'utf8') : '';
-}
-
-function hasProjectConfiguration(projectRoot) {
-  return (
-    PYPROJECT_SECTION.test(readOptional(path.join(projectRoot, PYPROJECT))) ||
-    SETUP_CFG_SECTION.test(readOptional(path.join(projectRoot, 'setup.cfg')))
-  );
-}
-
-function excludedPatterns(exclude = []) {
-  return exclude.flatMap((glob) => [glob, `${glob.replace(/\/+$/u, '')}/*`]);
-}
-
-export function ensureMutmutConfiguration({ projectRoot, project, exclude }) {
-  if (hasProjectConfiguration(projectRoot)) {
-    return;
-  }
-  if (project.sourceRoots.includes('.')) {
-    throw failure(
-      'mutmut needs the directories to mutate: set "python.sourceRoots" in nitpicker.config.json or source_paths in [tool.mutmut]',
-    );
-  }
-  const pyproject = path.join(projectRoot, PYPROJECT);
-  const section = [
-    '[tool.mutmut]',
-    `source_paths = ${JSON.stringify(project.sourceRoots)}`,
-    `do_not_mutate = ${JSON.stringify([
-      ...TEST_PATTERNS,
-      ...(isDjangoProject(projectRoot) ? DJANGO_TEST_PATTERNS : []),
-      ...excludedPatterns(exclude),
-    ])}`,
-  ].join('\n');
-  writeFileSync(pyproject, `${readOptional(pyproject)}\n${section}\n`);
 }
 
 function finishedRun({ status, stdout, stderr }) {
@@ -147,7 +96,7 @@ function runPassingTests(context) {
 function mutantRunData(context) {
   const mutants = path.join(context.projectRoot, MUTANTS_DIRECTORY);
   rmSync(mutants, { recursive: true, force: true });
-  ensureMutmutConfiguration(context);
+  writeMutmutConfig({ context, fail: failure });
   seedMutantsFromBase(context);
   const { result, ignored } = runPassingTests(context);
   if (`${result.stdout}${result.stderr}`.includes(NO_TESTS_COLLECTED)) {

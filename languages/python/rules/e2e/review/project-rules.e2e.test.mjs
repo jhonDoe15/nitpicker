@@ -324,23 +324,15 @@ describe.skipIf(!enabled)('unused-option', () => {
     ).toEqual([]);
   });
 
-  it('reports a pyproject.toml or setup.cfg it cannot read and still checks the code', () => {
+  it('reports a setup.cfg it cannot read and still checks the code', () => {
     const report = reportOf({
       'shop/__init__.py': '',
       'shop/pricing.py': TOTAL,
       'shop/app.py': 'from shop.pricing import total\ntotal(1)\n',
-      'pyproject.toml': '[project\nname = "shop"\n',
       'setup.cfg': '[options.entry_points\nconsole_scripts = x\n',
     });
 
     expect(report.filter(({ rule }) => rule !== 'unused-option')).toEqual([
-      {
-        rule: 'project-file-invalid',
-        path: 'pyproject.toml',
-        subject: 'pyproject.toml',
-        line: 1,
-        data: { problem: 'Invalid TOML document: illegal character in key (line 1, column 9)' },
-      },
       {
         rule: 'project-file-invalid',
         path: 'setup.cfg',
@@ -354,6 +346,12 @@ describe.skipIf(!enabled)('unused-option', () => {
       },
     ]);
     expect(report.filter(({ rule }) => rule === 'unused-option')).toHaveLength(2);
+  });
+
+  it('fails on a pyproject.toml it cannot parse, as the dependency reader does', () => {
+    expect(() =>
+      reportOf({ 'shop/app.py': 'x = 1\n', 'pyproject.toml': '[project\nname = "shop"\n' }),
+    ).toThrow(/Invalid TOML document/u);
   });
 
   it('does not judge test helpers or decorated functions', () => {

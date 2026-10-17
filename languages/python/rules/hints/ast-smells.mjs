@@ -140,6 +140,13 @@ export const SMELL_HINTS = [
   },
   {
     tool: RULES_TOOL,
+    rules: ['test-without-assertion'],
+    describe: (subject) => `Test \`${subject}\` has no assertion`,
+    allowed:
+      'Assert the outcome: `assert result == expected`, `with pytest.raises(SomeError):`, or call one of the assertion helpers the project tests use.',
+  },
+  {
+    tool: RULES_TOOL,
     rules: ['real-clock-in-test'],
     describe: (subject) => `\`${subject}()\` reads the real clock in a test`,
     allowed:
