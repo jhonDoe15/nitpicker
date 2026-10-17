@@ -7,7 +7,7 @@ const GRADLE_BUILD_FILE = /(?:^|[/\\])(?:build|settings)\.gradle$/u;
 export function temporaryCopies() {
   const roots = [];
   return {
-    copyOf(...sources) {
+    copyOf: (...sources) => {
       const root = mkdtempSync(path.join(tmpdir(), 'nitpicker-maven-e2e-'));
       roots.push(root);
       for (const source of sources) {
@@ -15,7 +15,7 @@ export function temporaryCopies() {
       }
       return root;
     },
-    removeCopies() {
+    removeCopies: () => {
       for (const root of roots.splice(0)) {
         rmSync(root, { recursive: true, force: true });
       }

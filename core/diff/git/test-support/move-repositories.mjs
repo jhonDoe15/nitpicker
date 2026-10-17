@@ -9,7 +9,7 @@ import {
 } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
-import { afterAll, afterEach, beforeAll } from 'vitest';
+import { afterAll, afterEach, beforeAll, beforeEach } from 'vitest';
 import { reportFromAnalyzerOutput } from '../../execution/process.mjs';
 import { runQualityDiff } from '../../comparison/run-diff.mjs';
 import { writeFiles } from './fixture-files.mjs';
@@ -113,17 +113,16 @@ export function createMoveRepositories() {
     folders.template = realpathSync(mkdtempSync(path.join(tmpdir(), 'nitpicker-moves-template-')));
     git(folders.template, 'init', '-q', '-b', 'main');
   });
+  beforeEach(() => {
+    folders.test = realpathSync(mkdtempSync(path.join(tmpdir(), 'nitpicker-moves-')));
+  });
   afterEach(() => {
-    if (folders.test !== undefined) {
-      rmSync(folders.test, { recursive: true, force: true });
-      folders.test = undefined;
-    }
+    rmSync(folders.test, { recursive: true, force: true });
   });
   afterAll(() => {
     rmSync(folders.template, { recursive: true, force: true });
   });
   return (files) => {
-    folders.test ??= realpathSync(mkdtempSync(path.join(tmpdir(), 'nitpicker-moves-')));
     const root = mkdtempSync(path.join(folders.test, 'repository-'));
     copyGitTemplate(folders.template, root);
     write(root, files);

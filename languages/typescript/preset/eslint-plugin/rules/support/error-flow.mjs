@@ -146,54 +146,56 @@ function isInside(outer, inner) {
   return outer.range[0] <= inner.range[0] && inner.range[1] <= outer.range[1];
 }
 
+const STOPPED = { flows: false, next: [] };
+const ESCAPED = { flows: true, next: [] };
+
+function referencesOf(target, { sourceCode, seen }) {
+  const variable = target.type === IDENTIFIER ? resolveVariable(sourceCode, target) : undefined;
+  if (variable === undefined || seen.has(variable)) {
+    return [];
+  }
+  seen.add(variable);
+  return variable.references
+    .map((reference) => reference.identifier)
+    .filter((identifier) => identifier !== target);
+}
+
+function assignmentOutcome({ left }, context) {
+  const variable = left.type === IDENTIFIER ? resolveVariable(context.sourceCode, left) : undefined;
+  if (variable === undefined) {
+    return ESCAPED;
+  }
+  const declaredInside = variable.defs.some((definition) =>
+    isInside(context.catchNode, definition.name),
+  );
+  return declaredInside ? { flows: false, next: referencesOf(left, context) } : ESCAPED;
+}
+
+function walk(from, context) {
+  const pending = [from];
+  for (const node of pending) {
+    const step = stepFrom(node);
+    if (step === STEP.outflow) {
+      return !isBareReturn(node) || context.acceptsReturn(node.parent) ? ESCAPED : STOPPED;
+    }
+    if (step === STEP.assign) {
+      return assignmentOutcome(node.parent, context);
+    }
+    if (step === STEP.alias) {
+      return { flows: false, next: referencesOf(node.parent.id, context) };
+    }
+    if (step === STEP.climb) {
+      pending.push(node.parent);
+    }
+  }
+  return STOPPED;
+}
+
 export function flowsOut(start, { catchNode, sourceCode, acceptsReturn = () => true }) {
-  const seen = new Set();
-  const stopped = { flows: false, next: [] };
-  const escaped = { flows: true, next: [] };
-
-  function referencesOf(target) {
-    const variable = target.type === IDENTIFIER ? resolveVariable(sourceCode, target) : undefined;
-    if (variable === undefined || seen.has(variable)) {
-      return [];
-    }
-    seen.add(variable);
-    return variable.references
-      .map((reference) => reference.identifier)
-      .filter((identifier) => identifier !== target);
-  }
-
-  function assignmentOutcome({ left }) {
-    const variable = left.type === IDENTIFIER ? resolveVariable(sourceCode, left) : undefined;
-    if (variable === undefined) {
-      return escaped;
-    }
-    const declaredInside = variable.defs.some((definition) => isInside(catchNode, definition.name));
-    return declaredInside ? { flows: false, next: referencesOf(left) } : escaped;
-  }
-
-  function walk(from) {
-    const pending = [from];
-    for (const node of pending) {
-      const step = stepFrom(node);
-      if (step === STEP.outflow) {
-        return !isBareReturn(node) || acceptsReturn(node.parent) ? escaped : stopped;
-      }
-      if (step === STEP.assign) {
-        return assignmentOutcome(node.parent);
-      }
-      if (step === STEP.alias) {
-        return { flows: false, next: referencesOf(node.parent.id) };
-      }
-      if (step === STEP.climb) {
-        pending.push(node.parent);
-      }
-    }
-    return stopped;
-  }
-
+  const context = { catchNode, sourceCode, acceptsReturn, seen: new Set() };
   const starts = [start];
   for (const from of starts) {
-    const { flows, next } = walk(from);
+    const { flows, next } = walk(from, context);
     if (flows) {
       return true;
     }
