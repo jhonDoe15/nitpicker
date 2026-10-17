@@ -10,8 +10,10 @@ const COMMENT = /(?:^|\s)#.*$/;
 
 function containedFile(root, from, relative) {
   const resolved = path.resolve(path.dirname(from), relative);
-  const inside = resolved === root || resolved.startsWith(`${root}${path.sep}`);
-  return inside && existsSync(resolved) ? resolved : undefined;
+  if (resolved !== root && !resolved.startsWith(root + path.sep)) {
+    return undefined;
+  }
+  return existsSync(resolved) ? resolved : undefined;
 }
 
 function logicalLines(file) {
@@ -35,31 +37,41 @@ function classify(line) {
   return { kind: LOCAL_REQUIREMENT.test(line) ? 'drop' : 'keep', value: line };
 }
 
+function consumeLine(state, root, file, line) {
+  const { kind, value } = classify(line);
+  const followed =
+    kind === 'include' || kind === 'constraint' ? containedFile(root, file, value) : undefined;
+  if (kind === 'include' && followed !== undefined) {
+    state.queue.push(followed);
+    return;
+  }
+  if (kind === 'constraint' && followed !== undefined) {
+    state.constraints.push(followed);
+    return;
+  }
+  if (kind === 'keep') {
+    state.lines.push(value);
+    return;
+  }
+  state.dropped.push(`${path.relative(root, file)}: ${line}`);
+}
+
 export function safeRequirements(root, names) {
-  const queue = names.map((name) => path.resolve(root, name));
+  const state = {
+    queue: names.map((name) => path.resolve(root, name)),
+    lines: [],
+    constraints: [],
+    dropped: [],
+  };
   const seen = new Set();
-  const lines = [];
-  const constraints = [];
-  const dropped = [];
-  for (const file of queue) {
+  for (const file of state.queue) {
     if (seen.has(file)) {
       continue;
     }
     seen.add(file);
     for (const line of logicalLines(file)) {
-      const { kind, value } = classify(line);
-      const followed =
-        kind === 'include' || kind === 'constraint' ? containedFile(root, file, value) : undefined;
-      if (kind === 'include' && followed !== undefined) {
-        queue.push(followed);
-      } else if (kind === 'constraint' && followed !== undefined) {
-        constraints.push(followed);
-      } else if (kind === 'keep') {
-        lines.push(value);
-      } else {
-        dropped.push(`${path.relative(root, file)}: ${line}`);
-      }
+      consumeLine(state, root, file, line);
     }
   }
-  return { lines, constraints, dropped };
+  return { lines: state.lines, constraints: state.constraints, dropped: state.dropped };
 }

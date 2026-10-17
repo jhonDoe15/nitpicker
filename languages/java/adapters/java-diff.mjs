@@ -1,5 +1,5 @@
 import { spawnSync } from 'node:child_process';
-import { existsSync, mkdtempSync, readFileSync, rmSync } from 'node:fs';
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { compareFindings } from '../../../core/diff/comparison/compare.mjs';
@@ -13,86 +13,24 @@ import { condenseFailure } from './gradle-wrapper/failure-text.mjs';
 import { runJavaDuplicates } from './metrics/java-duplicates.mjs';
 import { runKotlinDuplicates } from './kotlin/kotlin-duplicates.mjs';
 import { applyJavaPolicy } from './java-policy.mjs';
+import { withoutFollowedImports } from './imports/followed-imports.mjs';
 import { withoutOverlaps } from './overlaps/static-overlaps.mjs';
-import { PROJECT_TOOL_CONFIGS } from './gradle-presets.mjs';
+import { toolConfigChoices, toolConfigProperties } from './tool-config/tool-config-choices.mjs';
 import { readJavaFindings } from './reporting/java-reports.mjs';
 import { readReportModules } from './gradle-reports/report-modules.mjs';
 import { runMavenPreset, MAVEN_REPORT_DIRECTORY } from '../maven/maven-build.mjs';
 import { detectJavaBuild, INIT_SCRIPT } from '../builds/java-build.mjs';
 import { moduleReport, readModuleFindings } from '../builds/java-modules.mjs';
-import { kotlinGradleArguments } from './kotlin/kotlin-tools.mjs';
+import { resolveKotlinRun } from './kotlin/kotlin-run.mjs';
 import { isJavaTouchedRule } from './touched-rules.mjs';
 import { javaStyleProperties } from './style/java-style.mjs';
 
 const GRADLE_TIMEOUT_MS = 15 * 60 * 1000;
 const MAX_OUTPUT_BYTES = 50 * 1024 * 1024;
 const MAX_FAILURE_LENGTH = 3500;
+const CHECKSTYLE_EXPORT = 'checkstyle-nitpicker.xml';
 
-function kotlinProperties(projectRoot, { preset, kotlinFormatter, kotlinDetektConfig, snapshot }) {
-  return preset === 'kotlin'
-    ? kotlinGradleArguments(projectRoot, {
-        formatter: kotlinFormatter,
-        detektConfig: kotlinDetektConfig,
-        snapshot,
-      })
-    : [];
-}
-
-function toolConfigChoices(projectRoot, { toolPrecedence = {}, policyRoot } = {}) {
-  return Object.fromEntries(
-    [...PROJECT_TOOL_CONFIGS].map(([tool, file]) => {
-      const precedence = toolPrecedence[tool] ?? ['nitpicker'];
-      const projectConfig = path.join(policyRoot ?? projectRoot, file);
-      if (precedence.includes('project') && !existsSync(projectConfig)) {
-        throw new Error(`"tools.${tool}.precedence" lists "project" but ${file} is missing`);
-      }
-      return [
-        tool,
-        {
-          nitpicker: precedence.includes('nitpicker'),
-          project: precedence.includes('project') ? projectConfig : undefined,
-        },
-      ];
-    }),
-  );
-}
-
-export function toolConfigProperties(projectRoot, policy = {}) {
-  return Object.entries(toolConfigChoices(projectRoot, policy)).flatMap(([tool, choice]) => [
-    ...(choice.project === undefined
-      ? []
-      : [`-Pnitpicker.${tool}.projectConfig=${choice.project}`]),
-    ...(choice.nitpicker ? [] : [`-Pnitpicker.${tool}.nitpickerConfig=false`]),
-  ]);
-}
-
-function runJavaPreset(
-  projectRoot,
-  { gradle, initScript = INIT_SCRIPT, policy = {}, reportBase } = {},
-) {
-  const target = gradleTarget({
-    projectRoot,
-    configured: gradle,
-    args: [
-      '--console=plain',
-      '--quiet',
-      '--no-configuration-cache',
-      `-Pnitpicker.reportDir=${reportBase}`,
-      ...kotlinProperties(projectRoot, policy),
-      ...toolConfigProperties(projectRoot, policy),
-      ...javaStyleProperties(policy.javaStyle),
-      '-I',
-      initScript,
-      'nitpickerJava',
-    ],
-  });
-  const result = spawnSync(target.command, target.args, {
-    cwd: projectRoot,
-    encoding: 'utf8',
-    maxBuffer: MAX_OUTPUT_BYTES,
-    shell: target.shell,
-    timeout: GRADLE_TIMEOUT_MS,
-  });
+function assertSucceeded(result, projectRoot) {
   if (result.error !== undefined) {
     throw result.error;
   }
@@ -105,6 +43,61 @@ function runJavaPreset(
   }
 }
 
+function exportArguments(common, { initScript, directory, policy }) {
+  mkdirSync(directory, { recursive: true });
+  return [
+    ...common,
+    ...javaStyleProperties(policy),
+    `-Pnitpicker.checkstyle.exportConfig=${path.join(directory, CHECKSTYLE_EXPORT)}`,
+    '-I',
+    initScript,
+    'nitpickerCheckstyleConfig',
+  ];
+}
+
+function runJavaPreset(
+  projectRoot,
+  { gradle, initScript = INIT_SCRIPT, policy = {}, reportBase, kotlinRun } = {},
+) {
+  const withKotlin = kotlinRun?.withArguments ?? ((run) => run([]));
+  const directory = path.join(reportBase, 'tool-config');
+  const layersCheckstyle = toolConfigChoices(projectRoot, policy).checkstyle.project !== undefined;
+  withKotlin((kotlinArguments) => {
+    const common = [
+      '--console=plain',
+      '--quiet',
+      '--no-configuration-cache',
+      `-Pnitpicker.reportDir=${reportBase}`,
+      ...kotlinArguments,
+    ];
+    const checkstyleBase = path.join(directory, CHECKSTYLE_EXPORT);
+    const stages = [
+      ...(layersCheckstyle
+        ? [() => exportArguments(common, { initScript, directory, policy })]
+        : []),
+      () => [
+        ...common,
+        ...toolConfigProperties(projectRoot, policy, { directory, checkstyleBase }),
+        ...javaStyleProperties(policy),
+        '-I',
+        initScript,
+        'nitpickerJava',
+      ],
+    ];
+    for (const stage of stages) {
+      const target = gradleTarget({ projectRoot, configured: gradle, args: stage() });
+      const result = spawnSync(target.command, target.args, {
+        cwd: projectRoot,
+        encoding: 'utf8',
+        maxBuffer: MAX_OUTPUT_BYTES,
+        shell: target.shell,
+        timeout: GRADLE_TIMEOUT_MS,
+      });
+      assertSucceeded(result, projectRoot);
+    }
+  });
+}
+
 function withoutReportBase(error, reportBase) {
   return error instanceof Error && error.message.includes(reportBase)
     ? new Error(error.message.replaceAll(reportBase, '<report directory>'), { cause: error })
@@ -115,6 +108,7 @@ function readOptions(policy = {}) {
   return {
     crapLimit: policy.crapLimit,
     preset: policy.preset ?? 'java',
+    conventions: policy.conventions,
     fileLimits: policy.fileLimits,
     exclude: policy.exclude,
     exceptions: policy.exceptions,
@@ -127,14 +121,19 @@ function readOptions(policy = {}) {
 
 function gradleFindings(projectRoot, options, reportBase) {
   const preset = options.policy?.preset ?? 'java';
-  runJavaPreset(projectRoot, { ...options, reportBase });
+  const kotlinRun = resolveKotlinRun(projectRoot, options.policy);
+  runJavaPreset(projectRoot, { ...options, reportBase, kotlinRun });
   const report = readReportModules(reportBase, preset);
   runJavaDuplicates(projectRoot, { reportRoot: reportBase, manifest: report.manifest });
   if (preset === 'kotlin') {
     runKotlinDuplicates(projectRoot, { reportRoot: reportBase, manifest: report.manifest });
   }
-  return readJavaFindings(projectRoot, { ...readOptions(options.policy), reportBase, report })
-    .findings;
+  return readJavaFindings(projectRoot, {
+    ...readOptions(options.policy),
+    formatAdvice: kotlinRun?.advice,
+    reportBase,
+    report,
+  }).findings;
 }
 
 function withGradleReports(projectRoot, options) {
@@ -174,17 +173,48 @@ export function collectJavaFindings(root, options = {}) {
       ? mavenFindings(projectRoot, options)
       : withGradleReports(projectRoot, options);
   const preset = options.policy?.preset ?? 'java';
+  function readSource(file) {
+    return sourceText(projectRoot, file);
+  }
   return applyJavaPolicy(
-    parseAnalyzerReport({ findings }, preset).findings,
+    withoutFollowedImports(
+      parseAnalyzerReport({ findings }, preset).findings,
+      options.policy?.conventions,
+      readSource,
+    ),
     options.policy,
-    (reported) =>
-      withoutOverlaps(reported, { readSource: (file) => sourceText(projectRoot, file) }),
+    (reported) => withoutOverlaps(reported, { readSource }),
   );
 }
 
 function sourceText(projectRoot, file) {
   const absolute = path.join(projectRoot, file);
   return existsSync(absolute) ? readFileSync(absolute, 'utf8') : undefined;
+}
+
+function collectBothSnapshots({
+  repositoryRoot,
+  projectRelativePath,
+  comparison,
+  options,
+  policy,
+}) {
+  return withTemporaryWorktree(repositoryRoot, comparison.headSha, (headWorktree) => {
+    const policyRoot = path.join(headWorktree, projectRelativePath);
+    function collectIn(worktreeRoot, snapshot) {
+      return collectJavaFindings(path.join(worktreeRoot, projectRelativePath), {
+        ...options,
+        policy: { ...policy, snapshot, policyRoot },
+      });
+    }
+    const headFindings = collectIn(headWorktree, 'head');
+    const baseFindings = withTemporaryWorktree(
+      repositoryRoot,
+      comparison.mergeBaseSha,
+      (baseWorktree) => collectIn(baseWorktree, 'base'),
+    );
+    return { baseFindings, headFindings };
+  });
 }
 
 export function runJavaDiff({
@@ -207,15 +237,13 @@ export function runJavaDiff({
     headSha: comparison.headSha,
     projectRelativePath,
   });
-  const options = { gradle, maven, initScript, policy };
-  function collectAt(sha) {
-    return withTemporaryWorktree(repositoryRoot, sha, (worktreeRoot) =>
-      collectJavaFindings(path.join(worktreeRoot, projectRelativePath), options),
-    );
-  }
-
-  const baseFindings = collectAt(comparison.mergeBaseSha);
-  const headFindings = collectAt(comparison.headSha);
+  const { baseFindings, headFindings } = collectBothSnapshots({
+    repositoryRoot,
+    projectRelativePath,
+    comparison,
+    options: { gradle, maven, initScript },
+    policy,
+  });
   const touchedCode = {
     changedLines: readChangedLines({
       repositoryRoot,

@@ -1,18 +1,17 @@
+import { insideProject } from '../../../../../libraries/project-files.mjs';
 import { mkdirSync, mkdtempSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 
-const roots = [];
-
-export function temporaryRoot() {
+export function temporaryRoot(roots) {
   const root = realpathSync(mkdtempSync(path.join(tmpdir(), 'nitpicker-base-env-')));
   roots.push(root);
   return root;
 }
 
 export function write(root, relative, text = '') {
-  mkdirSync(path.dirname(path.join(root, relative)), { recursive: true });
-  writeFileSync(path.join(root, relative), text);
+  mkdirSync(path.dirname(insideProject(root, relative)), { recursive: true });
+  writeFileSync(insideProject(root, relative), text);
 }
 
 export function writeAll(root, files) {
@@ -21,7 +20,7 @@ export function writeAll(root, files) {
   }
 }
 
-export function removeTemporaryRoots() {
+export function removeTemporaryRoots(roots) {
   for (const root of roots.splice(0)) {
     rmSync(root, { recursive: true, force: true });
   }

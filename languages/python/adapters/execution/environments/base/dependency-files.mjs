@@ -1,6 +1,6 @@
+import { insideProject } from '../../../../libraries/project-files.mjs';
 import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
-import path from 'node:path';
 
 const FIXED_FILES = ['uv.lock', 'poetry.lock', 'pdm.lock', 'Pipfile', 'Pipfile.lock'];
 const REQUIREMENTS_FILE = /^(?:requirements|constraints)[\w.-]*\.txt$/;
@@ -32,14 +32,14 @@ function tableAt(document, keys) {
 function pyprojectDependencies(text) {
   try {
     const document = parseToml(text);
-    return JSON.stringify(DEPENDENCY_TABLES.map((keys) => tableAt(document, keys) ?? null));
-  } catch {
-    return text;
+    return JSON.stringify(DEPENDENCY_TABLES.map((keys) => tableAt(document, keys)));
+  } catch (error) {
+    return JSON.stringify({ unparsed: text, reason: String(error) });
   }
 }
 
 function requirementsFiles(root) {
-  const folder = path.join(root, REQUIREMENTS_FOLDER);
+  const folder = insideProject(root, REQUIREMENTS_FOLDER);
   const inFolder = existsSync(folder)
     ? readdirSync(folder)
         .filter((name) => name.endsWith('.txt'))
@@ -51,18 +51,18 @@ function requirementsFiles(root) {
 
 export function dependencyFiles(root) {
   const files = [
-    ...FIXED_FILES.filter((name) => existsSync(path.join(root, name))),
+    ...FIXED_FILES.filter((name) => existsSync(insideProject(root, name))),
     ...requirementsFiles(root),
   ];
   return files.toSorted();
 }
 
-export function dependencyDigest(root) {
+function dependencyDigest(root) {
   const entries = dependencyFiles(root).map((name) => [
     name,
-    readFileSync(path.join(root, name), 'utf8'),
+    readFileSync(insideProject(root, name), 'utf8'),
   ]);
-  const pyproject = path.join(root, PYPROJECT);
+  const pyproject = insideProject(root, PYPROJECT);
   if (existsSync(pyproject)) {
     entries.push([PYPROJECT, pyprojectDependencies(readFileSync(pyproject, 'utf8'))]);
   }

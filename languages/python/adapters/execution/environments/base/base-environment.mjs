@@ -1,3 +1,4 @@
+import { insideProject } from '../../../../libraries/project-files.mjs';
 import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
@@ -31,7 +32,7 @@ function lockedPlan(projectRoot, files, setting) {
   if (tool === undefined || !files.includes(tool.lock)) {
     return undefined;
   }
-  if (tool.forbids?.test(readFileSync(path.join(projectRoot, tool.lock), 'utf8'))) {
+  if (tool.forbids?.test(readFileSync(insideProject(projectRoot, tool.lock), 'utf8'))) {
     throw environmentError(
       `${tool.lock} of the base installs local packages, whose setup code the base environment must not run: install them in an environment of your own and set "python.environment" to it`,
     );
