@@ -151,7 +151,7 @@ def assignment_evidence(node, names):
 
 
 def evidence(node, names, context):
-    if isinstance(node, (ast.Raise, ast.Break)):
+    if isinstance(node, (ast.Raise, ast.Break, ast.Import, ast.ImportFrom)):
         return True
     if isinstance(node, ast.Call):
         return dotted_name(node.func, context.aliases) in EXIT_CALLS or (
