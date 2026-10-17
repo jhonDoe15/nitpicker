@@ -7,6 +7,7 @@ import {
   BAD,
   FAREWELL,
   FAREWELL_TEST,
+  GREETER_WITH_FAREWELL,
   LEGACY_WITH_COMMENT,
   DANGER,
   MAGIC_NUMBER_OFF_WITH_FORMATTING_RULESET,
@@ -74,6 +75,7 @@ describe.skipIf(!kotlinE2eEnabled)('Kotlin preset detekt, ktlint and ktfmt end t
     project = initializeProject();
     commitBranch(project, 'clean', {
       [`${kotlinSources}/Farewell.kt`]: FAREWELL,
+      [`${kotlinSources}/Greeter.kt`]: GREETER_WITH_FAREWELL,
       'src/test/kotlin/demo/FarewellTest.kt': FAREWELL_TEST,
       [`${kotlinSources}/Legacy.kt`]: LEGACY_WITH_COMMENT,
     });
