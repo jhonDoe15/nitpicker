@@ -1,4 +1,4 @@
-import { nitpickerCheckstyleConfig } from './checkstyle-config.mjs';
+import { nitpickerCheckstyleConfig } from './configuration/checkstyle-config.mjs';
 import { spawnSync } from 'node:child_process';
 import {
   existsSync,
