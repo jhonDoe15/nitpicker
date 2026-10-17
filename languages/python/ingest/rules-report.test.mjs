@@ -103,6 +103,31 @@ describe('rules script report', () => {
       'testing.py',
       '`testing.py` is test support inside the production source',
     ],
+    [
+      'tls-verification-off',
+      'session.verify',
+      '`session.verify` turns off TLS certificate verification, or lets the environment turn it off',
+    ],
+    [
+      'weak-hmac',
+      'hmac.new(md5)',
+      '`hmac.new(md5)` signs with HMAC-MD5, which is no longer approved for message authentication',
+    ],
+    [
+      'http-without-timeout',
+      'urllib.request.urlopen',
+      '`urllib.request.urlopen` can wait forever: it has no timeout',
+    ],
+    [
+      'unsafe-deserialization',
+      'torch.load',
+      '`torch.load` can unpickle arbitrary objects from the file',
+    ],
+    [
+      'unsafe-deserialization',
+      'yaml.full_load',
+      '`yaml.full_load` can build arbitrary Python objects from the document',
+    ],
   ])('describes %s by its subject', (rule, subject, message) => {
     expect(ingestRulesReport(JSON.stringify([entry({ rule, subject })]))[0].message).toBe(message);
   });
@@ -114,6 +139,21 @@ describe('rules script report', () => {
       'Order',
       'Order#2',
       'Order',
+    ]);
+  });
+
+  it('drops security findings in test support and keeps them in production code', () => {
+    const report = [
+      entry({ rule: 'tls-verification-off', path: 'src/app/test_support/tls.py' }),
+      entry({ rule: 'weak-hmac', path: 'mocks/signing.py' }),
+      entry({ rule: 'sql-string-formatting', path: 'src/app/conftest.py' }),
+      entry({ rule: 'http-without-timeout', path: 'src/app/feeds.py' }),
+      entry({ rule: 'frozen-dataclass', path: 'src/app/testing/order.py' }),
+    ];
+
+    expect(ingestRulesReport(JSON.stringify(report)).map(({ path }) => path)).toEqual([
+      'src/app/feeds.py',
+      'src/app/testing/order.py',
     ]);
   });
 

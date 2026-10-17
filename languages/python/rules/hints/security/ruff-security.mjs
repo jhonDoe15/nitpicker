@@ -25,7 +25,7 @@ export const SECURITY_HINTS = [
     tool: 'ruff',
     rules: ['S324', 'S303'],
     allowed:
-      'Hash with `hashlib.sha256(...)` or stronger; a digest that is no security measure (a cache key, a checksum) passes `usedforsecurity=False`.',
+      'Hash with `hashlib.sha256(...)` or stronger; a digest that is no security measure (a cache key, a checksum) passes `usedforsecurity=False`; sign with `hmac.new(key, message, hashlib.sha256)`.',
   },
   {
     tool: 'ruff',
@@ -60,13 +60,14 @@ export const SECURITY_HINTS = [
   {
     tool: 'ruff',
     rules: ['S113'],
-    allowed: 'Pass a timeout in seconds: `requests.get(url, timeout=10)`.',
+    allowed:
+      'Pass a timeout in seconds: `requests.get(url, timeout=10)`; an `httpx` call or client keeps its 5 second default unless you pass another number, never `timeout=None`.',
   },
   {
     tool: 'ruff',
     rules: ['S301', 'S302'],
     allowed:
-      'Exchange data in a format that cannot run code, such as JSON: `json.loads(text)`, and validate it at the boundary.',
+      'Exchange data in a format that cannot run code, such as JSON: `json.loads(text)`, and validate it at the boundary; copy an object with `copy.deepcopy(value)`, not a pickle round trip.',
   },
   {
     tool: 'ruff',

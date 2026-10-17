@@ -11,7 +11,9 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 def load_checks():
     sys.path.insert(0, HERE)
     from boundary import domain_types, guards, paths
-    from checks import comments, declarations, shell, sql, state
+    from checks import comments, declarations, shell, state
+    from security import hashes, loading, timeouts, tls
+    from security.sql import check as sql
     from environment import environment, purity
     from errors import errors
     from discovery import helpers, uncollected
@@ -27,6 +29,10 @@ def load_checks():
         state,
         shell,
         sql,
+        tls,
+        hashes,
+        timeouts,
+        loading,
         guards,
         domain_types,
         paths,
