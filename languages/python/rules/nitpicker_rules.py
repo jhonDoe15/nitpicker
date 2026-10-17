@@ -233,7 +233,7 @@ def check_file(path, text, tree, tests):
         "file": lambda: collected_findings(path, tree, aliases, tests),
         "fixed-sleep": lambda: fixed_sleep_findings(path, tree, aliases) if tests else [],
         "docstring": lambda: docstring_findings(path, scoped),
-        "field": lambda: field_findings(path, scoped, aliases),
+        "field": lambda: [] if tests else field_findings(path, scoped, aliases),
     }
     found = suppression_findings(path, text)
     for name, check in checks.items():

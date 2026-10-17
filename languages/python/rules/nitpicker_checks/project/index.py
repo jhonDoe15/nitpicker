@@ -37,6 +37,9 @@ class ProjectIndex:
         self.definitions = {path: module_definitions(tree) for path, tree in trees.items()}
         self.bindings = {path: self.bindings_of(path, tree) for path, tree in trees.items()}
 
+    def production_trees(self):
+        return [(path, tree) for path, tree in self.trees.items() if path not in self.tests]
+
     def relative_base(self, path, level, module):
         owner = self.modules.get(path)
         if owner is None:

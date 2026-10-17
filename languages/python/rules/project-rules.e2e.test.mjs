@@ -390,3 +390,25 @@ describe.skipIf(!enabled)('an expression too deep for the recursion limit', () =
     ]);
   });
 });
+
+describe.skipIf(!enabled)('production-only rules in a test file', () => {
+  it.each([
+    [
+      'forwarding-wrapper',
+      'from shop.pricing import compute\n\n\ndef total(amount: int, rate: int = 2, *, cents: bool = False) -> int:\n    return compute(amount, rate, cents=cents)\n',
+    ],
+    [
+      'exhaustive-enum-predicate',
+      'from shop.status import Status\n\n\ndef is_open(s: Status) -> bool:\n    return s == Status.NEW or s == Status.PAID\n',
+    ],
+    [
+      'singular-and-plural-field',
+      'def make(tag: str = "", tags: list[str] = ()) -> None:\n    pass\n',
+    ],
+  ])('does not report %s', (rule, code) => {
+    const files = { 'shop/__init__.py': '', 'shop/pricing.py': PRICING, 'shop/status.py': STATUS };
+
+    expect(only(rule, { ...files, 'shop/helpers.py': code })).toHaveLength(1);
+    expect(only(rule, { ...files, 'tests/test_helpers.py': code })).toEqual([]);
+  });
+});

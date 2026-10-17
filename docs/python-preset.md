@@ -348,6 +348,10 @@ These carry over checks the TypeScript preset added from review findings, with t
 where Python allows it. Each message names the allowed form and the `python.exceptions` entry that
 lifts the rule for some paths. The per-file rules live in `languages/python/rules/nitpicker_checks/`
 and the project-wide ones, which resolve imports across files, in `nitpicker_checks/project/`.
+`singular-and-plural-field`, `exhaustive-enum-predicate` and `forwarding-wrapper` check production
+sources only, never test files, as in TypeScript (its production scope) and Java (main sources); a
+test helper that forwards, a fixture factory with `tag` and `tags`, or a test that compares a few
+members is not reported.
 
 - `fixed-sleep` (TypeScript: `nitpicker/no-fixed-sleep-synchronization`), in test files only (the
   test files above, `conftest.py` and helpers in a test folder included): `time.sleep`,
