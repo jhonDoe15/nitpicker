@@ -7,7 +7,12 @@ import {
 } from '../../../core/tooling/runner-arguments.mjs';
 import { withLegacyInventory } from '../../../shared/legacy-inventory.mjs';
 import { configError, TYPESCRIPT_ONLY_KEYS } from '../../../shared/config.mjs';
-import { GRADLE_PRESETS, JAVA_TOOLS, PROJECT_TOOL_CONFIGS } from './gradle-presets.mjs';
+import {
+  GRADLE_PRESETS,
+  JAVA_TOOLS,
+  PROJECT_TOOL_CONFIGS,
+  precedenceToolNames,
+} from './gradle-presets.mjs';
 import { KOTLIN_FORMATTERS } from './kotlin/kotlin-options.mjs';
 import { JAVA_LINE_LENGTH, JAVA_SIZE_RULES } from '../../../shared/project-rules/size-rules.mjs';
 import { SHARED_EXCEPTION_RULES } from '../../../shared/policy.mjs';
@@ -34,7 +39,7 @@ export function parseJavaRunnerArguments(argumentList) {
   return parseRunnerArguments(argumentList, {
     runner: 'java-runner.mjs',
     choices: { '--preset': GRADLE_PRESETS, '--kotlin-formatter': KOTLIN_FORMATTERS },
-    precedenceTools: [...PROJECT_TOOL_CONFIGS.keys()],
+    precedenceTools: precedenceToolNames(),
   });
 }
 
@@ -102,14 +107,14 @@ function runnerArguments({
     ...(duplicates.skippedFolders === undefined
       ? []
       : ['--duplicate-skipped-folders', JSON.stringify(duplicates.skippedFolders)]),
-    ...[...PROJECT_TOOL_CONFIGS.keys()]
+    ...precedenceToolNames()
       .filter((tool) => tools[tool] !== undefined)
       .flatMap((tool) => [`--${tool}-precedence`, tools[tool].precedence.join(',')]),
   ];
 }
 
 export function configureJavaAnalyzer(analyzer, options) {
-  const { legacyInventory, tools = {} } = options;
+  const { legacyInventory, tools = {}, styleFiles } = options;
   const adapterArguments = runnerArguments(options);
   if (adapterArguments.length === 0 && legacyInventory === undefined) {
     return analyzer;
@@ -121,15 +126,14 @@ export function configureJavaAnalyzer(analyzer, options) {
   const configured = {
     ...analyzer,
     configurationHash,
-    ...(projectConfigDirectories.length === 0
+    ...(projectConfigDirectories.length === 0 && styleFiles === undefined
       ? {}
       : {
           resolveConfigurationHash: (policyRoot) =>
-            hashWithProjectConfigDirectories(
-              configurationHash,
-              policyRoot,
-              projectConfigDirectories,
-            ),
+            hashWithProjectConfigs(configurationHash, policyRoot, {
+              directories: projectConfigDirectories,
+              files: styleFiles?.(policyRoot) ?? [],
+            }),
         }),
     createInvocation: (context) => {
       const invocation = analyzer.createInvocation(context);
@@ -153,11 +157,18 @@ export function configureJavaAnalyzer(analyzer, options) {
     : withLegacyInventory(configured, legacyInventory);
 }
 
-function hashWithProjectConfigDirectories(configurationHash, policyRoot, directories) {
+function hashWithProjectConfigs(configurationHash, policyRoot, { directories, files }) {
   const hash = createHash('sha256').update(configurationHash);
-  for (const file of directories.flatMap((directory) => filesUnder(policyRoot, directory))) {
-    const content = readFileSync(path.join(policyRoot, file));
-    hash.update(`${file}\0${String(content.length)}\0`).update(content);
+  const named = [
+    ...directories.flatMap((directory) => filesUnder(policyRoot, directory)),
+    ...files.map((file) => path.relative(policyRoot, file)),
+  ];
+  for (const file of named) {
+    const absolute = path.resolve(policyRoot, file);
+    if (existsSync(absolute)) {
+      const content = readFileSync(absolute);
+      hash.update(`${file}\0${String(content.length)}\0`).update(content);
+    }
   }
   return hash.digest('hex');
 }
