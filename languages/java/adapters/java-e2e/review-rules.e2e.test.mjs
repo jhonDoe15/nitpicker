@@ -3,7 +3,7 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { collectJavaFindings, runJavaDiff } from '../java-diff.mjs';
-import { commitBranch, runGitIn } from '../test-support/gradle-e2e.mjs';
+import { commitBranch, GRADLE_STEP_TIMEOUT_MS, runGitIn } from '../test-support/gradle-e2e.mjs';
 
 const enabled = process.env.NITPICKER_JAVA_E2E === '1';
 const gradle = process.env.NITPICKER_GRADLE ?? 'gradle';
@@ -81,7 +81,7 @@ describe.skipIf(!enabled)('Review rules on Gradle and Maven builds of a Spring p
     runs.markers = markedViolations(gradleProject);
     runs.gradle = collectJavaFindings(gradleProject, { gradle, policy: {} });
     runs.maven = collectJavaFindings(mavenProject, { maven, policy: {} });
-  });
+  }, 2 * GRADLE_STEP_TIMEOUT_MS);
 
   afterAll(() => {
     for (const root of roots.splice(0)) {
@@ -139,7 +139,7 @@ describe.skipIf(!enabled)('New console output of tests on Gradle and Maven build
   beforeAll(() => {
     runs.gradle = consoleChange({ gradle, policy: {} }, 'pom.xml');
     runs.maven = consoleChange({ maven, policy: {} }, 'build.gradle', 'settings.gradle');
-  });
+  }, 4 * GRADLE_STEP_TIMEOUT_MS);
 
   afterAll(() => {
     for (const root of roots.splice(0)) {
