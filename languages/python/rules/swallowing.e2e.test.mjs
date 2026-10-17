@@ -126,6 +126,8 @@ describe.skipIf(!enabled)('swallowed-exception', () => {
 
   it.each([
     ['assigns None', '            tomllib = None'],
+    ['imports the alternative', '            import tomli as tomllib'],
+    ['imports from the alternative', '            from yaml import SafeLoader as Loader'],
     ['assigns False', '            HAS_YAML = False'],
     ['assigns several constants', '            yaml = None\n            HAS_YAML = False'],
   ])('allows an optional import that %s', (_name, body) => {
