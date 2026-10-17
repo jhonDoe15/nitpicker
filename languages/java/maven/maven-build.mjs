@@ -229,6 +229,19 @@ function missingLauncherVersions(analyzed) {
   return [...new Set(versions.filter((version) => version !== undefined))];
 }
 
+function palantirTool(javaStyle, pinned) {
+  return javaStyle === 'palantir'
+    ? [
+        {
+          name: 'format-palantir',
+          coordinates: [
+            `com.palantir.javaformat:palantir-java-format:${pinned.palantirJavaFormat}`,
+          ],
+        },
+      ]
+    : [];
+}
+
 export function runMavenPreset(projectRoot, { maven, policy = {}, configs }) {
   if (policy.preset === 'kotlin') {
     throw new Error(
@@ -250,7 +263,10 @@ export function runMavenPreset(projectRoot, { maven, policy = {}, configs }) {
       maven,
       pinned,
       launcherVersions: missingLauncherVersions(analyzed),
-      extraTools: modules.map((module) => processorTool(module.compiler)).filter(Boolean),
+      extraTools: [
+        ...modules.map((module) => processorTool(module.compiler)).filter(Boolean),
+        ...palantirTool(policy.javaStyle, pinned),
+      ],
     });
     for (const { module, classpaths } of analyzed) {
       analyzeModule({

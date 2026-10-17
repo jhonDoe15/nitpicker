@@ -167,7 +167,7 @@ describe('maven tools', () => {
 });
 
 describe('runFormat', () => {
-  function formatArguments(javaStyle) {
+  function formatTokens(javaStyle, keep) {
     const root = mkdtempSync(path.join(tmpdir(), 'nitpicker-maven-format-'));
     roots.push(root);
     const java = path.join(root, 'jdk/bin/java');
@@ -181,16 +181,39 @@ describe('runFormat', () => {
     const reportDir = path.join(root, 'report');
     mkdirSync(reportDir);
     const module = { basedir: root, sourceRoots: [path.dirname(source)], testSourceRoots: [] };
-    runFormat({ module, reportDir, tools: { format: ['format.jar'] }, javaStyle });
-    return readFileSync(path.join(reportDir, 'format.txt'), 'utf8')
-      .split('\n')
-      .filter((token) => token.startsWith('"--'))
-      .filter((token) => !token.startsWith('"--add-exports'));
+    const tools = { format: ['google.jar'], 'format-palantir': ['palantir.jar'] };
+    runFormat({ module, reportDir, tools, javaStyle });
+    return readFileSync(path.join(reportDir, 'format.txt'), 'utf8').split('\n').filter(keep);
+  }
+
+  function formatArguments(javaStyle) {
+    return formatTokens(
+      javaStyle,
+      (token) => token.startsWith('"--') && !token.startsWith('"--add-exports'),
+    );
   }
 
   it('runs google-java-format with --aosp for the 4-space style and without it otherwise', () => {
     expect(formatArguments('aosp')).toEqual(['"--aosp"', '"--dry-run"']);
     expect(formatArguments('google')).toEqual(['"--dry-run"']);
     expect(formatArguments(undefined)).toEqual(['"--dry-run"']);
+  });
+
+  it('runs palantir-java-format from its own jar, and nothing when no formatter runs', () => {
+    const run = (style) =>
+      formatTokens(style, (token) => /^"--(?:palantir|dry-run)"$|\.jar|\.Main"/.test(token));
+
+    expect(run('palantir')).toEqual([
+      '"palantir.jar"',
+      '"com.palantir.javaformat.java.Main"',
+      '"--palantir"',
+      '"--dry-run"',
+    ]);
+    expect(run('google')).toEqual([
+      '"google.jar"',
+      '"com.google.googlejavaformat.java.Main"',
+      '"--dry-run"',
+    ]);
+    expect(run('none')).toEqual([]);
   });
 });

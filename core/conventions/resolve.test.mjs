@@ -64,7 +64,7 @@ describe('conventions in the head policy', () => {
     expect(policy.conventions).toEqual({ 'java.indentation': '4' });
     expect(stdout.text()).toBe(
       "Following this project's conventions:\n" +
-        '  Java indentation: 4 spaces (google-java-format --aosp) (used by 2 of 2 measured files)\n',
+        '  Java indentation: 4 spaces (used by 2 of 2 measured files)\n',
     );
   });
 
@@ -145,7 +145,7 @@ describe('reading the measured files', () => {
 
     expect(stdout.text()).toBe(
       "Following this project's conventions:\n" +
-        '  Java indentation: 4 spaces (google-java-format --aosp) (used by 2 of 3 measured files)\n',
+        '  Java indentation: 4 spaces (used by 2 of 3 measured files)\n',
     );
   });
 
@@ -177,7 +177,9 @@ describe('reading the measured files', () => {
     const root = mkdtempSync(path.join(tmpdir(), 'nitpicker-no-git-'));
     try {
       const conventions = {
+        'java.formatter': 'palantir',
         'java.indentation': '4',
+        'java.lineLength': '120',
         'java.wildcardImports': 'wildcard',
         'java.testStaticImports': 'wildcard',
         'java.assertionHelpers': ['checkHelper'],

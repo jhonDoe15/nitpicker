@@ -151,6 +151,7 @@ describe('configureJavaAnalyzer', () => {
       'errorprone',
       'google-java-format',
       'jacoco',
+      'palantir-java-format',
       'pit',
       'pmd',
       'spotbugs',

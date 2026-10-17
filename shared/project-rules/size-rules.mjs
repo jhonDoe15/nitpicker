@@ -88,7 +88,7 @@ function fileRules(enforcedBy) {
     {
       id: FILE_RULE_IDS.lineLength,
       check: 'structure',
-      limit: `a line longer than ${String(FILE_LIMIT_DEFAULTS.lineLength)} characters, except imports, URLs and string literal text; override with \`thresholds.lineLength\` (Java files: ${String(JAVA_LINE_LENGTH)} characters, which google-java-format wraps at, not configurable; Kotlin files: detekt's)`,
+      limit: `a line longer than ${String(FILE_LIMIT_DEFAULTS.lineLength)} characters, except imports, URLs and string literal text; override with \`thresholds.lineLength\` (Java files: the width of the formatter, ${String(JAVA_LINE_LENGTH)} for google-java-format and 120 for palantir-java-format, or the \`java.lineLength\` convention when no formatter runs; Kotlin files: detekt's)`,
       enforcedBy,
     },
     {

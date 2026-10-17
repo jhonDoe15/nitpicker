@@ -5,7 +5,7 @@ import {
   SAMPLE_LIMIT,
   testAndSupportGlobs,
 } from './measures/assertion-helpers.mjs';
-import { indentationStep } from './java-conventions.mjs';
+import { indentationStep } from './measures/java-layout.mjs';
 import { lineLength } from './measures/kotlin-line-length.mjs';
 import { trailingCommas, wildcardImports } from './measures/kotlin-measures.mjs';
 

@@ -123,19 +123,37 @@ export function runSpotbugs({ module, reportDir, tools }) {
   });
 }
 
-export function runFormat({ module, reportDir, tools, javaStyle }) {
+const GOOGLE_FORMAT = {
+  tool: 'google-java-format',
+  classpath: 'format',
+  mainClass: 'com.google.googlejavaformat.java.Main',
+  flags: [],
+};
+const FORMATTERS = {
+  google: GOOGLE_FORMAT,
+  aosp: { ...GOOGLE_FORMAT, flags: ['--aosp'] },
+  palantir: {
+    tool: 'palantir-java-format',
+    classpath: 'format-palantir',
+    mainClass: 'com.palantir.javaformat.java.Main',
+    flags: ['--palantir'],
+  },
+};
+
+export function runFormat({ module, reportDir, tools, javaStyle = 'google' }) {
   const report = path.join(reportDir, 'format.txt');
   const files = javaFiles([...module.sourceRoots, ...module.testSourceRoots]);
-  if (files.length === 0) {
+  const formatter = FORMATTERS[javaStyle];
+  if (files.length === 0 || formatter === undefined) {
     writeFileSync(report, '');
     return;
   }
   const result = runJava({
-    tool: 'google-java-format',
-    classpath: tools.format,
+    tool: formatter.tool,
+    classpath: tools[formatter.classpath],
     jvmArgs: JAVAC_EXPORTS,
-    mainClass: 'com.google.googlejavaformat.java.Main',
-    args: [...(javaStyle === 'aosp' ? ['--aosp'] : []), '--dry-run', ...files],
+    mainClass: formatter.mainClass,
+    args: [...formatter.flags, '--dry-run', ...files],
     cwd: module.basedir,
   });
   writeFileSync(report, result.stdout);

@@ -43,6 +43,7 @@ describe('readPinnedTools', () => {
       'pmd',
       'spotbugs',
       'googleJavaFormat',
+      'palantirJavaFormat',
       'jacoco',
       'checkstyle',
       'lizard',

@@ -1,4 +1,3 @@
-import { leadingSpaces, majorityStep } from '../../../shared/conventions/lines.mjs';
 import {
   assertionEvidence,
   followedHelpers,
@@ -6,19 +5,45 @@ import {
   SAMPLE_LIMIT,
   testAndSupportGlobs,
 } from './measures/assertion-helpers.mjs';
+import { formatterProfile, indentationStep, javaLineLength } from './measures/java-layout.mjs';
 import { TEST_SOURCE_GLOB, testStaticImports, wildcardImports } from './measures/java-imports.mjs';
 
-const OPENS_BLOCK = /\{\s*(?:\/\/.*)?$/;
-const COMMENT_LINE = /^\s*(?:\/\/|\/\*|\*)/;
+export const JAVA_INDENTATION_ID = 'java.indentation';
+export const JAVA_FORMATTER = 'java.formatter';
+export const JAVA_LINE_LENGTH_ID = 'java.lineLength';
 
 const JAVA_INDENTATION = {
-  id: 'java.indentation',
+  id: JAVA_INDENTATION_ID,
   label: 'Java indentation',
   options: ['2', '4'],
-  optionLabels: { 2: '2 spaces (google-java-format)', 4: '4 spaces (google-java-format --aosp)' },
+  optionLabels: { 2: '2 spaces', 4: '4 spaces' },
   fallback: '2',
   files: ['**/*.java'],
   measure: indentationStep,
+};
+
+const JAVA_FORMATTERS = {
+  id: JAVA_FORMATTER,
+  label: 'Java formatter',
+  options: ['google', 'palantir', 'none'],
+  optionLabels: {
+    google: 'google-java-format',
+    palantir: 'palantir-java-format',
+    none: 'no Java formatter runs',
+  },
+  fallback: 'google',
+  files: ['**/*.java'],
+  measure: formatterProfile,
+};
+
+const JAVA_LINE_WIDTH = {
+  id: JAVA_LINE_LENGTH_ID,
+  label: 'Java line length',
+  options: ['100', '120', '140'],
+  optionLabels: { 100: '100 columns', 120: '120 columns', 140: '140 columns' },
+  fallback: '100',
+  files: ['**/*.java'],
+  measure: javaLineLength,
 };
 
 export const JAVA_WILDCARD_IMPORTS = 'java.wildcardImports';
@@ -59,17 +84,11 @@ const JAVA_ASSERTIONS = {
   choose: followedHelpers,
 };
 
-export const JAVA_CONVENTIONS = [JAVA_INDENTATION, JAVA_IMPORTS, JAVA_TEST_STATIC, JAVA_ASSERTIONS];
-
-export function indentationStep(text) {
-  const lines = text
-    .split(/\r?\n/)
-    .filter((line) => line.trim().length > 0 && !COMMENT_LINE.test(line));
-  const steps = lines.slice(1).flatMap((line, index) => {
-    const previous = lines[index];
-    return OPENS_BLOCK.test(previous) && !line.startsWith('\t')
-      ? [leadingSpaces(line) - leadingSpaces(previous)]
-      : [];
-  });
-  return majorityStep(steps);
-}
+export const JAVA_CONVENTIONS = [
+  JAVA_FORMATTERS,
+  JAVA_INDENTATION,
+  JAVA_LINE_WIDTH,
+  JAVA_IMPORTS,
+  JAVA_TEST_STATIC,
+  JAVA_ASSERTIONS,
+];

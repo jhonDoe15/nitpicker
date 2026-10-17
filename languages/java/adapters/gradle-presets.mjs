@@ -24,6 +24,7 @@ export const JAVA_TOOLS = [
   'errorprone',
   'archunit',
   'google-java-format',
+  'palantir-java-format',
   'jacoco',
   'checkstyle',
   'crap',

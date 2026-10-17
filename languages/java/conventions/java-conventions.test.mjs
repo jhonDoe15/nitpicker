@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { indentationStep } from './java-conventions.mjs';
+import { indentationStep } from './measures/java-layout.mjs';
 
 describe('indentationStep', () => {
   it('reads the step a block adds, not continuation lines or comments', () => {
