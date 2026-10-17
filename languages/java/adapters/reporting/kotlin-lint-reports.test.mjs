@@ -2,6 +2,8 @@ import { writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import { parseAnalyzerReport } from '../../../../core/diff/comparison/finding-schema.mjs';
+import { exceptionHint } from '../../../../shared/rules/exceptions.mjs';
+import { kotlinFormatAdvice } from '../kotlin/style/kotlin-format-advice.mjs';
 import {
   readJavaFindings,
   rootReports,
@@ -42,6 +44,21 @@ describe('readJavaFindings with the kotlin preset: detekt, ktlint and ktfmt', ()
       ],
     ]);
     expect(detekt[0].location).toEqual({ line: 6, column: 26 });
+  });
+  it('tells a project whose detekt config is left out how to use it', () => {
+    const root = projectWithKotlinReports();
+    const formatAdvice = kotlinFormatAdvice(
+      { ktfmtStyle: 'meta', detektIgnored: 'detekt.yml' },
+      {},
+    );
+
+    const { findings } = readJavaFindings(root, { preset: 'kotlin', formatAdvice });
+
+    expect(findings.find(({ rule }) => rule === 'detekt.style.MagicNumber').message).toBe(
+      'This expression contains a magic number. Consider defining it to a well named constant. ' +
+        'Nitpicker runs detekt without your detekt.yml (see the start of the run). ' +
+        exceptionHint('detekt.style.MagicNumber', bad),
+    );
   });
   it('treats note-level detekt results as descriptive', () => {
     const root = projectWithKotlinReports();
@@ -214,7 +231,7 @@ describe('readJavaFindings with the kotlin preset: detekt, ktlint and ktfmt', ()
       },
     ]);
     expect(ktlint[0].message).toBe(
-      'Wildcard import. Lift this rule: ktlint_standard_no-wildcard-imports = disabled in .editorconfig. Not your formatter: set kotlin.formatter',
+      'Wildcard import. Lift this rule with ktlint_standard_no-wildcard-imports = disabled in .editorconfig, which nitpicker reads only when ktlint lists "project" (see the start of the run). Not your formatter: set kotlin.formatter',
     );
     expect(ktlint[0].message).not.toContain('--format');
   });
@@ -227,7 +244,8 @@ describe('readJavaFindings with the kotlin preset: detekt, ktlint and ktfmt', ()
         rule: 'format',
         path: bad,
         identity: 'format',
-        message: 'File is not formatted with ktfmt. Not your formatter: set kotlin.formatter',
+        message:
+          'File is not formatted with ktfmt. Format it with the "Format with ktfmt" command printed at the start of the run. Not your formatter: set kotlin.formatter',
         classification: 'enforceable',
       },
     ]);
