@@ -894,8 +894,12 @@ directory>` or `test-runs/unittest_timings.py <report> discover` (unittest's own
   (the CRAP input) all come from this one script, like `StructureMetrics.java` for Java; no
   external tool is involved.
 - **Definitions** (the TypeScript analyzer's, applied to Python syntax). Unit: every `def` and
-  `async def` with a body, methods and nested functions alike; named `Outer.method` and
-  `outer.inner`, the qualified names coverage.py uses. `lines`: last line - first line + 1, from the
+  `async def` with a body, methods and nested functions alike, and every `lambda`; named
+  `Outer.method` and `outer.inner`, the qualified names coverage.py uses. A lambda is named after the
+  scope that holds it and the name it is assigned to (`pipeline.score` for `score = lambda v: ...`,
+  also with an annotation), else `<lambda>` (`pipeline.<lambda>`; a lambda in a default argument, a
+  decorator or a base class belongs to the scope around that `def` or `class`); repeated names are
+  numbered by the source, as for the `<init>` blocks of Kotlin. `lines`: last line - first line + 1, from the
   first decorator, without the docstring (it is documentation, like `statements`, so adding one to
   a long legacy function does not make it grow; TypeScript counts comments, Python has no comment
   node to leave out).
@@ -914,9 +918,12 @@ directory>` or `test-runs/unittest_timings.py <report> discover` (unittest's own
   `parameters`: positional-only, positional, keyword-only, `*args` and `**kwargs`, one each; the
   `/` and `*` markers are not parameters. The first positional parameter of a method (`self`,
   `cls`, or whatever it is called) is not counted, because the caller does not pass it: a function
-  directly in a class body that is not a `@staticmethod`. Lambdas and comprehensions are part of
-  the function that contains them; nested functions and methods of nested classes are units of
-  their own and do not count towards the function around them.
+  directly in a class body that is not a `@staticmethod`. A lambda has `statements` 1 (its
+  expression), `maxControlNesting` 0 and the parameters of its signature. Comprehensions are part of
+  the function that contains them; lambdas, nested functions and methods of nested classes are
+  units of their own and do not count towards the function around them (`lines` is the physical
+  span, so the lines of a nested unit still count towards the function around it, as in
+  TypeScript).
 - **Which files.** The `.py` files under the source roots (see `sourceRoots`), skipping hidden
   directories, `__pycache__`, `node_modules` and `site-packages`. When the source root is the whole
   project (`.`: no `src/` and no top-level package), the directories source root detection never
@@ -940,18 +947,20 @@ directory>` or `test-runs/unittest_timings.py <report> discover` (unittest's own
   clause and each `if` clause. The decision points are the McCabe ones of the other presets
   (ESLint's `complexity` rule for TypeScript, the Java and Kotlin metrics programs all
   count `if`, loops, `case` but not `default`, `catch`, `&&`, `||` and `?:`), with two differences
-  in scope: a lambda counts towards the function around it, as in Java and Kotlin but unlike
-  TypeScript, which scores every arrow function and function expression on its own; and each `for`
+  in scope: a lambda is a unit of its own, as every lambda, arrow function and anonymous function is
+  in the other presets, and does not count towards the function around it; and each `for`
   and `if` clause of a comprehension counts, which has no equivalent in the other languages.
   Not counted: `else`, `finally`, the `else` of a loop or a `try`, `with`, `assert`, `try` itself.
-  Lambdas and comprehensions are part of the function around them; nested functions and the
+  Comprehensions are part of the function around them; lambdas, nested functions and the
   methods of nested classes have their own entry and do not count towards it. An
   `@overload` stub (however the decorator is spelled: `overload`, `typing.overload`, `t.overload`)
   gets no CRAP score, and neither does a function whose first body statement starts on the `def`
   line (`def f(): return 1`): its only statement shares a line with the definition, which
   runs when the module is imported, so its coverage cannot be told apart. The script writes `complexity`, `definition` (the `def` line, which differs from
   `start` when the function is decorated) and `bodyStart` (the line of the first body statement)
-  next to the limit metrics, and the CRAP step reads them from `structure.json`; a failing
+  next to the limit metrics, and a lambda entry also carries `lambda: true` and `statementLine` (the first
+  line of the statement that holds it, which is the line coverage.py reports for it). The CRAP step reads
+  them from `structure.json`; a failing
   structure step is the only failure, `structure-failed`, and CRAP then has nothing to score.
 - **Coverage join.** `languages/python/ingest/crap.mjs` takes the per-function entries of the
   coverage.py JSON report PY1 already produces (`files.<path>.functions`, coverage.py 7.6 or newer)
@@ -972,6 +981,14 @@ directory>` or `test-runs/unittest_timings.py <report> discover` (unittest's own
   its empty entry to a branchy one with the same name. A file coverage.py did not report (outside
   the source roots) has unknown coverage and fails with `crap-coverage-unknown`; nothing is
   guessed. `# pragma: no cover` keeps its coverage.py meaning (excluded lines are not statements).
+  A lambda has no coverage.py entry and no line of its own: its body runs on the line of the statement
+  that creates it, so coverage.py cannot tell a lambda that was never called from one that was. A
+  lambda therefore counts as fully covered when that statement ran (`statementLine` of its entry is
+  not in `missing_lines`) and as not covered when it did not, whatever its size; a lambda in a
+  statement that ran is scored by its complexity alone, so only a lambda with 9 or more decisions
+  fails, with the message for a covered function. This is the most coverage.py can tell, and the
+  statement that never ran is already a finding of its own function. Lambdas of the same name in one
+  file are numbered by their source text, as the `<init>` blocks of Kotlin are.
   Identity: qualified name plus the same function-text hash, ratchet key the name, so an edited
   function over the limit fails only when its score rises.
 - **Cache invalidation.** The metrics script, the new adapters, the shared structure and CRAP rule
