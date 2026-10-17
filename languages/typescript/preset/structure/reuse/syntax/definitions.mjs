@@ -91,12 +91,14 @@ function definitionOf(spec, sourceFile, lookup) {
     ...declarationParts(spec.node),
   ];
   const texts = leafTexts(nodes, sourceFile);
+  const tokens = Object.freeze(normalizedTexts(texts));
   const first = sourceFile.getLineAndCharacterOfPosition(spec.statement.getStart(sourceFile)).line;
   const last = sourceFile.getLineAndCharacterOfPosition(spec.statement.getEnd()).line;
   return {
     name: spec.name,
     kind: spec.kind,
-    text: `${spec.tag}|${normalizedTexts(texts).join(' ')}`,
+    text: `${spec.tag}|${tokens.join(' ')}`,
+    tokens,
     free: freeBindings(nodes, lookup),
     size: texts.length,
     exported: spec.exported,
