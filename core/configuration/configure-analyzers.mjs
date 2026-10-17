@@ -56,6 +56,7 @@ function applyJavaConfig(analyzers, config) {
       ? configureJavaAnalyzer(analyzer, {
           kotlin: config.kotlin,
           tools: config.tools,
+          testConsole: config.testConsole,
           styleFiles: styleFilesOf(config, analyzer.name),
           exclude: config.exclude,
           legacyInventory: config.legacyInventory ?? DEFAULT_LEGACY_INVENTORY,

@@ -5,7 +5,7 @@ export const EXCEPTION_SEPARATOR = ':';
 const BASE_USAGE =
   ' --project-root <directory> [--snapshot base|head] [--policy-root <directory>]' +
   ' [--baseline-root <directory>] [--crap-limit <number>] [--exclude <glob>]... [--exception <rule>:<glob>]... [--legacy-inventory <path>]' +
-  ' [--kotlin-detekt-config <path>] [--file-limits <json>] [--test-seconds <json>] [--duplicate-skipped-folders <json array>]';
+  ' [--kotlin-detekt-config <path>] [--file-limits <json>] [--test-seconds <json>] [--test-console-allow <json array>] [--duplicate-skipped-folders <json array>]';
 
 function usageOf(runner, choices, precedenceTools) {
   const listed = Object.entries(choices).map(
@@ -91,6 +91,7 @@ export function parseRunnerArguments(
       crapLimit,
       fileLimits: parseJsonObject(values.get('--file-limits'), '--file-limits'),
       testSeconds: parseJsonObject(values.get('--test-seconds'), '--test-seconds'),
+      testConsoleAllow: parseJsonArray(values.get('--test-console-allow'), '--test-console-allow'),
       exclude,
       exceptions,
       legacyInventory: values.get('--legacy-inventory'),
@@ -135,6 +136,7 @@ const RUNNER_OPTIONS = [
   '--kotlin-detekt-config',
   '--file-limits',
   '--test-seconds',
+  '--test-console-allow',
   '--duplicate-skipped-folders',
 ];
 
@@ -151,4 +153,15 @@ function parseJsonObject(text, option) {
 
 function realpathOptional(directory) {
   return directory === undefined ? undefined : realpathSync(directory);
+}
+
+function parseJsonArray(text, option) {
+  if (text === undefined) {
+    return undefined;
+  }
+  const parsed = JSON.parse(text);
+  if (!Array.isArray(parsed)) {
+    throw new Error(`${option} must be a JSON array`);
+  }
+  return parsed;
 }
