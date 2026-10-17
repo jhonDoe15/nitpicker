@@ -48,6 +48,18 @@ export const LOGGERS = [
   { name: 'loguru', packages: ['loguru'] },
 ];
 
+export const DATABASES = [
+  { name: 'asyncpg', packages: ['asyncpg'] },
+  {
+    name: 'format',
+    packages: ['psycopg', 'psycopg2', 'psycopg2-binary', 'pymysql', 'mysqlclient', 'aiomysql'],
+  },
+  { name: 'format', packages: ['mysql-connector-python', 'aiopg'] },
+  { name: 'named', packages: ['databases'] },
+  { name: 'sqlite', packages: ['aiosqlite'] },
+];
+
+export const DEFAULT_DATABASE = 'format';
 export const DEFAULT_LOGGER = 'logging';
 export const DEFAULT_VALIDATOR = 'pydantic';
 

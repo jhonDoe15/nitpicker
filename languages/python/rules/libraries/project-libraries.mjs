@@ -1,5 +1,7 @@
 import { readPythonDependencies } from '../../libraries/python-dependencies.mjs';
 import {
+  DATABASES,
+  DEFAULT_DATABASE,
   DEFAULT_LOGGER,
   DEFAULT_VALIDATOR,
   LOGGERS,
@@ -8,6 +10,7 @@ import {
 } from './library-tables.mjs';
 
 export const DEFAULT_LIBRARIES = Object.freeze({
+  database: DEFAULT_DATABASE,
   logging: DEFAULT_LOGGER,
   validator: DEFAULT_VALIDATOR,
   validators: Object.freeze([DEFAULT_VALIDATOR]),
@@ -31,9 +34,10 @@ export function dependencyNames(projectRoot) {
 export function detectLibraries(projectRoot) {
   const dependencies = readPythonDependencies(projectRoot);
   const [logging = DEFAULT_LOGGER] = declared(LOGGERS, dependencies);
+  const [database = DEFAULT_DATABASE] = declared(DATABASES, dependencies);
   const found = declared(VALIDATORS, dependencies);
   const validators = found.length === 0 ? [...DEFAULT_LIBRARIES.validators] : found;
-  return { logging, validator: validators[0], validators };
+  return { database, logging, validator: validators[0], validators };
 }
 
 export function validatorsOf(libraries) {
