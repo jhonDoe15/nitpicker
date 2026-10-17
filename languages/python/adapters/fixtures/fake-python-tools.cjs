@@ -9,19 +9,23 @@
 //   violations.txt       one `rule|path|message` per line: ruff check findings
 //   unformatted.txt      one path per line: files ruff format / black would reformat
 //   test-exit.txt        exit status of `coverage run` (default 0); its output says the tests failed
+//   junit.xml            written as the pytest JUnit report when `coverage run` passes --junitxml
+//                        (default: one passing test, or one failing test when test-exit.txt is 1)
 //   coverage-data.json   written as the coverage.py JSON report (default: no files)
 //   unparsable.txt       one path per line: files the formatter cannot parse (it exits like the real
 //                        formatter does and names them on stderr)
 //   no-pytest.txt        `python -c "import pytest"` fails
-//   pytest-cov.txt, xdist.txt  the pytest probe reports that plugin as installed
+//   pytest-cov.txt, xdist.txt, rerunfailures.txt  the pytest probe reports that plugin as installed
 //   sources.txt          one path per line: what `ruff check --show-files` lists (default: every
 //                        .py file below the project, except .venv)
 //   type-errors.txt      printed by mypy as its report (exit 1 when not empty)
+//   mypy-version.txt     the version mypy prints for --version (default 1.13.0)
 //   pyright.json         { generalDiagnostics } printed by pyright and basedpyright as their
 //                        report, relative files made absolute (exit 1 when it has diagnostics)
 //   rules.json           written by the nitpicker rules script (default: no findings)
 //   structure-data.json  written as the structure metrics report of `python structure_metrics.py`
 //                        (default: no functions)
+//   classes-data.json    written as its classes report (default: no classes)
 //   no-mutmut.txt        the mutmut version probe fails
 //   mutmut-version.txt   the version the mutmut probe prints (default 3.8.0)
 //   mutants-data.json    { "<source path>": { "exitCodes": {...}, "mutated": "<text>" } }: what
@@ -29,7 +33,13 @@
 //   mutmut-exit.txt      exit status of `mutmut run` (default 0); 1 says no mutant is covered, any
 //                        other status says the clean test run failed
 //   mutmut-output.txt    what `mutmut run` prints instead of those messages
+//   mutmut-failing-tests.txt  one test module per line: `mutmut run` fails its stats run until
+//                        PYTEST_ADDOPTS ignores each (`python pytest_timings.py` writes junit.xml for them)
+//   mutmut-only-failing.txt   with those ignored, no test is left (the stats run collects none)
+//   python-version.txt   the `major.minor` the interpreter version probe prints (default 3.12)
 //   import-scan.json     printed by the import scan script (default: no imports)
+//   distributions.json   printed by the distribution scan script (default: Python 3.12, nothing
+//                        installed)
 //   lint-imports.txt     printed by lint-imports (default: a report with no broken contracts); its
 //                        exit status is 1 when the text says BROKEN
 // `python -c` with `sys.executable` prints `$VIRTUAL_ENV/bin/python` and always works.
@@ -49,6 +59,14 @@ const MUTMUT_MESSAGES = {
   0: '',
   1: 'Stopping early, because we could not find any test case for any mutant.\n',
 };
+const JUNIT_CASE = {
+  passed:
+    '<testcase classname="tests.test_greet" name="test_greet" file="tests/test_greet.py" line="0" time="0.01"/>',
+  failed:
+    '<testcase classname="tests.test_greet" name="test_greet" file="tests/test_greet.py" line="0" time="0.01"><failure message="assert False"/></testcase>',
+};
+const NO_DISTRIBUTIONS =
+  '{"python":[3,12],"stdlib":[],"modules":{},"entryPoints":[],"optional":{},"references":[]}';
 const PYRIGHT_REPORT_FAILURE = 1;
 const PYRIGHT_VERSIONS = {
   pyright: 'pyright 1.1.390\n',
@@ -143,11 +161,23 @@ function runFake({ tool, args, cwd, env }) {
     result.status = unparsable.length > 0 ? 123 : files.length > 0 ? 1 : 0;
   }
 
+  function writeJunit(status) {
+    const option = args.find((argument) => argument.startsWith('--junitxml='));
+    if (option === undefined) {
+      return;
+    }
+    const report = exists('junit.xml')
+      ? read('junit.xml')
+      : `<testsuites><testsuite name="pytest">${JUNIT_CASE[status === 1 ? 'failed' : 'passed']}</testsuite></testsuites>`;
+    write(option.slice('--junitxml='.length), report);
+  }
+
   function coverage() {
     if (args[0] === '--version') {
       out('Coverage.py, version 7.6.1 with C extension\n');
     } else if (args[0] === 'run') {
       const status = Number(lines('test-exit.txt')[0] ?? 0);
+      writeJunit(status);
       out(status === 0 ? '1 passed\n' : '1 failed: test_greet\n');
       result.status = status;
     } else {
@@ -160,7 +190,7 @@ function runFake({ tool, args, cwd, env }) {
 
   function mypy() {
     if (args[0] === '--version') {
-      out('mypy 1.13.0 (compiled: yes)\n');
+      out(`mypy ${lines('mypy-version.txt')[0] ?? '1.13.0'} (compiled: yes)\n`);
       return;
     }
     const report = exists('type-errors.txt') ? read('type-errors.txt') : '';
@@ -201,6 +231,14 @@ function runFake({ tool, args, cwd, env }) {
       write(args[3], exists('rules.json') ? read('rules.json') : '[]');
       return;
     }
+    if (args[1]?.includes('sys.version_info')) {
+      out(`${lines('python-version.txt')[0] ?? '3.12'}\n`);
+      return;
+    }
+    if (args[0]?.endsWith('pytest_timings.py')) {
+      writeJunit(Number(lines('test-exit.txt')[0] ?? 0));
+      return;
+    }
     if (args[1]?.includes('sys.executable')) {
       out(`${env.VIRTUAL_ENV ?? '/usr'}/bin/python\n`);
       return;
@@ -217,12 +255,19 @@ function runFake({ tool, args, cwd, env }) {
       out(exists('import-scan.json') ? read('import-scan.json') : '{}');
       return;
     }
+    if (args.some((argument) => argument.endsWith('distribution-scan.py'))) {
+      out(exists('distributions.json') ? read('distributions.json') : NO_DISTRIBUTIONS);
+      return;
+    }
     if (args.some((argument) => argument.includes('"import-linter"'))) {
       out('2.5\n');
       return;
     }
     if (args[0]?.endsWith('.py')) {
       write(args[1], exists('structure-data.json') ? read('structure-data.json') : '[]');
+      if (args[4] !== undefined) {
+        write(args[4], exists('classes-data.json') ? read('classes-data.json') : '{}');
+      }
       return;
     }
     if (exists('no-pytest.txt')) {
@@ -230,7 +275,7 @@ function runFake({ tool, args, cwd, env }) {
       return;
     }
     const flag = (file) => (exists(file) ? 1 : 0);
-    out(`8.3.1 ${flag('pytest-cov.txt')} ${flag('xdist.txt')}\n`);
+    out(`8.3.1 ${flag('pytest-cov.txt')} ${flag('xdist.txt')} ${flag('rerunfailures.txt')}\n`);
   }
 
   function seededMutants() {
@@ -252,6 +297,19 @@ function runFake({ tool, args, cwd, env }) {
       mkdirSync(path.dirname(path.join(at('mutants'), file)), { recursive: true });
       write(path.join('mutants', `${file}.meta`), JSON.stringify({ exit_code_by_key: exitCodes }));
       write(path.join('mutants', file), mutated);
+    }
+    const failing = lines('mutmut-failing-tests.txt');
+    const addopts = env.PYTEST_ADDOPTS ?? '';
+    const ignored = failing.filter((file) => addopts.includes(`--ignore=${file}`));
+    if (failing.length > 0 && ignored.length < failing.length) {
+      out('failed to collect stats. runner returned 1\n');
+      result.status = 1;
+      return;
+    }
+    if (failing.length > 0 && exists('mutmut-only-failing.txt')) {
+      out('failed to collect stats. runner returned 5\n');
+      result.status = 1;
+      return;
     }
     const status = Number(lines('mutmut-exit.txt')[0] ?? 0);
     out(
