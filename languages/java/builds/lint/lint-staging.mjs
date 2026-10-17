@@ -1,38 +1,33 @@
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
-import path from "node:path";
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import path from 'node:path';
 
-const SUPPRESS_WARNINGS =
-  /@\s*(?:java\s*\.\s*lang\s*\.\s*)?SuppressWarnings\s*\([^)]*\)/gu;
-const LOMBOK_CONFIG = "lombok.config";
-const LATIN1 = "latin1";
-const STOP_BUBBLING = "config.stopBubbling = true\n";
+const SUPPRESS_WARNINGS = /@\s*(?:java\s*\.\s*lang\s*\.\s*)?SuppressWarnings\s*\([^)]*\)/gu;
+const LOMBOK_CONFIG = 'lombok.config';
+const LATIN1 = 'latin1';
+const STOP_BUBBLING = 'config.stopBubbling = true\n';
 const STOPS_BUBBLING = /^\s*config\.stopBubbling\s*=\s*true\s*$/mu;
 const IMPORT = /^(\s*import\s+)(\S(?:.*\S)?)\s*$/gmu;
-const STAGED_TREE = "tree";
+const STAGED_TREE = 'tree';
 const ANCHORED_IMPORT = /^(?:[/~<\\]|[A-Za-z]:[/\\])/u;
 
 export function posix(file) {
-  return file.split(path.sep).join("/");
+  return file.split(path.sep).join('/');
 }
 
 export function blankSuppressions(text) {
-  return text.replaceAll(SUPPRESS_WARNINGS, (match) =>
-    match.replaceAll(/[^\n]/gu, " "),
-  );
+  return text.replaceAll(SUPPRESS_WARNINGS, (match) => match.replaceAll(/[^\n]/gu, ' '));
 }
 
 function directoriesUpTo(root, directory) {
   const relative = path.relative(root, directory);
-  const parts = relative === "" ? [] : relative.split(path.sep);
+  const parts = relative === '' ? [] : relative.split(path.sep);
   return parts.map((_, index) => path.join(root, ...parts.slice(0, index + 1)));
 }
 
 function ancestorsOf(directory) {
   const { root } = path.parse(directory);
   const parts = path.relative(root, directory).split(path.sep).filter(Boolean);
-  return parts.map((_, index) =>
-    path.join(root, ...parts.slice(0, parts.length - 1 - index)),
-  );
+  return parts.map((_, index) => path.join(root, ...parts.slice(0, parts.length - 1 - index)));
 }
 
 export function inheritedLombokConfigs(root) {
@@ -40,9 +35,7 @@ export function inheritedLombokConfigs(root) {
   const configs = [resolved, ...ancestorsOf(resolved)]
     .map((directory) => path.join(directory, LOMBOK_CONFIG))
     .filter((config) => existsSync(config));
-  const stop = configs.findIndex((config) =>
-    STOPS_BUBBLING.test(readFileSync(config, LATIN1)),
-  );
+  const stop = configs.findIndex((config) => STOPS_BUBBLING.test(readFileSync(config, LATIN1)));
   return (stop < 0 ? configs : configs.slice(0, stop + 1)).filter(
     (config) => path.dirname(config) !== resolved,
   );
@@ -63,8 +56,8 @@ function anchoredImport(directory, target) {
   if (ANCHORED_IMPORT.test(target)) {
     return target;
   }
-  const [file, ...entry] = target.split("!");
-  return [posix(path.resolve(directory, file)), ...entry].join("!");
+  const [file, ...entry] = target.split('!');
+  return [posix(path.resolve(directory, file)), ...entry].join('!');
 }
 
 function withAnchoredImports(text, directory) {
@@ -99,17 +92,11 @@ export function stageSources({ root, sources, staged }) {
     }
     return { source, target };
   });
-  for (const directory of new Set(
-    staging.map(({ target }) => path.dirname(target)),
-  )) {
+  for (const directory of new Set(staging.map(({ target }) => path.dirname(target)))) {
     mkdirSync(directory, { recursive: true });
   }
   const files = staging.map(({ source, target }) => {
-    writeFileSync(
-      target,
-      blankSuppressions(readFileSync(source, LATIN1)),
-      LATIN1,
-    );
+    writeFileSync(target, blankSuppressions(readFileSync(source, LATIN1)), LATIN1);
     return target;
   });
   for (const config of [...inherited, ...lombokConfigs({ root, sources })]) {
