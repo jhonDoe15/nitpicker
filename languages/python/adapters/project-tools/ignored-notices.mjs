@@ -2,7 +2,7 @@ import {
   ignoredConfigNotice,
   precedenceLayers,
 } from '../../../../shared/conventions/tool-precedence.mjs';
-import { readMypyConfig } from '../configuration/mypy-config.mjs';
+import { readMypyConfig } from '../configuration/mypy/mypy-config.mjs';
 import { detectTypeCheckers } from '../execution/python-project.mjs';
 import { ignoredMutmutKeys, MUTMUT_TOOL, readMutmutConfig } from './mutmut/mutmut-config.mjs';
 import { MYPY_TOOL } from './mypy-layers.mjs';
