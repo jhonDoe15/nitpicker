@@ -1,4 +1,5 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { acceptedDigest } from '../../../../../core/command/test-support/accepted-digest.mjs';
 import { LAYERED_FILES } from '../test-support/python-preset-data.mjs';
 import {
   commitBranch,
@@ -49,7 +50,12 @@ describe.skipIf(!pythonE2eEnabled)('Python imports under if TYPE_CHECKING end to
   afterAll(removeRepositories);
 
   it('does not count an import under if TYPE_CHECKING as a stability inversion', () => {
-    const result = gate(project, 'stability');
+    const digest = acceptedDigest(['python.importLinter: not set -> false'], {
+      'nitpicker.config.json': IMPORT_LINTER_OFF,
+    });
+    const result = gate(project, 'stability', {
+      environment: { CI: 'true', NITPICKER_ACCEPT_POLICY_CHANGE: digest },
+    });
 
     expect(result.exitCode, result.text).toBe(0);
     expect(newRules(result)).toEqual([]);
