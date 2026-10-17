@@ -1,7 +1,7 @@
 import { writeFileSync } from 'node:fs';
 import path from 'node:path';
-import { parseIni, readFileEntries, toml } from '../execution/python-project.mjs';
-import { coverageTestOmits } from '../execution/python-test-files.mjs';
+import { parseIni, readFileEntries, toml } from '../../execution/python-project.mjs';
+import { coverageTestOmits } from '../../execution/python-test-files.mjs';
 
 const COVERAGE_CONFIG = 'coveragerc';
 const UNTESTABLE_LINES = [

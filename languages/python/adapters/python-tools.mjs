@@ -19,7 +19,7 @@ import {
   importRoots,
 } from './execution/python-project.mjs';
 import { ruffConfigFor } from './configuration/python-ruff-config.mjs';
-import { writeCoverageConfig } from './configuration/python-coverage-config.mjs';
+import { writeCoverageConfig } from './configuration/coverage-config/python-coverage-config.mjs';
 import {
   detectTestRunner,
   NO_TESTS_EXIT,
