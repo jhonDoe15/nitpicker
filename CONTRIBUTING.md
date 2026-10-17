@@ -57,12 +57,17 @@ CI (the `typescript` workflow) runs:
 GitHub does not start a pull request run while the pull request has a merge conflict, so resolve it
 before adding the label.
 
-When a pull request loosens `nitpicker.config.json` (a new exception, exclude, entry point or test
-root), the self-gate fails with a `nitpicker-config/policy-loosened` finding that names a digest. A
-maintainer who agrees with the loosening sets the repository's Actions variable
-`NITPICKER_ACCEPT_POLICY_CHANGE` to that digest (Settings, Secrets and variables, Actions,
-Variables) and runs the self-gate again. The digest covers exactly those loosenings and the files
-they hide, so it accepts nothing else, and a later change needs a new digest.
+When a pull request loosens `nitpicker.config.json` (for example an exception, exclude or entry
+point that covers a new code file; see the policy changes in [docs/usage.md](docs/usage.md)), the
+self-gate fails with a `nitpicker-config/policy-loosened` finding that names a 12-character digest.
+A repository admin who agrees with the loosening copies the digest from that CI run's log (a local
+run can give another digest, since CI checks the pull request merged into `main`), sets the
+repository variable `NITPICKER_ACCEPT_POLICY_CHANGE` to exactly that value (Settings > Secrets and
+variables > Actions > Variables), and runs the self-gate again by removing and re-adding the
+`run-ci` label. The digest covers those loosenings and the content of the files they hide, so a
+different loosening needs a new digest. Delete the variable once the pull request is merged. The
+self-gate runs the pull request's own code and workflow, so changes to `.github/workflows/`,
+`core/`, `package.json` and `nitpicker.config.json` need a careful review whatever the gate says.
 
 `npm test` runs `languages/python/metrics/structure_metrics.py` on a real `python3`, so it needs
 `python3` 3.10 or newer on the `PATH` (that test file is skipped, with its reason in the name,
