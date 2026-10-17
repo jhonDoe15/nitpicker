@@ -5,6 +5,7 @@ import { depthFirst } from '../../../../shared/traversal.mjs';
 import { describe, expect, it } from 'vitest';
 import { failureMessagesFor } from '../failure-messages/test-support/harness.mjs';
 import { TEST_TIMEOUT_CEILING_MS } from '../eslint-plugin/rules/testing/assertions/no-raised-test-timeout.mjs';
+import { TEST_TIMEOUT_MS } from '../../adapters/test-runners/test-run.mjs';
 import { resolveLayout } from '../layout.mjs';
 import { isStrictRule } from '../strict-rules.mjs';
 import { syntaxChildren } from '../syntax/children.mjs';
@@ -138,8 +139,6 @@ describe('strict test rules', () => {
     expect(
       timeoutSettings('languages/typescript/preset/defaults/vitest.quality.config.ts'),
     ).toEqual([['testTimeout', TEST_TIMEOUT_CEILING_MS]]);
-    expect(
-      timeoutSettings('languages/typescript/adapters/quality-areas/runners/tests.mjs'),
-    ).toEqual([['--testTimeout', TEST_TIMEOUT_CEILING_MS]]);
+    expect(TEST_TIMEOUT_MS).toBe(TEST_TIMEOUT_CEILING_MS);
   });
 });

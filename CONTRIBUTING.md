@@ -43,7 +43,7 @@ uses 24) and Java 21 for the structure-metrics test. It checks your working tree
 untracked files included, while CI checks the pull request merged into its target branch, so commit
 everything and merge or rebase on the latest `main` before the final run. A change to a language's
 end-to-end behaviour also needs that language's suite (`npm run test:java`, `test:kotlin` or
-`test:python`), which needs the language's toolchain. CI runs only the Kotlin and Python ones, in the
+`test:python`), which needs the language's toolchain. CI runs all three, in the `java-e2e`,
 `kotlin-e2e` and `python-e2e` workflows, which follow the same triggers as the `typescript` workflow
 below (pushes to `main` that touch the paths they list, a manual run, and the `run-ci` label).
 

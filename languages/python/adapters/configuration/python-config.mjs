@@ -13,7 +13,7 @@ import { PYTHON_SIZE_RULES } from '../../../../shared/project-rules/size-rules.m
 export const PYTHON_TOP_LEVEL_EXCEPTION_RULES = [...SHARED_EXCEPTION_RULES, ...PYTHON_SIZE_RULES];
 import { ruleIdProblem } from './python-rule-ids.mjs';
 
-const ENVIRONMENTS = ['uv', 'poetry', 'path'];
+const ENVIRONMENTS = ['uv', 'poetry', 'path', 'pipenv', 'hatch', 'conda'];
 const FORMATTERS = ['ruff', 'black'];
 const TEST_RUNNERS = ['pytest', 'unittest', 'django', 'nose2'];
 const TYPE_CHECKERS = ['mypy', 'pyright', 'basedpyright'];
@@ -90,7 +90,7 @@ function validateRuleIds(exceptions) {
   for (const [index, { rule }] of exceptions.entries()) {
     if (PYTHON_TOP_LEVEL_EXCEPTION_RULES.includes(rule)) {
       throw configError(
-        `"python.exceptions[${String(index)}].rule" is "${rule}", a file limit shared by every preset: lift it in the top-level "exceptions" instead`,
+        `"python.exceptions[${String(index)}].rule" is "${rule}", a rule shared by every preset: lift it in the top-level "exceptions" instead`,
       );
     }
     const problem = ruleIdProblem(rule);

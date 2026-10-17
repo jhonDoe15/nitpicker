@@ -30,7 +30,10 @@ describe('nitpicker with "preset": "kotlin"', () => {
     const result = run(root);
 
     expect(result.exitCode, result.text).toBe(0);
-    expect(result.json('summary.json').tools.map(({ name }) => name)).toEqual(['kotlin']);
+    expect(result.json('summary.json').tools.map(({ name }) => name)).toEqual([
+      'kotlin',
+      'repository-hygiene',
+    ]);
   });
   it('fails on a new detekt finding and reports it in text and SARIF', () => {
     const root = kotlinRepository();

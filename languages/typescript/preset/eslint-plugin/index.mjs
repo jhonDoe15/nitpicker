@@ -1,3 +1,4 @@
+import { rule as noDevDependencyInProduction } from './rules/dependencies/no-dev-dependency-in-production.mjs';
 import { rule as integrationTestUsesApprovedHarness } from './rules/testing/processes/integration-test-uses-approved-harness.mjs';
 import { rule as containerPauseRequiresFinallyUnpause } from './rules/testing/lifecycle/container-pause-requires-finally-unpause.mjs';
 import { rule as boundedContainerTeardown } from './rules/testing/lifecycle/bounded-container-teardown.mjs';
@@ -110,6 +111,7 @@ export const nitpickerRules = {
     'no-production-console': noProductionConsole,
     'no-self-recursion': noSelfRecursion,
     'no-silent-catch': noSilentCatch,
+    'no-dev-dependency-in-production': noDevDependencyInProduction,
     'no-throw': noThrow,
     'no-unknown-in-domain': noUnknownInDomain,
     'no-mutating-method-in-domain': noMutatingMethodInDomain,

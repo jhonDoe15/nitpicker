@@ -14,6 +14,7 @@ import {
 import {
   applyLayout,
   applyLegacyInventory,
+  applyTestRunner,
   applyThresholds,
 } from '../../languages/typescript/preset/diff/configured-analyzers.mjs';
 import { applyDisable } from './config.mjs';
@@ -22,9 +23,12 @@ export function configureAnalyzers(analyzers, config, headPolicy) {
   return applyLegacyInventory(
     addCustomAnalyzers(
       applyJavaConfig(
-        applyThresholds(
-          applyLayout(applyDisable(analyzers, config), headPolicy),
-          config.thresholds,
+        applyTestRunner(
+          applyThresholds(
+            applyLayout(applyDisable(analyzers, config), headPolicy),
+            config.thresholds,
+            headPolicy,
+          ),
           headPolicy,
         ),
         config,

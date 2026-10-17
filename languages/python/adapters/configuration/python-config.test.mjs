@@ -95,7 +95,7 @@ describe('python config validation', () => {
     [{ exceptions: ['T201'] }, '"python.exceptions[0]" must be an object'],
     [
       { exceptions: [{ rule: 'T201', paths: ['a'], reason: 'r', why: 'x' }] },
-      'unknown key "why" in "python.exceptions[0]". Allowed keys: rule, paths, reason',
+      'unknown key "why" in "python.exceptions[0]". Allowed keys: rule, paths, packages, reason',
     ],
     [
       { exceptions: [{ paths: ['a'], reason: 'r' }] },
@@ -115,7 +115,7 @@ describe('python config validation', () => {
     ],
     [
       { exceptions: [{ rule: 'folder-files-limit', paths: ['a'], reason: 'r' }] },
-      'a file limit shared by every preset: lift it in the top-level "exceptions" instead',
+      'a rule shared by every preset: lift it in the top-level "exceptions" instead',
     ],
     [
       { exceptions: [{ rule: 'E501', paths: ['a'], reason: 'r' }] },
