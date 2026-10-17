@@ -184,6 +184,17 @@ function comparable(findings) {
   return findings.map((finding) => JSON.stringify(finding)).sort();
 }
 
+function stableConsoleEmitters(findings) {
+  return findings.map((finding) =>
+    finding.rule === 'test-console-output'
+      ? {
+          ...finding,
+          message: finding.message.replace(/ \([^)]*\)(?=\. Fix the cause)/u, ' (<emitting test>)'),
+        }
+      : finding,
+  );
+}
+
 describe.skipIf(!enabled)('Review rules on Gradle and Maven builds of a Spring project', () => {
   const runs = {};
 
@@ -203,7 +214,9 @@ describe.skipIf(!enabled)('Review rules on Gradle and Maven builds of a Spring p
 
   it('finds the same findings on both builds', () => {
     expect(comparable(reviewFindings(runs.maven))).toEqual(comparable(reviewFindings(runs.gradle)));
-    expect(comparable(runs.maven)).toEqual(comparable(runs.gradle));
+    expect(comparable(stableConsoleEmitters(runs.maven))).toEqual(
+      comparable(stableConsoleEmitters(runs.gradle)),
+    );
   });
 
   it('reports exactly the PMD violations marked in the fixture on both builds', () => {
