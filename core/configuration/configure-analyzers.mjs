@@ -7,7 +7,10 @@ import {
 } from '../../languages/python/adapters/python-analyzer.mjs';
 import { configureJavaAnalyzer } from '../../languages/java/adapters/java-policy.mjs';
 import { kotlinStyleFiles } from '../../languages/java/adapters/kotlin/kotlin-tools.mjs';
-import { projectFormatConfigFiles } from '../../languages/python/adapters/formatting/project-format-config.mjs';
+import {
+  mutationConfigFiles,
+  pythonConfigFiles,
+} from '../../languages/python/adapters/project-tools/config-files.mjs';
 import {
   applyLayout,
   applyLegacyInventory,
@@ -36,9 +39,10 @@ function styleFilesOf(config, analyzerName) {
   if (config.preset === 'kotlin') {
     return (policyRoot) => kotlinStyleFiles(config, policyRoot);
   }
-  return config.preset === 'python' && analyzerName === PYTHON_ANALYZER_NAME
-    ? projectFormatConfigFiles
-    : undefined;
+  if (config.preset !== 'python') {
+    return undefined;
+  }
+  return analyzerName === PYTHON_ANALYZER_NAME ? pythonConfigFiles : mutationConfigFiles;
 }
 
 function applyJavaConfig(analyzers, config) {
