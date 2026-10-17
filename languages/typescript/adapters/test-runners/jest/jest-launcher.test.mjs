@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import { PACKAGE_ROOT } from '../../../../../core/tooling/tool-resolution.mjs';
-import { TEST_TIMEOUT_MS } from '../test-run.mjs';
+import { testTimeoutMs } from '../test-run.mjs';
 import { createRunnerProjects } from '../test-support/runner-project.mjs';
 import { coverageArguments } from './jest-coverage.mjs';
 import { jestArguments, runJest } from './jest.mjs';
@@ -108,7 +108,7 @@ describe('a Jest run that a Create React App script starts', () => {
         ...['--json', `--outputFile=${path.join(root, '.nitpicker-diff-jest-report.json')}`],
         ...[
           '--testLocationInResults',
-          `--testTimeout=${String(TEST_TIMEOUT_MS)}`,
+          `--testTimeout=${String(testTimeoutMs())}`,
           '--restoreMocks',
         ],
         '--watchAll=false',

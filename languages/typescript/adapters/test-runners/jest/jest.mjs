@@ -1,11 +1,11 @@
 import { spawnNodeTool } from '../../quality-areas/runners/tooling.mjs';
 import { withoutOptions } from '../../../preset/test-runner/script-command.mjs';
 import {
-  MAX_WORKERS,
-  TEST_TIMEOUT_MS,
   readRun,
   removeTemporary,
   temporaryProjectPath,
+  testTimeoutMs,
+  workerCount,
 } from '../test-run.mjs';
 import { RUNNER_NAMES } from '../../../preset/test-runner/runners.mjs';
 import { assertSourcesCovered, coverageArguments, shownRootDir } from './jest-coverage.mjs';
@@ -75,9 +75,9 @@ export function jestArguments(command, nitpickerArguments, { leading, trailing }
   ];
 }
 
-function workerArguments(tokens) {
+function workerArguments(options, tokens) {
   const serial = tokens.some((token) => SERIAL_OPTIONS.has(token.split('=')[0]));
-  return serial ? [] : [`--maxWorkers=${String(MAX_WORKERS)}`];
+  return serial ? [] : [`--maxWorkers=${String(workerCount(options))}`];
 }
 
 function spawnJest(options, command, nitpickerArguments) {
@@ -99,16 +99,23 @@ export function runJest(options, command) {
       '--ci',
       '--no-watchman',
       '--passWithNoTests',
-      ...coverageArguments(options, rootDir),
+      ...(options.rerun === undefined
+        ? coverageArguments(options, rootDir)
+        : [
+            '--testNamePattern',
+            options.rerun.namePattern,
+            '--runTestsByPath',
+            ...options.rerun.files,
+          ]),
       '--json',
       `--outputFile=${reportPath}`,
       '--testLocationInResults',
-      `--testTimeout=${String(TEST_TIMEOUT_MS)}`,
+      `--testTimeout=${String(testTimeoutMs())}`,
       '--restoreMocks',
-      ...workerArguments(command.arguments_),
+      ...workerArguments(options, command.arguments_),
     ]);
     const run = readRun({ reportPath, result, runnerName: RUNNER_NAMES.jest });
-    if (!run.failed && run.report.numTotalTests > 0) {
+    if (!run.failed && run.report.numTotalTests > 0 && options.rerun === undefined) {
       assertSourcesCovered(options, rootDir);
     }
     return run;

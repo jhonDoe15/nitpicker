@@ -44,7 +44,7 @@ export async function runCoverage(options) {
   }
   return [
     ...readCoverageFindings(options, run.report),
-    ...readSlowTestFindings(options, run.report),
+    ...(await readSlowTestFindings(options, run.report)),
   ];
 }
 

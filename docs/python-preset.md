@@ -959,27 +959,45 @@ a changed test; mutmut has no such step yet, hence source-only.
 
 ## Slow tests
 
-- **Rule.** `test-runtime/slow-test` fails a test the change adds or edits when it takes more than
-  5 s as a unit test, or more than 30 s as an integration test (`thresholds.unitTestSeconds` and
+- **Rule.** `slow-test` fails a test the change adds or edits when it takes more than 5 s as a unit
+  test, or more than 30 s as an integration test (`thresholds.unitTestSeconds` and
   `thresholds.integrationTestSeconds`), the same rule, message shape and budgets as for
-  [Java and Kotlin](java-preset.md#slow-tests) and
-  [TypeScript](typescript-strict-preset.md#slow-tests). The message names the budget, the measured
+  [Java and Kotlin](java-preset.md#slow-tests) and [TypeScript](typescript-strict-preset.md#slow-tests).
+  Its tool is `test-runtime`; the finding prints the bare route `slow-test`, and
+  `test-runtime/slow-test` is accepted as the same rule. The message names the budget, the measured
   time, the fixes (patch the clock instead of `time.sleep`, fake network, database and disk, or move
   the test to an integration test) and the exception. The exception is a top-level `exceptions`
-  entry, `{ "rule": "slow-test", "paths": ["tests/db/**"], "reason": "..." }`, not `python.exceptions`.
-- **Measurement.** Head only, in the coverage run that already executes the tests, so there is no
-  extra run. pytest gets `--junitxml` (with `junit_family=xunit1`) and writes the time of each test
-  to the report directory; unittest runs through `languages/python/slow-tests/unittest_timing.py`,
-  which takes the same `discover` arguments, runs the tests as `python -m unittest` does and writes
-  the same XML. A parameterized pytest case is timed per case, and a rerun test keeps its slowest
-  time. A project that turns the built-in `junitxml` plugin off (`-p no:junitxml`) is not timed.
+  entry, `{ "rule": "slow-test", "paths": ["tests/db/**"], "reason": "..." }`, not
+  `python.exceptions`. For a unittest project the advice moves the test to an `integration` folder
+  under `tests` or a class named `Integration*`, since unittest has no markers; for pytest it is an
+  `integration` marker, which must be registered when the project uses `--strict-markers`. `exclude`
+  applies: a test in an excluded file is not checked.
+- **Measurement.** Head only, in the coverage run that already executes the tests (so under
+  coverage instrumentation, which makes tests slower). pytest gets `--junitxml` with
+  `junit_family=xunit1` and `junit_duration_report=call`, so the time is that of the test call
+  alone, without fixture setup and teardown; the report goes to the report directory. unittest runs
+  through `languages/python/slow-tests/unittest_timing.py`, which takes the same `discover`
+  arguments, runs the tests as `python -m unittest` does and writes the same XML, timing each test
+  from `startTest` to `stopTest` (setUp and tearDown included). Only passed tests are timed
+  (failed, errored and skipped cases are left out). A parameterized pytest case is timed per case, a
+  rerun test keeps its slowest time, and the test file is the `file` attribute of the report entry.
+  A test over the smaller budget is run again once, by node id (pytest) or test id (unittest), without
+  coverage; it is reported only when still over its budget, with the second time, and a rerun that
+  fails keeps the first time. A project that turns the built-in `junitxml` plugin off
+  (`-p no:junitxml` in `addopts`, `PYTEST_ADDOPTS` or the ini file: pytest then accepts `--junitxml`
+  and writes no file) gets no timing and one descriptive `test-runtime/slow-test-not-timed`
+  finding saying so, which never fails the run; a file whose tests could not be read for the
+  edited-or-added check, or a test whose file is not under the project, gets the same finding. The
+  step never drops the other findings of the run.
 - **Unit or integration.** A test is an integration test when it, its class or its module carries a
   pytest marker named `integration`, `integrations`, `e2e`, `end_to_end`, `functional`, `acceptance`
-  or `system` (`@pytest.mark.integration`, `pytestmark = pytest.mark.e2e`), or its file is under a
-  folder named `integration`, `integrations`, `e2e`, `end-to-end`, `functional`, `acceptance` or
-  `system` (also with a `_tests` suffix), or its file name has `integration` or `e2e` as a word
-  (`test_orders_integration.py`), or its class name contains `Integration`, `E2E` or `EndToEnd`.
-  Every other test is a unit test.
+  or `system` (`@pytest.mark.integration`, `pytestmark = pytest.mark.e2e`; markers set only in
+  `conftest.py` or an alias are not read), or its file is under a folder named `integration`,
+  `integrations`, `e2e`, `end-to-end`, `functional`, `acceptance` or `system` (also with a `_tests`
+  suffix) below a `tests` or `test` folder (a production folder such as `src/integrations` does not
+  count), or its file name has `integration` or `e2e` as a word (`test_orders_integration.py`), or
+  its class name starts or ends with `Integration`, `E2E` or `EndToEnd` (`TestIntegration`,
+  `OrdersIntegrationTests`). Every other test is a unit test.
 - **Edited or added.** `languages/python/slow-tests/test_facts.py` parses the test file with `ast`
   in the project's environment and gives, per function or method (`Class.test_name`), its line, its
   markers and a hash of its text with its decorators. A test counts when its hash differs from the
@@ -990,7 +1008,7 @@ a changed test; mutmut has no such step yet, hence source-only.
 - **Tests.** `languages/python/slow-tests/*.test.mjs` (sample JUnit XML, canned `ast` facts, budgets
   and messages), the gated `slow-test-scripts.e2e.test.mjs` (the two helpers on real Python) and
   `slow-tests.e2e.test.mjs` (a test that really sleeps, with pytest, unittest, an integration
-  folder and an exception, asserting only that the rule fires or not).
+  folder, `-p no:junitxml` and an exception).
 
 ## Slices
 

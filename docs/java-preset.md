@@ -531,14 +531,15 @@ resolved plus a new finding, as in the TypeScript check.
 
 ## Slow tests
 
-- **Rule.** `test-runtime/slow-test` fails a test the change adds or edits when it takes more than 5 s
+- **Rule.** `slow-test` (tool `test-runtime`) fails a test the change adds or edits when it takes more than 5 s
   as a unit test, or more than 30 s as an integration test (`thresholds.unitTestSeconds` and
   `thresholds.integrationTestSeconds`). The rule, message shape, budgets and exception are the same
   for [TypeScript and JavaScript](typescript-strict-preset.md#slow-tests) and
-  [Python](python-preset.md#slow-tests); the bare id `slow-test` lifts it in every preset. Integration tests are those of a test task other than `test`
-  (Maven's `surefire` counts as `test`), classes named `*IT`, `*ITCase` or `*IntegrationTest(s)`, and
-  classes annotated `@SpringBootTest`, also through a superclass or an annotation of their own that
-  carries it, when that type's source is in a test root.
+  [Python](python-preset.md#slow-tests); the finding prints the bare id `slow-test`, and
+  `test-runtime/slow-test` is accepted in `exceptions` as the same rule. Integration tests are those
+  of a test task other than `test` (Maven's `surefire` counts as `test`), classes named `*IT`,
+  `*ITCase` or `*IntegrationTest(s)`, and classes annotated `@SpringBootTest`, also through a
+  superclass or an annotation of their own that carries it, when that type's source is in a test root.
   The message names the budget, the measured time, the fixes (no `Thread.sleep` or other waits, a
   smaller Spring context or a test slice, or moving it to an integration test source set; on Maven,
   making it an integration test that Failsafe runs, `*IT`) and the exception route.
@@ -547,7 +548,11 @@ resolved plus a new finding, as in the TypeScript check.
 - **Measurement.** Head only, from the JUnit XML the test tasks already write: the init script copies
   `TEST-*.xml` of every test task in the run (not `nitpickerArchunit`) to
   `test-results/<task>/` in each module's report directory. No extra test run. A rerun test keeps
-  its slowest time. Maven builds copy Surefire's `TEST-*.xml` to `test-results/surefire/` and
+  its slowest time; only passed tests are timed (failed, errored and skipped cases are left out).
+  Unlike TypeScript and Python, a slow test is not run again without coverage: the build runs the
+  tests once, and a second build would double the cost, so the time is that of the build's own run
+  (with JaCoCo's agent when the same run measures coverage) and is checked against the budget as
+  measured. Maven builds copy Surefire's `TEST-*.xml` to `test-results/surefire/` and
   Failsafe's to `test-results/failsafe/` (see [Maven builds](#maven-builds)); `surefire` counts as
   the `test` task, `failsafe` as an integration task. Failsafe runs when the project binds its
   `integration-test` goal and does not keep it off, because nitpicker then builds to `verify`.

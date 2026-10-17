@@ -1,5 +1,11 @@
 import { describe, expect, it } from 'vitest';
-import { slowestRuns, slowTestBudget, slowTestFindings } from './slow-test-finding.mjs';
+import {
+  shownSeconds,
+  slowestRuns,
+  slowTestBudget,
+  slowTestFindings,
+  slowTestLimits,
+} from './slow-test-finding.mjs';
 
 const TEST = {
   path: 'tests/test_pay.py',
@@ -36,6 +42,7 @@ describe('slow test findings', () => {
       slowTestFindings({
         tool: 'test-runtime',
         language: 'python',
+        advice: 'pytest',
         test: TEST,
         integration: false,
       }),
@@ -47,7 +54,12 @@ describe('slow test findings', () => {
         identity: 'test:tests.test_pay.TestPay#test_slow',
         location: { line: 12 },
         message:
-          'test_pay.TestPay test_slow took 7.3 s; a unit test may take 5 s. Remove time.sleep and other waits (patch the clock) and fake network, database and disk access, or move it to an integration test (an integration or e2e folder, or @pytest.mark.integration) if it is one. If this is intended, add {"rule":"slow-test","paths":["tests/test_pay.py"],"reason":"..."} to "exceptions" in nitpicker.config.json.',
+          'test_pay.TestPay test_slow took 7.3 s; a unit test may take 5 s. Remove time.sleep and ' +
+          'other waits (patch the clock) and fake network, database and disk access, or move it to ' +
+          'an integration test (an integration or e2e folder under tests, or an integration marker ' +
+          'registered in the pytest config) if it is one. If this is intended, add ' +
+          '{"rule":"slow-test","paths":["tests/test_pay.py"],"reason":"..."} ' +
+          'to "exceptions" in nitpicker.config.json.',
         classification: 'enforceable',
       },
     ]);
@@ -71,7 +83,10 @@ describe('slow test findings', () => {
         path: 'tests/test_pay.py',
         identity: 'test:tests.test_pay.TestPay#test_slow',
         message:
-          'test_pay.TestPay test_slow took 7.3 s; an integration test may take 7 s. Remove fixed sleeps and real timers (use fake timers) and mock network, database and disk access. If this is intended, add {"rule":"slow-test","paths":["tests/test_pay.py"],"reason":"..."} to "exceptions" in nitpicker.config.json.',
+          'test_pay.TestPay test_slow took 7.3 s; an integration test may take 7 s. Remove fixed ' +
+          'sleeps and real timers (use fake timers) and mock network, database and disk access. If ' +
+          'this is intended, add {"rule":"slow-test","paths":["tests/test_pay.py"],"reason":"..."} ' +
+          'to "exceptions" in nitpicker.config.json.',
         classification: 'enforceable',
       },
     ]);
@@ -82,5 +97,18 @@ describe('slow test findings', () => {
     expect(
       slowTestFindings({ tool: 'test-runtime', language: 'python', test, integration: false }),
     ).toEqual([]);
+  });
+
+  it('reads only the slow test budgets of the thresholds', () => {
+    expect(slowTestLimits({ crapLimit: 3, unitTestSeconds: 2 })).toEqual({ unitTestSeconds: 2 });
+    expect(slowTestLimits({})).toEqual({});
+  });
+
+  it('shows two decimals when one would print the budget itself', () => {
+    expect([shownSeconds(5.04, 5), shownSeconds(5.04, 6), shownSeconds(7.25, 5)]).toEqual([
+      '5.04',
+      '5.0',
+      '7.3',
+    ]);
   });
 });

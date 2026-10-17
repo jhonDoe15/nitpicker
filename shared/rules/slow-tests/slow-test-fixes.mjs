@@ -8,7 +8,12 @@ export const SLOW_TEST_FIXES = {
 
 export const SLOW_TEST_MOVES = {
   typescript:
-    ', or move it to an integration test (an integration or e2e folder, or *.integration.test.*) if it is one',
-  python:
-    ', or move it to an integration test (an integration or e2e folder, or @pytest.mark.integration) if it is one',
+    ', or move it to an integration test (an integration or e2e folder under the test roots, ' +
+    'or *.integration.test.*) if it is one',
+  pytest:
+    ', or move it to an integration test (an integration or e2e folder under tests, ' +
+    'or an integration marker registered in the pytest config) if it is one',
+  unittest:
+    ', or move it to an integration test (an integration or e2e folder under tests, ' +
+    'or a class named Integration*) if it is one',
 };

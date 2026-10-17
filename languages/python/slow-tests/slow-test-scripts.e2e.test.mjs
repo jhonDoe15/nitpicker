@@ -3,13 +3,13 @@ import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'nod
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { FACTS_SCRIPT } from './slow-test-step.mjs';
+import { FACTS_SCRIPT } from './test-facts.mjs';
 import { UNITTEST_TIMING_SCRIPT } from './timing-command.mjs';
 
 const enabled = process.env.NITPICKER_PYTHON_E2E === '1';
 const MODULE = `import pytest
 
-pytestmark = [pytest.mark.system]
+pytestmark: list = [pytest.mark.system]
 
 
 @pytest.mark.integration
@@ -23,6 +23,8 @@ class TestPay:
         pass
 
     class TestNested:
+        pytestmark = pytest.mark.slow
+
         def test_three(self):
             pass
 `;
@@ -32,6 +34,26 @@ function python(args) {
   const result = spawnSync('python3', args, { cwd: directory, encoding: 'utf8' });
   expect(result.error).toBeUndefined();
   return result;
+}
+
+function factsOf(...files) {
+  const { stdout } = python(['-I', FACTS_SCRIPT, directory, ...files]);
+  return JSON.parse(
+    stdout
+      .split('\n')
+      .find((line) => line.startsWith('NITPICKER_FACTS '))
+      .slice(16),
+  );
+}
+
+function timesOf(file) {
+  return [
+    ...readFileSync(file, 'utf8').matchAll(
+      /classname="([^"]+)" name="([^"]+)"(?: file="([^"]+)")? time="[\d.]+"/gu,
+    ),
+  ]
+    .map(([, className, name, source]) => `${className}.${name} ${source}`)
+    .sort();
 }
 
 beforeEach(() => {
@@ -46,81 +68,101 @@ afterEach(() => {
 describe.skipIf(!enabled)('the Python helpers of the slow test gate', () => {
   it('lists every function with its line, markers of its own, its class and the module, and a hash', () => {
     writeFileSync(path.join(directory, 'tests/test_pay.py'), MODULE);
-    writeFileSync(path.join(directory, 'tests/test_bad.py'), 'def broken(:\n');
-    const { stdout } = python([
-      '-I',
-      FACTS_SCRIPT,
-      directory,
-      'tests/test_pay.py',
-      'tests/test_bad.py',
-    ]);
-    const facts = JSON.parse(stdout);
-    expect(facts['tests/test_bad.py']).toBeNull();
+    const facts = factsOf('tests/test_pay.py')['tests/test_pay.py'];
     expect(
       Object.fromEntries(
-        Object.entries(facts['tests/test_pay.py']).map(([name, { line, markers }]) => [
-          name,
-          [line, markers],
-        ]),
+        Object.entries(facts).map(([name, { line, markers }]) => [name, [line, markers]]),
       ),
     ).toEqual({
       test_one: [7, ['integration', 'system']],
       'TestPay.test_two': [13, ['parametrize', 'system']],
-      'TestPay.TestNested.test_three': [17, ['system']],
+      'TestPay.TestNested.test_three': [19, ['slow', 'system']],
     });
-    expect(Object.values(facts['tests/test_pay.py']).map(({ hash }) => hash.length)).toEqual([
-      40, 40, 40,
+    expect(Object.values(facts).map(({ hash }) => hash.length)).toEqual([40, 40, 40]);
+  });
+
+  it('gives null for a file it cannot read, parse or walk and still lists the others', () => {
+    writeFileSync(path.join(directory, 'tests/test_pay.py'), MODULE);
+    writeFileSync(path.join(directory, 'tests/test_bad.py'), 'def broken(:\n');
+    writeFileSync(path.join(directory, 'tests/test_deep.py'), `x = ${'1+'.repeat(60000)}1\n`);
+    const facts = factsOf(
+      'tests/test_pay.py',
+      'tests/test_bad.py',
+      'tests/test_deep.py',
+      'tests/test_missing.py',
+    );
+    expect(Object.keys(facts)).toEqual([
+      'tests/test_pay.py',
+      'tests/test_bad.py',
+      'tests/test_deep.py',
+      'tests/test_missing.py',
     ]);
+    expect([
+      facts['tests/test_bad.py'],
+      facts['tests/test_deep.py'],
+      facts['tests/test_missing.py'],
+    ]).toEqual([null, null, null]);
   });
 
   it('changes the hash of a function only when its text, decorators included, changes', () => {
     const file = path.join(directory, 'tests/test_pay.py');
     writeFileSync(file, MODULE);
-    const before = JSON.parse(python(['-I', FACTS_SCRIPT, directory, 'tests/test_pay.py']).stdout);
+    const before = factsOf('tests/test_pay.py')['tests/test_pay.py'];
     writeFileSync(
       file,
       MODULE.replace('def test_one():\n    pass', 'def test_one():\n    assert 1'),
     );
-    const after = JSON.parse(python(['-I', FACTS_SCRIPT, directory, 'tests/test_pay.py']).stdout);
-    const names = Object.keys(before['tests/test_pay.py']);
-    expect(
-      names.map(
-        (name) => before['tests/test_pay.py'][name].hash === after['tests/test_pay.py'][name].hash,
-      ),
-    ).toEqual([false, true, true]);
+    const after = factsOf('tests/test_pay.py')['tests/test_pay.py'];
+    expect(Object.keys(before).map((name) => before[name].hash === after[name].hash)).toEqual([
+      false,
+      true,
+      true,
+    ]);
   });
 
-  it('runs unittest discovery and writes the time of each test as JUnit XML', () => {
+  it('runs unittest discovery and writes the time of the passed tests, with their file, as XML', () => {
     writeFileSync(
       path.join(directory, 'tests/test_clock.py'),
-      'import time\nimport unittest\n\n\nclass TestClock(unittest.TestCase):\n    def test_wait(self):\n        time.sleep(0.2)\n\n    def test_now(self):\n        self.assertTrue(True)\n',
+      [
+        'import time',
+        'import unittest',
+        '',
+        '',
+        'class TestClock(unittest.TestCase):',
+        '    def test_wait(self):',
+        '        time.sleep(0.2)',
+        '',
+        '    def test_now(self):',
+        '        self.assertTrue(True)',
+        '',
+        '    @unittest.skip("later")',
+        '    def test_later(self):',
+        '        pass',
+        '',
+      ].join('\n'),
     );
     const output = path.join(directory, 'times.xml');
     const result = python([UNITTEST_TIMING_SCRIPT, output, 'discover', '-s', 'tests']);
     expect(result.status).toBe(0);
-    expect(result.stderr).toMatch(/Ran 2 tests/u);
-    const cases = [
-      ...readFileSync(output, 'utf8').matchAll(
-        /classname="([^"]+)" name="([^"]+)" time="([\d.]+)"/gu,
-      ),
-    ];
-    expect(cases.map(([, className, name]) => `${className}.${name}`).sort()).toEqual([
-      'test_clock.TestClock.test_now',
-      'test_clock.TestClock.test_wait',
+    expect(timesOf(output)).toEqual([
+      'test_clock.TestClock.test_now tests/test_clock.py',
+      'test_clock.TestClock.test_wait tests/test_clock.py',
     ]);
-    const seconds = Object.fromEntries(cases.map(([, , name, time]) => [name, Number(time)]));
-    expect(seconds.test_wait).toBeGreaterThanOrEqual(0.15);
-    expect(seconds.test_now).toBeLessThan(seconds.test_wait);
+    const seconds = Object.fromEntries(
+      [...readFileSync(output, 'utf8').matchAll(/ name="([^"]+)"[^>]* time="([\d.]+)"/gu)].map(
+        ([, name, time]) => [name, Number(time) >= 0.15],
+      ),
+    );
+    expect(seconds).toEqual({ test_now: false, test_wait: true });
   });
 
-  it('exits non-zero when a test fails, as unittest does', () => {
+  it('exits non-zero when a test fails, as unittest does, and leaves the failed test out', () => {
     writeFileSync(
       path.join(directory, 'tests/test_bad.py'),
       'import unittest\n\n\nclass TestBad(unittest.TestCase):\n    def test_fail(self):\n        self.fail("no")\n',
     );
-    expect(
-      python([UNITTEST_TIMING_SCRIPT, path.join(directory, 'times.xml'), 'discover', '-s', 'tests'])
-        .status,
-    ).toBe(1);
+    const output = path.join(directory, 'times.xml');
+    expect(python([UNITTEST_TIMING_SCRIPT, output, 'discover', '-s', 'tests']).status).toBe(1);
+    expect(timesOf(output)).toEqual([]);
   });
 });

@@ -6,32 +6,15 @@ import {
   slowestRuns,
   slowTestBudget,
   slowTestFindings,
+  slowTestLimits,
 } from '../../../../shared/rules/slow-tests/slow-test-finding.mjs';
 import { readHeadPolicy, readLayout } from '../../preset/head-policy.mjs';
 import { isIntegrationTest } from './integration-tests.mjs';
+import { passedRuns, runKey } from './report-runs.mjs';
+import { retimeWithoutCoverage } from './rerun-timings.mjs';
 import { testCallsOf } from './test-calls.mjs';
 
-const TEST_TIME_KEYS = ['unitTestSeconds', 'integrationTestSeconds'];
-const MILLISECONDS = 1000;
-
-function projectFile(projectRoot, name) {
-  const relative = path.relative(projectRoot, String(name)).replaceAll('\\', '/');
-  return relative.startsWith('..') || path.isAbsolute(relative) ? undefined : relative;
-}
-
-function passedRuns(report, projectRoot) {
-  const results = Array.isArray(report?.testResults) ? report.testResults : [];
-  return results.flatMap((result) =>
-    (result?.assertionResults ?? [])
-      .filter((run) => run?.status === 'passed' && Number.isFinite(run.duration))
-      .map((run) => ({
-        file: projectFile(projectRoot, result.name),
-        name: run.fullName ?? run.title,
-        seconds: run.duration / MILLISECONDS,
-      }))
-      .filter((run) => run.file !== undefined),
-  );
-}
+const SLOW_TEST_TOOL = 'test-runtime';
 
 function readOptional(root, file) {
   const absolute = root === undefined ? undefined : path.join(root, file);
@@ -51,7 +34,7 @@ function isEdited({ run, head, base }) {
     return true;
   }
   const matched = matchedCalls(run.file, head, run.name);
-  if (matched.length === 0) {
+  if (matched.length === 0 || matched.every((call) => call.fileLevel)) {
     return head !== base;
   }
   const baseCalls = testCallsOf(run.file, base);
@@ -60,36 +43,34 @@ function isEdited({ run, head, base }) {
   );
 }
 
-function chosenLimits(thresholds) {
-  return Object.fromEntries(
-    TEST_TIME_KEYS.filter((key) => thresholds[key] !== undefined).map((key) => [
-      key,
-      thresholds[key],
-    ]),
-  );
-}
-
-function slowRuns(report, options, { limits, exceptions }) {
+function slowRuns(report, { options, limits, exceptions, layout }) {
   const budget = slowTestBudget(limits);
   const floor = Math.min(budget.unitTestSeconds, budget.integrationTestSeconds);
   const isExcepted = exceptionMatcher(exceptions);
   return slowestRuns(
     passedRuns(report, options.projectRoot).filter(
-      (run) => run.seconds > floor && !isExcepted(RULE_IDS.slowTest, run.file),
+      (run) =>
+        run.seconds > floor &&
+        !layout.isExcluded(run.file) &&
+        !isExcepted(RULE_IDS.slowTest, run.file),
     ),
-    (run) => `${run.file}\0${run.name}`,
+    runKey,
   );
+}
+
+function isCounted(run, options) {
+  if (options.baselineRoot === undefined) {
+    return true;
+  }
+  const head = readOptional(options.projectRoot, run.file) ?? '';
+  return isEdited({ run, head, base: readOptional(options.baselineRoot, run.file) });
 }
 
 function findingsFor(run, { options, limits, layout }) {
   const head = readOptional(options.projectRoot, run.file) ?? '';
-  const base = readOptional(options.baselineRoot, run.file);
-  if (options.baselineRoot !== undefined && !isEdited({ run, head, base })) {
-    return [];
-  }
   const matched = matchedCalls(run.file, head, run.name);
   return slowTestFindings({
-    tool: options.analyzerName,
+    tool: SLOW_TEST_TOOL,
     language: 'typescript',
     integration: isIntegrationTest(run.file, layout),
     limits,
@@ -103,14 +84,23 @@ function findingsFor(run, { options, limits, layout }) {
   });
 }
 
-export function readSlowTestFindings(options, report) {
+export async function readSlowTestFindings(options, report, retime = retimeWithoutCoverage) {
   if (options.snapshot === 'base') {
     return [];
   }
   const { thresholds, exceptions } = readHeadPolicy();
-  const limits = chosenLimits(thresholds);
-  const settings = { options, limits, layout: readLayout() };
-  return slowRuns(report, options, { limits, exceptions }).flatMap((run) =>
-    findingsFor(run, settings),
+  const settings = {
+    options,
+    limits: slowTestLimits(thresholds),
+    exceptions,
+    layout: readLayout(),
+  };
+  const suspects = slowRuns(report, settings).filter((run) => isCounted(run, options));
+  if (suspects.length === 0) {
+    return [];
+  }
+  const timings = await retime(options, suspects);
+  return suspects.flatMap((run) =>
+    findingsFor({ ...run, seconds: timings.get(runKey(run)) ?? run.seconds }, settings),
   );
 }

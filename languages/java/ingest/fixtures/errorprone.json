@@ -1,9 +1,51 @@
 [
-  {"file":"/project/src/main/java/org/example/calculator/simple/Calculator.java","line":16,"column":26,"kind":"WARNING","message":"[CheckReturnValue] The result of `evaluate()` must be used\n  If you really don't want to use the result, then assign it to a variable: `var unused = ...`.\n  \n  If callers of `evaluate()` shouldn't be required to use its result, then annotate it with `@CanIgnoreReturnValue`.\n  \n    (see https://errorprone.info/bugpattern/CheckReturnValue)\n  Did you mean 'var unused = expr.evaluate();' or to remove this line?"},
-  {"file":"/project/src/main/java/org/example/calculator/concurrent/DependencyGraphCalculator.java","line":40,"column":30,"kind":"WARNING","message":"[FutureReturnValueIgnored] Return value of methods returning Future must be checked. Ignoring returned Futures suppresses exceptions thrown from the code that completes the Future.\n    (see https://errorprone.info/bugpattern/FutureReturnValueIgnored)\n  Did you mean 'var unused = future.thenAccept(result -> variables.put(variable, result));' or to remove this line?"},
-  {"file":"/project/src/main/java/org/example/genericcalculator/ExpressionEvaluator.java","line":20,"column":12,"kind":"WARNING","message":"[NullAway] initializer method does not guarantee @NonNull field 'expressionParser' (line 18) is initialized along all control-flow paths (remember to check for exceptions or early returns).\n    (see http://t.uber.com/nullaway )"},
-  {"file":"/project/src/main/java/org/example/openclosecalculator/ExpressionParser.java","line":53,"column":30,"kind":"WARNING","message":"[JdkObsolete] Stack is a nonstandard class that predates the Java Collections Framework; prefer ArrayDeque. Note that the Stack methods push/pop/peek correspond to the Deque methods addFirst/removeFirst/peekFirst.\n    (see https://errorprone.info/bugpattern/JdkObsolete)"},
-  {"file":"/project/src/main/java/org/example/openclosecalculator/ExpressionParser.java","line":54,"column":37,"kind":"WARNING","message":"[JdkObsolete] Stack is a nonstandard class that predates the Java Collections Framework; prefer ArrayDeque. Note that the Stack methods push/pop/peek correspond to the Deque methods addFirst/removeFirst/peekFirst.\n    (see https://errorprone.info/bugpattern/JdkObsolete)"},
-  {"file":"/project/build/nitpicker/errorprone/generated/main/org/example/Mapper_Impl.java","line":7,"column":3,"kind":"WARNING","message":"[MissingOverride] toString overrides method in Object; expected @Override\n    (see https://errorprone.info/bugpattern/MissingOverride)"},
-  {"file":"/project/src/main/java/org/example/Main.java","line":3,"column":1,"kind":"WARNING","message":"not an Error Prone diagnostic"}
+  {
+    "file": "/project/src/main/java/org/example/calculator/simple/Calculator.java",
+    "line": 16,
+    "column": 26,
+    "kind": "WARNING",
+    "message": "[CheckReturnValue] The result of `evaluate()` must be used\n  If you really don't want to use the result, then assign it to a variable: `var unused = ...`.\n  \n  If callers of `evaluate()` shouldn't be required to use its result, then annotate it with `@CanIgnoreReturnValue`.\n  \n    (see https://errorprone.info/bugpattern/CheckReturnValue)\n  Did you mean 'var unused = expr.evaluate();' or to remove this line?"
+  },
+  {
+    "file": "/project/src/main/java/org/example/calculator/concurrent/DependencyGraphCalculator.java",
+    "line": 40,
+    "column": 30,
+    "kind": "WARNING",
+    "message": "[FutureReturnValueIgnored] Return value of methods returning Future must be checked. Ignoring returned Futures suppresses exceptions thrown from the code that completes the Future.\n    (see https://errorprone.info/bugpattern/FutureReturnValueIgnored)\n  Did you mean 'var unused = future.thenAccept(result -> variables.put(variable, result));' or to remove this line?"
+  },
+  {
+    "file": "/project/src/main/java/org/example/genericcalculator/ExpressionEvaluator.java",
+    "line": 20,
+    "column": 12,
+    "kind": "WARNING",
+    "message": "[NullAway] initializer method does not guarantee @NonNull field 'expressionParser' (line 18) is initialized along all control-flow paths (remember to check for exceptions or early returns).\n    (see http://t.uber.com/nullaway )"
+  },
+  {
+    "file": "/project/src/main/java/org/example/openclosecalculator/ExpressionParser.java",
+    "line": 53,
+    "column": 30,
+    "kind": "WARNING",
+    "message": "[JdkObsolete] Stack is a nonstandard class that predates the Java Collections Framework; prefer ArrayDeque. Note that the Stack methods push/pop/peek correspond to the Deque methods addFirst/removeFirst/peekFirst.\n    (see https://errorprone.info/bugpattern/JdkObsolete)"
+  },
+  {
+    "file": "/project/src/main/java/org/example/openclosecalculator/ExpressionParser.java",
+    "line": 54,
+    "column": 37,
+    "kind": "WARNING",
+    "message": "[JdkObsolete] Stack is a nonstandard class that predates the Java Collections Framework; prefer ArrayDeque. Note that the Stack methods push/pop/peek correspond to the Deque methods addFirst/removeFirst/peekFirst.\n    (see https://errorprone.info/bugpattern/JdkObsolete)"
+  },
+  {
+    "file": "/project/build/nitpicker/errorprone/generated/main/org/example/Mapper_Impl.java",
+    "line": 7,
+    "column": 3,
+    "kind": "WARNING",
+    "message": "[MissingOverride] toString overrides method in Object; expected @Override\n    (see https://errorprone.info/bugpattern/MissingOverride)"
+  },
+  {
+    "file": "/project/src/main/java/org/example/Main.java",
+    "line": 3,
+    "column": 1,
+    "kind": "WARNING",
+    "message": "not an Error Prone diagnostic"
+  }
 ]

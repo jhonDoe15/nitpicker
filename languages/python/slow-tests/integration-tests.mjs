@@ -1,5 +1,3 @@
-import path from 'node:path';
-
 const INTEGRATION_MARKERS = new Set([
   'integration',
   'integrations',
@@ -9,16 +7,23 @@ const INTEGRATION_MARKERS = new Set([
   'acceptance',
   'system',
 ]);
+const TESTS_FOLDER = /(?:^|\/)tests?\/(.*)$/u;
 const INTEGRATION_FOLDER =
   /(?:^|\/)(?:integrations?|e2e|end[-_]to[-_]end|functional|acceptance|system)(?:[-_]tests?)?\//u;
 const INTEGRATION_FILE = /(?:^|_)(?:integration|e2e)(?:_|\.py$)/u;
-const INTEGRATION_CLASS = /(?:Integration|E2E|EndToEnd)/u;
+const INTEGRATION_CLASS =
+  /^(?:Test)?(?:Integration|E2E|EndToEnd)|(?:Integration|E2E|EndToEnd)(?:Tests?)?$/u;
+
+function belowTestsFolder(file) {
+  return TESTS_FOLDER.exec(file)?.[1];
+}
 
 export function isIntegrationTest({ file, classes, markers }) {
+  const below = belowTestsFolder(file);
   return (
     markers.some((marker) => INTEGRATION_MARKERS.has(marker)) ||
-    INTEGRATION_FOLDER.test(file) ||
-    INTEGRATION_FILE.test(path.posix.basename(file)) ||
+    (below !== undefined && INTEGRATION_FOLDER.test(below)) ||
+    INTEGRATION_FILE.test(file.split('/').pop()) ||
     classes.some((name) => INTEGRATION_CLASS.test(name))
   );
 }

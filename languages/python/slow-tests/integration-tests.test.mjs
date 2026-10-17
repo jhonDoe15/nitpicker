@@ -9,13 +9,15 @@ describe('integration tests by marker, folder, file and class name', () => {
       { ...unit, markers: ['integration'] },
       { ...unit, markers: ['e2e', 'slow'] },
       { ...unit, file: 'tests/integration/test_orders.py' },
-      { ...unit, file: 'tests/end_to_end/test_orders.py' },
+      { ...unit, file: 'src/shop/tests/end_to_end/test_orders.py' },
       { ...unit, file: 'tests/functional_tests/test_orders.py' },
       { ...unit, file: 'tests/test_orders_integration.py' },
       { ...unit, file: 'tests/test_e2e_orders.py' },
       { ...unit, classes: ['TestOrdersIntegration'] },
+      { ...unit, classes: ['TestIntegrationOrders'] },
+      { ...unit, classes: ['OrdersE2ETests'] },
     ];
-    expect(cases.map(isIntegrationTest)).toEqual([true, true, true, true, true, true, true, true]);
+    expect(cases.map(isIntegrationTest)).toEqual(cases.map(() => true));
   });
 
   it('keeps every other test a unit test', () => {
@@ -24,7 +26,11 @@ describe('integration tests by marker, folder, file and class name', () => {
       { ...unit, markers: ['parametrize', 'slow'] },
       { ...unit, file: 'tests/test_integrity.py' },
       { ...unit, file: 'tests/unit/test_orders.py', classes: [] },
+      { ...unit, file: 'app/integrations/slack/test_client.py' },
+      { ...unit, file: 'app/system/test_clock.py' },
+      { ...unit, classes: ['TestIntegerConfig'] },
+      { ...unit, classes: ['TestSubIntegrationConfig'] },
     ];
-    expect(cases.map(isIntegrationTest)).toEqual([false, false, false, false]);
+    expect(cases.map(isIntegrationTest)).toEqual(cases.map(() => false));
   });
 });

@@ -34,16 +34,19 @@ class TestSlow(unittest.TestCase):
         self.assertEqual(2, 1 + 1)
 `;
 
-const slowTests = (result) =>
+const findingsOf = (result, rule) =>
   result
     .json('new-findings.json')
-    .filter(({ rule }) => rule === 'slow-test')
-    .map(({ tool, path: file, identity, classification }) => [
+    .filter((finding) => finding.rule === rule)
+    .map(({ tool, path: file, identity, classification, message }) => [
       tool,
       file,
       identity,
       classification,
+      message,
     ]);
+
+const slowTests = (result) => findingsOf(result, 'slow-test').map((row) => row.slice(0, 4));
 
 describe.skipIf(!pythonE2eEnabled)('Python slow test gate end to end', () => {
   let project;
@@ -56,6 +59,11 @@ describe.skipIf(!pythonE2eEnabled)('Python slow test gate end to end', () => {
     commitBranch(project, 'slow-integration', {
       'nitpicker.config.json': CONFIG,
       'tests/integration/test_slow.py': SLOW_PYTEST,
+    });
+    commitBranch(project, 'slow-no-junit', {
+      'nitpicker.config.json': CONFIG,
+      'pytest.ini': '[pytest]\naddopts = -p no:junitxml\n',
+      'tests/test_slow.py': SLOW_PYTEST,
     });
     commitBranch(project, 'slow-unittest', {
       'nitpicker.config.json': JSON.stringify({
@@ -85,9 +93,8 @@ describe.skipIf(!pythonE2eEnabled)('Python slow test gate end to end', () => {
     expect(slowTests(result)).toEqual([
       ['test-runtime', 'tests/test_slow.py', 'test:tests.test_slow#test_slow', 'enforceable'],
     ]);
-    expect(result.text).toMatch(
-      /test_slow test_slow took \d+\.\d s; a unit test may take 0\.5 s\./u,
-    );
+    const [message] = findingsOf(result, 'slow-test').map((row) => row[4]);
+    expect(message.slice(0, message.indexOf(' s;'))).toBe('test_slow test_slow took 1.5');
   });
 
   it('gives a test under an integration folder the integration budget', () => {
@@ -101,6 +108,15 @@ describe.skipIf(!pythonE2eEnabled)('Python slow test gate end to end', () => {
 
     expect(slowTests(result)).toEqual([
       ['test-runtime', 'tests/test_slow.py', 'test:test_slow.TestSlow#test_slow', 'enforceable'],
+    ]);
+  });
+
+  it('does not time a project whose pytest options turn the JUnit report off, and says so', () => {
+    const result = gate(project, 'slow-no-junit');
+
+    expect(result.exitCode, result.text).toBe(0);
+    expect(findingsOf(result, 'slow-test-not-timed').map((row) => row.slice(0, 4))).toEqual([
+      ['test-runtime', '.', 'slow-test-not-timed:.', 'descriptive'],
     ]);
   });
 

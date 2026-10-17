@@ -151,8 +151,9 @@ Before you change code other modules use, fix a bug, or add a UI state, read
 - No per-test git repos, child processes, servers, fixed sleeps, or raised timeouts.
 - Plan tests to be fast (`slow-test`): a test you add or edit that takes over 5 s fails, over 30 s
   for an integration test (under an `integration`, `e2e` or `functional` folder, or named
-  `*.integration.test.ts`). Use fake timers instead of waits and fakes instead of network or disk.
-  A slow test you did not touch stays baselined.
+  `*.integration.test.ts`, folders counted under the test roots). Use fake timers instead of waits
+  and fakes instead of network or disk. A test over budget is run again alone without coverage and
+  fails only if it is still over. A slow test you did not touch stays baselined.
 
 ## React
 

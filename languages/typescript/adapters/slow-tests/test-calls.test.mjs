@@ -13,30 +13,62 @@ const SOURCE = `describe('checkout', () => {
 `;
 
 describe('test calls of a source file', () => {
-  it('lists each test with its title pattern, text and line', () => {
+  it('lists each test with its title pattern, text, line and whether only the file can tell an edit', () => {
     expect(
-      testCallsOf('a.test.ts', SOURCE).map(({ key, dynamic, text, line }) => ({
+      testCallsOf('a.test.ts', SOURCE).map(({ key, dynamic, fileLevel, text, line }) => ({
         key,
         dynamic,
+        fileLevel,
         text,
         line,
       })),
     ).toEqual([
-      { key: 'checkout pays', dynamic: false, text: "it('pays', () => {})", line: 2 },
+      {
+        key: 'checkout pays',
+        dynamic: false,
+        fileLevel: false,
+        text: "it('pays', () => { })",
+        line: 2,
+      },
       {
         key: 'checkout adds .* and .*',
         dynamic: false,
-        text: "it.each([[1, 2]])('adds %i and %i', (a, b) => {})",
+        fileLevel: true,
+        text: "it.each([[1, 2]])('adds %i and %i', (a, b) => { })",
         line: 3,
       },
       {
         key: 'checkout plan .* row .*',
         dynamic: false,
-        text: 'test(`row ${n}`, () => {})',
+        fileLevel: true,
+        text: 'test(`row ${n}`, () => { })',
         line: 5,
       },
-      { key: 'checkout .*', dynamic: true, text: 'it(title, () => {})', line: 7 },
-      { key: 'checkout skipped', dynamic: false, text: "it.skip('skipped', () => {})", line: 8 },
+      { key: 'checkout .*', dynamic: true, fileLevel: true, text: 'it(title, () => { })', line: 7 },
+      {
+        key: 'checkout skipped',
+        dynamic: false,
+        fileLevel: false,
+        text: "it.skip('skipped', () => { })",
+        line: 8,
+      },
+    ]);
+  });
+
+  it('reads a call the same whatever its formatting', () => {
+    const wrapped = "it('pays', () => {\n  run(\n    a,\n    b,\n  );\n});\n";
+    const compact = "it('pays', () => { run(a, b); });\n";
+    expect(testCallsOf('a.test.ts', wrapped)[0].text).toBe(
+      testCallsOf('a.test.ts', compact)[0].text,
+    );
+  });
+
+  it('knows the table form of Vitest 3 and the focused and skipped spellings', () => {
+    const source = "test.for([1])('n %i', () => {});\nfit('f', () => {});\nxtest('x', () => {});\n";
+    expect(testCallsOf('a.test.ts', source).map(({ key, fileLevel }) => [key, fileLevel])).toEqual([
+      ['n .*', true],
+      ['f', false],
+      ['x', false],
     ]);
   });
 
