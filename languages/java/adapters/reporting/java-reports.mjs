@@ -42,7 +42,6 @@ const LINE_NUMBER = /\bline \d+\b/g;
 const CHECKSTYLE_SOURCE_SET_REPORT = /^checkstyle-.+\.xml$/u;
 const MODULE_IDENTITY_SEPARATOR = '@';
 const ROOT_MODULE = 'root';
-const PROJECT_REPORTS = 'project';
 
 export function readJavaFindings(projectRoot, options = {}) {
   const { reportBase, report, preset = 'java', projectWide = true } = options;
@@ -69,7 +68,7 @@ export function readJavaFindings(projectRoot, options = {}) {
                 qualifier: module.key === ROOT_MODULE ? '' : module.dir,
                 sourceRoots: module.manifest.sourceRoots ?? [],
               })),
-              mergedRoot: path.join(reportBase, PROJECT_REPORTS),
+              mergedRoot: path.join(reportBase, 'project'),
               manifest,
               kotlin: kotlinPreset,
               policy: options,
@@ -95,6 +94,7 @@ function moduleContextFindings(projectRoot, module, { manifest, options }) {
       lintedRoots: lintedRoots(module.manifest),
       allSourceRoots: manifest.sourceRoots,
       kotlin: preset === 'kotlin' && module.manifest.kotlin === true,
+      formatAdvice: options.formatAdvice,
       javaStyle: options.javaStyle,
       classLimits: {
         thresholds: options.fileLimits,

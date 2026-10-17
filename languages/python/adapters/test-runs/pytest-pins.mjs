@@ -1,4 +1,4 @@
-import { parseIni } from '../configuration/mypy-config.mjs';
+import { parseIni } from '../configuration/ini-parser.mjs';
 import { readProjectFile, toml } from '../../libraries/project-files.mjs';
 
 const CONFIG_FILES = [

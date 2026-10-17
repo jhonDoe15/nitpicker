@@ -1,5 +1,6 @@
 import { changedByDiff } from './base-red/unknown-base.mjs';
 import { comparisonKey } from './fingerprint.mjs';
+import { matchSimilarFindings } from './similar/match.mjs';
 import { normalizeGitPath } from '../git/normalize.mjs';
 import { folderMoves, mainDestination } from '../git/patches/renames.mjs';
 
@@ -19,9 +20,17 @@ export function compareFindings({
   });
   const headByKey = indexFindings({ findings: headFindings, snapshot: 'head' });
   const present = classifyHeadFindings({ headByKey, baseByKey, touchedCode, unknownOnBase });
-  const unmatchedBase = [...baseByKey]
+  const withoutExactMatch = [...baseByKey]
     .filter(([key]) => !headByKey.has(key))
     .map(([, baseFinding]) => baseFinding);
+  const similar = matchSimilarFindings({
+    headFindings: present.newFindings,
+    baseFindings: withoutExactMatch,
+    renames: baseToHeadRenames,
+  });
+  present.newFindings = similar.unmatched;
+  present.unchangedFindings.push(...similar.matched);
+  const unmatchedBase = withoutExactMatch.filter((finding) => !similar.matchedBase.has(finding));
   const ratcheted = holdRatchetedFindings({
     newFindings: present.newFindings,
     unmatchedBase,
