@@ -167,13 +167,19 @@ function readClasspaths(work, module) {
   );
 }
 
+function readTestRuns({ module, reportDir, since, isArchunit, testRuntime }) {
+  const testsRan = collectTestResults({ module, reportDir, since, isArchunit });
+  requireTestngRun({ module, since, isArchunit, testRuntime });
+  copyTestResults({ module, reportDir, since, isArchunit });
+  return testsRan;
+}
+
 function analyzeModule({ module, classpaths, tools, pinned, configs, since }) {
   const reportDir = path.join(module.basedir, MAVEN_REPORT_DIRECTORY);
   const isArchunit = archunitMatcher(module.archunitIncludes);
   const spring = classpaths.mainCompile.some((entry) => SPRING_JAR.test(path.basename(entry)));
-  const testsRan = collectTestResults({ module, reportDir, since, isArchunit });
-  requireTestngRun({ module, since, isArchunit, testRuntime: classpaths.testRuntime });
-  copyTestResults({ module, reportDir, since, isArchunit });
+  const testRuntime = classpaths.testRuntime;
+  const testsRan = readTestRuns({ module, reportDir, since, isArchunit, testRuntime });
   runPmd({ module, reportDir, tools, classpaths, configs, spring });
   runSpotbugs({ module, reportDir, tools });
   runErrorProne({ module, reportDir, tools, classpaths });
