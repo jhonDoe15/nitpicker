@@ -5,6 +5,7 @@ import { detectJavaBuild } from '../builds/java-build.mjs';
 import { EXCEPTION_SEPARATOR } from './java-policy.mjs';
 import { GRADLE_PRESETS, PROJECT_TOOL_CONFIGS, styleToolNames } from './gradle-presets.mjs';
 import { KOTLIN_FORMATTERS } from './kotlin/kotlin-options.mjs';
+import { javaStyle } from './style/java-style.mjs';
 
 export const GRADLE_FAILURE_RULE = 'gradle-failure';
 export const MAVEN_FAILURE_RULE = 'maven-failure';
@@ -167,13 +168,17 @@ function realpathOptional(directory) {
   return directory === undefined ? undefined : realpathSync(directory);
 }
 
+export function readRunnerPolicy(runnerArguments, environment = process.env) {
+  const { projectRoot, policy } = parseRunnerArguments(runnerArguments);
+  const { conventions } = readHeadPolicyFile(environment);
+  return { projectRoot, policy: { ...policy, conventions, javaStyle: javaStyle(conventions) } };
+}
+
 function main(arguments_) {
-  const { projectRoot, policy } = parseRunnerArguments(arguments_);
-  const conventions = readHeadPolicyFile().conventions;
-  const report = analyzeJavaSnapshot(realpathSync(projectRoot), {
-    policy: { ...policy, conventions },
-  });
-  process.stdout.write(`${JSON.stringify(report)}\n`);
+  const { projectRoot, policy } = readRunnerPolicy(arguments_);
+  process.stdout.write(
+    `${JSON.stringify(analyzeJavaSnapshot(realpathSync(projectRoot), { policy }))}\n`,
+  );
 }
 
 if (process.argv[1] !== undefined && realpathSync(process.argv[1]) === import.meta.filename) {
