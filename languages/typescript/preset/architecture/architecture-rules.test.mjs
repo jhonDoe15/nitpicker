@@ -5,6 +5,13 @@ import { cruiseWithConfig } from './test-support/strict-cruise.mjs';
 import config from './fixtures/dependency-cruiser.fixture.config.mjs';
 import productionConfig from '../defaults/dependency-cruiser.config.mjs';
 
+const TEST_PATHS = [
+  '^(?:test|tests|__tests__|e2e)/',
+  '(?:^|/)(?:src)/.*/__tests__/',
+  '(?:^|/)(?:src)/.*\\.(?:test|spec)\\.',
+];
+const PRODUCTION_SOURCE = { path: '(?:^|/)(?:src)/', pathNot: TEST_PATHS };
+
 const projectRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../../..');
 
 function cruiseFixture(name) {
@@ -23,15 +30,13 @@ describe('dependency architecture rules', () => {
       {
         name: 'no-production-to-test',
         severity: 'error',
-        from: { path: '(?:^|/)(?:src)/(?!.*(?:__tests__|\\.test\\.|\\.spec\\.))' },
-        to: {
-          path: '^(?:test|tests|__tests__|e2e)/|(?:^|/)(?:src)/.*/__tests__/|(?:^|/)(?:src)/.*\\.(?:test|spec)\\.',
-        },
+        from: PRODUCTION_SOURCE,
+        to: { path: TEST_PATHS },
       },
       {
         name: 'no-production-cycles',
         severity: 'error',
-        from: { path: '(?:^|/)(?:src)/(?!.*(?:__tests__|\\.test\\.|\\.spec\\.))' },
+        from: PRODUCTION_SOURCE,
         to: { circular: true },
       },
       {
@@ -74,7 +79,7 @@ describe('dependency architecture rules', () => {
         severity: 'error',
         comment:
           'domain/ stays pure and may not import adapters/. Define the dependency as a type in domain/ and let adapters/ implement it. If it is deliberate, add an exception for this rule in nitpicker.config.json (paths are the importing files).',
-        from: { path: '(?:^|/)(?:src)/main/features/[^/]+/domain/' },
+        from: { path: '(?:^|/)(?:src)/main/features/[^/]+/domain/', pathNot: TEST_PATHS },
         to: { path: '(?:^|/)(?:src)/main/features/[^/]+/adapters/' },
       },
       {
@@ -82,7 +87,7 @@ describe('dependency architecture rules', () => {
         severity: 'error',
         comment:
           'domain/ may import only pure Node modules (path, url, util, assert, buffer, events, string_decoder, punycode, querystring, and their subpaths such as path/posix). Do the I/O in adapters/ and pass the result in as a parameter. If it is deliberate, add an exception for this rule in nitpicker.config.json (paths are the importing files).',
-        from: { path: '(?:^|/)(?:src)/main/features/[^/]+/domain/' },
+        from: { path: '(?:^|/)(?:src)/main/features/[^/]+/domain/', pathNot: TEST_PATHS },
         to: {
           dependencyTypes: ['core'],
           pathNot:
@@ -94,7 +99,7 @@ describe('dependency architecture rules', () => {
         severity: 'error',
         comment:
           'domain/ may not import network or database clients. Call the client from adapters/ and pass the data into domain/ as a parameter. If it is deliberate, add an exception for this rule in nitpicker.config.json (paths are the importing files).',
-        from: { path: '(?:^|/)(?:src)/main/features/[^/]+/domain/' },
+        from: { path: '(?:^|/)(?:src)/main/features/[^/]+/domain/', pathNot: TEST_PATHS },
         to: {
           path: '(?:^|(?:^|/)node_modules/)(?:axios|node-fetch|undici|got|ky|ws|pg|mysql|mysql2|mongodb|mongoose|redis|ioredis|sqlite3|better-sqlite3|knex|sequelize|typeorm|drizzle-orm|@prisma/client|@aws-sdk/[^/]+)(?:/|$)',
         },
@@ -104,7 +109,7 @@ describe('dependency architecture rules', () => {
         severity: 'error',
         comment:
           'domain/ may not import the logger. Return a result describing what happened and let adapters/ log it. If it is deliberate, add an exception for this rule in nitpicker.config.json (paths are the importing files).',
-        from: { path: '(?:^|/)(?:src)/main/features/[^/]+/domain/' },
+        from: { path: '(?:^|/)(?:src)/main/features/[^/]+/domain/', pathNot: TEST_PATHS },
         to: {
           path: [
             '(?:^|(?:^|/)node_modules/)(?:pino|winston|bunyan|log4js|loglevel|consola|debug)(?:/|$)',
@@ -118,7 +123,7 @@ describe('dependency architecture rules', () => {
         severity: 'error',
         comment:
           'domain/ may not import module state (state/, *-state, *-store files). Receive the state as a parameter and return the new value. If it is deliberate, add an exception for this rule in nitpicker.config.json (paths are the importing files).',
-        from: { path: '(?:^|/)(?:src)/main/features/[^/]+/domain/' },
+        from: { path: '(?:^|/)(?:src)/main/features/[^/]+/domain/', pathNot: TEST_PATHS },
         to: { path: ['(?:^|/)state/', '(?:^|/)[^/]*[.-](?:state|store)\\.[cm]?[jt]sx?$'] },
       },
       {
@@ -126,7 +131,7 @@ describe('dependency architecture rules', () => {
         severity: 'error',
         comment:
           'domain/ may not import ID or random-data libraries (uuid, nanoid, cuid, ulid, faker). Take the ID as a parameter from adapters/. If it is deliberate, add an exception for this rule in nitpicker.config.json (paths are the importing files).',
-        from: { path: '(?:^|/)(?:src)/main/features/[^/]+/domain/' },
+        from: { path: '(?:^|/)(?:src)/main/features/[^/]+/domain/', pathNot: TEST_PATHS },
         to: {
           path: '(?:^|(?:^|/)node_modules/)(?:uuid|nanoid|cuid|@paralleldrive/cuid2|ulid|@faker-js/faker|faker)(?:/|$)',
         },
@@ -136,7 +141,7 @@ describe('dependency architecture rules', () => {
         severity: 'error',
         comment:
           'domain/ reaches Node I/O or a client through a shared/ module it imports. Move that dependency out of the shared module, or do the work in adapters/ and pass the result into domain/ as a parameter. If it is deliberate, add an exception for this rule in nitpicker.config.json (paths are the importing files).',
-        from: { path: '(?:^|/)(?:src)/main/features/[^/]+/domain/' },
+        from: { path: '(?:^|/)(?:src)/main/features/[^/]+/domain/', pathNot: TEST_PATHS },
         to: {
           path: [
             '^(?:node:)?(?:fs|child_process|net|http|https|http2|tls|dgram|dns|cluster|worker_threads|os|readline|crypto|perf_hooks|timers|zlib)(?:$|/)',
