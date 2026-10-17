@@ -6,6 +6,7 @@ import {
   offsetOf,
   packageOf,
   readJavaSource,
+  staticImportsOf,
 } from './java-sources.mjs';
 
 export const ENUM_PREDICATE_RULE = 'ExhaustiveEnumPredicate';
@@ -16,6 +17,7 @@ const ANNOTATION = /@[\w.]+(?:\s*\([^()]*\))?/gu;
 const IDENTIFIER = /^[A-Za-z_$][\w$]*/u;
 const DOTTED_NAME = /[A-Za-z_$][\w$]*(?:\s*\.\s*[A-Za-z_$][\w$]*)+/gu;
 const TYPE_NAME = /^[A-Z]/u;
+const BARE_CONSTANT = /(?<![\w$.])([A-Z][A-Z0-9_]*)(?![\w$]|\s*[.(])/gu;
 
 function splitTopLevel(text) {
   const parts = [''];
@@ -86,13 +88,38 @@ function declarationFor(declarations, text, name) {
   return sameConstants(visible.length > 0 ? visible : declarations);
 }
 
-function comparedConstants(expression) {
+function simpleName(qualified) {
+  return qualified.split('.').at(-1);
+}
+
+function staticOwner(imports, name, enums) {
+  const single = imports.find((entry) => entry.name === name);
+  if (single !== undefined) {
+    return simpleName(single.owner);
+  }
+  const owners = imports
+    .filter((entry) => entry.name === '*')
+    .map((entry) => simpleName(entry.owner))
+    .filter((type) => (enums().get(type) ?? []).some(({ constants }) => constants.includes(name)));
+  return owners.length === 1 ? owners[0] : undefined;
+}
+
+function comparedConstants(expression, { text, enums }) {
   const byType = new Map();
+  const add = (type, constant) =>
+    byType.set(type, new Set([...(byType.get(type) ?? []), constant]));
   for (const [name] of expression.matchAll(DOTTED_NAME)) {
     const parts = name.split('.').map((part) => part.trim());
     const [type, constant] = parts.slice(parts.length - 2);
     if (TYPE_NAME.test(type)) {
-      byType.set(type, new Set([...(byType.get(type) ?? []), constant]));
+      add(type, constant);
+    }
+  }
+  const imports = staticImportsOf(text);
+  for (const [, name] of expression.matchAll(BARE_CONSTANT)) {
+    const type = imports.length === 0 ? undefined : staticOwner(imports, name, enums);
+    if (type !== undefined) {
+      add(type, name);
     }
   }
   return byType;
@@ -104,7 +131,7 @@ function partialEnum(finding, { projectRoot, enums }) {
     return undefined;
   }
   const expression = expressionAt(text, offsetOf(text, finding.location));
-  for (const [type, compared] of comparedConstants(expression)) {
+  for (const [type, compared] of comparedConstants(expression, { text, enums })) {
     const declared = declarationFor(enums().get(type), text, type);
     const constants = declared?.constants ?? [];
     const isPartial =

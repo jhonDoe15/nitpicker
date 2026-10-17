@@ -1,5 +1,9 @@
 package shop;
 
+import static shop.Status.CANCELLED;
+import static shop.Status.SHIPPED;
+
+import java.util.Collection;
 import java.util.EnumSet;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
@@ -39,5 +43,41 @@ public final class Orders {
 
   public static long withFee(List<Long> cents) {
     return Prices.sum(cents) + Prices.FEE;
+  }
+
+  public static boolean isClosed(Status status) {
+    return status == SHIPPED || status == CANCELLED; // violation: ExhaustiveEnumPredicate
+  }
+
+  public static boolean isPending(Delivery delivery) {
+    return delivery.status() == Status.NEW // violation: ExhaustiveEnumPredicate
+        || delivery.status() == Status.PAID;
+  }
+
+  public static boolean isDue(Status status, boolean paid) {
+    return (status == Status.NEW || status == Status.PAID) // violation: ExhaustiveEnumPredicate
+        && paid;
+  }
+
+  public static String label(Status status) {
+    return status == Status.NEW || status == Status.PAID // violation: ExhaustiveEnumPredicate
+        ? "open"
+        : "closed";
+  }
+
+  public static boolean isEitherNew(Delivery first, Delivery second) {
+    return first.status() == Status.NEW || second.status() == Status.NEW;
+  }
+
+  public static Delivery of(Status status) {
+    return delivery(status);
+  }
+
+  public static List<Long> copy(Collection<Long> cents) {
+    return List.copyOf(cents);
+  }
+
+  private static Delivery delivery(Status status) {
+    return new Delivery(status);
   }
 }

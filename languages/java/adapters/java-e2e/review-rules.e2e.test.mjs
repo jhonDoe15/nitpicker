@@ -17,6 +17,7 @@ const REVIEW_RULES = new Set([
   'StaticForwardingWrapper',
   'SingularAndPluralMember',
   'SpringUnusedContext',
+  'TestClassWithoutTestCases',
   'test-only-export',
 ]);
 const roots = [];
