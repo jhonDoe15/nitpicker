@@ -80,11 +80,6 @@ export function mutantRuleId(status) {
   return `mutant-${status.toLowerCase()}`;
 }
 
-/**
- * Rules held to the "touched code" standard: a finding on a line the change touched is new even
- * if the base had it. `tools` limits a rule to findings from those tools (the TypeScript check of
- * the same name keys its identity on branch source instead).
- */
 const TOUCHED_CODE_RULES = [
   { rule: RULE_IDS.changedBranchCoverage, tools: ['jacoco'] },
   { rule: RULE_IDS.changedBranchCoverage, tools: ['coverage-py'] },
