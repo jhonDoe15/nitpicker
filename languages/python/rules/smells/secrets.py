@@ -1,7 +1,7 @@
 import ast
 import re
 
-from checks.common import dotted_name, finding, is_log_call, words_of
+from checks.common import dotted_name, finding, words_of
 
 TOKEN_SHAPES = [
     re.compile(r"\bAKIA[0-9A-Z]{16}\b"),
@@ -29,10 +29,12 @@ CHARACTER_CLASSES = [
 MINIMUM_LENGTH = 6
 SECRET_NAME = re.compile(
     r"(?:password|passwd|pwd|passphrase|secret|token|credentials?|apikey|privatekey|accesskey"
-    r"|secretkey|authkey|signingkey|encryptionkey)$"
+    r"|secretkey|authkey|signingkey|encryptionkey|hmackey|jwtkey)$"
 )
-CONSTANT_NAME = re.compile(r"^[A-Z][A-Z0-9_]*$")
-STATUS_KEYS = {"has", "is"}
+VALUE_SUFFIXES = {"value", "raw", "str", "string", "text", "plain"}
+KEY_QUALIFIERS = {"hmac", "jwt", "signing", "private", "encryption", "auth", "secret"}
+LONG_SECRET = 8
+IDENTIFIER_TEXT = re.compile(r"^[a-z]+(?:[_-][a-z]+)*$")
 URL_SCHEME = re.compile(r"^[a-z][a-z0-9+.-]*://", re.I)
 ENVIRONMENT_READERS = {"os.getenv", "os.environ.get"}
 
@@ -57,21 +59,59 @@ def has_credential_shape(text):
 
 
 def is_secret_name(name):
-    joined = "".join(words_of(name))
-    return bool(SECRET_NAME.search(re.sub(r"\d", "", joined)))
+    words = words_of(name)
+    while len(words) > 1 and words[-1] in VALUE_SUFFIXES:
+        words = words[:-1]
+    if len(words) > 1 and words[-1] == "key" and words[-2] in KEY_QUALIFIERS:
+        return True
+    return bool(SECRET_NAME.search(re.sub(r"\d", "", "".join(words))))
+
+
+def looks_like_long_secret(text):
+    if len(text) < LONG_SECRET or re.search(r"\s", text) or PLACEHOLDER.match(text):
+        return False
+    return not (
+        ENVIRONMENT_NAME.match(text)
+        or NAME_PATH.match(text)
+        or IDENTIFIER_TEXT.match(text)
+    )
 
 
 def is_secret_assignment(text, name):
     if has_credential_shape(text) or URL_SCHEME.match(text):
         return False
-    return bool(looks_like_secret_value(text)) and "".join(words_of(text)) != "".join(
-        words_of(name)
-    )
+    if "".join(words_of(text)) == "".join(words_of(name)):
+        return False
+    return bool(looks_like_secret_value(text) or looks_like_long_secret(text))
+
+
+def folded_text(node):
+    if isinstance(node, ast.Constant) and isinstance(node.value, str):
+        return node.value
+    if isinstance(node, ast.BinOp) and isinstance(node.op, ast.Add):
+        left, right = folded_text(node.left), folded_text(node.right)
+        return left + right if left is not None and right is not None else None
+    if isinstance(node, ast.JoinedStr):
+        parts = [folded_text(v) for v in node.values if isinstance(v, ast.Constant)]
+        return "".join(parts) if parts and all(p is not None for p in parts) else None
+    return None
+
+
+def wrapped_value(node, aliases):
+    if not isinstance(node, ast.Call):
+        return node
+    name = (dotted_name(node.func, aliases) or "").rsplit(".", 1)[-1]
+    if name in {"field", "Field"}:
+        defaults = [k.value for k in node.keywords if k.arg == "default"]
+        return defaults[0] if defaults else (node.args[0] if node.args else node)
+    return node
 
 
 def literal_strings(node, aliases):
-    if isinstance(node, ast.Constant) and isinstance(node.value, str):
-        return [node]
+    node = wrapped_value(node, aliases)
+    text = folded_text(node)
+    if text is not None:
+        return [(text, node)]
     if isinstance(node, ast.BoolOp):
         return [
             leaf for value in node.values for leaf in literal_strings(value, aliases)
@@ -131,9 +171,22 @@ def hardcoded_findings(context):
     for name, value, node in assignments(context.tree):
         if name is None or not is_secret_name(name):
             continue
-        for literal in literal_strings(value, context.aliases):
-            if is_secret_assignment(literal.value, name):
+        for text, literal in literal_strings(value, context.aliases):
+            if is_secret_assignment(text, name):
                 found.append(finding(context.path, "hardcoded-secret", name, literal))
+    return found + wrapped_secret_findings(context)
+
+
+def wrapped_secret_findings(context):
+    found = []
+    for node in ast.walk(context.tree):
+        if not isinstance(node, ast.Call) or not node.args:
+            continue
+        name = (dotted_name(node.func, context.aliases) or "").rsplit(".", 1)[-1]
+        text = folded_text(node.args[0])
+        if name in {"SecretStr", "SecretBytes"} and text is not None:
+            if has_credential_shape(text) or looks_like_long_secret(text):
+                found.append(finding(context.path, "hardcoded-secret", name, node))
     return found
 
 
@@ -147,75 +200,7 @@ def shape_findings(context):
     ]
 
 
-def own_names(node):
-    if isinstance(node, ast.Name):
-        return [node.id]
-    if isinstance(node, ast.Attribute):
-        return [node.attr]
-    return []
-
-
-def logged_children(node):
-    if isinstance(node, ast.JoinedStr):
-        return [v.value for v in node.values if isinstance(v, ast.FormattedValue)]
-    if isinstance(node, ast.Dict):
-        return [v for k, v in zip(node.keys, node.values) if k is not None]
-    if isinstance(node, (ast.List, ast.Tuple, ast.Set)):
-        return list(node.elts)
-    if isinstance(node, ast.BinOp) and isinstance(node.op, (ast.Add, ast.Mod)):
-        return [node.left, node.right]
-    if isinstance(node, ast.BoolOp):
-        return list(node.values)
-    if isinstance(node, ast.Starred):
-        return [node.value]
-    if isinstance(node, ast.keyword):
-        return [node.value]
-    return []
-
-
-def dictionary_names(node):
-    names = []
-    if isinstance(node, ast.Dict):
-        for key, value in zip(node.keys, node.values):
-            if isinstance(key, ast.Constant) and isinstance(key.value, str):
-                if own_names(value):
-                    names.append(key.value)
-    return names
-
-
-def logged_names(arguments):
-    names = []
-    pending = list(arguments)
-    for node in pending:
-        names.extend(own_names(node))
-        names.extend(dictionary_names(node))
-        pending.extend(logged_children(node))
-    return names
-
-
-def is_status_name(name):
-    return (words_of(name) or [""])[0] in STATUS_KEYS
-
-
-def log_findings(context):
-    found = []
-    for node in ast.walk(context.tree):
-        if not is_log_call(node, context.aliases):
-            continue
-        names = logged_names(list(node.args) + list(node.keywords))
-        secrets = {
-            name
-            for name in names
-            if is_secret_name(name)
-            and not CONSTANT_NAME.match(name)
-            and not is_status_name(name)
-        }
-        for name in sorted(secrets):
-            found.append(finding(context.path, "secret-in-log", name, node))
-    return found
-
-
 def check(context):
     if context.tests:
         return []
-    return hardcoded_findings(context) + shape_findings(context) + log_findings(context)
+    return hardcoded_findings(context) + shape_findings(context)
