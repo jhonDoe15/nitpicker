@@ -1,4 +1,4 @@
-import { globMatcher } from '../glob.mjs';
+import { globMatcher } from '../paths/glob.mjs';
 
 export const SAMPLE_LIMIT = 400;
 

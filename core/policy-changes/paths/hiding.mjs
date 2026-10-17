@@ -1,4 +1,4 @@
-import { globMatcher } from '../../../shared/glob.mjs';
+import { globMatcher } from '../../../shared/paths/glob.mjs';
 import { resolveLayoutFor } from '../../../languages/typescript/preset/layout.mjs';
 import { isUnder } from '../policy-scope.mjs';
 

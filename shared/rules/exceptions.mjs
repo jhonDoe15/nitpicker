@@ -2,7 +2,7 @@
 //
 // Language-neutral: shared by the file limits and the project-level checks of a language preset.
 
-import { globMatcher } from '../glob.mjs';
+import { globMatcher } from '../paths/glob.mjs';
 import { EXCEPTION_HINT, renderMessage } from '../policy.mjs';
 
 /**

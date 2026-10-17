@@ -1,7 +1,7 @@
 import { existsSync } from 'node:fs';
 import path from 'node:path';
 import { filesUnder } from '../../../shared/filesystem.mjs';
-import { escapeRegExp, globMatcher, globToRegExpSource } from '../../../shared/glob.mjs';
+import { escapeRegExp, globMatcher, globToRegExpSource } from '../../../shared/paths/glob.mjs';
 import {
   isJavascriptPolicy,
   JAVASCRIPT_EXTENSIONS,

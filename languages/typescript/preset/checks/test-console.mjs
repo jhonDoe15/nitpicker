@@ -16,7 +16,7 @@ export function testConsoleCheckFor(exclusions) {
       'languages/typescript/adapters/quality-areas/runners/tooling.mjs',
       'languages/typescript/preset/head-policy.mjs',
       'languages/typescript/preset/test-console/vitest-reporter.config.mjs',
-      'shared/glob.mjs',
+      'shared/paths/glob.mjs',
       'shared/policy.mjs',
       'shared/rules/finding-helpers.mjs',
       'shared/rules/exceptions.mjs',

@@ -1,35 +1,4 @@
-// Glob matching shared by every language: `**`, `*`, `?` and `{a,b}` over `/` paths.
-
 const LINE_TERMINATORS = new Set(['\n', '\r', ' ', ' ']);
-
-/** Translates one glob (`**`, `*`, `?`, `{a,b}`) into a regular expression source for `/` paths. */
-export function globToRegExpSource(glob) {
-  let source = '';
-  let braceDepth = 0;
-  for (let index = 0; index < glob.length; index += 1) {
-    const character = glob[index];
-    if (character === '*' && glob[index + 1] === '*') {
-      const followedBySlash = glob[index + 2] === '/';
-      source += followedBySlash ? '(?:.*/)?' : '.*';
-      index += followedBySlash ? 2 : 1;
-    } else if (character === '*') {
-      source += '[^/]*';
-    } else if (character === '?') {
-      source += '[^/]';
-    } else if (character === '{') {
-      braceDepth += 1;
-      source += '(?:';
-    } else if (character === '}' && braceDepth > 0) {
-      braceDepth -= 1;
-      source += ')';
-    } else if (character === ',' && braceDepth > 0) {
-      source += '|';
-    } else {
-      source += escapeRegExp(character);
-    }
-  }
-  return `^(?:${source})$`;
-}
 
 function isNotSlash(character) {
   return character !== '/';
@@ -43,16 +12,52 @@ function globToken(glob, index) {
   const character = glob[index];
   if (character === '*' && glob[index + 1] === '*') {
     return glob[index + 2] === '/'
-      ? { kind: 'directories', length: 3 }
-      : { kind: 'repeat', test: isNotLineTerminator, length: 2 };
+      ? { kind: 'directories', length: 3, source: '(?:.*/)?' }
+      : { kind: 'repeat', test: isNotLineTerminator, length: 2, source: '.*' };
   }
   if (character === '*') {
-    return { kind: 'repeat', test: isNotSlash, length: 1 };
+    return { kind: 'repeat', test: isNotSlash, length: 1, source: '[^/]*' };
   }
   if (character === '?') {
-    return { kind: 'one', test: isNotSlash, length: 1 };
+    return { kind: 'one', test: isNotSlash, length: 1, source: '[^/]' };
   }
-  return { kind: 'one', test: (other) => other === character, length: 1 };
+  return {
+    kind: 'one',
+    test: (other) => other === character,
+    length: 1,
+    source: escapeRegExp(character),
+  };
+}
+
+function sourceToken(glob, index, depth) {
+  const character = glob[index];
+  if (character === '{') {
+    return { source: '(?:', length: 1, depth: depth + 1 };
+  }
+  if (character === '}' && depth > 0) {
+    return { source: ')', length: 1, depth: depth - 1 };
+  }
+  if (character === ',' && depth > 0) {
+    return { source: '|', length: 1, depth };
+  }
+  const { source, length } = globToken(glob, index);
+  return { source, length, depth };
+}
+
+/** Translates one glob (`**`, `*`, `?`, `{a,b}`) into a regular expression source for `/` paths. */
+export function globToRegExpSource(glob) {
+  let source = '';
+  let depth = 0;
+  let next = 0;
+  for (const index of glob.split('').keys()) {
+    if (index >= next) {
+      const token = sourceToken(glob, index, depth);
+      source += token.source;
+      depth = token.depth;
+      next = index + token.length;
+    }
+  }
+  return `^(?:${source})$`;
 }
 
 function parseBrace(open, character) {

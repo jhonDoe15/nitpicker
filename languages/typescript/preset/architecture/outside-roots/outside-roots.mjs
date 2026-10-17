@@ -1,4 +1,4 @@
-import { escapeRegExp } from '../../../../../shared/glob.mjs';
+import { escapeRegExp } from '../../../../../shared/paths/glob.mjs';
 
 export const NO_IMPORT_OUTSIDE_ROOTS = 'no-import-outside-roots';
 

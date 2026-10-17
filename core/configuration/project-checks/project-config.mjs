@@ -2,7 +2,7 @@ import { existsSync } from 'node:fs';
 import path from 'node:path';
 import { configError } from '../../../shared/config.mjs';
 import { filesUnder, pathInside } from '../../../shared/filesystem.mjs';
-import { globMatcher } from '../../../shared/glob.mjs';
+import { globMatcher } from '../../../shared/paths/glob.mjs';
 import {
   sourceRoots as defaultSourceRoots,
   testRoots as defaultTestRoots,

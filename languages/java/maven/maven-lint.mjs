@@ -10,7 +10,7 @@ import {
 } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
-import { escapeRegExp } from '../../../shared/glob.mjs';
+import { escapeRegExp } from '../../../shared/paths/glob.mjs';
 import { javaCommand, runJava } from './maven-command.mjs';
 import { GRADLE_DIRECTORY } from '../builds/java-build.mjs';
 

@@ -1,6 +1,6 @@
 import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import path from 'node:path';
-import { globMatcher } from '../../../../shared/glob.mjs';
+import { globMatcher } from '../../../../shared/paths/glob.mjs';
 import { collectFileLimitFindings } from '../../../../shared/rules/file-limits.mjs';
 import { hash } from '../../../../shared/rules/finding-helpers.mjs';
 import { evaluateStructure } from '../../../../shared/rules/structure.mjs';

@@ -2,7 +2,7 @@ import { existsSync, realpathSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import path from 'node:path';
 import { PACKAGE_ROOT, resolveTool } from '../../../../core/tooling/tool-resolution.mjs';
-import { escapeRegExp } from '../../../../shared/glob.mjs';
+import { escapeRegExp } from '../../../../shared/paths/glob.mjs';
 import { nativeDiagnostics } from './native-diagnostics.mjs';
 
 const NO_INPUTS_CODE = 18003;
