@@ -558,7 +558,13 @@ resolved plus a new finding, as in the TypeScript check.
   `@DisplayName`, with its annotations, inside the class the report names: a `@Nested` test
   (`CalcTest$WhenFull`) is looked up in that nested class, and named `CalcTest.WhenFull` in the
   message. `void` and `fun` methods count, and `@TestFactory` methods that return dynamic tests. A
-  test is counted when its method text differs from the base, or the file is new. A name that maps
+  test is counted when its method text differs from the base, or the file is new. A file the base
+  does not have at that path is first looked up by its file name under the base test roots, among
+  the base files the change removed or renamed, so a test file moved to another package with the
+  test unchanged reports nothing, while a copy next to an original that still exists is new. A test
+  the class inherits (an abstract contract test in a superclass) is found by following `extends` (or
+  Kotlin's `: Base()`) through the test roots, reported at the superclass method, and counted when
+  that method differs from the base, or the class is new or extends another class. A name that maps
   to no method (a default `[1] 1` or custom parameterized name, a dynamic test) is counted when the
   file is new or one of its class's `@ParameterizedTest`, `@RepeatedTest`, `@TestFactory` or
   `@TestTemplate` methods changed. Slow tests the change does not touch stay baselined, and the base
@@ -1396,8 +1402,26 @@ decides what counts as a literal secret, and `java-spring.mjs` applies the rules
   YAML, a `#---` or `!---` document in a properties file. The plain `application.*` main document has
   none. The expression is split on `, | & ! ( )` and spaces. A document is exempt from a rule only
   when it has at least one profile, every positive token is exempt for that rule, and the expression
-  has no `!`. Test profiles are `test` or a name starting with `test`, `it` and `integration-test`;
-  local profiles are `local`, `dev` and `development`.
+  has no `!`. Test profiles are `test`, a name starting with `test`, any name with a `test`, `tests`,
+  `it` or `integration` word (words split on `-`, `_` and `.`, so `integration-test` and `ci-test`),
+  and every profile the project's tests use that is not also configured for the main application.
+  A profile counts as used by the tests when `application-<profile>.(properties|yml|yaml)` or a
+  `spring.profiles.active` value sits under test resources (`src/test/resources`, the sibling
+  `resources` of each test source root), or the profile is named by `@ActiveProfiles` or
+  `spring.profiles.active=` in the test sources (`src/test/java`, `src/test/kotlin` or the manifest's
+  `testSourceRoots`). A profile is not test-only when
+  `application-<profile>.(properties|yml|yaml)` also exists in main resources, so `docker`, `k8s` or
+  `qa` stay checked; a main-resources file for a profile is exempt only through a test word in its
+  name. The set the tests use is measured on the merge base when the run has one, so a branch cannot exempt a profile
+  by adding a test that activates it. Words are compared case-insensitively, trailing digits are
+  dropped from each word (`prod2`, `stage1`), and a word that begins or ends with a production word
+  followed or preceded by a two-letter region or a known word (`testprod`, `prodeu`) counts too, while
+  `product`, `staged` and `livestock` do not. A name with a `prod`, `prd`, `production`, `live`,
+  `preprod`, `staging`, `stage`, `stg` or `uat` word is never a test or local profile, whatever its
+  other words (`prod-test`, `prod-dev`) and even when a test activates it. Local profiles are names
+  with a `local`, `dev` or `development` word, so `local-dev` counts. A profile built from a constant
+  (`@ActiveProfiles(Profiles.TEST)`) cannot be read; name it with a literal or add an exception for
+  the rule.
 - **True.** Wherever a rule needs `true`, Spring's spellings `true`, `on`, `yes` and `1` count, in
   any case.
 - **Rules**, all enforceable. Each message ends with the exception line to add to
@@ -1437,8 +1461,8 @@ decides what counts as a literal secret, and `java-spring.mjs` applies the rules
   its nesting, but `<<: *b` merges and `*ref` values are not expanded. A flow map or sequence that
   continues on later lines (`include: [` ... `]`), multi-line quoted or plain scalars (their
   continuation lines are skipped) and `? ` complex keys are not read; a YAML list of maps is
-  skipped. Profile groups, `spring.config.import` files and `spring.profiles.active` are not
-  followed.
+  skipped. Profile groups and `spring.config.import` files are not followed, and
+  `spring.profiles.active` is read only to learn the profiles the tests use.
 - **Tests.** `spring-config-parser.test.mjs` (properties and YAML parsing, line endings, byte
   order mark, continuations, escapes, indexes, flow collections, anchors), `spring-secrets.test.mjs`
   (key words, value judgement), `java-spring.test.mjs` (relaxed keys, open-in-view, ddl-auto,

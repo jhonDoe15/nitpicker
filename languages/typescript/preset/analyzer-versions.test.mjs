@@ -48,3 +48,19 @@ describe('ESLint analyzer versions', () => {
     ).toBe('5.9.3;typescript-native@7.0.2');
   });
 });
+
+describe('package-bundled analyzer versions', () => {
+  it.each(['crap', 'structure'])(
+    'resolves %s from the TypeScript package of nitpicker, not from the project',
+    (analyzer) => {
+      const calls = [];
+      const resolve = (name, options) => {
+        calls.push({ name, projectRoot: options.projectRoot });
+        return { version: '5.4.3' };
+      };
+
+      expect(resolveAnalyzerVersion(analyzer, '/project', resolve)).toBe('5.4.3');
+      expect(calls).toEqual([{ name: 'typescript', projectRoot: PACKAGE_ROOT }]);
+    },
+  );
+});
