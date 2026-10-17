@@ -38,9 +38,14 @@ jobs:
           node-version: 24
           cache: npm
           cache-dependency-path: package-lock.json
+      # 3.9 and 3.10 sit beside 3.13 (the default, listed last): the rules script runs on the oldest
+      # supported Python and reports one skipped error below it.
       - uses: actions/setup-python@v5
         with:
-          python-version: '3.13'
+          python-version: |
+            3.9
+            3.10
+            3.13
           cache: pip
           cache-dependency-path: .github/python-e2e-constraints.txt
       # The suite finds ruff, black, mypy, pyright, basedpyright, coverage, pytest and uv on the PATH and builds the

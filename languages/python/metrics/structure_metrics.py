@@ -4,13 +4,8 @@ import os
 import sys
 import warnings
 
-FUNCTIONS = (ast.FunctionDef, ast.AsyncFunctionDef)
-SCOPES = (*FUNCTIONS, ast.ClassDef)
-BLOCKS = tuple(
-    getattr(ast, name)
-    for name in ("stmt", "excepthandler", "match_case")
-    if hasattr(ast, name)
-)
+from class_metrics import FUNCTIONS, SCOPES, blocks_of, class_entries, first_line, has_decorator
+
 CONTROL = tuple(
     getattr(ast, name)
     for name in ("If", "For", "AsyncFor", "While", "Match", "ExceptHandler")
@@ -35,10 +30,6 @@ def has_docstring(body):
         and isinstance(first.value, ast.Constant)
         and isinstance(first.value.value, str)
     )
-
-
-def blocks_of(node):
-    return [child for child in ast.iter_child_nodes(node) if isinstance(child, BLOCKS)]
 
 
 def docstring_lines(function):
@@ -105,13 +96,6 @@ def complexity(function):
     return total
 
 
-def has_decorator(function, name):
-    return any(
-        getattr(decorator, "id", getattr(decorator, "attr", None)) == name
-        for decorator in function.decorator_list
-    )
-
-
 def is_static(function):
     return has_decorator(function, "staticmethod")
 
@@ -123,10 +107,6 @@ def parameter_count(function, owner):
     count += (arguments.vararg is not None) + (arguments.kwarg is not None)
     is_method = isinstance(owner, ast.ClassDef) and not is_static(function)
     return count - (1 if is_method and positional else 0)
-
-
-def first_line(function):
-    return min([function.lineno] + [item.lineno for item in function.decorator_list])
 
 
 def function_entry(function, owners):
@@ -159,32 +139,60 @@ def function_entries(module):
     return entries
 
 
-def file_entries(project, relative):
+def import_entries(module):
+    entries = []
+    for node in ast.walk(module):
+        if isinstance(node, ast.Import):
+            entries.extend({"module": a.name, "asname": a.asname} for a in node.names)
+        elif isinstance(node, ast.ImportFrom):
+            entries.extend(
+                {"level": node.level, "module": node.module, "name": a.name, "asname": a.asname}
+                for a in node.names
+            )
+    return entries
+
+
+def parse_file(project, relative):
     with open(os.path.join(project, relative), "rb") as handle:
         source = handle.read()
     try:
-        module = ast.parse(source, relative)
+        return ast.parse(source, relative)
     except (SyntaxError, ValueError):
-        return []
+        return None
     except (RecursionError, MemoryError) as error:
         raise SystemExit(
             f"structure_metrics: {relative} is too deeply nested for the Python parser "
             f"({type(error).__name__}), so its functions cannot be measured: "
             "split the very long expression or data literal into smaller parts"
         )
-    return [dict(entry, file=relative) for entry in function_entries(module)]
+
+
+def file_entries(project, relative):
+    module = parse_file(project, relative)
+    if module is None:
+        return [], None
+    functions = [dict(entry, file=relative) for entry in function_entries(module)]
+    classes = [dict(entry, file=relative) for entry in class_entries(module)]
+    return functions, {"classes": classes, "imports": import_entries(module)}
 
 
 def main(arguments):
-    output, project, listing = arguments
+    output, project, listing, *classes_output = arguments
     warnings.simplefilter("ignore")
     with open(listing, encoding="utf-8") as handle:
         files = [line for line in handle.read().split("\n") if line]
     entries = []
+    classes = {}
     for relative in files:
-        entries.extend(file_entries(project, relative))
+        functions, described = file_entries(project, relative)
+        entries.extend(functions)
+        if described is not None:
+            classes[relative] = described
     with open(output, "w", encoding="utf-8") as handle:
         json.dump(entries, handle)
+    if classes_output:
+        with open(classes_output[0], "w", encoding="utf-8") as handle:
+            json.dump(classes, handle)
 
 
 if __name__ == "__main__":

@@ -217,6 +217,18 @@ describe('Python file limits', () => {
     ]);
   });
 
+  it('keeps production modules when python_files matches every file, testing the testpaths folders', () => {
+    write(
+      ['pyproject.toml'],
+      '[tool.pytest.ini_options]\ntestpaths = ["tests"]\npython_files = ["*.py"]\n',
+    );
+    write(['app/service.py', 'tests/checks.py'], 'VALUE = 1\n'.repeat(480));
+
+    expect(findingsWith({}).map(([rule, findingPath]) => [rule, findingPath])).toEqual([
+      ['file-lines-limit', 'app/service.py'],
+    ]);
+  });
+
   it('honours exclude and file-limit exceptions', () => {
     write(['src/gen/a.py', 'src/gen/b.py', 'src/gen/c.py', 'src/icons/a.py', 'src/icons/b.py']);
     write(['src/icons/c.py']);
