@@ -39,7 +39,7 @@ describe('import-linter findings', () => {
       path: 'src/app/domain/model.py',
       identity: 'contract:Layered:app.domain.model -> app.web.views',
       message:
-        'Import contract "Layered" is broken: app.domain.model -> app.web.views. Remove the import, or lift this file with exclude in nitpicker.config.json.',
+        'Import contract "Layered" is broken: app.domain.model -> app.web.views. Remove the import.',
       classification: 'enforceable',
       location: { line: 2 },
     });
@@ -49,7 +49,7 @@ describe('import-linter findings', () => {
       path: 'src/app/web/views.py',
       identity: 'contract:Independent:app.web.views -> app.infra.db',
       message:
-        'Import contract "Independent" is broken: app.web.views -> app.infra.db. Remove the import, or lift this file with exclude in nitpicker.config.json.',
+        'Import contract "Independent" is broken: app.web.views -> app.infra.db. Remove the import.',
       classification: 'enforceable',
       location: { line: 1 },
     });
@@ -83,7 +83,7 @@ describe('import-linter findings', () => {
         path: 'src/q/a/x.py',
         identity: 'contract:a must not reach c:q.a.x -> q.b.y -> q.c.w',
         message:
-          'Import contract "a must not reach c" is broken: q.a.x -> q.b.y -> q.c.w. Remove the import, or lift this file with exclude in nitpicker.config.json.',
+          'Import contract "a must not reach c" is broken: q.a.x -> q.b.y -> q.c.w. Remove the import.',
         classification: 'enforceable',
         location: { line: 2 },
       },

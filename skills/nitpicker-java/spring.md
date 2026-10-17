@@ -69,8 +69,9 @@ Tests:
   `MockMvc`, `WebTestClient`, `TestRestTemplate`). Unit-test a class by creating it with `new`, and
   test one layer with a slice such as `@WebMvcTest` or `@DataJpaTest` (`SpringUnusedContext`).
 
-`application*.properties` and `application*.yml` (findings `spring/<rule>`; test profiles, and
-local or dev ones where noted, are exempt):
+`application*.properties` and `application*.yml` (findings `spring/<rule>`; test profiles, including
+the ones your tests activate with `@ActiveProfiles` or have a file for under `src/test/resources`,
+and local or dev ones where noted, are exempt):
 
 - With JPA, set `spring.jpa.open-in-view=false`.
 - `spring.jpa.hibernate.ddl-auto` is `none` or `validate` (schema changes go in migrations), and

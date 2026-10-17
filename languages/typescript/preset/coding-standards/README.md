@@ -5,7 +5,8 @@ exit 1; parser, configuration, and analyzer failures fail with exit 2.
 
 ## Rules
 
-- Preserve wrapped unclassified error causes and use Pino's structured `err` field.
+- Preserve wrapped unclassified error causes and use Pino's (or bunyan's) structured `err` field;
+  the rule stays silent when the project only has another logger.
 - Use runtime narrowing instead of production `any` or type assertions.
 - Inject internal collaborators instead of replacing production modules in tests.
 - Advance fake clocks explicitly instead of polling with `waitFor`.
@@ -15,8 +16,9 @@ exit 1; parser, configuration, and analyzer failures fail with exit 2.
   and external publication side effects out of source callbacks.
 - Give public contract methods a production consumer. Tests alone do not justify an API.
 - Strict set, `adapters/` (`languages/typescript/preset/eslint-config/strict-adapters.mjs`, files matching
-  `src/main/features/*/adapters/**`): parse untrusted input with a zod schema. Zod is an
-  expectation of the preset, not a dependency of nitpicker. `nitpicker/no-handwritten-boundary-guard`
+  `src/main/features/*/adapters/**`): parse untrusted input with a schema of the project's
+  validation library (zod when none is installed; zod is an expectation of the preset, not a
+  dependency of nitpicker). `nitpicker/no-handwritten-boundary-guard`
   reports (1) any `x is T` or `asserts x is T` return type, since a hand-written guard is the
   banned form, and (2) a `JSON.parse(...)` call whose result is neither passed directly to
   `.parse`/`.safeParse`/`.parseAsync`/`.safeParseAsync` nor bound to a `const` that is later passed
