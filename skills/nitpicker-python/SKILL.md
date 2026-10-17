@@ -54,11 +54,13 @@ backstop. It fails only on findings your change adds, so leave code the task doe
   not `STATUS_ACTIVE = "active"` constants or a class holding them. Settings like `DB_HOST` are fine.
 - Every other rule (logging, naming, environment access, the domain, paths, secrets, shell and SQL,
   test honesty) reports the allowed form in its message: follow the form the message names.
-- Tests: use the project's runner (pytest, unittest, Django or nose2). Every test asserts
-  something. Every branch you add needs a test, and a surviving mutant fails: assert the exact value,
-  so a changed line breaks a test. A test you add or edit takes at most 5 s, or 30 s under
-  `tests/integration/` or with
-  `@pytest.mark.integration`: no `time.sleep`.
+- Tests: use the project's runner (pytest, unittest, Django or nose2). Every test asserts something. Every branch you add needs a test, and a
+  surviving mutant fails: assert the exact value, so a changed line breaks a test. A test you add
+  or edit takes at most 5 s (`slow-test`), or 30 s under an `integration` or `e2e` folder or with
+  `@pytest.mark.integration` (registered when the project uses `--strict-markers`): patch the clock
+  instead of `time.sleep` and fake network, database and disk access. A test over budget is run
+  again alone without coverage and fails only if it is still over. Lift a legitimate one in the
+  top-level `exceptions` with `{ "rule": "slow-test", "paths": [...], "reason": "..." }`.
 - Dependencies: every package production code imports is a production dependency of the project
   (pyproject, Pipfile, requirements or setup.cfg); test-only packages go in a dev group; remove a
   dependency nothing uses.

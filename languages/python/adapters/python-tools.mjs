@@ -22,6 +22,7 @@ import { ruffConfigFor } from './configuration/python-ruff-config.mjs';
 import { detectTestRunner, pytestLabel, testRunnerLabel } from './execution/python-test-runner.mjs';
 import { mutationRunnerLabels } from './mutation/test-run/python-mutation-runner.mjs';
 import { test } from './test-runs/test-step.mjs';
+import { retimeSlowTests } from './test-runs/timing/slow-retime.mjs';
 
 import { resolveTypeChecker, typeCheck } from './python-types.mjs';
 import { structure } from './analysis/python-structure.mjs';
@@ -55,14 +56,12 @@ export function createToolContext({
     setting: settings.environment,
   });
   const sourceRoots = detectSourceRoots(projectRoot, settings.sourceRoots);
-  const pythonPath = [...importRoots(projectRoot, sourceRoots), process.env.PYTHONPATH]
-    .filter((entry) => entry !== undefined && entry !== '')
-    .join(path.delimiter);
   return {
     projectRoot,
     reportRoot,
     snapshot,
     baselineRoot,
+    testSeconds: settings.testSeconds,
     conventions,
     policyRoot,
     toolPrecedence,
@@ -80,7 +79,7 @@ export function createToolContext({
       entryPoints: settings.entryPoints ?? [],
     },
     env: {
-      PYTHONPATH: pythonPath,
+      PYTHONPATH: pythonPathFor(projectRoot, sourceRoots, process.env.PYTHONPATH),
       PYTHONDONTWRITEBYTECODE: '1',
       ...(reportRoot === undefined ? {} : { COVERAGE_FILE: path.join(reportRoot, COVERAGE_DATA) }),
     },
@@ -93,6 +92,7 @@ export function runPythonTools(context) {
     lint,
     format,
     test,
+    retimeSlowTests,
     typeCheck,
     checkRules,
     structure,
@@ -235,4 +235,10 @@ export function mutationVersions(context) {
     pytestLabel(context),
     ...mutationRunnerLabels(context),
   ].join(';');
+}
+
+function pythonPathFor(projectRoot, sourceRoots, inheritedPath) {
+  return [...importRoots(projectRoot, sourceRoots), inheritedPath]
+    .filter((entry) => entry !== undefined && entry !== '')
+    .join(path.delimiter);
 }

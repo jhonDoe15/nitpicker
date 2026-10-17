@@ -9,7 +9,7 @@ For a short introduction, see the [README](../README.md).
 Add nitpicker as a dev dependency, together with the peers it needs from your project:
 
 ```sh
-npm install --save-dev nitpicker typescript @types/node
+npm install --save-dev nitpicker vitest @vitest/coverage-v8 typescript @types/node
 ```
 
 `pnpm add --save-dev`, `yarn add --dev` and `bun add --dev` take the same packages; run nitpicker
@@ -20,10 +20,9 @@ installed in `node_modules` by npm, pnpm, Yarn (Yarn Plug'n'Play is not supporte
 `nodeLinker: node-modules`) or Bun. The base's own install supports all four managers; nitpicker
 itself is tested end to end with npm projects. nitpicker brings its own pinned ESLint, Prettier, dependency-cruiser, knip, jscpd,
 Stryker and CRAP tooling and loads them from its own package, so neither side of the comparison can
-choose them. `typescript` and the project's test runner come from your project: Vitest, Jest,
-`node:test` or Mocha (see [Test runners](#test-runners)). A Vitest project also needs
-`@vitest/coverage-v8` at its Vitest version (4.1.11 or newer, or 5). If a peer is missing or
-incompatible, the tool that needs it fails and the report shows a tool error.
+choose them. `vitest` and `@vitest/coverage-v8` (4.1.11 or newer, or 5) and `typescript` come from
+your project; if one is missing or incompatible, the tool that needs it fails and the report shows a
+tool error.
 
 ### From a GitHub release
 
@@ -36,7 +35,7 @@ without access to the release:
 VERSION=0.1.0-rc.1
 gh release download "v$VERSION" --repo jhonDoe15/nitpicker --pattern 'nitpicker-*.tgz' --pattern SHA256SUMS --dir vendor
 (cd vendor && shasum -a 256 -c SHA256SUMS && rm SHA256SUMS)
-npm install --save-dev "./vendor/nitpicker-$VERSION.tgz" typescript @types/node
+npm install --save-dev "./vendor/nitpicker-$VERSION.tgz" vitest @vitest/coverage-v8 typescript @types/node
 ```
 
 `package.json` then records `"nitpicker": "file:vendor/nitpicker-<version>.tgz"`. The peers are the
@@ -553,7 +552,7 @@ presets, `thresholds` (`crapLimit`, `fileLines`, `testFileLines`, `folderFiles`,
 A Java exception names the finding as printed, `<tool>/<rule>` (for example
 `pmd/UnusedPrivateField`), or a size rule (`file-lines-limit`,
 `line-length-limit`, `folder-files-limit`, `folder-depth-limit`, `class-methods-limit`,
-`class-fields-limit`, `inheritance-depth-limit`), and drops it under its `paths` on both snapshots. The
+`class-fields-limit`, `inheritance-depth-limit`) or `slow-test` (`test-runtime/slow-test` is read as the same rule), and drops it under its `paths` on both snapshots. The
 inventory has the same format as
 the TypeScript one, `{ "sites": [{ "file", "rule", "source", "count" }] }`, where `source` is the
 finding's `identity` as printed in `new-findings.json`: up to `count` occurrences of that site are
@@ -604,13 +603,12 @@ have one. `typescript` and `vitest` are peers as for TypeScript.
 
 What the preset does not support:
 
-- **Test runner lint.** Coverage, CRAP and mutation run the project's own runner, as for
-  TypeScript (see [Test runners](#test-runners)), but the lint rules for test files are still
-  Vitest's: `vitest/no-import-node-test` fails a `node:test` import (its message points to an
-  exception for that rule, which silences the lint finding only).
-- **CommonJS tests.** Production code may be CommonJS. A Vitest test file must `import` Vitest,
-  because `require('vitest')` fails at run time, so import `.cjs` production code from an ESM test,
-  as the fixture does. Jest, `node:test` and Mocha run CommonJS tests as they are.
+- **Test runner.** Vitest is the only runner, for both presets. A Jest or `node:test` project cannot
+  pass yet: coverage, CRAP and mutation run Vitest, and `vitest/no-import-node-test` fails a
+  `node:test` import (its message points to an exception for that rule, which silences the lint
+  finding only). Support for both runners is tracked in issue #162.
+- **CommonJS tests.** Production code may be CommonJS, but a test file must `import` Vitest, because
+  `require('vitest')` fails at run time. Import `.cjs` production code from an ESM test, as the fixture does.
 - **`.jsx` and `.tsx`.** React and JSX belong to the TypeScript preset. No analyzer reads a `.jsx` or
   `.tsx` file, so a project with one under its source or test roots is a config error (exit 2) rather
   than a green gate that checks nothing. Use the TypeScript preset, or list those files in `exclude`.
@@ -824,7 +822,7 @@ existing violations appear on both sides and stay baselined; the
 policy hash changes. Violations on lines your changes touch fail, so adoption is gradual and driven
 by ordinary edits. Add an `exceptions` entry for a rule you cannot adopt yet.
 
-### Your TypeScript and test configs
+### Your TypeScript and Vitest configs
 
 nitpicker builds on the project's own configs, so type checking and tests see the project as its
 own tools do:
@@ -851,11 +849,13 @@ own tools do:
   `rows[0]?.text` to `rows[0].text` is discarded as a compile error instead of surviving. The
   flags are only added when the project already type-checks with them; otherwise mutants are checked
   with the project's `tsconfig.json` as it is.
-- **Coverage and mutation tests** run with the project's own test runner and its config; see
-  [Test runners](#test-runners). nitpicker owns the coverage settings, so the project's coverage
-  thresholds never decide nitpicker's findings.
+- **Coverage and mutation tests** load the project's `vitest.config.*` or `vite.config.*` (the
+  first found, `.ts`, `.mts`, `.cts`, `.js`, `.mjs` or `.cjs`). Its environment, setup files,
+  aliases and plugins apply. nitpicker adds the `*.test.*` and `*.spec.*` files under the source and
+  test roots, ignores the project's `test.dir`, and owns the coverage settings, so the project's
+  coverage thresholds never decide nitpicker's findings.
 
-Without a project `tsconfig.json` or test runner config, nitpicker uses its own defaults.
+Without a project `tsconfig.json` or Vitest config, nitpicker uses its own defaults.
 
 ### Your project's tool configs
 
@@ -1067,74 +1067,6 @@ To always type check with the project's own TypeScript, set the engine:
 { "tools": { "typescript": { "engine": "project" } } }
 ```
 
-### Test runners
-
-Coverage, CRAP and mutation run the project's tests with the runner the project already uses:
-Vitest, Jest, `node:test` or Mocha. nitpicker picks the first of:
-
-1. `tools.tests.runner` in `nitpicker.config.json`: `"vitest"`, `"jest"`, `"node"` or `"mocha"`.
-2. The runner the `test` script in `package.json` calls, following `npm run <name>`, then the other
-   `test*` scripts. `react-scripts test` and `craco test` are Jest, `ts-mocha` is Mocha with
-   `ts-node`, and `tsx --test` is `node:test` with the `tsx` loader.
-3. The runner's config: `vitest.config.*` or `vitest.workspace.*`, `jest.config.*` or a `jest` key
-   in `package.json`, `.mocharc.*` or a `mocha` key in `package.json`.
-4. The runner in `dependencies` or `devDependencies`.
-5. Vitest.
-
-From the script nitpicker also takes the environment variables (`NODE_ENV=test`, also through
-`cross-env`), the Node options before the runner (`node --import tsx --test`) and the runner's own
-options (`--config`, `--require`, test file patterns). It drops the options it sets itself (watch
-mode, coverage, reporters, timeouts and worker counts) and Jest's options that run only some of the
-tests (`--shard`, `-t`, `--findRelatedTests`, `--onlyChanged`, `--changedSince`, `--lastCommit`,
-`--onlyFailures`); `--selectProjects` stays. Steps the script runs before the tests, such as
-`tsc && jest`, are not run: a failing test run names them so you can run them first. Tests get a
-10 000 ms timeout and run at most 4 files at once (Mocha, and Jest with `--runInBand`, run them one
-after another), and they must pass for coverage, CRAP and mutation to run.
-
-```json
-{ "tools": { "tests": { "runner": "jest" } } }
-```
-
-- **Vitest** loads the project's `vitest.config.*` or `vite.config.*` (the first found, `.ts`,
-  `.mts`, `.cts`, `.js`, `.mjs` or `.cjs`). Its environment, setup files, aliases and plugins
-  apply. nitpicker runs the `*.test.*` and `*.spec.*` files under the source and test roots,
-  ignores the project's `test.dir`, and restores mocks after every test. A Vitest project needs
-  `@vitest/coverage-v8` at its Vitest version.
-- **Jest** runs with the project's Jest config, so its `testMatch`, `roots`, transforms and
-  environment decide which files run and how. nitpicker collects coverage from the source roots
-  with Jest's Babel coverage provider, relative to the config's `rootDir` (such as NestJS's
-  `"rootDir": "src"`), and restores mocks after every test (`--restoreMocks`). A config whose
-  projects cover none of the source files is a tool error. `react-scripts test` and `craco test`
-  run through the project's installed `react-scripts` or `@craco/craco`, and mutation uses
-  Stryker's Create React App support or the craco Jest config.
-  Mutation uses Stryker's Jest runner, with the test transform's own type check turned off
-  (`ts-jest` would reject the instrumented code); the TypeScript checker still type checks each
-  mutant.
-- **`node:test`** runs `node --test` with the script's test patterns (Node's default patterns when
-  the script names none) and the test files under the test roots. TypeScript tests run with Node's
-  type stripping (Node's transform mode for enums, namespaces and parameter properties), or with
-  the loader the script names, such as `tsx` or `ts-node/register`. Each test file runs once. A
-  failing `before` hook shows its error on the tests it cancelled. Mutation uses Stryker's tap
-  runner.
-- **Mocha** runs with the project's `.mocharc.*`, the script's options and specs, and the test
-  files under the test roots. Loaders such as `ts-node/register` and `tsx` work in-process and in
-  the child process Mocha starts for Node options. A test file that fails to load is reported as
-  that file failing. Mutation uses Stryker's Mocha runner with the options Mocha itself merges
-  from the script, `.mocharc.*` and `package.json`; Stryker's Mocha runner supports Mocha up to 11,
-  so on Mocha 12 mutation is skipped with a notice while coverage and CRAP still run.
-
-For `node:test` and Mocha, nitpicker reads coverage from V8 (`NODE_V8_COVERAGE`) and maps it to
-branches the way Vitest's coverage does, so a finding names the same `if`, `?:` or `??` arm. When a
-loader rewrote a file, nitpicker records the code that ran and maps it back through the loader's
-source map; a loader that writes no source map is a tool error. Coverage from child processes and
-workers is merged. A `ts-node` target below ES2022 is raised to ES2022 for the coverage run (class
-field semantics kept), so `??` and `?.` are not counted as extra branches. A `.tsx` file no test
-loaded is not reported.
-
-With Jest, `node:test` and Mocha any file under the test roots counts as a test when nitpicker
-decides whether coverage runs; with Vitest only `*.test.*` and `*.spec.*` files do. A runner that
-runs no test while nitpicker sees test files is a tool error that names one of them.
-
 ## Adopting nitpicker on existing code
 
 Because only new findings fail, most analyzers need no preparation. The `coding-standards` analyzer
@@ -1174,7 +1106,7 @@ docker run --rm -v "$PWD":/work nitpicker --base origin/main --output reports/qu
 Mount your project at `/work`. The image marks `/work` as a Git `safe.directory`, so a checkout
 owned by another user works. Arguments after the image name are nitpicker's arguments and the exit
 codes are the same (0, 1, 2). Your project must have its dependencies installed in `node_modules`
-(`typescript` and the test runner are resolved from the project, as with `npx`), and
+(`vitest`, `@vitest/coverage-v8` and `typescript` are resolved from the project, as with `npx`), and
 its history must contain the merge base. Reports are written under the mount, owned by the
 container user; add `--user "$(id -u):$(id -g)"` to own them yourself, together with
 `-e HOME=/tmp` so that the package managers have a writable cache. The image carries Corepack

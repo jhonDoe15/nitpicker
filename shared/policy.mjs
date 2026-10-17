@@ -61,6 +61,7 @@ export const SHARED_EXCEPTION_RULES = [
   RULE_IDS.fileLines,
   RULE_IDS.lineLength,
   RULE_IDS.folderFiles,
+  RULE_IDS.slowTest,
   ...HYGIENE_EXCEPTION_RULES,
 ];
 
@@ -119,7 +120,7 @@ export const MESSAGES = {
   testOnlyReexport: `Export {name} is only imported by tests, and {reexporter} re-exports it, which is not a use. Remove the re-export and \`export\`, or import it from production code. If a host or tool loads {reexporter} instead of importing it, list it in "layout.entryPoints". ${EXCEPTION_HINT}`,
   testOnlyModule: `Module {name} is only imported by tests. Move it to a test-support/ folder, or import it from production code. ${EXCEPTION_HINT}`,
   ...sizeMessages(EXCEPTION_HINT),
-  slowTest: `{name} took {seconds} s; {kind} test may take {limit} s. Remove Thread.sleep and other waits, start a smaller Spring context or a test slice{move}. ${EXCEPTION_HINT}`,
+  slowTest: `{name} took {seconds} s; {kind} test may take {limit} s. {fix}. ${EXCEPTION_HINT}`,
   sharedUsedByOneFeature: `{path} is used only by feature {feature}. Move it into {directory}. ${EXCEPTION_HINT}`,
   duplicateDefinition: `{name} is also defined with {same} in {others}. {fix} ${EXCEPTION_HINT}`,
   siblingCopyEdit: `{name} is edited here but not in {others}, where it has almost the same code. Edit it there too, or merge the copies. ${EXCEPTION_HINT}`,
@@ -273,7 +274,7 @@ export const RULES = [
     id: RULE_IDS.slowTest,
     check: 'test-runtime',
     limit: `a test the change adds or edits taking more than ${String(TEST_TIME_DEFAULTS.unitTestSeconds)} s (unit) or ${String(TEST_TIME_DEFAULTS.integrationTestSeconds)} s (integration); override with \`thresholds.unitTestSeconds\` and \`thresholds.integrationTestSeconds\``,
-    enforcedBy: withKotlin({ ...ALL, typescript: false }, true),
+    enforcedBy: withKotlin(ALL, true),
   },
   ...HYGIENE_RULES,
   testConsoleRule(RULE_IDS, withKotlin(TYPESCRIPT_ONLY, false)),
