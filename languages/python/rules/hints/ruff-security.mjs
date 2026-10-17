@@ -17,12 +17,6 @@ export const SECURITY_HINTS = [
   },
   {
     tool: 'ruff',
-    rules: ['S608'],
-    allowed:
-      'Pass the values as query parameters: `cursor.execute("SELECT * FROM users WHERE id = %s", (user_id,))`.',
-  },
-  {
-    tool: 'ruff',
     rules: ['S610', 'S611'],
     allowed:
       'Use the ORM query API, or pass the values as parameters: `Model.objects.raw("SELECT ... WHERE id = %s", [value])`.',

@@ -100,7 +100,7 @@ describe('rules script report', () => {
     [
       'uncollected-tests',
       'orders_check.py',
-      '`orders_check.py` defines tests that pytest does not collect',
+      '`orders_check.py` defines tests that the test run does not collect',
     ],
     [
       'test-helper-in-source',

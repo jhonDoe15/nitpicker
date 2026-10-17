@@ -1,8 +1,8 @@
-import { writeFileSync } from 'node:fs';
+import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { normalizeReportPath } from '../../../java/ingest/common.mjs';
 import { run } from '../execution/python-process.mjs';
-import { RUFF_CONFIG } from '../configuration/python-ruff-config.mjs';
+import { ruffConfigFor } from '../configuration/python-ruff-config.mjs';
 import { fileURLToPath } from 'node:url';
 import { collectionOptions, isTestFile } from '../configuration/pytest/collection-options.mjs';
 import { readPytestConfig } from '../configuration/pytest/pytest-config.mjs';
@@ -17,10 +17,15 @@ const RULES_SCRIPT = path.resolve(
   '../rules/nitpicker_rules.py',
 );
 
+export function readTestFiles(reportRoot) {
+  const file = path.join(reportRoot, OPTIONS_FILE);
+  return existsSync(file) ? (JSON.parse(readFileSync(file, 'utf8')).testFiles ?? []) : [];
+}
+
 export function pythonSources(context) {
   const { stdout } = run(
     context,
-    ['ruff', 'check', '--show-files', '--config', RUFF_CONFIG, '--no-cache', '.'],
+    ['ruff', 'check', '--show-files', '--config', ruffConfigFor(context), '--no-cache', '.'],
     { rule: RULES_FAILED_RULE },
   );
   return stdout

@@ -5,7 +5,6 @@ export const SECURITY_CASES = [
     ...every(['S602', 'S604', 'S605'], 'leave `shell=true` out'),
     ['S609', 'separate list items'],
   ]),
-  ...ruffCases('sql-queries', [['S608', 'query parameters']]),
   ...ruffCases('weak-hash', every(['S324', 'S303'], 'sha256')),
   ...ruffCases('tls-settings', [
     ['S501', 'certificate verification on'],
