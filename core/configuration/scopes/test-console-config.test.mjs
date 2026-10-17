@@ -37,7 +37,7 @@ describe('testConsole config', () => {
     [{ testConsole: { allow: [{ contains: 'abc', reason: ' ' }] } }, /reason" is required/],
     [
       { preset: 'java', testConsole: { allow: [allowed] } },
-      'nitpicker.config.json: "testConsole" is not supported with "preset": "java". Supported with: typescript, javascript, python',
+      `nitpicker.config.json: "testConsole" is not supported with "preset": "java": its tests' console output is not checked yet. Supported with: typescript, javascript, python`,
     ],
     [
       { preset: 'kotlin', testConsole: {} },
