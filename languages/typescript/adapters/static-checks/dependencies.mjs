@@ -2,7 +2,8 @@ import { PACKAGE_ROOT } from '../../../../core/tooling/tool-resolution.mjs';
 import { resolveDependencyHook } from '../dependency-graph/dependency-hooks.mjs';
 import { detectPackageManager } from '../dependency-graph/package-managers/detect.mjs';
 import { containedPath } from '../dependency-graph/package-managers/contained-path.mjs';
-import { memberDependencyDirectories } from '../dependency-graph/package-managers/members.mjs';
+import { missingDependenciesMessage } from '../dependency-graph/package-managers/install.mjs';
+import { linkMemberDependencies } from '../dependency-graph/package-managers/member-links.mjs';
 import {
   existsSync,
   readFileSync,
@@ -30,17 +31,32 @@ export function dependencyPreparationMode({
     : 'link';
 }
 
+function sameFile(left, right) {
+  const leftExists = existsSync(left);
+  if (!leftExists || !existsSync(right)) {
+    return leftExists === existsSync(right);
+  }
+  return readFileSync(left).equals(readFileSync(right));
+}
+
 function dependencyManifestsDiffer(projectRoot, liveProjectRoot, dependencyHook) {
-  return dependencyHook.manifests.some((relativePath) => {
-    const projectPath = path.join(projectRoot, relativePath);
-    const policyPath = path.join(liveProjectRoot, relativePath);
-    const projectManifestExists = existsSync(projectPath);
-    const policyManifestExists = existsSync(policyPath);
-    if (!projectManifestExists || !policyManifestExists) {
-      return projectManifestExists !== policyManifestExists;
-    }
-    return !readFileSync(projectPath).equals(readFileSync(policyPath));
-  });
+  const snapshotRoot = dependencyHook.dependencyRoot(projectRoot);
+  const liveRoot = dependencyHook.dependencyRoot(liveProjectRoot);
+  if (path.relative(snapshotRoot, projectRoot) !== path.relative(liveRoot, liveProjectRoot)) {
+    return true;
+  }
+  const rootsDiffer = dependencyHook.manifests.some(
+    (relativePath) =>
+      !sameFile(containedPath(snapshotRoot, relativePath), containedPath(liveRoot, relativePath)),
+  );
+  const projectManifest = dependencyHook.manifests[0];
+  return (
+    rootsDiffer ||
+    !sameFile(
+      containedPath(projectRoot, projectManifest),
+      containedPath(liveProjectRoot, projectManifest),
+    )
+  );
 }
 
 export function prepareSnapshotDependencies(options) {
@@ -49,14 +65,13 @@ export function prepareSnapshotDependencies(options) {
   if (mode === 'existing') {
     return undefined;
   }
-  const dependencyPath = path.join(options.projectRoot, dependencyHook.directory);
+  const liveProjectRoot = options.liveProjectRoot ?? PACKAGE_ROOT;
+  const dependencyPath = containedPath(
+    dependencyHook.dependencyRoot(options.projectRoot),
+    dependencyHook.directory,
+  );
   if (existsSync(dependencyPath)) {
-    validatePreparedDependencies({
-      mode,
-      dependencyPath,
-      liveProjectRoot: options.liveProjectRoot ?? PACKAGE_ROOT,
-      dependencyHook,
-    });
+    validatePreparedDependencies({ mode, dependencyPath, liveProjectRoot, dependencyHook });
     return undefined;
   }
   switch (mode) {
@@ -74,7 +89,7 @@ function validatePreparedDependencies({ mode, dependencyPath, liveProjectRoot, d
   if (mode === 'install' && entry.isDirectory() && !entry.isSymbolicLink()) {
     return;
   }
-  const dependencyRoot = realpathSync(path.join(liveProjectRoot, dependencyHook.directory));
+  const dependencyRoot = liveDependencyRoot(liveProjectRoot, dependencyHook);
   if (
     mode === 'link' &&
     entry.isSymbolicLink() &&
@@ -91,7 +106,8 @@ function linkDependencies(options, dependencyHook) {
     return undefined;
   }
   const dependencyRoot = liveDependencyRoot(liveProjectRoot, dependencyHook);
-  const linkPath = path.join(options.projectRoot, dependencyHook.directory);
+  const snapshotRoot = dependencyHook.dependencyRoot(options.projectRoot);
+  const linkPath = containedPath(snapshotRoot, dependencyHook.directory);
   if (existsSync(linkPath)) {
     const entry = lstatSync(linkPath);
     if (entry.isSymbolicLink() && realpathSync(linkPath) === dependencyRoot) {
@@ -100,40 +116,46 @@ function linkDependencies(options, dependencyHook) {
     throw new Error(`Refusing to replace existing dependencies at ${linkPath}`);
   }
   symlinkSync(dependencyRoot, linkPath, 'dir');
-  const memberPaths = linkMemberDependencies(options.projectRoot, liveProjectRoot);
+  const memberPaths = linkMembersOrUnlink(snapshotRoot, liveProjectRoot, dependencyHook, linkPath);
   return { kind: 'linked', dependencyPath: linkPath, dependencyRoot, memberPaths };
 }
 
+function linkMembersOrUnlink(snapshotRoot, liveProjectRoot, dependencyHook, linkPath) {
+  try {
+    return linkMemberDependencies(snapshotRoot, dependencyHook.dependencyRoot(liveProjectRoot));
+  } catch (error) {
+    unlinkSync(linkPath);
+    throw error;
+  }
+}
+
 function liveDependencyRoot(liveProjectRoot, dependencyHook) {
-  const dependencyPath = containedPath(liveProjectRoot, dependencyHook.directory);
+  const dependencyPath = containedPath(
+    dependencyHook.dependencyRoot(liveProjectRoot),
+    dependencyHook.directory,
+  );
   if (!existsSync(dependencyPath)) {
-    const { name } = detectPackageManager(liveProjectRoot);
     throw new Error(
-      `Dependencies are not installed: ${dependencyPath} is missing. Run \`${name} install\` in ${liveProjectRoot} first (Yarn Plug'n'Play is not supported: set \`nodeLinker: node-modules\`).`,
+      missingDependenciesMessage(detectPackageManager(liveProjectRoot), dependencyPath),
     );
   }
   return realpathSync(dependencyPath);
-}
-
-function linkMemberDependencies(projectRoot, liveProjectRoot) {
-  const linked = [];
-  for (const relative of memberDependencyDirectories(liveProjectRoot)) {
-    const linkPath = containedPath(projectRoot, relative);
-    if (existsSync(path.dirname(linkPath)) && !existsSync(linkPath)) {
-      symlinkSync(realpathSync(containedPath(liveProjectRoot, relative)), linkPath, 'dir');
-      linked.push(linkPath);
-    }
-  }
-  return linked;
 }
 
 export function removeSnapshotDependencies(dependencies) {
   if (dependencies === undefined) {
     return;
   }
-  for (const memberPath of dependencies.memberPaths ?? []) {
-    removeMemberDependencies(dependencies.kind, memberPath);
+  try {
+    for (const memberPath of dependencies.memberPaths ?? []) {
+      removeMemberDependencies(memberPath);
+    }
+  } finally {
+    removeRootDependencies(dependencies);
   }
+}
+
+function removeRootDependencies(dependencies) {
   const entry = lstatSync(dependencies.dependencyPath);
   if (dependencies.kind === 'installed') {
     if (!entry.isDirectory() || entry.isSymbolicLink()) {
@@ -153,16 +175,13 @@ export function removeSnapshotDependencies(dependencies) {
   unlinkSync(dependencies.dependencyPath);
 }
 
-function removeMemberDependencies(kind, memberPath) {
+function removeMemberDependencies(memberPath) {
   if (!existsSync(memberPath)) {
     return;
   }
   const entry = lstatSync(memberPath);
-  if (kind === 'installed' && entry.isDirectory() && !entry.isSymbolicLink()) {
-    rmSync(memberPath, { recursive: true });
-  } else if (kind === 'linked' && entry.isSymbolicLink()) {
-    unlinkSync(memberPath);
-  } else {
+  if (!entry.isDirectory() || entry.isSymbolicLink()) {
     throw new Error(`Refusing to remove replaced member dependencies: ${memberPath}`);
   }
+  rmSync(memberPath, { recursive: true });
 }

@@ -1,3 +1,7 @@
+const COREPACK_HINT = 'npm install --global corepack && corepack enable';
+
+const YARN_INSTALL_HINT = `Run \`${COREPACK_HINT} yarn\` or \`npm install --global yarn\`.`;
+
 const MANAGERS = {
   npm: {
     binary: 'npm',
@@ -6,11 +10,16 @@ const MANAGERS = {
   },
   pnpm: {
     binary: 'pnpm',
-    args: ['install', '--frozen-lockfile', '--ignore-scripts', '--prefer-offline'],
-    installHint:
-      'Run `corepack enable pnpm` (Corepack ships with Node.js) or `npm install --global pnpm`.',
+    args: [
+      'install',
+      '--frozen-lockfile',
+      '--ignore-scripts',
+      '--ignore-pnpmfile',
+      '--prefer-offline',
+    ],
+    installHint: `Run \`${COREPACK_HINT} pnpm\` or \`npm install --global pnpm\`.`,
   },
-  yarn: {
+  yarnClassic: {
     binary: 'yarn',
     args: [
       'install',
@@ -19,13 +28,20 @@ const MANAGERS = {
       '--non-interactive',
       '--prefer-offline',
     ],
-    installHint:
-      'Run `corepack enable yarn` (Corepack ships with Node.js) or `npm install --global yarn`.',
+    ignoreYarnPath: true,
+    installHint: YARN_INSTALL_HINT,
+  },
+  yarnBerry2: {
+    binary: 'yarn',
+    args: ['install', '--immutable', '--skip-builds'],
+    ignoreYarnPath: true,
+    installHint: YARN_INSTALL_HINT,
   },
   yarnBerry: {
     binary: 'yarn',
     args: ['install', '--immutable', '--mode=skip-build'],
-    installHint: 'Run `corepack enable yarn` (Corepack ships with Node.js).',
+    ignoreYarnPath: true,
+    installHint: YARN_INSTALL_HINT,
   },
   bun: {
     binary: 'bun',
@@ -34,12 +50,30 @@ const MANAGERS = {
   },
 };
 
-export function installCommand(packageManager, platform = process.platform) {
-  const key = packageManager.flavor === 'berry' ? 'yarnBerry' : packageManager.name;
-  const { binary, args, installHint } = MANAGERS[key];
-  return {
-    command: platform === 'win32' && binary !== 'bun' ? `${binary}.cmd` : binary,
+function managerKey({ name, major }) {
+  if (name !== 'yarn') {
+    return name;
+  }
+  if (major === 1) {
+    return 'yarnClassic';
+  }
+  return major === 2 ? 'yarnBerry2' : 'yarnBerry';
+}
+
+export function isBerry({ name, major }) {
+  return name === 'yarn' && major > 1;
+}
+
+export function installInvocation(packageManager) {
+  const {
+    binary,
     args,
+    ignoreYarnPath = false,
     installHint,
-  };
+  } = MANAGERS[managerKey(packageManager)];
+  const environment = [
+    'COREPACK_ENABLE_AUTO_PIN=0',
+    ...(ignoreYarnPath ? ['YARN_IGNORE_PATH=1'] : []),
+  ];
+  return { command: 'env', args: [...environment, binary, ...args], installHint };
 }
