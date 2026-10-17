@@ -6,6 +6,7 @@ import {
   callsLog,
   contextFor,
   coverageRc,
+  DJANGO_OMIT,
   project,
   readReport,
   restoreTemporaryState,
@@ -35,6 +36,7 @@ describe('tool context', () => {
       targetVersion: 'py38',
       typeCheckers: [],
       sourceRoots: ['src'],
+      entryPoints: [],
     });
   });
   it('takes the environment from the live checkout and the sources from the snapshot', () => {
@@ -61,6 +63,7 @@ describe('tool context', () => {
       testRunner: 'unittest',
       targetVersion: 'py38',
       sourceRoots: ['src'],
+      entryPoints: [],
     });
   });
 });
@@ -87,6 +90,8 @@ describe('running the tools', () => {
       formatterDetected: true,
       sourceRoots: ['src'],
       testsRan: true,
+      testFailures: [],
+      testRunner: 'unittest',
     });
     expect(readReport(reportRoot, 'coveragerc')).toBe(coverageRc('src'));
   });
@@ -109,6 +114,13 @@ describe('running the tools', () => {
     runPythonTools(context);
 
     expect(readReport(reportRoot, 'coveragerc')).toBe(coverageRc('src'));
+  });
+  it('leaves the Django test module names out of coverage only in a Django project', () => {
+    const { context, reportRoot } = contextFor(project({ 'manage.py': '' }));
+
+    runPythonTools(context);
+
+    expect(readReport(reportRoot, 'coveragerc')).toBe(coverageRc('src', DJANGO_OMIT));
   });
   it('measures the source roots that exist and writes an empty report when none does', () => {
     const calls = callsLog();
@@ -144,6 +156,7 @@ describe('running the tools', () => {
         ['types-failed', 'mypy', 'mypy'],
         ['rules-failed', 'python', 'python'],
         ['structure-failed', `python ${structureScript}`, 'python'],
+        ['dependencies-failed', 'python', 'python'],
       ].map(([rule, command, call]) => ({
         rule,
         message: `${command} exited 2 in the virtualenv environment:\n${call} blew up`,
