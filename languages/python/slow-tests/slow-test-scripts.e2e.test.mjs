@@ -3,10 +3,10 @@ import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'nod
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { FACTS_SCRIPT } from './slow-test-step.mjs';
+import { UNITTEST_TIMING_SCRIPT } from './timing-command.mjs';
 
 const enabled = process.env.NITPICKER_PYTHON_E2E === '1';
-const FACTS = path.join(import.meta.dirname, 'test_facts.py');
-const TIMING = path.join(import.meta.dirname, 'unittest_timing.py');
 const MODULE = `import pytest
 
 pytestmark = [pytest.mark.system]
@@ -47,7 +47,13 @@ describe.skipIf(!enabled)('the Python helpers of the slow test gate', () => {
   it('lists every function with its line, markers of its own, its class and the module, and a hash', () => {
     writeFileSync(path.join(directory, 'tests/test_pay.py'), MODULE);
     writeFileSync(path.join(directory, 'tests/test_bad.py'), 'def broken(:\n');
-    const { stdout } = python(['-I', FACTS, directory, 'tests/test_pay.py', 'tests/test_bad.py']);
+    const { stdout } = python([
+      '-I',
+      FACTS_SCRIPT,
+      directory,
+      'tests/test_pay.py',
+      'tests/test_bad.py',
+    ]);
     const facts = JSON.parse(stdout);
     expect(facts['tests/test_bad.py']).toBeNull();
     expect(
@@ -70,12 +76,12 @@ describe.skipIf(!enabled)('the Python helpers of the slow test gate', () => {
   it('changes the hash of a function only when its text, decorators included, changes', () => {
     const file = path.join(directory, 'tests/test_pay.py');
     writeFileSync(file, MODULE);
-    const before = JSON.parse(python(['-I', FACTS, directory, 'tests/test_pay.py']).stdout);
+    const before = JSON.parse(python(['-I', FACTS_SCRIPT, directory, 'tests/test_pay.py']).stdout);
     writeFileSync(
       file,
       MODULE.replace('def test_one():\n    pass', 'def test_one():\n    assert 1'),
     );
-    const after = JSON.parse(python(['-I', FACTS, directory, 'tests/test_pay.py']).stdout);
+    const after = JSON.parse(python(['-I', FACTS_SCRIPT, directory, 'tests/test_pay.py']).stdout);
     const names = Object.keys(before['tests/test_pay.py']);
     expect(
       names.map(
@@ -90,7 +96,7 @@ describe.skipIf(!enabled)('the Python helpers of the slow test gate', () => {
       'import time\nimport unittest\n\n\nclass TestClock(unittest.TestCase):\n    def test_wait(self):\n        time.sleep(0.2)\n\n    def test_now(self):\n        self.assertTrue(True)\n',
     );
     const output = path.join(directory, 'times.xml');
-    const result = python([TIMING, output, 'discover', '-s', 'tests']);
+    const result = python([UNITTEST_TIMING_SCRIPT, output, 'discover', '-s', 'tests']);
     expect(result.status).toBe(0);
     expect(result.stderr).toMatch(/Ran 2 tests/u);
     const cases = [
@@ -113,7 +119,8 @@ describe.skipIf(!enabled)('the Python helpers of the slow test gate', () => {
       'import unittest\n\n\nclass TestBad(unittest.TestCase):\n    def test_fail(self):\n        self.fail("no")\n',
     );
     expect(
-      python([TIMING, path.join(directory, 'times.xml'), 'discover', '-s', 'tests']).status,
+      python([UNITTEST_TIMING_SCRIPT, path.join(directory, 'times.xml'), 'discover', '-s', 'tests'])
+        .status,
     ).toBe(1);
   });
 });

@@ -2,7 +2,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 export const TEST_TIMES_REPORT = 'test-times.xml';
-const UNITTEST_TIMING_SCRIPT = fileURLToPath(new URL('unittest_timing.py', import.meta.url));
+export const UNITTEST_TIMING_SCRIPT = fileURLToPath(new URL('unittest_timing.py', import.meta.url));
 const UNITTEST_MODULE_ARGUMENTS = 2;
 
 export function timedTestCommand(context, command) {

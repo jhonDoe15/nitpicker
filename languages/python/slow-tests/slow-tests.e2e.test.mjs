@@ -103,7 +103,7 @@ describe.skipIf(!pythonE2eEnabled)('Python slow test gate end to end', () => {
       [
         'test-runtime',
         'tests/test_slow.py',
-        'test:tests.test_slow.TestSlow#test_slow',
+        'test:test_slow.TestSlow#test_slow',
         'enforceable',
       ],
     ]);

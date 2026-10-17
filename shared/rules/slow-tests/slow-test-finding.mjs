@@ -1,19 +1,6 @@
-// The `slow-test` finding, from neutral inputs: one test the change adds or edits that took longer
-// than its budget. A language adapter reads its runner's per-test times, decides which tests are
-// integration tests and which the change touched, and calls this for each; Java and Kotlin build the
-// same message from `MESSAGES.slowTest`.
-//
-// Language-neutral: shared by the TypeScript and Python adapters.
-
-import {
-  MESSAGES,
-  RULE_IDS,
-  SLOW_TEST_FIXES,
-  SLOW_TEST_MOVES,
-  TEST_TIME_DEFAULTS,
-  renderMessage,
-} from '../../policy.mjs';
+import { MESSAGES, RULE_IDS, TEST_TIME_DEFAULTS, renderMessage } from '../../policy.mjs';
 import { exceptionText } from '../exceptions.mjs';
+import { SLOW_TEST_FIXES, SLOW_TEST_MOVES } from './slow-test-fixes.mjs';
 
 /** The unit and integration budgets in seconds: the defaults, over which the config's `limits` win. */
 export function slowTestBudget(limits) {
