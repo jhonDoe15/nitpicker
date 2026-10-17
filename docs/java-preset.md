@@ -15,7 +15,7 @@ side contributes only two things: producing reports, and converting them into fi
 
 ```
 gradle -I languages/java/gradle/nitpicker.init.gradle nitpickerJava   (per snapshot: base, head; Maven builds: see below)
-  -> <report dir>/modules.json and, per Gradle project that applies java, <report dir>/<key>/{pmd.sarif, spotbugs.sarif, errorprone.json, format.txt, jacoco.xml, checkstyle.xml, checkstyle-<source set>.xml, archunit/*.xml, structure.json, pit/mutations.xml, jdeps.txt, jdeps-classes.txt, manifest.json}
+  -> <report dir>/modules.json and, per Gradle project that applies java, <report dir>/<key>/{pmd.sarif, spotbugs.sarif, errorprone.json, format.txt, jacoco.xml, checkstyle.xml, checkstyle-<source set>.xml, archunit/*.xml, structure.json, classes.json, pit/mutations.xml, jdeps.txt, jdeps-classes.txt, manifest.json}
   -> languages/java/adapters/reporting/java-reports.mjs       (readJavaFindings, via the ingesters)
   -> languages/java/adapters/spring/java-spring.mjs    (spring findings read straight from application*.properties/yml, no Gradle report; only when manifest.json says spring: true)
   -> compareFindings(base, head, renames)               (languages/java/adapters/java-diff.mjs)
@@ -309,8 +309,13 @@ comma-separated>` changes that. Those classes are excluded from the regular `tes
   part of the analyzer's configuration hash:
   - `thresholds.crapLimit` replaces the default CRAP limit (from `shared/policy.mjs`), and
     `fileLines`, `testFileLines` and `folderFiles` the file limits, which count the `.java` files of
-    the main and test source sets (branch coverage and duplicates have fixed limits). Line length
-    is Checkstyle's; `thresholds.lineLength` is a config error. `unitTestSeconds` and
+    the main and test source sets (branch coverage and duplicates have fixed limits). `classMethods`
+    (20), `classFields` (10), `inheritanceDepth` (3) and `folderDepth` (4) replace the limits
+    described under [Class and package size limits](#class-and-package-size-limits). Line length
+    is 100 characters, where google-java-format wraps; nitpicker's own `line-length-limit` rule
+    checks it (string literal text, text blocks, imports and URLs do not count, an old long line is
+    held and fails only when it grows) and takes an `exceptions` entry; `thresholds.lineLength` is a
+    config error, not the general 120. `unitTestSeconds` and
     `integrationTestSeconds` are the [slow test](#slow-tests) budgets.
   - `exclude` drops findings whose project-relative path matches a glob (`**`, `*`, `?`, `{a,b}`);
     the tools still run on those files.
@@ -322,7 +327,8 @@ comma-separated>` changes that. Those classes are excluded from the regular `tes
   - `exceptions` lifts one rule for some paths: `{ "rule", "paths", "reason" }`, where `rule` is the
     finding as printed, `<tool>/<rule>` (for example `pmd/UnusedPrivateField`), and `tool` is one of
     the tools the Java analyzer reports. Matching findings are dropped on both snapshots. The shared
-    `file-lines-limit` and `folder-files-limit` rules are named as they are. Each exception is listed
+    `file-lines-limit`, `folder-files-limit`, `folder-depth-limit`, `class-methods-limit`,
+    `class-fields-limit` and `inheritance-depth-limit` rules are named as they are. Each exception is listed
     in the report and changes the configuration hash.
   - `layout` and `tools` configure TypeScript source roots and tool configs; they have no Java
     meaning and stay a config error with `"preset": "java"` instead of being ignored.
@@ -396,7 +402,7 @@ default, and their messages name it:
   sources) and `checkstyle-<source set>.xml` (`checkstyle-test.xml`, `checkstyle-integration.xml`,
   ...) in the report directory; the HTML report is off.
 - **Configuration.** The preset uses `google_checks.xml` from the pinned
-  Checkstyle jar, which matches google-java-format, with `MissingJavadocMethod` and
+  Checkstyle jar, with the layout checks the formatter owns (see [Style](#style)) and `MissingJavadocMethod` and
   `MissingJavadocType` suppressed (`languages/java/gradle/checkstyle-suppressions.xml`): Javadoc is
   allowed on public API but not required, the same rule as the TypeScript preset. Member and method
   names may be a single lowercase letter (`x`, `y`), as record components can. Javadoc that is
@@ -1147,6 +1153,76 @@ table:
 - **Tests.** `java-structure.test.mjs` (fast: limits, messages, identity stability);
   the gated e2e adds a branch with a method over the parameter limit (fails) and keeps a legacy
   oversize method baselined.
+
+## Class and package size limits
+
+Three limits on classes of the main sources and one on package depth, all failing only when the
+change makes them worse (the same ratchet as the file limits): a class already over a limit is
+held at its value and fails when it grows, and a new class over a limit fails. Each message names
+the allowed form and the `exceptions` entry that lifts it.
+
+| Rule                      | Default limit                                                                            | Threshold          |
+| ------------------------- | ---------------------------------------------------------------------------------------- | ------------------ |
+| `class-methods-limit`     | 20 methods per class; getters and setters count, constructors do not                     | `classMethods`     |
+| `class-fields-limit`      | 10 instance fields per class; record components count, statics and enum constants do not | `classFields`      |
+| `inheritance-depth-limit` | 3 superclasses; a superclass outside the project counts as one level                     | `inheritanceDepth` |
+| `folder-depth-limit`      | 4 package levels below the root package (test sources too)                               | `folderDepth`      |
+
+- **Classes.** `languages/java/gradle/StructureMetrics.java` (the Gradle task `nitpickerStructure`,
+  and the structure step of the Maven run for each module) writes `classes.json` next to
+  `structure.json` in the same parse, so each module's sources are parsed once. Gradle and Maven
+  projects get the same limits. Member and
+  local classes, interfaces, enums, records and annotation types are measured on their own;
+  anonymous classes are not. Tests are not measured: a test class legitimately holds many methods.
+  The inheritance chain is resolved from the source text (same package, imports, wildcard imports,
+  nested names, names in full), not compiled, so a superclass that only the compiler can find counts
+  as one level and ends the chain, so a hierarchy that continues in another module or a library is
+  undercounted. A record over `classFields` gets its own message (components, not fields). A kotlin-preset project gets the class limits for its `.java`
+  files; Kotlin classes are not measured.
+- **Package depth.** The root package is the longest package prefix all main and test code of the
+  base shares, so adding a package outside it (`db/migration`, the default package) moves nothing:
+  the head run reads the root from the base snapshot, and a project with no base code uses its
+  own. A package with code in it that lies more than four levels below the root fails once per
+  kind of file (source, test); a package outside the root counts its own levels. Packages are the
+  folders under the source roots.
+- **A missing report is an error.** If `classes.json` is absent the run fails with a tool error
+  naming the structure step (`StructureMetrics.java`), so a build that skipped it cannot silently
+  drop the limits.
+- **Allowed form.** Split a class by responsibility, group fields into a record, prefer composition
+  to a deep hierarchy, and keep packages flat: group by responsibility instead of nesting.
+- **Exceptions.** A class limit is lifted for the file the class is in
+  (`{ "rule": "class-methods-limit", "paths": ["src/main/java/app/Mapper.java"], "reason": "..." }`);
+  `folder-depth-limit` for the package folder (`"paths": ["src/main/java/app/a/b/c/d/e/**"]`).
+
+## Style
+
+google-java-format owns layout. The default is its Google style: 2 spaces, 4 for a continuation
+line, lines of at most 100 characters. A project that indents with 4 spaces gets google-java-format
+with `--aosp` (4 spaces, 8 for a continuation line, still wrapping at 100): nitpicker follows the
+`java.indentation` convention (`"2"` or `"4"`), which it takes from the Java files of the base
+snapshot, or from `"conventions": { "java.indentation": "4" }` in `nitpicker.config.json`; a tie or
+no Java files keeps Google. The run prints the choice. The convention applies to the Java sources
+of a kotlin-preset project too. It comes from the head policy file at run time, and the function
+`javaStyle()` in `languages/java/adapters/style/java-style.mjs` turns it into the style
+(`google` or `aosp`).
+
+A badly formatted file is one `google-java-format` finding, not hundreds: the Checkstyle checks that
+only restate the formatter's layout are suppressed in both styles (`Indentation`,
+`CommentsIndentation`, `WhitespaceAround`, `WhitespaceAfter`, `GenericWhitespace`, `MethodParamPad`,
+`ParenPad`, `NoWhitespaceBefore`, `OperatorWrap`, `SeparatorWrap`, `NoLineWrap`, `CustomImportOrder`,
+`EmptyLineSeparator`, `LeftCurly`, `RightCurly`, `AnnotationLocation`, `FileTabCharacter` and the
+empty-block spacing regex), in `languages/java/gradle/checkstyle-suppressions.xml`. Checkstyle keeps
+everything that is not layout: naming, `NeedBraces`, `AvoidStarImport`, empty catch blocks, the
+Javadoc rules, `OneStatementPerLine` and the rest. Checkstyle's `LineLength` is suppressed too: the
+line-length rule above replaces it. A project's own
+Checkstyle config (`tools.checkstyle.precedence`) is used as written, layout checks included.
+
+The style reaches Gradle as the command-line property `-Pnitpicker.java.style=aosp`, never through
+`gradle.properties`. The runner reads the convention from the head policy file at run time, like the
+other policy values, so it is not part of the analyzer's configuration hash; the base run gets the
+same policy file, so a change of style in the same pull request does not fail the files it makes
+differ. Format failures name the style (`File is not formatted with
+google-java-format --aosp`).
 
 ## Coupling and stability (ticket SH6)
 

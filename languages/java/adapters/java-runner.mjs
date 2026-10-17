@@ -2,6 +2,8 @@ import { realpathSync } from 'node:fs';
 import { collectJavaFindings } from './java-diff.mjs';
 import { detectJavaBuild } from '../builds/java-build.mjs';
 import { parseJavaRunnerArguments } from './java-policy.mjs';
+import { readHeadPolicyFile } from '../../../shared/head-policy.mjs';
+import { javaStyle } from './style/java-style.mjs';
 
 export const GRADLE_FAILURE_RULE = 'gradle-failure';
 export const MAVEN_FAILURE_RULE = 'maven-failure';
@@ -41,8 +43,14 @@ export function analyzeJavaSnapshot(
   }
 }
 
+export function readRunnerPolicy(runnerArguments, environment = process.env) {
+  const { projectRoot, policy } = parseJavaRunnerArguments(runnerArguments);
+  const { conventions } = readHeadPolicyFile(environment);
+  return { projectRoot, policy: { ...policy, javaStyle: javaStyle(conventions) } };
+}
+
 function main(arguments_) {
-  const { projectRoot, policy } = parseJavaRunnerArguments(arguments_);
+  const { projectRoot, policy } = readRunnerPolicy(arguments_);
   process.stdout.write(
     `${JSON.stringify(analyzeJavaSnapshot(realpathSync(projectRoot), { policy }))}\n`,
   );

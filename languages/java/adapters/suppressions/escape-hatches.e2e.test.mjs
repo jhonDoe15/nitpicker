@@ -57,7 +57,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import org.junit.jupiter.api.Test;
 
 class SwallowingTest {
-  // This comment runs past the 100 columns of Checkstyle's line length, which nothing else reports here.
+  // This comment runs past the 100 columns of the Java line length, which nothing else reports here.
   @Test
   void parses() {
     try {
@@ -115,9 +115,6 @@ describe.skipIf(!enabled)('Java preset escape hatches', () => {
 
       expect(result.failed).toBe(true);
       expect(ofFile(result, 'Bad.java')).toEqual([
-        ...['EmptyLineSeparator', 'Indentation', 'RegexpSinglelineJava'].map(
-          (check) => `checkstyle ${check} Bad.java`,
-        ),
         'errorprone DefaultCharset Bad.java',
         'errorprone EmptyCatch Bad.java',
         'google-java-format format Bad.java',
@@ -128,14 +125,14 @@ describe.skipIf(!enabled)('Java preset escape hatches', () => {
   );
 
   it(
-    'lints test sources with PMD, Checkstyle and the formatter, without the assertion-style rules',
+    'lints test sources with PMD, Error Prone, the formatter and the line length, without the assertion-style rules',
     () => {
       expect(ofFile(defaultDiff(), 'SwallowingTest.java')).toEqual([
-        'checkstyle LineLength SwallowingTest.java',
         'errorprone EmptyCatch SwallowingTest.java',
         'google-java-format format SwallowingTest.java',
         'pmd AvoidCatchingGenericException SwallowingTest.java',
         'pmd UnitTestShouldIncludeAssert SwallowingTest.java',
+        'structure line-length-limit SwallowingTest.java',
       ]);
     },
     GRADLE_STEP_TIMEOUT_MS,
