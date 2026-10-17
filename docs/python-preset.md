@@ -79,18 +79,20 @@ last row: its `bin` is first on the `PATH`. For pipenv, hatch and conda found by
 detection goes on with the next row, because the tools may be on the `PATH` (a CI job that installed
 them with `pip`). When the manager runs and has no environment for the project, or the setting names
 it and it is not installed, the run stops with an `environment-failed` error that says how to create
-it.
+it and how to install the manager (`uv`, `poetry`, `pipenv`, `hatch`, `conda`).
 
-The environment is always the one of the live checkout (the head work tree you run `nitpicker` in).
-It is never created or synced by nitpicker: the uv environment is checked before `uv run --no-sync`
-is called, so a missing `.venv` is an error and not an empty environment created in your checkout.
+The environment of the head is always the one of the live checkout (the head work tree you run
+`nitpicker` in). It is never created or synced by nitpicker: the uv environment is checked before
+`uv run --no-sync` is called, so a missing `.venv` is an error and not an empty environment created
+in your checkout. The base snapshot gets an environment of its own only when its dependency files
+differ from the head's (next section).
 A virtualenv outside the project (a shared `/opt/venv`, an activated CI environment) is used with
 an absolute `python.environment`. A tool that is
 not installed in the environment but is on the `PATH` (typically `ruff`, which many projects use
 from `pipx` or `uvx`) is used from the `PATH`. `coverage` and `pytest` must be in the environment,
 since pytest imports the project's code and dependencies; the error says so.
 
-### The base snapshot has no environment of its own
+### The base snapshot and its environment
 
 The base side is a separate git work tree of the merge base, and it has no virtualenv. Running the
 live checkout's environment there would normally import the wrong code: the project is usually
@@ -104,14 +106,36 @@ before the `.pth` files and import hooks editable installs use, so the snapshot'
 Tests run with the snapshot as working directory, so `tests/` and `conftest.py` are the snapshot's
 too, and coverage only measures the snapshot's source roots.
 
-Why not the dependency hook (`languages/typescript/adapters/dependency-graph/dependency-hooks.mjs`)? A hook installs
-a directory into the snapshot (`npm ci` for `node_modules`) and removes it afterwards. For Python
-that means building a second environment per snapshot: minutes of work, network access, and the
-base would be analyzed with the base's pinned tool versions while head uses head's, so every
-upgrade of ruff would show up as new findings. One environment for both sides keeps the tool
-versions identical, which is what a differential gate needs. The cost is that base is analyzed
-with head's dependencies; a change that needs a new dependency to even import its base sources is
-rare, and the CI job that runs the gate has the head environment installed anyway.
+When the change touches the dependencies, the base would still import head's packages, so the base
+snapshot gets its own environment. nitpicker compares the dependency files of the base snapshot
+with the head's: `uv.lock`, `poetry.lock`, `pdm.lock`, `Pipfile`, `Pipfile.lock`, the
+`requirements*.txt` and `constraints*.txt` files at the root and the `*.txt` files of a
+`requirements/` folder (byte for byte), and the dependency tables of `pyproject.toml`
+(`project.dependencies`, `optional-dependencies`, `requires-python`, `dependency-groups`,
+`build-system`, `tool.poetry` dependencies, groups and extras, `tool.uv`, `tool.pdm`
+dev-dependencies and resolution; any other setting is ignored). If nothing differs, the base uses the head's
+environment, as above. If something differs, the project's own tool builds `.venv` inside the
+snapshot, which is deleted with it, and the base tools run from it:
+
+| The base snapshot has | Command run in the snapshot                                                                                  | Skips                                                                    |
+| --------------------- | ------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------ |
+| `uv.lock`             | `uv sync --frozen --no-install-project --no-install-workspace`                                               | the project and its workspace members                                    |
+| `poetry.lock`         | `poetry install --no-root --no-interaction`                                                                  | the project                                                              |
+| `pdm.lock`            | `pdm sync --no-self`                                                                                         | the project                                                              |
+| `Pipfile.lock`        | `pipenv sync --dev`                                                                                          | refused when the lock has editable or path packages                      |
+| `requirements*.txt`   | `python3 -m venv .venv`, then `.venv/bin/python -m pip install --prefer-binary -r <copy> [-c <constraints>]` | `-e`, paths, `file:` URLs, includes and constraints outside the snapshot |
+
+`python.environment` picks the tool when it is `uv`, `poetry` or `pipenv`; with it unset the first
+lock file in the order above wins, and requirements files are used when no lock file is there and
+the project declares no pipenv, hatch or conda environment. `path`, `hatch`, `conda`, a directory and an
+absolute path keep the head's environment for the base, because those are environments nitpicker
+cannot rebuild from files. The commands never run the base's own setup code: the project itself is
+not installed, and the requirements copy drops editable and local entries. The packages the
+lock file lists are installed as the tool would install them, so their own build steps run.
+If the install fails, or the tool is not installed, the run stops with an `environment-failed`
+error that names the command and how to install the tool. A tool that the project's dev
+dependencies provide (`ruff`, `mypy`, `pytest`) runs in the base at the version the base locks, so
+a change that upgrades one of them compares the new version's findings against the old version's.
 
 Limits: compiled extension modules of the project itself that are built into the environment are
 not rebuilt for base; and a project whose code does not live under the detected source roots must
