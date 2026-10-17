@@ -5,7 +5,7 @@ import {
   gate,
   pythonE2eEnabled,
   removeRepositories,
-} from './test-support/python-e2e-support.mjs';
+} from '../test-support/python-e2e-support.mjs';
 
 const CONFIG = JSON.stringify({
   preset: 'python',

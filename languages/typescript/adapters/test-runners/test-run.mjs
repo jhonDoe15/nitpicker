@@ -15,7 +15,7 @@ import {
 } from '../quality-areas/reporting/test-report.mjs';
 
 export const TEST_TIMEOUT_MS = TEST_TIMEOUT_CEILING_MS;
-export const MAX_WORKERS = 4;
+const MAX_WORKERS = 4;
 const MILLISECONDS = 1000;
 
 export function testTimeoutMs() {

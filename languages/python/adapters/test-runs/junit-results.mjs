@@ -67,7 +67,11 @@ export function parseJunit(xml) {
 }
 
 export function readJunit(reportRoot, name = JUNIT_REPORT) {
-  const report = path.join(reportRoot, name);
+  const base = path.resolve(reportRoot);
+  const report = path.resolve(base, name);
+  if (!report.startsWith(base + path.sep)) {
+    throw new Error(`JUnit report path escapes the report directory: ${name}`);
+  }
   return existsSync(report) ? parseJunit(readFileSync(report, 'utf8')) : [];
 }
 

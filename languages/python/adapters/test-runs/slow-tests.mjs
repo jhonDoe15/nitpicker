@@ -215,10 +215,12 @@ function untimed({ reportRoot, testsRan }) {
 function findingsOf(options) {
   const { runs, notices } = slowCandidates(options);
   const times = retimes(options.reportRoot);
-  const retimed = (run) => ({
-    ...run,
-    testCase: { ...run.testCase, seconds: times.get(run.testCase.id) ?? run.testCase.seconds },
-  });
+  function retimed(run) {
+    return {
+      ...run,
+      testCase: { ...run.testCase, seconds: times.get(run.testCase.id) ?? run.testCase.seconds },
+    };
+  }
   return [
     ...untimed(options),
     ...notices,

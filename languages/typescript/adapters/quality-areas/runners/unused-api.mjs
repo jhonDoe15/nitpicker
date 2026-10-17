@@ -53,7 +53,9 @@ function testOnlyFindings(options, { config, normal, knip }) {
   const layout = readLayout();
   const packagesInfo = loadPackages(options.projectRoot, layout);
   const hasTests = layout.projectCodeFiles(options.projectRoot).some(layout.isTestFile);
-  if (!hasTests || !needsProductionRun(packagesInfo, options.projectRoot)) return [];
+  if (!hasTests || !needsProductionRun(packagesInfo, options.projectRoot)) {
+    return [];
+  }
   const productionConfig = layoutKnipProductionConfig(config, layout);
   return testOnlyExportFindings({
     normal,
