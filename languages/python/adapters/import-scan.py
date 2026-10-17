@@ -1,14 +1,6 @@
 import ast
 import json
-import os
 import sys
-import tokenize
-
-sys.dont_write_bytecode = True
-HERE = os.path.dirname(os.path.abspath(__file__))
-sys.path[:0] = [os.path.join(HERE, "facts"), os.path.join(os.path.dirname(HERE), "rules")]
-
-from python_facts import decoded, facts_of
 
 
 TYPE_CHECKING = "TYPE_CHECKING"
@@ -62,13 +54,18 @@ def branches(node, type_only, flags):
 
 
 def statement_of(node, type_only):
+    if isinstance(node, ast.Import):
+        return {
+            "level": 0,
+            "module": None,
+            "names": [a.name for a in node.names],
+            "typeOnly": type_only,
+        }
     return {
-        "level": getattr(node, "level", 0),
-        "module": getattr(node, "module", None),
+        "level": node.level,
+        "module": node.module,
         "names": [a.name for a in node.names],
         "typeOnly": type_only,
-        "line": node.lineno,
-        "aliases": [{"name": a.name, "alias": a.asname} for a in node.names],
     }
 
 
@@ -93,22 +90,13 @@ def imports_of(tree):
     return collect(tree, type_checking_names(tree))
 
 
-def scan_file(root, relative, with_facts):
-    with open(f"{root}/{relative}", "rb") as handle:
-        source = handle.read()
-    tree = ast.parse(source, relative)
-    imports = imports_of(tree)
-    if not with_facts:
-        return imports
-    return facts_of(relative, tree, decoded(source), imports)
-
-
-def scan(root, files, with_facts=False):
+def scan(root, files):
     scanned = {}
     for relative in files:
         try:
-            scanned[relative] = scan_file(root, relative, with_facts)
-        except (SyntaxError, ValueError, RecursionError, OSError, tokenize.TokenError):
+            with open(f"{root}/{relative}", "rb") as handle:
+                scanned[relative] = imports_of(ast.parse(handle.read(), relative))
+        except (SyntaxError, ValueError, RecursionError, OSError):
             continue
     return scanned
 
@@ -116,4 +104,4 @@ def scan(root, files, with_facts=False):
 if __name__ == "__main__":
     with open(sys.argv[1], encoding="utf-8") as handle:
         request = json.load(handle)
-    json.dump(scan(request["root"], request["files"], request.get("facts") is True), sys.stdout)
+    json.dump(scan(request["root"], request["files"]), sys.stdout)
