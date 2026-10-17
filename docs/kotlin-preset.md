@@ -774,6 +774,20 @@ fails only when it grows, and a package folder moved to a new path is matched to
   stability-direction violation between Kotlin packages, new and baselined. These cases share one
   head commit and one diff, and the project forces another Kotlin version onto the compiler
   configuration. It needs network access to Maven Central for the Kotlin compiler as well.
+- `languages/java/maven/kotlin/e2e/*.e2e.test.mjs`: real Maven, behind `NITPICKER_KOTLIN_E2E=1` (part of
+  `npm run test:kotlin`; `NITPICKER_MAVEN` overrides the `mvn` on the PATH). They run on the fixture
+  `languages/java/maven/fixtures/kotlin-single` (the same sources as the Gradle fixture, with a
+  `kotlin-maven-plugin` POM that generates `Api.kt` into `target/generated-sources`) and repeat the
+  Gradle suites' cases with the same data modules: detekt, ktlint and ktfmt (by override and by
+  detection from the POM), the detekt config layering, a Kotlin-only module, the Java tools on the
+  Java files of a Kotlin module, changed-branch coverage (one-sided, multi-line, generated
+  branches), structure, CRAP, clone and stability rules in one diff, init blocks, a compile error as
+  `kotlin/maven-failure`, and every one-way rule case. One test runs the Gradle and the Maven
+  fixture on the same sources and asserts the findings are equal. Another runs the reactor
+  `fixtures/kotlin-multi-module` (two Kotlin modules and a Java-only one) with a slow-test
+  threshold of -1, and one runs the Kotlin Spring fixture on Maven with ArchUnit written in
+  Kotlin.
+- `languages/java/adapters/kotlin/spring/kotlin-spring.e2e.test.mjs`: the same Spring fixture on Gradle.
 - `KotlinMetrics.java` on a fixture (units, lambda properties, package, multifile parts, byte order
   mark, parse error) is tested in the same opt-in suite, so a bump of the pinned compiler is checked
   with `npm run test:kotlin`.
