@@ -65,7 +65,7 @@ describe('configureJavaAnalyzer', () => {
   it('hands the size thresholds to the runner', () => {
     const analyzer = createJavaAnalyzer();
     const policyOf = (options) =>
-      parseRunnerArguments(
+      parseJavaRunnerArguments(
         configureJavaAnalyzer(analyzer, options).createInvocation(context()).args.slice(1),
       ).policy;
 
