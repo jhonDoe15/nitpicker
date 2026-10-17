@@ -1,4 +1,4 @@
-import { JAVA_LINE_LENGTH } from '../../../../shared/policy-size.mjs';
+import { JAVA_LINE_LENGTH } from '../../../../shared/project-rules/size-rules.mjs';
 import { evaluateFileLimits } from '../../../../shared/rules/file-limits.mjs';
 
 const TEXT_BLOCK_DELIMITER = /"""/gu;

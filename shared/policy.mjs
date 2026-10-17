@@ -5,12 +5,12 @@ import {
   sizeGrewMessages,
   sizeMessages,
   sizeRules,
-} from './policy-size.mjs';
+} from './project-rules/size-rules.mjs';
 import { UNUSED_API_RULES, UNUSED_API_RULE_IDS } from './unused-api/unused-api-policy.mjs';
 import { reuseRules } from './rules/reuse-rules.mjs';
 import { SOURCE_RULE_IDS, sourceRuleMessages, sourceRules } from './project-rules/source-rules.mjs';
 
-export { FILE_LIMIT_DEFAULTS } from './policy-size.mjs';
+export { FILE_LIMIT_DEFAULTS } from './project-rules/size-rules.mjs';
 
 export const LANGUAGES = ['typescript', 'java', 'python', 'kotlin'];
 

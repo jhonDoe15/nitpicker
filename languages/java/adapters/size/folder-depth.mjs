@@ -1,4 +1,4 @@
-import { FOLDER_DEPTH_DEFAULTS } from '../../../../shared/policy-size.mjs';
+import { FOLDER_DEPTH_DEFAULTS } from '../../../../shared/project-rules/size-rules.mjs';
 import { folderDepthFindings } from '../../../../shared/rules/size/folder-depth.mjs';
 
 const WORDING = {

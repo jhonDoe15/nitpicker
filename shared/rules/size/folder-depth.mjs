@@ -8,7 +8,7 @@ export function folderDepthFindings(files, options) {
   const folders = new Map();
   for (const file of files) {
     const folder = path.posix.dirname(file.path);
-    const depth = depthOfChecked(file, options.depthOf, isExcepted, folder);
+    const depth = depthOfChecked(file, { depthOf: options.depthOf, isExcepted });
     if (depth !== undefined) {
       const key = `${folder}\0${file.kind}`;
       folders.set(key, { depth, files: (folders.get(key)?.files ?? 0) + 1 });
@@ -19,7 +19,8 @@ export function folderDepthFindings(files, options) {
     .map(([key, folder]) => depthFinding(options, key, folder));
 }
 
-function depthOfChecked(file, depthOf, isExcepted, folder) {
+function depthOfChecked(file, { depthOf, isExcepted }) {
+  const folder = path.posix.dirname(file.path);
   const skipped =
     (file.kind === 'test' && TEST_DATA_FOLDER.test(file.path)) ||
     isExcepted(RULE_IDS.folderDepth, file.path, folder);
