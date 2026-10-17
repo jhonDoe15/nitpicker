@@ -51,13 +51,20 @@ describe('generated tsconfig.quality.json', () => {
       strict: true,
       noUncheckedIndexedAccess: true,
     });
-    expect(config.include).toEqual(['src/**/*', 'test/**/*', 'tests/**/*', 'vitest*.ts']);
+    expect(config.include).toEqual([
+      'src/**/*',
+      'test/**/*',
+      'tests/**/*',
+      '__tests__/**/*',
+      'e2e/**/*',
+      'vitest*.ts',
+    ]);
   });
 
-  it('keeps the TypeScript preset free of checkJs', () => {
+  it('keeps the TypeScript preset free of checkJs and never emits', () => {
     const config = transformed('tsconfig.quality.json', typescriptLayout, projectWith());
     expect(config.compilerOptions).not.toHaveProperty('checkJs');
-    expect(config.compilerOptions).not.toHaveProperty('noEmit');
+    expect(config.compilerOptions.noEmit).toBe(true);
   });
 
   it('uses the custom roots and exclusions together with the JavaScript options', () => {
@@ -85,7 +92,14 @@ describe('generated tsconfig.quality.json', () => {
       skipLibCheck: true,
       strict: true,
     });
-    expect(config.include).toEqual(['src/**/*', 'test/**/*', 'tests/**/*', 'vitest*.ts']);
+    expect(config.include).toEqual([
+      'src/**/*',
+      'test/**/*',
+      'tests/**/*',
+      '__tests__/**/*',
+      'e2e/**/*',
+      'vitest*.ts',
+    ]);
   });
 
   it('extends a jsconfig.json when the project has no tsconfig.json', () => {

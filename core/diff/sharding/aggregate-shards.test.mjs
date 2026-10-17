@@ -82,6 +82,49 @@ small/example src/main/example.ts example finding
 `),
     );
   });
+  it('carries the policy changes and notices of the shards into the report', () => {
+    const fixture = createFixture();
+    const carried = {
+      policyChanges: ['exclude added: src/vendor/**'],
+      notices: ['1 changed TypeScript file is outside layout.sourceRoots'],
+      policyLoosenings: ['exclude added: src/vendor/**'],
+      policyChangeAccepted: false,
+    };
+    const loosening = {
+      tool: 'nitpicker-config',
+      rule: 'policy-loosened',
+      path: 'nitpicker.config.json',
+      identity: 'exclude added: src/vendor/**',
+      message: 'exclude added: src/vendor/**. Stop and ask a person to review this change.',
+      classification: 'enforceable',
+    };
+    writeShard(fixture.inputRoot, 0, { tools: ['first'], findings: [loosening], carried });
+    writeShard(fixture.inputRoot, 1, { tools: ['second'], carried });
+
+    const report = aggregateShardReports({
+      ...fixture,
+      analyzers: [analyzer('first'), analyzer('second')],
+      shardCount: 2,
+    });
+    const summary = readJson(fixture.outputRoot, 'summary.json');
+    const text = readFileSync(path.join(fixture.outputRoot, 'report.txt'), 'utf8').split('\n');
+    const heading = 'Policy changed in this change (nitpicker.config.json, head against base):';
+    const start = text.indexOf(heading);
+
+    const fields = (entry) => Object.keys(carried).map((key) => entry[key]);
+
+    expect(fields(report.summary)).toEqual(Object.values(carried));
+    expect(fields(summary)).toEqual(Object.values(carried));
+    expect([report.newFindings, report.summary.newEnforceableFindings]).toEqual([[loosening], 1]);
+    expect(text.slice(start, start + 5)).toEqual([
+      heading,
+      '  exclude added: src/vendor/**',
+      '',
+      'Notices (not failing):',
+      '  1 changed TypeScript file is outside layout.sourceRoots',
+    ]);
+  });
+
   it('carries the held findings of every shard into the report and its note', () => {
     const fixture = createFixture();
     const held = {

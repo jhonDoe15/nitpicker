@@ -1,5 +1,6 @@
 import path from 'node:path';
 import { readLayout } from '../../../../head-policy.mjs';
+import { mockedModuleSource } from '../../analysis/test-code-analysis.mjs';
 
 const layout = readLayout();
 
@@ -23,23 +24,6 @@ function isProductionModule(filename, source) {
     sourceRoot !== undefined &&
     !layout.isTestFile(resolved.slice(resolved.indexOf(`/${sourceRoot}/`) + 1))
   );
-}
-
-function mockedSource(node) {
-  if (
-    node.callee.type !== 'MemberExpression' ||
-    node.callee.computed ||
-    node.callee.object.type !== 'Identifier' ||
-    node.callee.object.name !== 'vi' ||
-    node.callee.property.type !== 'Identifier' ||
-    !['mock', 'doMock'].includes(node.callee.property.name)
-  ) {
-    return undefined;
-  }
-  const [firstArgument] = node.arguments;
-  return firstArgument?.type === 'Literal' && typeof firstArgument.value === 'string'
-    ? firstArgument.value
-    : undefined;
 }
 
 export const rule = {
@@ -71,7 +55,7 @@ export const rule = {
         }
       },
       CallExpression(node) {
-        const source = mockedSource(node);
+        const source = mockedModuleSource(node);
         if (source !== undefined) {
           mocks.push({ node, source });
         }

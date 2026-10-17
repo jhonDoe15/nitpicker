@@ -55,13 +55,13 @@ export function commitBranch(root, name, files) {
   git(root, 'commit', '-q', '-m', name);
 }
 
-export function gate(root, branch, extra = []) {
+export function gate(root, branch, { extra = [], environment = {} } = {}) {
   git(root, 'checkout', '-q', branch);
   const reports = mkdtempSync(path.join(tmpdir(), 'nitpicker-python-e2e-out-'));
   const output = { text: '' };
   const exitCode = runCli({
     arguments_: ['--base', 'main', '--output', reports, ...extra],
-    environment: { NO_COLOR: '1' },
+    environment: { NO_COLOR: '1', ...environment },
     currentProjectRoot: root,
     stdout: {
       write: (value) => {

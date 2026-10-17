@@ -1,7 +1,7 @@
-import functional from 'eslint-plugin-functional';
 import tseslint from 'typescript-eslint';
 import { nitpickerRules } from '../../eslint-plugin/index.mjs';
-import { codeExtensions, excludedGlobs } from '../../layout.mjs';
+import { functionalPlugin } from '../../eslint-plugin/type-identity/functional-plugin.mjs';
+import { codeExtensions, builtInExcludedGlobs } from '../../layout.mjs';
 
 export function domainGlobsFor(sourceRoots) {
   return sourceRoots.map((root) => `${root}/main/features/*/domain/**/*.${codeExtensions}`);
@@ -181,17 +181,18 @@ export const domainTypeAwareFunctionalRules = {
 };
 
 export const strictDomainConfig = [
-  { ignores: excludedGlobs },
+  { ignores: builtInExcludedGlobs },
   {
     files: domainGlobs,
     languageOptions: { parser: tseslint.parser },
-    plugins: { functional, nitpicker: nitpickerRules },
+    plugins: { functional: functionalPlugin, nitpicker: nitpickerRules },
     rules: {
       ...domainFunctionalRules,
       ...domainPurityRules,
       'no-restricted-syntax': ['error', ...domainRestrictedSyntax],
       'nitpicker/no-self-recursion': 'error',
       'nitpicker/no-throw': 'error',
+      'nitpicker/no-ui-framework-in-domain': 'error',
       'nitpicker/no-unknown-in-domain': 'error',
     },
   },

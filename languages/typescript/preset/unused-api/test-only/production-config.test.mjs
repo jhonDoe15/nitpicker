@@ -38,6 +38,8 @@ describe('the knip config without tests', () => {
         'src/main/**',
         `!test/**/*.${CODE}`,
         `!tests/**/*.${CODE}`,
+        `!__tests__/**/*.${CODE}`,
+        `!e2e/**/*.${CODE}`,
         `!src/main/**/*.{test,spec}.${CODE}`,
         '!src/main/**/__tests__/**',
         `!**/*.{stories,story}.${CODE}`,

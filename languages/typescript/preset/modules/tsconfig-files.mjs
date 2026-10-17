@@ -1,17 +1,39 @@
+import { existsSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import path from 'node:path';
 
 export const PROJECT_TSCONFIG = 'tsconfig.json';
 
+function typescriptCompiler() {
+  return createRequire(import.meta.url)('typescript');
+}
+
 export function readJsonc(file) {
-  const typescript = createRequire(import.meta.url)('typescript');
+  const typescript = typescriptCompiler();
   const { config } = typescript.readConfigFile(file, typescript.sys.readFile);
   return config;
 }
 
-export function referencedConfigFile(projectDirectory, reference) {
+export function parsedTsconfig(configFile) {
+  const typescript = typescriptCompiler();
+  return typescript.parseJsonConfigFileContent(
+    readJsonc(configFile) ?? {},
+    { ...typescript.sys, readDirectory: () => [] },
+    path.dirname(configFile),
+    undefined,
+    configFile,
+  );
+}
+
+function referencedConfigFile(projectDirectory, reference) {
   const target = path.resolve(projectDirectory, reference.path);
   return path.extname(target) === '.json' ? target : path.join(target, PROJECT_TSCONFIG);
+}
+
+export function referencedTsconfigs(configFile, config = readJsonc(configFile)) {
+  return (config?.references ?? [])
+    .map((reference) => referencedConfigFile(path.dirname(configFile), reference))
+    .filter((file) => existsSync(file));
 }
 
 export function isSolutionTsconfig(config) {
@@ -22,4 +44,38 @@ export function isSolutionTsconfig(config) {
     config.include === undefined &&
     (config.files ?? []).length === 0
   );
+}
+
+const PROJECT_CONFIG = /(?:^|\/)tsconfig\.json$/u;
+const DEPENDENCY_FOLDER = /(?:^|\/)node_modules\//u;
+
+function referencedConfigs(projectRoot, config) {
+  return referencedTsconfigs(path.join(projectRoot, config)).map((file) =>
+    path.relative(projectRoot, file).split(path.sep).join('/'),
+  );
+}
+
+export function projectTsconfigs(projectRoot, files, isHidden = () => false) {
+  const found = new Set(
+    files.filter(
+      (file) => PROJECT_CONFIG.test(file) && !DEPENDENCY_FOLDER.test(file) && !isHidden(file),
+    ),
+  );
+  for (const config of found) {
+    for (const referenced of referencedConfigs(projectRoot, config)) {
+      found.add(referenced);
+    }
+  }
+  return [...found].toSorted();
+}
+
+export function checksJavascript(configFile) {
+  return parsedTsconfig(configFile).options.checkJs === true;
+}
+
+const LIB_FILE = /^lib\.(.+)\.d\.ts$/u;
+
+export function projectLibs(projectDirectory, configName) {
+  const { options } = parsedTsconfig(path.join(projectDirectory, configName));
+  return options.lib?.map((lib) => path.basename(lib).replace(LIB_FILE, '$1'));
 }

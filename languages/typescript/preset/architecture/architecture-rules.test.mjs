@@ -1,7 +1,9 @@
+import { existsSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 import { cruiseWithConfig } from './test-support/strict-cruise.mjs';
+import { outsideRootsRule } from './outside-roots/outside-roots.mjs';
 import config from './fixtures/dependency-cruiser.fixture.config.mjs';
 import productionConfig from '../defaults/dependency-cruiser.config.mjs';
 
@@ -10,8 +12,8 @@ const projectRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '
 function cruiseFixture(name) {
   const fixture = path.join(projectRoot, 'languages/typescript/preset/architecture/fixtures', name);
   return cruiseWithConfig(config, {
-    baseDir: projectRoot,
-    paths: [fixture],
+    baseDir: fixture,
+    paths: ['src', 'tests'].filter((entry) => existsSync(path.join(fixture, entry))),
     outputType: 'err-long',
   });
 }
@@ -25,7 +27,7 @@ describe('dependency architecture rules', () => {
         severity: 'error',
         from: { path: '(?:^|/)(?:src)/(?!.*(?:__tests__|\\.test\\.|\\.spec\\.))' },
         to: {
-          path: '(?:^|/)(?:(?:test|tests)/|(?:src)/.*/__tests__/|(?:src)/.*\\.(?:test|spec)\\.)',
+          path: '^(?:test|tests|__tests__|e2e)/|(?:^|/)(?:src)/.*/__tests__/|(?:^|/)(?:src)/.*\\.(?:test|spec)\\.',
         },
       },
       {
@@ -33,6 +35,27 @@ describe('dependency architecture rules', () => {
         severity: 'error',
         from: { path: '(?:^|/)(?:src)/(?!.*(?:__tests__|\\.test\\.|\\.spec\\.))' },
         to: { circular: true },
+      },
+      {
+        name: 'no-import-outside-roots',
+        severity: 'error',
+        comment: outsideRootsRule({ productionSource: '', roots: [] }).comment,
+        from: { path: '(?:^|/)(?:src)/(?!.*(?:__tests__|\\.test\\.|\\.spec\\.))' },
+        to: {
+          dependencyTypesNot: [
+            'core',
+            'npm',
+            'npm-dev',
+            'npm-optional',
+            'npm-peer',
+            'npm-bundled',
+            'npm-no-pkg',
+            'npm-unknown',
+            'unknown',
+            'undetermined',
+          ],
+          pathNot: '^(?:src|test|tests|__tests__|e2e)/|(?:^|/)node_modules/|\\.json$',
+        },
       },
       {
         name: 'feature-internals-only-through-index',
@@ -165,7 +188,7 @@ describe('dependency architecture rules', () => {
 
     expect(result.exitCode).not.toBe(0);
     expect(result.output).toEqual(
-      '\n  error features-do-not-import-bootstrap: languages/typescript/preset/architecture/fixtures/reverse-direction/src/main/auth/logic.ts → languages/typescript/preset/architecture/fixtures/reverse-direction/src/main/server.ts\n    -\n\n\nx 1 dependency violations (1 errors, 0 warnings). 2 modules, 1 dependencies cruised.\n\n',
+      '\n  error features-do-not-import-bootstrap: src/main/auth/logic.ts → src/main/server.ts\n    -\n\n\nx 1 dependency violations (1 errors, 0 warnings). 2 modules, 1 dependencies cruised.\n\n',
     );
   });
 });

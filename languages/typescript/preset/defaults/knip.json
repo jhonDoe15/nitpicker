@@ -11,22 +11,21 @@
     "src/main/vitest.config.ts",
     "test/vitest.config.ts",
     "tests/vitest.config.ts",
+    "__tests__/vitest.config.ts",
+    "e2e/vitest.config.ts",
     "vitest.quality.config.ts",
     "test/fixtures/*harness*.{ts,mts,mjs}",
-    "tests/fixtures/*harness*.{ts,mts,mjs}"
+    "tests/fixtures/*harness*.{ts,mts,mjs}",
+    "__tests__/fixtures/*harness*.{ts,mts,mjs}",
+    "e2e/fixtures/*harness*.{ts,mts,mjs}"
   ],
   "project": [
     "src/**/*.{ts,tsx,mts,cts,js,jsx,mjs,cjs}",
     "test/**/*.{ts,tsx,mts,cts,js,jsx,mjs,cjs}",
     "tests/**/*.{ts,tsx,mts,cts,js,jsx,mjs,cjs}",
+    "__tests__/**/*.{ts,tsx,mts,cts,js,jsx,mjs,cjs}",
+    "e2e/**/*.{ts,tsx,mts,cts,js,jsx,mjs,cjs}",
     "*.config.{ts,mts,mjs}"
   ],
-  "ignore": [
-    "src/**/dist/**",
-    "src/**/*.d.ts",
-    "coverage/**",
-    "reports/**",
-    ".stryker-tmp/**",
-    ".nitpicker-*"
-  ]
+  "ignore": ["src/**/*.d.ts", "coverage/**", "reports/**", ".stryker-tmp/**", ".nitpicker-*"]
 }

@@ -61,6 +61,62 @@ describe('coupling report on a neutral module graph', () => {
     ]);
   });
 
+  describe('type-only edges', () => {
+    const modules = ['p1/a', 'p2/a', 'stable/s', 'volatile/v', 'leaf/q'];
+    const edges = [
+      { source: 'p1/a', target: 'stable/s' },
+      { source: 'p2/a', target: 'stable/s' },
+      { source: 'volatile/v', target: 'leaf/q' },
+    ];
+    const reportWith = (...extra) =>
+      buildCouplingReport({ modules, edges: [...edges, ...extra], packageOf, fileOf });
+    const inversion = { source: 'stable/s', target: 'volatile/v' };
+
+    it('count in the metrics but are never reported as a stability inversion themselves', () => {
+      const report = reportWith({ ...inversion, kind: 'type-only' });
+
+      expect(report.summary.dependencies).toBe(4);
+      expect(report.modules.find(({ file }) => file === 'stable/s.py')).toEqual({
+        file: 'stable/s.py',
+        fanIn: 2,
+        fanOut: 1,
+        totalCoupling: 3,
+        instability: 0.3333,
+      });
+      expect(report.stabilityDirection).toEqual([]);
+    });
+
+    it('moving unrelated edges to type-only does not create an inversion elsewhere', () => {
+      const edgesOf = (kind) => [
+        { source: 'x/x1', target: 's/m' },
+        { source: 'x/x2', target: 's/m' },
+        { source: 's/m', target: 't/m' },
+        { source: 't/m', target: 'w/m' },
+        ...['z1', 'z2', 'z3'].map((name) => ({ source: `z/${name}`, target: 't/m', kind })),
+      ];
+      const reportOf = (kind) =>
+        buildCouplingReport({
+          modules: ['x/x1', 'x/x2', 'z/z1', 'z/z2', 'z/z3', 's/m', 't/m', 'w/m'],
+          edges: edgesOf(kind),
+          packageOf,
+          fileOf,
+        });
+
+      expect(reportOf('runtime').stabilityDirection).toEqual([]);
+      expect(reportOf('type-only').stabilityDirection).toEqual([]);
+      expect(reportOf('type-only').packages).toEqual(reportOf('runtime').packages);
+    });
+
+    it('are runtime edges once any copy of the edge is a runtime edge', () => {
+      const typeOnly = { ...inversion, kind: 'type-only' };
+      const expected = [{ source: 'stable', target: 'volatile', delta: 0.1667 }];
+
+      expect(reportWith(typeOnly, inversion).stabilityDirection).toEqual(expected);
+      expect(reportWith(inversion, typeOnly).stabilityDirection).toEqual(expected);
+      expect(reportWith(typeOnly, typeOnly).summary.dependencies).toBe(4);
+    });
+  });
+
   it('orders packages by name', () => {
     const report = buildCouplingReport({
       modules: ['b/x', 'a/x', 'B/x'],

@@ -1,7 +1,7 @@
 import { existsSync } from 'node:fs';
 import path from 'node:path';
 import { TYPESCRIPT_CONFIG_ENVIRONMENT } from './cruise.mjs';
-import { codeExtensionNames } from '../layout.mjs';
+import { EXCLUDED_PATH_PATTERN, codeExtensionNames } from '../layout.mjs';
 import { readLayout } from '../head-policy.mjs';
 
 const { excludePattern } = readLayout();
@@ -14,10 +14,7 @@ export default {
   options: {
     preserveSymlinks: true,
     doNotFollow: {
-      path: [
-        '(?:^|/)(?:node_modules|dist|build|generated|coverage|reports|target)(?:/|$)',
-        excludePattern,
-      ]
+      path: [EXCLUDED_PATH_PATTERN, excludePattern]
         .filter((pattern) => pattern !== undefined)
         .join('|'),
     },

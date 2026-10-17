@@ -33,7 +33,9 @@ Before you change code other modules use, fix a bug, or add a UI state, read
      wait for that run; never kill it.
 4. Never suppress: no `eslint-disable`, `@ts-ignore`, coverage or mutation ignore comments
    (`istanbul`/`c8`/`v8 ignore`, `Stryker disable`), config `exclude`/`disable`, legacy entries,
-   or weakened tests. If a finding seems wrong, stop and ask.
+   generator markers (`@generated`, `DO NOT EDIT`) in files you wrote, or weakened tests. If a finding seems wrong, stop and ask. Never pass `--accept-policy-change` or set
+   `NITPICKER_ACCEPT_POLICY_CHANGE`: a `nitpicker-config/policy-loosened` finding is for a person to
+   accept.
 
 ## Layout
 
@@ -55,6 +57,7 @@ Before you change code other modules use, fix a bug, or add a UI state, read
 - `src/main/composition-root.ts` only passes things in, through named functions. A new feature is
   a new directory, never a new `if`, `?:` or `??` in a shared entry point: lookups and their
   missing-value checks go in the feature's `adapters/`.
+- New code goes under the source roots (`layout.sourceRoots`); the gate reports anything outside.
 - Follow neighbouring signatures (parameter order, naming) and reuse helpers that exist.
 
 ## Write it this way
@@ -140,6 +143,8 @@ Before you change code other modules use, fix a bug, or add a UI state, read
   not loops. The rules above (`for...of` only, no `.then()`, no `as`) apply to tests too.
 - A shared helper (stdout capture) lives once, in a non-test file such as `test/support/stdout.ts`.
   When an existing test defines the same helper, make it import the shared one.
+- Test roots are `test/`, `tests/`, `__tests__/` and `e2e/` at the repo root. A Playwright or Cypress
+  spec in `e2e/` imports no production code and is not mutated; a Jest `__tests__/` goes in `exclude`.
 - A surviving mutant no input can kill means the code is redundant: delete or restructure it.
   Don't pin call order or messages just to kill it. If an input can kill it, add that test; never
   delete a schema rule to silence it.
@@ -147,19 +152,8 @@ Before you change code other modules use, fix a bug, or add a UI state, read
 
 ## React
 
-Applies when `react` is in `package.json`.
+Applies when `react` is in `package.json`. Every React finding names the allowed form and its
+exception route in the message: write that form, don't work around the rule.
 
-- Function components only. Hooks follow the rules of hooks, and every effect lists its
-  dependencies. No array index as `key`: use the item's id.
-- Compute derived values while rendering (`useMemo` if costly); never copy props or state into
-  state in an effect. Reset state with a `key`.
-- Fetch with the project's data library (`useQuery`) or the framework's loader, never in `useEffect`.
-- Style with `className` (CSS Modules or utility classes), not `style={{ ... }}`. A runtime value
-  goes in a custom property, `style={{ '--progress': percent }}`, typed once with
-  `declare module 'csstype' { interface Properties { '--progress'?: number } }`. If the project
-  styles with CSS-in-JS (or `react.styling` says so), follow that instead.
-- `null` only as the argument of `useRef` and `createContext`; elsewhere `undefined`.
-- Accessible markup: `alt` on images, buttons for clicks, labels on inputs.
-- Component tests: query by role (`screen.getByRole`), not test ids, class selectors or `container`;
-  `await userEvent`, not `fireEvent`; assert what the user sees, never component state, instances
-  or hook internals.
+- Component tests query through `screen` and assert what the user sees (text, roles, focus), never
+  component state, instances or hook internals.

@@ -128,6 +128,23 @@ describe('pyright JSON report', () => {
     ]);
   });
 
+  it('reports the same report under the basedpyright tool when asked', () => {
+    const findings = ingestPyright(fixture('pyright.json'), { roots, tool: 'basedpyright' });
+
+    expect(new Set(findings.map(({ tool }) => tool))).toEqual(new Set(['basedpyright']));
+    expect(findings.map(({ rule, identity }) => `${rule} ${identity}`)).toEqual(
+      ingestPyright(fixture('pyright.json'), { roots }).map(
+        ({ rule, identity }) => `${rule} ${identity}`,
+      ),
+    );
+  });
+
+  it('names the tool that printed no JSON report', () => {
+    expect(() => ingestPyright('crashed', { roots, tool: 'basedpyright' })).toThrow(
+      'basedpyright printed no JSON report',
+    );
+  });
+
   it('numbers repeated messages of one rule in one file', () => {
     const findings = ingestPyright(fixture('pyright.json'), { roots });
 

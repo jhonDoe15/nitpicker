@@ -201,6 +201,20 @@ public final class StructureMetrics {
       return super.scan(tree, next);
     }
 
+    // An `else if` continues the chain of its `if` and opens no level of its own, as in the TypeScript analyzer.
+    @Override
+    public Void visitIf(IfTree tree, Integer depth) {
+      scan(tree.getCondition(), depth);
+      scan(tree.getThenStatement(), depth);
+      Tree other = tree.getElseStatement();
+      if (other instanceof IfTree chained) {
+        statements += 1;
+        return visitIf(chained, depth);
+      }
+      scan(other, depth);
+      return null;
+    }
+
     // A `for` header's initializers and updates, a `catch` parameter and a `try` resource are javac statements or
     // variables but not statements of the body (the TypeScript analyzer does not count them).
     @Override

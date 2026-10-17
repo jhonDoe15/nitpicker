@@ -27,6 +27,7 @@ export function createStaticCheckAnalyzer({
     exclusions,
     timeoutMs,
     shardWeight,
+    requiresDependencies: kind === 'typecheck',
     createInvocation({ projectRoot, policyRoot, toolRoot, liveProjectRoot }) {
       const args = [
         runnerPath,

@@ -1,166 +1,20 @@
-import { execFileSync } from 'node:child_process';
-import {
-  cpSync,
-  mkdirSync,
-  mkdtempSync,
-  readFileSync,
-  readdirSync,
-  realpathSync,
-  rmSync,
-  writeFileSync,
-} from 'node:fs';
-import { tmpdir } from 'node:os';
 import path from 'node:path';
-import { afterAll, afterEach, beforeAll, describe, expect, it } from 'vitest';
-import { createBaseSetupResolver } from '../../configuration/base-setup.mjs';
-import { reportFromAnalyzerOutput } from '../execution/process.mjs';
-import { runQualityDiff } from '../comparison/run-diff.mjs';
+import { describe, expect, it } from 'vitest';
+import { createBaseSetupResolver } from '../../command/policy-review/base-setup.mjs';
+import {
+  commitHead,
+  compare,
+  createMoveRepositories,
+  filler,
+  finding,
+  git,
+  identities,
+  move,
+  probeAnalyzer,
+  write,
+} from './test-support/move-repositories.mjs';
 
-const repositories = [];
-
-afterEach(() => {
-  for (const root of repositories.splice(0)) {
-    rmSync(root, { recursive: true, force: true });
-  }
-});
-
-function probeAnalyzer() {
-  return {
-    name: 'probe',
-    version: '1.0.0',
-    configurationHash: 'probe',
-    exclusions: [],
-    createInvocation: ({ projectRoot }) => ({ command: process.execPath, args: [projectRoot] }),
-  };
-}
-
-function runProbe(tasks, policyFile) {
-  const policy = policyFile === undefined ? {} : JSON.parse(readFileSync(policyFile, 'utf8'));
-  const sourceRoots = policy.layout?.sourceRoots ?? ['src'];
-  const reports = tasks.map((task) => {
-    const [projectRoot] = task.invocation.args;
-    const findings = sourceRoots.flatMap((root) => scan(projectRoot, root));
-    const stdoutText = JSON.stringify({ findings });
-    return [
-      task.name,
-      reportFromAnalyzerOutput(
-        { ...task, acceptedExitCodes: [0] },
-        { status: 0, signal: null, stdoutText, stderrText: '' },
-      ),
-    ];
-  });
-  return { reports, errors: [], timings: [] };
-}
-
-function scan(projectRoot, relativeDirectory) {
-  const directory = path.join(projectRoot, relativeDirectory);
-  let entries;
-  try {
-    entries = readdirSync(directory, { withFileTypes: true });
-  } catch {
-    return [];
-  }
-  return entries.flatMap((entry) => {
-    const relativePath = `${relativeDirectory}/${entry.name}`;
-    if (entry.isDirectory()) {
-      return scan(projectRoot, relativePath);
-    }
-    return readFileSync(path.join(projectRoot, relativePath), 'utf8')
-      .split('\n')
-      .flatMap((line, index) => {
-        const marker = line.indexOf('// FINDING ');
-        return marker === -1
-          ? []
-          : [
-              {
-                tool: 'probe',
-                rule: 'probe-rule',
-                path: relativePath,
-                classification: 'enforceable',
-                message: 'probe finding',
-                location: { line: index + 1, column: 1 },
-                ...JSON.parse(line.slice(marker + '// FINDING '.length)),
-              },
-            ];
-      });
-  });
-}
-
-const finding = (identity) => `// FINDING ${JSON.stringify({ identity })}\n`;
-const filler = (name) =>
-  Array.from(
-    { length: 12 },
-    (_, index) => `export const ${name}${String(index)} = ${String(index)};\n`,
-  ).join('');
-
-const HERMETIC_GIT_ENVIRONMENT = {
-  ...process.env,
-  GIT_CONFIG_GLOBAL: '/dev/null',
-  GIT_CONFIG_NOSYSTEM: '1',
-};
-
-function git(root, ...arguments_) {
-  return execFileSync(
-    'git',
-    ['-c', 'user.name=t', '-c', 'user.email=t@example.invalid', ...arguments_],
-    { cwd: root, encoding: 'utf8', env: HERMETIC_GIT_ENVIRONMENT },
-  ).trim();
-}
-
-let templateRoot;
-
-beforeAll(() => {
-  templateRoot = realpathSync(mkdtempSync(path.join(tmpdir(), 'nitpicker-moves-template-')));
-  git(templateRoot, 'init', '-q', '-b', 'main');
-});
-
-afterAll(() => {
-  rmSync(templateRoot, { recursive: true, force: true });
-});
-
-function createRepository(files) {
-  const root = realpathSync(mkdtempSync(path.join(tmpdir(), 'nitpicker-moves-')));
-  repositories.push(root);
-  cpSync(path.join(templateRoot, '.git'), path.join(root, '.git'), { recursive: true });
-  write(root, files);
-  git(root, 'add', '-A');
-  git(root, 'commit', '-q', '-m', 'base');
-  git(root, 'branch', 'base-ref');
-  return root;
-}
-
-function write(root, files) {
-  for (const [relativePath, contents] of Object.entries(files)) {
-    mkdirSync(path.dirname(path.join(root, relativePath)), { recursive: true });
-    writeFileSync(path.join(root, relativePath), contents);
-  }
-}
-
-function move(root, from, to) {
-  mkdirSync(path.dirname(path.join(root, to)), { recursive: true });
-  git(root, 'mv', from, to);
-}
-
-function commitHead(root) {
-  git(root, 'add', '-A');
-  git(root, 'commit', '-q', '-m', 'head');
-}
-
-function compare(root, { projectRelativePath = '.', headPolicy, resolveBaseSetup } = {}) {
-  return runQualityDiff({
-    repositoryRoot: root,
-    projectRelativePath,
-    headProjectRoot: path.join(root, projectRelativePath),
-    requestedBaseRef: 'base-ref',
-    outputRoot: path.join(root, 'reports'),
-    analyzers: [probeAnalyzer()],
-    headPolicy,
-    resolveBaseSetup,
-    runTasks: runProbe,
-  });
-}
-
-const identities = (findings) => findings.map((entry) => entry.identity);
+const createRepository = createMoveRepositories();
 
 describe('a folder move without edits', () => {
   it('reports no new findings', () => {
@@ -174,7 +28,9 @@ describe('a folder move without edits', () => {
 
     const report = compare(root, {
       headPolicy: { layout: { sourceRoots: ['lib'] } },
-      resolveBaseSetup: () => ({ headPolicy: { layout: { sourceRoots: ['src'] } } }),
+      resolveBaseSetup: () => ({
+        headPolicy: { layout: { sourceRoots: ['src'] } },
+      }),
     });
 
     expect(identities(report.newFindings)).toEqual([]);
@@ -184,7 +40,9 @@ describe('a folder move without edits', () => {
   });
 
   it('keeps the old behaviour for a repository that did not move', () => {
-    const root = createRepository({ 'src/a.mjs': `${filler('a')}${finding('a-site')}` });
+    const root = createRepository({
+      'src/a.mjs': `${filler('a')}${finding('a-site')}`,
+    });
     write(root, { 'src/c.mjs': `${filler('c')}${finding('c-site')}` });
     commitHead(root);
 
@@ -208,7 +66,9 @@ describe('a folder move with a new violation', () => {
 
     const report = compare(root, {
       headPolicy: { layout: { sourceRoots: ['lib'] } },
-      resolveBaseSetup: () => ({ headPolicy: { layout: { sourceRoots: ['src'] } } }),
+      resolveBaseSetup: () => ({
+        headPolicy: { layout: { sourceRoots: ['src'] } },
+      }),
     });
 
     expect(identities(report.newFindings)).toEqual(['fresh-site']);
@@ -231,7 +91,9 @@ describe('a folder move with a new violation', () => {
 
     const report = compare(root, {
       headPolicy: { layout: { sourceRoots: ['lib'] } },
-      resolveBaseSetup: () => ({ headPolicy: { layout: { sourceRoots: ['src'] } } }),
+      resolveBaseSetup: () => ({
+        headPolicy: { layout: { sourceRoots: ['src'] } },
+      }),
     });
 
     expect(identities(report.newFindings)).toEqual([]);
@@ -283,7 +145,9 @@ describe('a config that changed between base and head', () => {
 
   function moveToSrc(root) {
     git(root, 'rm', '-q', 'nitpicker.config.json');
-    write(root, { 'nitpicker.config.json': '{"layout":{"sourceRoots":["src"]}}\n' });
+    write(root, {
+      'nitpicker.config.json': '{"layout":{"sourceRoots":["src"]}}\n',
+    });
     move(root, 'legacy/a.mjs', 'src/a.mjs');
     move(root, 'legacy/b.mjs', 'src/b.mjs');
     commitHead(root);
@@ -310,7 +174,9 @@ describe('a config that changed between base and head', () => {
     const root = createRepository(baseFiles);
     moveToSrc(root);
 
-    const report = compare(root, { headPolicy: { layout: { sourceRoots: ['src'] } } });
+    const report = compare(root, {
+      headPolicy: { layout: { sourceRoots: ['src'] } },
+    });
 
     expect(identities(report.newFindings)).toEqual(['a-site', 'b-site']);
   });
@@ -318,161 +184,122 @@ describe('a config that changed between base and head', () => {
   it('falls back to the head config when the base has none or it does not load', () => {
     const warnings = [];
     const resolve = createBaseSetupResolver({
-      headConfig: {},
+      headConfig: { exclude: ['src/vendor/**'] },
       injectedAnalyzers: [probeAnalyzer()],
       warn: (message) => warnings.push(message),
     });
-    const root = createRepository({ 'nitpicker.config.json': '{not json' });
+    const root = createRepository({
+      'nitpicker.config.json': '{not json',
+      'src/vendor/a.ts': 'export {};\n',
+    });
+    const comparedWithDefaults = {
+      policyChanges: ['exclude added: src/vendor/**'],
+      policyLoosenings: ['exclude added: src/vendor/**'],
+      policyDigest: expect.stringMatching(/^[0-9a-f]{12}$/),
+    };
 
-    expect(resolve({ baseProjectRoot: root, analyzers: [probeAnalyzer()] })).toEqual({});
+    expect(
+      resolve({
+        baseProjectRoot: root,
+        headSnapshotRoot: root,
+        analyzers: [probeAnalyzer()],
+      }),
+    ).toEqual(comparedWithDefaults);
     expect(warnings).toEqual([
-      "The base's nitpicker.config.json cannot be applied (nitpicker.config.json is not valid JSON: Expected property name or '}' in JSON at position 1 (line 1 column 2)); the base is analysed with the head config.",
+      "The base's nitpicker.config.json cannot be applied (nitpicker.config.json is not valid JSON: Expected property name or '}' in JSON at position 1 (line 1 column 2)); the base is analysed with the head config, and the head config is compared with the defaults.",
     ]);
-    expect(resolve({ baseProjectRoot: path.join(root, 'missing'), analyzers: [] })).toEqual({});
+    expect(
+      resolve({
+        baseProjectRoot: path.join(root, 'missing'),
+        headSnapshotRoot: root,
+        analyzers: [],
+      }).policyLoosenings,
+    ).toEqual([
+      'exclude and layout.excludedGlobs hide code this change adds or moves where the base config checked it: ' +
+        'src/vendor/a.ts',
+    ]);
     expect(warnings).toHaveLength(1);
   });
 
   it('keeps the head analyzers for names the base config does not provide', () => {
-    const root = createRepository({ 'nitpicker.config.json': '{"disable":["other"]}\n' });
+    const root = createRepository({
+      'nitpicker.config.json': '{"disable":["other"]}\n',
+    });
     const headOnly = { ...probeAnalyzer(), name: 'head-only' };
     const resolve = createBaseSetupResolver({
       headConfig: {},
       injectedAnalyzers: [probeAnalyzer(), { ...probeAnalyzer(), name: 'other' }],
     });
 
-    const setup = resolve({ baseProjectRoot: root, analyzers: [headOnly] });
+    const setup = resolve({
+      baseProjectRoot: root,
+      headSnapshotRoot: root,
+      analyzers: [headOnly],
+    });
 
     expect(setup.analyzers).toEqual([headOnly]);
     expect(setup.headPolicy.exclude).toEqual([]);
   });
 });
 
-describe('a tool that produced no report on one side', () => {
-  const notRun = `// FINDING ${JSON.stringify({
-    identity: 'not-run',
-    rule: 'not-run',
-    classification: 'descriptive',
-    toolNotRun: true,
-  })}\n`;
-
-  it('fails the run as a tool error when only the head lacks the report', () => {
-    const root = createRepository({ 'src/a.mjs': `${filler('a')}${finding('a-site')}` });
-    write(root, { 'src/a.mjs': `${filler('a')}${notRun}` });
+describe('notices about the change', () => {
+  it('passes the changed files to the notice callback and reports what it returns', () => {
+    const root = createRepository({ 'src/kept.mjs': filler('kept') });
+    write(root, {
+      'scripts/new.mjs': filler('new'),
+      'src/kept.mjs': `${filler('kept')}// edit\n`,
+    });
     commitHead(root);
+    const seen = [];
 
-    const report = compare(root);
-
-    expect(report.summary.overallStatus).toBe('tool-error');
-    expect(report.toolErrors).toEqual([
-      {
-        tool: 'probe',
-        snapshot: 'head',
-        rule: 'not-run',
-        path: 'src/a.mjs',
-        message: 'probe finding The base produced this probe report, so the change broke it.',
+    const report = compare(root, {
+      describeNotices: (files) => {
+        seen.push(...files);
+        return ['a notice'];
       },
-    ]);
-    expect(report.newFindings).toEqual([]);
+    });
+
+    expect(seen.sort()).toEqual(['scripts/new.mjs', 'src/kept.mjs']);
+    expect(report.summary.notices).toEqual(['a notice']);
+    const lines = report.text.split('\n');
+    const start = lines.indexOf('Notices (not failing):');
+    expect(lines.slice(start, start + 2)).toEqual(['Notices (not failing):', '  a notice']);
   });
 
-  it('reports the head findings without failing when only the base lacks the report', () => {
-    const root = createRepository({ 'src/a.mjs': `${filler('a')}${notRun}` });
-    write(root, { 'src/a.mjs': `${filler('a')}${finding('a-site')}` });
+  it('reports no notices without a callback', () => {
+    const root = createRepository({ 'src/kept.mjs': filler('kept') });
+    write(root, { 'src/kept.mjs': `${filler('kept')}// edit\n` });
     commitHead(root);
 
-    const report = compare(root);
-
-    expect(report.toolErrors).toEqual([]);
-    expect(report.newFindings).toEqual([
-      {
-        tool: 'probe',
-        rule: 'probe-rule',
-        path: 'src/a.mjs',
-        identity: 'a-site',
-        classification: 'descriptive',
-        location: { line: 13, column: 1 },
-        message:
-          'probe finding Not enforced: no base probe report shows whether the change added it.',
-      },
-    ]);
+    expect(compare(root).summary.notices).toEqual([]);
   });
+});
 
-  const legacyNotRun = `// FINDING ${JSON.stringify({
-    identity: 'not-run:legacy',
-    rule: 'not-run',
-    classification: 'descriptive',
-    toolNotRun: true,
-    notRunScope: ['src/legacy'],
-  })}\n`;
+describe('a change that adds a source root', () => {
+  const baseConfig = { layout: { sourceRoots: ['src'] } };
+  const headConfig = { layout: { sourceRoots: ['src', 'shared'] } };
 
-  function classified(report) {
-    return report.newFindings.map(
-      ({ identity, classification }) => `${identity} ${classification}`,
-    );
-  }
-
-  it('relaxes only the moved file when one file of a not-run folder moves into another', () => {
+  it('keeps the legacy findings of the new root baselined and checks new code in it', () => {
     const root = createRepository({
-      'src/legacy/a.mjs': filler('a'),
-      'src/legacy/b.mjs': filler('b'),
-      'src/kernel/k.mjs': filler('k'),
-      'src/notice.mjs': `${filler('n')}${legacyNotRun}`,
+      'nitpicker.config.json': `${JSON.stringify(baseConfig)}\n`,
+      'src/a.mjs': `${filler('a')}${finding('a-site')}`,
+      'shared/legacy.mjs': `${filler('legacy')}${finding('legacy-site')}`,
     });
-    move(root, 'src/legacy/a.mjs', 'src/kernel/a.mjs');
     write(root, {
-      'src/kernel/a.mjs': `${filler('a')}${finding('moved-site')}`,
-      'src/kernel/k.mjs': `${filler('k')}${finding('kernel-site')}`,
+      'nitpicker.config.json': `${JSON.stringify(headConfig)}\n`,
+      'shared/added.mjs': `${filler('added')}${finding('added-site')}`,
     });
     commitHead(root);
 
-    expect(classified(compare(root))).toEqual([
-      'moved-site descriptive',
-      'kernel-site enforceable',
-    ]);
-  });
-
-  it('keeps an existing folder enforced when the whole not-run folder moves into it', () => {
-    const root = createRepository({
-      'src/legacy/a.mjs': filler('a'),
-      'src/legacy/b.mjs': filler('b'),
-      'src/kernel/k.mjs': filler('k'),
-      'src/notice.mjs': `${filler('n')}${legacyNotRun}`,
+    const report = compare(root, {
+      headPolicy: headConfig,
+      resolveBaseSetup: createBaseSetupResolver({
+        headConfig,
+        injectedAnalyzers: [probeAnalyzer()],
+      }),
     });
-    move(root, 'src/legacy/a.mjs', 'src/kernel/a.mjs');
-    move(root, 'src/legacy/b.mjs', 'src/kernel/b.mjs');
-    write(root, {
-      'src/kernel/a.mjs': `${filler('a')}${finding('moved-site')}`,
-      'src/kernel/k.mjs': `${filler('k')}${finding('kernel-site')}`,
-      'src/notice.mjs': filler('n'),
-    });
-    commitHead(root);
 
-    expect(classified(compare(root))).toEqual([
-      'moved-site descriptive',
-      'kernel-site enforceable',
-    ]);
-  });
-
-  it('keeps the folder of a subproject whose files partly leave the project', () => {
-    const root = createRepository({
-      'proj/src/legacy/a.mjs': filler('a'),
-      'proj/src/legacy/b.mjs': filler('b'),
-      'proj/src/legacy/c.mjs': filler('c'),
-      'proj/src/legacy/keep.mjs': filler('keep'),
-      'proj/src/notice.mjs': `${filler('n')}${legacyNotRun}`,
-    });
-    move(root, 'proj/src/legacy/a.mjs', 'other/src/legacy/a.mjs');
-    move(root, 'proj/src/legacy/b.mjs', 'other/src/legacy/b.mjs');
-    move(root, 'proj/src/legacy/c.mjs', 'proj/src/core/c.mjs');
-    write(root, {
-      'proj/src/core/c.mjs': `${filler('c')}${finding('moved-site')}`,
-      'proj/src/legacy/keep.mjs': `${filler('keep')}${finding('keep-site')}`,
-    });
-    commitHead(root);
-
-    expect(classified(compare(root, { projectRelativePath: 'proj' }))).toEqual([
-      'moved-site descriptive',
-      'keep-site descriptive',
-    ]);
+    expect(identities(report.newFindings)).toEqual(['added-site']);
+    expect(identities(report.unchangedFindings).sort()).toEqual(['a-site', 'legacy-site']);
   });
 });
