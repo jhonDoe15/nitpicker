@@ -200,6 +200,7 @@ export function readHeadPolicy(environment = process.env) {
     preset: policy.preset,
     tools: policy.tools ?? {},
     conventions: policy.conventions,
+    testConsole: policy.testConsole ?? {},
     conventionPins: policy.conventionPins,
     generatedFiles: policy.generatedFiles ?? [],
     libraries: policy.libraries,

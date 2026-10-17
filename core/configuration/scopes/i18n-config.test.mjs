@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import { describeConfigOverrides } from './config.mjs';
-import { validateConfig } from './validate.mjs';
-import { policyHash } from '../diff/reporting/report-model.mjs';
+import { describeConfigOverrides } from '../config.mjs';
+import { validateConfig } from '../validate.mjs';
+import { policyHash } from '../../diff/reporting/report-model.mjs';
 
 describe('i18n config key', () => {
   it('accepts enabled either way, the wrapper names and an empty object', () => {
