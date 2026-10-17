@@ -322,10 +322,13 @@ Math` and `Math['random']()` are caught; `process`, `fetch`, `setTimeout`, `setI
 - `nitpicker/no-production-console` also reports `console['error']` and, outside the composition
   root, `process.stdout.write` and `process.stderr.write`.
 - Named functions use the `function` keyword; arrow functions only as callbacks.
-- `type`, never `interface`, except in a `declare module` or `declare global` augmentation, which
-  can only merge interfaces. No `enum` (use unions of string literals) and no `namespace`.
+- `type`, never `interface`, except in a `declare module` or `declare global` augmentation, or at
+  the top level of a global declaration file with no imports or exports (such as `ImportMetaEnv` in
+  `vite-env.d.ts`), which can only merge interfaces. No `enum` (use unions of string literals) and
+  no `namespace`.
 - Classes only for `Error` subclasses.
-- Named exports only; config files are exempt.
+- Named exports only; config files and `declare module` blocks (`declare module '*.svg'`) are
+  exempt.
 - Early returns; no `else` after a `return`; no nested ternaries.
 - A `switch` over a discriminated union must handle every case.
 - `nitpicker/exhaustive-union-predicate` (type-aware): no `||` chain of `===` (or `&&` chain of
@@ -804,6 +807,13 @@ off (a PR that adds or removes React keeps linting on both sides); a misspelled 
   crosses the half mark does not turn untouched components into new findings. An exception lists the
   file; the message carries the exact entry:
   `{"rule":"component-story-missing","paths":["src/Card.tsx"],"reason":"..."}`.
+- **TypeScript sources in a TypeScript project** (`javascript-in-typescript-project`, a check of
+  the `structure` analyzer). In a project with a `tsconfig.json` (read from the head checkout on
+  both sides), every `.js`, `.mjs`, `.cjs` or `.jsx` file under the source and test roots is a
+  finding with the file as its identity, so only a file a change adds fails. The message names the
+  TypeScript file to write instead (`.mjs` to `.mts`, `.jsx` to `.tsx`) and the exception entry,
+  `{"rule":"javascript-in-typescript-project","paths":["src/cli.mjs"],"reason":"..."}`.
+  `layout.entryPoints` are skipped, and the JavaScript preset does not run the check.
 - **Accessibility** (`jsx-a11y/*`): the recommended `eslint-plugin-jsx-a11y` rule set plus
   `control-has-associated-label` (buttons, links and roles need text or `aria-label`; form fields
   are covered by the field rule above), `anchor-ambiguous-text` (no "click here"),
@@ -1141,6 +1151,14 @@ from a real caller) and the `exceptions` entry that lifts it.
   and `<sourceRoot>/main/features/*/adapters/**`. They follow the layout's source roots.
 - The boundary rules (`languages/typescript/preset/architecture/strict-boundary-rules.mjs`) are part of the default
   dependency-cruiser config used by the `dependency-architecture` analyzer.
+- `no-import-outside-roots` (`languages/typescript/preset/architecture/outside-roots/`) fails production code that
+  imports a project file under no source or test root. Packages, Node built-ins, `.json` files,
+  `generated/` and paths in `exclude` are not counted; the other built-in output folders (`dist/`,
+  `build/`, `coverage/`, `reports/`, `target/`) are, because the `dependency-architecture` analyzer
+  drops only `node_modules` from the graph (`DEPENDENCY_PATH_PATTERN`) and leaves the output folders
+  unfollowed but visible. Generated code is commonly imported from `generated/`, so that folder stays
+  allowed. Its message names the ways out: move the file under a source root or add its folder to
+  `layout.sourceRoots`; to leave it unchecked, list it in `exclude`.
 - `src/main/composition-root.{ts,mts,js,mjs}` and `src/main/composition-root/index.*` are knip entry
   points, since nothing imports the composition root.
 - Touched code is enforced by the diff engine (see "How touched code is detected").
