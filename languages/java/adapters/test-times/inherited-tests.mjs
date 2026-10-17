@@ -15,23 +15,21 @@ export function superclassOf(text, className) {
 }
 
 export function inheritedMethod({ text, testCase, locate, projectRoot }) {
-  let current = { text, className: testCase.className };
-  for (let level = 0; level < MAX_LEVELS; level += 1) {
+  const pending = [{ text, className: testCase.className }];
+  for (const current of pending) {
     const written = superclassOf(current.text, current.className);
+    const className = written === undefined ? undefined : qualifiedName(current.text, written);
     const found =
-      written === undefined
-        ? undefined
-        : sourceOfType(locate, projectRoot, qualifiedName(current.text, written));
-    if (found === undefined) {
-      return undefined;
-    }
-    const className = qualifiedName(current.text, written);
-    const superText = readFileSync(found.file, 'utf8');
-    const method = testMethod(superText, testCase.name, className);
+      className === undefined ? undefined : sourceOfType(locate, projectRoot, className);
+    const superText = found === undefined ? undefined : readFileSync(found.file, 'utf8');
+    const method =
+      superText === undefined ? undefined : testMethod(superText, testCase.name, className);
     if (method !== undefined) {
       return { source: found.relative, className, method };
     }
-    current = { text: superText, className };
+    if (superText !== undefined && pending.length < MAX_LEVELS) {
+      pending.push({ text: superText, className });
+    }
   }
   return undefined;
 }

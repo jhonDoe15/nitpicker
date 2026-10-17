@@ -170,7 +170,7 @@ function deepest(parents, depths) {
   return Math.max(0, ...parents.map((parent) => 1 + (depths.get(parent) ?? 0)));
 }
 
-function inheritanceDepths(entries, resolve) {
+function hierarchy(entries, resolve) {
   const parents = new Map(entries.map((entry) => [entry, countedParents(entry, resolve)]));
   const children = new Map();
   const waiting = new Map();
@@ -180,44 +180,42 @@ function inheritanceDepths(entries, resolve) {
       children.set(parent, [...(children.get(parent) ?? []), entry]);
     }
   }
-  const depths = new Map();
-  const ready = entries.filter((entry) => waiting.get(entry) === 0);
-  for (const entry of ready) {
-    depths.set(entry, deepest(parents.get(entry), depths));
-    for (const child of children.get(entry) ?? []) {
-      waiting.set(child, waiting.get(child) - 1);
-      ready.push(...(waiting.get(child) === 0 ? [child] : []));
-    }
-  }
-  for (const entry of entries.filter((candidate) => !depths.has(candidate))) {
-    walkOutsideCycles(entry, { parents, depths });
-  }
-  return (entry) => depths.get(entry);
+  return { parents, children, waiting };
 }
 
-function walkOutsideCycles(start, { parents, depths }) {
-  const stack = [{ entry: start, next: 0 }];
-  const open = new Set([start]);
-  while (stack.length > 0) {
-    const frame = stack.at(-1);
-    const list = parents.get(frame.entry) ?? [];
-    const parent = list[frame.next];
-    frame.next += 1;
-    if (parent === undefined) {
-      depths.set(
-        frame.entry,
-        deepest(
-          list.filter((known) => depths.has(known)),
-          depths,
-        ),
-      );
-      open.delete(frame.entry);
-      stack.pop();
-    } else if (!depths.has(parent) && !open.has(parent)) {
-      stack.push({ entry: parent, next: 0 });
-      open.add(parent);
+function settle(entry, { graph, depths, enqueue }) {
+  const known = graph.parents.get(entry).filter((parent) => depths.has(parent));
+  depths.set(entry, deepest(known, depths));
+  for (const child of graph.children.get(entry) ?? []) {
+    graph.waiting.set(child, graph.waiting.get(child) - 1);
+    if (graph.waiting.get(child) === 0) {
+      enqueue(child);
     }
   }
+}
+
+function inheritanceDepths(entries, resolve) {
+  const graph = hierarchy(entries, resolve);
+  const depths = new Map();
+  const queued = new Set();
+  const ready = [];
+  function enqueue(entry) {
+    if (!queued.has(entry)) {
+      queued.add(entry);
+      ready.push(entry);
+    }
+  }
+  for (const entry of entries.filter((candidate) => graph.waiting.get(candidate) === 0)) {
+    enqueue(entry);
+  }
+  for (const entry of ready) {
+    settle(entry, { graph, depths, enqueue });
+    const stuck = entry === ready.at(-1) ? entries.find((other) => !queued.has(other)) : undefined;
+    if (stuck !== undefined) {
+      enqueue(stuck);
+    }
+  }
+  return (entry) => depths.get(entry);
 }
 
 export function readClassesReport(reportRoot) {

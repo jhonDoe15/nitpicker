@@ -167,8 +167,9 @@ function productionFiles(top, { skippedAtTop, isTest }) {
 export function listProductionModules(projectRoot, sourceRoots) {
   const seen = new Set();
   const matcher = testFileMatcher(projectRoot);
-  const isTest = (absolute) =>
-    matcher(path.relative(projectRoot, absolute).split(path.sep).join('/'));
+  function isTest(absolute) {
+    return matcher(path.relative(projectRoot, absolute).split(path.sep).join('/'));
+  }
   return existingSourceRoots(projectRoot, sourceRoots).flatMap((root) => {
     const [importRoot] =
       root === '.' ? [path.resolve(projectRoot)] : importRoots(projectRoot, [root]);
