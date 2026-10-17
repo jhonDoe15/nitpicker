@@ -373,4 +373,31 @@ describe('readTestOnlyClassFindings names outside the sources', () => {
       'src/main/java/shop/Helper.java:3 class:shop.Helper',
     ]);
   });
+
+  it('ignores comments in config files and build scripts and plain text, and reads container files anywhere', () => {
+    const names = ['Yaml', 'Props', 'Xml', 'Script', 'Text', 'Built', 'Worker', 'Api', 'Box'];
+    expect(
+      singleModule(
+        {
+          ...Object.fromEntries(
+            names.map((name) => [`src/main/java/shop/${name}.java`, source(name)]),
+          ),
+          'src/main/resources/app.yml': '# handler: shop.Yaml\nport: 8080 # not shop.Yaml\n',
+          'src/main/resources/app.properties': '# main=shop.Props\n! shop.Props\n',
+          'pom.xml': '<project><!-- <mainClass>shop.Xml</mainClass> --></project>\n',
+          'build.gradle': '// mainClass = "shop.Script"\n/* shop.Script */\n',
+          'notes.txt': 'shop.Text\n',
+          'build/docker/Dockerfile': 'CMD ["java", "shop.Built"]\n',
+          'deploy/worker/Dockerfile': '# shop.Box\nCMD ["java", "shop.Worker"]\n',
+          'ops/api.Dockerfile': 'ENTRYPOINT ["java", "shop.Api"]\n',
+          'ops/Containerfile': 'ENTRYPOINT ["java", "shop.Box"]\n',
+        },
+        { classes: names.map((name) => `shop.${name}`), resourceRoots: ['src/main/resources'] },
+      ),
+    ).toEqual(
+      ['Built', 'Props', 'Script', 'Text', 'Xml', 'Yaml'].map(
+        (name) => `src/main/java/shop/${name}.java:3 class:shop.${name}`,
+      ),
+    );
+  });
 });

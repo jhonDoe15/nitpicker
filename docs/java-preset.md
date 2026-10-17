@@ -1581,8 +1581,9 @@ classpath) and `published` (a library module that is deployed, see `test-only-ex
   `synchronized*` and `checked*` (they change the type or the guarantees), and wrappers that add
   type arguments, reorder or drop parameters.
 - `SingularAndPluralMember` compares declared types by simple name, with primitives boxed, and is
-  reported on the plural member. Method parameters, including varargs (`String key,
-String... keys`), are not checked, as the Python preset leaves required parameters alone.
+  reported on the plural member. Method parameters and varargs record components
+  (`record Keys(String key, String... keys)`) are not checked, as the Python preset leaves required
+  parameters alone.
 - `test-only-export` (`adapters/review-rules/test-only-classes.mjs`, run project-wide) reads
   `jdeps.txt`, `jdeps-classes.txt` and `jdeps-test.txt` of every module and resolves a class to its
   own module first. A main class is reported when test classes use it and no other main class
@@ -1609,8 +1610,10 @@ String... keys`), are not checked, as the Python preset leaves required paramete
   - its qualified name appears in a file the project reads by name: main sources, resources
     (`logback.xml`, `META-INF/spring/...`, `META-INF/services/...`), `src/main/webapp` (`web.xml`),
     or a file directly in the root or a module folder (build scripts with `implementationClass`,
-    `Main-Class` or a shade `mainClass`, `template.yaml`, `plugin.xml`, `Dockerfile`), comments
-    and documents (`.md`, `.adoc`) not counted;
+    `Main-Class` or a shade `mainClass`, `template.yaml`, `plugin.xml`), and a `Dockerfile`,
+    `*.Dockerfile` or `Containerfile` in any folder outside build output; comments (`//` and
+    `/* */` in Java, Kotlin and Gradle scripts, `<!-- -->` in XML and `pom.xml`, `#` in YAML, TOML,
+    properties and container files) and documents (`.md`, `.adoc`, `.rst`, `.txt`) not counted;
   - its simple name appears in the code of a main source file that sees its package (same package
     or a wildcard import);
   - or its module is a published library: on Gradle a project with a `publishing` publication, on
