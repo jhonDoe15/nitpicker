@@ -9,6 +9,7 @@ import { policy } from '../diff/execution/test-support/analyzer-findings.mjs';
 import { captureOutput } from '../diff/reporting/test-support/output-capture.mjs';
 import { fakeAnalyzer, useCliFixtures } from './test-support/cli-harness.mjs';
 import { writeFiles } from '../diff/git/test-support/fixture-files.mjs';
+import { acceptedDigest } from './test-support/accepted-digest.mjs';
 
 const { createRepository, makeOutputRoot, makeTemporaryRoot, runCli } =
   useCliFixtures(nitpickerCli);
@@ -160,6 +161,7 @@ describe('nitpicker config file', () => {
       analyzers: analyzers ?? [fakeAnalyzer()],
       stdout: output.stdout,
       stderr: output.stderr,
+      interactive: true,
     });
     const summaryPath = path.join(outputRoot, 'summary.json');
     const summary = existsSync(summaryPath)
@@ -206,17 +208,11 @@ describe('nitpicker config file', () => {
     expect(summary.configOverrides).toEqual([]);
   });
   it('uses base from the config file', () => {
-    const { exitCode, output } = runWithConfig({ base: 'HEAD' }, { extraArguments: [] });
+    const { exitCode, output } = runWithConfig({ base: 'comparison-base' }, { extraArguments: [] });
+    const baseLine = output.stdoutText.split('\n').find((line) => line.startsWith('Base: '));
 
     expect(exitCode).toBe(0);
-    expect(output.stdoutText).toEqual(
-      expect.stringMatching(exactText`Base: HEAD (config)
-
-\u001b[1m\u001b[32mQuality gate summary\u001b[0m
-\u001b[32m✓ No new enforceable violations\u001b[0m
-\u001b[2mFull diagnostics: /tmp/nitpicker-cli-output-${/[A-Za-z0-9]{6}/}/reports/report.txt\u001b[0m
-`),
-    );
+    expect(baseLine).toBe('Base: comparison-base (config)');
   });
   it('lets an explicit --base win over the config base', () => {
     const { output } = runWithConfig({ base: 'does-not-exist' });
@@ -226,14 +222,31 @@ describe('nitpicker config file', () => {
 
 \u001b[1m\u001b[32mQuality gate summary\u001b[0m
 \u001b[32m✓ No new enforceable violations\u001b[0m
+\u001b[1m\u001b[33mPolicy changed in this change (nitpicker.config.json, head against base):\u001b[0m
+  base: not set -> "does-not-exist"
 \u001b[2mFull diagnostics: /tmp/nitpicker-cli-output-${/[A-Za-z0-9]{6}/}/reports/report.txt\u001b[0m
 `),
     );
   });
   it('skips disabled analyzers, reports the override, and changes the policy hash', () => {
+    const acceptedPolicyHeading =
+      'Policy changed in this change (nitpicker.config.json, head against base; ' +
+      'loosening accepted with --accept-policy-change):';
     const analyzers = [fakeAnalyzer(), fakeAnalyzer('second-analyzer')];
     const plain = runWithConfig(undefined, { analyzers });
-    const disabled = runWithConfig({ disable: ['second-analyzer'] }, { analyzers });
+    const disabled = runWithConfig(
+      { disable: ['second-analyzer'] },
+      {
+        analyzers,
+        extraArguments: [
+          '--base',
+          'HEAD',
+          `--accept-policy-change=${acceptedDigest(['analyzer disabled: second-analyzer'], {
+            'nitpicker.config.json': JSON.stringify({ disable: ['second-analyzer'] }),
+          })}`,
+        ],
+      },
+    );
 
     expect(plain.summary.tools.map(({ name }) => name)).toEqual([
       'fake-quality-analyzer',
@@ -257,6 +270,9 @@ Tool errors: 0
 
 Config overrides:
   disable: ["second-analyzer"]
+
+${acceptedPolicyHeading}
+  analyzer disabled: second-analyzer
 
 Per-tool counts:
 fake-quality-analyzer: base=0 head=0 new=0 resolved=0 unchanged=0 changed-metrics=0 elapsed=${/[0-9]+(?:\.[0-9]+)?/}s
@@ -294,8 +310,8 @@ fake-quality-analyzer: base=0 head=0 new=0 resolved=0 unchanged=0 changed-metric
     // `exclude` gets its own run: with it set, the layout-only branch of applyLayout is skipped.
     const entries = [
       ['preset', 'typescript'],
-      ['thresholds', { crapLimit: 12 }],
-      ['layout', { sourceRoots: ['lib'] }],
+      ['thresholds', { crapLimit: 8 }],
+      ['layout', { sourceRoots: ['src', 'lib'] }],
       ['analyzers', [customAnalyzerEntry('clean')]],
       ['legacyInventory', 'config/legacy.json'],
     ];
@@ -367,6 +383,8 @@ fake-quality-analyzer: base=0 head=0 new=0 resolved=0 unchanged=0 changed-metric
 \u001b[1m\u001b[31m✖ 1 new enforceable violation\u001b[0m
   \u001b[33mcustom/text-file\u001b[0m src/main/new.txt
     Text file new.txt
+\u001b[1m\u001b[33mPolicy changed in this change (nitpicker.config.json, head against base):\u001b[0m
+  analyzer added: custom
 \u001b[2mFull diagnostics: ${outputRoot}/report.txt\u001b[0m
 `);
     });

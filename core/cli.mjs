@@ -16,7 +16,9 @@ import { configureAnalyzers } from './configuration/configure-analyzers.mjs';
 import { presetAnalyzers } from './configuration/preset-analyzers.mjs';
 import { withRunLock } from './command/run-lock.mjs';
 import { runSnapshotCli } from './command/snapshot.mjs';
-import { baseSetupResolver } from './configuration/base-setup.mjs';
+import { baseSetupResolver } from './command/policy-review/base-setup.mjs';
+import { noticeDescriber } from './command/policy-review/notices.mjs';
+import { policyAcceptance } from './command/policy-review/policy-acceptance.mjs';
 import { comparisonPolicy, snapshotPolicy } from './conventions/resolve.mjs';
 import { runGit } from './diff/git/repository/command.mjs';
 import { resolveComparison } from './diff/git/repository/git.mjs';
@@ -52,6 +54,10 @@ export function runCli(options = {}) {
   }
 }
 
+function isTerminal(stream) {
+  return stream.isTTY === true;
+}
+
 function withCliDefaults(options) {
   const stderr = options.stderr ?? process.stderr;
   const progress = options.progress ?? stderr;
@@ -59,6 +65,8 @@ function withCliDefaults(options) {
     ...options,
     arguments_: options.arguments_ ?? process.argv.slice(2),
     environment: options.environment ?? process.env,
+    interactive:
+      options.interactive ?? [process.stdin, options.stdout ?? process.stdout].every(isTerminal),
     snapshotAnalyzers: options.snapshotAnalyzers ?? options.analyzers,
     stdout: options.stdout ?? process.stdout,
     stderr,
@@ -155,10 +163,24 @@ function runComparisonCli(cli) {
     configOverrides: describeConfigOverrides(config),
     headPolicy,
     resolveBaseSetup: baseSetupResolver(cli, config, headPolicy),
+    describeNotices: noticeDescriber(config, headPolicy),
+    ...acceptanceOf(cli),
     progress: cli.progress,
     runTasks: cli.runTasks,
   });
   return writeComparisonOutcome({ cli, report, base, outputRoot });
+}
+
+function acceptanceOf(cli) {
+  const { ignoredAcceptance, ...acceptance } = policyAcceptance(
+    cli.options,
+    cli.environment,
+    cli.interactive,
+  );
+  if (ignoredAcceptance !== undefined) {
+    cli.stderr.write(`nitpicker: ${ignoredAcceptance}\n`);
+  }
+  return acceptance;
 }
 
 function fixIfRequested(cli, repositoryRoot, base) {
