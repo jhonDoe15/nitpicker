@@ -48,6 +48,16 @@ const FILES = {
     'async function work(): Promise<void> {}',
     'work();',
   ],
+  'node/default.test.ts': [
+    "import test, { describe, it } from 'node:test';",
+    "import assert from 'node:assert';",
+    "test('a', () => { assert.ok(1); });",
+    "test.describe('b', () => { test.it('c', () => { assert.ok(1); }); });",
+    "test.test('d', () => { assert.ok(1); });",
+    "test.skip('e', () => {});",
+    "describe.only('f', () => { it.todo('g'); });",
+    "test('h', async (t) => { await t.test('i', () => { assert.ok(1); }); });",
+  ],
   'mocha/suite.test.ts': [
     "import { before, describe, it } from 'mocha';",
     "import assert from 'node:assert';",
@@ -65,10 +75,12 @@ let oxlintFindings;
 
 function located(results) {
   return Object.fromEntries(
-    results.map(({ filePath, messages }) => [
-      path.relative(path.join(root, 'src'), filePath),
-      messages.map(({ ruleId, line, column }) => `${ruleId}@${String(line)}:${String(column)}`),
-    ]),
+    results
+      .filter(({ messages }) => messages.length > 0)
+      .map(({ filePath, messages }) => [
+        path.relative(path.join(root, 'src'), filePath),
+        messages.map(({ ruleId, line, column }) => `${ruleId}@${String(line)}:${String(column)}`),
+      ]),
   );
 }
 
