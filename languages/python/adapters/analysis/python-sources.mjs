@@ -9,8 +9,12 @@ import {
   NON_SOURCE_FILES,
 } from '../execution/python-project.mjs';
 import { isGeneratedPython } from '../../libraries/generated-files.mjs';
-import { collectionOptions, isTestFile } from '../configuration/pytest/collection-options.mjs';
-import { readPytestConfig } from '../configuration/pytest/pytest-config.mjs';
+import {
+  DJANGO_TEST_FILES,
+  isDjangoProject,
+  isTestFile,
+  testFileOptions,
+} from '../configuration/pytest/collection-options.mjs';
 
 const SOURCE_LISTING = 'python-files.txt';
 const WHOLE_PROJECT = '.';
@@ -102,16 +106,15 @@ export const NON_PRODUCTION_GLOBS = [
   ...[...EXCLUDED_DIRECTORIES, ...COMMON_HIDDEN_DIRECTORIES].map((name) => `**/${name}/**`),
   '**/test_*.py',
   '**/*_test.py',
-  '**/*_tests.py',
-  '**/tests.py',
-  '**/tests_*.py',
   '**/conftest.py',
 ];
 
-export function nonProductionGlobs(sourceRoots) {
-  return sourceRoots.includes('.')
-    ? [...NON_PRODUCTION_GLOBS, ...DOCUMENTATION_DIRECTORIES.map((name) => `${name}/**`)]
-    : NON_PRODUCTION_GLOBS;
+export function nonProductionGlobs(sourceRoots, projectRoot) {
+  return [
+    ...NON_PRODUCTION_GLOBS,
+    ...(isDjangoProject(projectRoot) ? DJANGO_TEST_FILES.map((name) => `**/${name}`) : []),
+    ...(sourceRoots.includes('.') ? DOCUMENTATION_DIRECTORIES.map((name) => `${name}/**`) : []),
+  ];
 }
 
 export function existingSourceRoots(projectRoot, sourceRoots) {
@@ -124,8 +127,8 @@ function moduleName(importRoot, absoluteFile) {
 }
 
 export function testFileMatcher(projectRoot) {
-  const collection = collectionOptions(readPytestConfig(projectRoot));
-  return (file) => isTestFile(file, collection);
+  const options = testFileOptions(projectRoot);
+  return (file) => isTestFile(file, options);
 }
 
 function listDirectory(directory, { skipped, isTest }) {
@@ -144,7 +147,7 @@ function listDirectory(directory, { skipped, isTest }) {
       )
       .map(named),
     files: entries
-      .filter((entry) => entry.isFile() && entry.name.endsWith('.py') && !isTest(entry.name))
+      .filter((entry) => entry.isFile() && entry.name.endsWith('.py') && !isTest(named(entry)))
       .map(named),
   };
 }
@@ -163,7 +166,9 @@ function productionFiles(top, { skippedAtTop, isTest }) {
 
 export function listProductionModules(projectRoot, sourceRoots) {
   const seen = new Set();
-  const isTest = testFileMatcher(projectRoot);
+  const matcher = testFileMatcher(projectRoot);
+  const isTest = (absolute) =>
+    matcher(path.relative(projectRoot, absolute).split(path.sep).join('/'));
   return existingSourceRoots(projectRoot, sourceRoots).flatMap((root) => {
     const [importRoot] =
       root === '.' ? [path.resolve(projectRoot)] : importRoots(projectRoot, [root]);

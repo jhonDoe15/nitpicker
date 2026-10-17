@@ -22,7 +22,7 @@ export function runDuplicates(context) {
       cwd: context.projectRoot,
       roots: existingSourceRoots(context.projectRoot, context.project.sourceRoots),
       format: 'python',
-      ignore: nonProductionGlobs(context.project.sourceRoots),
+      ignore: nonProductionGlobs(context.project.sourceRoots, context.projectRoot),
       reportRoot: context.reportRoot,
       together: true,
     });

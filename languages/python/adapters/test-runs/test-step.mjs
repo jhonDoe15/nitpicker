@@ -9,6 +9,7 @@ import {
   testsRan,
 } from '../execution/python-test-runner.mjs';
 import { insideProject } from '../../libraries/project-files.mjs';
+import { isDjangoProject } from '../configuration/pytest/collection-options.mjs';
 import { failedTests, readJunit } from './junit-results.mjs';
 import { unittestFailures } from './test-failures.mjs';
 
@@ -21,16 +22,8 @@ const UNTESTABLE_LINES = [
   String.raw`^\s*@(typing\.)?overload\b`,
   String.raw`^\s*raise NotImplementedError\b`,
 ];
-const TEST_FILES = [
-  'test_*.py',
-  '*_test.py',
-  '*_tests.py',
-  '*/tests.py',
-  '*/tests_*.py',
-  'conftest.py',
-  '*/tests/*',
-  '*/test/*',
-];
+const TEST_FILES = ['test_*.py', '*_test.py', 'conftest.py', '*/tests/*', '*/test/*'];
+const DJANGO_TEST_FILES = ['*_tests.py', '*/tests.py', '*/tests_*.py'];
 const EMPTY_COVERAGE_REPORT = '{"files":{}}';
 
 function coverageSources({ projectRoot, project }) {
@@ -41,13 +34,13 @@ function indented(entries) {
   return entries.map((entry) => `    ${entry}`).join('\n');
 }
 
-function coverageConfig(sources) {
+function coverageConfig(sources, django) {
   return [
     '[run]',
     'branch = True',
     'parallel = False',
     `source =\n${indented(sources)}`,
-    `omit =\n${indented(TEST_FILES)}`,
+    `omit =\n${indented([...TEST_FILES, ...(django ? DJANGO_TEST_FILES : [])])}`,
     '[report]',
     `exclude_lines =\n${indented(UNTESTABLE_LINES)}`,
     'partial_branches =',
@@ -72,7 +65,7 @@ function failuresOf(context, { command, result }) {
 export function test(context, outcome) {
   const sources = coverageSources(context);
   const config = path.join(context.reportRoot, COVERAGE_CONFIG);
-  writeFileSync(config, coverageConfig(sources));
+  writeFileSync(config, coverageConfig(sources, isDjangoProject(context.projectRoot)));
   const command = ['coverage', 'run', '--rcfile', config, ...testCommand(context)];
   const result = run(context, command, {
     accepted: [0, TESTS_FAILED_EXIT, NO_TESTS_EXIT],

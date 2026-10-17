@@ -63,7 +63,7 @@ function configurationContext(files = {}, overrides = {}) {
 }
 
 const TEST_PATTERNS =
-  '"tests/*","test/*","*/tests/*","*/test/*","test_*.py","*/test_*.py","*_test.py","*_tests.py","tests.py","*/tests.py","tests_*.py","*/tests_*.py","conftest.py","*/conftest.py"';
+  '"tests/*","test/*","*/tests/*","*/test/*","test_*.py","*/test_*.py","*_test.py","conftest.py","*/conftest.py"';
 const section = (sourcePaths, patterns = TEST_PATTERNS) =>
   `[tool.mutmut]\nsource_paths = ${sourcePaths}\ndo_not_mutate = [${patterns}]\n`;
 
@@ -77,6 +77,16 @@ describe('the mutmut configuration', () => {
 
     expect(read(context.projectRoot, 'pyproject.toml')).toBe(
       `[project]\nname = "demo"\n\n${section('["src"]')}`,
+    );
+  });
+
+  it('keeps mutmut away from the Django test module names in a Django project', () => {
+    const context = configurationContext({ 'manage.py': '' });
+
+    ensureMutmutConfiguration(context);
+
+    expect(read(context.projectRoot, 'pyproject.toml')).toBe(
+      `\n${section('["src"]', `${TEST_PATTERNS},"*_tests.py","tests.py","*/tests.py","tests_*.py","*/tests_*.py"`)}`,
     );
   });
 

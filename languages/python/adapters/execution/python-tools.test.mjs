@@ -6,6 +6,7 @@ import {
   callsLog,
   contextFor,
   coverageRc,
+  DJANGO_OMIT,
   project,
   readReport,
   restoreTemporaryState,
@@ -113,6 +114,13 @@ describe('running the tools', () => {
     runPythonTools(context);
 
     expect(readReport(reportRoot, 'coveragerc')).toBe(coverageRc('src'));
+  });
+  it('leaves the Django test module names out of coverage only in a Django project', () => {
+    const { context, reportRoot } = contextFor(project({ 'manage.py': '' }));
+
+    runPythonTools(context);
+
+    expect(readReport(reportRoot, 'coveragerc')).toBe(coverageRc('src', DJANGO_OMIT));
   });
   it('measures the source roots that exist and writes an empty report when none does', () => {
     const calls = callsLog();
