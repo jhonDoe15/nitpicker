@@ -393,22 +393,52 @@ default, and their messages name it:
 | `GuardLogStatement`                | `trace` and `debug` (and JUL `fine` levels) with placeholders whose values are variables, fields, literals or a no-argument call on one (`order.id()`); a guard only when an argument is computed. |
 | `LogStringConcatenation` (new)     | `info`, `warn` and `error` with placeholders, for SLF4J, Log4j 2, commons-logging, JUL and `System.Logger`.                                                                                        |
 | `GeneratedOnHandWrittenCode` (new) | No `@Generated` annotation on a class, method or constructor: JaCoCo and PIT skip what it marks.                                                                                                   |
-| `SwallowedException` (new)         | A `catch` that does something with the failure: the body is not only `continue`, `return;`, a return or an assignment of a constant (see below).                                                   |
+| `SwallowedException` (new)         | A `catch` that only logs, returns a constant or default, or carries on, without rethrowing, returning or storing the failure (see below).                                                          |
 
-**`SwallowedException` (PMD XPath rule, main and test sources).** It reports a non-empty `catch`
-whose statements are all inert: `continue`, `return;`, `;`, a `return` of a literal (`null`, `true`,
-`-1`, `"none"`, `'x'`), of `Optional.empty()` (also `OptionalInt`, `OptionalLong`, `OptionalDouble`
-and `Stream.empty()`), of an empty collection (`List.of()`, `Set.of()`, `Map.of()`,
-`Collections.emptyList()` and its siblings, `new ArrayList<>()` and other no-argument collection
-constructors) or of an empty array, or an assignment of a literal (`found = false;`). It is the
-Python `swallowed-exception` rule for Java; `EmptyCatchBlock` and Error Prone's `EmptyCatch` keep the
-empty block. A handler that logs, throws, calls anything, or returns or assigns a name or a computed
-value (a named constant, `text.length()`, `Optional.of(DEFAULT)`) is allowed, as is a handler that
-only catches `ClassNotFoundException` or `NoClassDefFoundError` and assigns a literal (the
-optional-class probe, `present = false`). The rule applies to tests too, where `assertThrows`
-replaces the `catch`. The message says to log it, rethrow it with the cause, use it, or return a
-named default, names `assertThrows` for tests, and gives the exception entry for `pmd/SwallowedException`.
-`languages/java/adapters/java-e2e/swallowed-exception.e2e.test.mjs` runs it on Gradle and Maven.
+**`SwallowedException` (PMD XPath rule, main and test sources).** It follows the Python
+`swallowed-exception` rule (`languages/python/rules/errors/handling.py`), and the Kotlin
+`exceptions.SwallowedException` and TypeScript `nitpicker/no-silent-catch` rules ask for the same
+handling. It reports a non-empty `catch` (the empty block stays with `EmptyCatchBlock`) in which, once
+log calls are set aside, nothing handles the failure. Set aside: calls on a logger (a receiver named
+`log`, `logger`, `logging`, ending in `Log` or `Logger`, `LOG`, a `getLogger(...)` chain, or typed
+as one), `System.out`/`System.err` printing and `printStackTrace()`, so logging alone is not handling,
+even with the exception as an argument. The rest of the handler is walked, nested blocks and `if`s
+included, but not lambdas, anonymous classes or local classes. The failure is handled when the
+handler:
+
+- throws, or `break`s;
+- calls anything as a statement (`recover();`, `Thread.currentThread().interrupt();`,
+  `System.exit(1);`) other than a collection tally (`add`, `put`, `offer`, ...) that does not receive
+  the error;
+- passes the exception, or a variable derived from it (`String message = e.getMessage();`), to a call
+  or constructor, including a tally (`errors.add(e)`, `fail(e)`);
+- returns the exception, a value derived from it, or anything computed by a call or constructor
+  (`return new Failure(e)`, `return Optional.of(DEFAULT)`, `return text.length()`), except the
+  empty values `Optional.empty()`, `List.of()`, `Collections.emptyList()` and its siblings and
+  `new ArrayList<>()` with no arguments;
+- stores the exception in a field or in a variable that is read after the handler
+  (`this.last = e;`, `failure = e;` followed by `throw new X(failure)`), or adds it to a number or
+  string (`total += e.getMessage().length()`);
+- assigns or declares a value computed by a call (`label = describe(text);`).
+
+A `return` of a literal, a named constant (`DEFAULT_PORT`), `-1`, `null`, `false` or an empty
+collection, `continue`, `return;`, a counter (`failures++`), an assignment of a literal or a name,
+and an `add` of something that is not the error are all swallowing. A handler that catches only
+`ClassNotFoundException` or `NoClassDefFoundError` (the optional-class probe) may assign anything and
+return a boolean literal (`present = false;`, `return false;`). Differences from Python, kept on purpose:
+a helper that only logs counts as a call here, because a PMD rule cannot see its body, and a
+variable derived from the exception counts as read after the handler only when it is declared
+outside it. Because `catch (E ignored) { }` is `EmptyCatchBlock`'s, which allows the names `ignored`
+and `expected` as PMD ships it, only the empty block keeps that exit; a non-empty handler is
+reported whatever the variable is called. The message names the allowed forms (rethrow with the cause,
+a failure result that carries the error, collecting it), says logging alone is not handling, names
+`assertThrows` for tests and gives the exception entry for `pmd/SwallowedException`. The catalog
+texts of `EmptyCatchBlock` (PMD and Checkstyle) and SpotBugs `DE_MIGHT_DROP` and `DE_MIGHT_IGNORE`
+give the same advice, so none of them sends the author to a bare default that this rule reports.
+`languages/java/adapters/java-e2e/swallowed-exception.e2e.test.mjs` runs it on Gradle and Maven over
+13 swallowing handlers in main code, one in a test, and 10 handling ones. In the Kotlin preset the rule runs on the Java files of
+the module and its exception entry (`pmd/SwallowedException`) is accepted there like any other rule of
+a Java-file tool.
 
 ## Slice 3: Checkstyle
 
@@ -487,13 +517,17 @@ identity when the value changes: editing such a line counts as a resolved plus a
   it). Its default became `true` in 1.18.34; up to 1.18.32 every `@Data`, `@Value`, `@Builder` and
   `@Getter` member counted, so `equals`, `hashCode`, `canEqual`, `toString`, builders and accessors
   showed as uncovered branches and as `mutant-survived` or `mutant-nocoverage` findings nobody can
-  fix with a test. `collectJavaFindings` therefore calls `markLombokGeneratedCode`
-  (`languages/java/adapters/generated-code/lombok-config.mjs`) on the tree it analyzes, which is
-  always a temporary snapshot or worktree, never the working copy: when a `lombok.config` or a
-  build file (`pom.xml`, `*.gradle`, `*.gradle.kts`, `*.versions.toml`) mentions Lombok, it sets
-  `lombok.addLombokGeneratedAnnotation = true` in every `lombok.config` there (replacing the
-  project's own value for that key, `clear` lines included) and creates one in the root when there
-  is none, so a nearer file cannot undo it. A project without Lombok is untouched. Gradle and
+  fix with a test. The runner (`analyzeJavaSnapshot`) and `runJavaDiff` therefore call
+  `markLombokGeneratedCode` (`languages/java/adapters/generated-code/lombok-config.mjs`) on the
+  temporary snapshot or worktree they analyze, never on the working copy (`collectJavaFindings`
+  itself writes nothing, and the step refuses a tree inside a live Git checkout with a note on
+  stderr): when a `lombok.config`, a build file (`pom.xml` and the poms above it, `*.gradle`,
+  `*.gradle.kts`, any `*.toml` version catalog, buildSrc scripts) or a `lombok.` import in a source
+  file shows Lombok, it sets `lombok.addLombokGeneratedAnnotation = true` in every `lombok.config`
+  there (removing the project's own lines for that key, `clear` lines included, and appending the
+  setting last) and creates one in the root when there is none, so a nearer file cannot undo it.
+  Each file is replaced by a regular file, so a symlinked `lombok.config` is copied, not written
+  through. A project without Lombok is untouched. Gradle and
   Maven share the step, because both compile the same tree. Measured on jasypt-spring-boot's core
   module with Lombok pinned to 1.18.30: 1146 mutants and 118 lines with missed branches without
   the setting, 573 and 113 with it, the same as with Lombok 1.18.38 (453 of the 1030 non-killed
@@ -503,7 +537,7 @@ identity when the value changes: editing such a line counts as a resolved plus a
   (records, enums, sealed types, lambdas) JaCoCo reported no missed branch on a record or enum
   declaration line and CRAP had no generated entry, because it is built from the parsed source
   methods. The Kotlin preset has its own mutant filter (a separate change); this one is kept
-  self-contained and shaped like it, a function over the project tree that returns what it
+  self-contained and shaped like it, a function over the project tree that reports what it
   changed, so the two can share their walk and their tests later.
 - **Identity.** `function:<signature>`, for example `function:Calc.classify(int, int, String)`:
   enclosing classes, method and parameter types (`signature` in `structure.json`), never a line.

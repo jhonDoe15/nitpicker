@@ -159,6 +159,18 @@ message, counts as using it, so `catch (e: IOException) { log.warn("bad", e) }` 
 other presets report it. detekt also reports a catch that passes only `e.message` to a `throw` (the cause is lost). The
 message names the exception route and `assertFailsWith`.
 
+Pinning these two rules means pinning the `exceptions` ruleset itself (`active: true`, `excludes: []`), because
+detekt skips every rule of a ruleset whose own `active` is false. The side effect: a project that switched the
+whole ruleset off in its detekt config gets detekt's other default-on `exceptions` rules back
+(`ExceptionRaisedInUnexpectedLocation`, `InstanceOfCheckForException`, `PrintStackTrace`,
+`RethrowCaughtException`, `ReturnFromFinally`, `ThrowingExceptionFromFinally`,
+`ThrowingExceptionsWithoutMessageOrCause`, `ThrowingNewInstanceOfSameException` and
+`TooGenericExceptionThrown`; the ruleset's remaining rules are off in detekt's defaults). They are plain
+correctness rules a catch-and-throw codebase should meet, and a project that disagrees with one switches that rule
+off by name in its detekt config (`exceptions: PrintStackTrace: active: false`), which we do not override, or
+lifts it per path with `exceptions` in `nitpicker.config.json`. A project that left the ruleset on sees no
+change, since these rules already run from detekt's defaults.
+
 Rule ids in findings are `detekt.<ruleset>.<Rule>`. Test sources are analyzed with the same rules, so
 `runBlocking` in a test is a finding too; its message points to `runTest`. A broad catch in a test
 (`catch (error: Exception)`) is a finding as well: assert on the specific exception with

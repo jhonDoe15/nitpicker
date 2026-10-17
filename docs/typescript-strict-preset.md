@@ -196,15 +196,21 @@ Math` and `Math['random']()` are caught; `process`, `fetch`, `setTimeout`, `setI
   an array, as in `new AggregateError([error, closeError], message)`, or through a
   `const cause = error`), whether or not it mentions the caught value (`throw new AppError('range')` and
   `new AppError(String(error))` are both reported).
-- `nitpicker/no-silent-catch`: a `catch` must hand the failure on. It passes when it uses the
-  caught value (rethrow an `Error` subclass with `{ cause: error }`, log it, or return it in a
-  result) or when it returns a failure result object (`catch { return { kind: 'malformed-json' } }`).
-  Carry the caught value only where something reads it; a field added just so the binding is read
-  is slop. A `catch` that falls through, or returns a non-object such as `undefined` or `[]`, is
-  reported. A deliberately dropped error needs an exception in the config file. The rule also
-  covers test files (a catch that returns `null`, continues or returns a constant there is
-  reported); in a test, assert the failure with `expect(() => run()).toThrow()` or
-  `await expect(promise).rejects.toThrow()`.
+- `nitpicker/no-silent-catch`: a `catch` must handle the failure, as the Python `swallowed-exception`,
+  Java `pmd/SwallowedException` and Kotlin `exceptions.SwallowedException` rules ask. Log calls
+  (`console.*`, `logger.*`, a `log` or `...Logger` receiver, `process.stderr.write`) are set aside,
+  so logging alone is reported, with or without the caught value. The rest of the handler is walked,
+  nested blocks and `if`s included, but not functions. It passes when the handler throws or
+  `break`s, calls anything as a statement (`recover()`, `await cleanup()`), hands the caught value
+  or a value derived from it to a call (`errors.push(error)`, `fail(String(error))`), returns it, a
+  value derived from it, a call or an object (`return { kind: 'malformed-json' }` is the failure
+  result), stores it in a property or in a variable read after the `catch`, or assigns a computed
+  value. A `catch` that only falls through, continues, returns `undefined`, `null`, `false`, a
+  number, a string, a name (a constant or a parameter) or `[]`, adds to a counter, or logs, is
+  reported. Carry the caught value only where something reads it; a field added just so the
+  binding is read is slop. A deliberately dropped error needs an exception in the config file. The
+  rule also covers test files; in a test, assert the failure with `expect(() => run()).toThrow()`
+  or `await expect(promise).rejects.toThrow()`.
 - `nitpicker/no-unvalidated-schema-field` (all production code): no `z.unknown()` or `z.any()`
   (also with `.optional()`, `.nullable()`, `.default()` and similar wrappers, `z.optional(...)`,
   `z.nullable(...)`, `z.nullish(...)` and `z.readonly(...)`) as a field of `z.object`,

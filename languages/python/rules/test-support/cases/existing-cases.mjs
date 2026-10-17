@@ -56,6 +56,13 @@ export const EXISTING_CASES = [
     mention: 'logging alone is not handling',
   },
   {
+    name: 'except continue names pytest.raises for tests',
+    fixture: 'swallowing-continue',
+    tool: 'python-rules',
+    rule: 'swallowed-exception',
+    mention: 'pytest.raises',
+  },
+  {
     name: 'except returning a constant names a failure result',
     fixture: 'swallowing-return-constant',
     tool: 'python-rules',
