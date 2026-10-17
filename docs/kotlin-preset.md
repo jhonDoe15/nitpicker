@@ -236,6 +236,44 @@ not a rule with `exceptions`.
 - Type resolution reports less where a library is built with a newer Kotlin than detekt's (above);
   `!!` on a value of such a type is not seen.
 
+## Source scans
+
+Two checks read the `.kt` files themselves, after masking comments and string literals (the same
+mask as `inline-suppression`), and report as tool `detekt`. Both can flag legitimate code, so both
+take an `exceptions` entry per path.
+
+**`catch-log-without-exception`.** A `catch (e: ...)` block that logs a failure must pass the caught
+exception itself to the logger, so the stack trace is kept: `log.error("what failed", e)` (SLF4J, Log4j2),
+`logger.error(e) { "what failed" }` or `logger.atError { cause = e }` (kotlin-logging),
+`logger.log(Level.SEVERE, "what failed", e)` (java.util.logging), `Log.e(TAG, "what failed", e)` (Android).
+`e.message`, `e.toString()` and a string template of the exception do not count, and neither does a log
+call without the exception. Only the failure levels are checked: `warn` and `error` (and `fatal`), JUL
+`warning`, `severe` and `log(Level.SEVERE | WARNING, ...)`, Android `Log.w`, `Log.e` and `Log.wtf`;
+`debug`, `info` and `trace` logs in a catch are not findings. These pass as well: the SLF4J 2 fluent API
+with the exception anywhere in the chain (`atError().setCause(e).log(...)`, `withThrowable(e)`), a cast of
+the exception (`e as Throwable`), and a catch that rethrows `e` or throws a new exception with `e` as an
+argument (its cause) after logging. A call is a log call when its receiver (also as `logger?.error(...)`) is
+declared from `KotlinLogging.logger`, `LoggerFactory.getLogger`, `LogManager.getLogger` or
+`getFormatterLogger`, `Logger.getLogger` or `System.getLogger`, or its name is `log` or `logger` (any case) or ends in one at a
+camelCase or underscore boundary (`auditLog`, `appLogger`, `AUDIT_LOG`, `audit_log`; `dialog` and `catalog` are not loggers). The list lives in `languages/java/source/loggers.mjs`. The
+innermost catch is the one checked, and a catch of `_`, `ignored...`, `expected...` or `unused...` is left
+alone. Main and test sources are scanned. One finding per log call, identified by
+`catch-log:<receiver>.<level>`.
+
+**`test-without-assertion`.** A test method (`@Test`, `@ParameterizedTest`, `@RepeatedTest`,
+`@TestTemplate`, block or expression body, backtick names) that calls no assertion. A call counts when its
+name is `assert`, `check`, `verify`, `coVerify`, `expect` or `should` alone or followed by a capital
+(`assertEquals`, `assertFailsWith`, `assertThrows`, `verifyOrder`, `expectThat`, `shouldThrow`; Kotest infix
+`x shouldBe y` too), or `confirmVerified`, `fail`, `andExpect` or `forAll`. Variables (`expected`) and calls on
+a receiver (`checkoutService.run()`) do not count. A test that is `@Test(expected = ...)` is skipped.
+The project's own helpers are learned: the convention `kotlin.assertionHelpers` lists the names that end
+the last statement of enabled tests without a known assertion in at least three test files, read like
+an assertion (`ensure...`, `must...`, `validate...`, `is...`, `has...`, `await...`) and are defined in a test
+or test-support source as a function whose body asserts or throws; pin a list of names in `conventions`
+to set it yourself. `@Disabled` and `@Ignore` tests are skipped. Kotest specs written as `"name" { ... }` have no `@Test`
+and are not scanned. The test sources are the Kotlin directories of the `test` source set.
+One finding per test, identified by `test:<name>`.
+
 ## Format check: ktlint, ktfmt or none
 
 The format check runs only for a project that uses a Kotlin formatter: Nitpicker does not make a
@@ -266,7 +304,7 @@ override there.
   only the topmost one gets `root = true`, and the conventions are ktlint defaults below them. The
   opt-in needs an `.editorconfig` at the project root or above, else it is a tool error that says to
   create one or remove `"project"`. `["nitpicker", "project"]` is a config error for ktlint, since
-  ktlint always reads its `.editorconfig` first. The run prints once what ktlint runs with and what
+  ktlint always reads its `.editorconfig` first. The conventions (`kotlin.lineLength`, `kotlin.indentation` and the others) take their values from the detekt, ktlint and ktfmt configs of the merge base in a comparison, and from the branch only when the base has no Kotlin sources, so a pull request cannot raise its own limit by editing them. The same values are enforced in the run: the followed `indent_size`, `max_line_length`, trailing-comma and wildcard-import values are appended after the matching section of every mirrored `.editorconfig` (nested and parent ones too) that sets them differently, and the followed detekt conventions are layered last in a file of their own, so an edited width in the branch changes neither the run nor the printed line. The run prints once what ktlint runs with and what
   to do to lift a rule, and one `Ignoring .editorconfig; opt in with ...` line when a project
   `.editorconfig` exists and is not used. Each violation is one finding: rule
   `ktlint.<ruleset>:<rule>` (for example `ktlint.standard:no-wildcard-imports`), the line, and
@@ -281,9 +319,13 @@ Two styles are equally valid in each of these, so the preset follows the project
 | `kotlin.indentation`     | `indent_size`                    | style `meta` (2) or `kotlinlang` (4) | not offered  | -                               |
 | `kotlin.trailingCommas`  | `ij_kotlin_allow_trailing_comma` | not offered (ktfmt always adds them) | not offered  | -                               |
 | `kotlin.wildcardImports` | disables `no-wildcard-imports`   | -                                    | -            | `WildcardImport: active: false` |
+| `kotlin.lineLength`      | `max_line_length`                | `--max-width`                        | not offered  | `MaxLineLength: maxLineLength`  |
 
+`kotlin.lineLength` is any number of columns (`100`, `120` and `140` are the measured ones; an `.editorconfig` or detekt width such as 110 is followed as it is) and has no default. It is measured like `python.lineLength`: the
+longest line that could have been wrapped, against the shortest join of a wrapped argument list, and
+else the lines that run past 100 or 120. With no clear answer each tool keeps its own width.
 An id the formatter cannot apply is neither measured nor printed, and pinning it is a config error.
-`java.indentation` (google-java-format `2` or `--aosp` 4) is the Java twin of `kotlin.indentation` and
+`java.indentation` (google-java-format `2` or `--aosp` 4, or `tab`; palantir-java-format is always 4, see `java.formatter` and `java.lineLength` in the [Java preset](java-preset.md#style)) is the Java twin of `kotlin.indentation` and
 applies to the Java sources of the same project; the difference is the default: `java.indentation`
 falls back to 2 (google-java-format's), while `kotlin.indentation` has none, because ktfmt's default
 is 2 and ktlint's is 4, so with no clear majority the tool keeps its own. For ktlint the choices are a
@@ -292,13 +334,16 @@ the project's `detekt.yml`. The scope-function rules do not change. With the pro
 project sets wins for every tool and the run prints it as "from your .editorconfig", "from your detekt
 config" or "from your build file" instead of "used by N of M measured files".
 
-- **ktfmt.** `--dry-run` lists the files that would change. By default the style is
+- **ktfmt.** `--dry-run` lists the files that would change. The style is the one the build names
+  (`kotlinLangStyle()`, `googleStyle()` or `metaStyle()`), with or without the ktfmt opt-in: which
+  formatter a project uses, and the style it declares for it, are facts about the project, like the
+  Java preset's declared formatter, so they are read from the build files at the merge base and
+  indent `kotlin.indentation` accordingly ("from your build file"). Without a named style it is
   `--kotlinlang-style` when most Kotlin files indent by 4 (`kotlin.indentation`), else ktfmt's
-  default (Meta), no `.editorconfig` is read, and it runs in the project, without a copy of the
-  sources. A build that names `kotlinLangStyle()` or `googleStyle()` and an `.editorconfig` are used
-  only with `"tools": { "ktfmt": { "precedence": ["project", "nitpicker"] } }`, which then passes the
-  build's style (read from the head checkout) and `--enable-editorconfig`, and runs in a copy of the
-  sources with the same mirrored `.editorconfig` files as ktlint. `["nitpicker", "project"]` is a
+  default (Meta). Config files are different: an `.editorconfig` is read only with
+  `"tools": { "ktfmt": { "precedence": ["project", "nitpicker"] } }`, which passes
+  `--enable-editorconfig` and runs in a copy of the sources with the same mirrored `.editorconfig`
+  files as ktlint; without it ktfmt runs in the project, without a copy of the sources. `["nitpicker", "project"]` is a
   config error for ktfmt, as ktfmt has no flag to ignore the `.editorconfig` once enabled. One
   `format` finding per file, tool `ktfmt`, identity `format`, whose message refers to the
   `Format with ktfmt` command printed at the start of the run; a file that already failed on the base
@@ -607,7 +652,8 @@ the comparison and exiting with 2. Nothing is silently skipped and nothing throw
 (legacy inventory sources are the findings' `identity`, for example
 `fp:nitpicker/subject=This expression contains a magic number. ...`). `kotlin.formatter` and
 `kotlin.detektConfig` are new and valid only with this preset. `exceptions` lifts the
-[one-way rules](#one-way-rules), the file limits `file-lines-limit` and `folder-files-limit` and
+[one-way rules](#one-way-rules), `catch-log-without-exception` and `test-without-assertion`
+([source scans](#source-scans)), the file limits `file-lines-limit` and `folder-files-limit` and
 `test-runtime/slow-test` per path. `layout` is a config error.
 
 ## Slow tests
@@ -628,8 +674,8 @@ below the root package (the longest package prefix all the code shares) fail `fo
 (`class-methods-limit`, `class-fields-limit`, `inheritance-depth-limit`) apply to the `.java` files of a
 Kotlin project, with `classMethods`, `classFields` and `inheritanceDepth`; Kotlin classes are not measured. The `java.indentation` convention (`"4"`) switches the Java sources' format check
 to 4 spaces. The Kotlin files' line length is
-detekt's `MaxLineLength` (120 by default, set in `config/detekt/detekt.yml`), the `.java` files keep
-nitpicker's fixed 100 characters (`line-length-limit`, which an exception lifts for some paths), and
+detekt's `MaxLineLength` (120 by default, set in `config/detekt/detekt.yml`), the `.java` files use
+the width of the Java formatter (100 for google-java-format, 120 for palantir-java-format, or the width of the project's Checkstyle `LineLength`, see the Java preset; `line-length-limit`, which an exception lifts for some paths), and
 `thresholds.lineLength` is a config error with this preset. A file or folder already over a limit
 fails only when it grows, and a package folder moved to a new path is matched to its old path.
 
