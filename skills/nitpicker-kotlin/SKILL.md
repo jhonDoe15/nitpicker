@@ -64,6 +64,11 @@ it with `npx skills add jhonDoe15/nitpicker --skill nitpicker-java`.
 - A project may add forbidden calls to `ForbiddenMethodCall.methods` in its `detekt.yml`; they join
   the four above. Do not call anything the project lists there.
 
+## Repository files
+
+- The gate fails committed secrets, binaries, build output and files over 1 MB; each message names
+  the fix. Don't add an `exceptions` entry to get past one: stop and ask.
+
 ## Size and tests
 
 - A function stays within 50 lines, 15 statements, 2 levels of control nesting and 3 parameters;

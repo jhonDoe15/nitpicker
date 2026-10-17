@@ -34,5 +34,14 @@
     "e2e/**/*.{ts,tsx,mts,cts,js,jsx,mjs,cjs}",
     "*.config.{ts,mts,mjs}"
   ],
+  "ignoreDependencies": [
+    "nitpicker",
+    "vitest",
+    "@vitest/coverage-v8",
+    "typescript",
+    "@types/node",
+    "jsdom",
+    "happy-dom"
+  ],
   "ignore": ["src/**/*.d.ts", "coverage/**", "reports/**", ".stryker-tmp/**", ".nitpicker-*"]
 }

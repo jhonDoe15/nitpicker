@@ -99,6 +99,7 @@ const presetConfig = defineConfig(
       nitpicker: nitpickerRules,
     },
     rules: {
+      'nitpicker/no-dev-dependency-in-production': 'error',
       'nitpicker/no-managed-resource-construction-outside-composition-roots': 'error',
       'nitpicker/preserve-error-cause': ['error', errorWrappingPolicy],
     },

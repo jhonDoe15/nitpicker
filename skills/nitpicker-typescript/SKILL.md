@@ -61,6 +61,12 @@ Before you change code other modules use, fix a bug, or add a UI state, read
 - New code goes under the source roots (`layout.sourceRoots`); the gate reports anything outside.
 - Follow neighbouring signatures (parameter order, naming) and reuse helpers that exist.
 
+## Dependencies and files
+
+- The gate fails unlisted, unused and unresolved dependencies, production imports of a
+  `devDependency`, and committed secrets, binaries, build output and files over 1 MB; each message
+  names the fix. Don't add an `exceptions` entry to get past one: stop and ask.
+
 ## Write it this way
 
 - `function` declarations for named functions, nested helpers too; arrows only as callbacks, with a block body when
