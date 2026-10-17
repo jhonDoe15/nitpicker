@@ -4,10 +4,10 @@ import {
   dropEntityAssociations,
   dropInheritedVersions,
   withExposureAdvice,
-} from '../jpa/jpa-source-filters.mjs';
-import { ingestSarif, prepareSarif } from '../../ingest/sarif.mjs';
-import { FIXED_SLEEP_RULE, withWaitAdvice } from '../../messages/wait-advice.mjs';
-import { dropSleepsInFakes } from '../../messages/latency-fakes.mjs';
+} from '../../jpa/jpa-source-filters.mjs';
+import { ingestSarif, prepareSarif } from '../../../ingest/sarif.mjs';
+import { FIXED_SLEEP_RULE, withWaitAdvice } from '../../../messages/wait-advice.mjs';
+import { dropSleepsInFakes } from '../../../messages/latency-fakes.mjs';
 
 const LINE_NUMBER = /\bline \d+\b/g;
 const EMPTY_SARIF = { version: '2.1.0', runs: [] };

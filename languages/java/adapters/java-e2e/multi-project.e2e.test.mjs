@@ -73,7 +73,7 @@ describe.skipIf(!enabled)('a Gradle build of two projects and an extra source se
   it('lints and compiles the integrationTest source set with the test rules, and not the jmh one', () => {
     const integrationTest = ['app/src/integrationTest/java/demo/app/GreeterRun.java'];
 
-    expect(located(findings, 'pmd', 'SystemPrintln')).toEqual(integrationTest);
+    expect(located(findings, 'errorprone', 'SystemOut')).toEqual(integrationTest);
     expect(located(findings, 'pmd', 'FixedSleepInTest')).toEqual(integrationTest);
     expect(located(findings, 'errorprone', 'PreferJavaTimeOverload')).toEqual(integrationTest);
     expect(findings.filter((finding) => finding.path?.includes('/src/jmh/'))).toEqual([]);
