@@ -5,6 +5,7 @@ import { ingestRulesReport } from '../../ingest/rules-report.mjs';
 import {
   RULES_REPORT,
   checkRules,
+  readAllowances,
   readTestFiles,
 } from '../../adapters/analysis/python-ast-rules.mjs';
 import { ruffFindings, typeFindings } from '../../adapters/python-reports.mjs';
@@ -28,6 +29,7 @@ const COLLECTORS = {
       roots,
       projectRoot: context.projectRoot,
       testFiles: readTestFiles(context.reportRoot),
+      ...readAllowances(context.reportRoot),
     });
   },
   'python-rules': (context) => {
