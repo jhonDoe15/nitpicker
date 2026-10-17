@@ -69,6 +69,7 @@ export function createToolContext({
     reportRoot,
     snapshot,
     baselineRoot,
+    testSeconds: settings.testSeconds,
     launcher,
     exclude,
     project: {
