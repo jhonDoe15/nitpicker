@@ -7,6 +7,7 @@ import { runDuplicates } from './analysis/python-duplicates.mjs';
 import { globToRegExpSource } from '../../../shared/glob.mjs';
 import { detectEnvironment, openEnvironment } from './execution/python-environment.mjs';
 import { checkRules } from './analysis/python-ast-rules.mjs';
+import { pytestStyle, pytestStyleFlags } from '../rules/libraries/pytest-style.mjs';
 import { importLinterEnabled, runImportLinter } from './analysis/python-import-linter.mjs';
 import { MUTMUT_VERSION_PROBE } from './mutation/python-mutation.mjs';
 import { execute, failure, probeVersion, run } from './execution/python-process.mjs';
@@ -17,18 +18,17 @@ import {
   detectTypeCheckers,
   importRoots,
 } from './execution/python-project.mjs';
-import { RUFF_CONFIG } from './configuration/python-ruff-config.mjs';
+import { ruffConfigFor } from './configuration/python-ruff-config.mjs';
 import {
   detectTestRunner,
   NO_TESTS_EXIT,
   pytestLabel,
-  testCommand,
   testRunnerLabel,
   testsRan,
 } from './execution/python-test-runner.mjs';
 import { resolveTypeChecker, typeCheck } from './python-types.mjs';
 import { structure } from './analysis/python-structure.mjs';
-import { collectSlowTests, timedTestCommand } from '../slow-tests/slow-test-step.mjs';
+import { collectSlowTests, timedCoverageCommand } from '../slow-tests/slow-test-step.mjs';
 
 export const RUFF_REPORT = 'ruff.sarif';
 export const FORMAT_REPORT = 'format.txt';
@@ -58,7 +58,6 @@ export function createToolContext({
   exclude = [],
   snapshot = 'head',
   baselineRoot,
-  testSeconds,
 }) {
   const launcher = openEnvironment(detectEnvironment(liveRoot, settings.environment), liveRoot);
   const sourceRoots = detectSourceRoots(projectRoot, settings.sourceRoots);
@@ -70,7 +69,6 @@ export function createToolContext({
     reportRoot,
     snapshot,
     baselineRoot,
-    testSeconds,
     launcher,
     exclude,
     project: {
@@ -81,6 +79,7 @@ export function createToolContext({
       targetVersion: detectTargetVersion(projectRoot),
       importLinter: settings.importLinter,
       sourceRoots,
+      entryPoints: settings.entryPoints ?? [],
     },
     env: {
       PYTHONPATH: pythonPath,
@@ -140,9 +139,10 @@ export function lint(context) {
       'ruff',
       'check',
       '--config',
-      RUFF_CONFIG,
+      ruffConfigFor(context),
       '--target-version',
       context.project.targetVersion,
+      ...pytestStyleFlags(pytestStyle(context.projectRoot)),
       '--ignore-noqa',
       '--no-cache',
       ...ruffExclusions(context),
@@ -235,8 +235,7 @@ function test(context, outcome) {
   const sources = coverageSources(context);
   const config = path.join(context.reportRoot, COVERAGE_CONFIG);
   writeFileSync(config, coverageConfig(sources));
-  const command = timedTestCommand(context, testCommand(context));
-  const result = run(context, ['coverage', 'run', '--rcfile', config, ...command], {
+  const result = run(context, timedCoverageCommand(context, config), {
     accepted: [0, NO_TESTS_EXIT],
     rule: TESTS_FAILED_RULE,
   });

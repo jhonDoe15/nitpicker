@@ -42,6 +42,7 @@ function context(extra = {}) {
     baselineRoot: root('base'),
     reportRoot: root('report'),
     snapshot: 'head',
+    settings: {},
     launcher: fakeLauncher({
       [root('head')]: {
         'tests/test_pay.py': {
@@ -134,7 +135,7 @@ describe('collecting slow tests after the run', () => {
 
   it('reads the budget floor from the thresholds', () => {
     times(['tests.test_pay.TestPay', 'test_slow', '1.5']);
-    collectSlowTests(context({ testSeconds: { unitTestSeconds: 1 } }));
+    collectSlowTests(context({ settings: { testSeconds: { unitTestSeconds: 1 } } }));
     expect(report().map(({ identity }) => identity)).toEqual([
       'test:tests.test_pay.TestPay#test_slow',
     ]);
