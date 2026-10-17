@@ -2,6 +2,7 @@ import { existsSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { TESTS_FAILED_RULE } from '../../../../shared/rules/finding-helpers.mjs';
 import { run } from './python-process.mjs';
+import { TEST_DIRECTORIES, TEST_FILE_GLOBS } from './python-project.mjs';
 import { NO_TESTS_EXIT, testCommand, testsRan } from './python-test-runner.mjs';
 
 export const COVERAGE_REPORT = 'coverage.json';
@@ -9,6 +10,7 @@ export const COVERAGE_DATA = '.coverage';
 export const PYTEST_REPORT = 'pytest-report.json';
 const REPORT_PLUGIN = 'nitpicker_pytest_report';
 const REPORT_VARIABLE = 'NITPICKER_PYTEST_REPORT';
+const BASELINE_VARIABLE = 'NITPICKER_BASELINE_ROOT';
 const PLUGIN_DIRECTORY = path.join(import.meta.dirname, '../test-results');
 const COVERAGE_CONFIG = 'coveragerc';
 const UNTESTABLE_LINES = [
@@ -17,7 +19,7 @@ const UNTESTABLE_LINES = [
   String.raw`^\s*@(typing\.)?overload\b`,
   String.raw`^\s*raise NotImplementedError\b`,
 ];
-const TEST_FILES = ['test_*.py', '*_test.py', 'conftest.py', '*/tests/*', '*/test/*'];
+const TEST_FILES = [...TEST_FILE_GLOBS, ...TEST_DIRECTORIES.map((directory) => `*/${directory}/*`)];
 const EMPTY_COVERAGE_REPORT = '{"files":{}}';
 
 function existsInside(projectRoot, root) {
@@ -51,15 +53,17 @@ function coverageConfig(sources) {
   ].join('\n');
 }
 
-function reportPlugin({ project, env, reportRoot }) {
+function reportPlugin({ project, env, reportRoot, snapshot, baselineRoot }) {
   if (project.testRunner !== 'pytest') {
     return { args: [], env: {} };
   }
+  const compared = snapshot === 'head' && baselineRoot !== undefined;
   return {
     args: ['-p', REPORT_PLUGIN],
     env: {
       PYTHONPATH: [PLUGIN_DIRECTORY, env.PYTHONPATH].filter(Boolean).join(path.delimiter),
       [REPORT_VARIABLE]: path.join(reportRoot, PYTEST_REPORT),
+      ...(compared ? { [BASELINE_VARIABLE]: baselineRoot } : {}),
     },
   };
 }

@@ -42,7 +42,7 @@ export function readPythonFindings({ projectRoot, reportRoot, crapLimit, policy 
   const manifest = JSON.parse(readReport(reportRoot, MANIFEST_REPORT));
   const roots = [...new Set([path.resolve(projectRoot), realpathSync(projectRoot)])];
   const coverage = readReport(reportRoot, COVERAGE_REPORT);
-  const pytest = readPytestReport(reportRoot);
+  const { report: pytest, findings: pytestFindings } = readPytestReport(reportRoot, manifest);
   return {
     findings: applyRuleHints([
       ...ruffFindings(JSON.parse(readReport(reportRoot, RUFF_REPORT)), { roots, projectRoot }),
@@ -67,6 +67,7 @@ export function readPythonFindings({ projectRoot, reportRoot, crapLimit, policy 
       ...readDuplicateFindings(reportRoot),
       ...readCouplingFindings(reportRoot),
       ...readImportLinterFindings(reportRoot),
+      ...pytestFindings,
       ...slowTestFindings(pytest, { projectRoot, policy }),
       ...consoleOutputFindings(pytest, { projectRoot }),
     ]),

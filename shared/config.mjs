@@ -29,14 +29,10 @@ const WHOLE_NUMBER_THRESHOLD_KEYS = new Set([
 
 const EXCEPTION_KEYS = ['rule', 'paths', 'reason'];
 
-export const TYPESCRIPT_ONLY_KEYS = [
-  'layout',
-  'exceptions',
-  'react',
-  'i18n',
-  'tools',
-  'testConsole',
-];
+export const TYPESCRIPT_ONLY_KEYS = ['layout', 'exceptions', 'react', 'i18n', 'tools'];
+
+/** Keys that only some presets read, with those presets (no `preset` means TypeScript). */
+export const PRESET_KEYS = { testConsole: ['typescript', 'javascript', 'python'] };
 
 export function configError(message) {
   return new Error(`${CONFIG_FILE_NAME}: ${message}`);
