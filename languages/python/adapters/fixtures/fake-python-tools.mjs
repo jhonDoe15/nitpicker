@@ -10,10 +10,14 @@
 //   junit.xml            written as the pytest JUnit report when `coverage run` passes --junitxml
 //                        (default: one passing test, or one failing test when test-exit.txt is 1)
 //   coverage-data.json   written as the coverage.py JSON report (default: no files)
+//   parallel-coverage.txt  `coverage run` leaves a per-process data file next to $COVERAGE_FILE
 //   unparsable.txt       one path per line: files the formatter cannot parse (it exits like the real
 //                        formatter does and names them on stderr)
 //   no-pytest.txt        `python -c "import pytest"` fails
-//   pytest-cov.txt, xdist.txt, rerunfailures.txt  the pytest probe reports that plugin as installed
+//   no-<name>.txt        the version probe of that distribution (Django, nose2) fails; it prints
+//                        5.1.0 otherwise
+//   pytest-cov.txt, xdist.txt, rerunfailures.txt, pytest-django.txt  the pytest probe reports that
+//                        plugin as installed
 //   ruff-rules.json      printed by `ruff rule --all` (default: that call exits 2, as an old ruff does)
 //   sources.txt          one path per line: what `ruff check --show-files` lists (default: every
 //                        .py file below the project, except .venv)
@@ -43,7 +47,7 @@
 //                        exit status is 1 when the text says BROKEN
 // `python -c` with `sys.executable` prints `$VIRTUAL_ENV/bin/python` and always works.
 // When FAKE_PYTHON_LOG is set, every call appends a JSON line with the tool, arguments, cwd,
-// PYTHONPATH, MYPYPATH and PYTEST_ADDOPTS.
+// PYTHONPATH, MYPYPATH, PYTEST_ADDOPTS and DJANGO_SETTINGS_MODULE.
 import {
   appendFileSync,
   existsSync,
@@ -71,6 +75,9 @@ if (process.env.FAKE_PYTHON_LOG !== undefined) {
       pythonPath: process.env.PYTHONPATH ?? '',
       ...(process.env.MYPYPATH === undefined ? {} : { mypyPath: process.env.MYPYPATH }),
       pytestAddopts: process.env.PYTEST_ADDOPTS,
+      ...(process.env.DJANGO_SETTINGS_MODULE === undefined
+        ? {}
+        : { djangoSettings: process.env.DJANGO_SETTINGS_MODULE }),
     })}\n`,
   );
 }
@@ -184,11 +191,14 @@ function coverage() {
   if (args[0] === '--version') {
     process.stdout.write('Coverage.py, version 7.6.1 with C extension\n');
   } else if (args[0] === 'run') {
+    if (existsSync('parallel-coverage.txt')) {
+      writeFileSync(`${process.env.COVERAGE_FILE}.host.1`, '');
+    }
     const status = Number(lines('test-exit.txt')[0] ?? 0);
     writeJunit(status);
     process.stdout.write(status === 0 ? '1 passed\n' : '1 failed: test_greet\n');
     process.exit(status);
-  } else {
+  } else if (args[0] !== 'combine') {
     writeFileSync(valueOf('-o'), read('coverage-data.json', '{"files":{}}'));
   }
 }
@@ -274,6 +284,14 @@ function python() {
     process.stdout.write('2.5\n');
     return;
   }
+  const distribution = /m\.version\("([\w-]+)"\)/.exec(args.join(' '))?.[1];
+  if (distribution !== undefined) {
+    if (existsSync(`no-${distribution}.txt`)) {
+      process.exit(1);
+    }
+    process.stdout.write('5.1.0\n');
+    return;
+  }
   if (args[0]?.endsWith('.py')) {
     const data = existsSync('structure-data.json')
       ? readFileSync('structure-data.json', 'utf8')
@@ -291,9 +309,8 @@ function python() {
     process.exit(1);
   }
   const flag = (file) => (existsSync(file) ? 1 : 0);
-  process.stdout.write(
-    `8.3.1 ${flag('pytest-cov.txt')} ${flag('xdist.txt')} ${flag('rerunfailures.txt')}\n`,
-  );
+  const plugins = ['pytest-cov.txt', 'xdist.txt', 'rerunfailures.txt', 'pytest-django.txt'];
+  process.stdout.write(`8.3.1 ${plugins.map(flag).join(' ')}\n`);
 }
 
 const MUTMUT_MESSAGES = {

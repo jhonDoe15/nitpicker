@@ -78,6 +78,22 @@ describe('reading the CRAP inputs', () => {
     expect(read(undefined, 1)).toEqual([]);
   });
 
+  it('scores no function of a test file, which coverage does not measure', () => {
+    const { root } = project();
+    const testFunctions = ['src/polls/tests.py', 'src/demo/tests/test_a.py', 'test_b.py'].map(
+      (file) => ({ ...FUNCTIONS[0], file }),
+    );
+
+    expect(
+      readPythonCrapFindings({
+        functions: testFunctions,
+        coverage: coverage(0),
+        projectRoot: root,
+        roots: [root],
+      }),
+    ).toEqual([]);
+  });
+
   it('keys the identity on the function text', () => {
     const { root } = project();
     const identityOf = () =>
