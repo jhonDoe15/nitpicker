@@ -290,6 +290,14 @@ so a line the filter does not recognize is judged as written. On the fixture thi
 and an `else -> throw` no test reaches, two `in 90..100 ->` entries). The cost of failing open is a
 report of a generated outcome on a line that also branches. It is never a missed real branch.
 
+**Since JaCoCo 0.8.14.** JaCoCo 0.8.13 and 0.8.14 filter more Kotlin bytecode themselves, among it
+suspending lambdas without suspension points, suspending lambdas with parameters and suspension
+points that return an inline value class. With the 0.8.14 pin the e2e fixture
+(`kotlin-preset-coverage-and-structure.e2e.test.mjs`, the `generated-branches` case) has no missed
+branch on any line JaCoCo reports, so that case now checks that the file's branches are measured and
+that nothing is reported. The filter above stays: it fails open, and its unit test runs it on the
+reports recorded from 0.8.12.
+
 Limits. A line that branches and also suspends (`if (ready) emit(1)`, `for (n in 1..2) emit(n)`)
 counts the generated outcome too, so it can fail with every branch the author wrote taken. The
 message then names the call (`Not taken: emit suspending (move the call to its own line if no

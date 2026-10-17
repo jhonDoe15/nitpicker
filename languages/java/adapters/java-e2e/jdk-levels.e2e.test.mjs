@@ -328,7 +328,6 @@ describe.skipIf(!kotlinEnabled)('the Kotlin preset on each supported JDK level',
   });
 
   afterAll(() => {
-    spawnSync(gradle, ['--stop'], { stdio: 'ignore' });
     for (const root of roots.splice(0)) {
       rmSync(root, { recursive: true, force: true });
     }

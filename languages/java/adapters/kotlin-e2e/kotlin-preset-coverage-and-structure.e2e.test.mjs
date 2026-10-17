@@ -144,11 +144,9 @@ describe.skipIf(!kotlinE2eEnabled)('Kotlin preset coverage and structure end to 
     const report = readFileSync(path.join(reportDirectory, 'root/jacoco.xml'), 'utf8');
     rmSync(reportDirectory, { recursive: true, force: true });
     const generatedFile = report.slice(report.indexOf('<sourcefile name="Generated.kt">'));
-    const missedLines = [...generatedFile.matchAll(/<line nr="(\d+)"[^>]* mb="([1-9]\d*)"/g)].map(
-      ([, line]) => Number(line),
-    );
+    const branchLines = [...generatedFile.matchAll(/<line nr="\d+"[^>]* cb="[1-9]\d*"/g)];
 
-    expect(missedLines.length).toBeGreaterThan(0);
+    expect(branchLines.length).toBeGreaterThan(0);
     expect(findings.filter(({ rule }) => rule === 'changed-branch-coverage')).toEqual([]);
   });
   it('applies the structure, CRAP, clone and stability rules to one change', () => {
