@@ -274,6 +274,12 @@ Math` and `Math['random']()` are caught; `process`, `fetch`, `setTimeout`, `setI
   (`@typescript-eslint/explicit-module-boundary-types`): `export function total(rows: readonly Row[]): number`;
   a React component returns `ReactElement`. A function typed by its variable
   (`export const handler: Handler = ...`) counts as typed. Tests and JavaScript files are exempt.
+- No deprecated API (`@typescript-eslint/no-deprecated`, type-aware, from the `strictTypeChecked`
+  set): a call, import or type that its declaration marks `@deprecated` (`new Buffer`, `url.parse`,
+  `fs.exists`, a deprecated React type) is reported with the replacement the deprecation names.
+  The check is the TypeScript counterpart of the Java preset's `javac/deprecation` and
+  `javac/removal` lint. A deprecation without a replacement, or an API the project must keep
+  calling, takes an exception for the rule in `nitpicker.config.json`.
 - No magic numbers (`nitpicker/no-magic-numbers`, which wraps
   `@typescript-eslint/no-magic-numbers`): name the number with a module-level constant; any number
   in its initializer is allowed (`const SECONDS_PER_DAY = 24 * 60 * 60;`,
@@ -304,6 +310,78 @@ Math` and `Math['random']()` are caught; `process`, `fetch`, `setTimeout`, `setI
   separator (`base + path.sep`, `` `${base}/` ``, `'/srv/'`): `full.startsWith(base)` also
   accepts `/srv-other`. A parameter as the first segment is the base and is fine
   (`path.join(dir, 'package.json')`).
+- Security sinks: SQL built from strings, weak hashes, disabled TLS checks, HTTP calls without a
+  timeout and unsafe deserialization. All five apply to production code, not to test support files (`test-support/`, `mocks/`, `__mocks__/`,
+  `__fixtures__/`, `fixtures/`, `stories/`, `.storybook/`, `*.stories.*`, `setupTests.*`); each message
+  names the allowed form and the exception route. They follow `const` values, aliases
+  (`import { createHash as digestOf }`, `const run = pool.query.bind(pool)`, `const { createHash } = crypto`),
+  `require`, `require(x).default`, `import x = require(x)`, `await import(x)`, default and namespace
+  imports, `enum` members, `readonly` class fields, and options objects held in a `const` or spread from one.
+  - `nitpicker/no-sql-string-building`: SQL text made by `+`, a template literal, `concat`, `join`,
+    `replace` or `util.format` with a runtime value in it. Text counts as SQL only with SQL context:
+    it starts with an upper-case statement (`SELECT ... FROM`, `INSERT INTO`, `UPDATE ... SET`,
+    `DELETE FROM`, `WITH x AS (`, DDL) or an upper-case clause (`WHERE id =`, `ORDER BY`, `LIMIT`),
+    or it reaches a query call: one named like `query`, `execute`, `raw`, `run` or `prepare`, or a
+    pg-promise method (`none`, `one`, `any`, `oneOrNone`, ...), where lower-case SQL and a fragment
+    such as `where id = ` before a value count too. English text, errors, log lines and JSX text are
+    not SQL. Query-builder sinks count any runtime value: knex `whereRaw`, `orderByRaw` and the other
+    `*Raw` methods, `sql.raw`, `Sequelize.literal`; TypeORM `where`/`andWhere`/`having` on a query
+    builder count a value after a comparison, and `orderBy`/`groupBy` any value that is not an alias
+    prefix (`${alias}.created_at`). Allowed: bind parameters (`$1`, `?`, `:name`), the project's tagged
+    template (`` sql`...` `` in drizzle-orm, kysely, postgres, `` prisma.$queryRaw`...` ``; the message
+    names the one in `package.json`), placeholder lists built only from placeholders
+    (`ids.map(() => '?').join(',')`, `rows.map(() => '(?, ?)').join(', ')`, `'?,'.repeat(n).slice(0, -1)`,
+    `Array.from(ids, () => '?')`, `$${i + 1}`, `$${params.length + 1}`), the optional-filter builder
+    (`conditions.push('name = ?')` joined with `' AND '`), a table or column from a fixed lookup
+    (`COLUMNS[key]` into a `const` object of plain names, also in JavaScript and `Object.freeze`, or a
+    `for (const table of TABLES)` loop over a `const` list), and values that cannot carry SQL:
+    numbers, `Number(x)`, `ids.map(Number)`, `Math.*`, `.length`, `mysql.escape(x)`, and with type
+    information a `number`, `number[]`, `boolean` or union of plain string literals (`table: 'users' | 'orders'`).
+  - `nitpicker/no-weak-hash`: MD5, SHA-1, MD2/MD4 and RIPEMD-160 in `createHash`, `createSign`,
+    `createVerify`, `crypto.hash`, `pbkdf2`, `hkdf`, WebCrypto `subtle.digest`, `sign` and `generateKey`, a
+    call whose name says hash, digest or checksum (not a predicate such as `isWeakHash`), a `{ algorithm }`
+    or `{ hashAlgorithm }` property, `crypto-js` `MD5`/`SHA1`/`algo.SHA1`, `@noble/hashes` and `hash-wasm`
+    `md5`/`sha1`, and the md5 and sha1 packages. A string counts only when it is exactly an algorithm
+    name (`'md5'`, `'SHA-1'`, `'RSA-SHA1'`), not a prefix such as `'md5-calculator'`. HMAC-SHA1
+    (`createHmac('sha1')`, `HmacSHA1`, subtle `{ name: 'HMAC', hash: 'SHA-1' }`, TOTP options with
+    `digits` or `period`) is allowed, since HMAC does not rest on collision resistance and TOTP and
+    OAuth 1.0a fix it; HMAC-MD5 is reported with its own message. Allowed: `createHash('sha256')` or
+    stronger, `createHmac('sha256', key)`, and `scrypt`, argon2 or bcrypt for passwords.
+  - `nitpicker/no-disabled-tls-verification`: `rejectUnauthorized: false`, `strictSSL: false`,
+    `sslValidate: false`, a `rejectUnauthorized` set from the environment or a condition
+    (`process.env.NODE_ENV === 'production'`, `!isDev`), MongoDB `tlsAllowInvalidCertificates`,
+    `tlsAllowInvalidHostnames` and `tlsInsecure`, `NODE_TLS_REJECT_UNAUTHORIZED` set to `0`
+    (assignment, `env` object, the whole string, or shell text given to `exec`/`spawn`),
+    `?sslmode=no-verify` and the MongoDB flags in a URL, a `checkServerIdentity` that returns nothing,
+    `ignoreHTTPSErrors`, `acceptInsecureCerts`, and `--ignore-certificate-errors` (also Electron's
+    `appendSwitch('ignore-certificate-errors')`) outside a blocklist or comparison. Not reported: a
+    server's `requestCert: true, rejectUnauthorized: false` (optional client certificates checked
+    through `socket.authorized`), `--ignore-certificate-errors-spki-list`, and the same words in help
+    or warning text. Allowed: trust the CA with `ca: readFileSync(caPath)`, `tlsCAFile` or
+    `NODE_EXTRA_CA_CERTS`, and pin a browser certificate with `--ignore-certificate-errors-spki-list`.
+  - `nitpicker/require-http-timeout`: a `fetch` without a `signal` or `dispatcher`, `axios` (`get`,
+    `post`, `request`, `create`) and `got` without `timeout` or `signal`, and `http`/`https`
+    `request`/`get` without `timeout`, `signal` or `setTimeout` (also after a chained `.on()`, and with a
+    named callback). A call whose options come from a parameter or a spread is not reported, options
+    built in steps (`init.signal = ...`) count, and a client made by `axios.create({ timeout })` or
+    `got.extend({ timeout })` covers its calls, as does an `axios.create()` instance whose every call
+    passes its own timeout. A timeout set once for the project counts: `axios.defaults.timeout` with a
+    non-zero value on the axios import or on the same instance, and undici
+    `setGlobalDispatcher(new Agent({ headersTimeout, bodyTimeout }))`, in the same file or in any
+    production module of the project. node-fetch 2's `timeout` option counts when the project's
+    node-fetch is 2.x. `fetch(request)` passthrough (a service worker's `event.request`, an edge
+    handler's `Request`), `data:` and `blob:` URLs and `new URL(path, import.meta.url)` are not
+    reported, and `axios.getUri` sends nothing. `fetch` is not checked in browser projects (React,
+    Preact, Vue, Svelte, Solid, Angular, read from `package.json`). Allowed:
+    `fetch(url, { signal: AbortSignal.timeout(10_000) })`.
+  - `nitpicker/no-unsafe-deserialization`: `node-serialize`, `funcster` and `cryo` (they rebuild
+    functions, also through `import x = require(...)` and `import()`), `v8.deserialize` (and the
+    `v8.deserialize(v8.serialize(x))` copy, whose allowed form is `structuredClone(x)`),
+    `vm.runInNewContext`, `runInThisContext`, `new vm.Script` and `compileFunction` with text that is
+    not a string literal, js-yaml `DEFAULT_FULL_SCHEMA` (imported, destructured or re-exported), js-yaml
+    3 `load`/`loadAll` without a `schema` (the installed major is read from the project), BSON
+    `evalFunctions: true` and libxmljs `noent: true`. Allowed: `JSON.parse` checked against a schema,
+    `yaml.load(text)` with the default schema in js-yaml 4, and `yaml.safeLoad(text)` in js-yaml 3.
 - Named exports list their names: no `export *`, which makes every internal export of a feature's
   `index.ts` public (`export { name } from './domain/x.js'`).
 - Cognitive complexity of at most 15 per function, tests included (`nitpicker/cognitive-complexity`).
@@ -1177,6 +1255,11 @@ from a real caller) and the `exceptions` entry that lifts it.
   same paths.
 - The file limits (`file-lines-limit`, `line-length-limit`, `folder-files-limit`) take exceptions the
   same way; each failure message spells out the entry that would lift it.
+- `folder-depth-limit`: code may sit at most one folder below `features/<feature>/<layer>/` (a file in
+  `domain/orders/x.ts` is fine, one in `domain/orders/rules/x.ts` is not), so nesting cannot dodge
+  the 6-files-per-folder limit. `thresholds.folderDepth` changes the one folder. `__tests__` and `__mocks__` folders do not
+  count as a level. A folder already deeper on the base fails only when it gets deeper, and the rule takes exceptions like the file
+  limits.
 - The reuse rules (`shared-used-by-one-feature`, `duplicate-definition`, `exported-name-collision`,
   `redefined-library-component`, `new-icon-asset`) come from the `coupling` and `structure` checks,
   not from ESLint, and take exceptions the same way; the JavaScript preset runs them too.
