@@ -293,7 +293,7 @@ override there.
   only the topmost one gets `root = true`, and the conventions are ktlint defaults below them. The
   opt-in needs an `.editorconfig` at the project root or above, else it is a tool error that says to
   create one or remove `"project"`. `["nitpicker", "project"]` is a config error for ktlint, since
-  ktlint always reads its `.editorconfig` first. The conventions (`kotlin.lineLength`, `kotlin.indentation` and the others) take their values from the detekt, ktlint and ktfmt configs of the merge base in a comparison, and from the branch only when the base has no Kotlin sources, so a pull request cannot raise its own limit by editing them. The run prints once what ktlint runs with and what
+  ktlint always reads its `.editorconfig` first. The conventions (`kotlin.lineLength`, `kotlin.indentation` and the others) take their values from the detekt, ktlint and ktfmt configs of the merge base in a comparison, and from the branch only when the base has no Kotlin sources, so a pull request cannot raise its own limit by editing them. The same values are enforced in the run: the followed `indent_size` and `max_line_length` are appended after the head `.editorconfig` section, and the followed detekt conventions are layered last, so an edited width in the branch changes neither the run nor the printed line. The run prints once what ktlint runs with and what
   to do to lift a rule, and one `Ignoring .editorconfig; opt in with ...` line when a project
   `.editorconfig` exists and is not used. Each violation is one finding: rule
   `ktlint.<ruleset>:<rule>` (for example `ktlint.standard:no-wildcard-imports`), the line, and

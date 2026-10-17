@@ -42,7 +42,12 @@ function readScope(read, root) {
   }
 }
 
-export function projectConfigFor({ formatter, precedence, policyRoot }) {
+function agrees(conventions, key, value) {
+  const followedValue = conventions[PYTHON_SETTING_IDS[key]];
+  return key === 'quotes' || followedValue === undefined || followedValue === String(value);
+}
+
+export function projectConfigFor({ formatter, precedence, policyRoot, conventions = {} }) {
   const { read, looked } = READERS[formatter];
   const layers = precedenceLayers(precedence);
   if (!layers.usesProject) {
@@ -55,6 +60,9 @@ export function projectConfigFor({ formatter, precedence, policyRoot }) {
   return {
     optedIn: true,
     project,
-    wins: (key) => project.set[key] !== undefined && !layers.nitpickerFirst,
+    wins: (key) =>
+      project.set[key] !== undefined &&
+      !layers.nitpickerFirst &&
+      agrees(conventions, key, project.set[key]),
   };
 }

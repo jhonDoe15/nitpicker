@@ -1,4 +1,8 @@
 import { ignoredConfigNotice } from '../../../../../shared/conventions/tool-precedence.mjs';
+import {
+  KOTLIN_INDENTATION,
+  KOTLIN_LINE_LENGTH,
+} from '../../../conventions/kotlin-conventions.mjs';
 import { ktlintDefaults } from './kotlin-style-files.mjs';
 
 function ktfmtLines(tools) {
@@ -27,10 +31,23 @@ function ktlintSettings(conventions) {
         .join(', ');
 }
 
+function followedLimits(conventions) {
+  return Object.entries({
+    indent_size: conventions[KOTLIN_INDENTATION],
+    max_line_length: conventions[KOTLIN_LINE_LENGTH],
+  })
+    .filter(([, value]) => value !== undefined)
+    .map(([key]) => key);
+}
+
 function ktlintLines(tools, conventions) {
   const settings = ktlintSettings(conventions);
+  const limits = followedLimits(conventions);
   if (tools.editorconfigFiles !== undefined) {
-    return [`ktlint reads your .editorconfig files, and uses ${settings} where they set nothing`];
+    return [
+      `ktlint reads your .editorconfig files, and uses ${settings} where they set nothing` +
+        (limits.length === 0 ? '' : `; the followed limits (${limits.join(', ')}) win over them`),
+    ];
   }
   return [
     `ktlint runs with ${settings}`,

@@ -216,6 +216,33 @@ describe('formatter arguments from the conventions followed', () => {
     });
 
     runPythonTools(
+      contextWithConventions(
+        root,
+        { ...followed, 'python.lineLength': '120' },
+        { ruff: ['project', 'nitpicker'] },
+      ).context,
+    );
+
+    expect(calls('ruff', 'format')[0].args).toEqual([
+      'format',
+      '--check',
+      '--diff',
+      '--no-cache',
+      '--config',
+      path.join(root, 'pyproject.toml'),
+      '--target-version',
+      'py38',
+      '--config',
+      'indent-width = 2',
+      '.',
+    ]);
+  });
+
+  it('formats at the followed line length when the project config says another one', () => {
+    const calls = callsLog();
+    const root = project({ 'pyproject.toml': '[tool.ruff]\nline-length = 160\n' });
+
+    runPythonTools(
       contextWithConventions(root, followed, { ruff: ['project', 'nitpicker'] }).context,
     );
 
@@ -228,6 +255,10 @@ describe('formatter arguments from the conventions followed', () => {
       path.join(root, 'pyproject.toml'),
       '--target-version',
       'py38',
+      '--line-length',
+      '100',
+      '--config',
+      'format.quote-style = "single"',
       '--config',
       'indent-width = 2',
       '.',

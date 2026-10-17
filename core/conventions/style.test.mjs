@@ -195,7 +195,7 @@ describe('Kotlin conventions that the formatter can apply', () => {
         '  Kotlin indentation: 4 spaces (from your .editorconfig)\n' +
         '  Kotlin trailing commas: required in wrapped lists (from your .editorconfig)\n' +
         '  Kotlin imports: wildcards allowed (from your detekt config)\n' +
-        'ktlint reads your .editorconfig files, and uses indent_size = 4, ktlint_standard_no-wildcard-imports = disabled where they set nothing\n',
+        'ktlint reads your .editorconfig files, and uses indent_size = 4, ktlint_standard_no-wildcard-imports = disabled where they set nothing; the followed limits (indent_size) win over them\n',
     });
   });
 
@@ -253,7 +253,7 @@ describe('Kotlin conventions that the formatter can apply', () => {
       printed:
         HEADER +
         '  Kotlin line length: 110 columns (from your .editorconfig)\n' +
-        'ktlint reads your .editorconfig files, and uses max_line_length = 110 where they set nothing\n',
+        'ktlint reads your .editorconfig files, and uses max_line_length = 110 where they set nothing; the followed limits (max_line_length) win over them\n',
     });
     expect(
       follow(both, {

@@ -156,11 +156,17 @@ describe('ruff with the project listed', () => {
     const root = project({ 'ruff.toml': 'line-length = 120\n[format]\nquote-style = "double"\n' });
     const file = path.join(root, 'ruff.toml');
 
+    expect(
+      ruffPlan(root, { precedence, conventions: { ...followed, 'python.lineLength': '120' } })
+        .options,
+    ).toEqual(['--config', file, '--target-version', 'py310', '--config', 'indent-width = 2']);
     expect(ruffPlan(root, { precedence, conventions: followed }).options).toEqual([
       '--config',
       file,
       '--target-version',
       'py310',
+      '--line-length',
+      '79',
       '--config',
       'indent-width = 2',
     ]);
@@ -298,9 +304,26 @@ describe('black with the project listed', () => {
   it('uses the project table and fills what it leaves out', () => {
     const root = project({ 'pyproject.toml': '[tool.black]\nline-length = 120\n' });
 
+    expect(
+      blackPlan(root, { precedence, conventions: { ...followed, 'python.lineLength': '120' } })
+        .options,
+    ).toEqual([
+      '--config',
+      path.join(root, 'pyproject.toml'),
+      '--skip-string-normalization',
+      '--target-version',
+      'py310',
+    ]);
+  });
+
+  it('formats at the followed line length when the project table says another one', () => {
+    const root = project({ 'pyproject.toml': '[tool.black]\nline-length = 160\n' });
+
     expect(blackPlan(root, { precedence, conventions: followed }).options).toEqual([
       '--config',
       path.join(root, 'pyproject.toml'),
+      '--line-length',
+      '79',
       '--skip-string-normalization',
       '--target-version',
       'py310',
