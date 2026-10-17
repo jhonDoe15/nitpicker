@@ -1,13 +1,4 @@
-import { spawnSync } from 'node:child_process';
-import {
-  mkdirSync,
-  mkdtempSync,
-  readdirSync,
-  readFileSync,
-  rmSync,
-  writeFileSync,
-  existsSync,
-} from 'node:fs';
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync, existsSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { javaCommand, runJava, runMaven } from './maven-command.mjs';
@@ -29,7 +20,7 @@ import { copyTestResults } from './results/maven-test-results.mjs';
 import { jacocoPlugin, MAVEN_PLUGINS, resolveTools } from './maven-tools.mjs';
 import { processorTool, runErrorProne } from './errorprone/maven-errorprone.mjs';
 import { GRADLE_DIRECTORY, readPinnedTools } from '../builds/java-build.mjs';
-const JDEPS_OUTPUT_BYTES = 50 * 1024 * 1024;
+import { writeJdepsReports } from '../builds/jdeps-reports.mjs';
 
 export const MAVEN_REPORT_DIRECTORY = 'target/nitpicker';
 const OWN_JACOCO_EXEC = 'nitpicker-jacoco.exec';
@@ -101,51 +92,14 @@ function runStructure(module, reportDir) {
   });
 }
 
-function classNamesIn(directory) {
-  return existsSync(directory)
-    ? readdirSync(directory, { recursive: true, withFileTypes: true })
-        .filter((entry) => entry.isFile() && entry.name.endsWith('.class'))
-        .filter((entry) => !['module-info.class', 'package-info.class'].includes(entry.name))
-        .map((entry) =>
-          relativeTo(directory, path.join(entry.parentPath, entry.name))
-            .replace(/\.class$/u, '')
-            .replaceAll('/', '.'),
-        )
-        .sort()
-    : [];
-}
-
-function writeJdeps(module, classDirectory, output) {
-  const classes = classNamesIn(classDirectory);
-  if (classes.length === 0) {
-    writeFileSync(output, '');
-    return classes;
-  }
-  const result = spawnSync(
-    javaCommand('jdeps'),
-    ['-verbose:class', '-filter:none', classDirectory],
-    {
-      cwd: module.basedir,
-      encoding: 'utf8',
-      maxBuffer: JDEPS_OUTPUT_BYTES,
-    },
-  );
-  if (result.error !== undefined || result.status !== 0) {
-    throw new Error(
-      `jdeps failed with exit code ${String(result.status)}: ${result.error?.message ?? result.stderr}`,
-    );
-  }
-  writeFileSync(output, result.stdout);
-  return classes;
-}
-
 function runJdeps(module, reportDir) {
-  const classes = writeJdeps(module, module.outputDirectory, path.join(reportDir, 'jdeps.txt'));
-  writeFileSync(
-    path.join(reportDir, 'jdeps-classes.txt'),
-    classes.map((name) => `${name}\n`).join(''),
-  );
-  writeJdeps(module, module.testOutputDirectory, path.join(reportDir, 'jdeps-test.txt'));
+  writeJdepsReports({
+    command: javaCommand('jdeps'),
+    cwd: module.basedir,
+    mainDirectory: module.outputDirectory,
+    testDirectory: module.testOutputDirectory,
+    reportDir,
+  });
 }
 
 function relativeRoots(module, roots) {
