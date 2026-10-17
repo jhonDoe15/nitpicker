@@ -57,6 +57,13 @@ CI (the `typescript` workflow) runs:
 GitHub does not start a pull request run while the pull request has a merge conflict, so resolve it
 before adding the label.
 
+When a pull request loosens `nitpicker.config.json` (a new exception, exclude, entry point or test
+root), the self-gate fails with a `nitpicker-config/policy-loosened` finding that names a digest. A
+maintainer who agrees with the loosening sets the repository's Actions variable
+`NITPICKER_ACCEPT_POLICY_CHANGE` to that digest (Settings, Secrets and variables, Actions,
+Variables) and runs the self-gate again. The digest covers exactly those loosenings and the files
+they hide, so it accepts nothing else, and a later change needs a new digest.
+
 `npm test` runs `languages/python/metrics/structure_metrics.py` on a real `python3`, so it needs
 `python3` 3.10 or newer on the `PATH` (that test file is skipped, with its reason in the name,
 without one). The Python end-to-end suite (`npm run test:python`) needs more tools and the
