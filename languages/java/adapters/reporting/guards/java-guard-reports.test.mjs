@@ -2,8 +2,8 @@ import { mkdirSync, mkdtempSync, realpathSync, rmSync, writeFileSync } from 'nod
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
-import { readJavaFindings } from './java-reports.mjs';
-import { reportBaseOf, writeModules } from '../test-support/report-base.mjs';
+import { readJavaFindings } from '../java-reports.mjs';
+import { reportBaseOf, writeModules } from '../../test-support/report-base.mjs';
 
 const roots = [];
 

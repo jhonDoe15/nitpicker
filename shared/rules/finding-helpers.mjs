@@ -72,3 +72,12 @@ export function summaryMetrics(analyzerName, summary = {}, rule, ignored = []) {
   }
   return findings;
 }
+
+const LISTED_MEMBERS = 5;
+
+export function listed(members) {
+  const shown = members.slice(0, LISTED_MEMBERS).join(', ');
+  return members.length > LISTED_MEMBERS
+    ? `${shown} and ${String(members.length - LISTED_MEMBERS)} more`
+    : shown;
+}

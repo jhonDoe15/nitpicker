@@ -23,7 +23,7 @@ import { copyTestResults } from './results/maven-test-results.mjs';
 import { formatTool, jacocoPlugin, MAVEN_PLUGINS, resolveTools } from './maven-tools.mjs';
 import { processorTool, runErrorProne } from './errorprone/maven-errorprone.mjs';
 import { GRADLE_DIRECTORY, readPinnedTools } from '../builds/java-build.mjs';
-import { writeJdepsReports } from '../builds/jdeps-reports.mjs';
+import { writeJdepsReports } from '../builds/classes/jdeps-reports.mjs';
 
 export const MAVEN_REPORT_DIRECTORY = 'target/nitpicker';
 const OWN_JACOCO_EXEC = 'nitpicker-jacoco.exec';
@@ -238,11 +238,7 @@ export function runMavenPreset(projectRoot, { maven, policy = {}, configs }) {
         ...formatTool(policy.javaStyle, pinned),
       ],
     });
-    const project = {
-      projectRoot,
-      baselineRoot: policy.snapshot === 'head' ? policy.baselineRoot : undefined,
-      reactor: modules.map((module) => module.coordinates),
-    };
+    const project = guardProject(projectRoot, policy, modules);
     for (const { module, classpaths } of analyzed) {
       analyzeModule({
         module,
@@ -262,4 +258,12 @@ export function runMavenPreset(projectRoot, { maven, policy = {}, configs }) {
   } finally {
     rmSync(work, { recursive: true, force: true });
   }
+}
+
+function guardProject(projectRoot, policy, modules) {
+  return {
+    projectRoot,
+    baselineRoot: policy.snapshot === 'head' ? policy.baselineRoot : undefined,
+    reactor: modules.map((module) => module.coordinates),
+  };
 }

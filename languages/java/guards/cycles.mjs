@@ -1,7 +1,7 @@
+import { listed } from '../../../shared/rules/finding-helpers.mjs';
 import { RULE_IDS } from '../../../shared/policy.mjs';
 
 const PACKAGE_CYCLE_RULE = RULE_IDS.packageCycle;
-const LISTED_MEMBERS = 5;
 
 function adjacencyOf(edges, from, to) {
   const adjacency = new Map();
@@ -91,13 +91,6 @@ export function cyclicComponents(nodes, edges) {
     collectComponent(state, node);
   }
   return state.components.filter((component) => component.length > 1);
-}
-
-function listed(members) {
-  const shown = members.slice(0, LISTED_MEMBERS).join(', ');
-  return members.length > LISTED_MEMBERS
-    ? `${shown} and ${String(members.length - LISTED_MEMBERS)} more`
-    : shown;
 }
 
 function memberFinding({ tool, member, others, path }) {
