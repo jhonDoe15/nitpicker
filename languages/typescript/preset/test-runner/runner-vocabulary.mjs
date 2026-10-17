@@ -18,7 +18,6 @@ const VOCABULARY = {
     waitOnCondition: 'vi.waitFor or expect.poll',
     pollInstead: 'vi.waitFor / expect.poll',
     advanceFakeTime: 'vi.advanceTimersByTime',
-    environmentDirective: '@vitest-environment',
     domSetup: 'a `/** @vitest-environment jsdom */` comment at the top of the test file',
     rejection: '`vi.fn().mockRejectedValue(value)`',
     assertCall: '`expect`',
@@ -34,7 +33,6 @@ const VOCABULARY = {
     waitOnCondition: TESTING_LIBRARY_WAIT,
     pollInstead: TESTING_LIBRARY_WAIT,
     advanceFakeTime: 'jest.advanceTimersByTime',
-    environmentDirective: '@jest-environment',
     domSetup: 'a `/** @jest-environment jsdom */` comment at the top of the test file',
     rejection: '`jest.fn().mockRejectedValue(value)`',
     assertCall: '`expect`',
@@ -50,7 +48,6 @@ const VOCABULARY = {
     waitOnCondition: EVENT_OR_TICK,
     pollInstead: EVENT_OR_TICK,
     advanceFakeTime: 'mock.timers.tick',
-    environmentDirective: '@jest-environment',
     domSetup:
       'a setup file that registers global-jsdom (`import "global-jsdom/register"`), loaded with `--import` in the test script; node:test reads no environment comment in the test file',
     rejection:
@@ -69,7 +66,6 @@ const VOCABULARY = {
     waitOnCondition: EVENT_OR_CLOCK,
     pollInstead: EVENT_OR_CLOCK,
     advanceFakeTime: 'clock.tick',
-    environmentDirective: '@jest-environment',
     domSetup:
       'a setup file that registers global-jsdom (`--require global-jsdom/register`, or the same entry under `require` in .mocharc); Mocha reads no environment comment in the test file',
     rejection: 'an async stub that throws an `unknown` value: `async () => { throw value; }`',

@@ -137,15 +137,24 @@ function nodeFlagArguments(mocha, loaded) {
   return flags.unparseNodeFlags(Object.fromEntries(nodeFlags));
 }
 
+function loadedWith(mocha, projectRoot, tokens) {
+  return mochaModule(mocha, 'options').loadOptions([
+    ...sourceArguments(projectRoot, tokens),
+    ...absoluteFileOptions(projectRoot, tokens),
+  ]);
+}
+
+export function loadedMochaOptions({ projectRoot, liveProjectRoot = projectRoot, tokens }) {
+  const mocha = projectMocha(projectRoot) ?? projectMocha(liveProjectRoot);
+  return mocha === undefined ? undefined : loadedWith(mocha, projectRoot, tokens);
+}
+
 export function mochaMutationOptions({ projectRoot, tokens, testFiles }) {
   const mocha = projectMocha(projectRoot);
   if (mocha === undefined) {
     throw new Error(`Mocha is not installed in ${projectRoot}, so its tests cannot be mutated.`);
   }
-  const loaded = mochaModule(mocha, 'options').loadOptions([
-    ...sourceArguments(projectRoot, tokens),
-    ...absoluteFileOptions(projectRoot, tokens),
-  ]);
+  const loaded = loadedWith(mocha, projectRoot, tokens);
   return {
     mochaOptions: strykerMochaOptions(loaded, specEntries(projectRoot, loaded, testFiles)),
     nodeArguments: nodeFlagArguments(mocha, loaded),

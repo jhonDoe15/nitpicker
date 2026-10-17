@@ -89,3 +89,79 @@ ruleTester.run('no-unused-dom-environment with node:test mocks', rule, {
     },
   ],
 });
+
+const mochaDom = {
+  environment: 'jsdom',
+  runner: 'mocha',
+  setupFiles: ['global-jsdom/register'],
+  globalDom: 'global-jsdom/register',
+};
+const nodeDom = {
+  ...mochaDom,
+  runner: 'node',
+  globalDom: '@happy-dom/global-registrator/register',
+};
+
+ruleTester.run('no-unused-dom-environment under a DOM that Mocha or node:test registers', rule, {
+  valid: [
+    { filename, code: lines('document.body.append("x");', logic), options: [mochaDom] },
+    { filename, code: lines("import 'global-jsdom/register';", 'document.title;') },
+    {
+      filename,
+      code: lines("require('global-jsdom/register');", 'window.scrollTo(0, 0);'),
+      options: [{ environment: 'node', runner: 'node' }],
+    },
+    {
+      filename,
+      code: lines(docblock('jsdom', 'jest'), logic),
+      options: [{ environment: 'node', runner: 'mocha' }],
+    },
+    {
+      filename,
+      code: lines(docblock('jsdom'), logic),
+      options: [{ environment: 'node', runner: 'node' }],
+    },
+  ],
+  invalid: [
+    {
+      filename,
+      code: logic,
+      options: [mochaDom],
+      errors: report('unusedGlobalDom', {
+        environment: 'jsdom',
+        setup: 'global-jsdom/register',
+        setupPlace: 'the Mocha `require` setup (.mocharc or the test script)',
+        separateRun: 'a separate Mocha run',
+      }),
+    },
+    {
+      filename,
+      code: logic,
+      options: [nodeDom],
+      errors: report('unusedGlobalDom', {
+        environment: 'jsdom',
+        setup: '@happy-dom/global-registrator/register',
+        setupPlace: 'the `--import` or `--require` flags of the `node --test` script',
+        separateRun: 'a separate `node --test` run',
+      }),
+    },
+    {
+      filename,
+      code: lines("import 'global-jsdom/register';", logic),
+      options: [{ environment: 'node', runner: 'mocha' }],
+      errors: report('unusedRegisteredEnvironment', {
+        environment: 'jsdom',
+        directive: 'global-jsdom/register',
+      }),
+    },
+    {
+      filename,
+      code: lines("const { GlobalRegistrator } = require('@happy-dom/global-registrator');", logic),
+      options: [{ environment: 'node', runner: 'node' }],
+      errors: report('unusedRegisteredEnvironment', {
+        environment: 'happy-dom',
+        directive: '@happy-dom/global-registrator',
+      }),
+    },
+  ],
+});
