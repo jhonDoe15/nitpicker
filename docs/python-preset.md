@@ -159,6 +159,14 @@ loosens `process-env-access`, so the policy-change list reports it as a loosenin
 a change, like `layout.entryPoints`; the base snapshot is measured with the entry points both
 sides declare.
 
+The policy-change list also reads the project's own pytest and mutmut settings, because they shrink
+what the gate measures: `testpaths` that stop collecting a test file, an added `--ignore`,
+`--ignore-glob` or `--deselect` in `addopts` and a `do_not_mutate` pattern that covers production
+code are loosening (`languages/python/adapters/configuration/pytest/test-selection.mjs`). A hidden
+module that production code imports (`from legacy import feature`, followed through other hidden
+modules and parent packages) fails even under an established `exclude`. Changed `.py` files outside
+`python.sourceRoots` are named in a notice that never fails the run.
+
 The type checker is the one the project uses: `mypy` when it has a `[tool.mypy]` table (or
 `[mypy]` in `mypy.ini`, `setup.cfg` or `tox.ini`), `pyright` when it has `pyrightconfig.json` or a
 `[tool.pyright]` table (`[ tool.pyright ]` too), `basedpyright` when it has a `[tool.basedpyright]`

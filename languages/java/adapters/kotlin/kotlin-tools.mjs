@@ -89,12 +89,22 @@ function detektConfigOf(projectRoot, configured, snapshot) {
   return configured;
 }
 
-export function resolveKotlinTools(projectRoot, { formatter, detektConfig, snapshot } = {}) {
+export function detectKotlinFormat(projectRoot) {
   const build = buildText(projectRoot);
-  const editorconfig = readIfExists(projectRoot, EDITORCONFIG);
   return {
-    formatter: formatter ?? detectFormatter({ build, editorconfig }),
+    formatter: detectFormatter({ build, editorconfig: readIfExists(projectRoot, EDITORCONFIG) }),
     ktfmtStyle: ktfmtStyle(build),
+  };
+}
+
+export function resolveKotlinTools(
+  projectRoot,
+  { formatter, ktfmtStyle: style, detektConfig, snapshot } = {},
+) {
+  const detected = detectKotlinFormat(projectRoot);
+  return {
+    formatter: formatter ?? detected.formatter,
+    ktfmtStyle: style ?? detected.ktfmtStyle,
     editorconfig: existsSync(path.join(projectRoot, EDITORCONFIG)),
     detektConfig: detektConfigOf(projectRoot, detektConfig, snapshot),
   };

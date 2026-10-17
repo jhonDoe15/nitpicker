@@ -12,6 +12,7 @@ import { gradleTarget } from './gradle-wrapper/gradle-command.mjs';
 import { condenseFailure } from './gradle-wrapper/failure-text.mjs';
 import { runJavaDuplicates } from './metrics/java-duplicates.mjs';
 import { runKotlinDuplicates } from './kotlin/kotlin-duplicates.mjs';
+import { withoutGeneratedSources } from './generated/generated-sources.mjs';
 import { applyJavaPolicy } from './java-policy.mjs';
 import { withoutOverlaps } from './overlaps/static-overlaps.mjs';
 import { PROJECT_TOOL_CONFIGS } from './gradle-presets.mjs';
@@ -28,10 +29,14 @@ const GRADLE_TIMEOUT_MS = 15 * 60 * 1000;
 const MAX_OUTPUT_BYTES = 50 * 1024 * 1024;
 const MAX_FAILURE_LENGTH = 3500;
 
-function kotlinProperties(projectRoot, { preset, kotlinFormatter, kotlinDetektConfig, snapshot }) {
+function kotlinProperties(
+  projectRoot,
+  { preset, kotlinFormatter, ktfmtStyle, kotlinDetektConfig, snapshot },
+) {
   return preset === 'kotlin'
     ? kotlinGradleArguments(projectRoot, {
         formatter: kotlinFormatter,
+        ktfmtStyle,
         detektConfig: kotlinDetektConfig,
         snapshot,
       })
@@ -79,6 +84,7 @@ function runJavaPreset(
       '--no-configuration-cache',
       `-Pnitpicker.reportDir=${reportBase}`,
       ...kotlinProperties(projectRoot, policy),
+      ...(policy.spring === true ? ['-Pnitpicker.spring=true'] : []),
       ...toolConfigProperties(projectRoot, policy),
       ...javaStyleProperties(policy.javaStyle),
       '-I',
@@ -175,7 +181,7 @@ export function collectJavaFindings(root, options = {}) {
       : withGradleReports(projectRoot, options);
   const preset = options.policy?.preset ?? 'java';
   return applyJavaPolicy(
-    parseAnalyzerReport({ findings }, preset).findings,
+    withoutGeneratedSources(parseAnalyzerReport({ findings }, preset).findings, projectRoot),
     options.policy,
     (reported) =>
       withoutOverlaps(reported, { readSource: (file) => sourceText(projectRoot, file) }),

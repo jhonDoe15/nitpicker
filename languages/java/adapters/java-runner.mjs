@@ -172,8 +172,18 @@ function realpathOptional(directory) {
 
 export function readRunnerPolicy(runnerArguments, environment = process.env) {
   const { projectRoot, policy } = parseRunnerArguments(runnerArguments);
-  const { conventions } = readHeadPolicyFile(environment);
-  return { projectRoot, policy: { ...policy, javaStyle: javaStyle(conventions) } };
+  const { conventions, spring, kotlin } = readHeadPolicyFile(environment);
+  return {
+    projectRoot,
+    policy: {
+      ...policy,
+      javaStyle: javaStyle(conventions),
+      ...(spring === true ? { spring } : {}),
+      ...(kotlin?.formatter === undefined
+        ? {}
+        : { kotlinFormatter: kotlin.formatter, ktfmtStyle: kotlin.ktfmtStyle }),
+    },
+  };
 }
 
 function main(arguments_) {
