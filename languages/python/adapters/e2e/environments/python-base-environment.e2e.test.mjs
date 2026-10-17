@@ -11,7 +11,7 @@ import {
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterAll, describe, expect, it } from 'vitest';
-import { openSnapshotEnvironment } from '../execution/python-environment.mjs';
+import { openSnapshotEnvironment } from '../../execution/python-environment.mjs';
 import { pythonE2eEnabled } from '../test-support/python-e2e-support.mjs';
 
 const roots = [];
