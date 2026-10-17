@@ -3,12 +3,7 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { runJavaDiff } from '../../java-diff.mjs';
-import {
-  commitBranch,
-  GRADLE_STEP_TIMEOUT_MS,
-  runGitIn,
-  summarize,
-} from '../../test-support/gradle-e2e.mjs';
+import { commitBranch, runGitIn, summarize } from '../../test-support/gradle-e2e.mjs';
 import {
   LEGACY_TEST,
   LEGACY_TEST_MOVED,
@@ -52,66 +47,50 @@ describe.skipIf(!enabled)('Kotlin preset on test sources', () => {
   let result;
   const defaultDiff = () => (result ??= diffOf());
 
-  it(
-    'lints new test code with detekt and ktlint, keeping the rules detekt itself excludes for tests off',
-    () => {
-      expect(ofFile(defaultDiff().newEnforceable, 'ShoutingTest.kt')).toEqual([
-        'detekt detekt.exceptions.TooGenericExceptionCaught ShoutingTest.kt',
-        'detekt detekt.exceptions.TooGenericExceptionCaught ShoutingTest.kt',
-        'detekt detekt.potential-bugs.UnsafeCallOnNullableType ShoutingTest.kt',
-        'detekt detekt.style.ForbiddenMethodCall ShoutingTest.kt',
-        'ktlint ktlint.standard:indent ShoutingTest.kt',
-        'ktlint ktlint.standard:indent ShoutingTest.kt',
-        'ktlint ktlint.standard:indent ShoutingTest.kt',
-      ]);
-    },
-    GRADLE_STEP_TIMEOUT_MS,
-  );
+  it('lints new test code with detekt and ktlint, keeping the rules detekt itself excludes for tests off', () => {
+    expect(ofFile(defaultDiff().newEnforceable, 'ShoutingTest.kt')).toEqual([
+      'detekt detekt.exceptions.TooGenericExceptionCaught ShoutingTest.kt',
+      'detekt detekt.exceptions.TooGenericExceptionCaught ShoutingTest.kt',
+      'detekt detekt.potential-bugs.UnsafeCallOnNullableType ShoutingTest.kt',
+      'detekt detekt.style.ForbiddenMethodCall ShoutingTest.kt',
+      'ktlint ktlint.standard:indent ShoutingTest.kt',
+      'ktlint ktlint.standard:indent ShoutingTest.kt',
+      'ktlint ktlint.standard:indent ShoutingTest.kt',
+    ]);
+  });
 
-  it(
-    'keeps a legacy test finding baselined when its line moves',
-    () => {
-      const { newEnforceable, unchangedFindings } = defaultDiff();
+  it('keeps a legacy test finding baselined when its line moves', () => {
+    const { newEnforceable, unchangedFindings } = defaultDiff();
 
-      expect(ofFile(newEnforceable, 'ParsingTest.kt')).toEqual([]);
-      expect(ofFile(unchangedFindings, 'ParsingTest.kt')).toEqual([
-        'detekt detekt.exceptions.TooGenericExceptionCaught ParsingTest.kt',
-      ]);
-    },
-    GRADLE_STEP_TIMEOUT_MS,
-  );
+    expect(ofFile(newEnforceable, 'ParsingTest.kt')).toEqual([]);
+    expect(ofFile(unchangedFindings, 'ParsingTest.kt')).toEqual([
+      'detekt detekt.exceptions.TooGenericExceptionCaught ParsingTest.kt',
+    ]);
+  });
 
-  it(
-    'reports an inline suppression in a test file as the finding, without the detekt finding it hides',
-    () => {
-      expect(ofFile(defaultDiff().newEnforceable, 'SuppressedTest.kt')).toEqual([
-        'detekt inline-suppression SuppressedTest.kt',
-      ]);
-    },
-    GRADLE_STEP_TIMEOUT_MS,
-  );
+  it('reports an inline suppression in a test file as the finding, without the detekt finding it hides', () => {
+    expect(ofFile(defaultDiff().newEnforceable, 'SuppressedTest.kt')).toEqual([
+      'detekt inline-suppression SuppressedTest.kt',
+    ]);
+  });
 
-  it(
-    'lifts the broad-catch ban for test paths with an exception, and nothing else',
-    () => {
-      const lifted = diffOf({
-        ...kotlinPolicy,
-        exceptions: [
-          {
-            rule: 'detekt.exceptions.TooGenericExceptionCaught',
-            glob: `${TESTS}/ShoutingTest.kt`,
-          },
-        ],
-      });
+  it('lifts the broad-catch ban for test paths with an exception, and nothing else', () => {
+    const lifted = diffOf({
+      ...kotlinPolicy,
+      exceptions: [
+        {
+          rule: 'detekt.exceptions.TooGenericExceptionCaught',
+          glob: `${TESTS}/ShoutingTest.kt`,
+        },
+      ],
+    });
 
-      expect(ofFile(lifted.newEnforceable, 'ShoutingTest.kt')).toEqual([
-        'detekt detekt.potential-bugs.UnsafeCallOnNullableType ShoutingTest.kt',
-        'detekt detekt.style.ForbiddenMethodCall ShoutingTest.kt',
-        'ktlint ktlint.standard:indent ShoutingTest.kt',
-        'ktlint ktlint.standard:indent ShoutingTest.kt',
-        'ktlint ktlint.standard:indent ShoutingTest.kt',
-      ]);
-    },
-    GRADLE_STEP_TIMEOUT_MS,
-  );
+    expect(ofFile(lifted.newEnforceable, 'ShoutingTest.kt')).toEqual([
+      'detekt detekt.potential-bugs.UnsafeCallOnNullableType ShoutingTest.kt',
+      'detekt detekt.style.ForbiddenMethodCall ShoutingTest.kt',
+      'ktlint ktlint.standard:indent ShoutingTest.kt',
+      'ktlint ktlint.standard:indent ShoutingTest.kt',
+      'ktlint ktlint.standard:indent ShoutingTest.kt',
+    ]);
+  });
 });

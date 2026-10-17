@@ -1,4 +1,4 @@
-import { existsSync } from 'node:fs';
+import { existsSync, writeSync } from 'node:fs';
 import { format as formatOutput } from 'node:util';
 import { mkdir, writeFile } from 'node:fs/promises';
 import path from 'node:path';
@@ -7,6 +7,7 @@ import { readLayout } from '../head-policy.mjs';
 import { measureCrap } from './measure.mjs';
 import { reportFunctionsOf } from './report-functions.mjs';
 
+const STDOUT = 1;
 const TYPESCRIPT_EXTENSIONS = ['ts', 'tsx', 'mts', 'cts'];
 
 const layout = readLayout();
@@ -41,11 +42,12 @@ const report = {
 await mkdir(path.dirname(outputPath), { recursive: true });
 await writeFile(outputPath, `${JSON.stringify(report, undefined, 2)}\n`);
 
-process.stdout.write(
+writeSync(
+  STDOUT,
   formatOutput(JSON.stringify({ output: config.outputPath, ...report.summary }, null, 2)) + '\n',
 );
 for (const entry of functions.slice(0, 20)) {
-  process.stdout.write(scoreLine(entry));
+  writeSync(STDOUT, scoreLine(entry));
 }
 
 function scoreLine(entry) {
