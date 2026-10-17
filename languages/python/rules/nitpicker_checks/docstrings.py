@@ -5,7 +5,7 @@ from nitpicker_checks.common import finding
 
 STOPWORDS = set(
     """a an the this that of for to in on by with and or is are be it its get gets set sets return
-    returns function method class component hook type value given new current specified provided""".split()
+    returns function method component hook type value given new current specified provided""".split()
 )
 SUFFIXES = (("ing", "e"), ("ed", "e"), ("es", ""), ("s", ""))
 MIN_STEM_LENGTH = 3
@@ -22,8 +22,8 @@ SECTION_NAMES = (
 SECTION = re.compile(rf"^(?:{SECTION_NAMES})(?:\s+[\w.]+)?:(?:\s+(.*))?$")
 UNDERLINE = re.compile(r"^-{3,}\s*$")
 CODE_FENCE = re.compile(r"^(?:```|~~~)")
+CODE_DIRECTIVE = re.compile(r"^\.\.\s+(?:code-block|code|sourcecode|doctest|testcode|testoutput)::")
 DIRECTIVE = re.compile(r"^\.\.\s+[\w:-]+::")
-BULLET = re.compile(r"^(?:[-*+\u2022]|\d+[.)])\s+")
 HAS_TEXT = re.compile(r"\w")
 FIELD_PREFIX = re.compile(r"^:[^:]+:")
 DOCTEST = ">>>"
@@ -49,10 +49,8 @@ def stem_variants(word):
 def starts_section(lines, index):
     line = lines[index]
     following = lines[index + 1].strip() if index + 1 < len(lines) else ""
-    return (
-        bool(FIELD_LIST.match(line) or SECTION.match(line))
-        or line.startswith(DOCTEST)
-        or (line != "" and UNDERLINE.match(following) is not None)
+    return bool(FIELD_LIST.match(line) or SECTION.match(line)) or (
+        line != "" and UNDERLINE.match(following) is not None
     )
 
 
@@ -60,28 +58,35 @@ def indent_of(line):
     return len(line) - len(line.lstrip())
 
 
+def opens_literal_block(line):
+    return line.endswith("::") and not DIRECTIVE.match(line)
+
+
 def split_docstring(docstring):
     raw = docstring.split("\n")
     lines = [line.strip() for line in raw]
-    prose, other, block, fenced = [], [], None, False
+    prose, code, block, fenced, doctest = [], [], None, False, False
     for index, line in enumerate(lines):
         indent = indent_of(raw[index])
-        if block is not None and (line == "" or indent > block):
-            other.append(line)
+        if (block is not None and (line == "" or indent > block)) or (doctest and line):
+            code.append(line)
             continue
-        block = None
+        block, doctest = None, False
         if CODE_FENCE.match(line) or fenced:
             fenced = fenced != bool(CODE_FENCE.match(line))
-            other.append(line)
+            code.append(line)
+        elif line.startswith(DOCTEST):
+            doctest = True
+            code.append(line)
         elif starts_section(lines, index):
-            return prose, other + lines[index:]
-        elif DIRECTIVE.match(line) or BULLET.match(line):
+            return prose, code + lines[index:]
+        elif CODE_DIRECTIVE.match(line):
             block = indent
-            other.append(line)
+            code.append(line)
         else:
-            block = indent if line.endswith("::") else None
+            block = indent if opens_literal_block(line) else None
             prose.extend([line] if line else [])
-    return prose, other
+    return prose, code
 
 
 def description_lines(docstring):

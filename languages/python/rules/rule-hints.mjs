@@ -127,7 +127,7 @@ export const RULE_HINTS = [
     describe: (subject, { lines, limit }) =>
       `The docstring of \`${subject}\` has ${String(lines)} description lines (limit ${String(limit)})`,
     allowed:
-      'Keep the non-obvious point (a unit, a limit, an edge case) and put the rest in names and types; `Args:`, `Returns:` and `:param x:` sections do not count.',
+      'Keep the non-obvious point (a unit, a limit, an edge case) and put the rest in names and types; `Args:`, `Returns:` and `:param x:` sections and code examples do not count.',
   },
   {
     tool: RULES_TOOL,
@@ -139,11 +139,9 @@ export const RULE_HINTS = [
   {
     tool: RULES_TOOL,
     rules: ['exhaustive-enum-predicate'],
-    describe: (_subject, { union, every }) => {
+    describe: (_subject, { union }) => {
       const name = union === 'the Literal' ? union : `\`${union}\``;
-      return every
-        ? `These comparisons list every member of ${name}, so they are always true and a member added later is silently left out`
-        : `These comparisons list only some members of ${name}, so a member added later is silently classified as the default`;
+      return `These comparisons list only some members of ${name}, so a member added later is silently classified as the default`;
     },
     allowed:
       'Classify every member with a `match` that ends in `case _: assert_never(value)` (or an `if`/`elif` chain that ends in `else: assert_never(value)`), so the type checker fails when a member is added.',

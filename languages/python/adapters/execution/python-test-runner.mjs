@@ -2,7 +2,7 @@ import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { environmentError } from './python-environment.mjs';
 import { execute, VERSION_PATTERN } from './python-process.mjs';
-import { isTestFileName, readProjectHints, TEST_DIRECTORIES } from './python-project.mjs';
+import { isTestFileName, readProjectHints, ROOT_TEST_DIRECTORIES } from './python-project.mjs';
 
 export const NO_TESTS_EXIT = 5;
 const PYTEST_CONFIGURATION = /^\s*\[(?:tool\.pytest(?:\.ini_options)?|pytest|tool:pytest)\]/m;
@@ -17,7 +17,9 @@ const PYTEST_PROBE = [
 const probes = new WeakMap();
 
 function existingTestFiles(projectRoot) {
-  const directories = TEST_DIRECTORIES.filter((name) => existsSync(path.join(projectRoot, name)));
+  const directories = ROOT_TEST_DIRECTORIES.filter((name) =>
+    existsSync(path.join(projectRoot, name)),
+  );
   return [
     ...readdirSync(projectRoot).filter((name) => isTestFileName(name)),
     ...directories.flatMap((directory) =>
@@ -29,7 +31,7 @@ function existingTestFiles(projectRoot) {
 }
 
 function hasPytestFile(projectRoot) {
-  const conftests = ['', ...TEST_DIRECTORIES].map((directory) =>
+  const conftests = ['', ...ROOT_TEST_DIRECTORIES].map((directory) =>
     path.join(projectRoot, directory, 'conftest.py'),
   );
   return (
@@ -102,7 +104,7 @@ function pytestCommand(context) {
 }
 
 function unittestCommand(context) {
-  const directory = TEST_DIRECTORIES.find((name) =>
+  const directory = ROOT_TEST_DIRECTORIES.find((name) =>
     existsSync(path.join(context.projectRoot, name)),
   );
   if (directory === undefined) {

@@ -114,7 +114,7 @@ def sleep_calls(tree, aliases):
         node, polling, patched = pending.pop()
         if isinstance(node, SCOPES):
             polling = False
-            patched = patched_by(getattr(node, "decorator_list", []), aliases)
+            patched = patched | patched_by(getattr(node, "decorator_list", []), aliases)
         if isinstance(node, ast.Call):
             yield node, polling, patched
         pending.extend(child_states(node, polling, patched, aliases))

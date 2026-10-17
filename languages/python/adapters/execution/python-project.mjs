@@ -52,7 +52,9 @@ const REQUIRES_PYTHON = [
 ];
 export const INSTALLED_DIRECTORIES = ['__pycache__', 'node_modules', 'site-packages'];
 export const DOCUMENTATION_DIRECTORIES = ['docs', 'doc', 'examples', 'scripts'];
-export const TEST_DIRECTORIES = ['tests', 'test', 'testing'];
+export const TEST_DIRECTORIES = ['tests', 'test'];
+export const TOP_LEVEL_TEST_DIRECTORIES = ['testing'];
+export const ROOT_TEST_DIRECTORIES = [...TEST_DIRECTORIES, ...TOP_LEVEL_TEST_DIRECTORIES];
 export const TEST_FILE_GLOBS = ['test_*.py', '*_test.py', 'tests.py', 'conftest.py'];
 const TEST_FILE_NAME = /^(?:test_.+|.+_test|tests|conftest)\.py$/;
 
@@ -64,7 +66,8 @@ export function isTestPath(file) {
   const parts = file.split(/[\\/]/);
   return (
     isTestFileName(parts.at(-1)) ||
-    parts.slice(0, -1).some((part) => TEST_DIRECTORIES.includes(part))
+    parts.slice(0, -1).some((part) => TEST_DIRECTORIES.includes(part)) ||
+    (parts.length > 1 && TOP_LEVEL_TEST_DIRECTORIES.includes(parts[0]))
   );
 }
 
@@ -179,6 +182,7 @@ export function detectSourceRoots(projectRoot, setting) {
         entry.isDirectory() &&
         !entry.name.startsWith('.') &&
         !NON_SOURCE_DIRECTORIES.has(entry.name) &&
+        !TOP_LEVEL_TEST_DIRECTORIES.includes(entry.name) &&
         existsSync(path.join(projectRoot, entry.name, '__init__.py')),
     )
     .map((entry) => entry.name)

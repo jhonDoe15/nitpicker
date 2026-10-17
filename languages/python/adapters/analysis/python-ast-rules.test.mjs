@@ -73,16 +73,22 @@ describe('running the rules script', () => {
       'tests/test_cli.py': '',
       'testing/helpers.py': '',
       'src/shop/tests.py': '',
+      'src/shop/testing/fakes.py': '',
     });
     const { context, reportRoot } = fakes.contextFor(root);
 
     checkRules(context);
 
     expect(JSON.parse(readFileSync(path.join(reportRoot, 'rules-options.json'), 'utf8'))).toEqual({
-      modules: { 'src/shop/__init__.py': 'shop', 'src/shop/cli.py': 'shop.cli' },
+      modules: {
+        'src/shop/__init__.py': 'shop',
+        'src/shop/cli.py': 'shop.cli',
+        'src/shop/testing/fakes.py': 'shop.testing.fakes',
+      },
       tests: ['src/shop/tests.py', 'testing/helpers.py', 'tests/test_cli.py'],
       published: true,
       entryPoints: ['shop.cli:main'],
+      invalidFiles: [],
     });
   });
 

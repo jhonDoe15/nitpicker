@@ -6,12 +6,32 @@ const PRIVATE_CLASSIFIER = 'Private :: Do Not Upload';
 const SCRIPT_TABLES = ['scripts', 'gui-scripts'];
 const ENTRY_POINT = /^\s*([\w.]+)\s*:\s*([\w.]+)/;
 
-function readPyproject(projectRoot) {
-  const file = path.join(projectRoot, 'pyproject.toml');
-  if (!existsSync(file)) {
-    return {};
+const PYPROJECT = 'pyproject.toml';
+
+function tomlProblem(error) {
+  const [summary] = String(error?.message ?? error).split('\n');
+  return error?.line === undefined
+    ? summary
+    : `${summary} (line ${String(error.line)}, column ${String(error.column)})`;
+}
+
+export function parseToml(text) {
+  try {
+    return { value: createRequire(import.meta.url)('smol-toml').parse(text) };
+  } catch (error) {
+    return { problem: tomlProblem(error), line: error?.line ?? 1 };
   }
-  return createRequire(import.meta.url)('smol-toml').parse(readFileSync(file, 'utf8'));
+}
+
+function readPyproject(projectRoot) {
+  const file = path.join(projectRoot, PYPROJECT);
+  if (!existsSync(file)) {
+    return { pyproject: {}, invalidFiles: [] };
+  }
+  const { value, problem, line } = parseToml(readFileSync(file, 'utf8'));
+  return problem === undefined
+    ? { pyproject: value, invalidFiles: [] }
+    : { pyproject: {}, invalidFiles: [{ file: PYPROJECT, line, problem }] };
 }
 
 function packageTable(pyproject) {
@@ -62,6 +82,6 @@ function entryPoints(pyproject) {
 }
 
 export function readPackageFacts(projectRoot) {
-  const pyproject = readPyproject(projectRoot);
-  return { published: isPublished(pyproject), entryPoints: entryPoints(pyproject) };
+  const { pyproject, invalidFiles } = readPyproject(projectRoot);
+  return { published: isPublished(pyproject), entryPoints: entryPoints(pyproject), invalidFiles };
 }

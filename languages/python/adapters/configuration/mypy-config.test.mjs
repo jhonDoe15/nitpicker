@@ -137,6 +137,12 @@ describe('the mypy config nitpicker generates', () => {
     expect(readMypyConfig(temporary())).toBeUndefined();
   });
 
+  it('names the file and the parse problem of a pyproject.toml that is not valid TOML', () => {
+    expect(() => generated({ 'pyproject.toml': '[tool.mypy\nstrict = true\n' })).toThrow(
+      'pyproject.toml is not valid TOML, so the mypy settings cannot be read: Invalid TOML document: illegal character in key (line 1, column 11)',
+    );
+  });
+
   it('writes an empty mypy section for a project without mypy settings', () => {
     expect(generated({}).text).toBe('[mypy]\n');
   });

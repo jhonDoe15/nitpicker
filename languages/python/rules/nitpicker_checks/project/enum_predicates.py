@@ -25,14 +25,21 @@ def literal_values(node):
     return values if len(values) == len(parts) else None
 
 
+def is_alias(value, names, values):
+    if isinstance(value, ast.Name):
+        return value.id in names
+    return isinstance(value, ast.Constant) and value.value in values
+
+
 def enum_members(node):
-    names = []
+    names, values = [], []
     for statement in node.body:
-        target = statement.targets[0] if isinstance(statement, ast.Assign) else None
-        if isinstance(statement, ast.AnnAssign) and statement.value is not None:
-            target = statement.target
-        if isinstance(target, ast.Name) and not target.id.startswith("_"):
+        target, value = alias_value(statement)
+        if not isinstance(target, ast.Name) or target.id.startswith("_"):
+            continue
+        if not is_alias(value, names, values):
             names.append(target.id)
+            values.extend([value.value] if isinstance(value, ast.Constant) else [])
     return names
 
 
@@ -139,9 +146,9 @@ class EnumPredicates:
             return None
         ((name, members),) = unions
         compared = {member for _, (_, member) in found}
-        if len(compared) < 2 or len(members) < MINIMUM_MEMBERS or not compared <= set(members):
+        if len(compared) < 2 or len(members) < MINIMUM_MEMBERS or not compared < set(members):
             return None
-        return {"union": name, "every": compared == set(members)}
+        return {"union": name}
 
     def candidates(self, node):
         pending = [node]
