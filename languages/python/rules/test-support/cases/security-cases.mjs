@@ -12,6 +12,7 @@ export const SECURITY_CASES = [
     ['S505', '2048 bits'],
   ]),
   ...ruffCases('http-timeout', [['S113', 'timeout=10']]),
+  ...ruffCases('security-support', [['S501', 'certificate verification on']]),
   ...ruffCases('unsafe-loading', [
     ...every(['S301', 'S302'], 'json.loads'),
     ['S506', 'yaml.safe_load'],

@@ -1,25 +1,16 @@
-import { existsSync, readFileSync, writeFileSync } from 'node:fs';
+import { writeFileSync } from 'node:fs';
 import path from 'node:path';
-import { writeMypyConfig } from './configuration/mypy-config.mjs';
+import { mypyExcludeArguments, writeMypyConfig } from './configuration/mypy/mypy-config.mjs';
 import { probe, run } from './execution/python-process.mjs';
 import { importRoots } from './execution/python-project.mjs';
+import { mypyLayers } from './project-tools/mypy-layers.mjs';
+import { pyrightConfig } from './project-tools/pyright/pyright-config.mjs';
 
 export const TYPES_REPORT = 'type-check.json';
 const TYPES_FAILED_RULE = 'types-failed';
 const PYRIGHT_CONFIG = 'pyrightconfig.json';
 const MYPY_CACHE = 'mypy-cache';
 const TYPE_CHECKERS = ['mypy', 'pyright', 'basedpyright'];
-const PYRIGHT_FAMILY = {
-  pyright: {
-    files: [PYRIGHT_CONFIG],
-    section: /^\s*\[\s*tool\.pyright\s*\]/m,
-  },
-  basedpyright: {
-    files: [PYRIGHT_CONFIG],
-    section: /^\s*\[\s*tool\.(?:basedpyright|pyright)\s*\]/m,
-  },
-};
-const PYRIGHT_DEFAULT_EXCLUDE = ['**/node_modules', '**/__pycache__', '**/.*'];
 const DEPRECATED_CODE_SINCE = { major: 1, minor: 14 };
 const MYPY_VERSION = /^mypy (\d+)\.(\d+)/;
 const EXECUTABLE_PROBE = ['python', '-c', 'import sys; print(sys.executable)'];
@@ -59,16 +50,18 @@ function mypyReportsDeprecations(context) {
 }
 
 function runMypy(context) {
+  const config = writeMypyConfig(context);
   return run(
     context,
     [
       'mypy',
       '--config-file',
-      writeMypyConfig(context),
+      config,
       '--python-executable',
       environmentPython(context),
-      '--strict',
+      ...(mypyLayers(context).appliesProject ? [] : ['--strict']),
       ...(mypyReportsDeprecations(context) ? ['--enable-error-code', 'deprecated'] : []),
+      ...mypyExcludeArguments(context),
       '--explicit-package-bases',
       '--show-error-codes',
       '--no-error-summary',
@@ -81,41 +74,6 @@ function runMypy(context) {
     ],
     { accepted: [0, 1], rule: TYPES_FAILED_RULE, env: { MYPYPATH: mypyPath(context) } },
   );
-}
-
-function projectPyrightConfig(projectRoot, checker) {
-  const { files, section } = PYRIGHT_FAMILY[checker];
-  const json = files.map((file) => path.join(projectRoot, file)).find((file) => existsSync(file));
-  if (json !== undefined) {
-    return json;
-  }
-  const pyproject = path.join(projectRoot, 'pyproject.toml');
-  const declaresSection = existsSync(pyproject) && section.test(readFileSync(pyproject, 'utf8'));
-  return declaresSection ? pyproject : undefined;
-}
-
-function pyrightExclude({ projectRoot, reportRoot, exclude }) {
-  return [
-    ...PYRIGHT_DEFAULT_EXCLUDE,
-    ...exclude.map((glob) => path.relative(reportRoot, path.resolve(projectRoot, glob))),
-  ];
-}
-
-export function pyrightConfig({ projectRoot, reportRoot, project, exclude }, checker = 'pyright') {
-  const inherited = projectPyrightConfig(projectRoot, checker);
-  return {
-    ...(inherited === undefined ? {} : { extends: inherited }),
-    typeCheckingMode: 'strict',
-    reportDeprecated: 'error',
-    enableTypeIgnoreComments: false,
-    ignore: [],
-    executionEnvironments: [],
-    exclude: pyrightExclude({ projectRoot, reportRoot, exclude }),
-    include: project.sourceRoots.map((root) =>
-      path.relative(reportRoot, path.resolve(projectRoot, root)),
-    ),
-    extraPaths: importRoots(projectRoot, project.sourceRoots),
-  };
 }
 
 function pyrightRunner(checker) {
