@@ -9,11 +9,13 @@ const LOCAL_REQUIREMENT = /^(?:[./\\~]|[A-Za-z]:[\\/]|file:)|@\s*file:/;
 const COMMENT = /(?:^|\s)#.*$/;
 
 function containedFile(root, from, relative) {
-  const resolved = path.resolve(path.dirname(from), relative);
-  if (resolved !== root && !resolved.startsWith(root + path.sep)) {
+  const base = path.resolve(root);
+  const directory = path.relative(base, path.dirname(from));
+  const full = path.resolve(base, directory, relative);
+  if (!full.startsWith(base + path.sep)) {
     return undefined;
   }
-  return existsSync(resolved) ? resolved : undefined;
+  return existsSync(full) ? full : undefined;
 }
 
 function logicalLines(file) {
@@ -37,7 +39,7 @@ function classify(line) {
   return { kind: LOCAL_REQUIREMENT.test(line) ? 'drop' : 'keep', value: line };
 }
 
-function consumeLine(state, root, file, line) {
+function consumeLine(state, { root, file }, line) {
   const { kind, value } = classify(line);
   const followed =
     kind === 'include' || kind === 'constraint' ? containedFile(root, file, value) : undefined;
@@ -70,7 +72,7 @@ export function safeRequirements(root, names) {
     }
     seen.add(file);
     for (const line of logicalLines(file)) {
-      consumeLine(state, root, file, line);
+      consumeLine(state, { root, file }, line);
     }
   }
   return { lines: state.lines, constraints: state.constraints, dropped: state.dropped };

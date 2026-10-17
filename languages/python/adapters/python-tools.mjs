@@ -4,7 +4,6 @@ import { jscpdVersion } from '../../java/adapters/metrics/java-duplicates.mjs';
 import { scanImports } from './analysis/python-coupling.mjs';
 import { scanDependencies } from './dependencies/dependency-findings.mjs';
 import { runDuplicates } from './analysis/python-duplicates.mjs';
-import { globToRegExpSource } from '../../../shared/glob.mjs';
 import { openSnapshotEnvironment } from './execution/python-environment.mjs';
 import { checkRules } from './analysis/python-ast-rules.mjs';
 import { pytestStyle, pytestStyleFlags } from '../rules/libraries/pytest-style.mjs';
