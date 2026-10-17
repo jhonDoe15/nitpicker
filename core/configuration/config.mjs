@@ -46,24 +46,24 @@ function describePythonOverrides({ exceptions = [], ...settings }) {
 function dependentsOf(name, analyzers) {
   return analyzers
     .filter((analyzer) => (analyzer.dependencies ?? []).includes(name))
-    .map((analyzer) => analyzer.name)
-    .toSorted();
+    .map((analyzer) => analyzer.name);
 }
 
-function blockMessage(name, dependents) {
-  const [verb, pronoun] = dependents.length > 1 ? ['depend', 'them'] : ['depends', 'it'];
-  const names =
-    dependents.length > 1
-      ? `${dependents.slice(0, -1).join(', ')} and ${dependents.at(-1)}`
-      : dependents[0];
-  return `cannot disable ${name} because ${names} ${verb} on it; add ${pronoun} to "disable" too`;
-}
-
-export function applyDisable(analyzers, config) {
-  const disabled = config.disable ?? [];
-  if (disabled.length === 0) {
-    return analyzers;
+function turnedOffByDependency(analyzers, disabled) {
+  const causes = new Map(disabled.map((name) => [name, name]));
+  for (const name of causes.keys()) {
+    for (const dependent of dependentsOf(name, analyzers)) {
+      causes.set(dependent, causes.get(dependent) ?? causes.get(name));
+    }
   }
+  return causes;
+}
+
+function listNames(names) {
+  return names.length > 1 ? `${names.slice(0, -1).join(', ')} and ${names.at(-1)}` : names[0];
+}
+
+function checkKnown(analyzers, disabled) {
   const names = new Set(analyzers.map(({ name }) => name));
   const unknown = disabled.filter((name) => !names.has(name));
   if (unknown.length > 0) {
@@ -71,12 +71,29 @@ export function applyDisable(analyzers, config) {
       `"disable" names unknown analyzers: ${unknown.join(', ')}. Known analyzers: ${[...names].sort().join(', ')}`,
     );
   }
-  const remaining = analyzers.filter(({ name }) => !disabled.includes(name));
-  const blockers = disabled.filter((name) => dependentsOf(name, remaining).length > 0);
-  if (blockers.length > 0) {
-    throw configError(
-      `"disable" ${blockers.map((name) => blockMessage(name, dependentsOf(name, remaining))).join('; ')}`,
-    );
+}
+
+export function applyDisable(analyzers, config) {
+  const disabled = config.disable ?? [];
+  if (disabled.length === 0) {
+    return analyzers;
   }
-  return remaining;
+  checkKnown(analyzers, disabled);
+  const off = turnedOffByDependency(analyzers, disabled);
+  return analyzers.filter(({ name }) => !off.has(name));
+}
+
+export function describeDisableCascade(analyzers, config) {
+  const disabled = config.disable ?? [];
+  const causes = turnedOffByDependency(analyzers, disabled);
+  return disabled.flatMap((root) => {
+    const dependents = analyzers
+      .map(({ name }) => name)
+      .filter((name) => !disabled.includes(name) && causes.get(name) === root);
+    return dependents.length === 0
+      ? []
+      : [
+          `${root} is disabled, so ${listNames(dependents)} ${dependents.length > 1 ? 'are' : 'is'} off too`,
+        ];
+  });
 }

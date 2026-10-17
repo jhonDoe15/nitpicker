@@ -263,6 +263,24 @@ fake-quality-analyzer: base=0 head=0 new=0 resolved=0 unchanged=0 changed-metric
 `),
     );
   });
+  it('says on stderr which analyzers a disabled one takes down with it', () => {
+    const dependent = {
+      ...fakeAnalyzer('dependent-analyzer'),
+      dependencies: ['fake-quality-analyzer'],
+    };
+    const analyzers = [fakeAnalyzer(), dependent, fakeAnalyzer('other-analyzer')];
+
+    const { exitCode, output, summary } = runWithConfig(
+      { disable: ['fake-quality-analyzer'] },
+      { analyzers },
+    );
+
+    expect(exitCode).toBe(0);
+    expect(summary.tools.map(({ name }) => name)).toEqual(['other-analyzer']);
+    expect(output.stderrText).toBe(
+      'nitpicker: fake-quality-analyzer is disabled, so dependent-analyzer is off too\n',
+    );
+  });
   it('rejects disabling an unknown analyzer', () => {
     const { exitCode, output } = runConfigOnly({ disable: ['nope'] });
 
