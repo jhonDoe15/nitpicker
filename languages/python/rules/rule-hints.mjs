@@ -1,14 +1,28 @@
 import { STRUCTURE_HINTS } from './hints/ast-structure.mjs';
 import { SMELL_HINTS } from './hints/ast-smells.mjs';
 import { PYTEST_HINTS } from './hints/ruff-pytest.mjs';
-import { SECURITY_HINTS } from './hints/ruff-security.mjs';
+import { SECURITY_HINTS } from './hints/security/ruff-security.mjs';
+import { RULES_SECURITY_HINTS } from './hints/security/rules-security.mjs';
 import { STYLE_HINTS } from './hints/ruff-style.mjs';
 import { RULES_TOOL } from './hints/tool.mjs';
 import { DEFAULT_LIBRARIES } from './libraries/project-libraries.mjs';
 
 export { RULES_TOOL };
 const TYPE_CHECK_TOOLS = ['mypy', 'pyright', 'basedpyright'];
-const HINTED_TOOLS = ['ruff', ...TYPE_CHECK_TOOLS, RULES_TOOL];
+const HINTED_TOOLS = [
+  'ruff',
+  ...TYPE_CHECK_TOOLS,
+  RULES_TOOL,
+  'coverage-py',
+  'duplicates',
+  'coupling',
+  'import-linter',
+  'dependencies',
+  'test-runtime',
+  'mutmut',
+];
+
+const RULES_ROUTED_BY_A_SETTING = new Set(['no-import-outside-roots']);
 
 const FIX_TYPE = 'Fix the type; inline ignores are banned.';
 const INSTALL_PACKAGE = 'Install the package, or its `types-` stubs, in the project environment.';
@@ -19,6 +33,7 @@ export const RULE_HINTS = [
   ...STYLE_HINTS,
   ...PYTEST_HINTS,
   ...SECURITY_HINTS,
+  ...RULES_SECURITY_HINTS,
   ...STRUCTURE_HINTS,
   ...SMELL_HINTS,
   { tool: 'mypy', rules: ['import-not-found', 'import-untyped'], allowed: INSTALL_PACKAGE },
@@ -77,7 +92,8 @@ function canBeLifted(finding) {
     HINTED_TOOLS.includes(finding.tool) &&
     finding.classification === 'enforceable' &&
     typeof finding.rule === 'string' &&
-    finding.rule !== ''
+    finding.rule !== '' &&
+    finding.path !== '.'
   );
 }
 
@@ -87,10 +103,11 @@ export function withHint(finding, libraries = DEFAULT_LIBRARIES) {
   if (hint === undefined && !canBeLifted(rest)) {
     return rest;
   }
+  const routed = hint?.exception === false || RULES_ROUTED_BY_A_SETTING.has(rest.rule);
   const sentences = [
     `${rest.message.replace(/\.$/, '')}.`,
     ...(hint === undefined ? [] : [allowedText(hint, subject, libraries)]),
-    ...(hint?.exception === false ? [] : [exceptionSentence(rest.rule)]),
+    ...(routed ? [] : [exceptionSentence(rest.rule)]),
   ];
   return { ...rest, message: sentences.join(' ') };
 }

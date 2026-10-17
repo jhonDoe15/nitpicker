@@ -33,6 +33,23 @@ function dependency(coordinates, exclusions = []) {
   ].join('');
 }
 
+export function formatTool(javaStyle, pinned) {
+  if (javaStyle === 'none') {
+    return [];
+  }
+  const palantir = javaStyle === 'palantir';
+  return [
+    {
+      name: palantir ? 'format-palantir' : 'format',
+      coordinates: [
+        palantir
+          ? `com.palantir.javaformat:palantir-java-format:${pinned.palantirJavaFormat}`
+          : `com.google.googlejavaformat:google-java-format:${pinned.googleJavaFormat}`,
+      ],
+    },
+  ];
+}
+
 export function toolDependencies(pinned, launcherVersions = [], extraTools = []) {
   return {
     pmd: [
@@ -41,9 +58,6 @@ export function toolDependencies(pinned, launcherVersions = [], extraTools = [])
     ],
     forbiddenapis: [dependency(`de.thetaphi:forbiddenapis:${pinned.forbiddenapis}`)],
     spotbugs: [dependency(`com.github.spotbugs:spotbugs:${pinned.spotbugs}`)],
-    format: [
-      dependency(`com.google.googlejavaformat:google-java-format:${pinned.googleJavaFormat}`),
-    ],
     checkstyle: [dependency(`com.puppycrawl.tools:checkstyle:${pinned.checkstyle}`)],
     errorprone: [
       dependency(`com.google.errorprone:error_prone_core:${pinned.errorProne}`),

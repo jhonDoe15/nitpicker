@@ -463,6 +463,24 @@ describe('spec/findings.schema.json', () => {
     });
   });
 
+  it('accepts tokens and rejects an empty one', () => {
+    const finding = {
+      tool: 'tool',
+      rule: 'rule',
+      path: 'src/a.ts',
+      identity: 'id',
+      message: 'message',
+      classification: 'enforceable',
+      tokens: ['a', 'b', 'c'],
+    };
+    const empty = { ...finding, tokens: ['a', ''] };
+
+    expect(parseFinding(finding)).toEqual(finding);
+    expect(validate({ findings: [finding] })).toEqual([]);
+    expect(() => parseFinding(empty)).toThrow(TypeError);
+    expect(validate({ findings: [empty] })).not.toEqual([]);
+  });
+
   it('accepts the number of files of a folder finding and rejects zero', () => {
     const finding = {
       tool: 'tool',

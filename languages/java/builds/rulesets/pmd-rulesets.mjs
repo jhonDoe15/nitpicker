@@ -84,7 +84,13 @@ function written(reportDir, file, content) {
   return target;
 }
 
-function nitpickerExtras({ reportDir, mainDirectories, testDirectories, compiler, spring }) {
+export function writeGuardRulesets({
+  reportDir,
+  mainDirectories,
+  testDirectories,
+  compiler,
+  spring,
+}) {
   const skipped = javaRelease(compiler) < PATTERN_MATCHING_RELEASE ? PATTERN_MATCHING_RULES : [];
   const guards = scopedRuleset(
     'nitpicker-guards-main',
@@ -97,6 +103,15 @@ function nitpickerExtras({ reportDir, mainDirectories, testDirectories, compiler
     path.join(GRADLE_DIRECTORY, 'rules/test-honesty-ruleset.xml'),
     { directories: existingTests, onlyThere: true },
   );
+  return [
+    written(reportDir, 'pmd-guards-main.xml', guards),
+    ...(existingTests.length === 0 ? [] : [written(reportDir, 'pmd-test-honesty.xml', honesty)]),
+  ];
+}
+
+function nitpickerExtras(plan) {
+  const { reportDir, mainDirectories, testDirectories, spring } = plan;
+  const guards = writeGuardRulesets(plan);
   const tests = rulesetXml('nitpicker-tests', {
     patterns: mainDirectories.map((directory) => directoryPattern('exclude', directory)),
     rules: TEST_CLASS_RULE,
@@ -107,8 +122,7 @@ function nitpickerExtras({ reportDir, mainDirectories, testDirectories, compiler
     { directories: testDirectories },
   );
   return [
-    written(reportDir, 'pmd-guards-main.xml', guards),
-    ...(existingTests.length === 0 ? [] : [written(reportDir, 'pmd-test-honesty.xml', honesty)]),
+    ...guards,
     written(reportDir, 'pmd-tests.xml', tests),
     ...(spring ? [written(reportDir, 'pmd-spring-main.xml', springMain)] : []),
   ];

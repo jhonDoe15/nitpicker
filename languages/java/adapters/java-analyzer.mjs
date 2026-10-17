@@ -16,7 +16,9 @@ const ENTRY_FILES = [
 const RESOURCE_FILES = [
   'languages/java/gradle/nitpicker.init.gradle',
   'languages/java/gradle/checkstyle-suppressions.xml',
+  'languages/java/gradle/checkstyle-suppressions-unformatted.xml',
   'languages/java/gradle/pmd-ruleset.xml',
+  'languages/java/gradle/pmd-main-ruleset.xml',
   'languages/java/gradle/spring-ruleset.xml',
   'languages/java/gradle/rules/checkstyle-all.xml',
   'languages/java/gradle/rules/checkstyle-main.xml',
@@ -35,6 +37,8 @@ const RESOURCE_FILES = [
   'languages/java/gradle/tasks/kotlin/kotlin-tasks.gradle',
   'languages/java/builds/rulesets/write-rules.mjs',
   'languages/java/builds/tools/tool-commands.json',
+  'languages/java/gradle/pmd-test-ruleset.xml',
+  'languages/java/gradle/spring-test-ruleset.xml',
   'languages/java/gradle/StructureMetrics.java',
   'languages/java/gradle/CpdReport.java',
   'languages/java/gradle/KotlinMetrics.java',
