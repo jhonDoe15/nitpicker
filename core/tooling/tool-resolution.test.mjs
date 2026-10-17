@@ -248,7 +248,10 @@ describe('project root resolution', () => {
     temporaryRoots.push(emptyRoot);
     copyGitTemplate(gitTemplateRoot, emptyRoot);
     expect(() => resolveProjectRoot(emptyRoot)).toThrow(
-      'No package.json or nitpicker.config.json found',
+      new Error(
+        `No package.json or nitpicker.config.json found between ${emptyRoot} and repository root ${emptyRoot}. ` +
+          'For a Java, Kotlin or Python project, create nitpicker.config.json with its preset, for example {"preset": "java"}.',
+      ),
     );
   });
 });
