@@ -166,14 +166,26 @@ describe('Java file limits', () => {
     rmSync(projectRoot, { recursive: true, force: true });
   });
 
-  it('counts main and test classes per package and leaves line length to Checkstyle', () => {
-    writeClasses('src/main/java/demo', 7, `class A { ${'int a; '.repeat(40)}}\n`);
+  it('counts main and test classes per package', () => {
+    writeClasses('src/main/java/demo', 7);
     writeClasses('src/test/java/demo', 6);
     writeFileSync(path.join(projectRoot, 'src/main/java/demo/notes.txt'), 'not code\n');
 
     expect(summary(readJavaFileLimitFindings(projectRoot, { manifest }))).toEqual([
       [RULE_IDS.folderFiles, 'src/main/java/demo', 'folder-files:source:7', 'structure'],
     ]);
+  });
+
+  it('limits Java lines to 100 characters, except string literals, and honours the exception', () => {
+    writeClasses('src/main/java/demo', 1, `class A { ${'int a; '.repeat(40)}}\n`);
+    writeClasses('src/test/java/demo', 1, `class T { String s = "${'t'.repeat(150)}"; }\n`);
+    const found = (policy) =>
+      readJavaFileLimitFindings(projectRoot, { manifest, policy }).map(
+        ({ rule, path: findingPath }) => [rule, findingPath],
+      );
+
+    expect(found({})).toEqual([[RULE_IDS.lineLength, 'src/main/java/demo/C0.java']]);
+    expect(found({ exceptions: [{ rule: 'line-length-limit', glob: 'src/main/**' }] })).toEqual([]);
   });
 
   it('applies the configured thresholds, exceptions and exclude globs', () => {
@@ -226,6 +238,64 @@ describe('Java file limits', () => {
         }),
       ).map(([rule, findingPath, identity]) => [rule, findingPath, identity]),
     ).toEqual([[RULE_IDS.folderFiles, 'src/main/kotlin/demo', 'folder-files:source:5']]);
+  });
+
+  it('fails a package more than 4 levels below the root package', () => {
+    writeClasses('src/main/java/demo', 1);
+    writeClasses('src/main/java/demo/a/b/c/d', 1);
+    writeClasses('src/main/java/demo/a/b/c/d/e', 1);
+    writeClasses('src/test/java/demo/a/b/c/d/e', 1);
+
+    const found = (options) =>
+      summary(readJavaFileLimitFindings(projectRoot, { manifest, ...options })).map(
+        ([rule, findingPath, identity]) => [rule, findingPath, identity],
+      );
+
+    expect(found({})).toEqual([
+      [RULE_IDS.folderDepth, 'src/main/java/demo/a/b/c/d/e', 'folder-depth:source:5'],
+      [RULE_IDS.folderDepth, 'src/test/java/demo/a/b/c/d/e', 'folder-depth:test:5'],
+    ]);
+    expect(found({ policy: { thresholds: { folderDepth: 5 } } })).toEqual([]);
+    expect(
+      found({ policy: { exceptions: [{ rule: 'folder-depth-limit', glob: '**/e/**' }] } }),
+    ).toEqual([]);
+  });
+
+  it('takes the root package from the base, so a new top-level package fails no legacy folder', () => {
+    const baseRoot = mkdtempSync(path.join(tmpdir(), 'nitpicker-java-base-'));
+    try {
+      for (const folder of ['demo', 'demo/a/b/c/d']) {
+        mkdirSync(path.join(baseRoot, 'src/main/java', folder), { recursive: true });
+        writeFileSync(path.join(baseRoot, 'src/main/java', folder, 'A.java'), 'class A {}\n');
+      }
+      writeClasses('src/main/java/demo', 1);
+      writeClasses('src/main/java/demo/a/b/c/d', 1);
+      writeClasses('src/main/java/db/migration', 1);
+      const found = (policy) =>
+        readJavaFileLimitFindings(projectRoot, { manifest, policy }).map(
+          ({ rule, path: findingPath }) => [rule, findingPath],
+        );
+
+      expect(found({})).toEqual([[RULE_IDS.folderDepth, 'src/main/java/demo/a/b/c/d']]);
+      expect(found({ baselineRoot: baseRoot })).toEqual([]);
+    } finally {
+      rmSync(baseRoot, { recursive: true, force: true });
+    }
+  });
+
+  it('checks the packages of Kotlin sources the same way', () => {
+    mkdirSync(path.join(projectRoot, 'src/main/kotlin/demo/a/b/c/d/e'), { recursive: true });
+    writeFileSync(path.join(projectRoot, 'src/main/kotlin/demo/Top.kt'), 'class Top\n');
+    writeFileSync(path.join(projectRoot, 'src/main/kotlin/demo/a/b/c/d/e/Deep.kt'), 'class Deep\n');
+
+    expect(
+      summary(
+        readJavaFileLimitFindings(projectRoot, {
+          manifest: { ...manifest, kotlinSourceRoots: ['src/main/kotlin'] },
+          kotlin: true,
+        }),
+      ).map(([rule, findingPath]) => [rule, findingPath]),
+    ).toEqual([[RULE_IDS.folderDepth, 'src/main/kotlin/demo/a/b/c/d/e']]);
   });
 
   it('skips generated roots under build/ and roots outside the project', () => {

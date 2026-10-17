@@ -31,6 +31,11 @@ export const ONE_WAY_RULES = [
       'Handle null with `value ?: return`, `value?.let { ... }`, or `checkNotNull(value) { "why" }` when null is a bug.',
   },
   { name: 'CastNullableToNonNullableType', ruleset: 'potential-bugs' },
+  {
+    name: 'TooGenericExceptionCaught',
+    ruleset: 'exceptions',
+    allowed: 'In a test, use `assertFailsWith`.',
+  },
   { name: 'GlobalCoroutineUsage', ruleset: 'coroutines' },
   { name: 'ForbiddenMethodCall', ruleset: 'style' },
   {

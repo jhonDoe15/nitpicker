@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { JAVA_TOOLS } from '../../../languages/java/adapters/gradle-presets.mjs';
-import { JAVA_NATIVE_RULES, SHARED_EXCEPTION_RULES } from '../../../shared/policy.mjs';
+import { SHARED_EXCEPTION_RULES } from '../../../shared/policy.mjs';
+import { JAVA_SIZE_RULES } from '../../../shared/project-rules/size-rules.mjs';
 import { runCli as nitpickerCli } from '../../cli.mjs';
 import { writeFiles } from '../../diff/git/test-support/fixture-files.mjs';
 import { commit } from '../../diff/git/test-support/git-repository.mjs';
@@ -112,7 +113,7 @@ describe('exceptions with "preset": "java"', () => {
 
       expect(result.exitCode).toBe(2);
       expect(result.output.err).toBe(
-        `nitpicker failed: nitpicker.config.json: "exceptions[0].rule" must name a finding as it is printed, "<tool>/<rule>" (for example "pmd/SpringConstructorInjection"), or one of ${SHARED_EXCEPTION_RULES.filter((rule) => !JAVA_NATIVE_RULES.includes(rule)).join(', ')}. Tools: ${JAVA_TOOLS.join(', ')}\n`,
+        `nitpicker failed: nitpicker.config.json: "exceptions[0].rule" must name a finding as it is printed, "<tool>/<rule>" (for example "pmd/SpringConstructorInjection"), or one of ${[...SHARED_EXCEPTION_RULES, ...JAVA_SIZE_RULES].join(', ')}. Tools: ${JAVA_TOOLS.join(', ')}\n`,
       );
     });
   });

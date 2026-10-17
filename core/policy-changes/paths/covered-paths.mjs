@@ -92,14 +92,27 @@ function exceptionChanges(baseExceptions = [], headExceptions = [], scope) {
 }
 
 function entryPointChanges(baseConfig, headConfig, scope) {
-  const before = baseConfig.layout?.entryPoints ?? [];
-  const after = headConfig.layout?.entryPoints ?? [];
+  return [
+    ...entryPointChangesOf('layout.entryPoints', {
+      before: baseConfig.layout?.entryPoints ?? [],
+      after: headConfig.layout?.entryPoints ?? [],
+      scope,
+    }),
+    ...entryPointChangesOf('python.entryPoints', {
+      before: baseConfig.python?.entryPoints ?? [],
+      after: headConfig.python?.entryPoints ?? [],
+      scope,
+    }),
+  ];
+}
+
+function entryPointChangesOf(key, { before, after, scope }) {
   return [
     ...after
       .filter((glob) => !before.includes(glob))
       .map((glob) =>
         addedGlob(
-          `layout.entryPoints added: ${glob}`,
+          `${key} added: ${glob}`,
           newlyCovered(before, glob, {
             paths: scope.codePaths,
             basePathOf: scope.basePathOf,
@@ -111,7 +124,7 @@ function entryPointChanges(baseConfig, headConfig, scope) {
       loosened: [],
       changed: before
         .filter((glob) => !after.includes(glob))
-        .map((glob) => `layout.entryPoints removed: ${glob}`),
+        .map((glob) => `${key} removed: ${glob}`),
     },
   ];
 }

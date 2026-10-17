@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { JAVA_TOOLS } from '../../languages/java/adapters/gradle-presets.mjs';
-import { JAVA_NATIVE_RULES, SHARED_EXCEPTION_RULES } from '../../shared/policy.mjs';
+import { SHARED_EXCEPTION_RULES } from '../../shared/policy.mjs';
+import { JAVA_SIZE_RULES } from '../../shared/project-rules/size-rules.mjs';
 import { validateConfig } from '../configuration/validate.mjs';
 
 describe('config exceptions', () => {
@@ -40,7 +41,7 @@ describe('config exceptions', () => {
       const other = { ...exception, rule: 'pmd.SomeRule' };
 
       expect(() => validateConfig({ preset: 'java', exceptions: [other] })).toThrow(
-        `"exceptions[0].rule" must name a finding as it is printed, "<tool>/<rule>" (for example "pmd/SpringConstructorInjection"), or one of ${SHARED_EXCEPTION_RULES.filter((rule) => !JAVA_NATIVE_RULES.includes(rule)).join(', ')}. Tools: ${JAVA_TOOLS.join(', ')}`,
+        `"exceptions[0].rule" must name a finding as it is printed, "<tool>/<rule>" (for example "pmd/SpringConstructorInjection"), or one of ${[...SHARED_EXCEPTION_RULES, ...JAVA_SIZE_RULES].join(', ')}. Tools: ${JAVA_TOOLS.join(', ')}`,
       );
     });
   });
