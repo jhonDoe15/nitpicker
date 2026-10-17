@@ -1,8 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { installCommand } from './commands.mjs';
 
-const PROMPT = { COREPACK_ENABLE_DOWNLOAD_PROMPT: '0', COREPACK_ENABLE_AUTO_PIN: '0' };
-
 describe('frozen install commands', () => {
   it.each([
     [
@@ -10,7 +8,6 @@ describe('frozen install commands', () => {
       {
         command: 'npm',
         args: ['ci', '--ignore-scripts', '--no-audit', '--no-fund', '--prefer-offline'],
-        environment: PROMPT,
         installHint: 'Install Node.js, which includes npm.',
       },
     ],
@@ -19,7 +16,6 @@ describe('frozen install commands', () => {
       {
         command: 'pnpm',
         args: ['install', '--frozen-lockfile', '--ignore-scripts', '--prefer-offline'],
-        environment: PROMPT,
         installHint:
           'Run `corepack enable pnpm` (Corepack ships with Node.js) or `npm install --global pnpm`.',
       },
@@ -35,7 +31,6 @@ describe('frozen install commands', () => {
           '--non-interactive',
           '--prefer-offline',
         ],
-        environment: PROMPT,
         installHint:
           'Run `corepack enable yarn` (Corepack ships with Node.js) or `npm install --global yarn`.',
       },
@@ -45,7 +40,6 @@ describe('frozen install commands', () => {
       {
         command: 'yarn',
         args: ['install', '--immutable', '--mode=skip-build'],
-        environment: { ...PROMPT, YARN_ENABLE_SCRIPTS: 'false', YARN_NODE_LINKER: 'node-modules' },
         installHint: 'Run `corepack enable yarn` (Corepack ships with Node.js).',
       },
     ],
@@ -54,7 +48,6 @@ describe('frozen install commands', () => {
       {
         command: 'bun',
         args: ['install', '--frozen-lockfile', '--ignore-scripts'],
-        environment: PROMPT,
         installHint: 'Run `npm install --global bun` or see https://bun.sh/docs/installation.',
       },
     ],

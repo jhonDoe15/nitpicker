@@ -25,7 +25,6 @@ const MANAGERS = {
   yarnBerry: {
     binary: 'yarn',
     args: ['install', '--immutable', '--mode=skip-build'],
-    environment: { YARN_ENABLE_SCRIPTS: 'false', YARN_NODE_LINKER: 'node-modules' },
     installHint: 'Run `corepack enable yarn` (Corepack ships with Node.js).',
   },
   bun: {
@@ -37,15 +36,10 @@ const MANAGERS = {
 
 export function installCommand(packageManager, platform = process.platform) {
   const key = packageManager.flavor === 'berry' ? 'yarnBerry' : packageManager.name;
-  const { binary, args, environment = {}, installHint } = MANAGERS[key];
+  const { binary, args, installHint } = MANAGERS[key];
   return {
     command: platform === 'win32' && binary !== 'bun' ? `${binary}.cmd` : binary,
     args,
-    environment: {
-      COREPACK_ENABLE_DOWNLOAD_PROMPT: '0',
-      COREPACK_ENABLE_AUTO_PIN: '0',
-      ...environment,
-    },
     installHint,
   };
 }

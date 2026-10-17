@@ -27,51 +27,36 @@ function recordedCall(projectRoot) {
   return JSON.parse(readFileSync(path.join(projectRoot, 'fake-install-call.json'), 'utf8'));
 }
 
-const NO_ENVIRONMENT = {
-  COREPACK_ENABLE_DOWNLOAD_PROMPT: '0',
-  YARN_ENABLE_SCRIPTS: null,
-  YARN_NODE_LINKER: null,
-};
-
 describe('dependency hook install', () => {
   it.each([
     [
       'npm',
       { 'package-lock.json': '{}' },
       ['ci', '--ignore-scripts', '--no-audit', '--no-fund', '--prefer-offline'],
-      NO_ENVIRONMENT,
     ],
     [
       'pnpm',
       { 'pnpm-lock.yaml': '' },
       ['install', '--frozen-lockfile', '--ignore-scripts', '--prefer-offline'],
-      NO_ENVIRONMENT,
     ],
     [
       'yarn',
       { 'yarn.lock': '# yarn lockfile v1\n' },
       ['install', '--frozen-lockfile', '--ignore-scripts', '--non-interactive', '--prefer-offline'],
-      NO_ENVIRONMENT,
     ],
     [
       'yarn',
       { 'yarn.lock': '__metadata:\n  version: 8\n' },
       ['install', '--immutable', '--mode=skip-build'],
-      { ...NO_ENVIRONMENT, YARN_ENABLE_SCRIPTS: 'false', YARN_NODE_LINKER: 'node-modules' },
     ],
-    [
-      'bun',
-      { 'bun.lock': '' },
-      ['install', '--frozen-lockfile', '--ignore-scripts'],
-      NO_ENVIRONMENT,
-    ],
-  ])('runs the frozen install of %s with scripts disabled', (manager, files, args, environment) => {
+    ['bun', { 'bun.lock': '' }, ['install', '--frozen-lockfile', '--ignore-scripts']],
+  ])('runs the frozen install of %s with scripts disabled', (manager, files, args) => {
     useFakeManagers();
     const projectRoot = projectWith(files);
 
     const dependencies = resolveDependencyHook().install(projectRoot);
 
-    expect(recordedCall(projectRoot)).toEqual({ manager, args, environment });
+    expect(recordedCall(projectRoot)).toEqual({ manager, args });
     expect(dependencies).toEqual({
       kind: 'installed',
       dependencyPath: path.join(projectRoot, 'node_modules'),
@@ -146,6 +131,20 @@ describe('dependency hook install', () => {
     const projectRoot = projectWith(files);
 
     expect(() => resolveDependencyHook().install(projectRoot)).toThrow(new Error(message));
+  });
+
+  it('explains a successful install that left no dependency folder', () => {
+    useFakeManagers();
+    const projectRoot = projectWith({
+      'yarn.lock': '__metadata:\n',
+      'fake-no-dependencies.txt': '',
+    });
+
+    expect(() => resolveDependencyHook().install(projectRoot)).toThrow(
+      new Error(
+        "Failed to install merge-base dependencies with yarn: the install created no node_modules folder (Yarn Plug'n'Play is not supported: set `nodeLinker: node-modules`).",
+      ),
+    );
   });
 
   it('refuses to replace an existing dependency folder', () => {
