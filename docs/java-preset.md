@@ -149,7 +149,8 @@ toolchain), and javac options, `--release` handling and the class readers accept
   (10.21.1, the earlier pin, skipped such files), and 13.0 and newer need a JDK 21 runtime. It
   runs on a JDK it supports through the same tool-JDK choice as google-java-format: Gradle's
   Checkstyle tasks get a `javaLauncher` from `nitpickerToolJava` (`checkstyle-jdk.gradle`: the JVM
-  running Gradle when it is 21 or newer, else a JDK 21 toolchain), and Maven's `checkstyleJava`
+  running Gradle when it is 21 or newer, else a JDK 21 toolchain; a project config that keeps the
+  project's own Checkstyle before 13.0 runs on JDK 11 or newer), and Maven's `checkstyleJava`
   uses the JDK Maven runs on or an installed JDK 21 or newer. Projects on 17 keep compiling at
   their release; Checkstyle only reads the sources. Without such a JDK Checkstyle is skipped with
   one `checkstyle/tool-skipped` tool error naming what to install, and every other analyzer still
@@ -591,7 +592,9 @@ default, and their messages name it:
   project-relative. Severities `error` and `warning` are enforceable, `info` is descriptive. The
   rule is the check's short name (`checkstyle/Indentation`, not the class
   `com.puppycrawl.tools.checkstyle.checks.indentation.IndentationCheck`), or the `id` the config
-  gives the module (`checkstyle/RightCurlySame`); see [Rule messages](#rule-messages).
+  gives the module (`checkstyle/RightCurlySame`; Checkstyle 13 writes such a source as
+  `...RightCurlyCheck#RightCurlySame`, and the part after `#` is the rule); see
+  [Rule messages](#rule-messages).
 
 | Tool                      | Report         | Ingester           | Classification                                         | Identity                                                                                                                                                                                                                   |
 | ------------------------- | -------------- | ------------------ | ------------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |

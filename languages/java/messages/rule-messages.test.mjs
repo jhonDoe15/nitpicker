@@ -25,15 +25,22 @@ const hint = (rule) =>
   `If this is intended, add {"rule":"${rule}","paths":["${FILE}"],"reason":"..."} to "exceptions" in nitpicker.config.json.`;
 
 describe('checkstyleRuleName', () => {
-  it('shortens check classes to the module name and keeps configured ids', () => {
+  it('shortens check classes to the module name, or to the id Checkstyle 13 appends after #', () => {
     expect(
       [
         'com.puppycrawl.tools.checkstyle.checks.indentation.IndentationCheck',
         'com.puppycrawl.tools.checkstyle.checks.UpperEllCheck',
         'RightCurlySame',
+        'com.puppycrawl.tools.checkstyle.checks.blocks.LeftCurlyCheck#LeftCurlyEol',
         'com.example.checks.HouseRuleCheck',
       ].map(checkstyleRuleName),
-    ).toEqual(['Indentation', 'UpperEll', 'RightCurlySame', 'com.example.checks.HouseRuleCheck']);
+    ).toEqual([
+      'Indentation',
+      'UpperEll',
+      'RightCurlySame',
+      'LeftCurlyEol',
+      'com.example.checks.HouseRuleCheck',
+    ]);
   });
 });
 

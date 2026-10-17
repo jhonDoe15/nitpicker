@@ -242,7 +242,6 @@ const TESTS_FAILED = {
 };
 
 const REPORTED = [
-  'errorprone JavaUtilDate Shapes.java',
   'forbiddenapis legacy-date-time Shapes.java',
   'google-java-format format Messy.java',
   'jacoco changed-branch-coverage Shapes.java',

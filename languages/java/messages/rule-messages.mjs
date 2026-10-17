@@ -16,7 +16,7 @@ const ROUTED = new Set([
   'comments',
 ]);
 const CHECKSTYLE_CHECK =
-  /^com\.puppycrawl\.tools\.checkstyle\.checks\.(?:\w+\.)*(\w+?)(?:Check)?$/u;
+  /^com\.puppycrawl\.tools\.checkstyle\.checks\.(?:\w+\.)*(\w+?)(?:Check)?(?:#(\w+))?$/u;
 const SENTENCE_END = /[.!?;]$/u;
 const CONFIG_FILE = 'nitpicker.config.json';
 
@@ -25,7 +25,8 @@ export function readCatalog(tool) {
 }
 
 export function checkstyleRuleName(source) {
-  return CHECKSTYLE_CHECK.exec(source)?.[1] ?? source;
+  const match = CHECKSTYLE_CHECK.exec(source);
+  return match === null ? source : (match[2] ?? match[1]);
 }
 
 export function withRuleMessage(finding, { preset = 'java' } = {}) {
