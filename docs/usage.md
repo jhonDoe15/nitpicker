@@ -484,7 +484,9 @@ new and touched code must comply.
   per case), no `forEach`, no `.then()/.catch()/.finally()` chains, and no `as` (except `as const`)
   or `<Type>value`. `nitpicker/no-partial-output-assertion` also rejects `toMatchObject` and
   `expect.objectContaining`, `expect.stringContaining` and `expect.arrayContaining` inside
-  `toEqual`/`toStrictEqual`: assert the whole value.
+  `toEqual`/`toStrictEqual`, and the same fragments under `node:test` and Chai
+  (`assert.ok(text.includes('x'))`, `assert.partialDeepStrictEqual`, `expect(x).to.include('x')`,
+  `containSubset`): assert the whole value.
 - **Layout**: features live in `src/main/features/<name>/` and are imported only through their
   `index.ts`; shared code does not import features; features do not import the composition root
   (`src/main/composition-root.ts`); no import cycles; objects are constructed only in the
@@ -729,12 +731,49 @@ Lint follows the runner too: test files get the same strictness under every runn
 `@vitest/eslint-plugin` for Vitest and `eslint-plugin-jest`'s structural rules for Jest (`jest/`),
 `node:test` (`node-test/`) and Mocha (`mocha/`). nitpicker's own test rules know each runner's
 mocks, fake timers and timeouts, and their messages name that runner's API. Type checks use the
-runner's globals (`@types/jest` or `@types/mocha` when installed), and Jest's `testEnvironment`
-decides which tests run in the DOM.
+runner's globals (`@types/jest` or `@types/mocha` when installed).
+
+Which files are tests follows the runner as well. nitpicker reads the runner's test file patterns
+from the head checkout and records them in the head policy as `tools.tests.testFiles`, so the base
+and the head use the same ones and the policy hash includes them:
+
+- **Vitest**: `*.test.*` and `*.spec.*`, plus the config's `test.include` and `test.exclude`.
+- **Jest**: the config's `testMatch`, `testRegex` and `testPathIgnorePatterns`, read with
+  `jest --showConfig` through the test script's options (`--config`) and its launcher
+  (`react-scripts test`, `craco test`), so a Create React App or craco project is read with the
+  config those tools build; else Jest's defaults, `__tests__/` and `*.test.*`/`*.spec.*`.
+- **`node:test`**: the patterns the `node --test` script names, else Node's defaults: `*.test.*`,
+  `*-test.*`, `*_test.*`, `test-*.*`, `test.*` and every file under a `test/` folder.
+- **Mocha**: the spec of the script, `.mocharc.*` or `package.json`, else `test/*.{js,cjs,mjs}`.
+
+A file under the source roots that matches those patterns is a test, not production code: the test
+lint rules apply to it, coverage, CRAP and mutation leave it out, the test-runtime analysis times it,
+and the dependency architecture rules treat it as a test (a colocated `greet-test.js` in `domain/`
+is not held to the domain rules, and production code may not import it). The message of
+`nitpicker/test-must-use-production-runtime` names the runner's naming when it sends a shared
+helper to a file that is not a test. Globs are matched as globs. A Jest config that finds its tests
+only through `testRegex` is matched against the project's files, and the tools that take globs or
+paths (ESLint, dependency-cruiser) get the matching files by their literal paths.
 
 With Jest, `node:test` and Mocha any file under the test roots counts as a test when nitpicker
 decides whether coverage runs; with Vitest only `*.test.*` and `*.spec.*` files do. A runner that
 runs no test while nitpicker sees test files is a tool error that names one of them.
+
+Which tests run in the DOM follows the runner too. Vitest's `environment` and Jest's
+`testEnvironment` (read through the same `jest --showConfig`, project by project) set the default,
+and a `@vitest-environment` or `@jest-environment` comment sets it for one file. Mocha and
+`node:test` read no environment comment: a test file runs in the DOM when the setup that runs
+before every test file registers a global DOM, that is `global-jsdom`, `jsdom-global` or
+`@happy-dom/global-registrator` (or a local setup file that imports one) in Mocha's `require`
+(the script or `.mocharc.*`) or in the `--import` and `--require` options of the `node --test`
+script. `nitpicker/no-unused-dom-environment` reports a test file that runs in a DOM but never uses
+it. Under Vitest and Jest its message asks for a `node` environment comment, or a `node` default
+with the DOM comment on the DOM tests; under Mocha and `node:test` it asks to take the registration
+out of that setup and import it at the top of the test files that use the DOM, or to move those
+files to a separate Mocha or `node --test` run that registers it, and a test file that imports a
+registrar itself but never uses the DOM is told to remove the import. The production code of a
+project whose tests run in a DOM gets the browser globals, with the confusing ones (`event`,
+`name`, `status`, ...) restricted to `window.<name>` outside `domain/`, as in a React project.
 
 ## Adopting nitpicker on existing code
 
