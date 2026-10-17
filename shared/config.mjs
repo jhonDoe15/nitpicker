@@ -44,14 +44,7 @@ const WHOLE_NUMBER_THRESHOLD_KEYS = new Set([
 
 const EXCEPTION_KEYS = ['rule', 'paths', 'packages', 'reason'];
 
-export const TYPESCRIPT_ONLY_KEYS = [
-  'layout',
-  'exceptions',
-  'react',
-  'i18n',
-  'tools',
-  'testConsole',
-];
+export const TYPESCRIPT_ONLY_KEYS = ['layout', 'exceptions', 'react', 'i18n', 'tools'];
 
 export function configError(message) {
   return new Error(`${CONFIG_FILE_NAME}: ${message}`);

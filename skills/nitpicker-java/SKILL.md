@@ -39,6 +39,9 @@ forms below from the start; the gate is a backstop.
 
 With Spring on the classpath, also follow [spring.md](spring.md).
 
+Before you change code other modules use, or fix a bug, read
+[beyond-the-gate.md](beyond-the-gate.md).
+
 ## Write it this way
 
 - Style is google-java-format, 100 columns, unless the project formats with palantir-java-format
@@ -64,6 +67,14 @@ With Spring on the classpath, also follow [spring.md](spring.md).
   `data.clone()` or `List.copyOf(items)`, and copy in the constructor.
 - Data and results: `record` for data, a `sealed interface` of records for an outcome, and an
   exhaustive `switch` expression over it. A `switch` statement needs `default`.
+- Enums: to sort the constants of one of your enums into two groups, classify every constant: a
+  `switch` expression without `default`, or a field each constant declares (`PAID(true)`). Not
+  `s == PAID || s == SHIPPED` or `EnumSet.of(...).contains(s)` (`ExhaustiveEnumPredicate`).
+- No static method that only passes its parameters on to another method; call that method.
+  Factories named `of` or `from` and copies such as `List.copyOf` are fine.
+- A record or `@ConfigurationProperties` class (and the classes nested in it) has `tags` or `tag`,
+  not both; one item is a one-element list.
+- A main class only tests use belongs in the test sources (`coupling/test-only-export`).
 - Resources: try-with-resources for anything `Closeable`. No `finally` that returns or throws.
 - Utility classes: a `final` class of static methods with a `private` empty constructor.
 - Dependencies between packages follow the project's ArchUnit rules (classes named `*ArchTest` or
@@ -113,10 +124,22 @@ With Spring on the classpath, also follow [spring.md](spring.md).
   cannot be told apart takes an exception for `pit/mutant-survived`.
 - Plan tests to be fast (`test-runtime/slow-test`): a fake clock instead of `Thread.sleep`, a test
   slice instead of `@SpringBootTest`.
+- Never wait a fixed time (`FixedSleepInTest`): wait on the condition with Awaitility when the
+  tests use it (`await().atMost(Duration.ofSeconds(5)).until(...)`), otherwise in a loop against a
+  deadline; `verify(mock, timeout(1000))` for a mock, not `after(1000)`. `parkNanos` and
+  `pollDelay(...).until(() -> true)` are fixed waits too. `join(ms)` and `wait(ms)` are timed
+  waits: they return early, but the test goes on unchecked when the time runs out, so assert the
+  result of `join(Duration)` or of a latch `await`. A sleep that simulates slow work in a mock
+  answer, a thread body or a test fake that implements or extends a main class is fine. To
+  show something does not happen, give the code a `Clock` or scheduler the test moves forward, not
+  `after(ms).never()` or `during(...)` (`NegativeWaitInTest`).
+- Tests print nothing new (`test-runtime/test-console-output`): no `System.out`/`System.err`, and
+  no new `WARN` or `ERROR` log line from the code under test. Fix the cause the line names.
 - Tests get the same PMD, Checkstyle, Error Prone and formatter checks as main code, plus the file
   (500 lines) and folder (6 files) limits. SpotBugs, the method limits, CRAP and duplicate detection
   read main sources only. In a test, use `assertThrows` instead of a try/catch. Spring rules apply
-  to main sources only. If a PMD rule or an Error Prone check flags test code that is right, add an
+  to main sources only, as do the enum predicate, forwarding wrapper and singular-and-plural rules.
+  If a PMD rule or an Error Prone check flags test code that is right, add an
   exception for `pmd/<rule>` or `errorprone/<Check>`.
 
 ## Editing existing code
