@@ -600,9 +600,13 @@ new and touched code must comply.
   Node I/O, network or database clients, loggers or module state.
 - **`features/<name>/adapters/`** does the I/O: throw only `Error` subclasses that keep `cause`, no
   silent catch (rethrow with `{ cause }` or return the caught value in the failure result), and
-  parse untrusted input once at the boundary with [zod](https://zod.dev), validating every field
-  (no `z.unknown()` or `z.any()` fields in `z.object`). zod is
-  an expectation of the preset, not a dependency of nitpicker: install it in your project.
+  parse untrusted input once at the boundary with a schema library, validating every field
+  (no `z.unknown()` or `z.any()` fields in `z.object`). The library is the one in your
+  `package.json` (zod, valibot, yup, joi, io-ts, arktype, class-validator, ajv, typebox,
+  superstruct, runtypes, typia, effect or valita); with none installed the messages name
+  [zod](https://zod.dev), an expectation of the preset, not a dependency of nitpicker. The
+  catch-logging rule follows the project's logger the same way. See
+  [Libraries follow the project](typescript-strict-preset.md#libraries-follow-the-project).
 - **All production code** has no recursion: a function that calls itself is flagged (use `map`,
   `flatMap` and friends, or a `for...of` loop for a retry outside `domain/`).
 - **Touched code**: a strict-rule finding that exists on the base stays baselined while its file's
