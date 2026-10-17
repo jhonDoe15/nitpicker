@@ -51,7 +51,7 @@
     "languages/typescript/preset/structure/fixtures/**",
     "languages/typescript/preset/test-runtime/fixtures/**"
   ],
-  "disable": ["typescript-typecheck", "coverage", "test-console", "crap", "mutation"],
+  "disable": ["typescript-typecheck", "coverage", "crap", "mutation"],
   "exceptions": [
     {
       "rule": "nitpicker/no-node-process-per-test",

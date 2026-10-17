@@ -16,6 +16,14 @@ const IDENTIFIER_PATTERN =
 const NUMBER_PATTERN =
   /(?<![A-Za-z_$])\d+(?:[.,]\d+)*(?:%|\s?(?:ms|s|sec|secs|seconds?|min|minutes?|hours?|[kmg]i?b|bytes?)\b)?/giu;
 
+const TEMPORARY_NAME_PATTERN =
+  /(?<![A-Za-z0-9_])tmp(?:[a-z0-9_]{6,}|[.-][A-Za-z0-9]{6,})(?![A-Za-z0-9_])/gu;
+
+const TEMPORARY_DIRECTORY_PATTERN = /^(?:<tmp>|\/(?:var\/)?tmp)(?:[\\/]|$)/u;
+
+const RANDOM_SUFFIX_NAME_PATTERN =
+  /^(?:[\w.@+~$%-]*[-_.][A-Za-z0-9]{6}|(?=[a-z]*[A-Z0-9])[A-Za-z0-9]{6})$/u;
+
 const PLACEHOLDER_PATTERN = /<(?:time|hex|uuid|id|n|root|tmp|home)>/gu;
 
 const MIN_SPECIFIC_CHARACTERS = 3;
@@ -23,12 +31,16 @@ const MIN_SPECIFIC_CHARACTERS = 3;
 const MAX_MESSAGE_LENGTH = 300;
 
 function lastSegment(match) {
-  return match.split(/[\\/]/u).at(-1);
+  const name = match.split(/[\\/]/u).at(-1);
+  return TEMPORARY_DIRECTORY_PATTERN.test(match) && RANDOM_SUFFIX_NAME_PATTERN.test(name)
+    ? '<id>'
+    : name;
 }
 
 export function normalizeConsoleMessage(line) {
   return stripAnsi(line)
     .replaceAll(ABSOLUTE_PATH_PATTERN, lastSegment)
+    .replaceAll(TEMPORARY_NAME_PATTERN, '<id>')
     .replaceAll(TIMESTAMP_PATTERN, '<time>')
     .replaceAll(HEX_PATTERN, '<hex>')
     .replaceAll(UUID_PATTERN, '<uuid>')

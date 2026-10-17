@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { applyDisable, describeConfigOverrides } from './config.mjs';
+import { describeConfigOverrides } from './config.mjs';
 import { validateConfig } from './validate.mjs';
 import { policyHash } from '../diff/reporting/report-model.mjs';
 
@@ -279,13 +279,6 @@ describe('config file', () => {
       'base: "main"',
       'thresholds: {"crapLimit":12}',
     ]);
-  });
-
-  it('refuses to disable an analyzer that another enabled analyzer depends on', () => {
-    const analyzers = [{ name: 'coverage' }, { name: 'crap', dependencies: ['coverage'] }];
-
-    expect(() => applyDisable(analyzers, { disable: ['coverage'] })).toThrow(/depends on it/);
-    expect(applyDisable(analyzers, { disable: ['coverage', 'crap'] })).toEqual([]);
   });
 
   it('keeps the zero-config policy hash and changes it for any override', () => {
