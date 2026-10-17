@@ -16,10 +16,8 @@ const tester = new RuleTester({
   languageOptions: { ecmaVersion: 'latest', sourceType: 'module', parser: tseslint.parser },
 });
 
-const EXCEPTION =
-  'If this is legitimate, add an exception for nitpicker/structured-catch-logging in nitpicker.config.json.';
-const VALUE_MESSAGE = `Pass the caught value itself to the logger, for example logger.error('message', error), not its message or a template string. ${EXCEPTION}`;
-const EITHER_MESSAGE = `Log a caught value as logger.<level>({ err: error, ...context }, message), or pass the caught value itself, for example logger.error('message', error). ${EXCEPTION}`;
+const VALUE_MESSAGE = `Pass the caught value itself to the logger, for example logger.error('message', error), not its message or a template string`;
+const EITHER_MESSAGE = `Log a caught value as logger.<level>({ err: error, ...context }, message), or pass the caught value itself, for example logger.error('message', error)`;
 const ERR_MESSAGE = 'Log a caught value as logger.<level>({ err: error, ...context }, message).';
 
 function inCatch(call) {
