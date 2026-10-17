@@ -133,17 +133,25 @@ Before you change code other modules use, fix a bug, or add a UI state, read
 - Test features through their `index.ts` with fakes: plain functions returning
   `Promise.resolve(x)` / `Promise.reject(error)`; a non-Error rejection is
   `vi.fn().mockRejectedValue(42)` (`jest.fn()` under Jest, `mock.fn(async () => { throw 42; })`
-  under `node:test`), a non-Error throw is `const value: unknown = 7; throw value;`.
+  under `node:test`, `sinon.stub().rejects(42)` under Mocha with sinon), a non-Error throw is
+  `const value: unknown = 7; throw value;`.
   Read a fake's calls through a helper that throws when the call is missing, not `calls[n]?.`. Spy on `process.stdout` only to test composition-root wiring,
   and give it a real temp file (`mkdtemp`) rather than `vi.mock` of `node:` modules (`jest.mock`,
-  `mock.module` and the other runners' module mocks count too). The gate restores spies; restore
-  fake timers with `vi.useRealTimers()` in `afterEach` (`jest.useRealTimers()`, `mock.timers.reset()`).
+  `mock.module`, `proxyquire`, `esmock` and the other runners' module mocks count too). After each
+  test the gate restores spies and stubs: Vitest's and Jest's mocks, the shared `node:test` `mock`
+  (`mock.restoreAll()`), and sinon's under Mocha (`sinon.restore()`, when the project has sinon).
+  Restore fake timers yourself in `afterEach`: `vi.useRealTimers()` (`jest.useRealTimers()`,
+  `mock.timers.reset()`, `clock.restore()` for a sinon clock).
 - The gate runs your tests with the runner the project uses, found from its `test` script, a runner
   config file or a dependency, and the same test rules apply to Vitest, Jest, `node:test` and Mocha;
   only the names differ. Examples in this guide are Vitest.
-- Assert whole outputs with `toEqual`/`toBe`, not `toContain`, `toMatchObject` or `expect.any`.
-  Write `expect` in the test body; asserting helpers don't count. Repeated cases are `it.each`,
-  not loops. The rules above (`for...of` only, no `.then()`, no `as`) apply to tests too.
+- Assert whole outputs with `toEqual`/`toBe` (`assert.deepStrictEqual`/`assert.equal`, chai's
+  `expect(x).to.deep.equal`), not `toContain`, `toMatchObject` or `expect.any`. Write the assertion
+  (`expect`, or `assert` under `node:test` and Mocha) in the test body; asserting helpers don't
+  count. Repeated cases are `it.each`; `node:test` and Mocha have no `it.each`, so there write
+  `for (const testCase of cases) { it(testCase.name, () => { ... }); }`, not a loop inside one test.
+  Shared setup goes in `beforeAll` (`before` under `node:test` and Mocha). The rules above
+  (`for...of` only, no `.then()`, no `as`) apply to tests too.
 - A shared helper (stdout capture) lives once, in a non-test file such as `test/support/stdout.ts`.
   When an existing test defines the same helper, make it import the shared one.
 - Test roots are `test/`, `tests/`, `__tests__/` and `e2e/` at the repo root. A Playwright or Cypress

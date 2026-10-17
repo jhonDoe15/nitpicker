@@ -14,6 +14,28 @@ function writeProjectFile(root, file, text) {
   writeFileSync(target, typeof text === 'string' ? text : JSON.stringify(text));
 }
 
+const PACKAGE_MODULES = path.join(PACKAGE_ROOT, 'node_modules');
+
+function packageIn(modules, name) {
+  const file = path.resolve(modules, name);
+  if (!file.startsWith(`${modules}${path.sep}`)) {
+    throw new Error(`Linked package is outside node_modules: ${name}`);
+  }
+  return file;
+}
+
+function linkPackages(root, linkDependencies) {
+  const modules = path.join(root, 'node_modules');
+  if (linkDependencies === true) {
+    symlinkSync(PACKAGE_MODULES, modules, 'dir');
+    return;
+  }
+  for (const name of linkDependencies || []) {
+    mkdirSync(modules, { recursive: true });
+    symlinkSync(packageIn(PACKAGE_MODULES, name), packageIn(modules, name), 'dir');
+  }
+}
+
 export function createRunnerProjects() {
   const parents = [];
   return {
@@ -24,13 +46,7 @@ export function createRunnerProjects() {
       for (const [file, text] of Object.entries(files)) {
         writeProjectFile(root, file, text);
       }
-      if (linkDependencies) {
-        symlinkSync(
-          path.join(PACKAGE_ROOT, 'node_modules'),
-          path.join(root, 'node_modules'),
-          'dir',
-        );
-      }
+      linkPackages(root, linkDependencies);
       return root;
     },
     remove() {

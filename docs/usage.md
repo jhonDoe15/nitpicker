@@ -335,7 +335,8 @@ Set `"preset": "javascript"` to gate a project of plain `.js`, `.mjs` and `.cjs`
 checks, rules and exit codes as the TypeScript preset; the keys `layout`, `exceptions` and `tools` work the same.
 It is never auto-detected. Types are written as JSDoc and checked by TypeScript with `allowJs` and
 `checkJs`: nitpicker generates the tsconfig, layered over your `tsconfig.json` or `jsconfig.json` when you
-have one. `typescript` and `vitest` are peers as for TypeScript.
+have one. `typescript` and the project's test runner (Vitest with `@vitest/coverage-v8`, Jest,
+`node:test` or Mocha) are peers as for TypeScript.
 
 What the preset does not support:
 
@@ -647,16 +648,27 @@ To always type check with the project's own TypeScript, set the engine:
 ### Test runners
 
 Coverage, CRAP and mutation run the project's tests with the runner the project already uses:
-Vitest, Jest, `node:test` or Mocha. nitpicker picks the first of:
+Vitest, Jest, `node:test` or Mocha. nitpicker goes through these steps in order and takes the runner
+from the first step that names one. When a step names more than one runner, nitpicker stops with an
+error that asks you to set `tools.tests.runner`, instead of picking one of them.
 
 1. `tools.tests.runner` in `nitpicker.config.json`: `"vitest"`, `"jest"`, `"node"` or `"mocha"`.
-2. The runner the `test` script in `package.json` calls, following `npm run <name>`, then the other
-   `test*` scripts. `react-scripts test` and `craco test` are Jest, `ts-mocha` is Mocha with
-   `ts-node`, and `tsx --test` is `node:test` with the `tsx` loader.
-3. The runner's config: `vitest.config.*` or `vitest.workspace.*`, `jest.config.*` or a `jest` key
-   in `package.json`, `.mocharc.*` or a `mocha` key in `package.json`.
-4. The runner in `dependencies` or `devDependencies`.
-5. Vitest.
+2. The runner the `test` script in `package.json` calls, following `npm run <name>`.
+   `react-scripts test` and `craco test` are Jest, `ts-mocha` is Mocha with `ts-node`, and
+   `tsx --test` is `node:test` with the `tsx` loader.
+3. The runners the other `test*` scripts call, together with the runners' config files:
+   `vitest.config.*` or `vitest.workspace.*`, `jest.config.*` or a `jest` key in `package.json`,
+   `.mocharc.*` or a `mocha` key in `package.json`.
+4. The runner the test files import: `vitest`, `@jest/globals`, `mocha` or `node:test`. Each test
+   file counts once, however often it imports the runner.
+5. The runner in `dependencies` or `devDependencies`. `ts-jest`, `babel-jest`, `@jest/globals`,
+   `react-scripts` and `@craco/craco` count as Jest.
+6. Vitest.
+
+The base snapshot is detected the same way. When the base commit uses another runner, its tests run
+with that runner if it is installed in the project; otherwise the base coverage and CRAP are skipped
+with a notice. The `test-only-export` check leaves out the `jest*` and `vitest*` config files and
+`.mocharc.*`, whichever runner the project uses.
 
 From the script nitpicker also takes the environment variables (`NODE_ENV=test`, also through
 `cross-env`), the Node options before the runner (`node --import tsx --test`) and the runner's own
@@ -691,12 +703,14 @@ after another), and they must pass for coverage, CRAP and mutation to run.
   the script names none) and the test files under the test roots. TypeScript tests run with Node's
   type stripping (Node's transform mode for enums, namespaces and parameter properties), or with
   the loader the script names, such as `tsx` or `ts-node/register`. Each test file runs once. A
-  failing `before` hook shows its error on the tests it cancelled. Mutation uses Stryker's tap
-  runner.
+  failing `before` hook shows its error on the tests it cancelled. nitpicker preloads a module that
+  restores the shared `mock` (`mock.restoreAll()`) after every test. Mutation uses Stryker's tap
+  runner, with the same preload.
 - **Mocha** runs with the project's `.mocharc.*`, the script's options and specs, and the test
   files under the test roots. Loaders such as `ts-node/register` and `tsx` work in-process and in
   the child process Mocha starts for Node options. A test file that fails to load is reported as
-  that file failing. Mutation uses Stryker's Mocha runner with the options Mocha itself merges
+  that file failing. When the project has sinon, a root hook plugin nitpicker adds runs
+  `sinon.restore()` after every test. Mutation uses Stryker's Mocha runner with the options Mocha itself merges
   from the script, `.mocharc.*` and `package.json`; Stryker's Mocha runner supports Mocha up to 11,
   so on Mocha 12 mutation is skipped with a notice while coverage and CRAP still run.
 
