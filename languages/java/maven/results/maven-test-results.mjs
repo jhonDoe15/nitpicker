@@ -1,6 +1,5 @@
 import { childrenNamed, parseXml } from '../../ingest/common.mjs';
-import { readFileSync } from 'node:fs';
-import { copyFileSync, existsSync, mkdirSync, readdirSync, statSync } from 'node:fs';
+import { copyFileSync, existsSync, mkdirSync, readdirSync, readFileSync, statSync } from 'node:fs';
 import path from 'node:path';
 import { TEST_RESULTS_DIRECTORY } from '../../adapters/test-times/slow-tests.mjs';
 import { pitTests, suiteNameOf, testReportDirectories } from '../maven-tests.mjs';
