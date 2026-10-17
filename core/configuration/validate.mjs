@@ -95,8 +95,8 @@ function validateScalars(config) {
   validatePythonConfig(
     config,
     liftsOnlyRules(config.exceptions, PYTHON_TOP_LEVEL_EXCEPTION_RULES)
-      ? TYPESCRIPT_ONLY_KEYS.filter((key) => key !== 'exceptions')
-      : TYPESCRIPT_ONLY_KEYS,
+      ? TYPESCRIPT_ONLY_KEYS.filter((key) => !['exceptions', 'tools'].includes(key))
+      : TYPESCRIPT_ONLY_KEYS.filter((key) => key !== 'tools'),
   );
 }
 
