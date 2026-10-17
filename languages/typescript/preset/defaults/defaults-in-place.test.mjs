@@ -50,6 +50,7 @@ const POLICY_PATHS = [
   'languages/typescript/adapters/quality-areas',
   'languages/typescript/adapters/eslint',
   'languages/typescript/adapters/immutable-types',
+  'languages/typescript/adapters/test-runners/jest',
   'languages/typescript/preset/syntax',
   'languages/typescript/preset/modules',
   'languages/typescript/preset/test-environment',

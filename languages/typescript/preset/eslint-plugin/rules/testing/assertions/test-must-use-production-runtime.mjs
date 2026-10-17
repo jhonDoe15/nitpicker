@@ -11,7 +11,6 @@ const layout = readLayout();
 const { testRoots } = layout;
 
 const DEFAULT_EXEMPT_PATTERN = String.raw`/(?:${testRoots.join('|')})/contract/|\.policy\.test\.[cm]?[jt]s$`;
-const RUNNABLE_TEST = /\.(?:test|spec)\.[cm]?[jt]sx?$/;
 const TEST_SUPPORT = new RegExp(
   `(?:^|/)(?:__tests__|fixtures)(?:/|$)|^(?:${testRoots.join('|')})(?:/|$)|\\.(?:test|spec)\\.[cm]?[jt]sx?$`,
 );
@@ -79,10 +78,11 @@ function isProductionModule(filename, source) {
       : (resolveModule(filename, source) ?? '')
   ).replaceAll('\\', '/');
   const resolvedRoot = layout.sourceRootOf(`${resolved}/`);
-  return (
-    resolvedRoot !== undefined &&
-    !TEST_SUPPORT.test(resolved.slice(resolved.indexOf(`/${resolvedRoot}/`) + 1))
-  );
+  if (resolvedRoot === undefined) {
+    return false;
+  }
+  const rootRelative = resolved.slice(resolved.indexOf(`/${resolvedRoot}/`) + 1);
+  return !TEST_SUPPORT.test(rootRelative) && !layout.isTestFile(rootRelative);
 }
 
 function reachesProduction(filename, source) {
@@ -107,7 +107,7 @@ function isExemptTest(context, filename) {
   const exemptTest = new RegExp(context.options[0]?.exemptPattern ?? DEFAULT_EXEMPT_PATTERN);
   const projectFile = path.relative(context.cwd, filename).replaceAll('\\', '/');
   return (
-    !RUNNABLE_TEST.test(filename) ||
+    !(layout.isRunnerTestFile(projectFile) || layout.isRunnerTestFile(filename)) ||
     exemptTest.test(filename) ||
     isBrowserEndToEndTest({
       sources: context.sourceCode.ast.body.flatMap(statementSources),

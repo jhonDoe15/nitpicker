@@ -53,3 +53,23 @@ export function runNitpicker(root, argumentsList) {
 export function readReport(root, ...segments) {
   return JSON.parse(readFileSync(path.join(root, ...segments), 'utf8'));
 }
+
+export function runSnapshot(root, extraArguments = []) {
+  const result = runNitpicker(root, [
+    '--all',
+    '--output',
+    path.join(root, 'reports/snapshot'),
+    ...extraArguments,
+  ]);
+  return {
+    ...result,
+    summary: readReport(root, 'reports/snapshot/summary.json'),
+    toolErrors: readReport(root, 'reports/snapshot/tool-errors.json'),
+    findings: readReport(root, 'reports/snapshot/findings.json'),
+  };
+}
+
+export function metricValue(findings, tool, identity) {
+  return findings.find((finding) => finding.tool === tool && finding.identity === identity)?.metric
+    .value;
+}

@@ -15,7 +15,7 @@ function environmentName(testEnvironment) {
   return ENVIRONMENT_NAMES.find(([, pattern]) => pattern.test(normalized))?.[0];
 }
 
-function stringList(value) {
+export function stringList(value) {
   return Array.isArray(value) ? value.filter((item) => typeof item === 'string') : [];
 }
 
@@ -33,7 +33,7 @@ function aliasesOf(config) {
     .map(({ pattern, replacement }) => ({ find: { pattern, flags: '' }, replacement }));
 }
 
-function relativeGlob(projectRoot, rootDir, pattern) {
+export function relativeGlob(projectRoot, rootDir, pattern) {
   if (path.isAbsolute(pattern)) {
     return path.relative(projectRoot, pattern).split(path.sep).join('/');
   }

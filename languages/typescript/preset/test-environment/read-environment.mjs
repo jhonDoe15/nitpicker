@@ -3,7 +3,7 @@ import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { chainOf } from '../../../../shared/traversal.mjs';
 import { aliasesFromConfig } from './aliases.mjs';
-import { environmentsFromConfig } from './environments.mjs';
+import { environmentsFromConfig, testFilesFromConfig } from './environments.mjs';
 
 export const RESULT_MARKER = 'NITPICKER_TEST_ENVIRONMENT_RESULT ';
 
@@ -54,8 +54,11 @@ export async function readEnvironment({ configFile, projectRoot, resolveRoots })
   );
   const config = loaded?.config;
   return {
-    ...environmentsFromConfig(config, projectRoot),
-    aliases: aliasesFromConfig(config, projectRoot),
+    environments: {
+      ...environmentsFromConfig(config, projectRoot),
+      aliases: aliasesFromConfig(config, projectRoot),
+    },
+    testFiles: testFilesFromConfig(config, projectRoot),
   };
 }
 
