@@ -17,6 +17,7 @@
 //   sources.txt          one path per line: what `ruff check --show-files` lists (default: every
 //                        .py file below the project, except .venv)
 //   type-errors.txt      printed by mypy as its report (exit 1 when not empty)
+//   mypy-version.txt     the version mypy prints for --version (default 1.13.0)
 //   pyright.json         { generalDiagnostics } printed by pyright and basedpyright as their
 //                        report, relative files made absolute (exit 1 when it has diagnostics)
 //   rules.json           written by the nitpicker rules script (default: no findings)
@@ -189,7 +190,7 @@ function coverage() {
 
 function mypy() {
   if (args[0] === '--version') {
-    process.stdout.write('mypy 1.13.0 (compiled: yes)\n');
+    process.stdout.write(`mypy ${lines('mypy-version.txt')[0] ?? '1.13.0'} (compiled: yes)\n`);
     return;
   }
   const report = existsSync('type-errors.txt') ? readFileSync('type-errors.txt', 'utf8') : '';
