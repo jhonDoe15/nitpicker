@@ -1,6 +1,7 @@
 import { globToRegExp } from '../../../shared/glob.mjs';
 import { resolveLayoutFor } from '../../../languages/typescript/preset/layout.mjs';
-import { isUnder } from '../policy-scope.mjs';
+import { isUnder, matcherOf } from '../policy-scope.mjs';
+import { duplicateFolderExclusions } from './duplicate-folders.mjs';
 
 const EXCLUSIONS = 'exclude and layout.excludedGlobs';
 
@@ -75,6 +76,17 @@ function testRootSet(baseConfig, headConfig) {
   };
 }
 
+function duplicateFolderSet(baseConfig, headConfig) {
+  const [base, head] = [baseConfig, headConfig].map((config) =>
+    duplicateFolderExclusions(config, headConfig.preset ?? 'typescript').map(({ glob }) => glob),
+  );
+  return {
+    ...globSet('duplicates.skippedFolders', [base, head], false),
+    establishedInBase:
+      baseConfig.duplicates?.skippedFolders === undefined ? matcherOf(base) : () => false,
+  };
+}
+
 export function hidingSets(baseConfig, headConfig, scope) {
   return [
     globSet(
@@ -84,6 +96,7 @@ export function hidingSets(baseConfig, headConfig, scope) {
       ),
       true,
     ),
+    duplicateFolderSet(baseConfig, headConfig),
     ...exceptionSets('exceptions', [baseConfig.exceptions, headConfig.exceptions]),
     ...exceptionSets('python.exceptions', [
       baseConfig.python?.exceptions,
