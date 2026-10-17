@@ -51,5 +51,7 @@ jobs:
       # The suite finds ruff, black, mypy, pyright, basedpyright, coverage, pytest and uv on the PATH and builds the
       # environments of its sample projects with uv.
       - run: pip install -c .github/python-e2e-constraints.txt basedpyright black coverage mypy pyright pytest ruff uv
+      # The base-environment tests install real projects with poetry and uv.
+      - run: pipx install poetry==2.4.3
       - run: npm ci
       - run: npm run test:python

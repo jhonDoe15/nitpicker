@@ -13,7 +13,7 @@ import { PYTHON_SIZE_RULES } from '../../../../shared/project-rules/size-rules.m
 export const PYTHON_TOP_LEVEL_EXCEPTION_RULES = [...SHARED_EXCEPTION_RULES, ...PYTHON_SIZE_RULES];
 import { ruleIdProblem } from './python-rule-ids.mjs';
 
-const ENVIRONMENTS = ['uv', 'poetry', 'path'];
+const ENVIRONMENTS = ['uv', 'poetry', 'path', 'pipenv', 'hatch', 'conda'];
 const FORMATTERS = ['ruff', 'black'];
 const TEST_RUNNERS = ['pytest', 'unittest', 'django', 'nose2'];
 const TYPE_CHECKERS = ['mypy', 'pyright', 'basedpyright'];
