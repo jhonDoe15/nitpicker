@@ -1214,7 +1214,7 @@ from a real caller) and the `exceptions` entry that lifts it.
   and `<sourceRoot>/main/features/*/adapters/**`. They follow the layout's source roots.
 - The boundary rules (`languages/typescript/preset/architecture/strict-boundary-rules.mjs`) are part of the default
   dependency-cruiser config used by the `dependency-architecture` analyzer.
-- `src/main/composition-root.{ts,mts,js,mjs}` and `src/main/composition-root/index.*` are knip entry
+- `src/main/composition-root.{ts,tsx,mts,js,jsx,mjs}` and `src/main/composition-root/index.*` are knip entry
   points, since nothing imports the composition root.
 - Touched code is enforced by the diff engine (see "How touched code is detected").
 - Exceptions go through `exceptions` in `nitpicker.config.json`. An exception names one rule id and
