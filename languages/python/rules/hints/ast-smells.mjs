@@ -1,5 +1,29 @@
 import { RULES_TOOL } from './tool.mjs';
 
+const EXPECTED_FAILURES = /xfail|expectedFailure/u;
+
+function skipDescription(subject) {
+  if (subject.startsWith('return in ')) {
+    return `\`${subject}\` skips the rest of a test without saying so`;
+  }
+  return EXPECTED_FAILURES.test(subject)
+    ? `\`${subject}\` marks a test as expected to fail without a reason`
+    : `\`${subject}\` skips a test without a reason`;
+}
+
+function skipAllowed(subject) {
+  if (subject.startsWith('return in ')) {
+    return 'Skip visibly: `@pytest.mark.skipif(sys.platform == "win32", reason="posix only")` or `pytest.skip("...")` (`self.skipTest("...")` in unittest).';
+  }
+  if (EXPECTED_FAILURES.test(subject)) {
+    return 'Give the reason and the expected error: `@pytest.mark.xfail(reason="bug 123", raises=ZeroDivisionError, strict=True)`; or fix or delete the test.';
+  }
+  if (subject.startsWith('unittest.') || subject === 'skipTest()' || subject === 'SkipTest') {
+    return 'Give the reason: `@unittest.skip("needs the staging database")`, `self.skipTest("...")`; or fix or delete the test.';
+  }
+  return 'Give the reason: `@pytest.mark.skip(reason="needs the staging database")`, `pytest.skip("...")`; or fix or delete the test.';
+}
+
 export const SMELL_HINTS = [
   {
     tool: RULES_TOOL,
@@ -46,9 +70,8 @@ export const SMELL_HINTS = [
   {
     tool: RULES_TOOL,
     rules: ['skipped-test-without-reason'],
-    describe: (subject) => `\`${subject}\` skips a test without a reason`,
-    allowed:
-      'Give the reason: `@pytest.mark.skip(reason="needs the staging database")`, `pytest.skip("...")`; or fix or delete the test.',
+    describe: (subject) => skipDescription(subject),
+    allowed: (subject) => skipAllowed(subject),
   },
   {
     tool: RULES_TOOL,

@@ -4,6 +4,8 @@ import {
   tomlTable,
 } from '../../adapters/configuration/project-files.mjs';
 
+export const DEFAULT_LIBRARIES = Object.freeze({ logging: 'logging', validator: 'pydantic' });
+
 const REQUIREMENT_FOLDERS = ['requirements', 'requirements-dev', 'reqs'];
 const REQUIREMENT_FILE = /\.(?:txt|in)$/u;
 const ROOT_REQUIREMENT_FILE = /^requirements.*\.(?:txt|in)$/u;
@@ -88,7 +90,7 @@ export function detectLibraries(projectRoot) {
   const names = dependencyNames(projectRoot);
   const validator = VALIDATORS.find(({ packages }) => packages.some((name) => names.has(name)));
   return {
-    logging: LOGGING_LIBRARIES.find((name) => names.has(name)) ?? 'logging',
-    validator: validator?.name ?? 'pydantic',
+    logging: LOGGING_LIBRARIES.find((name) => names.has(name)) ?? DEFAULT_LIBRARIES.logging,
+    validator: validator?.name ?? DEFAULT_LIBRARIES.validator,
   };
 }

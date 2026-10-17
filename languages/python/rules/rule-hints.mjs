@@ -4,6 +4,7 @@ import { PYTEST_HINTS } from './hints/ruff-pytest.mjs';
 import { SECURITY_HINTS } from './hints/ruff-security.mjs';
 import { STYLE_HINTS } from './hints/ruff-style.mjs';
 import { RULES_TOOL } from './hints/tool.mjs';
+import { DEFAULT_LIBRARIES } from './libraries/project-libraries.mjs';
 
 export { RULES_TOOL };
 const TYPE_CHECK_TOOLS = ['mypy', 'pyright', 'basedpyright'];
@@ -56,10 +57,15 @@ export function exceptionSentence(rule) {
   return `To allow it for some paths, add a "python.exceptions" entry for ${rule} in nitpicker.config.json.`;
 }
 
-export function describeRuleFinding(rule, subject) {
+export function describeRuleFinding(rule, subject, libraries = DEFAULT_LIBRARIES) {
   return RULE_HINTS.find((hint) => hint.tool === RULES_TOOL && hint.rules.includes(rule)).describe(
     subject,
+    libraries,
   );
+}
+
+function allowedText(hint, subject, libraries) {
+  return typeof hint.allowed === 'function' ? hint.allowed(subject, libraries) : hint.allowed;
 }
 
 export const PYTHON_RULES_IDS = RULE_HINTS.filter(({ tool }) => tool === RULES_TOOL).flatMap(
@@ -75,19 +81,20 @@ function canBeLifted(finding) {
   );
 }
 
-export function withHint(finding) {
-  const hint = hintFor(finding);
-  if (hint === undefined && !canBeLifted(finding)) {
-    return finding;
+export function withHint(finding, libraries = DEFAULT_LIBRARIES) {
+  const { subject, ...rest } = finding;
+  const hint = hintFor(rest);
+  if (hint === undefined && !canBeLifted(rest)) {
+    return rest;
   }
   const sentences = [
-    `${finding.message.replace(/\.$/, '')}.`,
-    ...(hint === undefined ? [] : [hint.allowed]),
-    ...(hint?.exception === false ? [] : [exceptionSentence(finding.rule)]),
+    `${rest.message.replace(/\.$/, '')}.`,
+    ...(hint === undefined ? [] : [allowedText(hint, subject, libraries)]),
+    ...(hint?.exception === false ? [] : [exceptionSentence(rest.rule)]),
   ];
-  return { ...finding, message: sentences.join(' ') };
+  return { ...rest, message: sentences.join(' ') };
 }
 
-export function applyRuleHints(findings) {
-  return findings.map(withHint);
+export function applyRuleHints(findings, libraries = DEFAULT_LIBRARIES) {
+  return findings.map((finding) => withHint(finding, libraries));
 }
