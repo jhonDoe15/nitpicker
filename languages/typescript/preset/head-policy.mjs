@@ -14,7 +14,7 @@ import {
   testsCleanUpAutomatically,
 } from './eslint-config/scope-support.mjs';
 import {
-  excludedGlobs,
+  builtInExcludedGlobs,
   resolveLayout,
   resolveLayoutFor,
   sourceRoots,
@@ -22,13 +22,14 @@ import {
 } from './layout.mjs';
 import { stylingApproachFor } from './eslint-config/react/react-styling.mjs';
 import { prettierConventionOptions } from '../conventions/prettier-conventions.mjs';
+import { markedGeneratedFiles } from './layout/generated-files.mjs';
 import { detectedRunnerFact } from './test-runner/detect-runner.mjs';
 import { runnerTestFiles } from './test-runner/test-files/runner-test-files.mjs';
 import { policyTestFiles } from './test-runner/test-files/test-file-patterns.mjs';
 
 export { headPolicyEnvironment, withHeadPolicyFile } from '../../../shared/head-policy.mjs';
 
-export const defaultLayout = { sourceRoots, testRoots, excludedGlobs };
+export const defaultLayout = { sourceRoots, testRoots, excludedGlobs: builtInExcludedGlobs };
 
 const PRETTIER_PROJECT_FILES = [
   '.prettierrc',
@@ -63,11 +64,8 @@ export function resolveHeadPolicy(config = {}, projectRoot) {
 
 function withProjectFacts(policy, config, projectRoot) {
   const scoped = SCOPED_PRESETS.includes(config.preset);
-  return {
-    ...policy,
-    ...(scoped ? detectedScopes(policy, projectRoot) : {}),
-    ...detectedTools(policy, scoped, projectRoot),
-  };
+  const withScopes = { ...policy, ...(scoped ? withDetectedScopes(policy, projectRoot) : {}) };
+  return { ...withScopes, ...detectedTools(withScopes, scoped, projectRoot) };
 }
 
 function testRunnerFacts(policy, projectRoot) {
@@ -96,6 +94,11 @@ function detectedTools(policy, scoped, projectRoot) {
   return Object.keys(facts).length === 0 ? {} : { tools: { ...policy.tools, ...facts } };
 }
 
+function withDetectedScopes(policy, projectRoot) {
+  const generatedFiles = markedGeneratedFiles(projectRoot);
+  return { generatedFiles, ...detectedScopes({ ...policy, generatedFiles }, projectRoot) };
+}
+
 function detectedScopes(policy, projectRoot) {
   const scopes = Object.fromEntries(
     ['react', 'i18n'].map((scope) => [
@@ -120,6 +123,40 @@ function detectedScopes(policy, projectRoot) {
       ...(styling === undefined ? {} : { styling }),
       ...(scopes.react.enabled ? { autoCleanup: testsCleanUpAutomatically(projectRoot) } : {}),
     },
+  };
+}
+
+const HEAD_CHECKOUT_FACTS = ['conventions', 'generatedFiles', 'frameworks'];
+const SCOPE_FACTS = [
+  ['react', ['enabled', 'iconPackage', 'major', 'styling', 'autoCleanup']],
+  ['i18n', ['enabled']],
+];
+
+function picked(source, keys) {
+  return Object.fromEntries(
+    keys.filter((key) => source[key] !== undefined).map((key) => [key, source[key]]),
+  );
+}
+
+function headPrettierDigest(policy, headPolicy) {
+  const digest = headPolicy.tools?.prettier?.projectConfigDigest;
+  const prettier = policy.tools?.prettier;
+  return digest === undefined || !usesProjectConfig(prettier?.precedence ?? [])
+    ? {}
+    : { tools: { ...policy.tools, prettier: { ...prettier, projectConfigDigest: digest } } };
+}
+
+export function withHeadCheckoutFacts(policy, headPolicy = {}) {
+  return {
+    ...policy,
+    ...picked(headPolicy, HEAD_CHECKOUT_FACTS),
+    ...Object.fromEntries(
+      SCOPE_FACTS.filter(([scope]) => headPolicy[scope] !== undefined).map(([scope, keys]) => [
+        scope,
+        { ...policy[scope], ...picked(headPolicy[scope], keys) },
+      ]),
+    ),
+    ...headPrettierDigest(policy, headPolicy),
   };
 }
 
@@ -164,6 +201,7 @@ export function readHeadPolicy(environment = process.env) {
     preset: policy.preset,
     tools: policy.tools ?? {},
     conventions: policy.conventions,
+    generatedFiles: policy.generatedFiles ?? [],
     frameworks: { defaultExports: [], entryPoints: [], ...policy.frameworks },
   };
 }
@@ -173,6 +211,7 @@ export function readLayout(environment = process.env) {
   return {
     ...resolveLayout(readHeadPolicyFile(environment).layout, policy.exclude, {
       javascript: isJavascriptPolicy(policy),
+      generatedFiles: policy.generatedFiles,
       testFiles: policyTestFiles(policy.tools.tests),
     }),
     entryPoints: [...(policy.layout.entryPoints ?? []), ...policy.frameworks.entryPoints],

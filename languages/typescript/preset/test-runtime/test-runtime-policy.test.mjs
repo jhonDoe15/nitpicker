@@ -35,15 +35,15 @@ describe('resolved test runtime report', () => {
     expect(report.findings).toEqual([]);
   });
 
-  it('reports type-only and missing runtimes while excluding contract and generated tests', async () => {
+  it('reports type-only and missing runtimes, excluding contract tests but not a generated folder', async () => {
     const report = await analyzeFixture('negative');
 
     expect(report.findings.map((entry) => [path.basename(entry.test), entry.category])).toEqual([
+      ['generated.test.ts', 'no-production-runtime'],
       ['none.test.ts', 'no-production-runtime'],
       ['type-only.test.ts', 'type-only-production-dependency'],
     ]);
     expect(report.exclusions).toEqual([`${fixtureRoot}/negative/tests/contract/contract.test.ts`]);
-    expect(report.tests.some((entry) => entry.test.includes('/generated/'))).toBe(false);
   });
 
   it.each([

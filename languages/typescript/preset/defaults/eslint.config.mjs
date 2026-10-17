@@ -12,7 +12,7 @@ import {
 import { applyRuleExceptions } from '../eslint-config/exceptions.mjs';
 import {
   applyJavascriptDialect,
-  javascriptRuleEntries,
+  scriptRuleEntries,
 } from '../../../javascript/preset/eslint-dialect.mjs';
 import { reactRuleIds, reactTestRuleIds } from '../eslint-config/react/react-rules.mjs';
 import {
@@ -24,7 +24,7 @@ import { readDependencyNames } from '../eslint-config/scope-support.mjs';
 import { i18nRuleIds } from '../eslint-config/i18n/i18n-rules.mjs';
 import { i18nScopeConfigFor, isI18nProject } from '../eslint-config/i18n/i18n-scope.mjs';
 import { readHeadPolicy, readLayout } from '../head-policy.mjs';
-import { withRunnerTestPaths } from '../layout.mjs';
+import { withRunnerTestPaths } from '../test-runner/test-files/test-file-patterns.mjs';
 import { testRunnerLintConfig } from '../eslint-config/runner/runner-rules.mjs';
 import { policyTestRunner } from '../test-runner/project-runner.mjs';
 import {
@@ -169,9 +169,6 @@ const applicableExceptions = policy.exceptions.filter(
 );
 
 export default applyRuleExceptions(
-  applyJavascriptDialect(
-    [...presetConfig, ...javascriptRuleEntries(policy, selectedFiles)],
-    policy,
-  ),
+  applyJavascriptDialect([...presetConfig, ...scriptRuleEntries(selectedFiles)], policy),
   applicableExceptions,
 );

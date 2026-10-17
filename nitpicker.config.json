@@ -2,7 +2,7 @@
   "preset": "typescript",
   "react": { "enabled": false },
   "layout": {
-    "sourceRoots": ["core", "languages"],
+    "sourceRoots": ["core", "languages", "shared"],
     "entryPoints": [
       "core/diff/cache/http-cache-worker.mjs",
       "core/fix/prettier-base-runner.mjs",
