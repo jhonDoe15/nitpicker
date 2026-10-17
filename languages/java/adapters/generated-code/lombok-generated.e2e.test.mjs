@@ -3,7 +3,6 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterAll, describe, expect, it } from 'vitest';
 import { collectJavaFindings } from '../java-diff.mjs';
-import { GRADLE_STEP_TIMEOUT_MS } from '../test-support/gradle-e2e.mjs';
 
 const enabled = process.env.NITPICKER_JAVA_E2E === '1';
 const gradle = process.env.NITPICKER_GRADLE ?? 'gradle';
@@ -151,41 +150,33 @@ describe.skipIf(!enabled)(
       for (const directory of roots.splice(0)) rmSync(directory, { recursive: true, force: true });
     });
 
-    it(
-      'reports no coverage or mutants for the Lombok-generated members of a Gradle project',
-      () => {
-        const root = project({
-          'settings.gradle': "rootProject.name = 'shop'\n",
-          'build.gradle': BUILD_GRADLE,
-        });
+    it('reports no coverage or mutants for the Lombok-generated members of a Gradle project', () => {
+      const root = project({
+        'settings.gradle': "rootProject.name = 'shop'\n",
+        'build.gradle': BUILD_GRADLE,
+      });
 
-        expect(coverageAndMutants(collectJavaFindings(root, { gradle, policy: {} }))).toEqual(
-          ONLY_THE_WRITTEN_CODE,
-        );
-        expect(readFileSync(path.join(root, 'lombok.config'), 'utf8')).toBe(
-          'lombok.addLombokGeneratedAnnotation = true\n',
-        );
-      },
-      GRADLE_STEP_TIMEOUT_MS,
-    );
+      expect(coverageAndMutants(collectJavaFindings(root, { gradle, policy: {} }))).toEqual(
+        ONLY_THE_WRITTEN_CODE,
+      );
+      expect(readFileSync(path.join(root, 'lombok.config'), 'utf8')).toBe(
+        'lombok.addLombokGeneratedAnnotation = true\n',
+      );
+    });
 
-    it(
-      'does the same on Maven and keeps the project own lombok.config settings',
-      () => {
-        const root = project({
-          'pom.xml': POM,
-          'lombok.config':
-            'config.stopBubbling = true\nlombok.addLombokGeneratedAnnotation = false\n',
-        });
+    it('does the same on Maven and keeps the project own lombok.config settings', () => {
+      const root = project({
+        'pom.xml': POM,
+        'lombok.config':
+          'config.stopBubbling = true\nlombok.addLombokGeneratedAnnotation = false\n',
+      });
 
-        expect(coverageAndMutants(collectJavaFindings(root, { maven, policy: {} }))).toEqual(
-          ONLY_THE_WRITTEN_CODE,
-        );
-        expect(readFileSync(path.join(root, 'lombok.config'), 'utf8')).toBe(
-          'config.stopBubbling = true\nlombok.addLombokGeneratedAnnotation = true\n',
-        );
-      },
-      GRADLE_STEP_TIMEOUT_MS,
-    );
+      expect(coverageAndMutants(collectJavaFindings(root, { maven, policy: {} }))).toEqual(
+        ONLY_THE_WRITTEN_CODE,
+      );
+      expect(readFileSync(path.join(root, 'lombok.config'), 'utf8')).toBe(
+        'config.stopBubbling = true\nlombok.addLombokGeneratedAnnotation = true\n',
+      );
+    });
   },
 );

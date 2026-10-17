@@ -3,7 +3,6 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterAll, describe, expect, it } from 'vitest';
 import { collectJavaFindings } from '../java-diff.mjs';
-import { GRADLE_STEP_TIMEOUT_MS } from '../test-support/gradle-e2e.mjs';
 import { LOOKUP, LOOKUP_TEST } from './test-support/swallowed-exception-data.mjs';
 
 const enabled = process.env.NITPICKER_JAVA_E2E === '1';
@@ -94,26 +93,18 @@ describe.skipIf(!enabled)('PMD SwallowedException', () => {
     for (const directory of roots.splice(0)) rmSync(directory, { recursive: true, force: true });
   });
 
-  it(
-    'reports a catch that only returns, continues or assigns a constant on Gradle, in tests too',
-    () => {
-      const root = project({
-        'settings.gradle': "rootProject.name = 'shop'\n",
-        'build.gradle': BUILD_GRADLE,
-      });
+  it('reports a catch that only returns, continues or assigns a constant on Gradle, in tests too', () => {
+    const root = project({
+      'settings.gradle': "rootProject.name = 'shop'\n",
+      'build.gradle': BUILD_GRADLE,
+    });
 
-      expect(swallowed(collectJavaFindings(root, { gradle, policy: {} }))).toEqual(expected);
-    },
-    GRADLE_STEP_TIMEOUT_MS,
-  );
+    expect(swallowed(collectJavaFindings(root, { gradle, policy: {} }))).toEqual(expected);
+  });
 
-  it(
-    'reports the same catches on Maven',
-    () => {
-      const root = project({ 'pom.xml': POM });
+  it('reports the same catches on Maven', () => {
+    const root = project({ 'pom.xml': POM });
 
-      expect(swallowed(collectJavaFindings(root, { maven, policy: {} }))).toEqual(expected);
-    },
-    GRADLE_STEP_TIMEOUT_MS,
-  );
+    expect(swallowed(collectJavaFindings(root, { maven, policy: {} }))).toEqual(expected);
+  });
 });
