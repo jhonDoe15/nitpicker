@@ -29,12 +29,15 @@ export function commitSource({ repositoryRoot, commitSha, projectRoot }) {
     }
   }
   return {
-    paths: () => [...blobs.keys()],
+    paths: ({ unreadable = false } = {}) =>
+      [...blobs.values()]
+        .filter(({ size }) => unreadable || size <= MAX_FILE_BYTES)
+        .map(({ file }) => file),
     readMany: (files) =>
       readResolved(
         repositoryRoot,
         blobs,
-        files.filter((file) => blobs.has(file)),
+        files.filter((file) => blobs.get(file)?.size <= MAX_FILE_BYTES),
       ),
   };
 }
@@ -74,12 +77,15 @@ export function lazySource(create) {
     }
     return created[0];
   }
-  return { paths: () => source().paths(), readMany: (files) => source().readMany(files) };
+  return {
+    paths: (options) => source().paths(options),
+    readMany: (files) => source().readMany(files),
+  };
 }
 
 export function filteredSource(source, accepts) {
   return {
-    paths: () => source.paths().filter(accepts),
+    paths: (options) => source.paths(options).filter(accepts),
     readMany: (files) => source.readMany(files.filter(accepts)),
   };
 }
@@ -125,7 +131,6 @@ function parseTreeEntry(entry, prefix) {
     tab < 0 ||
     type !== 'blob' ||
     !(BLOB_MODES.has(mode) || mode === LINK_MODE) ||
-    Number(size) > MAX_FILE_BYTES ||
     !file.startsWith(prefix)
   ) {
     return undefined;
