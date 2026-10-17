@@ -16,8 +16,9 @@ const TOOL_BY_ANALYZER = {
   structure: 'typescript',
   duplicates: 'jscpd',
   'dead-code': 'knip',
-  crap: '@barney-media/crap-typescript-core',
+  crap: 'typescript',
 };
+const PACKAGE_ANALYZERS = new Set(['structure', 'crap']);
 const TYPESCRIPT_CONSUMERS = new Set([
   'coding-standards',
   'test-runtime',
@@ -85,7 +86,7 @@ export function resolveAnalyzerVersion(analyzerName, liveProjectRoot, resolve = 
     throw new Error(`No tool is configured for analyzer ${analyzerName}`);
   }
 
-  const toolRoot = analyzerName === 'structure' ? PACKAGE_ROOT : liveProjectRoot;
+  const toolRoot = PACKAGE_ANALYZERS.has(analyzerName) ? PACKAGE_ROOT : liveProjectRoot;
   const version = resolve(toolName, { projectRoot: toolRoot }).version;
   if (analyzerName === 'typescript-typecheck') {
     return `${version};typescript-native@${resolve('typescript-native', { projectRoot: PACKAGE_ROOT }).version}`;
