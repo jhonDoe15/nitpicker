@@ -1,4 +1,5 @@
 import { readFileSync } from 'node:fs';
+import { createRequire } from 'node:module';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { exceptionHint } from '../../../../../shared/rules/exceptions.mjs';
@@ -145,10 +146,24 @@ describe('nitpicker-detekt.yml', () => {
         const { active, excludes, ignoreAnnotated, includes, severity } = rule;
         expect({ active, excludes, ignoreAnnotated, includes, severity }).toEqual({
           ...pinned,
-          excludes: mainOnly.has(name) ? expect.stringMatching(/^\['\*\*\/test\/\*\*'/) : '[]',
+          excludes: mainOnly.has(name) ? undefined : '[]',
           severity: 'warning',
         });
       }
+    }
+  });
+});
+
+describe('the rules on main sources only', () => {
+  it('keep detekt test globs as their excludes', () => {
+    const config = createRequire(import.meta.url)('yaml').parse(
+      readFileSync(
+        path.resolve(import.meta.dirname, '../../../detekt/nitpicker-detekt.yml'),
+        'utf8',
+      ),
+    );
+    for (const { ruleset, name } of ONE_WAY_RULES.filter((rule) => rule.mainOnly)) {
+      expect(config[ruleset][name].excludes).toContain('**/test/**');
     }
   });
 });

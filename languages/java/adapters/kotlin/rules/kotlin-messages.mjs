@@ -4,13 +4,13 @@ import { appendSentence, withAllowedForm } from './kotlin-rules.mjs';
 
 const CONFIG_FILE = 'nitpicker.config.json';
 const DETEKT_RULE = /^detekt\.[a-z-]+\.[A-Z][A-Za-z0-9]*$/;
-export const KOTLINC_RULES = [
+const KOTLINC_RULES = [
   'kotlinc/deprecation',
   'kotlinc/unchecked',
   'kotlinc/cast',
   'kotlinc/lint-not-run',
 ];
-export const KOTLIN_CLASS_LIMIT_RULES = [
+const KOTLIN_CLASS_LIMIT_RULES = [
   'class-methods-limit',
   'class-fields-limit',
   'inheritance-depth-limit',
@@ -26,7 +26,7 @@ export function isKotlinFindingRule(rule) {
   return DETEKT_RULE.test(rule) || LISTED_RULES.has(rule);
 }
 
-export function exceptionRuleOf(finding) {
+function exceptionRuleOf(finding) {
   const printed = `${finding.tool}/${finding.rule}`;
   return LISTED_RULES.has(printed) ? printed : finding.rule;
 }

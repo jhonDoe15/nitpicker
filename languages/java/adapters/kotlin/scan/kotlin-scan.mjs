@@ -19,7 +19,7 @@ import {
 } from './rules/secrets.mjs';
 import { TEST_MESSAGES, testClassesWithoutTests, testHelpersInSource } from './rules/tests.mjs';
 
-export const KOTLIN_SOURCE_TOOL = 'kotlin-source';
+const KOTLIN_SOURCE_TOOL = 'kotlin-source';
 
 const MESSAGES = {
   ...MARKER_MESSAGES,
@@ -57,7 +57,7 @@ const ROOT_MARKERS = [
   /(?<![\w.])fun\s+Application\s*\.\s*\w+\s*\(/,
 ];
 
-export function kotlinFiles(projectRoot, sourceRoots) {
+function kotlinFiles(projectRoot, sourceRoots) {
   const files = sourceRoots.flatMap((sourceRoot) => {
     const directory = path.join(projectRoot, sourceRoot);
     if (!existsSync(directory)) {

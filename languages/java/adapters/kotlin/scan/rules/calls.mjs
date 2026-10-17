@@ -24,14 +24,71 @@ const LITERAL_PAIR = /"\s*,\s*"/g;
 const FORMATTED = /(?:\bString\s*\.\s*format|"\s*\.\s*format(?:ted)?)\s*\(/;
 const CONCATENATED = /"\s*\+|\+\s*"/;
 
-const LOOP_HEADER = /\bfor\s*\(\s*(?:\(([^)]*)\)|([A-Za-z_]\w*))[^)]*\bin\b|\bwhile\s*\(/g;
+const LOOP_HEADER = /\b(?:for|while)\s*\(/g;
+const LOOP_VARIABLES = /^\s*(?:\(([^)]*)\)|([A-Za-z_]\w*))/;
 const DO_LOOP = /\bdo\s*\{/g;
-const ITERATING_LAMBDA =
-  /\.\s*(?:forEach|forEachIndexed|map|mapNotNull|mapIndexed|flatMap|filter|filterNot|onEach|associate|associateBy|associateWith|sumOf|any|all|none|count|groupBy|partition)\s*(?:\([^()]*\))?\s*\{/g;
-const IO_RECEIVER =
-  /^(?:repo|repository|dao|jdbc|jdbcTemplate|restTemplate|client|webClient|httpClient|connection|statement|entityManager|gateway|api)$|(?:Repo|Repository|Dao|DAO|Client|Connection|Statement|EntityManager|Gateway|Api|API|Template)$/;
-const IO_METHOD =
-  /^(?:find|load|read|query|select|insert|update|delete|exists|count|execute|fetch|list|write)(?:[A-Z0-9_]|$)|^(?:get|send|post|put|patch|exchange|retrieve|save)$/;
+const ITERATING_FUNCTIONS = [
+  'forEach',
+  'forEachIndexed',
+  'map',
+  'mapNotNull',
+  'mapIndexed',
+  'flatMap',
+  'filter',
+  'filterNot',
+  'onEach',
+  'associate',
+  'associateBy',
+  'associateWith',
+  'sumOf',
+  'any',
+  'all',
+  'none',
+  'count',
+  'groupBy',
+  'partition',
+];
+const ITERATING_LAMBDA = new RegExp(
+  String.raw`\.\s*(?:${ITERATING_FUNCTIONS.join('|')})\s*(?:\([^()]*\)\s*)?\{`,
+  'g',
+);
+const IO_RECEIVER_NAMES = [
+  'repo',
+  'repository',
+  'dao',
+  'jdbc',
+  'jdbcTemplate',
+  'restTemplate',
+  'client',
+  'webClient',
+  'httpClient',
+  'connection',
+  'statement',
+  'entityManager',
+  'gateway',
+  'api',
+];
+const IO_RECEIVER_SUFFIXES = [
+  'Repo',
+  'Repository',
+  'Dao',
+  'DAO',
+  'Client',
+  'Connection',
+  'Statement',
+  'EntityManager',
+  'Gateway',
+  'Api',
+  'API',
+  'Template',
+];
+const IO_RECEIVER = new RegExp(
+  `^(?:${IO_RECEIVER_NAMES.join('|')})$|(?:${IO_RECEIVER_SUFFIXES.join('|')})$`,
+);
+const IO_PREFIXES =
+  'find|load|read|query|select|insert|update|delete|exists|count|execute|fetch|list|write';
+const IO_VERBS = 'get|send|post|put|patch|exchange|retrieve|save';
+const IO_METHOD = new RegExp(`^(?:${IO_PREFIXES})(?:[A-Z0-9_]|$)|^(?:${IO_VERBS})$`);
 const BATCH_METHODS = new Set([
   'saveAll',
   'saveAllAndFlush',
@@ -41,8 +98,42 @@ const BATCH_METHODS = new Set([
   'findAllById',
 ]);
 const MEMBER_CALL = /\b([A-Za-z_]\w*)\s*\.\s*([A-Za-z_]\w*)\s*\(/g;
-const FILE_CALL =
-  /\b(?:File|Path|URL)\s*\([^()]*(?:\([^()]*\)[^()]*)*\)\s*\.\s*(?:readText|readLines|readBytes|writeText|writeBytes|appendText|forEachLine|useLines|bufferedReader|bufferedWriter|inputStream|outputStream|openStream|openConnection)\b|\bFiles\s*\.\s*(?!exists\b|notExists\b|isDirectory\b|isRegularFile\b|isReadable\b|isWritable\b|isExecutable\b|isSymbolicLink\b|isHidden\b|isSameFile\b)[a-z]\w*\s*\(/g;
+const FILE_METHODS = [
+  'readText',
+  'readLines',
+  'readBytes',
+  'writeText',
+  'writeBytes',
+  'appendText',
+  'forEachLine',
+  'useLines',
+  'bufferedReader',
+  'bufferedWriter',
+  'inputStream',
+  'outputStream',
+  'openStream',
+  'openConnection',
+];
+const FILES_CHECKS = [
+  'exists',
+  'notExists',
+  'isDirectory',
+  'isRegularFile',
+  'isReadable',
+  'isWritable',
+  'isExecutable',
+  'isSymbolicLink',
+  'isHidden',
+  'isSameFile',
+];
+const FILE_OBJECT_CALL = String.raw`\b(?:File|Path|URL)\s*\([^()]*(?:\([^()]*\)[^()]*)*\)`;
+const FILE_CALL = new RegExp(
+  [
+    String.raw`${FILE_OBJECT_CALL}\s*\.\s*(?:${FILE_METHODS.join('|')})\b`,
+    String.raw`\bFiles\s*\.\s*(?!(?:${FILES_CHECKS.join('|')})\b)[a-z]\w*\s*\(`,
+  ].join('|'),
+  'g',
+);
 
 export const CALL_MESSAGES = {
   LogStringConcatenation:
@@ -90,17 +181,25 @@ export function shellCommands(scanned) {
   });
 }
 
+function loopVariables(code, match) {
+  if (match[0].startsWith('while')) {
+    return [];
+  }
+  const open = match.index + match[0].length - 1;
+  const names = LOOP_VARIABLES.exec(code.slice(open + 1, closingIndex(code, open)));
+  return (names?.[1] ?? names?.[2] ?? '').split(',').map((name) => name.trim());
+}
+
 function loopBodies(code) {
   const loops = [...code.matchAll(LOOP_HEADER)].flatMap((match) => {
-    const headerOpen = code.indexOf('(', match.index);
+    const headerOpen = match.index + match[0].length - 1;
     const headerClose = closingIndex(code, headerOpen);
     const brace = /^\s*\{/.exec(code.slice(headerClose + 1));
     if (brace === null) {
       return [];
     }
     const open = headerClose + brace[0].length;
-    const variables = (match[1] ?? match[2] ?? '').split(',').map((name) => name.trim());
-    return [{ open, close: closingIndex(code, open), variables }];
+    return [{ open, close: closingIndex(code, open), variables: loopVariables(code, match) }];
   });
   const doLoops = [...code.matchAll(DO_LOOP)].map((match) => {
     const open = match.index + match[0].length - 1;
@@ -108,8 +207,9 @@ function loopBodies(code) {
   });
   const lambdas = [...code.matchAll(ITERATING_LAMBDA)].map((match) => {
     const open = match.index + match[0].length - 1;
-    const parameters = /^\{\s*([\w\s,()]+?)\s*->/.exec(code.slice(open));
-    const variables = parameters === null ? ['it'] : parameters[1].split(/[\s,()]+/);
+    const parameters = /^\{([\w\s,()]*)->/.exec(code.slice(open));
+    const variables =
+      parameters === null ? ['it'] : parameters[1].split(/[\s,()]+/).filter((name) => name !== '');
     return { open, close: closingIndex(code, open), variables };
   });
   return [...loops, ...doLoops, ...lambdas];

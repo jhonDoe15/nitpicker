@@ -45,6 +45,17 @@ describe('scanKotlinSource', () => {
     expect(lineText(scanned, 5)).toBe("val c = '\"'");
   });
 
+  it('reads escaped quotes, a backslash before a raw string end and empty strings', () => {
+    const source = 'val a = "\\"" + ""\nval b = """C:\\"""\nval c = """"""\n';
+
+    expect(scanKotlinSource(source).literals.map(({ text, raw }) => [text, raw])).toEqual([
+      ['\\"', false],
+      ['', false],
+      ['C:\\', true],
+      ['', true],
+    ]);
+  });
+
   it('closes a string left open at the end of a line', () => {
     const scanned = scanKotlinSource('val a = "open\nval b = 1\n');
 

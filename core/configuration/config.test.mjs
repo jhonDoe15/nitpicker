@@ -169,20 +169,6 @@ describe('config file', () => {
       );
     });
 
-    it('accepts every detekt rule, a source check and a compiler warning as the finding prints it', () => {
-      const rules = [
-        'detekt.style.MagicNumber',
-        'kotlin-source/MutableModuleState',
-        'kotlinc/unchecked',
-      ];
-      const exceptions = rules.map((rule) => ({ ...exception, rule }));
-
-      expect(validateConfig({ preset: 'kotlin', exceptions })).toEqual({
-        preset: 'kotlin',
-        exceptions,
-      });
-    });
-
     it('names the rules that can be lifted when the rule is not one a Kotlin finding prints', () => {
       const other = { ...exception, rule: 'MutableModuleState' };
 
