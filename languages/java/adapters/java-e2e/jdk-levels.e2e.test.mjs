@@ -241,15 +241,6 @@ const TESTS_FAILED = {
   ].join('\n'),
 };
 
-const CHECKSTYLE_SKIPPED = {
-  tool: 'checkstyle',
-  rule: 'tool-skipped',
-  message:
-    'Checkstyle did not run in the head snapshot: it cannot parse src/main/java/demo/Messy.java, ' +
-    'src/main/java/demo/Shapes.java, whose Java syntax is newer than the pinned Checkstyle knows ' +
-    '(a module import, or statements before super()). The other analyzers still ran.',
-};
-
 const REPORTED = [
   'errorprone JavaUtilDate Shapes.java',
   'forbiddenapis legacy-date-time Shapes.java',
@@ -261,17 +252,15 @@ const REPORTED = [
   'pmd CatchOnlyLogsOrReturnsDefault Shapes.java',
 ];
 
-const EXPECTED = {
-  17: {
-    toolErrors: [TESTS_FAILED],
-    reported: [
-      'checkstyle LeftCurlyEol Messy.java',
-      'checkstyle RightCurlyAlone Messy.java',
-      ...REPORTED,
-    ],
-  },
-  25: { toolErrors: [CHECKSTYLE_SKIPPED, TESTS_FAILED], reported: REPORTED },
+const EXPECTED_ON_EACH_LEVEL = {
+  toolErrors: [TESTS_FAILED],
+  reported: [
+    'checkstyle LeftCurlyEol Messy.java',
+    'checkstyle RightCurlyAlone Messy.java',
+    ...REPORTED,
+  ],
 };
+const EXPECTED = { 17: EXPECTED_ON_EACH_LEVEL, 25: EXPECTED_ON_EACH_LEVEL };
 
 describe.skipIf(!enabled)('the Java preset on each supported JDK level', () => {
   afterEach(() => {

@@ -48,8 +48,7 @@ export function withoutCheckstyleParseSkips(findings, testScope = {}) {
     toolSkipped(
       CHECKSTYLE_TOOL,
       `Checkstyle did not run in ${snapshotScope(testScope)}: it cannot parse ${files.join(', ')}, ` +
-        'whose Java syntax is newer than the pinned Checkstyle knows (a module import, or ' +
-        'statements before super()). The other analyzers still ran.',
+        'whose Java syntax is newer than the pinned Checkstyle knows. The other analyzers still ran.',
     ),
   ];
 }

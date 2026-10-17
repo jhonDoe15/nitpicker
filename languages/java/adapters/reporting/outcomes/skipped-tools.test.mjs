@@ -111,8 +111,8 @@ describe('skippedToolFindings', () => {
         classification: 'tool-error',
         message:
           'Checkstyle did not run in the head snapshot: it cannot parse src/main/java/demo/B.java, ' +
-          'src/main/java/demo/C.java, whose Java syntax is newer than the pinned Checkstyle knows ' +
-          '(a module import, or statements before super()). The other analyzers still ran.',
+          'src/main/java/demo/C.java, whose Java syntax is newer than the pinned Checkstyle knows. ' +
+          'The other analyzers still ran.',
       },
     ]);
   });
