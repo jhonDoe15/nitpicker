@@ -1,5 +1,4 @@
-import { toml } from '../../../../libraries/project-files.mjs';
-import { insideProject } from '../../../../libraries/project-files.mjs';
+import { insideProject, toml } from '../../../../libraries/project-files.mjs';
 import { existsSync, readdirSync, readFileSync } from 'node:fs';
 
 const FIXED_FILES = ['uv.lock', 'poetry.lock', 'pdm.lock', 'Pipfile', 'Pipfile.lock'];
