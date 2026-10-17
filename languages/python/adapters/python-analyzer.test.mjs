@@ -47,7 +47,9 @@ describe('Python analyzer', () => {
       'duplicates',
       'coupling',
       'import-linter',
+      'tests',
       'test-runtime',
+      'dependencies',
     ]);
     expect(analyzer.exclusions).toEqual([]);
     expect(analyzer.timeoutMs).toBe(30 * 60 * 1000);
@@ -61,6 +63,7 @@ describe('Python analyzer', () => {
     expect(analyzer.name).toBe(MUTATION_ANALYZER_NAME);
     expect(analyzer.reportedTools).toEqual(['mutmut']);
     expect(analyzer.dependencies).toEqual([PYTHON_ANALYZER_NAME]);
+    expect(analyzer.toleratedDependencyErrors).toEqual(['tests', 'test-runtime', 'dependencies']);
     expect(analyzer.timeoutMs).toBe(70 * 60 * 1000);
     expect(analyzer.version).toBe('unresolved');
   });

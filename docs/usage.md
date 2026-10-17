@@ -9,16 +9,15 @@ For a short introduction, see the [README](../README.md).
 Add nitpicker as a dev dependency, together with the peers it needs from your project:
 
 ```sh
-npm install --save-dev nitpicker typescript @types/node
+npm install --save-dev nitpicker vitest @vitest/coverage-v8 typescript @types/node
 ```
 
 Requirements: Node.js 22.14 or newer, a Git repository, and a single-package npm project (the
 tested setup). nitpicker brings its own pinned ESLint, Prettier, dependency-cruiser, knip, jscpd,
 Stryker and CRAP tooling and loads them from its own package, so neither side of the comparison can
-choose them. `typescript` and the project's test runner come from your project: Vitest, Jest,
-`node:test` or Mocha (see [Test runners](#test-runners)). A Vitest project also needs
-`@vitest/coverage-v8` at its Vitest version (4.1.11 or newer, or 5). If a peer is missing or
-incompatible, the tool that needs it fails and the report shows a tool error.
+choose them. `vitest` and `@vitest/coverage-v8` (4.1.11 or newer, or 5) and `typescript` come from
+your project; if one is missing or incompatible, the tool that needs it fails and the report shows a
+tool error.
 
 ### From a GitHub release
 
@@ -31,7 +30,7 @@ without access to the release:
 VERSION=0.1.0-rc.1
 gh release download "v$VERSION" --repo jhonDoe15/nitpicker --pattern 'nitpicker-*.tgz' --pattern SHA256SUMS --dir vendor
 (cd vendor && shasum -a 256 -c SHA256SUMS && rm SHA256SUMS)
-npm install --save-dev "./vendor/nitpicker-$VERSION.tgz" typescript @types/node
+npm install --save-dev "./vendor/nitpicker-$VERSION.tgz" vitest @vitest/coverage-v8 typescript @types/node
 ```
 
 `package.json` then records `"nitpicker": "file:vendor/nitpicker-<version>.tgz"`. The peers are the
@@ -270,16 +269,16 @@ hash, so a weakened check is visible in review.
 | `preset`          | `"typescript"`, `"javascript"`, `"java"`, `"kotlin"` or `"python"` | The preset; default `typescript`. `javascript` gates a plain JavaScript project; see [JavaScript preset](#javascript-preset). `java` and `kotlin` gate a Gradle project and `python` a Python project; none of them is auto-detected. Without `preset`, a project whose source roots hold no TypeScript or JavaScript but that has `pom.xml`, `build.gradle(.kts)` or `settings.gradle(.kts)` (Java, or Kotlin when `.kt` files outnumber `.java`), or `pyproject.toml`, `setup.py` or `setup.cfg` (Python), stops with a config error (exit 2) naming the preset to set. The check is best-effort: files under `resources`, `static`, `public`, `assets`, `webapp` or `wwwroot` folders and `*.min.js` files are bundled assets and do not count as TypeScript or JavaScript; see [Java preset](#java-preset), [Kotlin preset](#kotlin-preset) and [Python preset](#python-preset).                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         |
 | `disable`         | string[]                                                           | Analyzer names to turn off, without duplicates. An unknown name is an error, and so is disabling an analyzer another one depends on (`coverage` is needed by `crap`).                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        |
 | `thresholds`      | object                                                             | `crapLimit`: a positive number. A function whose CRAP score is at or above it is a finding. The default is 9. TypeScript, JavaScript, Java, Kotlin and Python. Whole numbers for the file limits: `fileLines` (lines per source file, default 300), `testFileLines` (per test file, default 500), `lineLength` (characters per line, default 120; imports, URLs and the text inside string literals are not counted) and `folderFiles` (source files, and separately test files, directly in one folder, default 6; only code files of the language count, so config and asset folders are never checked, and test files under a `fixtures` folder are skipped). A file or folder already over a limit on the base fails only when it grows, and a folder moved to a new path is matched to its old path. Every preset, except `lineLength` with Java and Kotlin, where setting it is a config error: nitpicker checks the `.java` files at a fixed 100 characters (where google-java-format wraps; text blocks are not counted either), and detekt's `MaxLineLength` checks the Kotlin files. Every preset: `unitTestSeconds` (default 5) and `integrationTestSeconds` (default 30), the seconds one test the change adds or edits may take (`slow-test`; see slow tests for [Java and Kotlin](java-preset.md#slow-tests), [TypeScript and JavaScript](typescript-strict-preset.md#slow-tests) and [Python](python-preset.md#slow-tests)). Generated sources a build registers (Java, Kotlin) belong in `exclude`. The size thresholds are below the table. |
-| `exclude`         | string[]                                                           | Globs relative to the project root (`**`, `*`, `?`, `{a,b}`), added to the built-in exclusions: the project-root folders `dist`, `build`, `generated`, `coverage`, `reports` and `target`, and `node_modules` at any depth (a folder such as `src/build/` is analysed). Generated code needs no `exclude`: a file named like generated code (`*.gen.*`, `*.generated.*`, `*.pb.*`, `*_pb.*`, under `__generated__/`) or a tracked code file in one of those root folders counts as generated, skipped by the layout checks and importable from the source roots, only when one of its first five lines carries a generator marker such as `// @generated` or `// Code generated by <tool>. DO NOT EDIT.`. That marker is the allowed form for generated code; without it the file is checked like any other. Hand-written `*.d.ts` files under the source roots are linted, and the type check reads their declarations, but it runs with `skipLibCheck`, so it reports no errors inside any `.d.ts` file; coverage, CRAP and mutation skip them. Excluded files are skipped by every analyzer and are absent from the dependency graph. With the Java and Python presets the built-in list does not apply and findings whose path matches a glob are dropped (Python also keeps those files away from ruff and black).                                                                                                                                                                                                                                      |
+| `exclude`         | string[]                                                           | Globs relative to the project root (`**`, `*`, `?`, `{a,b}`), added to the built-in exclusions: the project-root folders `dist`, `build`, `generated`, `coverage`, `reports` and `target`, and `node_modules` at any depth (a folder such as `src/build/` is analysed). Generated code needs no `exclude`: a file named like generated code (`*.gen.*`, `*.generated.*`, `*.pb.*`, `*_pb.*`, under `__generated__/`) or a tracked code file in one of those root folders counts as generated, skipped by the layout checks and importable from the source roots, when one of its first five lines carries a generator marker such as `// @generated`; any code file counts when its leading comments carry the exact header a known generator writes (OpenAPI Generator's `auto generated by OpenAPI Generator (https://openapi-generator.tech)`, protoc's, Thrift's, or `// Code generated by <tool>. DO NOT EDIT.`). That marker is the allowed form for generated code; without it the file is checked like any other. Hand-written `*.d.ts` files under the source roots are linted, and the type check reads their declarations, but it runs with `skipLibCheck`, so it reports no errors inside any `.d.ts` file; coverage, CRAP and mutation skip them. Excluded files are skipped by every analyzer and are absent from the dependency graph. With the Java and Python presets the built-in list does not apply and findings whose path matches a glob are dropped (Python also keeps those files away from ruff and black).                         |
 | `layout`          | object                                                             | Both the TypeScript and JavaScript presets; a config error with `java`, `kotlin` and `python`. `sourceRoots` (default `["src"]`) and `testRoots` (default `["test", "tests", "__tests__", "e2e"]`; a missing folder is ignored): non-empty arrays of directories inside the project, with no absolute paths, `..` or globs. `excludedGlobs`: an array of globs that replaces the built-in exclusions. `entryPoints`: an array of globs of files that are started or loaded by path (a spawned script, a worker, a config read by another tool) and so are never imported; the dead-code check treats them as entries and the module-load-effects check skips them. A root `e2e/` of Playwright or Cypress specs is linted and type-checked like tests but needs no production import, is never mutated and is not run by the default quality test run (a `testRoots` you list yourself is always run). A Jest project whose root `__tests__/` the quality test run cannot execute lists its own `testRoots` or adds `__tests__/**` to `exclude`. Other keys are an error. The strict preset puts features under `<sourceRoot>/main/features/`.                                                                                                                                                                                                                                                                                                                                                                                                               |
-| `exceptions`      | object[]                                                           | The TypeScript, JavaScript, Java and Kotlin presets; with `python`, only for the rules every preset shares (`file-lines-limit`, `folder-files-limit`, `line-length-limit` and `slow-test`), and `python` has `python.exceptions` for its other rules. Lifts a strict rule for some paths: `{ "rule", "paths", "reason" }`, all required. `rule` must be a rule the preset configures (with `java`: the finding as printed, `<tool>/<rule>`; with `kotlin`: one of the one-way rules, see [Kotlin preset](#kotlin-preset)) or one of the file limits `file-lines-limit`, `line-length-limit` and `folder-files-limit` (and the size rules below) or `slow-test` (also written `test-runtime/slow-test`; the TypeScript preset also takes `component-story-missing` and the reuse rules `shared-used-by-one-feature`, `duplicate-definition`, `exported-name-collision`, `redefined-library-component` and `new-icon-asset`, and a `domain-*` architecture rule, whose `paths` are the importing files); `paths` a non-empty glob array, `reason` a non-empty text. A file matching a file-limit exception is not checked and not counted in its folder; a `folder-files-limit` path may also name the folder itself. Each exception is listed in the report and changes the policy hash. See [The strict preset](#the-strict-preset).                                                                                                                                                                                                                         |
+| `exceptions`      | object[]                                                           | The TypeScript, JavaScript, Java and Kotlin presets; with `python`, only for the file limits (`file-lines-limit`, `folder-files-limit` and `line-length-limit`) and `slow-test` (also written `test-runtime/slow-test`), and `python` has `python.exceptions` for its other rules. Lifts a strict rule for some paths: `{ "rule", "paths", "reason" }`, all required. `rule` must be a rule the preset configures (with `java`: the finding as printed, `<tool>/<rule>`; with `kotlin`: one of the one-way rules, see [Kotlin preset](#kotlin-preset)) or one of the file limits `file-lines-limit`, `line-length-limit` and `folder-files-limit` (and the size rules below) or `slow-test` (also written `test-runtime/slow-test`; the TypeScript preset also takes `component-story-missing` and the reuse rules `shared-used-by-one-feature`, `duplicate-definition`, `exported-name-collision`, `redefined-library-component` and `new-icon-asset`, and a `domain-*` architecture rule, whose `paths` are the importing files); `paths` a non-empty glob array, `reason` a non-empty text. A file matching a file-limit exception is not checked and not counted in its folder; a `folder-files-limit` path may also name the folder itself. Each exception is listed in the report and changes the policy hash. See [The strict preset](#the-strict-preset).                                                                                                                                                                                            |
 | `react`           | object                                                             | TypeScript preset only; with `"preset": "javascript"` it is a config error. The React rule scope; see [React](#react). `enabled` (`true` or `false`) forces it on or off; without it the scope is on when `react` is in the project's `package.json` `dependencies` or `devDependencies`. `styling` (`"class-names"`, `"css-in-js"`, `"inline-style"` or `"style-sheet"`; inferred from what the source files use when unset) is the one styling approach the project uses. Other keys are an error.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         |
 | `i18n`            | object                                                             | TypeScript preset. The i18n rule scope for `react-intl`; see [Internationalized messages](#internationalized-messages). `enabled` (`true` or `false`) forces it on or off; without it the scope is on when `react-intl` or `@formatjs/intl` is in the head checkout's `package.json` `dependencies` or `devDependencies`. `functionNames` and `componentNames` (string arrays) name wrappers of `formatMessage` and `FormattedMessage` that are checked too. Other keys are an error.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        |
 | `python`          | object                                                             | Python preset only: `environment`, `formatter`, `testRunner`, `typeChecker` and `sourceRoots` overrides for what nitpicker detects, and `exceptions` (the Python counterpart of `exceptions`); see [Python preset](#python-preset).                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          |
 | `kotlin`          | object                                                             | Kotlin preset only. `formatter`: `"ktlint"`, `"ktfmt"` or `"none"`, the format check to run; detected from the build files and `.editorconfig` when absent. `detektConfig`: path of the detekt config inside the project; detected when absent. See [Kotlin preset](#kotlin-preset).                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         |
 | `analyzers`       | object[]                                                           | Custom analyzers; see below.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 |
 | `legacyInventory` | string                                                             | Path of the legacy inventory, inside the project. Default `nitpicker.legacy.json`. Every preset; see [Adopting nitpicker on existing code](#adopting-nitpicker-on-existing-code) [Java preset](#java-preset) and [Python preset](#python-preset).                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            |
-| `tools`           | object                                                             | Which config each tool uses: `{ "prettier": { "precedence": [...] } }`. See [Your project's tool configs](#your-projects-tool-configs). `prettier`, `eslint` and `typescript` with the TypeScript and JavaScript presets (`{ "eslint": { "engine": "oxlint" } }`; see [Lint engine](#lint-engine); `{ "typescript": { "engine": "native" } }`; see [Type check engine](#type-check-engine)), `tests` with the TypeScript and JavaScript presets (`{ "tests": { "runner": "jest" } }`; see [Test runners](#test-runners)), `pmd` and `checkstyle` with `java` and `kotlin`; any other name is an error, and `python` has no `tools`.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          |
+| `tools`           | object                                                             | Which config each tool uses: `{ "prettier": { "precedence": [...] } }`. See [Your project's tool configs](#your-projects-tool-configs). `prettier`, `eslint` and `typescript` with the TypeScript and JavaScript presets (`{ "eslint": { "engine": "oxlint" } }`; see [Lint engine](#lint-engine); `{ "typescript": { "engine": "native" } }`; see [Type check engine](#type-check-engine)), `pmd` and `checkstyle` with `java` and `kotlin`; any other name is an error, and `python` has no `tools`.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       |
 | `conventions`     | object                                                             | Pins a style nitpicker otherwise takes from the project. When two conventions are equally valid, nitpicker counts which one most files use and checks with that: a comparison measures the merge base (so a branch cannot flip it), or the branch when the base has no files of that kind yet; `--all` measures the checkout. A tie, or nothing to measure, keeps the preset default, and the run prints what it followed. Java and Kotlin presets (Java sources): `"java.indentation"`, `"2"` (google-java-format) or `"4"` (google-java-format `--aosp`). TypeScript and JavaScript presets (Prettier options): `"prettier.quotes"` `"single"`/`"double"`, `"prettier.semicolons"` `"always"`/`"never"`, `"prettier.indentation"` `"2"`/`"4"`/`"tab"`, `"prettier.printWidth"` `"80"`/`"100"`/`"120"`, `"prettier.trailingCommas"` `"all"`/`"es5"`/`"none"`, `"prettier.arrowParens"` `"always"`/`"avoid"`, `"prettier.bracketSpacing"` `"spaced"`/`"tight"`, `"prettier.endOfLine"` `"lf"`/`"crlf"`.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      |
 
 Size thresholds beyond the file limits, all whole numbers that fail only when a change makes the
@@ -433,13 +432,12 @@ have one. `typescript` and `vitest` are peers as for TypeScript.
 
 What the preset does not support:
 
-- **Test runner lint.** Coverage, CRAP and mutation run the project's own runner, as for
-  TypeScript (see [Test runners](#test-runners)), but the lint rules for test files are still
-  Vitest's: `vitest/no-import-node-test` fails a `node:test` import (its message points to an
-  exception for that rule, which silences the lint finding only).
-- **CommonJS tests.** Production code may be CommonJS. A Vitest test file must `import` Vitest,
-  because `require('vitest')` fails at run time, so import `.cjs` production code from an ESM test,
-  as the fixture does. Jest, `node:test` and Mocha run CommonJS tests as they are.
+- **Test runner.** Vitest is the only runner, for both presets. A Jest or `node:test` project cannot
+  pass yet: coverage, CRAP and mutation run Vitest, and `vitest/no-import-node-test` fails a
+  `node:test` import (its message points to an exception for that rule, which silences the lint
+  finding only). Support for both runners is tracked in issue #162.
+- **CommonJS tests.** Production code may be CommonJS, but a test file must `import` Vitest, because
+  `require('vitest')` fails at run time. Import `.cjs` production code from an ESM test, as the fixture does.
 - **`.jsx` and `.tsx`.** React and JSX belong to the TypeScript preset. No analyzer reads a `.jsx` or
   `.tsx` file, so a project with one under its source or test roots is a config error (exit 2) rather
   than a green gate that checks nothing. Use the TypeScript preset, or list those files in `exclude`.
@@ -531,7 +529,7 @@ packages). The gate also reports new duplicates (`duplicates/duplicate-clone`), 
 (`coupling/stability-direction`; an import under `if TYPE_CHECKING:` is never the reported dependency, though it still counts toward instability) and broken import-linter contracts (`import-linter/contract-broken`);
 their messages name the file to add to `exclude` when the repetition or dependency is intended.
 `layout` describes TypeScript and stays a config error; the top-level `exceptions` is accepted only
-for the file limits and slow tests (`file-lines-limit`, `line-length-limit`, `folder-files-limit`, `slow-test`).
+for the file limits (`file-lines-limit`, `line-length-limit`, `folder-files-limit`).
 
 The one-way rules (pathlib, f-strings, no mutable defaults, no bare `except`, no `except` that only passes, continues, returns or assigns a constant, no `contextlib.suppress(Exception)`, no
 `import *`, logging instead of `print`, frozen dataclasses, pydantic only in `adapters/`, enums
@@ -600,9 +598,13 @@ new and touched code must comply.
   Node I/O, network or database clients, loggers or module state.
 - **`features/<name>/adapters/`** does the I/O: throw only `Error` subclasses that keep `cause`, no
   silent catch (rethrow with `{ cause }` or return the caught value in the failure result), and
-  parse untrusted input once at the boundary with [zod](https://zod.dev), validating every field
-  (no `z.unknown()` or `z.any()` fields in `z.object`). zod is
-  an expectation of the preset, not a dependency of nitpicker: install it in your project.
+  parse untrusted input once at the boundary with a schema library, validating every field
+  (no `z.unknown()` or `z.any()` fields in `z.object`). The library is the one in your
+  `package.json` (zod, valibot, yup, joi, io-ts, arktype, class-validator, ajv, typebox,
+  superstruct, runtypes, typia, effect or valita); with none installed the messages name
+  [zod](https://zod.dev), an expectation of the preset, not a dependency of nitpicker. The
+  catch-logging rule follows the project's logger the same way. See
+  [Libraries follow the project](typescript-strict-preset.md#libraries-follow-the-project).
 - **All production code** has no recursion: a function that calls itself is flagged (use `map`,
   `flatMap` and friends, or a `for...of` loop for a retry outside `domain/`).
 - **Touched code**: a strict-rule finding that exists on the base stays baselined while its file's
@@ -643,7 +645,7 @@ existing violations appear on both sides and stay baselined; the
 policy hash changes. Violations on lines your changes touch fail, so adoption is gradual and driven
 by ordinary edits. Add an `exceptions` entry for a rule you cannot adopt yet.
 
-### Your TypeScript and test configs
+### Your TypeScript and Vitest configs
 
 nitpicker builds on the project's own configs, so type checking and tests see the project as its
 own tools do:
@@ -670,11 +672,13 @@ own tools do:
   `rows[0]?.text` to `rows[0].text` is discarded as a compile error instead of surviving. The
   flags are only added when the project already type-checks with them; otherwise mutants are checked
   with the project's `tsconfig.json` as it is.
-- **Coverage and mutation tests** run with the project's own test runner and its config; see
-  [Test runners](#test-runners). nitpicker owns the coverage settings, so the project's coverage
-  thresholds never decide nitpicker's findings.
+- **Coverage and mutation tests** load the project's `vitest.config.*` or `vite.config.*` (the
+  first found, `.ts`, `.mts`, `.cts`, `.js`, `.mjs` or `.cjs`). Its environment, setup files,
+  aliases and plugins apply. nitpicker adds the `*.test.*` and `*.spec.*` files under the source and
+  test roots, ignores the project's `test.dir`, and owns the coverage settings, so the project's
+  coverage thresholds never decide nitpicker's findings.
 
-Without a project `tsconfig.json` or test runner config, nitpicker uses its own defaults.
+Without a project `tsconfig.json` or Vitest config, nitpicker uses its own defaults.
 
 ### Your project's tool configs
 
@@ -767,74 +771,6 @@ To always type check with the project's own TypeScript, set the engine:
 { "tools": { "typescript": { "engine": "project" } } }
 ```
 
-### Test runners
-
-Coverage, CRAP and mutation run the project's tests with the runner the project already uses:
-Vitest, Jest, `node:test` or Mocha. nitpicker picks the first of:
-
-1. `tools.tests.runner` in `nitpicker.config.json`: `"vitest"`, `"jest"`, `"node"` or `"mocha"`.
-2. The runner the `test` script in `package.json` calls, following `npm run <name>`, then the other
-   `test*` scripts. `react-scripts test` and `craco test` are Jest, `ts-mocha` is Mocha with
-   `ts-node`, and `tsx --test` is `node:test` with the `tsx` loader.
-3. The runner's config: `vitest.config.*` or `vitest.workspace.*`, `jest.config.*` or a `jest` key
-   in `package.json`, `.mocharc.*` or a `mocha` key in `package.json`.
-4. The runner in `dependencies` or `devDependencies`.
-5. Vitest.
-
-From the script nitpicker also takes the environment variables (`NODE_ENV=test`, also through
-`cross-env`), the Node options before the runner (`node --import tsx --test`) and the runner's own
-options (`--config`, `--require`, test file patterns). It drops the options it sets itself (watch
-mode, coverage, reporters, timeouts and worker counts) and Jest's options that run only some of the
-tests (`--shard`, `-t`, `--findRelatedTests`, `--onlyChanged`, `--changedSince`, `--lastCommit`,
-`--onlyFailures`); `--selectProjects` stays. Steps the script runs before the tests, such as
-`tsc && jest`, are not run: a failing test run names them so you can run them first. Tests get a
-10 000 ms timeout and run at most 4 files at once (Mocha, and Jest with `--runInBand`, run them one
-after another), and they must pass for coverage, CRAP and mutation to run.
-
-```json
-{ "tools": { "tests": { "runner": "jest" } } }
-```
-
-- **Vitest** loads the project's `vitest.config.*` or `vite.config.*` (the first found, `.ts`,
-  `.mts`, `.cts`, `.js`, `.mjs` or `.cjs`). Its environment, setup files, aliases and plugins
-  apply. nitpicker runs the `*.test.*` and `*.spec.*` files under the source and test roots,
-  ignores the project's `test.dir`, and restores mocks after every test. A Vitest project needs
-  `@vitest/coverage-v8` at its Vitest version.
-- **Jest** runs with the project's Jest config, so its `testMatch`, `roots`, transforms and
-  environment decide which files run and how. nitpicker collects coverage from the source roots
-  with Jest's Babel coverage provider, relative to the config's `rootDir` (such as NestJS's
-  `"rootDir": "src"`), and restores mocks after every test (`--restoreMocks`). A config whose
-  projects cover none of the source files is a tool error. `react-scripts test` and `craco test`
-  run through the project's installed `react-scripts` or `@craco/craco`, and mutation uses
-  Stryker's Create React App support or the craco Jest config.
-  Mutation uses Stryker's Jest runner, with the test transform's own type check turned off
-  (`ts-jest` would reject the instrumented code); the TypeScript checker still type checks each
-  mutant.
-- **`node:test`** runs `node --test` with the script's test patterns (Node's default patterns when
-  the script names none) and the test files under the test roots. TypeScript tests run with Node's
-  type stripping (Node's transform mode for enums, namespaces and parameter properties), or with
-  the loader the script names, such as `tsx` or `ts-node/register`. Each test file runs once. A
-  failing `before` hook shows its error on the tests it cancelled. Mutation uses Stryker's tap
-  runner.
-- **Mocha** runs with the project's `.mocharc.*`, the script's options and specs, and the test
-  files under the test roots. Loaders such as `ts-node/register` and `tsx` work in-process and in
-  the child process Mocha starts for Node options. A test file that fails to load is reported as
-  that file failing. Mutation uses Stryker's Mocha runner with the options Mocha itself merges
-  from the script, `.mocharc.*` and `package.json`; Stryker's Mocha runner supports Mocha up to 11,
-  so on Mocha 12 mutation is skipped with a notice while coverage and CRAP still run.
-
-For `node:test` and Mocha, nitpicker reads coverage from V8 (`NODE_V8_COVERAGE`) and maps it to
-branches the way Vitest's coverage does, so a finding names the same `if`, `?:` or `??` arm. When a
-loader rewrote a file, nitpicker records the code that ran and maps it back through the loader's
-source map; a loader that writes no source map is a tool error. Coverage from child processes and
-workers is merged. A `ts-node` target below ES2022 is raised to ES2022 for the coverage run (class
-field semantics kept), so `??` and `?.` are not counted as extra branches. A `.tsx` file no test
-loaded is not reported.
-
-With Jest, `node:test` and Mocha any file under the test roots counts as a test when nitpicker
-decides whether coverage runs; with Vitest only `*.test.*` and `*.spec.*` files do. A runner that
-runs no test while nitpicker sees test files is a tool error that names one of them.
-
 ## Adopting nitpicker on existing code
 
 Because only new findings fail, most analyzers need no preparation. The `coding-standards` analyzer
@@ -874,7 +810,7 @@ docker run --rm -v "$PWD":/work nitpicker --base origin/main --output reports/qu
 Mount your project at `/work`. The image marks `/work` as a Git `safe.directory`, so a checkout
 owned by another user works. Arguments after the image name are nitpicker's arguments and the exit
 codes are the same (0, 1, 2). Your project must have its dependencies installed in `node_modules`
-(`typescript` and the test runner are resolved from the project, as with `npx`), and
+(`vitest`, `@vitest/coverage-v8` and `typescript` are resolved from the project, as with `npx`), and
 its history must contain the merge base. Reports are written under the mount, owned by the
 container user; add `--user "$(id -u):$(id -g)"` to own them yourself.
 

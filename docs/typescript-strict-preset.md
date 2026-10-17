@@ -154,11 +154,12 @@ Math` and `Math['random']()` are caught; `process`, `fetch`, `setTimeout`, `setI
 - Illegal states are made unrepresentable with discriminated unions.
 - `nitpicker/no-unknown-in-domain`: no `unknown` in a parameter or property type (including inside
   `readonly unknown[]`, `Record<string, unknown>` and index signatures). `domain/` receives values
-  already parsed and typed; the zod schema that parses untrusted input lives in `adapters/`, and
-  `domain/` writes its own readonly type for the value. Do not write `z.infer<typeof schema>`
-  in `domain/`: importing the schema type from `adapters/` breaks the layer rule, and a schema
-  defined in `domain/` is itself mutable. A zod output is assignable to the readonly type, so
-  `adapters/` parses and passes the result in. An alias that is or contains `unknown`
+  already parsed and typed; the schema that parses untrusted input (zod by default, otherwise the
+  project's validation library) lives in `adapters/`, and `domain/` writes its own readonly type for
+  the value. Do not write `z.infer<typeof schema>` or the library's equivalent in `domain/`:
+  importing the schema type from `adapters/` breaks the layer rule, and a schema defined in `domain/`
+  is itself mutable. The parsed output is assignable to the readonly type, so `adapters/` parses and
+  passes the result in. An alias that is or contains `unknown`
   (`type Raw = unknown`, `type JsonObject = Readonly<Record<string, unknown>>`), also one imported
   from another file, is reported like `unknown`. `unknown` as a
   generic bound or default (`<T extends unknown>`, `<T = unknown>`), a return type, a variable or a
@@ -215,8 +216,8 @@ Math` and `Math['random']()` are caught; `process`, `fetch`, `setTimeout`, `setI
   without a check function is a cast, and `z.looseObject()`, `.loose()`, `.passthrough()` and
   `.catchall(z.unknown())` let unknown keys through: use `z.object({...})` or
   `z.strictObject({...})`.
-- Untrusted input is parsed once, at the boundary, with zod. Hand-written type guards for external
-  data are not allowed (`nitpicker/no-handwritten-boundary-guard`, in `adapters/`, `shared/` and
+- Untrusted input is parsed once, at the boundary, with a schema library (zod by default). Hand-written
+  type guards for external data are not allowed (`nitpicker/no-handwritten-boundary-guard`, in `adapters/`, `shared/` and
   the other layers outside `domain/`): a predicate whose parameter is `unknown`, `any`, `object`,
   `{}` or `Record<string, unknown>`, an `unknown` value narrowed inline with `typeof x ===
 'object'` or `'key' in x`, and an overload whose implementation returns `unknown` or `any`. A
@@ -227,6 +228,59 @@ Math` and `Math['random']()` are caught; `process`, `fetch`, `setTimeout`, `setI
   (`error instanceof Error && 'code' in error`). `instanceof Object` or any other class does not
   count as a guard.
   `JSON.parse(JSON.stringify(value))` as a copy is reported: use `structuredClone(value)`.
+
+### Libraries follow the project
+
+The rules keep their reason (validate at the boundary, keep the caught error on the log call) and
+only the library follows the project. Nitpicker reads `dependencies`, `peerDependencies`,
+`optionalDependencies` and `devDependencies` (presence, not a vote over files).
+
+- **Where it reads.** The head policy carries the libraries of the head checkout:
+  `libraries: { validation, logger, packages }`, where `validation` and `logger` come from the root
+  `package.json` and `packages` maps each project-relative directory with a `package.json` (`.` for
+  the root; `node_modules` and excluded folders are skipped) to the libraries it declares. A base
+  run with its own `nitpicker.config.json` still takes the head's libraries, like the other facts of
+  the head checkout, so base and head are checked against the same libraries, and the policy hash
+  and cache key include them. The rules that report per file (the boundary guard, `unknown` in
+  `domain/`, catch logging) pick, from `packages`, the entry of the directory nearest the file and
+  every one above it up to the project root, so a monorepo package that declares valibot is
+  checked against valibot; they read no `package.json` while linting. Within the list
+  `dependencies` come before `devDependencies`, nearest package first; the first entry names the
+  library in messages. The static `as`, `any` and JSDoc-cast messages read the root list only, so
+  they name the root's library.
+- **Validation library.** Recognised: zod, valibot, yup, joi (and `@hapi/joi`), io-ts, arktype,
+  class-validator (with class-transformer), ajv, typebox, superstruct, runtypes, typia, effect
+  (`effect`, `@effect/schema`) and valita. With none found the preset names zod.
+  `nitpicker/no-handwritten-boundary-guard` accepts a parse of any detected library, matched by
+  receiver and method. Calls on a schema built from the library (a value whose chain starts at an
+  import or `require` of it) count for the library's parse methods: zod `parse`/`safeParse` and
+  the async forms, yup `validate`/`validateSync`/`isValid` and the `At` forms, joi `validate`/
+  `validateAsync`, io-ts `decode`, arktype `assert` and calling the schema, ajv `validate` and
+  calling a function from `compile`, typebox `Decode`/`Parse` on a compiled type, runtypes `check`/
+  `parse`/`assert`/`guard`/`validate`, valita `parse`/`try`. Functions of the library namespace or
+  named import count too: valibot `parse`/`safeParse`/`assert`/`is` and `parser(schema)(data)`,
+  `Joi.attempt`/`Joi.assert`, typebox `Value.Parse`/`Decode`/`Assert`, superstruct `create`/
+  `assert`/`validate`/`mask`/`is`, typia `assert`/`is`/`validate`, effect
+  `Schema.decodeUnknownSync(schema)(data)` and the other `decode` forms, class-validator
+  `validate`/`validateSync`/`validateOrReject` (with `plainToInstance` in between). The forms
+  `const { parse } = schema`, `schema['parse']`, `schema.parse.bind(schema)`, `pipe(data, codec.decode)`,
+  casts (`as`, `!`) and `await` around the `JSON.parse` call are followed.
+  A receiver the file cannot resolve (imported from your own module, a parameter, `this.schema`,
+  a class field) counts for those same methods when type information shows a type declared by the
+  library, or, without it, when its text matches `schema`, `codec`, `validat`, `type`, `ajv`,
+  `struct` or `parser`. Other calls with the same names (`console.assert`, `form.validate`,
+  `Value.Check`, yup `cast`) do not count. The guard and `unknown` messages are grammatical
+  per library ("an io-ts codec", "an ajv schema") and the guard messages say how to add an
+  exception. `nitpicker/no-unvalidated-schema-field` only looks at zod schemas, so it stays silent
+  without zod.
+- **Logger.** `nitpicker/structured-catch-logging` is never turned off; it checks the shape each
+  detected logger reads. pino, nestjs-pino, pino-http and bunyan take the caught value as
+  `logger.<level>({ err: error, ...context }, message)`. winston, log4js, loglevel, consola, tslog,
+  roarr and signale take the caught value itself, passed as an argument or as a field of an object
+  argument (`logger.error('message', error)`, `logger.error('message', { error })`), not its
+  `.message` or a template string. With several loggers any of their shapes passes; with none
+  found the `err` shape applies. `nitpicker/no-production-console` and `no-silent-catch` apply to
+  every logger.
 
 ## Everywhere
 
@@ -1217,7 +1271,23 @@ from a real caller) and the `exceptions` entry that lifts it.
   `vite.config.ts`, `bin` and `exports` stay entries) lists what production code does not use, and
   what the normal run does not list is used only by tests. That covers whole modules too: a module
   that only tests import should move to a `test-support/` folder, and modules under `test-support/`
-  are not reported.
+  are not reported. A re-export (`export { x } from`, `export * from`, `export * as ns from`, an import that is only
+  exported again, or `export const y = x` for an import the file does not otherwise read, which
+  `export default y`, `export { y as z }` and `export const w = y` pass onward as further aliases of
+  the same import) is not a use by itself: re-exporting a function from an entry such as
+  `src/main/main.ts` or a composition root does not clear the finding, and the finding names the
+  re-exporting file. It counts only when something imports the name onward from the re-exporting
+  module; barrels, renames and imports that are only exported again are followed to the
+  declaration, and the importer at the end decides (production code counts, a test does not). A
+  declaration that nothing imports, tests included, is not reported. Production that uses an
+  `export * as ns` of an entry as a whole value (`use(ns)`, `Object.keys(ns)`) uses every member;
+  `ns.member` uses only that member. Entries are found by the same walk as the rest of the project,
+  so a file in a dot, `dist`, `build`, `generated` or `node_modules` directory, a symlink or a
+  declaration file is not an entry here either. Exceptions: a re-export from a
+  public entry of a published package (see below), a re-export from a file listed in
+  `layout.entryPoints` (a handler, worker or plugin config that a host loads instead of importing
+  it), and what a framework plugin consumes from an entry. An entry that spreads a namespace
+  (`{ ...feat }`) counts as using it.
 - **Callers the check cannot see.** A component or function that is used as a value (passed as
   `component={X}`, put in a route or config object, `.call`ed, mapped over, assigned) is left alone,
   as are all exports of a module that is loaded with `import()` or `require()` (`lazy`, route
@@ -1231,7 +1301,10 @@ from a real caller) and the `exceptions` entry that lifts it.
   no `"private": true`, and says what it ships (`main`, `exports`, `bin`, `files` or
   `publishConfig`); it can have callers outside the repository. Its own tests, stories and examples
   count as callers, so a new public prop or option must at least be exercised there, and its
-  `test-only-export` findings are not reported. In any other package, or an app whose manifest has
+  `test-only-export` findings are not reported, and a re-export from its public entries (the files
+  that `main`, `module`, `types`, `typings`, `source` and `exports` of its `package.json` name, or
+  else its source-root `index`, and the files that `layout.entryPoints` lists) counts as a use of
+  what it re-exports, wherever that is declared. In any other package, or an app whose manifest has
   no name, only production callers count: a prop that only a test or story passes fails. Callers
   in the other packages of an npm, Yarn or pnpm workspace count for the package that declares the
   prop; a package name resolves to the source file its `package.json` names, or else to the
@@ -1317,7 +1390,8 @@ from a real caller) and the `exceptions` entry that lifts it.
   `src/crypto/e2e/` stays production code; a missing one is ignored). Type checking, duplicate
   detection, dead-code analysis and the test-file lint scopes cover all four. The roots must be
   directories; `excludedGlobs` are globs and replace the built-in exclusions;
-  `entryPoints` are globs added to knip's entries for files that are loaded by path, not imported;
+  `entryPoints` are globs added to knip's entries for files that are loaded by path, not imported (what
+  they re-export is not reported as `test-only-export`);
   the module-load-effects check does not apply to them, since running at load is what a script does.
 - A root `e2e/` of Playwright or Cypress specs needs no exception. Its specs need no production
   import (`nitpicker/test-must-use-production-runtime` and the `test-runtime` analysis skip it, as
@@ -1354,14 +1428,16 @@ change in review.
 
 Recommendation: documented expectation, not a peer dependency.
 
-The preset only requires that adapter code parse untrusted input with zod. Nitpicker's own runtime
-never imports zod (it is not in `package.json`), so a peer dependency would make every
-consumer install a package nitpicker does not use, and would break installs for projects that
-choose to have no external-input boundary. The `strict` ESLint rule that would check this works on
-syntax (a hand-written type guard on external data), not on which library parses it. Document in the
-preset README that adapters are expected to use zod, and have the rule message name zod as the
-allowed form. Revisit as a peer dependency (optional, via `peerDependenciesMeta`) only if a rule
-needs to import from zod at lint time.
+The preset only requires that adapter code parse untrusted input with a schema library, and zod is
+the default. Nitpicker's own runtime never imports zod (it is not in `package.json`), so a peer
+dependency would make every consumer install a package nitpicker does not use, and would break
+installs for projects that choose to have no external-input boundary. The rule that checks this
+works on syntax (a hand-written type guard on external data, an unparsed `JSON.parse`) and on which
+calls count as a parse, not on importing the library. Document in the preset README that adapters
+are expected to use zod unless the project has another validation library, and have the rule
+message name the project's library, or zod when it has none (see "Libraries follow the project").
+Revisit as a peer dependency (optional, via `peerDependenciesMeta`) only if a rule needs to import
+from zod at lint time.
 
 ### Does nitpicker's own code follow the preset
 

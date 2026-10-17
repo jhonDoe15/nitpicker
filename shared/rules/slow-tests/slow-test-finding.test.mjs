@@ -56,7 +56,7 @@ describe('slow test findings', () => {
         message:
           'test_pay.TestPay test_slow took 7.3 s; a unit test may take 5 s. Remove time.sleep and ' +
           'other waits (patch the clock) and fake network, database and disk access, or move it to ' +
-          'an integration test (an integration or e2e folder under tests, or an integration marker ' +
+          'an integration test (an integration or e2e folder, or an integration or e2e marker ' +
           'registered in the pytest config) if it is one. If this is intended, add ' +
           '{"rule":"slow-test","paths":["tests/test_pay.py"],"reason":"..."} ' +
           'to "exceptions" in nitpicker.config.json.',
