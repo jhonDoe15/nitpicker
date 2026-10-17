@@ -12,7 +12,7 @@ import {
   GRADLE_STEP_TIMEOUT_MS,
   runGitIn,
 } from '../adapters/test-support/gradle-e2e.mjs';
-import { copyOf, removeCopies, withoutGradle } from './test-support/maven-e2e-projects.mjs';
+import { temporaryCopies, withoutGradle } from './test-support/maven-e2e-projects.mjs';
 
 const enabled = process.env.NITPICKER_JAVA_E2E === '1';
 const gradle = process.env.NITPICKER_GRADLE ?? 'gradle';
@@ -75,6 +75,8 @@ function acrossBuilds(findings) {
       BUILD_FILES.has(finding.path) ? { ...finding, path: 'build file', message: '' } : finding,
     );
 }
+
+const { copyOf, removeCopies } = temporaryCopies();
 
 afterAll(removeCopies);
 

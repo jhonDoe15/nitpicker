@@ -78,7 +78,9 @@ const METHOD_NAMES = new Set([
 
 function isInputOutputMethod(name) {
   const [first, second] = wordsOf(name);
-  if (first === 'get') return second === undefined || GETTER_LOOKUPS.has(second);
+  if (first === 'get') {
+    return second === undefined || GETTER_LOOKUPS.has(second);
+  }
   return METHOD_NAMES.has(name) || METHOD_PREFIXES.has(first);
 }
 
@@ -91,11 +93,15 @@ function inputOutputModule(name) {
 }
 
 function chainStep(node) {
-  if (node.type === 'Identifier') return { name: node.name };
+  if (node.type === 'Identifier') {
+    return { name: node.name };
+  }
   if (node.type === 'MemberExpression') {
     return { name: node.computed ? undefined : node.property.name, next: node.object };
   }
-  if (node.type === 'CallExpression') return { next: node.callee };
+  if (node.type === 'CallExpression') {
+    return { next: node.callee };
+  }
   return node.type === 'AwaitExpression' ? { next: node.argument } : {};
 }
 
@@ -104,16 +110,24 @@ function chainNames(start) {
   const pending = [start];
   for (const node of pending) {
     const { name, next } = chainStep(node);
-    if (name !== undefined) names.unshift(name);
-    if (next !== undefined) pending.push(next);
+    if (name !== undefined) {
+      names.unshift(name);
+    }
+    if (next !== undefined) {
+      pending.push(next);
+    }
   }
   return names;
 }
 
 function isInputOutputCall(call, importedNames) {
   const names = chainNames(call.callee);
-  if (names.length === 0) return false;
-  if (names[0] === 'fetch' || importedNames.has(names[0])) return true;
+  if (names.length === 0) {
+    return false;
+  }
+  if (names[0] === 'fetch' || importedNames.has(names[0])) {
+    return true;
+  }
   const owners = names.slice(0, -1);
   return owners.length > 0 && isInputOutputMethod(names.at(-1)) && owners.some(isInputOutputOwner);
 }
@@ -160,13 +174,17 @@ export const rule = {
         const found = isInputOutputCall(node, importedNames)
           ? enclosingLoop(node, sourceCode)
           : undefined;
-        if (found === undefined) return;
+        if (found === undefined) {
+          return;
+        }
         const { visitorKeys } = sourceCode;
         const exempt =
           isRetryAttempt(node, found.loop, visitorKeys) ||
           isPagingLoop(found.loop, visitorKeys) ||
           isPushedForConcurrency(node, sourceCode);
-        if (exempt) return;
+        if (exempt) {
+          return;
+        }
         const callee = chainNames(node.callee).join('.');
         context.report({ node, messageId: 'call', data: { callee: `${callee}()` } });
       },

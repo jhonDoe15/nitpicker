@@ -23,7 +23,9 @@ function lastWord(node) {
 }
 
 function followsFrameworkType(declaration) {
-  if (declaration.type !== 'ClassDeclaration') return false;
+  if (declaration.type !== 'ClassDeclaration') {
+    return false;
+  }
   const word = lastWord(declaration.id);
   const implemented = (declaration.implements ?? []).map(({ expression }) => expression);
   return [declaration.superClass, ...implemented].some(
@@ -45,7 +47,9 @@ function declaredIdentifiers(node) {
   if (DECLARATION_TYPES.has(node?.type)) {
     return node.id && !followsFrameworkType(node) ? [node.id] : [];
   }
-  if (node?.type !== 'VariableDeclaration') return [];
+  if (node?.type !== 'VariableDeclaration') {
+    return [];
+  }
   return node.declarations.map(({ id }) => id).filter(({ type }) => type === 'Identifier');
 }
 
@@ -58,7 +62,9 @@ function exportedIdentifiers(program) {
       .flatMap((statement) => statement.specifiers.map(({ local }) => local.name)),
   );
   return program.body.flatMap((statement) => {
-    if (EXPORTS.has(statement.type)) return declaredIdentifiers(statement.declaration);
+    if (EXPORTS.has(statement.type)) {
+      return declaredIdentifiers(statement.declaration);
+    }
     return declaredIdentifiers(statement).filter(({ name }) => exportedNames.has(name));
   });
 }

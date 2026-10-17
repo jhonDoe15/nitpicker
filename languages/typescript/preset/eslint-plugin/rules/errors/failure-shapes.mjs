@@ -16,7 +16,9 @@ const SETTER = /^set[A-Z]/;
 const LOWEST_ERROR_STATUS = 400;
 
 function keyName(property) {
-  if (property.type !== 'Property' || property.computed) return undefined;
+  if (property.type !== 'Property' || property.computed) {
+    return undefined;
+  }
   return property.key.type === 'Identifier' ? property.key.name : property.key.value;
 }
 
@@ -40,9 +42,15 @@ function isAbsent(node) {
 function isFailureProperty(property) {
   const key = keyName(property);
   const { value } = property;
-  if (FAILED_FLAGS.has(key)) return value.type === LITERAL && value.value === false;
-  if (ERROR_KEYS.has(key)) return !isAbsent(value);
-  if (key === STATUS && isErrorStatus(value)) return true;
+  if (FAILED_FLAGS.has(key)) {
+    return value.type === LITERAL && value.value === false;
+  }
+  if (ERROR_KEYS.has(key)) {
+    return !isAbsent(value);
+  }
+  if (key === STATUS && isErrorStatus(value)) {
+    return true;
+  }
   return (
     OUTCOME_KEYS.has(key) && typeof value.value === 'string' && FAILURE_WORDS.test(value.value)
   );
@@ -52,10 +60,20 @@ function isFailureString(node) {
   return node?.type === LITERAL && typeof node.value === 'string' && FAILURE_WORDS.test(node.value);
 }
 
+function isFailureObject(node) {
+  return node.type === 'ObjectExpression' && node.properties.some(isFailureProperty);
+}
+
 export function isFailureResult(node) {
-  if (node?.type === 'ObjectExpression') return node.properties.some(isFailureProperty);
-  if (node?.type === CALL && isLogCall(node)) return false;
-  if (node?.type !== CALL && node?.type !== 'NewExpression') return false;
+  if (node?.type === 'ObjectExpression') {
+    return isFailureObject(node);
+  }
+  if (node?.type === CALL && isLogCall(node)) {
+    return false;
+  }
+  if (node?.type !== CALL && node?.type !== 'NewExpression') {
+    return false;
+  }
   const named = node.type === CALL && FAILURE_CONSTRUCTORS.test(calleeName(node) ?? '');
   return named || passesFailure(node);
 }
@@ -77,26 +95,34 @@ function isErrorResponse(call) {
 
 function showsError(call) {
   const name = calleeName(call) ?? '';
-  if (ERROR_SETTER.test(name)) return true;
-  if (SETTER.test(name) && call.arguments.some(isFailureString)) return true;
+  if (ERROR_SETTER.test(name)) {
+    return true;
+  }
+  if (SETTER.test(name) && call.arguments.some(isFailureString)) {
+    return true;
+  }
   return name === 'error' && call.callee.type === MEMBER && !isLogCall(call);
 }
 
 function passesFailure(call) {
-  return call.arguments.some(
-    (argument) => argument.type === 'ObjectExpression' && isFailureResult(argument),
-  );
+  return call.arguments.some(isFailureObject);
 }
 
 export function reportsFailure(call) {
-  if (isLogCall(call)) return false;
+  if (isLogCall(call)) {
+    return false;
+  }
   return isProcessExit(call) || isErrorResponse(call) || showsError(call) || passesFailure(call);
 }
 
 export function setsFailureState({ left, right }) {
-  if (left.type !== MEMBER) return false;
+  if (left.type !== MEMBER) {
+    return false;
+  }
   const owner = left.object.name;
   const property = left.property.name;
-  if (owner === 'process' && property === 'exitCode') return true;
+  if (owner === 'process' && property === 'exitCode') {
+    return true;
+  }
   return property === 'statusCode' && isErrorStatus(right);
 }

@@ -7,12 +7,14 @@ import {
   expectedViolations,
   reportedViolations,
 } from '../../adapters/test-support/violation-markers.mjs';
-import { copyOf, removeCopies, withoutGradle } from '../test-support/maven-e2e-projects.mjs';
+import { temporaryCopies, withoutGradle } from '../test-support/maven-e2e-projects.mjs';
 
 const enabled = process.env.NITPICKER_JAVA_E2E === '1';
 const maven = process.env.NITPICKER_MAVEN;
 const fixtures = path.join(import.meta.dirname, '..', 'fixtures');
 const gradleFixtures = path.join(import.meta.dirname, '../../adapters/fixtures');
+
+const { copyOf, removeCopies } = temporaryCopies();
 
 afterAll(removeCopies);
 

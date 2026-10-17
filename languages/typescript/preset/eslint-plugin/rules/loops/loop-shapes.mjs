@@ -45,7 +45,9 @@ function descendants(root, visitorKeys, isBoundary) {
   const pending = [root];
   for (const node of pending) {
     found.push(node);
-    if (node === root || !isBoundary(node)) pending.push(...childrenOf(node, visitorKeys));
+    if (node === root || !isBoundary(node)) {
+      pending.push(...childrenOf(node, visitorKeys));
+    }
   }
   return found;
 }
@@ -67,7 +69,9 @@ function isIterationCallback(fn) {
 export function enclosingLoop(node, sourceCode) {
   let child = node;
   for (const parent of ancestorsOf(node)) {
-    if (LOOPS.has(parent.type) && isLoopBody(parent, child)) return { loop: parent, child };
+    if (LOOPS.has(parent.type) && isLoopBody(parent, child)) {
+      return { loop: parent, child };
+    }
     if (FUNCTIONS.has(parent.type)) {
       const sequential = isIterationCallback(parent) && !isConcurrentBatch(parent, sourceCode);
       return sequential ? { callback: parent } : undefined;
@@ -104,13 +108,17 @@ function retryingTry(loop, call) {
 export function isRetryAttempt(call, loop, visitorKeys) {
   const attempt = loop === undefined ? undefined : retryingTry(loop, call);
   const handler = attempt?.handler;
-  if (handler === undefined || handler === null) return false;
+  if (handler === undefined || handler === null) {
+    return false;
+  }
   const continues = !handler.body.body.some((statement) => LOOP_EXITS.has(statement.type));
   return continues && exitsLoop(attempt.block, visitorKeys);
 }
 
 function isArithmeticSelfUpdate({ operator, left, right }) {
-  if (operator !== '=') return ARITHMETIC_OPERATORS.has(operator.slice(0, -1));
+  if (operator !== '=') {
+    return ARITHMETIC_OPERATORS.has(operator.slice(0, -1));
+  }
   return (
     right.type === 'BinaryExpression' &&
     ARITHMETIC_OPERATORS.has(right.operator) &&
@@ -119,8 +127,12 @@ function isArithmeticSelfUpdate({ operator, left, right }) {
 }
 
 export function isPagingLoop(loop, visitorKeys) {
-  if (loop === undefined || loop.test === null || loop.test === undefined) return false;
-  if (loop.type === 'ForOfStatement' || loop.type === 'ForInStatement') return false;
+  if (loop === undefined || loop.test === null || loop.test === undefined) {
+    return false;
+  }
+  if (loop.type === 'ForOfStatement' || loop.type === 'ForInStatement') {
+    return false;
+  }
   const tested = new Set(
     descendants(loop.test, visitorKeys, (node) => FUNCTIONS.has(node.type))
       .filter((node) => node.type === IDENTIFIER)
