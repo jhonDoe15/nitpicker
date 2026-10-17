@@ -226,7 +226,12 @@ function archunitFindings({ reportRoot, projectRoot, sourceRoots, manifest }) {
         .filter((name) => name.endsWith('.xml'))
         .sort()
     : [];
-  const locate = sourceLocator(projectRoot, [...sourceRoots, ...(manifest.testSourceRoots ?? [])]);
+  const locate = sourceLocator(projectRoot, [
+    ...sourceRoots,
+    ...(manifest.testSourceRoots ?? []),
+    ...(manifest.kotlinSourceRoots ?? []),
+    ...(manifest.kotlinTestSourceRoots ?? []),
+  ]);
   return archunitReports.flatMap(
     (name) =>
       ingestArchunit(readFileSync(path.join(archunitRoot, name), 'utf8'), {
@@ -275,7 +280,10 @@ function branchFindings(context, jacoco) {
 function sourceFileOf(locate, className, fileName) {
   const parts = className.split('.');
   const simple = parts.pop().split('$')[0];
-  return locate(parts.join('/'), fileName ?? `${simple}.java`);
+  const directory = parts.join('/');
+  return fileName === undefined
+    ? (locate(directory, `${simple}.java`) ?? locate(directory, `${simple}.kt`))
+    : locate(directory, fileName);
 }
 
 function projectRoots(projectRoot) {
