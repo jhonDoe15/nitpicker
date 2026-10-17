@@ -8,6 +8,7 @@ import {
   detectTargetVersion,
   detectTypeCheckers,
   importRoots,
+  isTestPath,
 } from './python-project.mjs';
 
 const roots = [];
@@ -245,6 +246,7 @@ describe('source root detection', () => {
       'zeta/__init__.py': '',
       'alpha/__init__.py': '',
       'tests/__init__.py': '',
+      'testing/__init__.py': '',
       '.hidden/__init__.py': '',
       'docs/__init__.py': '',
       'data/readme.txt': '',
@@ -304,5 +306,23 @@ describe('target version detection', () => {
     ['no configuration file', {}, 'py38'],
   ])('reads %s', (_, files, expected) => {
     expect(detectTargetVersion(project(files))).toBe(expected);
+  });
+});
+
+describe('which files are tests', () => {
+  it.each([
+    ['tests/test_cart.py', true],
+    ['src/shop/tests/helpers.py', true],
+    ['src/shop/test/helpers.py', true],
+    ['src/shop/tests.py', true],
+    ['src/shop/test_cart.py', true],
+    ['conftest.py', true],
+    ['testing/helpers.py', true],
+    ['src/shop/testing/helpers.py', false],
+    ['shop/testing/helpers.py', false],
+    ['testing.py', false],
+    ['src/shop/cart.py', false],
+  ])('%s is a test file: %s', (file, expected) => {
+    expect(isTestPath(file)).toBe(expected);
   });
 });
