@@ -6,6 +6,7 @@ import { exactText } from '../../diff/reporting/test-support/output-expectations
 import { commit, fixtureGit } from '../../diff/git/test-support/git-repository.mjs';
 import { unusedFieldMessage, useGradleFixtures } from './test-support/java-cli-harness.mjs';
 import { writeFiles } from '../../diff/git/test-support/fixture-files.mjs';
+import { acceptedDigest } from '../test-support/accepted-digest.mjs';
 
 const { gradleRepository, run, runCli, temporaryRoot } = useGradleFixtures(nitpickerCli);
 const addedField = unusedFieldMessage('added');
@@ -136,7 +137,11 @@ describe('nitpicker with "preset": "java"', () => {
     });
     commit(root, 'add violation in an excluded path');
 
-    const result = run(root);
+    const digest = acceptedDigest(['exclude added: src/main/java/demo/**'], {
+      'nitpicker.config.json': '{ "preset": "java", "exclude": ["src/main/java/demo/**"] }\n',
+      'src/main/java/demo/A.java': 'package demo;\n\npublic final class A {}\n',
+    });
+    const result = run(root, [`--accept-policy-change=${digest}`], { interactive: true });
 
     expect(result.exitCode, result.text).toBe(0);
     expect(result.json('new-findings.json')).toEqual([]);

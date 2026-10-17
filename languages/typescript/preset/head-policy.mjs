@@ -12,13 +12,14 @@ import {
   scopePackage,
   testsCleanUpAutomatically,
 } from './eslint-config/scope-support.mjs';
-import { excludedGlobs, resolveLayoutFor, sourceRoots, testRoots } from './layout.mjs';
+import { builtInExcludedGlobs, resolveLayoutFor, sourceRoots, testRoots } from './layout.mjs';
 import { stylingApproachFor } from './eslint-config/react/react-styling.mjs';
 import { prettierConventionOptions } from '../conventions/prettier-conventions.mjs';
+import { markedGeneratedFiles } from './layout/generated-files.mjs';
 
 export { headPolicyEnvironment, withHeadPolicyFile } from '../../../shared/head-policy.mjs';
 
-export const defaultLayout = { sourceRoots, testRoots, excludedGlobs };
+export const defaultLayout = { sourceRoots, testRoots, excludedGlobs: builtInExcludedGlobs };
 
 const PRETTIER_PROJECT_FILES = [
   '.prettierrc',
@@ -55,7 +56,7 @@ function withProjectFacts(policy, config, projectRoot) {
   const prettier = policy.tools?.prettier;
   return {
     ...policy,
-    ...(SCOPED_PRESETS.includes(config.preset) ? detectedScopes(policy, projectRoot) : {}),
+    ...(SCOPED_PRESETS.includes(config.preset) ? withDetectedScopes(policy, projectRoot) : {}),
     ...(usesProjectConfig(prettier?.precedence ?? [])
       ? {
           tools: {
@@ -65,6 +66,11 @@ function withProjectFacts(policy, config, projectRoot) {
         }
       : {}),
   };
+}
+
+function withDetectedScopes(policy, projectRoot) {
+  const generatedFiles = markedGeneratedFiles(projectRoot);
+  return { generatedFiles, ...detectedScopes({ ...policy, generatedFiles }, projectRoot) };
 }
 
 function detectedScopes(policy, projectRoot) {
@@ -91,6 +97,40 @@ function detectedScopes(policy, projectRoot) {
       ...(styling === undefined ? {} : { styling }),
       ...(scopes.react.enabled ? { autoCleanup: testsCleanUpAutomatically(projectRoot) } : {}),
     },
+  };
+}
+
+const HEAD_CHECKOUT_FACTS = ['conventions', 'generatedFiles', 'frameworks'];
+const SCOPE_FACTS = [
+  ['react', ['enabled', 'iconPackage', 'major', 'styling', 'autoCleanup']],
+  ['i18n', ['enabled']],
+];
+
+function picked(source, keys) {
+  return Object.fromEntries(
+    keys.filter((key) => source[key] !== undefined).map((key) => [key, source[key]]),
+  );
+}
+
+function headPrettierDigest(policy, headPolicy) {
+  const digest = headPolicy.tools?.prettier?.projectConfigDigest;
+  const prettier = policy.tools?.prettier;
+  return digest === undefined || !usesProjectConfig(prettier?.precedence ?? [])
+    ? {}
+    : { tools: { ...policy.tools, prettier: { ...prettier, projectConfigDigest: digest } } };
+}
+
+export function withHeadCheckoutFacts(policy, headPolicy = {}) {
+  return {
+    ...policy,
+    ...picked(headPolicy, HEAD_CHECKOUT_FACTS),
+    ...Object.fromEntries(
+      SCOPE_FACTS.filter(([scope]) => headPolicy[scope] !== undefined).map(([scope, keys]) => [
+        scope,
+        { ...policy[scope], ...picked(headPolicy[scope], keys) },
+      ]),
+    ),
+    ...headPrettierDigest(policy, headPolicy),
   };
 }
 
@@ -136,6 +176,7 @@ export function readHeadPolicy(environment = process.env) {
     tools: policy.tools ?? {},
     duplicates: policy.duplicates ?? {},
     conventions: policy.conventions,
+    generatedFiles: policy.generatedFiles ?? [],
     frameworks: { defaultExports: [], entryPoints: [], ...policy.frameworks },
   };
 }
