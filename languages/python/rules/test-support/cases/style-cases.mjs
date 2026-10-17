@@ -1,0 +1,96 @@
+import { everyRule as every, ruffCases } from './define.mjs';
+
+export const STYLE_CASES = [
+  ...ruffCases(
+    'logging-format',
+    every(['G001', 'G002', 'G003', 'G004'], 'pass the values as arguments'),
+  ),
+  ...ruffCases('logging-misc', [
+    ['G010', 'logger.warning'],
+    ['G101', 'extra'],
+    ['G201', 'logger.exception'],
+    ['G202', 'exc_info=true'],
+  ]),
+  ...ruffCases(
+    'naming',
+    every(
+      [
+        'N801',
+        'N802',
+        'N803',
+        'N804',
+        'N805',
+        'N806',
+        'N807',
+        'N811',
+        'N812',
+        'N813',
+        'N814',
+        'N815',
+        'N816',
+        'N817',
+        'N818',
+        'N999',
+      ],
+      'snake_case',
+    ),
+  ),
+  ...ruffCases('magic-number', [['PLR2004', 'name the value as a constant']]),
+  ...ruffCases('global-state', [
+    ['PLW0602', 'remove the `global`'],
+    ['PLW0603', 'functools.cache'],
+  ]),
+  ...ruffCases('commented-code', [['ERA001', 'delete the commented-out code']]),
+  ...ruffCases(
+    'unused-argument',
+    every(['ARG001', 'ARG002', 'ARG003', 'ARG004', 'ARG005'], 'remove the unused argument'),
+  ),
+  ...ruffCases('boolean-flag', every(['FBT001', 'FBT002'], 'keyword-only')),
+  ...ruffCases('try-patterns', [
+    ['TRY002', 'specific exception'],
+    ['TRY004', 'typeerror'],
+    ['TRY201', 'bare `raise`'],
+    ['TRY203', 'remove the `try`'],
+    ['TRY400', 'logger.exception'],
+    ['TRY401', 'leave the exception out'],
+  ]),
+  ...ruffCases('pytest-fixtures', [
+    ['PT001', 'without parentheses'],
+    ['PT002', 'by keyword'],
+    ['PT003', 'default scope'],
+    ['PT019', 'usefixtures'],
+    ['PT020', 'yield_fixture'],
+    ['PT021', 'addfinalizer'],
+    ['PT022', 'use `return`'],
+    ['PT024', 'remove `@pytest.mark.asyncio`'],
+    ['PT025', 'usefixtures'],
+  ]),
+  ...ruffCases('pytest-style-project', [['PT001', 'parentheses']]),
+  ...ruffCases('pytest-parametrize', [
+    ['PT006', 'tuple'],
+    ['PT007', 'list of tuples'],
+    ['PT014', 'each parametrize case once'],
+  ]),
+  ...ruffCases('pytest-raises', [
+    ['PT010', 'name the expected exception'],
+    ['PT011', 'match the message'],
+    ['PT012', 'one statement'],
+  ]),
+  ...ruffCases('pytest-assertions', [
+    ['PT015', 'pytest.fail("the reason")'],
+    ['PT016', 'pytest.fail("the reason")'],
+    ['PT017', 'pytest.raises'],
+    ['PT018', 'split the assertion'],
+  ]),
+  ...ruffCases('pytest-marks', [
+    ['PT023', 'without parentheses'],
+    ['PT026', 'name the fixtures'],
+    ['PT028', 'remove the default value'],
+  ]),
+  ...ruffCases('pytest-imports', [['PT013', 'import pytest']]),
+  ...ruffCases('pytest-patch', [['PT008', 'return_value']]),
+  ...ruffCases('pytest-warns', [
+    ['PT030', 'match the message'],
+    ['PT031', 'one statement'],
+  ]),
+];

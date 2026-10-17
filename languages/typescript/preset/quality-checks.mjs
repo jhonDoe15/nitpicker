@@ -1,4 +1,4 @@
-import { resolveLayout } from './layout.mjs';
+import { EXCLUDED_PATH_PATTERN, resolveLayout } from './layout.mjs';
 import { testExecutionChecksFor } from './checks/test-execution.mjs';
 import {
   POLICY_FILES,
@@ -19,9 +19,6 @@ const typeScriptVersion = 'unresolved';
 const jscpdVersion = 'unresolved';
 
 const knipVersion = 'unresolved';
-
-const ARCHITECTURE_EXCLUSION =
-  '(?<!node_modules/.*)(^|/)(dist|build|generated|coverage|reports|target)(/|$)';
 
 export function createQualityChecks(layout = resolveLayout()) {
   const exclusions = checkExclusions(layout);
@@ -146,7 +143,7 @@ function typeAndArchitectureChecksFor(layout) {
       kind: 'typecheck',
       version: typeScriptVersion,
       patterns: [],
-      exclusions: ['**/dist/**', ...layout.exclude],
+      exclusions: ['dist/**', ...layout.exclude],
       configRelativePath: 'languages/typescript/preset/defaults/tsconfig.quality.json',
       shardWeight: 9,
       configurationFiles: [
@@ -162,14 +159,14 @@ function typeAndArchitectureChecksFor(layout) {
       kind: 'architecture',
       version: dependencyCruiserVersion,
       patterns: layout.graphRoots,
-      exclusions: [ARCHITECTURE_EXCLUSION, ...layout.exclude],
+      exclusions: [EXCLUDED_PATH_PATTERN, ...layout.exclude],
       configRelativePath: ARCHITECTURE_CONFIG,
-      exclude: ARCHITECTURE_EXCLUSION,
       shardWeight: 7,
       configurationFiles: [
         'languages/typescript/preset/layout.mjs',
         'languages/typescript/preset/head-policy.mjs',
         ARCHITECTURE_CONFIG,
+        'languages/typescript/preset/architecture/outside-roots/outside-roots.mjs',
         'languages/typescript/preset/architecture/strict-boundary-rules.mjs',
         'languages/typescript/preset/architecture/domain-packages.mjs',
         'languages/typescript/preset/architecture/strict-layout.mjs',
@@ -270,6 +267,12 @@ function repositoryChecksFor(exclusions) {
         'languages/typescript/preset/layout.mjs',
         'languages/typescript/preset/head-policy.mjs',
         'languages/typescript/preset/eslint-config/scope-support.mjs',
+        'languages/typescript/preset/libraries/file-libraries.mjs',
+        'languages/typescript/preset/libraries/logger-libraries.mjs',
+        'languages/typescript/preset/libraries/module-bindings.mjs',
+        'languages/typescript/preset/libraries/project-libraries.mjs',
+        'languages/typescript/preset/libraries/schema-calls.mjs',
+        'languages/typescript/preset/libraries/validation-libraries.mjs',
         'languages/typescript/preset/unused-api/test-only/production-config.mjs',
         'languages/typescript/preset/unused-api/test-only/test-only-exports.mjs',
         'languages/typescript/preset/unused-api/workspace/packages.mjs',

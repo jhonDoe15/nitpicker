@@ -1,5 +1,9 @@
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import path from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { eslintMessageWithHint, growthAdviceFor } from './eslint-hints.mjs';
+import { normalizeEslintResults } from '../eslint/normalize.mjs';
+import { eslintMessageWithHint, growthAdviceFor, withoutFatalDirectives } from './eslint-hints.mjs';
 
 const IMMUTABLE = (kind) =>
   `${kind} should have an immutability of at least "ReadonlyDeep" (actual: "Mutable").`;
@@ -235,6 +239,36 @@ describe('eslintMessageWithHint', () => {
   });
 });
 
+describe('withoutFatalDirectives', () => {
+  const directive = {
+    fatal: true,
+    message: '/* eslint-env */ comments are no longer supported.',
+    severity: 2,
+  };
+  const rule = { ruleId: 'no-debugger', message: 'Unexpected debugger.', severity: 2 };
+
+  it('drops the fatal eslint-env message and keeps everything else', () => {
+    const otherFatal = { fatal: true, message: 'Parsing error: Unexpected token', severity: 2 };
+    expect(withoutFatalDirectives([directive, rule, otherFatal])).toEqual([rule, otherFatal]);
+  });
+
+  it('lets a file with an eslint-env comment normalize without a crash', () => {
+    const root = mkdtempSync(path.join(tmpdir(), 'nitpicker-eslint-env-'));
+    try {
+      mkdirSync(path.join(root, 'src'), { recursive: true });
+      writeFileSync(path.join(root, 'src/env.ts'), '/* eslint-env node */\nexport const a = 1;\n');
+      const findings = normalizeEslintResults({
+        value: [{ filePath: path.join(root, 'src/env.ts'), messages: [directive] }],
+        projectRoot: root,
+        analyzerName: 'eslint-errors',
+      });
+      expect(findings).toEqual([]);
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+});
+
 describe('hints for the production policy rules', () => {
   const hint = (ruleId, text) => eslintMessageWithHint({ ruleId, text, relativePath: 'src/a.ts' });
   const ROUTE = 'add an exception for this rule in nitpicker.config.json';
@@ -292,8 +326,21 @@ describe('hints for the production policy rules', () => {
       'Unsafe quantifier.',
       'without nested or overlapping quantifiers',
     ],
+    [
+      '@typescript-eslint/no-deprecated',
+      '`parse` is deprecated. Use the WHATWG URL API instead.',
+      'Call the replacement that the deprecation names',
+    ],
   ])('rewrites %s', (ruleId, text, expected) => {
     expect(hint(ruleId, text)).toContain(expected);
+  });
+
+  it('keeps the deprecation text and names the exception route after it', () => {
+    expect(
+      hint('@typescript-eslint/no-deprecated', '`Buffer` is deprecated. Use `Buffer.from`.'),
+    ).toBe(
+      `\`Buffer\` is deprecated. Use \`Buffer.from\`. Call the replacement that the deprecation names instead of the deprecated API. If it names none and the API cannot be avoided, ${ROUTE}.`,
+    );
   });
 
   it.each([
