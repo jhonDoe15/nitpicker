@@ -8,22 +8,24 @@ function qualifiedName(file, declaration) {
   return [file.packageName, ...parts].filter((part) => part !== '').join('.');
 }
 
+function isNewRepository(file, declaration, known) {
+  return (
+    declaration.kind === 'interface' &&
+    !known.has(qualifiedName(file, declaration)) &&
+    declaration.supertypes.some(({ type }) => file.resolver.matches(type.name, known))
+  );
+}
+
 function addRepositories(files, known) {
-  let added = false;
-  for (const file of files) {
-    for (const declaration of file.classes) {
-      const name = qualifiedName(file, declaration);
-      if (
-        declaration.kind === 'interface' &&
-        !known.has(name) &&
-        declaration.supertypes.some(({ type }) => file.resolver.matches(type.name, known))
-      ) {
-        known.add(name);
-        added = true;
-      }
-    }
+  const found = files.flatMap((file) =>
+    file.classes
+      .filter((declaration) => isNewRepository(file, declaration, known))
+      .map((declaration) => qualifiedName(file, declaration)),
+  );
+  for (const name of found) {
+    known.add(name);
   }
-  return added;
+  return found.length > 0;
 }
 
 export function repositoryTypesOf(files) {

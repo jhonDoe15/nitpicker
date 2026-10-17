@@ -1,15 +1,12 @@
 import { existsSync } from 'node:fs';
 import path from 'node:path';
 import { childAt, childrenAt } from '../../ingest/common.mjs';
+import { textAt } from '../errorprone/maven-compiler.mjs';
 
 const KOTLIN_PLUGIN = 'kotlin-maven-plugin';
 const MAIN_GOALS = ['compile', 'kapt'];
 const TEST_GOALS = ['test-compile', 'test-kapt'];
 const CONVENTIONAL = { main: 'src/main/kotlin', test: 'src/test/kotlin' };
-
-function textAt(element, ...names) {
-  return childAt(element, ...names)?.text?.trim();
-}
 
 export function kotlinPlugin(project) {
   return childrenAt(project, 'build', 'plugins', 'plugin').find(
