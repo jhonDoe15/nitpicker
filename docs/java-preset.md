@@ -400,8 +400,9 @@ default, and their messages name it:
 ## Slice 3: Checkstyle
 
 - **Gradle side.** The init script applies the Gradle `checkstyle` plugin (version pinned in the
-  map, `checkstyle: 10.21.1`) and makes `nitpickerJava` depend on the Checkstyle task of every
-  source set. `ignoreFailures` is on and the XML reports are written to `checkstyle.xml` (main
+  map, `checkstyle: 10.21.1`) and makes `nitpickerJava` depend on the Checkstyle task of the
+  main source set and of every test source set (see [Coupling and stability](#coupling-and-stability-ticket-sh6)
+  for which source sets are tests; a `jmh` or `benchmark` set is not checked). `ignoreFailures` is on and the XML reports are written to `checkstyle.xml` (main
   sources) and `checkstyle-<source set>.xml` (`checkstyle-test.xml`, `checkstyle-integration.xml`,
   ...) in the report directory; the HTML report is off.
 - **Configuration.** The preset uses `google_checks.xml` from the pinned
@@ -624,12 +625,13 @@ resolved plus a new finding, as in the TypeScript check.
 
 ## Error Prone and NullAway
 
-- **What runs.** `nitpickerErrorProne`, a dependency of `nitpickerJava`, compiles the main and
-  the test Java sources a second time with javac and Error Prone 2.50.0 (Apache 2.0) as its
+- **What runs.** `nitpickerErrorProne`, a dependency of `nitpickerJava`, compiles the main Java
+  sources and those of every test source set (`test`, `integrationTest`, `testFixtures`, the same
+  ones Maven compiles as test sources with build-helper's `add-test-source`) a second time with javac and Error Prone 2.50.0 (Apache 2.0) as its
   plugin, plus NullAway 0.14.2 (Uber, MIT), an Error Prone plugin for null safety. The task lives
   in `languages/java/gradle/errorprone/` (`error-prone.gradle`, applied by the init script to
   every `java` project, and `ErrorProneReport.java`). It uses the classpath, annotation processors,
-  compiler arguments and encoding of `compileJava` and `compileTestJava`, writes classes only to
+  compiler arguments and encoding of `compileJava` and of each test source set's compile task, writes classes only to
   the throwaway `build/nitpicker/errorprone/`, and leaves the regular compile and the consumer
   build alone. javac runs in its own JVM through `ErrorProneReport.java` in single-file source
   mode, which writes every diagnostic to `build/nitpicker/errorprone.json`. Error Prone and
@@ -1279,7 +1281,9 @@ google-java-format --aosp`).
   test source set is one a `Test` task runs or one whose name contains `test` (`integrationTest`,
   `testFixtures`); the task compiles only those, so a `jmh` or `benchmark` source set is neither
   compiled for it nor counted as a test. Maven runs the same single jdeps call over
-  `target/classes` and `target/test-classes` (`builds/jdeps-reports.mjs`).
+  `target/classes` and `target/test-classes` (`builds/jdeps-reports.mjs`). Neither build holds
+  the jdeps output in memory: Gradle splits it line by line as jdeps writes it, Maven writes it to
+  a file in the report directory and splits that in 1 MB chunks, so a module of any size works.
   jdeps comes with the JDK that runs Gradle; nothing is downloaded and no version is pinned. The
   block is delimited by `// --- coupling (SH6)` comments in the init script.
 - **Conversion.** `languages/java/adapters/metrics/java-coupling.mjs` parses the class graph, folds nested classes
@@ -1371,9 +1375,11 @@ project's build does not replace it either.
 
 **Test sources are linted too.** PMD, Checkstyle (`checkstyleTest`, reported in
 `checkstyle-test.xml`), Error Prone, google-java-format and the inline suppression scan cover
-`src/test/java` and every other source set (`integrationTest`, `testFixtures`, `jmh`, ...) as well
-as the main sources, with the test rules, the way the TypeScript preset lints its tests; the
-file and folder limits already counted test files. PMD runs nitpicker's own rule set,
+`src/test/java` and every other test source set (`integrationTest`, `testFixtures`; on Maven the
+test roots, `build-helper-maven-plugin` `add-test-source` ones included) as well as the main
+sources, with the test rules, the way the TypeScript preset lints its tests; the
+file and folder limits already counted test files. A `jmh` or `benchmark` source set is neither main nor test code: nitpicker
+neither compiles nor lints it on Gradle, as Maven ignores a source folder build-helper does not add. PMD runs nitpicker's own rule set,
 [`languages/java/gradle/pmd-ruleset.xml`](../languages/java/gradle/pmd-ruleset.xml): the
 errorprone and bestpractices categories without `UnitTestAssertionsShouldIncludeMessage` and
 `UnitTestContainsTooManyAsserts`, which set an assertion style the TypeScript preset does not have,

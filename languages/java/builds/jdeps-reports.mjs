@@ -1,8 +1,20 @@
 import { spawnSync } from 'node:child_process';
-import { existsSync, readdirSync, writeFileSync } from 'node:fs';
+import {
+  closeSync,
+  existsSync,
+  fstatSync,
+  openSync,
+  readdirSync,
+  readSync,
+  rmSync,
+  writeFileSync,
+  writeSync,
+} from 'node:fs';
 import path from 'node:path';
+import { StringDecoder } from 'node:string_decoder';
 
-const JDEPS_OUTPUT_BYTES = 50 * 1024 * 1024;
+const CHUNK_BYTES = 1024 * 1024;
+const JDEPS_OUTPUT = 'jdeps-output.txt';
 const EDGE = /^\s+(\S+)\s+->\s+\S+/u;
 const SKIPPED_CLASSES = new Set(['module-info.class', 'package-info.class']);
 
@@ -40,18 +52,69 @@ export function splitJdepsEdges(text, { mainClasses, testClasses }) {
   };
 }
 
-function jdepsOutput({ command, cwd, directories }) {
-  const result = spawnSync(command, ['-verbose:class', '-filter:none', ...directories], {
-    cwd,
-    encoding: 'utf8',
-    maxBuffer: JDEPS_OUTPUT_BYTES,
-  });
-  if (result.error !== undefined || result.status !== 0) {
-    throw new Error(
-      `jdeps failed with exit code ${String(result.status)}: ${result.error?.message ?? result.stderr}`,
-    );
+function runJdeps({ command, cwd, directories, outputFile }) {
+  const output = openSync(outputFile, 'w');
+  try {
+    const result = spawnSync(command, ['-verbose:class', '-filter:none', ...directories], {
+      cwd,
+      encoding: 'utf8',
+      stdio: ['ignore', output, 'pipe'],
+    });
+    if (result.error !== undefined || result.status !== 0) {
+      throw new Error(
+        `jdeps failed with exit code ${String(result.status)}: ${result.error?.message ?? result.stderr}`,
+      );
+    }
+  } finally {
+    closeSync(output);
   }
-  return result.stdout;
+}
+
+function chunkStarts(descriptor) {
+  const size = fstatSync(descriptor).size;
+  return Array.from({ length: Math.ceil(size / CHUNK_BYTES) }, (_, index) => index * CHUNK_BYTES);
+}
+
+function splitFile(file, classes, targets) {
+  const input = openSync(file, 'r');
+  const decoder = new StringDecoder('utf8');
+  const buffer = Buffer.alloc(CHUNK_BYTES);
+  let rest = '';
+  function write(text) {
+    const edges = splitJdepsEdges(text, classes);
+    writeSync(targets.main, edges.main);
+    writeSync(targets.test, edges.test);
+  }
+  try {
+    for (const position of chunkStarts(input)) {
+      const lines = (
+        rest + decoder.write(buffer.subarray(0, readSync(input, buffer, 0, CHUNK_BYTES, position)))
+      ).split('\n');
+      rest = lines.pop();
+      write(lines.join('\n'));
+    }
+    write(rest + decoder.end());
+  } finally {
+    closeSync(input);
+  }
+}
+
+function writeEdges({ command, cwd, directories, reportDir }, classes) {
+  const targets = {
+    main: openSync(path.join(reportDir, 'jdeps.txt'), 'w'),
+    test: openSync(path.join(reportDir, 'jdeps-test.txt'), 'w'),
+  };
+  const outputFile = path.join(reportDir, JDEPS_OUTPUT);
+  try {
+    if (directories.length > 0) {
+      runJdeps({ command, cwd, directories, outputFile });
+      splitFile(outputFile, classes, targets);
+    }
+  } finally {
+    closeSync(targets.main);
+    closeSync(targets.test);
+    rmSync(outputFile, { force: true });
+  }
 }
 
 export function writeJdepsReports({ command, cwd, mainDirectory, testDirectory, reportDir }) {
@@ -61,12 +124,7 @@ export function writeJdepsReports({ command, cwd, mainDirectory, testDirectory, 
     ...(mainClasses.length > 0 ? [mainDirectory] : []),
     ...(testClasses.length > 0 ? [testDirectory] : []),
   ];
-  const edges =
-    directories.length === 0
-      ? { main: '', test: '' }
-      : splitJdepsEdges(jdepsOutput({ command, cwd, directories }), { mainClasses, testClasses });
-  writeFileSync(path.join(reportDir, 'jdeps.txt'), edges.main);
-  writeFileSync(path.join(reportDir, 'jdeps-test.txt'), edges.test);
+  writeEdges({ command, cwd, directories, reportDir }, { mainClasses, testClasses });
   writeFileSync(
     path.join(reportDir, 'jdeps-classes.txt'),
     mainClasses.map((name) => `${name}\n`).join(''),

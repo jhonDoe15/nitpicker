@@ -1,8 +1,16 @@
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import {
+  chmodSync,
+  mkdirSync,
+  mkdtempSync,
+  readdirSync,
+  readFileSync,
+  rmSync,
+  writeFileSync,
+} from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
-import { classNamesIn, splitJdepsEdges } from './jdeps-reports.mjs';
+import { classNamesIn, splitJdepsEdges, writeJdepsReports } from './jdeps-reports.mjs';
 
 const roots = [];
 
@@ -58,5 +66,45 @@ describe('classNamesIn', () => {
 
     expect(classNamesIn(root)).toEqual(['shop.Cart', 'shop.Cart$Line']);
     expect(classNamesIn(path.join(root, 'missing'))).toEqual([]);
+  });
+});
+
+describe('writeJdepsReports', () => {
+  it('splits output of any size, read in chunks, and keeps no copy of it', () => {
+    const root = mkdtempSync(path.join(tmpdir(), 'nitpicker-jdeps-'));
+    roots.push(root);
+    const classes = { main: 'main/shop/Größe.class', test: 'test/shop/GrößeTest.class' };
+    for (const name of Object.values(classes)) {
+      mkdirSync(path.dirname(path.join(root, name)), { recursive: true });
+      writeFileSync(path.join(root, name), '');
+    }
+    const mainLine = '   shop.Größe -> java.lang.Object java.base';
+    const testLine = '   shop.GrößeTest -> shop.Größe classes';
+    const count = 40_000;
+    const output = path.join(root, 'output.txt');
+    writeFileSync(output, `classes -> java.base\n${`${mainLine}\n${testLine}\n`.repeat(count)}`);
+    const command = path.join(root, 'jdeps');
+    writeFileSync(command, `#!/bin/sh\ncat '${output}'\n`);
+    chmodSync(command, 0o755);
+    const reportDir = path.join(root, 'reports');
+    mkdirSync(reportDir);
+
+    writeJdepsReports({
+      command,
+      cwd: root,
+      mainDirectory: path.join(root, 'main'),
+      testDirectory: path.join(root, 'test'),
+      reportDir,
+    });
+
+    const report = (name) => readFileSync(path.join(reportDir, name), 'utf8');
+    expect(report('jdeps.txt')).toBe(`${mainLine}\n`.repeat(count));
+    expect(report('jdeps-test.txt')).toBe(`${testLine}\n`.repeat(count));
+    expect(report('jdeps-classes.txt')).toBe('shop.Größe\n');
+    expect(readdirSync(reportDir).toSorted()).toEqual([
+      'jdeps-classes.txt',
+      'jdeps-test.txt',
+      'jdeps.txt',
+    ]);
   });
 });
