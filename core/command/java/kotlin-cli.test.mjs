@@ -97,14 +97,14 @@ describe('nitpicker with "preset": "kotlin"', () => {
       },
     ]);
   });
-  it('fails on a changed Kotlin branch no test takes and ignores generated ones', () => {
+  it('fails on a changed Kotlin branch no test takes', () => {
     const root = kotlinRepository({
       'src/main/kotlin/demo/K.kt': feeSource,
       'jacoco.xml': branchReport(),
     });
     writeFiles(root, {
       'src/main/kotlin/demo/K.kt': surchargeSource,
-      'jacoco.xml': branchReport([5, 1, 1], [7, 1, 1], [8, 1, 1]),
+      'jacoco.xml': branchReport([5, 1, 1]),
     });
     commit(root, 'add an untested branch');
 

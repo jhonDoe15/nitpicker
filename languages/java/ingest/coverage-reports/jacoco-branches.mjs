@@ -1,7 +1,6 @@
 import { MINIMUM_BRANCH_COVERAGE } from '../../../../shared/policy.mjs';
 import { branchCoverageFindings } from '../../../../shared/rules/branch-coverage.mjs';
 import { childrenNamed, hashIdentity, normalizeReportPath, parseXml } from '../common.mjs';
-import { isCompilerGeneratedBranchLine, suspensionCall } from './kotlin-branches.mjs';
 
 export function ingestJacocoBranches(xml, options = {}) {
   const report = parseXml(xml);
@@ -80,20 +79,10 @@ function lineBranch(line, { path: filePath, lines: sourceLines }) {
   if (!(total > 0) || !Number.isInteger(lineNumber) || !source) {
     return undefined;
   }
-  const kotlin = filePath.endsWith('.kt');
-  if (kotlin && isCompilerGeneratedBranchLine(source)) {
-    return undefined;
-  }
-  const suspension = kotlin ? suspensionCall(source) : undefined;
   return {
     path: filePath,
     key: hashIdentity('branch-source', [source]),
     percent: (covered / total) * 100,
     line: lineNumber,
-    ...(suspension === undefined ? {} : { arms: [suspensionArm(suspension)] }),
   };
-}
-
-function suspensionArm(call) {
-  return `${call} suspending (move the call to its own line if no branch of yours is untested)`;
 }

@@ -152,3 +152,83 @@ describe('changed-branch-coverage in the differential comparison', () => {
     expect(isStrictRule('changed-branch-coverage')).toBe(false);
   });
 });
+
+describe('changed-branch-coverage on Kotlin sources recorded with JaCoCo 0.8.14', () => {
+  const fixtures = path.resolve(import.meta.dirname, '..', 'fixtures');
+  const kotlinFindings = (report, project) =>
+    ingestJacocoBranches(readFileSync(path.join(fixtures, report), 'utf8'), {
+      sourceRoot: 'src/main/kotlin',
+      sourceText: (file) => {
+        try {
+          return readFileSync(path.join(fixtures, project, file), 'utf8');
+        } catch {
+          return undefined;
+        }
+      },
+    }).findings;
+  const lines = (findings) =>
+    findings
+      .filter((finding) => finding.rule === 'changed-branch-coverage')
+      .map((finding) => `${path.basename(finding.path)}:${String(finding.location.line)}`);
+
+  it('reports the branches the tests missed, with no coroutine state machine lines to drop', () => {
+    const findings = kotlinFindings('jacoco-kotlin.xml', 'kotlin-measurement');
+
+    expect(lines(findings)).toEqual([
+      'More.kt:10',
+      'More.kt:112',
+      'More.kt:120',
+      'Coro.kt:44',
+      'Coro.kt:45',
+    ]);
+    expect(findings.find((finding) => finding.location.line === 10).message).toBe(
+      'Branch coverage is 75.00%; minimum is 95%',
+    );
+  });
+
+  it('keeps every line a statement spans, and JaCoCo reports no branch on a suspension line', () => {
+    const findings = kotlinFindings('jacoco-kotlin-multiline.xml', 'kotlin-multiline');
+
+    expect(lines(findings)).toEqual([
+      'Multi.kt:3',
+      'Multi.kt:6',
+      'Multi.kt:13',
+      'Multi.kt:21',
+      'Multi.kt:22',
+      'Multi.kt:23',
+      'Multi.kt:28',
+      'Multi.kt:29',
+      'Multi.kt:32',
+      'Multi.kt:35',
+      'Multi.kt:36',
+      'Multi.kt:41',
+      'Multi.kt:44',
+      'Multi.kt:54',
+      'Multi.kt:60',
+      'Multi.kt:63',
+      'Multi.kt:70',
+      'Multi.kt:72',
+      'Legacy.kt:4',
+      'Legacy.kt:11',
+      'Gen.kt:10',
+      'Gen.kt:27',
+      'Gen.kt:32',
+      'Probe.kt:8',
+      'Probe.kt:9',
+      'Probe.kt:17',
+      'Probe.kt:18',
+      'Probe.kt:39',
+      'Exotic.kt:20',
+    ]);
+  });
+
+  it('reports a Kotlin file it cannot find without failing on it', () => {
+    const notFound = kotlinFindings('jacoco-kotlin-multiline.xml', 'kotlin-multiline').filter(
+      (finding) => finding.rule === 'branch-source-not-found',
+    );
+
+    expect(notFound.map(({ path: file, classification }) => [file, classification])).toEqual([
+      ['demo/flat/Flat.kt', 'descriptive'],
+    ]);
+  });
+});

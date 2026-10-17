@@ -42,7 +42,7 @@ const JACOCO = `<?xml version="1.0" encoding="UTF-8"?>
   </sourcefile>
   <sourcefile name="Bad.kt">
     <line nr="8" mi="1" ci="0" mb="1" cb="1"/>
-    <line nr="9" mi="1" ci="0" mb="2" cb="0"/>
+    <line nr="9" mi="1" ci="0" mb="0" cb="0"/>
     <counter type="LINE" missed="3" covered="0"/>
   </sourcefile>
   <sourcefile name="Legacy.java">
@@ -154,7 +154,7 @@ export function projectWithKotlinReports({
     [`${reports}/pmd.sarif`]: EMPTY_SARIF,
     [`${reports}/spotbugs.sarif`]: EMPTY_SARIF,
     [`${reports}/format.txt`]: '',
-    [`${reports}/checkstyle.xml`]: '<checkstyle version="10.21.1"></checkstyle>',
+    [`${reports}/checkstyle.xml`]: '<checkstyle version="13.5.0"></checkstyle>',
     [`${reports}/jacoco.xml`]: JACOCO,
     [`${reports}/pit/mutations.xml`]: PIT,
     [`${reports}/structure.json`]: '[]',

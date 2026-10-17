@@ -27,14 +27,6 @@ describe('readJavaFindings with the kotlin preset: coverage and mutation', () =>
       ['changed-branch-coverage', 'src/main/java/demo/Legacy.java'],
     ]);
   });
-  it('ignores the generated outcomes of a Kotlin line that only calls a suspension function', () => {
-    const { findings } = readJavaFindings(projectWithKotlinReports(), { preset: 'kotlin' });
-    const branchLines = findings
-      .filter((finding) => finding.rule === 'changed-branch-coverage' && finding.path === bad)
-      .map((finding) => finding.location.line);
-
-    expect(branchLines).toEqual([8]);
-  });
   it('finds a Kotlin file whose directory does not match its package', () => {
     const root = projectWithKotlinReports();
     const reports = rootReports(root);
