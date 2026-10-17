@@ -48,18 +48,20 @@ function rootConfigsAndScripts(projectRoot, layout) {
   );
 }
 
-function isSkippedDirectory(absolute, entry, layout) {
+function isSkippedDirectory(absolute, entry, { layout, projectRoot }) {
+  const relative = path.relative(projectRoot, absolute).split(path.sep).join('/');
   return (
     entry.name.startsWith('.') ||
-    layout.excludedGlobs.some((glob) => path.posix.matchesGlob(`${absolute}/x`, glob))
+    layout.excludedGlobs.some((glob) => path.posix.matchesGlob(`${relative}/x`, glob))
   );
 }
 
-export function codeFilesUnder(directories, layout) {
+export function codeFilesUnder(directories, layout, projectRoot) {
+  const walked = { layout, projectRoot };
   return directories
     .flatMap((dir) => [
       ...filesUnder(dir, {
-        skipDirectory: (absolute, entry) => isSkippedDirectory(absolute, entry, layout),
+        skipDirectory: (absolute, entry) => isSkippedDirectory(absolute, entry, walked),
       }),
     ])
     .filter((file) => isCodeFile(file));
@@ -72,11 +74,12 @@ function isInside(root, target) {
 
 export function walkRules({ projectRoot, layout }) {
   const root = path.resolve(projectRoot);
+  const walked = { layout, projectRoot: root };
   const plain = new Map();
   function isPlainDirectory(directory) {
     if (!plain.has(directory)) {
       const entry = lstatSync(directory, { throwIfNoEntry: false });
-      const skipped = isSkippedDirectory(directory, { name: path.basename(directory) }, layout);
+      const skipped = isSkippedDirectory(directory, { name: path.basename(directory) }, walked);
       plain.set(directory, entry?.isDirectory() === true && !skipped);
     }
     return plain.get(directory);
@@ -129,6 +132,7 @@ export function createProjectProgram({ projectRoot, configPath, packagesInfo, la
     ...codeFilesUnder(
       siblings.map(({ dir }) => dir),
       layout,
+      projectRoot,
     ),
   ]);
   return ts.createProgram({
