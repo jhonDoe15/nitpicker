@@ -1,7 +1,7 @@
 import { closingIndex, enclosingOpen } from '../kotlin-source.mjs';
 
 const REQUEST_BUILDER = /\bHttpRequest\s*\.\s*newBuilder\s*\(/g;
-const CHAINED_CALL = /^\s*\??\.\s*([A-Za-z_]\w*)\s*(?:<[^<>()]*>)?\s*\(/;
+const CHAINED_CALL = /^\s*\??\.\s*([A-Za-z_]\w*)\s*(?:<[^<>()]*>\s*)?\(/;
 const HTTP_URL =
   /\b(?:URL\s*\(|URI\s*(?:\(|\.\s*create\s*\()[^\n]*?\.\s*toURL\s*\(\s*\)|[A-Za-z_]\w*\s*\.\s*toURL\s*\(\s*\))/;
 const RESOURCE = /\bgetResource\w*\s*\(|\bclassLoader\b|\bjavaClass\b/;
@@ -16,7 +16,7 @@ const UNSAFE_READERS = [
   /\benableDefaultTyping\s*\(/g,
   /\bactivateDefaultTyping\s*\(\s*LaissezFaireSubTypeValidator\b/g,
   /\bJsonTypeInfo\s*\.\s*Id\s*\.\s*(?:MINIMAL_)?CLASS\b/g,
-  /\bSerializationUtils\s*\.\s*deserialize\s*(?:<[^<>]*>)?\s*\(/g,
+  /\bSerializationUtils\s*\.\s*deserialize\s*(?:<[^<>]*>\s*)?\(/g,
   /\bisRegistrationRequired\s*=\s*false\b|\bsetRegistrationRequired\s*\(\s*false\s*\)/g,
 ];
 
@@ -28,18 +28,22 @@ export const CLIENT_MESSAGES = {
 };
 
 function chainCalls(code, open) {
-  const close = closingIndex(code, open);
-  const next = CHAINED_CALL.exec(code.slice(close + 1));
-  if (next === null) {
-    return { names: [], end: close + 1 };
+  const names = [];
+  const opens = [open];
+  for (const at of opens) {
+    const close = closingIndex(code, at);
+    const next = CHAINED_CALL.exec(code.slice(close + 1));
+    if (next !== null) {
+      names.push(next[1]);
+      opens.push(close + next[0].length);
+    }
   }
-  const following = chainCalls(code, close + 1 + next[0].length - 1);
-  return { names: [next[1], ...following.names], end: following.end };
+  return names;
 }
 
 function requestsWithoutTimeout(code) {
   return [...code.matchAll(REQUEST_BUILDER)].flatMap((match) => {
-    const { names } = chainCalls(code, match.index + match[0].length - 1);
+    const names = chainCalls(code, match.index + match[0].length - 1);
     return names.at(-1) === 'build' && !names.includes('timeout') ? [match.index] : [];
   });
 }

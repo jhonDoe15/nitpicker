@@ -49,10 +49,15 @@ describe('readKotlinSourceFindings', () => {
         classification: 'enforceable',
         location: { line: 3 },
       },
-      expect.objectContaining({
+      {
+        tool: 'kotlin-source',
+        rule: 'MutableModuleState',
+        path: 'src/main/kotlin/demo/State.kt',
         identity: expect.stringMatching(/^MutableModuleState:[0-9a-f]+#2$/),
+        message: expect.stringMatching(/^Keep state in an instance/),
+        classification: 'enforceable',
         location: { line: 4 },
-      }),
+      },
     ]);
   });
 
@@ -119,9 +124,32 @@ describe('readKotlinSourceFindings', () => {
   });
 
   it('names every rule it reports in KOTLIN_SOURCE_RULES', () => {
-    expect(KOTLIN_SOURCE_RULES).toContain('kotlin-source/MutableModuleState');
-    expect(KOTLIN_SOURCE_RULES).toContain('kotlin-source/TestClassWithoutTestCases');
-    expect(new Set(KOTLIN_SOURCE_RULES).size).toBe(KOTLIN_SOURCE_RULES.length);
+    expect(KOTLIN_SOURCE_RULES.toSorted()).toEqual(
+      [
+        'BooleanFlagParameter',
+        'CatchOnlyLogsOrReturnsDefault',
+        'CommentedOutCode',
+        'CredentialLiteral',
+        'DetachedTestCase',
+        'GeneratedOnHandWrittenCode',
+        'GenericPackageName',
+        'GenericTypeName',
+        'HardcodedSecret',
+        'HttpWithoutTimeout',
+        'IoCallInLoop',
+        'LogStringConcatenation',
+        'MutableModuleState',
+        'MutationIgnoreMarker',
+        'SecretInLog',
+        'ShellCommand',
+        'SqlStringBuilding',
+        'TestClassWithoutTestCases',
+        'TestHelperInSource',
+        'TlsVerificationOff',
+        'UnsafeDeserialization',
+        'WeakHash',
+      ].map((rule) => `kotlin-source/${rule}`),
+    );
   });
 });
 

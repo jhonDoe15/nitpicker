@@ -54,7 +54,9 @@ describe('applyKotlinRuleMessages', () => {
     for (const rule of ['detekt.style.MagicNumber', ...KOTLIN_LISTED_RULES]) {
       const config = { preset: 'kotlin', exceptions: [{ rule, paths: [file], reason: 'r' }] };
 
-      expect(() => validateKotlinOptions(config), rule).not.toThrow();
+      expect(() => {
+        validateKotlinOptions(config);
+      }, rule).not.toThrow();
     }
   });
 });

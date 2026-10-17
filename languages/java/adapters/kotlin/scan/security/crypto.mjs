@@ -11,13 +11,40 @@ const WEAK_ALGORITHMS = {
 };
 const ALGORITHM_CONSTANT =
   /^(?:MessageDigestAlgorithms|HmacAlgorithms)\s*\.\s*(MD[245]|SHA_1|HMAC_MD5)$/;
-const WEAK_HELPER =
-  /\b(?:DigestUtils\s*\.\s*(?:md[25](?:Hex)?|sha1?(?:Hex)?|get(?:Md[25]|Sha1?)Digest|md5Digest(?:AsHex)?|appendMd5DigestAsHex)|Hashing\s*\.\s*(?:md5|sha1)|HmacUtils\s*\.\s*hmacMd5\w*)\s*\(|\.\s*(?:md5|sha1)\s*\(\s*\)/g;
+const CODEC_HELPERS =
+  'md[25](?:Hex)?|sha1?(?:Hex)?|get(?:Md[25]|Sha1?)Digest|md5Digest(?:AsHex)?|appendMd5DigestAsHex';
+const WEAK_HELPER = new RegExp(
+  [
+    String.raw`\b(?:DigestUtils\s*\.\s*(?:${CODEC_HELPERS})|Hashing\s*\.\s*(?:md5|sha1)`,
+    String.raw`|HmacUtils\s*\.\s*hmacMd5\w*)\s*\(|\.\s*(?:md5|sha1)\s*\(\s*\)`,
+  ].join(''),
+  'g',
+);
+const VERIFIER_OWNERS = [
+  'HostnameVerifier',
+  'TrustStrategy',
+  'hostnameVerifier',
+  'setDefaultHostnameVerifier',
+  'setHostnameVerifier',
+  String.raw`loadTrustMaterial\s*\([^()]*\)`,
+];
+const INSECURE_TYPES = [
+  'NoopHostnameVerifier',
+  'AllowAllHostnameVerifier',
+  'ALLOW_ALL_HOSTNAME_VERIFIER',
+  'TrustAllStrategy',
+  'TrustSelfSignedStrategy',
+  'InsecureTrustManagerFactory',
+];
+const TRUE_LAMBDA = String.raw`\{\s*[\w_]+\s*,\s*[\w_]+\s*->\s*true\s*\}`;
 const TRUST_ALL = [
   /\boverride\s+fun\s+checkServerTrusted\s*\([^)]*\)\s*(?::\s*Unit\s*)?(?:=\s*Unit\b|\{\s*\})/g,
-  /\bfun\s+verify\s*\([^)]*SSLSession[^)]*\)\s*(?::\s*Boolean\s*)?(?:=\s*true\b|\{\s*return\s+true\s*\})/g,
-  /\b(?:HostnameVerifier|TrustStrategy|hostnameVerifier|setDefaultHostnameVerifier|setHostnameVerifier|loadTrustMaterial\s*\([^()]*\))\s*\(?\s*\{\s*[\w_]+\s*,\s*[\w_]+\s*->\s*true\s*\}/g,
-  /\b(?:NoopHostnameVerifier|AllowAllHostnameVerifier|ALLOW_ALL_HOSTNAME_VERIFIER|TrustAllStrategy|TrustSelfSignedStrategy|InsecureTrustManagerFactory)\b/g,
+  new RegExp(
+    String.raw`\bfun\s+verify\s*\([^)]*SSLSession[^)]*\)\s*(?::\s*Boolean\s*)?(?:=\s*true\b|\{\s*return\s+true\s*\})`,
+    'g',
+  ),
+  new RegExp(String.raw`\b(?:${VERIFIER_OWNERS.join('|')})\s*(?:\(\s*)?${TRUE_LAMBDA}`, 'g'),
+  new RegExp(String.raw`\b(?:${INSECURE_TYPES.join('|')})\b`, 'g'),
 ];
 
 export const CRYPTO_MESSAGES = {

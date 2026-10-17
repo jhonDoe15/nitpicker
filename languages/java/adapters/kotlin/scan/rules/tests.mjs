@@ -1,16 +1,39 @@
 import { closingIndex } from '../kotlin-source.mjs';
 
-const TEST_CLASS =
-  /((?:@[\w.]+(?:\([^)]*\))?\s+)*)((?:(?:abstract|open|sealed|private|internal|public|data|inner)\s+)*)class\s+([A-Z]\w*(?:Test|Tests|TestCase|IT))\b([^{\n]*)\{/g;
-const TEST_ANNOTATION =
-  /@(?:[\w.]+\.)?(?:Test|ParameterizedTest|RepeatedTest|TestFactory|TestTemplate|Property|Example|Nested)\b/;
-const SUPERCLASS_CALL = /:\s*(?:[^,{]*,\s*)*[A-Z][\w.]*\s*(?:<[^>]*>)?\s*\(/;
+const CLASS_MODIFIERS = 'abstract|open|sealed|private|internal|public|data|inner';
+const TEST_CLASS = new RegExp(
+  [
+    String.raw`((?:@[\w.]+(?:\([^)]*\))?\s+)*)((?:(?:${CLASS_MODIFIERS})\s+)*)`,
+    String.raw`class\s+([A-Z]\w*(?:Test|Tests|TestCase|IT))\b([^{\n]*)\{`,
+  ].join(''),
+  'g',
+);
+const TEST_ANNOTATIONS =
+  'Test|ParameterizedTest|RepeatedTest|TestFactory|TestTemplate|Property|Example|Nested';
+const TEST_ANNOTATION = new RegExp(String.raw`@(?:[\w.]+\.)?(?:${TEST_ANNOTATIONS})\b`);
+const SUPERTYPE_CALL = /^\s*[A-Z][\w.]*\s*(?:<[^>]*>\s*)?\(/;
 const SUITE = /@(?:Suite|SelectClasses|SelectPackages|RunWith|Cucumber\w*|IncludeEngines)\b/;
-const FUNCTION =
-  /(^|\n)([ \t]*)((?:(?:private|public|internal|protected|override|suspend|open)\s+)*)fun\s+(`[^`]+`|[A-Za-z_]\w*)\s*\(\s*\)/g;
+const FUNCTION_MODIFIERS = 'private|public|internal|protected|override|suspend|open';
+const FUNCTION = new RegExp(
+  String.raw`(^|\n)([ \t]*)((?:(?:${FUNCTION_MODIFIERS})\s+)*)fun\s+(\`[^\`]+\`|[A-Za-z_]\w*)\s*\(\s*\)`,
+  'g',
+);
 const TEST_NAME = /^`.+`$|^test[A-Z_]|^should[A-Z_]/;
-const TEST_FRAMEWORK =
-  /^\s*import\s+(?:org\.junit|kotlin\.test|io\.kotest|io\.mockk|org\.mockito|org\.assertj|com\.google\.common\.truth|strikt|org\.hamcrest)\b[\w.*]*/m;
+const TEST_PACKAGES = [
+  String.raw`org\.junit`,
+  String.raw`kotlin\.test`,
+  String.raw`io\.kotest`,
+  String.raw`io\.mockk`,
+  String.raw`org\.mockito`,
+  String.raw`org\.assertj`,
+  String.raw`com\.google\.common\.truth`,
+  'strikt',
+  String.raw`org\.hamcrest`,
+];
+const TEST_FRAMEWORK = new RegExp(
+  String.raw`^\s*import\s+(?:${TEST_PACKAGES.join('|')})\b[\w.*]*`,
+  'm',
+);
 
 export const TEST_MESSAGES = {
   TestClassWithoutTestCases:
@@ -20,6 +43,17 @@ export const TEST_MESSAGES = {
   TestHelperInSource:
     'Move the test helper to the test sources (`src/test/kotlin`): production code must not import a test framework.',
 };
+
+function hasSuperclassCall(header) {
+  const colon = header.indexOf(':');
+  return (
+    colon !== -1 &&
+    header
+      .slice(colon + 1)
+      .split(',')
+      .some((part) => SUPERTYPE_CALL.test(part))
+  );
+}
 
 function annotatedBefore(body, index) {
   const before = body.slice(0, index).trimEnd();
@@ -48,7 +82,7 @@ export function testClassesWithoutTests(scanned) {
     const body = scanned.code.slice(open, close);
     if (
       /\b(?:abstract|open|sealed)\b/.test(modifiers) ||
-      SUPERCLASS_CALL.test(header) ||
+      hasSuperclassCall(header) ||
       SUITE.test(annotations) ||
       TEST_ANNOTATION.test(annotations)
     ) {

@@ -1,5 +1,6 @@
 import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import path from 'node:path';
+import { pathInside } from '../../../../../shared/filesystem.mjs';
 import { hash, nextOccurrence } from '../../../../../shared/rules/finding-helpers.mjs';
 import { braceDepths, lineOf, lineText, scanKotlinSource } from './kotlin-source.mjs';
 import { CALL_MESSAGES, ioInLoops, logTemplates, shellCommands } from './rules/calls.mjs';
@@ -71,15 +72,19 @@ const ROOT_MARKERS = [
 
 function kotlinFiles(projectRoot, sourceRoots) {
   const files = sourceRoots.flatMap((sourceRoot) => {
-    const directory = path.join(projectRoot, sourceRoot);
-    if (!existsSync(directory)) {
+    const directory = pathInside(projectRoot, sourceRoot);
+    if (directory === undefined || !existsSync(directory)) {
       return [];
     }
     return readdirSync(directory, { recursive: true })
       .filter((entry) => entry.endsWith('.kt'))
-      .map((entry) => path.posix.join(sourceRoot, entry.replaceAll('\\', '/')));
+      .map((entry) => ({
+        file: path.posix.join(sourceRoot, entry.replaceAll('\\', '/')),
+        absolute: path.join(directory, entry),
+      }));
   });
-  return [...new Set(files)].toSorted();
+  const byFile = new Map(files.map((entry) => [entry.file, entry]));
+  return [...byFile.values()].toSorted((left, right) => (left.file < right.file ? -1 : 1));
 }
 
 export function isCompositionRoot(scanned) {
@@ -90,7 +95,7 @@ export function isCompositionRoot(scanned) {
   return declaresMain || ROOT_MARKERS.some((marker) => marker.test(scanned.code));
 }
 
-function finding(file, scanned, reported, occurrences) {
+function finding({ file, scanned, occurrences }, reported) {
   const line = lineOf(scanned, reported.offset);
   const subject = reported.subject ?? lineText(scanned, line).trim().replaceAll(/\s+/g, ' ');
   const key = `${reported.rule}\0${subject}`;
@@ -108,9 +113,9 @@ function finding(file, scanned, reported, occurrences) {
 
 function scannedFiles(projectRoot, sourceRoots) {
   return kotlinFiles(projectRoot, sourceRoots)
-    .map((file) => ({
+    .map(({ file, absolute }) => ({
       file,
-      scanned: scanKotlinSource(readFileSync(path.join(projectRoot, file), 'utf8')),
+      scanned: scanKotlinSource(readFileSync(absolute, 'utf8')),
     }))
     .filter(({ scanned }) => !generatedFile(scanned));
 }
@@ -122,7 +127,7 @@ function scanFiles(files, rules) {
     return rules
       .flatMap((rule) => rule(scanned, context))
       .toSorted((left, right) => left.offset - right.offset)
-      .map((reported) => finding(file, scanned, reported, occurrences));
+      .map((reported) => finding({ file, scanned, occurrences }, reported));
   });
 }
 

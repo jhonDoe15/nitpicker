@@ -1,9 +1,23 @@
 import { closingIndex, enclosingOpen, splitArguments } from '../kotlin-source.mjs';
 import { withoutLogCalls } from '../log-calls.mjs';
 
-const CATCH = /\bcatch\s*\(\s*([A-Za-z_]\w*|`[^`]+`)\s*:\s*([^)]*)\)\s*\{/g;
-const ERROR_RESPONSE =
-  /\b(?:status|internalServerError|badRequest|notFound|unprocessableEntity|sendError|exitProcess|exit|respond|respondText|ResponseEntity|Result\s*\.\s*failure)\s*[.(<]/;
+const CATCH = /\bcatch\s*\(\s*([A-Za-z_]\w*|`[^`]+`)\s*:([^)]*)\)\s*\{/g;
+const ERROR_CALLS = [
+  'status',
+  'internalServerError',
+  'badRequest',
+  'notFound',
+  'unprocessableEntity',
+  'sendError',
+  'exitProcess',
+  'exit',
+  'respond',
+  'respondText',
+  'ResponseEntity',
+  String.raw`Result\s*\.\s*failure`,
+];
+const ERROR_RESPONSE = new RegExp(String.raw`\b(?:${ERROR_CALLS.join('|')})\s*[.(<]`);
+const LOOP_LOOKBACK = 200;
 const LOOP_HEADER = /(?:\b(?:for|while)\s*\([^{}]*\)|\bdo|\brepeat\s*\([^()]*\))\s*$/;
 const FUNCTION = /(?<![\w.])fun\s+(?:<[^>]*>\s*)?(?:[\w.<>?]+\.)?([A-Za-z_]\w*)\s*\(/g;
 const HIDDEN = /\b(?:private|internal|protected|override)\b/;
@@ -33,7 +47,7 @@ function isRetry(code, tryBlock) {
     return false;
   }
   const outer = enclosingOpen(code, tryBlock.open);
-  return outer !== -1 && LOOP_HEADER.test(code.slice(Math.max(0, outer - 200), outer));
+  return outer !== -1 && LOOP_HEADER.test(code.slice(Math.max(0, outer - LOOP_LOOKBACK), outer));
 }
 
 function handles(body, name, type) {
@@ -110,8 +124,8 @@ export function booleanFlags(scanned) {
     }
     return parts.flatMap((part) => {
       const text = code.slice(part.start, part.end);
-      const flag = text.includes('@') ? null : BOOLEAN_PARAMETER.exec(text);
-      return flag !== null && switchesOn(body, flag[1])
+      const flag = text.includes('@') ? undefined : (BOOLEAN_PARAMETER.exec(text) ?? undefined);
+      return flag !== undefined && switchesOn(body, flag[1])
         ? [
             {
               rule: 'BooleanFlagParameter',

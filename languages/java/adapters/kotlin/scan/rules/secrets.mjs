@@ -1,8 +1,25 @@
 import { literalAt } from '../kotlin-source.mjs';
 import { logCalls } from '../log-calls.mjs';
 
-const SECRET_NAME =
-  /(?:password|passwd|pwd|passphrase|secret|token|credentials?|apikey|privatekey|accesskey|secretkey|authkey|signingkey|encryptionkey)$/;
+const SECRET_WORDS = [
+  'password',
+  'passwd',
+  'pwd',
+  'passphrase',
+  'secret',
+  'token',
+  'credentials?',
+  'apikey',
+  'privatekey',
+  'accesskey',
+  'secretkey',
+  'authkey',
+  'signingkey',
+  'encryptionkey',
+];
+const SECRET_NAME = new RegExp(`(?:${SECRET_WORDS.join('|')})$`);
+const MIN_SECRET_LENGTH = 6;
+const MIN_CHARACTER_CLASSES = 3;
 const ASSIGNED = /(?<![\w.])([A-Za-z_]\w*)(?:\s*:\s*[\w.<>?]+)?\s*=(?!=)\s*"/g;
 const KEYED = /"\s*(?:,|\bto\b)\s*"/g;
 const NOT_A_SECRET = [
@@ -12,7 +29,9 @@ const NOT_A_SECRET = [
   /^(?:changeme|change-me|todo|example|dummy|placeholder|redacted|none|null|undefined|your[-_ ].*)$/i,
 ];
 const CREDENTIAL = [
-  /AKIA[0-9A-Z]{16}|gh[pousr]_[A-Za-z0-9]{30,}|xox[abprs]-[A-Za-z0-9-]{10,}|-----BEGIN (?:[A-Z]+ )?PRIVATE KEY-----|[rs]k_(?:live|test)_[A-Za-z0-9]{20,}|sk-(?:proj|ant|live|test)-[A-Za-z0-9_-]{20,}/,
+  /AKIA[0-9A-Z]{16}|gh[pousr]_[A-Za-z0-9]{30,}|xox[abprs]-[A-Za-z0-9-]{10,}/,
+  /-----BEGIN (?:[A-Z]+ )?PRIVATE KEY-----/,
+  /[rs]k_(?:live|test)_[A-Za-z0-9]{20,}|sk-(?:proj|ant|live|test)-[A-Za-z0-9_-]{20,}/,
   /^[a-z][a-z0-9+.-]*:\/\/[^\s/:@]+:[^\s/@${}]{6,}@/i,
   /[?&;]password=[^&;\s${}]{6,}/i,
   /^(?:Bearer|Basic) [A-Za-z0-9._~+/=-]{16,}$/,
@@ -34,11 +53,15 @@ function isSecretName(name) {
 
 function looksSecret(literal) {
   const text = literal.text.replaceAll('\\$', '$');
-  if (literal.template || text.length < 6 || NOT_A_SECRET.some((pattern) => pattern.test(text))) {
+  if (
+    literal.template ||
+    text.length < MIN_SECRET_LENGTH ||
+    NOT_A_SECRET.some((pattern) => pattern.test(text))
+  ) {
     return false;
   }
   const classes = [/[a-z]/, /[A-Z]/, /\d/, /[^A-Za-z0-9]/].filter((pattern) => pattern.test(text));
-  return (/\d/.test(text) && /[A-Za-z]/.test(text)) || classes.length >= 3;
+  return (/\d/.test(text) && /[A-Za-z]/.test(text)) || classes.length >= MIN_CHARACTER_CLASSES;
 }
 
 function secretFinding(literal, name) {

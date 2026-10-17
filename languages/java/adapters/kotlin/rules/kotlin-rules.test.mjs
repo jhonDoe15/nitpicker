@@ -106,7 +106,9 @@ describe('one-way rule messages', () => {
   it('lists each rule once under the id detekt reports', () => {
     expect(new Set(ONE_WAY_RULE_IDS).size).toBe(ONE_WAY_RULE_IDS.length);
     for (const id of ONE_WAY_RULE_IDS) {
-      expect(id).toMatch(/^detekt\.(?:potential-bugs|exceptions|coroutines|style|complexity)\.[A-Z]\w+$/);
+      expect(id).toMatch(
+        /^detekt\.(?:potential-bugs|exceptions|coroutines|style|complexity)\.[A-Z]\w+$/,
+      );
     }
   });
 });
@@ -176,9 +178,20 @@ describe('the rules on main sources only', () => {
         'utf8',
       ),
     );
-    for (const { ruleset, name } of ONE_WAY_RULES.filter((rule) => rule.mainOnly)) {
-      expect(config[ruleset][name].excludes).toContain('**/test/**');
-    }
+    const mainOnly = ONE_WAY_RULES.filter((rule) => rule.mainOnly);
+
+    expect(mainOnly.map(({ ruleset, name }) => config[ruleset][name].excludes)).toEqual(
+      mainOnly.map(() => [
+        '**/test/**',
+        '**/androidTest/**',
+        '**/commonTest/**',
+        '**/jvmTest/**',
+        '**/androidUnitTest/**',
+        '**/androidInstrumentedTest/**',
+        '**/jsTest/**',
+        '**/iosTest/**',
+      ]),
+    );
   });
 });
 

@@ -1,3 +1,4 @@
+export const DYNAMIC = '\u0000';
 const STATEMENT =
   '(?:SELECT\\b[\\s\\S]*?\\bFROM\\b|INSERT\\s+INTO\\b|UPDATE\\s+\\S+\\s+SET\\b|DELETE\\s+FROM\\b|REPLACE\\s+INTO\\b|MERGE\\s+INTO\\b|TRUNCATE\\s+TABLE\\b|DROP\\s+(?:TABLE|INDEX|VIEW|DATABASE|SCHEMA)\\b|ALTER\\s+TABLE\\b|CREATE\\s+(?:UNIQUE\\s+)?(?:TABLE|INDEX|VIEW|DATABASE|SCHEMA)\\b|WITH\\s+\\S+\\s+AS\\s*\\()';
 const COMPARISON = '\\s*(?:=|<>|!=|<=|>=|<|>|\\bLIKE\\b|\\bIN\\b|\\bNOT\\s+IN\\b|\\bIS\\b)';

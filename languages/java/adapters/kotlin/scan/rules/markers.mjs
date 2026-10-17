@@ -10,8 +10,7 @@ export const MARKER_MESSAGES = {
   CommentedOutCode: 'Delete the commented-out code; version control keeps it.',
 };
 
-const DECLARATION =
-  '(?:val|var|const\\s+val)\\s+[a-z_]\\w*(?:\\s*:\\s*[\\w<>?,. ]+)?\\s*=\\s*\\S.*';
+const DECLARATION = '(?:val|var|const\\s+val)\\s+[a-z_]\\w*(?:\\s*:[\\w<>?,. ]+|\\s*)=\\s*\\S.*';
 const MODIFIERS =
   '(?:(?:private|public|internal|protected|override|suspend|inline|open|abstract)\\s+)*';
 const CODE_SHAPES = [
@@ -21,8 +20,8 @@ const CODE_SHAPES = [
   /^(?:\}\s*)?(?:if|for|while|when)\s*\(.*\)\s*\{?$/,
   /^(?:\}\s*)?(?:else|try|finally)\s*\{$/,
   /^\}\s*catch\s*\(.*\)\s*\{$/,
-  new RegExp(`^${MODIFIERS}fun\\s+[\\w.<>]+\\(.*\\)(?:\\s*:\\s*[\\w<>?, .]+)?\\s*(?:\\{|=.+)$`),
-  /^(?:(?:data|sealed|abstract|open|private|internal|enum|value)\s+)*(?:class|interface|object)\s+[A-Z]\w*.*\{$/,
+  new RegExp(`^${MODIFIERS}fun\\s+[\\w.<>]+\\(.*\\)(?:\\s*:[\\w<>?, .]+|\\s*)(?:\\{|=.+)$`),
+  /^(?:(?:data|sealed|abstract|open|private|internal|enum|value)\s+)*(?:class|interface|object)\s+[A-Z].*\{$/,
   /^(?:import|package)\s+[\w.]+(?:\.\*)?$/,
   /^(?:return|throw)\s+[\w.]+\(.*\)$/,
   /^return\s+(?:null|true|false|-?\d+)$/,
