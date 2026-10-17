@@ -7,11 +7,8 @@ import {
 } from '../../eslint-config/scope-support.mjs';
 import { readHeadPolicy, readLayout } from '../../head-policy.mjs';
 import { resolveModuleSpecifier } from '../../modules/module-resolution.mjs';
-import { reuseModules } from '../../../../../shared/rules/facts/reuse-modules.mjs';
-import { duplicateDefinitionFindings } from '../../../../../shared/rules/reuse/duplicate-definitions.mjs';
-import { exportedNameCollisionFindings } from '../../../../../shared/rules/reuse/name-collisions.mjs';
+import { sharedFactFindings } from '../../../../../shared/rules/facts/evaluate.mjs';
 import { uniqueFindings } from '../../../../../shared/rules/reuse/reuse-finding.mjs';
-import { siblingCopyEditFindings } from '../../../../../shared/rules/reuse/sibling-copy-edits.mjs';
 import { neutralReuseFacts } from './definition-facts.mjs';
 import { baselineFileReader, productionFacts, svgFiles } from './project-files.mjs';
 import { projectPathOf } from './reuse-paths.mjs';
@@ -19,6 +16,8 @@ import { iconAssetFindings } from './rules/icon-assets.mjs';
 import { redefinedLibraryComponentFindings } from './rules/library-components.mjs';
 
 const IGNORED = { kind: 'ignored' };
+
+const REUSE_RULES = ['duplicate-definition', 'exported-name-collision', 'sibling-copy-edit'];
 
 function projectTarget(target, source) {
   const located = source === undefined ? undefined : { ...target, path: source };
@@ -70,18 +69,20 @@ export function reuseFindings(
   const layout = readLayout(environment);
   const resolve = projectResolver(projectRoot);
   const facts = productionFacts(projectRoot, layout);
-  const neutral = neutralReuseFacts(facts, resolve);
-  const modules = reuseModules(neutral);
   const context = { analyzerName, isExcepted: exceptionMatcher(exceptions), resolve };
-  const baselineFile =
+  const baseline =
     baselineRoot === undefined
       ? undefined
-      : baselineFileReader({ projectRoot, baselineRoot, baselinePaths });
+      : { readFile: baselineFileReader({ projectRoot, baselineRoot, baselinePaths }) };
   const inReactScope = react.enabled ?? hasScopePackage(projectRoot, 'react');
   return uniqueFindings([
-    ...duplicateDefinitionFindings(modules, context),
-    ...exportedNameCollisionFindings(modules, neutral.imports, context),
-    ...siblingCopyEditFindings(modules, { ...context, baselineFile }),
+    ...sharedFactFindings(neutralReuseFacts(facts, resolve), {
+      language: 'typescript',
+      analyzerName,
+      rules: REUSE_RULES,
+      policy: { exceptions },
+      baseline,
+    }),
     ...(inReactScope ? reactFindings({ facts, context, projectRoot, layout, react }) : []),
   ]);
 }

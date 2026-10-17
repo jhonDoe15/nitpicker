@@ -33,8 +33,7 @@
         {
           "name": "Money"
         }
-      ],
-      "role": "production"
+      ]
     },
     {
       "from": "src/main/java/com/acme/features/orders/Cart.java",
@@ -43,8 +42,7 @@
         {
           "name": "Money"
         }
-      ],
-      "role": "production"
+      ]
     },
     {
       "from": "src/main/java/com/acme/features/billing/Invoice.java",
@@ -53,8 +51,7 @@
         {
           "name": "InvoiceNumbers"
         }
-      ],
-      "role": "production"
+      ]
     },
     {
       "from": "src/main/java/com/acme/shared/InvoiceNumbers.java",
@@ -63,8 +60,7 @@
         {
           "name": "Ids"
         }
-      ],
-      "role": "production"
+      ]
     },
     {
       "from": "src/test/java/com/acme/features/orders/CartTest.java",
@@ -73,8 +69,7 @@
         {
           "name": "InvoiceNumbers"
         }
-      ],
-      "role": "test"
+      ]
     }
   ]
 }

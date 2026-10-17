@@ -1,4 +1,4 @@
-import { globToRegExp } from '../../glob.mjs';
+import { globMatcher } from '../../glob.mjs';
 import { MESSAGES, RULE_IDS, renderMessage } from '../../policy.mjs';
 import { exceptionMatcher, exceptionText } from '../exceptions.mjs';
 import { hash } from '../finding-helpers.mjs';
@@ -7,7 +7,7 @@ import { normalizeConsoleMessage } from './console-messages.mjs';
 function allowMatcher(allow) {
   const entries = allow.map(({ contains, paths }) => ({
     needle: normalizeConsoleMessage(contains),
-    paths: paths?.map((glob) => globToRegExp(glob)),
+    paths: paths?.map((glob) => globMatcher(glob)),
   }));
   return (file, message) =>
     entries.some(

@@ -1,12 +1,12 @@
 import path from 'node:path';
 import { storyGlobs } from '../eslint-config/scope-support.mjs';
-import { codeExtensionNames, globToRegExp, toPosix } from '../layout.mjs';
+import { codeExtensionNames, globMatcher, toPosix } from '../layout.mjs';
 
 const TYPESCRIPT_EXTENSIONS = new Set(
   codeExtensionNames.filter((name) => name.includes('ts')).map((name) => `.${name}`),
 );
 const SUPPORT_DIRECTORY = /(?:^|\/)(?:\.storybook|test-support)\//u;
-const STORY_FILE = storyGlobs.map((glob) => globToRegExp(glob));
+const STORY_FILE = storyGlobs.map((glob) => globMatcher(glob));
 const GENERATED_MARKER =
   /@generated|auto-?generated|generated (?:by|from|file)|do not (?:edit|modify)/iu;
 const HEADER_LENGTH = 1000;

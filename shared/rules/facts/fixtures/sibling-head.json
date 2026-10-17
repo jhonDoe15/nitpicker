@@ -9,6 +9,7 @@
       "role": "production"
     }
   ],
+  "packages": [],
   "definitions": [
     {
       "file": "app/orders/totals.py",

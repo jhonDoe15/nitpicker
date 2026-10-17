@@ -11,11 +11,14 @@ import {
   validateProjectRelativePath,
   validateFolderGlobs,
   validateTestConsole,
+  FEATURE_LAYOUT_KEYS,
+  validateFactRuleSettings,
 } from '../../shared/config.mjs';
 import { validateJavaConfig } from '../../languages/java/adapters/java-policy.mjs';
 import { validateKotlinOptions } from '../../languages/java/adapters/kotlin/kotlin-options.mjs';
 import { validatePythonConfig } from '../../languages/python/adapters/configuration/python-config.mjs';
-import { SHARED_EXCEPTION_RULES } from '../../shared/policy.mjs';
+import { RULES, SHARED_EXCEPTION_RULES } from '../../shared/policy.mjs';
+import { factRuleSettings } from '../../shared/rules/facts/registry.mjs';
 import { validateTools } from './tool-settings.mjs';
 import { conventionDefinitions } from '../conventions/definitions.mjs';
 import { validateConventions } from '../../shared/conventions/settings.mjs';
@@ -44,8 +47,6 @@ export const KEYS = [
   'conventions',
 ];
 
-const FEATURE_LAYOUT_KEYS = ['sharedRoots', 'featureRoots'];
-
 const LAYOUT_KEYS = [
   'sourceRoots',
   'testRoots',
@@ -64,11 +65,16 @@ const I18N_KEYS = ['enabled', 'functionNames', 'componentNames'];
 
 const CUSTOM_ANALYZER_KEYS = ['name', 'command', 'args'];
 
+const NITPICKER_RULE_IDS = new Set(RULES.map(({ id }) => id));
+
+const TYPESCRIPT_RULE_NAMES = new Map([['doc-comment-content', 'nitpicker/no-comments']]);
+
 export function validateConfig(config) {
   if (!isPlainObject(config)) {
     throw configError('must be a JSON object');
   }
   validateKeys(config);
+  validateFactRuleSettings(config);
   validateScalars(config);
   validateDisable(config.disable);
   validateReact(config.react);
@@ -133,8 +139,14 @@ function validateOptional(config) {
     validateLayout(config.layout, config.preset);
   }
   if (config.exceptions !== undefined) {
-    validateExceptions(config.exceptions);
-    validateI18nExceptions(config.exceptions, config.preset);
+    validateExceptions(
+      config.exceptions,
+      'exceptions',
+      TYPESCRIPT_PRESETS.includes(config.preset)
+        ? (rule) => NITPICKER_RULE_IDS.has(rule)
+        : undefined,
+    );
+    validateTypescriptExceptionRules(config.exceptions, config.preset);
   }
   if (config.legacyInventory !== undefined) {
     validateProjectRelativePath(config.legacyInventory, 'legacyInventory');
@@ -180,15 +192,24 @@ function validateI18n(i18n) {
   }
 }
 
-function validateI18nExceptions(exceptions, preset) {
-  if (!['typescript', 'javascript', undefined].includes(preset)) {
+function exceptionRuleProblem(rule, preset) {
+  if (rule.startsWith('formatjs/') && !i18nRuleIds.includes(rule)) {
+    return `which nitpicker does not run. The i18n rules it runs: ${i18nRuleIds.join(', ')}`;
+  }
+  const native = TYPESCRIPT_RULE_NAMES.get(rule);
+  return native === undefined
+    ? undefined
+    : `which the ${preset ?? 'typescript'} preset reports as ${native}: name "${native}" instead`;
+}
+
+function validateTypescriptExceptionRules(exceptions, preset) {
+  if (!TYPESCRIPT_PRESETS.includes(preset)) {
     return;
   }
   for (const [index, { rule }] of exceptions.entries()) {
-    if (rule.startsWith('formatjs/') && !i18nRuleIds.includes(rule)) {
-      throw configError(
-        `"exceptions[${String(index)}].rule" names ${rule}, which nitpicker does not run. The i18n rules it runs: ${i18nRuleIds.join(', ')}`,
-      );
+    const problem = exceptionRuleProblem(rule, preset);
+    if (problem !== undefined) {
+      throw configError(`"exceptions[${String(index)}].rule" names ${rule}, ${problem}`);
     }
   }
 }
@@ -197,20 +218,27 @@ function validateLayout(layout, preset) {
   if (!isPlainObject(layout)) {
     throw configError('"layout" must be an object');
   }
-  const allowed = TYPESCRIPT_PRESETS.includes(preset) ? LAYOUT_KEYS : FEATURE_LAYOUT_KEYS;
+  const settings = factRuleSettings(preset ?? 'typescript');
+  const allowed = TYPESCRIPT_PRESETS.includes(preset)
+    ? LAYOUT_KEYS
+    : FEATURE_LAYOUT_KEYS.filter((key) => settings.includes(`layout.${key}`));
   for (const [key, value] of Object.entries(layout)) {
     if (LAYOUT_KEYS.includes(key) && !allowed.includes(key)) {
       throw configError(
-        `"layout.${key}" is not supported with "preset": "${preset}": it describes TypeScript source folders. Layout keys with ${preset}: ${allowed.join(', ')}`,
+        `"layout.${key}" is not supported with "preset": "${preset}": it describes TypeScript source folders. Layout keys with ${preset}: ${keyList(allowed)}`,
       );
     }
     validateLayoutEntry(key, value, allowed);
   }
 }
 
+function keyList(keys) {
+  return keys.length === 0 ? 'none yet' : keys.join(', ');
+}
+
 function validateLayoutEntry(key, value, allowed) {
   if (!allowed.includes(key)) {
-    throw configError(`unknown layout key "${key}". Allowed layout keys: ${allowed.join(', ')}`);
+    throw configError(`unknown layout key "${key}". Allowed layout keys: ${keyList(allowed)}`);
   }
   validateStringArray(value, `layout.${key}`);
   if (FEATURE_LAYOUT_KEYS.includes(key)) {

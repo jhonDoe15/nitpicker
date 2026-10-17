@@ -23,13 +23,17 @@ function memoized(read) {
   };
 }
 
+function sameDeclaration(left, right) {
+  return left.name === right.name && left.qualifier === right.qualifier;
+}
+
 function stateOf({ path, definition }, baselineFile) {
   const baseline = baselineFile(path);
   if (baseline.unchanged) {
     return { state: 'untouched' };
   }
   const before = baseline.definitions.find(
-    ({ kind, name }) => kind === definition.kind && name === definition.name,
+    (candidate) => candidate.kind === definition.kind && sameDeclaration(candidate, definition),
   );
   if (before === undefined) {
     return { state: 'new' };
@@ -40,19 +44,20 @@ function stateOf({ path, definition }, baselineFile) {
 function divergesFrom(cache, { copy, before }, other) {
   const right = other.definition.tokens;
   const after = tokenSimilarity(cache, { left: copy.definition.tokens, right }, MINIMUM_SIMILARITY);
-  const earlier = tokenSimilarity(cache, { left: before.tokens, right }, MINIMUM_SIMILARITY);
-  return after > 0 && earlier > after;
+  return (
+    after > 0 && tokenSimilarity(cache, { left: before.tokens, right }, MINIMUM_SIMILARITY) > after
+  );
 }
 
 function editFinding({ copy, untouched, analyzerName }) {
-  const { name, line } = copy.definition;
+  const { name, qualifier = name, line } = copy.definition;
   return reuseFinding(analyzerName, {
     key: 'siblingCopyEdit',
     path: copy.path,
-    identity: `sibling-copy:${name}`,
+    identity: `sibling-copy:${qualifier}`,
     symbol: name,
     line,
-    values: { name, others: listPaths(untouched.map(({ path }) => path).toSorted()) },
+    values: { name: qualifier, others: listPaths(untouched.map(({ path }) => path).toSorted()) },
   });
 }
 

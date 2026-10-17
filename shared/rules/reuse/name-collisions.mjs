@@ -1,13 +1,18 @@
 import { RULE_IDS } from '../../policy.mjs';
+import { groupBy, reexportSteps } from '../facts/fact-graph.mjs';
 import { listPaths, reuseFinding } from './reuse-finding.mjs';
 
 const COLLISION_FIX = 'Rename one, or alias both imports.';
 
+function localKey(definition) {
+  return definition.qualifier ?? definition.name;
+}
+
 function mergedDefinitions(definitions) {
   const byName = new Map();
   for (const definition of definitions) {
-    const known = byName.get(definition.name);
-    byName.set(definition.name, {
+    const known = byName.get(localKey(definition));
+    byName.set(localKey(definition), {
       key: known === undefined ? definition.key : `${known.key}+${definition.key}`,
       exported: (known?.exported ?? false) || definition.exported,
       line: known?.line ?? definition.line,
@@ -19,7 +24,9 @@ function mergedDefinitions(definitions) {
 function exportIndex(definitions) {
   const byExport = new Map();
   for (const definition of definitions) {
-    for (const exported of definition.exportNames) byExport.set(exported, definition.name);
+    for (const exported of definition.exportNames) {
+      byExport.set(exported, localKey(definition));
+    }
   }
   return byExport;
 }
@@ -48,30 +55,18 @@ function moduleIndex(modules, imports) {
   return index;
 }
 
-function reexportTargets(entry, name) {
-  return entry.reexports.flatMap(({ to, names }) =>
-    names
-      .filter((entryName) =>
-        entryName.name === '*'
-          ? entryName.alias === undefined
-          : (entryName.alias ?? entryName.name) === name,
-      )
-      .map((entryName) => ({ path: to, name: entryName.name === '*' ? name : entryName.name })),
-  );
-}
-
 function findOrigin(index, start) {
   const seen = new Set();
   const pending = [start];
   for (const step of pending) {
-    const visit = `${step.path}\0${step.name}`;
-    const entry = seen.has(visit) ? undefined : index.get(step.path);
+    const visit = `${step.file}\0${step.name}`;
+    const entry = seen.has(visit) || step.name === '*' ? undefined : index.get(step.file);
     seen.add(visit);
     const local = entry?.exports.get(step.name);
     if (local !== undefined && entry.definitions.has(local)) {
-      return { path: step.path, name: local };
+      return { path: step.file, name: local };
     }
-    if (entry !== undefined) pending.push(...reexportTargets(entry, step.name));
+    pending.push(...reexportSteps(entry?.reexports ?? [], step.name));
   }
   return undefined;
 }
@@ -83,7 +78,7 @@ function importedOrigins(path, { index, importsByFile }) {
       .map(({ name, alias }) => ({
         name,
         keepsName: alias === undefined || alias === name,
-        origin: findOrigin(index, { path: to, name }),
+        origin: findOrigin(index, { file: to, name }),
       })),
   );
 }
@@ -146,11 +141,10 @@ function mergeEntries(entries) {
 }
 
 function importsByImporter(imports) {
-  const byFile = new Map();
-  for (const record of imports.filter(({ reexport, role }) => !reexport && role !== 'test')) {
-    byFile.set(record.from, [...(byFile.get(record.from) ?? []), record]);
-  }
-  return byFile;
+  return groupBy(
+    imports.filter(({ reexport, role }) => !reexport && role !== 'test'),
+    ({ from }) => from,
+  );
 }
 
 export function exportedNameCollisionFindings(modules, imports, context) {

@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { exceptionHint } from '../exceptions.mjs';
 import {
   exception,
   factFixture,
@@ -22,8 +23,8 @@ describe('shared-used-by-one-feature over facts', () => {
   it('names the feature folder to move it into, and ignores test imports', () => {
     const [finding] = fixtureFindings('features', [RULE]);
 
-    expect(finding.message).toContain(
-      'is used only by feature billing. Move it into src/main/java/com/acme/features/billing/.',
+    expect(finding.message).toBe(
+      `${SHARED}/Ids.java is used only by feature billing. Move it into src/main/java/com/acme/features/billing/. ${exceptionHint(RULE, `${SHARED}/Ids.java`)}`,
     );
   });
 
@@ -46,6 +47,24 @@ describe('shared-used-by-one-feature over facts', () => {
     expect(rows(fixtureFindings('features', [RULE], { policy })).map(([, file]) => file)).toEqual([
       `${SHARED}/InvoiceNumbers.java`,
     ]);
+  });
+});
+
+describe('shared-used-by-one-feature import roles', () => {
+  it('leaves out an import from a test module, taking its role from modules', () => {
+    const facts = {
+      modules: [
+        { file: 'src/shared/money.py', role: 'production' },
+        { file: 'src/features/billing/invoice.py', role: 'production' },
+        { file: 'tests/test_money.py', role: 'test' },
+      ],
+      imports: [
+        { from: 'src/features/billing/invoice.py', to: 'src/shared/money.py', names: [] },
+        { from: 'tests/test_money.py', to: 'src/shared/money.py', names: [] },
+      ],
+    };
+
+    expect(rows(findingsOf(facts, [RULE]))).toEqual([[RULE, 'src/shared/money.py', RULE]]);
   });
 });
 

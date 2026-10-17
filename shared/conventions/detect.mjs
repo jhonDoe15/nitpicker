@@ -1,10 +1,10 @@
-import { globToRegExp } from '../glob.mjs';
+import { globMatcher } from '../glob.mjs';
 
 export const SAMPLE_LIMIT = 400;
 
 export function detectConventions({ definitions, source, pinned = {}, exclude = [] }) {
   const measured = definitions.filter((definition) => pinned[definition.id] === undefined);
-  const excluded = exclude.map(globToRegExp);
+  const excluded = exclude.map(globMatcher);
   const candidates =
     measured.length === 0
       ? []
@@ -33,7 +33,7 @@ export function conventionChoices(detected, definitions) {
 }
 
 function sampleFor(definition, candidates) {
-  const files = definition.files.map(globToRegExp);
+  const files = definition.files.map(globMatcher);
   return evenSample(
     candidates.filter((file) => files.some((glob) => glob.test(file))),
     SAMPLE_LIMIT,

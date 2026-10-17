@@ -14,8 +14,10 @@ import { siblingCopyEditFindings } from '../reuse/sibling-copy-edits.mjs';
 import { testOnlyFactFindings } from '../test-only/test-only-uses.mjs';
 import { baselineFromFacts, baselinePathsOf } from './baseline.mjs';
 import { FACT_RULE_LISTS, registeredFactRules } from './registry.mjs';
-import { reuseModules } from './reuse-modules.mjs';
+import { reuseModules, withImportRoles } from './reuse-modules.mjs';
 import { validateFacts } from './schema.mjs';
+
+const REGISTRY = 'FACT_RULE_LANGUAGES (shared/rules/facts/registry.mjs)';
 
 function featureLayout(layout = {}) {
   return {
@@ -42,20 +44,19 @@ const EVALUATORS = {
     sharedUsageFindings(
       sharedUsedByOneFeature(
         { modules: productionFiles(facts.modules), imports: facts.imports },
-        { roleOf: featureRoles(featureLayout(options.policy?.layout)) },
+        { roleOf: featureRoles(featureLayout(options.policy.layout)) },
       ),
       context,
     ),
-  'test-only-export': ({ facts, context }) =>
-    testOnlyFactFindings({ packages: [], ...facts }, context),
+  'test-only-export': ({ facts, context }) => testOnlyFactFindings(facts, context),
   'doc-comment-content': ({ facts, context }) => docCommentFindings(facts.docComments, context),
   'test-console-output': ({ facts, context, options }) =>
     testConsoleFindings(
       { entries: facts.console },
       {
         analyzerName: context.analyzerName,
-        allow: options.policy?.testConsole?.allow ?? [],
-        exceptions: options.policy?.exceptions ?? [],
+        allow: options.policy.testConsole?.allow ?? [],
+        exceptions: options.policy.exceptions ?? [],
       },
     ),
 };
@@ -72,6 +73,9 @@ function missingList(facts, rules, language) {
 }
 
 function baselineReader(baseline) {
+  if (typeof baseline?.readFile === 'function') {
+    return baseline.readFile;
+  }
   if (baseline?.facts === undefined) {
     return undefined;
   }
@@ -84,13 +88,78 @@ function baselineReader(baseline) {
 
 function selectedRules(language, rules) {
   const registered = registeredFactRules(language);
+  if (rules === undefined && registered.length === 0) {
+    throw new Error(`No fact rule is registered for language "${language}" in ${REGISTRY}`);
+  }
+  if (rules !== undefined && (!Array.isArray(rules) || rules.length === 0)) {
+    throw new TypeError('"rules" must name at least one registered fact rule, or be left out');
+  }
   const unregistered = (rules ?? []).filter((rule) => !registered.includes(rule));
   if (unregistered.length > 0) {
-    throw new Error(
-      `${unregistered.join(', ')} is not registered for ${language} in FACT_RULE_LANGUAGES (shared/rules/facts/registry.mjs)`,
-    );
+    throw new Error(`${unregistered.join(', ')} is not registered for ${language} in ${REGISTRY}`);
   }
   return rules ?? registered;
+}
+
+function isPlainObject(value) {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+function isGlobs(value) {
+  return Array.isArray(value) && value.every((glob) => typeof glob === 'string');
+}
+
+function isListOf(value, isEntry) {
+  return value === undefined || (Array.isArray(value) && value.every(isEntry));
+}
+
+function isException(entry) {
+  return (
+    isPlainObject(entry) &&
+    typeof entry.rule === 'string' &&
+    (isGlobs(entry.paths) || typeof entry.glob === 'string')
+  );
+}
+
+function isAllowEntry(entry) {
+  return (
+    isPlainObject(entry) &&
+    typeof entry.contains === 'string' &&
+    (entry.paths === undefined || isGlobs(entry.paths))
+  );
+}
+
+const POLICY_SHAPES = [
+  [
+    'policy.exceptions',
+    (policy) => isListOf(policy.exceptions, isException),
+    'an array of { rule, paths } entries',
+  ],
+  [
+    'policy.testConsole.allow',
+    (policy) => isListOf(policy.testConsole?.allow, isAllowEntry),
+    'an array of { contains, paths? } entries',
+  ],
+  [
+    'policy.layout.sharedRoots',
+    (policy) => policy.layout?.sharedRoots === undefined || isGlobs(policy.layout.sharedRoots),
+    'an array of folder globs',
+  ],
+  [
+    'policy.layout.featureRoots',
+    (policy) => policy.layout?.featureRoots === undefined || isGlobs(policy.layout.featureRoots),
+    'an array of folder globs',
+  ],
+];
+
+function validatePolicy(policy) {
+  const failed = isPlainObject(policy)
+    ? POLICY_SHAPES.find(([, check]) => !check(policy))
+    : ['policy', undefined, 'an object'];
+  if (failed !== undefined) {
+    const [name, , shape] = failed;
+    throw new TypeError(`${name} must be ${shape}: pass the head policy (readHeadPolicyFile())`);
+  }
 }
 
 export function sharedFactFindings(
@@ -98,15 +167,17 @@ export function sharedFactFindings(
   { language, analyzerName, rules: only, policy = {}, baseline, ...rest },
 ) {
   validateFacts(facts);
+  validatePolicy(policy);
   const rules = selectedRules(language, only);
   const problem = missingList(facts, rules, language);
   if (problem !== undefined) {
     throw new Error(problem);
   }
+  const roled = withImportRoles(facts);
   const context = { analyzerName, isExcepted: exceptionMatcher(policy.exceptions ?? []) };
   const options = { ...rest, policy, baselineFile: baselineReader(baseline) };
-  const modules = reuseModules(facts);
+  const modules = reuseModules(roled);
   return uniqueFindings(
-    rules.flatMap((rule) => EVALUATORS[rule]({ facts, modules, context, options })),
+    rules.flatMap((rule) => EVALUATORS[rule]({ facts: roled, modules, context, options })),
   );
 }

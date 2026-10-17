@@ -1,5 +1,5 @@
 import path from 'node:path';
-import { globToRegExp, toPosix } from '../../layout.mjs';
+import { globMatcher, toPosix } from '../../layout.mjs';
 import { codeFilesUnder, walkRules } from '../program.mjs';
 import { publicEntryGlobs } from '../workspace/entries.mjs';
 import { entriesOf, keyOf } from './knip-report.mjs';
@@ -8,7 +8,7 @@ import { exportLineOf, lazily, projectModules } from './project-modules.mjs';
 import { EVERYTHING, NAMED_EXPORTS, isCovered, reexportGraph } from './reexport-graph.mjs';
 
 function filesMatching(files, globs) {
-  const matchers = globs.filter((glob) => !glob.startsWith('!')).map((glob) => globToRegExp(glob));
+  const matchers = globs.filter((glob) => !glob.startsWith('!')).map((glob) => globMatcher(glob));
   return files.filter((file) => matchers.some((matcher) => matcher.test(file)));
 }
 

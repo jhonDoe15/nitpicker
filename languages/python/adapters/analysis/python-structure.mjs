@@ -1,6 +1,6 @@
 import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import path from 'node:path';
-import { globToRegExp } from '../../../../shared/glob.mjs';
+import { globMatcher } from '../../../../shared/glob.mjs';
 import { collectFileLimitFindings } from '../../../../shared/rules/file-limits.mjs';
 import { readStructureFindings } from '../../../java/adapters/metrics/java-structure.mjs';
 import { run } from '../execution/python-process.mjs';
@@ -87,7 +87,7 @@ export function pythonFileLimitFindings(
   projectRoot,
   { fileLimits, exclude = [], exceptions = [] },
 ) {
-  const excluders = exclude.map((glob) => globToRegExp(glob));
+  const excluders = exclude.map((glob) => globMatcher(glob));
   const entries = pythonFiles(projectRoot)
     .filter((file) => !excluders.some((matcher) => matcher.test(file)))
     .map((file) => ({

@@ -2,7 +2,7 @@
 //
 // Language-neutral: shared by the file limits and the project-level checks of a language preset.
 
-import { globToRegExp } from '../glob.mjs';
+import { globMatcher } from '../glob.mjs';
 import { EXCEPTION_HINT, renderMessage } from '../policy.mjs';
 
 /**
@@ -12,7 +12,7 @@ import { EXCEPTION_HINT, renderMessage } from '../policy.mjs';
 export function exceptionMatcher(exceptions) {
   const matchers = exceptions.map(({ rule, paths, glob }) => ({
     rule,
-    patterns: (paths ?? [glob]).map((pattern) => globToRegExp(pattern)),
+    patterns: (paths ?? [glob]).map((pattern) => globMatcher(pattern)),
   }));
   return (rule, ...candidates) =>
     matchers.some(

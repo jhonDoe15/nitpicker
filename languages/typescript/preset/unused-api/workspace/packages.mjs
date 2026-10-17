@@ -1,7 +1,7 @@
 import { existsSync, readFileSync, readdirSync } from 'node:fs';
 import path from 'node:path';
 import { readManifest } from '../../eslint-config/scope-support.mjs';
-import { globToRegExp } from '../../layout.mjs';
+import { globMatcher } from '../../layout.mjs';
 import { pnpmPackagePatterns } from './pnpm-workspace.mjs';
 
 const PNPM_WORKSPACE = 'pnpm-workspace.yaml';
@@ -58,9 +58,9 @@ function directoriesUnder(root, layout) {
 
 function memberDirectories(root, layout) {
   const patterns = workspacePatterns(root);
-  const included = patterns.filter((pattern) => !pattern.startsWith('!')).map(globToRegExp);
+  const included = patterns.filter((pattern) => !pattern.startsWith('!')).map(globMatcher);
   const excluded = patterns.filter((pattern) => pattern.startsWith('!'));
-  const excludedMatchers = excluded.map((pattern) => globToRegExp(pattern.slice(1)));
+  const excludedMatchers = excluded.map((pattern) => globMatcher(pattern.slice(1)));
   return directoriesUnder(root, layout)
     .filter((relative) => included.some((matcher) => matcher.test(relative)))
     .filter((relative) => !excludedMatchers.some((matcher) => matcher.test(relative)))

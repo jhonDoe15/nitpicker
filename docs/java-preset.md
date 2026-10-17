@@ -320,8 +320,11 @@ comma-separated>` changes that. Those classes are excluded from the regular `tes
     the tools the Java analyzer reports. Matching findings are dropped on both snapshots. The shared
     `file-lines-limit` and `folder-files-limit` rules are named as they are. Each exception is listed
     in the report and changes the configuration hash.
-  - `layout` and `tools` configure TypeScript source roots and tool configs; they have no Java
-    meaning and stay a config error with `"preset": "java"` instead of being ignored.
+  - `layout` and `testConsole` are a config error with `"preset": "java"` instead of being
+    ignored: the source-folder keys of `layout` are TypeScript only, and `layout.sharedRoots`,
+    `layout.featureRoots` and `testConsole` are accepted once the Java preset registers the rule that
+    reads them (`shared-used-by-one-feature`, `test-console-output`) in
+    `shared/rules/facts/registry.mjs`. `tools` takes `pmd` and `checkstyle`.
 - **Packaging.** The init script moved to `languages/java/gradle/` and `languages/**` is in the npm `files`;
   the packed-contents test and the installed-package test assert that `languages/java/gradle/nitpicker.init.gradle`
   ships.

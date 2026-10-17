@@ -1,4 +1,4 @@
-import { globToRegExp } from '../../glob.mjs';
+import { globMatcher } from '../../glob.mjs';
 import { MESSAGES, RULE_IDS, renderMessage } from '../../policy.mjs';
 import { exceptionText } from '../exceptions.mjs';
 
@@ -14,8 +14,8 @@ function folderPrefixes(file) {
 }
 
 export function featureRoles({ sharedRoots, featureRoots }) {
-  const shared = sharedRoots.map((glob) => globToRegExp(glob));
-  const features = featureRoots.map((glob) => globToRegExp(glob));
+  const shared = sharedRoots.map((glob) => globMatcher(glob));
+  const features = featureRoots.map((glob) => globMatcher(glob));
   return (file) => {
     const prefixes = folderPrefixes(file);
     if (prefixes.some(({ folder }) => shared.some((pattern) => pattern.test(folder)))) {

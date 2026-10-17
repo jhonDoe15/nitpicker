@@ -6,9 +6,18 @@
 // under `shared/` may import from `core/`, `languages/` or a tool package (shared/import-direction.test.mjs).
 
 import { UNUSED_API_RULES, UNUSED_API_RULE_IDS } from './unused-api/unused-api-policy.mjs';
-import { docCommentRule, reuseRules } from './rules/reuse-rules.mjs';
-import { testConsoleRule } from './rules/test-runtime.mjs';
+import { reuseRules } from './rules/reuse-rules.mjs';
+import { testConsoleRule } from './rules/console/console-rule.mjs';
+import { docCommentRule } from './rules/doc-comments/doc-comment-rule.mjs';
 import { sharedFactExceptionRules, withLanguageColumns } from './rules/facts/registry.mjs';
+
+export {
+  EXCEPTION_HINT,
+  GREW_MESSAGES,
+  HELD_MESSAGES,
+  MESSAGES,
+  renderMessage,
+} from './messages/messages.mjs';
 
 export const LANGUAGES = ['typescript', 'javascript', 'java', 'python', 'kotlin'];
 
@@ -77,10 +86,6 @@ export const SHARED_EXCEPTION_RULES = [
 /** The shared rules the Java preset leaves to its own tools (Checkstyle checks line length). */
 export const JAVA_NATIVE_RULES = [RULE_IDS.lineLength];
 
-/** `{exception}` is the `exceptions` entry that would lift the finding, as JSON. */
-export const EXCEPTION_HINT =
-  'If this is intended, add {exception} to "exceptions" in nitpicker.config.json.';
-
 /** A CRAP score at or above this fails (`QUALITY_CRAP_SCORE_LIMIT` / `thresholds.crapLimit` override it). */
 export const DEFAULT_CRAP_SCORE_LIMIT = 9;
 
@@ -107,90 +112,6 @@ export const TOUCHED_CODE_RULES = [
   { rule: RULE_IDS.changedBranchCoverage, tools: ['jacoco'] },
   { rule: RULE_IDS.changedBranchCoverage, tools: ['coverage-py'] },
 ];
-
-/** Failure-message templates; `{name}` placeholders are filled by `renderMessage`. */
-export const MESSAGES = {
-  functionStructure: '{name} has {value} {metric}; limit is {limit}',
-  functionStatements:
-    '{name} has {value} statements; limit is {limit}. Split by responsibility and name each part for what it checks or does.',
-  functionControlNesting:
-    '{name} nests control flow {value} deep (limit {limit}). Return early instead of nesting.',
-  crapScoreLimit:
-    '{name} has CRAP {crap}; score must be below {limit}. Test its uncovered branches, or split a branchy part into its own function.',
-  crapScoreLimitCovered:
-    '{name} has CRAP {crap} although tests cover it; score must be below {limit}. Reduce its branches: split a branchy part into its own function.',
-  crapCoverageUnknown:
-    '{name} has unknown coverage and no CRAP score: no test runs it. Add a test that calls it; for inline composition-root wiring, move it to a named function in adapters/ and test that.',
-  crapCoverageUnknownJava:
-    '{name} has unknown coverage and no CRAP score: JaCoCo has no data for it, so no test runs it or it is annotated @Generated. Add a test that calls it, and remove @Generated from hand-written code.',
-  crapCoverageUnknownPlain:
-    '{name} has unknown coverage and no CRAP score: no test runs it. Add a test that calls it.',
-  changedBranchCoverage: 'Branch coverage is {percent}%; minimum is {minimum}%',
-  unusedProp: `Prop {name} is never passed. Remove it, or pass it from a real caller ({scope}). ${EXCEPTION_HINT}`,
-  unusedOption: `Option {name} is never set. Remove it, or set it from a real call ({scope}). ${EXCEPTION_HINT}`,
-  testOnlyExport: `Export {name} is only imported by tests. Remove \`export\`, or import it from production code. ${EXCEPTION_HINT}`,
-  testOnlyReexport: `Export {name} is only imported by tests, and {reexporter} re-exports it, which is not a use. Remove the re-export and \`export\`, or import it from production code. If a host or tool loads {reexporter} instead of importing it, list it in "layout.entryPoints". ${EXCEPTION_HINT}`,
-  testOnlyModule: `Module {name} is only imported by tests. Move it to a test-support/ folder, or import it from production code. ${EXCEPTION_HINT}`,
-  testOnlyDeclaration: `{name} is only used by tests. Make it private to its module, or use it from production code. ${EXCEPTION_HINT}`,
-  testOnlyFile: `Module {name} is only used by tests. Move it beside the tests as a test helper, or use it from production code. ${EXCEPTION_HINT}`,
-  restatingDocComment: `This doc comment only restates {name}. Delete it, or say what the name cannot: a unit, a limit, an edge case or why. ${EXCEPTION_HINT}`,
-  longDocComment: `This doc comment's description is {lines} lines (limit {limit}). Keep the non-obvious point, a unit, a limit or an edge case, and put the rest in names and types. ${EXCEPTION_HINT}`,
-  fileLines: `File has {value} lines (limit {limit}). Split it into files by responsibility. ${EXCEPTION_HINT}`,
-  lineLength: `Line is {value} characters (limit {limit}). Break it up or extract a named value. ${EXCEPTION_HINT}`,
-  folderFiles: `Folder has {value} {kind} files directly in it (limit {limit}). Group related files into subfolders (packages in Java). ${EXCEPTION_HINT}`,
-  slowTest: `{name} took {seconds} s; {kind} test may take {limit} s. Remove Thread.sleep and other waits, start a smaller Spring context or a test slice{move}. ${EXCEPTION_HINT}`,
-  sharedUsedByOneFeature: `{path} is used only by feature {feature}. Move it into {directory}. ${EXCEPTION_HINT}`,
-  duplicateDefinition: `{name} is also defined with {same} in {others}. {fix} ${EXCEPTION_HINT}`,
-  siblingCopyEdit: `{name} is edited here but not in {others}, where it has almost the same code. Edit it there too, or merge the copies. ${EXCEPTION_HINT}`,
-  exportedNameCollision: `{name} is also exported by {others}; {importer} imports both. {fix} ${EXCEPTION_HINT}`,
-  redefinedLibraryComponent: `{name} is already rendered from {package} in {count}. Use that one. ${EXCEPTION_HINT}`,
-  newIconAsset: `Use an icon from {package} instead of adding {path}. ${EXCEPTION_HINT}`,
-  componentStoryMissing: `Most components in this project have a story. Add {story} for {name}. ${EXCEPTION_HINT}`,
-  componentStoryMissingUnenforced: `{name} has no story. Add {story}. Not enforced until more than half of the components have one. ${EXCEPTION_HINT}`,
-  testConsoleOutput: `Tests print new console output: {output}. Fix the cause (for example a timer that outlives the test), or allow a third-party message in "testConsole.allow" of nitpicker.config.json. ${EXCEPTION_HINT}`,
-};
-
-export function renderMessage(template, values) {
-  return template.replaceAll(/\{(\w+)\}/g, (_, key) => String(values[key]));
-}
-
-/**
- * Messages for a function that was already over a limit on the base and got worse. `{base}` is left
- * in the text for the comparison to fill in (it knows the base value); `GREW_MESSAGES[metric]`
- * covers the structure limits and `crap` the CRAP score limit.
- */
-export const GREW_MESSAGES = {
-  lines:
-    '{name} grew from {base} to {value} lines (limit {limit}). Put new code in a new function.',
-  statements:
-    '{name} grew from {base} to {value} statements (limit {limit}). Put new code in a new function.',
-  maxControlNesting:
-    '{name} control nesting grew from {base} to {value} levels (limit {limit}). Put the new nested code in a new function.',
-  parameters:
-    '{name} grew from {base} to {value} parameters (limit {limit}). Group related parameters into one object instead of adding another.',
-  crap: '{name} CRAP rose from {base} to {crap} (limit {limit}). Put new code in a new function and cover it with tests.',
-  fileLines: `File grew from {base} to {value} lines (limit {limit}). Put new code in a new file. ${EXCEPTION_HINT}`,
-  lineLength: `Line grew from {base} to {value} characters (limit {limit}). Break it up or extract a named value. ${EXCEPTION_HINT}`,
-  folderFiles: `Folder grew from {base} to {value} {kind} files (limit {limit}). Put the new file in a subfolder. ${EXCEPTION_HINT}`,
-};
-
-export const HELD_MESSAGES = {
-  lines:
-    '{name}: {value} lines (limit {limit}), allowed because base was {base}; any increase fails.',
-  statements:
-    '{name}: {value} statements (limit {limit}), allowed because base was {base}; any increase fails.',
-  maxControlNesting:
-    '{name}: control nesting {value} (limit {limit}), allowed because base was {base}; any increase fails.',
-  parameters:
-    '{name}: {value} parameters (limit {limit}), allowed because base was {base}; any increase fails.',
-  crap: '{name}: CRAP {crap} (limit {limit}), allowed because base was {base}; any increase fails.',
-  fileLines:
-    'File: {value} lines (limit {limit}), allowed because base was {base}; any increase fails.',
-  lineLength:
-    'Line: {value} characters (limit {limit}), allowed because base was {base}; any increase fails.',
-  folderFiles:
-    'Folder: {value} {kind} files (limit {limit}), allowed because base was {base}; any increase fails.',
-};
 
 const BOTH = { typescript: true, java: true, python: false };
 const ALL = { typescript: true, java: true, python: true };
@@ -324,10 +245,10 @@ const CATALOG = [
     check: 'structure',
     limit:
       'a component file without a story, in a package that has Storybook; enforced when more than half of its component files have one, reported otherwise',
-    enforcedBy: withKotlin(TYPESCRIPT_ONLY, false),
+    enforcedBy: { ...withKotlin(TYPESCRIPT_ONLY, false), javascript: 'partial' },
   },
-  testConsoleRule(RULE_IDS, withKotlin(TYPESCRIPT_ONLY, false)),
-  docCommentRule(RULE_IDS, withKotlin(TYPESCRIPT_ONLY, false)),
+  testConsoleRule(RULE_IDS),
+  docCommentRule(RULE_IDS),
 ];
 
 export const RULES = CATALOG.map((rule) => withLanguageColumns(rule, LANGUAGES));

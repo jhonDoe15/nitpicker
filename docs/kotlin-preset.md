@@ -542,7 +542,8 @@ the comparison and exiting with 2. Nothing is silently skipped and nothing throw
 `fp:nitpicker/subject=This expression contains a magic number. ...`). `kotlin.formatter` and
 `kotlin.detektConfig` are new and valid only with this preset. `exceptions` lifts the
 [one-way rules](#one-way-rules), the file limits `file-lines-limit` and `folder-files-limit` and
-`test-runtime/slow-test` per path. `layout` is a config error.
+`test-runtime/slow-test` per path. `layout` and `testConsole` are a config error until the Kotlin
+preset runs the rules that read them (`shared-used-by-one-feature`, `test-console-output`).
 
 ## Slow tests
 

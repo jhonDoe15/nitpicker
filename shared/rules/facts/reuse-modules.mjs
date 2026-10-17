@@ -11,13 +11,26 @@ export function roleLookup(modules = []) {
   return (file) => roles.get(file) ?? 'production';
 }
 
+export function withImportRoles(facts) {
+  if (facts.imports === undefined) {
+    return facts;
+  }
+  const roleOf = roleLookup(facts.modules);
+  return {
+    ...facts,
+    imports: facts.imports.map((record) => ({ ...record, role: roleOf(record.from) })),
+  };
+}
+
 function namesImportedFrom(imports) {
   const usage = new Map();
   const counted = imports.filter(({ from, to, role }) => role !== 'test' && from !== to);
   for (const { to, names } of counted) {
     const used = usage.get(to) ?? new Set();
     usage.set(to, used);
-    for (const { name } of names) used.add(name);
+    for (const { name } of names) {
+      used.add(name);
+    }
   }
   return usage;
 }
