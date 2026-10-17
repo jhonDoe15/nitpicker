@@ -11,6 +11,7 @@ import {
 export {
   commitBranch,
   commitFromBranch,
+  commitFromStructureBase,
   detektFindingsOf,
   fromTool,
   git,
