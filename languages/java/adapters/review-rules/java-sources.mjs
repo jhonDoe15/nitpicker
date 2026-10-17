@@ -12,13 +12,23 @@ const LITERALS = new RegExp(
   ].join('|'),
   'gu',
 );
-const PACKAGE = /^\s*package\s+([\w.]+)\s*;/mu;
+const PACKAGE = /^\s*package\s+([\w.]+)\s*(?:;|$)/mu;
 const IMPORT = /^\s*import\s+([\w.]+)\s*;/gmu;
 const DEPTH_CHANGE = { '(': 1, '[': 1, ')': -1, ']': -1 };
 const EXPRESSION_END = ';,?:{}';
 
-function blankLiterals(text) {
-  return text.replaceAll(LITERALS, (literal) => literal.replaceAll(/[^\n]/gu, ' '));
+function blank(literal) {
+  return literal.replaceAll(/[^\n]/gu, ' ');
+}
+
+export function blankLiterals(text) {
+  return text.replaceAll(LITERALS, blank);
+}
+
+export function blankComments(text) {
+  return text.replaceAll(LITERALS, (literal) =>
+    literal.startsWith('//') || literal.startsWith('/*') ? blank(literal) : literal,
+  );
 }
 
 export function pathInside(base, relative) {
@@ -30,30 +40,36 @@ export function pathInside(base, relative) {
   return full;
 }
 
-function childrenOf(directory) {
+function childrenOf(directory, extensions) {
   const entries = readdirSync(directory, { withFileTypes: true });
   return {
     directories: entries
       .filter((entry) => entry.isDirectory() && !SKIPPED_DIRECTORIES.has(entry.name))
       .map((entry) => path.join(directory, entry.name)),
     files: entries
-      .filter((entry) => entry.isFile() && entry.name.endsWith('.java'))
+      .filter(
+        (entry) => entry.isFile() && extensions.some((extension) => entry.name.endsWith(extension)),
+      )
       .map((entry) => path.join(directory, entry.name)),
   };
 }
 
-export function javaFilesUnder(root) {
+export function sourceFilesUnder(root, extensions) {
   if (!existsSync(root)) {
     return [];
   }
   const files = [];
   const pending = [root];
   for (const directory of pending) {
-    const children = childrenOf(directory);
+    const children = childrenOf(directory, extensions);
     pending.push(...children.directories);
     files.push(...children.files);
   }
   return files.sort();
+}
+
+export function javaFilesUnder(root) {
+  return sourceFilesUnder(root, ['.java']);
 }
 
 export function readJavaSource(file) {

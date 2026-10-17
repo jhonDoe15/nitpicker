@@ -390,6 +390,23 @@ describe('describeModule publishing', () => {
       ),
     ).toEqual([true, false, false, false]);
   });
+
+  it('counts a library jar a publishing plugin deploys, but not a war or a pom', () => {
+    const central = inBuild(
+      plugin('central-publishing-maven-plugin', '', 'org.sonatype.central') +
+        plugin('maven-surefire-plugin', ''),
+    );
+
+    expect(
+      [
+        central,
+        inBuild(plugin('nexus-staging-maven-plugin', '', 'org.sonatype.plugins')),
+        `<packaging>war</packaging>${DISTRIBUTION}`,
+        `<packaging>pom</packaging>${DISTRIBUTION}`,
+        `<packaging>bundle</packaging>${DISTRIBUTION}`,
+      ].map((inner) => soloModule(inner).published),
+    ).toEqual([true, true, false, false, true]);
+  });
 });
 
 describe('parseDependencyList', () => {
