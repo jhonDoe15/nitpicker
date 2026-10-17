@@ -2,6 +2,7 @@ import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import path from 'node:path';
 import { globToRegExpSource } from '../../../../shared/glob.mjs';
+import { parseToml } from './python-package.mjs';
 
 const MYPY_CONFIG = 'mypy.ini';
 const GLOBAL_OPTIONS = [
@@ -102,8 +103,12 @@ function iniModel(sections) {
   };
 }
 
-function tomlModel(text) {
-  const { tool = {} } = toml().parse(text);
+function tomlModel(text, name) {
+  const { value, problem } = parseToml(text);
+  if (problem !== undefined) {
+    throw new Error(`${name} is not valid TOML, so the mypy settings cannot be read: ${problem}`);
+  }
+  const { tool = {} } = value;
   const { mypy, ...others } = tool;
   if (mypy === undefined) {
     return undefined;
@@ -125,7 +130,7 @@ function readCandidate(projectRoot, name) {
     return undefined;
   }
   const text = readFileSync(file, 'utf8');
-  return name.endsWith('.toml') ? tomlModel(text) : iniModel(parseIni(text));
+  return name.endsWith('.toml') ? tomlModel(text, name) : iniModel(parseIni(text));
 }
 
 export function readMypyConfig(projectRoot) {

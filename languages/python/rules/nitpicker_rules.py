@@ -22,6 +22,7 @@ from nitpicker_checks.constants import (
 )
 from nitpicker_checks.docstrings import docstring_findings
 from nitpicker_checks.fields import field_findings
+from nitpicker_checks.project.entry_points import declared_entry_points, invalid_file_findings
 from nitpicker_checks.project.enum_predicates import enum_predicate_findings
 from nitpicker_checks.project.forwarding import forwarding_findings
 from nitpicker_checks.project.index import ProjectIndex
@@ -175,9 +176,7 @@ class Collector(ast.NodeVisitor):
 
     def check_dataclass(self, node, subject):
         for decorator in node.decorator_list:
-            if decorator_name(decorator, self.aliases) == "dataclass" and not is_frozen(
-                decorator
-            ):
+            if decorator_name(decorator, self.aliases) == "dataclass" and not is_frozen(decorator):
                 if not self.tests:
                     self.add("frozen-dataclass", subject, node)
 
@@ -199,15 +198,11 @@ class Collector(ast.NodeVisitor):
         for statement in tree.body:
             for name, value in string_constants([statement]):
                 if "_" in name:
-                    groups.setdefault(name.split("_", 1)[0], []).append(
-                        (statement, name, value)
-                    )
+                    groups.setdefault(name.split("_", 1)[0], []).append((statement, name, value))
         for prefix in sorted(groups):
             members = groups[prefix]
             constants = [(name, value) for _, name, value in members]
-            if len(members) >= MIN_MODULE_CONSTANTS and is_enum_group(
-                constants, prefix + "_"
-            ):
+            if len(members) >= MIN_MODULE_CONSTANTS and is_enum_group(constants, prefix + "_"):
                 self.add("enum-string-constants", prefix + "_*", members[0][0])
 
 
@@ -259,7 +254,10 @@ def file_findings(paths, tests):
         findings.extend(stub_findings(path))
         try:
             text, tree = parse(path)
-        except (OSError, SyntaxError, UnicodeDecodeError, ValueError, RecursionError):
+        except RecursionError:
+            findings.append(finding(TOO_DEEP_RULE, path, "all", 1))
+            continue
+        except (OSError, SyntaxError, UnicodeDecodeError, ValueError):
             continue
         findings.extend(check_file(path, text, tree, path in tests))
         trees[path] = tree
@@ -278,12 +276,15 @@ def project_findings(index, options):
 def main(arguments):
     list_file, out_file = arguments[:2]
     options = read_options(arguments)
+    entries, problems = declared_entry_points()
+    options["entryPoints"] = options.get("entryPoints", []) + entries
     with open(list_file, encoding="utf-8") as handle:
         paths = [line.strip() for line in handle if line.strip()]
     tests = set(options.get("tests", []))
     findings, trees = file_findings(paths, tests)
     index = ProjectIndex(trees, options.get("modules", {}), tests)
     findings.extend(project_findings(index, options))
+    findings.extend(invalid_file_findings(options.get("invalidFiles", []) + problems))
     findings.sort(key=lambda item: (item["path"], item["line"], item["rule"], item["subject"]))
     with open(out_file, "w", encoding="utf-8") as handle:
         json.dump(findings, handle)

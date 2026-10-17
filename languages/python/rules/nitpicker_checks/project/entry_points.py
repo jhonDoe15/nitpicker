@@ -3,9 +3,12 @@ import configparser
 import re
 import tokenize
 
+from nitpicker_checks.common import finding
+
 SETUP_CFG = "setup.cfg"
 SETUP_PY = "setup.py"
 SETUP_CFG_SECTION = "options.entry_points"
+INVALID_FILE_RULE = "project-file-invalid"
 ENTRY_POINT = re.compile(r"^\s*[^=\[#]+?=\s*([\w.]+)\s*:\s*([\w.]+)")
 
 
@@ -17,11 +20,17 @@ def references_in(text):
     ]
 
 
-def setup_cfg_entry_points():
+def invalid_file(file, line, error):
+    summary = str(error).strip().split("\n")[0]
+    return {"file": file, "line": line or 1, "problem": f"{type(error).__name__}: {summary}"}
+
+
+def setup_cfg_entry_points(problems):
     parser = configparser.ConfigParser(interpolation=None)
     try:
         parser.read(SETUP_CFG, encoding="utf-8")
-    except (configparser.Error, UnicodeDecodeError):
+    except (configparser.Error, UnicodeDecodeError) as error:
+        problems.append(invalid_file(SETUP_CFG, getattr(error, "lineno", 1), error))
         return []
     if not parser.has_section(SETUP_CFG_SECTION):
         return []
@@ -87,4 +96,19 @@ def setup_py_entry_points():
 
 
 def declared_entry_points():
-    return setup_cfg_entry_points() + setup_py_entry_points()
+    problems = []
+    found = setup_cfg_entry_points(problems) + setup_py_entry_points()
+    return found, problems
+
+
+def invalid_file_findings(problems):
+    return [
+        finding(
+            INVALID_FILE_RULE,
+            problem["file"],
+            problem["file"],
+            problem["line"],
+            {"problem": problem["problem"]},
+        )
+        for problem in problems
+    ]

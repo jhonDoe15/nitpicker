@@ -28,32 +28,47 @@ describe.skipIf(!enabled)('exhaustive-enum-predicate', () => {
     [
       'a returned or-chain of some members',
       'def is_open(s: Status) -> bool:\n    return s == Status.NEW or s == Status.PAID\n',
-      [['is_open Status', { union: 'Status', every: false }]],
+      [['is_open Status', { union: 'Status' }]],
     ],
     [
       'an and-chain of is not, assigned',
       'def f(s: Status) -> None:\n    closed = s is not Status.NEW and s is not Status.PAID\n',
-      [['f Status', { union: 'Status', every: false }]],
+      [['f Status', { union: 'Status' }]],
     ],
     [
       'a membership test of every member',
       'def known(s: Status) -> bool:\n    return s in (Status.NEW, Status.PAID, Status.SHIPPED)\n',
-      [['known Status', { union: 'Status', every: true }]],
+      [],
+    ],
+    [
+      'every member but an alias',
+      'class Mode(enum.Enum):\n    A = 1\n    B = 2\n    C = 3\n    DEFAULT = A\n    OTHER = 2\n\n\ndef f(m: Mode) -> bool:\n    return m in (Mode.A, Mode.B, Mode.C)\n',
+      [],
+    ],
+    [
+      'some members next to an alias',
+      'class Mode(enum.Enum):\n    A = 1\n    B = 2\n    C = 3\n    DEFAULT = A\n\n\ndef f(m: Mode) -> bool:\n    return m in (Mode.A, Mode.DEFAULT)\n',
+      [],
+    ],
+    [
+      'a negated list of every member',
+      'def f(s: Status) -> bool:\n    return s != Status.NEW and s != Status.PAID and s != Status.SHIPPED\n',
+      [],
     ],
     [
       'a predicate inside not and a conditional',
       'def f(s: Status, x: bool) -> bool:\n    return not (s == Status.NEW or s == Status.PAID) if x else x\n',
-      [['f Status', { union: 'Status', every: false }]],
+      [['f Status', { union: 'Status' }]],
     ],
     [
       'a lambda body',
       'OPEN = lambda s: s in {Status.NEW, Status.PAID}\n',
-      [['Status', { union: 'Status', every: false }]],
+      [['Status', { union: 'Status' }]],
     ],
     [
       'a Literal alias parameter',
       'from typing import Literal\nKind = Literal["a", "b", "c"]\ndef f(k: Kind | None) -> bool:\n    return k == "a" or k == "b"\n',
-      [['f Kind', { union: 'Kind', every: false }]],
+      [['f Kind', { union: 'Kind' }]],
     ],
     [
       'an if condition',
@@ -288,14 +303,56 @@ describe.skipIf(!enabled)('unused-option', () => {
     ).toEqual(['total.cents', 'total.rate']);
   });
 
-  it('does not count a Django tests.py or a testing folder as callers', () => {
+  it('does not count a Django tests.py or a top-level testing folder as callers', () => {
     expect(
       unused({
         'shop/app.py': 'from shop.pricing import total\ntotal(1)\n',
         'shop/tests.py': 'from shop.pricing import total\ntotal(1, rate=2)\n',
-        'testing/test_pricing.py': 'from shop.pricing import total\ntotal(1, cents=True)\n',
+        'testing/helpers.py': 'from shop.pricing import total\ntotal(1, cents=True)\n',
       }),
     ).toEqual(['total.cents', 'total.rate']);
+  });
+
+  it('counts a testing package inside the package as shipped code', () => {
+    expect(
+      unused({
+        'shop/app.py': 'from shop.pricing import total\ntotal(1)\n',
+        'shop/testing/__init__.py': '',
+        'shop/testing/helpers.py': 'from shop.pricing import total\ntotal(1, rate=2, cents=True)\n',
+      }),
+    ).toEqual([]);
+  });
+
+  it('reports a pyproject.toml or setup.cfg it cannot read and still checks the code', () => {
+    const report = reportOf({
+      'shop/__init__.py': '',
+      'shop/pricing.py': TOTAL,
+      'shop/app.py': 'from shop.pricing import total\ntotal(1)\n',
+      'pyproject.toml': '[project\nname = "shop"\n',
+      'setup.cfg': '[options.entry_points\nconsole_scripts = x\n',
+    });
+
+    expect(report.filter(({ rule }) => rule !== 'unused-option')).toEqual([
+      {
+        rule: 'project-file-invalid',
+        path: 'pyproject.toml',
+        subject: 'pyproject.toml',
+        line: 1,
+        data: { problem: 'Invalid TOML document: illegal character in key (line 1, column 9)' },
+      },
+      {
+        rule: 'project-file-invalid',
+        path: 'setup.cfg',
+        subject: 'setup.cfg',
+        line: 1,
+        data: {
+          problem: expect.stringMatching(
+            /^MissingSectionHeaderError: File contains no section headers/,
+          ),
+        },
+      },
+    ]);
+    expect(report.filter(({ rule }) => rule === 'unused-option')).toHaveLength(2);
   });
 
   it('does not judge test helpers or decorated functions', () => {
@@ -322,6 +379,14 @@ describe.skipIf(!enabled)('an expression too deep for the recursion limit', () =
     ).toEqual([
       { rule: 'rules-skipped', path: 'shop/sums.py', subject: 'file', line: 1 },
       { rule: 'restating-docstring', path: 'shop/users.py', subject: 'load_user', line: 2 },
+    ]);
+  });
+
+  it('notes a file that is too deep to parse', () => {
+    const sum = `total = ${Array.from({ length: 30000 }, () => '1').join(' + ')}\n`;
+
+    expect(reportOf({ 'shop/sums.py': sum })).toEqual([
+      { rule: 'rules-skipped', path: 'shop/sums.py', subject: 'all', line: 1 },
     ]);
   });
 });

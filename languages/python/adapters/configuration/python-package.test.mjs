@@ -78,3 +78,24 @@ describe('the entry points the package declares', () => {
     ]);
   });
 });
+
+describe('a pyproject.toml that is not valid TOML', () => {
+  it('reads as an unpublished package without entry points and names the problem', () => {
+    expect(factsOf('[project\nname = "shop"\n')).toEqual({
+      published: false,
+      entryPoints: [],
+      invalidFiles: [
+        {
+          file: 'pyproject.toml',
+          line: 1,
+          problem: 'Invalid TOML document: illegal character in key (line 1, column 9)',
+        },
+      ],
+    });
+  });
+
+  it('has no problem when the file is valid or absent', () => {
+    expect(factsOf('[project]\nname = "shop"\n').invalidFiles).toEqual([]);
+    expect(factsOf(undefined).invalidFiles).toEqual([]);
+  });
+});
