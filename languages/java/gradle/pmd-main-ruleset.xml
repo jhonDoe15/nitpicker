@@ -104,7 +104,7 @@
       <property name="xpath">
         <value><![CDATA[
 (
-  //RecordDeclaration/RecordComponentList/RecordComponent
+  //RecordDeclaration/RecordComponentList/RecordComponent[not(@Varargs = true())]
   | //ClassDeclaration[ancestor-or-self::ClassDeclaration/ModifierList/Annotation
                          [pmd-java:typeIs('org.springframework.boot.context.properties.ConfigurationProperties')]]
       /ClassBody/FieldDeclaration[not(pmd-java:modifiers() = 'static')]
