@@ -219,6 +219,23 @@ describe('readSlowTestFindings', () => {
     ).toHaveLength(1);
   });
 
+  it('finds an inherited Spock feature in its Groovy base specification and counts it when edited', () => {
+    const basePath = `${GROOVY_ROOT}/shop/StoreSpec.groovy`;
+    const baseSpec = (body) =>
+      `package shop\n\nabstract class StoreSpec extends Specification {\n  def "puts then gets"() {\n    expect: ${body}\n  }\n}\n`;
+    const diskPath = `${GROOVY_ROOT}/shop/DiskStoreSpec.groovy`;
+    const disk = 'package shop\n\nclass DiskStoreSpec extends StoreSpec {\n}\n';
+    const results = { test: suite('shop.DiskStoreSpec', [['puts then gets', '9']]) };
+    const base = { [basePath]: baseSpec('true'), [diskPath]: disk };
+    const run = (sources) =>
+      findingsFor({ sources, results, base, testRoots: [GROOVY_ROOT] }).map(
+        ({ path: file, location }) => [file, location?.line],
+      );
+
+    expect(run(base)).toEqual([]);
+    expect(run({ ...base, [basePath]: baseSpec('1 == 1') })).toEqual([[basePath, 4]]);
+  });
+
   it('counts a case named after no method only when its file is new or a parameterized test changed', () => {
     const results = { test: suite('shop.OrderTest', [['[1] 1', '9']]) };
     const base = { [ORDER_TEST]: ORDER_SOURCE };
