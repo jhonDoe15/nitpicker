@@ -29,7 +29,7 @@ const asMessage =
 const angleMessage =
   'Do not assert with `<Type>value`. Narrow the value (a discriminated union check or a zod parse) or give it the correct type at its source.';
 const silentCatchMessage =
-  "This catch discards the failure. Return a failure result (`return { kind: 'malformed-json' }`), or rethrow an Error subclass with `{ cause: error }`. In a test, use `expect(() => run()).toThrow()` or `await expect(promise).rejects.toThrow()`. If dropping it is intended, add an exception for this rule in nitpicker.config.json.";
+  "This catch swallows the error: it only logs it, returns a default, or carries on. Rethrow it as an Error subclass with `{ cause: error }`, return a failure result (`return { kind: 'malformed-json' }`), or collect it for the caller (`errors.push(error)`); logging alone is not handling. In a test, use `expect(() => run()).toThrow()` or `await expect(promise).rejects.toThrow()`. If it is intended, add an exception for nitpicker/no-silent-catch in nitpicker.config.json.";
 const moduleLevelArgv = 'export const [root] = process.argv.slice(2);';
 
 function messages(code, filename, config = strictTestsConfig) {
@@ -81,6 +81,7 @@ describe('strict test rules', () => {
   it.each([
     ['returns null', 'function find() { try { return load(); } catch (error) { return null; } }'],
     ['continues', 'for (const item of items) { try { run(item); } catch { continue; } }'],
+    ['only logs the error', 'try { run(); } catch (error) { console.error(error); }'],
     [
       'returns a constant',
       'function has() { try { load(); return true; } catch { return false; } }',
@@ -95,6 +96,7 @@ describe('strict test rules', () => {
     const allowed = [
       'function find() { try { return load(); } catch (error) { return describe(error); } }',
       "function find() { try { return load(); } catch { return { kind: 'missing' }; } }",
+      'function find() { try { return load(); } catch (error) { console.error(error); throw error; } }',
     ];
     for (const code of allowed) {
       expect(messages(code, 'test/a.test.ts')).toEqual([]);

@@ -1,4 +1,4 @@
-import { readFileSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { ingestJacocoBranches } from './jacoco-branches.mjs';
@@ -7,13 +7,12 @@ import { isCompilerGeneratedBranchLine, suspensionCall } from './kotlin-branches
 const fixtures = path.resolve(import.meta.dirname, '..', 'fixtures');
 const report = readFileSync(path.join(fixtures, 'jacoco-kotlin.xml'), 'utf8');
 
-const sourceText = (file) => {
-  try {
-    return readFileSync(path.join(fixtures, 'kotlin-measurement', file), 'utf8');
-  } catch {
-    return undefined;
-  }
+const readIfPresent = (...segments) => {
+  const location = path.join(...segments);
+  return existsSync(location) ? readFileSync(location, 'utf8') : undefined;
 };
+
+const sourceText = (file) => readIfPresent(fixtures, 'kotlin-measurement', file);
 
 const ingest = (xml) =>
   ingestJacocoBranches(xml, { sourceRoot: 'src/main/kotlin', sourceText }).findings.map(
@@ -121,13 +120,7 @@ describe('changed-branch-coverage on Kotlin sources', () => {
 
 describe('changed-branch-coverage on Kotlin statements that span lines', () => {
   const multilineReport = readFileSync(path.join(fixtures, 'jacoco-kotlin-multiline.xml'), 'utf8');
-  const multilineSource = (file) => {
-    try {
-      return readFileSync(path.join(fixtures, 'kotlin-multiline', file), 'utf8');
-    } catch {
-      return undefined;
-    }
-  };
+  const multilineSource = (file) => readIfPresent(fixtures, 'kotlin-multiline', file);
   const findings = ingestJacocoBranches(multilineReport, {
     sourceRoot: 'src/main/kotlin',
     sourceText: multilineSource,

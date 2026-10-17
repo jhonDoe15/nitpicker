@@ -34,7 +34,7 @@ nitpicker fails the change and says what to write instead:
 $ npx nitpicker
 ✖ 4 new enforceable violations
   eslint-errors/nitpicker/no-silent-catch src/main/features/greeting/adapters/load-names.ts:8
-    This catch discards the failure. Return a failure result (`return { kind: 'malformed-json' }`), or rethrow an Error subclass with `{ cause: error }`. In a test, use `expect(() => run()).toThrow()` or `await expect(promise).rejects.toThrow()`. If dropping it is intended, add an exception for this rule in nitpicker.config.json.
+    This catch swallows the error: it only logs it, returns a default, or carries on. Rethrow it as an Error subclass with `{ cause: error }`, return a failure result (`return { kind: 'malformed-json' }`), or collect it for the caller (`errors.push(error)`); logging alone is not handling. In a test, use `expect(() => run()).toThrow()` or `await expect(promise).rejects.toThrow()`. If it is intended, add an exception for nitpicker/no-silent-catch in nitpicker.config.json.
   eslint-lint/nitpicker/no-handwritten-boundary-guard src/main/features/greeting/adapters/load-names.ts:6
     Pass `JSON.parse(text)` straight into `schema.safeParse(...)` inside the same `try`.
   eslint-lint/no-restricted-syntax src/main/features/greeting/adapters/load-names.ts:6
