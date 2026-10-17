@@ -3,8 +3,8 @@ import {
   isNonEmptyString,
   isPlainObject,
   validateStringArray,
-} from '../../shared/config.mjs';
-import { hasSpecificText } from '../../languages/typescript/adapters/quality-areas/reporting/console/console-messages.mjs';
+} from '../../../shared/config.mjs';
+import { hasSpecificText } from '../../../languages/typescript/adapters/quality-areas/reporting/console/console-messages.mjs';
 
 const TEST_CONSOLE_KEYS = ['allow'];
 
