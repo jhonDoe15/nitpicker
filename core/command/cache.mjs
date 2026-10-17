@@ -2,7 +2,7 @@ import { realpathSync } from 'node:fs';
 import path from 'node:path';
 import { resolveProjectRoot } from '../tooling/tool-resolution.mjs';
 import { publishHeadPolicy } from '../conventions/resolve.mjs';
-import { withProjectTestFiles } from '../../languages/typescript/preset/head-policy.mjs';
+import { withProjectTestFiles } from '../../languages/typescript/preset/test-runner/test-files/project-test-files.mjs';
 import { configureAnalyzers } from '../configuration/configure-analyzers.mjs';
 import { presetAnalyzers } from '../configuration/preset-analyzers.mjs';
 import { describeConfigOverrides, loadConfig } from '../configuration/config.mjs';

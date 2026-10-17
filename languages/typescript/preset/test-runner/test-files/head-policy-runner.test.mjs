@@ -3,7 +3,8 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import { PACKAGE_ROOT } from '../../../../../core/tooling/tool-resolution.mjs';
-import { resolveHeadPolicy, withProjectTestFiles } from '../../head-policy.mjs';
+import { resolveHeadPolicy } from '../../head-policy.mjs';
+import { withProjectTestFiles } from './project-test-files.mjs';
 import { defaultTestFiles } from './test-file-patterns.mjs';
 
 const temporaryRoots = [];
