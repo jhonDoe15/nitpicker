@@ -30,14 +30,21 @@ function write(root, relative, text = '') {
   writeFileSync(path.join(root, relative), text);
 }
 
-function withTools(install) {
+function condaEnvironment(prefix) {
+  return {
+    CONDA_PREFIX: prefix,
+    PATH: `${path.join(prefix, 'bin')}${path.delimiter}${process.env.PATH ?? ''}`,
+  };
+}
+
+function withManager(name, spec) {
   const tools = temporaryRoot();
-  install(tools);
+  installFakeManager(path.join(tools, name), spec);
   setEnvironment('PATH', `${tools}${path.delimiter}/usr/bin${path.delimiter}/bin`);
 }
 
 function withoutManagers() {
-  setEnvironment('PATH', `${temporaryRoot()}`);
+  setEnvironment('PATH', temporaryRoot());
 }
 
 beforeEach(() => {
@@ -114,9 +121,7 @@ describe('opening a pipenv environment', () => {
     const root = temporaryRoot();
     const venv = temporaryRoot();
     write(venv, 'bin/pytest');
-    withTools((tools) => {
-      installFakeManager(tools, 'pipenv', { output: venv });
-    });
+    withManager('pipenv', { output: venv });
 
     const launcher = openEnvironment({ kind: 'pipenv', detected: true }, root);
 
@@ -126,9 +131,7 @@ describe('opening a pipenv environment', () => {
 
   it('reports a Pipfile project without a virtualenv', () => {
     const root = temporaryRoot();
-    withTools((tools) => {
-      installFakeManager(tools, 'pipenv', { status: 1, error: 'No virtualenv has been created' });
-    });
+    withManager('pipenv', { status: 1, error: 'No virtualenv has been created' });
 
     expect(() => openEnvironment({ kind: 'pipenv', detected: true }, root)).toThrow(
       `pipenv has no virtualenv for ${root}: run \`pipenv install --dev\` first, or set "python.environment" (No virtualenv has been created)`,
@@ -158,9 +161,7 @@ describe('opening a hatch environment', () => {
     const root = temporaryRoot();
     const venv = temporaryRoot();
     write(venv, 'bin/ruff');
-    withTools((tools) => {
-      installFakeManager(tools, 'hatch', { output: venv });
-    });
+    withManager('hatch', { output: venv });
 
     const launcher = openEnvironment({ kind: 'hatch', detected: true }, root);
 
@@ -171,9 +172,7 @@ describe('opening a hatch environment', () => {
   it('asks to create an environment hatch has only named', () => {
     const root = temporaryRoot();
     const missing = path.join(root, 'nope');
-    withTools((tools) => {
-      installFakeManager(tools, 'hatch', { output: missing });
-    });
+    withManager('hatch', { output: missing });
 
     expect(() => openEnvironment({ kind: 'hatch', detected: true }, root)).toThrow(
       `hatch has not created its environment at ${missing}: run \`hatch env create\` first, or set "python.environment"`,
@@ -200,12 +199,9 @@ describe('opening a conda environment', () => {
 
     expect(launcher.description).toBe('conda');
     expect(launcher.launch('pytest', ['-q'])).toEqual({
-      command: path.join(prefix, 'bin/pytest'),
+      command: 'pytest',
       args: ['-q'],
-      env: {
-        CONDA_PREFIX: prefix,
-        PATH: `${path.join(prefix, 'bin')}${path.delimiter}${process.env.PATH ?? ''}`,
-      },
+      env: condaEnvironment(prefix),
     });
   });
 
@@ -218,9 +214,11 @@ describe('opening a conda environment', () => {
     setEnvironment('CONDA_DEFAULT_ENV', 'demo');
     withoutManagers();
 
-    expect(
-      openEnvironment({ kind: 'conda', detected: true }, root).launch('python', []).env,
-    ).toEqual(expect.objectContaining({ CONDA_PREFIX: prefix }));
+    expect(openEnvironment({ kind: 'conda', detected: true }, root).launch('python', [])).toEqual({
+      command: 'python',
+      args: [],
+      env: condaEnvironment(prefix),
+    });
   });
 
   it('finds an environment by name through conda', () => {
@@ -229,24 +227,20 @@ describe('opening a conda environment', () => {
     write(prefix, 'bin/python');
     write(root, 'environment.yml', 'name: demo\n');
     setEnvironment('CONDA_PREFIX', undefined);
-    withTools((tools) => {
-      installFakeManager(tools, 'conda', {
-        output: JSON.stringify({ envs: ['/opt/conda', prefix] }),
-      });
-    });
+    withManager('conda', { output: JSON.stringify({ envs: ['/opt/conda', prefix] }) });
 
-    expect(
-      openEnvironment({ kind: 'conda', detected: true }, root).launch('python', []).env,
-    ).toEqual(expect.objectContaining({ CONDA_PREFIX: prefix }));
+    expect(openEnvironment({ kind: 'conda', detected: true }, root).launch('python', [])).toEqual({
+      command: 'python',
+      args: [],
+      env: condaEnvironment(prefix),
+    });
   });
 
   it('asks to create the environment when conda does not list it', () => {
     const root = temporaryRoot();
     write(root, 'environment.yml', 'name: demo\n');
     setEnvironment('CONDA_PREFIX', undefined);
-    withTools((tools) => {
-      installFakeManager(tools, 'conda', { output: '{"envs": ["/opt/conda"]}' });
-    });
+    withManager('conda', { output: '{"envs": ["/opt/conda"]}' });
 
     expect(() => openEnvironment({ kind: 'conda', detected: true }, root)).toThrow(
       'conda has no environment named demo: run `conda env create -f environment.yml` first, or set "python.environment"',
