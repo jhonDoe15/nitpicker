@@ -278,6 +278,21 @@ allprojects {
                 junitXml.outputLocation = reportDir.map { it.dir('archunit') }
                 html.required = false
             }
+            // Like the Maven side: ArchUnit classes that no runner picked up are an error, not a pass.
+            doLast {
+                def archunitClasses = sourceSets.test.output.classesDirs.files.findAll { it.exists() }.collectMany { dir ->
+                    fileTree(dir) { include archunitIncludes }.files.collect {
+                        dir.toPath().relativize(it.toPath()).toString().replace('\\', '/')
+                            .replaceAll(/\.class$/, '').replace('/', '.').replaceAll(/\$.*/, '')
+                    }
+                }.unique().sort()
+                def reported = (reportDir.get().dir('archunit').asFile.listFiles() ?: [])*.name
+                if (!archunitClasses.isEmpty() && !archunitClasses.any { reported.contains("TEST-${it}.xml".toString()) }) {
+                    throw new GradleException("nitpickerArchunit ran none of the ArchUnit classes in ${project.path} " +
+                        "(${archunitClasses.join(', ')}). archunit-junit4 rules run on JUnit 4 and archunit-junit5 " +
+                        'rules on the JUnit Platform; declare the one the classes use in the test dependencies')
+                }
+            }
         }
 
         // PIT mutates the project's main classes and runs its tests (JUnit 5 through the plugin, or
@@ -392,10 +407,14 @@ allprojects {
                     coverage.excludeClassLoaders = []
                 }
             }
-            // The rules run on the framework the project's own `test` task uses: archunit-junit4 needs
-            // JUnit 4, archunit-junit5 the JUnit Platform.
+            // The rules run on the framework their ArchUnit library needs: archunit-junit4 on JUnit 4,
+            // archunit-junit5 on the JUnit Platform. With both or neither declared, they follow `test`.
             tasks.named('nitpickerArchunit') {
-                if (tasks.named('test').get().options instanceof org.gradle.api.tasks.testing.junit.JUnitOptions) {
+                def declared = configurations.testRuntimeClasspath.allDependencies*.name
+                def junit5Rules = declared.any { it.startsWith('archunit-junit5') }
+                def junit4Rules = declared.contains('archunit-junit4')
+                def testOnJUnit4 = tasks.named('test').get().options instanceof org.gradle.api.tasks.testing.junit.JUnitOptions
+                if (junit4Rules == junit5Rules ? testOnJUnit4 : junit4Rules) {
                     useJUnit()
                 } else {
                     useJUnitPlatform()
