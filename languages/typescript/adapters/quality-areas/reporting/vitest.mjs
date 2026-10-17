@@ -4,6 +4,8 @@ import path from 'node:path';
 
 export const COVERAGE_REPORT_PATH = 'reports/quality/coverage/coverage-final.json';
 
+export const TEST_CONSOLE_REPORT_PATH = 'reports/quality/test-console/report.json';
+
 import { normalizeCoverage } from './tests.mjs';
 
 import { withBranchSourceHashes } from './source-hashes.mjs';
