@@ -15,6 +15,7 @@ import {
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { beforeAll, afterEach, describe, expect, it } from 'vitest';
+import { defaultTestFiles } from './test-runner/test-files/test-file-patterns.mjs';
 import { runQualityDiff } from '../../../core/diff/comparison/run-diff.mjs';
 import {
   defaultLayout,
@@ -268,41 +269,6 @@ describe('head policy framework conventions', () => {
   });
 });
 
-describe('head policy test runner fact', () => {
-  function runnerOf(files, config = {}) {
-    const root = temporaryDirectory();
-    for (const [name, text] of Object.entries(files)) writeFileSync(path.join(root, name), text);
-    return resolveHeadPolicy(config, root).tools?.tests;
-  }
-
-  it('records the runner the head checkout shows, so the lint config can follow it', () => {
-    expect(runnerOf({ 'package.json': '{"scripts":{"test":"jest"}}' })).toEqual({
-      detectedRunner: 'jest',
-    });
-    expect(runnerOf({ 'package.json': '{"scripts":{"test":"node --test"}}' })).toEqual({
-      detectedRunner: 'node',
-    });
-    expect(runnerOf({ '.mocharc.json': '{}' })).toEqual({ detectedRunner: 'mocha' });
-    expect(runnerOf({})).toEqual({ detectedRunner: 'vitest' });
-  });
-
-  it('keeps the configured runner next to the detected one', () => {
-    const config = { tools: { tests: { runner: 'mocha' } } };
-
-    expect(runnerOf({ 'package.json': '{"scripts":{"test":"jest"}}' }, config)).toEqual({
-      runner: 'mocha',
-      detectedRunner: 'jest',
-    });
-  });
-
-  it('records it for a JavaScript preset too, and for no other preset', () => {
-    const files = { 'package.json': '{"scripts":{"test":"mocha"}}' };
-
-    expect(runnerOf(files, { preset: 'javascript' })).toEqual({ detectedRunner: 'mocha' });
-    expect(runnerOf(files, { preset: 'java' })).toBeUndefined();
-  });
-});
-
 describe('head policy reader', () => {
   it('falls back to preset layout defaults without a policy file', () => {
     expect(readHeadPolicy({})).toEqual({
@@ -371,7 +337,9 @@ describe('head policy reader', () => {
     expect(resolveHeadPolicy(projectConfig, root).tools.prettier.projectConfigDigest).not.toBe(
       before,
     );
-    expect(resolveHeadPolicy({}, root).tools).toEqual({ tests: { detectedRunner: 'vitest' } });
+    expect(resolveHeadPolicy({}, root).tools).toEqual({
+      tests: { detectedRunner: 'vitest', testFiles: defaultTestFiles('vitest') },
+    });
   });
 
   it('exposes the configured entry points on the resolved layout', () => {

@@ -1,5 +1,4 @@
 import { spawnNodeTool } from '../../quality-areas/runners/tooling.mjs';
-import { withoutOptions } from '../../../preset/test-runner/script-command.mjs';
 import {
   MAX_WORKERS,
   TEST_TIMEOUT_MS,
@@ -10,70 +9,9 @@ import {
 import { RUNNER_NAMES } from '../../../preset/test-runner/runners.mjs';
 import { assertSourcesCovered, coverageArguments, shownRootDir } from './jest-coverage.mjs';
 import { jestTool } from './jest-launcher.mjs';
-
-const OPTIONS_NITPICKER_SETS = {
-  flags: [
-    '--watch',
-    '--watchAll',
-    '--coverage',
-    '--collectCoverage',
-    '--json',
-    '--ci',
-    '--silent',
-    '--passWithNoTests',
-    '--onlyChanged',
-    '-o',
-    '--onlyFailures',
-    '-f',
-    '--lastCommit',
-    '--changedFilesWithAncestor',
-    '--findRelatedTests',
-    '--showConfig',
-    '--listTests',
-    '--clearCache',
-  ],
-  valued: [
-    '--outputFile',
-    '--coverageDirectory',
-    '--coverageReporters',
-    '--coverageProvider',
-    '--collectCoverageFrom',
-    '--coverageThreshold',
-    '--reporters',
-    '--testTimeout',
-    '--maxWorkers',
-    '-w',
-    '--changedSince',
-    '--shard',
-    '--testNamePattern',
-    '-t',
-  ],
-};
+import { jestArguments } from './jest-arguments.mjs';
 
 const SERIAL_OPTIONS = new Set(['--runInBand', '-i']);
-
-function withoutRelatedFiles(tokens) {
-  const kept = [];
-  let related = false;
-  for (const token of tokens) {
-    if (token.startsWith('-')) {
-      related = token === '--findRelatedTests';
-    }
-    if (!related || token.startsWith('-')) {
-      kept.push(token);
-    }
-  }
-  return kept;
-}
-
-export function jestArguments(command, nitpickerArguments, { leading, trailing }) {
-  return [
-    ...leading,
-    ...withoutOptions(withoutRelatedFiles(command.arguments_), OPTIONS_NITPICKER_SETS),
-    ...nitpickerArguments,
-    ...trailing,
-  ];
-}
 
 function workerArguments(tokens) {
   const serial = tokens.some((token) => SERIAL_OPTIONS.has(token.split('=')[0]));

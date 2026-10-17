@@ -4,6 +4,7 @@ import path from 'node:path';
 import { existsSync } from 'node:fs';
 import config from '../defaults/crap.config.mjs';
 import { readLayout } from '../head-policy.mjs';
+import { escapeRegExp } from '../../../../shared/glob.mjs';
 import { analyzeWithFunctionMapFallback } from './analyze.mjs';
 
 const projectRoot = path.resolve(
@@ -17,6 +18,7 @@ const analysis = await analyzeWithFunctionMapFallback({
   coverageMode: 'existing-only',
   coverageReportPath,
   excludes: config.excludes,
+  excludePathRegexes: sourceTestPaths(),
 });
 
 const functions = analysis.metrics
@@ -81,4 +83,12 @@ function explicitPaths() {
         ? [sourcePath]
         : layout.projectCodeFiles(projectRoot, [sourcePath]).filter(layout.isSourceFile),
     );
+}
+
+function sourceTestPaths() {
+  const layout = readLayout();
+  return layout
+    .projectCodeFiles(projectRoot, config.sourcePaths)
+    .filter((file) => layout.isTestFile(file))
+    .map((file) => `^${escapeRegExp(file)}$`);
 }

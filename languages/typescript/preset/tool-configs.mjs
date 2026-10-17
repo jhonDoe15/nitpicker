@@ -189,6 +189,7 @@ function withoutMutantStrictness(text) {
 }
 
 const PROJECT_JSCONFIG = 'jsconfig.json';
+const JAVASCRIPT_PROJECT_OPTIONS = { ...JAVASCRIPT_COMPILER_OPTIONS, maxNodeModuleJsDepth: 0 };
 const MUTANT_STRICTNESS_OPTIONS = new Set([
   'noImplicitReturns',
   'noFallthroughCasesInSwitch',
@@ -248,13 +249,13 @@ function projectLayeredMutationTsconfig(extended, { strictMutants, layout }) {
     compilerOptions: {
       skipLibCheck: true,
       ...(strictMutants ? POLICY_COMPILER_OPTIONS : {}),
-      ...(layout.javascript ? JAVASCRIPT_COMPILER_OPTIONS : {}),
+      ...(layout.javascript ? JAVASCRIPT_PROJECT_OPTIONS : {}),
     },
   };
 }
 
 function projectLayeredTsconfig(extended, base, { layout, projectDirectory }) {
-  const javascriptOptions = layout.javascript ? JAVASCRIPT_COMPILER_OPTIONS : {};
+  const javascriptOptions = layout.javascript ? JAVASCRIPT_PROJECT_OPTIONS : {};
   const layered = layoutTsconfig(base, layout);
   const lib = libsWithEndToEndDom(
     projectLibs(projectDirectory, extended),

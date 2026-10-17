@@ -109,7 +109,12 @@ describe('generated tsconfig.quality.json', () => {
       projectWith('jsconfig.json'),
     );
     expect(config.extends).toBe('./jsconfig.json');
-    expect(config.compilerOptions.checkJs).toBe(true);
+    const { allowJs, checkJs, maxNodeModuleJsDepth } = config.compilerOptions;
+    expect({ allowJs, checkJs, maxNodeModuleJsDepth }).toEqual({
+      allowJs: true,
+      checkJs: true,
+      maxNodeModuleJsDepth: 0,
+    });
   });
 
   it('prefers tsconfig.json over jsconfig.json', () => {
@@ -156,11 +161,12 @@ describe('generated tsconfig.stryker.json', () => {
       projectWith('jsconfig.json'),
     );
     expect(javascript.extends).toBe('./jsconfig.json');
-    const { skipLibCheck, allowJs, checkJs } = javascript.compilerOptions;
-    expect({ skipLibCheck, allowJs, checkJs }).toEqual({
+    const { skipLibCheck, allowJs, checkJs, maxNodeModuleJsDepth } = javascript.compilerOptions;
+    expect({ skipLibCheck, allowJs, checkJs, maxNodeModuleJsDepth }).toEqual({
       skipLibCheck: true,
       allowJs: true,
       checkJs: true,
+      maxNodeModuleJsDepth: 0,
     });
     const typescript = transformed(
       'tsconfig.stryker.json',

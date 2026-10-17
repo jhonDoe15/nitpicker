@@ -24,6 +24,7 @@ import { readDependencyNames } from '../eslint-config/scope-support.mjs';
 import { i18nRuleIds } from '../eslint-config/i18n/i18n-rules.mjs';
 import { i18nScopeConfigFor, isI18nProject } from '../eslint-config/i18n/i18n-scope.mjs';
 import { readHeadPolicy, readLayout } from '../head-policy.mjs';
+import { withRunnerTestPaths } from '../layout.mjs';
 import { testRunnerLintConfig } from '../eslint-config/runner/runner-rules.mjs';
 import { policyTestRunner } from '../test-runner/project-runner.mjs';
 import {
@@ -35,7 +36,7 @@ const policy = readHeadPolicy();
 const testRunner = policyTestRunner(policy, analyzedProjectRoot());
 const runnerConfig = testRunnerLintConfig(testRunner);
 
-const layout = readLayout();
+const layout = withRunnerTestPaths(readLayout(), analyzedProjectRoot());
 const react = isReactProject({ projectRoot: analyzedProjectRoot(), react: policy.react });
 const routeHandlers = usesRouteHandlerFramework(readDependencyNames(analyzedProjectRoot()));
 const i18n = isI18nProject({ projectRoot: analyzedProjectRoot(), i18n: policy.i18n });

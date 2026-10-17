@@ -1,3 +1,4 @@
+import globals from 'globals';
 import { describe, expect, it } from 'vitest';
 import tseslint from 'typescript-eslint';
 import { rule } from '../eslint-plugin/rules/testing/environment/no-unused-dom-environment.mjs';
@@ -117,6 +118,15 @@ describe('testEnvironmentsFromVariables', () => {
     expect(
       testEnvironmentsFromVariables({ [TEST_ENVIRONMENTS_VARIABLE]: JSON.stringify(resolved) }),
     ).toEqual({ ...resolved, aliases: [] });
+  });
+
+  it('gives the blocks of a DOM environment the browser globals', () => {
+    const scopes = [{ files: ['src/ui/**/*.test.ts'], ignores: [], environment: 'happy-dom' }];
+    const blocks = testEnvironmentConfigFor(layout, { environment: 'node', scopes });
+    expect(blocks.map((block) => block.languageOptions)).toEqual([
+      undefined,
+      { globals: globals.browser },
+    ]);
   });
 
   it.each([undefined, 'not json', 'null', '{"environment":"jsdom"}'])(
