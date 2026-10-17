@@ -15,11 +15,13 @@ import {
 } from './eslint-config/scope-support.mjs';
 import {
   builtInExcludedGlobs,
+  globToRegExp,
   resolveLayout,
   resolveLayoutFor,
   sourceRoots,
   testRoots,
 } from './layout.mjs';
+import { detectLibraries } from './libraries/project-libraries.mjs';
 import { stylingApproachFor } from './eslint-config/react/react-styling.mjs';
 import { prettierConventionOptions } from '../conventions/prettier-conventions.mjs';
 import { markedGeneratedFiles } from './layout/generated-files.mjs';
@@ -63,7 +65,12 @@ function withProjectFacts(policy, config, projectRoot) {
   const prettier = policy.tools?.prettier;
   return {
     ...policy,
-    ...(SCOPED_PRESETS.includes(config.preset) ? withDetectedScopes(policy, projectRoot) : {}),
+    ...(SCOPED_PRESETS.includes(config.preset)
+      ? {
+          ...withDetectedScopes(policy, projectRoot),
+          libraries: detectLibraries(projectRoot, excludedPathMatcher(policy)),
+        }
+      : {}),
     ...(usesProjectConfig(prettier?.precedence ?? [])
       ? {
           tools: {
@@ -73,6 +80,11 @@ function withProjectFacts(policy, config, projectRoot) {
         }
       : {}),
   };
+}
+
+function excludedPathMatcher(policy) {
+  const matchers = resolveLayoutFor(policy).excludedGlobs.map(globToRegExp);
+  return (file) => matchers.some((matcher) => matcher.test(file));
 }
 
 function withDetectedScopes(policy, projectRoot) {
@@ -107,7 +119,7 @@ function detectedScopes(policy, projectRoot) {
   };
 }
 
-const HEAD_CHECKOUT_FACTS = ['conventions', 'generatedFiles', 'frameworks'];
+const HEAD_CHECKOUT_FACTS = ['conventions', 'generatedFiles', 'frameworks', 'libraries'];
 const SCOPE_FACTS = [
   ['react', ['enabled', 'iconPackage', 'major', 'styling', 'autoCleanup']],
   ['i18n', ['enabled']],
@@ -183,6 +195,7 @@ export function readHeadPolicy(environment = process.env) {
     tools: policy.tools ?? {},
     conventions: policy.conventions,
     generatedFiles: policy.generatedFiles ?? [],
+    libraries: policy.libraries,
     frameworks: { defaultExports: [], entryPoints: [], ...policy.frameworks },
   };
 }
