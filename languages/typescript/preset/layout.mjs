@@ -278,13 +278,6 @@ export function existingRoots(projectRoot, roots) {
   return roots.filter((root) => existsSync(path.join(projectRoot, root)));
 }
 
-export function hasColocatedTests(projectRoot, layout = {}) {
-  return (
-    existingRoots(projectRoot, (layout.testRoots ?? defaultTestRoots).map(normalizeRoot)).length ===
-    0
-  );
-}
-
 export function resolveLayoutFor(policy = {}) {
   return resolveLayout(policy.layout, policy.exclude, {
     javascript: isJavascriptPolicy(policy),
