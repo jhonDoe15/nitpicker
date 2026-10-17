@@ -8,7 +8,7 @@ import {
   withLegacyInventory,
 } from '../../../shared/legacy-inventory.mjs';
 import { configError, TYPESCRIPT_ONLY_KEYS } from '../../../shared/config.mjs';
-import { JAVA_TOOLS, PROJECT_TOOL_CONFIGS } from './gradle-presets.mjs';
+import { JAVA_TOOLS, PROJECT_TOOL_CONFIGS, styleToolNames } from './gradle-presets.mjs';
 import { JAVA_LINE_LENGTH, JAVA_SIZE_RULES } from '../../../shared/project-rules/size-rules.mjs';
 import { SHARED_EXCEPTION_RULES } from '../../../shared/policy.mjs';
 import { evaluateBaselineExpansions } from '../../../shared/rules/baseline-expansion.mjs';
@@ -34,7 +34,7 @@ const JAVA_EXCEPTION_RULES = [...SHARED_EXCEPTION_RULES, ...JAVA_SIZE_RULES];
 
 export function validateJavaConfig(config) {
   const typescriptOnly = TYPESCRIPT_ONLY_KEYS.filter(
-    (key) => !['exceptions', 'tools', 'testConsole'].includes(key),
+    (key) => !['exceptions', 'tools'].includes(key),
   );
   const unsupported = typescriptOnly.filter((key) => config[key] !== undefined);
   if (unsupported.length > 0) {
@@ -96,14 +96,14 @@ function javaAdapterArguments({
     ),
     ...(kotlin.formatter === undefined ? [] : ['--kotlin-formatter', kotlin.formatter]),
     ...(kotlin.detektConfig === undefined ? [] : ['--kotlin-detekt-config', kotlin.detektConfig]),
-    ...[...PROJECT_TOOL_CONFIGS.keys()]
+    ...[...PROJECT_TOOL_CONFIGS.keys(), ...styleToolNames()]
       .filter((tool) => tools[tool] !== undefined)
       .flatMap((tool) => [`--${tool}-precedence`, tools[tool].precedence.join(',')]),
   ];
 }
 
 export function configureJavaAnalyzer(analyzer, options) {
-  const { exceptions = [], legacyInventory, tools = {} } = options;
+  const { exceptions = [], legacyInventory, tools = {}, styleFiles } = options;
   const adapterArguments = javaAdapterArguments(options);
   if (adapterArguments.length === 0 && exceptions.length === 0 && legacyInventory === undefined) {
     return analyzer;
@@ -115,15 +115,14 @@ export function configureJavaAnalyzer(analyzer, options) {
   const configured = {
     ...analyzer,
     configurationHash,
-    ...(projectConfigDirectories.length === 0
+    ...(projectConfigDirectories.length === 0 && styleFiles === undefined
       ? {}
       : {
           resolveConfigurationHash: (policyRoot) =>
-            hashWithProjectConfigDirectories(
-              configurationHash,
-              policyRoot,
-              projectConfigDirectories,
-            ),
+            hashWithProjectConfigs(configurationHash, policyRoot, {
+              directories: projectConfigDirectories,
+              files: styleFiles?.(policyRoot) ?? [],
+            }),
         }),
     createInvocation: (context) => {
       const invocation = analyzer.createInvocation(context);
@@ -155,11 +154,18 @@ function isLifted(finding, lifted) {
   );
 }
 
-function hashWithProjectConfigDirectories(configurationHash, policyRoot, directories) {
+function hashWithProjectConfigs(configurationHash, policyRoot, { directories, files }) {
   const hash = createHash('sha256').update(configurationHash);
-  for (const file of directories.flatMap((directory) => filesUnder(policyRoot, directory))) {
-    const content = readFileSync(path.join(policyRoot, file));
-    hash.update(`${file}\0${String(content.length)}\0`).update(content);
+  const named = [
+    ...directories.flatMap((directory) => filesUnder(policyRoot, directory)),
+    ...files.map((file) => path.relative(policyRoot, file)),
+  ];
+  for (const file of named) {
+    const absolute = path.resolve(policyRoot, file);
+    if (existsSync(absolute)) {
+      const content = readFileSync(absolute);
+      hash.update(`${file}\0${String(content.length)}\0`).update(content);
+    }
   }
   return hash.digest('hex');
 }

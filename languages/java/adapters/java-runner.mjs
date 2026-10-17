@@ -1,11 +1,10 @@
 import { realpathSync } from 'node:fs';
+import { readHeadPolicyFile } from '../../../shared/head-policy.mjs';
 import { collectJavaFindings } from './java-diff.mjs';
 import { detectJavaBuild } from '../builds/java-build.mjs';
-import { GRADLE_PRESETS } from './gradle-presets.mjs';
 import { EXCEPTION_SEPARATOR } from './java-policy.mjs';
-import { PROJECT_TOOL_CONFIGS } from './gradle-presets.mjs';
+import { GRADLE_PRESETS, PROJECT_TOOL_CONFIGS, styleToolNames } from './gradle-presets.mjs';
 import { KOTLIN_FORMATTERS } from './kotlin/kotlin-options.mjs';
-import { readHeadPolicyFile } from '../../../shared/head-policy.mjs';
 import { javaStyle } from './style/java-style.mjs';
 
 export const GRADLE_FAILURE_RULE = 'gradle-failure';
@@ -50,7 +49,7 @@ const USAGE =
   'Usage: java-runner.mjs --project-root <directory> [--snapshot base|head] [--policy-root <directory>]' +
   ' [--baseline-root <directory>] [--crap-limit <number>] [--exclude <glob>]... [--exception <rule>:<glob>]... [--legacy-inventory <path>]' +
   ' [--preset java|kotlin] [--kotlin-formatter ktlint|ktfmt|none]' +
-  ' [--kotlin-detekt-config <path>] [--file-limits <json>] [--test-seconds <json>] [--test-console-allow <json>] [--pmd-precedence <layers>] [--checkstyle-precedence <layers>]';
+  ' [--kotlin-detekt-config <path>] [--file-limits <json>] [--test-seconds <json>] [--test-console-allow <json>] [--<tool>-precedence <layers>]...';
 
 function parseException(value) {
   const separator = value.indexOf(EXCEPTION_SEPARATOR);
@@ -126,15 +125,15 @@ export function parseRunnerArguments(arguments_) {
 }
 
 function toolPrecedence(values) {
-  const chosen = [...PROJECT_TOOL_CONFIGS.keys()].filter((tool) =>
-    values.has(`--${tool}-precedence`),
-  );
+  const chosen = PRECEDENCE_TOOLS.filter((tool) => values.has(`--${tool}-precedence`));
   return chosen.length === 0
     ? undefined
     : Object.fromEntries(
         chosen.map((tool) => [tool, values.get(`--${tool}-precedence`).split(',')]),
       );
 }
+
+const PRECEDENCE_TOOLS = [...PROJECT_TOOL_CONFIGS.keys(), ...styleToolNames()];
 
 const REPEATED_OPTIONS = ['--exclude', '--exception'];
 
@@ -150,8 +149,7 @@ const RUNNER_OPTIONS = [
   '--preset',
   '--kotlin-formatter',
   '--kotlin-detekt-config',
-  '--pmd-precedence',
-  '--checkstyle-precedence',
+  ...PRECEDENCE_TOOLS.map((tool) => `--${tool}-precedence`),
   '--file-limits',
   '--test-seconds',
   '--test-console-allow',
@@ -186,7 +184,7 @@ function realpathOptional(directory) {
 export function readRunnerPolicy(runnerArguments, environment = process.env) {
   const { projectRoot, policy } = parseRunnerArguments(runnerArguments);
   const { conventions } = readHeadPolicyFile(environment);
-  return { projectRoot, policy: { ...policy, javaStyle: javaStyle(conventions) } };
+  return { projectRoot, policy: { ...policy, conventions, javaStyle: javaStyle(conventions) } };
 }
 
 function main(arguments_) {
