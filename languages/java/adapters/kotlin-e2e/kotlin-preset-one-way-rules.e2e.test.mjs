@@ -133,7 +133,7 @@ describe.skipIf(!kotlinE2eEnabled)('Kotlin preset one-way rules end to end', () 
     const exception =
       ' To allow it on specific paths, add an "exceptions" entry for rule detekt.style.ForbiddenMethodCall in nitpicker.config.json.';
     const runBlocking =
-      'The method `kotlinx.coroutines.runBlocking` has been forbidden: Make the caller `suspend` (`suspend fun main()` for an entry point) and use `coroutineScope { ... }` for concurrent work.';
+      'The method `kotlinx.coroutines.runBlocking` has been forbidden: Make the caller `suspend` (`suspend fun main()` for an entry point) and use `coroutineScope { ... }` for concurrent work. In a test, use `runTest`.';
 
     const run =
       'The method `kotlin.run` has been forbidden: Use `let` to name a value for a block (`value?.let { ... }` for null), or call the code directly.';
