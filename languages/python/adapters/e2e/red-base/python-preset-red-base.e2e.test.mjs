@@ -63,13 +63,24 @@ describe.skipIf(!pythonE2eEnabled)('Python preset on a base whose tests fail', (
     expect(enforceable(result)).toEqual([]);
     expect(result.json('notes.json')).toEqual([
       {
+        tool: 'mutation',
+        snapshot: 'base',
+        rule: 'tests-failed-skipped',
+        path: '.',
+        message:
+          'Mutation testing (mutmut) did not run in the base snapshot: every test module fails (tests/test_greeter.py), so no passing test is left to run against the mutants. Make the tests pass.',
+      },
+      {
         tool: 'python',
         snapshot: 'base',
         rule: 'tests-failed',
         path: '.',
-        message: expect.stringMatching(
-          /^coverage run exited 1 in the virtualenv environment:\n[\s\S]*assert 'Hello, Ada!' == 'Hi, Ada!'[\s\S]*1 failed in [\d.]+s$/,
-        ),
+        message: [
+          'Tests fail in the base snapshot. Make each failing test pass:',
+          '  tests/test_greeter.py::test_greet',
+          'The static analyzers ran as usual; coverage and CRAP come from the tests that ran.',
+          'Mutation testing (mutmut) leaves out the test modules tests/test_greeter.py.',
+        ].join('\n'),
       },
     ]);
   });
@@ -100,6 +111,11 @@ describe.skipIf(!pythonE2eEnabled)('Python preset on a base whose tests fail', (
     expect(result.json('notes.json')).toEqual([]);
     expect(
       result.json('tool-errors.json').map(({ snapshot, rule }) => `${snapshot} ${rule}`),
-    ).toEqual(['base tests-failed', 'head tests-failed']);
+    ).toEqual([
+      'base tests-failed-skipped',
+      'head tests-failed-skipped',
+      'base tests-failed',
+      'head tests-failed',
+    ]);
   });
 });
