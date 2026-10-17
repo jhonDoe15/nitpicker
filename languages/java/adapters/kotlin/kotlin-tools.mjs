@@ -14,6 +14,7 @@ import {
 import {
   detektConventionLayer,
   detektLayers,
+  enforcedEditorconfigs,
   ktlintDefaults,
   projectEditorconfig,
 } from './style/kotlin-style-files.mjs';
@@ -209,8 +210,15 @@ export function kotlinStyleFile(tools, conventions) {
   const detekt = detektConventionLayer(conventions, {
     nitpickerFirst: tools.detektNitpickerFirst,
   });
+  const workspace =
+    tools.workspace === undefined || tools.editorconfigFiles === undefined
+      ? tools.workspace
+      : {
+          ...tools.workspace,
+          editorconfigs: enforcedEditorconfigs(tools.workspace, conventions),
+        };
   const style = {
-    ...tools.workspace,
+    ...workspace,
     ...(defaults === undefined ? {} : { ktlintDefaults: defaults }),
     ...(detekt === undefined ? {} : { detektConventions: detekt }),
   };

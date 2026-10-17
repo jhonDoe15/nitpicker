@@ -78,6 +78,26 @@ describe('the detekt, ktlint and ktfmt configs of a kotlin project', () => {
     });
   });
 
+  it('prints the ktlint widths of the base and says that they win over the branch .editorconfig', () => {
+    const editorconfig = (width) => `[*.{kt,kts}]\nmax_line_length = ${String(width)}\n`;
+    const base = {
+      'build.gradle.kts': 'ktlint',
+      '.editorconfig': editorconfig(100),
+      'src/A.kt': KOTLIN,
+    };
+    const ktlintOnly = { preset: 'kotlin', tools: { ktlint: { precedence: LISTED } } };
+
+    expect(
+      compared({ base, branch: { '.editorconfig': editorconfig(160) }, config: ktlintOnly })
+        .printed,
+    ).toBe(
+      HEADER +
+        '  Kotlin indentation: 2 spaces (used by 1 of 1 measured files)\n' +
+        '  Kotlin line length: 100 columns (from your .editorconfig)\n' +
+        'ktlint reads your .editorconfig files, and uses indent_size = 2, max_line_length = 100 where they set nothing; the followed limits (indent_size, max_line_length) win over them\n',
+    );
+  });
+
   it('prints the line length it read from the base', () => {
     const base = {
       'build.gradle.kts': 'ktlint',
@@ -100,7 +120,7 @@ describe('the ruff config of a python project', () => {
   const ruff = (width) => `line-length = ${String(width)}\n`;
   const config = { preset: 'python', tools: { ruff: { precedence: LISTED } } };
   const FORMAT =
-    "Format with ruff: ruff format --config ruff.toml --target-version py38 --config 'format.quote-style = \"double\"' --config 'indent-width = 4' .\n";
+    "Format with ruff: ruff format --config ruff.toml --target-version py38 --line-length 100 --config 'format.quote-style = \"double\"' --config 'indent-width = 4' .\n";
 
   it('reads the ruff line length from the merge base, so a branch cannot raise its own limit', () => {
     const base = { 'ruff.toml': ruff(100), 'a.py': PYTHON };

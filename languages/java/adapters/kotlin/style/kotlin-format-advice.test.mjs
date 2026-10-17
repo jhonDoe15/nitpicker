@@ -74,7 +74,7 @@ describe('the summary lines of the run', () => {
         },
       ),
     ).toEqual([
-      'ktlint reads your .editorconfig files, and uses indent_size = 2 where they set nothing',
+      'ktlint reads your .editorconfig files, and uses indent_size = 2 where they set nothing; the followed limits (indent_size) win over them',
     ]);
   });
 

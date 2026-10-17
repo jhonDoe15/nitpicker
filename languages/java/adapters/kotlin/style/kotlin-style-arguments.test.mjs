@@ -108,6 +108,32 @@ describe('what runs with the project listed', () => {
     });
   });
 
+  it('lets the followed limits win over the head .editorconfig, so an edited width is not enforced', () => {
+    const base = project({ 'build.gradle.kts': 'ktlint' });
+    const head = project({
+      'build.gradle.kts': 'ktlint',
+      '.editorconfig': '[*.{kt,kts}]\nindent_size = 8\nmax_line_length = 160\n',
+    });
+
+    const style = styleOf(base, {
+      policyRoot: head,
+      toolPrecedence: { ktlint: ['project', 'nitpicker'] },
+      conventions: { 'kotlin.indentation': '8', 'kotlin.lineLength': '100' },
+    });
+
+    expect(style).toEqual({
+      offset: '',
+      editorconfigs: [
+        {
+          path: '.editorconfig',
+          text: 'root = true\n\n[*.{kt,kts}]\nindent_size = 8\nmax_line_length = 160\n\n[*.{kt,kts}]\nmax_line_length = 100\n',
+        },
+      ],
+      ktlintDefaults: '[*.{kt,kts}]\nindent_size = 8\nmax_line_length = 100\n',
+      detektConventions: 'style:\n  MaxLineLength:\n    maxLineLength: 100\n',
+    });
+  });
+
   it('turns on ktfmt editorconfig support, the build style and the mirror, from the head checkout', () => {
     const base = project({ 'build.gradle.kts': 'ktfmt()' });
     const head = project({
@@ -127,7 +153,7 @@ describe('what runs with the project listed', () => {
     ]);
   });
 
-  it('layers the project detekt file above the conventions and names it by its head path', () => {
+  it('layers the project detekt file above the conventions, re-applies the followed conventions last and names it by its head path', () => {
     const base = project({ 'build.gradle.kts': 'plugins {}' });
     const head = project({ 'config/detekt/detekt.yml': 'style:\n' });
     const options = {
@@ -141,7 +167,7 @@ describe('what runs with the project listed', () => {
       );
 
     expect(layersOf(['project', 'nitpicker'])).toEqual([
-      '-Pnitpicker.kotlin.detektLayers=conventions,project',
+      '-Pnitpicker.kotlin.detektLayers=conventions,project,conventions',
       `-Pnitpicker.kotlin.detektConfig=${path.join(head, 'config/detekt/detekt.yml')}`,
     ]);
     expect(layersOf(['nitpicker', 'project'])).toEqual([
