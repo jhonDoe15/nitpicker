@@ -81,6 +81,19 @@ describe('one-way rule messages', () => {
     );
   });
 
+  it('tells a test to use assertFailsWith for a broad catch', () => {
+    const { message } = addOneWayHint(
+      detektFinding(
+        'detekt.exceptions.TooGenericExceptionCaught',
+        'The caught exception is too generic. Prefer catching specific exceptions to the case that is currently handled.',
+      ),
+    );
+
+    expect(message).toBe(
+      'The caught exception is too generic. Prefer catching specific exceptions to the case that is currently handled. In a test, use `assertFailsWith`. To allow it on specific paths, add an "exceptions" entry for rule detekt.exceptions.TooGenericExceptionCaught in nitpicker.config.json.',
+    );
+  });
+
   it('leaves other detekt rules and other tools alone', () => {
     const other = detektFinding('detekt.style.MagicNumber', 'magic');
     const sameRuleOtherTool = { ...detektFinding(ONE_WAY_RULES[0].id, 'x'), tool: 'ktlint' };
@@ -92,7 +105,7 @@ describe('one-way rule messages', () => {
   it('lists each rule once under the id detekt reports', () => {
     expect(new Set(ONE_WAY_RULE_IDS).size).toBe(ONE_WAY_RULE_IDS.length);
     for (const id of ONE_WAY_RULE_IDS) {
-      expect(id).toMatch(/^detekt\.(?:potential-bugs|coroutines|exceptions|style)\.[A-Z]\w+$/);
+      expect(id).toMatch(/^detekt\.(?:potential-bugs|exceptions|coroutines|style)\.[A-Z]\w+$/);
     }
   });
 });

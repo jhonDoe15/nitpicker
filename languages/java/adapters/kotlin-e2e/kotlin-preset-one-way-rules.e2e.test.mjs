@@ -9,6 +9,7 @@ import {
 import {
   expectedMessage,
   fixturePath,
+  fixtureSource,
   kotlinRuleCases,
 } from '../kotlin/rules/test-support/kotlin-rule-cases.mjs';
 import { SUPPRESSION_RULE, addOneWayHint } from '../kotlin/rules/kotlin-rules.mjs';
@@ -31,6 +32,7 @@ describe.skipIf(!kotlinE2eEnabled)('Kotlin preset one-way rules end to end', () 
   let bannedResult;
   let allowedResult;
   let hostileConfigResult;
+  let testSourceResult;
 
   beforeAll(() => {
     project = initializeProject();
@@ -46,7 +48,14 @@ describe.skipIf(!kotlinE2eEnabled)('Kotlin preset one-way rules end to end', () 
         ]),
       ),
     });
+    commitBranch(project, 'one-way-test-source', {
+      'src/test/kotlin/demo/swallowedException/SwallowedTest.kt': fixtureSource(
+        kotlinRuleCases.find(({ id }) => id === 'swallowedException'),
+        'banned',
+      ),
+    });
     bannedResult = diffOf(project, 'one-way-banned');
+    testSourceResult = diffOf(project, 'one-way-test-source');
     allowedResult = diffOf(project, 'one-way-allowed');
     hostileConfigResult = diffOf(project, 'one-way-hostile-config');
   });
@@ -87,6 +96,23 @@ describe.skipIf(!kotlinE2eEnabled)('Kotlin preset one-way rules end to end', () 
     const result = allowedResult;
 
     expect(fromTool(result.newEnforceable, 'detekt')).toEqual([]);
+  });
+  it('reports a swallowing catch in a test source with the same message and the test form', () => {
+    const swallowed = kotlinRuleCases.find(({ id }) => id === 'swallowedException');
+    const found = detektFindingsOf(testSourceResult.newEnforceable, swallowed);
+
+    expect(found.map(({ rule, path: file, message }) => [rule, file, message])).toEqual([
+      [
+        swallowed.rule,
+        'src/test/kotlin/demo/swallowedException/SwallowedTest.kt',
+        addOneWayHint({
+          tool: 'detekt',
+          rule: swallowed.rule,
+          message: expectedMessage(swallowed, 'banned'),
+        }).message,
+      ],
+    ]);
+    expect(found[0].message).toContain('In a test, use `assertFailsWith`.');
   });
   it('does not report the suppressed finding twice: the suppression is the finding', () => {
     const result = bannedResult;
@@ -133,7 +159,7 @@ describe.skipIf(!kotlinE2eEnabled)('Kotlin preset one-way rules end to end', () 
     const exception =
       ' To allow it on specific paths, add an "exceptions" entry for rule detekt.style.ForbiddenMethodCall in nitpicker.config.json.';
     const runBlocking =
-      'The method `kotlinx.coroutines.runBlocking` has been forbidden: Make the caller `suspend` (`suspend fun main()` for an entry point) and use `coroutineScope { ... }` for concurrent work.';
+      'The method `kotlinx.coroutines.runBlocking` has been forbidden: Make the caller `suspend` (`suspend fun main()` for an entry point) and use `coroutineScope { ... }` for concurrent work. In a test, use `runTest`.';
 
     const run =
       'The method `kotlin.run` has been forbidden: Use `let` to name a value for a block (`value?.let { ... }` for null), or call the code directly.';
