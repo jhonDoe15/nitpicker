@@ -13,6 +13,7 @@ import { ingestRulesReport } from '../ingest/rules-report.mjs';
 import { ingestMypy, ingestPyright } from '../ingest/type-check.mjs';
 import { applyRuleHints } from '../rules/rule-hints.mjs';
 import { detectLibraries } from '../rules/libraries/project-libraries.mjs';
+import { pytestStyle } from '../rules/libraries/pytest-style.mjs';
 import { withoutAllowedForms } from '../rules/filters/ruff-allowed-forms.mjs';
 import { RULES_REPORT, readTestFiles } from './analysis/python-ast-rules.mjs';
 import { readCouplingFindings } from './analysis/python-coupling.mjs';
@@ -42,7 +43,7 @@ export function readPythonFindings({ projectRoot, reportRoot, crapLimit, policy 
   const manifest = JSON.parse(readReport(reportRoot, MANIFEST_REPORT));
   const roots = [...new Set([path.resolve(projectRoot), realpathSync(projectRoot)])];
   const coverage = readReport(reportRoot, COVERAGE_REPORT);
-  const libraries = detectLibraries(projectRoot);
+  const libraries = { ...detectLibraries(projectRoot), pytestStyle: pytestStyle(projectRoot) };
   return {
     findings: applyRuleHints(
       [
