@@ -1,6 +1,7 @@
 import { mkdtempSync, realpathSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
+import { readHeadPolicyFile } from '../../../shared/head-policy.mjs';
 import { applyJavaPolicy } from '../../java/adapters/java-policy.mjs';
 import { parseRunnerArguments } from '../../java/adapters/java-runner.mjs';
 import {
@@ -40,6 +41,9 @@ function toolContext({ projectRoot, liveRoot, settings, policy }, reportRoot) {
     exclude: policy?.exclude,
     snapshot: policy?.snapshot,
     baselineRoot: policy?.baselineRoot,
+    conventions: policy?.conventions,
+    policyRoot: policy?.policyRoot,
+    toolPrecedence: policy?.toolPrecedence,
     pytestAddopts: process.env.PYTEST_ADDOPTS,
   });
 }
@@ -137,12 +141,13 @@ export function parsePythonArguments(arguments_) {
 
 function main(arguments_) {
   const { part, projectRoot, liveRoot, settings, policy } = parsePythonArguments(arguments_);
+  const conventions = readHeadPolicyFile().conventions;
   const report = analyzePythonSnapshot({
     part,
     projectRoot: realpathSync(projectRoot),
     liveRoot: realpathSync(liveRoot),
     settings,
-    policy,
+    policy: { ...policy, conventions },
   });
   process.stdout.write(`${JSON.stringify(report)}\n`);
 }

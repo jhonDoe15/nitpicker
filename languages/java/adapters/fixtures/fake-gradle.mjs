@@ -137,6 +137,15 @@ export function runFakeGradle({ args, cwd }) {
   mkdirSync(at(reportBase), { recursive: true });
   mkdirSync(at('build'), { recursive: true });
   write('build/gradle-args.json', JSON.stringify(args));
+  const styleFileArgument = args.find((argument) =>
+    argument.startsWith('-Pnitpicker.kotlin.styleFile='),
+  );
+  if (styleFileArgument !== undefined) {
+    write(
+      'build/style-file.json',
+      readBytes(styleFileArgument.slice(styleFileArgument.indexOf('=') + 1)),
+    );
+  }
   writeFileSync(path.join(at(reportBase), 'modules.json'), JSON.stringify(modules));
   for (const module of modules) {
     writeModule(module);

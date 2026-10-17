@@ -6,7 +6,11 @@ import { runCacheCommand } from './command/cache.mjs';
 import { parseArguments, USAGE_TEXT } from './command/arguments.mjs';
 import { resolveProjectRoot } from './tooling/tool-resolution.mjs';
 import { realpathSync } from 'node:fs';
-import { loadConfig, describeConfigOverrides } from './configuration/config.mjs';
+import {
+  describeConfigOverrides,
+  describeDisableCascade,
+  loadConfig,
+} from './configuration/config.mjs';
 import { resolveHeadPolicy } from '../languages/typescript/preset/head-policy.mjs';
 import { configureAnalyzers } from './configuration/configure-analyzers.mjs';
 import { presetAnalyzers } from './configuration/preset-analyzers.mjs';
@@ -99,11 +103,11 @@ function runConfigured(cli) {
       : realpathSync(cli.currentProjectRoot);
   const config = loadConfig(currentProjectRoot);
   const headPolicy = resolveHeadPolicy(config, currentProjectRoot);
-  const analyzers = configureAnalyzers(
-    presetAnalyzers(config, options.all ? cli.snapshotAnalyzers : cli.analyzers),
-    config,
-    headPolicy,
-  );
+  const presetSet = presetAnalyzers(config, options.all ? cli.snapshotAnalyzers : cli.analyzers);
+  const analyzers = configureAnalyzers(presetSet, config, headPolicy);
+  for (const note of describeDisableCascade(presetSet, config)) {
+    cli.stderr.write(`nitpicker: ${note}\n`);
+  }
   return withRunLock({ projectRoot: currentProjectRoot, stderr: cli.stderr }, () => {
     if (options.all) {
       return runSnapshotCli({

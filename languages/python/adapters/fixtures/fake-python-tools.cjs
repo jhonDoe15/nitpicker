@@ -16,6 +16,7 @@
 //                        formatter does and names them on stderr)
 //   no-pytest.txt        `python -c "import pytest"` fails
 //   pytest-cov.txt, xdist.txt, rerunfailures.txt  the pytest probe reports that plugin as installed
+//   ruff-rules.json      printed by `ruff rule --all` (default: that call exits 2, as an old ruff does)
 //   sources.txt          one path per line: what `ruff check --show-files` lists (default: every
 //                        .py file below the project, except .venv)
 //   type-errors.txt      printed by mypy as its report (exit 1 when not empty)
@@ -123,6 +124,13 @@ function runFake({ tool, args, cwd, env }) {
   function ruff() {
     if (args[0] === '--version') {
       out('ruff 0.9.9\n');
+    } else if (args[0] === 'rule') {
+      if (exists('ruff-rules.json')) {
+        out(read('ruff-rules.json'));
+      } else {
+        err('error: unrecognized subcommand\n');
+        result.status = 2;
+      }
     } else if (args.includes('--show-files')) {
       out(
         sources()
