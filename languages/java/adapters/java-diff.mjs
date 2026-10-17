@@ -21,7 +21,7 @@ import { runMavenPreset, MAVEN_REPORT_DIRECTORY } from '../maven/maven-build.mjs
 import { detectJavaBuild, INIT_SCRIPT } from '../builds/java-build.mjs';
 import { moduleReport, readModuleFindings } from '../builds/java-modules.mjs';
 import { kotlinGradleArguments } from './kotlin/kotlin-tools.mjs';
-import { isTouchedCodeRule } from '../../../shared/policy.mjs';
+import { isJavaTouchedRule } from './touched-rules.mjs';
 import { javaStyleProperties } from './style/java-style.mjs';
 
 const GRADLE_TIMEOUT_MS = 15 * 60 * 1000;
@@ -232,7 +232,7 @@ export function runJavaDiff({
       headSha: comparison.headSha,
       projectRelativePath,
     }),
-    isStrictRule: isTouchedCodeRule,
+    isStrictRule: isJavaTouchedRule,
   };
   const result = compareFindings({ baseFindings, headFindings, baseToHeadRenames, touchedCode });
   const newEnforceable = result.newFindings.filter(

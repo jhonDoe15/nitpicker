@@ -1,4 +1,5 @@
-import { isTouchedCodeRule } from '../../../shared/policy.mjs';
+import { isJavaTouchedRule } from '../../java/adapters/touched-rules.mjs';
+import { isPythonTouchedRule } from '../../python/rules/touched-rules.mjs';
 import { strictBoundaryRules } from './architecture/strict-boundary-rules.mjs';
 import { i18nRuleIds } from './eslint-config/i18n/i18n-rules.mjs';
 import { reactRuleIds, reactTestRuleIds } from './eslint-config/react/react-rules.mjs';
@@ -21,6 +22,7 @@ export const strictEslintRuleIds = [
   'nitpicker/no-branch-in-composition-root',
   'nitpicker/no-comments',
   'nitpicker/no-default-export',
+  'nitpicker/no-disabled-tls-verification',
   'nitpicker/no-first-test-charged-setup',
   'nitpicker/no-git-repository-per-test',
   'nitpicker/no-forwarding-wrapper',
@@ -39,13 +41,17 @@ export const strictEslintRuleIds = [
   'nitpicker/no-server-or-worker-per-test',
   'nitpicker/no-shell-string-command',
   'nitpicker/no-silent-catch',
+  'nitpicker/no-sql-string-building',
   'nitpicker/no-throw',
   'nitpicker/no-uninjectable-delay',
   'nitpicker/no-ui-framework-in-domain',
   'nitpicker/no-unknown-in-domain',
+  'nitpicker/no-unsafe-deserialization',
   'nitpicker/no-unsafe-path-join',
   'nitpicker/no-unvalidated-schema-field',
+  'nitpicker/no-weak-hash',
   'nitpicker/preserve-error-cause',
+  'nitpicker/require-http-timeout',
   'nitpicker/test-tsconfig-pins-lib-and-types',
   'no-duplicate-imports',
   'no-empty',
@@ -68,7 +74,12 @@ const strictRuleIds = new Set([
 ]);
 
 export function isStrictRule(rule, finding) {
-  return strictRuleIds.has(rule) || rule === PRETTIER_RULE || isTouchedCodeRule(rule, finding);
+  return (
+    strictRuleIds.has(rule) ||
+    rule === PRETTIER_RULE ||
+    isJavaTouchedRule(rule, finding) ||
+    isPythonTouchedRule(rule, finding)
+  );
 }
 
 export function mustMeetOnEditedLines(rule) {
