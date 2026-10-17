@@ -1177,6 +1177,11 @@ from a real caller) and the `exceptions` entry that lifts it.
   same paths.
 - The file limits (`file-lines-limit`, `line-length-limit`, `folder-files-limit`) take exceptions the
   same way; each failure message spells out the entry that would lift it.
+- `folder-depth-limit`: code may sit at most one folder below `features/<feature>/<layer>/` (a file in
+  `domain/orders/x.ts` is fine, one in `domain/orders/rules/x.ts` is not), so nesting cannot dodge
+  the 6-files-per-folder limit. `thresholds.folderDepth` changes the one folder. `__tests__` and `__mocks__` folders do not
+  count as a level. A folder already deeper on the base fails only when it gets deeper, and the rule takes exceptions like the file
+  limits.
 - The reuse rules (`shared-used-by-one-feature`, `duplicate-definition`, `exported-name-collision`,
   `redefined-library-component`, `new-icon-asset`) come from the `coupling` and `structure` checks,
   not from ESLint, and take exceptions the same way; the JavaScript preset runs them too.
