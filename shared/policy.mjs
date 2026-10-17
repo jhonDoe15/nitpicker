@@ -8,6 +8,7 @@ import {
 } from './project-rules/size-rules.mjs';
 import { UNUSED_API_RULES, UNUSED_API_RULE_IDS } from './unused-api/unused-api-policy.mjs';
 import { reuseRules } from './rules/reuse-rules.mjs';
+import { testConsoleRule } from './rules/test-runtime.mjs';
 import { SOURCE_RULE_IDS, sourceRuleMessages, sourceRules } from './project-rules/source-rules.mjs';
 
 export { FILE_LIMIT_DEFAULTS } from './project-rules/size-rules.mjs';
@@ -36,9 +37,11 @@ export const RULE_IDS = {
   slowTest: 'slow-test',
   sharedUsedByOneFeature: 'shared-used-by-one-feature',
   duplicateDefinition: 'duplicate-definition',
+  siblingCopyEdit: 'sibling-copy-edit',
   exportedNameCollision: 'exported-name-collision',
   redefinedLibraryComponent: 'redefined-library-component',
   newIconAsset: 'new-icon-asset',
+  testConsoleOutput: 'test-console-output',
   ...SOURCE_RULE_IDS,
 };
 
@@ -117,9 +120,11 @@ export const MESSAGES = {
   slowTest: `{name} took {seconds} s; {kind} test may take {limit} s. Remove Thread.sleep and other waits, start a smaller Spring context or a test slice{move}. ${EXCEPTION_HINT}`,
   sharedUsedByOneFeature: `{path} is used only by feature {feature}. Move it into {directory}. ${EXCEPTION_HINT}`,
   duplicateDefinition: `{name} is also defined with {same} in {others}. {fix} ${EXCEPTION_HINT}`,
+  siblingCopyEdit: `{name} is edited here but not in {others}, where it has almost the same code. Edit it there too, or merge the copies. ${EXCEPTION_HINT}`,
   exportedNameCollision: `{name} is also exported by {others}; {importer} imports both. {fix} ${EXCEPTION_HINT}`,
   redefinedLibraryComponent: `{name} is already rendered from {package} in {count}. Use that one. ${EXCEPTION_HINT}`,
   newIconAsset: `Use an icon from {package} instead of adding {path}. ${EXCEPTION_HINT}`,
+  testConsoleOutput: `Tests print new console output: {output}. Fix the cause (for example a timer that outlives the test), or allow a third-party message in "testConsole.allow" of nitpicker.config.json. ${EXCEPTION_HINT}`,
   ...sourceRuleMessages(EXCEPTION_HINT),
 };
 
@@ -268,15 +273,13 @@ export const RULES = [
     limit: `a test the change adds or edits taking more than ${String(TEST_TIME_DEFAULTS.unitTestSeconds)} s (unit) or ${String(TEST_TIME_DEFAULTS.integrationTestSeconds)} s (integration); override with \`thresholds.unitTestSeconds\` and \`thresholds.integrationTestSeconds\``,
     enforcedBy: withKotlin({ ...ALL, typescript: false }, true),
   },
+  testConsoleRule(RULE_IDS, withKotlin(TYPESCRIPT_ONLY, false)),
 ];
 
-/**
- * Project-level TypeScript checks that take `exceptions` entries although no ESLint rule has their
- * id: the rules only the TypeScript structure, coupling and dead-code checks enforce.
- */
+/** Rules of the TypeScript-only structure, coupling, dead-code and test-console checks, lifted by `exceptions`. */
 export const TYPESCRIPT_PROJECT_EXCEPTION_RULES = RULES.filter(
   ({ check, enforcedBy }) =>
-    ['structure', 'coupling', 'dead-code'].includes(check) &&
+    ['structure', 'coupling', 'dead-code', 'test-console'].includes(check) &&
     enforcedBy.typescript &&
     !enforcedBy.java &&
     !enforcedBy.python,

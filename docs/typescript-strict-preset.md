@@ -556,6 +556,30 @@ for a file takes that file out of the rule, so a pair of copies that must both s
   other files, once per name and file; the identity is the name and file, so existing copies are
   baselined. The message tells an exported copy to keep one definition and import it, a private copy
   to import the exported copy when there is one, and otherwise to move to one module and import it.
+- `sibling-copy-edit`: a change edits a function or class so that it drifts from a copy with the
+  same name and kind in another module of the package, and leaves that copy unedited. The two must
+  be at least 80% the same tokens (twice the longest common token sequence over the tokens of both)
+  both before and after the edit, and the edit must lower that figure: an edit that brings two
+  copies closer, or that leaves them under 80% alike, is not reported. A pair that is identical
+  before the edit counts as 100%; a pair that is identical after it is left to
+  `duplicate-definition` and the `duplicates` check. It covers functions (declarations, function
+  expressions and arrow-function `const`s) and classes of 20 tokens or more in parameters and body;
+  types, interfaces, enums and constants are skipped, as are default exports and exported `GET`,
+  `POST`, `PUT`, `PATCH`, `DELETE`, `HEAD` and `OPTIONS` handlers, whose name is the framework's and
+  not a shared one (a route's `Page`, `Layout` or `GET`); ordinary names such as `handler` or
+  `render` are compared. A copy is edited when its normalized text differs from the definition of
+  the same name in the base (whitespace, comments, quote style and semicolons do not count), and
+  untouched when it is equal; a copy with no base counterpart is new and left to
+  `duplicate-definition`. A file that the diff reports as moved or renamed (the diff engine's own
+  rename detection: at least 50% of the content kept, within git's rename limit of 20000 files) is
+  read at its old path, so a moved copy counts as edited or untouched like any other; a rename that
+  detection misses leaves the copy new. The token comparison stops as soon as 80% can no longer be
+  reached, so large functions with scattered small edits are compared; a pair is skipped only when
+  what lies between its shared start and shared end is more than 20,000 tokens in the two together.
+  Only the edited copy is reported, naming the untouched ones, so copies that are all edited, in the
+  same way or differently, report nothing. Only the head snapshot reports it, as it reads the base
+  checkout; the identity is the name and file. It covers the same files as `duplicate-definition`,
+  and an exception for either copy's path lifts it. Edit the other copy too, or merge the two.
 - `exported-name-collision`: two modules export different definitions under one name and a module
   imports both without aliasing both, so a reader and auto-import can mistake one for the other. A
   module that aliases every colliding import (`import { handler as getUser }`, `import type`,
@@ -703,6 +727,16 @@ hop, and type-only imports do not count.
   even when an assertion fails, and cannot leak into the next test. It also overrides a
   `restoreMocks` value in the project's own vitest config for these runs. Vitest has no option that
   restores fake timers automatically: call `vi.useRealTimers()` in `afterEach`.
+
+- `test-console-output` (the `test-console` check, not an ESLint rule): a test file that prints
+  `console.error` or `console.warn` output the base run did not print fails, with the message and
+  the test that printed it. A change that makes a suite start printing one (a React update on an
+  unmounted component from a timer that survives the test, a key warning, a logged error) is
+  usually a bug, and warnings in a suite hide the next real one. The allowed forms are fixing the
+  cause (cancel the timer or subscription in the cleanup), a `testConsole.allow` entry for a known
+  third-party message, or an `exceptions` entry for the test file. Messages are compared by their
+  normalized text, per test file, so an old warning that only moved is not new. See
+  [Console output from tests](usage.md#console-output-from-tests).
 
 Left out, from the same write-up: recomputing one expensive result in every test, and running the
 whole pipeline to check a decision made earlier. Both need a heuristic (repeated constant arguments
@@ -1333,9 +1367,11 @@ from a real caller) and the `exceptions` entry that lifts it.
   the 6-files-per-folder limit. `thresholds.folderDepth` changes the one folder. `__tests__` and `__mocks__` folders do not
   count as a level. A folder already deeper on the base fails only when it gets deeper, and the rule takes exceptions like the file
   limits.
-- The reuse rules (`shared-used-by-one-feature`, `duplicate-definition`, `exported-name-collision`,
-  `redefined-library-component`, `new-icon-asset`) come from the `coupling` and `structure` checks,
-  not from ESLint, and take exceptions the same way; the JavaScript preset runs them too.
+- The reuse rules (`shared-used-by-one-feature`, `duplicate-definition`, `sibling-copy-edit`,
+  `exported-name-collision`, `redefined-library-component`, `new-icon-asset`) come from the
+  `coupling` and `structure` checks, not from ESLint, and take exceptions the same way; the
+  JavaScript preset runs them too.
+
 - `layout.excludedGlobs`, `layout.entryPoints` and `layout.sourceRoots`/`layout.testRoots` are all valid `layout` keys. The
   default `testRoots` are `test`, `tests`, `__tests__` and `e2e` (repo-root folders only, so
   `src/crypto/e2e/` stays production code; a missing one is ignored). Type checking, duplicate
