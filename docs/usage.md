@@ -649,8 +649,10 @@ To always type check with the project's own TypeScript, set the engine:
 
 Coverage, CRAP and mutation run the project's tests with the runner the project already uses:
 Vitest, Jest, `node:test` or Mocha. nitpicker goes through these steps in order and takes the runner
-from the first step that names one. When a step names more than one runner, nitpicker stops with an
-error that asks you to set `tools.tests.runner`, instead of picking one of them.
+from the first step that names one. When a step names more than one runner (a `test` script running
+two, a Jest config next to a `test:unit` script running Vitest, as many test files for each, or two
+runner dependencies), nitpicker stops with exit 2 before any check runs, naming each runner with its
+evidence, until `tools.tests.runner` chooses one.
 
 1. `tools.tests.runner` in `nitpicker.config.json`: `"vitest"`, `"jest"`, `"node"` or `"mocha"`.
 2. The runner the `test` script in `package.json` calls, following `npm run <name>`.
@@ -659,16 +661,17 @@ error that asks you to set `tools.tests.runner`, instead of picking one of them.
 3. The runners the other `test*` scripts call, together with the runners' config files:
    `vitest.config.*` or `vitest.workspace.*`, `jest.config.*` or a `jest` key in `package.json`,
    `.mocharc.*` or a `mocha` key in `package.json`.
-4. The runner the test files import: `vitest`, `@jest/globals`, `mocha` or `node:test`. Each test
-   file counts once, however often it imports the runner.
+4. The runner the test files import: `vitest`, `@jest/globals`, `mocha` or `node:test`. The runner
+   most test files import wins; each test file counts once, however often it imports the runner.
 5. The runner in `dependencies` or `devDependencies`. `ts-jest`, `babel-jest`, `@jest/globals`,
    `react-scripts` and `@craco/craco` count as Jest.
 6. Vitest.
 
-The base snapshot is detected the same way. When the base commit uses another runner, its tests run
-with that runner if it is installed in the project; otherwise the base coverage and CRAP are skipped
-with a notice. The `test-only-export` check leaves out the `jest*` and `vitest*` config files and
-`.mocharc.*`, whichever runner the project uses.
+In a comparison the base snapshot runs its tests with its own runner: its `tools.tests.runner`, else
+the head's, else what the base shows through the same steps. When the base commit uses another
+runner, its tests run with that runner if it is installed in the project; when it is not, coverage
+and CRAP are not compared on that change and nitpicker says so. The `test-only-export` check leaves
+out the `jest*` and `vitest*` config files and `.mocharc.*`, whichever runner the project uses.
 
 From the script nitpicker also takes the environment variables (`NODE_ENV=test`, also through
 `cross-env`), the Node options before the runner (`node --import tsx --test`) and the runner's own

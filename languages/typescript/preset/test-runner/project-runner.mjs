@@ -1,6 +1,7 @@
-import { readHeadPolicy } from '../head-policy.mjs';
-import { detectTestRunner, testRunnerFor } from './detect-runner.mjs';
+import { readHeadPolicy, readLayout } from '../head-policy.mjs';
+import { runnerDetection, testRunnerFor } from './detect-runner.mjs';
 import { recordedTestRunner } from './runner-vocabulary.mjs';
+import { DEFAULT_TEST_RUNNER } from './runners.mjs';
 import { runnerCommand } from './script-command.mjs';
 
 const NO_COMMAND = { environment: {}, nodeArguments: [], arguments_: [], precedingCommands: [] };
@@ -9,8 +10,15 @@ function detectionRoot({ projectRoot, runnerProjectRoot }) {
   return runnerProjectRoot ?? projectRoot;
 }
 
+function snapshotTestRunner(options) {
+  const tests = readHeadPolicy().tools.tests ?? {};
+  return tests.snapshotRunner === undefined
+    ? testRunnerFor(detectionRoot(options), tests.runner, readLayout())
+    : testRunnerFor(options.projectRoot, tests.snapshotRunner);
+}
+
 export function projectTestRunner(options) {
-  const detected = testRunnerFor(detectionRoot(options), readHeadPolicy().tools.tests?.runner);
+  const detected = snapshotTestRunner(options);
   return {
     ...detected,
     command: runnerCommand(detected.command, detected.runner) ?? NO_COMMAND,
@@ -18,5 +26,5 @@ export function projectTestRunner(options) {
 }
 
 export function policyTestRunner(policy, projectRoot) {
-  return recordedTestRunner(policy) ?? detectTestRunner(projectRoot).runner;
+  return recordedTestRunner(policy) ?? runnerDetection(projectRoot).runner ?? DEFAULT_TEST_RUNNER;
 }

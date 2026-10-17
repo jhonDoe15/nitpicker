@@ -5,41 +5,52 @@ import { resolveHeadPolicy } from '../../shared/head-policy.mjs';
 import { configureAnalyzers } from './configure-analyzers.mjs';
 import { describeConfigOverrides, loadConfig } from './config.mjs';
 import { presetAnalyzers } from './preset-analyzers.mjs';
+import { withBaseTestRunner } from '../../languages/typescript/preset/diff/base-runner.mjs';
 
 export function baseSetupResolver(cli, headConfig, headPolicy) {
   return createBaseSetupResolver({
     headConfig,
+    headPolicy,
+    liveProjectRoot: cli.currentProjectRoot,
     conventions: headPolicy.conventions,
     injectedAnalyzers: cli.injectedAnalyzers,
     warn: (message) => cli.stderr.write(`nitpicker: ${message}\n`),
   });
 }
 
-export function createBaseSetupResolver({
-  headConfig,
-  conventions,
-  injectedAnalyzers,
-  warn = () => undefined,
-}) {
-  return ({ baseProjectRoot, analyzers }) => {
-    if (!existsSync(path.join(baseProjectRoot, CONFIG_FILE_NAME))) {
-      return {};
-    }
-    try {
-      return baseSetupFromConfig({
-        baseConfig: loadConfig(baseProjectRoot),
-        headConfig,
-        conventions,
-        injectedAnalyzers,
-        analyzers,
-      });
-    } catch (error) {
-      warn(
-        `The base's ${CONFIG_FILE_NAME} cannot be applied (${error instanceof Error ? error.message : String(error)}); the base is analysed with the head config.`,
-      );
-      return {};
-    }
-  };
+export function createBaseSetupResolver(options) {
+  const { headPolicy, liveProjectRoot, warn = () => undefined } = options;
+  return ({ baseProjectRoot, analyzers }) =>
+    withBaseTestRunner(configuredBaseSetup({ ...options, warn }, { baseProjectRoot, analyzers }), {
+      headPolicy,
+      baseProjectRoot,
+      liveProjectRoot,
+      analyzers,
+      warn,
+    });
+}
+
+function configuredBaseSetup(
+  { headConfig, conventions, injectedAnalyzers, warn },
+  { baseProjectRoot, analyzers },
+) {
+  if (!existsSync(path.join(baseProjectRoot, CONFIG_FILE_NAME))) {
+    return {};
+  }
+  try {
+    return baseSetupFromConfig({
+      baseConfig: loadConfig(baseProjectRoot),
+      headConfig,
+      conventions,
+      injectedAnalyzers,
+      analyzers,
+    });
+  } catch (error) {
+    warn(
+      `The base's ${CONFIG_FILE_NAME} cannot be applied (${error instanceof Error ? error.message : String(error)}); the base is analysed with the head config.`,
+    );
+    return {};
+  }
 }
 
 function baseSetupFromConfig({

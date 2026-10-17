@@ -22,7 +22,7 @@ import {
 } from './layout.mjs';
 import { stylingApproachFor } from './eslint-config/react/react-styling.mjs';
 import { prettierConventionOptions } from '../conventions/prettier-conventions.mjs';
-import { detectTestRunner } from './test-runner/detect-runner.mjs';
+import { detectedRunnerFact } from './test-runner/detect-runner.mjs';
 
 export { headPolicyEnvironment, withHeadPolicyFile } from '../../../shared/head-policy.mjs';
 
@@ -75,7 +75,10 @@ function detectedTools(policy, scoped, projectRoot) {
       ? {
           tests: {
             ...policy.tools?.tests,
-            detectedRunner: detectTestRunner(projectRoot).runner,
+            ...detectedRunnerFact(projectRoot, {
+              configured: policy.tools?.tests?.runner,
+              layout: resolveLayoutFor(policy),
+            }),
           },
         }
       : {}),
