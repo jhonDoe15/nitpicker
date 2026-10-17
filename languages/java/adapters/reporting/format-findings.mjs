@@ -22,22 +22,22 @@ export function checkstyleFindings({ reportRoot, roots, projectRoot, mainCheckst
   const sourceSetReports = readdirSync(reportRoot)
     .filter((name) => CHECKSTYLE_SOURCE_SET_REPORT.test(name))
     .sort()
-    .map((name) => readSourceSetReport(reportRoot, name));
+    .map((name) => readFileSync(containedFilePath(reportRoot, name), 'utf8'));
   return [mainCheckstyle, ...sourceSetReports]
     .filter(Boolean)
     .flatMap((checkstyle) =>
       roots.flatMap((root) =>
         ingestCheckstyle(checkstyle, { root }).findings.filter((finding) =>
-          existsSync(path.join(projectRoot, finding.path)),
+          existsSync(containedFilePath(projectRoot, finding.path)),
         ),
       ),
     );
 }
 
-function readSourceSetReport(reportRoot, name) {
+function containedFilePath(reportRoot, name) {
   const full = path.resolve(reportRoot, name);
   if (!full.startsWith(reportRoot + path.sep)) {
     throw new Error(`Report path escapes its directory: ${name}`);
   }
-  return readFileSync(full, 'utf8');
+  return full;
 }
