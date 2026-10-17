@@ -466,9 +466,10 @@ allprojects {
             }
         }
 
-        // --- coupling (SH6): package dependency graph from the JDK's jdeps over the main classes ---
-        // The coupling metrics and stability-direction findings are computed on the Nitpicker side
-        // from these two files. jdeps ships with the JDK that runs Gradle; it is not a pinned download.
+        // --- coupling (SH6): class dependency graph from one jdeps run over the main and test classes ---
+        // The coupling metrics, stability-direction and test-only-export findings are computed on the
+        // Nitpicker side from these files. jdeps ships with the JDK that runs Gradle; it is not a
+        // pinned download.
         def classNamesIn = { Collection<File> classDirs ->
             classDirs.collectMany { dir ->
                 fileTree(dir) { include '**/*.class'; exclude '**/module-info.class', '**/package-info.class' }.files.collect {
