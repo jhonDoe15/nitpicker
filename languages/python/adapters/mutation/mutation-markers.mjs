@@ -1,4 +1,4 @@
-import { hashIdentity } from '../../../java/ingest/common.mjs';
+import { hashIdentity } from '../../../../shared/ingest/common.mjs';
 import { readProjectFile, toml } from '../../libraries/project-files.mjs';
 import { listProductionModules } from '../analysis/python-sources.mjs';
 import { parseIni } from '../configuration/mypy-config.mjs';
