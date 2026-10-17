@@ -20,7 +20,7 @@ import { conventionDefinitions } from '../conventions/definitions.mjs';
 import { validateConventions } from '../../shared/conventions/settings.mjs';
 import { stylingApproaches } from '../../languages/typescript/preset/eslint-config/react/react-rules.mjs';
 import { i18nRuleIds } from '../../languages/typescript/preset/eslint-config/i18n/i18n-rules.mjs';
-import { hasSpecificText } from '../../languages/typescript/adapters/quality-areas/reporting/console/console-messages.mjs';
+import { validateScope, validateTestConsole } from './scope-settings.mjs';
 import path from 'node:path';
 
 export const SUPPORTED_PRESETS = ['typescript', 'javascript', ...GRADLE_PRESETS, 'python'];
@@ -51,10 +51,6 @@ const GLOB_LAYOUT_KEYS = ['excludedGlobs', 'entryPoints'];
 const REACT_KEYS = ['enabled', 'styling'];
 
 const I18N_KEYS = ['enabled', 'functionNames', 'componentNames'];
-
-const TEST_CONSOLE_KEYS = ['allow'];
-
-const ALLOW_KEYS = ['contains', 'paths', 'reason'];
 
 const CUSTOM_ANALYZER_KEYS = ['name', 'command', 'args'];
 
@@ -151,23 +147,6 @@ function validateOptional(config) {
   }
 }
 
-function validateScope(name, scope, keys) {
-  if (scope === undefined) {
-    return;
-  }
-  if (!isPlainObject(scope)) {
-    throw configError(`"${name}" must be an object`);
-  }
-  for (const key of Object.keys(scope)) {
-    if (!keys.includes(key)) {
-      throw configError(`unknown ${name} key "${key}". Allowed ${name} keys: ${keys.join(', ')}`);
-    }
-  }
-  if (scope.enabled !== undefined && typeof scope.enabled !== 'boolean') {
-    throw configError(`"${name}.enabled" must be true or false`);
-  }
-}
-
 function validateReact(react) {
   validateScope('react', react, REACT_KEYS);
   if (react?.styling !== undefined && !stylingApproaches.includes(react.styling)) {
@@ -181,50 +160,6 @@ function validateI18n(i18n) {
     if (i18n?.[key] !== undefined) {
       validateStringArray(i18n[key], `i18n.${key}`);
     }
-  }
-}
-
-function validateTestConsole(testConsole) {
-  if (testConsole === undefined) {
-    return;
-  }
-  validateScope('testConsole', testConsole, TEST_CONSOLE_KEYS);
-  if (testConsole.allow === undefined) {
-    return;
-  }
-  if (!Array.isArray(testConsole.allow)) {
-    throw configError('"testConsole.allow" must be an array');
-  }
-  for (const [index, entry] of testConsole.allow.entries()) {
-    validateAllowEntry(entry, `testConsole.allow[${String(index)}]`);
-  }
-}
-
-function validateAllowEntry(entry, label) {
-  if (!isPlainObject(entry)) {
-    throw configError(`"${label}" must be an object`);
-  }
-  for (const key of Object.keys(entry)) {
-    if (!ALLOW_KEYS.includes(key)) {
-      const hint = key === 'pattern' ? ': use "contains"' : '';
-      throw configError(
-        `unknown key "${key}" in "${label}"${hint}. Allowed keys: ${ALLOW_KEYS.join(', ')}`,
-      );
-    }
-  }
-  if (typeof entry.contains !== 'string' || !hasSpecificText(entry.contains)) {
-    throw configError(
-      `"${label}.contains" must keep at least 3 characters once numbers and ids become <n> and <id>`,
-    );
-  }
-  if (entry.paths !== undefined) {
-    validateStringArray(entry.paths, `${label}.paths`);
-    if (entry.paths.length === 0) {
-      throw configError(`"${label}.paths" needs at least one path glob`);
-    }
-  }
-  if (!isNonEmptyString(entry.reason) || entry.reason.trim().length === 0) {
-    throw configError(`"${label}.reason" is required: say which library prints this and why`);
   }
 }
 
