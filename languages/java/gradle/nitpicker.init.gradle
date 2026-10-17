@@ -57,9 +57,11 @@ def rulesetExcluding = { String name, String description, List<String> rules, Co
         + excludes + rules + ['</ruleset>', '']).join('\n')
 }
 
-def springOnMainSources = { File springRuleset, Collection<File> testDirectories ->
-    rulesetExcluding('nitpicker-spring-main', "Nitpicker's Spring rules on main sources only.",
-        ["  <rule ref=\"${escapeXml(springRuleset.absolutePath)}\"/>"], testDirectories)
+def mainRulesOnMainSources = { File rulesetDir, boolean spring, Collection<File> testDirectories ->
+    def rulesets = ['pmd-main-ruleset.xml'] + (spring ? ['spring-ruleset.xml'] : [])
+    rulesetExcluding('nitpicker-main', "Nitpicker's main-only rules on main sources only.",
+        rulesets.collect { "  <rule ref=\"${escapeXml(new File(rulesetDir, it).absolutePath)}\"/>".toString() },
+        testDirectories)
 }
 
 def testRulesOnTestSources = { File rulesetDir, boolean spring, Collection<File> mainDirectories ->
@@ -209,11 +211,11 @@ allprojects {
                 def auxClasspath = reportDir.get().file('pmd-aux-classpath.txt').asFile
                 auxClasspath.text = (sourceSets.collectMany { it.compileClasspath.files + it.output.classesDirs.files })
                     .findAll { it.exists() }.unique().collect { it.absolutePath }.join('\n')
-                def springMainRuleset = reportDir.get().file('pmd-spring-main.xml').asFile
-                springMainRuleset.text = springOnMainSources(new File(initScriptDir, 'spring-ruleset.xml'), testSourceDirectories())
+                def mainRuleset = reportDir.get().file('pmd-main.xml').asFile
+                mainRuleset.text = mainRulesOnMainSources(initScriptDir, usesSpring(), testSourceDirectories())
                 def testRuleset = reportDir.get().file('pmd-tests.xml').asFile
                 testRuleset.text = testRulesOnTestSources(initScriptDir, usesSpring(), mainSources.files)
-                def nitpickerExtras = [testRuleset] + (usesSpring() ? [springMainRuleset] : [])
+                def nitpickerExtras = [testRuleset, mainRuleset]
                 def rulesets = nitpickerRulesets
                     ? ([ruleset] + nitpickerExtras.collect { it.absolutePath }).join(',') : ruleset
                 args 'check', '--no-cache', '--no-progress', '--format', 'sarif',

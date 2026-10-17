@@ -14,6 +14,7 @@ const LITERALS = new RegExp(
 );
 const PACKAGE = /^\s*package\s+([\w.]+)\s*(?:;|$)/mu;
 const IMPORT = /^\s*import\s+([\w.]+)\s*;/gmu;
+const STATIC_IMPORT = /^\s*import\s+static\s+([\w.]+?)(\.\*)?\s*;/gmu;
 const DEPTH_CHANGE = { '(': 1, '[': 1, ')': -1, ']': -1 };
 const EXPRESSION_END = ';,?:{}';
 
@@ -82,6 +83,14 @@ export function packageOf(text) {
 
 export function importsOf(text) {
   return [...text.matchAll(IMPORT)].map((match) => match[1]);
+}
+
+export function staticImportsOf(text) {
+  return [...text.matchAll(STATIC_IMPORT)].map((match) =>
+    match[2] === undefined
+      ? { owner: match[1].split('.').slice(0, -1).join('.'), name: match[1].split('.').at(-1) }
+      : { owner: match[1], name: '*' },
+  );
 }
 
 export function offsetOf(text, { line, column = 1 }) {

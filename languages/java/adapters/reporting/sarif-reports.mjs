@@ -37,7 +37,7 @@ export function sarifFindings(context) {
         projectRoot,
         sourceRoots: allSourceRoots,
       }),
-      context.manifest,
+      { manifest: context.manifest, projectRoot },
     ),
     ...ingestSarif(dropEntityAssociations(spotbugs, projectRoot), {
       tool: 'spotbugs',

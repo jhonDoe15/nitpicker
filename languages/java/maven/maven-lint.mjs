@@ -65,13 +65,13 @@ function rulesetExcluding({ name, description, rulesets, excludedRoots }) {
 }
 
 function writeExtraRulesets(module, reportDir, spring) {
-  const springRuleset = path.join(reportDir, 'pmd-spring-main.xml');
+  const mainRuleset = path.join(reportDir, 'pmd-main.xml');
   writeFileSync(
-    springRuleset,
+    mainRuleset,
     rulesetExcluding({
-      name: 'nitpicker-spring-main',
-      description: "Nitpicker's Spring rules on main sources only.",
-      rulesets: ['spring-ruleset.xml'],
+      name: 'nitpicker-main',
+      description: "Nitpicker's main-only rules on main sources only.",
+      rulesets: ['pmd-main-ruleset.xml', ...(spring ? ['spring-ruleset.xml'] : [])],
       excludedRoots: module.testSourceRoots,
     }),
   );
@@ -85,7 +85,7 @@ function writeExtraRulesets(module, reportDir, spring) {
       excludedRoots: module.sourceRoots,
     }),
   );
-  return [testRuleset, ...(spring ? [springRuleset] : [])];
+  return [testRuleset, mainRuleset];
 }
 
 function writeAuxClasspath({ module, reportDir, classpaths }) {

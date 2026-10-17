@@ -8,12 +8,22 @@
          xsi:schemaLocation="http://pmd.sourceforge.net/ruleset/2.0.0 https://pmd.sourceforge.io/ruleset_2_0_0.xsd">
   <description>Nitpicker Spring rules for test sources.</description>
   <rule name="SpringUnusedContext" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
-        message="This @SpringBootTest starts the whole application context but uses nothing from it: no injected or mock bean, no MockMvc, WebTestClient or TestRestTemplate. Make it a unit test that creates the class with new, or use a slice such as @WebMvcTest for one layer; @SpringBootTest is for integration and component tests. If the context is needed, add an exception for pmd/SpringUnusedContext in nitpicker.config.json.">
+        message="This @SpringBootTest starts the whole application context but uses nothing from it: no injected or mock bean, no MockMvc, WebTestClient, TestRestTemplate, CapturedOutput or ApplicationEvents, and no web server port. Make it a unit test that creates the class with new, or use a slice such as @WebMvcTest for one layer; @SpringBootTest is for integration and component tests. If the context is needed, add an exception for pmd/SpringUnusedContext in nitpicker.config.json.">
     <priority>2</priority>
     <properties><property name="xpath"><value><![CDATA[
 //ClassDeclaration[not(ExtendsList)]
   [ModifierList/Annotation[pmd-java:typeIs('org.springframework.boot.test.context.SpringBootTest')]
-    [not(.//MemberValuePair[@Name = 'webEnvironment']//FieldAccess[@Name = ('RANDOM_PORT', 'DEFINED_PORT')])]]
+    [not(.//MemberValuePair[@Name = 'webEnvironment']
+           //(FieldAccess | VariableAccess)[@Name = ('RANDOM_PORT', 'DEFINED_PORT')])]]
+  [not(ModifierList/Annotation[
+         pmd-java:typeIs('org.springframework.boot.test.mock.mockito.MockBean')
+         or pmd-java:typeIs('org.springframework.boot.test.mock.mockito.MockBeans')
+         or pmd-java:typeIs('org.springframework.boot.test.mock.mockito.SpyBean')
+         or pmd-java:typeIs('org.springframework.boot.test.mock.mockito.SpyBeans')
+         or pmd-java:typeIs('org.springframework.test.context.bean.override.mockito.MockitoBean')
+         or pmd-java:typeIs('org.springframework.test.context.bean.override.mockito.MockitoBeans')
+         or pmd-java:typeIs('org.springframework.test.context.bean.override.mockito.MockitoSpyBean')
+         or pmd-java:typeIs('org.springframework.test.context.bean.override.mockito.MockitoSpyBeans')])]
   [let $injection := (
          'org.springframework.beans.factory.annotation.Autowired',
          'org.springframework.beans.factory.annotation.Value',
@@ -31,8 +41,10 @@
          'org.springframework.test.web.servlet.assertj.MockMvcTester',
          'org.springframework.test.web.reactive.server.WebTestClient',
          'org.springframework.boot.test.web.client.TestRestTemplate',
-         'org.springframework.context.ApplicationContext')
-   return not(.//(FieldDeclaration | FormalParameter)/ModifierList/Annotation
+         'org.springframework.context.ApplicationContext',
+         'org.springframework.boot.test.system.CapturedOutput',
+         'org.springframework.test.context.event.ApplicationEvents')
+   return not(.//(FieldDeclaration | FormalParameter | MethodDeclaration)/ModifierList/Annotation
                 [some $type in $injection satisfies pmd-java:typeIs($type)])
      and not(.//(FieldDeclaration | FormalParameter)/ClassType
                 [some $type in $clients satisfies pmd-java:typeIs($type)])]

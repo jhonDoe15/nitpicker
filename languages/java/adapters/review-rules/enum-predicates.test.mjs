@@ -53,8 +53,8 @@ function finding(line, column) {
   };
 }
 
-function orders(body) {
-  return `package shop;\n\nimport java.util.concurrent.TimeUnit;\n\nclass Orders {\n${body}\n}\n`;
+function orders(body, imports = '') {
+  return `package shop;\n\nimport java.util.concurrent.TimeUnit;\n${imports}\nclass Orders {\n${body}\n}\n`;
 }
 
 function locate(text, start) {
@@ -62,8 +62,8 @@ function locate(text, start) {
   return { line: lines.length, column: lines.at(-1).length + 1 };
 }
 
-function filtered(body, start, extra = {}) {
-  const text = orders(body);
+function filtered(body, start, extra = {}, imports = '') {
+  const text = orders(body, imports);
   const root = project({
     'src/main/java/shop/Status.java': STATUS,
     'src/main/java/shop/Orders.java': text,
@@ -128,6 +128,29 @@ describe('withProjectEnumPredicates', () => {
     expect(
       filtered(body, 'l == Holder', { 'src/main/java/shop/Holder.java': holder }),
     ).toHaveLength(1);
+  });
+
+  it('reads constants imported one by one or with a static wildcard', () => {
+    const body = '  boolean open(Status s) { return s == NEW || s == PAID; }';
+    const every = '  boolean any(Status s) { return s == NEW || s == PAID || s == SHIPPED; }';
+    const single = 'import static shop.Status.NEW;\nimport static shop.Status.PAID;\n';
+    const wildcard = 'import static shop.Status.*;\n';
+
+    expect(filtered(body, 's == NEW', {}, single).map(({ message }) => message)).toEqual([
+      'These comparisons list only some constants of Status.',
+    ]);
+    expect(filtered(body, 's == NEW', {}, wildcard)).toHaveLength(1);
+    expect(filtered(every, 's == NEW', {}, wildcard)).toEqual([]);
+  });
+
+  it('keeps a subset compared through an accessor and inside a larger condition', () => {
+    const accessor =
+      '  boolean open(Order o) { return o.status() == Status.NEW || o.status() == Status.PAID; }';
+    const nested =
+      '  boolean due(Status s, boolean paid) { return (s == Status.NEW || s == Status.PAID) && paid; }';
+
+    expect(filtered(accessor, 'o.status() ==')).toHaveLength(1);
+    expect(filtered(nested, 's == Status.NEW')).toHaveLength(1);
   });
 
   it('passes other findings through', () => {
