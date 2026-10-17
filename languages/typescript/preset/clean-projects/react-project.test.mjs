@@ -135,7 +135,7 @@ describe('the react-project fixture', () => {
       'conditional-hook': [naming, folder],
       'css-properties.ts': [folder],
       'derived-state': [naming, folder],
-      'effect-fetch': [naming, folder],
+      'effect-fetch': [naming, folder, 'nitpicker/require-http-timeout'],
       'hard-coded-color': [naming, folder],
       inaccessible: [naming, folder],
       'index-key': [naming, folder],

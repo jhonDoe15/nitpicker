@@ -23,6 +23,7 @@ const REPORTS = {
   'checkstyle.xml': '<checkstyle version="10.21.1"></checkstyle>',
   'jacoco.xml': '<report name="demo"></report>',
   'structure.json': '[]',
+  'classes.json': JSON.stringify({ files: {}, classes: [] }),
   'javac-lint.txt': 'src/main/java/demo/Bad.java:9: warning: [rawtypes] found raw type: List\n',
   'forbidden-apis.txt':
     'ERROR: Forbidden class/interface use: java.util.Date [legacy-date-time: Use java.time.]\n' +

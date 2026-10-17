@@ -8,3 +8,4 @@ def parse(text: str) -> None:
         int(text)
     except ValueError:
         logger.exception("not a number")
+        raise
