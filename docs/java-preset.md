@@ -1593,8 +1593,17 @@ String... keys`), are not checked, as the Python preset leaves required paramete
     `@Endpoint` and its variants, `@FeignClient`, Spring Data repositories, JPA `@Entity`,
     `@Embeddable`, `@MappedSuperclass` and `@Converter`, `@Named`, `@Singleton`, CDI scopes,
     interceptors and decorators, EJB beans, JAX-RS `@Path`, `@ApplicationPath` and `@Provider`,
-    servlet `@WebServlet`, `@WebFilter` and `@WebListener`, `@ServerEndpoint`, Micronaut
-    controllers, clients and factories;
+    servlet `@WebServlet`, `@WebFilter` and `@WebListener`, `@ServerEndpoint`, Spring Boot
+    `@SpringBootConfiguration` and `@JsonComponent`, Micronaut controllers, clients, factories,
+    `@ConfigurationProperties`, `@Context`, `@Prototype`, `@Bean` and filters, MicroProfile
+    `@RegisterRestClient` and `@ConfigProperties`, SmallRye `@ConfigMapping`, Quarkus `@Startup`;
+    a class also counts as wired when one of its methods or parameters carries a framework callback
+    annotation: `@Bean`, `@Scheduled` (Spring, Micronaut, Quarkus), `@EventListener`,
+    `@TransactionalEventListener`, `@KafkaListener`, `@RabbitListener`, `@JmsListener`, AWS
+    `@SqsListener`, `@MessageMapping`, MicroProfile `@Incoming` and `@Outgoing`, CDI `@Observes`.
+    jdeps names every annotation a class uses, so a method annotation shows as a class dependency.
+    Meta-annotations are followed only for the project's own annotations: a library annotation's
+    own annotations are not in the reports, so the known ones are listed;
   - it has an entry point: a Java `static void main`, a Kotlin `@JvmStatic fun main`, or a Kotlin
     file with a top-level `fun main` (its `FileKt` facade);
   - its qualified name appears in a file the project reads by name: main sources, resources
