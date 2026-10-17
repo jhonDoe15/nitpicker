@@ -59,11 +59,7 @@ export function commitBranch(root, name, files) {
   commitBranchFrom({ root, name, files, from: 'main' });
 }
 
-export function gate(root, branch, { extra = [], environment = {} } = {}) {
-  return gateAgainst({ root, branch, base: 'main', extra, environment });
-}
-
-export function gateAgainst({ root, branch, base, extra = [], environment = {} }) {
+export function gate(root, branch, { extra = [], environment = {}, base = 'main' } = {}) {
   git(root, 'checkout', '-q', branch);
   const reports = mkdtempSync(path.join(tmpdir(), 'nitpicker-python-e2e-out-'));
   const output = { text: '' };
@@ -84,7 +80,11 @@ export function gateAgainst({ root, branch, base, extra = [], environment = {} }
     progress: { write: () => undefined },
   });
   function json(name) {
-    return JSON.parse(readFileSync(path.join(reports, name), 'utf8'));
+    const file = path.resolve(reports, name);
+    if (!file.startsWith(reports + path.sep)) {
+      throw new Error(`${name} is outside the reports directory`);
+    }
+    return JSON.parse(readFileSync(file, 'utf8'));
   }
   return { exitCode, json, text: output.text, reports };
 }

@@ -3,12 +3,7 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { runJavaDiff } from '../adapters/java-diff.mjs';
-import {
-  commitBranch,
-  GRADLE_STEP_TIMEOUT_MS,
-  runGitIn,
-  summarize,
-} from '../adapters/test-support/gradle-e2e.mjs';
+import { commitBranch, runGitIn, summarize } from '../adapters/test-support/gradle-e2e.mjs';
 
 // End-to-end test of a change that repairs a Maven base whose tests fail, with real Maven. It needs
 // Java 21, Maven and network access like the other Java suites, and runs with
@@ -79,59 +74,45 @@ describe.skipIf(process.env.NITPICKER_JAVA_E2E !== '1')(
       rmSync(root, { recursive: true, force: true });
     });
 
-    it(
-      'does not block a change that repairs the failing base tests',
-      () => {
-        const result = diffOf(root, 'repaired');
+    it('does not block a change that repairs the failing base tests', () => {
+      const result = diffOf(root, 'repaired');
 
-        expect({
-          failed: result.failed,
-          newEnforceable: summarize(result.newEnforceable),
-          notes: result.notes.map(({ tool, rule, message }) => ({ tool, rule, message })),
-        }).toEqual({
-          failed: false,
-          newEnforceable: [],
-          notes: [
-            {
-              tool: 'java',
-              rule: 'tests-failed',
-              message: expect.stringMatching(
-                /^Tests fail in .*:\n {2}demo\.GreeterTest\.greetsByName: /u,
-              ),
-            },
-          ],
-        });
-      },
-      GRADLE_STEP_TIMEOUT_MS,
-    );
-
-    it(
-      'still fails a new violation next to a failing base',
-      () => {
-        const result = diffOf(root, 'repaired-with-violation');
-
-        expect({ failed: result.failed, newEnforceable: summarize(result.newEnforceable) }).toEqual(
+      expect({
+        failed: result.failed,
+        newEnforceable: summarize(result.newEnforceable),
+        notes: result.notes.map(({ tool, rule, message }) => ({ tool, rule, message })),
+      }).toEqual({
+        failed: false,
+        newEnforceable: [],
+        notes: [
           {
-            failed: true,
-            newEnforceable: [
-              'errorprone DefaultCharset Bad.java',
-              'errorprone EmptyCatch Bad.java',
-              'pit mutant-nocoverage Bad.java',
-            ],
+            tool: 'java',
+            rule: 'tests-failed',
+            message: expect.stringMatching(
+              /^Tests fail in .*:\n {2}demo\.GreeterTest\.greetsByName: /u,
+            ),
           },
-        );
-      },
-      GRADLE_STEP_TIMEOUT_MS,
-    );
+        ],
+      });
+    });
 
-    it(
-      'fails a head whose tests still fail',
-      () => {
-        expect(() => diffOf(root, 'still-red')).toThrow(
-          /^Tests fail in .*; nitpicker needs a passing test suite/u,
-        );
-      },
-      GRADLE_STEP_TIMEOUT_MS,
-    );
+    it('still fails a new violation next to a failing base', () => {
+      const result = diffOf(root, 'repaired-with-violation');
+
+      expect({ failed: result.failed, newEnforceable: summarize(result.newEnforceable) }).toEqual({
+        failed: true,
+        newEnforceable: [
+          'errorprone DefaultCharset Bad.java',
+          'errorprone EmptyCatch Bad.java',
+          'pit mutant-nocoverage Bad.java',
+        ],
+      });
+    });
+
+    it('fails a head whose tests still fail', () => {
+      expect(() => diffOf(root, 'still-red')).toThrow(
+        /^Tests fail in .*; nitpicker needs a passing test suite/u,
+      );
+    });
   },
 );
