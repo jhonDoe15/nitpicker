@@ -74,7 +74,7 @@ describe('nitpicker with "preset": "kotlin"', () => {
         identity: 'fp:nitpicker/subject=Wildcard import',
         location: { line: 3 },
         message:
-          'Wildcard import. Lift this rule: ktlint_standard_no-wildcard-imports = disabled in .editorconfig. Not your formatter: set kotlin.formatter',
+          'Wildcard import. Lift this rule with ktlint_standard_no-wildcard-imports = disabled in .editorconfig, which nitpicker reads only when ktlint lists "project" (see the start of the run). Not your formatter: set kotlin.formatter',
         classification: 'enforceable',
       },
     ]);
@@ -93,7 +93,8 @@ describe('nitpicker with "preset": "kotlin"', () => {
         rule: 'format',
         path: 'src/main/kotlin/demo/K.kt',
         identity: 'format',
-        message: 'File is not formatted with ktfmt. Not your formatter: set kotlin.formatter',
+        message:
+          'File is not formatted with ktfmt. Format it with the "Format with ktfmt" command printed at the start of the run. Not your formatter: set kotlin.formatter',
         classification: 'enforceable',
       },
     ]);
