@@ -6,7 +6,6 @@ import { ingestCrap } from '../../ingest/crap.mjs';
 import { DUPLICATES_REPORT, readDuplicateFindings } from '../metrics/java-duplicates.mjs';
 import { coveredByCpd } from '../../guards/cpd-duplicates.mjs';
 import { readKotlinDuplicateFindings } from '../kotlin/kotlin-duplicates.mjs';
-import { dropEntityAssociations, dropInheritedVersions } from '../jpa/jpa-source-filters.mjs';
 import {
   isEmptyModule,
   readMainCheckstyle,
@@ -25,7 +24,8 @@ import { readSlowTestFindings } from '../test-times/slow-tests.mjs';
 import { ingestJacoco } from '../../ingest/coverage-reports/jacoco.mjs';
 import { ingestPit } from '../../ingest/pit.mjs';
 import { ingestJacocoBranches } from '../../ingest/coverage-reports/jacoco-branches.mjs';
-import { ingestSarif, prepareSarif, projectRelative } from '../../ingest/sarif.mjs';
+import { projectRelative } from '../../ingest/sarif.mjs';
+import { sarifFindings } from './java-sarif-reports.mjs';
 import { projectWideFindings } from '../../builds/project-wide.mjs';
 import { applyRuleMessages } from '../../messages/rule-messages.mjs';
 import {
@@ -36,7 +36,6 @@ import {
   sourceLocator,
 } from './kotlin-reports.mjs';
 
-const LINE_NUMBER = /\bline \d+\b/g;
 const CHECKSTYLE_SOURCE_SET_REPORT = /^checkstyle-.+\.xml$/u;
 const MODULE_IDENTITY_SEPARATOR = '@';
 const ROOT_MODULE = 'root';
@@ -171,32 +170,6 @@ function springFindings(projectRoot, manifest) {
     : [];
 }
 
-function preparedReport(file, { reportRoot, roots, sourceRoots, projectRoot }, identityKey) {
-  return prepareSarif(JSON.parse(readFileSync(path.join(reportRoot, file), 'utf8')), {
-    roots,
-    sourceRoots,
-    projectRoot,
-    identityKey,
-  });
-}
-
-function sarifFindings(context) {
-  const { allSourceRoots, projectRoot } = context;
-  const pmd = preparedReport('pmd.sarif', context, (result) =>
-    result.message?.text?.replace(LINE_NUMBER, 'line'),
-  );
-  const spotbugs = preparedReport('spotbugs.sarif', context, spotbugsSubject);
-  return [
-    ...dropInheritedVersions(ingestSarif(pmd, { tool: 'pmd' }).findings, {
-      projectRoot,
-      sourceRoots: allSourceRoots,
-    }),
-    ...ingestSarif(dropEntityAssociations(spotbugs, projectRoot), {
-      tool: 'spotbugs',
-    }).findings,
-  ];
-}
-
 function formatFindings({ reportRoot, roots, javaStyle }) {
   const formatLines = readFileSync(path.join(reportRoot, 'format.txt'), 'utf8')
     .split(/\r?\n/)
@@ -295,9 +268,4 @@ function projectRoots(projectRoot) {
   const roots = new Set([path.resolve(projectRoot)]);
   roots.add(realpathSync(projectRoot));
   return [...roots];
-}
-
-function spotbugsSubject(result) {
-  const args = result.message?.arguments;
-  return Array.isArray(args) && args.length > 0 ? args.join(' ') : result.message?.text;
 }
