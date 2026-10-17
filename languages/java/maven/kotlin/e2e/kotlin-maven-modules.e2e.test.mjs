@@ -1,5 +1,5 @@
 import path from 'node:path';
-import { cpSync, existsSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { cpSync, existsSync, mkdtempSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { afterAll, describe, expect, it } from 'vitest';
 import { collectJavaFindings } from '../../../adapters/java-diff.mjs';

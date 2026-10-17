@@ -1,7 +1,6 @@
 import { walk } from '../syntax/kotlin-calls.mjs';
 import { textOf } from '../syntax/kotlin-tree.mjs';
 import {
-  CONTROLLERS,
   CROSS_ORIGIN,
   NO_OP_ENCODER,
   REQUEST_BODY,
