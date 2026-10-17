@@ -1,12 +1,11 @@
 import { nextOccurrence } from '../../../../shared/rules/finding-helpers.mjs';
 import { readSpringDocuments, stripBracketsAndQuotes, usesJpa } from './spring-config-files.mjs';
 import { relaxKey } from './spring-config-parser.mjs';
+import { readTestProfiles, withProfileKinds } from './spring-profiles.mjs';
 import { isLiteralSecret, secretVariable } from './spring-secrets.mjs';
 
 const SPRING_TOOL = 'spring';
 const DEFAULT_RESOURCE_ROOTS = ['src/main/resources'];
-const LOCAL_PROFILES = new Set(['local', 'dev', 'development']);
-const TEST_PROFILES = new Set(['it', 'integration-test']);
 const TRUE_SPELLINGS = new Set(['true', 'on', 'yes', '1']);
 const OPEN_IN_VIEW = 'spring.jpa.open-in-view';
 const DDL_MODE_NAMES = [
@@ -24,23 +23,13 @@ const STARTUP_FLAGS = new Set(STARTUP_FLAG_NAMES.map(relaxKey));
 const OPEN_IN_VIEW_MESSAGE =
   'Spring Boot enables open-in-view by default, which holds a database connection through view rendering and hides N+1 queries. Set spring.jpa.open-in-view=false.';
 
-function isTestProfile(profile) {
-  return profile.startsWith('test') || TEST_PROFILES.has(profile);
+function isTest(document) {
+  return document.testOnly;
 }
 
-function isLocalProfile(profile) {
-  return LOCAL_PROFILES.has(profile);
+function isTestOrLocal(document) {
+  return document.testOrLocalOnly;
 }
-
-function exemptWhenEvery(matches) {
-  return (document) =>
-    !document.negated && document.profiles.length > 0 && document.profiles.every(matches);
-}
-
-const isTest = exemptWhenEvery(isTestProfile);
-const isTestOrLocal = exemptWhenEvery(
-  (profile) => isTestProfile(profile) || isLocalProfile(profile),
-);
 
 function isTrue(entry) {
   return TRUE_SPELLINGS.has(entry.value.toLowerCase());
@@ -129,14 +118,21 @@ function allowance(rule) {
   return `To allow it here, add an exception for spring/${rule} in nitpicker.config.json.`;
 }
 
-export function readSpringConfigFindings(projectRoot, { sourceRoots = [], resourceRoots } = {}) {
-  const documents = readSpringDocuments(
+export function readSpringConfigFindings(
+  projectRoot,
+  { sourceRoots = [], resourceRoots, testSourceRoots, baselineRoot } = {},
+) {
+  const read = readSpringDocuments(
     projectRoot,
     Array.isArray(resourceRoots) ? resourceRoots : DEFAULT_RESOURCE_ROOTS,
   );
-  if (documents.length === 0) {
+  if (read.length === 0) {
     return [];
   }
+  const documents = withProfileKinds(
+    read,
+    readTestProfiles(baselineRoot ?? projectRoot, testSourceRoots),
+  );
   const occurrences = new Map();
   return [
     ...(usesJpa(projectRoot, sourceRoots) ? openInViewFindings(documents, occurrences) : []),

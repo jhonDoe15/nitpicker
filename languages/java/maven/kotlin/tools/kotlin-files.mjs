@@ -17,3 +17,7 @@ export function kotlinFiles(roots) {
 export function relativeTo(basedir, file) {
   return path.relative(basedir, file).replaceAll('\\', '/');
 }
+
+export function lintedRoots({ sourceRoots, testSourceRoots = [] }) {
+  return [...new Set([...sourceRoots, ...testSourceRoots])];
+}

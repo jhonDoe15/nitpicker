@@ -2,7 +2,7 @@ import { spawnSync } from 'node:child_process';
 import { existsSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { javaCommand, runJava } from '../../maven-command.mjs';
-import { EMPTY_SARIF, kotlinFiles } from './kotlin-files.mjs';
+import { EMPTY_SARIF, kotlinFiles, lintedRoots } from './kotlin-files.mjs';
 import { GRADLE_DIRECTORY } from '../../../builds/java-build.mjs';
 
 const DETEKT_DIRECTORY = path.resolve(GRADLE_DIRECTORY, '../detekt');
@@ -21,14 +21,18 @@ export function jdkHome() {
   return JAVA_HOME_LINE.exec(`${result.stderr}${result.stdout}`)?.[1].trim();
 }
 
-export function detektClasspath({ detektStdlib, javaClassDirectory, mainCompile }) {
-  const libraries = mainCompile.filter(
-    (entry) => existsSync(entry) && !STDLIB_JAR.test(path.basename(entry)),
-  );
+export function detektClasspath({ detektStdlib, javaClassDirectories, libraries, ownOutputs }) {
   return [
-    ...detektStdlib,
-    ...(existsSync(javaClassDirectory) ? [javaClassDirectory] : []),
-    ...libraries,
+    ...new Set([
+      ...detektStdlib,
+      ...javaClassDirectories.filter((directory) => existsSync(directory)),
+      ...libraries.filter(
+        (entry) =>
+          existsSync(entry) &&
+          !ownOutputs.includes(entry) &&
+          !STDLIB_JAR.test(path.basename(entry)),
+      ),
+    ]),
   ];
 }
 
@@ -40,7 +44,7 @@ export function detektArguments({ module, report, options, classpath, home }) {
     path.join(DETEKT_DIRECTORY, 'detekt-validation.yml'),
   ].filter((config) => config !== undefined);
   return [
-    ...['--input', module.kotlin.sourceRoots.join(',')],
+    ...['--input', lintedRoots(module.kotlin).join(',')],
     ...['--includes', '**/*.kt'],
     ...['--report', `sarif:${report}`],
     ...['--base-path', module.basedir],
@@ -51,16 +55,17 @@ export function detektArguments({ module, report, options, classpath, home }) {
   ];
 }
 
-export function runDetekt({ module, reportDir, tools, classpaths, javaClassDirectory, options }) {
+export function runDetekt({ module, reportDir, tools, classpaths, javaClassDirectories, options }) {
   const report = path.join(reportDir, 'detekt.sarif');
-  if (kotlinFiles(module.kotlin.sourceRoots).length === 0) {
+  if (kotlinFiles(lintedRoots(module.kotlin)).length === 0) {
     writeFileSync(report, EMPTY_SARIF);
     return;
   }
   const classpath = detektClasspath({
     detektStdlib: tools['detekt-stdlib'],
-    javaClassDirectory,
-    mainCompile: classpaths.mainCompile,
+    javaClassDirectories,
+    libraries: [...classpaths.mainCompile, ...classpaths.testCompile],
+    ownOutputs: [module.outputDirectory, module.testOutputDirectory],
   });
   runJava({
     tool: 'detekt',

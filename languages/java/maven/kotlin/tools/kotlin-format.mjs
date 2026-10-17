@@ -1,7 +1,7 @@
 import { existsSync, rmSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { runJava } from '../../maven-command.mjs';
-import { EMPTY_SARIF, kotlinFiles, relativeTo } from './kotlin-files.mjs';
+import { EMPTY_SARIF, kotlinFiles, lintedRoots, relativeTo } from './kotlin-files.mjs';
 
 const KTLINT_FAILURE_CODE = 1;
 const KTFMT_ERROR = 'Error formatting';
@@ -10,7 +10,7 @@ export function ktlintArguments({ module, report }) {
   return [
     '--relative',
     `--reporter=sarif,output=${report}`,
-    ...module.kotlin.sourceRoots.map((root) => `${relativeTo(module.basedir, root)}/**/*.kt`),
+    ...lintedRoots(module.kotlin).map((root) => `${relativeTo(module.basedir, root)}/**/*.kt`),
   ];
 }
 
@@ -61,7 +61,7 @@ function runKtfmt({ module, reportDir, tools, options, files }) {
 export function runKotlinFormatter({ module, reportDir, tools, options }) {
   writeFileSync(path.join(reportDir, 'ktlint.sarif'), EMPTY_SARIF);
   writeFileSync(path.join(reportDir, 'ktfmt.txt'), '');
-  const files = kotlinFiles(module.kotlin.sourceRoots);
+  const files = kotlinFiles(lintedRoots(module.kotlin));
   if (files.length === 0) {
     return;
   }
