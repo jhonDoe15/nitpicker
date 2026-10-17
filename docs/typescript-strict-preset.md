@@ -487,7 +487,10 @@ alone.
 Every runnable test imports production code at runtime
 (`nitpicker/test-must-use-production-runtime`), directly or through a relative test helper that
 does, such as a `renderWithProviders` in `test/support/` that imports the app. The rule follows one
-hop, and type-only imports do not count.
+hop, and type-only imports do not count. Its message sends a shared helper to a file the runner does
+not run as a test, named the runner's way: not `*.test.*` or `*.spec.*` (and not under `__tests__`
+for Jest), not one of Node's default patterns (`*-test.*`, `test/`, ...) for `node:test`, outside
+the spec for Mocha.
 
 - `nitpicker/no-git-repository-per-test`: no `git init` or `git clone` per test. This covers direct
   `child_process`/`execa` calls and same-file wrappers such as `git(root, ['init'])` or
@@ -605,8 +608,16 @@ hop, and type-only imports do not count.
   The same holds for `toMatchObject` and for `toEqual`/`toStrictEqual` given `expect.objectContaining`,
   `expect.stringContaining` or `expect.arrayContaining`, even nested inside an object or array
   literal: pass the whole expected value, using `expect.any(Type)` for a field that varies. Asymmetric
-  matchers inside `toHaveBeenCalledWith` are not reported. Output too large or unordered to pin
-  needs an exception in the config file.
+  matchers inside `toHaveBeenCalledWith` are not reported. Under every runner the rule also sees the
+  `assert` and Chai forms of the same checks: a text fragment through `assert.ok(text.includes('x'))`
+  (also `assert(...)`, `t.assert.ok(...)` and Chai's `assert.isTrue(...)`), Chai's
+  `expect(x).to.include('x')`, `contain`, `have.string`, `deep.include`, `assert.include` and
+  `assert.deepInclude`, and a partial match through `assert.partialDeepStrictEqual`, Chai's
+  `include` with an object literal, `include.members`, `containSubset`, `assert.includeMembers` and
+  `assert.containSubset`. Negated forms are allowed. Its messages name the runner's own whole-value
+  assertion (`assert.deepStrictEqual` under `node:test`, `expect(...).to.deep.equal` or
+  `assert.deepStrictEqual` under Mocha). Output too large or unordered to pin needs an exception in
+  the config file.
 - `no-restricted-syntax` bans the same constructs as in production code, with the same messages:
   `for(;;)`, `for...in`, `while` and `do...while` (use `for...of`, or `it.each` for one test per
   case; on `node:test` and Mocha, which have no `it.each`,
@@ -666,7 +677,9 @@ off (a PR that adds or removes React keeps linting on both sides); a misspelled 
   confusing-browser-globals list) are restricted wherever those globals apply, `domain/` aside:
   `onPick(name)` with no `name` in scope is a missing parameter, not `window.name`. Write
   `window.name` when the global is meant; otherwise take the value as a parameter
-  (`onClick={(event) => ...}`) or declare it.
+  (`onClick={(event) => ...}`) or declare it. A project without React whose tests run in jsdom or
+  happy-dom (through the runner's environment or a global DOM registered for Mocha or `node:test`)
+  gets the same globals and the same restriction for its production code.
 - **Function components only** (`react-x/no-class-component`). Class components are flagged; error
   boundaries, which React only supports as classes, are allowed. The "classes only for `Error`
   subclasses" ban leaves classes that extend `Component` or `PureComponent` to this rule in a React

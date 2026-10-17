@@ -176,8 +176,7 @@ line) is a finding.
 
 - Tests are files in `test/` run by the runner the project uses, found from its `test` script, a
   runner config file or a dependency (Vitest, Jest, `node:test` or Mocha; the examples below are
-  Vitest). Name them the way that runner finds them: its own file patterns, or the files the test
-  script or runner config names (`*.test.js` or `*.spec.js` for Vitest and Jest). In a Vitest
+  Vitest). Name them the way that runner finds them (see the naming below). In a Vitest
   project a test file must `import` from `'vitest'`: `require('vitest')` fails, so a test is ESM
   even when the code it tests is CommonJS:
   `import { initials } from '../src/main/features/greeting/domain/initials.cjs';`.
@@ -197,14 +196,35 @@ line) is a finding.
 - Test data typed from a literal widens (`status: string`): write the array as
   `/** @type {const} */ ([...])`, or annotate the `const` with the typedef.
 - Assert whole outputs with `toEqual`/`toBe` (`assert.deepStrictEqual`/`assert.equal`, chai's
-  `expect(x).to.deep.equal`), not `toContain`, `toMatchObject` or `expect.any`. Write the assertion
+  `expect(x).to.deep.equal`), not `toContain`, `toMatchObject` or `expect.any` (nor
+  `assert.ok(text.includes('x'))`, `assert.partialDeepStrictEqual` or chai's `include` and
+  `containSubset`). Write the assertion
   (`expect`, or `assert` under `node:test` and Mocha) in the test body; asserting helpers don't
   count. Repeated cases are `it.each`; `node:test` and Mocha have no `it.each`, so there write
   `for (const testCase of cases) { it(testCase.name, () => { ... }); }`, not a loop inside one test.
   Shared setup goes in `beforeAll` (`before` under `node:test` and Mocha). The rules above
   (`for...of` only, no `.then()`, no casts) apply to tests too.
-- A shared helper (stdout capture) lives once, in a non-test file such as `test/support/lines.js`.
-  When an existing test defines the same helper, make it import the shared one.
+- A shared helper (stdout capture) lives once, in a file the runner does not run as a test, such as
+  `test/support/lines.js` (under `node:test` with Node's default patterns every file in `test/` is
+  a test: put the helper in `tests/support/`, or name the tests in the script, such as
+  `node --test 'test/**/*.test.js'`). When an existing test defines the same helper, make it import
+  the shared one.
+- Name test files the way the runner finds them; the gate reads the same patterns. Vitest:
+  `*.test.{ext}` or `*.spec.{ext}` (plus the config's `test.include`). Jest: `*.test.{ext}`,
+  `*.spec.{ext}` or any file under `__tests__/`, or the config's `testMatch`/`testRegex`, read through
+  the test script (`react-scripts test` and `craco test` included). `node:test`: the patterns the
+  `node --test` script names, else Node's defaults (`*.test.*`, `*-test.*`, `*_test.*`, `test-*.*`,
+  `test.*` and every file under a `test/` folder). Mocha: its spec (`test/*.{js,cjs,mjs}` by default,
+  or the spec in `.mocharc.*` or the script). A file that matches is a test wherever it sits, even in
+  `domain/`, and gets the test rules, not the production ones.
+- A test that never touches the DOM runs without one. Under Vitest and Jest give it
+  `/** @vitest-environment node */` (`@jest-environment node`) when the project default is jsdom or
+  happy-dom. Mocha and `node:test` read no such comment: when the setup registers `global-jsdom`,
+  `jsdom-global` or `@happy-dom/global-registrator` for every file (`require` in `.mocharc.*`,
+  `node --test --import`), move the registration into the test files that use the DOM
+  (`import 'global-jsdom/register';` at the top) or into a separate run, and don't import a
+  registrar in a test that doesn't use the DOM. Production code of a project tested in a DOM may use
+  `document` and `window`; write `window.name` (not a bare `name`) for the confusing globals.
 - A surviving mutant no input can kill means the code is redundant: delete or restructure it.
   Don't pin call order or messages just to kill it. If an input can kill it, add that test (a
   padded value for a `.trim()`, two bad fields for a `join`); never delete a schema rule to silence it.
