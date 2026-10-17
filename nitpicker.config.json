@@ -74,7 +74,6 @@
         "languages/java/builds/rulesets/pmd-rulesets.mjs",
         "languages/java/maven/guards/maven-guards.mjs",
         "languages/java/maven/guards/maven-pmd.mjs",
-        "languages/java/maven/errorprone/maven-errorprone.mjs",
         "languages/java/maven/maven-lint.mjs",
         "languages/java/maven/results/maven-test-results.mjs",
         "languages/java/maven/coupling/maven-jdeps.mjs",

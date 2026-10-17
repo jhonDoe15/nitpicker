@@ -15,7 +15,11 @@ const LINT_FLAGS = [
 ];
 
 export function isJavaModule(file) {
-  if (statSync(file).isDirectory()) {
+  const stats = statSync(file, { throwIfNoEntry: false });
+  if (stats === undefined) {
+    return false;
+  }
+  if (stats.isDirectory()) {
     return existsSync(path.join(file, 'module-info.class'));
   }
   if (!file.endsWith('.jar')) {

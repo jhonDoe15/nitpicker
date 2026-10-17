@@ -62,4 +62,13 @@ describe('isJavaModule', () => {
       false,
     ]);
   });
+
+  it('treats a path that does not exist as no module', () => {
+    const root = temporary();
+
+    expect(['classes', 'missing.jar'].map((name) => isJavaModule(path.join(root, name)))).toEqual([
+      false,
+      false,
+    ]);
+  });
 });
