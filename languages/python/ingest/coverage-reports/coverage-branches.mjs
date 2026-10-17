@@ -3,7 +3,6 @@ import { branchCoverageFindings } from '../../../../shared/rules/branch-coverage
 import { hashIdentity, normalizeReportPath } from '../../../java/ingest/common.mjs';
 
 const SCOPE_START = /^(?:async\s+def|def|class)\s+(\w+)/;
-const EXCEPTION_ROUTE = 'To exempt a file, add it to exclude in nitpicker.config.json.';
 
 export function ingestCoverageBranches(text, options = {}) {
   const report = JSON.parse(text);
@@ -44,7 +43,7 @@ function fileFindings(data, { path, lines, tool, minimum }) {
     tool,
     minimum,
     identify: (key, occurrence) => (occurrence === 1 ? key : `${key}#${String(occurrence)}`),
-  }).map((finding) => ({ ...finding, message: `${finding.message} ${EXCEPTION_ROUTE}` }));
+  });
 }
 
 function indentOf(text) {

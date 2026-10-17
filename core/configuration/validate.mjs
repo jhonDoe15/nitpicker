@@ -12,8 +12,10 @@ import {
 } from '../../shared/config.mjs';
 import { validateJavaConfig } from '../../languages/java/adapters/java-policy.mjs';
 import { validateKotlinOptions } from '../../languages/java/adapters/kotlin/kotlin-options.mjs';
-import { validatePythonConfig } from '../../languages/python/adapters/configuration/python-config.mjs';
-import { SHARED_EXCEPTION_RULES } from '../../shared/policy.mjs';
+import {
+  PYTHON_TOP_LEVEL_EXCEPTION_RULES,
+  validatePythonConfig,
+} from '../../languages/python/adapters/configuration/python-config.mjs';
 import { validateTools } from './tool-settings.mjs';
 import { rejectHeadBase } from './project-checks/project-config.mjs';
 import { conventionDefinitions } from '../conventions/definitions.mjs';
@@ -85,13 +87,22 @@ function validateScalars(config) {
   if (GRADLE_PRESETS.includes(config.preset)) {
     validateJavaConfig(config);
   }
+  validateJavascriptConfig(config);
   validateKotlinOptions(config);
   validatePythonConfig(
     config,
-    liftsOnlyRules(config.exceptions, SHARED_EXCEPTION_RULES)
+    liftsOnlyRules(config.exceptions, PYTHON_TOP_LEVEL_EXCEPTION_RULES)
       ? TYPESCRIPT_ONLY_KEYS.filter((key) => key !== 'exceptions')
       : TYPESCRIPT_ONLY_KEYS,
   );
+}
+
+function validateJavascriptConfig(config) {
+  if (config.preset === 'javascript' && config.react !== undefined) {
+    throw configError(
+      '"react" is not supported with "preset": "javascript": React and JSX belong to the TypeScript preset, so remove the key, or use "preset": "typescript" for a React project',
+    );
+  }
 }
 
 function validateProjectConventions({ conventions, preset }) {

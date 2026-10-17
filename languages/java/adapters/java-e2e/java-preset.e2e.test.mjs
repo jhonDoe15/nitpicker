@@ -103,8 +103,6 @@ const BASELINED_FINDINGS_WITHOUT_GREETER_LINE_COVERAGE = [
   'structure function-parameters-limit Wide.java',
 ];
 
-const CHECKSTYLE_ON_BAD = ['EmptyLineSeparator', 'Indentation', 'RegexpSinglelineJava'];
-
 describe.skipIf(!enabled)('Java preset end to end', () => {
   beforeAll(() => {
     repository = mkdtempSync(path.join(tmpdir(), 'nitpicker-java-e2e-'));
@@ -189,13 +187,12 @@ describe.skipIf(!enabled)('Java preset end to end', () => {
   );
 
   it(
-    'fails new Error Prone, Checkstyle and formatter violations, and untested code, as new, each issue once',
+    'fails new Error Prone and formatter violations, and untested code, as new, each issue once',
     () => {
       const result = diffOf('violation');
 
       expect(result.failed).toBe(true);
       expect(summarize(result.newEnforceable)).toEqual([
-        ...CHECKSTYLE_ON_BAD.map((check) => `checkstyle ${check} Bad.java`),
         'errorprone DefaultCharset Bad.java',
         'errorprone EmptyCatch Bad.java',
         'google-java-format format Bad.java',

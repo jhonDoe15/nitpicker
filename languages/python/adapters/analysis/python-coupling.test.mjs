@@ -254,7 +254,7 @@ describe('analyzing the import graph', () => {
     });
   });
 
-  it('reports a stability inversion on the source package with the way to lift it', () => {
+  it('reports a stability inversion on the source package with the way out', () => {
     const reportRoot = temporaryRoot();
     writeFileSync(
       path.join(reportRoot, 'imports.json'),
@@ -288,7 +288,7 @@ describe('analyzing the import graph', () => {
       path: 'src/base/__init__.py',
       identity: 'package-edge:base->other',
       message:
-        'base depends on less stable package other. Depend on an abstraction in a more stable package instead, or, if the inversion is intended, add src/base/__init__.py to "exclude" in nitpicker.config.json.',
+        'base depends on less stable package other. Depend on an abstraction in a more stable package instead.',
       classification: 'enforceable',
     });
   });
@@ -371,10 +371,16 @@ describe('scanning imports with the project interpreter', () => {
     expect(calls[0].command.slice(0, 2)).toEqual(['python', '-I']);
     expect(calls[0].command[2]).toMatch(/import-scan\.py$/);
     expect(calls[0].options).toEqual({ rule: 'coupling-failed' });
-    expect(calls[0].request).toEqual({ root: context.projectRoot, files: ['src/app/a.py'] });
+    expect(calls[0].request).toEqual({
+      root: context.projectRoot,
+      files: ['src/app/a.py', 'src/app/test_a.py'],
+    });
     expect(JSON.parse(readFileSync(path.join(context.reportRoot, 'imports.json'), 'utf8'))).toEqual(
       {
         modules: [{ file: 'src/app/a.py', module: 'app.a', isPackage: false }],
+        others: [
+          { file: 'src/app/test_a.py', module: 'src.app.test_a', kind: 'test', inRoots: true },
+        ],
         imports: { 'src/app/a.py': [{ level: 0, module: null, names: ['os'] }] },
       },
     );
@@ -388,7 +394,7 @@ describe('scanning imports with the project interpreter', () => {
     });
 
     expect(JSON.parse(readFileSync(path.join(context.reportRoot, 'imports.json'), 'utf8'))).toEqual(
-      { modules: [], imports: {} },
+      { modules: [], others: [], imports: {} },
     );
   });
 });
