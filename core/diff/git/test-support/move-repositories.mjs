@@ -1,19 +1,22 @@
-import { execFileSync } from 'node:child_process';
 import {
-  cpSync,
+  existsSync,
   mkdirSync,
   mkdtempSync,
   readFileSync,
   readdirSync,
   realpathSync,
   rmSync,
-  writeFileSync,
+  statSync,
 } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterAll, afterEach, beforeAll } from 'vitest';
 import { reportFromAnalyzerOutput } from '../../execution/process.mjs';
 import { runQualityDiff } from '../../comparison/run-diff.mjs';
+import { writeFiles } from './fixture-files.mjs';
+import { copyGitTemplate, fixtureGit } from './git-repository.mjs';
+
+const FINDING_MARKER = '// FINDING ';
 
 export function probeAnalyzer() {
   return {
@@ -39,66 +42,68 @@ function runProbe(tasks, policyFile) {
       task.name,
       reportFromAnalyzerOutput(
         { ...task, acceptedExitCodes: [0] },
-        { status: 0, signal: null, stdoutText, stderrText: '' },
+        { status: 0, stdoutText, stderrText: '' },
       ),
     ];
   });
   return { reports, errors: [], timings: [] };
 }
 
-function scan(projectRoot, relativeDirectory) {
-  const directory = path.join(projectRoot, relativeDirectory);
-  let entries;
-  try {
-    entries = readdirSync(directory, { withFileTypes: true });
-  } catch {
-    return [];
+function insideRoot(root, relativePath) {
+  const base = path.resolve(root);
+  const full = path.resolve(base, relativePath);
+  if (!full.startsWith(base + path.sep)) {
+    return undefined;
   }
-  return entries.flatMap((entry) => {
-    const relativePath = `${relativeDirectory}/${entry.name}`;
-    if (entry.isDirectory()) {
-      return scan(projectRoot, relativePath);
-    }
-    return readFileSync(path.join(projectRoot, relativePath), 'utf8')
-      .split('\n')
-      .flatMap((line, index) => {
-        const marker = line.indexOf('// FINDING ');
-        return marker === -1
-          ? []
-          : [
-              {
-                tool: 'probe',
-                rule: 'probe-rule',
-                path: relativePath,
-                classification: 'enforceable',
-                message: 'probe finding',
-                location: { line: index + 1, column: 1 },
-                ...JSON.parse(line.slice(marker + '// FINDING '.length)),
-              },
-            ];
-      });
-  });
+  return full;
 }
 
-export const finding = (identity) => `// FINDING ${JSON.stringify({ identity })}\n`;
-export const filler = (name) =>
-  Array.from(
+function scan(projectRoot, sourceRoot) {
+  const directory = insideRoot(projectRoot, sourceRoot);
+  if (directory === undefined || !existsSync(directory)) {
+    return [];
+  }
+  return readdirSync(directory, { recursive: true })
+    .map((name) => `${sourceRoot}/${String(name).split(path.sep).join('/')}`)
+    .filter((relativePath) => statSync(insideRoot(projectRoot, relativePath)).isFile())
+    .sort()
+    .flatMap((relativePath) => findingsIn(projectRoot, relativePath));
+}
+
+function findingsIn(projectRoot, relativePath) {
+  return readFileSync(insideRoot(projectRoot, relativePath), 'utf8')
+    .split('\n')
+    .flatMap((line, index) => {
+      const marker = line.indexOf(FINDING_MARKER);
+      return marker === -1
+        ? []
+        : [
+            {
+              tool: 'probe',
+              rule: 'probe-rule',
+              path: relativePath,
+              classification: 'enforceable',
+              message: 'probe finding',
+              location: { line: index + 1, column: 1 },
+              ...JSON.parse(line.slice(marker + FINDING_MARKER.length)),
+            },
+          ];
+    });
+}
+
+export function finding(identity) {
+  return `${FINDING_MARKER}${JSON.stringify({ identity })}\n`;
+}
+
+export function filler(name) {
+  return Array.from(
     { length: 12 },
     (_, index) => `export const ${name}${String(index)} = ${String(index)};\n`,
   ).join('');
+}
 
-const HERMETIC_GIT_ENVIRONMENT = {
-  ...process.env,
-  GIT_CONFIG_GLOBAL: '/dev/null',
-  GIT_CONFIG_NOSYSTEM: '1',
-};
-
-export function git(root, ...arguments_) {
-  return execFileSync(
-    'git',
-    ['-c', 'user.name=t', '-c', 'user.email=t@example.invalid', ...arguments_],
-    { cwd: root, encoding: 'utf8', env: HERMETIC_GIT_ENVIRONMENT },
-  ).trim();
+export function git(root, ...gitArguments) {
+  return fixtureGit(root, gitArguments).trim();
 }
 
 export function createMoveRepositories() {
@@ -119,9 +124,7 @@ export function createMoveRepositories() {
   return (files) => {
     const root = realpathSync(mkdtempSync(path.join(tmpdir(), 'nitpicker-moves-')));
     repositories.push(root);
-    cpSync(path.join(template.root, '.git'), path.join(root, '.git'), {
-      recursive: true,
-    });
+    copyGitTemplate(template.root, root);
     write(root, files);
     git(root, 'add', '-A');
     git(root, 'commit', '-q', '-m', 'base');
@@ -131,14 +134,11 @@ export function createMoveRepositories() {
 }
 
 export function write(root, files) {
-  for (const [relativePath, contents] of Object.entries(files)) {
-    mkdirSync(path.dirname(path.join(root, relativePath)), { recursive: true });
-    writeFileSync(path.join(root, relativePath), contents);
-  }
+  writeFiles(root, files);
 }
 
 export function move(root, from, to) {
-  mkdirSync(path.dirname(path.join(root, to)), { recursive: true });
+  mkdirSync(path.dirname(insideRoot(root, to)), { recursive: true });
   git(root, 'mv', from, to);
 }
 
@@ -165,4 +165,6 @@ export function compare(
   });
 }
 
-export const identities = (findings) => findings.map((entry) => entry.identity);
+export function identities(findings) {
+  return findings.map((entry) => entry.identity);
+}
