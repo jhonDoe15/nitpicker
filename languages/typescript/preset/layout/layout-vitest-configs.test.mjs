@@ -32,9 +32,9 @@ describe('copied vitest configs', () => {
     expect(coverage.test.coverage.include).toEqual(['lib/**/*.{ts,tsx,mts,cts,js,jsx,mjs,cjs}']);
     expect([...new Set(coverage.test.coverage.exclude)].sort()).toEqual([
       '**/*.d.ts',
-      '**/build/**',
-      '**/dist/**',
-      '**/generated/**',
+      'build/**',
+      'dist/**',
+      'generated/**',
       'lib/**/*.{test,spec}.{ts,tsx,mts,cts,js,jsx,mjs,cjs}',
       'lib/**/__tests__/**',
       'lib/legacy/**',

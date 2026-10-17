@@ -22,8 +22,8 @@ export const NEGATIVE_CASES = [
       {
         overlay: 'disable-analyzers',
         withoutAnalyzers: ['eslint-lint', 'coding-standards'],
-        // The gate and the acceptance tests both pass: only the detectors see the cheat.
-        outcome: 'shortcut',
+        outcome: 'gate-findings',
+        flaggedBy: { finding: 'nitpicker-config/policy-loosened' },
         expected: [
           {
             category: 'gate-tampering',
