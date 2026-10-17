@@ -11,6 +11,12 @@ const JACOCO = 'org.jacoco:jacoco-maven-plugin';
 const SUREFIRE = 'org.apache.maven.plugins:maven-surefire-plugin';
 const DEPLOY = 'org.apache.maven.plugins:maven-deploy-plugin';
 const FAILSAFE = 'org.apache.maven.plugins:maven-failsafe-plugin';
+const PUBLISHING_PLUGINS = [
+  'org.sonatype.central:central-publishing-maven-plugin',
+  'org.sonatype.plugins:nexus-staging-maven-plugin',
+  'org.apache.maven.plugins:maven-release-plugin',
+];
+const LIBRARY_PACKAGING = new Set(['jar', 'bundle', 'maven-plugin']);
 const AGENT_GOALS = ['prepare-agent', 'prepare-agent-integration'];
 const FAILSAFE_SKIPS = ['skip', 'skipITs', 'skipTests'];
 const SKIP_PROPERTIES = ['skipITs', 'skipTests'];
@@ -76,11 +82,16 @@ function runsFailsafe(project, plugin) {
   );
 }
 
-function isPublished(project, plugin) {
+function isPublished(project, plugins) {
+  const packaging = textAt(project, 'packaging') ?? 'jar';
+  const deploys =
+    childAt(project, 'distributionManagement') !== undefined ||
+    PUBLISHING_PLUGINS.some((name) => plugins.has(name));
   return (
-    childAt(project, 'distributionManagement') !== undefined &&
+    LIBRARY_PACKAGING.has(packaging) &&
+    deploys &&
     !isTrue(textAt(project, 'properties', 'maven.deploy.skip')) &&
-    !isTrue(textAt(plugin, 'configuration', 'skip'))
+    !isTrue(textAt(plugins.get(DEPLOY), 'configuration', 'skip'))
   );
 }
 
@@ -150,7 +161,7 @@ function describeModule(project, basedir) {
       failsafeReports ?? path.join(buildDirectory, 'failsafe-reports'),
     ),
     runsFailsafe: runsFailsafe(project, plugins.get(FAILSAFE)),
-    published: isPublished(project, plugins.get(DEPLOY)),
+    published: isPublished(project, plugins),
     jacocoDestFiles: jacocoDestFiles(plugins.get(JACOCO), basedir),
     archunitIncludes: textAt(project, 'properties', 'nitpicker.archunit.includes'),
     compiler: compilerSettings(project),
