@@ -21,7 +21,9 @@ function isPromiseCatchCallback(fn) {
 function enclosingFunction(node) {
   const chain = [node.parent];
   for (const current of chain) {
-    if (current && !FUNCTION_TYPES.has(current.type)) chain.push(current.parent);
+    if (current && !FUNCTION_TYPES.has(current.type)) {
+      chain.push(current.parent);
+    }
   }
   return chain.at(-1);
 }
@@ -74,12 +76,16 @@ function reportUnlessHandled(tracker, node) {
 
 function functionVisitors(tracker) {
   function enterFunction(node) {
-    if (!isPromiseCatchCallback(node)) return;
+    if (!isPromiseCatchCallback(node)) {
+      return;
+    }
     const returnsFailure = node.body.type !== 'BlockStatement' && isFailureResult(node.body);
     tracker.catches.push({ node, depth: tracker.state.depth, handled: returnsFailure });
   }
   function exitFunction(node) {
-    if (isPromiseCatchCallback(node)) reportUnlessHandled(tracker, node);
+    if (isPromiseCatchCallback(node)) {
+      reportUnlessHandled(tracker, node);
+    }
   }
   return depthVisitors(tracker.state, enterFunction, exitFunction);
 }

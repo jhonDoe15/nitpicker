@@ -28,14 +28,14 @@ const CODE_SHAPES = [
   /^(?:await\s+|new\s+)?[\w$]+(?:\.[\w$]+)*(?:<[^>]*>)?\(.*\)(?:\.[\w$]+\(.*\))*\s*;$/,
   /^(?:return|throw)\b.*;$|^(?:break|continue);$/,
   /^[\w$.]+(?:\+\+|--);$/,
-  /^(?:import|package)\s+[\w.*{}, ]+(?:\s+from\s+['"][^'"]+['"])?;$/,
+  /^(?:import|package)\s[\w.*{}, ]+(?:\sfrom\s['"][^'"]+['"])?;$/,
   /^(?:\}\s*)?(?:if|for|while|switch|catch|else\s+if)\s*\(.*\)\s*\{$/,
   /^(?:\}\s*)?(?:else|try|do|finally)\s*\{$/,
   /^(?:export\s+)?(?:default\s+)?(?:async\s+)?function\b.*\)\s*\{$/,
   new RegExp(
-    `^(?:(?:${MODIFIERS})\\s+)+[\\w<>[\\], ]+\\s+\\w+\\s*\\(.*\\)\\s*(?:throws [\\w., ]+)?\\{$`,
+    `^(?:(?:${MODIFIERS})\\s)+[\\w<>[\\],]+(?: [\\w<>[\\],]+)* \\w+ ?\\(.*\\) ?(?:throws [\\w., ]+)?\\{$`,
   ),
-  /^(?:export\s+)?(?:abstract\s+)?(?:class|interface|enum|record)\s+\w+.*\{$/,
+  /^(?:export\s+)?(?:abstract\s+)?(?:class|interface|enum|record)\s+\w.*\{$/,
 ];
 const SENTENCE = /^[A-Z][a-z]+ [a-z]+ [a-z]+/;
 const EXAMPLE_TAG = /^@example\b/;
@@ -69,19 +69,30 @@ export function unreferencedWorkTagLines(lines) {
 }
 
 function isCodeLine(text) {
-  if (text === '' || INLINE_DOC_TAG.test(text) || SENTENCE.test(text)) return false;
+  if (text === '' || INLINE_DOC_TAG.test(text) || SENTENCE.test(text)) {
+    return false;
+  }
   return CODE_SHAPES.some((shape) => shape.test(text));
 }
 
 function exampleMask(lines) {
   const open = { example: false, fence: false, pre: false };
   return lines.map((line) => {
-    if (FENCE.test(line)) open.fence = !open.fence;
-    if (PRE_OPEN.test(line)) open.pre = true;
-    if (EXAMPLE_TAG.test(line)) open.example = true;
-    else if (ANY_TAG.test(line)) open.example = false;
+    if (FENCE.test(line)) {
+      open.fence = !open.fence;
+    }
+    if (PRE_OPEN.test(line)) {
+      open.pre = true;
+    }
+    if (EXAMPLE_TAG.test(line)) {
+      open.example = true;
+    } else if (ANY_TAG.test(line)) {
+      open.example = false;
+    }
     const documented = open.example || open.fence || open.pre;
-    if (PRE_CLOSE.test(line)) open.pre = false;
+    if (PRE_CLOSE.test(line)) {
+      open.pre = false;
+    }
     return documented;
   });
 }

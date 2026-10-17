@@ -8,8 +8,12 @@ const SETTER_OR_FACTORY = /^(?:(?:use|set|with)[A-Z]|of$|from$)/;
 
 function isBooleanType(parameter) {
   const type = parameter.typeAnnotation?.typeAnnotation;
-  if (type === undefined) return false;
-  if (type.type === 'TSBooleanKeyword') return true;
+  if (type === undefined) {
+    return false;
+  }
+  if (type.type === 'TSBooleanKeyword') {
+    return true;
+  }
   return (
     type.type === 'TSUnionType' && type.types.some(({ type: kind }) => kind === 'TSBooleanKeyword')
   );
@@ -38,7 +42,9 @@ function exportedNames(program) {
 function selectsBehavior(identifier) {
   const chain = [identifier];
   for (const node of chain) {
-    if (PASS_THROUGH.has(node.parent.type)) chain.push(node.parent);
+    if (PASS_THROUGH.has(node.parent.type)) {
+      chain.push(node.parent);
+    }
   }
   const root = chain.at(-1);
   return CONDITIONS.has(root.parent.type) && root.parent.test === root;
@@ -93,7 +99,9 @@ export const rule = {
     let exported = new Set();
     function check(fn) {
       const name = exportedFunctionName(fn, exported);
-      if (name === undefined || SETTER_OR_FACTORY.test(name) || isTypePredicate(fn)) return;
+      if (name === undefined || SETTER_OR_FACTORY.test(name) || isTypePredicate(fn)) {
+        return;
+      }
       const flags = new Set(fn.params.map(flagName).filter((flag) => flag !== undefined));
       for (const variable of sourceCode.getDeclaredVariables(fn)) {
         const switches = variable.references.some(({ identifier }) => selectsBehavior(identifier));

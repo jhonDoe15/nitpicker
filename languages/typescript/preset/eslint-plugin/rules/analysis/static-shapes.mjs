@@ -20,3 +20,7 @@ export function logicalOperands(test, operator) {
   }
   return operands.sort((first, second) => first.range[0] - second.range[0]);
 }
+
+export function isConcatenation(node) {
+  return node.type === 'BinaryExpression' && node.operator === '+';
+}

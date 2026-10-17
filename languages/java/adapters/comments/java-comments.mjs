@@ -10,6 +10,7 @@ import {
 const COMMENTS_TOOL = 'comments';
 const TODO_RULE = 'TodoWithoutIssue';
 const CODE_RULE = 'CommentedOutCode';
+const DELIMITER_LENGTH = '//'.length;
 const TOKENS =
   /"""(?:[^\\]|\\[\s\S])*?"""|"(?:[^"\\\n]|\\.)*"|'(?:[^'\\\n]|\\.)*'|\/\/[^\n]*|\/\*[\s\S]*?\*\//g;
 
@@ -79,9 +80,9 @@ function groupLineComments(source, comments) {
 
 function groupLines(group) {
   if (group[0].token.startsWith('//')) {
-    return group.map(({ token }) => token.slice(2).trim());
+    return group.map(({ token }) => token.slice(DELIMITER_LENGTH).trim());
   }
-  return bodyLines(group[0].token.slice(2, -2));
+  return bodyLines(group[0].token.slice(DELIMITER_LENGTH, -DELIMITER_LENGTH));
 }
 
 function groupReports(lines, isJavadoc) {

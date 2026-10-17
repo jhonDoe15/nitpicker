@@ -78,15 +78,21 @@ function oxlintSetting(name, setting) {
 }
 
 function residualRole(ruleId, translated, context) {
-  if (translated.plugin === undefined || !context.typedPluginRules.has(ruleId)) return 'none';
+  if (translated.plugin === undefined || !context.typedPluginRules.has(ruleId)) {
+    return 'none';
+  }
   return context.screenedRules.has(ruleId) ? 'screened' : 'only';
 }
 
 function addTranslatedRule(rules, context, { ruleId, setting, translated }) {
   rules[translated.name] = oxlintSetting(translated.name, setting);
   context.ruleNames.set(translated.name, ruleId);
-  if (translated.plugin !== undefined) addBridgedRule(context.plugins, translated.plugin, ruleId);
-  if (translated.typeAware) context.typeAware.value = true;
+  if (translated.plugin !== undefined) {
+    addBridgedRule(context.plugins, translated.plugin, ruleId);
+  }
+  if (translated.typeAware) {
+    context.typeAware.value = true;
+  }
 }
 
 function translateGroup(group, context) {
@@ -95,8 +101,12 @@ function translateGroup(group, context) {
   for (const [ruleId, setting] of Object.entries(group.rules)) {
     const translated = translateRule(ruleId, context);
     const role = residualRole(ruleId, translated, context);
-    if (role !== 'none') residualRules.push(ruleId);
-    if (role !== 'only') addTranslatedRule(rules, context, { ruleId, setting, translated });
+    if (role !== 'none') {
+      residualRules.push(ruleId);
+    }
+    if (role !== 'only') {
+      addTranslatedRule(rules, context, { ruleId, setting, translated });
+    }
   }
   return {
     override: { files: group.files.map(escapeGlob), globals: group.globals ?? {}, rules },
@@ -107,7 +117,9 @@ function translateGroup(group, context) {
 function addBridgedRule(plugins, plugin, ruleId) {
   const entry = plugins.get(plugin.alias) ?? { ...plugin, ruleNames: [] };
   const { rule } = splitRuleId(ruleId);
-  if (!entry.ruleNames.includes(rule)) entry.ruleNames.push(rule);
+  if (!entry.ruleNames.includes(rule)) {
+    entry.ruleNames.push(rule);
+  }
   plugins.set(plugin.alias, entry);
 }
 

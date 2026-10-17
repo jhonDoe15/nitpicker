@@ -42,13 +42,17 @@ function onlyCombined(variable, isAllowedUse) {
 
 function boundArray(sourceCode, declarator) {
   const declaration = declarator.parent;
-  if (declarator.id.type !== 'Identifier' || declaration.kind !== 'const') return undefined;
+  if (declarator.id.type !== 'Identifier' || declaration.kind !== 'const') {
+    return undefined;
+  }
   return sourceCode.getDeclaredVariables(declarator)[0];
 }
 
 function mappedConstant(sourceCode, call) {
   const declarator = call.parent;
-  if (declarator.type !== 'VariableDeclarator' || declarator.init !== call) return false;
+  if (declarator.type !== 'VariableDeclarator' || declarator.init !== call) {
+    return false;
+  }
   return onlyCombined(boundArray(sourceCode, declarator), () => false);
 }
 
@@ -61,8 +65,12 @@ export function isConcurrentBatch(callback, sourceCode) {
 
 export function isPushedForConcurrency(call, sourceCode) {
   const push = call.parent;
-  if (!isMethodCall(push, 'push') || !push.arguments.includes(call)) return false;
+  if (!isMethodCall(push, 'push') || !push.arguments.includes(call)) {
+    return false;
+  }
   const target = push.callee.object;
-  if (target.type !== 'Identifier') return false;
+  if (target.type !== 'Identifier') {
+    return false;
+  }
   return onlyCombined(findVariable({ sourceCode }, target, target.name), isPushTarget);
 }

@@ -15,12 +15,16 @@ function comparedType(node, services) {
 
 export function hasLiteralUnionType(context, node) {
   const services = typeServices(context);
-  if (services === undefined) return false;
+  if (services === undefined) {
+    return false;
+  }
   const checker = services.program.getTypeChecker();
   const type =
     comparedType(node, services) ??
     checker.getContextualType(services.esTreeNodeToTSNodeMap.get(node));
-  if (type === undefined) return false;
+  if (type === undefined) {
+    return false;
+  }
   const defined = checker.getNonNullableType(type);
   const members = defined.isUnion() ? defined.types : [defined];
   return members.every((member) => member.isStringLiteral());
@@ -28,7 +32,9 @@ export function hasLiteralUnionType(context, node) {
 
 export function hasBoundedKeys(context, node) {
   const services = typeServices(context);
-  if (services === undefined) return false;
+  if (services === undefined) {
+    return false;
+  }
   const checker = services.program.getTypeChecker();
   const type = services.getTypeAtLocation(node);
   return type.getProperties().length > 0 && checker.getIndexInfosOfType(type).length === 0;

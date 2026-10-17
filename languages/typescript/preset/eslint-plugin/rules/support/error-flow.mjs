@@ -34,14 +34,20 @@ const STEP = {
 };
 
 function nameOf(node) {
-  if (node?.type === IDENTIFIER) return node.name;
-  if (node?.type === MEMBER && !node.computed) return node.property.name;
+  if (node?.type === IDENTIFIER) {
+    return node.name;
+  }
+  if (node?.type === MEMBER && !node.computed) {
+    return node.property.name;
+  }
   return undefined;
 }
 
 export function isLogCall(call) {
   const { callee } = call;
-  if (callee.type !== MEMBER) return false;
+  if (callee.type !== MEMBER) {
+    return false;
+  }
   const owner = nameOf(callee.object) ?? '';
   const method = nameOf(callee.property);
   return (
@@ -56,7 +62,9 @@ function namesLogging(name) {
 
 function isLoggingCall(call) {
   const { callee } = call;
-  if (callee.type !== MEMBER) return namesLogging(nameOf(callee));
+  if (callee.type !== MEMBER) {
+    return namesLogging(nameOf(callee));
+  }
   const method = nameOf(callee.property);
   return (
     isLogCall(call) ||
@@ -67,31 +75,52 @@ function isLoggingCall(call) {
 }
 
 function isWrapperCall({ callee }) {
-  if (callee.type === IDENTIFIER) return WRAPPER_FUNCTIONS.has(callee.name);
+  if (callee.type === IDENTIFIER) {
+    return WRAPPER_FUNCTIONS.has(callee.name);
+  }
   return callee.type === MEMBER && WRAPPER_METHODS.has(nameOf(callee.property));
 }
 
 function stepThroughCall(call, node) {
-  if (call.callee === node) return STEP.climb;
-  if (isLoggingCall(call) || DISCARDING_FUNCTIONS.has(nameOf(call.callee))) return STEP.stop;
+  if (call.callee === node) {
+    return STEP.climb;
+  }
+  if (isLoggingCall(call) || DISCARDING_FUNCTIONS.has(nameOf(call.callee))) {
+    return STEP.stop;
+  }
   return isWrapperCall(call) ? STEP.climb : STEP.outflow;
 }
 
 function stepThroughOperator(node, parent) {
-  if (parent.type === 'ConditionalExpression') return parent.test === node ? STEP.stop : STEP.climb;
-  if (parent.type === 'BinaryExpression') return parent.operator === '+' ? STEP.climb : STEP.stop;
-  if (parent.type === MEMBER) return parent.object === node ? STEP.climb : STEP.stop;
+  if (parent.type === 'ConditionalExpression') {
+    return parent.test === node ? STEP.stop : STEP.climb;
+  }
+  if (parent.type === 'BinaryExpression') {
+    return parent.operator === '+' ? STEP.climb : STEP.stop;
+  }
+  if (parent.type === MEMBER) {
+    return parent.object === node ? STEP.climb : STEP.stop;
+  }
   return STEP.stop;
 }
 
 function stepFrom(node) {
   const { parent } = node;
-  if (OUTFLOW_PARENTS.has(parent.type)) return STEP.outflow;
-  if (parent.type === 'CallExpression') return stepThroughCall(parent, node);
-  if (parent.type === 'AssignmentExpression')
+  if (OUTFLOW_PARENTS.has(parent.type)) {
+    return STEP.outflow;
+  }
+  if (parent.type === 'CallExpression') {
+    return stepThroughCall(parent, node);
+  }
+  if (parent.type === 'AssignmentExpression') {
     return parent.right === node ? STEP.assign : STEP.stop;
-  if (parent.type === 'VariableDeclarator') return parent.init === node ? STEP.alias : STEP.stop;
-  if (parent.type === 'Property') return parent.value === node ? STEP.climb : STEP.stop;
+  }
+  if (parent.type === 'VariableDeclarator') {
+    return parent.init === node ? STEP.alias : STEP.stop;
+  }
+  if (parent.type === 'Property') {
+    return parent.value === node ? STEP.climb : STEP.stop;
+  }
   return VALUE_PARENTS.has(parent.type) ? STEP.climb : stepThroughOperator(node, parent);
 }
 
@@ -99,8 +128,12 @@ function resolveVariable(sourceCode, identifier) {
   const pending = [sourceCode.getScope(identifier)];
   for (const scope of pending) {
     const variable = scope.set.get(identifier.name);
-    if (variable) return variable;
-    if (scope.upper) pending.push(scope.upper);
+    if (variable) {
+      return variable;
+    }
+    if (scope.upper) {
+      pending.push(scope.upper);
+    }
   }
   return undefined;
 }
@@ -115,35 +148,56 @@ function isInside(outer, inner) {
 
 export function flowsOut(start, { catchNode, sourceCode, acceptsReturn = () => true }) {
   const seen = new Set();
+  const stopped = { flows: false, next: [] };
+  const escaped = { flows: true, next: [] };
 
-  function followVariable(target) {
+  function referencesOf(target) {
     const variable = target.type === IDENTIFIER ? resolveVariable(sourceCode, target) : undefined;
-    if (variable === undefined || seen.has(variable)) return false;
+    if (variable === undefined || seen.has(variable)) {
+      return [];
+    }
     seen.add(variable);
-    return variable.references.some(
-      (reference) => reference.identifier !== target && follow(reference.identifier),
-    );
+    return variable.references
+      .map((reference) => reference.identifier)
+      .filter((identifier) => identifier !== target);
   }
 
-  function followAssignment(assignment) {
-    const { left } = assignment;
+  function assignmentOutcome({ left }) {
     const variable = left.type === IDENTIFIER ? resolveVariable(sourceCode, left) : undefined;
-    if (variable === undefined) return true;
+    if (variable === undefined) {
+      return escaped;
+    }
     const declaredInside = variable.defs.some((definition) => isInside(catchNode, definition.name));
-    return declaredInside ? followVariable(left) : true;
+    return declaredInside ? { flows: false, next: referencesOf(left) } : escaped;
   }
 
-  function follow(from) {
+  function walk(from) {
     const pending = [from];
     for (const node of pending) {
       const step = stepFrom(node);
-      if (step === STEP.outflow) return !isBareReturn(node) || acceptsReturn(node.parent);
-      if (step === STEP.assign) return followAssignment(node.parent);
-      if (step === STEP.alias) return followVariable(node.parent.id);
-      if (step === STEP.climb) pending.push(node.parent);
+      if (step === STEP.outflow) {
+        return !isBareReturn(node) || acceptsReturn(node.parent) ? escaped : stopped;
+      }
+      if (step === STEP.assign) {
+        return assignmentOutcome(node.parent);
+      }
+      if (step === STEP.alias) {
+        return { flows: false, next: referencesOf(node.parent.id) };
+      }
+      if (step === STEP.climb) {
+        pending.push(node.parent);
+      }
     }
-    return false;
+    return stopped;
   }
 
-  return follow(start);
+  const starts = [start];
+  for (const from of starts) {
+    const { flows, next } = walk(from);
+    if (flows) {
+      return true;
+    }
+    starts.push(...next);
+  }
+  return false;
 }

@@ -1,3 +1,4 @@
+import { isConcatenation } from '../analysis/static-shapes.mjs';
 import { isLogCall } from '../support/error-flow.mjs';
 import { joinedWords } from '../support/identifier-words.mjs';
 import { hasCredentialShape, isSecretAssignment, staticString } from './secret-values.mjs';
@@ -29,14 +30,12 @@ const SECRET_NAME = new RegExp(
 );
 const FALLBACK_OPERATORS = new Set(['||', '??']);
 
-function isConcatenation(node) {
-  return node.type === 'BinaryExpression' && node.operator === '+';
-}
-
 function inStaticConcatenation(node) {
   const chain = [node];
   for (const current of chain) {
-    if (isConcatenation(current.parent)) chain.push(current.parent);
+    if (isConcatenation(current.parent)) {
+      chain.push(current.parent);
+    }
   }
   return chain.length > 1 && staticString(chain.at(-1)) !== undefined;
 }
@@ -59,13 +58,17 @@ function candidateStrings(start) {
     const branches = fallbackBranches(node);
     pending.push(...branches);
     const text = branches.length === 0 ? staticString(node) : undefined;
-    if (text !== undefined) found.push({ node, text });
+    if (text !== undefined) {
+      found.push({ node, text });
+    }
   }
   return found;
 }
 
 function keyText(key) {
-  if (key.type === IDENTIFIER) return key.name;
+  if (key.type === IDENTIFIER) {
+    return key.name;
+  }
   return key.type === LITERAL && typeof key.value === STRING ? key.value : undefined;
 }
 
@@ -78,7 +81,9 @@ function targetName(node) {
     case 'PropertyDefinition':
       return node.computed ? undefined : keyText(node.key);
     case 'AssignmentExpression':
-      if (node.left.type !== MEMBER) return node.left.name;
+      if (node.left.type !== MEMBER) {
+        return node.left.name;
+      }
       return node.left.computed ? undefined : keyText(node.left.property);
     default:
       return undefined;
@@ -86,8 +91,12 @@ function targetName(node) {
 }
 
 function valueOf(node) {
-  if (node.type === DECLARATOR) return node.init;
-  if (node.type === 'AssignmentPattern') return node.right;
+  if (node.type === DECLARATOR) {
+    return node.init;
+  }
+  if (node.type === 'AssignmentPattern') {
+    return node.right;
+  }
   return node.type === 'AssignmentExpression' ? node.right : node.value;
 }
 
@@ -101,15 +110,21 @@ const PASS_THROUGH = new Set([
 ]);
 
 function ownNames(node) {
-  if (node.type === IDENTIFIER) return [node.name];
-  if (node.type === MEMBER && !node.computed) return [keyText(node.property) ?? ''];
+  if (node.type === IDENTIFIER) {
+    return [node.name];
+  }
+  if (node.type === MEMBER && !node.computed) {
+    return [keyText(node.property) ?? ''];
+  }
   const direct = node.type === 'Property' && [IDENTIFIER, MEMBER].includes(node.value.type);
   const key = direct && !node.computed ? keyText(node.key) : undefined;
   return key === undefined || STATUS_KEY.test(key) ? [] : [key];
 }
 
 function loggedChildren(node) {
-  if (Array.isArray(node)) return node;
+  if (Array.isArray(node)) {
+    return node;
+  }
   switch (node?.type) {
     case 'ObjectExpression':
       return node.properties;
@@ -136,7 +151,9 @@ function namesIn(start) {
   const names = [];
   const pending = [start];
   for (const node of pending) {
-    if (isNode(node)) names.push(...ownNames(node));
+    if (isNode(node)) {
+      names.push(...ownNames(node));
+    }
     pending.push(...loggedChildren(node));
   }
   return names;
@@ -173,7 +190,9 @@ export const rule = {
   create(context) {
     function checkAssignment(node) {
       const name = targetName(node);
-      if (name === undefined || !isSecretName(name)) return;
+      if (name === undefined || !isSecretName(name)) {
+        return;
+      }
       for (const { node: literal, text } of candidateStrings(valueOf(node))) {
         if (isSecretAssignment(text, name)) {
           context.report({ node: literal, messageId: 'hardcoded', data: { name } });
@@ -196,7 +215,9 @@ export const rule = {
       TemplateLiteral: checkShape,
       'BinaryExpression[operator="+"]': checkShape,
       CallExpression(node) {
-        if (!isLogCall(node)) return;
+        if (!isLogCall(node)) {
+          return;
+        }
         for (const name of new Set(loggedSecretNames(node))) {
           context.report({ node, messageId: 'logged', data: { name } });
         }

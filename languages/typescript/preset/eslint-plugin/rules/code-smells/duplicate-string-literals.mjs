@@ -37,7 +37,9 @@ const SKIPPED_PARENTS = new Set([
 ]);
 
 function textOf(node) {
-  if (node.type === 'Literal') return typeof node.value === 'string' ? node.value : undefined;
+  if (node.type === 'Literal') {
+    return typeof node.value === 'string' ? node.value : undefined;
+  }
   return node.expressions.length === 0 ? node.quasis[0].value.cooked : undefined;
 }
 
@@ -46,7 +48,9 @@ function isDiscriminant(parent) {
 }
 
 function calleeName({ callee }) {
-  if (callee.type === 'Identifier') return callee.name;
+  if (callee.type === 'Identifier') {
+    return callee.name;
+  }
   return callee.type === 'MemberExpression' && !callee.computed ? callee.property.name : undefined;
 }
 
@@ -61,7 +65,9 @@ function isTranslationArgument(node) {
 
 function isTranslationKey(node) {
   const { parent } = node;
-  if (parent.type === 'JSXExpressionContainer') return parent.parent.type === 'JSXAttribute';
+  if (parent.type === 'JSXExpressionContainer') {
+    return parent.parent.type === 'JSXAttribute';
+  }
   const inMessageDescriptor =
     parent.type === PROPERTY && parent.value === node && parent.parent.type === 'ObjectExpression';
   return (
@@ -74,10 +80,15 @@ function isCountable(node, value) {
   if (value === undefined || value.length < MINIMUM_LENGTH || !ALPHANUMERIC.test(value)) {
     return false;
   }
-  if (MODULE_SOURCE_PARENTS.has(parent.type) || SKIPPED_PARENTS.has(parent.type)) return false;
-  if (parent.type === 'SwitchCase' || isDiscriminant(parent) || isTranslationKey(node))
+  if (MODULE_SOURCE_PARENTS.has(parent.type) || SKIPPED_PARENTS.has(parent.type)) {
     return false;
-  if (KEY_PARENTS.has(parent.type) && parent.key === node && !parent.computed) return false;
+  }
+  if (parent.type === 'SwitchCase' || isDiscriminant(parent) || isTranslationKey(node)) {
+    return false;
+  }
+  if (KEY_PARENTS.has(parent.type) && parent.key === node && !parent.computed) {
+    return false;
+  }
   return !(parent.type === CALL && parent.callee.name === 'require');
 }
 
@@ -104,7 +115,9 @@ export const rule = {
     return {
       'Literal, TemplateLiteral'(node) {
         const value = textOf(node);
-        if (!isCountable(node, value) || hasLiteralUnionType(context, node)) return;
+        if (!isCountable(node, value) || hasLiteralUnionType(context, node)) {
+          return;
+        }
         const nodes = uses.get(value) ?? [];
         nodes.push(node);
         uses.set(value, nodes);

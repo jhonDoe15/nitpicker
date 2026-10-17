@@ -1,5 +1,6 @@
 import { depthFirst } from '../../../../../../shared/traversal.mjs';
 import { variableNamed } from '../analysis/ancestry.mjs';
+import { isConcatenation } from '../analysis/static-shapes.mjs';
 import { importedCalleeName, moduleBindings } from '../analysis/subprocess-calls.mjs';
 import { isContained, unwrapped } from './path-containment.mjs';
 
@@ -100,10 +101,6 @@ function isTainted(scope, expression) {
     }
   }
   return false;
-}
-
-function isConcatenation(node) {
-  return node.type === 'BinaryExpression' && node.operator === '+';
 }
 
 function concatenationOperands(node) {

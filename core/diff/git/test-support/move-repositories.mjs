@@ -6,7 +6,6 @@ import {
   readdirSync,
   realpathSync,
   rmSync,
-  statSync,
 } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
@@ -17,12 +16,13 @@ import { writeFiles } from './fixture-files.mjs';
 import { copyGitTemplate, fixtureGit } from './git-repository.mjs';
 
 const FINDING_MARKER = '// FINDING ';
+const PROBE = 'probe';
 
 export function probeAnalyzer() {
   return {
-    name: 'probe',
+    name: PROBE,
     version: '1.0.0',
-    configurationHash: 'probe',
+    configurationHash: PROBE,
     exclusions: [],
     createInvocation: ({ projectRoot }) => ({
       command: process.execPath,
@@ -63,9 +63,10 @@ function scan(projectRoot, sourceRoot) {
   if (directory === undefined || !existsSync(directory)) {
     return [];
   }
-  return readdirSync(directory, { recursive: true })
-    .map((name) => `${sourceRoot}/${String(name).split(path.sep).join('/')}`)
-    .filter((relativePath) => statSync(insideRoot(projectRoot, relativePath)).isFile())
+  return readdirSync(directory, { recursive: true, withFileTypes: true })
+    .filter((entry) => entry.isFile())
+    .map((entry) => path.relative(directory, path.join(entry.parentPath, entry.name)))
+    .map((name) => `${sourceRoot}/${name.split(path.sep).join('/')}`)
     .sort()
     .flatMap((relativePath) => findingsIn(projectRoot, relativePath));
 }
@@ -79,7 +80,7 @@ function findingsIn(projectRoot, relativePath) {
         ? []
         : [
             {
-              tool: 'probe',
+              tool: PROBE,
               rule: 'probe-rule',
               path: relativePath,
               classification: 'enforceable',
@@ -107,24 +108,24 @@ export function git(root, ...gitArguments) {
 }
 
 export function createMoveRepositories() {
-  const repositories = [];
-  const template = { root: undefined };
+  const folders = { template: undefined, test: undefined };
   beforeAll(() => {
-    template.root = realpathSync(mkdtempSync(path.join(tmpdir(), 'nitpicker-moves-template-')));
-    git(template.root, 'init', '-q', '-b', 'main');
+    folders.template = realpathSync(mkdtempSync(path.join(tmpdir(), 'nitpicker-moves-template-')));
+    git(folders.template, 'init', '-q', '-b', 'main');
   });
   afterEach(() => {
-    for (const root of repositories.splice(0)) {
-      rmSync(root, { recursive: true, force: true });
+    if (folders.test !== undefined) {
+      rmSync(folders.test, { recursive: true, force: true });
+      folders.test = undefined;
     }
   });
   afterAll(() => {
-    rmSync(template.root, { recursive: true, force: true });
+    rmSync(folders.template, { recursive: true, force: true });
   });
   return (files) => {
-    const root = realpathSync(mkdtempSync(path.join(tmpdir(), 'nitpicker-moves-')));
-    repositories.push(root);
-    copyGitTemplate(template.root, root);
+    folders.test ??= realpathSync(mkdtempSync(path.join(tmpdir(), 'nitpicker-moves-')));
+    const root = mkdtempSync(path.join(folders.test, 'repository-'));
+    copyGitTemplate(folders.template, root);
     write(root, files);
     git(root, 'add', '-A');
     git(root, 'commit', '-q', '-m', 'base');
