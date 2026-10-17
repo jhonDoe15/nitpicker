@@ -204,6 +204,7 @@ function createTask(analyzer, context) {
   return {
     name: analyzer.name,
     dependencies: analyzer.dependencies ?? [],
+    toleratedDependencyErrors: analyzer.toleratedDependencyErrors ?? [],
     concurrencyWeight: analyzer.concurrencyWeight ?? 1,
     concurrencyGroup: analyzer.concurrencyGroup,
     executionPriority: analyzer.executionPriority ?? 0,
