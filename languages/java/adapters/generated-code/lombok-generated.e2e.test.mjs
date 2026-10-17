@@ -2,7 +2,7 @@ import { mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSy
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterAll, describe, expect, it } from 'vitest';
-import { collectJavaFindings } from '../java-diff.mjs';
+import { analyzeJavaSnapshot } from '../java-runner.mjs';
 
 const enabled = process.env.NITPICKER_JAVA_E2E === '1';
 const gradle = process.env.NITPICKER_GRADLE ?? 'gradle';
@@ -156,9 +156,9 @@ describe.skipIf(!enabled)(
         'build.gradle': BUILD_GRADLE,
       });
 
-      expect(coverageAndMutants(collectJavaFindings(root, { gradle, policy: {} }))).toEqual(
-        ONLY_THE_WRITTEN_CODE,
-      );
+      expect(
+        coverageAndMutants(analyzeJavaSnapshot(root, { gradle, policy: {} }).findings),
+      ).toEqual(ONLY_THE_WRITTEN_CODE);
       expect(readFileSync(path.join(root, 'lombok.config'), 'utf8')).toBe(
         'lombok.addLombokGeneratedAnnotation = true\n',
       );
@@ -171,7 +171,7 @@ describe.skipIf(!enabled)(
           'config.stopBubbling = true\nlombok.addLombokGeneratedAnnotation = false\n',
       });
 
-      expect(coverageAndMutants(collectJavaFindings(root, { maven, policy: {} }))).toEqual(
+      expect(coverageAndMutants(analyzeJavaSnapshot(root, { maven, policy: {} }).findings)).toEqual(
         ONLY_THE_WRITTEN_CODE,
       );
       expect(readFileSync(path.join(root, 'lombok.config'), 'utf8')).toBe(

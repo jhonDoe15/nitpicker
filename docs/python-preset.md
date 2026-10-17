@@ -319,10 +319,12 @@ Details that are decisions rather than the table:
   as `[]`, `()` or `{}`), or only reports the error: a call on a logger (`logger.exception(...)`,
   `logging.warning(...)`, `logging.getLogger(...).error(...)`), `print`, `warnings.warn` or
   `traceback.print_exc`. Logging alone is not handling: the failure disappears from the caller's
-  point of view, as in the TypeScript `nitpicker/no-silent-catch` and the Java preset. A handler that raises, calls anything
-  else, assigns or returns a name or computed value (a failure value built from the error, or a
-  named default) is allowed, with or without a log call next to it, and so is one that uses the
-  bound name (`except E as error: ...`) in a way that is not a log call. The one exception
+  point of view, as in the TypeScript `nitpicker/no-silent-catch`, the Java `pmd/SwallowedException`
+  and the Kotlin `exceptions.SwallowedException` rules. A handler that raises, breaks, calls anything
+  else, or returns or assigns a computed value or one built from the error (a failure result
+  carrying it, `errors.append(error)`) is allowed, with or without a log call next to it, and so is
+  one that uses the bound name (`except E as error: ...`) in a way that is not a log call. Returning
+  or assigning a bare name (a module constant, a parameter) is still swallowing. The one exception
   inside the list is the optional-dependency idiom: a handler that catches only `ImportError` or
   `ModuleNotFoundError` may assign constants (`except ImportError: yaml = None` or
   `HAS_YAML = False`); an `except ImportError:` that only passes or returns is still flagged. It replaces ruff's
@@ -330,9 +332,9 @@ Details that are decisions rather than the table:
   test files too. `break` is not in the list, since it ends the loop rather than ignoring one item.
   The subject is `except <type>` (`except (A, B)`, plain `except` for a bare one), so identities
   survive edits above; repeats in a file are numbered. The message says to re-raise it with its
-  cause (`raise DomainError(...) from error`), return a failure value built from it or a named
-  default, that logging alone is not handling, that `contextlib.suppress(SpecificError)` ignores
-  one expected error, and the `python.exceptions` entry for `swallowed-exception` for a handler that
+  cause (`raise DomainError(...) from error`), return a failure result that carries it or collect
+  it, that logging alone is not handling, that `contextlib.suppress(SpecificError)` ignores
+  one expected error, that a test asserts the error with `with pytest.raises(SpecificError):`, and the `python.exceptions` entry for `swallowed-exception` for a handler that
   must stay (a lookup that answers `False` for bad input, say). Untested `except` handlers are not
   gated by branch coverage either, since coverage.py emits no arcs for them.
 - `blind-suppress` closes the way around the rule above: `contextlib.suppress(Exception)`,

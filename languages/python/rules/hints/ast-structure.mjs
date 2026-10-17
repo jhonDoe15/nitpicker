@@ -22,7 +22,7 @@ export const STRUCTURE_HINTS = [
     describe: (subject) =>
       `\`${subject}\` swallows the error: it only logs it or returns a default, and carries on`,
     allowed:
-      'Re-raise it with its cause (`raise DomainError(...) from error`), return a failure result that carries the error (`return Rejected(str(error))`), or collect it for the caller (`errors.append(error)`); logging alone is not handling. `contextlib.suppress(SpecificError)` ignores one expected error.',
+      'Re-raise it with its cause (`raise DomainError(...) from error`), return a failure result that carries the error (`return Rejected(str(error))`), or collect it for the caller (`errors.append(error)`); logging alone is not handling. `contextlib.suppress(SpecificError)` ignores one expected error. In a test, assert the error with `with pytest.raises(SpecificError):`.',
   },
   {
     tool: RULES_TOOL,

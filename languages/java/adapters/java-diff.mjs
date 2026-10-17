@@ -170,7 +170,6 @@ function mavenFindings(projectRoot, options) {
 
 export function collectJavaFindings(root, options = {}) {
   const projectRoot = path.resolve(root);
-  markLombokGeneratedCode(projectRoot);
   const findings =
     detectJavaBuild(projectRoot) === 'maven'
       ? mavenFindings(projectRoot, options)
@@ -211,9 +210,11 @@ export function runJavaDiff({
   });
   const options = { gradle, maven, initScript, policy };
   function collectAt(sha) {
-    return withTemporaryWorktree(repositoryRoot, sha, (worktreeRoot) =>
-      collectJavaFindings(path.join(worktreeRoot, projectRelativePath), options),
-    );
+    return withTemporaryWorktree(repositoryRoot, sha, (worktreeRoot) => {
+      const projectRoot = path.join(worktreeRoot, projectRelativePath);
+      markLombokGeneratedCode(projectRoot);
+      return collectJavaFindings(projectRoot, options);
+    });
   }
 
   const baseFindings = collectAt(comparison.mergeBaseSha);

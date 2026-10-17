@@ -1,5 +1,6 @@
 import { realpathSync } from 'node:fs';
 import { collectJavaFindings } from './java-diff.mjs';
+import { markLombokGeneratedCode } from './generated-code/lombok-config.mjs';
 import { detectJavaBuild } from '../builds/java-build.mjs';
 import { GRADLE_PRESETS } from './gradle-presets.mjs';
 import { EXCEPTION_SEPARATOR } from './java-policy.mjs';
@@ -17,6 +18,10 @@ export function analyzeJavaSnapshot(
   { gradle = process.env.NITPICKER_GRADLE, maven = process.env.NITPICKER_MAVEN, policy } = {},
 ) {
   try {
+    const { note } = markLombokGeneratedCode(projectRoot);
+    if (note !== undefined) {
+      process.stderr.write(`${note}\n`);
+    }
     return {
       findings: collectJavaFindings(projectRoot, {
         gradle: gradle || undefined,
