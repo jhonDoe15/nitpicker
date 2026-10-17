@@ -22,6 +22,10 @@ def initScriptDir = buildscript.sourceFile.parentFile
 // END SH5 structure metrics
 
 def nitpickerArgument = { String name -> gradle.startParameter.projectProperties[name] }
+def nitpickerStyle = {
+    def file = nitpickerArgument('nitpicker.kotlin.styleFile')
+    file == null ? [:] : new groovy.json.JsonSlurper().parse(new File(file.toString()), 'UTF-8')
+}
 
 def analysisRoot = gradle.startParameter.currentDir
 def reportBase = nitpickerArgument('nitpicker.reportDir')
@@ -574,6 +578,21 @@ allprojects {
                 // unresolved too, so rules report less there. --jdk-home makes JDK types resolve: it is the project's Gradle
                 // Java toolchain JDK when the project declares one (java.toolchain, kotlin.jvmToolchain), else the JDK
                 // that runs Gradle.
+                tasks.register('nitpickerDetektLayers') {
+                    group = 'nitpicker'
+                    def layersFile = new File(temporaryDir, 'layers.txt')
+                    ext.layersFile = layersFile
+                    doLast {
+                        def conventions = new File(temporaryDir, 'followed-conventions.yml')
+                        conventions.text = nitpickerStyle().detektConventions ?: ''
+                        def paths = [conventions: conventions.absolutePath,
+                                     project    : nitpickerArgument('nitpicker.kotlin.detektConfig')]
+                        def names = (nitpickerArgument('nitpicker.kotlin.detektLayers') ?: '').toString()
+                            .split(',')*.trim().findAll { it }
+                        layersFile.text = names.collect { paths[it] }.findAll { it }.collect { it + '\n' }.join('')
+                    }
+                }
+
                 tasks.register('nitpickerDetekt', JavaExec) {
                     group = 'nitpicker'
                     classpath = configurations.nitpickerDetekt
@@ -585,11 +604,11 @@ allprojects {
                     def validationOff = new File(initScriptDir, '../detekt/detekt-validation.yml').canonicalFile
                     dependsOn 'compileJava', 'compileTestJava'
                     onlyIf { !kotlinLintedDirs().isEmpty() }
+                    dependsOn 'nitpickerDetektLayers'
                     doFirst {
                         reportDir.get().asFile.mkdirs()
                         standardOutput = log
                         errorOutput = log
-                        def projectConfig = nitpickerArgument('nitpicker.kotlin.detektConfig')
                         def mergedLists = nitpickerArgument('nitpicker.kotlin.detektLists')
                         def mainOutput = sourceSets.main.output.files
                         def libraries = (sourceSets.main.compileClasspath.files + sourceSets.test.compileClasspath.files).findAll {
@@ -599,12 +618,13 @@ allprojects {
                         def typeResolutionClasspath = (configurations.nitpickerDetektStdlib.files + analyzedClassDirs().findAll { it.exists() }
                                 + [testJavaClasses].findAll { it.exists() } + libraries).unique()
                             .collect { it.absolutePath }.join(File.pathSeparator)
+                        def styleLayers = tasks.named('nitpickerDetektLayers').get().ext.layersFile.readLines().findAll { it }
                         args(['--input', kotlinLintedDirs().join(','),
                               '--includes', '**/*.kt',
                               '--report', "sarif:${report.get().asFile.absolutePath}".toString(),
                               '--base-path', analysisRoot.absolutePath,
                               '--build-upon-default-config',
-                              '--config', ([projectConfig, nitpickerConfig.absolutePath, mergedLists, validationOff.absolutePath]).findAll { it }.join(','),
+                              '--config', (styleLayers + [nitpickerConfig.absolutePath, mergedLists, validationOff.absolutePath]).findAll { it }.join(','),
                               '--classpath', typeResolutionClasspath,
                               '--jdk-home', detektJdkHome()])
                     }
@@ -616,6 +636,48 @@ allprojects {
                     }
                 }
 
+                // ktlint, and ktfmt when it reads .editorconfig files, run in a mirror of the Kotlin sources: the
+                // .editorconfig files above the checkout and the ones the project did not list cannot reach them. The
+                // mirror has the .editorconfig files of the style file at their repository relative paths and the
+                // sources of this module below the folder of the build, so a section such as [src/**/*.kt] of any of
+                // them matches the same files as in the repository. ktfmt without .editorconfig runs in the analysis root.
+                def styleMirrorNeeded = {
+                    kotlinFormatter() == 'ktlint' ||
+                        (kotlinFormatter() == 'ktfmt' && nitpickerArgument('nitpicker.kotlin.ktfmtEditorconfig') == 'true')
+                }
+                tasks.register('nitpickerKotlinStyleWorkspace') {
+                    group = 'nitpicker'
+                    def workspace = new File(temporaryDir, 'workspace')
+                    ext.workspace = workspace
+                    ext.moduleWorkspace = workspace
+                    ext.defaultsFile = new File(temporaryDir, 'ktlint-defaults.editorconfig')
+                    onlyIf { styleMirrorNeeded() && !kotlinLintedFiles().isEmpty() }
+                    doLast {
+                        project.delete(workspace)
+                        workspace.mkdirs()
+                        def style = nitpickerStyle()
+                        ext.moduleWorkspace = style.offset ? new File(workspace, style.offset) : workspace
+                        (style.editorconfigs ?: [[path: '.editorconfig', text: 'root = true\n']]).each { entry ->
+                            def target = new File(workspace, entry.path.toString())
+                            if (!target.canonicalPath.startsWith(workspace.canonicalPath + File.separator)) {
+                                throw new GradleException("The style file names ${entry.path}, which is outside the mirror")
+                            }
+                            target.parentFile.mkdirs()
+                            target.text = entry.text
+                        }
+                        kotlinLintedFiles().each { file ->
+                            def target = new File(ext.moduleWorkspace, relative(file))
+                            target.parentFile.mkdirs()
+                            target.bytes = file.bytes
+                        }
+                        ext.defaultsFile.delete()
+                        def defaults = style.ktlintDefaults
+                        if (defaults) {
+                            ext.defaultsFile.text = defaults
+                        }
+                    }
+                }
+
                 tasks.register('nitpickerKtlint', JavaExec) {
                     group = 'nitpicker'
                     classpath = configurations.nitpickerKtlint
@@ -623,15 +685,19 @@ allprojects {
                     ignoreExitValue = true
                     def log = new ByteArrayOutputStream()
                     def report = reportDir.map { it.file('ktlint.sarif') }
-                    workingDir = analysisRoot
+                    dependsOn 'nitpickerKotlinStyleWorkspace'
                     onlyIf { kotlinFormatter() == 'ktlint' && !kotlinLintedFiles().isEmpty() }
                     doFirst {
                         reportDir.get().asFile.mkdirs()
                         standardOutput = log
                         errorOutput = log
                         report.get().asFile.delete()
+                        def styleWorkspace = tasks.named('nitpickerKotlinStyleWorkspace').get()
+                        workingDir = styleWorkspace.ext.moduleWorkspace
+                        def defaultsArguments = styleWorkspace.ext.defaultsFile.exists()
+                            ? ["--editorconfig=${styleWorkspace.ext.defaultsFile.absolutePath}".toString()] : []
                         args(['--relative', "--reporter=sarif,output=${report.get().asFile.absolutePath}".toString()] +
-                            kotlinLintedDirs().collect { "${relative(it)}/**/*.kt".toString() })
+                            defaultsArguments + kotlinLintedDirs().collect { "${relative(it)}/**/*.kt".toString() })
                     }
                     doLast {
                         if (executionResult.get().exitValue > 1 || !report.get().asFile.exists()) {
@@ -647,15 +713,16 @@ allprojects {
                     ignoreExitValue = true
                     def changed = new ByteArrayOutputStream()
                     def errors = new ByteArrayOutputStream()
-                    workingDir = analysisRoot
+                    dependsOn 'nitpickerKotlinStyleWorkspace'
                     onlyIf { kotlinFormatter() == 'ktfmt' && !kotlinLintedFiles().isEmpty() }
                     doFirst {
                         standardOutput = changed
                         errorOutput = errors
+                        workingDir = styleMirrorNeeded() ? tasks.named('nitpickerKotlinStyleWorkspace').get().ext.moduleWorkspace : analysisRoot
                         def style = "--${nitpickerArgument('nitpicker.kotlin.ktfmtStyle') ?: 'meta'}-style".toString()
                         def argumentFile = new File(temporaryDir, 'ktfmt.args')
                         argumentFile.text = ([style, '--dry-run'] +
-                            (nitpickerArgument('nitpicker.kotlin.editorconfig') == 'true' ? ['--enable-editorconfig'] : []) +
+                            (nitpickerArgument('nitpicker.kotlin.ktfmtEditorconfig') == 'true' ? ['--enable-editorconfig'] : []) +
                             kotlinLintedFiles().collect { relative(it) }).collect { it + '\n' }.join('')
                         args("@${argumentFile.absolutePath}".toString())
                     }

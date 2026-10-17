@@ -1,7 +1,7 @@
 import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { runGit } from '../../../../core/diff/git/repository/command.mjs';
-import { detectKotlinFormat } from '../kotlin/kotlin-tools.mjs';
+import { kotlinFormatterOf } from '../kotlin/kotlin-tools.mjs';
 
 const BUILD_FILE =
   /(?:^|\/)(?:pom\.xml|[^/]+\.gradle(?:\.kts)?|libs\.versions\.toml|[^/]+\.versions\.toml)$/u;
@@ -28,11 +28,10 @@ export function declaresSpring(projectRoot) {
 }
 
 export function javaHeadFacts(projectRoot, config) {
-  const kotlin = config.preset === 'kotlin' ? detectKotlinFormat(projectRoot) : undefined;
   return {
     ...(declaresSpring(projectRoot) ? { spring: true } : {}),
-    ...(kotlin === undefined
-      ? {}
-      : { kotlin: { ...kotlin, formatter: config.kotlin?.formatter ?? kotlin.formatter } }),
+    ...(config.preset === 'kotlin'
+      ? { kotlin: { formatter: kotlinFormatterOf(projectRoot, config.kotlin?.formatter) } }
+      : {}),
   };
 }

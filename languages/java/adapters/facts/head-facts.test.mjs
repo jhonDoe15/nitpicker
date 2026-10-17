@@ -81,10 +81,7 @@ describe('javaHeadFacts', () => {
   it('reads the formatter the Kotlin build declares, unless the config pins one', () => {
     const root = createGitRepository(kotlinBuild('id("org.jlleitschuh.gradle.ktlint")')).root;
 
-    expect(javaHeadFacts(root, { preset: 'kotlin' }).kotlin).toEqual({
-      formatter: 'ktlint',
-      ktfmtStyle: 'meta',
-    });
+    expect(javaHeadFacts(root, { preset: 'kotlin' }).kotlin).toEqual({ formatter: 'ktlint' });
     expect(
       javaHeadFacts(root, { preset: 'kotlin', kotlin: { formatter: 'none' } }).kotlin?.formatter,
     ).toBe('none');
@@ -116,27 +113,20 @@ describe('javaHeadFacts', () => {
       head,
     );
 
-    expect([head.spring, head.kotlin]).toEqual([true, { formatter: 'ktfmt', ktfmtStyle: 'meta' }]);
-    expect([base.spring, base.kotlin]).toEqual([true, { formatter: 'ktfmt', ktfmtStyle: 'meta' }]);
+    expect([head.spring, head.kotlin]).toEqual([true, { formatter: 'ktfmt' }]);
+    expect([base.spring, base.kotlin]).toEqual([true, { formatter: 'ktfmt' }]);
   });
 
   it('reaches the runner policy from the policy file', () => {
     const directory = realpathSync(mkdtempSync(path.join(tmpdir(), 'nitpicker-head-facts-')));
     roots.push(directory);
     const file = path.join(directory, 'policy.json');
-    writeFileSync(
-      file,
-      JSON.stringify({ spring: true, kotlin: { formatter: 'ktlint', ktfmtStyle: 'google' } }),
-    );
+    writeFileSync(file, JSON.stringify({ spring: true, kotlin: { formatter: 'ktlint' } }));
     const { policy } = readRunnerPolicy(['--project-root', '/p', '--kotlin-formatter', 'none'], {
       NITPICKER_POLICY: file,
     });
 
-    expect([policy.spring, policy.kotlinFormatter, policy.ktfmtStyle]).toEqual([
-      true,
-      'ktlint',
-      'google',
-    ]);
+    expect([policy.spring, policy.kotlinFormatter]).toEqual([true, 'ktlint']);
     expect(
       readRunnerPolicy(['--project-root', '/p', '--kotlin-formatter', 'none'], {}).policy,
     ).toMatchObject({
@@ -147,13 +137,8 @@ describe('javaHeadFacts', () => {
   it('turns Spring on and picks the formatter in the Gradle run from the policy', () => {
     expect(gradleArguments({ spring: true })).toContain('-Pnitpicker.spring=true');
     expect(gradleArguments({})).not.toContain('-Pnitpicker.spring=true');
-    expect(
-      gradleArguments({ preset: 'kotlin', kotlinFormatter: 'ktfmt', ktfmtStyle: 'google' }),
-    ).toEqual(
-      expect.arrayContaining([
-        '-Pnitpicker.kotlin.formatter=ktfmt',
-        '-Pnitpicker.kotlin.ktfmtStyle=google',
-      ]),
+    expect(gradleArguments({ preset: 'kotlin', kotlinFormatter: 'ktfmt' })).toContain(
+      '-Pnitpicker.kotlin.formatter=ktfmt',
     );
   });
 });
