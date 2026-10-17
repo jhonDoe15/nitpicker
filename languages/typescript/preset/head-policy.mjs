@@ -23,7 +23,7 @@ import {
 } from './layout.mjs';
 import { detectLibraries } from './libraries/project-libraries.mjs';
 import { stylingApproachFor } from './eslint-config/react/react-styling.mjs';
-import { prettierConventionOptions } from '../conventions/prettier-conventions.mjs';
+import { hasPrettierConventions } from '../conventions/prettier-conventions.mjs';
 import { markedGeneratedFiles } from './layout/generated-files.mjs';
 
 export { headPolicyEnvironment, withHeadPolicyFile } from '../../../shared/head-policy.mjs';
@@ -119,7 +119,13 @@ function detectedScopes(policy, projectRoot) {
   };
 }
 
-const HEAD_CHECKOUT_FACTS = ['conventions', 'generatedFiles', 'frameworks', 'libraries'];
+const HEAD_CHECKOUT_FACTS = [
+  'conventions',
+  'conventionPins',
+  'generatedFiles',
+  'frameworks',
+  'libraries',
+];
 const SCOPE_FACTS = [
   ['react', ['enabled', 'iconPackage', 'major', 'styling', 'autoCleanup']],
   ['i18n', ['enabled']],
@@ -178,7 +184,7 @@ export function usesLayeredPrettier(environment = process.env) {
   const policy = readHeadPolicy(environment);
   return (
     usesProjectConfig(policy.tools.prettier?.precedence ?? []) ||
-    Object.keys(prettierConventionOptions(policy.conventions)).length > 0
+    hasPrettierConventions(policy.conventions)
   );
 }
 
@@ -195,6 +201,7 @@ export function readHeadPolicy(environment = process.env) {
     tools: policy.tools ?? {},
     conventions: policy.conventions,
     testConsole: policy.testConsole ?? {},
+    conventionPins: policy.conventionPins,
     generatedFiles: policy.generatedFiles ?? [],
     libraries: policy.libraries,
     frameworks: { defaultExports: [], entryPoints: [], ...policy.frameworks },
