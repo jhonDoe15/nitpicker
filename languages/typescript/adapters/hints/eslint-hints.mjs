@@ -79,7 +79,7 @@ const ARGUMENT_TYPE_HINT = ' Write the parameter type in the signature: `(rows: 
 
 const DUPLICATE_IMPORT_HINT = ' Merge the imports of one module into a single import statement.';
 
-const DEPRECATED_HINT = ` Call the replacement that the deprecation names instead of the deprecated API. If it names none and the API cannot be avoided, ${EXCEPTION_ROUTE}.`;
+const DEPRECATED_HINT = ` Call the replacement that the deprecation names instead of the deprecated API. An exception fits only when it names none and the API cannot be avoided.`;
 
 const GROWTH_ADVICE = new Map([
   [

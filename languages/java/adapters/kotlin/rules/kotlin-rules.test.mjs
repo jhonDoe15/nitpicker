@@ -90,7 +90,7 @@ describe('one-way rule messages', () => {
     );
 
     expect(message).toBe(
-      'The caught exception is too generic. Prefer catching specific exceptions to the case that is currently handled. In a test, use `assertFailsWith`. To allow it on specific paths, add an "exceptions" entry for rule detekt.exceptions.TooGenericExceptionCaught in nitpicker.config.json.',
+      'The caught exception is too generic. Prefer catching specific exceptions to the case that is currently handled. In a test, use `assertFailsWith`. If a reviewer agrees this is intended, add {"rule":"detekt.exceptions.TooGenericExceptionCaught","paths":["src/main/kotlin/demo/A.kt"],"reason":"<why this is intended>"} to "exceptions" in nitpicker.config.json.',
     );
   });
 

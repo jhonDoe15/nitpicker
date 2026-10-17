@@ -185,7 +185,9 @@ describe('Java file limits', () => {
       );
 
     expect(found({})).toEqual([[RULE_IDS.lineLength, 'src/main/java/demo/C0.java']]);
-    expect(found({ exceptions: [{ rule: 'line-length-limit', glob: 'src/main/**' }] })).toEqual([]);
+    expect(found({ exceptions: [{ rule: 'line-length-limit', paths: ['src/main/**'] }] })).toEqual(
+      [],
+    );
   });
 
   it('applies the configured thresholds, exceptions and exclude globs', () => {
@@ -257,7 +259,7 @@ describe('Java file limits', () => {
     ]);
     expect(found({ policy: { thresholds: { folderDepth: 5 } } })).toEqual([]);
     expect(
-      found({ policy: { exceptions: [{ rule: 'folder-depth-limit', glob: '**/e/**' }] } }),
+      found({ policy: { exceptions: [{ rule: 'folder-depth-limit', paths: ['**/e/**'] }] } }),
     ).toEqual([]);
   });
 

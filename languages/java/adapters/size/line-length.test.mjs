@@ -18,7 +18,7 @@ describe('Java line length', () => {
     const [finding] = found(`int a;\nint ${WIDE} = ${WIDE};\n`);
     expect(finding.location).toEqual({ line: 2 });
     expect(finding.message).toBe(
-      'Line is 198 characters (limit 100). Break it up or extract a named value. If this is intended, add {"rule":"line-length-limit","paths":["src/main/java/demo/A.java"],"reason":"..."} to "exceptions" in nitpicker.config.json.',
+      'Line is 198 characters (limit 100). Break it up or extract a named value. If a reviewer agrees this is intended, add {"rule":"line-length-limit","paths":["src/main/java/demo/A.java"],"reason":"<why this is intended>"} to "exceptions" in nitpicker.config.json.',
     );
   });
 
