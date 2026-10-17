@@ -185,14 +185,21 @@ function comparable(findings) {
 }
 
 function stableConsoleEmitters(findings) {
-  return findings.map((finding) =>
-    finding.rule === 'test-console-output'
-      ? {
-          ...finding,
-          message: finding.message.replace(/ \([^)]*\)(?=\. Fix the cause)/u, ' (<emitting test>)'),
-        }
-      : finding,
-  );
+  return findings.map((finding) => {
+    if (finding.rule !== 'test-console-output') {
+      return finding;
+    }
+    const file = / \(([^,)]+)(?:, test "[^"]*")?\)(?=\. Fix the cause)/u.exec(finding.message)?.[1];
+    if (file === undefined) {
+      return finding;
+    }
+    return {
+      ...finding,
+      message: finding.message
+        .replaceAll(file, '<emitting source>')
+        .replace(/, test "[^"]*"/u, ', test "<emitting test>"'),
+    };
+  });
 }
 
 describe.skipIf(!enabled)('Review rules on Gradle and Maven builds of a Spring project', () => {
