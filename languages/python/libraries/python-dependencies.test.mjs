@@ -210,6 +210,19 @@ describe('the dependencies a project declares', () => {
     });
   });
 
+  it('reads nothing from a manifest that cannot be parsed, and is incomplete', () => {
+    const root = project({ 'pyproject.toml': '[project\n', Pipfile: '[packages\n' });
+
+    expect(readPythonDependencies(root)).toEqual({
+      runtime: [],
+      development: [],
+      dependencies: [],
+      complete: false,
+      declaresDev: false,
+      manifest: 'pyproject.toml',
+    });
+  });
+
   it('reads nothing from a project without manifests', () => {
     expect(names(project({}))).toEqual({
       runtime: [],
