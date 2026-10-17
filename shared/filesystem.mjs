@@ -11,6 +11,17 @@ export function pathInside(root, relative) {
   return full;
 }
 
+export function ancestorDirectories(directory) {
+  const found = [directory];
+  for (const current of found) {
+    const parent = path.dirname(current);
+    if (parent !== current) {
+      found.push(parent);
+    }
+  }
+  return found;
+}
+
 export function* filesUnder(root, { skipDirectory = () => false } = {}) {
   function children(frame) {
     if (frame.entry && (!frame.entry.isDirectory() || skipDirectory(frame.absolute, frame.entry)))

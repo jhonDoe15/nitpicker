@@ -203,6 +203,14 @@ Math` and `Math['random']()` are caught; `process`, `fetch`, `setTimeout`, `setI
   Carry the caught value only where something reads it; a field added just so the binding is read
   is slop. A `catch` that falls through, or returns a non-object such as `undefined` or `[]`, is
   reported. A deliberately dropped error needs an exception in the config file.
+- `nitpicker/no-dev-dependency-in-production` (all production code): a value import (`import`,
+  `export ... from`, `import()`, `require`) of a package that package.json lists only under
+  `devDependencies` is reported. Move the package to `dependencies` (zod included). Type-only imports
+  are not reported. An app a bundler builds (a bundler config or `build` script, and no `main`,
+  `module`, `exports` or `bin` in package.json) and test support files (`setupTests.*`,
+  `test-utils`, `testing/`, `__mocks__/`, stories) are skipped. The nearest package.json that lists
+  dependencies is used; one that is not a JSON object is reported. Unlisted packages and unused dependencies are reported by the
+  `dead-code` analyzer, see [Dependency and repository checks](usage.md#dependency-and-repository-checks).
 - `nitpicker/no-unvalidated-schema-field` (all production code): no `z.unknown()` or `z.any()`
   (also with `.optional()`, `.nullable()`, `.default()` and similar wrappers, `z.optional(...)`,
   `z.nullable(...)`, `z.nullish(...)` and `z.readonly(...)`) as a field of `z.object`,
@@ -640,8 +648,8 @@ hop, and type-only imports do not count.
   them included), `*.test.*`/`*.spec.*` next to sources, and `__tests__` directories (their
   fixtures are skipped). A wait that cannot be avoided gets an exception for the rule.
 - `nitpicker/no-raised-test-timeout`: no test, suite or hook timeout above 10 000 ms. That is the
-  `testTimeout` nitpicker runs a project's tests with (`languages/typescript/preset/defaults/vitest.quality.config.ts`, which
-  Stryker also uses, and the coverage runner's `--testTimeout`; a test keeps them in step).
+  test timeout nitpicker runs a project's tests with (`languages/typescript/preset/defaults/vitest.quality.config.ts`, which
+  Stryker also uses, and the timeout it passes to Vitest, Jest, `node:test` and Mocha; a test keeps them in step).
   The rule covers the third argument of `it`/`test`, `{ timeout }` options, hook timeouts and
   `vi.setConfig`. A timeout that is not a constant written in the file is also reported. There is
   no e2e exemption; a genuinely long suite needs an exception in the config file.
@@ -726,8 +734,10 @@ hop, and type-only imports do not count.
 - The vitest config nitpicker runs tests with (`defaults/vitest.quality.config.ts`, used for
   coverage and mutation) sets `restoreMocks: true`, so a `vi.spyOn` spy is restored after every test
   even when an assertion fails, and cannot leak into the next test. It also overrides a
-  `restoreMocks` value in the project's own vitest config for these runs. Vitest has no option that
-  restores fake timers automatically: call `vi.useRealTimers()` in `afterEach`.
+  `restoreMocks` value in the project's own vitest config for these runs. Jest runs with
+  `--restoreMocks` for the same reason, and `node:test` restores a test's `t.mock` itself. Neither
+  Vitest nor Jest restores fake timers automatically: call `vi.useRealTimers()` (or
+  `jest.useRealTimers()`) in `afterEach`.
 
 - `test-console-output` (the `test-console` check, not an ESLint rule): a test file that prints
   `console.error` or `console.warn` output the base run did not print fails, with the message and
@@ -1388,10 +1398,8 @@ from a real caller) and the `exceptions` entry that lifts it.
   `page.evaluate` compile (the lib then applies to every file in that check). The default quality
   test run does not run `e2e`, since end-to-end runners start those tests themselves; a `testRoots`
   you list yourself is always run, so list `e2e` to keep a vitest or supertest suite there.
-- A Jest project with tests in a root `__tests__/` gets them run by Vitest in the quality test run,
-  and they fail on `jest.*` (Jest support is issue #162). Either list `layout.testRoots` without
-  `__tests__`, or add `"__tests__/**"` to `exclude`, which also leaves the folder out of the other
-  tools.
+- A Jest project with tests in a root `__tests__/` gets them run by Jest in the quality test run,
+  like every other test file (see [Test runners](usage.md#test-runners)).
 
 ## Enforcement sources
 
