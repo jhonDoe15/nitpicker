@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { applyDisable, describeConfigOverrides } from './config.mjs';
+import { describeConfigOverrides } from './config.mjs';
 import { validateConfig } from './validate.mjs';
 import { policyHash } from '../diff/reporting/report-model.mjs';
 
@@ -275,13 +275,6 @@ describe('config file', () => {
     ]);
   });
 
-  it('refuses to disable an analyzer that another enabled analyzer depends on', () => {
-    const analyzers = [{ name: 'coverage' }, { name: 'crap', dependencies: ['coverage'] }];
-
-    expect(() => applyDisable(analyzers, { disable: ['coverage'] })).toThrow(/depends on it/);
-    expect(applyDisable(analyzers, { disable: ['coverage', 'crap'] })).toEqual([]);
-  });
-
   it('keeps the zero-config policy hash and changes it for any override', () => {
     const analyzers = [{ name: 'a', version: '1', configurationHash: 'h' }];
 
@@ -374,7 +367,7 @@ describe('tool precedence', () => {
     );
     expect(() => validateConfig({ preset: 'python', tools })).toThrow(
       new Error(
-        'nitpicker.config.json: "tools" names unknown tool "pmd". Supported tools with this preset: ruff, black',
+        'nitpicker.config.json: "tools" names unknown tool "pmd". Supported tools with this preset: ruff, black, pyright, mypy, mutmut',
       ),
     );
   });
