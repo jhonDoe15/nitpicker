@@ -26,7 +26,17 @@ const MUTMUT_LISTED_CONFIG =
   '{ "preset": "python", "tools": { "mutmut": { "precedence": ["project", "nitpicker"] } } }\n';
 const MUTMUT_LISTED = 'tools.mutmut.precedence: not set -> ["project","nitpicker"]';
 
+const ACCEPTED = {
+  CI: 'true',
+  NITPICKER_ACCEPT_POLICY_CHANGE: acceptedDigest([MUTMUT_LISTED], {
+    'nitpicker.config.json': MUTMUT_LISTED_CONFIG,
+  }),
+};
 const SHRUNK = `${readFileSync(path.join(fixture, 'pyproject.toml'), 'utf8')}\n[tool.mutmut]\ndo_not_mutate = ["src/*"]\n`;
+const OWN_KEY = `${readFileSync(path.join(fixture, 'pyproject.toml'), 'utf8')}\n[tool.mutmut]\nmax_stack_depth = 8\n`;
+const PRODUCTION_FILES = ['__init__', 'greeter', 'legacy', 'pricing', 'wide'].map(
+  (name) => `src/demo/${name}.py`,
+);
 const mutantFindings = (result) =>
   result
     .json('new-findings.json')
@@ -49,6 +59,11 @@ describe.skipIf(!pythonE2eEnabled)('Python preset mutation gates end to end', ()
     commitBranch(project, 'shrunk', pricing);
     commitBranch(project, 'shrunk-listed', {
       ...pricing,
+      'nitpicker.config.json': MUTMUT_LISTED_CONFIG,
+    });
+    commitBranch(project, 'listed-key', {
+      ...pricing,
+      'pyproject.toml': OWN_KEY,
       'nitpicker.config.json': MUTMUT_LISTED_CONFIG,
     });
     commitBranch(project, 'killed', {
@@ -82,24 +97,37 @@ describe.skipIf(!pythonE2eEnabled)('Python preset mutation gates end to end', ()
       location: { line: 2 },
     });
   });
-  it('keeps mutating the files a do_not_mutate of the project config would skip', () => {
+  it('keeps mutating the files a do_not_mutate of the project config would skip, and reports them as ignored', () => {
     const result = gate(project, 'shrunk');
+    const findings = mutantFindings(result);
+    const mutated = findings.filter(({ rule }) => rule !== 'mutant-ignored');
+    const ignored = findings.filter(({ rule }) => rule === 'mutant-ignored');
 
     expect(result.exitCode, result.text).toBe(1);
-    expect(new Set(mutantFindings(result).map(({ path: file }) => file))).toEqual(
+    expect(new Set(mutated.map(({ path: file }) => file))).toEqual(
       new Set(['src/demo/pricing.py']),
     );
+    expect(new Set(ignored.map(({ path: file }) => file))).toEqual(new Set(PRODUCTION_FILES));
   });
-  it('takes the do_not_mutate of the project config once a person accepts listing the project', () => {
-    const digest = acceptedDigest([MUTMUT_LISTED], {
-      'nitpicker.config.json': MUTMUT_LISTED_CONFIG,
-    });
-    const result = gate(project, 'shrunk-listed', {
-      environment: { CI: 'true', NITPICKER_ACCEPT_POLICY_CHANGE: digest },
-    });
+  it('still reports the do_not_mutate of the project config as ignored code once a person accepts listing the project', () => {
+    const result = gate(project, 'shrunk-listed', { environment: ACCEPTED });
+    const findings = mutantFindings(result);
 
-    expect(result.exitCode, result.text).toBe(0);
-    expect(mutantFindings(result)).toEqual([]);
+    expect(result.exitCode, result.text).toBe(1);
+    expect(new Set(findings.map(({ rule }) => rule))).toEqual(new Set(['mutant-ignored']));
+    expect(new Set(findings.map(({ path: file }) => file))).toEqual(new Set(PRODUCTION_FILES));
+  });
+  it('takes the other keys of the project config once a person accepts listing the project', () => {
+    const result = gate(project, 'listed-key', { environment: ACCEPTED });
+    const findings = mutantFindings(result);
+
+    expect(result.exitCode, result.text).toBe(1);
+    expect(new Set(findings.map(({ rule }) => rule))).toEqual(
+      new Set(['mutant-survived', 'mutant-nocoverage']),
+    );
+    expect(new Set(findings.map(({ path: file }) => file))).toEqual(
+      new Set(['src/demo/pricing.py']),
+    );
   });
   it('passes new code whose mutants are all killed', () => {
     const result = gate(project, 'killed');

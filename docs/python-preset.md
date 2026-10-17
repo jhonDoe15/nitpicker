@@ -1140,7 +1140,8 @@ location.
   line to list the file under `also_copy` in `[tool.mutmut]`.
   With `"tools": { "mutmut": { "precedence": ["project", "nitpicker"] } }` every key of the
   project's table (or `setup.cfg` section, with its values typed) overrides nitpicker's, except that
-  the test patterns and the `exclude` globs stay in `do_not_mutate`; `["nitpicker", "project"]` is the
+  the test patterns and the `exclude` globs stay in `do_not_mutate` (the project's own `do_not_mutate`
+  patterns still count as `mutant-ignored`, listed or not); `["nitpicker", "project"]` is the
   unlisted behavior. A project listed without a table is a tool error.
 - **Equivalent mutants.** mutmut also mutates strings and logging, so some survivors cannot be
   killed by any test. The way out is a `python.exceptions` entry for `mutant-survived` (or

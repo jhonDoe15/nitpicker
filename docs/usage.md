@@ -513,8 +513,10 @@ gate, and mutants that survived on the base stay baselined. `"disable": ["mutati
 (`python` cannot be disabled alone, because `mutation` depends on it), and it is also what to do
 when mutmut cannot be installed. A project's own `[tool.mutmut]` is used as it is; without one
 nitpicker mutates the source roots, skipping test files and the `exclude` globs. A mutant that no
-test can tell from the original (an equivalent mutant) is lifted in `[tool.mutmut]` with
-`do_not_mutate`, or by listing the path in `exclude`, which drops its findings. mutmut needs
+test can tell from the original (an equivalent mutant) is lifted with a `python.exceptions` entry
+for `mutant-survived`, or by listing the path in `exclude`, which drops its findings; code hidden
+with `# pragma: no mutate` or a `do_not_mutate` in your `[tool.mutmut]` is reported as
+`mutant-ignored`, whatever `tools.mutmut` says. mutmut needs
 `fork`, so on native Windows the analyzer is skipped with a note: run nitpicker in WSL. Add
 `mutants/` to your ignore file. See [python-preset.md](python-preset.md).
 
