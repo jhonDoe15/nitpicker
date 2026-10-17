@@ -35,7 +35,7 @@ describe('the knip config without tests', () => {
       layout,
     );
 
-    expect(config.entry).toEqual(['src/main/main.ts']);
+    expect(config.entry).toEqual(['src/main/main.ts', 'server.js']);
   });
 
   it('keeps the other entries and config and leaves tests, stories and runner configs out', () => {
@@ -52,7 +52,8 @@ describe('the knip config without tests', () => {
 
     expect(config).toEqual({
       ...Object.fromEntries(TEST_RUNNERS.map((plugin) => [plugin, false])),
-      entry: ['src/main/main.ts', 'scripts/*.ts'],
+      node: false,
+      entry: ['src/main/main.ts', 'scripts/*.ts', 'server.js'],
       project: [
         'src/main/**',
         `!test/**/*.${CODE}`,
