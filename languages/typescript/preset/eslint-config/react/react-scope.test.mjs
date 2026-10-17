@@ -12,7 +12,7 @@ import {
   accessibilityRuleNames,
   reactRuleIds,
   reactTestRuleIds,
-  testingLibraryHints,
+  testingLibraryHintsFor,
 } from './react-rules.mjs';
 import {
   analyzedProjectRoot,
@@ -21,6 +21,7 @@ import {
   reactSyntaxConfigFor,
 } from './react-scope.mjs';
 import { fileURLToPath } from 'node:url';
+import { runnerVocabulary } from '../../test-runner/runner-vocabulary.mjs';
 
 const layout = resolveLayout();
 const { projectWith, removeProjects } = temporaryProjects();
@@ -144,6 +145,8 @@ describe('the React scope config', () => {
   it('gives every Testing Library rule a hint naming the allowed form', async () => {
     const { testingLibraryPlugin } = await import('./react-plugins.mjs');
 
+    const testingLibraryHints = testingLibraryHintsFor(runnerVocabulary());
+
     expect(Object.keys(testingLibraryPlugin.rules).toSorted()).toEqual(
       Object.keys(testingLibraryHints).toSorted(),
     );
@@ -154,6 +157,27 @@ describe('the React scope config', () => {
         expect(message.endsWith(hint), name).toBe(true);
       }
     }
+  });
+
+  it.each([
+    ['jest', '`toHaveFocus()`', '`expect(screen.getByRole(...)).toBeVisible()`'],
+    [
+      'node',
+      '`assert.equal(document.activeElement, element)`',
+      '`assert.ok(screen.getByRole(...))`',
+    ],
+    [
+      'mocha',
+      '`assert.equal(document.activeElement, element)`, or `expect(element).to.have.focus` with chai-dom',
+      '`assert.ok(screen.getByRole(...))`, or `expect(screen.getByRole(...)).to.be.visible` with chai-dom',
+    ],
+  ])('names the focus and visibility assertions a %s project has', (runner, focus, visible) => {
+    const hints = testingLibraryHintsFor(runnerVocabulary(runner));
+
+    expect([hints['no-node-access'], hints['no-debugging-utils']]).toEqual([
+      ` Use \`screen.getByRole(...)\` or \`within(...)\`, and ${focus} for focus. If this is intentional, add an exception for this rule in nitpicker.config.json.`,
+      `. Remove the debug output and assert what you were looking for: ${visible}. If this is intentional, add an exception for this rule in nitpicker.config.json.`,
+    ]);
   });
 
   it('lists the accessibility rules the plugin recommends, plus the extra ones', () => {

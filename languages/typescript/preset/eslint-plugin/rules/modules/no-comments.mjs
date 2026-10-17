@@ -20,6 +20,7 @@ const TOOL_DIRECTIVES = [
   'prettier-ignore',
   '@ts-check\\b',
   '@vitest-environment\\b',
+  '@jest-environment\\b',
   '@jsx\\b',
   '@jsxImportSource\\b',
   '\\/\\s*<reference\\b',

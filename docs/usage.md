@@ -22,7 +22,7 @@ itself is tested end to end with npm projects. nitpicker brings its own pinned E
 Stryker and CRAP tooling and loads them from its own package, so neither side of the comparison can
 choose them. `typescript` and the project's test runner come from your project: Vitest, Jest,
 `node:test` or Mocha (see [Test runners](#test-runners)). A Vitest project also needs
-`@vitest/coverage-v8` at its Vitest version (4.1.11 or newer, or 5). If a peer is missing or
+`@vitest/coverage-v8` at its Vitest version (3.2 or newer). If a peer is missing or
 incompatible, the tool that needs it fails and the report shows a tool error.
 
 ### From a GitHub release
@@ -600,14 +600,11 @@ Set `"preset": "javascript"` to gate a project of plain `.js`, `.mjs` and `.cjs`
 checks, rules and exit codes as the TypeScript preset; the keys `layout`, `exceptions` and `tools` work the same.
 It is never auto-detected. Types are written as JSDoc and checked by TypeScript with `allowJs` and
 `checkJs`: nitpicker generates the tsconfig, layered over your `tsconfig.json` or `jsconfig.json` when you
-have one. `typescript` and `vitest` are peers as for TypeScript.
+have one. `typescript` and the project's test runner (Vitest with `@vitest/coverage-v8`, Jest,
+`node:test` or Mocha) are peers as for TypeScript.
 
 What the preset does not support:
 
-- **Test runner lint.** Coverage, CRAP and mutation run the project's own runner, as for
-  TypeScript (see [Test runners](#test-runners)), but the lint rules for test files are still
-  Vitest's: `vitest/no-import-node-test` fails a `node:test` import (its message points to an
-  exception for that rule, which silences the lint finding only).
 - **CommonJS tests.** Production code may be CommonJS. A Vitest test file must `import` Vitest,
   because `require('vitest')` fails at run time, so import `.cjs` production code from an ESM test,
   as the fixture does. Jest, `node:test` and Mocha run CommonJS tests as they are.
@@ -763,7 +760,9 @@ new and touched code must comply.
   per case), no `forEach`, no `.then()/.catch()/.finally()` chains, and no `as` (except `as const`)
   or `<Type>value`. `nitpicker/no-partial-output-assertion` also rejects `toMatchObject` and
   `expect.objectContaining`, `expect.stringContaining` and `expect.arrayContaining` inside
-  `toEqual`/`toStrictEqual`: assert the whole value.
+  `toEqual`/`toStrictEqual`, and the same fragments under `node:test` and Chai
+  (`assert.ok(text.includes('x'))`, `assert.partialDeepStrictEqual`, `expect(x).to.include('x')`,
+  `containSubset`): assert the whole value.
 - **Layout**: features live in `src/main/features/<name>/` and are imported only through their
   `index.ts`; shared code does not import features; features do not import the composition root
   (`src/main/composition-root.ts`); no import cycles; objects are constructed only in the
@@ -1070,16 +1069,39 @@ To always type check with the project's own TypeScript, set the engine:
 ### Test runners
 
 Coverage, CRAP and mutation run the project's tests with the runner the project already uses:
-Vitest, Jest, `node:test` or Mocha. nitpicker picks the first of:
+Vitest, Jest, `node:test` or Mocha. nitpicker goes through these steps in order and takes the runner
+from the first step that names one. When a step names more than one runner (a `test` script running
+two, a Jest config next to a `test:unit` script running Vitest, as many test files for each, or two
+runner dependencies), coverage, CRAP and mutation stop with exit 2 before any check runs, naming
+each runner with its evidence, until `tools.tests.runner` chooses one. A run without them goes on:
+the test-file lint rules follow the runner the later steps favour among the ones named (else the
+first one named), and a notice says which until `tools.tests.runner` chooses.
 
 1. `tools.tests.runner` in `nitpicker.config.json`: `"vitest"`, `"jest"`, `"node"` or `"mocha"`.
-2. The runner the `test` script in `package.json` calls, following `npm run <name>`, then the other
-   `test*` scripts. `react-scripts test` and `craco test` are Jest, `ts-mocha` is Mocha with
-   `ts-node`, and `tsx --test` is `node:test` with the `tsx` loader.
-3. The runner's config: `vitest.config.*` or `vitest.workspace.*`, `jest.config.*` or a `jest` key
-   in `package.json`, `.mocharc.*` or a `mocha` key in `package.json`.
-4. The runner in `dependencies` or `devDependencies`.
-5. Vitest.
+2. The runner the `test` script in `package.json` calls, following the scripts it runs:
+   `npm run <name>` (also with `--silent` or `-s`), `npm test`, `yarn <name>`, `yarn run <name>`,
+   `pnpm <name>`, `pnpm run <name>`, `bun run <name>`, and the scripts `run-s`, `run-p` and
+   `npm-run-all` run, name globs such as `test:*` included. `react-scripts test`, `craco test`,
+   `react-app-rewired test` and `rescripts test` are Jest, `ts-mocha` is Mocha with `ts-node`, and
+   `tsx --test` is `node:test` with the `tsx` loader.
+3. The runners the other `test*` scripts call, together with the runners' config files:
+   `vitest.config.*` or `vitest.workspace.*`, `jest.config.*` or a `jest` key in `package.json`,
+   `.mocharc.*` or a `mocha` key in `package.json`.
+4. The runner the test files import: `vitest`, `@jest/globals`, `mocha` or `node:test`. The runner
+   most test files import wins; each test file counts once, however often it imports the runner.
+   The test files here are the files under the test roots, the source roots' `*.test.*`,
+   `*.spec.*` and `__tests__/` files, and the files any runner's default patterns match, so a
+   `test/greeting.js` counts.
+5. The runner in `dependencies` or `devDependencies`. `ts-jest`, `babel-jest`, `@jest/globals`,
+   `react-scripts`, `@craco/craco`, `react-app-rewired` and `@rescripts/cli` count as Jest.
+6. Vitest.
+
+In a comparison the base snapshot runs its tests with its own runner: its `tools.tests.runner`, else
+the head's, else what the base checkout alone shows through the same steps. When the base commit
+uses another runner, its tests run with that runner, and with the test files that runner finds in
+the base checkout, if it is installed in the project; when it is not, coverage
+and CRAP are not compared on that change and nitpicker says so. The `test-only-export` check leaves
+out the `jest*` and `vitest*` config files and `.mocharc.*`, whichever runner the project uses.
 
 From the script nitpicker also takes the environment variables (`NODE_ENV=test`, also through
 `cross-env`), the Node options before the runner (`node --import tsx --test`) and the runner's own
@@ -1104,8 +1126,9 @@ after another), and they must pass for coverage, CRAP and mutation to run.
   environment decide which files run and how. nitpicker collects coverage from the source roots
   with Jest's Babel coverage provider, relative to the config's `rootDir` (such as NestJS's
   `"rootDir": "src"`), and restores mocks after every test (`--restoreMocks`). A config whose
-  projects cover none of the source files is a tool error. `react-scripts test` and `craco test`
-  run through the project's installed `react-scripts` or `@craco/craco`, and mutation uses
+  projects cover none of the source files is a tool error. `react-scripts test`, `craco test`,
+  `react-app-rewired test` and `rescripts test` run through the project's installed
+  `react-scripts`, `@craco/craco`, `react-app-rewired` or `@rescripts/cli`, and mutation uses
   Stryker's Create React App support or the craco Jest config.
   Mutation uses Stryker's Jest runner, with the test transform's own type check turned off
   (`ts-jest` would reject the instrumented code); the TypeScript checker still type checks each
@@ -1114,12 +1137,17 @@ after another), and they must pass for coverage, CRAP and mutation to run.
   the script names none) and the test files under the test roots. TypeScript tests run with Node's
   type stripping (Node's transform mode for enums, namespaces and parameter properties), or with
   the loader the script names, such as `tsx` or `ts-node/register`. Each test file runs once. A
-  failing `before` hook shows its error on the tests it cancelled. Mutation uses Stryker's tap
-  runner.
+  failing `before` hook shows its error on the tests it cancelled. nitpicker preloads a module that
+  restores, after each test, the doubles that test and its `beforeEach` hooks made with the shared
+  `mock`; doubles a `before` hook made stay until the suite restores them. The preload leaves the
+  processes a test forks alone. Mutation uses Stryker's tap runner, with the same preload.
 - **Mocha** runs with the project's `.mocharc.*`, the script's options and specs, and the test
   files under the test roots. Loaders such as `ts-node/register` and `tsx` work in-process and in
   the child process Mocha starts for Node options. A test file that fails to load is reported as
-  that file failing. Mutation uses Stryker's Mocha runner with the options Mocha itself merges
+  that file failing. When the project has sinon, a root hook plugin nitpicker adds restores, after
+  each test, the sinon doubles (clocks from `sinon.useFakeTimers()` included) that test and its
+  `beforeEach` hooks made; doubles a `before` hook made stay until the suite calls
+  `sinon.restore()`. Mutation uses Stryker's Mocha runner with the options Mocha itself merges
   from the script, `.mocharc.*` and `package.json`; Stryker's Mocha runner supports Mocha up to 11,
   so on Mocha 12 mutation is skipped with a notice while coverage and CRAP still run.
 
@@ -1131,9 +1159,64 @@ workers is merged. A `ts-node` target below ES2022 is raised to ES2022 for the c
 field semantics kept), so `??` and `?.` are not counted as extra branches. A `.tsx` file no test
 loaded is not reported.
 
+Lint follows the runner too: test files get the same strictness under every runner, through
+`@vitest/eslint-plugin` for Vitest and `eslint-plugin-jest`'s structural rules for Jest (`jest/`),
+`node:test` (`node-test/`) and Mocha (`mocha/`). nitpicker's own test rules know each runner's
+mocks, fake timers and timeouts, and their messages name that runner's API. Type checks use the
+runner's globals (`@types/jest` or `@types/mocha` when installed). When a Jest or Mocha project has
+not installed them, the type check does not report the errors the runner's globals cause in test
+files (`describe` or `expect` not found), and a notice names the package to install.
+
+Which files are tests follows the runner as well. When an analyzer of the preset runs, nitpicker
+reads the runner's test file patterns from the head checkout and records them in the head policy as
+`tools.tests.testFiles`, so the policy hash includes them; a base snapshot that runs another runner
+reads that runner's patterns from the base checkout. The project's Vite, Jest and Mocha configs
+load in a child process. When one cannot be read, nitpicker takes the runner's default patterns and
+says so in a notice.
+
+- **Vitest**: `*.test.*` and `*.spec.*`, plus the config's `test.include` and `test.exclude`.
+- **Jest**: the config's `testMatch`, `testRegex` and `testPathIgnorePatterns`, read with
+  `jest --showConfig` through the test script's options (`--config`) and its launcher
+  (`react-scripts test`, `craco test`, `react-app-rewired test`, `rescripts test`), so a Create
+  React App or craco project is read with the config those tools build; else Jest's defaults,
+  `__tests__/` and `*.test.*`/`*.spec.*`. Each project's matches count under its `roots` only,
+  and a project whose `runner` does not run tests (`jest-runner-eslint`, `jest-runner-tsc`) adds
+  none.
+- **`node:test`**: the patterns the `node --test` script names, else Node's defaults: `*.test.*`,
+  `*-test.*`, `*_test.*`, `test-*.*`, `test.*` and every file under a `test/` folder.
+- **Mocha**: the spec of the script, `.mocharc.*` or `package.json`, else `test/*.{js,cjs,mjs}`.
+
+A file under the source roots that matches those patterns is a test, not production code: the test
+lint rules apply to it, coverage, CRAP and mutation leave it out, the test-runtime analysis times it,
+and the dependency architecture rules treat it as a test (a colocated `greet-test.js` in `domain/`
+is not held to the domain rules, and production code may not import it). The message of
+`nitpicker/test-must-use-production-runtime` names the runner's naming when it sends a shared
+helper to a file that is not a test. Globs are matched as globs. A Jest config that finds its tests
+only through `testRegex` is matched against the project's files, and the tools that take globs or
+paths (ESLint, dependency-cruiser) get the matching files by their literal paths.
+
 With Jest, `node:test` and Mocha any file under the test roots counts as a test when nitpicker
 decides whether coverage runs; with Vitest only `*.test.*` and `*.spec.*` files do. A runner that
 runs no test while nitpicker sees test files is a tool error that names one of them.
+
+Which tests run in the DOM follows the runner too. Vitest's `environment` and Jest's
+`testEnvironment` (read through the same `jest --showConfig`, project by project) set the default,
+and a `@vitest-environment` or `@jest-environment` comment sets it for one file. Mocha and
+`node:test` read no environment comment: a test file runs in the DOM when the setup that runs
+before every test file registers a global DOM, that is `global-jsdom`, `jsdom-global` or
+`@happy-dom/global-registrator` (or a local setup file that imports one) in Mocha's `require`
+(the script or `.mocharc.*`) or in the `--import` and `--require` options of the `node --test`
+script. `nitpicker/no-unused-dom-environment` reports a test file that runs in a DOM but never uses
+it. Under Vitest and Jest its message asks for a `node` environment comment, or a `node` default
+with the DOM comment on the DOM tests; under Mocha and `node:test` it asks to take the registration
+out of that setup and import it at the top of the test files that use the DOM, or to move those
+files to a separate Mocha or `node --test` run that registers it, and a test file that imports a
+registrar itself but never uses the DOM is told to remove the import. In a project without React,
+the production files the DOM tests import (followed through relative imports) get the browser
+globals, with the confusing ones (`event`, `name`, `status`, ...) restricted to `window.<name>`
+outside `domain/`, as in a React project; production code no DOM test reaches, such as a Node
+server, does not, so its use of `document` is still reported. When a test runs in a DOM, the type
+check adds the DOM lib to the shipped tsconfig, or to a project tsconfig whose `lib` leaves it out.
 
 ## Adopting nitpicker on existing code
 

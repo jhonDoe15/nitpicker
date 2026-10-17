@@ -1,6 +1,5 @@
 import eslint from '@eslint/js';
 import { defineConfig } from 'eslint/config';
-import vitest from '@vitest/eslint-plugin';
 import globals from 'globals';
 import tseslint from 'typescript-eslint';
 import { nitpickerRules } from '../eslint-plugin/index.mjs';
@@ -26,6 +25,9 @@ import { securityFactsFor } from '../eslint-config/policy/security-facts.mjs';
 import { i18nRuleIds } from '../eslint-config/i18n/i18n-rules.mjs';
 import { i18nScopeConfigFor, isI18nProject } from '../eslint-config/i18n/i18n-scope.mjs';
 import { readHeadPolicy, readLayout } from '../head-policy.mjs';
+import { withRunnerTestPaths } from '../test-runner/test-files/test-file-patterns.mjs';
+import { testRunnerLintConfig } from '../eslint-config/runner/runner-rules.mjs';
+import { policyTestRunner } from '../test-runner/project-runner.mjs';
 import { fileNameRuleOptions } from '../../conventions/file-name-casing.mjs';
 import { assertionFunctionNames } from '../../conventions/measures/assertion-helpers.mjs';
 import { typeImportFixStyle } from '../../conventions/type-import-style.mjs';
@@ -33,10 +35,13 @@ import {
   testEnvironmentConfigFor,
   testEnvironmentsFromVariables,
 } from '../test-environment/test-environment-config.mjs';
+import { domProductionConfigFor } from '../test-environment/dom-code/dom-code.mjs';
 
 const policy = readHeadPolicy();
+const testRunner = policyTestRunner(policy, analyzedProjectRoot());
+const runnerConfig = testRunnerLintConfig(testRunner, assertionFunctionNames(policy.conventions));
 
-const layout = readLayout();
+const layout = withRunnerTestPaths(readLayout(), analyzedProjectRoot());
 const react = isReactProject({
   projectRoot: analyzedProjectRoot(),
   react: policy.react,
@@ -48,6 +53,7 @@ const i18n = isI18nProject({
   i18n: policy.i18n,
   javascript: layout.javascript,
 });
+const testEnvironments = testEnvironmentsFromVariables();
 const security = securityFactsFor(analyzedProjectRoot(), (file) => layout.isSourceFile(file));
 const { sourceGlobs, testGlobs, excludedGlobs, unitTestGlobs } = layout;
 const parserOptions = {
@@ -131,17 +137,16 @@ const presetConfig = defineConfig(
     },
   },
   {
-    ...vitest.configs.recommended,
     files: testFiles,
     plugins: {
-      ...vitest.configs.recommended.plugins,
+      ...runnerConfig.plugins,
       nitpicker: nitpickerRules,
     },
+    settings: runnerConfig.settings,
     languageOptions: {
-      ...vitest.configs.env.languageOptions,
       globals: {
         ...globals.node,
-        ...vitest.configs.env.languageOptions.globals,
+        ...runnerConfig.globals,
       },
       parserOptions: {
         project: './tsconfig.quality.json',
@@ -149,32 +154,26 @@ const presetConfig = defineConfig(
       },
     },
     rules: {
-      ...vitest.configs.recommended.rules,
+      ...runnerConfig.rules,
+      ...runnerConfig.typedRules,
       'nitpicker/integration-test-uses-approved-harness': 'error',
       'nitpicker/container-pause-requires-finally-unpause': 'error',
       'nitpicker/bounded-container-teardown': 'error',
-      'nitpicker/no-fixed-sleep-synchronization': 'error',
-      'nitpicker/no-interval-polling-in-tests': 'error',
+      'nitpicker/no-fixed-sleep-synchronization': ['error', { runner: testRunner }],
+      'nitpicker/no-interval-polling-in-tests': ['error', { runner: testRunner }],
       'nitpicker/no-mocking-subject-under-test': 'error',
       'nitpicker/no-internal-module-mocks': 'error',
       'nitpicker/no-wait-for-with-fake-timers': 'error',
-      'nitpicker/no-partial-output-assertion': 'error',
-      'nitpicker/test-must-use-production-runtime': 'error',
-      'vitest/expect-expect': [
-        'error',
-        { assertFunctionNames: assertionFunctionNames(policy.conventions) },
-      ],
-      'vitest/no-conditional-in-test': 'error',
-      'vitest/valid-expect': ['error', { maxArgs: 2 }],
-      'vitest/require-awaited-expect-poll': 'error',
-      'vitest/valid-expect-in-promise': 'error',
+      'nitpicker/no-partial-output-assertion': ['error', { runner: testRunner }],
+      'nitpicker/test-must-use-production-runtime': ['error', { runner: testRunner }],
     },
   },
   {
     files: unitTestGlobs,
     rules: { 'nitpicker/no-external-executables-in-unit-tests': 'error' },
   },
-  ...testEnvironmentConfigFor(layout, testEnvironmentsFromVariables()),
+  ...testEnvironmentConfigFor(layout, testEnvironments, testRunner),
+  ...(react ? [] : domProductionConfigFor(layout, testEnvironments, analyzedProjectRoot())),
 );
 
 const inactiveRuleIds = [

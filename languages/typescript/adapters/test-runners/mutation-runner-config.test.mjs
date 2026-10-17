@@ -2,14 +2,18 @@ import { mkdirSync, mkdtempSync, realpathSync, rmSync, symlinkSync, writeFileSyn
 import { createRequire } from 'node:module';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
+import { pathToFileURL } from 'node:url';
 import { afterEach, describe, expect, it } from 'vitest';
 import { PACKAGE_ROOT } from '../../../../core/tooling/tool-resolution.mjs';
+import { RESTORE_SINON_PLUGIN } from './mocha/mocha.mjs';
 import {
   CRACO_JEST_CONFIG,
   cracoJestConfigText,
   mutationRunnerConfig,
   unsupportedMutationRunner,
 } from './mutation-runner-config.mjs';
+
+const RESTORE_MOCKS = path.join(import.meta.dirname, 'node-test', 'restore-mocks.cjs');
 
 const SOURCE_CONFIG = {
   mutate: ['src/**/*.ts'],
@@ -86,7 +90,12 @@ describe('the Stryker runner for each test runner', () => {
       checkers: ['typescript'],
       tsconfigFile: '.nitpicker-diff-tsconfig.stryker.json',
       testRunnerNodeArgs: ['--experimental-vm-modules'],
-      jest: { projectType: 'custom', enableFindRelatedTests: false, configFile: 'jest.unit.js' },
+      jest: {
+        projectType: 'custom',
+        enableFindRelatedTests: false,
+        configFile: 'jest.unit.js',
+        config: { restoreMocks: true },
+      },
       disableTypeChecks: true,
       timeoutMS: 10_000,
       timeoutFactor: 2,
@@ -96,20 +105,31 @@ describe('the Stryker runner for each test runner', () => {
   it.each([
     [
       { arguments_: ['--config={"testEnvironment":"node"}'] },
-      { config: { testEnvironment: 'node' } },
+      { config: { testEnvironment: 'node', restoreMocks: true } },
     ],
     [
       { launcher: 'react-scripts', arguments_: ['--config', 'x.js'] },
-      { projectType: 'create-react-app' },
+      { projectType: 'create-react-app', config: { restoreMocks: true } },
     ],
-    [{ launcher: 'craco' }, { configFile: CRACO_JEST_CONFIG }],
-  ])('loads the Jest config of the command %j', (command, source) => {
-    expect(configFor('jest', command).jest).toEqual({
-      projectType: 'custom',
-      enableFindRelatedTests: false,
-      ...source,
-    });
-  });
+    [{ launcher: 'craco' }, { configFile: CRACO_JEST_CONFIG, config: { restoreMocks: true } }],
+    [
+      { launcher: 'react-app-rewired' },
+      { projectType: 'create-react-app', config: { restoreMocks: true } },
+    ],
+    [
+      { launcher: 'rescripts' },
+      { projectType: 'create-react-app', config: { restoreMocks: true } },
+    ],
+  ])(
+    'loads the Jest config of the command %j and restores mocks after each test',
+    (command, source) => {
+      expect(configFor('jest', command).jest).toEqual({
+        projectType: 'custom',
+        enableFindRelatedTests: false,
+        ...source,
+      });
+    },
+  );
 
   it('builds the Jest config of a craco project the way craco test does', async () => {
     const lib = 'node_modules/@craco/craco/dist/lib';
@@ -159,7 +179,7 @@ describe('the Stryker runner for each test runner', () => {
       mochaOptions: {
         'no-config': true,
         'no-package': true,
-        require: ['test/setup.js'],
+        require: ['test/setup.js', RESTORE_SINON_PLUGIN],
         ignore: ['test/integration/**'],
         extension: ['js', 'cjs', 'mjs'],
         ui: 'tdd',
@@ -175,7 +195,7 @@ describe('the Stryker runner for each test runner', () => {
     expect(configFor('mocha', {}, { projectRoot: root, testFiles: [] }).mochaOptions).toEqual({
       'no-config': true,
       'no-package': true,
-      require: ['test/env.js'],
+      require: ['test/env.js', RESTORE_SINON_PLUGIN],
       extension: ['js', 'cjs', 'mjs'],
       ui: 'bdd',
     });
@@ -197,6 +217,7 @@ describe('the Stryker runner for each test runner', () => {
       mochaOptions: {
         'no-config': true,
         'no-package': true,
+        require: [RESTORE_SINON_PLUGIN],
         extension: ['js', 'cjs', 'mjs'],
         ui: 'bdd',
         grep: String.raw`a\.b\(c\)`,
@@ -216,7 +237,7 @@ describe('the Stryker runner for each test runner', () => {
     expect(unsupportedMutationRunner({ projectRoot: project({}) }, 'mocha')).toBeUndefined();
   });
 
-  it('runs node:test files through the TAP runner with the node options of the script', () => {
+  it('runs node:test files through the TAP runner with the node options of the script and the mock restore', () => {
     const config = configFor('node', {
       arguments_: ['test/**/*.test.js'],
       nodeArguments: ['--import', 'tsx'],
@@ -225,8 +246,22 @@ describe('the Stryker runner for each test runner', () => {
     expect(config.testRunner).toBe('tap');
     expect(config.tap).toEqual({
       testFiles: ['test/**/*.test.js'],
-      nodeArgs: ['--import', 'tsx'],
+      nodeArgs: ['--import', 'tsx', '--import', pathToFileURL(RESTORE_MOCKS).href],
       forceBail: true,
     });
+  });
+
+  it('preloads the mock restore with --require next to a require hook, which --import would bypass', () => {
+    const config = configFor('node', {
+      arguments_: ['test/a.test.ts'],
+      nodeArguments: ['--require', 'ts-node/register'],
+    });
+
+    expect(config.tap.nodeArgs).toEqual([
+      '--require',
+      'ts-node/register',
+      '--require',
+      RESTORE_MOCKS,
+    ]);
   });
 });

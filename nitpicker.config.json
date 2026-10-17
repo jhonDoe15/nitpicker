@@ -1,5 +1,6 @@
 {
   "preset": "typescript",
+  "react": { "enabled": false },
   "layout": {
     "sourceRoots": ["core", "languages", "shared"],
     "entryPoints": [
@@ -11,7 +12,9 @@
       "languages/typescript/adapters/eslint-wrapper.config.mjs",
       "languages/typescript/adapters/oxlint/oxlint-bridge.mjs",
       "languages/typescript/adapters/oxlint/oxlint-plan.mjs",
+      "languages/typescript/adapters/test-runners/mocha/restore-sinon.mjs",
       "languages/typescript/adapters/test-runners/node-test/node-test-reporter.mjs",
+      "languages/typescript/adapters/test-runners/node-test/restore-mocks.cjs",
       "languages/typescript/adapters/test-runners/v8-coverage/loaded-sources.cjs",
       "languages/typescript/preset/*/report.mjs",
       "languages/typescript/preset/defaults/crap.config.mjs",
@@ -54,6 +57,14 @@
   ],
   "disable": ["typescript-typecheck", "coverage", "crap", "mutation"],
   "exceptions": [
+    {
+      "rule": "nitpicker/no-process-access-outside-composition-root",
+      "paths": [
+        "languages/typescript/preset/test-environment/jest/read-jest-config.mjs",
+        "languages/typescript/preset/test-environment/vite/vite-reader.mjs"
+      ],
+      "reason": "Config loaders: each spawns the project's own Jest or Vite to print its resolved config, and the child must inherit the caller's environment with the runner's variables added (the test script's variables for Jest, VITEST and NODE_ENV for Vite). The environment is a default parameter, so callers and tests can pass their own."
+    },
     {
       "rule": "nitpicker/no-node-process-per-test",
       "paths": ["languages/typescript/preset/duplicates/duplicates-policy.test.mjs"],
@@ -118,6 +129,10 @@
       "rule": "nitpicker/no-raised-test-timeout",
       "paths": [
         "languages/javascript/preset/clean-project/js-clean.test.mjs",
+        "languages/javascript/preset/clean-project/runner-projects.test.mjs",
+        "languages/javascript/preset/clean-project/runner-switch.test.mjs",
+        "languages/javascript/preset/clean-project/test-runners.test.mjs",
+        "languages/typescript/preset/clean-projects/jest-dom-project.test.mjs",
         "languages/typescript/preset/clean-projects/react-project.test.mjs",
         "languages/typescript/preset/clean-projects/strict-clean.test.mjs"
       ],

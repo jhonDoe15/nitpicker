@@ -1,62 +1,91 @@
-import { spawnSync } from 'node:child_process';
 import path from 'node:path';
 import { readHeadPolicy, readLayout } from '../head-policy.mjs';
+import { DEFAULT_TEST_RUNNER } from '../test-runner/runners.mjs';
+import { projectTestRunner } from '../test-runner/project-runner.mjs';
+import {
+  loadedProjectMocha,
+  mochaSetupEntries,
+} from '../test-runner/test-files/mocha-test-files.mjs';
 import { projectConfigFile } from './config-files.mjs';
-import { DEFAULT_ENVIRONMENT } from './environments.mjs';
-import { RESULT_MARKER } from './read-environment.mjs';
+import {
+  DEFAULT_ENVIRONMENT,
+  TEST_ENVIRONMENT_RULE,
+  TEST_ENVIRONMENTS_VARIABLE,
+} from './environments.mjs';
+import { globalDomEnvironments, nodeSetupEntries } from './global-dom/global-dom.mjs';
+import { environmentsFromJestConfig } from './jest/jest-environment.mjs';
+import { jestConfigFile, readJestConfig } from './jest/read-jest-config.mjs';
+import { readViteConfig } from './vite/vite-reader.mjs';
 
-export const TEST_ENVIRONMENTS_VARIABLE = 'NITPICKER_TEST_ENVIRONMENTS';
-export const TEST_ENVIRONMENT_RULE = 'nitpicker/no-unused-dom-environment';
+export { TEST_ENVIRONMENTS_VARIABLE };
 export const LINT_CONFIG = 'languages/typescript/preset/defaults/eslint.config.mjs';
 
-const READER = path.join(import.meta.dirname, 'read-environment.mjs');
 const TIMEOUT_MS = 30_000;
-const MAX_OUTPUT_BYTES = 10 * 1024 * 1024;
 const UNKNOWN = { environment: undefined, scopes: [] };
 const WHOLE_PROJECT_GLOBS = new Set(['**', '**/*']);
+const NO_COMMAND = { environment: {}, nodeArguments: [], arguments_: [] };
 
-function runReader({ configFile, projectRoot, resolveRoots, timeoutMs }) {
-  const result = spawnSync(process.execPath, [READER, configFile, projectRoot, ...resolveRoots], {
-    cwd: projectRoot,
-    env: { ...process.env, VITEST: 'true', NODE_ENV: 'test' },
-    encoding: 'utf8',
-    input: '',
-    maxBuffer: MAX_OUTPUT_BYTES,
-    timeout: timeoutMs,
-    killSignal: 'SIGKILL',
-  });
-  if (result.error?.code === 'ETIMEDOUT')
-    return { failure: `it did not finish within ${String(timeoutMs)} ms` };
-  if (result.error !== undefined) return { failure: result.error.message };
-  const line = result.stdout
-    .split('\n')
-    .findLast((candidate) => candidate.startsWith(RESULT_MARKER));
-  if (line === undefined)
-    return { failure: `the config ended the process with exit code ${String(result.status)}` };
-  return JSON.parse(line.slice(RESULT_MARKER.length));
+function unreadable(projectRoot, configFile, failure) {
+  const configPath = path.relative(projectRoot, configFile).split(path.sep).join('/');
+  return {
+    ...UNKNOWN,
+    notice: { path: configPath, message: noticeFor(configPath, failure) },
+  };
 }
 
-export function loadTestEnvironments({
-  projectRoot,
-  liveProjectRoot = projectRoot,
-  timeoutMs = TIMEOUT_MS,
-}) {
+function loadJestEnvironments(options) {
+  const { projectRoot, command } = options;
+  const { config, failure } = readJestConfig(options);
+  return config === undefined
+    ? unreadable(
+        projectRoot,
+        path.resolve(projectRoot, jestConfigFile(projectRoot, command)),
+        failure,
+      )
+    : environmentsFromJestConfig(config, projectRoot);
+}
+
+function loadMochaEnvironments({ projectRoot, liveProjectRoot, command }) {
+  const loaded = loadedProjectMocha({ projectRoot, liveProjectRoot, tokens: command.arguments_ });
+  return globalDomEnvironments(projectRoot, mochaSetupEntries(loaded));
+}
+
+function loadNodeEnvironments({ projectRoot, command }) {
+  return globalDomEnvironments(projectRoot, nodeSetupEntries(command));
+}
+
+function loadViteEnvironments({ projectRoot, liveProjectRoot, timeoutMs }) {
   const configFile = projectConfigFile(projectRoot);
-  if (configFile === undefined) return { ...UNKNOWN, environment: DEFAULT_ENVIRONMENT };
-  const outcome = runReader({
+  if (configFile === undefined) {
+    return { ...UNKNOWN, environment: DEFAULT_ENVIRONMENT };
+  }
+  const outcome = readViteConfig({
     configFile,
     projectRoot,
     resolveRoots: [...new Set([projectRoot, liveProjectRoot])],
     timeoutMs,
   });
-  if (outcome.result === undefined) {
-    const configPath = path.relative(projectRoot, configFile).split(path.sep).join('/');
-    return {
-      ...UNKNOWN,
-      notice: { path: configPath, message: noticeFor(configPath, outcome.failure) },
-    };
-  }
-  return outcome.result;
+  return outcome.result === undefined
+    ? unreadable(projectRoot, configFile, outcome.failure)
+    : outcome.result.environments;
+}
+
+const LOADERS = {
+  jest: loadJestEnvironments,
+  vitest: loadViteEnvironments,
+  mocha: loadMochaEnvironments,
+  node: loadNodeEnvironments,
+};
+
+export function loadTestEnvironments({
+  projectRoot,
+  liveProjectRoot = projectRoot,
+  timeoutMs = TIMEOUT_MS,
+  runner = DEFAULT_TEST_RUNNER,
+  command = NO_COMMAND,
+}) {
+  const load = LOADERS[runner] ?? LOADERS[DEFAULT_TEST_RUNNER];
+  return load({ projectRoot, liveProjectRoot, timeoutMs, command });
 }
 
 function noticeFor(configPath, reason) {
@@ -72,11 +101,16 @@ function ruleIsExcepted(exceptions) {
 
 export function testEnvironmentsFor(options) {
   const layout = readLayout();
+  const policy = readHeadPolicy();
   const selected =
     options.configRelativePath === LINT_CONFIG &&
-    !ruleIsExcepted(readHeadPolicy().exceptions) &&
+    !ruleIsExcepted(policy.exceptions) &&
     layout.projectCodeFiles(options.projectRoot).some((file) => layout.isRunnableTestFile(file));
-  return selected ? loadTestEnvironments(options) : UNKNOWN;
+  if (!selected) {
+    return UNKNOWN;
+  }
+  const { runner, command } = projectTestRunner(options);
+  return loadTestEnvironments({ ...options, runner, command });
 }
 
 export function testEnvironmentNotices({ testEnvironments, analyzerName }) {

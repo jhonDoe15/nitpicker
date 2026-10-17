@@ -5,7 +5,8 @@ import { PACKAGE_ROOT } from '../../../../../core/tooling/tool-resolution.mjs';
 import { TEST_TIMEOUT_MS } from '../test-run.mjs';
 import { createRunnerProjects } from '../test-support/runner-project.mjs';
 import { coverageArguments } from './jest-coverage.mjs';
-import { jestArguments, runJest } from './jest.mjs';
+import { jestArguments } from './jest-arguments.mjs';
+import { runJest } from './jest.mjs';
 
 const projects = createRunnerProjects();
 
@@ -124,6 +125,26 @@ describe('a Jest run that a Create React App script starts', () => {
         `The test script runs "craco test", but @craco/craco is not installed in ${root}. ` +
           'Install the project dependencies, or set "tools.tests.runner" in nitpicker.config.json.',
       ),
+    );
+  });
+
+  it.each([
+    ['react-app-rewired', 'react-app-rewired', 'bin/index.js'],
+    ['rescripts', '@rescripts/cli', 'bin/rescripts.js'],
+  ])('starts Jest through %s, from the bin of %s', (launcher, packageName, bin) => {
+    const packageFolder = `node_modules/${packageName}`;
+    const depth = packageFolder.split('/').length + 1;
+    const fake = FAKE_REACT_SCRIPTS.replace("'../../..'", `'${Array(depth).fill('..').join('/')}'`);
+    const root = launchedProject({
+      [`${packageFolder}/package.json`]: { name: packageName, version: '1.0.0' },
+      [`${packageFolder}/${bin}`]: fake,
+    });
+
+    const run = runJest(optionsFor(root), command(launcher, []));
+
+    expect([run.failed, run.report.numTotalTests]).toEqual([false, 1]);
+    expect(() => runJest(optionsFor(launchedProject({})), command(launcher, []))).toThrow(
+      /^The test script runs "[a-z-]+ test", but [@a-z/-]+ is not installed in /u,
     );
   });
 });

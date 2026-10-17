@@ -1,17 +1,21 @@
 import { readLayout } from '../../../../head-policy.mjs';
+import { RUNNER_OPTION_SCHEMA, vocabularyOf } from '../runners/runner-option.mjs';
 
 const { isTestFixture } = readLayout();
 
 export const rule = {
   meta: {
     type: 'problem',
-    schema: [],
+    schema: RUNNER_OPTION_SCHEMA,
     messages: {
-      intervalPolling: 'Prefer vi.waitFor / expect.poll over setInterval polling in tests.',
+      intervalPolling: 'Prefer {{pollInstead}} over setInterval polling in tests.',
     },
   },
   create(context) {
-    if (isTestFixture(context.filename)) return {};
+    if (isTestFixture(context.filename)) {
+      return {};
+    }
+    const { pollInstead } = vocabularyOf(context);
     return {
       CallExpression(node) {
         const callee = node.callee;
@@ -22,8 +26,9 @@ export const rule = {
             callee.object.type === 'Identifier' &&
             callee.object.name === 'globalThis' &&
             callee.property.name === 'setInterval')
-        )
-          context.report({ node, messageId: 'intervalPolling' });
+        ) {
+          context.report({ node, messageId: 'intervalPolling', data: { pollInstead } });
+        }
       },
     };
   },

@@ -97,6 +97,30 @@ ruleTester.run('test-must-use-production-runtime', testMustUseProductionRuntime,
       code: "import { describe } from 'vitest'; describe('fixture', () => {});",
       errors: [{ messageId: 'missingRuntime' }],
     },
+    ...[
+      ['vitest', 'a file not named *.test.* or *.spec.*'],
+      [
+        'jest',
+        'a file Jest does not run as a test: not named *.test.* or *.spec.*, not under __tests__, and outside the testMatch or testRegex of the Jest config',
+      ],
+      [
+        'node',
+        'a file `node --test` does not run: not named *.test.*, *-test.*, *_test.*, test-*.* or test.*, not under a test/ folder, and outside the patterns of the test script',
+      ],
+      [
+        'mocha',
+        'a file outside the Mocha spec (test/*.{js,cjs,mjs} by default, or the spec in .mocharc.* and the test script)',
+      ],
+    ].map(([runner, helperFile]) => ({
+      filename: '/repo/tests/greet.test.ts',
+      code: "import path from 'node:path'; path.join('a');",
+      options: [{ runner }],
+      errors: [
+        {
+          message: `This test imports no production code at runtime (only types, libraries, or helpers that import none). Import the code under test from the source root, directly or through a helper such as a render function that imports it. Shared helpers belong in ${helperFile}.`,
+        },
+      ],
+    })),
   ],
 });
 ruleTester.run('no-mocking-subject-under-test', noMockingSubjectUnderTest, {

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { chainOf, depthFirst } from './traversal.mjs';
+import { chainOf, depthFirst, parentDirectory } from './traversal.mjs';
 
 describe('iterative tree traversal', () => {
   it('visits children before the next sibling in their original order', () => {
@@ -24,5 +24,11 @@ describe('iterative tree traversal', () => {
         throw new Error('unexpected successor');
       }),
     ).toEqual([]);
+  });
+});
+
+describe('parentDirectory', () => {
+  it('walks up to the file system root and stops there', () => {
+    expect(chainOf('/a/b', parentDirectory)).toEqual(['/a/b', '/a', '/']);
   });
 });

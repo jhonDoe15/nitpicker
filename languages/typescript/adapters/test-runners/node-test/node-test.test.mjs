@@ -178,4 +178,102 @@ describe('coverage on a node:test project', () => {
       "Branch coverage is 0.00%; minimum is 95%. Not taken: the true arm of the if at 2:3; the false arm of the if (or its else) at 2:3. Test it, or remove it if it can't happen.",
     ]);
   });
+
+  it.each([
+    ['ES modules', { type: 'module', scripts: { test: 'node --test' } }, 'test/b.test.mjs'],
+    [
+      'a require hook',
+      {
+        scripts: {
+          test: 'TS_NODE_TRANSPILE_ONLY=true node --require ts-node/register --test test/*.test.ts',
+        },
+      },
+      'test/b.test.ts',
+    ],
+  ])(
+    'restores what a test replaced with mock.method before the next test, with %s',
+    async (_loading, manifest, second) => {
+      const replaceThenRead = [
+        `${IMPORTS}import { mock } from 'node:test';`,
+        "const target = { answer: () => 'real' };",
+        "it('replaces the answer', () => {",
+        "  mock.method(target, 'answer', () => 'fake');",
+        "  assert.equal(target.answer(), 'fake');",
+        '});',
+        "it('reads the real answer', () => {",
+        "  assert.equal(target.answer(), 'real');",
+        '});',
+        '',
+      ].join('\n');
+      const root = projects.project({
+        'package.json': { name: 'p', ...manifest },
+        'tsconfig.json': {
+          compilerOptions: { module: 'commonjs', target: 'es2022', types: ['node'], rootDir: '.' },
+        },
+        'src/main/pick.ts': PICK_SOURCE,
+        'test/a.test.ts': replaceThenRead,
+        [second]: replaceThenRead,
+      });
+
+      const findings = await runArea('coverage', root);
+
+      expect(findings.filter(({ rule }) => rule === 'tests-failed')).toEqual([]);
+      expect(findings.find(({ identity }) => identity === 'test-count')?.metric.value).toBe(4);
+    },
+  );
+
+  it('keeps a double a before hook made, and restores the ones each test made', async () => {
+    const sharedDouble = [
+      "import { after, before, beforeEach, describe, it, mock } from 'node:test';",
+      "import assert from 'node:assert/strict';",
+      "const target = { answer: () => 'real', other: () => 'real' };",
+      "describe('a double made once for the suite', () => {",
+      "  before(() => { mock.method(target, 'answer', () => 'fake'); });",
+      '  after(() => { mock.restoreAll(); });',
+      "  beforeEach(() => { mock.method(target, 'other', () => 'each'); });",
+      "  it('reads the doubles', () => {",
+      "    assert.deepEqual([target.answer(), target.other()], ['fake', 'each']);",
+      '  });',
+      "  it('reads them again', () => {",
+      "    assert.deepEqual([target.answer(), target.other()], ['fake', 'each']);",
+      '  });',
+      '});',
+      "it('runs after the suite restored its doubles', () => {",
+      "  assert.deepEqual([target.answer(), target.other()], ['real', 'real']);",
+      '});',
+      '',
+    ].join('\n');
+    const root = nodeTestProject({ 'test/shared.test.mjs': sharedDouble });
+
+    const findings = await runArea('coverage', root);
+
+    expect(findings.filter(({ rule }) => rule === 'tests-failed')).toEqual([]);
+    expect(findings.find(({ identity }) => identity === 'test-count')?.metric.value).toBe(3);
+  });
+
+  it('leaves a process a test forks free of the mock restoring preload', async () => {
+    const forksChild = [
+      "import { fork } from 'node:child_process';",
+      "import { once } from 'node:events';",
+      "import { it } from 'node:test';",
+      "import assert from 'node:assert/strict';",
+      "it('reads what the forked child prints', async () => {",
+      "  const child = fork(new URL('../scripts/child.mjs', import.meta.url), [], { silent: true });",
+      '  const chunks = [];',
+      "  child.stdout.on('data', (chunk) => chunks.push(chunk));",
+      "  await once(child, 'close');",
+      "  assert.equal(Buffer.concat(chunks).toString(), 'hello');",
+      '});',
+      '',
+    ].join('\n');
+    const root = nodeTestProject({
+      'scripts/child.mjs': "process.stdout.write('hello');\n",
+      'test/fork.test.mjs': forksChild,
+    });
+
+    const findings = await runArea('coverage', root);
+
+    expect(findings.filter(({ rule }) => rule === 'tests-failed')).toEqual([]);
+    expect(findings.find(({ identity }) => identity === 'test-count')?.metric.value).toBe(1);
+  });
 });

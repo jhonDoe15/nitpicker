@@ -7,6 +7,7 @@ export const PARITY_BRIDGED_RULES = new Set([
   'vitest/expect-expect',
   'vitest/no-conditional-expect',
   'vitest/no-conditional-in-test',
+  'vitest/no-identical-title',
   'vitest/valid-expect',
 ]);
 const NEVER_MATCHING_PATTERN = '[^\\s\\S]';

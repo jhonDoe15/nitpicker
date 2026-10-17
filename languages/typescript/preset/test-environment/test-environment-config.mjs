@@ -1,6 +1,10 @@
+import globals from 'globals';
 import { nitpickerRules } from '../eslint-plugin/index.mjs';
-import { codeExtensions } from '../layout.mjs';
-import { TEST_ENVIRONMENTS_VARIABLE, TEST_ENVIRONMENT_RULE } from './resolve-environment.mjs';
+import {
+  TEST_ENVIRONMENTS_VARIABLE,
+  TEST_ENVIRONMENT_RULE,
+  isDomEnvironment,
+} from './environments.mjs';
 
 const UNKNOWN = { environment: undefined, scopes: [] };
 
@@ -18,28 +22,37 @@ export function testEnvironmentsFromVariables(variables = process.env) {
   return Array.isArray(parsed.aliases) ? parsed : { ...parsed, aliases: [] };
 }
 
-function runnableTestGlobs(layout) {
-  return [...layout.sourceRoots, ...layout.testRoots].map(
-    (root) => `${root}/**/*.{test,spec}.${codeExtensions}`,
-  );
-}
-
-function environmentBlock({ files, ignores = [], environment, setupFiles = [] }, aliases, layout) {
+function environmentBlock({ files, ignores = [], environment, setupFiles = [] }, context) {
+  const { aliases, layout, runner, globalDom } = context;
   return {
     files,
     ignores: [...layout.excludedGlobs, ...ignores],
+    ...(isDomEnvironment(environment) ? { languageOptions: { globals: globals.browser } } : {}),
     plugins: { nitpicker: nitpickerRules },
-    rules: { [TEST_ENVIRONMENT_RULE]: ['error', { environment, aliases, setupFiles }] },
+    rules: {
+      [TEST_ENVIRONMENT_RULE]: [
+        'error',
+        {
+          environment,
+          aliases,
+          setupFiles,
+          ...(runner === undefined ? {} : { runner }),
+          ...(globalDom === undefined ? {} : { globalDom }),
+        },
+      ],
+    },
   };
 }
 
 export function testEnvironmentConfigFor(
   layout,
-  { environment, scopes, aliases = [], setupFiles = [] },
+  { environment, scopes, aliases = [], setupFiles = [], globalDom },
+  runner,
 ) {
-  const files = runnableTestGlobs(layout);
+  const files = layout.runnableTestGlobs;
+  const context = { aliases, layout, runner, globalDom };
   return [
-    environmentBlock({ files, environment, setupFiles }, aliases, layout),
-    ...scopes.map((scope) => environmentBlock(scope, aliases, layout)),
+    environmentBlock({ files, environment, setupFiles }, context),
+    ...scopes.map((scope) => environmentBlock(scope, context)),
   ];
 }

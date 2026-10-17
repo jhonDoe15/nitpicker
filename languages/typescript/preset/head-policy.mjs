@@ -25,6 +25,8 @@ import { detectLibraries } from './libraries/project-libraries.mjs';
 import { stylingApproachFor } from './eslint-config/react/react-styling.mjs';
 import { hasPrettierConventions } from '../conventions/prettier-conventions.mjs';
 import { markedGeneratedFiles } from './layout/generated-files.mjs';
+import { detectedRunnerFact } from './test-runner/detect-runner.mjs';
+import { policyTestFiles } from './test-runner/test-files/test-file-patterns.mjs';
 
 export { headPolicyEnvironment, withHeadPolicyFile } from '../../../shared/head-policy.mjs';
 
@@ -62,24 +64,52 @@ export function resolveHeadPolicy(config = {}, projectRoot) {
 }
 
 function withProjectFacts(policy, config, projectRoot) {
-  const prettier = policy.tools?.prettier;
-  return {
+  const scoped = SCOPED_PRESETS.includes(config.preset);
+  const withScopes = {
     ...policy,
-    ...(SCOPED_PRESETS.includes(config.preset)
+    ...(scoped
       ? {
           ...withDetectedScopes(policy, projectRoot),
           libraries: detectLibraries(projectRoot, excludedPathMatcher(policy)),
         }
       : {}),
-    ...(usesProjectConfig(prettier?.precedence ?? [])
+  };
+  const withTools = { ...withScopes, ...detectedTools(withScopes, scoped, projectRoot) };
+  return withTools.react?.enabled === true && scoped
+    ? withAutoCleanup(withTools, projectRoot)
+    : withTools;
+}
+
+function withAutoCleanup(policy, projectRoot) {
+  const tests = policy.tools.tests;
+  const runner = tests.runner ?? tests.detectedRunner;
+  return {
+    ...policy,
+    react: { ...policy.react, autoCleanup: testsCleanUpAutomatically(projectRoot, runner) },
+  };
+}
+
+function testRunnerFacts(policy, projectRoot) {
+  const options = { configured: policy.tools?.tests?.runner, layout: resolveLayoutFor(policy) };
+  return detectedRunnerFact(projectRoot, options);
+}
+
+function detectedTools(policy, scoped, projectRoot) {
+  const prettier = policy.tools?.prettier;
+  const facts = {
+    ...(scoped
       ? {
-          tools: {
-            ...policy.tools,
-            prettier: { ...prettier, projectConfigDigest: projectFilesDigest(projectRoot) },
+          tests: {
+            ...policy.tools?.tests,
+            ...testRunnerFacts(policy, projectRoot),
           },
         }
       : {}),
+    ...(usesProjectConfig(prettier?.precedence ?? [])
+      ? { prettier: { ...prettier, projectConfigDigest: projectFilesDigest(projectRoot) } }
+      : {}),
   };
+  return Object.keys(facts).length === 0 ? {} : { tools: { ...policy.tools, ...facts } };
 }
 
 function excludedPathMatcher(policy) {
@@ -114,7 +144,6 @@ function detectedScopes(policy, projectRoot) {
       ...(iconPackage === undefined ? {} : { iconPackage }),
       ...(major === undefined ? {} : { major }),
       ...(styling === undefined ? {} : { styling }),
-      ...(scopes.react.enabled ? { autoCleanup: testsCleanUpAutomatically(projectRoot) } : {}),
     },
   };
 }
@@ -214,6 +243,7 @@ export function readLayout(environment = process.env) {
     ...resolveLayout(readHeadPolicyFile(environment).layout, policy.exclude, {
       javascript: isJavascriptPolicy(policy),
       generatedFiles: policy.generatedFiles,
+      testFiles: policyTestFiles(policy.tools.tests),
     }),
     entryPoints: [...(policy.layout.entryPoints ?? []), ...policy.frameworks.entryPoints],
   };
