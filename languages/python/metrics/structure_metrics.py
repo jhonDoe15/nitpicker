@@ -4,13 +4,8 @@ import os
 import sys
 import warnings
 
-FUNCTIONS = (ast.FunctionDef, ast.AsyncFunctionDef)
-SCOPES = (*FUNCTIONS, ast.ClassDef)
-BLOCKS = tuple(
-    getattr(ast, name)
-    for name in ("stmt", "excepthandler", "match_case")
-    if hasattr(ast, name)
-)
+from class_metrics import FUNCTIONS, SCOPES, blocks_of, class_entries, first_line, has_decorator
+
 CONTROL = tuple(
     getattr(ast, name)
     for name in ("If", "For", "AsyncFor", "While", "Match", "ExceptHandler")
@@ -35,10 +30,6 @@ def has_docstring(body):
         and isinstance(first.value, ast.Constant)
         and isinstance(first.value.value, str)
     )
-
-
-def blocks_of(node):
-    return [child for child in ast.iter_child_nodes(node) if isinstance(child, BLOCKS)]
 
 
 def docstring_lines(function):
@@ -105,13 +96,6 @@ def complexity(function):
     return total
 
 
-def has_decorator(function, name):
-    return any(
-        getattr(decorator, "id", getattr(decorator, "attr", None)) == name
-        for decorator in function.decorator_list
-    )
-
-
 def is_static(function):
     return has_decorator(function, "staticmethod")
 
@@ -123,10 +107,6 @@ def parameter_count(function, owner):
     count += (arguments.vararg is not None) + (arguments.kwarg is not None)
     is_method = isinstance(owner, ast.ClassDef) and not is_static(function)
     return count - (1 if is_method and positional else 0)
-
-
-def first_line(function):
-    return min([function.lineno] + [item.lineno for item in function.decorator_list])
 
 
 def function_entry(function, owners):
@@ -154,67 +134,6 @@ def function_entries(module):
         node, owners = pending.pop()
         if isinstance(node, FUNCTIONS):
             entries.append(function_entry(node, owners))
-        inner = (*owners, node) if isinstance(node, SCOPES) else owners
-        pending.extend((child, inner) for child in reversed(blocks_of(node)))
-    return entries
-
-
-def written_name(node):
-    if isinstance(node, ast.Subscript):
-        return written_name(node.value)
-    if isinstance(node, ast.Attribute):
-        owner = written_name(node.value)
-        return None if owner is None else owner + "." + node.attr
-    return node.id if isinstance(node, ast.Name) else None
-
-
-def is_class_var(annotation):
-    name = written_name(annotation) or ""
-    return name.split(".")[-1] == "ClassVar"
-
-
-def self_attributes(function):
-    names = set()
-    for node in ast.walk(function):
-        targets = node.targets if isinstance(node, ast.Assign) else []
-        if isinstance(node, (ast.AnnAssign, ast.AugAssign)):
-            targets = [node.target]
-        for target in targets:
-            if (
-                isinstance(target, ast.Attribute)
-                and isinstance(target.value, ast.Name)
-                and target.value.id == "self"
-            ):
-                names.add(target.attr)
-    return names
-
-
-def class_entry(node, owners):
-    methods = [child for child in node.body if isinstance(child, FUNCTIONS)]
-    fields = set()
-    for child in node.body:
-        if isinstance(child, ast.AnnAssign) and isinstance(child.target, ast.Name):
-            if not is_class_var(child.annotation):
-                fields.add(child.target.id)
-    for method in methods:
-        fields |= self_attributes(method)
-    return {
-        "name": ".".join(owner.name for owner in (*owners, node)),
-        "start": first_line(node),
-        "kind": "class",
-        "methods": sum(method.name != "__init__" for method in methods),
-        "fields": len(fields),
-        "bases": [name for name in map(written_name, node.bases) if name is not None],
-    }
-
-
-def class_entries(module):
-    entries = []
-    pending = [(child, ()) for child in reversed(blocks_of(module))]
-    while pending:
-        node, owners = pending.pop()
-        if isinstance(node, ast.ClassDef):
-            entries.append(class_entry(node, owners))
         inner = (*owners, node) if isinstance(node, SCOPES) else owners
         pending.extend((child, inner) for child in reversed(blocks_of(node)))
     return entries
