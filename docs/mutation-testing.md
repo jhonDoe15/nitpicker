@@ -24,6 +24,13 @@ base side runs no mutants: a mutant on a line the change wrote has no counterpar
 every surviving or uncovered mutant reported is new, which matches the touched-code rule for strict
 findings.
 
+When tests fail, mutation runs on the tests that pass. The coverage check writes the test files
+that have a failure to `reports/quality/coverage/failing-test-files.json`, and Stryker runs without
+those files. The coverage check runs first in a process; when a CI shard runs `mutation` without
+`coverage`, there is no list and mutation is skipped as before. Mutants only the left-out tests would have
+killed then show as survived or uncovered. Jest cannot leave files out, and a project whose every
+test file fails has nothing to run: mutation is skipped with a `tests-failed-skipped` reason.
+
 What this gives up: a change that weakens existing tests, or changes a dependency or config, can
 let mutants survive in lines it did not touch, and a comparison does not see them. `--all` (for
 example on a schedule) still mutates every source file.

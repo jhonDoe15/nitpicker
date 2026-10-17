@@ -1,8 +1,10 @@
 import { TESTS_FAILED_RULE } from '../../../../../shared/rules/finding-helpers.mjs';
-import { readFileSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 
 export const COVERAGE_REPORT_PATH = 'reports/quality/coverage/coverage-final.json';
+export const FAILING_TEST_FILES_PATH = 'reports/quality/coverage/failing-test-files.json';
+const TESTS_TOOL = 'tests';
 
 import { normalizeCoverage } from './tests.mjs';
 
@@ -28,6 +30,42 @@ export function coverageFailureFindings(
       message: formatTestFailures(report, options.projectRoot, { runnerName, precedingCommands }),
     }),
   ];
+}
+
+export function testsFailedFinding(options, { report, runnerName, precedingCommands }) {
+  const [firstFailure] = testFailures(report, options.projectRoot);
+  return {
+    ...toolErrorFinding(options, {
+      rule: TESTS_FAILED_RULE,
+      path: findingPath(firstFailure?.file ?? '<unknown test file>'),
+      message: formatTestFailures(report, options.projectRoot, {
+        runnerName,
+        precedingCommands,
+        partial: true,
+      }),
+    }),
+    tool: TESTS_TOOL,
+  };
+}
+
+export function failingTestFiles(report, projectRoot) {
+  const files = testFailures(report, projectRoot)
+    .map(({ file }) => file)
+    .filter((file) => findingPath(file) !== '.');
+  return [...new Set(files)].toSorted();
+}
+
+export function hasPassingTests(report) {
+  return report.numTotalTests - (report.numFailedTests ?? 0) > 0;
+}
+
+export function readFailingTestFiles(projectRoot) {
+  const file = path.join(projectRoot, FAILING_TEST_FILES_PATH);
+  if (!existsSync(file)) {
+    return [];
+  }
+  const files = JSON.parse(readFileSync(file, 'utf8'));
+  return Array.isArray(files) ? files.filter((entry) => typeof entry === 'string') : [];
 }
 
 export function readCoverageFindings(options, testReport) {
@@ -114,18 +152,26 @@ function precedingNote(precedingCommands) {
   ];
 }
 
-export function formatTestFailures(report, projectRoot, { runnerName, precedingCommands } = {}) {
-  return [failureText(report, projectRoot, runnerName), ...precedingNote(precedingCommands)].join(
-    '\n',
-  );
+export function formatTestFailures(
+  report,
+  projectRoot,
+  { runnerName, precedingCommands, partial = false } = {},
+) {
+  return [
+    failureText(report, projectRoot, { runnerName, partial }),
+    ...precedingNote(precedingCommands),
+  ].join('\n');
 }
 
-function failureText(report, projectRoot, runnerName) {
+function failureText(report, projectRoot, { runnerName, partial }) {
   const failures = testFailures(report, projectRoot);
   const failedCount = Number.isInteger(report?.numFailedTests)
     ? Math.max(report.numFailedTests, failures.length)
     : failures.length;
-  const headline = `${String(failedCount)} ${failedCount === 1 ? 'test fails' : 'tests fail'}, so coverage, CRAP and mutation were skipped. Fix the tests and rerun`;
+  const consequence = partial
+    ? '. Coverage and CRAP come from the tests that ran, and mutation leaves out the test files that fail'
+    : ', so coverage, CRAP and mutation were skipped';
+  const headline = `${String(failedCount)} ${failedCount === 1 ? 'test fails' : 'tests fail'}${consequence}. Fix the tests and rerun`;
   if (failures.length === 0) {
     return `${headline}; the report named no test.`;
   }

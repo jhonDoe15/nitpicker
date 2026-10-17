@@ -11,7 +11,7 @@ export function testExecutionChecksFor(exclusions) {
       exclusions: exclusions.general,
       concurrencyWeight: 2,
       concurrencyGroup: 'test-execution',
-      executionPriority: 1,
+      executionPriority: 2,
       shardWeight: 16,
       timeoutMs: 5 * MINUTE_MS,
       configurationFiles: [

@@ -135,6 +135,23 @@ describe('analyzer task graph', () => {
     expect(result.errors).toEqual([]);
     expect(result.skipped).toEqual([{ name: 'crap', because: 'coverage' }]);
   });
+  it('keeps running dependents when the tool error names another tool than the analyzer', async () => {
+    const started = [];
+    const result = await runTaskGraph(
+      [task('coverage'), task('crap', { dependencies: ['coverage'] })],
+      {
+        execute: ({ name }) => {
+          started.push(name);
+          return Promise.resolve({
+            findings: [{ tool: 'tests', rule: 'tests-failed', classification: 'tool-error' }],
+          });
+        },
+      },
+    );
+
+    expect(started).toEqual(['coverage', 'crap']);
+    expect(result.skipped).toBeUndefined();
+  });
   it('still reports a dependency the task graph lacks as an error', async () => {
     const result = await runTaskGraph([task('crap', { dependencies: ['coverage'] })], {
       execute: () => Promise.resolve({ findings: [] }),

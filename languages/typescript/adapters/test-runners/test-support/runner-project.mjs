@@ -1,4 +1,12 @@
-import { mkdirSync, mkdtempSync, realpathSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
+import {
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  realpathSync,
+  rmSync,
+  symlinkSync,
+  writeFileSync,
+} from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { PACKAGE_ROOT } from '../../../../../core/tooling/tool-resolution.mjs';
@@ -67,3 +75,18 @@ export const PICK_SOURCE = [
 
 export const UNCOVERED_ELSE =
   'Branch coverage is 50.00%; minimum is 95%. Not taken: the false arm of the if (or its else) at 2:3.';
+
+export function toolErrors(findings) {
+  return findings
+    .filter(({ classification }) => classification === 'tool-error')
+    .map(({ tool, rule }) => ({ tool, rule }));
+}
+
+export function failingTestFilesOf(projectRoot) {
+  return JSON.parse(
+    readFileSync(
+      path.join(projectRoot, 'reports/quality/coverage/failing-test-files.json'),
+      'utf8',
+    ),
+  );
+}

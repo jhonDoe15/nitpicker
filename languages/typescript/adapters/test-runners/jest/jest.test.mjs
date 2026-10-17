@@ -4,8 +4,10 @@ import { afterEach, describe, expect, it } from 'vitest';
 import {
   PICK_SOURCE,
   UNCOVERED_ELSE,
+  failingTestFilesOf,
   rulesOf,
   runArea,
+  toolErrors,
   createRunnerProjects,
 } from '../test-support/runner-project.mjs';
 
@@ -108,6 +110,27 @@ describe('coverage on a Jest project', () => {
     expect(findings[0].message).toMatch(
       /test\/pick\.test\.ts > says no: .*expect\(received\)\.toBe/u,
     );
+  });
+
+  it('keeps the coverage of the passing tests when another test file fails', async () => {
+    const root = projects.project({
+      'package.json': {
+        name: 'p',
+        private: true,
+        scripts: { test: 'jest' },
+        jest: { preset: 'ts-jest', testEnvironment: 'node' },
+      },
+      'tsconfig.json': TSCONFIG,
+      'src/main/pick.ts': PICK_SOURCE,
+      'test/pick.test.ts': `import { pick } from '../src/main/pick';\n${SAYS_YES}`,
+      'test/fails.test.ts': `import { pick } from '../src/main/pick';\nit('says no', () => {\n  expect(pick(true)).toBe('no');\n});\n`,
+    });
+
+    const findings = await runArea('coverage', root);
+
+    expect(toolErrors(findings)).toEqual([{ tool: 'tests', rule: 'tests-failed' }]);
+    expect(uncoveredBranch(findings)).toMatch(UNCOVERED_ELSE);
+    expect(failingTestFilesOf(root)).toEqual(['test/fails.test.ts']);
   });
 
   it('says so when the Jest config finds none of the test files', async () => {

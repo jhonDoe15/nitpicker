@@ -1,10 +1,14 @@
 import { runNodeTool, parseReportJson } from './tooling.mjs';
 import path from 'node:path';
-import { existsSync, readFileSync, rmSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import {
   COVERAGE_REPORT_PATH,
+  FAILING_TEST_FILES_PATH,
   coverageFailureFindings,
+  failingTestFiles,
+  hasPassingTests,
   readCoverageFindings,
+  testsFailedFinding,
   toolErrorFinding,
 } from '../reporting/test-report.mjs';
 import { runProjectTests } from '../../test-runners/run-project-tests.mjs';
@@ -31,11 +35,32 @@ export function runPolicyTests(options) {
   return [];
 }
 
-export async function runCoverage(options) {
-  const run = await runProjectTests(options);
-  if (run.failed) {
+function removeCoverageOutputs(options) {
+  for (const reportPath of [COVERAGE_REPORT_PATH, FAILING_TEST_FILES_PATH]) {
+    rmSync(path.join(options.projectRoot, reportPath), { force: true });
+  }
+}
+
+function failedRunFindings(options, run) {
+  const failingPath = path.join(options.projectRoot, FAILING_TEST_FILES_PATH);
+  mkdirSync(path.dirname(failingPath), { recursive: true });
+  writeFileSync(
+    failingPath,
+    `${JSON.stringify(failingTestFiles(run.report, options.projectRoot))}\n`,
+  );
+  const hasCoverage = existsSync(path.join(options.projectRoot, COVERAGE_REPORT_PATH));
+  if (!hasCoverage || !hasPassingTests(run.report)) {
     rmSync(path.join(options.projectRoot, COVERAGE_REPORT_PATH), { force: true });
     return coverageFailureFindings(options, run);
+  }
+  return [testsFailedFinding(options, run), ...readCoverageFindings(options, run.report)];
+}
+
+export async function runCoverage(options) {
+  removeCoverageOutputs(options);
+  const run = await runProjectTests(options);
+  if (run.failed) {
+    return failedRunFindings(options, run);
   }
   if (run.report.numTotalTests === 0) {
     rmSync(path.join(options.projectRoot, COVERAGE_REPORT_PATH), { force: true });

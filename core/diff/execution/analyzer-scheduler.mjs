@@ -138,7 +138,9 @@ function hasFailed(outcome) {
   return (
     outcome.error !== undefined ||
     outcome.skippedBecause !== undefined ||
-    (outcome.report?.findings ?? []).some((finding) => finding.classification === 'tool-error')
+    (outcome.report?.findings ?? []).some(
+      (finding) => finding.classification === 'tool-error' && finding.tool === outcome.name,
+    )
   );
 }
 

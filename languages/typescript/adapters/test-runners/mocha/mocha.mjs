@@ -67,9 +67,7 @@ export async function runMocha(options, command) {
       result,
       runnerName: RUNNER_NAMES.mocha,
     });
-    if (!run.failed) {
-      await coverage.write();
-    }
+    await coverage.write();
     return run;
   } finally {
     removeTemporary(mochaReportPath);

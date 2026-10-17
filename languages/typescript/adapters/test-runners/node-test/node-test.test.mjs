@@ -2,8 +2,10 @@ import { afterEach, describe, expect, it } from 'vitest';
 import {
   PICK_SOURCE,
   UNCOVERED_ELSE,
+  failingTestFilesOf,
   rulesOf,
   runArea,
+  toolErrors,
   createRunnerProjects,
 } from '../test-support/runner-project.mjs';
 
@@ -53,6 +55,23 @@ describe('coverage on a node:test project', () => {
     expect(coverage.find(({ rule }) => rule === 'changed-branch-coverage')?.message).toMatch(
       UNCOVERED_ELSE,
     );
+    expect(crap.find(({ identity }) => identity.endsWith(':branchCoverage'))?.metric.value).toBe(
+      50,
+    );
+  });
+
+  it('keeps the coverage of the passing tests when another test file fails', async () => {
+    const root = nodeTestProject({
+      'test/pick.test.ts': `${IMPORTS}import { pick } from '../src/main/pick.ts';\nit('says yes', () => {\n  assert.equal(pick(true), 'yes');\n});\n`,
+      'test/fails.test.ts': `${IMPORTS}import { pick } from '../src/main/pick.ts';\nit('says no', () => {\n  assert.equal(pick(true), 'no');\n});\n`,
+    });
+
+    const findings = await runArea('coverage', root);
+    const crap = await runArea('crap', root);
+
+    expect(toolErrors(findings)).toEqual([{ tool: 'tests', rule: 'tests-failed' }]);
+    expect(changedBranchMessages(findings)[0]).toMatch(UNCOVERED_ELSE);
+    expect(failingTestFilesOf(root)).toEqual(['test/fails.test.ts']);
     expect(crap.find(({ identity }) => identity.endsWith(':branchCoverage'))?.metric.value).toBe(
       50,
     );

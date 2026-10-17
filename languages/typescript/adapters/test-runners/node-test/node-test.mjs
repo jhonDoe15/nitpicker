@@ -132,9 +132,7 @@ export async function runNodeTest(options, command) {
       arguments_: [],
     });
     const run = readRun({ reportPath, result, runnerName: RUNNER_NAMES.node });
-    if (!run.failed) {
-      await coverage.write();
-    }
+    await coverage.write();
     return run;
   } finally {
     removeTemporary(reportPath);

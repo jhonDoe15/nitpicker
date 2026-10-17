@@ -5,6 +5,7 @@ import {
   commitFiles,
   COMMON_EXCLUSIONS,
   comparisonOptions,
+  fakeAnalyzer,
   useQualityDiffRepositories,
 } from '../test-support/quality-diff-harness.mjs';
 import { runQualityDiff } from '../../../comparison/run-diff.mjs';
@@ -250,6 +251,47 @@ describe('quality diff Git comparison', () => {
     expect(() => runQualityDiff(comparisonOptions(repository, 'upstream/base'))).toThrow(
       /git fetch 'upstream' 'base'/,
     );
+  });
+  it('leaves out only the tool that a tool error names when it is not the analyzer itself', () => {
+    const mutant = finding({ tool: 'mutants', identity: 'mutant' });
+    const repository = createRepository({
+      'quality-policy.json': policy(),
+      'src/main/kept.ts': findingLine(mutant),
+    });
+    commitFiles(
+      repository.root,
+      {
+        'src/main/kept.ts': '',
+        'src/main/new.ts': [
+          findingLine(finding({ identity: 'new-lint' })),
+          findingLine(
+            finding({
+              tool: 'mutants',
+              rule: 'tests-failed-skipped',
+              identity: 'tests-failed-skipped',
+              message: 'mutants did not run',
+              classification: 'tool-error',
+            }),
+          ),
+        ].join(''),
+      },
+      'break the tests',
+    );
+
+    const report = runQualityDiff({
+      ...comparisonOptions(repository),
+      analyzers: [fakeAnalyzer({ reportedTools: ['mutants'] })],
+    });
+
+    expect({
+      newFindings: report.newFindings.map(({ tool, identity }) => `${tool} ${identity}`),
+      resolvedFindings: report.resolvedFindings,
+      toolErrors: report.toolErrors.map(({ tool, snapshot, rule }) => ({ tool, snapshot, rule })),
+    }).toEqual({
+      newFindings: ['fake-quality-analyzer new-lint'],
+      resolvedFindings: [],
+      toolErrors: [{ tool: 'mutants', snapshot: 'head', rule: 'tests-failed-skipped' }],
+    });
   });
   it('accepts valid findings output with a nonzero analyzer exit', () => {
     const repository = createRepository({

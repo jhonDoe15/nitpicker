@@ -2,7 +2,8 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { mochaMutationOptions, projectMocha } from '../../preset/test-runner/mocha-options.mjs';
 import { nodeTestSelection } from './node-test/node-test.mjs';
-import { TEST_TIMEOUT_MS } from './test-run.mjs';
+import { TESTS_FAILED_SKIPPED_RULE } from '../../../../shared/rules/finding-helpers.mjs';
+import { TEST_TIMEOUT_MS, runnableTestFiles } from './test-run.mjs';
 
 const RUNNER_PLUGINS = {
   vitest: '@stryker-mutator/vitest-runner',
@@ -40,10 +41,12 @@ function pluginPath(name) {
   return fileURLToPath(import.meta.resolve(name));
 }
 
-function relativeFiles(options, files) {
-  return files.map((file) =>
-    path.isAbsolute(file) ? path.relative(options.projectRoot, file).replaceAll('\\', '/') : file,
-  );
+function relativeFiles(options, files, failing = []) {
+  return files
+    .map((file) =>
+      path.isAbsolute(file) ? path.relative(options.projectRoot, file).replaceAll('\\', '/') : file,
+    )
+    .filter((file) => !failing.includes(file));
 }
 
 function optionValue(tokens, index) {
@@ -62,6 +65,26 @@ export function unsupportedMutationRunner(options, runner) {
     `and this project uses Mocha ${String(major)}. Coverage and CRAP still run; ` +
     `use Mocha ${supported} to get mutation testing.`
   );
+}
+
+export function failingTestsBlock(options, runner, failing) {
+  if (failing.length === 0) {
+    return undefined;
+  }
+  if (runner === 'jest') {
+    return {
+      rule: TESTS_FAILED_SKIPPED_RULE,
+      message:
+        "mutation skipped: tests fail, and Stryker's Jest runner cannot leave test files out. Fix the failing tests (see the tests-failed finding) to get mutation testing.",
+    };
+  }
+  const passing = relativeFiles(options, runnableTestFiles(options), failing);
+  return passing.length === 0
+    ? {
+        rule: TESTS_FAILED_SKIPPED_RULE,
+        message: 'mutation skipped: every test file fails (see the tests-failed finding).',
+      }
+    : undefined;
 }
 
 export function cracoJestConfigText() {
@@ -91,16 +114,16 @@ function jestOptions(command) {
   return { projectType, enableFindRelatedTests: false, ...source };
 }
 
-function mochaConfig(options, command, testFiles) {
+function mochaConfig({ options, command, testFiles, failing }) {
   const { mochaOptions, nodeArguments } = mochaMutationOptions({
     projectRoot: options.projectRoot,
     tokens: command.arguments_,
-    testFiles: relativeFiles(options, testFiles),
+    testFiles: relativeFiles(options, testFiles, failing),
   });
   return { testRunnerNodeArgs: [...command.nodeArguments, ...nodeArguments], mochaOptions };
 }
 
-function runnerOptions({ options, runner, command, testFiles }) {
+function runnerOptions({ options, runner, command, testFiles, failing }) {
   if (runner === 'jest') {
     return {
       testRunnerNodeArgs: command.nodeArguments,
@@ -111,19 +134,26 @@ function runnerOptions({ options, runner, command, testFiles }) {
     };
   }
   if (runner === 'mocha') {
-    return mochaConfig(options, command, testFiles);
+    return mochaConfig({ options, command, testFiles, failing });
   }
   const selection = nodeTestSelection(options, command);
   return {
     tap: {
-      testFiles: relativeFiles(options, selection.testFiles),
+      testFiles: relativeFiles(options, selection.testFiles, failing),
       nodeArgs: selection.nodeArguments,
       forceBail: true,
     },
   };
 }
 
-export function mutationRunnerConfig({ options, runner, command, testFiles, sourceConfig }) {
+export function mutationRunnerConfig({
+  options,
+  runner,
+  command,
+  testFiles,
+  failing = [],
+  sourceConfig,
+}) {
   const { vitest, ...withoutVitest } = sourceConfig;
   const plugins = [
     pluginPath(RUNNER_PLUGINS[runner]),
@@ -136,6 +166,6 @@ export function mutationRunnerConfig({ options, runner, command, testFiles, sour
     ...withoutVitest,
     plugins,
     testRunner: STRYKER_RUNNER_NAMES[runner],
-    ...runnerOptions({ options, runner, command, testFiles }),
+    ...runnerOptions({ options, runner, command, testFiles, failing }),
   };
 }

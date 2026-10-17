@@ -22,7 +22,26 @@ const sourceRoots: string[] = policy.layout?.sourceRoots ?? ['src'];
 const testRoots: string[] = policy.layout?.testRoots ?? ['test', 'tests', '__tests__'];
 const exclude: string[] = policy.exclude ?? [];
 const codeExtensions = '{ts,tsx,mts,cts,js,jsx,mjs,cjs}';
-const nitpickerExclude = [...configDefaults.exclude, ...exclude];
+
+function escapedGlob(file: string) {
+  return file.replaceAll(/[\\[\](){}!*?+@]/gu, '\\$&');
+}
+
+function failingTestFiles(file: string | undefined): string[] {
+  if (!file) {
+    return [];
+  }
+  const parsed: unknown = JSON.parse(readFileSync(file, 'utf8'));
+  return Array.isArray(parsed)
+    ? parsed.filter((entry): entry is string => typeof entry === 'string').map(escapedGlob)
+    : [];
+}
+
+const nitpickerExclude = [
+  ...configDefaults.exclude,
+  ...exclude,
+  ...failingTestFiles(process.env.NITPICKER_FAILING_TESTS),
+];
 
 function testFiles(root: string) {
   return [`${root}/**/*.test.${codeExtensions}`, `${root}/**/*.spec.${codeExtensions}`];
@@ -52,6 +71,7 @@ const coverage = {
     ...exclude,
   ],
   reporter: ['text', 'json'],
+  reportOnFailure: true,
   reportsDirectory: 'reports/quality/coverage',
 };
 

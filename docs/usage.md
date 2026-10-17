@@ -108,6 +108,11 @@ tool errors are still listed in the console and reports and recorded in `summary
 (`overallStatus` stays `tool-error`). `nitpicker aggregate` applies the same rule. With `--defer-exit`, a comparison always exits 0 once it has
 written its reports; use it only for shard workers that are followed by `nitpicker aggregate`.
 
+A tool error normally leaves out all findings of the analyzer that reported it, on both snapshots.
+When the error names a tool other than the analyzer (the `tests` error of the TypeScript coverage
+check), only the findings of that tool are left out, and every other finding of the analyzer is
+still compared.
+
 A full run can take several minutes. While it runs, nitpicker writes a line to stderr when each
 snapshot starts and when an analyzer that took 10 seconds or more finishes, fails or is skipped,
 labelled `base` or `head` for the two snapshots (for example
@@ -670,7 +675,15 @@ tests (`--shard`, `-t`, `--findRelatedTests`, `--onlyChanged`, `--changedSince`,
 `--onlyFailures`); `--selectProjects` stays. Steps the script runs before the tests, such as
 `tsc && jest`, are not run: a failing test run names them so you can run them first. Tests get a
 10 000 ms timeout and run at most 4 files at once (Mocha, and Jest with `--runInBand`, run them one
-after another), and they must pass for coverage, CRAP and mutation to run.
+after another).
+
+When some tests fail, the other results still come from the tests that ran.
+One `tests` tool error (`tests-failed`) names the failing tests. Coverage and CRAP are computed from
+the passing tests, so code that only a failing test covered shows as uncovered. Mutation leaves
+out the test files that have a failing test (Vitest, Mocha and `node:test`); it is skipped with a
+reason when every test file fails, and for Jest, whose Stryker runner cannot leave test files out.
+When no test passes, or the runner writes no coverage, coverage, CRAP and mutation are skipped
+as before.
 
 ```json
 { "tools": { "tests": { "runner": "jest" } } }

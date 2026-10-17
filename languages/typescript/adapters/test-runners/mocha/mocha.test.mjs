@@ -2,8 +2,10 @@ import { afterEach, describe, expect, it } from 'vitest';
 import {
   PICK_SOURCE,
   UNCOVERED_ELSE,
+  failingTestFilesOf,
   rulesOf,
   runArea,
+  toolErrors,
   createRunnerProjects,
 } from '../test-support/runner-project.mjs';
 
@@ -44,6 +46,21 @@ describe('coverage on a Mocha project', () => {
 
     expect(rulesOf(findings)).toEqual(['tool-error:tests-failed']);
     expect(findings[0].message).toMatch(/test\/pick\.test\.ts > pick answers: AssertionError/u);
+  });
+
+  it('keeps the coverage of the passing tests when another test file fails', async () => {
+    const root = mochaProject({
+      'test/pick.test.ts': testFile('yes'),
+      'test/fails.test.ts': testFile('no'),
+    });
+
+    const findings = await runArea('coverage', root);
+
+    expect(toolErrors(findings)).toEqual([{ tool: 'tests', rule: 'tests-failed' }]);
+    expect(findings.find(({ rule }) => rule === 'changed-branch-coverage')?.message).toMatch(
+      UNCOVERED_ELSE,
+    );
+    expect(failingTestFilesOf(root)).toEqual(['test/fails.test.ts']);
   });
 
   it('names the test file that Mocha could not load', async () => {

@@ -87,12 +87,12 @@ describe('quality-area analyzer catalog', () => {
       expect(weights.mutation).toBe(2);
       expect(weights.crap).toBe(1);
       expect(weights['eslint-lint']).toBe(1);
-      expect(priorities.coverage).toBe(1);
+      expect(priorities.coverage).toBe(2);
       expect(priorities.mutation).toBe(1);
       expect(
         Object.entries(priorities).filter(([, executionPriority]) => executionPriority !== 0),
       ).toEqual([
-        ['coverage', 1],
+        ['coverage', 2],
         ['mutation', 1],
       ]);
       expect(

@@ -7,6 +7,7 @@ import { PACKAGE_ROOT } from '../../../../core/tooling/tool-resolution.mjs';
 import {
   CRACO_JEST_CONFIG,
   cracoJestConfigText,
+  failingTestsBlock,
   mutationRunnerConfig,
   unsupportedMutationRunner,
 } from './mutation-runner-config.mjs';
@@ -47,13 +48,14 @@ function mochaProject(files) {
 function configFor(
   runner,
   command,
-  { projectRoot = '/p', testFiles = ['/p/test/a.test.ts'] } = {},
+  { projectRoot = '/p', testFiles = ['/p/test/a.test.ts'], failing } = {},
 ) {
   return mutationRunnerConfig({
     options: { projectRoot },
     runner,
     command: { environment: {}, nodeArguments: [], arguments_: [], ...command },
     testFiles,
+    failing,
     sourceConfig: SOURCE_CONFIG,
   });
 }
@@ -227,6 +229,53 @@ describe('the Stryker runner for each test runner', () => {
       testFiles: ['test/**/*.test.js'],
       nodeArgs: ['--import', 'tsx'],
       forceBail: true,
+    });
+  });
+
+  it('leaves the failing test files out of the node:test and Mocha runs', () => {
+    const projectRoot = mochaProject({});
+    const files = ['test/a.test.ts', 'test/b.test.ts'].map((file) => path.join(projectRoot, file));
+    const mocha = configFor(
+      'mocha',
+      {},
+      { projectRoot, testFiles: files, failing: ['test/b.test.ts'] },
+    );
+    const tap = configFor(
+      'node',
+      { arguments_: ['test/a.test.ts', 'test/b.test.ts'] },
+      { failing: ['test/b.test.ts'] },
+    );
+
+    expect(mocha.mochaOptions.spec).toEqual(['test/a.test.ts']);
+    expect(tap.tap.testFiles).toEqual(['test/a.test.ts']);
+  });
+});
+
+describe('mutation when tests fail', () => {
+  const FILES = { 'test/a.test.ts': '', 'test/b.test.ts': '' };
+
+  it('runs on the passing test files, and needs nothing when no test fails', () => {
+    const options = { projectRoot: project(FILES) };
+
+    expect(failingTestsBlock(options, 'vitest', [])).toBeUndefined();
+    expect(failingTestsBlock(options, 'vitest', ['test/b.test.ts'])).toBeUndefined();
+    expect(failingTestsBlock(options, 'mocha', ['test/b.test.ts'])).toBeUndefined();
+  });
+
+  it('is skipped with a reason when every test file fails', () => {
+    const options = { projectRoot: project(FILES) };
+
+    expect(failingTestsBlock(options, 'node', ['test/a.test.ts', 'test/b.test.ts'])).toEqual({
+      rule: 'tests-failed-skipped',
+      message: 'mutation skipped: every test file fails (see the tests-failed finding).',
+    });
+  });
+
+  it('is skipped for Jest, whose Stryker runner cannot leave test files out', () => {
+    expect(failingTestsBlock({ projectRoot: project(FILES) }, 'jest', ['test/b.test.ts'])).toEqual({
+      rule: 'tests-failed-skipped',
+      message:
+        "mutation skipped: tests fail, and Stryker's Jest runner cannot leave test files out. Fix the failing tests (see the tests-failed finding) to get mutation testing.",
     });
   });
 });
