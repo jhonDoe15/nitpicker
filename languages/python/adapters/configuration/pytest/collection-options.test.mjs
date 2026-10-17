@@ -53,7 +53,12 @@ describe('the collection options for the rules script', () => {
       ],
     };
 
-    expect(collectionOptions(config)).toMatchObject({
+    expect(collectionOptions(config)).toEqual({
+      pythonFiles: config.pythonFiles,
+      pythonClasses: config.pythonClasses,
+      pythonFunctions: config.pythonFunctions,
+      norecursedirs: config.norecursedirs,
+      testpaths: config.testpaths,
       deselected: ['tests/a.py::test_x', 'tests/b.py'],
       ignored: ['tests/old'],
       ignoredGlobs: ['tests/gen_*'],

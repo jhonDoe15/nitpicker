@@ -6,10 +6,6 @@ const { cleanup, outcomes, findingsOf } = createScripts();
 afterEach(cleanup);
 
 const inFile = (file, code) => ({ file, code });
-function inAdapters(rows) {
-  return rows.map(([name, code, found]) => [name, inFile('adapters/m.py', code), found]);
-}
-
 describe.skipIf(!enabled)('module-level-mutable-state', () => {
   it('flags each place a function changes a module collection', () => {
     const [actual, expected] = outcomes([

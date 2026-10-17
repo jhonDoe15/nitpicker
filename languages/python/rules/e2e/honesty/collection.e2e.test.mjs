@@ -80,7 +80,8 @@ describe.skipIf(!enabled)('uncollected-tests', () => {
 });
 
 describe.skipIf(!enabled)('uncollected-tests in other configurations', () => {
-  const passing = 'def test_a():\n    assert total() == 3\n\n\ndef test_b():\n    assert total() == 3\n';
+  const passing =
+    'def test_a():\n    assert total() == 3\n\n\ndef test_b():\n    assert total() == 3\n';
   const lines = (...rows) => rows.join('\n') + '\n';
 
   it('reads the native pytest table, norecursedirs, ignore, deselect and -k', () => {
@@ -94,7 +95,8 @@ describe.skipIf(!enabled)('uncollected-tests in other configurations', () => {
       'tests/test_a.py': passing,
       'tests/test_ignored.py': passing,
       'tests/slow/test_slow.py': passing,
-      'tests/test_flaky.py': 'import pytest\n\n\n@pytest.mark.flaky\ndef test_c():\n    assert total() == 3\n',
+      'tests/test_flaky.py':
+        'import pytest\n\n\n@pytest.mark.flaky\ndef test_c():\n    assert total() == 3\n',
       'tests/orders_test.py': passing,
     };
 

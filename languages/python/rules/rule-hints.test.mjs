@@ -162,29 +162,46 @@ describe('hints', () => {
 describe('hints follow the libraries of the project', () => {
   const advice = (rule, libraries, tool = 'ruff', subject) =>
     withHint({ ...sample({ tool, rule }), subject }, libraries).message;
+  const expected = (rule, allowed) => `The base message. ${allowed} ${exceptionSentence(rule)}`;
 
   it.each([
-    ['structlog', 'log.info("items_loaded", count=count)'],
-    ['loguru', 'logger.info("Loaded {} items", count)'],
-    ['logging', 'logger.info("Loaded %s items", count)'],
-  ])('name the %s form for a formatted log message', (logging, form) => {
-    expect(advice('G004', { logging })).toContain(form);
+    [
+      'structlog',
+      'Keep the message constant and pass the data as key-value pairs: `log.info("items_loaded", count=count)`.',
+    ],
+    [
+      'loguru',
+      'Pass the values as arguments, not a formatted string: `logger.info("Loaded {} items", count)`.',
+    ],
+    [
+      'logging',
+      'Pass the values as arguments, not a formatted string: `logger.info("Loaded %s items", count)`.',
+    ],
+  ])('name the %s form for a formatted log message', (logging, allowed) => {
+    expect(advice('G004', { logging })).toBe(expected('G004', allowed));
   });
 
   it.each([
-    ['structlog', 'structlog.get_logger()'],
-    ['loguru', 'from loguru import logger'],
-  ])('send a print to %s', (logging, form) => {
-    expect(advice('T201', { logging })).toContain(form);
+    [
+      'structlog',
+      'Use structlog: `log = structlog.get_logger()`, then `log.info("event_name", key=value)`.',
+    ],
+    ['loguru', 'Use loguru: `from loguru import logger`, then `logger.info(...)`.'],
+  ])('send a print to %s', (logging, allowed) => {
+    expect(advice('T201', { logging })).toBe(expected('T201', allowed));
   });
 
   it.each([
-    ['msgspec', 'msgspec.json.decode(raw, type=Model)'],
-    ['cattrs', 'cattrs.structure(data, Model)'],
-    ['marshmallow', 'Schema().load(data)'],
-    ['pydantic', 'Model.model_validate(data)'],
+    ['msgspec', 'msgspec (`msgspec.json.decode(raw, type=Model)`)'],
+    ['cattrs', 'cattrs (`cattrs.structure(data, Model)`)'],
+    ['marshmallow', 'marshmallow (`Schema().load(data)`)'],
+    ['pydantic', 'pydantic (`Model.model_validate(data)`)'],
   ])('send a hand-written guard to %s', (validator, form) => {
-    expect(advice('handwritten-boundary-guard', { validator }, 'python-rules')).toContain(form);
+    const allowed = `Parse untrusted input once at the boundary with ${form} in an \`adapters/\` package, not with \`isinstance\` checks or a \`TypeGuard\`.`;
+
+    expect(advice('handwritten-boundary-guard', { validator }, 'python-rules')).toBe(
+      expected('handwritten-boundary-guard', allowed),
+    );
   });
 
   it('write the pytest decorators and parametrize calls the way the project does', () => {
@@ -195,17 +212,48 @@ describe('hints follow the libraries of the project', () => {
       'parametrize-values-row-type': 'list',
     };
 
-    expect(advice('PT001', { pytestStyle })).toContain('`@pytest.fixture()`');
-    expect(advice('PT006', { pytestStyle })).toContain('comma-separated string');
-    expect(advice('PT007', { pytestStyle })).toContain('tuple of lists: `([1, 2], [3, 4])`');
-    expect(advice('PT007', {})).toContain('list of tuples: `[(1, 2), (3, 4)]`');
+    expect(advice('PT001', { pytestStyle })).toBe(
+      expected(
+        'PT001',
+        'Write the decorator with parentheses, as the rest of the project does: `@pytest.fixture()`, `@pytest.mark.slow()`.',
+      ),
+    );
+    expect(advice('PT006', { pytestStyle })).toBe(
+      expected(
+        'PT006',
+        'Pass the names as one comma-separated string: `@pytest.mark.parametrize("a,b", [(1, 2)])`.',
+      ),
+    );
+    expect(advice('PT007', { pytestStyle })).toBe(
+      expected(
+        'PT007',
+        'Pass the values as a tuple of lists: `([1, 2], [3, 4])`, or a tuple for one name.',
+      ),
+    );
+    expect(advice('PT007', {})).toBe(
+      expected(
+        'PT007',
+        'Pass the values as a list of tuples: `[(1, 2), (3, 4)]`, or a list for one name.',
+      ),
+    );
   });
 
-  it('word a skipped test by the mark that skips it', () => {
-    const skip = (subject) => advice('skipped-test-without-reason', {}, 'python-rules', subject);
-
-    expect(skip('pytest.mark.xfail')).toContain('raises=ZeroDivisionError');
-    expect(skip('unittest.skip')).toContain('@unittest.skip("needs the staging database")');
-    expect(skip('return in test_a')).toContain('@pytest.mark.skipif');
+  it.each([
+    [
+      'pytest.mark.xfail',
+      'Give the reason and the expected error: `@pytest.mark.xfail(reason="bug 123", raises=ZeroDivisionError, strict=True)`; or fix or delete the test.',
+    ],
+    [
+      'unittest.skip',
+      'Give the reason: `@unittest.skip("needs the staging database")`, `self.skipTest("...")`; or fix or delete the test.',
+    ],
+    [
+      'return in test_a',
+      'Skip visibly: `@pytest.mark.skipif(sys.platform == "win32", reason="posix only")` or `pytest.skip("...")` (`self.skipTest("...")` in unittest).',
+    ],
+  ])('word a skipped test by the form %s', (subject, allowed) => {
+    expect(advice('skipped-test-without-reason', {}, 'python-rules', subject)).toBe(
+      expected('skipped-test-without-reason', allowed),
+    );
   });
 });

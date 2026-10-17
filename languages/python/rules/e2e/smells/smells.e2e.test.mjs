@@ -440,7 +440,7 @@ describe.skipIf(!enabled)('todo-without-issue', () => {
       ],
       [
         'a docstring',
-        'def f():\n    \"\"\"TODO: implement this properly.\"\"\"\n    return 1\n',
+        'def f():\n    """TODO: implement this properly."""\n    return 1\n',
         ['todo-without-issue:2 TODO: implement this properly.'],
       ],
       [
