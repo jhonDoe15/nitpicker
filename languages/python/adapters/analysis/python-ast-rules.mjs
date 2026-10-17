@@ -4,8 +4,9 @@ import { normalizeReportPath } from '../../../java/ingest/common.mjs';
 import { run } from '../execution/python-process.mjs';
 import { ruffConfigFor } from '../configuration/python-ruff-config.mjs';
 import { fileURLToPath } from 'node:url';
-import { collectionOptions, isTestFile } from '../configuration/pytest/collection-options.mjs';
+import { collectionOptions } from '../configuration/pytest/collection-options.mjs';
 import { readPytestConfig } from '../configuration/pytest/pytest-config.mjs';
+import { testFileMatcher } from './python-sources.mjs';
 import { entryFilesOf, readEntryModules } from '../../rules/libraries/entry-modules.mjs';
 import { boundaryRoots, detectLibraries } from '../../rules/libraries/project-libraries.mjs';
 
@@ -49,7 +50,7 @@ export function checkRules(context) {
       sourceRoots: context.project.sourceRoots,
       testRunner,
       ...collection,
-      testFiles: sources.filter((file) => isTestFile(file, collection)),
+      testFiles: sources.filter(testFileMatcher(context.projectRoot)),
       entryFiles: entryFilesOf(sources, context.project.entryPoints),
       entryModules: readEntryModules(context.projectRoot),
       boundaryRoots: boundaryRoots(detectLibraries(context.projectRoot)),

@@ -111,6 +111,7 @@ export const MESSAGES = {
   unusedProp: `Prop {name} is never passed. Remove it, or pass it from a real caller ({scope}). ${EXCEPTION_HINT}`,
   unusedOption: `Option {name} is never set. Remove it, or set it from a real call ({scope}). ${EXCEPTION_HINT}`,
   testOnlyExport: `Export {name} is only imported by tests. Remove \`export\`, or import it from production code. ${EXCEPTION_HINT}`,
+  testOnlyReexport: `Export {name} is only imported by tests, and {reexporter} re-exports it, which is not a use. Remove the re-export and \`export\`, or import it from production code. If a host or tool loads {reexporter} instead of importing it, list it in "layout.entryPoints". ${EXCEPTION_HINT}`,
   testOnlyModule: `Module {name} is only imported by tests. Move it to a test-support/ folder, or import it from production code. ${EXCEPTION_HINT}`,
   ...sizeMessages(EXCEPTION_HINT),
   slowTest: `{name} took {seconds} s; {kind} test may take {limit} s. Remove Thread.sleep and other waits, start a smaller Spring context or a test slice{move}. ${EXCEPTION_HINT}`,
@@ -157,7 +158,6 @@ export const HELD_MESSAGES = {
   ...SIZE_HELD_MESSAGES,
 };
 
-const BOTH = { typescript: true, java: true, python: false };
 const ALL = { typescript: true, java: true, python: true };
 const TYPESCRIPT_ONLY = { typescript: true, java: false, python: false };
 const withKotlin = (enforcedBy, kotlin) => ({ ...enforcedBy, kotlin });
@@ -259,14 +259,14 @@ export const RULES = [
     enforcedBy: withKotlin(TYPESCRIPT_ONLY, false),
   },
   ...UNUSED_API_RULES,
-  ...sizeRules({ all: ALL, both: BOTH, withKotlin }),
+  ...sizeRules({ all: ALL, withKotlin }),
   ...reuseRules(RULE_IDS, withKotlin(TYPESCRIPT_ONLY, false)),
   ...sourceRules(RULE_IDS, withKotlin(TYPESCRIPT_ONLY, false)),
   {
     id: RULE_IDS.slowTest,
     check: 'test-runtime',
     limit: `a test the change adds or edits taking more than ${String(TEST_TIME_DEFAULTS.unitTestSeconds)} s (unit) or ${String(TEST_TIME_DEFAULTS.integrationTestSeconds)} s (integration); override with \`thresholds.unitTestSeconds\` and \`thresholds.integrationTestSeconds\``,
-    enforcedBy: withKotlin({ ...BOTH, typescript: false }, true),
+    enforcedBy: withKotlin({ ...ALL, typescript: false }, true),
   },
 ];
 

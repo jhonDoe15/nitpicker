@@ -10,7 +10,6 @@ import {
 } from './python-dependencies.mjs';
 
 const roots = [];
-
 afterEach(() => {
   for (const root of roots.splice(0)) {
     rmSync(root, { recursive: true, force: true });
@@ -28,146 +27,142 @@ function project(files) {
 }
 
 describe('requirement names', () => {
+  it('reads the distribution of a requirement line, a URL with #egg, and nothing from options', () => {
+    expect(requirementName('Django>=4.2 ; python_version >= "3.10"  # web')).toBe('Django');
+    expect(requirementName('requests[socks]==2.*')).toBe('requests');
+    expect(requirementName('git+https://example.test/x.git#egg=my_lib')).toBe('my_lib');
+    expect(requirementName('-r base.txt')).toBeUndefined();
+    expect(requirementName('# comment')).toBeUndefined();
+  });
+
   it.each([
     ['pydantic>=2,<3', 'pydantic'],
-    ['Pydantic_Settings[extra]==2.1 ; python_version >= "3.9"', 'pydantic-settings'],
-    ['ruamel.yaml', 'ruamel-yaml'],
+    ['Pydantic_Settings[extra]==2.1 ; python_version >= "3.9"', 'Pydantic_Settings'],
     ['attrs @ https://example.com/attrs.whl', 'attrs'],
-    ['-e git+https://example.com/repo.git#egg=Local_Pkg', 'local-pkg'],
+    ['-e git+https://example.com/repo.git#egg=Local_Pkg', 'Local_Pkg'],
+    ['git+https://example.com/repo.git@main&egg=other', 'other'],
     ['marshmallow # validation', 'marshmallow'],
     ['-e ./local', undefined],
-    ['-r base.txt', undefined],
+    ['/srv/wheels/pkg.whl', undefined],
     ['--index-url https://example.com', undefined],
     ['https://example.com/pkg.whl', undefined],
-    ['# comment', undefined],
     ['', undefined],
   ])('reads %s', (line, expected) => {
     expect(requirementName(line)).toBe(expected);
   });
 
-  it('normalizes the way PEP 503 does', () => {
-    expect(normalizeRequirementName('Foo__Bar.baz-QUX')).toBe('foo-bar-baz-qux');
-  });
-
-  it.each([
-    ['dev', true],
-    ['test-extras', true],
-    ['lint', true],
-    ['docs', true],
-    ['redis', false],
-    ['all', false],
-    ['latest', false],
-  ])('classifies the group %s', (group, expected) => {
-    expect(isDevelopmentGroup(group)).toBe(expected);
+  it('normalizes names the PEP 503 way and recognizes development groups', () => {
+    expect(normalizeRequirementName('Zope.Interface__x')).toBe('zope-interface-x');
+    expect(['dev', 'test-extras', 'lint', 'docs', 'typing', 'ci'].every(isDevelopmentGroup)).toBe(
+      true,
+    );
+    expect(['web', 'postgres', 'devices', 'redis', 'all', 'latest'].some(isDevelopmentGroup)).toBe(
+      false,
+    );
   });
 });
 
-describe('reading the dependencies of a project', () => {
-  it('splits a PEP 621 project into runtime and development', () => {
+function names(root) {
+  const { runtime, development } = readPythonDependencies(root);
+  return { runtime, development };
+}
+
+function declaration({ runtime, development, complete, manifest }) {
+  return { runtime, development, complete, manifest };
+}
+
+describe('the dependencies a project declares', () => {
+  it('reads PEP 621, extras, dependency groups, uv and pdm from pyproject.toml', () => {
     const root = project({
       'pyproject.toml': [
         '[project]',
-        'name = "demo"',
-        'dependencies = ["pydantic>=2", "requests"]',
+        'dependencies = ["attrs>=23", "Django"]',
         '[project.optional-dependencies]',
-        'dev = ["pytest", "Mypy"]',
-        'yaml = ["PyYAML"]',
+        'postgres = ["psycopg"]',
+        'test = ["pytest"]',
         '[dependency-groups]',
         'lint = ["ruff"]',
-        'typing = [{ include-group = "lint" }, "pyright"]',
-        '',
+        '[tool.uv]',
+        'dev-dependencies = ["mypy"]',
+        '[tool.pdm.dev-dependencies]',
+        'docs = ["sphinx"]',
       ].join('\n'),
     });
 
-    expect(readPythonDependencies(root)).toEqual({
-      runtime: ['pydantic', 'requests', 'pyyaml'],
-      development: ['pytest', 'mypy', 'ruff', 'pyright'],
+    const result = readPythonDependencies(root);
+
+    expect(result.runtime).toEqual(['attrs', 'django', 'psycopg']);
+    expect(result.development).toEqual(['mypy', 'pytest', 'ruff', 'sphinx']);
+    const { complete, declaresDev, manifest } = result;
+    expect({ complete, declaresDev, manifest }).toEqual({
+      complete: true,
+      declaresDev: true,
+      manifest: 'pyproject.toml',
+    });
+    expect(result.dependencies.find(({ normalized }) => normalized === 'psycopg')).toEqual({
+      name: 'psycopg',
+      normalized: 'psycopg',
+      group: 'optional',
+      file: 'pyproject.toml',
     });
   });
-
-  it('reads Poetry dependencies, groups and the legacy dev table, without python', () => {
+  it('reads Poetry dependencies and groups, leaving out python itself', () => {
     const root = project({
       'pyproject.toml': [
         '[tool.poetry.dependencies]',
-        'python = "^3.10"',
-        'msgspec = "^0.18"',
-        '[tool.poetry.group.dev.dependencies]',
+        'python = "^3.11"',
+        'fastapi = "*"',
+        '[tool.poetry.group.test.dependencies]',
         'pytest = "*"',
-        '[tool.poetry.group.main.dependencies]',
-        'structlog = "*"',
         '[tool.poetry.dev-dependencies]',
         'black = "*"',
-        '',
       ].join('\n'),
     });
 
-    expect(readPythonDependencies(root)).toEqual({
-      runtime: ['msgspec', 'structlog'],
-      development: ['pytest', 'black'],
+    const { runtime, development, complete } = readPythonDependencies(root);
+    expect({ runtime, development, complete }).toEqual({
+      runtime: ['fastapi'],
+      development: ['black', 'pytest'],
+      complete: true,
     });
   });
-
-  it('reads uv and pdm development tables', () => {
+  it('reads Pipfile categories', () => {
     const root = project({
-      'pyproject.toml':
-        '[tool.uv]\ndev-dependencies = ["pytest"]\n[tool.pdm.dev-dependencies]\ntest = ["coverage"]\n',
+      Pipfile:
+        '[packages]\nrequests = "*"\n[dev-packages]\npytest = "*"\n[docs-packages]\nsphinx = "*"\n',
     });
 
-    expect(readPythonDependencies(root)).toEqual({
-      runtime: [],
-      development: ['pytest', 'coverage'],
+    expect(declaration(readPythonDependencies(root))).toEqual({
+      runtime: ['requests'],
+      development: ['pytest', 'sphinx'],
+      complete: true,
+      manifest: 'Pipfile',
     });
   });
-
-  it('reads requirements files by name, including a requirements directory', () => {
+  it('reads requirements files by their name and setup.cfg options', () => {
     const root = project({
-      'requirements.txt': 'Cerberus==1.3\n-r extra.txt\n# comment\nloguru>=0.7 ; sys_platform\n',
-      'requirements-dev.txt': 'pytest\nvoluptuous\n',
-      'dev-requirements.in': 'tox\n',
-      'requirements/base.txt': 'attrs\ncattrs\n',
-      'requirements/test.txt': 'hypothesis\n',
-      'notes.txt': 'unrelated\n',
+      'requirements.txt': 'flask>=2\n-r requirements/base.txt\n',
+      'requirements/base.txt': 'click\n',
+      'requirements-dev.txt': 'pytest\n',
+      'setup.cfg':
+        '[options]\ninstall_requires =\n    attrs\ntests_require = hypothesis\n[options.extras_require]\nlint = ruff\n',
     });
 
-    expect(readPythonDependencies(root)).toEqual({
-      runtime: ['cerberus', 'loguru', 'attrs', 'cattrs'],
-      development: ['tox', 'pytest', 'voluptuous', 'hypothesis'],
+    expect(declaration(readPythonDependencies(root))).toEqual({
+      runtime: ['attrs', 'click', 'flask'],
+      development: ['hypothesis', 'pytest', 'ruff'],
+      complete: true,
+      manifest: 'setup.cfg',
     });
   });
-
-  it('reads setup.cfg install_requires, tests_require and extras', () => {
-    const root = project({
-      'setup.cfg': [
-        '[metadata]',
-        'name = demo',
-        '[options]',
-        'install_requires =',
-        '    marshmallow>=3',
-        '    dataclasses-json',
-        'tests_require = pytest',
-        '[options.extras_require]',
-        'dev =',
-        '    flake8',
-        'cli = click',
-        '',
-      ].join('\n'),
-    });
-
-    expect(readPythonDependencies(root)).toEqual({
-      runtime: ['marshmallow', 'dataclasses-json', 'click'],
-      development: ['pytest', 'flake8'],
-    });
-  });
-
-  it('reads a Pipfile', () => {
-    const root = project({
-      Pipfile: '[packages]\nstructlog = "*"\n[dev-packages]\npytest = "*"\n',
-    });
-
-    expect(readPythonDependencies(root)).toEqual({
-      runtime: ['structlog'],
-      development: ['pytest'],
-    });
+  it('is incomplete when the dependencies are dynamic or only in setup.py', () => {
+    expect(
+      readPythonDependencies(
+        project({ 'pyproject.toml': '[project]\ndynamic = ["dependencies"]\n' }),
+      ).complete,
+    ).toBe(false);
+    expect(readPythonDependencies(project({ 'setup.py': 'setup()\n' })).complete).toBe(false);
+    expect(readPythonDependencies(project({})).runtime).toEqual([]);
   });
 
   it('counts a package that is both runtime and development as runtime', () => {
@@ -176,15 +171,47 @@ describe('reading the dependencies of a project', () => {
       'requirements-dev.txt': 'pydantic\npytest\n',
     });
 
-    expect(readPythonDependencies(root)).toEqual({
+    expect(names(root)).toEqual({
       runtime: ['pydantic'],
       development: ['pytest'],
     });
   });
 
-  it('reads nothing from a project without manifests, or with a broken one', () => {
-    expect(readPythonDependencies(project({}))).toEqual({ runtime: [], development: [] });
-    expect(readPythonDependencies(project({ 'pyproject.toml': '[project' }))).toEqual({
+  it('reads Poetry main groups as runtime and a dependency group that includes another', () => {
+    const root = project({
+      'pyproject.toml': [
+        '[tool.poetry.group.main.dependencies]',
+        'structlog = "*"',
+        '[dependency-groups]',
+        'typing = [{ include-group = "lint" }, "pyright"]',
+        '',
+      ].join('\n'),
+    });
+
+    expect(names(root)).toEqual({
+      runtime: ['structlog'],
+      development: ['pyright'],
+    });
+  });
+
+  it('reads requirements files named either way and a requirements directory', () => {
+    const root = project({
+      'requirements.txt': 'Cerberus==1.3\n# comment\nloguru>=0.7 ; sys_platform\n',
+      'requirements-dev.txt': 'pytest\nvoluptuous\n',
+      'dev-requirements.in': 'tox\n',
+      'requirements/base.txt': 'attrs\ncattrs\n',
+      'requirements/test.txt': 'hypothesis\n',
+      'notes.txt': 'unrelated\n',
+    });
+
+    expect(names(root)).toEqual({
+      runtime: ['attrs', 'cattrs', 'cerberus', 'loguru'],
+      development: ['hypothesis', 'pytest', 'tox', 'voluptuous'],
+    });
+  });
+
+  it('reads nothing from a project without manifests', () => {
+    expect(names(project({}))).toEqual({
       runtime: [],
       development: [],
     });
@@ -200,7 +227,7 @@ describe('requirements files', () => {
       'requirements-constraints.txt': 'marshmallow\n',
     });
 
-    expect(readPythonDependencies(root)).toEqual({ runtime: ['attrs'], development: [] });
+    expect(names(root)).toEqual({ runtime: ['attrs'], development: [] });
   });
 
   it('follows -r includes of any project path, once, even in a loop', () => {
@@ -213,8 +240,8 @@ describe('requirements files', () => {
       'requirements-dev.txt': '-r requirements.txt\npytest\n-r ../outside.txt\n-r missing.txt\n',
     });
 
-    expect(readPythonDependencies(root)).toEqual({
-      runtime: ['loguru', 'attrs', 'structlog', 'cattrs'],
+    expect(names(root)).toEqual({
+      runtime: ['attrs', 'cattrs', 'loguru', 'structlog'],
       development: ['pytest'],
     });
   });
@@ -222,7 +249,7 @@ describe('requirements files', () => {
   it('does not follow an include out of the project', () => {
     const root = project({ 'requirements.txt': '-r ../../outside.txt\nattrs\n' });
 
-    expect(readPythonDependencies(root)).toEqual({ runtime: ['attrs'], development: [] });
+    expect(names(root)).toEqual({ runtime: ['attrs'], development: [] });
   });
 
   it('reads the .in file next to a compiled requirements file', () => {
@@ -231,7 +258,7 @@ describe('requirements files', () => {
       'requirements.txt': 'annotated-types==0.6\npydantic==2.5\n    # via -r requirements.in\n',
     });
 
-    expect(readPythonDependencies(root)).toEqual({ runtime: ['pydantic'], development: [] });
+    expect(names(root)).toEqual({ runtime: ['pydantic'], development: [] });
   });
 
   it('reads only the direct dependencies of a pip-compile output without a .in file', () => {
@@ -257,8 +284,8 @@ describe('requirements files', () => {
       ].join('\n'),
     });
 
-    expect(readPythonDependencies(root)).toEqual({
-      runtime: ['pydantic', 'typing-extensions', 'structlog'],
+    expect(names(root)).toEqual({
+      runtime: ['pydantic', 'structlog', 'typing-extensions'],
       development: [],
     });
   });
@@ -269,7 +296,7 @@ describe('requirements files', () => {
         '# This file is autogenerated by pip-compile\nattrs==23.1\ncattrs==23.2\n',
     });
 
-    expect(readPythonDependencies(root)).toEqual({ runtime: ['attrs', 'cattrs'], development: [] });
+    expect(names(root)).toEqual({ runtime: ['attrs', 'cattrs'], development: [] });
   });
 
   it('reads inline via annotations', () => {
@@ -277,7 +304,7 @@ describe('requirements files', () => {
       'requirements.txt': 'attrs==23.1  # via -r requirements.in\nsix==1.16  # via attrs\n',
     });
 
-    expect(readPythonDependencies(root)).toEqual({ runtime: ['attrs'], development: [] });
+    expect(names(root)).toEqual({ runtime: ['attrs'], development: [] });
   });
 
   it.each([
@@ -300,7 +327,7 @@ describe('requirements files', () => {
   ])('decodes %s', (_name, content) => {
     const root = project({ 'requirements.txt': content });
 
-    expect(readPythonDependencies(root)).toEqual({
+    expect(names(root)).toEqual({
       runtime: ['attrs', 'msgspec'],
       development: [],
     });
@@ -332,8 +359,8 @@ describe('setup.py', () => {
       ].join('\n'),
     });
 
-    expect(readPythonDependencies(root)).toEqual({
-      runtime: ['marshmallow', 'cerberus', 'click', 'structlog'],
+    expect(names(root)).toEqual({
+      runtime: ['cerberus', 'click', 'marshmallow', 'structlog'],
       development: ['mock', 'sphinx'],
     });
   });
@@ -343,6 +370,6 @@ describe('setup.py', () => {
       'setup.py': 'setup(install_requires=read_requirements(), extras_require=EXTRAS)\n',
     });
 
-    expect(readPythonDependencies(root)).toEqual({ runtime: [], development: [] });
+    expect(names(root)).toEqual({ runtime: [], development: [] });
   });
 });

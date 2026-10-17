@@ -1,34 +1,11 @@
-import { existsSync } from 'node:fs';
-import path from 'node:path';
-import { groupKind, namesOf } from './dependency-names.mjs';
-import { parseIni, readText } from './dependency-text.mjs';
+import { readProjectFile } from '../project-files.mjs';
+import { groupOf, requirementEntries } from './requirement-names.mjs';
 
+const SETUP_PY = 'setup.py';
 const PAIRS = { '[': ']', '{': '}', '(': ')' };
 const CLOSERS = Object.values(PAIRS);
 const STRING = /(["'])((?:(?!\1).)+)\1/gu;
 const EXTRA = /(["'])([^"']+)\1\s*:\s*(?=\[)/gu;
-
-function linesOf(text) {
-  return (text ?? '').split('\n');
-}
-
-export function setupCfgGroups(projectRoot) {
-  const file = path.join(projectRoot, 'setup.cfg');
-  if (!existsSync(file)) {
-    return [];
-  }
-  const sections = parseIni(readText(file));
-  const options = sections.get('options') ?? new Map();
-  const extras = sections.get('options.extras_require') ?? new Map();
-  return [
-    { kind: 'runtime', names: namesOf(linesOf(options.get('install_requires'))) },
-    { kind: 'development', names: namesOf(linesOf(options.get('tests_require'))) },
-    ...[...extras].map(([group, text]) => ({
-      kind: groupKind(group),
-      names: namesOf(linesOf(text)),
-    })),
-  ];
-}
 
 function quoteAfter(quote, character) {
   if (quote !== undefined) {
@@ -76,17 +53,16 @@ function stringsOf(literal) {
   return [...literal.matchAll(STRING)].map((match) => match[2]);
 }
 
-function extrasOf(literal) {
-  return [...literal.matchAll(EXTRA)].map((match) => {
+function extraEntries(literal) {
+  return [...literal.matchAll(EXTRA)].flatMap((match) => {
     const start = match.index + match[0].length;
     const end = closing(literal, start);
-    return { kind: groupKind(match[2]), names: namesOf(stringsOf(literal.slice(start, end + 1))) };
+    return requirementEntries(
+      stringsOf(literal.slice(start, end + 1)),
+      groupOf(match[2], 'optional'),
+      SETUP_PY,
+    );
   });
-}
-
-function listGroup(source, key, kind) {
-  const literal = literalAfter(source, key);
-  return { kind, names: literal === undefined ? [] : namesOf(stringsOf(literal)) };
 }
 
 function withoutComment(line) {
@@ -103,16 +79,25 @@ function withoutComment(line) {
   return line;
 }
 
-export function setupPyGroups(projectRoot) {
-  const file = path.join(projectRoot, 'setup.py');
-  if (!existsSync(file)) {
-    return [];
+function listEntries(source, key, group) {
+  const literal = literalAfter(source, key);
+  return literal === undefined ? [] : requirementEntries(stringsOf(literal), group, SETUP_PY);
+}
+
+/** The requirements setup.py spells out as literals; a list built by code is not read. */
+export function readSetupPy(projectRoot) {
+  const text = readProjectFile(projectRoot, SETUP_PY);
+  if (text === undefined) {
+    return undefined;
   }
-  const source = readText(file).split(/\r?\n/u).map(withoutComment).join('\n');
+  const source = text.split(/\r?\n/u).map(withoutComment).join('\n');
   const extras = literalAfter(source, 'extras_require');
-  return [
-    listGroup(source, 'install_requires', 'runtime'),
-    listGroup(source, 'tests_require', 'development'),
-    ...(extras === undefined ? [] : extrasOf(extras)),
-  ];
+  return {
+    entries: [
+      ...listEntries(source, 'install_requires', 'production'),
+      ...listEntries(source, 'tests_require', 'dev'),
+      ...(extras === undefined ? [] : extraEntries(extras)),
+    ],
+    declares: literalAfter(source, 'install_requires') !== undefined,
+  };
 }

@@ -39,6 +39,10 @@ describe.skipIf(!pythonE2eEnabled)(
         'pkg/shape.py': 'def area(side):\n    return side**2\n',
       });
       commitBranch(plain, 'unformatted', { 'pkg/extra.py': 'x = {"a":1}\n' });
+      commitBranch(plain, 'slow', {
+        'tests/test_shape.py':
+          'import time\nimport unittest\n\nfrom pkg.shape import area\n\n\nclass AreaTest(unittest.TestCase):\n    def test_area(self):\n        self.assertEqual(area(3), 9)\n\n    def test_area_slow(self):\n        time.sleep(5.2)\n        self.assertEqual(area(2), 4)\n',
+      });
     });
     it('runs unittest under coverage and passes a clean change', () => {
       const result = gate(plain, 'clean');
@@ -47,6 +51,17 @@ describe.skipIf(!pythonE2eEnabled)(
       expect(result.json('summary.json').tools[0].version).toMatch(
         /^ruff@[\d.]+;black@[\d.]+;(?:mypy|pyright)@[\d.]+;coverage@[\d.]+;unittest;jscpd@[\d.]+$/,
       );
+    });
+    it('times the unittest tests and fails a new slow one', () => {
+      const result = gate(plain, 'slow');
+
+      expect(result.exitCode, result.text).toBe(1);
+      expect(
+        result
+          .json('new-findings.json')
+          .filter(({ rule }) => rule === 'slow-test')
+          .map(({ path, message }) => [path, message.split(';')[0]]),
+      ).toEqual([['tests/test_shape.py', 'AreaTest.test_area_slow took 5.2 s']]);
     });
     it('checks formatting with black', () => {
       const result = gate(plain, 'unformatted');
