@@ -70,9 +70,10 @@ describe('strict test rules', () => {
     expect(messages(raisedTimeout, 'src/main/service.ts')).toEqual([
       'No matching configuration found for src/main/service.ts.',
     ]);
-    expect(messages(raisedTimeout, 'tests/generated/a.test.ts')).toEqual([
-      'No matching configuration found for tests/generated/a.test.ts.',
+    expect(messages(raisedTimeout, 'tests/node_modules/a.test.ts')).toEqual([
+      'No matching configuration found for tests/node_modules/a.test.ts.',
     ]);
+    expect(messages(raisedTimeout, 'tests/generated/a.test.ts')).toHaveLength(1);
   });
 
   it('hold helper and fixture scripts, not test files, to the main guard', () => {
