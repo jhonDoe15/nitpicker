@@ -10,19 +10,23 @@ const repeat = (literal, times = 3) =>
   Array.from({ length: times }, (_, index) => `A${String(index)} = ${literal}\n`).join('');
 
 describe.skipIf(!enabled)('repeated-string-literal', () => {
-  it('flags a string of five characters or more used three times, at its first use', () => {
+  it('flags each use of a string of five characters or more after the second', () => {
     const [actual, expected] = outcomes([
-      ['three uses', repeat('"pending"'), ['repeated-string-literal:1 pending']],
-      ['four uses', repeat('"pending"', 4), ['repeated-string-literal:1 pending']],
+      ['three uses', repeat('"pending"'), ['repeated-string-literal:3 pending']],
+      [
+        'four uses',
+        repeat('"pending"', 4),
+        ['repeated-string-literal:3 pending', 'repeated-string-literal:4 pending'],
+      ],
       [
         'uses in calls and comparisons',
         'def f(x):\n    if x == "pending":\n        return g("pending")\n    return h("pending")\n',
-        ['repeated-string-literal:2 pending'],
+        ['repeated-string-literal:4 pending'],
       ],
       [
         'a long literal is shortened',
         repeat('"a-very-long-literal-that-keeps-going-on-and-on"'),
-        ['repeated-string-literal:1 a-very-long-literal-that-keeps...'],
+        ['repeated-string-literal:3 a-very-long-literal-that-keeps...'],
       ],
       ['two uses', repeat('"pending"', 2), []],
       ['a short literal', repeat('"ok"'), []],
@@ -42,7 +46,28 @@ describe.skipIf(!enabled)('repeated-string-literal', () => {
       [
         'subscripts with a literal key',
         'def f(a, b, c):\n    return a["pending"], b["pending"], c["pending"]\n',
-        ['repeated-string-literal:2 pending'],
+        [],
+      ],
+      ['keyword argument values', 'f(mode="pending")\ng(mode="pending")\nh(mode="pending")\n', []],
+      [
+        'encodings, mime types, time formats and actions',
+        'A = f(x, "utf-8")\nB = f(y, "utf-8")\nC = f(z, "utf-8")\nD = g("application/json")\nE = g("application/json")\nF = g("application/json")\nH = h("%Y-%m-%d")\nI = h("%Y-%m-%d")\nJ = h("%Y-%m-%d")\nK = a("store_true")\nL = a("store_true")\nM = a("store_true")\n',
+        [],
+      ],
+      [
+        'names listed in __all__ and in a class body',
+        '__all__ = ["pending", "shipped"]\nA = f(__all__, "pending")\n\n\nclass Admin:\n    list_display = ["pending", "shipped"]\n    search = ("pending",)\n',
+        [],
+      ],
+      [
+        'a Django migration',
+        'from django.db import migrations\n\n\nclass Migration(migrations.Migration):\n    operations = [f("pending"), g("pending"), h("pending")]\n',
+        [],
+      ],
+      [
+        'an Alembic revision',
+        'revision = "abc"\nA = f("pending")\nB = g("pending")\nC = h("pending")\n',
+        [],
       ],
       ['translation calls', 'A = _("pending")\nB = _("pending")\nC = gettext("pending")\n', []],
       ['a test file', inFile('tests/test_a.py', repeat('"pending"')), []],
