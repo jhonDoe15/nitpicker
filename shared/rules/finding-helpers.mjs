@@ -20,6 +20,13 @@ export function nextOccurrence(occurrences, key) {
   return occurrence;
 }
 
+const REPEATING_UNIT_NAME = /<(?:init|clinit|lambda)>$/u;
+
+/** Whether a function name (`Owner.<init>`, `Owner.run.<lambda>`) may repeat in one file with other source. */
+export function repeatsInSource(name) {
+  return REPEATING_UNIT_NAME.test(name);
+}
+
 /** `value` when it is a positive integer (a usable line number), else undefined. */
 export function positiveInteger(value) {
   return Number.isInteger(value) && value > 0 ? value : undefined;
