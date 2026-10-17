@@ -28,6 +28,7 @@ describe('the files and directories that the walk of a project reaches', () => {
     'src/.cache/c.ts': '',
     'dist/d.ts': '',
     'src/generated/g.ts': '',
+    'generated/g.ts': '',
   };
 
   it('accepts a code file in a plain directory', () => {
@@ -50,7 +51,7 @@ describe('the files and directories that the walk of a project reaches', () => {
 
   it('leaves out what sits in a dot, built, generated, linked or excluded directory', () => {
     const rules = projectWith(files);
-    const directories = ['src/.cache', 'dist', 'src/generated', 'src/linked', 'node_modules'];
+    const directories = ['src/.cache', 'dist', 'generated', 'src/linked', 'node_modules'];
 
     expect(directories.map((dir) => rules.isDirectory(path.join(root, dir)))).toEqual([
       false,
@@ -62,6 +63,13 @@ describe('the files and directories that the walk of a project reaches', () => {
     expect(rules.isFile(path.join(root, 'src/.cache/c.ts'))).toBe(false);
     expect(rules.isFile(path.join(root, 'src/linked/a.ts'))).toBe(false);
     expect(rules.isFile(path.join(root, 'src/linked/deep/b.ts'))).toBe(false);
+  });
+
+  it('walks a folder named like build output below the project root', () => {
+    const rules = projectWith(files);
+
+    expect(rules.isDirectory(path.join(root, 'src/generated'))).toBe(true);
+    expect(rules.isFile(path.join(root, 'src/generated/g.ts'))).toBe(true);
   });
 
   it('leaves out what lies outside the project', () => {
