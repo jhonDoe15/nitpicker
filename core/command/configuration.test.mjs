@@ -286,10 +286,14 @@ fake-quality-analyzer: base=0 head=0 new=0 resolved=0 unchanged=0 changed-metric
     };
     const analyzers = [fakeAnalyzer(), dependent, fakeAnalyzer('other-analyzer')];
 
-    const { exitCode, output, summary } = runWithConfig(
-      { disable: ['fake-quality-analyzer'] },
-      { analyzers },
-    );
+    const config = { disable: ['fake-quality-analyzer'] };
+    const digest = acceptedDigest(['analyzer disabled: fake-quality-analyzer'], {
+      'nitpicker.config.json': JSON.stringify(config),
+    });
+    const { exitCode, output, summary } = runWithConfig(config, {
+      analyzers,
+      extraArguments: ['--base', 'HEAD', `--accept-policy-change=${digest}`],
+    });
 
     expect(exitCode).toBe(0);
     expect(summary.tools.map(({ name }) => name)).toEqual(['other-analyzer']);
