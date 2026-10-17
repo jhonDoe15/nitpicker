@@ -1,20 +1,29 @@
 import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { environmentError } from './python-environment.mjs';
 import { execute, probeVersion, VERSION_PATTERN } from './python-process.mjs';
 import { readOptional, readProjectHints } from './python-project.mjs';
 import { DJANGO_SCRIPT, readDjangoScript } from './python-django.mjs';
 import { TEST_DIRECTORIES, TEST_FILE_NAME } from './python-test-files.mjs';
+import { JUNIT_REPORT } from '../test-runs/junit-results.mjs';
+import { pinnedEnvironmentAddopts, pinnedPytestArguments } from '../test-runs/pytest-pins.mjs';
 
 export const NO_TESTS_EXIT = 5;
 const PYTEST_PROBE = [
   'python',
   '-c',
-  'import importlib.util as u, pytest; print(pytest.__version__, *(int(u.find_spec(m) is not None) for m in ("pytest_cov", "xdist", "pytest_django")))',
+  'import importlib.util as u, pytest; print(pytest.__version__, *(int(u.find_spec(m) is not None) for m in ("pytest_cov", "xdist", "pytest_rerunfailures", "pytest_django")))',
 ];
 const UNITTEST_FILES = 'python_files=test*.py';
 const RUNNER_DISTRIBUTIONS = { django: 'Django', nose2: 'nose2' };
 const probes = new WeakMap();
+export const UNITTEST_SCRIPT = fileURLToPath(
+  new URL('../test-runs/unittest_timings.py', import.meta.url),
+);
+export const PYTEST_SCRIPT = fileURLToPath(
+  new URL('../test-runs/pytest_timings.py', import.meta.url),
+);
 
 const PYTEST_CONFIGURATION = /^\s*\[(?:tool\.pytest(?:\.ini_options)?|pytest|tool:pytest)\]/m;
 const PYTEST_DEPENDENCY = /(?:^|[\s"'=])pytest(?:\b|_)/m;
@@ -98,12 +107,18 @@ export function detectTestRunner(projectRoot, setting) {
 export function probePytest(context) {
   if (!probes.has(context)) {
     const result = execute(context, PYTEST_PROBE);
-    const [version, coverage, xdist, django] =
+    const [version, coverage, xdist, rerunfailures, django] =
       result.error === undefined && result.status === 0 ? result.stdout.trim().split(' ') : [];
     probes.set(
       context,
       VERSION_PATTERN.test(version ?? '')
-        ? { version, coverage: coverage === '1', xdist: xdist === '1', django: django === '1' }
+        ? {
+            version,
+            coverage: coverage === '1',
+            xdist: xdist === '1',
+            rerunfailures: rerunfailures === '1',
+            django: django === '1',
+          }
         : undefined,
     );
   }
@@ -141,7 +156,21 @@ export function mutationPytestOptions(context) {
   ];
 }
 
-function pytestCommand(context) {
+/** PYTEST_ADDOPTS for the pytest runs mutmut starts: pinned, single-process, `ignored` left out. */
+export function mutmutPytestEnvironment(context, ignored = []) {
+  const inherited = context.pytestAddopts;
+  const pinned = pinnedEnvironmentAddopts(inherited).PYTEST_ADDOPTS ?? inherited;
+  const options = [
+    pinned,
+    ...mutationPytestOptions(context),
+    ...ignored.map((file) => `--ignore=${file}`),
+  ].filter(Boolean);
+  return options.length === 0 || options.join(' ') === inherited
+    ? {}
+    : { PYTEST_ADDOPTS: options.join(' ') };
+}
+
+export function pytestCommand(context) {
   const probe = probePytest(context);
   if (probe === undefined) {
     throw environmentError(
@@ -149,25 +178,38 @@ function pytestCommand(context) {
     );
   }
   return [
-    '-m',
-    'pytest',
+    PYTEST_SCRIPT,
     '-q',
     '-o',
     `cache_dir=${path.join(context.reportRoot, 'pytest-cache')}`,
     ...(probe.coverage ? ['--no-cov'] : []),
     ...(probe.xdist ? ['-n0'] : []),
+    '--continue-on-collection-errors',
+    `--junitxml=${path.join(context.reportRoot, JUNIT_REPORT)}`,
+    '-o',
+    'junit_family=xunit1',
+    '-o',
+    'junit_duration_report=call',
+    ...pinnedPytestArguments(context.projectRoot, probe),
   ];
 }
 
+export function testEnvironment(context) {
+  return context.project.testRunner === 'pytest'
+    ? pinnedEnvironmentAddopts(context.pytestAddopts)
+    : {};
+}
+
 function unittestCommand(context) {
+  const timed = [UNITTEST_SCRIPT, path.join(context.reportRoot, JUNIT_REPORT), 'discover'];
   const directory = TEST_DIRECTORIES.find((name) =>
     existsSync(path.join(context.projectRoot, name)),
   );
   if (directory === undefined) {
-    return ['-m', 'unittest', 'discover'];
+    return timed;
   }
   const packaged = existsSync(path.join(context.projectRoot, directory, '__init__.py'));
-  return ['-m', 'unittest', 'discover', '-s', directory, ...(packaged ? ['-t', '.'] : [])];
+  return [...timed, '-s', directory, ...(packaged ? ['-t', '.'] : [])];
 }
 
 function requireRunner(context, runner) {

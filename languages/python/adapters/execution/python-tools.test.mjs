@@ -89,6 +89,8 @@ describe('running the tools', () => {
       formatterDetected: true,
       sourceRoots: ['src'],
       testsRan: true,
+      testFailures: [],
+      testRunner: 'unittest',
     });
     expect(readReport(reportRoot, 'coveragerc')).toBe(coverageRc(root, ['src']));
   });
@@ -113,7 +115,7 @@ describe('running the tools', () => {
     runPythonTools(context);
 
     expect(readReport(reportRoot, 'coveragerc')).toBe(
-      coverageRc(root, ['src'], ['concurrency =', '    multiprocessing']),
+      coverageRc(root, ['src'], { carried: ['concurrency =', '    multiprocessing'] }),
     );
   });
   it('combines the data files of the processes the tests started before the report', () => {
@@ -145,6 +147,14 @@ describe('running the tools', () => {
         message: 'coverage combine exited 2 in the virtualenv environment:\nNo data to combine',
       },
     ]);
+  });
+  it('leaves the Django test module names out of coverage only in a Django project', () => {
+    const root = project({ 'manage.py': '' });
+    const { context, reportRoot } = contextFor(root);
+
+    runPythonTools(context);
+
+    expect(readReport(reportRoot, 'coveragerc')).toBe(coverageRc(root, ['src'], { django: true }));
   });
   it('measures the source roots that exist and writes an empty report when none does', () => {
     const calls = callsLog();
@@ -180,6 +190,7 @@ describe('running the tools', () => {
         ['types-failed', 'mypy', 'mypy'],
         ['rules-failed', 'python', 'python'],
         ['structure-failed', `python ${structureScript}`, 'python'],
+        ['dependencies-failed', 'python', 'python'],
       ].map(([rule, command, call]) => ({
         rule,
         message: `${command} exited 2 in the virtualenv environment:\n${call} blew up`,

@@ -86,7 +86,7 @@ function forwardedSpecifiers(fact) {
   }
   return [
     ...fact.exports.reexports.map(({ specifier }) => specifier),
-    ...fact.exports.namespaces,
+    ...fact.exports.namespaces.map(({ specifier }) => specifier),
     ...fact.imports.filter(forwardsBinding).map(({ specifier }) => specifier),
   ];
 }

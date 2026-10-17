@@ -1,6 +1,8 @@
 import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import path from 'node:path';
-import { parseIni, readFileEntries, toml } from './python-project.mjs';
+import { readFileEntries } from './python-project.mjs';
+import { toml } from '../../libraries/project-files.mjs';
+import { parseIni } from '../configuration/mypy-config.mjs';
 
 export const DJANGO_SCRIPT = 'manage.py';
 const SETTINGS_ASSIGNMENT = /DJANGO_SETTINGS_MODULE["']\s*(?:,|\]\s*=)\s*["']([\w.]+)["']/;

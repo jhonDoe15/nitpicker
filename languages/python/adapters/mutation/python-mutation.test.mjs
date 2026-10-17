@@ -63,7 +63,7 @@ function configurationContext(files = {}, overrides = {}) {
 }
 
 const TEST_PATTERNS =
-  '"tests/*","*/tests/*","test/*","*/test/*","test_*.py","*/test_*.py","*_test.py","*/*_test.py","tests.py","*/tests.py","conftest.py","*/conftest.py"';
+  '"tests/*","*/tests/*","test/*","*/test/*","test_*.py","*/test_*.py","*_test.py","*/*_test.py","conftest.py","*/conftest.py"';
 const section = (sourcePaths, patterns = TEST_PATTERNS) =>
   `[tool.mutmut]\nsource_paths = ${sourcePaths}\ndo_not_mutate = [${patterns}]\n`;
 
@@ -77,6 +77,16 @@ describe('the mutmut configuration', () => {
 
     expect(read(context.projectRoot, 'pyproject.toml')).toBe(
       `[project]\nname = "demo"\n\n${section('["src"]')}`,
+    );
+  });
+
+  it('keeps mutmut away from the Django test module names in a Django project', () => {
+    const context = configurationContext({ 'manage.py': '' });
+
+    ensureMutmutConfiguration(context);
+
+    expect(read(context.projectRoot, 'pyproject.toml')).toBe(
+      `\n${section('["src"]', `${TEST_PATTERNS},"tests.py","*/tests.py","tests_*.py","*/tests_*.py","*_tests.py","*/*_tests.py"`)}`,
     );
   });
 
@@ -255,14 +265,14 @@ describe('running mutmut', () => {
     expect(mutmutCalls(calls)[0].pytestAddopts).toBe('-n0');
   });
 
-  it('keeps the PYTEST_ADDOPTS of the caller and puts -n0 after them', () => {
+  it('keeps the PYTEST_ADDOPTS of the caller, without the options that let a failing run pass, and puts -n0 after them', () => {
     const calls = callsLog();
-    setEnvironment('PYTEST_ADDOPTS', '-x --lf');
+    setEnvironment('PYTEST_ADDOPTS', undefined);
     const root = project({ 'xdist.txt': '' });
 
-    mutationFindings(contextFor(root));
+    mutationFindings(contextFor(root, { pytestAddopts: '-x --lf' }));
 
-    expect(mutmutCalls(calls)[0].pytestAddopts).toBe('-x --lf -n0');
+    expect(mutmutCalls(calls)[0].pytestAddopts).toBe('--lf -n0');
   });
 
   it('leaves PYTEST_ADDOPTS alone without xdist', () => {

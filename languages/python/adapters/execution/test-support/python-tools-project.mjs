@@ -14,7 +14,9 @@ export function temporaryRoot() {
   return root;
 }
 
-export function coverageRc(root, sources, carried = []) {
+const DJANGO_OMIT = ['    */tests.py', '    */tests_*.py', '    */*_tests.py'];
+
+export function coverageRc(root, sources, { carried = [], django = false } = {}) {
   return [
     '[run]',
     'branch = True',
@@ -24,10 +26,10 @@ export function coverageRc(root, sources, carried = []) {
     'omit =',
     '    */test_*.py',
     '    */*_test.py',
-    '    */tests.py',
     '    */conftest.py',
     '    */tests/*',
     '    */test/*',
+    ...(django ? DJANGO_OMIT : []),
     ...carried,
     '[report]',
     'exclude_lines =',

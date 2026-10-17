@@ -1,7 +1,7 @@
 import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { globToRegExpSource } from '../../../../shared/glob.mjs';
-import { parseIni, toml } from '../execution/python-project.mjs';
+import { toml } from '../../libraries/project-files.mjs';
 
 const MYPY_CONFIG = 'mypy.ini';
 const GLOBAL_OPTIONS = [
@@ -16,6 +16,62 @@ const MODULE_PREFIX = 'mypy-';
 const INI_FILES = ['mypy.ini', '.mypy.ini'];
 const CONFIG_DIRECTORY_VARIABLE = /\$\{?MYPY_CONFIG_FILE_DIR\}?/g;
 const PLUGIN_FILE = /^.+\.py(?=(?::\w+)?$)/;
+const INI_SECTION = /^\[([^\]]+)\]\s*$/;
+const INI_OPTION = /^([^\s=:][^=:]*?)\s*[=:]\s*(.*)$/;
+const INI_COMMENT = /\s+[#;].*$/;
+
+function startSection(name, sections, state) {
+  state.options = new Map();
+  state.key = undefined;
+  sections.set(name.trim(), state.options);
+}
+
+function appendValue(content, state) {
+  state.options.set(state.key, `${state.options.get(state.key)}\n${content}`);
+}
+
+function startOption(line, state) {
+  const option = INI_OPTION.exec(line);
+  if (option === null || state.options === undefined) {
+    return;
+  }
+  state.key = option[1].trim();
+  state.options.set(state.key, option[2].trim());
+}
+
+function isIndented(line) {
+  return /^\s/.test(line);
+}
+
+function sectionName(line) {
+  return isIndented(line) ? undefined : INI_SECTION.exec(line.trim())?.[1];
+}
+
+function readIniLine(line, sections, state) {
+  const content = line.trim();
+  const name = sectionName(line);
+  if (content === '' || /^[#;]/.test(content)) {
+    return;
+  }
+  if (name !== undefined) {
+    startSection(name, sections, state);
+    return;
+  }
+  if (isIndented(line) && state.key !== undefined) {
+    appendValue(content, state);
+    return;
+  }
+  startOption(line, state);
+}
+
+export function parseIni(text) {
+  const sections = new Map();
+  const state = { options: undefined, key: undefined };
+  for (const raw of text.split(/\r?\n/)) {
+    readIniLine(raw.replace(INI_COMMENT, ''), sections, state);
+  }
+  return sections;
+}
 
 function iniModel(sections) {
   if (!sections.has('mypy')) {
