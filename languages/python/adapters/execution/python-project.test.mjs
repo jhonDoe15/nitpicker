@@ -8,7 +8,6 @@ import {
   detectTargetVersion,
   detectTypeCheckers,
   importRoots,
-  isTestPath,
 } from './python-project.mjs';
 
 const roots = [];
@@ -306,23 +305,5 @@ describe('target version detection', () => {
     ['no configuration file', {}, 'py38'],
   ])('reads %s', (_, files, expected) => {
     expect(detectTargetVersion(project(files))).toBe(expected);
-  });
-});
-
-describe('which files are tests', () => {
-  it.each([
-    ['tests/test_cart.py', true],
-    ['src/shop/tests/helpers.py', true],
-    ['src/shop/test/helpers.py', true],
-    ['src/shop/tests.py', true],
-    ['src/shop/test_cart.py', true],
-    ['conftest.py', true],
-    ['testing/helpers.py', true],
-    ['src/shop/testing/helpers.py', false],
-    ['shop/testing/helpers.py', false],
-    ['testing.py', false],
-    ['src/shop/cart.py', false],
-  ])('%s is a test file: %s', (file, expected) => {
-    expect(isTestPath(file)).toBe(expected);
   });
 });

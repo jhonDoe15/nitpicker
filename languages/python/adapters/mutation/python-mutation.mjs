@@ -13,7 +13,15 @@ import {
   TEST_DIRECTORIES,
   TEST_FILE_GLOBS,
 } from '../execution/python-project.mjs';
-import { singleProcessPytestEnvironment } from '../execution/python-test-runner.mjs';
+import { mutmutPytestEnvironment } from '../execution/python-test-runner.mjs';
+import { mutationMarkerFindings } from './mutation-markers.mjs';
+import { isDjangoProject } from '../configuration/pytest/collection-options.mjs';
+import {
+  everyModuleFails,
+  failedOnProjectTests,
+  failingTestModules,
+  pythonVersionSkip,
+} from './mutation-scope.mjs';
 
 export const MUTATION_FAILED_RULE = 'mutation-failed';
 export const MUTATION_SKIPPED_RULE = 'mutation-skipped';
@@ -39,6 +47,7 @@ const TEST_PATTERNS = [
   ...TEST_DIRECTORIES.map((directory) => `*/${directory}/*`),
   ...TEST_FILE_GLOBS.flatMap((glob) => [glob, `*/${glob}`]),
 ];
+const DJANGO_TEST_PATTERNS = ['*_tests.py', 'tests.py', '*/tests.py', 'tests_*.py', '*/tests_*.py'];
 
 function failure(message) {
   return Object.assign(new Error(message), { rule: MUTATION_FAILED_RULE });
@@ -72,7 +81,11 @@ export function ensureMutmutConfiguration({ projectRoot, project, exclude }) {
   const section = [
     '[tool.mutmut]',
     `source_paths = ${JSON.stringify(project.sourceRoots)}`,
-    `do_not_mutate = ${JSON.stringify([...TEST_PATTERNS, ...excludedPatterns(exclude)])}`,
+    `do_not_mutate = ${JSON.stringify([
+      ...TEST_PATTERNS,
+      ...(isDjangoProject(projectRoot) ? DJANGO_TEST_PATTERNS : []),
+      ...excludedPatterns(exclude),
+    ])}`,
   ].join('\n');
   writeFileSync(pyproject, `${readOptional(pyproject)}\n${section}\n`);
 }
@@ -99,16 +112,35 @@ function checkInstallation(context) {
   }
 }
 
-function runMutmut(context) {
+function runMutmut(context, ignored = []) {
+  return run(context, ['mutmut', 'run'], {
+    accepted: finishedRun,
+    rule: MUTATION_FAILED_RULE,
+    timeoutMs: MUTATION_TIMEOUT_MS,
+    env: mutmutPytestEnvironment(context, ignored),
+  });
+}
+
+function withCopyHint(error) {
+  return error.message.includes(STATS_FAILURE) ? failure(`${error.message}\n${COPY_HINT}`) : error;
+}
+
+function runPassingTests(context) {
   try {
-    return run(context, ['mutmut', 'run'], {
-      accepted: finishedRun,
-      rule: MUTATION_FAILED_RULE,
-      timeoutMs: MUTATION_TIMEOUT_MS,
-      env: singleProcessPytestEnvironment(context),
-    });
+    return { result: runMutmut(context), ignored: [] };
   } catch (error) {
-    throw error.message.includes(STATS_FAILURE) ? failure(`${error.message}\n${COPY_HINT}`) : error;
+    if (!failedOnProjectTests(error.message)) {
+      throw withCopyHint(error);
+    }
+    const ignored = failingTestModules(context);
+    if (ignored.length === 0) {
+      throw withCopyHint(error);
+    }
+    try {
+      return { result: runMutmut(context, ignored), ignored };
+    } catch (retryError) {
+      throw withCopyHint(retryError);
+    }
   }
 }
 
@@ -117,14 +149,17 @@ function mutantRunData(context) {
   rmSync(mutants, { recursive: true, force: true });
   ensureMutmutConfiguration(context);
   seedMutantsFromBase(context);
-  const result = runMutmut(context);
+  const { result, ignored } = runPassingTests(context);
   if (`${result.stdout}${result.stderr}`.includes(NO_TESTS_COLLECTED)) {
-    return undefined;
+    return ignored.length === 0
+      ? { findings: [] }
+      : { findings: [everyModuleFails(context, ignored)] };
   }
-  return collectRunData({
+  const data = collectRunData({
     projectRoot: context.projectRoot,
     uncheckedExitCode: result.status === 0 ? undefined : NO_COVERAGE_EXIT_CODE,
   });
+  return { findings: ingestMutmut(data).findings };
 }
 
 function skippedOnWindows() {
@@ -142,10 +177,14 @@ export function mutationFindings(context, platform = process.platform) {
   if (platform === 'win32') {
     return [skippedOnWindows()];
   }
+  const skipped = pythonVersionSkip(context);
+  if (skipped !== undefined) {
+    return [skipped];
+  }
   checkInstallation(context);
+  const markers = mutationMarkerFindings(context);
   try {
-    const data = mutantRunData(context);
-    return data === undefined ? [] : ingestMutmut(data).findings;
+    return [...markers, ...mutantRunData(context).findings];
   } finally {
     if (context.snapshot !== 'base') {
       rmSync(path.join(context.projectRoot, MUTANTS_DIRECTORY), { recursive: true, force: true });

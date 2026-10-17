@@ -93,7 +93,7 @@ describe('running the rules script', () => {
       'src/shop/cli.py': '',
       'tests/test_cli.py': '',
       'testing/helpers.py': '',
-      'src/shop/tests.py': '',
+      'src/shop/cart_test.py': '',
       'src/shop/testing/fakes.py': '',
     });
     const { context, reportRoot } = fakes.contextFor(root);
@@ -109,7 +109,7 @@ describe('running the rules script', () => {
         'src/shop/cli.py': 'shop.cli',
         'src/shop/testing/fakes.py': 'shop.testing.fakes',
       },
-      testFiles: ['src/shop/tests.py', 'testing/helpers.py', 'tests/test_cli.py'],
+      testFiles: ['src/shop/cart_test.py', 'testing/helpers.py', 'tests/test_cli.py'],
       entryModules: ['shop.cli'],
       published: true,
       entryPoints: ['shop.cli:main'],

@@ -131,17 +131,17 @@ describe.skipIf(!enabled)('sleep-in-test', () => {
     ]);
   });
 
-  it.each([
-    'src/conftest.py',
-    'test/helpers.py',
-    'src/test_a.py',
-    'testing/helpers.py',
-    'shop/tests.py',
-  ])('applies to %s', (file) => {
-    expect(sleeps('import time\ntime.sleep(1)\n', file)).toHaveLength(1);
-  });
+  it.each(['src/conftest.py', 'test/helpers.py', 'src/test_a.py', 'testing/helpers.py'])(
+    'applies to %s',
+    (file) => {
+      expect(sleeps('import time\ntime.sleep(1)\n', file)).toHaveLength(1);
+    },
+  );
 
-  it.each(['src/mod.py', 'shop/testing/helpers.py'])('does not apply to %s', (file) => {
-    expect(sleeps('import time\ntime.sleep(1)\n', file)).toEqual([]);
-  });
+  it.each(['src/mod.py', 'shop/testing/helpers.py', 'shop/tests.py'])(
+    'does not apply to %s',
+    (file) => {
+      expect(sleeps('import time\ntime.sleep(1)\n', file)).toEqual([]);
+    },
+  );
 });

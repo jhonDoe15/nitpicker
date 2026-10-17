@@ -2,7 +2,7 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
-import { detectTestRunner, testCommand, testsRan } from './python-test-runner.mjs';
+import { detectTestRunner, testCommand, testsRan, UNITTEST_SCRIPT } from './python-test-runner.mjs';
 
 const roots = [];
 
@@ -64,17 +64,20 @@ describe('test runner detection', () => {
 });
 
 describe('unittest command', () => {
-  const contextFor = (root) => ({ projectRoot: root, project: { testRunner: 'unittest' } });
+  const contextFor = (root) => ({
+    projectRoot: root,
+    reportRoot: '/reports',
+    project: { testRunner: 'unittest' },
+  });
+  const timed = [UNITTEST_SCRIPT, path.join('/reports', 'pytest-junit.xml'), 'discover'];
 
-  it('discovers from the project when there is no tests directory', () => {
-    expect(testCommand(contextFor(project({})))).toEqual(['-m', 'unittest', 'discover']);
+  it('discovers from the project when there is no tests directory, timing each test', () => {
+    expect(testCommand(contextFor(project({})))).toEqual(timed);
   });
 
   it('starts in a plain tests directory', () => {
     expect(testCommand(contextFor(project({ 'tests/test_a.py': '' })))).toEqual([
-      '-m',
-      'unittest',
-      'discover',
+      ...timed,
       '-s',
       'tests',
     ]);
@@ -82,9 +85,7 @@ describe('unittest command', () => {
 
   it('keeps the project as the top level directory for a tests package', () => {
     expect(testCommand(contextFor(project({ 'test/__init__.py': '' })))).toEqual([
-      '-m',
-      'unittest',
-      'discover',
+      ...timed,
       '-s',
       'test',
       '-t',

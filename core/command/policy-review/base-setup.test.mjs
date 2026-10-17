@@ -30,6 +30,7 @@ describe('createBaseSetupResolver', () => {
     const frameworks = { defaultExports: ['app/**/page.tsx'], entryPoints: ['src/main.tsx'] };
     const headPolicy = {
       conventions: { 'prettier.semi': false },
+      conventionPins: { 'typescript.fileNames': 'kebab-case' },
       generatedFiles: ['src/api.gen.ts'],
       frameworks,
       libraries: { validation: ['valibot'], logger: ['winston'] },
@@ -47,6 +48,7 @@ describe('createBaseSetupResolver', () => {
       exceptions: [],
       thresholds: {},
       conventions: { 'prettier.semi': false },
+      conventionPins: { 'typescript.fileNames': 'kebab-case' },
       generatedFiles: ['src/api.gen.ts'],
       frameworks,
       libraries: { validation: ['valibot'], logger: ['winston'] },

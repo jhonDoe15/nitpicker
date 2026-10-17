@@ -84,9 +84,7 @@ export const STRUCTURE_HINTS = [
     tool: RULES_TOOL,
     rules: ['no-inline-suppression'],
     describe: (subject) => `Inline suppression \`# ${subject}\``,
-    allowed:
-      'Remove the comment and fix the code. If it must stay, add a "python.exceptions" entry for no-inline-suppression for this path.',
-    exception: false,
+    allowed: 'Remove the comment and fix the code.',
   },
   {
     tool: RULES_TOOL,
@@ -129,7 +127,7 @@ export const STRUCTURE_HINTS = [
     rules: ['module-level-mutable-state'],
     describe: (subject) => `\`${subject}\` changes a module-level collection`,
     allowed:
-      'Keep the state in an object that is created in the composition root and passed in, or build a new immutable value and return it. A registry filled once at import time (a decorator that adds the function to a table) is not run-time state: add an exception for that path.',
+      'Keep the state in an object that is created in the composition root and passed in, or build a new immutable value and return it. A registry filled once at import time (a decorator that adds the function to a table) is not run-time state; the exception route below covers its path.',
   },
   {
     tool: RULES_TOOL,

@@ -4,7 +4,6 @@ import path from 'node:path';
 import { importClosure } from '../../../shared/import-closure.mjs';
 import { RULES_TOOL } from '../rules/rule-hints.mjs';
 import { createToolContext, mutationVersions, toolVersions } from './python-tools.mjs';
-import { TEST_RUN_TOOL } from './test-results/slow-tests.mjs';
 import { TEST_CONSOLE_TOOL } from './test-results/console-output.mjs';
 
 export const PYTHON_ANALYZER_NAME = 'python';
@@ -94,8 +93,10 @@ export function createPythonAnalyzer(settings = {}) {
       'duplicates',
       'coupling',
       'import-linter',
-      TEST_RUN_TOOL,
+      'tests',
+      'test-runtime',
       TEST_CONSOLE_TOOL,
+      'dependencies',
     ],
     timeoutMs: ANALYZER_TIMEOUT_MS,
     createInvocation: pythonInvocation(settings, PYTHON_ANALYZER_NAME),
@@ -112,6 +113,7 @@ export function createMutationAnalyzer(settings = {}) {
     exclusions: [],
     reportedTools: ['mutmut'],
     dependencies: [PYTHON_ANALYZER_NAME],
+    toleratedDependencyErrors: ['tests', 'test-runtime', 'dependencies'],
     shardWeight: MUTATION_SHARD_WEIGHT,
     timeoutMs: MUTATION_TIMEOUT_MS,
     createInvocation: pythonInvocation(settings, MUTATION_ANALYZER_NAME),
