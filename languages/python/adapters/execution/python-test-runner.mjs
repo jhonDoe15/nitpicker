@@ -1,5 +1,6 @@
 import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { environmentError } from './python-environment.mjs';
 import { execute, VERSION_PATTERN } from './python-process.mjs';
 import { readProjectHints } from './python-project.mjs';
@@ -19,6 +20,9 @@ const PYTEST_PROBE = [
   'import importlib.util as u, pytest; print(pytest.__version__, *(int(u.find_spec(m) is not None) for m in ("pytest_cov", "xdist", "pytest_rerunfailures")))',
 ];
 const probes = new WeakMap();
+export const UNITTEST_SCRIPT = fileURLToPath(
+  new URL('../test-runs/unittest_timings.py', import.meta.url),
+);
 
 function existingTestFiles(projectRoot) {
   const directories = TEST_DIRECTORIES.filter((name) => existsSync(path.join(projectRoot, name)));
@@ -119,6 +123,8 @@ export function pytestCommand(context) {
     `--junitxml=${path.join(context.reportRoot, JUNIT_REPORT)}`,
     '-o',
     'junit_family=xunit1',
+    '-o',
+    'junit_duration_report=call',
     ...pinnedPytestArguments(context.projectRoot, probe),
   ];
 }
@@ -130,14 +136,15 @@ export function testEnvironment(context) {
 }
 
 function unittestCommand(context) {
+  const timed = [UNITTEST_SCRIPT, path.join(context.reportRoot, JUNIT_REPORT), 'discover'];
   const directory = TEST_DIRECTORIES.find((name) =>
     existsSync(path.join(context.projectRoot, name)),
   );
   if (directory === undefined) {
-    return ['-m', 'unittest', 'discover'];
+    return timed;
   }
   const packaged = existsSync(path.join(context.projectRoot, directory, '__init__.py'));
-  return ['-m', 'unittest', 'discover', '-s', directory, ...(packaged ? ['-t', '.'] : [])];
+  return [...timed, '-s', directory, ...(packaged ? ['-t', '.'] : [])];
 }
 
 export function testCommand(context) {
