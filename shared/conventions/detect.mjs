@@ -44,7 +44,9 @@ export function conventionChoices(detected, definitions) {
   return Object.fromEntries(
     definitions
       .filter(
-        ({ id, fallback }) => JSON.stringify(detected[id].choice) !== JSON.stringify(fallback),
+        ({ id, fallback }) =>
+          detected[id].followsConfig === true ||
+          JSON.stringify(detected[id].choice) !== JSON.stringify(fallback),
       )
       .map(({ id }) => [id, detected[id].choice]),
   );
@@ -66,6 +68,28 @@ function sampleFor(definition, candidates, accepts) {
   );
 }
 
+function measureConvention(definition, sample, texts) {
+  return definition.kind === 'names'
+    ? measureNames(definition, sample, texts)
+    : measureOptions(definition, sample, texts);
+}
+
+function measureOptions(definition, sample, texts) {
+  const counts = Object.fromEntries(definition.options.map((option) => [option, 0]));
+  for (const file of sample) {
+    const text = texts.get(file);
+    const option =
+      text === undefined && !definition.nameOnly ? undefined : definition.measure(text, file);
+    if (option !== undefined && option in counts) {
+      counts[option] += 1;
+    }
+  }
+  const winner = pluralityOf(counts, definition);
+  return winner === undefined
+    ? { choice: definition.fallback, source: 'default', counts, files: sample.length }
+    : { choice: winner, source: 'majority', counts, files: sample.length };
+}
+
 function measureNames(definition, sample, texts) {
   const counts = {};
   for (const file of sample) {
@@ -84,29 +108,17 @@ function measureNames(definition, sample, texts) {
     : { choice, source: 'majority', counts, files: sample.length };
 }
 
-function measureConvention(definition, sample, texts) {
-  if (definition.kind === 'names') {
-    return measureNames(definition, sample, texts);
-  }
-  const counts = Object.fromEntries(definition.options.map((option) => [option, 0]));
-  for (const file of sample) {
-    const text = texts.get(file);
-    const option =
-      text === undefined && !definition.nameOnly ? undefined : definition.measure(text, file);
-    if (option !== undefined && option in counts) {
-      counts[option] += 1;
-    }
-  }
-  const winner = pluralityOf(counts);
-  return winner === undefined
-    ? { choice: definition.fallback, source: 'default', counts, files: sample.length }
-    : { choice: winner, source: 'majority', counts, files: sample.length };
-}
-
-function pluralityOf(counts) {
+function pluralityOf(counts, { minVotes = 0, strictMajority = false }) {
   const ranked = Object.entries(counts).sort(([, left], [, right]) => right - left);
   const [first, second] = ranked;
-  if (first === undefined || first[1] === 0 || (second !== undefined && second[1] === first[1])) {
+  const votes = ranked.reduce((total, [, count]) => total + count, 0);
+  if (
+    first === undefined ||
+    first[1] === 0 ||
+    (second !== undefined && second[1] === first[1]) ||
+    votes < minVotes ||
+    (strictMajority && first[1] * 2 <= votes)
+  ) {
     return undefined;
   }
   return first[0];

@@ -67,6 +67,7 @@ describe('strict rule exceptions', () => {
     const reuseRules = [
       'shared-used-by-one-feature',
       'duplicate-definition',
+      'sibling-copy-edit',
       'exported-name-collision',
       'redefined-library-component',
       'new-icon-asset',

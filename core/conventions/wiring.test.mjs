@@ -58,7 +58,7 @@ describe('conventions in a run', () => {
     expect(exitCode, out).toBe(0);
     expect(out).toContain(
       "Following this project's conventions:\n" +
-        '  Java indentation: 4 spaces (google-java-format --aosp) (used by 1 of 1 measured files)\n',
+        '  Java indentation: 4 spaces (used by 1 of 1 measured files)\n',
     );
   });
 

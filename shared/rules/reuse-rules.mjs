@@ -14,6 +14,13 @@ export function reuseRules(ids, enforcedBy) {
       enforcedBy,
     },
     {
+      id: ids.siblingCopyEdit,
+      check: 'structure',
+      limit:
+        'a function or class edited so that it drifts from its same-named copy in another module of the package, at least 80% the same tokens before and after, while that copy is left unedited',
+      enforcedBy,
+    },
+    {
       id: ids.exportedNameCollision,
       check: 'structure',
       limit:

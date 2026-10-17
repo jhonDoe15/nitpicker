@@ -40,6 +40,18 @@ describe('Python conventions with the ruff config of the project', () => {
     });
   });
 
+  it('follows a ruff line length that is none of 79, 88, 100 and 120', () => {
+    const config = { preset: 'python', tools: { ruff: { precedence: LISTED } } };
+
+    expect(follow(config, { 'ruff.toml': 'line-length = 110\n', 'a.py': DOUBLE_QUOTED })).toEqual({
+      conventions: { 'python.lineLength': '110' },
+      printed:
+        HEADER +
+        '  Python line length: 110 columns (from your ruff config)\n' +
+        "Format with ruff: ruff format --config ruff.toml --target-version py38 --config 'format.quote-style = \"double\"' --config 'indent-width = 4' .\n",
+    });
+  });
+
   it('lets the config win over a pin and a pin win over the files', () => {
     const config = {
       preset: 'python',
@@ -266,13 +278,96 @@ describe('Kotlin conventions that the formatter can apply', () => {
     };
 
     expect(follow(config, files)).toEqual({
-      conventions: { 'kotlin.indentation': '4', 'kotlin.wildcardImports': 'wildcard' },
+      conventions: {
+        'kotlin.indentation': '4',
+        'kotlin.trailingCommas': 'always',
+        'kotlin.wildcardImports': 'wildcard',
+      },
       printed:
         HEADER +
         '  Kotlin indentation: 4 spaces (from your .editorconfig)\n' +
         '  Kotlin trailing commas: required in wrapped lists (from your .editorconfig)\n' +
         '  Kotlin imports: wildcards allowed (from your detekt config)\n' +
-        'ktlint reads your .editorconfig files, and uses indent_size = 4, ktlint_standard_no-wildcard-imports = disabled where they set nothing\n',
+        'ktlint reads your .editorconfig files, and uses indent_size = 4, ktlint_standard_no-wildcard-imports = disabled where they set nothing; the followed limits (indent_size) win over them\n',
     });
+  });
+
+  it('follows the line length and prints it with the ktfmt command', () => {
+    const wide = `fun f() {\n  g(${'a'.repeat(105)},\n    1)\n  g(${'b'.repeat(112)},\n    2)\n}\n`;
+    const files = { 'build.gradle.kts': 'ktfmt()', 'src/A.kt': wide, 'src/B.kt': wide };
+
+    expect(follow({ preset: 'kotlin' }, files)).toEqual({
+      conventions: { 'kotlin.indentation': '2', 'kotlin.lineLength': '120' },
+      printed:
+        HEADER +
+        '  Kotlin indentation: 2 spaces (used by 2 of 2 measured files)\n' +
+        '  Kotlin line length: 120 columns (used by 2 of 2 measured files)\n' +
+        'Format with ktfmt: ktfmt --meta-style --max-width=120 <Kotlin files>\n',
+    });
+  });
+
+  it('takes the line length from the .editorconfig and the detekt config when they are listed', () => {
+    const config = {
+      preset: 'kotlin',
+      tools: { ktlint: { precedence: LISTED }, detekt: { precedence: LISTED } },
+    };
+    const editorconfig = '[*.{kt,kts}]\nmax_line_length = 120\n';
+    const detekt = 'style:\n  MaxLineLength:\n    maxLineLength: 100\n';
+
+    expect(
+      follow(config, { 'build.gradle.kts': 'ktlint', '.editorconfig': editorconfig }).conventions,
+    ).toEqual({ 'kotlin.lineLength': '120' });
+    expect(
+      follow(
+        { preset: 'kotlin', tools: { detekt: { precedence: LISTED } } },
+        { 'build.gradle.kts': 'plugins {}', 'detekt.yml': detekt },
+      ).conventions,
+    ).toBeUndefined();
+    expect(
+      follow(config, {
+        'build.gradle.kts': 'ktlint',
+        '.editorconfig': 'root = true\n',
+        'config/detekt/detekt.yml': detekt,
+      }).conventions,
+    ).toEqual({ 'kotlin.lineLength': '100' });
+  });
+
+  it('follows a line length that is none of 100, 120 and 140', () => {
+    const ktlint = { preset: 'kotlin', tools: { ktlint: { precedence: LISTED } } };
+    const both = { ...ktlint, tools: { ...ktlint.tools, detekt: { precedence: LISTED } } };
+
+    expect(
+      follow(ktlint, {
+        'build.gradle.kts': 'ktlint',
+        '.editorconfig': '[*.{kt,kts}]\nmax_line_length = 110\n',
+      }),
+    ).toEqual({
+      conventions: { 'kotlin.lineLength': '110' },
+      printed:
+        HEADER +
+        '  Kotlin line length: 110 columns (from your .editorconfig)\n' +
+        'ktlint reads your .editorconfig files, and uses max_line_length = 110 where they set nothing; the followed limits (max_line_length) win over them\n',
+    });
+    expect(
+      follow(both, {
+        'build.gradle.kts': 'ktlint',
+        '.editorconfig': 'root = true\n',
+        'config/detekt/detekt.yml': 'style:\n  MaxLineLength:\n    maxLineLength: 160\n',
+      }).conventions,
+    ).toEqual({ 'kotlin.lineLength': '160' });
+  });
+
+  it('accepts a pinned line length of any number of columns', () => {
+    const config = { preset: 'kotlin', conventions: { 'kotlin.lineLength': '110' } };
+
+    expect(
+      follow(config, { 'build.gradle.kts': 'ktlint', 'src/A.kt': TWO_SPACES }).conventions,
+    ).toEqual({ 'kotlin.indentation': '2', 'kotlin.lineLength': '110' });
+  });
+
+  it('refuses a pinned line length when no formatter runs', () => {
+    expect(() =>
+      follow({ preset: 'kotlin', conventions: { 'kotlin.lineLength': '120' } }, { 'src/A.kt': '' }),
+    ).toThrow('"conventions.kotlin.lineLength" has no effect: no Kotlin formatter runs');
   });
 });

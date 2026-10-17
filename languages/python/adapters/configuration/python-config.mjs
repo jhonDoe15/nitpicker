@@ -15,7 +15,7 @@ import { ruleIdProblem } from './python-rule-ids.mjs';
 
 const ENVIRONMENTS = ['uv', 'poetry', 'path'];
 const FORMATTERS = ['ruff', 'black'];
-const TEST_RUNNERS = ['pytest', 'unittest'];
+const TEST_RUNNERS = ['pytest', 'unittest', 'django', 'nose2'];
 const TYPE_CHECKERS = ['mypy', 'pyright', 'basedpyright'];
 const SETTING_KEYS = [
   'environment',
