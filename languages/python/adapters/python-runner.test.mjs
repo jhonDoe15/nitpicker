@@ -10,6 +10,7 @@ import {
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
+import { RUFF_FORMAT_ADVICE } from './test-support/ruff-format-advice.mjs';
 import { installFakeToolchain } from './test-support/fake-toolchain.mjs';
 import { analyzePythonSnapshot, parsePythonArguments } from './python-runner.mjs';
 
@@ -107,11 +108,11 @@ describe('analyzing a Python snapshot', () => {
     );
 
     expect(messages).toEqual([
-      'format: File is not formatted with ruff (detected; set "python.formatter" if wrong)',
+      `format: File is not formatted with ruff (detected; set "python.formatter" if wrong). ${RUFF_FORMAT_ADVICE}`,
     ]);
     expect(
       enforceable(analyze(root, { settings: { formatter: 'ruff' } }).findings).at(-1).message,
-    ).toBe('File is not formatted with ruff');
+    ).toBe(`File is not formatted with ruff. ${RUFF_FORMAT_ADVICE}`);
   });
 
   it('reports a run without tests as an enforceable finding, so only a change that removes them fails', () => {
