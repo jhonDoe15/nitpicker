@@ -203,6 +203,14 @@ Math` and `Math['random']()` are caught; `process`, `fetch`, `setTimeout`, `setI
   Carry the caught value only where something reads it; a field added just so the binding is read
   is slop. A `catch` that falls through, or returns a non-object such as `undefined` or `[]`, is
   reported. A deliberately dropped error needs an exception in the config file.
+- `nitpicker/no-dev-dependency-in-production` (all production code): a value import (`import`,
+  `export ... from`, `import()`, `require`) of a package that package.json lists only under
+  `devDependencies` is reported. Move the package to `dependencies` (zod included). Type-only imports
+  are not reported. An app a bundler builds (a bundler config or `build` script, and no `main`,
+  `module`, `exports` or `bin` in package.json) and test support files (`setupTests.*`,
+  `test-utils`, `testing/`, `__mocks__/`, stories) are skipped. The nearest package.json that lists
+  dependencies is used; one that is not a JSON object is reported. Unlisted packages and unused dependencies are reported by the
+  `dead-code` analyzer, see [Dependency and repository checks](usage.md#dependency-and-repository-checks).
 - `nitpicker/no-unvalidated-schema-field` (all production code): no `z.unknown()` or `z.any()`
   (also with `.optional()`, `.nullable()`, `.default()` and similar wrappers, `z.optional(...)`,
   `z.nullable(...)`, `z.nullish(...)` and `z.readonly(...)`) as a field of `z.object`,

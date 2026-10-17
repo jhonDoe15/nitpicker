@@ -10,6 +10,7 @@ import { UNUSED_API_RULES, UNUSED_API_RULE_IDS } from './unused-api/unused-api-p
 import { reuseRules } from './rules/reuse-rules.mjs';
 import { testConsoleRule } from './rules/test-runtime.mjs';
 import { SOURCE_RULE_IDS, sourceRuleMessages, sourceRules } from './project-rules/source-rules.mjs';
+import { HYGIENE_EXCEPTION_RULES, HYGIENE_RULES } from './project-rules/hygiene-rules.mjs';
 
 export { FILE_LIMIT_DEFAULTS } from './project-rules/size-rules.mjs';
 
@@ -60,6 +61,7 @@ export const SHARED_EXCEPTION_RULES = [
   RULE_IDS.fileLines,
   RULE_IDS.lineLength,
   RULE_IDS.folderFiles,
+  ...HYGIENE_EXCEPTION_RULES,
 ];
 
 /** `{exception}` is the `exceptions` entry that would lift the finding, as JSON. */
@@ -273,6 +275,7 @@ export const RULES = [
     limit: `a test the change adds or edits taking more than ${String(TEST_TIME_DEFAULTS.unitTestSeconds)} s (unit) or ${String(TEST_TIME_DEFAULTS.integrationTestSeconds)} s (integration); override with \`thresholds.unitTestSeconds\` and \`thresholds.integrationTestSeconds\``,
     enforcedBy: withKotlin({ ...ALL, typescript: false }, true),
   },
+  ...HYGIENE_RULES,
   testConsoleRule(RULE_IDS, withKotlin(TYPESCRIPT_ONLY, false)),
 ];
 

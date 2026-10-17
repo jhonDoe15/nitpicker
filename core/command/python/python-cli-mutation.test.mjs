@@ -158,7 +158,10 @@ describe('nitpicker with "preset": "python" and mutation testing', () => {
     const result = run(root);
 
     expect(result.exitCode, result.text).toBe(0);
-    expect(result.json('summary.json').tools.map(({ name }) => name)).toEqual(['python']);
+    expect(result.json('summary.json').tools.map(({ name }) => name)).toEqual([
+      'python',
+      'repository-hygiene',
+    ]);
     expect(calls().filter(({ tool }) => tool === 'mutmut')).toEqual([]);
   });
   it('does not run mutmut when the tests fail, and the tests-failed error is the only one', () => {

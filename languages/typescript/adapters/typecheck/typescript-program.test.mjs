@@ -202,3 +202,32 @@ describe('TypeScript 7 type check', () => {
     ).toBe(`'src/a.ts' '.' '/mnt${root}/b.ts' '${root}-copy'`);
   });
 });
+
+describe('the default quality config', () => {
+  it('type checks JavaScript sources without trying to emit over them', async () => {
+    const project = path.join(root, 'javascript-project');
+    mkdirSync(path.join(project, 'src'), { recursive: true });
+    writeFileSync(path.join(project, 'src/legacy.cjs'), "'use strict';\nmodule.exports = 1;\n");
+    writeFileSync(path.join(project, 'src/plain.js'), 'export const plain = 1;\n');
+    const configPath = path.join(project, 'tsconfig.json');
+    const defaults = path.join(PACKAGE_ROOT, 'languages/typescript/preset/defaults');
+    writeFileSync(
+      configPath,
+      JSON.stringify({
+        extends: path.join(defaults, 'tsconfig.quality.json'),
+        compilerOptions: { types: [], lib: ['ES2022'] },
+        include: ['src'],
+      }),
+    );
+
+    for (const engine of ['native', 'project']) {
+      const diagnostics = await preEmitDiagnostics({
+        ts,
+        engine,
+        configPath,
+        projectRoot: project,
+      });
+      expect(diagnostics.map(({ code }) => code)).toEqual([]);
+    }
+  });
+});

@@ -153,8 +153,8 @@ Config keys with this preset: `base`, `disable` (the analyzer names are `python`
 below. `layout` describes TypeScript source roots and stays a config error with this preset. The
 top-level `exceptions` is accepted only for the file and size limits shared with the other languages
 (`file-lines-limit`, `line-length-limit`, `folder-files-limit`, `folder-depth-limit`,
-`class-methods-limit`, `class-fields-limit`, `inheritance-depth-limit`), whose messages name it;
-the Python equivalent of
+`class-methods-limit`, `class-fields-limit`, `inheritance-depth-limit`), whose messages name it, and
+the [dependency and repository checks](usage.md#dependency-and-repository-checks); the Python equivalent of
 `exceptions` for every other rule is `python.exceptions`. `python` is an error with any other preset.
 
 ```json
