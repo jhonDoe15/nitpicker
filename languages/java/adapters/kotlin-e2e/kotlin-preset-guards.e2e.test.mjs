@@ -36,7 +36,7 @@ const BANNED_GUARDS = {
   'Casts.kt': `${PACKAGE}@Deprecated("Use next")\nfun old(): Int = 1\n\nfun next(): Int = old()\n\n@Suppress("unused")\nfun names(value: Any): List<String> = value as List<String>\n\nfun same(value: String): String = value as String\n`,
   'Wide.kt': `${PACKAGE}class Wide {\n${methods.join('\n')}\n}\n`,
   'Deep.kt': `${PACKAGE}open class Failure : Exception()\n\nopen class OrderFailure : Failure()\n\nopen class PaymentFailure : OrderFailure()\n\nclass CardFailure : PaymentFailure()\n`,
-  'App.kt': `${PACKAGE}fun main() {\n    check(System.getenv("HOME") != null)\n}\n`,
+  'App.kt': `${PACKAGE}fun main() {\n    ProcessBuilder("serve", "--port", System.getenv("PORT")).inheritIO().start()\n}\n`,
 };
 
 const BANNED_TESTS = {
@@ -54,7 +54,7 @@ const ALLOWED_GUARDS = {
   'Commented.kt': `${PACKAGE}// Totals are in cents, so rounding stays exact.\nfun subtotal(): Int = 1\n`,
   'Marked.kt': `${PACKAGE}fun keep(): Int = 1\n`,
   'Casts.kt': `${PACKAGE}fun next(): Int = 1\n\nfun names(value: Any): List<String> = (value as? List<*>).orEmpty().filterIsInstance<String>()\n\nfun same(value: String): String = value\n`,
-  'App.kt': `${PACKAGE}fun main() {\n    check(System.getenv("HOME") != null)\n}\n`,
+  'App.kt': `${PACKAGE}fun main() {\n    ProcessBuilder("serve", "--port", System.getenv("PORT")).inheritIO().start()\n}\n`,
 };
 
 const ALLOWED_TESTS = {
