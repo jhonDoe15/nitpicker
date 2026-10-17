@@ -88,6 +88,7 @@ ruleTester.run('no-comments', noComments, {
       ['/** Order id. */\nexport default function orderId() { return 1; }', 'orderId'],
       ['/** Order id. */\nexport class OrderId {}', 'OrderId'],
       ['/** The user. */\nexport interface User {}', 'User'],
+      ['/** Order class. */\nexport class Order {}', 'Order'],
     ].map(([code, name]) => ({
       code,
       errors: [{ messageId: 'restatingDocComment', data: { name } }],
@@ -106,6 +107,7 @@ ruleTester.run('no-comments', noComments, {
     },
     ...[
       '/**\n * Rounds toward zero.\n * Never returns negative zero.\n * @scope/numbers rounds the same way.\n * Accepts only finite numbers.\n * Throws RangeError otherwise.\n * Safe to call often.\n * @param value a number\n */\nexport const truncate = 1;',
+      '/**\n * Rounds toward zero.\n * ```ts\n * truncate(1.5);\n * truncate(-1.5);\n * truncate(2);\n * truncate(3);\n * @returns the integer part\n */\nexport const truncate = 1;',
       '/**\n * Rounds toward zero.\n * ```ts\n * @Component()\n * class Rounder {}\n * ```\n * Safe to call often.\n * Never returns negative zero.\n * Accepts only finite numbers.\n * Throws RangeError otherwise.\n * Runs in constant time.\n * @returns the integer part\n */\nexport const truncate = 1;',
     ].map((code) => ({
       code,

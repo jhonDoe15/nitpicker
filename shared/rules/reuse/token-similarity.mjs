@@ -1,7 +1,7 @@
 const MAX_COMPARED_TOKENS = 20_000;
 const GUARD_SLOTS = 3;
 const PAIR_WORK_CAP = 4_000_000;
-const ALWAYS_COMPARED_WORK = 4_000_000;
+const ALWAYS_COMPARED_WORK = 10_000;
 const RUN_WORK_BUDGET = 60_000_000;
 
 export function createSimilarityCache(workBudget = RUN_WORK_BUDGET) {
@@ -101,9 +101,7 @@ function boundedSearch(cache, { left, right, limit }) {
     stopped: false,
   };
   const distance = editDistance(search);
-  if (!isSmall) {
-    cache.remainingWork -= search.work;
-  }
+  cache.remainingWork -= search.work;
   return distance;
 }
 

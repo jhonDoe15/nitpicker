@@ -79,8 +79,14 @@ describe('facts schema', () => {
     [{ imports: [{ from: 'b.py', to: 'a.py', names: [] }] }, 'facts.imports[0].from is "b.py"'],
     [{ imports: [{ from: 'a.py', to: 'c.py', names: [] }] }, 'facts.imports[0].to is "c.py"'],
     [{ definitions: [{ ...definition, file: 'c.py' }] }, 'facts.definitions[0].file is "c.py"'],
+    [
+      { docComments: [{ file: 'c.py', line: 1, name: 'f', lines: [] }] },
+      'facts.docComments[0].file is "c.py"',
+    ],
+    [{ console: [{ file: 'lib', test: '', messages: [] }] }, 'facts.console[0].file is "lib"'],
   ])('rejects %j, which names a file missing from modules', (lists, problem) => {
-    const noun = Object.hasOwn(lists, 'imports') ? 'import' : 'definition';
+    const nouns = { imports: 'import', definitions: 'definition', docComments: 'doc comment' };
+    const noun = nouns[Object.keys(lists)[0]] ?? 'console entry';
 
     expect(() =>
       validateFacts({ modules: [{ file: 'a.py', role: 'production' }], ...lists }),
@@ -89,6 +95,19 @@ describe('facts schema', () => {
         `${problem}, which is not in facts.modules: list that file in modules, or leave the ${noun} out; see "Facts schema" in docs/internals.md`,
       ),
     );
+  });
+
+  it('takes a console entry for a listed file, a module folder or the root', () => {
+    const facts = {
+      modules: [{ file: 'billing/src/a.py', role: 'test' }],
+      console: ['billing/src/a.py', 'billing', ''].map((file) => ({
+        file,
+        test: '',
+        messages: [],
+      })),
+    };
+
+    expect(validateFacts(facts)).toBe(facts);
   });
 
   it('reads and checks a facts file', () => {

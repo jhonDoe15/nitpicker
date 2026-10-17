@@ -74,10 +74,25 @@ function spreadEdits(count, every) {
 }
 
 describe('tokenSimilarity work limits', () => {
-  it('always compares a pair small enough to be cheap, even with no budget left', () => {
-    const { left, right } = spreadEdits(1500, 20);
+  it('always compares a tiny pair, even with no budget left', () => {
+    const { left, right } = spreadEdits(40, 20);
 
     expect(tokenSimilarity(createSimilarityCache(0), { left, right }, 0.8)).toBe(0.95);
+  });
+
+  it('charges every pair to the run budget, so many mid-sized copies stay bounded', () => {
+    const cache = createSimilarityCache();
+    const copies = Array.from({ length: 60 }, (_, copy) =>
+      Array.from({ length: 2000 }, (_, index) => `t${String((index * (copy + 3) + copy) % 50)}`),
+    );
+    const started = performance.now();
+    const scores = copies.flatMap((left, index) =>
+      copies.slice(index + 1).map((right) => tokenSimilarity(cache, { left, right }, 0.8)),
+    );
+
+    expect(cache.remainingWork).toBeLessThan(0);
+    expect(scores.at(-1)).toBe(0);
+    expect(performance.now() - started).toBeLessThan(10_000);
   });
 
   it('skips a large pair once the run has spent its budget', () => {

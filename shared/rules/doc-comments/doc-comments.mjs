@@ -3,7 +3,9 @@ import { exceptionText } from '../exceptions.mjs';
 
 const STOPWORDS = new Set(
   `a an the this that of for to in on by with and or is are be it its get gets set sets return returns
-  function method component hook type value given new current specified provided`.split(/\s+/u),
+  function method component hook class type value given new current specified provided`.split(
+    /\s+/u,
+  ),
 );
 const SUFFIXES = [
   ['ing', 'e'],
@@ -42,12 +44,18 @@ function stemVariants(word) {
   );
 }
 
+function pairedFences(lines) {
+  const fences = lines.flatMap((line, index) => (CODE_FENCE.test(line.trim()) ? [index] : []));
+  return new Set(fences.length % 2 === 0 ? fences : fences.slice(0, -1));
+}
+
 export function descriptionLines(text, { blockTag, marker = /^/u }) {
+  const lines = text.split('\n').map((raw) => raw.replace(marker, '').trim());
+  const fences = pairedFences(lines);
   const description = [];
   let insideFence = false;
-  for (const raw of text.split('\n')) {
-    const line = raw.replace(marker, '').trim();
-    if (CODE_FENCE.test(line)) {
+  for (const [index, line] of lines.entries()) {
+    if (fences.has(index)) {
       insideFence = !insideFence;
     }
     if (!insideFence && blockTag.test(line)) {
@@ -65,9 +73,9 @@ function withoutInlineTags(text) {
   return text.slice(0, end).replace(INLINE_TAG, ' $1 ') + text.slice(end);
 }
 
-function codeExampleState(state, raw) {
+function codeExampleState(state, raw, isFence) {
   const line = raw.trim();
-  if (CODE_FENCE.test(line)) {
+  if (isFence) {
     return { fenced: !state.fenced, example: state.example, code: true };
   }
   if (state.fenced) {
@@ -79,9 +87,10 @@ function codeExampleState(state, raw) {
 }
 
 function proseLines(lines) {
+  const fences = pairedFences(lines);
   let state = { fenced: false, example: false, code: false };
-  return lines.filter((line) => {
-    state = codeExampleState(state, line);
+  return lines.filter((line, index) => {
+    state = codeExampleState(state, line, fences.has(index));
     return !state.code;
   });
 }

@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { describeConfigOverrides } from './config.mjs';
 import { validateConfig } from './validate.mjs';
 import { policyHash } from '../diff/reporting/report-model.mjs';
+import { exceptionMatcher } from '../../shared/rules/exceptions.mjs';
 
 describe('config file', () => {
   it('accepts an empty config and the documented keys', () => {
@@ -472,6 +473,14 @@ describe('config exceptions', () => {
     expect(() => validateConfig(liftOf('file-lines-limit', ['src/legacy/']))).toThrow(
       'nitpicker.config.json: "exceptions[0].paths" glob "src/legacy/" can never match: drop the trailing "/": write "src/legacy/**"',
     );
+  });
+
+  it('takes a bracketed route folder, whose brackets match themselves', () => {
+    const config = liftOf('test-only-export', ['src/app/[id]/**']);
+    const isExcepted = exceptionMatcher(validateConfig(config).exceptions);
+
+    expect(isExcepted('test-only-export', 'src/app/[id]/page.tsx')).toBe(true);
+    expect(isExcepted('test-only-export', 'src/app/i/page.tsx')).toBe(false);
   });
 
   it('leaves the path globs of an ESLint rule to ESLint, which reads character classes', () => {

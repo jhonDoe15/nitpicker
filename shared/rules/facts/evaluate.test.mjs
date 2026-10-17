@@ -89,6 +89,9 @@ describe('the shared fact rules', () => {
       { layout: { featureRoots: [1] } },
       'policy.layout.featureRoots must be an array of folder globs',
     ],
+    [{ testConsole: 'x' }, 'policy.testConsole must be an object'],
+    [{ layout: 'x' }, 'policy.layout must be an object'],
+    [{ layout: [] }, 'policy.layout must be an object'],
   ])('names the bad policy field in %j', (policy, message) => {
     expect(() =>
       sharedFactFindings(
@@ -96,6 +99,42 @@ describe('the shared fact rules', () => {
         { language: 'typescript', analyzerName: 'facts', rules: [CONSOLE], policy },
       ),
     ).toThrow(new TypeError(`${message}: pass the head policy (readHeadPolicyFile())`));
+  });
+
+  it.each([[undefined], [''], [3]])('rejects %j as the analyzer name', (analyzerName) => {
+    expect(() =>
+      sharedFactFindings(
+        { console: [] },
+        { language: 'typescript', analyzerName, rules: [CONSOLE] },
+      ),
+    ).toThrow(
+      new TypeError('"analyzerName" must be a non-empty string: the analyzer the findings are for'),
+    );
+  });
+
+  it.each([['x'], [{}], [{ movesFile: 'moves.json' }]])(
+    'rejects %j as the baseline',
+    (baseline) => {
+      expect(() =>
+        sharedFactFindings(
+          { console: [] },
+          { language: 'typescript', analyzerName: 'f', rules: [CONSOLE], baseline },
+        ),
+      ).toThrow(
+        new TypeError('baseline must be { readFile } or { facts, movesFile? }, or be left out'),
+      );
+    },
+  );
+
+  it('says a bad fact comes from the baseline', () => {
+    const baseline = { facts: { modules: [{ file: './a.ts', role: 'production' }] } };
+
+    expect(() =>
+      sharedFactFindings(
+        { console: [] },
+        { language: 'typescript', analyzerName: 'f', rules: [CONSOLE], baseline },
+      ),
+    ).toThrow(/^baseline facts\.modules\[0\]\.file is "\.\/a\.ts"/u);
   });
 
   it('lets every preset lift a rule once a language besides TypeScript registers it', () => {

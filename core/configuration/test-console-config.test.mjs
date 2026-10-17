@@ -12,6 +12,7 @@ describe('testConsole config', () => {
     [{ testConsole: {} }],
     [{ testConsole: { allow: [] } }],
     [{ testConsole: { allow: [allowed, { ...allowed, paths: ['test/legacy/**'] }] } }],
+    [{ testConsole: { allow: [{ ...allowed, paths: ['src/app/[id]/**'] }] } }],
   ])('accepts %j', (config) => {
     expect(validateConfig(config)).toEqual(config);
   });

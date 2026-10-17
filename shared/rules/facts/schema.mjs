@@ -111,11 +111,25 @@ const SHAPES = {
 
 const FACT_LISTS = Object.keys(SHAPES);
 
+function isModule(known, file) {
+  return known.has(file);
+}
+
+function isModuleOrFolder(known, file) {
+  return (
+    file === '' || known.has(file) || [...known].some((module) => module.startsWith(`${file}/`))
+  );
+}
+
 const MODULE_REFERENCES = [
-  ['imports', 'from'],
-  ['imports', 'to'],
-  ['definitions', 'file'],
+  ['imports', 'from', isModule],
+  ['imports', 'to', isModule],
+  ['definitions', 'file', isModule],
+  ['docComments', 'file', isModule],
+  ['console', 'file', isModuleOrFolder],
 ];
+
+const REFERENCE_NOUNS = { docComments: 'doc comment', console: 'console entry' };
 
 function itemProblem(list, item, index) {
   if (typeof item !== 'object' || item === null || Array.isArray(item)) {
@@ -140,17 +154,23 @@ function listProblem(facts, list) {
   return facts[list].map((item, index) => itemProblem(list, item, index)).find(Boolean);
 }
 
+function danglingReference({ list, field, index, value }) {
+  const noun = REFERENCE_NOUNS[list] ?? list.slice(0, -1);
+  const where = `facts.${list}[${String(index)}].${field} is ${JSON.stringify(value)}`;
+  return `${where}, which is not in facts.modules: list that file in modules, or leave the ${noun} out`;
+}
+
 function referenceProblem(facts) {
   if (!Array.isArray(facts.modules)) {
     return undefined;
   }
   const known = new Set(facts.modules.map(({ file }) => file));
-  const problems = MODULE_REFERENCES.map(([list, field]) => {
+  const problems = MODULE_REFERENCES.map(([list, field, isKnown]) => {
     const items = facts[list] ?? [];
-    const index = items.findIndex((item) => !known.has(item[field]));
+    const index = items.findIndex((item) => !isKnown(known, item[field]));
     return index === -1
       ? undefined
-      : `facts.${list}[${String(index)}].${field} is ${JSON.stringify(items[index][field])}, which is not in facts.modules: list that file in modules, or leave the ${list.slice(0, -1)} out`;
+      : danglingReference({ list, field, index, value: items[index][field] });
   });
   return problems.find(Boolean);
 }
