@@ -74,17 +74,22 @@ describe.skipIf(!pythonE2eEnabled)(
           rule: 'duplicate-clone',
           file: 'src/shop/domain/bulk.py',
           message:
-            'This code repeats src/shop/domain/pricing.py:5 (10 lines). Keep one copy and call it from both places. If the repetition is intended, add src/shop/domain/bulk.py or src/shop/domain/pricing.py to "exclude" in nitpicker.config.json.',
+            'This code repeats src/shop/domain/pricing.py:5 (10 lines). Keep one copy and call it from both places. If the repetition is intended, add src/shop/domain/bulk.py or src/shop/domain/pricing.py to "exclude" in nitpicker.config.json. To allow it for some paths, add a "python.exceptions" entry for duplicate-clone in nitpicker.config.json.',
         },
       ]);
     });
-    it('fails a stable package importing an unstable one and the contract it breaks', () => {
+    it('fails a stable package importing an unstable one, the cycle it closes and the contract it breaks', () => {
       const result = gate(project, 'upward-import');
 
       expect(result.exitCode, result.text).toBe(1);
       expect(
         enforceable(result).map(({ rule, path: file, identity }) => ({ rule, file, identity })),
       ).toEqual([
+        ...['domain', 'infra', 'web'].map((name) => ({
+          rule: 'package-cycle',
+          file: `src/shop/${name}/__init__.py`,
+          identity: `cycle:shop.${name}`,
+        })),
         {
           rule: 'stability-direction',
           file: 'src/shop/domain/__init__.py',
@@ -111,7 +116,12 @@ describe.skipIf(!pythonE2eEnabled)(
         environment: { CI: 'true', NITPICKER_ACCEPT_POLICY_CHANGE: digest },
       });
 
-      expect(newRules(result)).toEqual(['coupling stability-direction']);
+      expect(newRules(result)).toEqual([
+        'coupling package-cycle',
+        'coupling package-cycle',
+        'coupling package-cycle',
+        'coupling stability-direction',
+      ]);
       expect(result.json('summary.json').tools[0].version).not.toContain('import-linter');
     });
   },

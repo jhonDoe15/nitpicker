@@ -3,6 +3,7 @@ import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import { jscpdVersion } from '../../../../core/tooling/jscpd/run-jscpd.mjs';
 import { failure } from './python-process.mjs';
+import { PYTEST_SCRIPT } from './python-test-runner.mjs';
 import { mutationVersions, runPythonTools, toolVersions } from '../python-tools.mjs';
 import {
   callsLog,
@@ -48,6 +49,7 @@ describe('running the import and duplicate tools', () => {
         { file: 'src/demo/a.py', module: 'demo.a', isPackage: false },
         { file: 'src/demo/b.py', module: 'demo.b', isPackage: false },
       ],
+      others: [],
       imports: { 'src/demo/a.py': [] },
     });
     expect(readReport(reportRoot, 'import-linter.txt')).toBe('Contracts: 1 kept, 0 broken.\n');
@@ -101,7 +103,7 @@ describe('running the import and duplicate tools', () => {
   });
 });
 describe('running pytest', () => {
-  it('keeps the project pytest configuration working under the outer coverage run', () => {
+  it('keeps the project pytest configuration working under the outer coverage run, timing the call phase and function-scoped setup', () => {
     const calls = callsLog();
     const root = project({
       'conftest.py': '',
@@ -113,13 +115,18 @@ describe('running pytest', () => {
     runPythonTools(context);
 
     expect(calls('coverage', 'run')[0].args.slice(3)).toEqual([
-      '-m',
-      'pytest',
+      PYTEST_SCRIPT,
       '-q',
       '-o',
       `cache_dir=${path.join(reportRoot, 'pytest-cache')}`,
       '--no-cov',
       '-n0',
+      '--continue-on-collection-errors',
+      `--junitxml=${path.join(reportRoot, 'pytest-junit.xml')}`,
+      '-o',
+      'junit_family=xunit1',
+      '-o',
+      'junit_duration_report=call',
     ]);
   });
   it('is an environment error naming the override when pytest is indicated but not importable', () => {

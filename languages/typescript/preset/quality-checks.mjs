@@ -1,5 +1,5 @@
 import { DUPLICATES_CONFIGURATION_FILES } from './duplicates/configuration-files.mjs';
-import { EXCLUDED_PATH_PATTERN, resolveLayout } from './layout.mjs';
+import { EXCLUDED_PATH_PATTERN, prettierPatterns, resolveLayout } from './layout.mjs';
 import { testExecutionChecksFor } from './checks/test-execution.mjs';
 import {
   POLICY_FILES,
@@ -106,15 +106,6 @@ function entryPointsCheckFor(layout, exclusions) {
   };
 }
 
-function prettierPatterns(layout) {
-  const code = layout.formatExtensions.join(',');
-  return [
-    ...layout.sourceRoots.map((root) => `${root}/**/*.{${code},json,yaml,yml}`),
-    ...layout.testRoots.map((root) => `${root}/**/*.{${code},json}`),
-    `*.{${code},json}`,
-  ];
-}
-
 function prettierCheckFor(layout, exclusions) {
   return {
     name: 'prettier-format',
@@ -128,6 +119,9 @@ function prettierCheckFor(layout, exclusions) {
     configurationFiles: [
       'languages/typescript/adapters/prettier/prettier-layers.mjs',
       'languages/typescript/conventions/prettier-conventions.mjs',
+      'languages/typescript/conventions/measures/jsx-conventions.mjs',
+      'languages/typescript/conventions/measures/typescript-syntax.mjs',
+      'languages/typescript/conventions/measures/data-conventions.mjs',
       'languages/typescript/preset/layout.mjs',
       'languages/typescript/preset/head-policy.mjs',
       JAVASCRIPT_PRESET_FILE,

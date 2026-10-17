@@ -563,7 +563,13 @@ resolved plus a new finding, as in the TypeScript check.
   `@DisplayName`, with its annotations, inside the class the report names: a `@Nested` test
   (`CalcTest$WhenFull`) is looked up in that nested class, and named `CalcTest.WhenFull` in the
   message. `void` and `fun` methods count, and `@TestFactory` methods that return dynamic tests. A
-  test is counted when its method text differs from the base, or the file is new. A name that maps
+  test is counted when its method text differs from the base, or the file is new. A file the base
+  does not have at that path is first looked up by its file name under the base test roots, among
+  the base files the change removed or renamed, so a test file moved to another package with the
+  test unchanged reports nothing, while a copy next to an original that still exists is new. A test
+  the class inherits (an abstract contract test in a superclass) is found by following `extends` (or
+  Kotlin's `: Base()`) through the test roots, reported at the superclass method, and counted when
+  that method differs from the base, or the class is new or extends another class. A name that maps
   to no method (a default `[1] 1` or custom parameterized name, a dynamic test) is counted when the
   file is new or one of its class's `@ParameterizedTest`, `@RepeatedTest`, `@TestFactory` or
   `@TestTemplate` methods changed. Slow tests the change does not touch stay baselined, and the base
