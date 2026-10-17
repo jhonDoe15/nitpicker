@@ -78,7 +78,7 @@ export function readJavaFindings(projectRoot, options = {}) {
         ...readInlineSuppressionFindings(projectRoot, lintedRoots(manifest)),
         ...springFindings(projectRoot, manifest),
       ],
-      { preset },
+      { preset, javaStyle: options.javaStyle },
     ),
   };
 }

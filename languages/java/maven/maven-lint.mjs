@@ -14,8 +14,11 @@ import { javaCommand, runJava } from './maven-command.mjs';
 import { GRADLE_DIRECTORY } from '../builds/java-build.mjs';
 import { writeRulesets } from '../adapters/tool-config/pmd-wrappers.mjs';
 import { layerCheckstyle } from '../adapters/tool-config/checkstyle/checkstyle-layers.mjs';
+import { unformattedCheckstyle } from '../adapters/tool-config/checkstyle/unformatted-checks.mjs';
 import { NITPICKER_RULESET } from '../adapters/tool-config/layer-files.mjs';
 
+const LAYOUT_SUPPRESSIONS = 'checkstyle-suppressions.xml';
+const UNFORMATTED_SUPPRESSIONS = 'checkstyle-suppressions-unformatted.xml';
 const EMPTY_SARIF = '{"version":"2.1.0","runs":[]}';
 const INLINE_CHECKSTYLE_FILTERS = [
   'SuppressWarningsFilter',
@@ -196,18 +199,27 @@ function propertiesLine(name, value) {
   return `${name}=${value.replaceAll('\\', '\\\\')}`;
 }
 
-function checkstyleSetup({ reportDir, tools, configs, pinned }) {
+function checkstyleSetup({ reportDir, tools, configs, pinned, style }) {
   const jar = tools.checkstyle.find(
     (entry) => path.basename(entry) === `checkstyle-${pinned.checkstyle}.jar`,
   );
+  const bundled = nitpickerCheckstyleConfig(bundledGoogleChecks(jar));
+  const unformatted = style?.javaStyle === 'none';
   return writeCheckstyleSetup({
     directory: path.join(reportDir, 'checkstyle-config'),
-    nitpickerConfig: nitpickerCheckstyleConfig(bundledGoogleChecks(jar)),
+    nitpickerConfig: unformatted ? unformattedCheckstyle(bundled, style.indentation) : bundled,
+    suppressions: unformatted ? UNFORMATTED_SUPPRESSIONS : LAYOUT_SUPPRESSIONS,
     ...configs.checkstyle,
   });
 }
 
-export function writeCheckstyleSetup({ directory, nitpickerConfig, project, projectWins }) {
+export function writeCheckstyleSetup({
+  directory,
+  nitpickerConfig,
+  project,
+  projectWins,
+  suppressions = LAYOUT_SUPPRESSIONS,
+}) {
   mkdirSync(directory, { recursive: true });
   const config = path.join(directory, 'checkstyle.xml');
   writeFileSync(
@@ -227,7 +239,7 @@ export function writeCheckstyleSetup({ directory, nitpickerConfig, project, proj
       ...(project === undefined ? [] : [propertiesLine('config_loc', path.dirname(project))]),
       propertiesLine(
         'org.checkstyle.google.suppressionfilter.config',
-        path.join(GRADLE_DIRECTORY, 'checkstyle-suppressions.xml'),
+        path.join(GRADLE_DIRECTORY, suppressions),
       ),
     ].join('\n'),
   );
@@ -252,12 +264,12 @@ function checkstyleReport({ module, setup, tools, pinned, roots, report, always 
   });
 }
 
-export function runCheckstyle({ module, reportDir, tools, configs, pinned }) {
+export function runCheckstyle({ module, reportDir, tools, configs, pinned, style }) {
   const context = {
     module,
     tools,
     pinned,
-    setup: checkstyleSetup({ reportDir, tools, configs, pinned }),
+    setup: checkstyleSetup({ reportDir, tools, configs, pinned, style }),
   };
   checkstyleReport({
     ...context,

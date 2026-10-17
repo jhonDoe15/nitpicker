@@ -80,6 +80,7 @@ allprojects {
         }
         def kotlinPreset = nitpickerArgument('nitpicker.kotlin') == 'true'
         def javaStyle = nitpickerArgument('nitpicker.java.style') ?: 'google'
+        def javaIndentation = nitpickerArgument('nitpicker.java.indentation') ?: '2'
 
         configurations {
             nitpickerPmd { canBeConsumed = false }
@@ -127,6 +128,8 @@ allprojects {
         def writeCheckstyleConfig = tasks.register('nitpickerCheckstyleConfig') {
             group = 'nitpicker'
             inputs.files(checkstyleJar)
+            inputs.property('javaStyle', javaStyle)
+            inputs.property('javaIndentation', javaIndentation)
             outputs.file(nitpickerCheckstyleConfig)
             if (exportedCheckstyleConfig) {
                 outputs.upToDateWhen { false }
@@ -146,6 +149,26 @@ allprojects {
                         throw new GradleException("nitpicker could not find ${name} in google_checks.xml")
                     }
                     text = text.replaceAll(pattern, '$1^[a-z]([a-z0-9][a-zA-Z0-9]*)?\\$$2')
+                }
+                if (javaStyle == 'none') {
+                    if (!text.contains('<module name="TreeWalker">')) {
+                        throw new GradleException('nitpicker could not find TreeWalker in google_checks.xml')
+                    }
+                    text = text.replace('<module name="TreeWalker">',
+                        '<module name="TreeWalker">\n    <module name="UnusedImports"/>')
+                    if (javaIndentation == 'tab') {
+                        ['Indentation', 'FileTabCharacter'].each { name ->
+                            text = text.replaceAll("(?s)<module name=\"${name}\"\\s*(?:/>|>.*?</module>)", '')
+                        }
+                    } else if (javaIndentation == '4') {
+                        ['basicOffset', 'caseIndent', 'arrayInitIndent'].each { property ->
+                            def pattern = ~/(?s)(<module name="Indentation">(?:(?!<\/module>).)*?<property name="${property}" value=")\d+(")/
+                            if (!(text =~ pattern).find()) {
+                                throw new GradleException("nitpicker could not find Indentation ${property} in google_checks.xml")
+                            }
+                            text = text.replaceAll(pattern) { whole, head, tail -> "${head}4${tail}".toString() }
+                        }
+                    }
                 }
                 def target = nitpickerCheckstyleConfig.get().asFile
                 target.parentFile.mkdirs()
@@ -174,7 +197,8 @@ allprojects {
                     configDirectory = layout.dir(providers.provider { new File(projectCheckstyleConfig.toString()).parentFile })
                 }
                 configProperties = ['org.checkstyle.google.suppressionfilter.config':
-                    new File(initScriptDir, 'checkstyle-suppressions.xml').absolutePath]
+                    new File(initScriptDir, javaStyle == 'none'
+                        ? 'checkstyle-suppressions-unformatted.xml' : 'checkstyle-suppressions.xml').absolutePath]
             }
         }
         tasks.withType(Checkstyle).configureEach { checkstyleTask ->

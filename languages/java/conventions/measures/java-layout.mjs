@@ -1,5 +1,5 @@
 import { indentOf, leadingSpaces, majorityStep } from '../../../../shared/conventions/lines.mjs';
-import { measuredLineLength, UNBREAKABLE_LINE } from './kotlin-line-length.mjs';
+import { measuredLineLength, UNBREAKABLE_LINE, withoutRawStrings } from './kotlin-line-length.mjs';
 
 const OPENS_BLOCK = /\{\s*(?:\/\/.*)?$/;
 const COMMENT_LINE = /^\s*(?:\/\/|\/\*|\*)/;
@@ -37,27 +37,53 @@ export function javaLineLength(text) {
   });
 }
 
-export function indentationStep(text) {
-  const lines = text
-    .split(/\r?\n/)
-    .filter((line) => line.trim().length > 0 && !COMMENT_LINE.test(line));
-  const steps = lines.slice(1).flatMap((line, index) => {
-    const previous = lines[index];
-    return OPENS_BLOCK.test(previous) && !line.startsWith('\t')
-      ? [leadingSpaces(line) - leadingSpaces(previous)]
-      : [];
-  });
-  return majorityStep(steps);
+function codeLines(text) {
+  return withoutRawStrings(text.split(/\r?\n/)).filter(
+    (line) => line.trim().length > 0 && !COMMENT_LINE.test(line),
+  );
 }
 
-const TAB_INDENTED = /^\t/m;
+function blockChildren(text) {
+  const lines = codeLines(text);
+  return lines.slice(1).flatMap((line, index) => {
+    const previous = lines[index];
+    return OPENS_BLOCK.test(previous) ? [{ previous, line }] : [];
+  });
+}
+
+function spaceSteps(children) {
+  return children
+    .filter(({ line }) => !line.startsWith('\t'))
+    .map(({ previous, line }) => leadingSpaces(line) - leadingSpaces(previous));
+}
+
+export function indentationStep(text) {
+  return majorityStep(spaceSteps(blockChildren(text)));
+}
+
+export function javaIndentation(text) {
+  const children = blockChildren(text);
+  const steps = spaceSteps(children);
+  return children.length - steps.length > steps.length ? 'tab' : majorityStep(steps);
+}
+
+function wrappedLineLength(text) {
+  return measuredLineLength(text, {
+    unbreakable: UNBREAKABLE_LINE,
+    joinLengths: wrappedJoinLengths,
+    wrappedOnly: true,
+  });
+}
 
 export function formatterProfile(text) {
-  if (TAB_INDENTED.test(text)) {
+  if (javaIndentation(text) === 'tab') {
     return 'none';
   }
+  const width = wrappedLineLength(text);
+  if (width === undefined) {
+    return undefined;
+  }
   const step = indentationStep(text);
-  const width = javaLineLength(text);
   if (width === '140' || (step === '2' && width === '120')) {
     return 'none';
   }

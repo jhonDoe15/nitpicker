@@ -310,11 +310,11 @@ Two styles are equally valid in each of these, so the preset follows the project
 | `kotlin.wildcardImports` | disables `no-wildcard-imports`   | -                                    | -            | `WildcardImport: active: false` |
 | `kotlin.lineLength`      | `max_line_length`                | `--max-width`                        | not offered  | `MaxLineLength: maxLineLength`  |
 
-`kotlin.lineLength` is `100`, `120` or `140` and has no default. It is measured like `python.lineLength`: the
+`kotlin.lineLength` is any number of columns (`100`, `120` and `140` are the measured ones; an `.editorconfig` or detekt width such as 110 is followed as it is) and has no default. It is measured like `python.lineLength`: the
 longest line that could have been wrapped, against the shortest join of a wrapped argument list, and
 else the lines that run past 100 or 120. With no clear answer each tool keeps its own width.
 An id the formatter cannot apply is neither measured nor printed, and pinning it is a config error.
-`java.indentation` (google-java-format `2` or `--aosp` 4; palantir-java-format is always 4, see `java.formatter` and `java.lineLength` in the [Java preset](java-preset.md#style)) is the Java twin of `kotlin.indentation` and
+`java.indentation` (google-java-format `2` or `--aosp` 4, or `tab`; palantir-java-format is always 4, see `java.formatter` and `java.lineLength` in the [Java preset](java-preset.md#style)) is the Java twin of `kotlin.indentation` and
 applies to the Java sources of the same project; the difference is the default: `java.indentation`
 falls back to 2 (google-java-format's), while `kotlin.indentation` has none, because ktfmt's default
 is 2 and ktlint's is 4, so with no clear majority the tool keeps its own. For ktlint the choices are a

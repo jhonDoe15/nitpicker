@@ -1,65 +1,110 @@
 import { configError } from '../../../shared/config.mjs';
-import { readInside } from '../../../shared/conventions/read-inside.mjs';
 import { precedenceLayers } from '../../../shared/conventions/tool-precedence.mjs';
 import { PROJECT_TOOL_CONFIGS } from '../adapters/gradle-presets.mjs';
-import { checkstyleLineLength, declaredJavaFormatter } from './java-formatter-detection.mjs';
+import { checkstyleLineLength } from './build-style/checkstyle-width.mjs';
+import { declaredJavaFormatter } from './build-style/java-formatter-detection.mjs';
 import { JAVA_FORMATTER, JAVA_INDENTATION_ID, JAVA_LINE_LENGTH_ID } from './java-conventions.mjs';
 
 const FORMATTER_NAMES = {
   google: 'google-java-format',
   palantir: 'palantir-java-format',
 };
-const FIXED_BY_FORMATTER = {
-  google: { [JAVA_LINE_LENGTH_ID]: '100' },
-  palantir: { [JAVA_INDENTATION_ID]: '4', [JAVA_LINE_LENGTH_ID]: '120' },
-};
+const PINNED_FORMATTER = 'pinned in nitpicker.config.json';
+const DECLARED_FORMATTER = 'declared in your build file';
 
-function checkstyleChoices(projectRoot, tools) {
+function checkstyleChoices(source, tools) {
   const layers = precedenceLayers(tools.checkstyle?.precedence);
   if (!layers.usesProject || layers.nitpickerFirst) {
     return {};
   }
-  const text = readInside(projectRoot, PROJECT_TOOL_CONFIGS.get('checkstyle'), 'utf8');
+  const file = PROJECT_TOOL_CONFIGS.get('checkstyle');
+  const text = source.readMany([file]).get(file);
   const max = text === undefined ? undefined : checkstyleLineLength(text);
   return max === undefined
     ? {}
     : { [JAVA_LINE_LENGTH_ID]: { choice: max, from: 'your Checkstyle config' } };
 }
 
-function fixedChoice({ id, choice, entry, formatter }) {
-  if (entry.source === 'project' || (entry.source === 'pinned' && entry.choice === choice)) {
-    return [];
-  }
+function formatterOrigin(entry, declared) {
   if (entry.source === 'pinned') {
-    throw configError(
-      `"conventions.${id}" is "${entry.choice}", but ${FORMATTER_NAMES[formatter]} fixes it at "${choice}". Remove the pin, or pin "conventions.${JAVA_FORMATTER}" to "none"`,
+    return { formatter: entry.choice, aosp: false, declared: false, hard: PINNED_FORMATTER };
+  }
+  return declared === undefined
+    ? { formatter: entry.choice, aosp: false, declared: false }
+    : { ...declared, declared: true, hard: DECLARED_FORMATTER };
+}
+
+function formatterName({ formatter, aosp }) {
+  return `${FORMATTER_NAMES[formatter]}${aosp ? ' --aosp' : ''}`;
+}
+
+function fixedChoices({ formatter, declared, aosp }) {
+  if (formatter === 'palantir') {
+    return { [JAVA_INDENTATION_ID]: '4', [JAVA_LINE_LENGTH_ID]: '120' };
+  }
+  if (formatter !== 'google') {
+    return {};
+  }
+  return {
+    [JAVA_LINE_LENGTH_ID]: '100',
+    ...(declared ? { [JAVA_INDENTATION_ID]: aosp ? '4' : '2' } : {}),
+  };
+}
+
+function contradictions(fixed, detected) {
+  return Object.entries(fixed)
+    .filter(([id]) => ['pinned', 'project'].includes(detected[id].source))
+    .filter(([id, choice]) => detected[id].choice !== choice)
+    .map(([id, choice]) => ({ id, choice, entry: detected[id] }));
+}
+
+function contradictionError(origin, { id, choice, entry }) {
+  return configError(
+    `"conventions.${id}" is "${entry.choice}", but ${formatterName(origin)} (${origin.hard}) fixes it at "${choice}". Remove the pin, or pin "conventions.${JAVA_FORMATTER}" to "none"`,
+  );
+}
+
+function withoutFormatter({ entry, id }) {
+  const reason =
+    entry.source === 'pinned' ? `your conventions.${id} pin in nitpicker.config.json` : entry.from;
+  return { [JAVA_FORMATTER]: { choice: 'none', from: reason } };
+}
+
+function formatterChoices(origin, detected) {
+  const fixed = fixedChoices(origin);
+  const [conflict] = contradictions(fixed, detected).filter(
+    ({ entry }) => entry.source === 'pinned' || origin.hard === undefined,
+  );
+  if (conflict === undefined) {
+    return Object.fromEntries(
+      Object.entries(fixed)
+        .filter(([id]) => !['pinned', 'project'].includes(detected[id].source))
+        .map(([id, choice]) => [id, { choice, from: formatterName(origin) }]),
     );
   }
-  return [[id, { choice, from: FORMATTER_NAMES[formatter] }]];
+  if (origin.hard === undefined) {
+    return withoutFormatter(conflict);
+  }
+  throw contradictionError(origin, conflict);
 }
 
-function formatterChoice(detected, projectRoot) {
-  const declared =
-    detected[JAVA_FORMATTER].source === 'pinned' ? undefined : declaredJavaFormatter(projectRoot);
-  return declared === undefined
-    ? {}
-    : { [JAVA_FORMATTER]: { choice: declared, from: 'your build file' } };
+function derivedChoices(detected, source) {
+  const entry = detected[JAVA_FORMATTER];
+  const declared = entry.source === 'pinned' ? undefined : declaredJavaFormatter(source);
+  const origin = formatterOrigin(entry, declared);
+  return {
+    ...(declared === undefined
+      ? {}
+      : { [JAVA_FORMATTER]: { choice: declared.formatter, from: 'your build file' } }),
+    ...formatterChoices(origin, detected),
+  };
 }
 
-function derivedChoices(detected, projectRoot) {
-  const declared = formatterChoice(detected, projectRoot);
-  const formatter = declared[JAVA_FORMATTER]?.choice ?? detected[JAVA_FORMATTER].choice;
-  const fixed = Object.entries(FIXED_BY_FORMATTER[formatter] ?? {}).flatMap(([id, choice]) =>
-    fixedChoice({ id, choice, entry: detected[id], formatter }),
-  );
-  return { ...declared, ...Object.fromEntries(fixed) };
-}
-
-export function javaProjectStyle({ config, projectRoot }) {
+export function javaProjectStyle({ config, source }) {
   return {
     unused: {},
-    project: checkstyleChoices(projectRoot, config.tools ?? {}),
+    project: checkstyleChoices(source, config.tools ?? {}),
     note: () => undefined,
-    derive: (detected) => derivedChoices(detected, projectRoot),
+    derive: (detected) => derivedChoices(detected, source),
   };
 }

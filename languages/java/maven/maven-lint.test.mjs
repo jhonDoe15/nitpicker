@@ -101,6 +101,24 @@ describe('writeCheckstyleSetup', () => {
     expect(readFileSync(setup.properties, 'utf8')).toBe(suppressions);
   });
 
+  it('points the suppression filter at the file that keeps the checks both formatters agree on', () => {
+    const root = mkdtempSync(path.join(tmpdir(), 'nitpicker-checkstyle-setup-'));
+    roots.push(root);
+
+    const setup = writeCheckstyleSetup({
+      directory: path.join(root, 'out'),
+      nitpickerConfig,
+      suppressions: 'checkstyle-suppressions-unformatted.xml',
+    });
+
+    expect(readFileSync(setup.properties, 'utf8')).toBe(
+      suppressions.replace(
+        'checkstyle-suppressions.xml',
+        'checkstyle-suppressions-unformatted.xml',
+      ),
+    );
+  });
+
   it('lays the project config over the nitpicker checks and points config_loc at it', () => {
     const { project, setup } = projectSetup({ projectWins: true });
 

@@ -2,6 +2,23 @@ import { configError, isPlainObject } from '../config.mjs';
 
 const NAME = /^[A-Za-z_]\w*$/;
 
+export const COLUMNS = { valuePattern: /^[1-9]\d{1,2}$/, unit: 'columns' };
+
+export function isValidChoice(definition, choice) {
+  return (
+    definition.kind === 'names' ||
+    definition.options.includes(choice) ||
+    (definition.valuePattern !== undefined &&
+      typeof choice === 'string' &&
+      definition.valuePattern.test(choice))
+  );
+}
+
+function optionLabel(definition, choice) {
+  const unit = definition.unit === undefined ? '' : ` ${definition.unit}`;
+  return definition.optionLabels[choice] ?? `${choice}${unit}`;
+}
+
 function validateChoice(id, choice, definition) {
   if (definition.kind === 'names') {
     if (
@@ -12,10 +29,11 @@ function validateChoice(id, choice, definition) {
     }
     return;
   }
-  if (!definition.options.includes(choice)) {
-    throw configError(
-      `"conventions.${id}" must be one of: ${definition.options.map((option) => `"${option}"`).join(', ')}`,
-    );
+  if (!isValidChoice(definition, choice)) {
+    const options = definition.options.map((option) => `"${option}"`).join(', ');
+    const other =
+      definition.valuePattern === undefined ? '' : `, or another number of ${definition.unit}`;
+    throw configError(`"conventions.${id}" must be one of: ${options}${other}`);
   }
 }
 
@@ -52,10 +70,10 @@ function describeOne(definition, detectedEntry, note) {
   }
   const { choice, source, counts, from, overrides } = detectedEntry;
   const extra = note(definition.id, choice);
-  const option = definition.optionLabels[choice] ?? choice;
+  const option = optionLabel(definition, choice);
   const label = `${definition.label}: ${option}${extra === undefined ? '' : `, ${extra}`}`;
   if (source === 'project') {
-    const pin = definition.optionLabels[overrides] ?? overrides;
+    const pin = overrides === undefined ? undefined : optionLabel(definition, overrides);
     const overridden =
       overrides === undefined ? '' : `, overriding the pin of ${pin} in nitpicker.config.json`;
     return `${label} (from ${from}${overridden})`;

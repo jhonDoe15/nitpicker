@@ -8,6 +8,8 @@ import { readJavaFindings as readFindings } from '../reporting/java-reports.mjs'
 import { readingFrom, reportBaseOf, writeModules } from '../test-support/report-base.mjs';
 import { javaLineLength, javaStyle, javaStyleProperties } from './java-style.mjs';
 
+const NOT_YOUR_FORMATTER =
+  'Not your formatter: pin "conventions.java.formatter" to "google", "palantir" or "none" in nitpicker.config.json.';
 const fakeGradle = path.resolve(import.meta.dirname, '../fixtures/fake-gradle.mjs');
 const roots = [];
 
@@ -26,11 +28,29 @@ function gradleArguments(policy) {
 
 describe('javaStyleProperties', () => {
   it('passes only a non-default style, as a command-line property', () => {
-    expect(javaStyleProperties('aosp')).toEqual(['-Pnitpicker.java.style=aosp']);
-    expect(javaStyleProperties('palantir')).toEqual(['-Pnitpicker.java.style=palantir']);
-    expect(javaStyleProperties('none')).toEqual(['-Pnitpicker.java.style=none']);
-    expect(javaStyleProperties('google')).toEqual([]);
-    expect(javaStyleProperties(undefined)).toEqual([]);
+    const properties = (javaStyle, conventions) => javaStyleProperties({ javaStyle, conventions });
+
+    expect(properties('aosp')).toEqual(['-Pnitpicker.java.style=aosp']);
+    expect(properties('palantir')).toEqual(['-Pnitpicker.java.style=palantir']);
+    expect(properties('google')).toEqual([]);
+    expect(properties(undefined)).toEqual([]);
+  });
+
+  it('passes the indentation along when no formatter runs, for the Checkstyle checks', () => {
+    const properties = (conventions) => javaStyleProperties({ javaStyle: 'none', conventions });
+
+    expect(properties({})).toEqual([
+      '-Pnitpicker.java.style=none',
+      '-Pnitpicker.java.indentation=2',
+    ]);
+    expect(properties({ 'java.indentation': '4' })).toEqual([
+      '-Pnitpicker.java.style=none',
+      '-Pnitpicker.java.indentation=4',
+    ]);
+    expect(properties({ 'java.indentation': 'tab' })).toEqual([
+      '-Pnitpicker.java.style=none',
+      '-Pnitpicker.java.indentation=tab',
+    ]);
   });
 });
 
@@ -76,6 +96,31 @@ describe('Checkstyle layout checks', () => {
   });
 });
 
+describe('Checkstyle checks when no formatter runs', () => {
+  const suppressed = readFileSync(
+    path.resolve(import.meta.dirname, '../../gradle/checkstyle-suppressions-unformatted.xml'),
+    'utf8',
+  )
+    .split('\n')
+    .flatMap((line) => /checks="([^"]+)"/u.exec(line)?.[1].split('|') ?? []);
+
+  it('keeps the layout checks both formatters agree on, indentation and tabs included', () => {
+    expect(suppressed.toSorted()).toEqual([
+      'AnnotationLocation',
+      'CommentsIndentation',
+      'CustomImportOrder',
+      'EmptyLineSeparator',
+      'LineLength',
+      'MissingJavadocMethod',
+      'MissingJavadocType',
+      'NoLineWrap',
+      'OperatorWrap',
+      'RegexpSinglelineJava',
+      'SeparatorWrap',
+    ]);
+  });
+});
+
 describe('the Gradle run', () => {
   it('gets the aosp style as a command-line property and nothing for the default', () => {
     const styleProperties = (policy) =>
@@ -85,6 +130,11 @@ describe('the Gradle run', () => {
     expect(styleProperties({})).toEqual([]);
     expect(styleProperties({ javaStyle: 'palantir' })).toEqual(['-Pnitpicker.java.style=palantir']);
     expect(styleProperties({ javaStyle: 'none' })).toEqual(['-Pnitpicker.java.style=none']);
+    expect(
+      gradleArguments({ javaStyle: 'none', conventions: { 'java.indentation': '4' } }).filter(
+        (argument) => argument.startsWith('-Pnitpicker.java.'),
+      ),
+    ).toEqual(['-Pnitpicker.java.style=none', '-Pnitpicker.java.indentation=4']);
     expect(styleProperties({ preset: 'kotlin', javaStyle: 'aosp' })).toEqual([
       '-Pnitpicker.java.style=aosp',
     ]);
@@ -119,8 +169,14 @@ describe('the analyzer hash', () => {
     const styleFiles = [
       'languages/java/adapters/style/java-style.mjs',
       'languages/java/gradle/checkstyle-suppressions.xml',
+      'languages/java/gradle/checkstyle-suppressions-unformatted.xml',
+      'languages/java/adapters/tool-config/checkstyle/unformatted-checks.mjs',
     ];
-    expect(configurationFiles().filter((file) => styleFiles.includes(file))).toEqual(styleFiles);
+    expect(
+      configurationFiles()
+        .filter((file) => styleFiles.includes(file))
+        .toSorted(),
+    ).toEqual(styleFiles.toSorted());
   });
 });
 
@@ -194,9 +250,17 @@ describe('the format finding', () => {
         .findings.filter(({ tool }) => tool === 'google-java-format')
         .map(({ path: file, message }) => [file, message]);
 
-    expect(format({})).toEqual([[unformatted, 'File is not formatted with google-java-format']]);
+    expect(format({})).toEqual([
+      [
+        unformatted,
+        `File is not formatted with google-java-format. Format it with google-java-format --replace <Java files>. ${NOT_YOUR_FORMATTER}`,
+      ],
+    ]);
     expect(format({ javaStyle: 'aosp' })).toEqual([
-      [unformatted, 'File is not formatted with google-java-format --aosp'],
+      [
+        unformatted,
+        `File is not formatted with google-java-format --aosp. Format it with google-java-format --aosp --replace <Java files>. ${NOT_YOUR_FORMATTER}`,
+      ],
     ]);
   });
 
@@ -207,7 +271,10 @@ describe('the format finding', () => {
     );
 
     expect(found.map(({ path: file, message }) => [file, message])).toEqual([
-      [unformatted, 'File is not formatted with palantir-java-format'],
+      [
+        unformatted,
+        `File is not formatted with palantir-java-format. Format it with palantir-java-format --palantir --replace <Java files>. ${NOT_YOUR_FORMATTER}`,
+      ],
     ]);
   });
 });

@@ -57,7 +57,7 @@ function measureOptions(definition, sample, texts) {
       counts[option] += 1;
     }
   }
-  const winner = pluralityOf(counts);
+  const winner = pluralityOf(counts, definition);
   return winner === undefined
     ? { choice: definition.fallback, source: 'default', counts, files: sample.length }
     : { choice: winner, source: 'majority', counts, files: sample.length };
@@ -81,10 +81,17 @@ function measureNames(definition, sample, texts) {
     : { choice, source: 'majority', counts, files: sample.length };
 }
 
-function pluralityOf(counts) {
+function pluralityOf(counts, { minVotes = 0, strictMajority = false }) {
   const ranked = Object.entries(counts).sort(([, left], [, right]) => right - left);
   const [first, second] = ranked;
-  if (first === undefined || first[1] === 0 || (second !== undefined && second[1] === first[1])) {
+  const votes = ranked.reduce((total, [, count]) => total + count, 0);
+  if (
+    first === undefined ||
+    first[1] === 0 ||
+    (second !== undefined && second[1] === first[1]) ||
+    votes < minVotes ||
+    (strictMajority && first[1] * 2 <= votes)
+  ) {
     return undefined;
   }
   return first[0];

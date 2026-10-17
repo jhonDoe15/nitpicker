@@ -40,6 +40,18 @@ describe('Python conventions with the ruff config of the project', () => {
     });
   });
 
+  it('follows a ruff line length that is none of 79, 88, 100 and 120', () => {
+    const config = { preset: 'python', tools: { ruff: { precedence: LISTED } } };
+
+    expect(follow(config, { 'ruff.toml': 'line-length = 110\n', 'a.py': DOUBLE_QUOTED })).toEqual({
+      conventions: { 'python.lineLength': '110' },
+      printed:
+        HEADER +
+        '  Python line length: 110 columns (from your ruff config)\n' +
+        "Format with ruff: ruff format --config ruff.toml --target-version py38 --config 'format.quote-style = \"double\"' --config 'indent-width = 4' .\n",
+    });
+  });
+
   it('lets the config win over a pin and a pin win over the files', () => {
     const config = {
       preset: 'python',
@@ -225,6 +237,39 @@ describe('Kotlin conventions that the formatter can apply', () => {
         'config/detekt/detekt.yml': detekt,
       }).conventions,
     ).toEqual({ 'kotlin.lineLength': '100' });
+  });
+
+  it('follows a line length that is none of 100, 120 and 140', () => {
+    const ktlint = { preset: 'kotlin', tools: { ktlint: { precedence: LISTED } } };
+    const both = { ...ktlint, tools: { ...ktlint.tools, detekt: { precedence: LISTED } } };
+
+    expect(
+      follow(ktlint, {
+        'build.gradle.kts': 'ktlint',
+        '.editorconfig': '[*.{kt,kts}]\nmax_line_length = 110\n',
+      }),
+    ).toEqual({
+      conventions: { 'kotlin.lineLength': '110' },
+      printed:
+        HEADER +
+        '  Kotlin line length: 110 columns (from your .editorconfig)\n' +
+        'ktlint reads your .editorconfig files, and uses max_line_length = 110 where they set nothing\n',
+    });
+    expect(
+      follow(both, {
+        'build.gradle.kts': 'ktlint',
+        '.editorconfig': 'root = true\n',
+        'config/detekt/detekt.yml': 'style:\n  MaxLineLength:\n    maxLineLength: 160\n',
+      }).conventions,
+    ).toEqual({ 'kotlin.lineLength': '160' });
+  });
+
+  it('accepts a pinned line length of any number of columns', () => {
+    const config = { preset: 'kotlin', conventions: { 'kotlin.lineLength': '110' } };
+
+    expect(
+      follow(config, { 'build.gradle.kts': 'ktlint', 'src/A.kt': TWO_SPACES }).conventions,
+    ).toEqual({ 'kotlin.indentation': '2', 'kotlin.lineLength': '110' });
   });
 
   it('refuses a pinned line length when no formatter runs', () => {
