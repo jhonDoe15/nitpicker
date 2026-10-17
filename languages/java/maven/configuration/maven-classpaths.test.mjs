@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { moduleClasspaths, parseDependencyList } from './maven-project.mjs';
+import { moduleClasspaths, parseDependencyList } from '../maven-project.mjs';
 
 describe('parseDependencyList', () => {
   it('reads scope and file, with classifiers, module names, optional markers and drive letters', () => {

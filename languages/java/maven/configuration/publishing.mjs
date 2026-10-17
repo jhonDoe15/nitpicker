@@ -8,7 +8,7 @@ const PUBLISHING_PLUGINS = [
 ];
 const LIBRARY_PACKAGING = new Set(['jar', 'bundle', 'maven-plugin']);
 
-function isTrue(text) {
+export function isTrue(text) {
   return text?.trim().toLowerCase() === 'true';
 }
 

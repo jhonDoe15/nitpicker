@@ -1,4 +1,4 @@
-import { isPublished } from './configuration/publishing.mjs';
+import { isPublished, isTrue } from './configuration/publishing.mjs';
 import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { childAt, childrenAt, childrenNamed, parseXml } from '../ingest/common.mjs';
@@ -59,10 +59,6 @@ function executionsWithGoal(plugin, goal) {
 
 function configured(execution, plugin, name) {
   return textAt(execution, 'configuration', name) ?? textAt(plugin, 'configuration', name);
-}
-
-function isTrue(text) {
-  return text?.trim().toLowerCase() === 'true';
 }
 
 function runsFailsafe(project, plugin) {
