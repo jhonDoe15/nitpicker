@@ -97,11 +97,30 @@ export function sourceFileOf(locate, className, fileName) {
   return locate(parts.join('/'), fileName ?? `${simple}.java`);
 }
 
+function containedFile(projectRoot, file) {
+  const base = path.resolve(projectRoot);
+  const full = path.resolve(base, file);
+  if (!full.startsWith(base + path.sep)) {
+    return undefined;
+  }
+  return full;
+}
+
+function isProjectFile(projectRoot, file) {
+  const full = containedFile(projectRoot, file);
+  return full !== undefined && existsSync(full);
+}
+
+function projectFileText(projectRoot, file) {
+  const full = containedFile(projectRoot, file);
+  return full !== undefined && existsSync(full) ? readFileSync(full, 'utf8') : undefined;
+}
+
 function jacocoFindings(context) {
   const { projectRoot, jacoco } = context;
   return jacocoSourceRoots(context).flatMap((sourceRoot) =>
     ingestJacoco(jacoco, { sourceRoot }).findings.filter((finding) =>
-      existsSync(path.join(projectRoot, finding.path)),
+      isProjectFile(projectRoot, finding.path),
     ),
   );
 }
@@ -113,7 +132,7 @@ function crapFindings({ reportRoot, sourceRoots, projectRoot, jacoco }, crapLimi
     sourceRoots,
     limit: crapLimit,
     sourceHash: (entry) =>
-      existsSync(path.join(projectRoot, entry.file))
+      isProjectFile(projectRoot, entry.file)
         ? hash(methodText(sources, projectRoot, entry))
         : undefined,
   }).findings;
@@ -136,10 +155,7 @@ function branchFindings(context) {
   const { projectRoot } = context;
   return ingestJacocoBranches(context.jacoco, {
     locate: sourceLocator(projectRoot, jacocoSourceRoots(context)),
-    sourceText: (file) => {
-      const absolute = path.join(projectRoot, file);
-      return existsSync(absolute) ? readFileSync(absolute, 'utf8') : undefined;
-    },
+    sourceText: (file) => projectFileText(projectRoot, file),
   }).findings;
 }
 

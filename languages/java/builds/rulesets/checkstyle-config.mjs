@@ -67,16 +67,20 @@ function scopedChecks() {
   ).join('\n');
 }
 
-function fieldNameModules() {
-  const strict = (check) =>
+function digitUnderscoreModule(check) {
+  return (
     `<module name="${check}"><property name="id" value="${FIELD_RULE}"/>` +
     `<property name="format" value="${NO_DIGIT_UNDERSCORE}"/>` +
-    `<message key="name.invalidPattern" value="${DIGIT_UNDERSCORE_MESSAGE}"/></module>`;
+    `<message key="name.invalidPattern" value="${DIGIT_UNDERSCORE_MESSAGE}"/></module>`
+  );
+}
+
+function fieldNameModules() {
   return [
     `<module name="${FIELD_RULE}">`,
     `<message key="google.non.constant.field.name.format" value="${FIELD_MESSAGE}"/></module>`,
-    strict('MemberName'),
-    strict('StaticVariableName'),
+    digitUnderscoreModule('MemberName'),
+    digitUnderscoreModule('StaticVariableName'),
   ].join('');
 }
 

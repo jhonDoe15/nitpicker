@@ -53,13 +53,20 @@ export function withoutCheckstyleParseSkips(findings, testScope = {}) {
   ];
 }
 
+function skipReason(reportRoot, file) {
+  const base = path.resolve(reportRoot);
+  const full = path.resolve(base, file);
+  if (!full.startsWith(base + path.sep)) {
+    return undefined;
+  }
+  return existsSync(full) ? readFileSync(full, 'utf8').trim() : undefined;
+}
+
 export function skippedToolFindings({ reportRoot, testScope = {} }) {
-  return SKIP_REPORTS.filter(([file]) => existsSync(path.join(reportRoot, file))).map(
-    ([file, tool, name]) =>
-      toolSkipped(
-        tool,
-        `${name} did not run in ${snapshotScope(testScope)}: ` +
-          `${readFileSync(path.join(reportRoot, file), 'utf8').trim()}.`,
-      ),
-  );
+  return SKIP_REPORTS.flatMap(([file, tool, name]) => {
+    const reason = skipReason(reportRoot, file);
+    return reason === undefined
+      ? []
+      : [toolSkipped(tool, `${name} did not run in ${snapshotScope(testScope)}: ${reason}.`)];
+  });
 }

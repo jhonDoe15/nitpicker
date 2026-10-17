@@ -1,3 +1,6 @@
+const PARSED = 3;
+const NOT_PARSED = 2;
+
 function testClass(name, expected) {
   return `package demo
 
@@ -66,8 +69,8 @@ tasks.test {
 `,
     'src/main/kotlin/demo/Shapes.kt': SHAPES,
     'src/main/kotlin/demo/Messy.kt': MESSY,
-    'src/test/kotlin/demo/ShapesTest.kt': testClass('ShapesTest', 3),
-    'src/test/kotlin/demo/BrokenTest.kt': testClass('BrokenTest', 2),
+    'src/test/kotlin/demo/ShapesTest.kt': testClass('ShapesTest', PARSED),
+    'src/test/kotlin/demo/BrokenTest.kt': testClass('BrokenTest', NOT_PARSED),
   };
 }
 
