@@ -168,18 +168,26 @@ function readClasspaths(work, module) {
   );
 }
 
-function usesSpring(policy, classpaths) {
+function usesSpring(declared, classpaths) {
   return (
-    policy.spring === true ||
+    declared === true ||
     classpaths.mainCompile.some((entry) => SPRING_JAR.test(path.basename(entry)))
   );
 }
 
-function analyzeModule({ module, classpaths, tools, pinned, configs, since, policy }) {
-  const { javaStyle } = policy;
+function analyzeModule({
+  module,
+  classpaths,
+  tools,
+  pinned,
+  configs,
+  since,
+  javaStyle,
+  spring: declared,
+}) {
   const reportDir = path.join(module.basedir, MAVEN_REPORT_DIRECTORY);
   const isArchunit = archunitMatcher(module.archunitIncludes);
-  const spring = usesSpring(policy, classpaths);
+  const spring = usesSpring(declared, classpaths);
   const testsRan = collectTestResults({ module, reportDir, since, isArchunit });
   copyTestResults({ module, reportDir, since, isArchunit });
   runPmd({ module, reportDir, tools, classpaths, configs, spring });
@@ -268,7 +276,8 @@ export function runMavenPreset(projectRoot, { maven, policy = {}, configs }) {
         pinned,
         configs,
         since,
-        policy,
+        javaStyle: policy.javaStyle,
+        spring: policy.spring,
       });
     }
     return modules.map((module) => module.basedir);
