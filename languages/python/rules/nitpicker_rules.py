@@ -11,7 +11,9 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 def load_checks():
     sys.path.insert(0, HERE)
     from boundary import domain_types, guards, paths
-    from checks import comments, declarations, environment, errors, state
+    from checks import comments, declarations, state
+    from environment import environment, purity
+    from errors import errors
     from honesty import assertions, collection, isolation, skipped
     from smells import literals, loops, names, secrets
 
@@ -20,6 +22,7 @@ def load_checks():
         errors,
         comments,
         environment,
+        purity,
         state,
         guards,
         domain_types,

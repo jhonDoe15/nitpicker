@@ -78,6 +78,7 @@ export function createToolContext({
       targetVersion: detectTargetVersion(projectRoot),
       importLinter: settings.importLinter,
       sourceRoots,
+      entryPoints: settings.entryPoints ?? [],
     },
     env: {
       PYTHONPATH: pythonPath,

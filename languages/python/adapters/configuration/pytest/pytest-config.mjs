@@ -1,6 +1,4 @@
-import { existsSync, readFileSync } from 'node:fs';
-import { createRequire } from 'node:module';
-import path from 'node:path';
+import { parseToml, readProjectFile } from '../project-files.mjs';
 import { parseIni } from './ini-file.mjs';
 
 export const DEFAULT_PYTHON_FILES = ['test_*.py', '*_test.py'];
@@ -25,23 +23,6 @@ const INI_SOURCES = [
   { file: 'tox.ini', section: 'pytest', always: false },
   { file: 'setup.cfg', section: 'tool:pytest', always: false },
 ];
-
-function readProjectFile(projectRoot, name) {
-  const root = path.resolve(projectRoot);
-  const full = path.resolve(root, name);
-  if (!full.startsWith(root + path.sep) || !existsSync(full)) {
-    return undefined;
-  }
-  return readFileSync(full, 'utf8');
-}
-
-function parseToml(text) {
-  try {
-    return { kind: 'table', table: createRequire(import.meta.url)('smol-toml').parse(text) };
-  } catch (error) {
-    return { kind: 'invalid', error };
-  }
-}
 
 function isTable(value) {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
