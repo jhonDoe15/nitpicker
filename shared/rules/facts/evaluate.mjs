@@ -73,18 +73,37 @@ function missingList(facts, rules, language) {
     : `The ${language} facts lack lists that registered rules read: ${missing.join('; ')}`;
 }
 
+function validBaselineFacts(facts) {
+  try {
+    return validateFacts(facts);
+  } catch (error) {
+    throw new TypeError(`baseline ${error.message}`, { cause: error });
+  }
+}
+
 function baselineReader(baseline) {
+  if (baseline === undefined) {
+    return undefined;
+  }
   if (typeof baseline?.readFile === 'function') {
     return baseline.readFile;
   }
-  if (baseline?.facts === undefined) {
-    return undefined;
+  if (!isPlainObject(baseline) || baseline.facts === undefined) {
+    throw new TypeError('baseline must be { readFile } or { facts, movesFile? }, or be left out');
   }
   const baselinePaths = baselinePathsOf({
     snapshot: 'head',
     baselineMovesFile: baseline.movesFile,
   });
-  return baselineFromFacts(validateFacts(baseline.facts), baselinePaths);
+  return baselineFromFacts(validBaselineFacts(baseline.facts), baselinePaths);
+}
+
+function validateAnalyzerName(analyzerName) {
+  if (typeof analyzerName !== 'string' || analyzerName === '') {
+    throw new TypeError(
+      '"analyzerName" must be a non-empty string: the analyzer the findings are for',
+    );
+  }
 }
 
 function selectedRules(language, rules) {
@@ -126,7 +145,13 @@ function isAllowEntry(entry) {
   );
 }
 
+function isOptionalObject(value) {
+  return value === undefined || isPlainObject(value);
+}
+
 const POLICY_SHAPES = [
+  ['policy.testConsole', (policy) => isOptionalObject(policy.testConsole), 'an object'],
+  ['policy.layout', (policy) => isOptionalObject(policy.layout), 'an object'],
   [
     'policy.exceptions',
     (policy) => isListOf(policy.exceptions, isException),
@@ -164,6 +189,7 @@ export function sharedFactFindings(
   { language, analyzerName, rules: only, policy = {}, baseline, ...rest },
 ) {
   validateFacts(facts);
+  validateAnalyzerName(analyzerName);
   validatePolicy(policy);
   const rules = selectedRules(language, only);
   const problem = missingList(facts, rules, language);

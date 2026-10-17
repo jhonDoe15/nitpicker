@@ -17,6 +17,7 @@ const CASES = [
   { glob: 'a?c', matching: ['abc'], other: ['a/c', 'ac'] },
   { glob: '{a,{b,c}}/x', matching: ['a/x', 'c/x'], other: ['d/x'] },
   { glob: 'a}b,c', matching: ['a}b,c'], other: ['ab'] },
+  { glob: 'src/app/[id]/**', matching: ['src/app/[id]/page.tsx'], other: ['src/app/i/page.tsx'] },
   { glob: '$x.(1)', matching: ['$x.(1)'], other: ['ax.(1)'] },
 ];
 

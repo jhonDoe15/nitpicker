@@ -86,10 +86,6 @@ describe('feature layout keys', () => {
     ['./shared', 'drop the leading "./": globs match from the project root'],
     ['**/shared/', 'drop the trailing "/": write "**/shared"'],
     [
-      '**/[Ss]hared',
-      'character classes such as [a-z] are not supported: list the alternatives in braces, such as {a,b}',
-    ],
-    [
       '(?i)**/shared',
       'regular expression flags such as (?i) are not supported: globs match case-sensitively, so list each spelling in braces, such as {README,readme}.md',
     ],
@@ -98,6 +94,12 @@ describe('feature layout keys', () => {
     expect(() => validateConfig({ layout: { sharedRoots: [glob] } })).toThrow(
       `nitpicker.config.json: "layout.sharedRoots" glob ${JSON.stringify(glob)} can never match: ${problem}`,
     );
+  });
+
+  it('takes a folder glob with brackets, which match themselves', () => {
+    const config = { layout: { featureRoots: ['src/app/[locale]/features'] } };
+
+    expect(validateConfig(config)).toEqual(config);
   });
 
   it.each([['python'], ['java'], ['kotlin']])(

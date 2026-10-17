@@ -382,13 +382,13 @@ Math` and `Math['random']()` are caught; `process`, `fetch`, `setTimeout`, `setI
 - A doc comment has to say something the name does not. `nitpicker/no-comments` reports a doc
   comment on an exported declaration or exported type member whose description only restates the
   name: it splits the name into words (camelCase, PascalCase, snake_case, kebab-case, digits),
-  drops stopwords (`the`, `a`, `of`, `get`, `returns`, `component`, `value`...), and reports when
+  drops stopwords (`the`, `a`, `of`, `get`, `returns`, `component`, `class`, `value`...), and reports when
   every remaining description word, with a crude `ing`/`ed`/`es`/`s` stem, is a word of the name
   (`/** Gets the user name. */ getUserName`, `/** The order id */ orderId`, `/** Button component */
 Button`). `@param`, `@returns` and other tag lines are not part of the description. Write the
   unit, the limit, the edge case or the reason (`/** Price in cents, rounded down. */`). A
   description longer than 5 lines, tag lines, blank lines and code examples not counted (a fenced
-  ` ``` ` or `~~~` block, or the body of an `@example` tag), is reported too; bullets and
+  ` ``` ` or `~~~` block, or the body of an `@example` tag; a fence that is never closed counts as prose), is reported too; bullets and
   other prose count: keep the non-obvious point and move the rest into names and types. Both
   checks are skipped in the JavaScript preset's JSDoc mode, which already bans JSDoc prose, and a
   doc comment that is needed as written gets an exception for the rule.

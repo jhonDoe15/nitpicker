@@ -215,10 +215,6 @@ const GLOB_PROBLEMS = [
   [(glob) => glob.startsWith('./'), 'drop the leading "./": globs match from the project root'],
   [(glob) => glob.endsWith('/'), 'drop the trailing "/": write {fix}'],
   [
-    (glob) => /[[\]]/u.test(glob),
-    'character classes such as [a-z] are not supported: list the alternatives in braces, such as {a,b}',
-  ],
-  [
     (glob) => glob.includes('(?'),
     'regular expression flags such as (?i) are not supported: globs match case-sensitively, so list each spelling in braces, such as {README,readme}.md',
   ],

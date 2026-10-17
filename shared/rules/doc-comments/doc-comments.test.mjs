@@ -76,6 +76,14 @@ describe('doc-comment content', () => {
       { name: 'formatPrice', lines: ['Formats the {@link price}.'] },
       { kind: 'restating', name: 'formatPrice' },
     ],
+    [
+      { name: 'Order', lines: ['Order class.'] },
+      { kind: 'restating', name: 'Order' },
+    ],
+    [
+      { name: 'x', lines: ['1', '```ts', 'a();', 'b();', 'c();', 'd();'] },
+      { kind: 'long', lines: 6, limit: 5 },
+    ],
     [{ name: 'x', lines: ['1', '```ts', 'a();', 'b();', 'c();', 'd();', '```', '2'] }, undefined],
     [
       { name: 'x', lines: ['1', '~~~', 'a();', '@param b', 'c();', '~~~', '2', '3', '4'] },
@@ -92,6 +100,16 @@ describe('doc-comment content', () => {
     ],
   ])('%j is %j', (comment, problem) => {
     expect(docCommentProblem(comment)).toEqual(problem);
+  });
+
+  it('cuts at a block tag after a fence that is never closed', () => {
+    const text = ['Sums the rows.', '```', 'a();', ':param rows: the rows', 'more'].join('\n');
+
+    expect(descriptionLines(text, { blockTag: /^:param\b/u })).toEqual([
+      'Sums the rows.',
+      '```',
+      'a();',
+    ]);
   });
 
   it('cuts the description at the first block tag, outside code fences', () => {
