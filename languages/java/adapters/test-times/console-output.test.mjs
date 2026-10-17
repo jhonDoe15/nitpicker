@@ -55,6 +55,44 @@ describe('consoleMessages', () => {
   });
 });
 
+const SELF_ATTACH = [
+  'Mockito is currently self-attaching to enable the inline-mock-maker.',
+  'WARNING: A Java agent has been loaded dynamically (/home/u/.m2/byte-buddy-agent-1.15.11.jar)',
+  'WARNING: If a serviceability tool is in use, please run with -XX:+EnableDynamicAgentLoading',
+  'WARNING: Dynamic loading of agents will be disallowed by default in a future release',
+];
+
+describe('consoleMessages of JVM and logging bootstrap output', () => {
+  it('reads a multi-line JVM warning and the line it follows as one message', () => {
+    expect(consoleMessages({ err: `${SELF_ATTACH.join('\n')}\n` })).toEqual([
+      SELF_ATTACH.join(' '),
+    ]);
+    expect(
+      consoleMessages({ err: `${SELF_ATTACH.slice(1).join('\n')}\n${SELF_ATTACH[0]}\n` }),
+    ).toEqual([[...SELF_ATTACH.slice(1), SELF_ATTACH[0]].join(' ')]);
+  });
+
+  it('keeps a warning that a blank line separates as its own message', () => {
+    expect(consoleMessages({ err: `cache miss\n\n${SELF_ATTACH[1]}\n` })).toEqual([
+      'cache miss',
+      SELF_ATTACH[1],
+    ]);
+  });
+
+  it("drops SLF4J's provider notices, which describe the test classpath", () => {
+    expect(
+      consoleMessages({
+        err: [
+          'SLF4J(W): No SLF4J providers were found.',
+          'SLF4J(W): Defaulting to no-operation (NOP) logger implementation',
+          'SLF4J: Failed to load class "org.slf4j.impl.StaticLoggerBinder".',
+          'pool closed early',
+        ].join('\n'),
+      }),
+    ).toEqual(['pool closed early']);
+  });
+});
+
 describe('consoleEntriesOf', () => {
   it('reads the output of each test case and of the suite outside them', () => {
     expect(consoleEntriesOf(SUITE)).toEqual([
