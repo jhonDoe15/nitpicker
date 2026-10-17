@@ -20,25 +20,25 @@ function leafLine(node, open) {
     : `${open}>${escapeXml(node.text).replaceAll('&quot;', '"')}</${node.name}>`;
 }
 
-export function renderXml(root) {
-  const lines = [];
-  const stack = [{ node: root, depth: 0, closing: false }];
-  while (stack.length > 0) {
-    const { node, depth, closing } = stack.pop();
-    const pad = INDENT.repeat(depth);
-    if (closing) {
-      lines.push(`${pad}</${node.name}>`);
-    } else if (node.children.length === 0) {
-      lines.push(leafLine(node, `${pad}<${node.name}${attributesOf(node.attrs)}`));
-    } else {
-      lines.push(`${pad}<${node.name}${attributesOf(node.attrs)}>`);
-      stack.push({ node, depth, closing: true });
-      for (const child of node.children.toReversed()) {
-        stack.push({ node: child, depth: depth + 1, closing: false });
-      }
-    }
+function linesOf(node, rendered) {
+  const open = `<${node.name}${attributesOf(node.attrs)}`;
+  if (node.children.length === 0) {
+    return [leafLine(node, open)];
   }
-  return lines.join('\n');
+  const inner = node.children.flatMap((child) => rendered.get(child).map((line) => INDENT + line));
+  return [`${open}>`, ...inner, `</${node.name}>`];
+}
+
+export function renderXml(root) {
+  const order = [root];
+  for (const node of order) {
+    order.push(...node.children);
+  }
+  const rendered = new Map();
+  for (const node of order.toReversed()) {
+    rendered.set(node, linesOf(node, rendered));
+  }
+  return rendered.get(root).join('\n');
 }
 
 export function element(name, attrs = {}, children = []) {

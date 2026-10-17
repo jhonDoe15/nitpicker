@@ -26,20 +26,13 @@ function isModule(node) {
   return node.name === 'module';
 }
 
-function modulesParentsFirst(root) {
-  const order = [];
-  const stack = [root];
-  while (stack.length > 0) {
-    const module = stack.pop();
-    order.push(module);
-    stack.push(...module.children.filter(isModule));
-  }
-  return order;
-}
-
 function withoutInlineFilters(root) {
+  const order = [root];
+  for (const module of order) {
+    order.push(...module.children.filter(isModule));
+  }
   const rewritten = new Map();
-  for (const module of modulesParentsFirst(root).toReversed()) {
+  for (const module of order.toReversed()) {
     const children = module.children
       .filter((child) => !(isModule(child) && INLINE_FILTERS.has(nameOf(child))))
       .map((child) => rewritten.get(child) ?? child);
@@ -56,13 +49,30 @@ function isFilter(module) {
   return nameOf(module).endsWith('Filter');
 }
 
-function counterparts(candidates, module) {
-  const sameName = candidates.filter((other) => nameOf(other) === nameOf(module));
+function partsOf(module) {
+  return {
+    properties: childrenNamed(module, 'property'),
+    modules: module.children.filter(isModule),
+    rest: module.children.filter((child) => !isModule(child) && child.name !== 'property'),
+  };
+}
+
+function groupOf(base) {
+  const parts = partsOf(base);
+  return { base, properties: parts.properties, rest: parts.rest, pending: [], children: [] };
+}
+
+function shapeOf(group) {
+  return { ...group.base, children: group.properties };
+}
+
+function counterparts(groups, module) {
+  const sameName = groups.filter((group) => nameOf(group.base) === nameOf(module));
   const id = idOf(module);
   if (sameName.length === 1 || id === undefined) {
     return sameName;
   }
-  return sameName.filter((other) => idOf(other) === id);
+  return sameName.filter((group) => idOf(shapeOf(group)) === id);
 }
 
 function mergedProperties(base, other, otherWins) {
@@ -78,47 +88,57 @@ function mergedProperties(base, other, otherWins) {
   return merged;
 }
 
-function mergeModules(base, other, otherWins) {
-  const result = [...base];
-  const used = new Set();
-  for (const module of other) {
+function absorb(group, other, otherWins) {
+  const parts = partsOf(other);
+  group.properties = mergedProperties(group.properties, parts.properties, otherWins);
+  group.rest = [
+    ...group.rest,
+    ...parts.rest.filter((node) => !group.rest.some((kept) => kept.attrs.key === node.attrs.key)),
+  ];
+  group.pending.push(other);
+}
+
+function feedModules(group, other, otherWins) {
+  for (const module of partsOf(other).modules) {
     const matches = isFilter(module)
       ? []
       : counterparts(
-          result.filter((candidate) => !used.has(candidate) && !isFilter(candidate)),
+          group.children.filter((child) => !isFilter(child.base)),
           module,
         );
     if (matches.length === 0) {
-      result.push(module);
+      group.children.push(groupOf(module));
     }
     for (const match of matches) {
-      used.add(match);
-      result[result.indexOf(match)] = mergeModule(match, module, otherWins);
+      absorb(match, module, otherWins);
     }
   }
-  return result;
 }
 
-function partsOf(module) {
-  return {
-    properties: childrenNamed(module, 'property'),
-    modules: module.children.filter(isModule),
-    rest: module.children.filter((child) => !isModule(child) && child.name !== 'property'),
-  };
+function expand(group, otherWins) {
+  group.children = partsOf(group.base).modules.map(groupOf);
+  for (const other of group.pending) {
+    feedModules(group, other, otherWins);
+  }
 }
 
 function mergeModule(base, other, otherWins) {
-  const left = partsOf(base);
-  const right = partsOf(other);
-  return {
-    ...base,
-    children: [
-      ...mergedProperties(left.properties, right.properties, otherWins),
-      ...left.rest,
-      ...right.rest.filter((node) => !left.rest.some((kept) => kept.attrs.key === node.attrs.key)),
-      ...mergeModules(left.modules, right.modules, otherWins),
-    ],
-  };
+  const root = groupOf(base);
+  absorb(root, other, otherWins);
+  const order = [root];
+  for (const group of order) {
+    expand(group, otherWins);
+    order.push(...group.children);
+  }
+  const results = new Map();
+  for (const group of order.toReversed()) {
+    const modules = group.children.map((child) => results.get(child));
+    results.set(group, {
+      ...group.base,
+      children: [...group.properties, ...group.rest, ...modules],
+    });
+  }
+  return results.get(root);
 }
 
 export function layerCheckstyle({ nitpickerText, projectText, projectWins = true }) {

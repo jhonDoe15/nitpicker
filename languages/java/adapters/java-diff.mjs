@@ -27,17 +27,7 @@ import { isJavaTouchedRule } from './touched-rules.mjs';
 const GRADLE_TIMEOUT_MS = 15 * 60 * 1000;
 const MAX_OUTPUT_BYTES = 50 * 1024 * 1024;
 const MAX_FAILURE_LENGTH = 3500;
-
-function gradleResult(projectRoot, { gradle, args }) {
-  const target = gradleTarget({ projectRoot, configured: gradle, args });
-  return spawnSync(target.command, target.args, {
-    cwd: projectRoot,
-    encoding: 'utf8',
-    maxBuffer: MAX_OUTPUT_BYTES,
-    shell: target.shell,
-    timeout: GRADLE_TIMEOUT_MS,
-  });
-}
+const CHECKSTYLE_EXPORT = 'checkstyle-nitpicker.xml';
 
 function assertSucceeded(result, projectRoot) {
   if (result.error !== undefined) {
@@ -52,18 +42,15 @@ function assertSucceeded(result, projectRoot) {
   }
 }
 
-function exportCheckstyleBase({ projectRoot, gradle, common, initScript, directory }) {
-  const exported = path.join(directory, 'checkstyle-nitpicker.xml');
+function exportArguments(common, { initScript, directory }) {
   mkdirSync(directory, { recursive: true });
-  const args = [
+  return [
     ...common,
-    `-Pnitpicker.checkstyle.exportConfig=${exported}`,
+    `-Pnitpicker.checkstyle.exportConfig=${path.join(directory, CHECKSTYLE_EXPORT)}`,
     '-I',
     initScript,
     'nitpickerCheckstyleConfig',
   ];
-  assertSucceeded(gradleResult(projectRoot, { gradle, args }), projectRoot);
-  return exported;
 }
 
 function runJavaPreset(
@@ -72,7 +59,8 @@ function runJavaPreset(
 ) {
   const withKotlin = kotlinRun?.withArguments ?? ((run) => run([]));
   const directory = path.join(reportBase, 'tool-config');
-  const result = withKotlin((kotlinArguments) => {
+  const layersCheckstyle = toolConfigChoices(projectRoot, policy).checkstyle.project !== undefined;
+  withKotlin((kotlinArguments) => {
     const common = [
       '--console=plain',
       '--quiet',
@@ -80,20 +68,29 @@ function runJavaPreset(
       `-Pnitpicker.reportDir=${reportBase}`,
       ...kotlinArguments,
     ];
-    const checkstyleBase =
-      toolConfigChoices(projectRoot, policy).checkstyle.project === undefined
-        ? undefined
-        : exportCheckstyleBase({ projectRoot, gradle, common, initScript, directory });
-    const args = [
+    const checkstyleBase = path.join(directory, CHECKSTYLE_EXPORT);
+    const main = () => [
       ...common,
       ...toolConfigProperties(projectRoot, policy, { directory, checkstyleBase }),
       '-I',
       initScript,
       'nitpickerJava',
     ];
-    return gradleResult(projectRoot, { gradle, args });
+    const stages = layersCheckstyle
+      ? [() => exportArguments(common, { initScript, directory }), main]
+      : [main];
+    for (const stage of stages) {
+      const target = gradleTarget({ projectRoot, configured: gradle, args: stage() });
+      const result = spawnSync(target.command, target.args, {
+        cwd: projectRoot,
+        encoding: 'utf8',
+        maxBuffer: MAX_OUTPUT_BYTES,
+        shell: target.shell,
+        timeout: GRADLE_TIMEOUT_MS,
+      });
+      assertSucceeded(result, projectRoot);
+    }
   });
-  assertSucceeded(result, projectRoot);
 }
 
 function withoutReportBase(error, reportBase) {
