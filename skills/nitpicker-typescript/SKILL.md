@@ -11,6 +11,9 @@ backstop. It fails only on findings your change adds, so leave code the task doe
 If your change edits a function that existed before it, read
 [editing-existing-code.md](editing-existing-code.md) before you edit.
 
+Before you change code other modules use, fix a bug, or add a UI state, read
+[beyond-the-gate.md](beyond-the-gate.md).
+
 ## Finish with the gate
 
 1. Run your tests (`npx vitest run`). Failing tests stop coverage, CRAP and mutation from running.
@@ -18,7 +21,8 @@ If your change edits a function that existed before it, read
    `@types/node` in devDependencies.
 2. When the change is complete, run `npx nitpicker --fix` as a background command you wait on,
    without a pipe: you need its exit code. It applies ESLint and Prettier fixes with its own
-   configs (don't format with plain `prettier`), then checks your change against the merge base. It
+   configs (don't format with plain `prettier`; its quotes, semicolons, indentation and width follow
+   most of the project's files), then checks your change against the merge base. It
    takes minutes and prints a progress line for each slow analyzer.
 3. Act on the exit code:
    - 0: done.
@@ -29,7 +33,9 @@ If your change edits a function that existed before it, read
      wait for that run; never kill it.
 4. Never suppress: no `eslint-disable`, `@ts-ignore`, coverage or mutation ignore comments
    (`istanbul`/`c8`/`v8 ignore`, `Stryker disable`), config `exclude`/`disable`, legacy entries,
-   or weakened tests. If a finding seems wrong, stop and ask.
+   generator markers (`@generated`, `DO NOT EDIT`) in files you wrote, or weakened tests. If a finding seems wrong, stop and ask. Never pass `--accept-policy-change` or set
+   `NITPICKER_ACCEPT_POLICY_CHANGE`: a `nitpicker-config/policy-loosened` finding is for a person to
+   accept.
 
 ## Layout
 
@@ -40,8 +46,8 @@ If your change edits a function that existed before it, read
 - Export only what another module imports; an exported type nobody imports fails dead-code.
   Callers in another feature derive result types: `Awaited<ReturnType<typeof importContacts>>`;
   inside a feature, extend the named type (`TransitionResult | { kind: 'blank-reason' }`).
-- `adapters/` does I/O and parses untrusted input (files, HTTP bodies, JSON) once, with zod (add it
-  if it isn't a dependency). Field rules and conversions live in the schema
+- `adapters/` does I/O and parses untrusted input (files, HTTP bodies, JSON) once, with the project's
+  validation library (zod if it has none; add it then). Field rules and conversions live in the schema
   (`z.string().trim().min(1)`, `z.email()`, `z.iso.date()`, `.transform(toCents)`), never
   `z.unknown()` fields plus hand checks. A JSON list is `z.array(recordSchema)`; the first issue's
   `path` (`[index, field]`) names the bad record.
@@ -51,6 +57,7 @@ If your change edits a function that existed before it, read
 - `src/main/composition-root.ts` only passes things in, through named functions. A new feature is
   a new directory, never a new `if`, `?:` or `??` in a shared entry point: lookups and their
   missing-value checks go in the feature's `adapters/`.
+- New code goes under the source roots (`layout.sourceRoots`); the gate reports anything outside.
 - Follow neighbouring signatures (parameter order, naming) and reuse helpers that exist.
 
 ## Dependencies and files
@@ -85,6 +92,15 @@ If your change edits a function that existed before it, read
   inner functions count toward its 50 lines: put helpers at module level and pass `deps` in.
 - `async`/`await`, never `.then()`. No floating promises.
 - Named exports only. No comments; a `/** ... */` doc comment on an export is the one exception.
+
+## Production rules
+
+- Wire clients, servers, pools and config in the composition root (`src/main/composition-root.ts`,
+  `main.ts` or `server.ts`) and pass them into factories; read `process.env` only there.
+- Parse untrusted input once with zod in `adapters/`; `domain/` takes readonly types it declares.
+- Run programs with `execFile(command, [args])`, never a command string.
+- Each finding names the allowed form. A deliberate exception goes in `nitpicker.config.json`
+  `exceptions` (rule, paths, reason), never inline.
 
 ## domain/ is deeply readonly
 
@@ -133,6 +149,8 @@ If your change edits a function that existed before it, read
   not loops. The rules above (`for...of` only, no `.then()`, no `as`) apply to tests too.
 - A shared helper (stdout capture) lives once, in a non-test file such as `test/support/stdout.ts`.
   When an existing test defines the same helper, make it import the shared one.
+- Test roots are `test/`, `tests/`, `__tests__/` and `e2e/` at the repo root. A Playwright or Cypress
+  spec in `e2e/` imports no production code and is not mutated; a Jest `__tests__/` goes in `exclude`.
 - A surviving mutant no input can kill means the code is redundant: delete or restructure it.
   Don't pin call order or messages just to kill it. If an input can kill it, add that test; never
   delete a schema rule to silence it.
@@ -140,19 +158,8 @@ If your change edits a function that existed before it, read
 
 ## React
 
-Applies when `react` is in `package.json`.
+Applies when `react` is in `package.json`. Every React finding names the allowed form and its
+exception route in the message: write that form, don't work around the rule.
 
-- Function components only. Hooks follow the rules of hooks, and every effect lists its
-  dependencies. No array index as `key`: use the item's id.
-- Compute derived values while rendering (`useMemo` if costly); never copy props or state into
-  state in an effect. Reset state with a `key`.
-- Fetch with the project's data library (`useQuery`) or the framework's loader, never in `useEffect`.
-- Style with `className` (CSS Modules or utility classes), not `style={{ ... }}`. A runtime value
-  goes in a custom property, `style={{ '--progress': percent }}`, typed once with
-  `declare module 'csstype' { interface Properties { '--progress'?: number } }`. If the project
-  styles with CSS-in-JS (or `react.styling` says so), follow that instead.
-- `null` only as the argument of `useRef` and `createContext`; elsewhere `undefined`.
-- Accessible markup: `alt` on images, buttons for clicks, labels on inputs.
-- Component tests: query by role (`screen.getByRole`), not test ids, class selectors or `container`;
-  `await userEvent`, not `fireEvent`; assert what the user sees, never component state, instances
-  or hook internals.
+- Component tests query through `screen` and assert what the user sees (text, roles, focus), never
+  component state, instances or hook internals.

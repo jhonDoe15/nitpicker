@@ -6,7 +6,6 @@ import { tmpdir } from 'node:os';
 import {
   LEGACY,
   BRANCHY,
-  WIDE,
   FAREWELL,
   GREETER_TEST,
   LEGACY_MOVED,
@@ -19,12 +18,11 @@ import {
   BRANCHY_MOVED,
   BRANCHY_EDITED,
   BRANCHY_ADDED,
-  WIDE_EXTENDED,
-  WIDE_REFORMATTED,
   STABILITY_FILES,
   stabilityClass,
   repeated,
 } from './test-support/java-preset-data.mjs';
+import { WIDE, WIDE_EXTENDED, WIDE_REFORMATTED } from './test-support/wide-sources.mjs';
 import { runJavaDiff } from '../java-diff.mjs';
 import {
   commitBranch,
@@ -45,10 +43,6 @@ let repository;
 
 const sourceDirectory = 'src/main/java/demo';
 
-function git(...args) {
-  runGitIn(repository, ...args);
-}
-
 function branchWith(name, files) {
   const rooted = Object.entries(files).map(([file, content]) => [
     file.includes('/') ? file : path.join(sourceDirectory, file),
@@ -64,6 +58,7 @@ const BASELINED_FINDINGS = [
   'coupling module-coupling Legacy.java',
   'coupling module-coupling Wide.java',
   'coupling package-coupling .',
+  'errorprone UnnecessarilyFullyQualified Greeter.java',
   'jacoco changed-branch-coverage Branchy.java',
   'jacoco line-coverage Branchy.java',
   'jacoco line-coverage Greeter.java',
@@ -79,7 +74,6 @@ const BASELINED_FINDINGS = [
   'pit mutant-nocoverage Wide.java',
   'pit mutation-summary .',
   'pmd UnusedPrivateField Legacy.java',
-  'spotbugs UUF_UNUSED_FIELD Legacy.java',
   'structure function-parameters-limit Wide.java',
 ];
 
@@ -90,6 +84,7 @@ const BASELINED_FINDINGS_WITHOUT_GREETER_LINE_COVERAGE = [
   'coupling module-coupling Legacy.java',
   'coupling module-coupling Wide.java',
   'coupling package-coupling .',
+  'errorprone UnnecessarilyFullyQualified Greeter.java',
   'jacoco changed-branch-coverage Branchy.java',
   'jacoco line-coverage Branchy.java',
   'jacoco line-coverage Legacy.java',
@@ -104,17 +99,7 @@ const BASELINED_FINDINGS_WITHOUT_GREETER_LINE_COVERAGE = [
   'pit mutant-nocoverage Wide.java',
   'pit mutation-summary .',
   'pmd UnusedPrivateField Legacy.java',
-  'spotbugs UUF_UNUSED_FIELD Legacy.java',
   'structure function-parameters-limit Wide.java',
-];
-
-const CHECKSTYLE_PREFIX = 'com.puppycrawl.tools.checkstyle.checks.';
-
-const CHECKSTYLE_ON_BAD = [
-  'blocks.EmptyCatchBlockCheck',
-  'indentation.IndentationCheck',
-  'regexp.RegexpSinglelineJavaCheck',
-  'whitespace.EmptyLineSeparatorCheck',
 ];
 
 describe.skipIf(!enabled)('Java preset end to end', () => {
@@ -127,9 +112,9 @@ describe.skipIf(!enabled)('Java preset end to end', () => {
     writeFileSync(path.join(repository, sourceDirectory, 'Legacy.java'), LEGACY);
     writeFileSync(path.join(repository, sourceDirectory, 'Branchy.java'), BRANCHY);
     writeFileSync(path.join(repository, sourceDirectory, 'Wide.java'), WIDE);
-    git('init', '-q', '-b', 'main');
-    git('add', '-A');
-    git('commit', '-q', '-m', 'base with one legacy violation');
+    runGitIn(repository, 'init', '-q', '-b', 'main');
+    runGitIn(repository, 'add', '-A');
+    runGitIn(repository, 'commit', '-q', '-m', 'base with one legacy violation');
     branchWith('clean', {
       'Greeter.java': FAREWELL,
       'src/test/java/demo/GreeterTest.java': GREETER_TEST,
@@ -147,7 +132,7 @@ describe.skipIf(!enabled)('Java preset end to end', () => {
     branchWith('structure-moved', { 'Wide.java': WIDE_REFORMATTED });
     // --- coupling (SH6) branches ---
     branchWith('stability', STABILITY_FILES);
-    git('checkout', '-q', '-b', 'stability-edited', 'stability');
+    runGitIn(repository, 'checkout', '-q', '-b', 'stability-edited', 'stability');
     writeFileSync(
       path.join(repository, 'src/main/java/stable/Core.java'),
       stabilityClass(
@@ -156,8 +141,8 @@ describe.skipIf(!enabled)('Java preset end to end', () => {
         '  // Delegates to the volatile package.\n  public int value() {\n    return new churn.Volatile().value();\n  }',
       ),
     );
-    git('add', '-A');
-    git('commit', '-q', '-m', 'stability-edited');
+    runGitIn(repository, 'add', '-A');
+    runGitIn(repository, 'commit', '-q', '-m', 'stability-edited');
     // --- end coupling branches ---
   });
 
@@ -167,7 +152,7 @@ describe.skipIf(!enabled)('Java preset end to end', () => {
   });
 
   const diffOf = (branch, policy) => {
-    git('checkout', '-q', branch);
+    runGitIn(repository, 'checkout', '-q', branch);
     return runJavaDiff({ repositoryRoot: repository, requestedBaseRef: 'main', gradle, policy });
   };
 
@@ -200,17 +185,16 @@ describe.skipIf(!enabled)('Java preset end to end', () => {
   );
 
   it(
-    'fails new PMD, SpotBugs, Checkstyle and formatter violations, and untested code, as new',
+    'fails new Error Prone and formatter violations, and untested code, as new, each issue once',
     () => {
       const result = diffOf('violation');
 
       expect(result.failed).toBe(true);
       expect(summarize(result.newEnforceable)).toEqual([
-        ...CHECKSTYLE_ON_BAD.map((check) => `checkstyle ${CHECKSTYLE_PREFIX}${check} Bad.java`),
+        'errorprone DefaultCharset Bad.java',
+        'errorprone EmptyCatch Bad.java',
         'google-java-format format Bad.java',
         'pit mutant-nocoverage Bad.java', // Bad.decode has no test
-        'pmd EmptyCatchBlock Bad.java',
-        'spotbugs DM_DEFAULT_ENCODING Bad.java',
       ]);
       expect([...new Set(summarize(result.unchangedFindings))].sort()).toEqual(BASELINED_FINDINGS);
     },
@@ -224,8 +208,8 @@ describe.skipIf(!enabled)('Java preset end to end', () => {
 
       expect(result.failed).toBe(true);
       expect(summarize(result.newEnforceable)).toEqual([
-        'archunit no_classes_use_legacy_date Stamp.java',
-        'archunit no_classes_use_legacy_date Stamp.java',
+        ...repeated(2, 'archunit no_classes_use_legacy_date Stamp.java'),
+        ...repeated(4, 'errorprone JavaUtilDate Stamp.java'),
         ...repeated(3, 'pit mutant-nocoverage Stamp.java'),
       ]);
       expect(
@@ -296,7 +280,7 @@ describe.skipIf(!enabled)('Java preset end to end', () => {
       expect(survivor.failed).toBe(true);
       expect(summarize(survivor.newEnforceable)).toEqual(['pit mutant-survived Calc.java']);
       expect(survivor.newEnforceable.find((finding) => finding.tool === 'pit').message).toEqual(
-        'Survived ConditionalsBoundaryMutator: changed conditional boundary: no test fails when this code changes. Add an assertion that would. If no input can tell the two apart, simplify the code so this mutant disappears.',
+        'Survived ConditionalsBoundaryMutator: changed conditional boundary: no test fails when this code changes. Add an assertion that would. If no input can tell the two apart (a compareTo boundary, a discarded lambda return), simplify the code so this mutant disappears, or add an exception for pit/mutant-survived in nitpicker.config.json.',
       );
       // The legacy uncovered mutants (Greeter.shout, Legacy.value) stay baselined.
       expect([...new Set(summarize(survivor.unchangedFindings))].sort()).toEqual(
@@ -360,10 +344,16 @@ describe.skipIf(!enabled)('Java preset end to end', () => {
       expect(result.failed).toBe(true);
       expect(structureOf(result.newEnforceable)).toEqual([
         'function-control-nesting-limit Wide.deep',
+        'function-control-nesting-limit Wide.nested',
       ]);
-      expect(result.newEnforceable.find((finding) => finding.tool === 'structure').message).toBe(
+      expect(
+        result.newEnforceable
+          .filter((finding) => finding.tool === 'structure')
+          .map(({ message }) => message),
+      ).toEqual([
         'Wide.deep nests control flow 3 deep (limit 2). Return early instead of nesting.',
-      );
+        'Wide.nested nests control flow 3 deep (limit 2). Return early instead of nesting.',
+      ]);
       expect(structureOf(result.unchangedFindings)).toEqual(['function-parameters-limit Wide.sum']);
     },
     GRADLE_STEP_TIMEOUT_MS,
@@ -417,7 +407,7 @@ describe.skipIf(!enabled)('Java preset end to end', () => {
   it(
     'keeps an existing stability-direction violation baselined when the package is edited',
     () => {
-      git('checkout', '-q', 'stability-edited');
+      runGitIn(repository, 'checkout', '-q', 'stability-edited');
       const result = runJavaDiff({
         repositoryRoot: repository,
         requestedBaseRef: 'stability',

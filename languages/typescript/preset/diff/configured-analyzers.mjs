@@ -18,7 +18,7 @@ const ANALYZER_RUNTIME_FILES = [
   'languages/typescript/preset/syntax/children.mjs',
   'shared/filesystem.mjs',
 ];
-export const ESLINT_ADAPTER_FILES = [
+const ESLINT_ADAPTER_FILES = [
   'languages/typescript/preset/quality-checks.mjs',
   ...ANALYZER_RUNTIME_FILES,
   'languages/typescript/adapters/eslint/analyzer.mjs',
@@ -38,43 +38,55 @@ const STATIC_CHECK_ADAPTER_FILES = [
   'languages/typescript/adapters/static-checks/analyzer.mjs',
   'languages/typescript/adapters/static-checks-runner.mjs',
 ];
-export const QUALITY_AREA_ADAPTER_FILES = [
+const QUALITY_AREA_ADAPTER_FILES = [
   'languages/typescript/preset/quality-checks.mjs',
   ...ANALYZER_RUNTIME_FILES,
   'languages/typescript/adapters/quality-areas/analyzer.mjs',
   'languages/typescript/adapters/quality-areas-runner.mjs',
 ];
 
+function keyedBy(files, configurationValues, create) {
+  return {
+    ...create(hashFiles(files, configurationValues)),
+    cacheKeyFiles: files,
+  };
+}
+
 function buildAnalyzers(checks) {
   const { eslintChecks, entryPointsCheck, staticChecks, qualityAreaChecks } = checks;
   return [
     ...eslintChecks.map((check) =>
-      createEslintAnalyzer({
-        name: check.name,
-        version: eslintVersion,
-        configurationHash: hashFiles([...ESLINT_ADAPTER_FILES, ...check.configurationFiles]),
-        configRelativePath: check.configRelativePath,
-        patterns: check.patterns,
-        exclusions: check.exclusions,
-        policyFiles: check.policyFiles,
-        shardWeight: check.shardWeight,
-      }),
+      keyedBy([...ESLINT_ADAPTER_FILES, ...check.configurationFiles], [], (configurationHash) =>
+        createEslintAnalyzer({
+          name: check.name,
+          version: eslintVersion,
+          configurationHash,
+          configRelativePath: check.configRelativePath,
+          patterns: check.patterns,
+          exclusions: check.exclusions,
+          policyFiles: check.policyFiles,
+          shardWeight: check.shardWeight,
+        }),
+      ),
     ),
-    createEntryPointAnalyzer({
-      version: entryPointsCheck.version,
-      configurationHash: hashFiles([
-        ...ENTRY_POINT_ADAPTER_FILES,
-        ...entryPointsCheck.logicalFiles,
-      ]),
-      exclusions: entryPointsCheck.exclusions,
-      sourceRoots: entryPointsCheck.sourceRoots,
-      shardWeight: entryPointsCheck.shardWeight,
-    }),
+    keyedBy(
+      [...ENTRY_POINT_ADAPTER_FILES, ...entryPointsCheck.logicalFiles],
+      [],
+      (configurationHash) =>
+        createEntryPointAnalyzer({
+          version: entryPointsCheck.version,
+          configurationHash,
+          exclusions: entryPointsCheck.exclusions,
+          sourceRoots: entryPointsCheck.sourceRoots,
+          shardWeight: entryPointsCheck.shardWeight,
+        }),
+    ),
     ...staticChecks.map((check) =>
-      createStaticCheckAnalyzer({
-        ...check,
-        configurationHash: hashFiles([...STATIC_CHECK_ADAPTER_FILES, ...check.configurationFiles]),
-      }),
+      keyedBy(
+        [...STATIC_CHECK_ADAPTER_FILES, ...check.configurationFiles],
+        [],
+        (configurationHash) => createStaticCheckAnalyzer({ ...check, configurationHash }),
+      ),
     ),
     ...qualityAreaChecks
       .filter((check) => check.name !== 'policy-tests')
@@ -83,14 +95,12 @@ function buildAnalyzers(checks) {
 }
 
 function createQualityAreaCheckAnalyzer(check, adapterArguments = check.adapterArguments) {
-  return createQualityAreaAnalyzer({
-    ...check,
+  return keyedBy(
+    [...QUALITY_AREA_ADAPTER_FILES, ...check.configurationFiles],
     adapterArguments,
-    configurationHash: hashFiles(
-      [...QUALITY_AREA_ADAPTER_FILES, ...check.configurationFiles],
-      adapterArguments,
-    ),
-  });
+    (configurationHash) =>
+      createQualityAreaAnalyzer({ ...check, adapterArguments, configurationHash }),
+  );
 }
 
 function withPackagePolicy(analyzer) {

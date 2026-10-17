@@ -1,14 +1,28 @@
-import { SHARED_EXCEPTION_RULES } from '../../../../shared/policy.mjs';
+import { TYPESCRIPT_SIZE_RULES } from '../../../../shared/project-rules/size-rules.mjs';
+import {
+  SHARED_EXCEPTION_RULES,
+  TYPESCRIPT_PROJECT_EXCEPTION_RULES,
+} from '../../../../shared/policy.mjs';
 import { PACKAGE_EXCEPTION_RULES } from '../../../../shared/hygiene/rules.mjs';
+import { strictBoundaryRules } from '../architecture/strict-boundary-rules.mjs';
 
-const NON_ESLINT_RULES = [...SHARED_EXCEPTION_RULES, ...PACKAGE_EXCEPTION_RULES];
+const boundaryRuleNames = strictBoundaryRules.map(({ name }) => name);
+
+const NON_ESLINT_EXCEPTION_RULES = [
+  ...SHARED_EXCEPTION_RULES,
+  ...TYPESCRIPT_PROJECT_EXCEPTION_RULES,
+  ...TYPESCRIPT_SIZE_RULES,
+  ...PACKAGE_EXCEPTION_RULES,
+];
 
 export function applyRuleExceptions(configEntries, allExceptions = []) {
-  const exceptions = allExceptions.filter(({ rule }) => !NON_ESLINT_RULES.includes(rule));
+  const exceptions = allExceptions.filter(
+    ({ rule }) => !NON_ESLINT_EXCEPTION_RULES.includes(rule) && !boundaryRuleNames.includes(rule),
+  );
   const unknown = exceptions.filter(({ rule }) => !isKnownRule(configEntries, rule));
   if (unknown.length > 0) {
     throw new Error(
-      `nitpicker.config.json "exceptions" name unknown rules: ${unknown.map(({ rule }) => rule).join(', ')}`,
+      `nitpicker.config.json "exceptions" name unknown rules: ${unknown.map(({ rule }) => rule).join(', ')}. Only rules nitpicker runs can be lifted: check the spelling.`,
     );
   }
   return [

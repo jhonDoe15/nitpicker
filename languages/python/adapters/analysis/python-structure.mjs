@@ -1,10 +1,11 @@
-import { readdirSync } from 'node:fs';
+import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { globToRegExp } from '../../../../shared/glob.mjs';
 import { collectFileLimitFindings } from '../../../../shared/rules/file-limits.mjs';
 import { readStructureFindings } from '../../../java/adapters/metrics/java-structure.mjs';
 import { run } from '../execution/python-process.mjs';
-import { functionText, writeSourceListing } from './python-sources.mjs';
+import { functionText, testFileMatcher, writeSourceListing } from './python-sources.mjs';
+import { isGeneratedPython } from '../../libraries/generated-files.mjs';
 import { fileURLToPath } from 'node:url';
 
 const METRICS_SCRIPT = path.resolve(
@@ -12,9 +13,10 @@ const METRICS_SCRIPT = path.resolve(
   '../metrics/structure_metrics.py',
 );
 export const STRUCTURE_REPORT = 'structure.json';
+export const CLASSES_REPORT = 'classes.json';
 const STRUCTURE_HINTS = {
   maxControlNesting:
-    'An elif chain counts one level per branch; use match, a dict lookup or a helper function.',
+    'An if/elif chain counts as one level; use match, a dict lookup or a helper function for what nests inside a branch.',
 };
 
 export function structure(context) {
@@ -27,6 +29,7 @@ export function structure(context) {
       path.join(context.reportRoot, STRUCTURE_REPORT),
       context.projectRoot,
       listing,
+      path.join(context.reportRoot, CLASSES_REPORT),
     ],
     { rule: 'structure-failed' },
   );
@@ -39,6 +42,11 @@ export function readPythonStructureFindings(reportRoot, projectRoot) {
   });
 }
 
+export function readPythonFunctions(reportRoot) {
+  const report = path.join(reportRoot, STRUCTURE_REPORT);
+  return existsSync(report) ? JSON.parse(readFileSync(report, 'utf8')) : [];
+}
+
 const SKIPPED_DIRECTORIES = new Set([
   '__pycache__',
   'venv',
@@ -49,7 +57,6 @@ const SKIPPED_DIRECTORIES = new Set([
   'build',
   'dist',
 ]);
-const TEST_FILE = /(?:^|\/)(?:tests?\/|test_[^/]*\.py$|[^/]*_test\.py$|conftest\.py$)/u;
 
 function directoryEntries(projectRoot, directory) {
   return readdirSync(path.join(projectRoot, directory), { withFileTypes: true }).map((entry) => ({
@@ -83,11 +90,13 @@ export function pythonFileLimitFindings(
   { fileLimits, exclude = [], exceptions = [] },
 ) {
   const excluders = exclude.map((glob) => globToRegExp(glob));
+  const isTest = testFileMatcher(projectRoot);
   const entries = pythonFiles(projectRoot)
     .filter((file) => !excluders.some((matcher) => matcher.test(file)))
+    .filter((file) => !isGeneratedPython(projectRoot, file))
     .map((file) => ({
       path: file,
-      kind: TEST_FILE.test(file) ? 'test' : 'source',
+      kind: isTest(file) ? 'test' : 'source',
       countsInFolder: path.posix.basename(file) !== '__init__.py',
     }));
   return collectFileLimitFindings(projectRoot, entries, {

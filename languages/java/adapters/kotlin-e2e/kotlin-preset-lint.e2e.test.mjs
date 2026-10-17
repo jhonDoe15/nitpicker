@@ -129,7 +129,10 @@ describe.skipIf(!kotlinE2eEnabled)('Kotlin preset detekt, ktlint and ktfmt end t
     const result = diffOf(project, 'java-in-kotlin-module');
 
     expect(result.failed).toBe(true);
-    expect(fromTool(result.newEnforceable, 'pmd')).toEqual(['pmd EmptyCatchBlock Danger.java']);
+    expect(fromTool(result.newEnforceable, 'errorprone')).toEqual([
+      'errorprone EmptyCatch Danger.java',
+    ]);
+    expect(fromTool(result.newEnforceable, 'pmd')).toEqual([]);
     expect(
       result.newEnforceable.filter((finding) =>
         ['detekt', 'ktlint', 'ktfmt'].includes(finding.tool),
@@ -159,10 +162,9 @@ describe.skipIf(!kotlinE2eEnabled)('Kotlin preset detekt, ktlint and ktfmt end t
     expect(summarize(result.newEnforceable)).toEqual(
       [...BAD_FINDINGS, 'ktfmt format Bad.kt'].sort(),
     );
-    expect(fromTool(result.unchangedFindings, 'ktfmt')).toEqual([
-      'ktfmt format Greeter.kt',
-      'ktfmt format Legacy.kt',
-    ]);
+    expect(fromTool(result.unchangedFindings, 'ktfmt')).toEqual(
+      ['Greeter', 'GreeterTest', 'Legacy'].map((name) => `ktfmt format ${name}.kt`),
+    );
   });
   it('detects ktfmt from the build files when the project names it', () => {
     git(project, 'checkout', '-q', 'ktfmt-named');

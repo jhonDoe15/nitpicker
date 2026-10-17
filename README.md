@@ -36,12 +36,15 @@ $ npx nitpicker
   eslint-errors/nitpicker/no-silent-catch src/main/features/greeting/adapters/load-names.ts:8
     This catch discards the failure. Return a failure result (`return { kind: 'malformed-json' }`), or rethrow an Error subclass with `{ cause: error }`. If dropping it is intended, add an exception for this rule in nitpicker.config.json.
   eslint-lint/nitpicker/no-handwritten-boundary-guard src/main/features/greeting/adapters/load-names.ts:6
-    Pass `JSON.parse(text)` straight into `schema.safeParse(...)` inside the same `try`.
+    Pass `JSON.parse(text)` straight into `schema.safeParse(...)` inside the same `try`. If the text is trusted and already typed, add an exception for nitpicker/no-handwritten-boundary-guard in nitpicker.config.json.
   eslint-lint/no-restricted-syntax src/main/features/greeting/adapters/load-names.ts:6
     Do not assert with `as`. Narrow the value (a discriminated union check or a zod parse) or give it the correct type at its source. `as const` is allowed.
   mutation/mutant-survived src/main/features/greeting/adapters/load-names.ts:9
     Survived ArrayDeclaration at column 12: replacing `[]` with `["Stryker was here"]` fails no test. Add an assertion that would. If no input can tell the two apart, simplify the code so this mutant disappears.
 ```
+
+The messages name zod, the default validation library; in a project that depends on another one
+(valibot, yup, joi and others) they name that library instead.
 
 ## Why nitpicker
 
@@ -69,13 +72,13 @@ The TypeScript preset assumes a feature-folder [layout](docs/typescript-strict-p
 For another language, put the preset in `nitpicker.config.json`, for example
 `{ "preset": "python" }`, and run `npx nitpicker`. Each guide lists what your project provides.
 
-| Language                                                  | Preset                 | Agent skill            |
-| --------------------------------------------------------- | ---------------------- | ---------------------- |
-| [TypeScript](docs/typescript-strict-preset.md), and React | `typescript` (default) | `nitpicker-typescript` |
-| [JavaScript](docs/usage.md#javascript-preset)             | `javascript`           | `nitpicker-javascript` |
-| [Python](docs/python-preset.md)                           | `python`               | `nitpicker-python`     |
-| [Java](docs/java-preset.md)                               | `java`                 | `nitpicker-java`       |
-| [Kotlin](docs/kotlin-preset.md)                           | `kotlin`               | `nitpicker-kotlin`     |
+| Language                                                              | Preset                 | Agent skill            |
+| --------------------------------------------------------------------- | ---------------------- | ---------------------- |
+| [TypeScript](docs/typescript-strict-preset.md), React, and react-intl | `typescript` (default) | `nitpicker-typescript` |
+| [JavaScript](docs/usage.md#javascript-preset)                         | `javascript`           | `nitpicker-javascript` |
+| [Python](docs/python-preset.md)                                       | `python`               | `nitpicker-python`     |
+| [Java](docs/java-preset.md)                                           | `java`                 | `nitpicker-java`       |
+| [Kotlin](docs/kotlin-preset.md)                                       | `kotlin`               | `nitpicker-kotlin`     |
 
 Then teach your agent the allowed forms. Install the skill for your preset with
 [skills](https://skills.sh), which works with Claude Code, Cursor, Codex and other agents:

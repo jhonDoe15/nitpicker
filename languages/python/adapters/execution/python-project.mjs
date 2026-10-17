@@ -1,5 +1,6 @@
 import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs';
 import path from 'node:path';
+import { isDirectory } from '../../libraries/project-files.mjs';
 
 const HINT_FILES = [
   'pyproject.toml',
@@ -34,6 +35,11 @@ const TYPE_CHECKER_HINTS = {
     configured: /^\s*\[\s*tool\.pyright\s*\]/m,
     configFiles: ['pyrightconfig.json'],
     declared: /(?:^\s*|["'])pyright(?![\w.-])|pyright-python/m,
+  },
+  basedpyright: {
+    configured: /^\s*\[\s*tool\.basedpyright\s*\]/m,
+    configFiles: [],
+    declared: /(?:^\s*|["'])basedpyright(?![\w.-])|basedpyright-pre-commit/m,
   },
 };
 const CONFIGURED_WEIGHT = 2;
@@ -127,18 +133,19 @@ export function detectTypeCheckers(projectRoot, setting) {
     ...requirementFiles(projectRoot),
     ...TYPE_CONFIG_FILES,
   ]);
+  const basedpyright = typeCheckerScore(texts, TYPE_CHECKER_HINTS.basedpyright);
   const scores = Object.entries(TYPE_CHECKER_HINTS).map(([checker, hints]) => [
     checker,
-    typeCheckerScore(texts, hints),
+    typeCheckerScore(texts, hints, checker === 'pyright' && basedpyright > 0),
   ]);
   const best = Math.max(...scores.map(([, score]) => score));
   return best === 0 ? [] : scores.filter(([, score]) => score === best).map(([checker]) => checker);
 }
 
-function typeCheckerScore(texts, { configured, configFiles, declared }) {
-  const hasConfig = texts.some(
-    ([file, text]) => configFiles.includes(file) || configured.test(text),
-  );
+function typeCheckerScore(texts, { configured, configFiles, declared }, sharesConfig = false) {
+  const hasConfig =
+    !sharesConfig &&
+    texts.some(([file, text]) => configFiles.includes(file) || configured.test(text));
   const isDeclared = texts.some(([, text]) => declared.test(text));
   return (hasConfig ? CONFIGURED_WEIGHT : 0) + (isDeclared ? 1 : 0);
 }
@@ -175,8 +182,4 @@ export function importRoots(projectRoot, sourceRoots) {
 
 function isFile(file) {
   return existsSync(file) && statSync(file).isFile();
-}
-
-function isDirectory(directory) {
-  return existsSync(directory) && statSync(directory).isDirectory();
 }

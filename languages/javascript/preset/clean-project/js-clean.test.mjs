@@ -12,15 +12,22 @@ import {
 const fixtureRoot = path.join(import.meta.dirname, '../fixtures/js-clean');
 const FIXTURE_TIMEOUT_MS = 300_000;
 const SOURCE_FILES = 6;
+const UNKNOWN_FOLDER_ADVICE =
+  'Under src/main/ put code in features/<name>/ (domain/ for pure logic, adapters/ for I/O), ' +
+  'in shared/ when several features need it, or in the composition root. ' +
+  'If this folder is deliberate, add an exception for this rule in nitpicker.config.json.';
+const unknownFolder = (file, line) =>
+  `eslint-lint/nitpicker/no-unknown-main-folder src/main/${file}:${String(line)} ` +
+  `'${file.split('/')[0]}/' is not a layer of this layout. ${UNKNOWN_FOLDER_ADVICE}`;
 const PLANTED_OUTPUT = [
   'Nitpicker quality snapshot',
   'Status: violations',
-  'Enforceable findings: 21',
+  'Enforceable findings: 31',
   'Descriptive findings: 2',
   'Tool errors: 0',
   '',
   'Per-tool counts:',
-  'eslint-lint: total=4 enforceable=4 descriptive=0',
+  'eslint-lint: total=14 enforceable=14 descriptive=0',
   'entry-points: total=1 enforceable=1 descriptive=0',
   'prettier-format: total=3 enforceable=3 descriptive=0',
   'typescript-typecheck: total=1 enforceable=1 descriptive=0',
@@ -41,10 +48,20 @@ const PLANTED_OUTPUT = [
   'dead-code/files src/main/orders/place.js files: src/main/orders/place.js',
   'duplicates/duplicate-clone src/main/dup/a.js:5 This code repeats src/main/dup/b.js:5 (12 lines). Keep one copy and call it from both places.',
   'entry-points/public-alternative-bypass src/main/orders/place.js Import src/main/billing/adapters/charge.js through src/main/billing/index.js (runtime)',
+  unknownFolder('billing/adapters/charge.js', 5),
+  unknownFolder('billing/index.js', 1),
+  unknownFolder('dup/a.js', 5),
+  unknownFolder('dup/b.js', 5),
+  unknownFolder('format/messy.cjs', 1),
+  unknownFolder('format/messy.js', 1),
+  unknownFolder('format/unformatted.ts', 1),
   'eslint-lint/@typescript-eslint/no-unsafe-return src/main/lint/banned.js:7 Unsafe return of a value of type `any`. Give the value a JSDoc type at its source (`@param {string} name`, `@returns {Type}`, `@type {Type}`), or read fields of a legacy `any` value through one reader function whose parameter is `{unknown}` and that returns a typed object.',
   'eslint-lint/nitpicker/no-comments src/main/lint/banned.js:1 JSDoc holds types only: remove the description text and put the intent in a descriptive identifier or a named function.',
+  unknownFolder('lint/banned.js', 6),
   'eslint-lint/no-var src/main/lint/banned.js:10 Unexpected var, use let or const instead.',
+  unknownFolder('lint/mode.ts', 1),
   "eslint-lint/no-restricted-syntax src/main/lint/mode.ts:1 Do not declare an `enum`. Use a union of string literals: `type Mode = 'read' | 'write'`.",
+  unknownFolder('orders/place.js', 1),
   'prettier-format/prettier/prettier src/main/format/messy.cjs:1 Format these lines with Prettier',
   'prettier-format/prettier/prettier src/main/format/messy.js:1 Format these lines with Prettier',
   'prettier-format/prettier/prettier src/main/format/unformatted.ts:1 Format these lines with Prettier',
@@ -120,7 +137,7 @@ export function charge(cents) {
  * @returns {number}
  */
 export function place(cents) {
-  return charge(cents);
+  return charge(cents) + 1;
 }
 `,
   'src/main/dup/a.js': duplicatedBody('summarizeA'),
@@ -223,6 +240,31 @@ describe('the js-clean fixture project', () => {
       expect(stdoutText).toBe(PLANTED_OUTPUT);
       expect(exitCode).toBe(1);
     });
+
+    it(
+      'leaves the React rule scope off even when package.json lists react',
+      () => {
+        const root = createProject({
+          'package.json': JSON.stringify({
+            name: 'js-clean-fixture',
+            private: true,
+            type: 'module',
+            devDependencies: { vitest: '4.1.11' },
+            dependencies: { react: '19.0.0' },
+          }),
+          'src/main/ui/panel.js':
+            "import { Component } from 'react';\n\nexport class Panel extends Component {}\n",
+        });
+
+        const { toolErrors, findings } = runSnapshot(root, ['--analyzer', 'eslint-lint']);
+
+        expect(toolErrors).toEqual([]);
+        expect(
+          findings.filter(({ rule }) => /^react/u.test(rule)).map(({ identity }) => identity),
+        ).toEqual([]);
+      },
+      FIXTURE_TIMEOUT_MS,
+    );
 
     it('reports a failing test as a tool error instead of crashing the coverage runner', () => {
       const root = createProject({
@@ -342,8 +384,8 @@ it('fails on purpose', () => {
           '',
           'Quality gate summary',
           '✖ 1 new enforceable violation',
-          '  eslint-lint/no-restricted-syntax src/main/legacy.js:2',
-          '    Use `undefined` for an absent value. `null` is only for strict comparison with a library value and the `JSON.stringify` replacer argument.',
+          '  eslint-lint/nitpicker/no-null src/main/legacy.js:2',
+          '    Use `undefined` for an absent value, and an optional field or parameter (`value?: T`) where it may be missing. `null` is only for strict comparison with a library value and the `JSON.stringify` replacer argument. If a framework or library requires it, add an exception for this rule for those paths in nitpicker.config.json.',
           `Full diagnostics: ${sharedRoot}/reports/diff/report.txt`,
           '',
         ].join('\n'),
