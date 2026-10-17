@@ -45,6 +45,11 @@ tester.run('react-test-no-implementation-details', rule, {
     "vi.mock('./use-cart', () => ({ useCart: vi.fn() }));",
     'vi.mock(name, () => ({ useState: vi.fn() }));',
     "mock('react', () => ({ useState: vi.fn() }));",
+    "import sinon from 'sinon'; sinon.stub(api, 'useLoad');",
+    "import sinon from 'sinon'; sinon.stub(React);",
+    "import { mock } from 'node:test'; mock.method(React, 'createElement');",
+    "import { mock } from './doubles.js'; mock.method(React, 'useState');",
+    "import proxyquire from 'proxyquire'; proxyquire('react', { './panel': {} });",
     "vi.fn('react', () => ({ useState: vi.fn() }));",
     'useStore.setState({ count: 0 });',
     'expect(machine.state()).toEqual({});',
@@ -203,6 +208,43 @@ tester.run('react-test-no-implementation-details', rule, {
         filename: testFilename,
         code: `${importLine} jest.spyOn(${target}, '${hook}');`,
         errors: [{ messageId: 'hookSpy', data: { name: hook } }],
+      })),
+    )
+    .concat(
+      [
+        ["import { mock } from 'node:test'; mock.method(React, 'useState');", 'useState'],
+        ["it('a', (t) => { t.mock.method(React, 'useEffect'); });", 'useEffect'],
+        ["import sinon from 'sinon'; sinon.stub(React, 'useState');", 'useState'],
+        ["import * as sinon from 'sinon'; sinon.spy(React, 'useRef');", 'useRef'],
+        [
+          "const box = sinon.createSandbox(); box.replace(React, 'useMemo', (f) => f());",
+          'useMemo',
+        ],
+        ["import td from 'testdouble'; td.replace(React, 'useContext');", 'useContext'],
+      ].map(([code, hook]) => ({
+        filename: testFilename,
+        code: `${reactTestingImport}${code}`,
+        errors: [{ messageId: 'hookSpy', data: { name: hook } }],
+      })),
+    )
+    .concat(
+      [
+        [
+          "import { mock } from 'node:test'; mock.module('react', { namedExports: { useState: () => [1] } });",
+          'useState',
+        ],
+        [
+          "const proxyquire = require('proxyquire').noCallThru(); const { Panel } = proxyquire('../panel', { react: { useId: () => 'id' } });",
+          'useId',
+        ],
+        [
+          "import esmock from 'esmock'; const { Panel } = await esmock('../panel.js', { 'react-dom': { useFormStatus: () => ({}) } });",
+          'useFormStatus',
+        ],
+      ].map(([code, name]) => ({
+        filename: plainTestFilename,
+        code,
+        errors: [{ messageId: 'reactMock', data: { name } }],
       })),
     ),
 });

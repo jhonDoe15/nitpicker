@@ -1,12 +1,9 @@
 import { ancestorsOf, chainOf } from '../../analysis/ancestry.mjs';
-import {
-  createRunnerApis,
-  fakeTimerChange,
-  runnerApiVisitors,
-  waitKind,
-} from '../runners/runner-apis.mjs';
+import { createRunnerApis, runnerApiVisitors } from '../runners/runner-apis.mjs';
+import { fakeTimerChange, waitKind } from '../runners/runner-doubles.mjs';
 
 const TEARDOWN_HOOKS = ['afterEach', 'afterAll', 'after'];
+const WAIT_MESSAGES = { node: 'mockedWait', sinon: 'clockWait' };
 function callName(node) {
   if (node?.type !== 'CallExpression') return undefined;
   const callee = node.callee;
@@ -63,6 +60,8 @@ export const rule = {
         'Use an explicit completion signal or advanceTimersByTimeAsync and a direct assertion; waitFor advances fake time.',
       mockedWait:
         'Use an explicit completion signal or mock.timers.tick and a direct assertion; waitFor polls on timers that mock.timers has replaced, so it never settles.',
+      clockWait:
+        'Use an explicit completion signal or `await clock.tickAsync(ms)` and a direct assertion; waitFor polls on timers that the sinon fake clock has replaced, so it never settles.',
     },
   },
   create(context) {
@@ -86,8 +85,10 @@ export const rule = {
         for (const wait of waits) {
           const change = governingChange(changes, wait.node);
           if (isFakeWait(wait, change)) {
-            const messageId = change.kind === 'node' ? 'mockedWait' : 'fakeWait';
-            context.report({ node: wait.node, messageId });
+            context.report({
+              node: wait.node,
+              messageId: WAIT_MESSAGES[change.kind] ?? 'fakeWait',
+            });
           }
         }
       },

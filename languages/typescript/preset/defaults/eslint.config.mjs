@@ -136,6 +136,7 @@ const presetConfig = defineConfig(
     },
     rules: {
       ...runnerConfig.rules,
+      ...runnerConfig.typedRules,
       'nitpicker/integration-test-uses-approved-harness': 'error',
       'nitpicker/container-pause-requires-finally-unpause': 'error',
       'nitpicker/bounded-container-teardown': 'error',

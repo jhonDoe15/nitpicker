@@ -2,7 +2,8 @@ import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
-import { policyTestRunner, projectTestRunner, recordedTestRunner } from './project-runner.mjs';
+import { policyTestRunner, projectTestRunner } from './project-runner.mjs';
+import { recordedTestRunner } from './runner-vocabulary.mjs';
 
 const roots = [];
 
