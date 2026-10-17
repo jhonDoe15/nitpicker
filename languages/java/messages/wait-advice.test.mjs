@@ -64,9 +64,9 @@ describe('withWaitAdvice', () => {
     const javaRoots = { testSourceRoots: ['src/test/java'] };
     const kotlinRoots = { testSourceRoots: [], kotlinTestSourceRoots: ['src/test/kotlin'] };
 
-    expect(
-      withWaitAdvice([sleep], { manifest: javaRoots, projectRoot: java })[0].message,
-    ).toMatch(/with Awaitility/u);
+    expect(withWaitAdvice([sleep], { manifest: javaRoots, projectRoot: java })[0].message).toMatch(
+      /with Awaitility/u,
+    );
     expect(
       withWaitAdvice([sleep], { manifest: kotlinRoots, projectRoot: kotlin })[0].message,
     ).toMatch(/with Awaitility/u);
@@ -74,7 +74,8 @@ describe('withWaitAdvice', () => {
 
   it('does not count Awaitility named only in a comment or in main code', () => {
     const root = projectWith({
-      'src/test/java/shop/OrderTest.java': 'package shop;\n\n// import org.awaitility.Awaitility;\n',
+      'src/test/java/shop/OrderTest.java':
+        'package shop;\n\n// import org.awaitility.Awaitility;\n',
       'src/main/java/shop/Order.java': 'package shop;\n\nimport org.awaitility.Awaitility;\n',
     });
 

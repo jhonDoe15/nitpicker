@@ -53,25 +53,28 @@ function isWiring(target) {
   return WIRING_ANNOTATIONS.has(target) || WIRING_PATTERNS.some((pattern) => pattern.test(target));
 }
 
+function grownWiring(candidates, wiring = new Set()) {
+  const added = candidates
+    .filter(({ source, target }) => !wiring.has(source) && (isWiring(target) || wiring.has(target)))
+    .map(({ source }) => source);
+  return added.length === 0 ? wiring : grownWiring(candidates, new Set([...wiring, ...added]));
+}
+
 function wiringAnnotations(edges, owned) {
   const annotations = new Set(
     edges
-      .filter(({ source, target }) => target === ANNOTATION_TYPE && owned(source))
+      .filter(({ source, target }) => target === ANNOTATION_TYPE && owned.has(source))
       .map(({ source }) => source),
   );
-  const wiring = new Set();
-  let grown = true;
-  while (grown) {
-    const added = edges.filter(
-      ({ source, target }) =>
-        annotations.has(source) && !wiring.has(source) && (isWiring(target) || wiring.has(target)),
-    );
-    for (const { source } of added) {
-      wiring.add(source);
-    }
-    grown = added.length > 0;
-  }
+  const wiring = grownWiring(edges.filter(({ source }) => annotations.has(source)));
   return (target) => isWiring(target) || wiring.has(target);
+}
+
+function ownedClasses(projects, edges) {
+  return new Set([
+    ...projects.flatMap((project) => project.classes),
+    ...edges.map(({ source }) => source),
+  ]);
 }
 
 export function mainUsages(projects, resolve) {
@@ -81,11 +84,7 @@ export function mainUsages(projects, resolve) {
   const edges = projects.flatMap(({ qualifier, mainEdges }) =>
     mainEdges.map((edge) => ({ ...edge, qualifier })),
   );
-  const owned = new Set([
-    ...projects.flatMap((project) => project.classes),
-    ...edges.map(({ source }) => source),
-  ]);
-  const wires = wiringAnnotations(edges, (source) => owned.has(source));
+  const wires = wiringAnnotations(edges, ownedClasses(projects, edges));
   for (const { source, target, qualifier } of edges) {
     const own = `${qualifier}\0${outerClass(source)}`;
     const used = resolve(target, qualifier);

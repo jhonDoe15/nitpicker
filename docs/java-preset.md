@@ -611,7 +611,7 @@ resolved plus a new finding, as in the TypeScript check.
   whatever runs then. A line printed only in some runs (a timing-dependent warning) shows up as new
   in the run that has it; allow it in `testConsole.allow` with the reason.
 - **Tests.** `adapters/test-times/console-output.test.mjs`, `console-findings.test.mjs`,
-  `maven/results/maven-test-results.test.mjs`, and `java-e2e/review-rules.e2e.test.mjs`, which
+  `maven/results/maven-test-results.test.mjs`, and `spring/java-spring.e2e.test.mjs`, which
   commits a test that prints a new line on top of the Spring fixture and asserts, on Gradle and on
   Maven, that it is the only console finding: Spring's startup output, the WARN line a service logs
   in an unchanged `@SpringBootTest`, and a renumbered line in an edited test all stay baselined.
@@ -1504,7 +1504,7 @@ decides what counts as a literal secret, and `java-spring.mjs` applies the rules
 ## Review rules
 
 Rules that carry review findings over from the TypeScript preset. Each works the same on Gradle
-and Maven: the PMD rules are in the shared rule set files, and `java-e2e/review-rules.e2e.test.mjs`
+and Maven: the PMD rules are in the shared rule set files, and `spring/java-spring.e2e.test.mjs`
 builds one Spring project (`java-e2e/fixtures/review-rules`, every expected violation marked with
 `// violation: <rule>`) with both and asserts the same findings, and exactly the marked ones.
 Every message names the allowed form and the exception that keeps code that is right.

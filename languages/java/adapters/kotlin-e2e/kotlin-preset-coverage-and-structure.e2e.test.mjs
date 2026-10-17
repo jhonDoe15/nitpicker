@@ -55,7 +55,8 @@ import {
 } from './test-support/kotlin-e2e-project.mjs';
 
 const TEST_ONLY_FILES = {
-  [`${kotlinSources}/Shouting.kt`]: 'package demo\n\nfun shout(text: String): String = text.uppercase()\n',
+  [`${kotlinSources}/Shouting.kt`]:
+    'package demo\n\nfun shout(text: String): String = text.uppercase()\n',
   [`${kotlinSources}/Tool.kt`]:
     'package demo\n\nfun main() {\n    check(toolName().isNotEmpty())\n}\n\nfun toolName(): String = "tool"\n',
   'src/test/kotlin/demo/ShoutingTest.kt': [

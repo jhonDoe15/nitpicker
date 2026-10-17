@@ -51,16 +51,13 @@ function resolver(owners) {
 }
 
 function testUsages(projects, resolve) {
-  const tests = new Set();
-  for (const project of projects) {
-    for (const { target } of project.testEdges) {
-      const resolved = resolve(target, project.qualifier);
-      if (resolved !== undefined) {
-        tests.add(resolved);
-      }
-    }
-  }
-  return tests;
+  return new Set(
+    projects
+      .flatMap((project) =>
+        project.testEdges.map(({ target }) => resolve(target, project.qualifier)),
+      )
+      .filter((resolved) => resolved !== undefined),
+  );
 }
 
 function withDeclarations(projectRoot, project) {
@@ -101,8 +98,9 @@ function candidates(projectRoot, read) {
       .filter((project) => involved.has(project.qualifier))
       .map((project) => [project.qualifier, withDeclarations(projectRoot, project)]),
   );
-  const isLibrary = (project) =>
-    project.publishes && !project.hasEntryPoint && !applications.has(project.qualifier);
+  function isLibrary(project) {
+    return project.publishes && !project.hasEntryPoint && !applications.has(project.qualifier);
+  }
   return keys
     .map((key) => ({ project: byQualifier.get(key.split('\0')[0]), className: key.split('\0')[1] }))
     .filter(({ project }) => !isLibrary(project))
