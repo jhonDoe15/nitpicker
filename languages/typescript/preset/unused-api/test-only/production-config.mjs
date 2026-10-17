@@ -2,6 +2,12 @@ import path from 'node:path';
 import { storyGlobs } from '../../eslint-config/scope-support.mjs';
 
 const TEST_RUNNER_CONFIG = /^(?:vitest|jest|\.mocharc)/u;
+const TEST_RUNNER_CONFIG_GLOBS = [
+  '**/jest*.config.*',
+  '**/vitest*.config.*',
+  '**/vitest.workspace.*',
+  '**/.mocharc.*',
+];
 const TEST_RUNNER_PLUGINS = [
   'ava',
   'cucumber',
@@ -28,7 +34,12 @@ function isProductionEntry(pattern, layout) {
  * found by plugins, `bin` and `exports`) stays an entry as before.
  */
 export function layoutKnipProductionConfig(config, layout) {
-  const tests = [...layout.testGlobs, ...layout.sourceTestDirectoryGlobs, ...storyGlobs];
+  const tests = [
+    ...layout.testGlobs,
+    ...layout.sourceTestDirectoryGlobs,
+    ...storyGlobs,
+    ...TEST_RUNNER_CONFIG_GLOBS,
+  ];
   return {
     ...config,
     ...Object.fromEntries(TEST_RUNNER_PLUGINS.map((plugin) => [plugin, false])),
