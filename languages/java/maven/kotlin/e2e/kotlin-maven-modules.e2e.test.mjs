@@ -70,14 +70,39 @@ describe.skipIf(!kotlinE2eEnabled)('Kotlin preset on Maven: equivalence and modu
         .map(({ tool, metric }) => `${tool} ${metric.name} ${String(metric.value)}`)
         .sort();
 
-    expect(metrics('core/src/main/kotlin/demo/core/Adder.kt')).toEqual([]);
-    expect(metrics('util/src/main/java/demo/util/Joiner.java')).toEqual([]);
+    expect(metrics('core/src/main/kotlin/demo/core/Adder.kt')).toEqual([
+      'coupling fanIn 1',
+      'coupling fanOut 0',
+      'coupling instability 0',
+      'coupling totalCoupling 1',
+      'jacoco line-coverage 100',
+    ]);
+    expect(metrics('app/src/main/kotlin/demo/app/Total.kt')).toEqual([
+      'coupling fanIn 0',
+      'coupling fanOut 1',
+      'coupling instability 1',
+      'coupling totalCoupling 1',
+      'jacoco line-coverage 100',
+    ]);
+    expect(metrics('util/src/main/java/demo/util/Joiner.java')).toEqual([
+      'coupling fanIn 0',
+      'coupling fanOut 0',
+      'coupling totalCoupling 0',
+      'jacoco line-coverage 100',
+    ]);
     expect(
       findings
         .filter((finding) => finding.tool === 'test-runtime')
         .map(({ rule, path: file, identity }) => `${rule} ${file} ${identity}`),
-    ).toEqual([]);
-    expect(existsSync(path.join(project, 'core/target/nitpicker/kotlin-metrics.json'))).toBe(true);
-    expect(existsSync(path.join(project, 'util/target/nitpicker/kotlin-metrics.json'))).toBe(false);
+    ).toEqual([
+      'slow-test core/src/test/kotlin/demo/core/AdderTest.kt test:demo.core.AdderTest#adds',
+      'slow-test app/src/test/kotlin/demo/app/TotalTest.kt test:demo.app.TotalTest#sums',
+      'slow-test util/src/test/java/demo/util/JoinerTest.java test:demo.util.JoinerTest#joins',
+    ]);
+    expect(
+      ['core', 'app', 'util'].map((module) =>
+        existsSync(path.join(project, module, 'target/nitpicker/kotlin-metrics.json')),
+      ),
+    ).toEqual([true, true, false]);
   });
 });
