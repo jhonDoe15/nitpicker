@@ -37,8 +37,10 @@ function directoryWith(files) {
 }
 
 function run(projectRoot, file, test, seconds, { markers = [], source } = {}) {
-  const found = { nodeid: `${file}::${test}`, file: path.join(projectRoot, file), test, seconds };
-  return { ...found, markers, ...(source === undefined ? {} : { source }) };
+  const absolute = path.join(projectRoot, file);
+  const found = { nodeid: `${file}::${test}`, file: absolute, test, seconds };
+  const located = source === undefined ? {} : { source: { file: absolute, ...source } };
+  return { ...found, markers, ...located };
 }
 
 function findingsFor({ sources = { [ORDER_TEST]: ORDER_SOURCE }, runs, base, policy = {} }) {
@@ -69,6 +71,30 @@ describe('Python slow tests', () => {
         message: `${ORDER_TEST}::test_total took 5.4 s; a unit test may take 5 s. Remove \`time.sleep\` and other fixed waits, or give a costly fixture a wider scope (\`scope="module"\` or \`"session"\`), or mark it \`@pytest.mark.integration\` if it is one. ${EXCEPTION} in nitpicker.config.json.`,
         classification: 'enforceable',
       },
+    ]);
+  });
+
+  it('names where an inherited test is defined and gives no line of the other file', () => {
+    const findings = findingsFor({
+      sources: {
+        [ORDER_TEST]: ORDER_SOURCE,
+        'tests/common.py': 'class Base:\n    def test_inh(self):\n',
+      },
+      runs: (root) => [
+        run(root, 'tests/test_child.py', 'TestChild::test_inh', 6, {
+          source: { file: path.join(root, 'tests/common.py'), line: 2, changed: true },
+        }),
+      ],
+    });
+
+    expect(
+      findings.map(({ path: file, location, message }) => [file, location, message.split(';')[0]]),
+    ).toEqual([
+      [
+        'tests/test_child.py',
+        undefined,
+        'tests/test_child.py::TestChild::test_inh (defined at tests/common.py:2) took 6.0 s',
+      ],
     ]);
   });
 
