@@ -197,18 +197,15 @@ describe('pit', () => {
     ]);
   });
 
-  it('names the equivalent-mutant cases and the exception route in a survived mutant', () => {
-    const message = (tool) =>
-      `Survived ConditionalsBoundaryMutator: changed conditional boundary: no test fails when this code changes. Add an assertion that would. If no input can tell the two apart (a compareTo boundary, a discarded lambda return), simplify the code so this mutant disappears, or add an exception for ${tool}/mutant-survived in nitpicker.config.json.`;
+  it('names the equivalent-mutant cases in a survived mutant, whichever tool names it', () => {
+    const message =
+      'Survived ConditionalsBoundaryMutator: changed conditional boundary: no test fails when this code changes. Add an assertion that would. If no input can tell the two apart (a compareTo boundary, a discarded lambda return), simplify the code so this mutant disappears.';
     const named = ingestPit(fixture('pit-mutations.xml'), {
       tool: 'custom',
       resolvePath: resolveMainPath,
     });
 
-    expect([findings[0].message, named.findings[0].message]).toEqual([
-      message('pit'),
-      message('custom'),
-    ]);
+    expect([findings[0].message, named.findings[0].message]).toEqual([message, message]);
   });
 
   it('identifies mutants by class, method, mutator and description, never by line', () => {

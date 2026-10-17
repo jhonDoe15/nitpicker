@@ -172,13 +172,13 @@ export const rule = {
     schema: [],
     messages: {
       componentInternals:
-        'Do not use component state or instances ({{ name }}). Assert what the user sees with `screen.getByRole(...)`. An exception fits only when this is intentional.',
+        'Do not use component state or instances ({{ name }}). Assert what the user sees with `screen.getByRole(...)`.',
       fiberInternals:
-        'Do not read React internals ({{ name }}). Assert what the user sees with `screen.getByRole(...)`. An exception fits only when this is intentional.',
+        'Do not read React internals ({{ name }}). Assert what the user sees with `screen.getByRole(...)`.',
       reactMock:
-        'Do not replace `{{ name }}` with a module mock. Assert what the user sees with `screen.getByRole(...)`, or test a custom hook with `renderHook`. An exception fits only when this is intentional.',
+        'Do not replace `{{ name }}` with a module mock. Assert what the user sees with `screen.getByRole(...)`, or test a custom hook with `renderHook`.',
       hookSpy:
-        'Do not spy on the React hook `{{ name }}`. Assert what the user sees with `screen.getByRole(...)`, or test a custom hook with `renderHook`. An exception fits only when this is intentional.',
+        'Do not spy on the React hook `{{ name }}`. Assert what the user sees with `screen.getByRole(...)`, or test a custom hook with `renderHook`.',
     },
   },
   create: inReactTestFilesOnly((context) => {

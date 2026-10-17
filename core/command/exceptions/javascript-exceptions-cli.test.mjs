@@ -12,7 +12,7 @@ const config = (...exceptions) =>
   `${JSON.stringify(validateConfig({ preset: 'javascript', exceptions }))}\n`;
 
 describe('exceptions with "preset": "javascript"', () => {
-  it('names the entry that accepts a wide function, and the entry accepts it', () => {
+  it('names the entry that accepts a wide function, and the entry in the base policy accepts it', () => {
     const root = typescriptRepository({
       'src/main/b.js': 'export const b = 1;\n',
       'nitpicker.config.json': config(),
@@ -36,7 +36,8 @@ describe('exceptions with "preset": "javascript"', () => {
       ],
     ]);
 
-    writeFiles(root, {
+    const accepting = typescriptRepository({
+      'src/main/a.js': 'export function wide(a, b, c) {\n  return a + b + c;\n}\n',
       'nitpicker.config.json': config({
         rule: 'function-parameters-limit',
         paths: ['src/main/a.js'],
@@ -44,9 +45,10 @@ describe('exceptions with "preset": "javascript"', () => {
         reason: 'A reviewed reason.',
       }),
     });
-    commit(root, 'accept it');
+    writeFiles(accepting, { 'src/main/a.js': WIDE });
+    commit(accepting, 'add a parameter');
 
-    const accepted = runTypescript(root, ['structure']);
+    const accepted = runTypescript(accepting, ['structure']);
 
     expect(accepted.exitCode, accepted.text).toBe(0);
   });

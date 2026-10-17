@@ -45,7 +45,7 @@ describe('exceptions with "preset": "python"', () => {
     expect(enforceable(result)).toEqual([['function-parameters-limit', 'Service.wide']]);
   });
 
-  it('accepts a wide method with the exception added in the same change', () => {
+  it('reports an exception added with the method it lifts as a loosening of the base policy', () => {
     const root = pythonRepository();
     writeFiles(root, {
       'nitpicker.config.json': config(lifted),
@@ -56,8 +56,8 @@ describe('exceptions with "preset": "python"', () => {
 
     const result = run(root);
 
-    expect(result.exitCode, result.text).toBe(0);
-    expect(enforceable(result)).toEqual([]);
+    expect(result.exitCode, result.text).toBe(1);
+    expect(enforceable(result)).toEqual([['policy-loosened', undefined]]);
   });
 
   it('keeps a legacy wide method unchanged when the change removes the exception', () => {

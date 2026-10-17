@@ -54,15 +54,15 @@ describe('exceptions in the differential gate', () => {
     expect(enforceable(result)).toEqual([]);
   });
 
-  it('accepts new code with the exception that lifts it in the same change', () => {
+  it('reports an exception added with the code it lifts as a loosening of the base policy', () => {
     const root = typescriptRepository({ 'src/main/b.ts': 'export const b = 1;\n' });
     writeFiles(root, { 'src/main/a.ts': WIDE, 'nitpicker.config.json': config(lifted) });
     commit(root, 'add a wide function and its exception');
 
     const result = runTypescript(root, ['structure']);
 
-    expect(result.exitCode, result.text).toBe(0);
-    expect(enforceable(result)).toEqual([]);
+    expect(result.exitCode, result.text).toBe(1);
+    expect(enforceable(result)).toEqual([['policy-loosened', undefined]]);
   });
 
   it('fails the same new code without the exception', () => {

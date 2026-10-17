@@ -120,7 +120,10 @@ function writeModule({ key, dir }) {
   if (existsSync('mutations.xml')) {
     writeFileSync(report('pit/mutations.xml'), readFileSync('mutations.xml'));
   }
-  writeFileSync(report('structure.json'), '[]');
+  writeFileSync(
+    report('structure.json'),
+    existsSync(inside('structure.json')) ? readFileSync(inside('structure.json')) : '[]',
+  );
 }
 
 const modules = existsSync('NO_REPORTS')

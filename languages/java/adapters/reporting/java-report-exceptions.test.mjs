@@ -3,7 +3,10 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import { applyJavaPolicy } from '../java-policy.mjs';
-import { readJavaFindings } from './java-reports.mjs';
+import { readJavaFindings as readFindings } from './java-reports.mjs';
+import { readingFrom, writeModules } from '../test-support/report-base.mjs';
+
+const readJavaFindings = readingFrom(readFindings);
 
 const BAD = 'src/main/java/demo/Bad.java';
 const JACOCO = `<?xml version="1.0" encoding="UTF-8"?>
@@ -39,16 +42,15 @@ afterEach(() => {
 function projectWithOneComplexMethod() {
   const root = realpathSync(mkdtempSync(path.join(tmpdir(), 'nitpicker-java-exceptions-')));
   temporaryRoots.push(root);
-  mkdirSync(path.join(root, 'build/nitpicker'), { recursive: true });
+  const reports = writeModules(root);
   mkdirSync(path.join(root, 'src/main/java/demo'), { recursive: true });
   const sourceLines = Array.from({ length: 9 }, () => '');
   sourceLines[8] = '    return new String(bytes);';
   writeFileSync(path.join(root, BAD), `${sourceLines.join('\n')}\n`);
   writeFileSync(
-    path.join(root, 'build/nitpicker/manifest.json'),
+    path.join(reports, 'manifest.json'),
     JSON.stringify({ versions: {}, sourceRoots: ['src/main/java'] }),
   );
-  const reports = path.join(root, 'build/nitpicker');
   for (const [name, tool] of [
     ['pmd.sarif', 'PMD'],
     ['spotbugs.sarif', 'SpotBugs'],
@@ -61,8 +63,8 @@ function projectWithOneComplexMethod() {
   writeFileSync(path.join(reports, 'format.txt'), '');
   writeFileSync(path.join(reports, 'checkstyle.xml'), '<checkstyle version="10"/>');
   writeFileSync(path.join(reports, 'duplicates.json'), JSON.stringify({ runs: [] }));
-  writeFileSync(path.join(root, 'build/nitpicker/jacoco.xml'), JACOCO);
-  writeFileSync(path.join(root, 'build/nitpicker/structure.json'), JSON.stringify(STRUCTURE));
+  writeFileSync(path.join(reports, 'jacoco.xml'), JACOCO);
+  writeFileSync(path.join(reports, 'structure.json'), JSON.stringify(STRUCTURE));
   return root;
 }
 

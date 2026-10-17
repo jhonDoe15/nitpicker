@@ -188,7 +188,7 @@ describe('ingestCrap', () => {
     const unknown = ingest().find((f) => f.rule === 'crap-coverage-unknown');
 
     expect(unknown.message).toBe(
-      'Calc.Inner.get(int) has unknown coverage and no CRAP score: JaCoCo has no data for it, so no test runs it or it is annotated @Generated. Add a test that calls it, and remove @Generated from hand-written code.',
+      'Calc.Inner.get has unknown coverage and no CRAP score: JaCoCo has no data for it, so no test runs it or it is annotated @Generated. Add a test that calls it, and remove @Generated from hand-written code. If a reviewer agrees this is intended, add {"rule":"crap-coverage-unknown","paths":["src/main/java/demo/Calc.java"],"function":"Calc.Inner.get","reason":"<why this is intended>"} to "exceptions" in nitpicker.config.json.',
     );
   });
 
@@ -200,7 +200,7 @@ describe('ingestCrap', () => {
     const score = ingest(undefined, covered).find((f) => f.rule === 'crap-score-limit');
 
     expect(score.message).toBe(
-      'Calc.classify(int, int, String) has CRAP 9.00 although tests cover it; score must be below 9. Reduce its branches: split a branchy part into its own function.',
+      'Calc.classify has CRAP 9.00 although tests cover it; score must be below 9. Reduce its branches: split a branchy part into its own function. If a reviewer agrees this is intended, add {"rule":"crap-score-limit","paths":["src/main/java/demo/Calc.java"],"function":"Calc.classify","reason":"<why this is intended>"} to "exceptions" in nitpicker.config.json.',
     );
   });
 
