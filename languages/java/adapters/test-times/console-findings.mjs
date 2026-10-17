@@ -6,6 +6,7 @@ import { readConsoleEntries } from './console-output.mjs';
 
 const CONSOLE_TOOL = 'test-runtime';
 const CONSOLE_RULE = 'test-console-output';
+export const CONSOLE_EXCEPTION_RULE = `${CONSOLE_TOOL}/${CONSOLE_RULE}`;
 const ESCAPE = String.fromCodePoint(0x1b);
 const ANSI = new RegExp(`${ESCAPE}\\[[0-9;]*m`, 'gu');
 const ABSOLUTE_PATH = /(?<![\w/:.\\-])(?:file:\/\/)?(?:[A-Za-z]:)?(?:[\\/][\w.@+~$%-]+)+/gu;
@@ -90,7 +91,7 @@ function findingFor({ file, test, message }, moduleRoot) {
     identity: `console:${hash(message)}`,
     message: MESSAGE.replace('{output}', `"${message}" (${where})`).replace(
       '{exception}',
-      exceptionHint(`${CONSOLE_TOOL}/${CONSOLE_RULE}`, file),
+      exceptionHint(CONSOLE_EXCEPTION_RULE, file),
     ),
     classification: 'enforceable',
     ...(tokens.length < MIN_TOKENS ? {} : { tokens }),
