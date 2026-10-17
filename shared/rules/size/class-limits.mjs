@@ -1,4 +1,4 @@
-import { CLASS_LIMIT_DEFAULTS } from '../../policy-size.mjs';
+import { CLASS_LIMIT_DEFAULTS } from '../../project-rules/size-rules.mjs';
 import { RULE_IDS } from '../../policy.mjs';
 import { nextOccurrence } from '../finding-helpers.mjs';
 import { exceptionMatcher, exceptionText } from '../exceptions.mjs';

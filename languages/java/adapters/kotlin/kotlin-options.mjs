@@ -3,7 +3,7 @@ import {
   isPlainObject,
   validateProjectRelativePath,
 } from '../../../../shared/config.mjs';
-import { JAVA_SIZE_RULES } from '../../../../shared/policy-size.mjs';
+import { JAVA_SIZE_RULES } from '../../../../shared/project-rules/size-rules.mjs';
 import { SHARED_EXCEPTION_RULES } from '../../../../shared/policy.mjs';
 import { ONE_WAY_RULE_IDS } from './rules/kotlin-rules.mjs';
 

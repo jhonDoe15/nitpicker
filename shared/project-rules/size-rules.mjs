@@ -100,14 +100,13 @@ function fileRules(enforcedBy) {
   ];
 }
 
+const JAVA_ONLY = { typescript: false, java: true, python: false };
+
+function classRule(id, limit, withKotlin) {
+  return { id, check: 'structure', limit, enforcedBy: withKotlin(JAVA_ONLY, true) };
+}
+
 export function sizeRules({ all, both, withKotlin }) {
-  const javaOnly = { typescript: false, java: true, python: false };
-  const classRule = (id, limit) => ({
-    id,
-    check: 'structure',
-    limit,
-    enforcedBy: withKotlin(javaOnly, true),
-  });
   return [
     ...fileRules(withKotlin(all, true)),
     {
@@ -119,14 +118,17 @@ export function sizeRules({ all, both, withKotlin }) {
     classRule(
       SIZE_RULE_IDS.classMethods,
       `more than ${String(CLASS_LIMIT_DEFAULTS.classMethods)} methods in a class of the main Java sources; override with \`thresholds.classMethods\``,
+      withKotlin,
     ),
     classRule(
       SIZE_RULE_IDS.classFields,
       `more than ${String(CLASS_LIMIT_DEFAULTS.classFields)} instance fields in a class of the main Java sources; override with \`thresholds.classFields\``,
+      withKotlin,
     ),
     classRule(
       SIZE_RULE_IDS.inheritanceDepth,
       `a class more than ${String(CLASS_LIMIT_DEFAULTS.inheritanceDepth)} superclasses deep in the main Java sources; override with \`thresholds.inheritanceDepth\``,
+      withKotlin,
     ),
   ];
 }

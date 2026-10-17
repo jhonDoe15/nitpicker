@@ -1,4 +1,4 @@
-import { TYPESCRIPT_SIZE_RULES } from '../../../../shared/policy-size.mjs';
+import { TYPESCRIPT_SIZE_RULES } from '../../../../shared/project-rules/size-rules.mjs';
 import {
   SHARED_EXCEPTION_RULES,
   TYPESCRIPT_PROJECT_EXCEPTION_RULES,

@@ -8,7 +8,7 @@ export const STRUCTURE_CHECK_FILES = [
   'languages/typescript/preset/structure/limits/folder-depth.mjs',
   'shared/rules/size/folder-depth.mjs',
   'shared/policy.mjs',
-  'shared/policy-size.mjs',
+  'shared/project-rules/size-rules.mjs',
   'languages/typescript/preset/structure/component-stories.mjs',
   'languages/typescript/preset/structure/project-findings.mjs',
   'languages/typescript/preset/structure/sources/javascript-files.mjs',
