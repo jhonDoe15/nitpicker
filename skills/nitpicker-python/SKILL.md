@@ -22,7 +22,9 @@ backstop. It fails only on findings your change adds, so leave code the task doe
      tool missing from the environment) and rerun. Exit 2 is never a pass. If it says another run
      is in progress, wait for that run; never kill it.
 4. Never suppress: no `# noqa`, `# type: ignore`, config `exclude`/`disable`, legacy entries, or
-   weakened tests. If a finding seems wrong, stop and ask.
+   weakened tests. If a finding seems wrong, stop and ask. Never pass `--accept-policy-change` or set
+   `NITPICKER_ACCEPT_POLICY_CHANGE`: a `nitpicker-config/policy-loosened` finding is for a person to
+   accept.
 
 ## Write it this way
 
