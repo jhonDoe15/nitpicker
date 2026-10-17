@@ -91,6 +91,7 @@ function runStructure(module, reportDir) {
     args: [
       path.join(GRADLE_DIRECTORY, 'StructureMetrics.java'),
       path.join(reportDir, 'structure.json'),
+      path.join(reportDir, 'classes.json'),
       module.basedir,
       ...roots,
     ],
@@ -168,7 +169,39 @@ function readClasspaths(work, module) {
   );
 }
 
-function analyzeModule({ module, classpaths, tools, pinned, configs, since, tolerateFailures }) {
+function runStaticAnalysis({
+  module,
+  reportDir,
+  tools,
+  classpaths,
+  configs,
+  pinned,
+  spring,
+  javaStyle,
+}) {
+  runPmd({ module, reportDir, tools, classpaths, configs, spring });
+  runSpotbugs({ module, reportDir, tools });
+  runErrorProne({ module, reportDir, tools, classpaths });
+  runFormat({ module, reportDir, tools, javaStyle });
+  runCheckstyle({ module, reportDir, tools, configs, pinned });
+  runStructure(module, reportDir);
+  runJdeps(module, reportDir);
+}
+
+function runCoverageTools({ module, reportDir, tools, classpaths, since, testsRan, isArchunit }) {
+  runJacocoReport({
+    module,
+    reportDir,
+    tools,
+    execFiles: jacocoExecFiles(module),
+    since,
+    testsRan,
+  });
+  runPit({ module, reportDir, tools, classpaths, isArchunit });
+}
+
+function analyzeModule(context) {
+  const { module, classpaths, pinned, since, tolerateFailures } = context;
   const reportDir = path.join(module.basedir, MAVEN_REPORT_DIRECTORY);
   const isArchunit = archunitMatcher(module.archunitIncludes);
   const spring = classpaths.mainCompile.some((entry) => SPRING_JAR.test(path.basename(entry)));
@@ -180,23 +213,9 @@ function analyzeModule({ module, classpaths, tools, pinned, configs, since, tole
     tolerateFailures,
   });
   copyTestResults({ module, reportDir, since, isArchunit });
-  runPmd({ module, reportDir, tools, classpaths, configs, spring });
-  runSpotbugs({ module, reportDir, tools });
-  runErrorProne({ module, reportDir, tools, classpaths });
-  runFormat({ module, reportDir, tools });
-  runCheckstyle({ module, reportDir, tools, configs, pinned });
-  runStructure(module, reportDir);
-  runJdeps(module, reportDir);
+  runStaticAnalysis({ ...context, reportDir, spring });
   if (testsFailure === undefined) {
-    runJacocoReport({
-      module,
-      reportDir,
-      tools,
-      execFiles: jacocoExecFiles(module),
-      since,
-      testsRan,
-    });
-    runPit({ module, reportDir, tools, classpaths, isArchunit });
+    runCoverageTools({ ...context, reportDir, testsRan, isArchunit });
   }
   writeManifest({
     module,
@@ -271,7 +290,16 @@ export function runMavenPreset(projectRoot, { maven, policy = {}, configs }) {
     });
     const failures = analyzed
       .map(({ module, classpaths }) =>
-        analyzeModule({ module, classpaths, tools, pinned, configs, since, tolerateFailures }),
+        analyzeModule({
+          module,
+          classpaths,
+          tools,
+          pinned,
+          configs,
+          since,
+          javaStyle: policy.javaStyle,
+          tolerateFailures,
+        }),
       )
       .filter((failure) => failure !== undefined);
     return {

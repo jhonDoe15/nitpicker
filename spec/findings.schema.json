@@ -87,6 +87,11 @@
         "pathIsFolder": {
           "description": "When true, `path` is a folder: a base finding with no match at its own path is held at the folder most of its files were renamed to.",
           "type": "boolean"
+        },
+        "folderFiles": {
+          "description": "With `pathIsFolder`: the number of files in the folder, when `value` is not that number. A base finding is held at a new path when more than half of these files were renamed there.",
+          "type": "integer",
+          "minimum": 1
         }
       }
     },
