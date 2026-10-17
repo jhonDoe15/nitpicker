@@ -1,7 +1,8 @@
 import { STRUCTURE_HINTS } from './hints/ast-structure.mjs';
 import { SMELL_HINTS } from './hints/ast-smells.mjs';
 import { PYTEST_HINTS } from './hints/ruff-pytest.mjs';
-import { SECURITY_HINTS } from './hints/ruff-security.mjs';
+import { SECURITY_HINTS } from './hints/security/ruff-security.mjs';
+import { RULES_SECURITY_HINTS } from './hints/security/rules-security.mjs';
 import { STYLE_HINTS } from './hints/ruff-style.mjs';
 import { RULES_TOOL } from './hints/tool.mjs';
 import { DEFAULT_LIBRARIES } from './libraries/project-libraries.mjs';
@@ -19,6 +20,7 @@ export const RULE_HINTS = [
   ...STYLE_HINTS,
   ...PYTEST_HINTS,
   ...SECURITY_HINTS,
+  ...RULES_SECURITY_HINTS,
   ...STRUCTURE_HINTS,
   ...SMELL_HINTS,
   { tool: 'mypy', rules: ['import-not-found', 'import-untyped'], allowed: INSTALL_PACKAGE },

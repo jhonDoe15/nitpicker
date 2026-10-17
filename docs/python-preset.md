@@ -262,7 +262,12 @@ through the real tools.
   a prefix such as `E4` or `T20` stays when a known rule starts with it. Test files are the ones
   pytest collects (the `python_files` patterns, `testpaths`, `conftest.py`, any `tests` or `test`
   folder, `test_*.py`, `*_test.py`): ruff's `ARG`, `FBT`, `PLR2004` and `S` findings in them are
-  dropped after ruff runs (`rules/filters/ruff-allowed-forms.mjs`).
+  dropped after ruff runs (`rules/filters/ruff-allowed-forms.mjs`). Security findings (ruff `S` and the
+  `sql-string-formatting`, `tls-verification-off`, `weak-hmac`, `http-without-timeout` and
+  `unsafe-deserialization` rules) are also dropped in test support that pytest does not collect, as in the
+  TypeScript preset: a `testing`, `test_support`, `test-support`, `test_utils`, `test_helpers`, `testutils`,
+  `test_fixtures`, `fixtures`, `__fixtures__`, `mocks` or `__mocks__` folder anywhere in the path, and files
+  named `conftest.py`, `testing.py`, `testutils.py` or `fixtures.py` (`rules/filters/test-support.mjs`).
 - **AST rules.** `languages/python/rules/nitpicker_rules.py` runs with `python -I` (standard
   library only, never importing project code) over the files `ruff check --show-files` lists, so
   it sees exactly the files ruff lints, honoring `.gitignore`. Findings have tool `python-rules`.
@@ -353,32 +358,36 @@ under `languages/python/rules/`: `checks`, `boundary`, `smells`, `honesty`); the
 rules. Rules that are not enforced because they flag idiomatic code with no clean alternative
 are listed at the end.
 
-| Concern                  | Allowed form                                                                                           | Rule                                                                                                                                                 |
-| ------------------------ | ------------------------------------------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Logging                  | `logger.info("Loaded %s", count)`, `logger.warning`, `logger.exception` (structlog, loguru: see below) | ruff `G001`-`G004`, `G010`, `G101`, `G201`, `G202`, `TRY400`, `TRY401`                                                                               |
-| Environment              | read once in a composition root, pass values in                                                        | `process-env-access` (script)                                                                                                                        |
-| Shell                    | a list: `subprocess.run(["git", "status"], check=True)`                                                | `shell-command` (script), ruff `S602`, `S604`, `S605`, `S609`                                                                                        |
-| SQL                      | parameters: `cursor.execute("select * from t where id = %s", (id,))`                                   | `sql-string-formatting` (script)                                                                                                                     |
-| Path traversal           | `target = (base / name).resolve()`, then `target.is_relative_to(base)`                                 | `unsafe-path-join` (script)                                                                                                                          |
-| Magic numbers            | a named constant                                                                                       | ruff `PLR2004`                                                                                                                                       |
-| Naming                   | PEP 8: `CapWords`, `snake_case`, `UPPER_SNAKE_CASE`, `...Error`                                        | ruff `N`                                                                                                                                             |
-| Boundary                 | parse untrusted data once with the project's validator (pydantic by default) in `adapters/`            | `handwritten-boundary-guard` (script)                                                                                                                |
-| Types in the domain      | real types, `Protocol`, frozen dataclasses                                                             | `any-in-domain`, `pydantic-any-field`, `pydantic-extra-allow` (script)                                                                               |
-| Pure domain              | clock, ids and random values passed in; ports implemented in `adapters/`                               | `clock-now`, `random-in-domain`, `io-in-domain` (script)                                                                                             |
-| Module state             | state in an object made in the composition root                                                        | `module-level-mutable-state` (script), ruff `PLW0602`, `PLW0603`                                                                                     |
-| Risky APIs               | JSON instead of pickle or marshal, a specific exception class                                          | ruff `S301`, `S302`, `TRY002`, `TRY004`, `TRY201`, `TRY203`                                                                                          |
-| Deprecated APIs          | the replacement the deprecation notice names                                                           | mypy `deprecated`, pyright and basedpyright `reportDeprecated`                                                                                       |
-| Repeated strings         | a constant or enum member                                                                              | `repeated-string-literal` (script)                                                                                                                   |
-| Unused arguments         | remove the argument, or prefix it with `_` when the signature is fixed                                 | ruff `ARG001`-`ARG005`                                                                                                                               |
-| Generic names            | a name for the job (`price_rounding.py`, `OrderRepository`)                                            | `generic-name` (script)                                                                                                                              |
-| Secrets                  | read from the environment; log only that a secret is set                                               | `hardcoded-secret`, `credential-shape`, `secret-in-log` (script)                                                                                     |
-| Boolean flags            | keyword-only (`def send(message, *, urgent=False)`) or two functions                                   | ruff `FBT001`, `FBT002`                                                                                                                              |
-| Input or output per item | one batch call, or `asyncio.gather`                                                                    | `io-in-loop` (script)                                                                                                                                |
-| Task markers             | `# TODO(#123): ...` with an issue                                                                      | `todo-without-issue` (script)                                                                                                                        |
-| Commented-out code       | delete it                                                                                              | ruff `ERA001`                                                                                                                                        |
-| Security sinks           | parameterized queries, `sha256`, verified TLS, a timeout, `yaml.safe_load`, `defusedxml`               | ruff `S` (see below)                                                                                                                                 |
-| Test honesty             | a reason on every skip, no sleeping, no tautologies, fixed time and seeded random values, no network   | ruff `PT`, `skipped-test-without-reason`, `sleep-in-test`, `tautological-assert`, `real-clock-in-test`, `random-in-test`, `network-in-test` (script) |
-| Test layout              | tests in files pytest collects; helpers in the tests folder                                            | `uncollected-tests`, `test-helper-in-source` (script)                                                                                                |
+| Concern                  | Allowed form                                                                                                                                     | Rule                                                                                                                                                 |
+| ------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Logging                  | `logger.info("Loaded %s", count)`, `logger.warning`, `logger.exception` (structlog, loguru: see below)                                           | ruff `G001`-`G004`, `G010`, `G101`, `G201`, `G202`, `TRY400`, `TRY401`                                                                               |
+| Environment              | read once in a composition root, pass values in                                                                                                  | `process-env-access` (script)                                                                                                                        |
+| Shell                    | a list: `subprocess.run(["git", "status"], check=True)`                                                                                          | `shell-command` (script), ruff `S602`, `S604`, `S605`, `S609`                                                                                        |
+| SQL                      | parameters: `cursor.execute("select * from t where id = %s", (id,))`; placeholder lists, fixed lookups, `Literal`/`Enum` names, `sql.Identifier` | `sql-string-formatting` (script), ruff `S610`, `S611`                                                                                                |
+| Path traversal           | `target = (base / name).resolve()`, then `target.is_relative_to(base)`                                                                           | `unsafe-path-join` (script)                                                                                                                          |
+| Magic numbers            | a named constant                                                                                                                                 | ruff `PLR2004`                                                                                                                                       |
+| Naming                   | PEP 8: `CapWords`, `snake_case`, `UPPER_SNAKE_CASE`, `...Error`                                                                                  | ruff `N`                                                                                                                                             |
+| Boundary                 | parse untrusted data once with the project's validator (pydantic by default) in `adapters/`                                                      | `handwritten-boundary-guard` (script)                                                                                                                |
+| Types in the domain      | real types, `Protocol`, frozen dataclasses                                                                                                       | `any-in-domain`, `pydantic-any-field`, `pydantic-extra-allow` (script)                                                                               |
+| Pure domain              | clock, ids and random values passed in; ports implemented in `adapters/`                                                                         | `clock-now`, `random-in-domain`, `io-in-domain` (script)                                                                                             |
+| Module state             | state in an object made in the composition root                                                                                                  | `module-level-mutable-state` (script), ruff `PLW0602`, `PLW0603`                                                                                     |
+| Risky APIs               | JSON instead of pickle or marshal, `copy.deepcopy` to clone, a specific exception class                                                          | ruff `S301`, `S302`, `TRY002`, `TRY004`, `TRY201`, `TRY203`                                                                                          |
+| Deserialization          | `yaml.safe_load`, `torch.load(path, weights_only=True)`, `numpy.load` without `allow_pickle`                                                     | ruff `S506`, `unsafe-deserialization` (script)                                                                                                       |
+| Deprecated APIs          | the replacement the deprecation notice names                                                                                                     | mypy `deprecated`, pyright and basedpyright `reportDeprecated`                                                                                       |
+| Repeated strings         | a constant or enum member                                                                                                                        | `repeated-string-literal` (script)                                                                                                                   |
+| Unused arguments         | remove the argument, or prefix it with `_` when the signature is fixed                                                                           | ruff `ARG001`-`ARG005`                                                                                                                               |
+| Generic names            | a name for the job (`price_rounding.py`, `OrderRepository`)                                                                                      | `generic-name` (script)                                                                                                                              |
+| Secrets                  | read from the environment; log only that a secret is set                                                                                         | `hardcoded-secret`, `credential-shape`, `secret-in-log` (script)                                                                                     |
+| Boolean flags            | keyword-only (`def send(message, *, urgent=False)`) or two functions                                                                             | ruff `FBT001`, `FBT002`                                                                                                                              |
+| Input or output per item | one batch call, or `asyncio.gather`                                                                                                              | `io-in-loop` (script)                                                                                                                                |
+| Task markers             | `# TODO(#123): ...` with an issue                                                                                                                | `todo-without-issue` (script)                                                                                                                        |
+| Commented-out code       | delete it                                                                                                                                        | ruff `ERA001`                                                                                                                                        |
+| Security sinks           | parameterized queries, `sha256`, verified TLS, a timeout, `yaml.safe_load`, `defusedxml`                                                         | ruff `S` (see below)                                                                                                                                 |
+| TLS                      | verification on in every environment; a CA bundle (`verify=ca_path`, `cafile=`, `tlsCAFile=`)                                                    | ruff `S501`, `S323`, `tls-verification-off` (script)                                                                                                 |
+| Signatures               | `hmac.new(key, message, hashlib.sha256)`; HMAC-SHA1 where a protocol fixes it                                                                    | ruff `S324`, `S303`, `weak-hmac` (script)                                                                                                            |
+| Timeouts                 | `timeout=10` on every request, `urlopen` and plain `requests.Session` call; never `timeout=None`                                                 | ruff `S113`, `http-without-timeout` (script)                                                                                                         |
+| Test honesty             | a reason on every skip, no sleeping, no tautologies, fixed time and seeded random values, no network                                             | ruff `PT`, `skipped-test-without-reason`, `sleep-in-test`, `tautological-assert`, `real-clock-in-test`, `random-in-test`, `network-in-test` (script) |
+| Test layout              | tests in files pytest collects; helpers in the tests folder                                                                                      | `uncollected-tests`, `test-helper-in-source` (script)                                                                                                |
 
 Details that are decisions rather than the table:
 
@@ -407,11 +416,71 @@ Details that are decisions rather than the table:
   `os.exec*`, `os.spawn*`, `pty.spawn` and `asyncio.create_subprocess_*` calls (also
   `create_subprocess_shell`). A list of arguments, or a fixed command string that ruff already
   accepts, is the allowed form. Not in tests.
-- `sql-string-formatting` reports an f-string, `%`, `+` or `.format` that builds SQL text (a
-  `select ... from`, `insert ... values`, `update ... set` or `delete from`) and reaches
-  `execute`, `executemany`, `text`, `raw`, `RawSQL`, `extra` or a pandas `read_sql*` call, directly or
-  through a local variable. It replaces ruff's `S608`, which flags every string that looks like SQL;
-  a formatted query that is not passed to one of those calls is not reported.
+- `sql-string-formatting` reports SQL text built at run time that reaches a query call. A value is
+  built when an f-string, `%`, `+`, `+=`, `.format` or `.join` puts a piece into it that is not provably
+  inert, followed through local names, module constants, constants and helper functions imported from
+  other project modules (with the call's arguments bound to the helper's parameters), comprehensions and
+  lists filled by `append`/`extend`. Inert pieces are literals, numbers (`int(x)`, `len(ids)`), placeholder
+  lists built from placeholders alone (`", ".join(["%s"] * len(ids))`, `"?" * n`, `("%s" for _ in ids)`,
+  rows such as `"(%s, %s)"`), optional filters whose every `append` is constant text
+  (`conditions.append("name = %s")` joined with `" AND "`), a subscript or `.get` of a dict, tuple or list of
+  constant names (`COLUMNS[key]`), a loop over such a tuple, a parameter annotated `Literal[...]`, `int` or
+  an `Enum`/`StrEnum` class of the project (and `.value`), a Django `_meta.db_table` or a SQLAlchemy
+  `__tablename__`, quoting calls (`quote_name`, `quote_ident`, `escape_identifier`) and psycopg
+  `sql.Identifier`, `sql.Literal` and `sql.Placeholder`; anything else, including a parameter or an unknown
+  call, is not. The query calls are `execute`, `executemany`, `executescript`, `exec_driver_sql`, `raw`,
+  `text`, `query`, `fetch`, `fetchrow`, `fetchval`, `fetch_all`, `fetch_one`, `fetch_val`, `copy_expert` and
+  pandas `read_sql*`, where the static text must look like SQL (a statement, a clause keyword such as
+  `WHERE`, `ORDER BY` or `LIMIT`, or an upper-case `AND`, `SET`, `FROM`); the raw builders of query libraries
+  report any built piece, since their argument is SQL by definition: SQLAlchemy `text` and `literal_column`
+  (also inside `.where(...)`, `.order_by(...)`), peewee `SQL` and psycopg `sql.SQL` (and `sql.SQL(value)` as
+  an argument of `sql.SQL(...).format`, while `.format` on a `sql.SQL` with `sql.Identifier`/`sql.Literal`
+  is the safe composition). A project function that passes one of its parameters straight to a query call
+  is a wrapper, and its call sites are checked too (two levels). Django `.extra` and `RawSQL` are left to
+  ruff `S610` and `S611`, which report them already. Prose, log and exception text with SQL words never
+  reaches a query call and passes. It replaces ruff's `S608`, which flags every string that looks like SQL.
+- `tls-verification-off` reports what ruff `S501` and `S323` miss: `verify=` on `requests`, `httpx`,
+  `boto3`, `aiohttp` and session or client calls when the value can be `False` (a condition such as
+  `verify=not DEBUG`, a comparison with the environment such as `os.environ.get("X") != "0"`, `bool(...)`,
+  `strtobool`, `env.bool`, a conditional expression with a `False` branch, or a name or imported constant
+  bound to one of those), and a literal `False` on calls `S501` does not cover (a session, `boto3`);
+  `session.verify = False` and the same conditions; `ssl._create_default_https_context =
+ssl._create_unverified_context`; `check_hostname = False` and `verify_mode = ssl.CERT_NONE` on a client
+  context; urllib3 `cert_reqs="CERT_NONE"` and `assert_hostname=False`; `cert_reqs`/`ssl_cert_reqs` set to
+  `CERT_NONE` (and redis `ssl_cert_reqs=None`) in calls and option dicts (websocket `sslopt`); aiohttp
+  `ssl=False` and `verify_ssl=False`; MongoDB `tlsAllowInvalidCertificates`, `tlsAllowInvalidHostnames`,
+  `tlsInsecure` set to a value that can be `True`, also in a `mongodb://` URI; and environment switches set
+  in code or for child processes (`PYTHONHTTPSVERIFY=0`, an empty `CURL_CA_BUNDLE` or `REQUESTS_CA_BUNDLE`,
+  `NODE_TLS_REJECT_UNAUTHORIZED=0`, `GIT_SSL_NO_VERIFY`). A server context (`ssl.Purpose.CLIENT_AUTH`,
+  `PROTOCOL_TLS_SERVER`, `server_side=True`, uvicorn and similar servers) passes: a server that asks for
+  optional client certificates sets `CERT_OPTIONAL`, which is never reported. A literal `verify=False` on a
+  module-level `requests` or `httpx` call is left to `S501`, so one site gives one finding. A `verify=`
+  read from an attribute (`settings.CA_BUNDLE`) is not reported, since it can be a path. Text that mentions
+  the settings (a warning, help text) is not read.
+- `weak-hmac` reports HMAC with MD5 (or MD4, MD2): `hmac.new`, `hmac.HMAC` and `hmac.digest` with
+  `hashlib.md5`, `"md5"`, an import alias or a constant bound to one, also from another module, pycryptodome
+  `HMAC.new(..., digestmod=MD5)` and cryptography `hmac.HMAC(key, hashes.MD5())`. HMAC-SHA1 passes: its
+  security does not rest on collision resistance, and TOTP, HOTP and OAuth 1.0a fix it. Ruff's `S324`
+  does not look into `hmac`, and `hashlib.md5(..., usedforsecurity=False)` passes `S324` already; ruff's
+  `S303` reports `hashes.SHA1()` and `hashes.MD5()` inside a cryptography `HMAC(...)`, so those findings are
+  dropped after ruff runs (`ruff-allowed-forms.mjs` finds the enclosing call), leaving HMAC-SHA1 allowed and
+  HMAC-MD5 reported once, with the HMAC message.
+- `http-without-timeout` reports what ruff `S113` (module-level `requests` and `httpx` calls) misses:
+  `urllib.request.urlopen` and an opener's `open` without a timeout, `http.client.HTTPConnection` and
+  `HTTPSConnection` without one, a call on a plain `requests.Session()` (a local, a `with` target, a chain or
+  a `self.` attribute set in the class) without `timeout=`, and `timeout=None` on such a session or an httpx
+  client. `httpx` without a timeout passes: it has a 5 second default, and `S113` reports only an explicit
+  `None`. `aiohttp.ClientSession` passes: its default `ClientTimeout` ends a request after 5 minutes. A
+  session that mounts an adapter (a timeout adapter) or comes from a project factory, and a call with
+  `**kwargs`, are not reported; `urlopen` is not reported when production code calls
+  `socket.setdefaulttimeout` with a number.
+- `unsafe-deserialization` reports what ruff `S301`, `S302` and `S506` miss: `yaml.unsafe_load`,
+  `yaml.full_load` and their `_all` forms, `yaml.load_all` without a safe loader (`SafeLoader`, `CSafeLoader`,
+  `BaseLoader` or a project class deriving from one; `S506` covers `yaml.load` only), ruamel
+  `YAML(typ="unsafe")`, `torch.load` without `weights_only=True` (torch 2.6 made it the default, and the
+  explicit form holds on every version) and `numpy.load(..., allow_pickle=True)`. `jsonpickle.decode`,
+  `dill`, `shelve` and `pandas.read_pickle` are `S301` findings already. A pickle round trip used to copy a
+  value is an `S301` finding whose advice names `copy.deepcopy(value)`.
 - `clock-now`, `random-in-domain`, `io-in-domain` and `any-in-domain` apply to a directory named
   `domain` anywhere in the path (not tests). `io-in-domain` reports `open`, `input`, `time.sleep`,
   `os.system` and imports of `subprocess`, `socket`, `requests`, `httpx`, `urllib.request`,

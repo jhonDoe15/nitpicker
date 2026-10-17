@@ -67,6 +67,54 @@ describe('test files', () => {
   });
 });
 
+describe('test support', () => {
+  const inFile = (rule, path) => ({ ...finding(rule, 'm'), path });
+
+  it.each(['S501', 'S113', 'S324'])('drop %s in test support folders and conftest.py', (rule) => {
+    const support = ['src/app/test_support/a.py', 'mocks/a.py', 'conftest.py', 'fixtures/a.py'];
+
+    expect(withoutAllowedForms(support.map((path) => inFile(rule, path)))).toEqual([]);
+  });
+
+  it('keep other rules there and security rules in production code', () => {
+    const kept = [inFile('ARG001', 'mocks/a.py'), inFile('S501', 'src/app/client.py')];
+
+    expect(withoutAllowedForms(kept)).toEqual(kept);
+  });
+});
+
+describe('hash classes inside an HMAC', () => {
+  const s303 = (line, column) => ({
+    ...finding('S303', 'Use of insecure MD2, MD4, MD5, or SHA1 hash function'),
+    path: 'a.py',
+    location: { line, column },
+  });
+  const lines = {
+    1: '    signer = crypto_hmac.HMAC(key, hashes.SHA1())',
+    2: '    signer = hmac.HMAC(',
+    3: '        key,',
+    4: '        hashes.SHA1(),',
+    5: '    )',
+    6: '    digest = hashes.Hash(hashes.SHA1())',
+    7: '    hashes.MD5()',
+  };
+  const lineOf = (_path, line) => lines[line];
+
+  it.each([
+    [1, 36],
+    [4, 9],
+  ])('drop the finding on line %s, which names the HMAC hash', (line, column) => {
+    expect(withoutAllowedForms([s303(line, column)], { lineOf })).toEqual([]);
+  });
+
+  it.each([
+    [6, 26],
+    [7, 5],
+  ])('keep the finding on line %s, which is no HMAC', (line, column) => {
+    expect(withoutAllowedForms([s303(line, column)], { lineOf })).toEqual([s303(line, column)]);
+  });
+});
+
 describe('comment labels', () => {
   const era = (line) => ({
     ...finding('ERA001', 'Found commented-out code'),

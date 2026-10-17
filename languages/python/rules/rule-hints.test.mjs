@@ -256,4 +256,13 @@ describe('hints follow the libraries of the project', () => {
       expected('skipped-test-without-reason', allowed),
     );
   });
+
+  it.each([
+    ['torch.load', 'torch.load(path, weights_only=True)'],
+    ['numpy.load', 'allow_pickle=False'],
+    ['ruamel.yaml.YAML', 'YAML(typ="safe")'],
+    ['yaml.full_load', 'yaml.safe_load(text)'],
+  ])('name the safe loader for %s', (subject, form) => {
+    expect(advice('unsafe-deserialization', {}, 'python-rules', subject)).toContain(form);
+  });
 });
