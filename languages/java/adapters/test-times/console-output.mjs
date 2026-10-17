@@ -1,3 +1,4 @@
+import { sourceOf } from './spring-boot-tests.mjs';
 import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { childrenNamed, parseXml } from '../../ingest/common.mjs';
 import { sourceLocator } from '../reporting/kotlin-reports.mjs';
@@ -85,19 +86,12 @@ function readEntries(reportRoot) {
   });
 }
 
-function sourceOf(locate, className) {
-  const parts = className.split('.');
-  const simple = parts.pop().split('$')[0];
-  const directory = parts.join('/');
-  return locate(directory, `${simple}.java`) ?? locate(directory, `${simple}.kt`) ?? '.';
-}
-
 export function readConsoleEntries({ reportRoot, projectRoot, testRoots }) {
   const locate = sourceLocator(projectRoot, testRoots);
   return readEntries(reportRoot)
     .filter(({ messages }) => messages.length > 0)
     .map(({ className, test, messages }) => ({
-      file: sourceOf(locate, className),
+      file: sourceOf(locate, className) ?? '.',
       test,
       messages,
     }));

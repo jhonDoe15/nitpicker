@@ -1,3 +1,4 @@
+import { isPublished } from './configuration/publishing.mjs';
 import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { childAt, childrenAt, childrenNamed, parseXml } from '../ingest/common.mjs';
@@ -11,14 +12,8 @@ const GMAVENPLUS = 'org.codehaus.gmavenplus:gmavenplus-plugin';
 const GROOVY_TEST_ROOT = 'src/test/groovy';
 const JACOCO = 'org.jacoco:jacoco-maven-plugin';
 const SUREFIRE = 'org.apache.maven.plugins:maven-surefire-plugin';
-const DEPLOY = 'org.apache.maven.plugins:maven-deploy-plugin';
 const FAILSAFE = 'org.apache.maven.plugins:maven-failsafe-plugin';
-const PUBLISHING_PLUGINS = [
-  'org.sonatype.central:central-publishing-maven-plugin',
-  'org.sonatype.plugins:nexus-staging-maven-plugin',
-  'org.apache.maven.plugins:maven-release-plugin',
-];
-const LIBRARY_PACKAGING = new Set(['jar', 'bundle', 'maven-plugin']);
+
 const AGENT_GOALS = ['prepare-agent', 'prepare-agent-integration'];
 const FAILSAFE_SKIPS = ['skip', 'skipITs', 'skipTests'];
 const SKIP_PROPERTIES = ['skipITs', 'skipTests'];
@@ -87,19 +82,6 @@ function runsFailsafe(project, plugin) {
 function rootsInside(basedir, roots) {
   const resolved = roots.map((root) => path.resolve(basedir, root));
   return [...new Set(resolved.filter((root) => root === basedir || insideOf(basedir, root)))];
-}
-
-function isPublished(project, plugins) {
-  const packaging = textAt(project, 'packaging') ?? 'jar';
-  const deploys =
-    childAt(project, 'distributionManagement') !== undefined ||
-    PUBLISHING_PLUGINS.some((name) => plugins.has(name));
-  return (
-    LIBRARY_PACKAGING.has(packaging) &&
-    deploys &&
-    !isTrue(textAt(project, 'properties', 'maven.deploy.skip')) &&
-    !isTrue(textAt(plugins.get(DEPLOY), 'configuration', 'skip'))
-  );
 }
 
 function helperRoots(plugin, goal, basedir) {

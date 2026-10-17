@@ -69,3 +69,10 @@ export function isSpringBootTest(text, context) {
   }
   return false;
 }
+
+export function sourceOf(locate, className) {
+  const parts = className.split('.');
+  const simple = parts.pop().split('$')[0];
+  const directory = parts.join('/');
+  return typeSource(locate, directory, simple);
+}

@@ -9,7 +9,7 @@ import {
   TEST_TIME_DEFAULTS,
   renderMessage,
 } from '../../../../shared/policy.mjs';
-import { isSpringBootTest, typeSource } from './spring-boot-tests.mjs';
+import { isSpringBootTest, sourceOf } from './spring-boot-tests.mjs';
 import { inheritedMethod, superclassOf } from './inherited-tests.mjs';
 import { templateMethods, testMethod } from './test-methods.mjs';
 
@@ -58,13 +58,6 @@ function slowestRuns(testCases) {
     }
   }
   return [...byKey.values()];
-}
-
-function sourceOf(locate, className) {
-  const parts = className.split('.');
-  const simple = parts.pop().split('$')[0];
-  const directory = parts.join('/');
-  return typeSource(locate, directory, simple);
 }
 
 function readOptional(root, relative) {
