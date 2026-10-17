@@ -1,5 +1,8 @@
 import { TEST_RUNNERS } from '../../../../test-runner/runners.mjs';
-import { runnerVocabulary } from '../../../../test-runner/runner-vocabulary.mjs';
+import {
+  projectRunnerVocabulary,
+  runnerVocabulary,
+} from '../../../../test-runner/runner-vocabulary.mjs';
 
 export const RUNNER_OPTION_PROPERTY = { runner: { enum: TEST_RUNNERS } };
 
@@ -8,5 +11,6 @@ export const RUNNER_OPTION_SCHEMA = [
 ];
 
 export function vocabularyOf(context) {
-  return runnerVocabulary(context.options[0]?.runner);
+  const runner = context.options[0]?.runner;
+  return runner === undefined ? projectRunnerVocabulary() : runnerVocabulary(runner);
 }

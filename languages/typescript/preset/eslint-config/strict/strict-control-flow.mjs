@@ -1,3 +1,4 @@
+import { projectRunnerVocabulary } from '../../test-runner/runner-vocabulary.mjs';
 import { SYNTAX_EXCEPTION_HINT } from '../rule-hints.mjs';
 
 const loopMessage = 'for...of is the only loop; iterate the items with for...of.';
@@ -10,8 +11,7 @@ export const loopSelectors = [
   { selector: 'DoWhileStatement', message: loopMessage },
 ];
 
-const testLoopMessage =
-  'for...of is the only loop; iterate the items with for...of, or give each case its own test with it.each.';
+const testLoopMessage = `for...of is the only loop; iterate the items with for...of, or ${projectRunnerVocabulary().eachCase}.`;
 
 const testLoopSelectors = loopSelectors.map(({ selector }) => ({
   selector,

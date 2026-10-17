@@ -4,7 +4,9 @@ import {
   isReactExpression,
   reactBindingNames,
 } from './react-test-files.mjs';
-import { mockedModuleSource } from '../analysis/test-code-analysis.mjs';
+import { moduleMocks } from '../testing/runners/module-mocks.mjs';
+import { runnerApisOf } from '../testing/runners/runner-apis.mjs';
+import { spiedMember } from '../testing/runners/runner-doubles.mjs';
 
 const instanceMethods = new Set([
   'instance',
@@ -64,21 +66,14 @@ function isFiberName(name) {
   return name !== undefined && (fiberProperties.has(name) || name.startsWith(fiberKeyPrefix));
 }
 
-function spiedHook(node, reactNames) {
-  const [target, hook] = node.arguments;
-  const spies = node.callee.type === 'MemberExpression' && memberName(node.callee) === 'spyOn';
-  const onReact = target !== undefined && isReactExpression(target, reactNames);
-  const name = hook === undefined ? undefined : staticName(hook);
-  return spies && onReact && hookNamePattern.test(name ?? '') ? name : undefined;
+function spiedHook(node, { reactNames, apis }) {
+  const spied = spiedMember(apis, node);
+  const onReact = spied !== undefined && isReactExpression(spied.target, reactNames);
+  const name = onReact ? staticName(spied.property) : undefined;
+  return hookNamePattern.test(name ?? '') ? name : undefined;
 }
 
-function mockedModule(node) {
-  const name = mockedModuleSource(node);
-  return mockedModules.has(name) ? name : undefined;
-}
-
-function mockedHooks(node, visitorKeys) {
-  const factory = node.arguments[1];
+function mockedHooks(factory, visitorKeys) {
   const keys = factory === undefined ? [] : descendants(factory, visitorKeys);
   return keys
     .filter((key) => key.type === 'Property')
@@ -86,13 +81,13 @@ function mockedHooks(node, visitorKeys) {
     .filter((name) => hookNamePattern.test(name ?? ''));
 }
 
-function reactMock(node, visitorKeys) {
-  const name = mockedModule(node);
-  const hooks = name === undefined ? [] : mockedHooks(node, visitorKeys);
+function reactMock(node, { apis, visitorKeys }) {
+  const mock = moduleMocks(apis, node).find(({ name }) => mockedModules.has(name));
+  const hooks = mock === undefined ? [] : mockedHooks(mock.replacement, visitorKeys);
   if (hooks.length > 0) {
     return hooks.join('`, `');
   }
-  return name === REACT_MODULE ? name : undefined;
+  return mock?.name === REACT_MODULE ? mock.name : undefined;
 }
 
 function importedBindings(statement) {
@@ -186,6 +181,8 @@ export const rule = {
     const bindings = factoryBindings(context.sourceCode.ast);
     const nodes = descendants(context.sourceCode.ast, context.sourceCode.visitorKeys);
     const wrappers = { bindings, names: wrapperNames(nodes, bindings) };
+    const apis = runnerApisOf(context.sourceCode.ast);
+    const visitorKeys = context.sourceCode.visitorKeys;
     return {
       CallExpression(node) {
         const callee = node.callee;
@@ -193,11 +190,11 @@ export const rule = {
         if (usesComponentInternals(callee, method, wrappers)) {
           context.report({ node, messageId: 'componentInternals', data: { name: `${method}()` } });
         }
-        const mocked = reactMock(node, context.sourceCode.visitorKeys);
+        const mocked = reactMock(node, { apis, visitorKeys });
         if (mocked !== undefined) {
           context.report({ node, messageId: 'reactMock', data: { name: mocked } });
         }
-        const hook = spiedHook(node, reactNames);
+        const hook = spiedHook(node, { reactNames, apis });
         if (hook !== undefined) {
           context.report({ node, messageId: 'hookSpy', data: { name: hook } });
         }
