@@ -4,10 +4,12 @@ import { nextOccurrence } from '../rules/finding-helpers.mjs';
 import { createIdentityCounter, normalizeReportPath } from './common.mjs';
 
 const FULL_COVERAGE = 100;
+const CRAP_EXPONENT = 3;
+const LIZARD_FIELD_COUNT = 11;
 
 export function calculateCrap(complexity, coveragePercent) {
   const uncovered = 1 - coveragePercent / 100;
-  return complexity * complexity * uncovered ** 3 + complexity;
+  return complexity * complexity * uncovered ** CRAP_EXPONENT + complexity;
 }
 
 export function ingestCrapRows(parsed, options, resolve) {
@@ -78,7 +80,7 @@ export function parseLizardCsv(text) {
     const ccn = Number.parseInt(fields[1], 10);
     const start = Number.parseInt(fields[9], 10);
     const end = Number.parseInt(fields[10], 10);
-    if (fields.length < 11 || ![ccn, start, end].every(Number.isInteger)) {
+    if (fields.length < LIZARD_FIELD_COUNT || ![ccn, start, end].every(Number.isInteger)) {
       throw new TypeError(`Unrecognized lizard CSV row: ${line}`);
     }
     functions.push({ ccn, file: fields[6], name: fields[7], longName: fields[8], start, end });
@@ -119,7 +121,8 @@ function consumeCsvCharacter(state, token, characters) {
 function splitCsvLine(line) {
   const state = { fields: [], current: '', quoted: false };
   const characters = line.split('').entries();
-  for (const [index, char] of characters)
+  for (const [index, char] of characters) {
     consumeCsvCharacter(state, { char, next: line[index + 1] }, characters);
+  }
   return [...state.fields, state.current];
 }

@@ -1,4 +1,4 @@
-import { existsSync, readdirSync } from 'node:fs';
+import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { globToRegExp } from '../../../../shared/glob.mjs';
 import {
@@ -6,6 +6,8 @@ import {
   STRUCTURE_TOOL,
 } from '../../../../shared/ingest/structure-report.mjs';
 import { collectFileLimitFindings } from '../../../../shared/rules/file-limits.mjs';
+import { javaFolderDepthFindings } from '../size/folder-depth.mjs';
+import { javaLineLengthFindings } from '../size/line-length.mjs';
 
 export function readJavaStructureFindings(reportRoot, projectRoot) {
   return readStructureFindings(reportRoot, projectRoot);
@@ -23,9 +25,9 @@ function rootsOf(manifest, kind, kotlin) {
   ].filter((root) => !OUTSIDE_SOURCES.test(root));
 }
 
-export function readJavaFileLimitFindings(projectRoot, { manifest, kotlin = false, policy = {} }) {
-  const excluders = (policy.exclude ?? []).map((glob) => globToRegExp(glob));
-  const entries = [
+function projectCodeFiles(projectRoot, { manifest, kotlin, exclude = [] }) {
+  const excluders = exclude.map((glob) => globToRegExp(glob));
+  return [
     ...codeFiles(projectRoot, {
       roots: rootsOf(manifest, 'source', kotlin),
       kind: 'source',
@@ -33,12 +35,40 @@ export function readJavaFileLimitFindings(projectRoot, { manifest, kotlin = fals
     }),
     ...codeFiles(projectRoot, { roots: rootsOf(manifest, 'test', kotlin), kind: 'test', kotlin }),
   ].filter((entry) => !excluders.some((matcher) => matcher.test(entry.path)));
-  return collectFileLimitFindings(projectRoot, entries, {
+}
+
+export function readJavaFileLimitFindings(projectRoot, { manifest, kotlin = false, policy = {} }) {
+  const entries = projectCodeFiles(projectRoot, { manifest, kotlin, exclude: policy.exclude });
+  const rootEntries =
+    policy.baselineRoot === undefined
+      ? entries
+      : projectCodeFiles(policy.baselineRoot, { manifest, kotlin, exclude: policy.exclude });
+  const options = {
     analyzerName: STRUCTURE_TOOL,
     thresholds: policy.thresholds,
     exceptions: policy.exceptions,
-    checks: ['fileLines', 'folderFiles'],
-  });
+  };
+  return [
+    ...collectFileLimitFindings(projectRoot, entries, {
+      ...options,
+      checks: ['fileLines', 'folderFiles'],
+    }),
+    ...javaLineLengthFindings(javaFiles(projectRoot, entries), options),
+    ...javaFolderDepthFindings(entries, { ...options, rootEntries }),
+  ];
+}
+
+function javaFiles(projectRoot, entries) {
+  const base = path.resolve(projectRoot);
+  return entries
+    .filter((entry) => entry.path.endsWith('.java'))
+    .flatMap((entry) => {
+      const full = path.resolve(base, entry.path);
+      if (!full.startsWith(base + path.sep)) {
+        return [];
+      }
+      return [{ ...entry, text: readFileSync(full, 'utf8') }];
+    });
 }
 
 function codeFiles(projectRoot, { roots, kind, kotlin }) {
@@ -48,6 +78,10 @@ function codeFiles(projectRoot, { roots, kind, kotlin }) {
     .flatMap((root) =>
       readdirSync(path.join(projectRoot, root), { recursive: true })
         .filter((file) => extensions.includes(path.extname(file)))
-        .map((file) => ({ path: path.posix.join(root, file.split(path.sep).join('/')), kind })),
+        .map((file) => ({
+          path: path.posix.join(root, file.split(path.sep).join('/')),
+          packagePath: path.posix.dirname(file.split(path.sep).join('/')).replace(/^\.$/u, ''),
+          kind,
+        })),
     );
 }

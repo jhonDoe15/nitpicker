@@ -27,7 +27,12 @@ export function structureFindings(entries, projectRoot, { textOf = methodText, h
 
 export function sourceLines(sources, projectRoot, file) {
   if (!sources.has(file)) {
-    sources.set(file, readFileSync(path.join(projectRoot, file), 'utf8').split(/\r?\n/));
+    const base = path.resolve(projectRoot);
+    const full = path.resolve(base, file);
+    if (!full.startsWith(base + path.sep)) {
+      throw new Error(`Source path escapes the project: ${file}`);
+    }
+    sources.set(file, readFileSync(full, 'utf8').split(/\r?\n/));
   }
   return sources.get(file);
 }

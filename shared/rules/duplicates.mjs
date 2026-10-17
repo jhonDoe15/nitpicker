@@ -8,8 +8,6 @@
 //     lines?: number, tokens?: number,            // size of the clone
 //   }
 // The two sides are ordered by path, so the same pair gives the same finding either way round.
-// `clonePartnerPath` reads the other file of the pair back from the identity, so an `exclude` or
-// exception that matches either file of the pair applies.
 // Identity is the file pair, a hash of the fragment and the n-th occurrence of that pair, never a
 // line number. Each clone is one enforceable `duplicate-clone` plus descriptive size metrics.
 
