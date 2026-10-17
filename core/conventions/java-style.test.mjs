@@ -1,10 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import { resolveComparison } from '../diff/git/repository/git.mjs';
-import { fixtureGit, useGitFixtures } from '../diff/git/test-support/git-repository.mjs';
-import { writeFiles } from '../diff/git/test-support/fixture-files.mjs';
+import { branchOff } from '../diff/git/test-support/branch-off.mjs';
+import { useGitFixtures } from '../diff/git/test-support/git-repository.mjs';
 import { wrappedCall } from '../../languages/java/conventions/measures/test-support/wrapped-call.mjs';
 import { resolveHeadPolicy } from '../../languages/typescript/preset/head-policy.mjs';
-import { comparisonPolicy, snapshotPolicy } from './resolve.mjs';
+import { snapshotPolicy } from './resolve.mjs';
+import { comparedConventions } from './test-support/compare-policy.mjs';
 
 const { createGitRepository } = useGitFixtures();
 const HEADER = "Following this project's conventions:\n";
@@ -29,23 +30,8 @@ function follow(config, files) {
 
 function compare(config, base, branch) {
   const { root } = createGitRepository(base);
-  fixtureGit(root, ['checkout', '-q', '-b', 'feature']);
-  writeFiles(root, branch);
-  fixtureGit(root, ['add', '-A']);
-  fixtureGit(root, ['-c', 'commit.gpgsign=false', 'commit', '-q', '-m', 'feature']);
-  const chunks = [];
-  const policy = comparisonPolicy(
-    {
-      config,
-      currentProjectRoot: root,
-      headPolicy: resolveHeadPolicy(config, root),
-      stdout: { write: (chunk) => chunks.push(chunk) },
-      repositoryRoot: root,
-      base: { baseRef: 'main' },
-    },
-    resolveComparison,
-  );
-  return { conventions: policy.conventions, printed: chunks.join('') };
+  branchOff(root, branch);
+  return comparedConventions({ root, config, resolvers: { resolveComparison, resolveHeadPolicy } });
 }
 
 function javaFiles(code, count = 3) {

@@ -71,8 +71,8 @@ function ktfmtChoices(root) {
   };
 }
 
-function detektChoices(root, configured) {
-  const file = detektConfigOf(root, configured, 'head');
+function detektChoices({ root, snapshot }, configured) {
+  const file = detektConfigOf(root, configured, snapshot);
   const text = file === undefined ? undefined : readInside(root, file, 'utf8');
   const active = text === undefined ? undefined : detektWildcardActive(text);
   return choicesFrom('your detekt config', {
@@ -119,18 +119,23 @@ function summaryLines({ config, projectRoot }, conventions) {
   }
 }
 
-export function kotlinStyle({ config, projectRoot }) {
+function headConfigRoot(projectRoot) {
+  return () => ({ path: projectRoot, snapshot: 'head' });
+}
+
+export function kotlinStyle({ config, projectRoot, configRoot = headConfigRoot(projectRoot) }) {
   const tools = config.tools ?? {};
   const configured = config.kotlin?.detektConfig;
-  const formatter = kotlinFormatterOf(projectRoot, config.kotlin?.formatter);
+  const { path: root, snapshot } = configRoot();
+  const formatter = kotlinFormatterOf(root, config.kotlin?.formatter);
   const detektListed =
     projectWins(tools, 'detekt') || (configured !== undefined && tools.detekt === undefined);
   return {
     unused: unusedFor(formatter),
     project: {
-      ...(detektListed ? detektChoices(projectRoot, configured) : {}),
-      ...(formatter === 'ktfmt' && projectWins(tools, 'ktfmt') ? ktfmtChoices(projectRoot) : {}),
-      ...(formatter === 'ktlint' && projectWins(tools, 'ktlint') ? ktlintChoices(projectRoot) : {}),
+      ...(detektListed ? detektChoices({ root, snapshot }, configured) : {}),
+      ...(formatter === 'ktfmt' && projectWins(tools, 'ktfmt') ? ktfmtChoices(root) : {}),
+      ...(formatter === 'ktlint' && projectWins(tools, 'ktlint') ? ktlintChoices(root) : {}),
     },
     note: () => undefined,
     summary: (conventions) => summaryLines({ config, projectRoot }, conventions),
