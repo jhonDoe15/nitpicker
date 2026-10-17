@@ -25,10 +25,10 @@ export const THRESHOLD_KEYS = [
 const TEST_TIME_KEYS = ['unitTestSeconds', 'integrationTestSeconds'];
 const TEST_TIME_PRESETS = new Set(['java', 'kotlin', 'python']);
 const THRESHOLD_PRESETS = {
-  folderDepth: ['typescript', 'javascript', 'java', 'kotlin'],
-  classMethods: ['java', 'kotlin'],
-  classFields: ['java', 'kotlin'],
-  inheritanceDepth: ['java', 'kotlin'],
+  folderDepth: ['typescript', 'javascript', 'java', 'kotlin', 'python'],
+  classMethods: ['java', 'kotlin', 'python'],
+  classFields: ['java', 'kotlin', 'python'],
+  inheritanceDepth: ['java', 'kotlin', 'python'],
 };
 const WHOLE_NUMBER_THRESHOLD_KEYS = new Set([
   'fileLines',
@@ -45,21 +45,8 @@ const EXCEPTION_KEYS = ['rule', 'paths', 'reason'];
 
 export const TYPESCRIPT_ONLY_KEYS = ['layout', 'exceptions', 'react', 'i18n', 'tools'];
 
-const PRESET_KEYS = { testConsole: ['typescript', 'javascript', 'python'] };
-
 export function configError(message) {
   return new Error(`${CONFIG_FILE_NAME}: ${message}`);
-}
-
-export function validatePresetKeys(config) {
-  const preset = config.preset ?? 'typescript';
-  for (const [key, presets] of Object.entries(PRESET_KEYS)) {
-    if (config[key] !== undefined && !presets.includes(preset)) {
-      throw configError(
-        `"${key}" is not supported with "preset": "${preset}". Supported with: ${presets.join(', ')}`,
-      );
-    }
-  }
 }
 
 export function isNonEmptyString(value) {

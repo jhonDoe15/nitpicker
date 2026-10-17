@@ -1,4 +1,4 @@
-import { existsSync, readdirSync, readFileSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import path from 'node:path';
 
@@ -15,11 +15,6 @@ function insideRoot(projectRoot, name) {
 export function readProjectFile(projectRoot, name) {
   const full = insideRoot(projectRoot, name);
   return full !== undefined && existsSync(full) ? readFileSync(full, 'utf8') : undefined;
-}
-
-export function listProjectFiles(projectRoot, folder) {
-  const full = insideRoot(projectRoot, folder);
-  return full !== undefined && existsSync(full) ? readdirSync(full) : [];
 }
 
 export function parseToml(text) {

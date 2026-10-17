@@ -161,7 +161,6 @@ export const HELD_MESSAGES = {
   ...SIZE_HELD_MESSAGES,
 };
 
-const BOTH = { typescript: true, java: true, python: false };
 const ALL = { typescript: true, java: true, python: true };
 const TYPESCRIPT_ONLY = { typescript: true, java: false, python: false };
 const withKotlin = (enforcedBy, kotlin) => ({ ...enforcedBy, kotlin });
@@ -263,7 +262,7 @@ export const RULES = [
     enforcedBy: withKotlin(TYPESCRIPT_ONLY, false),
   },
   ...UNUSED_API_RULES,
-  ...sizeRules({ all: ALL, both: BOTH, withKotlin }),
+  ...sizeRules({ all: ALL, withKotlin }),
   ...reuseRules(RULE_IDS, withKotlin(TYPESCRIPT_ONLY, false)),
   ...sourceRules(RULE_IDS, withKotlin(TYPESCRIPT_ONLY, false)),
   {

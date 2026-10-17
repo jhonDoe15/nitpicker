@@ -14,21 +14,24 @@ export function temporaryRoot() {
   return root;
 }
 
+export const DJANGO_OMIT = ['    *_tests.py', '    */tests.py', '    */tests_*.py'];
+
 export function coverageRc(...sources) {
+  const django = sources.at(-1) === DJANGO_OMIT;
   return [
     '[run]',
     'branch = True',
     'parallel = False',
     'source =',
-    ...sources.map((source) => `    ${source}`),
+    ...(django ? sources.slice(0, -1) : sources).map((source) => `    ${source}`),
     'omit =',
     '    test_*.py',
     '    *_test.py',
-    '    tests.py',
     '    conftest.py',
     '    */tests/*',
     '    */test/*',
     '    testing/*',
+    ...(django ? DJANGO_OMIT : []),
     '[report]',
     'exclude_lines =',
     String.raw`    ^\s*if (typing\.)?TYPE_CHECKING:`,
@@ -81,6 +84,20 @@ export function contextFor(root, settings = {}, exclude = []) {
       settings,
       reportRoot,
       exclude,
+    }),
+    reportRoot,
+  };
+}
+
+export function contextWithConventions(root, conventions, toolPrecedence) {
+  const reportRoot = temporaryRoot();
+  return {
+    context: createToolContext({
+      projectRoot: root,
+      liveRoot: root,
+      reportRoot,
+      conventions,
+      toolPrecedence,
     }),
     reportRoot,
   };

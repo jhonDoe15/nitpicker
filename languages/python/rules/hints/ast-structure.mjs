@@ -1,17 +1,31 @@
+import { validatorNamed } from '../libraries/library-tables.mjs';
+import { validatorsOf } from '../libraries/project-libraries.mjs';
 import { RULES_TOOL } from './tool.mjs';
 
 const HANDLE_EXCEPTION =
   'Catch the specific exception and handle it, or re-raise it with its cause (`raise DomainError(...) from error`); `contextlib.suppress(SpecificError)` ignores one expected error.';
 
-const VALIDATOR_FORMS = {
-  pydantic: 'pydantic (`Model.model_validate(data)`)',
-  msgspec: 'msgspec (`msgspec.json.decode(raw, type=Model)`)',
-  cattrs: 'cattrs (`cattrs.structure(data, Model)`)',
-  marshmallow: 'marshmallow (`Schema().load(data)`)',
+const CAUGHT_LOG_ADVICE = {
+  logging:
+    'Keep the traceback: `logger.exception("message")` or `logger.error("message", exc_info=True)`; the exception as an argument drops it. Re-raising after the log also passes.',
+  structlog:
+    'Keep the traceback: `logger.exception("event")` or `logger.error("event", exc_info=True)`; the exception as a field drops it. Re-raising after the log also passes.',
+  loguru:
+    'Keep the traceback: `logger.exception("message")` or `logger.opt(exception=True).error("message")`; the exception as an argument drops it. Re-raising after the log also passes.',
 };
 
-function boundaryAdvice(validator) {
-  return `Parse untrusted input once at the boundary with ${VALIDATOR_FORMS[validator]} in an \`adapters/\` package, not with \`isinstance\` checks or a \`TypeGuard\`.`;
+function validatorForm(name) {
+  return `${name} (\`${validatorNamed(name).call}\`)`;
+}
+
+function boundaryAdvice(libraries) {
+  const [validator] = validatorsOf(libraries);
+  return `Parse untrusted input once at the boundary with ${validatorForm(validator)} in an \`adapters/\` package, not with \`isinstance\` checks or a \`TypeGuard\`.`;
+}
+
+function importBoundaryAdvice(libraries) {
+  const validators = validatorsOf(libraries);
+  return `Use ${validators.join(' or ')} only in an \`adapters/\` package to parse untrusted input (\`${validatorNamed(validators[0]).call}\`), and pass frozen dataclasses on from there.`;
 }
 
 function ownerOf(subject) {
@@ -35,6 +49,12 @@ export const STRUCTURE_HINTS = [
   },
   {
     tool: RULES_TOOL,
+    rules: ['catch-log-without-exception'],
+    describe: (subject) => `\`${subject}\` logs a caught error without its traceback`,
+    allowed: (_subject, libraries) => CAUGHT_LOG_ADVICE[libraries?.logging ?? 'logging'],
+  },
+  {
+    tool: RULES_TOOL,
     rules: ['blind-suppress'],
     describe: (subject) => `\`${subject}\` ignores every error`,
     allowed:
@@ -51,8 +71,7 @@ export const STRUCTURE_HINTS = [
     tool: RULES_TOOL,
     rules: ['pydantic-boundary'],
     describe: (subject) => `${subject} is imported outside an adapters/ package`,
-    allowed:
-      'Use pydantic only in an `adapters/` package to parse untrusted input, and pass frozen dataclasses on from there.',
+    allowed: (_subject, libraries) => importBoundaryAdvice(libraries),
   },
   {
     tool: RULES_TOOL,
@@ -84,9 +103,7 @@ export const STRUCTURE_HINTS = [
     tool: RULES_TOOL,
     rules: ['no-inline-suppression'],
     describe: (subject) => `Inline suppression \`# ${subject}\``,
-    allowed:
-      'Remove the comment and fix the code. If it must stay, add a "python.exceptions" entry for no-inline-suppression for this path.',
-    exception: false,
+    allowed: 'Remove the comment and fix the code.',
   },
   {
     tool: RULES_TOOL,
@@ -129,7 +146,7 @@ export const STRUCTURE_HINTS = [
     rules: ['module-level-mutable-state'],
     describe: (subject) => `\`${subject}\` changes a module-level collection`,
     allowed:
-      'Keep the state in an object that is created in the composition root and passed in, or build a new immutable value and return it. A registry filled once at import time (a decorator that adds the function to a table) is not run-time state: add an exception for that path.',
+      'Keep the state in an object that is created in the composition root and passed in, or build a new immutable value and return it. A registry filled once at import time (a decorator that adds the function to a table) is not run-time state; the exception route below covers its path.',
   },
   {
     tool: RULES_TOOL,
@@ -143,7 +160,7 @@ export const STRUCTURE_HINTS = [
     tool: RULES_TOOL,
     rules: ['handwritten-boundary-guard'],
     describe: (subject) => `\`${subject}\` checks untrusted data by hand`,
-    allowed: (_subject, libraries) => boundaryAdvice(libraries?.validator ?? 'pydantic'),
+    allowed: (_subject, libraries) => boundaryAdvice(libraries),
   },
   {
     tool: RULES_TOOL,

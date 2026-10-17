@@ -7,12 +7,13 @@ import {
   validateStringArray,
 } from '../../../../shared/config.mjs';
 import { RULE_IDS, SHARED_EXCEPTION_RULES } from '../../../../shared/policy.mjs';
+import { PYTHON_SIZE_RULES } from '../../../../shared/project-rules/size-rules.mjs';
 import { ruleIdProblem } from './python-rule-ids.mjs';
 
-export const PYTHON_TOP_LEVEL_EXCEPTION_RULES = [
-  ...SHARED_EXCEPTION_RULES,
-  RULE_IDS.testConsoleOutput,
-];
+const LIMIT_RULES = [...SHARED_EXCEPTION_RULES, ...PYTHON_SIZE_RULES];
+
+/** The shared limits the top-level "exceptions" lift; python.exceptions lifts every other rule. */
+export const PYTHON_TOP_LEVEL_EXCEPTION_RULES = [...LIMIT_RULES, RULE_IDS.testConsoleOutput];
 const ENVIRONMENTS = ['uv', 'poetry', 'path'];
 const FORMATTERS = ['ruff', 'black'];
 const TEST_RUNNERS = ['pytest', 'unittest'];
@@ -88,7 +89,7 @@ function validateSettings(settings) {
 
 function validateRuleIds(exceptions) {
   for (const [index, { rule }] of exceptions.entries()) {
-    if (SHARED_EXCEPTION_RULES.includes(rule)) {
+    if (LIMIT_RULES.includes(rule)) {
       throw configError(
         `"python.exceptions[${String(index)}].rule" is "${rule}", a file limit shared by every preset: lift it in the top-level "exceptions" instead`,
       );

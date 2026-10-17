@@ -1,10 +1,19 @@
-import { describe, expect, it } from 'vitest';
-import { consoleFacts, consoleOutputFindings } from './console-output.mjs';
+import { mkdtempSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import path from 'node:path';
+import { afterEach, describe, expect, it } from 'vitest';
+import {
+  consoleFacts,
+  consoleOutputFindings,
+  consoleReportEnvironment,
+  projectRelative,
+  readConsoleReport,
+} from './console-output.mjs';
 
 const ROOT = '/work/shop';
 
 function findingsFor(entries, headPolicy = {}) {
-  return consoleOutputFindings({ tests: [], entries }, { projectRoot: ROOT, headPolicy });
+  return consoleOutputFindings({ entries }, { projectRoot: ROOT, headPolicy });
 }
 
 describe('Python console output', () => {
@@ -70,7 +79,7 @@ describe('Python console output', () => {
       { file: '', test: '', messages: ['y'] },
     ];
 
-    expect(consoleFacts({ tests: [], entries }, ROOT)).toEqual([
+    expect(consoleFacts({ entries }, ROOT)).toEqual([
       { file: 'tests/test_a.py', test: 'test_a', messages: ['UserWarning: x'] },
       { file: '', test: '', messages: ['y'] },
     ]);
@@ -84,5 +93,53 @@ describe('Python console output', () => {
     const names = ['tmpaeiouaei', 'tmp_x8y2k3j', 'tmpk2j_8xq1', 'tmp4kq9zw2r'];
 
     expect(new Set(names.map(identityOf)).size).toBe(1);
+  });
+});
+
+const roots = [];
+afterEach(() => {
+  for (const root of roots.splice(0)) {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+describe('the console report', () => {
+  it('reads a missing report as empty, and a tool error when pytest ran tests', () => {
+    const root = mkdtempSync(path.join(tmpdir(), 'nitpicker-console-'));
+    roots.push(root);
+
+    expect(readConsoleReport(root, { testRunner: 'unittest', testsRan: true })).toEqual({
+      report: { entries: [] },
+      findings: [],
+    });
+    expect(readConsoleReport(root, { testRunner: 'pytest', testsRan: false }).findings).toEqual([]);
+    expect(readConsoleReport(root, { testRunner: 'pytest', testsRan: true }).findings).toEqual([
+      {
+        tool: 'test-console',
+        rule: 'console-report-missing',
+        path: '.',
+        identity: 'console-report-missing',
+        message:
+          "Test console output was not checked: the pytest run left no test-console.json. A test that ends the process (os._exit) or a plugin that stops pytest early keeps nitpicker's console plugin from writing it.",
+        classification: 'tool-error',
+      },
+    ]);
+  });
+
+  it('names the report file only for a pytest run', () => {
+    const reportRoot = '/work/out';
+
+    expect(consoleReportEnvironment({ project: { testRunner: 'pytest' }, reportRoot })).toEqual({
+      NITPICKER_CONSOLE_REPORT: path.join(reportRoot, 'test-console.json'),
+    });
+    expect(consoleReportEnvironment({ project: { testRunner: 'unittest' }, reportRoot })).toEqual(
+      {},
+    );
+  });
+
+  it('reads paths outside the project as the project', () => {
+    expect(projectRelative('/work/app', '/work/app/tests/test_a.py')).toBe('tests/test_a.py');
+    expect(projectRelative('/work/app', '/elsewhere/test_a.py')).toBe('.');
+    expect(projectRelative('/work/app', '')).toBe('.');
   });
 });
