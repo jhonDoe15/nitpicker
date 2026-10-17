@@ -20,6 +20,7 @@ const SETTING_KEYS = [
   'typeChecker',
   'importLinter',
   'sourceRoots',
+  'entryPoints',
   'exceptions',
 ];
 
@@ -72,6 +73,9 @@ function validateSettings(settings) {
   if (settings.sourceRoots !== undefined) {
     validateSourceRoots(settings.sourceRoots);
   }
+  if (settings.entryPoints !== undefined) {
+    validateEntryPoints(settings.entryPoints);
+  }
   if (settings.exceptions !== undefined) {
     validateExceptions(settings.exceptions, 'python.exceptions');
     validateRuleIds(settings.exceptions);
@@ -112,6 +116,13 @@ function validateSourceRoots(sourceRoots) {
   }
   for (const root of sourceRoots) {
     validateProjectRelativePath(root, 'python.sourceRoots');
+  }
+}
+
+function validateEntryPoints(entryPoints) {
+  validateStringArray(entryPoints, 'python.entryPoints');
+  for (const glob of entryPoints) {
+    validateProjectRelativePath(glob, 'python.entryPoints');
   }
 }
 
