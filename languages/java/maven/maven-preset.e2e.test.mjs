@@ -38,6 +38,7 @@ public class Dated {
     }
 
     public String shout(String text) {
+        if (text.isEmpty()) return text;
         return text.toUpperCase();
     }
 }
