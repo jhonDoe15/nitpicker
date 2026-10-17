@@ -30,6 +30,7 @@ export const POLICY_FILES = [
   'languages/typescript/preset/eslint-config/react/react-scope.mjs',
   'languages/typescript/preset/eslint-config/rule-hints.mjs',
   'languages/typescript/preset/eslint-plugin/index.mjs',
+  'languages/typescript/preset/eslint-plugin/type-identity/functional-plugin.mjs',
   'languages/typescript/preset/eslint-plugin/rules/analysis/ancestry.mjs',
   'languages/typescript/preset/eslint-plugin/rules/analysis/narrowing/instanceof-guards.mjs',
   'languages/typescript/preset/eslint-plugin/rules/analysis/subprocess-calls.mjs',
