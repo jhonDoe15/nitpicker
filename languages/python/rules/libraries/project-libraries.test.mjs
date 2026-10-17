@@ -68,8 +68,24 @@ describe('the dependencies a project declares', () => {
 });
 
 describe('the libraries a project uses', () => {
-  it('default to logging and pydantic', () => {
-    expect(detectLibraries(project({}))).toEqual({ logging: 'logging', validator: 'pydantic' });
+  it('default to %s placeholders, logging and pydantic', () => {
+    expect(detectLibraries(project({}))).toEqual({
+      database: 'format',
+      logging: 'logging',
+      validator: 'pydantic',
+    });
+  });
+
+  it.each([
+    ['asyncpg', 'asyncpg>=0.29', 'asyncpg'],
+    ['psycopg', 'psycopg[binary]>=3', 'format'],
+    ['PyMySQL', 'PyMySQL', 'format'],
+    ['databases', 'databases[postgresql]', 'named'],
+    ['aiosqlite', 'aiosqlite', 'sqlite'],
+  ])('name the placeholder style of %s', (_name, requirement, expected) => {
+    const root = project({ 'requirements.txt': `${requirement}\n` });
+
+    expect(detectLibraries(root).database).toBe(expected);
   });
 
   it.each([

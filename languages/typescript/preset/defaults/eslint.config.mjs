@@ -30,6 +30,9 @@ import { i18nRuleIds } from '../eslint-config/i18n/i18n-rules.mjs';
 import { i18nScopeConfigFor, isI18nProject } from '../eslint-config/i18n/i18n-scope.mjs';
 import { readHeadPolicy, readLayout } from '../head-policy.mjs';
 import { existingRoots } from '../layout.mjs';
+import { fileNameRuleOptions } from '../../conventions/file-name-casing.mjs';
+import { assertionFunctionNames } from '../../conventions/measures/assertion-helpers.mjs';
+import { typeImportFixStyle } from '../../conventions/type-import-style.mjs';
 import {
   testEnvironmentConfigFor,
   testEnvironmentsFromVariables,
@@ -73,8 +76,9 @@ const presetConfig = defineConfig(
     rules: {
       '@typescript-eslint/consistent-type-imports': [
         'error',
-        { disallowTypeAnnotations: false, fixStyle: 'separate-type-imports' },
+        { disallowTypeAnnotations: false, fixStyle: typeImportFixStyle(policy.conventions) },
       ],
+      'nitpicker/file-name-casing': ['error', fileNameRuleOptions(policy)],
       'nitpicker/cognitive-complexity': ['error', 15],
       '@typescript-eslint/ban-ts-comment': [
         'error',
@@ -157,7 +161,7 @@ const presetConfig = defineConfig(
       'nitpicker/test-must-use-production-runtime': 'error',
       'vitest/expect-expect': [
         'error',
-        { assertFunctionNames: ['expect', 'assert', 'expectTypeOf', 'assertType'] },
+        { assertFunctionNames: assertionFunctionNames(policy.conventions) },
       ],
       'vitest/no-conditional-in-test': 'error',
       'vitest/valid-expect': ['error', { maxArgs: 2 }],

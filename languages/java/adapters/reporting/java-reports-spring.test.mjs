@@ -33,6 +33,7 @@ function emptyProject() {
   writeFileSync(path.join(reports, 'format.txt'), '');
   writeFileSync(path.join(reports, 'checkstyle.xml'), '<checkstyle></checkstyle>');
   writeFileSync(path.join(reports, 'structure.json'), '[]');
+  writeFileSync(path.join(reports, 'classes.json'), JSON.stringify({ files: {}, classes: [] }));
   writeFileSync(path.join(reportBaseOf(root), 'duplicates.json'), JSON.stringify({ runs: [] }));
   return root;
 }
