@@ -108,6 +108,36 @@ describe.skipIf(!enabled)('hardcoded-secret, credential-shape and secret-in-log'
         inFile('main.py', 'import os\n\nTOKEN = os.getenv("TOKEN", "a1b2c3d4e5f6")\n'),
         ['hardcoded-secret:3 TOKEN'],
       ],
+      ['a key that signs', 'HMAC_KEY = "s3cr3t-hmac-2024"\n', ['hardcoded-secret:1 HMAC_KEY']],
+      [
+        'a name with a value suffix',
+        'DB_PASSWORD_VALUE = "Pa55word2024"\n',
+        ['hardcoded-secret:1 DB_PASSWORD_VALUE'],
+      ],
+      [
+        'a passphrase of letters',
+        'ADMIN_PASSWORD = "CorrectHorseBatteryStaple"\n',
+        ['hardcoded-secret:1 ADMIN_PASSWORD'],
+      ],
+      [
+        'a value built from parts',
+        'SERVICE_TOKEN = "prod" + "Abc123Xyz789"\n',
+        ['hardcoded-secret:1 SERVICE_TOKEN'],
+      ],
+      [
+        'a dataclass field default',
+        'from dataclasses import field\n\n\nclass C:\n    api_token: str = field(default="Abc123Xyz789Qwe")\n',
+        ['hardcoded-secret:5 api_token'],
+      ],
+      [
+        'a SecretStr literal',
+        inFile(
+          'adapters/m.py',
+          'from pydantic import SecretStr\n\nX = make(SecretStr("Abc123Xyz789Qwe"))\n',
+        ),
+        ['hardcoded-secret:3 SecretStr'],
+      ],
+      ['a key that is no secret', 'SORT_KEY = "created_at_desc"\nCACHE_KEY = "orders-list"\n', []],
       ['an environment variable name', 'TOKEN = "MY_API_TOKEN"\n', []],
       ['a placeholder', 'TOKEN = "changeme"\nPASSWORD = "<password>"\nSECRET = "xxxxxxxx"\n', []],
       ['a plain word', 'PASSWORD = "password"\nTOKEN = "token"\n', []],
@@ -184,6 +214,26 @@ describe.skipIf(!enabled)('hardcoded-secret, credential-shape and secret-in-log'
         'import logging\n\nlogger = logging.getLogger(__name__)\n\n\ndef f(has_token):\n    logger.info("set: %s", has_token)\n',
         [],
       ],
+      [
+        'a subscripted value',
+        'import logging\n\nlogger = logging.getLogger(__name__)\n\n\ndef f(creds):\n    logger.info("creds %s", creds["token"])\n',
+        ['secret-in-log:7 token'],
+      ],
+      [
+        'a value wrapped in str',
+        'import logging\n\nlogger = logging.getLogger(__name__)\n\n\ndef f(token):\n    logger.info("x %s", str(token))\n',
+        ['secret-in-log:7 token'],
+      ],
+      [
+        'a format call',
+        'import logging\n\nlogger = logging.getLogger(__name__)\n\n\ndef f(token):\n    logger.info("x {}".format(token))\n',
+        ['secret-in-log:7 token'],
+      ],
+      [
+        'a logger with another name',
+        'import logging\n\naudit = logging.getLogger("audit")\n\n\ndef f(token):\n    audit.info("x %s", token)\n',
+        ['secret-in-log:7 token'],
+      ],
       ['a call that is no log', 'def f(token):\n    print_value("x %s", token)\n', []],
     ]);
     expect(actual).toEqual(expected);
@@ -198,7 +248,11 @@ describe.skipIf(!enabled)('io-in-loop', () => {
     const [actual, expected] = outcomes([
       ['requests.get', loop('requests.get(item)'), ['io-in-loop:6 requests.get()']],
       ['a repository', loop('repo.find_by_id(item)', ''), ['io-in-loop:5 repo.find_by_id()']],
-      ['a session execute', loop('session.execute(statement, item)', ''), ['io-in-loop:5 session.execute()']],
+      [
+        'a session execute',
+        loop('session.execute(statement, item)', ''),
+        ['io-in-loop:5 session.execute()'],
+      ],
       [
         'a comprehension',
         'import requests\n\n\ndef f(items):\n    return [requests.get(i) for i in items]\n',
