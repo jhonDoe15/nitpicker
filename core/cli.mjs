@@ -159,7 +159,7 @@ function runComparisonCli(cli) {
     configOverrides: describeConfigOverrides(config),
     headPolicy,
     resolveBaseSetup: baseSetupResolver(cli, config, headPolicy),
-    describeNotices: noticeDescriber(config, headPolicy),
+    describeNotices: noticeDescriber(config, headPolicy, currentProjectRoot),
     ...acceptanceOf(cli),
     progress: cli.progress,
     runTasks: cli.runTasks,

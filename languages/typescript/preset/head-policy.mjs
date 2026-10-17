@@ -30,7 +30,7 @@ export { headPolicyEnvironment, withHeadPolicyFile } from '../../../shared/head-
 
 export const defaultLayout = { sourceRoots, testRoots, excludedGlobs: builtInExcludedGlobs };
 
-const PRETTIER_PROJECT_FILES = [
+export const PRETTIER_PROJECT_FILES = [
   '.prettierrc',
   '.prettierrc.json',
   '.prettierrc.json5',

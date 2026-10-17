@@ -4,6 +4,11 @@ import path from 'node:path';
 import { pathInside } from '../../shared/filesystem.mjs';
 import { globToRegExp } from '../../shared/glob.mjs';
 import { runGit } from '../diff/git/repository/command.mjs';
+import { GRADLE_PRESETS } from '../../languages/java/adapters/gradle-presets.mjs';
+import { readBuildSources } from '../../languages/java/builds/narrowing/build-sources.mjs';
+import { jvmProductionReach } from '../../languages/java/builds/source-reach.mjs';
+import { pythonProductionReach } from '../../languages/python/adapters/analysis/python-reach.mjs';
+import { readPythonSelection } from '../../languages/python/adapters/configuration/pytest/test-selection.mjs';
 import { detectSourceRoots } from '../../languages/python/adapters/execution/python-project.mjs';
 import { resolveLayout, resolveLayoutFor } from '../../languages/typescript/preset/layout.mjs';
 import {
@@ -15,6 +20,7 @@ import {
   projectTsconfigs,
 } from '../../languages/typescript/preset/modules/tsconfig-files.mjs';
 import { presetToDeclare } from '../configuration/project-checks/preset-detection.mjs';
+import { readToolConfigs } from './build-files/tool-config-files.mjs';
 
 const GRADLE_EXTENSIONS = ['java', 'kt', 'kts'];
 const PRESET_EXTENSIONS = new Map([
@@ -118,6 +124,8 @@ export function createPolicyScope({
   moves,
   presetRequired = false,
   tsconfigs,
+  buildSources,
+  toolConfigs = [],
   reach = () => new Map(),
   blobOf = () => 'unread',
 }) {
@@ -139,12 +147,14 @@ export function createPolicyScope({
     existsInBase: (file) => baseFileSet.has(file),
     presetRequired,
     tsconfigs,
+    buildSources,
+    toolConfigs,
     productionReach: computedOnce(reach),
     blobOf,
   };
 }
 
-function listedFiles(projectRoot) {
+export function listedFiles(projectRoot) {
   return existsSync(projectRoot)
     ? runGit(projectRoot, ['ls-files', '-z', '--cached', '--others', '--exclude-standard'])
         .split('\0')
@@ -152,10 +162,7 @@ function listedFiles(projectRoot) {
     : [];
 }
 
-function productionReachOf(headProjectRoot, headConfig, files) {
-  if (!usesLayout(headConfig)) {
-    return new Map();
-  }
+function typescriptReach(headProjectRoot, headConfig, files) {
   const layout = resolveLayoutFor(headConfig);
   const isEntryPoint = matcherOf(headConfig.layout?.entryPoints ?? []);
   const code = codeOf(files, headConfig);
@@ -166,6 +173,40 @@ function productionReachOf(headProjectRoot, headConfig, files) {
       ...code.filter(isEntryPoint).map((file) => ({ file, label: 'layout.entryPoints' })),
     ],
   });
+}
+
+function mainSourceRoots(sources) {
+  return sources
+    .filter(({ type, set }) => type === 'roots' && set === 'main')
+    .flatMap(({ roots }) => roots);
+}
+
+function productionReachOf({ headProjectRoot, headConfig, files, headRoots, headSources }) {
+  const isHidden = matcherOf(headConfig.exclude ?? []);
+  if (headConfig.preset === 'python') {
+    return pythonProductionReach(headProjectRoot, {
+      sourceRoots: headRoots['python.sourceRoots'],
+      isHidden,
+    });
+  }
+  if (GRADLE_PRESETS.includes(headConfig.preset)) {
+    const roots = mainSourceRoots(headSources);
+    return jvmProductionReach(headProjectRoot, {
+      files: codeOf(files, headConfig),
+      isImporter: (file) => roots.some((root) => isUnder(file, root)) && !isHidden(file),
+    });
+  }
+  return usesLayout(headConfig) ? typescriptReach(headProjectRoot, headConfig, files) : new Map();
+}
+
+function buildSourcesOf({ preset }, { projectRoot, files, roots }) {
+  if (preset === 'python') {
+    return readPythonSelection(
+      projectRoot,
+      roots['python.sourceRoots'] ?? detectSourceRoots(projectRoot, undefined),
+    );
+  }
+  return GRADLE_PRESETS.includes(preset) ? readBuildSources(projectRoot, files) : [];
 }
 
 function blobReader(projectRoot) {
@@ -186,11 +227,16 @@ export function readPolicyScope({
 }) {
   const files = listedFiles(headProjectRoot);
   const baseFiles = listedFiles(baseProjectRoot);
+  const baseRoots = rootSets(baseConfig, baseProjectRoot);
+  const headRoots = rootSets(headConfig, headProjectRoot);
+  const base = { projectRoot: baseProjectRoot, files: baseFiles, roots: baseRoots };
+  const head = { projectRoot: headProjectRoot, files, roots: headRoots };
+  const headSources = buildSourcesOf(headConfig, head);
   return createPolicyScope({
     files,
     baseFiles,
-    baseRoots: rootSets(baseConfig, baseProjectRoot),
-    headRoots: rootSets(headConfig, headProjectRoot),
+    baseRoots,
+    headRoots,
     headConfig,
     moves,
     presetRequired: presetToDeclare(headConfig, headProjectRoot) !== undefined,
@@ -200,7 +246,13 @@ export function readPolicyScope({
           head: tsconfigsOf(headProjectRoot, files, headConfig),
         }
       : undefined,
-    reach: () => productionReachOf(headProjectRoot, headConfig, files),
+    buildSources: { base: buildSourcesOf(headConfig, base), head: headSources },
+    toolConfigs: readToolConfigs(
+      { config: baseConfig, root: baseProjectRoot, files: baseFiles },
+      { config: headConfig, root: headProjectRoot, files },
+      gitBlobId,
+    ),
+    reach: () => productionReachOf({ headProjectRoot, headConfig, files, headRoots, headSources }),
     blobOf: blobReader(headProjectRoot),
   });
 }
