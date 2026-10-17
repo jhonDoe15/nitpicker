@@ -18,6 +18,7 @@ const RULE_FILES = [
   'findbugs.xml',
 ];
 const EXTRA_PMD_RULES = ['AvoidCatchingGenericException'];
+const EXTRA_CHECKSTYLE_RULES = ['UnusedImports'];
 const CHECKSTYLE_INFRASTRUCTURE = /^(?:Checker|TreeWalker)$|Filter$|^Suppress/u;
 
 function pinnedVersion(tool) {
@@ -103,7 +104,10 @@ describe.skipIf(!enabled)('Java rule catalogs', () => {
           ...pmdRules(read('category/java/bestpractices.xml')),
           ...EXTRA_PMD_RULES,
         ]),
-        checkstyle: sorted(checkstyleRules(read('google_checks.xml'))),
+        checkstyle: sorted([
+          ...checkstyleRules(read('google_checks.xml')),
+          ...EXTRA_CHECKSTYLE_RULES,
+        ]),
         spotbugs: sorted(spotbugsRules(read('findbugs.xml'))),
       });
     },

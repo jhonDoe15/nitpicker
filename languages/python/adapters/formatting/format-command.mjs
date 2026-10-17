@@ -9,8 +9,8 @@ export function ruffExclusions({ exclude }) {
 }
 
 export function formatterPlan(settings) {
-  const { formatter, precedence, policyRoot } = settings;
-  const project = projectConfigFor({ formatter, precedence, policyRoot });
+  const { formatter, precedence, policyRoot, conventions = {} } = settings;
+  const project = projectConfigFor({ formatter, precedence, policyRoot, conventions });
   return PLANS[formatter]({
     ...settings,
     ...project,

@@ -1,4 +1,4 @@
-import { bracketGroups } from '../../../shared/conventions/lines.mjs';
+import { bracketGroups } from '../../../../shared/conventions/lines.mjs';
 
 const IMPORT = /^import\s+(\S+)/gm;
 const DEFAULT_ON_DEMAND = /^(?:java\.util|kotlinx\.android\.synthetic(?:\.[\w.]+)?)\.\*+$/;

@@ -81,6 +81,7 @@ describe.skipIf(!kotlinE2eEnabled)('Kotlin preset detekt, ktlint and ktfmt end t
     });
     commitBranch(project, 'violation', { [`${kotlinSources}/Bad.kt`]: BAD });
     commitBranch(project, 'java-in-kotlin-module', { 'src/main/java/demo/Danger.java': DANGER });
+    commitBranch(project, 'java-palantir', { 'src/main/java/demo/Danger.java': DANGER });
     commitBranch(project, 'detekt-config', {
       [`${kotlinSources}/Bad.kt`]: BAD,
       'config/detekt.yml': MAGIC_NUMBER_OFF_WITH_FORMATTING_RULESET,
@@ -139,6 +140,21 @@ describe.skipIf(!kotlinE2eEnabled)('Kotlin preset detekt, ktlint and ktfmt end t
     expect(
       result.newEnforceable.filter((finding) =>
         ['detekt', 'ktlint', 'ktfmt'].includes(finding.tool),
+      ),
+    ).toEqual([]);
+  });
+  it('checks the Java files of a Kotlin module with palantir-java-format when the project declares it', () => {
+    const conventions = { 'java.formatter': 'palantir', 'java.indentation': '4' };
+    const result = diffOf(project, 'java-palantir', {
+      policy: { preset: 'kotlin', javaStyle: 'palantir', conventions },
+    });
+
+    expect(fromTool(result.newEnforceable, 'palantir-java-format')).toEqual([
+      'palantir-java-format format Danger.java',
+    ]);
+    expect(
+      [...result.newFindings, ...result.unchangedFindings].filter(
+        ({ tool }) => tool === 'google-java-format',
       ),
     ).toEqual([]);
   });
