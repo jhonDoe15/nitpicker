@@ -46,7 +46,7 @@ directory is the contract between the tool runs and the readers; later slices ad
   `black`, `coverage`, `mypy`, `pyright` or `basedpyright`, and `python-rules`; `mutation` (slice 6) carries those of `mutmut` and depends on `python`,
   so it runs after it and is skipped when it had a tool error. They are separate so that a missing
   or crashing mutmut costs only the mutation results, and `"disable": ["mutation"]` turns it off.
-  `python` cannot be disabled alone, because `mutation` depends on it. The version is the versions of the tools in the
+  Disabling `python` turns `mutation` off too, because `mutation` depends on it. The version is the versions of the tools in the
   project's environment (`ruff@0.9.9;mypy@1.13.0;coverage@7.6.1;pytest@8.3.1`), read from the live checkout, and
   the configuration hash covers the Python adapter files, the nitpicker-owned ruff config and the
   `python` settings. Upgrading ruff, or editing the preset, therefore invalidates the base cache.
@@ -270,26 +270,54 @@ through the real tools.
 
 - **Type checking.** `mypy --strict`, `pyright` or `basedpyright` with `typeCheckingMode: strict`, on the source
   roots. Strict is not configurable: a project that cannot pass yet baselines its existing errors
-  (they only count when new), and a project's config cannot switch the check off. Only its
-  environment settings apply. For mypy that is `plugins`, `mypy_path`, `python_version`, the
-  namespace and typeshed options and, per module, `ignore_missing_imports` and `follow_imports`;
-  `ignore_errors`, `disable_error_code`, `exclude` and every flag that weakens strict are dropped.
-  Pyright gets a generated config that `extends` the project's (for `extraPaths`, `pythonVersion`
-  and the like), then forces strict, `enableTypeIgnoreComments: false`, `ignore: []`, `executionEnvironments: []`, the source
-  roots and nitpicker's `exclude` in place of the project's. basedpyright runs the same way, with the
+  (they only count when new), and a project's config cannot switch the check off unless it opts in
+  with `tools.pyright` or `tools.mypy` (below). Only its environment settings apply. For mypy that is
+  `plugins`, `mypy_path`, `python_version`, the namespace and typeshed options and, per module,
+  `ignore_missing_imports` and `follow_imports` for modules the project does not own; a section for
+  one of its own packages or modules (found under the source roots and under the `mypy_path`
+  directories, as `.py` or `.pyi` files, directories and `-stubs` packages), or for a pattern that
+  starts with `*`, is dropped, as are `ignore_errors`, `disable_error_code`, `exclude` and every flag that
+  weakens strict. Pyright gets a generated config in the report directory holding the project's
+  environment keys (`venv`, `venvPath`, `pythonVersion`, `pythonPlatform`, `stubPath`,
+  `typeshedPath`, `extraPaths` and the root, `extraPaths`, version and platform of each
+  `executionEnvironments` entry, paths made absolute, following `extends`), then forces strict,
+  `enableTypeIgnoreComments: false`, `ignore: []`, the source roots and nitpicker's `exclude`; its
+  `report*` overrides, `include`, `exclude`, `ignore` and `strict` are never read. basedpyright runs the same way, with the
   same generated config, and the same strict mode: it names its modes `off`, `basic`, `standard`,
   `strict`, `recommended` and `all`, and nitpicker forces `strict` (not `all`, whose extra rules such as
   `reportAny` and `reportUnusedCallResult` are style opinions, nor `recommended`, its default), so the
-  two checkers report the same rules. A project's `[tool.basedpyright]` or `[tool.pyright]` table,
-  `pyrightconfig.json` is the one that `extends` (the file first, else the pyproject table; basedpyright
-  does not read a `basedpyrightconfig.json`, so neither does nitpicker), and a baseline file (`.basedpyright/baseline.json`) is not read, since the
-  generated config lives in the report directory. Mypy also gets the environment's
+  two checkers report the same rules. The project config is `pyrightconfig.json` (first) or the
+  `[tool.basedpyright]` / `[tool.pyright]` table (basedpyright does not read a
+  `basedpyrightconfig.json`, so neither does nitpicker), and a baseline file
+  (`.basedpyright/baseline.json`) is not read. Mypy takes the first of `mypy.ini` and `.mypy.ini`
+  that exists, even without a `[mypy]` section (its `[mypy-...]` sections still apply, as in mypy
+  itself), then `pyproject.toml` or `setup.cfg` only with a mypy table or section. Mypy also gets the environment's
   interpreter (`--python-executable`), so packages installed there resolve. Tests are not
   type-checked unless a source root contains them. Findings are one per diagnostic: tool `mypy`, `pyright` or `basedpyright`, rule the
   error code (`arg-type`) or rule name (`reportArgumentType`), identity the message text without `on line N` / `from line N` references (ruff messages such as F811 too), with `#n` for repeats in one file. Only the first line of a pyright or basedpyright message is used, since
   the detail lines vary with surrounding code. A checker that exits other than 0 or 1 is a
   `types-failed` tool error. The checker runs in the project's environment like pytest, so it must
   be installed there (or on the `PATH`).
+- **Opting in to the project's checker config.** `"tools": { "pyright": { "precedence": ["project", "nitpicker"] } }`
+  (it covers basedpyright) or `"mypy"` lays the whole project config over nitpicker's strict
+  settings: a key the project sets wins, a key it leaves out stays strict. For mypy the generated
+  config starts with `strict = true` (and `--strict` is left off the command line, since a flag would
+  override the file), then the project's global options and every per-module section, own modules
+  included. The project's `exclude` is written as it is (an inline `(?x)` keeps working) and
+  nitpicker's `exclude` globs go to the command line as `--exclude`, which mypy adds to it. For
+  pyright the project's keys replace the generated ones (`include`, `exclude` and `extraPaths` are
+  merged instead, and each `executionEnvironments` entry keeps nitpicker's import roots). The config
+  is read from the head checkout for both sides of the comparison, and every source path in it
+  (`include`, `exclude`, `extraPaths`, `stubPath`, an environment's `root` and `extraPaths`) is
+  resolved against the checkout that is being checked, so the base run checks base files; `venv`,
+  `venvPath` and `typeshedPath` stay where the environment is. With the opt-in pyright also looks
+  for `pyrightconfig.json` or a `pyproject.toml` with the table in the parent directories up to
+  the repository root. The config files, the `extends` chain included, are part of the cache key.
+  Naming `"project"` without a config is a tool error, and so is a config that cannot be parsed (the
+  message says so and names the file). `["nitpicker", "project"]` reads only what the unlisted
+  behavior reads. Without the opt-in the run prints
+  `Ignoring [tool.pyright] in pyproject.toml except its environment keys; opt in with ...` once. The code is in
+  `languages/python/adapters/project-tools/`.
 - **Lint rules.** `languages/python/ruff/nitpicker-ruff.toml` selects, besides slice 1's rules,
   `PTH`, `UP031`, `UP032`, `FLY002` and `BLE001`, and ignores `F405`
   (the star import itself is `F403`), `SIM105` (the `swallowed-exception` rule below covers that
@@ -337,9 +365,11 @@ through the real tools.
 | re-raise, return a failure value or a default  | `except X:` that only passes, continues, logs, returns or assigns a constant | `swallowed-exception`                                      |
 | `contextlib.suppress(SpecificError)`           | `contextlib.suppress(Exception)`, `BaseException` or no argument             | `blind-suppress`                                           |
 | explicit imports                               | `from module import *`                                                       | ruff `F403`                                                |
-| `logging`                                      | `print`, `pprint`                                                            | ruff `T201`, `T203`                                        |
+| `logging` (or the project's structlog, loguru) | `print`, `pprint`                                                            | ruff `T201`, `T203`                                        |
+| log the caught exception itself                | logging only `str(error)` or an f-string with it in an `except`              | `catch-log-without-exception`                              |
+| a test that asserts                            | a test function with no assertion                                            | `test-without-assertion`                                   |
 | `@dataclass(frozen=True)`                      | `@dataclass` without `frozen=True`, outside tests                            | `frozen-dataclass`                                         |
-| pydantic in `adapters/` only                   | importing `pydantic` or `pydantic_settings` elsewhere                        | `pydantic-boundary`                                        |
+| the validation library in `adapters/` only     | importing pydantic (or the declared library) elsewhere                       | `pydantic-boundary`                                        |
 | an `enum.Enum` / `StrEnum`                     | a plain class of two string constants, or three `X_*`                        | `enum-string-constants`                                    |
 | fixing the code                                | `# type: ignore`, `# noqa`, `# pyright: ignore`, ...                         | `no-inline-suppression`                                    |
 | annotated code the checkers read               | `@no_type_check`, `if not TYPE_CHECKING:`, a stub beside                     | `no-type-check`, `not-type-checking`, `stub-beside-source` |
@@ -349,8 +379,58 @@ Details that are decisions rather than the table:
 - `frozen-dataclass` and `pydantic-boundary` do not apply to test files (a `tests` or `test`
   directory, `test_*.py`, `*_test.py`, `conftest.py`), where fakes mutate and tests exercise the
   adapters. `frozen=True` must be the literal `True`.
+- The validation library is the one the project declares, read from `pyproject.toml` (PEP 621
+  `dependencies`, `optional-dependencies` and `dependency-groups`; Poetry, uv and pdm tables),
+  `requirements*.txt` (also under `requirements/`), `setup.cfg`, the literal `install_requires` and
+  `extras_require` of a `setup.py` and a `Pipfile`: pydantic, attrs
+  with cattrs, marshmallow, msgspec, dataclasses-json, voluptuous or cerberus. Runtime
+  dependencies come before development ones, and when several are declared all of them are
+  guarded. `pydantic-boundary` then flags importing any of them (`cattrs` for attrs, which is also
+  the domain's record library, so `import attrs` stays allowed) outside `adapters/`, and the
+  message names the declared libraries and the first one's parse call (`Schema().load(data)`);
+  with none declared it guards pydantic and says so. The requirements files follow `-r` includes
+  of any path inside the project (once each), skip constraints files, read the `.in` file next to
+  a compiled `.txt` and, for a compiled file without one, only the direct dependencies (the
+  entries `# via -r ...`), and decode a byte order mark or UTF-16. The detection is
+  `languages/python/rules/libraries/project-libraries.mjs` over the dependency reader
+  `languages/python/libraries/python-dependencies.mjs`; the rules step hands the import roots it
+  guards to the script as `boundaryRoots`.
+- The logger is read the same way: `structlog` or `loguru` when declared, else the standard
+  library. The `print` message and the `catch-log-without-exception` message name that logger's
+  form (`structlog.get_logger()`, `from loguru import logger`).
+- `catch-log-without-exception` flags a `warning`, `warn`, `error` or `critical` call on a logger
+  in an `except ... as name:` body that uses the caught name, or a value built from it, without
+  keeping the traceback. The traceback is kept by `logger.exception(...)`, `exc_info=` (anything
+  but `False` or `None`), loguru's `logger.opt(exception=...)` and structlog's `exc_info`, and
+  by a handler that re-raises after logging (a bare `raise`, `raise error`, or
+  `raise Other(...) from error`). Passing the caught name as an argument (`logger.warning("failed:
+%s", error)`), as a field (`error=error`) or in `extra=` does not keep it, nor does
+  `str(error)` or an f-string, so those are flagged. A call in a nested handler that uses the outer
+  name is checked for the outer handler too. A logger is a name bound from `logging.getLogger` or
+  `structlog.get_logger`, loguru's `logger`, or a receiver called `logger`/`log`/`..._logger`;
+  `logging.error(...)` counts too. A handler that does nothing but log is reported once, as
+  `swallowed-exception` (logging alone is not handling), so `catch-log-without-exception` looks only
+  at handlers that handle the error some other way, and a log call that does not use the caught
+  name is not its concern.
+- `test-without-assertion` flags a `test_*` function (or method of a `Test*` class or a
+  `TestCase`) in a test file pytest collects (the files of `testFiles`) that has no `assert`, no `raise AssertionError`,
+  no `pytest.raises`/`warns`/`fail`/`skip`/`xfail` or `self.fail`/`self.skipTest` (a bare `fail`
+  or `skip`, or another receiver, does not count), no call whose name starts with `assert` on a
+  receiver (`self.assertEqual`, `mock.assert_called_once`) or imported from a library
+  (`from assertpy import assert_that`), no imported `expect`, no pytest-check call or
+  `with check:` (when `pytest_check` is imported), and no call to one of the project's assertion
+  helpers. A function decorated with `@fixture` or `@pytest.fixture` is never a test, whatever its
+  name. Tests marked `skip`, `skipif` or `xfail` are exempt. A helper is followed only with proof:
+  it is defined as a `def` in a test directory, a `conftest.py`, a `test_*.py` file or a
+  `testing`/`assertions` module and its own body asserts (an `assert`, `self.assert*`,
+  `pytest.raises`, `pytest.fail` or a `raise`; not through a nested function or lambda), and it
+  is the last call of tests that have no other assertion in at least three test files. The name
+  alone never counts, and tests that already assert do not vote. A call counts when it is bare,
+  `self.name(...)` or qualified by a project test module (`helpers.check_total(...)`), never on an
+  arbitrary receiver. A smoke test that deliberately asserts nothing takes a `python.exceptions`
+  entry for `test-without-assertion`.
 - The boundary is a directory named `adapters` anywhere in the path (`src/shop/adapters/api.py`),
-  as in the TypeScript preset; a project that keeps its pydantic models elsewhere (`schemas/`,
+  as in the TypeScript preset; a project that keeps its models elsewhere (`schemas/`,
   `api/`) adds a `python.exceptions` entry for `pydantic-boundary` with those paths.
 - `enum-string-constants` flags a class with no bases or decorators whose body assigns at least two
   `UPPER_CASE` names to string literals, and module-level `UPPER_CASE` string constants where at
@@ -1056,28 +1136,42 @@ location.
   out of version control in your project, like `.venv/`. A project whose tests collect no test
   gets no mutation findings (`python/no-tests-ran` already says it).
 - **Configuration.** mutmut reads `[tool.mutmut]` in `pyproject.toml` (or `[mutmut]` in
-  `setup.cfg`). If the project has one, it is used as it is: `source_paths`, `also_copy`,
-  `do_not_mutate`, `pytest_add_cli_args` and the rest stay the project's decision, and `exclude`
-  then only drops findings afterwards. If it has none, nitpicker adds one to the snapshot's
-  `pyproject.toml` (never to your checkout, and it creates the file if the project has none, so
-  that file is the one thing besides `mutants/` the preset writes into the snapshot):
-  `source_paths` is the source roots and `do_not_mutate` skips the test files (`tests/`,
-  `test_*.py`, `*_test.py`, `conftest.py`) and the `exclude` globs, so an excluded file that mutmut
-  cannot parse (a Python 2 leftover) does not fail the run. Source roots of `.` are an error in
-  that case, since mutmut would copy the whole project: set `python.sourceRoots` or
-  `[tool.mutmut]`. A test that reads a file outside the copied sources fails mutmut's first run
-  ("failed to collect stats"); the error then adds a line to list the file under `also_copy` in
-  `[tool.mutmut]`.
+  `setup.cfg`). nitpicker always writes its own `[tool.mutmut]` into the snapshot's `pyproject.toml`
+  (never into your checkout; it creates the file if the project has none, and a table the project
+  had is removed from the snapshot's copy, so that file is the one thing besides `mutants/` the
+  preset writes into the snapshot): `source_paths` is the source roots and `do_not_mutate` skips the
+  test files (`tests/`, `test_*.py`, `*_test.py`, `conftest.py`) and the `exclude` globs, so an
+  excluded file that mutmut cannot parse (a Python 2 leftover) does not fail the run. From the
+  project's table only what the run needs is kept: `also_copy`, the process isolation options
+  (`process_isolation`, `forkserver_warmup`, `preload_modules_file`, `max_forkserver_restarts`,
+  `use_setproctitle`) and, when the source roots are `.`, its `source_paths` (or the old
+  `paths_to_mutate`). `do_not_mutate`, `only_mutate`, `mutate_only_covered_lines`,
+  `max_stack_depth`, `pytest_add_cli_args` and the rest are ignored, since they can shrink the
+  mutation testing; when the project's table holds any of them the run prints
+  `Ignoring [tool.mutmut] in pyproject.toml except also_copy and its process options; opt in with ...`.
+  The table is written with a TOML serializer, and a `pyproject.toml` that cannot be parsed is a
+  tool error that names the file.
+  Source roots of `.` with no `source_paths` of the project are an error, since mutmut would copy
+  the whole project: set `python.sourceRoots` or `[tool.mutmut]`. A test that reads a file outside
+  the copied sources fails mutmut's first run ("failed to collect stats"); the error then adds a
+  line to list the file under `also_copy` in `[tool.mutmut]`.
+  With `"tools": { "mutmut": { "precedence": ["project", "nitpicker"] } }` every key of the
+  project's table (or `setup.cfg` section, with its values typed) overrides nitpicker's, except that
+  the test patterns and the `exclude` globs stay in `do_not_mutate` (the project's own `do_not_mutate`
+  patterns still count as `mutant-ignored`, listed or not); `["nitpicker", "project"]` is the
+  unlisted behavior. A project listed without a table is a tool error.
 - **Equivalent mutants.** mutmut also mutates strings and logging, so some survivors cannot be
   killed by any test. The way out is a `python.exceptions` entry for `mutant-survived` (or
-  `mutant-ignored`, below) with the path, or `exclude`.
+  `mutant-ignored`, below) with the path, or `exclude` (the mutants of the file are dropped).
 - **Code hidden from mutmut.** Like a Stryker disable comment in the TypeScript preset, what hides
   production code from mutmut is an enforceable `mutmut/mutant-ignored` finding
   (`languages/python/adapters/mutation/mutation-markers.mjs`): each `# pragma: no mutate`
   (also its `block`, `start`, `end`, `class` and `function` forms) at its line, each production
   file a `do_not_mutate` pattern of the project's own `[tool.mutmut]` (or setup.cfg `[mutmut]`)
   matches, and `mutate_only_covered_lines = true` on the config file. The comment or pattern is not
-  an exception route; the finding's `python.exceptions` sentence for `mutant-ignored` is.
+  an exception route; the finding's `python.exceptions` sentence for `mutant-ignored` is. The
+  project's own table is read whether or not `tools.mutmut` opts it in, before nitpicker writes
+  its table.
 - **pytest.** mutmut 3 runs the suite with pytest, which also runs `unittest.TestCase` classes. A
   project whose runner is `unittest` therefore needs pytest installed for mutation testing; set
   `"testRunner": "unittest"` if you want coverage.py to keep running `unittest discover`.

@@ -1,0 +1,49 @@
+{
+  "findings": [
+    {
+      "tool": "t",
+      "rule": "r",
+      "path": "test/a.test.ts",
+      "identity": "b1",
+      "message": "Error: boom kqzmwa",
+      "classification": "enforceable",
+      "tokens": ["Error:", "boom", "kqzmwa"]
+    },
+    {
+      "tool": "t",
+      "rule": "r",
+      "path": "test/a.test.ts",
+      "identity": "b2",
+      "message": "Warning: unique key List.",
+      "classification": "enforceable",
+      "tokens": ["Warning:", "unique", "key", "List."]
+    },
+    {
+      "tool": "t",
+      "rule": "r",
+      "path": "test/a.test.ts",
+      "identity": "b3",
+      "message": "E: kqzmwa zgcfdk",
+      "classification": "enforceable",
+      "tokens": ["E:", "kqzmwa", "zgcfdk"]
+    },
+    {
+      "tool": "t",
+      "rule": "r",
+      "path": "test/a.test.ts",
+      "identity": "b4",
+      "message": "E: xvbnrt qwrtpl",
+      "classification": "enforceable",
+      "tokens": ["E:", "xvbnrt", "qwrtpl"]
+    },
+    {
+      "tool": "t",
+      "rule": "r",
+      "path": "test/a.test.ts",
+      "identity": "b5",
+      "message": "short kqzmwa",
+      "classification": "enforceable",
+      "tokens": ["short", "kqzmwa"]
+    }
+  ]
+}
