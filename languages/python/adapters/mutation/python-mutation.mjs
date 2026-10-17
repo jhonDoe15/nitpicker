@@ -44,6 +44,11 @@ const TEST_PATTERNS = [
   'test_*.py',
   '*/test_*.py',
   '*_test.py',
+  '*_tests.py',
+  'tests.py',
+  '*/tests.py',
+  'tests_*.py',
+  '*/tests_*.py',
   'conftest.py',
   '*/conftest.py',
 ];

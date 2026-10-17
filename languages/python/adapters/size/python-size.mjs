@@ -8,30 +8,76 @@ import { CLASSES_REPORT } from '../analysis/python-structure.mjs';
 const SIZE_TOOL = 'structure';
 const WORDING = {
   subject: 'Package',
-  below: 'its top-level package',
+  below: 'the root package',
   advice: (limit) =>
-    `Keep packages at most ${String(limit)} levels below the top-level package: group by responsibility instead of nesting.`,
+    `Keep packages at most ${String(limit)} levels below the root package: group by responsibility instead of nesting.`,
 };
-const INTERFACE_BASES = new Set(['object', 'ABC', 'Generic', 'Protocol']);
+const TEST_FOLDERS = new Set(['tests', 'test']);
+const UNCOUNTED_KINDS = new Set(['protocol', 'interface']);
 
-function packageDepth({ module, isPackage }) {
+function packageParts({ module, isPackage }, packages) {
   const parts = module.split('.');
   const folders = isPackage ? parts : parts.slice(0, -1);
-  return Math.max(0, folders.length - 1);
+  const namespaces = folders.findIndex((_, index) =>
+    packages.has(folders.slice(0, index + 1).join('.')),
+  );
+  return namespaces === -1 ? folders : folders.slice(namespaces);
 }
 
-export function pythonFolderDepthFindings(modules, { thresholds = {}, exceptions }) {
-  const depths = new Map(modules.map((entry) => [entry.file, packageDepth(entry)]));
-  return folderDepthFindings(
-    modules.map(({ file }) => ({ path: file, kind: 'source' })),
-    {
-      analyzerName: SIZE_TOOL,
-      limit: thresholds.folderDepth ?? FOLDER_DEPTH_DEFAULTS.python,
-      exceptions,
-      wording: WORDING,
-      depthOf: ({ path: file }) => depths.get(file),
-    },
+function productionParts(modules) {
+  const packages = new Set(
+    modules.filter(({ isPackage }) => isPackage).map(({ module }) => module),
   );
+  return modules.map((entry) => packageParts(entry, packages));
+}
+
+function testParts({ file }, sourceRoots) {
+  const inRoot = sourceRoots.find((root) => root !== '.' && file.startsWith(`${root}/`));
+  const relative = inRoot === undefined ? file : file.slice(inRoot.length + 1);
+  return path.posix
+    .dirname(relative)
+    .split('/')
+    .filter((part) => part !== '.' && !TEST_FOLDERS.has(part));
+}
+
+function commonRoot(partsList) {
+  const voting = partsList.filter((parts) => parts.length > 0);
+  if (voting.length === 0) {
+    return [];
+  }
+  const [first, ...others] = voting;
+  const divergence = first.findIndex((part, index) =>
+    others.some((other) => other[index] !== part),
+  );
+  return first.slice(0, divergence === -1 ? first.length : divergence);
+}
+
+function depthBelow(root, parts) {
+  const underRoot = root.every((part, index) => parts[index] === part);
+  return underRoot ? parts.length - root.length : parts.length;
+}
+
+export function pythonFolderDepthFindings(
+  modules,
+  { thresholds = {}, exceptions, tests = [], sourceRoots = [], rootModules = modules },
+) {
+  const root = commonRoot(productionParts(rootModules.length === 0 ? modules : rootModules));
+  const production = productionParts(modules);
+  const entries = [
+    ...modules.map(({ file }, index) => ({ path: file, kind: 'source', parts: production[index] })),
+    ...tests.map((entry) => ({
+      path: entry.file,
+      kind: 'test',
+      parts: testParts(entry, sourceRoots),
+    })),
+  ];
+  return folderDepthFindings(entries, {
+    analyzerName: SIZE_TOOL,
+    limit: thresholds.folderDepth ?? FOLDER_DEPTH_DEFAULTS.python,
+    exceptions,
+    wording: WORDING,
+    depthOf: ({ parts }) => depthBelow(root, parts),
+  });
 }
 
 function importedBase(entry, importer) {
@@ -88,26 +134,27 @@ function resolver(report, modules) {
   };
 }
 
-function countedBases(entry) {
-  return entry.bases.filter((written) => !INTERFACE_BASES.has(written.split('.').at(-1)));
-}
-
-function parentsOf({ entry, lineage }, resolve) {
-  const onPath = new Set([...lineage, entry]);
-  return countedBases(entry)
-    .map((written) => resolve(entry, written))
-    .filter((parent) => parent !== undefined && !onPath.has(parent))
-    .map((parent) => ({ entry: parent, lineage: onPath }));
-}
-
-function inheritanceDepth(entry, resolve) {
-  const generations = [[{ entry, lineage: new Set() }]];
-  for (const generation of generations) {
-    if (generation.some((current) => countedBases(current.entry).length > 0)) {
-      generations.push(generation.flatMap((current) => parentsOf(current, resolve)));
+function depthWalker(resolve) {
+  const depths = new Map();
+  const walking = new Set();
+  function depthOf(entry) {
+    if (depths.has(entry)) {
+      return depths.get(entry);
     }
+    if (UNCOUNTED_KINDS.has(entry.kind)) {
+      return 0;
+    }
+    walking.add(entry);
+    const parents = entry.bases
+      .map((written) => resolve(entry, written))
+      .filter((parent) => parent !== undefined && !walking.has(parent))
+      .filter((parent) => !UNCOUNTED_KINDS.has(parent.kind));
+    const depth = Math.max(0, ...parents.map((parent) => 1 + depthOf(parent)));
+    walking.delete(entry);
+    depths.set(entry, depth);
+    return depth;
   }
-  return generations.length - 1;
+  return depthOf;
 }
 
 export function readClassesReport(reportRoot) {
@@ -122,10 +169,10 @@ export function readClassesReport(reportRoot) {
 
 export function pythonClassLimitFindings(report, modules, { thresholds, exceptions }) {
   const production = new Set(modules.map(({ file }) => file));
-  const resolve = resolver(report, modules);
+  const depthOf = depthWalker(resolver(report, modules));
   const classes = Object.entries(report)
     .filter(([file]) => production.has(file))
     .flatMap(([, { classes: entries }]) => entries)
-    .map((entry) => ({ ...entry, inheritanceDepth: inheritanceDepth(entry, resolve) }));
+    .map((entry) => ({ ...entry, inheritanceDepth: depthOf(entry) }));
   return classLimitFindings(classes, { analyzerName: SIZE_TOOL, thresholds, exceptions });
 }

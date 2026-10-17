@@ -62,7 +62,7 @@ describe('listing production modules', () => {
     ]);
   });
 
-  it('skips tests, environments, hidden directories and build output', () => {
+  it('skips tests (Django tests.py too), environments, hidden directories and build output', () => {
     const root = project([
       'app/__init__.py',
       'app/keep.py',
@@ -70,6 +70,8 @@ describe('listing production modules', () => {
       'app/test/helper.py',
       'app/test_keep.py',
       'app/keep_test.py',
+      'app/tests.py',
+      'app/keep_tests.py',
       'app/conftest.py',
       'app/.hidden/secret.py',
       'app/__pycache__/keep.py',
@@ -160,6 +162,9 @@ describe('listing production modules', () => {
       '**/.pytest_cache/**',
       '**/test_*.py',
       '**/*_test.py',
+      '**/*_tests.py',
+      '**/tests.py',
+      '**/tests_*.py',
       '**/conftest.py',
     ]);
   });

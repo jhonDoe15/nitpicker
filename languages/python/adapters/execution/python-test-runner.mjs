@@ -13,7 +13,7 @@ const PYTEST_CONFIGURATION = /^\s*\[(?:tool\.pytest(?:\.ini_options)?|pytest|too
 const PYTEST_DEPENDENCY = /(?:^|[\s"'=])pytest(?:\b|_)/m;
 const PYTEST_STYLE_TEST =
   /^(?:async\s+)?def test_|^(?:import|from)\s+pytest\b|^class Test\w*\s*(?:\(\s*\))?:/m;
-const TEST_FILE = /^(?:test_.*|.*_test)\.py$/;
+const TEST_FILE = /^(?:tests?_.*|.*_tests?|tests)\.py$/u;
 const PYTEST_PROBE = [
   'python',
   '-c',

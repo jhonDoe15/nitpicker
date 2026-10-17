@@ -20,10 +20,11 @@ function classEntry(file, name, overrides = {}) {
 }
 
 describe('Python package depth', () => {
-  it('reports a package more than 4 levels below its top-level package, once per folder', () => {
+  it('reports a package more than 4 levels below the root package, once per folder', () => {
     const deep = 'src/app/a/b/c/d/e';
     const findings = pythonFolderDepthFindings(
       [
+        module('src/app/__init__.py', 'app', true),
         module(`${deep}/__init__.py`, 'app.a.b.c.d.e', true),
         module(`${deep}/x.py`, 'app.a.b.c.d.e.x'),
         module('src/app/a/b/c/d/ok.py', 'app.a.b.c.d.ok'),
@@ -32,21 +33,21 @@ describe('Python package depth', () => {
     );
 
     const fix =
-      'Keep packages at most 4 levels below the top-level package: group by responsibility instead of nesting. If this is intended, add {"rule":"folder-depth-limit","paths":["src/app/a/b/c/d/e/**"],"reason":"..."} to "exceptions" in nitpicker.config.json.';
+      'Keep packages at most 4 levels below the root package: group by responsibility instead of nesting. If this is intended, add {"rule":"folder-depth-limit","paths":["src/app/a/b/c/d/e/**"],"reason":"..."} to "exceptions" in nitpicker.config.json.';
     expect(findings).toEqual([
       {
         tool: 'structure',
         rule: 'folder-depth-limit',
         path: deep,
         identity: 'folder-depth:source:5',
-        message: `Package is 5 levels below its top-level package (limit 4). ${fix}`,
+        message: `Package is 5 levels below the root package (limit 4). ${fix}`,
         classification: 'enforceable',
         ratchet: {
           key: 'folder-depth:source',
           value: 5,
-          worseMessage: `Package grew from {base} to 5 levels below its top-level package (limit 4). ${fix}`,
+          worseMessage: `Package grew from {base} to 5 levels below the root package (limit 4). ${fix}`,
           heldMessage:
-            'Package: 5 levels below its top-level package (limit 4), allowed because base was {base}; any increase fails.',
+            'Package: 5 levels below the root package (limit 4), allowed because base was {base}; any increase fails.',
           pathIsFolder: true,
           folderFiles: 2,
         },
@@ -54,15 +55,63 @@ describe('Python package depth', () => {
     ]);
   });
   it('takes the limit from thresholds and lifts excepted folders', () => {
-    const modules = [module('src/app/a/b.py', 'app.a.b')];
+    const modules = [module('src/app/a/b.py', 'app.a.b'), module('src/lib/c.py', 'lib.c')];
 
-    expect(pythonFolderDepthFindings(modules, { thresholds: { folderDepth: 0 } })).toHaveLength(1);
+    expect(pythonFolderDepthFindings(modules, { thresholds: { folderDepth: 0 } })).toHaveLength(2);
     expect(
       pythonFolderDepthFindings(modules, {
         thresholds: { folderDepth: 0 },
-        exceptions: [{ rule: 'folder-depth-limit', glob: 'src/app/a/**' }],
+        exceptions: [{ rule: 'folder-depth-limit', glob: 'src/**' }],
       }),
     ).toEqual([]);
+  });
+  it('measures below the common root, leaving out namespace folders without __init__.py', () => {
+    const deep = 'acme.billing.api.v1.handlers.users';
+    const modules = [
+      module('src/acme/billing/__init__.py', 'acme.billing', true),
+      module('src/acme/billing/domain/invoice.py', 'acme.billing.domain.invoice'),
+      module(`src/${deep.replaceAll('.', '/')}/views.py`, `${deep}.views`),
+      module('backend/app/__init__.py', 'backend.app', true),
+    ];
+
+    expect(pythonFolderDepthFindings(modules.slice(0, 3), { thresholds: {} })).toEqual([]);
+    expect(
+      pythonFolderDepthFindings(modules, { thresholds: {} }).map(({ path, message }) => [
+        path,
+        message.split('.')[0],
+      ]),
+    ).toEqual([
+      [
+        'src/acme/billing/api/v1/handlers/users',
+        'Package is 5 levels below the root package (limit 4)',
+      ],
+    ]);
+  });
+  it('keeps the base root, so a new top-level package does not deepen the others', () => {
+    const modules = [
+      module('src/app/a/b/c/d/x.py', 'app.a.b.c.d.x'),
+      module('src/lib/y.py', 'lib.y'),
+    ];
+
+    expect(pythonFolderDepthFindings(modules, { thresholds: {} })).toHaveLength(1);
+    expect(
+      pythonFolderDepthFindings(modules, { thresholds: {}, rootModules: modules.slice(0, 1) }),
+    ).toEqual([]);
+  });
+  it('checks test packages against the production root, with their own folder key', () => {
+    const findings = pythonFolderDepthFindings([module('src/app/core.py', 'app.core')], {
+      thresholds: {},
+      sourceRoots: ['src'],
+      tests: [
+        { file: 'tests/app/a/b/c/d/e/test_core.py', kind: 'test' },
+        { file: 'src/app/a/b/tests/test_x.py', kind: 'test' },
+        { file: 'tests/fixtures/a/b/c/d/e/f/data.py', kind: 'test' },
+      ],
+    });
+
+    expect(findings.map(({ path, identity }) => [path, identity])).toEqual([
+      ['tests/app/a/b/c/d/e', 'folder-depth:test:5'],
+    ]);
   });
 });
 
@@ -120,6 +169,58 @@ describe('Python class limits', () => {
       ['inheritance-depth-limit', 'Class D'],
       ['inheritance-depth-limit', 'Class E'],
     ]);
+  });
+  it('counts project base classes only, and no protocol or interface link', () => {
+    const report = {
+      'src/app/base.py': {
+        classes: [
+          classEntry('src/app/base.py', 'AppError', { bases: ['Exception'] }),
+          classEntry('src/app/base.py', 'DomainError', { bases: ['AppError'] }),
+          classEntry('src/app/base.py', 'NotFound', { bases: ['DomainError'] }),
+          classEntry('src/app/base.py', 'UserNotFound', { bases: ['NotFound'] }),
+          classEntry('src/app/base.py', 'Readable', { kind: 'protocol', bases: ['Protocol'] }),
+          classEntry('src/app/base.py', 'Store', {
+            kind: 'protocol',
+            bases: ['Readable', 'Protocol'],
+          }),
+          classEntry('src/app/base.py', 'Cache', {
+            kind: 'protocol',
+            bases: ['Store', 'Protocol'],
+          }),
+          classEntry('src/app/base.py', 'Port', { kind: 'interface', bases: ['ABC'] }),
+          classEntry('src/app/base.py', 'Memory', { bases: ['Cache', 'Port', 'UserNotFound'] }),
+        ],
+        imports: [],
+      },
+    };
+
+    expect(
+      pythonClassLimitFindings(report, modules, { thresholds: {} }).map(
+        ({ message }) => message.split(' (')[0],
+      ),
+    ).toEqual(['Class Memory extends 4 classes deep']);
+  });
+  it('walks a deep diamond hierarchy in linear time', () => {
+    const classes = [classEntry('src/app/base.py', 'C0'), classEntry('src/app/base.py', 'D0')];
+    for (let index = 1; index <= 40; index += 1) {
+      const bases = [`C${String(index - 1)}`, `D${String(index - 1)}`];
+      classes.push(
+        classEntry('src/app/base.py', `C${String(index)}`, { bases }),
+        classEntry('src/app/base.py', `D${String(index)}`, { bases }),
+      );
+    }
+    const started = performance.now();
+
+    const findings = pythonClassLimitFindings(
+      { 'src/app/base.py': { classes, imports: [] } },
+      modules,
+      { thresholds: {} },
+    );
+
+    expect(performance.now() - started).toBeLessThan(1000);
+    expect(findings.map(({ message }) => message.split(' (')[0])).toContain(
+      'Class D40 extends 40 classes deep',
+    );
   });
   it('checks only production modules', () => {
     const report = {

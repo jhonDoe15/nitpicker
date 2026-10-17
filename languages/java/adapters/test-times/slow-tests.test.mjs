@@ -242,6 +242,23 @@ describe('readSlowTestFindings', () => {
     expect(findingsFor({ sources: unchanged, results, snapshot: 'base' })).toEqual([]);
   });
 
+  it('leaves out an unchanged test whose file moved to another package', () => {
+    const movedPath = `${TEST_ROOT}/shop/orders/OrderTest.java`;
+    const moved = ORDER_SOURCE.replace('package shop;', 'package shop.orders;');
+    const results = { test: suite('shop.orders.OrderTest', [['totals()', '9']]) };
+    const run = (source) =>
+      findingsFor({
+        sources: { [movedPath]: source },
+        results,
+        base: { [ORDER_TEST]: ORDER_SOURCE },
+      });
+
+    expect(run(moved)).toEqual([]);
+    expect(run(moved.replace('total()', 'total() + 0')).map(({ identity }) => identity)).toEqual([
+      'test:shop.orders.OrderTest#totals()',
+    ]);
+  });
+
   it('counts a case named after no method only when its file is new or a parameterized test changed', () => {
     const results = { test: suite('shop.OrderTest', [['[1] 1', '9']]) };
     const base = { [ORDER_TEST]: ORDER_SOURCE };

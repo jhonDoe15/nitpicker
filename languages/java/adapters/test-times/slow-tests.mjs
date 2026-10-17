@@ -80,17 +80,39 @@ function isIntegration(testCase, text, context) {
   );
 }
 
-function isChanged({ testCase, source, text, method, modulePath }, baselineRoot) {
-  const baseText = readOptional(baselineRoot, source && inModule(modulePath, source));
-  if (baseText === undefined || text === undefined) {
-    return baseText !== text;
-  }
+function sameTest(baseText, { testCase, method }) {
   if (method === undefined) {
     return (
-      templateMethods(baseText, testCase.className) !== templateMethods(text, testCase.className)
+      templateMethods(baseText, testCase.className) ===
+      templateMethods(testCase.text, testCase.className)
     );
   }
-  return testMethod(baseText, testCase.name, testCase.className)?.text !== method.text;
+  return testMethod(baseText, testCase.name, testCase.className)?.text === method.text;
+}
+
+function movedFrom(baselineRoot, { source, modulePath, testRoots }) {
+  const name = path.basename(source);
+  return testRoots.flatMap((root) => {
+    const directory = path.join(baselineRoot, inModule(modulePath, root));
+    return existsSync(directory)
+      ? readdirSync(directory, { recursive: true })
+          .filter((entry) => path.basename(entry) === name)
+          .map((entry) => readFileSync(path.join(directory, entry), 'utf8'))
+      : [];
+  });
+}
+
+function isChanged(slow, baselineRoot) {
+  const { source, text, modulePath } = slow;
+  const baseText = readOptional(baselineRoot, source && inModule(modulePath, source));
+  if (text === undefined) {
+    return baseText !== text;
+  }
+  const compared = { testCase: { ...slow.testCase, text }, method: slow.method };
+  if (baseText !== undefined) {
+    return !sameTest(baseText, compared);
+  }
+  return !movedFrom(baselineRoot, slow).some((moved) => sameTest(moved, compared));
 }
 
 function slowTestFinding({ testCase, source, method, limit, integration, modulePath }) {
@@ -131,7 +153,7 @@ export function readSlowTestFindings(options) {
     const limit = integration ? budget.integrationTestSeconds : budget.unitTestSeconds;
     const method =
       text === undefined ? undefined : testMethod(text, testCase.name, testCase.className);
-    const slow = { testCase, source, text, method, limit, integration, modulePath };
+    const slow = { testCase, source, text, method, limit, integration, modulePath, testRoots };
     const counted = baseline?.baselineRoot === undefined || isChanged(slow, baseline.baselineRoot);
     return testCase.seconds > limit && counted ? [slowTestFinding(slow)] : [];
   });

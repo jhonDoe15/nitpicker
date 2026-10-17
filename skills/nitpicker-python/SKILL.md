@@ -71,8 +71,8 @@ backstop. It fails only on findings your change adds, so leave code the task doe
   early, look the value up in a dict, or move a branch into a helper.
 - A new clone of at least 5 lines and 50 tokens (`duplicate-clone`) fails: extract a function. A
   package must not depend on a less stable one (`stability-direction`).
-- A class has at most 20 methods and 10 fields, and at most 3 project base classes above it. A
-  package sits at most 4 levels below its top-level package. Modules and packages must not import
+- A class has at most 20 methods and 10 fields, and at most 3 project base classes above it
+  (`Exception` or `models.Model` add none). A package sits at most 4 levels below the root package. Modules and packages must not import
   each other in a cycle, and production code imports only from the source roots.
 - A module stays within 300 lines (a test module 500) and a line within 120 characters. A folder
   holds at most 6 modules and 6 test modules directly: group the rest into packages by what they do.

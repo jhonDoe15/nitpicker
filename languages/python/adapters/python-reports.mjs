@@ -37,6 +37,8 @@ import {
 import { readDependencyFindings } from './dependencies/dependency-findings.mjs';
 import { withoutFrameworkForms } from './dependencies/python-frameworks.mjs';
 import { TYPES_REPORT } from './python-types.mjs';
+import { listProductionModules } from './analysis/python-sources.mjs';
+import { isGeneratedPython } from '../libraries/generated-files.mjs';
 
 const FORMATTER_TOOLS = { ruff: 'ruff-format', black: 'black' };
 const NO_TESTS_RULE = 'no-tests-ran';
@@ -92,6 +94,16 @@ export function readPythonFindings({ projectRoot, reportRoot, crapLimit, policy 
   return { findings: withoutFrameworkForms(found, projectRoot, imports) };
 }
 
+function sizedModules(projectRoot, modules) {
+  return modules.filter(({ file }) => !isGeneratedPython(projectRoot, file));
+}
+
+function baseModules(baselineRoot, sourceRoots) {
+  return baselineRoot === undefined
+    ? undefined
+    : sizedModules(baselineRoot, listProductionModules(baselineRoot, sourceRoots));
+}
+
 function projectShapeFindings({ projectRoot, reportRoot, policy, imports, manifest }) {
   const limits = { thresholds: policy.fileLimits ?? {}, exceptions: policy.exceptions ?? [] };
   return [
@@ -103,7 +115,12 @@ function projectShapeFindings({ projectRoot, reportRoot, policy, imports, manife
       snapshot: policy.snapshot,
       testRunner: manifest.testRunner,
     }),
-    ...pythonFolderDepthFindings(imports.modules, limits),
+    ...pythonFolderDepthFindings(sizedModules(projectRoot, imports.modules), {
+      ...limits,
+      tests: sizedModules(projectRoot, imports.others ?? []).filter(({ kind }) => kind === 'test'),
+      sourceRoots: manifest.sourceRoots ?? [],
+      rootModules: baseModules(policy.baselineRoot, manifest.sourceRoots ?? []),
+    }),
     ...pythonClassLimitFindings(readClassesReport(reportRoot), imports.modules, limits),
     ...cycleFindings(imports),
     ...outsideRootsFindings(imports),
