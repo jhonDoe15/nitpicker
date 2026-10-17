@@ -1,6 +1,7 @@
 import { PACKAGE_ROOT } from '../../../../core/tooling/tool-resolution.mjs';
 import { resolveDependencyHook } from '../dependency-graph/dependency-hooks.mjs';
 import { detectPackageManager } from '../dependency-graph/package-managers/detect.mjs';
+import { containedPath } from '../dependency-graph/package-managers/contained-path.mjs';
 import { memberDependencyDirectories } from '../dependency-graph/package-managers/members.mjs';
 import {
   existsSync,
@@ -104,7 +105,7 @@ function linkDependencies(options, dependencyHook) {
 }
 
 function liveDependencyRoot(liveProjectRoot, dependencyHook) {
-  const dependencyPath = path.join(liveProjectRoot, dependencyHook.directory);
+  const dependencyPath = containedPath(liveProjectRoot, dependencyHook.directory);
   if (!existsSync(dependencyPath)) {
     const { name } = detectPackageManager(liveProjectRoot);
     throw new Error(
@@ -117,9 +118,9 @@ function liveDependencyRoot(liveProjectRoot, dependencyHook) {
 function linkMemberDependencies(projectRoot, liveProjectRoot) {
   const linked = [];
   for (const relative of memberDependencyDirectories(liveProjectRoot)) {
-    const linkPath = path.join(projectRoot, relative);
+    const linkPath = containedPath(projectRoot, relative);
     if (existsSync(path.dirname(linkPath)) && !existsSync(linkPath)) {
-      symlinkSync(realpathSync(path.join(liveProjectRoot, relative)), linkPath, 'dir');
+      symlinkSync(realpathSync(containedPath(liveProjectRoot, relative)), linkPath, 'dir');
       linked.push(linkPath);
     }
   }

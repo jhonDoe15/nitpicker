@@ -1,5 +1,6 @@
 import { existsSync, lstatSync, readdirSync } from 'node:fs';
 import path from 'node:path';
+import { containedPath } from './contained-path.mjs';
 
 const MAX_MEMBER_DEPTH = 4;
 const DEPENDENCY_DIRECTORY = 'node_modules';
@@ -10,15 +11,12 @@ function childDirectories(directory) {
       (entry) =>
         entry.isDirectory() && entry.name !== DEPENDENCY_DIRECTORY && !entry.name.startsWith('.'),
     )
-    .map((entry) => path.join(directory, entry.name));
+    .map((entry) => containedPath(directory, entry.name));
 }
 
-function isRealDirectory(candidate) {
-  return (
-    existsSync(candidate) &&
-    lstatSync(candidate).isDirectory() &&
-    !lstatSync(candidate).isSymbolicLink()
-  );
+function hasRealDependencyDirectory(directory) {
+  const candidate = containedPath(directory, DEPENDENCY_DIRECTORY);
+  return existsSync(candidate) && lstatSync(candidate).isDirectory();
 }
 
 export function memberDependencyDirectories(root) {
@@ -32,7 +30,8 @@ export function memberDependencyDirectories(root) {
   }
   return found
     .slice(1)
-    .filter(({ directory }) => existsSync(path.join(directory, 'package.json')))
-    .map(({ directory }) => path.relative(root, path.join(directory, DEPENDENCY_DIRECTORY)))
-    .filter((relative) => isRealDirectory(path.join(root, relative)));
+    .map(({ directory }) => directory)
+    .filter((directory) => existsSync(containedPath(directory, 'package.json')))
+    .filter(hasRealDependencyDirectory)
+    .map((directory) => path.relative(root, containedPath(directory, DEPENDENCY_DIRECTORY)));
 }
