@@ -1,5 +1,7 @@
 import { CONFIG_FILE_NAME, isPlainObject } from '../../shared/config.mjs';
 import { policyDigest } from '../diff/reporting/review/policy-findings.mjs';
+import { buildNarrowingChanges } from './build-files/build-narrowing.mjs';
+import { toolConfigChanges } from './build-files/tool-config-changes.mjs';
 import { coveredPathChanges } from './paths/covered-paths.mjs';
 import { hiddenCodeChanges } from './paths/hidden-code.mjs';
 import { tsconfigChanges } from './paths/tsconfig-changes.mjs';
@@ -68,6 +70,8 @@ function describedEntries(baseConfig, headConfig, scope) {
     ...listedChanges(baseConfig, headConfig),
     hiddenCodeChanges(baseConfig, headConfig, scope),
     tsconfigChanges(scope),
+    ...buildNarrowingChanges(scope),
+    toolConfigChanges(scope),
   ];
   return {
     loosened: [
