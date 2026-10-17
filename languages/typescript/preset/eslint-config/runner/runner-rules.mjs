@@ -106,7 +106,16 @@ function jestConfig() {
   };
 }
 
-const NODE_TEST_FUNCTIONS = ['test', 'suite', 'skip', 'todo', 'only', 'expectFailure'];
+const NODE_TEST_FUNCTIONS = [
+  'test',
+  'suite',
+  'it',
+  'describe',
+  'skip',
+  'todo',
+  'only',
+  'expectFailure',
+];
 
 const NODE_TEST_TYPED_RULES = {
   '@typescript-eslint/no-floating-promises': [
