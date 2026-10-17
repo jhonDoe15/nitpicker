@@ -22,12 +22,12 @@ import { readSpringConfigFindings } from '../spring/java-spring.mjs';
 import { methodText, readJavaStructureFindings } from '../metrics/java-structure.mjs';
 import { readClassLimitFindings } from '../size/class-limits.mjs';
 import { hash } from '../../../../shared/rules/finding-helpers.mjs';
-import { ingestFormatCheck } from '../../ingest/formatting/format-check.mjs';
+import { formatFindings } from './format-findings.mjs';
 import { readSlowTestFindings } from '../test-times/slow-tests.mjs';
 import { ingestJacoco } from '../../ingest/coverage-reports/jacoco.mjs';
 import { ingestPit } from '../../ingest/pit.mjs';
 import { ingestJacocoBranches } from '../../ingest/coverage-reports/jacoco-branches.mjs';
-import { ingestSarif, prepareSarif, projectRelative } from '../../ingest/sarif.mjs';
+import { ingestSarif, prepareSarif } from '../../ingest/sarif.mjs';
 import { projectWideFindings } from '../../builds/project-wide.mjs';
 import { applyRuleMessages } from '../../messages/rule-messages.mjs';
 import {
@@ -192,23 +192,6 @@ function sarifFindings(context) {
       tool: 'spotbugs',
     }).findings.map(withExposureAdvice),
   ];
-}
-
-const FORMAT_TOOLS = {
-  google: { tool: 'google-java-format', flag: '' },
-  aosp: { tool: 'google-java-format', flag: ' --aosp' },
-  palantir: { tool: 'palantir-java-format', flag: '' },
-};
-
-function formatFindings({ reportRoot, roots, javaStyle }) {
-  const formatLines = readFileSync(path.join(reportRoot, 'format.txt'), 'utf8')
-    .split(/\r?\n/)
-    .map((line) => projectRelative(line.trim(), roots) ?? line);
-  const { tool, flag } = FORMAT_TOOLS[javaStyle] ?? FORMAT_TOOLS.google;
-  return ingestFormatCheck(formatLines.join('\n'), {
-    tool,
-    message: `File is not formatted with ${tool}${flag}`,
-  }).findings;
 }
 
 function checkstyleFindings({ reportRoot, roots, projectRoot, mainCheckstyle }) {
