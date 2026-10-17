@@ -1,9 +1,11 @@
 import { ESLint } from 'eslint';
-import { mkdirSync, mkdtempSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
+import { rmSync } from 'node:fs';
 import path from 'node:path';
-import { describe, expect, it } from 'vitest';
-import { lintWithOxlint } from '../../../adapters/oxlint/oxlint-runner.mjs';
+import { afterAll, describe, expect, it } from 'vitest';
+import {
+  createProject,
+  lintProject,
+} from '../../../adapters/oxlint/test-support/oxlint-project.mjs';
 
 const POLICY = `import tseslint from ${JSON.stringify(import.meta.resolve('typescript-eslint'))};
 import { i18nScopeConfigFor } from ${JSON.stringify(import.meta.resolve('./i18n-scope.mjs'))};
@@ -49,21 +51,9 @@ function located(messages) {
   return messages.map(({ ruleId, line, column }) => `${ruleId}@${String(line)}:${String(column)}`);
 }
 
-function messagesByFile(root, results) {
-  return Object.fromEntries(
-    Object.keys(SOURCES).map((file) => [
-      file,
-      located(results.find((entry) => entry.filePath === path.join(root, file))?.messages ?? []),
-    ]),
-  );
-}
-
-function writeProject(root) {
-  writeFileSync(path.join(root, 'policy.mjs'), POLICY);
-  for (const [relativePath, text] of Object.entries(SOURCES)) {
-    mkdirSync(path.dirname(path.join(root, relativePath)), { recursive: true });
-    writeFileSync(path.join(root, relativePath), text);
-  }
+function messagesIn(root, results, file) {
+  const entry = results.find((candidate) => candidate.filePath === path.join(root, file));
+  return located(entry?.messages ?? []);
 }
 
 const expected = {
@@ -75,31 +65,35 @@ const expected = {
   'src/values.tsx': ['formatjs/enforce-placeholders@2:57', 'formatjs/no-invalid-icu@4:55'],
 };
 
-describe('the i18n rules report the same on both lint engines', () => {
-  it('in every source, after the filters', async () => {
-    const root = realpathSync(mkdtempSync(path.join(tmpdir(), 'nitpicker-i18n-engines-')));
-    try {
-      writeProject(root);
-      const oxlint = lintWithOxlint({
-        options: { projectRoot: root, patterns: ['src/**/*.tsx'] },
-        environment: {
-          ...process.env,
-          NITPICKER_DIFF_ESLINT_POLICY_CONFIG: path.join(root, 'policy.mjs'),
-          NITPICKER_DIFF_ESLINT_PROJECT_ROOT: root,
-        },
-        runEslintCli: () => {
-          throw new Error('no rule needs ESLint here');
-        },
-      });
-      const eslint = await new ESLint({
-        cwd: root,
-        overrideConfigFile: path.join(root, 'policy.mjs'),
-      }).lintFiles(['src/**/*.tsx']);
+const patterns = ['src/**/*.tsx'];
+const roots = [];
 
-      expect(messagesByFile(root, eslint)).toEqual(expected);
-      expect(messagesByFile(root, oxlint)).toEqual(expected);
-    } finally {
-      rmSync(root, { recursive: true, force: true });
+afterAll(() => {
+  for (const root of roots) rmSync(root, { recursive: true, force: true });
+});
+
+describe('the i18n rules report the same on both lint engines', () => {
+  it('checks every source', () => {
+    expect(Object.keys(expected)).toEqual(Object.keys(SOURCES));
+  });
+
+  it('reports the expected findings in each source, after the filters', async () => {
+    const root = createProject('nitpicker-i18n-engines-', { 'policy.mjs': POLICY, ...SOURCES });
+    roots.push(root);
+    const oxlint = lintProject({ root, patterns });
+    const eslint = await new ESLint({
+      cwd: root,
+      overrideConfigFile: path.join(root, 'policy.mjs'),
+    }).lintFiles(patterns);
+    for (const file of Object.keys(expected)) {
+      expect({ file, eslint: messagesIn(root, eslint, file) }).toEqual({
+        file,
+        eslint: expected[file],
+      });
+      expect({ file, oxlint: messagesIn(root, oxlint, file) }).toEqual({
+        file,
+        oxlint: expected[file],
+      });
     }
   });
 });
