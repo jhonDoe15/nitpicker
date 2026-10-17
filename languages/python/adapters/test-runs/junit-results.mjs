@@ -5,6 +5,7 @@ import { childrenNamed, parseXml } from '../../../java/ingest/common.mjs';
 export const JUNIT_REPORT = 'pytest-junit.xml';
 const FAILED_CHILDREN = ['failure', 'error'];
 const PARAMETERS = /\[.*\]$/su;
+const MARKS_PROPERTY = 'nitpicker_marks';
 
 function moduleFile(dotted) {
   return `${dotted.replaceAll('.', '/')}.py`;
@@ -23,6 +24,19 @@ function owner(file, classname) {
   return index === -1 ? '' : classname.slice(index + dotted.length).replace(/^\./u, '');
 }
 
+function marksOf(testCase) {
+  const property = childrenNamed(testCase, 'properties')
+    .flatMap((properties) => childrenNamed(properties, 'property'))
+    .find(({ attrs }) => attrs.name === MARKS_PROPERTY);
+  return property === undefined
+    ? {}
+    : {
+        marks: String(property.attrs.value ?? '')
+          .split(' ')
+          .filter(Boolean),
+      };
+}
+
 function testCaseOf(testCase) {
   const { classname = '', name = '', file, line, time } = testCase.attrs;
   const collection = classname === '' && file === undefined;
@@ -31,6 +45,8 @@ function testCaseOf(testCase) {
   const test = classname === '' ? undefined : name;
   return {
     file: relative,
+    qualifiedClass: classname,
+    ...marksOf(testCase),
     line: line === undefined ? undefined : Number(line) + 1,
     className,
     name: test,

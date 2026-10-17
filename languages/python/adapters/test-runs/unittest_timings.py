@@ -6,17 +6,24 @@ import unittest
 from xml.sax.saxutils import quoteattr
 
 
+def inside(source):
+    relative = os.path.relpath(source).replace(os.sep, "/")
+    return None if relative.startswith("../") else relative
+
+
 def located(test):
     method = getattr(test, getattr(test, "_testMethodName", ""), None)
     if method is None:
         return None
     try:
-        source = inspect.getsourcefile(type(test))
-        line = inspect.unwrap(method).__code__.co_firstlineno
-        relative = os.path.relpath(source).replace(os.sep, "/")
+        owner = inside(inspect.getsourcefile(type(test)))
+        code = inspect.unwrap(method).__code__
+        defined = inside(inspect.getsourcefile(code))
     except (TypeError, AttributeError, OSError, ValueError):
         return None
-    return None if relative.startswith("../") else (relative, line)
+    if owner is None:
+        return None
+    return (owner, defined or owner, code.co_firstlineno if defined else None)
 
 
 class TimedResult(unittest.TextTestResult):
@@ -38,14 +45,13 @@ class TimedResult(unittest.TextTestResult):
 
 
 def testcase(test, where, seconds):
-    relative, line = where
-    module = relative[: -len(".py")].replace("/", ".")
-    owner = module + "." + type(test).__qualname__
+    owner, defined, line = where
+    module = owner[: -len(".py")].replace("/", ".")
     attributes = {
-        "classname": owner,
+        "classname": module + "." + type(test).__qualname__,
         "name": test._testMethodName,
-        "file": relative,
-        "line": str(line - 1),
+        "file": defined,
+        **({} if line is None else {"line": str(line - 1)}),
         "time": "%.3f" % seconds,
     }
     return "<testcase " + " ".join(k + "=" + quoteattr(v) for k, v in attributes.items()) + "/>"

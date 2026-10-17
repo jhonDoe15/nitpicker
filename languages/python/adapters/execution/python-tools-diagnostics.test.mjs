@@ -3,6 +3,7 @@ import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import { jscpdVersion } from '../../../java/adapters/metrics/java-duplicates.mjs';
 import { failure } from './python-process.mjs';
+import { PYTEST_SCRIPT } from './python-test-runner.mjs';
 import { mutationVersions, runPythonTools, toolVersions } from '../python-tools.mjs';
 import {
   callsLog,
@@ -102,7 +103,7 @@ describe('running the import and duplicate tools', () => {
   });
 });
 describe('running pytest', () => {
-  it('keeps the project pytest configuration working under the outer coverage run, timing the call phase only', () => {
+  it('keeps the project pytest configuration working under the outer coverage run, timing the call phase and function-scoped setup', () => {
     const calls = callsLog();
     const root = project({
       'conftest.py': '',
@@ -114,8 +115,7 @@ describe('running pytest', () => {
     runPythonTools(context);
 
     expect(calls('coverage', 'run')[0].args.slice(3)).toEqual([
-      '-m',
-      'pytest',
+      PYTEST_SCRIPT,
       '-q',
       '-o',
       `cache_dir=${path.join(reportRoot, 'pytest-cache')}`,

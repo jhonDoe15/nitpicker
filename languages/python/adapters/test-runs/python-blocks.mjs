@@ -1,5 +1,9 @@
 const DEFINITION = /^\s*(?:async\s+)?def\s+(\w+)\s*\(/u;
-const CLASS = /^\s*class\s+\w+/u;
+const CLASS = /^\s*class\s+(\w+)/u;
+const WORD = /\w+/gu;
+const PARAM_CALL = /\bparam\s*\(/gu;
+const PARENTHESES = /[()]/gu;
+const SCOPE = /^\s*(?:class|(?:async\s+)?def)\s+(\w+)/u;
 const DECORATOR = /^\s*@/u;
 const MARKS = /^\s*pytestmark\s*[:=]/u;
 const TOKEN = /\\.?|"""|'''|["'#()[\]{}]/gu;
@@ -134,6 +138,16 @@ function moduleMarks({ logical, lines }) {
     .map((entry) => textOf(lines, entry.first, entry.last));
 }
 
+function scopeChain(source, position) {
+  const names = [];
+  let owner = ownerOf(source.logical, position);
+  while (owner !== undefined) {
+    names.unshift(SCOPE.exec(source.lines[source.logical[owner].first])?.[1] ?? '');
+    owner = ownerOf(source.logical, owner);
+  }
+  return names.join('.');
+}
+
 function blockAt(source, position) {
   const { logical, lines } = source;
   const first = logical[decoratorsAbove(source, position)].first;
@@ -143,6 +157,7 @@ function blockAt(source, position) {
     definition: logical[position].first,
     last,
     text: textOf(lines, first, last),
+    owner: scopeChain(source, position),
     marks: [
       ...decoratorText(source, position),
       ...classMarks(source, position),
@@ -151,12 +166,71 @@ function blockAt(source, position) {
   };
 }
 
-export function functionBlocks(text, name) {
+function sourceOf(text) {
   const lines = text.split(/\r?\n/u);
-  const source = { lines, logical: logicalLines(lines) };
-  return source.logical.flatMap((entry, position) =>
-    !entry.blank && DEFINITION.exec(lines[entry.first])?.[1] === name
-      ? [blockAt(source, position)]
-      : [],
+  return { lines, logical: logicalLines(lines) };
+}
+
+function statement({ lines }, { first, last }) {
+  return lines
+    .slice(first, last + 1)
+    .map((line) => line.trim())
+    .join('\n');
+}
+
+export function functionBlocks(text, name) {
+  const source = sourceOf(text);
+  return source.logical.flatMap((entry, position) => {
+    const found = entry.blank ? undefined : DEFINITION.exec(source.lines[entry.first])?.[1];
+    return found !== undefined && (name === undefined || found === name)
+      ? [{ name: found, ...blockAt(source, position) }]
+      : [];
+  });
+}
+
+export function classHeader(text, chain) {
+  const source = sourceOf(text);
+  const position = source.logical.findIndex(
+    (entry, index) =>
+      !entry.blank &&
+      CLASS.test(source.lines[entry.first]) &&
+      [scopeChain(source, index), CLASS.exec(source.lines[entry.first])[1]]
+        .filter(Boolean)
+        .join('.') === chain,
   );
+  return position === -1 ? undefined : statement(source, source.logical[position]);
+}
+
+export function mentions(text, name) {
+  const source = sourceOf(text);
+  return source.logical
+    .filter(
+      (entry) =>
+        !entry.blank &&
+        (textOf(source.lines, entry.first, entry.last).match(WORD) ?? []).includes(name),
+    )
+    .map((entry) => statement(source, entry));
+}
+
+function closingParenthesis(text, start) {
+  let depth = 1;
+  for (const { 0: token, index } of text.slice(start).matchAll(PARENTHESES)) {
+    depth += token === '(' ? 1 : -1;
+    if (depth === 0) {
+      return start + index + 1;
+    }
+  }
+  return text.length;
+}
+
+export function withoutParamCalls(text) {
+  const kept = [];
+  let from = 0;
+  for (const match of text.matchAll(PARAM_CALL)) {
+    if (match.index >= from) {
+      kept.push(text.slice(from, match.index));
+      from = closingParenthesis(text, match.index + match[0].length);
+    }
+  }
+  return [...kept, text.slice(from)].join('');
 }

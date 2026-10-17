@@ -33,7 +33,8 @@ describe.skipIf(!pythonE2eEnabled)(
       });
       commitBranch(project, 'project-shape', {
         ...NO_MUTATION,
-        'tests/test_slow.py': 'import time\n\n\ndef test_waits():\n    time.sleep(5.2)\n',
+        'tests/test_slow.py':
+          'import time\n\nimport pytest\n\n\n@pytest.fixture\ndef client(seconds):\n    time.sleep(seconds)\n    return seconds\n\n\n@pytest.mark.parametrize(\n    "seconds", [pytest.param(0, marks=pytest.mark.integration), 5.2]\n)\ndef test_waits(client):\n    assert client >= 0\n',
         'src/demo/cyc_a.py': 'from demo import cyc_b\n\n\ndef a():\n    return cyc_b.b()\n',
         'src/demo/cyc_b.py':
           'from demo import cyc_a\n\n\ndef b():\n    return 1\n\n\ndef c():\n    return cyc_a.a()\n',
@@ -71,7 +72,7 @@ describe.skipIf(!pythonE2eEnabled)(
           .map(({ rule }) => rule),
       ).toEqual(['F401']);
     });
-    it('reports a slow new test, an import cycle and a dev-only package in production code', () => {
+    it('reports a slow new test (its fixture setup counted, one unit case of an integration-marked parametrization), an import cycle and a dev-only package in production code', () => {
       const result = gate(project, 'project-shape', MUTATION_DISABLED);
 
       expect(result.exitCode, result.text).toBe(1);
