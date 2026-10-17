@@ -4,8 +4,7 @@ import { jscpdVersion } from '../../java/adapters/metrics/java-duplicates.mjs';
 import { scanImports } from './analysis/python-coupling.mjs';
 import { scanDependencies } from './dependencies/dependency-findings.mjs';
 import { runDuplicates } from './analysis/python-duplicates.mjs';
-import { globToRegExpSource } from '../../../shared/glob.mjs';
-import { detectEnvironment, openEnvironment } from './execution/python-environment.mjs';
+import { openSnapshotEnvironment } from './execution/python-environment.mjs';
 import { checkRules } from './analysis/python-ast-rules.mjs';
 import { pytestStyle, pytestStyleFlags } from '../rules/libraries/pytest-style.mjs';
 import { importLinterEnabled, runImportLinter } from './analysis/python-import-linter.mjs';
@@ -18,8 +17,10 @@ import {
   detectTypeCheckers,
   importRoots,
 } from './execution/python-project.mjs';
+import { formatCommand, ruffExclusions } from './formatting/format-command.mjs';
 import { ruffConfigFor } from './configuration/python-ruff-config.mjs';
 import { detectTestRunner, pytestLabel, testRunnerLabel } from './execution/python-test-runner.mjs';
+import { mutationRunnerLabels } from './mutation/test-run/python-mutation-runner.mjs';
 import { test } from './test-runs/test-step.mjs';
 import { retimeSlowTests } from './test-runs/slow-retime.mjs';
 
@@ -44,9 +45,16 @@ export function createToolContext({
   exclude = [],
   snapshot = 'head',
   baselineRoot,
+  conventions = {},
+  policyRoot,
+  toolPrecedence,
   pytestAddopts,
 }) {
-  const launcher = openEnvironment(detectEnvironment(liveRoot, settings.environment), liveRoot);
+  const launcher = openSnapshotEnvironment({
+    projectRoot,
+    liveRoot,
+    setting: settings.environment,
+  });
   const sourceRoots = detectSourceRoots(projectRoot, settings.sourceRoots);
   const pythonPath = [...importRoots(projectRoot, sourceRoots), process.env.PYTHONPATH]
     .filter((entry) => entry !== undefined && entry !== '')
@@ -57,6 +65,9 @@ export function createToolContext({
     snapshot,
     baselineRoot,
     testSeconds: settings.testSeconds,
+    conventions,
+    policyRoot,
+    toolPrecedence,
     launcher,
     exclude,
     pytestAddopts,
@@ -148,24 +159,6 @@ export function lint(context) {
   );
 }
 
-function ruffExclusions({ exclude }) {
-  return exclude.flatMap((glob) => ['--extend-exclude', glob]);
-}
-
-function blackExclusions({ exclude }) {
-  if (exclude.length === 0) {
-    return [];
-  }
-  const patterns = exclude.map((glob) => `^/${globToRegExpSource(glob).slice(1, -1)}(?:/.*)?/?$`);
-  return ['--extend-exclude', patterns.join('|')];
-}
-
-function formatCommand({ project, ...context }) {
-  return project.formatter === 'black'
-    ? ['black', '--check', ...blackExclusions(context), '.']
-    : ['ruff', 'format', '--check', '--diff', '--no-cache', ...ruffExclusions(context), '.'];
-}
-
 export function unformattedPaths(formatter, { stdout, stderr }) {
   if (formatter === 'black') {
     return [...stderr.matchAll(/^would reformat (.+)$/gm)].map((match) => match[1]);
@@ -240,5 +233,9 @@ export function toolVersions(context) {
 }
 
 export function mutationVersions(context) {
-  return [`mutmut@${probeVersion(context, MUTMUT_VERSION_PROBE)}`, pytestLabel(context)].join(';');
+  return [
+    `mutmut@${probeVersion(context, MUTMUT_VERSION_PROBE)}`,
+    pytestLabel(context),
+    ...mutationRunnerLabels(context),
+  ].join(';');
 }

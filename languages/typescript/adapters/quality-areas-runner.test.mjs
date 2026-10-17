@@ -13,6 +13,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { PACKAGE_ROOT } from '../../../core/tooling/tool-resolution.mjs';
 import { installStrykerTsconfig, mutationSkipFor } from './quality-areas/runners/mutation.mjs';
 import { normalizeStructure } from './quality-areas/reporting/repository.mjs';
+import { normalizeCrap } from './quality-areas/reporting/tests.mjs';
 import { parseArguments } from './quality-areas/arguments.mjs';
 import { runQualityArea } from './quality-areas-runner.mjs';
 
@@ -36,7 +37,7 @@ function snapshotWith(files) {
   return root;
 }
 
-function optionsFor(kind, projectRoot) {
+function optionsFor(kind, projectRoot, extra = []) {
   return parseArguments([
     '--analyzer-name',
     kind,
@@ -50,11 +51,12 @@ function optionsFor(kind, projectRoot) {
     PACKAGE_ROOT,
     '--snapshot',
     'head',
+    ...extra,
   ]);
 }
 
-function runKind(kind, projectRoot) {
-  return runQualityArea(optionsFor(kind, projectRoot));
+function runKind(kind, projectRoot, extra) {
+  return runQualityArea(optionsFor(kind, projectRoot, extra));
 }
 
 describe('crap runner without a coverage report', () => {
@@ -74,6 +76,30 @@ describe('crap runner without a coverage report', () => {
         path: '.',
         identity: 'tests-failed-skipped',
         message: 'CRAP did not run: there is no coverage report, because the project tests fail.',
+        classification: 'tool-error',
+      },
+    ]);
+  });
+});
+
+describe('test-console runner without a console report', () => {
+  it('says the coverage run left no report instead of blaming the tests', async () => {
+    const projectRoot = snapshotWith({
+      'package.json': '{"name":"p","type":"module"}\n',
+      'src/main/a.ts': 'export function a(): number {\n  return 1;\n}\n',
+      'test/a.test.ts': "import { it } from 'vitest';\nit('x', () => {});\n",
+    });
+
+    const findings = await runKind('test-console', projectRoot);
+
+    expect(findings).toEqual([
+      {
+        tool: 'test-console',
+        rule: 'test-console-report-missing',
+        path: '.',
+        identity: 'test-console-report-missing',
+        message:
+          'Test console output was not checked: the coverage run left no reports/quality/test-console/report.json.',
         classification: 'tool-error',
       },
     ]);
@@ -134,6 +160,67 @@ describe('coverage runner invoked as a script', () => {
   });
 });
 
+describe('structure runner with a base checkout', () => {
+  const copy = (tail) =>
+    [
+      'export function total(items: number[], tax: number): number {',
+      '  const sum = items.reduce((a, b) => a + b, 0);',
+      '  const taxed = sum * (1 + tax);',
+      '  const rounded = Math.round(taxed * 100) / 100;',
+      `  ${tail}`,
+      '}',
+      '',
+    ].join('\n');
+  const files = (cart) => ({
+    'package.json': '{"name":"p","type":"module"}\n',
+    'src/cart/total.ts': copy(cart),
+    'src/checkout/total.ts': copy('return rounded;'),
+  });
+
+  it('reports the edit of one of two near-identical copies against the base side', async () => {
+    const baseRoot = snapshotWith(files('return rounded;'));
+    const headRoot = snapshotWith(files('return Math.max(rounded, 0);'));
+
+    const findings = await runKind('structure', headRoot, ['--baseline-root', baseRoot]);
+
+    expect(
+      findings
+        .filter(({ rule }) => rule === 'sibling-copy-edit')
+        .map(({ path: file, identity }) => [file, identity]),
+    ).toEqual([['src/cart/total.ts', 'sibling-copy:total']]);
+  });
+
+  it('reports nothing without a base checkout', async () => {
+    const headRoot = snapshotWith(files('return Math.max(rounded, 0);'));
+
+    const findings = await runKind('structure', headRoot);
+
+    expect(findings.filter(({ rule }) => rule === 'sibling-copy-edit')).toEqual([]);
+  });
+});
+
+describe('coverage run in a project that configures its own reporters', () => {
+  it('writes the test report where nitpicker reads it', async () => {
+    const projectRoot = snapshotWith({
+      'package.json': '{"name":"p","type":"module"}\n',
+      'vitest.config.ts':
+        "export default { test: { reporters: [['json', { outputFile: 'mine.json' }]], outputFile: { json: 'mine.json' } } };\n",
+      'src/main/a.ts': 'export function a(): number {\n  return 1;\n}\n',
+      'test/a.test.ts':
+        "import { expect, it } from 'vitest';\nimport { a } from '../src/main/a';\nit('returns one', () => {\n  expect(a()).toBe(1);\n});\n",
+    });
+    symlinkSync(
+      path.join(PACKAGE_ROOT, 'node_modules'),
+      path.join(projectRoot, 'node_modules'),
+      'dir',
+    );
+
+    const findings = await runKind('coverage', projectRoot);
+
+    expect(findings.filter(({ classification }) => classification === 'tool-error')).toEqual([]);
+  });
+});
+
 describe('structure limit messages', () => {
   function violations(metrics) {
     return normalizeStructure(
@@ -158,6 +245,59 @@ describe('structure limit messages', () => {
     expect(violations({ statements: 16 })).toEqual([
       'big has 16 statements; limit is 15. Split by responsibility and name each part for what it checks or does.',
     ]);
+  });
+});
+
+describe('numbering of functions that share a name', () => {
+  const site = (start, sourceHash) => ({
+    source: 'src/a.ts',
+    function: 'handler',
+    start,
+    end: start + 1,
+    lines: { start, end: start + 1 },
+    sourceHash,
+    complexity: 1,
+    crap: 30,
+  });
+  const identities = (starts) =>
+    normalizeCrap({ functions: starts.map(([start, hash]) => site(start, hash)) }, 'crap')
+      .filter(({ classification }) => classification === 'enforceable')
+      .map(({ identity }) => identity);
+  const structureIdentities = (starts) =>
+    normalizeStructure(
+      {
+        functions: starts.map(([start, hash]) => ({
+          source: 'src/a.ts',
+          function: 'handler',
+          start,
+          end: start + 1,
+          sourceHash: hash,
+          parameters: 9,
+        })),
+      },
+      'structure',
+    )
+      .filter(({ classification }) => classification === 'enforceable')
+      .map(({ identity }) => identity);
+
+  it('keeps the identity of a CRAP finding when a function of the same name is added above it', () => {
+    expect(identities([[20, 'b']])).toEqual(['function:handler:occurrence:1:source:b']);
+    expect(
+      identities([
+        [5, 'a'],
+        [20, 'b'],
+      ]),
+    ).toEqual(['function:handler:occurrence:1:source:a', 'function:handler:occurrence:1:source:b']);
+  });
+
+  it('keeps the identity of a structure finding when a function of the same name is added above it', () => {
+    expect(structureIdentities([[20, 'b']])).toEqual(['function:handler:occurrence:1:source:b']);
+    expect(
+      structureIdentities([
+        [5, 'a'],
+        [20, 'b'],
+      ]),
+    ).toEqual(['function:handler:occurrence:1:source:a', 'function:handler:occurrence:1:source:b']);
   });
 });
 

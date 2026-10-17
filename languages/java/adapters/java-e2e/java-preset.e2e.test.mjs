@@ -21,7 +21,10 @@ import {
   STABILITY_FILES,
   stabilityClass,
   repeated,
+  PALANTIR_MESSY,
+  PALANTIR_ROOMY,
 } from './test-support/java-preset-data.mjs';
+import { UNITS, UNITS_TEST } from './test-support/unit-sources.mjs';
 import { WIDE, WIDE_EXTENDED, WIDE_REFORMATTED } from './test-support/wide-sources.mjs';
 import { runJavaDiff } from '../java-diff.mjs';
 import {
@@ -58,6 +61,7 @@ const BASELINED_FINDINGS = [
   'coupling module-coupling Legacy.java',
   'coupling module-coupling Wide.java',
   'coupling package-coupling .',
+  'coupling test-only-export Greeter.java',
   'errorprone UnnecessarilyFullyQualified Greeter.java',
   'jacoco changed-branch-coverage Branchy.java',
   'jacoco line-coverage Branchy.java',
@@ -84,6 +88,7 @@ const BASELINED_FINDINGS_WITHOUT_GREETER_LINE_COVERAGE = [
   'coupling module-coupling Legacy.java',
   'coupling module-coupling Wide.java',
   'coupling package-coupling .',
+  'coupling test-only-export Greeter.java',
   'errorprone UnnecessarilyFullyQualified Greeter.java',
   'jacoco changed-branch-coverage Branchy.java',
   'jacoco line-coverage Branchy.java',
@@ -123,6 +128,8 @@ describe.skipIf(!enabled)('Java preset end to end', () => {
     branchWith('violation', { 'Bad.java': BAD });
     branchWith('architecture', { 'Stamp.java': STAMP });
     branchWith('complex', { 'Complex.java': COMPLEX });
+    branchWith('units', { 'Units.java': UNITS, 'src/test/java/demo/UnitsTest.java': UNITS_TEST });
+    branchWith('palantir', { 'Messy.java': PALANTIR_MESSY, 'Roomy.java': PALANTIR_ROOMY });
     branchWith('clone', { 'Left.java': clonedClass('Left'), 'Right.java': clonedClass('Right') });
     branchWith('survivor', { 'Calc.java': CALC, 'src/test/java/demo/CalcTest.java': CALC_TEST });
     branchWith('branch-moved', { 'Branchy.java': BRANCHY_MOVED });
@@ -239,6 +246,21 @@ describe.skipIf(!enabled)('Java preset end to end', () => {
   );
 
   it(
+    'scores a lambda by its synthetic method and an initializer block by its lines, each as a unit of its own',
+    () => {
+      const result = diffOf('units');
+      const scored = result.newEnforceable.filter(({ tool }) => tool === 'crap');
+
+      expect(scored.map(({ rule, symbol }) => `${rule} ${symbol}`).sort()).toEqual([
+        'crap-score-limit Units.<init>',
+        'crap-score-limit Units.total.<lambda>',
+      ]);
+      expect(result.newEnforceable.filter(({ tool }) => tool === 'structure')).toEqual([]);
+    },
+    GRADLE_STEP_TIMEOUT_MS,
+  );
+
+  it(
     'honours thresholds.crapLimit: a high limit lets the complex method pass the CRAP rule',
     () => {
       const result = diffOf('complex', { crapLimit: 1_000_000 });
@@ -255,6 +277,28 @@ describe.skipIf(!enabled)('Java preset end to end', () => {
 
       expect(result.failed).toBe(false);
       expect(result.newFindings.some((finding) => finding.path.endsWith('Bad.java'))).toBe(false);
+    },
+    GRADLE_STEP_TIMEOUT_MS,
+  );
+
+  it(
+    'with palantir declared, fails a new badly formatted file and lets a 108-column line pass',
+    () => {
+      const conventions = {
+        'java.formatter': 'palantir',
+        'java.indentation': '4',
+        'java.lineLength': '120',
+      };
+      const result = diffOf('palantir', { javaStyle: 'palantir', conventions });
+      const style = (findings) =>
+        summarize(
+          findings.filter(
+            ({ tool, rule }) => tool === 'palantir-java-format' || rule === 'line-length-limit',
+          ),
+        );
+
+      expect(style(result.newEnforceable)).toEqual(['palantir-java-format format Messy.java']);
+      expect(style(result.newFindings)).toEqual(['palantir-java-format format Messy.java']);
     },
     GRADLE_STEP_TIMEOUT_MS,
   );
@@ -278,7 +322,10 @@ describe.skipIf(!enabled)('Java preset end to end', () => {
       const survivor = diffOf('survivor');
 
       expect(survivor.failed).toBe(true);
-      expect(summarize(survivor.newEnforceable)).toEqual(['pit mutant-survived Calc.java']);
+      expect(summarize(survivor.newEnforceable)).toEqual([
+        'coupling test-only-export Calc.java',
+        'pit mutant-survived Calc.java',
+      ]);
       expect(survivor.newEnforceable.find((finding) => finding.tool === 'pit').message).toEqual(
         'Survived ConditionalsBoundaryMutator: changed conditional boundary: no test fails when this code changes. Add an assertion that would. If no input can tell the two apart (a compareTo boundary, a discarded lambda return), simplify the code so this mutant disappears, or add an exception for pit/mutant-survived in nitpicker.config.json.',
       );

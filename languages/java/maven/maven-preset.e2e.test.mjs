@@ -1,6 +1,7 @@
 import {
   cpSync,
   existsSync,
+  mkdirSync,
   mkdtempSync,
   readdirSync,
   readFileSync,
@@ -13,6 +14,18 @@ import { afterAll, describe, expect, it } from 'vitest';
 import { collectJavaFindings, runJavaDiff } from '../adapters/java-diff.mjs';
 import { analyzeJavaSnapshot } from '../adapters/java-runner.mjs';
 import { testCasesOf } from '../adapters/test-times/slow-tests.mjs';
+import {
+  isFormatting,
+  LOOSE,
+  LOOSE_SOURCE,
+  MESSY,
+  MESSY_SOURCE,
+  OPTED_IN_CHECKSTYLE,
+  ROOMY,
+  ROOMY_SOURCE,
+  summaryOf,
+  withFourSpaces,
+} from './test-support/style-sources.mjs';
 import {
   commitBranch,
   GRADLE_STEP_TIMEOUT_MS,
@@ -80,6 +93,15 @@ function copyOf(...sources) {
   return root;
 }
 
+function twinProjects() {
+  const gradleProject = copyOf(gradleFixture);
+  const mavenProject = copyOf(gradleFixture, path.join(fixtures, 'single'));
+  for (const name of ['build.gradle', 'settings.gradle']) {
+    rmSync(path.join(mavenProject, name));
+  }
+  return [gradleProject, mavenProject];
+}
+
 function copiedTestCases(project) {
   const results = path.join(project, 'target/nitpicker/test-results');
   return readdirSync(results)
@@ -103,8 +125,6 @@ function lineCoverage(text, value) {
   };
 }
 
-const MESSY = 'src/main/java/demo/Messy.java';
-
 const comparable = (findings) => findings.map((finding) => JSON.stringify(finding)).sort();
 
 afterAll(() => {
@@ -117,11 +137,7 @@ describe.skipIf(!enabled)('Java preset on Maven builds', () => {
   it(
     'finds exactly what the Gradle build of the same sources finds',
     () => {
-      const gradleProject = copyOf(gradleFixture);
-      const mavenProject = copyOf(gradleFixture, path.join(fixtures, 'single'));
-      for (const name of ['build.gradle', 'settings.gradle']) {
-        rmSync(path.join(mavenProject, name));
-      }
+      const [gradleProject, mavenProject] = twinProjects();
       for (const root of [gradleProject, mavenProject]) {
         writeFileSync(path.join(root, 'src/main/java/demo/Dated.java'), DATED);
       }
@@ -150,33 +166,106 @@ describe.skipIf(!enabled)('Java preset on Maven builds', () => {
   it(
     'formats a 4-space project with --aosp and reports no layout, on Gradle and on Maven',
     () => {
-      const gradleProject = copyOf(gradleFixture);
-      const mavenProject = copyOf(gradleFixture, path.join(fixtures, 'single'));
-      for (const name of ['build.gradle', 'settings.gradle']) {
-        rmSync(path.join(mavenProject, name));
-      }
+      const [gradleProject, mavenProject] = twinProjects();
       for (const root of [gradleProject, mavenProject]) {
-        for (const file of readdirSync(path.join(root, 'src'), { recursive: true })) {
-          const source = path.join(root, 'src', file);
-          if (source.endsWith('.java')) {
-            writeFileSync(source, readFileSync(source, 'utf8').replaceAll(/^( +)/gmu, '$1$1'));
-          }
-        }
-        writeFileSync(path.join(root, MESSY), 'package demo;\n\nclass Messy {\n  int a;\n}\n');
+        withFourSpaces(root);
+        writeFileSync(path.join(root, MESSY), MESSY_SOURCE);
       }
       const policy = { javaStyle: 'aosp' };
-      const layout = (findings) =>
-        findings
-          .filter(
-            ({ tool, rule }) =>
-              tool === 'google-java-format' || (tool === 'checkstyle' && rule === 'Indentation'),
-          )
-          .map(({ tool, rule, path: file }) => `${tool} ${rule} ${file}`);
-
+      const layout = ({ tool, rule }) =>
+        tool === 'google-java-format' || (tool === 'checkstyle' && rule === 'Indentation');
       const messy = [`google-java-format format ${MESSY}`];
 
-      expect(layout(collectJavaFindings(gradleProject, { gradle, policy }))).toEqual(messy);
-      expect(layout(collectJavaFindings(mavenProject, { maven, policy }))).toEqual(messy);
+      expect(summaryOf(collectJavaFindings(gradleProject, { gradle, policy }), layout)).toEqual(
+        messy,
+      );
+      expect(summaryOf(collectJavaFindings(mavenProject, { maven, policy }), layout)).toEqual(
+        messy,
+      );
+    },
+    2 * GRADLE_STEP_TIMEOUT_MS,
+  );
+
+  it(
+    'formats a palantir project with palantir-java-format and lets a 108-column line pass, on both builds',
+    () => {
+      const [gradleProject, mavenProject] = twinProjects();
+      for (const root of [gradleProject, mavenProject]) {
+        writeFileSync(path.join(root, MESSY), MESSY_SOURCE);
+        writeFileSync(path.join(root, ROOMY), ROOMY_SOURCE);
+      }
+      const conventions = {
+        'java.formatter': 'palantir',
+        'java.indentation': '4',
+        'java.lineLength': '120',
+      };
+      const policy = { javaStyle: 'palantir', conventions };
+      const ours = ({ path: file, ...finding }) =>
+        [MESSY, ROOMY].includes(file) && isFormatting(finding);
+
+      expect(summaryOf(collectJavaFindings(gradleProject, { gradle, policy }), ours)).toEqual([
+        `palantir-java-format format ${MESSY}`,
+      ]);
+      expect(summaryOf(collectJavaFindings(mavenProject, { maven, policy }), ours)).toEqual([
+        `palantir-java-format format ${MESSY}`,
+      ]);
+    },
+    2 * GRADLE_STEP_TIMEOUT_MS,
+  );
+
+  it(
+    'with no formatter, flags the unused import only: 4-space indentation, no format finding, a one-letter field',
+    () => {
+      const [gradleProject, mavenProject] = twinProjects();
+      for (const root of [gradleProject, mavenProject]) {
+        withFourSpaces(root);
+        writeFileSync(path.join(root, LOOSE), LOOSE_SOURCE);
+      }
+      const conventions = { 'java.formatter': 'none', 'java.indentation': '4' };
+      const policy = { javaStyle: 'none', conventions };
+      const unused = [`checkstyle UnusedImports ${LOOSE}`];
+
+      expect(
+        summaryOf(collectJavaFindings(gradleProject, { gradle, policy }), isFormatting),
+      ).toEqual(unused);
+      expect(summaryOf(collectJavaFindings(mavenProject, { maven, policy }), isFormatting)).toEqual(
+        unused,
+      );
+    },
+    2 * GRADLE_STEP_TIMEOUT_MS,
+  );
+
+  it(
+    'with no formatter and the project Checkstyle config in charge, still carries UnusedImports',
+    () => {
+      const [gradleProject, mavenProject] = twinProjects();
+      for (const root of [gradleProject, mavenProject]) {
+        withFourSpaces(root);
+        writeFileSync(path.join(root, LOOSE), LOOSE_SOURCE);
+        mkdirSync(path.join(root, 'config/checkstyle'), { recursive: true });
+        writeFileSync(path.join(root, 'config/checkstyle/checkstyle.xml'), OPTED_IN_CHECKSTYLE);
+      }
+      const conventions = { 'java.formatter': 'none', 'java.indentation': '4' };
+      const policyOf = (policyRoot) => ({
+        javaStyle: 'none',
+        conventions,
+        toolPrecedence: { checkstyle: ['project'] },
+        policyRoot,
+      });
+      const unused = [`checkstyle UnusedImports ${LOOSE}`];
+
+      expect(
+        summaryOf(
+          collectJavaFindings(gradleProject, { gradle, policy: policyOf(gradleProject) }),
+          isFormatting,
+        ),
+      ).toEqual(unused);
+      expect(
+        summaryOf(
+          collectJavaFindings(mavenProject, { maven, policy: policyOf(mavenProject) }),
+          isFormatting,
+        ),
+      ).toEqual(unused);
     },
     2 * GRADLE_STEP_TIMEOUT_MS,
   );

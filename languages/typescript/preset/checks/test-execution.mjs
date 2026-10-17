@@ -1,6 +1,16 @@
 import { MINUTE_MS, vitestVersion, crapVersion, strykerVersion } from './constants.mjs';
 import { JAVASCRIPT_PRESET_FILE, CRAP_CONFIGURATION_FILES } from './policy-files.mjs';
 import { DEFAULT_CRAP_SCORE_LIMIT } from '../../../../shared/policy.mjs';
+import { testConsoleCheckFor } from './test-console.mjs';
+
+const COVERAGE_CONFIGURATION_FILES = [
+  'languages/typescript/preset/defaults/vitest.quality.config.ts',
+  'languages/typescript/preset/layout.mjs',
+  'languages/typescript/preset/head-policy.mjs',
+  'languages/typescript/preset/test-console/ansi.mjs',
+  'languages/typescript/preset/test-console/vitest-reporter.config.mjs',
+  JAVASCRIPT_PRESET_FILE,
+];
 
 export function testExecutionChecksFor(exclusions) {
   return [
@@ -15,13 +25,9 @@ export function testExecutionChecksFor(exclusions) {
       reportedTools: ['test-runtime'],
       shardWeight: 16,
       timeoutMs: 5 * MINUTE_MS,
-      configurationFiles: [
-        'languages/typescript/preset/defaults/vitest.quality.config.ts',
-        'languages/typescript/preset/layout.mjs',
-        'languages/typescript/preset/head-policy.mjs',
-        JAVASCRIPT_PRESET_FILE,
-      ],
+      configurationFiles: COVERAGE_CONFIGURATION_FILES,
     },
+    testConsoleCheckFor(exclusions),
     {
       name: 'crap',
       kind: 'crap',

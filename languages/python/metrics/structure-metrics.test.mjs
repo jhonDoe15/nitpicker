@@ -95,12 +95,71 @@ describe.skipIf(!pythonUsable())('with python3 3.10 or newer on the PATH', () =>
         ['Service.static', 8, 10, 3, 1, 0, 4, 1],
         ['Service.build', 12, 19, 8, 2, 0, 1, 1],
         ['Service.build.inner', 14, 17, 4, 3, 1, 1, 2],
-        ['Service.fetch', 21, 31, 10, 6, 1, 3, 3],
+        ['Service.fetch', 21, 31, 10, 6, 1, 3, 2],
+        ['Service.fetch.<lambda>', 31, 31, 1, 1, 0, 1, 2],
         ['chain', 34, 41, 8, 7, 1, 1, 4],
         ['loops', 44, 54, 11, 8, 3, 1, 5],
         ['positional', 57, 58, 2, 1, 0, 3, 1],
       ]);
       expect(metrics.every(({ file }) => file === 'sample.py')).toBe(true);
+    });
+
+    it('measures each lambda as a unit of its own, named after the name it is assigned to or <lambda>, and keeps it out of the enclosing function', () => {
+      const metrics = functionsOf([
+        'top = lambda a, b: a if a else b',
+        '',
+        '',
+        'def outer(items, order=lambda x: x or 0):',
+        '    ran: object = lambda x: x + 1',
+        '    items.sort(key=lambda v: (v > 1 and v < 9) or v)',
+        '    pairs = [lambda: 1, lambda: 2]',
+        '',
+        '    def inner(z):',
+        '        return list(map(lambda t: t * 2 if t else 0, z))',
+        '',
+        '    class Local:',
+        '        attr = lambda self: self',
+        '',
+        '    return ran, pairs, inner, Local, (lambda: lambda: 3)',
+      ]);
+
+      expect(
+        metrics.map(
+          ({
+            name,
+            start,
+            end,
+            statements,
+            maxControlNesting,
+            parameters,
+            complexity,
+            ...rest
+          }) => [
+            name,
+            start,
+            end,
+            statements,
+            maxControlNesting,
+            parameters,
+            complexity,
+            rest.lambda === true,
+            rest.statementLine,
+          ],
+        ),
+      ).toEqual([
+        ['top', 1, 1, 1, 0, 2, 2, true, 1],
+        ['outer', 4, 15, 6, 0, 2, 1, false, undefined],
+        ['<lambda>', 4, 4, 1, 0, 1, 2, true, 4],
+        ['outer.ran', 5, 5, 1, 0, 1, 1, true, 5],
+        ['outer.<lambda>', 6, 6, 1, 0, 1, 3, true, 6],
+        ['outer.<lambda>', 7, 7, 1, 0, 0, 1, true, 7],
+        ['outer.<lambda>', 7, 7, 1, 0, 0, 1, true, 7],
+        ['outer.inner', 9, 10, 1, 0, 1, 1, false, undefined],
+        ['outer.inner.<lambda>', 10, 10, 1, 0, 1, 2, true, 10],
+        ['outer.Local.attr', 13, 13, 1, 0, 1, 1, true, 13],
+        ['outer.<lambda>', 15, 15, 1, 0, 0, 1, true, 15],
+        ['outer.<lambda>.<lambda>', 15, 15, 1, 0, 0, 1, true, 15],
+      ]);
     });
 
     it('reports the def line and the first body line apart from the first decorator line', () => {
@@ -165,14 +224,38 @@ describe.skipIf(!pythonUsable())('with python3 3.10 or newer on the PATH', () =>
       expect(metrics.map(({ overload }) => overload)).toEqual([true, true, true, false]);
     });
 
-    it('skips a file that does not parse, or that is too deep for the parser', () => {
+    it('skips a file that does not parse, which ruff reports as a syntax error', () => {
       const metrics = metricsOf({
         'broken.py': 'def (:\n',
-        'deep.py': `X = ${Array.from({ length: 60_000 }, () => '1').join(' + ')}\n`,
         'ok.py': 'def f():\n    return 1\n',
       });
 
       expect(metrics.map(({ file, name }) => `${file} ${name}`)).toEqual(['ok.py f']);
+    });
+
+    it('fails with a clear message on a file too deeply nested for the parser instead of skipping it', () => {
+      const directory = scratchDirectory();
+      writeFileSync(
+        path.join(directory, 'deep.py'),
+        `X = ${Array.from({ length: 60_000 }, () => '1').join(' + ')}\n`,
+      );
+      writeFileSync(path.join(directory, 'listing.txt'), 'deep.py');
+
+      const result = spawnSync(
+        'python3',
+        [
+          script,
+          path.join(directory, STRUCTURE_REPORT),
+          directory,
+          path.join(directory, 'listing.txt'),
+        ],
+        { encoding: 'utf8' },
+      );
+
+      expect([result.status, result.stderr]).toEqual([
+        1,
+        'structure_metrics: deep.py is too deeply nested for the Python parser (RecursionError), so its functions cannot be measured: split the very long expression or data literal into smaller parts\n',
+      ]);
     });
 
     it('does not count the docstring as a line, so documenting a long function does not grow it', () => {

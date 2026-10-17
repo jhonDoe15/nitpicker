@@ -4,7 +4,7 @@ import re
 
 from checks.common import dotted_name, finding, is_boundary_path
 
-PYDANTIC_ROOTS = {"pydantic", "pydantic_settings"}
+DEFAULT_BOUNDARY_ROOTS = ["pydantic", "pydantic_settings"]
 MIN_CLASS_CONSTANTS = 2
 MIN_MODULE_CONSTANTS = 3
 TYPE_CHECKING_NAMES = {"typing.TYPE_CHECKING", "typing_extensions.TYPE_CHECKING"}
@@ -79,6 +79,9 @@ class Declarations(ast.NodeVisitor):
         self.findings = []
         self.tests = context.tests
         self.boundary = is_boundary_path(context.path)
+        self.boundary_roots = set(
+            context.options.get("boundaryRoots", DEFAULT_BOUNDARY_ROOTS)
+        )
 
     def add(self, rule, subject, node):
         self.findings.append(finding(self.path, rule, subject, node))
@@ -150,7 +153,7 @@ class Declarations(ast.NodeVisitor):
 
     def check_pydantic(self, module, node):
         outside = not (self.boundary or self.tests)
-        if outside and module.split(".")[0] in PYDANTIC_ROOTS:
+        if outside and module.split(".")[0] in self.boundary_roots:
             self.add("pydantic-boundary", module, node)
 
     def check_module_constants(self, tree):
