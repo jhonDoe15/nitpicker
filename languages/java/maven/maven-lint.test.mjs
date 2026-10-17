@@ -1,4 +1,4 @@
-import { nitpickerCheckstyleConfig } from './checkstyle-config.mjs';
+import { nitpickerCheckstyleConfig } from './configuration/checkstyle-config.mjs';
 import { chmodSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
