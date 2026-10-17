@@ -8,7 +8,7 @@ describe('main', () => {
   });
 
   it('renders the greeting into the page', () => {
-    main(document.body);
+    main();
     assert.equal(document.body.innerHTML, '<p>Hello, Ada!</p>');
   });
 });
