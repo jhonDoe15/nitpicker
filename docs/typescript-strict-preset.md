@@ -310,8 +310,8 @@ Math` and `Math['random']()` are caught; `process`, `fetch`, `setTimeout`, `setI
   separator (`base + path.sep`, `` `${base}/` ``, `'/srv/'`): `full.startsWith(base)` also
   accepts `/srv-other`. A parameter as the first segment is the base and is fine
   (`path.join(dir, 'package.json')`).
-- Security sinks, the TypeScript counterpart of the Java preset's find-sec-bugs and PMD rules. All
-  five apply to production code, not to test support files (`test-support/`, `mocks/`, `__mocks__/`,
+- Security sinks: SQL built from strings, weak hashes, disabled TLS checks, HTTP calls without a
+  timeout and unsafe deserialization. All five apply to production code, not to test support files (`test-support/`, `mocks/`, `__mocks__/`,
   `__fixtures__/`, `fixtures/`, `stories/`, `.storybook/`, `*.stories.*`, `setupTests.*`); each message
   names the allowed form and the exception route. They follow `const` values, aliases
   (`import { createHash as digestOf }`, `const run = pool.query.bind(pool)`, `const { createHash } = crypto`),
