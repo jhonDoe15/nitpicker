@@ -1,5 +1,5 @@
 import path from 'node:path';
-import picomatch from 'picomatch';
+import { createRequire } from 'node:module';
 
 const CODE_EXTENSIONS = '{ts,tsx,mts,cts,js,jsx,mjs,cjs}';
 const NODE_EXTENSIONS = '{cjs,mjs,js,cts,mts,ts}';
@@ -83,8 +83,12 @@ function compiled(source) {
   }
 }
 
+function loadPicomatch() {
+  return createRequire(import.meta.url)('picomatch');
+}
+
 function globMatcher(globs) {
-  return globs.length === 0 ? () => false : picomatch(globs, { dot: true });
+  return globs.length === 0 ? () => false : loadPicomatch()(globs, { dot: true });
 }
 
 function matchesAny(file, { globs, regexes }) {

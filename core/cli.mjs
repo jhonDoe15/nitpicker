@@ -7,10 +7,8 @@ import { parseArguments, USAGE_TEXT } from './command/arguments.mjs';
 import { resolveProjectRoot } from './tooling/tool-resolution.mjs';
 import { realpathSync } from 'node:fs';
 import { loadConfig, describeConfigOverrides } from './configuration/config.mjs';
-import {
-  resolveHeadPolicy,
-  withProjectTestFiles,
-} from '../languages/typescript/preset/head-policy.mjs';
+import { resolveHeadPolicy } from '../languages/typescript/preset/head-policy.mjs';
+import { withProjectTestFiles } from '../languages/typescript/preset/test-runner/test-files/project-test-files.mjs';
 import { configureAnalyzers } from './configuration/configure-analyzers.mjs';
 import { presetAnalyzers } from './configuration/preset-analyzers.mjs';
 import { withRunLock } from './command/run-lock.mjs';
