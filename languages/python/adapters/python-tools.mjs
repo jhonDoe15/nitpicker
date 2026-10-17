@@ -2,8 +2,8 @@ import { writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { jscpdVersion } from '../../java/adapters/metrics/java-duplicates.mjs';
 import { scanImports } from './analysis/python-coupling.mjs';
+import { scanDependencies } from './dependencies/dependency-findings.mjs';
 import { runDuplicates } from './analysis/python-duplicates.mjs';
-import { globToRegExpSource } from '../../../shared/glob.mjs';
 import { detectEnvironment, openEnvironment } from './execution/python-environment.mjs';
 import { checkRules } from './analysis/python-ast-rules.mjs';
 import { pytestStyle, pytestStyleFlags } from '../rules/libraries/pytest-style.mjs';
@@ -17,16 +17,18 @@ import {
   detectTypeCheckers,
   importRoots,
 } from './execution/python-project.mjs';
+import { formatCommand, ruffExclusions } from './formatting/format-command.mjs';
 import { ruffConfigFor } from './configuration/python-ruff-config.mjs';
 import { detectTestRunner, pytestLabel, testRunnerLabel } from './execution/python-test-runner.mjs';
-import { COVERAGE_DATA, test } from './execution/python-test-step.mjs';
+import { test } from './test-runs/test-step.mjs';
+
 import { resolveTypeChecker, typeCheck } from './python-types.mjs';
 import { structure } from './analysis/python-structure.mjs';
 
 export const RUFF_REPORT = 'ruff.sarif';
 export const FORMAT_REPORT = 'format.txt';
 export const MANIFEST_REPORT = 'manifest.json';
-export { COVERAGE_REPORT } from './execution/python-test-step.mjs';
+const COVERAGE_DATA = '.coverage';
 const FORMAT_FAILURE_STATUS = { black: 123, ruff: 2 };
 const PARSE_ERROR = {
   black: /^error: cannot (?:format .+: cannot )?parse\b/i,
@@ -41,6 +43,10 @@ export function createToolContext({
   exclude = [],
   snapshot = 'head',
   baselineRoot,
+  conventions = {},
+  policyRoot,
+  toolPrecedence,
+  pytestAddopts,
 }) {
   const launcher = openEnvironment(detectEnvironment(liveRoot, settings.environment), liveRoot);
   const sourceRoots = detectSourceRoots(projectRoot, settings.sourceRoots);
@@ -52,8 +58,12 @@ export function createToolContext({
     reportRoot,
     snapshot,
     baselineRoot,
+    conventions,
+    policyRoot,
+    toolPrecedence,
     launcher,
     exclude,
+    pytestAddopts,
     project: {
       formatter: detectFormatter(projectRoot, settings.formatter),
       formatterDetected: settings.formatter === undefined,
@@ -84,6 +94,7 @@ export function runPythonTools(context) {
     runDuplicates,
     (stepContext) => {
       scanImports(stepContext, run);
+      scanDependencies(stepContext, run);
     },
     (stepContext) => {
       runImportLinter(stepContext, run);
@@ -108,8 +119,9 @@ export function runPythonTools(context) {
       formatter: context.project.formatter,
       formatterDetected: context.project.formatterDetected,
       sourceRoots: context.project.sourceRoots,
-      testRunner: context.project.testRunner,
       testsRan: outcome.testsRan,
+      testFailures: outcome.testFailures ?? [],
+      testRunner: context.project.testRunner,
     }),
   );
   return failures;
@@ -137,24 +149,6 @@ export function lint(context) {
     ],
     { accepted: [0, 1], rule: 'ruff-failed' },
   );
-}
-
-function ruffExclusions({ exclude }) {
-  return exclude.flatMap((glob) => ['--extend-exclude', glob]);
-}
-
-function blackExclusions({ exclude }) {
-  if (exclude.length === 0) {
-    return [];
-  }
-  const patterns = exclude.map((glob) => `^/${globToRegExpSource(glob).slice(1, -1)}(?:/.*)?/?$`);
-  return ['--extend-exclude', patterns.join('|')];
-}
-
-function formatCommand({ project, ...context }) {
-  return project.formatter === 'black'
-    ? ['black', '--check', ...blackExclusions(context), '.']
-    : ['ruff', 'format', '--check', '--diff', '--no-cache', ...ruffExclusions(context), '.'];
 }
 
 export function unformattedPaths(formatter, { stdout, stderr }) {

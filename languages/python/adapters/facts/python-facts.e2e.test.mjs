@@ -102,7 +102,7 @@ describe.skipIf(!pythonE2eEnabled)('the facts scan', () => {
       ['src/shop/pricing.py', 'production', false, 'shop.pricing'],
       ['src/shop/test_inline.py', 'test', false, undefined],
       ['src/shop/testing/fakes.py', 'production', false, 'shop.testing.fakes'],
-      ['src/shop/tests.py', 'test', false, undefined],
+      ['src/shop/tests.py', 'production', false, 'shop.tests'],
       ['src/shop/tool.py', 'production', true, 'shop.tool'],
       ['testing/helpers.py', 'test', false, undefined],
       ['tests/conftest.py', 'test', false, undefined],

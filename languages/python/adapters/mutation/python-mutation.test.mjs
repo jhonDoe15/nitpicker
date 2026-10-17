@@ -12,12 +12,12 @@ import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import { installFakeToolchain } from '../test-support/fake-toolchain.mjs';
 import {
-  ensureMutmutConfiguration,
   MUTATION_FAILED_RULE,
   MUTATION_SKIPPED_RULE,
   mutationFindings,
 } from './python-mutation.mjs';
 import { createToolContext } from '../python-tools.mjs';
+import { section } from './test-support/mutmut-section.mjs';
 
 const roots = [];
 const savedEnvironment = new Map();
@@ -56,78 +56,7 @@ function write(root, files) {
   }
 }
 
-function configurationContext(files = {}, overrides = {}) {
-  const projectRoot = temporaryRoot();
-  write(projectRoot, files);
-  return { projectRoot, project: { sourceRoots: ['src'] }, ...overrides };
-}
-
-const TEST_PATTERNS =
-  '"tests/*","test/*","testing/*","*/tests/*","*/test/*","test_*.py","*/test_*.py","*_test.py","*/*_test.py","tests.py","*/tests.py","conftest.py","*/conftest.py"';
-const section = (sourcePaths, patterns = TEST_PATTERNS) =>
-  `[tool.mutmut]\nsource_paths = ${sourcePaths}\ndo_not_mutate = [${patterns}]\n`;
-
 const read = (root, file) => readFileSync(path.join(root, file), 'utf8');
-
-describe('the mutmut configuration', () => {
-  it('adds the source roots and the test patterns when the project has no mutmut configuration', () => {
-    const context = configurationContext({ 'pyproject.toml': '[project]\nname = "demo"\n' });
-
-    ensureMutmutConfiguration(context);
-
-    expect(read(context.projectRoot, 'pyproject.toml')).toBe(
-      `[project]\nname = "demo"\n\n${section('["src"]')}`,
-    );
-  });
-
-  it('creates pyproject.toml when the project has none', () => {
-    const context = configurationContext({}, { project: { sourceRoots: ['pkg', 'lib'] } });
-
-    ensureMutmutConfiguration(context);
-
-    expect(read(context.projectRoot, 'pyproject.toml')).toBe(`\n${section('["pkg","lib"]')}`);
-  });
-
-  it('keeps mutmut away from the excluded paths, the files and the directories below them', () => {
-    const context = configurationContext(
-      {},
-      { exclude: ['legacy/**', 'src/demo/old.py', 'vendor/'] },
-    );
-
-    ensureMutmutConfiguration(context);
-
-    expect(read(context.projectRoot, 'pyproject.toml')).toBe(
-      `\n${section('["src"]', `${TEST_PATTERNS},"legacy/**","legacy/**/*","src/demo/old.py","src/demo/old.py/*","vendor/","vendor/*"`)}`,
-    );
-  });
-
-  it('keeps the [tool.mutmut] table of the project', () => {
-    const own = '[tool.mutmut]\nsource_paths = ["app"]\n';
-    const context = configurationContext({ 'pyproject.toml': own }, { exclude: ['legacy/**'] });
-
-    ensureMutmutConfiguration(context);
-
-    expect(read(context.projectRoot, 'pyproject.toml')).toBe(own);
-  });
-
-  it('keeps the [mutmut] section of setup.cfg', () => {
-    const context = configurationContext({ 'setup.cfg': '[mutmut]\nsource_paths=app\n' });
-
-    ensureMutmutConfiguration(context);
-
-    expect(existsSync(path.join(context.projectRoot, 'pyproject.toml'))).toBe(false);
-  });
-
-  it('asks for the directories to mutate instead of copying the whole project', () => {
-    const context = configurationContext({}, { project: { sourceRoots: ['.'] } });
-
-    expect(() => {
-      ensureMutmutConfiguration(context);
-    }).toThrow(
-      /set "python.sourceRoots" in nitpicker.config.json or source_paths in \[tool.mutmut\]/,
-    );
-  });
-});
 
 const MUTATED =
   'def x_value__mutmut_orig():\n    return 1\n\n\ndef x_value__mutmut_1():\n    return 2\n\n\ndef x_value__mutmut_2():\n    return 3\n';
@@ -197,7 +126,7 @@ describe('running mutmut', () => {
     ]);
     expect(summaries(findings)).toEqual(['status:Survived=1', 'status:Killed=1']);
     expect(existsSync(path.join(root, 'mutants'))).toBe(false);
-    expect(read(root, 'pyproject.toml')).toBe(`\n${section('["src"]')}`);
+    expect(read(root, 'pyproject.toml')).toBe(`\n${section(['src'])}`);
   });
 
   it('runs mutmut once, from the snapshot, with the snapshot sources first on PYTHONPATH', () => {
@@ -247,14 +176,14 @@ describe('running mutmut', () => {
     expect(mutmutCalls(calls)[0].pytestAddopts).toBe('-n0');
   });
 
-  it('keeps the PYTEST_ADDOPTS of the caller and puts -n0 after them', () => {
+  it('keeps the PYTEST_ADDOPTS of the caller, without the options that let a failing run pass, and puts -n0 after them', () => {
     const calls = callsLog();
-    setEnvironment('PYTEST_ADDOPTS', '-x --lf');
+    setEnvironment('PYTEST_ADDOPTS', undefined);
     const root = project({ 'xdist.txt': '' });
 
-    mutationFindings(contextFor(root));
+    mutationFindings(contextFor(root, { pytestAddopts: '-x --lf' }));
 
-    expect(mutmutCalls(calls)[0].pytestAddopts).toBe('-x --lf -n0');
+    expect(mutmutCalls(calls)[0].pytestAddopts).toBe('--lf -n0');
   });
 
   it('leaves PYTEST_ADDOPTS alone without xdist', () => {

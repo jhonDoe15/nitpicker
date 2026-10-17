@@ -1,5 +1,6 @@
 import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs';
 import path from 'node:path';
+import { isDirectory } from '../../libraries/project-files.mjs';
 
 const HINT_FILES = [
   'pyproject.toml',
@@ -55,21 +56,7 @@ export const DOCUMENTATION_DIRECTORIES = ['docs', 'doc', 'examples', 'scripts'];
 export const TEST_DIRECTORIES = ['tests', 'test'];
 export const TOP_LEVEL_TEST_DIRECTORIES = ['testing'];
 export const ROOT_TEST_DIRECTORIES = [...TEST_DIRECTORIES, ...TOP_LEVEL_TEST_DIRECTORIES];
-export const TEST_FILE_GLOBS = ['test_*.py', '*_test.py', 'tests.py', 'conftest.py'];
-const TEST_FILE_NAME = /^(?:test_.+|.+_test|tests|conftest)\.py$/;
-
-export function isTestFileName(name) {
-  return TEST_FILE_NAME.test(name);
-}
-
-export function isTestPath(file) {
-  const parts = file.split(/[\\/]/);
-  return (
-    isTestFileName(parts.at(-1)) ||
-    parts.slice(0, -1).some((part) => TEST_DIRECTORIES.includes(part)) ||
-    (parts.length > 1 && TOP_LEVEL_TEST_DIRECTORIES.includes(parts[0]))
-  );
-}
+export const TEST_FILE_GLOBS = ['test_*.py', '*_test.py', 'conftest.py'];
 
 export const NON_SOURCE_DIRECTORIES = new Set([
   ...TEST_DIRECTORIES,
@@ -200,8 +187,4 @@ export function importRoots(projectRoot, sourceRoots) {
 
 function isFile(file) {
   return existsSync(file) && statSync(file).isFile();
-}
-
-function isDirectory(directory) {
-  return existsSync(directory) && statSync(directory).isDirectory();
 }

@@ -306,6 +306,7 @@ describe.skipIf(!enabled)('unused-option', () => {
   it('does not count a Django tests.py or a top-level testing folder as callers', () => {
     expect(
       unused({
+        'manage.py': '',
         'shop/app.py': 'from shop.pricing import total\ntotal(1)\n',
         'shop/tests.py': 'from shop.pricing import total\ntotal(1, rate=2)\n',
         'testing/helpers.py': 'from shop.pricing import total\ntotal(1, cents=True)\n',
@@ -323,23 +324,15 @@ describe.skipIf(!enabled)('unused-option', () => {
     ).toEqual([]);
   });
 
-  it('reports a pyproject.toml or setup.cfg it cannot read and still checks the code', () => {
+  it('reports a setup.cfg it cannot read and still checks the code', () => {
     const report = reportOf({
       'shop/__init__.py': '',
       'shop/pricing.py': TOTAL,
       'shop/app.py': 'from shop.pricing import total\ntotal(1)\n',
-      'pyproject.toml': '[project\nname = "shop"\n',
       'setup.cfg': '[options.entry_points\nconsole_scripts = x\n',
     });
 
     expect(report.filter(({ rule }) => rule !== 'unused-option')).toEqual([
-      {
-        rule: 'project-file-invalid',
-        path: 'pyproject.toml',
-        subject: 'pyproject.toml',
-        line: 1,
-        data: { problem: 'Invalid TOML document: illegal character in key (line 1, column 9)' },
-      },
       {
         rule: 'project-file-invalid',
         path: 'setup.cfg',
@@ -353,6 +346,12 @@ describe.skipIf(!enabled)('unused-option', () => {
       },
     ]);
     expect(report.filter(({ rule }) => rule === 'unused-option')).toHaveLength(2);
+  });
+
+  it('fails on a pyproject.toml it cannot parse, as the dependency reader does', () => {
+    expect(() =>
+      reportOf({ 'shop/app.py': 'x = 1\n', 'pyproject.toml': '[project\nname = "shop"\n' }),
+    ).toThrow(/Invalid TOML document/u);
   });
 
   it('does not judge test helpers or decorated functions', () => {
@@ -377,7 +376,7 @@ describe.skipIf(!enabled)('an expression too deep for the recursion limit', () =
         'shop/users.py': 'def load_user():\n    """Load the user."""\n',
       }),
     ).toEqual([
-      { rule: 'rules-skipped', path: 'shop/sums.py', subject: 'file', line: 1 },
+      { rule: 'rules-too-deep', path: 'shop/sums.py', subject: 'file', line: 1 },
       { rule: 'restating-docstring', path: 'shop/users.py', subject: 'load_user', line: 2 },
     ]);
   });
@@ -386,7 +385,7 @@ describe.skipIf(!enabled)('an expression too deep for the recursion limit', () =
     const sum = `total = ${Array.from({ length: 30000 }, () => '1').join(' + ')}\n`;
 
     expect(reportOf({ 'shop/sums.py': sum })).toEqual([
-      { rule: 'rules-skipped', path: 'shop/sums.py', subject: 'all', line: 1 },
+      { rule: 'rules-too-deep', path: 'shop/sums.py', subject: 'all', line: 1 },
     ]);
   });
 });

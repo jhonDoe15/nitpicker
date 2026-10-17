@@ -1,19 +1,23 @@
 import { writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { listProductionModules, pythonSourceFiles } from '../analysis/python-sources.mjs';
+import {
+  listProductionModules,
+  pythonSourceFiles,
+  testFileMatcher,
+} from '../analysis/python-sources.mjs';
 import { readPackageFacts } from '../../rules/libraries/package-facts.mjs';
-import { isTestPath, ROOT_TEST_DIRECTORIES } from '../execution/python-project.mjs';
+import { ROOT_TEST_DIRECTORIES } from '../execution/python-project.mjs';
 import { factsBundle } from './facts-bundle.mjs';
 
 export const FACTS_REPORT = 'facts.json';
 const FACTS_FAILED_RULE = 'facts-failed';
 const FACTS_REQUEST = 'facts-request.json';
 const SCAN_SCRIPT = path.join(fileURLToPath(new URL('../', import.meta.url)), 'import-scan.py');
-function factsFiles(projectRoot, sourceRoots) {
+function factsFiles(projectRoot, sourceRoots, isTest) {
   const modules = listProductionModules(projectRoot, sourceRoots);
   const roots = [...sourceRoots, ...ROOT_TEST_DIRECTORIES, '.'];
-  const tests = pythonSourceFiles(projectRoot, roots).filter(isTestPath);
+  const tests = pythonSourceFiles(projectRoot, roots).filter(isTest);
   return {
     modules,
     files: [...new Set([...modules.map(({ file }) => file), ...tests])].sort(),
@@ -22,7 +26,8 @@ function factsFiles(projectRoot, sourceRoots) {
 
 export function collectFacts(context, run) {
   const { projectRoot, reportRoot } = context;
-  const { modules, files } = factsFiles(projectRoot, context.project.sourceRoots);
+  const isTest = testFileMatcher(projectRoot);
+  const { modules, files } = factsFiles(projectRoot, context.project.sourceRoots, isTest);
   const request = path.join(reportRoot, FACTS_REQUEST);
   writeFileSync(request, JSON.stringify({ root: projectRoot, files, facts: true }));
   const scanned =
@@ -34,7 +39,7 @@ export function collectFacts(context, run) {
   const report = factsBundle({
     modules,
     scanned,
-    isTest: isTestPath,
+    isTest,
     ...readPackageFacts(projectRoot),
   });
   writeFileSync(path.join(reportRoot, FACTS_REPORT), JSON.stringify(report));
