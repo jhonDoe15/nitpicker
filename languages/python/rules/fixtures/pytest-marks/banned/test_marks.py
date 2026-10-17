@@ -13,3 +13,13 @@ def test_fixtures():
 
 def test_default(number=1):
     assert number
+
+
+@pytest.mark.fast
+def test_fast():
+    assert 1
+
+
+@pytest.mark.smoke
+def test_smoke():
+    assert 1

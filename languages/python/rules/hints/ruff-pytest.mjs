@@ -1,11 +1,48 @@
 const PYTEST_WARNING_MATCH =
   'Match the message: `with pytest.warns(UserWarning, match="deprecated"):`, or name a more specific warning class.';
 
+function styleOf(libraries) {
+  return libraries?.pytestStyle ?? {};
+}
+
+function decoratorParentheses(option) {
+  return (_subject, libraries) => {
+    const withParentheses = styleOf(libraries)[option] === true;
+    return withParentheses
+      ? 'Write the decorator with parentheses, as the rest of the project does: `@pytest.fixture()`, `@pytest.mark.slow()`.'
+      : 'Write the decorator without parentheses: `@pytest.fixture`, `@pytest.mark.slow`.';
+  };
+}
+
+const NAMES_FORMS = {
+  csv: 'Pass the names as one comma-separated string: `@pytest.mark.parametrize("a,b", [(1, 2)])`.',
+  list: 'Pass the names as a list: `@pytest.mark.parametrize(["a", "b"], [(1, 2)])`.',
+  tuple: 'Pass the names as a tuple: `@pytest.mark.parametrize(("a", "b"), [(1, 2)])`.',
+};
+
+function parametrizeNames(_subject, libraries) {
+  return NAMES_FORMS[styleOf(libraries)['parametrize-names-type'] ?? 'tuple'];
+}
+
+function parametrizeValues(_subject, libraries) {
+  const style = styleOf(libraries);
+  const values = style['parametrize-values-type'] ?? 'list';
+  const row = style['parametrize-values-row-type'] ?? 'tuple';
+  const example = values === 'list' ? `[(1, 2), (3, 4)]` : `((1, 2), (3, 4))`;
+  const rows = row === 'tuple' ? example : example.replaceAll('(', '[').replaceAll(')', ']');
+  return `Pass the values as a ${values} of ${row}s: \`${rows}\`, or a ${values} for one name.`;
+}
+
 export const PYTEST_HINTS = [
   {
     tool: 'ruff',
-    rules: ['PT001', 'PT023'],
-    allowed: 'Write the decorator without parentheses: `@pytest.fixture`, `@pytest.mark.slow`.',
+    rules: ['PT001'],
+    allowed: decoratorParentheses('fixture-parentheses'),
+  },
+  {
+    tool: 'ruff',
+    rules: ['PT023'],
+    allowed: decoratorParentheses('mark-parentheses'),
   },
   {
     tool: 'ruff',
@@ -20,12 +57,12 @@ export const PYTEST_HINTS = [
   {
     tool: 'ruff',
     rules: ['PT006'],
-    allowed: 'Pass the names as a tuple: `@pytest.mark.parametrize(("a", "b"), [(1, 2)])`.',
+    allowed: parametrizeNames,
   },
   {
     tool: 'ruff',
     rules: ['PT007'],
-    allowed: 'Pass the values as a list of tuples: `[(1, 2), (3, 4)]`, or a list for one name.',
+    allowed: parametrizeValues,
   },
   {
     tool: 'ruff',

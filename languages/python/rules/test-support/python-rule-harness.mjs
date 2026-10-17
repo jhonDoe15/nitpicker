@@ -11,6 +11,8 @@ import { ruffFindings, typeFindings } from '../../adapters/python-reports.mjs';
 import { RUFF_REPORT, createToolContext, lint } from '../../adapters/python-tools.mjs';
 import { TYPES_REPORT, typeCheck } from '../../adapters/python-types.mjs';
 import { applyRuleHints } from '../rule-hints.mjs';
+import { detectLibraries } from '../libraries/project-libraries.mjs';
+import { pytestStyle } from '../libraries/pytest-style.mjs';
 
 const fixtures = path.resolve(import.meta.dirname, '../fixtures');
 const TYPE_CHECKERS = ['mypy', 'pyright', 'basedpyright'];
@@ -63,7 +65,8 @@ function collectFindings({ fixture, tool }, side) {
       reportRoot,
     });
     const collect = COLLECTORS[isTypeChecker ? 'type' : tool];
-    return applyRuleHints(collect(context, [projectRoot]));
+    const libraries = { ...detectLibraries(projectRoot), pytestStyle: pytestStyle(projectRoot) };
+    return applyRuleHints(collect(context, [projectRoot]), libraries);
   } finally {
     rmSync(projectRoot, { recursive: true, force: true });
     rmSync(reportRoot, { recursive: true, force: true });
