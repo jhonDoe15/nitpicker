@@ -108,7 +108,9 @@ holder.fn = function () {
 };
 
 export function sleepThenFind(items: string[]): Promise<string | undefined> {
-  return new Promise((resolve) => setTimeout(() => resolve(items.find((item) => item.length > 1)), 0));
+  return new Promise((resolve) =>
+    setTimeout(() => resolve(items.find((item) => item.length > 1)), 0),
+  );
 }
 
 export function neverCalled(a: number): number {

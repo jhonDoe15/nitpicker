@@ -553,14 +553,14 @@ the comparison and exiting with 2. Nothing is silently skipped and nothing throw
 `fp:nitpicker/subject=This expression contains a magic number. ...`). `kotlin.formatter` and
 `kotlin.detektConfig` are new and valid only with this preset. `exceptions` lifts the
 [one-way rules](#one-way-rules), the file limits `file-lines-limit` and `folder-files-limit` and
-`test-runtime/slow-test` per path. `layout` is a config error.
+`slow-test` (or `test-runtime/slow-test`) per path. `layout` is a config error.
 
 ## Slow tests
 
 As for Java ([slow tests](java-preset.md#slow-tests)): a test the change adds or edits fails over 5 s
 as a unit test or 30 s as an integration test (`thresholds.unitTestSeconds`,
-`thresholds.integrationTestSeconds`), measured on head from the JUnit XML of the test tasks. A Kotlin
-test named with backticks is found by its name.
+`thresholds.integrationTestSeconds`), measured on head from the JUnit XML of the test tasks, once and
+without a rerun (see Java). A Kotlin test named with backticks is found by its name.
 
 ## File limits
 

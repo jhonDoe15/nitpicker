@@ -18,6 +18,7 @@ export function createQualityAreaAnalyzer({
   concurrencyWeight = 1,
   concurrencyGroup,
   executionPriority = 0,
+  reportedTools = [],
   shardWeight = 1,
 }) {
   return {
@@ -30,6 +31,7 @@ export function createQualityAreaAnalyzer({
     concurrencyWeight,
     concurrencyGroup,
     executionPriority,
+    reportedTools,
     shardWeight,
     requiresDependencies: true,
     createInvocation({ projectRoot, policyRoot, toolRoot, snapshot, ...optionalRoots }) {

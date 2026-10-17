@@ -150,6 +150,12 @@ function coverage() {
     process.stdout.write('Coverage.py, version 7.6.1 with C extension\n');
   } else if (args[0] === 'run') {
     const status = Number(lines('test-exit.txt')[0] ?? 0);
+    const pytestTimes = args.find((argument) => argument.startsWith('--junitxml='));
+    const scriptAt = args.findIndex((argument) => argument.endsWith('unittest_timing.py'));
+    const times = pytestTimes?.slice('--junitxml='.length) ?? args[scriptAt + 1];
+    if (scriptAt >= 0 || pytestTimes !== undefined) {
+      writeFileSync(times, '<testsuites></testsuites>');
+    }
     process.stdout.write(status === 0 ? '1 passed\n' : '1 failed: test_greet\n');
     process.exit(status);
   } else {

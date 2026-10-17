@@ -123,6 +123,8 @@ describe('running pytest', () => {
       `--junitxml=${path.join(reportRoot, 'test-times.xml')}`,
       '-o',
       'junit_family=xunit1',
+      '-o',
+      'junit_duration_report=call',
     ]);
   });
   it('is an environment error naming the override when pytest is indicated but not importable', () => {

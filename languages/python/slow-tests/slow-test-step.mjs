@@ -1,44 +1,41 @@
 import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
-import { fileURLToPath } from 'node:url';
-import { childrenNamed, parseXml } from '../../java/ingest/common.mjs';
+import { testCasesOf } from '../../java/adapters/test-times/slow-tests.mjs';
 import {
   slowestRuns,
   slowTestBudget,
 } from '../../../shared/rules/slow-tests/slow-test-finding.mjs';
-import { run } from '../adapters/execution/python-process.mjs';
+import { execute } from '../adapters/execution/python-process.mjs';
 import { isIntegrationTest } from './integration-tests.mjs';
-import { TEST_TIMES_REPORT } from './timing-command.mjs';
+import { factsOf, isChanged, isFile } from './test-facts.mjs';
+import { RERUN_TIMES_REPORT, TEST_TIMES_REPORT, rerunCommand } from './timing-command.mjs';
 
 export { timedCoverageCommand } from './timing-command.mjs';
 
 export const SLOW_TESTS_REPORT = 'slow-tests.json';
-export const FACTS_SCRIPT = fileURLToPath(new URL('test_facts.py', import.meta.url));
 const TEST_ROOTS = ['', 'tests', 'test'];
 const PARAMETERS = /\[.*$/su;
+const PYTHON_SUFFIX = /\.py$/u;
+const NOT_TIMED =
+  'The test run wrote no timing report, so slow tests were not checked ' +
+  "(a project that disables pytest's JUnit report with -p no:junitxml is not timed)";
 
-function testCasesOf(xml) {
-  const root = parseXml(xml);
-  const suites = root.name === 'testsuites' ? childrenNamed(root, 'testsuite') : [root];
-  return suites.flatMap((suite) =>
-    childrenNamed(suite, 'testcase').map((testCase) => ({
-      className: testCase.attrs.classname ?? '',
-      name: testCase.attrs.name ?? '',
-      seconds: Number(String(testCase.attrs.time ?? '0').replaceAll(',', '')),
-    })),
-  );
+function runKey({ className, name }) {
+  return `${className}#${name}`;
 }
 
-function isFile(root, relative) {
-  const base = path.resolve(root);
-  const full = path.resolve(base, relative);
-  if (!full.startsWith(base + path.sep)) {
-    return false;
+function fromFile(projectRoot, testCase) {
+  if (testCase.file === undefined || !isFile(projectRoot, testCase.file)) {
+    return undefined;
   }
-  return existsSync(full);
+  const module = testCase.file.replace(PYTHON_SUFFIX, '').replaceAll('/', '.');
+  const inner = testCase.className.startsWith(`${module}.`)
+    ? testCase.className.slice(module.length + 1)
+    : '';
+  return { file: testCase.file, classes: inner === '' ? [] : inner.split('.') };
 }
 
-function locate(projectRoot, className) {
+function fromClassName(projectRoot, className) {
   const parts = className.split('.');
   return Array.from({ length: parts.length }, (_, index) => parts.length - index)
     .flatMap((count) =>
@@ -50,42 +47,32 @@ function locate(projectRoot, className) {
     .find(({ file }) => isFile(projectRoot, file));
 }
 
-function factsOf(context, root, files) {
-  const present = files.filter((file) => isFile(root, file));
-  if (present.length === 0) {
-    return {};
-  }
-  const { stdout } = run(context, ['python', '-I', FACTS_SCRIPT, root, ...present], {
-    rule: 'slow-tests-failed',
-  });
-  return JSON.parse(stdout);
+function locate(projectRoot, testCase) {
+  const found = fromFile(projectRoot, testCase) ?? fromClassName(projectRoot, testCase.className);
+  const name = testCase.name.replace(PARAMETERS, '');
+  return found === undefined
+    ? undefined
+    : { ...testCase, ...found, qualname: [...found.classes, name].join('.') };
 }
 
-function textOf(root, file) {
-  const absolute = root === undefined ? undefined : path.join(root, file);
-  return absolute !== undefined && existsSync(absolute)
-    ? readFileSync(absolute, 'utf8')
-    : undefined;
+function slowCases(context, xml) {
+  const budget = slowTestBudget(context.testSeconds);
+  const floor = Math.min(budget.unitTestSeconds, budget.integrationTestSeconds);
+  return slowestRuns(
+    testCasesOf(xml).filter((testCase) => testCase.seconds > floor),
+    runKey,
+  );
 }
 
-function isChanged({ test, head, base, roots }) {
-  if (roots.baselineRoot === undefined || base[test.file] === undefined) {
-    return true;
-  }
-  const current = head[test.file]?.[test.qualname];
-  return current === undefined
-    ? textOf(roots.projectRoot, test.file) !== textOf(roots.baselineRoot, test.file)
-    : base[test.file][test.qualname]?.hash !== current.hash;
-}
-
-function recordOf({ test, head, base, roots }) {
-  const fact = head[test.file]?.[test.qualname];
+function recordOf({ test, head, roots, base }, runner) {
+  const fact = head.facts[test.file]?.[test.qualname];
   const module = path.posix.basename(test.file, '.py');
   return {
     path: test.file,
     identity: `test:${test.className}#${test.name}`,
     name: `${[module, ...test.classes].join('.')} ${test.name}`,
     seconds: test.seconds,
+    runner,
     ...(fact === undefined ? {} : { line: fact.line }),
     integration: isIntegrationTest({
       file: test.file,
@@ -96,35 +83,104 @@ function recordOf({ test, head, base, roots }) {
   };
 }
 
-function slowTests(context, xml) {
-  const budget = slowTestBudget(context.testSeconds);
-  const floor = Math.min(budget.unitTestSeconds, budget.integrationTestSeconds);
-  const slowest = slowestRuns(
-    testCasesOf(xml).filter((testCase) => testCase.seconds > floor),
-    (testCase) => `${testCase.className}#${testCase.name}`,
-  );
-  return slowest.flatMap((testCase) => {
-    const found = locate(context.projectRoot, testCase.className);
-    const name = testCase.name.replace(PARAMETERS, '');
-    return found === undefined
-      ? []
-      : [{ ...testCase, ...found, qualname: [...found.classes, name].join('.') }];
-  });
+function notice(file, message) {
+  return { path: file, message };
 }
 
-export function collectSlowTests(context) {
-  const times = path.join(context.reportRoot, TEST_TIMES_REPORT);
-  if (context.snapshot === 'base' || !existsSync(times)) {
-    return;
-  }
-  const tests = slowTests(context, readFileSync(times, 'utf8'));
+function retimed(context, tests) {
+  const launch = rerunCommand(context, tests);
+  execute(context, launch);
+  const report = path.join(context.reportRoot, RERUN_TIMES_REPORT);
+  return new Map(
+    existsSync(report)
+      ? testCasesOf(readFileSync(report, 'utf8')).map((testCase) => [
+          runKey(testCase),
+          testCase.seconds,
+        ])
+      : [],
+  );
+}
+
+function located(context, cases) {
+  const found = cases.map((testCase) => ({
+    testCase,
+    test: locate(context.projectRoot, testCase),
+  }));
+  return {
+    tests: found.flatMap(({ test }) => (test === undefined ? [] : [test])),
+    notices: found
+      .filter(({ test }) => test === undefined)
+      .map(({ testCase }) =>
+        notice(
+          '.',
+          `${testCase.className} ${testCase.name} took ${testCase.seconds.toFixed(1)} s, ` +
+            'but its file was not found under the project root, so it is not checked for slow tests',
+        ),
+      ),
+  };
+}
+
+function withFacts(context, tests) {
   const files = [...new Set(tests.map(({ file }) => file))];
   const roots = { projectRoot: context.projectRoot, baselineRoot: context.baselineRoot };
   const head = factsOf(context, context.projectRoot, files);
   const base =
-    context.baselineRoot === undefined ? {} : factsOf(context, context.baselineRoot, files);
+    context.baselineRoot === undefined
+      ? { facts: {} }
+      : factsOf(context, context.baselineRoot, files);
+  return { files, roots, head, base };
+}
+
+function entriesOf(context, tests) {
+  const { files, roots, head, base } = withFacts(context, tests);
+  const failed = head.error ?? base.error;
+  if (failed !== undefined) {
+    return {
+      entries: [],
+      notices: files.map((file) =>
+        notice(file, `${file} is not checked for slow tests: reading its tests failed, ${failed}`),
+      ),
+    };
+  }
+  return {
+    entries: tests.map((test) => ({
+      test,
+      record: recordOf({ test, head, base, roots }, context.project.testRunner),
+    })),
+    notices: [],
+  };
+}
+
+function untimed(context, outcome) {
+  const missing = !existsSync(path.join(context.reportRoot, TEST_TIMES_REPORT));
+  return missing && outcome.testsRan === true ? [notice('.', NOT_TIMED)] : [];
+}
+
+export function collectSlowTests(context, outcome = {}) {
+  if (context.snapshot === 'base') {
+    return;
+  }
+  const times = path.join(context.reportRoot, TEST_TIMES_REPORT);
+  const timed = existsSync(times)
+    ? located(context, slowCases(context, readFileSync(times, 'utf8')))
+    : { tests: [], notices: untimed(context, outcome) };
+  const { entries, notices } = entriesOf(context, timed.tests);
+  const counted = entries.filter(({ record }) => record.changed);
+  const seconds =
+    counted.length === 0
+      ? new Map()
+      : retimed(
+          context,
+          counted.map(({ test }) => test),
+        );
   writeFileSync(
     path.join(context.reportRoot, SLOW_TESTS_REPORT),
-    JSON.stringify(tests.map((test) => recordOf({ test, head, base, roots }))),
+    JSON.stringify({
+      tests: counted.map(({ test, record }) => ({
+        ...record,
+        seconds: seconds.get(runKey(test)) ?? record.seconds,
+      })),
+      notices: [...timed.notices, ...notices],
+    }),
   );
 }

@@ -2,6 +2,9 @@ import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { PACKAGE_ROOT } from '../../../../core/tooling/tool-resolution.mjs';
+import { parseArguments } from '../quality-areas/arguments.mjs';
+import { retimeWithoutCoverage } from './rerun-timings.mjs';
 import {
   PICK_SOURCE,
   createRunnerProjects,
@@ -21,7 +24,14 @@ const RUNNERS = [
     identity: 'test:waits',
     files: {
       'package.json': { name: 'p', private: true, type: 'module' },
-      'test/slow.test.ts': `import { expect, it } from 'vitest';\nit('waits', async () => {\n  ${WAIT}\n  expect(1).toBe(1);\n});\n`,
+      'test/slow.test.ts': [
+        "import { expect, it } from 'vitest';",
+        "it('waits', async () => {",
+        `  ${WAIT}`,
+        '  expect(1).toBe(1);',
+        '});',
+        '',
+      ].join('\n'),
     },
   },
   {
@@ -93,7 +103,27 @@ describe('slow tests on each test runner', () => {
             id,
             classification,
           ]),
-      ).toEqual([['coverage', 'test/slow.test.ts', identity, 'enforceable']]);
+      ).toEqual([['test-runtime', 'test/slow.test.ts', identity, 'enforceable']]);
+    },
+  );
+
+  it.each(RUNNERS)(
+    'times the test again without coverage on $runner',
+    async ({ files, identity }) => {
+      const root = projects.project({ 'src/main/pick.ts': PICK_SOURCE, ...files });
+      const options = parseArguments([
+        ...['--analyzer-name', 'coverage', '--kind', 'coverage'],
+        ...['--project-root', root, '--policy-root', PACKAGE_ROOT],
+        ...['--tool-root', PACKAGE_ROOT, '--snapshot', 'head'],
+      ]);
+      const name = identity.replace('test:', '');
+
+      const timings = await retimeWithoutCoverage(options, [
+        { file: 'test/slow.test.ts', name, seconds: 3 },
+      ]);
+
+      expect([...timings.keys()]).toEqual([`test/slow.test.ts\0${name}`]);
+      expect([...timings.values()].map((seconds) => seconds >= 1.4)).toEqual([true]);
     },
   );
 });

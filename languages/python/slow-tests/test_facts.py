@@ -28,14 +28,22 @@ def mark_names(nodes):
     return names
 
 
-def module_marks(tree):
+def mark_assignment(node):
+    if isinstance(node, ast.Assign):
+        targets, value = node.targets, node.value
+    elif isinstance(node, ast.AnnAssign) and node.value is not None:
+        targets, value = [node.target], node.value
+    else:
+        return set()
+    if not any(isinstance(target, ast.Name) and target.id == "pytestmark" for target in targets):
+        return set()
+    return mark_names(value.elts if isinstance(value, (ast.List, ast.Tuple)) else [value])
+
+
+def body_marks(body):
     names = set()
-    for node in tree.body:
-        if isinstance(node, ast.Assign) and any(
-            isinstance(target, ast.Name) and target.id == "pytestmark" for target in node.targets
-        ):
-            values = node.value.elts if isinstance(node.value, (ast.List, ast.Tuple)) else [node.value]
-            names |= mark_names(values)
+    for node in body:
+        names |= mark_assignment(node)
     return names
 
 
@@ -48,7 +56,7 @@ def text_of(lines, node):
 def visit(body, lines, context):
     for node in body:
         if isinstance(node, ast.ClassDef):
-            inherited = context["marks"] | mark_names(node.decorator_list)
+            inherited = context["marks"] | mark_names(node.decorator_list) | body_marks(node.body)
             visit(
                 node.body,
                 lines,
@@ -67,13 +75,13 @@ def facts(root, file):
         with open(os.path.join(root, file), encoding="utf-8") as handle:
             source = handle.read()
         tree = ast.parse(source)
-    except (OSError, SyntaxError, ValueError):
+        found = {}
+        visit(tree.body, source.splitlines(), {"path": [], "marks": body_marks(tree.body), "found": found})
+        return found
+    except Exception:
         return None
-    found = {}
-    visit(tree.body, source.splitlines(), {"path": [], "marks": module_marks(tree), "found": found})
-    return found
 
 
 if __name__ == "__main__":
     root, *files = sys.argv[1:]
-    print(json.dumps({file: facts(root, file) for file in files}))
+    print("NITPICKER_FACTS " + json.dumps({file: facts(root, file) for file in files}))

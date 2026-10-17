@@ -7,7 +7,8 @@ describe('integration tests by path', () => {
     const files = [
       'e2e/login.test.ts',
       'test/integration/db.test.ts',
-      'src/api/__integration__/users.test.ts',
+      'tests/api/__integration__/users.test.ts',
+      '__tests__/system/clock.test.ts',
       'tests/end-to-end/flow.spec.js',
       'src/orders.integration.test.ts',
       'src/orders.e2e.spec.tsx',
@@ -15,6 +16,9 @@ describe('integration tests by path', () => {
       'src/orders.test.ts',
       'test/unit/orders.test.ts',
       'src/integrationless.test.ts',
+      'src/integrations/stripe.test.ts',
+      'src/system/clock.test.ts',
+      'src/api/__integration__/users.test.ts',
     ];
     expect(files.map((file) => isIntegrationTest(file, defaultResolvedLayout))).toEqual([
       true,
@@ -24,6 +28,10 @@ describe('integration tests by path', () => {
       true,
       true,
       true,
+      true,
+      false,
+      false,
+      false,
       false,
       false,
       false,

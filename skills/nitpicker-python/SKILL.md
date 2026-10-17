@@ -51,10 +51,12 @@ backstop. It fails only on findings your change adds, so leave code the task doe
 - Tests: use the project's runner (pytest or unittest). Every branch you add needs a test, and a
   surviving mutant fails: assert the exact value, so a changed line breaks a test.
 - Plan tests to be fast (`slow-test`): a test you add or edit that takes over 5 s fails, over 30 s
-  for an integration test (marked `@pytest.mark.integration`, or under an `integration` or `e2e`
-  folder). Patch the clock instead of `time.sleep` and fake network, database and disk access. A
-  slow test you did not touch stays baselined. Lift a legitimate one in the top-level `exceptions`
-  with `{ "rule": "slow-test", "paths": [...], "reason": "..." }`.
+  for an integration test (marked `@pytest.mark.integration`, which `--strict-markers` projects must
+  register, or under an `integration` or `e2e` folder in `tests`, or a unittest class named
+  `Integration*`). Patch the clock instead of `time.sleep` and fake network, database and disk
+  access. A test over budget is run again alone without coverage and fails only if it is still over;
+  a slow test you did not touch stays baselined. Lift a legitimate one in the top-level
+  `exceptions` with `{ "rule": "slow-test", "paths": [...], "reason": "..." }`.
 - A finding that flags legitimate code (a command line entry point that prints) is lifted in
   `nitpicker.config.json`, under `python.exceptions`, with an entry such as
   `{ "rule": "T201", "paths": ["src/cli/**"], "reason": "..." }`, the rule being the id in the
