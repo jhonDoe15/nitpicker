@@ -1,7 +1,7 @@
 import { hashIdentity } from '../../../java/ingest/common.mjs';
-import { readProjectFile, toml } from '../../libraries/project-files.mjs';
+import { readProjectFile } from '../../libraries/project-files.mjs';
 import { listProductionModules } from '../analysis/python-sources.mjs';
-import { parseIni } from '../configuration/mypy-config.mjs';
+import { readMutmutConfig } from '../project-tools/mutmut/mutmut-config.mjs';
 
 const MUTMUT_TOOL = 'mutmut';
 const MUTANT_IGNORED_RULE = 'mutant-ignored';
@@ -9,7 +9,6 @@ const NO_MUTATE = /#\s*pragma:\s*no mutate\b(?:[ \t]+(block|start|end|class|func
 const NOT_A_ROUTE =
   'Remove it and test the code. Ignore comments and patterns are not an exception route.';
 const PYPROJECT = 'pyproject.toml';
-const SETUP_CFG = 'setup.cfg';
 
 function ignoredFinding({ file, identity, line, message }) {
   return {
@@ -71,16 +70,14 @@ function listOf(value) {
 }
 
 function readOptions(projectRoot) {
-  const pyproject = readProjectFile(projectRoot, PYPROJECT);
-  const mutmut = pyproject === undefined ? undefined : toml().parse(pyproject).tool?.mutmut;
-  if (mutmut !== undefined) {
-    return { file: PYPROJECT, section: '[tool.mutmut]', options: mutmut };
-  }
-  const setupCfg = readProjectFile(projectRoot, SETUP_CFG);
-  const section = setupCfg === undefined ? undefined : parseIni(setupCfg).get('mutmut');
-  return section === undefined
+  const config = readMutmutConfig(projectRoot);
+  return config === undefined
     ? undefined
-    : { file: SETUP_CFG, section: '[mutmut]', options: Object.fromEntries(section) };
+    : {
+        file: config.file,
+        section: config.file === PYPROJECT ? '[tool.mutmut]' : '[mutmut]',
+        options: config.table,
+      };
 }
 
 export function mutmutDoNotMutate(projectRoot) {

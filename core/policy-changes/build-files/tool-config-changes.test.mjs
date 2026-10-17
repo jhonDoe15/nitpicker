@@ -53,18 +53,36 @@ describe('project tool configs the project opted into', () => {
     });
   });
 
-  it('counts an edit of the detekt config the Kotlin preset layers', () => {
-    const kotlin = { preset: 'kotlin' };
+  it('counts an edit of the detekt config and editorconfig the Kotlin project opted into', () => {
+    const kotlin = { preset: 'kotlin', tools: { detekt: PROJECT, ktlint: PROJECT } };
+    const at = (detekt, editorconfig) => ({
+      'config/detekt/detekt.yml': detekt,
+      '.editorconfig': editorconfig,
+      'src/main/kotlin/A.kt': 'class A\n',
+    });
+
+    expect(
+      between({ base: at('a: 1\n', 'x=1\n'), head: at('a: 2\n', 'x=2\n'), config: kotlin })
+        .policyLoosenings,
+    ).toEqual([
+      'detekt project config changed: config/detekt/detekt.yml',
+      'ktlint project config changed: .editorconfig',
+    ]);
+    expect(
+      between({ base: at('a: 1\n', 'x=1\n'), head: at('a: 1\n', 'x=1\n'), config: kotlin })
+        .policyLoosenings,
+    ).toEqual([]);
+  });
+
+  it('ignores the project detekt config while the project did not opt into it', () => {
     const at = (text) => ({
       'config/detekt/detekt.yml': text,
       'src/main/kotlin/A.kt': 'class A\n',
     });
 
     expect(
-      between({ base: at('a: 1\n'), head: at('a: 2\n'), config: kotlin }).policyLoosenings,
-    ).toEqual(['detekt project config changed: config/detekt/detekt.yml']);
-    expect(
-      between({ base: at('a: 1\n'), head: at('a: 1\n'), config: kotlin }).policyLoosenings,
+      between({ base: at('a: 1\n'), head: at('a: 2\n'), config: { preset: 'kotlin' } })
+        .policyLoosenings,
     ).toEqual([]);
   });
 

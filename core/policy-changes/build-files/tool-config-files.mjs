@@ -4,10 +4,11 @@ import {
   GRADLE_PRESETS,
   PROJECT_TOOL_CONFIGS,
 } from '../../../languages/java/adapters/gradle-presets.mjs';
-import { resolveKotlinTools } from '../../../languages/java/adapters/kotlin/kotlin-tools.mjs';
+import { kotlinStyleFiles } from '../../../languages/java/adapters/kotlin/kotlin-tools.mjs';
 import { PRETTIER_PROJECT_FILES } from '../../../languages/typescript/preset/head-policy.mjs';
 
 const PACKAGE_JSON = 'package.json';
+const KOTLIN_TOOLS = ['detekt', 'ktlint', 'ktfmt'];
 const PRETTIER_PRESETS = new Set([undefined, 'typescript', 'javascript']);
 
 function usesProjectConfig(config, tool) {
@@ -44,13 +45,23 @@ function underDirectory(files, directory) {
   return files.filter((file) => file.startsWith(`${directory}/`));
 }
 
-function detektFiles(config, projectRoot) {
+function kotlinFiles(tool, side) {
+  const { config, root } = side;
+  const formatter = tool === 'detekt' ? 'none' : tool;
+  const precedence = config.tools?.[tool]?.precedence;
   try {
-    const { detektConfig } = resolveKotlinTools(projectRoot, {
-      detektConfig: config.kotlin?.detektConfig,
-      snapshot: 'base',
-    });
-    return detektConfig === undefined ? [] : [detektConfig];
+    return kotlinStyleFiles(
+      {
+        tools: precedence === undefined ? {} : { [tool]: { precedence } },
+        kotlin: {
+          formatter,
+          detektConfig: tool === 'detekt' ? config.kotlin?.detektConfig : undefined,
+        },
+      },
+      root,
+    )
+      .filter((file) => tool === 'detekt' || path.basename(file) === '.editorconfig')
+      .map((file) => path.relative(root, file));
   } catch {
     return [];
   }
@@ -58,8 +69,8 @@ function detektFiles(config, projectRoot) {
 
 function candidates(tool, side) {
   const { config, root, files } = side;
-  if (tool === 'detekt') {
-    return config.preset === 'kotlin' ? detektFiles(config, root) : [];
+  if (KOTLIN_TOOLS.includes(tool)) {
+    return config.preset === 'kotlin' ? kotlinFiles(tool, side) : [];
   }
   if (tool === 'prettier') {
     return PRETTIER_PRESETS.has(config.preset) ? PRETTIER_PROJECT_FILES : [];
@@ -71,11 +82,14 @@ function candidates(tool, side) {
 }
 
 function isOptedIn(tool, config) {
-  return tool === 'detekt' ? config.preset === 'kotlin' : usesProjectConfig(config, tool);
+  return (
+    usesProjectConfig(config, tool) ||
+    (tool === 'detekt' && config.kotlin?.detektConfig !== undefined)
+  );
 }
 
 export function readToolConfigs(base, head, gitBlobId) {
-  return ['pmd', 'checkstyle', 'detekt', 'prettier']
+  return ['pmd', 'checkstyle', ...KOTLIN_TOOLS, 'prettier']
     .filter((tool) => isOptedIn(tool, base.config) && isOptedIn(tool, head.config))
     .map((tool) => ({
       tool,
