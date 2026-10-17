@@ -670,7 +670,8 @@ kind, a version entry, a check definition and project-level findings) and is not
   accepted in `exceptions` as the same rule. The message names the budget, the measured time, the
   fixes (fake timers instead of waits, fakes for network, database and disk, or moving the test to
   an integration test) and the exception. It is reported by the `coverage` analyzer, which already
-  runs the tests, so a failing test run reports `tests-failed` and no slow tests. TypeScript,
+  runs the tests, so a failing test run reports `tests-failed` and no slow tests, and disabling `coverage` also
+  turns the check off. TypeScript,
   JavaScript and React share it. `exclude` applies: a test in an excluded file is not checked.
 - **Measurement.** Head only, from the per-test `duration` of the report the project's runner
   writes for the coverage run (Vitest and Jest JSON, the `node:test` reporter, Mocha JSON), which

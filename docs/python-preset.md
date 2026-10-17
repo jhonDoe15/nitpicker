@@ -978,7 +978,8 @@ a changed test; mutmut has no such step yet, hence source-only.
   alone, without fixture setup and teardown; the report goes to the report directory. unittest runs
   through `languages/python/slow-tests/unittest_timing.py`, which takes the same `discover`
   arguments, runs the tests as `python -m unittest` does and writes the same XML, timing each test
-  from `startTest` to `stopTest` (setUp and tearDown included). Only passed tests are timed
+  from `startTest` to `stopTest` (setUp and tearDown included, `setUpClass` not; `__main__` and
+  `sys.argv[0]` are the helper's, not `unittest`'s). Only passed tests are timed
   (failed, errored and skipped cases are left out). A parameterized pytest case is timed per case, a
   rerun test keeps its slowest time, and the test file is the `file` attribute of the report entry.
   A test over the smaller budget is run again once, by node id (pytest) or test id (unittest), without
@@ -988,7 +989,8 @@ a changed test; mutmut has no such step yet, hence source-only.
   and writes no file) gets no timing and one descriptive `test-runtime/slow-test-not-timed`
   finding saying so, which never fails the run; a file whose tests could not be read for the
   edited-or-added check, or a test whose file is not under the project, gets the same finding. The
-  step never drops the other findings of the run.
+  step never drops the other findings of the run. A failing test run reports `tests-failed` and no
+  slow tests.
 - **Unit or integration.** A test is an integration test when it, its class or its module carries a
   pytest marker named `integration`, `integrations`, `e2e`, `end_to_end`, `functional`, `acceptance`
   or `system` (`@pytest.mark.integration`, `pytestmark = pytest.mark.e2e`; markers set only in

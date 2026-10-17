@@ -549,6 +549,7 @@ resolved plus a new finding, as in the TypeScript check.
   `TEST-*.xml` of every test task in the run (not `nitpickerArchunit`) to
   `test-results/<task>/` in each module's report directory. No extra test run. A rerun test keeps
   its slowest time; only passed tests are timed (failed, errored and skipped cases are left out).
+  A failing build reports its own error and no slow tests.
   Unlike TypeScript and Python, a slow test is not run again without coverage: the build runs the
   tests once, and a second build would double the cost, so the time is that of the build's own run
   (with JaCoCo's agent when the same run measures coverage) and is checked against the budget as
