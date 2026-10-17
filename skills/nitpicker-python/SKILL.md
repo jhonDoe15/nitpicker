@@ -35,13 +35,8 @@ backstop. It fails only on findings your change adds, so leave code the task doe
 - Paths: `pathlib.Path` with `/`, `.read_text()`, `.exists()`. No `os.path`, no `open(path)`.
 - Strings: f-strings only. No `.format()` and no `%`.
 - Defaults: `None`, then build the value inside the function. No mutable default arguments.
-- Errors: catch the specific exception and handle it, log it with `logger.exception(...)`, or
-  re-raise. A new exception raised inside `except` keeps the cause: `raise ParseError(text) from err`
-  (or `from None`). No bare `except:`, `except Exception:`, or a handler that only does `pass`, `...`, `continue`,
-  `return None` / `return []` (or another constant) or `x = None`: log it, re-raise it, use the error, or return a
-  named default or a value built from the error. `except ImportError: x = None` is the one allowed constant
-  assignment. One expected error that is deliberately ignored is `with contextlib.suppress(SpecificError):`,
-  never `suppress(Exception)`.
+- Errors: catch the specific exception and handle it, or re-raise it with its cause:
+  `raise ParseError(text) from err`. No bare `except:` or `except Exception:`, and no `raise Exception(...)`.
 - A `try` inside a loop is flagged (PERF203): move it out, or extract the loop body into a function.
 - Flow: no `else` after a `return`, and return an expression directly instead of assigning it to a
   local first. Build a list with a comprehension, not `append` in a loop.
@@ -51,6 +46,8 @@ backstop. It fails only on findings your change adds, so leave code the task doe
   an `adapters/` package, where untrusted input is parsed once; pass frozen dataclasses on from there.
 - Constants: a fixed set of strings is an `enum.StrEnum` (`class X(str, Enum)` before Python 3.11),
   not `STATUS_ACTIVE = "active"` constants or a class holding them. Settings like `DB_HOST` are fine.
+- Every other rule (logging, naming, environment access, the domain, paths, secrets, shell and SQL,
+  test honesty) reports the allowed form in its message: follow the form the message names.
 - Tests: use the project's runner (pytest or unittest). Every branch you add needs a test, and a
   surviving mutant fails: assert the exact value, so a changed line breaks a test.
 - A finding that flags legitimate code (a command line entry point that prints) is lifted in
