@@ -77,13 +77,17 @@ function testRootSet(baseConfig, headConfig) {
 }
 
 function duplicateFolderSet(baseConfig, headConfig) {
-  const [base, head] = [baseConfig, headConfig].map((config) =>
-    duplicateFolderExclusions(config, headConfig.preset ?? 'typescript').map(({ glob }) => glob),
+  const [baseEntries, headEntries] = [baseConfig, headConfig].map((config) =>
+    duplicateFolderExclusions(config, headConfig.preset ?? 'typescript'),
+  );
+  const base = baseEntries.map(({ glob }) => glob);
+  const head = headEntries.map(({ glob }) => glob);
+  const established = baseEntries.filter(
+    ({ permanent }) => permanent || baseConfig.duplicates?.skippedFolders === undefined,
   );
   return {
     ...globSet('duplicates.skippedFolders', [base, head], false),
-    establishedInBase:
-      baseConfig.duplicates?.skippedFolders === undefined ? matcherOf(base) : () => false,
+    establishedInBase: matcherOf(established.map(({ glob }) => glob)),
   };
 }
 
