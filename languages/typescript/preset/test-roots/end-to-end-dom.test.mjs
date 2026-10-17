@@ -34,6 +34,10 @@ function qualityTsconfig(root, layout = resolveLayout()) {
   return JSON.parse(transform(shipped, path.join(root, '.nitpicker-tsconfig.json')));
 }
 
+function environmentDirective(runner, environment) {
+  return `/** @${runner}-environment ${environment} */\n`;
+}
+
 describe('the DOM lib for a root e2e folder', () => {
   it('is added to the shipped tsconfig when the project has an e2e folder', () => {
     const config = qualityTsconfig(project({ folders: ['e2e'] }));
@@ -116,7 +120,7 @@ describe.each([
   it('is added when a test file asks for a DOM environment', () => {
     const root = project({
       folders: ['src'],
-      files: { 'src/view.test.js': '/** @jest-environment jsdom */\n' },
+      files: { 'src/view.test.js': environmentDirective('jest', 'jsdom') },
     });
 
     expect(libOf(root)).toEqual(['ES2024', 'dom']);
