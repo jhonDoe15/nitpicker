@@ -28,7 +28,6 @@ const ENGINES = new Map([
   ],
 ]);
 const PRECEDENCE_KEYS = ['precedence'];
-const SINGLE_CONFIG_TOOLS = ['checkstyle'];
 const NITPICKER_FIRST_REJECTED = new Map([
   [
     'ktlint',
@@ -92,11 +91,6 @@ function validateToolSettings(name, settings, toolSettingKeys) {
 }
 
 function validatePrecedenceOrder(precedence, name) {
-  if (SINGLE_CONFIG_TOOLS.includes(name) && precedence.length > 1) {
-    throw configError(
-      `"tools.${name}.precedence" must be ["nitpicker"] or ["project"]: ${name} runs one configuration, so the two cannot be merged`,
-    );
-  }
   if (
     NITPICKER_FIRST_REJECTED.has(name) &&
     precedence[0] === 'nitpicker' &&
