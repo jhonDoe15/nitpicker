@@ -15,8 +15,8 @@ import {
 } from './eslint-config/scope-support.mjs';
 import {
   builtInExcludedGlobs,
+  existingRoots,
   globToRegExp,
-  hasColocatedTests,
   resolveLayout,
   resolveLayoutFor,
   sourceRoots,
@@ -56,7 +56,10 @@ const PRETTIER_PROJECT_FILES = [
 ];
 
 function withTestPlacement(policy, projectRoot) {
-  if (projectRoot === undefined || !hasColocatedTests(projectRoot, policy.layout)) {
+  if (
+    projectRoot === undefined ||
+    existingRoots(projectRoot, resolveLayout(policy.layout).testRoots).length > 0
+  ) {
     return policy;
   }
   return { ...policy, layout: { ...policy.layout, colocatedTests: true } };
