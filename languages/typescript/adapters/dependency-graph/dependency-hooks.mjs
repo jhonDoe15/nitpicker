@@ -1,18 +1,19 @@
 import { spawnSync } from 'node:child_process';
 import { existsSync, lstatSync, rmSync } from 'node:fs';
-import path from 'node:path';
 import { DEPENDENCY_MANIFESTS, detectPackageManager } from './package-managers/detect.mjs';
 import { installCommand } from './package-managers/commands.mjs';
+import { containedPath } from './package-managers/contained-path.mjs';
 import { memberDependencyDirectories } from './package-managers/members.mjs';
 
 const MAX_OUTPUT_BYTES = 50 * 1024 * 1024;
 const DEPENDENCY_INSTALL_TIMEOUT_MS = 4 * 60 * 1000;
+const DEPENDENCY_DIRECTORY = 'node_modules';
 
-function runInstall(projectRoot, packageManager) {
+function runInstall(projectRoot, packageManager, inheritedEnvironment = process.env) {
   const { command, args, environment, installHint } = installCommand(packageManager);
   const result = spawnSync(command, args, {
     cwd: projectRoot,
-    env: { ...process.env, ...environment },
+    env: { ...inheritedEnvironment, ...environment },
     encoding: 'utf8',
     maxBuffer: MAX_OUTPUT_BYTES,
     timeout: DEPENDENCY_INSTALL_TIMEOUT_MS,
@@ -25,34 +26,42 @@ function runInstall(projectRoot, packageManager) {
   return result;
 }
 
+function assertInstalled(result, dependencyPath, packageManager) {
+  if (result.error === undefined && result.status === 0) {
+    return;
+  }
+  rmSync(dependencyPath, { recursive: true, force: true });
+  if (result.error !== undefined) {
+    throw result.error;
+  }
+  const detail = result.stderr.trim() || result.stdout.trim() || 'no diagnostic output';
+  throw new Error(
+    `Failed to install merge-base dependencies with ${packageManager.name}: ${detail}`,
+  );
+}
+
+function assertRegularDirectory(dependencyPath) {
+  const entry = lstatSync(dependencyPath);
+  if (!entry.isDirectory() || entry.isSymbolicLink()) {
+    rmSync(dependencyPath, { recursive: true, force: true });
+    throw new Error('Installed merge-base dependencies are not a regular directory');
+  }
+}
+
 const nodeDependencyHook = {
   language: 'typescript',
   manifests: DEPENDENCY_MANIFESTS,
-  directory: 'node_modules',
+  directory: DEPENDENCY_DIRECTORY,
   install(projectRoot) {
-    const dependencyPath = path.join(projectRoot, nodeDependencyHook.directory);
+    const dependencyPath = containedPath(projectRoot, DEPENDENCY_DIRECTORY);
     if (existsSync(dependencyPath)) {
       throw new Error(`Refusing to replace existing dependencies at ${dependencyPath}`);
     }
     const packageManager = detectPackageManager(projectRoot);
-    const result = runInstall(projectRoot, packageManager);
-    if (result.error !== undefined || result.status !== 0) {
-      rmSync(dependencyPath, { recursive: true, force: true });
-      if (result.error !== undefined) {
-        throw result.error;
-      }
-      const detail = result.stderr.trim() || result.stdout.trim() || 'no diagnostic output';
-      throw new Error(
-        `Failed to install merge-base dependencies with ${packageManager.name}: ${detail}`,
-      );
-    }
-    const entry = lstatSync(dependencyPath);
-    if (!entry.isDirectory() || entry.isSymbolicLink()) {
-      rmSync(dependencyPath, { recursive: true, force: true });
-      throw new Error('Installed merge-base dependencies are not a regular directory');
-    }
+    assertInstalled(runInstall(projectRoot, packageManager), dependencyPath, packageManager);
+    assertRegularDirectory(dependencyPath);
     const memberPaths = memberDependencyDirectories(projectRoot).map((relative) =>
-      path.join(projectRoot, relative),
+      containedPath(projectRoot, relative),
     );
     return { kind: 'installed', dependencyPath, memberPaths };
   },

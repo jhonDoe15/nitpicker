@@ -41,7 +41,7 @@ describe('frozen install with the real package managers', () => {
           memberPaths: members.map((member) => path.join(projectRoot, member)),
         });
         const libraries = (members.length === 0 ? ['node_modules'] : members).map((directory) =>
-          existsSync(path.join(projectRoot, directory, 'fixture-lib/index.js')),
+          existsSync(path.join(projectRoot, directory, 'fixture-lib/fixture.json')),
         );
         expect(libraries).toEqual(libraries.map(() => true));
         expect(existsSync(path.join(projectRoot, 'ROOT_POSTINSTALL'))).toBe(false);

@@ -7,8 +7,8 @@ __metadata:
 
 "fixture-lib@file:vendor/fixture-lib::locator=pm-fixture%40workspace%3A.":
   version: 1.0.0
-  resolution: "fixture-lib@file:vendor/fixture-lib#vendor/fixture-lib::hash=832c4b&locator=pm-fixture%40workspace%3A."
-  checksum: 10c0/9a1026a449cc2dd5b1a4d66f5413df4682e885eff05806bf39c083f8e18d9ae56e230df875f41836cf53eebc230e200c5acd3753916bf3ad2bfe0544e05aad40
+  resolution: "fixture-lib@file:vendor/fixture-lib#vendor/fixture-lib::hash=ecc6d2&locator=pm-fixture%40workspace%3A."
+  checksum: 10c0/0a889d9b78801e04cd4f9d197ec22a621058db05277b45abd3fa69994195c0aef86668db73740e36234a2e01d8a71e3cefe712e73a6f788dcd518a9af83385f7
   languageName: node
   linkType: hard
 
