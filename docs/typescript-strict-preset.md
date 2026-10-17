@@ -1201,26 +1201,15 @@ from a real caller) and the `exceptions` entry that lifts it.
   same paths.
 - The file limits (`file-lines-limit`, `line-length-limit`, `folder-files-limit`) take exceptions the
   same way; each failure message spells out the entry that would lift it.
-  <<<<<<< HEAD
-- The reuse rules (`shared-used-by-one-feature`, `duplicate-definition`, `sibling-copy-edit`,
-  `exported-name-collision`, `redefined-library-component`, `new-icon-asset`) come from the
-  `coupling` and `structure` checks, not from ESLint, and take exceptions the same way; the
-  JavaScript preset runs them too.
-  ||||||| 3118b545
-- The reuse rules (`shared-used-by-one-feature`, `duplicate-definition`, `exported-name-collision`,
-  `redefined-library-component`, `new-icon-asset`) come from the `coupling` and `structure` checks,
-  not from ESLint, and take exceptions the same way; the JavaScript preset runs them too.
-  \=======
 - `folder-depth-limit`: code may sit at most one folder below `features/<feature>/<layer>/` (a file in
   `domain/orders/x.ts` is fine, one in `domain/orders/rules/x.ts` is not), so nesting cannot dodge
   the 6-files-per-folder limit. `thresholds.folderDepth` changes the one folder. `__tests__` and `__mocks__` folders do not
   count as a level. A folder already deeper on the base fails only when it gets deeper, and the rule takes exceptions like the file
   limits.
-- The reuse rules (`shared-used-by-one-feature`, `duplicate-definition`, `exported-name-collision`,
-  `redefined-library-component`, `new-icon-asset`) come from the `coupling` and `structure` checks,
-  not from ESLint, and take exceptions the same way; the JavaScript preset runs them too.
-
-> > > > > > > origin/main
+- The reuse rules (`shared-used-by-one-feature`, `duplicate-definition`, `sibling-copy-edit`,
+  `exported-name-collision`, `redefined-library-component`, `new-icon-asset`) come from the
+  `coupling` and `structure` checks, not from ESLint, and take exceptions the same way; the
+  JavaScript preset runs them too.
 
 - `layout.excludedGlobs`, `layout.entryPoints` and `layout.sourceRoots`/`layout.testRoots` are all valid `layout` keys. The
   default `testRoots` are `test`, `tests`, `__tests__` and `e2e` (repo-root folders only, so
