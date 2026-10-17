@@ -29,6 +29,10 @@ afterEach(() => {
   fakes.cleanup();
 });
 
+function enabledErrorCodes(args) {
+  return args.filter((_arg, index) => args[index - 1] === '--enable-error-code');
+}
+
 function logged() {
   const logFile = path.join(fakes.temporaryRoot(), 'calls.jsonl');
   setEnvironment('FAKE_PYTHON_LOG', logFile);
@@ -175,6 +179,23 @@ describe('running mypy', () => {
     );
   });
 
+  it.each([
+    ['1.13.0', false],
+    ['1.14.0', true],
+    ['1.20.1', true],
+    ['2.0.0', true],
+    ['0.991', false],
+  ])('mypy %s asks for the deprecated error code: %s', (version, asked) => {
+    const logFile = logged();
+    const root = fakes.project({ 'mypy-version.txt': version });
+    const { context } = fakes.contextFor(root);
+
+    typeCheck(context);
+
+    const [call] = fakes.calls(logFile).filter(({ args }) => args.includes('--strict'));
+    expect(enabledErrorCodes(call.args)).toEqual(asked ? ['deprecated'] : []);
+  });
+
   it('adds the import roots to MYPYPATH before an existing value', () => {
     const logFile = logged();
     setEnvironment('MYPYPATH', '/existing');
@@ -285,6 +306,7 @@ describe('running basedpyright', () => {
     ]);
     expect(JSON.parse(readFileSync(path.join(reportRoot, 'pyrightconfig.json'), 'utf8'))).toEqual({
       typeCheckingMode: 'strict',
+      reportDeprecated: 'error',
       enableTypeIgnoreComments: false,
       ignore: [],
       executionEnvironments: [],
@@ -323,6 +345,7 @@ describe('running pyright', () => {
     ]);
     expect(JSON.parse(readFileSync(path.join(reportRoot, 'pyrightconfig.json'), 'utf8'))).toEqual({
       typeCheckingMode: 'strict',
+      reportDeprecated: 'error',
       enableTypeIgnoreComments: false,
       ignore: [],
       executionEnvironments: [],
@@ -338,6 +361,7 @@ describe('running pyright', () => {
 
     expect(pyrightConfig(context)).toEqual({
       typeCheckingMode: 'strict',
+      reportDeprecated: 'error',
       enableTypeIgnoreComments: false,
       ignore: [],
       executionEnvironments: [],

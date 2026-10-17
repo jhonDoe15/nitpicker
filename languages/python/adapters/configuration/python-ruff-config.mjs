@@ -8,7 +8,7 @@ export const RUFF_CONFIG = path.resolve(
   '../ruff/nitpicker-ruff.toml',
 );
 const FILTERED_CONFIG = 'nitpicker-ruff.toml';
-const SELECTED_RULE = /^\s*"(RUF\d+)",\n/gm;
+const SELECTED_RULE = /^\s*"([A-Z]+\d+)",\n/gm;
 
 function parseRules(text) {
   try {
@@ -35,19 +35,23 @@ function installedRules(context) {
   return new Set(parsed.rules.filter(isStableRule).map((rule) => rule.code));
 }
 
+function isKnown(known, code) {
+  return known.has(code) || [...known].some((rule) => rule.startsWith(code));
+}
+
 function filteredConfig(context) {
   const text = readFileSync(RUFF_CONFIG, 'utf8');
   const known = installedRules(context);
   if (
     known === undefined ||
-    [...text.matchAll(SELECTED_RULE)].every(([, code]) => known.has(code))
+    [...text.matchAll(SELECTED_RULE)].every(([, code]) => isKnown(known, code))
   ) {
     return RUFF_CONFIG;
   }
   const file = path.join(context.reportRoot, FILTERED_CONFIG);
   writeFileSync(
     file,
-    text.replaceAll(SELECTED_RULE, (line, code) => (known.has(code) ? line : '')),
+    text.replaceAll(SELECTED_RULE, (line, code) => (isKnown(known, code) ? line : '')),
   );
   return file;
 }

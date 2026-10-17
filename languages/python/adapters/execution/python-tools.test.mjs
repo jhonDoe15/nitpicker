@@ -35,6 +35,7 @@ describe('tool context', () => {
       targetVersion: 'py38',
       typeCheckers: [],
       sourceRoots: ['src'],
+      entryPoints: [],
     });
   });
   it('takes the environment from the live checkout and the sources from the snapshot', () => {
@@ -61,6 +62,7 @@ describe('tool context', () => {
       testRunner: 'unittest',
       targetVersion: 'py38',
       sourceRoots: ['src'],
+      entryPoints: [],
     });
   });
 });
@@ -87,7 +89,6 @@ describe('running the tools', () => {
       formatterDetected: true,
       sourceRoots: ['src'],
       testsRan: true,
-      libraries: { validation: [], logger: [] },
     });
     expect(readReport(reportRoot, 'coveragerc')).toBe(coverageRc('src'));
   });

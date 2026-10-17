@@ -28,6 +28,10 @@ export function requireKotlinManifest(manifest) {
   }
 }
 
+export function kotlinLintedRoots({ kotlinSourceRoots, kotlinTestSourceRoots = [] }) {
+  return [...new Set([...kotlinSourceRoots, ...kotlinTestSourceRoots])];
+}
+
 export function jacocoSourceRoots({ sourceRoots, manifest, kotlin }) {
   return kotlin ? [...new Set([...sourceRoots, ...manifest.kotlinSourceRoots])] : sourceRoots;
 }
@@ -81,7 +85,7 @@ export function readKotlinFindings(context, crapLimit) {
   const metrics = readKotlinMetrics(reportRoot);
   return [
     ...detektFindings(reportRoot, formatAdvice),
-    ...readSuppressionFindings(projectRoot, manifest.kotlinSourceRoots),
+    ...readSuppressionFindings(projectRoot, kotlinLintedRoots(manifest)),
     ...formatterFindings(reportRoot, manifest.kotlinFormatter, formatAdvice),
     ...readKotlinStructureFindings(metrics, projectRoot),
     ...readKotlinCrapFindings(metrics, {

@@ -11,6 +11,8 @@ const TYPES_FAILED_RULE = 'types-failed';
 const PYRIGHT_CONFIG = 'pyrightconfig.json';
 const MYPY_CACHE = 'mypy-cache';
 const TYPE_CHECKERS = ['mypy', 'pyright', 'basedpyright'];
+const DEPRECATED_CODE_SINCE = { major: 1, minor: 14 };
+const MYPY_VERSION = /^mypy (\d+)\.(\d+)/;
 const EXECUTABLE_PROBE = ['python', '-c', 'import sys; print(sys.executable)'];
 
 function typesError(message) {
@@ -35,6 +37,18 @@ function mypyPath(context) {
     .join(path.delimiter);
 }
 
+function mypyReportsDeprecations(context) {
+  const match = MYPY_VERSION.exec(execute(context, ['mypy', '--version']).stdout);
+  if (match === null) {
+    return false;
+  }
+  const [major, minor] = match.slice(1).map(Number);
+  return (
+    major > DEPRECATED_CODE_SINCE.major ||
+    (major === DEPRECATED_CODE_SINCE.major && minor >= DEPRECATED_CODE_SINCE.minor)
+  );
+}
+
 function runMypy(context) {
   const config = writeMypyConfig(context);
   return run(
@@ -46,6 +60,7 @@ function runMypy(context) {
       '--python-executable',
       environmentPython(context),
       ...(mypyLayers(context).appliesProject ? [] : ['--strict']),
+      ...(mypyReportsDeprecations(context) ? ['--enable-error-code', 'deprecated'] : []),
       ...mypyExcludeArguments(context),
       '--explicit-package-bases',
       '--show-error-codes',

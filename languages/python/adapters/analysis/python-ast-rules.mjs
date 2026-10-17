@@ -1,19 +1,27 @@
-import { writeFileSync } from 'node:fs';
+import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { normalizeReportPath } from '../../../java/ingest/common.mjs';
 import { run } from '../execution/python-process.mjs';
 import { ruffConfigFor } from '../configuration/python-ruff-config.mjs';
 import { fileURLToPath } from 'node:url';
-import { detectPythonLibraries, validationBehavior } from '../../libraries/project-libraries.mjs';
+import { collectionOptions, isTestFile } from '../configuration/pytest/collection-options.mjs';
+import { readPytestConfig } from '../configuration/pytest/pytest-config.mjs';
+import { entryFilesOf, readEntryModules } from '../../rules/libraries/entry-modules.mjs';
+import { boundaryRoots, detectLibraries } from '../../rules/libraries/project-libraries.mjs';
 
 export const RULES_REPORT = 'rules.json';
 const RULES_FAILED_RULE = 'rules-failed';
 const FILE_LIST = 'python-files.txt';
-const SETTINGS_FILE = 'rules-settings.json';
+const OPTIONS_FILE = 'rule-options.json';
 const RULES_SCRIPT = path.resolve(
   fileURLToPath(new URL('../', import.meta.url)),
   '../rules/nitpicker_rules.py',
 );
+
+export function readTestFiles(reportRoot) {
+  const file = path.join(reportRoot, OPTIONS_FILE);
+  return existsSync(file) ? (JSON.parse(readFileSync(file, 'utf8')).testFiles ?? []) : [];
+}
 
 export function pythonSources(context) {
   const { stdout } = run(
@@ -30,17 +38,26 @@ export function pythonSources(context) {
 
 export function checkRules(context) {
   const list = path.join(context.reportRoot, FILE_LIST);
-  const settings = path.join(context.reportRoot, SETTINGS_FILE);
-  writeFileSync(list, pythonSources(context).join('\n'));
+  const options = path.join(context.reportRoot, OPTIONS_FILE);
+  const sources = pythonSources(context);
+  const collection = collectionOptions(readPytestConfig(context.projectRoot));
+  const { testRunner } = context.project;
+  writeFileSync(list, sources.join('\n'));
   writeFileSync(
-    settings,
+    options,
     JSON.stringify({
-      boundary_roots: validationBehavior(detectPythonLibraries(context.projectRoot)).importRoots,
+      sourceRoots: context.project.sourceRoots,
+      testRunner,
+      ...collection,
+      testFiles: sources.filter((file) => isTestFile(file, collection)),
+      entryFiles: entryFilesOf(sources, context.project.entryPoints),
+      entryModules: readEntryModules(context.projectRoot),
+      boundaryRoots: boundaryRoots(detectLibraries(context.projectRoot)),
     }),
   );
   run(
     context,
-    ['python', '-I', RULES_SCRIPT, list, path.join(context.reportRoot, RULES_REPORT), settings],
+    ['python', '-I', RULES_SCRIPT, list, path.join(context.reportRoot, RULES_REPORT), options],
     { rule: RULES_FAILED_RULE },
   );
 }
