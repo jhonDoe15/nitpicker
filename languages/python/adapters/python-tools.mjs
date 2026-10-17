@@ -56,9 +56,6 @@ export function createToolContext({
     setting: settings.environment,
   });
   const sourceRoots = detectSourceRoots(projectRoot, settings.sourceRoots);
-  const pythonPath = [...importRoots(projectRoot, sourceRoots), process.env.PYTHONPATH]
-    .filter((entry) => entry !== undefined && entry !== '')
-    .join(path.delimiter);
   return {
     projectRoot,
     reportRoot,
@@ -82,7 +79,7 @@ export function createToolContext({
       entryPoints: settings.entryPoints ?? [],
     },
     env: {
-      PYTHONPATH: pythonPath,
+      PYTHONPATH: pythonPathFor(projectRoot, sourceRoots),
       PYTHONDONTWRITEBYTECODE: '1',
       ...(reportRoot === undefined ? {} : { COVERAGE_FILE: path.join(reportRoot, COVERAGE_DATA) }),
     },
@@ -237,4 +234,10 @@ export function mutationVersions(context) {
     pytestLabel(context),
     ...mutationRunnerLabels(context),
   ].join(';');
+}
+
+function pythonPathFor(projectRoot, sourceRoots) {
+  return [...importRoots(projectRoot, sourceRoots), process.env.PYTHONPATH]
+    .filter((entry) => entry !== undefined && entry !== '')
+    .join(path.delimiter);
 }

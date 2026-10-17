@@ -31,9 +31,18 @@ import { resolveCacheStore } from './diff/cache/cache-stores.mjs';
 import { selectAnalyzerShard } from './diff/sharding/sharding.mjs';
 import { renderConsoleSummary } from './diff/reporting/summary.mjs';
 import { renderRuleFilterSection } from './diff/reporting/text.mjs';
+import { runHygieneCli } from '../shared/hygiene/runner.mjs';
 
 export function runCli(options = {}) {
   const cli = withCliDefaults(options);
+  if (cli.arguments_[0] === 'hygiene') {
+    return runHygieneCli({
+      commandArguments: cli.arguments_.slice(1),
+      stdout: cli.stdout,
+      stderr: cli.stderr,
+      environment: cli.environment,
+    });
+  }
   if (cli.arguments_[0] === 'aggregate') {
     return runAggregateCli({
       arguments_: cli.arguments_.slice(1),

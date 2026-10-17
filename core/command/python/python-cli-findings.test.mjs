@@ -39,13 +39,10 @@ describe('nitpicker with "preset": "python"', () => {
     const result = run(root);
 
     expect(result.exitCode, result.text).toBe(0);
-    expect(result.json('summary.json').tools.map(({ name }) => name)).toEqual([
-      'python',
-      'mutation',
-    ]);
-    expect(result.json('summary.json').tools.map(({ version }) => version)).toEqual([
-      `ruff@0.9.9;mypy@1.13.0;coverage@7.6.1;unittest;jscpd@${jscpdVersion()}`,
-      'mutmut@3.8.0;pytest@8.3.1;pytest-django@missing',
+    expect(result.json('summary.json').tools.map(({ name, version }) => [name, version])).toEqual([
+      ['python', `ruff@0.9.9;mypy@1.13.0;coverage@7.6.1;unittest;jscpd@${jscpdVersion()}`],
+      ['mutation', 'mutmut@3.8.0;pytest@8.3.1;pytest-django@missing'],
+      ['repository-hygiene', '1'],
     ]);
   });
   it('fails on a new lint finding and a new unformatted file in every report format', () => {

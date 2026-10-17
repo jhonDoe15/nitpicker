@@ -1,6 +1,5 @@
 import { ingestCrapRows } from '../../../shared/ingest/lizard-crap.mjs';
 import { normalizeReportPath } from '../../../shared/ingest/common.mjs';
-import { repeatsInSource } from '../../../shared/rules/finding-helpers.mjs';
 
 const FULLY_COVERED = 100;
 
