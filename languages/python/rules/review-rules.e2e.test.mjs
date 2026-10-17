@@ -102,6 +102,12 @@ describe.skipIf(!enabled)('fixed-sleep', () => {
     expect(sleeps(code)).toEqual([]);
   });
 
+  it('does not report a sleep in a method of a class the patch decorates', () => {
+    const code =
+      'import time\nfrom unittest.mock import patch\n@patch("time.sleep")\nclass TestA:\n    def test_a(self, sleep):\n        time.sleep(5)\n';
+    expect(sleeps(code)).toEqual([]);
+  });
+
   it('reports a sleep after the patch ends, and a name the patch does not replace', () => {
     const code = [
       'import time',
@@ -135,8 +141,8 @@ describe.skipIf(!enabled)('fixed-sleep', () => {
     expect(sleeps('import time\ntime.sleep(1)\n', file)).toHaveLength(1);
   });
 
-  it('does not apply to production code', () => {
-    expect(sleeps('import time\ntime.sleep(1)\n', 'src/mod.py')).toEqual([]);
+  it.each(['src/mod.py', 'shop/testing/helpers.py'])('does not apply to %s', (file) => {
+    expect(sleeps('import time\ntime.sleep(1)\n', file)).toEqual([]);
   });
 });
 
@@ -242,13 +248,28 @@ describe.skipIf(!enabled)('long-docstring', () => {
         '    d = 4',
       ],
     ],
-    ['a bullet list', ['One.', '', '- a', '- b', '  more b', '* c', '1. d', '2) e']],
+    [
+      'a fenced block',
+      ['One.', '', '```', 'a = 1', 'b = 2', 'c = 3', 'd = 4', 'e = 5', '```', 'Two.'],
+    ],
     [
       'one-line sections',
       ['One.', 'Two.', 'Returns: x.', 'Raises ValueError: y.', 'Note: z.', 'more z.', 'and z.'],
     ],
   ])('does not count %s', (_name, lines) => {
     expect(long(docstring(lines))).toEqual([]);
+  });
+
+  it.each([
+    ['a bullet list', ['One.', '', '- a', '- b', '  more b', '* c', '1. d', '2) e'], 7],
+    ['a note directive', ['One.', '', '.. note::', '', '    a', '    b', '    c', '    d'], 6],
+    [
+      'prose after a doctest',
+      ['One.', '>>> render()', "''", '', 'Two.', 'Three.', 'Four.', 'Five.', 'Six.'],
+      6,
+    ],
+  ])('counts %s', (_name, lines, count) => {
+    expect(long(docstring(lines)).map(({ data }) => data.lines)).toEqual([count]);
   });
 });
 
