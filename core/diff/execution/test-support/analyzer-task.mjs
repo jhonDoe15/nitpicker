@@ -4,11 +4,18 @@ import { fileURLToPath } from 'node:url';
 
 export function task(
   name,
-  { dependencies = [], concurrencyWeight = 1, concurrencyGroup, executionPriority } = {},
+  {
+    dependencies = [],
+    toleratedDependencyErrors,
+    concurrencyWeight = 1,
+    concurrencyGroup,
+    executionPriority,
+  } = {},
 ) {
   return {
     name,
     dependencies,
+    ...(toleratedDependencyErrors === undefined ? {} : { toleratedDependencyErrors }),
     concurrencyWeight,
     concurrencyGroup,
     executionPriority,
