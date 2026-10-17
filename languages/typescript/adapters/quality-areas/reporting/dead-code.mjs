@@ -1,8 +1,5 @@
-import {
-  PACKAGE_RULE_IDS,
-  exceptionHint,
-  isExcepted,
-} from '../../../../../shared/hygiene/rules.mjs';
+import { exceptionHint, isExcepted } from '../../../../../shared/hygiene/rules.mjs';
+import { PACKAGE_RULE_IDS } from '../../../../../shared/project-rules/hygiene-rules.mjs';
 import {
   hash,
   nextOccurrence,
@@ -29,7 +26,10 @@ export function normalizeDeadCode(report, analyzerName, { exceptions = [] } = {}
       issueFindings({ issue, analyzerName, occurrences }),
     ),
   ]
-    .filter(({ finding, name }) => !isExcepted(exceptions, finding.rule, finding.path, name))
+    .filter(
+      ({ finding, name }) =>
+        !isExcepted(exceptions, { rule: finding.rule, path: finding.path, packageName: name }),
+    )
     .map(({ finding }) => finding);
 }
 

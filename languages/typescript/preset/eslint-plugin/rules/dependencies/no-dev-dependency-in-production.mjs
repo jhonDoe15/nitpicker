@@ -1,5 +1,6 @@
 import path from 'node:path';
 import { exceptionHint } from '../../../../../../shared/hygiene/rules.mjs';
+import { stringValue } from '../analysis/constant-resolution.mjs';
 import { nearestManifest, packageNameOf } from './package-manifest.mjs';
 import { isTestSupportFile } from './test-support.mjs';
 
@@ -13,10 +14,6 @@ function isTypeOnly(node) {
       node.specifiers.length > 0 &&
       node.specifiers.every((specifier) => specifier.importKind === 'type'))
   );
-}
-
-function literalSource(node) {
-  return node?.type === 'Literal' && typeof node.value === 'string' ? node.value : undefined;
 }
 
 function reportDevelopmentImport({ context, manifest, node, specifier, file }) {
@@ -75,7 +72,7 @@ export const rule = {
     }
     function checkDeclaration(node) {
       if (!isTypeOnly(node)) {
-        check(node, literalSource(node.source));
+        check(node, stringValue(node.source));
       }
     }
     return {
@@ -83,11 +80,11 @@ export const rule = {
       ExportNamedDeclaration: checkDeclaration,
       ExportAllDeclaration: checkDeclaration,
       ImportExpression(node) {
-        check(node, literalSource(node.source));
+        check(node, stringValue(node.source));
       },
       CallExpression(node) {
         if (isRequireCall(node)) {
-          check(node, literalSource(node.arguments[0]));
+          check(node, stringValue(node.arguments[0]));
         }
       },
     };

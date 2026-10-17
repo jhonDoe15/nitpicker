@@ -3,7 +3,7 @@ import {
   SHARED_EXCEPTION_RULES,
   TYPESCRIPT_PROJECT_EXCEPTION_RULES,
 } from '../../../../shared/policy.mjs';
-import { PACKAGE_EXCEPTION_RULES } from '../../../../shared/hygiene/rules.mjs';
+import { PACKAGE_EXCEPTION_RULES } from '../../../../shared/project-rules/hygiene-rules.mjs';
 import { strictBoundaryRules } from '../architecture/strict-boundary-rules.mjs';
 
 const boundaryRuleNames = strictBoundaryRules.map(({ name }) => name);

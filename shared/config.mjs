@@ -5,7 +5,7 @@
 // Language-neutral: no imports from `core/`, `languages/` or tool packages.
 
 import path from 'node:path';
-import { PACKAGE_EXCEPTION_RULES } from './hygiene/rules.mjs';
+import { PACKAGE_EXCEPTION_RULES } from './project-rules/hygiene-rules.mjs';
 
 export const CONFIG_FILE_NAME = 'nitpicker.config.json';
 

@@ -1,4 +1,3 @@
-import { spawnSync } from 'node:child_process';
 import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
@@ -6,9 +5,8 @@ import { afterEach, describe, expect, it } from 'vitest';
 import { useGitFixtures } from '../../core/diff/git/test-support/git-repository.mjs';
 import { HEAD_POLICY_ENV } from '../head-policy.mjs';
 import { configurationFiles, createHygieneAnalyzers } from './analyzers.mjs';
-import { parseHygieneArguments, runHygieneCheck } from './runner.mjs';
+import { parseHygieneArguments, runHygieneCheck, runHygieneCli } from './runner.mjs';
 
-const runnerPath = path.join(import.meta.dirname, 'runner.mjs');
 const temporaryDirectories = [];
 const { createGitRepository } = useGitFixtures();
 
@@ -91,16 +89,20 @@ describe('parseHygieneArguments', () => {
   });
 });
 
-describe('the runner process', () => {
-  function run(arguments_, policy) {
+describe('runHygieneCli', () => {
+  function run(commandArguments, policy) {
     const directory = mkdtempSync(path.join(tmpdir(), 'nitpicker-hygiene-policy-'));
     temporaryDirectories.push(directory);
     const policyFile = path.join(directory, 'policy.json');
     writeFileSync(policyFile, JSON.stringify(policy));
-    return spawnSync(process.execPath, [runnerPath, ...arguments_], {
-      encoding: 'utf8',
-      env: { ...process.env, [HEAD_POLICY_ENV]: policyFile },
+    const output = { stdout: '', stderr: '' };
+    const status = runHygieneCli({
+      commandArguments,
+      stdout: { write: (text) => (output.stdout += text) },
+      stderr: { write: (text) => (output.stderr += text) },
+      environment: { [HEAD_POLICY_ENV]: policyFile },
     });
+    return { status, ...output };
   }
 
   it('prints the findings as JSON and honours the head policy file', () => {
@@ -109,30 +111,38 @@ describe('the runner process', () => {
       exclude: ['vendor/**'],
     });
 
-    expect(result.status).toBe(0);
-    expect(JSON.parse(result.stdout).findings.map(({ path: findingPath }) => findingPath)).toEqual([
-      '.env',
-    ]);
+    expect({
+      ...result,
+      stdout: JSON.parse(result.stdout).findings.map(({ path: file }) => file),
+    }).toEqual({ status: 0, stdout: ['.env'], stderr: '' });
   });
 
   it('exits 2 with the cause on bad input', () => {
-    const result = run(['--check', 'nope', '--project-root', '/'], {});
-
-    expect(result.status).toBe(2);
-    expect(result.stderr).toContain('Hygiene check failed: Unknown hygiene check: nope');
+    expect(run(['--check', 'nope', '--project-root', '/'], {})).toEqual({
+      status: 2,
+      stdout: '',
+      stderr: 'Hygiene check failed: Unknown hygiene check: nope\n',
+    });
   });
 });
 
 describe('createHygieneAnalyzers', () => {
   it('runs the repository check on the snapshot it is given', () => {
-    const [analyzer, ...others] = createHygieneAnalyzers();
+    const [analyzer, ...others] = createHygieneAnalyzers('/tool/core/cli.mjs');
 
     expect(others).toEqual([]);
     expect(analyzer.name).toBe('repository-hygiene');
     expect(analyzer.configurationHash).toMatch(/^[0-9a-f]{64}$/u);
     expect(analyzer.createInvocation({ projectRoot: '/head', toolRoot: '/tool' })).toEqual({
       command: process.execPath,
-      args: [runnerPath, '--check', 'repository-hygiene', '--project-root', '/head'],
+      args: [
+        '/tool/core/cli.mjs',
+        'hygiene',
+        '--check',
+        'repository-hygiene',
+        '--project-root',
+        '/head',
+      ],
       cwd: '/tool',
     });
   });
@@ -141,6 +151,7 @@ describe('createHygieneAnalyzers', () => {
 describe('the hygiene configuration hash', () => {
   it('covers every module the runner loads', () => {
     expect(configurationFiles()).toEqual([
+      'filesystem.mjs',
       'glob.mjs',
       'head-policy.mjs',
       'hygiene/files/build-output.mjs',
@@ -151,6 +162,8 @@ describe('the hygiene configuration hash', () => {
       'hygiene/rules.mjs',
       'hygiene/runner.mjs',
       'hygiene/tracked-files.mjs',
+      'project-rules/hygiene-rules.mjs',
+      'traversal.mjs',
     ]);
   });
 });

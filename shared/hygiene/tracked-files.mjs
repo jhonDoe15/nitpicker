@@ -3,8 +3,8 @@ import { execFileSync } from 'node:child_process';
 const MAX_LISTING_BYTES = 256 * 1024 * 1024;
 const REGULAR_FILE_MODES = new Set(['100644', '100755']);
 
-function git(root, arguments_, input) {
-  return execFileSync('git', arguments_, {
+function git(root, gitArguments, input) {
+  return execFileSync('git', gitArguments, {
     cwd: root,
     encoding: 'utf8',
     input,

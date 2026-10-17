@@ -1,5 +1,6 @@
 import { existsSync, readFileSync, readdirSync } from 'node:fs';
 import path from 'node:path';
+import { ancestorDirectories } from '../../../../../../shared/filesystem.mjs';
 
 const DEPENDENCY_SECTIONS = [
   'dependencies',
@@ -14,26 +15,27 @@ const BUNDLER_PROJECT_FILES = new Set(['.parcelrc', 'angular.json']);
 const BUNDLER_COMMAND =
   /(?:^|[\s;&|])(?:vite|webpack|next|rsbuild|rspack|parcel|astro|nuxt|ng|react-scripts|vue-cli-service)(?:\s|$)/u;
 
-const manifests = new Map();
-
 export function nearestManifest(directory) {
-  if (!manifests.has(directory)) {
-    manifests.set(directory, findManifest(directory));
+  for (const current of ancestorDirectories(directory)) {
+    const manifest = manifestAt(current);
+    if (manifest !== undefined) {
+      return manifest;
+    }
   }
-  return manifests.get(directory);
+  return undefined;
 }
 
-function findManifest(directory) {
+function manifestAt(directory) {
   const file = path.join(directory, 'package.json');
   if (!existsSync(file)) {
-    return parentManifest(directory);
+    return undefined;
   }
   const { value } = parseObject(readFileSync(file, 'utf8'));
   if (value === undefined) {
     return { kind: 'unreadable', file };
   }
   if (!DEPENDENCY_SECTIONS.some((section) => Object.hasOwn(value, section))) {
-    return parentManifest(directory);
+    return undefined;
   }
   return {
     kind: 'manifest',
@@ -46,11 +48,6 @@ function findManifest(directory) {
       ),
     ),
   };
-}
-
-function parentManifest(directory) {
-  const parent = path.dirname(directory);
-  return parent === directory ? undefined : nearestManifest(parent);
 }
 
 function parseObject(text) {

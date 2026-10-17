@@ -18,6 +18,8 @@ import { createQualityChecks } from '../../typescript/preset/quality-checks.mjs'
 import { isJavascriptPolicy } from './javascript-preset.mjs';
 import { fileURLToPath } from 'node:url';
 
+const cliPath = fileURLToPath(new URL('../../../core/cli.mjs', import.meta.url));
+
 const packageRoot = fileURLToPath(new URL('../../..', import.meta.url));
 const javascriptPolicy = resolveHeadPolicy({ preset: 'javascript' });
 
@@ -43,7 +45,7 @@ function prettierPatterns(layout) {
 
 describe('preset selection', () => {
   it('runs the TypeScript analyzers for the typescript preset and for no preset', () => {
-    const expected = fingerprint([...packageAnalyzers, ...createHygieneAnalyzers()]);
+    const expected = fingerprint([...packageAnalyzers, ...createHygieneAnalyzers(cliPath)]);
 
     expect(fingerprint(presetAnalyzers({ preset: 'typescript' }))).toEqual(expected);
     expect(fingerprint(presetAnalyzers({}))).toEqual(expected);
@@ -53,7 +55,7 @@ describe('preset selection', () => {
     const selected = fingerprint(presetAnalyzers({ preset: 'javascript' }));
 
     expect(selected).toEqual(
-      fingerprint([...javascriptPackageAnalyzers, ...createHygieneAnalyzers()]),
+      fingerprint([...javascriptPackageAnalyzers, ...createHygieneAnalyzers(cliPath)]),
     );
     expect(selected).not.toEqual(fingerprint(packageAnalyzers));
   });

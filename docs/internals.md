@@ -33,7 +33,7 @@ Findings follow `spec/findings.schema.json`. Identity (the part of the compariso
 
 ## Dependency and repository hygiene (`shared/hygiene/`)
 
-`repository-hygiene` is added to every preset's analyzers by `core/configuration/preset-analyzers.mjs` (injected analyzers still replace the whole set). It runs `runner.mjs --check repository-hygiene --project-root <root>`, lists files with `git ls-files -z` and reads the head policy file for `exclude` and `exceptions`: an excepted finding is dropped inside the runner, by rule id and project-relative path.
+`repository-hygiene` is added to every preset's analyzers by `core/configuration/preset-analyzers.mjs` (injected analyzers still replace the whole set). It runs `core/cli.mjs hygiene --check repository-hygiene --project-root <root>` (the CLI entry hands the arguments to `runHygieneCli` in `runner.mjs`, so the runner needs no entry point of its own; the rule ids and the catalog rows live in `shared/project-rules/hygiene-rules.mjs`, which `shared/policy.mjs` imports), lists files with `git ls-files -z` and reads the head policy file for `exclude` and `exceptions`: an excepted finding is dropped inside the runner, by rule id and project-relative path.
 
 - **Identities.** `file:<path>`, so a file already on the base stays unchanged and only an added one is new.
 - **Sizes.** `git ls-files -s` and `git cat-file --batch-check` size the committed blob of each regular file, so an LFS pointer is small and a symlink or submodule is not sized.

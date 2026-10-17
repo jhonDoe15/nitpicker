@@ -21,7 +21,7 @@ function hashConfiguration() {
   return hash.digest('hex');
 }
 
-function createHygieneAnalyzer(name, configurationHash) {
+function createHygieneAnalyzer({ name, configurationHash, entryPath }) {
   return {
     name,
     version: ANALYZER_VERSION,
@@ -30,14 +30,14 @@ function createHygieneAnalyzer(name, configurationHash) {
     createInvocation({ projectRoot, toolRoot }) {
       return {
         command: process.execPath,
-        args: [runnerPath, '--check', name, '--project-root', projectRoot],
+        args: [entryPath, 'hygiene', '--check', name, '--project-root', projectRoot],
         cwd: toolRoot,
       };
     },
   };
 }
 
-export function createHygieneAnalyzers() {
+export function createHygieneAnalyzers(entryPath) {
   const configurationHash = hashConfiguration();
-  return [createHygieneAnalyzer(REPOSITORY_HYGIENE_TOOL, configurationHash)];
+  return [createHygieneAnalyzer({ name: REPOSITORY_HYGIENE_TOOL, configurationHash, entryPath })];
 }
