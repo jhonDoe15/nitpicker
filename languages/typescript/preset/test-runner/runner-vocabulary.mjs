@@ -13,8 +13,17 @@ const ASSERT_FOCUS = '`assert.equal(document.activeElement, element)`';
 const MATCHER_ANY =
   'an asymmetric matcher (`expect.any`, `expect.stringContaining`, `expect.objectContaining`): assert the whole value with `toEqual`';
 
+const EXPECT_PARTIAL_FORMS =
+  '`toMatchObject`, `expect.objectContaining`, `expect.stringContaining`, `expect.arrayContaining`';
+const VARIED_FIELD_ON_ITS_OWN =
+  'For a field that varies, assert it on its own and compare the rest of the value whole.';
+
 const VOCABULARY = {
   vitest: {
+    wholeOutput: '`toEqual` or `toBe`',
+    wholeValue: '`toEqual`',
+    partialForms: EXPECT_PARTIAL_FORMS,
+    variedField: 'Use `expect.any(Type)` for a field that varies.',
     helperFile: 'a file not named *.test.* or *.spec.*',
     waitOnCondition: 'vi.waitFor or expect.poll',
     pollInstead: 'vi.waitFor / expect.poll',
@@ -31,6 +40,10 @@ const VOCABULARY = {
     anyInTests: MATCHER_ANY,
   },
   jest: {
+    wholeOutput: '`toEqual` or `toBe`',
+    wholeValue: '`toEqual`',
+    partialForms: EXPECT_PARTIAL_FORMS,
+    variedField: 'Use `expect.any(Type)` for a field that varies.',
     helperFile:
       'a file Jest does not run as a test: not named *.test.* or *.spec.*, not under __tests__, and outside the testMatch or testRegex of the Jest config',
     waitOnCondition: TESTING_LIBRARY_WAIT,
@@ -48,6 +61,10 @@ const VOCABULARY = {
     anyInTests: MATCHER_ANY,
   },
   node: {
+    wholeOutput: '`assert.deepStrictEqual` or `assert.strictEqual`',
+    wholeValue: '`assert.deepStrictEqual`',
+    partialForms: '`assert.partialDeepStrictEqual`',
+    variedField: VARIED_FIELD_ON_ITS_OWN,
     helperFile:
       'a file `node --test` does not run: not named *.test.*, *-test.*, *_test.*, test-*.* or test.*, not under a test/ folder, and outside the patterns of the test script',
     waitOnCondition: EVENT_OR_TICK,
@@ -68,6 +85,11 @@ const VOCABULARY = {
       "a mock's recorded calls (`fn.mock.calls[0].arguments`): give `mock.fn` the function it replaces (`mock.fn(send)`) so its calls are typed",
   },
   mocha: {
+    wholeOutput: '`expect(...).to.deep.equal` or `assert.deepStrictEqual`',
+    wholeValue: '`expect(...).to.deep.equal` or `assert.deepStrictEqual`',
+    partialForms:
+      '`include` or `contain` with an object, `include.members`, `containSubset`, `assert.partialDeepStrictEqual`',
+    variedField: VARIED_FIELD_ON_ITS_OWN,
     helperFile:
       'a file outside the Mocha spec (test/*.{js,cjs,mjs} by default, or the spec in .mocharc.* and the test script)',
     waitOnCondition: EVENT_OR_CLOCK,
