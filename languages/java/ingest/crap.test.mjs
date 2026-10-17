@@ -259,6 +259,107 @@ describe('ingestCrap', () => {
     });
   });
 
+  describe('lambdas and initializer blocks', () => {
+    const FILE = 'src/main/java/demo/Box.java';
+    const unit = (name, [start, end], complexity, flags = {}) => ({
+      file: FILE,
+      name: `Box.${name}`,
+      start,
+      end,
+      complexity,
+      signature: `Box.${name}`,
+      ...flags,
+    });
+    const jacocoMethod = (name, line, covered, missed) =>
+      `<method name="${name}" desc="()V" line="${line}"><counter type="LINE" missed="${missed}" covered="${covered}"/></method>`;
+    const sourceLine = (number, covered, missed) =>
+      `<line nr="${number}" mi="${missed}" ci="${covered}" mb="0" cb="0"/>`;
+    const report = ({ methods, lines }) =>
+      `<report name="demo"><package name="demo"><class name="demo/Box" sourcefilename="Box.java">${methods.join('')}</class><sourcefile name="Box.java">${lines.join('')}</sourcefile></package></report>`;
+    const scores = (entries, xml) =>
+      ingest(entries, xml, { limit: 1 }).map(
+        ({ symbol, identity, message }) =>
+          `${symbol} ${identity} ${/CRAP (\d+\.\d+)/.exec(message)?.[1] ?? 'unknown'}`,
+      );
+
+    it('scores a lambda by its synthetic lambda$ method and leaves the lambda inside it out', () => {
+      const entries = [
+        unit('run', [10, 30], 2),
+        unit('run.<lambda>', [12, 20], 4, { lambda: true }),
+        unit('run.<lambda>.<lambda>', [15, 15], 3, { lambda: true }),
+      ];
+      const xml = report({
+        methods: [
+          jacocoMethod('run', 10, 6, 0),
+          jacocoMethod('lambda$run$1', 15, 0, 1),
+          jacocoMethod('lambda$run$0', 12, 5, 0),
+        ],
+        lines: [],
+      });
+
+      expect(scores(entries, xml)).toEqual([
+        'Box.run function:Box.run 2.00',
+        'Box.run.<lambda> function:Box.run.<lambda> 4.00',
+        'Box.run.<lambda>.<lambda> function:Box.run.<lambda>.<lambda> 12.00',
+      ]);
+    });
+
+    it('never matches a lambda to a named method that starts in its range', () => {
+      const entries = [unit('run.<lambda>', [12, 20], 4, { lambda: true })];
+      const xml = report({ methods: [jacocoMethod('helper', 13, 3, 0)], lines: [] });
+
+      expect(scores(entries, xml)).toEqual(['Box.run.<lambda> function:Box.run.<lambda> unknown']);
+    });
+
+    it('scores an initializer block by the coverage of its own lines, whatever method holds them', () => {
+      const entries = [
+        unit('<clinit>', [40, 46], 3, { initializer: true }),
+        unit('<clinit>.<lambda>', [43, 43], 1, { lambda: true }),
+      ];
+      const xml = report({
+        methods: [
+          jacocoMethod('lambda$static$0', 43, 0, 1),
+          jacocoMethod('&lt;clinit&gt;', 3, 2, 3),
+        ],
+        lines: [
+          sourceLine(41, 1, 0),
+          sourceLine(42, 0, 1),
+          sourceLine(43, 0, 1),
+          sourceLine(44, 1, 0),
+          sourceLine(50, 0, 3),
+        ],
+      });
+
+      expect(scores(entries, xml)).toEqual([
+        'Box.<clinit> function:Box.<clinit> 3.33',
+        'Box.<clinit>.<lambda> function:Box.<clinit>.<lambda> 2.00',
+      ]);
+    });
+
+    it('numbers repeated blocks and lambdas only among the ones over the limit with the same source', () => {
+      const entries = [
+        unit('<init>', [10, 12], 3, { initializer: true }),
+        unit('<init>', [20, 22], 3, { initializer: true }),
+        unit('run.<lambda>', [30, 31], 3, { lambda: true }),
+        unit('run.<lambda>', [40, 41], 3, { lambda: true }),
+      ];
+      const xml = report({
+        methods: [jacocoMethod('lambda$run$0', 30, 2, 0), jacocoMethod('lambda$run$1', 40, 0, 2)],
+        lines: [sourceLine(11, 0, 1), sourceLine(21, 0, 1)],
+      });
+      const findings = ingest(entries, xml, {
+        limit: 4,
+        sourceHash: ({ start }) => String(start % 20),
+      });
+
+      expect(findings.map(({ symbol, identity }) => `${symbol} ${identity}`)).toEqual([
+        'Box.<init> function:Box.<init>:source:10',
+        'Box.<init> function:Box.<init>:source:0',
+        'Box.run.<lambda> function:Box.run.<lambda>:source:0',
+      ]);
+    });
+  });
+
   it('leaves out a private empty constructor, which JaCoCo omits from its report', () => {
     const [util] = structure().filter((e) => e.name === 'Calc.Util.Util');
     const reported = ingest([{ ...util, privateEmptyConstructor: false }]);
