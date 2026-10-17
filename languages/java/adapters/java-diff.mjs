@@ -17,6 +17,7 @@ import { withoutOverlaps } from './overlaps/static-overlaps.mjs';
 import { PROJECT_TOOL_CONFIGS } from './gradle-presets.mjs';
 import { readJavaFindings } from './reporting/java-reports.mjs';
 import { readReportModules } from './gradle-reports/report-modules.mjs';
+import { failingTestsOf } from './gradle-reports/failing-tests.mjs';
 import { runMavenPreset, MAVEN_REPORT_DIRECTORY } from '../maven/maven-build.mjs';
 import { detectJavaBuild, INIT_SCRIPT } from '../builds/java-build.mjs';
 import { moduleReport, readModuleFindings } from '../builds/java-modules.mjs';
@@ -27,6 +28,7 @@ import { withProjectEnumPredicates } from './review-rules/enum-predicates.mjs';
 const GRADLE_TIMEOUT_MS = 15 * 60 * 1000;
 const MAX_OUTPUT_BYTES = 50 * 1024 * 1024;
 const MAX_FAILURE_LENGTH = 3500;
+const CLOCK_SLACK_MS = 2000;
 
 function kotlinProperties(projectRoot, { preset, kotlinFormatter, kotlinDetektConfig, snapshot }) {
   return preset === 'kotlin'
@@ -85,6 +87,7 @@ function runJavaPreset(
       'nitpickerJava',
     ],
   });
+  const since = Date.now() - CLOCK_SLACK_MS;
   const result = spawnSync(target.command, target.args, {
     cwd: projectRoot,
     encoding: 'utf8',
@@ -96,6 +99,10 @@ function runJavaPreset(
     throw result.error;
   }
   if (result.status !== 0) {
+    const failingTests = failingTestsOf(projectRoot, { reportBase, since });
+    if (failingTests !== undefined) {
+      throw failingTests;
+    }
     const detail = condenseFailure(
       result.stderr.trim() === '' ? result.stdout : result.stderr,
       MAX_FAILURE_LENGTH,

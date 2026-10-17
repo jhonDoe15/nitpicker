@@ -1,7 +1,8 @@
 import { copyFileSync, existsSync, mkdirSync, readdirSync, statSync } from 'node:fs';
 import path from 'node:path';
 import { TEST_RESULTS_DIRECTORY } from '../../adapters/test-times/slow-tests.mjs';
-import { freshReports, suiteNameOf, testReportDirectories } from '../maven-tests.mjs';
+import { suiteNameOf, testReportDirectories } from '../maven-tests.mjs';
+import { freshReports } from '../../builds/test-failures.mjs';
 
 const REDIRECTED_OUTPUT = /^(.+)-output\.txt$/u;
 

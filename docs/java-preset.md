@@ -242,8 +242,11 @@ comma-separated>` changes that. Those classes are excluded from the regular `tes
   `--mutableCodePaths` limits mutation to the main classes. The JUnit Platform is not pinned by
   Nitpicker: the plugin's own platform dependencies are excluded and the project's are used, with a
   launcher of the project's engine version added when the project does not declare one. PIT
-  requires a green test run: a failing test suite fails the task, which is a Gradle failure
-  (`tool-error` on the CLI path). Projects without main classes produce no report and no findings.
+  requires a green test run: a failing test suite fails the build, which is a `java/gradle-failure`
+  tool error. When the failed build left JUnit reports with failing tests (the init script lists
+  the report directory of every test task in `test-results.json` of the report base), the error
+  names up to ten of them with the same text as on Maven (`Tests fail in <project>; nitpicker needs
+  a passing test suite ...`) instead of Gradle's own failure output. Projects without main classes produce no report and no findings.
   The `pitest-junit5-plugin` and the launcher are added only when the project's test runtime has
   `junit-platform-engine`; a JUnit 4 project runs PIT's built-in JUnit 4 support.
 - **Equivalent mutants.** A survived mutant's message names the common equivalent cases (a
@@ -572,7 +575,13 @@ resolved plus a new finding, as in the TypeScript check.
   [slow tests](#slow-tests)): every `system-err` block, and the `system-out` blocks that carry a
   `WARN`, `WARNING`, `ERROR`, `FATAL` or `SEVERE` level, so Spring's banner and `INFO` startup lines
   never count. A block is a line plus its indented continuation lines; stack frames
-  (`at ...`, `... 3 more`) are dropped. Surefire's redirected output files (`<class>-output.txt`,
+  (`at ...`, `... 3 more`) are dropped. A JVM warning is several `WARNING:` lines and often follows
+  the line that caused it (Mockito's "self-attaching" notice and the agent warning after it on JDK
+  21); adjacent `WARNING:` lines and the line next to them are one block, so one finding. SLF4J's own
+  notices (`SLF4J(W): No SLF4J providers were found.`) describe the test classpath, not the code
+  under test, and land on whichever test first loads a logger: on Maven that is the first test,
+  because Surefire discovers the ArchUnit classes in the test JVM, while Gradle runs them in
+  `nitpickerArchunit`. Both builds drop them, so they report the same. Surefire's redirected output files (`<class>-output.txt`,
   with `redirectTestOutputToFile`) are copied too and read with the stdout rule. The init script
   sets `outputPerTestCase` on every test task, so Gradle names the test that printed a line as
   Surefire does; a test name loses its parameter list (`totals()` is `totals`).
@@ -590,11 +599,7 @@ resolved plus a new finding, as in the TypeScript check.
   shared matcher that tolerates one random-looking word.
 - **Limits.** Output a test prints from a thread after it ends is attributed by the build to
   whatever runs then. A line printed only in some runs (a timing-dependent warning) shows up as new
-  in the run that has it; allow it in `testConsole.allow` with the reason. Surefire runs the ArchUnit
-  rule classes in the same JVM as the tests, so output their libraries print while JUnit discovers
-  them (SLF4J's "no providers" notice) lands on the first test, while Gradle runs them in
-  `nitpickerArchunit`, whose output is not read. Base and head print it alike, so it stays
-  baselined.
+  in the run that has it; allow it in `testConsole.allow` with the reason.
 - **Tests.** `adapters/test-times/console-output.test.mjs`, `console-findings.test.mjs`,
   `maven/results/maven-test-results.test.mjs`, and `java-e2e/review-rules.e2e.test.mjs`, which
   commits a test that prints a new line on top of the Spring fixture and asserts, on Gradle and on
@@ -1181,10 +1186,14 @@ table:
 ## Coupling and stability (ticket SH6)
 
 - **What runs.** The init script's `nitpickerJdeps` task (a dependency of `nitpickerJava`) runs the
-  JDK's `jdeps -verbose:class -filter:none` over the main class directories and writes
-  `jdeps.txt` in the report directory plus `jdeps-classes.txt` (the main classes, one binary name per line),
-  and `jdeps-test.txt` from the class directories of every other source set, which only the
-  [test-only class check](#review-rules) reads.
+  JDK's `jdeps -verbose:class -filter:none` once over the main and test class directories and
+  splits the edges by the side that declares the source class: `jdeps.txt` in the report directory
+  (main classes), `jdeps-classes.txt` (the main classes, one binary name per line) and
+  `jdeps-test.txt` (test classes), which only the [test-only class check](#review-rules) reads. A
+  test source set is one a `Test` task runs or one whose name contains `test` (`integrationTest`,
+  `testFixtures`); the task compiles only those, so a `jmh` or `benchmark` source set is neither
+  compiled for it nor counted as a test. Maven runs the same single jdeps call over
+  `target/classes` and `target/test-classes` (`builds/jdeps-reports.mjs`).
   jdeps comes with the JDK that runs Gradle; nothing is downloaded and no version is pinned. The
   block is delimited by `// --- coupling (SH6)` comments in the init script.
 - **Conversion.** `languages/java/adapters/metrics/java-coupling.mjs` parses the class graph, folds nested classes

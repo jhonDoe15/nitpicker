@@ -36,6 +36,12 @@ gradle.projectsEvaluated {
         def modules = new File(reportBase.toString(), 'modules.json')
         modules.parentFile.mkdirs()
         modules.text = groovy.json.JsonOutput.toJson(javaModules)
+        def testResults = gradle.rootProject.allprojects.collectMany { project ->
+            project.tasks.withType(Test).findAll { it.name != 'nitpickerArchunit' }.collect {
+                it.reports.junitXml.outputLocation.get().asFile.absolutePath
+            }
+        }
+        new File(reportBase.toString(), 'test-results.json').text = groovy.json.JsonOutput.toJson(testResults)
     }
 }
 
@@ -237,6 +243,7 @@ allprojects {
                     (auxiliary.isEmpty() ? [] : ['-auxclasspath', auxiliary.join(File.pathSeparator)]) +
                     classDirs.collect { it.absolutePath })
             }
+            onlyIf { analyzedClassDirs().any { it.exists() && it.list()?.length } }
         }
 
         tasks.register('nitpickerFormat', JavaExec) {
@@ -433,6 +440,10 @@ allprojects {
                         into reportDir.get().dir("test-results/${testTask.name}")
                     }
                 }
+                def spotbugsReport = reportDir.get().file('spotbugs.sarif').asFile
+                if (!spotbugsReport.exists() || spotbugsReport.length() == 0) {
+                    spotbugsReport.text = '{"version":"2.1.0","runs":[]}'
+                }
                 def roots = mainSources.files.collect { relativeToRoot(it) }
                 def testRoots = testSourceDirectories().collect { relativeToRoot(it) }
                 def resourceRoots = sourceSets.main.resources.srcDirs.collect { relativeToRoot(it) }
@@ -454,17 +465,15 @@ allprojects {
         // --- coupling (SH6): package dependency graph from the JDK's jdeps over the main classes ---
         // The coupling metrics and stability-direction findings are computed on the Nitpicker side
         // from these two files. jdeps ships with the JDK that runs Gradle; it is not a pinned download.
-        def runJdeps = { Collection<File> classDirs, File output ->
-            def classNames = classDirs.collectMany { dir ->
+        def classNamesIn = { Collection<File> classDirs ->
+            classDirs.collectMany { dir ->
                 fileTree(dir) { include '**/*.class'; exclude '**/module-info.class', '**/package-info.class' }.files.collect {
                     dir.toPath().relativize(it.toPath()).toString().replace('\\', '/')
                         .replaceAll(/\.class$/, '').replace('/', '.')
                 }
             }.unique().sort()
-            if (classNames.isEmpty()) {
-                output.text = ''
-                return classNames
-            }
+        }
+        def runJdeps = { Collection<File> classDirs ->
             def jdeps = new File(System.getProperty('java.home'), 'bin/jdeps')
             def process = new ProcessBuilder([jdeps.absolutePath, '-verbose:class', '-filter:none'] +
                 classDirs.collect { it.absolutePath }).directory(projectDir)
@@ -473,20 +482,36 @@ allprojects {
             if (process.waitFor() != 0) {
                 throw new GradleException("jdeps failed (${jdeps}) with exit code ${process.exitValue()}")
             }
-            output.text = text
-            classNames
+            text
+        }
+        def testSourceSets = {
+            def testClassDirs = tasks.withType(Test).collectMany { it.testClassesDirs.files }
+            sourceSets.findAll { sourceSet ->
+                sourceSet.name != 'main' && (sourceSet.name.toLowerCase().contains('test')
+                    || sourceSet.output.classesDirs.files.any { testClassDirs.contains(it) })
+            }
         }
         tasks.register('nitpickerJdeps') {
             group = 'nitpicker'
-            dependsOn allClassesTasks
+            dependsOn { [tasks.named('classes')] + testSourceSets().collect { tasks.named(it.classesTaskName) } }
             doLast {
                 reportDir.get().asFile.mkdirs()
                 def mainDirs = sourceSets.main.output.classesDirs.files.findAll { it.exists() }
-                def classNames = runJdeps(mainDirs, reportDir.get().file('jdeps.txt').asFile)
-                reportDir.get().file('jdeps-classes.txt').asFile.text = classNames.collect { it + '\n' }.join('')
-                def testDirs = sourceSets.findAll { it.name != 'main' }
-                    .collectMany { it.output.classesDirs.files }.findAll { it.exists() }.unique()
-                runJdeps(testDirs, reportDir.get().file('jdeps-test.txt').asFile)
+                def testDirs = testSourceSets().collectMany { it.output.classesDirs.files }
+                    .findAll { it.exists() && !mainDirs.contains(it) }.unique()
+                def mainClasses = classNamesIn(mainDirs)
+                def mainClassSet = mainClasses as Set
+                def testClassSet = classNamesIn(testDirs) as Set
+                def analyzed = (mainDirs + testDirs).findAll { !classNamesIn([it]).isEmpty() }
+                def edges = analyzed.isEmpty() ? [] : runJdeps(analyzed).readLines()
+                    .findAll { it ==~ /^\s+\S+\s+->\s+\S+.*/ }
+                def sourceOf = { String line -> line.trim().split(/\s+/)[0] }
+                reportDir.get().file('jdeps.txt').asFile.text =
+                    edges.findAll { mainClassSet.contains(sourceOf(it)) }.collect { it + '\n' }.join('')
+                reportDir.get().file('jdeps-test.txt').asFile.text =
+                    edges.findAll { !mainClassSet.contains(sourceOf(it)) && testClassSet.contains(sourceOf(it)) }
+                        .collect { it + '\n' }.join('')
+                reportDir.get().file('jdeps-classes.txt').asFile.text = mainClasses.collect { it + '\n' }.join('')
             }
         }
         tasks.named('nitpickerJava') { dependsOn 'nitpickerJdeps' }
