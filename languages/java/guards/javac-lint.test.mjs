@@ -6,12 +6,9 @@ import { exceptionHint } from '../../../shared/rules/exceptions.mjs';
 import { compareFindings } from '../../../core/diff/comparison/compare.mjs';
 import { parseAnalyzerReport } from '../../../core/diff/comparison/finding-schema.mjs';
 import { parseLintWarnings, readLintFindings } from './javac-lint.mjs';
-import {
-  guardProject,
-  javaClass,
-  newLines,
-  removeGuardProjects,
-} from './test-support/guard-project.mjs';
+import { createGuardProjects, javaClass, newLines } from './test-support/guard-project.mjs';
+
+const guardProjects = createGuardProjects();
 
 const roots = [];
 afterEach(() => {
@@ -284,7 +281,7 @@ describe('readLintFindings', () => {
 
 describe('javac identities', () => {
   afterEach(() => {
-    removeGuardProjects();
+    guardProjects.remove();
   });
 
   const MAPS = javaClass('class A {', ['java.util.Map first;', 'java.util.Map second;']);
@@ -295,7 +292,7 @@ describe('javac identities', () => {
   ]);
 
   function lintFindings(files) {
-    const root = guardProject(files);
+    const root = guardProjects.project(files);
     return readLintFindings(path.join(root, 'reports'), { projectRoot: root });
   }
 

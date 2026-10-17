@@ -13,6 +13,7 @@ import {
   readModuleJacoco,
   readReportModules,
 } from '../gradle-reports/report-modules.mjs';
+import { readErrorProneFindings } from '../errorprone/java-errorprone.mjs';
 import { readInlineSuppressionFindings } from '../suppressions/java-suppressions.mjs';
 import { readCommentFindings } from '../comments/java-comments.mjs';
 import { readSpringConfigFindings } from '../spring/java-spring.mjs';
@@ -78,7 +79,7 @@ export function readJavaFindings(projectRoot, options = {}) {
         ...readCommentFindings(projectRoot, lintedRoots(manifest)),
         ...springFindings(projectRoot, manifest),
       ],
-      { preset },
+      { preset, testRoots: manifest.testSourceRoots ?? [] },
     ),
   };
 }
@@ -93,6 +94,7 @@ function moduleContextFindings(projectRoot, module, { manifest, options }) {
       manifest: module.manifest,
       module: { moduleDir: module.dir, modulePath: options.modulePath },
       sourceRoots: module.manifest.sourceRoots ?? [],
+      lintedRoots: lintedRoots(module.manifest),
       allSourceRoots: manifest.sourceRoots,
       kotlin: preset === 'kotlin' && module.manifest.kotlin === true,
       jacoco: readModuleJacoco(module, preset),
@@ -111,6 +113,7 @@ function readModuleFindings(context, crapLimit) {
   const { reportRoot, projectRoot, kotlin, jacoco } = context;
   return [
     ...sarifFindings(context),
+    ...readErrorProneFindings(context),
     ...formatFindings(context),
     ...checkstyleFindings(context),
     ...jacocoFindings(context, jacoco),

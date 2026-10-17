@@ -5,10 +5,10 @@ description: Use before writing or changing Java in a project that runs nitpicke
 
 # nitpicker for Java
 
-nitpicker gates a Gradle or Maven project (Java 21) with PMD, SpotBugs, Checkstyle,
-google-java-format, JaCoCo, CRAP, PIT mutation testing, jscpd and size limits. It fails only on
-findings your change adds, so leave code the task doesn't need alone. Write the allowed forms below from the
-start; the gate is a backstop.
+nitpicker gates a Gradle or Maven project (Java 21) with PMD, SpotBugs, Error Prone with NullAway,
+Checkstyle, google-java-format, JaCoCo, CRAP, PIT mutation testing, jscpd and size limits. It fails
+only on findings your change adds, so leave code the task doesn't need alone. Write the allowed
+forms below from the start; the gate is a backstop.
 
 ## Finish with the gate
 
@@ -28,8 +28,11 @@ start; the gate is a backstop.
      cause it names and rerun. Exit 2 is never a pass. If another run is in progress, wait for
      it; never kill it.
 5. Never suppress: no `// NOPMD`, `@SuppressWarnings`, `@SuppressFBWarnings`, `CHECKSTYLE`
-   comments, config `exclude`/`disable`/`exceptions`, legacy entries, or weakened tests. If a
-   finding seems wrong, stop and ask.
+   comments, config `exclude`/`disable`/`exceptions`, legacy entries, or weakened tests. The one
+   exception is `@SuppressWarnings("PMD.SpringDataNativeQuery")` on a repository method with native
+   SQL ([spring.md](spring.md)). If a finding seems wrong, stop and ask. Never pass
+   `--accept-policy-change` or set `NITPICKER_ACCEPT_POLICY_CHANGE`: a
+   `nitpicker-config/policy-loosened` finding is for a person to accept.
 
 With Spring on the classpath, also follow [spring.md](spring.md).
 
@@ -41,7 +44,10 @@ With Spring on the classpath, also follow [spring.md](spring.md).
   a locale: `s.getBytes(StandardCharsets.UTF_8)`, `s.toUpperCase(Locale.ROOT)`.
 - Output: no `System.out`/`System.err` and no `printStackTrace()`. Log with
   `System.getLogger(Foo.class.getName())`, or the project's logger.
-- Null: return `List.of()`, not `null`. Never assign `null` (`out = null`); restructure instead.
+- Null: a method returning a collection returns an empty one (`List.of()`), never `null`. Any
+  other value that may be absent is declared `@Nullable` (the project's annotation, JSpecify's
+  `org.jspecify.annotations.Nullable` if it has none) and checked before use. Never assign `null`
+  (`out = null`); restructure instead.
 - Literals: compare against named constants (`quantity >= BULK_THRESHOLD`), not literals in an
   `if`; `-1`, `0`, `1` and `2` are fine. A string literal of 5+ characters used 3 times in a file
   becomes a constant.
@@ -103,9 +109,9 @@ With Spring on the classpath, also follow [spring.md](spring.md).
   cannot be told apart takes an exception for `pit/mutant-survived`.
 - Plan tests to be fast (`test-runtime/slow-test`): a fake clock instead of `Thread.sleep`, a test
   slice instead of `@SpringBootTest`.
-- Tests get the PMD, Checkstyle and formatter checks of main code, with test rules in place of some
-  main-code ones, plus the file (500 lines) and folder (6 files) limits. SpotBugs, the method
-  limits, CRAP and jscpd read main sources only. Spring rules apply to main sources only.
+- Tests get the PMD, Checkstyle, Error Prone and formatter checks of main code, with test rules in
+  place of some main-code ones, plus the file (500 lines) and folder (6 files) limits. SpotBugs, the
+  method limits, CRAP and jscpd read main sources only. Spring rules apply to main sources only.
 
 ## Editing existing code
 
@@ -115,9 +121,9 @@ With Spring on the classpath, also follow [spring.md](spring.md).
 - A file or folder already over its limit must not grow: put the new code in a new class, and a
   new file in a new package.
 - A line you touch must have its branches covered, even if it was uncovered before.
-- Existing PMD, SpotBugs and Checkstyle findings stay baselined while their message is unchanged;
-  adding another of the same kind in the file is new. Don't rename or move a file that has
-  findings: Checkstyle and CRAP findings don't follow renames and would count as new.
+- Existing PMD, SpotBugs, Error Prone and Checkstyle findings stay baselined while their message is
+  unchanged; adding another of the same kind in the file is new. Don't rename or move a file that
+  has findings: Checkstyle and CRAP findings don't follow renames and would count as new.
 
 ## Exceptions and suppressions
 
@@ -125,12 +131,16 @@ With Spring on the classpath, also follow [spring.md](spring.md).
   `"serial"` or `"fallthrough"` is itself a finding (`pmd/InlineSuppression`). The one allowed
   marker is `@SuppressWarnings("PMD.SpringDataNativeQuery")` on a repository method with native
   SQL ([spring.md](spring.md)).
+- A `@SuppressWarnings` naming an Error Prone check (`"CheckReturnValue"`, `"dep-ann"`) or NullAway
+  (`"NullAway"`, `"NullAway.Init"`), `@NullUnmarked`, and a `@CanIgnoreReturnValue` the project
+  declares itself are findings too (`errorprone/InlineSuppression`).
 - `@SuppressFBWarnings` is a finding too (`spotbugs/InlineSuppression`). Checkstyle's
   `@SuppressWarnings("checkstyle:...")` and `CHECKSTYLE.OFF`/`CHECKSTYLE.SUPPRESS` comments do
   nothing.
 - Code that is right despite a rule gets a reviewed `exceptions` entry in `nitpicker.config.json`
-  that names the finding as printed, for example `pmd/UnusedPrivateField` or
-  `checkstyle/AbbreviationAsWordInName`, with its paths and a reason. Never add one, nor a config `exclude`, `disable`, `thresholds` or legacy entry, nor a
+  that names the finding as printed, for example `pmd/UnusedPrivateField`,
+  `checkstyle/AbbreviationAsWordInName` or `errorprone/FieldCanBeFinal`, with its paths and a
+  reason. Never add one, nor a config `exclude`, `disable`, `thresholds` or legacy entry, nor a
   weaker test, to get past the gate yourself: stop and ask.
 - A violated ArchUnit rule is a finding (`archunit/<rule>`) on the offending class. Run the
   `*ArchTest` class with the build's test task to read the full violation, and fix the code.

@@ -19,7 +19,7 @@ function readPolicy(file: string | undefined): NitpickerPolicy {
 }
 const policy = readPolicy(policyFile);
 const sourceRoots: string[] = policy.layout?.sourceRoots ?? ['src'];
-const testRoots: string[] = policy.layout?.testRoots ?? ['test', 'tests'];
+const testRoots: string[] = policy.layout?.testRoots ?? ['test', 'tests', '__tests__'];
 const exclude: string[] = policy.exclude ?? [];
 const codeExtensions = '{ts,tsx,mts,cts,js,jsx,mjs,cjs}';
 const nitpickerExclude = [...configDefaults.exclude, ...exclude];
@@ -44,9 +44,9 @@ const coverage = {
       `${root}/**/__tests__/**`,
       `${root}/**/*.{test,spec}.${codeExtensions}`,
     ]),
-    '**/dist/**',
-    '**/build/**',
-    '**/generated/**',
+    'dist/**',
+    'build/**',
+    'generated/**',
     '**/*.d.ts',
     ...sourceRoots.flatMap((root) => [`${root}/vitest.config.ts`, `${root}/main/vitest.config.ts`]),
     ...exclude,

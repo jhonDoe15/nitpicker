@@ -1,5 +1,5 @@
 import { memberName } from '../analysis/test-code-analysis.mjs';
-import { variableNamed } from '../analysis/ancestry.mjs';
+import { ancestorsOf, variableNamed } from '../analysis/ancestry.mjs';
 
 const effectHooks = new Set(['useEffect', 'useLayoutEffect']);
 const functionTypes = new Set([
@@ -12,6 +12,10 @@ const REACT_NAMESPACE = 'React';
 
 export function isFunctionNode(node) {
   return functionTypes.has(node.type);
+}
+
+export function enclosingFunction(node) {
+  return ancestorsOf(node).find(isFunctionNode);
 }
 
 function importDefinition(variable) {

@@ -82,7 +82,7 @@ export const failureMessageCases = [
       '/* explains */\nconst value = 1;',
       'descriptive identifier',
     ],
-    ['interface names type', 'interface Shape { size: number }', '`type`'],
+    ['interface names type', 'export interface Shape { size: number }', '`type`'],
     [
       'enum names a union of string literals',
       'enum Mode { Read, Write }',

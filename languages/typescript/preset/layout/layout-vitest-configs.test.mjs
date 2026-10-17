@@ -32,9 +32,9 @@ describe('copied vitest configs', () => {
     expect(coverage.test.coverage.include).toEqual(['lib/**/*.{ts,tsx,mts,cts,js,jsx,mjs,cjs}']);
     expect([...new Set(coverage.test.coverage.exclude)].sort()).toEqual([
       '**/*.d.ts',
-      '**/build/**',
-      '**/dist/**',
-      '**/generated/**',
+      'build/**',
+      'dist/**',
+      'generated/**',
       'lib/**/*.{test,spec}.{ts,tsx,mts,cts,js,jsx,mjs,cjs}',
       'lib/**/__tests__/**',
       'lib/legacy/**',
@@ -51,6 +51,8 @@ describe('copied vitest configs', () => {
       'src/**/*.spec.{ts,tsx,mts,cts,js,jsx,mjs,cjs}',
     ]);
     expect([...new Set(coverage.test.projects[1].test.include)].sort()).toEqual([
+      '__tests__/**/*.spec.{ts,tsx,mts,cts,js,jsx,mjs,cjs}',
+      '__tests__/**/*.test.{ts,tsx,mts,cts,js,jsx,mjs,cjs}',
       'test/**/*.spec.{ts,tsx,mts,cts,js,jsx,mjs,cjs}',
       'test/**/*.test.{ts,tsx,mts,cts,js,jsx,mjs,cjs}',
       'tests/**/*.spec.{ts,tsx,mts,cts,js,jsx,mjs,cjs}',

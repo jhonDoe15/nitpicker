@@ -4,12 +4,9 @@ import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import { parseAnalyzerReport } from '../../../core/diff/comparison/finding-schema.mjs';
 import { parseForbiddenApiUses, readForbiddenApiFindings } from './forbidden-apis.mjs';
-import {
-  guardProject,
-  javaClass,
-  newLines,
-  removeGuardProjects,
-} from './test-support/guard-project.mjs';
+import { createGuardProjects, javaClass, newLines } from './test-support/guard-project.mjs';
+
+const guardProjects = createGuardProjects();
 
 const roots = [];
 afterEach(() => {
@@ -375,7 +372,7 @@ describe('readForbiddenApiFindings', () => {
 
 describe('forbiddenapis identities and declaration lines', () => {
   afterEach(() => {
-    removeGuardProjects();
+    guardProjects.remove();
   });
 
   const SLEEP =
@@ -393,7 +390,7 @@ describe('forbiddenapis identities and declaration lines', () => {
   const CONSTRUCTOR = ['<init>(java.util.Date)', '  Held(Date at) {'];
 
   function forbiddenFindings(files) {
-    const root = guardProject(files);
+    const root = guardProjects.project(files);
     return readForbiddenApiFindings(path.join(root, 'reports'), {
       locate: (packageDirectory, fileName) => `src/main/java/${packageDirectory}/${fileName}`,
       projectRoot: root,

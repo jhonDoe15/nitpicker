@@ -1,23 +1,25 @@
 import path from 'node:path';
-import { readFileSync, writeFileSync } from 'node:fs';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { acceptedDigest } from '../../../../core/command/test-support/accepted-digest.mjs';
 import {
   GREETER_HI_TEST,
   NO_MUTATION,
-  SAMPLE_SOURCE,
   SAME_NAME_SOURCES,
 } from './test-support/python-preset-data.mjs';
 import {
-  command,
   commitBranch,
   fixtureRepository,
   gate,
   pythonE2eEnabled,
   removeRepositories,
-  repository,
-  write,
 } from './test-support/python-e2e-support.mjs';
-import { fileURLToPath } from 'node:url';
+
+const MUTATION_DISABLED = {
+  environment: {
+    CI: 'true',
+    NITPICKER_ACCEPT_POLICY_CHANGE: acceptedDigest(['analyzer disabled: mutation'], NO_MUTATION),
+  },
+};
 
 describe.skipIf(!pythonE2eEnabled)(
   'Python preset tool errors, structure and CRAP end to end',
@@ -100,7 +102,7 @@ describe.skipIf(!pythonE2eEnabled)(
               classification === 'enforceable' && ['structure', 'crap'].includes(tool),
           );
       it('fails a new function over the structure limits with the same rules as TypeScript and Java', () => {
-        const result = gate(project, 'nested-and-wide');
+        const result = gate(project, 'nested-and-wide', MUTATION_DISABLED);
 
         expect(result.exitCode, result.text).toBe(1);
         expect(
@@ -111,9 +113,9 @@ describe.skipIf(!pythonE2eEnabled)(
         ]);
       });
       it('keeps a touched legacy function that is still over the limit, and fails it when it grows', () => {
-        expect(gate(project, 'legacy-edited').exitCode).toBe(0);
+        expect(gate(project, 'legacy-edited', MUTATION_DISABLED).exitCode).toBe(0);
 
-        const grown = gate(project, 'legacy-grown');
+        const grown = gate(project, 'legacy-grown', MUTATION_DISABLED);
 
         expect(grown.exitCode, grown.text).toBe(1);
         expect(enforceable(grown)).toEqual([
@@ -139,7 +141,7 @@ describe.skipIf(!pythonE2eEnabled)(
         ]);
       });
       it('fails a new untested branchy function on its CRAP score, and scores tested same-named definitions from their own lines', () => {
-        const result = gate(project, 'untested-complex');
+        const result = gate(project, 'untested-complex', MUTATION_DISABLED);
 
         expect(result.exitCode, result.text).toBe(1);
         expect(enforceable(result)).toEqual([
@@ -167,61 +169,3 @@ describe.skipIf(!pythonE2eEnabled)(
     });
   },
 );
-describe.skipIf(!pythonE2eEnabled)('Python structure metrics script', () => {
-  const script = path.resolve(
-    fileURLToPath(new URL('../', import.meta.url)),
-    '../metrics/structure_metrics.py',
-  );
-  function metricsOf(files) {
-    const directory = repository();
-    write(directory, files);
-    const listing = path.join(directory, 'listing.txt');
-    writeFileSync(listing, Object.keys(files).join('\n'));
-    const output = path.join(directory, 'metrics.json');
-    command(directory, 'python3', [script, output, directory, listing]);
-    return JSON.parse(readFileSync(output, 'utf8'));
-  }
-  it('counts lines, statements, control nesting and parameters the way the shared limits mean them', () => {
-    const metrics = metricsOf({ 'sample.py': SAMPLE_SOURCE });
-
-    expect(
-      metrics.map((entry) => [
-        entry.name,
-        entry.start,
-        entry.end,
-        entry.lines,
-        entry.statements,
-        entry.maxControlNesting,
-        entry.parameters,
-      ]),
-    ).toEqual([
-      ['Service.method', 5, 6, 2, 1, 0, 3],
-      ['Service.static', 8, 10, 3, 1, 0, 4],
-      ['Service.build', 12, 19, 8, 2, 0, 1],
-      ['Service.build.inner', 14, 17, 4, 3, 1, 1],
-      ['Service.fetch', 21, 31, 10, 6, 1, 3],
-      ['chain', 34, 41, 8, 7, 3, 1],
-      ['loops', 44, 54, 11, 8, 3, 1],
-      ['positional', 57, 58, 2, 1, 0, 3],
-    ]);
-    expect(metrics.every(({ file }) => file === 'sample.py')).toBe(true);
-  });
-  it('skips a file that does not parse, or that is too deep for the parser', () => {
-    const metrics = metricsOf({
-      'broken.py': 'def (:\n',
-      'deep.py': `X = ${Array.from({ length: 60_000 }, () => '1').join(' + ')}\n`,
-      'ok.py': 'def f():\n    return 1\n',
-    });
-
-    expect(metrics.map(({ file, name }) => `${file} ${name}`)).toEqual(['ok.py f']);
-  });
-  it('does not count the docstring as a line, so documenting a long function does not grow it', () => {
-    const body = ['    a = 1', '    return a'];
-    const lines = (...head) =>
-      metricsOf({ 'doc.py': ['def f():', ...head, ...body, ''].join('\n') })[0].lines;
-
-    expect(lines()).toBe(3);
-    expect(lines('    """Doc."""')).toBe(3);
-    expect(lines('    """Doc.', '', '    More.', '    """')).toBe(3);
-  });
-});

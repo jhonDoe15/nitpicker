@@ -1,13 +1,19 @@
 import { fileURLToPath } from 'node:url';
 import { readLayout } from '../head-policy.mjs';
 
-const { sourceGlobs, testGlobs, excludedGlobs, testRoots, sourceRoots, sourceTestDirectoryGlobs } =
-  readLayout();
+const {
+  sourceGlobs,
+  testGlobs,
+  runtimeExcludedGlobs,
+  testRoots,
+  sourceRoots,
+  sourceTestDirectoryGlobs,
+} = readLayout();
 
 export default {
   mutate: [
     ...sourceGlobs,
-    ...excludedGlobs.map((glob) => `!${glob}`),
+    ...runtimeExcludedGlobs.map((glob) => `!${glob}`),
     ...sourceTestDirectoryGlobs.map((glob) => `!${glob}`),
     ...testGlobs.map((glob) => `!${glob}`),
   ],

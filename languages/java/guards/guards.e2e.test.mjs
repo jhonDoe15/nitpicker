@@ -17,6 +17,7 @@ import { runJavaDuplicates } from '../adapters/metrics/java-duplicates.mjs';
 import { readJavaFindings } from '../adapters/reporting/java-reports.mjs';
 import { readReportModules } from '../adapters/gradle-reports/report-modules.mjs';
 import { readCouplingFindings } from '../adapters/metrics/java-coupling.mjs';
+import { readErrorProneFindings } from '../adapters/errorprone/java-errorprone.mjs';
 import { readCpdFindings } from './cpd-duplicates.mjs';
 import { readLintFindings } from './javac-lint.mjs';
 import { exceptionHint } from '../../../shared/rules/exceptions.mjs';
@@ -90,6 +91,7 @@ function expectedViolations(root) {
 function isGuard({ tool, rule, classification }) {
   return (
     classification === 'enforceable' &&
+    tool !== 'errorprone' &&
     (GUARD_TOOLS.has(tool) || GUARD_RULES.has(rule)) &&
     !(tool === 'coupling' && rule !== 'package-cycle') &&
     !(tool === 'duplicates' && rule !== 'duplicate-clone')
@@ -158,6 +160,7 @@ describe.skipIf(!enabled)('Java guards on a fixture project', () => {
           ':legacy:nitpickerPmd',
           ':arguments:nitpickerPmd',
           ':modular:nitpickerJdeps',
+          ':modular:nitpickerErrorProne',
           ':legacy:nitpickerCpd',
         ]),
       );
@@ -239,6 +242,27 @@ describe.skipIf(!enabled)('Java guards on a fixture project', () => {
         'impl/Square.java instability 0.5',
       ].map((line) => `modular/src/main/java/modular/shapes/${line}`),
     );
+  });
+
+  it('runs Error Prone on a module whose sealed interface permits classes in another package', () => {
+    const module = path.join(roots[1], 'modular');
+    const reportRoot = path.join(module, 'build', 'nitpicker');
+    const lines = readFileSync(path.join(reportRoot, 'errorprone', 'main.args'), 'utf8').split(
+      '\n',
+    );
+    const modulePath = lines[lines.indexOf('--module-path') + 1];
+
+    expect(lines).toContain(path.join(module, 'src', 'main', 'java', 'module-info.java'));
+    expect(modulePath.split(path.delimiter).map((entry) => path.basename(entry))).toEqual([
+      'commons-lang3-3.17.0.jar',
+    ]);
+    expect(
+      readErrorProneFindings({
+        reportRoot,
+        roots: [roots[1]],
+        lintedRoots: ['modular/src/main/java'],
+      }).map(({ path: file, rule, location }) => `${file}:${String(location?.line)} ${rule}`),
+    ).toEqual([]);
   });
 
   it('runs CPD over class literals followed by a declaration without modifiers', () => {
