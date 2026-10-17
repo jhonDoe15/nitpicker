@@ -39,6 +39,13 @@ function validateOptionalTaskFields(task) {
   ) {
     throw new TypeError(`${task.name} executionPriority must be a non-negative safe integer`);
   }
+  if (
+    task.toleratedDependencyErrors !== undefined &&
+    (!Array.isArray(task.toleratedDependencyErrors) ||
+      task.toleratedDependencyErrors.some((tool) => typeof tool !== 'string' || tool === ''))
+  ) {
+    throw new TypeError(`${task.name} toleratedDependencyErrors must be non-empty strings`);
+  }
 }
 
 function validateTaskInvocation(task) {
