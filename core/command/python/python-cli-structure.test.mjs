@@ -69,7 +69,7 @@ describe('nitpicker with "preset": "python" and function structure', () => {
           rule: 'crap-coverage-unknown',
           symbol: 'ghost',
           message:
-            'ghost has unknown coverage and no CRAP score: no test runs it. Add a test that calls it; for inline composition-root wiring, move it to a named function in adapters/ and test that. If a reviewer agrees this is intended, add {"rule":"crap-coverage-unknown","paths":["src/demo/a.py"],"function":"ghost","reason":"<why this is intended>"} to "exceptions" in nitpicker.config.json.',
+            'ghost has unknown coverage and no CRAP score: no test runs it. Add a test that calls it; for inline composition-root wiring, move it to a named function in adapters/ and test that. If a reviewer agrees this is intended, add {"rule":"crap-coverage-unknown","paths":["src/demo/b.py"],"function":"ghost","reason":"<why this is intended>"} to "exceptions" in nitpicker.config.json.',
         },
         {
           tool: 'structure',

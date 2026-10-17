@@ -79,4 +79,32 @@ describe('baseConfigCoveringHead', () => {
       thresholds: { fileLines: 300, crapLimit: 6, lineLength: 100 },
     });
   });
+
+  it('keeps only the exceptions of the same function and name in the head', () => {
+    const exception = (extra) => ({
+      rule: 'function-lines-limit',
+      paths: ['src/a.py'],
+      reason: 'Legacy',
+      ...extra,
+    });
+
+    expect(
+      baseConfigCoveringHead(
+        {
+          exceptions: [
+            exception({ function: 'old' }),
+            exception({ function: 'kept' }),
+            exception({ name: 'n' }),
+          ],
+        },
+        {
+          exceptions: [
+            exception({ function: 'kept' }),
+            exception({ function: 'other' }),
+            exception({}),
+          ],
+        },
+      ).exceptions,
+    ).toEqual([exception({ function: 'kept' })]);
+  });
 });

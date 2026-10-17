@@ -5,6 +5,7 @@ import { ingestArchunit } from '../../ingest/archunit.mjs';
 import { ingestCrap } from '../../ingest/crap.mjs';
 import { readDuplicateFindings } from '../metrics/java-duplicates.mjs';
 import { readKotlinDuplicateFindings } from '../kotlin/kotlin-duplicates.mjs';
+import { readKotlinMetrics } from '../kotlin/kotlin-metrics.mjs';
 import {
   dropEntityAssociations,
   dropInheritedVersions,

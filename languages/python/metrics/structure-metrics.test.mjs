@@ -380,7 +380,7 @@ describe.skipIf(!pythonUsable())('with python3 3.10 or newer on the PATH', () =>
           rule: 'function-control-nesting-limit',
           symbol: 'deep',
           message:
-            'deep nests control flow 3 deep (limit 2). Return early instead of nesting. An if/elif chain counts as one level; use match, a dict lookup or a helper function for what nests inside a branch.',
+            'deep nests control flow 3 deep (limit 2). Return early instead of nesting. An if/elif chain counts as one level; use match, a dict lookup or a helper function for what nests inside a branch. If a reviewer agrees this is intended, add {"rule":"function-control-nesting-limit","paths":["sample.py"],"function":"deep","reason":"<why this is intended>"} to "exceptions" in nitpicker.config.json.',
         },
       ]);
     });

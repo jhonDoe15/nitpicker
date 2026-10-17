@@ -288,7 +288,7 @@ describe('the preset config', () => {
     expect(pickerNames).toEqual(restrictedBrowserGlobals.slice(1).map((entry) => entry.name));
     expect(pickerNames).toHaveLength(58);
     expect(restrictedBrowserGlobals.find((entry) => entry.name === 'event').message).toBe(
-      '`event` here is the browser global, not a local value. Write `window.event` when you mean the global; otherwise take the value as a parameter (`onClick={(event) => ...}`) or declare it. An exception fits only when this is intentional.',
+      '`event` here is the browser global, not a local value. Write `window.event` when you mean the global; otherwise take the value as a parameter (`onClick={(event) => ...}`) or declare it.',
     );
     expect(await restrictedOf(reactManifest, 'test/picker.test.tsx')).toEqual(pickerNames);
     expect(await restrictedOf(native, 'src/main/ui/picker.jsx')).toEqual([]);

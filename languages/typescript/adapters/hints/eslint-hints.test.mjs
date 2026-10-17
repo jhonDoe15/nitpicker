@@ -354,7 +354,7 @@ describe('hints for the production policy rules', () => {
 
   it('names the allowed casing for a naming-convention finding', () => {
     expect(hint('nitpicker/naming-convention', 'Function name `a_b` must match camelCase')).toBe(
-      `Function name \`a_b\` must match camelCase. Types are PascalCase; functions, variables and parameters are camelCase; constants may be UPPER_CASE; a schema constant may be PascalCase (\`const Order = z.object(...)\`).  An exception fits only when an external API forces the name.`,
+      `Function name \`a_b\` must match camelCase. Types are PascalCase; functions, variables and parameters are camelCase; constants may be UPPER_CASE; a schema constant may be PascalCase (\`const Order = z.object(...)\`). An exception fits only when an external API forces the name.`,
     );
   });
 

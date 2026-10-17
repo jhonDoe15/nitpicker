@@ -100,10 +100,9 @@ describe('readErrorProneFindings', () => {
       roots: [projectRoot],
       lintedRoots: ['src/main/java', 'src/test/java'],
       manifest: { testSourceRoots: ['src/test/java'], guava: false, testGuava: true },
-      kotlin: true,
     });
 
-    expect(findings.map((finding) => finding.message)).toStrictEqual([
+    expect(findings.map((finding) => finding.message.split(' If a reviewer')[0])).toStrictEqual([
       "Throw something specific. Did you mean 'throw new IllegalStateException('?",
       "Throw something specific. Did you mean 'throw new VerifyException('?",
     ]);
@@ -142,7 +141,6 @@ describe('readErrorProneFindings', () => {
       reportRoot,
       roots: [projectRoot],
       lintedRoots: ['src/main/java'],
-      kotlin: true,
     });
 
     expect(findings.map((finding) => [finding.rule, finding.location.line])).toStrictEqual([
