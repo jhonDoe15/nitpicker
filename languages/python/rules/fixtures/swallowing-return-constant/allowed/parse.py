@@ -1,12 +1,13 @@
-import logging
-
-logger = logging.getLogger(__name__)
+from dataclasses import dataclass
 
 
-def is_number(text: str) -> bool:
+@dataclass(frozen=True)
+class Rejected:
+    reason: str
+
+
+def parse(text: str) -> int | Rejected:
     try:
-        int(text)
+        return int(text)
     except ValueError as error:
-        logger.debug("not a number: %s", error)
-        return False
-    return True
+        return Rejected(str(error))
