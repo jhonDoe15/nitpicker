@@ -1,12 +1,7 @@
-// The single source for the custom checks nitpicker adds on top of third-party tools: rule ids,
-// default limits, failure-message templates and the languages that enforce each rule. Every
-// language adapter reads it, and `spec/checks.md` is generated from it (`npm run gen:checks`).
-//
-// Language-neutral: imports only from shared/rules and shared/unused-api, so any entry point can load it. Nothing
-// under `shared/` may import from `core/`, `languages/` or a tool package (shared/import-direction.test.mjs).
-
+import { FILE_RULE_IDS, SIZE_RULE_IDS, sizeRules } from './project-rules/size-rules.mjs';
 import { UNUSED_API_RULES, UNUSED_API_RULE_IDS } from './unused-api/unused-api-policy.mjs';
 import { reuseRules } from './rules/reuse-rules.mjs';
+import { SOURCE_RULE_IDS, sourceRules } from './project-rules/source-rules.mjs';
 import { testConsoleRule } from './rules/console/console-rule.mjs';
 import { docCommentRule } from './rules/doc-comments/doc-comment-rule.mjs';
 import { sharedFactExceptionRules, withLanguageColumns } from './rules/facts/registry.mjs';
@@ -18,6 +13,8 @@ export {
   MESSAGES,
   renderMessage,
 } from './messages/messages.mjs';
+
+export { FILE_LIMIT_DEFAULTS } from './project-rules/size-rules.mjs';
 
 export const LANGUAGES = ['typescript', 'javascript', 'java', 'python', 'kotlin'];
 
@@ -38,9 +35,8 @@ export const RULE_IDS = {
   ...UNUSED_API_RULE_IDS,
   noProductionRuntime: 'no-production-runtime',
   typeOnlyProductionDependency: 'type-only-production-dependency',
-  fileLines: 'file-lines-limit',
-  lineLength: 'line-length-limit',
-  folderFiles: 'folder-files-limit',
+  ...FILE_RULE_IDS,
+  ...SIZE_RULE_IDS,
   slowTest: 'slow-test',
   sharedUsedByOneFeature: 'shared-used-by-one-feature',
   duplicateDefinition: 'duplicate-definition',
@@ -48,9 +44,9 @@ export const RULE_IDS = {
   exportedNameCollision: 'exported-name-collision',
   redefinedLibraryComponent: 'redefined-library-component',
   newIconAsset: 'new-icon-asset',
-  componentStoryMissing: 'component-story-missing',
   testConsoleOutput: 'test-console-output',
   docCommentContent: 'doc-comment-content',
+  ...SOURCE_RULE_IDS,
 };
 
 /** Per-function structure limits, keyed by the metric name the TypeScript analyzer reports. */
@@ -59,18 +55,6 @@ export const FUNCTION_STRUCTURE_LIMITS = {
   statements: { limit: 15, ruleId: RULE_IDS.functionStatements },
   maxControlNesting: { limit: 2, ruleId: RULE_IDS.functionControlNesting },
   parameters: { limit: 3, ruleId: RULE_IDS.functionParameters },
-};
-
-/**
- * Per-file limits, keyed by their `thresholds` name. `fileLines` applies to source files and
- * `testFileLines` to test files; `folderFiles` counts the source files and the test files directly in
- * one folder separately.
- */
-export const FILE_LIMIT_DEFAULTS = {
-  fileLines: 300,
-  testFileLines: 500,
-  lineLength: 120,
-  folderFiles: 6,
 };
 
 export const TEST_TIME_DEFAULTS = { unitTestSeconds: 5, integrationTestSeconds: 30 };
@@ -82,9 +66,6 @@ export const SHARED_EXCEPTION_RULES = [
   RULE_IDS.folderFiles,
   ...sharedFactExceptionRules(),
 ];
-
-/** The shared rules the Java preset leaves to its own tools (Checkstyle checks line length). */
-export const JAVA_NATIVE_RULES = [RULE_IDS.lineLength];
 
 /** A CRAP score at or above this fails (`QUALITY_CRAP_SCORE_LIMIT` / `thresholds.crapLimit` override it). */
 export const DEFAULT_CRAP_SCORE_LIMIT = 9;
@@ -211,37 +192,14 @@ const CATALOG = [
     enforcedBy: withKotlin(TYPESCRIPT_ONLY, false),
   },
   ...UNUSED_API_RULES,
-  {
-    id: RULE_IDS.fileLines,
-    check: 'structure',
-    limit: `more than ${String(FILE_LIMIT_DEFAULTS.fileLines)} lines in a source file or ${String(FILE_LIMIT_DEFAULTS.testFileLines)} in a test file; override with \`thresholds.fileLines\` and \`thresholds.testFileLines\``,
-    enforcedBy: withKotlin(ALL, true),
-  },
-  {
-    id: RULE_IDS.lineLength,
-    check: 'structure',
-    limit: `a line longer than ${String(FILE_LIMIT_DEFAULTS.lineLength)} characters, except imports, URLs and string literal text; override with \`thresholds.lineLength\` (Java: Checkstyle's own line length; Kotlin: detekt's)`,
-    enforcedBy: withKotlin({ ...ALL, java: false }, false),
-  },
-  {
-    id: RULE_IDS.folderFiles,
-    check: 'structure',
-    limit: `more than ${String(FILE_LIMIT_DEFAULTS.folderFiles)} source files, or test files, directly in one folder; override with \`thresholds.folderFiles\``,
-    enforcedBy: withKotlin(ALL, true),
-  },
+  ...sizeRules({ all: ALL, both: BOTH, withKotlin }),
   ...reuseRules(RULE_IDS, withKotlin(TYPESCRIPT_ONLY, false)),
+  ...sourceRules(RULE_IDS, withKotlin(TYPESCRIPT_ONLY, false)),
   {
     id: RULE_IDS.slowTest,
     check: 'test-runtime',
     limit: `a test the change adds or edits taking more than ${String(TEST_TIME_DEFAULTS.unitTestSeconds)} s (unit) or ${String(TEST_TIME_DEFAULTS.integrationTestSeconds)} s (integration); override with \`thresholds.unitTestSeconds\` and \`thresholds.integrationTestSeconds\``,
     enforcedBy: withKotlin({ ...BOTH, typescript: false }, true),
-  },
-  {
-    id: RULE_IDS.componentStoryMissing,
-    check: 'structure',
-    limit:
-      'a component file without a story, in a package that has Storybook; enforced when more than half of its component files have one, reported otherwise',
-    enforcedBy: { ...withKotlin(TYPESCRIPT_ONLY, false), javascript: 'partial' },
   },
   testConsoleRule(RULE_IDS),
   docCommentRule(RULE_IDS),

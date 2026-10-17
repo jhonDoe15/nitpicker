@@ -83,16 +83,14 @@ describe('configureAnalyzers', () => {
     expect(mutation.createInvocation(context).args).not.toContain('--exclude');
   });
 
-  it('lets a Python project disable mutation testing alone, but not the analyzer it depends on', () => {
+  it('lets a Python project disable mutation testing alone, and python with it', () => {
     const configure = (disable) => {
       const config = { preset: 'python', disable };
       return configureAnalyzers(createPythonAnalyzers(), config, resolveHeadPolicy(config));
     };
 
     expect(configure(['mutation']).map(({ name }) => name)).toEqual(['python']);
-    expect(() => configure(['python'])).toThrow(
-      '"disable" cannot disable python because mutation depends on it; add it to "disable" too',
-    );
+    expect(configure(['python'])).toEqual([]);
   });
 });
 

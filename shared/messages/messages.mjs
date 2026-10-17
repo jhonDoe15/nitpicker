@@ -1,3 +1,10 @@
+import {
+  SIZE_HELD_MESSAGES,
+  sizeGrewMessages,
+  sizeMessages,
+} from '../project-rules/size-rules.mjs';
+import { sourceRuleMessages } from '../project-rules/source-rules.mjs';
+
 export const EXCEPTION_HINT =
   'If this is intended, add {exception} to "exceptions" in nitpicker.config.json.';
 
@@ -27,9 +34,7 @@ export const MESSAGES = {
   testOnlyFile: `Module {name} is only used by tests. Move it beside the tests as a test helper, or use it from production code. ${EXCEPTION_HINT}`,
   restatingDocComment: `This doc comment only restates {name}. Delete it, or say what the name cannot: a unit, a limit, an edge case or why. ${EXCEPTION_HINT}`,
   longDocComment: `This doc comment's description is {lines} lines (limit {limit}). Keep the non-obvious point, a unit, a limit or an edge case, and put the rest in names and types. ${EXCEPTION_HINT}`,
-  fileLines: `File has {value} lines (limit {limit}). Split it into files by responsibility. ${EXCEPTION_HINT}`,
-  lineLength: `Line is {value} characters (limit {limit}). Break it up or extract a named value. ${EXCEPTION_HINT}`,
-  folderFiles: `Folder has {value} {kind} files directly in it (limit {limit}). Group related files into subfolders (packages in Java). ${EXCEPTION_HINT}`,
+  ...sizeMessages(EXCEPTION_HINT),
   slowTest: `{name} took {seconds} s; {kind} test may take {limit} s. Remove Thread.sleep and other waits, start a smaller Spring context or a test slice{move}. ${EXCEPTION_HINT}`,
   sharedUsedByOneFeature: `{path} is used only by feature {feature}. Move it into {directory}. ${EXCEPTION_HINT}`,
   duplicateDefinition: `{name} is also defined with {same} in {others}. {fix} ${EXCEPTION_HINT}`,
@@ -37,8 +42,7 @@ export const MESSAGES = {
   exportedNameCollision: `{name} is also exported by {others}; {importer} imports both. {fix} ${EXCEPTION_HINT}`,
   redefinedLibraryComponent: `{name} is already rendered from {package} in {count}. Use that one. ${EXCEPTION_HINT}`,
   newIconAsset: `Use an icon from {package} instead of adding {path}. ${EXCEPTION_HINT}`,
-  componentStoryMissing: `Most components in this project have a story. Add {story} for {name}. ${EXCEPTION_HINT}`,
-  componentStoryMissingUnenforced: `{name} has no story. Add {story}. Not enforced until more than half of the components have one. ${EXCEPTION_HINT}`,
+  ...sourceRuleMessages(EXCEPTION_HINT),
   testConsoleOutput: `Tests print new console output: {output}. Fix the cause (for example a timer that outlives the test), or allow a third-party message in "testConsole.allow" of nitpicker.config.json. ${EXCEPTION_HINT}`,
 };
 
@@ -56,9 +60,7 @@ export const GREW_MESSAGES = {
   parameters:
     '{name} grew from {base} to {value} parameters (limit {limit}). Group related parameters into one object instead of adding another.',
   crap: '{name} CRAP rose from {base} to {crap} (limit {limit}). Put new code in a new function and cover it with tests.',
-  fileLines: `File grew from {base} to {value} lines (limit {limit}). Put new code in a new file. ${EXCEPTION_HINT}`,
-  lineLength: `Line grew from {base} to {value} characters (limit {limit}). Break it up or extract a named value. ${EXCEPTION_HINT}`,
-  folderFiles: `Folder grew from {base} to {value} {kind} files (limit {limit}). Put the new file in a subfolder. ${EXCEPTION_HINT}`,
+  ...sizeGrewMessages(EXCEPTION_HINT),
 };
 
 export const HELD_MESSAGES = {
@@ -71,10 +73,5 @@ export const HELD_MESSAGES = {
   parameters:
     '{name}: {value} parameters (limit {limit}), allowed because base was {base}; any increase fails.',
   crap: '{name}: CRAP {crap} (limit {limit}), allowed because base was {base}; any increase fails.',
-  fileLines:
-    'File: {value} lines (limit {limit}), allowed because base was {base}; any increase fails.',
-  lineLength:
-    'Line: {value} characters (limit {limit}), allowed because base was {base}; any increase fails.',
-  folderFiles:
-    'Folder: {value} {kind} files (limit {limit}), allowed because base was {base}; any increase fails.',
+  ...SIZE_HELD_MESSAGES,
 };

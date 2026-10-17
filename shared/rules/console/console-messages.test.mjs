@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { tmpdir } from 'node:os';
 import { hasSpecificText, normalizeConsoleMessage } from './console-messages.mjs';
 
 describe('console message normalization', () => {
@@ -69,6 +70,69 @@ describe('console message normalization', () => {
     const after = 'Warning: timer fired in /other/src/x.ts:99:5 at 2026-02-03T04:05:06Z (pid 91)';
 
     expect(normalizeConsoleMessage(before)).toBe(normalizeConsoleMessage(after));
+  });
+});
+
+function randomPicker(seed) {
+  let state = seed;
+  return (alphabet, length) =>
+    Array.from({ length }, () => {
+      state = (Math.imul(state, 1664525) + 1013904223) >>> 0;
+      return alphabet[Math.floor((state / 2 ** 32) * alphabet.length)];
+    }).join('');
+}
+
+describe('random temporary names', () => {
+  const pick = randomPicker(20261017);
+  const PYTHON_ALPHABET = 'abcdefghijklmnopqrstuvwxyz0123456789_';
+  const NODE_ALPHABET = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+
+  it.each([
+    ['a Python temporary file', 'cannot open /tmp/tmpab3_x9qz.txt', 'cannot open <id>.txt'],
+    ['a Python temporary directory', 'rm <tmp>/tmpqwertyui failed', 'rm <id> failed'],
+    ['a Python name in a message', 'wrote tmp_____ab to disk', 'wrote <id> to disk'],
+    ['a shell temporary name', 'using tmp.X7kQp2LmNz', 'using <id>'],
+    ['a Node temporary directory', 'ENOENT <tmp>/app-AbCdEf/out.json', 'ENOENT out.json'],
+    ['a Node temporary directory as the end', 'ENOENT <tmp>/app-AbCdEf', 'ENOENT <id>'],
+    ['a raw temporary directory', 'rm /var/tmp/session_xYzAbC', 'rm <id>'],
+  ])('replaces %s', (_name, line, expected) => {
+    expect(normalizeConsoleMessage(line)).toBe(expected);
+  });
+
+  it.each([
+    ['a short name', 'tmpfile and tmpl are fine', 'tmpfile and tmpl are fine'],
+    ['a word inside another', 'attmpabcdefgh stays', 'attmpabcdefgh stays'],
+    ['a word under the temporary directory', 'wrote <tmp>/scratch/output', 'wrote output'],
+    ['a bare lowercase name', 'wrote <tmp>/output', 'wrote output'],
+    ['a name outside the temporary directory', 'wrote /srv/app-output', 'wrote app-output'],
+  ])('leaves %s', (_name, line, expected) => {
+    expect(normalizeConsoleMessage(line)).toBe(expected);
+  });
+
+  it('gives one message for 2000 random Python temporary names', () => {
+    const messages = Array.from({ length: 2000 }, () =>
+      normalizeConsoleMessage(`No such file: tmp${pick(PYTHON_ALPHABET, 8)}`),
+    );
+
+    expect(new Set(messages)).toEqual(new Set(['No such file: <id>']));
+  });
+
+  it('gives one message for 2000 random mkdtemp names with and without a file name', () => {
+    const directories = Array.from({ length: 2000 }, () => `<tmp>/app-${pick(NODE_ALPHABET, 6)}`);
+
+    expect(new Set(directories.map((name) => normalizeConsoleMessage(`rm ${name}`)))).toEqual(
+      new Set(['rm <id>']),
+    );
+    expect(new Set(directories.map((name) => normalizeConsoleMessage(`${name}/a.log`)))).toEqual(
+      new Set(['a.log']),
+    );
+  });
+
+  it('gives one message for 2000 random names of a real mkdtemp style', () => {
+    const names = Array.from({ length: 2000 }, () => `${tmpdir()}/test_${pick(NODE_ALPHABET, 6)}`);
+    const messages = names.map((name) => normalizeConsoleMessage(`EACCES: ${name}`));
+
+    expect(new Set(messages)).toEqual(new Set(['EACCES: <id>']));
   });
 });
 
