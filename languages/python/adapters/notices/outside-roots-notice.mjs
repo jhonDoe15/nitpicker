@@ -1,5 +1,6 @@
 import { outsideRootsNotice } from '../../../../shared/notices/outside-roots-message.mjs';
 import { globToRegExp } from '../../../../shared/glob.mjs';
+import { isUnder } from '../analysis/python-sources.mjs';
 import { isGeneratedPython } from '../../libraries/generated-files.mjs';
 import {
   DOCUMENTATION_DIRECTORIES,
@@ -18,10 +19,6 @@ const SKIPPED_FOLDERS = new Set([
   'env',
   'venv',
 ]);
-
-function isUnder(file, root) {
-  return root === '.' || file === root || file.startsWith(`${root}/`);
-}
 
 function isQuiet(file) {
   const parts = file.split('/');

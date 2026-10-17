@@ -14,7 +14,7 @@ const ROOT_DIRECTORY = /^\$\{?rootDir\}?/u;
 const TEST_TASK_HEADERS = [
   /^(?:tasks\.)?(?:test|\w*Test)$/u,
   /withType\s*[(<]\s*Test\b/u,
-  /(?:named|register|create|getByName)\s*(?:<\s*Test\s*>)?\s*\(\s*["']\w*[tT]est\w*["']/u,
+  /(?:named|register|create|getByName)\s*(?:<\s*Test\s*>\s*)?\(\s*["']\w*[tT]est\w*["']/u,
   /^task\s+\w*[tT]est\w*\s*\(.*type\s*:\s*Test/u,
 ];
 const EXCLUDE = /^(?:[\w.]+\.)?(?:exclude|setExcludes)\b(?!\s*(?:group|module)\s*[:=])/u;
@@ -76,18 +76,22 @@ function defaultRoot(module, set, language) {
   return inModule(module, `src/${set}/${language}`);
 }
 
+function addDeclared(declared, found) {
+  const state = declared.get(found.set) ?? { replaced: new Map(), added: [] };
+  if (found.replaces) {
+    state.replaced.set(found.language, found.roots);
+  } else {
+    state.added.push(...found.roots);
+  }
+  declared.set(found.set, state);
+}
+
 function rootsEntries(module, file, statements) {
   const declared = new Map();
   for (const statement of statements) {
     const found = declaredRoots(statement, module);
     if (found !== undefined) {
-      const state = declared.get(found.set) ?? { replaced: new Map(), added: [] };
-      if (found.replaces) {
-        state.replaced.set(found.language, found.roots);
-      } else {
-        state.added.push(...found.roots);
-      }
-      declared.set(found.set, state);
+      addDeclared(declared, found);
     }
   }
   const sets = [...new Set([...DEFAULT_SETS, ...declared.keys()])];
@@ -142,7 +146,7 @@ function excludesOf(statements) {
   return found;
 }
 
-function excludeEntries(module, file, statements, entries) {
+function excludeEntries({ module, file, statements }, entries) {
   return [...excludesOf(statements)].map(([kind, patterns]) => ({
     type: 'excludes',
     key: `gradle:${module}:exclude:${kind}`,
@@ -160,6 +164,6 @@ export function readGradleSources(files, readFile) {
       const module = path.posix.dirname(file);
       const statements = gradleStatements(readFile(file));
       const roots = rootsEntries(module, file, statements);
-      return [...roots, ...excludeEntries(module, file, statements, roots)];
+      return [...roots, ...excludeEntries({ module, file, statements }, roots)];
     });
 }

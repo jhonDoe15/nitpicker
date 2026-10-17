@@ -1,21 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import { useGitFixtures } from '../../diff/git/test-support/git-repository.mjs';
-import { policyChangeFields } from '../describe-policy-changes.mjs';
-import { readPolicyScope } from '../policy-scope.mjs';
+import { between, changesOf, without } from './test-support/policy-fixtures.mjs';
 
-const { createGitRepository } = useGitFixtures();
-const JAVA = { preset: 'java' };
 const CLASS = 'package a;\nclass A {}\n';
-
-function between({ base, head, config = JAVA }) {
-  const scope = readPolicyScope({
-    baseConfig: config,
-    headConfig: config,
-    baseProjectRoot: createGitRepository(base).root,
-    headProjectRoot: createGitRepository(head).root,
-  });
-  return policyChangeFields(config, config, scope);
-}
 
 function gradle(buildScript, extra = {}) {
   return {
@@ -69,7 +55,7 @@ describe('Gradle build files', () => {
     expect(between({ base, head: covering }).policyLoosenings).toEqual([
       'Gradle test excludes in build.gradle added: **/slow/**',
     ]);
-    expect(between({ base, head: idle })).toMatchObject({
+    expect(changesOf(between({ base, head: idle }))).toEqual({
       policyLoosenings: [],
       policyChanges: [
         'Gradle test excludes in build.gradle added: **/nothing/** (covers no checked file it did not cover before)',
@@ -103,7 +89,7 @@ describe('Gradle build files', () => {
   });
 
   it('counts a build file removed from a module that still has code', () => {
-    const { 'build.gradle': _removed, ...head } = gradle('');
+    const head = without(gradle(''), 'build.gradle');
 
     expect(between({ base: gradle(''), head }).policyLoosenings).toEqual([
       'Gradle source set main in build.gradle no longer includes checked code: src/main/java/a/A.java',
@@ -198,7 +184,7 @@ describe('Python test selection', () => {
     const head =
       '[tool.mutmut]\npaths_to_mutate = "src"\ndo_not_mutate = ["src/app/core.py", "docs/*"]\n';
 
-    expect(run(base, head)).toMatchObject({
+    expect(changesOf(run(base, head))).toEqual({
       policyLoosenings: ['mutmut do_not_mutate added: src/app/core.py'],
       policyChanges: [
         'mutmut do_not_mutate added: src/app/core.py',

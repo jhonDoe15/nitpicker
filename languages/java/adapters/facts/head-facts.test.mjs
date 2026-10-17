@@ -128,17 +128,19 @@ describe('javaHeadFacts', () => {
 
     expect([policy.spring, policy.kotlinFormatter]).toEqual([true, 'ktlint']);
     expect(
-      readRunnerPolicy(['--project-root', '/p', '--kotlin-formatter', 'none'], {}).policy,
-    ).toMatchObject({
-      kotlinFormatter: 'none',
-    });
+      readRunnerPolicy(['--project-root', '/p', '--kotlin-formatter', 'none'], {}).policy
+        .kotlinFormatter,
+    ).toBe('none');
   });
 
   it('turns Spring on and picks the formatter in the Gradle run from the policy', () => {
-    expect(gradleArguments({ spring: true })).toContain('-Pnitpicker.spring=true');
-    expect(gradleArguments({})).not.toContain('-Pnitpicker.spring=true');
-    expect(gradleArguments({ preset: 'kotlin', kotlinFormatter: 'ktfmt' })).toContain(
-      '-Pnitpicker.kotlin.formatter=ktfmt',
-    );
+    const named = (policy, prefix) =>
+      gradleArguments(policy).filter((argument) => argument.startsWith(prefix));
+
+    expect(named({ spring: true }, '-Pnitpicker.spring')).toEqual(['-Pnitpicker.spring=true']);
+    expect(named({}, '-Pnitpicker.spring')).toEqual([]);
+    expect(
+      named({ preset: 'kotlin', kotlinFormatter: 'ktfmt' }, '-Pnitpicker.kotlin.formatter'),
+    ).toEqual(['-Pnitpicker.kotlin.formatter=ktfmt']);
   });
 });

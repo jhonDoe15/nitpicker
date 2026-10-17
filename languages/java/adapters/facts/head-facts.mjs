@@ -1,6 +1,5 @@
-import { existsSync, readFileSync } from 'node:fs';
-import path from 'node:path';
 import { runGit } from '../../../../core/diff/git/repository/command.mjs';
+import { readInside } from '../../../../shared/conventions/read-inside.mjs';
 import { kotlinFormatterOf } from '../kotlin/kotlin-tools.mjs';
 
 const BUILD_FILE =
@@ -10,21 +9,20 @@ const COMMENTS = /\/\*[\s\S]*?\*\/|<!--[\s\S]*?-->|(?:^|[ \t])(?:\/\/|#)[^\n]*/g
 
 function buildFiles(projectRoot) {
   try {
-    return runGit(projectRoot, ['ls-files', '-z', '--cached', '--others', '--exclude-standard'])
-      .split('\0')
-      .filter((file) => BUILD_FILE.test(file));
+    return {
+      files: runGit(projectRoot, ['ls-files', '-z', '--cached', '--others', '--exclude-standard'])
+        .split('\0')
+        .filter((file) => BUILD_FILE.test(file)),
+    };
   } catch {
-    return [];
+    return { files: [] };
   }
 }
 
 export function declaresSpring(projectRoot) {
-  return buildFiles(projectRoot).some((file) => {
-    const absolute = path.join(projectRoot, file);
-    return (
-      existsSync(absolute) && SPRING.test(readFileSync(absolute, 'utf8').replaceAll(COMMENTS, ' '))
-    );
-  });
+  return buildFiles(projectRoot).files.some((file) =>
+    SPRING.test(readInside(projectRoot, file, 'utf8')?.replaceAll(COMMENTS, ' ') ?? ''),
+  );
 }
 
 export function javaHeadFacts(projectRoot, config) {

@@ -14,15 +14,20 @@ describe('jvmOutsideRootsNotices', () => {
     ];
     const notice = jvmOutsideRootsNotices(files, { ...KOTLIN, declaredRoots: ['libs/extra'] });
 
-    expect(notice).toHaveLength(1);
-    expect(notice[0]).toContain('2 changed Java or Kotlin files are outside');
-    expect(notice[0]).toContain('scripts/E.kt, tools/D.java.');
+    expect(notice).toEqual([
+      "2 changed Java or Kotlin files are outside the build's source sets, so the build does not compile " +
+        'or check them: scripts/E.kt, tools/D.java. Move them under src/main or src/test of a module, ' +
+        'or declare their folders as a source directory in the build file; to leave them unchecked, ' +
+        'list them in "exclude" in nitpicker.config.json.',
+    ]);
   });
 
   it('follows the preset: the java preset counts Java files only', () => {
-    expect(jvmOutsideRootsNotices(['tools/D.java', 'tools/E.kt'], { preset: 'java' })[0]).toContain(
-      '1 changed Java file is outside',
-    );
+    expect(jvmOutsideRootsNotices(['tools/D.java', 'tools/E.kt'], { preset: 'java' })).toEqual([
+      "1 changed Java file is outside the build's source sets, so the build does not compile or check it: " +
+        'tools/D.java. Move it under src/main or src/test of a module, or declare its folder as a source ' +
+        'directory in the build file; to leave it unchecked, list it in "exclude" in nitpicker.config.json.',
+    ]);
   });
 
   it('stays quiet for hidden folders, build output, excluded folders and non-source files', () => {

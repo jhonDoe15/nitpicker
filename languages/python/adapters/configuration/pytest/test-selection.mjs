@@ -1,8 +1,7 @@
-import { existsSync, readFileSync } from 'node:fs';
-import path from 'node:path';
+import { readInside } from '../../../../../shared/conventions/read-inside.mjs';
 import { listProductionModules } from '../../analysis/python-sources.mjs';
 import { mutmutDoNotMutate } from '../../mutation/mutation-markers.mjs';
-import { isTestFile, matchesGlob, testFileOptions } from './collection-options.mjs';
+import { isTestFile, matchesGlob, testFileOptions, underTestPath } from './collection-options.mjs';
 
 const PYTEST_FILES = [
   'pytest.toml',
@@ -13,27 +12,14 @@ const PYTEST_FILES = [
   'tox.ini',
   'setup.cfg',
 ];
+const DEFAULT_FILE = 'pyproject.toml';
 const NODE_SEPARATOR = '::';
 
 function configFileWith(projectRoot, word) {
   return (
-    PYTEST_FILES.find(
-      (file) =>
-        existsSync(path.join(projectRoot, file)) &&
-        readFileSync(path.join(projectRoot, file), 'utf8').includes(word),
-    ) ?? PYTEST_FILES.at(-2)
+    PYTEST_FILES.find((file) => readInside(projectRoot, file, 'utf8')?.includes(word)) ??
+    DEFAULT_FILE
   );
-}
-
-function folderPattern(root) {
-  return root.replace(/^\.\//u, '').replace(/\/+$/u, '');
-}
-
-function underTestPath(file, root) {
-  const parts = file.split('/');
-  return parts
-    .slice(0, -1)
-    .some((_, index) => matchesGlob(parts.slice(0, index + 1).join('/'), folderPattern(root)));
 }
 
 function ignoredPath(file, pattern) {
@@ -49,7 +35,7 @@ function testpathsEntry(projectRoot, options) {
     file: configFileWith(projectRoot, 'testpaths'),
     label: 'pytest testpaths',
     roots: testpaths.length === 0 ? undefined : testpaths,
-    contains: underTestPath,
+    contains: (file, root) => underTestPath(file.split('/'), [root]),
     applies: (file) => isTestFile(file, { ...options, testpaths: [] }),
   };
 }
