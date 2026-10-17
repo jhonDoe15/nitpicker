@@ -91,7 +91,12 @@ describe.skipIf(!pythonE2eEnabled)(
           ...NO_MUTATION,
           'src/demo/pipeline.py': [
             'def pipeline(items):',
-            `    score = lambda v: ${Array.from({ length: 9 }, (_, index) => `(1 if v > ${String(index)} else 0)`).join(' + ')}`,
+            '    score = lambda v: (',
+            Array.from(
+              { length: 9 },
+              (_, index) => `        (1 if v > ${String(index)} else 0)`,
+            ).join(' +\n'),
+            '    )',
             '    return [score(item) for item in items]',
             '',
           ].join('\n'),

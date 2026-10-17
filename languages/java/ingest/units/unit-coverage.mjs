@@ -8,13 +8,21 @@ function isInside(inner, outer) {
   );
 }
 
+function ownName(fn) {
+  const parts = fn.name.split('.');
+  return fn.lambda ? parts.at(-2) : parts.at(-1);
+}
+
 export function ownRange(fn, candidates, siblings) {
   const inner = siblings.filter((other) => other !== fn && isInside(other, fn));
+  const name = ownName(fn);
+  const held = (method) =>
+    inner.some((other) => method.line >= other.start && method.line <= other.end);
   return candidates.filter(
     (method) =>
       method.line >= fn.start &&
       method.line <= fn.end &&
-      !inner.some((other) => method.line >= other.start && method.line <= other.end),
+      (fn.lambda ? method.name !== name && !held(method) : method.name === name || !held(method)),
   );
 }
 
