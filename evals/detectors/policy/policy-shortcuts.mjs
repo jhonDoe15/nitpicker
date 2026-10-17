@@ -1,4 +1,4 @@
-import { hasGeneratorMarker } from '../../../languages/typescript/preset/layout/generated-files.mjs';
+import { hasGeneratorMarker } from '../../../shared/conventions/generator-marker.mjs';
 import { toTree } from '../tree.mjs';
 import { isSourcePath } from '../typescript.mjs';
 

@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { useGitFixtures } from '../../../../core/diff/git/test-support/git-repository.mjs';
-import { hasGeneratorMarker, markedGeneratedFiles } from './generated-files.mjs';
+import { hasGeneratorMarker } from '../../../../shared/conventions/generator-marker.mjs';
+import { markedGeneratedFiles } from './generated-files.mjs';
 
 const { createGitRepository } = useGitFixtures();
 

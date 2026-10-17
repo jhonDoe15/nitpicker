@@ -134,27 +134,38 @@ function resolver(report, modules) {
   };
 }
 
-function depthWalker(resolve) {
-  const depths = new Map();
-  const walking = new Set();
-  function depthOf(entry) {
-    if (depths.has(entry)) {
-      return depths.get(entry);
+function countedParents(entry, resolve) {
+  return UNCOUNTED_KINDS.has(entry.kind)
+    ? []
+    : entry.bases
+        .map((written) => resolve(entry, written))
+        .filter((parent) => parent !== undefined && !UNCOUNTED_KINDS.has(parent.kind));
+}
+
+function deepest(parents, depths) {
+  return Math.max(0, ...parents.map((parent) => 1 + (depths.get(parent) ?? 0)));
+}
+
+function inheritanceDepths(entries, resolve) {
+  const parents = new Map(entries.map((entry) => [entry, countedParents(entry, resolve)]));
+  const children = new Map();
+  const waiting = new Map();
+  for (const [entry, list] of parents) {
+    waiting.set(entry, list.length);
+    for (const parent of list) {
+      children.set(parent, [...(children.get(parent) ?? []), entry]);
     }
-    if (UNCOUNTED_KINDS.has(entry.kind)) {
-      return 0;
-    }
-    walking.add(entry);
-    const parents = entry.bases
-      .map((written) => resolve(entry, written))
-      .filter((parent) => parent !== undefined && !walking.has(parent))
-      .filter((parent) => !UNCOUNTED_KINDS.has(parent.kind));
-    const depth = Math.max(0, ...parents.map((parent) => 1 + depthOf(parent)));
-    walking.delete(entry);
-    depths.set(entry, depth);
-    return depth;
   }
-  return depthOf;
+  const depths = new Map();
+  const ready = entries.filter((entry) => waiting.get(entry) === 0);
+  for (const entry of ready) {
+    depths.set(entry, deepest(parents.get(entry), depths));
+    for (const child of children.get(entry) ?? []) {
+      waiting.set(child, waiting.get(child) - 1);
+      ready.push(...(waiting.get(child) === 0 ? [child] : []));
+    }
+  }
+  return (entry) => depths.get(entry) ?? deepest(parents.get(entry), depths);
 }
 
 export function readClassesReport(reportRoot) {
@@ -169,10 +180,10 @@ export function readClassesReport(reportRoot) {
 
 export function pythonClassLimitFindings(report, modules, { thresholds, exceptions }) {
   const production = new Set(modules.map(({ file }) => file));
-  const depthOf = depthWalker(resolver(report, modules));
-  const classes = Object.entries(report)
+  const entries = Object.entries(report)
     .filter(([file]) => production.has(file))
-    .flatMap(([, { classes: entries }]) => entries)
-    .map((entry) => ({ ...entry, inheritanceDepth: depthOf(entry) }));
+    .flatMap(([, { classes: found }]) => found);
+  const depthOf = inheritanceDepths(entries, resolver(report, modules));
+  const classes = entries.map((entry) => ({ ...entry, inheritanceDepth: depthOf(entry) }));
   return classLimitFindings(classes, { analyzerName: SIZE_TOOL, thresholds, exceptions });
 }

@@ -1,4 +1,4 @@
-import { hasGeneratorMarker } from '../../typescript/preset/layout/generated-files.mjs';
+import { hasGeneratorMarker } from '../../../shared/conventions/generator-marker.mjs';
 import { readProjectFile } from './project-files.mjs';
 
 const GENERATED_NAME = /(?:^|\/)[^/]+_pb2(?:_grpc)?\.pyi?$/u;
