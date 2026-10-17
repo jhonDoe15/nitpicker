@@ -2,7 +2,6 @@ import { existsSync } from 'node:fs';
 import path from 'node:path';
 import { readPythonDependencies } from '../../../libraries/python-dependencies.mjs';
 import { readPytestConfig } from './pytest-config.mjs';
-import { parseToml, readProjectFile } from '../project-files.mjs';
 import { TOP_LEVEL_TEST_DIRECTORIES } from '../../execution/python-project.mjs';
 
 const TEST_DIRECTORIES = new Set(['tests', 'test']);
@@ -10,7 +9,6 @@ const STANDARD_TEST_FILES = ['test_*.py', '*_test.py'];
 export const DJANGO_TEST_FILES = ['tests.py', 'tests_*.py', '*_tests.py'];
 const DJANGO_DISTRIBUTIONS = new Set(['django', 'pytest-django', 'djangorestframework']);
 const DJANGO_ENTRY = 'manage.py';
-const PYPROJECT = 'pyproject.toml';
 const BROAD_PROBES = ['a.py', 'service.py', 'models.py'];
 const VALUE_FLAGS = ['--deselect', '--ignore', '--ignore-glob'];
 
@@ -61,21 +59,13 @@ export function isTestFile(file, { pythonFiles, testpaths = [], django = false }
   );
 }
 
-function declaresDjango(projectRoot) {
-  const pyproject = readProjectFile(projectRoot, PYPROJECT);
-  if (pyproject !== undefined && parseToml(pyproject).kind === 'invalid') {
-    return false;
-  }
-  return readPythonDependencies(projectRoot).dependencies.some(({ normalized }) =>
-    DJANGO_DISTRIBUTIONS.has(normalized),
-  );
-}
-
 export function isDjangoProject(projectRoot, config = readPytestConfig(projectRoot)) {
   return (
     config.djangoSettingsModule !== undefined ||
     existsSync(path.join(projectRoot, DJANGO_ENTRY)) ||
-    declaresDjango(projectRoot)
+    readPythonDependencies(projectRoot).dependencies.some(({ normalized }) =>
+      DJANGO_DISTRIBUTIONS.has(normalized),
+    )
   );
 }
 

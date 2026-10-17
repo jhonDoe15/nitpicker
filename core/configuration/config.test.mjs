@@ -350,7 +350,7 @@ describe('tool precedence', () => {
       expect(() =>
         validateConfig({ preset, tools: { prettier: { precedence: ['project'] } } }),
       ).toThrow(
-        '"tools" names unknown tool "prettier". Supported tools with this preset: pmd, checkstyle',
+        `"tools" names unknown tool "prettier". Supported tools with this preset: pmd, checkstyle${preset === 'kotlin' ? ', ktlint, ktfmt, detekt' : ''}`,
       );
       expect(() =>
         validateConfig({ preset, tools: { checkstyle: { precedence: ['nitpicker', 'project'] } } }),
@@ -366,7 +366,9 @@ describe('tool precedence', () => {
       ),
     );
     expect(() => validateConfig({ preset: 'python', tools })).toThrow(
-      '"tools" is not supported with "preset": "python"',
+      new Error(
+        'nitpicker.config.json: "tools" names unknown tool "pmd". Supported tools with this preset: ruff, black, pyright, mypy, mutmut',
+      ),
     );
   });
 });
