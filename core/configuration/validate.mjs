@@ -87,6 +87,7 @@ function validateScalars(config) {
   if (GRADLE_PRESETS.includes(config.preset)) {
     validateJavaConfig(config);
   }
+  validateJavascriptConfig(config);
   validateKotlinOptions(config);
   validatePythonConfig(
     config,
@@ -94,6 +95,14 @@ function validateScalars(config) {
       ? TYPESCRIPT_ONLY_KEYS.filter((key) => key !== 'exceptions')
       : TYPESCRIPT_ONLY_KEYS,
   );
+}
+
+function validateJavascriptConfig(config) {
+  if (config.preset === 'javascript' && config.react !== undefined) {
+    throw configError(
+      '"react" is not supported with "preset": "javascript": React and JSX belong to the TypeScript preset, so remove the key, or use "preset": "typescript" for a React project',
+    );
+  }
 }
 
 function validateProjectConventions({ conventions, preset }) {
