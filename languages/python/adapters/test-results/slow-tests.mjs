@@ -59,7 +59,8 @@ function slowestRuns(tests, projectRoot) {
     const file = projectRelative(projectRoot, test.file);
     const key = `${file}::${testPath(test.test).join('::')}`;
     if ((byFunction.get(key)?.seconds ?? -1) < test.seconds) {
-      byFunction.set(key, { ...test, file, key });
+      const definedIn = test.source && projectRelative(projectRoot, test.source.file);
+      byFunction.set(key, { ...test, file, key, definedIn });
     }
   }
   return [...byFunction.values()];
@@ -81,16 +82,23 @@ function isChanged(test, { projectRoot, baselineRoot }) {
   );
 }
 
+function definedElsewhere({ source, definedIn, file }) {
+  return source !== undefined && definedIn !== file
+    ? ` (defined at ${definedIn}:${String(source.line)})`
+    : '';
+}
+
 function slowTestFinding({ test, limit, integration }) {
   const kind = integration ? 'an integration' : 'a unit';
+  const located = test.source !== undefined && test.definedIn === test.file;
   return {
     tool: TEST_RUN_TOOL,
     rule: RULE_IDS.slowTest,
     path: test.file,
     identity: `test:${test.key}`,
-    ...(test.source === undefined ? {} : { location: { line: test.source.line } }),
+    ...(located ? { location: { line: test.source.line } } : {}),
     message: [
-      `${test.key} took ${test.seconds.toFixed(1)} s; ${kind} test may take ${String(limit)} s.`,
+      `${test.key}${definedElsewhere(test)} took ${test.seconds.toFixed(1)} s; ${kind} test may take ${String(limit)} s.`,
       `Remove \`time.sleep\` and other fixed waits, or give a costly fixture a wider scope (\`scope="module"\` or \`"session"\`)${integration ? '' : MOVE_ADVICE}.`,
       exceptionSentence(RULE_IDS.slowTest),
     ].join(' '),

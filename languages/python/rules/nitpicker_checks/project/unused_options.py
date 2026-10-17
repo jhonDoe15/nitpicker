@@ -1,7 +1,6 @@
 import ast
 
 from nitpicker_checks.common import FUNCTION_TYPES, defaulted_parameters, finding
-from nitpicker_checks.project.entry_points import declared_entry_points
 
 MAIN_GUARD = "__main__"
 MAIN_MODULE = "__main__.py"
@@ -66,7 +65,7 @@ class Usage:
     def __init__(self, index, options):
         self.index = index
         self.published = options.get("published") is True
-        entries = options.get("entryPoints", []) + declared_entry_points()
+        entries = options.get("entryPoints", [])
         self.entries = {tuple(entry.split(":", 1)) for entry in entries}
         self.calls = {}
         self.blocked = set()

@@ -2,7 +2,11 @@ import { existsSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { TESTS_FAILED_RULE } from '../../../../shared/rules/finding-helpers.mjs';
 import { run } from './python-process.mjs';
-import { TEST_DIRECTORIES, TEST_FILE_GLOBS } from './python-project.mjs';
+import {
+  TEST_DIRECTORIES,
+  TEST_FILE_GLOBS,
+  TOP_LEVEL_TEST_DIRECTORIES,
+} from './python-project.mjs';
 import { NO_TESTS_EXIT, testCommand, testsRan } from './python-test-runner.mjs';
 
 export const COVERAGE_REPORT = 'coverage.json';
@@ -19,7 +23,11 @@ const UNTESTABLE_LINES = [
   String.raw`^\s*@(typing\.)?overload\b`,
   String.raw`^\s*raise NotImplementedError\b`,
 ];
-const TEST_FILES = [...TEST_FILE_GLOBS, ...TEST_DIRECTORIES.map((directory) => `*/${directory}/*`)];
+const TEST_FILES = [
+  ...TEST_FILE_GLOBS,
+  ...TEST_DIRECTORIES.map((directory) => `*/${directory}/*`),
+  ...TOP_LEVEL_TEST_DIRECTORIES.map((directory) => `${directory}/*`),
+];
 const EMPTY_COVERAGE_REPORT = '{"files":{}}';
 
 function existsInside(projectRoot, root) {

@@ -10,6 +10,7 @@ import {
   NON_SOURCE_FILES,
   TEST_DIRECTORIES,
   TEST_FILE_GLOBS,
+  TOP_LEVEL_TEST_DIRECTORIES,
 } from '../execution/python-project.mjs';
 
 const SOURCE_LISTING = 'python-files.txt';
@@ -24,9 +25,13 @@ function isPythonFile(entry, { wholeProject }) {
   );
 }
 
-function isSearched(entry, { wholeProject }) {
+function isSearched(entry, { directory, wholeProject }) {
   const skipped = wholeProject ? NON_SOURCE_DIRECTORIES : INSTALLED;
-  return entry.isDirectory() && !entry.name.startsWith('.') && !skipped.has(entry.name);
+  const topLevelTests =
+    directory === WHOLE_PROJECT && TOP_LEVEL_TEST_DIRECTORIES.includes(entry.name);
+  return (
+    entry.isDirectory() && !entry.name.startsWith('.') && !skipped.has(entry.name) && !topLevelTests
+  );
 }
 
 function isDirectory(absolute) {
@@ -49,7 +54,7 @@ export function pythonSourceFiles(projectRoot, sourceRoots) {
     }
     pending.push(
       ...entries
-        .filter((candidate) => isSearched(candidate, { wholeProject }))
+        .filter((candidate) => isSearched(candidate, { directory, wholeProject }))
         .map((entry) => ({ directory: path.posix.join(directory, entry.name), wholeProject })),
     );
   }
@@ -102,7 +107,12 @@ export const NON_PRODUCTION_GLOBS = [
 
 export function nonProductionGlobs(sourceRoots) {
   return sourceRoots.includes('.')
-    ? [...NON_PRODUCTION_GLOBS, ...DOCUMENTATION_DIRECTORIES.map((name) => `${name}/**`)]
+    ? [
+        ...NON_PRODUCTION_GLOBS,
+        ...[...DOCUMENTATION_DIRECTORIES, ...TOP_LEVEL_TEST_DIRECTORIES].map(
+          (name) => `${name}/**`,
+        ),
+      ]
     : NON_PRODUCTION_GLOBS;
 }
 
@@ -154,7 +164,8 @@ export function listProductionModules(projectRoot, sourceRoots) {
   return existingSourceRoots(projectRoot, sourceRoots).flatMap((root) => {
     const [importRoot] =
       root === '.' ? [path.resolve(projectRoot)] : importRoots(projectRoot, [root]);
-    const skippedAtTop = root === '.' ? DOCUMENTATION_DIRECTORIES : [];
+    const skippedAtTop =
+      root === '.' ? [...DOCUMENTATION_DIRECTORIES, ...TOP_LEVEL_TEST_DIRECTORIES] : [];
     return productionFiles(path.resolve(projectRoot, root), skippedAtTop).flatMap((absolute) => {
       const file = path.relative(projectRoot, absolute).split(path.sep).join('/');
       const module = moduleName(importRoot, absolute);

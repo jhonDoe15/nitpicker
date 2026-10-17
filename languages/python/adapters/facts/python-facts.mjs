@@ -3,7 +3,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { listProductionModules, pythonSourceFiles } from '../analysis/python-sources.mjs';
 import { readPackageFacts } from '../configuration/python-package.mjs';
-import { isTestPath, TEST_DIRECTORIES } from '../execution/python-project.mjs';
+import { isTestPath, ROOT_TEST_DIRECTORIES } from '../execution/python-project.mjs';
 import { factsBundle } from './facts-bundle.mjs';
 
 export const FACTS_REPORT = 'facts.json';
@@ -12,7 +12,7 @@ const FACTS_REQUEST = 'facts-request.json';
 const SCAN_SCRIPT = path.join(fileURLToPath(new URL('../', import.meta.url)), 'import-scan.py');
 function factsFiles(projectRoot, sourceRoots) {
   const modules = listProductionModules(projectRoot, sourceRoots);
-  const roots = [...sourceRoots, ...TEST_DIRECTORIES, '.'];
+  const roots = [...sourceRoots, ...ROOT_TEST_DIRECTORIES, '.'];
   const tests = pythonSourceFiles(projectRoot, roots).filter(isTestPath);
   return {
     modules,

@@ -66,6 +66,7 @@ describe('rules script report', () => {
     const report = [
       entry({ rule: 'rules-skipped', path: 'src/sums.py', subject: 'file', line: 1 }),
       entry({ rule: 'rules-skipped', path: '.', subject: 'unused-option', line: 1 }),
+      entry({ rule: 'rules-skipped', path: 'src/deep.py', subject: 'all', line: 1 }),
     ];
 
     expect(ingestRulesReport(JSON.stringify(report))).toEqual([
@@ -88,6 +89,41 @@ describe('rules script report', () => {
           "python-rules skipped the unused-option checks here: an expression nests too deeply for Python's recursion limit. Split the expression to have it checked.",
         classification: 'descriptive',
         location: { line: 1 },
+      },
+      {
+        tool: 'python-rules',
+        rule: 'rules-skipped',
+        path: 'src/deep.py',
+        identity: 'all',
+        message:
+          "python-rules skipped every check here: an expression nests too deeply for Python's recursion limit. Split the expression to have it checked.",
+        classification: 'descriptive',
+        location: { line: 1 },
+      },
+    ]);
+  });
+
+  it('turns a project file that cannot be read into a tool error naming the problem', () => {
+    const report = [
+      entry({
+        rule: 'project-file-invalid',
+        path: 'setup.cfg',
+        subject: 'setup.cfg',
+        line: 3,
+        data: { problem: 'ParsingError: bad line' },
+      }),
+    ];
+
+    expect(ingestRulesReport(JSON.stringify(report))).toEqual([
+      {
+        tool: 'python-rules',
+        rule: 'project-file-invalid',
+        path: 'setup.cfg',
+        identity: 'setup.cfg',
+        message:
+          'setup.cfg could not be read (ParsingError: bad line), so python-rules took the package as unpublished with no entry points from it, and unused-option may name a parameter an entry point passes. Fix the file.',
+        classification: 'tool-error',
+        location: { line: 3 },
       },
     ]);
   });

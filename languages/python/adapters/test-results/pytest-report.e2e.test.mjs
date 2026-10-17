@@ -182,6 +182,30 @@ def cart():
     expect(seconds.test_last).toBeLessThan(1);
   });
 
+  it('subtracts a shared fixture once when it requests another shared fixture', () => {
+    const { report } = pytestReport({
+      'tests/conftest.py': `import time
+
+import pytest
+
+
+@pytest.fixture(scope="session")
+def inner():
+    time.sleep(0.6)
+
+
+@pytest.fixture(scope="session")
+def outer(request):
+    return request.getfixturevalue("inner")
+`,
+      'tests/test_a.py': 'import time\n\n\ndef test_slow(outer):\n    time.sleep(0.6)\n',
+    });
+    const [{ seconds }] = report.tests;
+
+    expect(seconds).toBeGreaterThanOrEqual(0.55);
+    expect(seconds).toBeLessThan(1);
+  });
+
   it('finds each test by its source range and compares it with the base', () => {
     const query = (limit) =>
       `def test_query():\n    sql = """\nSELECT id\nFROM orders\n"""\n    assert len(sql) < ${String(limit)}\n`;
