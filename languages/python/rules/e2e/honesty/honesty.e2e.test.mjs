@@ -105,6 +105,102 @@ describe.skipIf(!enabled)('skipped-test-without-reason', () => {
   });
 });
 
+describe.skipIf(!enabled)('skipped-test-without-reason in other forms', () => {
+  const prelude = 'import pytest\nimport sys\nimport unittest\n\n';
+
+  it('flags aliases, empty reasons, parametrized marks, unittest and silent returns', () => {
+    const [actual, expected] = outcomes([
+      [
+        'an alias of the mark',
+        inTests(`${prelude}skip = pytest.mark.skip\n\n\n@skip\ndef test_a():\n    assert f()\n`),
+        ['skipped-test-without-reason:8 pytest.mark.skip'],
+      ],
+      [
+        'an alias of xfail',
+        inTests(`${prelude}flaky = pytest.mark.xfail\n\n\n@flaky\ndef test_a():\n    assert f()\n`),
+        ['skipped-test-without-reason:8 pytest.mark.xfail'],
+      ],
+      [
+        'an empty reason',
+        inTests(
+          `${prelude}@pytest.mark.skipif(sys.platform == "win32", reason="")\ndef test_a():\n    assert f()\n`,
+        ),
+        ['skipped-test-without-reason:5 pytest.mark.skipif'],
+      ],
+      [
+        'a parametrized xfail',
+        inTests(
+          `${prelude}@pytest.mark.parametrize("n", [1, pytest.param(2, marks=pytest.mark.xfail)])\ndef test_a(n):\n    assert f(n)\n`,
+        ),
+        ['skipped-test-without-reason:5 pytest.mark.xfail'],
+      ],
+      [
+        'a parametrized skip in a list',
+        inTests(`${prelude}CASES = [pytest.param(2, marks=[pytest.mark.skip])]\n`),
+        ['skipped-test-without-reason:5 pytest.mark.skip'],
+      ],
+      [
+        'a bare unittest skip',
+        inTests(
+          `${prelude}class A(unittest.TestCase):\n    @unittest.skip("")\n    def test_a(self):\n        self.assertTrue(f())\n`,
+        ),
+        ['skipped-test-without-reason:6 unittest.skip'],
+      ],
+      [
+        'expectedFailure',
+        inTests(
+          `${prelude}class A(unittest.TestCase):\n    @unittest.expectedFailure\n    def test_a(self):\n        self.assertTrue(f())\n`,
+        ),
+        ['skipped-test-without-reason:6 unittest.expectedFailure'],
+      ],
+      [
+        'skipTest with an empty message',
+        inTests(
+          `${prelude}class A(unittest.TestCase):\n    def test_a(self):\n        self.skipTest("")\n`,
+        ),
+        ['skipped-test-without-reason:7 skipTest()'],
+      ],
+      [
+        'raise SkipTest',
+        inTests(`${prelude}def test_a():\n    raise unittest.SkipTest\n`),
+        ['skipped-test-without-reason:6 SkipTest'],
+      ],
+      [
+        'a conditional return at the top',
+        inTests(
+          `${prelude}def test_a():\n    if sys.platform == "linux":\n        return\n    assert f()\n`,
+        ),
+        ['skipped-test-without-reason:6 return in test_a'],
+      ],
+      [
+        'xfail with a reason and the expected error',
+        inTests(
+          `${prelude}@pytest.mark.xfail(raises=ZeroDivisionError, strict=True)\ndef test_a():\n    assert f()\n`,
+        ),
+        [],
+      ],
+      [
+        'unittest.skip with a reason',
+        inTests(`${prelude}@unittest.skip("needs a database")\ndef test_a():\n    assert f()\n`),
+        [],
+      ],
+      [
+        'skipTest with a message',
+        inTests(
+          `${prelude}class A(unittest.TestCase):\n    def test_a(self):\n        self.skipTest("no database")\n`,
+        ),
+        [],
+      ],
+      [
+        'a conditional return that returns a value',
+        inTests(`${prelude}def test_a():\n    if f():\n        return 1\n    assert f()\n`),
+        [],
+      ],
+    ]);
+    expect(actual).toEqual(expected);
+  });
+});
+
 describe.skipIf(!enabled)('sleep-in-test', () => {
   it('flags waiting for real time in a test', () => {
     const [actual, expected] = outcomes([

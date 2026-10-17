@@ -17,6 +17,7 @@ describe('rules script report', () => {
         rule: 'frozen-dataclass',
         path: 'src/order.py',
         identity: 'Order',
+        subject: 'Order',
         message: 'Dataclass Order is not frozen',
         classification: 'enforceable',
         location: { line: 4 },
@@ -43,7 +44,7 @@ describe('rules script report', () => {
       '`Parser.parse` is excluded from type checking by `@no_type_check`',
       '`if not TYPE_CHECKING` hides code from the type checkers',
       '`mod.pyi` sits beside its source and replaces it for the checkers',
-      '`except ValueError` swallows the error',
+      '`except ValueError` swallows the error: it only logs it or returns a default, and carries on',
       '`contextlib.suppress(Exception)` ignores every error',
     ]);
   });
