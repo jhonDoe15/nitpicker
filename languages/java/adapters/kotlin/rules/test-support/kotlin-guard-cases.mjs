@@ -34,7 +34,7 @@ export const kotlinGuardCases = [
     allowedForm: 'composition root',
     banned: 'fun home(): String? = System.getenv("HOME")\n',
     allowed:
-      'data class Settings(val home: String?)\n\nfun main() {\n    check(Settings(System.getenv("HOME")).home != "")\n}\n',
+      'fun main() {\n    ProcessBuilder("serve", "--port", System.getenv("PORT")).inheritIO().start()\n}\n',
   },
   {
     id: 'clockNow',
@@ -68,7 +68,7 @@ export const kotlinGuardCases = [
     id: 'collectionRandom',
     rule: 'detekt.style.ForbiddenMethodCall',
     message: forbidden(
-      'kotlin.collections.random()',
+      'kotlin.collections.random(kotlin.collections.Collection)',
       'Pass an injected `kotlin.random.Random`: `items.random(random)`, so the code can be tested with `Random(seed)`.',
     ),
     allowedForm: 'items.random(random)',
