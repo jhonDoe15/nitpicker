@@ -6,7 +6,6 @@
     "lib": ["ES2024"],
     "allowSyntheticDefaultImports": true,
     "allowJs": true,
-    "noEmit": true,
     "esModuleInterop": true,
     "exactOptionalPropertyTypes": true,
     "forceConsistentCasingInFileNames": true,
