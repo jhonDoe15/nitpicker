@@ -36,12 +36,15 @@ $ npx nitpicker
   eslint-errors/nitpicker/no-silent-catch src/main/features/greeting/adapters/load-names.ts:8
     This catch swallows the error: it only logs it, returns a default, or carries on. Rethrow it as an Error subclass with `{ cause: error }`, return a failure result (`return { kind: 'malformed-json' }`), or collect it for the caller (`errors.push(error)`); logging alone is not handling. In a test, use `expect(() => run()).toThrow()` or `await expect(promise).rejects.toThrow()`. If it is intended, add an exception for nitpicker/no-silent-catch in nitpicker.config.json.
   eslint-lint/nitpicker/no-handwritten-boundary-guard src/main/features/greeting/adapters/load-names.ts:6
-    Pass `JSON.parse(text)` straight into `schema.safeParse(...)` inside the same `try`.
+    Pass `JSON.parse(text)` straight into `schema.safeParse(...)` inside the same `try`. If the text is trusted and already typed, add an exception for nitpicker/no-handwritten-boundary-guard in nitpicker.config.json.
   eslint-lint/no-restricted-syntax src/main/features/greeting/adapters/load-names.ts:6
     Do not assert with `as`. Narrow the value (a discriminated union check or a zod parse) or give it the correct type at its source. `as const` is allowed.
   mutation/mutant-survived src/main/features/greeting/adapters/load-names.ts:9
     Survived ArrayDeclaration at column 12: replacing `[]` with `["Stryker was here"]` fails no test. Add an assertion that would. If no input can tell the two apart, simplify the code so this mutant disappears.
 ```
+
+The messages name zod, the default validation library; in a project that depends on another one
+(valibot, yup, joi and others) they name that library instead.
 
 ## Why nitpicker
 

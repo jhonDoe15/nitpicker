@@ -103,6 +103,46 @@ describe('rules script report', () => {
       'testing.py',
       '`testing.py` is test support inside the production source',
     ],
+    [
+      'tls-verification-off',
+      'session.verify',
+      '`session.verify` turns off TLS certificate verification, or lets the environment turn it off',
+    ],
+    [
+      'weak-hmac',
+      'hmac.new(md5)',
+      '`hmac.new(md5)` signs with HMAC-MD5, which is no longer approved for message authentication',
+    ],
+    [
+      'http-without-timeout',
+      'urllib.request.urlopen',
+      '`urllib.request.urlopen` can wait forever: it has no timeout',
+    ],
+    [
+      'unsafe-deserialization',
+      'torch.load',
+      '`torch.load` unpickles arbitrary objects from the file on torch below 2.6, or with `weights_only=False`',
+    ],
+    [
+      'unsafe-deserialization',
+      'joblib.load',
+      '`joblib.load` unpickles arbitrary objects from the file',
+    ],
+    [
+      'unsafe-deserialization',
+      'keras.models.load_model',
+      '`keras.models.load_model` with `safe_mode=False` runs arbitrary code stored in the model file',
+    ],
+    [
+      'unsafe-deserialization',
+      'lxml.etree.XMLParser',
+      '`lxml.etree.XMLParser` expands external entities or fetches them from the network',
+    ],
+    [
+      'unsafe-deserialization',
+      'yaml.full_load',
+      '`yaml.full_load` can build arbitrary Python objects from the document',
+    ],
   ])('describes %s by its subject', (rule, subject, message) => {
     expect(ingestRulesReport(JSON.stringify([entry({ rule, subject })]))[0].message).toBe(message);
   });
@@ -114,6 +154,66 @@ describe('rules script report', () => {
       'Order',
       'Order#2',
       'Order',
+    ]);
+  });
+
+  it('keeps every finding the script reports, test support is decided by the script', () => {
+    const report = [
+      entry({ rule: 'tls-verification-off', path: 'src/shop/testing/ab_variants.py' }),
+      entry({ rule: 'sql-string-formatting', path: 'src/league/fixtures/repository.py' }),
+      entry({ rule: 'sql-string-formatting', path: 'src/league/fixtures.py' }),
+      entry({ rule: 'http-without-timeout', path: 'src/payments/mocks/sandbox_gateway.py' }),
+    ];
+
+    expect(ingestRulesReport(JSON.stringify(report)).map(({ path }) => path)).toEqual([
+      'src/shop/testing/ab_variants.py',
+      'src/league/fixtures/repository.py',
+      'src/league/fixtures.py',
+      'src/payments/mocks/sandbox_gateway.py',
+    ]);
+  });
+
+  it('turns a failed check into a tool error for that file and keeps the other findings', () => {
+    const report = [
+      entry(),
+      {
+        rule: 'rules-check-failed',
+        path: 'src/app/db.py',
+        subject: 'sql-string-formatting',
+        line: 1,
+        error: 'IndexError: list index out of range',
+      },
+    ];
+
+    const [kept, failed] = ingestRulesReport(JSON.stringify(report));
+
+    expect([kept.rule, kept.classification]).toEqual(['frozen-dataclass', 'enforceable']);
+    expect([failed]).toEqual([
+      {
+        tool: 'python-rules',
+        rule: 'rules-check-failed',
+        path: 'src/app/db.py',
+        identity: 'rules-check-failed:sql-string-formatting',
+        message:
+          'The python-rules check sql-string-formatting failed on src/app/db.py (IndexError: list index out of range), so that file has no sql-string-formatting findings; the other checks and files ran. Report it as a nitpicker bug with the file.',
+        classification: 'tool-error',
+      },
+    ]);
+  });
+
+  it('turns a skipped run on an old Python into one tool error naming the required version', () => {
+    const report = [{ rule: 'rules-skipped', path: '.', subject: '3.9.18', line: 1 }];
+
+    expect(ingestRulesReport(JSON.stringify(report))).toEqual([
+      {
+        tool: 'python-rules',
+        rule: 'rules-skipped',
+        path: '.',
+        identity: 'rules-skipped',
+        message:
+          'The python-rules checks did not run: they need Python 3.10 or newer, and the project environment runs Python 3.9.18. Point "python.environment" at a Python 3.10 or newer environment.',
+        classification: 'tool-error',
+      },
     ]);
   });
 

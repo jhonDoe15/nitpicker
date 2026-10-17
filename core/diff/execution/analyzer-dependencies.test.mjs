@@ -135,6 +135,36 @@ describe('analyzer task graph', () => {
     expect(result.errors).toEqual([]);
     expect(result.skipped).toEqual([{ name: 'crap', because: 'coverage' }]);
   });
+  it('runs a dependent that tolerates the tools of the tool errors its dependency reports', async () => {
+    const started = [];
+    const failing = (tool) => ({ tool, rule: 'tests-failed', classification: 'tool-error' });
+    const result = await runTaskGraph(
+      [
+        task('python'),
+        task('mutation', { dependencies: ['python'], toleratedDependencyErrors: ['tests'] }),
+      ],
+      {
+        execute: ({ name }) => {
+          started.push(name);
+          return Promise.resolve({
+            findings: name === 'python' ? [failing('tests')] : [],
+          });
+        },
+      },
+    );
+
+    expect(started.sort()).toEqual(['mutation', 'python']);
+    expect(result.skipped).toBeUndefined();
+
+    const blocked = await runTaskGraph(
+      [
+        task('python'),
+        task('mutation', { dependencies: ['python'], toleratedDependencyErrors: ['tests'] }),
+      ],
+      { execute: () => Promise.resolve({ findings: [failing('python')] }) },
+    );
+    expect(blocked.skipped).toEqual([{ name: 'mutation', because: 'python' }]);
+  });
   it('still reports a dependency the task graph lacks as an error', async () => {
     const result = await runTaskGraph([task('crap', { dependencies: ['coverage'] })], {
       execute: () => Promise.resolve({ findings: [] }),
