@@ -108,14 +108,17 @@ export function analyzeSource(source, filename) {
 
 function productionFiles(root, displayRoot, layout) {
   if (!existsSync(root)) return [];
+  function projectRelative(absolute) {
+    return normalizePath(path.join(displayRoot, path.relative(root, absolute)));
+  }
   function skipDirectory(absolute, entry) {
-    return isExcludedPath(normalizePath(absolute)) || entry.name === '__tests__';
+    return isExcludedPath(projectRelative(absolute)) || entry.name === '__tests__';
   }
   return [...filesUnder(root, { skipDirectory })]
     .filter((absolute) => {
       const relative = normalizePath(path.relative(root, absolute));
       return (
-        !isExcludedPath(normalizePath(absolute)) &&
+        !isExcludedPath(projectRelative(absolute)) &&
         layout.isSourceFile(`${layout.sourceRoot}/${relative}`) &&
         !layout.isExcluded(normalizePath(path.join(displayRoot, relative)))
       );

@@ -213,3 +213,12 @@ export function routedEslintMessage(options) {
 export function growthAdviceFor(ruleId) {
   return GROWTH_ADVICE.get(ruleId);
 }
+
+const UNSUPPORTED_DIRECTIVE_TEXT = '/* eslint-env */ comments are no longer supported';
+
+export function withoutFatalDirectives(messages) {
+  return messages.filter(
+    (message) =>
+      !(message?.fatal === true && message.message?.startsWith(UNSUPPORTED_DIRECTIVE_TEXT)),
+  );
+}

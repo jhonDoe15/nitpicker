@@ -2,8 +2,17 @@ import path from 'node:path';
 import { CONFIG_FILE_NAME, configError } from '../../shared/config.mjs';
 import { existsSync, readFileSync } from 'node:fs';
 import { validateConfig, KEYS } from './validate.mjs';
+import { rejectUnreadableSources } from './project-checks/project-config.mjs';
+import { rejectUndeclaredPreset } from './project-checks/preset-detection.mjs';
 
 export function loadConfig(projectRoot) {
+  const config = readConfigFile(projectRoot);
+  rejectUnreadableSources(config, projectRoot);
+  rejectUndeclaredPreset(config, projectRoot);
+  return config;
+}
+
+export function readConfigFile(projectRoot) {
   const configPath = path.join(projectRoot, CONFIG_FILE_NAME);
   if (!existsSync(configPath)) {
     return {};

@@ -1,11 +1,11 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { ESLint, Linter } from 'eslint';
-import functional from 'eslint-plugin-functional';
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import tseslint from 'typescript-eslint';
 import { nitpickerRules } from '../../eslint-plugin/index.mjs';
+import { functionalPlugin } from '../../eslint-plugin/type-identity/functional-plugin.mjs';
 import { lintFixture } from '../../failure-messages/test-support/harness.mjs';
 import { domainTypeAwareFunctionalRules, strictDomainConfig } from './strict-domain.mjs';
 
@@ -232,7 +232,7 @@ beforeAll(() => {
             tsconfigRootDir: typed.root,
           },
         },
-        plugins: { functional, nitpicker: nitpickerRules },
+        plugins: { functional: functionalPlugin, nitpicker: nitpickerRules },
         rules: domainTypeAwareFunctionalRules,
       },
     ],

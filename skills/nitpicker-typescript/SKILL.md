@@ -32,8 +32,9 @@ Before you change code other modules use, fix a bug, or add a UI state, read
      missing package) and rerun. Exit 2 is never a pass. If it says another run is in progress,
      wait for that run; never kill it.
 4. Never suppress: no `eslint-disable`, `@ts-ignore`, coverage or mutation ignore comments
-   (`istanbul`/`c8`/`v8 ignore`, `Stryker disable`), config `exclude`/`disable`/`exceptions`, legacy entries,
-   or weakened tests. If a finding seems wrong, stop and ask.
+   (`istanbul`/`c8`/`v8 ignore`, `Stryker disable`), config `exclude`/`disable`/`exceptions`, legacy entries, generator markers (`@generated`, `DO NOT EDIT`) in files you wrote, or weakened tests. If a finding seems wrong, stop and ask. Never pass `--accept-policy-change` or set
+   `NITPICKER_ACCEPT_POLICY_CHANGE`: a `nitpicker-config/policy-loosened` finding is for a person to
+   accept.
 5. Code that is right despite a rule: each message ends with the `exceptions` entry that would
    accept it (`If a reviewer agrees this is intended, add {...} to "exceptions" in
 nitpicker.config.json`). That entry is for a human reviewer. Never add one, and never fill in its
@@ -60,6 +61,7 @@ nitpicker.config.json`). That entry is for a human reviewer. Never add one, and 
 - `src/main/composition-root.ts` only passes things in, through named functions. A new feature is
   a new directory, never a new `if`, `?:` or `??` in a shared entry point: lookups and their
   missing-value checks go in the feature's `adapters/`.
+- New code goes under the source roots (`layout.sourceRoots`); the gate reports anything outside.
 - Follow neighbouring signatures (parameter order, naming) and reuse helpers that exist.
 
 ## Write it this way
