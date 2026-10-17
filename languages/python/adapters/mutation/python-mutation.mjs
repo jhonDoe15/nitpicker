@@ -1,4 +1,4 @@
-import { rmSync, writeFileSync } from 'node:fs';
+import { rmSync } from 'node:fs';
 import path from 'node:path';
 import { ingestMutmut, SUPPORTED_MUTMUT } from '../../ingest/mutmut.mjs';
 import {
@@ -7,11 +7,9 @@ import {
   NO_COVERAGE_EXIT_CODE,
 } from './python-mutation-data.mjs';
 import { seedMutantsFromBase } from './python-mutation-reuse.mjs';
+import { writeMutmutConfig } from '../project-tools/mutmut/mutmut-config.mjs';
 import { probeVersion, run } from '../execution/python-process.mjs';
-import { readOptional } from '../execution/python-project.mjs';
-import { mutmutTestPatterns } from '../execution/python-test-files.mjs';
 import { mutationMarkerFindings } from './mutation-markers.mjs';
-import { isDjangoProject } from '../configuration/pytest/collection-options.mjs';
 import {
   DISABLE_HINT,
   missingPytest,
@@ -40,44 +38,9 @@ const STATS_FAILURE = 'failed to collect stats';
 const COPY_HINT =
   'If the tests read files outside the source roots, list them under "also_copy" in [tool.mutmut] of pyproject.toml.';
 const SUPPORTED_MAJOR = /^3\./u;
-const PYPROJECT = 'pyproject.toml';
-const PYPROJECT_SECTION = /^\s*\[tool\.mutmut\]/mu;
-const SETUP_CFG_SECTION = /^\s*\[mutmut\]/mu;
 
 function failure(message) {
   return Object.assign(new Error(message), { rule: MUTATION_FAILED_RULE });
-}
-
-function hasProjectConfiguration(projectRoot) {
-  return (
-    PYPROJECT_SECTION.test(readOptional(path.join(projectRoot, PYPROJECT))) ||
-    SETUP_CFG_SECTION.test(readOptional(path.join(projectRoot, 'setup.cfg')))
-  );
-}
-
-function excludedPatterns(exclude = []) {
-  return exclude.flatMap((glob) => [glob, `${glob.replace(/\/+$/u, '')}/*`]);
-}
-
-export function ensureMutmutConfiguration({ projectRoot, project, exclude }) {
-  if (hasProjectConfiguration(projectRoot)) {
-    return;
-  }
-  if (project.sourceRoots.includes('.')) {
-    throw failure(
-      'mutmut needs the directories to mutate: set "python.sourceRoots" in nitpicker.config.json or source_paths in [tool.mutmut]',
-    );
-  }
-  const pyproject = path.join(projectRoot, PYPROJECT);
-  const section = [
-    '[tool.mutmut]',
-    `source_paths = ${JSON.stringify(project.sourceRoots)}`,
-    `do_not_mutate = ${JSON.stringify([
-      ...mutmutTestPatterns(isDjangoProject(projectRoot)),
-      ...excludedPatterns(exclude),
-    ])}`,
-  ].join('\n');
-  writeFileSync(pyproject, `${readOptional(pyproject)}\n${section}\n`);
 }
 
 function finishedRun({ status, stdout, stderr }) {
@@ -141,7 +104,7 @@ function runPassingTests(context) {
 function mutantRunData(context) {
   const mutants = path.join(context.projectRoot, MUTANTS_DIRECTORY);
   rmSync(mutants, { recursive: true, force: true });
-  ensureMutmutConfiguration(context);
+  writeMutmutConfig({ context, fail: failure });
   seedMutantsFromBase(context);
   const { result, ignored } = runPassingTests(context);
   if (`${result.stdout}${result.stderr}`.includes(NO_TESTS_COLLECTED)) {

@@ -2,6 +2,13 @@ import { rulesCases } from './define.mjs';
 
 export const RULES_CASES = [
   ...rulesCases('sql-queries', [['sql-string-formatting', 'query parameters']]),
+  ...rulesCases('tls-verification', [['tls-verification-off', 'trust the certificate authority']]),
+  ...rulesCases('security-support-rules', [
+    ['tls-verification-off', 'verify_mode = ssl.cert_optional'],
+  ]),
+  ...rulesCases('weak-hmac', [['weak-hmac', 'hashlib.sha256']]),
+  ...rulesCases('http-client-timeout', [['http-without-timeout', 'timeout=10']]),
+  ...rulesCases('unsafe-model-loading', [['unsafe-deserialization', 'yaml.safe_load']]),
   ...rulesCases('shell-command-forms', [['shell-command', 'shell=false']]),
   ...rulesCases('env-access', [['process-env-access', 'composition root']]),
   ...rulesCases('domain-clock', [['clock-now', 'datetime.now(tz=utc)']]),
@@ -23,6 +30,12 @@ export const RULES_CASES = [
   ...rulesCases('skipped-test', [['skipped-test-without-reason', 'reason=']]),
   ...rulesCases('sleep-in-test', [['sleep-in-test', 'fake clock']]),
   ...rulesCases('tautological-assert', [['tautological-assert', 'result of the code under test']]),
+  ...rulesCases('test-without-assertion', [
+    ['test-without-assertion', 'assert result == expected'],
+  ]),
+  ...rulesCases('catch-log-without-exception', [
+    ['catch-log-without-exception', 'logger.exception'],
+  ]),
   ...rulesCases('real-clock-test', [['real-clock-in-test', 'freeze']]),
   ...rulesCases('random-test', [['random-in-test', 'seed']]),
   ...rulesCases('network-test', [['network-in-test', 'fake']]),
