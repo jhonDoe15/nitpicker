@@ -60,7 +60,7 @@ export function readJavaFindings(projectRoot, options = {}) {
       [
         ...moduleFindings,
         ...readDuplicateFindings(reportBase),
-        ...(kotlinPreset ? readKotlinDuplicateFindings(reportBase) : []),
+        ...(kotlinPreset ? readKotlinDuplicateFindings(reportBase, projectRoot) : []),
         ...(projectWide
           ? projectWideFindings(projectRoot, {
               projects: modules.map((module) => ({

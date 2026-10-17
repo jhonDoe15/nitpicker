@@ -227,7 +227,7 @@ export const RULES = [
   {
     id: RULE_IDS.duplicateClone,
     check: 'duplicates',
-    limit: `jscpd in \`${DUPLICATES_MODE}\` mode; any new clone fails`,
+    limit: `jscpd in \`${DUPLICATES_MODE}\` mode, also over sources with names and literals normalized (at least 100 tokens); any new clone fails`,
     enforcedBy: withKotlin(ALL, true),
   },
   {
@@ -274,11 +274,18 @@ export const RULES = [
   testConsoleRule(RULE_IDS, withKotlin(TYPESCRIPT_ONLY, false)),
 ];
 
-/** Rules of the TypeScript-only structure, coupling, dead-code and test-console checks, lifted by `exceptions`. */
-export const TYPESCRIPT_PROJECT_EXCEPTION_RULES = RULES.filter(
-  ({ check, enforcedBy }) =>
-    ['structure', 'coupling', 'dead-code', 'test-console'].includes(check) &&
-    enforcedBy.typescript &&
-    !enforcedBy.java &&
-    !enforcedBy.python,
-).map(({ id }) => id);
+/**
+ * Project-level TypeScript checks that take `exceptions` entries although no ESLint rule has their
+ * id: the rules only the TypeScript structure, coupling, dead-code and test-console checks enforce,
+ * and `duplicate-clone`.
+ */
+export const TYPESCRIPT_PROJECT_EXCEPTION_RULES = [
+  ...RULES.filter(
+    ({ check, enforcedBy }) =>
+      ['structure', 'coupling', 'dead-code', 'test-console'].includes(check) &&
+      enforcedBy.typescript &&
+      !enforcedBy.java &&
+      !enforcedBy.python,
+  ).map(({ id }) => id),
+  RULE_IDS.duplicateClone,
+];

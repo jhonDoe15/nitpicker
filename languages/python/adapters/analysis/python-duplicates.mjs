@@ -1,13 +1,13 @@
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { jscpdClones } from '../../../../core/tooling/jscpd-clones.mjs';
-import { evaluateDuplicates } from '../../../../shared/rules/duplicates.mjs';
 import {
   DUPLICATES_REPORT,
-  DUPLICATES_TOOL,
+  duplicateFindings,
   runJscpd,
 } from '../../../java/adapters/metrics/java-duplicates.mjs';
-import { existingSourceRoots, nonProductionGlobs } from './python-sources.mjs';
+import { isGeneratedPython } from '../../libraries/generated-files.mjs';
+import { existingSourceRoots, nonProductionGlobs, pythonSourceFiles } from './python-sources.mjs';
 
 const DUPLICATES_FAILED_RULE = 'duplicates-failed';
 const IMPORT_LINE = /^\s*(?:import\s|from\s+\S+\s+import\b)/;
@@ -25,6 +25,12 @@ export function runDuplicates(context) {
       ignore: nonProductionGlobs(context.project.sourceRoots, context.projectRoot),
       reportRoot: context.reportRoot,
       together: true,
+      renamed: {
+        syntax: 'python',
+        files: pythonSourceFiles(context.projectRoot, context.project.sourceRoots).filter(
+          (file) => !isGeneratedPython(context.projectRoot, file),
+        ),
+      },
     });
   } catch (error) {
     throw Object.assign(new Error(error.message, { cause: error }), {
@@ -53,10 +59,15 @@ export function importsOnly(fragment) {
   });
 }
 
-export function readDuplicateFindings(reportRoot) {
+export function readDuplicateFindings(reportRoot, projectRoot) {
   const { runs } = JSON.parse(readFileSync(path.join(reportRoot, DUPLICATES_REPORT), 'utf8'));
   const clones = runs
     .flatMap(({ root, report }) => jscpdClones(report, [root]))
     .filter((clone) => !importsOnly(clone.fragment ?? ''));
-  return evaluateDuplicates(clones, DUPLICATES_TOOL);
+  return duplicateFindings(clones, {
+    reportRoot,
+    reportFile: DUPLICATES_REPORT,
+    projectRoot,
+    syntax: 'python',
+  });
 }

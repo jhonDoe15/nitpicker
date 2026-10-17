@@ -21,6 +21,8 @@ import { typescriptStructureProjectFindings } from '../../../preset/structure/pr
 import { layoutJscpdConfig, layoutKnipConfig } from '../../../preset/tool-configs.mjs';
 import { trackTemporaryPath } from '../../../../../core/tooling/temporary-files.mjs';
 import { normalizeDuplicates } from '../../../preset/duplicates/normalize.mjs';
+import { renamedDuplicatesReport } from '../../../preset/duplicates/renamed.mjs';
+import { exceptionMatcher } from '../../../../../shared/rules/exceptions.mjs';
 import { runTestOnlyExports, runUnusedApi } from './unused-api.mjs';
 import { spawnedEntryFiles } from '../../dependency-graph/spawned-entries.mjs';
 
@@ -135,10 +137,7 @@ export async function runStructure(options) {
   ];
 }
 
-export function runDuplicates(options) {
-  const configPath = path.join(options.projectRoot, '.nitpicker-diff-jscpd.json');
-  const outputDirectory = path.join(options.projectRoot, 'reports/quality/duplicates');
-  const layout = readLayout();
+function duplicatesJscpdConfig(options) {
   const config = layoutJscpdConfig(
     parseReportJson(
       readFileSync(
@@ -146,33 +145,64 @@ export function runDuplicates(options) {
         'utf8',
       ),
     ),
-    layout,
+    readLayout(),
   );
-  config.path = existingRoots(options.projectRoot, config.path);
-  if (config.path.length === 0) return [];
+  return { ...config, path: existingRoots(options.projectRoot, config.path) };
+}
+
+function jscpdRunner(options) {
+  return function runJscpd({ configPath, cwd = options.projectRoot }) {
+    return runNodeTool({
+      options,
+      relativeToolPath: 'jscpd/run-jscpd.js',
+      arguments_: ['--config', configPath],
+      cwd,
+      acceptedStatuses: [0],
+    });
+  };
+}
+
+function duplicatesNormalizeOptions(options, renamed) {
+  return {
+    configuredPaths: [],
+    projectRoot: options.projectRoot,
+    isExcepted: exceptionMatcher(readHeadPolicy().exceptions),
+    ...(renamed === undefined
+      ? {}
+      : { renamedReport: withProjectRelativeNames(renamed.report, renamed.root) }),
+  };
+}
+
+function runDuplicatesReport(options, config, outputDirectory) {
+  const runJscpd = jscpdRunner(options);
+  const configPath = path.join(options.projectRoot, '.nitpicker-diff-jscpd.json');
   trackTemporaryPath(configPath);
   writeFileSync(
     configPath,
     `${JSON.stringify({ ...config, absolute: true, reporters: ['json'], output: outputDirectory })}\n`,
   );
   try {
-    runNodeTool({
-      options,
-      relativeToolPath: 'jscpd/run-jscpd.js',
-      arguments_: ['--config', configPath],
-      acceptedStatuses: [0],
-    });
+    runJscpd({ configPath });
     const report = JSON.parse(
       readFileSync(path.join(outputDirectory, 'jscpd-report.json'), 'utf8'),
     );
-    return normalizeDuplicates(
-      withProjectRelativeNames(report, realpathSync(options.projectRoot)),
-      options.analyzerName,
-      { configuredPaths: [] },
-    );
+    const renamed = renamedDuplicatesReport({ projectRoot: options.projectRoot, config, runJscpd });
+    return { report, renamed };
   } finally {
     unlinkSync(configPath);
   }
+}
+
+export function runDuplicates(options) {
+  const config = duplicatesJscpdConfig(options);
+  if (config.path.length === 0) return [];
+  const outputDirectory = path.join(options.projectRoot, 'reports/quality/duplicates');
+  const { report, renamed } = runDuplicatesReport(options, config, outputDirectory);
+  return normalizeDuplicates(
+    withProjectRelativeNames(report, realpathSync(options.projectRoot)),
+    options.analyzerName,
+    duplicatesNormalizeOptions(options, renamed),
+  );
 }
 
 function projectRelativeSide(side, projectRoot) {

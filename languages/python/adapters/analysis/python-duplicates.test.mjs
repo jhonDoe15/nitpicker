@@ -2,6 +2,7 @@ import { mkdirSync, mkdtempSync, realpathSync, rmSync, writeFileSync } from 'nod
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
+import { withHint } from '../../rules/rule-hints.mjs';
 import { importsOnly, readDuplicateFindings, runDuplicates } from './python-duplicates.mjs';
 
 const roots = [];
@@ -43,7 +44,9 @@ function project(files, sourceRoots = ['src']) {
 
 function clonesOf(context) {
   runDuplicates(context);
-  return readDuplicateFindings(context.reportRoot).filter(({ rule }) => rule === 'duplicate-clone');
+  return readDuplicateFindings(context.reportRoot, context.projectRoot).filter(
+    ({ rule }) => rule === 'duplicate-clone',
+  );
 }
 
 describe('duplicates in Python sources', () => {
@@ -68,7 +71,7 @@ describe('duplicates in Python sources', () => {
     const context = project({ 'src/app/a.py': CLONE, 'src/app/b.py': CLONE });
     runDuplicates(context);
 
-    const metrics = readDuplicateFindings(context.reportRoot)
+    const metrics = readDuplicateFindings(context.reportRoot, context.projectRoot)
       .filter(({ rule }) => rule === 'duplicate-clone-size')
       .map(({ metric }) => metric.name);
 
@@ -202,6 +205,126 @@ describe('duplicates in Python sources', () => {
     expect(() => {
       runDuplicates({ ...context, reportRoot: blocker });
     }).toThrow(expect.objectContaining({ rule: 'duplicates-failed' }));
+  });
+});
+
+function renamedFunction({ fn, items, total, item, cap, scale, bonus }) {
+  return [
+    `def ${fn}(${items}, rate):`,
+    `    ${total} = 0`,
+    `    for ${item} in ${items}:`,
+    `        if ${item}.price > ${bonus} and ${item}.quantity > ${bonus}:`,
+    `            ${total} += ${item}.price * ${item}.quantity * rate`,
+    `        elif ${item}.price < ${bonus}:`,
+    `            ${total} -= abs(${item}.price) * ${item}.quantity`,
+    `        else:`,
+    `            ${total} += ${scale}`,
+    `    if ${total} > ${cap}:`,
+    `        ${total} = ${total} - ${scale}`,
+    `    if ${total} < ${bonus} and rate > ${bonus}:`,
+    `        ${total} = ${bonus}`,
+    `    elif ${total} > ${cap} * rate:`,
+    `        ${total} = ${cap}`,
+    `    rounded = round(${total} * ${scale}) / ${scale}`,
+    `    return rounded if rounded > ${cap} else ${total}`,
+    '',
+  ].join('\n');
+}
+
+const INVOICE = {
+  fn: 'invoice_total',
+  items: 'lines',
+  total: 'subtotal',
+  item: 'line',
+  cap: 1000,
+  scale: 100,
+  bonus: 0,
+};
+const PARCEL = {
+  fn: 'weigh_boxes',
+  items: 'boxes',
+  total: 'accumulated',
+  item: 'box',
+  cap: 5000,
+  scale: 10,
+  bonus: 1,
+};
+
+describe('duplicates whose names and literals were renamed', () => {
+  it('reports a copied function with every name and literal changed, once', () => {
+    const context = project({
+      'src/app/invoice.py': renamedFunction(INVOICE),
+      'src/app/parcel.py': renamedFunction(PARCEL),
+    });
+
+    const clones = clonesOf(context);
+
+    expect(clones).toHaveLength(1);
+    expect(clones[0]).toMatchObject({
+      path: 'src/app/invoice.py',
+      identity: expect.stringMatching(
+        /^renamed:pair:src\/app\/invoice\.py\|src\/app\/parcel\.py:/u,
+      ),
+      message: expect.stringMatching(
+        /^This code repeats src\/app\/parcel\.py:1 \(\d+ lines\)\. Keep one copy/u,
+      ),
+    });
+  });
+
+  it('ends the message with the python.exceptions route', () => {
+    const context = project({
+      'src/app/invoice.py': renamedFunction(INVOICE),
+      'src/app/parcel.py': renamedFunction(PARCEL),
+    });
+
+    expect(withHint(clonesOf(context)[0]).message).toMatch(
+      /Keep one copy and call it from both places\. To allow it for some paths, add a "python\.exceptions" entry for duplicate-clone in nitpicker\.config\.json\.$/u,
+    );
+  });
+
+  it('keeps the identity when a name or a literal in a copy changes', () => {
+    const before = project({
+      'src/app/invoice.py': renamedFunction(INVOICE),
+      'src/app/parcel.py': renamedFunction(PARCEL),
+    });
+    const after = project({
+      'src/app/invoice.py': renamedFunction(INVOICE),
+      'src/app/parcel.py': renamedFunction({ ...PARCEL, total: 'running', cap: 77 }),
+    });
+
+    expect(clonesOf(after)[0].identity).toBe(clonesOf(before)[0].identity);
+  });
+
+  it('stays quiet for short functions, imports, tables, fields and generated files', () => {
+    const imports = (names) =>
+      `${names.map((name) => `from app.${name} import ${name}_one, ${name}_two, ${name}_three`).join('\n')}\n`;
+    const table = (key) =>
+      `ROWS = [\n${Array.from({ length: 30 }, (_, index) => `    ("${key}${index}", ${index * 3}, True),`).join('\n')}\n]\n`;
+    const fields = (key) =>
+      `@dataclass\nclass Record:\n${Array.from({ length: 20 }, (_, index) => `    ${key}${index}: str = ""`).join('\n')}\n`;
+    const generated = (values) => `# @generated\n${renamedFunction(values)}`;
+    const context = project({
+      'src/app/short_a.py': 'def area(w, h):\n    return w * h\n',
+      'src/app/short_b.py': 'def size(a, b):\n    return a * b\n',
+      'src/app/imports_a.py': imports([
+        'alpha',
+        'beta',
+        'gamma',
+        'delta',
+        'epsilon',
+        'zeta',
+        'eta',
+      ]),
+      'src/app/imports_b.py': imports(['one', 'two', 'three', 'four', 'five', 'six', 'seven']),
+      'src/app/table_a.py': table('left'),
+      'src/app/table_b.py': table('right'),
+      'src/app/fields_a.py': fields('left'),
+      'src/app/fields_b.py': fields('right'),
+      'src/app/generated_a.py': generated(INVOICE),
+      'src/app/generated_b.py': generated(PARCEL),
+    });
+
+    expect(clonesOf(context)).toEqual([]);
   });
 });
 

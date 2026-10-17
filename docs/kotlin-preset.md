@@ -568,6 +568,15 @@ the cloned text and the n-th occurrence, never a line. Clones are found within o
 within the Kotlin files; a clone between a `.kt` and a `.java` file, or between two source roots, is not
 (the same as for several Java roots).
 
+A second jscpd run (100 tokens, 5 lines) goes over a normalized copy of the `.kt` and `.kts` files,
+where names, strings, numbers and comments are one token each, `package` and `import` lines and
+literal-only `listOf`, `mapOf` and `Pair` calls are blanked and generated files are left out, so a
+copy with renamed locals and changed literals fails too, with `duplicate-clone` and an identity
+starting `renamed:`. It replaces a plain clone over the same two ranges, and drops clones made of
+declarations only (data class fields, enum constants). PMD CPD would not do this better: the
+`pmd-kotlin` lexer ignores the identifier and literal flags. The message ends with the exception
+route, an `exceptions` entry for `duplicates/duplicate-clone` on the first file of the pair.
+
 ## Coupling
 
 The stability-direction rule runs on Kotlin. `nitpickerJdeps` runs the JDK's `jdeps` over every main

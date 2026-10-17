@@ -14,6 +14,7 @@ export const KOTLIN_EXCEPTION_RULES = [
   ...SHARED_EXCEPTION_RULES,
   ...JAVA_SIZE_RULES,
   'test-runtime/slow-test',
+  'duplicates/duplicate-clone',
 ];
 
 function validateKotlinExceptions(config) {
