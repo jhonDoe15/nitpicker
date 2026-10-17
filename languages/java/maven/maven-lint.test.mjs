@@ -19,6 +19,12 @@ afterEach(() => {
   }
 });
 
+const LOWER_CAMEL = '^[a-z]([a-z0-9][a-zA-Z0-9]*)?$';
+
+function naming(name, format) {
+  return `<module name="${name}">\n    <property name="format" value="${format}"/>\n  </module>`;
+}
+
 describe('nitpickerCheckstyleConfig', () => {
   it('drops every inline suppression filter from the bundled Google checks', () => {
     const bundled = [
@@ -28,6 +34,8 @@ describe('nitpickerCheckstyleConfig', () => {
       '    <property name="commentFormat" value="x"/>',
       '  </module>',
       '  <module name="TreeWalker"><module name="SuppressWarningsHolder" /></module>',
+      `  ${naming('MemberName', '^[a-z][a-z0-9][a-zA-Z0-9]*$')}`,
+      `  ${naming('MethodName', '^[a-z][a-z0-9][a-zA-Z0-9]*$')}`,
       '</module>',
     ].join('\n');
 
@@ -37,8 +45,16 @@ describe('nitpickerCheckstyleConfig', () => {
         '  ',
         '  ',
         '  <module name="TreeWalker"></module>',
+        `  ${naming('MemberName', LOWER_CAMEL)}`,
+        `  ${naming('MethodName', LOWER_CAMEL)}`,
         '</module>',
       ].join('\n'),
+    );
+  });
+
+  it('allows one-letter member and method names like the Gradle init script', () => {
+    expect(() => nitpickerCheckstyleConfig(naming('MemberName', 'x'))).toThrow(
+      'nitpicker could not find MethodName in google_checks.xml',
     );
   });
 });
