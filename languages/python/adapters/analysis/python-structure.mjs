@@ -1,6 +1,6 @@
 import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import path from 'node:path';
-import { globMatcher } from '../../../../shared/glob.mjs';
+import { globMatcher } from '../../../../shared/paths/glob.mjs';
 import { collectFileLimitFindings } from '../../../../shared/rules/file-limits.mjs';
 import { readStructureFindings } from '../../../java/adapters/metrics/java-structure.mjs';
 import { run } from '../execution/python-process.mjs';

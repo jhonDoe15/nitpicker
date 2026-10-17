@@ -9,7 +9,7 @@ import {
   writeFileSync,
 } from 'node:fs';
 import path from 'node:path';
-import { globMatcher } from '../../../shared/glob.mjs';
+import { globMatcher } from '../../../shared/paths/glob.mjs';
 import { childrenNamed, parseXml } from '../ingest/common.mjs';
 import { runJava } from './maven-command.mjs';
 

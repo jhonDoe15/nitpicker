@@ -4,7 +4,7 @@ import { jscpdVersion } from '../../java/adapters/metrics/java-duplicates.mjs';
 import { TESTS_FAILED_RULE } from '../../../shared/rules/finding-helpers.mjs';
 import { scanImports } from './analysis/python-coupling.mjs';
 import { runDuplicates } from './analysis/python-duplicates.mjs';
-import { globToRegExpSource } from '../../../shared/glob.mjs';
+import { globToRegExpSource } from '../../../shared/paths/glob.mjs';
 import { detectEnvironment, openEnvironment } from './execution/python-environment.mjs';
 import { checkRules } from './analysis/python-ast-rules.mjs';
 import { importLinterEnabled, runImportLinter } from './analysis/python-import-linter.mjs';

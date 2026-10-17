@@ -52,5 +52,5 @@ export const STRUCTURE_CHECK_FILES = [
   'shared/rules/reuse/reuse-finding.mjs',
   'shared/rules/reuse/sibling-copy-edits.mjs',
   'shared/rules/reuse/token-similarity.mjs',
-  'shared/glob.mjs',
+  'shared/paths/glob.mjs',
 ];

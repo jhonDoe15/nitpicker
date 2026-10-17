@@ -1,18 +1,26 @@
-import { FILE_RULE_IDS, SIZE_RULE_IDS, sizeRules } from './project-rules/size-rules.mjs';
+import {
+  FILE_RULE_IDS,
+  SIZE_HELD_MESSAGES,
+  SIZE_RULE_IDS,
+  sizeGrewMessages,
+  sizeMessages,
+  sizeRules,
+} from './project-rules/size-rules.mjs';
 import { UNUSED_API_RULES, UNUSED_API_RULE_IDS } from './unused-api/unused-api-policy.mjs';
 import { reuseRules } from './rules/reuse-rules.mjs';
-import { SOURCE_RULE_IDS, sourceRules } from './project-rules/source-rules.mjs';
+import { SOURCE_RULE_IDS, sourceRuleMessages, sourceRules } from './project-rules/source-rules.mjs';
 import { testConsoleRule } from './rules/console/console-rule.mjs';
 import { docCommentRule } from './rules/doc-comments/doc-comment-rule.mjs';
 import { sharedFactExceptionRules, withLanguageColumns } from './rules/facts/registry.mjs';
 
-export {
+import {
+  BASE_GREW_MESSAGES,
+  BASE_HELD_MESSAGES,
+  BASE_MESSAGES,
   EXCEPTION_HINT,
-  GREW_MESSAGES,
-  HELD_MESSAGES,
-  MESSAGES,
-  renderMessage,
 } from './messages/messages.mjs';
+
+export { EXCEPTION_HINT, renderMessage } from './messages/messages.mjs';
 
 export { FILE_LIMIT_DEFAULTS } from './project-rules/size-rules.mjs';
 
@@ -93,6 +101,16 @@ export const TOUCHED_CODE_RULES = [
   { rule: RULE_IDS.changedBranchCoverage, tools: ['jacoco'] },
   { rule: RULE_IDS.changedBranchCoverage, tools: ['coverage-py'] },
 ];
+
+export const MESSAGES = {
+  ...BASE_MESSAGES,
+  ...sizeMessages(EXCEPTION_HINT),
+  ...sourceRuleMessages(EXCEPTION_HINT),
+};
+
+export const GREW_MESSAGES = { ...BASE_GREW_MESSAGES, ...sizeGrewMessages(EXCEPTION_HINT) };
+
+export const HELD_MESSAGES = { ...BASE_HELD_MESSAGES, ...SIZE_HELD_MESSAGES };
 
 const BOTH = { typescript: true, java: true, python: false };
 const ALL = { typescript: true, java: true, python: true };

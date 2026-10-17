@@ -1,4 +1,4 @@
-import { globMatcher } from '../../../../shared/glob.mjs';
+import { globMatcher } from '../../../../shared/paths/glob.mjs';
 import { RUFF_SELECTOR } from './python-rule-ids.mjs';
 
 function covers(rule, finding) {

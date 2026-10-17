@@ -59,6 +59,6 @@ describe('analyzer cache keys', () => {
         'languages/typescript/preset/eslint-plugin/rules/analysis/constant-resolution.mjs',
       ]),
     ).toEqual([]);
-    expect(missing('dependency-architecture', ['shared/glob.mjs'])).toEqual([]);
+    expect(missing('dependency-architecture', ['shared/paths/glob.mjs'])).toEqual([]);
   });
 });

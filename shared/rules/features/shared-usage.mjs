@@ -1,4 +1,4 @@
-import { globMatcher } from '../../glob.mjs';
+import { globMatcher } from '../../paths/glob.mjs';
 import { MESSAGES, RULE_IDS, renderMessage } from '../../policy.mjs';
 import { exceptionText } from '../exceptions.mjs';
 
