@@ -171,15 +171,24 @@ export function hasScopePackage(projectRoot, scope) {
   return scopePackage(projectRoot, scope) !== undefined;
 }
 
-export function reactMajorOf(projectRoot) {
-  const installed = readJsonc(path.join(projectRoot, 'node_modules/react/package.json'))?.version;
+export function packageMajorOf(projectRoot, name) {
+  const installed = readJsonc(
+    path.join(projectRoot, 'node_modules', name, 'package.json'),
+  )?.version;
   const manifest = readManifest(projectRoot);
-  const declared = manifest?.dependencies?.react ?? manifest?.devDependencies?.react;
+  const declared = manifest?.dependencies?.[name] ?? manifest?.devDependencies?.[name];
   const major = /\d+/u.exec(typeof installed === 'string' ? installed : String(declared ?? ''));
   return major === null ? undefined : Number(major[0]);
 }
 
-export function isReactProject({ projectRoot, react = {} }) {
+export function reactMajorOf(projectRoot) {
+  return packageMajorOf(projectRoot, 'react');
+}
+
+export function isReactProject({ projectRoot, react = {}, javascript = false }) {
+  if (javascript) {
+    return false;
+  }
   return react.enabled ?? hasScopePackage(projectRoot, 'react');
 }
 

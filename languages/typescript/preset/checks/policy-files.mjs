@@ -1,4 +1,5 @@
 import { ARCHITECTURE_CONFIG, POLICY_TYPESCRIPT_CONFIG } from '../dependency-graph/cruise.mjs';
+import { CRAP_CHECK_FILES } from '../crap/check-files.mjs';
 
 export const JAVASCRIPT_PRESET_FILE = 'languages/javascript/preset/javascript-preset.mjs';
 
@@ -14,6 +15,8 @@ export const POLICY_FILES = [
   'languages/typescript/preset/eslint-config/strict.mjs',
   'languages/typescript/preset/eslint-config/strict/strict-control-flow.mjs',
   'languages/typescript/preset/eslint-config/policy/production-policy.mjs',
+  'languages/typescript/preset/eslint-config/policy/security-facts.mjs',
+  'languages/typescript/preset/structure/reuse/reuse-paths.mjs',
   'languages/typescript/preset/eslint-config/strict-adapters.mjs',
   'languages/typescript/preset/eslint-config/strict/strict-declarations.mjs',
   'languages/typescript/preset/eslint-config/strict/strict-domain.mjs',
@@ -99,6 +102,23 @@ export const POLICY_FILES = [
   'languages/typescript/preset/eslint-plugin/rules/guards/no-shell-string-command.mjs',
   'languages/typescript/preset/eslint-plugin/rules/guards/no-unknown-main-folder.mjs',
   'languages/typescript/preset/eslint-plugin/rules/guards/no-unsafe-path-join.mjs',
+  'languages/typescript/preset/eslint-plugin/rules/security/http/http-clients.mjs',
+  'languages/typescript/preset/eslint-plugin/rules/security/http/http-config.mjs',
+  'languages/typescript/preset/eslint-plugin/rules/security/http/http-defaults.mjs',
+  'languages/typescript/preset/eslint-plugin/rules/security/imported-names.mjs',
+  'languages/typescript/preset/eslint-plugin/rules/security/member-values.mjs',
+  'languages/typescript/preset/eslint-plugin/rules/security/security-values.mjs',
+  'languages/typescript/preset/eslint-plugin/rules/security/tls/no-disabled-tls-verification.mjs',
+  'languages/typescript/preset/eslint-plugin/rules/security/tls/tls-text.mjs',
+  'languages/typescript/preset/eslint-plugin/rules/security/deserialization/no-unsafe-deserialization.mjs',
+  'languages/typescript/preset/eslint-plugin/rules/security/hash/hash-sources.mjs',
+  'languages/typescript/preset/eslint-plugin/rules/security/hash/no-weak-hash.mjs',
+  'languages/typescript/preset/eslint-plugin/rules/security/http/require-http-timeout.mjs',
+  'languages/typescript/preset/eslint-plugin/rules/security/sql/no-sql-string-building.mjs',
+  'languages/typescript/preset/eslint-plugin/rules/security/sql/sql-composition.mjs',
+  'languages/typescript/preset/eslint-plugin/rules/security/sql/sql-arrays.mjs',
+  'languages/typescript/preset/eslint-plugin/rules/security/sql/sql-inert.mjs',
+  'languages/typescript/preset/eslint-plugin/rules/security/sql/sql-sinks.mjs',
   'languages/typescript/preset/eslint-plugin/rules/wrapped/no-magic-numbers.mjs',
   'languages/typescript/preset/eslint-plugin/rules/wrapped/naming-convention.mjs',
   'languages/typescript/preset/eslint-plugin/rules/wrapped/report-filter.mjs',
@@ -111,10 +131,7 @@ export const DEPENDENCY_GRAPH_FILES = [
 ];
 
 export const CRAP_CONFIGURATION_FILES = [
-  'languages/typescript/preset/defaults/crap.config.mjs',
-  'languages/typescript/preset/crap/report.mjs',
-  'languages/typescript/preset/crap/analyze.mjs',
-  'languages/javascript/preset/crap-extensions-hook.mjs',
+  ...CRAP_CHECK_FILES,
   'languages/typescript/preset/layout.mjs',
   'languages/typescript/preset/head-policy.mjs',
   JAVASCRIPT_PRESET_FILE,
