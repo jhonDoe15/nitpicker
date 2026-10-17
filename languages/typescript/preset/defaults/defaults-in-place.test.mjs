@@ -37,6 +37,7 @@ const POLICY_PATHS = [
   'languages/typescript/preset/layout.mjs',
   'languages/typescript/preset/layout/generated-files.mjs',
   'languages/typescript/preset/head-policy.mjs',
+  'languages/typescript/preset/libraries',
   'languages/typescript/preset/tool-configs.mjs',
   'languages/typescript/preset/architecture/outside-roots/outside-roots.mjs',
   'languages/typescript/preset/architecture/strict-boundary-rules.mjs',
