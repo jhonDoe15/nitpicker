@@ -133,6 +133,7 @@ export function projectWideFindings(
       kotlin,
       policy: {
         thresholds: policy.fileLimits,
+        conventions: policy.conventions,
         exclude: policy.exclude,
         exceptions: policy.exceptions,
         baselineRoot: policy.baselineRoot,
