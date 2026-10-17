@@ -1,7 +1,7 @@
 {
   "preset": "typescript",
   "layout": {
-    "sourceRoots": ["core", "languages"],
+    "sourceRoots": ["core", "languages", "shared"],
     "entryPoints": [
       "core/diff/cache/http-cache-worker.mjs",
       "core/fix/prettier-base-runner.mjs",
@@ -25,7 +25,6 @@
       "languages/typescript/adapters/eslint-runner.mjs",
       "languages/typescript/adapters/quality-areas-runner.mjs",
       "languages/typescript/adapters/static-checks-runner.mjs",
-      "languages/typescript/preset/test-console/vitest-reporter.config.mjs",
       "languages/typescript/preset/test-environment/read-environment.mjs",
       "languages/typescript/preset/architecture/public-contract-usage.mjs",
       "languages/typescript/preset/architecture/runtime-dependency-boundaries.mjs",
@@ -51,7 +50,7 @@
     "languages/typescript/preset/structure/fixtures/**",
     "languages/typescript/preset/test-runtime/fixtures/**"
   ],
-  "disable": ["typescript-typecheck", "coverage", "test-console", "crap", "mutation"],
+  "disable": ["typescript-typecheck", "coverage", "crap", "mutation"],
   "exceptions": [
     {
       "rule": "nitpicker/no-node-process-per-test",

@@ -81,6 +81,55 @@ describe('resolveBase', () => {
     });
   });
 
+  it('rejects a configured base that is the commit being checked', () => {
+    const repositoryRoot = createRepository();
+    const sha = fixtureGit(repositoryRoot, ['rev-parse', 'HEAD']).trim();
+
+    expect(() => resolveBase({ repositoryRoot, configuredBase: sha, environment: {} })).toThrow(
+      /compared with itself/,
+    );
+    expect(() =>
+      resolveBase({ repositoryRoot, configuredBase: sha.slice(0, 8), environment: {} }),
+    ).toThrow(/compared with itself/);
+  });
+
+  it('rejects a configured base that follows HEAD, and accepts a remote branch at HEAD', () => {
+    const repositoryRoot = createRepository();
+    setRemoteBranch(repositoryRoot, 'origin', 'main');
+    const resolve = (configuredBase) => () =>
+      resolveBase({ repositoryRoot, configuredBase, environment: {} });
+
+    for (const configuredBase of ['HEAD~0', 'HEAD^0', '@{0}', 'main', 'refs/heads/main']) {
+      expect(resolve(configuredBase)).toThrow(`"base" is ${configuredBase}, the commit you are on`);
+    }
+    expect(resolve('origin/main')()).toEqual({ baseRef: 'origin/main', source: 'config' });
+  });
+
+  it('accepts a remote HEAD at the checked commit and rejects a reflog entry of HEAD', () => {
+    const repositoryRoot = createRepository();
+    setRemoteHead(repositoryRoot, 'origin', 'main');
+    const resolve = (configuredBase) => () =>
+      resolveBase({ repositoryRoot, configuredBase, environment: {} });
+
+    expect(resolve('origin/HEAD')()).toEqual({ baseRef: 'origin/HEAD', source: 'config' });
+    expect(resolve('HEAD@{0}')).toThrow('"base" is HEAD@{0}, the commit you are on');
+  });
+
+  it('accepts a configured commit id that is not the checked commit, and an explicit base at HEAD', () => {
+    const repositoryRoot = createRepository();
+    const sha = fixtureGit(repositoryRoot, ['rev-parse', 'HEAD']).trim();
+    fixtureGit(repositoryRoot, ['commit', '--allow-empty', '-m', 'next']);
+
+    expect(resolveBase({ repositoryRoot, configuredBase: sha, environment: {} })).toEqual({
+      baseRef: sha,
+      source: 'config',
+    });
+    expect(resolveBase({ repositoryRoot, explicitBase: 'HEAD', environment: {} })).toEqual({
+      baseRef: 'HEAD',
+      source: 'argument',
+    });
+  });
+
   it('prefers the upstream remote HEAD over origin remote HEAD', () => {
     const repositoryRoot = createRepository();
     addRemote(repositoryRoot, 'origin');
