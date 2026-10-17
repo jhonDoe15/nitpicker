@@ -1,4 +1,4 @@
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import {
@@ -11,23 +11,12 @@ import {
 import {
   restoreTemporaryState,
   setEnvironment,
-  temporaryRoot,
 } from '../execution/test-support/python-tools-project.mjs';
-import {
-  MUTATION_FAILED_RULE,
-  mutationFindings,
-} from './python-mutation.mjs';
+import { MUTATION_FAILED_RULE, mutationFindings } from './python-mutation.mjs';
 import { MUTATION_SKIPPED_RULE } from './test-run/python-mutation-runner.mjs';
 import { section } from './test-support/mutmut-section.mjs';
 
 afterEach(restoreTemporaryState);
-
-function write(root, files) {
-  for (const [file, text] of Object.entries(files)) {
-    mkdirSync(path.dirname(path.join(root, file)), { recursive: true });
-    writeFileSync(path.join(root, file), text);
-  }
-}
 
 const NOTHING_COLLECTED = {
   'mutants-data.json': mutantsData(null),
