@@ -904,7 +904,8 @@ location.
   analyzer and only when it had no tool error other than failing tests, a skipped dependency check
   or a test time error (`toleratedDependencyErrors` of the analyzer: `tests`, `dependencies`,
   `test-runtime`). When mutmut's first run fails on the project's tests ("failed to collect
-  stats", "Failed to run clean test"), nitpicker runs pytest once with a JUnit report, and runs
+  stats", "Failed to run clean test"), nitpicker runs pytest once with a JUnit report and the
+  options and Django settings mutmut's pytest gets (below), and runs
   mutmut again with `--ignore=<module>` in `PYTEST_ADDOPTS` for each failing or uncollectable test
   module, the Python counterpart of PIT's `--excludedTestClasses`; the `tests/tests-failed` error
   names those modules. When no test module is left, the run is a `mutmut/tests-failed-skipped`
