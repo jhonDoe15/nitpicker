@@ -66,7 +66,9 @@ function moduleDirectories(projects) {
 }
 
 export function readProjectTexts(projectRoot, projects) {
-  const inProject = (relative) => pathInside(projectRoot, relative);
+  function inProject(relative) {
+    return pathInside(projectRoot, relative);
+  }
   const sourceRoots = projects.flatMap((project) => [
     ...project.sourceRoots,
     ...project.kotlinSourceRoots,

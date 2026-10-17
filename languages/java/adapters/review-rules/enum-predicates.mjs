@@ -104,23 +104,34 @@ function staticOwner(imports, name, enums) {
   return owners.length === 1 ? owners[0] : undefined;
 }
 
-function comparedConstants(expression, { text, enums }) {
-  const byType = new Map();
-  const add = (type, constant) =>
-    byType.set(type, new Set([...(byType.get(type) ?? []), constant]));
-  for (const [name] of expression.matchAll(DOTTED_NAME)) {
-    const parts = name.split('.').map((part) => part.trim());
-    const [type, constant] = parts.slice(parts.length - 2);
-    if (TYPE_NAME.test(type)) {
-      add(type, constant);
-    }
-  }
+function qualifiedConstants(expression) {
+  return [...expression.matchAll(DOTTED_NAME)]
+    .map(([name]) =>
+      name
+        .split('.')
+        .map((part) => part.trim())
+        .slice(-2),
+    )
+    .filter(([type]) => TYPE_NAME.test(type));
+}
+
+function importedConstants(expression, { text, enums }) {
   const imports = staticImportsOf(text);
-  for (const [, name] of expression.matchAll(BARE_CONSTANT)) {
-    const type = imports.length === 0 ? undefined : staticOwner(imports, name, enums);
-    if (type !== undefined) {
-      add(type, name);
-    }
+  if (imports.length === 0) {
+    return [];
+  }
+  return [...expression.matchAll(BARE_CONSTANT)]
+    .map(([, name]) => [staticOwner(imports, name, enums), name])
+    .filter(([type]) => type !== undefined);
+}
+
+function comparedConstants(expression, source) {
+  const byType = new Map();
+  for (const [type, constant] of [
+    ...qualifiedConstants(expression),
+    ...importedConstants(expression, source),
+  ]) {
+    byType.set(type, new Set([...(byType.get(type) ?? []), constant]));
   }
   return byType;
 }

@@ -20,8 +20,8 @@ const CLOSING = new Set(['}', ')']);
 
 function depthsOf(text) {
   const depths = new Int32Array(text.length + 1);
-  for (let index = 0; index < text.length; index += 1) {
-    const change = (OPENING.has(text[index]) ? 1 : 0) - (CLOSING.has(text[index]) ? 1 : 0);
+  for (const [index, character] of text.split('').entries()) {
+    const change = (OPENING.has(character) ? 1 : 0) - (CLOSING.has(character) ? 1 : 0);
     depths[index + 1] = depths[index] + change;
   }
   return depths;
@@ -73,7 +73,9 @@ function declarationsIn(file) {
   const text = blankLiterals(raw);
   const depths = depthsOf(text);
   const packageName = packageOf(text);
-  const qualify = (name) => (packageName === '' ? name : `${packageName}.${name}`);
+  function qualify(name) {
+    return packageName === '' ? name : `${packageName}.${name}`;
+  }
   const kotlin = file.endsWith('.kt');
   const mainPattern = kotlin ? KOTLIN_STATIC_MAIN : JAVA_MAIN;
   const classes = [...text.matchAll(DECLARATION)]
@@ -93,12 +95,16 @@ export function readDeclarations(projectRoot, roots) {
   const files = [...new Set(roots)].flatMap((root) =>
     sourceFilesUnder(pathInside(projectRoot, root), SOURCE_EXTENSIONS),
   );
-  for (const file of files) {
+  const found = files.flatMap((file) => {
     const relative = path.relative(projectRoot, file).replaceAll('\\', '/');
-    for (const [className, declared] of declarationsIn(file)) {
-      if (!declarations.has(className)) {
-        declarations.set(className, { ...declared, file: relative });
-      }
+    return declarationsIn(file).map(([className, declared]) => [
+      className,
+      { ...declared, file: relative },
+    ]);
+  });
+  for (const [className, declared] of found) {
+    if (!declarations.has(className)) {
+      declarations.set(className, declared);
     }
   }
   return declarations;

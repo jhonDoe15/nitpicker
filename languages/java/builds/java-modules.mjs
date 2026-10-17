@@ -44,7 +44,9 @@ function mergedRoots(projectRoot, moduleDirs, reportDirectory) {
 function moduleProject(projectRoot, moduleDir, { reportDirectory }) {
   const prefix = prefixOf(projectRoot, moduleDir);
   const manifest = readManifest(moduleDir, reportDirectory);
-  const roots = (name) => (manifest[name] ?? []).map((root) => inModule(prefix, root));
+  function roots(name) {
+    return (manifest[name] ?? []).map((root) => inModule(prefix, root));
+  }
   return {
     reportRoot: path.join(moduleDir, reportDirectory),
     qualifier: prefix,

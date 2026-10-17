@@ -22,15 +22,21 @@ export function classNamesIn(directory) {
     : [];
 }
 
+function sourceOf(line) {
+  return EDGE.exec(line)[1];
+}
+
+function linesOf(selected) {
+  return selected.map((line) => `${line}\n`).join('');
+}
+
 export function splitJdepsEdges(text, { mainClasses, testClasses }) {
   const main = new Set(mainClasses);
   const test = new Set(testClasses);
   const edges = text.split(/\r?\n/u).filter((line) => EDGE.test(line));
-  const sourceOf = (line) => EDGE.exec(line)[1];
-  const lines = (selected) => selected.map((line) => `${line}\n`).join('');
   return {
-    main: lines(edges.filter((line) => main.has(sourceOf(line)))),
-    test: lines(edges.filter((line) => !main.has(sourceOf(line)) && test.has(sourceOf(line)))),
+    main: linesOf(edges.filter((line) => main.has(sourceOf(line)))),
+    test: linesOf(edges.filter((line) => !main.has(sourceOf(line)) && test.has(sourceOf(line)))),
   };
 }
 
