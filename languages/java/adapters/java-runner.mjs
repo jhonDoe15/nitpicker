@@ -49,7 +49,7 @@ const USAGE =
   'Usage: java-runner.mjs --project-root <directory> [--snapshot base|head] [--policy-root <directory>]' +
   ' [--baseline-root <directory>] [--crap-limit <number>] [--exclude <glob>]... [--exception <rule>:<glob>]... [--legacy-inventory <path>]' +
   ' [--preset java|kotlin] [--kotlin-formatter ktlint|ktfmt|none]' +
-  ' [--kotlin-detekt-config <path>] [--file-limits <json>] [--test-seconds <json>] [--<tool>-precedence <layers>]...';
+  ' [--kotlin-detekt-config <path>] [--file-limits <json>] [--test-seconds <json>] [--test-console-allow <json>] [--<tool>-precedence <layers>]...';
 
 function parseException(value) {
   const separator = value.indexOf(EXCEPTION_SEPARATOR);
@@ -109,6 +109,7 @@ export function parseRunnerArguments(arguments_) {
       crapLimit,
       fileLimits: parseJsonObject(values.get('--file-limits'), '--file-limits'),
       testSeconds: parseJsonObject(values.get('--test-seconds'), '--test-seconds'),
+      testConsoleAllow: parseJsonArray(values.get('--test-console-allow'), '--test-console-allow'),
       exclude,
       exceptions,
       legacyInventory: values.get('--legacy-inventory'),
@@ -151,6 +152,7 @@ const RUNNER_OPTIONS = [
   ...PRECEDENCE_TOOLS.map((tool) => `--${tool}-precedence`),
   '--file-limits',
   '--test-seconds',
+  '--test-console-allow',
 ];
 
 function parseJsonObject(text, option) {
@@ -160,6 +162,17 @@ function parseJsonObject(text, option) {
   const parsed = JSON.parse(text);
   if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) {
     throw new Error(`${option} must be a JSON object`);
+  }
+  return parsed;
+}
+
+function parseJsonArray(text, option) {
+  if (text === undefined) {
+    return undefined;
+  }
+  const parsed = JSON.parse(text);
+  if (!Array.isArray(parsed)) {
+    throw new Error(`${option} must be a JSON array`);
   }
   return parsed;
 }

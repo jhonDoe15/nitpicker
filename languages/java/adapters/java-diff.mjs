@@ -18,23 +18,30 @@ import { withoutOverlaps } from './overlaps/static-overlaps.mjs';
 import { toolConfigChoices, toolConfigProperties } from './tool-config/tool-config-choices.mjs';
 import { readJavaFindings } from './reporting/java-reports.mjs';
 import { readReportModules } from './gradle-reports/report-modules.mjs';
+import { failingTestsOf } from './gradle-reports/failing-tests.mjs';
 import { runMavenPreset, MAVEN_REPORT_DIRECTORY } from '../maven/maven-build.mjs';
 import { detectJavaBuild, INIT_SCRIPT } from '../builds/java-build.mjs';
 import { moduleReport, readModuleFindings } from '../builds/java-modules.mjs';
 import { resolveKotlinRun } from './kotlin/kotlin-run.mjs';
 import { isJavaTouchedRule } from './touched-rules.mjs';
+import { withProjectEnumPredicates } from './review-rules/enum-predicates.mjs';
 import { javaStyleProperties } from './style/java-style.mjs';
 
 const GRADLE_TIMEOUT_MS = 15 * 60 * 1000;
 const MAX_OUTPUT_BYTES = 50 * 1024 * 1024;
 const MAX_FAILURE_LENGTH = 3500;
+const CLOCK_SLACK_MS = 2000;
 const CHECKSTYLE_EXPORT = 'checkstyle-nitpicker.xml';
 
-function assertSucceeded(result, projectRoot) {
+function assertSucceeded(result, projectRoot, { reportBase, since }) {
   if (result.error !== undefined) {
     throw result.error;
   }
   if (result.status !== 0) {
+    const failingTests = failingTestsOf(projectRoot, { reportBase, since });
+    if (failingTests !== undefined) {
+      throw failingTests;
+    }
     const detail = condenseFailure(
       result.stderr.trim() === '' ? result.stdout : result.stderr,
       MAX_FAILURE_LENGTH,
@@ -61,6 +68,7 @@ function runJavaPreset(
 ) {
   const withKotlin = kotlinRun?.withArguments ?? ((run) => run([]));
   const directory = path.join(reportBase, 'tool-config');
+  const since = Date.now() - CLOCK_SLACK_MS;
   const layersCheckstyle = toolConfigChoices(projectRoot, policy).checkstyle.project !== undefined;
   withKotlin((kotlinArguments) => {
     const common = [
@@ -93,7 +101,7 @@ function runJavaPreset(
         shell: target.shell,
         timeout: GRADLE_TIMEOUT_MS,
       });
-      assertSucceeded(result, projectRoot);
+      assertSucceeded(result, projectRoot, { reportBase, since });
     }
   });
 }
@@ -113,6 +121,7 @@ function readOptions(policy = {}) {
     exclude: policy.exclude,
     exceptions: policy.exceptions,
     testSeconds: policy.testSeconds,
+    testConsoleAllow: policy.testConsoleAllow,
     javaStyle: policy.javaStyle,
     baselineRoot: policy.baselineRoot,
     baseline: { snapshot: policy.snapshot, baselineRoot: policy.baselineRoot },
@@ -178,7 +187,7 @@ export function collectJavaFindings(root, options = {}) {
   }
   return applyJavaPolicy(
     withoutFollowedImports(
-      parseAnalyzerReport({ findings }, preset).findings,
+      withProjectEnumPredicates(parseAnalyzerReport({ findings }, preset).findings, projectRoot),
       options.policy?.conventions,
       readSource,
     ),
