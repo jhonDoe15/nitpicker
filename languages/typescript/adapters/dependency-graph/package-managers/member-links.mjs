@@ -21,15 +21,18 @@ function linkTarget(livePath, roots) {
     : real;
 }
 
-function linkEntries(liveDirectory, snapshotDirectory, roots) {
-  for (const entry of readdirSync(liveDirectory, { withFileTypes: true })) {
-    const livePath = containedPath(liveDirectory, entry.name);
-    const snapshotPath = containedPath(snapshotDirectory, entry.name);
-    if (entry.isDirectory() && entry.name.startsWith('@')) {
-      mkdirSync(snapshotPath);
-      linkEntries(livePath, snapshotPath, roots);
-    } else if (existsSync(livePath)) {
-      symlinkSync(linkTarget(livePath, roots), snapshotPath);
+function linkEntries(liveRoot, snapshotRoot, roots) {
+  const pending = [{ liveDirectory: liveRoot, snapshotDirectory: snapshotRoot }];
+  for (const { liveDirectory, snapshotDirectory } of pending) {
+    for (const entry of readdirSync(liveDirectory, { withFileTypes: true })) {
+      const livePath = containedPath(liveDirectory, entry.name);
+      const snapshotPath = containedPath(snapshotDirectory, entry.name);
+      if (entry.isDirectory() && entry.name.startsWith('@')) {
+        mkdirSync(snapshotPath);
+        pending.push({ liveDirectory: livePath, snapshotDirectory: snapshotPath });
+      } else if (existsSync(livePath)) {
+        symlinkSync(linkTarget(livePath, roots), snapshotPath);
+      }
     }
   }
 }

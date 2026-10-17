@@ -15,7 +15,6 @@ import {
 } from '../../../../../languages/typescript/adapters/static-checks/dependencies.mjs';
 import { installFakeManagers } from '../../../../../languages/typescript/adapters/dependency-graph/package-managers/test-support/fake-managers.mjs';
 import { toolRoot, useStaticCheckFixtures } from './test-support/static-check-fixtures.mjs';
-import { writeFiles } from '../../../git/test-support/fixture-files.mjs';
 
 const { temporaryDirectory, createRepository } = useStaticCheckFixtures();
 

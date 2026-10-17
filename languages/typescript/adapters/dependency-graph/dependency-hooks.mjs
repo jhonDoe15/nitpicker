@@ -51,7 +51,9 @@ const nodeDependencyHook = {
       throw new Error(`Refusing to replace existing dependencies at ${dependencyPath}`);
     }
     const existingMembers = new Set(memberDependencyDirectories(packageManager.root));
-    const memberPaths = () => installedMembers(packageManager.root, existingMembers);
+    function memberPaths() {
+      return installedMembers(packageManager.root, existingMembers);
+    }
     try {
       const outcome = installDependencies(packageManager);
       if (!outcome.ok) {
