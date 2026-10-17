@@ -1,9 +1,9 @@
-import { parseToml, readProjectFile } from '../project-files.mjs';
+import { isTable, parseToml, readProjectFile } from '../project-files.mjs';
 import { parseIni } from './ini-file.mjs';
 
 export const DEFAULT_PYTHON_FILES = ['test_*.py', '*_test.py'];
-export const DEFAULT_PYTHON_CLASSES = ['Test'];
-export const DEFAULT_PYTHON_FUNCTIONS = ['test'];
+const DEFAULT_PYTHON_CLASSES = ['Test'];
+const DEFAULT_PYTHON_FUNCTIONS = ['test'];
 export const DEFAULT_NORECURSEDIRS = [
   '*.egg',
   '.*',
@@ -23,10 +23,6 @@ const INI_SOURCES = [
   { file: 'tox.ini', section: 'pytest', always: false },
   { file: 'setup.cfg', section: 'tool:pytest', always: false },
 ];
-
-function isTable(value) {
-  return typeof value === 'object' && value !== null && !Array.isArray(value);
-}
 
 function normalized(options) {
   return Object.fromEntries(
@@ -96,32 +92,13 @@ function listOr(value, fallback) {
   return list.length === 0 ? fallback : list;
 }
 
+const SHELL_WORD = /(?:[^\s"']|"[^"]*"?|'[^']*'?)+/gu;
+const SHELL_QUOTED = /"([^"]*)"?|'([^']*)'?/gu;
+
 export function shellWords(text) {
-  const result = [];
-  let current = '';
-  let quote;
-  let started = false;
-  for (const character of text) {
-    if (quote !== undefined) {
-      if (character === quote) {
-        quote = undefined;
-      } else {
-        current += character;
-      }
-    } else if (character === '"' || character === "'") {
-      quote = character;
-      started = true;
-    } else if (/\s/u.test(character)) {
-      if (started || current !== '') {
-        result.push(current);
-      }
-      current = '';
-      started = false;
-    } else {
-      current += character;
-    }
-  }
-  return started || current !== '' ? [...result, current] : result;
+  return [...text.matchAll(SHELL_WORD)].map(([word]) =>
+    word.replaceAll(SHELL_QUOTED, (_quoted, double, single) => double ?? single),
+  );
 }
 
 export function readPytestConfig(projectRoot) {

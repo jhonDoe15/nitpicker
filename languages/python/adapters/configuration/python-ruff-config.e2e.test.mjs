@@ -32,9 +32,10 @@ describe.skipIf(!enabled)('the ruff config for the installed ruff', () => {
 
     const text = readFileSync(ruffConfigFor(context), 'utf8');
 
-    expect(text).toContain('"E4"');
-    expect(text).toContain('"T20"');
-    expect(text).toContain('"PT001"');
-    expect(text).toContain('"G004"');
+    const lines = text.split('\n').map((line) => line.trim());
+
+    expect(
+      ['"E4",', '"T20",', '"PT001",', '"G004",'].filter((code) => lines.includes(code)),
+    ).toEqual(['"E4",', '"T20",', '"PT001",', '"G004",']);
   });
 });

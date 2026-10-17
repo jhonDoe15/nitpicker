@@ -19,27 +19,30 @@ function isIndented(raw) {
   return raw.startsWith(' ') || raw.startsWith('\t');
 }
 
+function addLine(sections, state, raw) {
+  const line = raw.trim();
+  if (line === '' || isComment(line)) {
+    return;
+  }
+  const name = sectionName(line);
+  if (isIndented(raw) && state.options !== undefined && state.current !== undefined) {
+    state.options.set(state.current, `${state.options.get(state.current) ?? ''}\n${line}`.trim());
+  } else if (name !== undefined) {
+    state.options = new Map();
+    sections.set(name, state.options);
+    state.current = undefined;
+  } else if (state.options !== undefined) {
+    const option = splitOption(line);
+    state.options.set(option.key, option.value);
+    state.current = option.key;
+  }
+}
+
 export function parseIni(text) {
   const sections = new Map();
-  let options;
-  let current;
+  const state = { options: undefined, current: undefined };
   for (const raw of text.split(/\r?\n/u)) {
-    const line = raw.trim();
-    const name = sectionName(line);
-    if (line === '' || isComment(line)) {
-      continue;
-    }
-    if (isIndented(raw) && options !== undefined && current !== undefined) {
-      options.set(current, `${options.get(current) ?? ''}\n${line}`.trim());
-    } else if (name !== undefined) {
-      options = new Map();
-      sections.set(name, options);
-      current = undefined;
-    } else if (options !== undefined) {
-      const option = splitOption(line);
-      options.set(option.key, option.value);
-      current = option.key;
-    }
+    addLine(sections, state, raw);
   }
   return sections;
 }

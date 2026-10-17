@@ -1,6 +1,9 @@
 const FIXTURE = /^[ \t]*@(?:pytest\.)?fixture(\(\s*\))?[ \t]*$/gmu;
-const MARK =
-  /^[ \t]*@pytest\.mark\.(?!parametrize\b|skip\b|skipif\b|xfail\b|usefixtures\b|filterwarnings\b)\w+(\(\s*\))?[ \t]*$/gmu;
+const BUILT_IN_MARKS = 'parametrize|skip|skipif|xfail|usefixtures|filterwarnings';
+const MARK = new RegExp(
+  String.raw`^[ \t]*@pytest\.mark\.(?!(?:${BUILT_IN_MARKS})\b)\w+(\(\s*\))?[ \t]*$`,
+  'gmu',
+);
 const PARAMETRIZE = /@pytest\.mark\.parametrize\(/gu;
 const OPENERS = new Set(['(', '[', '{']);
 const CLOSERS = new Set([')', ']', '}']);
@@ -33,25 +36,34 @@ export function parenthesesChoice(counts) {
     : total.withParentheses > total.without;
 }
 
+function nextState(state, character, previous) {
+  const { depth, quote } = state;
+  if (quote !== undefined) {
+    return { ...state, quote: character === quote && previous !== '\\' ? undefined : quote };
+  }
+  if (QUOTES.has(character)) {
+    return { ...state, quote: character };
+  }
+  if (OPENERS.has(character)) {
+    return { ...state, depth: depth + 1 };
+  }
+  if (!CLOSERS.has(character)) {
+    return state;
+  }
+  return depth === 0 ? { ...state, done: true } : { ...state, depth: depth - 1 };
+}
+
 function topLevelArguments(text, start) {
+  const tail = text.slice(start).split('');
   const starts = [start];
-  let depth = 0;
-  let quote;
-  for (let index = start; index < text.length; index += 1) {
-    const character = text[index];
-    if (quote !== undefined) {
-      quote = character === quote && text[index - 1] !== '\\' ? undefined : quote;
-    } else if (QUOTES.has(character)) {
-      quote = character;
-    } else if (OPENERS.has(character)) {
-      depth += 1;
-    } else if (CLOSERS.has(character)) {
-      if (depth === 0) {
-        break;
-      }
-      depth -= 1;
-    } else if (character === ',' && depth === 0) {
-      starts.push(index + 1);
+  let state = { depth: 0, quote: undefined, done: false };
+  for (const [offset, character] of tail.entries()) {
+    state = nextState(state, character, tail[offset - 1]);
+    if (state.done) {
+      break;
+    }
+    if (character === ',' && state.depth === 0 && state.quote === undefined) {
+      starts.push(start + offset + 1);
     }
   }
   return starts.slice(0, 2).map((position) => text.slice(position).trimStart());

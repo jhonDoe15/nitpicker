@@ -2,6 +2,10 @@ import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import path from 'node:path';
 
+export function isTable(value) {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
 function insideRoot(projectRoot, name) {
   const root = path.resolve(projectRoot);
   const full = path.resolve(root, name);

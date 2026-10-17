@@ -24,13 +24,16 @@ function normalized(requirement) {
 }
 
 function stringsOf(value) {
-  if (typeof value === 'string') {
-    return [value];
+  const pending = [value];
+  const strings = [];
+  for (const item of pending) {
+    if (typeof item === 'string') {
+      strings.push(item);
+    } else if (item !== null && typeof item === 'object') {
+      pending.push(...Object.values(item));
+    }
   }
-  if (Array.isArray(value)) {
-    return value.flatMap(stringsOf);
-  }
-  return value !== null && typeof value === 'object' ? Object.values(value).flatMap(stringsOf) : [];
+  return strings;
 }
 
 function keysOf(value) {

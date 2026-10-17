@@ -100,10 +100,12 @@ describe('the pytest style of a project', () => {
         '[tool.ruff.lint.flake8-pytest-style]\nfixture-parentheses = false\nparametrize-names-type = "tuple"\n',
     });
 
-    expect(pytestStyle(root, ['tests/test_a.py'])).toMatchObject({
+    expect(pytestStyle(root, ['tests/test_a.py'])).toEqual({
       'fixture-parentheses': false,
       'parametrize-names-type': 'tuple',
       'mark-parentheses': true,
+      'parametrize-values-type': 'list',
+      'parametrize-values-row-type': 'tuple',
     });
   });
 

@@ -2,29 +2,14 @@ const TEST_DIRECTORIES = new Set(['tests', 'test']);
 const ALSO_TESTS = ['test_*.py', '*_test.py', 'tests.py', 'tests_*.py', '*_tests.py'];
 const VALUE_FLAGS = ['--deselect', '--ignore', '--ignore-glob'];
 
+const REGEXP_SPECIALS = /[.+^${}()|[\]\\]/gu;
+
 export function matchesGlob(name, pattern) {
-  let nameIndex = 0;
-  let patternIndex = 0;
-  let starIndex = -1;
-  let resume = 0;
-  while (nameIndex < name.length) {
-    const token = pattern[patternIndex];
-    if (token === '*') {
-      starIndex = patternIndex;
-      resume = nameIndex;
-      patternIndex += 1;
-    } else if (token === '?' || token === name[nameIndex]) {
-      patternIndex += 1;
-      nameIndex += 1;
-    } else if (starIndex >= 0) {
-      resume += 1;
-      nameIndex = resume;
-      patternIndex = starIndex + 1;
-    } else {
-      return false;
-    }
-  }
-  return pattern.slice(patternIndex).split('*').join('') === '';
+  const source = pattern
+    .replaceAll(REGEXP_SPECIALS, String.raw`\$&`)
+    .replaceAll('*', '.*')
+    .replaceAll('?', '.');
+  return new RegExp(`^${source}$`, 'su').test(name);
 }
 
 function matchesAny(name, patterns) {

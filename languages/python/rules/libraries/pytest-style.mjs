@@ -1,6 +1,10 @@
 import { readdirSync } from 'node:fs';
 import path from 'node:path';
-import { readProjectFile, tomlTable } from '../../adapters/configuration/project-files.mjs';
+import {
+  isTable,
+  readProjectFile,
+  tomlTable,
+} from '../../adapters/configuration/project-files.mjs';
 import {
   fixtureCounts,
   markCounts,
@@ -20,10 +24,6 @@ const OPTION_KEYS = [
 const CONFIG_FILES = ['ruff.toml', '.ruff.toml'];
 const SKIPPED_FOLDERS = new Set(['node_modules', 'venv', 'build', 'dist', 'site-packages']);
 const MAX_FILES = 2000;
-
-function isTable(value) {
-  return typeof value === 'object' && value !== null && !Array.isArray(value);
-}
 
 function explicitOptions(projectRoot) {
   const pyproject = tomlTable(projectRoot, 'pyproject.toml')?.tool?.ruff;
@@ -48,21 +48,30 @@ function skipsFolder(name) {
   return name.startsWith('.') || SKIPPED_FOLDERS.has(name) || name.endsWith('.egg-info');
 }
 
-export function pythonFilesOf(projectRoot) {
+function subfolders(entries, folder) {
+  return entries
+    .filter((entry) => entry.isDirectory() && !skipsFolder(entry.name))
+    .map((entry) => path.posix.join(folder, entry.name));
+}
+
+function pythonEntries(entries, folder) {
+  return entries
+    .filter((entry) => entry.isFile() && entry.name.endsWith('.py'))
+    .map((entry) => path.posix.join(folder, entry.name));
+}
+
+function pythonFilesOf(projectRoot) {
+  const folders = [''];
   const found = [];
-  const pending = [''];
-  while (pending.length > 0 && found.length < MAX_FILES) {
-    const folder = pending.pop();
-    for (const entry of readdirSync(path.join(projectRoot, folder), { withFileTypes: true })) {
-      const relative = path.posix.join(folder, entry.name);
-      if (entry.isDirectory() && !skipsFolder(entry.name)) {
-        pending.push(relative);
-      } else if (entry.isFile() && entry.name.endsWith('.py')) {
-        found.push(relative);
-      }
+  for (const folder of folders) {
+    const entries = readdirSync(path.join(projectRoot, folder), { withFileTypes: true });
+    folders.push(...subfolders(entries, folder));
+    found.push(...pythonEntries(entries, folder));
+    if (found.length >= MAX_FILES) {
+      break;
     }
   }
-  return found;
+  return found.slice(0, MAX_FILES);
 }
 
 function textOf(projectRoot, file) {
