@@ -1,6 +1,7 @@
 import { readManifest } from '../eslint-config/scope-support.mjs';
 import { defaultResolvedLayout } from '../layout.mjs';
 import { ambiguityMessage, chooseRunner } from './detection/choose-runner.mjs';
+import { RUNNER_NAMES } from './runners.mjs';
 import { configEvidence, dependencyEvidence } from './detection/project-files.mjs';
 import { importEvidence } from './detection/test-imports.mjs';
 import {
@@ -44,9 +45,29 @@ export function testRunnerFor(projectRoot, configured, layout) {
 }
 
 export function detectedRunnerFact(projectRoot, { configured, layout }) {
-  const runner =
-    configured === undefined
-      ? detectTestRunner(projectRoot, layout).runner
-      : runnerDetection(projectRoot, layout).runner;
-  return runner === undefined ? {} : { detectedRunner: runner };
+  const detection = runnerDetection(projectRoot, layout);
+  if (detection.candidates === undefined) {
+    return { detectedRunner: detection.runner };
+  }
+  return configured === undefined
+    ? {
+        detectedRunner: detection.fallback,
+        runnerAmbiguity: ambiguityMessage(detection.candidates),
+      }
+    : {};
+}
+
+const TEST_RUNNING_ANALYZERS = new Set(['coverage', 'crap', 'mutation']);
+
+export function runnerChoiceNotices(tests, analyzers) {
+  if (tests.runnerAmbiguity === undefined) {
+    return [];
+  }
+  if (analyzers.some(({ name }) => TEST_RUNNING_ANALYZERS.has(name))) {
+    throw new Error(tests.runnerAmbiguity);
+  }
+  return [
+    `Test runner detection ${tests.runnerAmbiguity} Until then the test-file lint rules follow ` +
+      `${RUNNER_NAMES[tests.detectedRunner]}, and coverage, CRAP and mutation testing cannot run.`,
+  ];
 }

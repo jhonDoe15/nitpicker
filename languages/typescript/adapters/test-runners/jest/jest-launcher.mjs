@@ -6,6 +6,8 @@ import { pathToFileURL } from 'node:url';
 const LAUNCHERS = {
   'react-scripts': { packageName: 'react-scripts', bin: 'bin/react-scripts.js' },
   craco: { packageName: '@craco/craco', bin: 'dist/bin/craco.js' },
+  'react-app-rewired': { packageName: 'react-app-rewired', bin: 'bin/index.js' },
+  rescripts: { packageName: '@rescripts/cli', bin: 'bin/rescripts.js' },
 };
 
 function missingLauncher(launcher, projectRoot, cause) {

@@ -86,14 +86,13 @@ describe('balanced test runner evidence', () => {
 });
 
 describe('the head policy test runner check', () => {
-  it('stops before any analyzer runs when the head shows two runners', () => {
+  it('records two runners the head shows, for the analyzers that run tests to stop on', () => {
     const root = projectWith({ 'package.json': manifest(BOTH_DEPENDENCIES) });
 
-    expect(() => resolveHeadPolicy({}, root)).toThrow(
-      new Error(
-        `found several test runners: Vitest (the vitest dependency) and Jest (the jest dependency). ${choose('"vitest" or "jest"')}`,
-      ),
-    );
+    expect(resolveHeadPolicy({}, root).tools.tests).toEqual({
+      detectedRunner: 'vitest',
+      runnerAmbiguity: `found several test runners: Vitest (the vitest dependency) and Jest (the jest dependency). ${choose('"vitest" or "jest"')}`,
+    });
   });
 
   it('records the configured runner and no detected one when the evidence is balanced', () => {
@@ -101,12 +100,6 @@ describe('the head policy test runner check', () => {
 
     expect(resolveHeadPolicy({ tools: { tests: { runner: 'jest' } } }, root).tools.tests).toEqual({
       runner: 'jest',
-      testFiles: {
-        include: ['**/__tests__/**/*.?([mc])[jt]s?(x)', '**/?(*.)+(spec|test).?([mc])[jt]s?(x)'],
-        exclude: [],
-        includeRegexes: [],
-        excludeRegexes: ['/node_modules/'],
-      },
     });
   });
 

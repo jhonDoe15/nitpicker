@@ -1,20 +1,14 @@
 import { spawnSync } from 'node:child_process';
 import path from 'node:path';
-import { RESULT_MARKER } from '../read-environment.mjs';
+import { MOCHA_MODE, RESULT_MARKER } from '../read-environment.mjs';
 
 const READER = path.join(import.meta.dirname, '..', 'read-environment.mjs');
 const MAX_OUTPUT_BYTES = 10 * 1024 * 1024;
 
-export function readViteConfig({
-  configFile,
-  projectRoot,
-  resolveRoots,
-  timeoutMs,
-  parentEnvironment = process.env,
-}) {
-  const result = spawnSync(process.execPath, [READER, configFile, projectRoot, ...resolveRoots], {
+function readerOutcome(readerArguments, { projectRoot, environment, timeoutMs }) {
+  const result = spawnSync(process.execPath, [READER, ...readerArguments], {
     cwd: projectRoot,
-    env: { ...parentEnvironment, VITEST: 'true', NODE_ENV: 'test' },
+    env: environment,
     encoding: 'utf8',
     input: '',
     maxBuffer: MAX_OUTPUT_BYTES,
@@ -34,4 +28,32 @@ export function readViteConfig({
     return { failure: `the config ended the process with exit code ${String(result.status)}` };
   }
   return JSON.parse(line.slice(RESULT_MARKER.length));
+}
+
+export function readViteConfig({
+  configFile,
+  projectRoot,
+  resolveRoots,
+  timeoutMs,
+  parentEnvironment = process.env,
+}) {
+  return readerOutcome([configFile, projectRoot, ...resolveRoots], {
+    projectRoot,
+    environment: { ...parentEnvironment, VITEST: 'true', NODE_ENV: 'test' },
+    timeoutMs,
+  });
+}
+
+export function readMochaOptions({
+  projectRoot,
+  liveProjectRoot = projectRoot,
+  tokens,
+  timeoutMs,
+  parentEnvironment = process.env,
+}) {
+  return readerOutcome([MOCHA_MODE, projectRoot, liveProjectRoot, ...tokens], {
+    projectRoot,
+    environment: parentEnvironment,
+    timeoutMs,
+  });
 }

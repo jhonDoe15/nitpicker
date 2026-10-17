@@ -147,12 +147,23 @@ export function readDependencyNames(projectRoot) {
 
 const vitestGlobals = /\bglobals\s*:\s*true\b/u;
 
-export function testsCleanUpAutomatically(projectRoot) {
+function vitestCleansUp(projectRoot) {
   if (!readDependencyNames(projectRoot).includes('vitest')) {
     return true;
   }
   const configFile = projectConfigFile(projectRoot);
   return configFile !== undefined && vitestGlobals.test(readText(configFile));
+}
+
+const AUTO_CLEANUP = {
+  vitest: vitestCleansUp,
+  jest: () => true,
+  mocha: () => true,
+  node: () => false,
+};
+
+export function testsCleanUpAutomatically(projectRoot, runner = 'vitest') {
+  return (AUTO_CLEANUP[runner] ?? vitestCleansUp)(projectRoot);
 }
 
 export function isReactNativePackage(name) {

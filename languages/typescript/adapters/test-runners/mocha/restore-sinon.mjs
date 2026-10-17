@@ -38,6 +38,82 @@ async function importedSinon(manifestFile) {
   return loaded.default ?? loaded;
 }
 
+const REPLACERS = ['replace', 'define', 'replaceGetter', 'replaceSetter'];
+
+function fakesOf(sinon) {
+  return typeof sinon.getFakes === 'function' ? sinon.getFakes() : [];
+}
+
+function restoreFakes(fakes) {
+  for (const fake of fakes.toReversed()) {
+    if (typeof fake?.restore === 'function') {
+      fake.restore();
+    }
+  }
+}
+
+function createdSince(mark, fakes) {
+  if (mark === undefined) {
+    return fakes.length;
+  }
+  return mark.fakes === fakes ? mark.length : 0;
+}
+
+function replacerFor(sinon, state, name) {
+  const original = sinon[name];
+  function current() {
+    return state.sandbox === undefined ? original : state.sandbox[name];
+  }
+  function replacer(...replaced) {
+    return current()(...replaced);
+  }
+  if (typeof original.usingAccessor === 'function') {
+    replacer.usingAccessor = (...replaced) => current().usingAccessor(...replaced);
+  }
+  return replacer;
+}
+
+function sandboxHooks(sinon) {
+  const state = { sandbox: undefined, mark: undefined };
+  for (const name of REPLACERS.filter((replacer) => typeof sinon[replacer] === 'function')) {
+    sinon[name] = replacerFor(sinon, state, name);
+  }
+  const restoreDefault = sinon.restore;
+  sinon.restore = () => {
+    state.sandbox?.restore();
+    restoreDefault();
+  };
+  return {
+    beforeEach() {
+      const fakes = fakesOf(sinon);
+      state.mark = { fakes, length: fakes.length };
+      state.sandbox = sinon.createSandbox();
+    },
+    afterEach() {
+      const fakes = fakesOf(sinon);
+      restoreFakes(fakes.splice(createdSince(state.mark, fakes)));
+      state.sandbox?.restore();
+      state.sandbox = undefined;
+    },
+  };
+}
+
+function testDoubleHooks(sandboxes) {
+  const hooks = sandboxes.map(sandboxHooks);
+  return {
+    beforeEach() {
+      for (const hook of hooks) {
+        hook.beforeEach();
+      }
+    },
+    afterEach() {
+      for (const hook of hooks) {
+        hook.afterEach();
+      }
+    },
+  };
+}
+
 async function sinonRestoreHooks(projectRoot) {
   const projectManifest = path.join(projectRoot, 'package.json');
   const { file } = sinonManifest(projectManifest);
@@ -45,14 +121,9 @@ async function sinonRestoreHooks(projectRoot) {
     return {};
   }
   const instances = new Set([createRequire(projectManifest)(SINON), await importedSinon(file)]);
-  const sandboxes = [...instances].filter((sinon) => typeof sinon?.restore === 'function');
-  return {
-    afterEach() {
-      for (const sinon of sandboxes) {
-        sinon.restore();
-      }
-    },
-  };
+  return testDoubleHooks(
+    [...instances].filter((sinon) => typeof sinon?.createSandbox === 'function'),
+  );
 }
 
 export function mochaHooks() {

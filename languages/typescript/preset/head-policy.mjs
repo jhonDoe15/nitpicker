@@ -23,8 +23,9 @@ import {
 import { stylingApproachFor } from './eslint-config/react/react-styling.mjs';
 import { prettierConventionOptions } from '../conventions/prettier-conventions.mjs';
 import { markedGeneratedFiles } from './layout/generated-files.mjs';
-import { detectedRunnerFact } from './test-runner/detect-runner.mjs';
-import { runnerTestFiles } from './test-runner/test-files/runner-test-files.mjs';
+import { detectedRunnerFact, runnerChoiceNotices } from './test-runner/detect-runner.mjs';
+import { runnerTypesNotices } from './test-runner/runner-types.mjs';
+import { runnerTestFileFacts } from './test-runner/test-files/runner-test-files.mjs';
 import { policyTestFiles } from './test-runner/test-files/test-file-patterns.mjs';
 
 export { headPolicyEnvironment, withHeadPolicyFile } from '../../../shared/head-policy.mjs';
@@ -65,15 +66,56 @@ export function resolveHeadPolicy(config = {}, projectRoot) {
 function withProjectFacts(policy, config, projectRoot) {
   const scoped = SCOPED_PRESETS.includes(config.preset);
   const withScopes = { ...policy, ...(scoped ? withDetectedScopes(policy, projectRoot) : {}) };
-  return { ...withScopes, ...detectedTools(withScopes, scoped, projectRoot) };
+  const withTools = { ...withScopes, ...detectedTools(withScopes, scoped, projectRoot) };
+  return withTools.react?.enabled === true && scoped
+    ? withAutoCleanup(withTools, projectRoot)
+    : withTools;
+}
+
+function withAutoCleanup(policy, projectRoot) {
+  const tests = policy.tools.tests;
+  const runner = tests.runner ?? tests.detectedRunner;
+  return {
+    ...policy,
+    react: { ...policy.react, autoCleanup: testsCleanUpAutomatically(projectRoot, runner) },
+  };
 }
 
 function testRunnerFacts(policy, projectRoot) {
   const options = { configured: policy.tools?.tests?.runner, layout: resolveLayoutFor(policy) };
-  return {
-    ...detectedRunnerFact(projectRoot, options),
-    testFiles: runnerTestFiles(projectRoot, options),
+  return detectedRunnerFact(projectRoot, options);
+}
+
+function usesPresetAnalyzers(analyzers) {
+  return analyzers.some((analyzer) => analyzer.policyFromPackage === true);
+}
+
+export function withProjectTestFiles(policy, { projectRoot, liveProjectRoot, analyzers }) {
+  const tests = policy.tools?.tests;
+  if (tests === undefined || !usesPresetAnalyzers(analyzers)) {
+    return policy;
+  }
+  const choice = runnerChoiceNotices(tests, analyzers);
+  const facts = runnerTestFileFacts(projectRoot, {
+    configured: tests.runner ?? tests.detectedRunner,
+    layout: resolveLayoutFor(policy),
+    liveProjectRoot,
+  });
+  const notices = [
+    ...choice,
+    ...(facts.notices ?? []),
+    ...runnerTypesNotices(tests.runner ?? tests.detectedRunner, {
+      projectDirectory: projectRoot,
+      analyzers,
+    }),
+  ];
+  const recorded = {
+    ...tests,
+    testFiles: facts.testFiles,
+    ...(facts.domEnvironment === true ? { domEnvironment: true } : {}),
+    ...(notices.length === 0 ? {} : { notices }),
   };
+  return { ...policy, tools: { ...policy.tools, tests: recorded } };
 }
 
 function detectedTools(policy, scoped, projectRoot) {
@@ -121,7 +163,6 @@ function detectedScopes(policy, projectRoot) {
       ...(iconPackage === undefined ? {} : { iconPackage }),
       ...(major === undefined ? {} : { major }),
       ...(styling === undefined ? {} : { styling }),
-      ...(scopes.react.enabled ? { autoCleanup: testsCleanUpAutomatically(projectRoot) } : {}),
     },
   };
 }

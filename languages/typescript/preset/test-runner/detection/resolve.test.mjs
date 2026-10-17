@@ -53,13 +53,20 @@ describe('a detected test runner', () => {
       { 'package.json': manifest({ devDependencies: { vitest: '4' } }) },
       { runner: 'vitest', evidence: 'the vitest dependency' },
     ],
-    ...['jest', 'ts-jest', 'babel-jest', '@jest/globals', 'react-scripts', '@craco/craco'].map(
-      (name) => [
-        `a ${name} dependency`,
-        { 'package.json': manifest({ devDependencies: { [name]: '1' } }) },
-        { runner: 'jest', evidence: `the ${name} dependency` },
-      ],
-    ),
+    ...[
+      'jest',
+      'ts-jest',
+      'babel-jest',
+      '@jest/globals',
+      'react-scripts',
+      '@craco/craco',
+      'react-app-rewired',
+      '@rescripts/cli',
+    ].map((name) => [
+      `a ${name} dependency`,
+      { 'package.json': manifest({ devDependencies: { [name]: '1' } }) },
+      { runner: 'jest', evidence: `the ${name} dependency` },
+    ]),
     [
       'a vitest config file',
       { 'package.json': manifest({}), 'vitest.config.mts': '' },
@@ -122,12 +129,55 @@ describe('a detected test runner', () => {
     ['pnpm run', { test: 'pnpm run unit', unit: 'jest' }],
     ['yarn', { test: 'yarn unit', unit: 'jest' }],
     ['two levels of', { test: 'npm run unit', unit: 'npm run jest:all', 'jest:all': 'jest' }],
+    ['npm run --silent', { test: 'npm run unit --silent', unit: 'jest' }],
+    ['npm run -s', { test: 'npm run -s unit', unit: 'jest' }],
+    ['yarn run', { test: 'yarn run unit', unit: 'jest' }],
+    ['pnpm', { test: 'pnpm unit', unit: 'jest' }],
+    ['run-s', { test: 'run-s lint unit', lint: 'eslint .', unit: 'jest' }],
+    ['run-p', { test: 'run-p --silent unit', unit: 'jest' }],
+    ['npm-run-all', { test: 'npm-run-all --serial unit', unit: 'jest' }],
   ])('follows %s script indirection', (_name, scripts) => {
     expect(detect({ 'package.json': manifest({ scripts }) })).toEqual({
       runner: 'jest',
       evidence: 'package.json script "test"',
       command: 'jest',
     });
+  });
+
+  it('follows a script chain to one runner instead of weighing every test script', () => {
+    const scripts = {
+      test: 'npm run test:unit --silent',
+      'test:unit': 'vitest run',
+      'test:e2e': 'mocha',
+    };
+
+    expect(detect({ 'package.json': manifest({ scripts }) })).toEqual({
+      runner: 'vitest',
+      evidence: 'package.json script "test"',
+      command: 'vitest run',
+    });
+  });
+
+  it('follows the scripts a run-s name glob matches', () => {
+    const scripts = { test: 'run-s "test:*"', 'test:unit': 'node --test', 'test:types': 'tsc' };
+
+    expect(detect({ 'package.json': manifest({ scripts }) })).toEqual({
+      runner: 'node',
+      evidence: 'package.json script "test"',
+      command: 'node --test',
+    });
+  });
+
+  it('reads the Jest a create-react-app launcher runs', () => {
+    for (const launcher of ['react-scripts', 'react-app-rewired', 'rescripts', 'craco']) {
+      const files = { 'package.json': manifest({ scripts: { test: `${launcher} test` } }) };
+
+      expect(detect(files)).toEqual({
+        runner: 'jest',
+        evidence: 'package.json script "test"',
+        command: `${launcher} test`,
+      });
+    }
   });
 
   it('stops at a script that runs itself', () => {
@@ -183,6 +233,17 @@ describe('a detected test runner', () => {
     const files = { 'package.json': manifest({}), 'src/main/helper.js': NODE_TEST_FILE };
 
     expect(detect(files)).toEqual({ runner: 'vitest', evidence: 'the default' });
+  });
+
+  it('counts the node:test and Mocha files that follow no runner naming', () => {
+    const files = {
+      'package.json': manifest({ devDependencies: { vitest: '4', jest: '30' } }),
+      'test/greeting.js': NODE_TEST_FILE,
+      'test/farewell.mjs': NODE_TEST_FILE,
+      'tests/mocha.js': "import { describe } from 'mocha';\n",
+    };
+
+    expect(detect(files)).toEqual({ runner: 'node', evidence: '2 test files import node:test' });
   });
 
   it('follows the test files over a Jest dependency they do not use', () => {

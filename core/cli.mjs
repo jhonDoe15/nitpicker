@@ -7,13 +7,16 @@ import { parseArguments, USAGE_TEXT } from './command/arguments.mjs';
 import { resolveProjectRoot } from './tooling/tool-resolution.mjs';
 import { realpathSync } from 'node:fs';
 import { loadConfig, describeConfigOverrides } from './configuration/config.mjs';
-import { resolveHeadPolicy } from '../languages/typescript/preset/head-policy.mjs';
+import {
+  resolveHeadPolicy,
+  withProjectTestFiles,
+} from '../languages/typescript/preset/head-policy.mjs';
 import { configureAnalyzers } from './configuration/configure-analyzers.mjs';
 import { presetAnalyzers } from './configuration/preset-analyzers.mjs';
 import { withRunLock } from './command/run-lock.mjs';
 import { runSnapshotCli } from './command/snapshot.mjs';
 import { baseSetupResolver } from './command/policy-review/base-setup.mjs';
-import { noticeDescriber } from './command/policy-review/notices.mjs';
+import { noticeDescriber, policyNotices } from './command/policy-review/notices.mjs';
 import { policyAcceptance } from './command/policy-review/policy-acceptance.mjs';
 import { comparisonPolicy, snapshotPolicy } from './conventions/resolve.mjs';
 import { runGit } from './diff/git/repository/command.mjs';
@@ -98,14 +101,25 @@ function runConfigured(cli) {
       ? resolveProjectRoot()
       : realpathSync(cli.currentProjectRoot);
   const config = loadConfig(currentProjectRoot);
-  const headPolicy = resolveHeadPolicy(config, currentProjectRoot);
-  const analyzers = configureAnalyzers(
-    presetAnalyzers(config, options.all ? cli.snapshotAnalyzers : cli.analyzers),
-    config,
-    headPolicy,
-  );
+  function configure(policy) {
+    return configureAnalyzers(
+      presetAnalyzers(config, options.all ? cli.snapshotAnalyzers : cli.analyzers),
+      config,
+      policy,
+    );
+  }
+  const detectedPolicy = resolveHeadPolicy(config, currentProjectRoot);
+  const headPolicy = withProjectTestFiles(detectedPolicy, {
+    projectRoot: currentProjectRoot,
+    liveProjectRoot: currentProjectRoot,
+    analyzers: requestedAnalyzers(options, configure(detectedPolicy)),
+  });
+  const analyzers = configure(headPolicy);
   return withRunLock({ projectRoot: currentProjectRoot, stderr: cli.stderr }, () => {
     if (options.all) {
+      for (const notice of policyNotices(headPolicy)) {
+        cli.stderr.write(`nitpicker: ${notice}\n`);
+      }
       return runSnapshotCli({
         options,
         currentProjectRoot,
@@ -209,11 +223,14 @@ function resolveRunCacheStore(cli) {
   return cli.options.cache ? store : undefined;
 }
 
+function requestedAnalyzers(options, analyzers) {
+  return options.shardCount === undefined || options.all
+    ? selectAnalyzers(analyzers, options.analyzerNames)
+    : selectAnalyzerShard(analyzers, options.shardCount, options.shardIndex);
+}
+
 function selectComparisonAnalyzers({ options, analyzers }) {
-  const selectedAnalyzers =
-    options.shardCount === undefined
-      ? selectAnalyzers(analyzers, options.analyzerNames)
-      : selectAnalyzerShard(analyzers, options.shardCount, options.shardIndex);
+  const selectedAnalyzers = requestedAnalyzers(options, analyzers);
   if (selectedAnalyzers.length === 0) {
     throw new Error(
       'No quality analyzers are configured. The comparison framework is ready, but real analyzer adapters are a later phase.',

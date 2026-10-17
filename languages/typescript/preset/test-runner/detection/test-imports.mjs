@@ -1,5 +1,11 @@
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
+import { TEST_RUNNERS } from '../runners.mjs';
+import {
+  defaultTestFiles,
+  mergedTestFiles,
+  testFileMatcher,
+} from '../test-files/test-file-patterns.mjs';
 
 const RUNNER_MODULES = new Map([
   ['vitest', 'vitest'],
@@ -25,9 +31,17 @@ function readTestFile(projectRoot, file) {
   return readFileSync(target, 'utf8');
 }
 
+const isAnyRunnerDefault = testFileMatcher(mergedTestFiles(TEST_RUNNERS.map(defaultTestFiles)));
+
+function structuralTestFiles(projectRoot, layout) {
+  return layout
+    .projectCodeFiles(projectRoot)
+    .filter((file) => layout.isTestFile(file) || isAnyRunnerDefault(file));
+}
+
 function importCounts(projectRoot, layout) {
   const counts = new Map();
-  for (const file of layout.projectCodeFiles(projectRoot).filter(layout.isRunnableTestFile)) {
+  for (const file of structuralTestFiles(projectRoot, layout)) {
     const runner = importedRunner(readTestFile(projectRoot, file));
     if (runner !== undefined) {
       counts.set(runner, (counts.get(runner) ?? 0) + 1);

@@ -27,14 +27,25 @@ export function ambiguityMessage(candidates) {
   );
 }
 
+function tieBreak(laterTiers, candidates) {
+  const ambiguous = new Set(candidates.map(({ runner }) => runner));
+  for (const tier of laterTiers) {
+    const favoured = firstPerRunner(tier()).filter(({ runner }) => ambiguous.has(runner));
+    if (favoured.length === 1) {
+      return favoured[0].runner;
+    }
+  }
+  return candidates[0].runner;
+}
+
 export function chooseRunner(tiers) {
-  for (const tier of tiers) {
+  for (const [index, tier] of tiers.entries()) {
     const candidates = firstPerRunner(tier());
     if (candidates.length === 1) {
       return candidates[0];
     }
     if (candidates.length > 1) {
-      return { candidates };
+      return { candidates, fallback: tieBreak(tiers.slice(index + 1), candidates) };
     }
   }
   return { runner: DEFAULT_TEST_RUNNER, evidence: 'the default' };

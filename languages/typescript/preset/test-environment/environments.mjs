@@ -104,6 +104,10 @@ export function isDomEnvironment(environment) {
   return DOM_ENVIRONMENTS.has(environment);
 }
 
+export function hasDomEnvironment({ environment, scopes = [] }) {
+  return [environment, ...scopes.map((scope) => scope.environment)].some(isDomEnvironment);
+}
+
 export function domLast(scopes) {
   function isDom(scope) {
     return DOM_ENVIRONMENTS.has(scope.environment);

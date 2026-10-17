@@ -16,6 +16,7 @@ import {
 import { readHeadPolicy } from './head-policy.mjs';
 import { policyTestRunner } from './test-runner/project-runner.mjs';
 import { withRunnerTypes } from './test-runner/runner-types.mjs';
+import { hasDomDirectiveTests } from './test-environment/dom-code/dom-tests.mjs';
 import { END_TO_END_ROOT, sourceRoots, testRoots } from './layout.mjs';
 
 const DEFAULT_SOURCE_ROOTS = new Set(sourceRoots);
@@ -147,7 +148,7 @@ export function layoutTransformFor(policyFileName, layout, { strictMutants = tru
           : projectLayeredTsconfig(extended, JSON.parse(text), { layout, projectDirectory });
       return `${JSON.stringify(layered, null, 2)}\n`;
     }
-    const rewritten = withEndToEndDom(layoutTransform?.(text) ?? text, name, {
+    const rewritten = withTestDom(layoutTransform?.(text) ?? text, name, {
       projectDirectory,
       layout,
     });
@@ -158,24 +159,35 @@ export function layoutTransformFor(policyFileName, layout, { strictMutants = tru
 }
 
 const DOM_LIB = 'dom';
-function libsWithEndToEndDom(libs, projectDirectory, layout) {
-  const hasEndToEnd =
+function hasEndToEndRoot(name, { projectDirectory, layout }) {
+  return (
+    name === 'tsconfig.quality.json' &&
     layout.testRoots.includes(END_TO_END_ROOT) &&
-    existsSync(path.join(projectDirectory, END_TO_END_ROOT));
-  const lacksDom = libs?.every((lib) => lib.toLowerCase() !== DOM_LIB) ?? false;
-  return hasEndToEnd && lacksDom ? [...libs, DOM_LIB] : undefined;
+    existsSync(path.join(projectDirectory, END_TO_END_ROOT))
+  );
 }
 
-function withEndToEndDom(text, name, { projectDirectory, layout }) {
-  if (name !== 'tsconfig.quality.json') {
-    return text;
-  }
+function testsUseDom(name, context) {
+  return (
+    hasEndToEndRoot(name, context) ||
+    readHeadPolicy().tools.tests?.domEnvironment === true ||
+    hasDomDirectiveTests(context.layout, context.projectDirectory)
+  );
+}
+
+function libsWithTestDom(libs, name, context) {
+  const lacksDom = libs?.every((lib) => lib.toLowerCase() !== DOM_LIB) ?? false;
+  return lacksDom && testsUseDom(name, context) ? [...libs, DOM_LIB] : undefined;
+}
+
+function withTestDom(text, name, context) {
   const config = JSON.parse(text);
-  const lib = libsWithEndToEndDom(config.compilerOptions?.lib, projectDirectory, layout);
+  const lib = libsWithTestDom(config.compilerOptions?.lib, name, context);
   if (lib === undefined) {
     return text;
   }
-  return `${JSON.stringify({ ...config, compilerOptions: { ...config.compilerOptions, lib } }, null, 2)}\n`;
+  const compilerOptions = { ...config.compilerOptions, lib };
+  return `${JSON.stringify({ ...config, compilerOptions }, null, 2)}\n`;
 }
 
 function withoutMutantStrictness(text) {
@@ -258,11 +270,10 @@ function projectLayeredMutationTsconfig(extended, { strictMutants, layout }) {
 function projectLayeredTsconfig(extended, base, { layout, projectDirectory }) {
   const javascriptOptions = layout.javascript ? JAVASCRIPT_PROJECT_OPTIONS : {};
   const layered = layoutTsconfig(base, layout);
-  const lib = libsWithEndToEndDom(
-    projectLibs(projectDirectory, extended),
+  const lib = libsWithTestDom(projectLibs(projectDirectory, extended), 'tsconfig.quality.json', {
     projectDirectory,
     layout,
-  );
+  });
   return {
     extends: extended,
     compilerOptions: {
