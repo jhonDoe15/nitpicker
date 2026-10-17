@@ -99,13 +99,13 @@ package manager the base uses: the `packageManager` field of its `package.json`,
 (`pnpm-lock.yaml`, `yarn.lock`, `bun.lock` or `bun.lockb`, `package-lock.json` or
 `npm-shrinkwrap.json`), else npm. The install commands are:
 
-| Manager | Command                                                                                                             |
-| ------- | ------------------------------------------------------------------------------------------------------------------- |
-| npm     | `npm ci --ignore-scripts`                                                                                           |
-| pnpm    | `pnpm install --frozen-lockfile --ignore-scripts`                                                                   |
-| Yarn 1  | `yarn install --frozen-lockfile --ignore-scripts`                                                                   |
-| Yarn 2+ | `yarn install --immutable --mode=skip-build` (with `YARN_ENABLE_SCRIPTS=false` and `YARN_NODE_LINKER=node-modules`) |
-| Bun     | `bun install --frozen-lockfile --ignore-scripts`                                                                    |
+| Manager | Command                                           |
+| ------- | ------------------------------------------------- |
+| npm     | `npm ci --ignore-scripts`                         |
+| pnpm    | `pnpm install --frozen-lockfile --ignore-scripts` |
+| Yarn 1  | `yarn install --frozen-lockfile --ignore-scripts` |
+| Yarn 2+ | `yarn install --immutable --mode=skip-build`      |
+| Bun     | `bun install --frozen-lockfile --ignore-scripts`  |
 
 Workspaces install from the repository root, as the manager does by default. A missing manager is
 a tool error that names how to get it (`corepack enable pnpm`, `corepack enable yarn`,

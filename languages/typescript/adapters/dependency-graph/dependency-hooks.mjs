@@ -9,11 +9,10 @@ const MAX_OUTPUT_BYTES = 50 * 1024 * 1024;
 const DEPENDENCY_INSTALL_TIMEOUT_MS = 4 * 60 * 1000;
 const DEPENDENCY_DIRECTORY = 'node_modules';
 
-function runInstall(projectRoot, packageManager, inheritedEnvironment = process.env) {
-  const { command, args, environment, installHint } = installCommand(packageManager);
+function runInstall(projectRoot, packageManager) {
+  const { command, args, installHint } = installCommand(packageManager);
   const result = spawnSync(command, args, {
     cwd: projectRoot,
-    env: { ...inheritedEnvironment, ...environment },
     encoding: 'utf8',
     maxBuffer: MAX_OUTPUT_BYTES,
     timeout: DEPENDENCY_INSTALL_TIMEOUT_MS,
@@ -40,7 +39,12 @@ function assertInstalled(result, dependencyPath, packageManager) {
   );
 }
 
-function assertRegularDirectory(dependencyPath) {
+function assertRegularDirectory(dependencyPath, packageManager) {
+  if (!existsSync(dependencyPath)) {
+    throw new Error(
+      `Failed to install merge-base dependencies with ${packageManager.name}: the install created no ${DEPENDENCY_DIRECTORY} folder (Yarn Plug'n'Play is not supported: set \`nodeLinker: node-modules\`).`,
+    );
+  }
   const entry = lstatSync(dependencyPath);
   if (!entry.isDirectory() || entry.isSymbolicLink()) {
     rmSync(dependencyPath, { recursive: true, force: true });
@@ -59,7 +63,7 @@ const nodeDependencyHook = {
     }
     const packageManager = detectPackageManager(projectRoot);
     assertInstalled(runInstall(projectRoot, packageManager), dependencyPath, packageManager);
-    assertRegularDirectory(dependencyPath);
+    assertRegularDirectory(dependencyPath, packageManager);
     const memberPaths = memberDependencyDirectories(projectRoot).map((relative) =>
       containedPath(projectRoot, relative),
     );

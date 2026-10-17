@@ -5,7 +5,6 @@ settings:
   excludeLinksFromLockfile: false
 
 importers:
-
   .:
     dependencies:
       fixture-lib:
@@ -13,10 +12,8 @@ importers:
         version: file:vendor/fixture-lib
 
 packages:
-
   fixture-lib@file:vendor/fixture-lib:
-    resolution: {directory: vendor/fixture-lib, type: directory}
+    resolution: { directory: vendor/fixture-lib, type: directory }
 
 snapshots:
-
   fixture-lib@file:vendor/fixture-lib: {}
