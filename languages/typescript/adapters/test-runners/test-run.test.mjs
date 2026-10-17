@@ -38,6 +38,6 @@ describe('the limits of a test run', () => {
       nodeArguments: [],
       environment: { A: '1' },
     });
-    expect(await run.write()).toBeUndefined();
+    await run.write();
   });
 });

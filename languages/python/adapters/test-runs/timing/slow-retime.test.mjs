@@ -3,7 +3,7 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import { rerunCommand, retimeSlowTests } from './slow-retime.mjs';
-import { readSlowTestFindings } from './slow-tests.mjs';
+import { readSlowTestFindings } from '../slow-tests.mjs';
 
 const roots = [];
 afterEach(() => {

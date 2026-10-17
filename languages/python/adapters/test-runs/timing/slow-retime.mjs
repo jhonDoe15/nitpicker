@@ -1,8 +1,7 @@
-import path from 'node:path';
-import { execute } from '../execution/python-process.mjs';
-import { testCommand, testEnvironment } from '../execution/python-test-runner.mjs';
-import { JUNIT_REPORT, RERUN_REPORT } from './junit-results.mjs';
-import { slowCandidates } from './slow-tests.mjs';
+import { execute } from '../../execution/python-process.mjs';
+import { testCommand, testEnvironment } from '../../execution/python-test-runner.mjs';
+import { JUNIT_REPORT, RERUN_REPORT } from '../junit-results.mjs';
+import { slowCandidates } from '../slow-tests.mjs';
 
 function selection(context, { testCase }) {
   return context.project.testRunner === 'pytest'
@@ -31,7 +30,7 @@ export function retimeSlowTests(context, outcome) {
     if (runs.length > 0) {
       execute(context, rerunCommand(context, runs), { env: testEnvironment(context) });
     }
-  } catch {
-    return;
+  } catch (error) {
+    throw new Error('Could not rerun slow tests without coverage', { cause: error });
   }
 }

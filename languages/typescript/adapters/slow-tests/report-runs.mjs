@@ -1,4 +1,4 @@
-import { realpathSync } from 'node:fs';
+import { existsSync, realpathSync } from 'node:fs';
 import path from 'node:path';
 
 const MILLISECONDS = 1000;
@@ -8,14 +8,12 @@ export function runKey({ file, name }) {
 }
 
 function projectRoots(projectRoot) {
-  try {
-    return [...new Set([projectRoot, realpathSync(projectRoot)])];
-  } catch {
-    return [projectRoot];
-  }
+  return existsSync(projectRoot)
+    ? [...new Set([projectRoot, realpathSync(projectRoot)])]
+    : [projectRoot];
 }
 
-export function projectFile(projectRoot, name) {
+function projectFile(projectRoot, name) {
   const relatives = projectRoots(projectRoot).map((root) =>
     path.relative(root, String(name)).replaceAll('\\', '/'),
   );
