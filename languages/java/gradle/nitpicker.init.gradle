@@ -252,7 +252,7 @@ allprojects {
         }
         checkstyle { toolVersion = pinned.checkstyle }
         afterEvaluate {
-            tasks.withType(Checkstyle).configureEach {
+            tasks.withType(Checkstyle).configureEach { task ->
                 ignoreFailures = true
                 showViolations = false
                 maxWarnings = Integer.MAX_VALUE
@@ -622,9 +622,17 @@ allprojects {
         // The coupling metrics, stability-direction and test-only-export findings are computed on the
         // Nitpicker side from these files. jdeps ships with the JDK that runs Gradle; it is not a
         // pinned download.
+        def classFilesIn = { File directory ->
+            java.nio.file.Files.walk(directory.toPath()).withCloseable { paths ->
+                paths.filter { java.nio.file.Files.isRegularFile(it, java.nio.file.LinkOption.NOFOLLOW_LINKS) }
+                    .filter { it.fileName.toString().endsWith('.class') &&
+                        !(it.fileName.toString() in ['module-info.class', 'package-info.class']) }
+                    .map { it.toFile() }.collect(java.util.stream.Collectors.toList())
+            }
+        }
         def classNamesIn = { Collection<File> classDirs ->
             classDirs.collectMany { dir ->
-                fileTree(dir) { include '**/*.class'; exclude '**/module-info.class', '**/package-info.class' }.files.collect {
+                classFilesIn(dir).collect {
                     dir.toPath().relativize(it.toPath()).toString().replace('\\', '/')
                         .replaceAll(/\.class$/, '').replace('/', '.')
                 }
@@ -632,16 +640,17 @@ allprojects {
         }
         def runJdeps = { Collection<File> classDirs, Closure onLine ->
             def staged = layout.buildDirectory.dir('nitpicker-jdeps-classes').get().asFile
-            def modular = classDirs.any { new File(it, 'module-info.class').exists() }
-            def analyzed = classDirs
-            if (modular) {
-                delete staged
-                staged.mkdirs()
-                analyzed = classDirs.withIndex().collect { directory, index ->
-                    def target = new File(staged, index.toString())
-                    copy { from directory; into target; exclude '**/module-info.class' }
-                    target
+            delete staged
+            staged.mkdirs()
+            def analyzed = classDirs.withIndex().collect { directory, index ->
+                def target = new File(staged, index.toString())
+                target.mkdirs()
+                classFilesIn(directory).each { source ->
+                    def destination = new File(target, directory.toPath().relativize(source.toPath()).toString())
+                    destination.parentFile.mkdirs()
+                    java.nio.file.Files.copy(source.toPath(), destination.toPath())
                 }
+                target
             }
             def jdeps = new File(System.getProperty('java.home'), 'bin/jdeps')
             def process = new ProcessBuilder([jdeps.absolutePath, '-verbose:class', '-filter:none'] +
@@ -649,7 +658,7 @@ allprojects {
                 .redirectError(ProcessBuilder.Redirect.DISCARD).start()
             process.inputStream.withReader('UTF-8') { reader -> reader.eachLine { onLine(it) } }
             def result = process.waitFor()
-            if (modular) { delete staged }
+            delete staged
             if (result != 0) {
                 throw new GradleException("jdeps failed (${jdeps}) with exit code ${process.exitValue()}")
             }

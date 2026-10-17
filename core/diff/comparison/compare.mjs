@@ -24,17 +24,7 @@ export function compareFindings({
     touchedCode,
   });
   const present = classifyHeadFindings({ headByKey, baseByKey, touchedCode });
-  const withoutExactMatch = [...baseByKey]
-    .filter(([key]) => !headByKey.has(key))
-    .map(([, baseFinding]) => baseFinding);
-  const similar = matchSimilarFindings({
-    headFindings: present.newFindings,
-    baseFindings: withoutExactMatch,
-    renames: baseToHeadRenames,
-  });
-  present.newFindings = similar.unmatched;
-  present.unchangedFindings.push(...similar.matched);
-  const unmatchedBase = withoutExactMatch.filter((finding) => !similar.matchedBase.has(finding));
+  const unmatchedBase = matchUnpairedFindings({ baseByKey, headByKey, present, baseToHeadRenames });
   const ratcheted = holdRatchetedFindings({
     newFindings: present.newFindings,
     unmatchedBase,
@@ -168,4 +158,18 @@ function compareDisplayOrder(left, right) {
     left.rule.localeCompare(right.rule) ||
     left.identity.localeCompare(right.identity)
   );
+}
+
+function matchUnpairedFindings({ baseByKey, headByKey, present, baseToHeadRenames }) {
+  const withoutExactMatch = [...baseByKey]
+    .filter(([key]) => !headByKey.has(key))
+    .map(([, baseFinding]) => baseFinding);
+  const similar = matchSimilarFindings({
+    headFindings: present.newFindings,
+    baseFindings: withoutExactMatch,
+    renames: baseToHeadRenames,
+  });
+  present.newFindings = similar.unmatched;
+  present.unchangedFindings.push(...similar.matched);
+  return withoutExactMatch.filter((finding) => !similar.matchedBase.has(finding));
 }

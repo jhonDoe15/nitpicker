@@ -1,3 +1,4 @@
+import { escapeXml } from '../../adapters/tool-config/xml-write.mjs';
 import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { escapeRegExp } from '../../../../shared/glob.mjs';
@@ -20,14 +21,6 @@ const TEST_CLASS_RULE = [
   '    </properties>',
   '  </rule>',
 ];
-
-function escapeXml(text) {
-  return text
-    .replaceAll('&', '&amp;')
-    .replaceAll('<', '&lt;')
-    .replaceAll('>', '&gt;')
-    .replaceAll('"', '&quot;');
-}
 
 function directoryPattern(kind, directory) {
   const pattern = `${escapeRegExp(directory + path.sep)}.*`;

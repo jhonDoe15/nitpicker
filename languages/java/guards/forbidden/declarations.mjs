@@ -1,3 +1,4 @@
+import { lineAt } from '../../../../shared/conventions/lines.mjs';
 import {
   closing,
   declaringBody,
@@ -16,10 +17,6 @@ function escaped(text) {
 
 function simpleName(qualified) {
   return qualified.split(/[.$]/).at(-1);
-}
-
-function lineAt(text, index) {
-  return text.slice(0, index).split('\n').length;
 }
 
 function prefixBefore(text, index) {
