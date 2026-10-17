@@ -1,6 +1,6 @@
 import { existsSync, statSync } from 'node:fs';
 import path from 'node:path';
-import { loadedMochaOptions } from '../mocha-options.mjs';
+import { loadedMochaOptions } from './mocha-options.mjs';
 import {
   MOCHA_DEFAULT_EXTENSIONS,
   MOCHA_DEFAULT_SPEC,
