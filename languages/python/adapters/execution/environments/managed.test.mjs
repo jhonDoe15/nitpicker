@@ -126,7 +126,7 @@ describe('opening a pipenv environment', () => {
     withoutManagers();
 
     expect(() => openEnvironment({ kind: 'pipenv' }, root)).toThrow(
-      `No pipenv environment found for ${root}: install pipenv or activate the environment, or set "python.environment"`,
+      `No pipenv environment found for ${root}: install pipenv with \`pipx install pipenv\` or \`pip install pipenv\` or activate the environment, or set "python.environment"`,
     );
   });
 });
