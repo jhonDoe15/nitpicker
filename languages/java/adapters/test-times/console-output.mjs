@@ -10,19 +10,28 @@ const STACK_FRAME = /^\s+(?:at\s|\.\.\.\s\d+\s(?:more|common frames omitted))/u;
 const TEXT = /[\p{L}\p{N}]/u;
 const PARAMETER_LIST = /\((?:[^()]|\([^()]*\))*\)(?:\[\d+\])?$/u;
 
+const JVM_WARNING = /^WARNING: /u;
+const SLF4J_NOTICE = /^SLF4J(?:\([A-Z]\))?: /u;
+
+function continues(line, previous) {
+  const adjacent = previous !== undefined && TEXT.test(previous);
+  return /^\s/u.test(line) || (adjacent && (JVM_WARNING.test(line) || JVM_WARNING.test(previous)));
+}
+
 function blocksOf(text) {
   const blocks = [];
-  for (const line of text.split(/\r?\n/u)) {
+  const lines = text.split(/\r?\n/u);
+  for (const [index, line] of lines.entries()) {
     if (!TEXT.test(line) || STACK_FRAME.test(line)) {
       continue;
     }
-    if (/^\s/u.test(line) && blocks.length > 0) {
+    if (blocks.length > 0 && continues(line, lines[index - 1])) {
       blocks[blocks.length - 1] += ` ${line.trim()}`;
     } else {
       blocks.push(line.trim());
     }
   }
-  return blocks;
+  return blocks.filter((block) => !SLF4J_NOTICE.test(block));
 }
 
 export function consoleMessages({ out = '', err = '' }) {
