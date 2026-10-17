@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { validateConfig } from './validate.mjs';
+import { validateConfig } from '../validate.mjs';
 
 describe('the react key', () => {
   it.each([[{}], [{ enabled: true }], [{ enabled: false }], [{ styling: 'css-in-js' }]])(
