@@ -1,5 +1,4 @@
-import { readFileSync } from 'node:fs';
-import path from 'node:path';
+import { readInside } from '../../../../../shared/conventions/read-inside.mjs';
 import { createIdentityCounter } from '../../../ingest/common.mjs';
 import {
   CATCH_LOG_MESSAGE,
@@ -29,7 +28,7 @@ function filesOf(projectRoot, sourceRoots) {
 export function readCatchLogFindings(projectRoot, sourceRoots) {
   return filesOf(projectRoot, sourceRoots).flatMap((file) => {
     const next = createIdentityCounter();
-    const { code } = maskKotlinSource(readFileSync(path.join(projectRoot, file), 'utf8'));
+    const { code } = maskKotlinSource(readInside(projectRoot, file, 'utf8') ?? '');
     return catchLogViolations(code, 'kotlin').map(({ receiver, level }) =>
       finding(file, next(`catch-log:${receiver}.${level}`), CATCH_LOG),
     );
@@ -39,7 +38,7 @@ export function readCatchLogFindings(projectRoot, sourceRoots) {
 export function readTestAssertionFindings(projectRoot, testRoots, helpers = []) {
   return filesOf(projectRoot, testRoots).flatMap((file) => {
     const next = createIdentityCounter();
-    const text = readFileSync(path.join(projectRoot, file), 'utf8');
+    const text = readInside(projectRoot, file, 'utf8') ?? '';
     return testMethods(text, 'kotlin')
       .filter(({ body }) => !hasAssertion({ body, language: 'kotlin', extra: helpers }))
       .map(({ name }) => finding(file, next(`test:${name}`), TEST_ASSERTION));

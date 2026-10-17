@@ -22,7 +22,6 @@
       "core/diff/execution/analyzer-scheduler.mjs",
       "core/diff/execution/test-support/fake-analyzer.mjs",
       "languages/java/adapters/java-runner.mjs",
-      "languages/java/adapters/tool-config/checkstyle/checkstyle-merge-cli.mjs",
       "languages/typescript/adapters/eslint-runner.mjs",
       "languages/typescript/adapters/quality-areas-runner.mjs",
       "languages/typescript/adapters/static-checks-runner.mjs",
@@ -90,25 +89,10 @@
         "languages/java/adapters/gradle-reports/report-modules.mjs",
         "languages/java/adapters/jpa/jpa-source-filters.mjs",
         "languages/java/adapters/reporting/java-reports.mjs",
-        "languages/java/adapters/kotlin/rules/kotlin-source-rules.mjs",
-        "languages/java/adapters/tool-config/tool-config-choices.mjs",
         "languages/java/adapters/test-times/slow-tests.mjs",
         "languages/java/builds/project-wide.mjs"
       ],
       "reason": "These readers join the report directory nitpicker itself created, the file names the build tools wrote into it, and the source roots the build reported for the project under analysis; none of them comes from user input or from the code under analysis."
-    },
-    {
-      "rule": "nitpicker/no-self-recursion",
-      "paths": [
-        "languages/java/adapters/tool-config/checkstyle/checkstyle-layers.mjs",
-        "languages/java/adapters/tool-config/xml-write.mjs"
-      ],
-      "reason": "These walk the module tree of a Checkstyle config file and write it back; the depth is the nesting of one XML file, which is a handful of levels, and a worklist would only hide the parent-child structure the merge follows."
-    },
-    {
-      "rule": "nitpicker/no-production-console",
-      "paths": ["languages/java/adapters/tool-config/checkstyle/checkstyle-merge-cli.mjs"],
-      "reason": "Gradle runs this file as a command (like the analyzer runners) and reads its exit code and standard error as the failure of the Checkstyle merge task; there is no logger in that process."
     },
     {
       "rule": "nitpicker/no-raised-test-timeout",

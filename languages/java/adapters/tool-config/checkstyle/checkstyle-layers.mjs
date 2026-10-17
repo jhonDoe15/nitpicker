@@ -26,13 +26,26 @@ function isModule(node) {
   return node.name === 'module';
 }
 
-function withoutInlineFilters(module) {
-  return {
-    ...module,
-    children: module.children
+function modulesParentsFirst(root) {
+  const order = [];
+  const stack = [root];
+  while (stack.length > 0) {
+    const module = stack.pop();
+    order.push(module);
+    stack.push(...module.children.filter(isModule));
+  }
+  return order;
+}
+
+function withoutInlineFilters(root) {
+  const rewritten = new Map();
+  for (const module of modulesParentsFirst(root).toReversed()) {
+    const children = module.children
       .filter((child) => !(isModule(child) && INLINE_FILTERS.has(nameOf(child))))
-      .map((child) => (isModule(child) ? withoutInlineFilters(child) : child)),
-  };
+      .map((child) => rewritten.get(child) ?? child);
+    rewritten.set(module, { ...module, children });
+  }
+  return rewritten.get(root);
 }
 
 function idOf(module) {

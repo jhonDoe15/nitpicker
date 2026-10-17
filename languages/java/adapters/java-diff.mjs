@@ -1,5 +1,5 @@
 import { spawnSync } from 'node:child_process';
-import { existsSync, mkdtempSync, readFileSync, rmSync } from 'node:fs';
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { compareFindings } from '../../../core/diff/comparison/compare.mjs';
@@ -28,35 +28,18 @@ const GRADLE_TIMEOUT_MS = 15 * 60 * 1000;
 const MAX_OUTPUT_BYTES = 50 * 1024 * 1024;
 const MAX_FAILURE_LENGTH = 3500;
 
-function runJavaPreset(
-  projectRoot,
-  { gradle, initScript = INIT_SCRIPT, policy = {}, reportBase, kotlinRun } = {},
-) {
-  const withKotlin = kotlinRun?.withArguments ?? ((run) => run([]));
-  const result = withKotlin((kotlinArguments) => {
-    const target = gradleTarget({
-      projectRoot,
-      configured: gradle,
-      args: [
-        '--console=plain',
-        '--quiet',
-        '--no-configuration-cache',
-        `-Pnitpicker.reportDir=${reportBase}`,
-        ...kotlinArguments,
-        ...toolConfigProperties(projectRoot, policy, path.join(reportBase, 'tool-config')),
-        '-I',
-        initScript,
-        'nitpickerJava',
-      ],
-    });
-    return spawnSync(target.command, target.args, {
-      cwd: projectRoot,
-      encoding: 'utf8',
-      maxBuffer: MAX_OUTPUT_BYTES,
-      shell: target.shell,
-      timeout: GRADLE_TIMEOUT_MS,
-    });
+function gradleResult(projectRoot, { gradle, args }) {
+  const target = gradleTarget({ projectRoot, configured: gradle, args });
+  return spawnSync(target.command, target.args, {
+    cwd: projectRoot,
+    encoding: 'utf8',
+    maxBuffer: MAX_OUTPUT_BYTES,
+    shell: target.shell,
+    timeout: GRADLE_TIMEOUT_MS,
   });
+}
+
+function assertSucceeded(result, projectRoot) {
   if (result.error !== undefined) {
     throw result.error;
   }
@@ -67,6 +50,50 @@ function runJavaPreset(
     );
     throw new Error(`Java preset failed in ${projectRoot}: ${detail || 'no diagnostic output'}`);
   }
+}
+
+function exportCheckstyleBase({ projectRoot, gradle, common, initScript, directory }) {
+  const exported = path.join(directory, 'checkstyle-nitpicker.xml');
+  mkdirSync(directory, { recursive: true });
+  const args = [
+    ...common,
+    `-Pnitpicker.checkstyle.exportConfig=${exported}`,
+    '-I',
+    initScript,
+    'nitpickerCheckstyleConfig',
+  ];
+  assertSucceeded(gradleResult(projectRoot, { gradle, args }), projectRoot);
+  return exported;
+}
+
+function runJavaPreset(
+  projectRoot,
+  { gradle, initScript = INIT_SCRIPT, policy = {}, reportBase, kotlinRun } = {},
+) {
+  const withKotlin = kotlinRun?.withArguments ?? ((run) => run([]));
+  const directory = path.join(reportBase, 'tool-config');
+  const result = withKotlin((kotlinArguments) => {
+    const common = [
+      '--console=plain',
+      '--quiet',
+      '--no-configuration-cache',
+      `-Pnitpicker.reportDir=${reportBase}`,
+      ...kotlinArguments,
+    ];
+    const checkstyleBase =
+      toolConfigChoices(projectRoot, policy).checkstyle.project === undefined
+        ? undefined
+        : exportCheckstyleBase({ projectRoot, gradle, common, initScript, directory });
+    const args = [
+      ...common,
+      ...toolConfigProperties(projectRoot, policy, { directory, checkstyleBase }),
+      '-I',
+      initScript,
+      'nitpickerJava',
+    ];
+    return gradleResult(projectRoot, { gradle, args });
+  });
+  assertSucceeded(result, projectRoot);
 }
 
 function withoutReportBase(error, reportBase) {

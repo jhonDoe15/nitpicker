@@ -29,7 +29,6 @@ describe('Java analyzer configuration files', () => {
       'languages/java/adapters/java-runner.mjs',
       'languages/java/adapters/java-analyzer.mjs',
       'languages/java/adapters/kotlin/rules/kotlin-literals.mjs',
-      'languages/java/adapters/tool-config/checkstyle/checkstyle-merge-cli.mjs',
       ...resourceFiles('languages/java/gradle'),
       ...resourceFiles('languages/java/detekt'),
     ];

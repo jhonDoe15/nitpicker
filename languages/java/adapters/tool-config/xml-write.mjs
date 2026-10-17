@@ -14,16 +14,31 @@ function attributesOf(attrs) {
     .join('');
 }
 
-export function renderXml(node, depth = 0) {
-  const pad = INDENT.repeat(depth);
-  const open = `${pad}<${node.name}${attributesOf(node.attrs)}`;
-  if (node.children.length > 0) {
-    const inner = node.children.map((child) => renderXml(child, depth + 1)).join('\n');
-    return `${open}>\n${inner}\n${pad}</${node.name}>`;
-  }
+function leafLine(node, open) {
   return node.text === undefined
     ? `${open}/>`
     : `${open}>${escapeXml(node.text).replaceAll('&quot;', '"')}</${node.name}>`;
+}
+
+export function renderXml(root) {
+  const lines = [];
+  const stack = [{ node: root, depth: 0, closing: false }];
+  while (stack.length > 0) {
+    const { node, depth, closing } = stack.pop();
+    const pad = INDENT.repeat(depth);
+    if (closing) {
+      lines.push(`${pad}</${node.name}>`);
+    } else if (node.children.length === 0) {
+      lines.push(leafLine(node, `${pad}<${node.name}${attributesOf(node.attrs)}`));
+    } else {
+      lines.push(`${pad}<${node.name}${attributesOf(node.attrs)}>`);
+      stack.push({ node, depth, closing: true });
+      for (const child of node.children.toReversed()) {
+        stack.push({ node: child, depth: depth + 1, closing: false });
+      }
+    }
+  }
+  return lines.join('\n');
 }
 
 export function element(name, attrs = {}, children = []) {

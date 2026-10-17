@@ -23,7 +23,18 @@ const RULESET = `<ruleset name="project" xmlns="http://pmd.sourceforge.net/rules
   <description>p</description>
   <rule ref="category/java/performance.xml/AvoidArrayLoops"/>
 </ruleset>`;
-const CHECKSTYLE = '<module name="Checker"/>';
+const CHECKSTYLE =
+  '<module name="Checker"><module name="LineLength"><property name="max" value="140"/></module></module>';
+const NITPICKER_CHECKSTYLE =
+  '<module name="Checker"><module name="LineLength"><property name="max" value="100"/></module></module>';
+const MERGED = (max) => `<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE module PUBLIC "-//Checkstyle//DTD Checkstyle Configuration 1.3//EN" "https://checkstyle.org/dtds/configuration_1_3.dtd">
+<module name="Checker">
+  <module name="LineLength">
+    <property name="max" value="${max}"/>
+  </module>
+</module>
+`;
 
 describe('the Gradle properties of the project tool configs', () => {
   it("passes nothing by default, and the layered files of the head project's configs when opted in", () => {
@@ -32,8 +43,10 @@ describe('the Gradle properties of the project tool configs', () => {
       'config/checkstyle/checkstyle.xml': CHECKSTYLE,
     });
     const directory = path.join(head, 'layers');
+    const checkstyleBase = path.join(head, 'nitpicker-checkstyle.xml');
+    writeFileSync(checkstyleBase, NITPICKER_CHECKSTYLE);
 
-    expect(toolConfigProperties('/base', { policyRoot: head }, directory)).toEqual([]);
+    expect(toolConfigProperties('/base', { policyRoot: head }, { directory })).toEqual([]);
     expect(
       toolConfigProperties(
         '/base',
@@ -41,15 +54,16 @@ describe('the Gradle properties of the project tool configs', () => {
           policyRoot: head,
           toolPrecedence: { pmd: ['project', 'nitpicker'], checkstyle: ['project'] },
         },
-        directory,
+        { directory, checkstyleBase },
       ),
     ).toEqual([
       `-Pnitpicker.pmd.nitpickerRuleset=${path.join(directory, 'pmd-nitpicker.xml')}`,
       `-Pnitpicker.pmd.projectConfig=${path.join(directory, 'pmd-project.xml')}`,
       `-Pnitpicker.pmd.testRules=${path.join(directory, 'pmd-test-rules.xml')}`,
       `-Pnitpicker.checkstyle.projectConfig=${path.join(head, 'config/checkstyle/checkstyle.xml')}`,
-      `-Pnitpicker.node=${process.execPath}`,
+      `-Pnitpicker.checkstyle.mergedConfig=${path.join(directory, 'checkstyle-merged.xml')}`,
     ]);
+    expect(readFileSync(path.join(directory, 'checkstyle-merged.xml'), 'utf8')).toBe(MERGED(140));
     expect(readFileSync(path.join(directory, 'pmd-project.xml'), 'utf8')).toBe(
       [
         '<?xml version="1.0" encoding="UTF-8"?>',
@@ -69,7 +83,7 @@ describe('the Gradle properties of the project tool configs', () => {
     const properties = toolConfigProperties(
       '/base',
       { policyRoot: head, toolPrecedence: { pmd: ['project'] } },
-      directory,
+      { directory },
     );
 
     expect(properties).toEqual([
@@ -86,7 +100,7 @@ describe('the Gradle properties of the project tool configs', () => {
     const properties = toolConfigProperties(
       root,
       { conventions: { 'java.assertionHelpers': ['expectOk', 'mustBe'] } },
-      directory,
+      { directory },
     );
 
     expect(properties).toEqual([
@@ -94,25 +108,35 @@ describe('the Gradle properties of the project tool configs', () => {
     ]);
   });
 
-  it('tells Gradle when nitpicker is first', () => {
-    const head = projectWith({ 'config/checkstyle/checkstyle.xml': CHECKSTYLE });
+  it('merges with nitpicker first when the policy lists nitpicker before the project', () => {
+    const head = projectWith({
+      'config/checkstyle/checkstyle.xml': CHECKSTYLE,
+      'nitpicker-checkstyle.xml': NITPICKER_CHECKSTYLE,
+    });
+    const directory = path.join(head, 'layers');
 
     expect(
       toolConfigProperties(
         '/base',
         { policyRoot: head, toolPrecedence: { checkstyle: ['nitpicker', 'project'] } },
-        path.join(head, 'layers'),
+        { directory, checkstyleBase: path.join(head, 'nitpicker-checkstyle.xml') },
       ),
     ).toEqual([
       `-Pnitpicker.checkstyle.projectConfig=${path.join(head, 'config/checkstyle/checkstyle.xml')}`,
-      `-Pnitpicker.node=${process.execPath}`,
-      '-Pnitpicker.checkstyle.projectWins=false',
+      `-Pnitpicker.checkstyle.mergedConfig=${path.join(directory, 'checkstyle-merged.xml')}`,
     ]);
+    expect(readFileSync(path.join(directory, 'checkstyle-merged.xml'), 'utf8')).toBe(MERGED(100));
   });
 
   it('fails with the missing file when the project layer is chosen without one', () => {
     expect(() =>
-      toolConfigProperties(projectWith({}), { toolPrecedence: { pmd: ['project'] } }, '/unused'),
+      toolConfigProperties(
+        projectWith({}),
+        { toolPrecedence: { pmd: ['project'] } },
+        {
+          directory: '/unused',
+        },
+      ),
     ).toThrow(
       new Error('"tools.pmd.precedence" lists "project" but config/pmd/ruleset.xml is missing'),
     );

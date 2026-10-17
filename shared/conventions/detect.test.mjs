@@ -204,16 +204,15 @@ describe('conventions that collect names', () => {
   });
 
   it('validates a pin as a list of names', () => {
-    expect(() =>
-      validateConventions({ 'demo.helpers': ['checkA', 'check_b'] }, [helpers]),
-    ).not.toThrow();
-    expect(() => validateConventions({ 'demo.helpers': [] }, [helpers])).not.toThrow();
-    expect(() => validateConventions({ 'demo.helpers': ['a b'] }, [helpers])).toThrow(
-      '"conventions.demo.helpers" must be a list of function names',
-    );
-    expect(() => validateConventions({ 'demo.helpers': 'checkA' }, [helpers])).toThrow(
-      '"conventions.demo.helpers" must be a list of function names',
-    );
+    const validate = (pin) => () => {
+      validateConventions({ 'demo.helpers': pin }, [helpers]);
+    };
+    const message = '"conventions.demo.helpers" must be a list of function names';
+
+    expect(validate(['checkA', 'check_b'])).not.toThrow();
+    expect(validate([])).not.toThrow();
+    expect(validate(['a b'])).toThrow(message);
+    expect(validate('checkA')).toThrow(message);
   });
 });
 
