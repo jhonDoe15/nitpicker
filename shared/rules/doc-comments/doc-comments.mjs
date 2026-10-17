@@ -13,6 +13,8 @@ const SUFFIXES = [
 ];
 const MIN_STEM_LENGTH = 3;
 const CODE_FENCE = /^(?:```|~~~)/u;
+const EXAMPLE_TAG = /^@example(?![\w-])/u;
+const BLOCK_TAG = /^@[A-Za-z][\w-]*(?=[\s{]|$)/u;
 const INLINE_TAG = /\{@\w+(?!\w)\s*((?:[^\s}][^}]*)?)\}/gu;
 
 const MAX_DESCRIPTION_LINES = 5;
@@ -63,6 +65,27 @@ function withoutInlineTags(text) {
   return text.slice(0, end).replace(INLINE_TAG, ' $1 ') + text.slice(end);
 }
 
+function codeExampleState(state, raw) {
+  const line = raw.trim();
+  if (CODE_FENCE.test(line)) {
+    return { fenced: !state.fenced, example: state.example, code: true };
+  }
+  if (state.fenced) {
+    return { ...state, code: true };
+  }
+  const tag = BLOCK_TAG.test(line);
+  const example = EXAMPLE_TAG.test(line) || (state.example && !tag);
+  return { fenced: false, example, code: example || tag };
+}
+
+function proseLines(lines) {
+  let state = { fenced: false, example: false, code: false };
+  return lines.filter((line) => {
+    state = codeExampleState(state, line);
+    return !state.code;
+  });
+}
+
 function restatesName(lines, name) {
   const description = wordsOf(withoutInlineTags(lines.join(' ')));
   const nameStems = new Set(wordsOf(name).flatMap(stemVariants));
@@ -78,8 +101,9 @@ export function docCommentProblem({ name, lines }) {
   if (name !== undefined && restatesName(lines, name)) {
     return { kind: 'restating', name };
   }
-  return lines.length > MAX_DESCRIPTION_LINES
-    ? { kind: 'long', lines: lines.length, limit: MAX_DESCRIPTION_LINES }
+  const counted = proseLines(lines).length;
+  return counted > MAX_DESCRIPTION_LINES
+    ? { kind: 'long', lines: counted, limit: MAX_DESCRIPTION_LINES }
     : undefined;
 }
 

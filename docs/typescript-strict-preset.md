@@ -384,8 +384,9 @@ Math` and `Math['random']()` are caught; `process`, `fetch`, `setTimeout`, `setI
   (`/** Gets the user name. */ getUserName`, `/** The order id */ orderId`, `/** Button component */
 Button`). `@param`, `@returns` and other tag lines are not part of the description. Write the
   unit, the limit, the edge case or the reason (`/** Price in cents, rounded down. */`). A
-  description longer than 5 lines, tag lines and blank lines not counted (an `@example` block is a
-  tag), is reported too: keep the non-obvious point and move the rest into names and types. Both
+  description longer than 5 lines, tag lines, blank lines and code examples not counted (a fenced
+  ` ``` ` or `~~~` block, or the body of an `@example` tag), is reported too; bullets and
+  other prose count: keep the non-obvious point and move the rest into names and types. Both
   checks are skipped in the JavaScript preset's JSDoc mode, which already bans JSDoc prose, and a
   doc comment that is needed as written gets an exception for the rule.
 

@@ -132,7 +132,7 @@ over limit" and does not fail.
 | `slow-test`                       | `test-runtime`     | a test the change adds or edits taking more than 5 s (unit) or 30 s (integration); override with `thresholds.unitTestSeconds` and `thresholds.integrationTestSeconds`                                    | not enforced | not enforced | enforced     | not enforced | enforced     |
 | `component-story-missing`         | `structure`        | a component file without a story, in a package that has Storybook; enforced when more than half of its component files have one, reported otherwise                                                      | enforced     | partial      | not enforced | not enforced | not enforced |
 | `test-console-output`             | `test-console`     | a test file printing console.error or console.warn output (compared as text with numbers and paths normalized, one random-looking word tolerated) that the base run did not print                        | enforced     | enforced     | not enforced | not enforced | not enforced |
-| `doc-comment-content`             | `coding-standards` | a doc comment that only restates its declaration name, or a description longer than 5 lines (TypeScript and JavaScript report it as `nitpicker/no-comments`)                                             | enforced     | enforced     | not enforced | not enforced | not enforced |
+| `doc-comment-content`             | `coding-standards` | a doc comment that only restates its declaration name, or a description longer than 5 lines, code examples not counted (TypeScript and JavaScript report it as `nitpicker/no-comments`)                  | enforced     | enforced     | not enforced | not enforced | not enforced |
 
 <!-- generated:custom-rules end -->
 

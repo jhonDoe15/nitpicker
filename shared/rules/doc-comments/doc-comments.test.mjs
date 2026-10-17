@@ -76,6 +76,20 @@ describe('doc-comment content', () => {
       { name: 'formatPrice', lines: ['Formats the {@link price}.'] },
       { kind: 'restating', name: 'formatPrice' },
     ],
+    [{ name: 'x', lines: ['1', '```ts', 'a();', 'b();', 'c();', 'd();', '```', '2'] }, undefined],
+    [
+      { name: 'x', lines: ['1', '~~~', 'a();', '@param b', 'c();', '~~~', '2', '3', '4'] },
+      undefined,
+    ],
+    [{ name: 'x', lines: ['1', '2', '3', '4', '@example', 'a();', 'b();', 'c();'] }, undefined],
+    [
+      { name: 'x', lines: ['1', '@example', 'a();', '@see y', '2', '3', '4', '5', '6'] },
+      { kind: 'long', lines: 6, limit: 5 },
+    ],
+    [
+      { name: 'x', lines: ['1', '```', 'a();', '```', '2', '- 3', '- 4', '* 5', '6'] },
+      { kind: 'long', lines: 6, limit: 5 },
+    ],
   ])('%j is %j', (comment, problem) => {
     expect(docCommentProblem(comment)).toEqual(problem);
   });
