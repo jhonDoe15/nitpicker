@@ -102,7 +102,7 @@ describe('running the import and duplicate tools', () => {
   });
 });
 describe('running pytest', () => {
-  it('keeps the project pytest configuration working under the outer coverage run', () => {
+  it('keeps the project pytest configuration working under the outer coverage run, timing the call phase only', () => {
     const calls = callsLog();
     const root = project({
       'conftest.py': '',
@@ -125,6 +125,8 @@ describe('running pytest', () => {
       `--junitxml=${path.join(reportRoot, 'pytest-junit.xml')}`,
       '-o',
       'junit_family=xunit1',
+      '-o',
+      'junit_duration_report=call',
     ]);
   });
   it('is an environment error naming the override when pytest is indicated but not importable', () => {

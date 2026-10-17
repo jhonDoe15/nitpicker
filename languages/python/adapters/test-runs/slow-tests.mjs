@@ -1,95 +1,67 @@
 import path from 'node:path';
 import { RULE_IDS, TEST_TIME_DEFAULTS } from '../../../../shared/policy.mjs';
 import { readProjectFile } from '../../libraries/project-files.mjs';
+import { listOtherModules } from '../analysis/python-sources.mjs';
 import { readJunit } from './junit-results.mjs';
+import { functionBlocks } from './python-blocks.mjs';
 
 const SLOW_TEST_TOOL = 'test-runtime';
 const INTEGRATION_FOLDERS = new Set(['integration', 'integration_tests', 'e2e', 'end_to_end']);
 const INTEGRATION_MARK = /\bmark\s*\.\s*(?:integration|e2e)\b/u;
-const DEFINITION = /^(\s*)(?:async\s+)?def\s+(\w+)\s*\(/u;
-const CLASS = /^(\s*)class\s+\w+/u;
-const DECORATOR = /^\s*@/u;
-const MODULE_MARKS = /^pytestmark\s*=[^\n]*(?:\n[ \t)\]][^\n]*)*/mu;
+const MOVE_ADVICE = {
+  pytest:
+    ', or move it to a tests/integration/ folder or mark it @pytest.mark.integration if it is one',
+  unittest: ', or move it to a tests/integration/ folder if it is one',
+};
 
-function readLines(root, file) {
-  return root === undefined || file === ''
-    ? undefined
-    : readProjectFile(root, file)?.split(/\r?\n/u);
+function readText(root, file) {
+  return root === undefined || file === '' ? undefined : readProjectFile(root, file);
 }
 
-function indentOf(line) {
-  return /^\s*/u.exec(line)[0].length;
-}
-
-function isBlank(line) {
-  return line.trim() === '';
-}
-
-function blockAt(lines, definition) {
-  const indent = indentOf(lines[definition]);
-  const decorators = lines
-    .slice(0, definition)
-    .reverse()
-    .findIndex((line) => !DECORATOR.test(line));
-  const first = decorators === -1 ? 0 : definition - decorators;
-  const after = lines.slice(definition + 1);
-  const end = after.findIndex((line) => !isBlank(line) && indentOf(line) <= indent);
-  const body = end === -1 ? after : after.slice(0, end);
-  const last = definition + 1 + body.findLastIndex((line) => !isBlank(line));
-  return { first, definition, last, text: lines.slice(first, last + 1).join('\n') };
-}
-
-function blocksNamed(lines, name) {
-  return lines.flatMap((line, index) =>
-    DEFINITION.exec(line)?.[2] === name ? [blockAt(lines, index)] : [],
+function isIntegration(testCase, block) {
+  const folders = path.posix.dirname(testCase.file).split('/');
+  return (
+    folders.some((folder) => INTEGRATION_FOLDERS.has(folder)) ||
+    (block?.marks ?? []).some((mark) => INTEGRATION_MARK.test(mark))
   );
 }
 
-function classDecorators(lines, block) {
-  const indent = indentOf(lines[block.definition]);
-  const owner = lines
-    .slice(0, block.first)
-    .findLastIndex((line) => (CLASS.exec(line)?.[1].length ?? indent) < indent);
-  return owner === -1
-    ? []
-    : blockAt(lines, owner)
-        .text.split('\n')
-        .filter((line) => DECORATOR.test(line));
-}
-
-function isIntegration(testCase, lines, block) {
-  const folders = path.posix.dirname(testCase.file).split('/');
-  if (folders.some((folder) => INTEGRATION_FOLDERS.has(folder))) {
-    return true;
-  }
-  if (block === undefined) {
-    return false;
-  }
-  const marks = [
-    ...lines.slice(block.first, block.definition),
-    ...classDecorators(lines, block),
-    MODULE_MARKS.exec(lines.join('\n'))?.[0] ?? '',
-  ];
-  return marks.some((line) => INTEGRATION_MARK.test(line));
-}
-
-function headBlock(lines, testCase) {
-  if (lines === undefined || testCase.functionName === undefined) {
+function headBlock(text, testCase) {
+  if (text === undefined || testCase.functionName === undefined) {
     return undefined;
   }
-  const blocks = blocksNamed(lines, testCase.functionName);
+  const blocks = functionBlocks(text, testCase.functionName);
+  const index = (testCase.line ?? 0) - 1;
+  return blocks.find(({ first, definition }) => index >= first && index <= definition) ?? blocks[0];
+}
+
+function hasBlock(text, testCase, block) {
   return (
-    blocks.find(
-      ({ first, definition }) => testCase.line - 1 >= first && testCase.line - 1 <= definition,
-    ) ?? blocks[0]
+    text !== undefined &&
+    functionBlocks(text, testCase.functionName).some(({ text: base }) => base === block.text)
   );
 }
 
-function isChanged(testCase, block, baselineRoot) {
-  const base = readLines(baselineRoot, testCase.file);
-  return base === undefined || block === undefined
-    ? true
-    : !blocksNamed(base, testCase.functionName).some(({ text }) => text === block.text);
+function baseTestFiles(baselineRoot) {
+  return listOtherModules(baselineRoot, [], [])
+    .filter(({ kind }) => kind === 'test')
+    .map(({ file }) => file);
+}
+
+function changeReader(baselineRoot) {
+  let others;
+  return (testCase, block) => {
+    if (block === undefined) {
+      return true;
+    }
+    if (hasBlock(readText(baselineRoot, testCase.file), testCase, block)) {
+      return false;
+    }
+    others ??= baseTestFiles(baselineRoot);
+    return !others.some(
+      (file) => file !== testCase.file && hasBlock(readText(baselineRoot, file), testCase, block),
+    );
+  };
 }
 
 function slowestRuns(cases) {
@@ -103,27 +75,25 @@ function slowestRuns(cases) {
   return [...byTest.values()];
 }
 
-function slowTestMessage({ testCase, limit, integration }) {
+function slowTestMessage({ testCase, limit, integration, testRunner }) {
   const name = [testCase.className, testCase.functionName].filter(Boolean).join('.');
-  const move = integration
-    ? ''
-    : ', or move it to a tests/integration/ folder or mark it @pytest.mark.integration if it is one';
+  const move = integration ? '' : (MOVE_ADVICE[testRunner] ?? MOVE_ADVICE.pytest);
   return `${name} took ${testCase.seconds.toFixed(1)} s; ${integration ? 'an integration' : 'a unit'} test may take ${String(limit)} s. Remove time.sleep and other real waits, and use smaller fixtures${move}.`;
 }
 
-export function readSlowTestFindings({ reportRoot, projectRoot, limits, baselineRoot, snapshot }) {
+export function readSlowTestFindings(options) {
+  const { reportRoot, projectRoot, limits, baselineRoot, snapshot, testRunner } = options;
   if (snapshot === 'base') {
     return [];
   }
   const budget = { ...TEST_TIME_DEFAULTS, ...limits };
+  const isChanged = baselineRoot === undefined ? () => true : changeReader(baselineRoot);
   return slowestRuns(readJunit(reportRoot).filter(({ name }) => name !== undefined)).flatMap(
     (testCase) => {
-      const lines = readLines(projectRoot, testCase.file);
-      const block = headBlock(lines, testCase);
-      const integration = isIntegration(testCase, lines, block);
+      const block = headBlock(readText(projectRoot, testCase.file), testCase);
+      const integration = isIntegration(testCase, block);
       const limit = integration ? budget.integrationTestSeconds : budget.unitTestSeconds;
-      const counted = baselineRoot === undefined || isChanged(testCase, block, baselineRoot);
-      if (testCase.seconds <= limit || !counted) {
+      if (testCase.seconds <= limit || !isChanged(testCase, block)) {
         return [];
       }
       return [
@@ -133,7 +103,7 @@ export function readSlowTestFindings({ reportRoot, projectRoot, limits, baseline
           path: testCase.file,
           identity: `test:${testCase.file}::${testCase.className}::${testCase.functionName}`,
           ...(block === undefined ? {} : { location: { line: block.definition + 1 } }),
-          message: slowTestMessage({ testCase, limit, integration }),
+          message: slowTestMessage({ testCase, limit, integration, testRunner }),
           classification: 'enforceable',
         },
       ];

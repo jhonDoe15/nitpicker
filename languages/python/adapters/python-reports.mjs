@@ -76,12 +76,12 @@ export function readPythonFindings({ projectRoot, reportRoot, crapLimit, policy 
     ...readCouplingFindings(reportRoot),
     ...readImportLinterFindings(reportRoot),
     ...testFailureFindings(manifest, policy.snapshot),
-    ...projectShapeFindings({ projectRoot, reportRoot, policy, imports }),
+    ...projectShapeFindings({ projectRoot, reportRoot, policy, imports, manifest }),
   ]);
   return { findings: withoutFrameworkForms(found, projectRoot, imports) };
 }
 
-function projectShapeFindings({ projectRoot, reportRoot, policy, imports }) {
+function projectShapeFindings({ projectRoot, reportRoot, policy, imports, manifest }) {
   const limits = { thresholds: policy.fileLimits ?? {}, exceptions: policy.exceptions ?? [] };
   return [
     ...readSlowTestFindings({
@@ -90,6 +90,7 @@ function projectShapeFindings({ projectRoot, reportRoot, policy, imports }) {
       limits: policy.testSeconds,
       baselineRoot: policy.baselineRoot,
       snapshot: policy.snapshot,
+      testRunner: manifest.testRunner,
     }),
     ...pythonFolderDepthFindings(imports.modules, limits),
     ...pythonClassLimitFindings(readClassesReport(reportRoot), imports.modules, limits),
