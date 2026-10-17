@@ -22,6 +22,7 @@ STATE = {
     "output": {},
     "functions": {},
     "teardowns": {},
+    "shared": {},
 }
 
 
@@ -71,13 +72,22 @@ def relative_to_root(path):
 
 
 def entry_of(nodeid):
-    return STATE["tests"].setdefault(nodeid, {"seconds": 0.0, "sharedSeconds": 0.0, "markers": []})
+    return STATE["tests"].setdefault(nodeid, {"seconds": 0.0, "markers": []})
 
 
-def add_shared(seconds):
+def add_shared(started):
     nodeid = STATE["current"]
     if nodeid is not None:
-        entry_of(nodeid)["sharedSeconds"] += seconds
+        STATE["shared"].setdefault(nodeid, []).append((started, time.perf_counter()))
+
+
+def covered_seconds(intervals):
+    total, reach = 0.0, None
+    for started, ended in sorted(intervals):
+        start = started if reach is None else max(started, reach)
+        total += max(0.0, ended - start)
+        reach = ended if reach is None else max(reach, ended)
+    return total
 
 
 def file_and_test(nodeid):
@@ -149,7 +159,7 @@ def pytest_fixture_setup(fixturedef, request):
     started = time.perf_counter()
     yield
     if fixturedef.scope != "function":
-        add_shared(time.perf_counter() - started)
+        add_shared(started)
         fixturedef.addfinalizer(
             lambda: STATE["teardowns"].update({id(fixturedef): time.perf_counter()})
         )
@@ -158,7 +168,7 @@ def pytest_fixture_setup(fixturedef, request):
 def pytest_fixture_post_finalizer(fixturedef, request):
     started = STATE["teardowns"].pop(id(fixturedef), None)
     if started is not None:
-        add_shared(time.perf_counter() - started)
+        add_shared(started)
 
 
 @pytest.hookimpl(tryfirst=True)
@@ -195,8 +205,10 @@ def pytest_warning_recorded(warning_message, when, nodeid, location):
 
 def test_entry(nodeid, entry, sources):
     file, test = file_and_test(nodeid)
-    charged = max(0.0, entry["seconds"] - entry["sharedSeconds"])
+    shared = covered_seconds(STATE["shared"].get(nodeid, []))
+    charged = max(0.0, entry["seconds"] - shared)
     found = {"nodeid": nodeid, "file": file, "test": test, **entry, "seconds": charged}
+    found["sharedSeconds"] = shared
     function = STATE["functions"].get(nodeid)
     source = None if function is None else sources.describe(function)
     return found if source is None else {**found, "source": source}
