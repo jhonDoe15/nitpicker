@@ -5,7 +5,7 @@ import { javascriptFileFindings } from './sources/javascript-files.mjs';
 import { reuseFindings } from './reuse/reuse-findings.mjs';
 
 export function typescriptStructureProjectFindings(
-  { projectRoot, liveProjectRoot, analyzerName },
+  { projectRoot, liveProjectRoot, analyzerName, snapshot, baselineRoot, baselinePaths },
   environment = process.env,
 ) {
   const layout = readLayout(environment);
@@ -20,6 +20,14 @@ export function typescriptStructureProjectFindings(
       layout,
       exceptions: policy.exceptions,
     }),
-    ...reuseFindings(projectRoot, analyzerName, environment),
+    ...reuseFindings(
+      {
+        projectRoot,
+        analyzerName,
+        baselineRoot: snapshot === 'head' ? baselineRoot : undefined,
+        baselinePaths,
+      },
+      environment,
+    ),
   ];
 }

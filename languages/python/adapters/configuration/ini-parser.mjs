@@ -33,7 +33,6 @@ function readIniLine(line, sections, state) {
   const content = line.trim();
   const name = sectionName(line);
   if (content === '' || /^[#;]/.test(content)) {
-    state.key = undefined;
     return;
   }
   if (name !== undefined) {
