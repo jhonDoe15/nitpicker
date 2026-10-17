@@ -125,6 +125,7 @@ function checkType(value, node, errors, at) {
     string: typeof value === 'string',
     number: typeof value === 'number' && Number.isFinite(value),
     integer: Number.isInteger(value),
+    boolean: typeof value === 'boolean',
   };
   if (node.type !== undefined && !checks[node.type]) {
     errors.push(`${at} must be ${node.type}`);
@@ -378,6 +379,24 @@ describe('spec/findings.schema.json', () => {
     expect(validate({ findings: [finding] })).toEqual([]);
     expect(() => parseFinding(empty)).toThrow(TypeError);
     expect(validate({ findings: [empty] })).not.toEqual([]);
+  });
+
+  it('accepts the number of files of a folder finding and rejects zero', () => {
+    const finding = {
+      tool: 'tool',
+      rule: 'rule',
+      path: 'src/a',
+      identity: 'id',
+      message: 'message',
+      classification: 'enforceable',
+      ratchet: { key: 'depth', value: 5, pathIsFolder: true, folderFiles: 3 },
+    };
+    const none = { ...finding, ratchet: { ...finding.ratchet, folderFiles: 0 } };
+
+    expect(parseFinding(finding)).toEqual(finding);
+    expect(validate({ findings: [finding] })).toEqual([]);
+    expect(() => parseFinding(none)).toThrow(TypeError);
+    expect(validate({ findings: [none] })).not.toEqual([]);
   });
 
   it('is exercised by a validator that covers every keyword the schema uses', () => {

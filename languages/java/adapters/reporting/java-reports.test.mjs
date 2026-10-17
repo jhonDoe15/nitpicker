@@ -109,6 +109,7 @@ function projectWithReports({ shift = 0 } = {}) {
       .replaceAll('@SOURCE@', sourceFile)
       .replace(/line="(\d+)"/g, (_, line) => `line="${Number(line) + shift}"`),
   );
+  writeFileSync(path.join(reports, 'classes.json'), JSON.stringify({ files: {}, classes: [] }));
   // One complex function that the JaCoCo method above (0 of 3 lines covered) belongs to.
   writeFileSync(
     path.join(reports, 'structure.json'),

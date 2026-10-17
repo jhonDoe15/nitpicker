@@ -79,6 +79,7 @@ allprojects {
             javaModules << [key: moduleKey, path: project.path, dir: relativeToRoot(project.projectDir)]
         }
         def kotlinPreset = nitpickerArgument('nitpicker.kotlin') == 'true'
+        def aosp = nitpickerArgument('nitpicker.java.style') == 'aosp'
 
         configurations {
             nitpickerPmd { canBeConsumed = false }
@@ -254,7 +255,7 @@ allprojects {
                 standardOutput = new FileOutputStream(reportDir.get().file('format.txt').asFile)
                 def files = (mainSources.files + testSourceDirectories()).findAll { it.exists() }
                     .collectMany { directory -> fileTree(directory) { include '**/*.java' }.files }.unique().sort()
-                args(['--dry-run'] + files*.absolutePath)
+                args(['--dry-run'] + (aosp ? ['--aosp'] : []) + files*.absolutePath)
             }
         }
 
@@ -404,9 +405,10 @@ allprojects {
                 reportDir.get().asFile.mkdirs()
                 def roots = mainSources.files.findAll { it.exists() }.collect { relativeToRoot(it) }
                 def output = reportDir.get().file('structure.json').asFile
+                def classesOutput = reportDir.get().file('classes.json').asFile
                 def java = new File(System.getProperty('java.home'), 'bin/java').absolutePath
                 def process = new ProcessBuilder([java, metricsSource.absolutePath,
-                        output.absolutePath, analysisRoot.absolutePath] + roots)
+                        output.absolutePath, classesOutput.absolutePath, analysisRoot.absolutePath] + roots)
                     .directory(projectDir).redirectErrorStream(true).start()
                 def log = process.inputStream.getText('UTF-8')
                 if (process.waitFor() != 0) {
