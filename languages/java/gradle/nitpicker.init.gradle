@@ -176,11 +176,21 @@ allprojects {
         }
 
         def mainSources = sourceSets.main.allJava.sourceDirectories
+        def testSourceSets = {
+            def testClassDirs = tasks.withType(Test).collectMany { it.testClassesDirs.files }
+            sourceSets.findAll { sourceSet ->
+                sourceSet.name != 'main' && (sourceSet.name.toLowerCase().contains('test')
+                    || sourceSet.output.classesDirs.files.any { testClassDirs.contains(it) })
+            }
+        }
+        project.ext.nitpickerTestSourceSets = testSourceSets
         def testSourceDirectories = {
-            sourceSets.findAll { it.name != 'main' }.collectMany { it.allJava.sourceDirectories.files }.unique()
+            testSourceSets().collectMany { it.allJava.sourceDirectories.files }.unique()
         }
         def lintedSources = { (mainSources.files + testSourceDirectories()).findAll { it.exists() } }
-        def allClassesTasks = { sourceSets.collect { tasks.named(it.classesTaskName) } }
+        def lintedClassesTasks = {
+            [tasks.named('classes')] + testSourceSets().collect { tasks.named(it.classesTaskName) }
+        }
         def analyzedClassDirs = {
             kotlinPreset ? [tasks.named('compileJava').get().destinationDirectory.get().asFile]
                 : sourceSets.main.output.classesDirs.files
@@ -196,7 +206,7 @@ allprojects {
 
         tasks.register('nitpickerPmd', JavaExec) {
             group = 'nitpicker'
-            dependsOn allClassesTasks
+            dependsOn lintedClassesTasks
             classpath = configurations.nitpickerPmd
             mainClass = 'net.sourceforge.pmd.cli.PmdCli'
             ignoreExitValue = true // PMD exits 4 when it finds violations
@@ -210,7 +220,8 @@ allprojects {
                 // main one only) and the main and test classes, so rules can match annotation and
                 // supertype names exactly.
                 def auxClasspath = reportDir.get().file('pmd-aux-classpath.txt').asFile
-                auxClasspath.text = (sourceSets.collectMany { it.compileClasspath.files + it.output.classesDirs.files })
+                auxClasspath.text = (([sourceSets.main] + testSourceSets())
+                    .collectMany { it.compileClasspath.files + it.output.classesDirs.files })
                     .findAll { it.exists() }.unique().collect { it.absolutePath }.join('\n')
                 def mainRuleset = reportDir.get().file('pmd-main.xml').asFile
                 mainRuleset.text = mainRulesOnMainSources(initScriptDir, usesSpring(), testSourceDirectories())
@@ -436,7 +447,10 @@ allprojects {
                 'ArchUnit rule tests, structure metrics and PIT; reports go to build/nitpicker.'
             dependsOn 'nitpickerPmd', 'nitpickerSpotbugs', 'nitpickerErrorProne', 'nitpickerFormat',
                 'nitpickerJacoco', 'nitpickerArchunit', 'nitpickerStructure', 'nitpickerPit'
-            dependsOn { tasks.withType(Checkstyle) }
+            dependsOn {
+                ([sourceSets.main] + testSourceSets())
+                    .collect { tasks.findByName(it.getTaskName('checkstyle', null)) }.findAll { it != null }
+            }
             doLast {
                 tasks.withType(Test).findAll { it.name != 'nitpickerArchunit' && gradle.taskGraph.hasTask(it) }.each { testTask ->
                     copy {
@@ -478,22 +492,14 @@ allprojects {
                 }
             }.unique().sort()
         }
-        def runJdeps = { Collection<File> classDirs ->
+        def runJdeps = { Collection<File> classDirs, Closure onLine ->
             def jdeps = new File(System.getProperty('java.home'), 'bin/jdeps')
             def process = new ProcessBuilder([jdeps.absolutePath, '-verbose:class', '-filter:none'] +
                 classDirs.collect { it.absolutePath }).directory(projectDir)
                 .redirectError(ProcessBuilder.Redirect.DISCARD).start()
-            def text = process.inputStream.getText('UTF-8')
+            process.inputStream.withReader('UTF-8') { reader -> reader.eachLine { onLine(it) } }
             if (process.waitFor() != 0) {
                 throw new GradleException("jdeps failed (${jdeps}) with exit code ${process.exitValue()}")
-            }
-            text
-        }
-        def testSourceSets = {
-            def testClassDirs = tasks.withType(Test).collectMany { it.testClassesDirs.files }
-            sourceSets.findAll { sourceSet ->
-                sourceSet.name != 'main' && (sourceSet.name.toLowerCase().contains('test')
-                    || sourceSet.output.classesDirs.files.any { testClassDirs.contains(it) })
             }
         }
         tasks.register('nitpickerJdeps') {
@@ -508,14 +514,23 @@ allprojects {
                 def mainClassSet = mainClasses as Set
                 def testClassSet = classNamesIn(testDirs) as Set
                 def analyzed = (mainDirs + testDirs).findAll { !classNamesIn([it]).isEmpty() }
-                def edges = analyzed.isEmpty() ? [] : runJdeps(analyzed).readLines()
-                    .findAll { it ==~ /^\s+\S+\s+->\s+\S+.*/ }
                 def sourceOf = { String line -> line.trim().split(/\s+/)[0] }
-                reportDir.get().file('jdeps.txt').asFile.text =
-                    edges.findAll { mainClassSet.contains(sourceOf(it)) }.collect { it + '\n' }.join('')
-                reportDir.get().file('jdeps-test.txt').asFile.text =
-                    edges.findAll { !mainClassSet.contains(sourceOf(it)) && testClassSet.contains(sourceOf(it)) }
-                        .collect { it + '\n' }.join('')
+                reportDir.get().file('jdeps.txt').asFile.withWriter('UTF-8') { mainEdges ->
+                    reportDir.get().file('jdeps-test.txt').asFile.withWriter('UTF-8') { testEdges ->
+                        if (!analyzed.isEmpty()) {
+                            runJdeps(analyzed) { String line ->
+                                if (line ==~ /^\s+\S+\s+->\s+\S+.*/) {
+                                    def source = sourceOf(line)
+                                    if (mainClassSet.contains(source)) {
+                                        mainEdges.write(line + '\n')
+                                    } else if (testClassSet.contains(source)) {
+                                        testEdges.write(line + '\n')
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
                 reportDir.get().file('jdeps-classes.txt').asFile.text = mainClasses.collect { it + '\n' }.join('')
             }
         }

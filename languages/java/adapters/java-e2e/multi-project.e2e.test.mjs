@@ -1,4 +1,4 @@
-import { cpSync, mkdtempSync, rmSync } from 'node:fs';
+import { cpSync, existsSync, mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
@@ -70,10 +70,14 @@ describe.skipIf(!enabled)('a Gradle build of two projects and an extra source se
     ).toEqual(['package:app/demo.app:fanIn 0', 'package:lib/demo.lib:fanIn 1']);
   });
 
-  it('lints the integrationTest source set with the test rules', () => {
-    expect(located(findings, 'pmd', 'SystemPrintln')).toEqual([
-      'app/src/integrationTest/java/demo/app/GreeterRun.java',
-    ]);
+  it('lints and compiles the integrationTest source set with the test rules, and not the jmh one', () => {
+    const integrationTest = ['app/src/integrationTest/java/demo/app/GreeterRun.java'];
+
+    expect(located(findings, 'pmd', 'SystemPrintln')).toEqual(integrationTest);
+    expect(located(findings, 'pmd', 'FixedSleepInTest')).toEqual(integrationTest);
+    expect(located(findings, 'errorprone', 'PreferJavaTimeOverload')).toEqual(integrationTest);
+    expect(findings.filter((finding) => finding.path?.includes('/src/jmh/'))).toEqual([]);
+    expect(existsSync(path.join(root, 'app/build/classes/java/jmh'))).toBe(false);
   });
 
   it('times every test of the test task from its JUnit XML, under the module path', () => {
