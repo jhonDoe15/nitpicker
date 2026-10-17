@@ -32,7 +32,7 @@ export function readPytestReport(reportRoot, { testRunner, testsRan } = {}) {
   return { report: { tests: [], entries: [] }, findings: missing ? [missingReportFinding()] : [] };
 }
 
-export function testPath(test) {
+function testPath(test) {
   return test.replace(/\[.*\]$/s, '').split('::');
 }
 
