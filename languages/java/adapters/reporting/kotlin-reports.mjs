@@ -2,7 +2,6 @@ import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { ingestFormatCheck } from '../../ingest/formatting/format-check.mjs';
 import { ingestSarif } from '../../ingest/sarif.mjs';
-import { readKotlinDuplicateFindings } from '../kotlin/kotlin-duplicates.mjs';
 import {
   readKotlinCrapFindings,
   readKotlinMetrics,
@@ -24,6 +23,10 @@ export function requireKotlinManifest(manifest) {
       'The kotlin preset needs a Gradle project that applies org.jetbrains.kotlin.jvm; this one does not',
     );
   }
+}
+
+export function kotlinLintedRoots({ kotlinSourceRoots, kotlinTestSourceRoots = [] }) {
+  return [...new Set([...kotlinSourceRoots, ...kotlinTestSourceRoots])];
 }
 
 export function jacocoSourceRoots({ sourceRoots, manifest, kotlin }) {
@@ -79,7 +82,7 @@ export function readKotlinFindings(context, crapLimit) {
   const metrics = readKotlinMetrics(reportRoot);
   return [
     ...detektFindings(reportRoot),
-    ...readSuppressionFindings(projectRoot, manifest.kotlinSourceRoots),
+    ...readSuppressionFindings(projectRoot, kotlinLintedRoots(manifest)),
     ...formatterFindings(reportRoot, manifest.kotlinFormatter),
     ...readKotlinStructureFindings(metrics, projectRoot),
     ...readKotlinCrapFindings(metrics, {
@@ -87,7 +90,6 @@ export function readKotlinFindings(context, crapLimit) {
       jacoco,
       crapLimit,
     }),
-    ...readKotlinDuplicateFindings(reportRoot),
   ];
 }
 

@@ -66,7 +66,7 @@ function findings(file, durations, context = {}) {
 }
 
 const UNIT_MESSAGE =
-  'This test took 7.2 s; the budget for a unit test is 5 s. Replace real waits with fake timers (`vi.useFakeTimers()`) and use smaller fixtures. If it really is an integration test, move it to an `integration/` or `e2e/` folder of a test root. A justified exception for slow-test goes in nitpicker.config.json.';
+  'This test took 7.2 s; the budget for a unit test is 5 s. Replace real waits with fake timers (`vi.useFakeTimers()`) and use smaller fixtures. If it really is an integration test, move it to an `integration/` or `e2e/` folder of a test root. If this is intended, add {"rule":"slow-test","paths":["test/a.test.ts"],"reason":"..."} to "exceptions" in nitpicker.config.json.';
 
 describe('tests over their time budget', () => {
   it('fail when the change edited them, keyed by file and full test name', () => {
@@ -99,7 +99,7 @@ describe('tests over their time budget', () => {
     );
   });
 
-  it('get 30 s in an integration or e2e folder, and the thresholds can change both budgets', () => {
+  it('get 30 s in an integration or e2e folder or root, and the thresholds change both budgets', () => {
     const integration = findings(
       'test/integration/a.test.ts',
       [
@@ -110,12 +110,15 @@ describe('tests over their time budget', () => {
     );
 
     expect(integration.map(({ message }) => message)).toEqual([
-      'This test took 31.0 s; the budget for an integration or e2e test is 30 s. Replace real waits with fake timers (`vi.useFakeTimers()`) and use smaller fixtures. A justified exception for slow-test goes in nitpicker.config.json.',
+      'This test took 31.0 s; the budget for an integration or e2e test is 30 s. Replace real waits with fake timers (`vi.useFakeTimers()`) and use smaller fixtures. If this is intended, add {"rule":"slow-test","paths":["test/integration/a.test.ts"],"reason":"..."} to "exceptions" in nitpicker.config.json.',
     ]);
     expect(
       findings('test/e2e/a.test.ts', [['waits', 31_000, 2]], {
         thresholds: { integrationTestSeconds: 40, unitTestSeconds: 2 },
       }),
+    ).toEqual([]);
+    expect(
+      findings('e2e/a.test.ts', [['waits', 12_000, 2]], { testRoots: ['test', 'e2e'] }),
     ).toEqual([]);
     expect(
       findings('test/a.test.ts', [['waits', 3000, 2]], { thresholds: { unitTestSeconds: 2 } }).map(

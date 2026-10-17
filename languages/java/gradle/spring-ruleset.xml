@@ -167,7 +167,7 @@
   </rule>
 
   <rule name="SpringProxySelfCall" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
-        message="This call stays inside the class, so it skips the proxy and the called method's annotation does nothing. Move the annotated method to another bean and call it there. If it is right here, add an exception for pmd/SpringProxySelfCall in nitpicker.config.json.">
+        message="This call stays inside the class, so it skips the proxy and the called method''s annotation does nothing. Move the annotated method to another bean and call it there. If it is right here, add an exception for pmd/SpringProxySelfCall in nitpicker.config.json.">
     <priority>1</priority>
     <properties><property name="xpath"><value><![CDATA[
 //MethodCall[*[1][self::ArgumentList or self::TypeArguments or self::ThisExpression[not(*)]]][
@@ -284,7 +284,7 @@
   </rule>
 
   <rule name="SpringValidRequestBody" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
-        message="Add @Valid to this @RequestBody; without it the record's constraints are never checked. If it is right here, add an exception for pmd/SpringValidRequestBody in nitpicker.config.json.">
+        message="Add @Valid to this @RequestBody; without it the record''s constraints are never checked. If it is right here, add an exception for pmd/SpringValidRequestBody in nitpicker.config.json.">
     <priority>2</priority>
     <properties><property name="xpath"><value><![CDATA[
 //FormalParameter[ModifierList/Annotation[pmd-java:typeIs('org.springframework.web.bind.annotation.RequestBody')]]
@@ -375,11 +375,10 @@
         message="Add a @Version field next to the @Id, so concurrent updates fail instead of overwriting each other. Mark entities that are never updated with @Immutable. If it is right here, add an exception for pmd/JpaVersion in nitpicker.config.json.">
     <priority>2</priority>
     <properties><property name="xpath"><value><![CDATA[
-//ClassDeclaration[not(ExtendsList)]
-  [ModifierList/Annotation[pmd-java:typeIs('jakarta.persistence.Entity')]
-   or (ModifierList/Annotation[pmd-java:typeIs('jakarta.persistence.MappedSuperclass')]
-       and ClassBody/FieldDeclaration/ModifierList/Annotation[
-         pmd-java:typeIs('jakarta.persistence.Id') or pmd-java:typeIs('jakarta.persistence.EmbeddedId')])]
+//ClassDeclaration[ModifierList/Annotation[pmd-java:typeIs('jakarta.persistence.Entity') or pmd-java:typeIs('jakarta.persistence.MappedSuperclass')]]
+  [(not(ExtendsList) and ModifierList/Annotation[pmd-java:typeIs('jakarta.persistence.Entity')])
+   or ClassBody/(FieldDeclaration | MethodDeclaration)/ModifierList/Annotation[
+     pmd-java:typeIs('jakarta.persistence.Id') or pmd-java:typeIs('jakarta.persistence.EmbeddedId')]]
   [not(ModifierList/Annotation[pmd-java:typeIs('org.hibernate.annotations.Immutable')])]
   [not(ClassBody/(FieldDeclaration | MethodDeclaration)/ModifierList/Annotation[pmd-java:typeIs('jakarta.persistence.Version')])]
   /ModifierList/Annotation[pmd-java:typeIs('jakarta.persistence.Entity')
@@ -451,9 +450,11 @@
 //MethodCall[@MethodName = ('save', 'saveAndFlush', 'delete', 'deleteById', 'persist', 'merge', 'remove')]
   [*[1][pmd-java:typeIs('org.springframework.data.repository.Repository') or pmd-java:typeIs('jakarta.persistence.EntityManager')]]
   [ancestor::*[self::ForStatement or self::ForeachStatement or self::WhileStatement or self::DoStatement][not(.//MethodCall[@MethodName = 'clear'][*[1][pmd-java:typeIs('jakarta.persistence.EntityManager')]])]
-   or ancestor::LambdaExpression[parent::ArgumentList/parent::MethodCall[@MethodName = ('forEach', 'map', 'peek', 'forEachOrdered')]]]
+   or ancestor::LambdaExpression[parent::ArgumentList/parent::MethodCall[@MethodName = ('forEach', 'map', 'peek', 'forEachOrdered')]
+     [*[1][pmd-java:typeIs('java.util.stream.BaseStream') or pmd-java:typeIs('java.lang.Iterable') or pmd-java:typeIs('java.util.Map')]]]]
 |
-//MethodCall[@MethodName = ('forEach', 'map', 'peek', 'forEachOrdered')]/ArgumentList
+//MethodCall[@MethodName = ('forEach', 'map', 'peek', 'forEachOrdered')]
+  [*[1][pmd-java:typeIs('java.util.stream.BaseStream') or pmd-java:typeIs('java.lang.Iterable') or pmd-java:typeIs('java.util.Map')]]/ArgumentList
   /MethodReference[@MethodName = ('save', 'saveAndFlush', 'delete', 'deleteById', 'persist', 'merge', 'remove')]
   [*[1][pmd-java:typeIs('org.springframework.data.repository.Repository') or pmd-java:typeIs('jakarta.persistence.EntityManager')]]
 ]]></value></property></properties>

@@ -4,7 +4,7 @@ import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import { createJavaAnalyzer } from './java-analyzer.mjs';
 import { JAVA_TOOLS } from './gradle-presets.mjs';
-import { applyJavaPolicy, configureJavaAnalyzer } from './java-policy.mjs';
+import { applyJavaPolicy, configureJavaAnalyzer, validateJavaConfig } from './java-policy.mjs';
 import { toolConfigProperties } from './java-diff.mjs';
 import { parseRunnerArguments } from './java-runner.mjs';
 
@@ -75,6 +75,20 @@ describe('configureJavaAnalyzer', () => {
     expect(configured.legacyInventory).toBe('legacy.json');
   });
 
+  it('hands the size thresholds to the runner', () => {
+    const analyzer = createJavaAnalyzer();
+    const policyOf = (options) =>
+      parseRunnerArguments(
+        configureJavaAnalyzer(analyzer, options).createInvocation(context()).args.slice(1),
+      ).policy;
+
+    expect(
+      policyOf({
+        thresholds: { classMethods: 25, classFields: 12, inheritanceDepth: 4, folderDepth: 5 },
+      }).fileLimits,
+    ).toEqual({ classMethods: 25, classFields: 12, inheritanceDepth: 4, folderDepth: 5 });
+  });
+
   it('hands each exception path to the runner as a rule and a glob and changes the hash', () => {
     const analyzer = createJavaAnalyzer({ kotlin: true });
     const exceptions = [
@@ -135,6 +149,7 @@ describe('configureJavaAnalyzer', () => {
       'coupling',
       'crap',
       'duplicates',
+      'errorprone',
       'google-java-format',
       'jacoco',
       'pit',
@@ -142,6 +157,7 @@ describe('configureJavaAnalyzer', () => {
       'spotbugs',
       'spring',
       'structure',
+      'test-runtime',
     ]);
   });
 });
@@ -263,6 +279,17 @@ describe('Java file limits', () => {
       thresholds: { crapLimit: 12 },
     });
     const parsed = parseRunnerArguments(configured.createInvocation(context()).args.slice(1));
+    expect(parsed.policy.fileLimits).toBeUndefined();
+  });
+
+  it('hands the test time budgets to the runner', () => {
+    const configured = configureJavaAnalyzer(createJavaAnalyzer(), {
+      thresholds: { unitTestSeconds: 2, integrationTestSeconds: 40 },
+    });
+
+    const parsed = parseRunnerArguments(configured.createInvocation(context()).args.slice(1));
+
+    expect(parsed.policy.testSeconds).toEqual({ unitTestSeconds: 2, integrationTestSeconds: 40 });
     expect(parsed.policy.fileLimits).toBeUndefined();
   });
 
@@ -442,5 +469,24 @@ describe('applyJavaPolicy', () => {
         classification: 'enforceable',
       },
     ]);
+  });
+});
+
+describe('validateJavaConfig', () => {
+  it('asks for the printed name of a Checkstyle check instead of its class', () => {
+    const exception = { rule: 'checkstyle/Indentation', paths: ['src/**'], reason: 'Legacy' };
+    const byClass = {
+      ...exception,
+      rule: 'checkstyle/com.puppycrawl.tools.checkstyle.checks.indentation.IndentationCheck',
+    };
+
+    expect(() => {
+      validateJavaConfig({ preset: 'java', exceptions: [exception] });
+    }).not.toThrow();
+    expect(() => {
+      validateJavaConfig({ preset: 'java', exceptions: [byClass] });
+    }).toThrow(
+      `"exceptions[0].rule" names a Checkstyle check by class; findings print the check's name, so write "checkstyle/Indentation"`,
+    );
   });
 });

@@ -17,6 +17,9 @@ follows the full TypeScript rules (no `as`, `enum`, `interface`, `any`, `!`), no
 If your change edits a function that existed before it, read
 [editing-existing-code.md](editing-existing-code.md) before you edit.
 
+Before you change code other modules use or fix a bug, read
+[beyond-the-gate.md](beyond-the-gate.md).
+
 ## Finish with the gate
 
 1. Run your tests (`npx vitest run`). Failing tests stop coverage, CRAP and mutation from running.
@@ -24,7 +27,8 @@ If your change edits a function that existed before it, read
    `@types/node` in devDependencies.
 2. When the change is complete, run `npx nitpicker --fix` as a background command you wait on,
    without a pipe: you need its exit code. It applies ESLint and Prettier fixes with its own
-   configs (don't format with plain `prettier`), then checks your change against the merge base. It
+   configs (don't format with plain `prettier`; its quotes, semicolons, indentation and width follow
+   most of the project's files), then checks your change against the merge base. It
    takes minutes and prints a progress line for each slow analyzer.
 3. Act on the exit code:
    - 0: done.
@@ -35,7 +39,9 @@ If your change edits a function that existed before it, read
      wait for that run; never kill it.
 4. Never suppress: no `eslint-disable`, `@ts-ignore`, `@ts-nocheck`, coverage or mutation ignore
    comments (`istanbul`/`c8`/`v8 ignore`, `Stryker disable`), config `exclude`/`disable`, legacy
-   entries, or weakened tests. If a finding seems wrong, stop and ask.
+   entries, generator markers (`@generated`, `DO NOT EDIT`) in files you wrote, or weakened tests. If a finding seems wrong, stop and ask. Never pass `--accept-policy-change` or set
+   `NITPICKER_ACCEPT_POLICY_CHANGE`: a `nitpicker-config/policy-loosened` finding is for a person to
+   accept.
 
 ## Layout
 
@@ -46,8 +52,8 @@ If your change edits a function that existed before it, read
   `/** @typedef {import('./domain/tally.js').Invoice} Invoice */` in `invoices/index.js`, then
   `/** @import { Invoice } from '../../invoices/index.js' */` in the other feature. Never copy a
   type: import it, or derive it from a function you call (`Parameters<typeof runGreeting>[1]`).
-- `adapters/` does I/O and parses untrusted input (files, HTTP bodies, JSON) once, with zod (add it
-  if it isn't a dependency). Field rules and conversions live in the schema
+- `adapters/` does I/O and parses untrusted input (files, HTTP bodies, JSON) once, with the project's
+  validation library (zod if it has none; add it then). Field rules and conversions live in the schema
   (`z.string().trim().min(1)`, `z.email()`, `z.iso.date()`, `.transform(toCents)`), never
   `z.unknown()` fields plus hand checks. A JSON list is `z.array(recordSchema)`; the issues'
   `path` (`[index, field]`) names the bad record: `issues.map((issue) => issue.path.join('.'))`.
@@ -61,7 +67,8 @@ If your change edits a function that existed before it, read
 - Export only what another module imports: an exported function or `@typedef` that nothing imports
   fails dead-code.
 - Don't put `x.js` beside `x.ts` in one directory: TypeScript drops the `.js`. `.jsx` and `.tsx` are
-  outside the preset.
+  outside the preset, and so is React: a React project uses the typescript preset (`react` in
+  `nitpicker.config.json` is an error here).
 - Follow neighbouring signatures (parameter order, naming) and reuse helpers that exist. Match the
   module format of the files around you (ESM `import`/`export`, or CommonJS where the project is).
 
@@ -82,7 +89,7 @@ line) is a finding.
 - Bring a type in with `@import { Invoice } from '../domain/tally.js'`; there is no `import type`.
 - A value whose type can't be inferred gets a one-line `/** @type {string[]} */` above its `const`.
   A literal that must stay narrow is `/** @type {const} */ ([...])`; that is the one allowed cast.
-- No cast `/** @type {T} */ (value)`, the JSDoc `as`. Narrow with checks, parse with zod, or type the
+- No cast `/** @type {T} */ (value)`, the JSDoc `as`. Narrow with checks, parse with the project's validation library, or type the
   value correctly where it is made. There is no `!`.
 - No `any`, `*` or a bare `?` in a type. No `null`, `?T` or `T?`: absent is `undefined`
   (`{ readonly note: string | undefined }`).

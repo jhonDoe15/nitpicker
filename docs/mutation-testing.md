@@ -5,8 +5,8 @@ Status: Proposed, pending owner review.
 ## Current scope
 
 The default Stryker config (`languages/typescript/preset/defaults/stryker.config.mjs`) mutates `src/**` code
-files (`sourceGlobs` from `languages/typescript/preset/layout.mjs`), minus the shared excluded globs (`dist`, `build`,
-`generated`, `node_modules`, `coverage`, `reports`, `target`, `*.d.ts`), `src/**/__tests__/**`,
+files (`sourceGlobs` from `languages/typescript/preset/layout.mjs`), minus the shared excluded globs (the root folders `dist`, `build`,
+`generated`, `coverage`, `reports` and `target`, `node_modules` at any depth, and `*.d.ts`), `src/**/__tests__/**`,
 `src/**/test-support/**` when no test root exists (tests next to the code), and every test glob. It uses the vitest runner with the TypeScript checker, `perTest` coverage analysis,
 and `thresholds.break: null`, so Stryker itself never fails the run. The differential gate runs it
 through `languages/typescript/adapters/quality-areas-runner.mjs`, which rewrites the config, forces the `json`

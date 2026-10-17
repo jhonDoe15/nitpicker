@@ -146,11 +146,27 @@ describe('Gradle arguments', () => {
     ]);
   });
 
+  it("passes the merged forbidden-call list when the project's detekt config lists calls of its own", () => {
+    const root = project({
+      'detekt.yml': "style:\n  ForbiddenMethodCall:\n    methods: ['kotlin.io.println']\n",
+    });
+
+    expect(kotlinGradleArguments(root, {})).toEqual([
+      '-Pnitpicker.kotlin=true',
+      '-Pnitpicker.kotlin.formatter=none',
+      '-Pnitpicker.kotlin.ktfmtStyle=meta',
+      `-Pnitpicker.kotlin.detektConfig=${path.join(root, 'detekt.yml')}`,
+      `-Pnitpicker.kotlin.detektLists=${path.join(root, 'build/nitpicker/detekt-lists.yml')}`,
+    ]);
+  });
+
   it('runs Gradle without the configuration cache, for both presets', () => {
     const root = project({ 'build.gradle.kts': 'ktlint' });
     const argumentsOf = (policy) => {
       collectJavaFindings(root, { gradle: fakeGradle, policy });
-      return JSON.parse(readFileSync(path.join(root, 'build/nitpicker/gradle-args.json'), 'utf8'));
+      return JSON.parse(readFileSync(path.join(root, 'build/gradle-args.json'), 'utf8')).filter(
+        (argument) => !argument.startsWith('-Pnitpicker.reportDir='),
+      );
     };
     const common = ['--console=plain', '--quiet', '--no-configuration-cache'];
 

@@ -4,7 +4,7 @@ import { readLayout } from '../head-policy.mjs';
 const {
   sourceGlobs,
   testGlobs,
-  excludedGlobs,
+  runtimeExcludedGlobs,
   testRoots,
   sourceRoots,
   sourceTestDirectoryGlobs,
@@ -14,7 +14,7 @@ const {
 export default {
   mutate: [
     ...sourceGlobs,
-    ...excludedGlobs.map((glob) => `!${glob}`),
+    ...runtimeExcludedGlobs.map((glob) => `!${glob}`),
     ...sourceTestDirectoryGlobs.map((glob) => `!${glob}`),
     ...testSupportGlobs.map((glob) => `!${glob}`),
     ...testGlobs.map((glob) => `!${glob}`),

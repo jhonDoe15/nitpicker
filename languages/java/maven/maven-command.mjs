@@ -8,6 +8,7 @@ const MAVEN_TIMEOUT_MS = 15 * 60 * 1000;
 const TOOL_TIMEOUT_MS = 15 * 60 * 1000;
 const MAX_OUTPUT_BYTES = 50 * 1024 * 1024;
 const MAX_ERROR_LINES = 40;
+const MILLISECONDS_PER_MINUTE = 60_000;
 const MINIMUM_MAVEN = '3.6.3';
 const OLD_MAVEN = /Unrecognized option: --no-transfer-progress|requires Maven version/u;
 const MAVEN_FLAGS = ['--batch-mode', '--no-transfer-progress', '-Dstyle.color=never'];
@@ -54,17 +55,34 @@ function missingMaven(error, command) {
     : error;
 }
 
-export function runMaven({ projectRoot, maven, args }) {
+function duration(milliseconds) {
+  return milliseconds % MILLISECONDS_PER_MINUTE === 0
+    ? `${String(milliseconds / MILLISECONDS_PER_MINUTE)} minutes`
+    : `${String(milliseconds / 1000)} s`;
+}
+
+function spawnFailure(error, { command, projectRoot, timeoutMs }) {
+  if (error.code !== 'ETIMEDOUT') {
+    return missingMaven(error, command);
+  }
+  return new Error(
+    `Maven did not finish in ${projectRoot} within ${duration(timeoutMs)} and was stopped. ` +
+      'Its post-integration-test steps may not have run, so containers or servers the build ' +
+      'started may still be running',
+  );
+}
+
+export function runMaven({ projectRoot, maven, args, timeoutMs = MAVEN_TIMEOUT_MS }) {
   const target = mavenTarget({ projectRoot, configured: maven, args: [...MAVEN_FLAGS, ...args] });
   const result = spawnSync(target.command, target.args, {
     cwd: projectRoot,
     encoding: 'utf8',
     maxBuffer: MAX_OUTPUT_BYTES,
     shell: target.shell,
-    timeout: MAVEN_TIMEOUT_MS,
+    timeout: timeoutMs,
   });
   if (result.error !== undefined) {
-    throw missingMaven(result.error, target.command);
+    throw spawnFailure(result.error, { command: target.command, projectRoot, timeoutMs });
   }
   if (result.status !== 0) {
     throw new Error(
@@ -87,6 +105,7 @@ function argumentFileToken(value) {
 }
 
 export function runJava({
+  java = javaCommand('java'),
   tool,
   classpath,
   mainClass,
@@ -105,12 +124,17 @@ export function runJava({
       ...args,
     ];
     writeFileSync(argumentFile, tokens.map(argumentFileToken).join('\n'));
-    const result = spawnSync(javaCommand('java'), [`@${argumentFile}`], {
+    const result = spawnSync(java, [`@${argumentFile}`], {
       cwd,
       encoding: 'utf8',
       maxBuffer: MAX_OUTPUT_BYTES,
       timeout: TOOL_TIMEOUT_MS,
     });
+    if (result.error?.code === 'ENOENT') {
+      throw new Error(
+        `java not found (${java}): set JAVA_HOME to a JDK, or put its bin directory on the PATH`,
+      );
+    }
     if (result.error !== undefined) {
       throw result.error;
     }

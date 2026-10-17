@@ -2,12 +2,18 @@ import { spawnSync } from 'node:child_process';
 import path from 'node:path';
 import { resolveTool } from '../../../../core/tooling/tool-resolution.mjs';
 import { readHeadPolicy } from '../../preset/head-policy.mjs';
+import { TEST_ENVIRONMENTS_VARIABLE } from '../../preset/test-environment/resolve-environment.mjs';
 import { lintWithOxlint } from '../oxlint/oxlint-runner.mjs';
 
 const MAX_ESLINT_OUTPUT_BYTES = 50 * 1024 * 1024;
 
-export function runLintEngine({ options, projectConfigPath, policyConfigPath }) {
-  const invocation = eslintInvocation({ options, projectConfigPath, policyConfigPath });
+export function runLintEngine({ options, projectConfigPath, policyConfigPath, testEnvironments }) {
+  const invocation = eslintInvocation({
+    options,
+    projectConfigPath,
+    policyConfigPath,
+    testEnvironments,
+  });
   if (lintEngine(options) === 'eslint') return runEslintCli(invocation, options.patterns);
   return lintWithOxlint({
     options,
@@ -24,7 +30,7 @@ function lintEngine(options) {
     : 'eslint';
 }
 
-function eslintInvocation({ options, projectConfigPath, policyConfigPath }) {
+function eslintInvocation({ options, projectConfigPath, policyConfigPath, testEnvironments }) {
   return {
     options,
     projectConfigPath,
@@ -35,6 +41,12 @@ function eslintInvocation({ options, projectConfigPath, policyConfigPath }) {
       NITPICKER_DIFF_ESLINT_POLICY_CONFIG: policyConfigPath,
       NITPICKER_DIFF_ESLINT_PROJECT_ROOT: options.projectRoot,
       NITPICKER_DIFF_ESLINT_PROJECT_CONFIG: projectConfigPath ?? '',
+      [TEST_ENVIRONMENTS_VARIABLE]: JSON.stringify({
+        environment: testEnvironments?.environment,
+        scopes: testEnvironments?.scopes ?? [],
+        aliases: testEnvironments?.aliases ?? [],
+        setupFiles: testEnvironments?.setupFiles ?? [],
+      }),
     },
   };
 }

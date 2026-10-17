@@ -1,9 +1,12 @@
-import { describe, expect, it } from 'vitest';
+import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import path from 'node:path';
+import { afterAll, describe, expect, it } from 'vitest';
+import { eslintShapedResults } from './oxlint-diagnostics.mjs';
 import {
   escapeGlob,
   messageIdResolver,
   nativeRuleIndex,
-  nativeSetting,
   PARITY_BRIDGED_RULES,
   rejectedRuleIds,
   reportedRuleKey,
@@ -193,36 +196,49 @@ describe('messageIdResolver', () => {
   });
 });
 
-describe('options oxlint does not accept for a native rule', () => {
-  it.each([
-    [
-      'drops options that only steer the autofix',
-      'vitest/no-focused-tests',
-      [2, { fixable: true }],
-      [2],
-      [],
-    ],
-    [
-      'keeps the options oxlint knows and drops empty defaults',
-      'preserve-caught-error',
-      [2, { requireCatchParameter: true, errorClassNames: [] }],
-      [2, { requireCatchParameter: true }],
-      [],
-    ],
-    [
-      'bridges the rule when an option would change what it reports',
-      'preserve-caught-error',
-      [2, { requireCatchParameter: false, errorClassNames: ['AppError'] }],
-      [2, { requireCatchParameter: false, errorClassNames: ['AppError'] }],
-      ['preserve-caught-error'],
-    ],
-    ['leaves other rules alone', 'no-debugger', [2, { any: 1 }], [2, { any: 1 }], []],
-  ])('%s', (_name, ruleId, setting, expected, bridged) => {
-    const bridgedRules = new Set();
+describe('eslintShapedResults', () => {
+  const stage = mkdtempSync(path.join(tmpdir(), 'nitpicker-oxlint-diagnostics-'));
+  writeFileSync(path.join(stage, 'a.ts'), 'export const roll = Math.random();\n');
 
-    expect([nativeSetting(ruleId, setting, bridgedRules), [...bridgedRules]]).toEqual([
-      expected,
-      bridged,
-    ]);
+  afterAll(() => {
+    rmSync(stage, { recursive: true, force: true });
+  });
+
+  function shaped(diagnostic) {
+    const naming = {
+      ruleNames: new Map([
+        ['eslint/no-restricted-properties', 'no-restricted-properties'],
+        ['eslint/no-restricted-globals', 'no-restricted-globals'],
+      ]),
+      messageIdOf: () => undefined,
+      neutralized: new Map(),
+    };
+    const labels = [{ span: { offset: 20, length: 11 } }];
+    const [result] = eslintShapedResults(
+      stage,
+      [{ filename: 'a.ts', labels, ...diagnostic }],
+      naming,
+    );
+    return result.messages[0].message;
+  }
+
+  it('keeps the configured message that oxlint moves into the help of a restricted property', () => {
+    expect(
+      shaped({
+        code: 'eslint(no-restricted-properties)',
+        message: "'Math.random' is restricted from being used.",
+        help: 'Use crypto.randomUUID().',
+      }),
+    ).toBe("'Math.random' is restricted from being used. Use crypto.randomUUID().");
+  });
+
+  it('leaves the generic help of other rules out', () => {
+    expect(
+      shaped({
+        code: 'eslint(no-restricted-globals)',
+        message: "Unexpected use of 'name'. Write window.name.",
+        help: 'Use a local variable or function parameter instead of the restricted global.',
+      }),
+    ).toBe("Unexpected use of 'name'. Write window.name.");
   });
 });

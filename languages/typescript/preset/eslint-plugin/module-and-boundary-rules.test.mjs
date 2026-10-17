@@ -216,6 +216,10 @@ ruleTester.run('no-branch-in-composition-root', noBranchInCompositionRoot, {
       filename: '/repo/src/main/composition-root.ts',
       code: "if (import.meta.url === pathToFileURL(process.argv[1] ?? '').href) { main(); }",
     },
+    ...[
+      "const container = document.getElementById('root'); if (container === null) { throw new Error('#root is missing'); } createRoot(container).render(app);",
+      "if (container === null) throw new Error('#root is missing');",
+    ].map((code) => ({ filename: '/repo/src/main.tsx', code })),
   ],
   invalid: [
     {
@@ -253,6 +257,11 @@ ruleTester.run('no-branch-in-composition-root', noBranchInCompositionRoot, {
       code: 'if (import.meta.main) { if (ready) { main(); } }',
       errors: [{ messageId: 'branch' }],
     },
+    ...[
+      'if (container !== null) { createRoot(container).render(app); }',
+      "if (container === null) { throw new Error('missing'); } else { createRoot(container); }",
+      "if (container === null) { log('missing'); throw new Error('missing'); }",
+    ].map((code) => ({ filename: '/repo/src/main.tsx', code, errors: [{ messageId: 'branch' }] })),
     {
       filename: '/repo/src/main/main.ts',
       code: 'export const pick = (book) => (book ? 1 : 2);',

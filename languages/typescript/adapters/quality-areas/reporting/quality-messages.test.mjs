@@ -9,7 +9,7 @@ import {
   unhandledErrors,
   unhandledErrorText,
   withSnapshotAdvice,
-} from './failure-text.mjs';
+} from './failure-lines.mjs';
 
 const rule = '⎯⎯⎯⎯⎯⎯⎯';
 const unhandledOutput = [
@@ -212,7 +212,7 @@ describe('mutants hidden by a Stryker comment', () => {
 
     expect(ignored.classification).toBe('enforceable');
     expect(ignored.message).toBe(
-      'Ignored ConditionalExpression at column 7: an ignore comment hides this code from mutation testing. Remove the comment and test the code. Ignore comments are not an exception route: if this code must stay out of mutation testing, add an exception for mutant-ignored with its path in nitpicker.config.json.',
+      'Ignored ConditionalExpression at column 7: an ignore comment hides this code from mutation testing. Remove the comment and test the code; an ignore comment is not an exception route. If this is intended, add {"rule":"mutant-ignored","paths":["src/classify.ts"],"reason":"..."} to "exceptions" in nitpicker.config.json.',
     );
   });
 });

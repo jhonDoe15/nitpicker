@@ -39,6 +39,7 @@ describe('Python analyzer', () => {
       'coverage',
       'mypy',
       'pyright',
+      'basedpyright',
       'structure',
       'crap',
       'python-rules',
@@ -46,6 +47,9 @@ describe('Python analyzer', () => {
       'duplicates',
       'coupling',
       'import-linter',
+      'tests',
+      'test-runtime',
+      'dependencies',
     ]);
     expect(analyzer.exclusions).toEqual([]);
     expect(analyzer.timeoutMs).toBe(30 * 60 * 1000);
@@ -59,11 +63,12 @@ describe('Python analyzer', () => {
     expect(analyzer.name).toBe(MUTATION_ANALYZER_NAME);
     expect(analyzer.reportedTools).toEqual(['mutmut']);
     expect(analyzer.dependencies).toEqual([PYTHON_ANALYZER_NAME]);
+    expect(analyzer.toleratedDependencyErrors).toEqual(['tests', 'test-runtime', 'dependencies']);
     expect(analyzer.timeoutMs).toBe(70 * 60 * 1000);
     expect(analyzer.version).toBe('unresolved');
   });
 
-  it('hashes the ruff config, the adapters, the lizard pin and every file the runner imports, not the tests', () => {
+  it('hashes the ruff config, the adapters and every file the runner imports, not the tests', () => {
     const files = configurationFiles();
 
     const required = [
@@ -73,7 +78,7 @@ describe('Python analyzer', () => {
       'languages/java/ingest/sarif.mjs',
       'shared/policy.mjs',
       'shared/rules/baseline-expansion.mjs',
-      'languages/java/gradle/nitpicker.init.gradle',
+      'languages/python/metrics/structure_metrics.py',
     ];
     expect(required.filter((file) => !files.includes(file))).toEqual([]);
     expect(
