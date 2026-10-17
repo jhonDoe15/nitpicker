@@ -18,6 +18,7 @@ import {
   growthAdviceFor,
   metricWorseMessage,
   routedEslintMessage,
+  withoutFatalDirectives,
 } from '../hints/eslint-hints.mjs';
 import { requiredString, positiveInteger } from './arguments.mjs';
 
@@ -42,7 +43,7 @@ function normalizeResult({ result, resultIndex, projectRoot, analyzerName }) {
     throw new TypeError(`ESLint result ${String(resultIndex)} must contain messages`);
   }
   const projectFile = validatedProjectFile(projectRoot, result.filePath);
-  const messages = withoutSupersededMessages(result.messages);
+  const messages = withoutFatalDirectives(withoutSupersededMessages(result.messages));
   if (messages.length === 0) {
     return [];
   }

@@ -67,9 +67,9 @@ describe('structural metrics report', () => {
     const report = analyzeProductionFiles(fixtureRoot, 'fixture/src/main');
     const complex = report.functions.find((entry) => entry.function === 'coordinate');
 
-    expect(report.summary.files).toBe(2);
+    expect(report.summary.files).toBe(5);
     expect(report.functions.map((entry) => entry.source)).not.toEqual(
-      expect.arrayContaining([expect.stringMatching(/dist|build|generated|__tests__/)]),
+      expect.arrayContaining([expect.stringMatching(/__tests__/)]),
     );
     expect(complex).toEqual({
       source: 'fixture/src/main/complex.ts',
@@ -83,6 +83,23 @@ describe('structural metrics report', () => {
     });
     expect(complex.statements).toBeGreaterThan(4);
     expect(report.rankings.functionParameters[0].function).toBe('coordinate');
+  });
+
+  it('analyzes folders named like build output below the project root', () => {
+    const sources = analyzeProductionFiles(fixtureRoot, 'fixture/src/main')
+      .functions.map((entry) => entry.source)
+      .filter((source) => source.endsWith('/folder-named-like-output.ts'))
+      .sort();
+
+    expect(sources).toEqual([
+      'fixture/src/main/build/folder-named-like-output.ts',
+      'fixture/src/main/dist/folder-named-like-output.ts',
+      'fixture/src/main/generated/folder-named-like-output.ts',
+    ]);
+  });
+
+  it('skips a source root that is build output at the project root', () => {
+    expect(analyzeProductionFiles(fixtureRoot, 'dist').summary.files).toBe(0);
   });
 
   it('keeps anonymous function names stable when preceding lines move', () => {

@@ -66,3 +66,13 @@ describe('@typescript-eslint/ban-ts-comment', () => {
     expect(tsCommentMessages('// @ts-check\nconst value = 1;\n')).toEqual([]);
   });
 });
+
+describe('@typescript-eslint/no-unsafe-assignment', () => {
+  it('stays on for JavaScript files that the project tsconfig does not check', () => {
+    expect(
+      presetConfig.filter(
+        (entry) => entry.rules?.['@typescript-eslint/no-unsafe-assignment'] === 'off',
+      ),
+    ).toEqual([]);
+  });
+});

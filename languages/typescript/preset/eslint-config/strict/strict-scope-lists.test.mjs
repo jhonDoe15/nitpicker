@@ -65,9 +65,9 @@ const commonBans = [
   },
   {
     selector:
-      "TSInterfaceDeclaration:not(:matches(TSModuleDeclaration[declare=true][id.type='Literal'], TSModuleDeclaration[declare=true][kind='global']) TSInterfaceDeclaration)",
+      "TSInterfaceDeclaration:not(:matches(TSModuleDeclaration[declare=true][id.type='Literal'], TSModuleDeclaration[declare=true][kind='global']) TSInterfaceDeclaration):not(Program:not(:has(> ImportDeclaration, > ExportNamedDeclaration, > ExportDefaultDeclaration, > ExportAllDeclaration, > TSExportAssignment)) > TSInterfaceDeclaration)",
     message:
-      'Use a `type` instead of an `interface`: `type Shape = { size: number }`. Only a `declare module` or `declare global` augmentation may declare an `interface`.',
+      'Use a `type` instead of an `interface`: `type Shape = { size: number }`. Only a `declare module` or `declare global` augmentation, or a global declaration file without imports or exports, may declare an `interface`.',
   },
   {
     selector: 'ExportAllDeclaration',
