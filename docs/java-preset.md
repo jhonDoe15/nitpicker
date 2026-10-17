@@ -539,6 +539,11 @@ identity when the value changes: editing such a line counts as a resolved plus a
   methods. The Kotlin preset has its own mutant filter (a separate change); this one is kept
   self-contained and shaped like it, a function over the project tree that reports what it
   changed, so the two can share their walk and their tests later.
+  Other generators are not handled: MapStruct and AutoValue mark their classes with
+  `javax.annotation.processing.Generated`, whose retention is SOURCE, so it is not in the class files
+  JaCoCo and PIT read, and nothing in nitpicker filters those classes. Treat coverage and mutants of
+  `*MapperImpl` and `AutoValue_*` classes as real until that is measured and handled (not verified
+  here); Immutables is likewise not handled.
 - **Identity.** `function:<signature>`, for example `function:Calc.classify(int, int, String)`:
   enclosing classes, method and parameter types (`signature` in `structure.json`), never a line.
   Repeats (anonymous classes) get `#2`, `#3` in report order. The path
