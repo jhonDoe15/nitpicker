@@ -121,9 +121,11 @@ Before you change code other modules use, or fix a bug, read
   slice instead of `@SpringBootTest`.
 - Never wait a fixed time (`FixedSleepInTest`): wait on the condition with Awaitility when the
   tests use it (`await().atMost(Duration.ofSeconds(5)).until(...)`), otherwise in a loop against a
-  deadline; `verify(mock, timeout(1000))` for a mock, not `after(1000)`. `parkNanos`, `wait(ms)`,
-  `join(ms)` and `pollDelay(...).until(() -> true)` are fixed waits too; check the result of
-  `join(Duration)`. A sleep that simulates slow work in a mock answer or a thread body is fine. To
+  deadline; `verify(mock, timeout(1000))` for a mock, not `after(1000)`. `parkNanos` and
+  `pollDelay(...).until(() -> true)` are fixed waits too. `join(ms)` and `wait(ms)` are timed
+  waits: they return early, but the test goes on unchecked when the time runs out, so assert the
+  result of `join(Duration)` or of a latch `await`. A sleep that simulates slow work in a mock
+  answer, a thread body or a test fake that implements or extends a main class is fine. To
   show something does not happen, give the code a `Clock` or scheduler the test moves forward, not
   `after(ms).never()` or `during(...)` (`NegativeWaitInTest`).
 - Tests print nothing new (`test-runtime/test-console-output`): no `System.out`/`System.err`, and

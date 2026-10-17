@@ -87,3 +87,49 @@ describe('withWaitAdvice', () => {
     ).toEqual([sleep]);
   });
 });
+
+describe('withWaitAdvice for a timed wait', () => {
+  const join = {
+    ...sleep,
+    path: 'src/test/java/shop/WorkerTest.java',
+    location: { line: 4 },
+  };
+  const root = () =>
+    projectWith({
+      'src/test/java/shop/WorkerTest.java': [
+        'package shop;',
+        '',
+        'class WorkerTest {',
+        '  void runs() { worker.join(1000); lock.wait(5); }',
+        '  void sleeps() { Thread.sleep(5); }',
+        '}',
+      ].join('\n'),
+    });
+
+  it('calls join(ms) and wait(ms) timed waits that return early and asks to check the outcome', () => {
+    const [timed, fixed] = withWaitAdvice([join, { ...join, location: { line: 5 } }], {
+      manifest: {},
+      projectRoot: root(),
+    });
+
+    expect(timed.message).toMatch(
+      /^A timed wait, join\(ms\) or wait\(ms\), returns as soon as the thread ends or is notified/u,
+    );
+    expect(timed.message).toMatch(
+      /assertThat\(thread\.join\(Duration\.ofSeconds\(5\)\)\)\.isTrue\(\)/u,
+    );
+    expect(timed.message).not.toMatch(/Awaitility/u);
+    expect(fixed).toEqual({ ...join, location: { line: 5 } });
+  });
+
+  it('offers Awaitility for a timed wait when the tests use it', () => {
+    const [timed] = withWaitAdvice([join], {
+      manifest: { testAwaitility: true },
+      projectRoot: root(),
+    });
+
+    expect(timed.message).toMatch(
+      /^A timed wait, .*until\(\(\) -> !thread\.isAlive\(\)\) with Awaitility/u,
+    );
+  });
+});

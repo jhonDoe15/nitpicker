@@ -36,7 +36,7 @@ class WaitingTest {
     Runnable task = mock(Runnable.class);
     task.run();
     verify(task, timeout(1000)).run();
-    assertThat(done.get()).isTrue();
+    assertThat(new SlowOrderService().cancel(Status.NEW)).isTrue();
   }
 
   @Test

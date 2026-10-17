@@ -14,7 +14,7 @@
     </properties>
   </rule>
   <rule name="FixedSleepInTest" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
-        message="A fixed wait makes the test slow and flaky: a sleep, parkNanos, wait(ms) or join(ms) outside a polling loop, after(ms) with a check that could pass sooner, or pollDelay(...).until(() -> true). Wait on the condition: a loop that checks it against a deadline (a sleep inside that loop is allowed), verify(mock, timeout(1000)) for a mock, or a checked join(Duration) for a thread. A sleep in a mock answer or a thread body is allowed. If a real wait is unavoidable, add an exception for pmd/FixedSleepInTest in nitpicker.config.json.">
+        message="A fixed wait makes the test slow and flaky: a sleep or parkNanos outside a polling loop, after(ms) with a check that could pass sooner, or pollDelay(...).until(() -> true). Wait on the condition: a loop that checks it against a deadline (a sleep inside that loop is allowed), or verify(mock, timeout(1000)) for a mock. A timed wait, wait(ms) or join(ms), returns early but lets the test go on unchecked when the time runs out: assert the result of join(Duration) or of a latch await. A sleep in a mock answer, a thread body or a test fake that implements or extends a main class is allowed. If a real wait is unavoidable, add an exception for pmd/FixedSleepInTest in nitpicker.config.json.">
     <priority>2</priority>
     <properties>
       <property name="xpath">
