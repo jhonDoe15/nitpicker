@@ -13,7 +13,19 @@ const MOCHA_CONFIG_EXTRA = ['.mocharc.yml', '.mocharc.yaml', '.mocharc.jsonc'];
 
 const RUNNER_DEPENDENCIES = [
   ['vitest', ['vitest']],
-  ['jest', ['jest', 'ts-jest', 'babel-jest', '@jest/globals', 'react-scripts', '@craco/craco']],
+  [
+    'jest',
+    [
+      'jest',
+      'ts-jest',
+      'babel-jest',
+      '@jest/globals',
+      'react-scripts',
+      '@craco/craco',
+      'react-app-rewired',
+      '@rescripts/cli',
+    ],
+  ],
   ['mocha', ['mocha']],
 ];
 

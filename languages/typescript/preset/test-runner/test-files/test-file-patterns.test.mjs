@@ -1,4 +1,5 @@
-import { describe, expect, it } from 'vitest';
+import path from 'node:path';
+import { describe, expect, it, vi } from 'vitest';
 import { resolveLayout } from '../../layout.mjs';
 import {
   defaultTestFiles,
@@ -184,5 +185,18 @@ describe('the runner-aware layout', () => {
     expect(layout.testGlobs.slice(-layout.runnerSourceTestGlobs.length)).toEqual(
       layout.runnerSourceTestGlobs,
     );
+  });
+});
+
+describe('the test file matcher', () => {
+  it('matches without the experimental glob matcher of node:path, so Node prints no warning', () => {
+    const matchesGlob = vi.spyOn(path.posix, 'matchesGlob');
+    const warnings = vi.spyOn(process, 'emitWarning');
+    const matches = testFileMatcher(defaultTestFiles('jest'));
+
+    expect(
+      ['src/a.test.ts', 'src/a.ts', 'src/__tests__/a.jsx'].map((file) => matches(file)),
+    ).toEqual([true, false, true]);
+    expect([matchesGlob.mock.calls, warnings.mock.calls]).toEqual([[], []]);
   });
 });

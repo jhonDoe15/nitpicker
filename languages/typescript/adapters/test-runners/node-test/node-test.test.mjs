@@ -221,4 +221,59 @@ describe('coverage on a node:test project', () => {
       expect(findings.find(({ identity }) => identity === 'test-count')?.metric.value).toBe(4);
     },
   );
+
+  it('keeps a double a before hook made, and restores the ones each test made', async () => {
+    const sharedDouble = [
+      "import { after, before, beforeEach, describe, it, mock } from 'node:test';",
+      "import assert from 'node:assert/strict';",
+      "const target = { answer: () => 'real', other: () => 'real' };",
+      "describe('a double made once for the suite', () => {",
+      "  before(() => { mock.method(target, 'answer', () => 'fake'); });",
+      '  after(() => { mock.restoreAll(); });',
+      "  beforeEach(() => { mock.method(target, 'other', () => 'each'); });",
+      "  it('reads the doubles', () => {",
+      "    assert.deepEqual([target.answer(), target.other()], ['fake', 'each']);",
+      '  });',
+      "  it('reads them again', () => {",
+      "    assert.deepEqual([target.answer(), target.other()], ['fake', 'each']);",
+      '  });',
+      '});',
+      "it('runs after the suite restored its doubles', () => {",
+      "  assert.deepEqual([target.answer(), target.other()], ['real', 'real']);",
+      '});',
+      '',
+    ].join('\n');
+    const root = nodeTestProject({ 'test/shared.test.mjs': sharedDouble });
+
+    const findings = await runArea('coverage', root);
+
+    expect(findings.filter(({ rule }) => rule === 'tests-failed')).toEqual([]);
+    expect(findings.find(({ identity }) => identity === 'test-count')?.metric.value).toBe(3);
+  });
+
+  it('leaves a process a test forks free of the mock restoring preload', async () => {
+    const forksChild = [
+      "import { fork } from 'node:child_process';",
+      "import { once } from 'node:events';",
+      "import { it } from 'node:test';",
+      "import assert from 'node:assert/strict';",
+      "it('reads what the forked child prints', async () => {",
+      "  const child = fork(new URL('../scripts/child.mjs', import.meta.url), [], { silent: true });",
+      '  const chunks = [];',
+      "  child.stdout.on('data', (chunk) => chunks.push(chunk));",
+      "  await once(child, 'close');",
+      "  assert.equal(Buffer.concat(chunks).toString(), 'hello');",
+      '});',
+      '',
+    ].join('\n');
+    const root = nodeTestProject({
+      'scripts/child.mjs': "process.stdout.write('hello');\n",
+      'test/fork.test.mjs': forksChild,
+    });
+
+    const findings = await runArea('coverage', root);
+
+    expect(findings.filter(({ rule }) => rule === 'tests-failed')).toEqual([]);
+    expect(findings.find(({ identity }) => identity === 'test-count')?.metric.value).toBe(1);
+  });
 });

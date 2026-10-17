@@ -28,10 +28,10 @@ import { withRunnerTestPaths } from '../test-runner/test-files/test-file-pattern
 import { testRunnerLintConfig } from '../eslint-config/runner/runner-rules.mjs';
 import { policyTestRunner } from '../test-runner/project-runner.mjs';
 import {
-  domProductionConfigFor,
   testEnvironmentConfigFor,
   testEnvironmentsFromVariables,
 } from '../test-environment/test-environment-config.mjs';
+import { domProductionConfigFor } from '../test-environment/dom-code/dom-code.mjs';
 
 const policy = readHeadPolicy();
 const testRunner = policyTestRunner(policy, analyzedProjectRoot());
@@ -157,7 +157,7 @@ const presetConfig = defineConfig(
     rules: { 'nitpicker/no-external-executables-in-unit-tests': 'error' },
   },
   ...testEnvironmentConfigFor(layout, testEnvironments, testRunner),
-  ...(react ? [] : domProductionConfigFor(layout, testEnvironments)),
+  ...(react ? [] : domProductionConfigFor(layout, testEnvironments, analyzedProjectRoot())),
 );
 
 const inactiveRuleIds = [

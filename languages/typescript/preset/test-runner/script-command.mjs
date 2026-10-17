@@ -6,7 +6,7 @@ const BINARY_EXTENSION = /\.(?:[cm]?js|cmd)$/u;
 
 const NODE_WRAPPER_ARGUMENTS = { node: [], tsx: ['--import', 'tsx'] };
 const MOCHA_BINARIES = new Set(['mocha', '_mocha', 'ts-mocha']);
-const JEST_LAUNCHERS = new Set(['react-scripts', 'craco']);
+const JEST_LAUNCHERS = new Set(['react-scripts', 'craco', 'react-app-rewired', 'rescripts']);
 const TS_MOCHA_FLAGS = { '--paths': 'TS_CONFIG_PATHS', '--type-check': 'TS_TYPE_CHECK' };
 const TS_MOCHA_PROJECT = new Set(['-p', '--project']);
 
@@ -23,14 +23,15 @@ export function tokenize(command) {
   );
 }
 
-function segments(command) {
-  const result = [{ tokens: [], words: [] }];
-  for (const { groups } of command.matchAll(TOKEN)) {
+export function commandSegments(command) {
+  const result = [{ tokens: [], words: [], starts: [] }];
+  for (const { groups, index } of command.matchAll(TOKEN)) {
     if (groups.separator === undefined) {
       result.at(-1).tokens.push(unquote(groups.word));
       result.at(-1).words.push(groups.word);
+      result.at(-1).starts.push(index);
     } else {
-      result.push({ tokens: [], words: [] });
+      result.push({ tokens: [], words: [], starts: [] });
     }
   }
   return result.filter(({ tokens }) => tokens.length > 0);
@@ -60,7 +61,7 @@ export function withoutOptions(tokens, { flags = [], valued = [] }) {
   );
 }
 
-function binaryName(token) {
+export function binaryName(token) {
   return token.split('/').at(-1).replace(BINARY_EXTENSION, '');
 }
 
@@ -176,7 +177,7 @@ function firstRunner(tokens) {
 }
 
 export function commandRunners(command) {
-  const runners = segments(command)
+  const runners = commandSegments(command)
     .map(({ tokens }) => firstRunner(tokens)?.runner)
     .filter((runner) => runner !== undefined);
   return [...new Set(runners)];
@@ -186,7 +187,7 @@ export function parseTestCommand(command, runner) {
   if (typeof command !== 'string') {
     return undefined;
   }
-  const parts = segments(command);
+  const parts = commandSegments(command);
   for (const [position, { tokens }] of parts.entries()) {
     const found = runner === undefined ? firstRunner(tokens) : runnerAt(tokens, runner);
     if (found !== undefined) {

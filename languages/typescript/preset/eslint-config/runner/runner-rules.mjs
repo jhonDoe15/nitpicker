@@ -28,11 +28,41 @@ const MATCHER_RULES = {
   'valid-expect': 'error',
 };
 
+const NODE_ASSERT_EXPORTS = [
+  'ok',
+  'equal',
+  'notEqual',
+  'strictEqual',
+  'notStrictEqual',
+  'deepEqual',
+  'notDeepEqual',
+  'deepStrictEqual',
+  'notDeepStrictEqual',
+  'partialDeepStrictEqual',
+  'throws',
+  'doesNotThrow',
+  'rejects',
+  'doesNotReject',
+  'match',
+  'doesNotMatch',
+  'fail',
+  'ifError',
+];
+
 const ASSERTION_NAMES = {
   vitest: EXPECT_ASSERTIONS,
   jest: EXPECT_ASSERTIONS,
-  node: ['assert', 'expect', '*.assert'],
-  mocha: ['assert', 'expect', 'sinon.assert', '**.should'],
+  node: ['assert', 'expect', '*.assert', ...NODE_ASSERT_EXPORTS],
+  mocha: [
+    'assert',
+    'expect',
+    'should',
+    '*.assert',
+    '*.expect',
+    'sinon.assert',
+    '**.should',
+    ...NODE_ASSERT_EXPORTS,
+  ],
 };
 
 const NAMESPACES = { vitest: 'vitest', jest: 'jest', node: 'node-test', mocha: 'mocha' };

@@ -642,13 +642,23 @@ the spec for Mocha.
   `jest.useRealTimers()` in `afterEach`. `node --test` (and Stryker's tap runner) preloads a module
   with `--import` (with `--require` when the script loads a require hook such as
   `ts-node/register`, which an `--import` would bypass for the test files) that registers a global
-  `afterEach(() => mock.restoreAll())`, so a
-  `mock.method` spy on the shared `mock` is restored after every test in every file (a `t.mock`
-  double is restored by Node itself); call `mock.timers.reset()` in `afterEach`. Mocha (and
-  Stryker's Mocha runner) loads a root hook plugin with `--require` whose `afterEach` calls
-  `sinon.restore()` on the project's sinon, through both its CommonJS and its ESM entry, when the
-  project has sinon, and does nothing otherwise; call `clock.restore()` for a sinon clock in
-  `afterEach`.
+  `beforeEach` and `afterEach`: a double made with the shared `mock` (`mock.fn`, `mock.method`,
+  `mock.getter`, `mock.setter`, `mock.property`) while a test or its `beforeEach` hooks run is
+  restored after that test, and one made in a `before` hook or at the top of the file stays until
+  the suite restores it, so `before(() => mock.method(...))` with `after(() => mock.restoreAll())`
+  keeps working. A `t.mock` double is restored by Node itself; a `mock.module` mock on the shared
+  `mock` is not restored per test (use `t.mock.module`); call `mock.timers.reset()` in `afterEach`.
+  The preload takes itself out of `process.execArgv` in the test process, so a process a test
+  starts with `child_process.fork()` or a worker does not load it. Mocha (and Stryker's Mocha
+  runner) loads a root hook plugin with `--require` that does the same for the project's sinon,
+  through both its CommonJS and its ESM entry, when the project has sinon (and does nothing
+  otherwise): the stubs, spies, fakes, mocks and `useFakeTimers` clocks made while a test or its
+  `beforeEach` hooks run are restored after that test, and so is what `sinon.replace`,
+  `sinon.define`, `sinon.replaceGetter` and `sinon.replaceSetter` changed, while the doubles a
+  `before` hook made stay until the suite calls `sinon.restore()` (the
+  `before(() => sinon.stub(...))` with `after(() => sinon.restore())` idiom). `sinon.restore()`
+  restores a clock made with `sinon.useFakeTimers()` as well, so only a clock made with
+  `@sinonjs/fake-timers` directly needs its own `clock.uninstall()` in `afterEach`.
 - Vitest versions: nitpicker works with Vitest 3.2 or newer (3, 4 and 5). Vitest 3 needs
   `coverage.experimentalAstAwareRemapping: true`, which `vitest.quality.config.ts` sets, so that
   coverage reports branches in the Istanbul shapes the changed-branch check reads; without it
@@ -681,8 +691,10 @@ off (a PR that adds or removes React keeps linting on both sides); a misspelled 
   `onPick(name)` with no `name` in scope is a missing parameter, not `window.name`. Write
   `window.name` when the global is meant; otherwise take the value as a parameter
   (`onClick={(event) => ...}`) or declare it. A project without React whose tests run in jsdom or
-  happy-dom (through the runner's environment or a global DOM registered for Mocha or `node:test`)
-  gets the same globals and the same restriction for its production code.
+  happy-dom (through the runner's environment, an environment comment, or a global DOM registered
+  for Mocha or `node:test`) gets the same globals and the same restriction for the production files
+  those DOM tests import, followed through relative imports; the rest of its production code, such
+  as a Node server, keeps Node's globals, so `document` there is still an error.
 - **Function components only** (`react-x/no-class-component`). Class components are flagged; error
   boundaries, which React only supports as classes, are allowed. The "classes only for `Error`
   subclasses" ban leaves classes that extend `Component` or `PureComponent` to this rule in a React
@@ -944,9 +956,10 @@ off (a PR that adds or removes React keeps linting on both sides); a misspelled 
   `queryBy*` (`testing-library/prefer-presence-queries`). Do not wrap `render` or `user` calls
   in `act` (`testing-library/no-unnecessary-act`), leave `screen.debug()` and other debug
   output in (`testing-library/no-debugging-utils`) or call `cleanup` yourself
-  (`testing-library/no-manual-cleanup`, on when the project's Vitest config sets
-  `globals: true` or the project has no Vitest; with `globals` unset or false, Testing Library
-  cannot register its own cleanup, so the `afterEach(cleanup)` a setup file needs passes). Do not test implementation details
+  (`testing-library/no-manual-cleanup`, on where Testing Library cleans up by itself: under Jest
+  and Mocha, whose `afterEach` is global, and under Vitest when its config sets `globals: true`;
+  under `node:test`, which has no global `afterEach`, and under Vitest without `globals`, Testing
+  Library cannot register its own cleanup, so the `afterEach(cleanup)` a setup file needs passes). Do not test implementation details
   (`nitpicker/react-test-no-implementation-details`): no `.instance()`, no `.state()` or `.setState()` on
   an enzyme or test-renderer wrapper (a store's `setState` is fine), no test-renderer
   `findByType`/`findByProps`, no React fiber internals (`_reactInternals`,

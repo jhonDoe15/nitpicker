@@ -1,7 +1,4 @@
 import globals from 'globals';
-import { restrictedBrowserGlobals } from '../eslint-config/react/react-rules.mjs';
-import { productionScope } from '../eslint-config/scope-support.mjs';
-import { domainGlobsFor } from '../eslint-config/strict/strict-domain.mjs';
 import { nitpickerRules } from '../eslint-plugin/index.mjs';
 import {
   TEST_ENVIRONMENTS_VARIABLE,
@@ -57,21 +54,5 @@ export function testEnvironmentConfigFor(
   return [
     environmentBlock({ files, environment, setupFiles }, context),
     ...scopes.map((scope) => environmentBlock(scope, context)),
-  ];
-}
-
-export function domProductionConfigFor(layout, { environment, scopes }) {
-  const environments = [environment, ...scopes.map((scope) => scope.environment)];
-  if (!environments.some(isDomEnvironment)) {
-    return [];
-  }
-  const production = productionScope(layout);
-  return [
-    { ...production, languageOptions: { globals: globals.browser } },
-    {
-      files: [...production.files, ...production.ignores],
-      ignores: [...layout.excludedGlobs, ...domainGlobsFor(layout.sourceRoots)],
-      rules: { 'no-restricted-globals': restrictedBrowserGlobals },
-    },
   ];
 }

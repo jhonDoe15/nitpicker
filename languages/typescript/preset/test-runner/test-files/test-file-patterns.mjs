@@ -1,4 +1,5 @@
 import path from 'node:path';
+import picomatch from 'picomatch';
 
 const CODE_EXTENSIONS = '{ts,tsx,mts,cts,js,jsx,mjs,cjs}';
 const NODE_EXTENSIONS = '{cjs,mjs,js,cts,mts,ts}';
@@ -82,16 +83,23 @@ function compiled(source) {
   }
 }
 
+function globMatcher(globs) {
+  return globs.length === 0 ? () => false : picomatch(globs, { dot: true });
+}
+
 function matchesAny(file, { globs, regexes }) {
-  return (
-    globs.some((glob) => path.posix.matchesGlob(file, glob)) ||
-    regexes.some((regex) => regex.test(`/${file}`))
-  );
+  return globs(file) || regexes.some((regex) => regex.test(`/${file}`));
 }
 
 export function testFileMatcher(patterns) {
-  const included = { globs: patterns.include, regexes: patterns.includeRegexes.map(compiled) };
-  const excluded = { globs: patterns.exclude, regexes: patterns.excludeRegexes.map(compiled) };
+  const included = {
+    globs: globMatcher(patterns.include),
+    regexes: patterns.includeRegexes.map(compiled),
+  };
+  const excluded = {
+    globs: globMatcher(patterns.exclude),
+    regexes: patterns.excludeRegexes.map(compiled),
+  };
   const verdicts = new Map();
   return (file) => {
     const normalized = normalizedGlob(file);
