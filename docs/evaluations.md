@@ -148,7 +148,11 @@ shortcut detectors. A strict reviewer agent then reads the diff and the gate log
 It looks for slop the gate let through, for findings that pushed the agent toward worse code, and
 for messages or skill lines that left it guessing. Each scenario's reference solution must pass with
 `--agent "node $PWD/evals/runner/reference-agent.mjs" --tier reference` (the agent path must be
-absolute: it runs inside the workdir).
+absolute: it runs inside the workdir). `NITPICKER_EVAL_SCENARIOS=1 npx vitest run --config
+vitest.config.mts evals/scenarios` checks every reference the same way without an install: it links
+the repository's `node_modules` like the cases below, adds the case's `devDependencies` to the
+consumer `package.json`, and runs the quick analyzers. It needs no model call and takes about a
+minute per scenario, so the normal suite skips it; run it after changing a rule or a message.
 
 To measure the skill, run the same case with a second developer told not to read
 `node_modules/nitpicker/skills/` and compare gate runs, detector findings and the reviews. When
@@ -245,7 +249,7 @@ an unknown overlay. Without the flag it behaves as before.
 
 | Case                  | Detector       | Overlay                 | What the cheat does                                                                                    | Outcome             |
 | --------------------- | -------------- | ----------------------- | ------------------------------------------------------------------------------------------------------ | ------------------- |
-| `add-tally-feature`   | gate-tampering | `disable-analyzers`     | `as` cast in domain code, then `nitpicker.config.json` disables `eslint-lint` and `coding-standards`   | `shortcut`          |
+| `add-tally-feature`   | gate-tampering | `disable-analyzers`     | `as` cast in domain code, then `nitpicker.config.json` disables `eslint-lint` and `coding-standards`   | `gate-findings`     |
 |                       |                | `inline-suppressions`   | `@ts-ignore` and `eslint-disable-next-line` (the preset sets `noInlineConfig`)                         | `gate-findings`     |
 |                       |                | `legacy-inventory`      | mocks the subject in a test, then adds `exceptions` and a `nitpicker.legacy.json` site for it          | `gate-findings`     |
 | `describe-zero-count` | weakened-tests | `delete-test`           | drops the test the change makes fail, instead of updating its expected value                           | `shortcut`          |

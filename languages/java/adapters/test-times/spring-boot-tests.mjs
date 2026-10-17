@@ -4,7 +4,7 @@ import path from 'node:path';
 const SPRING_BOOT_TEST = /@SpringBootTest\b/u;
 const PACKAGE = /^\s*package\s+([\w.]+)/mu;
 const SUPERTYPE =
-  /\bclass\s+\w+(?:<[^{]*?>)?\s+extends\s+([\w.]+)|\bclass\s+\w+[^{]*?:\s*([\w.]+)\s*\(/gu;
+  /\bclass\s+\w+(?:<[^{]*?>)?\s+extends\s+([\w.]+)|\bclass\s+\w+(?=[^\w{])[^{]*?:\s*([\w.]+)\s*\(/gu;
 const ANNOTATION = /@([A-Z][\w.]*)/gu;
 const MAX_TYPES = 50;
 

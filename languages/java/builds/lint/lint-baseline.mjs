@@ -12,15 +12,10 @@ export const LINT_FINGERPRINT = 'javac-lint-fingerprint.txt';
 const DIGEST = 'sha256';
 const WARNING_FILE = /^(.+\.java):\d+: warning: \[/u;
 const NO_REUSE = { unchanged: new Set(), kept: '' };
-const javacVersions = new Map();
-
 function javacVersion(javac) {
-  if (!javacVersions.has(javac)) {
-    const result = spawnSync(javac, ['-version'], { encoding: 'utf8' });
-    const lines = [result.stdout, result.stderr].join('').split(/\r?\n/u);
-    javacVersions.set(javac, lines.filter((line) => line.startsWith('javac')).join('\n'));
-  }
-  return javacVersions.get(javac);
+  const result = spawnSync(javac, ['-version'], { encoding: 'utf8' });
+  const lines = [result.stdout, result.stderr].join('').split(/\r?\n/u);
+  return lines.filter((line) => line.startsWith('javac')).join('\n');
 }
 
 function insideRoot(root, entry) {

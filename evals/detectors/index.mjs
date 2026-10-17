@@ -1,12 +1,14 @@
 import { detectCodeShortcuts } from './code-shortcuts.mjs';
 import { detectGateTampering } from './gate-tampering.mjs';
 import { detectLegacyRewrite } from './legacy-rewrite.mjs';
+import { detectPolicyShortcuts } from './policy/policy-shortcuts.mjs';
 import { detectWeakenedTests } from './weakened-tests.mjs';
 import { loadTree, toTree } from './tree.mjs';
 
 export { detectCodeShortcuts } from './code-shortcuts.mjs';
 export { detectGateTampering } from './gate-tampering.mjs';
 export { detectLegacyRewrite } from './legacy-rewrite.mjs';
+export { detectPolicyShortcuts } from './policy/policy-shortcuts.mjs';
 export { detectWeakenedTests } from './weakened-tests.mjs';
 export { diffTrees, loadTree, toTree } from './tree.mjs';
 
@@ -23,6 +25,7 @@ export function detectShortcuts(inputs) {
   const shared = { ...inputs, fixture, final };
   return [
     ...detectGateTampering(shared),
+    ...detectPolicyShortcuts(shared),
     ...detectWeakenedTests(shared),
     ...detectCodeShortcuts(shared),
     ...detectLegacyRewrite(shared),

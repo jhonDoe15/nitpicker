@@ -1,16 +1,16 @@
 import { describe, expect, it, vi } from 'vitest';
 import { main } from '../src/main/composition-root.mjs';
-import { pad } from '../src/main/shared/pad.cjs';
+import { pad } from '../src/main/features/greeting/domain/pad.cjs';
 
 describe('wiring', () => {
   it('wires the greeting to standard output', () => {
     const write = vi.spyOn(process.stdout, 'write').mockImplementation(() => true);
     main(['Ada']);
-    expect(write).toHaveBeenCalledWith('Hello, Ada!\n');
+    expect(write).toHaveBeenCalledWith('A Hello, Ada!\n');
     write.mockRestore();
   });
 
-  it('pads with the shared CommonJS helper', () => {
+  it('pads with the CommonJS domain helper', () => {
     expect(pad('7', 3)).toBe('  7');
   });
 });

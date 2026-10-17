@@ -4,7 +4,7 @@ import { configuredAnalyzers } from '../../../languages/typescript/preset/diff/c
 import { planAnalyzerShards } from './sharding.mjs';
 import { resolveMetadata } from './metadata.mjs';
 import { readAndValidateShard, validateCommonSummaries, commonSummary } from './read-shards.mjs';
-import { sortByToolAndPath, policyHash } from '../reporting/report-model.mjs';
+import { sortByToolAndPath, policyHash, summaryFields } from '../reporting/report-model.mjs';
 import {
   writeDiffReports,
   clearDiffReports,
@@ -154,7 +154,7 @@ function aggregateSummary({ shardReports, analyzers, configOverrides, newFinding
   return {
     ...commonSummary(shardReports[0].summary),
     policyHash: policyHash(analyzers, configOverrides),
-    configOverrides,
+    ...summaryFields(configOverrides, shardReports[0].summary),
     tools: analyzers.map(({ name }) => toolsByName.get(name)),
     exclusions: analyzerExclusions(analyzers),
     elapsedMs: Math.max(...shardReports.map(({ summary: shardSummary }) => shardSummary.elapsedMs)),

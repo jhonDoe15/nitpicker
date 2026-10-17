@@ -1,6 +1,7 @@
-import { existsSync, readFileSync, statSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { reachableModules } from '../../../../modules/module-resolution.mjs';
+import { readStamped } from '../../../../modules/stamped-file-cache.mjs';
 import { scanDomEvidence } from './dom-evidence.mjs';
 
 const LIMITS = { maxDepth: 8, maxFiles: 200 };
@@ -9,19 +10,10 @@ const SCANNED_MODULE = /\.(?:[cm]?[jt]sx?)$/u;
 
 const evidenceCache = new Map();
 
-function fileStamp(file) {
-  const stats = statSync(file, { throwIfNoEntry: false });
-  return stats === undefined ? undefined : `${String(stats.mtimeMs)}:${String(stats.size)}`;
-}
-
 function evidenceOf(file) {
-  const stamp = fileStamp(file);
-  if (stamp === undefined) return undefined;
-  const cached = evidenceCache.get(file);
-  if (cached?.stamp === stamp) return cached.evidence;
-  const evidence = scanDomEvidence(readFileSync(file, 'utf8'), file);
-  evidenceCache.set(file, { stamp, evidence });
-  return evidence;
+  return readStamped(evidenceCache, file, (scanned) =>
+    scanDomEvidence(readFileSync(scanned, 'utf8'), scanned),
+  );
 }
 
 function scannedEvidence(file) {

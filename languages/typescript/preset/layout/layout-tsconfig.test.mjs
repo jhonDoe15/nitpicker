@@ -36,6 +36,7 @@ describe('layout-aware tsconfig', () => {
     const layered = JSON.parse(transform(shipped, path.join(projectRoot, '.nitpicker-x.json')));
     expect(layered.extends).toBe('./tsconfig.json');
     expect(layered.compilerOptions).toEqual({
+      allowJs: true,
       noEmit: true,
       skipLibCheck: true,
       strict: true,
@@ -50,21 +51,23 @@ describe('layout-aware tsconfig', () => {
       noImplicitReturns: true,
       noFallthroughCasesInSwitch: true,
       noUncheckedIndexedAccess: true,
+      exactOptionalPropertyTypes: true,
+      noPropertyAccessFromIndexSignature: true,
+      noUncheckedSideEffectImports: true,
       forceConsistentCasingInFileNames: true,
     });
     expect(layered.compilerOptions).not.toHaveProperty('module');
     expect(layered.compilerOptions).not.toHaveProperty('jsx');
     expect(layered.include).toEqual(['lib/**/*', 'spec/**/*', 'vitest*.ts']);
     expect([...new Set(layered.exclude)].sort()).toEqual([
-      '**/*.d.ts',
-      '**/build/**',
-      '**/coverage/**',
-      '**/dist/**',
-      '**/generated/**',
       '**/node_modules/**',
-      '**/reports/**',
-      '**/target/**',
+      'build/**',
+      'coverage/**',
+      'dist/**',
+      'generated/**',
       'lib/legacy/**',
+      'reports/**',
+      'target/**',
     ]);
   });
   describe('over a solution-style project tsconfig', () => {

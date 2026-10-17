@@ -9,14 +9,6 @@ export function greet(name: string): GreetResult {
   return { kind: 'greeted', text: `Hello, ${trimmed}!` };
 }
 
-export function greetAll(names: readonly string[]): readonly GreetResult[] {
-  return names.map((name) => greet(name));
-}
-
-export function totalLength(names: readonly string[]): number {
-  return names.reduce((sum, name) => sum + name.length, 0);
-}
-
 export function describeResult(result: GreetResult): string {
   switch (result.kind) {
     case 'greeted':

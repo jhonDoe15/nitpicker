@@ -3,22 +3,32 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { compareFindings } from '../../../../core/diff/comparison/compare.mjs';
 
-const roots = [];
-
-export function removeGuardProjects() {
-  for (const root of roots.splice(0)) {
-    rmSync(root, { recursive: true, force: true });
+function writeProjectFile(root, name, text) {
+  const target = path.resolve(root, name);
+  if (!target.startsWith(root + path.sep)) {
+    throw new Error(`${name} is outside the project ${root}`);
   }
+  mkdirSync(path.dirname(target), { recursive: true });
+  writeFileSync(target, text);
 }
 
-export function guardProject(files) {
-  const root = mkdtempSync(path.join(tmpdir(), 'nitpicker-guard-'));
-  roots.push(root);
-  for (const [name, text] of Object.entries(files)) {
-    mkdirSync(path.dirname(path.join(root, name)), { recursive: true });
-    writeFileSync(path.join(root, name), text);
-  }
-  return root;
+export function createGuardProjects() {
+  const roots = [];
+  return {
+    project(files) {
+      const root = mkdtempSync(path.join(tmpdir(), 'nitpicker-guard-'));
+      roots.push(root);
+      for (const [name, text] of Object.entries(files)) {
+        writeProjectFile(root, name, text);
+      }
+      return root;
+    },
+    remove() {
+      for (const root of roots.splice(0)) {
+        rmSync(root, { recursive: true, force: true });
+      }
+    },
+  };
 }
 
 export function newLines(base, head, renames = new Map()) {

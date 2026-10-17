@@ -1,0 +1,2326 @@
+{
+  "sources": {
+    "src/main/java/probe/Arrays1.java": "package probe;\n\npublic class Arrays1 {\n  public String all(int[] a, int[] b) {\n    return \"\" + a + a.equals(b) + a.hashCode();\n  }\n}\n",
+    "src/main/java/probe/BadEquals.java": "package probe;\n\npublic class BadEquals {\n  private int a;\n\n  public boolean equals(BadEquals o) {\n    return o.a == a;\n  }\n\n  @Override\n  public int hashCode() {\n    return a;\n  }\n\n  @Override\n  public boolean equals(Object o) {\n    return o instanceof BadEquals b && b.a == a;\n  }\n}\n",
+    "src/main/java/probe/C1Arrays.java": "package probe;\n\nimport java.util.Date;\n\npublic class C1Arrays {\n  public static final int[] VALUES = {1, 2};\n  private final int[] items = {1};\n  private Date when = new Date();\n\n  public int[] items() {\n    return items;\n  }\n\n  public void store(int[] values) {\n    this.items[0] = values.length;\n    int[] copy = values;\n    System.arraycopy(copy, 0, items, 0, 0);\n  }\n\n  public Date when() {\n    return when;\n  }\n\n  public void when(Date date) {\n    this.when = date;\n  }\n}\n",
+    "src/main/java/probe/C2Strings.java": "package probe;\n\npublic class C2Strings {\n  public String sub(String s) {\n    return s.substring(0);\n  }\n\n  public boolean same(String a, String b) {\n    return a == b;\n  }\n\n  public boolean selfCompare(int x, String s) {\n    return x == x || s.equals(s) || s.compareTo(s) == 0;\n  }\n\n  public boolean nan(double d) {\n    return d == Double.NaN;\n  }\n\n  public String cls() {\n    return new C2Strings().getClass().getName();\n  }\n\n  public Integer boxed(int x) {\n    return new Integer(x);\n  }\n\n  public Double boxedDouble(double x) {\n    return new Double(x);\n  }\n\n  public boolean sameObject(Integer a, Integer b) {\n    return a == b;\n  }\n\n  public String[] split(String s) {\n    return s.split(\"|\");\n  }\n}\n",
+    "src/main/java/probe/C3Locks.java": "package probe;\n\nimport java.util.concurrent.CountDownLatch;\nimport java.util.concurrent.Semaphore;\nimport java.util.concurrent.TimeUnit;\nimport java.util.concurrent.locks.ReentrantLock;\n\npublic class C3Locks {\n  private final Integer boxed = 1;\n  private final ReentrantLock lock = new ReentrantLock();\n  private final Semaphore permits = new Semaphore(1);\n  private final CountDownLatch latch = new CountDownLatch(1);\n\n  public void locked() {\n    synchronized (boxed) {\n      lock.tryLock();\n    }\n  }\n\n  public void waits() throws InterruptedException {\n    latch.await(1, TimeUnit.SECONDS);\n    permits.tryAcquire();\n  }\n\n  public void runs(Runnable job) {\n    Thread t = new Thread(job);\n    t.run();\n  }\n}\n",
+    "src/main/java/probe/C4Switches.java": "package probe;\n\npublic class C4Switches {\n  public int noDefault(int x) {\n    int r = 0;\n    switch (x) {\n      case 1:\n        r = 1;\n        break;\n      case 2:\n        r = 2;\n        break;\n    }\n    return r;\n  }\n\n  public int fallThrough(int x) {\n    int r = 0;\n    switch (x) {\n      case 1:\n        r = 1;\n      case 2:\n        r += 2;\n        break;\n      default:\n        r = 3;\n    }\n    return r;\n  }\n\n  public void emptyCatch() {\n    try {\n      Thread.sleep(1);\n    } catch (InterruptedException e) {\n    }\n  }\n\n  public int declarations() {\n    int a = 1, b = 2;\n    return a + b;\n  }\n}\n",
+    "src/main/java/probe/C5Nulls.java": "package probe;\n\nimport java.util.List;\nimport org.jspecify.annotations.Nullable;\n\npublic class C5Nulls {\n  private @Nullable String name = \"a\";\n  private String other = \"b\";\n\n  public void clear() {\n    name = null;\n    other = null;\n  }\n\n  public @Nullable List<String> maybe(boolean b) {\n    return b ? List.of() : null;\n  }\n\n  @Override\n  public String toString() {\n    return name;\n  }\n\n  public String other() {\n    return other;\n  }\n}\n",
+    "src/main/java/probe/C6Encoding.java": "package probe;\n\nimport java.io.ByteArrayOutputStream;\nimport java.io.PrintStream;\nimport java.net.URL;\nimport java.util.Formatter;\nimport java.util.HashMap;\nimport java.util.Map;\n\npublic class C6Encoding {\n  final int constant = 5;\n  private final Map<URL, String> urls = new HashMap<>();\n\n  public String print() {\n    ByteArrayOutputStream out = new ByteArrayOutputStream();\n    PrintStream stream = new PrintStream(out);\n    stream.print(constant);\n    Formatter formatter = new Formatter();\n    return out.toString() + formatter + urls.size();\n  }\n}\n",
+    "src/main/java/probe/C7Names.java": "package probe;\n\npublic class C7Names {\n  public static final int lowerConstant = 1;\n  private static int Counter;\n  private int Member;\n\n  public int read() {\n    try {\n      Thread.sleep(1);\n    } catch (Exception e) {\n      Counter++;\n    }\n    return lowerConstant + Counter + Member;\n  }\n\n  public void Bad_Name() {\n    Member = 2;\n  }\n}\n",
+    "src/main/java/probe/C8Equals.java": "package probe;\n\npublic class C8Equals {\n  private final int a = 1;\n\n  @Override\n  public boolean equals(Object o) {\n    return o instanceof C8Equals other && other.a == a;\n  }\n}\n",
+    "src/main/java/probe/Charsets.java": "package probe;\n\nimport java.io.UnsupportedEncodingException;\nimport java.nio.charset.Charset;\n\npublic class Charsets {\n  public byte[] bytes(String s) throws UnsupportedEncodingException {\n    Charset c = Charset.forName(\"UTF-8\");\n    return (s.getBytes(\"UTF-8\").length > 0) ? s.getBytes(c) : new byte[0];\n  }\n}\n",
+    "src/main/java/probe/Consts.java": "package probe;\n\npublic interface Consts {\n  int A = 1;\n}\n",
+    "src/main/java/probe/Dead.java": "package probe;\n\npublic class Dead {\n  public int f(int x) {\n    if (x < 0) {\n      new IllegalArgumentException(\"neg\");\n    }\n    return x;\n  }\n}\n",
+    "src/main/java/probe/Encodings.java": "package probe;\n\nimport java.io.File;\nimport java.io.FileReader;\nimport java.io.IOException;\n\npublic class Encodings {\n  public String read(byte[] b, File f) throws IOException {\n    try (FileReader r = new FileReader(f)) {\n      return new String(b) + r.read();\n    }\n  }\n}\n",
+    "src/main/java/probe/Enumer.java": "package probe;\n\nimport java.util.Enumeration;\n\npublic class Enumer implements Enumeration<String> {\n  @Override\n  public boolean hasMoreElements() {\n    return false;\n  }\n\n  @Override\n  public String nextElement() {\n    return \"\";\n  }\n}\n",
+    "src/main/java/probe/EqOnly.java": "package probe;\n\npublic class EqOnly {\n  private final int a = 1;\n\n  @Override\n  public boolean equals(Object o) {\n    return o instanceof EqOnly e && e.a == a;\n  }\n}\n",
+    "src/main/java/probe/Eqs.java": "package probe;\n\npublic class Eqs {\n  private int a;\n\n  @Override\n  public boolean equals(Object o) {\n    Eqs e = (Eqs) o;\n    return e.a == a;\n  }\n\n  @Override\n  public int hashCode() {\n    return a;\n  }\n}\n",
+    "src/main/java/probe/Fields.java": "package probe;\n\npublic class Fields {\n  public static final String[] ARR = {\"a\"};\n  private final int k = 5;\n\n  public int k() {\n    return k;\n  }\n\n  public class Inner {\n    public int one() {\n      return 1;\n    }\n  }\n}\n",
+    "src/main/java/probe/Formats.java": "package probe;\n\nimport java.util.regex.Pattern;\n\npublic class Formats {\n  public String all(String s) {\n    return String.format(\"%d\", \"x\") + s.split(\".\").length + Pattern.compile(\"[\").pattern();\n  }\n}\n",
+    "src/main/java/probe/HashOnly.java": "package probe;\n\npublic class HashOnly {\n  @Override\n  public int hashCode() {\n    return 1;\n  }\n}\n",
+    "src/main/java/probe/Hiding.java": "package probe;\n\npublic class Hiding extends Fields {\n  public String name = \"h\";\n  private String inner;\n\n  public static class Base {\n    public String name = \"b\";\n  }\n\n  public static class Sub extends Base {\n    public String name = \"s\";\n\n    @Override\n    public String toString() {\n      return null;\n    }\n  }\n\n  public String inner() {\n    return inner;\n  }\n}\n",
+    "src/main/java/probe/Immut.java": "package probe;\n\nimport java.math.BigDecimal;\nimport java.math.BigInteger;\n\npublic class Immut {\n  public void ops(BigDecimal d, BigInteger i, String s) {\n    d.add(BigDecimal.ONE);\n    i.add(BigInteger.ONE);\n    s.trim();\n  }\n}\n",
+    "src/main/java/probe/Locales.java": "package probe;\n\nimport java.text.SimpleDateFormat;\n\npublic class Locales {\n  public String all(String s) {\n    String f = String.format(\"%d\", 1);\n    String l = s.toLowerCase();\n    return f + l + new SimpleDateFormat(\"yyyy\").toPattern();\n  }\n}\n",
+    "src/main/java/probe/Locks.java": "package probe;\n\nimport java.net.URL;\nimport java.text.SimpleDateFormat;\nimport java.util.HashSet;\nimport java.util.Locale;\nimport java.util.Set;\nimport java.util.concurrent.locks.ReentrantLock;\n\npublic class Locks {\n  private static final SimpleDateFormat FORMAT = new SimpleDateFormat(\"yyyy\", Locale.ROOT);\n  private final ReentrantLock lock = new ReentrantLock();\n  private final Set<URL> urls = new HashSet<>();\n\n  public String run(boolean a) {\n    lock.lock();\n    String s = FORMAT.toPattern();\n    lock.unlock();\n    return s + urls.size() + (a & check());\n  }\n\n  private boolean check() {\n    return urls.isEmpty();\n  }\n}\n",
+    "src/main/java/probe/Misc.java": "package probe;\n\npublic class Misc {\n  private Object guard = new Object();\n\n  /**\n   * Old.\n   *\n   * @deprecated use other\n   */\n  public void old() {}\n\n  /**\n   * Void.\n   *\n   * @return nothing\n   */\n  public void v() {}\n\n  public int paren(int x) {\n    char c = 'A';\n    ;\n    synchronized (guard) {\n      guard = new Object();\n    }\n    return (x + c);\n  }\n\n  public void end() {\n    Thread t = new Thread(() -> {});\n    t.setPriority(1);\n    double d = 1.0;\n    if (d == d) {\n      return;\n    }\n    return;\n  }\n}\n",
+    "src/main/java/probe/NullColl.java": "package probe;\n\nimport java.util.List;\nimport org.jspecify.annotations.Nullable;\n\npublic class NullColl {\n  public List<String> none(int x) {\n    if (x > 0) {\n      return List.of();\n    }\n    return null;\n  }\n\n  public @Nullable List<String> maybe(int x) {\n    if (x > 0) {\n      return List.of();\n    }\n    return null;\n  }\n}\n",
+    "src/main/java/probe/Numbers.java": "package probe;\n\nimport java.util.Random;\n\npublic class Numbers {\n  public long all(int x, byte b, int y) {\n    int s = x << 32;\n    int r = (int) Math.random();\n    int m = new Random().nextInt() % 5;\n    boolean big = b == 200;\n    long mul = x * y;\n    int abs = Math.abs(new Random().nextInt());\n    return s + r + m + (big ? 1 : 0) + mul + abs;\n  }\n}\n",
+    "src/main/java/probe/Obsolete.java": "package probe;\n\nimport java.util.Hashtable;\nimport java.util.LinkedList;\nimport java.util.Stack;\nimport java.util.Vector;\n\npublic class Obsolete {\n  public int sizes() {\n    Vector<String> v = new Vector<>();\n    Hashtable<String, String> h = new Hashtable<>();\n    Stack<String> s = new Stack<>();\n    LinkedList<String> l = new LinkedList<>();\n    StringBuffer b = new StringBuffer();\n    return v.size() + h.size() + s.size() + l.size() + b.length();\n  }\n}\n",
+    "src/main/java/probe/P2Eq.java": "package probe;\n\npublic class P2Eq {\n  private int a;\n\n  public boolean equals(P2Eq o) {\n    return o.a == a;\n  }\n}\n",
+    "src/main/java/probe/P2Inner.java": "package probe;\n\nimport java.text.SimpleDateFormat;\n\npublic class P2Inner {\n  public static String[] names = {\"a\"};\n  private static SimpleDateFormat format = new SimpleDateFormat(\"yyyy\");\n\n  public int one() {\n    return new Helper().one() + format.toPattern().length() + names.length;\n  }\n\n  private class Helper {\n    int one() {\n      return 1;\n    }\n  }\n}\n",
+    "src/main/java/probe/P2Strings.java": "package probe;\n\nimport java.io.ByteArrayOutputStream;\nimport java.io.IOException;\nimport java.io.OutputStreamWriter;\nimport java.io.Writer;\n\npublic class P2Strings {\n  public String all(byte[] b, int[] arr, int x, int y) throws IOException {\n    String u = \"A\";\n    String s = new String(b, \"UTF-8\");\n    Writer w = new OutputStreamWriter(new ByteArrayOutputStream(), \"UTF-8\");\n    w.close();\n    long sum = x + y;\n    float div = x / y;\n    if (x > y);\n    return u + s + arr.toString() + String.format(\"%s %s\", \"x\") + sum + div;\n  }\n\n  public Object make(Class<?> c) throws ReflectiveOperationException {\n    return c.newInstance();\n  }\n\n  public void sleep() {\n    try {\n      Thread.sleep(5);\n    } catch (Exception e) {\n      throw new IllegalStateException(e);\n    }\n  }\n}\n",
+    "src/main/java/probe/P3Fields.java": "package probe;\n\npublic class P3Fields {\n  private int unusedPrivate;\n  int unusedPackage;\n  private int writtenOnly;\n  int writtenOnlyPackage;\n\n  public void set(int value) {\n    writtenOnly = value;\n    writtenOnlyPackage = value;\n  }\n}\n",
+    "src/main/java/probe/Recur.java": "package probe;\n\npublic class Recur {\n  public int f() {\n    return f();\n  }\n}\n",
+    "src/main/java/probe/SelfAssign.java": "package probe;\n\npublic class SelfAssign {\n  private int a;\n\n  public int both(int b) {\n    b = b;\n    this.a = this.a;\n    return a + b;\n  }\n}\n",
+    "src/main/java/probe/Skip.java": "package probe;\n\nimport java.io.IOException;\nimport java.io.InputStream;\n\npublic class Skip {\n  public void skip(InputStream in) throws IOException {\n    in.skip(5);\n  }\n}\n",
+    "src/main/java/probe/StaticCtor.java": "package probe;\n\npublic class StaticCtor {\n  private static int count;\n\n  public StaticCtor() {\n    count = 5;\n  }\n\n  public int count() {\n    return count;\n  }\n}\n",
+    "src/main/java/probe/SunUse.java": "package probe;\n\nimport sun.misc.Signal;\nimport sun.misc.Unsafe;\n\npublic class SunUse {\n  public Object get() {\n    return Unsafe.class.getName() + Signal.class.getName();\n  }\n}\n",
+    "src/main/java/probe/Types.java": "package probe;\n\nimport java.util.List;\n\npublic class Types {\n  public boolean all(List<String> l) {\n    return l.contains(5) || \"a\".equals(5);\n  }\n}\n",
+    "src/main/java/probe/V1Style.java": "package probe;\n\nimport java.math.BigDecimal;\nimport java.util.*;\n\n/** V1. */\npublic class V1Style<t> {\n  private final @Deprecated int annotated = 1;\n  private final long big = 10l;\n  int legacy[] = {1};\n\n  public BigDecimal decimal() {\n    return new BigDecimal(0.1);\n  }\n\n  public StringBuilder builder() {\n    return new StringBuilder('c');\n  }\n\n  public boolean nullEquals(Object o) {\n    return o.equals(null);\n  }\n\n  public int varargs() {\n    return Arrays.asList(new String[] {\"a\"}).size() + annotated + (int) big + legacy.length;\n  }\n\n  public int loop(List<String> items) {\n    int n = 0;\n    for (int i = 0; i < items.size(); i++) {\n      n += items.get(i).length();\n    }\n    for (int j = 0; j < 3; j++) {\n      j++;\n    }\n    return n;\n  }\n\n  public void out() {\n    System.out.println(\"x\");\n    System.exit(1);\n  }\n\n  public void trace() {\n    try {\n      Thread.sleep(1);\n    } catch (InterruptedException e) {\n      e.printStackTrace();\n    }\n  }\n\n  public int assignInOperand(int x) {\n    int y;\n    if ((y = x) > 0) {\n      return y;\n    }\n    return 0;\n  }\n\n  public String sdcard() {\n    return \"/sdcard/x\";\n  }\n\n  public <u> u same(u value) {\n    return value;\n  }\n\n  @SuppressWarnings(\"finally\")\n  public int fin() {\n    try {\n      return 1;\n    } finally {\n      return 2;\n    }\n  }\n\n  @Override\n  protected void finalize() {}\n\n  public String toString() {\n    return \"v\";\n  }\n\n  public boolean optional(Optional<String> a, Optional<String> b) {\n    return a == b;\n  }\n\n  public Map<String, String> doubleBrace() {\n    return new HashMap<>() {\n      {\n        put(\"a\", \"b\");\n      }\n    };\n  }\n\n  public int sw(int x) {\n    switch (x) {\n      default:\n        return 0;\n      case 1:\n        return 1;\n    }\n  }\n\n  private int unusedHelper() {\n    return 1;\n  }\n\n  public void rethrow() {\n    try {\n      Thread.sleep(1);\n    } catch (InterruptedException e) {\n      throw new IllegalStateException(\"x\");\n    }\n  }\n\n  public int unusedLocal() {\n    int unusedLocal2 = 5;\n    return 1;\n  }\n}\n\nclass Second {}\n",
+    "src/main/java/probe/V2Docs.java": "package probe;\n\npublic class V2Docs {\n  /**\n   * Adds.\n   *\n   * @param a first\n   * @param missing not a parameter\n   * @return sum\n   * @throws\n   */\n  public int add(int a) {\n    return a;\n  }\n\n  /** Returns the value. */\n  public int value() {\n    /** Not javadoc. */\n    return 1;\n  }\n\n  enum Color {\n    RED,\n    GREEN\n  }\n\n  public int color(Color c) {\n    switch (c) {\n      case RED:\n        return 1;\n    }\n    return 0;\n  }\n}\n",
+    "src/main/java/probe/V3Unused.java": "package probe;\n\npublic class V3Unused {\n  public int compute(int used, int unusedParam) {\n    int dead = 3;\n    dead = 4;\n    return used;\n  }\n\n  private void neverCalled() {}\n}\n",
+    "src/main/java/probe/Volatile.java": "package probe;\n\npublic class Volatile {\n  private volatile int v;\n  private final Object lock = new Object();\n  private Object inst;\n\n  public void inc() {\n    v++;\n  }\n\n  public void await() throws InterruptedException {\n    synchronized (lock) {\n      lock.wait();\n    }\n  }\n\n  public Object get() {\n    if (inst == null) {\n      synchronized (this) {\n        if (inst == null) {\n          inst = new Object();\n        }\n      }\n    }\n    return inst;\n  }\n}\n",
+    "src/test/java/probe/OldTest.java": "package probe;\n\nimport static org.junit.Assert.assertTrue;\n\nimport org.junit.Test;\n\npublic class OldTest {\n  public void setUp() {}\n\n  public void tearDown() {}\n\n  @Test\n  public void works() {\n    assertTrue(new Recur() != null);\n  }\n}\n"
+  },
+  "findings": [
+    {
+      "tool": "pmd",
+      "rule": "UseVarargs",
+      "path": "src/main/java/probe/Arrays1.java",
+      "line": 4
+    },
+    {
+      "tool": "pmd",
+      "rule": "SuspiciousEqualsMethodName",
+      "path": "src/main/java/probe/BadEquals.java",
+      "line": 6
+    },
+    {
+      "tool": "pmd",
+      "rule": "AvoidFieldNameMatchingMethodName",
+      "path": "src/main/java/probe/C1Arrays.java",
+      "line": 7
+    },
+    {
+      "tool": "pmd",
+      "rule": "AvoidFieldNameMatchingMethodName",
+      "path": "src/main/java/probe/C1Arrays.java",
+      "line": 8
+    },
+    {
+      "tool": "pmd",
+      "rule": "MethodReturnsInternalArray",
+      "path": "src/main/java/probe/C1Arrays.java",
+      "line": 11
+    },
+    {
+      "tool": "pmd",
+      "rule": "UseVarargs",
+      "path": "src/main/java/probe/C1Arrays.java",
+      "line": 14
+    },
+    {
+      "tool": "pmd",
+      "rule": "CompareObjectsWithEquals",
+      "path": "src/main/java/probe/C2Strings.java",
+      "line": 9
+    },
+    {
+      "tool": "pmd",
+      "rule": "UseEqualsToCompareStrings",
+      "path": "src/main/java/probe/C2Strings.java",
+      "line": 9
+    },
+    {
+      "tool": "pmd",
+      "rule": "ComparisonWithNaN",
+      "path": "src/main/java/probe/C2Strings.java",
+      "line": 17
+    },
+    {
+      "tool": "pmd",
+      "rule": "InstantiationToGetClass",
+      "path": "src/main/java/probe/C2Strings.java",
+      "line": 21
+    },
+    {
+      "tool": "pmd",
+      "rule": "PrimitiveWrapperInstantiation",
+      "path": "src/main/java/probe/C2Strings.java",
+      "line": 25
+    },
+    {
+      "tool": "pmd",
+      "rule": "PrimitiveWrapperInstantiation",
+      "path": "src/main/java/probe/C2Strings.java",
+      "line": 29
+    },
+    {
+      "tool": "pmd",
+      "rule": "CompareObjectsWithEquals",
+      "path": "src/main/java/probe/C2Strings.java",
+      "line": 33
+    },
+    {
+      "tool": "pmd",
+      "rule": "NonExhaustiveSwitch",
+      "path": "src/main/java/probe/C4Switches.java",
+      "line": 6
+    },
+    {
+      "tool": "pmd",
+      "rule": "ImplicitSwitchFallThrough",
+      "path": "src/main/java/probe/C4Switches.java",
+      "line": 22
+    },
+    {
+      "tool": "pmd",
+      "rule": "EmptyCatchBlock",
+      "path": "src/main/java/probe/C4Switches.java",
+      "line": 34
+    },
+    {
+      "tool": "pmd",
+      "rule": "OneDeclarationPerLine",
+      "path": "src/main/java/probe/C4Switches.java",
+      "line": 39
+    },
+    {
+      "tool": "pmd",
+      "rule": "AvoidFieldNameMatchingMethodName",
+      "path": "src/main/java/probe/C5Nulls.java",
+      "line": 8
+    },
+    {
+      "tool": "pmd",
+      "rule": "NullAssignment",
+      "path": "src/main/java/probe/C5Nulls.java",
+      "line": 11
+    },
+    {
+      "tool": "pmd",
+      "rule": "NullAssignment",
+      "path": "src/main/java/probe/C5Nulls.java",
+      "line": 12
+    },
+    {
+      "tool": "pmd",
+      "rule": "AvoidCatchingGenericException",
+      "path": "src/main/java/probe/C7Names.java",
+      "line": 11
+    },
+    {
+      "tool": "pmd",
+      "rule": "OverrideBothEqualsAndHashcode",
+      "path": "src/main/java/probe/C8Equals.java",
+      "line": 7
+    },
+    {
+      "tool": "pmd",
+      "rule": "UseStandardCharsets",
+      "path": "src/main/java/probe/Charsets.java",
+      "line": 8
+    },
+    {
+      "tool": "pmd",
+      "rule": "ConstantsInInterface",
+      "path": "src/main/java/probe/Consts.java",
+      "line": 4
+    },
+    {
+      "tool": "pmd",
+      "rule": "ReplaceEnumerationWithIterator",
+      "path": "src/main/java/probe/Enumer.java",
+      "line": 5
+    },
+    {
+      "tool": "pmd",
+      "rule": "OverrideBothEqualsAndHashcode",
+      "path": "src/main/java/probe/EqOnly.java",
+      "line": 7
+    },
+    {
+      "tool": "pmd",
+      "rule": "AvoidFieldNameMatchingMethodName",
+      "path": "src/main/java/probe/Fields.java",
+      "line": 5
+    },
+    {
+      "tool": "pmd",
+      "rule": "OverrideBothEqualsAndHashcode",
+      "path": "src/main/java/probe/HashOnly.java",
+      "line": 5
+    },
+    {
+      "tool": "pmd",
+      "rule": "AvoidFieldNameMatchingMethodName",
+      "path": "src/main/java/probe/Hiding.java",
+      "line": 5
+    },
+    {
+      "tool": "pmd",
+      "rule": "UselessOperationOnImmutable",
+      "path": "src/main/java/probe/Immut.java",
+      "line": 8
+    },
+    {
+      "tool": "pmd",
+      "rule": "UselessOperationOnImmutable",
+      "path": "src/main/java/probe/Immut.java",
+      "line": 9
+    },
+    {
+      "tool": "pmd",
+      "rule": "UselessOperationOnImmutable",
+      "path": "src/main/java/probe/Immut.java",
+      "line": 10
+    },
+    {
+      "tool": "pmd",
+      "rule": "UseLocaleWithCaseConversions",
+      "path": "src/main/java/probe/Locales.java",
+      "line": 8
+    },
+    {
+      "tool": "pmd",
+      "rule": "SimpleDateFormatNeedsLocale",
+      "path": "src/main/java/probe/Locales.java",
+      "line": 9
+    },
+    {
+      "tool": "pmd",
+      "rule": "ReturnEmptyCollectionRatherThanNull",
+      "path": "src/main/java/probe/NullColl.java",
+      "line": 11
+    },
+    {
+      "tool": "pmd",
+      "rule": "ReturnEmptyCollectionRatherThanNull",
+      "path": "src/main/java/probe/NullColl.java",
+      "line": 18
+    },
+    {
+      "tool": "pmd",
+      "rule": "LooseCoupling",
+      "path": "src/main/java/probe/Obsolete.java",
+      "line": 10
+    },
+    {
+      "tool": "pmd",
+      "rule": "ReplaceVectorWithList",
+      "path": "src/main/java/probe/Obsolete.java",
+      "line": 10
+    },
+    {
+      "tool": "pmd",
+      "rule": "ReplaceVectorWithList",
+      "path": "src/main/java/probe/Obsolete.java",
+      "line": 10
+    },
+    {
+      "tool": "pmd",
+      "rule": "LooseCoupling",
+      "path": "src/main/java/probe/Obsolete.java",
+      "line": 11
+    },
+    {
+      "tool": "pmd",
+      "rule": "ReplaceHashtableWithMap",
+      "path": "src/main/java/probe/Obsolete.java",
+      "line": 11
+    },
+    {
+      "tool": "pmd",
+      "rule": "ReplaceHashtableWithMap",
+      "path": "src/main/java/probe/Obsolete.java",
+      "line": 11
+    },
+    {
+      "tool": "pmd",
+      "rule": "LooseCoupling",
+      "path": "src/main/java/probe/Obsolete.java",
+      "line": 12
+    },
+    {
+      "tool": "pmd",
+      "rule": "LooseCoupling",
+      "path": "src/main/java/probe/Obsolete.java",
+      "line": 13
+    },
+    {
+      "tool": "pmd",
+      "rule": "SuspiciousEqualsMethodName",
+      "path": "src/main/java/probe/P2Eq.java",
+      "line": 6
+    },
+    {
+      "tool": "pmd",
+      "rule": "SimpleDateFormatNeedsLocale",
+      "path": "src/main/java/probe/P2Inner.java",
+      "line": 7
+    },
+    {
+      "tool": "pmd",
+      "rule": "AvoidCatchingGenericException",
+      "path": "src/main/java/probe/P2Strings.java",
+      "line": 27
+    },
+    {
+      "tool": "pmd",
+      "rule": "UnusedPrivateField",
+      "path": "src/main/java/probe/P3Fields.java",
+      "line": 4
+    },
+    {
+      "tool": "pmd",
+      "rule": "UnusedPrivateField",
+      "path": "src/main/java/probe/P3Fields.java",
+      "line": 6
+    },
+    {
+      "tool": "pmd",
+      "rule": "IdempotentOperations",
+      "path": "src/main/java/probe/SelfAssign.java",
+      "line": 7
+    },
+    {
+      "tool": "pmd",
+      "rule": "AvoidReassigningParameters",
+      "path": "src/main/java/probe/SelfAssign.java",
+      "line": 7
+    },
+    {
+      "tool": "pmd",
+      "rule": "IdempotentOperations",
+      "path": "src/main/java/probe/SelfAssign.java",
+      "line": 8
+    },
+    {
+      "tool": "pmd",
+      "rule": "CheckSkipResult",
+      "path": "src/main/java/probe/Skip.java",
+      "line": 8
+    },
+    {
+      "tool": "pmd",
+      "rule": "AvoidFieldNameMatchingMethodName",
+      "path": "src/main/java/probe/StaticCtor.java",
+      "line": 4
+    },
+    {
+      "tool": "pmd",
+      "rule": "AssignmentToNonFinalStatic",
+      "path": "src/main/java/probe/StaticCtor.java",
+      "line": 7
+    },
+    {
+      "tool": "pmd",
+      "rule": "DontImportSun",
+      "path": "src/main/java/probe/SunUse.java",
+      "line": 3
+    },
+    {
+      "tool": "pmd",
+      "rule": "DontImportSun",
+      "path": "src/main/java/probe/SunUse.java",
+      "line": 4
+    },
+    {
+      "tool": "pmd",
+      "rule": "AvoidDecimalLiteralsInBigDecimalConstructor",
+      "path": "src/main/java/probe/V1Style.java",
+      "line": 13
+    },
+    {
+      "tool": "pmd",
+      "rule": "StringBufferInstantiationWithChar",
+      "path": "src/main/java/probe/V1Style.java",
+      "line": 17
+    },
+    {
+      "tool": "pmd",
+      "rule": "EqualsNull",
+      "path": "src/main/java/probe/V1Style.java",
+      "line": 21
+    },
+    {
+      "tool": "pmd",
+      "rule": "UnnecessaryVarargsArrayCreation",
+      "path": "src/main/java/probe/V1Style.java",
+      "line": 25
+    },
+    {
+      "tool": "pmd",
+      "rule": "ForLoopCanBeForeach",
+      "path": "src/main/java/probe/V1Style.java",
+      "line": 30
+    },
+    {
+      "tool": "pmd",
+      "rule": "AvoidReassigningLoopVariables",
+      "path": "src/main/java/probe/V1Style.java",
+      "line": 34
+    },
+    {
+      "tool": "pmd",
+      "rule": "SystemPrintln",
+      "path": "src/main/java/probe/V1Style.java",
+      "line": 40
+    },
+    {
+      "tool": "pmd",
+      "rule": "DoNotTerminateVM",
+      "path": "src/main/java/probe/V1Style.java",
+      "line": 41
+    },
+    {
+      "tool": "pmd",
+      "rule": "AvoidPrintStackTrace",
+      "path": "src/main/java/probe/V1Style.java",
+      "line": 48
+    },
+    {
+      "tool": "pmd",
+      "rule": "AssignmentInOperand",
+      "path": "src/main/java/probe/V1Style.java",
+      "line": 54
+    },
+    {
+      "tool": "pmd",
+      "rule": "DoNotHardCodeSDCard",
+      "path": "src/main/java/probe/V1Style.java",
+      "line": 61
+    },
+    {
+      "tool": "pmd",
+      "rule": "ReturnFromFinallyBlock",
+      "path": "src/main/java/probe/V1Style.java",
+      "line": 73
+    },
+    {
+      "tool": "pmd",
+      "rule": "EmptyFinalizer",
+      "path": "src/main/java/probe/V1Style.java",
+      "line": 78
+    },
+    {
+      "tool": "pmd",
+      "rule": "MissingOverride",
+      "path": "src/main/java/probe/V1Style.java",
+      "line": 80
+    },
+    {
+      "tool": "pmd",
+      "rule": "CompareObjectsWithEquals",
+      "path": "src/main/java/probe/V1Style.java",
+      "line": 85
+    },
+    {
+      "tool": "pmd",
+      "rule": "DoubleBraceInitialization",
+      "path": "src/main/java/probe/V1Style.java",
+      "line": 90
+    },
+    {
+      "tool": "pmd",
+      "rule": "DefaultLabelNotLastInSwitch",
+      "path": "src/main/java/probe/V1Style.java",
+      "line": 98
+    },
+    {
+      "tool": "pmd",
+      "rule": "UnusedPrivateMethod",
+      "path": "src/main/java/probe/V1Style.java",
+      "line": 105
+    },
+    {
+      "tool": "pmd",
+      "rule": "PreserveStackTrace",
+      "path": "src/main/java/probe/V1Style.java",
+      "line": 113
+    },
+    {
+      "tool": "pmd",
+      "rule": "NonExhaustiveSwitch",
+      "path": "src/main/java/probe/V2Docs.java",
+      "line": 28
+    },
+    {
+      "tool": "pmd",
+      "rule": "UnusedLocalVariable",
+      "path": "src/main/java/probe/V3Unused.java",
+      "line": 5
+    },
+    {
+      "tool": "pmd",
+      "rule": "UnusedAssignment",
+      "path": "src/main/java/probe/V3Unused.java",
+      "line": 5
+    },
+    {
+      "tool": "pmd",
+      "rule": "UnusedAssignment",
+      "path": "src/main/java/probe/V3Unused.java",
+      "line": 6
+    },
+    {
+      "tool": "pmd",
+      "rule": "UnusedPrivateMethod",
+      "path": "src/main/java/probe/V3Unused.java",
+      "line": 10
+    },
+    {
+      "tool": "pmd",
+      "rule": "UnusedPrivateField",
+      "path": "src/main/java/probe/Volatile.java",
+      "line": 4
+    },
+    {
+      "tool": "pmd",
+      "rule": "UnitTestShouldUseBeforeAnnotation",
+      "path": "src/test/java/probe/OldTest.java",
+      "line": 8
+    },
+    {
+      "tool": "pmd",
+      "rule": "DetachedTestCase",
+      "path": "src/test/java/probe/OldTest.java",
+      "line": 8
+    },
+    {
+      "tool": "pmd",
+      "rule": "UnitTestShouldUseAfterAnnotation",
+      "path": "src/test/java/probe/OldTest.java",
+      "line": 10
+    },
+    {
+      "tool": "pmd",
+      "rule": "DetachedTestCase",
+      "path": "src/test/java/probe/OldTest.java",
+      "line": 10
+    },
+    {
+      "tool": "pmd",
+      "rule": "SimplifiableTestAssertion",
+      "path": "src/test/java/probe/OldTest.java",
+      "line": 14
+    },
+    {
+      "tool": "spotbugs",
+      "rule": "DMI_INVOKING_HASHCODE_ON_ARRAY",
+      "path": "src/main/java/probe/Arrays1.java",
+      "line": 5,
+      "symbol": "probe.Arrays1.all(int[], int[])#a"
+    },
+    {
+      "tool": "spotbugs",
+      "rule": "EC_BAD_ARRAY_COMPARE",
+      "path": "src/main/java/probe/Arrays1.java",
+      "line": 5,
+      "symbol": "probe.Arrays1.all(int[], int[])#a"
+    },
+    {
+      "tool": "spotbugs",
+      "rule": "EI_EXPOSE_REP",
+      "path": "src/main/java/probe/C1Arrays.java",
+      "line": 11,
+      "symbol": "probe.C1Arrays.items"
+    },
+    {
+      "tool": "spotbugs",
+      "rule": "EI_EXPOSE_REP",
+      "path": "src/main/java/probe/C1Arrays.java",
+      "line": 21,
+      "symbol": "probe.C1Arrays.when"
+    },
+    {
+      "tool": "spotbugs",
+      "rule": "EI_EXPOSE_REP2",
+      "path": "src/main/java/probe/C1Arrays.java",
+      "line": 25,
+      "symbol": "probe.C1Arrays.when(Date)#date"
+    },
+    {
+      "tool": "spotbugs",
+      "rule": "DMI_USELESS_SUBSTRING",
+      "path": "src/main/java/probe/C2Strings.java",
+      "line": 5,
+      "symbol": "probe.C2Strings.sub(String)"
+    },
+    {
+      "tool": "spotbugs",
+      "rule": "DM_NEW_FOR_GETCLASS",
+      "path": "src/main/java/probe/C2Strings.java",
+      "line": 21,
+      "symbol": "probe.C2Strings.cls()"
+    },
+    {
+      "tool": "spotbugs",
+      "rule": "DM_NUMBER_CTOR",
+      "path": "src/main/java/probe/C2Strings.java",
+      "line": 25,
+      "symbol": "Integer.valueOf(int)"
+    },
+    {
+      "tool": "spotbugs",
+      "rule": "ES_COMPARING_PARAMETER_STRING_WITH_EQ",
+      "path": "src/main/java/probe/C2Strings.java",
+      "line": 9,
+      "symbol": "probe.C2Strings.same(String, String)#a"
+    },
+    {
+      "tool": "spotbugs",
+      "rule": "FE_TEST_IF_EQUAL_TO_NOT_A_NUMBER",
+      "path": "src/main/java/probe/C2Strings.java",
+      "line": 17,
+      "symbol": "probe.C2Strings.nan(double)"
+    },
+    {
+      "tool": "spotbugs",
+      "rule": "RC_REF_COMPARISON",
+      "path": "src/main/java/probe/C2Strings.java",
+      "line": 33,
+      "symbol": "probe.C2Strings.sameObject(Integer, Integer)#a"
+    },
+    {
+      "tool": "spotbugs",
+      "rule": "RE_POSSIBLE_UNINTENDED_PATTERN",
+      "path": "src/main/java/probe/C2Strings.java",
+      "line": 37,
+      "symbol": "String.split(String)"
+    },
+    {
+      "tool": "spotbugs",
+      "rule": "SA_LOCAL_SELF_COMPARISON",
+      "path": "src/main/java/probe/C2Strings.java",
+      "line": 13,
+      "symbol": "probe.C2Strings.selfCompare(int, String)#s"
+    },
+    {
+      "tool": "spotbugs",
+      "rule": "SA_LOCAL_SELF_COMPARISON",
+      "path": "src/main/java/probe/C2Strings.java",
+      "line": 13,
+      "symbol": "probe.C2Strings.selfCompare(int, String)#x"
+    },
+    {
+      "tool": "spotbugs",
+      "rule": "SA_LOCAL_SELF_COMPARISON",
+      "path": "src/main/java/probe/C2Strings.java",
+      "line": 13,
+      "symbol": "String.compareTo(String)#s"
+    },
+    {
+      "tool": "spotbugs",
+      "rule": "SA_LOCAL_SELF_COMPARISON",
+      "path": "src/main/java/probe/C2Strings.java",
+      "line": 13,
+      "symbol": "String.equals(Object)#s"
+    },
+    {
+      "tool": "spotbugs",
+      "rule": "DL_SYNCHRONIZATION_ON_BOXED_PRIMITIVE",
+      "path": "src/main/java/probe/C3Locks.java",
+      "line": 15,
+      "symbol": "probe.C3Locks.boxed"
+    },
+    {
+      "tool": "spotbugs",
+      "rule": "RU_INVOKE_RUN",
+      "path": "src/main/java/probe/C3Locks.java",
+      "line": 27,
+      "symbol": "probe.C3Locks.runs(Runnable)"
+    },
+    {
+      "tool": "spotbugs",
+      "rule": "RV_RETURN_VALUE_IGNORED",
+      "path": "src/main/java/probe/C3Locks.java",
+      "line": 22,
+      "symbol": "java.util.concurrent.Semaphore.tryAcquire()"
+    },
+    {
+      "tool": "spotbugs",
+      "rule": "RV_RETURN_VALUE_IGNORED",
+      "path": "src/main/java/probe/C3Locks.java",
+      "line": 21,
+      "symbol": "java.util.concurrent.CountDownLatch.await(long, TimeUnit)"
+    },
+    {
+      "tool": "spotbugs",
+      "rule": "SF_SWITCH_FALLTHROUGH",
+      "path": "src/main/java/probe/C4Switches.java",
+      "line": 21,
+      "symbol": "probe.C4Switches.fallThrough(int)"
+    },
+    {
+      "tool": "spotbugs",
+      "rule": "SF_SWITCH_NO_DEFAULT",
+      "path": "src/main/java/probe/C4Switches.java",
+      "line": 6,
+      "symbol": "probe.C4Switches.noDefault(int)"
+    },
+    {
+      "tool": "spotbugs",
+      "rule": "DMI_COLLECTION_OF_URLS",
+      "path": "src/main/java/probe/C6Encoding.java",
+      "symbol": "probe.C6Encoding.urls"
+    },
+    {
+      "tool": "spotbugs",
+      "rule": "DM_DEFAULT_ENCODING",
+      "path": "src/main/java/probe/C6Encoding.java",
+      "line": 19,
+      "symbol": "java.io.ByteArrayOutputStream.toString()"
+    },
+    {
+      "tool": "spotbugs",
+      "rule": "DM_DEFAULT_ENCODING",
+      "path": "src/main/java/probe/C6Encoding.java",
+      "line": 16,
+      "symbol": "new java.io.PrintStream(OutputStream)"
+    },
+    {
+      "tool": "spotbugs",
+      "rule": "SS_SHOULD_BE_STATIC",
+      "path": "src/main/java/probe/C6Encoding.java",
+      "line": 11,
+      "symbol": "probe.C6Encoding.constant"
+    },
+    {
+      "tool": "spotbugs",
+      "rule": "ST_WRITE_TO_STATIC_FROM_INSTANCE_METHOD",
+      "path": "src/main/java/probe/C7Names.java",
+      "line": 12,
+      "symbol": "probe.C7Names.Counter"
+    },
+    {
+      "tool": "spotbugs",
+      "rule": "HE_EQUALS_USE_HASHCODE",
+      "path": "src/main/java/probe/C8Equals.java",
+      "line": 8,
+      "symbol": "probe.C8Equals.equals(Object)"
+    },
+    {
+      "tool": "spotbugs",
+      "rule": "SS_SHOULD_BE_STATIC",
+      "path": "src/main/java/probe/C8Equals.java",
+      "line": 4,
+      "symbol": "probe.C8Equals.a"
+    },
+    {
+      "tool": "spotbugs",
+      "rule": "RV_EXCEPTION_NOT_THROWN",
+      "path": "src/main/java/probe/Dead.java",
+      "line": 6,
+      "symbol": "new IllegalArgumentException(String)"
+    },
+    {
+      "tool": "spotbugs",
+      "rule": "DM_DEFAULT_ENCODING",
+      "path": "src/main/java/probe/Encodings.java",
+      "line": 9,
+      "symbol": "new java.io.FileReader(File)"
+    },
+    {
+      "tool": "spotbugs",
+      "rule": "DM_DEFAULT_ENCODING",
+      "path": "src/main/java/probe/Encodings.java",
+      "line": 10,
+      "symbol": "new String(byte[])"
+    },
+    {
+      "tool": "spotbugs",
+      "rule": "HE_EQUALS_USE_HASHCODE",
+      "path": "src/main/java/probe/EqOnly.java",
+      "line": 8,
+      "symbol": "probe.EqOnly.equals(Object)"
+    },
+    {
+      "tool": "spotbugs",
+      "rule": "SS_SHOULD_BE_STATIC",
+      "path": "src/main/java/probe/EqOnly.java",
+      "line": 4,
+      "symbol": "probe.EqOnly.a"
+    },
+    {
+      "tool": "spotbugs",
+      "rule": "BC_EQUALS_METHOD_SHOULD_WORK_FOR_ALL_OBJECTS",
+      "path": "src/main/java/probe/Eqs.java",
+      "line": 8,
+      "symbol": "probe.Eqs.equals(Object)"
+    },
+    {
+      "tool": "spotbugs",
+      "rule": "NP_EQUALS_SHOULD_HANDLE_NULL_ARGUMENT",
+      "path": "src/main/java/probe/Eqs.java",
+      "line": 8,
+      "symbol": "probe.Eqs.equals(Object)#o"
+    },
+    {
+      "tool": "spotbugs",
+      "rule": "SS_SHOULD_BE_STATIC",
+      "path": "src/main/java/probe/Fields.java",
+      "line": 5,
+      "symbol": "probe.Fields.k"
+    },
+    {
+      "tool": "spotbugs",
+      "rule": "RE_BAD_SYNTAX_FOR_REGULAR_EXPRESSION",
+      "path": "src/main/java/probe/Formats.java",
+      "line": 7,
+      "symbol": "java.util.regex.Pattern.compile(String)"
+    },
+    {
+      "tool": "spotbugs",
+      "rule": "RE_POSSIBLE_UNINTENDED_PATTERN",
+      "path": "src/main/java/probe/Formats.java",
+      "line": 7,
+      "symbol": "String.split(String)"
+    },
+    {
+      "tool": "spotbugs",
+      "rule": "URF_UNREAD_PUBLIC_OR_PROTECTED_FIELD",
+      "path": "src/main/java/probe/Hiding.java",
+      "line": 4,
+      "symbol": "probe.Hiding.name"
+    },
+    {
+      "tool": "spotbugs",
+      "rule": "UWF_UNWRITTEN_FIELD",
+      "path": "src/main/java/probe/Hiding.java",
+      "line": 21,
+      "symbol": "probe.Hiding.inner"
+    },
+    {
+      "tool": "spotbugs",
+      "rule": "URF_UNREAD_PUBLIC_OR_PROTECTED_FIELD",
+      "path": "src/main/java/probe/Hiding.java",
+      "line": 8,
+      "symbol": "probe.Hiding$Base.name"
+    },
+    {
+      "tool": "spotbugs",
+      "rule": "NP_TOSTRING_COULD_RETURN_NULL",
+      "path": "src/main/java/probe/Hiding.java",
+      "line": 16,
+      "symbol": "probe.Hiding$Sub.toString()"
+    },
+    {
+      "tool": "spotbugs",
+      "rule": "URF_UNREAD_PUBLIC_OR_PROTECTED_FIELD",
+      "path": "src/main/java/probe/Hiding.java",
+      "line": 12,
+      "symbol": "probe.Hiding$Sub.name"
+    },
+    {
+      "tool": "spotbugs",
+      "rule": "RV_RETURN_VALUE_IGNORED",
+      "path": "src/main/java/probe/Immut.java",
+      "line": 10,
+      "symbol": "String.trim()"
+    },
+    {
+      "tool": "spotbugs",
+      "rule": "RV_RETURN_VALUE_IGNORED",
+      "path": "src/main/java/probe/Immut.java",
+      "line": 8,
+      "symbol": "java.math.BigDecimal.add(BigDecimal)"
+    },
+    {
+      "tool": "spotbugs",
+      "rule": "RV_RETURN_VALUE_IGNORED",
+      "path": "src/main/java/probe/Immut.java",
+      "line": 9,
+      "symbol": "java.math.BigInteger.add(BigInteger)"
+    },
+    {
+      "tool": "spotbugs",
+      "rule": "DMI_COLLECTION_OF_URLS",
+      "path": "src/main/java/probe/Locks.java",
+      "symbol": "probe.Locks.urls"
+    },
+    {
+      "tool": "spotbugs",
+      "rule": "UL_UNRELEASED_LOCK_EXCEPTION_PATH",
+      "path": "src/main/java/probe/Locks.java",
+      "line": 16,
+      "symbol": "probe.Locks.run(boolean)"
+    },
+    {
+      "tool": "spotbugs",
+      "rule": "ML_SYNC_ON_FIELD_TO_GUARD_CHANGING_THAT_FIELD",
+      "path": "src/main/java/probe/Misc.java",
+      "line": 24,
+      "symbol": "probe.Misc.guard"
+    },
+    {
+      "tool": "spotbugs",
+      "rule": "DMI_RANDOM_USED_ONLY_ONCE",
+      "path": "src/main/java/probe/Numbers.java",
+      "line": 9,
+      "symbol": "java.util.Random.nextInt()"
+    },
+    {
+      "tool": "spotbugs",
+      "rule": "ICAST_BAD_SHIFT_AMOUNT",
+      "path": "src/main/java/probe/Numbers.java",
+      "line": 7,
+      "symbol": "probe.Numbers.all(int, byte, int)#x"
+    },
+    {
+      "tool": "spotbugs",
+      "rule": "ICAST_INTEGER_MULTIPLY_CAST_TO_LONG",
+      "path": "src/main/java/probe/Numbers.java",
+      "line": 11,
+      "symbol": "probe.Numbers.all(int, byte, int)"
+    },
+    {
+      "tool": "spotbugs",
+      "rule": "INT_BAD_COMPARISON_WITH_SIGNED_BYTE",
+      "path": "src/main/java/probe/Numbers.java",
+      "line": 10,
+      "symbol": "probe.Numbers.all(int, byte, int)#b"
+    },
+    {
+      "tool": "spotbugs",
+      "rule": "RV_01_TO_INT",
+      "path": "src/main/java/probe/Numbers.java",
+      "line": 8,
+      "symbol": "probe.Numbers.all(int, byte, int)"
+    },
+    {
+      "tool": "spotbugs",
+      "rule": "RV_ABSOLUTE_VALUE_OF_RANDOM_INT",
+      "path": "src/main/java/probe/Numbers.java",
+      "line": 12,
+      "symbol": "probe.Numbers.all(int, byte, int)"
+    },
+    {
+      "tool": "spotbugs",
+      "rule": "EQ_SELF_USE_OBJECT",
+      "path": "src/main/java/probe/P2Eq.java",
+      "line": 7,
+      "symbol": "probe.P2Eq.equals(P2Eq)"
+    },
+    {
+      "tool": "spotbugs",
+      "rule": "HE_EQUALS_USE_HASHCODE",
+      "path": "src/main/java/probe/P2Eq.java",
+      "line": 7,
+      "symbol": "probe.P2Eq.equals(P2Eq)"
+    },
+    {
+      "tool": "spotbugs",
+      "rule": "MS_FINAL_PKGPROTECT",
+      "path": "src/main/java/probe/P2Inner.java",
+      "line": 6,
+      "symbol": "probe.P2Inner.names"
+    },
+    {
+      "tool": "spotbugs",
+      "rule": "DMI_INVOKING_TOSTRING_ON_ARRAY",
+      "path": "src/main/java/probe/P2Strings.java",
+      "line": 17,
+      "symbol": "probe.P2Strings.all(byte[], int[], int, int)#arr"
+    },
+    {
+      "tool": "spotbugs",
+      "rule": "ICAST_IDIV_CAST_TO_DOUBLE",
+      "path": "src/main/java/probe/P2Strings.java",
+      "line": 15,
+      "symbol": "probe.P2Strings.all(byte[], int[], int, int)"
+    },
+    {
+      "tool": "spotbugs",
+      "rule": "REFLC_REFLECTION_MAY_INCREASE_ACCESSIBILITY_OF_CLASS",
+      "path": "src/main/java/probe/P2Strings.java",
+      "line": 21,
+      "symbol": "probe.P2Strings.make(Class)"
+    },
+    {
+      "tool": "spotbugs",
+      "rule": "UCF_USELESS_CONTROL_FLOW_NEXT_LINE",
+      "path": "src/main/java/probe/P2Strings.java",
+      "line": 16,
+      "symbol": "probe.P2Strings.all(byte[], int[], int, int)"
+    },
+    {
+      "tool": "spotbugs",
+      "rule": "URF_UNREAD_FIELD",
+      "path": "src/main/java/probe/P3Fields.java",
+      "line": 10,
+      "symbol": "probe.P3Fields.writtenOnly"
+    },
+    {
+      "tool": "spotbugs",
+      "rule": "URF_UNREAD_FIELD",
+      "path": "src/main/java/probe/P3Fields.java",
+      "line": 11,
+      "symbol": "probe.P3Fields.writtenOnlyPackage"
+    },
+    {
+      "tool": "spotbugs",
+      "rule": "UUF_UNUSED_FIELD",
+      "path": "src/main/java/probe/P3Fields.java",
+      "symbol": "probe.P3Fields.unusedPackage"
+    },
+    {
+      "tool": "spotbugs",
+      "rule": "UUF_UNUSED_FIELD",
+      "path": "src/main/java/probe/P3Fields.java",
+      "symbol": "probe.P3Fields.unusedPrivate"
+    },
+    {
+      "tool": "spotbugs",
+      "rule": "IL_INFINITE_RECURSIVE_LOOP",
+      "path": "src/main/java/probe/Recur.java",
+      "line": 5,
+      "symbol": "probe.Recur.f()"
+    },
+    {
+      "tool": "spotbugs",
+      "rule": "SA_FIELD_SELF_ASSIGNMENT",
+      "path": "src/main/java/probe/SelfAssign.java",
+      "line": 8,
+      "symbol": "probe.SelfAssign.both(int)#b"
+    },
+    {
+      "tool": "spotbugs",
+      "rule": "SA_LOCAL_SELF_ASSIGNMENT",
+      "path": "src/main/java/probe/SelfAssign.java",
+      "line": 7,
+      "symbol": "probe.SelfAssign.both(int)#b"
+    },
+    {
+      "tool": "spotbugs",
+      "rule": "SR_NOT_CHECKED",
+      "path": "src/main/java/probe/Skip.java",
+      "line": 8,
+      "symbol": "java.io.InputStream.skip(long)"
+    },
+    {
+      "tool": "spotbugs",
+      "rule": "ST_WRITE_TO_STATIC_FROM_INSTANCE_METHOD",
+      "path": "src/main/java/probe/StaticCtor.java",
+      "line": 7,
+      "symbol": "probe.StaticCtor.count"
+    },
+    {
+      "tool": "spotbugs",
+      "rule": "EC_UNRELATED_TYPES",
+      "path": "src/main/java/probe/Types.java",
+      "line": 7,
+      "symbol": "String.equals(Object)"
+    },
+    {
+      "tool": "spotbugs",
+      "rule": "GC_UNRELATED_TYPES",
+      "path": "src/main/java/probe/Types.java",
+      "line": 7,
+      "symbol": "Integer.equals(Object)#l"
+    },
+    {
+      "tool": "spotbugs",
+      "rule": "DMI_BIGDECIMAL_CONSTRUCTED_FROM_DOUBLE",
+      "path": "src/main/java/probe/V1Style.java",
+      "line": 13,
+      "symbol": "java.math.BigDecimal.valueOf(double)"
+    },
+    {
+      "tool": "spotbugs",
+      "rule": "DM_EXIT",
+      "path": "src/main/java/probe/V1Style.java",
+      "line": 41,
+      "symbol": "probe.V1Style.out()"
+    },
+    {
+      "tool": "spotbugs",
+      "rule": "EC_NULL_ARG",
+      "path": "src/main/java/probe/V1Style.java",
+      "line": 21,
+      "symbol": "probe.V1Style.nullEquals(Object)"
+    },
+    {
+      "tool": "spotbugs",
+      "rule": "FI_EMPTY",
+      "path": "src/main/java/probe/V1Style.java",
+      "line": 78,
+      "symbol": "probe.V1Style.finalize()"
+    },
+    {
+      "tool": "spotbugs",
+      "rule": "SS_SHOULD_BE_STATIC",
+      "path": "src/main/java/probe/V1Style.java",
+      "line": 8,
+      "symbol": "probe.V1Style.annotated"
+    },
+    {
+      "tool": "spotbugs",
+      "rule": "SS_SHOULD_BE_STATIC",
+      "path": "src/main/java/probe/V1Style.java",
+      "line": 9,
+      "symbol": "probe.V1Style.big"
+    },
+    {
+      "tool": "spotbugs",
+      "rule": "DC_DOUBLECHECK",
+      "path": "src/main/java/probe/Volatile.java",
+      "line": 19,
+      "symbol": "probe.Volatile.inst"
+    },
+    {
+      "tool": "spotbugs",
+      "rule": "IS2_INCONSISTENT_SYNC",
+      "path": "src/main/java/probe/Volatile.java",
+      "line": 19,
+      "symbol": "probe.Volatile.inst"
+    },
+    {
+      "tool": "spotbugs",
+      "rule": "UW_UNCOND_WAIT",
+      "path": "src/main/java/probe/Volatile.java",
+      "line": 14,
+      "symbol": "probe.Volatile.await()"
+    },
+    {
+      "tool": "spotbugs",
+      "rule": "VO_VOLATILE_INCREMENT",
+      "path": "src/main/java/probe/Volatile.java",
+      "line": 9,
+      "symbol": "probe.Volatile.v"
+    },
+    {
+      "tool": "spotbugs",
+      "rule": "WA_NOT_IN_LOOP",
+      "path": "src/main/java/probe/Volatile.java",
+      "line": 14,
+      "symbol": "probe.Volatile.await()"
+    },
+    {
+      "tool": "checkstyle",
+      "rule": "MemberName",
+      "path": "src/main/java/probe/P2Eq.java",
+      "line": 4
+    },
+    {
+      "tool": "checkstyle",
+      "rule": "MissingSwitchDefault",
+      "path": "src/main/java/probe/C4Switches.java",
+      "line": 6
+    },
+    {
+      "tool": "checkstyle",
+      "rule": "FallThrough",
+      "path": "src/main/java/probe/C4Switches.java",
+      "line": 22
+    },
+    {
+      "tool": "checkstyle",
+      "rule": "EmptyCatchBlock",
+      "path": "src/main/java/probe/C4Switches.java",
+      "line": 34
+    },
+    {
+      "tool": "checkstyle",
+      "rule": "MultipleVariableDeclarations",
+      "path": "src/main/java/probe/C4Switches.java",
+      "line": 39
+    },
+    {
+      "tool": "checkstyle",
+      "rule": "MemberName",
+      "path": "src/main/java/probe/EqOnly.java",
+      "line": 4
+    },
+    {
+      "tool": "checkstyle",
+      "rule": "MemberName",
+      "path": "src/main/java/probe/BadEquals.java",
+      "line": 4
+    },
+    {
+      "tool": "checkstyle",
+      "rule": "OverloadMethodsDeclarationOrder",
+      "path": "src/main/java/probe/BadEquals.java",
+      "line": 15
+    },
+    {
+      "tool": "checkstyle",
+      "rule": "MemberName",
+      "path": "src/main/java/probe/C7Names.java",
+      "line": 6
+    },
+    {
+      "tool": "checkstyle",
+      "rule": "MethodName",
+      "path": "src/main/java/probe/C7Names.java",
+      "line": 17
+    },
+    {
+      "tool": "checkstyle",
+      "rule": "MemberName",
+      "path": "src/main/java/probe/SelfAssign.java",
+      "line": 4
+    },
+    {
+      "tool": "checkstyle",
+      "rule": "NeedBraces",
+      "path": "src/main/java/probe/P2Strings.java",
+      "line": 16
+    },
+    {
+      "tool": "checkstyle",
+      "rule": "MemberName",
+      "path": "src/main/java/probe/C8Equals.java",
+      "line": 4
+    },
+    {
+      "tool": "checkstyle",
+      "rule": "MemberName",
+      "path": "src/main/java/probe/Eqs.java",
+      "line": 4
+    },
+    {
+      "tool": "checkstyle",
+      "rule": "MemberName",
+      "path": "src/main/java/probe/Fields.java",
+      "line": 5
+    },
+    {
+      "tool": "checkstyle",
+      "rule": "MethodName",
+      "path": "src/main/java/probe/Fields.java",
+      "line": 7
+    },
+    {
+      "tool": "checkstyle",
+      "rule": "MethodName",
+      "path": "src/main/java/probe/Recur.java",
+      "line": 4
+    },
+    {
+      "tool": "checkstyle",
+      "rule": "JavadocMethod",
+      "path": "src/main/java/probe/Misc.java",
+      "line": 16
+    },
+    {
+      "tool": "checkstyle",
+      "rule": "MethodName",
+      "path": "src/main/java/probe/Misc.java",
+      "line": 18
+    },
+    {
+      "tool": "checkstyle",
+      "rule": "MethodName",
+      "path": "src/main/java/probe/Dead.java",
+      "line": 4
+    },
+    {
+      "tool": "checkstyle",
+      "rule": "AvoidStarImport",
+      "path": "src/main/java/probe/V1Style.java",
+      "line": 4
+    },
+    {
+      "tool": "checkstyle",
+      "rule": "ClassTypeParameterName",
+      "path": "src/main/java/probe/V1Style.java",
+      "line": 7
+    },
+    {
+      "tool": "checkstyle",
+      "rule": "UpperEll",
+      "path": "src/main/java/probe/V1Style.java",
+      "line": 9
+    },
+    {
+      "tool": "checkstyle",
+      "rule": "ArrayTypeStyle",
+      "path": "src/main/java/probe/V1Style.java",
+      "line": 10
+    },
+    {
+      "tool": "checkstyle",
+      "rule": "MethodTypeParameterName",
+      "path": "src/main/java/probe/V1Style.java",
+      "line": 64
+    },
+    {
+      "tool": "checkstyle",
+      "rule": "NoFinalizer",
+      "path": "src/main/java/probe/V1Style.java",
+      "line": 77
+    },
+    {
+      "tool": "checkstyle",
+      "rule": "OneTopLevelClass",
+      "path": "src/main/java/probe/V1Style.java",
+      "line": 123
+    },
+    {
+      "tool": "checkstyle",
+      "rule": "MemberName",
+      "path": "src/main/java/probe/Volatile.java",
+      "line": 4
+    },
+    {
+      "tool": "checkstyle",
+      "rule": "JavadocMethod",
+      "path": "src/main/java/probe/V2Docs.java",
+      "line": 8
+    },
+    {
+      "tool": "checkstyle",
+      "rule": "NonEmptyAtclauseDescription",
+      "path": "src/main/java/probe/V2Docs.java",
+      "line": 10
+    },
+    {
+      "tool": "checkstyle",
+      "rule": "InvalidJavadocPosition",
+      "path": "src/main/java/probe/V2Docs.java",
+      "line": 18
+    },
+    {
+      "tool": "checkstyle",
+      "rule": "MissingSwitchDefault",
+      "path": "src/main/java/probe/V2Docs.java",
+      "line": 28
+    },
+    {
+      "tool": "errorprone",
+      "rule": "ArrayToString",
+      "path": "src/main/java/probe/Arrays1.java",
+      "line": 5
+    },
+    {
+      "tool": "errorprone",
+      "rule": "ArrayEquals",
+      "path": "src/main/java/probe/Arrays1.java",
+      "line": 5
+    },
+    {
+      "tool": "errorprone",
+      "rule": "ArrayHashCode",
+      "path": "src/main/java/probe/Arrays1.java",
+      "line": 5
+    },
+    {
+      "tool": "errorprone",
+      "rule": "UngroupedOverloads",
+      "path": "src/main/java/probe/BadEquals.java",
+      "line": 6
+    },
+    {
+      "tool": "errorprone",
+      "rule": "NonOverridingEquals",
+      "path": "src/main/java/probe/BadEquals.java",
+      "line": 6
+    },
+    {
+      "tool": "errorprone",
+      "rule": "UngroupedOverloads",
+      "path": "src/main/java/probe/BadEquals.java",
+      "line": 16
+    },
+    {
+      "tool": "errorprone",
+      "rule": "MutablePublicArray",
+      "path": "src/main/java/probe/C1Arrays.java",
+      "line": 6
+    },
+    {
+      "tool": "errorprone",
+      "rule": "JavaUtilDate",
+      "path": "src/main/java/probe/C1Arrays.java",
+      "line": 8
+    },
+    {
+      "tool": "errorprone",
+      "rule": "SubstringOfZero",
+      "path": "src/main/java/probe/C2Strings.java",
+      "line": 5
+    },
+    {
+      "tool": "errorprone",
+      "rule": "ReferenceEquality",
+      "path": "src/main/java/probe/C2Strings.java",
+      "line": 9
+    },
+    {
+      "tool": "errorprone",
+      "rule": "IdentityBinaryExpression",
+      "path": "src/main/java/probe/C2Strings.java",
+      "line": 13
+    },
+    {
+      "tool": "errorprone",
+      "rule": "SelfEquals",
+      "path": "src/main/java/probe/C2Strings.java",
+      "line": 13
+    },
+    {
+      "tool": "errorprone",
+      "rule": "SelfComparison",
+      "path": "src/main/java/probe/C2Strings.java",
+      "line": 13
+    },
+    {
+      "tool": "errorprone",
+      "rule": "EqualsNaN",
+      "path": "src/main/java/probe/C2Strings.java",
+      "line": 17
+    },
+    {
+      "tool": "errorprone",
+      "rule": "BoxedPrimitiveConstructor",
+      "path": "src/main/java/probe/C2Strings.java",
+      "line": 25
+    },
+    {
+      "tool": "errorprone",
+      "rule": "BoxedPrimitiveConstructor",
+      "path": "src/main/java/probe/C2Strings.java",
+      "line": 29
+    },
+    {
+      "tool": "errorprone",
+      "rule": "BoxedPrimitiveEquality",
+      "path": "src/main/java/probe/C2Strings.java",
+      "line": 33
+    },
+    {
+      "tool": "errorprone",
+      "rule": "ReferenceEquality",
+      "path": "src/main/java/probe/C2Strings.java",
+      "line": 33
+    },
+    {
+      "tool": "errorprone",
+      "rule": "FieldCanBeStatic",
+      "path": "src/main/java/probe/C3Locks.java",
+      "line": 9
+    },
+    {
+      "tool": "errorprone",
+      "rule": "LockOnBoxedPrimitive",
+      "path": "src/main/java/probe/C3Locks.java",
+      "line": 15
+    },
+    {
+      "tool": "errorprone",
+      "rule": "DoNotCall",
+      "path": "src/main/java/probe/C3Locks.java",
+      "line": 27
+    },
+    {
+      "tool": "errorprone",
+      "rule": "StatementSwitchToExpressionSwitch",
+      "path": "src/main/java/probe/C4Switches.java",
+      "line": 6
+    },
+    {
+      "tool": "errorprone",
+      "rule": "MissingDefault",
+      "path": "src/main/java/probe/C4Switches.java",
+      "line": 6
+    },
+    {
+      "tool": "errorprone",
+      "rule": "FallThrough",
+      "path": "src/main/java/probe/C4Switches.java",
+      "line": 22
+    },
+    {
+      "tool": "errorprone",
+      "rule": "PreferJavaTimeOverload",
+      "path": "src/main/java/probe/C4Switches.java",
+      "line": 33
+    },
+    {
+      "tool": "errorprone",
+      "rule": "EmptyCatch",
+      "path": "src/main/java/probe/C4Switches.java",
+      "line": 34
+    },
+    {
+      "tool": "errorprone",
+      "rule": "MultiVariableDeclaration",
+      "path": "src/main/java/probe/C4Switches.java",
+      "line": 39
+    },
+    {
+      "tool": "errorprone",
+      "rule": "NullAway",
+      "path": "src/main/java/probe/C5Nulls.java",
+      "line": 12
+    },
+    {
+      "tool": "errorprone",
+      "rule": "NullAway",
+      "path": "src/main/java/probe/C5Nulls.java",
+      "line": 21
+    },
+    {
+      "tool": "errorprone",
+      "rule": "URLEqualsHashCode",
+      "path": "src/main/java/probe/C6Encoding.java",
+      "line": 12
+    },
+    {
+      "tool": "errorprone",
+      "rule": "DefaultLocale",
+      "path": "src/main/java/probe/C6Encoding.java",
+      "line": 18
+    },
+    {
+      "tool": "errorprone",
+      "rule": "DefaultCharset",
+      "path": "src/main/java/probe/C6Encoding.java",
+      "line": 19
+    },
+    {
+      "tool": "errorprone",
+      "rule": "IdentifierName",
+      "path": "src/main/java/probe/C7Names.java",
+      "line": 5
+    },
+    {
+      "tool": "errorprone",
+      "rule": "NonFinalStaticField",
+      "path": "src/main/java/probe/C7Names.java",
+      "line": 5
+    },
+    {
+      "tool": "errorprone",
+      "rule": "IdentifierName",
+      "path": "src/main/java/probe/C7Names.java",
+      "line": 6
+    },
+    {
+      "tool": "errorprone",
+      "rule": "PreferJavaTimeOverload",
+      "path": "src/main/java/probe/C7Names.java",
+      "line": 10
+    },
+    {
+      "tool": "errorprone",
+      "rule": "InterruptedExceptionSwallowed",
+      "path": "src/main/java/probe/C7Names.java",
+      "line": 11
+    },
+    {
+      "tool": "errorprone",
+      "rule": "IdentifierName",
+      "path": "src/main/java/probe/C7Names.java",
+      "line": 17
+    },
+    {
+      "tool": "errorprone",
+      "rule": "FieldCanBeStatic",
+      "path": "src/main/java/probe/C8Equals.java",
+      "line": 4
+    },
+    {
+      "tool": "errorprone",
+      "rule": "EqualsHashCode",
+      "path": "src/main/java/probe/C8Equals.java",
+      "line": 7
+    },
+    {
+      "tool": "errorprone",
+      "rule": "JdkObsolete",
+      "path": "src/main/java/probe/Charsets.java",
+      "line": 9
+    },
+    {
+      "tool": "errorprone",
+      "rule": "DeadException",
+      "path": "src/main/java/probe/Dead.java",
+      "line": 6
+    },
+    {
+      "tool": "errorprone",
+      "rule": "DefaultCharset",
+      "path": "src/main/java/probe/Encodings.java",
+      "line": 9
+    },
+    {
+      "tool": "errorprone",
+      "rule": "DefaultCharset",
+      "path": "src/main/java/probe/Encodings.java",
+      "line": 10
+    },
+    {
+      "tool": "errorprone",
+      "rule": "JdkObsolete",
+      "path": "src/main/java/probe/Enumer.java",
+      "line": 5
+    },
+    {
+      "tool": "errorprone",
+      "rule": "FieldCanBeStatic",
+      "path": "src/main/java/probe/EqOnly.java",
+      "line": 4
+    },
+    {
+      "tool": "errorprone",
+      "rule": "EqualsHashCode",
+      "path": "src/main/java/probe/EqOnly.java",
+      "line": 7
+    },
+    {
+      "tool": "errorprone",
+      "rule": "EqualsBrokenForNull",
+      "path": "src/main/java/probe/Eqs.java",
+      "line": 7
+    },
+    {
+      "tool": "errorprone",
+      "rule": "EqualsUnsafeCast",
+      "path": "src/main/java/probe/Eqs.java",
+      "line": 8
+    },
+    {
+      "tool": "errorprone",
+      "rule": "MutablePublicArray",
+      "path": "src/main/java/probe/Fields.java",
+      "line": 4
+    },
+    {
+      "tool": "errorprone",
+      "rule": "FieldCanBeStatic",
+      "path": "src/main/java/probe/Fields.java",
+      "line": 5
+    },
+    {
+      "tool": "errorprone",
+      "rule": "ClassCanBeStatic",
+      "path": "src/main/java/probe/Fields.java",
+      "line": 11
+    },
+    {
+      "tool": "errorprone",
+      "rule": "FormatString",
+      "path": "src/main/java/probe/Formats.java",
+      "line": 7
+    },
+    {
+      "tool": "errorprone",
+      "rule": "DefaultLocale",
+      "path": "src/main/java/probe/Formats.java",
+      "line": 7
+    },
+    {
+      "tool": "errorprone",
+      "rule": "BareDotMetacharacter",
+      "path": "src/main/java/probe/Formats.java",
+      "line": 7
+    },
+    {
+      "tool": "errorprone",
+      "rule": "ConstantPatternCompile",
+      "path": "src/main/java/probe/Formats.java",
+      "line": 7
+    },
+    {
+      "tool": "errorprone",
+      "rule": "InvalidPatternSyntax",
+      "path": "src/main/java/probe/Formats.java",
+      "line": 7
+    },
+    {
+      "tool": "errorprone",
+      "rule": "NullAway",
+      "path": "src/main/java/probe/Hiding.java",
+      "line": 5
+    },
+    {
+      "tool": "errorprone",
+      "rule": "HidingField",
+      "path": "src/main/java/probe/Hiding.java",
+      "line": 12
+    },
+    {
+      "tool": "errorprone",
+      "rule": "ToStringReturnsNull",
+      "path": "src/main/java/probe/Hiding.java",
+      "line": 15
+    },
+    {
+      "tool": "errorprone",
+      "rule": "NullAway",
+      "path": "src/main/java/probe/Hiding.java",
+      "line": 16
+    },
+    {
+      "tool": "errorprone",
+      "rule": "ReturnValueIgnored",
+      "path": "src/main/java/probe/Immut.java",
+      "line": 8
+    },
+    {
+      "tool": "errorprone",
+      "rule": "ReturnValueIgnored",
+      "path": "src/main/java/probe/Immut.java",
+      "line": 9
+    },
+    {
+      "tool": "errorprone",
+      "rule": "ReturnValueIgnored",
+      "path": "src/main/java/probe/Immut.java",
+      "line": 10
+    },
+    {
+      "tool": "errorprone",
+      "rule": "DefaultLocale",
+      "path": "src/main/java/probe/Locales.java",
+      "line": 7
+    },
+    {
+      "tool": "errorprone",
+      "rule": "StringCaseLocaleUsage",
+      "path": "src/main/java/probe/Locales.java",
+      "line": 8
+    },
+    {
+      "tool": "errorprone",
+      "rule": "DefaultLocale",
+      "path": "src/main/java/probe/Locales.java",
+      "line": 9
+    },
+    {
+      "tool": "errorprone",
+      "rule": "DateFormatConstant",
+      "path": "src/main/java/probe/Locks.java",
+      "line": 11
+    },
+    {
+      "tool": "errorprone",
+      "rule": "URLEqualsHashCode",
+      "path": "src/main/java/probe/Locks.java",
+      "line": 13
+    },
+    {
+      "tool": "errorprone",
+      "rule": "LockNotBeforeTry",
+      "path": "src/main/java/probe/Locks.java",
+      "line": 16
+    },
+    {
+      "tool": "errorprone",
+      "rule": "ShortCircuitBoolean",
+      "path": "src/main/java/probe/Locks.java",
+      "line": 19
+    },
+    {
+      "tool": "errorprone",
+      "rule": "DepAnn",
+      "path": "src/main/java/probe/Misc.java",
+      "line": 11
+    },
+    {
+      "tool": "errorprone",
+      "rule": "ReturnFromVoid",
+      "path": "src/main/java/probe/Misc.java",
+      "line": 16
+    },
+    {
+      "tool": "errorprone",
+      "rule": "UnnecessarySemicolon",
+      "path": "src/main/java/probe/Misc.java",
+      "line": 22
+    },
+    {
+      "tool": "errorprone",
+      "rule": "SynchronizeOnNonFinalField",
+      "path": "src/main/java/probe/Misc.java",
+      "line": 23
+    },
+    {
+      "tool": "errorprone",
+      "rule": "ReturnAtTheEndOfVoidFunction",
+      "path": "src/main/java/probe/Misc.java",
+      "line": 29
+    },
+    {
+      "tool": "errorprone",
+      "rule": "ThreadPriorityCheck",
+      "path": "src/main/java/probe/Misc.java",
+      "line": 31
+    },
+    {
+      "tool": "errorprone",
+      "rule": "IdentityBinaryExpression",
+      "path": "src/main/java/probe/Misc.java",
+      "line": 33
+    },
+    {
+      "tool": "errorprone",
+      "rule": "ReturnsNullCollection",
+      "path": "src/main/java/probe/NullColl.java",
+      "line": 11
+    },
+    {
+      "tool": "errorprone",
+      "rule": "NullAway",
+      "path": "src/main/java/probe/NullColl.java",
+      "line": 11
+    },
+    {
+      "tool": "errorprone",
+      "rule": "BadShiftAmount",
+      "path": "src/main/java/probe/Numbers.java",
+      "line": 7
+    },
+    {
+      "tool": "errorprone",
+      "rule": "RandomCast",
+      "path": "src/main/java/probe/Numbers.java",
+      "line": 8
+    },
+    {
+      "tool": "errorprone",
+      "rule": "RandomModInteger",
+      "path": "src/main/java/probe/Numbers.java",
+      "line": 9
+    },
+    {
+      "tool": "errorprone",
+      "rule": "ComparisonOutOfRange",
+      "path": "src/main/java/probe/Numbers.java",
+      "line": 10
+    },
+    {
+      "tool": "errorprone",
+      "rule": "IntLongMath",
+      "path": "src/main/java/probe/Numbers.java",
+      "line": 11
+    },
+    {
+      "tool": "errorprone",
+      "rule": "NarrowCalculation",
+      "path": "src/main/java/probe/Numbers.java",
+      "line": 11
+    },
+    {
+      "tool": "errorprone",
+      "rule": "MathAbsoluteNegative",
+      "path": "src/main/java/probe/Numbers.java",
+      "line": 12
+    },
+    {
+      "tool": "errorprone",
+      "rule": "JdkObsolete",
+      "path": "src/main/java/probe/Obsolete.java",
+      "line": 10
+    },
+    {
+      "tool": "errorprone",
+      "rule": "JdkObsolete",
+      "path": "src/main/java/probe/Obsolete.java",
+      "line": 11
+    },
+    {
+      "tool": "errorprone",
+      "rule": "JdkObsolete",
+      "path": "src/main/java/probe/Obsolete.java",
+      "line": 12
+    },
+    {
+      "tool": "errorprone",
+      "rule": "JdkObsolete",
+      "path": "src/main/java/probe/Obsolete.java",
+      "line": 13
+    },
+    {
+      "tool": "errorprone",
+      "rule": "JdkObsolete",
+      "path": "src/main/java/probe/Obsolete.java",
+      "line": 14
+    },
+    {
+      "tool": "errorprone",
+      "rule": "NonOverridingEquals",
+      "path": "src/main/java/probe/P2Eq.java",
+      "line": 6
+    },
+    {
+      "tool": "errorprone",
+      "rule": "NonFinalStaticField",
+      "path": "src/main/java/probe/P2Inner.java",
+      "line": 6
+    },
+    {
+      "tool": "errorprone",
+      "rule": "FieldCanBeFinal",
+      "path": "src/main/java/probe/P2Inner.java",
+      "line": 7
+    },
+    {
+      "tool": "errorprone",
+      "rule": "NonFinalStaticField",
+      "path": "src/main/java/probe/P2Inner.java",
+      "line": 7
+    },
+    {
+      "tool": "errorprone",
+      "rule": "DefaultLocale",
+      "path": "src/main/java/probe/P2Inner.java",
+      "line": 7
+    },
+    {
+      "tool": "errorprone",
+      "rule": "ClassCanBeStatic",
+      "path": "src/main/java/probe/P2Inner.java",
+      "line": 13
+    },
+    {
+      "tool": "errorprone",
+      "rule": "JdkObsolete",
+      "path": "src/main/java/probe/P2Strings.java",
+      "line": 11
+    },
+    {
+      "tool": "errorprone",
+      "rule": "JdkObsolete",
+      "path": "src/main/java/probe/P2Strings.java",
+      "line": 12
+    },
+    {
+      "tool": "errorprone",
+      "rule": "IntLongMath",
+      "path": "src/main/java/probe/P2Strings.java",
+      "line": 14
+    },
+    {
+      "tool": "errorprone",
+      "rule": "NarrowCalculation",
+      "path": "src/main/java/probe/P2Strings.java",
+      "line": 15
+    },
+    {
+      "tool": "errorprone",
+      "rule": "MissingBraces",
+      "path": "src/main/java/probe/P2Strings.java",
+      "line": 16
+    },
+    {
+      "tool": "errorprone",
+      "rule": "UnnecessarySemicolon",
+      "path": "src/main/java/probe/P2Strings.java",
+      "line": 16
+    },
+    {
+      "tool": "errorprone",
+      "rule": "ArrayToString",
+      "path": "src/main/java/probe/P2Strings.java",
+      "line": 17
+    },
+    {
+      "tool": "errorprone",
+      "rule": "FormatString",
+      "path": "src/main/java/probe/P2Strings.java",
+      "line": 17
+    },
+    {
+      "tool": "errorprone",
+      "rule": "ClassNewInstance",
+      "path": "src/main/java/probe/P2Strings.java",
+      "line": 21
+    },
+    {
+      "tool": "errorprone",
+      "rule": "PreferJavaTimeOverload",
+      "path": "src/main/java/probe/P2Strings.java",
+      "line": 26
+    },
+    {
+      "tool": "errorprone",
+      "rule": "InterruptedExceptionSwallowed",
+      "path": "src/main/java/probe/P2Strings.java",
+      "line": 27
+    },
+    {
+      "tool": "errorprone",
+      "rule": "InfiniteRecursion",
+      "path": "src/main/java/probe/Recur.java",
+      "line": 5
+    },
+    {
+      "tool": "errorprone",
+      "rule": "SelfAssignment",
+      "path": "src/main/java/probe/SelfAssign.java",
+      "line": 7
+    },
+    {
+      "tool": "errorprone",
+      "rule": "SelfAssignment",
+      "path": "src/main/java/probe/SelfAssign.java",
+      "line": 8
+    },
+    {
+      "tool": "errorprone",
+      "rule": "NonFinalStaticField",
+      "path": "src/main/java/probe/StaticCtor.java",
+      "line": 4
+    },
+    {
+      "tool": "errorprone",
+      "rule": "StaticAssignmentInConstructor",
+      "path": "src/main/java/probe/StaticCtor.java",
+      "line": 7
+    },
+    {
+      "tool": "errorprone",
+      "rule": "SunApi",
+      "path": "src/main/java/probe/SunUse.java",
+      "line": 8
+    },
+    {
+      "tool": "errorprone",
+      "rule": "SunApi",
+      "path": "src/main/java/probe/SunUse.java",
+      "line": 8
+    },
+    {
+      "tool": "errorprone",
+      "rule": "CollectionIncompatibleType",
+      "path": "src/main/java/probe/Types.java",
+      "line": 7
+    },
+    {
+      "tool": "errorprone",
+      "rule": "EqualsIncompatibleType",
+      "path": "src/main/java/probe/Types.java",
+      "line": 7
+    },
+    {
+      "tool": "errorprone",
+      "rule": "WildcardImport",
+      "path": "src/main/java/probe/V1Style.java",
+      "line": 4
+    },
+    {
+      "tool": "errorprone",
+      "rule": "MultipleTopLevelClasses",
+      "path": "src/main/java/probe/V1Style.java",
+      "line": 7
+    },
+    {
+      "tool": "errorprone",
+      "rule": "TypeParameterNaming",
+      "path": "src/main/java/probe/V1Style.java",
+      "line": 7
+    },
+    {
+      "tool": "errorprone",
+      "rule": "AnnotationPosition",
+      "path": "src/main/java/probe/V1Style.java",
+      "line": 8
+    },
+    {
+      "tool": "errorprone",
+      "rule": "FieldCanBeStatic",
+      "path": "src/main/java/probe/V1Style.java",
+      "line": 8
+    },
+    {
+      "tool": "errorprone",
+      "rule": "FieldCanBeStatic",
+      "path": "src/main/java/probe/V1Style.java",
+      "line": 9
+    },
+    {
+      "tool": "errorprone",
+      "rule": "LongLiteralLowerCaseSuffix",
+      "path": "src/main/java/probe/V1Style.java",
+      "line": 9
+    },
+    {
+      "tool": "errorprone",
+      "rule": "MixedArrayDimensions",
+      "path": "src/main/java/probe/V1Style.java",
+      "line": 10
+    },
+    {
+      "tool": "errorprone",
+      "rule": "BigDecimalLiteralDouble",
+      "path": "src/main/java/probe/V1Style.java",
+      "line": 13
+    },
+    {
+      "tool": "errorprone",
+      "rule": "StringBuilderInitWithChar",
+      "path": "src/main/java/probe/V1Style.java",
+      "line": 17
+    },
+    {
+      "tool": "errorprone",
+      "rule": "EqualsNull",
+      "path": "src/main/java/probe/V1Style.java",
+      "line": 21
+    },
+    {
+      "tool": "errorprone",
+      "rule": "ExplicitArrayForVarargs",
+      "path": "src/main/java/probe/V1Style.java",
+      "line": 25
+    },
+    {
+      "tool": "errorprone",
+      "rule": "IncrementInForLoopAndHeader",
+      "path": "src/main/java/probe/V1Style.java",
+      "line": 33
+    },
+    {
+      "tool": "errorprone",
+      "rule": "SystemOut",
+      "path": "src/main/java/probe/V1Style.java",
+      "line": 40
+    },
+    {
+      "tool": "errorprone",
+      "rule": "SystemExitOutsideMain",
+      "path": "src/main/java/probe/V1Style.java",
+      "line": 41
+    },
+    {
+      "tool": "errorprone",
+      "rule": "PreferJavaTimeOverload",
+      "path": "src/main/java/probe/V1Style.java",
+      "line": 46
+    },
+    {
+      "tool": "errorprone",
+      "rule": "CatchAndPrintStackTrace",
+      "path": "src/main/java/probe/V1Style.java",
+      "line": 48
+    },
+    {
+      "tool": "errorprone",
+      "rule": "SystemOut",
+      "path": "src/main/java/probe/V1Style.java",
+      "line": 48
+    },
+    {
+      "tool": "errorprone",
+      "rule": "TypeParameterNaming",
+      "path": "src/main/java/probe/V1Style.java",
+      "line": 64
+    },
+    {
+      "tool": "errorprone",
+      "rule": "Finalize",
+      "path": "src/main/java/probe/V1Style.java",
+      "line": 78
+    },
+    {
+      "tool": "errorprone",
+      "rule": "MissingOverride",
+      "path": "src/main/java/probe/V1Style.java",
+      "line": 80
+    },
+    {
+      "tool": "errorprone",
+      "rule": "OptionalEquality",
+      "path": "src/main/java/probe/V1Style.java",
+      "line": 85
+    },
+    {
+      "tool": "errorprone",
+      "rule": "ReferenceEquality",
+      "path": "src/main/java/probe/V1Style.java",
+      "line": 85
+    },
+    {
+      "tool": "errorprone",
+      "rule": "DoubleBraceInitialization",
+      "path": "src/main/java/probe/V1Style.java",
+      "line": 89
+    },
+    {
+      "tool": "errorprone",
+      "rule": "StatementSwitchToExpressionSwitch",
+      "path": "src/main/java/probe/V1Style.java",
+      "line": 97
+    },
+    {
+      "tool": "errorprone",
+      "rule": "SwitchDefault",
+      "path": "src/main/java/probe/V1Style.java",
+      "line": 98
+    },
+    {
+      "tool": "errorprone",
+      "rule": "PreferJavaTimeOverload",
+      "path": "src/main/java/probe/V1Style.java",
+      "line": 111
+    },
+    {
+      "tool": "errorprone",
+      "rule": "MultipleTopLevelClasses",
+      "path": "src/main/java/probe/V1Style.java",
+      "line": 123
+    },
+    {
+      "tool": "errorprone",
+      "rule": "InvalidParam",
+      "path": "src/main/java/probe/V2Docs.java",
+      "line": 8
+    },
+    {
+      "tool": "errorprone",
+      "rule": "NotJavadoc",
+      "path": "src/main/java/probe/V2Docs.java",
+      "line": 18
+    },
+    {
+      "tool": "errorprone",
+      "rule": "StatementSwitchToExpressionSwitch",
+      "path": "src/main/java/probe/V2Docs.java",
+      "line": 28
+    },
+    {
+      "tool": "errorprone",
+      "rule": "MissingCasesInEnumSwitch",
+      "path": "src/main/java/probe/V2Docs.java",
+      "line": 28
+    },
+    {
+      "tool": "errorprone",
+      "rule": "UnusedMethod",
+      "path": "src/main/java/probe/V3Unused.java",
+      "line": 10
+    },
+    {
+      "tool": "errorprone",
+      "rule": "NullAway",
+      "path": "src/main/java/probe/Volatile.java",
+      "line": 6
+    },
+    {
+      "tool": "errorprone",
+      "rule": "NonAtomicVolatileUpdate",
+      "path": "src/main/java/probe/Volatile.java",
+      "line": 9
+    },
+    {
+      "tool": "errorprone",
+      "rule": "WaitNotInLoop",
+      "path": "src/main/java/probe/Volatile.java",
+      "line": 14
+    },
+    {
+      "tool": "errorprone",
+      "rule": "DoubleCheckedLocking",
+      "path": "src/main/java/probe/Volatile.java",
+      "line": 19
+    },
+    {
+      "tool": "errorprone",
+      "rule": "JUnit4TestNotRun",
+      "path": "src/test/java/probe/OldTest.java",
+      "line": 8
+    },
+    {
+      "tool": "errorprone",
+      "rule": "JUnit4SetUpNotRun",
+      "path": "src/test/java/probe/OldTest.java",
+      "line": 8
+    },
+    {
+      "tool": "errorprone",
+      "rule": "JUnit4TestNotRun",
+      "path": "src/test/java/probe/OldTest.java",
+      "line": 10
+    },
+    {
+      "tool": "errorprone",
+      "rule": "JUnit4TearDownNotRun",
+      "path": "src/test/java/probe/OldTest.java",
+      "line": 10
+    },
+    {
+      "tool": "errorprone",
+      "rule": "RedundantNullCheck",
+      "path": "src/test/java/probe/OldTest.java",
+      "line": 14
+    },
+    {
+      "tool": "errorprone",
+      "rule": "StringCharset",
+      "path": "src/main/java/probe/Charsets.java",
+      "line": 9
+    },
+    {
+      "tool": "errorprone",
+      "rule": "StringCharset",
+      "path": "src/main/java/probe/P2Strings.java",
+      "line": 11
+    }
+  ]
+}

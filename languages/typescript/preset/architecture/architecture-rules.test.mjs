@@ -1,7 +1,9 @@
+import { existsSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 import { cruiseWithConfig } from './test-support/strict-cruise.mjs';
+import { outsideRootsRule } from './outside-roots/outside-roots.mjs';
 import config from './fixtures/dependency-cruiser.fixture.config.mjs';
 import productionConfig from '../defaults/dependency-cruiser.config.mjs';
 
@@ -10,8 +12,8 @@ const projectRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '
 function cruiseFixture(name) {
   const fixture = path.join(projectRoot, 'languages/typescript/preset/architecture/fixtures', name);
   return cruiseWithConfig(config, {
-    baseDir: projectRoot,
-    paths: [fixture],
+    baseDir: fixture,
+    paths: ['src', 'tests'].filter((entry) => existsSync(path.join(fixture, entry))),
     outputType: 'err-long',
   });
 }
@@ -25,7 +27,7 @@ describe('dependency architecture rules', () => {
         severity: 'error',
         from: { path: '(?:^|/)(?:src)/(?!.*(?:__tests__|\\.test\\.|\\.spec\\.))' },
         to: {
-          path: '(?:^|/)(?:(?:test|tests)/|(?:src)/.*/__tests__/|(?:src)/.*\\.(?:test|spec)\\.)',
+          path: '^(?:test|tests|__tests__|e2e)/|(?:^|/)(?:src)/.*/__tests__/|(?:^|/)(?:src)/.*\\.(?:test|spec)\\.',
         },
       },
       {
@@ -33,6 +35,27 @@ describe('dependency architecture rules', () => {
         severity: 'error',
         from: { path: '(?:^|/)(?:src)/(?!.*(?:__tests__|\\.test\\.|\\.spec\\.))' },
         to: { circular: true },
+      },
+      {
+        name: 'no-import-outside-roots',
+        severity: 'error',
+        comment: outsideRootsRule({ productionSource: '', roots: [] }).comment,
+        from: { path: '(?:^|/)(?:src)/(?!.*(?:__tests__|\\.test\\.|\\.spec\\.))' },
+        to: {
+          dependencyTypesNot: [
+            'core',
+            'npm',
+            'npm-dev',
+            'npm-optional',
+            'npm-peer',
+            'npm-bundled',
+            'npm-no-pkg',
+            'npm-unknown',
+            'unknown',
+            'undetermined',
+          ],
+          pathNot: '^(?:src|test|tests|__tests__|e2e)/|(?:^|/)node_modules/|\\.json$',
+        },
       },
       {
         name: 'feature-internals-only-through-index',
@@ -73,7 +96,7 @@ describe('dependency architecture rules', () => {
         name: 'domain-does-not-import-adapters',
         severity: 'error',
         comment:
-          'domain/ stays pure and may not import adapters/. Define the dependency as a type in domain/ and let adapters/ implement it.',
+          'domain/ stays pure and may not import adapters/. Define the dependency as a type in domain/ and let adapters/ implement it. If it is deliberate, add an exception for this rule in nitpicker.config.json (paths are the importing files).',
         from: { path: '(?:^|/)(?:src)/main/features/[^/]+/domain/' },
         to: { path: '(?:^|/)(?:src)/main/features/[^/]+/adapters/' },
       },
@@ -81,32 +104,33 @@ describe('dependency architecture rules', () => {
         name: 'domain-does-not-import-node-io',
         severity: 'error',
         comment:
-          'domain/ may import only pure Node modules (path, url, util, assert, buffer, events, string_decoder). Do the I/O in adapters/ and pass the result in as a parameter.',
+          'domain/ may import only pure Node modules (path, url, util, assert, buffer, events, string_decoder, punycode, querystring, and their subpaths such as path/posix). Do the I/O in adapters/ and pass the result in as a parameter. If it is deliberate, add an exception for this rule in nitpicker.config.json (paths are the importing files).',
         from: { path: '(?:^|/)(?:src)/main/features/[^/]+/domain/' },
         to: {
           dependencyTypes: ['core'],
-          pathNot: '^(?:node:)?(?:path|url|util|assert|buffer|events|string_decoder)$',
+          pathNot:
+            '^(?:node:)?(?:path|url|util|assert|buffer|events|string_decoder|punycode|querystring)(?:/(?:posix|win32|strict|types))?$',
         },
       },
       {
         name: 'domain-does-not-import-network-or-database-clients',
         severity: 'error',
         comment:
-          'domain/ may not import network or database clients. Call the client from adapters/ and pass the data into domain/ as a parameter.',
+          'domain/ may not import network or database clients. Call the client from adapters/ and pass the data into domain/ as a parameter. If it is deliberate, add an exception for this rule in nitpicker.config.json (paths are the importing files).',
         from: { path: '(?:^|/)(?:src)/main/features/[^/]+/domain/' },
         to: {
-          path: '(?:^|/)(?:node_modules/)?(?:axios|node-fetch|undici|got|ky|ws|pg|mysql|mysql2|mongodb|mongoose|redis|ioredis|sqlite3|better-sqlite3|knex|sequelize|typeorm|drizzle-orm|@prisma/client|@aws-sdk/[^/]+)(?:/|$)',
+          path: '(?:^|(?:^|/)node_modules/)(?:axios|node-fetch|undici|got|ky|ws|pg|mysql|mysql2|mongodb|mongoose|redis|ioredis|sqlite3|better-sqlite3|knex|sequelize|typeorm|drizzle-orm|@prisma/client|@aws-sdk/[^/]+)(?:/|$)',
         },
       },
       {
         name: 'domain-does-not-import-the-logger',
         severity: 'error',
         comment:
-          'domain/ may not import the logger. Return a result describing what happened and let adapters/ log it.',
+          'domain/ may not import the logger. Return a result describing what happened and let adapters/ log it. If it is deliberate, add an exception for this rule in nitpicker.config.json (paths are the importing files).',
         from: { path: '(?:^|/)(?:src)/main/features/[^/]+/domain/' },
         to: {
           path: [
-            '(?:^|/)(?:node_modules/)?(?:pino|winston|bunyan|log4js|loglevel|consola|debug)(?:/|$)',
+            '(?:^|(?:^|/)node_modules/)(?:pino|winston|bunyan|log4js|loglevel|consola|debug)(?:/|$)',
             '(?:^|/)(?:logger|logging|log)(?:/index)?\\.[cm]?[jt]sx?$',
             '(?:^|/)(?:logger|logging)/',
           ],
@@ -116,9 +140,33 @@ describe('dependency architecture rules', () => {
         name: 'domain-does-not-import-module-state',
         severity: 'error',
         comment:
-          'domain/ may not import module state (state/, *-state, *-store files). Receive the state as a parameter and return the new value.',
+          'domain/ may not import module state (state/, *-state, *-store files). Receive the state as a parameter and return the new value. If it is deliberate, add an exception for this rule in nitpicker.config.json (paths are the importing files).',
         from: { path: '(?:^|/)(?:src)/main/features/[^/]+/domain/' },
         to: { path: ['(?:^|/)state/', '(?:^|/)[^/]*[.-](?:state|store)\\.[cm]?[jt]sx?$'] },
+      },
+      {
+        name: 'domain-does-not-import-id-libraries',
+        severity: 'error',
+        comment:
+          'domain/ may not import ID or random-data libraries (uuid, nanoid, cuid, ulid, faker). Take the ID as a parameter from adapters/. If it is deliberate, add an exception for this rule in nitpicker.config.json (paths are the importing files).',
+        from: { path: '(?:^|/)(?:src)/main/features/[^/]+/domain/' },
+        to: {
+          path: '(?:^|(?:^|/)node_modules/)(?:uuid|nanoid|cuid|@paralleldrive/cuid2|ulid|@faker-js/faker|faker)(?:/|$)',
+        },
+      },
+      {
+        name: 'domain-does-not-reach-io-through-shared',
+        severity: 'error',
+        comment:
+          'domain/ reaches Node I/O or a client through a shared/ module it imports. Move that dependency out of the shared module, or do the work in adapters/ and pass the result into domain/ as a parameter. If it is deliberate, add an exception for this rule in nitpicker.config.json (paths are the importing files).',
+        from: { path: '(?:^|/)(?:src)/main/features/[^/]+/domain/' },
+        to: {
+          path: [
+            '^(?:node:)?(?:fs|child_process|net|http|https|http2|tls|dgram|dns|cluster|worker_threads|os|readline|crypto|perf_hooks|timers|zlib)(?:$|/)',
+            '(?:^|(?:^|/)node_modules/)(?:axios|node-fetch|undici|got|ky|ws|pg|mysql|mysql2|mongodb|mongoose|redis|ioredis|sqlite3|better-sqlite3|knex|sequelize|typeorm|drizzle-orm|@prisma/client|@aws-sdk/[^/]+|pino|winston|bunyan|log4js|loglevel|consola|debug)(?:/|$)',
+          ],
+          reachable: true,
+        },
       },
       {
         name: 'features-do-not-import-bootstrap',
@@ -140,7 +188,7 @@ describe('dependency architecture rules', () => {
 
     expect(result.exitCode).not.toBe(0);
     expect(result.output).toEqual(
-      '\n  error features-do-not-import-bootstrap: languages/typescript/preset/architecture/fixtures/reverse-direction/src/main/auth/logic.ts → languages/typescript/preset/architecture/fixtures/reverse-direction/src/main/server.ts\n    -\n\n\nx 1 dependency violations (1 errors, 0 warnings). 2 modules, 1 dependencies cruised.\n\n',
+      '\n  error features-do-not-import-bootstrap: src/main/auth/logic.ts → src/main/server.ts\n    -\n\n\nx 1 dependency violations (1 errors, 0 warnings). 2 modules, 1 dependencies cruised.\n\n',
     );
   });
 });

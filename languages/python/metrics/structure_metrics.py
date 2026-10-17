@@ -18,6 +18,16 @@ CONTROL = tuple(
 )
 
 
+DECISIONS = tuple(
+    getattr(ast, name)
+    for name in ("If", "IfExp", "For", "AsyncFor", "While", "ExceptHandler")
+    if hasattr(ast, name)
+)
+
+
+MATCH_CASE = getattr(ast, "match_case", ())
+
+
 def has_docstring(body):
     first = body[0]
     return (
@@ -38,26 +48,72 @@ def docstring_lines(function):
     return docstring.end_lineno - docstring.lineno + 1
 
 
+def elif_branch(parent, child):
+    return (
+        isinstance(parent, ast.If)
+        and isinstance(child, ast.If)
+        and parent.orelse == [child]
+        and child.col_offset == parent.col_offset
+    )
+
+
+def nested_depth(node, parent, depth):
+    return depth + (isinstance(node, CONTROL) and not elif_branch(parent, node))
+
+
 def body_metrics(function):
     body = function.body[1:] if has_docstring(function.body) else function.body
     statements = 0
     deepest = 0
-    pending = [(statement, 0) for statement in body]
+    pending = [(statement, function, 0) for statement in body]
     while pending:
-        node, depth = pending.pop()
-        depth += isinstance(node, CONTROL)
+        node, parent, depth = pending.pop()
+        depth = nested_depth(node, parent, depth)
         deepest = max(deepest, depth)
         statements += isinstance(node, ast.stmt)
         if not isinstance(node, SCOPES):
-            pending.extend((child, depth) for child in blocks_of(node))
+            pending.extend((child, node, depth) for child in blocks_of(node))
     return statements, deepest
 
 
-def is_static(function):
+def is_wildcard(case):
+    return (
+        case.guard is None
+        and isinstance(case.pattern, ast.MatchAs)
+        and case.pattern.pattern is None
+    )
+
+
+def decision_points(node):
+    if isinstance(node, ast.BoolOp):
+        return len(node.values) - 1
+    if isinstance(node, MATCH_CASE):
+        return 0 if is_wildcard(node) else 1
+    if isinstance(node, ast.comprehension):
+        return 1 + len(node.ifs)
+    return isinstance(node, DECISIONS)
+
+
+def complexity(function):
+    total = 1
+    pending = list(function.body)
+    while pending:
+        node = pending.pop()
+        total += decision_points(node)
+        if not isinstance(node, SCOPES):
+            pending.extend(ast.iter_child_nodes(node))
+    return total
+
+
+def has_decorator(function, name):
     return any(
-        getattr(decorator, "id", getattr(decorator, "attr", None)) == "staticmethod"
+        getattr(decorator, "id", getattr(decorator, "attr", None)) == name
         for decorator in function.decorator_list
     )
+
+
+def is_static(function):
+    return has_decorator(function, "staticmethod")
 
 
 def parameter_count(function, owner):
@@ -79,20 +135,28 @@ def function_entry(function, owners):
     return {
         "name": ".".join(owner.name for owner in (*owners, function)),
         "start": start,
+        "definition": function.lineno,
+        "bodyStart": function.body[0].lineno,
         "end": function.end_lineno,
         "lines": function.end_lineno - start + 1 - docstring_lines(function),
         "statements": statements,
         "maxControlNesting": deepest,
         "parameters": parameter_count(function, owners[-1] if owners else None),
+        "complexity": complexity(function),
+        "overload": has_decorator(function, "overload"),
     }
 
 
-def function_entries(node, owners):
-    for child in blocks_of(node):
-        if isinstance(child, FUNCTIONS):
-            yield function_entry(child, owners)
-        inner = (*owners, child) if isinstance(child, SCOPES) else owners
-        yield from function_entries(child, inner)
+def function_entries(module):
+    entries = []
+    pending = [(child, ()) for child in reversed(blocks_of(module))]
+    while pending:
+        node, owners = pending.pop()
+        if isinstance(node, FUNCTIONS):
+            entries.append(function_entry(node, owners))
+        inner = (*owners, node) if isinstance(node, SCOPES) else owners
+        pending.extend((child, inner) for child in reversed(blocks_of(node)))
+    return entries
 
 
 def file_entries(project, relative):
@@ -102,7 +166,7 @@ def file_entries(project, relative):
         module = ast.parse(source, relative)
     except (SyntaxError, ValueError, RecursionError, MemoryError):
         return []
-    return [dict(entry, file=relative) for entry in function_entries(module, ())]
+    return [dict(entry, file=relative) for entry in function_entries(module)]
 
 
 def main(arguments):

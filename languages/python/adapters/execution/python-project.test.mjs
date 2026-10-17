@@ -72,6 +72,39 @@ describe('type checker detection', () => {
       { '.pre-commit-config.yaml': '  - repo: https://github.com/RobertCraigie/pyright-python\n' },
       'pyright',
     ],
+    ['a [tool.basedpyright] table', { 'pyproject.toml': '[tool.basedpyright]\n' }, 'basedpyright'],
+    [
+      'a [tool.basedpyright] table with spaces',
+      { 'pyproject.toml': '[ tool.basedpyright ]\n' },
+      'basedpyright',
+    ],
+    [
+      'a dependency in an array',
+      { 'pyproject.toml': 'dev = ["basedpyright>=1.20", "pytest"]\n' },
+      'basedpyright',
+    ],
+    ['a requirements line', { 'requirements.txt': 'basedpyright==1.20\n' }, 'basedpyright'],
+    [
+      'the basedpyright pre-commit mirror',
+      {
+        '.pre-commit-config.yaml':
+          '  - repo: https://github.com/DetachHead/basedpyright-pre-commit-mirror\n',
+      },
+      'basedpyright',
+    ],
+    [
+      'a [tool.pyright] table next to a basedpyright dependency',
+      {
+        'pyproject.toml': '[tool.pyright]\nreportX = false\n',
+        'requirements.txt': 'basedpyright\n',
+      },
+      'basedpyright',
+    ],
+    [
+      'a pyrightconfig.json next to a basedpyright dependency',
+      { 'pyrightconfig.json': '{}', 'requirements.txt': 'basedpyright\n' },
+      'basedpyright',
+    ],
   ])('finds the checker from %s', (_name, files, expected) => {
     expect(detectTypeCheckers(project(files), undefined)).toEqual([expected]);
   });
@@ -82,7 +115,7 @@ describe('type checker detection', () => {
       'other tools only',
       {
         'requirements.txt': 'pytest\nmypyc-extras\npyright-helper\n',
-        'pyproject.toml': 'dev = ["mypy-extensions", "basedpyright", "mypy.ini"]\n',
+        'pyproject.toml': 'dev = ["mypy-extensions", "based-pyright", "mypy.ini"]\n',
       },
     ],
     ['a mention in a word', { 'pyproject.toml': 'description = "all about mypy"\n' }],
@@ -111,6 +144,12 @@ describe('type checker detection', () => {
     ['both in a requirements file', { 'requirements.txt': 'pyright\nmypy\n' }],
   ])('lists both, mypy first, when %s', (_name, files) => {
     expect(detectTypeCheckers(project(files), undefined)).toEqual(['mypy', 'pyright']);
+  });
+
+  it('lists pyright and basedpyright when both are only dependencies', () => {
+    const files = { 'requirements.txt': 'pyright\nbasedpyright\n' };
+
+    expect(detectTypeCheckers(project(files), undefined)).toEqual(['pyright', 'basedpyright']);
   });
 
   it('takes the setting over any detection', () => {

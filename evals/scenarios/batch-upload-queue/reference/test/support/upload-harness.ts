@@ -1,10 +1,10 @@
-import { vi } from 'vitest';
+import { expect, vi } from 'vitest';
 import type { createBatchUploader } from '../../src/main/features/uploads/index.js';
 
-export type Deps = Parameters<typeof createBatchUploader>[0];
-export type Item = Parameters<Deps['upload']>[0][number];
+type Deps = Parameters<typeof createBatchUploader>[0];
+type Item = Parameters<Deps['upload']>[0][number];
 
-export type Call = {
+type Call = {
   readonly ids: readonly string[];
   readonly argumentCount: number;
   readonly signal: AbortSignal;
@@ -12,7 +12,7 @@ export type Call = {
   readonly fail: (error: Error) => void;
 };
 
-export type Wait = { readonly ms: number; readonly release: () => void };
+type Wait = { readonly ms: number; readonly release: () => void };
 
 const PENDING = Symbol('pending');
 const SETTLE_TICKS = Array.from({ length: 40 }, (_, tick) => tick);
@@ -85,20 +85,16 @@ export function waitAt(waits: readonly Wait[], index: number): Wait {
   return wait;
 }
 
-async function waitForLength(list: readonly unknown[], count: number, what: string): Promise<void> {
+export async function waitForCalls(calls: readonly Call[], count: number): Promise<void> {
   await vi.waitFor(() => {
-    if (list.length !== count) {
-      throw new Error(`expected ${String(count)} ${what}, saw ${String(list.length)}`);
-    }
+    expect(calls).toHaveLength(count);
   });
 }
 
-export async function waitForCalls(calls: readonly Call[], count: number): Promise<void> {
-  await waitForLength(calls, count, 'upload calls');
-}
-
 export async function waitForWaits(waits: readonly Wait[], count: number): Promise<void> {
-  await waitForLength(waits, count, 'sleep calls');
+  await vi.waitFor(() => {
+    expect(waits).toHaveLength(count);
+  });
 }
 
 export function options(

@@ -35,13 +35,28 @@ export function createIdentityCounter() {
   };
 }
 
+export function projectFile(projectRoot, file) {
+  const root = path.resolve(projectRoot);
+  const absolute = path.resolve(root, file);
+  if (!absolute.startsWith(root + path.sep)) {
+    return undefined;
+  }
+  return absolute;
+}
+
+function projectLines(projectRoot, file) {
+  const absolute = projectFile(projectRoot, file);
+  return absolute !== undefined && existsSync(absolute)
+    ? readFileSync(absolute, 'utf8').split(/\r?\n/u)
+    : [];
+}
+
 export function createLineIdentity(prefix, projectRoot) {
   const sources = new Map();
   const counters = new Map();
   function lineText(file, line) {
     if (!sources.has(file)) {
-      const absolute = path.join(projectRoot, file);
-      sources.set(file, existsSync(absolute) ? readFileSync(absolute, 'utf8').split(/\r?\n/u) : []);
+      sources.set(file, projectLines(projectRoot, file));
     }
     return (sources.get(file)[line - 1] ?? '').trim().replaceAll(/\s+/gu, ' ');
   }
@@ -170,6 +185,15 @@ function parseAttributes(source) {
 
 export function childrenNamed(element, name) {
   return element.children.filter((child) => child.name === name);
+}
+
+export function childAt(element, ...names) {
+  return names.reduce((current, name) => current && childrenNamed(current, name)[0], element);
+}
+
+export function childrenAt(element, ...names) {
+  const parent = childAt(element, ...names.slice(0, -1));
+  return parent === undefined ? [] : childrenNamed(parent, names.at(-1));
 }
 
 function consumeXmlTag(match, { stack, text, contentStarts }) {

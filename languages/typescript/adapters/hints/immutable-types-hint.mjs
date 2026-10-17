@@ -1,7 +1,7 @@
-import { KINDS } from '../immutable-types/kinds.mjs';
+import { ERROR_CLASS_HINT, KINDS } from '../immutable-types/kinds.mjs';
 import ts from 'typescript';
 import { mutablePart, kindOfType } from '../immutable-types/types.mjs';
-import { kindOfExpression } from '../immutable-types/expressions.mjs';
+import { typeParameterFinding, untypedFinding } from '../immutable-types/untyped.mjs';
 
 const GENERIC_HINT = 'Type it deeply readonly, e.g. `readonly T[]` or `{ readonly field: T }`.';
 
@@ -33,9 +33,12 @@ function hintOf(finding) {
   if (finding?.kind === undefined) {
     return GENERIC_HINT;
   }
-  return finding.kind === 'class'
-    ? `${finding.label} is a class and always mutable: keep it in adapters/ and pass domain code a plain value.`
-    : KINDS[finding.kind].hint;
+  if (finding.kind !== 'class') {
+    return KINDS[finding.kind].hint;
+  }
+  return finding.label === 'Error'
+    ? ERROR_CLASS_HINT
+    : `${finding.label} is a class and always mutable: keep it in adapters/ and pass domain code a plain value.`;
 }
 
 function declarationOf(kind, node) {
@@ -63,20 +66,15 @@ function functionNameNode(declaration) {
   return parent !== undefined && ts.isVariableDeclaration(parent) ? parent.name : undefined;
 }
 
-function hasInitializedType(node) {
-  return ts.isVariableDeclaration(node) || ts.isParameter(node) || ts.isPropertyDeclaration(node);
-}
-
 function flaggedPart(declaration, sourceFile) {
   const typeNode = declaration.type;
-  if (typeNode !== undefined) {
-    return describeTypePart(mutablePart(typeNode, sourceFile), sourceFile);
+  if (typeNode === undefined) {
+    return untypedFinding(declaration);
   }
-  if (!hasInitializedType(declaration) || declaration.initializer === undefined) {
-    return undefined;
-  }
-  const kind = kindOfExpression(declaration.initializer);
-  return kind === undefined ? undefined : { kind, label: KINDS[kind].label };
+  return (
+    describeTypePart(mutablePart(typeNode, sourceFile), sourceFile) ??
+    typeParameterFinding(declaration, sourceFile)
+  );
 }
 
 function describeTypePart(part, sourceFile) {

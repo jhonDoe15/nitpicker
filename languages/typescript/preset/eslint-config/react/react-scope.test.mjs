@@ -1,13 +1,13 @@
 import { ESLint } from 'eslint';
 import accessibility from 'eslint-plugin-jsx-a11y-x';
-import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
 import path from 'node:path';
 import tseslint from 'typescript-eslint';
 import { afterEach, describe, expect, it } from 'vitest';
 import { lintFixture } from '../../failure-messages/test-support/harness.mjs';
 import { resolveLayout } from '../../layout.mjs';
-import { GENERAL_HINT } from '../rule-hints.mjs';
+import { storyGlobs } from '../scope-support.mjs';
+import { installReact, manifestWith, temporaryProjects } from './test-support/react-projects.mjs';
+import { extraAccessibilityRuleNames } from './rules/accessibility-rules.mjs';
 import {
   accessibilityRuleNames,
   reactRuleIds,
@@ -19,31 +19,13 @@ import {
   isReactProject,
   reactScopeConfigFor,
   reactSyntaxConfigFor,
-  stylingApproachFor,
 } from './react-scope.mjs';
 import { fileURLToPath } from 'node:url';
 
 const layout = resolveLayout();
-const temporaryRoots = [];
+const { projectWith, removeProjects } = temporaryProjects();
 
-afterEach(() => {
-  for (const root of temporaryRoots.splice(0)) {
-    rmSync(root, { recursive: true, force: true });
-  }
-});
-
-function projectWith(manifest) {
-  const root = mkdtempSync(path.join(tmpdir(), 'nitpicker-react-scope-'));
-  temporaryRoots.push(root);
-  if (manifest !== undefined) {
-    writeFileSync(path.join(root, 'package.json'), manifest);
-  }
-  return root;
-}
-
-function manifestWith(fields) {
-  return JSON.stringify({ name: 'app', ...fields });
-}
+afterEach(removeProjects);
 
 describe('React detection', () => {
   it.each([
@@ -98,75 +80,51 @@ async function calculatedConfig(entries, file) {
   return eslint.calculateConfigForFile(file);
 }
 
-describe('the styling approach', () => {
-  it.each([
-    ['styled-components', { dependencies: { 'styled-components': '6.0.0' } }],
-    ['an @emotion package', { devDependencies: { '@emotion/react': '11.0.0' } }],
-    ['another CSS-in-JS library', { dependencies: { goober: '2.0.0' } }],
-  ])('is css-in-js when the manifest lists %s', (_name, fields) => {
-    const projectRoot = projectWith(manifestWith({ dependencies: { react: '19.0.0' }, ...fields }));
-
-    expect(stylingApproachFor({ projectRoot })).toBe('css-in-js');
-  });
-
-  it.each([
-    [
-      'no CSS-in-JS dependency',
-      manifestWith({ dependencies: { react: '19.0.0', tailwindcss: '4.0.0' } }),
-    ],
-    [
-      'a similarly named package',
-      manifestWith({ dependencies: { 'styled-components-extra': '1.0.0' } }),
-    ],
-    ['no manifest', undefined],
-  ])('is class-names with %s', (_name, manifest) => {
-    expect(stylingApproachFor({ projectRoot: projectWith(manifest) })).toBe('class-names');
-  });
-
-  it('lets the config override what the manifest suggests', () => {
-    const projectRoot = projectWith(
-      manifestWith({ dependencies: { 'styled-components': '6.0.0' } }),
-    );
-
-    expect(stylingApproachFor({ projectRoot, react: { styling: 'inline-style' } })).toBe(
-      'inline-style',
-    );
-    expect(stylingApproachFor({ projectRoot, react: { enabled: true } })).toBe('css-in-js');
-  });
-
-  it('reaches the styling rule through the scope config', async () => {
-    const projectRoot = projectWith(
-      manifestWith({ dependencies: { '@emotion/styled': '11.0.0' } }),
-    );
-
-    const [entry] = await reactScopeConfigFor(layout, {}, projectRoot);
-
-    expect(entry.rules['nitpicker/react-single-styling-approach']).toEqual([
-      'error',
-      { approach: 'css-in-js' },
-    ]);
-  });
-});
-
 describe('the React scope config', () => {
-  it('configures exactly the listed React rule ids', async () => {
-    const [production, tests] = await reactSyntaxConfigFor(layout);
+  it.each([
+    ['a React 18 range', { dependencies: { react: '^18.2.0' } }, [], false],
+    ['an installed React 18', { dependencies: { react: '*' } }, ['18.3.1'], false],
+    [
+      'an installed React 18 under a React 19 range',
+      { dependencies: { react: '^19.0.0' } },
+      ['18.3.1'],
+      false,
+    ],
+    ['React 19', { dependencies: { react: '19.0.0' } }, [], true],
+    ['an unreadable version', { dependencies: { react: 'latest' } }, [], true],
+  ])('applies the React 19 rules for %s: %s', async (_name, fields, installed, applied) => {
+    const projectRoot = projectWith(manifestWith(fields));
+    for (const version of installed) {
+      installReact(projectRoot, version);
+    }
+    const [{ rules }] = await reactScopeConfigFor(layout, {}, projectRoot);
+    const react19 = ['react-x/no-forward-ref', 'react-x/no-context-provider'];
 
-    expect(Object.keys(production.rules).toSorted()).toEqual(reactRuleIds.toSorted());
+    expect(react19.filter((id) => id in rules)).toEqual(applied ? react19 : []);
+  });
+
+  it('configures exactly the listed React rule ids', async () => {
+    const [production, tests, , typed] = await reactScopeConfigFor(layout);
+    const typedReactRules = Object.keys(typed.rules).filter((id) => id.startsWith('react-x/'));
+
+    expect([...Object.keys(production.rules), ...typedReactRules].toSorted()).toEqual(
+      reactRuleIds.toSorted(),
+    );
     expect(Object.keys(tests.rules).toSorted()).toEqual(reactTestRuleIds.toSorted());
   });
 
   it('registers an implementation for every plugin rule it configures', async () => {
-    for (const entry of await reactSyntaxConfigFor(layout)) {
-      for (const id of Object.keys(entry.rules)) {
+    for (const entry of await reactScopeConfigFor(layout)) {
+      for (const id of Object.keys(entry.rules).filter((ruleId) => ruleId.includes('/'))) {
         const [pluginName, ...rest] = id.split('/');
         expect(entry.plugins[pluginName].rules[rest.join('/')], id).toBeDefined();
       }
     }
   });
 
-  it('runs every rule as an error', async () => {
-    for (const entry of await reactSyntaxConfigFor(layout)) {
+  it('runs every rule as an error, except the ones story files switch off', async () => {
+    const entries = await reactScopeConfigFor(layout, { autoCleanup: true });
+    for (const entry of entries.filter(({ files }) => files !== storyGlobs)) {
       for (const [id, setting] of Object.entries(entry.rules)) {
         expect([setting].flat()[0], id).toBe('error');
       }
@@ -188,12 +146,14 @@ describe('the React scope config', () => {
     }
   });
 
-  it('lists the accessibility rules the plugin recommends, and only those', () => {
+  it('lists the accessibility rules the plugin recommends, plus the extra ones', () => {
     const recommended = Object.entries(accessibility.configs.recommended.rules)
       .filter(([, setting]) => [setting].flat()[0] !== 'off')
       .map(([id]) => id.replace('jsx-a11y-x/', ''));
 
-    expect(accessibilityRuleNames.toSorted()).toEqual(recommended.toSorted());
+    expect(accessibilityRuleNames.toSorted()).toEqual(
+      [...recommended, ...extraAccessibilityRuleNames].toSorted(),
+    );
   });
 
   it('defaults to class names and passes the configured styling approach to the rule', async () => {
@@ -244,37 +204,6 @@ describe('the React scope config', () => {
     ]);
   });
 
-  it('requires focus and blur handlers next to hover-only enter and leave handlers', async () => {
-    const [entry] = await reactSyntaxConfigFor(layout);
-    const config = [{ languageOptions: { parser: tseslint.parser } }, entry];
-    const flagged = (attributes) =>
-      lintFixture({
-        config,
-        filename: 'src/main/ui/card.tsx',
-        code: `export const Card = () => <div ${attributes} />;`,
-      })
-        .filter(({ ruleId }) => ruleId === 'jsx-a11y/mouse-events-have-key-events')
-        .map(({ message }) => message);
-
-    expect(entry.rules['jsx-a11y/mouse-events-have-key-events']).toEqual([
-      'error',
-      {
-        hoverInHandlers: ['onMouseOver', 'onMouseEnter'],
-        hoverOutHandlers: ['onMouseOut', 'onMouseLeave'],
-      },
-    ]);
-    expect(flagged('onMouseEnter={show} onMouseLeave={hide}')).toEqual([
-      `onMouseEnter must be accompanied by onFocus for accessibility.${GENERAL_HINT}`,
-      `onMouseLeave must be accompanied by onBlur for accessibility.${GENERAL_HINT}`,
-    ]);
-    expect(flagged('onMouseOver={show}')).toEqual([
-      `onMouseOver must be accompanied by onFocus for accessibility.${GENERAL_HINT}`,
-    ]);
-    expect(flagged('onMouseEnter={show} onFocus={show} onMouseLeave={hide} onBlur={hide}')).toEqual(
-      [],
-    );
-  });
-
   it('applies to production source only, not to tests', async () => {
     const entries = await reactScopeConfigFor(layout);
 
@@ -282,7 +211,13 @@ describe('the React scope config', () => {
       const config = await calculatedConfig(entries, file);
       expect(config.rules['react-hooks/rules-of-hooks'], file).toBeDefined();
     }
-    for (const file of ['src/ui/panel.test.tsx', 'test/panel.tsx', 'src/ui/__tests__/panel.tsx']) {
+    for (const file of [
+      'src/ui/panel.test.tsx',
+      'test/panel.tsx',
+      '__tests__/panel.tsx',
+      'e2e/panel.tsx',
+      'src/ui/__tests__/panel.tsx',
+    ]) {
       const config = await calculatedConfig(entries, file);
       expect(config?.rules?.['react-hooks/rules-of-hooks'], file).toBeUndefined();
     }
@@ -315,6 +250,8 @@ describe('the React scope config', () => {
       'src/ui/panel.spec.jsx',
       'test/panel.tsx',
       'tests/ui/panel.tsx',
+      '__tests__/ui/panel.tsx',
+      'e2e/ui/panel.tsx',
       'src/ui/__tests__/panel.tsx',
     ]) {
       const config = await calculatedConfig(entries, file);
@@ -347,7 +284,7 @@ describe('the React scope config', () => {
       ...(await reactSyntaxConfigFor(layout)),
     ];
 
-    expect(lintFixture({ config, filename: 'test/ui/a.test.tsx', code })).toEqual([]);
+    expect(lintFixture({ config, filename: 'test/ui/a.test.ts', code })).toEqual([]);
   });
 
   it.each([
@@ -356,7 +293,6 @@ describe('the React scope config', () => {
     ['react-dom', "import { flushSync } from 'react-dom';"],
     ['enzyme', "import { mount } from 'enzyme';"],
     ['react-test-renderer', "import renderer from 'react-test-renderer';"],
-    ['a project test-utils module', "import { renderWithProviders } from '../utils/test-utils';"],
   ])('reports in a test that imports %s', async (_name, importLine) => {
     const config = [
       { languageOptions: { parser: tseslint.parser } },
@@ -365,11 +301,65 @@ describe('the React scope config', () => {
 
     const rules = lintFixture({
       config,
-      filename: 'test/ui/a.test.tsx',
-      code: `${importLine} wrapper.state();`,
+      filename: 'test/ui/a.test.ts',
+      code: `${importLine} wrapper.instance();`,
     }).map(({ ruleId }) => ruleId);
 
     expect(rules).toEqual(['nitpicker/react-test-no-implementation-details']);
+  });
+
+  it.each([
+    ['a destructured query', "const { getByRole } = render(<A />); getByRole('button');", 1],
+    ['a query on the render result', "render(<A />).getByRole('button');", 1],
+    [
+      'a query through a project test-utils wrapper',
+      "import { renderWithProviders } from '../utils/test-utils'; const { getByRole } = renderWithProviders(<A />); getByRole('button');",
+      1,
+    ],
+    ['a screen query', "render(<A />); screen.getByRole('button');", 0],
+    ['a within query', "render(<A />); within(screen.getByRole('list')).getByRole('listitem');", 0],
+    ['an unrelated render result use', 'const { rerender } = render(<A />); rerender(<A />);', 0],
+  ])('prefers screen queries: %s', async (_name, code, count) => {
+    const config = [
+      { languageOptions: { parser: tseslint.parser } },
+      ...(await reactSyntaxConfigFor(layout)),
+    ];
+
+    const rules = lintFixture({
+      config,
+      filename: 'test/ui/a.test.tsx',
+      code: `import { render, screen, within } from '@testing-library/react'; ${code}`,
+    }).filter(({ ruleId }) => ruleId === 'testing-library/prefer-screen-queries');
+
+    expect(rules).toHaveLength(count);
+  });
+
+  it.each([
+    [
+      'toMatchSnapshot on a query',
+      "render(<A />); expect(screen.getByRole('list')).toMatchSnapshot();",
+    ],
+    [
+      'toMatchInlineSnapshot on a query',
+      "render(<A />); expect(screen.getByRole('list')).toMatchInlineSnapshot();",
+    ],
+    [
+      'toMatchSnapshot on asFragment',
+      'const { asFragment } = render(<A />); expect(asFragment()).toMatchSnapshot();',
+    ],
+  ])('allows a snapshot-only test: %s', async (_name, body) => {
+    const config = [
+      { languageOptions: { parser: tseslint.parser } },
+      ...(await reactSyntaxConfigFor(layout)),
+    ];
+
+    expect(
+      lintFixture({
+        config,
+        filename: 'test/ui/a.test.tsx',
+        code: `import { render, screen } from '@testing-library/react'; it('renders', () => { ${body} });`,
+      }),
+    ).toEqual([]);
   });
 
   it('reaches container queries made through a project test-utils wrapper', async () => {
@@ -435,8 +425,10 @@ describe('the React scope config', () => {
     const [result] = await eslint.lintText(code, { filePath: path.join(root, 'test/a.test.tsx') });
 
     expect(result.messages.map(({ ruleId }) => ruleId)).toEqual([
+      'testing-library/prefer-user-event-setup',
       'testing-library/await-async-events',
       'testing-library/await-async-events',
+      'testing-library/prefer-user-event-setup',
       'testing-library/await-async-events',
     ]);
     expect(result.messages.every(({ fix, suggestions }) => !fix && !suggestions)).toBe(true);

@@ -29,13 +29,6 @@ function totalOf(rows: readonly Row[]): Cells {
   });
 }
 
-function alignedLine(cells: Cells, width: Widths): string {
-  const product = cells.product.padEnd(width.product);
-  const units = cells.units.padStart(width.units);
-  const revenue = cells.revenue.padStart(width.revenue);
-  return `${product}  ${units}  ${revenue}\n`;
-}
-
 function renderTable(rows: readonly Row[]): string {
   if (rows.length === 0) {
     return 'No sales found\n';
@@ -47,7 +40,13 @@ function renderTable(rows: readonly Row[]): string {
     units: Math.max(...lines.map((cells) => cells.units.length)),
     revenue: Math.max(...lines.map((cells) => cells.revenue.length)),
   };
-  return lines.map((cells) => alignedLine(cells, width)).join('');
+  return lines
+    .map((cells) => {
+      const units = cells.units.padStart(width.units);
+      const revenue = cells.revenue.padStart(width.revenue);
+      return `${cells.product.padEnd(width.product)}  ${units}  ${revenue}\n`;
+    })
+    .join('');
 }
 
 function renderCsv(rows: readonly Row[]): string {

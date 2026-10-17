@@ -11,17 +11,28 @@ export type PriceResult =
   | { readonly kind: 'ok'; readonly symbol: string; readonly cents: number }
   | { readonly kind: 'failed'; readonly symbol: string; readonly reason: FailureReason };
 
+type StatusRange = { readonly from: number; readonly below: number };
+
+const SUCCESS: StatusRange = { from: 200, below: 300 };
+const CLIENT_ERROR: StatusRange = { from: 400, below: 500 };
+const SERVER_ERROR: StatusRange = { from: 500, below: 600 };
+const TOO_MANY_REQUESTS = 429;
+
+function inRange(status: number, range: StatusRange): boolean {
+  return status >= range.from && status < range.below;
+}
+
 export function classifyStatus(status: number): StatusVerdict {
-  if (status >= 200 && status < 300) {
+  if (inRange(status, SUCCESS)) {
     return { kind: 'read-body' };
   }
-  if (status === 429) {
+  if (status === TOO_MANY_REQUESTS) {
     return { kind: 'retry', reason: 'rate-limited' };
   }
-  if (status >= 400 && status < 500) {
+  if (inRange(status, CLIENT_ERROR)) {
     return { kind: 'failed', reason: 'not-found' };
   }
-  if (status >= 500 && status < 600) {
+  if (inRange(status, SERVER_ERROR)) {
     return { kind: 'retry', reason: 'server-error' };
   }
   return { kind: 'failed', reason: 'server-error' };

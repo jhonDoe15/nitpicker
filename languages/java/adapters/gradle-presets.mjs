@@ -8,6 +8,7 @@ export const PROJECT_TOOL_CONFIGS = new Map([
 export const JAVA_TOOLS = [
   'pmd',
   'spotbugs',
+  'errorprone',
   'archunit',
   'google-java-format',
   'jacoco',

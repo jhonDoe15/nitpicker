@@ -6,7 +6,7 @@ import {
   JAVASCRIPT_ONLY_RULES,
   JSDOC_RULE_OPTIONS,
   applyJavascriptDialect,
-  javascriptRuleEntries,
+  scriptRuleEntries,
 } from './eslint-dialect.mjs';
 
 const javascript = { preset: 'javascript' };
@@ -125,11 +125,23 @@ describe('applyJavascriptDialect', () => {
       'no-restricted-syntax',
     );
     expect(forTypescript).toEqual(before);
-    expect(forJavascript).toHaveLength(before.length);
-    for (const setting of forJavascript) {
-      expect(selectors(setting).some((text) => /\bTS[A-Z]/.test(text))).toBe(false);
-      expect(selectors(setting).length).toBeGreaterThan(5);
-    }
+    const typescriptOnly = (text) => /\bTS[A-Z]/.test(text);
+    expect(forTypescript.flatMap(selectors).some(typescriptOnly)).toBe(true);
+    expect(forJavascript.flatMap(selectors).some(typescriptOnly)).toBe(false);
+    expect(forJavascript.map((setting) => selectors(setting).length)).toEqual(
+      forTypescript.map(
+        (setting) => selectors(setting).filter((text) => !typescriptOnly(text)).length,
+      ),
+    );
+  });
+
+  it('removes the TypeScript-only null selector from the null rule in JavaScript files', () => {
+    const mapped = applyJavascriptDialect(strict, javascript);
+    const [forJavascript] = ruleSettings(entriesFor(mapped, JAVASCRIPT_FILES), 'nitpicker/no-null');
+    const [forTypescript] = ruleSettings(entriesFor(mapped, TYPESCRIPT_FILES), 'nitpicker/no-null');
+
+    expect(selectors(forTypescript)).toHaveLength(2);
+    expect(selectors(forJavascript)).toEqual([selectors(forTypescript)[0]]);
   });
 
   it('keeps severity and string selectors when filtering restrictions', () => {
@@ -202,15 +214,10 @@ describe('the dialect applied to files', () => {
   });
 });
 
-describe('javascriptRuleEntries', () => {
+describe('scriptRuleEntries', () => {
   it('turns on the rules typescript-eslint enables for TypeScript files only', () => {
-    expect(javascriptRuleEntries(javascript, ['src/**/*.js'])).toEqual([
+    expect(scriptRuleEntries(['src/**/*.js'])).toEqual([
       { files: ['src/**/*.js'], rules: JAVASCRIPT_ONLY_RULES },
     ]);
-  });
-
-  it('adds nothing for other presets', () => {
-    expect(javascriptRuleEntries({}, ['src/**/*.js'])).toEqual([]);
-    expect(javascriptRuleEntries(undefined, ['src/**/*.js'])).toEqual([]);
   });
 });
