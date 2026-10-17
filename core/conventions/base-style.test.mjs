@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { resolveHeadPolicy } from '../../languages/typescript/preset/head-policy.mjs';
 import { resolveComparison } from '../diff/git/repository/git.mjs';
 import { branchOff } from '../diff/git/test-support/branch-off.mjs';
@@ -11,9 +11,10 @@ const LISTED = ['project', 'nitpicker'];
 const KOTLIN = 'package a\n\nclass A {\n  fun f() {\n    run()\n  }\n}\n';
 const PYTHON = 'a = "a"\nb = "b"\nc = "c"\n';
 
-function compared({ base, branch, config, directory }) {
+function compared({ base, branch, config, directory, environment }) {
   const { root } = createGitRepository(base);
   branchOff(root, branch);
+  environment?.();
   return comparedConventions({
     root,
     config,
@@ -55,14 +56,23 @@ describe('the detekt, ktlint and ktfmt configs of a kotlin project', () => {
     ).toEqual({ 'kotlin.indentation': '2', 'kotlin.lineLength': '100' });
   });
 
-  it('does not let a branch opt in a formatter that the base did not have', () => {
+  it('follows the measured style, not the .editorconfig of the branch, when the branch adds the formatter', () => {
     const base = { 'build.gradle.kts': 'plugins {}', 'src/A.kt': KOTLIN };
     const branch = {
       'build.gradle.kts': 'ktlint',
       '.editorconfig': '[*.kt]\nmax_line_length = 160\n',
     };
 
-    expect(compared({ base, branch, config }).conventions).toBeUndefined();
+    expect(compared({ base, branch, config }).conventions).toEqual({ 'kotlin.indentation': '2' });
+  });
+
+  it('accepts a pin for a setting that only the formatter of the branch uses', () => {
+    const base = { 'build.gradle.kts': 'plugins {}', 'src/A.kt': KOTLIN };
+    const pinned = { ...config, conventions: { 'kotlin.lineLength': '120' } };
+
+    expect(
+      compared({ base, branch: { 'build.gradle.kts': 'ktlint' }, config: pinned }).conventions,
+    ).toEqual({ 'kotlin.indentation': '2', 'kotlin.lineLength': '120' });
   });
 
   it('reads the branch when the base has no Kotlin sources yet', () => {
@@ -116,6 +126,63 @@ describe('the detekt, ktlint and ktfmt configs of a kotlin project', () => {
   });
 });
 
+describe('the Kotlin settings that cannot be followed', () => {
+  const detekt = (body) => `style:\n  MaxLineLength:\n${body}`;
+  const config = { preset: 'kotlin', tools: { detekt: { precedence: LISTED } } };
+  const files = (yml) => ({ 'build.gradle.kts': 'ktlint', 'detekt.yml': yml, 'src/A.kt': KOTLIN });
+
+  it('says why it ignored a detekt width outside 10 to 999, and measures instead', () => {
+    const base = files(detekt('    maxLineLength: 1000\n'));
+
+    expect(compared({ base, branch: { 'README.md': 'x' }, config })).toEqual({
+      conventions: { 'kotlin.indentation': '2' },
+      printed:
+        HEADER +
+        '  Kotlin indentation: 2 spaces (used by 1 of 1 measured files)\n' +
+        'Ignoring the kotlin line length of 1000 columns from your detekt config: it must be a whole number from 10 to 999\n' +
+        'ktlint runs with indent_size = 2\n',
+    });
+  });
+
+  it('does not read a MaxLineLength rule that is switched off', () => {
+    const base = files(detekt('    active: false\n    maxLineLength: 150\n'));
+
+    expect(compared({ base, branch: { 'README.md': 'x' }, config }).conventions).toEqual({
+      'kotlin.indentation': '2',
+    });
+  });
+
+  it('takes the declared ktfmt style from the build file of the base without any opt-in', () => {
+    const base = {
+      'build.gradle.kts': 'ktfmt { kotlinLangStyle() }',
+      'src/A.kt': KOTLIN,
+    };
+    const branch = { 'build.gradle.kts': 'ktfmt { metaStyle() }' };
+
+    expect(compared({ base, branch, config: { preset: 'kotlin' } })).toEqual({
+      conventions: { 'kotlin.indentation': '4' },
+      printed:
+        HEADER +
+        '  Kotlin indentation: 4 spaces (from your build file)\n' +
+        'Format with ktfmt: ktfmt --kotlinlang-style <Kotlin files>\n',
+    });
+  });
+
+  it('builds no copy of the merge base when no tool lists the project config', () => {
+    const base = files(detekt('    maxLineLength: 100\n'));
+    const plain = { preset: 'kotlin' };
+    const environment = () => vi.stubEnv('TMPDIR', '/nonexistent-directory-for-nitpicker-tests');
+
+    try {
+      expect(
+        compared({ base, branch: { 'README.md': 'x' }, config: plain, environment }).conventions,
+      ).toEqual({ 'kotlin.indentation': '2' });
+    } finally {
+      vi.unstubAllEnvs();
+    }
+  });
+});
+
 describe('the ruff config of a python project', () => {
   const ruff = (width) => `line-length = ${String(width)}\n`;
   const config = { preset: 'python', tools: { ruff: { precedence: LISTED } } };
@@ -157,5 +224,59 @@ describe('the ruff config of a python project', () => {
     expect(compared({ base: { 'README.md': 'x' }, branch, config }).conventions).toEqual({
       'python.lineLength': '110',
     });
+  });
+
+  it('keeps a base width that equals the default, so the branch cannot raise it', () => {
+    const base = { 'ruff.toml': ruff(88), 'a.py': PYTHON };
+    const { conventions, printed } = compared({
+      base,
+      branch: { 'ruff.toml': ruff(120) },
+      config,
+    });
+
+    expect(conventions).toEqual({ 'python.lineLength': '88' });
+    expect(printed).toBe(
+      HEADER +
+        '  Python line length: 88 columns (from your ruff config)\n' +
+        "Format with ruff: ruff format --config ruff.toml --target-version py38 --line-length 88 --config 'format.quote-style = \"double\"' --config 'indent-width = 4' .\n",
+    );
+  });
+
+  it('keeps a base indentation that equals the default, so the branch cannot change it', () => {
+    const toml = (width) => `line-length = 100\nindent-width = ${String(width)}\n`;
+    const base = { 'ruff.toml': toml(4), 'a.py': PYTHON };
+
+    expect(compared({ base, branch: { 'ruff.toml': toml(2) }, config }).conventions).toEqual({
+      'python.indentation': '4',
+      'python.lineLength': '100',
+    });
+  });
+
+  it('says why it ignored a width outside 10 to 999', () => {
+    const base = { 'ruff.toml': ruff(1000), 'a.py': PYTHON };
+
+    expect(compared({ base, branch: { 'README.md': 'x' }, config }).printed).toBe(
+      'Ignoring the python line length of 1000 columns from your ruff config: it must be a whole number from 10 to 999\n' +
+        "Format with ruff: ruff format --config ruff.toml --target-version py38 --config 'format.quote-style = \"double\"' --config 'indent-width = 4' .\n",
+    );
+  });
+
+  it('accepts a pin that only the formatter of the branch uses', () => {
+    const pinned = { preset: 'python', conventions: { 'python.indentation': '2' } };
+    const base = { 'pyproject.toml': '[tool.black]\nline-length = 88\n', 'a.py': PYTHON };
+    const branch = { 'pyproject.toml': '[tool.ruff]\nline-length = 88\n' };
+
+    expect(compared({ base, branch, config: pinned }).conventions).toEqual({
+      'python.indentation': '2',
+    });
+  });
+
+  it('refuses a pin that neither the base nor the branch formatter uses', () => {
+    const pinned = { preset: 'python', conventions: { 'python.indentation': '2' } };
+    const base = { 'pyproject.toml': '[tool.black]\nline-length = 88\n', 'a.py': PYTHON };
+
+    expect(() => compared({ base, branch: { 'README.md': 'x' }, config: pinned })).toThrow(
+      'nitpicker.config.json: "conventions.python.indentation" has no effect: black has no indentation setting',
+    );
   });
 });

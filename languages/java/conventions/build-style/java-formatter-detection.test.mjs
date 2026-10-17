@@ -10,7 +10,7 @@ function sourceWith(files) {
 }
 
 function declared(files) {
-  return declaredJavaFormatter(sourceWith(files));
+  return declaredJavaFormatter(sourceWith(files)).declared;
 }
 
 const SPOTLESS_POM = (java) =>
@@ -236,5 +236,24 @@ describe('declaredJavaFormatter', () => {
 
   it('survives a pom that is not well-formed', () => {
     expect(declared({ 'pom.xml': '<project><plugin>' })).toBeUndefined();
+  });
+});
+
+describe('declaredJavaFormatter notes', () => {
+  it('says which pom it could not parse and why', () => {
+    expect(declaredJavaFormatter(sourceWith({ 'pom.xml': '<project>' }))).toEqual({
+      declared: undefined,
+      notes: ['Could not read pom.xml: XML element <project> is not closed'],
+    });
+  });
+
+  it('says how many build files it left out beyond its limit', () => {
+    const files = Object.fromEntries(
+      Array.from({ length: 203 }, (_, index) => [`m${String(index)}/build.gradle`, 'plugins {}']),
+    );
+
+    expect(declaredJavaFormatter(sourceWith(files)).notes).toEqual([
+      'Read the first 200 build files and skipped 3 more',
+    ]);
   });
 });

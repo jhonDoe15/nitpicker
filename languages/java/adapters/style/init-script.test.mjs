@@ -69,9 +69,9 @@ describe('the Gradle init script and the formatter style', () => {
     ]);
   });
 
-  it('writes an empty format report when the formatter did not run', () => {
-    expect(blockStartingWith('if (!formatReport.exists()) {')).toEqual([
-      'if (!formatReport.exists()) {',
+  it('writes an empty format report when no formatter runs, and when the formatter did not run', () => {
+    expect(blockStartingWith("if (javaStyle == 'none' || !formatReport.exists()) {")).toEqual([
+      "if (javaStyle == 'none' || !formatReport.exists()) {",
       "formatReport.text = ''",
       '}',
     ]);

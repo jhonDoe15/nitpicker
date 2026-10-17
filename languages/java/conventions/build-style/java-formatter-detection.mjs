@@ -99,14 +99,19 @@ function parsedPom(text) {
 }
 
 function declaredInPom(text) {
-  const { root } = parsedPom(text);
+  const { root, failure } = parsedPom(text);
   if (root === undefined) {
-    return undefined;
+    return { failure };
   }
   const artifacts = descendants(root, 'artifactId').map((node) =>
     MAVEN_FORMATTER_ARTIFACTS.get(node.text),
   );
-  return pickFormatter([...descendants(root, 'plugin').flatMap(pluginDeclarations), ...artifacts]);
+  return {
+    declared: pickFormatter([
+      ...descendants(root, 'plugin').flatMap(pluginDeclarations),
+      ...artifacts,
+    ]),
+  };
 }
 
 function pickFormatter(declarations) {
@@ -121,7 +126,7 @@ function pickFormatter(declarations) {
 }
 
 function declaredIn({ kind, text }) {
-  return kind === 'xml' ? declaredInPom(text) : declaredInCode(text, kind);
+  return kind === 'xml' ? declaredInPom(text) : { declared: declaredInCode(text, kind) };
 }
 
 function pluralityDeclaration(declarations) {
@@ -135,5 +140,19 @@ function pluralityDeclaration(declarations) {
 }
 
 export function declaredJavaFormatter(source) {
-  return pluralityDeclaration(buildFiles(source).flatMap((file) => declaredIn(file) ?? []));
+  const { files, skipped } = buildFiles(source);
+  const results = files.map((file) => ({ file: file.file, ...declaredIn(file) }));
+  return {
+    declared: pluralityDeclaration(results.flatMap(({ declared }) => declared ?? [])),
+    notes: [
+      ...results
+        .filter(({ failure }) => failure !== undefined)
+        .map(({ file, failure }) => `Could not read ${file}: ${failure}`),
+      ...(skipped === 0
+        ? []
+        : [
+            `Read the first ${String(files.length)} build files and skipped ${String(skipped)} more`,
+          ]),
+    ],
+  };
 }

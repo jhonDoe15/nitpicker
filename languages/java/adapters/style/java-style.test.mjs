@@ -104,6 +104,17 @@ describe('Checkstyle checks when no formatter runs', () => {
     .split('\n')
     .flatMap((line) => /checks="([^"]+)"/u.exec(line)?.[1].split('|') ?? []);
 
+  it('suppresses the case-brace check by id, which wrongly asks for a brace on its own line', () => {
+    const ids = readFileSync(
+      path.resolve(import.meta.dirname, '../../gradle/checkstyle-suppressions-unformatted.xml'),
+      'utf8',
+    )
+      .split('\n')
+      .flatMap((line) => /<suppress id="([^"]+)"/u.exec(line)?.[1] ?? []);
+
+    expect(ids).toEqual(['LeftCurlyNl']);
+  });
+
   it('keeps the layout checks both formatters agree on, indentation and tabs included', () => {
     expect(suppressed.toSorted()).toEqual([
       'AnnotationLocation',
@@ -137,6 +148,34 @@ describe('the Gradle run', () => {
     ).toEqual(['-Pnitpicker.java.style=none', '-Pnitpicker.java.indentation=4']);
     expect(styleProperties({ preset: 'kotlin', javaStyle: 'aosp' })).toEqual([
       '-Pnitpicker.java.style=aosp',
+    ]);
+  });
+});
+
+describe('the Checkstyle export stage', () => {
+  it('gets the style properties too, so the merged config carries the edits for no formatter', () => {
+    const root = realpathSync(mkdtempSync(path.join(tmpdir(), 'nitpicker-java-export-')));
+    roots.push(root);
+    mkdirSync(path.join(root, 'config/checkstyle'), { recursive: true });
+    writeFileSync(path.join(root, 'config/checkstyle/checkstyle.xml'), '<module name="Checker"/>');
+    const policy = {
+      javaStyle: 'none',
+      conventions: { 'java.indentation': '4' },
+      toolPrecedence: { checkstyle: ['project'] },
+      policyRoot: root,
+    };
+
+    analyzeJavaSnapshot(root, { gradle: fakeGradle, policy });
+
+    const calls = readFileSync(path.join(root, 'build/gradle-calls.jsonl'), 'utf8')
+      .trim()
+      .split('\n')
+      .map((line) =>
+        JSON.parse(line).filter((argument) => /java\.(style|indentation)=/u.test(argument)),
+      );
+    expect(calls).toEqual([
+      ['-Pnitpicker.java.style=none', '-Pnitpicker.java.indentation=4'],
+      ['-Pnitpicker.java.style=none', '-Pnitpicker.java.indentation=4'],
     ]);
   });
 });

@@ -43,10 +43,11 @@ function assertSucceeded(result, projectRoot) {
   }
 }
 
-function exportArguments(common, { initScript, directory }) {
+function exportArguments(common, { initScript, directory, policy }) {
   mkdirSync(directory, { recursive: true });
   return [
     ...common,
+    ...javaStyleProperties(policy),
     `-Pnitpicker.checkstyle.exportConfig=${path.join(directory, CHECKSTYLE_EXPORT)}`,
     '-I',
     initScript,
@@ -71,7 +72,9 @@ function runJavaPreset(
     ];
     const checkstyleBase = path.join(directory, CHECKSTYLE_EXPORT);
     const stages = [
-      ...(layersCheckstyle ? [() => exportArguments(common, { initScript, directory })] : []),
+      ...(layersCheckstyle
+        ? [() => exportArguments(common, { initScript, directory, policy })]
+        : []),
       () => [
         ...common,
         ...toolConfigProperties(projectRoot, policy, { directory, checkstyleBase }),

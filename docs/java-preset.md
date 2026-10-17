@@ -1248,6 +1248,12 @@ and Maven) or `none` (no format check). It comes, in this order, from:
    `--aosp`. An IntelliJ project with four spaces and 120 columns looks like palantir-java-format to
    the measure; pin `java.formatter` to `none` for it.
 
+The formatter a build file declares (`googleJavaFormat()`, `palantirJavaFormat()`, `aosp()`, a style
+name, the Maven plugins) is a fact about which formatter the project uses, so it is detected without
+any opt-in; the Kotlin preset does the same for the ktfmt style its build names. Config files (the
+Checkstyle config, detekt, `.editorconfig`, `ruff.toml`) are read only once their tool lists
+`"project"`.
+
 The build files are read from the same snapshot as the measured conventions: the merge base in a
 comparison (so a pull request that adds `palantirJavaFormat()` is still judged at the limits of its
 base, and starts being judged at 120 once it is merged), the checked-out tree for `--all`, and the
@@ -1274,8 +1280,10 @@ text blocks, do not vote).
 When `tools.checkstyle.precedence` lists `"project"` and `config/checkstyle/checkstyle.xml` has a
 `LineLength` module, its `max` (any number; Checkstyle's default 80 for a module without one) wins
 over the formatter and the files (the project overrides only what it sets). A formatter that was
-only the default or measured gives way to it and becomes `none`; a declared or pinned one keeps its
-own width. Checkstyle's own `LineLength` stays suppressed, so the limit is checked once, by
+only the default or measured gives way to it and becomes `none`; a declared or pinned one stays, and
+runs at the Checkstyle width, because listing `"project"` is the project's own decision about the
+width. A `LineLength` module with `severity` `ignore` is not read, and a `max` outside 10 to 999 is
+ignored with a printed note. Checkstyle's own `LineLength` stays suppressed, so the limit is checked once, by
 `line-length-limit`. The run prints each choice and its source. The conventions apply to the Java
 sources of a kotlin-preset project too. They come from the head policy file at run time, and the
 function `javaStyle()` in `languages/java/adapters/style/java-style.mjs` turns them into the style
@@ -1304,9 +1312,11 @@ google-java-format used to remove, so the Gradle and Maven runs use
 `languages/java/gradle/checkstyle-suppressions-unformatted.xml`, which suppresses only the layout
 checks the formatters disagree on or that depend on a house style (`CommentsIndentation`,
 `OperatorWrap`, `SeparatorWrap`, `NoLineWrap`, `CustomImportOrder`, `EmptyLineSeparator`,
-`AnnotationLocation`, the empty-block spacing regex) and `LineLength`. The checks both formatters
-agree on stay on: `WhitespaceAround`, `WhitespaceAfter`, `GenericWhitespace`, `MethodParamPad`,
-`ParenPad`, `NoWhitespaceBefore`, `LeftCurly` and `RightCurly`, `FileTabCharacter`, and
+`AnnotationLocation`, the empty-block spacing regex), `LineLength` and, by id, `LeftCurlyNl` (it asks
+for the brace of `case X: {` on its own line, which neither formatter does). The checks both
+formatters agree on stay on: `WhitespaceAround`, `WhitespaceAfter`, `GenericWhitespace`,
+`MethodParamPad`, `ParenPad`, `NoWhitespaceBefore`, `LeftCurlyEol` (the other `LeftCurly`) and
+`RightCurly`, `FileTabCharacter`, and
 `Indentation` at the measured width (2 by default; at 4 the `basicOffset`, `caseIndent` and
 `arrayInitIndent` of the bundled check become 4; for tab-indented files `Indentation` and
 `FileTabCharacter` are removed). Checkstyle's `UnusedImports` is added to the bundled checks, so an

@@ -10,10 +10,6 @@ import {
 
 const EDITORCONFIG = '.editorconfig';
 const KOTLIN_SECTION = '[*.{kt,kts}]';
-const LIMIT_KEYS = [
-  [KOTLIN_INDENTATION, 'indent_size'],
-  [KOTLIN_LINE_LENGTH, 'max_line_length'],
-];
 
 export function projectEditorconfig(root) {
   const file = path.join(root, EDITORCONFIG);
@@ -41,9 +37,10 @@ export function ktlintDefaults(conventions) {
   return lines.length === 0 ? undefined : [KOTLIN_SECTION, ...lines, ''].join('\n');
 }
 
-function wildcardRule(conventions, nitpickerFirst) {
-  const wildcard = conventions[KOTLIN_WILDCARD_IMPORTS] === 'wildcard';
-  return wildcard || nitpickerFirst
+function wildcardRule(conventions, { nitpickerFirst, always }) {
+  const choice = conventions[KOTLIN_WILDCARD_IMPORTS];
+  const wildcard = choice === 'wildcard';
+  return wildcard || nitpickerFirst || (always && choice !== undefined)
     ? ['  WildcardImport:', `    active: ${String(!wildcard)}`]
     : [];
 }
@@ -54,31 +51,48 @@ function lineLengthRule(conventions) {
     : ['  MaxLineLength:', `    maxLineLength: ${conventions[KOTLIN_LINE_LENGTH]}`];
 }
 
-export function detektConventionLayer(conventions, { nitpickerFirst = false } = {}) {
-  const rules = [...wildcardRule(conventions, nitpickerFirst), ...lineLengthRule(conventions)];
+export function detektConventionLayer(
+  conventions,
+  { nitpickerFirst = false, always = false } = {},
+) {
+  const rules = [
+    ...wildcardRule(conventions, { nitpickerFirst, always }),
+    ...lineLengthRule(conventions),
+  ];
   return rules.length === 0 ? undefined : ['style:', ...rules, ''].join('\n');
 }
 
-export function detektLayers({ conventionLayer, projectConfig, nitpickerFirst }) {
-  if (conventionLayer === undefined || projectConfig === undefined) {
-    return [
-      ...(conventionLayer === undefined ? [] : ['conventions']),
-      ...(projectConfig === undefined ? [] : ['project']),
-    ];
+export function detektLayers({ conventionLayer, enforcedLayer, projectConfig, nitpickerFirst }) {
+  const conventions = conventionLayer === undefined ? [] : ['conventions'];
+  if (projectConfig === undefined) {
+    return conventions;
   }
-  return nitpickerFirst ? ['project', 'conventions'] : ['conventions', 'project', 'conventions'];
+  return nitpickerFirst
+    ? ['project', ...conventions]
+    : [...conventions, 'project', ...(enforcedLayer === undefined ? [] : ['enforced'])];
 }
 
-export function enforcedEditorconfigs({ editorconfigs, offset }, conventions) {
-  const projectFile = offset === '' ? EDITORCONFIG : `${offset}/${EDITORCONFIG}`;
+const COMMA_VALUES = { always: 'true', never: 'false' };
+const WILDCARD_VALUES = { explicit: 'enabled', wildcard: 'disabled' };
+
+function enforcedValues(conventions) {
+  const comma = COMMA_VALUES[conventions[KOTLIN_TRAILING_COMMAS]];
+  return Object.entries({
+    indent_size: conventions[KOTLIN_INDENTATION],
+    max_line_length: conventions[KOTLIN_LINE_LENGTH],
+    ij_kotlin_allow_trailing_comma: comma,
+    ij_kotlin_allow_trailing_comma_on_call_site: comma,
+    'ktlint_standard_no-wildcard-imports': WILDCARD_VALUES[conventions[KOTLIN_WILDCARD_IMPORTS]],
+  }).filter(([, value]) => value !== undefined);
+}
+
+export function enforcedEditorconfigs({ editorconfigs }, conventions) {
+  const expected = enforcedValues(conventions);
   return editorconfigs.map((entry) => {
-    const values = entry.path === projectFile ? kotlinEditorconfigValues(entry.text) : {};
-    const lines = LIMIT_KEYS.filter(
-      ([id, key]) =>
-        conventions[id] !== undefined &&
-        values[key] !== undefined &&
-        values[key] !== conventions[id],
-    ).map(([id, key]) => `${key} = ${conventions[id]}`);
+    const values = kotlinEditorconfigValues(entry.text);
+    const lines = expected
+      .filter(([key, value]) => values[key] !== undefined && values[key] !== value)
+      .map(([key, value]) => `${key} = ${value}`);
     return lines.length === 0
       ? entry
       : { ...entry, text: `${entry.text}\n${KOTLIN_SECTION}\n${lines.join('\n')}\n` };

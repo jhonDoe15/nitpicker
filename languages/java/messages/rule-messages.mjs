@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs';
 import { exceptionHint } from '../../../shared/rules/exceptions.mjs';
-import { JAVA_FORMATTER_TOOLS } from '../adapters/style/java-style.mjs';
+import { JAVA_FORMATTER_TOOLS, NOT_YOUR_JAVA_FORMATTER } from '../adapters/style/java-style.mjs';
 
 export const CATALOG_TOOLS = ['pmd', 'checkstyle', 'spotbugs'];
 const CATALOGS = new Map(CATALOG_TOOLS.map((tool) => [tool, readCatalog(tool)]));
@@ -22,7 +22,7 @@ function layoutFix(javaStyle) {
     return 'Fix this layout by hand; no Java formatter runs.';
   }
   const formatter = JAVA_FORMATTER_TOOLS[javaStyle]?.label ?? 'your Java formatter';
-  return `Run ${formatter} on the file; it fixes this layout.`;
+  return `Run ${formatter} on the file; it fixes this layout. ${NOT_YOUR_JAVA_FORMATTER}`;
 }
 
 export function withRuleMessage(finding, { preset = 'java', javaStyle } = {}) {

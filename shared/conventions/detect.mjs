@@ -28,7 +28,9 @@ export function conventionChoices(detected, definitions) {
   return Object.fromEntries(
     definitions
       .filter(
-        ({ id, fallback }) => JSON.stringify(detected[id].choice) !== JSON.stringify(fallback),
+        ({ id, fallback }) =>
+          detected[id].followsConfig === true ||
+          JSON.stringify(detected[id].choice) !== JSON.stringify(fallback),
       )
       .map(({ id }) => [id, detected[id].choice]),
   );

@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { appendFileSync, existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 
 if (existsSync('GRADLE_FAIL')) {
@@ -138,6 +138,13 @@ const modules = existsSync('NO_REPORTS')
 mkdirSync(reportBase, { recursive: true });
 mkdirSync('build', { recursive: true });
 writeFileSync('build/gradle-args.json', JSON.stringify(process.argv.slice(2)));
+appendFileSync('build/gradle-calls.jsonl', `${JSON.stringify(process.argv.slice(2))}\n`);
+const exportArgument = process.argv.find((argument) =>
+  argument.startsWith('-Pnitpicker.checkstyle.exportConfig='),
+);
+if (exportArgument !== undefined) {
+  writeFileSync(exportArgument.slice(exportArgument.indexOf('=') + 1), '<module name="Checker"/>');
+}
 const styleFileArgument = process.argv.find((argument) =>
   argument.startsWith('-Pnitpicker.kotlin.styleFile='),
 );

@@ -1,6 +1,10 @@
 import { conventionChoices, detectConventions } from '../../shared/conventions/detect.mjs';
 import { configError } from '../../shared/config.mjs';
-import { describeConventions, isValidChoice } from '../../shared/conventions/settings.mjs';
+import {
+  describeConventions,
+  ignoredChoiceNote,
+  isValidChoice,
+} from '../../shared/conventions/settings.mjs';
 import { resolveHeadPolicy } from '../../languages/typescript/preset/head-policy.mjs';
 import { builtInExcludedGlobs } from '../../languages/typescript/preset/layout.mjs';
 import { conventionDefinitions, conventionStyle } from './definitions.mjs';
@@ -48,7 +52,7 @@ function rejectUnusedPins(pinned, unused) {
   }
 }
 
-function fromProject(detected, project, pinned = {}) {
+function fromProject(detected, project, { pinned = {}, followsConfig = false } = {}) {
   return Object.fromEntries(
     Object.entries(detected).map(([id, entry]) => [
       id,
@@ -59,6 +63,7 @@ function fromProject(detected, project, pinned = {}) {
             choice: project[id].choice,
             source: 'project',
             from: project[id].from,
+            followsConfig,
             overrides: pinned[id] !== project[id].choice ? pinned[id] : undefined,
           },
     ]),
@@ -74,6 +79,20 @@ function appliedChoices(detected, definitions) {
       ),
     ),
   );
+}
+
+function splitProject(project, definitions) {
+  const entries = Object.entries(project).flatMap(([id, entry]) => {
+    const definition = definitions.find((candidate) => candidate.id === id);
+    return definition === undefined ? [] : [{ id, entry, definition }];
+  });
+  const valid = entries.filter(({ definition, entry }) => isValidChoice(definition, entry.choice));
+  return {
+    usable: Object.fromEntries(valid.map(({ id, entry }) => [id, entry])),
+    ignored: entries
+      .filter((item) => !valid.includes(item))
+      .map(({ definition, entry }) => ignoredChoiceNote(definition, entry)),
+  };
 }
 
 function conventionSources(projectRoot, commit) {
@@ -113,11 +132,14 @@ function conventionContext({ config, projectRoot, headPolicy, sources, configRoo
     configRoot: configRoot.get,
   });
   rejectUnusedPins(config.conventions ?? {}, style.unused);
+  const definitions = all.filter(({ id }) => style.unused[id] === undefined);
+  const { usable, ignored } = splitProject(style.project, definitions);
   return {
-    style,
+    style: { ...style, project: usable },
+    ignored,
     sources,
     exclude,
-    definitions: all.filter(({ id }) => style.unused[id] === undefined),
+    definitions,
   };
 }
 
@@ -133,9 +155,9 @@ function detectedConventions(config, { style, sources, exclude, definitions }) {
       sources,
     }),
     style.project,
-    config.conventions,
+    { pinned: config.conventions, followsConfig: true },
   );
-  return fromProject(measured, style.derive?.(measured) ?? {}, config.conventions);
+  return fromProject(measured, style.derive?.(measured) ?? {}, { pinned: config.conventions });
 }
 
 function followConventions({ config, projectRoot, headPolicy, commit, stdout }) {
@@ -156,7 +178,13 @@ function followConventions({ config, projectRoot, headPolicy, commit, stdout }) 
     const followed = definitions.filter(
       ({ id }) => conventions[id] !== undefined || style.project[id] !== undefined,
     );
-    const report = conventionsReport({ detected, followed, style, conventions });
+    const report = conventionsReport({
+      detected,
+      followed,
+      style,
+      conventions,
+      notes: [...context.ignored, ...configRoot.notes()],
+    });
     if (stdout !== undefined && report !== '') {
       stdout.write(report);
     }
@@ -166,9 +194,9 @@ function followConventions({ config, projectRoot, headPolicy, commit, stdout }) 
   }
 }
 
-function conventionsReport({ detected, followed, style, conventions }) {
+function conventionsReport({ detected, followed, style, conventions, notes: collected }) {
   const lines = describeConventions(detected, followed, style.note).map((line) => `  ${line}\n`);
-  const notes = (style.summary?.(conventions) ?? []).map((line) => `${line}\n`);
+  const notes = [...collected, ...(style.summary?.(conventions) ?? [])].map((line) => `${line}\n`);
   const heading = followed.length === 0 ? '' : "Following this project's conventions:\n";
   return `${heading}${lines.join('')}${notes.join('')}`;
 }

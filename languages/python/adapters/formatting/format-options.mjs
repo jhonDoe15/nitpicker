@@ -42,9 +42,21 @@ function readScope(read, root) {
   }
 }
 
-function agrees(conventions, key, value) {
+const COMPARABLE_QUOTES = {
+  ruff: { double: 'double', single: 'single' },
+  black: { normalize: 'double' },
+};
+
+function agrees({ formatter, conventions }, key, value) {
   const followedValue = conventions[PYTHON_SETTING_IDS[key]];
-  return key === 'quotes' || followedValue === undefined || followedValue === String(value);
+  if (followedValue === undefined) {
+    return true;
+  }
+  if (key === 'quotes') {
+    const comparable = COMPARABLE_QUOTES[formatter][value];
+    return comparable === undefined || comparable === followedValue;
+  }
+  return followedValue === String(value);
 }
 
 export function projectConfigFor({ formatter, precedence, policyRoot, conventions = {} }) {
@@ -63,6 +75,6 @@ export function projectConfigFor({ formatter, precedence, policyRoot, convention
     wins: (key) =>
       project.set[key] !== undefined &&
       !layers.nitpickerFirst &&
-      agrees(conventions, key, project.set[key]),
+      agrees({ formatter, conventions }, key, project.set[key]),
   };
 }

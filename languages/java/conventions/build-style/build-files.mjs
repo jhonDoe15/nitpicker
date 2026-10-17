@@ -24,13 +24,16 @@ function depth(file) {
 }
 
 export function buildFiles(source) {
-  const files = source
+  const all = source
     .paths()
     .filter(isBuildFile)
-    .sort((left, right) => depth(left) - depth(right) || left.localeCompare(right))
-    .slice(0, MAX_BUILD_FILES);
+    .sort((left, right) => depth(left) - depth(right) || left.localeCompare(right));
+  const files = all.slice(0, MAX_BUILD_FILES);
   const texts = source.readMany(files);
-  return files.flatMap((file) =>
-    texts.has(file) ? [{ file, kind: buildFileKind(file), text: texts.get(file) }] : [],
-  );
+  return {
+    files: files.flatMap((file) =>
+      texts.has(file) ? [{ file, kind: buildFileKind(file), text: texts.get(file) }] : [],
+    ),
+    skipped: all.length - files.length,
+  };
 }
