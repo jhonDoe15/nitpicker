@@ -141,7 +141,12 @@ describe.skipIf(!enabled)('KotlinMetrics on source files', () => {
     expect(
       metrics.functions.map(
         ({ name, start, end, statements, parameters, complexity, inline, initializer, lambda }) =>
-          `${name} ${start}-${end} s${statements} p${parameters} c${complexity}${inline ? ' inline' : ''}${initializer ? ' initializer' : ''}${lambda ? ' lambda' : ''}`,
+          [
+            `${name} ${start}-${end} s${statements} p${parameters} c${complexity}`,
+            inline ? ' inline' : '',
+            initializer ? ' initializer' : '',
+            lambda ? ' lambda' : '',
+          ].join(''),
       ),
     ).toEqual([
       'plain 3-8 s3 p2 c5',
