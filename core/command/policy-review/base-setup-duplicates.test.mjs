@@ -28,9 +28,9 @@ function duplicateArguments(analyzer) {
 }
 
 describe.each([
-  ['java', ['["build"]']],
-  ['kotlin', ['["build"]']],
-  ['python', ['["build"]', undefined]],
+  ['java', ['["build"]', undefined]],
+  ['kotlin', ['["build"]', undefined]],
+  ['python', ['["build"]', undefined, undefined]],
 ])('the base of a %s project', (preset, expected) => {
   const headConfig = { preset, duplicates: { skippedFolders: ['build'] } };
   const headAnalyzers = configureAnalyzers(
