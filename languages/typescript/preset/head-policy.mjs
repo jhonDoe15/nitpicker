@@ -25,6 +25,8 @@ import { detectLibraries } from './libraries/project-libraries.mjs';
 import { stylingApproachFor } from './eslint-config/react/react-styling.mjs';
 import { hasPrettierConventions } from '../conventions/prettier-conventions.mjs';
 import { markedGeneratedFiles } from './layout/generated-files.mjs';
+import { GRADLE_PRESETS } from '../../java/adapters/gradle-presets.mjs';
+import { javaHeadFacts } from '../../java/adapters/facts/head-facts.mjs';
 
 export { headPolicyEnvironment, withHeadPolicyFile } from '../../../shared/head-policy.mjs';
 
@@ -71,6 +73,7 @@ function withProjectFacts(policy, config, projectRoot) {
           libraries: detectLibraries(projectRoot, excludedPathMatcher(policy)),
         }
       : {}),
+    ...(GRADLE_PRESETS.includes(config.preset) ? javaHeadFacts(projectRoot, config) : {}),
     ...(usesProjectConfig(prettier?.precedence ?? [])
       ? {
           tools: {
@@ -125,6 +128,8 @@ const HEAD_CHECKOUT_FACTS = [
   'generatedFiles',
   'frameworks',
   'libraries',
+  'spring',
+  'kotlin',
 ];
 const SCOPE_FACTS = [
   ['react', ['enabled', 'iconPackage', 'major', 'styling', 'autoCleanup']],

@@ -92,9 +92,12 @@ Reports are written to `reports/quality/diff/` (`reports/quality/snapshot/` for 
 `report.txt`, `report.junit.xml`, `summary.json`, `new-findings.json`, `resolved-findings.json`,
 `changed-metrics.json` and `tool-errors.json`. The summary records every config override, a
 policy hash, the `policyChanges` the head config makes against the base and any `notices`. A notice
-is information that never fails the run. Today there is one: changed TypeScript files that lie
-outside `layout.sourceRoots` and `layout.testRoots` (move them under a root or add their folder to
-`layout.sourceRoots`; to leave them unchecked, list them in `exclude`). Choose another directory
+is information that never fails the run. Today there is one kind: changed code files that lie
+outside the roots the preset checks. For TypeScript those are `layout.sourceRoots` and
+`layout.testRoots` (move the files under a root or add their folder to `layout.sourceRoots`); for
+Python, `python.sourceRoots`; for Java and Kotlin, the build's source sets (`src/<set>/java` or
+`src/<set>/kotlin` of a module, or a directory the build file declares). To leave files unchecked,
+list them in `exclude`. Choose another directory
 with `--output <dir>`. Set `NO_COLOR` to disable colored console output.
 
 ## Exit codes
@@ -214,11 +217,30 @@ defaults. These changes are loosening:
   through other hidden files (a barrel re-exporting a new file), plus the `main`, `bin` and
   `exports` targets of any `package.json` and the `layout.entryPoints` files. So a feature cannot be
   written under an excluded folder and used from the checked code. Exceptions under an established
-  glob do not fail on imports, because the file is still checked by every other rule, and the
-  import walk reads TypeScript and JavaScript only, so under the Python, Java and Kotlin presets an
-  established glob does not fail;
+  glob do not fail on imports, because the file is still checked by every other rule. The import
+  walk reads `import` statements: TypeScript and JavaScript through the module resolver, Python
+  through the same import scan the coupling rules use (relative imports, `from x import y`,
+  parent packages), Java and Kotlin from `import` lines, same-package use of a type or top-level
+  declaration by name, and qualified names in the code, starting at the files under the main
+  source directories;
 - a `tsconfig.json` removed, or `checkJs` turned off in any of the project's tsconfig files (the root
   one, per-package ones and the configs they reference), with the TypeScript preset;
+- a build file that makes the build measure less, compared with the base: a Gradle `sourceSets`
+  `srcDirs` assignment, or a module whose build file is gone, that leaves out a folder holding
+  checked code (adding a directory is not loosening); an added Gradle `exclude` in a source set or
+  in a test task, `excludeTestsMatching`, `excludeTags`, `excludeEngines` or `enabled = false`;
+  with Maven, a `sourceDirectory`, `testSourceDirectory` or `build-helper` source that leaves out
+  checked code, an added surefire or failsafe `excludes`, `excludedGroups` or skip flag, and an
+  added compiler `excludes` or `testExcludes`; with Python, `pytest` `testpaths` that stop
+  collecting a test file, an added `--ignore`, `--ignore-glob` or `--deselect` in `addopts`, and a
+  `[tool.mutmut]` `do_not_mutate` pattern that covers production code. An added exclude that
+  covers no checked file is listed and does not fail;
+- an edit of a project tool config the project opted into: any file in `config/pmd/` or
+  `config/checkstyle/` while `tools.pmd.precedence` or `tools.checkstyle.precedence` lists
+  `"project"` on both sides, the Kotlin preset's detekt config (`kotlin.detektConfig` or the
+  detected `config/detekt/detekt.yml`), and the Prettier config files while
+  `tools.prettier.precedence` lists `"project"` (the `prettier` key of `package.json` only). Whether
+  an edit is stricter or looser is not judged, so a person reviews it; a removed file is listed;
 - a newly disabled analyzer, a threshold above the base's (a removed threshold counts at its
   default), and a removed or changed custom analyzer (any change to its `command` or `args`);
 - a `preset` that checks less: an explicit preset changed to another one, or `javascript` set where
@@ -701,8 +723,9 @@ For Prettier, "the project's config" is what Prettier itself resolves for each f
 (`.prettierrc*`, `prettier.config.*`, the `prettier` key in `package.json`, and `.editorconfig`),
 and the project's `.prettierignore` applies too. The version is still the one nitpicker pins. The
 project's config is read from the head checkout and applies to both sides of the comparison, so
-editing it never turns unchanged code into new findings; `--fix` formats with the same merged
-config. The setting is listed under "Config overrides" in the report.
+editing it never turns unchanged code into new findings, and for the same reason an edit of that
+config is a policy change a person reviews (see [Configuration](#configuration)); `--fix` formats
+with the same merged config. The setting is listed under "Config overrides" in the report.
 
 Merging is key by key. The project's config replaces only the options it sets; every option it
 leaves out keeps the value from the next layer. With `["project", "nitpicker"]` that next layer is
