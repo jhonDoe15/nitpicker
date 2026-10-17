@@ -55,7 +55,7 @@ The messages name zod, the default validation library; in a project that depends
   [Adopting nitpicker on existing code](docs/usage.md#adopting-nitpicker-on-existing-code).
 - **Beyond lint.** Depending on the language, it also checks that changed code is covered by
   tests, that tests can fail (mutation testing), function size, duplication, module boundaries,
-  dead code and slow test patterns.
+  dead code, unused or unlisted dependencies, committed secrets and slow test patterns.
 - **Teaches first, gates second.** An agent skill for each preset teaches the allowed forms before
   the agent writes code. The gate in CI is the backstop.
 

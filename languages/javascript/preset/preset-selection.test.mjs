@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { presetAnalyzers } from '../../../core/configuration/preset-analyzers.mjs';
+import { createHygieneAnalyzers } from '../../../shared/hygiene/analyzers.mjs';
 import {
   applyLayout,
   applyThresholds,
@@ -16,6 +17,8 @@ import { resolveLayout, resolveLayoutFor } from '../../typescript/preset/layout.
 import { createQualityChecks } from '../../typescript/preset/quality-checks.mjs';
 import { isJavascriptPolicy } from './javascript-preset.mjs';
 import { fileURLToPath } from 'node:url';
+
+const cliPath = fileURLToPath(new URL('../../../core/cli.mjs', import.meta.url));
 
 const packageRoot = fileURLToPath(new URL('../../..', import.meta.url));
 const javascriptPolicy = resolveHeadPolicy({ preset: 'javascript' });
@@ -42,17 +45,25 @@ function prettierPatterns(layout) {
 
 describe('preset selection', () => {
   it('runs the TypeScript analyzers for the typescript preset and for no preset', () => {
-    expect(fingerprint(presetAnalyzers({ preset: 'typescript' }))).toEqual(
-      fingerprint(packageAnalyzers),
-    );
-    expect(fingerprint(presetAnalyzers({}))).toEqual(fingerprint(packageAnalyzers));
+    const expected = fingerprint([...packageAnalyzers, ...createHygieneAnalyzers(cliPath)]);
+
+    expect(fingerprint(presetAnalyzers({ preset: 'typescript' }))).toEqual(expected);
+    expect(fingerprint(presetAnalyzers({}))).toEqual(expected);
   });
 
   it('runs the JavaScript analyzer set for the javascript preset', () => {
     const selected = fingerprint(presetAnalyzers({ preset: 'javascript' }));
 
-    expect(selected).toEqual(fingerprint(javascriptPackageAnalyzers));
+    expect(selected).toEqual(
+      fingerprint([...javascriptPackageAnalyzers, ...createHygieneAnalyzers(cliPath)]),
+    );
     expect(selected).not.toEqual(fingerprint(packageAnalyzers));
+  });
+
+  it('adds the repository hygiene checks to every preset', () => {
+    for (const preset of ['typescript', 'javascript', 'java', 'kotlin', 'python']) {
+      expect(analyzerNames(presetAnalyzers({ preset })).at(-1)).toBe('repository-hygiene');
+    }
   });
 
   it('prefers injected analyzers over any preset', () => {

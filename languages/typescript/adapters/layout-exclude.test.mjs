@@ -173,6 +173,7 @@ describe('custom layout and exclude for tools that need project dependencies', (
       'lib/live/types.ts',
       'lib/live/unused.ts',
       'lib/live/uses-spec.ts',
+      'package.json',
       'spec/helper.ts',
     ]);
     expect(paths.filter(isExcludedPath)).toEqual([]);

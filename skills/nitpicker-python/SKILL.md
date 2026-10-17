@@ -67,6 +67,11 @@ backstop. It fails only on findings your change adds, so leave code the task doe
   `{ "rule": "T201", "paths": ["src/cli/**"], "reason": "..." }`, the rule being the id in the
   message. Don't add one to get past the gate: stop and ask.
 
+## Repository files
+
+- The gate fails committed secrets, binaries, build output and files over 1 MB; each message names
+  the fix. Don't add an `exceptions` entry to get past one: stop and ask.
+
 ## Size
 
 - A function stays within 50 lines, 15 statements, 2 levels of control nesting and 3 parameters;
