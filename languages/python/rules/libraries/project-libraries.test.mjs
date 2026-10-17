@@ -133,6 +133,7 @@ describe('the libraries a project uses', () => {
     });
 
     expect(detectLibraries(root)).toEqual({
+      database: 'format',
       logging: 'structlog',
       validator: 'marshmallow',
       validators: ['marshmallow', 'pydantic'],
@@ -147,11 +148,13 @@ describe('the libraries a project uses', () => {
     const setup = project({ 'setup.cfg': '[options]\ninstall_requires =\n    voluptuous\n' });
 
     expect(detectLibraries(poetry)).toEqual({
+      database: 'format',
       logging: 'loguru',
       validator: 'msgspec',
       validators: ['msgspec'],
     });
     expect(detectLibraries(setup)).toEqual({
+      database: 'format',
       logging: 'logging',
       validator: 'voluptuous',
       validators: ['voluptuous'],
