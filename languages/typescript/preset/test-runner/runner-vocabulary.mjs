@@ -15,6 +15,7 @@ const MATCHER_ANY =
 
 const VOCABULARY = {
   vitest: {
+    helperFile: 'a file not named *.test.* or *.spec.*',
     waitOnCondition: 'vi.waitFor or expect.poll',
     pollInstead: 'vi.waitFor / expect.poll',
     advanceFakeTime: 'vi.advanceTimersByTime',
@@ -30,6 +31,8 @@ const VOCABULARY = {
     anyInTests: MATCHER_ANY,
   },
   jest: {
+    helperFile:
+      'a file Jest does not run as a test: not named *.test.* or *.spec.*, not under __tests__, and outside the testMatch or testRegex of the Jest config',
     waitOnCondition: TESTING_LIBRARY_WAIT,
     pollInstead: TESTING_LIBRARY_WAIT,
     advanceFakeTime: 'jest.advanceTimersByTime',
@@ -45,6 +48,8 @@ const VOCABULARY = {
     anyInTests: MATCHER_ANY,
   },
   node: {
+    helperFile:
+      'a file `node --test` does not run: not named *.test.*, *-test.*, *_test.*, test-*.* or test.*, not under a test/ folder, and outside the patterns of the test script',
     waitOnCondition: EVENT_OR_TICK,
     pollInstead: EVENT_OR_TICK,
     advanceFakeTime: 'mock.timers.tick',
@@ -63,6 +68,8 @@ const VOCABULARY = {
       "a mock's recorded calls (`fn.mock.calls[0].arguments`): give `mock.fn` the function it replaces (`mock.fn(send)`) so its calls are typed",
   },
   mocha: {
+    helperFile:
+      'a file outside the Mocha spec (test/*.{js,cjs,mjs} by default, or the spec in .mocharc.* and the test script)',
     waitOnCondition: EVENT_OR_CLOCK,
     pollInstead: EVENT_OR_CLOCK,
     advanceFakeTime: 'clock.tick',

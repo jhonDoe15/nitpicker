@@ -6,6 +6,7 @@ import {
 } from '../../../../modules/module-resolution.mjs';
 import { moduleReferencesOf, statementSources } from '../../../../modules/module-sources.mjs';
 import { isBrowserEndToEndTest } from '../../analysis/test-code-analysis.mjs';
+import { RUNNER_OPTION_PROPERTY, vocabularyOf } from '../runners/runner-option.mjs';
 
 const layout = readLayout();
 const { testRoots } = layout;
@@ -127,6 +128,7 @@ export const rule = {
       {
         type: 'object',
         properties: {
+          ...RUNNER_OPTION_PROPERTY,
           exemptPattern: { type: 'string' },
         },
         additionalProperties: false,
@@ -134,7 +136,7 @@ export const rule = {
     ],
     messages: {
       missingRuntime:
-        'This test imports no production code at runtime (only types, libraries, or helpers that import none). Import the code under test from the source root, directly or through a helper such as a render function that imports it. Shared helpers belong in a file not named *.test.* or *.spec.*.',
+        'This test imports no production code at runtime (only types, libraries, or helpers that import none). Import the code under test from the source root, directly or through a helper such as a render function that imports it. Shared helpers belong in {{helperFile}}.',
     },
   },
   create(context) {
@@ -175,7 +177,11 @@ export const rule = {
       },
       'Program:exit'() {
         if (!hasProductionRuntime) {
-          context.report({ node: program, messageId: 'missingRuntime' });
+          context.report({
+            node: program,
+            messageId: 'missingRuntime',
+            data: { helperFile: vocabularyOf(context).helperFile },
+          });
         }
       },
     };

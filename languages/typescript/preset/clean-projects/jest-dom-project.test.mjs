@@ -19,7 +19,7 @@ const PLANTED_OUTPUT = [
   '',
   'Enforceable findings:',
   `eslint-lint/nitpicker/no-unused-dom-environment ${PLANTED_TEST}:1 This test file runs in jsdom, the project default, but never uses the DOM. Add \`/** @jest-environment node */\` here, or default to node and add \`/** @jest-environment jsdom */\` to DOM tests. If it uses the DOM in a way nitpicker cannot see, add an exception for nitpicker/no-unused-dom-environment.`,
-  `eslint-lint/nitpicker/test-must-use-production-runtime ${PLANTED_TEST}:1 This test imports no production code at runtime (only types, libraries, or helpers that import none). Import the code under test from the source root, directly or through a helper such as a render function that imports it. Shared helpers belong in a file not named *.test.* or *.spec.*.`,
+  `eslint-lint/nitpicker/test-must-use-production-runtime ${PLANTED_TEST}:1 This test imports no production code at runtime (only types, libraries, or helpers that import none). Import the code under test from the source root, directly or through a helper such as a render function that imports it. Shared helpers belong in a file Jest does not run as a test: not named *.test.* or *.spec.*, not under __tests__, and outside the testMatch or testRegex of the Jest config.`,
   '',
 ].join('\n');
 
