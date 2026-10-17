@@ -59,6 +59,7 @@ style:
     active: true
     severity: warning
     excludes: []
+    ignoreAnnotated: []
     includes: []
     imports:
       - value: 'java.util.Date'

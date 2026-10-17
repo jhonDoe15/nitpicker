@@ -32,6 +32,7 @@ const REPORTS = {
   'format.txt': '',
   'checkstyle.xml': '<checkstyle version="13.5.0"></checkstyle>',
   'structure.json': '[]',
+  'classes.json': JSON.stringify({ files: {}, classes: [] }),
 };
 
 function projectWithFailingTests(report) {

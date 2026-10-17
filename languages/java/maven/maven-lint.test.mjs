@@ -88,7 +88,10 @@ describe('runFormat', () => {
     roots.push(root);
     const java = path.join(root, 'jdk/bin/java');
     mkdirSync(path.dirname(java), { recursive: true });
-    writeFileSync(java, '#!/bin/sh\ncat "${1#@}"\n');
+    writeFileSync(
+      java,
+      '#!/bin/sh\n[ "$1" = -version ] && echo \'openjdk version "21.0.2"\' >&2 && exit 0\ncat "${1#@}"\n',
+    );
     chmodSync(java, 0o755);
     vi.stubEnv('JAVA_HOME', path.join(root, 'jdk'));
     const source = path.join(root, 'src/main/java/demo/A.java');

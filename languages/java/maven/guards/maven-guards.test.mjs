@@ -59,7 +59,7 @@ function moduleOf(root, files) {
       outputDirectory,
       sourceRoots: [],
       testSourceRoots: [],
-      compiler: { release: undefined, source: undefined, target: undefined, compilerArgs: [] },
+      compiler: { release: undefined, source: undefined, target: undefined, args: [] },
     },
     reportDir: path.join(basedir, 'target/nitpicker'),
   };
