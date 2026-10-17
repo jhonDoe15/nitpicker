@@ -1,7 +1,7 @@
 {
   "preset": "typescript",
   "layout": {
-    "sourceRoots": ["core", "languages"],
+    "sourceRoots": ["core", "languages", "shared"],
     "entryPoints": [
       "core/diff/cache/http-cache-worker.mjs",
       "core/fix/prettier-base-runner.mjs",
@@ -108,6 +108,14 @@
       "rule": "nitpicker/no-raised-test-timeout",
       "paths": ["languages/typescript/adapters/layout-exclude.test.mjs"],
       "reason": "The shared hook runs ten real analyzers (eslint, prettier, tsc, dependency-cruiser, jscpd and others) side by side over one fixture project, as they run for a user; that takes about eight seconds on an idle four-CPU machine, too close to the ten-second hook limit for a shared CI runner."
+    },
+    {
+      "rule": "nitpicker/no-raised-test-timeout",
+      "paths": [
+        "languages/typescript/adapters/oxlint/react/oxlint-react.test.mjs",
+        "languages/typescript/adapters/oxlint/react/oxlint-react-tests.test.mjs"
+      ],
+      "reason": "The shared hook plans the ESLint config, then runs oxlint with the nitpicker JS plugins over one fixture project, as the eslint-lint analyzer does for a user; each step is a separate process that loads the full rule set, which takes about seven seconds on an idle machine, too close to the ten-second hook limit for a shared CI runner. The tests only read the shared result."
     },
     {
       "rule": "nitpicker/no-raised-test-timeout",
