@@ -2,7 +2,7 @@ import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { globToRegExp } from '../../../../shared/glob.mjs';
 import { collectFileLimitFindings } from '../../../../shared/rules/file-limits.mjs';
-import { hash, repeatsInSource } from '../../../../shared/rules/finding-helpers.mjs';
+import { hash } from '../../../../shared/rules/finding-helpers.mjs';
 import { evaluateStructure } from '../../../../shared/rules/structure.mjs';
 import { javaFolderDepthFindings } from '../size/folder-depth.mjs';
 import { javaLineLengthFindings } from '../size/line-length.mjs';
@@ -31,7 +31,6 @@ export function structureFindings(
   const sources = new Map();
   const functions = entries.map((entry) => ({
     ...entry,
-    numberedAmongSameSource: repeatsInSource(entry.name),
     sourceHash: hash(textOf(sources, projectRoot, entry)),
     numberedAmongSameSource: numberedAmongSameSource ?? entry.numberedAmongSameSource,
   }));

@@ -1,6 +1,6 @@
+import { toml } from '../../../../libraries/project-files.mjs';
 import { insideProject } from '../../../../libraries/project-files.mjs';
 import { existsSync, readdirSync, readFileSync } from 'node:fs';
-import { createRequire } from 'node:module';
 
 const FIXED_FILES = ['uv.lock', 'poetry.lock', 'pdm.lock', 'Pipfile', 'Pipfile.lock'];
 const REQUIREMENTS_FILE = /^(?:requirements|constraints)[\w.-]*\.txt$/;
@@ -21,17 +21,13 @@ const DEPENDENCY_TABLES = [
   ['tool', 'pdm', 'resolution'],
 ];
 
-function parseToml(text) {
-  return createRequire(import.meta.url)('smol-toml').parse(text);
-}
-
 function tableAt(document, keys) {
   return keys.reduce((table, key) => table?.[key], document);
 }
 
 function pyprojectDependencies(text) {
   try {
-    const document = parseToml(text);
+    const document = toml().parse(text);
     return JSON.stringify(DEPENDENCY_TABLES.map((keys) => tableAt(document, keys)));
   } catch (error) {
     return JSON.stringify({ unparsed: text, reason: String(error) });
