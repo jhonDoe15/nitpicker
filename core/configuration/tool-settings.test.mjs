@@ -59,7 +59,7 @@ describe('tool precedence', () => {
   });
 
   it.each(['java', 'kotlin'])(
-    'names PMD and Checkstyle with the %s preset, where Checkstyle runs one config',
+    'names PMD and Checkstyle with the %s preset and accepts both config layers',
     (preset) => {
       const tools = {
         pmd: { precedence: ['project', 'nitpicker'] },
@@ -71,9 +71,8 @@ describe('tool precedence', () => {
       ).toThrow(
         '"tools" names unknown tool "prettier". Supported tools with this preset: pmd, checkstyle',
       );
-      expect(() =>
-        validateConfig({ preset, tools: { checkstyle: { precedence: ['nitpicker', 'project'] } } }),
-      ).toThrow('"tools.checkstyle.precedence" must be ["nitpicker"] or ["project"]');
+      const layered = { preset, tools: { checkstyle: { precedence: ['nitpicker', 'project'] } } };
+      expect(validateConfig(layered)).toEqual(layered);
     },
   );
 
