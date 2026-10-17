@@ -147,7 +147,7 @@ export function testRunnerLabel(context) {
     : `${testRunner}@${runnerVersion(context, testRunner)}`;
 }
 
-export function mutationPytestOptions(context) {
+function mutationPytestOptions(context) {
   const probe = probePytest(context);
   return [
     ...(probe?.xdist ? ['-n0'] : []),

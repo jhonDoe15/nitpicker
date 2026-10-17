@@ -19,13 +19,13 @@ import {
   noTestsCollected,
   runnerSkip,
   skippedFinding,
-} from './python-mutation-runner.mjs';
+} from './test-run/python-mutation-runner.mjs';
 import {
   everyModuleFails,
   failedOnProjectTests,
   failingTestModules,
   pythonVersionSkip,
-} from './mutation-scope.mjs';
+} from './test-run/mutation-scope.mjs';
 
 export const MUTATION_FAILED_RULE = 'mutation-failed';
 export const MUTMUT_VERSION_PROBE = [
