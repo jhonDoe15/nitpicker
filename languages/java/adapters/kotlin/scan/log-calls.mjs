@@ -6,7 +6,7 @@ const LOG_CALL = new RegExp(`\\b([A-Za-z_]\\w*)\\s*\\.\\s*(${LOG_METHODS})\\s*\\
 const CONSOLE_CALL = /(?<![\w.])(println|print)\s*\(/g;
 const LOGGER_NAME = /^(?:log|logger|LOG|LOGGER|_log|_logger)$|(?:Log|Logger|_LOG|_LOGGER)$/;
 
-export function isLoggerName(name) {
+function isLoggerName(name) {
   return LOGGER_NAME.test(name);
 }
 
