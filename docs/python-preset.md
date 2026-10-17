@@ -206,10 +206,52 @@ The formatter is `black` when `pyproject.toml`, `setup.cfg`, `tox.ini`, `Pipfile
 `[tool.black]` table, `black` as a dependency (a requirements line, a poetry key or an entry of any
 TOML dependency array), a `tox` command, or the `psf/black` or `black-pre-commit-mirror` repository
 or the `black` hook id, and none of them configures ruff's formatter (`[tool.ruff.format]`, a
-`[format]` table in `ruff.toml`, the `ruff-format` hook). The format check uses the project's own
-formatter configuration (line length and so on); only the lint rules are nitpicker's. A format
-finding from a detected formatter says so and names `python.formatter`, the setting that changes
-it.
+`[format]` table in `ruff.toml`, the `ruff-format` hook).
+
+**The format check follows the project's code, not its formatter config.** A project whose
+`[tool.ruff]`, `ruff.toml` or `[tool.black]` set the line length, quote style or indentation is
+checked with the settings nitpicker measures from the code (below), which may differ from that
+config, until the project opts in. By default `ruff format` runs with `--isolated` and always gets
+`--target-version`, `--line-length`, `--config 'format.quote-style = "..."'` and
+`--config 'indent-width = N'` (or `--config 'format.indent-style = "tab"'`); `black` runs with
+`--config` pointing at an empty file nitpicker writes and the same options as flags
+(`--line-length`, `--skip-string-normalization` for single quotes, `--target-version`). The values
+are `python.quotes` (double), `python.lineLength` (88) and `python.indentation` (4) when the code
+has no clear majority; `python.indentation` is `4`, `2` or `tab` (ruff only).
+
+The project's scope still applies without the opt-in, so a generated file the project excludes gets
+no format finding: `exclude`, `extend-exclude` and `force-exclude` of the ruff or black config are
+forwarded (patterns are resolved against the config file that sets them, and nitpicker's own
+`python.exclude` is added), and so is the target version (`target-version` or, for black, `target-version`
+and `project.requires-python` of the nearest `pyproject.toml`), so both formatters infer the same
+target. The keys that change how code is formatted but that nitpicker does not measure
+(`skip-magic-trailing-comma`, `line-ending`, `docstring-code-format`, `preview`) are dropped and take
+effect only with the opt-in.
+
+The run prints, once at the start, the command that formats the code the way nitpicker checks it
+(for example `Format with ruff: ruff format --isolated --target-version py38 --line-length 88 --config 'format.quote-style = "double"' --config 'indent-width = 4' .`;
+black prints `<empty file>` for the config it writes), and one line when a project config is
+ignored: `Ignoring [tool.ruff] in pyproject.toml; opt in with "tools": { "ruff": { "precedence":
+["project", "nitpicker"] } }`. Each format finding refers to the command and names
+`python.formatter` (when detected), the setting that changes the formatter.
+
+**Opt-in.** `"tools": { "ruff": { "precedence": ["project", "nitpicker"] } }` (or `black`) reads the
+project's own config: `.ruff.toml`, then `ruff.toml`, then `pyproject.toml`, the first found from
+the project root up to the repository root, following `extend` (for black, the nearest
+`pyproject.toml`, where black stops searching, with or without a `[tool.black]` table). A key the
+config sets wins, and a pin in `nitpicker.config.json` that it overrides is named in the conventions
+line; the measured or pinned convention fills the rest. `["nitpicker", "project"]` lets the
+conventions win instead for ruff; it is a config error for black, whose flags cannot switch string
+normalization back on. Listing `"project"` with no config file is a tool error that says to create it
+or remove `"project"` from `tools.<tool>.precedence`. The file is read from the head checkout for
+both sides of the comparison and passed to the formatter as `--config <file>`; the whole `extend`
+chain and the located files are part of the cache key. Which formatter applies which convention:
+ruff format applies all three; black applies `python.lineLength` and `python.quotes` (it keeps single
+quotes as written, so it accepts both styles) and has no indentation option, so `python.indentation`
+is neither measured nor printed with black, and pinning it is a config error. A file votes a line
+length only from a call or bracket that the formatter left wrapped without a trailing comma (joined,
+it would have fit any wider limit), or 120 when two lines pass 100. The run prints the source of each
+convention: the files it measured, the pin in `nitpicker.config.json`, or "from your ruff config".
 
 The test runner is `pytest` when the project shows it uses it: a `[tool.pytest.ini_options]`,
 `[pytest]` or `[tool:pytest]` section, `pytest.ini`, `pytest` or a pytest plugin as a dependency or
@@ -1282,6 +1324,10 @@ and CRAP rules.
   the one-way rules and `python.exceptions` end to end; `languages/python/adapters/e2e/` holds the
   basedpyright e2e (a configured and a weakened `[tool.basedpyright]` table) and the `if TYPE_CHECKING:`
   one (no stability inversion, import-linter still sees it), which share `helpers.mjs` with the preset e2e.
+- `languages/python/ruff/ruff-rules.e2e.test.mjs`: gated behind `NITPICKER_PYTHON_E2E=1` (the ruff
+  from the `PATH`, or `NITPICKER_RUFF`). Every stable `RUF` rule of the installed ruff must be
+  selected or ignored in `nitpicker-ruff.toml`, so a new stable rule fails the test until someone
+  reviews it.
 - `core/pack-contents.test.mjs` checks that the Python files, including the ruff config and the
   rules script, are in the npm package.
 - Slice 5 unit tests: `python-sources.test.mjs` (module naming, exclusions), `python-coupling.test.mjs`
