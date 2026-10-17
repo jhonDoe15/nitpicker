@@ -60,8 +60,8 @@ function headerStep(state, line) {
     opening(state, line, { start: BLOCK_START.length, closing: BLOCK_END });
     return true;
   }
-  const docstring = state.docstring ? null : DOCSTRING_START.exec(line);
-  if (docstring !== null) {
+  const docstring = state.docstring ? undefined : (DOCSTRING_START.exec(line) ?? undefined);
+  if (docstring !== undefined) {
     state.docstring = true;
     opening(state, line, { start: docstring[0].length, closing: docstring[1] });
     return true;

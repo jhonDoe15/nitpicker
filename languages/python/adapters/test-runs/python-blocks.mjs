@@ -140,10 +140,10 @@ function moduleMarks({ logical, lines }) {
 
 function scopeChain(source, position) {
   const names = [];
-  let owner = ownerOf(source.logical, position);
-  while (owner !== undefined) {
+  const owners = [ownerOf(source.logical, position)].filter((owner) => owner !== undefined);
+  for (const owner of owners) {
     names.unshift(SCOPE.exec(source.lines[source.logical[owner].first])?.[1] ?? '');
-    owner = ownerOf(source.logical, owner);
+    owners.push(...[ownerOf(source.logical, owner)].filter((next) => next !== undefined));
   }
   return names.join('.');
 }
