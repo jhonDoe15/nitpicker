@@ -21,17 +21,26 @@ function linkTarget(livePath, roots) {
     : real;
 }
 
+function linkEntry(entry, directories, roots) {
+  const livePath = containedPath(directories.liveDirectory, entry.name);
+  const snapshotPath = containedPath(directories.snapshotDirectory, entry.name);
+  if (entry.isDirectory() && entry.name.startsWith('@')) {
+    mkdirSync(snapshotPath);
+    return { liveDirectory: livePath, snapshotDirectory: snapshotPath };
+  }
+  if (existsSync(livePath)) {
+    symlinkSync(linkTarget(livePath, roots), snapshotPath);
+  }
+  return undefined;
+}
+
 function linkEntries(liveRoot, snapshotRoot, roots) {
   const pending = [{ liveDirectory: liveRoot, snapshotDirectory: snapshotRoot }];
-  for (const { liveDirectory, snapshotDirectory } of pending) {
-    for (const entry of readdirSync(liveDirectory, { withFileTypes: true })) {
-      const livePath = containedPath(liveDirectory, entry.name);
-      const snapshotPath = containedPath(snapshotDirectory, entry.name);
-      if (entry.isDirectory() && entry.name.startsWith('@')) {
-        mkdirSync(snapshotPath);
-        pending.push({ liveDirectory: livePath, snapshotDirectory: snapshotPath });
-      } else if (existsSync(livePath)) {
-        symlinkSync(linkTarget(livePath, roots), snapshotPath);
+  for (const directories of pending) {
+    for (const entry of readdirSync(directories.liveDirectory, { withFileTypes: true })) {
+      const scope = linkEntry(entry, directories, roots);
+      if (scope !== undefined) {
+        pending.push(scope);
       }
     }
   }
