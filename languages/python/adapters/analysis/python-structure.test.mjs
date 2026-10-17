@@ -183,6 +183,14 @@ describe('Python file limits', () => {
     ]);
   });
 
+  it('counts the tests.py of a Django app as a test module', () => {
+    write(['manage.py', 'polls/models.py', 'polls/views.py', 'polls/admin.py', 'polls/tests.py']);
+
+    expect(findingsWith({ fileLimits: limits })).toEqual([
+      ['folder-files-limit', 'polls', 'folder-files:source:3'],
+    ]);
+  });
+
   it('leaves package markers out of the folder count', () => {
     write(['pkg/__init__.py', 'pkg/a.py', 'pkg/b.py']);
 

@@ -9,17 +9,23 @@ import {
 import { seedMutantsFromBase } from './python-mutation-reuse.mjs';
 import { writeMutmutConfig } from '../project-tools/mutmut/mutmut-config.mjs';
 import { probeVersion, run } from '../execution/python-process.mjs';
-import { mutmutPytestEnvironment } from '../execution/python-test-runner.mjs';
 import { mutationMarkerFindings } from './mutation-markers.mjs';
+import {
+  DISABLE_HINT,
+  missingPytest,
+  mutmutEnvironment,
+  noTestsCollected,
+  runnerSkip,
+  skippedFinding,
+} from './test-run/python-mutation-runner.mjs';
 import {
   everyModuleFails,
   failedOnProjectTests,
   failingTestModules,
   pythonVersionSkip,
-} from './mutation-scope.mjs';
+} from './test-run/mutation-scope.mjs';
 
 export const MUTATION_FAILED_RULE = 'mutation-failed';
-export const MUTATION_SKIPPED_RULE = 'mutation-skipped';
 export const MUTMUT_VERSION_PROBE = [
   'python',
   '-c',
@@ -31,8 +37,6 @@ const NO_TESTS_COLLECTED = 'failed to collect stats. runner returned 5';
 const STATS_FAILURE = 'failed to collect stats';
 const COPY_HINT =
   'If the tests read files outside the source roots, list them under "also_copy" in [tool.mutmut] of pyproject.toml.';
-const DISABLE_HINT =
-  'To run without mutation testing, add "mutation" to "disable" in nitpicker.config.json.';
 const SUPPORTED_MAJOR = /^3\./u;
 
 function failure(message) {
@@ -59,6 +63,10 @@ function checkInstallation(context) {
       `mutmut ${version} is not supported: nitpicker reads the run data of ${SUPPORTED_MUTMUT}. ${DISABLE_HINT}`,
     );
   }
+  const pytestProblem = missingPytest(context);
+  if (pytestProblem !== undefined) {
+    throw failure(pytestProblem);
+  }
 }
 
 function runMutmut(context, ignored = []) {
@@ -66,7 +74,7 @@ function runMutmut(context, ignored = []) {
     accepted: finishedRun,
     rule: MUTATION_FAILED_RULE,
     timeoutMs: MUTATION_TIMEOUT_MS,
-    env: mutmutPytestEnvironment(context, ignored),
+    ...mutmutEnvironment(context, ignored),
   });
 }
 
@@ -100,9 +108,11 @@ function mutantRunData(context) {
   seedMutantsFromBase(context);
   const { result, ignored } = runPassingTests(context);
   if (`${result.stdout}${result.stderr}`.includes(NO_TESTS_COLLECTED)) {
-    return ignored.length === 0
-      ? { findings: [] }
-      : { findings: [everyModuleFails(context, ignored)] };
+    return {
+      findings: [
+        ignored.length === 0 ? noTestsCollected(context) : everyModuleFails(context, ignored),
+      ],
+    };
   }
   const data = collectRunData({
     projectRoot: context.projectRoot,
@@ -112,14 +122,10 @@ function mutantRunData(context) {
 }
 
 function skippedOnWindows() {
-  return {
-    tool: 'mutmut',
-    rule: MUTATION_SKIPPED_RULE,
-    path: '.',
-    identity: 'windows',
-    message: `Mutation testing was skipped: mutmut needs POSIX fork and does not run on native Windows. Run nitpicker inside WSL to enable it. ${DISABLE_HINT}`,
-    classification: 'descriptive',
-  };
+  return skippedFinding(
+    'windows',
+    'mutmut needs POSIX fork and does not run on native Windows. Run nitpicker inside WSL to enable it.',
+  );
 }
 
 export function mutationFindings(context, platform = process.platform) {
@@ -131,6 +137,10 @@ export function mutationFindings(context, platform = process.platform) {
     return [skipped];
   }
   checkInstallation(context);
+  const runnerSkipped = runnerSkip(context);
+  if (runnerSkipped !== undefined) {
+    return [runnerSkipped];
+  }
   const markers = mutationMarkerFindings(context);
   try {
     return [...markers, ...mutantRunData(context).findings];
