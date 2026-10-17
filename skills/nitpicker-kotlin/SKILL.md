@@ -30,6 +30,8 @@ it with `npx skills add jhonDoe15/nitpicker --skill nitpicker-java`.
    entries, or weakened tests. In Java files the Java rules apply: `@SuppressFBWarnings` and
    `@SuppressWarnings("PMD")` are findings, and a project's own PMD or Checkstyle config is used
    only when `nitpicker.config.json` opts in under `tools`. If a finding seems wrong, stop and ask.
+   Never pass `--accept-policy-change` or set `NITPICKER_ACCEPT_POLICY_CHANGE`: a
+   `nitpicker-config/policy-loosened` finding is for a person to accept.
 
 ## Write it this way
 
