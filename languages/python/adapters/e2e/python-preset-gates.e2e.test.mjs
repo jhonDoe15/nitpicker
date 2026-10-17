@@ -58,6 +58,12 @@ function sourcePython(root) {
     .map((file) => `src/${file}`);
 }
 
+const TEST_RUN_CONFIG = {
+  preset: 'python',
+  disable: ['mutation'],
+  thresholds: { unitTestSeconds: 0.2 },
+};
+
 const withoutMutants = (summaries) => summaries.filter((summary) => !summary.startsWith('mutmut '));
 
 describe.skipIf(!pythonE2eEnabled)('Python preset lint, type and rule gates end to end', () => {
@@ -89,11 +95,7 @@ describe.skipIf(!pythonE2eEnabled)('Python preset lint, type and rule gates end 
       'pyrightconfig.json': `${WEAKENED_PYRIGHT}\n`,
     });
     commitBranch(project, 'hidden-from-types', { 'src/demo/hidden.py': HIDDEN_ERROR });
-    const testRun = {
-      preset: 'python',
-      disable: ['mutation'],
-      thresholds: { unitTestSeconds: 0.2 },
-    };
+    const testRun = TEST_RUN_CONFIG;
     const testFiles = { 'tests/test_runtime.py': RUNTIME_TEST, 'tests/test_noisy.py': NOISY_TEST };
     commitBranch(project, 'test-run', {
       ...testFiles,
@@ -270,7 +272,12 @@ describe.skipIf(!pythonE2eEnabled)('Python preset lint, type and rule gates end 
     expect(result.text).toMatch(/Remove the decorator and annotate the code/);
   });
   it('fails a new slow test and new test output, and passes them once lifted', () => {
-    const result = gate(project, 'test-run');
+    const mutationOff = acceptedDigest(['analyzer disabled: mutation'], {
+      'nitpicker.config.json': JSON.stringify(TEST_RUN_CONFIG),
+    });
+    const result = gate(project, 'test-run', {
+      environment: { CI: 'true', NITPICKER_ACCEPT_POLICY_CHANGE: mutationOff },
+    });
 
     expect(result.exitCode, result.text).toBe(1);
     expect(enforceable(result)).toEqual([
@@ -284,7 +291,16 @@ describe.skipIf(!pythonE2eEnabled)('Python preset lint, type and rule gates end 
     );
     expect(result.text).toMatch(/test_value_is_cached took 0\.\d s; a unit test may take 0\.2 s/);
     for (const branch of ['test-run-lifted', 'test-run-python-lifted']) {
-      const lifted = gate(project, branch);
+      const asked = gate(project, branch);
+      expect(new Set(enforceable(asked).map((summary) => summary.split(' ')[0]))).toEqual(
+        new Set(['nitpicker-config']),
+      );
+      const lifted = gate(project, branch, {
+        environment: {
+          CI: 'true',
+          NITPICKER_ACCEPT_POLICY_CHANGE: asked.json('summary.json').policyDigest,
+        },
+      });
       expect(lifted.exitCode, lifted.text).toBe(0);
       expect(enforceable(lifted)).toEqual([]);
     }

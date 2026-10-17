@@ -125,7 +125,7 @@ def wrapper_finding(index, path, fn):
 
 def forwarding_findings(index):
     found = []
-    for path, tree in index.trees.items():
+    for path, tree in index.production_trees():
         for statement in tree.body:
             if is_plain(statement):
                 wrapper = wrapper_finding(index, path, statement)
