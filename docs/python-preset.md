@@ -110,12 +110,15 @@ set `python.sourceRoots`.
 ## Configuration
 
 Config keys with this preset: `base`, `disable` (the analyzer names are `python` and `mutation`), `analyzers`, the keys shared by all languages,
-`thresholds` (`crapLimit`, enforced from slice 3, and the file limits `fileLines`, `testFileLines`,
-`lineLength` and `folderFiles`), `exclude` (findings under the globs are dropped) and
+`thresholds` (`crapLimit`, enforced from slice 3, the file limits `fileLines`, `testFileLines`,
+`lineLength` and `folderFiles`, the size limits `folderDepth`, `classMethods`, `classFields` and
+`inheritanceDepth`, and the test time limits `unitTestSeconds` and `integrationTestSeconds`), `exclude` (findings under the globs are dropped) and
 `legacyInventory` (same format and `baseline-expansion` rule as for Java), and the `python` object
 below. `layout` describes TypeScript source roots and stays a config error with this preset. The
-top-level `exceptions` is accepted only for the file limits shared by every language
-(`file-lines-limit`, `line-length-limit`, `folder-files-limit`); the Python equivalent of
+top-level `exceptions` is accepted only for the file and size limits shared with the other languages
+(`file-lines-limit`, `line-length-limit`, `folder-files-limit`, `folder-depth-limit`,
+`class-methods-limit`, `class-fields-limit`, `inheritance-depth-limit`), whose messages name it;
+the Python equivalent of
 `exceptions` for every other rule is `python.exceptions`. `python` is an error with any other preset.
 
 ```json
@@ -261,7 +264,7 @@ can import, so an environment without pytest is an error (`environment-failed`, 
 
 The purpose of this slice is the "one way" for each construct. Every finding message names the
 allowed form, and, because any rule can flag legitimate code, ends with how to add the exception.
-Every enforceable finding of ruff, the type checkers and the rules ends with the `python.exceptions` sentence, except the two whose own advice differs (`no-inline-suppression`, mypy `unused-ignore`). The wording lives in `languages/python/rules/hints/` (assembled by `rule-hints.mjs`); a test checks that each rule's message
+Every enforceable finding of ruff, the type checkers, the rules, coverage, duplicates, coupling, import-linter, the dependency checks, the test times and mutmut ends with the one `python.exceptions` sentence (`To allow it for some paths, add a "python.exceptions" entry for <rule> in nitpicker.config.json.`), except mypy `unused-ignore` (delete the comment), `no-import-outside-roots` (whose way out is `python.sourceRoots`), findings on `.` and the shared file and size limits, whose message names the top-level `exceptions` entry instead. The allowed forms live in `languages/python/rules/hints/` and the route in one place, `exceptionSentence` in `languages/python/rules/rule-hints.mjs`, which assembles them and applies them to both analyzers' findings with `applyRuleHints`; `languages/python/rules/exception-sentences.test.mjs` fails on any other Python file that writes a route of its own, and a test checks that each rule's message
 names its allowed form, and an opt-in test runs a banned and an allowed fixture of every rule
 through the real tools.
 
@@ -302,8 +305,9 @@ through the real tools.
   without the codes that the installed ruff does not know or lists as preview or removed
   (`ruff rule --all --output-format json`), which lets ruff 0.9 up to 0.16 run the same selection;
   a prefix such as `E4` or `T20` stays when a known rule starts with it. Test files are the ones
-  pytest collects (the `python_files` patterns, `testpaths`, `conftest.py`, any `tests` or `test`
-  folder, `test_*.py`, `*_test.py`): ruff's `ARG`, `FBT`, `PLR2004` and `S` findings in them are
+  pytest collects (the `python_files` patterns, `conftest.py`, any `tests` or `test` folder,
+  `test_*.py`, `*_test.py`, and the Django names in a Django project, see
+  [runner parity](#runner-parity)): ruff's `ARG`, `FBT`, `PLR2004` and `S` findings in them are
   dropped after ruff runs (`rules/filters/ruff-allowed-forms.mjs`).
 - **AST rules.** `languages/python/rules/nitpicker_rules.py` runs with `python -I` (standard
   library only, never importing project code) over the files `ruff check --show-files` lists, so
@@ -585,8 +589,10 @@ Details that are decisions rather than the table:
   skipped, because ruff already reports it as an `invalid-syntax` finding; any other formatter
   failure is a tool error.
 - **Tests under coverage.** `coverage run --rcfile <nitpicker> -m pytest -q -o cache_dir=<report
-directory>` or `-m unittest discover` (with `-s tests` or `-s test` when that directory exists,
-  and `-t .` when it is a package), then `coverage json`. The project's pytest configuration keeps
+directory>` or `test-runs/unittest_timings.py <report> discover` (unittest's own `discover`, with
+  `-s tests` or `-s test` when that directory exists and `-t .` when it is a package, through a
+  `TextTestRunner` whose result records each test's time and writes the JUnit report), then
+  `coverage json`. The project's pytest configuration keeps
   working: `--no-cov` and `-n0` are added only when pytest-cov or xdist is installed, so
   `--cov=pkg` or `-n 2` in `addopts` cannot replace the outer coverage run or fork it away, and
   `--lf` or `--sw` find their cache in the report directory. The coverage settings are nitpicker's,
@@ -608,8 +614,9 @@ directory>` or `-m unittest discover` (with `-s tests` or `-s test` when that di
   (`executed_branches`, `missing_branches`) those slices need, which is why it was chosen over lcov.
   Paths are made project-relative.
 - **Tool failures.** Anything that goes wrong on either snapshot becomes a `tool-error` finding with
-  the analyzer as tool (`python`, or `mutation` for `mutation-failed`) and path `.`, never a throw from the CLI: `ruff-failed`, `format-failed`, `tests-failed` (the project's own
-  tests fail, the same rule the TypeScript preset uses), `coverage-failed`, `types-failed` and `rules-failed` (slice 2), `structure-failed`, `environment-failed`,
+  the analyzer as tool (`python`, or `mutation` for `mutation-failed`) and path `.`, never a throw from the CLI: `ruff-failed`, `format-failed`, `tests-failed` (the test run
+  exited 1 without naming a failing test; failing tests themselves are the `tests/tests-failed`
+  error of [Runner parity](#runner-parity), which keeps the other findings), `coverage-failed`, `types-failed` and `rules-failed` (slice 2), `structure-failed`, `environment-failed`,
   `duplicates-failed`, `coupling-failed`, `import-linter-failed` (slice 5), `mutation-failed` (slice 6)
   and `python-failed` for anything unexpected. An environment that cannot be found at all (no
   `.venv` at the configured directory, no `uv sync`, poetry has none) is caught earlier, while the
@@ -764,7 +771,7 @@ directory>` or `-m unittest discover` (with `-s tests` or `-s test` when that di
   matters only when the branch line itself is also changed.
   Editing the line changes both the identity and the changed range, so it is new.
 - **Message.** `Branch coverage is 50.00%; minimum is 95%. Not taken: the branch to line 7. Test it,
-or remove it if it can't happen. To exempt a file, add it to exclude in nitpicker.config.json.` It
+or remove it if it can't happen. To allow it for some paths, add a "python.exceptions" entry for changed-branch-coverage in nitpicker.config.json.` It
   names where the untaken outcomes lead; those line numbers are only in the message, never in the
   identity.
 - **Granularity and limits.** A line with several outcomes (`while`, `for`, `if`/`else` chains,
@@ -869,7 +876,7 @@ the source root detection already does.
   version; both are read. Items of contract types that do not print import chains (acyclic
   siblings) are reported by their text, and a broken contract with nothing readable is one finding
   for the contract; these have path `.`, so their message says only to remove the import. Findings
-  on a file say how to except it: `exclude` in `nitpicker.config.json`. A run that checked no
+  on a file end with the `python.exceptions` sentence for `contract-broken`. A run that checked no
   contract (missing config file, `lint-imports` not installed in the environment, which the
   message answers with `"python": { "importLinter": false }`) is an `import-linter-failed` tool
   error, as `duplicates-failed` and `coupling-failed` are for the other two steps.
@@ -896,8 +903,16 @@ location.
   The version in the cache key is read from the package metadata (`mutmut --version` fails in a
   project where mutmut cannot guess its source directory).
 - **What runs.** `mutmut run` in the snapshot, as the `mutation` analyzer, after the `python`
-  analyzer and only when it had no tool error (a failing test run is already `tests-failed`, and
-  mutmut starts with a clean run of the same tests). When pytest-xdist is installed the run gets
+  analyzer and only when it had no tool error other than failing tests, a skipped dependency check
+  or a test time error (`toleratedDependencyErrors` of the analyzer: `tests`, `dependencies`,
+  `test-runtime`). When mutmut's first run fails on the project's tests ("failed to collect
+  stats", "Failed to run clean test"), nitpicker runs pytest once with a JUnit report, and runs
+  mutmut again with `--ignore=<module>` in `PYTEST_ADDOPTS` for each failing or uncollectable test
+  module, the Python counterpart of PIT's `--excludedTestClasses`; the `tests/tests-failed` error
+  names those modules. When no test module is left, the run is a `mutmut/tests-failed-skipped`
+  tool error instead. A project environment on Python before 3.10, which mutmut 3 does not
+  support, gets one `mutmut/tool-skipped` tool error and nothing else of this analyzer. The
+  pinned `PYTEST_ADDOPTS` of [Runner parity](#runner-parity) apply here too. When pytest-xdist is installed the run gets
   `PYTEST_ADDOPTS=-n0` (merged after any value the environment already has), because mutmut runs
   pytest itself and cannot collect which tests cover which function under `-n`. The snapshot is a
   disposable work tree; mutmut writes its `mutants/` directory into it. On head the directory is
@@ -918,9 +933,15 @@ location.
   ("failed to collect stats"); the error then adds a line to list the file under `also_copy` in
   `[tool.mutmut]`.
 - **Equivalent mutants.** mutmut also mutates strings and logging, so some survivors cannot be
-  killed by any test. The ways out are in the configuration, not in the code: list the path in
-  `exclude` (the mutants of the file are dropped), or, with a `[tool.mutmut]` of your own, list it
-  in `do_not_mutate`, which also saves the run time.
+  killed by any test. The way out is a `python.exceptions` entry for `mutant-survived` (or
+  `mutant-ignored`, below) with the path, or `exclude`.
+- **Code hidden from mutmut.** Like a Stryker disable comment in the TypeScript preset, what hides
+  production code from mutmut is an enforceable `mutmut/mutant-ignored` finding
+  (`languages/python/adapters/mutation/mutation-markers.mjs`): each `# pragma: no mutate`
+  (also its `block`, `start`, `end`, `class` and `function` forms) at its line, each production
+  file a `do_not_mutate` pattern of the project's own `[tool.mutmut]` (or setup.cfg `[mutmut]`)
+  matches, and `mutate_only_covered_lines = true` on the config file. The comment or pattern is not
+  an exception route; the finding's `python.exceptions` sentence for `mutant-ignored` is.
 - **pytest.** mutmut 3 runs the suite with pytest, which also runs `unittest.TestCase` classes. A
   project whose runner is `unittest` therefore needs pytest installed for mutation testing; set
   `"testRunner": "unittest"` if you want coverage.py to keep running `unittest discover`.
@@ -997,6 +1018,117 @@ the statistics again, which is one run of the suite. And changed tests are not h
 stays "survived" after a test that kills it was added, and a killed mutant stays "killed" after a
 test was weakened, so a test change cannot reuse anything. Stryker re-tests the mutants covered by
 a changed test; mutmut has no such step yet, hence source-only.
+
+## Runner parity
+
+What the Python preset does the way the TypeScript and Java presets do (`parity/python-runner`).
+
+- **Failing tests.** pytest runs with `--junitxml` (xunit1, so each case has its file and line) and
+  `--continue-on-collection-errors`; exit status 1 with failing cases is no longer a failure of
+  the analyzer. The static analyzers run as usual, coverage and CRAP come from the tests that ran,
+  and the failing tests are one `tests/tests-failed` tool error per snapshot, listing up to 20 test
+  ids, as Java's `tests/tests-failed` (`test-runs/test-failures.mjs`). unittest failures are read
+  from its `FAIL:`/`ERROR:` lines. A run that exits 1 without naming a test stays
+  `python/tests-failed`.
+- **Slow tests.** `test-runtime/slow-test`, as for Java and Kotlin, for pytest and unittest
+  projects alike: a test the change adds or edits over 5 s, or 30 s for an integration test, from
+  the JUnit times (`test-runs/slow-tests.mjs`); a parametrized test counts its slowest case over
+  that case's own budget. A test is its decorators, its signature and its body, read by logical
+  line (`test-runs/python-blocks.mjs`: brackets, strings and continuations, so a wrapped signature
+  or decorator is one line), in the file and at the line where it is defined, inside the classes
+  that enclose it. It counts as edited when the base file has no identical block in the same
+  classes; a block that is only in a base test file the change removed or renamed counts as moved,
+  so a test copied next to an original that still exists is new. An inherited test (a mixin or base
+  class in another module, as the usual unittest and Django way to share tests) is also counted
+  when the class that collects it is new or its `class` line changed; a test built by a factory
+  (`test_import = make_case(6)`) when a line that names it is new or changed. pytest runs through
+  `test-runs/pytest_timings.py`, which times the call phase plus the setup of function-scoped
+  fixtures (`setup_method` is one), so a session, module or class fixture's setup (`setup_class`
+  too) is not charged to the first test that uses it, and records each case's marks; unittest
+  times each test from `startTest` to `stopTest` (its `setUp` and `tearDown`, not `setUpClass` or
+  `setUpModule`), as JUnit charges `@BeforeEach` and not `@BeforeAll`. A test is an integration
+  test under an `integration`, `integration_tests`, `e2e` or `end_to_end` folder, or with
+  `@pytest.mark.integration` or `@pytest.mark.e2e` on that case, as pytest applies it (decorators,
+  classes, `pytestmark`, conftest hooks, or `pytest.param(..., marks=...)` for that case only); the
+  unittest message names only the folder. `thresholds.unitTestSeconds` and
+  `integrationTestSeconds` change the limits. Base snapshots report none.
+- **Pinned runner options.** Options that let a failing run pass are taken out of the project's
+  pytest `addopts` (read from the first of `pytest.toml`, `.pytest.toml`, `pytest.ini`,
+  `.pytest.ini`, `pyproject.toml`, `tox.ini`, `setup.cfg`, as pytest does) with `-o addopts=...`,
+  and out of `PYTEST_ADDOPTS`: `-x`/`--exitfirst` (also inside `-vx`), `--maxfail`, `--sw`,
+  `--stepwise`, `--collect-only`, `--setup-only`, `--setup-plan`, `-k`, `--deselect`,
+  `--reruns`, `--only-rerun` and the other rerun and retry options, and `-p no:` for the
+  plugins that collect or report results; with pytest-rerunfailures installed `-o reruns=0` is
+  added. A run that collects no test is `python/no-tests-ran`, as before.
+- **Size.** `folder-depth-limit` (a package more than 4 levels below the root package, as for Java:
+  the common package prefix of the production modules, on the base when there is one, after
+  the leading namespace folders without `__init__.py` of each top-level tree, up to its shallowest
+  package and never past the folders all its modules share, counted on the base for a tree the
+  base has, so a new `__init__.py` deep in a namespace tree moves no root; test packages are measured the same way, with
+  `tests`/`test` folders and the source root left out, against the production root),
+  `class-methods-limit` (20, not counting `__init__` or `@overload` stubs), `class-fields-limit`
+  (10: annotated class attributes that are not `ClassVar`, plus `self.x` assignments in the
+  class's own methods, not in a class nested in them; a `Protocol` and an `ABC` with only abstract
+  methods have no fields, as Java skips interfaces; a dataclass, attrs class, `NamedTuple` or
+  `TypedDict` is a record and gets Java's record wording) and `inheritance-depth-limit` (at most 3
+  project base classes above it: an external base such as `Exception` or `models.Model` adds no
+  level, and neither does a `Protocol` or interface link; bases are followed through imports and
+  aliases, each class once; `class Client(Client)` resolves its base through the import, as Python
+  binds the name only after the class body, and classes in an unresolvable cycle are measured from
+  their parents outside it) with Java's thresholds, from the classes report of
+  `structure_metrics.py` and `class_metrics.py` (`size/python-size.mjs`). Generated files
+  (`libraries/generated-files.mjs`) are left out of every size and structure limit, as Java's
+  generated sources are: `*_pb2.py`, `*_pb2_grpc.py` and their `.pyi`; a file whose leading
+  comments or module docstring carry the header a known generator writes (protoc, gRPC Python,
+  datamodel-codegen's `# generated by datamodel-codegen:`, OpenAPI Generator's `Generated by OpenAPI
+  Generator (https://openapi-generator.tech)`, Thrift, or `Code generated by <tool>. DO NOT
+  EDIT.`); and a file under a `generated/`, `_generated/` or `__generated__/` folder or named
+  `*_generated.py` with a generic marker such as `DO NOT EDIT` or `@generated` in its first five
+  lines, as TypeScript gates the same markers on the file name. A docstring that only mentions
+  generated code, or `# DO NOT EDIT` in a normally named module, exempts nothing, and neither does
+  `# Generated by Django` (migrations are edited by hand; `migrations/` is skipped as before).
+  sqlacodegen writes no header, so its output goes in `exclude`. Test files are the files pytest collects
+  (`test_*.py`, `*_test.py` and the project's `python_files`), `conftest.py` and everything under
+  `tests/` or `test/`. In a Django project (a `django`, `pytest-django` or `djangorestframework`
+  dependency, a `manage.py` at the root, or `DJANGO_SETTINGS_MODULE` in the pytest configuration)
+  `tests.py`, `tests_*.py` and `*_tests.py` are tests too, in the size limits, the coverage
+  `omit`, mutmut's `do_not_mutate` and the duplicate scan; elsewhere a `lab_tests.py` is
+  production code, as pytest does not collect it. A `python_files` pattern that matches every
+  file (`*.py`) is left out: the files under the `testpaths` folders are the tests then, so the
+  production modules keep their checks.
+- **Import structure.** From the import scan (`imports/python-import-rules.mjs`):
+  `coupling/package-cycle` with Java's message, on each package of a cycle (a package `__init__`
+  importing its own submodules is a re-export, not a dependency); `coupling/no-production-cycles`
+  for module cycles inside one package; `coupling/no-import-outside-roots` when production code
+  imports a project module outside `python.sourceRoots` (scripts, a top-level `tests/` package).
+  Type-only imports do not count.
+- **Dependencies.** `dependencies/unused-dependency`, `unlisted-dependency` and
+  `no-dev-dependency-in-production`, with the TypeScript (knip) messages. The declared
+  dependencies come from `languages/python/libraries/python-dependencies.mjs`, a standalone reader
+  of `pyproject.toml` (PEP 621 dependencies and extras, `[dependency-groups]`, uv, pdm, hatch
+  environments, Poetry dependencies and groups), `Pipfile`, `requirements*.txt` and
+  `requirements/*.txt|in`, and `setup.cfg`, that returns `{ runtime, development }` names and each
+  declaration with its group. The installed distributions come from
+  `importlib.metadata.packages_distributions()` in the project environment
+  (`dependencies/distribution-scan.py`). Test imports are checked only when the project declares
+  dev dependencies; a package is unused only when no import, entry point, optional backend of a
+  declared package, string reference (`"psycopg2"`, `"postgresql://"`), known loaded-by-name
+  package (database drivers, `tzdata`, `setuptools`) or package the detected framework loads for
+  the project, as knip's plugins do for TypeScript, uses it (Django: `pillow` with an `ImageField`,
+  `redis` with `RedisCache`, `pymemcache`, `pylibmc`, `argon2-cffi` and `bcrypt` for the cache
+  backends and password hashers named in settings; FastAPI: `python-multipart` with `Form`, `File`
+  or `UploadFile`; Flask: `python-dotenv`; pydantic: `email-validator` with `EmailStr`); dynamic or `setup.py`-only
+  dependencies switch the checks off. On Python before 3.10 the checks are one
+  `dependencies/tool-skipped` tool error and the other analyzers still run.
+- **Frameworks.** Django, FastAPI and Flask are detected from the dependencies or the production
+  imports (`dependencies/python-frameworks.mjs`). Django settings modules (named `settings`, or
+  named by `DJANGO_SETTINGS_MODULE` in `manage.py`, `wsgi.py` or `asgi.py`) may read the
+  environment and use `from x import *`; `manage.py`, `wsgi.py` and `asgi.py` may read the
+  environment and have no test. FastAPI routers (modules that import `fastapi`) and the modules
+  they import directly may use pydantic. Flask needs no allowance yet.
+- **Feature folders.** Not applied to Python: the TypeScript feature layout lives under
+  `<root>/main/`, and Python has no such convention, so the rule would flag ordinary Django apps and
+  FastAPI packages.
 
 ## Slices
 
