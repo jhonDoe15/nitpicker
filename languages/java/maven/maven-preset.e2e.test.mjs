@@ -96,10 +96,12 @@ function withoutGradle(root) {
   return root;
 }
 
-function onEitherBuildFile(findings) {
-  return findings.map((finding) =>
-    BUILD_FILES.has(finding.path) ? { ...finding, path: 'build file', message: '' } : finding,
-  );
+function acrossBuilds(findings) {
+  return findings
+    .filter(({ tool, rule }) => `${tool}/${rule}` !== 'test-runtime/slow-test')
+    .map((finding) =>
+      BUILD_FILES.has(finding.path) ? { ...finding, path: 'build file', message: '' } : finding,
+    );
 }
 
 afterAll(() => {
@@ -144,7 +146,7 @@ describe.skipIf(!enabled)('Java preset on Maven builds', () => {
   );
 
   it(
-    'finds exactly the guard findings the Gradle build of the same sources finds',
+    'finds exactly the guard findings the Gradle build of the same sources finds, test times aside (they vary by run)',
     () => {
       const guards = path.join(gradleFixtures, 'guards-project');
       const gradleProject = copyOf(guards);
@@ -152,9 +154,7 @@ describe.skipIf(!enabled)('Java preset on Maven builds', () => {
       const fromGradle = collectJavaFindings(gradleProject, { gradle, policy: {} });
       const fromMaven = collectJavaFindings(mavenProject, { maven, policy: {} });
 
-      expect(comparable(onEitherBuildFile(fromMaven))).toEqual(
-        comparable(onEitherBuildFile(fromGradle)),
-      );
+      expect(comparable(acrossBuilds(fromMaven))).toEqual(comparable(acrossBuilds(fromGradle)));
       expect(
         fromMaven
           .filter((finding) => finding.tool === 'dependencies')
