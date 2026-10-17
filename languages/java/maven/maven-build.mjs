@@ -301,7 +301,10 @@ export function runMavenPreset(projectRoot, { maven, policy = {}, configs }) {
         javaStyle: policy.javaStyle,
       });
     }
-    return modules.map((module) => module.basedir);
+    return {
+      moduleDirs: modules.map((module) => module.basedir),
+      formatAdvice: kotlin.options?.advice,
+    };
   } finally {
     rmSync(work, { recursive: true, force: true });
   }

@@ -15,11 +15,12 @@ it with `npx skills add jhonDoe15/nitpicker --skill nitpicker-java`.
 1. Run the project's tests (`./gradlew test`, or `./mvnw test` on Maven). Failing tests stop
    coverage, CRAP and mutation from running.
 2. When the change is complete, run `npx nitpicker` as a background command you wait on, without a
-   pipe: you need its exit code. It has no `--fix` for Kotlin; format with the project's ktlint or
-   ktfmt. It runs the project's build (Gradle, or Maven with `kotlin-maven-plugin`) on the merge
-   base and on head, with the project's `./gradlew` or `./mvnw` when there is one, otherwise
-   `gradle` or `mvn` from the PATH (`NITPICKER_GRADLE` or `NITPICKER_MAVEN` overrides both). It
-   takes minutes and prints a progress line for each slow analyzer.
+   pipe: you need its exit code. It has no `--fix` for Kotlin; format with the command and notes
+   printed at the start of the run. It runs the project's build (Gradle, or Maven with
+   `kotlin-maven-plugin`) on the merge base and on head, with the project's `./gradlew` or `./mvnw`
+   when there is one, otherwise `gradle` or `mvn` from the PATH (`NITPICKER_GRADLE` or
+   `NITPICKER_MAVEN` overrides both). It takes minutes and prints a progress line for each slow
+   analyzer.
 3. Act on the exit code:
    - 0: done.
    - 1: fix every new finding and any tool error listed below them, then rerun.
@@ -51,8 +52,8 @@ it with `npx skills add jhonDoe15/nitpicker --skill nitpicker-java`.
   instead of catching `Exception`, whatever the variable is called.
 - detekt's defaults stay on. In main sources: lines of at most 120 characters, named constants
   instead of numbers other than -1, 0, 1 and 2 (`MagicNumber`), at most 2 `return` and 2 `throw`
-  per function, conditions of at most 3 `&&`/`||` parts, no wildcard imports, and no `TODO:` or
-  `FIXME:` comments. Catch and throw specific exceptions, never `Exception`, `RuntimeException` or
+  per function, conditions of at most 3 `&&`/`||` parts, no wildcard imports unless most of the project's files
+  already use them, and no `TODO:` or `FIXME:` comments. Catch and throw specific exceptions, never `Exception`, `RuntimeException` or
   `Throwable` (also in tests: `TooGenericExceptionCaught`), and pass the caught exception on as the cause (`SwallowedException`). Use
   `require(...)` and `check(...)` instead of throwing `IllegalArgumentException` and
   `IllegalStateException`; a top-level `val` holding a literal is `const val`. Remove unused private

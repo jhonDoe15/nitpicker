@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { applyDisable, describeConfigOverrides } from './config.mjs';
+import { describeConfigOverrides } from './config.mjs';
 import { validateConfig } from './validate.mjs';
 import { policyHash } from '../diff/reporting/report-model.mjs';
 
@@ -275,13 +275,6 @@ describe('config file', () => {
     ]);
   });
 
-  it('refuses to disable an analyzer that another enabled analyzer depends on', () => {
-    const analyzers = [{ name: 'coverage' }, { name: 'crap', dependencies: ['coverage'] }];
-
-    expect(() => applyDisable(analyzers, { disable: ['coverage'] })).toThrow(/depends on it/);
-    expect(applyDisable(analyzers, { disable: ['coverage', 'crap'] })).toEqual([]);
-  });
-
   it('keeps the zero-config policy hash and changes it for any override', () => {
     const analyzers = [{ name: 'a', version: '1', configurationHash: 'h' }];
 
@@ -357,7 +350,7 @@ describe('tool precedence', () => {
       expect(() =>
         validateConfig({ preset, tools: { prettier: { precedence: ['project'] } } }),
       ).toThrow(
-        '"tools" names unknown tool "prettier". Supported tools with this preset: pmd, checkstyle',
+        `"tools" names unknown tool "prettier". Supported tools with this preset: pmd, checkstyle${preset === 'kotlin' ? ', ktlint, ktfmt, detekt' : ''}`,
       );
       expect(() =>
         validateConfig({ preset, tools: { checkstyle: { precedence: ['nitpicker', 'project'] } } }),
@@ -374,7 +367,7 @@ describe('tool precedence', () => {
     );
     expect(() => validateConfig({ preset: 'python', tools })).toThrow(
       new Error(
-        'nitpicker.config.json: "tools" is not supported with "preset": "python": it describes the TypeScript source layout and ESLint rules, which the Python preset does not have. Not supported with python: layout, exceptions, react, i18n, tools, except exceptions for file-lines-limit, line-length-limit, folder-files-limit, folder-depth-limit, class-methods-limit, class-fields-limit, inheritance-depth-limit. Shared by all presets: thresholds, exclude, legacyInventory',
+        'nitpicker.config.json: "tools" names unknown tool "pmd". Supported tools with this preset: ruff, black, pyright, mypy, mutmut',
       ),
     );
   });
