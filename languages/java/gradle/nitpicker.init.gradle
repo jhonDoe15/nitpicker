@@ -407,14 +407,6 @@ allprojects {
                     coverage.excludeClassLoaders = []
                 }
             }
-            def testFramework = tasks.named('test').get().options
-            tasks.named('nitpickerArchunit') {
-                if (testFramework instanceof org.gradle.api.tasks.testing.testng.TestNGOptions) {
-                    useTestNG()
-                } else if (testFramework instanceof org.gradle.api.tasks.testing.junit.JUnitOptions) {
-                    useJUnit()
-                }
-            }
             tasks.named('jacocoTestReport') {
                 enabled = true
                 classDirectories.setFrom(sourceSets.main.output.classesDirs)

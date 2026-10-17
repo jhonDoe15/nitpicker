@@ -1,4 +1,5 @@
 import {
+  copyFileSync,
   existsSync,
   mkdirSync,
   readdirSync,
@@ -11,7 +12,6 @@ import path from 'node:path';
 import { globToRegExp } from '../../../shared/glob.mjs';
 import { childrenNamed, parseXml } from '../ingest/common.mjs';
 import { runJava } from './maven-command.mjs';
-import { splitReport } from './results/report-split.mjs';
 
 const DEFAULT_ARCHUNIT_INCLUDES = '**/*ArchTest.class,**/*ArchitectureTest.class';
 const MAX_LISTED_FAILURES = 10;
@@ -47,18 +47,18 @@ export function freshReports(directory, since) {
     : [];
 }
 
-export function suiteNameOf(report) {
-  return path.basename(report).replace(/^TEST-|\.xml$/gu, '');
-}
-
 export function testReportDirectories(module) {
   const surefire = ['surefire', module.surefireReports];
   const shared = path.resolve(module.failsafeReports) === path.resolve(module.surefireReports);
   return shared ? [surefire] : [surefire, ['failsafe', module.failsafeReports]];
 }
 
-function failedCases(text) {
-  const root = parseXml(text);
+export function suiteNameOf(report) {
+  return path.basename(report).replace(/^TEST-|\.xml$/gu, '');
+}
+
+function failedCases(file) {
+  const root = parseXml(readFileSync(file, 'utf8'));
   const suites = root.name === 'testsuites' ? childrenNamed(root, 'testsuite') : [root];
   return suites.flatMap((suite) =>
     childrenNamed(suite, 'testcase')
@@ -83,20 +83,15 @@ export function collectTestResults({ module, reportDir, since, isArchunit }) {
   );
   const archunitDir = path.join(reportDir, 'archunit');
   const failures = [];
-  const parts = reports.map((report) => ({
-    report,
-    ...splitReport(readFileSync(report, 'utf8'), isArchunit, suiteNameOf(report)),
-  }));
-  for (const { report, archunit, other } of parts) {
-    if (archunit !== undefined) {
+  for (const report of reports) {
+    if (isArchunit(suiteNameOf(report))) {
       mkdirSync(archunitDir, { recursive: true });
-      writeFileSync(path.join(archunitDir, path.basename(report)), archunit);
-    }
-    if (other !== undefined) {
-      failures.push(...failedCases(other));
+      copyFileSync(report, path.join(archunitDir, path.basename(report)));
+    } else {
+      failures.push(...failedCases(report));
     }
   }
-  requireArchunitRun(module, parts, isArchunit);
+  requireArchunitRun(module, reports, isArchunit);
   if (failures.length > 0) {
     const listed = failures.slice(0, MAX_LISTED_FAILURES).map((failure) => `  ${failure}`);
     const more =
@@ -114,9 +109,9 @@ export function collectTestResults({ module, reportDir, since, isArchunit }) {
   return reports.length > 0;
 }
 
-function requireArchunitRun(module, parts, isArchunit) {
+function requireArchunitRun(module, reports, isArchunit) {
   const archunitClasses = topLevelClasses(module.testOutputDirectory).filter(isArchunit);
-  if (archunitClasses.length > 0 && !parts.some(({ archunit }) => archunit !== undefined)) {
+  if (archunitClasses.length > 0 && !reports.some((report) => isArchunit(suiteNameOf(report)))) {
     throw new Error(
       `Neither maven-surefire-plugin nor maven-failsafe-plugin ran any of the ArchUnit classes in ${module.basedir} ` +
         `(${archunitClasses.join(', ')}). Let surefire run them (its <includes>, no skipTests) ` +
