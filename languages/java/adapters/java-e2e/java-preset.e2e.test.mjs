@@ -327,7 +327,10 @@ describe.skipIf(!enabled)('Java preset end to end', () => {
       const survivor = diffOf('survivor');
 
       expect(survivor.failed).toBe(true);
-      expect(summarize(survivor.newEnforceable)).toEqual(['coupling test-only-export Calc.java', 'pit mutant-survived Calc.java']);
+      expect(summarize(survivor.newEnforceable)).toEqual([
+        'coupling test-only-export Calc.java',
+        'pit mutant-survived Calc.java',
+      ]);
       const mutant = survivor.newEnforceable.find((finding) => finding.tool === 'pit');
       expect(mutant.message).toEqual(
         'Survived ConditionalsBoundaryMutator: changed conditional boundary: no test fails when this code changes. Add an assertion that would. If no input can tell the two apart (a compareTo boundary, a discarded lambda return), simplify the code so this mutant disappears. ' +

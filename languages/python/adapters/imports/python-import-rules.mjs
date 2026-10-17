@@ -1,10 +1,10 @@
+import { listed } from '../../../../shared/rules/finding-helpers.mjs';
 import { importEdges } from '../analysis/python-coupling.mjs';
 
 const COUPLING_TOOL = 'coupling';
 const PACKAGE_CYCLE_RULE = 'package-cycle';
 const MODULE_CYCLE_RULE = 'no-production-cycles';
 const OUTSIDE_ROOTS_RULE = 'no-import-outside-roots';
-const LISTED_MEMBERS = 5;
 
 function packageOf(entry) {
   if (entry.isPackage) {
@@ -58,13 +58,6 @@ export function stronglyConnected(nodes, edges) {
     components.push(component);
   }
   return components.filter((component) => component.length > 1);
-}
-
-function listed(members) {
-  const shown = members.slice(0, LISTED_MEMBERS).join(', ');
-  return members.length > LISTED_MEMBERS
-    ? `${shown} and ${String(members.length - LISTED_MEMBERS)} more`
-    : shown;
 }
 
 function runtimeEdges({ modules, imports }) {
