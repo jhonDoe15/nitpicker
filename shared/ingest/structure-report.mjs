@@ -14,11 +14,16 @@ export function readStructureFindings(reportRoot, projectRoot, options) {
   return structureFindings(JSON.parse(readFileSync(report, 'utf8')), projectRoot, options);
 }
 
-export function structureFindings(entries, projectRoot, { textOf = methodText, hints } = {}) {
+export function structureFindings(
+  entries,
+  projectRoot,
+  { textOf = methodText, hints, numberedAmongSameSource } = {},
+) {
   const sources = new Map();
   const functions = entries.map((entry) => ({
     ...entry,
-    numberedAmongSameSource: repeatsInSource(entry.name),
+    numberedAmongSameSource:
+      numberedAmongSameSource ?? entry.numberedAmongSameSource ?? repeatsInSource(entry.name),
     sourceHash: hash(textOf(sources, projectRoot, entry)),
   }));
   return evaluateStructure({ functions }, STRUCTURE_TOOL, { hints }).filter(

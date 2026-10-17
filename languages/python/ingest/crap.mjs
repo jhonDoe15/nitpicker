@@ -17,7 +17,7 @@ function scoredFunctions(entries) {
       end: entry.end,
       lambda: entry.lambda === true,
       statementLine: entry.statementLine,
-      numberedAmongSameSource: repeatsInSource(entry.name),
+      numberedAmongSameSource: true,
     }));
 }
 
