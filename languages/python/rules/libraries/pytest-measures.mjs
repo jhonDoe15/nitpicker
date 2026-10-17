@@ -38,8 +38,8 @@ export function parenthesesChoice(counts) {
 
 function nextState(state, character, previous) {
   const { depth, quote } = state;
-  if (quote !== undefined) {
-    return { ...state, quote: character === quote && previous !== '\\' ? undefined : quote };
+  if (quote !== '') {
+    return { ...state, quote: character === quote && previous !== '\\' ? '' : quote };
   }
   if (QUOTES.has(character)) {
     return { ...state, quote: character };
@@ -56,13 +56,13 @@ function nextState(state, character, previous) {
 function topLevelArguments(text, start) {
   const tail = text.slice(start).split('');
   const starts = [start];
-  let state = { depth: 0, quote: undefined, done: false };
+  let state = { depth: 0, quote: '', done: false };
   for (const [offset, character] of tail.entries()) {
     state = nextState(state, character, tail[offset - 1]);
     if (state.done) {
       break;
     }
-    if (character === ',' && state.depth === 0 && state.quote === undefined) {
+    if (character === ',' && state.depth === 0 && state.quote === '') {
       starts.push(start + offset + 1);
     }
   }
