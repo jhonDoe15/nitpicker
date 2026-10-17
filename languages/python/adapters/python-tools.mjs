@@ -6,6 +6,7 @@ import { runDuplicates } from './analysis/python-duplicates.mjs';
 import { globToRegExpSource } from '../../../shared/glob.mjs';
 import { detectEnvironment, openEnvironment } from './execution/python-environment.mjs';
 import { checkRules } from './analysis/python-ast-rules.mjs';
+import { pytestStyle, pytestStyleFlags } from '../rules/libraries/pytest-style.mjs';
 import { importLinterEnabled, runImportLinter } from './analysis/python-import-linter.mjs';
 import { MUTMUT_VERSION_PROBE } from './mutation/python-mutation.mjs';
 import { execute, failure, probeVersion, run } from './execution/python-process.mjs';
@@ -16,7 +17,7 @@ import {
   detectTypeCheckers,
   importRoots,
 } from './execution/python-project.mjs';
-import { RUFF_CONFIG } from './configuration/python-ruff-config.mjs';
+import { ruffConfigFor } from './configuration/python-ruff-config.mjs';
 import { detectTestRunner, pytestLabel, testRunnerLabel } from './execution/python-test-runner.mjs';
 import { COVERAGE_DATA, test } from './execution/python-test-step.mjs';
 import { resolveTypeChecker, typeCheck } from './python-types.mjs';
@@ -61,6 +62,7 @@ export function createToolContext({
       targetVersion: detectTargetVersion(projectRoot),
       importLinter: settings.importLinter,
       sourceRoots,
+      entryPoints: settings.entryPoints ?? [],
     },
     env: {
       PYTHONPATH: pythonPath,
@@ -120,9 +122,10 @@ export function lint(context) {
       'ruff',
       'check',
       '--config',
-      RUFF_CONFIG,
+      ruffConfigFor(context),
       '--target-version',
       context.project.targetVersion,
+      ...pytestStyleFlags(pytestStyle(context.projectRoot)),
       '--ignore-noqa',
       '--no-cache',
       ...ruffExclusions(context),
