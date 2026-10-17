@@ -155,7 +155,8 @@ toolchain), and javac options, `--release` handling and the class readers accept
   forbiddenapis, google-java-format, JaCoCo, PIT (with the failing class left out), PMD, and
   Checkstyle on 17 (on 25 its parse skip). The release-25 sources use a module import, statements
   before `super()`, an unnamed catch parameter and record patterns. A level without an installed
-  JDK is skipped.
+  JDK is skipped. With `NITPICKER_GRADLE_ON_JDK25` set to a Gradle that runs on JDK 25 (9.1 or
+  newer), the JDK 25 Gradle project also runs with Gradle itself on JDK 25.
 
 ## Maven builds
 
