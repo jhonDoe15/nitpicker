@@ -147,7 +147,7 @@ const presetConfig = defineConfig(
       'nitpicker/no-internal-module-mocks': 'error',
       'nitpicker/no-wait-for-with-fake-timers': 'error',
       'nitpicker/no-partial-output-assertion': 'error',
-      'nitpicker/test-must-use-production-runtime': 'error',
+      'nitpicker/test-must-use-production-runtime': ['error', { runner: testRunner }],
     },
   },
   {
