@@ -14,7 +14,7 @@ export function styleToolsOf(preset) {
   return STYLE_TOOLS.get(preset) ?? [];
 }
 
-export function styleToolNames() {
+function styleToolNames() {
   return [...STYLE_TOOLS.values()].flat();
 }
 
