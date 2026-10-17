@@ -537,9 +537,12 @@ allprojects {
                     }.sort()
                 }
                 def kotlinSourceDirs = { kotlinSourceDirsOf('main') }
-                def kotlinFiles = {
-                    kotlinSourceDirs().collectMany { dir -> fileTree(dir) { include '**/*.kt' }.files.sort() }.unique()
+                def kotlinLintedDirs = { (kotlinSourceDirs() + kotlinSourceDirsOf('test')).unique() }
+                def filesOf = { Collection<File> dirs ->
+                    dirs.collectMany { dir -> fileTree(dir) { include '**/*.kt' }.files.sort() }.unique()
                 }
+                def kotlinFiles = { filesOf(kotlinSourceDirs()) }
+                def kotlinLintedFiles = { filesOf(kotlinLintedDirs()) }
                 def detektJdkHome = {
                     def toolchain = project.extensions.findByType(JavaPluginExtension)?.toolchain
                     toolchain != null && toolchain.languageVersion.isPresent()
@@ -597,7 +600,7 @@ allprojects {
                 // --includes '**/*.kt' keeps .kts scripts (precompiled Gradle plugins) out: detekt's type resolution
                 // crashes on them. Exit code 2 means findings; anything else is a failure.
                 // Type resolution: the rules of nitpicker-detekt.yml and several default ones need it. The
-                // classpath is the module's compile classpath plus the compiled Java classes, with the
+                // classpath is the module's main and test compile classpaths plus the compiled Java classes, with the
                 // project's kotlin-stdlib replaced by the one detekt itself embeds (pinned.detektKotlin):
                 // detekt 1.23 cannot read the metadata of a newer Kotlin standard library, and then every
                 // call to it stays unresolved. Libraries built with a newer Kotlin than detekt's stay
@@ -613,20 +616,23 @@ allprojects {
                     def log = new ByteArrayOutputStream()
                     def nitpickerConfig = new File(initScriptDir, '../detekt/nitpicker-detekt.yml').canonicalFile
                     def validationOff = new File(initScriptDir, '../detekt/detekt-validation.yml').canonicalFile
-                    dependsOn 'compileJava'
-                    onlyIf { !kotlinSourceDirs().isEmpty() }
+                    dependsOn 'compileJava', 'compileTestJava'
+                    onlyIf { !kotlinLintedDirs().isEmpty() }
                     doFirst {
                         reportDir.get().asFile.mkdirs()
                         standardOutput = log
                         errorOutput = log
                         def projectConfig = nitpickerArgument('nitpicker.kotlin.detektConfig')
                         def mergedLists = nitpickerArgument('nitpicker.kotlin.detektLists')
-                        def libraries = sourceSets.main.compileClasspath.files.findAll {
-                            it.exists() && !it.name.startsWith('kotlin-stdlib')
+                        def mainOutput = sourceSets.main.output.files
+                        def libraries = (sourceSets.main.compileClasspath.files + sourceSets.test.compileClasspath.files).findAll {
+                            it.exists() && !it.name.startsWith('kotlin-stdlib') && !mainOutput.contains(it)
                         }
-                        def typeResolutionClasspath = (configurations.nitpickerDetektStdlib.files + analyzedClassDirs().findAll { it.exists() } + libraries)
+                        def testJavaClasses = tasks.named('compileTestJava').get().destinationDirectory.get().asFile
+                        def typeResolutionClasspath = (configurations.nitpickerDetektStdlib.files + analyzedClassDirs().findAll { it.exists() }
+                                + [testJavaClasses].findAll { it.exists() } + libraries).unique()
                             .collect { it.absolutePath }.join(File.pathSeparator)
-                        args(['--input', kotlinSourceDirs().join(','),
+                        args(['--input', kotlinLintedDirs().join(','),
                               '--includes', '**/*.kt',
                               '--report', "sarif:${report.get().asFile.absolutePath}".toString(),
                               '--base-path', analysisRoot.absolutePath,
@@ -651,14 +657,14 @@ allprojects {
                     def log = new ByteArrayOutputStream()
                     def report = reportDir.map { it.file('ktlint.sarif') }
                     workingDir = analysisRoot
-                    onlyIf { kotlinFormatter() == 'ktlint' && !kotlinFiles().isEmpty() }
+                    onlyIf { kotlinFormatter() == 'ktlint' && !kotlinLintedFiles().isEmpty() }
                     doFirst {
                         reportDir.get().asFile.mkdirs()
                         standardOutput = log
                         errorOutput = log
                         report.get().asFile.delete()
                         args(['--relative', "--reporter=sarif,output=${report.get().asFile.absolutePath}".toString()] +
-                            kotlinSourceDirs().collect { "${relative(it)}/**/*.kt".toString() })
+                            kotlinLintedDirs().collect { "${relative(it)}/**/*.kt".toString() })
                     }
                     doLast {
                         if (executionResult.get().exitValue > 1 || !report.get().asFile.exists()) {
@@ -675,7 +681,7 @@ allprojects {
                     def changed = new ByteArrayOutputStream()
                     def errors = new ByteArrayOutputStream()
                     workingDir = analysisRoot
-                    onlyIf { kotlinFormatter() == 'ktfmt' && !kotlinFiles().isEmpty() }
+                    onlyIf { kotlinFormatter() == 'ktfmt' && !kotlinLintedFiles().isEmpty() }
                     doFirst {
                         standardOutput = changed
                         errorOutput = errors
@@ -683,7 +689,7 @@ allprojects {
                         def argumentFile = new File(temporaryDir, 'ktfmt.args')
                         argumentFile.text = ([style, '--dry-run'] +
                             (nitpickerArgument('nitpicker.kotlin.editorconfig') == 'true' ? ['--enable-editorconfig'] : []) +
-                            kotlinFiles().collect { relative(it) }).collect { it + '\n' }.join('')
+                            kotlinLintedFiles().collect { relative(it) }).collect { it + '\n' }.join('')
                         args("@${argumentFile.absolutePath}".toString())
                     }
                     doLast {
