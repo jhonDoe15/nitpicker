@@ -12,8 +12,12 @@ import { configureAnalyzers } from './configuration/configure-analyzers.mjs';
 import { presetAnalyzers } from './configuration/preset-analyzers.mjs';
 import { withRunLock } from './command/run-lock.mjs';
 import { runSnapshotCli } from './command/snapshot.mjs';
-import { createBaseSetupResolver } from './configuration/base-setup.mjs';
+import { baseSetupResolver } from './command/policy-review/base-setup.mjs';
+import { noticeDescriber } from './command/policy-review/notices.mjs';
+import { policyAcceptance } from './command/policy-review/policy-acceptance.mjs';
+import { comparisonPolicy, snapshotPolicy } from './conventions/resolve.mjs';
 import { runGit } from './diff/git/repository/command.mjs';
+import { resolveComparison } from './diff/git/repository/git.mjs';
 import { resolveBase } from './diff/git/repository/base-ref.mjs';
 import path from 'node:path';
 import { clearDiffReports, absoluteTextReportPath } from './diff/reporting/reporters.mjs';
@@ -46,6 +50,10 @@ export function runCli(options = {}) {
   }
 }
 
+function isTerminal(stream) {
+  return stream.isTTY === true;
+}
+
 function withCliDefaults(options) {
   const stderr = options.stderr ?? process.stderr;
   const progress = options.progress ?? stderr;
@@ -53,6 +61,8 @@ function withCliDefaults(options) {
     ...options,
     arguments_: options.arguments_ ?? process.argv.slice(2),
     environment: options.environment ?? process.env,
+    interactive:
+      options.interactive ?? [process.stdin, options.stdout ?? process.stdout].every(isTerminal),
     snapshotAnalyzers: options.snapshotAnalyzers ?? options.analyzers,
     stdout: options.stdout ?? process.stdout,
     stderr,
@@ -100,7 +110,7 @@ function runConfigured(cli) {
         options,
         currentProjectRoot,
         analyzers,
-        headPolicy,
+        headPolicy: snapshotPolicy({ config, currentProjectRoot, headPolicy, stdout }),
         stdout,
         runTasks,
       });
@@ -109,11 +119,7 @@ function runConfigured(cli) {
       ...cli,
       currentProjectRoot,
       analyzers,
-      resolveBaseSetup: createBaseSetupResolver({
-        headConfig: config,
-        injectedAnalyzers: cli.analyzers,
-        warn: (message) => cli.stderr.write(`nitpicker: ${message}\n`),
-      }),
+      injectedAnalyzers: cli.analyzers,
       config,
       headPolicy,
     });
@@ -121,7 +127,7 @@ function runConfigured(cli) {
 }
 
 function runComparisonCli(cli) {
-  const { options, currentProjectRoot, config, headPolicy } = cli;
+  const { options, currentProjectRoot, config } = cli;
   const repositoryRoot = realpathSync(
     runGit(currentProjectRoot, ['rev-parse', '--show-toplevel']).trim(),
   );
@@ -135,8 +141,10 @@ function runComparisonCli(cli) {
     options.outputRoot === undefined
       ? path.join(currentProjectRoot, 'reports/quality/diff')
       : path.resolve(currentProjectRoot, options.outputRoot);
-  const fixResult = fixIfRequested(cli, repositoryRoot, base);
   clearDiffReports(outputRoot);
+  const analyzers = selectComparisonAnalyzers(cli);
+  const headPolicy = comparisonPolicy({ ...cli, repositoryRoot, base }, resolveComparison);
+  const fixResult = fixIfRequested({ ...cli, headPolicy }, repositoryRoot, base);
   const cacheStore = resolveRunCacheStore(cli);
   const report = runQualityDiff({
     repositoryRoot,
@@ -144,17 +152,31 @@ function runComparisonCli(cli) {
     headProjectRoot: currentProjectRoot,
     requestedBaseRef: base.baseRef,
     outputRoot,
-    analyzers: selectComparisonAnalyzers(cli),
+    analyzers,
     cacheStore,
     includeWorkingTree: true,
     additionalToolErrors: fixResult.toolErrors,
     configOverrides: describeConfigOverrides(config),
     headPolicy,
-    resolveBaseSetup: cli.resolveBaseSetup,
+    resolveBaseSetup: baseSetupResolver(cli, config, headPolicy),
+    describeNotices: noticeDescriber(config, headPolicy),
+    ...acceptanceOf(cli),
     progress: cli.progress,
     runTasks: cli.runTasks,
   });
   return writeComparisonOutcome({ cli, report, base, outputRoot });
+}
+
+function acceptanceOf(cli) {
+  const { ignoredAcceptance, ...acceptance } = policyAcceptance(
+    cli.options,
+    cli.environment,
+    cli.interactive,
+  );
+  if (ignoredAcceptance !== undefined) {
+    cli.stderr.write(`nitpicker: ${ignoredAcceptance}\n`);
+  }
+  return acceptance;
 }
 
 function fixIfRequested(cli, repositoryRoot, base) {

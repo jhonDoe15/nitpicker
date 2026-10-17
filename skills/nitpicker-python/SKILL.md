@@ -10,8 +10,9 @@ backstop. It fails only on findings your change adds, so leave code the task doe
 
 ## Finish with the gate
 
-1. Run the project's tests with its own runner (pytest or unittest). Failing tests stop coverage,
-   CRAP and mutation from running.
+1. Run the project's tests with its own runner (pytest or unittest). Failing tests are a tool error
+   that names them; coverage and CRAP then come only from the tests that pass, and mutation testing
+   leaves the failing modules out.
 2. When the change is complete, run `npx nitpicker` as a background command you wait on, without a
    pipe: you need its exit code. It has no `--fix` for Python; format with the project's ruff or
    black. It takes minutes and prints a progress line for each slow analyzer.
@@ -21,22 +22,23 @@ backstop. It fails only on findings your change adds, so leave code the task doe
    - 2: no new findings, but a tool failed. Fix the cause it names (usually a failing test or a
      tool missing from the environment) and rerun. Exit 2 is never a pass. If it says another run
      is in progress, wait for that run; never kill it.
-4. Never suppress: no `# noqa`, `# type: ignore`, config `exclude`/`disable`, legacy entries, or
-   weakened tests. If a finding seems wrong, stop and ask.
+4. Never suppress: no `# noqa`, `# type: ignore`, `# pragma: no mutate`, `do_not_mutate`, config
+   `exclude`/`disable`, legacy entries, or weakened tests (`-x`, `-k`, `--deselect` and reruns in
+   `addopts` are ignored anyway). If a finding seems wrong, stop and ask. Never pass
+   `--accept-policy-change` or set `NITPICKER_ACCEPT_POLICY_CHANGE`: a
+   `nitpicker-config/policy-loosened` finding is for a person to accept.
 
 ## Write it this way
 
-- Types: annotate every function, method and parameter; strict mypy or pyright (the project's own
+- Types: annotate every function, method and parameter; strict mypy, pyright or basedpyright (the project's own
   choice) checks the source roots. Fix the type. `# type: ignore`, `# noqa` and `# pyright: ignore`
   are findings themselves, so never write them, nor `# fmt: off`, `@no_type_check`, `if not TYPE_CHECKING:`
   around code, or a `.pyi` beside its `.py`.
 - Paths: `pathlib.Path` with `/`, `.read_text()`, `.exists()`. No `os.path`, no `open(path)`.
 - Strings: f-strings only. No `.format()` and no `%`.
 - Defaults: `None`, then build the value inside the function. No mutable default arguments.
-- Errors: catch the specific exception and handle it, log it with `logger.exception(...)`, or
-  re-raise. A new exception raised inside `except` keeps the cause: `raise ParseError(text) from err`
-  (or `from None`). No bare `except:`, `except Exception:` or `except X: pass`;
-  one expected error that is deliberately ignored is `with contextlib.suppress(SpecificError):`.
+- Errors: catch the specific exception and handle it, or re-raise it with its cause:
+  `raise ParseError(text) from err`. No bare `except:` or `except Exception:`, and no `raise Exception(...)`.
 - A `try` inside a loop is flagged (PERF203): move it out, or extract the loop body into a function.
 - Flow: no `else` after a `return`, and return an expression directly instead of assigning it to a
   local first. Build a list with a comprehension, not `append` in a loop.
@@ -46,8 +48,15 @@ backstop. It fails only on findings your change adds, so leave code the task doe
   an `adapters/` package, where untrusted input is parsed once; pass frozen dataclasses on from there.
 - Constants: a fixed set of strings is an `enum.StrEnum` (`class X(str, Enum)` before Python 3.11),
   not `STATUS_ACTIVE = "active"` constants or a class holding them. Settings like `DB_HOST` are fine.
+- Every other rule (logging, naming, environment access, the domain, paths, secrets, shell and SQL,
+  test honesty) reports the allowed form in its message: follow the form the message names.
 - Tests: use the project's runner (pytest or unittest). Every branch you add needs a test, and a
-  surviving mutant fails: assert the exact value, so a changed line breaks a test.
+  surviving mutant fails: assert the exact value, so a changed line breaks a test. A test you add
+  or edit takes at most 5 s, or 30 s under `tests/integration/` or with
+  `@pytest.mark.integration`: no `time.sleep`.
+- Dependencies: every package production code imports is a production dependency of the project
+  (pyproject, Pipfile, requirements or setup.cfg); test-only packages go in a dev group; remove a
+  dependency nothing uses.
 - A finding that flags legitimate code (a command line entry point that prints) is lifted in
   `nitpicker.config.json`, under `python.exceptions`, with an entry such as
   `{ "rule": "T201", "paths": ["src/cli/**"], "reason": "..." }`, the rule being the id in the
@@ -62,6 +71,9 @@ backstop. It fails only on findings your change adds, so leave code the task doe
   early, look the value up in a dict, or move a branch into a helper.
 - A new clone of at least 5 lines and 50 tokens (`duplicate-clone`) fails: extract a function. A
   package must not depend on a less stable one (`stability-direction`).
+- A class has at most 20 methods and 10 fields, and at most 3 project base classes above it
+  (`Exception` or `models.Model` add none). A package sits at most 4 levels below the root package. Modules and packages must not import
+  each other in a cycle, and production code imports only from the source roots.
 - A module stays within 300 lines (a test module 500) and a line within 120 characters. A folder
   holds at most 6 modules and 6 test modules directly: group the rest into packages by what they do.
 - A function or file already over a limit may be edited but must not get worse: put new code in a

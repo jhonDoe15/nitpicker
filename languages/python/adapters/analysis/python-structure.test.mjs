@@ -94,7 +94,7 @@ describe('reading the structure report', () => {
         rule: 'function-control-nesting-limit',
         symbol: 'Service.run',
         message:
-          'Service.run nests control flow 3 deep (limit 2). Return early instead of nesting. An elif chain counts one level per branch; use match, a dict lookup or a helper function.',
+          'Service.run nests control flow 3 deep (limit 2). Return early instead of nesting. An if/elif chain counts as one level; use match, a dict lookup or a helper function for what nests inside a branch.',
       },
     ]);
     expect(
@@ -196,6 +196,18 @@ describe('Python file limits', () => {
     expect(findingsWith({}).map(([rule, findingPath]) => [rule, findingPath])).toEqual([
       ['file-lines-limit', 'src/app/long.py'],
       ['line-length-limit', 'src/app/wide.py'],
+    ]);
+  });
+
+  it('keeps production modules when python_files matches every file, testing the testpaths folders', () => {
+    write(
+      ['pyproject.toml'],
+      '[tool.pytest.ini_options]\ntestpaths = ["tests"]\npython_files = ["*.py"]\n',
+    );
+    write(['app/service.py', 'tests/checks.py'], 'VALUE = 1\n'.repeat(480));
+
+    expect(findingsWith({}).map(([rule, findingPath]) => [rule, findingPath])).toEqual([
+      ['file-lines-limit', 'app/service.py'],
     ]);
   });
 

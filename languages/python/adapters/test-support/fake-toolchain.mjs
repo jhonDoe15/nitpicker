@@ -8,9 +8,9 @@ const TOOLS = [
   'coverage',
   'mypy',
   'pyright',
+  'basedpyright',
   'python',
   'python3',
-  'lizard',
   'mutmut',
   'lint-imports',
 ];

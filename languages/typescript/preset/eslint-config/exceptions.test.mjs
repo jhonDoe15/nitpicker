@@ -44,6 +44,32 @@ describe('strict rule exceptions', () => {
     expect(applyRuleExceptions(presetConfig, [ignoredMutant])).toEqual(presetConfig);
   });
 
+  it('leaves exceptions for a dependency boundary rule to the architecture check', () => {
+    const boundary = {
+      rule: 'domain-does-not-import-node-io',
+      paths: ['src/legacy/**'],
+      reason: 'Legacy rewrite',
+    };
+    expect(applyRuleExceptions(presetConfig, [boundary])).toEqual(presetConfig);
+  });
+
+  it('leaves exceptions for the reuse rules to the structure and coupling checks', () => {
+    const reuseRules = [
+      'shared-used-by-one-feature',
+      'duplicate-definition',
+      'exported-name-collision',
+      'redefined-library-component',
+      'new-icon-asset',
+    ];
+    const exceptions = reuseRules.map((name) => ({ ...exception, rule: name }));
+    expect(applyRuleExceptions(presetConfig, exceptions)).toEqual(presetConfig);
+  });
+
+  it('leaves exceptions for the component story check to the structure check', () => {
+    const story = { rule: 'component-story-missing', paths: ['src/ui/Badge.tsx'], reason: 'None' };
+    expect(applyRuleExceptions(presetConfig, [story])).toEqual(presetConfig);
+  });
+
   it('fails for a rule the preset does not define', () => {
     expect(() =>
       applyRuleExceptions(presetConfig, [{ ...exception, rule: 'nitpicker/nope' }]),
@@ -58,6 +84,20 @@ describe('strict rule exceptions', () => {
     ]);
     await expect(ruleSeverity(config, 'src/legacy/old.ts', silentCatch)).resolves.toBe(0);
     await expect(ruleSeverity(config, 'src/fresh/new.ts', silentCatch)).resolves.toBe(2);
+  });
+
+  it.each([
+    'nitpicker/no-default-export',
+    'nitpicker/no-null',
+    'nitpicker/no-promise-chain',
+    'nitpicker/no-ui-framework-in-domain',
+  ])('keeps %s on under a no-restricted-syntax exception', async (name) => {
+    const config = applyRuleExceptions(presetConfig, [
+      { rule: 'no-restricted-syntax', paths: ['src/main/**'], reason: 'Legacy rewrite' },
+    ]);
+    const file = 'src/main/features/billing/domain/invoice.ts';
+    await expect(ruleSeverity(config, file, 'no-restricted-syntax')).resolves.toBe(0);
+    await expect(ruleSeverity(config, file, name)).resolves.toBe(2);
   });
 
   it('travels through the head policy', () => {

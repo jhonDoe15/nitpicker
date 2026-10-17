@@ -5,6 +5,8 @@ import { GRADLE_PRESETS } from './gradle-presets.mjs';
 import { EXCEPTION_SEPARATOR } from './java-policy.mjs';
 import { PROJECT_TOOL_CONFIGS } from './gradle-presets.mjs';
 import { KOTLIN_FORMATTERS } from './kotlin/kotlin-options.mjs';
+import { readHeadPolicyFile } from '../../../shared/head-policy.mjs';
+import { javaStyle } from './style/java-style.mjs';
 
 export const GRADLE_FAILURE_RULE = 'gradle-failure';
 export const MAVEN_FAILURE_RULE = 'maven-failure';
@@ -48,7 +50,7 @@ const USAGE =
   'Usage: java-runner.mjs --project-root <directory> [--snapshot base|head] [--policy-root <directory>]' +
   ' [--baseline-root <directory>] [--crap-limit <number>] [--exclude <glob>]... [--exception <rule>:<glob>]... [--legacy-inventory <path>]' +
   ' [--preset java|kotlin] [--kotlin-formatter ktlint|ktfmt|none]' +
-  ' [--kotlin-detekt-config <path>] [--file-limits <json>] [--pmd-precedence <layers>] [--checkstyle-precedence <layers>]';
+  ' [--kotlin-detekt-config <path>] [--file-limits <json>] [--test-seconds <json>] [--pmd-precedence <layers>] [--checkstyle-precedence <layers>]';
 
 function parseException(value) {
   const separator = value.indexOf(EXCEPTION_SEPARATOR);
@@ -106,7 +108,8 @@ export function parseRunnerArguments(arguments_) {
     projectRoot: values.get('--project-root'),
     policy: {
       crapLimit,
-      fileLimits: parseFileLimits(values.get('--file-limits')),
+      fileLimits: parseJsonObject(values.get('--file-limits'), '--file-limits'),
+      testSeconds: parseJsonObject(values.get('--test-seconds'), '--test-seconds'),
       exclude,
       exceptions,
       legacyInventory: values.get('--legacy-inventory'),
@@ -149,15 +152,16 @@ const RUNNER_OPTIONS = [
   '--pmd-precedence',
   '--checkstyle-precedence',
   '--file-limits',
+  '--test-seconds',
 ];
 
-function parseFileLimits(text) {
+function parseJsonObject(text, option) {
   if (text === undefined) {
     return undefined;
   }
   const parsed = JSON.parse(text);
   if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) {
-    throw new Error('--file-limits must be a JSON object');
+    throw new Error(`${option} must be a JSON object`);
   }
   return parsed;
 }
@@ -166,8 +170,14 @@ function realpathOptional(directory) {
   return directory === undefined ? undefined : realpathSync(directory);
 }
 
+export function readRunnerPolicy(runnerArguments, environment = process.env) {
+  const { projectRoot, policy } = parseRunnerArguments(runnerArguments);
+  const { conventions } = readHeadPolicyFile(environment);
+  return { projectRoot, policy: { ...policy, javaStyle: javaStyle(conventions) } };
+}
+
 function main(arguments_) {
-  const { projectRoot, policy } = parseRunnerArguments(arguments_);
+  const { projectRoot, policy } = readRunnerPolicy(arguments_);
   process.stdout.write(
     `${JSON.stringify(analyzeJavaSnapshot(realpathSync(projectRoot), { policy }))}\n`,
   );

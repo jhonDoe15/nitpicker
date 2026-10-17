@@ -1,4 +1,5 @@
 import { productionModulePath } from '../../../test-isolation/production-source.mjs';
+import { mockedModuleSource } from '../../analysis/test-code-analysis.mjs';
 
 const EXCEPTION_ROUTE =
   'If injection is not possible, add an exception for nitpicker/no-internal-module-mocks in nitpicker.config.json.';
@@ -44,16 +45,13 @@ export const rule = {
       },
       CallExpression(node) {
         const callee = node.callee;
-        if (!isVitestMember(aliases, callee)) return;
-        if (callee.property.name === 'spyOn') {
+        if (isVitestMember(aliases, callee) && callee.property.name === 'spyOn') {
           const source = productionNamespaces.get(node.arguments[0]?.name);
           if (source !== undefined)
             context.report({ node, messageId: 'internalSpy', data: { source } });
           return;
         }
-        if (!['mock', 'doMock'].includes(callee.property.name)) return;
-        const target = node.arguments[0];
-        const source = target?.type === 'ImportExpression' ? target.source.value : target?.value;
+        const source = mockedModuleSource(node, aliases);
         if (productionModulePath(source, context.filename) === undefined) return;
         context.report({ node, messageId: 'internalMock', data: { source } });
       },

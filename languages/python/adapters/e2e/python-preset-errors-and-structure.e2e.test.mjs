@@ -1,23 +1,23 @@
+import { readFileSync } from 'node:fs';
 import path from 'node:path';
-import { readFileSync, writeFileSync } from 'node:fs';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { acceptedDigest } from '../../../../core/command/test-support/accepted-digest.mjs';
+import { NO_MUTATION, SAME_NAME_SOURCES, VIOLATION } from './test-support/python-preset-data.mjs';
 import {
-  GREETER_HI_TEST,
-  NO_MUTATION,
-  SAMPLE_SOURCE,
-  SAME_NAME_SOURCES,
-} from './test-support/python-preset-data.mjs';
-import {
-  command,
   commitBranch,
+  fixture,
   fixtureRepository,
   gate,
   pythonE2eEnabled,
   removeRepositories,
-  repository,
-  write,
 } from './test-support/python-e2e-support.mjs';
-import { fileURLToPath } from 'node:url';
+
+const MUTATION_DISABLED = {
+  environment: {
+    CI: 'true',
+    NITPICKER_ACCEPT_POLICY_CHANGE: acceptedDigest(['analyzer disabled: mutation'], NO_MUTATION),
+  },
+};
 
 describe.skipIf(!pythonE2eEnabled)(
   'Python preset tool errors, structure and CRAP end to end',
@@ -26,34 +26,67 @@ describe.skipIf(!pythonE2eEnabled)(
     beforeAll(() => {
       project = fixtureRepository(['coverage', 'mutmut', 'pytest', 'mypy']);
       commitBranch(project, 'failing-tests', {
-        'tests/test_greeter.py': GREETER_HI_TEST,
+        'pyproject.toml': `${readFileSync(path.join(fixture, 'pyproject.toml'), 'utf8')}\n[tool.pytest.ini_options]\naddopts = "-x"\n`,
+        'tests/test_more.py':
+          'def test_one():\n    assert 1 == 2\n\n\ndef test_two():\n    assert 2 == 3\n',
+        'src/demo/bad.py': VIOLATION,
+      });
+      commitBranch(project, 'project-shape', {
+        ...NO_MUTATION,
+        'tests/test_slow.py':
+          'import time\n\nimport pytest\n\n\n@pytest.fixture\ndef client(seconds):\n    time.sleep(seconds)\n    return seconds\n\n\n@pytest.mark.parametrize(\n    "seconds", [pytest.param(0, marks=pytest.mark.integration), 5.2]\n)\ndef test_waits(client):\n    assert client >= 0\n',
+        'src/demo/cyc_a.py': 'from demo import cyc_b\n\n\ndef a():\n    return cyc_b.b()\n',
+        'src/demo/cyc_b.py':
+          'from demo import cyc_a\n\n\ndef b():\n    return 1\n\n\ndef c():\n    return cyc_a.a()\n',
+        'src/demo/report.py':
+          'import coverage\n\n\ndef version():\n    return coverage.__version__\n',
       });
       commitBranch(project, 'broken-environment', {
         'nitpicker.config.json': '{ "preset": "python", "python": { "environment": "nowhere" } }\n',
       });
     });
     afterAll(removeRepositories);
-    it('reports failing tests on head as a tool error with exit 2, never a throw', () => {
+    it('keeps every other finding when tests fail, runs all tests despite -x, and mutates against the passing modules', () => {
       const result = gate(project, 'failing-tests');
 
-      expect(result.exitCode, result.text).toBe(2);
+      expect(result.exitCode, result.text).toBe(1);
       expect(result.json('tool-errors.json')).toEqual([
         {
-          tool: 'python',
+          tool: 'tests',
           snapshot: 'head',
           rule: 'tests-failed',
           path: '.',
-          message: expect.stringMatching(
-            new RegExp(
-              [
-                '^coverage run exited 1 in the virtualenv environment:\\n',
-                "[\\s\\S]*assert 'Hello, Ada!' == 'Hi, Ada!'",
-                '[\\s\\S]*1 failed, 2 passed in [\\d.]+s$',
-              ].join(''),
-              '',
-            ),
-          ),
+          message: [
+            'Tests fail in the head snapshot. Make each failing test pass:',
+            '  tests/test_more.py::test_one',
+            '  tests/test_more.py::test_two',
+            'The static analyzers ran as usual; coverage and CRAP come from the tests that ran.',
+            'Mutation testing (mutmut) leaves out the test modules tests/test_more.py.',
+          ].join('\n'),
         },
+      ]);
+      expect(
+        result
+          .json('new-findings.json')
+          .filter(({ tool, path: file }) => tool === 'ruff' && file === 'src/demo/bad.py')
+          .map(({ rule }) => rule),
+      ).toEqual(['F401']);
+    });
+    it('reports a slow new test (its fixture setup counted, one unit case of an integration-marked parametrization), an import cycle and a dev-only package in production code', () => {
+      const result = gate(project, 'project-shape', MUTATION_DISABLED);
+
+      expect(result.exitCode, result.text).toBe(1);
+      const shape = result
+        .json('new-findings.json')
+        .filter(({ rule }) =>
+          ['slow-test', 'no-production-cycles', 'no-dev-dependency-in-production'].includes(rule),
+        )
+        .map(({ tool, rule, path: file }) => `${tool} ${rule} ${file}`);
+      expect(shape).toEqual([
+        'coupling no-production-cycles src/demo/cyc_a.py',
+        'coupling no-production-cycles src/demo/cyc_b.py',
+        'dependencies no-dev-dependency-in-production src/demo/report.py',
+        'test-runtime slow-test tests/test_slow.py',
       ]);
     });
     it('reports a missing environment as a tool error', () => {
@@ -100,7 +133,7 @@ describe.skipIf(!pythonE2eEnabled)(
               classification === 'enforceable' && ['structure', 'crap'].includes(tool),
           );
       it('fails a new function over the structure limits with the same rules as TypeScript and Java', () => {
-        const result = gate(project, 'nested-and-wide');
+        const result = gate(project, 'nested-and-wide', MUTATION_DISABLED);
 
         expect(result.exitCode, result.text).toBe(1);
         expect(
@@ -111,9 +144,9 @@ describe.skipIf(!pythonE2eEnabled)(
         ]);
       });
       it('keeps a touched legacy function that is still over the limit, and fails it when it grows', () => {
-        expect(gate(project, 'legacy-edited').exitCode).toBe(0);
+        expect(gate(project, 'legacy-edited', MUTATION_DISABLED).exitCode).toBe(0);
 
-        const grown = gate(project, 'legacy-grown');
+        const grown = gate(project, 'legacy-grown', MUTATION_DISABLED);
 
         expect(grown.exitCode, grown.text).toBe(1);
         expect(enforceable(grown)).toEqual([
@@ -139,7 +172,7 @@ describe.skipIf(!pythonE2eEnabled)(
         ]);
       });
       it('fails a new untested branchy function on its CRAP score, and scores tested same-named definitions from their own lines', () => {
-        const result = gate(project, 'untested-complex');
+        const result = gate(project, 'untested-complex', MUTATION_DISABLED);
 
         expect(result.exitCode, result.text).toBe(1);
         expect(enforceable(result)).toEqual([
@@ -167,61 +200,3 @@ describe.skipIf(!pythonE2eEnabled)(
     });
   },
 );
-describe.skipIf(!pythonE2eEnabled)('Python structure metrics script', () => {
-  const script = path.resolve(
-    fileURLToPath(new URL('../', import.meta.url)),
-    '../metrics/structure_metrics.py',
-  );
-  function metricsOf(files) {
-    const directory = repository();
-    write(directory, files);
-    const listing = path.join(directory, 'listing.txt');
-    writeFileSync(listing, Object.keys(files).join('\n'));
-    const output = path.join(directory, 'metrics.json');
-    command(directory, 'python3', [script, output, directory, listing]);
-    return JSON.parse(readFileSync(output, 'utf8'));
-  }
-  it('counts lines, statements, control nesting and parameters the way the shared limits mean them', () => {
-    const metrics = metricsOf({ 'sample.py': SAMPLE_SOURCE });
-
-    expect(
-      metrics.map((entry) => [
-        entry.name,
-        entry.start,
-        entry.end,
-        entry.lines,
-        entry.statements,
-        entry.maxControlNesting,
-        entry.parameters,
-      ]),
-    ).toEqual([
-      ['Service.method', 5, 6, 2, 1, 0, 3],
-      ['Service.static', 8, 10, 3, 1, 0, 4],
-      ['Service.build', 12, 19, 8, 2, 0, 1],
-      ['Service.build.inner', 14, 17, 4, 3, 1, 1],
-      ['Service.fetch', 21, 31, 10, 6, 1, 3],
-      ['chain', 34, 41, 8, 7, 3, 1],
-      ['loops', 44, 54, 11, 8, 3, 1],
-      ['positional', 57, 58, 2, 1, 0, 3],
-    ]);
-    expect(metrics.every(({ file }) => file === 'sample.py')).toBe(true);
-  });
-  it('skips a file that does not parse, or that is too deep for the parser', () => {
-    const metrics = metricsOf({
-      'broken.py': 'def (:\n',
-      'deep.py': `X = ${Array.from({ length: 60_000 }, () => '1').join(' + ')}\n`,
-      'ok.py': 'def f():\n    return 1\n',
-    });
-
-    expect(metrics.map(({ file, name }) => `${file} ${name}`)).toEqual(['ok.py f']);
-  });
-  it('does not count the docstring as a line, so documenting a long function does not grow it', () => {
-    const body = ['    a = 1', '    return a'];
-    const lines = (...head) =>
-      metricsOf({ 'doc.py': ['def f():', ...head, ...body, ''].join('\n') })[0].lines;
-
-    expect(lines()).toBe(3);
-    expect(lines('    """Doc."""')).toBe(3);
-    expect(lines('    """Doc.', '', '    More.', '    """')).toBe(3);
-  });
-});

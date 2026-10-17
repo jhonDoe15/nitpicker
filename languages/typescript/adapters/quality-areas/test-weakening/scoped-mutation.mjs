@@ -1,5 +1,5 @@
 import { createHash } from 'node:crypto';
-import { exceptionMatcher } from '../../../../../shared/rules/file-limits.mjs';
+import { exceptionMatcher } from '../../../../../shared/rules/exceptions.mjs';
 import { mutationTargets } from '../runners/mutation-scope.mjs';
 import { sourceLineShifts } from './line-shifts.mjs';
 import { MAX_TESTED_MODULES, testedSourceModules } from './tested-modules.mjs';

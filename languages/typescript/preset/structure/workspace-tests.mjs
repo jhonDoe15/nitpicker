@@ -1,7 +1,7 @@
 import { existsSync, globSync, readFileSync, statSync } from 'node:fs';
 import path from 'node:path';
 import ts from 'typescript';
-import { exceptionMatcher } from '../../../../shared/rules/file-limits.mjs';
+import { exceptionMatcher } from '../../../../shared/rules/exceptions.mjs';
 
 const RULE = 'nitpicker/no-uncollected-tests';
 const TEST_FILES = '**/*.{test,spec}.{ts,tsx,mts,cts,js,jsx,mjs,cjs}';

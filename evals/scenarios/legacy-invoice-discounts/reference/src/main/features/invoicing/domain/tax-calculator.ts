@@ -1,11 +1,15 @@
+const US_TAX_RATE = 0.08;
+const DE_TAX_RATE = 0.19;
+const GB_TAX_RATE = 0.2;
+
 export function taxRateFor(country: string): number {
   switch (country) {
     case 'US':
-      return 0.08;
+      return US_TAX_RATE;
     case 'DE':
-      return 0.19;
+      return DE_TAX_RATE;
     case 'GB':
-      return 0.2;
+      return GB_TAX_RATE;
     default:
       return 0;
   }

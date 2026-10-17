@@ -21,16 +21,6 @@ const ESLINT_DEFAULTS_FOR_NATIVE_RULES = new Map([
     },
   ],
 ]);
-const NATIVE_OPTION_LIMITS = new Map([
-  ['vitest/no-focused-tests', { accepted: [], ignored: { fixable: () => true } }],
-  [
-    'preserve-caught-error',
-    {
-      accepted: ['requireCatchParameter'],
-      ignored: { errorClassNames: (value) => Array.isArray(value) && value.length === 0 },
-    },
-  ],
-]);
 const MESSAGE_PLACEHOLDER = /\{\{\s*[^{}\s]+\s*\}\}/gu;
 const SEVERITIES = new Map([
   [1, 'warn'],
@@ -87,38 +77,11 @@ function oxlintSetting(name, setting) {
   return options.length === 0 ? level : [level, ...options];
 }
 
-function acceptedOptions(limits, options = {}) {
-  const unsupported = Object.entries(options).filter(
-    ([key, value]) => !limits.accepted.includes(key) && limits.ignored[key]?.(value) !== true,
-  );
-  if (unsupported.length > 0) return undefined;
-  const kept = Object.entries(options).filter(([key]) => limits.accepted.includes(key));
-  return kept.length === 0 ? [] : [Object.fromEntries(kept)];
-}
-
-export function nativeSetting(ruleId, setting, bridgedRules) {
-  const limits = NATIVE_OPTION_LIMITS.get(ruleId);
-  if (limits === undefined || bridgedRules.has(ruleId) || !Array.isArray(setting)) return setting;
-  const [severity, options, ...rest] = setting;
-  const accepted = rest.length === 0 ? acceptedOptions(limits, options) : undefined;
-  if (accepted === undefined) {
-    bridgedRules.add(ruleId);
-    return setting;
-  }
-  return [severity, ...accepted];
-}
-
-function translatedSetting(ruleId, configured, context) {
-  const native = translateRule(ruleId, context).plugin === undefined;
-  const setting = native ? nativeSetting(ruleId, configured, context.bridgedRules) : configured;
-  return { setting, translated: translateRule(ruleId, context) };
-}
-
 function translateGroup(group, context) {
   const rules = {};
   const residualRules = [];
-  for (const [ruleId, configured] of Object.entries(group.rules)) {
-    const { setting, translated } = translatedSetting(ruleId, configured, context);
+  for (const [ruleId, setting] of Object.entries(group.rules)) {
+    const translated = translateRule(ruleId, context);
     if (translated.plugin !== undefined && context.typedPluginRules.has(ruleId)) {
       residualRules.push(ruleId);
       continue;
@@ -141,7 +104,7 @@ function addBridgedRule(plugins, plugin, ruleId) {
   plugins.set(plugin.alias, entry);
 }
 
-export function translatePlan(plan, { nativeRules, bridgedRules = new Set() }) {
+export function translatePlan(plan, { nativeRules, bridgedRules }) {
   const context = {
     nativeRules,
     bridgedRules,

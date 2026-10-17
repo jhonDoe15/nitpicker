@@ -2,8 +2,8 @@ import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import ts from 'typescript';
 import { parseChangedLines } from '../../../../../core/diff/git/patches/changed-lines.mjs';
-import { RULE_IDS, TEST_DURATION_LIMITS } from '../../../../../shared/policy.mjs';
-import { exceptionMatcher } from '../../../../../shared/rules/file-limits.mjs';
+import { RULE_IDS, TEST_TIME_DEFAULTS } from '../../../../../shared/policy.mjs';
+import { exceptionHint, exceptionMatcher } from '../../../../../shared/rules/exceptions.mjs';
 import { diffAgainstBase } from '../runners/mutation-scope.mjs';
 
 const INTEGRATION_FOLDERS = ['integration', 'e2e'];
@@ -16,9 +16,11 @@ export function changedTestLines(options) {
 }
 
 function isIntegrationTest(file, testRoots) {
-  return testRoots.some((root) =>
-    INTEGRATION_FOLDERS.some((folder) => file.startsWith(`${root}/${folder}/`)),
-  );
+  return testRoots.some((root) => {
+    if (!file.startsWith(`${root}/`)) return false;
+    const [folder] = file.slice(root.length + 1).split('/');
+    return [path.posix.basename(root), folder].some((name) => INTEGRATION_FOLDERS.includes(name));
+  });
 }
 
 function testCallSpans(projectRoot, file) {
@@ -41,12 +43,12 @@ function isTouched({ ranges, spans }, location) {
   return ranges.some(([first, end]) => first <= last && end >= location.line);
 }
 
-function slowTestMessage({ seconds, budget, integration }) {
+function slowTestMessage({ file, seconds, budget, integration }) {
   const kind = integration ? 'an integration or e2e test' : 'a unit test';
   const move = integration
     ? ''
     : ' If it really is an integration test, move it to an `integration/` or `e2e/` folder of a test root.';
-  return `This test took ${seconds.toFixed(1)} s; the budget for ${kind} is ${String(budget)} s. Replace real waits with fake timers (\`vi.useFakeTimers()\`) and use smaller fixtures.${move} A justified exception for slow-test goes in nitpicker.config.json.`;
+  return `This test took ${seconds.toFixed(1)} s; the budget for ${kind} is ${String(budget)} s. Replace real waits with fake timers (\`vi.useFakeTimers()\`) and use smaller fixtures.${move} ${exceptionHint(RULE_IDS.slowTest, file)}`;
 }
 
 function fileFindings(context, testResult) {
@@ -72,14 +74,19 @@ function fileFindings(context, testResult) {
       rule: RULE_IDS.slowTest,
       path: file,
       identity: `slow-test|${file}|${test.fullName}`,
-      message: slowTestMessage({ seconds: test.duration / MILLISECONDS, budget, integration }),
+      message: slowTestMessage({
+        file,
+        seconds: test.duration / MILLISECONDS,
+        budget,
+        integration,
+      }),
       classification: 'enforceable',
       location: { line: test.location.line },
     }));
 }
 
 export function slowTestFindings(report, context) {
-  const limits = { ...TEST_DURATION_LIMITS, ...context.thresholds };
+  const limits = { ...TEST_TIME_DEFAULTS, ...context.thresholds };
   const isExcepted = exceptionMatcher(context.exceptions ?? []);
   return (report.testResults ?? [])
     .flatMap((testResult) => fileFindings({ ...context, limits }, testResult))
