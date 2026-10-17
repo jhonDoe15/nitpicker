@@ -31,6 +31,7 @@ import { processorTool, runErrorProne } from './errorprone/maven-errorprone.mjs'
 import { GRADLE_DIRECTORY, readPinnedTools } from '../builds/java-build.mjs';
 import { analyzeKotlinModule } from './kotlin/kotlin-module.mjs';
 import { kotlinSetup } from './kotlin/kotlin-options.mjs';
+import { relativeTo } from './kotlin/tools/kotlin-files.mjs';
 
 export const MAVEN_REPORT_DIRECTORY = 'target/nitpicker';
 const OWN_JACOCO_EXEC = 'nitpicker-jacoco.exec';
@@ -45,10 +46,6 @@ const PROJECT_CHECKS_OFF = [
   '-Dktlint.skip=true',
   '-Ddetekt.skip=true',
 ];
-
-function relativeTo(basedir, file) {
-  return path.relative(basedir, file).replaceAll('\\', '/');
-}
 
 function readEffectivePom(projectRoot, maven, work) {
   const output = path.join(work, 'effective-pom.xml');
@@ -172,6 +169,19 @@ function readClasspaths(work, module) {
   );
 }
 
+function runSourceTools({ module, reportDir, tools, classpaths, configs, pinned, kotlin }) {
+  runPmd({ module, reportDir, tools, classpaths, configs, spring: kotlin.spring });
+  runSpotbugs({
+    module: kotlin.spotbugsModule,
+    reportDir,
+    tools,
+    auxClasspath: kotlin.auxClasspath,
+  });
+  runErrorProne({ module, reportDir, tools, classpaths });
+  runFormat({ module, reportDir, tools });
+  runCheckstyle({ module, reportDir, tools, configs, pinned });
+}
+
 function analyzeModule({ module, classpaths, tools, pinned, configs, since, kotlinOptions }) {
   const reportDir = path.join(module.basedir, MAVEN_REPORT_DIRECTORY);
   const isArchunit = archunitMatcher(module.archunitIncludes);
@@ -187,16 +197,15 @@ function analyzeModule({ module, classpaths, tools, pinned, configs, since, kotl
     options: kotlinOptions,
     spring,
   });
-  runPmd({ module, reportDir, tools, classpaths, configs, spring });
-  runSpotbugs({
-    module: kotlin.spotbugsModule,
+  runSourceTools({
+    module,
     reportDir,
     tools,
-    auxClasspath: kotlin.auxClasspath,
+    classpaths,
+    configs,
+    pinned,
+    kotlin: { ...kotlin, spring },
   });
-  runErrorProne({ module, reportDir, tools, classpaths });
-  runFormat({ module, reportDir, tools });
-  runCheckstyle({ module, reportDir, tools, configs, pinned });
   runStructure(module, reportDir);
   runJdeps(module, reportDir);
   runJacocoReport({

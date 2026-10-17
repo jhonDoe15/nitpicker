@@ -3,7 +3,7 @@ import { childAt, childrenAt, childrenNamed } from '../../ingest/common.mjs';
 const COMPILER = 'maven-compiler-plugin';
 const UNRESOLVED = /\$\{/u;
 
-function textAt(element, ...names) {
+export function textAt(element, ...names) {
   return childAt(element, ...names)?.text?.trim();
 }
 

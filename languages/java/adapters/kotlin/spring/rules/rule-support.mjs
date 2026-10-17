@@ -25,7 +25,7 @@ function parameterSites(file, parameters, scope) {
   );
 }
 
-function sitesOf(file, kind, declarations, symbolOf) {
+function sitesOf(file, kind, { declarations, symbolOf }) {
   return declarations.flatMap((declaration) =>
     declaration.annotations.map((annotation) => ({
       file,
@@ -43,25 +43,19 @@ export function annotationSites(file) {
     declaration.constructors.map((constructed) => ({ ...constructed, owner: declaration })),
   );
   return [
-    ...sitesOf(file, 'class', file.classes, classSymbol),
-    ...sitesOf(
-      file,
-      'property',
-      file.properties.filter((property) => !property.fromConstructor),
-      (property) => `${ownerSymbol(property.owner)}${property.name}`,
-    ),
-    ...sitesOf(
-      file,
-      'function',
-      file.functions,
-      (declaration) => `${ownerSymbol(declaration.owner)}${declaration.name}`,
-    ),
-    ...sitesOf(
-      file,
-      'constructor',
-      constructors,
-      (constructed) => `${classSymbol(constructed.owner)}.<init>`,
-    ),
+    ...sitesOf(file, 'class', { declarations: file.classes, symbolOf: classSymbol }),
+    ...sitesOf(file, 'property', {
+      declarations: file.properties.filter((property) => !property.fromConstructor),
+      symbolOf: (property) => `${ownerSymbol(property.owner)}${property.name}`,
+    }),
+    ...sitesOf(file, 'function', {
+      declarations: file.functions,
+      symbolOf: (declaration) => `${ownerSymbol(declaration.owner)}${declaration.name}`,
+    }),
+    ...sitesOf(file, 'constructor', {
+      declarations: constructors,
+      symbolOf: (constructed) => `${classSymbol(constructed.owner)}.<init>`,
+    }),
     ...file.functions.flatMap((declaration) =>
       parameterSites(file, declaration.params, {
         owner: declaration.owner,
