@@ -25,6 +25,7 @@ import {
   readStructureFunctions,
   readJavaStructureFindings,
 } from '../metrics/java-structure.mjs';
+import { readClassLimitFindings } from '../size/class-limits.mjs';
 import { hash } from '../../../../shared/rules/finding-helpers.mjs';
 import { javaDeclarationUnits } from '../../ingest/declarations/java-declaration-units.mjs';
 import { ingestFormatCheck } from '../../ingest/formatting/format-check.mjs';
@@ -100,6 +101,12 @@ function moduleContextFindings(projectRoot, module, { manifest, options }) {
       lintedRoots: lintedRoots(module.manifest),
       allSourceRoots: manifest.sourceRoots,
       kotlin: preset === 'kotlin' && module.manifest.kotlin === true,
+      javaStyle: options.javaStyle,
+      classLimits: {
+        thresholds: options.fileLimits,
+        exceptions: options.exceptions,
+        modulePath: options.modulePath,
+      },
       jacoco: readModuleJacoco(module, preset),
       mainCheckstyle: readMainCheckstyle(projectRoot, module, preset),
       testTimes: {
@@ -124,6 +131,7 @@ function readModuleFindings(context, crapLimit) {
     ...crapFindings(context, jacoco, crapLimit),
     ...pitFindings(context),
     ...readJavaStructureFindings(reportRoot, projectRoot),
+    ...readClassLimitFindings(reportRoot, context.classLimits),
     ...branchFindings(context, jacoco),
     ...(kotlin ? readKotlinFindings(context, crapLimit) : []),
     ...readSlowTestFindings({
@@ -190,13 +198,13 @@ function sarifFindings(context) {
   ];
 }
 
-function formatFindings({ reportRoot, roots }) {
+function formatFindings({ reportRoot, roots, javaStyle }) {
   const formatLines = readFileSync(path.join(reportRoot, 'format.txt'), 'utf8')
     .split(/\r?\n/)
     .map((line) => projectRelative(line.trim(), roots) ?? line);
   return ingestFormatCheck(formatLines.join('\n'), {
     tool: 'google-java-format',
-    message: 'File is not formatted with google-java-format',
+    message: `File is not formatted with google-java-format${javaStyle === 'aosp' ? ' --aosp' : ''}`,
   }).findings;
 }
 

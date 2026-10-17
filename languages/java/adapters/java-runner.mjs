@@ -3,6 +3,8 @@ import { collectJavaFindings } from './java-diff.mjs';
 import { detectJavaBuild } from '../builds/java-build.mjs';
 import { GRADLE_PRESETS, PROJECT_TOOL_CONFIGS } from './gradle-presets.mjs';
 import { KOTLIN_FORMATTERS } from './kotlin/kotlin-options.mjs';
+import { readHeadPolicyFile } from '../../../shared/head-policy.mjs';
+import { javaStyle } from './style/java-style.mjs';
 
 export const GRADLE_FAILURE_RULE = 'gradle-failure';
 export const MAVEN_FAILURE_RULE = 'maven-failure';
@@ -176,8 +178,14 @@ function realpathOptional(directory) {
   return directory === undefined ? undefined : realpathSync(directory);
 }
 
+export function readRunnerPolicy(runnerArguments, environment = process.env) {
+  const { projectRoot, policy } = parseRunnerArguments(runnerArguments);
+  const { conventions } = readHeadPolicyFile(environment);
+  return { projectRoot, policy: { ...policy, javaStyle: javaStyle(conventions) } };
+}
+
 function main(arguments_) {
-  const { projectRoot, policy } = parseRunnerArguments(arguments_);
+  const { projectRoot, policy } = readRunnerPolicy(arguments_);
   process.stdout.write(
     `${JSON.stringify(analyzeJavaSnapshot(realpathSync(projectRoot), { policy }))}\n`,
   );

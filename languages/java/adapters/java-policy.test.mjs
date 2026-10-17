@@ -76,6 +76,20 @@ describe('configureJavaAnalyzer', () => {
     expect(configured.legacyInventory).toBe('legacy.json');
   });
 
+  it('hands the size thresholds to the runner', () => {
+    const analyzer = createJavaAnalyzer();
+    const policyOf = (options) =>
+      parseRunnerArguments(
+        configureJavaAnalyzer(analyzer, options).createInvocation(context()).args.slice(1),
+      ).policy;
+
+    expect(
+      policyOf({
+        thresholds: { classMethods: 25, classFields: 12, inheritanceDepth: 4, folderDepth: 5 },
+      }).fileLimits,
+    ).toEqual({ classMethods: 25, classFields: 12, inheritanceDepth: 4, folderDepth: 5 });
+  });
+
   it('hands each exception to the runner with its rule, paths and function and changes the hash', () => {
     const analyzer = createJavaAnalyzer({ kotlin: true });
     const exceptions = [

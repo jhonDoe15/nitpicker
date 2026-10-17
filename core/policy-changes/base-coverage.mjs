@@ -90,6 +90,12 @@ function stricterLists(baseConfig, headConfig) {
   if (baseConfig.thresholds !== undefined || headConfig.thresholds !== undefined) {
     covering.thresholds = stricterThresholds(baseConfig.thresholds, headConfig.thresholds);
   }
+  if (baseConfig.python?.entryPoints !== undefined) {
+    covering.python = {
+      ...(covering.python ?? baseConfig.python),
+      entryPoints: common(baseConfig.python.entryPoints, headConfig.python?.entryPoints ?? []),
+    };
+  }
   return covering;
 }
 

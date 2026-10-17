@@ -9,7 +9,8 @@ import {
 } from '../../../shared/legacy-inventory.mjs';
 import { configError, TYPESCRIPT_ONLY_KEYS } from '../../../shared/config.mjs';
 import { JAVA_TOOLS, PROJECT_TOOL_CONFIGS } from './gradle-presets.mjs';
-import { JAVA_NATIVE_RULES, SHARED_EXCEPTION_RULES } from '../../../shared/policy.mjs';
+import { JAVA_LINE_LENGTH, JAVA_SIZE_RULES } from '../../../shared/project-rules/size-rules.mjs';
+import { SHARED_EXCEPTION_RULES } from '../../../shared/policy.mjs';
 import { applyFindingExceptions } from '../../../shared/exceptions/finding-exceptions.mjs';
 import { sharedRouteRule, withExceptionRoutes } from '../../../shared/exceptions/routes.mjs';
 import { evaluateBaselineExpansions } from '../../../shared/rules/baseline-expansion.mjs';
@@ -17,15 +18,22 @@ import { INLINE_SUPPRESSION_RULE } from './suppressions/java-suppressions.mjs';
 import { canonicalRule } from '../../../shared/exceptions/rule-names.mjs';
 import { checkstyleRuleName } from '../messages/rule-messages.mjs';
 
-const FILE_LIMIT_THRESHOLDS = ['fileLines', 'testFileLines', 'lineLength', 'folderFiles'];
+const FILE_LIMIT_THRESHOLDS = [
+  'fileLines',
+  'testFileLines',
+  'lineLength',
+  'folderFiles',
+  'folderDepth',
+  'classMethods',
+  'classFields',
+  'inheritanceDepth',
+];
 const TEST_TIME_THRESHOLDS = ['unitTestSeconds', 'integrationTestSeconds'];
 const NATIVE_LINE_LENGTH = {
-  java: 'Checkstyle checks Java line length; set it in config/checkstyle/checkstyle.xml and opt in with "tools": { "checkstyle": { "precedence": ["project"] } }',
-  kotlin: 'detekt checks Kotlin line length; set style>MaxLineLength in config/detekt/detekt.yml',
+  java: `Java keeps ${String(JAVA_LINE_LENGTH)} characters per line, where google-java-format wraps; lift the rule for some paths with an exception for "line-length-limit"`,
+  kotlin: `detekt checks Kotlin line length (set style>MaxLineLength in config/detekt/detekt.yml); the Java files keep ${String(JAVA_LINE_LENGTH)} characters per line, and an exception for "line-length-limit" lifts that for some paths`,
 };
-const JAVA_EXCEPTION_RULES = SHARED_EXCEPTION_RULES.filter(
-  (rule) => !JAVA_NATIVE_RULES.includes(rule),
-);
+const JAVA_EXCEPTION_RULES = [...SHARED_EXCEPTION_RULES, ...JAVA_SIZE_RULES];
 
 export function validateJavaConfig(config) {
   const typescriptOnly = TYPESCRIPT_ONLY_KEYS.filter(

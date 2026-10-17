@@ -124,6 +124,7 @@ function writeModule({ key, dir }) {
     report('structure.json'),
     existsSync(inside('structure.json')) ? readFileSync(inside('structure.json')) : '[]',
   );
+  writeFileSync(report('classes.json'), '{"files":{},"classes":[]}');
 }
 
 const modules = existsSync('NO_REPORTS')

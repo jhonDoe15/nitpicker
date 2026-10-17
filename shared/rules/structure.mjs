@@ -74,13 +74,7 @@ function addEntries(findings, analyzerName, entries = [], kind, messageOptions) 
   for (const entry of entries) {
     const occurrence = nextOccurrence(occurrences, `${entry.file}\0${entry.name}`);
     if (kind === 'function') {
-      addLimitViolations(
-        findings,
-        analyzerName,
-        entry,
-        { occurrence, violations },
-        messageOptions,
-      );
+      addLimitViolations(findings, analyzerName, entry, { occurrence, violations }, messageOptions);
     }
     for (const [metricName, value] of Object.entries(entry)) {
       if (METADATA_FIELDS.has(metricName)) {

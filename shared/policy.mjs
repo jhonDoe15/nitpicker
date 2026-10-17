@@ -3,10 +3,19 @@
 // language adapter reads it, and `spec/checks.md` is generated from it (`npm run gen:checks`).
 
 import { exceptionSentence } from './exceptions/sentence.mjs';
+import {
+  FILE_RULE_IDS,
+  SIZE_HELD_MESSAGES,
+  SIZE_RULE_IDS,
+  sizeGrewMessages,
+  sizeMessages,
+  sizeRules,
+} from './project-rules/size-rules.mjs';
 import { UNUSED_API_RULES, UNUSED_API_RULE_IDS } from './unused-api/unused-api-policy.mjs';
-
 import { reuseRules } from './rules/reuse-rules.mjs';
 import { SOURCE_RULE_IDS, sourceRuleMessages, sourceRules } from './project-rules/source-rules.mjs';
+
+export { FILE_LIMIT_DEFAULTS } from './project-rules/size-rules.mjs';
 
 export const LANGUAGES = ['typescript', 'java', 'python', 'kotlin'];
 
@@ -27,9 +36,8 @@ export const RULE_IDS = {
   ...UNUSED_API_RULE_IDS,
   noProductionRuntime: 'no-production-runtime',
   typeOnlyProductionDependency: 'type-only-production-dependency',
-  fileLines: 'file-lines-limit',
-  lineLength: 'line-length-limit',
-  folderFiles: 'folder-files-limit',
+  ...FILE_RULE_IDS,
+  ...SIZE_RULE_IDS,
   slowTest: 'slow-test',
   sharedUsedByOneFeature: 'shared-used-by-one-feature',
   duplicateDefinition: 'duplicate-definition',
@@ -66,18 +74,6 @@ export const DEAD_CODE_RULES = ['files', 'exports', 'types'];
 /** Rules an exception can narrow to one declaration with `name`. */
 export const NAME_EXCEPTION_RULES = ['exports', 'types'];
 
-/**
- * Per-file limits, keyed by their `thresholds` name. `fileLines` applies to source files and
- * `testFileLines` to test files; `folderFiles` counts the source files and the test files directly in
- * one folder, each kind on its own. Every language enforces them with the same defaults.
- */
-export const FILE_LIMIT_DEFAULTS = {
-  fileLines: 300,
-  testFileLines: 500,
-  lineLength: 120,
-  folderFiles: 6,
-};
-
 export const TEST_TIME_DEFAULTS = { unitTestSeconds: 5, integrationTestSeconds: 30 };
 
 /** Rules an exception lifts for a path only: such a finding has no function or declaration to name. */
@@ -99,6 +95,7 @@ export const SHARED_EXCEPTION_RULES = [...FUNCTION_EXCEPTION_RULES, ...PATH_EXCE
  */
 const STRUCTURE_RULES = [
   ...Object.values(FUNCTION_STRUCTURE_LIMITS).map(({ ruleId }) => ruleId),
+  ...Object.values(SIZE_RULE_IDS),
   RULE_IDS.fileLines,
   RULE_IDS.lineLength,
   RULE_IDS.folderFiles,
@@ -177,9 +174,6 @@ export const PRESET_TOOLS = {
 PRESET_TOOLS.javascript = PRESET_TOOLS.typescript;
 PRESET_TOOLS.kotlin = PRESET_TOOLS.java;
 
-/** The shared rules the Java preset leaves to its own tools (Checkstyle checks line length). */
-export const JAVA_NATIVE_RULES = [RULE_IDS.lineLength];
-
 /** `{exception}` is the `exceptions` entry that would lift the finding, as JSON. */
 export const EXCEPTION_HINT = exceptionSentence('{exception}');
 
@@ -232,9 +226,7 @@ export const MESSAGES = {
   unusedOption: `Option {name} is never set. Remove it, or set it from a real call ({scope}). ${EXCEPTION_HINT}`,
   testOnlyExport: `Export {name} is only imported by tests. Remove \`export\`, or import it from production code. ${EXCEPTION_HINT}`,
   testOnlyModule: `Module {name} is only imported by tests. Move it to a test-support/ folder, or import it from production code. ${EXCEPTION_HINT}`,
-  fileLines: `File has {value} lines (limit {limit}). Split it into files by responsibility. ${EXCEPTION_HINT}`,
-  lineLength: `Line is {value} characters (limit {limit}). Break it up or extract a named value. ${EXCEPTION_HINT}`,
-  folderFiles: `Folder has {value} {kind} files directly in it (limit {limit}). Group related files into subfolders (packages in Java). ${EXCEPTION_HINT}`,
+  ...sizeMessages(EXCEPTION_HINT),
   slowTest: `{name} took {seconds} s; {kind} test may take {limit} s. Remove Thread.sleep and other waits, start a smaller Spring context or a test slice{move}. ${EXCEPTION_HINT}`,
   sharedUsedByOneFeature: `{path} is used only by feature {feature}. Move it into {directory}. ${EXCEPTION_HINT}`,
   duplicateDefinition: `{name} is also defined with {same} in {others}. {fix} ${EXCEPTION_HINT}`,
@@ -263,9 +255,7 @@ export const GREW_MESSAGES = {
   parameters:
     '{name} grew from {base} to {value} parameters (limit {limit}). Group related parameters into one object instead of adding another.',
   crap: '{name} CRAP rose from {base} to {crap} (limit {limit}). Put new code in a new function and cover it with tests.',
-  fileLines: `File grew from {base} to {value} lines (limit {limit}). Put new code in a new file. ${EXCEPTION_HINT}`,
-  lineLength: `Line grew from {base} to {value} characters (limit {limit}). Break it up or extract a named value. ${EXCEPTION_HINT}`,
-  folderFiles: `Folder grew from {base} to {value} {kind} files (limit {limit}). Put the new file in a subfolder. ${EXCEPTION_HINT}`,
+  ...sizeGrewMessages(EXCEPTION_HINT),
 };
 
 export const HELD_MESSAGES = {
@@ -278,12 +268,7 @@ export const HELD_MESSAGES = {
   parameters:
     '{name}: {value} parameters (limit {limit}), allowed because base was {base}; any increase fails.',
   crap: '{name}: CRAP {crap} (limit {limit}), allowed because base was {base}; any increase fails.',
-  fileLines:
-    'File: {value} lines (limit {limit}), allowed because base was {base}; any increase fails.',
-  lineLength:
-    'Line: {value} characters (limit {limit}), allowed because base was {base}; any increase fails.',
-  folderFiles:
-    'Folder: {value} {kind} files (limit {limit}), allowed because base was {base}; any increase fails.',
+  ...SIZE_HELD_MESSAGES,
 };
 
 const BOTH = { typescript: true, java: true, python: false };
@@ -388,24 +373,7 @@ export const RULES = [
     enforcedBy: withKotlin(TYPESCRIPT_ONLY, false),
   },
   ...UNUSED_API_RULES,
-  {
-    id: RULE_IDS.fileLines,
-    check: 'structure',
-    limit: `more than ${String(FILE_LIMIT_DEFAULTS.fileLines)} lines in a source file or ${String(FILE_LIMIT_DEFAULTS.testFileLines)} in a test file; override with \`thresholds.fileLines\` and \`thresholds.testFileLines\``,
-    enforcedBy: withKotlin(ALL, true),
-  },
-  {
-    id: RULE_IDS.lineLength,
-    check: 'structure',
-    limit: `a line longer than ${String(FILE_LIMIT_DEFAULTS.lineLength)} characters, except imports, URLs and string literal text; override with \`thresholds.lineLength\` (Java: Checkstyle's own line length; Kotlin: detekt's)`,
-    enforcedBy: withKotlin({ ...ALL, java: false }, false),
-  },
-  {
-    id: RULE_IDS.folderFiles,
-    check: 'structure',
-    limit: `more than ${String(FILE_LIMIT_DEFAULTS.folderFiles)} source files, or test files, directly in one folder; override with \`thresholds.folderFiles\``,
-    enforcedBy: withKotlin(ALL, true),
-  },
+  ...sizeRules({ all: ALL, both: BOTH, withKotlin }),
   ...reuseRules(RULE_IDS, withKotlin(TYPESCRIPT_ONLY, false)),
   ...sourceRules(RULE_IDS, withKotlin(TYPESCRIPT_ONLY, false)),
   {

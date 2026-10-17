@@ -1,105 +1,27 @@
 import { exceptionRoute } from '../../../shared/exceptions/rule-names.mjs';
+import { STRUCTURE_HINTS } from './hints/ast-structure.mjs';
+import { SMELL_HINTS } from './hints/ast-smells.mjs';
+import { PYTEST_HINTS } from './hints/ruff-pytest.mjs';
+import { SECURITY_HINTS } from './hints/ruff-security.mjs';
+import { STYLE_HINTS } from './hints/ruff-style.mjs';
+import { RULES_TOOL } from './hints/tool.mjs';
+import { DEFAULT_LIBRARIES } from './libraries/project-libraries.mjs';
 
-export const RULES_TOOL = 'python-rules';
+export { RULES_TOOL };
 const TYPE_CHECK_TOOLS = ['mypy', 'pyright', 'basedpyright'];
 const HINTED_TOOLS = ['ruff', ...TYPE_CHECK_TOOLS, RULES_TOOL];
 
-const LOGGING = 'Use `logging`: `logger = logging.getLogger(__name__)`, then `logger.info(...)`.';
-const HANDLE_EXCEPTION =
-  'Catch the specific exception and handle it, log it with `logger.exception(...)` or re-raise it; `contextlib.suppress(SpecificError)` ignores one expected error.';
 const FIX_TYPE = 'Fix the type; inline ignores are banned.';
 const INSTALL_PACKAGE = 'Install the package, or its `types-` stubs, in the project environment.';
+const USE_REPLACEMENT =
+  'Call the replacement the deprecation notice names; the deprecated API is going away.';
 
 export const RULE_HINTS = [
-  {
-    tool: 'ruff',
-    rules: ['PTH'],
-    prefix: true,
-    allowed: 'Use `pathlib.Path`: `Path(a) / b`, `path.read_text()`, `path.exists()`.',
-  },
-  {
-    tool: 'ruff',
-    rules: ['UP031', 'UP032', 'FLY002'],
-    allowed: 'Use an f-string: `f"Hello, {name}"`.',
-  },
-  {
-    tool: 'ruff',
-    rules: ['B006'],
-    allowed:
-      'Default to `None` and create the value inside the function, or use an immutable default such as a tuple.',
-  },
-  { tool: 'ruff', rules: ['E722', 'BLE001'], allowed: HANDLE_EXCEPTION },
-  {
-    tool: 'ruff',
-    rules: ['F403'],
-    allowed: 'Import the names you use: `from module import name`.',
-  },
-  { tool: 'ruff', rules: ['T201', 'T203'], allowed: LOGGING },
-  {
-    tool: 'ruff',
-    rules: ['PERF203'],
-    allowed: 'Move the `try` out of the loop, or handle each item in a helper function.',
-  },
-  {
-    tool: RULES_TOOL,
-    rules: ['swallowed-exception'],
-    describe: (subject) => `\`${subject}\` swallows the error`,
-    allowed:
-      'Log it with `logger.exception(...)`, re-raise it or use it, or return a named default or a value built from the error; `contextlib.suppress(SpecificError)` ignores one expected error.',
-  },
-  {
-    tool: RULES_TOOL,
-    rules: ['blind-suppress'],
-    describe: (subject) => `\`${subject}\` ignores every error`,
-    allowed:
-      'Name the expected exception: `contextlib.suppress(KeyError)`; or handle it, log it with `logger.exception(...)` or re-raise it.',
-  },
-  {
-    tool: RULES_TOOL,
-    rules: ['frozen-dataclass'],
-    describe: (subject) => `Dataclass ${subject} is not frozen`,
-    allowed:
-      'Declare records as `@dataclass(frozen=True)` and build a changed copy with `dataclasses.replace`.',
-  },
-  {
-    tool: RULES_TOOL,
-    rules: ['pydantic-boundary'],
-    describe: (subject) => `${subject} is imported outside an adapters/ package`,
-    allowed:
-      'Use pydantic only in an `adapters/` package to parse untrusted input, and pass frozen dataclasses on from there.',
-  },
-  {
-    tool: RULES_TOOL,
-    rules: ['enum-string-constants'],
-    describe: (subject) => `${subject} are string constants that belong in one enum`,
-    allowed:
-      'Declare an enum: `class Status(enum.StrEnum): ACTIVE = "active"` on Python 3.11+, otherwise `class Status(str, enum.Enum)`.',
-  },
-  {
-    tool: RULES_TOOL,
-    rules: ['no-type-check'],
-    describe: (subject) => `\`${subject}\` is excluded from type checking by \`@no_type_check\``,
-    allowed: 'Remove the decorator and annotate the code so the checker can verify it.',
-  },
-  {
-    tool: RULES_TOOL,
-    rules: ['not-type-checking'],
-    describe: (subject) => `\`${subject}\` hides code from the type checkers`,
-    allowed:
-      'Put the code in the normal flow; `if TYPE_CHECKING:` is only for imports that annotations need.',
-  },
-  {
-    tool: RULES_TOOL,
-    rules: ['stub-beside-source'],
-    describe: (subject) => `\`${subject}\` sits beside its source and replaces it for the checkers`,
-    allowed: 'Delete the `.pyi` file and annotate the `.py` file itself.',
-  },
-  {
-    tool: RULES_TOOL,
-    rules: ['no-inline-suppression'],
-    describe: (subject) => `Inline suppression \`# ${subject}\``,
-    allowed: 'Remove the comment and fix the code.',
-  },
+  ...STYLE_HINTS,
+  ...PYTEST_HINTS,
+  ...SECURITY_HINTS,
+  ...STRUCTURE_HINTS,
+  ...SMELL_HINTS,
   { tool: 'mypy', rules: ['import-not-found', 'import-untyped'], allowed: INSTALL_PACKAGE },
   ...['pyright', 'basedpyright'].map((tool) => ({
     tool,
@@ -107,6 +29,12 @@ export const RULE_HINTS = [
     allowed: INSTALL_PACKAGE,
   })),
   { tool: 'mypy', rules: ['unused-ignore'], allowed: 'Delete the comment.', exception: false },
+  { tool: 'mypy', rules: ['deprecated'], allowed: USE_REPLACEMENT },
+  ...['pyright', 'basedpyright'].map((tool) => ({
+    tool,
+    rules: ['reportDeprecated'],
+    allowed: USE_REPLACEMENT,
+  })),
   ...TYPE_CHECK_TOOLS.map((tool) => ({ tool, rules: undefined, allowed: FIX_TYPE })),
 ];
 
@@ -126,10 +54,15 @@ export function hintFor(finding) {
   return RULE_HINTS.find((hint) => matches(hint, finding));
 }
 
-export function describeRuleFinding(rule, subject) {
+export function describeRuleFinding(rule, subject, libraries = DEFAULT_LIBRARIES) {
   return RULE_HINTS.find((hint) => hint.tool === RULES_TOOL && hint.rules.includes(rule)).describe(
     subject,
+    libraries,
   );
+}
+
+function allowedText(hint, subject, libraries) {
+  return typeof hint.allowed === 'function' ? hint.allowed(subject, libraries) : hint.allowed;
 }
 
 export const PYTHON_RULES_IDS = RULE_HINTS.filter(({ tool }) => tool === RULES_TOOL).flatMap(
@@ -145,21 +78,20 @@ function canBeLifted(finding) {
   );
 }
 
-export function withHint(finding) {
-  const hint = hintFor(finding);
-  if (hint === undefined && !canBeLifted(finding)) {
-    return finding;
+export function withHint(finding, libraries = DEFAULT_LIBRARIES) {
+  const { subject, ...rest } = finding;
+  const hint = hintFor(rest);
+  if (hint === undefined && !canBeLifted(rest)) {
+    return rest;
   }
   const sentences = [
-    `${finding.message.replace(/\.$/, '')}.`,
-    ...(hint === undefined ? [] : [hint.allowed]),
-    ...(hint?.exception === false
-      ? []
-      : [exceptionRoute({ rule: finding.rule, path: finding.path })]),
+    `${rest.message.replace(/\.$/, '')}.`,
+    ...(hint === undefined ? [] : [allowedText(hint, subject, libraries)]),
+    ...(hint?.exception === false ? [] : [exceptionRoute({ rule: rest.rule, path: rest.path })]),
   ];
-  return { ...finding, message: sentences.join(' ') };
+  return { ...rest, message: sentences.join(' ') };
 }
 
-export function applyRuleHints(findings) {
-  return findings.map(withHint);
+export function applyRuleHints(findings, libraries = DEFAULT_LIBRARIES) {
+  return findings.map((finding) => withHint(finding, libraries));
 }
