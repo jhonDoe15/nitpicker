@@ -1,10 +1,10 @@
 import { TESTS_FAILED_SKIPPED_RULE } from '../../../../../shared/rules/finding-helpers.mjs';
 import { execute, run } from '../../execution/python-process.mjs';
 import { pytestCommand } from '../../execution/python-test-runner.mjs';
-import { pinnedEnvironmentAddopts } from '../../test-runs/pytest-pins.mjs';
 import { failingModules, readJunit } from '../../test-runs/junit-results.mjs';
 import { snapshotScope } from '../../test-runs/test-failures.mjs';
 import { MUTANTS_DIRECTORY } from '../python-mutation-data.mjs';
+import { mutmutEnvironment } from './python-mutation-runner.mjs';
 
 const MUTMUT_TOOL = 'mutmut';
 const MINIMUM_PYTHON = [3, 10];
@@ -55,14 +55,14 @@ export function failedOnProjectTests(message) {
 }
 
 /**
- * Runs pytest once on the snapshot itself (not mutmut's copy in mutants/) and names the test
- * modules that fail or cannot be collected.
+ * Runs pytest once on the snapshot itself (not mutmut's copy in mutants/), with the options and
+ * settings mutmut's pytest gets, and names the test modules that fail or cannot be collected.
  */
 export function failingTestModules(context) {
   run(context, ['python', ...pytestCommand(context), `--ignore=${MUTANTS_DIRECTORY}`], {
     accepted: () => true,
     rule: 'mutation-failed',
-    env: pinnedEnvironmentAddopts(context.pytestAddopts),
+    ...mutmutEnvironment(context),
   });
   return failingModules(readJunit(context.reportRoot));
 }
