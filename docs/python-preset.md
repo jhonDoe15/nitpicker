@@ -989,17 +989,24 @@ What the Python preset does the way the TypeScript and Java presets do (`parity/
   `python/tests-failed`.
 - **Slow tests.** `test-runtime/slow-test`, as for Java and Kotlin, for pytest and unittest
   projects alike: a test the change adds or edits over 5 s, or 30 s for an integration test, from
-  the JUnit times (`test-runs/slow-tests.mjs`); a parametrized test counts its slowest case. A test
-  is its decorators, its signature and its body, read by logical line (`test-runs/python-blocks.mjs`:
-  brackets, strings and continuations, so a wrapped signature or decorator is one line); it counts
-  as edited when no identical block of the same name is in the base file, or in any base test file
-  when it moved (a file moved unchanged reports nothing). pytest times only the call phase
-  (`-o junit_duration_report=call`), so a session or module fixture's setup is not charged to the
-  first test that uses it; unittest times each test from `startTest` to `stopTest` (its `setUp`
-  and `tearDown`, not `setUpClass` or `setUpModule`). A test is an integration test under an
-  `integration`, `integration_tests`, `e2e` or `end_to_end` folder, or with
-  `@pytest.mark.integration` or `@pytest.mark.e2e` on the function (however its decorators wrap),
-  its classes (decorators or a `pytestmark` in the class body) or the module's `pytestmark`; the
+  the JUnit times (`test-runs/slow-tests.mjs`); a parametrized test counts its slowest case over
+  that case's own budget. A test is its decorators, its signature and its body, read by logical
+  line (`test-runs/python-blocks.mjs`: brackets, strings and continuations, so a wrapped signature
+  or decorator is one line), in the file and at the line where it is defined, inside the classes
+  that enclose it. It counts as edited when the base file has no identical block in the same
+  classes; a block that is only in a base test file the change removed or renamed counts as moved,
+  so a test copied next to an original that still exists is new. An inherited test (a mixin or base
+  class in another module, as the usual unittest and Django way to share tests) is also counted
+  when the class that collects it is new or its `class` line changed; a test built by a factory
+  (`test_import = make_case(6)`) when a line that names it is new or changed. pytest runs through
+  `test-runs/pytest_timings.py`, which times the call phase plus the setup of function-scoped
+  fixtures (`setup_method` is one), so a session, module or class fixture's setup (`setup_class`
+  too) is not charged to the first test that uses it, and records each case's marks; unittest
+  times each test from `startTest` to `stopTest` (its `setUp` and `tearDown`, not `setUpClass` or
+  `setUpModule`), as JUnit charges `@BeforeEach` and not `@BeforeAll`. A test is an integration
+  test under an `integration`, `integration_tests`, `e2e` or `end_to_end` folder, or with
+  `@pytest.mark.integration` or `@pytest.mark.e2e` on that case, as pytest applies it (decorators,
+  classes, `pytestmark`, conftest hooks, or `pytest.param(..., marks=...)` for that case only); the
   unittest message names only the folder. `thresholds.unitTestSeconds` and
   `integrationTestSeconds` change the limits. Base snapshots report none.
 - **Pinned runner options.** Options that let a failing run pass are taken out of the project's

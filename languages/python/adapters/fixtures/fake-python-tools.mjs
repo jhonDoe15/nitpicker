@@ -32,7 +32,7 @@
 //                        other status says the clean test run failed
 //   mutmut-output.txt    what `mutmut run` prints instead of those messages
 //   mutmut-failing-tests.txt  one test module per line: `mutmut run` fails its stats run until
-//                        PYTEST_ADDOPTS ignores each (`python -m pytest` writes junit.xml for them)
+//                        PYTEST_ADDOPTS ignores each (`python pytest_timings.py` writes junit.xml for them)
 //   mutmut-only-failing.txt   with those ignored, no test is left (the stats run collects none)
 //   python-version.txt   the `major.minor` the interpreter version probe prints (default 3.12)
 //   import-scan.json     printed by the import scan script (default: no imports)
@@ -241,7 +241,7 @@ function python() {
     process.stdout.write(`${lines('python-version.txt')[0] ?? '3.12'}\n`);
     return;
   }
-  if (args[0] === '-m' && args[1] === 'pytest') {
+  if (args[0]?.endsWith('pytest_timings.py')) {
     writeJunit(Number(lines('test-exit.txt')[0] ?? 0));
     return;
   }

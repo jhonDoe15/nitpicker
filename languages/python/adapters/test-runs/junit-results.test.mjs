@@ -15,6 +15,7 @@ describe('pytest JUnit results', () => {
 
     expect(ok).toEqual({
       file: 'tests/test_a.py',
+      qualifiedClass: 'tests.test_a.TestA',
       line: 5,
       className: 'TestA',
       name: 'test_ok[1-2]',
@@ -25,6 +26,7 @@ describe('pytest JUnit results', () => {
     });
     expect(bad).toEqual({
       file: 'tests/test_a.py',
+      qualifiedClass: 'tests.test_a',
       line: 10,
       className: '',
       name: 'test_bad',
@@ -36,6 +38,7 @@ describe('pytest JUnit results', () => {
     expect(skipped.outcome).toBe('skipped');
     expect(collection).toEqual({
       file: 'tests/test_c.py',
+      qualifiedClass: '',
       line: undefined,
       className: '',
       name: undefined,
@@ -53,6 +56,13 @@ describe('pytest JUnit results', () => {
       'tests/test_c.py',
     ]);
     expect(failingModules(cases)).toEqual(['tests/test_a.py', 'tests/test_c.py']);
+  });
+  it('reads the marks the timing plugin recorded for each case', () => {
+    const [marked, plain] = parseJunit(
+      '<testsuite><testcase classname="t" name="test_x[1]" file="t.py" time="1"><properties><property name="nitpicker_marks" value="integration parametrize"/></properties></testcase><testcase classname="t" name="test_y" file="t.py" time="1"/></testsuite>',
+    );
+
+    expect([marked.marks, plain.marks]).toEqual([['integration', 'parametrize'], undefined]);
   });
   it('reads a single testsuite root', () => {
     expect(

@@ -23,6 +23,9 @@ const probes = new WeakMap();
 export const UNITTEST_SCRIPT = fileURLToPath(
   new URL('../test-runs/unittest_timings.py', import.meta.url),
 );
+export const PYTEST_SCRIPT = fileURLToPath(
+  new URL('../test-runs/pytest_timings.py', import.meta.url),
+);
 
 function existingTestFiles(projectRoot) {
   const directories = TEST_DIRECTORIES.filter((name) => existsSync(path.join(projectRoot, name)));
@@ -112,8 +115,7 @@ export function pytestCommand(context) {
     );
   }
   return [
-    '-m',
-    'pytest',
+    PYTEST_SCRIPT,
     '-q',
     '-o',
     `cache_dir=${path.join(context.reportRoot, 'pytest-cache')}`,
