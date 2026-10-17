@@ -34,15 +34,17 @@ function linkEntry(entry, directories, roots) {
   return undefined;
 }
 
+function linkDirectory(directories, roots) {
+  const entries = readdirSync(directories.liveDirectory, { withFileTypes: true });
+  return entries
+    .map((entry) => linkEntry(entry, directories, roots))
+    .filter((scope) => scope !== undefined);
+}
+
 function linkEntries(liveRoot, snapshotRoot, roots) {
   const pending = [{ liveDirectory: liveRoot, snapshotDirectory: snapshotRoot }];
   for (const directories of pending) {
-    for (const entry of readdirSync(directories.liveDirectory, { withFileTypes: true })) {
-      const scope = linkEntry(entry, directories, roots);
-      if (scope !== undefined) {
-        pending.push(scope);
-      }
-    }
+    pending.push(...linkDirectory(directories, roots));
   }
 }
 
