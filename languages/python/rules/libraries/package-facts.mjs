@@ -1,6 +1,9 @@
-import { existsSync, readFileSync } from 'node:fs';
-import { createRequire } from 'node:module';
-import path from 'node:path';
+import {
+  isTable,
+  parseToml,
+  readProjectFile,
+  tomlProblem,
+} from '../../adapters/configuration/project-files.mjs';
 
 const PRIVATE_CLASSIFIER = 'Private :: Do Not Upload';
 const SCRIPT_TABLES = ['scripts', 'gui-scripts'];
@@ -8,30 +11,17 @@ const ENTRY_POINT = /^\s*([\w.]+)\s*:\s*([\w.]+)/;
 
 const PYPROJECT = 'pyproject.toml';
 
-function tomlProblem(error) {
-  const [summary] = String(error?.message ?? error).split('\n');
-  return error?.line === undefined
-    ? summary
-    : `${summary} (line ${String(error.line)}, column ${String(error.column)})`;
-}
-
-export function parseToml(text) {
-  try {
-    return { value: createRequire(import.meta.url)('smol-toml').parse(text) };
-  } catch (error) {
-    return { problem: tomlProblem(error), line: error?.line ?? 1 };
-  }
-}
-
 function readPyproject(projectRoot) {
-  const file = path.join(projectRoot, PYPROJECT);
-  if (!existsSync(file)) {
-    return { pyproject: {}, invalidFiles: [] };
+  const text = readProjectFile(projectRoot, PYPROJECT);
+  const parsed = text === undefined ? undefined : parseToml(text);
+  if (parsed?.kind === 'invalid') {
+    const problem = tomlProblem(parsed.error);
+    return {
+      pyproject: {},
+      invalidFiles: [{ file: PYPROJECT, line: parsed.error?.line ?? 1, problem }],
+    };
   }
-  const { value, problem, line } = parseToml(readFileSync(file, 'utf8'));
-  return problem === undefined
-    ? { pyproject: value, invalidFiles: [] }
-    : { pyproject: {}, invalidFiles: [{ file: PYPROJECT, line, problem }] };
+  return { pyproject: parsed?.table ?? {}, invalidFiles: [] };
 }
 
 function packageTable(pyproject) {
@@ -50,10 +40,6 @@ function isPublished(pyproject) {
     typeof pyproject['build-system']?.['build-backend'] === 'string' &&
     !classifiers.includes(PRIVATE_CLASSIFIER)
   );
-}
-
-function isTable(value) {
-  return typeof value === 'object' && value !== null;
 }
 
 function entryPointGroups(pyproject) {

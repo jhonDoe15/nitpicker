@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it } from 'vitest';
-import { createFakeProjects } from '../test-support/fake-project.mjs';
-import { readPackageFacts } from './python-package.mjs';
+import { createFakeProjects } from '../../adapters/test-support/fake-project.mjs';
+import { readPackageFacts } from './package-facts.mjs';
 
 const fakes = createFakeProjects();
 const BACKEND = '[build-system]\nbuild-backend = "hatchling.build"\n';

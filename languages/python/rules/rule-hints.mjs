@@ -57,7 +57,11 @@ export function exceptionSentence(rule) {
   return `To allow it for some paths, add a "python.exceptions" entry for ${rule} in nitpicker.config.json.`;
 }
 
-export function describeRuleFinding(rule, subject, libraries = DEFAULT_LIBRARIES, data = {}) {
+export function describeRuleFinding(
+  rule,
+  subject,
+  { libraries = DEFAULT_LIBRARIES, data = {} } = {},
+) {
   return RULE_HINTS.find((hint) => hint.tool === RULES_TOOL && hint.rules.includes(rule)).describe(
     subject,
     libraries,

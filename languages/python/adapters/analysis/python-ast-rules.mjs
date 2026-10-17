@@ -3,7 +3,7 @@ import path from 'node:path';
 import { normalizeReportPath } from '../../../java/ingest/common.mjs';
 import { run } from '../execution/python-process.mjs';
 import { isTestPath } from '../execution/python-project.mjs';
-import { readPackageFacts } from '../configuration/python-package.mjs';
+import { readPackageFacts } from '../../rules/libraries/package-facts.mjs';
 import { ruffConfigFor } from '../configuration/python-ruff-config.mjs';
 import { listProductionModules } from './python-sources.mjs';
 import { fileURLToPath } from 'node:url';
