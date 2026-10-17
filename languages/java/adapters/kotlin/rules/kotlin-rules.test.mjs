@@ -92,7 +92,7 @@ describe('one-way rule messages', () => {
   it('lists each rule once under the id detekt reports', () => {
     expect(new Set(ONE_WAY_RULE_IDS).size).toBe(ONE_WAY_RULE_IDS.length);
     for (const id of ONE_WAY_RULE_IDS) {
-      expect(id).toMatch(/^detekt\.(?:potential-bugs|coroutines|style)\.[A-Z]\w+$/);
+      expect(id).toMatch(/^detekt\.(?:potential-bugs|coroutines|exceptions|style)\.[A-Z]\w+$/);
     }
   });
 });

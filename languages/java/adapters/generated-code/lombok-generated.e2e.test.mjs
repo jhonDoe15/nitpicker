@@ -88,8 +88,14 @@ const POM = `<project xmlns="http://maven.apache.org/POM/4.0.0">
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
   </properties>
   <dependencies>
-    <dependency><groupId>org.projectlombok</groupId><artifactId>lombok</artifactId><version>${LOMBOK}</version><scope>provided</scope></dependency>
-    <dependency><groupId>org.junit.jupiter</groupId><artifactId>junit-jupiter</artifactId><version>5.11.0</version><scope>test</scope></dependency>
+    <dependency>
+      <groupId>org.projectlombok</groupId><artifactId>lombok</artifactId>
+      <version>${LOMBOK}</version><scope>provided</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.junit.jupiter</groupId><artifactId>junit-jupiter</artifactId>
+      <version>5.11.0</version><scope>test</scope>
+    </dependency>
   </dependencies>
   <build><plugins>
     <plugin>
@@ -131,6 +137,10 @@ const ONLY_THE_WRITTEN_CODE = [
   'jacoco line-coverage src/main/java/shop/Discount.java',
   'jacoco uncovered-method src/main/java/shop/Discount.java',
   'pit mutant-nocoverage src/main/java/shop/Discount.java',
+  'pit mutant-nocoverage src/main/java/shop/Discount.java',
+  'pit mutant-survived src/main/java/shop/Discount.java',
+  'pit mutation-summary .',
+  'pit mutation-summary .',
   'pit mutation-summary .',
 ];
 
