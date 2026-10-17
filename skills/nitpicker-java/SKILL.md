@@ -15,7 +15,8 @@ forms below from the start; the gate is a backstop.
 1. Run the project's tests (`./gradlew test`, or `./mvnw test` on Maven). Failing tests or compile
    errors make the gate exit 2.
 2. Format with google-java-format 1.25.2 (the project's own formatter task, or the CLI with
-   `--replace`). `npx nitpicker --fix` does not touch Java.
+   `--replace`, plus `--aosp` when the project's style is aosp). `npx nitpicker --fix` does not
+   touch Java.
 3. Run `npx nitpicker` as a background command you wait on, without a pipe: you need its exit
    code. It runs the build on the merge base and on head and takes minutes. It uses the project's
    `./gradlew` or `./mvnw` when there is one, otherwise `gradle` or `mvn` from the PATH
@@ -38,8 +39,9 @@ With Spring on the classpath, also follow [spring.md](spring.md).
 
 ## Write it this way
 
-- Style is google-java-format, 100 columns (Checkstyle's line length). Indent like the files around you:
-  nitpicker follows the project's majority, 2 spaces (Google style) or 4 (`--aosp`).
+- Style is google-java-format, 100 columns. Indent like the files around you (nitpicker follows the
+  project's majority, 2 spaces or 4 with `--aosp`); a misformatted file is one finding, so run the
+  formatter rather than fixing layout by hand.
 - Text: `"a".equals(x)` or `a.equals(b)`, never `==` on strings or other objects. Pass a charset and
   a locale: `s.getBytes(StandardCharsets.UTF_8)`, `s.toUpperCase(Locale.ROOT)`.
 - Output: no `System.out`/`System.err` and no `printStackTrace()`. Log with
@@ -90,6 +92,7 @@ With Spring on the classpath, also follow [spring.md](spring.md).
   toward the method). Return early instead of nesting; past 3 parameters, pass a `record`.
 - A file: at most 300 lines (test file 500). A folder: at most 6 source files and, separately, 6
   test files directly in it; group the rest into sub-packages.
+- Keep classes small: split by responsibility and prefer holding a collaborator to extending one.
 - Cyclomatic complexity 9 or more fails `crap-score-limit` even when fully covered; less
   coverage lowers the ceiling (`ccn^2 * (1 - coverage)^3 + ccn < 9`). Split branchy methods.
 - Copied code fails (`duplicate-clone`): extract a method; in tests, a helper or one
@@ -115,8 +118,8 @@ With Spring on the classpath, also follow [spring.md](spring.md).
 - A method already over a size limit may be edited but must not get worse: the gate then prints
   a note ("allowed because base was 4"). Adding a parameter, statement or nesting level fails
   (`Legacy.total grew from 4 to 5 parameters`). Put new logic in a new method and call it once.
-- A file or folder already over its limit must not grow: put the new code in a new class, and a
-  new file in a new package.
+- A file, folder or class already over its limit must not grow: put the new code in a new class,
+  and a new file in a new package.
 - A line you touch must have its branches covered, even if it was uncovered before.
 - Existing PMD, SpotBugs, Error Prone and Checkstyle findings stay baselined while their message is
   unchanged; adding another of the same kind in the file is new. Don't rename or move a file that

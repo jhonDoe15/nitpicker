@@ -1,6 +1,8 @@
 def reportDir = project.ext.nitpickerReportDir
 def testSourceDirectories = project.ext.nitpickerTestSourceDirectories
 def mainSources = sourceSets.main.allJava.sourceDirectories
+def nitpickerArgument = { String name -> gradle.startParameter.projectProperties[name] }
+def aosp = nitpickerArgument('nitpicker.java.style') == 'aosp'
 
 tasks.register('nitpickerFormat', JavaExec) {
     group = 'nitpicker'
@@ -15,6 +17,6 @@ tasks.register('nitpickerFormat', JavaExec) {
         standardOutput = new FileOutputStream(reportDir.get().file('format.txt').asFile)
         def files = (mainSources.files + testSourceDirectories()).findAll { it.exists() }
             .collectMany { directory -> fileTree(directory) { include '**/*.java' }.files }.unique().sort()
-        args(['--dry-run'] + files*.absolutePath)
+        args(['--dry-run'] + (aosp ? ['--aosp'] : []) + files*.absolutePath)
     }
 }

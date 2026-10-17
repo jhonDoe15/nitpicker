@@ -24,7 +24,7 @@ function sarif(results = []) {
   return JSON.stringify({ runs: [{ tool: { driver: { name: 'PMD', rules: [] } }, results }] });
 }
 
-function writeModule(moduleDir, { className, lines }) {
+function writeModule(moduleDir, { className, lines, methods = 0 }) {
   const source = path.join(moduleDir, `src/main/java/demo/${className}.java`);
   write(source, `${Array.from({ length: lines }, () => '').join('\n')}\n`);
   const reports = path.join(moduleDir, REPORT_DIRECTORY);
@@ -54,6 +54,14 @@ function writeModule(moduleDir, { className, lines }) {
   write(path.join(reports, 'jacoco.xml'), '<report name="demo"></report>');
   write(path.join(reports, 'checkstyle.xml'), '<checkstyle version="10.21.1"></checkstyle>');
   write(path.join(reports, 'structure.json'), '[]');
+  const file = `src/main/java/demo/${className}.java`;
+  write(
+    path.join(reports, 'classes.json'),
+    JSON.stringify({
+      files: { [file]: { package: 'demo', imports: [] } },
+      classes: [{ file, name: className, kind: 'class', start: 1, methods, fields: 0 }],
+    }),
+  );
   write(path.join(reports, 'jdeps.txt'), '');
   write(path.join(reports, 'jdeps-classes.txt'), `demo.${className}\n`);
   write(path.join(reports, 'duplicates.json'), JSON.stringify({ runs: [] }));
@@ -63,7 +71,7 @@ function mavenProject() {
   const root = realpathSync(mkdtempSync(path.join(tmpdir(), 'nitpicker-java-modules-')));
   temporaryRoots.push(root);
   writeModule(path.join(root, 'core'), { className: 'Adder', lines: 320 });
-  writeModule(path.join(root, 'app'), { className: 'Main', lines: 10 });
+  writeModule(path.join(root, 'app'), { className: 'Main', lines: 10, methods: 21 });
   return root;
 }
 
@@ -82,6 +90,7 @@ describe('readModuleFindings', () => {
     expect(summary(findings)).toEqual([
       ['pmd', 'EmptyCatchBlock', 'app/src/main/java/demo/Main.java'],
       ['pmd', 'EmptyCatchBlock', 'core/src/main/java/demo/Adder.java'],
+      ['structure', 'class-methods-limit', 'app/src/main/java/demo/Main.java'],
       ['structure', 'file-lines-limit', 'core/src/main/java/demo/Adder.java'],
     ]);
     const coupling = findings
@@ -98,11 +107,15 @@ describe('readModuleFindings', () => {
     });
     expect(summary(findings)).toEqual([
       ['pmd', 'EmptyCatchBlock', 'app/src/main/java/demo/Main.java'],
+      ['structure', 'class-methods-limit', 'app/src/main/java/demo/Main.java'],
     ]);
     const single = path.join(root, 'app');
     expect(
       summary(readModuleFindings(single, [single], { reportDirectory: REPORT_DIRECTORY })),
-    ).toEqual([['pmd', 'EmptyCatchBlock', 'src/main/java/demo/Main.java']]);
+    ).toEqual([
+      ['pmd', 'EmptyCatchBlock', 'src/main/java/demo/Main.java'],
+      ['structure', 'class-methods-limit', 'src/main/java/demo/Main.java'],
+    ]);
   });
 
   it('gives each module its path so a slow test is compared with the base file of that module', () => {
@@ -244,6 +257,24 @@ describe('readModuleFindings', () => {
       ['outside', true, ['outside/src/main/java', 'shared/src']],
       ['platform', undefined, undefined],
     ]);
+  });
+
+  it('names the module folder in the exception a module class limit offers and honours', () => {
+    const root = mavenProject();
+    const modules = [path.join(root, 'app'), path.join(root, 'core')];
+    const classLimits = (exceptions) =>
+      readModuleFindings(root, modules, { reportDirectory: REPORT_DIRECTORY, exceptions }).filter(
+        ({ rule }) => rule === 'class-methods-limit',
+      );
+    const main = 'app/src/main/java/demo/Main.java';
+
+    const offered = classLimits([]).map(({ message }) =>
+      JSON.parse(/\{"rule".*?\}/u.exec(message)?.[0] ?? '{}'),
+    );
+
+    expect(offered).toEqual([{ rule: 'class-methods-limit', paths: [main], reason: '...' }]);
+    expect(classLimits([{ rule: 'class-methods-limit', glob: 'app/src/**' }])).toEqual([]);
+    expect(classLimits([{ rule: 'class-methods-limit', glob: 'src/**' }])).toHaveLength(1);
   });
 });
 
