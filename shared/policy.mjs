@@ -5,6 +5,7 @@
 import { UNUSED_API_RULES, UNUSED_API_RULE_IDS } from './unused-api/unused-api-policy.mjs';
 
 import { reuseRules } from './rules/reuse-rules.mjs';
+import { couplingRules } from './project-rules/coupling-rules.mjs';
 import { SOURCE_RULE_IDS, sourceRuleMessages, sourceRules } from './project-rules/source-rules.mjs';
 
 export const LANGUAGES = ['typescript', 'java', 'python', 'kotlin'];
@@ -181,7 +182,6 @@ export const HELD_MESSAGES = {
 const BOTH = { typescript: true, java: true, python: false };
 const ALL = { typescript: true, java: true, python: true };
 const TYPESCRIPT_ONLY = { typescript: true, java: false, python: false };
-const JAVA_ONLY = { typescript: false, java: true, python: false };
 const withKotlin = (enforcedBy, kotlin) => ({ ...enforcedBy, kotlin });
 
 /**
@@ -249,19 +249,10 @@ export const RULES = [
     limit: `jscpd in \`${DUPLICATES_MODE}\` mode; any new clone fails`,
     enforcedBy: withKotlin(ALL, true),
   },
-  {
-    id: RULE_IDS.stabilityDirection,
-    check: 'coupling',
-    limit:
-      'a package depending on a less stable package; an import that exists only for the type checker (`import type`, `if TYPE_CHECKING:`) is never the reported dependency, but still counts toward instability',
-    enforcedBy: withKotlin(ALL, true),
-  },
-  {
-    id: RULE_IDS.packageCycle,
-    check: 'coupling',
-    limit: 'packages that depend on each other in a loop',
-    enforcedBy: withKotlin(JAVA_ONLY, true),
-  },
+  ...couplingRules(RULE_IDS, {
+    everyLanguage: withKotlin(ALL, true),
+    javaOnly: withKotlin({ typescript: false, java: true, python: false }, true),
+  }),
   {
     id: RULE_IDS.noProductionRuntime,
     check: 'test-runtime',

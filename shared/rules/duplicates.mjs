@@ -1,18 +1,3 @@
-// Duplicate-code findings, from neutral inputs.
-//
-// Input: a list of clones, each
-//   {
-//     first:  { file: string, line?: number, endLine?: number },   // project-relative, forward-slash paths
-//     second: { file: string, line?: number, endLine?: number },
-//     fragment?: string,                          // the cloned text (hashed into the identity)
-//     lines?: number, tokens?: number,            // size of the clone
-//   }
-// The two sides are ordered by path, so the same pair gives the same finding either way round.
-// Identity is the file pair, a hash of the fragment and the n-th occurrence of that fragment in
-// the pair, never a line number. Each clone is one enforceable `duplicate-clone` plus descriptive
-// size metrics. Its ratchet lists both cloned ranges (endLine, else line + lines - 1) as lines that
-// must keep an unchanged line for a shrunk legacy clone to be held.
-
 import { RULE_IDS } from '../policy.mjs';
 import { addMetric, hash, nextOccurrence, positiveInteger } from './finding-helpers.mjs';
 
