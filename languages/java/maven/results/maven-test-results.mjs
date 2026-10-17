@@ -1,3 +1,5 @@
+import { childrenNamed, parseXml } from '../../ingest/common.mjs';
+import { readFileSync } from 'node:fs';
 import { copyFileSync, existsSync, mkdirSync, readdirSync, statSync } from 'node:fs';
 import path from 'node:path';
 import { TEST_RESULTS_DIRECTORY } from '../../adapters/test-times/slow-tests.mjs';
@@ -49,6 +51,17 @@ function platformHidesTestng(testRuntime) {
   );
 }
 
+function hasNonArchunitCase(report, isArchunit) {
+  const root = parseXml(readFileSync(report, 'utf8'));
+  const suites = root.name === 'testsuites' ? childrenNamed(root, 'testsuite') : [root];
+  return suites.some((suite) =>
+    childrenNamed(suite, 'testcase').some(
+      (testCase) =>
+        !isArchunit(testCase.attrs.classname ?? suite.attrs.name ?? suiteNameOf(report)),
+    ),
+  );
+}
+
 export function requireTestngRun({ module, since, isArchunit, testRuntime }) {
   if (
     !platformHidesTestng(testRuntime) ||
@@ -59,7 +72,7 @@ export function requireTestngRun({ module, since, isArchunit, testRuntime }) {
   const reports = testReportDirectories(module).flatMap(([, directory]) =>
     freshReports(directory, since),
   );
-  if (!reports.some((report) => !isArchunit(suiteNameOf(report)))) {
+  if (!reports.some((report) => hasNonArchunitCase(report, isArchunit))) {
     throw new Error(
       `Surefire ran none of the tests in ${module.basedir} but the ArchUnit classes: the JUnit Platform on its ` +
         'test classpath makes Surefire use its JUnit Platform provider, which runs TestNG tests only through ' +

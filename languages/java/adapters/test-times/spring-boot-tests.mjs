@@ -27,7 +27,7 @@ export function qualifiedName(text, name) {
   return owner === undefined ? name : `${owner}.${name}`;
 }
 
-export function typeSource(locate, directory, simple) {
+function typeSource(locate, directory, simple) {
   return (
     locate(directory, `${simple}.java`) ??
     locate(directory, `${simple}.kt`) ??

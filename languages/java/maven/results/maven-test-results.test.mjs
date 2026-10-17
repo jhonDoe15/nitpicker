@@ -131,7 +131,12 @@ describe('requireTestngRun', () => {
     const basedir = tree({
       'target/test-classes/shop/OrderTest.class': '',
       'target/test-classes/shop/LayerArchTest.class': '',
-      ...Object.fromEntries(reports.map((name) => [`target/surefire-reports/${name}`, '<a/>'])),
+      ...Object.fromEntries(
+        reports.map((name) => [
+          `target/surefire-reports/${name}`,
+          `<testsuite><testcase classname="${name.replace(/^TEST-|\.xml$/gu, '')}" name="test"/></testsuite>`,
+        ]),
+      ),
     });
     return {
       basedir,
@@ -157,6 +162,15 @@ describe('requireTestngRun', () => {
           'a Surefire execution of its own',
       ),
     );
+  });
+
+  it('rejects a non-ArchUnit report whose suite contains no test cases', () => {
+    const module = moduleWith(['TEST-shop.LayerArchTest.xml', 'TEST-shop.OrderTest.xml']);
+    writeFileSync(
+      path.join(module.surefireReports, 'TEST-shop.OrderTest.xml'),
+      '<testsuite name="shop.OrderTest" tests="0"/>',
+    );
+    expect(check(module, PLATFORM_TESTNG)).toThrow('Surefire ran none of the tests');
   });
 
   it('passes when TestNG ran, the TestNG engine is there, or no Platform hides TestNG', () => {
