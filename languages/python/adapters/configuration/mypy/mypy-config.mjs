@@ -1,7 +1,17 @@
 import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
-import { globToRegExpSource } from '../../../../shared/glob.mjs';
-import { toml } from '../../libraries/project-files.mjs';
+import { parseIni } from '../ini-parser.mjs';
+import { missingProjectConfig } from '../../../../../shared/conventions/tool-precedence.mjs';
+import { globToRegExpSource } from '../../../../../shared/glob.mjs';
+import {
+  isOwnModulePattern,
+  MYPY_LOOKED,
+  MYPY_TOOL,
+  mypyLayers,
+  mypyOwnModules,
+} from '../../project-tools/mypy-layers.mjs';
+import { attempt } from '../../project-tools/project-tool-layers.mjs';
+import { toml } from '../../../libraries/project-files.mjs';
 
 const MYPY_CONFIG = 'mypy.ini';
 const GLOBAL_OPTIONS = [
@@ -16,66 +26,13 @@ const MODULE_PREFIX = 'mypy-';
 const INI_FILES = ['mypy.ini', '.mypy.ini'];
 const CONFIG_DIRECTORY_VARIABLE = /\$\{?MYPY_CONFIG_FILE_DIR\}?/g;
 const PLUGIN_FILE = /^.+\.py(?=(?::\w+)?$)/;
-const INI_SECTION = /^\[([^\]]+)\]\s*$/;
-const INI_OPTION = /^([^\s=:][^=:]*?)\s*[=:]\s*(.*)$/;
-const INI_COMMENT = /\s+[#;].*$/;
 
-function startSection(name, sections, state) {
-  state.options = new Map();
-  state.key = undefined;
-  sections.set(name.trim(), state.options);
+function isDedicatedFile(name) {
+  return INI_FILES.includes(name);
 }
 
-function appendValue(content, state) {
-  state.options.set(state.key, `${state.options.get(state.key)}\n${content}`);
-}
-
-function startOption(line, state) {
-  const option = INI_OPTION.exec(line);
-  if (option === null || state.options === undefined) {
-    return;
-  }
-  state.key = option[1].trim();
-  state.options.set(state.key, option[2].trim());
-}
-
-function isIndented(line) {
-  return /^\s/.test(line);
-}
-
-function sectionName(line) {
-  return isIndented(line) ? undefined : INI_SECTION.exec(line.trim())?.[1];
-}
-
-function readIniLine(line, sections, state) {
-  const content = line.trim();
-  const name = sectionName(line);
-  if (content === '' || /^[#;]/.test(content)) {
-    state.key = undefined;
-    return;
-  }
-  if (name !== undefined) {
-    startSection(name, sections, state);
-    return;
-  }
-  if (isIndented(line) && state.key !== undefined) {
-    appendValue(content, state);
-    return;
-  }
-  startOption(line, state);
-}
-
-export function parseIni(text) {
-  const sections = new Map();
-  const state = { options: undefined, key: undefined };
-  for (const raw of text.split(/\r?\n/)) {
-    readIniLine(raw.replace(INI_COMMENT, ''), sections, state);
-  }
-  return sections;
-}
-
-function iniModel(sections) {
-  if (!sections.has('mypy')) {
+function iniModel(sections, shared) {
+  if (shared && !sections.has('mypy')) {
     return undefined;
   }
   const others = [...sections].filter(
@@ -92,14 +49,18 @@ function iniModel(sections) {
     }));
   return {
     format: 'ini',
-    options: Object.fromEntries(sections.get('mypy')),
+    options: Object.fromEntries(sections.get('mypy') ?? []),
     modules,
     others,
   };
 }
 
-function tomlModel(text) {
-  const { tool = {} } = toml().parse(text);
+function tomlModel(text, name) {
+  const { value: parsed, error } = attempt(() => toml().parse(text));
+  if (error !== undefined) {
+    throw new Error(`${name} could not be parsed (${error.message}): fix it`);
+  }
+  const { tool = {} } = parsed;
   const { mypy, ...others } = tool;
   if (mypy === undefined) {
     return undefined;
@@ -121,13 +82,26 @@ function readCandidate(projectRoot, name) {
     return undefined;
   }
   const text = readFileSync(file, 'utf8');
-  return name.endsWith('.toml') ? tomlModel(text) : iniModel(parseIni(text));
+  const model = name.endsWith('.toml')
+    ? tomlModel(text, name)
+    : iniModel(parseIni(text), !isDedicatedFile(name));
+  return model === undefined ? undefined : { ...model, file: name };
 }
 
 export function readMypyConfig(projectRoot) {
-  return [...INI_FILES, 'pyproject.toml', 'setup.cfg']
-    .map((name) => readCandidate(projectRoot, name))
-    .find((model) => model !== undefined);
+  for (const name of [...INI_FILES, 'pyproject.toml', 'setup.cfg']) {
+    const model = readCandidate(projectRoot, name);
+    if (model !== undefined) {
+      return model;
+    }
+  }
+  return undefined;
+}
+
+export function mypyExcludeArguments(context) {
+  return mypyLayers(context).appliesProject && context.exclude.length > 0
+    ? ['--exclude', excludePattern(context.exclude)]
+    : [];
 }
 
 function pluginEntry(entry, projectRoot) {
@@ -164,7 +138,7 @@ function pick(options, keys, projectRoot) {
   );
 }
 
-function excludePattern(exclude) {
+export function excludePattern(exclude) {
   const patterns = exclude.map((glob) => `${globToRegExpSource(glob).slice(1, -1)}(?:/.*)?/?`);
   return `^(?:${patterns.join('|')})$`;
 }
@@ -180,17 +154,47 @@ function iniText(sections) {
     .join('\n');
 }
 
-function mypyConfigText(model, { projectRoot, exclude }) {
-  const options = {
-    ...pick(model.options, GLOBAL_OPTIONS, projectRoot),
-    ...(exclude.length === 0 ? {} : { exclude: excludePattern(exclude) }),
+function excludeOption(exclude) {
+  return exclude.length === 0 ? {} : { exclude: excludePattern(exclude) };
+}
+
+function pickAll(options, projectRoot) {
+  return Object.fromEntries(
+    Object.entries(options).map(([key, value]) => [key, environmentValue(key, value, projectRoot)]),
+  );
+}
+
+function isolatedSections(model, { projectRoot, exclude, own }) {
+  return {
+    options: { ...pick(model.options, GLOBAL_OPTIONS, projectRoot), ...excludeOption(exclude) },
+    modules: model.modules
+      .map(({ patterns, options }) => ({
+        patterns: patterns.filter((pattern) => !isOwnModulePattern(pattern, own)),
+        options: pick(options, MODULE_OPTIONS, projectRoot),
+      }))
+      .filter(({ patterns, options }) => patterns.length > 0 && Object.keys(options).length > 0),
   };
-  const modules = model.modules
-    .map(({ patterns, options: moduleOptions }) => ({
+}
+
+function layeredSections(model, { projectRoot }) {
+  const { exclude: projectExclude, ...rest } = model.options;
+  return {
+    options: {
+      strict: true,
+      ...pickAll(rest, projectRoot),
+      ...(projectExclude === undefined ? {} : { exclude: projectExclude }),
+    },
+    modules: model.modules.map(({ patterns, options }) => ({
       patterns,
-      options: pick(moduleOptions, MODULE_OPTIONS, projectRoot),
-    }))
-    .filter(({ options: kept }) => Object.keys(kept).length > 0);
+      options: pickAll(options, projectRoot),
+    })),
+  };
+}
+
+function mypyConfigText(model, settings) {
+  const { options, modules } = settings.appliesProject
+    ? layeredSections(model, settings)
+    : isolatedSections(model, settings);
   if (model.format === 'toml') {
     return toml().stringify({
       tool: {
@@ -219,14 +223,23 @@ function mypyConfigText(model, { projectRoot, exclude }) {
   ]);
 }
 
-export function writeMypyConfig({ projectRoot, reportRoot, exclude }) {
-  const model = readMypyConfig(projectRoot);
+export function writeMypyConfig(context) {
+  const { projectRoot, reportRoot, exclude } = context;
+  const layers = mypyLayers(context);
+  const model = readMypyConfig(layers.configRoot);
+  if (layers.optedIn && model === undefined) {
+    throw new Error(
+      missingProjectConfig(MYPY_TOOL, `${MYPY_LOOKED} (searched ${layers.configRoot})`),
+    );
+  }
   const file = path.join(reportRoot, model?.format === 'toml' ? 'pyproject.toml' : MYPY_CONFIG);
   writeFileSync(
     file,
     mypyConfigText(model ?? { format: 'ini', options: {}, modules: [], others: [] }, {
       projectRoot,
       exclude,
+      appliesProject: layers.appliesProject,
+      own: layers.appliesProject ? new Set() : mypyOwnModules(context, model),
     }),
   );
   return file;
