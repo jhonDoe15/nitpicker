@@ -1,9 +1,9 @@
 import { spawnSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
-import path from 'node:path';
+import { pathInside } from '../../../../../shared/filesystem.mjs';
 import { SQL_LIBRARIES } from '../../eslint-plugin/rules/security/sql/no-sql-string-building.mjs';
 import { codeExtensions } from '../../layout.mjs';
-import { NON_PRODUCTION_FOLDERS } from '../../structure/reuse/reuse-paths.mjs';
+import { nonProductionFolders } from '../../structure/reuse/reuse-paths.mjs';
 import { packageMajorOf, readDependencyNames, storyGlobs } from '../scope-support.mjs';
 
 export const SECURITY_RULES = [
@@ -22,9 +22,10 @@ const BROWSER_FRAMEWORKS = new Set([
   'solid-js',
   '@angular/core',
 ]);
-const SUPPORT_FOLDERS = [...NON_PRODUCTION_FOLDERS, 'test-support', '.storybook', 'mocks'];
+const SUPPORT_FOLDERS = [...nonProductionFolders(), 'test-support', '.storybook', 'mocks'];
 const SUPPORT_FILES = ['setupTests', 'setup-tests', 'test-setup', 'vitest.setup', 'jest.setup'];
 const DEFAULTS_SEARCH = 'defaults\\.timeout|setGlobalDispatcher';
+const FIRST_NODE_FETCH_WITHOUT_TIMEOUT = 3;
 const MAX_LISTING_BYTES = 16 * 1024 * 1024;
 const NOT_ZERO = '(?!0\\b|undefined\\b|null\\b|false\\b)[\\w(]';
 const AXIOS_BINDING =
@@ -76,10 +77,12 @@ function setsDispatcherTimeouts(text) {
   return UNDICI_IMPORT.test(text) && GLOBAL_DISPATCHER.test(text) && DISPATCHER_TIMEOUT.test(text);
 }
 
-export function projectHttpDefaults(projectRoot, isProductionFile) {
+function projectHttpDefaults(projectRoot, isProductionFile) {
   const texts = filesSettingDefaults(projectRoot)
     .filter((file) => isProductionFile(file))
-    .map((file) => readFileSync(path.join(projectRoot, file), 'utf8'));
+    .map((file) => pathInside(projectRoot, file))
+    .filter((full) => full !== undefined)
+    .map((full) => readFileSync(full, 'utf8'));
   return [
     ...(texts.some(setsAxiosDefaults) ? ['axios'] : []),
     ...(texts.some(setsDispatcherTimeouts) ? ['fetch'] : []),
@@ -95,7 +98,7 @@ export function securityFactsFor(projectRoot, isProductionFile) {
     browser: names.some((name) => BROWSER_FRAMEWORKS.has(name)),
     sqlLibrary: SQL_LIBRARIES.find((name) => names.includes(name)),
     yamlMajor: names.includes('js-yaml') ? packageMajorOf(projectRoot, 'js-yaml') : undefined,
-    nodeFetchTimeout: nodeFetch === undefined || nodeFetch < 3,
+    nodeFetchTimeout: nodeFetch === undefined || nodeFetch < FIRST_NODE_FETCH_WITHOUT_TIMEOUT,
     httpDefaults: projectHttpDefaults(projectRoot, isProductionFile),
   };
 }

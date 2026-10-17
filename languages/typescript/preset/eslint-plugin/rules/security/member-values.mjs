@@ -12,7 +12,7 @@ function keyName(key, computed) {
 
 function enumValue(declaration, name) {
   const members = declaration.body?.members ?? declaration.members ?? [];
-  const member = members.find((entry) => keyName(entry.id, entry.computed) === name);
+  const member = members.find((entry) => keyName(entry.id, false) === name);
   return member?.initializer === undefined ? undefined : { fixed: true, value: member.initializer };
 }
 

@@ -1,13 +1,14 @@
 import ts from 'typescript';
 import { stringValue } from '../../analysis/constant-resolution.mjs';
-import { leafValues, memberName, unwrapped } from '../security-values.mjs';
-import { inertArray, isIndexParameter } from './sql-arrays.mjs';
+import { leafValues, memberName, typeServices, unwrapped } from '../security-values.mjs';
+import { arrayObligations, arrayOf, isIndexParameter, textOf } from './sql-arrays.mjs';
 
-const MAX_DEPTH = 8;
+const MAX_OBLIGATIONS = 256;
 const NUMERIC_FUNCTIONS = new Set(['Number', 'parseInt', 'parseFloat', 'BigInt', 'Boolean']);
 const ESCAPE_FUNCTIONS = new Set(['escape', 'escapeId', 'escapeLiteral', 'escapeIdentifier']);
 const NUMERIC_METHODS = new Set(['getTime', 'now', 'toFixed']);
 const NUMERIC_PROPERTIES = new Set(['length', 'size', 'byteLength']);
+const INERT_UNARY = new Set(['+', '-', '!', 'typeof']);
 const TEXT_BUILDERS = new Set([
   'repeat',
   'slice',
@@ -23,7 +24,7 @@ const PRIMITIVE_FLAGS =
 
 export const DYNAMIC = '\u0000';
 
-export function literalText(leaf) {
+function literalText(leaf) {
   const text = stringValue(leaf);
   if (text !== undefined) {
     return text;
@@ -43,37 +44,43 @@ function isInertCall(node) {
   return onMath || ESCAPE_FUNCTIONS.has(name) || NUMERIC_METHODS.has(name);
 }
 
-function inertTextCall(context, call, isInert) {
+function callObligations(call) {
+  if (isInertCall(call)) {
+    return [];
+  }
   const callee = call.callee;
   const name = callee.type === 'MemberExpression' ? memberName(callee) : undefined;
   if (name === 'join') {
-    return inertArray(context, callee.object, isInert) && call.arguments.every(isInert);
+    return [arrayOf(callee.object), ...call.arguments.map((argument) => textOf(argument))];
   }
-  return TEXT_BUILDERS.has(name) && isInert(callee.object);
+  return TEXT_BUILDERS.has(name) ? [textOf(callee.object)] : undefined;
 }
 
-function isInertShape(context, node, depth) {
-  const target = unwrapped(node);
-  const isInert = (part) => classify(context, part, depth + 1).node === undefined;
+function shapeObligations(context, leaf) {
+  const target = unwrapped(leaf);
   switch (target.type) {
     case 'UnaryExpression':
-      return ['+', '-', '!', 'typeof'].includes(target.operator);
+      return INERT_UNARY.has(target.operator) ? [] : undefined;
     case 'BinaryExpression':
-      return target.operator !== '+' || (isInert(target.left) && isInert(target.right));
+      return target.operator === '+' ? [textOf(target.left), textOf(target.right)] : [];
     case 'MemberExpression':
-      return NUMERIC_PROPERTIES.has(memberName(target));
+      return NUMERIC_PROPERTIES.has(memberName(target)) ? [] : undefined;
     case 'TemplateLiteral':
-      return target.expressions.every(isInert);
+      return target.expressions.map((expression) => textOf(expression));
     case 'Identifier':
-      return isIndexParameter(context, target);
+      return isIndexParameter(context, target) ? [] : undefined;
     case 'CallExpression':
-      return isInertCall(target) || inertTextCall(context, target, isInert);
+      return callObligations(target);
     default:
-      return false;
+      return undefined;
   }
 }
 
-function isInertType(services, node) {
+function isInertType(context, node) {
+  const services = typeServices(context);
+  if (services === undefined) {
+    return false;
+  }
   const type = services.getTypeAtLocation(node);
   const members = type.isUnion() ? type.types : [type];
   return members.every(
@@ -83,23 +90,39 @@ function isInertType(services, node) {
   );
 }
 
-function hasTypes(context) {
-  const services = context.sourceCode.parserServices;
-  return services?.program === undefined || services.program === null ? undefined : services;
+function textObligations(context, node) {
+  if (isInertType(context, node)) {
+    return [];
+  }
+  const parts = leafValues(context, node).map((leaf) =>
+    literalText(leaf) === undefined ? shapeObligations(context, leaf) : [],
+  );
+  return parts.includes(undefined) ? undefined : parts.flat();
 }
 
-export function classify(context, node, depth = 0) {
-  if (depth > MAX_DEPTH) {
-    return { node };
+const STEPS = { text: textObligations, array: arrayObligations };
+
+function isInert(context, root) {
+  const pending = [root];
+  const seen = { text: new Set(), array: new Set() };
+  for (const { kind, node } of pending) {
+    const next =
+      node === undefined || node === null || pending.length > MAX_OBLIGATIONS
+        ? undefined
+        : STEPS[kind](context, node);
+    if (next === undefined) {
+      return false;
+    }
+    seen[kind].add(node);
+    pending.push(...next.filter((item) => !seen[item.kind].has(item.node)));
   }
-  const leaves = leafValues(context, node);
-  const texts = leaves.map((leaf) => literalText(leaf));
+  return true;
+}
+
+export function classify(context, node) {
+  const texts = leafValues(context, node).map((leaf) => literalText(leaf));
   if (texts.length > 0 && texts.every((text) => text !== undefined)) {
     return { text: texts[0] };
   }
-  const services = hasTypes(context);
-  const inert =
-    leaves.every((leaf) => literalText(leaf) !== undefined || isInertShape(context, leaf, depth)) ||
-    (services !== undefined && isInertType(services, node));
-  return inert ? { text: DYNAMIC } : { node };
+  return isInert(context, textOf(node)) ? { text: DYNAMIC } : { node };
 }

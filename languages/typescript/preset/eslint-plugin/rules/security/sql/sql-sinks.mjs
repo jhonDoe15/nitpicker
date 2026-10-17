@@ -1,9 +1,19 @@
 import { ancestorsOf, chainOf } from '../../analysis/ancestry.mjs';
 import { findVariable, resolveConstant } from '../../analysis/constant-resolution.mjs';
-import { leafValues, memberName, TYPE_WRAPPERS, unwrapped } from '../security-values.mjs';
+import {
+  isTypeWrapper,
+  leafValues,
+  memberName,
+  typeServices,
+  unwrapped,
+} from '../security-values.mjs';
 
-const SQL_CALL_NAME =
-  /^(?:\$?(?:query|execute|exec|raw|run|all|get|each|prepare|unsafe|batch)\w*|\w*(?:query|sql|execute)\w*|none|one|many|any|oneOrNone|manyOrNone|result|multi|multiResult)$/iu;
+const QUERY_PREFIX = '\\$?(?:query|execute|exec|raw|run|all|get|each|prepare|unsafe|batch)\\w*';
+const PG_PROMISE = 'none|one|many|any|oneOrNone|manyOrNone|result|multi|multiResult';
+const SQL_CALL_NAME = new RegExp(
+  `^(?:${QUERY_PREFIX}|\\w*(?:query|sql|execute)\\w*|${PG_PROMISE})$`,
+  'iu',
+);
 const RAW_METHODS = new Set([
   'whereRaw',
   'orWhereRaw',
@@ -23,13 +33,7 @@ const CLAUSE_METHODS = new Set(['where', 'andWhere', 'orWhere', 'having', 'andHa
 const ORDER_METHODS = new Set(['orderBy', 'addOrderBy', 'groupBy', 'addGroupBy']);
 const BUILDER_NAME = /^(?:qb|\w*(?:QueryBuilder|queryBuilder|Qb))$/u;
 const BUILDER_TYPE = /QueryBuilder$/u;
-const WRAPPERS = new Set([
-  'Property',
-  'ObjectExpression',
-  'ArrayExpression',
-  'AwaitExpression',
-  ...TYPE_WRAPPERS,
-]);
+const WRAPPERS = new Set(['Property', 'ObjectExpression', 'ArrayExpression', 'AwaitExpression']);
 
 function calleeName(context, callee) {
   const target = unwrapped(callee);
@@ -52,8 +56,8 @@ function ownerName(callee) {
 }
 
 function hasBuilderType(context, node) {
-  const services = context.sourceCode.parserServices;
-  if (services?.program === undefined || services.program === null) {
+  const services = typeServices(context);
+  if (services === undefined) {
     return false;
   }
   const symbol = services.getTypeAtLocation(node).getSymbol();
@@ -106,9 +110,9 @@ function sinkOf(context, call, argument) {
   return builder ?? (name !== undefined && SQL_CALL_NAME.test(name) ? 'query' : undefined);
 }
 
-export function consumingSink(context, node) {
+function consumingSink(context, node) {
   const owners = ancestorsOf(node);
-  const index = owners.findIndex((owner) => !WRAPPERS.has(owner.type));
+  const index = owners.findIndex((owner) => !WRAPPERS.has(owner.type) && !isTypeWrapper(owner));
   const call = owners[index];
   const argument = index === 0 ? node : owners[index - 1];
   const isArgument = call?.type === 'CallExpression' && call.callee !== argument;

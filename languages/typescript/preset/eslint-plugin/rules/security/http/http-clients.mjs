@@ -1,3 +1,4 @@
+import { chainOf } from '../../analysis/ancestry.mjs';
 import { findVariable, resolveConstant } from '../../analysis/constant-resolution.mjs';
 import { bindingsOf, importedFunction } from '../imported-names.mjs';
 import { memberName, unwrapped } from '../security-values.mjs';
@@ -33,7 +34,7 @@ function isGlobalFetch(context, callee) {
   return (findVariable(context, target, 'fetch')?.defs.length ?? 0) === 0;
 }
 
-function requestHolder(call) {
+function chainedListener(call) {
   const owner = call.parent;
   const chained =
     owner.type === 'MemberExpression' &&
@@ -41,7 +42,11 @@ function requestHolder(call) {
     CHAINED_LISTENERS.has(memberName(owner)) &&
     owner.parent.type === 'CallExpression' &&
     owner.parent.callee === owner;
-  return chained ? requestHolder(owner.parent) : call;
+  return chained ? owner.parent : undefined;
+}
+
+function requestHolder(call) {
+  return chainOf(call, chainedListener).at(-1);
 }
 
 function hasSetTimeoutCall(context, call) {
