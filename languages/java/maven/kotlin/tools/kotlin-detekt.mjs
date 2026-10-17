@@ -38,7 +38,7 @@ export function detektClasspath({ detektStdlib, javaClassDirectories, libraries,
 
 export function detektArguments({ module, report, options, classpath, home }) {
   const configs = [
-    options.detektConfig,
+    ...(options.detektLayers ?? []),
     path.join(DETEKT_DIRECTORY, 'nitpicker-detekt.yml'),
     options.detektLists,
     path.join(DETEKT_DIRECTORY, 'detekt-validation.yml'),

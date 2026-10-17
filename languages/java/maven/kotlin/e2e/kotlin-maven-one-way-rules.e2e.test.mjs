@@ -21,6 +21,7 @@ import {
   initializeMavenProject,
   maven,
   kotlinPolicy,
+  kotlinPolicyWithProjectDetekt,
   kotlinE2eEnabled,
   removeProject,
   summarize,
@@ -48,7 +49,9 @@ describe.skipIf(!kotlinE2eEnabled)('Kotlin preset on Maven: one-way rules', () =
     });
     bannedResult = mavenDiffOf(project, 'one-way-banned');
     allowedResult = mavenDiffOf(project, 'one-way-allowed');
-    hostileConfigResult = mavenDiffOf(project, 'one-way-hostile-config');
+    hostileConfigResult = mavenDiffOf(project, 'one-way-hostile-config', {
+      policy: kotlinPolicyWithProjectDetekt,
+    });
   });
   afterAll(() => {
     removeProject(project);

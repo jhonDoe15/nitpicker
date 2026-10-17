@@ -35,14 +35,17 @@ afterEach(() => {
 });
 
 describe('detekt arguments', () => {
-  it('layers the project config, the one-way rules, the merged lists and the validation switch', () => {
+  it('layers the followed conventions, the project config, the one-way rules, the merged lists and the validation switch', () => {
     const detekt = path.resolve(import.meta.dirname, '../../../detekt');
 
     expect(
       detektArguments({
         module,
         report: '/work/app/target/nitpicker/detekt.sarif',
-        options: { detektConfig: '/work/app/config/detekt.yml', detektLists: '/tmp/lists.yml' },
+        options: {
+          detektLayers: ['/tmp/conventions.yml', '/work/app/config/detekt.yml'],
+          detektLists: '/tmp/lists.yml',
+        },
         classpath: ['/lib/a.jar', '/lib/b.jar'],
         home: '/jdk',
       }),
@@ -55,6 +58,7 @@ describe('detekt arguments', () => {
       ...[
         '--config',
         [
+          '/tmp/conventions.yml',
           '/work/app/config/detekt.yml',
           `${detekt}/nitpicker-detekt.yml`,
           '/tmp/lists.yml',
@@ -132,14 +136,27 @@ describe('formatter and metrics arguments', () => {
     ]);
   });
 
+  it('hands ktlint the defaults file of the followed conventions before the globs', () => {
+    expect(
+      ktlintArguments({ module, report: 'r.sarif', defaultsFile: '/tmp/defaults.editorconfig' }),
+    ).toEqual([
+      '--relative',
+      '--reporter=sarif,output=r.sarif',
+      '--editorconfig=/tmp/defaults.editorconfig',
+      'src/main/java/**/*.kt',
+      'src/main/kotlin/**/*.kt',
+      'src/test/kotlin/**/*.kt',
+    ]);
+  });
+
   it('hands ktfmt its style, the editorconfig switch and the files relative to the module', () => {
     const files = ['/work/app/src/main/kotlin/A.kt'];
 
     expect(
-      ktfmtArguments({ module, options: { ktfmtStyle: 'google', editorconfig: true }, files }),
+      ktfmtArguments({ module, options: { ktfmtStyle: 'google', ktfmtEditorconfig: true }, files }),
     ).toEqual(['--google-style', '--dry-run', '--enable-editorconfig', 'src/main/kotlin/A.kt']);
     expect(
-      ktfmtArguments({ module, options: { ktfmtStyle: 'meta', editorconfig: false }, files }),
+      ktfmtArguments({ module, options: { ktfmtStyle: 'meta', ktfmtEditorconfig: false }, files }),
     ).toEqual(['--meta-style', '--dry-run', 'src/main/kotlin/A.kt']);
   });
 

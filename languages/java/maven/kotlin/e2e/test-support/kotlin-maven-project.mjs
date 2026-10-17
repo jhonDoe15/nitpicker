@@ -17,6 +17,7 @@ export {
   git,
   kotlinE2eEnabled,
   kotlinPolicy,
+  kotlinPolicyWithProjectDetekt,
   kotlinSources,
   ktlintOf,
   ktlintRules,
