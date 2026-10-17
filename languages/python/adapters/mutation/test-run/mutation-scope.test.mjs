@@ -2,10 +2,10 @@ import { mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSy
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { installFakeToolchain } from '../test-support/fake-toolchain.mjs';
-import { createToolContext } from '../python-tools.mjs';
+import { installFakeToolchain } from '../../test-support/fake-toolchain.mjs';
+import { createToolContext } from '../../python-tools.mjs';
 import { failedOnProjectTests } from './mutation-scope.mjs';
-import { mutationFindings } from './python-mutation.mjs';
+import { mutationFindings } from '../python-mutation.mjs';
 
 const roots = [];
 afterEach(() => {
@@ -45,14 +45,21 @@ function callsLog() {
       .map((line) => JSON.parse(line));
 }
 
-const contextFor = (root) =>
-  createToolContext({ projectRoot: root, liveRoot: root, reportRoot: temporaryRoot() });
+const contextFor = (root, settings = {}) =>
+  createToolContext({ projectRoot: root, liveRoot: root, reportRoot: temporaryRoot(), settings });
 
 const FAILING_JUNIT =
   '<testsuites><testsuite>' +
   '<testcase classname="tests.test_a" name="test_x" file="tests/test_a.py" line="0" time="0"><failure/></testcase>' +
   '<testcase classname="tests.test_b" name="test_y" file="tests/test_b.py" line="0" time="0"/>' +
   '</testsuite></testsuites>';
+
+const FAILING_FILES = {
+  'junit.xml': FAILING_JUNIT,
+  'mutmut-failing-tests.txt': 'tests/test_a.py\n',
+};
+const DJANGO_MANAGE =
+  'import os\n\nos.environ.setdefault("DJANGO_SETTINGS_MODULE", "site.settings")\n';
 
 describe('what mutation testing runs against', () => {
   it('leaves out the failing test modules and mutates against the tests that pass', () => {
@@ -71,6 +78,32 @@ describe('what mutation testing runs against', () => {
     ]);
     expect(findings.filter(({ classification }) => classification === 'tool-error')).toEqual([]);
   });
+  it.each([
+    ['nose2', {}, '-o python_files=test*.py', undefined],
+    [
+      'django',
+      { 'manage.py': DJANGO_MANAGE, 'pytest-django.txt': '' },
+      '-o python_files=test*.py -o django_find_project=false',
+      'site.settings',
+    ],
+  ])(
+    'finds the failing modules of a %s project with the options and settings mutmut gets',
+    (testRunner, files, pytestAddopts, djangoSettings) => {
+      const calls = callsLog();
+      vi.stubEnv('PYTEST_ADDOPTS', undefined);
+      vi.stubEnv('DJANGO_SETTINGS_MODULE', undefined);
+      const root = project({ ...FAILING_FILES, ...files });
+
+      mutationFindings(contextFor(root, { testRunner }));
+
+      const fallback = calls().filter(
+        ({ tool, args }) => tool === 'python' && args[0].endsWith('pytest_timings.py'),
+      );
+      expect(fallback.map((call) => [call.pytestAddopts, call.djangoSettings])).toEqual([
+        [pytestAddopts, djangoSettings],
+      ]);
+    },
+  );
   it('skips with a reason when every test module fails', () => {
     const root = project({
       'junit.xml': FAILING_JUNIT,

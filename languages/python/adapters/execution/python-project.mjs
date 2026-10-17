@@ -65,7 +65,7 @@ export const NON_SOURCE_DIRECTORIES = new Set([
 ]);
 export const NON_SOURCE_FILES = new Set(['conftest.py']);
 
-function readFileEntries(projectRoot, names) {
+export function readFileEntries(projectRoot, names) {
   return names
     .filter((name) => isFile(path.join(projectRoot, name)))
     .map((name) => [name, readFileSync(path.join(projectRoot, name), 'utf8')]);
@@ -194,6 +194,10 @@ export function importRoots(projectRoot, sourceRoots) {
     return existsSync(path.join(absolute, '__init__.py')) ? path.dirname(absolute) : absolute;
   });
   return [...new Set(roots)];
+}
+
+export function readOptional(file) {
+  return existsSync(file) ? readFileSync(file, 'utf8') : '';
 }
 
 function isFile(file) {
