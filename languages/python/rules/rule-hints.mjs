@@ -9,7 +9,20 @@ import { DEFAULT_LIBRARIES } from './libraries/project-libraries.mjs';
 
 export { RULES_TOOL };
 const TYPE_CHECK_TOOLS = ['mypy', 'pyright', 'basedpyright'];
-const HINTED_TOOLS = ['ruff', ...TYPE_CHECK_TOOLS, RULES_TOOL];
+const HINTED_TOOLS = [
+  'ruff',
+  ...TYPE_CHECK_TOOLS,
+  RULES_TOOL,
+  'coverage-py',
+  'duplicates',
+  'coupling',
+  'import-linter',
+  'dependencies',
+  'test-runtime',
+  'mutmut',
+];
+
+const RULES_ROUTED_BY_A_SETTING = new Set(['no-import-outside-roots']);
 
 const FIX_TYPE = 'Fix the type; inline ignores are banned.';
 const INSTALL_PACKAGE = 'Install the package, or its `types-` stubs, in the project environment.';
@@ -79,7 +92,8 @@ function canBeLifted(finding) {
     HINTED_TOOLS.includes(finding.tool) &&
     finding.classification === 'enforceable' &&
     typeof finding.rule === 'string' &&
-    finding.rule !== ''
+    finding.rule !== '' &&
+    finding.path !== '.'
   );
 }
 
@@ -89,10 +103,11 @@ export function withHint(finding, libraries = DEFAULT_LIBRARIES) {
   if (hint === undefined && !canBeLifted(rest)) {
     return rest;
   }
+  const routed = hint?.exception === false || RULES_ROUTED_BY_A_SETTING.has(rest.rule);
   const sentences = [
     `${rest.message.replace(/\.$/, '')}.`,
     ...(hint === undefined ? [] : [allowedText(hint, subject, libraries)]),
-    ...(hint?.exception === false ? [] : [exceptionSentence(rest.rule)]),
+    ...(routed ? [] : [exceptionSentence(rest.rule)]),
   ];
   return { ...rest, message: sentences.join(' ') };
 }

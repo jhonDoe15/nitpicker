@@ -60,7 +60,7 @@ describe('every message names the allowed form', () => {
     const { message } = withHint(sample({ tool: 'python-rules', rule: 'no-inline-suppression' }));
 
     expect(message).toBe(
-      'The base message. Remove the comment and fix the code. If it must stay, add a "python.exceptions" entry for no-inline-suppression for this path.',
+      'The base message. Remove the comment and fix the code. To allow it for some paths, add a "python.exceptions" entry for no-inline-suppression in nitpicker.config.json.',
     );
   });
 
