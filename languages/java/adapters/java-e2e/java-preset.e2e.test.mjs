@@ -24,6 +24,7 @@ import {
   PALANTIR_MESSY,
   PALANTIR_ROOMY,
 } from './test-support/java-preset-data.mjs';
+import { UNITS, UNITS_TEST } from './test-support/unit-sources.mjs';
 import { WIDE, WIDE_EXTENDED, WIDE_REFORMATTED } from './test-support/wide-sources.mjs';
 import { runJavaDiff } from '../java-diff.mjs';
 import {
@@ -127,6 +128,7 @@ describe.skipIf(!enabled)('Java preset end to end', () => {
     branchWith('violation', { 'Bad.java': BAD });
     branchWith('architecture', { 'Stamp.java': STAMP });
     branchWith('complex', { 'Complex.java': COMPLEX });
+    branchWith('units', { 'Units.java': UNITS, 'src/test/java/demo/UnitsTest.java': UNITS_TEST });
     branchWith('palantir', { 'Messy.java': PALANTIR_MESSY, 'Roomy.java': PALANTIR_ROOMY });
     branchWith('clone', { 'Left.java': clonedClass('Left'), 'Right.java': clonedClass('Right') });
     branchWith('survivor', { 'Calc.java': CALC, 'src/test/java/demo/CalcTest.java': CALC_TEST });
@@ -239,6 +241,21 @@ describe.skipIf(!enabled)('Java preset end to end', () => {
         ...repeated(28, 'pit mutant-nocoverage Complex.java'),
         'structure function-statements-limit Complex.java', // the method has more than 15 statements
       ]);
+    },
+    GRADLE_STEP_TIMEOUT_MS,
+  );
+
+  it(
+    'scores a lambda by its synthetic method and an initializer block by its lines, each as a unit of its own',
+    () => {
+      const result = diffOf('units');
+      const scored = result.newEnforceable.filter(({ tool }) => tool === 'crap');
+
+      expect(scored.map(({ rule, symbol }) => `${rule} ${symbol}`).sort()).toEqual([
+        'crap-score-limit Units.<init>',
+        'crap-score-limit Units.total.<lambda>',
+      ]);
+      expect(result.newEnforceable.filter(({ tool }) => tool === 'structure')).toEqual([]);
     },
     GRADLE_STEP_TIMEOUT_MS,
   );

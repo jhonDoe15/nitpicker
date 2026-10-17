@@ -70,8 +70,9 @@ backstop. It fails only on findings your change adds, so leave code the task doe
 ## Size
 
 - A function stays within 50 lines, 15 statements, 2 levels of control nesting and 3 parameters;
-  past 3 parameters, pass a frozen dataclass. Complex code needs tests: the CRAP score of a
-  function must stay below 9.
+  past 3 parameters, pass a frozen dataclass. A `lambda` is a function of its own with the same
+  limits, counted on its own and not toward the function around it. Complex code needs tests: the
+  CRAP score of a function must stay below 9.
 - Each `elif` and `except` adds a nesting level: `if`/`elif`/`elif` is already too deep. Return
   early, look the value up in a dict, or move a branch into a helper.
 - A new clone of at least 5 lines and 50 tokens (`duplicate-clone`) fails: extract a function. A

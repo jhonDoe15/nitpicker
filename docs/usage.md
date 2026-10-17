@@ -535,8 +535,8 @@ classes that only hold data. Every message names the allowed form. Test sources 
 ktlint and ktfmt like the main sources, and these rules apply in them too.
 A project's own `ForbiddenMethodCall.methods` entries in its `detekt.yml` (for example
 `java.lang.Thread.sleep`) are added to the preset's four calls and never replace them; an entry that is not a
-method name with an optional parameter list is ignored. `init` blocks and property initializers that
-hold a block or a branch are measured like functions, under the names `Class.<init>` and `Class.property`;
+method name with an optional parameter list is ignored. `init` blocks, lambdas and property initializers that
+branch are measured like functions, under the names `Class.<init>`, `Class.function.<lambda>` and `Class.property`;
 a legacy one that is over a limit is held like any function, and a project that must keep one drops its
 file with `exclude`.
 Inline `@Suppress` of any detekt or ktlint rule fails (Kotlin compiler warnings may be suppressed). Where a rule flags legitimate code, add an `exceptions`
