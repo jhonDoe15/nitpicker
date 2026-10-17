@@ -8,6 +8,7 @@ import { mainUsages } from './test-only-usage.mjs';
 
 const TEST_ONLY_TOOL = 'coupling';
 const TEST_ONLY_RULE = 'test-only-export';
+export const TEST_ONLY_EXCEPTION_RULE = `${TEST_ONLY_TOOL}/${TEST_ONLY_RULE}`;
 const REPORTS = ['jdeps.txt', 'jdeps-classes.txt', 'jdeps-test.txt'];
 const MESSAGE =
   'Class {name} is only used by tests. Move it to the test sources, or use it from production code. ' +
@@ -73,7 +74,7 @@ function withDeclarations(projectRoot, project) {
 }
 
 function finding({ file, className, line }) {
-  const exception = exceptionText(`${TEST_ONLY_TOOL}/${TEST_ONLY_RULE}`, file);
+  const exception = exceptionText(TEST_ONLY_EXCEPTION_RULE, file);
   return {
     tool: TEST_ONLY_TOOL,
     rule: TEST_ONLY_RULE,
