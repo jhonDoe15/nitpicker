@@ -154,6 +154,11 @@ Before you change code other modules use, or fix a bug, read
   unchanged; adding another of the same kind in the file is new. Don't rename or move a file that
   has findings: Checkstyle and CRAP findings don't follow renames and would count as new.
 
+## Repository files
+
+- The gate fails committed secrets, binaries, build output and files over 1 MB; each message names
+  the fix. Don't add an `exceptions` entry to get past one: stop and ask.
+
 ## Exceptions and suppressions
 
 - `// NOPMD` does nothing, and a `@SuppressWarnings` naming `"PMD..."`, `"all"`, `"unused"`,

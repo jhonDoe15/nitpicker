@@ -10,8 +10,8 @@ import {
   normalizeCoupling,
   normalizeTestRuntime,
   normalizeStructure,
-  normalizeDeadCode,
 } from '../reporting/repository.mjs';
+import { normalizeDeadCode } from '../reporting/dead-code.mjs';
 import path from 'node:path';
 import { existsSync, readFileSync, writeFileSync, realpathSync, unlinkSync } from 'node:fs';
 import { existingRoots } from '../../../preset/layout.mjs';
@@ -232,6 +232,7 @@ export function runDeadCode(options) {
     ...normalizeDeadCode(
       withDeadCodeSourceHashes(normal, options.projectRoot),
       options.analyzerName,
+      { exceptions: readHeadPolicy().exceptions },
     ),
     ...runTestOnlyExports(options, {
       config,
