@@ -1,57 +1,38 @@
+import { existsSync, writeSync } from 'node:fs';
 import { format as formatOutput } from 'node:util';
 import { mkdir, writeFile } from 'node:fs/promises';
 import path from 'node:path';
-import { existsSync } from 'node:fs';
 import config from '../defaults/crap.config.mjs';
 import { readLayout } from '../head-policy.mjs';
-import { analyzeWithFunctionMapFallback } from './analyze.mjs';
+import { measureCrap } from './measure.mjs';
+import { reportFunctionsOf } from './report-functions.mjs';
 
+const STDOUT = 1;
+const TYPESCRIPT_EXTENSIONS = ['ts', 'tsx', 'mts', 'cts'];
+
+const layout = readLayout();
 const projectRoot = path.resolve(
   process.env.NITPICKER_PROJECT_ROOT ?? path.resolve(import.meta.dirname, '../../../..'),
 );
 const coverageReportPath = path.resolve(projectRoot, config.coverageReportPath);
 const outputPath = path.resolve(projectRoot, config.outputPath);
-const analysis = await analyzeWithFunctionMapFallback({
-  projectRoot,
-  explicitPaths: explicitPaths(),
-  coverageMode: 'existing-only',
-  coverageReportPath,
+const analysis = measureCrap(projectRoot, sourceFiles(), {
+  extensions: layout.javascript ? layout.extensions : TYPESCRIPT_EXTENSIONS,
   excludes: config.excludes,
+  coverageReportPath,
 });
 
-const functions = analysis.metrics
-  .map((metric) => ({
-    source: metric.relativePath,
-    function: metric.displayName,
-    lines: {
-      start: metric.startLine,
-      end: metric.endLine,
-    },
-    complexity: metric.complexity,
-    statementCoverage: metric.statementCoverage,
-    branchCoverage: metric.branchCoverage,
-    effectiveCoverage: metric.coverage,
-    crap: metric.crapScore,
-  }))
-  .sort((left, right) => {
-    if (left.crap === null) {
-      return right.crap === null ? 0 : 1;
-    }
-    if (right.crap === null) {
-      return -1;
-    }
-    return right.crap - left.crap;
-  });
+const functions = reportFunctionsOf(analysis.metrics);
 
 const report = {
-  analyzer: '@barney-media/crap-typescript',
+  analyzer: 'nitpicker-crap',
   policy: 'report-only',
   coverageReport: config.coverageReportPath,
   summary: {
     files: analysis.selectedFiles.length,
     functions: functions.length,
-    measuredFunctions: functions.filter((entry) => entry.crap !== null).length,
-    unknownCoverageFunctions: functions.filter((entry) => entry.crap === null).length,
+    measuredFunctions: functions.filter((entry) => entry.crap !== undefined).length,
+    unknownCoverageFunctions: functions.filter((entry) => entry.crap === undefined).length,
   },
   warnings: analysis.warnings,
   sourceExclusions: analysis.sourceExclusionAudit,
@@ -59,26 +40,34 @@ const report = {
 };
 
 await mkdir(path.dirname(outputPath), { recursive: true });
-await writeFile(outputPath, `${JSON.stringify(report, null, 2)}\n`);
+await writeFile(outputPath, `${JSON.stringify(report, undefined, 2)}\n`);
 
-process.stdout.write(
+writeSync(
+  STDOUT,
   formatOutput(JSON.stringify({ output: config.outputPath, ...report.summary }, null, 2)) + '\n',
 );
 for (const entry of functions.slice(0, 20)) {
-  const crap = entry.crap === null ? 'N/A' : entry.crap.toFixed(2);
-  const location = `${entry.source}:${entry.lines.start}`;
-  process.stdout.write(
-    formatOutput(`${crap}\tCC ${entry.complexity}\t${location}\t${entry.function}`) + '\n',
-  );
+  writeSync(STDOUT, scoreLine(entry));
 }
 
-function explicitPaths() {
-  const layout = readLayout();
+function scoreLine(entry) {
+  const score = entry.crap === undefined ? 'N/A' : entry.crap.toFixed(2);
+  return `${score}\tCC ${entry.complexity}\t${entry.source}:${entry.lines.start}\t${entry.function}\n`;
+}
+
+function resolveInsideProject(relative) {
+  const full = path.resolve(projectRoot, relative);
+  if (!full.startsWith(projectRoot + path.sep)) {
+    throw new RangeError(`${relative} is outside the project root`);
+  }
+  return full;
+}
+
+function sourceFiles() {
   return config.sourcePaths
-    .filter((sourcePath) => existsSync(path.resolve(projectRoot, sourcePath)))
+    .filter((sourcePath) => existsSync(resolveInsideProject(sourcePath)))
     .flatMap((sourcePath) =>
-      path.basename(sourcePath) === 'src'
-        ? [sourcePath]
-        : layout.projectCodeFiles(projectRoot, [sourcePath]).filter(layout.isSourceFile),
-    );
+      layout.projectCodeFiles(projectRoot, [sourcePath]).filter(layout.isSourceFile),
+    )
+    .map(resolveInsideProject);
 }

@@ -32,7 +32,7 @@ export const UNUSED_API_RULES = [
     id: UNUSED_API_RULE_IDS.testOnlyExport,
     check: 'dead-code',
     limit:
-      'an export, module or main class that only tests use (a published package or library counts its own tests as callers, so it is not judged)',
+      'an export, module or main class that only tests use; a re-export is not an import (a published package or library counts its own tests as callers, so it is not judged)',
     enforcedBy: TYPESCRIPT_AND_JVM,
   },
 ];
