@@ -88,6 +88,7 @@ export function readKotlinFindings(context, crapLimit) {
     ...withFrameworkAllowances(detektFindings(reportRoot), {
       projectRoot,
       spring: manifest.spring === true,
+      testRoots: manifest.kotlinTestSourceRoots ?? [],
     }),
     ...readKotlinSourceFindings(projectRoot, manifest),
     ...readCompilerFindings(reportRoot, manifest.kotlinSourceRoots ?? []),

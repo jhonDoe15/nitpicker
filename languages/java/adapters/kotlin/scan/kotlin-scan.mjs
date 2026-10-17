@@ -18,6 +18,10 @@ import {
   secretsInLogs,
 } from './rules/secrets.mjs';
 import { TEST_MESSAGES, testClassesWithoutTests, testHelpersInSource } from './rules/tests.mjs';
+import { CLIENT_MESSAGES, httpWithoutTimeout, unsafeDeserialization } from './security/clients.mjs';
+import { CRYPTO_MESSAGES, disabledTlsVerification, weakHashes } from './security/crypto.mjs';
+import { SQL_MESSAGES, sqlStringBuilding } from './security/sql.mjs';
+import { kotlinDeclarations } from './security/sql-values.mjs';
 
 const KOTLIN_SOURCE_TOOL = 'kotlin-source';
 
@@ -28,6 +32,9 @@ const MESSAGES = {
   ...CATCH_MESSAGES,
   ...SECRET_MESSAGES,
   ...TEST_MESSAGES,
+  ...SQL_MESSAGES,
+  ...CRYPTO_MESSAGES,
+  ...CLIENT_MESSAGES,
 };
 
 export const KOTLIN_SOURCE_RULES = Object.keys(MESSAGES).map(
@@ -48,6 +55,11 @@ const MAIN_RULES = [
   credentialLiterals,
   secretsInLogs,
   testHelpersInSource,
+  sqlStringBuilding,
+  weakHashes,
+  disabledTlsVerification,
+  httpWithoutTimeout,
+  unsafeDeserialization,
 ];
 const TEST_RULES = [testClassesWithoutTests];
 
@@ -88,21 +100,27 @@ function finding(file, scanned, reported, occurrences) {
     rule: reported.rule,
     path: file,
     identity: `${reported.rule}:${hash(subject)}${occurrence === 1 ? '' : `#${String(occurrence)}`}`,
-    message: MESSAGES[reported.rule],
+    message: reported.message ?? MESSAGES[reported.rule],
     classification: 'enforceable',
     location: { line },
   };
 }
 
-function scanFiles(projectRoot, files, rules) {
-  return files.flatMap((file) => {
-    const scanned = scanKotlinSource(readFileSync(path.join(projectRoot, file), 'utf8'));
-    if (generatedFile(scanned)) {
-      return [];
-    }
+function scannedFiles(projectRoot, sourceRoots) {
+  return kotlinFiles(projectRoot, sourceRoots)
+    .map((file) => ({
+      file,
+      scanned: scanKotlinSource(readFileSync(path.join(projectRoot, file), 'utf8')),
+    }))
+    .filter(({ scanned }) => !generatedFile(scanned));
+}
+
+function scanFiles(files, rules) {
+  const context = { declarations: kotlinDeclarations(files.map(({ scanned }) => scanned)) };
+  return files.flatMap(({ file, scanned }) => {
     const occurrences = new Map();
     return rules
-      .flatMap((rule) => rule(scanned))
+      .flatMap((rule) => rule(scanned, context))
       .toSorted((left, right) => left.offset - right.offset)
       .map((reported) => finding(file, scanned, reported, occurrences));
   });
@@ -110,15 +128,7 @@ function scanFiles(projectRoot, files, rules) {
 
 export function readKotlinSourceFindings(projectRoot, manifest) {
   return [
-    ...scanFiles(
-      projectRoot,
-      kotlinFiles(projectRoot, manifest.kotlinSourceRoots ?? []),
-      MAIN_RULES,
-    ),
-    ...scanFiles(
-      projectRoot,
-      kotlinFiles(projectRoot, manifest.kotlinTestSourceRoots ?? []),
-      TEST_RULES,
-    ),
+    ...scanFiles(scannedFiles(projectRoot, manifest.kotlinSourceRoots ?? []), MAIN_RULES),
+    ...scanFiles(scannedFiles(projectRoot, manifest.kotlinTestSourceRoots ?? []), TEST_RULES),
   ];
 }

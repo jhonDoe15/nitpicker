@@ -141,7 +141,7 @@ export const CALL_MESSAGES = {
   ShellCommand:
     'Run the program directly with an argument list (`ProcessBuilder("git", "log", ref)`), not through a shell with `-c`.',
   IoCallInLoop:
-    'This calls a database, HTTP, file or repository API once per loop item (one query or request per item). Batch it: fetch or write all items at once (`findAllById`, `saveAll`, `deleteAll`, `WHERE id IN (...)`, one batched request). Paging, polling and retry loops are fine.',
+    'Fetch or write all items at once (`findAllById`, `saveAll`, `deleteAll`, `WHERE id IN (...)`, one batched request): this calls a database, HTTP, file or repository API once per loop item. Paging, polling and retry loops are fine.',
 };
 
 function builtMessage(scanned, argument) {
