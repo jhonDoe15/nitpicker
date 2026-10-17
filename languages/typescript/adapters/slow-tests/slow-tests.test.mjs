@@ -68,10 +68,12 @@ function options(extra = {}) {
 }
 
 function unitMessage({ seconds, file, name, limit = 5 }) {
-  return;
-  `${path.posix.basename(file)} ${name} took ${seconds} s; a unit test may take ${limit} ` +
+  return (
+    `${path.posix.basename(file)} ${name} took ${seconds} s; a unit test may take ${limit} ` +
     `s. ${FIX}${MOVE}. If this is intended, add ` +
-    `{"rule":"slow-test","paths":["${file}"],"reason":"..."} to "exceptions" in nitpicker.config.json.`;
+    `{"rule":"slow-test","paths":["${file}"],"reason":"..."} ` +
+    'to "exceptions" in nitpicker.config.json.'
+  );
 }
 
 function keepFirstTimings() {
