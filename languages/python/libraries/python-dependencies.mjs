@@ -65,43 +65,23 @@ function isDynamic(parsed) {
   return Array.isArray(dynamic) && dynamic.includes('dependencies');
 }
 
-const UNREADABLE = { entries: [], declares: false, unreadable: true };
-
-function parseTomlFile(projectRoot, file) {
-  const text = readProjectFile(projectRoot, file);
+function readPyproject(projectRoot) {
+  const text = readProjectFile(projectRoot, PYPROJECT);
   if (text === undefined) {
     return undefined;
   }
-  try {
-    return { parsed: toml().parse(text) };
-  } catch (error) {
-    return { error };
-  }
-}
-
-function readPyproject(projectRoot) {
-  const file = parseTomlFile(projectRoot, PYPROJECT);
-  if (file === undefined) {
-    return undefined;
-  }
-  if (file.error !== undefined) {
-    return UNREADABLE;
-  }
-  const { parsed } = file;
+  const parsed = toml().parse(text);
   const declares =
     Array.isArray(parsed.project?.dependencies) || parsed.tool?.poetry?.dependencies !== undefined;
   return { entries: pyprojectEntries(parsed, PYPROJECT), declares, dynamic: isDynamic(parsed) };
 }
 
 function readPipfile(projectRoot) {
-  const file = parseTomlFile(projectRoot, PIPFILE);
-  if (file === undefined) {
+  const text = readProjectFile(projectRoot, PIPFILE);
+  if (text === undefined) {
     return undefined;
   }
-  if (file.error !== undefined) {
-    return UNREADABLE;
-  }
-  const { parsed } = file;
+  const parsed = toml().parse(text);
   const categories = Object.entries(parsed).filter(
     ([name, table]) => name.endsWith('packages') && typeof table === 'object',
   );
@@ -159,9 +139,8 @@ function manifestOf(sources, dependencies) {
 /**
  * `runtime` and `development` are the normalized names (optional extras count as runtime);
  * `dependencies` lists each declaration `{ name, normalized, group: 'production' | 'dev' |
- * 'optional', file }`; `complete` says the production list is fully declared (not dynamic, not
- * computed in setup.py and not in a manifest that cannot be parsed); `manifest` is the file new
- * production dependencies go in.
+ * 'optional', file }`; `complete` says the production list is fully declared (not dynamic or
+ * computed in setup.py); `manifest` is the file new production dependencies go in.
  */
 export function readPythonDependencies(projectRoot) {
   const pyproject = readPyproject(projectRoot);
@@ -180,7 +159,6 @@ export function readPythonDependencies(projectRoot) {
     [pyproject, pipfile, setupCfg, setupPy].some((source) => source?.declares === true) ||
     requirements.some(({ group }) => group === 'production');
   const opaque =
-    [pyproject, pipfile].some((source) => source?.unreadable === true) ||
     (pyproject?.dynamic === true && requirements.length === 0) ||
     (setupPy !== undefined && !declaresProduction);
   const development = dependencies.filter(({ group }) => group === 'dev');
