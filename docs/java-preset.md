@@ -246,7 +246,7 @@ comma-separated>` changes that. Those classes are excluded from the regular `tes
   tool error. When the failed build left JUnit reports with failing tests (the init script lists
   the report directory of every test task in `test-results.json` of the report base), the error
   names up to ten of them with the same text as on Maven (`Tests fail in <project>; nitpicker needs
-  a passing test suite ...`) instead of Gradle's own failure output. Projects without main classes produce no report and no findings.
+a passing test suite ...`) instead of Gradle's own failure output. Projects without main classes produce no report and no findings.
   The `pitest-junit5-plugin` and the launcher are added only when the project's test runtime has
   `junit-platform-engine`; a JUnit 4 project runs PIT's built-in JUnit 4 support.
 - **Equivalent mutants.** A survived mutant's message names the common equivalent cases (a
@@ -1383,9 +1383,9 @@ which hold ArchUnit rules. The rules that only make sense in tests live in
 [`spring-test-ruleset.xml`](../languages/java/gradle/spring-test-ruleset.xml)); the init script and
 the Maven side wrap them in `pmd-tests.xml` in the report directory, which excludes the main source
 directories, so a main class such as `TestDataGenerator` is not a test (see
-[Review rules](#review-rules)). The Spring rule set reads main sources only: the init script wraps it in
-`pmd-spring-main.xml` in the report directory with an exclude pattern per test source directory, since
-field injection and package-private test methods are the norm in tests. A PMD rule that flags
+[Review rules](#review-rules)). The Spring rule set reads main sources only: the init script and the Maven side wrap it, with
+`pmd-main-ruleset.xml`, in `pmd-main.xml` in the report directory with an exclude pattern per test
+source directory, since field injection and package-private test methods are the norm in tests. A PMD rule that flags
 legitimate test code, such as `SystemPrintln` in a test of console output, or `CloseResource` on a
 `PrintStream` handed to `System.setOut`, takes an exception like any other: `{ "rule": "pmd/<rule>", "paths": [...],
 "reason": "..." }`. PMD messages that name a line ("first occurrence is on line 12") lose the number
@@ -1509,54 +1509,88 @@ builds one Spring project (`java-e2e/fixtures/review-rules`, every expected viol
 `// violation: <rule>`) with both and asserts the same findings, and exactly the marked ones.
 Every message names the allowed form and the exception that keeps code that is right.
 
-**Test rule sets.** `pmd-test-ruleset.xml` (and `spring-test-ruleset.xml` when the compile
+**Rule set scopes.** `pmd-test-ruleset.xml` (and `spring-test-ruleset.xml` when the compile
 classpath has Spring) run on test sources only, through the generated `pmd-tests.xml` that
-excludes the main source directories; `pmd-spring-main.xml` likewise keeps the main Spring rules
-off tests. The init script and `maven/maven-lint.mjs` generate both, so Maven also runs
-`TestClassWithoutTestCases` now. Two manifest flags feed the messages and checks below:
-`testAwaitility` (Awaitility on the test classpath) and `published` (a Gradle project with a
-`publishing` publication, or a Maven module with `distributionManagement` whose deploy is not
-skipped through `maven.deploy.skip` or the deploy plugin's `<skip>`).
+excludes the main source directories. `pmd-main-ruleset.xml` (and `spring-ruleset.xml` with Spring)
+run on main sources only, through the generated `pmd-main.xml` that excludes the test directories.
+The init script and `maven/maven-lint.mjs` generate both, so the scopes are the same on both
+builds. The main-only set holds the API design rules (`ExhaustiveEnumPredicate`,
+`StaticForwardingWrapper`, `SingularAndPluralMember`): like the TypeScript preset's
+`exhaustive-union-predicate`, `no-forwarding-wrapper` and `no-singular-and-plural-prop`, which run
+on production files only, they leave test helpers alone, since tests are not an API anyone calls.
+Two manifest flags feed the messages and checks below: `testAwaitility` (Awaitility on the test
+classpath) and `published` (a library module that is deployed, see `test-only-export`).
 
-| Rule (prints as)              | Flags                                                                                                                                                                                                                                                                                                                                                                          | Allowed form                                                                                                                                                                                                                         |
-| ----------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `pmd/FixedSleepInTest`        | In tests: `Thread.sleep(...)` and `TimeUnit.X.sleep(...)` outside a `while`/`do` loop, Playwright's `page.waitForTimeout(...)`, Awaitility's `until(() -> true)`.                                                                                                                                                                                                              | Wait on the condition. When the project's tests use Awaitility, the message names `await().atMost(...).until(...)`; otherwise a `while` loop against a deadline (a sleep inside it is fine). `verify(mock, timeout(ms))` for a mock. |
-| `pmd/NegativeWaitInTest`      | In tests: Mockito's `after(ms)` and Awaitility's `during(...)`, which prove that nothing happens by waiting out a delay.                                                                                                                                                                                                                                                       | A `Clock` or scheduler the test controls: move it past the delay and assert at once.                                                                                                                                                 |
-| `pmd/SpringUnusedContext`     | A `@SpringBootTest` class (no superclass, no `RANDOM_PORT` or `DEFINED_PORT`) with a non-empty test method that injects nothing: no `@Autowired`, `@Inject`, `@Resource`, `@Value`, `@MockBean`/`@MockitoBean`/`@SpyBean`/`@TestBean` or server port field or parameter, no `MockMvc`, `WebTestClient`, `TestRestTemplate` or `ApplicationContext`, no constructor parameters. | A unit test that creates the class with `new`, or a slice (`@WebMvcTest`); `@SpringBootTest` is for integration and component tests. An empty `contextLoads()` test is exempt.                                                       |
-| `pmd/ExhaustiveEnumPredicate` | A boolean in a value position (returned, assigned, a lambda body) that compares one variable with some constants of one enum (`s == PAID \|\| s == SHIPPED`, `s != A && s != B`, `EnumSet.of(A, B).contains(s)`).                                                                                                                                                              | A `switch` expression without `default`, or a boolean each constant declares (`PAID(true)`).                                                                                                                                         |
-| `pmd/StaticForwardingWrapper` | A static method with parameters whose body only passes them, in order, to another static or same-class method (`return Prices.sum(a, b);`).                                                                                                                                                                                                                                    | Call the target directly.                                                                                                                                                                                                            |
-| `pmd/SingularAndPluralMember` | A record, or a `@ConfigurationProperties` class, with both `tag` and `tags` (`-s`, `-es`, `y`/`ies`) where the plural is a `List`, `Set`, `Collection`, `Iterable` or array of the singular's type.                                                                                                                                                                            | Keep the plural; pass one item as a one-element list.                                                                                                                                                                                |
-| `coupling/test-only-export`   | A main class that only test classes use.                                                                                                                                                                                                                                                                                                                                       | Move it to the test sources, or use it from production code.                                                                                                                                                                         |
+| Rule (prints as)                | Flags                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           | Allowed form                                                                                                                                                                                                                                                                         |
+| ------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `pmd/FixedSleepInTest`          | In tests: `Thread.sleep`, `TimeUnit.X.sleep`, `LockSupport.parkNanos`, `wait(ms)` and `join(ms)` (and an unchecked `join(Duration)`) outside a polling loop; Mockito's `after(ms)` with a check that could pass sooner (`after(ms)`, `.atLeastOnce()`, `.times(n)`); Playwright's `page.waitForTimeout(...)`; Awaitility's `until(() -> true)`. A sleep in a mock answer (`doAnswer`, `thenAnswer`) or in a thread body (`new Thread`, an executor, `CompletableFuture.runAsync`) is not flagged.                               | Wait on the condition. When the project's tests use Awaitility, the message names `await().atMost(...).until(...)`; otherwise a loop that checks it against a deadline (a sleep inside it is fine). `verify(mock, timeout(ms))` for a mock, a checked `join(Duration)` for a thread. |
+| `pmd/NegativeWaitInTest`        | In tests: Mockito's `after(ms)` with `never()`, `times(0)`, `atMost(n)` or `atMostOnce()`, and Awaitility's `during(...)`, which prove that nothing happens by waiting out a delay.                                                                                                                                                                                                                                                                                                                                             | A `Clock` or scheduler the test controls: move it past the delay and assert at once.                                                                                                                                                                                                 |
+| `pmd/SpringUnusedContext`       | A `@SpringBootTest` class (no superclass, no `RANDOM_PORT` or `DEFINED_PORT`, also static-imported, no type-level `@MockBean`, `@MockitoBean`, `@SpyBean` or `@MockitoSpyBean`) with a non-empty test method that injects nothing: no `@Autowired`, `@Inject`, `@Resource`, `@Value`, `@MockBean`/`@MockitoBean`/`@SpyBean`/`@TestBean` or server port field, parameter or setter, no `MockMvc`, `WebTestClient`, `TestRestTemplate`, `ApplicationContext`, `CapturedOutput` or `ApplicationEvents`, no constructor parameters. | A unit test that creates the class with `new`, or a slice (`@WebMvcTest`); `@SpringBootTest` is for integration and component tests. An empty `contextLoads()` test is exempt.                                                                                                       |
+| `pmd/TestClassWithoutTestCases` | A test-named class (`Test*`, `*Test`, `*Tests`, `*TestCase`) without a test method. Classes named `*ArchTest`, `*ArchTests` or `*ArchitectureTest` are left to ArchUnit.                                                                                                                                                                                                                                                                                                                                                        | Add the tests, or rename a helper so it does not look like a test class.                                                                                                                                                                                                             |
+| `pmd/ExhaustiveEnumPredicate`   | In main sources: a boolean in a value position (returned, assigned, a lambda body, also inside a larger `&&`/`\|\|` or as a ternary condition there) that compares one subject (a variable, a field, an accessor or getter call) with some constants of one enum, qualified or static-imported (`s == PAID \|\| s == SHIPPED`, `o.status() != A && o.status() != B`, `EnumSet.of(A, B).contains(s)`).                                                                                                                           | A `switch` expression without `default`, or a boolean each constant declares (`PAID(true)`).                                                                                                                                                                                         |
+| `pmd/StaticForwardingWrapper`   | In main sources: a static method with parameters whose body only passes them, in order, to another static or same-class method (`return Prices.sum(a, b);`).                                                                                                                                                                                                                                                                                                                                                                    | Call the target directly. Factories named `of` or `from` and copies (`List.copyOf`, `Collections.unmodifiableList`) are allowed.                                                                                                                                                     |
+| `pmd/SingularAndPluralMember`   | In main sources: a record, or a `@ConfigurationProperties` class or a class nested in one, with both `tag` and `tags` (`-s`, `-es`, `y`/`ies`) where the plural is a `List`, `Set`, `Collection`, `Iterable` or array of the singular's type.                                                                                                                                                                                                                                                                                   | Keep the plural; pass one item as a one-element list.                                                                                                                                                                                                                                |
+| `coupling/test-only-export`     | A main class that only test classes use.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        | Move it to the test sources, or use it from production code.                                                                                                                                                                                                                         |
 
 **Precision notes.**
 
 - `FixedSleepInTest` and `NegativeWaitInTest` match by resolved type (`java.lang.Thread`,
-  `java.util.concurrent.TimeUnit`, `org.mockito.Mockito`, Awaitility's `ConditionFactory`,
-  Playwright's `Page` and `Frame`), so a project's own `sleep` method is not flagged. Both
-  Awaitility and a deadline loop are valid, so the message follows the project: it names Awaitility
-  only when the tests already use it.
+  `java.util.concurrent.TimeUnit`, `LockSupport`, `org.mockito.Mockito`, Awaitility's
+  `ConditionFactory`, Playwright's `Page` and `Frame`), so a project's own `sleep` method is not
+  flagged. A polling loop is a `while`, `do` or `for` loop with a condition other than `true`, or a
+  `while (true)` / `for (;;)` loop that reads the clock (`System.nanoTime()`,
+  `System.currentTimeMillis()`, `Instant.now()`, a `Clock`). Both Awaitility and a deadline loop
+  are valid, so the message follows the project (`messages/wait-advice.mjs`): it names Awaitility
+  when the module has it on the test classpath or a test file imports `org.awaitility`, and it
+  then says that `pollDelay(...).until(() -> true)` is a fixed sleep too.
 - `ExhaustiveEnumPredicate` needs at least two comparisons with distinct constants of one enum on
-  one subject. A condition in an `if` or a loop is not a value and is not flagged. The Node side
-  (`adapters/review-rules/enum-predicates.mjs`) then keeps a finding only when the enum is declared
-  in the project's sources (same package, imported, or the only enum with those constants), has at
-  least three constants and the predicate lists some but not all of them; the message names the
-  enum. Library enums (`TimeUnit`, `HttpStatus`) are not the project's to classify.
-- `StaticForwardingWrapper` skips annotated methods, generic methods, `main`, `valueOf` and
-  `fromString` (names frameworks look up), methods of Spring stereotype and configuration classes,
-  and wrappers that add type arguments, reorder or drop parameters.
+  one subject. A condition in an `if` or a loop, or a predicate passed as an argument, is not a
+  value and is not flagged. The Node side (`adapters/review-rules/enum-predicates.mjs`) then keeps
+  a finding only when the enum is declared in the project's sources (same package, imported, or
+  the only enum with those constants), has at least three constants and the predicate lists some
+  but not all of them; the message names the enum. A static-imported constant is resolved through
+  its `import static`, and through a wildcard static import when one project enum declares it.
+  Library enums (`TimeUnit`, `HttpStatus`) are not the project's to classify.
+- `StaticForwardingWrapper` skips annotated methods, generic methods, `main`, `valueOf`,
+  `fromString`, `of` and `from` (names frameworks and callers look up), methods of Spring
+  stereotype and configuration classes, wrappers around `copyOf`, `copyOfRange`, `unmodifiable*`,
+  `synchronized*` and `checked*` (they change the type or the guarantees), and wrappers that add
+  type arguments, reorder or drop parameters.
 - `SingularAndPluralMember` compares declared types by simple name, with primitives boxed, and is
-  reported on the plural member.
+  reported on the plural member. Method parameters, including varargs (`String key,
+String... keys`), are not checked, as the Python preset leaves required parameters alone.
 - `test-only-export` (`adapters/review-rules/test-only-classes.mjs`, run project-wide) reads
   `jdeps.txt`, `jdeps-classes.txt` and `jdeps-test.txt` of every module and resolves a class to its
   own module first. A main class is reported when test classes use it and no other main class
-  does, unless: it carries a container annotation (Spring stereotypes, `@Configuration`,
-  `@SpringBootApplication`, `@AutoConfiguration`, `@ConfigurationProperties`, JPA `@Entity`,
-  `@Embeddable`, `@MappedSuperclass` and `@Converter`, `@Named`, `@Singleton`, CDI scopes, JAX-RS
-  `@Path`); it has a `main` method; its qualified name appears in a main source or resource file
-  (`logback.xml`, `META-INF/spring/...`, `META-INF/services/...`); its simple name appears in a
-  main source file that sees its package (same package or a wildcard import); or the module is
-  published and the test is in that same module (a library's API is used by its consumers, so its
-  own tests are legitimate callers). A module without all three reports is skipped.
+  does, unless:
+  - it carries a wiring annotation, directly or through a project annotation that carries one
+    (`adapters/review-rules/test-only-usage.mjs`): Spring stereotypes, `@Configuration`,
+    `@SpringBootApplication`, `@AutoConfiguration`, `@ConfigurationProperties`, actuator
+    `@Endpoint` and its variants, `@FeignClient`, Spring Data repositories, JPA `@Entity`,
+    `@Embeddable`, `@MappedSuperclass` and `@Converter`, `@Named`, `@Singleton`, CDI scopes,
+    interceptors and decorators, EJB beans, JAX-RS `@Path`, `@ApplicationPath` and `@Provider`,
+    servlet `@WebServlet`, `@WebFilter` and `@WebListener`, `@ServerEndpoint`, Micronaut
+    controllers, clients and factories;
+  - it has an entry point: a Java `static void main`, a Kotlin `@JvmStatic fun main`, or a Kotlin
+    file with a top-level `fun main` (its `FileKt` facade);
+  - its qualified name appears in a file the project reads by name: main sources, resources
+    (`logback.xml`, `META-INF/spring/...`, `META-INF/services/...`), `src/main/webapp` (`web.xml`),
+    or a file directly in the root or a module folder (build scripts with `implementationClass`,
+    `Main-Class` or a shade `mainClass`, `template.yaml`, `plugin.xml`, `Dockerfile`), comments
+    and documents (`.md`, `.adoc`) not counted;
+  - its simple name appears in the code of a main source file that sees its package (same package
+    or a wildcard import);
+  - or its module is a published library: on Gradle a project with a `publishing` publication, on
+    Maven a `jar`, `bundle` or `maven-plugin` module with `distributionManagement` or a publishing
+    plugin (`central-publishing-maven-plugin`, `nexus-staging-maven-plugin`,
+    `maven-release-plugin`) whose deploy is not skipped. Its classes are its consumers' API, so its
+    own and its sibling modules' tests are legitimate callers. A module with an entry point or a
+    `@SpringBootApplication` is an application, not a library, even when it is deployed.
+
+  Kotlin sources are read the same way: each top-level class, object or interface of a `.kt` file
+  is a declaration, and a file with top-level functions or properties declares its `FileKt` facade
+  (or the `@file:JvmName` name). The message names the exception for a class that a file
+  nitpicker does not read loads by name. A module without all three reports is skipped.
 
 **Not built.** Unused builder parameters (a Lombok `@Builder` or record builder field no caller
 sets) are not checked: builders are filled by reflection (Jackson's `@Jacksonized`, MapStruct,
