@@ -63,20 +63,21 @@ describe('formatter detection', () => {
     expect(formatterOf(files, { formatter: 'none' })).toBe('none');
   });
 
-  it('ignores the style the build names unless the project is listed', () => {
+  it('takes the style the build names whether or not the project is listed, and the indentation otherwise', () => {
     const files = { 'build.gradle.kts': 'ktfmt { googleStyle() }' };
 
-    expect(toolsOf(files).ktfmtStyle).toBe('meta');
-    expect(toolsOf(files, { conventions: { 'kotlin.indentation': '4' } }).ktfmtStyle).toBe(
-      'kotlinlang',
-    );
+    expect(toolsOf(files).ktfmtStyle).toBe('google');
+    expect(
+      toolsOf({ 'build.gradle.kts': 'ktfmt()' }, { conventions: { 'kotlin.indentation': '4' } })
+        .ktfmtStyle,
+    ).toBe('kotlinlang');
   });
 
   it.each([
     ['kotlinLangStyle()', 'kotlinlang'],
     ['googleStyle()', 'google'],
     ['ktfmt()', 'meta'],
-  ])('reads the ktfmt style from %s once the project is listed', (build, style) => {
+  ])('reads the ktfmt style from %s', (build, style) => {
     expect(
       toolsOf({ 'build.gradle.kts': build }, { toolPrecedence: PROJECT_KTFMT }).ktfmtStyle,
     ).toBe(style);
@@ -86,11 +87,13 @@ describe('formatter detection', () => {
     ['names no style', 'ktfmt()', '4', 'kotlinlang'],
     ['names no style', 'ktfmt()', '2', 'meta'],
     ['names no style', 'ktfmt()', undefined, 'meta'],
-    ['names google', 'ktfmt { googleStyle() }', '4', 'google'],
-    ['names meta', 'ktfmt { metaStyle() }', '4', 'meta'],
-    ['names kotlinlang', 'ktfmt { kotlinLangStyle() }', '2', 'kotlinlang'],
+    ['names google', 'ktfmt { googleStyle() }', '2', 'google'],
+    ['names google', 'ktfmt { googleStyle() }', '4', 'kotlinlang'],
+    ['names meta', 'ktfmt { metaStyle() }', '4', 'kotlinlang'],
+    ['names kotlinlang', 'ktfmt { kotlinLangStyle() }', '2', 'meta'],
+    ['names kotlinlang', 'ktfmt { kotlinLangStyle() }', '4', 'kotlinlang'],
   ])(
-    'with a listed project and a build that %s and the indentation %s followed, uses ktfmt %s',
+    'with a build that %s and the indentation %s followed, uses ktfmt %s',
     (_n, build, width, style) => {
       const conventions = width === undefined ? {} : { 'kotlin.indentation': width };
 
@@ -226,11 +229,11 @@ describe('ktlint and ktfmt with a project .editorconfig', () => {
     });
   });
 
-  it('names a ktfmt style the build declares and the run leaves out', () => {
+  it('uses the ktfmt style the build declares, with or without the project listed', () => {
     const files = { 'build.gradle.kts': 'ktfmt { googleStyle() }' };
 
-    expect(toolsOf(files).ktfmtBuildStyleIgnored).toBe(true);
-    expect(toolsOf(files, { toolPrecedence: PROJECT_KTFMT }).ktfmtBuildStyleIgnored).toBe(false);
-    expect(toolsOf({ 'build.gradle.kts': 'ktfmt()' }).ktfmtBuildStyleIgnored).toBe(false);
+    expect(toolsOf(files).ktfmtStyle).toBe('google');
+    expect(toolsOf(files, { toolPrecedence: PROJECT_KTFMT }).ktfmtStyle).toBe('google');
+    expect(toolsOf({ 'build.gradle.kts': 'ktfmt()' }).ktfmtStyle).toBe('meta');
   });
 });
