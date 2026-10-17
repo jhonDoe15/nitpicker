@@ -1,6 +1,6 @@
 const MEASURES = ['lines', 'branches'];
 
-export function isInside(inner, outer) {
+function isInside(inner, outer) {
   return (
     inner.start >= outer.start &&
     inner.end <= outer.end &&
@@ -39,7 +39,7 @@ function remainder(own, lent) {
   };
 }
 
-export function lowestCoverage(matches, lentMatches = []) {
+function lowestCoverage(matches, lentMatches = []) {
   const own = MEASURES.map((key) => sum(matches, key));
   const lent = MEASURES.map((key) => sum(lentMatches, key));
   const remaining = own.map((measure, index) => remainder(measure, lent[index]));

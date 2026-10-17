@@ -96,7 +96,7 @@ describe.skipIf(!pythonE2eEnabled)(
             '',
           ].join('\n'),
           'tests/test_pipeline.py':
-            'from demo.pipeline import pipeline\n\n\ndef test_pipeline():\n    assert pipeline([3]) == [4]\n',
+            'from demo.pipeline import pipeline\n\n\ndef test_pipeline():\n    assert pipeline([3]) == [3]\n',
         });
         commitBranch(project, 'untested-complex', {
           ...NO_MUTATION,
@@ -152,7 +152,7 @@ describe.skipIf(!pythonE2eEnabled)(
         ]);
       });
       it('scores a lambda as a unit of its own and leaves its branches out of the function around it', () => {
-        const result = gate(project, 'branchy-lambda');
+        const result = gate(project, 'branchy-lambda', MUTATION_DISABLED);
 
         expect(result.exitCode, result.text).toBe(1);
         expect(enforceable(result)).toEqual([

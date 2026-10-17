@@ -21,9 +21,8 @@ import {
   STABILITY_FILES,
   stabilityClass,
   repeated,
-  UNITS,
-  UNITS_TEST,
 } from './test-support/java-preset-data.mjs';
+import { UNITS, UNITS_TEST } from './test-support/unit-sources.mjs';
 import { WIDE, WIDE_EXTENDED, WIDE_REFORMATTED } from './test-support/wide-sources.mjs';
 import { runJavaDiff } from '../java-diff.mjs';
 import {
