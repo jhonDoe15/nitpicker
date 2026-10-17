@@ -35,6 +35,28 @@ describe('javaLineLength', () => {
   });
 });
 
+const LONG_STATEMENTS = [
+  'class A {',
+  '    void run() {',
+  `        int first = ${'a + '.repeat(22)}b;`,
+  `        int second = ${'c + '.repeat(22)}d;`,
+  '    }',
+  '}',
+  '',
+].join('\n');
+const TEXT_BLOCK_WITH_TAB = [
+  'class A {',
+  '  void run() {',
+  '    service.process(',
+  `        ${'x'.repeat(83)});`,
+  '    String text = """',
+  '\tindented by a tab',
+  '    """;',
+  '  }',
+  '}',
+  '',
+].join('\n');
+
 describe('formatterProfile', () => {
   it('reads two spaces and four spaces at 100 as google-java-format, in both styles', () => {
     expect(formatterProfile(GOOGLE)).toBe('google');
@@ -53,5 +75,24 @@ describe('formatterProfile', () => {
 
   it('has no answer without evidence', () => {
     expect(formatterProfile('package a;\n\nclass A {}\n')).toBeUndefined();
+  });
+
+  it('has no answer for four-space files with long lines but no wrapped call', () => {
+    expect(javaLineLength(LONG_STATEMENTS)).toBe('120');
+    expect(formatterProfile(LONG_STATEMENTS)).toBeUndefined();
+  });
+
+  it('lets a tab inside a text block or a comment vote for nothing', () => {
+    expect(formatterProfile(TEXT_BLOCK_WITH_TAB)).toBe('google');
+    expect(javaLineLength(TEXT_BLOCK_WITH_TAB)).toBe('100');
+    expect(
+      formatterProfile(GOOGLE.replace('class A {', 'class A {\n\t// a tab in a comment')),
+    ).toBe('google');
+  });
+
+  it('reads files whose blocks are indented with tabs as no formatter', () => {
+    const tabs = 'class A {\n\tvoid a() {\n\t\tcall();\n\t}\n}\n';
+
+    expect(formatterProfile(tabs)).toBe('none');
   });
 });

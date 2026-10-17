@@ -2,20 +2,18 @@ import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { ingestFormatCheck } from '../../ingest/formatting/format-check.mjs';
 import { projectRelative } from '../../ingest/sarif.mjs';
+import { JAVA_FORMATTER_TOOLS } from '../style/java-style.mjs';
 
-const FORMAT_TOOLS = {
-  google: { tool: 'google-java-format', flag: '' },
-  aosp: { tool: 'google-java-format', flag: ' --aosp' },
-  palantir: { tool: 'palantir-java-format', flag: '' },
-};
+const NOT_YOUR_FORMATTER =
+  'Not your formatter: pin "conventions.java.formatter" to "google", "palantir" or "none" in nitpicker.config.json.';
 
 export function formatFindings({ reportRoot, roots, javaStyle }) {
   const formatLines = readFileSync(path.join(reportRoot, 'format.txt'), 'utf8')
     .split(/\r?\n/)
     .map((line) => projectRelative(line.trim(), roots) ?? line);
-  const { tool, flag } = FORMAT_TOOLS[javaStyle] ?? FORMAT_TOOLS.google;
+  const { tool, label, command } = JAVA_FORMATTER_TOOLS[javaStyle] ?? JAVA_FORMATTER_TOOLS.google;
   return ingestFormatCheck(formatLines.join('\n'), {
     tool,
-    message: `File is not formatted with ${tool}${flag}`,
+    message: `File is not formatted with ${label}. Format it with ${command}. ${NOT_YOUR_FORMATTER}`,
   }).findings;
 }

@@ -31,8 +31,26 @@ export function commitSource({ repositoryRoot, commitSha, projectRoot }) {
     readMany: (files) =>
       readBlobs(
         repositoryRoot,
-        files.map((file) => blobs.get(file)),
+        files.filter((file) => blobs.has(file)).map((file) => blobs.get(file)),
       ),
+  };
+}
+
+export function lazySource(create) {
+  const created = [];
+  function source() {
+    if (created.length === 0) {
+      created.push(create());
+    }
+    return created[0];
+  }
+  return { paths: () => source().paths(), readMany: (files) => source().readMany(files) };
+}
+
+export function filteredSource(source, accepts) {
+  return {
+    paths: () => source.paths().filter(accepts),
+    readMany: (files) => source.readMany(files.filter(accepts)),
   };
 }
 

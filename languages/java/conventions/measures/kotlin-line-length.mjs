@@ -10,8 +10,9 @@ const GROUP_CLOSER = /^\s*\)/;
 const INNER_SKIP = /[({]\s*$|^\s*(?:\/\/|\/\*|\*)/;
 const RAW_STRING = /"""/g;
 const TRAILING_COMMA = /,$/;
+const COMMENT_LINE = /^\s*(?:\/\/|\/\*|\*)/;
 
-function withoutRawStrings(lines) {
+export function withoutRawStrings(lines) {
   let open = false;
   return lines.map((line) => {
     const quotes = (line.match(RAW_STRING) ?? []).length;
@@ -54,12 +55,11 @@ export function lineLength(text) {
   });
 }
 
-export function measuredLineLength(text, { unbreakable, joinLengths }) {
-  const raw = text.split(/\r?\n/);
-  if (raw.some((line) => line.startsWith('\t'))) {
+export function measuredLineLength(text, { unbreakable, joinLengths, wrappedOnly = false }) {
+  const lines = withoutRawStrings(text.split(/\r?\n/));
+  if (lines.some((line) => line.startsWith('\t') && !COMMENT_LINE.test(line))) {
     return undefined;
   }
-  const lines = withoutRawStrings(raw);
   const lengths = lines.filter((line) => !unbreakable.test(line)).map((line) => line.length);
   const longest = lengths.reduce((most, length) => Math.max(most, length), 0);
   const joins = joinLengths(lines);
@@ -68,5 +68,5 @@ export function measuredLineLength(text, { unbreakable, joinLengths }) {
     const fitting = WIDTHS.filter((width) => longest <= width && width < shortestJoin);
     return fitting.length === 1 ? String(fitting[0]) : undefined;
   }
-  return beyondWidth(lengths, longest);
+  return wrappedOnly ? undefined : beyondWidth(lengths, longest);
 }

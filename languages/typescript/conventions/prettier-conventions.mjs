@@ -1,3 +1,4 @@
+import { COLUMNS } from '../../../shared/conventions/settings.mjs';
 import {
   arrowParentheses,
   bracketSpacing,
@@ -46,6 +47,7 @@ export const PRETTIER_CONVENTIONS = [
     label: 'Line width',
     optionLabels: { 80: '80 columns', 100: '100 columns', 120: '120 columns' },
     fallback: '100',
+    ...COLUMNS,
     measure: printWidth,
   }),
   convention({

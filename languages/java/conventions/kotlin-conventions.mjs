@@ -5,6 +5,7 @@ import {
   SAMPLE_LIMIT,
   testAndSupportGlobs,
 } from './measures/assertion-helpers.mjs';
+import { COLUMNS } from '../../../shared/conventions/settings.mjs';
 import { indentationStep } from './measures/java-layout.mjs';
 import { lineLength } from './measures/kotlin-line-length.mjs';
 import { trailingCommas, wildcardImports } from './measures/kotlin-measures.mjs';
@@ -51,6 +52,7 @@ export const KOTLIN_CONVENTIONS = [
     options: ['100', '120', '140'],
     optionLabels: { 100: '100 columns', 120: '120 columns', 140: '140 columns' },
     fallback: undefined,
+    ...COLUMNS,
     files: KOTLIN_FILES,
     measure: lineLength,
   },

@@ -42,7 +42,8 @@ With Spring on the classpath, also follow [spring.md](spring.md).
 - Style is google-java-format, 100 columns, unless the project formats with palantir-java-format
   (120 columns, 4 spaces). Indent like the files around you (nitpicker follows the project's
   formatter and majority, 2 spaces or 4 with `--aosp`); a misformatted file is one finding, so run the
-  formatter rather than fixing layout by hand.
+  formatter rather than fixing layout by hand. With no formatter, nitpicker still reports unused
+  imports, tabs and bad indentation or whitespace.
 - Text: `"a".equals(x)` or `a.equals(b)`, never `==` on strings or other objects. Pass a charset and
   a locale: `s.getBytes(StandardCharsets.UTF_8)`, `s.toUpperCase(Locale.ROOT)`.
 - Output: no `System.out`/`System.err` and no `printStackTrace()`. Log with

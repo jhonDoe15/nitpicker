@@ -25,8 +25,9 @@ import {
   runJacocoReport,
   runPit,
 } from './maven-tests.mjs';
+import { checkstyleIndentation } from '../adapters/style/java-style.mjs';
 import { copyTestResults } from './results/maven-test-results.mjs';
-import { jacocoPlugin, MAVEN_PLUGINS, resolveTools } from './maven-tools.mjs';
+import { formatTool, jacocoPlugin, MAVEN_PLUGINS, resolveTools } from './maven-tools.mjs';
 import { processorTool, runErrorProne } from './errorprone/maven-errorprone.mjs';
 import { GRADLE_DIRECTORY, readPinnedTools } from '../builds/java-build.mjs';
 
@@ -168,7 +169,7 @@ function readClasspaths(work, module) {
   );
 }
 
-function analyzeModule({ module, classpaths, tools, pinned, configs, since, javaStyle }) {
+function analyzeModule({ module, classpaths, tools, pinned, configs, since, style }) {
   const reportDir = path.join(module.basedir, MAVEN_REPORT_DIRECTORY);
   const isArchunit = archunitMatcher(module.archunitIncludes);
   const spring = classpaths.mainCompile.some((entry) => SPRING_JAR.test(path.basename(entry)));
@@ -177,8 +178,8 @@ function analyzeModule({ module, classpaths, tools, pinned, configs, since, java
   runPmd({ module, reportDir, tools, classpaths, configs, spring });
   runSpotbugs({ module, reportDir, tools });
   runErrorProne({ module, reportDir, tools, classpaths });
-  runFormat({ module, reportDir, tools, javaStyle });
-  runCheckstyle({ module, reportDir, tools, configs, pinned });
+  runFormat({ module, reportDir, tools, javaStyle: style.javaStyle });
+  runCheckstyle({ module, reportDir, tools, configs, pinned, style });
   runStructure(module, reportDir);
   runJdeps(module, reportDir);
   runJacocoReport({
@@ -229,19 +230,6 @@ function missingLauncherVersions(analyzed) {
   return [...new Set(versions.filter((version) => version !== undefined))];
 }
 
-function palantirTool(javaStyle, pinned) {
-  return javaStyle === 'palantir'
-    ? [
-        {
-          name: 'format-palantir',
-          coordinates: [
-            `com.palantir.javaformat:palantir-java-format:${pinned.palantirJavaFormat}`,
-          ],
-        },
-      ]
-    : [];
-}
-
 export function runMavenPreset(projectRoot, { maven, policy = {}, configs }) {
   if (policy.preset === 'kotlin') {
     throw new Error(
@@ -265,7 +253,7 @@ export function runMavenPreset(projectRoot, { maven, policy = {}, configs }) {
       launcherVersions: missingLauncherVersions(analyzed),
       extraTools: [
         ...modules.map((module) => processorTool(module.compiler)).filter(Boolean),
-        ...palantirTool(policy.javaStyle, pinned),
+        ...formatTool(policy.javaStyle, pinned),
       ],
     });
     for (const { module, classpaths } of analyzed) {
@@ -276,7 +264,10 @@ export function runMavenPreset(projectRoot, { maven, policy = {}, configs }) {
         pinned,
         configs,
         since,
-        javaStyle: policy.javaStyle,
+        style: {
+          javaStyle: policy.javaStyle,
+          indentation: checkstyleIndentation(policy.conventions),
+        },
       });
     }
     return modules.map((module) => module.basedir);

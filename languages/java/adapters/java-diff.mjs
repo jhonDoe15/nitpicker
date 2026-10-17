@@ -75,7 +75,7 @@ function runJavaPreset(
       () => [
         ...common,
         ...toolConfigProperties(projectRoot, policy, { directory, checkstyleBase }),
-        ...javaStyleProperties(policy.javaStyle),
+        ...javaStyleProperties(policy),
         '-I',
         initScript,
         'nitpickerJava',

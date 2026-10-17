@@ -3,6 +3,7 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import * as prettier from 'prettier';
 import { describe, expect, it } from 'vitest';
+import { validateConventions } from '../../../shared/conventions/settings.mjs';
 import { layeredPrettierOptions } from '../adapters/prettier/prettier-layers.mjs';
 import { usesLayeredPrettier } from '../preset/head-policy.mjs';
 import { PRETTIER_CONVENTIONS, prettierConventionOptions } from './prettier-conventions.mjs';
@@ -108,5 +109,19 @@ describe('Prettier conventions', () => {
       rmSync(directory, { recursive: true, force: true });
     }
     expect(usesLayeredPrettier({})).toBe(false);
+  });
+
+  it('accepts a pinned print width of any number of columns', () => {
+    const validate = (width) => () => {
+      validateConventions({ 'prettier.printWidth': width }, PRETTIER_CONVENTIONS);
+    };
+
+    expect(validate('110')).not.toThrow();
+    expect(validate('wide')).toThrow(
+      '"conventions.prettier.printWidth" must be one of: "80", "100", "120", or another number of columns',
+    );
+    expect(prettierConventionOptions({ 'prettier.printWidth': '110' })).toEqual({
+      printWidth: 110,
+    });
   });
 });
