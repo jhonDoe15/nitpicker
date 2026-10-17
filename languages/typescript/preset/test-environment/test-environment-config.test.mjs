@@ -5,6 +5,7 @@ import { rule } from '../eslint-plugin/rules/testing/environment/no-unused-dom-e
 import { failureMessagesFor } from '../failure-messages/test-support/harness.mjs';
 import { resolveLayout } from '../layout.mjs';
 import {
+  domProductionConfigFor,
   testEnvironmentConfigFor,
   testEnvironmentsFromVariables,
 } from './test-environment-config.mjs';
@@ -135,6 +136,51 @@ describe('testEnvironmentsFromVariables', () => {
       expect(testEnvironmentsFromVariables({ [TEST_ENVIRONMENTS_VARIABLE]: value })).toEqual(
         unknown,
       );
+    },
+  );
+});
+
+describe('domProductionConfigFor', () => {
+  const javascriptLayout = resolveLayout({ sourceRoots: ['src'], testRoots: ['tests'] }, [], {
+    javascript: true,
+  });
+  const domScope = { files: ['src/ui/**/*.test.js'], ignores: [], environment: 'happy-dom' };
+
+  function productionMessages(projectEnvironments, filename, code) {
+    const config = [
+      { rules: { 'no-undef': 'error' } },
+      ...domProductionConfigFor(javascriptLayout, projectEnvironments),
+    ];
+    return failureMessagesFor({ config, filename, code });
+  }
+
+  it.each([
+    { environment: 'jsdom', scopes: [] },
+    { environment: 'node', scopes: [domScope] },
+  ])('lets the production code of a DOM project use the browser globals', (environments) => {
+    expect(productionMessages(environments, 'src/main/render.js', "document.title = 'a';")).toEqual(
+      [],
+    );
+  });
+
+  it('restricts the confusing browser globals outside domain/', () => {
+    const jsdom = { environment: 'jsdom', scopes: [] };
+
+    expect(productionMessages(jsdom, 'src/main/render.js', 'export const value = name;')).toEqual([
+      "Unexpected use of 'name'. `name` here is the browser global, not a local value. Write `window.name` when you mean the global; otherwise take the value as a parameter (`onClick={(event) => ...}`) or declare it. If this is intentional, add an exception for this rule in nitpicker.config.json.",
+    ]);
+    expect(
+      productionMessages(jsdom, 'src/main/features/a/domain/b.js', 'export const value = name;'),
+    ).toEqual([]);
+  });
+
+  it.each([unknown, { environment: 'node', scopes: [] }])(
+    'leaves the production code of a project without a DOM environment to Node (%j)',
+    (environments) => {
+      expect(domProductionConfigFor(javascriptLayout, environments)).toEqual([]);
+      expect(
+        productionMessages(environments, 'src/main/render.js', "document.title = 'a';"),
+      ).toEqual(["'document' is not defined."]);
     },
   );
 });
