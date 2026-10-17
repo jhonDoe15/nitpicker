@@ -69,16 +69,16 @@ function runJavaPreset(
       ...kotlinArguments,
     ];
     const checkstyleBase = path.join(directory, CHECKSTYLE_EXPORT);
-    const main = () => [
-      ...common,
-      ...toolConfigProperties(projectRoot, policy, { directory, checkstyleBase }),
-      '-I',
-      initScript,
-      'nitpickerJava',
+    const stages = [
+      ...(layersCheckstyle ? [() => exportArguments(common, { initScript, directory })] : []),
+      () => [
+        ...common,
+        ...toolConfigProperties(projectRoot, policy, { directory, checkstyleBase }),
+        '-I',
+        initScript,
+        'nitpickerJava',
+      ],
     ];
-    const stages = layersCheckstyle
-      ? [() => exportArguments(common, { initScript, directory }), main]
-      : [main];
     for (const stage of stages) {
       const target = gradleTarget({ projectRoot, configured: gradle, args: stage() });
       const result = spawnSync(target.command, target.args, {
