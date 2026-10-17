@@ -5,7 +5,7 @@ import { runFakeGradle } from '../fixtures/fake-gradle.mjs';
 
 export const fakeGradle = path.resolve(import.meta.dirname, '../fixtures/fake-gradle.mjs');
 
-export function spawnFakeGradle(realSpawn) {
+function spawnFakeGradle(realSpawn) {
   return (command, args, options) => {
     if (command !== fakeGradle) {
       return realSpawn(command, args, options);
