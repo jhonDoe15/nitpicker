@@ -100,9 +100,10 @@ describe('running the rules script', () => {
 
     checkRules(context);
 
-    expect(
-      JSON.parse(readFileSync(path.join(reportRoot, 'rule-options.json'), 'utf8')),
-    ).toMatchObject({
+    const { modules, testFiles, entryModules, published, entryPoints, invalidFiles } = JSON.parse(
+      readFileSync(path.join(reportRoot, 'rule-options.json'), 'utf8'),
+    );
+    expect({ modules, testFiles, entryModules, published, entryPoints, invalidFiles }).toEqual({
       modules: {
         'src/shop/__init__.py': 'shop',
         'src/shop/cli.py': 'shop.cli',

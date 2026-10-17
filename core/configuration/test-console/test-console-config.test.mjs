@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest';
-import { configuredAnalyzers } from '../../languages/typescript/preset/diff/configured-analyzers.mjs';
-import { resolveHeadPolicy } from '../../languages/typescript/preset/head-policy.mjs';
-import { applyDisable, describeConfigOverrides, describeDisableCascade } from './config.mjs';
-import { validateConfig } from './validate.mjs';
+import { configuredAnalyzers } from '../../../languages/typescript/preset/diff/configured-analyzers.mjs';
+import { resolveHeadPolicy } from '../../../languages/typescript/preset/head-policy.mjs';
+import { applyDisable, describeConfigOverrides, describeDisableCascade } from '../config.mjs';
+import { validateConfig } from '../validate.mjs';
 
 const allowed = { contains: 'is no longer supported', reason: 'react 17 shim' };
 

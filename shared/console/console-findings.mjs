@@ -1,7 +1,7 @@
-import { globToRegExp } from '../../../../../../shared/glob.mjs';
-import { MESSAGES, RULE_IDS, renderMessage } from '../../../../../../shared/policy.mjs';
-import { exceptionMatcher, exceptionText } from '../../../../../../shared/rules/exceptions.mjs';
-import { hash } from '../../../../../../shared/rules/finding-helpers.mjs';
+import { globToRegExp } from '../glob.mjs';
+import { MESSAGES, RULE_IDS, renderMessage } from '../policy.mjs';
+import { exceptionMatcher, exceptionText } from '../rules/exceptions.mjs';
+import { hash } from '../rules/finding-helpers.mjs';
 import { normalizeConsoleMessage } from './console-messages.mjs';
 
 function allowMatcher(allow) {

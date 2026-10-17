@@ -14,7 +14,7 @@ function invalidFileMessage(subject, { problem }) {
   return `${subject} could not be read (${problem}), so python-rules took the package as unpublished with no entry points from it, and unused-option may name a parameter an entry point passes. Fix the file.`;
 }
 
-function described(rule, subject, data, libraries) {
+function described({ rule, subject, data }, libraries) {
   if (rule === SKIPPED_RULE) {
     return { message: skippedMessage(subject), classification: 'descriptive' };
   }
@@ -22,7 +22,7 @@ function described(rule, subject, data, libraries) {
     return { message: invalidFileMessage(subject, data), classification: 'tool-error' };
   }
   return {
-    message: describeRuleFinding(rule, subject, libraries, data),
+    message: describeRuleFinding(rule, subject, { libraries, data }),
     classification: 'enforceable',
   };
 }
@@ -35,7 +35,7 @@ export function ingestRulesReport(text, libraries) {
     path,
     identity: identify({ path, rule, subject }),
     subject,
-    ...described(rule, subject, data, libraries),
+    ...described({ rule, subject, data }, libraries),
     location: { line },
   }));
 }
