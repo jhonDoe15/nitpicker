@@ -14,9 +14,11 @@ forms below from the start; the gate is a backstop.
 
 1. Run the project's tests (`./gradlew test`, or `./mvnw test` on Maven). Failing tests or compile
    errors make the gate exit 2.
-2. Format with google-java-format 1.25.2 (the project's own formatter task, or the CLI with
-   `--replace`, plus `--aosp` when the project's style is aosp). `npx nitpicker --fix` does not
-   touch Java.
+2. Format with the formatter the run names under "Following this project's conventions": the
+   project's own formatter task, or google-java-format 1.25.2 with `--replace` (plus `--aosp` for
+   the aosp style), or palantir-java-format with `--palantir --replace`. When the run says no
+   Java formatter runs, there is nothing to run; keep the layout by hand. `npx nitpicker --fix`
+   does not touch Java.
 3. Run `npx nitpicker` as a background command you wait on, without a pipe: you need its exit
    code. It runs the build on the merge base and on head and takes minutes. It uses the project's
    `./gradlew` or `./mvnw` when there is one, otherwise `gradle` or `mvn` from the PATH
@@ -39,9 +41,12 @@ With Spring on the classpath, also follow [spring.md](spring.md).
 
 ## Write it this way
 
-- Style is google-java-format, 100 columns. Indent like the files around you (nitpicker follows the
-  project's majority, 2 spaces or 4 with `--aosp`); a misformatted file is one finding, so run the
-  formatter rather than fixing layout by hand.
+- Style is google-java-format, 100 columns, unless the project formats with palantir-java-format
+  (120 columns, 4 spaces). Indent like the files around you (nitpicker follows the project's
+  formatter and majority, 2 spaces or 4 with `--aosp`); a misformatted file is one finding, so run the
+  formatter rather than fixing layout by hand. With no formatter, nitpicker still reports unused
+  imports and bad indentation or whitespace; in a tab-indented project it checks neither tabs nor
+  indentation.
 - Text: `"a".equals(x)` or `a.equals(b)`, never `==` on strings or other objects. Pass a charset and
   a locale: `s.getBytes(StandardCharsets.UTF_8)`, `s.toUpperCase(Locale.ROOT)`.
 - Output: no `System.out`/`System.err` and no `printStackTrace()`. Log with
