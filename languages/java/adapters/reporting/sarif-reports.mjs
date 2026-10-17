@@ -6,7 +6,8 @@ import {
   withExposureAdvice,
 } from '../jpa/jpa-source-filters.mjs';
 import { ingestSarif, prepareSarif } from '../../ingest/sarif.mjs';
-import { withWaitAdvice } from '../../messages/wait-advice.mjs';
+import { FIXED_SLEEP_RULE, withWaitAdvice } from '../../messages/wait-advice.mjs';
+import { dropSleepsInFakes } from '../../messages/latency-fakes.mjs';
 
 const LINE_NUMBER = /\bline \d+\b/g;
 const EMPTY_SARIF = { version: '2.1.0', runs: [] };
@@ -33,10 +34,17 @@ export function sarifFindings(context) {
   const spotbugs = preparedReport('spotbugs.sarif', context, spotbugsSubject);
   return [
     ...withWaitAdvice(
-      dropInheritedVersions(ingestSarif(pmd, { tool: 'pmd' }).findings, {
-        projectRoot,
-        sourceRoots: allSourceRoots,
-      }),
+      dropSleepsInFakes(
+        dropInheritedVersions(ingestSarif(pmd, { tool: 'pmd' }).findings, {
+          projectRoot,
+          sourceRoots: allSourceRoots,
+        }),
+        {
+          rule: FIXED_SLEEP_RULE,
+          projectRoot,
+          mainRoots: [...(allSourceRoots ?? []), ...(context.manifest?.kotlinSourceRoots ?? [])],
+        },
+      ),
       { manifest: context.manifest, projectRoot },
     ),
     ...ingestSarif(dropEntityAssociations(spotbugs, projectRoot), {

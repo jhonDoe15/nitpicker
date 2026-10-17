@@ -211,10 +211,15 @@ describe.skipIf(!enabled)('Review rules on Gradle and Maven builds of a Spring p
     expect(located(reviewFindings(runs.maven))).toEqual(runs.markers);
   });
 
-  it('names Awaitility for a fixed sleep, as the project has it', () => {
-    const [sleep] = runs.gradle.filter(({ rule }) => rule === 'FixedSleepInTest');
+  it('names Awaitility for a fixed sleep, as the project has it, and calls join(ms) a timed wait', () => {
+    const waits = runs.gradle.filter(({ rule }) => rule === 'FixedSleepInTest');
+    const timed = waits.filter(({ message }) => message.startsWith('A timed wait, '));
 
-    expect(sleep.message).toMatch(/with Awaitility, which the project's tests use/u);
+    expect(waits[0].message).toMatch(/with Awaitility, which the project's tests use/u);
+    expect(timed.map(({ path: file, location }) => `${file}:${String(location?.line)}`)).toEqual([
+      'src/test/java/shop/WaitingTest.java:87',
+    ]);
+    expect(timed[0].message).toMatch(/until\(\(\) -> !thread\.isAlive\(\)\)/u);
   });
 
   it('reports the main classes only tests use and spares the Spring service', () => {
