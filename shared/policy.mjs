@@ -111,6 +111,7 @@ export const MESSAGES = {
   unusedProp: `Prop {name} is never passed. Remove it, or pass it from a real caller ({scope}). ${EXCEPTION_HINT}`,
   unusedOption: `Option {name} is never set. Remove it, or set it from a real call ({scope}). ${EXCEPTION_HINT}`,
   testOnlyExport: `Export {name} is only imported by tests. Remove \`export\`, or import it from production code. ${EXCEPTION_HINT}`,
+  testOnlyReexport: `Export {name} is only imported by tests, and {reexporter} re-exports it, which is not a use. Remove the re-export and \`export\`, or import it from production code. If a host or tool loads {reexporter} instead of importing it, list it in "layout.entryPoints". ${EXCEPTION_HINT}`,
   testOnlyModule: `Module {name} is only imported by tests. Move it to a test-support/ folder, or import it from production code. ${EXCEPTION_HINT}`,
   ...sizeMessages(EXCEPTION_HINT),
   slowTest: `{name} took {seconds} s; {kind} test may take {limit} s. Remove Thread.sleep and other waits, start a smaller Spring context or a test slice{move}. ${EXCEPTION_HINT}`,
