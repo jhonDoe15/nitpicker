@@ -31,10 +31,20 @@ export function appendSentence(message, sentence) {
   return `${message.endsWith('.') ? message : `${message}.`} ${sentence}`;
 }
 
-/** `message` with the file the sentence names replaced, for a finding whose path gained a prefix. */
+const FOLDER_SUFFIXES = ['', '/**', '/*'];
+
+function pathWithSuffix(path, suffix) {
+  return path === '.' ? (suffix === '' ? path : suffix.slice(1)) : `${escapeGlob(path)}${suffix}`;
+}
+
+/** `message` with the file or folder the sentence names replaced, for a finding whose path gained a prefix. */
 export function retargetSentence(message, fromPath, toPath) {
-  return message.replaceAll(
-    `"paths":[${JSON.stringify(escapeGlob(fromPath))}]`,
-    `"paths":[${JSON.stringify(escapeGlob(toPath))}]`,
+  return FOLDER_SUFFIXES.reduce(
+    (text, suffix) =>
+      text.replaceAll(
+        `"paths":[${JSON.stringify(pathWithSuffix(fromPath, suffix))}]`,
+        `"paths":[${JSON.stringify(pathWithSuffix(toPath, suffix))}]`,
+      ),
+    message,
   );
 }

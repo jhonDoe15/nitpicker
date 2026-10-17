@@ -376,11 +376,11 @@ describe('hints for the production policy rules', () => {
     expect(hint(ruleId, text)).toContain(expected);
   });
 
-  it('keeps the deprecation text and names the exception route after it', () => {
+  it('keeps the deprecation text and says when an exception fits', () => {
     expect(
       hint('@typescript-eslint/no-deprecated', '`Buffer` is deprecated. Use `Buffer.from`.'),
     ).toBe(
-      `\`Buffer\` is deprecated. Use \`Buffer.from\`. Call the replacement that the deprecation names instead of the deprecated API. If it names none and the API cannot be avoided, ${ROUTE}.`,
+      `\`Buffer\` is deprecated. Use \`Buffer.from\`. Call the replacement that the deprecation names instead of the deprecated API. An exception fits only when it names none and the API cannot be avoided.`,
     );
   });
 

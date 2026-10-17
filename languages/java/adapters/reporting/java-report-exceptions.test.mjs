@@ -4,7 +4,7 @@ import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import { applyJavaPolicy } from '../java-policy.mjs';
 import { readJavaFindings as readFindings } from './java-reports.mjs';
-import { readingFrom, writeModules } from '../test-support/report-base.mjs';
+import { readingFrom, reportBaseOf, writeModules } from '../test-support/report-base.mjs';
 
 const readJavaFindings = readingFrom(readFindings);
 
@@ -62,7 +62,7 @@ function projectWithOneComplexMethod() {
   }
   writeFileSync(path.join(reports, 'format.txt'), '');
   writeFileSync(path.join(reports, 'checkstyle.xml'), '<checkstyle version="10"/>');
-  writeFileSync(path.join(reports, 'duplicates.json'), JSON.stringify({ runs: [] }));
+  writeFileSync(path.join(reportBaseOf(root), 'duplicates.json'), JSON.stringify({ runs: [] }));
   writeFileSync(path.join(reports, 'jacoco.xml'), JACOCO);
   writeFileSync(path.join(reports, 'structure.json'), JSON.stringify(STRUCTURE));
   writeFileSync(path.join(reports, 'classes.json'), '{"files":{},"classes":[]}');
