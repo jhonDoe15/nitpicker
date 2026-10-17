@@ -110,7 +110,7 @@ describe.skipIf(!pythonE2eEnabled)('Python preset lint, type and rule gates end 
         python: {
           exceptions: [
             { rule: 'slow-test', paths: ['tests/**'], reason: 'fixture' },
-            { rule: 'fixed-sleep', paths: ['tests/**'], reason: 'fixture' },
+            { rule: 'sleep-in-test', paths: ['tests/**'], reason: 'fixture' },
           ],
         },
       }),
@@ -124,7 +124,7 @@ describe.skipIf(!pythonE2eEnabled)('Python preset lint, type and rule gates end 
           exceptions: [
             { rule: 'test-console-output', paths: ['tests/test_noisy.py'], reason: 'fixture' },
             { rule: 'slow-test', paths: ['tests/**'], reason: 'fixture' },
-            { rule: 'fixed-sleep', paths: ['tests/**'], reason: 'fixture' },
+            { rule: 'sleep-in-test', paths: ['tests/**'], reason: 'fixture' },
           ],
         },
       }),
@@ -281,7 +281,7 @@ describe.skipIf(!pythonE2eEnabled)('Python preset lint, type and rule gates end 
 
     expect(result.exitCode, result.text).toBe(1);
     expect(enforceable(result)).toEqual([
-      'python-rules fixed-sleep test_runtime.py',
+      'python-rules sleep-in-test test_runtime.py',
       'test-console test-console-output test_noisy.py',
       'test-console test-console-output test_runtime.py',
       'test-runtime slow-test test_runtime.py',

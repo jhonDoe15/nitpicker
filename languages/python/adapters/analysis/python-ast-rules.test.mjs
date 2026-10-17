@@ -2,6 +2,7 @@ import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import { createFakeProjects } from '../test-support/fake-project.mjs';
+import { DEFAULT_NORECURSEDIRS } from '../configuration/pytest/pytest-config.mjs';
 import { checkRules, pythonSources } from './python-ast-rules.mjs';
 
 const fakes = createFakeProjects();
@@ -58,8 +59,28 @@ describe('running the rules script', () => {
       expect.stringMatching(/rules\/nitpicker_rules\.py$/),
       path.join(reportRoot, 'python-files.txt'),
       path.join(reportRoot, 'rules.json'),
-      path.join(reportRoot, 'rules-options.json'),
+      path.join(reportRoot, 'rule-options.json'),
     ]);
+    expect(JSON.parse(readFileSync(path.join(reportRoot, 'rule-options.json'), 'utf8'))).toEqual({
+      sourceRoots: context.project.sourceRoots,
+      testRunner: context.project.testRunner,
+      pythonFiles: ['test_*.py', '*_test.py'],
+      pythonClasses: ['Test'],
+      pythonFunctions: ['test'],
+      norecursedirs: DEFAULT_NORECURSEDIRS,
+      testpaths: [],
+      deselected: [],
+      ignored: [],
+      ignoredGlobs: [],
+      keywords: [],
+      testFiles: [],
+      entryFiles: [],
+      entryModules: [],
+      modules: { 'src/demo/a.py': 'demo.a' },
+      published: false,
+      entryPoints: [],
+      invalidFiles: [],
+    });
     expect(readFileSync(path.join(reportRoot, 'python-files.txt'), 'utf8')).toBe('src/demo/a.py');
     expect(readFileSync(path.join(reportRoot, 'rules.json'), 'utf8')).toBe('[{"rule":"x"}]');
   });
@@ -79,13 +100,17 @@ describe('running the rules script', () => {
 
     checkRules(context);
 
-    expect(JSON.parse(readFileSync(path.join(reportRoot, 'rules-options.json'), 'utf8'))).toEqual({
+    const { modules, testFiles, entryModules, published, entryPoints, invalidFiles } = JSON.parse(
+      readFileSync(path.join(reportRoot, 'rule-options.json'), 'utf8'),
+    );
+    expect({ modules, testFiles, entryModules, published, entryPoints, invalidFiles }).toEqual({
       modules: {
         'src/shop/__init__.py': 'shop',
         'src/shop/cli.py': 'shop.cli',
         'src/shop/testing/fakes.py': 'shop.testing.fakes',
       },
-      tests: ['src/shop/tests.py', 'testing/helpers.py', 'tests/test_cli.py'],
+      testFiles: ['src/shop/tests.py', 'testing/helpers.py', 'tests/test_cli.py'],
+      entryModules: ['shop.cli'],
       published: true,
       entryPoints: ['shop.cli:main'],
       invalidFiles: [],
