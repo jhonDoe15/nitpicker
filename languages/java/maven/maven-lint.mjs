@@ -23,6 +23,8 @@ const INLINE_CHECKSTYLE_FILTERS = [
   'SuppressWithNearbyTextFilter',
   'SuppressionXpathFilter',
 ];
+const LOWER_CAMEL_NAMES = ['MemberName', 'MethodName'];
+const LOWER_CAMEL_FORMAT = '^[a-z]([a-z0-9][a-zA-Z0-9]*)?$';
 const JAVAC_EXPORTS = ['api', 'file', 'parser', 'tree', 'util', 'code'].map(
   (name) => `--add-exports=jdk.compiler/com.sun.tools.javac.${name}=ALL-UNNAMED`,
 );
@@ -215,7 +217,16 @@ export function nitpickerCheckstyleConfig(bundled) {
   if (left.length > 0) {
     throw new Error(`nitpicker could not remove ${left.join(', ')} from google_checks.xml`);
   }
-  return text;
+  return LOWER_CAMEL_NAMES.reduce((current, name) => {
+    const format = new RegExp(
+      `(<module name="${name}">\\s*<property name="format" value=")[^"]*(")`,
+      'u',
+    );
+    if (!format.test(current)) {
+      throw new Error(`nitpicker could not find ${name} in google_checks.xml`);
+    }
+    return current.replace(format, (_match, before, after) => before + LOWER_CAMEL_FORMAT + after);
+  }, text);
 }
 
 function propertiesLine(name, value) {
