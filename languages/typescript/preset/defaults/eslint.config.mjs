@@ -34,7 +34,11 @@ import {
 const policy = readHeadPolicy();
 
 const layout = readLayout();
-const react = isReactProject({ projectRoot: analyzedProjectRoot(), react: policy.react });
+const react = isReactProject({
+  projectRoot: analyzedProjectRoot(),
+  react: policy.react,
+  javascript: layout.javascript,
+});
 const routeHandlers = usesRouteHandlerFramework(readDependencyNames(analyzedProjectRoot()));
 const i18n = isI18nProject({ projectRoot: analyzedProjectRoot(), i18n: policy.i18n });
 const security = securityFactsFor(analyzedProjectRoot(), (file) => layout.isSourceFile(file));

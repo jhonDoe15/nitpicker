@@ -81,7 +81,7 @@
         "languages/java/maven/errorprone/maven-errorprone.e2e.test.mjs",
         "languages/java/messages/rule-catalog.e2e.test.mjs"
       ],
-      "reason": "Opt-in end-to-end suite that runs Gradle and Maven builds (minutes per step); it cannot be made faster and is skipped unless NITPICKER_JAVA_E2E=1."
+      "reason": "Opt-in end-to-end suite that runs Gradle and Maven builds (minutes per step); it cannot be made faster and is skipped unless NITPICKER_JAVA_E2E=1 (NITPICKER_KOTLIN_E2E=1 for the Kotlin suite)."
     },
     {
       "rule": "nitpicker/no-unsafe-path-join",
