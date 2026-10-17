@@ -123,7 +123,7 @@ export function runSpotbugs({ module, reportDir, tools }) {
   });
 }
 
-export function runFormat({ module, reportDir, tools }) {
+export function runFormat({ module, reportDir, tools, javaStyle }) {
   const report = path.join(reportDir, 'format.txt');
   const files = javaFiles([...module.sourceRoots, ...module.testSourceRoots]);
   if (files.length === 0) {
@@ -135,7 +135,7 @@ export function runFormat({ module, reportDir, tools }) {
     classpath: tools.format,
     jvmArgs: JAVAC_EXPORTS,
     mainClass: 'com.google.googlejavaformat.java.Main',
-    args: ['--dry-run', ...files],
+    args: [...(javaStyle === 'aosp' ? ['--aosp'] : []), '--dry-run', ...files],
     cwd: module.basedir,
   });
   writeFileSync(report, result.stdout);

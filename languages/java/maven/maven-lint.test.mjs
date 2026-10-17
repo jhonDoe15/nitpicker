@@ -1,9 +1,14 @@
-import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { chmodSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { GRADLE_DIRECTORY } from '../builds/java-build.mjs';
-import { javaFiles, nitpickerCheckstyleConfig, writeCheckstyleSetup } from './maven-lint.mjs';
+import {
+  javaFiles,
+  nitpickerCheckstyleConfig,
+  runFormat,
+  writeCheckstyleSetup,
+} from './maven-lint.mjs';
 import { toolDependencies } from './maven-tools.mjs';
 import { readPinnedTools } from '../builds/java-build.mjs';
 
@@ -15,6 +20,7 @@ function dependency(groupId, artifactId, version, extra = '') {
 }
 
 afterEach(() => {
+  vi.unstubAllEnvs();
   for (const root of roots.splice(0)) {
     rmSync(root, { recursive: true, force: true });
   }
@@ -157,5 +163,34 @@ describe('maven tools', () => {
     expect(tools.jacoco).toEqual([
       dependency('org.jacoco', 'org.jacoco.cli', pinned.jacoco, '<classifier>nodeps</classifier>'),
     ]);
+  });
+});
+
+describe('runFormat', () => {
+  function formatArguments(javaStyle) {
+    const root = mkdtempSync(path.join(tmpdir(), 'nitpicker-maven-format-'));
+    roots.push(root);
+    const java = path.join(root, 'jdk/bin/java');
+    mkdirSync(path.dirname(java), { recursive: true });
+    writeFileSync(java, '#!/bin/sh\ncat "${1#@}"\n');
+    chmodSync(java, 0o755);
+    vi.stubEnv('JAVA_HOME', path.join(root, 'jdk'));
+    const source = path.join(root, 'src/main/java/demo/A.java');
+    mkdirSync(path.dirname(source), { recursive: true });
+    writeFileSync(source, 'package demo;\n\nclass A {\n    int a;\n}\n');
+    const reportDir = path.join(root, 'report');
+    mkdirSync(reportDir);
+    const module = { basedir: root, sourceRoots: [path.dirname(source)], testSourceRoots: [] };
+    runFormat({ module, reportDir, tools: { format: ['format.jar'] }, javaStyle });
+    return readFileSync(path.join(reportDir, 'format.txt'), 'utf8')
+      .split('\n')
+      .filter((token) => token.startsWith('"--'))
+      .filter((token) => !token.startsWith('"--add-exports'));
+  }
+
+  it('runs google-java-format with --aosp for the 4-space style and without it otherwise', () => {
+    expect(formatArguments('aosp')).toEqual(['"--aosp"', '"--dry-run"']);
+    expect(formatArguments('google')).toEqual(['"--dry-run"']);
+    expect(formatArguments(undefined)).toEqual(['"--dry-run"']);
   });
 });
