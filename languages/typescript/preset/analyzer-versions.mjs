@@ -1,6 +1,8 @@
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { PACKAGE_ROOT, resolveTool } from '../../../core/tooling/tool-resolution.mjs';
+import { testRunnerFor } from './test-runner/detect-runner.mjs';
+import { RUNNER_PACKAGES } from './test-runner/runners.mjs';
 
 const TOOL_BY_ANALYZER = {
   'entry-points': 'dependency-cruiser',
@@ -14,10 +16,8 @@ const TOOL_BY_ANALYZER = {
   structure: 'typescript',
   duplicates: 'jscpd',
   'dead-code': 'knip',
-  coverage: 'vitest',
   'test-console': 'vitest',
   crap: 'typescript',
-  mutation: '@stryker-mutator/core',
 };
 const PACKAGE_ANALYZERS = new Set(['structure', 'crap']);
 const TYPESCRIPT_CONSUMERS = new Set([
@@ -56,7 +56,31 @@ function resolveEslintPluginVersions(resolve) {
   return [...plugins, `nitpicker-plugin@${String(nitpickerVersion)}`].join(',');
 }
 
+function testRunnerVersion(liveProjectRoot, resolve, configuredRunner) {
+  const { runner } = testRunnerFor(liveProjectRoot, configuredRunner);
+  if (runner === 'node') {
+    return `node@${process.versions.node}`;
+  }
+  const name = RUNNER_PACKAGES[runner];
+  return `${name}@${resolve(name, { projectRoot: liveProjectRoot }).version}`;
+}
+
+export function testRunnerAnalyzerVersion(
+  analyzerName,
+  liveProjectRoot,
+  { resolve = resolveTool, configuredRunner } = {},
+) {
+  const runnerVersion = testRunnerVersion(liveProjectRoot, resolve, configuredRunner);
+  if (analyzerName === 'coverage') {
+    return runnerVersion;
+  }
+  return `${resolve('@stryker-mutator/core', { projectRoot: liveProjectRoot }).version};${runnerVersion}`;
+}
+
 export function resolveAnalyzerVersion(analyzerName, liveProjectRoot, resolve = resolveTool) {
+  if (analyzerName === 'coverage' || analyzerName === 'mutation') {
+    return testRunnerAnalyzerVersion(analyzerName, liveProjectRoot, { resolve });
+  }
   const toolName = analyzerName.startsWith('eslint-') ? 'eslint' : TOOL_BY_ANALYZER[analyzerName];
   if (toolName === undefined) {
     throw new Error(`No tool is configured for analyzer ${analyzerName}`);

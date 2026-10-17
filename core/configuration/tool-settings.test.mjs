@@ -33,7 +33,7 @@ describe('tool precedence', () => {
 
   it('rejects unknown tools, unknown keys and malformed precedence lists', () => {
     expect(() => validateConfig({ tools: { stylelint: { precedence: ['project'] } } })).toThrow(
-      '"tools" names unknown tool "stylelint". Supported tools with this preset: prettier, eslint, typescript',
+      '"tools" names unknown tool "stylelint". Supported tools with this preset: prettier, eslint, typescript, tests',
     );
     expect(() => validateConfig({ tools: { prettier: { config: 'project' } } })).toThrow(
       '"tools.prettier" has unknown key "config"',
@@ -69,7 +69,7 @@ describe('tool precedence', () => {
       expect(() =>
         validateConfig({ preset, tools: { prettier: { precedence: ['project'] } } }),
       ).toThrow(
-        '"tools" names unknown tool "prettier". Supported tools with this preset: pmd, checkstyle',
+        `"tools" names unknown tool "prettier". Supported tools with this preset: pmd, checkstyle${preset === 'kotlin' ? ', ktlint, ktfmt, detekt' : ''}`,
       );
       const layered = { preset, tools: { checkstyle: { precedence: ['nitpicker', 'project'] } } };
       expect(validateConfig(layered)).toEqual(layered);
@@ -80,13 +80,26 @@ describe('tool precedence', () => {
     const tools = { pmd: { precedence: ['project'] } };
     expect(() => validateConfig({ tools })).toThrow(
       new Error(
-        'nitpicker.config.json: "tools" names unknown tool "pmd". Supported tools with this preset: prettier, eslint, typescript',
+        'nitpicker.config.json: "tools" names unknown tool "pmd". Supported tools with this preset: prettier, eslint, typescript, tests',
       ),
     );
     expect(() => validateConfig({ preset: 'python', tools })).toThrow(
       new Error(
         'nitpicker.config.json: "tools" names unknown tool "pmd". Supported tools with this preset: ruff, black, pyright, mypy, mutmut',
       ),
+    );
+  });
+  it('accepts only the known test runners', () => {
+    for (const runner of ['vitest', 'jest', 'node', 'mocha', undefined]) {
+      expect(validateConfig({ tools: { tests: { runner } } })).toBeDefined();
+    }
+    for (const runner of ['ava', '']) {
+      expect(() => validateConfig({ tools: { tests: { runner } } })).toThrow(
+        '"tools.tests.runner" must be "vitest", "jest", "node" or "mocha"',
+      );
+    }
+    expect(() => validateConfig({ tools: { tests: { engine: 'jest' } } })).toThrow(
+      '"tools.tests" has unknown key "engine"',
     );
   });
 });
