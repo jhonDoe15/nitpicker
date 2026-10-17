@@ -1,6 +1,6 @@
 import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs';
 import path from 'node:path';
-import { blankComments, blankLiterals, pathInside } from './java-sources.mjs';
+import { blankComments, blankLiterals, pathInside, sourceFilesUnder } from './java-sources.mjs';
 
 const CODE_EXTENSIONS = new Set(['.java', '.kt']);
 const BINARY_EXTENSIONS = new Set([
@@ -21,7 +21,20 @@ const BINARY_EXTENSIONS = new Set([
   '.exe',
   '.bin',
 ]);
-const DOCUMENT_EXTENSIONS = new Set(['.md', '.markdown', '.adoc', '.rst']);
+const DOCUMENT_EXTENSIONS = new Set(['.md', '.markdown', '.adoc', '.rst', '.txt']);
+const CONTAINER_FILES = ['Dockerfile', 'Containerfile', '.dockerfile', '.containerfile'];
+const XML_COMMENT = /<!--[\s\S]*?-->/gu;
+const HASH_COMMENT = /(^|\s)#.*$/gmu;
+const LINE_HASH_COMMENT = /^\s*[#!].*$/gmu;
+const COMMENT_STYLES = new Map([
+  ['.xml', (text) => text.replaceAll(XML_COMMENT, ' ')],
+  ['.gradle', blankComments],
+  ['.kts', blankComments],
+  ['.yml', (text) => text.replaceAll(HASH_COMMENT, '$1')],
+  ['.yaml', (text) => text.replaceAll(HASH_COMMENT, '$1')],
+  ['.toml', (text) => text.replaceAll(HASH_COMMENT, '$1')],
+  ['.properties', (text) => text.replaceAll(LINE_HASH_COMMENT, '')],
+]);
 const MAX_TEXT_BYTES = 2 * 1024 * 1024;
 const WEBAPP_ROOT = 'src/main/webapp';
 
@@ -58,7 +71,15 @@ function entryFor(projectRoot, file) {
   if (CODE_EXTENSIONS.has(path.extname(file))) {
     return { file: relative, code: blankLiterals(raw), named: blankComments(raw) };
   }
-  return raw.includes('\0') ? undefined : { file: relative, named: raw };
+  return raw.includes('\0') ? undefined : { file: relative, named: withoutComments(file, raw) };
+}
+
+function withoutComments(file, raw) {
+  const isContainerFile = CONTAINER_FILES.some((name) => path.basename(file).endsWith(name));
+  const strip = isContainerFile
+    ? (text) => text.replaceAll(LINE_HASH_COMMENT, '')
+    : COMMENT_STYLES.get(path.extname(file).toLowerCase());
+  return strip === undefined ? raw : strip(raw);
 }
 
 function moduleDirectories(projects) {
@@ -79,6 +100,7 @@ export function readProjectTexts(projectRoot, projects) {
     ...[...sourceRoots, ...resourceRoots].flatMap((root) => filesUnder(inProject(root))),
     ...directories.flatMap((directory) => filesUnder(inProject(path.join(directory, WEBAPP_ROOT)))),
     ...directories.flatMap((directory) => filesIn(inProject(directory || '.'))),
+    ...sourceFilesUnder(path.resolve(projectRoot), CONTAINER_FILES),
   ];
   return [...new Set(files)]
     .filter(isText)
