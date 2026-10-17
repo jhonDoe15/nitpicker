@@ -1212,6 +1212,11 @@ from a real caller) and the `exceptions` entry that lifts it.
   same paths.
 - The file limits (`file-lines-limit`, `line-length-limit`, `folder-files-limit`) and `slow-test` take exceptions the
   same way; each failure message spells out the entry that would lift it.
+- `folder-depth-limit`: code may sit at most one folder below `features/<feature>/<layer>/` (a file in
+  `domain/orders/x.ts` is fine, one in `domain/orders/rules/x.ts` is not), so nesting cannot dodge
+  the 6-files-per-folder limit. `thresholds.folderDepth` changes the one folder. `__tests__` and `__mocks__` folders do not
+  count as a level. A folder already deeper on the base fails only when it gets deeper, and the rule takes exceptions like the file
+  limits.
 - The reuse rules (`shared-used-by-one-feature`, `duplicate-definition`, `exported-name-collision`,
   `redefined-library-component`, `new-icon-asset`) come from the `coupling` and `structure` checks,
   not from ESLint, and take exceptions the same way; the JavaScript preset runs them too.
@@ -1229,10 +1234,8 @@ from a real caller) and the `exceptions` entry that lifts it.
   `page.evaluate` compile (the lib then applies to every file in that check). The default quality
   test run does not run `e2e`, since end-to-end runners start those tests themselves; a `testRoots`
   you list yourself is always run, so list `e2e` to keep a vitest or supertest suite there.
-- A Jest project with tests in a root `__tests__/` gets them run by Vitest in the quality test run,
-  and they fail on `jest.*` (Jest support is issue #162). Either list `layout.testRoots` without
-  `__tests__`, or add `"__tests__/**"` to `exclude`, which also leaves the folder out of the other
-  tools.
+- A Jest project with tests in a root `__tests__/` gets them run by Jest in the quality test run,
+  like every other test file (see [Test runners](usage.md#test-runners)).
 
 ## Enforcement sources
 
