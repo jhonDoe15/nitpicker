@@ -59,11 +59,13 @@ describe('mergeCheckstyleFiles', () => {
   it('throws for a config without a Checker root and for an unreadable file', () => {
     const files = filesWith(config(100), '<module name="TreeWalker"/>');
 
-    expect(() => mergeCheckstyleFiles(files)).toThrow(
-      'The Checkstyle config must have a Checker module at its root, not TreeWalker',
-    );
-    expect(() => mergeCheckstyleFiles({ ...files, project: `${files.project}.missing` })).toThrow(
-      'ENOENT',
-    );
+    const missing = { ...files, project: `${files.project}.missing` };
+
+    expect(() => {
+      mergeCheckstyleFiles(files);
+    }).toThrow('The Checkstyle config must have a Checker module at its root, not TreeWalker');
+    expect(() => {
+      mergeCheckstyleFiles(missing);
+    }).toThrow('ENOENT');
   });
 });
