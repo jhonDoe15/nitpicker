@@ -11,6 +11,8 @@
       "languages/typescript/adapters/eslint-wrapper.config.mjs",
       "languages/typescript/adapters/oxlint/oxlint-bridge.mjs",
       "languages/typescript/adapters/oxlint/oxlint-plan.mjs",
+      "languages/typescript/adapters/test-runners/node-test/node-test-reporter.mjs",
+      "languages/typescript/adapters/test-runners/v8-coverage/loaded-sources.cjs",
       "languages/typescript/preset/*/report.mjs",
       "languages/typescript/preset/defaults/crap.config.mjs",
       "languages/typescript/preset/defaults/stryker.config.mjs",
@@ -170,6 +172,11 @@
       "rule": "no-restricted-syntax",
       "paths": ["languages/typescript/adapters/oxlint/stage/oxlint-paths.mjs"],
       "reason": "The generated tsconfig must carry an explicit baseUrl: null to unset a baseUrl inherited through extends; undefined is dropped by JSON.stringify and leaves the inherited value in place."
+    },
+    {
+      "rule": "nitpicker/no-default-export",
+      "paths": ["languages/typescript/adapters/test-runners/node-test/node-test-reporter.mjs"],
+      "reason": "node --test-reporter loads a reporter only through the module's default export."
     }
   ]
 }

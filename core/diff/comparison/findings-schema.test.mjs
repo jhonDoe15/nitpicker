@@ -2,10 +2,10 @@ import { describe, expect, it } from 'vitest';
 import { normalizeArchitectureViolations } from '../../../languages/typescript/adapters/static-checks-runner.mjs';
 import {
   normalizeCoupling,
-  normalizeDeadCode,
   normalizeStructure,
   normalizeTestRuntime,
 } from '../../../languages/typescript/adapters/quality-areas/reporting/repository.mjs';
+import { normalizeDeadCode } from '../../../languages/typescript/adapters/quality-areas/reporting/dead-code.mjs';
 import {
   normalizeCrap,
   normalizeMutation,

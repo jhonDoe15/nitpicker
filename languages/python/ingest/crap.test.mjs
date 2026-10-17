@@ -153,6 +153,29 @@ describe('ingestPythonCrap', () => {
     expect(unknown.identity).toBe('function:f');
   });
 
+  it('numbers same-named definitions among those of the same text, so adding one above does not rename another', () => {
+    const sourceHash = ({ start }) => (start === 30 ? 'setter' : 'getter');
+    const coverage = JSON.stringify({
+      files: { 'm.py': { executed_lines: [], missing_lines: [6, 11, 31], functions: {} } },
+    });
+    const identities = (starts) =>
+      ingestPythonCrap(
+        starts.map((start) => entry('m.py', 'A.value', [start, start + 1])),
+        coverage,
+        { limit: 1.5, sourceHash },
+      ).findings.map((finding) => finding.identity);
+
+    expect(identities([10, 30])).toEqual([
+      'function:A.value:source:getter',
+      'function:A.value:source:setter',
+    ]);
+    expect(identities([5, 10, 30])).toEqual([
+      'function:A.value:source:getter',
+      'function:A.value#2:source:getter',
+      'function:A.value:source:setter',
+    ]);
+  });
+
   it('scores same-named definitions from the per-line data of their own ranges', () => {
     const functions = [
       entry('m.py', 'A.x', [6, 7]),
