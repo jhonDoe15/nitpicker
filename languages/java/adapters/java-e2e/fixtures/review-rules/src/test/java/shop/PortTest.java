@@ -7,7 +7,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.SpringBootTest;
 
 @SpringBootTest(webEnvironment = RANDOM_PORT)
-class PortTest {
+abstract class PortTest {
   @Test
   void starts() {
     assertThat(Status.values()).hasSize(4);
