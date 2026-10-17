@@ -237,7 +237,7 @@ describe('formatter arguments from the conventions followed', () => {
 describe('the ruff config for the installed ruff', () => {
   const rule = (code, status = { Stable: { since: '0.1.0' } }) => ({ code, status });
   const selected = (path) =>
-    [...readFileSync(path, 'utf8').matchAll(/^\s*"(RUF\d+)",$/gm)].map((match) => match[1]);
+    [...readFileSync(path, 'utf8').matchAll(/^\s*"([A-Z]+\d+)",$/gm)].map((match) => match[1]);
 
   it('keeps the preset file when ruff knows every rule it selects', () => {
     const calls = callsLog();
@@ -273,7 +273,7 @@ describe('the ruff config for the installed ruff', () => {
     const sourceFiles = calls('ruff', 'check').find(({ args }) => args.includes('--show-files'));
     const expected = readFileSync(RUFF_CONFIG, 'utf8')
       .split('\n')
-      .filter((line) => !/^\s*"RUF\d+",$/.test(line) || /RUF00[56]/.test(line))
+      .filter((line) => !/^\s*"[A-Z]+\d+",$/.test(line) || /RUF00[56]/.test(line))
       .join('\n');
     expect(calls('ruff', 'check')[0].args[2]).toBe(config);
     expect(sourceFiles.args[3]).toBe(config);
