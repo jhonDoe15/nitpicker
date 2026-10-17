@@ -226,6 +226,39 @@ describe('ingestPythonCrap', () => {
     expect(ingestPythonCrap(functions, coverage, { limit: 4 }).findings).toHaveLength(1);
   });
 
+  it('scores a lambda by whether the statement that creates it ran, however it is spread over lines, and numbers repeated lambdas by their source', () => {
+    const lambda = (name, line, complexity, statementLine) => ({
+      ...entry('m.py', name, [line, line], complexity),
+      bodyStart: line,
+      lambda: true,
+      statementLine,
+    });
+    const functions = [
+      lambda('run.<lambda>', 5, 4, 5),
+      lambda('run.<lambda>', 9, 4, 8),
+      lambda('run.<lambda>', 12, 4, 12),
+      lambda('run.key', 13, 1, 13),
+    ];
+    const coverage = JSON.stringify({
+      files: { 'm.py': { executed_lines: [5, 12, 13], missing_lines: [8], functions: {} } },
+    });
+
+    const findings = ingestPythonCrap(functions, coverage, { limit: 4 }).findings;
+
+    expect(
+      findings.map(({ symbol, identity, location, message }) => [
+        symbol,
+        identity,
+        location.line,
+        /CRAP (\d+\.\d+)/.exec(message)[1],
+      ]),
+    ).toEqual([
+      ['run.<lambda>', 'function:run.<lambda>', 5, '4.00'],
+      ['run.<lambda>', 'function:run.<lambda>#2', 9, '20.00'],
+      ['run.<lambda>', 'function:run.<lambda>#3', 12, '4.00'],
+    ]);
+  });
+
   it('does not score an overload stub, whatever the shape of its signature', () => {
     const stub = { ...entry('m.py', 'A.get', [6, 9], 3), overload: true };
     const coverage = JSON.stringify({

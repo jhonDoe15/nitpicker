@@ -1,6 +1,6 @@
 import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
-import { hash } from '../rules/finding-helpers.mjs';
+import { hash, repeatsInSource } from '../rules/finding-helpers.mjs';
 import { evaluateStructure } from '../rules/structure.mjs';
 
 const STRUCTURE_REPORT = 'structure.json';
@@ -18,6 +18,7 @@ export function structureFindings(entries, projectRoot, { textOf = methodText, h
   const sources = new Map();
   const functions = entries.map((entry) => ({
     ...entry,
+    numberedAmongSameSource: repeatsInSource(entry.name),
     sourceHash: hash(textOf(sources, projectRoot, entry)),
   }));
   return evaluateStructure({ functions }, STRUCTURE_TOOL, { hints }).filter(

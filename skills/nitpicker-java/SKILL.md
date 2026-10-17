@@ -92,8 +92,8 @@ With Spring on the classpath, also follow [spring.md](spring.md).
 
 ## Structure limits
 
-- A method in main sources: at most 50 lines, 15 statements, control nesting 2, 3 parameters (lambda bodies count
-  toward the method). Return early instead of nesting; past 3 parameters, pass a `record`.
+- A method in main sources: at most 50 lines, 15 statements, control nesting 2, 3 parameters. Each lambda and each static or instance
+  initializer block is a unit with the same limits, counted on its own and not toward the method around it. Return early instead of nesting; past 3 parameters, pass a `record`.
 - A file: at most 300 lines (test file 500). A folder: at most 6 source files and, separately, 6
   test files directly in it; group the rest into sub-packages.
 - Keep classes small: split by responsibility and prefer holding a collaborator to extending one.
