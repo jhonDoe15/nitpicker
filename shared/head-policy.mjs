@@ -1,11 +1,3 @@
-// The head policy: the config values that change what analyzers report (`exclude`, `layout`,
-// `exceptions`, `thresholds` and, when set, `react`, `i18n`, `tools` and `testConsole`), written once
-// to a file outside both snapshots so base and head runs see the same policy. The file format and
-// its reader are language-neutral; the TypeScript preset adds its layout defaults in
-// `languages/typescript/preset/head-policy.mjs`.
-//
-// Language-neutral: no imports from `core/`, `languages/` or tool packages.
-
 import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';

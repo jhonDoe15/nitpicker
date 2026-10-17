@@ -46,7 +46,9 @@ function consumerRoles(start, importers, roleOf) {
   const consumers = [];
   for (const module of pending) {
     const direct = [...(importers.get(module) ?? [])].filter((importer) => !seen.has(importer));
-    for (const importer of direct) seen.add(importer);
+    for (const importer of direct) {
+      seen.add(importer);
+    }
     const roles = direct.map((importer) => ({ importer, role: roleOf(importer) }));
     pending.push(
       ...roles.filter(({ role }) => role.kind === 'shared').map(({ importer }) => importer),
