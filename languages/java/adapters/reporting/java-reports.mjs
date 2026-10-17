@@ -84,6 +84,7 @@ export function readJavaFindings(projectRoot, options = {}) {
 
 function moduleContextFindings(projectRoot, module, { manifest, options }) {
   const preset = options.preset ?? 'java';
+  const { fileLimits: thresholds, exceptions, modulePath } = options;
   return readModuleFindings(
     {
       projectRoot,
@@ -97,17 +98,13 @@ function moduleContextFindings(projectRoot, module, { manifest, options }) {
       formatAdvice: options.formatAdvice,
       conventions: options.conventions,
       javaStyle: options.javaStyle,
-      classLimits: {
-        thresholds: options.fileLimits,
-        exceptions: options.exceptions,
-        modulePath: options.modulePath,
-      },
+      classLimits: { thresholds, exceptions, modulePath },
       jacoco: readModuleJacoco(module, preset),
       mainCheckstyle: readMainCheckstyle(projectRoot, module, preset),
       testTimes: {
         limits: options.testSeconds,
         baseline: options.baseline,
-        modulePath: options.modulePath,
+        modulePath,
       },
     },
     options.crapLimit,
