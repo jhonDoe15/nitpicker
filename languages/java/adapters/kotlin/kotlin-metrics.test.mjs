@@ -209,7 +209,7 @@ describe('readKotlinStructureFindings', () => {
 });
 
 describe('selectKotlinMethods', () => {
-  const fn = { start: 10, end: 20 };
+  const fn = { name: 'Demo.run', start: 10, end: 20 };
   const method = (name, line) => ({ name, line });
 
   it('takes the methods that start inside the function', () => {
@@ -223,13 +223,26 @@ describe('selectKotlinMethods', () => {
   });
 
   it('leaves the synthetic method of a lambda to the lambda unit', () => {
-    const lambda = { start: 14, end: 16, lambda: true };
+    const lambda = { name: 'Demo.run.<lambda>', start: 14, end: 16, lambda: true };
     const methods = [method('run', 10), method('run$lambda$0', 15)];
 
     expect(selectKotlinMethods(fn, methods, [fn, lambda]).map(({ name }) => name)).toEqual(['run']);
     expect(selectKotlinMethods(lambda, methods, [fn, lambda]).map(({ name }) => name)).toEqual([
       'run$lambda$0',
     ]);
+  });
+
+  it('keeps the method of a function whose first line is the line of a lambda inside it', () => {
+    const oneLine = { name: 'Demo.bump', start: 10, end: 12 };
+    const lambda = { name: 'Demo.bump.<lambda>', start: 11, end: 11, lambda: true };
+    const methods = [method('bump', 11), method('bump$lambda$0', 11)];
+
+    expect(
+      selectKotlinMethods(oneLine, methods, [oneLine, lambda]).map(({ name }) => name),
+    ).toEqual(['bump']);
+    expect(selectKotlinMethods(lambda, methods, [oneLine, lambda]).map(({ name }) => name)).toEqual(
+      ['bump$lambda$0'],
+    );
   });
 
   it('leaves out the synthetic default-argument bridge', () => {
@@ -260,7 +273,7 @@ describe('selectKotlinMethods', () => {
   });
 
   it('leaves the methods of a function nested inside to that function', () => {
-    const inner = { start: 14, end: 16 };
+    const inner = { name: 'Demo.run.inner', start: 14, end: 16 };
 
     expect(
       selectKotlinMethods(fn, [method('outer', 10), method('inner', 14)], [fn, inner]).map(
