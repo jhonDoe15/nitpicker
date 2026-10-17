@@ -1,3 +1,4 @@
+import { hasGeneratorHeader } from '../../../../../../shared/conventions/generator-marker.mjs';
 const ANNOTATION = /@(?:[A-Za-z_][\w]*:)?(?:[A-Za-z_]\w*\.)*([A-Za-z_]\w*)/g;
 const MUTATION_MARKERS = new Set(['DoNotMutate', 'CoverageIgnore']);
 const GENERATED_HEADER = /@generated\b|\bgenerated\b[\s\S]*\bdo not (?:edit|modify)\b/i;
@@ -32,7 +33,10 @@ const NOT_CODE = /^(?:@|https?:|TODO\b|FIXME\b|[-*>#]|\{@)/;
 
 export function generatedFile(scanned) {
   const header = scanned.comments.find(({ start }) => scanned.code.slice(0, start).trim() === '');
-  return header !== undefined && GENERATED_HEADER.test(header.text);
+  return (
+    (header !== undefined && GENERATED_HEADER.test(header.text)) ||
+    hasGeneratorHeader(scanned.source)
+  );
 }
 
 export function annotationMarkers(scanned) {
