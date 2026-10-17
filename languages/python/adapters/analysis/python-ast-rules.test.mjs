@@ -74,6 +74,8 @@ describe('running the rules script', () => {
       ignoredGlobs: [],
       keywords: [],
       testFiles: [],
+      entryFiles: [],
+      entryModules: [],
     });
     expect(readFileSync(path.join(reportRoot, 'python-files.txt'), 'utf8')).toBe('src/demo/a.py');
     expect(readFileSync(path.join(reportRoot, 'rules.json'), 'utf8')).toBe('[{"rule":"x"}]');

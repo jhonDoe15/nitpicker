@@ -14,7 +14,7 @@ import { ingestMypy, ingestPyright } from '../ingest/type-check.mjs';
 import { applyRuleHints } from '../rules/rule-hints.mjs';
 import { detectLibraries } from '../rules/libraries/project-libraries.mjs';
 import { withoutAllowedForms } from '../rules/filters/ruff-allowed-forms.mjs';
-import { RULES_REPORT } from './analysis/python-ast-rules.mjs';
+import { RULES_REPORT, readTestFiles } from './analysis/python-ast-rules.mjs';
 import { readCouplingFindings } from './analysis/python-coupling.mjs';
 import { readPythonCrapFindings } from './mutation/python-crap.mjs';
 import { readImportLinterFindings } from './analysis/python-import-linter.mjs';
@@ -46,7 +46,11 @@ export function readPythonFindings({ projectRoot, reportRoot, crapLimit, policy 
   return {
     findings: applyRuleHints(
       [
-        ...ruffFindings(JSON.parse(readReport(reportRoot, RUFF_REPORT)), { roots, projectRoot }),
+        ...ruffFindings(JSON.parse(readReport(reportRoot, RUFF_REPORT)), {
+          roots,
+          projectRoot,
+          testFiles: readTestFiles(reportRoot),
+        }),
         ...formatFindings(readReport(reportRoot, FORMAT_REPORT), { roots, manifest }),
         ...typeFindings(JSON.parse(readReport(reportRoot, TYPES_REPORT)), roots),
         ...ingestRulesReport(readReport(reportRoot, RULES_REPORT), libraries),
@@ -74,14 +78,21 @@ export function readPythonFindings({ projectRoot, reportRoot, crapLimit, policy 
   };
 }
 
-export function ruffFindings(log, { roots, projectRoot }) {
+function sourceLine(projectRoot, file, line) {
+  return readSource(projectRoot, file)?.split(/\r?\n/u)[line - 1];
+}
+
+export function ruffFindings(log, { roots, projectRoot, testFiles = [] }) {
   const prepared = prepareSarif(log, {
     roots,
     sourceRoots: [],
     projectRoot,
     identityKey: (result) => withoutLineNumbers(result.message?.text ?? ''),
   });
-  return withoutAllowedForms(ingestSarif(prepared, { tool: 'ruff' }).findings);
+  return withoutAllowedForms(ingestSarif(prepared, { tool: 'ruff' }).findings, {
+    testFiles,
+    lineOf: (file, line) => sourceLine(projectRoot, file, line),
+  });
 }
 
 const TYPE_INGESTERS = {

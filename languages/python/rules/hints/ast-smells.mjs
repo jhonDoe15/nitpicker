@@ -2,7 +2,7 @@ import { RULES_TOOL } from './tool.mjs';
 
 const EXPECTED_FAILURES = /xfail|expectedFailure/u;
 
-function skipDescription(subject) {
+function skipDescription(subject = '') {
   if (subject.startsWith('return in ')) {
     return `\`${subject}\` skips the rest of a test without saying so`;
   }
@@ -11,7 +11,7 @@ function skipDescription(subject) {
     : `\`${subject}\` skips a test without a reason`;
 }
 
-function skipAllowed(subject) {
+function skipAllowed(subject = '') {
   if (subject.startsWith('return in ')) {
     return 'Skip visibly: `@pytest.mark.skipif(sys.platform == "win32", reason="posix only")` or `pytest.skip("...")` (`self.skipTest("...")` in unittest).';
   }
@@ -60,7 +60,7 @@ const UNCOLLECTED_ADVICE = [
   ['(unittest)', 'Name the file `test*.py` so `python -m unittest discover` finds it.'],
 ];
 
-function uncollectedAllowed(subject) {
+function uncollectedAllowed(subject = '') {
   const advice = UNCOLLECTED_ADVICE.find(([marker]) => subject.endsWith(marker));
   return (
     advice?.[1] ??
@@ -69,6 +69,20 @@ function uncollectedAllowed(subject) {
 }
 
 export const SMELL_HINTS = [
+  {
+    tool: RULES_TOOL,
+    rules: ['shell-command'],
+    describe: (subject) => `\`${subject}\` runs a command through a shell`,
+    allowed:
+      'Run the program directly with the arguments as a list and leave the shell out: `subprocess.run(["git", "status"], check=True)`; `shell=False` is the default.',
+  },
+  {
+    tool: RULES_TOOL,
+    rules: ['sql-string-formatting'],
+    describe: (subject) => `\`${subject}\` runs a query built by formatting a string`,
+    allowed:
+      'Pass the values as query parameters: `cursor.execute("SELECT * FROM users WHERE id = %s", (user_id,))`, or `session.execute(text("SELECT * FROM users WHERE id = :id"), {"id": user_id})` in SQLAlchemy.',
+  },
   {
     tool: RULES_TOOL,
     rules: ['repeated-string-literal'],

@@ -1,6 +1,8 @@
 import { rulesCases } from './define.mjs';
 
 export const RULES_CASES = [
+  ...rulesCases('sql-queries', [['sql-string-formatting', 'query parameters']]),
+  ...rulesCases('shell-command-forms', [['shell-command', 'shell=false']]),
   ...rulesCases('env-access', [['process-env-access', 'composition root']]),
   ...rulesCases('domain-clock', [['clock-now', 'datetime.now(tz=utc)']]),
   ...rulesCases('domain-random', [['random-in-domain', 'random.random']]),

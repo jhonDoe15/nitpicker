@@ -2,7 +2,11 @@ import { cpSync, mkdtempSync, readFileSync, realpathSync, rmSync } from 'node:fs
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { ingestRulesReport } from '../../ingest/rules-report.mjs';
-import { RULES_REPORT, checkRules } from '../../adapters/analysis/python-ast-rules.mjs';
+import {
+  RULES_REPORT,
+  checkRules,
+  readTestFiles,
+} from '../../adapters/analysis/python-ast-rules.mjs';
 import { ruffFindings, typeFindings } from '../../adapters/python-reports.mjs';
 import { RUFF_REPORT, createToolContext, lint } from '../../adapters/python-tools.mjs';
 import { TYPES_REPORT, typeCheck } from '../../adapters/python-types.mjs';
@@ -16,10 +20,12 @@ function read(reportRoot, name) {
 
 const COLLECTORS = {
   ruff: (context, roots) => {
+    checkRules(context);
     lint(context);
     return ruffFindings(JSON.parse(read(context.reportRoot, RUFF_REPORT)), {
       roots,
       projectRoot: context.projectRoot,
+      testFiles: readTestFiles(context.reportRoot),
     });
   },
   'python-rules': (context) => {

@@ -17,7 +17,7 @@ import {
   detectTypeCheckers,
   importRoots,
 } from './execution/python-project.mjs';
-import { RUFF_CONFIG } from './configuration/python-ruff-config.mjs';
+import { ruffConfigFor } from './configuration/python-ruff-config.mjs';
 import {
   detectTestRunner,
   NO_TESTS_EXIT,
@@ -137,7 +137,7 @@ export function lint(context) {
       'ruff',
       'check',
       '--config',
-      RUFF_CONFIG,
+      ruffConfigFor(context),
       '--target-version',
       context.project.targetVersion,
       '--ignore-noqa',

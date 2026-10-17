@@ -48,6 +48,50 @@ describe('shell commands', () => {
   });
 });
 
+describe('test files', () => {
+  const inFile = (rule, path) => ({ ...finding(rule, 'm'), path });
+
+  it.each(['ARG001', 'FBT001', 'PLR2004', 'S105', 'S311'])(
+    'drop %s in a file the project runs as tests',
+    (rule) => {
+      expect(
+        withoutAllowedForms([inFile(rule, 'qa/check_a.py')], { testFiles: ['qa/check_a.py'] }),
+      ).toEqual([]);
+    },
+  );
+
+  it('keep them in other files and keep other rules in test files', () => {
+    const kept = [inFile('ARG001', 'src/a.py'), inFile('F401', 'qa/check_a.py')];
+
+    expect(withoutAllowedForms(kept, { testFiles: ['qa/check_a.py'] })).toEqual(kept);
+  });
+});
+
+describe('comment labels', () => {
+  const era = (line) => ({
+    ...finding('ERA001', 'Found commented-out code'),
+    path: 'a.py',
+    location: { line },
+  });
+  const lines = {
+    1: '# Raises: ValueError',
+    2: '    # Shape: (batch, channels)',
+    3: '# e.g. foo(bar)',
+    4: '# Example: compute([1, 2]) == 3',
+    5: '# total = compute(1)',
+    6: '# x: int = 3',
+  };
+  const lineOf = (_path, line) => lines[line];
+
+  it.each([1, 2, 3, 4])('allow the label on line %s', (line) => {
+    expect(withoutAllowedForms([era(line)], { lineOf })).toEqual([]);
+  });
+
+  it.each([5, 6])('keep the code on line %s', (line) => {
+    expect(withoutAllowedForms([era(line)], { lineOf })).toEqual([era(line)]);
+  });
+});
+
 describe('other findings', () => {
   it('stay untouched, including those of other tools', () => {
     const rest = [
