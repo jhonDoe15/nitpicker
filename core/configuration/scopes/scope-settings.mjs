@@ -10,6 +10,8 @@ const TEST_CONSOLE_KEYS = ['allow'];
 
 const ALLOW_KEYS = ['contains', 'paths', 'reason'];
 
+const TEST_CONSOLE_PRESETS = ['typescript', 'javascript', 'python'];
+
 export function validateScope(name, scope, keys) {
   if (scope === undefined) {
     return;
@@ -27,9 +29,14 @@ export function validateScope(name, scope, keys) {
   }
 }
 
-export function validateTestConsole(testConsole) {
+export function validateTestConsole(testConsole, preset = 'typescript') {
   if (testConsole === undefined) {
     return;
+  }
+  if (!TEST_CONSOLE_PRESETS.includes(preset)) {
+    throw configError(
+      `"testConsole" is not supported with "preset": "${preset}": its tests' console output is not checked yet. Supported with: ${TEST_CONSOLE_PRESETS.join(', ')}`,
+    );
   }
   validateScope('testConsole', testConsole, TEST_CONSOLE_KEYS);
   if (testConsole.allow === undefined) {

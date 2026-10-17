@@ -45,21 +45,8 @@ const EXCEPTION_KEYS = ['rule', 'paths', 'reason'];
 
 export const TYPESCRIPT_ONLY_KEYS = ['layout', 'exceptions', 'react', 'i18n', 'tools'];
 
-const PRESET_KEYS = { testConsole: ['typescript', 'javascript', 'python'] };
-
 export function configError(message) {
   return new Error(`${CONFIG_FILE_NAME}: ${message}`);
-}
-
-export function validatePresetKeys(config) {
-  const preset = config.preset ?? 'typescript';
-  for (const [key, presets] of Object.entries(PRESET_KEYS)) {
-    if (config[key] !== undefined && !presets.includes(preset)) {
-      throw configError(
-        `"${key}" is not supported with "preset": "${preset}". Supported with: ${presets.join(', ')}`,
-      );
-    }
-  }
 }
 
 export function isNonEmptyString(value) {

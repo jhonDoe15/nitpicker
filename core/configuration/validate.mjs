@@ -8,7 +8,6 @@ import {
   validateThresholds,
   validateExceptions,
   TYPESCRIPT_ONLY_KEYS,
-  validatePresetKeys,
   validateProjectRelativePath,
 } from '../../shared/config.mjs';
 import { validateJavaConfig } from '../../languages/java/adapters/java-policy.mjs';
@@ -66,7 +65,7 @@ export function validateConfig(config) {
   validateDisable(config.disable);
   validateReact(config.react);
   validateI18n(config.i18n);
-  validateTestConsole(config.testConsole);
+  validateTestConsole(config.testConsole, config.preset);
   validateOptional(config);
   validateProjectConventions(config);
   return config;
@@ -78,7 +77,6 @@ function validateKeys(config) {
       throw configError(`unknown key "${key}". Allowed keys: ${KEYS.join(', ')}`);
     }
   }
-  validatePresetKeys(config);
 }
 
 function validateScalars(config) {
