@@ -2,6 +2,23 @@ import { configError, isPlainObject } from '../config.mjs';
 
 const NAME = /^[A-Za-z_]\w*$/;
 
+function validateChoice(id, choice, definition) {
+  if (definition.kind === 'names') {
+    if (
+      !Array.isArray(choice) ||
+      !choice.every((name) => typeof name === 'string' && NAME.test(name))
+    ) {
+      throw configError(`"conventions.${id}" must be a list of function names`);
+    }
+    return;
+  }
+  if (!definition.options.includes(choice)) {
+    throw configError(
+      `"conventions.${id}" must be one of: ${definition.options.map((option) => `"${option}"`).join(', ')}`,
+    );
+  }
+}
+
 export function validateConventions(value, definitions) {
   if (!isPlainObject(value)) {
     throw configError('"conventions" must be an object');
@@ -14,18 +31,7 @@ export function validateConventions(value, definitions) {
         `unknown convention "${id}". Allowed conventions: ${[...known.keys()].join(', ') || '(none for this preset)'}`,
       );
     }
-    if (definition.kind === 'names') {
-      if (
-        !Array.isArray(choice) ||
-        !choice.every((name) => typeof name === 'string' && NAME.test(name))
-      ) {
-        throw configError(`"conventions.${id}" must be a list of function names`);
-      }
-    } else if (!definition.options.includes(choice)) {
-      throw configError(
-        `"conventions.${id}" must be one of: ${definition.options.map((option) => `"${option}"`).join(', ')}`,
-      );
-    }
+    validateChoice(id, choice, definition);
   }
 }
 

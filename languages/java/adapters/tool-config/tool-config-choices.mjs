@@ -1,8 +1,10 @@
-import { existsSync } from 'node:fs';
 import path from 'node:path';
+import { existsSync } from 'node:fs';
+import { resolveInside } from '../../../../shared/conventions/read-inside.mjs';
 import { precedenceLayers } from '../../../../shared/conventions/tool-precedence.mjs';
 import { JAVA_ASSERTION_HELPERS } from '../../conventions/java-conventions.mjs';
 import { PROJECT_TOOL_CONFIGS } from '../gradle-presets.mjs';
+import { mergeCheckstyleFiles } from './checkstyle/checkstyle-merge.mjs';
 import { pmdLayerFiles } from './layer-files.mjs';
 
 export function toolConfigChoices(projectRoot, policy = {}) {
@@ -11,8 +13,11 @@ export function toolConfigChoices(projectRoot, policy = {}) {
   return Object.fromEntries(
     [...PROJECT_TOOL_CONFIGS].map(([tool, file]) => {
       const precedence = toolPrecedence[tool] ?? ['nitpicker'];
-      const projectConfig = path.join(policyRoot ?? projectRoot, file);
-      if (precedence.includes('project') && !existsSync(projectConfig)) {
+      const projectConfig = resolveInside(policyRoot ?? projectRoot, file);
+      if (
+        precedence.includes('project') &&
+        (projectConfig === undefined || !existsSync(projectConfig))
+      ) {
         throw new Error(`"tools.${tool}.precedence" lists "project" but ${file} is missing`);
       }
       const layers = precedenceLayers(precedence);
@@ -28,20 +33,30 @@ export function toolConfigChoices(projectRoot, policy = {}) {
   );
 }
 
-export function toolConfigProperties(projectRoot, policy = {}, directory) {
+function checkstyleProperties({ checkstyle, directory, checkstyleBase }) {
+  if (checkstyle.project === undefined) {
+    return [];
+  }
+  const merged = path.join(directory, 'checkstyle-merged.xml');
+  mergeCheckstyleFiles({
+    nitpicker: checkstyleBase,
+    project: checkstyle.project,
+    output: merged,
+    projectWins: checkstyle.projectWins,
+  });
+  return [
+    `-Pnitpicker.checkstyle.projectConfig=${checkstyle.project}`,
+    `-Pnitpicker.checkstyle.mergedConfig=${merged}`,
+  ];
+}
+
+export function toolConfigProperties(projectRoot, policy = {}, { directory, checkstyleBase }) {
   const choices = toolConfigChoices(projectRoot, policy);
   const pmd = pmdLayerFiles({ ...choices.pmd, directory });
-  const { checkstyle } = choices;
   return [
     ...(pmd.nitpicker === undefined ? [] : [`-Pnitpicker.pmd.nitpickerRuleset=${pmd.nitpicker}`]),
     ...(pmd.project === undefined ? [] : [`-Pnitpicker.pmd.projectConfig=${pmd.project}`]),
     ...(pmd.tests === undefined ? [] : [`-Pnitpicker.pmd.testRules=${pmd.tests}`]),
-    ...(checkstyle.project === undefined
-      ? []
-      : [
-          `-Pnitpicker.checkstyle.projectConfig=${checkstyle.project}`,
-          `-Pnitpicker.node=${process.execPath}`,
-          ...(checkstyle.projectWins ? [] : ['-Pnitpicker.checkstyle.projectWins=false']),
-        ]),
+    ...checkstyleProperties({ checkstyle: choices.checkstyle, directory, checkstyleBase }),
   ];
 }

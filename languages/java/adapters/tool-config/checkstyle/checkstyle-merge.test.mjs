@@ -17,11 +17,11 @@ function filesWith(nitpicker, project) {
   roots.push(root);
   writeFileSync(path.join(root, 'nitpicker.xml'), nitpicker);
   writeFileSync(path.join(root, 'project.xml'), project);
-  return [
-    path.join(root, 'nitpicker.xml'),
-    path.join(root, 'project.xml'),
-    path.join(root, 'out.xml'),
-  ];
+  return {
+    nitpicker: path.join(root, 'nitpicker.xml'),
+    project: path.join(root, 'project.xml'),
+    output: path.join(root, 'nested', 'out.xml'),
+  };
 }
 
 const config = (max) =>
@@ -40,27 +40,30 @@ ${doctype}
 `;
 
 describe('mergeCheckstyleFiles', () => {
-  it('writes the merged config with the project winning', () => {
-    const [nitpicker, project, output] = filesWith(config(100), config(140));
+  it('writes the merged config with the project winning, creating the folder', () => {
+    const files = filesWith(config(100), config(140));
 
-    expect(mergeCheckstyleFiles([nitpicker, project, output])).toEqual({ code: 0, message: '' });
-    expect(readFileSync(output, 'utf8')).toBe(merged(140));
+    mergeCheckstyleFiles(files);
+
+    expect(readFileSync(files.output, 'utf8')).toBe(merged(140));
   });
 
-  it('lets nitpicker win with nitpicker-first', () => {
-    const [nitpicker, project, output] = filesWith(config(100), config(140));
+  it('lets nitpicker win when the project does not', () => {
+    const files = filesWith(config(100), config(140));
 
-    expect(mergeCheckstyleFiles([nitpicker, project, output, 'nitpicker-first']).code).toBe(0);
-    expect(readFileSync(output, 'utf8')).toBe(merged(100));
+    mergeCheckstyleFiles({ ...files, projectWins: false });
+
+    expect(readFileSync(files.output, 'utf8')).toBe(merged(100));
   });
 
-  it('reports a config without a Checker root and an unreadable file', () => {
-    const [nitpicker, project, output] = filesWith(config(100), '<module name="TreeWalker"/>');
+  it('throws for a config without a Checker root and for an unreadable file', () => {
+    const files = filesWith(config(100), '<module name="TreeWalker"/>');
 
-    expect(mergeCheckstyleFiles([nitpicker, project, output])).toEqual({
-      code: 1,
-      message: 'The Checkstyle config must have a Checker module at its root, not TreeWalker',
-    });
-    expect(mergeCheckstyleFiles([nitpicker, `${project}.missing`, output]).code).toBe(1);
+    expect(() => mergeCheckstyleFiles(files)).toThrow(
+      'The Checkstyle config must have a Checker module at its root, not TreeWalker',
+    );
+    expect(() => mergeCheckstyleFiles({ ...files, project: `${files.project}.missing` })).toThrow(
+      'ENOENT',
+    );
   });
 });

@@ -113,19 +113,18 @@ allprojects {
             'SuppressionXpathFilter']
         def nitpickerCheckstyleConfig = layout.buildDirectory.file('nitpicker-checkstyle/checkstyle.xml')
         def projectCheckstyleConfig = nitpickerArgument('nitpicker.checkstyle.projectConfig')
-        def mergedCheckstyleConfig = layout.buildDirectory.file('nitpicker-checkstyle/checkstyle-merged.xml')
+        def mergedCheckstyleConfig = nitpickerArgument('nitpicker.checkstyle.mergedConfig')
+        def exportedCheckstyleConfig = nitpickerArgument('nitpicker.checkstyle.exportConfig')
         def checkstyleJar = configurations.nitpickerCheckstyle
             .filter { it.name == "checkstyle-${pinned.checkstyle}.jar".toString() }
         def bundledCheckstyleConfig = resources.text.fromArchiveEntry(checkstyleJar, 'google_checks.xml')
         def writeCheckstyleConfig = tasks.register('nitpickerCheckstyleConfig') {
             group = 'nitpicker'
             inputs.files(checkstyleJar)
-            if (projectCheckstyleConfig) {
-                inputs.file(projectCheckstyleConfig)
-                inputs.property('projectWins', nitpickerArgument('nitpicker.checkstyle.projectWins') ?: 'true')
-                outputs.file(mergedCheckstyleConfig)
-            }
             outputs.file(nitpickerCheckstyleConfig)
+            if (exportedCheckstyleConfig) {
+                outputs.upToDateWhen { false }
+            }
             doLast {
                 def text = bundledCheckstyleConfig.asString()
                 inlineCheckstyleFilters.each { name ->
@@ -145,20 +144,12 @@ allprojects {
                 def target = nitpickerCheckstyleConfig.get().asFile
                 target.parentFile.mkdirs()
                 target.text = text
-                if (projectCheckstyleConfig) {
-                    // The project's modules are laid over nitpicker's by languages/java/adapters/tool-config
-                    // (the same code the Maven build runs): a property the project sets wins, every other
-                    // module and property stays nitpicker's.
-                    def mergeScript = new File(initScriptDir, '../adapters/tool-config/checkstyle/checkstyle-merge-cli.mjs').canonicalFile
-                    def merge = new ProcessBuilder([nitpickerArgument('nitpicker.node'), mergeScript.absolutePath,
-                            target.absolutePath, projectCheckstyleConfig.toString(),
-                            mergedCheckstyleConfig.get().asFile.absolutePath] +
-                        (nitpickerArgument('nitpicker.checkstyle.projectWins') == 'false' ? ['nitpicker-first'] : []))
-                        .redirectErrorStream(true).start()
-                    def mergeLog = merge.inputStream.getText('UTF-8')
-                    if (merge.waitFor() != 0) {
-                        throw new GradleException("nitpicker could not merge ${projectCheckstyleConfig} into its Checkstyle config: ${mergeLog.trim()}")
-                    }
+                if (exportedCheckstyleConfig) {
+                    // Node lays the project's modules over this file (languages/java/adapters/tool-config/checkstyle)
+                    // before the second run and passes the result as nitpicker.checkstyle.mergedConfig.
+                    def exported = new File(exportedCheckstyleConfig.toString())
+                    exported.parentFile.mkdirs()
+                    exported.text = text
                 }
             }
         }
@@ -170,8 +161,8 @@ allprojects {
                 maxWarnings = Integer.MAX_VALUE
                 dependsOn writeCheckstyleConfig
                 checkstyleClasspath = configurations.nitpickerCheckstyle
-                configFile = (projectCheckstyleConfig ? mergedCheckstyleConfig : nitpickerCheckstyleConfig).get().asFile
-                if (projectCheckstyleConfig) {
+                configFile = (mergedCheckstyleConfig ? new File(mergedCheckstyleConfig.toString()) : nitpickerCheckstyleConfig.get().asFile)
+                if (projectCheckstyleConfig && mergedCheckstyleConfig) {
                     // ${config_loc} in the project's config (its suppressions file, for one) is read from the head
                     // checkout that holds the policy, as the Maven build does, also when this run is the base snapshot.
                     configDirectory = layout.dir(providers.provider { new File(projectCheckstyleConfig.toString()).parentFile })
