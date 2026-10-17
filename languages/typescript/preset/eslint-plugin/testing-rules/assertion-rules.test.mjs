@@ -421,8 +421,25 @@ ruleTester.run('do not replace internal collaborators', noInternalMocks, {
   valid: [
     { filename, code: "vi.mock('undici');" },
     { filename, code: 'const serverFactory = () => fakeServer; start({ serverFactory });' },
+    { filename, code: "import * as os from 'node:os'; vi.spyOn(os, 'hostname');" },
+    { filename, code: "import * as helpers from './helpers.test.js'; vi.spyOn(helpers, 'make');" },
+    {
+      filename,
+      code: "import * as domain from '../domain.js'; vi.spyOn(console, 'log'); run(domain);",
+    },
+    { filename, code: "import { leaf } from '../domain.js'; vi.spyOn(leaf, 'call');" },
   ],
   invalid: [
+    {
+      filename,
+      code: "import * as domain from '../domain.js'; vi.spyOn(domain, 'leaf').mockReturnValue(1);",
+      errors: [{ messageId: 'internalSpy', data: { source: '../domain.js' } }],
+    },
+    {
+      filename,
+      code: "import { vi as mocks } from 'vitest'; import * as domain from '../domain.js'; mocks.spyOn(domain, 'leaf');",
+      errors: [{ messageId: 'internalSpy' }],
+    },
     {
       filename,
       code: "vi.mock('../../logging/logger.js');",

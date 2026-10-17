@@ -1,5 +1,6 @@
-import { mutationTargets, MUTATION_REPORT_PATH } from './mutation-scope.mjs';
-import { readLayout } from '../../../preset/head-policy.mjs';
+import { MUTATION_REPORT_PATH } from './mutation-scope.mjs';
+import { readHeadPolicy, readLayout } from '../../../preset/head-policy.mjs';
+import { runScopedMutation } from '../test-weakening/scoped-mutation.mjs';
 import {
   importPolicyModule,
   relativeProjectPath,
@@ -23,13 +24,21 @@ const STRYKER_TSCONFIG_TARGET = '.nitpicker-diff-tsconfig.stryker.json';
 
 const STRYKER_CONFIG_PATH = 'languages/typescript/preset/defaults/stryker.config.mjs';
 
-const INITIAL_TEST_RUN_FAILED_PATTERN = /failed tests in the initial test run/u;
+const INITIAL_TEST_RUN_FAILED_PATTERN =
+  /failed tests in the initial test run|Something went wrong in the initial test run/u;
 
 const DRY_RUN_TYPECHECK_FAILED_PATTERN = /Typescript error\(s\) found in dry run compilation/u;
 
-export async function runMutation(options) {
-  const targets = mutationTargets(options, readLayout());
-  if (targets?.length === 0) return [];
+export function runMutation(options) {
+  return runScopedMutation(options, {
+    layout: readLayout(),
+    exceptions: readHeadPolicy().exceptions,
+    mutationReport,
+    normalize: normalizeMutation,
+  });
+}
+
+async function mutationReport(options, targets) {
   const sourceConfig = (
     await importPolicyModule(options, STRYKER_CONFIG_PATH, `?run=${Date.now().toString()}`)
   ).default;
@@ -37,15 +46,16 @@ export async function runMutation(options) {
   const createdFiles = [];
   try {
     writeStrykerConfig({ options, sourceConfig, targets, configPath, createdFiles });
-    const skippedFindings = runStrykerOrExplainSkip(options, configPath);
-    if (skippedFindings !== undefined) {
-      return skippedFindings;
+    const skipped = runStrykerOrExplainSkip(options, configPath);
+    if (skipped !== undefined) {
+      return { skipped };
     }
-    const report = readMutationReport(options.projectRoot);
-    return normalizeMutation(
-      withMutationSourceHashes(report, options.projectRoot),
-      options.analyzerName,
-    );
+    return {
+      report: withMutationSourceHashes(
+        readMutationReport(options.projectRoot),
+        options.projectRoot,
+      ),
+    };
   } finally {
     for (const filePath of createdFiles.reverse()) {
       rmSync(filePath, { force: true });
@@ -54,26 +64,36 @@ export async function runMutation(options) {
 }
 
 function writeStrykerConfig({ options, sourceConfig, targets, configPath, createdFiles }) {
-  const tsconfigPath = installStrykerTsconfig(options, sourceConfig.tsconfigFile, createdFiles);
+  const typeChecked = options.snapshot !== 'base';
+  const tsconfigPath = typeChecked
+    ? installStrykerTsconfig(options, sourceConfig.tsconfigFile, createdFiles)
+    : undefined;
   const vitestConfigPath = installMutationCompanion(
     options,
     [sourceConfig.vitest?.configFile, '.nitpicker-diff-stryker.vitest.config.ts'],
     createdFiles,
   );
-  const config = {
-    ...rebaseMutationConfig(sourceConfig, {
-      tsconfigFile: relativeProjectPath(options.projectRoot, tsconfigPath),
-      vitestConfigFile: relativeProjectPath(options.projectRoot, vitestConfigPath),
-    }),
-    ...(targets === undefined ? {} : { mutate: targets }),
-    reporters: ['json'],
-    jsonReporter: { fileName: MUTATION_REPORT_PATH },
-  };
+  const config = strykerRunConfig(sourceConfig, {
+    snapshot: options.snapshot,
+    targets,
+    tsconfigFile: tsconfigPath && relativeProjectPath(options.projectRoot, tsconfigPath),
+    vitestConfigFile: relativeProjectPath(options.projectRoot, vitestConfigPath),
+  });
   writeTemporaryFile(
     configPath,
     `export default ${JSON.stringify(config, null, 2)};\n`,
     createdFiles,
   );
+}
+
+export function strykerRunConfig(sourceConfig, { snapshot, targets, ...files }) {
+  return {
+    ...rebaseMutationConfig(sourceConfig, files),
+    ...(targets === undefined ? {} : { mutate: targets }),
+    ...(snapshot === 'base' ? { checkers: [] } : {}),
+    reporters: ['json'],
+    jsonReporter: { fileName: MUTATION_REPORT_PATH },
+  };
 }
 
 const SKIP_MESSAGES = {

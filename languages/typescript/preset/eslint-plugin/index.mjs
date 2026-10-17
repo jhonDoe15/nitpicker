@@ -66,6 +66,10 @@ import { rule as noUnknownMainFolder } from './rules/guards/no-unknown-main-fold
 import { rule as noUnsafePathJoin } from './rules/guards/no-unsafe-path-join.mjs';
 import { rule as noMagicNumbers } from './rules/wrapped/no-magic-numbers.mjs';
 import { rule as namingConvention } from './rules/wrapped/naming-convention.mjs';
+import { testAssertionRules } from './test-assertions/rules.mjs';
+import { rule as noTestHelpersInSource } from './test-placement/no-test-helpers-in-source.mjs';
+import { testIsolationRules } from './test-isolation/rules.mjs';
+import { testQualityRules } from './test-quality/rules.mjs';
 
 export const nitpickerRules = {
   meta: {
@@ -143,5 +147,9 @@ export const nitpickerRules = {
     'react-no-effect-event-handling': reactNoEffectEventHandling,
     'react-no-random-key': reactNoRandomKey,
     'react-test-no-implementation-details': reactTestNoImplementationDetails,
+    'no-test-helpers-in-source': noTestHelpersInSource,
+    ...testAssertionRules,
+    ...testIsolationRules,
+    ...testQualityRules,
   },
 };

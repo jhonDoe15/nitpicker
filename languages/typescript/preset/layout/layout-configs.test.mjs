@@ -43,6 +43,17 @@ describe('resolveLayout', () => {
     expect(customLayout.isTestFixture('/repo/lib/fixtures/app.ts')).toBe(false);
     expect(customLayout.sourceRootOf('/repo/lib/a.ts')).toBe('lib');
   });
+  it('counts test-support/ under the source roots as test code only in a colocated layout', () => {
+    const colocated = resolveLayout({ sourceRoots: ['lib'], colocatedTests: true });
+    expect(colocated.testSupportGlobs).toEqual(['lib/**/test-support/**']);
+    expect(colocated.isTestFile('lib/feature/test-support/make.ts')).toBe(true);
+    expect(colocated.isSourceFile('lib/feature/test-support/make.ts')).toBe(false);
+    expect(colocated.isRunnableTestFile('lib/feature/test-support/make.ts')).toBe(false);
+    expect(colocated.isSourceFile('lib/feature/support/make.ts')).toBe(true);
+    expect(customLayout.testSupportGlobs).toEqual([]);
+    expect(customLayout.isSourceFile('lib/feature/test-support/make.ts')).toBe(true);
+    expect(customLayout.isTestFile('lib/feature/test-support/make.ts')).toBe(false);
+  });
   it('treats exclude globs as excluded from source, test and graph analysis', () => {
     expect(customLayout.isExcluded('lib/legacy/old.ts')).toBe(true);
     expect(customLayout.isExcluded('lib/live/new.ts')).toBe(false);

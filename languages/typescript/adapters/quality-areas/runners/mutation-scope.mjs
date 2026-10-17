@@ -3,15 +3,13 @@ import { runGit } from '../../../../../core/diff/git/repository/command.mjs';
 
 export const MUTATION_REPORT_PATH = 'reports/quality/mutation/mutation.json';
 
-export function mutationTargets({ snapshot, baselineRoot, projectRoot }, layout) {
-  if (snapshot === 'base') return [];
-  if (baselineRoot === undefined) return undefined;
+export function diffAgainstBase({ baselineRoot, projectRoot }, format) {
   const baseCommit = runGit(baselineRoot, ['rev-parse', 'HEAD']).trim();
-  const diff = runGit(projectRoot, [
+  return runGit(projectRoot, [
     '-c',
     'core.quotePath=false',
     'diff',
-    '--unified=0',
+    format,
     '--find-renames',
     '--relative',
     '--no-color',
@@ -19,7 +17,12 @@ export function mutationTargets({ snapshot, baselineRoot, projectRoot }, layout)
     baseCommit,
     'HEAD',
   ]);
-  return [...parseChangedLines(diff).values()]
+}
+
+export function mutationTargets(options, layout) {
+  if (options.snapshot === 'base') return [];
+  if (options.baselineRoot === undefined) return undefined;
+  return [...parseChangedLines(diffAgainstBase(options, '--unified=0')).values()]
     .filter((file) => layout.isSourceFile(file.path))
     .flatMap((file) =>
       file.ranges.map(([start, end]) => `${file.path}:${String(start)}-${String(end)}`),

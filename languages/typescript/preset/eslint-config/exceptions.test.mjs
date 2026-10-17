@@ -39,6 +39,11 @@ describe('strict rule exceptions', () => {
     expect(applyRuleExceptions(presetConfig, [fileLimit])).toEqual(presetConfig);
   });
 
+  it('leaves exceptions for mutants hidden by an ignore comment to the mutation check', () => {
+    const ignoredMutant = { rule: 'mutant-ignored', paths: ['src/gen/**'], reason: 'Generated' };
+    expect(applyRuleExceptions(presetConfig, [ignoredMutant])).toEqual(presetConfig);
+  });
+
   it('leaves exceptions for a dependency boundary rule to the architecture check', () => {
     const boundary = {
       rule: 'domain-does-not-import-node-io',

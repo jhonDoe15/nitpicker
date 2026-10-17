@@ -10,6 +10,7 @@ import { branchCoverageFindings } from '../../../../../shared/rules/branch-cover
 import { DEFAULT_CRAP_SCORE_LIMIT } from '../../../../../shared/policy.mjs';
 import { crapFindings } from '../../../../../shared/rules/crap.mjs';
 import { mutantFindings } from '../../../../../shared/rules/mutation.mjs';
+import { crapUnknownMessage } from './crap-unknown-message.mjs';
 
 export function normalizeCoverage(report, analyzerName, { projectRoot, testCount } = {}) {
   const findings = [];
@@ -116,7 +117,7 @@ function addCrapFunction(findings, entry, { analyzerName, scoreLimit, occurrence
           crap: entry.crap,
         },
       ],
-      { tool: analyzerName, limit: scoreLimit },
+      { tool: analyzerName, limit: scoreLimit, unknownMessage: crapUnknownMessage(entry.source) },
     ),
   );
   const values = {
@@ -184,6 +185,7 @@ function neutralMutant(mutant, { filePath, status, occurrences }) {
     path: filePath,
     identity: `${semanticIdentity}|occurrence:${String(occurrence)}`,
     status,
+    ...(status === 'Ignored' ? { hiddenByComment: true } : {}),
     label: mutant.mutatorName ?? 'mutant',
     line: mutant.location?.start?.line,
     ...(positiveInteger(mutant.location?.start?.column) === undefined

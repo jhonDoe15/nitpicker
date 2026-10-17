@@ -341,6 +341,18 @@ describe('head policy reader', () => {
     expect(resolveHeadPolicy({}, root)).not.toHaveProperty('tools');
   });
 
+  it('marks the layout colocated only when no test root exists in the project', () => {
+    const root = temporaryDirectory();
+    expect(resolveHeadPolicy({}, root).layout).toEqual({ colocatedTests: true });
+    expect(resolveHeadPolicy({ layout: { testRoots: ['spec'] } }, root).layout).toEqual({
+      testRoots: ['spec'],
+      colocatedTests: true,
+    });
+    mkdirSync(path.join(root, 'tests'));
+    expect(resolveHeadPolicy({}, root).layout).toEqual({});
+    expect(resolveHeadPolicy({}).layout).toEqual({});
+  });
+
   it('exposes the configured entry points on the resolved layout', () => {
     const policy = resolveHeadPolicy({ layout: { entryPoints: ['tools/*-runner.mjs'] } });
     withHeadPolicyFile(policy, (policyFile) => {

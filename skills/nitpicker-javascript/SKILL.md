@@ -181,6 +181,7 @@ line) is a finding.
   `import { initials } from '../src/main/features/greeting/domain/initials.cjs';`.
 - Every branch you add needs a test: changed-branch coverage and mutation testing run on your
   change. Test each outcome of each union.
+- Keep an assertion unless another test covers the same behaviour.
 - Test features through their `index.js` with fakes: plain functions returning
   `Promise.resolve(x)` / `Promise.reject(error)`; a non-Error rejection is
   `vi.fn().mockRejectedValue(42)`. Read a fake's calls through a helper that throws when the call is missing, not
@@ -192,7 +193,8 @@ line) is a finding.
 - Assert whole outputs with `toEqual`/`toBe`, not `toContain`, `toMatchObject` or `expect.any`.
   Write `expect` in the test body; asserting helpers don't count. Repeated cases are `it.each`,
   not loops. The rules above (`for...of` only, no `.then()`, no casts) apply to tests too.
-- A shared helper (stdout capture) lives once, in a non-test file such as `test/support/lines.js`.
+- Tests assert exact values and are deterministic and fast; each finding names the allowed form.
+- A shared helper (stdout capture) lives once, in a non-test file such as `test/support/lines.js`, or in a `test-support/` folder beside the code when the tests sit next to it.
   When an existing test defines the same helper, make it import the shared one.
 - A surviving mutant no input can kill means the code is redundant: delete or restructure it.
   Don't pin call order or messages just to kill it. If an input can kill it, add that test (a

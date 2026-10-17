@@ -43,6 +43,7 @@ function checkExclusions(layout) {
     production: [
       ...layout.excludedGlobs,
       ...layout.sourceTestDirectoryGlobs,
+      ...layout.testSupportGlobs,
       ...layout.testGlobs,
       '.stryker-tmp/**',
     ],

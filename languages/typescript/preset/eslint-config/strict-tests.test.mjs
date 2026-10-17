@@ -42,8 +42,13 @@ function timeoutSettings(file) {
   );
   const settings = [];
   for (const node of depthFirst(source, syntaxChildren)) {
-    if (ts.isPropertyAssignment(node) && node.name.getText(source) === 'testTimeout') {
-      settings.push(['testTimeout', Number(node.initializer.getText(source).replaceAll('_', ''))]);
+    if (
+      (ts.isPropertyAssignment(node) || ts.isVariableDeclaration(node)) &&
+      ['testTimeout', 'MINIMUM_TIMEOUT'].includes(node.name.getText(source)) &&
+      node.initializer !== undefined &&
+      ts.isNumericLiteral(node.initializer)
+    ) {
+      settings.push([node.name.getText(source), Number(node.initializer.text)]);
     }
     if (ts.isArrayLiteralExpression(node)) {
       const values = node.elements.map((element) =>
@@ -134,12 +139,12 @@ describe('strict test rules', () => {
     }
   });
 
-  it('cap timeouts at the testTimeout nitpicker runs tests with', () => {
+  it('cap timeouts at the minimum testTimeout nitpicker runs tests with', () => {
     expect(
       timeoutSettings('languages/typescript/preset/defaults/vitest.quality.config.ts'),
-    ).toEqual([['testTimeout', TEST_TIMEOUT_CEILING_MS]]);
+    ).toEqual([['MINIMUM_TIMEOUT', TEST_TIMEOUT_CEILING_MS]]);
     expect(
       timeoutSettings('languages/typescript/adapters/quality-areas/runners/tests.mjs'),
-    ).toEqual([['--testTimeout', TEST_TIMEOUT_CEILING_MS]]);
+    ).toEqual([]);
   });
 });

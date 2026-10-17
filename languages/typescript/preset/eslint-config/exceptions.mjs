@@ -1,6 +1,8 @@
 import { TYPESCRIPT_SIZE_RULES } from '../../../../shared/project-rules/size-rules.mjs';
 import {
+  MUTATION_EXCEPTION_RULES,
   SHARED_EXCEPTION_RULES,
+  TEST_RUN_EXCEPTION_RULES,
   TYPESCRIPT_PROJECT_EXCEPTION_RULES,
 } from '../../../../shared/policy.mjs';
 import { strictBoundaryRules } from '../architecture/strict-boundary-rules.mjs';
@@ -11,6 +13,8 @@ const NON_ESLINT_EXCEPTION_RULES = [
   ...SHARED_EXCEPTION_RULES,
   ...TYPESCRIPT_PROJECT_EXCEPTION_RULES,
   ...TYPESCRIPT_SIZE_RULES,
+  ...MUTATION_EXCEPTION_RULES,
+  ...TEST_RUN_EXCEPTION_RULES,
 ];
 
 export function applyRuleExceptions(configEntries, allExceptions = []) {

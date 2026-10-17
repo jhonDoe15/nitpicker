@@ -8,10 +8,29 @@ import { normalizeCoverage } from './tests.mjs';
 
 import { withBranchSourceHashes } from './source-hashes.mjs';
 
-import { firstLine, missingSetupHints } from './failure-lines.mjs';
+import { readHeadPolicy, readLayout } from '../../../preset/head-policy.mjs';
+import { changedTestLines, slowTestFindings } from '../test-durations/slow-tests.mjs';
+import {
+  firstLine,
+  missingSetupHints,
+  timeoutText,
+  unhandledErrors,
+  unhandledErrorText,
+  withSnapshotAdvice,
+} from './failure-lines.mjs';
 
 export function coverageFailureFindings(options, report, result) {
   const [firstFailure] = vitestFailures(report, options.projectRoot);
+  const unhandled = unhandledErrors(result.stderr);
+  if (firstFailure === undefined && unhandled.length > 0) {
+    return [
+      toolErrorFinding(options, {
+        rule: TESTS_FAILED_RULE,
+        path: unhandled[0].file === undefined ? '.' : findingPath(unhandled[0].file),
+        message: unhandledErrorText(unhandled),
+      }),
+    ];
+  }
   if (firstFailure === undefined) {
     throw new Error(
       `Vitest exited ${String(result.status)} without naming a failing test${formatProcessOutput(result)}`,
@@ -31,11 +50,28 @@ export function readCoverageFindings(options, testReportPath) {
     readFileSync(path.join(options.projectRoot, COVERAGE_REPORT_PATH), 'utf8'),
   );
   const testReport = JSON.parse(readFileSync(testReportPath, 'utf8'));
-  return normalizeCoverage(
-    withBranchSourceHashes(report, options.projectRoot),
-    options.analyzerName,
-    { projectRoot: options.projectRoot, testCount: testReport.numTotalTests },
-  );
+  return [
+    ...normalizeCoverage(
+      withBranchSourceHashes(report, options.projectRoot),
+      options.analyzerName,
+      {
+        projectRoot: options.projectRoot,
+        testCount: testReport.numTotalTests,
+      },
+    ),
+    ...(options.snapshot === 'base' ? [] : headSlowTests(options, testReport)),
+  ];
+}
+
+function headSlowTests(options, testReport) {
+  const { thresholds, exceptions } = readHeadPolicy();
+  return slowTestFindings(testReport, {
+    ...options,
+    testRoots: readLayout().testRoots,
+    thresholds,
+    exceptions,
+    changedLines: changedTestLines(options),
+  });
 }
 
 export function readVitestReport(reportPath, result) {
@@ -74,9 +110,11 @@ function vitestFailures(report, projectRoot) {
       failures.push({
         file,
         name: vitestAssertionName(assertion),
-        assertion: firstLine(
-          assertion.failureMessages?.find((message) => typeof message === 'string'),
-        ),
+        assertion:
+          timeoutText(assertion) ??
+          withSnapshotAdvice(
+            firstLine(assertion.failureMessages?.find((message) => typeof message === 'string')),
+          ),
       });
     }
     if (failedAssertions.length === 0 && testResult?.status === 'failed') {
