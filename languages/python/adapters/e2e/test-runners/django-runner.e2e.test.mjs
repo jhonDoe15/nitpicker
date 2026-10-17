@@ -49,6 +49,8 @@ const GRADE_TESTS = [
   '',
 ].join('\n');
 const WEAK_TESTS = GRADE_TESTS.split('\n    def test_boundary')[0];
+const PLACEHOLDER_TESTS =
+  'from django.test import SimpleTestCase\n\n\nclass GradeTests(SimpleTestCase):\n    pass\n';
 const UNTYPED_DJANGO = ['import-untyped', 'misc'].map((rule) => ({
   rule,
   paths: ['polls/tests.py', 'backend/polls/tests.py'],
@@ -87,6 +89,7 @@ function djangoProject(packages) {
     '.gitignore': '.venv/\n__pycache__/\nmutants/\n',
     'requirements.txt': 'django\n',
     'polls/__init__.py': '',
+    'polls/tests.py': PLACEHOLDER_TESTS,
   });
   initializeRepository(root, 'base without Django');
   installPackages(root, packages);
@@ -111,6 +114,7 @@ function nestedDjangoProject(packages) {
     '.gitignore': '.venv/\n__pycache__/\nmutants/\n',
     'requirements.txt': 'django\n',
     'backend/polls/__init__.py': '',
+    'backend/polls/tests.py': PLACEHOLDER_TESTS,
   });
   initializeRepository(root, 'base without Django');
   installPackages(root, packages);
