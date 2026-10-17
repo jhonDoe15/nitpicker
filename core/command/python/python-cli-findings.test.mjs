@@ -120,7 +120,7 @@ describe('nitpicker with "preset": "python"', () => {
       [
         'python-rules/no-inline-suppression',
         'noqa',
-        'Inline suppression `# noqa`. Remove the comment and fix the code. If it must stay, add a "python.exceptions" entry for no-inline-suppression for this path.',
+        'Inline suppression `# noqa`. Remove the comment and fix the code. To allow it for some paths, add a "python.exceptions" entry for no-inline-suppression in nitpicker.config.json.',
       ],
     ]);
   });
