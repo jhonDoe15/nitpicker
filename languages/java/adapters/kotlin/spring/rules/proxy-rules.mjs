@@ -1,6 +1,6 @@
 import { hasArgument } from '../syntax/kotlin-annotations.mjs';
 import { callsIn, isSelfCall } from '../syntax/kotlin-calls.mjs';
-import { descendants, kid, kids } from '../syntax/kotlin-tree.mjs';
+import { descendants, kid } from '../syntax/kotlin-tree.mjs';
 import { typeOf } from '../syntax/kotlin-types.mjs';
 import {
   ASYNC,
@@ -19,7 +19,6 @@ import {
   hitAt,
   hitOn,
   memberSymbolOf,
-  isAnnotation,
   sitesOfType,
 } from './rule-support.mjs';
 
