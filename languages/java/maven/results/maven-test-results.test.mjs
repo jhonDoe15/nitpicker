@@ -123,8 +123,10 @@ describe('requireTestngRun', () => {
     };
   }
 
-  const check = (module, testRuntime) => () =>
+  const check = (module, testRuntime) => () => {
     requireTestngRun({ module, since, isArchunit: archunitMatcher(), testRuntime });
+    return 'passed';
+  };
 
   it('fails when the JUnit Platform ran only the ArchUnit classes of a TestNG module', () => {
     const module = moduleWith(['TEST-shop.LayerArchTest.xml']);
@@ -152,6 +154,6 @@ describe('requireTestngRun', () => {
         check(archunitOnly, ['/m2/testng-7.10.2.jar']),
         check(archunitOnly, ['/m2/junit-platform-engine-1.11.4.jar']),
       ].map((run) => run()),
-    ).toEqual([undefined, undefined, undefined, undefined]);
+    ).toEqual(['passed', 'passed', 'passed', 'passed']);
   });
 });
