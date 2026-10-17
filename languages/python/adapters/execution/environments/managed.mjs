@@ -26,12 +26,6 @@ function condaFile(projectRoot) {
   return [yml, yaml].find((candidate) => existsSync(candidate));
 }
 
-function activeCondaPrefix(variables) {
-  const prefix = variables.CONDA_PREFIX;
-  const active = prefix !== undefined && prefix !== '';
-  return active && variables.CONDA_DEFAULT_ENV !== CONDA_BASE ? prefix : undefined;
-}
-
 function hasPipfile(projectRoot) {
   return (
     existsSync(path.join(projectRoot, 'Pipfile')) ||
@@ -49,21 +43,11 @@ export function declaredManagedEnvironment(projectRoot) {
   return condaFile(projectRoot) === undefined ? undefined : 'conda';
 }
 
-export function activeCondaEnvironment(variables) {
-  return activeCondaPrefix(variables) === undefined ? undefined : 'conda';
-}
-
-export function openActiveConda(variables) {
-  const prefix = activeCondaPrefix(variables);
-  return prefix === undefined ? undefined : condaLauncher(prefix, variables);
-}
-
-function askManager(manager, args, { projectRoot, variables }) {
+function askManager(manager, args, { projectRoot }) {
   const result = spawnSync(manager, args, {
     cwd: projectRoot,
     encoding: 'utf8',
     timeout: MANAGER_TIMEOUT_MS,
-    env: { ...variables, PIPENV_VERBOSITY: '-1' },
   });
   if (result.error?.code === 'ENOENT') {
     return undefined;
@@ -132,23 +116,19 @@ function declaredCondaPrefix(file, context) {
   if (name === undefined || name === CONDA_BASE) {
     return undefined;
   }
-  const active = activeCondaPrefix(context.variables);
-  return active !== undefined && path.basename(active) === name
-    ? active
-    : condaEnvironmentNamed(name, context);
+  return condaEnvironmentNamed(name, context);
 }
 
-function condaOrActive(context) {
+function condaLauncherOfProject(context) {
   const file = condaFile(context.projectRoot);
-  const declared = file === undefined ? undefined : declaredCondaPrefix(file, context);
-  const prefix = declared ?? activeCondaPrefix(context.variables);
-  return prefix === undefined ? undefined : condaLauncher(prefix, context.variables);
+  const prefix = file === undefined ? undefined : declaredCondaPrefix(file, context);
+  return prefix === undefined ? undefined : condaLauncher(prefix);
 }
 
 const OPENERS = new Map([
   ['pipenv', pipenvLauncher],
   ['hatch', hatchLauncher],
-  ['conda', condaOrActive],
+  ['conda', condaLauncherOfProject],
 ]);
 
 export function openManagedEnvironment(kind, context) {

@@ -1,7 +1,7 @@
 import { mkdirSync, mkdtempSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it } from 'vitest';
 import { detectEnvironment, openEnvironment } from '../python-environment.mjs';
 import { installFakeManager } from './test-support/fake-managers.mjs';
 
@@ -30,13 +30,6 @@ function write(root, relative, text = '') {
   writeFileSync(path.join(root, relative), text);
 }
 
-function condaEnvironment(prefix) {
-  return {
-    CONDA_PREFIX: prefix,
-    PATH: `${path.join(prefix, 'bin')}${path.delimiter}${process.env.PATH ?? ''}`,
-  };
-}
-
 function withManager(name, spec) {
   const tools = temporaryRoot();
   installFakeManager(path.join(tools, name), spec);
@@ -46,11 +39,6 @@ function withManager(name, spec) {
 function withoutManagers() {
   setEnvironment('PATH', temporaryRoot());
 }
-
-beforeEach(() => {
-  setEnvironment('CONDA_PREFIX', undefined);
-  setEnvironment('CONDA_DEFAULT_ENV', undefined);
-});
 
 afterEach(() => {
   for (const [name, value] of savedEnvironment) {
@@ -96,19 +84,6 @@ describe('detecting a pipenv, hatch or conda project', () => {
 
     write(root, 'poetry.lock');
     expect(detectEnvironment(root)).toEqual({ kind: 'poetry' });
-  });
-
-  it('uses the active conda environment of a project that declares none, but not the base one', () => {
-    const root = temporaryRoot();
-    setEnvironment('CONDA_PREFIX', '/opt/conda/envs/work');
-    setEnvironment('CONDA_DEFAULT_ENV', 'work');
-    expect(detectEnvironment(root)).toEqual({ kind: 'conda', detected: true });
-
-    write(root, '.venv/bin/python');
-    expect(detectEnvironment(root)).toEqual({ kind: 'venv', directory: path.join(root, '.venv') });
-
-    setEnvironment('CONDA_DEFAULT_ENV', 'base');
-    expect(detectEnvironment(temporaryRoot())).toEqual({ kind: 'path' });
   });
 
   it.each(['pipenv', 'hatch', 'conda'])('lets the setting name %s', (name) => {
@@ -199,26 +174,12 @@ describe('opening a conda environment', () => {
 
     expect(launcher.description).toBe('conda');
     expect(launcher.launch('pytest', ['-q'])).toEqual({
-      command: 'pytest',
+      command: path.join(prefix, 'bin/pytest'),
       args: ['-q'],
-      env: condaEnvironment(prefix),
+      env: { CONDA_PREFIX: prefix },
     });
-  });
-
-  it('uses the active environment when its name is the one environment.yml names', () => {
-    const root = temporaryRoot();
-    const prefix = path.join(temporaryRoot(), 'demo');
-    write(prefix, 'bin/python');
-    write(root, 'environment.yml', 'name: demo\n');
-    setEnvironment('CONDA_PREFIX', prefix);
-    setEnvironment('CONDA_DEFAULT_ENV', 'demo');
-    withoutManagers();
-
-    expect(openEnvironment({ kind: 'conda', detected: true }, root).launch('python', [])).toEqual({
-      command: 'python',
-      args: [],
-      env: condaEnvironment(prefix),
-    });
+    expect(launcher.launch('ruff', []).command).toBe('ruff');
+    expect(launcher.launch('../outside', []).command).toBe('../outside');
   });
 
   it('finds an environment by name through conda', () => {
@@ -226,20 +187,18 @@ describe('opening a conda environment', () => {
     const prefix = path.join(temporaryRoot(), 'demo');
     write(prefix, 'bin/python');
     write(root, 'environment.yml', 'name: demo\n');
-    setEnvironment('CONDA_PREFIX', undefined);
     withManager('conda', { output: JSON.stringify({ envs: ['/opt/conda', prefix] }) });
 
     expect(openEnvironment({ kind: 'conda', detected: true }, root).launch('python', [])).toEqual({
-      command: 'python',
+      command: path.join(prefix, 'bin/python'),
       args: [],
-      env: condaEnvironment(prefix),
+      env: { CONDA_PREFIX: prefix },
     });
   });
 
   it('asks to create the environment when conda does not list it', () => {
     const root = temporaryRoot();
     write(root, 'environment.yml', 'name: demo\n');
-    setEnvironment('CONDA_PREFIX', undefined);
     withManager('conda', { output: '{"envs": ["/opt/conda"]}' });
 
     expect(() => openEnvironment({ kind: 'conda', detected: true }, root)).toThrow(
@@ -247,23 +206,12 @@ describe('opening a conda environment', () => {
     );
   });
 
-  it('carries on with the PATH when conda is not installed and no environment is active', () => {
+  it('carries on with the PATH when conda is not installed', () => {
     const root = temporaryRoot();
     write(root, 'environment.yml', 'name: demo\n');
-    setEnvironment('CONDA_PREFIX', undefined);
     withoutManagers();
 
     expect(openEnvironment({ kind: 'conda', detected: true }, root).description).toBe('PATH');
-  });
-
-  it('uses an active environment of a project without environment.yml', () => {
-    const prefix = temporaryRoot();
-    setEnvironment('CONDA_PREFIX', prefix);
-    setEnvironment('CONDA_DEFAULT_ENV', 'work');
-
-    expect(openEnvironment({ kind: 'conda', detected: true }, temporaryRoot()).description).toBe(
-      'conda',
-    );
   });
 
   it('reports a declared prefix that does not exist', () => {

@@ -8,18 +8,29 @@ function condaBinDirectories(prefix) {
     : [path.join(prefix, 'bin')];
 }
 
-export function condaLauncher(prefix, variables) {
+function installedTool(directories, tool) {
+  for (const directory of directories) {
+    const candidate = path.resolve(directory, tool);
+    if (!candidate.startsWith(`${directory}${path.sep}`)) {
+      return undefined;
+    }
+    if (existsSync(candidate)) {
+      return candidate;
+    }
+  }
+  return undefined;
+}
+
+export function condaLauncher(prefix) {
   if (!existsSync(prefix)) {
     throw environmentError(
       `No conda environment at ${prefix}: create it with \`conda env create -f environment.yml\`, ${OVERRIDE_HINT}`,
     );
   }
-  const env = {
-    CONDA_PREFIX: prefix,
-    PATH: [...condaBinDirectories(prefix), variables.PATH ?? ''].join(path.delimiter),
-  };
+  const directories = condaBinDirectories(prefix);
+  const env = { CONDA_PREFIX: prefix };
   return {
     description: 'conda',
-    launch: (tool, args) => ({ command: tool, args, env }),
+    launch: (tool, args) => ({ command: installedTool(directories, tool) ?? tool, args, env }),
   };
 }
