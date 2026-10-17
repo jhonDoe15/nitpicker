@@ -34,12 +34,11 @@ function toolContext({ projectRoot, liveRoot, settings, policy }, reportRoot) {
   return createToolContext({
     projectRoot,
     liveRoot,
-    settings,
+    settings: { ...settings, testSeconds: policy?.testSeconds },
     reportRoot,
     exclude: policy?.exclude,
     snapshot: policy?.snapshot,
     baselineRoot: policy?.baselineRoot,
-    testSeconds: policy?.testSeconds,
   });
 }
 

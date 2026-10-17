@@ -10,7 +10,7 @@ import { run } from '../adapters/execution/python-process.mjs';
 import { isIntegrationTest } from './integration-tests.mjs';
 import { TEST_TIMES_REPORT } from './timing-command.mjs';
 
-export { timedTestCommand } from './timing-command.mjs';
+export { timedCoverageCommand } from './timing-command.mjs';
 
 export const SLOW_TESTS_REPORT = 'slow-tests.json';
 export const FACTS_SCRIPT = fileURLToPath(new URL('test_facts.py', import.meta.url));
@@ -94,7 +94,7 @@ function recordOf({ test, head, base, roots }) {
 }
 
 function slowTests(context, xml) {
-  const budget = slowTestBudget(context.testSeconds);
+  const budget = slowTestBudget(context.settings.testSeconds);
   const floor = Math.min(budget.unitTestSeconds, budget.integrationTestSeconds);
   const slowest = slowestRuns(
     testCasesOf(xml).filter((testCase) => testCase.seconds > floor),
