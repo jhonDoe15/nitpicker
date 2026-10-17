@@ -136,6 +136,7 @@ export function projectWideFindings(
         thresholds: policy.fileLimits,
         exclude: policy.exclude,
         exceptions: policy.exceptions,
+        baselineRoot: policy.baselineRoot,
       },
     }),
     ...couplingFindings(projectRoot, { projects, mergedRoot, manifest, kotlin }),

@@ -24,7 +24,7 @@ function attempt(action) {
   }
 }
 
-function valueOr(fallback, action) {
+export function valueOr(fallback, action) {
   const result = attempt(action);
   return result.ok ? result.value : fallback;
 }
@@ -68,6 +68,7 @@ function fileDocuments(absoluteDirectory, relativePath, name) {
   return parsed.map((document) => ({
     path: relativePath,
     main: MAIN_FILES.includes(name),
+    fileProfile: fileProfile?.toLowerCase(),
     ...documentProfiles(document.entries, fileProfile),
     entries: document.entries,
   }));

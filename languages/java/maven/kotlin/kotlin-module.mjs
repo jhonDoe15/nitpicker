@@ -6,6 +6,7 @@ import { runKotlinFormatter } from './tools/kotlin-format.mjs';
 import { runKotlinMetrics, runKotlinSyntax } from './tools/kotlin-programs.mjs';
 
 const JAVA_CLASSES = 'java-classes';
+const JAVA_TEST_CLASSES = 'java-test-classes';
 
 export function isKotlinModule(module) {
   return module.kotlin !== undefined;
@@ -37,8 +38,17 @@ export function analyzeKotlinModule({
     return { spotbugsModule: module, coverageModule: module, manifest: {} };
   }
   const javaClasses = path.join(reportDir, JAVA_CLASSES);
+  const javaTestClasses = path.join(reportDir, JAVA_TEST_CLASSES);
   copyJavaClasses(module.outputDirectory, javaClasses);
-  runDetekt({ module, reportDir, tools, classpaths, javaClassDirectory: javaClasses, options });
+  copyJavaClasses(module.testOutputDirectory, javaTestClasses);
+  runDetekt({
+    module,
+    reportDir,
+    tools,
+    classpaths,
+    javaClassDirectories: [javaClasses, javaTestClasses],
+    options,
+  });
   runKotlinFormatter({ module, reportDir, tools, options });
   runKotlinMetrics({ module, reportDir, tools, pinned });
   if (spring) {

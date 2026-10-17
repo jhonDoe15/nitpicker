@@ -3,7 +3,8 @@ import {
   isPlainObject,
   validateProjectRelativePath,
 } from '../../../../shared/config.mjs';
-import { JAVA_NATIVE_RULES, SHARED_EXCEPTION_RULES } from '../../../../shared/policy.mjs';
+import { JAVA_SIZE_RULES } from '../../../../shared/project-rules/size-rules.mjs';
+import { SHARED_EXCEPTION_RULES } from '../../../../shared/policy.mjs';
 import { SPRING_CONFIG_RULE_IDS } from '../spring/java-spring.mjs';
 import { ONE_WAY_RULE_IDS } from './rules/kotlin-rules.mjs';
 import { KOTLIN_SPRING_RULE_IDS } from './spring/spring-rules.mjs';
@@ -14,7 +15,8 @@ export const KOTLIN_EXCEPTION_RULES = [
   ...ONE_WAY_RULE_IDS,
   ...SPRING_CONFIG_RULE_IDS,
   ...KOTLIN_SPRING_RULE_IDS,
-  ...SHARED_EXCEPTION_RULES.filter((rule) => !JAVA_NATIVE_RULES.includes(rule)),
+  ...SHARED_EXCEPTION_RULES,
+  ...JAVA_SIZE_RULES,
   'test-runtime/slow-test',
 ];
 

@@ -92,6 +92,7 @@ function runStructure(module, reportDir) {
     args: [
       path.join(GRADLE_DIRECTORY, 'StructureMetrics.java'),
       path.join(reportDir, 'structure.json'),
+      path.join(reportDir, 'classes.json'),
       module.basedir,
       ...roots,
     ],
@@ -178,11 +179,20 @@ function runSourceTools({ module, reportDir, tools, classpaths, configs, pinned,
     auxClasspath: kotlin.auxClasspath,
   });
   runErrorProne({ module, reportDir, tools, classpaths });
-  runFormat({ module, reportDir, tools });
+  runFormat({ module, reportDir, tools, javaStyle: kotlin.javaStyle });
   runCheckstyle({ module, reportDir, tools, configs, pinned });
 }
 
-function analyzeModule({ module, classpaths, tools, pinned, configs, since, kotlinOptions }) {
+function analyzeModule({
+  module,
+  classpaths,
+  tools,
+  pinned,
+  configs,
+  since,
+  kotlinOptions,
+  javaStyle,
+}) {
   const reportDir = path.join(module.basedir, MAVEN_REPORT_DIRECTORY);
   const isArchunit = archunitMatcher(module.archunitIncludes);
   const spring = classpaths.mainCompile.some((entry) => SPRING_JAR.test(path.basename(entry)));
@@ -204,7 +214,7 @@ function analyzeModule({ module, classpaths, tools, pinned, configs, since, kotl
     classpaths,
     configs,
     pinned,
-    kotlin: { ...kotlin, spring },
+    kotlin: { ...kotlin, spring, javaStyle },
   });
   runStructure(module, reportDir);
   runJdeps(module, reportDir);
@@ -288,6 +298,7 @@ export function runMavenPreset(projectRoot, { maven, policy = {}, configs }) {
         configs,
         since,
         kotlinOptions: kotlin.options,
+        javaStyle: policy.javaStyle,
       });
     }
     return modules.map((module) => module.basedir);

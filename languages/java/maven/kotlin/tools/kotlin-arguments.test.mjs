@@ -12,7 +12,10 @@ import { programArguments } from './kotlin-programs.mjs';
 const roots = [];
 const module = {
   basedir: '/work/app',
-  kotlin: { sourceRoots: ['/work/app/src/main/java', '/work/app/src/main/kotlin'] },
+  kotlin: {
+    sourceRoots: ['/work/app/src/main/java', '/work/app/src/main/kotlin'],
+    testSourceRoots: ['/work/app/src/test/kotlin', '/work/app/src/main/kotlin'],
+  },
 };
 
 function tree(files) {
@@ -44,7 +47,7 @@ describe('detekt arguments', () => {
         home: '/jdk',
       }),
     ).toEqual([
-      ...['--input', '/work/app/src/main/java,/work/app/src/main/kotlin'],
+      ...['--input', '/work/app/src/main/java,/work/app/src/main/kotlin,/work/app/src/test/kotlin'],
       ...['--includes', '**/*.kt'],
       ...['--report', 'sarif:/work/app/target/nitpicker/detekt.sarif'],
       ...['--base-path', '/work/app'],
@@ -69,7 +72,7 @@ describe('detekt arguments', () => {
     expect(
       detektArguments({ module, report: 'r.sarif', options: {}, classpath: [], home: undefined }),
     ).toEqual([
-      ...['--input', '/work/app/src/main/java,/work/app/src/main/kotlin'],
+      ...['--input', '/work/app/src/main/java,/work/app/src/main/kotlin,/work/app/src/test/kotlin'],
       ...['--includes', '**/*.kt'],
       ...['--report', 'sarif:r.sarif'],
       ...['--base-path', '/work/app'],
@@ -79,23 +82,41 @@ describe('detekt arguments', () => {
     ]);
   });
 
-  it('resolves types against detekt’s own standard library, the Java classes and the other libraries', () => {
-    const root = tree(['java-classes/.keep', 'lib/guava.jar', 'lib/kotlin-stdlib-1.9.jar']);
+  it('resolves types against detekt’s own standard library, the Java classes and the other libraries of both source sets', () => {
+    const root = tree([
+      'java-classes/.keep',
+      'java-test-classes/.keep',
+      'lib/guava.jar',
+      'lib/junit.jar',
+      'lib/kotlin-stdlib-1.9.jar',
+      'classes/.keep',
+    ]);
+    const library = (name) => path.join(root, 'lib', name);
 
     expect(
       detektClasspath({
         detektStdlib: ['/tools/kotlin-stdlib-2.0.21.jar'],
-        javaClassDirectory: path.join(root, 'java-classes'),
-        mainCompile: [
-          path.join(root, 'lib/kotlin-stdlib-1.9.jar'),
-          path.join(root, 'lib/guava.jar'),
-          path.join(root, 'lib/missing.jar'),
+        javaClassDirectories: [
+          path.join(root, 'java-classes'),
+          path.join(root, 'java-test-classes'),
+          path.join(root, 'missing-classes'),
         ],
+        libraries: [
+          library('kotlin-stdlib-1.9.jar'),
+          library('guava.jar'),
+          library('missing.jar'),
+          path.join(root, 'classes'),
+          library('guava.jar'),
+          library('junit.jar'),
+        ],
+        ownOutputs: [path.join(root, 'classes')],
       }),
     ).toEqual([
       '/tools/kotlin-stdlib-2.0.21.jar',
       path.join(root, 'java-classes'),
-      path.join(root, 'lib/guava.jar'),
+      path.join(root, 'java-test-classes'),
+      library('guava.jar'),
+      library('junit.jar'),
     ]);
   });
 });
@@ -107,6 +128,7 @@ describe('formatter and metrics arguments', () => {
       '--reporter=sarif,output=/r/ktlint.sarif',
       'src/main/java/**/*.kt',
       'src/main/kotlin/**/*.kt',
+      'src/test/kotlin/**/*.kt',
     ]);
   });
 
