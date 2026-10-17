@@ -1,4 +1,5 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { acceptedDigest } from '../../../../core/command/test-support/accepted-digest.mjs';
 import { LAYERED_FILES, ORDER_TOTAL } from './test-support/python-preset-data.mjs';
 import {
   commitBranch,
@@ -10,6 +11,9 @@ import {
   repository,
   write,
 } from './test-support/python-e2e-support.mjs';
+
+const IMPORT_LINTER_OFF_CONFIG =
+  '{ "preset": "python", "disable": ["mutation"], "python": { "importLinter": false } }\n';
 
 describe.skipIf(!pythonE2eEnabled)(
   'Python duplicates, coupling and import contracts end to end',
@@ -41,8 +45,7 @@ describe.skipIf(!pythonE2eEnabled)(
       });
       commitBranch(project, 'contracts-off', {
         'src/shop/domain/pricing.py': `${LAYERED_FILES['src/shop/domain/pricing.py']}\n\ndef describe() -> str:\n    from shop.web import views\n\n    return views.show([1])\n`,
-        'nitpicker.config.json':
-          '{ "preset": "python", "disable": ["mutation"], "python": { "importLinter": false } }\n',
+        'nitpicker.config.json': IMPORT_LINTER_OFF_CONFIG,
       });
     });
     afterAll(removeRepositories);
@@ -101,7 +104,12 @@ describe.skipIf(!pythonE2eEnabled)(
       ]);
     });
     it('does not run the contracts when the config turns import-linter off', () => {
-      const result = gate(project, 'contracts-off');
+      const digest = acceptedDigest(['python.importLinter: not set -> false'], {
+        'nitpicker.config.json': IMPORT_LINTER_OFF_CONFIG,
+      });
+      const result = gate(project, 'contracts-off', {
+        environment: { CI: 'true', NITPICKER_ACCEPT_POLICY_CHANGE: digest },
+      });
 
       expect(newRules(result)).toEqual(['coupling stability-direction']);
       expect(result.json('summary.json').tools[0].version).not.toContain('import-linter');
