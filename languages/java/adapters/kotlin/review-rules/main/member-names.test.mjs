@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { file, klass, parameter, property, run, summary } from '../test-support/facts.mjs';
+import { file, klass, parameter, property, routeOf, run, summary } from '../test-support/facts.mjs';
 import { SINGULAR_PLURAL_RULE, singularPluralFindings } from './member-names.mjs';
 
 const member = (name, type, overrides = {}) =>
@@ -17,7 +17,9 @@ describe('singular and plural members in Kotlin', () => {
 
     expect(summary(findings)).toEqual([`${SINGULAR_PLURAL_RULE} Query.tags 7`]);
     expect(findings[0].tool).toBe('pmd');
-    expect(findings[0].message).toContain('add an exception for pmd/SingularAndPluralMember in nitpicker.config.json');
+    expect(routeOf(findings[0].message)).toBe(
+      'add an exception for pmd/SingularAndPluralMember in nitpicker.config.json.',
+    );
   });
 
   it.each([
@@ -41,7 +43,10 @@ describe('singular and plural members in Kotlin', () => {
     ['a varargs plural', [member('tag', 'String'), member('tags', 'String', { vararg: true })]],
     ['a plural that is not a collection', [member('tag', 'String'), member('tags', 'String')]],
     ['no singular', [member('names', 'List<String>'), member('tags', 'List<String>')]],
-    ['a parameter that is not a property', [parameter('tag', 'String'), member('tags', 'List<String>')]],
+    [
+      'a parameter that is not a property',
+      [parameter('tag', 'String'), member('tags', 'List<String>')],
+    ],
   ])('allows %s', (_name, parameters) => {
     expect(findingsFor([dataClass(parameters)])).toEqual([]);
   });

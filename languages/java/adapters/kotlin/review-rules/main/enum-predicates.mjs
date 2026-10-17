@@ -1,10 +1,9 @@
-import { readEnums } from '../../../review-rules/enum-predicates.mjs';
+import { ENUM_PREDICATE_RULE, readEnums } from '../../../review-rules/enum-predicates.mjs';
 import { exceptionSentence } from '../review-finding.mjs';
-
-export const ENUM_PREDICATE_RULE = 'ExhaustiveEnumPredicate';
 
 const MESSAGE = `These comparisons list only some entries of {type}, so an entry added later silently falls into the other case. Classify every entry: a \`when\` without \`else\` (adding an entry then fails to compile), or a Boolean each entry declares (PAID(true)). If a partial test is intended, ${exceptionSentence(ENUM_PREDICATE_RULE)}`;
 const MINIMUM_ENTRIES = 3;
+const ENUM_OFFSET = 2;
 const MINIMUM_ELEMENTS = 2;
 const QUALIFIED = /^(?:\w+\.)*([A-Z]\w*)\.(\w+)$/u;
 const BARE = /^\w+$/u;
@@ -30,6 +29,10 @@ function allEnums(files, projectRoot) {
   return enums;
 }
 
+function constantsKey(declared) {
+  return [...declared.constants].toSorted().join(',');
+}
+
 function declarationFor(enums, file, name) {
   const declarations = enums.get(name);
   if (declarations === undefined) {
@@ -43,8 +46,9 @@ function declarationFor(enums, file, name) {
       file.imports.some(({ all, path }) => all && path === packageName),
   );
   const [first] = visible.length > 0 ? visible : declarations;
-  const key = (declared) => [...declared.constants].toSorted().join(',');
-  return (visible.length > 0 ? visible : declarations).every((declared) => key(declared) === key(first))
+  return (visible.length > 0 ? visible : declarations).every(
+    (declared) => constantsKey(declared) === constantsKey(first),
+  )
     ? first
     : undefined;
 }
@@ -53,7 +57,7 @@ function importedConstant(text, file, enums) {
   const single = file.imports.find(({ path, all }) => !all && path.endsWith(`.${text}`));
   if (single !== undefined) {
     const parts = single.path.split('.');
-    return { type: parts.at(-2), constant: text };
+    return { type: parts.at(-ENUM_OFFSET), constant: text };
   }
   const owners = file.imports
     .filter(({ all }) => all)
@@ -62,13 +66,16 @@ function importedConstant(text, file, enums) {
   return owners.length === 1 ? { type: owners[0], constant: text } : undefined;
 }
 
-function constantOf(text, file, enums) {
+function referenceOf(text, file, enums) {
   const qualified = QUALIFIED.exec(text);
-  const found = qualified
-    ? { type: qualified[1], constant: qualified[2] }
-    : BARE.test(text)
-      ? importedConstant(text, file, enums)
-      : undefined;
+  if (qualified) {
+    return { type: qualified[1], constant: qualified[2] };
+  }
+  return BARE.test(text) ? importedConstant(text, file, enums) : undefined;
+}
+
+function constantOf(text, file, enums) {
+  const found = referenceOf(text, file, enums);
   const declared = found && declarationFor(enums, file, found.type);
   return declared?.constants.includes(found.constant) ? { ...found, declared } : undefined;
 }
@@ -79,7 +86,9 @@ function chainOperand(comparison, file, enums) {
   if (left && !right && comparison.rightStable) {
     return { ...left, subject: comparison.right };
   }
-  return right && !left && comparison.leftStable ? { ...right, subject: comparison.left } : undefined;
+  return right && !left && comparison.leftStable
+    ? { ...right, subject: comparison.left }
+    : undefined;
 }
 
 function partialType(operands) {
@@ -89,7 +98,8 @@ function partialType(operands) {
   const [first] = operands;
   const constants = new Set(operands.map(({ constant }) => constant));
   const consistent = operands.every(
-    ({ type, subject }) => type === first.type && (subject === undefined || subject === first.subject),
+    ({ type, subject }) =>
+      type === first.type && (subject === undefined || subject === first.subject),
   );
   return consistent &&
     constants.size === operands.length &&
@@ -113,6 +123,10 @@ function predicateType(predicate, file, enums) {
     : undefined;
 }
 
+export function enumMessage(type) {
+  return MESSAGE.replace('{type}', type);
+}
+
 export function enumPredicateFindings(files, { projectRoot, finding }) {
   const main = files.filter(({ test }) => !test);
   if (!main.some((file) => file.predicates.length > 0)) {
@@ -131,7 +145,7 @@ export function enumPredicateFindings(files, { projectRoot, finding }) {
               line: predicate.line,
               symbol: predicate.symbol,
               key: `${predicate.symbol}:${type}`,
-              message: MESSAGE.replace('{type}', type),
+              message: enumMessage(type),
             }),
           ];
     }),

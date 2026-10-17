@@ -16,7 +16,16 @@ const SPRING_STEREOTYPES = new Set([
   'SpringBootApplication',
 ]);
 const SKIPPED_NAMES = new Set(['main', 'valueOf', 'fromString', 'of', 'from', 'invoke', 'copy']);
-const SKIPPED_MODIFIERS = new Set(['override', 'operator', 'infix', 'inline', 'open', 'abstract', 'actual', 'expect']);
+const SKIPPED_MODIFIERS = new Set([
+  'override',
+  'operator',
+  'infix',
+  'inline',
+  'open',
+  'abstract',
+  'actual',
+  'expect',
+]);
 const COPY_PREFIX = /^(?:copyOf|unmodifiable|synchronized|checked)/u;
 const TYPE_QUALIFIER = /^[A-Z]\w*(?:\.[A-Z]\w*)*$/u;
 const STATIC_OWNERS = new Set(['object', 'companion']);
@@ -34,18 +43,21 @@ function isStaticLike(fn, owners) {
     return true;
   }
   const owner = owners.get(fn.owner);
-  return owner !== undefined && STATIC_OWNERS.has(owner.kind) && !annotationNamed(owner.annotations, SPRING_STEREOTYPES);
+  return (
+    owner !== undefined &&
+    STATIC_OWNERS.has(owner.kind) &&
+    !annotationNamed(owner.annotations, SPRING_STEREOTYPES)
+  );
 }
 
 function candidate(fn, owners) {
   return (
     !fn.local &&
-    fn.name !== null &&
     fn.annotations.length === 0 &&
     !fn.typeParameters &&
-    fn.receiver === null &&
+    fn.receiver === undefined &&
     fn.parameters.length > 0 &&
-    fn.forward !== null &&
+    fn.forward !== undefined &&
     !SKIPPED_NAMES.has(fn.name) &&
     !fn.modifiers.some((modifier) => SKIPPED_MODIFIERS.has(modifier)) &&
     fn.parameters.every(({ vararg, default: hasDefault }) => !vararg && !hasDefault) &&
@@ -61,10 +73,14 @@ function passesInOrder(fn) {
     forward.arguments.length === fn.parameters.length &&
     forward.arguments.every(
       (argument, index) =>
-        !argument.spread && !argument.lambda && argument.text === fn.parameters[index].name &&
-        (argument.name === null || argument.name === fn.parameters[index].name),
+        !argument.spread &&
+        !argument.lambda &&
+        argument.text === fn.parameters[index].name &&
+        (argument.name === undefined || argument.name === fn.parameters[index].name),
     ) &&
-    (forward.qualifier === null ? forward.name !== fn.name : TYPE_QUALIFIER.test(forward.qualifier))
+    (forward.qualifier === undefined
+      ? forward.name !== fn.name
+      : TYPE_QUALIFIER.test(forward.qualifier))
   );
 }
 
@@ -72,7 +88,9 @@ function targetsOf(files) {
   const targets = new Map();
   for (const file of files) {
     const owners = ownerKinds(file);
-    for (const fn of file.functions.filter((entry) => !entry.local && isStaticLike(entry, owners))) {
+    for (const fn of file.functions.filter(
+      (entry) => !entry.local && isStaticLike(entry, owners),
+    )) {
       targets.set(fn.name, [...(targets.get(fn.name) ?? []), fn]);
     }
   }
@@ -82,20 +100,23 @@ function targetsOf(files) {
 function sameSignature(fn, target) {
   return (
     target !== fn &&
-    target.receiver === null &&
+    target.receiver === undefined &&
     target.parameters.length === fn.parameters.length &&
     target.parameters.every(
       (parameter, index) => normalized(parameter.type) === normalized(fn.parameters[index].type),
     ) &&
-    (fn.returnType === null || target.returnType === null || normalized(fn.returnType) === normalized(target.returnType))
+    (fn.returnType === undefined ||
+      target.returnType === undefined ||
+      normalized(fn.returnType) === normalized(target.returnType))
   );
 }
 
 function forwardsTo(fn, targets) {
-  const qualifier = fn.forward.qualifier?.split('.').at(-1) ?? null;
+  const qualifier = fn.forward.qualifier?.split('.').at(-1);
   return (targets.get(fn.forward.name) ?? []).some(
     (target) =>
-      sameSignature(fn, target) && (qualifier === null || target.owner.split('.').at(-1) === qualifier),
+      sameSignature(fn, target) &&
+      (qualifier === undefined || target.owner.split('.').at(-1) === qualifier),
   );
 }
 

@@ -2,8 +2,9 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterAll, describe, expect, it } from 'vitest';
-import { file, klass, run, summary } from '../test-support/facts.mjs';
-import { ENUM_PREDICATE_RULE, enumPredicateFindings } from './enum-predicates.mjs';
+import { file, klass, routeOf, run, summary } from '../test-support/facts.mjs';
+import { ENUM_PREDICATE_RULE } from '../../../review-rules/enum-predicates.mjs';
+import { enumMessage, enumPredicateFindings } from './enum-predicates.mjs';
 
 const status = klass('Status', { kind: 'enum', entries: ['NEW', 'PAID', 'SHIPPED', 'CANCELLED'] });
 const comparison = (left, right, stability = {}) => ({
@@ -30,7 +31,6 @@ const membership = (elements, overrides = {}) => ({
   subject: 'status',
   subjectStable: true,
   elements,
-  factory: null,
   ...overrides,
 });
 
@@ -60,9 +60,10 @@ describe('exhaustive enum predicate in Kotlin', () => {
 
     expect(summary(findings)).toEqual([`${ENUM_PREDICATE_RULE} isSettled 4`]);
     expect(findings[0].tool).toBe('pmd');
-    expect(findings[0].message).toContain('some entries of Status');
-    expect(findings[0].message).toContain('a `when` without `else`');
-    expect(findings[0].message).toContain('add an exception for pmd/ExhaustiveEnumPredicate in nitpicker.config.json');
+    expect(findings[0].message).toBe(enumMessage('Status'));
+    expect(routeOf(findings[0].message)).toBe(
+      'add an exception for pmd/ExhaustiveEnumPredicate in nitpicker.config.json.',
+    );
   });
 
   it('reports a membership test in setOf and a negated chain with !=', () => {
@@ -123,20 +124,24 @@ describe('exhaustive enum predicate in Kotlin', () => {
       file({ file: 'src/main/kotlin/demo/Use.kt', package: 'demo', predicates: [SETTLED] }),
     ];
 
-    expect(findingsFor([chain([comparison('mode', 'RoundingMode.UP'), comparison('mode', 'RoundingMode.DOWN')])])).toEqual([]);
+    expect(
+      findingsFor([
+        chain([comparison('mode', 'RoundingMode.UP'), comparison('mode', 'RoundingMode.DOWN')]),
+      ]),
+    ).toEqual([]);
     expect(run(enumPredicateFindings, twice)).toEqual([]);
   });
 
   it('resolves an entry imported from the enum, with or without a star import', () => {
     const single = file({
       imports: [
-        { path: 'demo.Status.PAID', alias: null, all: false },
-        { path: 'demo.Status.SHIPPED', alias: null, all: false },
+        { path: 'demo.Status.PAID', all: false },
+        { path: 'demo.Status.SHIPPED', all: false },
       ],
       predicates: [chain([comparison('status', 'PAID'), comparison('status', 'SHIPPED')])],
     });
     const star = file({
-      imports: [{ path: 'demo.Status', alias: null, all: true }],
+      imports: [{ path: 'demo.Status', all: true }],
       predicates: [chain([comparison('status', 'PAID'), comparison('status', 'SHIPPED')])],
     });
     const statusFile = file({ file: 'src/main/kotlin/demo/Status.kt', classes: [status] });

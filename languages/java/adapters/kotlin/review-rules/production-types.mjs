@@ -1,5 +1,5 @@
 import { existsSync } from 'node:fs';
-import path from 'node:path';
+import { pathInside } from '../../review-rules/java-sources.mjs';
 
 function qualifiedNames(files) {
   return new Set(
@@ -20,7 +20,7 @@ function javaDeclares(projectRoot, javaRoots) {
       const relative = parts.slice(0, parts.length - index).join('/');
       return (
         relative !== '' &&
-        javaRoots.some((root) => existsSync(path.join(projectRoot, root, `${relative}.java`)))
+        javaRoots.some((root) => existsSync(pathInside(projectRoot, `${root}/${relative}.java`)))
       );
     });
   };
@@ -34,7 +34,9 @@ function candidatesOf(name, file) {
   if (imported !== undefined) {
     return [[imported.path, ...rest].join('.')];
   }
-  const starred = file.imports.filter(({ all }) => all).map(({ path: target }) => `${target}.${name}`);
+  const starred = file.imports
+    .filter(({ all }) => all)
+    .map(({ path: target }) => `${target}.${name}`);
   return [[file.package, name].filter(Boolean).join('.'), name, ...starred];
 }
 

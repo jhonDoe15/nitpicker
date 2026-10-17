@@ -4,6 +4,7 @@ import {
   klass,
   parameter,
   property,
+  routeOf,
   run,
   summary,
   testFile,
@@ -11,11 +12,19 @@ import {
 } from '../test-support/facts.mjs';
 import { SPRING_UNUSED_CONTEXT_RULE, springContextFindings } from './spring-context.mjs';
 
-const IMPORT = { path: 'org.springframework.boot.test.context.SpringBootTest', alias: null, all: false };
+const IMPORT = {
+  path: 'org.springframework.boot.test.context.SpringBootTest',
+  all: false,
+};
 const bootTest = (text = '@SpringBootTest') => ({ name: 'SpringBootTest', text });
 
 function contextTest({ annotations = [bootTest()], ...rest } = {}) {
-  const { properties = [], functions = [testMethod()], classOverrides = {}, imports = [IMPORT] } = rest;
+  const {
+    properties = [],
+    functions = [testMethod()],
+    classOverrides = {},
+    imports = [IMPORT],
+  } = rest;
   return testFile({
     imports,
     classes: [klass('SampleTest', { annotations, ...classOverrides })],
@@ -32,16 +41,33 @@ describe('unused Spring test context in Kotlin', () => {
 
     expect(summary(findings)).toEqual([`${SPRING_UNUSED_CONTEXT_RULE} SampleTest 1`]);
     expect(findings[0].tool).toBe('pmd');
-    expect(findings[0].message).toContain('add an exception for pmd/SpringUnusedContext in nitpicker.config.json');
+    expect(routeOf(findings[0].message)).toBe(
+      'add an exception for pmd/SpringUnusedContext in nitpicker.config.json.',
+    );
   });
 
   it.each([
-    ['an @Autowired property', { properties: [property('service', 'SampleTest', { annotations: ['Autowired'] })] }],
-    ['a lateinit property', { properties: [property('service', 'SampleTest', { lateinit: true })] }],
+    [
+      'an @Autowired property',
+      { properties: [property('service', 'SampleTest', { annotations: ['Autowired'] })] },
+    ],
+    [
+      'a lateinit property',
+      { properties: [property('service', 'SampleTest', { lateinit: true })] },
+    ],
     ['a MockMvc property', { properties: [property('mvc', 'SampleTest', { type: 'MockMvc' })] }],
-    ['a WebTestClient property', { properties: [property('client', 'SampleTest', { type: 'WebTestClient?' })] }],
-    ['a @MockBean property', { properties: [property('repo', 'SampleTest', { annotations: ['MockBean'] })] }],
-    ['a @LocalServerPort property', { properties: [property('port', 'SampleTest', { annotations: ['LocalServerPort'] })] }],
+    [
+      'a WebTestClient property',
+      { properties: [property('client', 'SampleTest', { type: 'WebTestClient?' })] },
+    ],
+    [
+      'a @MockBean property',
+      { properties: [property('repo', 'SampleTest', { annotations: ['MockBean'] })] },
+    ],
+    [
+      'a @LocalServerPort property',
+      { properties: [property('port', 'SampleTest', { annotations: ['LocalServerPort'] })] },
+    ],
     [
       'a constructor parameter',
       { classOverrides: { primaryParameters: [parameter('service', 'Service')] } },
@@ -67,7 +93,10 @@ describe('unused Spring test context in Kotlin', () => {
         ],
       },
     ],
-    ['a class-level @MockBean', { annotations: [bootTest(), { name: 'MockBean', text: '@MockBean' }] }],
+    [
+      'a class-level @MockBean',
+      { annotations: [bootTest(), { name: 'MockBean', text: '@MockBean' }] },
+    ],
     [
       'a web environment with a port',
       { annotations: [bootTest('@SpringBootTest(webEnvironment = WebEnvironment.RANDOM_PORT)')] },
@@ -77,7 +106,7 @@ describe('unused Spring test context in Kotlin', () => {
     expect(findingsOf(contextTest(options))).toEqual([]);
   });
 
-  it('allows a context test without a test method body, and an annotation that is not Spring Boot\'s', () => {
+  it("allows a context test without a test method body, and an annotation that is not Spring Boot's", () => {
     const emptyBody = contextTest({
       functions: [fn('waits', { owner: 'SampleTest', annotations: ['Test'], emptyBody: true })],
     });
@@ -89,7 +118,10 @@ describe('unused Spring test context in Kotlin', () => {
   it('counts the injection of a nested class towards the outer class', () => {
     const file = testFile({
       imports: [IMPORT],
-      classes: [klass('SampleTest', { annotations: [bootTest()] }), klass('Inner', { qualified: 'SampleTest.Inner' })],
+      classes: [
+        klass('SampleTest', { annotations: [bootTest()] }),
+        klass('Inner', { qualified: 'SampleTest.Inner' }),
+      ],
       functions: [testMethod(), fn('check', { owner: 'SampleTest.Inner', annotations: ['Test'] })],
       properties: [property('service', 'SampleTest.Inner', { annotations: ['Autowired'] })],
     });

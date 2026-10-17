@@ -5,10 +5,14 @@ export const SINGULAR_PLURAL_RULE = 'SingularAndPluralMember';
 
 const MESSAGE = `A member and its plural (tag and tags) are two ways to pass the same data. Keep the plural and pass one item as a one-element list. If both are intended, ${exceptionSentence(SINGULAR_PLURAL_RULE)}`;
 const CONFIGURATION_PROPERTIES = new Set(['ConfigurationProperties']);
-const COLLECTION = /^(?:kotlin\.collections\.|java\.util\.)?(?:Mutable)?(?:List|Set|Collection|Iterable|SortedSet)<(?:out)?(.+)>$/u;
+const COLLECTION =
+  /^(?:kotlin\.collections\.|java\.util\.)?(?:Mutable)?(?:List|Set|Collection|Iterable|SortedSet)<(?:out)?(.+)>$/u;
 const ARRAY = /^Array<(?:out)?(.+)>$/u;
 const PRIMITIVE_ARRAYS = new Map(
-  ['Int', 'Long', 'Short', 'Byte', 'Char', 'Boolean', 'Float', 'Double'].map((name) => [`${name}Array`, name]),
+  ['Int', 'Long', 'Short', 'Byte', 'Char', 'Boolean', 'Float', 'Double'].map((name) => [
+    `${name}Array`,
+    name,
+  ]),
 );
 const NULLABLE = /\?$/u;
 
@@ -31,9 +35,7 @@ function pluralsOf(name) {
 }
 
 function membersOf(file, klass, configuration) {
-  const parameters = klass.primaryParameters
-    .filter(({ property }) => property !== null)
-    ;
+  const parameters = klass.primaryParameters.filter(({ property }) => property !== undefined);
   const properties = configuration
     ? file.properties
         .filter(({ owner, delegated }) => owner === klass.qualified && !delegated)

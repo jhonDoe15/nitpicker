@@ -2,7 +2,12 @@ import { writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import { parseAnalyzerReport } from '../../../../core/diff/comparison/finding-schema.mjs';
-import { file as reviewFile, klass as reviewClass, wait as reviewWait } from '../kotlin/review-rules/test-support/facts.mjs';
+import {
+  file as reviewFile,
+  klass as reviewClass,
+  routeOf,
+  wait as reviewWait,
+} from '../kotlin/review-rules/test-support/facts.mjs';
 import {
   readJavaFindings,
   rootReports,
@@ -104,7 +109,9 @@ describe('readJavaFindings with the kotlin preset: metrics and errors', () => {
     expect(review.map(({ rule, path: file }) => [rule, file])).toEqual([
       ['FixedSleepInTest', testFile],
     ]);
-    expect(review[0].message).toContain('pmd/FixedSleepInTest');
+    expect(routeOf(review[0].message)).toBe(
+      'add an exception for pmd/FixedSleepInTest in nitpicker.config.json.',
+    );
     expect(() => parseAnalyzerReport({ findings }, 'kotlin')).not.toThrow();
   });
   it('fails when the project does not apply the Kotlin plugin', () => {

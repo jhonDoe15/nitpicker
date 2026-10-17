@@ -11,7 +11,10 @@ export function readKotlinFacts(reportRoot) {
 }
 
 export function simpleTypeName(type) {
-  const bare = (type ?? '').replaceAll(/\s+/gu, '').replace(NULLABLE, '').replace(GENERIC_ARGUMENTS, '');
+  const bare = (type ?? '')
+    .replaceAll(/\s+/gu, '')
+    .replace(NULLABLE, '')
+    .replace(GENERIC_ARGUMENTS, '');
   return bare.split('.').at(-1);
 }
 
@@ -25,8 +28,4 @@ export function annotationNamed(annotations, names) {
 
 export function importsFrom(file, prefix) {
   return file.imports.some(({ path: imported }) => imported.startsWith(prefix));
-}
-
-export function factsOf(facts, { tests }) {
-  return facts.files.filter((file) => file.test === tests);
 }
