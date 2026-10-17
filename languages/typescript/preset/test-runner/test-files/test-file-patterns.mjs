@@ -124,3 +124,18 @@ export function sourceRootGlobs(sourceRoots, patterns) {
     sourceRoots.some((root) => glob.startsWith(`${root}/`)),
   );
 }
+
+export function withRunnerTestPaths(layout, projectRoot) {
+  if (layout.testFiles.includeRegexes.length === 0) {
+    return layout;
+  }
+  const paths = layout
+    .projectCodeFiles(projectRoot)
+    .filter((file) => layout.isRunnableTestFile(file))
+    .map(escapedGlob);
+  return {
+    ...layout,
+    testGlobs: [...layout.testGlobs, ...paths],
+    runnableTestGlobs: [...layout.runnableTestGlobs, ...paths],
+  };
+}

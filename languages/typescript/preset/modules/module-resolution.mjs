@@ -3,12 +3,11 @@ import { builtinModules } from 'node:module';
 import path from 'node:path';
 import ts from 'typescript';
 import { chainOf, parentDirectory } from '../../../../shared/traversal.mjs';
-import { readJsonc, referencedConfigFile } from './tsconfig-files.mjs';
+import { parsedTsconfig, readJsonc, referencedTsconfigs } from './tsconfig-files.mjs';
 
 const CONFIG_NAMES = ['tsconfig.json', 'jsconfig.json'];
 const PATH_KEYS = ['paths', 'pathsBasePath', 'baseUrl'];
 const MAPPING_KEYS = ['paths', 'baseUrl'];
-const PARSE_HOST = { ...ts.sys, readDirectory: () => [] };
 const PACKAGE_SPECIFIER = /^(?:@[\w.-]+\/)?[\w.-]+(?:\/|$)/u;
 const BUILTINS = new Set(builtinModules);
 const IGNORED = Object.freeze({ kind: 'ignored' });
@@ -28,16 +27,6 @@ function nearestConfig(directory) {
     .find((candidate) => existsSync(candidate));
 }
 
-function parsedConfig(configFile) {
-  return ts.parseJsonConfigFileContent(
-    readJsonc(configFile) ?? {},
-    PARSE_HOST,
-    path.dirname(configFile),
-    undefined,
-    configFile,
-  );
-}
-
 function pathMapping(options) {
   return MAPPING_KEYS.some((key) => options[key] !== undefined)
     ? Object.fromEntries(
@@ -47,15 +36,13 @@ function pathMapping(options) {
 }
 
 function referencedMapping(configFile, rawConfig) {
-  return (rawConfig?.references ?? [])
-    .map((reference) => referencedConfigFile(path.dirname(configFile), reference))
-    .filter((file) => existsSync(file))
-    .map((file) => pathMapping(parsedConfig(file).options))
+  return referencedTsconfigs(configFile, rawConfig)
+    .map((file) => pathMapping(parsedTsconfig(file).options))
     .find(Boolean);
 }
 
 function configuredOptions(configFile) {
-  const parsed = parsedConfig(configFile);
+  const parsed = parsedTsconfig(configFile);
   const own = pathMapping(parsed.options);
   const mapping = own ?? referencedMapping(configFile, readJsonc(configFile));
   return { ...parsed.options, ...mapping };
@@ -166,11 +153,12 @@ function followedFilesOf(file, specifiersOf, aliases) {
     .filter((target) => target !== undefined);
 }
 
-export function* reachableModules(entryFile, specifiersOf, { maxDepth, maxFiles, aliases = [] }) {
-  const visited = new Set([entryFile]);
-  const queue = [{ file: entryFile, depth: 0 }];
-  for (const { file, depth } of queue) {
-    if (depth > 0) yield { file, depth };
+export function* reachableModules(entries, specifiersOf, { maxDepth, maxFiles, aliases = [] }) {
+  const entryFiles = [entries].flat();
+  const visited = new Set(entryFiles);
+  const queue = entryFiles.map((file) => ({ file, depth: 0 }));
+  for (const { file, depth, from } of queue) {
+    if (depth > 0) yield { file, depth, from };
     const followed = new Set(followedFilesOf(file, specifiersOf, aliases));
     const fresh = [...followed].filter((candidate) => !visited.has(candidate));
     const room = depth < maxDepth ? Math.max(0, maxFiles - visited.size) : 0;
@@ -180,7 +168,7 @@ export function* reachableModules(entryFile, specifiersOf, { maxDepth, maxFiles,
     }
     for (const target of fresh) {
       visited.add(target);
-      queue.push({ file: target, depth: depth + 1 });
+      queue.push({ file: target, depth: depth + 1, from: file });
     }
   }
 }

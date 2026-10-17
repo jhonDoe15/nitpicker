@@ -34,7 +34,9 @@ Before you change code other modules use, fix a bug, or add a UI state, read
      wait for that run; never kill it.
 4. Never suppress: no `eslint-disable`, `@ts-ignore`, coverage or mutation ignore comments
    (`istanbul`/`c8`/`v8 ignore`, `Stryker disable`), config `exclude`/`disable`, legacy entries,
-   or weakened tests. If a finding seems wrong, stop and ask.
+   generator markers (`@generated`, `DO NOT EDIT`) in files you wrote, or weakened tests. If a finding seems wrong, stop and ask. Never pass `--accept-policy-change` or set
+   `NITPICKER_ACCEPT_POLICY_CHANGE`: a `nitpicker-config/policy-loosened` finding is for a person to
+   accept.
 
 ## Layout
 
@@ -56,6 +58,7 @@ Before you change code other modules use, fix a bug, or add a UI state, read
 - `src/main/composition-root.ts` only passes things in, through named functions. A new feature is
   a new directory, never a new `if`, `?:` or `??` in a shared entry point: lookups and their
   missing-value checks go in the feature's `adapters/`.
+- New code goes under the source roots (`layout.sourceRoots`); the gate reports anything outside.
 - Follow neighbouring signatures (parameter order, naming) and reuse helpers that exist.
 
 ## Write it this way
@@ -176,7 +179,7 @@ Before you change code other modules use, fix a bug, or add a UI state, read
   registrar in a test that doesn't use the DOM. Production code of a project tested in a DOM may use
   `document` and `window`; write `window.name` (not a bare `name`) for the confusing globals.
 - Test roots are `test/`, `tests/`, `__tests__/` and `e2e/` at the repo root. A Playwright or Cypress
-  spec in `e2e/` imports no production code and is not mutated; a Jest `__tests__/` goes in `exclude`.
+  spec in `e2e/` imports no production code and is not mutated.
 - A surviving mutant no input can kill means the code is redundant: delete or restructure it.
   Don't pin call order or messages just to kill it. If an input can kill it, add that test; never
   delete a schema rule to silence it.
