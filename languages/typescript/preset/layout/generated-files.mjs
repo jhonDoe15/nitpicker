@@ -1,7 +1,10 @@
 import { spawnSync } from 'node:child_process';
 import { existsSync, readFileSync } from 'node:fs';
 import { pathInside } from '../../../../shared/filesystem.mjs';
-import { hasGeneratorMarker } from '../../../../shared/conventions/generator-marker.mjs';
+import {
+  fileHasGeneratorHeader,
+  hasGeneratorMarker,
+} from '../../../../shared/conventions/generator-marker.mjs';
 import { codeExtensionNames, mayBeGenerated } from '../layout.mjs';
 
 const MAX_LISTING_BYTES = 64 * 1024 * 1024;
@@ -23,12 +26,11 @@ function projectFiles(projectRoot) {
 export function markedGeneratedFiles(projectRoot) {
   return projectFiles(projectRoot).filter((file) => {
     const absolute = pathInside(projectRoot, file);
-    return (
-      CODE_FILE.test(file) &&
-      mayBeGenerated(file) &&
-      absolute !== undefined &&
-      existsSync(absolute) &&
-      hasGeneratorMarker(readFileSync(absolute, 'utf8'))
-    );
+    if (!CODE_FILE.test(file) || absolute === undefined || !existsSync(absolute)) {
+      return false;
+    }
+    return mayBeGenerated(file)
+      ? hasGeneratorMarker(readFileSync(absolute, 'utf8')) || fileHasGeneratorHeader(absolute)
+      : fileHasGeneratorHeader(absolute);
   });
 }
