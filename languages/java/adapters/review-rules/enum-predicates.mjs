@@ -49,7 +49,7 @@ function enumBody(text, from) {
   return open < 0 || text.slice(from, open).includes(';') ? undefined : text.slice(open + 1);
 }
 
-function readEnums(projectRoot) {
+export function readEnums(projectRoot) {
   const enums = new Map();
   for (const file of javaFilesUnder(projectRoot)) {
     const text = readJavaSource(file);

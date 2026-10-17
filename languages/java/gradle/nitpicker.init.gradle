@@ -748,10 +748,40 @@ allprojects {
                 }
                 // --- end kotlin structure ---
 
+                // --- kotlin review facts: declarations, calls and test waits of the main and test sources ---
+                // languages/java/gradle/KotlinFacts.java parses both source sets and writes kotlin-facts.json,
+                // which the Nitpicker side turns into the review rules (docs/kotlin-preset.md).
+                tasks.register('nitpickerKotlinFacts') {
+                    group = 'nitpicker'
+                    dependsOn tasks.named('classes')
+                    def factsSource = new File(initScriptDir, 'KotlinFacts.java')
+                    doLast {
+                        reportDir.get().asFile.mkdirs()
+                        def output = reportDir.get().file('kotlin-facts.json').asFile
+                        def roots = kotlinSourceDirs().collect { relative(it) } +
+                            kotlinSourceDirsOf('test').collect { 'test:' + relative(it) }
+                        if (kotlinLintedFiles().isEmpty()) {
+                            output.text = '{"files":[]}'
+                            return
+                        }
+                        def java = new File(System.getProperty('java.home'), 'bin/java').absolutePath
+                        def process = new ProcessBuilder([java, '-Djava.awt.headless=true',
+                                "-Dnitpicker.kotlinCompiler=${pinned.kotlinCompiler}".toString(), '-cp',
+                                configurations.nitpickerKotlinCompiler.asPath, factsSource.absolutePath,
+                                output.absolutePath, analysisRoot.absolutePath] + roots)
+                            .directory(projectDir).redirectErrorStream(true).start()
+                        def log = process.inputStream.getText('UTF-8')
+                        if (process.waitFor() != 0) {
+                            throw new GradleException("KotlinFacts failed: ${log.trim()}")
+                        }
+                    }
+                }
+                // --- end kotlin review facts ---
+
                 // Reports a skipped tool would have written, so the Nitpicker side reads the same files for
                 // every module; and the Kotlin entries of the manifest. The Java source roots stay Java-only.
                 tasks.named('nitpickerJava') {
-                    dependsOn 'nitpickerDetekt', 'nitpickerKtlint', 'nitpickerKtfmt', 'nitpickerKotlinMetrics'
+                    dependsOn 'nitpickerDetekt', 'nitpickerKtlint', 'nitpickerKtfmt', 'nitpickerKotlinMetrics', 'nitpickerKotlinFacts'
                     doLast {
                         def directory = reportDir.get().asFile
                         def emptySarif = '{"version":"2.1.0","runs":[]}'
