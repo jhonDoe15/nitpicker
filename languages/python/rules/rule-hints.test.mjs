@@ -158,3 +158,54 @@ describe('hints', () => {
     expect(describeRuleFinding('frozen-dataclass', 'Order')).toBe('Dataclass Order is not frozen');
   });
 });
+
+describe('hints follow the libraries of the project', () => {
+  const advice = (rule, libraries, tool = 'ruff', subject) =>
+    withHint({ ...sample({ tool, rule }), subject }, libraries).message;
+
+  it.each([
+    ['structlog', 'log.info("items_loaded", count=count)'],
+    ['loguru', 'logger.info("Loaded {} items", count)'],
+    ['logging', 'logger.info("Loaded %s items", count)'],
+  ])('name the %s form for a formatted log message', (logging, form) => {
+    expect(advice('G004', { logging })).toContain(form);
+  });
+
+  it.each([
+    ['structlog', 'structlog.get_logger()'],
+    ['loguru', 'from loguru import logger'],
+  ])('send a print to %s', (logging, form) => {
+    expect(advice('T201', { logging })).toContain(form);
+  });
+
+  it.each([
+    ['msgspec', 'msgspec.json.decode(raw, type=Model)'],
+    ['cattrs', 'cattrs.structure(data, Model)'],
+    ['marshmallow', 'Schema().load(data)'],
+    ['pydantic', 'Model.model_validate(data)'],
+  ])('send a hand-written guard to %s', (validator, form) => {
+    expect(advice('handwritten-boundary-guard', { validator }, 'python-rules')).toContain(form);
+  });
+
+  it('write the pytest decorators and parametrize calls the way the project does', () => {
+    const pytestStyle = {
+      'fixture-parentheses': true,
+      'parametrize-names-type': 'csv',
+      'parametrize-values-type': 'tuple',
+      'parametrize-values-row-type': 'list',
+    };
+
+    expect(advice('PT001', { pytestStyle })).toContain('`@pytest.fixture()`');
+    expect(advice('PT006', { pytestStyle })).toContain('comma-separated string');
+    expect(advice('PT007', { pytestStyle })).toContain('tuple of lists: `([1, 2], [3, 4])`');
+    expect(advice('PT007', {})).toContain('list of tuples: `[(1, 2), (3, 4)]`');
+  });
+
+  it('word a skipped test by the mark that skips it', () => {
+    const skip = (subject) => advice('skipped-test-without-reason', {}, 'python-rules', subject);
+
+    expect(skip('pytest.mark.xfail')).toContain('raises=ZeroDivisionError');
+    expect(skip('unittest.skip')).toContain('@unittest.skip("needs the staging database")');
+    expect(skip('return in test_a')).toContain('@pytest.mark.skipif');
+  });
+});
