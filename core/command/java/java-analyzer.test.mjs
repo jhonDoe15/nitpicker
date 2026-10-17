@@ -97,6 +97,7 @@ const PINNED_TOOLS = [
   'pmd',
   'spotbugs',
   'googleJavaFormat',
+  'palantirJavaFormat',
   'jacoco',
   'checkstyle',
   'lizard',
