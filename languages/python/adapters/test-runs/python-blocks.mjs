@@ -7,6 +7,7 @@ const QUOTES = new Set(['"', "'", '"""', "'''"]);
 const DEPTH = { '(': 1, '[': 1, '{': 1, ')': -1, ']': -1, '}': -1 };
 const COMMENT = '#';
 const CONTINUATION = '\\';
+const NO_QUOTE = '';
 
 function indentOf(line) {
   return /^\s*/u.exec(line)[0].length;
@@ -22,7 +23,7 @@ function inString(token, state) {
     !token.startsWith(CONTINUATION) &&
     token.startsWith(state.quote[0]) &&
     (state.quote.length === 1 || token === state.quote);
-  state.quote = closes ? undefined : state.quote;
+  state.quote = closes ? NO_QUOTE : state.quote;
 }
 
 function inCode(token, state, atEnd) {
@@ -37,7 +38,7 @@ function inCode(token, state, atEnd) {
 function scanLine(line, state) {
   state.continued = false;
   for (const { 0: token, index } of line.matchAll(TOKEN)) {
-    if (state.quote !== undefined) {
+    if (state.quote !== NO_QUOTE) {
       inString(token, state);
     } else if (token === COMMENT) {
       break;
@@ -45,14 +46,14 @@ function scanLine(line, state) {
       inCode(token, state, index + token.length === line.length);
     }
   }
-  state.quote = state.quote?.length === 1 ? undefined : state.quote;
+  state.quote = state.quote.length === 1 ? NO_QUOTE : state.quote;
 }
 
 function logicalLines(lines) {
-  const state = { depth: 0, quote: undefined, continued: false };
+  const state = { depth: 0, quote: NO_QUOTE, continued: false };
   const logical = [];
   for (const [index, line] of lines.entries()) {
-    if (state.depth > 0 || state.quote !== undefined || state.continued) {
+    if (state.depth > 0 || state.quote !== NO_QUOTE || state.continued) {
       logical.at(-1).last = index;
     } else {
       logical.push({ first: index, last: index, indent: indentOf(line), blank: isBlank(line) });
