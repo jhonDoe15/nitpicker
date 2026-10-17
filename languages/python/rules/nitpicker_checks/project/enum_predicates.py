@@ -209,7 +209,7 @@ def returns_type_guard(fn):
 def enum_predicate_findings(index):
     checker = EnumPredicates(index)
     found = []
-    for path, tree in index.trees.items():
+    for path, tree in index.production_trees():
         found.extend(checker.findings_in({"path": path, "annotations": {}}, slot_values(tree), ""))
         for node, scope in scoped_definitions(tree):
             if isinstance(node, FUNCTION_TYPES) and not returns_type_guard(node):
