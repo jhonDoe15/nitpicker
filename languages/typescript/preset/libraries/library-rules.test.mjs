@@ -22,18 +22,16 @@ function guardRule(...validation) {
 }
 
 const PREDICATE = 'function isUser(value: unknown): value is User { return true; }';
-const RULE_EXCEPTION =
-  'add an exception for nitpicker/no-handwritten-boundary-guard in nitpicker.config.json.';
 const UNION_NOTE =
   'A predicate over a union (`(result): result is Ok => result.kind === "ok"`) is fine.';
 const predicateMessage = (how) =>
-  `Do not hand-write a type guard for unknown input: parse it once at the boundary with ${how}. ${UNION_NOTE} If the guard is genuinely needed, ${RULE_EXCEPTION}`;
+  `Do not hand-write a type guard for unknown input: parse it once at the boundary with ${how}. ${UNION_NOTE} An exception fits only when the guard is genuinely needed.`;
 const ZOD_PREDICATE_MESSAGE = predicateMessage('a zod schema (schema.parse or schema.safeParse)');
 const unparsed = (call) => ({
-  message: `Pass \`JSON.parse(text)\` straight into \`${call}(...)\` inside the same \`try\`. If the text is trusted and already typed, ${RULE_EXCEPTION}`,
+  message: `Pass \`JSON.parse(text)\` straight into \`${call}(...)\` inside the same \`try\`. An exception fits only when the text is trusted and already typed.`,
 });
 const domainMessage = (library) =>
-  `domain/ code takes typed values, not unknown (also through a type alias). Write a readonly type for this value in domain/; adapters/ parses the input with ${library} schema and passes the result in (the parsed value is assignable to a readonly type; do not import the schema type from adapters/). A caught error may be typed unknown as \`cause\` or \`error\`. If the value is genuinely opaque, add an exception for this rule in nitpicker.config.json.`;
+  `domain/ code takes typed values, not unknown (also through a type alias). Write a readonly type for this value in domain/; adapters/ parses the input with ${library} schema and passes the result in (the parsed value is assignable to a readonly type; do not import the schema type from adapters/). A caught error may be typed unknown as \`cause\` or \`error\`. An exception fits only when the value is genuinely opaque.`;
 
 tester.run('boundary guard with no validation library detected', guardRule(), {
   valid: ['const data = schema.parse(JSON.parse(text));'],
@@ -213,7 +211,7 @@ tester.run(
         code: 'function read(value: unknown) { return typeof value === "object"; }',
         errors: [
           {
-            message: `Do not hand-narrow an \`unknown\` value with \`typeof x === "object"\` or \`"key" in x\`: parse it once at the boundary with a valibot schema (v.parse or v.safeParse). A caught error is read with \`error instanceof Error\`. If the narrowing is genuinely needed, ${RULE_EXCEPTION}`,
+            message: `Do not hand-narrow an \`unknown\` value with \`typeof x === "object"\` or \`"key" in x\`: parse it once at the boundary with a valibot schema (v.parse or v.safeParse). A caught error is read with \`error instanceof Error\`. An exception fits only when the narrowing is genuinely needed.`,
           },
         ],
       },
@@ -221,7 +219,7 @@ tester.run(
         code: 'const copy = JSON.parse(JSON.stringify(value));',
         errors: [
           {
-            message: `Copy a value with \`structuredClone(value)\`, not \`JSON.parse(JSON.stringify(value))\`. If it is deliberate, ${RULE_EXCEPTION}`,
+            message: `Copy a value with \`structuredClone(value)\`, not \`JSON.parse(JSON.stringify(value))\`. An exception fits only when it is deliberate.`,
           },
         ],
       },
@@ -229,7 +227,7 @@ tester.run(
         code: 'function pick(a: string): string;\nfunction pick(a: number): number;\nfunction pick(a: unknown): unknown { return a; }',
         errors: [
           {
-            message: `This overload implementation returns unknown or any, which makes its overload signatures a cast. Return a typed value, or split it into separate functions. If it is deliberate, ${RULE_EXCEPTION}`,
+            message: `This overload implementation returns unknown or any, which makes its overload signatures a cast. Return a typed value, or split it into separate functions. An exception fits only when it is deliberate.`,
           },
         ],
       },
