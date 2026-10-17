@@ -12,8 +12,9 @@ function detectionRoot({ projectRoot, runnerProjectRoot }) {
 
 function snapshotTestRunner(options) {
   const tests = readHeadPolicy().tools.tests ?? {};
+  const chosen = tests.runnerAmbiguity === undefined ? tests.runner : tests.detectedRunner;
   return tests.snapshotRunner === undefined
-    ? testRunnerFor(detectionRoot(options), tests.runner, readLayout())
+    ? testRunnerFor(detectionRoot(options), chosen, readLayout())
     : testRunnerFor(options.projectRoot, tests.snapshotRunner);
 }
 

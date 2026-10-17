@@ -112,6 +112,14 @@ describe('the Stryker runner for each test runner', () => {
       { projectType: 'create-react-app', config: { restoreMocks: true } },
     ],
     [{ launcher: 'craco' }, { configFile: CRACO_JEST_CONFIG, config: { restoreMocks: true } }],
+    [
+      { launcher: 'react-app-rewired' },
+      { projectType: 'create-react-app', config: { restoreMocks: true } },
+    ],
+    [
+      { launcher: 'rescripts' },
+      { projectType: 'create-react-app', config: { restoreMocks: true } },
+    ],
   ])(
     'loads the Jest config of the command %j and restores mocks after each test',
     (command, source) => {

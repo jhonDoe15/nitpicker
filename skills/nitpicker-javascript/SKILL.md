@@ -191,10 +191,11 @@ line) is a finding.
   through a helper that throws when the call is missing, not `calls[n]?.`. Spy on `process.stdout` only to test composition-root wiring, and give it a real temp
   file (`mkdtemp`) rather than `vi.mock` of `node:` modules (`jest.mock`, `mock.module`,
   `proxyquire`, `esmock` and the other runners' module mocks count too). After each test the gate
-  restores spies and stubs: Vitest's and Jest's mocks, the shared `node:test` `mock`
-  (`mock.restoreAll()`), and sinon's under Mocha (`sinon.restore()`, when the project has sinon).
-  Restore fake timers yourself in `afterEach`: `vi.useRealTimers()` (`jest.useRealTimers()`,
-  `mock.timers.reset()`, `clock.restore()` for a sinon clock).
+  restores spies and stubs: Vitest's and Jest's mocks, and, under `node:test` and Mocha, the
+  doubles the test and its `beforeEach` hooks made with the shared `node:test` `mock` or with
+  sinon (sinon's `useFakeTimers` clocks included); a double a `before` hook made stays until your
+  `after` hook restores it (`mock.restoreAll()`, `sinon.restore()`). Restore other fake timers
+  yourself in `afterEach`: `vi.useRealTimers()` (`jest.useRealTimers()`, `mock.timers.reset()`).
 - Test data typed from a literal widens (`status: string`): write the array as
   `/** @type {const} */ ([...])`, or annotate the `const` with the typedef.
 - Assert whole outputs with `toEqual`/`toBe` (`assert.deepStrictEqual`/`assert.equal`, chai's
@@ -214,7 +215,9 @@ line) is a finding.
 - Name test files the way the runner finds them; the gate reads the same patterns. Vitest:
   `*.test.{ext}` or `*.spec.{ext}` (plus the config's `test.include`). Jest: `*.test.{ext}`,
   `*.spec.{ext}` or any file under `__tests__/`, or the config's `testMatch`/`testRegex`, read through
-  the test script (`react-scripts test` and `craco test` included). `node:test`: the patterns the
+  the test script (`react-scripts`, `craco`, `react-app-rewired` and `rescripts test` included),
+  under each project's `roots`, leaving out projects whose `runner` lints or type-checks instead of
+  running tests. `node:test`: the patterns the
   `node --test` script names, else Node's defaults (`*.test.*`, `*-test.*`, `*_test.*`, `test-*.*`,
   `test.*` and every file under a `test/` folder). Mocha: its spec (`test/*.{js,cjs,mjs}` by default,
   or the spec in `.mocharc.*` or the script). A file that matches is a test wherever it sits, even in

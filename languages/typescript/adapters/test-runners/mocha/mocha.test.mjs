@@ -20,30 +20,37 @@ function mochaProject(files, test = 'mocha') {
 const testFile = (expected) =>
   `import assert from 'node:assert/strict';\nimport { pick } from '../src/main/pick.ts';\ndescribe('pick', () => {\n  it('answers', () => {\n    assert.equal(pick(true), '${expected}');\n  });\n});\n`;
 
-const FAKE_SINON = [
-  '(() => {',
-  '  const replaced = [];',
-  '  return {',
-  '    replace(target, key, value) {',
-  '      replaced.push([target, key, target[key]]);',
-  '      target[key] = value;',
-  '    },',
-  '    restore() {',
-  '      for (const [target, key, value] of replaced.splice(0)) {',
-  '        target[key] = value;',
-  '      }',
-  '    },',
-  '  };',
-  '})()',
-].join('\n');
-
 const REPLACE_THEN_READ = [
-  "const target = { answer: () => 'real' };",
+  "const target = { answer: () => 'real', count: () => 1 };",
   "it('replaces the answer', () => {",
   "  sinon.replace(target, 'answer', () => 'fake');",
+  "  sinon.stub(target, 'count').returns(2);",
+  '  sinon.useFakeTimers().tick(1);',
   "  assert.equal(target.answer(), 'fake');",
   '});',
   "it('reads the real answer', () => {",
+  "  assert.equal(target.answer(), 'real');",
+  '  assert.equal(target.count(), 1);',
+  '  assert.ok(Date.now() > 1000);',
+  "  sinon.replace(target, 'answer', () => 'again');",
+  '});',
+  '',
+].join('\n');
+
+const SHARED_DOUBLE = [
+  "const target = { answer: () => 'real', other: () => 'real' };",
+  "describe('a double made once for the suite', () => {",
+  "  before(() => { sinon.stub(target, 'answer').returns('fake'); });",
+  '  after(() => { sinon.restore(); });',
+  "  beforeEach(() => { sinon.stub(target, 'other').returns('each'); });",
+  "  it('reads the doubles', () => {",
+  "    assert.deepEqual([target.answer(), target.other()], ['fake', 'each']);",
+  '  });',
+  "  it('reads them again', () => {",
+  "    assert.deepEqual([target.answer(), target.other()], ['fake', 'each']);",
+  '  });',
+  '});',
+  "it('runs after the suite restored its double', () => {",
   "  assert.equal(target.answer(), 'real');",
   '});',
   '',
@@ -134,26 +141,30 @@ describe('coverage on a Mocha project', () => {
     );
   });
 
-  it('restores what a test replaced through either sinon entry before the next test', async () => {
-    const root = projects.project(
-      {
-        'package.json': { name: 'p', type: 'module', scripts: { test: 'mocha' } },
-        'src/main/pick.ts': PICK_SOURCE,
-        'node_modules/sinon/package.json': {
-          name: 'sinon',
-          exports: { '.': { require: './sinon.cjs', import: './sinon.mjs' } },
-        },
-        'node_modules/sinon/sinon.cjs': `module.exports = ${FAKE_SINON};\n`,
-        'node_modules/sinon/sinon.mjs': `export default ${FAKE_SINON};\n`,
-        'test/esm.test.js': `import sinon from 'sinon';\nimport assert from 'node:assert/strict';\n${REPLACE_THEN_READ}`,
-        'test/cjs.test.cjs': `const sinon = require('sinon');\nconst assert = require('node:assert/strict');\n${REPLACE_THEN_READ}`,
-      },
-      { linkDependencies: ['mocha'] },
-    );
+  it('restores what a test made with either sinon entry before the next test', async () => {
+    const root = projects.project({
+      'package.json': { name: 'p', type: 'module', scripts: { test: 'mocha' } },
+      'src/main/pick.ts': PICK_SOURCE,
+      'test/esm.test.js': `import sinon from 'sinon';\nimport assert from 'node:assert/strict';\n${REPLACE_THEN_READ}`,
+      'test/cjs.test.cjs': `const sinon = require('sinon');\nconst assert = require('node:assert/strict');\n${REPLACE_THEN_READ}`,
+    });
 
     const findings = await runArea('coverage', root);
 
     expect(findings.filter(({ rule }) => rule === 'tests-failed')).toEqual([]);
     expect(findings.find(({ identity }) => identity === 'test-count')?.metric.value).toBe(4);
+  });
+
+  it('keeps a double a before hook made until the suite restores it', async () => {
+    const root = projects.project({
+      'package.json': { name: 'p', type: 'module', scripts: { test: 'mocha' } },
+      'src/main/pick.ts': PICK_SOURCE,
+      'test/shared.test.js': `import sinon from 'sinon';\nimport assert from 'node:assert/strict';\n${SHARED_DOUBLE}`,
+    });
+
+    const findings = await runArea('coverage', root);
+
+    expect(findings.filter(({ rule }) => rule === 'tests-failed')).toEqual([]);
+    expect(findings.find(({ identity }) => identity === 'test-count')?.metric.value).toBe(3);
   });
 });

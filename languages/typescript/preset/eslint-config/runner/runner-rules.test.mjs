@@ -22,6 +22,9 @@ function findings(runner, code) {
 const NODE_HEAD = "import test from 'node:test';\nimport assert from 'node:assert/strict';\n";
 const NODE_NAMED_HEAD =
   "import { describe, it } from 'node:test';\nimport assert from 'node:assert';\n";
+const NAMED_ASSERT_HEAD =
+  "import test, { it } from 'node:test';\n" +
+  "import { deepStrictEqual, equal, rejects } from 'node:assert/strict';\n";
 
 describe('the test file rules follow the runner', () => {
   it('names one namespace per runner', () => {
@@ -47,6 +50,11 @@ describe('the test file rules follow the runner', () => {
     ['node', `${NODE_HEAD}test('a', () => { assert.equal(1, 1); });`],
     ['node', `${NODE_HEAD}test('a', () => { assert(true); });`],
     ['node', `${NODE_NAMED_HEAD}it('a', (t) => { t.assert.ok(true); });`],
+    ['node', `${NAMED_ASSERT_HEAD}test('a', () => { deepStrictEqual([1], [1]); });`],
+    ['node', `${NAMED_ASSERT_HEAD}test('a', async () => { await rejects(Promise.reject(1)); });`],
+    ['mocha', "import { equal } from 'node:assert/strict';\nit('a', () => { equal(1, 1); });"],
+    ['mocha', "it('a', () => { chai.expect(1).to.equal(1); });"],
+    ['mocha', "it('a', () => { should.exist(1); });"],
   ])('accepts the assertions the %s project uses', (runner, code) => {
     expect(findings(runner, code)).toEqual([]);
   });

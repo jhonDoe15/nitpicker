@@ -72,8 +72,10 @@ export function cracoJestConfigText() {
   return CRACO_JEST_CONFIG_LINES.join('\n');
 }
 
+const CREATE_REACT_APP_LAUNCHERS = new Set(['react-scripts', 'react-app-rewired', 'rescripts']);
+
 function jestConfigSource(command) {
-  if (command.launcher === 'react-scripts') {
+  if (CREATE_REACT_APP_LAUNCHERS.has(command.launcher)) {
     return { projectType: 'create-react-app' };
   }
   if (command.launcher === 'craco') {

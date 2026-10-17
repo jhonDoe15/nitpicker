@@ -5,6 +5,7 @@ import { afterEach, describe, expect, it } from 'vitest';
 import { createBaseSetupResolver } from '../../../../core/command/policy-review/base-setup.mjs';
 import { useGitFixtures } from '../../../../core/diff/git/test-support/git-repository.mjs';
 import { PACKAGE_ROOT } from '../../../../core/tooling/tool-resolution.mjs';
+import { defaultTestFiles } from '../test-runner/test-files/test-file-patterns.mjs';
 import { withBaseTestRunner } from './base-runner.mjs';
 
 const roots = [];
@@ -65,9 +66,54 @@ describe('the test runner of the base snapshot', () => {
 
     expect(baseSetup({}, { headPolicy: VITEST_HEAD, baseProjectRoot })).toEqual({
       result: {
-        headPolicy: { tools: { tests: { detectedRunner: 'vitest', snapshotRunner: 'jest' } } },
+        headPolicy: {
+          tools: {
+            tests: {
+              detectedRunner: 'jest',
+              snapshotRunner: 'jest',
+              testFiles: defaultTestFiles('jest'),
+            },
+          },
+        },
       },
       warnings: [],
+    });
+  });
+
+  it('measures the base with the test files of its own runner and checkout', () => {
+    const baseProjectRoot = projectWith({
+      'package.json': '{"scripts":{"test":"node --test checks/*.js"}}',
+    });
+    const headPolicy = {
+      tools: {
+        tests: {
+          detectedRunner: 'vitest',
+          testFiles: defaultTestFiles('vitest'),
+          notices: ['a head notice'],
+        },
+      },
+    };
+
+    expect(baseSetup({}, { headPolicy, baseProjectRoot }).result.headPolicy.tools.tests).toEqual({
+      detectedRunner: 'node',
+      snapshotRunner: 'node',
+      testFiles: { include: ['checks/*.js'], exclude: [], includeRegexes: [], excludeRegexes: [] },
+    });
+  });
+
+  it('detects the base runner from the base checkout alone, not the head test files', () => {
+    const baseProjectRoot = projectWith({
+      'package.json': '{"devDependencies":{"vitest":"4","jest":"30"}}',
+      'test/greeting.js': "import test from 'node:test';\n",
+    });
+    const headPolicy = {
+      tools: { tests: { detectedRunner: 'vitest', testFiles: defaultTestFiles('vitest') } },
+    };
+
+    expect(baseSetup({}, { headPolicy, baseProjectRoot }).result.headPolicy.tools.tests).toEqual({
+      detectedRunner: 'node',
+      snapshotRunner: 'node',
+      testFiles: defaultTestFiles('node'),
     });
   });
 
@@ -103,7 +149,14 @@ describe('the test runner of the base snapshot', () => {
       result: {
         headPolicy: {
           exclude: [],
-          tools: { tests: { detectedRunner: 'vitest', runner: 'node', snapshotRunner: 'node' } },
+          tools: {
+            tests: {
+              detectedRunner: 'node',
+              runner: 'node',
+              snapshotRunner: 'node',
+              testFiles: defaultTestFiles('node'),
+            },
+          },
         },
       },
       warnings: [],

@@ -1,6 +1,8 @@
 import { existsSync, statSync } from 'node:fs';
 import path from 'node:path';
-import { loadedMochaOptions } from './mocha-options.mjs';
+import { hasDomEnvironment } from '../../test-environment/environments.mjs';
+import { globalDomEnvironments } from '../../test-environment/global-dom/global-dom.mjs';
+import { readMochaOptions } from '../../test-environment/vite/vite-reader.mjs';
 import {
   MOCHA_DEFAULT_EXTENSIONS,
   MOCHA_DEFAULT_SPEC,
@@ -10,6 +12,7 @@ import {
 } from './test-file-patterns.mjs';
 
 const GLOB_MAGIC = /[!()*?[\]{}]/u;
+const TIMEOUT_MS = 30_000;
 
 function projectPath(projectRoot, entry) {
   const file = path.resolve(projectRoot, entry);
@@ -42,11 +45,12 @@ function stringList(value) {
 }
 
 function loadedOptions(options) {
-  try {
-    return { loaded: loadedMochaOptions(options) };
-  } catch (error) {
-    return { failure: error instanceof Error ? error.message : String(error) };
-  }
+  const { result, failure } = readMochaOptions({ timeoutMs: TIMEOUT_MS, ...options });
+  return { loaded: result, failure };
+}
+
+function mochaFailure(failure) {
+  return `The Mocha options could not be read (${failure}), so nitpicker takes Mocha's default spec (test/*.{js,cjs,mjs}) as the project's test files.`;
 }
 
 export function mochaSetupEntries(loaded) {
@@ -67,9 +71,26 @@ function mochaTestFilesFrom(projectRoot, loaded) {
   return testFilePatterns({ include, exclude: stringList(loaded.ignore) });
 }
 
-export function mochaTestFiles({ projectRoot, command }) {
-  const { loaded } = loadedOptions({ projectRoot, tokens: command.arguments_ });
-  return loaded === undefined ? defaultTestFiles('mocha') : mochaTestFilesFrom(projectRoot, loaded);
+export function mochaTestFiles({ projectRoot, liveProjectRoot, command }) {
+  const { loaded, failure } = loadedOptions({
+    projectRoot,
+    liveProjectRoot,
+    tokens: command.arguments_,
+  });
+  if (failure !== undefined) {
+    return {
+      testFiles: defaultTestFiles('mocha'),
+      domEnvironment: false,
+      notices: [mochaFailure(failure)],
+    };
+  }
+  return {
+    testFiles:
+      loaded === undefined ? defaultTestFiles('mocha') : mochaTestFilesFrom(projectRoot, loaded),
+    domEnvironment: hasDomEnvironment(
+      globalDomEnvironments(projectRoot, mochaSetupEntries(loaded)),
+    ),
+  };
 }
 
 export function loadedProjectMocha(options) {

@@ -2,6 +2,7 @@ import { realpathSync } from 'node:fs';
 import path from 'node:path';
 import { resolveProjectRoot } from '../tooling/tool-resolution.mjs';
 import { publishHeadPolicy } from '../conventions/resolve.mjs';
+import { withProjectTestFiles } from '../../languages/typescript/preset/head-policy.mjs';
 import { configureAnalyzers } from '../configuration/configure-analyzers.mjs';
 import { presetAnalyzers } from '../configuration/preset-analyzers.mjs';
 import { describeConfigOverrides, loadConfig } from '../configuration/config.mjs';
@@ -56,9 +57,16 @@ export function runCacheCommand(cli) {
       ? resolveProjectRoot()
       : realpathSync(cli.currentProjectRoot);
   const config = loadConfig(projectRoot);
-  const headPolicy = publishHeadPolicy(config, projectRoot);
-  const configured = configureAnalyzers(presetAnalyzers(config, cli.analyzers), config, headPolicy);
-  const selected = selectedAnalyzers(configured, options);
+  function configure(policy) {
+    return configureAnalyzers(presetAnalyzers(config, cli.analyzers), config, policy);
+  }
+  const detectedPolicy = publishHeadPolicy(config, projectRoot);
+  const headPolicy = withProjectTestFiles(detectedPolicy, {
+    projectRoot,
+    liveProjectRoot: projectRoot,
+    analyzers: selectedAnalyzers(configure(detectedPolicy), options),
+  });
+  const selected = selectedAnalyzers(configure(headPolicy), options);
   const store = writableStore(projectRoot, cli);
   const repositoryRoot = realpathSync(runGit(projectRoot, ['rev-parse', '--show-toplevel']).trim());
   const result = publishBaseSnapshot({

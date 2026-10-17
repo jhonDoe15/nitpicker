@@ -191,6 +191,48 @@ describe('a project that mixes test runners', () => {
   });
 
   it(
+    'runs the analyzers that run no tests, with a notice naming the runner the lint follows',
+    () => {
+      const root = createProject(MIXED_FILES);
+
+      const { exitCode, stderrText } = runNitpicker(root, [
+        '--all',
+        '--analyzer',
+        'eslint-lint',
+        '--output',
+        path.join(root, 'reports/snapshot'),
+      ]);
+
+      expect(stderrText).toBe(
+        `nitpicker: Test runner detection ${MIXED_RUNNERS_MESSAGE.slice('nitpicker failed: '.length, -1)} ` +
+          'Until then the test-file lint rules follow node:test, and coverage, CRAP and mutation testing cannot run.\n',
+      );
+      expect(readReport(root, 'reports/snapshot/tool-errors.json')).toEqual([]);
+      expect(
+        readReport(root, 'reports/snapshot/findings.json').map(({ rule, path: file }) => ({
+          rule,
+          file,
+        })),
+      ).toEqual([]);
+      expect(exitCode).toBe(0);
+    },
+    FIXTURE_TIMEOUT_MS,
+  );
+
+  it('reports an unknown analyzer before the runner ambiguity', () => {
+    const root = createProject(MIXED_FILES);
+
+    const { exitCode, stderrText } = runNitpicker(root, ['--all', '--analyzer', 'no-such']);
+
+    expect({ stderrText, exitCode }).toEqual({
+      stderrText: expect.stringMatching(
+        /^nitpicker failed: Unknown --analyzer: no-such\. Known analyzers: [a-z, -]+\n$/u,
+      ),
+      exitCode: 2,
+    });
+  });
+
+  it(
     'runs the runner that nitpicker.config.json names',
     () => {
       const root = createProject({

@@ -19,6 +19,15 @@ describe('noticeDescriber', () => {
     expect(describeExcluded?.(changed)).toEqual([]);
   });
 
+  it('passes on the notices the head policy recorded about the test runner, for every preset', () => {
+    const headPolicy = { exclude: ['scripts/**'], tools: { tests: { notices: ['read failed'] } } };
+
+    expect(noticeDescriber({}, headPolicy)?.(changed)).toEqual(['read failed']);
+    expect(noticeDescriber({ preset: 'javascript' }, headPolicy)?.(changed)).toEqual([
+      'read failed',
+    ]);
+  });
+
   it('describes nothing for the other presets', () => {
     for (const preset of ['javascript', 'python', 'java', 'kotlin']) {
       expect(noticeDescriber({ preset }, {})).toBeUndefined();

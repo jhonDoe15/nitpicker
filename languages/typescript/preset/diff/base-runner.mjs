@@ -3,8 +3,10 @@ import { resolveLayoutFor } from '../layout.mjs';
 import { runnerDetection } from '../test-runner/detect-runner.mjs';
 import { recordedTestRunner } from '../test-runner/runner-vocabulary.mjs';
 import { RUNNER_NAMES, RUNNER_PACKAGES } from '../test-runner/runners.mjs';
+import { runnerTestFileFacts } from '../test-runner/test-files/runner-test-files.mjs';
 
 const BASE_TEST_ANALYZERS = new Set(['coverage', 'crap']);
+const HEAD_ONLY_FACTS = new Set(['runnerAmbiguity', 'notices']);
 
 function baseRunnerPolicy(setup, headPolicy) {
   const own = setup.headPolicy;
@@ -17,18 +19,38 @@ function baseRunnerPolicy(setup, headPolicy) {
   };
 }
 
+function baseOnlyLayout(policy) {
+  const { runner } = policy.tools.tests;
+  const tests = runner === undefined ? {} : { runner };
+  return resolveLayoutFor({ ...policy, tools: { ...policy.tools, tests } });
+}
+
 function baseRunnerFor(policy, baseProjectRoot) {
   return (
     policy.tools.tests.runner ??
-    runnerDetection(baseProjectRoot, resolveLayoutFor(policy)).runner ??
+    runnerDetection(baseProjectRoot, baseOnlyLayout(policy)).runner ??
     policy.tools.tests.detectedRunner
   );
 }
 
-function withSnapshotRunner(policy, runner) {
+function withSnapshotRunner(policy, runner, { baseProjectRoot, liveProjectRoot }) {
+  const tests = Object.entries(policy.tools.tests).filter(([key]) => !HEAD_ONLY_FACTS.has(key));
+  const { testFiles } = runnerTestFileFacts(baseProjectRoot, {
+    configured: runner,
+    layout: baseOnlyLayout(policy),
+    liveProjectRoot,
+  });
   return {
     ...policy,
-    tools: { ...policy.tools, tests: { ...policy.tools.tests, snapshotRunner: runner } },
+    tools: {
+      ...policy.tools,
+      tests: {
+        ...Object.fromEntries(tests),
+        snapshotRunner: runner,
+        detectedRunner: runner,
+        testFiles,
+      },
+    },
   };
 }
 
@@ -60,7 +82,7 @@ export function withBaseTestRunner(setup, context) {
     return setup.headPolicy === undefined ? setup : { ...setup, headPolicy: policy };
   }
   if (runnerInstallation(baseRunner, liveProjectRoot).installed) {
-    return { ...setup, headPolicy: withSnapshotRunner(policy, baseRunner) };
+    return { ...setup, headPolicy: withSnapshotRunner(policy, baseRunner, context) };
   }
   warn(missingRunnerNotice(baseRunner, headRunner));
   return withoutBaseTests(setup, { analyzers: context.analyzers, policy });

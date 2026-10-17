@@ -2,7 +2,13 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterAll, describe, expect, it } from 'vitest';
-import { runnerTypes, withRunnerTypes } from './runner-types.mjs';
+import {
+  isUntypedRunnerGlobal,
+  missingRunnerTypes,
+  runnerTypes,
+  runnerTypesNotices,
+  withRunnerTypes,
+} from './runner-types.mjs';
 
 const roots = [];
 
@@ -41,6 +47,50 @@ describe('runnerTypes', () => {
 
   it('adds nothing for node:test, which has no globals', () => {
     expect(runnerTypes('node', projectWith(['@types/jest', '@types/mocha']))).toEqual([]);
+  });
+});
+
+describe('a runner whose types package is missing', () => {
+  const TYPE_CHECK = [{ name: 'typescript-typecheck' }];
+  function diagnostic(code, text, name) {
+    return { code, file: { text }, start: text.indexOf(name), length: name.length };
+  }
+
+  it('names the package the Jest and Mocha globals need, and nothing for the others', () => {
+    const bare = projectWith([]);
+
+    expect(
+      ['vitest', 'jest', 'mocha', 'node'].map((runner) => missingRunnerTypes(runner, bare)),
+    ).toEqual([undefined, '@types/jest', '@types/mocha', undefined]);
+    expect(missingRunnerTypes('jest', projectWith(['@types/jest']))).toBe(undefined);
+  });
+
+  it('tells a test runner global apart from any other unknown name', () => {
+    const text = 'describe("a", () => { it("b", () => { expect(missing).toBe(1); }); });';
+
+    expect([
+      isUntypedRunnerGlobal(diagnostic(2582, text, 'describe'), 'jest'),
+      isUntypedRunnerGlobal(diagnostic(2593, text, 'describe'), 'mocha'),
+      isUntypedRunnerGlobal(diagnostic(2304, text, 'expect'), 'jest'),
+      isUntypedRunnerGlobal(diagnostic(2304, text, 'missing'), 'jest'),
+      isUntypedRunnerGlobal(diagnostic(2304, text, 'expect'), 'mocha'),
+      isUntypedRunnerGlobal(diagnostic(2322, text, 'describe'), 'mocha'),
+    ]).toEqual([true, true, true, false, false, false]);
+  });
+
+  it('gives a notice naming the package, only when the type check runs', () => {
+    const projectDirectory = projectWith([]);
+
+    expect(runnerTypesNotices('mocha', { projectDirectory, analyzers: TYPE_CHECK })).toEqual([
+      'The project runs its tests with Mocha, but @types/mocha is not installed, so the type ' +
+        'check does not know the Mocha globals and does not report the errors they cause in ' +
+        'test files. Install @types/mocha (npm install --save-dev @types/mocha) to have the ' +
+        'tests type checked against them.',
+    ]);
+    expect(
+      runnerTypesNotices('mocha', { projectDirectory, analyzers: [{ name: 'eslint' }] }),
+    ).toEqual([]);
+    expect(runnerTypesNotices('vitest', { projectDirectory, analyzers: TYPE_CHECK })).toEqual([]);
   });
 });
 
