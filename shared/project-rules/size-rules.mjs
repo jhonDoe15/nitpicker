@@ -24,11 +24,13 @@ export const CLASS_LIMIT_DEFAULTS = {
   inheritanceDepth: 3,
 };
 
-export const FOLDER_DEPTH_DEFAULTS = { typescript: 1, java: 4 };
+export const FOLDER_DEPTH_DEFAULTS = { typescript: 1, java: 4, python: 4 };
 
 export const JAVA_SIZE_RULES = Object.values(SIZE_RULE_IDS);
 
 export const TYPESCRIPT_SIZE_RULES = [SIZE_RULE_IDS.folderDepth];
+
+export const PYTHON_SIZE_RULES = Object.values(SIZE_RULE_IDS);
 
 export const JAVA_LINE_LENGTH = 100;
 
@@ -100,34 +102,38 @@ function fileRules(enforcedBy) {
   ];
 }
 
-const JAVA_ONLY = { typescript: false, java: true, python: false };
+const TYPESCRIPT_DEPTH = `code more than ${String(FOLDER_DEPTH_DEFAULTS.typescript)} folder below \`features/<feature>/<layer>/\` (TypeScript)`;
+const JAVA_DEPTH = `more than ${String(FOLDER_DEPTH_DEFAULTS.java)} packages below the root package (Java, Kotlin)`;
+const PYTHON_DEPTH = `more than ${String(FOLDER_DEPTH_DEFAULTS.python)} packages below the root package (Python)`;
+
+const JAVA_AND_PYTHON = { typescript: false, java: true, python: true };
 
 function classRule(id, limit, withKotlin) {
-  return { id, check: 'structure', limit, enforcedBy: withKotlin(JAVA_ONLY, true) };
+  return { id, check: 'structure', limit, enforcedBy: withKotlin(JAVA_AND_PYTHON, true) };
 }
 
-export function sizeRules({ all, both, withKotlin }) {
+export function sizeRules({ all, withKotlin }) {
   return [
     ...fileRules(withKotlin(all, true)),
     {
       id: SIZE_RULE_IDS.folderDepth,
       check: 'structure',
-      limit: `code more than ${String(FOLDER_DEPTH_DEFAULTS.typescript)} folder below \`features/<feature>/<layer>/\` (TypeScript) or more than ${String(FOLDER_DEPTH_DEFAULTS.java)} packages below the root package (Java, Kotlin); override with \`thresholds.folderDepth\``,
-      enforcedBy: withKotlin(both, true),
+      limit: `${TYPESCRIPT_DEPTH}, ${JAVA_DEPTH} or ${PYTHON_DEPTH}; override with \`thresholds.folderDepth\``,
+      enforcedBy: withKotlin(all, true),
     },
     classRule(
       SIZE_RULE_IDS.classMethods,
-      `more than ${String(CLASS_LIMIT_DEFAULTS.classMethods)} methods in a class of the main Java sources; override with \`thresholds.classMethods\``,
+      `more than ${String(CLASS_LIMIT_DEFAULTS.classMethods)} methods in a class of the main Java sources or the Python source roots; override with \`thresholds.classMethods\``,
       withKotlin,
     ),
     classRule(
       SIZE_RULE_IDS.classFields,
-      `more than ${String(CLASS_LIMIT_DEFAULTS.classFields)} instance fields in a class of the main Java sources; override with \`thresholds.classFields\``,
+      `more than ${String(CLASS_LIMIT_DEFAULTS.classFields)} instance fields in a class of the main Java sources or the Python source roots; override with \`thresholds.classFields\``,
       withKotlin,
     ),
     classRule(
       SIZE_RULE_IDS.inheritanceDepth,
-      `a class more than ${String(CLASS_LIMIT_DEFAULTS.inheritanceDepth)} superclasses deep in the main Java sources; override with \`thresholds.inheritanceDepth\``,
+      `a class more than ${String(CLASS_LIMIT_DEFAULTS.inheritanceDepth)} superclasses deep in the main Java sources or the Python source roots; override with \`thresholds.inheritanceDepth\``,
       withKotlin,
     ),
   ];

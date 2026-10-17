@@ -14,19 +14,23 @@ export function temporaryRoot() {
   return root;
 }
 
+export const DJANGO_OMIT = ['    *_tests.py', '    */tests.py', '    */tests_*.py'];
+
 export function coverageRc(...sources) {
+  const django = sources.at(-1) === DJANGO_OMIT;
   return [
     '[run]',
     'branch = True',
     'parallel = False',
     'source =',
-    ...sources.map((source) => `    ${source}`),
+    ...(django ? sources.slice(0, -1) : sources).map((source) => `    ${source}`),
     'omit =',
     '    test_*.py',
     '    *_test.py',
     '    conftest.py',
     '    */tests/*',
     '    */test/*',
+    ...(django ? DJANGO_OMIT : []),
     '[report]',
     'exclude_lines =',
     String.raw`    ^\s*if (typing\.)?TYPE_CHECKING:`,
