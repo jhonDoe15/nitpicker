@@ -72,6 +72,32 @@ describe.skipIf(!enabled)('generic-name', () => {
       ['a specific file', inFile('price_rounding.py', 'X = 1\n'), []],
       ['a specific class', inFile('orders.py', 'class OrderRepository:\n    pass\n'), []],
       ['a word inside a name', inFile('commonality.py', 'X = 1\n'), []],
+      ['a version suffix', inFile('helpers_v2.py', 'X = 1\n'), ['generic-name:1 helpers_v2']],
+      ['a digit suffix', inFile('order_utils2/a.py', 'X = 1\n'), ['generic-name:1 order_utils2/']],
+      [
+        'a generic word before a noun',
+        inFile('util_functions.py', 'X = 1\n'),
+        ['generic-name:1 util_functions'],
+      ],
+      [
+        'a mixin',
+        inFile('orders.py', 'class OrderHelperMixin:\n    pass\n'),
+        ['generic-name:1 OrderHelperMixin'],
+      ],
+      [
+        'a nested class',
+        inFile('orders.py', 'class Order:\n    class InnerManager:\n        pass\n'),
+        ['generic-name:2 InnerManager'],
+      ],
+      ['context managers are a language term', inFile('context_managers.py', 'X = 1\n'), []],
+      [
+        'a Django managers module',
+        inFile(
+          'managers.py',
+          'from django.db import models\n\n\nclass OrderManager(models.Manager):\n    pass\n',
+        ),
+        [],
+      ],
       [
         'a subclass of a framework type with the same ending',
         inFile('caches.py', 'class SessionManager(CacheManager):\n    pass\n'),
@@ -366,7 +392,37 @@ describe.skipIf(!enabled)('todo-without-issue', () => {
         '# TODO: SHA-256 later\nX = 1\n',
         ['todo-without-issue:1 TODO: SHA-256 later'],
       ],
-      ['prose', '# Todo item list\nX = 1\n', []],
+      ['prose', '# the todo list is long\nX = 1\n', []],
+      [
+        'lowercase',
+        '# todo: handle refunds\nX = 1\n',
+        ['todo-without-issue:1 todo: handle refunds'],
+      ],
+      [
+        'capitalized',
+        '# Todo handle refunds\nX = 1\n',
+        ['todo-without-issue:1 Todo handle refunds'],
+      ],
+      [
+        'trailing',
+        '# handle refunds later TODO\nX = 1\n',
+        ['todo-without-issue:1 handle refunds later TODO'],
+      ],
+      [
+        'issue zero',
+        '# TODO(#0): handle refunds\nX = 1\n',
+        ['todo-without-issue:1 TODO(#0): handle refunds'],
+      ],
+      [
+        'a docstring',
+        'def f():\n    \"\"\"TODO: implement this properly.\"\"\"\n    return 1\n',
+        ['todo-without-issue:2 TODO: implement this properly.'],
+      ],
+      [
+        'a NotImplementedError message',
+        'def f():\n    raise NotImplementedError("TODO")\n',
+        ['todo-without-issue:2 TODO'],
+      ],
       ['a word that contains it', '# AUTODOC: later\nX = 1\n', []],
       ['a marker inside a string', 'X = "TODO: later"\n', []],
     ]);

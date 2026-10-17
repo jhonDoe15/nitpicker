@@ -1,3 +1,4 @@
+import ast
 import io
 import os
 import re
@@ -13,9 +14,11 @@ SUPPRESSION = re.compile(
     r"|mypy:\s*(?!strict\b)\S)",
     re.IGNORECASE,
 )
-TASK_MARKER = re.compile(r"(?<![\w./-])(?:TODO|FIXME|XXX|HACK)(?![\w-])(?![./]\w)")
+TASK_MARKER = re.compile(
+    r"(?<![\w./-])(?:TODO|FIXME|XXX|HACK)(?![\w-])(?![./]\w)", re.I
+)
 MARKER_FOLLOWER = re.compile(r"^[:(]")
-REFERENCE = r"#\d+|[A-Z][A-Z0-9]+-\d+|https?://\S+"
+REFERENCE = r"#[1-9]\d*|[A-Z][A-Z0-9]+-[1-9]\d*|https?://\S+"
 DIRECT_REFERENCE = re.compile(rf"^(?:\(\s*({REFERENCE})\s*\)|:?\s+({REFERENCE}))")
 NOT_ISSUE_KEYS = {
     "SHA",
@@ -55,7 +58,10 @@ def is_referenced(rest):
 
 def has_unreferenced_tag(line):
     for match in TASK_MARKER.finditer(line):
-        follows = match.start() == 0 or MARKER_FOLLOWER.match(line[match.end() :])
+        shouted = match.group(0).isupper()
+        follows = (
+            shouted or match.start() == 0 or MARKER_FOLLOWER.match(line[match.end() :])
+        )
         if follows and not is_referenced(line[match.end() :]):
             return True
     return False
@@ -101,5 +107,44 @@ def stub_findings(path):
     ]
 
 
+def docstring_nodes(tree):
+    for node in ast.walk(tree):
+        if isinstance(
+            node, (ast.Module, ast.ClassDef, ast.FunctionDef, ast.AsyncFunctionDef)
+        ):
+            first = node.body[0] if node.body else None
+            if isinstance(first, ast.Expr) and isinstance(first.value, ast.Constant):
+                yield first.value
+        elif isinstance(node, ast.Call) and is_not_implemented(node):
+            yield from (a for a in node.args if isinstance(a, ast.Constant))
+
+
+def is_not_implemented(call):
+    function = call.func
+    name = function.id if isinstance(function, ast.Name) else None
+    return name == "NotImplementedError"
+
+
+def string_findings(path, tree):
+    findings = []
+    for node in docstring_nodes(tree):
+        if not isinstance(node.value, str):
+            continue
+        for offset, line in enumerate(node.value.splitlines()):
+            body = line.strip()
+            if has_unreferenced_tag(body):
+                findings.append(
+                    {
+                        "rule": "todo-without-issue",
+                        "path": path,
+                        "subject": body[:SHOWN_LENGTH],
+                        "line": node.lineno + offset,
+                    }
+                )
+    return findings
+
+
 def check(context):
-    return comment_findings(context.path, context.text)
+    return comment_findings(context.path, context.text) + string_findings(
+        context.path, context.tree
+    )
