@@ -176,14 +176,14 @@ describe('running mutmut', () => {
     expect(mutmutCalls(calls)[0].pytestAddopts).toBe('-n0');
   });
 
-  it('keeps the PYTEST_ADDOPTS of the caller and puts -n0 after them', () => {
+  it('keeps the PYTEST_ADDOPTS of the caller, without the options that let a failing run pass, and puts -n0 after them', () => {
     const calls = callsLog();
-    setEnvironment('PYTEST_ADDOPTS', '-x --lf');
+    setEnvironment('PYTEST_ADDOPTS', undefined);
     const root = project({ 'xdist.txt': '' });
 
-    mutationFindings(contextFor(root));
+    mutationFindings(contextFor(root, { pytestAddopts: '-x --lf' }));
 
-    expect(mutmutCalls(calls)[0].pytestAddopts).toBe('-x --lf -n0');
+    expect(mutmutCalls(calls)[0].pytestAddopts).toBe('--lf -n0');
   });
 
   it('leaves PYTEST_ADDOPTS alone without xdist', () => {

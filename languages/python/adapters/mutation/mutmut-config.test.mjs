@@ -51,6 +51,27 @@ describe('the mutmut configuration', () => {
     );
   });
 
+  it('keeps mutmut away from the Django test module names in a Django project', () => {
+    const context = configurationContext({ 'manage.py': '' });
+
+    ensureMutmutConfiguration(context);
+
+    expect(read(context.projectRoot, 'pyproject.toml')).toBe(
+      `\n${section(
+        ['src'],
+        [
+          ...TEST_PATTERNS,
+          'tests.py',
+          '*/tests.py',
+          'tests_*.py',
+          '*/tests_*.py',
+          '*_tests.py',
+          '*/*_tests.py',
+        ],
+      )}`,
+    );
+  });
+
   it('creates pyproject.toml when the project has none', () => {
     const context = configurationContext({}, { project: { sourceRoots: ['pkg', 'lib'] } });
 

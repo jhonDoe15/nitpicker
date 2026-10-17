@@ -68,11 +68,9 @@ function describe(violation) {
   return violation.modules.length > 0 ? violation.modules.join(' -> ') : violation.note;
 }
 
-function brokenMessage(name, violation, file) {
+function brokenMessage(name, violation) {
   const detail = violation === NO_VIOLATION ? '' : `: ${describe(violation)}`;
-  const route =
-    file === undefined ? '' : ', or lift this file with exclude in nitpicker.config.json';
-  return `Import contract "${name}" is broken${detail}. Remove the import${route}.`;
+  return `Import contract "${name}" is broken${detail}. Remove the import.`;
 }
 
 function contractFinding({ name, violation, files, identity }) {
@@ -83,7 +81,7 @@ function contractFinding({ name, violation, files, identity }) {
     rule: 'contract-broken',
     path: file ?? '.',
     identity: identity(`contract:${name}${subject}`),
-    message: brokenMessage(name, violation, file),
+    message: brokenMessage(name, violation),
     classification: 'enforceable',
     ...(violation.line === undefined ? {} : { location: { line: violation.line } }),
   };

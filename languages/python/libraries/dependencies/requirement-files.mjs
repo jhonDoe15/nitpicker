@@ -1,7 +1,7 @@
 import { existsSync, readdirSync, statSync } from 'node:fs';
 import path from 'node:path';
-import { groupKind, isDevelopmentGroup, requirementName } from './dependency-names.mjs';
-import { readText } from './dependency-text.mjs';
+import { readProjectText } from '../project-files.mjs';
+import { isDevelopmentGroup } from './requirement-names.mjs';
 
 const REQUIREMENT_FILE = /^requirements.*\.(?:txt|in)$|^.*-requirements\.(?:txt|in)$/u;
 const REQUIREMENT_DIRECTORY = 'requirements';
@@ -15,22 +15,21 @@ function isFile(file) {
   return statSync(file, { throwIfNoEntry: false })?.isFile() === true;
 }
 
+function listed(directory, pattern) {
+  return readdirSync(directory)
+    .filter((name) => pattern.test(name))
+    .sort()
+    .map((name) => path.join(directory, name));
+}
+
 function discovered(root) {
   const directory = path.join(root, REQUIREMENT_DIRECTORY);
-  const nested = existsSync(directory) && statSync(directory).isDirectory() ? directory : undefined;
-  const listed = [
-    ...readdirSync(root)
-      .filter((name) => REQUIREMENT_FILE.test(name))
-      .sort()
-      .map((name) => path.join(root, name)),
-    ...(nested === undefined
-      ? []
-      : readdirSync(nested)
-          .filter((name) => /\.(?:txt|in)$/u.test(name))
-          .sort()
-          .map((name) => path.join(nested, name))),
+  const nested = existsSync(directory) && statSync(directory).isDirectory();
+  const files = [
+    ...listed(root, REQUIREMENT_FILE),
+    ...(nested ? listed(directory, /\.(?:txt|in)$/u) : []),
   ];
-  return listed.filter((file) => !CONSTRAINTS.test(path.basename(file)) && isFile(file));
+  return files.filter((file) => !CONSTRAINTS.test(path.basename(file)) && isFile(file));
 }
 
 function sourceFor(file) {
@@ -42,19 +41,15 @@ function logicalLines(text) {
   return text.replaceAll(/\\\r?\n/gu, ' ').split(/\r?\n/u);
 }
 
-function annotate(entries, comment) {
-  const last = entries.at(-1);
-  if (last !== undefined) {
-    last.via += ` ${comment}`;
-  }
-}
-
 function entriesOf(text) {
   const entries = [];
   for (const line of logicalLines(text)) {
     const trimmed = line.trim();
     if (trimmed.startsWith('#')) {
-      annotate(entries, trimmed.slice(1));
+      const last = entries.at(-1);
+      if (last !== undefined) {
+        last.via += ` ${trimmed.slice(1)}`;
+      }
     } else if (trimmed !== '') {
       entries.push({ line: trimmed, via: /\s#(.*)$/u.exec(trimmed)?.[1] ?? '' });
     }
@@ -62,12 +57,11 @@ function entriesOf(text) {
   return entries;
 }
 
-function namesOfText(text) {
+function directLines(text) {
   const compiled = COMPILED_HEADER.test(text) || VIA.test(text);
   return entriesOf(text)
     .filter((entry) => !compiled || entry.via.trim() === '' || DIRECT.test(entry.via))
-    .map((entry) => requirementName(entry.line))
-    .filter((name) => name !== undefined);
+    .map((entry) => entry.line);
 }
 
 function includesOf(text) {
@@ -80,38 +74,35 @@ function stemOf(file) {
   return path.basename(file, path.extname(file));
 }
 
-function inside(root, target) {
-  return target.startsWith(root + path.sep) && isFile(target);
-}
-
-function includedFiles(root, { source, text, kind }) {
+function includedFiles(root, { source, text, development }) {
   return includesOf(text)
     .map((include) => path.resolve(path.dirname(source), include))
-    .filter((target) => inside(root, target))
-    .map((file) => ({
-      file,
-      kind: kind === 'development' || isDevelopmentGroup(stemOf(file)) ? 'development' : 'runtime',
-    }));
+    .filter((target) => target.startsWith(root + path.sep) && isFile(target))
+    .map((file) => ({ file, development: development || isDevelopmentGroup(stemOf(file)) }));
 }
 
 function readTree(root, start) {
   const seen = new Set();
-  const groups = [];
-  const pending = [{ file: start, kind: groupKind(stemOf(start)) }];
-  for (const { file, kind } of pending) {
+  const found = [];
+  const pending = [{ file: start, development: isDevelopmentGroup(stemOf(start)) }];
+  for (const { file, development } of pending) {
     const source = sourceFor(file);
     if (seen.has(source)) {
       continue;
     }
     seen.add(source);
-    const text = readText(source);
-    groups.push({ kind, names: namesOfText(text) });
-    pending.push(...includedFiles(root, { source, text, kind }));
+    const text = readProjectText(source);
+    found.push({
+      file: path.relative(root, file).split(path.sep).join('/'),
+      group: development ? 'dev' : 'production',
+      lines: directLines(text),
+    });
+    pending.push(...includedFiles(root, { source, text, development }));
   }
-  return groups;
+  return found;
 }
 
-export function requirementGroups(projectRoot) {
+export function requirementFiles(projectRoot) {
   const root = path.resolve(projectRoot);
   return discovered(root).flatMap((file) => readTree(root, file));
 }
