@@ -51,13 +51,10 @@ describe.skipIf(!kotlinE2eEnabled)('Kotlin preset on Maven: equivalence and modu
     expect(comparable(fromMaven)).toEqual(comparable(fromGradle));
     expect([...new Set(fromMaven.map(({ tool }) => tool))].sort()).toEqual([
       'coupling',
-      'crap',
       'detekt',
-      'errorprone',
       'jacoco',
       'ktlint',
       'pit',
-      'structure',
     ]);
   });
 
