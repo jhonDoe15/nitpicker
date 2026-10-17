@@ -1,5 +1,6 @@
 import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
+import { writeDetektLists } from './detekt/detekt-lists.mjs';
 
 const BUILD_FILES = [
   'build.gradle',
@@ -101,6 +102,10 @@ export function resolveKotlinTools(projectRoot, { formatter, detektConfig, snaps
 
 export function kotlinGradleArguments(projectRoot, options) {
   const tools = resolveKotlinTools(projectRoot, options);
+  const lists =
+    tools.detektConfig === undefined
+      ? undefined
+      : writeDetektLists(projectRoot, path.join(projectRoot, tools.detektConfig));
   return [
     '-Pnitpicker.kotlin=true',
     `-Pnitpicker.kotlin.formatter=${tools.formatter}`,
@@ -109,5 +114,6 @@ export function kotlinGradleArguments(projectRoot, options) {
     ...(tools.detektConfig === undefined
       ? []
       : [`-Pnitpicker.kotlin.detektConfig=${path.join(projectRoot, tools.detektConfig)}`]),
+    ...(lists === undefined ? [] : [`-Pnitpicker.kotlin.detektLists=${lists}`]),
   ];
 }

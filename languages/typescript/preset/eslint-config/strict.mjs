@@ -1,6 +1,6 @@
-import functional from 'eslint-plugin-functional';
 import tseslint from 'typescript-eslint';
 import { nitpickerRules } from '../eslint-plugin/index.mjs';
+import { functionalPlugin } from '../eslint-plugin/type-identity/functional-plugin.mjs';
 import { defaultResolvedLayout } from '../layout.mjs';
 import { errorWrappingPolicy } from './policies/error-wrapping-policy.mjs';
 import {
@@ -126,7 +126,7 @@ export function strictSyntaxConfigFor(layout = defaultResolvedLayout, options = 
     {
       files: domainGlobsFor(layout.sourceRoots),
       ...productionScope(layout),
-      plugins: { functional, nitpicker: nitpickerRules },
+      plugins: { functional: functionalPlugin, nitpicker: nitpickerRules },
       rules: { ...domainRules, 'no-restricted-syntax': ['error', ...restrictedSyntax.domain] },
     },
     {
@@ -164,7 +164,7 @@ function strictTypedConfigFor(layout, parserOptions) {
       files: domainGlobsFor(layout.sourceRoots),
       ...productionScope(layout),
       languageOptions: { parser: tseslint.parser, parserOptions },
-      plugins: { functional, nitpicker: nitpickerRules },
+      plugins: { functional: functionalPlugin, nitpicker: nitpickerRules },
       rules: domainTypeAwareFunctionalRules,
     },
     ...strictAdaptersTypedConfig.map((entry) => ({

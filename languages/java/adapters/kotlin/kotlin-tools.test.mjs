@@ -146,6 +146,20 @@ describe('Gradle arguments', () => {
     ]);
   });
 
+  it("passes the merged forbidden-call list when the project's detekt config lists calls of its own", () => {
+    const root = project({
+      'detekt.yml': "style:\n  ForbiddenMethodCall:\n    methods: ['kotlin.io.println']\n",
+    });
+
+    expect(kotlinGradleArguments(root, {})).toEqual([
+      '-Pnitpicker.kotlin=true',
+      '-Pnitpicker.kotlin.formatter=none',
+      '-Pnitpicker.kotlin.ktfmtStyle=meta',
+      `-Pnitpicker.kotlin.detektConfig=${path.join(root, 'detekt.yml')}`,
+      `-Pnitpicker.kotlin.detektLists=${path.join(root, 'build/nitpicker/detekt-lists.yml')}`,
+    ]);
+  });
+
   it('runs Gradle without the configuration cache, for both presets', () => {
     const root = project({ 'build.gradle.kts': 'ktlint' });
     const argumentsOf = (policy) => {

@@ -5,14 +5,14 @@
   "reporters": ["console", "json"],
   "output": "reports/quality/duplicates",
   "ignore": [
+    "dist/**",
+    "build/**",
+    "generated/**",
+    "coverage/**",
+    "reports/**",
+    "target/**",
     "**/node_modules/**",
-    "**/dist/**",
-    "**/build/**",
-    "**/generated/**",
     "**/*.d.ts",
-    "**/coverage/**",
-    "**/reports/**",
-    "**/target/**",
     "**/.stryker-tmp/**"
   ]
 }

@@ -6,7 +6,7 @@ import {
   controlFlowSelectors,
   controlFlowTypedRules,
 } from './strict/strict-control-flow.mjs';
-import { codeExtensions, excludedGlobs } from '../layout.mjs';
+import { codeExtensions, builtInExcludedGlobs } from '../layout.mjs';
 
 export function adapterGlobsFor(sourceRoots) {
   return sourceRoots.map((root) => `${root}/main/features/*/adapters/**/*.${codeExtensions}`);
@@ -30,7 +30,7 @@ export const restrictedAdapterSyntax = [
 ];
 
 export const strictAdaptersConfig = [
-  { ignores: excludedGlobs },
+  { ignores: builtInExcludedGlobs },
   {
     files: adapterGlobs,
     languageOptions: { parser: tseslint.parser },

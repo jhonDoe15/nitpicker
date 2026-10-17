@@ -27,7 +27,7 @@ export function usePresetFixtures({
     return runCli({ ...runOptions, ...options });
   }
 
-  function run(root, extra = [], { subprocess = false } = {}) {
+  function run(root, extra = [], { subprocess = false, interactive = false } = {}) {
     const output = captureOutput();
     const reports = path.join(git.temporaryRoot(`nitpicker-${name}-out-`), 'reports');
     const exitCode = invokeCli({
@@ -37,6 +37,7 @@ export function usePresetFixtures({
       stdout: output.stdout,
       stderr: output.stderr,
       progress: { write: () => undefined },
+      interactive,
       ...(subprocess ? { runTasks: undefined } : {}),
     });
     return {

@@ -11,14 +11,14 @@ import {
   isSolutionTsconfig,
   projectLibs,
   readJsonc,
-  referencedConfigFile,
+  referencedTsconfigs,
 } from './modules/tsconfig-files.mjs';
 import { readHeadPolicy } from './head-policy.mjs';
 import { policyTestRunner } from './test-runner/project-runner.mjs';
 import { withRunnerTypes } from './test-runner/runner-types.mjs';
-import { END_TO_END_ROOT, testRoots } from './layout.mjs';
+import { END_TO_END_ROOT, sourceRoots, testRoots } from './layout.mjs';
 
-const DEFAULT_SOURCE_ROOT = 'src';
+const DEFAULT_SOURCE_ROOTS = new Set(sourceRoots);
 const DEFAULT_TEST_ROOTS = new Set(testRoots);
 const STRYKER_TSCONFIG = 'tsconfig.stryker.json';
 
@@ -30,7 +30,7 @@ function expandLayoutRoots(entries, layout, testRootsOf = (value) => value.testR
   const expanded = entries.flatMap((entry) => {
     const [first, ...rest] = entry.split('/');
     const suffix = rest.length === 0 ? '' : `/${rest.join('/')}`;
-    if (first === DEFAULT_SOURCE_ROOT) {
+    if (DEFAULT_SOURCE_ROOTS.has(first)) {
       return layout.sourceRoots.map((root) => `${root}${suffix}`);
     }
     if (DEFAULT_TEST_ROOTS.has(first)) {
@@ -45,9 +45,9 @@ export function isCustomLayout(layout) {
   return (
     JSON.stringify([layout.sourceRoots, layout.testRoots, executedRoots(layout)]) !==
       JSON.stringify([
-        [DEFAULT_SOURCE_ROOT],
-        [...DEFAULT_TEST_ROOTS],
-        [...DEFAULT_TEST_ROOTS].filter((root) => root !== END_TO_END_ROOT),
+        sourceRoots,
+        testRoots,
+        testRoots.filter((root) => root !== END_TO_END_ROOT),
       ]) ||
     layout.exclude.length > 0 ||
     (layout.entryPoints ?? []).length > 0
@@ -221,7 +221,7 @@ const POLICY_COMPILER_OPTIONS = {
   forceConsistentCasingInFileNames: true,
 };
 
-const NO_EMIT_ANALYSIS_OPTIONS = { noEmit: true, skipLibCheck: true };
+const ANALYSIS_OPTIONS = { allowJs: true, noEmit: true, skipLibCheck: true };
 
 function includesSourceRoot(config, layout) {
   return (config?.include ?? []).some((entry) =>
@@ -235,9 +235,10 @@ function projectBaseTsconfig(projectDirectory, layout, projectConfig) {
   if (!isSolutionTsconfig(project)) {
     return projectBase;
   }
-  const sourceConfig = project.references
-    .map((reference) => referencedConfigFile(projectDirectory, reference))
-    .find((file) => existsSync(file) && includesSourceRoot(readJsonc(file), layout));
+  const sourceConfig = referencedTsconfigs(
+    path.join(projectDirectory, projectConfig),
+    project,
+  ).find((file) => includesSourceRoot(readJsonc(file), layout));
   return sourceConfig === undefined
     ? projectBase
     : `./${path.relative(projectDirectory, sourceConfig).split(path.sep).join('/')}`;
@@ -265,7 +266,7 @@ function projectLayeredTsconfig(extended, base, { layout, projectDirectory }) {
   return {
     extends: extended,
     compilerOptions: {
-      ...NO_EMIT_ANALYSIS_OPTIONS,
+      ...ANALYSIS_OPTIONS,
       ...POLICY_COMPILER_OPTIONS,
       ...(layout.javascript ? {} : TYPESCRIPT_ONLY_OPTIONS),
       ...javascriptOptions,

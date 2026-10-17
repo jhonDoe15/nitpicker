@@ -2,7 +2,8 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
-import { createBaseSetupResolver } from '../../../../core/configuration/base-setup.mjs';
+import { createBaseSetupResolver } from '../../../../core/command/policy-review/base-setup.mjs';
+import { useGitFixtures } from '../../../../core/diff/git/test-support/git-repository.mjs';
 import { PACKAGE_ROOT } from '../../../../core/tooling/tool-resolution.mjs';
 import { withBaseTestRunner } from './base-runner.mjs';
 
@@ -111,10 +112,12 @@ describe('the test runner of the base snapshot', () => {
 });
 
 describe('a base config without a test runner', () => {
+  const { createGitRepository } = useGitFixtures();
+
   it('inherits the runner the head config names', () => {
-    const baseProjectRoot = projectWith({
+    const { root } = createGitRepository({
       ...JEST_BASE,
-      'nitpicker.config.json': '{ "exclude": ["tmp/**"] }\n',
+      'nitpicker.config.json': '{ "thresholds": { "fileLines": 400 } }\n',
     });
     const headPolicy = { tools: { tests: { runner: 'vitest', detectedRunner: 'jest' } } };
     const resolve = createBaseSetupResolver({
@@ -124,18 +127,8 @@ describe('a base config without a test runner', () => {
       injectedAnalyzers: [],
     });
 
-    const setup = resolve({ baseProjectRoot, analyzers: [] });
+    const setup = resolve({ baseProjectRoot: root, headSnapshotRoot: root, analyzers: [] });
 
-    expect(setup).toEqual({
-      analyzers: [],
-      configOverrides: ['exclude: ["tmp/**"]'],
-      headPolicy: {
-        exclude: ['tmp/**'],
-        layout: {},
-        exceptions: [],
-        thresholds: {},
-        tools: headPolicy.tools,
-      },
-    });
+    expect(setup.headPolicy.tools).toEqual(headPolicy.tools);
   });
 });

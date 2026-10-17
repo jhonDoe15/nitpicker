@@ -9,15 +9,22 @@
 //   lines              last line - first line + 1 (annotations and modifiers included, KDoc and comments not)
 //   statements         every element of a block, plus the unbraced body of an if, else, loop or when branch
 //                      that is itself a statement, plus 1 for an expression body
-//   maxControlNesting  deepest nesting of if, for, while, do, when and catch; an else if nests like in Java
+//   maxControlNesting  deepest nesting of if, for, while, do, when and catch; a flat if / else if / else chain is
+//                      one level, while an if inside an else { } block or inside a branch body nests one deeper
 //   parameters         declared value parameters (the extension receiver is not one)
 //   complexity         cyclomatic complexity: 1 + if, for, while, do, each when branch but else, catch,
 //                      &&, || and ?: (the CRAP input; counted like StructureMetrics does for Java)
 //   inline             true for an inline function or accessor: its body is copied into the callers, so
 //                      JaCoCo never sees it run and its coverage (hence its CRAP score) cannot be measured
+//   initializer        true for an init block or a property initializer that runs inside the class
+//                      constructor or static initializer: JaCoCo has no method of its own for it, so
+//                      its coverage is read from the coverage of its source lines
 // A unit is a named function, a property accessor with a body, a secondary constructor with a block
-// body, or a property whose initializer is a lambda or an anonymous function or whose delegate takes a
-// lambda (by lazy { }); a property unit is named after the property. Members of nested, local and
+// body, an init block with statements (named after its class, Foo.<init>; several blocks of a class share the name),
+// a property whose initializer is a lambda or an anonymous function or whose delegate takes a lambda
+// (by lazy { }), or a property whose other initializer holds a block (a lambda such as run { } or
+// map { }, or braces of if, try and when) or is more than a straight line (complexity above 1 or control
+// nesting); a property unit is named after the property. Members of nested, local and
 // anonymous classes and objects are units of their own and do not count towards the enclosing function;
 // lambdas and local functions count towards it.
 // Every file also lists its package and the JVM names of its top-level classes and, when it declares
@@ -215,9 +222,15 @@ public final class KotlinMetrics {
         }
       } else if (declaration instanceof KtProperty) {
         property((KtProperty) declaration, owner);
-      } else if (declaration instanceof KtClassInitializer) {
-        nestedClasses(((KtClassInitializer) declaration).getBody(), owner);
       }
+    }
+
+    private void initializer(KtClassInitializer initializer, String owner) {
+      KtExpression body = initializer.getBody();
+      if (body instanceof KtBlockExpression && !((KtBlockExpression) body).getStatements().isEmpty()) {
+        report(initializer, join(owner, "<init>"), body, 0, false, true);
+      }
+      nestedClasses(body, owner);
     }
 
     private void property(KtProperty property, String owner) {
@@ -231,9 +244,17 @@ public final class KotlinMetrics {
       KtFunction unit = unitOf(property);
       if (unit != null && unit.getBodyExpression() != null) {
         report(property, join(owner, property.getName()), unit.getBodyExpression(), unit.getValueParameters().size(), false);
+      } else if (unit == null && property.getInitializer() != null && measuredInitializer(property.getInitializer())) {
+        report(property, join(owner, property.getName()), property.getInitializer(), 0, false, true);
       }
       nestedClasses(property.getInitializer(), owner);
       nestedClasses(property.getDelegateExpression(), owner);
+    }
+
+    private static boolean measuredInitializer(KtExpression initializer) {
+      Body metrics = new Body();
+      metrics.visit(initializer, 0);
+      return metrics.complexity > 1 || metrics.maxNesting > 0 || metrics.blocks > 0;
     }
 
     private static KtFunction unitOf(KtProperty property) {
@@ -246,6 +267,9 @@ public final class KotlinMetrics {
         return (KtNamedFunction) initializer;
       }
       KtExpression delegate = property.getDelegateExpression();
+      if (delegate instanceof KtQualifiedExpression) {
+        delegate = ((KtQualifiedExpression) delegate).getSelectorExpression();
+      }
       if (delegate instanceof KtCallExpression) {
         KtLambdaExpression lambda = null;
         for (KtValueArgument argument : ((KtCallExpression) delegate).getValueArguments()) {
@@ -268,7 +292,11 @@ public final class KotlinMetrics {
         nestedClasses(entry, qualified);
       }
       for (KtDeclaration member : klass.getDeclarations()) {
-        declare(member, qualified);
+        if (member instanceof KtClassInitializer) {
+          initializer((KtClassInitializer) member, qualified);
+        } else {
+          declare(member, qualified);
+        }
       }
       for (KtParameter parameter : klass.getPrimaryConstructorParameters()) {
         nestedClasses(parameter.getDefaultValue(), qualified);
@@ -297,6 +325,11 @@ public final class KotlinMetrics {
     }
 
     private void report(PsiElement declaration, String name, KtExpression body, int parameters, boolean inline) {
+      report(declaration, name, body, parameters, inline, false);
+    }
+
+    private void report(
+        PsiElement declaration, String name, KtExpression body, int parameters, boolean inline, boolean initializer) {
       int start = significant(declaration.getNode(), true);
       int end = significant(declaration.getNode(), false);
       int startLine = lineOf(start);
@@ -318,6 +351,7 @@ public final class KotlinMetrics {
               + ",\"parameters\":" + parameters
               + ",\"complexity\":" + metrics.complexity
               + ",\"inline\":" + inline
+              + ",\"initializer\":" + initializer
               + "}");
     }
 
@@ -352,12 +386,13 @@ public final class KotlinMetrics {
     int statements = 0;
     int maxNesting = 0;
     int complexity = 1;
+    int blocks = 0;
 
     void visit(PsiElement element, int depth) {
       if (element == null || element instanceof KtClassOrObject) {
         return;
       }
-      int next = isControl(element) ? depth + 1 : depth;
+      int next = isControl(element) && !isElseIf(element) ? depth + 1 : depth;
       maxNesting = Math.max(maxNesting, next);
       count(element);
       for (PsiElement child : element.getChildren()) {
@@ -367,6 +402,7 @@ public final class KotlinMetrics {
 
     private void count(PsiElement element) {
       if (element instanceof KtBlockExpression) {
+        blocks += 1;
         statements += ((KtBlockExpression) element).getStatements().size();
       } else if (element instanceof KtIfExpression) {
         KtIfExpression expression = (KtIfExpression) element;
@@ -400,6 +436,14 @@ public final class KotlinMetrics {
       return parent instanceof KtBlockExpression || parent instanceof KtContainerNodeForControlStructureBody
           || parent instanceof KtWhenEntry;
     }
+  }
+
+  private static boolean isElseIf(PsiElement element) {
+    PsiElement container = element.getParent();
+    return element instanceof KtIfExpression
+        && container instanceof KtContainerNodeForControlStructureBody
+        && container.getParent() instanceof KtIfExpression
+        && ((KtIfExpression) container.getParent()).getElse() == element;
   }
 
   private static boolean isControl(PsiElement element) {

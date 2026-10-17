@@ -34,12 +34,5 @@
     "e2e/**/*.{ts,tsx,mts,cts,js,jsx,mjs,cjs}",
     "*.config.{ts,mts,mjs}"
   ],
-  "ignore": [
-    "src/**/dist/**",
-    "src/**/*.d.ts",
-    "coverage/**",
-    "reports/**",
-    ".stryker-tmp/**",
-    ".nitpicker-*"
-  ]
+  "ignore": ["src/**/*.d.ts", "coverage/**", "reports/**", ".stryker-tmp/**", ".nitpicker-*"]
 }

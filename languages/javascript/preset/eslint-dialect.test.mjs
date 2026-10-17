@@ -6,7 +6,7 @@ import {
   JAVASCRIPT_ONLY_RULES,
   JSDOC_RULE_OPTIONS,
   applyJavascriptDialect,
-  javascriptRuleEntries,
+  scriptRuleEntries,
 } from './eslint-dialect.mjs';
 
 const javascript = { preset: 'javascript' };
@@ -214,15 +214,10 @@ describe('the dialect applied to files', () => {
   });
 });
 
-describe('javascriptRuleEntries', () => {
+describe('scriptRuleEntries', () => {
   it('turns on the rules typescript-eslint enables for TypeScript files only', () => {
-    expect(javascriptRuleEntries(javascript, ['src/**/*.js'])).toEqual([
+    expect(scriptRuleEntries(['src/**/*.js'])).toEqual([
       { files: ['src/**/*.js'], rules: JAVASCRIPT_ONLY_RULES },
     ]);
-  });
-
-  it('adds nothing for other presets', () => {
-    expect(javascriptRuleEntries({}, ['src/**/*.js'])).toEqual([]);
-    expect(javascriptRuleEntries(undefined, ['src/**/*.js'])).toEqual([]);
   });
 });
