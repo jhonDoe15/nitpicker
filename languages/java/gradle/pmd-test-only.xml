@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ruleset name="nitpicker-test-rules"
+         xmlns="http://pmd.sourceforge.net/ruleset/2.0.0">
+  <description>Nitpicker's PMD rules that run on test sources only.</description>
+  <rule ref="category/java/errorprone.xml/TestClassWithoutTestCases">
+    <properties>
+      <property name="testClassPattern"
+                value="^(?:.*\.)?Test[^\.]*$|^(?:.*\.)?.*(?&lt;!Arch|Architecture)Tests?$|^(?:.*\.)?.*TestCase$"/>
+    </properties>
+  </rule>
+</ruleset>
