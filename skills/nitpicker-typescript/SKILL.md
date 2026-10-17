@@ -33,7 +33,9 @@ Before you change code other modules use, fix a bug, or add a UI state, read
      wait for that run; never kill it.
 4. Never suppress: no `eslint-disable`, `@ts-ignore`, coverage or mutation ignore comments
    (`istanbul`/`c8`/`v8 ignore`, `Stryker disable`), config `exclude`/`disable`, legacy entries,
-   or weakened tests. If a finding seems wrong, stop and ask.
+   generator markers (`@generated`, `DO NOT EDIT`) in files you wrote, or weakened tests. If a finding seems wrong, stop and ask. Never pass `--accept-policy-change` or set
+   `NITPICKER_ACCEPT_POLICY_CHANGE`: a `nitpicker-config/policy-loosened` finding is for a person to
+   accept.
 
 ## Layout
 
@@ -44,8 +46,8 @@ Before you change code other modules use, fix a bug, or add a UI state, read
 - Export only what another module imports; an exported type nobody imports fails dead-code.
   Callers in another feature derive result types: `Awaited<ReturnType<typeof importContacts>>`;
   inside a feature, extend the named type (`TransitionResult | { kind: 'blank-reason' }`).
-- `adapters/` does I/O and parses untrusted input (files, HTTP bodies, JSON) once, with zod (add it
-  if it isn't a dependency). Field rules and conversions live in the schema
+- `adapters/` does I/O and parses untrusted input (files, HTTP bodies, JSON) once, with the project's
+  validation library (zod if it has none; add it then). Field rules and conversions live in the schema
   (`z.string().trim().min(1)`, `z.email()`, `z.iso.date()`, `.transform(toCents)`), never
   `z.unknown()` fields plus hand checks. A JSON list is `z.array(recordSchema)`; the first issue's
   `path` (`[index, field]`) names the bad record.
@@ -55,6 +57,7 @@ Before you change code other modules use, fix a bug, or add a UI state, read
 - `src/main/composition-root.ts` only passes things in, through named functions. A new feature is
   a new directory, never a new `if`, `?:` or `??` in a shared entry point: lookups and their
   missing-value checks go in the feature's `adapters/`.
+- New code goes under the source roots (`layout.sourceRoots`); the gate reports anything outside.
 - Follow neighbouring signatures (parameter order, naming) and reuse helpers that exist.
 
 ## Write it this way

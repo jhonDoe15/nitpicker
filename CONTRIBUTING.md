@@ -38,7 +38,7 @@ npm run check
 
 `npm run check` runs the self-gate (nitpicker checks your change against the remote's default
 branch) and then the full test suite, and fails if either fails. Arguments after `--` go to vitest,
-so `npm run check -- --maxWorkers=2` matches CI's worker count. It needs Node.js 22.14 or newer (CI
+so `npm run check -- --shard=2/8` runs only what one CI test shard runs. It needs Node.js 22.14 or newer (CI
 uses 24) and Java 21 for the structure-metrics test. It checks your working tree, uncommitted and
 untracked files included, while CI checks the pull request merged into its target branch, so commit
 everything and merge or rebase on the latest `main` before the final run. A change to a language's
@@ -56,6 +56,29 @@ CI (the `typescript` workflow) runs:
 
 GitHub does not start a pull request run while the pull request has a merge conflict, so resolve it
 before adding the label.
+
+When a pull request loosens `nitpicker.config.json` (for example an exception, exclude or entry
+point that covers a new code file; see the policy changes in [docs/usage.md](docs/usage.md)), the
+self-gate fails with a `nitpicker-config/policy-loosened` finding that names a 12-character digest.
+A repository admin who agrees with the loosening copies the digest from that CI run's log (a local
+run can give another digest, since CI checks the pull request merged into `main`), sets the
+repository variable `NITPICKER_ACCEPT_POLICY_CHANGE` to exactly that value (Settings > Secrets and
+variables > Actions > Variables), and runs the self-gate again by removing and re-adding the
+`run-ci` label. The digest covers those loosenings and the content of the files they hide, so a
+different loosening needs a new digest. Delete the variable once the pull request is merged. The
+self-gate runs the pull request's own code and workflow, so changes to `.github/workflows/`,
+`core/`, `package.json` and `nitpicker.config.json` need a careful review whatever the gate says.
+
+CI splits the test files into shards that run as parallel jobs, and the required `test` check passes
+only when every shard passed. `scripts/test-shards/sequencer.mjs` gives each shard about the same
+total time, from the per-file times in `scripts/test-shards/durations.json`; a file that is not
+listed counts as one second. The split never drops a file, it only gets less even as the times drift.
+After adding or reshaping slow tests, record the times again: the script runs the suite (vitest
+arguments pass through) and rewrites the times of the files it ran.
+
+```sh
+node scripts/test-shards/record-durations.mjs --maxWorkers=100%
+```
 
 `npm test` runs `languages/python/metrics/structure_metrics.py` on a real `python3`, so it needs
 `python3` 3.10 or newer on the `PATH` (that test file is skipped, with its reason in the name,

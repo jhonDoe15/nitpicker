@@ -81,6 +81,20 @@ describe('one-way rule messages', () => {
     expect(withAllowedForm(finding)).toBe(finding);
   });
 
+  it('tells a test to use assertFailsWith for a broad catch', () => {
+    const file = 'src/main/kotlin/demo/A.kt';
+    const { message } = withKotlinRuleMessage(
+      detektFinding(
+        'detekt.exceptions.TooGenericExceptionCaught',
+        'The caught exception is too generic. Prefer catching specific exceptions to the case that is currently handled.',
+      ),
+    );
+
+    expect(message).toBe(
+      `The caught exception is too generic. Prefer catching specific exceptions to the case that is currently handled. In a test, use \`assertFailsWith\`. ${exceptionHint('detekt.exceptions.TooGenericExceptionCaught', file)}`,
+    );
+  });
+
   it('leaves other detekt rules and other tools without an allowed form', () => {
     const other = detektFinding('detekt.style.MagicNumber', 'magic');
     const sameRuleOtherTool = { ...detektFinding(ONE_WAY_RULES[0].id, 'x'), tool: 'ktlint' };
@@ -92,7 +106,7 @@ describe('one-way rule messages', () => {
   it('lists each rule once under the id detekt reports', () => {
     expect(new Set(ONE_WAY_RULE_IDS).size).toBe(ONE_WAY_RULE_IDS.length);
     for (const id of ONE_WAY_RULE_IDS) {
-      expect(id).toMatch(/^detekt\.(?:potential-bugs|coroutines|style|complexity)\.[A-Z]\w+$/);
+      expect(id).toMatch(/^detekt\.(?:potential-bugs|exceptions|coroutines|style|complexity)\.[A-Z]\w+$/);
     }
   });
 });

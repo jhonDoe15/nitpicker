@@ -29,6 +29,8 @@ it with `npx skills add jhonDoe15/nitpicker --skill nitpicker-java`.
    entries, or weakened tests. In Java files the Java rules apply: `@SuppressFBWarnings` and
    `@SuppressWarnings("PMD")` are findings, and a project's own PMD or Checkstyle config is used
    only when `nitpicker.config.json` opts in under `tools`. If a finding seems wrong, stop and ask.
+   Never pass `--accept-policy-change` or set `NITPICKER_ACCEPT_POLICY_CHANGE`: a
+   `nitpicker-config/policy-loosened` finding is for a person to accept.
 
 ## Write it this way
 
@@ -37,18 +39,23 @@ it with `npx skills add jhonDoe15/nitpicker --skill nitpicker-java`.
 - Null: no `!!`, no `as String` on a nullable. Use `value ?: return`, `?.let`, or
   `checkNotNull(value) { "why" }` when null is a bug; `x?.let { ... }`, not `if (x == null) null else ...`.
 - Coroutines: no `GlobalScope`, no `runBlocking` (a call, however it is imported). Make the caller `suspend`
-  (`suspend fun main()` for an entry point) and use `coroutineScope { launch { ... } }`.
+  (`suspend fun main()` for an entry point) and use `coroutineScope { launch { ... } }`; a test uses `runTest`.
 - Records: a class that only holds data is a `data class` with `val`s; change a copy with `copy(...)`.
   A class with `var`s is not flagged, nor a JPA or Spring Data entity; the project adds other
   annotations to `UseDataClass`'s `excludeAnnotatedClasses` in its `detekt.yml`.
 - Design for a fixed clock and a seeded random: take a `java.time.Clock` and a `kotlin.random.Random`
   as constructor parameters, and read environment variables once where `fun main` (or the
   `@SpringBootApplication` class, or the Ktor module) builds the objects, into a config class passed in.
+- Test sources are linted like main ones (detekt, and ktlint or ktfmt): the rules above, including `!!`, apply
+  in tests. detekt keeps its default exclusions for tests, so magic numbers, `lateinit`, many functions,
+  duplicated string literals, spread operators and function names in backticks are not findings in a
+  test. A test asserts on the specific exception (`assertFailsWith<IllegalStateException> { ... }`)
+  instead of catching `Exception`, whatever the variable is called.
 - detekt's defaults stay on. In main sources: lines of at most 120 characters, named constants
   instead of numbers other than -1, 0, 1 and 2 (`MagicNumber`), at most 2 `return` and 2 `throw`
   per function, conditions of at most 3 `&&`/`||` parts, no wildcard imports, and no `TODO` or
   `FIXME` without an issue (`TODO(#123): ...`). Catch and throw specific exceptions, never `Exception`, `RuntimeException` or
-  `Throwable`, and pass the caught exception on as the cause (`SwallowedException`). Use
+  `Throwable` (also in tests: `TooGenericExceptionCaught`), and pass the caught exception on as the cause (`SwallowedException`). Use
   `require(...)` and `check(...)` instead of throwing `IllegalArgumentException` and
   `IllegalStateException`; a top-level `val` holding a literal is `const val`. Remove unused private
   members and parameters.
@@ -72,7 +79,8 @@ it with `npx skills add jhonDoe15/nitpicker --skill nitpicker-java`.
 - A new clone of at least 5 lines and 50 tokens in main sources (`duplicate-clone`) fails: extract
   a function. A package must not depend on a less stable one (`stability-direction`).
 - A file stays within 300 lines (a test file 500). A package folder holds at most 6 files and 6
-  test files directly: group the rest into subpackages by what they do.
+  test files directly: group the rest into subpackages by what they do. Java sources follow the
+  `nitpicker-java` rules.
 - Every branch you add needs a test: changed-branch coverage runs on your change.
 - Plan tests to be fast (`test-runtime/slow-test`): a test dispatcher or fake clock instead of
   waits, a test slice instead of a full context.

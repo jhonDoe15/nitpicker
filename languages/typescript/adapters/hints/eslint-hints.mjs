@@ -79,6 +79,8 @@ const ARGUMENT_TYPE_HINT = ' Write the parameter type in the signature: `(rows: 
 
 const DUPLICATE_IMPORT_HINT = ' Merge the imports of one module into a single import statement.';
 
+const DEPRECATED_HINT = ` Call the replacement that the deprecation names instead of the deprecated API. If it names none and the API cannot be avoided, ${EXCEPTION_ROUTE}.`;
+
 const GROWTH_ADVICE = new Map([
   [
     'nitpicker/no-throw',
@@ -180,6 +182,7 @@ const MESSAGE_REWRITERS = new Map([
   ['curly', appendHint(CURLY_HINT)],
   ['no-duplicate-imports', appendHint(DUPLICATE_IMPORT_HINT)],
   ['regexp/no-super-linear-backtracking', appendHint(REGEXP_HINT)],
+  ['@typescript-eslint/no-deprecated', appendHint(DEPRECATED_HINT)],
 ]);
 
 export function eslintMessageWithHint({ ruleId, text, relativePath, node, sourceFile }) {
@@ -189,4 +192,13 @@ export function eslintMessageWithHint({ ruleId, text, relativePath, node, source
 
 export function growthAdviceFor(ruleId) {
   return GROWTH_ADVICE.get(ruleId);
+}
+
+const UNSUPPORTED_DIRECTIVE_TEXT = '/* eslint-env */ comments are no longer supported';
+
+export function withoutFatalDirectives(messages) {
+  return messages.filter(
+    (message) =>
+      !(message?.fatal === true && message.message?.startsWith(UNSUPPORTED_DIRECTIVE_TEXT)),
+  );
 }
