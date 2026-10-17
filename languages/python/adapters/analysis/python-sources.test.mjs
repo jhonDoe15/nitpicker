@@ -62,7 +62,7 @@ describe('listing production modules', () => {
     ]);
   });
 
-  it('skips tests, environments, hidden directories and build output', () => {
+  it('skips tests, environments, hidden directories and build output, and Django test names only in Django', () => {
     const root = project([
       'app/__init__.py',
       'app/keep.py',
@@ -70,6 +70,8 @@ describe('listing production modules', () => {
       'app/test/helper.py',
       'app/test_keep.py',
       'app/keep_test.py',
+      'app/tests.py',
+      'app/keep_tests.py',
       'app/conftest.py',
       'app/.hidden/secret.py',
       'app/__pycache__/keep.py',
@@ -82,6 +84,16 @@ describe('listing production modules', () => {
       'app/data.txt',
     ]);
 
+    expect(listProductionModules(root, ['.']).map(({ file }) => file)).toEqual([
+      'app/__init__.py',
+      'app/keep.py',
+      'app/keep_tests.py',
+      'app/tests.py',
+    ]);
+    writeFileSync(
+      path.join(root, 'pyproject.toml'),
+      '[project]\nname = "app"\ndependencies = ["Django>=5"]\n',
+    );
     expect(listProductionModules(root, ['.']).map(({ file }) => file)).toEqual([
       'app/__init__.py',
       'app/keep.py',
@@ -129,13 +141,21 @@ describe('listing production modules', () => {
     expect(existingSourceRoots(root, ['src', 'lib'])).toEqual(['src']);
   });
 
-  it('adds the documentation directories to the globs when the project is its own root', () => {
-    expect(nonProductionGlobs(['src'])).toBe(NON_PRODUCTION_GLOBS);
-    expect(nonProductionGlobs(['.']).slice(NON_PRODUCTION_GLOBS.length)).toEqual([
+  it('adds the documentation directories when the project is its own root, and Django test names', () => {
+    const plain = project([]);
+    const django = project(['manage.py']);
+
+    expect(nonProductionGlobs(['src'], plain)).toEqual(NON_PRODUCTION_GLOBS);
+    expect(nonProductionGlobs(['.'], plain).slice(NON_PRODUCTION_GLOBS.length)).toEqual([
       'docs/**',
       'doc/**',
       'examples/**',
       'scripts/**',
+    ]);
+    expect(nonProductionGlobs(['src'], django).slice(NON_PRODUCTION_GLOBS.length)).toEqual([
+      '**/tests.py',
+      '**/tests_*.py',
+      '**/*_tests.py',
     ]);
   });
 
