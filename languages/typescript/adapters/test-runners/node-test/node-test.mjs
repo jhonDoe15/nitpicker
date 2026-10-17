@@ -6,6 +6,7 @@ import {
   NODE_TEST_OPTIONS_NITPICKER_SETS,
   RUNNER_NAMES,
 } from '../../../preset/test-runner/runners.mjs';
+import { NODE_DEFAULT_PATTERNS } from '../../../preset/test-runner/test-files/test-file-patterns.mjs';
 import { spawnNodeTool } from '../../quality-areas/runners/tooling.mjs';
 import { startV8Coverage } from '../v8-coverage/v8-coverage-run.mjs';
 import {
@@ -21,7 +22,6 @@ const REPORTER = pathToFileURL(path.join(import.meta.dirname, 'node-test-reporte
 const RESTORE_MOCKS = path.join(import.meta.dirname, 'restore-mocks.cjs');
 const REQUIRE_HOOK_OPTIONS = new Set(['--require', '-r']);
 const TYPESCRIPT_FILE = /\.[cm]?ts$/u;
-const SCRIPT_EXTENSIONS = '{cjs,mjs,js,cts,mts,ts}';
 const LOADER_OPTIONS = new Set([
   '--import',
   '--require',
@@ -31,15 +31,6 @@ const LOADER_OPTIONS = new Set([
 ]);
 
 const SKIPPED_DIRECTORY = /^(?:node_modules|\.nitpicker-diff-.*)$/u;
-
-const NODE_DEFAULT_PATTERNS = [
-  `**/*.test.${SCRIPT_EXTENSIONS}`,
-  `**/*-test.${SCRIPT_EXTENSIONS}`,
-  `**/*_test.${SCRIPT_EXTENSIONS}`,
-  `**/test-*.${SCRIPT_EXTENSIONS}`,
-  `**/test.${SCRIPT_EXTENSIONS}`,
-  `**/test/**/*.${SCRIPT_EXTENSIONS}`,
-];
 
 const VALUED_NODE_OPTIONS = new Set([
   '--import',
