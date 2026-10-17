@@ -2,6 +2,7 @@ import regexp from 'eslint-plugin-regexp';
 import tseslint from 'typescript-eslint';
 import { nitpickerRules } from '../../eslint-plugin/index.mjs';
 import { domainGlobsFor } from '../strict/strict-domain.mjs';
+import { SECURITY_RULES, securityRules, securitySupportGlobs } from './security-facts.mjs';
 
 const JAVASCRIPT_FILES = '**/*.{js,jsx,mjs,cjs}';
 const MAGIC_NUMBER_ALLOWED = [-1, 0, 1, 2, 10, 100, 1000];
@@ -81,19 +82,15 @@ function productionRules({ react, routeHandlers }) {
   };
 }
 
-function productionGuardRules({ react }) {
+function productionGuardRules({ react, security }) {
   return {
     'nitpicker/no-process-access-outside-composition-root': [
       'error',
       { allowImportMetaEnv: react, allowBundlerEnv: react },
     ],
-    'nitpicker/no-disabled-tls-verification': 'error',
     'nitpicker/no-shell-string-command': 'error',
-    'nitpicker/no-sql-string-building': 'error',
-    'nitpicker/no-unsafe-deserialization': 'error',
     'nitpicker/no-unsafe-path-join': 'error',
-    'nitpicker/no-weak-hash': 'error',
-    'nitpicker/require-http-timeout': ['error', { fetch: !react }],
+    ...securityRules({ react, security }),
   };
 }
 
@@ -132,8 +129,13 @@ export function productionPolicyConfigFor(layout, options = {}) {
           react: options.react === true,
           routeHandlers: options.routeHandlers === true,
         }),
-        ...productionGuardRules({ react: options.react === true }),
+        ...productionGuardRules({ react: options.react === true, security: options.security }),
       },
+    },
+    {
+      files: securitySupportGlobs(),
+      plugins: { nitpicker: nitpickerRules },
+      rules: Object.fromEntries(SECURITY_RULES.map((rule) => [rule, 'off'])),
     },
     {
       files: layout.sourceGlobs,

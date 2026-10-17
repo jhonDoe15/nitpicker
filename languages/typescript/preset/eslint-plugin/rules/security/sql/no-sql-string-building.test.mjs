@@ -1,8 +1,8 @@
 import { createRuleTester } from '../../guards/test-support/rule-tester.mjs';
-import { rule as noSqlStringBuilding } from './no-sql-string-building.mjs';
+import { rule as noSqlStringBuilding, taggedForm } from './no-sql-string-building.mjs';
 
 const tester = createRuleTester();
-const built = (kind) => [{ messageId: 'sqlBuilt', data: { kind } }];
+const built = (kind) => [{ messageId: 'sqlBuilt', data: { kind, tagged: taggedForm() } }];
 const template = built('a template literal');
 const concatenation = built('concatenation');
 
@@ -137,7 +137,7 @@ tester.run('no-sql-string-building', noSqlStringBuilding, {
     },
     {
       code: 'export const find = (name, age) => { let sql = "SELECT * FROM users WHERE 1 = 1"; sql += " AND name = \'" + name + "\'"; return pool.query(sql); };',
-      errors: [{ messageId: 'sqlBuilt', data: { kind: 'concatenation' } }],
+      errors: [{ messageId: 'sqlBuilt', data: { kind: 'concatenation', tagged: taggedForm() } }],
     },
     {
       code: 'export const find = (name) => { let sql = "SELECT * FROM users WHERE 1 = 1"; if (name) { sql += ` AND name = \'${name}\'`; } return pool.query(sql); };',

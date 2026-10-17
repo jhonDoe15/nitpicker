@@ -1,4 +1,4 @@
-import { createRuleTester } from '../guards/test-support/rule-tester.mjs';
+import { createRuleTester } from '../../guards/test-support/rule-tester.mjs';
 import { rule as noDisabledTlsVerification } from './no-disabled-tls-verification.mjs';
 
 const tester = createRuleTester();
@@ -9,7 +9,6 @@ tester.run('no-disabled-tls-verification', noDisabledTlsVerification, {
     'import https from "node:https"; export const agent = new https.Agent({ ca: readFileSync(caPath) });',
     'export const options = { rejectUnauthorized: true };',
     'export const options = { rejectUnauthorized };',
-    'export const options = { rejectUnauthorized: !isLocal };',
     'import { Pool } from "pg"; export const pool = new Pool({ ssl: { ca, rejectUnauthorized: true } });',
     'export const x = { strictSSL: true };',
     'process.env.NODE_TLS_REJECT_UNAUTHORIZED = "1";',
@@ -20,6 +19,19 @@ tester.run('no-disabled-tls-verification', noDisabledTlsVerification, {
     'export const browser = { ignoreHTTPSErrors: false };',
     'export const url = "postgres://db/app?sslmode=verify-full";',
     'export const options = { other: false };',
+    'import https from "node:https"; export const server = (key, cert, ca) => https.createServer({ key, cert, ca, requestCert: true, rejectUnauthorized: false }, (req, res) => { if (!req.socket.authorized) { res.writeHead(401).end(); return; } res.end("ok"); });',
+    'import tls from "node:tls"; export const s = (key, cert) => tls.createServer({ key, cert, requestCert: true, rejectUnauthorized: false }, (socket) => { if (!socket.authorized) socket.end(); });',
+    'import { createSecureServer } from "node:http2"; export const s = (key, cert, ca) => createSecureServer({ key, cert, ca, requestCert: true, rejectUnauthorized: false });',
+    'export const args = (spki) => [`--ignore-certificate-errors-spki-list=${spki}`];',
+    'export const FLAG = "--ignore-certificate-errors-spki-list";',
+    'export function checkEnv(env, logger) { if (env.NODE_TLS_REJECT_UNAUTHORIZED === "0") { logger.warn("NODE_TLS_REJECT_UNAUTHORIZED=0 is set: certificate checks are off, unset it"); } }',
+    'const BLOCKED = new Set(["--ignore-certificate-errors", "--disable-web-security"]); export const safeArgs = (args) => args.filter((a) => !BLOCKED.has(a));',
+    'export const safeArgs = (args) => args.filter((a) => a !== "--ignore-certificate-errors");',
+    'export const HELP = "Use sslmode=verify-full; never sslmode=no-verify in production.";',
+    'export function agentOptions({ rejectUnauthorized = true }) { return { rejectUnauthorized }; }',
+    'export const insecure = process.env.NODE_TLS_REJECT_UNAUTHORIZED === "0";',
+    'export const serverOptions = (key, cert, ca) => ({ key, cert, ca, requestCert: true, rejectUnauthorized: false });',
+    'import { MongoClient } from "mongodb"; export const c = (uri, ca) => new MongoClient(uri, { tls: true, tlsCAFile: ca });',
   ],
   invalid: [
     { code: 'export const options = { rejectUnauthorized: false };', errors: off },
@@ -95,5 +107,52 @@ tester.run('no-disabled-tls-verification', noDisabledTlsVerification, {
       code: 'export const args = ["--no-sandbox", "--ignore-certificate-errors"];',
       errors: off,
     },
+    { code: 'export const options = { rejectUnauthorized: !isLocal };', errors: off },
+    {
+      code: 'import https from "node:https"; export const agent = new https.Agent({ rejectUnauthorized: process.env.NODE_ENV === "production" });',
+      errors: off,
+    },
+    {
+      code: 'const isDev = process.env.NODE_ENV !== "production"; export const agent = new https.Agent({ rejectUnauthorized: !isDev });',
+      errors: off,
+    },
+    {
+      code: 'export const ssl = { rejectUnauthorized: process.env.DB_SSL_VERIFY === "true" };',
+      errors: off,
+    },
+    {
+      code: 'export const browser = { ignoreHTTPSErrors: process.env.CI === "true" };',
+      errors: off,
+    },
+    {
+      code: 'import { MongoClient } from "mongodb"; export const c = (uri) => new MongoClient(uri, { tls: true, tlsAllowInvalidCertificates: true });',
+      errors: off,
+    },
+    {
+      code: 'import { MongoClient } from "mongodb"; export const c = (uri) => new MongoClient(uri, { tlsInsecure: true });',
+      errors: off,
+    },
+    {
+      code: 'import { MongoClient } from "mongodb"; export const c = (uri) => new MongoClient(uri, { tlsAllowInvalidHostnames: true });',
+      errors: off,
+    },
+    { code: 'export const options = { sslValidate: false };', errors: off },
+    {
+      code: 'export const uri = "mongodb://h:27017/db?tls=true&tlsAllowInvalidCertificates=true";',
+      errors: off,
+    },
+    {
+      code: 'import { app } from "electron"; app.commandLine.appendSwitch("ignore-certificate-errors");',
+      errors: off,
+    },
+    {
+      code: 'export const launch = (puppeteer) => puppeteer.launch({ args: ["--ignore-certificate-errors"] });',
+      errors: off,
+    },
+    {
+      code: 'import { execSync } from "node:child_process"; export const run = (script) => execSync(`NODE_TLS_REJECT_UNAUTHORIZED=0 node ${script}`);',
+      errors: off,
+    },
+    { code: 'export const ENV = "NODE_TLS_REJECT_UNAUTHORIZED=0";', errors: off },
   ],
 });

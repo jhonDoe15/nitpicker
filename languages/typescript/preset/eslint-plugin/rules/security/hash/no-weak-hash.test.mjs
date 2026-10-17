@@ -1,4 +1,4 @@
-import { createRuleTester } from '../guards/test-support/rule-tester.mjs';
+import { createRuleTester } from '../../guards/test-support/rule-tester.mjs';
 import { rule as noWeakHash } from './no-weak-hash.mjs';
 
 const tester = createRuleTester();
@@ -8,6 +8,9 @@ const CRYPTO = 'import { createHash, createHmac } from "node:crypto";';
 
 tester.run('no-weak-hash', noWeakHash, {
   valid: [
+    'import * as CryptoJS from "crypto-js"; export const id = (s, k) => CryptoJS.HmacSHA1(s, k);',
+    'const subtle = crypto.subtle; export const key = (raw) => subtle.importKey("raw", raw, { name: "HMAC", hash: "SHA-1" }, false, ["sign"]);',
+    `${CRYPTO} export const sign = (s, k) => createHmac("sha1", k).update(s).digest();`,
     `${CRYPTO} export const id = (s) => createHash("sha256").update(s).digest("hex");`,
     `${CRYPTO} export const id = (s) => createHash("sha512").update(s).digest("hex");`,
     `${CRYPTO} export const id = (s) => createHash("sha3-256").update(s).digest("hex");`,
@@ -39,10 +42,6 @@ tester.run('no-weak-hash', noWeakHash, {
     {
       code: `${CRYPTO} export const id = (s) => createHash("SHA-1").update(s).digest("hex");`,
       errors: weak('SHA-1'),
-    },
-    {
-      code: `${CRYPTO} export const sign = (s, k) => createHmac("sha1", k).update(s).digest();`,
-      errors: weak('sha1'),
     },
     {
       code: 'import crypto from "node:crypto"; export const id = (s) => crypto.createHash("md5").update(s).digest();',
@@ -90,7 +89,7 @@ tester.run('no-weak-hash', noWeakHash, {
     },
     {
       code: `${CRYPTO} const CONFIG = { hash: "md5" }; export const id = (s) => createHash(CONFIG.hash).update(s).digest();`,
-      errors: [...weak('md5'), ...weak('md5')],
+      errors: weak('md5'),
     },
     {
       code: `${CRYPTO} const FIRST = "md5"; const SECOND = FIRST; export const id = (s) => createHash(SECOND).update(s).digest();`,
@@ -137,10 +136,6 @@ tester.run('no-weak-hash', noWeakHash, {
       errors: weak('SHA-1'),
     },
     {
-      code: 'const subtle = crypto.subtle; export const key = (raw) => subtle.importKey("raw", raw, { name: "HMAC", hash: "SHA-1" }, false, ["sign"]);',
-      errors: weak('SHA-1'),
-    },
-    {
       code: 'import { md5 } from "other"; export const id = (s) => md5(s); export const sums = (s) => hashWith("md5", s);',
       errors: weak('md5'),
     },
@@ -175,10 +170,6 @@ tester.run('no-weak-hash', noWeakHash, {
     {
       code: 'import { SHA1 } from "crypto-js"; export const id = (s) => SHA1(s).toString();',
       errors: weak('SHA1'),
-    },
-    {
-      code: 'import * as CryptoJS from "crypto-js"; export const id = (s, k) => CryptoJS.HmacSHA1(s, k);',
-      errors: weak('HmacSHA1'),
     },
   ],
 });
