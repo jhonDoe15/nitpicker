@@ -467,17 +467,26 @@ identity when the value changes: editing such a line counts as a resolved plus a
   several constants count once; `default` and `case null, default` count 0). A flat switch, a switch
   expression or a pattern switch whose cases are all one-expression arrows, counts as one decision
   plus one per `when` guard, at most its case count, so an exhaustive switch over an enum or sealed
-  type does not push a method over the limit. Lambda bodies count towards the
-  enclosing method; members of nested and anonymous classes are methods of their own.
+  type does not push a method over the limit. Lambda bodies, initializer blocks and members of
+  nested and anonymous classes are units of their own and do not count towards the enclosing
+  method; the same scanner counts all of them (see
+  [Structure limits (SH5)](#structure-limits-sh5)).
 - **Ingester.** `ingestCrap` (`languages/java/ingest/crap.mjs`) joins those methods with the JaCoCo
   report (same `jacoco.xml` as slice 1). A JaCoCo method belongs to a method of `structure.json` when
   the file, the method name (`<init>` is the class name) and the line match: the method's first line
   lies in the method's line range. This also joins methods of anonymous classes. A constructor is
   also joined by its parameter types (`parameterTypes` in `structure.json` against JaCoCo's
   descriptor), because a class with field initializers starts its `<init>` at the first initializer,
-  before the constructor. Lambdas and
-  `<clinit>` have no entry of their own and stay out of the join (a lambda body counts
-  toward its enclosing method's complexity but not toward its coverage).
+  before the constructor. A lambda is joined to the synthetic JaCoCo methods `lambda$<method>$<n>`
+  (`lambda$new$<n>` in a constructor, an instance initializer or a field initializer,
+  `lambda$static$<n>` in a static one) whose first line lies in the lambda's range and not in a lambda
+  nested in it, so a lambda inside a lambda is scored separately and an outer lambda is scored
+  without the inner one. An initializer block and a field initializer that branches (`entry.initializer`
+  in `structure.json`) have no JaCoCo method of their own: their code is part of the constructors'
+  `<init>` or of `<clinit>`, so their coverage is read from JaCoCo's per-line data (`jacoco.xml`
+  `<sourcefile><line>`: covered lines and branches) for the lines of the unit, minus the lines of a unit nested in
+  it, and the lower of the line and branch percentage is used as everywhere else. A constructor's
+  own score still counts the initializer lines that its `<init>` holds.
 - **Private empty constructors.** `private Util() {}` (also with an explicit `super();`), the
   utility-class idiom, is flagged `privateEmptyConstructor` in `structure.json` and left out of the
   join. JaCoCo leaves such a constructor out of its report only in some cases (inner classes, enums,
@@ -497,8 +506,14 @@ identity when the value changes: editing such a line counts as a resolved plus a
   hand-written code that annotation is the `pmd/GeneratedOnHandWrittenCode` finding. Only violations are findings; the
   per-function metric findings of the TypeScript check are not produced.
 - **Identity.** `function:<signature>`, for example `function:Calc.classify(int, int, String)`:
-  enclosing classes, method and parameter types (`signature` in `structure.json`), never a line.
-  Repeats (anonymous classes) get `#2`, `#3` in report order. The path
+  enclosing classes, method and parameter types (`signature` in `structure.json`), never a line;
+  a lambda is `function:Calc.classify.<lambda>` or `function:Calc.classify.callback` (named after the
+  variable it initializes), an initializer block `function:Calc.<clinit>` (static) or
+  `function:Calc.<init>`, a field initializer `function:Calc.LIMIT`.
+  Repeats (anonymous classes) get `#2`, `#3` in report order. The `<init>`, `<clinit>` and `<lambda>`
+  names repeat within a class by nature, so a finding on one is numbered only among the entries of
+  that name with the same source text that are over the limit: inserting, deleting or reordering other
+  blocks or lambdas never turns a legacy one into a new finding. The path
   is part of the comparison key, so, as with the hashed identities of slice 1, a renamed file shows
   its findings as resolved plus new. Changing a method's parameters is a different function, as in
   the TypeScript check, where an edit that moves a function changes its identity too.
@@ -1161,18 +1176,26 @@ table:
   its rules do not expose per-method statements). A small JavaParser step was the alternative; it would add a
   pinned artifact for nothing the JDK does not already provide.
 - **Definitions** (the TypeScript analyzer's, so both languages gate the same way). Unit: each
-  method and constructor with a body. `lines`: last line - first line + 1, annotations and
+  method and constructor with a body, each static and instance initializer block with a statement
+  (`Class.<clinit>`, `Class.<init>`), each field initializer that is a lambda (`Class.field`) or
+  branches (`?:`, `&&`, `||`, a `switch` expression) and each lambda (`Class.method.<lambda>`; one
+  assigned to a variable or field is named after it, one inside another unit is named after that unit,
+  as in `Class.method.<lambda>.<lambda>`), as every arrow function and callback is in TypeScript. `lines`: last line - first line + 1, annotations and
   modifiers included, Javadoc not. `statements`: every statement in the body except blocks (`for`
   initializers and updates, `catch` parameters and `try` resources are not statements).
   `maxControlNesting`: deepest nesting of `if`, `for`, enhanced `for`, `while`, `do`, `switch`
   (statement or expression) and `catch`; an `else if` stays on the level of the `if` it continues,
   as in the Python and Kotlin presets. `parameters`:
-  declared parameters. Anonymous, local and member class bodies are separate units and do not count
-  towards the method that contains them; lambda bodies count towards the enclosing method.
+  declared parameters (the parameters of the lambda). Anonymous, local and member class bodies,
+  lambdas and initializer blocks are separate units and do not count towards the method that
+  contains them: the statements, control nesting and complexity of a lambda are its own, as in
+  TypeScript (`lines` is the physical span, so the lines of a nested unit still count towards the one
+  around it). A lambda with an expression body has 1 statement. A field initializer unit has 1 statement.
 - **Findings.** `languages/java/adapters/metrics/java-structure.mjs` hands the metrics to `evaluateStructure` and keeps
   the enforceable limit findings only (tool `structure`); the per-method descriptive metrics of the
   TypeScript check are not emitted, since they would add four findings per method to every report.
-  Name: `Outer.Inner.method` (constructors use the class name; anonymous classes `<anonymous>`),
+  Name: `Outer.Inner.method` (constructors use the class name; anonymous classes `<anonymous>`;
+  initializer blocks `Outer.<clinit>` and `Outer.<init>`, lambdas `Outer.method.<lambda>`),
   identity: name, occurrence among equal names in the file and a hash of the method text with
   indentation removed, no line number. A moved or re-indented method stays baselined; editing a
   method that already violates produces a new finding, as in TypeScript.
