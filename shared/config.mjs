@@ -15,20 +15,20 @@ export const THRESHOLD_KEYS = [
   'testFileLines',
   'lineLength',
   'folderFiles',
-  'unitTestSeconds',
-  'integrationTestSeconds',
   'folderDepth',
   'classMethods',
   'classFields',
   'inheritanceDepth',
+  'unitTestSeconds',
+  'integrationTestSeconds',
 ];
 const TEST_TIME_KEYS = ['unitTestSeconds', 'integrationTestSeconds'];
 const TEST_TIME_PRESETS = new Set(['java', 'kotlin', 'python']);
 const THRESHOLD_PRESETS = {
-  folderDepth: ['python'],
-  classMethods: ['python'],
-  classFields: ['python'],
-  inheritanceDepth: ['python'],
+  folderDepth: ['typescript', 'javascript', 'java', 'kotlin', 'python'],
+  classMethods: ['java', 'kotlin', 'python'],
+  classFields: ['java', 'kotlin', 'python'],
+  inheritanceDepth: ['java', 'kotlin', 'python'],
 };
 const WHOLE_NUMBER_THRESHOLD_KEYS = new Set([
   'fileLines',
