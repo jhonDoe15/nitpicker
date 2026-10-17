@@ -1,6 +1,24 @@
 import { describe, expect, it } from 'vitest';
 import { validateConfig } from './validate.mjs';
 
+describe('the i18n key', () => {
+  it.each([[{}], [{ enabled: true }], [{ enabled: false }], [{ functionNames: ['t'] }]])(
+    'is an error with the javascript preset, which points to the typescript preset (%j)',
+    (i18n) => {
+      expect(() => validateConfig({ preset: 'javascript', i18n })).toThrow(
+        'nitpicker.config.json: "i18n" is not supported with "preset": "javascript": the message rules check react-intl messages and the text in JSX, which belong to the TypeScript preset, so remove the key, or use "preset": "typescript" for a project with translated messages',
+      );
+    },
+  );
+
+  it('is still accepted with the typescript preset and with no preset', () => {
+    const i18n = { enabled: true, functionNames: ['t'] };
+
+    expect(validateConfig({ preset: 'typescript', i18n })).toEqual({ preset: 'typescript', i18n });
+    expect(validateConfig({ i18n })).toEqual({ i18n });
+  });
+});
+
 describe('the react key', () => {
   it.each([[{}], [{ enabled: true }], [{ enabled: false }], [{ styling: 'css-in-js' }]])(
     'is an error with the javascript preset, which points to the typescript preset (%j)',

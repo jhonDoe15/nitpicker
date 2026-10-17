@@ -40,7 +40,11 @@ const react = isReactProject({
   javascript: layout.javascript,
 });
 const routeHandlers = usesRouteHandlerFramework(readDependencyNames(analyzedProjectRoot()));
-const i18n = isI18nProject({ projectRoot: analyzedProjectRoot(), i18n: policy.i18n });
+const i18n = isI18nProject({
+  projectRoot: analyzedProjectRoot(),
+  i18n: policy.i18n,
+  javascript: layout.javascript,
+});
 const security = securityFactsFor(analyzedProjectRoot(), (file) => layout.isSourceFile(file));
 const { sourceGlobs, testGlobs, excludedGlobs, unitTestGlobs } = layout;
 const parserOptions = {
