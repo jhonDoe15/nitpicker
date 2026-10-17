@@ -56,6 +56,34 @@ describe('readKotlinSourceFindings', () => {
     ]);
   });
 
+  it('reads the enums and property types of every main file for the security checks', () => {
+    const root = projectWith({
+      'src/main/kotlin/demo/Sort.kt':
+        'package demo\n\nenum class Sort(val sql: String) { NAME("name") }\n',
+      'src/main/kotlin/demo/Users.kt': [
+        'package demo',
+        '',
+        'class Users(private val jdbc: JdbcTemplate) {',
+        '    fun sorted(sort: Sort) = jdbc.query("SELECT * FROM users ORDER BY ${sort.sql}", mapper)',
+        '    fun named(name: String) = jdbc.query("SELECT * FROM users WHERE name = \'$name\'", mapper)',
+        '    fun etag(body: String) = DigestUtils.md5Hex(body)',
+        '}',
+        '',
+      ].join('\n'),
+    });
+
+    expect(
+      readKotlinSourceFindings(root, manifest).map(({ rule, location, message }) => [
+        rule,
+        location.line,
+        message.slice(0, 20),
+      ]),
+    ).toEqual([
+      ['SqlStringBuilding', 5, 'Pass values as bind '],
+      ['WeakHash', 6, 'Hash with `MessageDi'],
+    ]);
+  });
+
   it('keeps the identity when lines move', () => {
     const before = projectWith({ 'src/main/kotlin/A.kt': 'var a = 0\n' });
     const after = projectWith({ 'src/main/kotlin/A.kt': '\n\nval b = 1\nvar a = 0\n' });
@@ -166,5 +194,32 @@ describe('withFrameworkAllowances', () => {
       ),
     ).toEqual([5]);
     expect(withFrameworkAllowances(findings, { projectRoot: project })).toEqual(findings);
+  });
+
+  it('keeps the forbidden-API calls to main sources, as forbiddenapis reads main classes only', () => {
+    const forbidden = (rule, kind, name, file) => ({
+      tool: 'detekt',
+      rule: `detekt.style.${rule}`,
+      path: file,
+      message: `The ${kind} \`${name}\` has been forbidden: reason.`,
+      location: { line: 1 },
+    });
+    const test = 'src/test/kotlin/demo/ShopTest.kt';
+    const findings = [
+      forbidden('ForbiddenMethodCall', 'method', 'java.lang.Thread.sleep', test),
+      forbidden('ForbiddenMethodCall', 'method', 'java.time.Instant.now()', test),
+      forbidden('ForbiddenImport', 'import', 'java.util.Date', test),
+      forbidden('ForbiddenMethodCall', 'method', 'kotlinx.coroutines.runBlocking', test),
+      forbidden('ForbiddenMethodCall', 'method', 'kotlin.io.println', test),
+      forbidden('ForbiddenMethodCall', 'method', 'com.acme.Legacy.call', test),
+      forbidden('ForbiddenMethodCall', 'method', 'java.lang.Thread.sleep', 'src/main/kotlin/A.kt'),
+    ];
+
+    const kept = withFrameworkAllowances(findings, {
+      projectRoot: root(),
+      testRoots: ['src/test/kotlin'],
+    });
+
+    expect(kept).toEqual(findings.slice(3));
   });
 });

@@ -1,5 +1,6 @@
 import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
+import { listEntriesOf, MERGED_LISTS } from '../detekt/detekt-lists.mjs';
 import { isCompositionRoot } from './kotlin-scan.mjs';
 import { lineText, scanKotlinSource } from './kotlin-source.mjs';
 
@@ -7,6 +8,42 @@ const FORBIDDEN_CALL = 'detekt.style.ForbiddenMethodCall';
 const SPREAD = 'detekt.performance.SpreadOperator';
 const ENVIRONMENT = '`java.lang.System.getenv`';
 const SPRING_ENTRY = /\brunApplication\s*<|\bSpringApplication\s*\.\s*run\s*\(/;
+const NAMED = /^The (?:method|import) `([^`]+)`/;
+const IN_TESTS_TOO = new Set([
+  'kotlin.run',
+  'kotlin.with',
+  'kotlin.also',
+  'kotlinx.coroutines.runBlocking',
+  'kotlin.io.print',
+  'kotlin.io.println',
+]);
+const NITPICKER_DETEKT = path.resolve(import.meta.dirname, '../../../detekt/nitpicker-detekt.yml');
+
+function mainOnlyNames() {
+  const text = readFileSync(NITPICKER_DETEKT, 'utf8');
+  const lists = MERGED_LISTS.filter(({ rule }) => /^Forbidden(?:MethodCall|Import)$/.test(rule));
+  return new Map(
+    lists.map((list) => [
+      `detekt.${list.ruleset}.${list.rule}`,
+      new Set(
+        listEntriesOf(text, list)
+          .map(({ value }) => value)
+          .filter((value) => !IN_TESTS_TOO.has(value)),
+      ),
+    ]),
+  );
+}
+
+const MAIN_ONLY = mainOnlyNames();
+
+function isMainOnlyInTest(finding, testRoots) {
+  const name = NAMED.exec(finding.message)?.[1];
+  return (
+    name !== undefined &&
+    MAIN_ONLY.get(finding.rule)?.has(name) === true &&
+    testRoots.some((root) => finding.path.startsWith(`${root}/`))
+  );
+}
 
 function sourceReader(projectRoot) {
   const scans = new Map();
@@ -34,7 +71,9 @@ function isAllowed(finding, source, spring) {
   return false;
 }
 
-export function withFrameworkAllowances(findings, { projectRoot, spring = false }) {
+export function withFrameworkAllowances(findings, { projectRoot, spring = false, testRoots = [] }) {
   const source = sourceReader(projectRoot);
-  return findings.filter((finding) => !isAllowed(finding, source, spring));
+  return findings.filter(
+    (finding) => !isMainOnlyInTest(finding, testRoots) && !isAllowed(finding, source, spring),
+  );
 }
