@@ -5,8 +5,8 @@ import { ingestSarif, prepareSarif } from '../../ingest/sarif.mjs';
 
 const LINE_NUMBER = /\bline \d+\b/g;
 
-function preparedReport(file, { reportRoot, roots, sourceRoots, projectRoot }, identityKey) {
-  return prepareSarif(JSON.parse(readFileSync(path.join(reportRoot, file), 'utf8')), {
+function preparedReport(report, { roots, sourceRoots, projectRoot }, identityKey) {
+  return prepareSarif(JSON.parse(readFileSync(report, 'utf8')), {
     roots,
     sourceRoots,
     projectRoot,
@@ -16,10 +16,14 @@ function preparedReport(file, { reportRoot, roots, sourceRoots, projectRoot }, i
 
 export function sarifFindings(context) {
   const { allSourceRoots, projectRoot } = context;
-  const pmd = preparedReport('pmd.sarif', context, (result) =>
+  const pmd = preparedReport(path.join(context.reportRoot, 'pmd.sarif'), context, (result) =>
     result.message?.text?.replace(LINE_NUMBER, 'line'),
   );
-  const spotbugs = preparedReport('spotbugs.sarif', context, spotbugsSubject);
+  const spotbugs = preparedReport(
+    path.join(context.reportRoot, 'spotbugs.sarif'),
+    context,
+    spotbugsSubject,
+  );
   return [
     ...dropInheritedVersions(ingestSarif(pmd, { tool: 'pmd' }).findings, {
       projectRoot,
