@@ -1,23 +1,18 @@
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
-import path from 'node:path';
-import { afterEach, describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vitest';
+import { useGitFixtures } from '../../diff/git/test-support/git-repository.mjs';
 import { createBaseSetupResolver } from './base-setup.mjs';
-import { configureAnalyzers } from './configure-analyzers.mjs';
-import { presetAnalyzers } from './preset-analyzers.mjs';
-import { resolveHeadPolicy } from '../../shared/head-policy.mjs';
+import { configureAnalyzers } from '../../configuration/configure-analyzers.mjs';
+import { presetAnalyzers } from '../../configuration/preset-analyzers.mjs';
+import { resolveHeadPolicy } from '../../../shared/head-policy.mjs';
 
-const roots = [];
-afterEach(() => {
-  for (const root of roots.splice(0)) rmSync(root, { recursive: true, force: true });
-});
+const { createGitRepository } = useGitFixtures();
 
 function baseWith(config) {
-  const root = mkdtempSync(path.join(tmpdir(), 'nitpicker-base-setup-'));
-  roots.push(root);
-  mkdirSync(root, { recursive: true });
-  writeFileSync(path.join(root, 'nitpicker.config.json'), JSON.stringify(config));
-  return root;
+  return createGitRepository({
+    'nitpicker.config.json': JSON.stringify(config),
+    'src/a.ts': 'export {};\n',
+  }).root;
 }
 
 function duplicateArguments(analyzer) {
@@ -51,7 +46,13 @@ describe.each([
       { preset, duplicates: { skippedFolders: ['dist'] } },
       { preset, thresholds: { crapLimit: 12 } },
       { preset, thresholds: { crapLimit: 12 }, duplicates: { skippedFolders: ['dist'] } },
-    ].map((config) => resolve({ baseProjectRoot: baseWith(config), analyzers: headAnalyzers }));
+    ].map((config) =>
+      resolve({
+        baseProjectRoot: baseWith(config),
+        headSnapshotRoot: baseWith({}),
+        analyzers: headAnalyzers,
+      }),
+    );
 
     expect(bases.map(({ analyzers = headAnalyzers }) => analyzers.map(duplicateArguments))).toEqual(
       Array.from({ length: 4 }, () => headAnalyzers.map(duplicateArguments)),
