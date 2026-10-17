@@ -38,6 +38,7 @@ function configOf(files, { precedence, settings = {}, exclude = [] } = {}, check
 function strictBase(root, reportRoot) {
   return {
     typeCheckingMode: 'strict',
+    reportDeprecated: 'error',
     enableTypeIgnoreComments: false,
     ignore: [],
     executionEnvironments: [],

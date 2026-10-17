@@ -17,6 +17,7 @@ function relativeToReport(reportRoot, entries) {
 function nitpickerConfig({ projectRoot, reportRoot, project, exclude }) {
   return {
     typeCheckingMode: 'strict',
+    reportDeprecated: 'error',
     enableTypeIgnoreComments: false,
     ignore: [],
     executionEnvironments: [],

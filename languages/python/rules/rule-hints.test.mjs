@@ -4,7 +4,6 @@ import { describe, expect, it } from 'vitest';
 import { RULE_CASES } from './test-support/python-rule-cases.mjs';
 import {
   applyRuleHints,
-  behaviorsOf,
   describeRuleFinding,
   exceptionSentence,
   hintFor,
@@ -160,47 +159,121 @@ describe('hints', () => {
   });
 });
 
-describe('hints that follow the libraries of the project', () => {
-  const rulesSample = (rule) => sample({ tool: 'python-rules', rule });
-  const sentence = (text, rule) => `The base message. ${text} ${exceptionSentence(rule)}`;
+describe('hints follow the libraries of the project', () => {
+  const advice = (rule, libraries, tool = 'ruff', subject) =>
+    withHint({ ...sample({ tool, rule }), subject }, libraries).message;
+  const expected = (rule, allowed) => `The base message. ${allowed} ${exceptionSentence(rule)}`;
 
-  it('name pydantic as the validation library when nothing is detected', () => {
-    expect(withHint(rulesSample('pydantic-boundary')).message).toBe(
-      sentence(
-        'Use pydantic only in an `adapters/` package to parse untrusted input (`Model.model_validate(data)`), and pass frozen dataclasses on from there.',
-        'pydantic-boundary',
-      ),
+  it.each([
+    [
+      'structlog',
+      'Keep the message constant and pass the data as key-value pairs: `log.info("items_loaded", count=count)`.',
+    ],
+    [
+      'loguru',
+      'Pass the values as arguments, not a formatted string: `logger.info("Loaded {} items", count)`.',
+    ],
+    [
+      'logging',
+      'Pass the values as arguments, not a formatted string: `logger.info("Loaded %s items", count)`.',
+    ],
+  ])('name the %s form for a formatted log message', (logging, allowed) => {
+    expect(advice('G004', { logging })).toBe(expected('G004', allowed));
+  });
+
+  it.each([
+    [
+      'structlog',
+      'Use structlog: `log = structlog.get_logger()`, then `log.info("event_name", key=value)`.',
+    ],
+    ['loguru', 'Use loguru: `from loguru import logger`, then `logger.info(...)`.'],
+  ])('send a print to %s', (logging, allowed) => {
+    expect(advice('T201', { logging })).toBe(expected('T201', allowed));
+  });
+
+  it.each([
+    ['msgspec', 'msgspec (`msgspec.json.decode(raw, type=Model)`)'],
+    ['cattrs', 'cattrs (`cattrs.structure(data, Model)`)'],
+    ['marshmallow', 'marshmallow (`Schema().load(data)`)'],
+    ['pydantic', 'pydantic (`Model.model_validate(data)`)'],
+  ])('send a hand-written guard to %s', (validator, form) => {
+    const allowed = `Parse untrusted input once at the boundary with ${form} in an \`adapters/\` package, not with \`isinstance\` checks or a \`TypeGuard\`.`;
+
+    expect(advice('handwritten-boundary-guard', { validator }, 'python-rules')).toBe(
+      expected('handwritten-boundary-guard', allowed),
     );
   });
 
-  it('name every detected validation library and the call of the first', () => {
-    const behaviors = behaviorsOf({ validation: ['marshmallow', 'msgspec'], logger: [] });
+  it('write the pytest decorators and parametrize calls the way the project does', () => {
+    const pytestStyle = {
+      'fixture-parentheses': true,
+      'parametrize-names-type': 'csv',
+      'parametrize-values-type': 'tuple',
+      'parametrize-values-row-type': 'list',
+    };
 
-    expect(withHint(rulesSample('pydantic-boundary'), behaviors).message).toBe(
-      sentence(
-        'Use marshmallow or msgspec only in an `adapters/` package to parse untrusted input (`Schema().load(data)`), and pass frozen dataclasses on from there.',
-        'pydantic-boundary',
+    expect(advice('PT001', { pytestStyle })).toBe(
+      expected(
+        'PT001',
+        'Write the decorator with parentheses, as the rest of the project does: `@pytest.fixture()`, `@pytest.mark.slow()`.',
+      ),
+    );
+    expect(advice('PT006', { pytestStyle })).toBe(
+      expected(
+        'PT006',
+        'Pass the names as one comma-separated string: `@pytest.mark.parametrize("a,b", [(1, 2)])`.',
+      ),
+    );
+    expect(advice('PT007', { pytestStyle })).toBe(
+      expected(
+        'PT007',
+        'Pass the values as a tuple of lists: `([1, 2], [3, 4])`, or a tuple for one name.',
+      ),
+    );
+    expect(advice('PT007', {})).toBe(
+      expected(
+        'PT007',
+        'Pass the values as a list of tuples: `[(1, 2), (3, 4)]`, or a list for one name.',
       ),
     );
   });
 
   it.each([
     [
-      'logging',
-      undefined,
-      'Use `logging`: `logger = logging.getLogger(__name__)`, then `logger.info(...)`.',
+      'pytest.mark.xfail',
+      'Give the reason and the expected error: `@pytest.mark.xfail(reason="bug 123", raises=ZeroDivisionError, strict=True)`; or fix or delete the test.',
     ],
     [
-      'structlog',
-      ['structlog'],
-      'Use `structlog`: `logger = structlog.get_logger()`, then `logger.info("event", key=value)`.',
+      'unittest.skip',
+      'Give the reason: `@unittest.skip("needs the staging database")`, `self.skipTest("...")`; or fix or delete the test.',
     ],
-    ['loguru', ['loguru'], 'Use `loguru`: `from loguru import logger`, then `logger.info(...)`.'],
-  ])('send a print to the %s logger', (_name, logger, expected) => {
-    const behaviors = behaviorsOf({ validation: [], logger });
+    [
+      'return in test_a',
+      'Skip visibly: `@pytest.mark.skipif(sys.platform == "win32", reason="posix only")` or `pytest.skip("...")` (`self.skipTest("...")` in unittest).',
+    ],
+  ])('word a skipped test by the form %s', (subject, allowed) => {
+    expect(advice('skipped-test-without-reason', {}, 'python-rules', subject)).toBe(
+      expected('skipped-test-without-reason', allowed),
+    );
+  });
 
-    expect(withHint(sample({ tool: 'ruff', rule: 'T201' }), behaviors).message).toBe(
-      sentence(expected, 'T201'),
+  it('name the default validation library when none is declared', () => {
+    expect(advice('pydantic-boundary', undefined, 'python-rules')).toBe(
+      expected(
+        'pydantic-boundary',
+        'Use pydantic only in an `adapters/` package to parse untrusted input (`Model.model_validate(data)`), and pass frozen dataclasses on from there.',
+      ),
+    );
+  });
+
+  it('name every declared validation library and the call of the first', () => {
+    expect(
+      advice('pydantic-boundary', { validators: ['marshmallow', 'msgspec'] }, 'python-rules'),
+    ).toBe(
+      expected(
+        'pydantic-boundary',
+        'Use marshmallow or msgspec only in an `adapters/` package to parse untrusted input (`Schema().load(data)`), and pass frozen dataclasses on from there.',
+      ),
     );
   });
 
@@ -210,30 +283,34 @@ describe('hints that follow the libraries of the project', () => {
       'Keep the traceback: `logger.exception("message")` or `logger.error("message", exc_info=True)`; the exception as an argument drops it. Re-raising after the log also passes.',
     ],
     [
-      ['structlog'],
+      'structlog',
       'Keep the traceback: `logger.exception("event")` or `logger.error("event", exc_info=True)`; the exception as a field drops it. Re-raising after the log also passes.',
     ],
     [
-      ['loguru'],
+      'loguru',
       'Keep the traceback: `logger.exception("message")` or `logger.opt(exception=True).error("message")`; the exception as an argument drops it. Re-raising after the log also passes.',
     ],
   ])(
     'tell a caught error log to keep the traceback the way the %s logger does',
-    (logger, expected) => {
-      const behaviors = behaviorsOf({ validation: [], logger });
-
-      expect(withHint(rulesSample('catch-log-without-exception'), behaviors).message).toBe(
-        sentence(expected, 'catch-log-without-exception'),
+    (logging, allowed) => {
+      expect(advice('catch-log-without-exception', { logging }, 'python-rules')).toBe(
+        expected('catch-log-without-exception', allowed),
       );
     },
   );
 
-  it('describe the new rules by their subject', () => {
+  it('describe the rules for caught logs and silent tests by their subject', () => {
     expect(describeRuleFinding('catch-log-without-exception', 'logger.error(...)')).toBe(
       '`logger.error(...)` logs a caught error without its traceback',
     );
     expect(describeRuleFinding('test-without-assertion', 'TestOrders.test_total')).toBe(
       'Test `TestOrders.test_total` has no assertion',
+    );
+    expect(advice('test-without-assertion', undefined, 'python-rules')).toBe(
+      expected(
+        'test-without-assertion',
+        'Assert the outcome: `assert result == expected`, `with pytest.raises(SomeError):`, or call one of the assertion helpers the project tests use.',
+      ),
     );
   });
 });

@@ -39,6 +39,7 @@ describe('pyright paths of a project config under the opt-in', () => {
 
     expect(config).toEqual({
       typeCheckingMode: 'strict',
+      reportDeprecated: 'error',
       enableTypeIgnoreComments: false,
       ignore: [],
       exclude: [
