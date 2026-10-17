@@ -1,4 +1,5 @@
 import { isJavaTouchedRule } from '../../java/adapters/touched-rules.mjs';
+import { isPythonTouchedRule } from '../../python/rules/touched-rules.mjs';
 import { strictBoundaryRules } from './architecture/strict-boundary-rules.mjs';
 import { i18nRuleIds } from './eslint-config/i18n/i18n-rules.mjs';
 import { reactRuleIds, reactTestRuleIds } from './eslint-config/react/react-rules.mjs';
@@ -68,7 +69,12 @@ const strictRuleIds = new Set([
 ]);
 
 export function isStrictRule(rule, finding) {
-  return strictRuleIds.has(rule) || rule === PRETTIER_RULE || isJavaTouchedRule(rule, finding);
+  return (
+    strictRuleIds.has(rule) ||
+    rule === PRETTIER_RULE ||
+    isJavaTouchedRule(rule, finding) ||
+    isPythonTouchedRule(rule, finding)
+  );
 }
 
 export function mustMeetOnEditedLines(rule) {
