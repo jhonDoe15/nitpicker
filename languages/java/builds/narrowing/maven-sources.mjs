@@ -142,7 +142,7 @@ function parsed(text) {
   try {
     return text === undefined ? undefined : parseXml(text);
   } catch {
-    return undefined;
+    return { kind: 'malformed-xml' };
   }
 }
 

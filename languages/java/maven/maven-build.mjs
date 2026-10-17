@@ -168,13 +168,18 @@ function readClasspaths(work, module) {
   );
 }
 
+function usesSpring(policy, classpaths) {
+  return (
+    policy.spring === true ||
+    classpaths.mainCompile.some((entry) => SPRING_JAR.test(path.basename(entry)))
+  );
+}
+
 function analyzeModule({ module, classpaths, tools, pinned, configs, since, policy }) {
-  const { javaStyle, spring: declaredSpring } = policy;
+  const { javaStyle } = policy;
   const reportDir = path.join(module.basedir, MAVEN_REPORT_DIRECTORY);
   const isArchunit = archunitMatcher(module.archunitIncludes);
-  const spring =
-    declaredSpring === true ||
-    classpaths.mainCompile.some((entry) => SPRING_JAR.test(path.basename(entry)));
+  const spring = usesSpring(policy, classpaths);
   const testsRan = collectTestResults({ module, reportDir, since, isArchunit });
   copyTestResults({ module, reportDir, since, isArchunit });
   runPmd({ module, reportDir, tools, classpaths, configs, spring });

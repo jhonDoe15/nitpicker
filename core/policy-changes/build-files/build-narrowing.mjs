@@ -16,6 +16,10 @@ function within(entry, file) {
   return entry.roots.some((root) => contains(file, root));
 }
 
+function lostText(base, lost, limit) {
+  return `${base.label} no longer includes checked code: ${listed(lost, limit)}`;
+}
+
 function familyOf(entry) {
   return entry.key.split(':')[0];
 }
@@ -32,9 +36,14 @@ function rootsChange(base, head, { scope, headEntries }) {
     return { loosened: [], changed: [] };
   }
   const file = (head ?? base).file;
-  const text = (limit) => `${base.label} no longer includes checked code: ${listed(lost, limit)}`;
   return {
-    loosened: [{ text: text(LISTED_FILES), key: text(lost.length), files: [file, ...lost] }],
+    loosened: [
+      {
+        text: lostText(base, lost, LISTED_FILES),
+        key: lostText(base, lost, lost.length),
+        files: [file, ...lost],
+      },
+    ],
     changed: [],
   };
 }

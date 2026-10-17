@@ -1,13 +1,24 @@
-import { readFileSync } from 'node:fs';
 import path from 'node:path';
+import { readInside } from '../../../shared/conventions/read-inside.mjs';
 
 const PACKAGE = /^\s*package\s+([\w.]+)/mu;
-const IMPORT = /^\s*import\s+(?:static\s+)?([\w.]+?)(\.\*)?(?:\s+as\s+\w+)?\s*;?\s*$/gmu;
+const IMPORT =
+  /^[ \t]*import[ \t]+(?:static[ \t]+)?([\w.]+?)(\.\*)?(?:[ \t]+as[ \t]+\w+)?[ \t]*;?[ \t]*$/gmu;
 const COMMENTS_AND_STRINGS = /\/\*[\s\S]*?\*\/|\/\/[^\n]*|"""[\s\S]*?"""|"(?:\\.|[^"\\\n])*"/gu;
-const JAVA_TYPE =
-  /^(?:(?:public|protected|private|abstract|final|sealed|non-sealed|static|strictfp)\s+)*(?:class|interface|enum|record|@interface)\s+(\w+)/gmu;
-const KOTLIN_DECLARATION =
-  /^(?:(?:public|internal|private|open|abstract|final|sealed|data|enum|annotation|value|inline|fun|inner|expect|actual|const|lateinit|suspend|tailrec|operator|infix|external)\s+)*(?:class|interface|object|typealias|fun|val|var)\s+(?:<[^>\n]*>\s*)?(?:[\w.<>?]+\.)?(\w+)/gmu;
+const JAVA_MODIFIERS = 'public|protected|private|abstract|final|sealed|non-sealed|static|strictfp';
+const KOTLIN_MODIFIERS = [
+  'public|internal|private|open|abstract|final|sealed|data|enum|annotation|value',
+  'inline|fun|inner|expect|actual|const|lateinit|suspend|tailrec|operator|infix|external',
+].join('|');
+const JAVA_TYPE = new RegExp(
+  String.raw`^(?:(?:${JAVA_MODIFIERS})\s+)*(?:class|interface|enum|record|@interface)\s+(\w+)`,
+  'gmu',
+);
+const KOTLIN_DECLARATION = new RegExp(
+  String.raw`^(?:(?:${KOTLIN_MODIFIERS})\s+)*(?:class|interface|object|typealias|fun|val|var)\s+` +
+    String.raw`(?:<[^>\n]*>\s*)?(?:[\w.<>?]+\.)?(\w+)`,
+  'gmu',
+);
 const QUALIFIED = /\b[a-z_]\w*(?:\.\w+)+/gu;
 const IDENTIFIER = /\b[A-Za-z_]\w*\b/gu;
 const SOURCE_FILE = /\.(?:java|kt)$/u;
@@ -41,13 +52,9 @@ function describe(file, text) {
 
 function longestKnown(name, byName) {
   const parts = name.split('.');
-  for (let length = parts.length; length > 0; length -= 1) {
-    const found = byName.get(parts.slice(0, length).join('.'));
-    if (found !== undefined) {
-      return found;
-    }
-  }
-  return undefined;
+  return parts
+    .map((_part, dropped) => byName.get(parts.slice(0, parts.length - dropped).join('.')))
+    .find((entry) => entry !== undefined);
 }
 
 function indexOf(described) {
@@ -77,24 +84,25 @@ function usedFrom(importer, { byName, byPackage }) {
   return [...sameOrWildcard, ...named].filter((entry) => entry !== importer);
 }
 
+function enqueue(target, importerLabel, { labels, pending }) {
+  if (!labels.has(target.file)) {
+    labels.set(target.file, importerLabel);
+    pending.push(target.file);
+  }
+}
+
 export function jvmProductionReach(projectRoot, { files, isImporter }) {
   const described = files
     .filter((file) => SOURCE_FILE.test(file))
-    .map((file) => describe(file, readFileSync(path.join(projectRoot, file), 'utf8')));
+    .map((file) => describe(file, readInside(projectRoot, file, 'utf8') ?? ''));
   const index = indexOf(described);
   const entries = new Map(described.map((entry) => [entry.file, entry]));
-  const labels = new Map(
-    described.filter(({ file }) => isImporter(file)).map(({ file }) => [file, file]),
-  );
-  const starts = new Set(labels.keys());
-  const pending = [...labels.keys()];
-  for (const file of pending) {
+  const starts = described.filter(({ file }) => isImporter(file)).map(({ file }) => file);
+  const queue = { labels: new Map(starts.map((file) => [file, file])), pending: [...starts] };
+  for (const file of queue.pending) {
     for (const target of usedFrom(entries.get(file), index)) {
-      if (!labels.has(target.file)) {
-        labels.set(target.file, labels.get(file));
-        pending.push(target.file);
-      }
+      enqueue(target, queue.labels.get(file), queue);
     }
   }
-  return new Map([...labels].filter(([file]) => !starts.has(file)));
+  return new Map([...queue.labels].filter(([file]) => !starts.includes(file)));
 }

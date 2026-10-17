@@ -11,9 +11,11 @@ describe('pythonOutsideRootsNotices', () => {
   it('names changed Python files outside the source roots', () => {
     const notice = pythonOutsideRootsNotices(['src/app/a.py', 'tools/b.py', 'lib/c.pyi'], project);
 
-    expect(notice).toHaveLength(1);
-    expect(notice[0]).toContain('2 changed Python files are outside python.sourceRoots');
-    expect(notice[0]).toContain('lib/c.pyi, tools/b.py.');
+    expect(notice).toEqual([
+      '2 changed Python files are outside python.sourceRoots, so only the lint and format checks see them: ' +
+        'lib/c.pyi, tools/b.py. Move them under a source root or add their folders to python.sourceRoots; ' +
+        'to leave them unchecked, list them in "exclude" in nitpicker.config.json.',
+    ]);
   });
 
   it('takes the project as the root when the source root is .', () => {

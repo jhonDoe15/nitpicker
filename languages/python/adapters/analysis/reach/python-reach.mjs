@@ -2,7 +2,7 @@ import { spawnSync } from 'node:child_process';
 import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
-import { collectImports, importEdges } from './python-coupling.mjs';
+import { collectImports, importEdges } from '../python-coupling.mjs';
 
 const INTERPRETERS = ['python3', 'python'];
 const MAX_OUTPUT_BYTES = 50 * 1024 * 1024;

@@ -1,5 +1,5 @@
 import { existsSync } from 'node:fs';
-import path from 'node:path';
+import { resolveInside } from '../../../../shared/conventions/read-inside.mjs';
 import {
   hasGeneratorAnnotation,
   hasGeneratorHeader,
@@ -28,8 +28,10 @@ export function isGeneratedJvm(projectRoot, file) {
   if (BUILD_OUTPUT.test(file)) {
     return true;
   }
-  const absolute = path.join(projectRoot, file);
-  return existsSync(absolute) && hasMarkedHead(readFileHead(absolute), file);
+  const absolute = resolveInside(projectRoot, file);
+  return (
+    absolute !== undefined && existsSync(absolute) && hasMarkedHead(readFileHead(absolute), file)
+  );
 }
 
 export function withoutGeneratedSources(findings, projectRoot) {

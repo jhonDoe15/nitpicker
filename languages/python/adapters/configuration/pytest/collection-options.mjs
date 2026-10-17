@@ -33,7 +33,7 @@ function folderPattern(root) {
   return root.replace(/^\.\//u, '').replace(/\/+$/u, '');
 }
 
-function underTestPath(parts, testpaths) {
+export function underTestPath(parts, testpaths) {
   const folders = parts.slice(0, -1).map((_, index) => parts.slice(0, index + 1).join('/'));
   return testpaths.some((root) =>
     folders.some((folder) => matchesGlob(folder, folderPattern(root))),

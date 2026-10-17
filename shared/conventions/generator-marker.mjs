@@ -30,7 +30,7 @@ const GENERATOR_HEADERS = [
   /^(?:AUTO-GENERATED FILE\.|Automatically generated file\.)\s+DO NOT MODIFY\.?$/u,
 ];
 const GENERATOR_ANNOTATION = new RegExp(
-  String.raw`^[ \t]*@(?:(?:javax|jakarta)\.annotation\.(?:processing\.)?)?Generated\s*\(\s*(?:value\s*=\s*)?\{?\s*"(?:` +
+  String.raw`^[ \t]*@(?:(?:javax|jakarta)\.annotation\.(?:processing\.)?)?Generated\s*\([\s{]*(?:value\s*=[\s{]*)?"(?:` +
     [
       String.raw`org\.mapstruct\.ap\.`,
       String.raw`dagger\.`,

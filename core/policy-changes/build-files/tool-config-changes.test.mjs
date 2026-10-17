@@ -1,20 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import { useGitFixtures } from '../../diff/git/test-support/git-repository.mjs';
-import { policyChangeFields } from '../describe-policy-changes.mjs';
-import { readPolicyScope } from '../policy-scope.mjs';
+import { between, changesOf, without } from './test-support/policy-fixtures.mjs';
 
-const { createGitRepository } = useGitFixtures();
 const PROJECT = { precedence: ['project', 'nitpicker'] };
-
-function between({ base, head, config }) {
-  const scope = readPolicyScope({
-    baseConfig: config,
-    headConfig: config,
-    baseProjectRoot: createGitRepository(base).root,
-    headProjectRoot: createGitRepository(head).root,
-  });
-  return policyChangeFields(config, config, scope);
-}
 
 describe('project tool configs the project opted into', () => {
   const java = { preset: 'java', tools: { pmd: PROJECT, checkstyle: PROJECT } };
@@ -40,14 +27,14 @@ describe('project tool configs the project opted into', () => {
 
   it('stays quiet for an unchanged config, a tool the project did not opt into and a removed file', () => {
     const base = files('<ruleset/>');
-    const removed = (({ 'config/pmd/ruleset.xml': _gone, ...rest }) => rest)(files('<ruleset/>'));
+    const removed = without(files('<ruleset/>'), 'config/pmd/ruleset.xml');
 
     expect(between({ base, head: files('<ruleset/>'), config: java }).policyLoosenings).toEqual([]);
     expect(
       between({ base, head: files('<ruleset a="2"/>'), config: { preset: 'java' } })
         .policyLoosenings,
     ).toEqual([]);
-    expect(between({ base, head: removed, config: java })).toMatchObject({
+    expect(changesOf(between({ base, head: removed, config: java }))).toEqual({
       policyLoosenings: [],
       policyChanges: ['pmd project config removed: config/pmd/ruleset.xml'],
     });
