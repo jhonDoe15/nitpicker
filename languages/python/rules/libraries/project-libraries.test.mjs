@@ -65,9 +65,11 @@ describe('the dependencies a project declares', () => {
     expect(dependencyNames(root)).toEqual(new Set(['structlog', 'pydantic-settings', 'loguru']));
   });
 
-  it('stay empty for a project without dependency files or with a broken one', () => {
+  it('stay empty for a project without dependency files and fail on a broken one', () => {
     expect(dependencyNames(project({}))).toEqual(new Set());
-    expect(dependencyNames(project({ 'pyproject.toml': '[project\n' }))).toEqual(new Set());
+    expect(() => dependencyNames(project({ 'pyproject.toml': '[project\n' }))).toThrow(
+      /Invalid TOML document/,
+    );
   });
 });
 
