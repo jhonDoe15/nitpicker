@@ -6,6 +6,14 @@ import {
   JAVASCRIPT_EXTENSIONS,
   TYPESCRIPT_EXTENSIONS_IN_JAVASCRIPT_PROJECT,
 } from '../../javascript/preset/javascript-preset.mjs';
+import {
+  defaultTestFiles,
+  escapedGlob,
+  policyTestFiles,
+  rootScopedGlobs,
+  sourceRootGlobs,
+  testFileMatcher,
+} from './test-runner/test-files/test-file-patterns.mjs';
 
 export { globToRegExp };
 
@@ -61,12 +69,7 @@ function filePatterns({ sourceRoots, testRoots, extensions }) {
       .join('|'),
   );
   const sourcePattern = new RegExp(`^(?:${sourceAlternatives})/.*\\.${suffix}`);
-  return {
-    testPattern,
-    sourcePattern,
-    codePattern: new RegExp(`\\.${suffix}`),
-    runnableTestPattern: new RegExp(`\\.(?:test|spec)\\.${suffix}`),
-  };
+  return { testPattern, sourcePattern, codePattern: new RegExp(`\\.${suffix}`) };
 }
 
 function unitTestGlobsFor({ sourceRoots, testRoots, javascript, extensionGlob }) {
@@ -93,16 +96,22 @@ function sourceUnderRootClassifier({ sourceRoot, isSourceFile, isExcluded }) {
   };
 }
 
-function createClassifiers({ sourceRoots, testRoots, exclude, patterns }) {
+function createClassifiers({ sourceRoots, testRoots, exclude, patterns, testFiles }) {
   const excludeMatchers = exclude.map(globToRegExp);
+  const isRunnerTest = testFileMatcher(testFiles);
   function isExcluded(file) {
     const normalized = toPosix(file);
     return excludeMatchers.some((matcher) => matcher.test(normalized));
   }
   function isTestFile(file) {
     const normalized = toPosix(file);
-    if (!patterns.codePattern.test(normalized) || normalized.endsWith('.d.ts')) return false;
-    return patterns.testPattern.test(normalized);
+    if (!patterns.codePattern.test(normalized) || normalized.endsWith('.d.ts')) {
+      return false;
+    }
+    if (patterns.testPattern.test(normalized)) {
+      return true;
+    }
+    return patterns.sourcePattern.test(normalized) && isRunnerTest(normalized);
   }
   function isSourceFile(file) {
     const normalized = toPosix(file);
@@ -119,7 +128,8 @@ function createClassifiers({ sourceRoots, testRoots, exclude, patterns }) {
     isTestFile,
     isGeneratedPath: (file) => GENERATED_PATH.test(toPosix(file)),
     isTestPath: (file) => patterns.testPattern.test(toPosix(file)),
-    isRunnableTestFile: (file) => isTestFile(file) && patterns.runnableTestPattern.test(file),
+    isRunnableTestFile: (file) => isTestFile(file) && isRunnerTest(toPosix(file)),
+    isRunnerTestFile: (file) => isRunnerTest(toPosix(file)),
     isSourceFile,
     isSourceUnderRoot: sourceUnderRootClassifier({
       sourceRoot: sourceRoots[0] ?? defaultSourceRoots[0],
@@ -137,13 +147,16 @@ function createClassifiers({ sourceRoots, testRoots, exclude, patterns }) {
   };
 }
 
-function globsFor({ sourceRoots, testRoots, javascript, extensionGlob }) {
+function globsFor({ sourceRoots, testRoots, javascript, extensionGlob, testFiles }) {
   return {
     sourceGlobs: sourceRoots.map((root) => `${root}/**/*.${extensionGlob}`),
     testGlobs: [
       ...testRoots.map((root) => `${root}/**/*.${extensionGlob}`),
       ...sourceRoots.map((root) => `${root}/**/*.{test,spec}.${extensionGlob}`),
+      ...sourceRootGlobs(sourceRoots, testFiles),
     ],
+    runnerSourceTestGlobs: sourceRootGlobs(sourceRoots, testFiles),
+    runnableTestGlobs: rootScopedGlobs([...sourceRoots, ...testRoots], testFiles.include),
     sourceTestDirectoryGlobs: sourceRoots.map((root) => `${root}/**/__tests__/**`),
     unitTestGlobs: unitTestGlobsFor({ sourceRoots, testRoots, javascript, extensionGlob }),
     graphRoots: [...sourceRoots, ...testRoots],
@@ -164,14 +177,19 @@ function endToEndFor(layout, testRoots, extensionGlob) {
   };
 }
 
-export function resolveLayout(layout = {}, exclude = [], { javascript = false } = {}) {
+export function resolveLayout(
+  layout = {},
+  exclude = [],
+  { javascript = false, testFiles = defaultTestFiles() } = {},
+) {
   const sourceRoots = (layout.sourceRoots ?? defaultSourceRoots).map(normalizeRoot);
   const testRoots = (layout.testRoots ?? defaultTestRoots).map(normalizeRoot);
   const extensions = javascript ? javascriptProjectExtensionNames : codeExtensionNames;
   const extensionGlob = `{${extensions.join(',')}}`;
   const patterns = filePatterns({ sourceRoots, testRoots, extensions });
-  const globs = globsFor({ sourceRoots, testRoots, javascript, extensionGlob });
+  const globs = globsFor({ sourceRoots, testRoots, javascript, extensionGlob, testFiles });
   const resolved = {
+    testFiles,
     javascript,
     extensions,
     entryExtensions: javascript
@@ -187,7 +205,7 @@ export function resolveLayout(layout = {}, exclude = [], { javascript = false } 
     ...endToEndFor(layout, testRoots, extensionGlob),
     excludePattern:
       exclude.length === 0 ? undefined : exclude.map((glob) => globToRegExpSource(glob)).join('|'),
-    ...createClassifiers({ sourceRoots, testRoots, exclude, patterns }),
+    ...createClassifiers({ sourceRoots, testRoots, exclude, patterns, testFiles }),
     projectCodeFiles: (projectRoot, roots = globs.graphRoots) =>
       codeFilesUnder(resolved, projectRoot, existingRoots(projectRoot, roots)),
   };
@@ -224,7 +242,25 @@ export function existingRoots(projectRoot, roots) {
 }
 
 export function resolveLayoutFor(policy = {}) {
-  return resolveLayout(policy.layout, policy.exclude, { javascript: isJavascriptPolicy(policy) });
+  return resolveLayout(policy.layout, policy.exclude, {
+    javascript: isJavascriptPolicy(policy),
+    testFiles: policyTestFiles(policy.tools?.tests),
+  });
+}
+
+export function withRunnerTestPaths(layout, projectRoot) {
+  if (layout.testFiles.includeRegexes.length === 0) {
+    return layout;
+  }
+  const paths = layout
+    .projectCodeFiles(projectRoot)
+    .filter((file) => layout.isRunnableTestFile(file))
+    .map(escapedGlob);
+  return {
+    ...layout,
+    testGlobs: [...layout.testGlobs, ...paths],
+    runnableTestGlobs: [...layout.runnableTestGlobs, ...paths],
+  };
 }
 
 const defaults = resolveLayout();

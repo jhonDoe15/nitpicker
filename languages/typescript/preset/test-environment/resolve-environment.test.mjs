@@ -9,23 +9,24 @@ import {
   testEnvironmentsFor,
 } from './resolve-environment.mjs';
 
-const repositoryVite = path.join(import.meta.dirname, '../../../../node_modules/vite');
+const repositoryModules = path.join(import.meta.dirname, '../../../../node_modules');
 const roots = [];
 
 afterAll(() => {
   for (const root of roots) rmSync(root, { recursive: true, force: true });
 });
 
-function projectWith(files, { vite = 'real' } = {}) {
+function projectWith(files, { vite = 'real', packages = [] } = {}) {
   const root = mkdtempSync(path.join(tmpdir(), 'nitpicker-resolve-environment-'));
   roots.push(root);
   for (const [name, text] of Object.entries(files)) {
     mkdirSync(path.dirname(path.join(root, name)), { recursive: true });
     writeFileSync(path.join(root, name), text);
   }
-  if (vite === 'real') {
+  const linked = vite === 'real' ? ['vite', ...packages] : packages;
+  for (const name of linked) {
     mkdirSync(path.join(root, 'node_modules'), { recursive: true });
-    symlinkSync(repositoryVite, path.join(root, 'node_modules/vite'), 'dir');
+    symlinkSync(path.join(repositoryModules, name), path.join(root, 'node_modules', name), 'dir');
   }
   return root;
 }
@@ -141,6 +142,61 @@ describe('loadTestEnvironments', () => {
     expect(loadTestEnvironments({ projectRoot: root }).notice.message).toMatch(
       noticePattern('vite could not be resolved from the project'),
     );
+  });
+});
+
+describe('loadTestEnvironments for the runners that register a DOM globally', () => {
+  const nodeCommand = (nodeArguments) => ({
+    environment: {},
+    nodeArguments,
+    arguments_: ['test/'],
+  });
+
+  it("reads Mocha's require from the .mocharc file", () => {
+    const root = projectWith(
+      { '.mocharc.json': JSON.stringify({ require: ['global-jsdom/register'] }) },
+      { vite: 'none', packages: ['mocha'] },
+    );
+
+    expect(loadTestEnvironments({ projectRoot: root, runner: 'mocha' })).toEqual({
+      environment: 'jsdom',
+      scopes: [],
+      setupFiles: ['global-jsdom/register'],
+      globalDom: 'global-jsdom/register',
+    });
+  });
+
+  it("reads Mocha's require from the test script, through a local setup file", () => {
+    const root = projectWith(
+      { 'test/dom.cjs': "require('jsdom-global/register');\n" },
+      { vite: 'none', packages: ['mocha'] },
+    );
+    const command = { environment: {}, nodeArguments: [], arguments_: ['-r', './test/dom.cjs'] };
+
+    expect(loadTestEnvironments({ projectRoot: root, runner: 'mocha', command })).toEqual({
+      environment: 'jsdom',
+      scopes: [],
+      setupFiles: [path.join(root, 'test/dom.cjs')],
+      globalDom: './test/dom.cjs',
+    });
+  });
+
+  it("reads node's --import and --require flags", () => {
+    const root = projectWith({}, { vite: 'none' });
+    const load = (nodeArguments) =>
+      loadTestEnvironments({
+        projectRoot: root,
+        runner: 'node',
+        command: nodeCommand(nodeArguments),
+      });
+
+    expect(load(['--import', 'global-jsdom/register'])).toEqual({
+      environment: 'jsdom',
+      scopes: [],
+      setupFiles: ['global-jsdom/register'],
+      globalDom: 'global-jsdom/register',
+    });
+    expect(load(['--import', 'tsx'])).toEqual({ environment: 'node', scopes: [] });
   });
 });
 
