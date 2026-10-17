@@ -29,17 +29,23 @@ function isRestoredByHookOrFinally(call) {
 }
 
 function viMember(node, aliases) {
-  if (node?.type !== 'MemberExpression' || node.computed) return undefined;
+  if (node?.type !== 'MemberExpression' || node.computed) {
+    return undefined;
+  }
   return aliases.has(node.object.name) ? node.property.name : undefined;
 }
 
 function restoresIn(node, aliases) {
-  if (isRestoringHook(node)) return node.arguments.map((argument) => viMember(argument, aliases));
+  if (isRestoringHook(node)) {
+    return node.arguments.map((argument) => viMember(argument, aliases));
+  }
   return isRestoredByHookOrFinally(node) ? [viMember(node.callee, aliases)] : [];
 }
 
 function messageIdFor(method, state) {
-  if (method !== 'useFakeTimers') return STUB_MESSAGES.get(method);
+  if (method !== 'useFakeTimers') {
+    return STUB_MESSAGES.get(method);
+  }
   return state.usesUserEvent ? 'unrestoredWithUserEvent' : 'unrestored';
 }
 
@@ -78,7 +84,9 @@ export const rule = {
     return {
       ImportDeclaration(node) {
         state.usesUserEvent ||= node.source.value === USER_EVENT_PACKAGE;
-        if (node.source.value !== 'vitest') return;
+        if (node.source.value !== 'vitest') {
+          return;
+        }
         for (const specifier of node.specifiers) {
           if (specifier.type === 'ImportSpecifier' && aliases.has(specifier.imported.name)) {
             aliases.add(specifier.local.name);
@@ -87,8 +95,12 @@ export const rule = {
       },
       CallExpression(node) {
         const method = viMember(node.callee, aliases);
-        if (checked.has(method)) calls.push({ node, method });
-        for (const restore of restoresIn(node, aliases)) restored.add(restore);
+        if (checked.has(method)) {
+          calls.push({ node, method });
+        }
+        for (const restore of restoresIn(node, aliases)) {
+          restored.add(restore);
+        }
       },
       'Program:exit'() {
         for (const { node, method } of calls) {

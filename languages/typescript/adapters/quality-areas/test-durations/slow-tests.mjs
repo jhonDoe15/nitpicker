@@ -2,6 +2,7 @@ import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import ts from 'typescript';
 import { parseChangedLines } from '../../../../../core/diff/git/patches/changed-lines.mjs';
+import { pathInside } from '../../../../../shared/filesystem.mjs';
 import { RULE_IDS, TEST_TIME_DEFAULTS } from '../../../../../shared/policy.mjs';
 import { exceptionHint, exceptionMatcher } from '../../../../../shared/rules/exceptions.mjs';
 import { diffAgainstBase } from '../runners/mutation-scope.mjs';
@@ -10,24 +11,34 @@ const INTEGRATION_FOLDERS = ['integration', 'e2e'];
 const MILLISECONDS = 1000;
 
 export function changedTestLines(options) {
-  if (options.baselineRoot === undefined) return undefined;
+  if (options.baselineRoot === undefined) {
+    return undefined;
+  }
   const changed = parseChangedLines(diffAgainstBase(options, '--unified=0'));
   return new Map([...changed.values()].map((file) => [file.path, file.ranges]));
 }
 
 function isIntegrationTest(file, testRoots) {
   return testRoots.some((root) => {
-    if (!file.startsWith(`${root}/`)) return false;
+    if (!file.startsWith(`${root}/`)) {
+      return false;
+    }
     const [folder] = file.slice(root.length + 1).split('/');
     return [path.posix.basename(root), folder].some((name) => INTEGRATION_FOLDERS.includes(name));
   });
 }
 
 function testCallSpans(projectRoot, file) {
-  const text = readFileSync(path.join(projectRoot, file), 'utf8');
+  const full = pathInside(projectRoot, file);
+  if (full === undefined) {
+    return new Map();
+  }
+  const text = readFileSync(full, 'utf8');
   const source = ts.createSourceFile(file, text, ts.ScriptTarget.Latest, true);
   const nodes = [source];
-  for (const node of nodes) nodes.push(...node.getChildren(source));
+  for (const node of nodes) {
+    nodes.push(...node.getChildren(source));
+  }
   return new Map(
     nodes.filter(ts.isCallExpression).map((call) => {
       const start = source.getLineAndCharacterOfPosition(call.getStart(source));
@@ -38,7 +49,9 @@ function testCallSpans(projectRoot, file) {
 }
 
 function isTouched({ ranges, spans }, location) {
-  if (ranges === undefined) return true;
+  if (ranges === undefined) {
+    return true;
+  }
   const last = spans.get(`${String(location.line)}:${String(location.column)}`) ?? location.line;
   return ranges.some(([first, end]) => first <= last && end >= location.line);
 }
@@ -61,12 +74,16 @@ function fileFindings(context, testResult) {
     (test) =>
       typeof test.duration === 'number' && test.duration > budget * MILLISECONDS && test.location,
   );
-  if (slow.length === 0) return [];
+  if (slow.length === 0) {
+    return [];
+  }
   const touched = {
     ranges: context.changedLines?.get(file),
     spans: testCallSpans(context.projectRoot, file),
   };
-  if (context.changedLines !== undefined && touched.ranges === undefined) return [];
+  if (context.changedLines !== undefined && touched.ranges === undefined) {
+    return [];
+  }
   return slow
     .filter((test) => isTouched(touched, test.location))
     .map((test) => ({

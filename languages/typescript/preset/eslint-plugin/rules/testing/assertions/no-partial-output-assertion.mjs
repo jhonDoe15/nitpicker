@@ -51,11 +51,19 @@ function isPositiveExpectation(callee) {
 
 function isPartialAssertion(node) {
   const callee = node.callee;
-  if (callee.type !== 'MemberExpression') return false;
+  if (callee.type !== 'MemberExpression') {
+    return false;
+  }
   const matcher = memberName(callee);
-  if (!PARTIAL_MATCHERS.has(matcher)) return false;
-  if (matcher === 'toContain' && !isTextArgument(node.arguments[0])) return false;
-  if (matcher === 'toMatch' && !isFragmentMatch(node)) return false;
+  if (!PARTIAL_MATCHERS.has(matcher)) {
+    return false;
+  }
+  if (matcher === 'toContain' && !isTextArgument(node.arguments[0])) {
+    return false;
+  }
+  if (matcher === 'toMatch' && !isFragmentMatch(node)) {
+    return false;
+  }
   return isPositiveExpectation(callee);
 }
 
@@ -75,15 +83,21 @@ function expectedValueParts(node) {
       property.type === 'Property' ? property.value : property,
     );
   }
-  if (node.type === 'ArrayExpression') return node.elements.filter((element) => element !== null);
-  if (node.type === 'SpreadElement') return [node.argument];
+  if (node.type === 'ArrayExpression') {
+    return node.elements.filter((element) => element !== null);
+  }
+  if (node.type === 'SpreadElement') {
+    return [node.argument];
+  }
   return [];
 }
 
 function containsPartialMatcher(expected) {
   const pending = [expected];
   for (const node of pending) {
-    if (isPartialAsymmetricMatcher(node)) return true;
+    if (isPartialAsymmetricMatcher(node)) {
+      return true;
+    }
     pending.push(...expectedValueParts(node));
   }
   return false;
@@ -91,9 +105,13 @@ function containsPartialMatcher(expected) {
 
 function isPartialMatcherAssertion(node) {
   const callee = node.callee;
-  if (callee.type !== 'MemberExpression' || !isPositiveExpectation(callee)) return false;
+  if (callee.type !== 'MemberExpression' || !isPositiveExpectation(callee)) {
+    return false;
+  }
   const matcher = memberName(callee);
-  if (matcher === 'toMatchObject') return true;
+  if (matcher === 'toMatchObject') {
+    return true;
+  }
   return WHOLE_VALUE_MATCHERS.has(matcher) && node.arguments.some(containsPartialMatcher);
 }
 

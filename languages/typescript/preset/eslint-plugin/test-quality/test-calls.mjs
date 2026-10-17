@@ -5,7 +5,9 @@ const CASE_NAMES = new Set(['it', 'test']);
 
 function rootNameOf(callee) {
   const root = chainOf(callee, (current) => {
-    if (current.type === 'CallExpression') return current.callee;
+    if (current.type === 'CallExpression') {
+      return current.callee;
+    }
     return current.type === 'MemberExpression' ? current.object : undefined;
   }).at(-1);
   return root?.type === 'Identifier' ? root.name : undefined;
@@ -18,7 +20,9 @@ export function isTestFunctionChain(node) {
 
 export function chainHasProperty(callee, name) {
   return chainOf(callee, (current) => {
-    if (current.type === 'CallExpression') return current.callee;
+    if (current.type === 'CallExpression') {
+      return current.callee;
+    }
     return current.type === 'MemberExpression' ? current.object : undefined;
   }).some(
     (link) => link.type === 'MemberExpression' && !link.computed && link.property.name === name,

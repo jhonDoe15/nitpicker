@@ -47,7 +47,9 @@ function isRandomSpy(node) {
 
 function trackNetworkImport(bindings, node) {
   const allowed = NETWORK_MODULES.get(moduleName(node.source.value));
-  if (allowed === undefined) return;
+  if (allowed === undefined) {
+    return;
+  }
   for (const specifier of node.specifiers) {
     const imported = specifier.type === 'ImportSpecifier' ? specifier.imported.name : '*';
     bindings.set(specifier.local.name, { allowed, imported });
@@ -76,7 +78,9 @@ function isNetworkCall({ sourceCode, bindings }, node) {
       (binding !== undefined && binding.allowed.has(binding.imported))
     );
   }
-  if (callee.type !== 'MemberExpression' || callee.computed) return false;
+  if (callee.type !== 'MemberExpression' || callee.computed) {
+    return false;
+  }
   const binding = bindings.get(callee.object.name);
   return binding !== undefined && binding.allowed.has(callee.property.name);
 }
@@ -113,7 +117,9 @@ export const rule = {
         trackNetworkImport(networkBindings, node);
       },
       NewExpression(node) {
-        if (isNewDateWithoutArguments(node)) clockCalls.push(node);
+        if (isNewDateWithoutArguments(node)) {
+          clockCalls.push(node);
+        }
         if (
           checksNetwork &&
           node.callee.type === 'Identifier' &&
@@ -123,19 +129,28 @@ export const rule = {
         }
       },
       CallExpression(node) {
-        if (isMemberCall(node, 'Date', 'now')) clockCalls.push(node);
-        if (isMemberCall(node, 'Math', 'random')) randomCalls.push(node);
+        if (isMemberCall(node, 'Date', 'now')) {
+          clockCalls.push(node);
+        }
+        if (isMemberCall(node, 'Math', 'random')) {
+          randomCalls.push(node);
+        }
         state.fakeClock ||= isFakeClockSetup(node);
         state.randomSpy ||= isRandomSpy(node);
-        if (checksNetwork && isNetworkCall(network, node))
+        if (checksNetwork && isNetworkCall(network, node)) {
           context.report({ node, messageId: 'network' });
+        }
       },
       'Program:exit'() {
         if (!state.fakeClock) {
-          for (const node of clockCalls) context.report({ node, messageId: 'clock' });
+          for (const node of clockCalls) {
+            context.report({ node, messageId: 'clock' });
+          }
         }
         if (!state.randomSpy) {
-          for (const node of randomCalls) context.report({ node, messageId: 'random' });
+          for (const node of randomCalls) {
+            context.report({ node, messageId: 'random' });
+          }
         }
       },
     };

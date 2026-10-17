@@ -18,9 +18,13 @@ const EXCEPTION_ROUTE =
 function helperName(filename, { colocated }) {
   const parts = filename.replaceAll('\\', '/').split('/');
   const directories = parts.slice(0, -1);
-  if (colocated && directories.includes(TEST_SUPPORT_DIRECTORY)) return undefined;
+  if (colocated && directories.includes(TEST_SUPPORT_DIRECTORY)) {
+    return undefined;
+  }
   const directory = directories.find((part) => HELPER_DIRECTORIES.has(part));
-  if (directory !== undefined) return `${directory}/`;
+  if (directory !== undefined) {
+    return `${directory}/`;
+  }
   const stem = path.parse(parts.at(-1)).name;
   return HELPER_STEM.test(stem) ? parts.at(-1) : undefined;
 }
@@ -46,7 +50,9 @@ export const rule = {
     const name = helperName(path.relative(context.cwd, context.filename), { colocated });
     return {
       Program(node) {
-        if (name === undefined) return;
+        if (name === undefined) {
+          return;
+        }
         context.report({
           node,
           messageId: colocated ? 'colocatedTestHelper' : 'testHelper',

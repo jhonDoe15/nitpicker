@@ -28,7 +28,9 @@ export function baseLineOf(hunks, line) {
   const isWritten = hunks.some(
     ({ headStart, headCount }) => line >= headStart && line < headStart + headCount,
   );
-  if (isWritten) return undefined;
+  if (isWritten) {
+    return undefined;
+  }
   return hunks
     .filter(({ headStart, headCount }) => line >= headStart + Math.max(headCount, 1))
     .reduce((mapped, { baseCount, headCount }) => mapped + baseCount - headCount, line);

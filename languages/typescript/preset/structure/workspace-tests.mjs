@@ -1,7 +1,9 @@
 import { existsSync, globSync, readFileSync, statSync } from 'node:fs';
 import path from 'node:path';
 import ts from 'typescript';
+import { firstFileIn, pathInside } from '../../../../shared/filesystem.mjs';
 import { exceptionMatcher } from '../../../../shared/rules/exceptions.mjs';
+import { propertyName } from '../syntax/property-names.mjs';
 
 const RULE = 'nitpicker/no-uncollected-tests';
 const TEST_FILES = '**/*.{test,spec}.{ts,tsx,mts,cts,js,jsx,mjs,cjs}';
@@ -28,10 +30,14 @@ function readJson(file) {
 
 function pnpmPatterns(root) {
   const file = path.join(root, 'pnpm-workspace.yaml');
-  if (!existsSync(file)) return [];
+  if (!existsSync(file)) {
+    return [];
+  }
   const lines = readFileSync(file, 'utf8').split('\n');
   const start = lines.findIndex((line) => /^packages\s*:/u.test(line));
-  if (start === -1) return [];
+  if (start === -1) {
+    return [];
+  }
   const block = lines.slice(start + 1);
   const end = block.findIndex((line) => /^\S/u.test(line));
   return block
@@ -46,6 +52,14 @@ function workspacePatterns(root, manifest) {
   return [...npm, ...pnpmPatterns(root)].filter((pattern) => typeof pattern === 'string');
 }
 
+function isPackageDirectory(directory) {
+  return (
+    directory !== undefined &&
+    existsSync(path.join(directory, 'package.json')) &&
+    statSync(directory).isDirectory()
+  );
+}
+
 function packageDirectories(root, patterns) {
   const negated = patterns
     .filter((pattern) => pattern.startsWith('!'))
@@ -56,21 +70,13 @@ function packageDirectories(root, patterns) {
       globSync(pattern.replace(/^\.\//u, '').replace(/\/$/u, ''), { cwd: root }),
     )
     .map((match) => match.replaceAll('\\', '/'))
-    .filter((match) => !SKIPPED.test(match) && existsSync(path.join(root, match, 'package.json')))
-    .filter((match) => statSync(path.join(root, match)).isDirectory())
+    .filter((match) => !SKIPPED.test(match) && isPackageDirectory(pathInside(root, match)))
     .filter((match) => !negated.some((pattern) => path.matchesGlob(match, pattern)));
   return [...new Set(found)].sort();
 }
 
 function stringElements(node) {
   return node.elements.filter(ts.isStringLiteralLike).map((element) => element.text);
-}
-
-function propertyName(node) {
-  return ts.isPropertyAssignment(node) &&
-    (ts.isIdentifier(node.name) || ts.isStringLiteral(node.name))
-    ? node.name.text
-    : undefined;
 }
 
 function ownerName(node) {
@@ -82,8 +88,12 @@ function arrayProperty(nodes, name, owner) {
   const found = nodes.find(
     (node) => propertyName(node) === name && (owner === undefined || ownerName(node) === owner),
   );
-  if (found === undefined) return undefined;
-  if (!ts.isArrayLiteralExpression(found.initializer)) return 'unknown';
+  if (found === undefined) {
+    return undefined;
+  }
+  if (!ts.isArrayLiteralExpression(found.initializer)) {
+    return 'unknown';
+  }
   const values = stringElements(found.initializer);
   return values.length === found.initializer.elements.length ? values : 'unknown';
 }
@@ -92,7 +102,9 @@ function configSelection(configPath) {
   const text = readFileSync(configPath, 'utf8');
   const source = ts.createSourceFile(configPath, text, ts.ScriptTarget.Latest, true);
   const nodes = [source];
-  for (const node of nodes) nodes.push(...node.getChildren(source));
+  for (const node of nodes) {
+    nodes.push(...node.getChildren(source));
+  }
   const owner = path.basename(configPath).startsWith('jest.') ? undefined : 'test';
   return {
     projects: arrayProperty(nodes, 'projects', owner),
@@ -101,8 +113,10 @@ function configSelection(configPath) {
 }
 
 function rootSelection(root, manifest) {
-  const config = ROOT_CONFIGS.find((name) => existsSync(path.join(root, name)));
-  if (config !== undefined) return configSelection(path.join(root, config));
+  const config = firstFileIn(root, ROOT_CONFIGS);
+  if (config !== undefined) {
+    return configSelection(config);
+  }
   if (manifest?.jest !== undefined) {
     const { projects } = manifest.jest;
     return { projects: Array.isArray(projects) ? projects : undefined };
@@ -121,15 +135,21 @@ function projectMatches(packageDirectory, entry) {
 }
 
 function isCollectedByRoot(selection, packageDirectory, testFiles) {
-  if (selection === undefined) return false;
+  if (selection === undefined) {
+    return false;
+  }
   const { projects, include } = selection;
-  if (projects === 'unknown' || include === 'unknown') return true;
+  if (projects === 'unknown' || include === 'unknown') {
+    return true;
+  }
   if (Array.isArray(projects)) {
     return projects.some(
       (entry) => !entry.startsWith('!') && projectMatches(packageDirectory, entry),
     );
   }
-  if (!Array.isArray(include)) return true;
+  if (!Array.isArray(include)) {
+    return true;
+  }
   return testFiles.some((file) =>
     include.some((pattern) => path.matchesGlob(file, pattern.replace(/^\.\//u, ''))),
   );
@@ -162,17 +182,25 @@ function uncollectedFinding(analyzerName, packageDirectory, count) {
 export function uncollectedWorkspaceTestFindings(projectRoot, { analyzerName, exceptions = [] }) {
   const manifest = readJson(path.join(projectRoot, 'package.json'));
   const directories = packageDirectories(projectRoot, workspacePatterns(projectRoot, manifest));
-  if (directories.length === 0) return [];
+  if (directories.length === 0) {
+    return [];
+  }
   const selection = rootSelection(projectRoot, manifest);
   const isExcepted = exceptionMatcher(exceptions);
   return directories.flatMap((directory) => {
-    if (hasTestScript(readJson(path.join(projectRoot, directory, 'package.json')))) return [];
+    if (hasTestScript(readJson(path.join(projectRoot, directory, 'package.json')))) {
+      return [];
+    }
     const testFiles = globSync(`${directory}/${TEST_FILES}`, {
       cwd: projectRoot,
       exclude: isSkipped,
     }).map((file) => file.replaceAll('\\', '/'));
-    if (testFiles.length === 0 || isCollectedByRoot(selection, directory, testFiles)) return [];
-    if (isExcepted(RULE, `${directory}/package.json`, directory)) return [];
+    if (testFiles.length === 0 || isCollectedByRoot(selection, directory, testFiles)) {
+      return [];
+    }
+    if (isExcepted(RULE, `${directory}/package.json`, directory)) {
+      return [];
+    }
     return [uncollectedFinding(analyzerName, directory, testFiles.length)];
   });
 }

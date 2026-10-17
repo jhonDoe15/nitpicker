@@ -47,7 +47,9 @@ async function mutationReport(options, targets) {
   try {
     writeStrykerConfig({ options, sourceConfig, targets, configPath, createdFiles });
     const skipped = runStrykerOrExplainSkip(options, configPath);
-    if (skipped !== undefined) return { skipped };
+    if (skipped !== undefined) {
+      return { skipped };
+    }
     return {
       report: withMutationSourceHashes(
         readMutationReport(options.projectRoot),

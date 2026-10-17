@@ -1,4 +1,4 @@
-import { createHash } from 'node:crypto';
+import { hash } from '../../../../../shared/rules/finding-helpers.mjs';
 import { mutantRuleId } from '../../../../../shared/policy.mjs';
 import { baseLineOf } from './line-shifts.mjs';
 
@@ -85,7 +85,9 @@ function baseLineMapper(scope, filePath) {
 function keyedMutants(mutants, baseLine) {
   return mutants.flatMap((mutant) => {
     const line = baseLine(startLine(mutant));
-    if (line === undefined) return [];
+    if (line === undefined) {
+      return [];
+    }
     const column = String(mutant.location?.start?.column);
     const key = [mutant.mutatorName, mutant.replacement ?? '', `${String(line)}:${column}`];
     return [{ mutant, key: key.join('\0') }];
@@ -135,7 +137,7 @@ function weakenedFinding(analyzerName, filePath, { mutant, key }) {
     tool: analyzerName,
     rule: mutantRuleId(mutant.status),
     path: filePath,
-    identity: `weakened|${createHash('sha256').update(key).digest('hex').slice(0, 24)}`,
+    identity: `weakened|${hash(key)}`,
     message: weakenedMessage(filePath, mutant),
     classification: 'enforceable',
     ...(typeof line === 'number'

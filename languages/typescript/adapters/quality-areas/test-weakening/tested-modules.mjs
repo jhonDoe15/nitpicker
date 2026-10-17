@@ -1,6 +1,7 @@
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import ts from 'typescript';
+import { pathInside } from '../../../../../shared/filesystem.mjs';
 import { diffAgainstBase } from '../runners/mutation-scope.mjs';
 import {
   isFile,
@@ -36,7 +37,11 @@ function changedTestPaths(options, layout) {
 }
 
 function importedModules({ root, compilerOptions }, filePath) {
-  const text = readFileSync(path.join(root, filePath), 'utf8');
+  const full = pathInside(root, filePath);
+  if (full === undefined) {
+    return [];
+  }
+  const text = readFileSync(full, 'utf8');
   const context = { root, compilerOptions, fromFile: filePath };
   return ts
     .preProcessFile(text, true, true)
@@ -65,11 +70,15 @@ function testImporters(project, layout) {
 
 function testsUsingHelpers(project, changedTests, layout) {
   const helpers = changedTests.filter((testPath) => !layout.isRunnableTestFile(testPath));
-  if (helpers.length === 0) return [];
+  if (helpers.length === 0) {
+    return [];
+  }
   const importers = testImporters(project, layout);
   const reached = new Set(helpers);
   for (const filePath of reached) {
-    for (const importer of importers.get(filePath) ?? []) reached.add(importer);
+    for (const importer of importers.get(filePath) ?? []) {
+      reached.add(importer);
+    }
   }
   return [...reached].filter((testPath) => layout.isRunnableTestFile(testPath));
 }
@@ -80,7 +89,9 @@ function projectAt(root) {
 
 export function testedSourceModules(options, layout) {
   const { snapshot, baselineRoot, projectRoot } = options;
-  if (snapshot === 'base' || baselineRoot === undefined) return { modules: [], skipped: [] };
+  if (snapshot === 'base' || baselineRoot === undefined) {
+    return { modules: [], skipped: [] };
+  }
   const changed = changedTestPaths(options, layout);
   const head = projectAt(projectRoot);
   const base = projectAt(baselineRoot);

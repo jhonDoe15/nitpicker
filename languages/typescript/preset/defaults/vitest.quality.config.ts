@@ -142,8 +142,12 @@ function pinnedProjects(entries: readonly TestProjectConfiguration[]): TestProje
   return [
     ...[...new Set(projectPaths(paths))].map(projectAt),
     ...entries.flatMap((entry): TestProjectConfiguration[] => {
-      if (typeof entry === 'string') return [];
-      if (entry instanceof Promise) return [entry.then(pinnedInline)];
+      if (typeof entry === 'string') {
+        return [];
+      }
+      if (entry instanceof Promise) {
+        return [entry.then(pinnedInline)];
+      }
       if (typeof entry === 'function') {
         return [async (environment) => pinnedInline(await entry(environment))];
       }
