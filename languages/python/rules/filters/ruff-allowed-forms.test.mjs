@@ -69,49 +69,54 @@ describe('test files', () => {
 
 describe('test support', () => {
   const inFile = (rule, path) => ({ ...finding(rule, 'm'), path });
+  const supportFiles = ['qa/servers/fake_tls.py', 'conftest.py'];
 
-  it.each(['S501', 'S113', 'S324'])('drop %s in test support folders and conftest.py', (rule) => {
-    const support = ['src/app/test_support/a.py', 'mocks/a.py', 'conftest.py', 'fixtures/a.py'];
+  it.each(['S501', 'S113', 'S324'])(
+    'drop %s in the support files the rules script listed',
+    (rule) => {
+      const found = supportFiles.map((path) => inFile(rule, path));
 
-    expect(withoutAllowedForms(support.map((path) => inFile(rule, path)))).toEqual([]);
-  });
+      expect(withoutAllowedForms(found, { supportFiles })).toEqual([]);
+    },
+  );
 
-  it('keep other rules there and security rules in production code', () => {
-    const kept = [inFile('ARG001', 'mocks/a.py'), inFile('S501', 'src/app/client.py')];
+  it('keep other rules there and security rules in production support folders', () => {
+    const kept = [inFile('ARG001', 'conftest.py'), inFile('S501', 'shop/testing/ab_variants.py')];
 
-    expect(withoutAllowedForms(kept)).toEqual(kept);
+    expect(withoutAllowedForms(kept, { supportFiles })).toEqual(kept);
   });
 });
 
-describe('hash classes inside an HMAC', () => {
-  const s303 = (line, column) => ({
-    ...finding('S303', 'Use of insecure MD2, MD4, MD5, or SHA1 hash function'),
+describe('sites the rules script allowed', () => {
+  const at = (rule, line) => ({
+    ...finding(rule, 'm'),
     path: 'a.py',
-    location: { line, column },
+    location: { line, column: 5 },
   });
-  const lines = {
-    1: '    signer = crypto_hmac.HMAC(key, hashes.SHA1())',
-    2: '    signer = hmac.HMAC(',
-    3: '        key,',
-    4: '        hashes.SHA1(),',
-    5: '    )',
-    6: '    digest = hashes.Hash(hashes.SHA1())',
-    7: '    hashes.MD5()',
-  };
-  const lineOf = (_path, line) => lines[line];
+  const allowed = [
+    { rule: 'S303', path: 'a.py', line: 4 },
+    { rule: 'S506', path: 'a.py', line: 9 },
+  ];
 
   it.each([
-    [1, 36],
-    [4, 9],
-  ])('drop the finding on line %s, which names the HMAC hash', (line, column) => {
-    expect(withoutAllowedForms([s303(line, column)], { lineOf })).toEqual([]);
+    ['S303', 4],
+    ['S506', 9],
+  ])('drop %s on line %s', (rule, line) => {
+    expect(withoutAllowedForms([at(rule, line)], { allowed })).toEqual([]);
   });
 
   it.each([
-    [6, 26],
-    [7, 5],
-  ])('keep the finding on line %s, which is no HMAC', (line, column) => {
-    expect(withoutAllowedForms([s303(line, column)], { lineOf })).toEqual([s303(line, column)]);
+    ['S303', 6],
+    ['S506', 4],
+    ['S324', 4],
+  ])('keep %s on line %s', (rule, line) => {
+    expect(withoutAllowedForms([at(rule, line)], { allowed })).toEqual([at(rule, line)]);
+  });
+
+  it('keep a site in another file', () => {
+    const other = { ...at('S303', 4), path: 'b.py' };
+
+    expect(withoutAllowedForms([other], { allowed })).toEqual([other]);
   });
 });
 

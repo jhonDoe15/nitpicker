@@ -4,13 +4,27 @@ import {
   tomlTable,
 } from '../../adapters/configuration/project-files.mjs';
 
-export const DEFAULT_LIBRARIES = Object.freeze({ logging: 'logging', validator: 'pydantic' });
+export const DEFAULT_LIBRARIES = Object.freeze({
+  database: 'format',
+  logging: 'logging',
+  validator: 'pydantic',
+});
 
 const REQUIREMENT_FOLDERS = ['requirements', 'requirements-dev', 'reqs'];
 const REQUIREMENT_FILE = /\.(?:txt|in)$/u;
 const ROOT_REQUIREMENT_FILE = /^requirements.*\.(?:txt|in)$/u;
 const DISTRIBUTION_NAME = /^[A-Za-z0-9][A-Za-z0-9._-]*/u;
 const LOGGING_LIBRARIES = ['structlog', 'loguru'];
+const DATABASES = [
+  { name: 'asyncpg', packages: ['asyncpg'] },
+  {
+    name: 'format',
+    packages: ['psycopg', 'psycopg2', 'psycopg2_binary', 'pymysql', 'mysqlclient', 'aiomysql'],
+  },
+  { name: 'format', packages: ['mysql_connector_python', 'aiopg'] },
+  { name: 'named', packages: ['databases'] },
+  { name: 'sqlite', packages: ['aiosqlite'] },
+];
 const VALIDATORS = [
   { name: 'pydantic', packages: ['pydantic', 'pydantic_settings'] },
   { name: 'msgspec', packages: ['msgspec'] },
@@ -89,10 +103,15 @@ export function dependencyNames(projectRoot) {
   return new Set(raw.map(normalized).filter((name) => name !== undefined));
 }
 
+function firstUsed(entries, names) {
+  return entries.find(({ packages }) => packages.some((name) => names.has(name)));
+}
+
 export function detectLibraries(projectRoot) {
   const names = dependencyNames(projectRoot);
-  const validator = VALIDATORS.find(({ packages }) => packages.some((name) => names.has(name)));
+  const validator = firstUsed(VALIDATORS, names);
   return {
+    database: firstUsed(DATABASES, names)?.name ?? DEFAULT_LIBRARIES.database,
     logging: LOGGING_LIBRARIES.find((name) => names.has(name)) ?? DEFAULT_LIBRARIES.logging,
     validator: validator?.name ?? DEFAULT_LIBRARIES.validator,
   };

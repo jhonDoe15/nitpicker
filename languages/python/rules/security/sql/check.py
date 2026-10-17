@@ -1,120 +1,44 @@
 import ast
 import re
 
-from checks.common import dotted_name, finding, own_nodes
+from checks.common import dotted_name, finding
+from security.resolve.scopes import where_of
 from security.sql.pieces import Pieces
-from security.values import FUNCTIONS, function_of, where_of
+from security.sql.sinks import (
+    RAW_BUILDERS,
+    RAW_KEYWORDS,
+    build_wrappers,
+    query_arguments,
+    sink_of,
+)
+from security.support import exempt
 
 RULE = "sql-string-formatting"
+OBJECTS = r"(?:table|index|view|database|schema|sequence|trigger|function|type|materialized\s+view)"
 STATEMENT = re.compile(
-    r"\b(?:select\s.+?\sfrom\s|delete\s+from\s|(?:insert|replace)\s.+?\svalues\s"
-    r"|update\s.+?\sset\s)",
+    r"\b(?:select\s.+?\sfrom\s|delete\s+from\s|(?:insert|replace)\s.+?\svalues\b"
+    r"|update\s.+?\sset\s|merge\s+into\s|truncate\s+table\b"
+    rf"|drop\s+{OBJECTS}\b|alter\s+(?:table|index|view|database|schema|sequence)\b"
+    rf"|create\s+(?:or\s+replace\s+)?(?:unique\s+)?(?:temp(?:orary)?\s+)?{OBJECTS}\b"
+    r"|with\s+\w+\s+as\s*\()",
     re.I | re.S,
 )
+UPPER_KEYWORD = re.compile(
+    r"\b(?:SELECT|INSERT|UPDATE|DELETE|MERGE|TRUNCATE|DROP|ALTER|CREATE|FROM|WHERE|SET"
+    r"|VALUES|JOIN|GROUP\s+BY|ORDER\s+BY|HAVING|LIMIT|OFFSET|RETURNING)\b"
+)
+COMPARISON = r"\s*(?:=|<>|!=|<=|>=|<|>|\blike\b|\bilike\b|\bin\b|\bnot\s+in\b|\bis\b|\bbetween\b)"
 CLAUSE = re.compile(
-    r"\b(?:where|order\s+by|group\s+by|having|limit|offset|returning|values|join)\b",
+    rf"\b(?:where|and|or|having|on)\s+[\w.\"`\[\]]+{COMPARISON}|\b(?:order|group)\s+by\s"
+    r"|\b(?:limit|offset)\s+(?:\d|%s|\?|:\w|\$\d)|\breturning\s|\bvalues\s*\(",
     re.I,
 )
-UPPER_CLAUSE = re.compile(r"\b(?:SELECT|FROM|UPDATE|DELETE|INSERT|SET|AND|OR|IN|ON)\b")
-NAMED_SINKS = {
-    "execute",
-    "executemany",
-    "executescript",
-    "exec_driver_sql",
-    "read_sql",
-    "read_sql_query",
-    "read_sql_table",
-    "raw",
-    "text",
-    "query",
-    "fetch",
-    "fetchrow",
-    "fetchval",
-    "fetch_all",
-    "fetch_one",
-    "fetch_val",
-    "copy_expert",
-}
-RAW_BUILDERS = {
-    "sqlalchemy.text",
-    "sqlalchemy.sql.text",
-    "sqlalchemy.sql.expression.text",
-    "sqlalchemy.literal_column",
-    "sqlalchemy.sql.literal_column",
-    "sqlalchemy.sql.expression.literal_column",
-    "peewee.SQL",
-    "psycopg.sql.SQL",
-    "psycopg2.sql.SQL",
-}
-QUERY_KEYWORDS = {"sql", "query", "statement", "operation", "sql_query"}
-WRAPPER_PASSES = 2
 
 
 def is_sql(text):
     return bool(
-        STATEMENT.search(text) or CLAUSE.search(text) or UPPER_CLAUSE.search(text)
+        STATEMENT.search(text) or UPPER_KEYWORD.search(text) or CLAUSE.search(text)
     )
-
-
-def query_arguments(call, index=0, name=None):
-    found = [call.args[index]] if len(call.args) > index else []
-    names = QUERY_KEYWORDS | ({name} if name else set())
-    return found + [k.value for k in call.keywords if k.arg in names]
-
-
-def direct_sink(call, aliases):
-    function = call.func
-    name = dotted_name(function, aliases)
-    if name in RAW_BUILDERS:
-        return name, True, query_arguments(call)
-    last = function.attr if isinstance(function, ast.Attribute) else None
-    last = last or (function.id if isinstance(function, ast.Name) else None)
-    if last in NAMED_SINKS:
-        return name or last, False, query_arguments(call)
-    return None
-
-
-def parameters_of(function):
-    every = function.args.posonlyargs + function.args.args
-    return [a.arg for a in every if a.arg not in {"self", "cls"}]
-
-
-def wrapped_parameter(function, context, wrappers):
-    parameters = parameters_of(function)
-    for node in own_nodes(function):
-        if not isinstance(node, ast.Call):
-            continue
-        sink = sink_of(node, context, wrappers)
-        for value in sink[2] if sink else []:
-            if isinstance(value, ast.Name) and value.id in parameters:
-                return parameters.index(value.id), value.id, sink[1]
-    return None
-
-
-def build_wrappers(project):
-    wrappers = {}
-    for _ in range(WRAPPER_PASSES):
-        for context in project.contexts.values():
-            if context.tests:
-                continue
-            for node in ast.walk(context.tree):
-                if isinstance(node, FUNCTIONS) and id(node) not in wrappers:
-                    found = wrapped_parameter(node, context, wrappers)
-                    if found is not None:
-                        wrappers[id(node)] = found
-    return wrappers
-
-
-def sink_of(call, context, wrappers):
-    direct = direct_sink(call, context.aliases)
-    if direct is not None or not wrappers:
-        return direct
-    target = function_of(call, where_of(call, context))
-    wrapper = wrappers.get(id(target[0])) if target else None
-    if wrapper is None:
-        return None
-    subject = dotted_name(call.func, context.aliases) or target[0].name
-    return subject, wrapper[2], query_arguments(call, wrapper[0], wrapper[1])
 
 
 def composed_raw(call, context):
@@ -132,8 +56,19 @@ def composed_raw(call, context):
     ]
 
 
+def raw_findings(node, context, pieces):
+    found = []
+    for raw in composed_raw(node, context):
+        arguments = query_arguments(raw, keywords=RAW_KEYWORDS)
+        where = where_of(raw, context)
+        if any(pieces.of(value, where)[1] for value in arguments):
+            subject = dotted_name(raw.func, context.aliases)
+            found.append(finding(context.path, RULE, subject, raw))
+    return found
+
+
 def check(context):
-    if context.tests:
+    if exempt(context):
         return []
     wrappers = context.project.memo("sql-wrappers", build_wrappers)
     pieces = Pieces()
@@ -141,14 +76,7 @@ def check(context):
     for node in ast.walk(context.tree):
         if not isinstance(node, ast.Call):
             continue
-        for raw in composed_raw(node, context):
-            text, unsafe, _ = pieces.of(raw.args[0], where_of(raw, context))
-            if unsafe:
-                found.append(
-                    finding(
-                        context.path, RULE, dotted_name(raw.func, context.aliases), raw
-                    )
-                )
+        found.extend(raw_findings(node, context, pieces))
         sink = sink_of(node, context, wrappers)
         if sink is None:
             continue

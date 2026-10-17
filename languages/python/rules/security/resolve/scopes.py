@@ -3,9 +3,9 @@ import ast
 from checks.common import dotted_name, own_nodes
 
 SCOPES = (ast.FunctionDef, ast.AsyncFunctionDef, ast.Lambda)
+FUNCTIONS = (ast.FunctionDef, ast.AsyncFunctionDef)
 MAX_HOPS = 4
 ENUM_BASES = {"Enum", "IntEnum", "StrEnum", "Flag", "IntFlag"}
-BOOLEAN_CALLS = {"bool", "strtobool", "getboolean", "as_bool", "to_bool", "str2bool"}
 
 
 class Where:
@@ -29,46 +29,100 @@ def where_of(node, context):
     return Where(context, scope_of(node, context))
 
 
-def collect_bindings(scope):
-    values = {}
+def module_where(context):
+    return Where(context, None)
 
-    def add(target, kind, value):
+
+def parameter_defaults(arguments):
+    positional = arguments.posonlyargs + arguments.args
+    start = len(positional) - len(arguments.defaults)
+    pairs = list(zip(positional[start:], arguments.defaults))
+    keyword_pairs = zip(arguments.kwonlyargs, arguments.kw_defaults)
+    return pairs + [(name, value) for name, value in keyword_pairs if value is not None]
+
+
+def synthetic_call(owner, method, node):
+    call = ast.Call(func=ast.Attribute(value=owner, attr=method), args=[], keywords=[])
+    return ast.copy_location(call, node)
+
+
+def loop_parts(target, iterable):
+    if not isinstance(target, ast.Tuple) or not isinstance(iterable, ast.Call):
+        return None
+    function = iterable.func
+    name = function.id if isinstance(function, ast.Name) else None
+    elements = target.elts
+    if name == "enumerate" and len(elements) == 2 and iterable.args:
+        index = ast.copy_location(ast.Constant(value=0), iterable)
+        return [(elements[0], "value", index), (elements[1], "iter", iterable.args[0])]
+    if name == "zip" and len(elements) == len(iterable.args):
+        return [
+            (element, "iter", value) for element, value in zip(elements, iterable.args)
+        ]
+    if isinstance(function, ast.Attribute) and function.attr == "items":
+        if len(elements) == 2 and not iterable.args:
+            keys = synthetic_call(function.value, "keys", iterable)
+            values = synthetic_call(function.value, "values", iterable)
+            return [(elements[0], "iter", keys), (elements[1], "iter", values)]
+    return None
+
+
+class Bindings:
+    def __init__(self):
+        self.values = {}
+
+    def add(self, target, kind, value):
         if isinstance(target, ast.Name):
-            values.setdefault(target.id, []).append((kind, value))
+            self.values.setdefault(target.id, []).append((kind, value))
         elif isinstance(target, (ast.Tuple, ast.List)):
             for element in target.elts:
-                add(element, kind, value)
+                self.add(element, kind, value)
         elif isinstance(target, ast.Starred):
-            add(target.value, kind, value)
+            self.add(target.value, kind, value)
 
-    if isinstance(scope, SCOPES):
+    def add_loop(self, target, iterable):
+        parts = loop_parts(target, iterable)
+        if parts is None:
+            self.add(target, "iter", iterable)
+            return
+        for element, kind, value in parts:
+            self.add(element, kind, value)
+
+    def add_parameters(self, scope):
         arguments = scope.args
         every = arguments.posonlyargs + arguments.args + arguments.kwonlyargs
         for argument in every + [arguments.vararg, arguments.kwarg]:
             if argument is not None:
-                add(ast.Name(id=argument.arg), "param", argument.annotation)
-    for node in own_nodes(scope):
+                self.add(ast.Name(id=argument.arg), "param", argument.annotation)
+        for argument, default in parameter_defaults(arguments):
+            self.add(ast.Name(id=argument.arg), "value", default)
+
+    def add_node(self, node):
         if isinstance(node, ast.Assign):
             for target in node.targets:
-                add(target, "value", node.value)
+                self.add(target, "value", node.value)
         elif isinstance(node, (ast.AnnAssign, ast.AugAssign, ast.NamedExpr)):
             if node.value is not None:
-                add(node.target, "value", node.value)
+                self.add(node.target, "value", node.value)
         elif isinstance(node, (ast.For, ast.AsyncFor, ast.comprehension)):
-            add(node.target, "iter", node.iter)
+            self.add_loop(node.target, node.iter)
         elif isinstance(node, ast.withitem) and node.optional_vars is not None:
-            add(node.optional_vars, "value", node.context_expr)
-    return values
+            self.add(node.optional_vars, "value", node.context_expr)
+
+
+def collect_bindings(scope):
+    found = Bindings()
+    if isinstance(scope, SCOPES):
+        found.add_parameters(scope)
+    for node in own_nodes(scope):
+        found.add_node(node)
+    return found.values
 
 
 def bindings(where):
     scope = where.scope if where.scope is not None else where.context.tree
     key = ("security-bindings", where.context.path, id(scope))
     return where.context.project.memo(key, lambda _: collect_bindings(scope))
-
-
-def module_where(context):
-    return Where(context, None)
 
 
 def imported_where(name, where):
@@ -98,8 +152,14 @@ def lookup(name, where, hops=0):
     return lookup(imported[1], imported[0], hops + 1)
 
 
+def values_of(name, where):
+    return [
+        (value, place) for kind, value, place in lookup(name, where) if kind == "value"
+    ]
+
+
 def definition(node, where, kinds=(ast.ClassDef,), hops=0):
-    if hops > MAX_HOPS:
+    if hops > MAX_HOPS or where is None:
         return None
     if isinstance(node, ast.Name):
         for statement in where.context.tree.body:
@@ -129,100 +189,8 @@ def is_enum_class(node, where):
     return found is not None and bool(base_names(found[0]) & ENUM_BASES)
 
 
-def is_boolean_shaped(node, where):
-    if isinstance(node, (ast.Compare, ast.BoolOp)):
-        return True
-    if isinstance(node, ast.UnaryOp) and isinstance(node.op, ast.Not):
-        return True
-    if isinstance(node, ast.Call):
-        name = dotted_name(node.func, where.context.aliases) or ""
-        cast = keyword(node, "cast")
-        return (
-            name.rsplit(".", 1)[-1] in BOOLEAN_CALLS
-            or name.endswith("env.bool")
-            or (isinstance(cast, ast.Name) and cast.id == "bool")
-        )
-    return False
-
-
-def can_be(node, where, wanted, depth=0):
-    if depth > 4 or node is None:
-        return False
-    if isinstance(node, ast.Constant):
-        return node.value is wanted
-    if isinstance(node, ast.IfExp):
-        return any(
-            can_be(n, where, wanted, depth + 1) for n in (node.body, node.orelse)
-        )
-    if isinstance(node, ast.Name):
-        return any(
-            kind == "value" and can_be(value, place, wanted, depth + 1)
-            for kind, value, place in lookup(node.id, where)
-        )
-    return is_boolean_shaped(node, where)
-
-
-def can_be_false(node, where):
-    return can_be(node, where, False)
-
-
-def can_be_true(node, where):
-    return can_be(node, where, True)
-
-
-def keyword(call, name):
-    return next((k.value for k in call.keywords if k.arg == name), None)
-
-
-def argument(call, index, name):
-    found = keyword(call, name)
-    if found is None and len(call.args) > index:
-        found = call.args[index]
-    return found
-
-
-def has_double_star(call):
-    return any(k.arg is None for k in call.keywords)
-
-
-FUNCTIONS = (ast.FunctionDef, ast.AsyncFunctionDef)
-
-
 def enclosing_class(node, context):
     current = context.parents.get(id(node))
     while current is not None and not isinstance(current, ast.ClassDef):
         current = context.parents.get(id(current))
     return current
-
-
-def function_of(call, where):
-    function = call.func
-    if (
-        isinstance(function, ast.Attribute)
-        and isinstance(function.value, ast.Name)
-        and function.value.id in {"self", "cls"}
-    ):
-        owner = enclosing_class(call, where.context)
-        for statement in owner.body if owner is not None else []:
-            if isinstance(statement, FUNCTIONS) and statement.name == function.attr:
-                return statement, Where(
-                    where.context, scope_of(statement, where.context)
-                )
-        return None
-    return definition(function, where, FUNCTIONS)
-
-
-def bind_arguments(call, function, where):
-    parameters = function.args.posonlyargs + function.args.args
-    if parameters and parameters[0].arg in {"self", "cls"}:
-        if isinstance(call.func, ast.Attribute):
-            parameters = parameters[1:]
-    bound = {}
-    for parameter, value in zip(parameters, call.args):
-        if isinstance(value, ast.Starred):
-            break
-        bound[parameter.arg] = ("value", value, where)
-    for keyword in call.keywords:
-        if keyword.arg is not None:
-            bound[keyword.arg] = ("value", keyword.value, where)
-    return bound

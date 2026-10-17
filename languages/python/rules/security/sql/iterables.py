@@ -1,19 +1,31 @@
 import ast
 
 from checks.common import dotted_name, own_nodes
+from security.resolve.classes import attribute_values
+from security.resolve.scopes import lookup
+from security.sql.schema import is_schema
 from security.sql.shapes import (
     INERT,
     MAX_DEPTH,
     NUMERIC_CALLS,
     UNSAFE,
     combine,
+    is_constant_text,
     safe_annotation,
+    tail,
     textual,
 )
-from security.values import lookup
 
 SEQUENCE_CALLS = {"sorted", "list", "tuple", "set", "reversed", "enumerate", "zip"}
-SEQUENCE_CALLS |= {"frozenset", "filter"}
+SEQUENCE_CALLS |= {"frozenset", "filter", "iter"}
+WRAPPED_TABLES = {"MappingProxyType", "frozenset", "set", "tuple", "list", "dict"}
+TABLE_DEPTH = 4
+
+
+def constant_keys(node):
+    return bool(node.keys) and all(
+        key is not None and is_constant_text(key) for key in node.keys
+    )
 
 
 class Iterables:
@@ -23,6 +35,8 @@ class Iterables:
         depth += 1
         if isinstance(node, (ast.List, ast.Tuple, ast.Set, ast.Constant)):
             return self.of(node, where, depth)
+        if isinstance(node, ast.Dict):
+            return INERT if constant_keys(node) else UNSAFE
         if isinstance(node, (ast.ListComp, ast.GeneratorExp, ast.SetComp)):
             return self.of(node.elt, where, depth)
         if isinstance(node, ast.BinOp) and isinstance(node.op, (ast.Mult, ast.Add)):
@@ -30,14 +44,18 @@ class Iterables:
             if isinstance(node.op, ast.Mult):
                 return next((s for s in sides if textual(s)), combine(sides))
             return combine(sides)
+        if is_schema(node, where):
+            return INERT
         if isinstance(node, ast.Call):
             return self.iterable_call(node, where, depth)
         if isinstance(node, ast.Name):
             return self.iterable_name(node, where, depth)
         if isinstance(node, ast.Attribute):
-            constant = self.project_constant(node, where)
-            if constant is not None:
-                return self.iterable(constant[0], constant[1], depth)
+            values = attribute_values(node, where)
+            if values:
+                return combine(
+                    [self.iterable(value, place, depth) for value, place in values]
+                )
         return UNSAFE
 
     def iterable_call(self, node, where, depth):
@@ -52,8 +70,14 @@ class Iterables:
             return self.iterable(node.args[1], where, depth)
         function = node.func
         if isinstance(function, ast.Attribute):
-            if function.attr in {"keys", "values", "items"}:
+            if function.attr == "keys":
+                return INERT if self.is_collection(function.value, where) else UNSAFE
+            if function.attr == "values":
                 return INERT if self.is_table(function.value, where) else UNSAFE
+            if function.attr == "items":
+                owner = function.value
+                safe = self.is_table(owner, where) and self.is_collection(owner, where)
+                return INERT if safe else UNSAFE
             if function.attr == "split" and isinstance(function.value, ast.Constant):
                 return INERT
         return self.returns(node, where, depth)
@@ -90,3 +114,40 @@ class Iterables:
             elif node.func.attr == "extend":
                 found.append(self.iterable(node.args[0], where, depth))
         return found
+
+    def is_table(self, node, where, depth=0):
+        return self.constant_container(node, where, depth, keys=False)
+
+    def is_collection(self, node, where, depth=0):
+        return self.constant_container(node, where, depth, keys=True)
+
+    def constant_container(self, node, where, depth, keys):
+        if depth > TABLE_DEPTH or node is None:
+            return False
+        if isinstance(node, ast.Dict):
+            if keys:
+                return constant_keys(node)
+            return bool(node.values) and all(is_constant_text(v) for v in node.values)
+        if isinstance(node, (ast.Tuple, ast.List, ast.Set)):
+            return bool(node.elts) and all(is_constant_text(e) for e in node.elts)
+        if isinstance(node, ast.Call):
+            function = node.func
+            if isinstance(function, ast.Attribute) and function.attr == "keys" and keys:
+                return self.constant_container(function.value, where, depth + 1, True)
+            if tail(function, where) in WRAPPED_TABLES and len(node.args) == 1:
+                return self.constant_container(node.args[0], where, depth + 1, keys)
+            return False
+        if isinstance(node, ast.Name):
+            entries = lookup(node.id, where)
+            return bool(entries) and all(
+                kind == "value"
+                and self.constant_container(value, place, depth + 1, keys)
+                for kind, value, place in entries
+            )
+        if isinstance(node, ast.Attribute):
+            values = attribute_values(node, where)
+            return bool(values) and all(
+                self.constant_container(value, place, depth + 1, keys)
+                for value, place in values
+            )
+        return False
