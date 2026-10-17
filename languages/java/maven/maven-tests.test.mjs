@@ -119,6 +119,7 @@ describe('pitClasspath', () => {
         ['/m2/junit-platform-engine-1.11.4.jar'],
         ['/m2/junit-platform-engine-1.11.4.jar', '/m2/junit-platform-launcher-1.11.4.jar'],
         ['/m2/testng-7.10.2.jar', '/m2/testng-helper-1.0.jar'],
+        ['/m2/testng-7.10.2.jar', '/m2/junit-platform-engine-1.11.4.jar'],
       ].map((testRuntime) => pitClasspath(tools, testRuntime)),
     ).toEqual([
       ['/m2/pitest-command-line.jar'],
@@ -129,6 +130,12 @@ describe('pitClasspath', () => {
       ],
       ['/m2/pitest-command-line.jar', '/m2/pitest-junit5-plugin.jar'],
       ['/m2/pitest-command-line.jar', '/m2/pitest-testng-plugin.jar'],
+      [
+        '/m2/pitest-command-line.jar',
+        '/m2/pitest-junit5-plugin.jar',
+        '/m2/junit-platform-launcher-1.11.4.jar',
+        '/m2/pitest-testng-plugin.jar',
+      ],
     ]);
   });
 });
