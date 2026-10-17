@@ -30,7 +30,7 @@ const REPORTS = {
   ]),
   'spotbugs.sarif': sarif([]),
   'format.txt': '',
-  'checkstyle.xml': '<checkstyle version="10.21.1"></checkstyle>',
+  'checkstyle.xml': '<checkstyle version="13.5.0"></checkstyle>',
   'structure.json': '[]',
 };
 

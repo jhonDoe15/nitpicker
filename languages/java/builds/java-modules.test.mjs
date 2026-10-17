@@ -52,7 +52,7 @@ function writeModule(moduleDir, { className, lines }) {
   write(path.join(reports, 'spotbugs.sarif'), sarif());
   write(path.join(reports, 'format.txt'), '');
   write(path.join(reports, 'jacoco.xml'), '<report name="demo"></report>');
-  write(path.join(reports, 'checkstyle.xml'), '<checkstyle version="10.21.1"></checkstyle>');
+  write(path.join(reports, 'checkstyle.xml'), '<checkstyle version="13.5.0"></checkstyle>');
   write(path.join(reports, 'structure.json'), '[]');
   write(path.join(reports, 'jdeps.txt'), '');
   write(path.join(reports, 'jdeps-classes.txt'), `demo.${className}\n`);

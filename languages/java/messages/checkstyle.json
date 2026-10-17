@@ -3,7 +3,12 @@
     "fix": "Treat abbreviations as words: no run of capitals, so parseUrl, HttpClient, userId, never parseURL, HTTPClient or userID.",
     "mayBeIntended": true
   },
-  "AnnotationLocationMostCases": {
+  "AnnotationLocationMethodsAndCtors": {
+    "fix": null,
+    "layout": true,
+    "mayBeIntended": false
+  },
+  "AnnotationLocationTypeAndPackage": {
     "fix": null,
     "layout": true,
     "mayBeIntended": false
@@ -27,6 +32,10 @@
   },
   "AvoidStarImport": {
     "fix": "Import each class by name (import java.util.List;), never a wildcard like java.util.*.",
+    "mayBeIntended": false
+  },
+  "BoxComments": {
+    "fix": "Write the comment as plain text without a row of repeated *, = or # characters; split a part that needs a banner into its own method or class.",
     "mayBeIntended": false
   },
   "CatchParameterName": {
@@ -73,6 +82,10 @@
     "layout": true,
     "mayBeIntended": false
   },
+  "GoogleNonConstantFieldName": {
+    "fix": "Name fields lowerCamelCase with a lowercase or digit second character: userId, not uId or user_id; an underscore goes only between digits, as in version1_2.",
+    "mayBeIntended": false
+  },
   "IllegalTokenText": {
     "fix": "Use the escape sequences \\n, \\t, \\r, \\f, \\\", \\' and \\\\ instead of a unicode or octal escape for those characters.",
     "mayBeIntended": false
@@ -90,8 +103,23 @@
     "fix": "Put a Javadoc comment directly before the class, method or field it documents; use // or /* */ for any other comment.",
     "mayBeIntended": false
   },
+  "JavadocContentLocation": {
+    "fix": null,
+    "layout": true,
+    "mayBeIntended": false
+  },
+  "JavadocLeadingAsteriskAlign": {
+    "fix": null,
+    "layout": true,
+    "mayBeIntended": false
+  },
   "JavadocMethod": {
     "fix": "Make the Javadoc match the signature: @param only for real parameter names, and no @return on a void method or constructor.",
+    "mayBeIntended": false
+  },
+  "JavadocMissingLeadingAsterisk": {
+    "fix": null,
+    "layout": true,
     "mayBeIntended": false
   },
   "JavadocParagraph": {
@@ -125,10 +153,6 @@
     "fix": "Name local variables lowerCamelCase, one letter or two or more characters with a lowercase or digit second: totalCents, not tC or total_cents.",
     "mayBeIntended": false
   },
-  "MemberName": {
-    "fix": "Name fields lowerCamelCase with at least two characters and a lowercase or digit second: userId, not uId, x or user_id.",
-    "mayBeIntended": false
-  },
   "MethodName": {
     "fix": "Name methods lowerCamelCase with a lowercase or digit second character (xCoord fails, total passes); @Test methods may join such parts with underscores.",
     "mayBeIntended": false
@@ -149,6 +173,10 @@
   "MissingJavadocType": {
     "fix": "Add a Javadoc comment on the type whose first sentence says what it represents.",
     "mayBeIntended": true
+  },
+  "MissingOverrideOnRecordAccessor": {
+    "fix": "Annotate an explicit record accessor with @Override: @Override public int x() { ... }.",
+    "mayBeIntended": false
   },
   "MissingSwitchDefault": {
     "fix": "Add a default branch that throws IllegalStateException, or make the switch an exhaustive switch expression over a sealed interface or enum.",
@@ -198,7 +226,12 @@
     "fix": "Keep one top-level type per file; move the extra types to files of their own, or nest them inside the main type.",
     "mayBeIntended": false
   },
-  "OperatorWrap": {
+  "OperatorWrapEOL": {
+    "fix": null,
+    "layout": true,
+    "mayBeIntended": false
+  },
+  "OperatorWrapNL": {
     "fix": null,
     "layout": true,
     "mayBeIntended": false
@@ -289,6 +322,15 @@
     "fix": "Start the Javadoc with a one-sentence summary ending in a period, and do not open with @return, This method returns or A {@code X} is a.",
     "mayBeIntended": false
   },
+  "TextBlockGoogleStyleFormatting": {
+    "fix": null,
+    "layout": true,
+    "mayBeIntended": false
+  },
+  "TodoFormat": {
+    "fix": "Write the tag in capitals, with its issue reference: \"TODO(#123): ...\" or \"TODO PROJ-123: ...\".",
+    "mayBeIntended": false
+  },
   "TypeName": {
     "fix": "Name classes, interfaces, enums, records and annotations UpperCamelCase with no underscores: OrderService, HttpClient.",
     "mayBeIntended": false
@@ -307,6 +349,11 @@
     "mayBeIntended": false
   },
   "WhitespaceAround": {
+    "fix": null,
+    "layout": true,
+    "mayBeIntended": false
+  },
+  "singleLineCommentStartWithSpace": {
     "fix": null,
     "layout": true,
     "mayBeIntended": false

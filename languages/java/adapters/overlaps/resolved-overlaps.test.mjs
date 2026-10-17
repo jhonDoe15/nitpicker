@@ -70,12 +70,12 @@ describe('overlaps on the probe project', () => {
         'C4Switches.java:6',
         ['errorprone/StatementSwitchToExpressionSwitch', 'pmd/NonExhaustiveSwitch'],
       ],
-      ['C8Equals.java:4', ['checkstyle/MemberName', 'errorprone/FieldCanBeStatic']],
-      ['EqOnly.java:4', ['checkstyle/MemberName', 'errorprone/FieldCanBeStatic']],
+      ['C8Equals.java:4', ['checkstyle/GoogleNonConstantFieldName', 'errorprone/FieldCanBeStatic']],
+      ['EqOnly.java:4', ['checkstyle/GoogleNonConstantFieldName', 'errorprone/FieldCanBeStatic']],
       [
         'Fields.java:5',
         [
-          'checkstyle/MemberName',
+          'checkstyle/GoogleNonConstantFieldName',
           'errorprone/FieldCanBeStatic',
           'pmd/AvoidFieldNameMatchingMethodName',
         ],
@@ -103,7 +103,7 @@ describe('overlaps on the probe project', () => {
         'StaticCtor.java:4',
         ['errorprone/NonFinalStaticField', 'pmd/AvoidFieldNameMatchingMethodName'],
       ],
-      ['Volatile.java:4', ['checkstyle/MemberName', 'pmd/UnusedPrivateField']],
+      ['Volatile.java:4', ['checkstyle/GoogleNonConstantFieldName', 'pmd/UnusedPrivateField']],
     ]);
   });
 

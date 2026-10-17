@@ -47,6 +47,22 @@ style:
         reason: 'Use `apply` to configure an object, or write a plain statement after it.'
       - value: 'kotlinx.coroutines.runBlocking'
         reason: 'Make the caller `suspend` (`suspend fun main()` for an entry point) and use `coroutineScope { ... }` for concurrent work.'
+  ForbiddenImport:
+    active: true
+    severity: warning
+    excludes: []
+    includes: []
+    imports:
+      - value: 'java.util.Date'
+        reason: 'Use java.time (Instant, LocalDate, ZonedDateTime, ZoneId and DateTimeFormatter); convert a Date another API returns with toInstant() in the same expression.'
+      - value: 'java.util.Calendar'
+        reason: 'Use java.time (Instant, LocalDate, ZonedDateTime, ZoneId and DateTimeFormatter); convert a Date another API returns with toInstant() in the same expression.'
+      - value: 'java.util.GregorianCalendar'
+        reason: 'Use java.time (Instant, LocalDate, ZonedDateTime, ZoneId and DateTimeFormatter); convert a Date another API returns with toInstant() in the same expression.'
+      - value: 'java.util.TimeZone'
+        reason: 'Use java.time (Instant, LocalDate, ZonedDateTime, ZoneId and DateTimeFormatter); convert a Date another API returns with toInstant() in the same expression.'
+      - value: 'java.text.SimpleDateFormat'
+        reason: 'Use java.time (Instant, LocalDate, ZonedDateTime, ZoneId and DateTimeFormatter); convert a Date another API returns with toInstant() in the same expression.'
   UnnecessaryLet:
     active: true
     severity: warning

@@ -7,6 +7,7 @@ import { javaCommand } from '../maven-command.mjs';
 export const ERROR_PRONE = { tool: 'Error Prone', minimum: 21 };
 export const GOOGLE_JAVA_FORMAT = { tool: 'google-java-format', minimum: 21 };
 export const STRUCTURE_METRICS = { tool: 'StructureMetrics', minimum: 21 };
+export const CHECKSTYLE = { tool: 'Checkstyle', minimum: 21 };
 const VERSION = /version "(?:1\.)?(\d+)/u;
 const VERSIONED_HOME = /^JAVA_HOME_\d+_(?:X64|ARM64|AARCH64)$/u;
 const JDK_HOME = /<jdkHome>\s*([^<]+?)\s*<\/jdkHome>/gu;

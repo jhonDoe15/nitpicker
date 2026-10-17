@@ -1,0 +1,31 @@
+def reportDir = project.ext.nitpickerReportDir
+def checkstyleVersion = project.ext.nitpickerPinned.checkstyle
+def skippedFile = reportDir.map { it.file('checkstyle-skipped.txt') }
+def chosen = [:]
+def minimumOf = { task ->
+    def jar = task.checkstyleClasspath.files.find { it.name ==~ /checkstyle-\d+\..*\.jar/ }
+    def major = jar == null ? 13 : (jar.name =~ /checkstyle-(\d+)\./)[0][1] as int
+    major >= 13 ? 21 : 11
+}
+def choose = { task ->
+    def minimum = minimumOf(task)
+    if (!chosen.containsKey(minimum)) {
+        chosen[minimum] = project.ext.nitpickerToolJava('Checkstyle', minimum, [])
+    }
+    chosen[minimum]
+}
+
+tasks.withType(Checkstyle).configureEach { task ->
+    task.javaLauncher.set(project.provider { choose(task).launcher }.flatMap { it })
+    task.onlyIf {
+        reportDir.get().asFile.mkdirs()
+        skippedFile.get().asFile.delete()
+        if (choose(task).skipped) {
+            skippedFile.get().asFile.text = "${choose(task).skipped}\n"
+            def report = task.reports.xml.outputLocation.get().asFile
+            report.parentFile.mkdirs()
+            report.text = "<checkstyle version=\"${checkstyleVersion}\"></checkstyle>"
+        }
+        !choose(task).skipped
+    }
+}

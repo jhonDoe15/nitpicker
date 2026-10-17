@@ -62,7 +62,7 @@ describe.skipIf(!enabled)('Spring rules on a Spring project', () => {
       path.join(project.root, 'build', 'nitpicker', 'checkstyle.xml'),
       'utf8',
     );
-    expect(CHECKSTYLE_VERSION.exec(report)?.[1]).toBe('10.21.1');
+    expect(CHECKSTYLE_VERSION.exec(report)?.[1]).toBe('13.5.0');
   });
 
   it('reports no FieldCanBeFinal in JPA entities and no utility-class finding on configuration classes', () => {

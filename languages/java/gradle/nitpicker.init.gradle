@@ -4,7 +4,7 @@ def pinned = [
     spotbugs        : '4.9.8',
     googleJavaFormat: '1.35.0',
     jacoco          : '0.8.14',
-    checkstyle      : '10.21.1',
+    checkstyle      : '13.5.0',
     lizard          : '1.24.1',
     pitest          : '1.19.6',
     pitestJunit5    : '1.2.1',
@@ -287,9 +287,9 @@ allprojects {
             }
         }
 
-        ['analysis/tool-jdk.gradle', 'analysis/pmd-task.gradle', 'analysis/spotbugs-task.gradle',
-         'analysis/format-task.gradle', 'structure-task.gradle', 'jdeps-task.gradle', 'lint-tasks.gradle',
-         'cpd-task.gradle', 'dependency-tasks.gradle', 'tests/test-failures.gradle', 'pit-task.gradle']
+        ['tool-jdk', 'pmd-task', 'spotbugs-task', 'format-task', 'checkstyle-jdk'].collect { "analysis/${it}.gradle" }
+            .plus(['structure-task.gradle', 'jdeps-task.gradle', 'lint-tasks.gradle', 'cpd-task.gradle',
+                   'dependency-tasks.gradle', 'tests/test-failures.gradle', 'pit-task.gradle'])
             .collect { "tasks/${it}" }
             .plus('errorprone/error-prone.gradle').each { project.apply from: new File(initScriptDir, it) }
 

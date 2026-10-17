@@ -105,7 +105,7 @@ function writeModule({ key, dir }) {
   );
   writeFileSync(report('spotbugs.sarif'), sarif('SpotBugs', []));
   writeFileSync(report('format.txt'), '');
-  writeFileSync(report('checkstyle.xml'), '<checkstyle version="10.21.1"></checkstyle>');
+  writeFileSync(report('checkstyle.xml'), '<checkstyle version="13.5.0"></checkstyle>');
   if (!lines('NO_JACOCO_IN').includes(dir === '' ? '.' : dir)) {
     writeFileSync(
       report('jacoco.xml'),

@@ -3,13 +3,16 @@ import path from 'node:path';
 import { snapshotScope } from './test-results.mjs';
 
 const TOOL_SKIPPED_RULE = 'tool-skipped';
+const CHECKSTYLE_TOOL = 'checkstyle';
 export const ERROR_PRONE_SKIPPED = 'errorprone-skipped.txt';
 export const FORMAT_SKIPPED = 'format-skipped.txt';
 export const STRUCTURE_SKIPPED = 'structure-skipped.txt';
+export const CHECKSTYLE_SKIPPED = 'checkstyle-skipped.txt';
 const KOTLIN_METRICS_SKIPPED = 'kotlin-metrics-skipped.txt';
 const SKIP_REPORTS = [
   [ERROR_PRONE_SKIPPED, 'errorprone', 'Error Prone'],
   [FORMAT_SKIPPED, 'google-java-format', 'google-java-format'],
+  [CHECKSTYLE_SKIPPED, CHECKSTYLE_TOOL, 'Checkstyle'],
   [STRUCTURE_SKIPPED, 'structure', 'The structure metrics'],
   [STRUCTURE_SKIPPED, 'crap', 'CRAP'],
   ['detekt-skipped.txt', 'detekt', 'detekt'],
@@ -34,7 +37,7 @@ function toolSkipped(tool, message) {
 
 export function withoutCheckstyleParseSkips(findings, testScope = {}) {
   const skipped = findings.filter(
-    (finding) => finding.tool === 'checkstyle' && PARSE_SKIP_SOURCE.test(finding.rule),
+    (finding) => finding.tool === CHECKSTYLE_TOOL && PARSE_SKIP_SOURCE.test(finding.rule),
   );
   if (skipped.length === 0) {
     return findings;
@@ -43,7 +46,7 @@ export function withoutCheckstyleParseSkips(findings, testScope = {}) {
   return [
     ...findings.filter((finding) => !skipped.includes(finding)),
     toolSkipped(
-      'checkstyle',
+      CHECKSTYLE_TOOL,
       `Checkstyle did not run in ${snapshotScope(testScope)}: it cannot parse ${files.join(', ')}, ` +
         'whose Java syntax is newer than the pinned Checkstyle knows (a module import, or ' +
         'statements before super()). The other analyzers still ran.',

@@ -129,20 +129,34 @@ ends with the exception route, which the gate appends to all of them. The `inlin
 message names the fix and both routes. Each rule has a banned and an allowed fixture in
 `languages/java/adapters/kotlin/rules/test-support/kotlin-rule-cases.mjs`.
 
-| Spot              | Banned                                | Allowed                                                           | Rule (detekt)                                                            |
-| ----------------- | ------------------------------------- | ----------------------------------------------------------------- | ------------------------------------------------------------------------ |
-| Scope functions   | `run`, `with`, `also`                 | `let` (`value?.let { ... }`) and `apply` (configure an object)    | `style.ForbiddenMethodCall` (`kotlin.run`, `kotlin.with`, `kotlin.also`) |
-|                   | `let` or `apply` that changes nothing | call the member directly                                          | `style.UnnecessaryLet`, `style.UnnecessaryApply`                         |
-| Nullable handling | `!!`                                  | `?:`, `?.let`, `checkNotNull(value) { "why" }`                    | `potential-bugs.UnsafeCallOnNullableType`                                |
-|                   | `value as String` on a nullable value | handle null first, or `as?`                                       | `potential-bugs.CastNullableToNonNullableType`                           |
-|                   | `if (x == null) null else ...`        | `x?.let { ... }`                                                  | `style.UseLet`                                                           |
-| Coroutines        | `GlobalScope`                         | `coroutineScope { launch { ... } }`, or a scope its owner cancels | `coroutines.GlobalCoroutineUsage`                                        |
-|                   | `runBlocking`                         | a `suspend` caller (`suspend fun main()`)                         | `style.ForbiddenMethodCall` (`kotlinx.coroutines.runBlocking`)           |
-| Records           | a class that only holds `val`s        | `data class`                                                      | `style.UseDataClass` (`allowVars: true`)                                 |
-|                   | a `data class` with a `var`           | `val` and `copy(...)`                                             | `style.DataClassShouldBeImmutable`                                       |
+| Spot              | Banned                                 | Allowed                                                           | Rule (detekt)                                                            |
+| ----------------- | -------------------------------------- | ----------------------------------------------------------------- | ------------------------------------------------------------------------ |
+| Scope functions   | `run`, `with`, `also`                  | `let` (`value?.let { ... }`) and `apply` (configure an object)    | `style.ForbiddenMethodCall` (`kotlin.run`, `kotlin.with`, `kotlin.also`) |
+|                   | `let` or `apply` that changes nothing  | call the member directly                                          | `style.UnnecessaryLet`, `style.UnnecessaryApply`                         |
+| Nullable handling | `!!`                                   | `?:`, `?.let`, `checkNotNull(value) { "why" }`                    | `potential-bugs.UnsafeCallOnNullableType`                                |
+|                   | `value as String` on a nullable value  | handle null first, or `as?`                                       | `potential-bugs.CastNullableToNonNullableType`                           |
+|                   | `if (x == null) null else ...`         | `x?.let { ... }`                                                  | `style.UseLet`                                                           |
+| Coroutines        | `GlobalScope`                          | `coroutineScope { launch { ... } }`, or a scope its owner cancels | `coroutines.GlobalCoroutineUsage`                                        |
+|                   | `runBlocking`                          | a `suspend` caller (`suspend fun main()`)                         | `style.ForbiddenMethodCall` (`kotlinx.coroutines.runBlocking`)           |
+| Records           | a class that only holds `val`s         | `data class`                                                      | `style.UseDataClass` (`allowVars: true`)                                 |
+|                   | a `data class` with a `var`            | `val` and `copy(...)`                                             | `style.DataClassShouldBeImmutable`                                       |
+| Time              | `Date`, `Calendar`, `SimpleDateFormat` | `java.time` (`Instant`, `LocalDate`, `DateTimeFormatter`)         | `style.ForbiddenImport` (also `GregorianCalendar`, `TimeZone`)           |
 
 Rule ids in findings are `detekt.<ruleset>.<Rule>`. Only main source sets are analyzed, so
 `runBlocking` in tests is not seen.
+
+**Java rules with a Kotlin counterpart (decision).** Each rule the Java preset turns on is checked
+for a Kotlin form. The legacy date classes the Java preset bans (forbiddenapis `legacy-date-time`,
+PMD's `ReplaceJavaUtilDate` and `ReplaceJavaUtilCalendar`) are banned as imports here, with the same
+java.time forms; forbiddenapis reads only the classes compiled from Java. PMD's
+`UnnecessaryWarningSuppression` has no counterpart to add: every `@Suppress` of a detekt or ktlint
+rule is already an `inline-suppression` finding, and compiler diagnostics stay allowed. PMD's
+`ImplicitFunctionalInterface` has none either: a Kotlin interface takes a lambda only when it is
+declared `fun interface`, so the intent is always written. PMD's `ExhaustiveSwitchHasDefault` maps to
+the compiler's own "`when` is exhaustive so `else` is redundant" warning, which the Kotlin preset does
+not read; detekt's `ElseCaseInsteadOfExhaustiveWhen` is not used in its place, because it flags every
+`else` of a `when` over an enum, a sealed type or a Boolean, also one that covers cases the branches
+do not name (`when (state) { LOADING -> spinner(); else -> content() }`), which is correct code.
 
 **Why these allowed forms (decision).** One function per job: `let` binds a value to a name for a
 block (and is the null-handling form), `apply` configures an object and returns it. `run` and `with`
@@ -260,58 +274,33 @@ For Kotlin the source text is read from the `.kt` files under `kotlinSourceRoots
 lines.
 
 **Generated branches (decision and measurement).** The Kotlin compiler emits branches that have no
-source counterpart. JaCoCo already filters most of them (measured with 0.8.12; the pin is now 0.8.14). Verified on real reports of a
-fixture whose tests take every branch the author wrote (any missed outcome is then generated by
-construction): no branch outcome is reported for null-check intrinsics (parameter checks, `!!`,
-`as`, `as?`, platform-type checks, `lateinit` access), `when` over sealed types, enums, integers
-and strings (including the implicit throwing `else`), default-argument bridges (`$default`,
-`@JvmOverloads`), inline function bodies, `use`, `try`/`finally`, `for` over ranges, collections and
-`indices`, `by lazy`, delegated properties, value classes, interface default methods and named
-`suspend` functions. What it leaves is the coroutine state machines of suspend lambdas:
-`sequence { yield(1) }`, `flow { emit(1) }`, `coroutineScope { ... }`, `a.await()` each report one to
-three missed outcomes (the "call returned `COROUTINE_SUSPENDED`" arm no test can take): 9 lines in
-the fixture.
+source counterpart, and JaCoCo filters them; nitpicker reads its report as it is. Measured on real
+reports of a fixture whose tests take every branch the author wrote (any missed outcome is then
+generated by construction): no branch outcome is reported for null-check intrinsics (parameter
+checks, `!!`, `as`, `as?`, platform-type checks, `lateinit` access), `when` over sealed types,
+enums, integers and strings (including the implicit throwing `else`), default-argument bridges
+(`$default`, `@JvmOverloads`), inline function bodies, `use`, `try`/`finally`, `for` over ranges,
+collections and `indices`, `by lazy`, delegated properties, value classes, interface default methods
+and named `suspend` functions. JaCoCo 0.8.12 still left the coroutine state machines of suspend
+lambdas (`sequence { yield(1) }`, `flow { emit(1) }`, `coroutineScope { ... }`, `a.await()`: one to
+three "call returned `COROUTINE_SUSPENDED`" outcomes no test can take, 9 lines in the fixture), and
+nitpicker dropped those lines with a text filter. JaCoCo 0.8.13 and 0.8.14 filter them too
+(suspending lambdas without suspension points, suspending lambdas with parameters, suspension points
+that return an inline value class, `suspendCoroutineUninterceptedOrReturn`), and 0.8.14 is pinned
+for every Kotlin build (the Kotlin preset runs on Gradle only, where the init script sets JaCoCo's
+`toolVersion`), so the filter is gone. The reports recorded again with 0.8.14 have no branch on any
+suspension line of either fixture: the 9 coroutine lines carry no branch counter, and the 5 real
+misses are what remains (a range loop never given a negative bound, an `if` and an `else -> throw`
+no test reaches, two `in 90..100 ->` entries). A line that branches and also suspends
+(`for (n in 1..2) emit(n)`) now counts only the loop's two outcomes. The e2e fixture
+(`kotlin-preset-coverage-and-structure.e2e.test.mjs`, the `generated-branches` case) checks that the
+file's branches are measured and that nothing is reported.
 
-One filter removes them, in `kotlin-branches.mjs`, and it fails open: **a Kotlin line is dropped
-only when it calls a suspension function and contains nothing that can branch**. The suspension
-calls are `emit`, `emitAll`, `yield`, `yieldAll`, `delay`, `await`, `awaitAll`, `withContext`,
-`withTimeout`, `withTimeoutOrNull`, `coroutineScope`, `supervisorScope`, `flow`, `channelFlow`,
-`callbackFlow` and `sequence` followed by `(` or `{`. What can branch is `if`, `when`, `while`,
-`for`, `do`, `is`, `in`, `as`, `&&`, `||`, `?.`, `?:`, any of `<`, `>`, `!`, `==`, a call to
-`require`, `check`, `assert`, `requireNotNull`, `checkNotNull`, or an inline standard library
-function that branches (`takeIf`, `takeUnless`, `ifEmpty`, `ifBlank`, `orEmpty`, `getOrElse`,
-`maxOf`, `minOf`, `coerce*`). The line is judged on its code alone: string literals, comments, type
-arguments and `->` are removed first, and a line with a string template (`${`) is always kept.
-Every other line is kept, including the continuation lines JaCoCo attributes a branch to when a
-statement spans lines (the operand after a trailing `&&`, the `?:` on the next line, the condition
-of a multi-line `if (`), because the report has a branch count per line and no instruction detail,
-so a line the filter does not recognize is judged as written. On the fixture this drops exactly the
-9 coroutine lines and keeps the 5 real misses (a range loop never given a negative bound, an `if`
-and an `else -> throw` no test reaches, two `in 90..100 ->` entries). The cost of failing open is a
-report of a generated outcome on a line that also branches. It is never a missed real branch.
-
-**Since JaCoCo 0.8.14.** JaCoCo 0.8.13 and 0.8.14 filter more Kotlin bytecode themselves, among it
-suspending lambdas without suspension points, suspending lambdas with parameters and suspension
-points that return an inline value class. With the 0.8.14 pin the e2e fixture
-(`kotlin-preset-coverage-and-structure.e2e.test.mjs`, the `generated-branches` case) has no missed
-branch on any line JaCoCo reports, so that case now checks that the file's branches are measured and
-that nothing is reported. The filter above stays: it fails open, and its unit test runs it on the
-reports recorded from 0.8.12.
-
-Limits. A line that branches and also suspends (`if (ready) emit(1)`, `for (n in 1..2) emit(n)`)
-counts the generated outcome too, so it can fail with every branch the author wrote taken. The
-message then names the call (`Not taken: emit suspending (move the call to its own line if no
-branch of yours is untested)`); put the suspension call on a line of its own, or, when that is not
-possible, lift the rule for the file with `exclude` in `nitpicker.config.json` (path-level, so it
-also stops gating the real branches of that file). A line is judged as a whole, as for Java, and a
-reformatted line is a changed line. Lines of inline functions that the compiler copies into other
-files are not in the report (JaCoCo maps them outside the file).
-
-**Alternatives not used.** A newer JaCoCo does not remove the coroutine arms (measured with 0.8.12, and
-its `<method>` entries show `invokeSuspend` but no per-branch origin); reading the bytecode for
-`COROUTINE_SUSPENDED` checks would need the class files of both snapshots matched to source lines,
-which is a larger tool than this filter. The text filter is the smallest thing that is right in the
-direction that matters: it only ever hides lines that cannot hold a branch the author wrote.
+Limits. A line is judged as a whole, as for Java, and a reformatted line is a changed line. Every
+line JaCoCo attributes a branch to is gated, including the continuation lines of a statement that
+spans lines (the operand after a trailing `&&`, the `?:` on the next line, the condition of a
+multi-line `if (`). Lines of inline functions that the compiler copies into other files are not in
+the report (JaCoCo maps them outside the file).
 
 **Source files.** A report's source file is found as `<root>/<package directory>/<File>.kt` under
 the Java and Kotlin source roots, and, when no directory matches (Kotlin style leaves the root
@@ -595,12 +584,11 @@ fails only when it grows, and a package folder moved to a new path is matched to
   (`languages/java/ingest/fixtures/detekt.sarif`, recorded from detekt 1.23.8) and the format list
   through `readJavaFindings`; JaCoCo roots; branch gating of Kotlin files; Kotlin mutants being
   descriptive and Java ones enforceable; the Java preset ignoring Kotlin reports.
-- `languages/java/ingest/coverage-reports/kotlin-branches.test.mjs`: the generated-line filter (what it drops and the
-  lines it must keep), a JaCoCo report recorded from 0.8.12 on the measurement project
-  (`fixtures/jacoco-kotlin.xml`, class elements dropped; the project is
-  `fixtures/kotlin-measurement`) that yields exactly the real misses, and a recorded report of
-  statements that span lines (`fixtures/jacoco-kotlin-multiline.xml` with its sources in
-  `fixtures/kotlin-multiline`).
+- `languages/java/ingest/coverage-reports/jacoco-branches.test.mjs`: a JaCoCo report recorded from
+  0.8.14 on the measurement project (`fixtures/jacoco-kotlin.xml`, class elements dropped; the
+  project is `fixtures/kotlin-measurement`) that yields exactly the real misses, and a recorded
+  report of statements that span lines (`fixtures/jacoco-kotlin-multiline.xml` with its sources in
+  `fixtures/kotlin-multiline`, no tests) with no branch on a suspension line.
 - `languages/java/adapters/kotlin/kotlin-tools.test.mjs`: formatter and ktfmt style detection (Spotless
   blocks, comments, `.editorconfig`, the override), detekt config detection and the override, and
   the Gradle arguments (including `--no-configuration-cache`).

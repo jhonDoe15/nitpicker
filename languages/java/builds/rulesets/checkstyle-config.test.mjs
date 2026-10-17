@@ -27,19 +27,39 @@ function moduleTree(element) {
   return { name: element.attrs.name, modules: childrenNamed(element, 'module').map(moduleTree) };
 }
 
+const TODO_FORMAT = [
+  '<module name="TodoComment"><property name="id" value="TodoFormat"/>',
+  '<property name="format" value="^[ \\t]*(?!TODO\\b)(?i:TODO)\\b"/>',
+  '<message key="todo.match" value="The TODO tag must be written in capitals."/></module>',
+].join('');
+const SCOPED = [
+  '<module name="SuppressionXpathSingleFilter"><property name="checks" value="Indentation"/>',
+  '<property name="query" value="//TEXT_BLOCK_LITERAL_END"/></module>',
+  '\n<module name="SuppressionXpathSingleFilter">',
+  '<property name="checks" value="GoogleNonConstantFieldName"/>',
+  `<property name="query" value="//VARIABLE_DEF/IDENT[matches(@text, '^[a-z]$')]"/></module>`,
+].join('');
+const METHOD_NAME = '<module name="MethodName"><property name="format" value="x"/></module>';
+const TODO = [
+  '<module name="TodoComment">',
+  '  <property name="id" value="TodoFormat"/>',
+  '  <property name="format" value="^[ \\t]*(?!TODO:)(?i:TODO)\\b:?"/>',
+  '</module>',
+].join('\n');
+
 describe('nitpickerCheckstyleConfig', () => {
-  it('drops every inline suppression filter and allows one-letter camel-case prefixes in names', () => {
+  it('drops the inline suppression filters and the text block check google-java-format contradicts', () => {
     const bundled = [
       '<module name="Checker">',
       '  <module name="SuppressWarningsFilter"/>',
-      '  <module name="MemberName">',
-      '    <property name="format" value="^[a-z][a-z0-9][a-zA-Z0-9]*$"/>',
-      '  </module>',
-      '  <module name="MethodName"><property name="format" value="x"/></module>',
       '  <module name="SuppressWithNearbyCommentFilter">',
       '    <property name="commentFormat" value="x"/>',
       '  </module>',
-      '  <module name="TreeWalker"><module name="SuppressWarningsHolder" /></module>',
+      '  <module name="TreeWalker"><module name="SuppressWarningsHolder" />',
+      '  <module name="TextBlockGoogleStyleFormatting"/>',
+      `  ${METHOD_NAME}`,
+      TODO,
+      '</module>',
       '</module>',
     ].join('\n');
 
@@ -47,20 +67,24 @@ describe('nitpickerCheckstyleConfig', () => {
       [
         '<module name="Checker">',
         '  ',
-        '  <module name="MemberName">',
-        `    <property name="format" value="${CAMEL_CASE}"/>`,
-        '  </module>',
-        `  <module name="MethodName"><property name="format" value="${CAMEL_CASE}"/></module>`,
         '  ',
-        '  <module name="TreeWalker"></module>',
+        `  <module name="TreeWalker">\n${SCOPED}`,
+        '  ',
+        `  <module name="MethodName"><property name="format" value="${CAMEL_CASE}"/></module>`,
+        TODO_FORMAT,
+        '</module>',
         '</module>',
       ].join('\n'),
     );
   });
 
-  it('fails when the bundled checks have no member name format', () => {
-    expect(() => nitpickerCheckstyleConfig('<module name="Checker"/>')).toThrow(
-      new Error('nitpicker could not find MemberName in google_checks.xml'),
+  it.each([
+    ['MethodName', `<module name="TreeWalker">${TODO}</module>`],
+    ['TodoFormat', `<module name="TreeWalker">${METHOD_NAME}</module>`],
+    ['TreeWalker', `<module name="Checker">${METHOD_NAME}${TODO}</module>`],
+  ])('fails when the bundled checks have no %s to adapt', (name, bundled) => {
+    expect(() => nitpickerCheckstyleConfig(bundled)).toThrow(
+      new Error(`nitpicker could not find ${name} in google_checks.xml`),
     );
   });
 });
@@ -126,12 +150,12 @@ describe('writeCheckstyleConfigs', () => {
   it('writes the main and test configs from the google_checks.xml of the Checkstyle jar', () => {
     const directory = mkdtempSync(path.join(tmpdir(), 'nitpicker-checkstyle-config-'));
     roots.push(directory);
-    const jar = path.join(directory, 'checkstyle-10.21.1.jar');
+    const jar = path.join(directory, 'checkstyle-13.5.0.jar');
     const bundled = [
       '<module name="Checker">',
       '<module name="TreeWalker">',
-      '<module name="MemberName"><property name="format" value="a"/></module>',
-      '<module name="MethodName"><property name="format" value="b"/></module>',
+      METHOD_NAME,
+      TODO,
       '</module>',
       '</module>',
     ].join('');
@@ -151,14 +175,18 @@ describe('writeCheckstyleConfigs', () => {
       'VisibilityModifier',
       'SuppressionXpathSingleFilter',
       'SuppressionXpathSingleFilter',
-      'MemberName',
+      'SuppressionXpathSingleFilter',
+      'SuppressionXpathSingleFilter',
       'MethodName',
+      'TodoComment',
     ]);
     expect(names(written.test).map((module) => module.name)).toEqual([
       'ConstantName',
       'SuppressionXpathSingleFilter',
-      'MemberName',
+      'SuppressionXpathSingleFilter',
+      'SuppressionXpathSingleFilter',
       'MethodName',
+      'TodoComment',
     ]);
   });
 });

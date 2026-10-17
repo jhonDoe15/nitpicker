@@ -4,6 +4,7 @@ import { GRADLE_DIRECTORY } from '../java-build.mjs';
 import { readZip } from '../zip-entries.mjs';
 
 const TREE_WALKER = '<module name="TreeWalker">';
+const TREE_WALKER_START = /<module name="TreeWalker">/u;
 const SKIP_UNPARSEABLE = '<property name="skipFileOnJavaParseException" value="true"/>';
 const INLINE_CHECKSTYLE_FILTERS = [
   'SuppressWarningsFilter',
@@ -13,36 +14,66 @@ const INLINE_CHECKSTYLE_FILTERS = [
   'SuppressWithNearbyTextFilter',
   'SuppressionXpathFilter',
 ];
-const CAMEL_CASE_NAMES = ['MemberName', 'MethodName'];
+const FORMATTER_CONFLICTS = ['TextBlockGoogleStyleFormatting'];
 const CAMEL_CASE_FORMAT = '^[a-z]([a-z0-9][a-zA-Z0-9]*)?$';
+const METHOD_NAME_FORMAT =
+  /(<module name="MethodName">\s*<property name="format"\s+value=")[^"]*(")/u;
+const TODO_FORMAT =
+  /<module name="TodoComment">\s*<property name="id" value="TodoFormat"\/>[\s\S]*?<\/module>/u;
+const TODO_CASE =
+  '<module name="TodoComment"><property name="id" value="TodoFormat"/>' +
+  '<property name="format" value="^[ \\t]*(?!TODO\\b)(?i:TODO)\\b"/>' +
+  '<message key="todo.match" value="The TODO tag must be written in capitals."/></module>';
+const SCOPED_CHECKS = [
+  ['Indentation', '//TEXT_BLOCK_LITERAL_END'],
+  ['GoogleNonConstantFieldName', "//VARIABLE_DEF/IDENT[matches(@text, '^[a-z]$')]"],
+];
 
-function withCamelCaseNames(config) {
-  return CAMEL_CASE_NAMES.reduce((current, name) => {
-    const format = new RegExp(
-      `(<module name="${name}">\\s*<property name="format" value=")[^"]*(")`,
-      'u',
-    );
-    if (!format.test(current)) {
-      throw new Error(`nitpicker could not find ${name} in google_checks.xml`);
-    }
-    return current.replace(format, (_, before, after) => `${before}${CAMEL_CASE_FORMAT}${after}`);
-  }, config);
+function moduleElement(name) {
+  return new RegExp(`<module name="${name}"\\s*(?:/>|>[\\s\\S]*?</module>)`, 'gu');
 }
 
-export function nitpickerCheckstyleConfig(bundled) {
-  const text = INLINE_CHECKSTYLE_FILTERS.reduce(
-    (current, name) =>
-      current.replaceAll(
-        new RegExp(`<module name="${name}"\\s*(?:/>|>[\\s\\S]*?</module>)`, 'gu'),
-        '',
-      ),
-    bundled,
-  );
-  const left = INLINE_CHECKSTYLE_FILTERS.filter((name) => text.includes(`"${name}"`));
+function withoutModules(config, names) {
+  const text = names.reduce((current, name) => current.replaceAll(moduleElement(name), ''), config);
+  const left = names.filter((name) => text.includes(`"${name}"`));
   if (left.length > 0) {
     throw new Error(`nitpicker could not remove ${left.join(', ')} from google_checks.xml`);
   }
-  return withCamelCaseNames(text);
+  return text;
+}
+
+function replaced(config, { pattern, replacement, name }) {
+  if (!pattern.test(config)) {
+    throw new Error(`nitpicker could not find ${name} in google_checks.xml`);
+  }
+  return config.replace(pattern, replacement);
+}
+
+function scopedChecks() {
+  return SCOPED_CHECKS.map(
+    ([checks, query]) =>
+      `<module name="SuppressionXpathSingleFilter"><property name="checks" value="${checks}"/>` +
+      `<property name="query" value="${query}"/></module>`,
+  ).join('\n');
+}
+
+export function nitpickerCheckstyleConfig(bundled) {
+  const filtered = withoutModules(bundled, [...INLINE_CHECKSTYLE_FILTERS, ...FORMATTER_CONFLICTS]);
+  const named = replaced(filtered, {
+    pattern: METHOD_NAME_FORMAT,
+    replacement: (_, before, after) => `${before}${CAMEL_CASE_FORMAT}${after}`,
+    name: 'MethodName',
+  });
+  const todo = replaced(named, {
+    pattern: TODO_FORMAT,
+    replacement: () => TODO_CASE,
+    name: 'TodoFormat',
+  });
+  return replaced(todo, {
+    pattern: TREE_WALKER_START,
+    replacement: () => `${TREE_WALKER}\n${scopedChecks()}`,
+    name: 'TreeWalker',
+  });
 }
 
 function checkstyleRuleModules(file) {

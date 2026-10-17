@@ -1,4 +1,5 @@
 const DETEKT_TOOL = 'detekt';
+const STYLE = 'style';
 const BANNED_SUPPRESSIONS = [
   /^all$/i,
   /^detekt(?:[.:]|$)/i,
@@ -17,7 +18,7 @@ const DETEKT_RULESETS = new Set([
   'performance',
   'potential-bugs',
   'ruleauthors',
-  'style',
+  STYLE,
 ]);
 
 export const ONE_WAY_RULES = [
@@ -29,22 +30,23 @@ export const ONE_WAY_RULES = [
   },
   { name: 'CastNullableToNonNullableType', ruleset: 'potential-bugs' },
   { name: 'GlobalCoroutineUsage', ruleset: 'coroutines' },
-  { name: 'ForbiddenMethodCall', ruleset: 'style' },
+  { name: 'ForbiddenMethodCall', ruleset: STYLE },
+  { name: 'ForbiddenImport', ruleset: STYLE },
   {
     name: 'UnnecessaryLet',
-    ruleset: 'style',
+    ruleset: STYLE,
     allowed: 'Call the member directly; `let` is for `value?.let { ... }`.',
   },
   {
     name: 'UnnecessaryApply',
-    ruleset: 'style',
+    ruleset: STYLE,
     allowed: 'Remove `apply`; use it only to configure an object you just created.',
   },
-  { name: 'UseLet', ruleset: 'style' },
-  { name: 'UseDataClass', ruleset: 'style' },
+  { name: 'UseLet', ruleset: STYLE },
+  { name: 'UseDataClass', ruleset: STYLE },
   {
     name: 'DataClassShouldBeImmutable',
-    ruleset: 'style',
+    ruleset: STYLE,
     allowed: 'Make the property a `val` and build a changed copy with `copy(...)`.',
   },
 ].map((rule) => ({ ...rule, id: `detekt.${rule.ruleset}.${rule.name}` }));

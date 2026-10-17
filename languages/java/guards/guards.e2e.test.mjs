@@ -60,6 +60,11 @@ const GUARD_RULES = new Set([
   'ConstantName',
   'MagicNumber',
   'VisibilityModifier',
+  'ReplaceJavaUtilDate',
+  'ReplaceJavaUtilCalendar',
+  'ExhaustiveSwitchHasDefault',
+  'ImplicitFunctionalInterface',
+  'UnnecessaryWarningSuppression',
 ]);
 
 function markedFiles(root) {

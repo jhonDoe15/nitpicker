@@ -7,18 +7,23 @@ import java.security.cert.X509Certificate;
 import java.time.Clock;
 import java.time.Instant;
 import java.util.Date;
+import java.util.GregorianCalendar;
 import java.util.concurrent.ThreadFactory;
 
 public final class Legacy {
   /** The Date this was created, see {@link #age(Date)}. */
-  private Date created; // violation: forbiddenapis/legacy-date-time
+  private Date created; // violation: forbiddenapis/legacy-date-time, pmd/ReplaceJavaUtilDate
 
   public Object stamp() {
-    return new Date(0L); // violation: forbiddenapis/legacy-date-time
+    return new Date(0L); // violation: forbiddenapis/legacy-date-time, pmd/ReplaceJavaUtilDate
   }
 
-  public long age(Date since) { // violation: forbiddenapis/legacy-date-time
+  public long age(Date since) { // violation: forbiddenapis/legacy-date-time, pmd/ReplaceJavaUtilDate
     return since.getTime(); // violation: forbiddenapis/legacy-date-time
+  }
+
+  public Object calendar() {
+    return new GregorianCalendar(); // violation: forbiddenapis/legacy-date-time, pmd/ReplaceJavaUtilCalendar
   }
 
   public Instant expiry(X509Certificate certificate) {

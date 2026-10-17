@@ -34,6 +34,7 @@ const RESOURCE_FILES = [
   'languages/java/gradle/tasks/pit-task.gradle',
   'languages/java/gradle/tasks/tests/test-failures.gradle',
   'languages/java/gradle/tasks/analysis/tool-jdk.gradle',
+  'languages/java/gradle/tasks/analysis/checkstyle-jdk.gradle',
   'languages/java/gradle/tasks/kotlin/kotlin-tasks.gradle',
   'languages/java/builds/rulesets/write-rules.mjs',
   'languages/java/gradle/code-smells-ruleset.xml',

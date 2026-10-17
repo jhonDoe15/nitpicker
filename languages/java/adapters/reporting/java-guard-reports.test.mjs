@@ -20,7 +20,7 @@ const REPORTS = {
   'pmd.sarif': EMPTY_SARIF,
   'spotbugs.sarif': EMPTY_SARIF,
   'format.txt': '',
-  'checkstyle.xml': '<checkstyle version="10.21.1"></checkstyle>',
+  'checkstyle.xml': '<checkstyle version="13.5.0"></checkstyle>',
   'jacoco.xml': '<report name="demo"></report>',
   'structure.json': '[]',
   'javac-lint.txt': 'src/main/java/demo/Bad.java:9: warning: [rawtypes] found raw type: List\n',

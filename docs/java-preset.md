@@ -29,7 +29,7 @@ gradle -I languages/java/gradle/nitpicker.init.gradle nitpickerJava   (per snaps
   same tools and versions as head, even if the base predates any adoption. It registers
   `nitpickerJava` in every project that applies the `java` plugin. Every tool version is pinned
   exactly in one map at the top of the file (PMD 7.16.0, SpotBugs 4.9.8, google-java-format 1.35.0,
-  JaCoCo 0.8.14, Checkstyle 10.21.1, PIT 1.19.6, Error Prone 2.50.0, NullAway 0.14.2). Tools run from their own configurations (`nitpickerPmd` and so on), so they never
+  JaCoCo 0.8.14, Checkstyle 13.5.0, PIT 1.19.6, Error Prone 2.50.0, NullAway 0.14.2). Tools run from their own configurations (`nitpickerPmd` and so on), so they never
   touch the consumer's compile classpath. Nitpicker passes `-Pnitpicker.reportDir=<dir>`, a
   temporary directory outside the project, and the task writes only below it, one subdirectory per
   Gradle project (layout in [internals.md](internals.md#java-report-directory)). A build script
@@ -126,34 +126,44 @@ toolchain), and javac options, `--release` handling and the class readers accept
   knows class files up to 70. PMD 7.16.0 is the first release that parses Java 25 (module import
   declarations, compact source files, flexible constructor bodies); PMD runs without
   `--use-version`, so it parses at its newest level, which also reads code written for 17. The
-  categories nitpicker takes whole gained five rules between 7.7.0 and 7.16.0; they are excluded in
-  `pmd-ruleset.xml` so the bump changes no findings: `ReplaceJavaUtilDate` and
-  `ReplaceJavaUtilCalendar` repeat forbiddenapis' legacy date check, `UnnecessaryWarningSuppression`
-  is experimental, and `ExhaustiveSwitchHasDefault` and `ImplicitFunctionalInterface` are new
-  policy for the maintainers to decide on. The rule catalogs carry messages for them and for
+  categories nitpicker takes whole gained five rules between 7.7.0 and 7.16.0, and all five are
+  on: `ReplaceJavaUtilDate` and `ReplaceJavaUtilCalendar` (the forbiddenapis `legacy-date-time`
+  signature stands for them on a line both report), `UnnecessaryWarningSuppression` (an
+  `@SuppressWarnings` value that silences nothing, such as the Spring native-query marker on a
+  method that needs no SQL; `pmd/InlineSuppression` stands for it on the same line, and `// NOPMD`
+  is not seen because PMD runs with a suppress marker no code uses), `ExhaustiveSwitchHasDefault`
+  on switch expressions and pattern switches only (a classic `switch` statement over an enum keeps
+  the `default` Checkstyle's `MissingSwitchDefault` asks for, so the rule skips it with
+  `violationSuppressXPath`), and `ImplicitFunctionalInterface`, with a message of nitpicker's own
+  (PMD's names an inline suppression), skipping interfaces a framework implements: one carrying an
+  annotation (`@FeignClient`, `@Mapper`, `@HttpExchange`), one whose abstract method does (`@GET`,
+  `@SqlQuery`), and a Spring Data `Repository`. The rule catalogs carry messages for them and for
   SpotBugs 4.9.8's two new patterns (`DMI_MISLEADING_SUBSTRING`, `CWO_CLOSED_WITHOUT_OPENED`).
   google-java-format 1.25.2 and 1.26.0 crash on a JDK 25 runtime (`Log$DeferredDiagnosticHandler`),
   1.27.0 to 1.29.0 cannot parse `import module`; 1.30 to 1.35 work on JDK 25, and 1.35.0 is pinned (it runs on
   JDK 21 or newer). Error Prone 2.50.0 and NullAway 0.14.2 compile Java 25 on a JDK 25 runtime.
   ArchUnit is the project's own dependency: version 1.4.1 or newer reads class file 69 (1.4.0 stops
   at 68).
-- **Checkstyle stays on 10.21.1.** It parses with its own grammar, independent of the JDK, and
-  reads Java 25 code except module import declarations and statements before `super()`; every
-  release before 13.5.0 fails on those, and 13.0 and newer need a JDK 21 runtime. Moving to 13.5.0
-  changes `google_checks.xml` (13 checks added, among them `GoogleNonConstantFieldName` and the
-  `OperatorWrapNL`/`OperatorWrapEOL` pair, and `MemberName`, `OperatorWrap` and
-  `AnnotationLocationMostCases` removed), so it needs its own change to the rule catalog, the
-  camel-case rewrite in `checkstyle-config.mjs` and the overlap pairs. Until then nitpicker's
-  configuration sets `skipFileOnJavaParseException` on the TreeWalker: a file Checkstyle cannot
-  parse is skipped instead of failing the build, and one `checkstyle/tool-skipped` tool error names
-  every such file (`withoutCheckstyleParseSkips` in `skipped-tools.mjs`), which leaves Checkstyle
-  out of that comparison while every other analyzer still reports.
+- **Checkstyle 13.5.0.** Checkstyle parses with its own grammar, independent of the JDK; 13.5.0
+  is the first release that reads module import declarations and statements before `super()`
+  (10.21.1, the earlier pin, skipped such files), and 13.0 and newer need a JDK 21 runtime. It
+  runs on a JDK it supports through the same tool-JDK choice as google-java-format: Gradle's
+  Checkstyle tasks get a `javaLauncher` from `nitpickerToolJava` (`checkstyle-jdk.gradle`: the JVM
+  running Gradle when it is 21 or newer, else a JDK 21 toolchain), and Maven's `checkstyleJava`
+  uses the JDK Maven runs on or an installed JDK 21 or newer. Projects on 17 keep compiling at
+  their release; Checkstyle only reads the sources. Without such a JDK Checkstyle is skipped with
+  one `checkstyle/tool-skipped` tool error naming what to install, and every other analyzer still
+  reports. The TreeWalker keeps `skipFileOnJavaParseException`, so a file Checkstyle cannot parse
+  is skipped instead of failing the build, and one `checkstyle/tool-skipped` tool error names every
+  such file (`withoutCheckstyleParseSkips` in `skipped-tools.mjs`). The 13.5.0 `google_checks.xml`
+  adds 13 checks and removes 3; see [Slice 3: Checkstyle](#slice-3-checkstyle) for how each is
+  used.
 - **Verified end to end** by `languages/java/adapters/java-e2e/jdk-levels.e2e.test.mjs`: a Gradle
   project with a JDK 17 toolchain on Gradle running on JDK 17, a Gradle project with a JDK 25
   toolchain on Gradle running on JDK 21, and Maven projects at release 17 and 25 on JDKs 17 and 25.
   Each has a failing test and an unformatted file, and the test pins every finding: Error Prone,
   forbiddenapis, google-java-format, JaCoCo, PIT (with the failing class left out), PMD, and
-  Checkstyle on 17 (on 25 its parse skip). The release-25 sources use a module import, statements
+  Checkstyle on both. The release-25 sources use a module import, statements
   before `super()`, an unnamed catch parameter and record patterns. A level without an installed
   JDK is skipped. With `NITPICKER_GRADLE_ON_JDK25` set to a Gradle that runs on JDK 25 (9.1 or
   newer), the JDK 25 Gradle project also runs with Gradle itself on JDK 25.
@@ -541,21 +551,42 @@ default, and their messages name it:
 ## Slice 3: Checkstyle
 
 - **Gradle side.** The init script applies the Gradle `checkstyle` plugin (version pinned in the
-  map, `checkstyle: 10.21.1`) and makes `nitpickerJava` depend on the Checkstyle task of every
+  map, `checkstyle: 13.5.0`) and makes `nitpickerJava` depend on the Checkstyle task of every
   source set. `ignoreFailures` is on and the XML reports are written to `checkstyle.xml` (main
   sources) and `checkstyle-<source set>.xml` (`checkstyle-test.xml`, `checkstyle-integration.xml`,
   ...) in the report directory; the HTML report is off.
 - **Configuration.** The preset uses `google_checks.xml` from the pinned
   Checkstyle jar, which matches google-java-format, with `MissingJavadocMethod` and
   `MissingJavadocType` suppressed (`languages/java/gradle/checkstyle-suppressions.xml`): Javadoc is
-  allowed on public API but not required, the same rule as the TypeScript preset. Member and method
-  names may be a single lowercase letter (`x`, `y`), as record components can. Javadoc that is
+  allowed on public API but not required, the same rule as the TypeScript preset. Field and method
+  names may be a single lowercase letter (`x`, `y`), as record components can: `MethodName` gets
+  the format `^[a-z]([a-z0-9][a-zA-Z0-9]*)?$` and `GoogleNonConstantFieldName` a
+  `SuppressionXpathSingleFilter` for one-letter names. Javadoc that is
   there still has to be well formed. With this bundled config the tasks run on nitpicker's own
   `nitpickerCheckstyle` configuration, so a project that declares its own Checkstyle version in
   `checkstyle` still gets the pinned version and its config; a project config chosen by policy
   keeps the project's Checkstyle classpath. Decision to review: google_checks is noisy on
   code that was never written for it, but the gate is differential, so existing violations stay
   baselined and only new ones fail.
+- **The 13.5.0 checks (decision).** Of the 13 checks `google_checks.xml` gained since 10.21.1,
+  eight are layout that google-java-format 1.35 writes itself, so their message says to run it
+  (`layout` in the catalog): `AnnotationLocationMethodsAndCtors`, `AnnotationLocationTypeAndPackage`,
+  `JavadocContentLocation`, `JavadocLeadingAsteriskAlign`, `JavadocMissingLeadingAsterisk`,
+  `OperatorWrapEOL`, `OperatorWrapNL` and `singleLineCommentStartWithSpace`. Four are one-way
+  rules with a fix of their own: `GoogleNonConstantFieldName` (lowerCamelCase fields, replacing
+  `MemberName`; an underscore is allowed only between digits, `version1_2`), `MissingOverrideOnRecordAccessor`
+  (`@Override` on an explicit record accessor), `BoxComments` (no rows of `*`, `=` or `#`) and
+  `TodoFormat`, whose format nitpicker narrows to the case of the tag (`todo`, `Todo`), because
+  the bundled one also flags the issue-reference forms the comment guard asks for
+  (`TODO(#123): ...`, `TODO PROJ-123: ...`); a TODO without a reference is the guard's
+  `comments/TodoWithoutIssue`, which stands for `TodoFormat` on that line. `TextBlockGoogleStyleFormatting`
+  is left out of the generated config: it flags the text block google-java-format writes after
+  `return` (`return """` on one line), and the formatter already lays out text blocks, so the two
+  would disagree on formatted code. Its catalog entry stays, since the rule catalog follows the
+  bundled config. The generated config also scopes `Indentation` away from the closing `"""` of a
+  text block (`//TEXT_BLOCK_LITERAL_END`), where the formatter's placement is flagged in 10.21.1 and
+  13.5.0 alike. The 3 removed checks (`MemberName`, `OperatorWrap`, `AnnotationLocationMostCases`)
+  left the catalog and the overlap pairs, which now name their successors.
 - **Ingestion.** `ingestCheckstyle` (X6) unchanged, `tool` `checkstyle`, absolute file paths made
   project-relative. Severities `error` and `warning` are enforceable, `info` is descriptive. The
   rule is the check's short name (`checkstyle/Indentation`, not the class
@@ -1107,7 +1138,13 @@ clearest message: usually the Error Prone check with its fix over a SpotBugs pat
 check over the general one (`OptionalEquality` or `BoxedPrimitiveEquality` over
 `ReferenceEquality`, over PMD's `CompareObjectsWithEquals` and SpotBugs `ES_COMPARING_*`), and the fullest switch check over the
 rest (`MissingCasesInEnumSwitch` over `NonExhaustiveSwitch`, `MissingDefault`, Checkstyle's
-`MissingSwitchDefault` and `SF_SWITCH_NO_DEFAULT`).
+`MissingSwitchDefault` and `SF_SWITCH_NO_DEFAULT`). Nitpicker's own guards take part too: the
+forbiddenapis `legacy-date-time` signature, which names every java.time replacement and the
+`toInstant()` route, stands for Error Prone's `JavaUtilDate` and PMD's `ReplaceJavaUtilDate` and
+`ReplaceJavaUtilCalendar` (and `JavaUtilDate` for `ReplaceJavaUtilDate` where forbiddenapis names
+another line); `pmd/InlineSuppression`, which names the one accepted marker, stands for PMD's
+`UnnecessaryWarningSuppression` on the same annotation; and `comments/TodoWithoutIssue`, which names
+the reference forms, stands for Checkstyle's `TodoFormat` on the same comment line.
 
 Where the primary covers only some of the secondary's cases, both stay on and the secondary is
 dropped only in the scope the two share: `RV_RETURN_VALUE_IGNORED` on a method Error Prone's
@@ -1122,8 +1159,8 @@ always stay.
 on the probe project those are, among others, `LooseCoupling` and `JdkObsolete` on a `Vector`
 field, `HidingField` and `URF_UNREAD_PUBLIC_OR_PROTECTED_FIELD`, `RandomModInteger` and
 `DMI_RANDOM_USED_ONLY_ONCE`, `ClassNewInstance` and `REFLC_REFLECTION_MAY_INCREASE_ACCESSIBILITY_OF_CLASS`,
-`SelfAssignment` and `AvoidReassigningParameters`, and Checkstyle's `MemberName` with
-`FieldCanBeStatic`. `adapters/overlaps/resolved-overlaps.test.mjs` pins every cross-tool line left
+`SelfAssignment` and `AvoidReassigningParameters`, and Checkstyle's `GoogleNonConstantFieldName`
+with `FieldCanBeStatic`. `adapters/overlaps/resolved-overlaps.test.mjs` pins every cross-tool line left
 on the probe's findings (`fixtures/probe-findings.json`, every enabled check with nothing turned off
 for overlap), the partial-coverage cases kept, and the policy order;
 `static-overlaps.test.mjs` checks each pair in its scope; a unit test checks that this list is the
@@ -1184,7 +1221,7 @@ table:
 - line: `errorprone/MultiVariableDeclaration` over `pmd/OneDeclarationPerLine`, `checkstyle/MultipleVariableDeclarations`
 - line: `pmd/OneDeclarationPerLine` over `checkstyle/MultipleVariableDeclarations`
 - line: `errorprone/InterruptedExceptionSwallowed` over `pmd/AvoidCatchingGenericException`
-- line: `errorprone/IdentifierName` over `checkstyle/CatchParameterName`, `checkstyle/LambdaParameterName`, `checkstyle/LocalVariableName`, `checkstyle/MemberName`, `checkstyle/MethodName`, `checkstyle/ParameterName`, `checkstyle/PatternVariableName`, `checkstyle/RecordComponentName`
+- line: `errorprone/IdentifierName` over `checkstyle/CatchParameterName`, `checkstyle/GoogleNonConstantFieldName`, `checkstyle/LambdaParameterName`, `checkstyle/LocalVariableName`, `checkstyle/MethodName`, `checkstyle/ParameterName`, `checkstyle/PatternVariableName`, `checkstyle/RecordComponentName`
 - line: `errorprone/TypeParameterNaming` over `checkstyle/ClassTypeParameterName`, `checkstyle/InterfaceTypeParameterName`, `checkstyle/MethodTypeParameterName`, `checkstyle/RecordTypeParameterName`
 - file: `errorprone/WildcardImport` over `checkstyle/AvoidStarImport`
 - line: `errorprone/LongLiteralLowerCaseSuffix` over `checkstyle/UpperEll`
@@ -1198,14 +1235,14 @@ table:
 - line: `pmd/DoNotTerminateVM` over `spotbugs/DM_EXIT`
 - line: `errorprone/CatchAndPrintStackTrace` over `pmd/AvoidPrintStackTrace`, `errorprone/SystemOut`
 - line: `errorprone/SystemOut` over `pmd/SystemPrintln`
-- line: `errorprone/MissingOverride` over `pmd/MissingOverride`
+- line: `errorprone/MissingOverride` over `pmd/MissingOverride`, `checkstyle/MissingOverrideOnRecordAccessor`
 - line: `pmd/DefaultLabelNotLastInSwitch` over `errorprone/SwitchDefault`
 - line: `checkstyle/JavadocMethod` over `errorprone/InvalidParam`
 - line: `errorprone/ReturnFromVoid` over `checkstyle/JavadocMethod`
 - line: `errorprone/NotJavadoc` over `checkstyle/InvalidJavadocPosition`
 - line: `errorprone/EmptyBlockTag` over `checkstyle/NonEmptyAtclauseDescription`
 - javadoc: `errorprone/MissingSummary` over `checkstyle/SummaryJavadoc`
-- line: `errorprone/AnnotationPosition` over `checkstyle/AnnotationLocationMostCases`, `checkstyle/AnnotationLocationVariables`
+- line: `errorprone/AnnotationPosition` over `checkstyle/AnnotationLocationMethodsAndCtors`, `checkstyle/AnnotationLocationTypeAndPackage`, `checkstyle/AnnotationLocationVariables`
 - line: `errorprone/ClassName` over `checkstyle/OuterTypeFilename`
 - line: `errorprone/AssignmentExpression` over `pmd/AssignmentInOperand`
 - line: `errorprone/HardCodedSdCardPath` over `pmd/DoNotHardCodeSDCard`
@@ -1239,6 +1276,10 @@ table:
 - field: `errorprone/URLEqualsHashCode` over `spotbugs/DMI_COLLECTION_OF_URLS`
 - field: `pmd/UnusedPrivateField` over `spotbugs/URF_UNREAD_FIELD`, `spotbugs/UUF_UNUSED_FIELD`
 - field: `errorprone/NullAway` over `spotbugs/NP_UNWRITTEN_FIELD`, `spotbugs/UWF_UNWRITTEN_FIELD`
+- line: `forbiddenapis/legacy-date-time` over `errorprone/JavaUtilDate`, `pmd/ReplaceJavaUtilCalendar`, `pmd/ReplaceJavaUtilDate`
+- line: `errorprone/JavaUtilDate` over `pmd/ReplaceJavaUtilDate`
+- line: `pmd/InlineSuppression` over `pmd/UnnecessaryWarningSuppression`
+- line: `comments/TodoWithoutIssue` over `checkstyle/TodoFormat`
 
 ### Checks spared in annotated classes
 
@@ -1903,7 +1944,7 @@ Error Prone findings are in no catalog and pass through unchanged: their allowed
 route come from `ingest/errorprone/messages.mjs` and `adapters/errorprone/java-errorprone.mjs`, so
 they carry one exception route, not two. The overlap step runs after this, so
 `overlap-pairs.json` names Checkstyle checks the same short way, or by the module id
-`google_checks.xml` gives (`checkstyle/AnnotationLocationMostCases`); a unit test checks every rule
+`google_checks.xml` gives (`checkstyle/AnnotationLocationMethodsAndCtors`); a unit test checks every rule
 in it against the catalogs and Error Prone's check list.
 
 ## Slice 1: what is deliberately not included

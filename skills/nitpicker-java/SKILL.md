@@ -56,7 +56,13 @@ With Spring on the classpath, also follow [spring.md](spring.md).
 - Mutable state: don't return or store a caller's array or collection directly. Return
   `data.clone()` or `List.copyOf(items)`, and copy in the constructor.
 - Data and results: `record` for data, a `sealed interface` of records for an outcome, and an
-  exhaustive `switch` expression over it. A `switch` statement needs `default`.
+  exhaustive `switch` expression over it. An exhaustive `switch` expression or pattern `switch` has
+  no `default` (the compiler then flags a new case); a classic `switch` statement needs `default`.
+- Time: `java.time` (`Instant`, `LocalDate`, `ZonedDateTime`, `DateTimeFormatter`), never
+  `Date`, `Calendar` or `SimpleDateFormat`; convert a `Date` another API returns with
+  `toInstant()` in the same expression.
+- Interfaces with one abstract method are `@FunctionalInterface`. Comments: no rows of `*`, `=`
+  or `#`, and a TODO is `TODO(#123): ...` or `TODO PROJ-123: ...` in capitals.
 - Resources: try-with-resources for anything `Closeable`. No `finally` that returns or throws.
 - Utility classes: a `final` class of static methods with a `private` empty constructor.
 - Dependencies between packages follow the project's ArchUnit rules (classes named `*ArchTest` or
@@ -64,8 +70,8 @@ With Spring on the classpath, also follow [spring.md](spring.md).
   less stable one (`stability-direction`).
 - Names and declarations: abbreviations are words (`parseUrl`, `HttpClient`, `userId`, never
   `parseURL`). Declare a local next to its first use, one variable per declaration, and keep
-  overloads next to each other. Mark overrides `@Override`. Never reassign a loop variable, and
-  never call `System.exit`. A trailing array parameter is varargs (`String... names`).
+  overloads next to each other. Mark overrides `@Override`, explicit record accessors too. Never
+  reassign a loop variable, and never call `System.exit`. A trailing array parameter is varargs (`String... names`).
 - Javadoc is optional; when you write it, the first sentence is a real summary (not `@return`),
   every `@param`/`@return` has a description, in that order, and paragraphs start with `<p>`.
 - nitpicker runs its own PMD rules (errorprone, bestpractices, performance, multithreading,

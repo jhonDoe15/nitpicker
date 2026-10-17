@@ -1160,7 +1160,7 @@
     },
     {
       "tool": "checkstyle",
-      "rule": "MemberName",
+      "rule": "GoogleNonConstantFieldName",
       "path": "src/main/java/probe/P2Eq.java",
       "line": 4
     },
@@ -1190,13 +1190,13 @@
     },
     {
       "tool": "checkstyle",
-      "rule": "MemberName",
+      "rule": "GoogleNonConstantFieldName",
       "path": "src/main/java/probe/EqOnly.java",
       "line": 4
     },
     {
       "tool": "checkstyle",
-      "rule": "MemberName",
+      "rule": "GoogleNonConstantFieldName",
       "path": "src/main/java/probe/BadEquals.java",
       "line": 4
     },
@@ -1208,7 +1208,7 @@
     },
     {
       "tool": "checkstyle",
-      "rule": "MemberName",
+      "rule": "GoogleNonConstantFieldName",
       "path": "src/main/java/probe/C7Names.java",
       "line": 6
     },
@@ -1220,7 +1220,7 @@
     },
     {
       "tool": "checkstyle",
-      "rule": "MemberName",
+      "rule": "GoogleNonConstantFieldName",
       "path": "src/main/java/probe/SelfAssign.java",
       "line": 4
     },
@@ -1232,19 +1232,19 @@
     },
     {
       "tool": "checkstyle",
-      "rule": "MemberName",
+      "rule": "GoogleNonConstantFieldName",
       "path": "src/main/java/probe/C8Equals.java",
       "line": 4
     },
     {
       "tool": "checkstyle",
-      "rule": "MemberName",
+      "rule": "GoogleNonConstantFieldName",
       "path": "src/main/java/probe/Eqs.java",
       "line": 4
     },
     {
       "tool": "checkstyle",
-      "rule": "MemberName",
+      "rule": "GoogleNonConstantFieldName",
       "path": "src/main/java/probe/Fields.java",
       "line": 5
     },
@@ -1322,7 +1322,7 @@
     },
     {
       "tool": "checkstyle",
-      "rule": "MemberName",
+      "rule": "GoogleNonConstantFieldName",
       "path": "src/main/java/probe/Volatile.java",
       "line": 4
     },

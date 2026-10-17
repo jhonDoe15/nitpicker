@@ -3,6 +3,7 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import {
+  CHECKSTYLE_SKIPPED,
   ERROR_PRONE_SKIPPED,
   FORMAT_SKIPPED,
   STRUCTURE_SKIPPED,
@@ -29,6 +30,7 @@ describe('skippedToolFindings', () => {
     const reportRoot = reportRootWith({
       [ERROR_PRONE_SKIPPED]: 'Error Prone needs at least JDK 21. Install one\n',
       [FORMAT_SKIPPED]: 'google-java-format needs at least JDK 21. Install one\n',
+      [CHECKSTYLE_SKIPPED]: 'Checkstyle needs at least JDK 21. Install one\n',
     });
 
     expect(
@@ -37,6 +39,7 @@ describe('skippedToolFindings', () => {
       [
         ['errorprone', 'Error Prone'],
         ['google-java-format', 'google-java-format'],
+        ['checkstyle', 'Checkstyle'],
       ].map(([tool, name]) => ({
         tool,
         rule: 'tool-skipped',

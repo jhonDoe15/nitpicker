@@ -3,8 +3,11 @@ import path from 'node:path';
 import { runJava } from './maven-command.mjs';
 import { GRADLE_DIRECTORY } from '../builds/java-build.mjs';
 import { writeCheckstyleConfigs } from '../builds/rulesets/checkstyle-config.mjs';
-import { FORMAT_SKIPPED } from '../adapters/reporting/outcomes/skipped-tools.mjs';
-import { GOOGLE_JAVA_FORMAT, toolJava } from './errorprone/maven-jdk.mjs';
+import {
+  CHECKSTYLE_SKIPPED,
+  FORMAT_SKIPPED,
+} from '../adapters/reporting/outcomes/skipped-tools.mjs';
+import { CHECKSTYLE, GOOGLE_JAVA_FORMAT, toolJava } from './errorprone/maven-jdk.mjs';
 
 export const EMPTY_SARIF = '{"version":"2.1.0","runs":[]}';
 const JAVAC_EXPORTS = ['api', 'file', 'parser', 'tree', 'util', 'code'].map(
@@ -105,15 +108,20 @@ function checkstyleSetup({ reportDir, tools, configs, pinned }) {
   return { main, test, properties };
 }
 
+function emptyCheckstyleReport(report, pinned) {
+  writeFileSync(report, `<checkstyle version="${pinned.checkstyle}"></checkstyle>`);
+}
+
 function checkstyleReport({ module, config, setup, tools, pinned, roots, report, always }) {
   const files = javaFiles(roots);
-  if (files.length === 0) {
+  if (files.length === 0 || setup.java === undefined) {
     if (always) {
-      writeFileSync(report, `<checkstyle version="${pinned.checkstyle}"></checkstyle>`);
+      emptyCheckstyleReport(report, pinned);
     }
     return;
   }
   runJava({
+    java: setup.java,
     tool: 'Checkstyle',
     classpath: tools.checkstyle,
     mainClass: 'com.puppycrawl.tools.checkstyle.Main',
@@ -123,12 +131,28 @@ function checkstyleReport({ module, config, setup, tools, pinned, roots, report,
   });
 }
 
+function checkstyleJava(reportDir, module) {
+  const skipped = path.join(reportDir, CHECKSTYLE_SKIPPED);
+  rmSync(skipped, { force: true });
+  if (javaFiles([...module.sourceRoots, ...module.testSourceRoots]).length === 0) {
+    return undefined;
+  }
+  const { java, problem } = toolJava(CHECKSTYLE);
+  if (problem !== undefined) {
+    writeFileSync(skipped, `${problem}\n`);
+  }
+  return java;
+}
+
 export function runCheckstyle({ module, reportDir, tools, configs, pinned }) {
   const context = {
     module,
     tools,
     pinned,
-    setup: checkstyleSetup({ reportDir, tools, configs, pinned }),
+    setup: {
+      ...checkstyleSetup({ reportDir, tools, configs, pinned }),
+      java: checkstyleJava(reportDir, module),
+    },
   };
   checkstyleReport({
     ...context,

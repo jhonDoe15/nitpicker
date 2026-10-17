@@ -300,7 +300,7 @@
     "mayBeIntended": false
   },
   "ExhaustiveSwitchHasDefault": {
-    "fix": "Drop the default branch: the switch already covers every enum constant or sealed subtype, and without it the compiler flags a constant or subtype added later.",
+    "fix": "Drop the default branch: the switch covers every enum constant or sealed subtype, so without it the compiler flags one added later.",
     "mayBeIntended": true
   },
   "FinalizeDoesNotCallSuperFinalize": {
@@ -340,7 +340,7 @@
     "mayBeIntended": false
   },
   "ImplicitFunctionalInterface": {
-    "fix": "Annotate the interface with @FunctionalInterface when lambdas implement it, or make it sealed when they must not.",
+    "fix": "Annotate the interface with @FunctionalInterface; it is valid on any interface with one abstract method, also one only classes implement.",
     "mayBeIntended": true
   },
   "ImplicitSwitchFallThrough": {
@@ -656,7 +656,7 @@
     "mayBeIntended": false
   },
   "UnnecessaryWarningSuppression": {
-    "fix": "Remove the @SuppressWarnings value or NOPMD comment that suppresses nothing.",
+    "fix": "Remove the @SuppressWarnings value that suppresses nothing.",
     "mayBeIntended": true
   },
   "UnsynchronizedStaticFormatter": {

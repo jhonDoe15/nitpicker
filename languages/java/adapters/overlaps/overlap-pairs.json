@@ -330,9 +330,9 @@
     "primary": ["errorprone/IdentifierName"],
     "secondary": [
       "checkstyle/CatchParameterName",
+      "checkstyle/GoogleNonConstantFieldName",
       "checkstyle/LambdaParameterName",
       "checkstyle/LocalVariableName",
-      "checkstyle/MemberName",
       "checkstyle/MethodName",
       "checkstyle/ParameterName",
       "checkstyle/PatternVariableName",
@@ -415,7 +415,7 @@
   },
   {
     "primary": ["errorprone/MissingOverride"],
-    "secondary": ["pmd/MissingOverride"],
+    "secondary": ["pmd/MissingOverride", "checkstyle/MissingOverrideOnRecordAccessor"],
     "scope": "line"
   },
   {
@@ -451,7 +451,8 @@
   {
     "primary": ["errorprone/AnnotationPosition"],
     "secondary": [
-      "checkstyle/AnnotationLocationMostCases",
+      "checkstyle/AnnotationLocationMethodsAndCtors",
+      "checkstyle/AnnotationLocationTypeAndPackage",
       "checkstyle/AnnotationLocationVariables"
     ],
     "scope": "line"
@@ -636,5 +637,29 @@
     "primary": ["errorprone/NullAway"],
     "secondary": ["spotbugs/NP_UNWRITTEN_FIELD", "spotbugs/UWF_UNWRITTEN_FIELD"],
     "scope": "field"
+  },
+  {
+    "primary": ["forbiddenapis/legacy-date-time"],
+    "secondary": [
+      "errorprone/JavaUtilDate",
+      "pmd/ReplaceJavaUtilCalendar",
+      "pmd/ReplaceJavaUtilDate"
+    ],
+    "scope": "line"
+  },
+  {
+    "primary": ["errorprone/JavaUtilDate"],
+    "secondary": ["pmd/ReplaceJavaUtilDate"],
+    "scope": "line"
+  },
+  {
+    "primary": ["pmd/InlineSuppression"],
+    "secondary": ["pmd/UnnecessaryWarningSuppression"],
+    "scope": "line"
+  },
+  {
+    "primary": ["comments/TodoWithoutIssue"],
+    "secondary": ["checkstyle/TodoFormat"],
+    "scope": "line"
   }
 ]

@@ -2,17 +2,30 @@ import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { CATALOG_TOOLS, readCatalog } from '../../messages/rule-messages.mjs';
+import { commentFindings } from '../comments/java-comments.mjs';
+import { fileFindings } from '../suppressions/java-suppressions.mjs';
 import { OVERLAP_PAIRS, matchesRule, withoutOverlaps } from './static-overlaps.mjs';
 
 const CHECKS = path.resolve(import.meta.dirname, '../../gradle/errorprone/checks.json');
+const SIGNATURES = path.resolve(import.meta.dirname, '../../gradle/rules/forbidden-apis.txt');
+const GUARD_RULES = [
+  ...[...readFileSync(SIGNATURES, 'utf8').matchAll(/^@defaultMessage ([\w-]+):/gmu)].map(
+    ([, group]) => `forbiddenapis/${group}`,
+  ),
+  ...[
+    ...commentFindings('class A {\n  // TODO later\n}\n', 'A.java'),
+    ...fileFindings('@SuppressWarnings("PMD")\nclass A {}\n', 'A.java'),
+  ].map(({ tool, rule }) => `${tool}/${rule}`),
+];
 const KNOWN_RULES = [
   'errorprone/NullAway',
   ...JSON.parse(readFileSync(CHECKS, 'utf8')).suppressible.map((check) => `errorprone/${check}`),
+  ...GUARD_RULES,
   ...CATALOG_TOOLS.flatMap((tool) =>
     Object.keys(readCatalog(tool)).map((rule) => `${tool}/${rule}`),
   ),
 ];
-const TOOLS = /^(?:pmd|spotbugs|errorprone|checkstyle)\/[A-Za-z0-9_*]+$/u;
+const TOOLS = /^(?:pmd|spotbugs|errorprone|checkstyle|forbiddenapis|comments)\/[A-Za-z0-9_*-]+$/u;
 const SOURCE = [
   'package demo;',
   'public class A {',
@@ -66,7 +79,7 @@ const cases = OVERLAP_PAIRS.flatMap(({ primary, secondary, scope }) =>
 );
 
 describe('overlap pairs', () => {
-  it('name printed rules of the four tools, in known scopes, with no rule depending on itself', () => {
+  it('name printed rules of the analyzers and guards, in known scopes, with no rule depending on itself', () => {
     const rules = OVERLAP_PAIRS.flatMap(({ primary, secondary }) => [...primary, ...secondary]);
     const coveredBy = (rule) =>
       OVERLAP_PAIRS.filter(({ secondary }) => matchesRule(secondary, rule)).flatMap(
@@ -92,7 +105,7 @@ describe('overlap pairs', () => {
     expect(rules.filter((rule) => reaches(rule, rule))).toStrictEqual([]);
   });
 
-  it('name rules as the findings print them: Checkstyle module ids, catalog rules, Error Prone checks', () => {
+  it('name rules as the findings print them: module ids, catalog, guard and Error Prone rules', () => {
     const rules = OVERLAP_PAIRS.flatMap(({ primary, secondary }) => [...primary, ...secondary]);
 
     expect(
