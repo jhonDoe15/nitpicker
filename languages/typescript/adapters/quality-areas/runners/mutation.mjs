@@ -15,9 +15,19 @@ import {
   TYPECHECK_FAILED_SKIPPED_RULE,
   TESTS_FAILED_SKIPPED_RULE,
 } from '../../../../../shared/rules/finding-helpers.mjs';
-import { toolErrorFinding } from '../reporting/vitest.mjs';
+import { toolErrorFinding } from '../reporting/test-report.mjs';
 import { layoutTransformFor } from '../../../preset/tool-configs.mjs';
 import { trackTemporaryPath } from '../../../../../core/tooling/temporary-files.mjs';
+import { projectTestRunner } from '../../../preset/test-runner/project-runner.mjs';
+import {
+  CRACO_JEST_CONFIG,
+  cracoJestConfigText,
+  mutationRunnerConfig,
+  unsupportedMutationRunner,
+} from '../../test-runners/mutation-runner-config.mjs';
+import { runnableTestFiles } from '../../test-runners/test-run.mjs';
+
+const UNSUPPORTED_RUNNER_RULE = 'mutation-unsupported-runner';
 
 const STRYKER_TSCONFIG_TARGET = '.nitpicker-diff-tsconfig.stryker.json';
 
@@ -29,15 +39,33 @@ const DRY_RUN_TYPECHECK_FAILED_PATTERN = /Typescript error\(s\) found in dry run
 
 export async function runMutation(options) {
   const targets = mutationTargets(options, readLayout());
-  if (targets?.length === 0) return [];
+  if (targets?.length === 0) {
+    return [];
+  }
+  const testRunner = projectTestRunner(options);
+  const unsupported = unsupportedMutationRunner(options, testRunner.runner);
+  if (unsupported !== undefined) {
+    return [toolErrorFinding(options, { rule: UNSUPPORTED_RUNNER_RULE, message: unsupported })];
+  }
+  return mutateWith(options, { targets, testRunner });
+}
+
+async function mutateWith(options, { targets, testRunner }) {
   const sourceConfig = (
     await importPolicyModule(options, STRYKER_CONFIG_PATH, `?run=${Date.now().toString()}`)
   ).default;
   const configPath = path.join(options.projectRoot, '.nitpicker-diff-stryker.config.mjs');
   const createdFiles = [];
   try {
-    writeStrykerConfig({ options, sourceConfig, targets, configPath, createdFiles });
-    const skippedFindings = runStrykerOrExplainSkip(options, configPath);
+    const command = writeStrykerConfig({
+      options,
+      sourceConfig,
+      targets,
+      configPath,
+      createdFiles,
+      testRunner,
+    });
+    const skippedFindings = runStrykerOrExplainSkip(options, configPath, command);
     if (skippedFindings !== undefined) {
       return skippedFindings;
     }
@@ -53,18 +81,43 @@ export async function runMutation(options) {
   }
 }
 
-function writeStrykerConfig({ options, sourceConfig, targets, configPath, createdFiles }) {
+function runnerConfig({ options, sourceConfig, createdFiles, testRunner }) {
   const tsconfigPath = installStrykerTsconfig(options, sourceConfig.tsconfigFile, createdFiles);
+  const tsconfigFile = relativeProjectPath(options.projectRoot, tsconfigPath);
+  if (testRunner.command.launcher === 'craco') {
+    const cracoConfigPath = path.join(options.projectRoot, CRACO_JEST_CONFIG);
+    writeTemporaryFile(cracoConfigPath, cracoJestConfigText(), createdFiles);
+  }
+  if (testRunner.runner !== 'vitest') {
+    return mutationRunnerConfig({
+      options,
+      runner: testRunner.runner,
+      command: testRunner.command,
+      testFiles: runnableTestFiles(options),
+      sourceConfig: { ...sourceConfig, tsconfigFile },
+    });
+  }
   const vitestConfigPath = installMutationCompanion(
     options,
     [sourceConfig.vitest?.configFile, '.nitpicker-diff-stryker.vitest.config.ts'],
     createdFiles,
   );
+  return rebaseMutationConfig(sourceConfig, {
+    tsconfigFile,
+    vitestConfigFile: relativeProjectPath(options.projectRoot, vitestConfigPath),
+  });
+}
+
+function writeStrykerConfig({
+  options,
+  sourceConfig,
+  targets,
+  configPath,
+  createdFiles,
+  testRunner,
+}) {
   const config = {
-    ...rebaseMutationConfig(sourceConfig, {
-      tsconfigFile: relativeProjectPath(options.projectRoot, tsconfigPath),
-      vitestConfigFile: relativeProjectPath(options.projectRoot, vitestConfigPath),
-    }),
+    ...runnerConfig({ options, sourceConfig, createdFiles, testRunner }),
     ...(targets === undefined ? {} : { mutate: targets }),
     reporters: ['json'],
     jsonReporter: { fileName: MUTATION_REPORT_PATH },
@@ -74,6 +127,7 @@ function writeStrykerConfig({ options, sourceConfig, targets, configPath, create
     `export default ${JSON.stringify(config, null, 2)};\n`,
     createdFiles,
   );
+  return testRunner.command;
 }
 
 const SKIP_MESSAGES = {
@@ -100,12 +154,13 @@ export function mutationSkipFor(errorMessage, snapshot = 'head') {
     : undefined;
 }
 
-function runStrykerOrExplainSkip(options, configPath) {
+function runStrykerOrExplainSkip(options, configPath, command) {
   try {
     runNodeTool({
       options,
       relativeToolPath: '@stryker-mutator/core/bin/stryker.js',
       arguments_: ['run', configPath],
+      environment: command.environment,
       acceptedStatuses: [0],
     });
     return undefined;
