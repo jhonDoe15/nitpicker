@@ -14,14 +14,18 @@ const SKIPPED_DIRECTORIES = new Set([
   'target',
 ]);
 
-function walk(directory, found) {
-  for (const entry of readdirSync(directory, { withFileTypes: true })) {
-    if (entry.isDirectory() && !SKIPPED_DIRECTORIES.has(entry.name)) {
-      walk(path.join(directory, entry.name), found);
-    } else if (entry.isFile() && entry.name === CONFIG_FILE) {
-      found.configs.push(path.join(directory, entry.name));
-    } else if (entry.isFile() && BUILD_FILE.test(entry.name)) {
-      found.builds.push(path.join(directory, entry.name));
+function walk(projectRoot) {
+  const found = { configs: [], builds: [] };
+  const pending = [projectRoot];
+  for (const directory of pending) {
+    for (const entry of readdirSync(directory, { withFileTypes: true })) {
+      if (entry.isDirectory() && !SKIPPED_DIRECTORIES.has(entry.name)) {
+        pending.push(path.join(directory, entry.name));
+      } else if (entry.isFile() && entry.name === CONFIG_FILE) {
+        found.configs.push(path.join(directory, entry.name));
+      } else if (entry.isFile() && BUILD_FILE.test(entry.name)) {
+        found.builds.push(path.join(directory, entry.name));
+      }
     }
   }
   return found;
@@ -40,7 +44,7 @@ function withSetting(text) {
 }
 
 export function markLombokGeneratedCode(projectRoot) {
-  const found = walk(projectRoot, { configs: [], builds: [] });
+  const found = walk(projectRoot);
   if (!usesLombok(found)) {
     return [];
   }

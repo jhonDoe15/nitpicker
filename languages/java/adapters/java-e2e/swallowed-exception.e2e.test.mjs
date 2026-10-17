@@ -35,7 +35,10 @@ const POM = `<project xmlns="http://maven.apache.org/POM/4.0.0">
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
   </properties>
   <dependencies>
-    <dependency><groupId>org.junit.jupiter</groupId><artifactId>junit-jupiter</artifactId><version>5.11.0</version><scope>test</scope></dependency>
+    <dependency>
+      <groupId>org.junit.jupiter</groupId><artifactId>junit-jupiter</artifactId>
+      <version>5.11.0</version><scope>test</scope>
+    </dependency>
   </dependencies>
   <build><plugins>
     <plugin>
