@@ -2,7 +2,7 @@ import ast
 import fnmatch
 import os
 
-from checks.common import directories, finding, is_test_path
+from checks.common import directories, finding
 
 DEFAULT_PYTHON_FILES = ["test_*.py", "*_test.py"]
 TEST_FILE_WORDS = ("test", "tests")

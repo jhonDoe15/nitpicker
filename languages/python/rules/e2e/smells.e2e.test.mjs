@@ -1,8 +1,8 @@
-import { afterEach, describe, it } from 'vitest';
+import { afterEach, describe, expect, it } from 'vitest';
 import { createScripts } from '../test-support/python-script-helpers.mjs';
 
 const enabled = process.env.NITPICKER_PYTHON_E2E === '1';
-const { cleanup, expectVerdicts } = createScripts();
+const { cleanup, outcomes } = createScripts();
 afterEach(cleanup);
 
 const inFile = (file, code) => ({ file, code });
@@ -11,7 +11,7 @@ const repeat = (literal, times = 3) =>
 
 describe.skipIf(!enabled)('repeated-string-literal', () => {
   it('flags a string of five characters or more used three times, at its first use', () => {
-    expectVerdicts([
+    const [actual, expected] = outcomes([
       ['three uses', repeat('"pending"'), ['repeated-string-literal:1 pending']],
       ['four uses', repeat('"pending"', 4), ['repeated-string-literal:1 pending']],
       [
@@ -47,12 +47,13 @@ describe.skipIf(!enabled)('repeated-string-literal', () => {
       ['translation calls', 'A = _("pending")\nB = _("pending")\nC = gettext("pending")\n', []],
       ['a test file', inFile('tests/test_a.py', repeat('"pending"')), []],
     ]);
+    expect(actual).toEqual(expected);
   });
 });
 
 describe.skipIf(!enabled)('generic-name', () => {
   it('flags files, folders and classes named for what they are, not for their job', () => {
-    expectVerdicts([
+    const [actual, expected] = outcomes([
       ['utils.py', inFile('utils.py', 'X = 1\n'), ['generic-name:1 utils']],
       ['string_utils.py', inFile('string_utils.py', 'X = 1\n'), ['generic-name:1 string_utils']],
       ['helpers.py', inFile('pkg/helpers.py', 'X = 1\n'), ['generic-name:1 helpers']],
@@ -78,12 +79,13 @@ describe.skipIf(!enabled)('generic-name', () => {
       ],
       ['a test helper', inFile('tests/helpers.py', 'X = 1\n'), []],
     ]);
+    expect(actual).toEqual(expected);
   });
 });
 
 describe.skipIf(!enabled)('hardcoded-secret, credential-shape and secret-in-log', () => {
   it('flags a secret-looking string assigned to a secret-named target', () => {
-    expectVerdicts([
+    const [actual, expected] = outcomes([
       ['a variable', 'API_TOKEN = "a1b2c3d4e5f6"\n', ['hardcoded-secret:1 API_TOKEN']],
       ['an attribute', 'self.password = "hunter2hunter2"\n', ['hardcoded-secret:1 password']],
       [
@@ -114,10 +116,11 @@ describe.skipIf(!enabled)('hardcoded-secret, credential-shape and secret-in-log'
       ['a url', 'TOKEN_URL = "https://example.com/oauth/token"\n', []],
       ['a test file', inFile('tests/test_a.py', 'TOKEN = "a1b2c3d4e5f6"\n'), []],
     ]);
+    expect(actual).toEqual(expected);
   });
 
   it('flags credential shapes anywhere', () => {
-    expectVerdicts([
+    const [actual, expected] = outcomes([
       [
         'a url with a password',
         'URL = "postgres://app:Pa55w0rdX9@db.internal/orders"\n',
@@ -146,10 +149,11 @@ describe.skipIf(!enabled)('hardcoded-secret, credential-shape and secret-in-log'
         [],
       ],
     ]);
+    expect(actual).toEqual(expected);
   });
 
   it('flags a secret passed to a log call', () => {
-    expectVerdicts([
+    const [actual, expected] = outcomes([
       [
         'an argument',
         'import logging\n\nlogger = logging.getLogger(__name__)\n\n\ndef f(token):\n    logger.info("using %s", token)\n',
@@ -182,6 +186,7 @@ describe.skipIf(!enabled)('hardcoded-secret, credential-shape and secret-in-log'
       ],
       ['a call that is no log', 'def f(token):\n    print_value("x %s", token)\n', []],
     ]);
+    expect(actual).toEqual(expected);
   });
 });
 
@@ -190,7 +195,7 @@ describe.skipIf(!enabled)('io-in-loop', () => {
     `${head}\n\ndef f(items):\n    for item in items:\n        ${call}\n`;
 
   it('flags a database, HTTP or file call once per item', () => {
-    expectVerdicts([
+    const [actual, expected] = outcomes([
       ['requests.get', loop('requests.get(item)'), ['io-in-loop:6 requests.get()']],
       ['a repository', loop('repo.find_by_id(item)', ''), ['io-in-loop:5 repo.find_by_id()']],
       ['a session execute', loop('session.execute(item)', ''), ['io-in-loop:5 session.execute()']],
@@ -236,12 +241,13 @@ describe.skipIf(!enabled)('io-in-loop', () => {
       ],
       ['a test file', inFile('tests/test_a.py', loop('repo.find_by_id(item)', '')), []],
     ]);
+    expect(actual).toEqual(expected);
   });
 });
 
 describe.skipIf(!enabled)('todo-without-issue', () => {
   it('flags a task marker that names no issue', () => {
-    expectVerdicts([
+    const [actual, expected] = outcomes([
       ['TODO', 'X = 1  # TODO: later\n', ['todo-without-issue:1 TODO: later']],
       ['FIXME', '# FIXME this\nX = 1\n', ['todo-without-issue:1 FIXME this']],
       ['HACK', '# HACK: temporary\nX = 1\n', ['todo-without-issue:1 HACK: temporary']],
@@ -264,5 +270,6 @@ describe.skipIf(!enabled)('todo-without-issue', () => {
       ['a word that contains it', '# AUTODOC: later\nX = 1\n', []],
       ['a marker inside a string', 'X = "TODO: later"\n', []],
     ]);
+    expect(actual).toEqual(expected);
   });
 });

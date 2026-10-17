@@ -1,6 +1,7 @@
 import ast
 
-from checks.common import dotted_name, finding, is_log_call, type_text
+from checks.common import dotted_name, finding, type_text
+from checks.handling import is_handled
 
 OPTIONAL_IMPORT_ERRORS = {"ImportError", "ModuleNotFoundError"}
 BLIND_ERRORS = {
@@ -9,28 +10,6 @@ BLIND_ERRORS = {
     "builtins.Exception",
     "builtins.BaseException",
 }
-REPORT_CALLS = {
-    "warnings.warn",
-    "traceback.print_exc",
-    "traceback.print_exception",
-    "print",
-    "pprint.pprint",
-}
-
-
-def is_constant(node):
-    if isinstance(node, ast.Constant):
-        return True
-    if isinstance(node, ast.UnaryOp):
-        return is_constant(node.operand)
-    if isinstance(node, (ast.Tuple, ast.List, ast.Set)):
-        return all(is_constant(element) for element in node.elts)
-    if isinstance(node, ast.Dict):
-        return all(
-            key is not None and is_constant(key) and is_constant(value)
-            for key, value in zip(node.keys, node.values)
-        )
-    return False
 
 
 def is_optional_import(handler):
@@ -41,63 +20,75 @@ def is_optional_import(handler):
     return len(names) == len(caught) and names <= OPTIONAL_IMPORT_ERRORS
 
 
-def is_report(call, aliases):
-    return is_log_call(call, aliases) or dotted_name(call.func, aliases) in REPORT_CALLS
-
-
-def is_inert(statement, optional_import, aliases):
-    if isinstance(statement, ast.Return):
-        return statement.value is None or is_constant(statement.value)
-    if isinstance(statement, ast.Expr):
-        value = statement.value
-        return isinstance(value, ast.Constant) or (
-            isinstance(value, ast.Call) and is_report(value, aliases)
-        )
-    if isinstance(statement, (ast.Assign, ast.AnnAssign)):
-        return (
-            not optional_import
-            and statement.value is not None
-            and is_constant(statement.value)
-        )
-    return isinstance(statement, (ast.Pass, ast.Continue))
+def module_tuples(tree):
+    found = {}
+    for statement in tree.body:
+        if (
+            isinstance(statement, ast.Assign)
+            and len(statement.targets) == 1
+            and isinstance(statement.targets[0], ast.Name)
+            and isinstance(statement.value, (ast.Tuple, ast.List))
+        ):
+            found[statement.targets[0].id] = statement.value.elts
+    return found
 
 
 class Errors(ast.NodeVisitor):
-    def __init__(self, path, aliases):
-        self.path = path
-        self.aliases = aliases
+    def __init__(self, context):
+        self.context = context
+        self.scopes = [context.tree]
+        self.tuples = module_tuples(context.tree)
         self.findings = []
+
+    def visit_scope(self, node):
+        self.scopes.append(node)
+        self.generic_visit(node)
+        self.scopes.pop()
+
+    visit_FunctionDef = visit_scope
+    visit_AsyncFunctionDef = visit_scope
 
     def visit_ExceptHandler(self, node):
         optional_import = node.type is not None and is_optional_import(node)
-        if all(
-            is_inert(statement, optional_import, self.aliases)
-            for statement in node.body
-        ):
+        if not is_handled(node, self.context, self.scopes[-1], optional_import):
             caught = type_text(node.type) if node.type else ""
             subject = f"except {caught}".strip()
             self.findings.append(
-                finding(self.path, "swallowed-exception", subject, node)
+                finding(self.context.path, "swallowed-exception", subject, node)
             )
         self.generic_visit(node)
 
+    def caught_names(self, node):
+        for argument in node.args:
+            target = argument.value if isinstance(argument, ast.Starred) else argument
+            members = (
+                self.tuples.get(target.id) if isinstance(target, ast.Name) else None
+            )
+            if isinstance(argument, ast.Starred) and members is not None:
+                yield from members
+            else:
+                yield argument
+
     def visit_Call(self, node):
-        name = dotted_name(node.func, self.aliases)
+        aliases = self.context.aliases
+        name = dotted_name(node.func, aliases)
         if name == "contextlib.suppress" and (
             not node.args
             or any(
-                dotted_name(argument, self.aliases) in BLIND_ERRORS
-                for argument in node.args
+                dotted_name(caught, aliases) in BLIND_ERRORS
+                for caught in self.caught_names(node)
             )
         ):
             arguments = ", ".join(type_text(argument) for argument in node.args)
             self.findings.append(
-                finding(self.path, "blind-suppress", f"{name}({arguments})", node)
+                finding(
+                    self.context.path, "blind-suppress", f"{name}({arguments})", node
+                )
             )
         self.generic_visit(node)
 
 
 def check(context):
-    visitor = Errors(context.path, context.aliases)
+    visitor = Errors(context)
     visitor.visit(context.tree)
     return visitor.findings

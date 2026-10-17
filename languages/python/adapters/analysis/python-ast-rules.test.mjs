@@ -2,6 +2,7 @@ import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import { createFakeProjects } from '../test-support/fake-project.mjs';
+import { DEFAULT_NORECURSEDIRS } from '../configuration/pytest/pytest-config.mjs';
 import { checkRules, pythonSources } from './python-ast-rules.mjs';
 
 const fakes = createFakeProjects();
@@ -64,6 +65,15 @@ describe('running the rules script', () => {
       sourceRoots: context.project.sourceRoots,
       testRunner: context.project.testRunner,
       pythonFiles: ['test_*.py', '*_test.py'],
+      pythonClasses: ['Test'],
+      pythonFunctions: ['test'],
+      norecursedirs: DEFAULT_NORECURSEDIRS,
+      testpaths: [],
+      deselected: [],
+      ignored: [],
+      ignoredGlobs: [],
+      keywords: [],
+      testFiles: [],
     });
     expect(readFileSync(path.join(reportRoot, 'python-files.txt'), 'utf8')).toBe('src/demo/a.py');
     expect(readFileSync(path.join(reportRoot, 'rules.json'), 'utf8')).toBe('[{"rule":"x"}]');

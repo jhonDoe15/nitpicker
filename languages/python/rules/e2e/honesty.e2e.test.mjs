@@ -1,15 +1,15 @@
-import { afterEach, describe, it } from 'vitest';
+import { afterEach, describe, expect, it } from 'vitest';
 import { createScripts } from '../test-support/python-script-helpers.mjs';
 
 const enabled = process.env.NITPICKER_PYTHON_E2E === '1';
-const { cleanup, expectVerdicts } = createScripts();
+const { cleanup, outcomes } = createScripts();
 afterEach(cleanup);
 
 const inTests = (code, file = 'tests/test_a.py') => ({ file, code });
 
 describe.skipIf(!enabled)('skipped-test-without-reason', () => {
   it('flags a skip or xfail that gives no reason', () => {
-    expectVerdicts([
+    const [actual, expected] = outcomes([
       [
         'a bare skip mark',
         inTests('import pytest\n\n\n@pytest.mark.skip\ndef test_a():\n    assert f()\n'),
@@ -101,12 +101,13 @@ describe.skipIf(!enabled)('skipped-test-without-reason', () => {
         [],
       ],
     ]);
+    expect(actual).toEqual(expected);
   });
 });
 
 describe.skipIf(!enabled)('sleep-in-test', () => {
   it('flags waiting for real time in a test', () => {
-    expectVerdicts([
+    const [actual, expected] = outcomes([
       [
         'time.sleep',
         inTests('import time\n\n\ndef test_a():\n    time.sleep(1)\n'),
@@ -143,12 +144,13 @@ describe.skipIf(!enabled)('sleep-in-test', () => {
       ],
       ['production code', { file: 'src/mod.py', code: 'import time\n\ntime.sleep(1)\n' }, []],
     ]);
+    expect(actual).toEqual(expected);
   });
 });
 
 describe.skipIf(!enabled)('tautological-assert', () => {
   it('flags assertions that cannot fail', () => {
-    expectVerdicts([
+    const [actual, expected] = outcomes([
       [
         'assert True',
         inTests('def test_a():\n    assert True\n'),
@@ -217,12 +219,13 @@ describe.skipIf(!enabled)('tautological-assert', () => {
       ],
       ['production code', { file: 'src/mod.py', code: 'assert True\n' }, []],
     ]);
+    expect(actual).toEqual(expected);
   });
 });
 
 describe.skipIf(!enabled)('real clock, randomness and network in unit tests', () => {
   it('flags the real clock', () => {
-    expectVerdicts([
+    const [actual, expected] = outcomes([
       [
         'datetime.now',
         inTests(
@@ -269,10 +272,11 @@ describe.skipIf(!enabled)('real clock, randomness and network in unit tests', ()
         [],
       ],
     ]);
+    expect(actual).toEqual(expected);
   });
 
   it('flags unseeded randomness', () => {
-    expectVerdicts([
+    const [actual, expected] = outcomes([
       [
         'random.random',
         inTests('import random\n\n\ndef test_a():\n    assert random.random() < 1\n'),
@@ -303,10 +307,11 @@ describe.skipIf(!enabled)('real clock, randomness and network in unit tests', ()
         [],
       ],
     ]);
+    expect(actual).toEqual(expected);
   });
 
   it('flags the network in a unit test, not in an integration test', () => {
-    expectVerdicts([
+    const [actual, expected] = outcomes([
       [
         'requests.get',
         inTests('import requests\n\n\ndef test_a():\n    assert requests.get("http://x")\n'),
@@ -367,5 +372,6 @@ describe.skipIf(!enabled)('real clock, randomness and network in unit tests', ()
         [],
       ],
     ]);
+    expect(actual).toEqual(expected);
   });
 });

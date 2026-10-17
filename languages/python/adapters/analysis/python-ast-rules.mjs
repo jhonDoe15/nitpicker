@@ -4,7 +4,8 @@ import { normalizeReportPath } from '../../../java/ingest/common.mjs';
 import { run } from '../execution/python-process.mjs';
 import { RUFF_CONFIG } from '../configuration/python-ruff-config.mjs';
 import { fileURLToPath } from 'node:url';
-import { readPythonFiles } from '../configuration/pytest-collection.mjs';
+import { collectionOptions, isTestFile } from '../configuration/pytest/collection-options.mjs';
+import { readPytestConfig } from '../configuration/pytest/pytest-config.mjs';
 
 export const RULES_REPORT = 'rules.json';
 const RULES_FAILED_RULE = 'rules-failed';
@@ -31,13 +32,17 @@ export function pythonSources(context) {
 export function checkRules(context) {
   const list = path.join(context.reportRoot, FILE_LIST);
   const options = path.join(context.reportRoot, OPTIONS_FILE);
-  writeFileSync(list, pythonSources(context).join('\n'));
+  const sources = pythonSources(context);
+  const collection = collectionOptions(readPytestConfig(context.projectRoot));
+  const { testRunner } = context.project;
+  writeFileSync(list, sources.join('\n'));
   writeFileSync(
     options,
     JSON.stringify({
       sourceRoots: context.project.sourceRoots,
-      testRunner: context.project.testRunner,
-      pythonFiles: readPythonFiles(context.projectRoot),
+      testRunner,
+      ...collection,
+      testFiles: sources.filter((file) => isTestFile(file, collection)),
     }),
   );
   run(

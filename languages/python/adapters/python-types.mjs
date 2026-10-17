@@ -47,7 +47,7 @@ function mypyPath(context) {
 }
 
 function mypyReportsDeprecations(context) {
-  const match = MYPY_VERSION.exec(execute(context, ['mypy', '--version']).stdout ?? '');
+  const match = MYPY_VERSION.exec(execute(context, ['mypy', '--version']).stdout);
   if (match === null) {
     return false;
   }

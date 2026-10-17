@@ -1,7 +1,6 @@
 import { mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
-import { expect } from 'vitest';
 import { RULES_REPORT, checkRules } from '../../adapters/analysis/python-ast-rules.mjs';
 import { createToolContext } from '../../adapters/python-tools.mjs';
 
@@ -33,7 +32,7 @@ function rawFindingsOf(roots, files, settings = {}) {
 
 function caseFiles(cases) {
   return Object.fromEntries(
-    Object.entries(cases).map(([name, spec], index) => {
+    Object.values(cases).map((spec, index) => {
       const { file = 'mod.py', code } = typeof spec === 'string' ? { code: spec } : spec;
       return [`k${String(index)}/${file}`, code];
     }),
@@ -71,15 +70,15 @@ export function createScripts() {
     return verdictsFrom(found, Object.keys(cases));
   }
 
-  function expectVerdicts(rows, settings) {
+  function outcomes(rows, settings) {
     const cases = Object.fromEntries(rows.map(([name, code]) => [name, code]));
     const expected = Object.fromEntries(rows.map(([name, , found]) => [name, found]));
-    expect(verdicts(cases, settings)).toEqual(expected);
+    return [verdicts(cases, settings), expected];
   }
 
   function single(code, file = 'src/mod.py') {
     return findingsOf({ [file]: code });
   }
 
-  return { cleanup, expectVerdicts, findingsOf, single, verdicts };
+  return { cleanup, outcomes, findingsOf, single, verdicts };
 }
