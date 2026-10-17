@@ -28,7 +28,7 @@ function staticBase(glob) {
     : { path: segments.slice(0, dynamic).join('/'), isFile: false };
 }
 
-function filesNear(globs, { layout, walk, rules }) {
+function filesNear(globs, { layout, walk, rules, projectRoot }) {
   const bases = globs.map(staticBase);
   const named = bases.filter(({ isFile }) => isFile).map(({ path: file }) => file);
   const directories = new Set(bases.filter(({ isFile }) => !isFile).map(({ path: dir }) => dir));
@@ -37,6 +37,7 @@ function filesNear(globs, { layout, walk, rules }) {
     ...walk(
       [...directories].filter((dir) => rules.isDirectory(dir)),
       layout,
+      projectRoot,
     ).map(toPosix),
   ];
 }
@@ -48,7 +49,7 @@ function entryFilesOf({ projectRoot, entryPatterns, packagesInfo, layout }, walk
   );
   const globs = [...configured, ...manifestGlobs.map(toPosix)];
   const rules = walkRules({ projectRoot, layout });
-  return filesMatching(filesNear(globs, { layout, walk, rules }), globs);
+  return filesMatching(filesNear(globs, { layout, walk, rules, projectRoot }), globs);
 }
 
 function publicFilesOf({ files, projectRoot, packagesInfo, layout }) {
@@ -141,7 +142,7 @@ function revealedEntries({ production, entryExportsRun, projectRoot }) {
 }
 
 function projectOf({ layout, projectRoot }, walk) {
-  const files = walk([projectRoot], layout).map(toPosix);
+  const files = walk([projectRoot], layout, projectRoot).map(toPosix);
   const isProduction = layoutProductionMatcher(layout);
   const production = new Set(
     files.filter((file) => isProduction(path.relative(projectRoot, file))),

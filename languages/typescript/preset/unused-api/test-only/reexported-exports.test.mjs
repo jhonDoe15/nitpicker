@@ -12,9 +12,9 @@ let root;
 
 const walked = [];
 
-function walk(directories, layout) {
+function walk(directories, layout, projectRoot) {
   walked.push(...directories);
-  return codeFilesUnder(directories, layout);
+  return codeFilesUnder(directories, layout, projectRoot);
 }
 
 function report(listed) {
