@@ -114,7 +114,7 @@ describe.skipIf(!pythonE2eEnabled)('Python slow test gate end to end', () => {
   it('does not time a project whose pytest options turn the JUnit report off, and says so', () => {
     const result = gate(project, 'slow-no-junit');
 
-    expect(result.exitCode, result.text).toBe(0);
+    expect(slowTests(result), result.text).toEqual([]);
     expect(findingsOf(result, 'slow-test-not-timed').map((row) => row.slice(0, 4))).toEqual([
       ['test-runtime', '.', 'slow-test-not-timed:.', 'descriptive'],
     ]);
