@@ -1,30 +1,28 @@
 import { describe, expect, it } from 'vitest';
-import { isSecurityFinding, isTestSupportPath, SECURITY_RULES } from './test-support.mjs';
+import { isSecurityFinding, isSupportSecurityFinding, SECURITY_RULES } from './test-support.mjs';
 
-describe('test support paths', () => {
-  it.each([
-    'tests/helpers/server.py',
-    'src/shop/test_support/tls.py',
-    'src/shop/testing/fakes.py',
-    'test-support/server.py',
-    'fixtures/payloads.py',
-    'src/shop/__fixtures__/rows.py',
-    'mocks/api.py',
-    'src/shop/__mocks__/api.py',
-    'src/shop/test_utils/db.py',
-    'conftest.py',
-    'src/shop/conftest.py',
-    'src/shop/testing.py',
-  ])('count %s as test support', (file) => {
-    expect(isTestSupportPath(file)).toBe(true);
+describe('support files the rules script reported', () => {
+  const support = new Set(['qa/servers/fake_tls.py']);
+
+  it('count a security finding in a listed support file', () => {
+    const found = { tool: 'ruff', rule: 'S501', path: 'qa/servers/fake_tls.py' };
+
+    expect(isSupportSecurityFinding(found, support)).toBe(true);
   });
 
-  it.each(['src/shop/orders.py', 'src/testing_tools.py', 'src/shop/latest/mock.py', 'mocks.py'])(
-    'count %s as production code',
-    (file) => {
-      expect(isTestSupportPath(file)).toBe(false);
-    },
-  );
+  it.each([
+    { tool: 'ruff', rule: 'S501', path: 'shop/testing/ab_variants.py' },
+    { tool: 'ruff', rule: 'F401', path: 'qa/servers/fake_tls.py' },
+    { tool: 'ruff', rule: 'S501' },
+  ])('leave out $rule in $path', (found) => {
+    expect(isSupportSecurityFinding(found, support)).toBe(false);
+  });
+
+  it('count nothing when no support files are listed', () => {
+    expect(isSupportSecurityFinding({ tool: 'ruff', rule: 'S501', path: 'mocks/a.py' })).toBe(
+      false,
+    );
+  });
 });
 
 describe('security findings', () => {

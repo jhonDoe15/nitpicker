@@ -15,7 +15,7 @@ import { applyRuleHints } from '../rules/rule-hints.mjs';
 import { detectLibraries } from '../rules/libraries/project-libraries.mjs';
 import { pytestStyle } from '../rules/libraries/pytest-style.mjs';
 import { withoutAllowedForms } from '../rules/filters/ruff-allowed-forms.mjs';
-import { RULES_REPORT, readTestFiles } from './analysis/python-ast-rules.mjs';
+import { RULES_REPORT, readAllowances, readTestFiles } from './analysis/python-ast-rules.mjs';
 import { readCouplingFindings } from './analysis/python-coupling.mjs';
 import { readPythonCrapFindings } from './mutation/python-crap.mjs';
 import { readImportLinterFindings } from './analysis/python-import-linter.mjs';
@@ -51,6 +51,7 @@ export function readPythonFindings({ projectRoot, reportRoot, crapLimit, policy 
           roots,
           projectRoot,
           testFiles: readTestFiles(reportRoot),
+          ...readAllowances(reportRoot),
         }),
         ...formatFindings(readReport(reportRoot, FORMAT_REPORT), { roots, manifest }),
         ...typeFindings(JSON.parse(readReport(reportRoot, TYPES_REPORT)), roots),
@@ -83,7 +84,10 @@ function sourceLine(projectRoot, file, line) {
   return readSource(projectRoot, file)?.split(/\r?\n/u)[line - 1];
 }
 
-export function ruffFindings(log, { roots, projectRoot, testFiles = [] }) {
+export function ruffFindings(
+  log,
+  { roots, projectRoot, testFiles = [], supportFiles = [], allowed = [] },
+) {
   const prepared = prepareSarif(log, {
     roots,
     sourceRoots: [],
@@ -92,6 +96,8 @@ export function ruffFindings(log, { roots, projectRoot, testFiles = [] }) {
   });
   return withoutAllowedForms(ingestSarif(prepared, { tool: 'ruff' }).findings, {
     testFiles,
+    supportFiles,
+    allowed,
     lineOf: (file, line) => sourceLine(projectRoot, file, line),
   });
 }

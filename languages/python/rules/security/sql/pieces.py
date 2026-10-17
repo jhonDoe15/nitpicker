@@ -1,25 +1,43 @@
 import ast
 
 from checks.common import dotted_name, own_nodes
+from security.resolve.calls import dict_entries
+from security.resolve.classes import attribute_values, bind_arguments, function_of
+from security.resolve.scopes import Where, is_enum_class, lookup
 from security.sql.iterables import Iterables
+from security.sql.schema import is_schema, schema_text, typed_field
 from security.sql.shapes import (
     INERT,
     MAX_DEPTH,
     NUMERIC_CALLS,
+    PREPARER_QUOTING,
+    PREPARERS,
     QUOTING,
     UNSAFE,
     combine,
-    is_constant_text,
+    guard_collections,
     safe_annotation,
-    tail,
     textual,
 )
-from security.values import Where, bind_arguments, function_of, is_enum_class, lookup
 
 TEXT_METHODS = {"strip", "lstrip", "rstrip", "upper", "lower", "title", "casefold"}
+TEXT_METHODS |= {"decode", "encode"}
 COMPOSABLE = {"psycopg.sql.SQL", "psycopg2.sql.SQL", "psycopg.sql.Composed"}
 COMPOSABLE |= {"psycopg2.sql.Composed"}
 SCHEMA_NAMES = {"db_table", "__tablename__", "model_name", "app_label"}
+TEMPLATES = {"string.Template"}
+SUBSTITUTIONS = {"substitute", "safe_substitute"}
+
+
+def add_operands(node):
+    pending, found = [node], []
+    while pending:
+        current = pending.pop()
+        if isinstance(current, ast.BinOp) and isinstance(current.op, ast.Add):
+            pending.extend([current.right, current.left])
+        else:
+            found.append(current)
+    return found
 
 
 class Pieces(Iterables):
@@ -30,7 +48,7 @@ class Pieces(Iterables):
         if depth > MAX_DEPTH or node is None:
             return UNSAFE
         method = getattr(self, f"of_{type(node).__name__}", None)
-        return method(node, where, depth + 1) if method else UNSAFE
+        return method(node, where, depth) if method else UNSAFE
 
     def of_Constant(self, node, where, depth):
         return (node.value, False, False) if isinstance(node.value, str) else INERT
@@ -38,27 +56,43 @@ class Pieces(Iterables):
     def of_JoinedStr(self, node, where, depth):
         parts = []
         for value in node.values:
-            if isinstance(value, ast.FormattedValue):
-                parts.append(self.of(value.value, where, depth))
-            else:
-                parts.append(self.of(value, where, depth))
+            inner = value.value if isinstance(value, ast.FormattedValue) else value
+            parts.append(self.of(inner, where, depth))
         built = any(isinstance(v, ast.FormattedValue) for v in node.values)
         return combine(parts, built=built)
 
     def of_BinOp(self, node, where, depth):
+        if isinstance(node.op, ast.Add):
+            parts = [self.of(operand, where, depth) for operand in add_operands(node)]
+            return combine(parts, built=any(textual(part) for part in parts))
         left = self.of(node.left, where, depth)
         if isinstance(node.op, ast.Mod) and textual(left):
-            right = node.right
-            items = right.elts if isinstance(right, ast.Tuple) else [right]
-            items = right.values if isinstance(right, ast.Dict) else items
-            return combine([left] + [self.of(i, where, depth) for i in items], True)
+            return combine([left] + self.mapping_values(node.right, where, depth), True)
         right = self.of(node.right, where, depth)
         if isinstance(node.op, ast.Mult):
             text_side = left if textual(left) else right if textual(right) else None
             if text_side is not None:
                 return text_side
-        built = isinstance(node.op, ast.Add) and (textual(left) or textual(right))
-        return combine([left, right], built=built)
+        return combine([left, right], built=False)
+
+    def mapping_values(self, node, where, depth):
+        if isinstance(node, ast.Tuple):
+            return [self.of(item, where, depth) for item in node.elts]
+        if self.is_mapping(node, where):
+            entries = dict_entries(node, where)
+            found = [self.of(value, place, depth) for _, value, place in entries.items]
+            return found + ([] if entries.complete else [UNSAFE])
+        return [self.of(node, where, depth)]
+
+    def is_mapping(self, node, where):
+        if isinstance(node, ast.Name):
+            values = [
+                value for kind, value, _ in lookup(node.id, where) if kind == "value"
+            ]
+            node = values[0] if len(values) == 1 else None
+        if isinstance(node, ast.Call):
+            return dotted_name(node.func, where.context.aliases) == "dict"
+        return isinstance(node, ast.Dict)
 
     def of_IfExp(self, node, where, depth):
         return combine([self.of(n, where, depth) for n in (node.body, node.orelse)])
@@ -71,7 +105,14 @@ class Pieces(Iterables):
 
     of_List = of_Set = of_Tuple
 
+    def is_guarded(self, node, where):
+        return any(
+            self.is_collection(c, where) for c in guard_collections(node, where.context)
+        )
+
     def of_Name(self, node, where, depth):
+        if self.is_guarded(node, where):
+            return INERT
         key = ("name", node.id, where.context.path, id(where.scope))
         if key in self.active:
             return INERT
@@ -80,7 +121,7 @@ class Pieces(Iterables):
             entries = lookup(node.id, where)
             if not entries:
                 return UNSAFE
-            return combine([self.entry(e, depth) for e in entries])
+            return combine([self.entry(e, depth + 1) for e in entries])
         finally:
             self.active.discard(key)
 
@@ -93,53 +134,31 @@ class Pieces(Iterables):
         return self.of(value, place, depth)
 
     def of_Attribute(self, node, where, depth):
-        if node.attr in SCHEMA_NAMES or (
-            node.attr in {"name", "fullname"}
-            and isinstance(node.value, ast.Attribute)
-            and node.value.attr == "__table__"
-        ):
+        if node.attr in SCHEMA_NAMES or schema_text(node, where):
             return INERT
-        if is_enum_class(node.value, where):
+        if is_enum_class(node.value, where) or typed_field(node, where):
             return INERT
+        values = self.attribute(node, where)
+        if values is not None:
+            return combine(
+                [self.of(value, place, depth + 1) for value, place in values]
+            )
         if node.attr in {"value", "name"}:
             return self.of(node.value, where, depth)
-        constant = self.project_constant(node, where)
-        return UNSAFE if constant is None else self.of(constant[0], constant[1], depth)
+        return UNSAFE
 
-    def project_constant(self, node, where):
-        dotted = dotted_name(node, where.context.aliases)
-        located = where.context.project.locate(dotted) if dotted else None
-        other = located and where.context.project.contexts.get(located[0])
-        if other is None:
-            return None
-        entries = lookup(located[1], Where(other, None))
-        values = [e for e in entries if e[0] == "value"]
-        if len(values) != 1:
-            return None
-        return values[0][1], values[0][2]
+    def attribute(self, node, where):
+        key = ("attribute", ast.dump(node), where.context.path, id(where.scope))
+        if key in self.active:
+            return []
+        self.active.add(key)
+        try:
+            return attribute_values(node, where)
+        finally:
+            self.active.discard(key)
 
     def of_Subscript(self, node, where, depth):
         return INERT if self.is_table(node.value, where) else UNSAFE
-
-    def is_table(self, node, where, depth=0):
-        if depth > 3:
-            return False
-        if isinstance(node, ast.Dict):
-            return bool(node.values) and all(is_constant_text(v) for v in node.values)
-        if isinstance(node, (ast.Tuple, ast.List)):
-            return bool(node.elts) and all(is_constant_text(e) for e in node.elts)
-        if isinstance(node, ast.Call) and tail(node.func, where) == "MappingProxyType":
-            return bool(node.args) and self.is_table(node.args[0], where, depth + 1)
-        if isinstance(node, ast.Name):
-            entries = lookup(node.id, where)
-            return bool(entries) and all(
-                kind == "value" and self.is_table(value, place, depth + 1)
-                for kind, value, place in entries
-            )
-        if isinstance(node, ast.Attribute):
-            constant = self.project_constant(node, where)
-            return constant is not None and self.is_table(*constant, depth + 1)
-        return False
 
     def of_Call(self, node, where, depth):
         function = node.func
@@ -154,37 +173,63 @@ class Pieces(Iterables):
             return self.of(node.args[0], where, depth)
         return self.returns(node, where, depth)
 
+    def formatted(self, node, receiver, where, depth):
+        if not textual(receiver):
+            return None
+        if any(isinstance(a, ast.Starred) for a in node.args):
+            return combine([receiver, UNSAFE], True)
+        parts = [self.of(a, where, depth) for a in node.args]
+        parts += [
+            self.of(k.value, where, depth) if k.arg else UNSAFE for k in node.keywords
+        ]
+        return combine([receiver] + parts, True)
+
     def method_call(self, node, function, name, where, depth):
-        if function.attr == "format":
-            if (
-                dotted_name(
-                    getattr(function.value, "func", None), where.context.aliases
-                )
-                in COMPOSABLE
-            ):
-                return INERT
+        attr = function.attr
+        receiver_call = function.value if isinstance(function.value, ast.Call) else None
+        receiver_name = dotted_name(
+            getattr(receiver_call, "func", None), where.context.aliases
+        )
+        if attr == "format" and receiver_name in COMPOSABLE:
+            return INERT
+        if attr == "format":
+            return self.formatted(
+                node, self.of(function.value, where, depth), where, depth
+            )
+        if attr == "format_map" and len(node.args) == 1:
             receiver = self.of(function.value, where, depth)
-            if not textual(receiver):
-                return None
-            if any(isinstance(a, ast.Starred) for a in node.args):
-                return combine([receiver, UNSAFE], True)
-            parts = [self.of(a, where, depth) for a in node.args]
-            parts += [
-                self.of(k.value, where, depth) if k.arg else UNSAFE
-                for k in node.keywords
+            values = self.mapping_values(node.args[0], where, depth)
+            return combine([receiver] + values, True) if textual(receiver) else None
+        if attr in SUBSTITUTIONS and receiver_name in TEMPLATES and receiver_call.args:
+            template = self.of(receiver_call.args[0], where, depth)
+            values = [
+                v for a in node.args for v in self.mapping_values(a, where, depth)
             ]
-            return combine([receiver] + parts, True)
-        if function.attr == "join" and len(node.args) == 1:
+            return (
+                self.formatted(node, template, where, depth)
+                if not values
+                else combine([template] + values, True)
+            )
+        return self.other_method(node, function, name, where, depth)
+
+    def other_method(self, node, function, name, where, depth):
+        attr = function.attr
+        if attr == "join" and len(node.args) == 1:
             separator = self.of(function.value, where, depth)
             if textual(separator) or isinstance(function.value, ast.Constant):
                 return combine(
                     [separator, self.iterable(node.args[0], where, depth)], True
                 )
-        if function.attr in TEXT_METHODS:
+        if attr in TEXT_METHODS:
             return self.of(function.value, where, depth)
-        if function.attr == "get" and self.is_table(function.value, where):
+        if attr == "mogrify" and node.args:
+            return self.of(node.args[0], where, depth)
+        if attr == "get" and self.is_table(function.value, where):
             return combine([self.of(a, where, depth) for a in node.args[1:2]])
-        if name.rsplit(".", 1)[-1] in QUOTING:
+        owner = (dotted_name(function.value, ({}, {})) or "").rsplit(".", 1)[-1]
+        if attr in PREPARER_QUOTING and owner in PREPARERS:
+            return INERT
+        if name.rsplit(".", 1)[-1] in QUOTING or is_schema(node, where):
             return INERT
         return None
 
@@ -202,7 +247,7 @@ class Pieces(Iterables):
                 place.context, function, bind_arguments(call, function, where)
             )
             values = [
-                self.of(n.value, inner, depth)
+                self.of(n.value, inner, depth + 1)
                 for n in own_nodes(function)
                 if isinstance(n, ast.Return) and n.value is not None
             ]

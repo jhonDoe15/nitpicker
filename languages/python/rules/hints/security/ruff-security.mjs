@@ -72,7 +72,8 @@ export const SECURITY_HINTS = [
   {
     tool: 'ruff',
     rules: ['S506'],
-    allowed: 'Load YAML with `yaml.safe_load(text)`.',
+    allowed:
+      'Load YAML with `yaml.safe_load(text)`, or `yaml.load(text, Loader=yaml.SafeLoader)` with `SafeLoader` or a subclass of it.',
   },
   {
     tool: 'ruff',

@@ -265,13 +265,22 @@ through the real tools.
   dropped after ruff runs (`rules/filters/ruff-allowed-forms.mjs`). Security findings (ruff `S` and the
   `sql-string-formatting`, `tls-verification-off`, `weak-hmac`, `http-without-timeout` and
   `unsafe-deserialization` rules) are also dropped in test support that pytest does not collect, as in the
-  TypeScript preset: a `testing`, `test_support`, `test-support`, `test_utils`, `test_helpers`, `testutils`,
-  `test_fixtures`, `fixtures`, `__fixtures__`, `mocks` or `__mocks__` folder anywhere in the path, and files
-  named `conftest.py`, `testing.py`, `testutils.py` or `fixtures.py` (`rules/filters/test-support.mjs`).
+  TypeScript preset. Test support is every file under a test root (the configured pytest `testpaths`, and
+  any `tests` or `test` folder) and `conftest.py`; a `testing`, `test_support`, `test-support`, `test_utils`,
+  `test_helpers`, `testutils`, `test_fixtures`, `fixtures`, `__fixtures__`, `mocks`, `__mocks__`, `fakes` or
+  `stubs` folder, or a file named `testing.py`, `testutils.py` or `fixtures.py`, counts only inside a test
+  root or when no production module imports it (directly or through other support files). A production
+  `testing/` or `fixtures/` package that the application imports keeps its findings. The rules script
+  decides the support files (`security/support.py`) and lists them in `rules-allowances.json` beside its
+  report, where `rules/filters/test-support.mjs` reads them for ruff's findings.
 - **AST rules.** `languages/python/rules/nitpicker_rules.py` runs with `python -I` (standard
   library only, never importing project code) over the files `ruff check --show-files` lists, so
   it sees exactly the files ruff lints, honoring `.gitignore`. Findings have tool `python-rules`.
-  Files that do not parse are left to ruff's syntax errors.
+  Files that do not parse are left to ruff's syntax errors. The script needs Python 3.10 or newer (every
+  Python still supported upstream); on an older project interpreter it runs no check and reports one
+  `python-rules/rules-skipped` tool error that names the version it needs and the one it found. A security
+  check that fails on a file is reported as a `python-rules/rules-check-failed` tool error naming the check
+  and the file; that file has no findings of that check, and every other check and file still runs.
 
 | Allowed form                                   | Banned form                                                                  | Rule                                                       |
 | ---------------------------------------------- | ---------------------------------------------------------------------------- | ---------------------------------------------------------- |
@@ -417,68 +426,109 @@ Details that are decisions rather than the table:
   `create_subprocess_shell`). A list of arguments, or a fixed command string that ruff already
   accepts, is the allowed form. Not in tests.
 - `sql-string-formatting` reports SQL text built at run time that reaches a query call. A value is
-  built when an f-string, `%`, `+`, `+=`, `.format` or `.join` puts a piece into it that is not provably
-  inert, followed through local names, module constants, constants and helper functions imported from
-  other project modules (with the call's arguments bound to the helper's parameters), comprehensions and
-  lists filled by `append`/`extend`. Inert pieces are literals, numbers (`int(x)`, `len(ids)`), placeholder
+  built when an f-string, `%`, `+`, `+=`, `.format`, `.format_map`, `string.Template(...).substitute` or
+  `.join` puts a piece into it that is not provably inert, followed through local names, parameter
+  defaults, module constants, class attributes and `self.x` set in the class (or a dataclass field),
+  attributes of a project module (`settings.TABLE`), constants and helper functions imported from other
+  project modules (with the call's arguments bound to the helper's parameters), comprehensions and lists
+  filled by `append`/`extend`. Inert pieces are literals, numbers (`int(x)`, `len(ids)`), placeholder
   lists built from placeholders alone (`", ".join(["%s"] * len(ids))`, `"?" * n`, `("%s" for _ in ids)`,
   rows such as `"(%s, %s)"`), optional filters whose every `append` is constant text
   (`conditions.append("name = %s")` joined with `" AND "`), a subscript or `.get` of a dict, tuple or list of
-  constant names (`COLUMNS[key]`), a loop over such a tuple, a parameter annotated `Literal[...]`, `int` or
-  an `Enum`/`StrEnum` class of the project (and `.value`), a Django `_meta.db_table` or a SQLAlchemy
-  `__tablename__`, quoting calls (`quote_name`, `quote_ident`, `escape_identifier`) and psycopg
-  `sql.Identifier`, `sql.Literal` and `sql.Placeholder`; anything else, including a parameter or an unknown
-  call, is not. The query calls are `execute`, `executemany`, `executescript`, `exec_driver_sql`, `raw`,
-  `text`, `query`, `fetch`, `fetchrow`, `fetchval`, `fetch_all`, `fetch_one`, `fetch_val`, `copy_expert` and
-  pandas `read_sql*`, where the static text must look like SQL (a statement, a clause keyword such as
-  `WHERE`, `ORDER BY` or `LIMIT`, or an upper-case `AND`, `SET`, `FROM`); the raw builders of query libraries
+  constant names (`COLUMNS[key]`), a loop over such a tuple or over the keys or values of a constant dict
+  (also `MappingProxyType`, `frozenset` and `sorted` of one), the counter of `enumerate` (`f"${n}"`), a name
+  checked against a constant collection before use (`if column not in ALLOWED: raise ...`, also `return`,
+  `continue` or `break`, an enclosing `if column in ALLOWED:` and a comprehension filter), a parameter or a
+  pydantic or dataclass field annotated `Literal[...]`, `int` or an `Enum`/`StrEnum` class of the project
+  (and `.value`; a union counts only when every member does), a Django `_meta.db_table`, `get_field(...)`
+  and `concrete_fields` columns, SQLAlchemy metadata (`__tablename__`, `Table("name", ...)` and its `.name`,
+  `.c`, `.columns`, `metadata.tables`, `sorted_tables`, `inspect(Model).columns`), quoting calls
+  (`quote_name`, `quote_ident`, `escape_identifier`, `dialect.identifier_preparer.quote`), psycopg
+  `sql.Identifier`, `sql.Literal` and `sql.Placeholder`, and rows from `cursor.mogrify`; anything else,
+  including a parameter or an unknown call, is not. The query calls are matched by name, as in the
+  TypeScript rule: any name containing `query`, `sql` or `execute` (`execute`, `executemany`, `run_sql`,
+  `read_sql`, `exec_driver_sql`, but not `execute_command` or `to_sql`), a name starting with `fetch`,
+  `prepare`, `mogrify`, `raw`, `text`, `exec` and the `copy_*` calls, also through an alias
+  (`run = cursor.execute`), `getattr(cursor, "execute")` and `functools.partial`, plus psycopg2
+  `execute_values`/`execute_batch`. The static text must look like SQL: a statement (`SELECT`, `INSERT`,
+  `UPDATE`, `DELETE`, `WITH`, `MERGE`, and DDL: `CREATE`, `ALTER`, `DROP`, `TRUNCATE`), or a clause in SQL
+  shape (`WHERE name =`, `ORDER BY`, `LIMIT`, `SET x =`); a lone upper-case `AND`, `OR`, `IN` or `ON`, as in
+  a search query, is not SQL. The raw builders of query libraries
   report any built piece, since their argument is SQL by definition: SQLAlchemy `text` and `literal_column`
   (also inside `.where(...)`, `.order_by(...)`), peewee `SQL` and psycopg `sql.SQL` (and `sql.SQL(value)` as
   an argument of `sql.SQL(...).format`, while `.format` on a `sql.SQL` with `sql.Identifier`/`sql.Literal`
-  is the safe composition). A project function that passes one of its parameters straight to a query call
-  is a wrapper, and its call sites are checked too (two levels). Django `.extra` and `RawSQL` are left to
+  is the safe composition). A project function or method that passes one of its parameters (positional or
+  keyword-only) straight to a query call is a wrapper, and its call sites are checked too (two levels). The
+  advice names the placeholder style of the project's driver, read from its dependencies: `$1` for asyncpg,
+  `?` for aiosqlite, `:name` for `databases`, `%s` otherwise. Django `.extra` and `RawSQL` are left to
   ruff `S610` and `S611`, which report them already. Prose, log and exception text with SQL words never
   reaches a query call and passes. It replaces ruff's `S608`, which flags every string that looks like SQL.
 - `tls-verification-off` reports what ruff `S501` and `S323` miss: `verify=` on `requests`, `httpx`,
   `boto3`, `aiohttp` and session or client calls when the value can be `False` (a condition such as
   `verify=not DEBUG`, a comparison with the environment such as `os.environ.get("X") != "0"`, `bool(...)`,
-  `strtobool`, `env.bool`, a conditional expression with a `False` branch, or a name or imported constant
-  bound to one of those), and a literal `False` on calls `S501` does not cover (a session, `boto3`);
+  `strtobool`, `env.bool`, a conditional expression with a `False` branch, an `or` whose last operand can be
+  `False` or an `and` whose operands can, or a name, parameter default, class attribute or imported
+  constant bound to one of those; `ca or True` and `env or certifi.where()` cannot be `False` and pass),
+  also through an options dict (a literal, `dict(...)`, one built in steps, `**options`) and
+  `functools.partial`, and a literal `False` on calls `S501` does not cover (a session, `boto3`);
   `session.verify = False` and the same conditions; `ssl._create_default_https_context =
 ssl._create_unverified_context`; `check_hostname = False` and `verify_mode = ssl.CERT_NONE` on a client
-  context; urllib3 `cert_reqs="CERT_NONE"` and `assert_hostname=False`; `cert_reqs`/`ssl_cert_reqs` set to
-  `CERT_NONE` (and redis `ssl_cert_reqs=None`) in calls and option dicts (websocket `sslopt`); aiohttp
-  `ssl=False` and `verify_ssl=False`; MongoDB `tlsAllowInvalidCertificates`, `tlsAllowInvalidHostnames`,
-  `tlsInsecure` set to a value that can be `True`, also in a `mongodb://` URI; and environment switches set
-  in code or for child processes (`PYTHONHTTPSVERIFY=0`, an empty `CURL_CA_BUNDLE` or `REQUESTS_CA_BUNDLE`,
-  `NODE_TLS_REJECT_UNAUTHORIZED=0`, `GIT_SSL_NO_VERIFY`). A server context (`ssl.Purpose.CLIENT_AUTH`,
-  `PROTOCOL_TLS_SERVER`, `server_side=True`, uvicorn and similar servers) passes: a server that asks for
-  optional client certificates sets `CERT_OPTIONAL`, which is never reported. A literal `verify=False` on a
+  context (also `ssl.VerifyMode.CERT_NONE` and `0`, and through `setattr`); urllib3 `cert_reqs="CERT_NONE"`
+  and `assert_hostname=False`; `cert_reqs`/`ssl_cert_reqs` set to `CERT_NONE` (and redis
+  `ssl_cert_reqs=None`) in calls and option dicts (websocket `sslopt`); aiohttp `ssl=False` (also a name
+  bound to it) and `verify_ssl=False`; Elasticsearch and OpenSearch `verify_certs=False` and
+  `ssl_assert_hostname=False`, kafka `ssl_check_hostname=False`, ldap3 `Tls(validate=CERT_NONE)`, docker
+  `TLSConfig(verify=False)` and minio `cert_check=False`; Playwright `ignore_https_errors=True`, Selenium
+  `acceptInsecureCerts` (a capability or `accept_insecure_certs = True`) and the browser flag
+  `--ignore-certificate-errors`; MongoDB `tlsAllowInvalidCertificates`, `tlsAllowInvalidHostnames`,
+  `tlsInsecure` set to a value that can be `True`, also in a connection URI, including one built with an
+  f-string or `+`; and environment switches set in code or for child processes (`PYTHONHTTPSVERIFY=0`, an
+  empty `CURL_CA_BUNDLE` or `REQUESTS_CA_BUNDLE`, `NODE_TLS_REJECT_UNAUTHORIZED=0`, `GIT_SSL_NO_VERIFY`). A
+  switch behind an explicit command-line flag (`verify=not args.insecure`) is reported too; a project that
+  wants such a flag lifts the rule for its path with `python.exceptions`. A server context
+  (`ssl.Purpose.CLIENT_AUTH`, `PROTOCOL_TLS_SERVER`, `server_side=True`, also held on `self.context`, and
+  uvicorn and similar servers) and a server option dict (one that sets `certfile`,
+  `keyfile`, `ssl_certfile` or `ssl_keyfile`) pass: a server that asks for optional client certificates
+  sets `CERT_OPTIONAL`, which is never reported. A literal `verify=False` on a
   module-level `requests` or `httpx` call is left to `S501`, so one site gives one finding. A `verify=`
   read from an attribute (`settings.CA_BUNDLE`) is not reported, since it can be a path. Text that mentions
   the settings (a warning, help text) is not read.
 - `weak-hmac` reports HMAC with MD5 (or MD4, MD2): `hmac.new`, `hmac.HMAC` and `hmac.digest` with
-  `hashlib.md5`, `"md5"`, an import alias or a constant bound to one, also from another module, pycryptodome
-  `HMAC.new(..., digestmod=MD5)` and cryptography `hmac.HMAC(key, hashes.MD5())`. HMAC-SHA1 passes: its
+  `hashlib.md5`, `"md5"`, a lambda returning one, `hashlib.new("md5")`, an import alias, a parameter default,
+  a class attribute or a constant bound to one, also from another module and through `functools.partial`,
+  pycryptodome `HMAC.new(..., digestmod=MD5)` and cryptography `hmac.HMAC(key, hashes.MD5())`. HMAC-SHA1 passes: its
   security does not rest on collision resistance, and TOTP, HOTP and OAuth 1.0a fix it. Ruff's `S324`
   does not look into `hmac`, and `hashlib.md5(..., usedforsecurity=False)` passes `S324` already; ruff's
   `S303` reports `hashes.SHA1()` and `hashes.MD5()` inside a cryptography `HMAC(...)`, so those findings are
-  dropped after ruff runs (`ruff-allowed-forms.mjs` finds the enclosing call), leaving HMAC-SHA1 allowed and
-  HMAC-MD5 reported once, with the HMAC message.
+  dropped after ruff runs, leaving HMAC-SHA1 allowed and HMAC-MD5 reported once, with the HMAC message. The
+  rules script finds those sites from the syntax tree (an aliased `HMAC`, a hash held in a variable) and
+  lists them in `rules-allowances.json`; it also lists SHA-1 in RSA-OAEP and `MGF1`
+  (`padding.OAEP(mgf=padding.MGF1(algorithm=hashes.SHA1()), algorithm=hashes.SHA1(), ...)`), which rests on
+  no collision resistance either. `hashes.Hash(hashes.SHA1())` stays an `S303` finding.
 - `http-without-timeout` reports what ruff `S113` (module-level `requests` and `httpx` calls) misses:
   `urllib.request.urlopen` and an opener's `open` without a timeout, `http.client.HTTPConnection` and
-  `HTTPSConnection` without one, a call on a plain `requests.Session()` (a local, a `with` target, a chain or
-  a `self.` attribute set in the class) without `timeout=`, and `timeout=None` on such a session or an httpx
-  client. `httpx` without a timeout passes: it has a 5 second default, and `S113` reports only an explicit
-  `None`. `aiohttp.ClientSession` passes: its default `ClientTimeout` ends a request after 5 minutes. A
-  session that mounts an adapter (a timeout adapter) or comes from a project factory, and a call with
-  `**kwargs`, are not reported; `urlopen` is not reported when production code calls
-  `socket.setdefaulttimeout` with a number.
+  `HTTPSConnection` without one, a call on a plain `requests.Session()` (a local, a `with` target, a chain, a
+  class attribute, a `self.` attribute set or annotated in the class, a dataclass field, or a module
+  attribute of a project module) without `timeout=`, `timeout=None` (also through a constant such as
+  `TIMEOUT = None`) on such a session or an httpx client, `getattr(session, method)(...)`,
+  `functools.partial(requests.get, ...)` without a timeout, a urllib3 `PoolManager` or `urllib3.request`
+  without one (urllib3 has no default), and an `aiohttp.ClientTimeout` that bounds nothing (no `total`,
+  `connect`, `sock_read` or `sock_connect`, or each of them `None`, as in `ClientTimeout(total=None)`). `httpx` without a timeout passes: it has a 5 second default, and
+  `S113` reports only an explicit `None`. `aiohttp.ClientSession` passes: its default `ClientTimeout` ends a
+  request after 5 minutes. A project factory or `Session` subclass passes only when it sets a timeout: it
+  mounts a timeout adapter on that same session in the same scope (a plain `HTTPAdapter` sets none),
+  overrides `request` or `send` to set one, or binds `request` with `functools.partial(..., timeout=...)`.
+  A call with `**kwargs` whose keys are unknown is not reported; `urlopen` is not reported when production
+  code calls `socket.setdefaulttimeout` with a number.
 - `unsafe-deserialization` reports what ruff `S301`, `S302` and `S506` miss: `yaml.unsafe_load`,
   `yaml.full_load` and their `_all` forms, `yaml.load_all` without a safe loader (`SafeLoader`, `CSafeLoader`,
-  `BaseLoader` or a project class deriving from one; `S506` covers `yaml.load` only), ruamel
-  `YAML(typ="unsafe")`, `torch.load` without `weights_only=True` (torch 2.6 made it the default, and the
-  explicit form holds on every version) and `numpy.load(..., allow_pickle=True)`. `jsonpickle.decode`,
+  `BaseLoader` or a project class deriving from one at any depth; `S506` covers `yaml.load` only, and its
+  finding is dropped when the loader is such a class), ruamel `YAML(typ="unsafe")` (also `y.typ = "unsafe"`
+  set afterwards), `torch.load` without `weights_only` bound to `True` (a literal or a constant; torch 2.6
+  made it the default, and the explicit form holds on every version), `numpy.load(..., allow_pickle=True)`,
+  the pickle-based `joblib.load`, `cloudpickle.load` and `cloudpickle.loads`, keras and `tf.keras`
+  `load_model(..., safe_mode=False)` and lxml `XMLParser(resolve_entities=True)` or `no_network=False`,
+  also through an options dict or `functools.partial`. `jsonpickle.decode`,
   `dill`, `shelve` and `pandas.read_pickle` are `S301` findings already. A pickle round trip used to copy a
   value is an `S301` finding whose advice names `copy.deepcopy(value)`.
 - `clock-now`, `random-in-domain`, `io-in-domain` and `any-in-domain` apply to a directory named

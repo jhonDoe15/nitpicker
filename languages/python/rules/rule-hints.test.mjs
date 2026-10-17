@@ -262,7 +262,30 @@ describe('hints follow the libraries of the project', () => {
     ['numpy.load', 'allow_pickle=False'],
     ['ruamel.yaml.YAML', 'YAML(typ="safe")'],
     ['yaml.full_load', 'yaml.safe_load(text)'],
+    ['joblib.load', 'skops.io.load'],
+    ['cloudpickle.loads', 'json.loads(text)'],
+    ['keras.models.load_model', '`safe_mode=True`'],
+    ['lxml.etree.XMLParser', 'defusedxml.lxml'],
   ])('name the safe loader for %s', (subject, form) => {
     expect(advice('unsafe-deserialization', {}, 'python-rules', subject)).toContain(form);
+  });
+
+  it.each([
+    [
+      'cur.execute',
+      'asyncpg',
+      'WHERE id = $1", user_id)',
+      'f"${n}" for n in range(1, len(ids) + 1)',
+    ],
+    ['cur.execute', 'sqlite', 'WHERE id = ?", (user_id,))', '", ".join(["?"] * len(ids))'],
+    ['cur.execute', 'format', 'WHERE id = %s", (user_id,))', '", ".join(["%s"] * len(ids))'],
+    ['cur.execute', 'named', 'WHERE id = :id", {"id": user_id})', 'f":id_{n}"'],
+    ['conn.fetchrow', 'format', 'WHERE id = $1", user_id)', 'f"${n}"'],
+    ['db.fetch_all', 'format', 'WHERE id = :id", {"id": user_id})', 'f":id_{n}"'],
+  ])('name the placeholders for %s on %s', (subject, database, call, list) => {
+    const message = advice('sql-string-formatting', { database }, 'python-rules', subject);
+
+    expect(message).toContain(call);
+    expect(message).toContain(list);
   });
 });

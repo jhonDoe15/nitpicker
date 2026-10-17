@@ -121,7 +121,22 @@ describe('rules script report', () => {
     [
       'unsafe-deserialization',
       'torch.load',
-      '`torch.load` can unpickle arbitrary objects from the file',
+      '`torch.load` unpickles arbitrary objects from the file on torch below 2.6, or with `weights_only=False`',
+    ],
+    [
+      'unsafe-deserialization',
+      'joblib.load',
+      '`joblib.load` unpickles arbitrary objects from the file',
+    ],
+    [
+      'unsafe-deserialization',
+      'keras.models.load_model',
+      '`keras.models.load_model` with `safe_mode=False` runs arbitrary code stored in the model file',
+    ],
+    [
+      'unsafe-deserialization',
+      'lxml.etree.XMLParser',
+      '`lxml.etree.XMLParser` expands external entities or fetches them from the network',
     ],
     [
       'unsafe-deserialization',
@@ -142,18 +157,63 @@ describe('rules script report', () => {
     ]);
   });
 
-  it('drops security findings in test support and keeps them in production code', () => {
+  it('keeps every finding the script reports, test support is decided by the script', () => {
     const report = [
-      entry({ rule: 'tls-verification-off', path: 'src/app/test_support/tls.py' }),
-      entry({ rule: 'weak-hmac', path: 'mocks/signing.py' }),
-      entry({ rule: 'sql-string-formatting', path: 'src/app/conftest.py' }),
-      entry({ rule: 'http-without-timeout', path: 'src/app/feeds.py' }),
-      entry({ rule: 'frozen-dataclass', path: 'src/app/testing/order.py' }),
+      entry({ rule: 'tls-verification-off', path: 'src/shop/testing/ab_variants.py' }),
+      entry({ rule: 'sql-string-formatting', path: 'src/league/fixtures/repository.py' }),
+      entry({ rule: 'sql-string-formatting', path: 'src/league/fixtures.py' }),
+      entry({ rule: 'http-without-timeout', path: 'src/payments/mocks/sandbox_gateway.py' }),
     ];
 
     expect(ingestRulesReport(JSON.stringify(report)).map(({ path }) => path)).toEqual([
-      'src/app/feeds.py',
-      'src/app/testing/order.py',
+      'src/shop/testing/ab_variants.py',
+      'src/league/fixtures/repository.py',
+      'src/league/fixtures.py',
+      'src/payments/mocks/sandbox_gateway.py',
+    ]);
+  });
+
+  it('turns a failed check into a tool error for that file and keeps the other findings', () => {
+    const report = [
+      entry(),
+      {
+        rule: 'rules-check-failed',
+        path: 'src/app/db.py',
+        subject: 'sql-string-formatting',
+        line: 1,
+        error: 'IndexError: list index out of range',
+      },
+    ];
+
+    const [kept, failed] = ingestRulesReport(JSON.stringify(report));
+
+    expect([kept.rule, kept.classification]).toEqual(['frozen-dataclass', 'enforceable']);
+    expect([failed]).toEqual([
+      {
+        tool: 'python-rules',
+        rule: 'rules-check-failed',
+        path: 'src/app/db.py',
+        identity: 'rules-check-failed:sql-string-formatting',
+        message:
+          'The python-rules check sql-string-formatting failed on src/app/db.py (IndexError: list index out of range), so that file has no sql-string-formatting findings; the other checks and files ran. Report it as a nitpicker bug with the file.',
+        classification: 'tool-error',
+      },
+    ]);
+  });
+
+  it('turns a skipped run on an old Python into one tool error naming the required version', () => {
+    const report = [{ rule: 'rules-skipped', path: '.', subject: '3.9.18', line: 1 }];
+
+    expect(ingestRulesReport(JSON.stringify(report))).toEqual([
+      {
+        tool: 'python-rules',
+        rule: 'rules-skipped',
+        path: '.',
+        identity: 'rules-skipped',
+        message:
+          'The python-rules checks did not run: they need Python 3.10 or newer, and the project environment runs Python 3.9.18. Point "python.environment" at a Python 3.10 or newer environment.',
+        classification: 'tool-error',
+      },
     ]);
   });
 

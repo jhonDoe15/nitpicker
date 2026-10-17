@@ -8,10 +8,6 @@ const FIXED_COMMAND = /seems safe, but may be changed in the future/;
 const TEST_FILE_NOISE = /^(?:ARG|FBT|PLR2004|S\d)/u;
 const COMMENT_LABEL = /^\s*#+\s*(?:[A-Z][A-Za-z]*(?: [A-Za-z]+){0,2}:\s+\S|e\.g\.|i\.e\.)/u;
 const COMMENTED_CODE_RULE = 'ERA001';
-const HASH_CLASS_RULE = 'S303';
-const HMAC_CALLEE = /\bHMAC\s*$/u;
-const LINES_BEFORE = 8;
-const PAREN_DEPTH = { ')': 1, '(': -1 };
 
 function isAllowedNumber(message) {
   const text = MAGIC_VALUE.exec(message)?.[1];
@@ -25,42 +21,20 @@ function isLabelComment({ rule, path, location }, lineOf) {
   return COMMENT_LABEL.test(lineOf(path, location.line) ?? '');
 }
 
-function textBefore({ path, location }, lineOf) {
-  const first = Math.max(1, location.line - LINES_BEFORE);
-  const lines = Array.from(
-    { length: location.line - first },
-    (_, offset) => lineOf(path, first + offset) ?? '',
-  );
-  const current = lineOf(path, location.line) ?? '';
-  return [...lines, current.slice(0, Math.max(0, (location.column ?? 1) - 1))].join('\n');
+function siteKey({ rule, path, line }) {
+  return `${rule}\0${path}\0${String(line)}`;
 }
 
-function enclosingCallee(text) {
-  const characters = text.split('').reverse();
-  let depth = 0;
-  for (const [offset, character] of characters.entries()) {
-    depth += PAREN_DEPTH[character] ?? 0;
-    if (depth < 0) {
-      return text.slice(0, text.length - 1 - offset);
-    }
-  }
-  return undefined;
+function isAllowedSite({ rule, path, location }, sites) {
+  return location?.line !== undefined && sites.has(siteKey({ rule, path, line: location.line }));
 }
 
-function isHmacHash(finding, lineOf) {
-  if (finding.rule !== HASH_CLASS_RULE || finding.location?.line === undefined) {
-    return false;
-  }
-  const callee = enclosingCallee(textBefore(finding, lineOf));
-  return callee !== undefined && HMAC_CALLEE.test(callee);
-}
-
-function isAllowedForm(finding, { testFiles, lineOf }) {
+function isAllowedForm(finding, { testFiles, supportFiles, sites, lineOf }) {
   const { rule, message, path } = finding;
   if (testFiles.has(path) && TEST_FILE_NOISE.test(rule)) {
     return true;
   }
-  if (isSupportSecurityFinding(finding) || isHmacHash(finding, lineOf)) {
+  if (isSupportSecurityFinding(finding, supportFiles) || isAllowedSite(finding, sites)) {
     return true;
   }
   if (isLabelComment(finding, lineOf)) {
@@ -72,7 +46,15 @@ function isAllowedForm(finding, { testFiles, lineOf }) {
   return SHELL_RULES.has(rule) && FIXED_COMMAND.test(message);
 }
 
-export function withoutAllowedForms(findings, { testFiles = [], lineOf = () => undefined } = {}) {
-  const context = { testFiles: new Set(testFiles), lineOf };
+export function withoutAllowedForms(
+  findings,
+  { testFiles = [], supportFiles = [], allowed = [], lineOf = () => undefined } = {},
+) {
+  const context = {
+    testFiles: new Set(testFiles),
+    supportFiles: new Set(supportFiles),
+    sites: new Set(allowed.map(siteKey)),
+    lineOf,
+  };
   return findings.filter((finding) => finding.tool !== 'ruff' || !isAllowedForm(finding, context));
 }
