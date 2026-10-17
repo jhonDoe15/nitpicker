@@ -91,4 +91,16 @@ describe('rules script report', () => {
       },
     ]);
   });
+
+  it('names an unused parameter with a default, and which calls count', () => {
+    const report = [
+      entry({ rule: 'unused-option', subject: 'total.rate', data: { scope: 'private' } }),
+      entry({ rule: 'unused-option', subject: 'total.cents', data: { scope: 'published' } }),
+    ];
+
+    expect(ingestRulesReport(JSON.stringify(report)).map(({ message }) => message)).toEqual([
+      'Optional parameter `total.rate` is never passed by a call outside the tests',
+      "Optional parameter `total.cents` is never passed by any call, this package's own tests included",
+    ]);
+  });
 });
