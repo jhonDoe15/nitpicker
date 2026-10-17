@@ -4,7 +4,7 @@ import { ingestCrapFunctions } from '../../ingest/crap.mjs';
 import { ownRange } from '../../ingest/units/unit-coverage.mjs';
 import { MESSAGES, RULE_IDS } from '../../../../shared/policy.mjs';
 import { hash, repeatsInSource } from '../../../../shared/rules/finding-helpers.mjs';
-import { methodText, structureFindings } from '../metrics/java-structure.mjs';
+import { methodText, structureFindings } from '../../../../shared/ingest/structure-report.mjs';
 
 const METRICS_REPORT = 'kotlin-metrics.json';
 const DEFAULT_ARGUMENTS_SUFFIX = '$default';

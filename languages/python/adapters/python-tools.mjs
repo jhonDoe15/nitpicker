@@ -1,6 +1,6 @@
 import { writeFileSync } from 'node:fs';
 import path from 'node:path';
-import { jscpdVersion } from '../../java/adapters/metrics/java-duplicates.mjs';
+import { jscpdVersion } from '../../../core/tooling/jscpd/run-jscpd.mjs';
 import { scanImports } from './analysis/python-coupling.mjs';
 import { scanDependencies } from './dependencies/dependency-findings.mjs';
 import { runDuplicates } from './analysis/python-duplicates.mjs';
@@ -42,6 +42,7 @@ export function createToolContext({
   settings = {},
   reportRoot,
   exclude = [],
+  duplicateSkippedFolders,
   snapshot = 'head',
   baselineRoot,
   conventions = {},
@@ -55,9 +56,6 @@ export function createToolContext({
     setting: settings.environment,
   });
   const sourceRoots = detectSourceRoots(projectRoot, settings.sourceRoots);
-  const pythonPath = [...importRoots(projectRoot, sourceRoots), process.env.PYTHONPATH]
-    .filter((entry) => entry !== undefined && entry !== '')
-    .join(path.delimiter);
   return {
     projectRoot,
     reportRoot,
@@ -68,6 +66,7 @@ export function createToolContext({
     toolPrecedence,
     launcher,
     exclude,
+    duplicateSkippedFolders,
     pytestAddopts,
     project: {
       formatter: detectFormatter(projectRoot, settings.formatter),
@@ -80,7 +79,7 @@ export function createToolContext({
       entryPoints: settings.entryPoints ?? [],
     },
     env: {
-      PYTHONPATH: pythonPath,
+      PYTHONPATH: pythonPathFor(projectRoot, sourceRoots, process.env.PYTHONPATH),
       PYTHONDONTWRITEBYTECODE: '1',
       ...(reportRoot === undefined ? {} : { COVERAGE_FILE: path.join(reportRoot, COVERAGE_DATA) }),
     },
@@ -235,4 +234,10 @@ export function mutationVersions(context) {
     pytestLabel(context),
     ...mutationRunnerLabels(context),
   ].join(';');
+}
+
+function pythonPathFor(projectRoot, sourceRoots, inheritedPath) {
+  return [...importRoots(projectRoot, sourceRoots), inheritedPath]
+    .filter((entry) => entry !== undefined && entry !== '')
+    .join(path.delimiter);
 }
