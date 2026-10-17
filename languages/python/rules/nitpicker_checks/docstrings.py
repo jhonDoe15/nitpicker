@@ -14,13 +14,18 @@ FIELD_LIST = re.compile(
     r"^:(?:param|parameter|arg|argument|key|keyword|type|raises?|except|exception|returns?|rtype"
     r"|yields?|ytype|var|ivar|cvar|vartype|meta)\b"
 )
-SECTION = re.compile(
-    r"^(?:Args|Arguments|Parameters|Params|Returns?|Yields?|Raises|Examples?|Notes?|Attributes"
+SECTION_NAMES = (
+    r"Args|Arguments|Parameters|Params|Returns?|Yields?|Raises|Examples?|Notes?|Attributes"
     r"|See Also|Warnings?|Warns|Todo|References|Other Parameters|Keyword Args|Keyword Arguments"
-    r"|Methods):\s*$"
+    r"|Methods"
 )
+SECTION = re.compile(rf"^(?:{SECTION_NAMES})(?:\s+[\w.]+)?:(?:\s+(.*))?$")
 UNDERLINE = re.compile(r"^-{3,}\s*$")
 CODE_FENCE = re.compile(r"^(?:```|~~~)")
+DIRECTIVE = re.compile(r"^\.\.\s+[\w:-]+::")
+BULLET = re.compile(r"^(?:[-*+\u2022]|\d+[.)])\s+")
+HAS_TEXT = re.compile(r"\w")
+FIELD_PREFIX = re.compile(r"^:[^:]+:")
 DOCTEST = ">>>"
 
 
@@ -51,22 +56,58 @@ def starts_section(lines, index):
     )
 
 
-def description_lines(docstring):
-    lines = [line.strip() for line in docstring.split("\n")]
-    description = []
-    inside_fence = False
+def indent_of(line):
+    return len(line) - len(line.lstrip())
+
+
+def split_docstring(docstring):
+    raw = docstring.split("\n")
+    lines = [line.strip() for line in raw]
+    prose, other, block, fenced = [], [], None, False
     for index, line in enumerate(lines):
-        if CODE_FENCE.match(line):
-            inside_fence = not inside_fence
-        if not inside_fence and starts_section(lines, index):
-            break
-        if line:
-            description.append(line)
-    return description
+        indent = indent_of(raw[index])
+        if block is not None and (line == "" or indent > block):
+            other.append(line)
+            continue
+        block = None
+        if CODE_FENCE.match(line) or fenced:
+            fenced = fenced != bool(CODE_FENCE.match(line))
+            other.append(line)
+        elif starts_section(lines, index):
+            return prose, other + lines[index:]
+        elif DIRECTIVE.match(line) or BULLET.match(line):
+            block = indent
+            other.append(line)
+        else:
+            block = indent if line.endswith("::") else None
+            prose.extend([line] if line else [])
+    return prose, other
+
+
+def description_lines(docstring):
+    return split_docstring(docstring)[0]
+
+
+def content_of(lines, index):
+    line = lines[index]
+    following = lines[index + 1] if index + 1 < len(lines) else ""
+    section = SECTION.match(line)
+    if section:
+        return section.group(1) or ""
+    if UNDERLINE.match(line) or UNDERLINE.match(following):
+        return ""
+    return FIELD_PREFIX.sub("", line)
+
+
+def has_content(lines):
+    return any(HAS_TEXT.search(content_of(lines, index)) for index in range(len(lines)))
 
 
 def restates_name(docstring, name):
-    description = words_of(" ".join(description_lines(docstring)))
+    prose, other = split_docstring(docstring)
+    if has_content(other):
+        return False
+    description = words_of(" ".join(prose))
     name_stems = {variant for word in words_of(name) for variant in stem_variants(word)}
     return bool(description) and all(
         any(variant in name_stems for variant in stem_variants(word))

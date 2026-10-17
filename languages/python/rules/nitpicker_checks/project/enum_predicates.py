@@ -1,27 +1,26 @@
 import ast
 
-from nitpicker_checks.common import FUNCTION_TYPES, finding, last_segment, scoped_definitions
+from nitpicker_checks.common import (
+    FUNCTION_TYPES,
+    every_parameter,
+    finding,
+    last_segment,
+    parts_of,
+    scoped_definitions,
+    without_none,
+)
 
 ENUM_BASES = {"Enum", "IntEnum", "StrEnum"}
 TYPE_GUARDS = {"TypeGuard", "TypeIs"}
 MINIMUM_MEMBERS = 3
 CHAIN_OPERATORS = {ast.Or: (ast.Eq, ast.Is), ast.And: (ast.NotEq, ast.IsNot)}
 MEMBERSHIP = (ast.In, ast.NotIn)
-OPTIONAL_NAMES = {"Optional"}
-
-
-def subscript_parts(node):
-    inner = node.slice
-    index_type = getattr(ast, "Index", None)
-    if index_type is not None and isinstance(inner, index_type):
-        inner = inner.value
-    return inner.elts if isinstance(inner, ast.Tuple) else [inner]
 
 
 def literal_values(node):
     if not (isinstance(node, ast.Subscript) and last_segment(node.value) == "Literal"):
         return None
-    parts = subscript_parts(node)
+    parts = parts_of(node)
     values = [part.value for part in parts if isinstance(part, ast.Constant)]
     return values if len(values) == len(parts) else None
 
@@ -61,18 +60,6 @@ def is_reference(node):
     while isinstance(node, ast.Attribute):
         node = node.value
     return isinstance(node, ast.Name)
-
-
-def without_none(annotation):
-    if isinstance(annotation, ast.BinOp) and isinstance(annotation.op, ast.BitOr):
-        sides = [annotation.left, annotation.right]
-        kept = [
-            side for side in sides if not (isinstance(side, ast.Constant) and side.value is None)
-        ]
-        return kept[0] if len(kept) == 1 else annotation
-    if isinstance(annotation, ast.Subscript) and last_segment(annotation.value) in OPTIONAL_NAMES:
-        return subscript_parts(annotation)[0]
-    return annotation
 
 
 class EnumPredicates:
@@ -152,7 +139,7 @@ class EnumPredicates:
             return None
         ((name, members),) = unions
         compared = {member for _, (_, member) in found}
-        if len(members) < MINIMUM_MEMBERS or not compared <= set(members):
+        if len(compared) < 2 or len(members) < MINIMUM_MEMBERS or not compared <= set(members):
             return None
         return {"union": name, "every": compared == set(members)}
 
@@ -204,13 +191,7 @@ def slot_values(owner):
 
 
 def parameter_annotations(fn):
-    arguments = fn.args
-    parameters = (
-        list(getattr(arguments, "posonlyargs", []))
-        + list(arguments.args)
-        + list(arguments.kwonlyargs)
-    )
-    return {p.arg: p.annotation for p in parameters if p.annotation is not None}
+    return {p.arg: p.annotation for p in every_parameter(fn) if p.annotation is not None}
 
 
 def returns_type_guard(fn):

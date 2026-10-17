@@ -8,6 +8,7 @@ import {
 } from './python-mutation-data.mjs';
 import { seedMutantsFromBase } from './python-mutation-reuse.mjs';
 import { probeVersion, run } from '../execution/python-process.mjs';
+import { TEST_DIRECTORIES, TEST_FILE_GLOBS } from '../execution/python-project.mjs';
 import { singleProcessPytestEnvironment } from '../execution/python-test-runner.mjs';
 
 export const MUTATION_FAILED_RULE = 'mutation-failed';
@@ -30,15 +31,9 @@ const PYPROJECT = 'pyproject.toml';
 const PYPROJECT_SECTION = /^\s*\[tool\.mutmut\]/mu;
 const SETUP_CFG_SECTION = /^\s*\[mutmut\]/mu;
 const TEST_PATTERNS = [
-  'tests/*',
-  'test/*',
-  '*/tests/*',
-  '*/test/*',
-  'test_*.py',
-  '*/test_*.py',
-  '*_test.py',
-  'conftest.py',
-  '*/conftest.py',
+  ...TEST_DIRECTORIES.map((directory) => `${directory}/*`),
+  ...TEST_DIRECTORIES.map((directory) => `*/${directory}/*`),
+  ...TEST_FILE_GLOBS.flatMap((glob) => [glob, `*/${glob}`]),
 ];
 
 function failure(message) {

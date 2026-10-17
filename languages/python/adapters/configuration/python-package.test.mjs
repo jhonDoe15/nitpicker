@@ -61,4 +61,20 @@ describe('the entry points the package declares', () => {
       'shop.legacy:start',
     ]);
   });
+
+  it('reads every group of [project.entry-points]', () => {
+    const pyproject = [
+      '[project]',
+      'name = "shop"',
+      '[project.entry-points."shop.plugins"]',
+      'cart = "shop.plugins.cart:register"',
+      '[project.entry-points.pytest11]',
+      'shop = "shop.testing.plugin:load"',
+    ].join('\n');
+
+    expect(factsOf(pyproject).entryPoints).toEqual([
+      'shop.plugins.cart:register',
+      'shop.testing.plugin:load',
+    ]);
+  });
 });

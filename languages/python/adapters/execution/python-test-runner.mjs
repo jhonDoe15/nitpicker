@@ -2,15 +2,13 @@ import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { environmentError } from './python-environment.mjs';
 import { execute, VERSION_PATTERN } from './python-process.mjs';
-import { readProjectHints } from './python-project.mjs';
+import { isTestFileName, readProjectHints, TEST_DIRECTORIES } from './python-project.mjs';
 
 export const NO_TESTS_EXIT = 5;
-const TEST_DIRECTORIES = ['tests', 'test'];
 const PYTEST_CONFIGURATION = /^\s*\[(?:tool\.pytest(?:\.ini_options)?|pytest|tool:pytest)\]/m;
 const PYTEST_DEPENDENCY = /(?:^|[\s"'=])pytest(?:\b|_)/m;
 const PYTEST_STYLE_TEST =
   /^(?:async\s+)?def test_|^(?:import|from)\s+pytest\b|^class Test\w*\s*(?:\(\s*\))?:/m;
-const TEST_FILE = /^(?:test_.*|.*_test)\.py$/;
 const PYTEST_PROBE = [
   'python',
   '-c',
@@ -21,10 +19,10 @@ const probes = new WeakMap();
 function existingTestFiles(projectRoot) {
   const directories = TEST_DIRECTORIES.filter((name) => existsSync(path.join(projectRoot, name)));
   return [
-    ...readdirSync(projectRoot).filter((name) => TEST_FILE.test(name)),
+    ...readdirSync(projectRoot).filter((name) => isTestFileName(name)),
     ...directories.flatMap((directory) =>
       readdirSync(path.join(projectRoot, directory), { recursive: true })
-        .filter((name) => TEST_FILE.test(path.basename(name)))
+        .filter((name) => isTestFileName(path.basename(name)))
         .map((name) => path.join(directory, name)),
     ),
   ];

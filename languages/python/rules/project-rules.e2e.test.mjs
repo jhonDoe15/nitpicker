@@ -62,6 +62,11 @@ describe.skipIf(!enabled)('exhaustive-enum-predicate', () => {
     ],
     ['a single membership value', 'def f(s: Status) -> bool:\n    return s in (Status.NEW,)\n', []],
     [
+      'one member compared twice',
+      'def f(s: Status) -> bool:\n    return s == Status.NEW or s == Status.NEW\n',
+      [],
+    ],
+    [
       'two different subjects',
       'def f(s: Status, t: Status) -> bool:\n    return s == Status.NEW or t == Status.PAID\n',
       [],
@@ -242,8 +247,55 @@ describe.skipIf(!enabled)('unused-option', () => {
           '[project]\nname = "shop"\n[project.scripts]\nprice = "shop.pricing:total"\n',
       },
     ],
+    [
+      'a __main__.py calls it',
+      { 'shop/__main__.py': 'import sys\nfrom shop.pricing import total\nsys.exit(total(1))\n' },
+    ],
+    [
+      'a [project.entry-points] group names it',
+      {
+        'shop/app.py': 'from shop.pricing import total\ntotal(1)\n',
+        'pyproject.toml':
+          '[project]\nname = "shop"\n[project.entry-points."shop.plugins"]\nprice = "shop.pricing:total"\n',
+      },
+    ],
+    [
+      'setup.cfg names it',
+      {
+        'shop/app.py': 'from shop.pricing import total\ntotal(1)\n',
+        'setup.cfg': '[options.entry_points]\nconsole_scripts =\n    price = shop.pricing:total\n',
+      },
+    ],
+    [
+      'setup.py names it',
+      {
+        'shop/app.py': 'from shop.pricing import total\ntotal(1)\n',
+        'setup.py':
+          'from setuptools import setup\nSCRIPTS = {"console_scripts": ["price=shop.pricing:total"]}\nsetup(name="shop", entry_points=SCRIPTS)\n',
+      },
+    ],
   ])('does not judge it when %s', (_name, files) => {
     expect(unused(files)).toEqual([]);
+  });
+
+  it('still judges it when setup.py builds its entry points at run time', () => {
+    expect(
+      unused({
+        'shop/app.py': 'from shop.pricing import total\ntotal(1)\n',
+        'setup.py':
+          'from setuptools import setup\nsetup(name="shop", entry_points=load_entry_points())\n',
+      }),
+    ).toEqual(['total.cents', 'total.rate']);
+  });
+
+  it('does not count a Django tests.py or a testing folder as callers', () => {
+    expect(
+      unused({
+        'shop/app.py': 'from shop.pricing import total\ntotal(1)\n',
+        'shop/tests.py': 'from shop.pricing import total\ntotal(1, rate=2)\n',
+        'testing/test_pricing.py': 'from shop.pricing import total\ntotal(1, cents=True)\n',
+      }),
+    ).toEqual(['total.cents', 'total.rate']);
   });
 
   it('does not judge test helpers or decorated functions', () => {
@@ -255,5 +307,21 @@ describe.skipIf(!enabled)('unused-option', () => {
         'tests/test_a.py': 'from tests.helpers import make\nmake()\n',
       }),
     ).toEqual([]);
+  });
+});
+
+describe.skipIf(!enabled)('an expression too deep for the recursion limit', () => {
+  it('notes the skipped checks of that file and checks the others', () => {
+    const sum = `total = ${Array.from({ length: 900 }, () => '1').join(' + ')}\n`;
+
+    expect(
+      reportOf({
+        'shop/sums.py': sum,
+        'shop/users.py': 'def load_user():\n    """Load the user."""\n',
+      }),
+    ).toEqual([
+      { rule: 'rules-skipped', path: 'shop/sums.py', subject: 'file', line: 1 },
+      { rule: 'restating-docstring', path: 'shop/users.py', subject: 'load_user', line: 2 },
+    ]);
   });
 });

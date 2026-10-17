@@ -1,6 +1,16 @@
 import ast
 
-from nitpicker_checks.common import FUNCTION_TYPES, decorator_name, finding, last_segment, same_node
+from nitpicker_checks.common import (
+    FUNCTION_TYPES,
+    decorator_name,
+    defaulted_parameters,
+    finding,
+    last_segment,
+    parsed_annotation,
+    parts_of,
+    same_node,
+    unwrapped,
+)
 
 RECORD_DECORATORS = {"dataclass", "define"}
 RECORD_BASES = {"BaseModel", "BaseSettings", "TypedDict", "NamedTuple"}
@@ -19,31 +29,23 @@ COLLECTIONS = {
     "tuple",
     "Tuple",
 }
-WRAPPERS = {"NotRequired", "Required", "Annotated", "Final"}
-OPTIONAL_NAMES = {"Optional"}
-
-
-def parts_of(subscript):
-    inner = subscript.slice
-    index_type = getattr(ast, "Index", None)
-    if index_type is not None and isinstance(inner, index_type):
-        inner = inner.value
-    return inner.elts if isinstance(inner, ast.Tuple) else [inner]
-
-
-def is_none(node):
-    return isinstance(node, ast.Constant) and node.value is None
-
-
-def unwrapped(annotation):
-    while isinstance(annotation, ast.Subscript) and last_segment(annotation.value) in WRAPPERS:
-        annotation = parts_of(annotation)[0]
-    if isinstance(annotation, ast.BinOp) and isinstance(annotation.op, ast.BitOr):
-        kept = [side for side in (annotation.left, annotation.right) if not is_none(side)]
-        return kept[0] if len(kept) == 1 else annotation
-    if isinstance(annotation, ast.Subscript) and last_segment(annotation.value) in OPTIONAL_NAMES:
-        return parts_of(annotation)[0]
-    return annotation
+IRREGULAR_PLURALS = {
+    "analysis": ("analyses",),
+    "axis": ("axes",),
+    "child": ("children",),
+    "criterion": ("criteria",),
+    "foot": ("feet",),
+    "index": ("indices", "indexes"),
+    "leaf": ("leaves",),
+    "life": ("lives",),
+    "man": ("men",),
+    "matrix": ("matrices",),
+    "mouse": ("mice",),
+    "person": ("people",),
+    "tooth": ("teeth",),
+    "vertex": ("vertices",),
+    "woman": ("women",),
+}
 
 
 def element_of(annotation):
@@ -57,13 +59,17 @@ def element_of(annotation):
     is_variadic_tuple = (
         len(parts) == 2 and isinstance(parts[1], ast.Constant) and parts[1].value is ...
     )
-    return parts[0] if len(parts) == 1 or is_variadic_tuple else None
+    element = parts[0] if len(parts) == 1 or is_variadic_tuple else None
+    return None if element is None else unwrapped(element)
 
 
 def plurals_of(name):
+    head, _, last = name.rpartition("_")
+    prefix = f"{head}_" if head else ""
     plurals = [name + "s", name + "es"]
-    if len(name) > 1 and name.endswith("y") and name[-2] not in "aeiou":
+    if len(last) > 1 and last.endswith("y") and last[-2] not in "aeiou":
         plurals.append(name[:-1] + "ies")
+    plurals.extend(prefix + plural for plural in IRREGULAR_PLURALS.get(last, ()))
     return plurals
 
 
@@ -100,7 +106,8 @@ def optional_fields(node):
         if not isinstance(statement, ast.AnnAssign) or not isinstance(statement.target, ast.Name):
             continue
         annotation = statement.annotation
-        wrapper = last_segment(annotation.value) if isinstance(annotation, ast.Subscript) else None
+        parsed = parsed_annotation(annotation)
+        wrapper = last_segment(parsed.value) if isinstance(parsed, ast.Subscript) else None
         if wrapper == "ClassVar":
             continue
         optional = (
@@ -114,13 +121,7 @@ def optional_fields(node):
 
 
 def optional_parameters(fn):
-    arguments = fn.args
-    parameters = list(getattr(arguments, "posonlyargs", [])) + list(arguments.args)
-    defaulted = parameters[len(parameters) - len(arguments.defaults) :]
-    keyword_only = [
-        p for p, default in zip(arguments.kwonlyargs, arguments.kw_defaults) if default is not None
-    ]
-    return {p.arg: p.annotation for p in defaulted + keyword_only if p.annotation is not None}
+    return {p.arg: p.annotation for p, _ in defaulted_parameters(fn) if p.annotation is not None}
 
 
 def field_findings(path, scoped, aliases):

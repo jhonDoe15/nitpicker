@@ -32,13 +32,23 @@ function isPublished(pyproject) {
   );
 }
 
+function isTable(value) {
+  return typeof value === 'object' && value !== null;
+}
+
+function entryPointGroups(pyproject) {
+  const groups = pyproject.project?.['entry-points'];
+  return isTable(groups) ? Object.values(groups) : [];
+}
+
 function scriptReferences(pyproject) {
   const tables = [
     ...SCRIPT_TABLES.map((name) => pyproject.project?.[name]),
     pyproject.tool?.poetry?.scripts,
+    ...entryPointGroups(pyproject),
   ];
   return tables
-    .filter((table) => typeof table === 'object' && table !== null)
+    .filter((table) => isTable(table))
     .flatMap((table) => Object.values(table))
     .map((value) => (typeof value === 'string' ? value : value?.reference))
     .filter((value) => typeof value === 'string');

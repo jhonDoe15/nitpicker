@@ -5,8 +5,11 @@ import {
   DOCUMENTATION_DIRECTORIES,
   importRoots,
   INSTALLED_DIRECTORIES,
+  isTestFileName,
   NON_SOURCE_DIRECTORIES,
   NON_SOURCE_FILES,
+  TEST_DIRECTORIES,
+  TEST_FILE_GLOBS,
 } from '../execution/python-project.mjs';
 
 const SOURCE_LISTING = 'python-files.txt';
@@ -77,8 +80,7 @@ const EXCLUDED_DIRECTORIES = [
   'site-packages',
   'build',
   'dist',
-  'tests',
-  'test',
+  ...TEST_DIRECTORIES,
   'migrations',
 ];
 const HIDDEN_PREFIX = '.';
@@ -92,13 +94,10 @@ const COMMON_HIDDEN_DIRECTORIES = [
   '.ruff_cache',
   '.pytest_cache',
 ];
-const TEST_FILE = /^(?:test_.+|.+_test|conftest)\.py$/;
 
 export const NON_PRODUCTION_GLOBS = [
   ...[...EXCLUDED_DIRECTORIES, ...COMMON_HIDDEN_DIRECTORIES].map((name) => `**/${name}/**`),
-  '**/test_*.py',
-  '**/*_test.py',
-  '**/conftest.py',
+  ...TEST_FILE_GLOBS.map((glob) => `**/${glob}`),
 ];
 
 export function nonProductionGlobs(sourceRoots) {
@@ -133,7 +132,7 @@ function listDirectory(directory, skipped) {
       .map(named),
     files: entries
       .filter(
-        (entry) => entry.isFile() && entry.name.endsWith('.py') && !TEST_FILE.test(entry.name),
+        (entry) => entry.isFile() && entry.name.endsWith('.py') && !isTestFileName(entry.name),
       )
       .map(named),
   };

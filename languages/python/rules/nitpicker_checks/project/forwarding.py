@@ -1,14 +1,16 @@
 import ast
 
-from nitpicker_checks.common import body_without_docstring, finding, same_node
+from nitpicker_checks.common import (
+    body_without_docstring,
+    finding,
+    positional,
+    positional_defaults,
+    same_node,
+)
 
 
 def is_name(node, name):
     return isinstance(node, ast.Name) and node.id == name
-
-
-def positional(fn):
-    return list(getattr(fn.args, "posonlyargs", [])) + list(fn.args.args)
 
 
 def forwarded_call(fn):
@@ -53,16 +55,11 @@ def forwards_own_parameters(fn, call):
 
 def shape_of(fn):
     arguments = fn.args
-    parameters = positional(fn)
-    defaults = [None] * (len(parameters) - len(arguments.defaults)) + list(arguments.defaults)
     keyword_only = sorted(
         zip(arguments.kwonlyargs, arguments.kw_defaults), key=lambda pair: pair[0].arg
     )
     return (
-        [
-            (parameter.arg, parameter.annotation, default)
-            for parameter, default in zip(parameters, defaults)
-        ]
+        [(parameter.arg, parameter.annotation, default) for parameter, default in positional_defaults(fn)]
         + [(parameter.arg, parameter.annotation, default) for parameter, default in keyword_only]
         + [(f"*{p.arg}", p.annotation, None) for p in (arguments.vararg, arguments.kwarg) if p]
     )
