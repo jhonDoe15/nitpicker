@@ -1,7 +1,9 @@
 import { spawnSync } from 'node:child_process';
 import { lstatSync, readFileSync } from 'node:fs';
 import path from 'node:path';
-import { HYGIENE_RULE_IDS, LARGE_FILE_BYTES, exceptionEntry, exceptionHint } from '../rules.mjs';
+import { pathInside } from '../../filesystem.mjs';
+import { HYGIENE_RULE_IDS, LARGE_FILE_BYTES } from '../../project-rules/hygiene-rules.mjs';
+import { exceptionEntry, exceptionHint } from '../rules.mjs';
 import { committedSizes } from '../tracked-files.mjs';
 import { buildOutputFolders } from './build-output.mjs';
 import { holdsOnlyPublicValues, isEnvFileName } from './env-files.mjs';
@@ -70,7 +72,10 @@ function problem(ruleName, file, text) {
 }
 
 function isPublicEnvFile(projectRoot, file) {
-  const filePath = path.join(projectRoot, file);
+  const filePath = pathInside(projectRoot, file);
+  if (filePath === undefined) {
+    return false;
+  }
   const stats = lstatSync(filePath, { throwIfNoEntry: false });
   return stats?.isFile() === true && holdsOnlyPublicValues(readFileSync(filePath, 'utf8'));
 }

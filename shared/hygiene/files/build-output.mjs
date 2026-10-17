@@ -1,6 +1,5 @@
-import { readFileSync } from 'node:fs';
 import path from 'node:path';
-import { readJson } from './known-files.mjs';
+import { readJson, trackedText } from './known-files.mjs';
 import { holdsSources } from './output-sources.mjs';
 
 const MANIFESTS = new Set([
@@ -24,8 +23,9 @@ export function buildOutputFolders(projectRoot, files) {
   const filesByFolder = new Map();
   for (const file of files) {
     const folder = outputFolderOf(file, projectDirectories);
-    if (folder !== undefined)
+    if (folder !== undefined) {
       filesByFolder.set(folder, [...(filesByFolder.get(folder) ?? []), file]);
+    }
   }
   const context = { projectRoot, tracked, manifests };
   const flagged = [...filesByFolder].filter(
@@ -39,7 +39,9 @@ export function buildOutputFolders(projectRoot, files) {
 }
 
 function isSourceFolder(folder, folderFiles, { projectRoot, tracked, manifests }) {
-  if (!SOURCE_FOLDER_NAMES.has(path.posix.basename(folder))) return false;
+  if (!SOURCE_FOLDER_NAMES.has(path.posix.basename(folder))) {
+    return false;
+  }
   const siblings = manifests.filter((manifest) => directoryOf(manifest) === directoryOf(folder));
   return holdsSources(folderFiles) || isReferenced(projectRoot, tracked, { folder, siblings });
 }
@@ -48,7 +50,7 @@ function isReferenced(projectRoot, tracked, { folder, siblings }) {
   const name = path.posix.basename(folder);
   const reference = new RegExp(`(?:^|[\\s"'=:(./])${name}/([\\w./-]+)`, 'gu');
   return siblings.some((manifest) =>
-    [...readFileSync(path.join(projectRoot, manifest), 'utf8').matchAll(reference)].some((match) =>
+    [...trackedText(projectRoot, manifest).matchAll(reference)].some((match) =>
       tracked.has(path.posix.normalize(`${folder}/${match[1]}`)),
     ),
   );
@@ -103,16 +105,21 @@ function actionEntries(projectRoot, tracked, parent) {
   return ACTION_FILES.map((name) => path.posix.join(parent, name))
     .filter((file) => tracked.has(file))
     .flatMap((file) =>
-      [...readFileSync(path.join(projectRoot, file), 'utf8').matchAll(ACTION_ENTRY)].map(
-        (match) => match[1],
-      ),
+      [...trackedText(projectRoot, file).matchAll(ACTION_ENTRY)].map((match) => match[1]),
     );
 }
 
 function stringsIn(value) {
-  if (typeof value === 'string') return [value];
-  if (typeof value !== 'object' || value === null) return [];
-  return Object.values(value).flatMap((entry) => stringsIn(entry));
+  const pending = [value];
+  const strings = [];
+  for (const item of pending) {
+    if (typeof item === 'string') {
+      strings.push(item);
+    } else if (typeof item === 'object' && item !== null) {
+      pending.push(...Object.values(item));
+    }
+  }
+  return strings;
 }
 
 function directoryOf(file) {

@@ -1,6 +1,7 @@
-import { readFileSync, readdirSync } from 'node:fs';
+import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
+import { filesUnder } from './filesystem.mjs';
 
 const sharedRoot = import.meta.dirname;
 const packageRoot = path.resolve(sharedRoot, '..');
@@ -9,12 +10,10 @@ const packageRoot = path.resolve(sharedRoot, '..');
 const SPECIFIER =
   /(?:^|\n)\s*(?:import|export)\b[^'";]*?\bfrom\s*['"]([^'"]+)['"]|(?<![\w-])import\s*['"]([^'"]+)['"]/g;
 
-function sharedModules(directory = sharedRoot) {
-  return readdirSync(directory, { withFileTypes: true }).flatMap((entry) => {
-    const entryPath = path.join(directory, entry.name);
-    if (entry.isDirectory()) return sharedModules(entryPath);
-    return entry.name.endsWith('.mjs') && !entry.name.endsWith('.test.mjs') ? [entryPath] : [];
-  });
+function sharedModules() {
+  return [...filesUnder(sharedRoot)].filter(
+    (file) => file.endsWith('.mjs') && !file.endsWith('.test.mjs'),
+  );
 }
 
 describe('shared layer import direction', () => {
@@ -23,8 +22,12 @@ describe('shared layer import direction', () => {
       [...readFileSync(file, 'utf8').matchAll(SPECIFIER)]
         .map((match) => match[1] ?? match[2])
         .filter((specifier) => {
-          if (specifier.startsWith('node:')) return false;
-          if (!specifier.startsWith('.')) return true;
+          if (specifier.startsWith('node:')) {
+            return false;
+          }
+          if (!specifier.startsWith('.')) {
+            return true;
+          }
           const target = path.resolve(path.dirname(file), specifier);
           return path.relative(sharedRoot, target).startsWith('..');
         })

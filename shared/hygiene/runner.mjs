@@ -1,5 +1,3 @@
-import path from 'node:path';
-import { pathToFileURL } from 'node:url';
 import { readHeadPolicyFile } from '../head-policy.mjs';
 import { REPOSITORY_HYGIENE_TOOL, collectRepositoryFindings } from './files/repository-files.mjs';
 import { withoutExcepted, withoutExcluded } from './rules.mjs';
@@ -22,31 +20,32 @@ export function runHygieneCheck({ check, projectRoot, policy = {} }) {
   return withoutExcepted(collect({ projectRoot, files }), policy.exceptions);
 }
 
-export function parseHygieneArguments(arguments_) {
+export function parseHygieneArguments(commandArguments) {
   const options = {};
-  for (let index = 0; index < arguments_.length; index += 2) {
-    const name = OPTION_NAMES[arguments_[index]];
-    if (name === undefined || arguments_[index + 1] === undefined) {
-      throw new Error(`Invalid hygiene argument: ${arguments_[index]}`);
+  for (const [index, flag] of commandArguments.entries()) {
+    if (index % 2 === 1) {
+      continue;
     }
-    options[name] = arguments_[index + 1];
+    const name = OPTION_NAMES[flag];
+    const value = commandArguments[index + 1];
+    if (name === undefined || value === undefined) {
+      throw new Error(`Invalid hygiene argument: ${flag}`);
+    }
+    options[name] = value;
   }
   return options;
 }
 
-const invokedPath = process.argv[1];
-if (
-  invokedPath !== undefined &&
-  import.meta.url === pathToFileURL(path.resolve(invokedPath)).href
-) {
+export function runHygieneCli({ commandArguments, stdout, stderr, environment }) {
   try {
-    const options = parseHygieneArguments(process.argv.slice(2));
-    const findings = runHygieneCheck({ ...options, policy: readHeadPolicyFile() });
-    process.stdout.write(`${JSON.stringify({ findings })}\n`);
+    const options = parseHygieneArguments(commandArguments);
+    const findings = runHygieneCheck({ ...options, policy: readHeadPolicyFile(environment) });
+    stdout.write(`${JSON.stringify({ findings })}\n`);
+    return 0;
   } catch (error) {
-    process.stderr.write(
+    stderr.write(
       `Hygiene check failed: ${error instanceof Error ? error.message : String(error)}\n`,
     );
-    process.exitCode = 2;
+    return 2;
   }
 }

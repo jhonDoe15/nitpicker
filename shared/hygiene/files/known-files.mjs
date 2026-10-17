@@ -1,5 +1,6 @@
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
+import { pathInside } from '../../filesystem.mjs';
 
 const LOCK_FILES = new Set([
   'package-lock.json',
@@ -64,6 +65,11 @@ function localPackageFiles(projectRoot, manifest) {
   return DEPENDENCY_SECTIONS.flatMap((section) => Object.values(value?.[section] ?? {}))
     .filter((spec) => typeof spec === 'string' && spec.startsWith('file:'))
     .map((spec) => path.posix.normalize(path.posix.join(directory, spec.slice('file:'.length))));
+}
+
+export function trackedText(projectRoot, file) {
+  const full = pathInside(projectRoot, file);
+  return full === undefined ? '' : readFileSync(full, 'utf8');
 }
 
 export function readJson(file) {

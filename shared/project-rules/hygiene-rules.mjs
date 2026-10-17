@@ -1,4 +1,21 @@
-import { HYGIENE_RULE_IDS, LARGE_FILE_BYTES, PACKAGE_RULE_IDS } from './rules.mjs';
+export const HYGIENE_RULE_IDS = {
+  committedEnvFile: 'committed-env-file',
+  committedPrivateKey: 'committed-private-key',
+  committedBinary: 'committed-binary',
+  largeFile: 'large-file',
+  committedBuildOutput: 'committed-build-output',
+};
+
+export const PACKAGE_RULE_IDS = {
+  unusedDependency: 'unused-dependency',
+  unlistedDependency: 'unlisted-dependency',
+  unresolvedImport: 'unresolved-import',
+};
+
+export const HYGIENE_EXCEPTION_RULES = Object.values(HYGIENE_RULE_IDS);
+export const PACKAGE_EXCEPTION_RULES = Object.values(PACKAGE_RULE_IDS);
+
+export const LARGE_FILE_BYTES = 1024 * 1024;
 
 const EVERY_LANGUAGE = { typescript: true, java: true, python: true, kotlin: true };
 const TYPESCRIPT_ONLY = { typescript: true, java: false, python: false, kotlin: false };

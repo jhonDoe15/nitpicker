@@ -9,11 +9,9 @@ import {
 import { UNUSED_API_RULES, UNUSED_API_RULE_IDS } from './unused-api/unused-api-policy.mjs';
 import { reuseRules } from './rules/reuse-rules.mjs';
 import { SOURCE_RULE_IDS, sourceRuleMessages, sourceRules } from './project-rules/source-rules.mjs';
-import { HYGIENE_EXCEPTION_RULES } from './hygiene/rules.mjs';
-import { HYGIENE_RULES } from './hygiene/catalog.mjs';
+import { HYGIENE_EXCEPTION_RULES, HYGIENE_RULES } from './project-rules/hygiene-rules.mjs';
 
 export { FILE_LIMIT_DEFAULTS } from './project-rules/size-rules.mjs';
-
 
 export const LANGUAGES = ['typescript', 'java', 'python', 'kotlin'];
 

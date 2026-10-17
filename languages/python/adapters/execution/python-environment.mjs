@@ -1,6 +1,7 @@
 import { spawnSync } from 'node:child_process';
 import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
+import { ancestorDirectories } from '../../../../shared/filesystem.mjs';
 
 const NAMED_ENVIRONMENTS = ['uv', 'poetry', 'path'];
 const LOCKFILE_ENVIRONMENTS = [
@@ -102,7 +103,7 @@ function uvEnvironmentDirectory(workspaceRoot) {
 }
 
 function uvWorkspaceRoot(projectRoot) {
-  return ancestors(projectRoot).find(
+  return ancestorDirectories(projectRoot).find(
     (directory) =>
       existsSync(path.join(directory, 'uv.lock')) &&
       (directory === projectRoot || declaresUvWorkspace(directory)),
@@ -112,17 +113,6 @@ function uvWorkspaceRoot(projectRoot) {
 function declaresUvWorkspace(directory) {
   const pyproject = path.join(directory, 'pyproject.toml');
   return existsSync(pyproject) && UV_WORKSPACE_TABLE.test(readFileSync(pyproject, 'utf8'));
-}
-
-function ancestors(directory) {
-  const found = [directory];
-  for (const current of found) {
-    const parent = path.dirname(current);
-    if (parent !== current) {
-      found.push(parent);
-    }
-  }
-  return found;
 }
 
 function poetryDirectory(projectRoot) {

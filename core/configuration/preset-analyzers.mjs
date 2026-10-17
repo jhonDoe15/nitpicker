@@ -1,3 +1,4 @@
+import { fileURLToPath } from 'node:url';
 import { createHygieneAnalyzers } from '../../shared/hygiene/analyzers.mjs';
 import { GRADLE_PRESETS } from '../../languages/java/adapters/gradle-presets.mjs';
 import { createJavaAnalyzer } from '../../languages/java/adapters/java-analyzer.mjs';
@@ -7,7 +8,9 @@ import {
   javascriptAnalyzers,
 } from '../../languages/typescript/preset/diff/configured-analyzers.mjs';
 
-const hygieneAnalyzers = createHygieneAnalyzers();
+const hygieneAnalyzers = createHygieneAnalyzers(
+  fileURLToPath(new URL('../cli.mjs', import.meta.url)),
+);
 
 export function presetAnalyzers(config, injected) {
   return injected ?? [...languageAnalyzers(config), ...hygieneAnalyzers];
