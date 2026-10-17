@@ -2,8 +2,7 @@ import path from 'node:path';
 import { readInside } from '../../../shared/conventions/read-inside.mjs';
 
 const PACKAGE = /^\s*package\s+([\w.]+)/mu;
-const IMPORT =
-  /^[ \t]*import[ \t]+(?:static[ \t]+)?([\w.]+?)(\.\*)?(?:[ \t]+as[ \t]+\w+)?[ \t]*;?[ \t]*$/gmu;
+const IMPORT = /^[ \t]*import[ \t]+(?:static[ \t]+)?([\w.]+?)(\.\*)?(?:[ \t;].*)?$/gmu;
 const COMMENTS_AND_STRINGS = /\/\*[\s\S]*?\*\/|\/\/[^\n]*|"""[\s\S]*?"""|"(?:\\.|[^"\\\n])*"/gu;
 const JAVA_MODIFIERS = 'public|protected|private|abstract|final|sealed|non-sealed|static|strictfp';
 const KOTLIN_MODIFIERS = [
