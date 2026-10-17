@@ -1,24 +1,25 @@
 import { codeExtensionNames } from '../layout.mjs';
 import { readLayout } from '../head-policy.mjs';
 import { strictBoundaryRules } from '../architecture/strict-boundary-rules.mjs';
+import { testFilePaths } from '../architecture/strict-layout.mjs';
 
-const { sourceRoots, testRoots, excludePattern } = readLayout();
-const sourceRootPattern = `(?:^|/)(?:${sourceRoots.join('|')})/`;
-const productionSource = `${sourceRootPattern}(?!.*(?:__tests__|\\.test\\.|\\.spec\\.))`;
+const { sourceRoots, excludePattern } = readLayout();
+const productionSource = {
+  path: `(?:^|/)(?:${sourceRoots.join('|')})/`,
+  pathNot: testFilePaths,
+};
 export default {
   forbidden: [
     {
       name: 'no-production-to-test',
       severity: 'error',
-      from: { path: productionSource },
-      to: {
-        path: `^(?:${testRoots.join('|')})/|(?:^|/)(?:${sourceRoots.join('|')})/.*/__tests__/|(?:^|/)(?:${sourceRoots.join('|')})/.*\\.(?:test|spec)\\.`,
-      },
+      from: productionSource,
+      to: { path: testFilePaths },
     },
     {
       name: 'no-production-cycles',
       severity: 'error',
-      from: { path: productionSource },
+      from: productionSource,
       to: { circular: true },
     },
     ...strictBoundaryRules,
