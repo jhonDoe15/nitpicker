@@ -82,4 +82,13 @@ describe('baseConfigCoveringHead', () => {
       python: { typeChecker: 'mypy', exceptions: [] },
     });
   });
+
+  it('measures the base with the python entry points both sides declare', () => {
+    expect(
+      baseConfigCoveringHead(
+        { python: { entryPoints: ['src/a.py', 'src/b.py'] } },
+        { python: { entryPoints: ['src/b.py', 'src/c.py'] } },
+      ).python,
+    ).toEqual({ entryPoints: ['src/b.py'] });
+  });
 });
