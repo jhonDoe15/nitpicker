@@ -15,7 +15,7 @@ function writeFiles(root, files) {
   }
 }
 
-function rawFindingsOf(roots, files, settings = {}) {
+function rawFindingsOf(roots, files, { settings = {}, hidden = [] }) {
   const root = realpathSync(mkdtempSync(path.join(tmpdir(), 'nitpicker-rules-script-')));
   const reportRoot = realpathSync(mkdtempSync(path.join(tmpdir(), 'nitpicker-rules-report-')));
   roots.push(root, reportRoot);
@@ -27,7 +27,9 @@ function rawFindingsOf(roots, files, settings = {}) {
     reportRoot,
   });
   checkRules(context);
-  return JSON.parse(readFileSync(path.join(reportRoot, RULES_REPORT), 'utf8'));
+  return JSON.parse(readFileSync(path.join(reportRoot, RULES_REPORT), 'utf8')).filter(
+    ({ rule }) => !hidden.includes(rule),
+  );
 }
 
 function specFiles(spec) {
@@ -58,7 +60,7 @@ function verdictsFrom(found, names) {
   );
 }
 
-export function createScripts() {
+export function createScripts({ hidden = [] } = {}) {
   const roots = [];
 
   function cleanup() {
@@ -68,13 +70,13 @@ export function createScripts() {
   }
 
   function findingsOf(files, settings) {
-    return rawFindingsOf(roots, files, settings).map(
+    return rawFindingsOf(roots, files, { settings, hidden }).map(
       ({ rule, path: file, subject, line }) => `${rule} ${file}:${String(line)} ${subject}`,
     );
   }
 
   function verdicts(cases, settings) {
-    const found = rawFindingsOf(roots, caseFiles(cases), settings);
+    const found = rawFindingsOf(roots, caseFiles(cases), { settings, hidden });
     return verdictsFrom(found, Object.keys(cases));
   }
 
