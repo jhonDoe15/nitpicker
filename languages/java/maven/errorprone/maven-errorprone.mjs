@@ -51,7 +51,7 @@ function levelLines(compiler) {
 }
 
 function lookupLines({ classpath, own, modular }) {
-  const libraries = classpath.filter((entry) => !own.includes(entry) && existsSync(entry));
+  const libraries = classpath.filter((entry) => !own.includes(entry));
   const modules =
     modular === false ? [] : libraries.filter((entry) => modular === 'all' || isJavaModule(entry));
   const plain = classpath.filter((entry) => !modules.includes(entry));
