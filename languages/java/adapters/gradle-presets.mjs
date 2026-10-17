@@ -6,7 +6,7 @@ export const PROJECT_TOOL_CONFIGS = new Map([
 ]);
 
 const STYLE_TOOLS = new Map([
-  ['python', ['ruff', 'black']],
+  ['python', ['ruff', 'black', 'pyright', 'mypy', 'mutmut']],
   ['kotlin', ['ktlint', 'ktfmt', 'detekt']],
 ]);
 

@@ -16,7 +16,7 @@ export async function runQualityArea(options) {
     if (['coupling', 'crap', 'mutation'].includes(options.kind) && !files.some(layout.isSourceFile))
       return [];
     if (
-      ['test-runtime', 'coverage', 'mutation'].includes(options.kind) &&
+      ['test-runtime', 'coverage', 'test-console', 'mutation'].includes(options.kind) &&
       !files.some(layout.isRunnableTestFile)
     )
       return [];
