@@ -11,7 +11,7 @@ describe('nitpicker with "preset": "kotlin" configuration', () => {
   describe('exceptions for one-way rules', () => {
     const callRule = 'detekt.style.ForbiddenMethodCall';
     const forbidden =
-      'The method `kotlinx.coroutines.runBlocking` has been forbidden: Make the caller `suspend` (`suspend fun main()` for an entry point) and use `coroutineScope { ... }` for concurrent work.';
+      'The method `kotlinx.coroutines.runBlocking` has been forbidden: Make the caller `suspend` (`suspend fun main()` for an entry point) and use `coroutineScope { ... }` for concurrent work. In a test, use `runTest`.';
     const withExceptions = (exceptions) => `${JSON.stringify({ preset: 'kotlin', exceptions })}\n`;
     const exception = {
       rule: callRule,

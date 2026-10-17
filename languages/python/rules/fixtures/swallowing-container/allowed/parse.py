@@ -1,5 +1,6 @@
-def parse(text: str, default: list[int]) -> list[int]:
+def parse(text: str, errors: list[ValueError]) -> list[int]:
     try:
         return [int(text)]
-    except ValueError:
-        return default
+    except ValueError as error:
+        errors.append(error)
+        return []
