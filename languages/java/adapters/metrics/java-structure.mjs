@@ -8,6 +8,7 @@ import {
 import { collectFileLimitFindings } from '../../../../shared/rules/file-limits.mjs';
 import { javaFolderDepthFindings } from '../size/folder-depth.mjs';
 import { javaLineLengthFindings } from '../size/line-length.mjs';
+import { javaLineLength } from '../style/java-style.mjs';
 
 export function readJavaStructureFindings(reportRoot, projectRoot) {
   return readStructureFindings(reportRoot, projectRoot);
@@ -53,7 +54,10 @@ export function readJavaFileLimitFindings(projectRoot, { manifest, kotlin = fals
       ...options,
       checks: ['fileLines', 'folderFiles'],
     }),
-    ...javaLineLengthFindings(javaFiles(projectRoot, entries), options),
+    ...javaLineLengthFindings(javaFiles(projectRoot, entries), {
+      ...options,
+      lineLength: javaLineLength(policy.conventions),
+    }),
     ...javaFolderDepthFindings(entries, { ...options, rootEntries }),
   ];
 }

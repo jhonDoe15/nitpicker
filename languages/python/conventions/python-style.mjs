@@ -3,7 +3,11 @@ import {
   ignoredConfigNotice,
   precedenceLayers,
 } from '../../../shared/conventions/tool-precedence.mjs';
-import { detectFormatter, detectTargetVersion } from '../adapters/execution/python-project.mjs';
+import {
+  detectFormatter,
+  detectFormatterFromSource,
+  detectTargetVersion,
+} from '../adapters/execution/python-project.mjs';
 import { ignoredProjectToolNotices } from '../adapters/project-tools/ignored-notices.mjs';
 import { formatterPlan } from '../adapters/formatting/format-command.mjs';
 import { readBlackConfig, readRuffConfig } from '../adapters/formatting/project-format-config.mjs';
@@ -63,16 +67,35 @@ function formattingLines({ formatter, precedence, conventions, projectRoot }) {
   }
 }
 
-export function pythonStyle({ config, projectRoot }) {
-  const formatter = detectFormatter(projectRoot, config.python?.formatter);
-  const precedence = config.tools?.[formatter]?.precedence;
+function unusedFor(formatter) {
+  return formatter === 'black' ? { [PYTHON_INDENTATION]: 'black has no indentation setting' } : {};
+}
+
+function projectSettings({ formatter, precedence }, configRoot) {
   const layers = precedenceLayers(precedence);
+  if (!layers.usesProject || layers.nitpickerFirst) {
+    return undefined;
+  }
   const read = formatter === 'black' ? readBlackConfig : readRuffConfig;
-  const project = layers.usesProject && !layers.nitpickerFirst ? read(projectRoot) : undefined;
+  return read(configRoot().path);
+}
+
+export function pythonStyle({
+  config,
+  projectRoot,
+  source,
+  configRoot = () => ({ path: projectRoot }),
+}) {
+  const setting = config.python?.formatter;
+  const formatter =
+    source === undefined
+      ? detectFormatter(projectRoot, setting)
+      : detectFormatterFromSource(source, setting);
+  const headFormatter = detectFormatter(projectRoot, setting);
+  const precedence = config.tools?.[formatter]?.precedence;
   return {
-    unused:
-      formatter === 'black' ? { [PYTHON_INDENTATION]: 'black has no indentation setting' } : {},
-    project: projectChoices(formatter, project),
+    unused: formatter === headFormatter ? unusedFor(formatter) : {},
+    project: projectChoices(formatter, projectSettings({ formatter, precedence }, configRoot)),
     note: (id, choice) =>
       formatter === 'black' && id === PYTHON_QUOTES && choice === 'single' ? BLACK_NOTE : undefined,
     summary: (conventions) => [

@@ -30,8 +30,8 @@ const FILE_LIMIT_THRESHOLDS = [
 ];
 const TEST_TIME_THRESHOLDS = ['unitTestSeconds', 'integrationTestSeconds'];
 const NATIVE_LINE_LENGTH = {
-  java: `Java keeps ${String(JAVA_LINE_LENGTH)} characters per line, where google-java-format wraps; lift the rule for some paths with an exception for "line-length-limit"`,
-  kotlin: `detekt checks Kotlin line length (set style>MaxLineLength in config/detekt/detekt.yml); the Java files keep ${String(JAVA_LINE_LENGTH)} characters per line, and an exception for "line-length-limit" lifts that for some paths`,
+  java: `Java line length follows the formatter (google-java-format wraps at ${String(JAVA_LINE_LENGTH)}, palantir-java-format at 120); with the "conventions" key "java.formatter" set to "none", "java.lineLength" (any number of columns) sets it, as does max on LineLength in config/checkstyle/checkstyle.xml once "tools": { "checkstyle": { "precedence": ["project"] } } opts in, and an exception for "line-length-limit" lifts the rule for some paths`,
+  kotlin: `the "conventions" key "kotlin.lineLength" (any number of columns) sets it for ktlint, ktfmt and detekt when a formatter runs; otherwise set style>MaxLineLength in config/detekt/detekt.yml and opt in with "tools": { "detekt": { "precedence": ["project"] } }; the Java files follow "java.lineLength" (${String(JAVA_LINE_LENGTH)} by default, or max on LineLength in config/checkstyle/checkstyle.xml once "tools": { "checkstyle": { "precedence": ["project"] } } opts in), and an exception for "line-length-limit" lifts that for some paths`,
 };
 const JAVA_EXCEPTION_RULES = [...SHARED_EXCEPTION_RULES, ...JAVA_SIZE_RULES];
 

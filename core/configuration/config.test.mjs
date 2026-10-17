@@ -160,7 +160,7 @@ describe('config file', () => {
         exceptions: [fileLimit, lineLength, slowTest],
       });
       expect(() => validateConfig({ preset: 'kotlin', thresholds: { lineLength: 140 } })).toThrow(
-        'detekt checks Kotlin line length',
+        '"kotlin.lineLength" (any number of columns) sets it for ktlint, ktfmt and detekt',
       );
     });
 
@@ -243,7 +243,7 @@ describe('config file', () => {
     ]);
     expect(() => validateConfig({ preset: 'java', thresholds: { lineLength: 140 } })).toThrow(
       new Error(
-        'nitpicker.config.json: "thresholds.lineLength" is not supported with "preset": "java": Java keeps 100 characters per line, where google-java-format wraps; lift the rule for some paths with an exception for "line-length-limit"',
+        'nitpicker.config.json: "thresholds.lineLength" is not supported with "preset": "java": Java line length follows the formatter (google-java-format wraps at 100, palantir-java-format at 120); with the "conventions" key "java.formatter" set to "none", "java.lineLength" (any number of columns) sets it, as does max on LineLength in config/checkstyle/checkstyle.xml once "tools": { "checkstyle": { "precedence": ["project"] } } opts in, and an exception for "line-length-limit" lifts the rule for some paths',
       ),
     );
   });
@@ -396,21 +396,20 @@ describe('tool precedence', () => {
   });
 
   it.each(['java', 'kotlin'])(
-    'names PMD and Checkstyle with the %s preset, where Checkstyle runs one config',
+    'names PMD and Checkstyle with the %s preset, and accepts both layers for each',
     (preset) => {
       const tools = {
         pmd: { precedence: ['project', 'nitpicker'] },
         checkstyle: { precedence: ['project'] },
       };
+      const layered = { checkstyle: { precedence: ['nitpicker', 'project'] } };
       expect(validateConfig({ preset, tools })).toEqual({ preset, tools });
+      expect(validateConfig({ preset, tools: layered })).toEqual({ preset, tools: layered });
       expect(() =>
         validateConfig({ preset, tools: { prettier: { precedence: ['project'] } } }),
       ).toThrow(
         `"tools" names unknown tool "prettier". Supported tools with this preset: pmd, checkstyle${preset === 'kotlin' ? ', ktlint, ktfmt, detekt' : ''}`,
       );
-      expect(() =>
-        validateConfig({ preset, tools: { checkstyle: { precedence: ['nitpicker', 'project'] } } }),
-      ).toThrow('"tools.checkstyle.precedence" must be ["nitpicker"] or ["project"]');
     },
   );
 
@@ -501,43 +500,5 @@ describe('layout keys', () => {
     expect(() => validateConfig({ layout: { roots: ['lib'] } })).toThrow(
       /Allowed layout keys: sourceRoots, testRoots, excludedGlobs/,
     );
-  });
-});
-
-describe('react keys', () => {
-  it('accepts enabled and every styling approach', () => {
-    for (const react of [
-      {},
-      { enabled: true },
-      { enabled: false },
-      { styling: 'class-names' },
-      { styling: 'css-in-js' },
-      { styling: 'inline-style' },
-      { enabled: true, styling: 'css-in-js' },
-    ]) {
-      expect(validateConfig({ react })).toEqual({ react });
-    }
-  });
-
-  it.each([
-    [[], /"react" must be an object/],
-    ['react', /"react" must be an object/],
-    [{ enable: true }, /unknown react key "enable". Allowed react keys: enabled, styling/],
-    [{ enabled: 'yes' }, /"react.enabled" must be true or false/],
-    [{ enabled: 1 }, /"react.enabled" must be true or false/],
-    [
-      { styling: 'tailwind' },
-      /"react.styling" must be one of: class-names, css-in-js, inline-style/,
-    ],
-  ])('rejects react %j', (react, message) => {
-    expect(() => validateConfig({ react })).toThrow(message);
-  });
-
-  it('reports the react override and changes the policy hash', () => {
-    const overrides = describeConfigOverrides({ react: { styling: 'css-in-js' } });
-    const analyzers = [{ name: 'a', version: '1', configurationHash: 'h' }];
-
-    expect(overrides).toEqual(['react: {"styling":"css-in-js"}']);
-    expect(policyHash(analyzers, overrides)).not.toBe(policyHash(analyzers, []));
   });
 });

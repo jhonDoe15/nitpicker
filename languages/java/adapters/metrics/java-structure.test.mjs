@@ -182,6 +182,17 @@ describe('Java file limits', () => {
     expect(found({ exceptions: [{ rule: 'line-length-limit', glob: 'src/main/**' }] })).toEqual([]);
   });
 
+  it('limits Java lines to the length the conventions choose', () => {
+    writeClasses('src/main/java/demo', 1, `class A { ${'int a; '.repeat(14)}}\n`);
+    const found = (conventions) =>
+      readJavaFileLimitFindings(projectRoot, { manifest, policy: { conventions } }).map(
+        ({ rule }) => rule,
+      );
+
+    expect(found({})).toEqual([RULE_IDS.lineLength]);
+    expect(found({ 'java.lineLength': '120' })).toEqual([]);
+  });
+
   it('applies the configured thresholds, exceptions and exclude globs', () => {
     writeClasses('src/main/java/demo', 3, 'a\nb\nc\n');
     writeClasses('src/main/java/gen', 3);
