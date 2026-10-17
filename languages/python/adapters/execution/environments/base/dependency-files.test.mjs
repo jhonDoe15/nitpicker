@@ -3,11 +3,18 @@ import { dependenciesDiffer } from './dependency-files.mjs';
 import {
   pyproject,
   removeTemporaryRoots,
-  temporaryRoot,
+  temporaryRoot as registeredTemporaryRoot,
   writeAll,
 } from './test-support/temporary-projects.mjs';
 
-afterEach(removeTemporaryRoots);
+const roots = [];
+function temporaryRoot() {
+  return registeredTemporaryRoot(roots);
+}
+
+afterEach(() => {
+  removeTemporaryRoots(roots);
+});
 
 describe('comparing the dependency files of base and head', () => {
   it.each([

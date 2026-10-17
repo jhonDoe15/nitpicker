@@ -10,10 +10,15 @@ import {
 import {
   pyproject,
   removeTemporaryRoots,
-  temporaryRoot,
+  temporaryRoot as registeredTemporaryRoot,
   write,
   writeAll,
 } from './test-support/temporary-projects.mjs';
+
+const roots = [];
+function temporaryRoot() {
+  return registeredTemporaryRoot(roots);
+}
 
 let savedPath;
 
@@ -39,7 +44,7 @@ afterEach(() => {
     process.env.PATH = savedPath;
     savedPath = undefined;
   }
-  removeTemporaryRoots();
+  removeTemporaryRoots(roots);
 });
 
 describe('building the base its own environment with the project tool', () => {
@@ -72,7 +77,9 @@ describe('building the base its own environment with the project tool', () => {
       const head = temporaryRoot();
       write(base, lock, 'new');
       write(head, lock, 'old');
-      const log = withTools((tools, file) => installRecordingManager(tools, kind, { log: file }));
+      const log = withTools((tools, file) => {
+        installRecordingManager(tools, kind, { log: file });
+      });
 
       const launcher = baseEnvironment({ projectRoot: base, liveRoot: head, virtualenv });
 
@@ -88,7 +95,9 @@ describe('building the base its own environment with the project tool', () => {
     const head = temporaryRoot();
     writeAll(base, { 'uv.lock': 'same' });
     writeAll(head, { 'uv.lock': 'same' });
-    const log = withTools((tools, file) => installRecordingManager(tools, 'uv', { log: file }));
+    const log = withTools((tools, file) => {
+      installRecordingManager(tools, 'uv', { log: file });
+    });
 
     expect(baseEnvironment({ projectRoot: base, liveRoot: head, virtualenv })).toBeUndefined();
     expect(() => readFileSync(log, 'utf8')).toThrow(/ENOENT/);
@@ -108,7 +117,9 @@ describe('building the base its own environment with the project tool', () => {
       const head = temporaryRoot();
       write(base, 'uv.lock', 'new');
       write(head, 'uv.lock', 'old');
-      const log = withTools((tools, file) => installRecordingManager(tools, 'uv', { log: file }));
+      const log = withTools((tools, file) => {
+        installRecordingManager(tools, 'uv', { log: file });
+      });
 
       expect(
         baseEnvironment({ projectRoot: base, liveRoot: head, setting, virtualenv }),
@@ -122,7 +133,9 @@ describe('building the base its own environment with the project tool', () => {
     const head = temporaryRoot();
     writeAll(base, { 'uv.lock': 'a', 'poetry.lock': 'new' });
     writeAll(head, { 'uv.lock': 'a', 'poetry.lock': 'old' });
-    const log = withTools((tools, file) => installRecordingManager(tools, 'poetry', { log: file }));
+    const log = withTools((tools, file) => {
+      installRecordingManager(tools, 'poetry', { log: file });
+    });
 
     const launcher = baseEnvironment({
       projectRoot: base,
@@ -192,9 +205,9 @@ describe('building the base its own environment with the project tool', () => {
     const head = temporaryRoot();
     write(base, 'poetry.lock', 'new');
     write(head, 'poetry.lock', 'old');
-    withTools((tools, file) =>
-      installRecordingManager(tools, 'poetry', { log: file, status: 1, stderr: 'lock is stale' }),
-    );
+    withTools((tools, file) => {
+      installRecordingManager(tools, 'poetry', { log: file, status: 1, stderr: 'lock is stale' });
+    });
 
     expect(() => baseEnvironment({ projectRoot: base, liveRoot: head, virtualenv })).toThrow(
       `poetry install --no-root --no-interaction failed for the base snapshot ${base} (exit 1): lock is stale. The base needs its own environment because its dependency files differ from the head's (install poetry with \`pipx install poetry\` or \`pip install poetry\`)`,
@@ -211,7 +224,9 @@ describe('building the base environment from requirements files', () => {
       'constraints.txt': 'flask<4\n',
     });
     writeAll(head, { 'requirements.txt': 'flask==2.0.0\n' });
-    const log = withTools((tools, file) => installRecordingPython(tools, { log: file }));
+    const log = withTools((tools, file) => {
+      installRecordingPython(tools, { log: file });
+    });
 
     const launcher = baseEnvironment({ projectRoot: base, liveRoot: head, virtualenv });
 
@@ -241,7 +256,9 @@ describe('opening the environment of a snapshot', () => {
     write(base, 'uv.lock', 'new');
     write(head, 'uv.lock', 'old');
     write(head, '.venv/bin/.keep');
-    withTools((tools, file) => installRecordingManager(tools, 'uv', { log: file }));
+    withTools((tools, file) => {
+      installRecordingManager(tools, 'uv', { log: file });
+    });
 
     const baseLauncher = openSnapshotEnvironment({ projectRoot: base, liveRoot: head });
     const headLauncher = openSnapshotEnvironment({ projectRoot: head, liveRoot: head });

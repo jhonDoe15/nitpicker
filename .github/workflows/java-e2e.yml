@@ -1,9 +1,10 @@
 name: java-e2e
 
-# The Java end-to-end suite (npm run test:java): real Gradle and Maven builds of small Java projects, PMD,
-# Checkstyle, SpotBugs, Error Prone, PIT and Spring. It runs on a push to main that touches the Java preset
-# code, the core and shared code it imports, the package and test configuration, or this file; by hand from
-# the Actions tab; and on a pull request only when the `run-ci` label is added, like the typescript workflow.
+# The Java end-to-end suite (npm run test:java): real Gradle and Maven builds of small Java projects, which
+# exercise the formatter, Checkstyle and the followed project style for real. It runs on a push to main that
+# touches the Java preset code, the core and shared code it imports, the package and test configuration, or
+# this file; by hand from the Actions tab; and on a pull request only when the `run-ci` label is added, like
+# the kotlin-e2e workflow.
 on:
   push:
     branches: [main]
@@ -29,11 +30,8 @@ jobs:
   java:
     if: github.event_name != 'pull_request' || github.event.label.name == 'run-ci'
     runs-on: ubuntu-latest
-    # A healthy run takes 15 to 30 minutes with cold Gradle and Maven caches; this stops a hung one well
-    # before the default.
+    # A healthy run takes well under an hour with cold Gradle and Maven caches; this stops a hung one well before the default.
     timeout-minutes: 60
-    env:
-      MAVEN_VERSION: 3.9.11
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -41,29 +39,18 @@ jobs:
           node-version: 24
           cache: npm
           cache-dependency-path: package-lock.json
+      # Maven comes with the runner image; the cache keeps ~/.m2 between runs, keyed on the fixture poms.
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: 21
-      # Caches ~/.gradle: the PMD, Checkstyle, SpotBugs, Error Prone and PIT jars the init script resolves.
+          cache: maven
+          cache-dependency-path: languages/java/maven/fixtures/**/pom.xml
+      # Caches ~/.gradle: the Checkstyle, PMD, SpotBugs, Error Prone, palantir-java-format and PIT jars the init
+      # script resolves, and the plugins the fixture projects use.
       - uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: 8.14.3
-      # The runner's own Maven is not pinned, so install the version the suite is checked against and
-      # verify the download against the checksum Apache publishes.
-      - name: Install Maven
-        run: |
-          base="https://archive.apache.org/dist/maven/maven-3/${MAVEN_VERSION}/binaries"
-          archive="apache-maven-${MAVEN_VERSION}-bin.tar.gz"
-          curl -fsSL -o "${RUNNER_TEMP}/${archive}" "${base}/${archive}"
-          echo "$(curl -fsSL "${base}/${archive}.sha512")  ${RUNNER_TEMP}/${archive}" | sha512sum --check
-          tar -xzf "${RUNNER_TEMP}/${archive}" -C "${RUNNER_TEMP}"
-          echo "${RUNNER_TEMP}/apache-maven-${MAVEN_VERSION}/bin" >> "$GITHUB_PATH"
-      - uses: actions/cache@v4
-        with:
-          path: ~/.m2/repository
-          key: maven-${{ runner.os }}-${{ hashFiles('languages/java/**/*.mjs', 'languages/java/**/*.gradle') }}
-          restore-keys: maven-${{ runner.os }}-
       - run: npm ci
       - name: Java end-to-end suite
         run: npm run test:java

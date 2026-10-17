@@ -312,7 +312,8 @@ comma-separated>` changes that. Those classes are excluded from the regular `tes
     the main and test source sets (branch coverage and duplicates have fixed limits). `classMethods`
     (20), `classFields` (10), `inheritanceDepth` (3) and `folderDepth` (4) replace the limits
     described under [Class and package size limits](#class-and-package-size-limits). Line length
-    is 100 characters, where google-java-format wraps; nitpicker's own `line-length-limit` rule
+    is 100 characters, where google-java-format wraps (120 for palantir-java-format, or the
+    `java.lineLength` convention; see [Style](#style)); nitpicker's own `line-length-limit` rule
     checks it (string literal text, text blocks, imports and URLs do not count, an old long line is
     held and fails only when it grows) and takes an `exceptions` entry; `thresholds.lineLength` is a
     config error, not the general 120. `unitTestSeconds` and
@@ -347,12 +348,12 @@ finding that only moves stays baselined. The comparison key is already
 `tool, rule, path, symbol, identity, classification, metric name`; "identity" below is what each
 tool adds on top of rule and path.
 
-| Tool                                      | Report                     | Ingester                                                                       | Classification                                          | Identity                                                                                                            |
-| ----------------------------------------- | -------------------------- | ------------------------------------------------------------------------------ | ------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------- |
-| PMD (`pmd`)                               | SARIF 2.1.0                | `ingestSarif` (X5), after URI rewriting                                        | enforceable: every reported violation                   | The rule's message text (PMD names the offending field, method or variable in it). Repeats get `#2`, `#3` in order. |
-| SpotBugs (`spotbugs`)                     | SARIF 2.1.0                | `ingestSarif` (X5), after URI rewriting                                        | enforceable: every reported bug                         | SpotBugs' message arguments (class, method or field, called method). Repeats get `#2`, `#3` in order.               |
-| google-java-format (`google-java-format`) | file list from `--dry-run` | `ingestFormatCheck` (new, `languages/java/ingest/formatting/format-check.mjs`) | enforceable                                             | The constant `format`; the file path is the key. One finding per unformatted file.                                  |
-| JaCoCo (`jacoco`)                         | XML                        | `ingestJacoco` (X6)                                                            | descriptive: `line-coverage` metric, `uncovered-method` | As in X6: class and method name plus descriptor.                                                                    |
+| Tool                                                                             | Report                     | Ingester                                                                       | Classification                                          | Identity                                                                                                            |
+| -------------------------------------------------------------------------------- | -------------------------- | ------------------------------------------------------------------------------ | ------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------- |
+| PMD (`pmd`)                                                                      | SARIF 2.1.0                | `ingestSarif` (X5), after URI rewriting                                        | enforceable: every reported violation                   | The rule's message text (PMD names the offending field, method or variable in it). Repeats get `#2`, `#3` in order. |
+| SpotBugs (`spotbugs`)                                                            | SARIF 2.1.0                | `ingestSarif` (X5), after URI rewriting                                        | enforceable: every reported bug                         | SpotBugs' message arguments (class, method or field, called method). Repeats get `#2`, `#3` in order.               |
+| google-java-format (`google-java-format`; `palantir-java-format` for that style) | file list from `--dry-run` | `ingestFormatCheck` (new, `languages/java/ingest/formatting/format-check.mjs`) | enforceable                                             | The constant `format`; the file path is the key. One finding per unformatted file.                                  |
+| JaCoCo (`jacoco`)                                                                | XML                        | `ingestJacoco` (X6)                                                            | descriptive: `line-coverage` metric, `uncovered-method` | As in X6: class and method name plus descriptor.                                                                    |
 
 Notes on the glue in `java-reports.mjs`:
 
@@ -382,6 +383,20 @@ Notes on the glue in `java-reports.mjs`:
   remap them: a renamed file with such findings shows them as resolved plus new. `format` and
   `fp:` identities carry no path, so they follow renames.
 
+**The project's PMD ruleset.** With `tools.pmd.precedence` listing `"project"`, PMD runs
+nitpicker's ruleset and the project's together, on Gradle and Maven alike
+(`adapters/tool-config/pmd-layers.mjs`). A rule the project names on its own, or defines inline,
+is laid over nitpicker's definition of the rule: nitpicker's copy is excluded and the merged rule goes into
+the project's ruleset file (PMD keeps the first reference of a rule, and a ruleset's `exclude-pattern`
+applies to the file that holds it), so the project's priority, message and named properties win while the
+properties it leaves unset keep nitpicker's values (xpath, `violationSuppressXPath`, `ignore...`). A
+whole-category reference enables the rules nitpicker leaves out of that category (as single `<rule ref>`
+entries, minus the project's `<exclude>`s) and nothing nitpicker already runs, and an `<exclude>` in the
+project's file cannot turn a nitpicker rule off. With `["nitpicker", "project"]` nitpicker's values win
+where both set one. A rule nitpicker runs through its test-only ruleset (`TestClassWithoutTestCases`, from
+`pmd-test-only.xml`) is never added to the project's file, so a project category reference does not run
+it a second time; a project rule that names it is overlaid on that ruleset (`pmd-test-rules.xml`) instead.
+
 **PMD rules tuned by nitpicker.** These rules of the rule set allow a narrower form than PMD's
 default, and their messages name it:
 
@@ -408,8 +423,13 @@ default, and their messages name it:
   names may be a single lowercase letter (`x`, `y`), as record components can. Javadoc that is
   there still has to be well formed. With this bundled config the tasks run on nitpicker's own
   `nitpickerCheckstyle` configuration, so a project that declares its own Checkstyle version in
-  `checkstyle` (Spring PetClinic declares 12.3.1) still gets the pinned version and its config;
-  a project config chosen by policy keeps the project's Checkstyle classpath. Decision to review: google_checks is noisy on
+  `checkstyle` (Spring PetClinic declares 12.3.1) still gets the pinned version and its config.
+  A project config chosen by policy (`tools.checkstyle.precedence` lists `"project"`) is merged
+  into this one module by module (`adapters/tool-config/checkstyle/checkstyle-layers.mjs`, run in
+  Node by `checkstyle-merge.mjs` between two Gradle runs (the first exports nitpicker's config, the second
+  gets the merged file as `-Pnitpicker.checkstyle.mergedConfig`) and by `writeCheckstyleSetup` for Maven): the project's property
+  values win for the modules both configs name, the modules only one names stay, so nitpicker's
+  checks are never dropped, and the merged file still runs on the pinned Checkstyle. Decision to review: google_checks is noisy on
   code that was never written for it, but the gate is differential, so existing violations stay
   baselined and only new ones fail.
 - **Ingestion.** `ingestCheckstyle` (X6) unchanged, `tool` `checkstyle`, absolute file paths made
@@ -425,6 +445,17 @@ default, and their messages name it:
 Messages that embed a measured value (for example "found 120" in a line-length violation) change
 identity when the value changes: editing such a line counts as a resolved plus a new finding.
 
+- **Wildcard imports follow the project.** Wildcard and explicit imports are both valid, so
+  the `java.wildcardImports` convention (`explicit` or `wildcard`, default `explicit`) marks a file
+  `wildcard` when it has any wildcard import except a static one in a test source set, and the plurality
+  of files wins. With `wildcard`, `checkstyle/AvoidStarImport` and `errorprone/WildcardImport` are
+  dropped on Gradle and on Maven alike (the Kotlin preset's Java files too); PMD and google-java-format
+  have no such rule. Static wildcards in test sources (`import static org.assertj.core.api.Assertions.*;`)
+  are their own convention, `java.testStaticImports`, measured over the test source sets
+  (`src/test`, `src/integrationTest`, ...): with `wildcard`, only star findings on a
+  `import static` line of a test file are dropped, and the ban stays everywhere else. Pin either in
+  `conventions` (see [Configuration](usage.md#configuration)).
+
 ## Slice 5: CRAP
 
 - **Complexity source.** `StructureMetrics.java` (the `nitpickerStructure` task, see
@@ -436,17 +467,26 @@ identity when the value changes: editing such a line counts as a resolved plus a
   several constants count once; `default` and `case null, default` count 0). A flat switch, a switch
   expression or a pattern switch whose cases are all one-expression arrows, counts as one decision
   plus one per `when` guard, at most its case count, so an exhaustive switch over an enum or sealed
-  type does not push a method over the limit. Lambda bodies count towards the
-  enclosing method; members of nested and anonymous classes are methods of their own.
+  type does not push a method over the limit. Lambda bodies, initializer blocks and members of
+  nested and anonymous classes are units of their own and do not count towards the enclosing
+  method; the same scanner counts all of them (see
+  [Structure limits (SH5)](#structure-limits-sh5)).
 - **Ingester.** `ingestCrap` (`languages/java/ingest/crap.mjs`) joins those methods with the JaCoCo
   report (same `jacoco.xml` as slice 1). A JaCoCo method belongs to a method of `structure.json` when
   the file, the method name (`<init>` is the class name) and the line match: the method's first line
   lies in the method's line range. This also joins methods of anonymous classes. A constructor is
   also joined by its parameter types (`parameterTypes` in `structure.json` against JaCoCo's
   descriptor), because a class with field initializers starts its `<init>` at the first initializer,
-  before the constructor. Lambdas and
-  `<clinit>` have no entry of their own and stay out of the join (a lambda body counts
-  toward its enclosing method's complexity but not toward its coverage).
+  before the constructor. A lambda is joined to the synthetic JaCoCo methods `lambda$<method>$<n>`
+  (`lambda$new$<n>` in a constructor, an instance initializer or a field initializer,
+  `lambda$static$<n>` in a static one) whose first line lies in the lambda's range and not in a lambda
+  nested in it, so a lambda inside a lambda is scored separately and an outer lambda is scored
+  without the inner one. An initializer block and a field initializer that branches (`entry.initializer`
+  in `structure.json`) have no JaCoCo method of their own: their code is part of the constructors'
+  `<init>` or of `<clinit>`, so their coverage is read from JaCoCo's per-line data (`jacoco.xml`
+  `<sourcefile><line>`: covered lines and branches) for the lines of the unit, minus the lines of a unit nested in
+  it, and the lower of the line and branch percentage is used as everywhere else. A constructor's
+  own score still counts the initializer lines that its `<init>` holds.
 - **Private empty constructors.** `private Util() {}` (also with an explicit `super();`), the
   utility-class idiom, is flagged `privateEmptyConstructor` in `structure.json` and left out of the
   join. JaCoCo leaves such a constructor out of its report only in some cases (inner classes, enums,
@@ -466,8 +506,14 @@ identity when the value changes: editing such a line counts as a resolved plus a
   hand-written code that annotation is the `pmd/GeneratedOnHandWrittenCode` finding. Only violations are findings; the
   per-function metric findings of the TypeScript check are not produced.
 - **Identity.** `function:<signature>`, for example `function:Calc.classify(int, int, String)`:
-  enclosing classes, method and parameter types (`signature` in `structure.json`), never a line.
-  Repeats (anonymous classes) get `#2`, `#3` in report order. The path
+  enclosing classes, method and parameter types (`signature` in `structure.json`), never a line;
+  a lambda is `function:Calc.classify.<lambda>` or `function:Calc.classify.callback` (named after the
+  variable it initializes), an initializer block `function:Calc.<clinit>` (static) or
+  `function:Calc.<init>`, a field initializer `function:Calc.LIMIT`.
+  Repeats (anonymous classes) get `#2`, `#3` in report order. The `<init>`, `<clinit>` and `<lambda>`
+  names repeat within a class by nature, so a finding on one is numbered only among the entries of
+  that name with the same source text that are over the limit: inserting, deleting or reordering other
+  blocks or lambdas never turns a legacy one into a new finding. The path
   is part of the comparison key, so, as with the hashed identities of slice 1, a renamed file shows
   its findings as resolved plus new. Changing a method's parameters is a different function, as in
   the TypeScript check, where an edit that moves a function changes its identity too.
@@ -845,7 +891,7 @@ resolved plus a new finding, as in the TypeScript check.
 | `NonApiType`                     | on      | Its collection advice duplicates pmd/LooseCoupling and its primitive-array advice needs Guava                                                                                                                                             |
 | `ParameterMissingNullable`       | off     | Nullness is NullAway's job here; this check only asks for an annotation                                                                                                                                                                   |
 | `PreferredInterfaceType`         | off     | Fights pmd/LooseCoupling: it asks for the concrete type that rule forbids                                                                                                                                                                 |
-| `RemoveUnusedImports`            | off     | google-java-format removes unused imports, so the file is already reported as unformatted                                                                                                                                                 |
+| `RemoveUnusedImports`            | off     | A formatter removes unused imports, so the file is already reported as unformatted; with no formatter, Checkstyle's UnusedImports reports them                                                                                            |
 | `ReturnMissingNullable`          | off     | Only asks for a @Nullable annotation; NullAway reports the returned null where it matters, and the fix is often a non-null value                                                                                                          |
 | `StaticOrDefaultInterfaceMethod` | off     | Forbids static and default interface methods for old Android; they are the normal form in modern Java                                                                                                                                     |
 | `StringFormatWithLiteral`        | off     | Crashes Error Prone 2.50.0 (IllegalFormatConversionException) on a format string that does not match its literal arguments, failing the whole run                                                                                         |
@@ -940,7 +986,7 @@ No Error Prone, PMD, SpotBugs or Checkstyle rule is turned off because one of th
 the same code: there is no SpotBugs exclude file, and the PMD ruleset leaves out only the
 test-style rules named in its header. (Two Error Prone checks are still off as repeats:
 `RemoveUnusedImports`, whose unused import google-java-format already reports as an unformatted
-file, and `EmptyIf`, whose `if (c);` Error Prone's own `UnnecessarySemicolon` reports at the same
+file (with no formatter, Checkstyle's `UnusedImports` reports it), and `EmptyIf`, whose `if (c);` Error Prone's own `UnnecessarySemicolon` reports at the same
 position.) Instead, `languages/java/adapters/overlaps/overlap-pairs.json` lists pairs of a
 primary rule and the secondary rules it stands for, with a scope:
 
@@ -960,8 +1006,7 @@ primary rule and the secondary rules it stands for, with a scope:
 `withoutOverlaps` (`static-overlaps.mjs`) runs in `collectJavaFindings`, on the base and the head
 alike, after the policy's `exclude` and `exceptions` and before the legacy inventory. A secondary
 finding is dropped only when a primary finding in the same scope is itself reported. So an
-exception for the primary, a primary tool that did not run (PMD with
-`nitpicker.pmd.nitpickerConfig=false`, NullAway without packages) or a primary dropped for its own
+exception for the primary, a primary tool that did not run (NullAway without packages) or a primary dropped for its own
 primary brings the secondary back, while a baselined primary still stands for its secondary, so a
 baselined issue does not come back under another tool's name. The primary is the finding with the
 clearest message: usually the Error Prone check with its fix over a SpotBugs pattern, the specific
@@ -1131,18 +1176,26 @@ table:
   its rules do not expose per-method statements). A small JavaParser step was the alternative; it would add a
   pinned artifact for nothing the JDK does not already provide.
 - **Definitions** (the TypeScript analyzer's, so both languages gate the same way). Unit: each
-  method and constructor with a body. `lines`: last line - first line + 1, annotations and
+  method and constructor with a body, each static and instance initializer block with a statement
+  (`Class.<clinit>`, `Class.<init>`), each field initializer that is a lambda (`Class.field`) or
+  branches (`?:`, `&&`, `||`, a `switch` expression) and each lambda (`Class.method.<lambda>`; one
+  assigned to a variable or field is named after it, one inside another unit is named after that unit,
+  as in `Class.method.<lambda>.<lambda>`), as every arrow function and callback is in TypeScript. `lines`: last line - first line + 1, annotations and
   modifiers included, Javadoc not. `statements`: every statement in the body except blocks (`for`
   initializers and updates, `catch` parameters and `try` resources are not statements).
   `maxControlNesting`: deepest nesting of `if`, `for`, enhanced `for`, `while`, `do`, `switch`
   (statement or expression) and `catch`; an `else if` stays on the level of the `if` it continues,
   as in the Python and Kotlin presets. `parameters`:
-  declared parameters. Anonymous, local and member class bodies are separate units and do not count
-  towards the method that contains them; lambda bodies count towards the enclosing method.
+  declared parameters (the parameters of the lambda). Anonymous, local and member class bodies,
+  lambdas and initializer blocks are separate units and do not count towards the method that
+  contains them: the statements, control nesting and complexity of a lambda are its own, as in
+  TypeScript (`lines` is the physical span, so the lines of a nested unit still count towards the one
+  around it). A lambda with an expression body has 1 statement. A field initializer unit has 1 statement.
 - **Findings.** `languages/java/adapters/metrics/java-structure.mjs` hands the metrics to `evaluateStructure` and keeps
   the enforceable limit findings only (tool `structure`); the per-method descriptive metrics of the
   TypeScript check are not emitted, since they would add four findings per method to every report.
-  Name: `Outer.Inner.method` (constructors use the class name; anonymous classes `<anonymous>`),
+  Name: `Outer.Inner.method` (constructors use the class name; anonymous classes `<anonymous>`;
+  initializer blocks `Outer.<clinit>` and `Outer.<init>`, lambdas `Outer.method.<lambda>`),
   identity: name, occurrence among equal names in the file and a hash of the method text with
   indentation removed, no line number. A moved or re-indented method stays baselined; editing a
   method that already violates produces a new finding, as in TypeScript.
@@ -1194,18 +1247,84 @@ the allowed form and the `exceptions` entry that lifts it.
 
 ## Style
 
-google-java-format owns layout. The default is its Google style: 2 spaces, 4 for a continuation
-line, lines of at most 100 characters. A project that indents with 4 spaces gets google-java-format
-with `--aosp` (4 spaces, 8 for a continuation line, still wrapping at 100): nitpicker follows the
-`java.indentation` convention (`"2"` or `"4"`), which it takes from the Java files of the base
-snapshot, or from `"conventions": { "java.indentation": "4" }` in `nitpicker.config.json`; a tie or
-no Java files keeps Google. The run prints the choice. The convention applies to the Java sources
-of a kotlin-preset project too. It comes from the head policy file at run time, and the function
-`javaStyle()` in `languages/java/adapters/style/java-style.mjs` turns it into the style
-(`google` or `aosp`).
+The formatter owns layout, and nitpicker follows the formatter the project uses. The
+`java.formatter` convention is `google` (google-java-format, the default), `palantir`
+(palantir-java-format, Apache-2.0, pinned like google-java-format and resolved the same way on Gradle
+and Maven) or `none` (no format check). It comes, in this order, from:
 
-A badly formatted file is one `google-java-format` finding, not hundreds: the Checkstyle checks that
-only restate the formatter's layout are suppressed in both styles (`Indentation`,
+1. A pin in `"conventions": { "java.formatter": "..." }`.
+2. The build files, with no opt-in: Spotless `googleJavaFormat()` or `palantirJavaFormat()` in
+   Gradle, `spotless-maven-plugin` with `<googleJavaFormat>` or `<palantirJavaFormat>`,
+   `fmt-maven-plugin`, the `com.palantir.java-format` plugin, or either formatter's artifact in a
+   version catalog. `googleJavaFormat().aosp()`, `.style("AOSP")` and a `<style>aosp</style>` read as
+   google-java-format with 4 spaces; `palantirJavaFormat().style("GOOGLE")` reads as google (with
+   `"AOSP"`, google with 4 spaces); `eclipse()` and `prettier()` in a Spotless `java` block read as
+   `none`. The scan covers the root and module `build.gradle(.kts)` and `settings.gradle(.kts)`, the
+   `gradle/*.versions.toml` catalogs, the convention plugins under `buildSrc/` and `build-logic/`
+   (`.gradle`, `.gradle.kts`, `.kt`, `.groovy`) and every `pom.xml` of the project (module and parent
+   poms), at most 200 files, shallowest first. Files under `src/`, `node_modules`, `build`,
+   `target`, `out`, `fixtures` and `testdata`, and paths in `exclude`, are skipped. Comments are
+   removed by a reader that knows string literals (`//` and `/* */` only outside quotes in Gradle
+   files, `#` in TOML; the XML parser skips pom comments), so a glob such as `'**/*.java'` or
+   `**/*Test.java` around the plugin does not hide it. Within a file palantir wins when both are
+   named; across files the most common declaration wins and a tie declares nothing.
+3. The Java files, when the build names nothing: each file votes from a call the formatter wrapped
+   after `(`, never from its longest line, and a file with no such call votes for nothing. Two spaces
+   or four spaces wrapped at 100 vote `google`, four spaces wrapped at 120 `palantir`, and block
+   indentation with tabs, 140 columns or two spaces at 120 vote `none` (tabs inside text blocks and
+   comments do not count). The winner needs at least 3 voting files and more than half of the
+   votes. With weaker or no evidence the choice stays `google`, and the measured indentation picks
+   `--aosp`. An IntelliJ project with four spaces and 120 columns looks like palantir-java-format to
+   the measure; pin `java.formatter` to `none` for it.
+
+The formatter a build file declares (`googleJavaFormat()`, `palantirJavaFormat()`, `aosp()`, a style
+name, the Maven plugins) is a fact about which formatter the project uses, so it is detected without
+any opt-in; the Kotlin preset does the same for the ktfmt style its build names. Config files (the
+Checkstyle config, detekt, `.editorconfig`, `ruff.toml`) are read only once their tool lists
+`"project"`.
+
+The build files are read from the same snapshot as the measured conventions: the merge base in a
+comparison (so a pull request that adds `palantirJavaFormat()` is still judged at the limits of its
+base, and starts being judged at 120 once it is merged), the checked-out tree for `--all`, and the
+pull request's own tree only when the base has no Java sources yet. The Checkstyle config below is
+read from the same snapshot. Nothing in `nitpicker.config.json` is involved, so the policy gate has
+nothing to report here; the printed "Following this project's conventions" block names the
+formatter and where it came from.
+
+The formatter fixes what it can: google-java-format wraps at 100 and indents with 2 spaces (4 spaces,
+8 for a continuation line, with `--aosp`, which nitpicker uses for the `java.indentation` convention
+`"4"`; a declared `googleJavaFormat()` without `.aosp()` fixes it at `"2"`); palantir-java-format
+indents with 4 and wraps at 120. `java.indentation` is `"2"`, `"4"` or `"tab"`. `java.lineLength` is
+any whole number of columns from 10 to 999 (`"100"`, `"120"` and `"140"` are the measured ones);
+it drives the limit of `line-length-limit` for Java files. When the formatter comes from a pin or the
+build file, a pin that contradicts what it fixes is a config error that names where the formatter
+came from (`"conventions.java.lineLength" is "120", but google-java-format (declared in your build
+file) fixes it at "100"`). When the formatter is only the default or was measured, the contradiction
+means the project does not use it: the formatter becomes `none` and the run prints why (`from your
+conventions.java.lineLength pin in nitpicker.config.json`). A repository without Java files never
+fails on this. With `java.formatter` set to `none`, `java.lineLength` is measured from wrapped
+code the way `kotlin.lineLength` is (unbreakable lines, such as imports, URLs, string literals and
+text blocks, do not vote).
+
+When `tools.checkstyle.precedence` lists `"project"` and `config/checkstyle/checkstyle.xml` has a
+`LineLength` module, its `max` (any number; Checkstyle's default 80 for a module without one) wins
+over the formatter and the files (the project overrides only what it sets). A formatter that was
+only the default or measured gives way to it and becomes `none`; a declared or pinned one stays, and
+runs at the Checkstyle width, because listing `"project"` is the project's own decision about the
+width. A `LineLength` module with `severity` `ignore` is not read, and a `max` outside 10 to 999 is
+ignored with a printed note. Checkstyle's own `LineLength` stays suppressed, so the limit is checked once, by
+`line-length-limit`. The run prints each choice and its source. The conventions apply to the Java
+sources of a kotlin-preset project too. They come from the head policy file at run time, and the
+function `javaStyle()` in `languages/java/adapters/style/java-style.mjs` turns them into the style
+(`google`, `aosp`, `palantir` or `none`), which reaches Gradle as `-Pnitpicker.java.style` and Maven
+as `javaStyle`.
+
+A badly formatted file is one `google-java-format`, `google-java-format --aosp` or
+`palantir-java-format` finding (the one that ran), not hundreds. Its message gives the command that
+fixes the file (`google-java-format --replace <Java files>`, with `--aosp`, or `palantir-java-format
+--palantir --replace <Java files>`) and says how to pin `conventions.java.formatter` (`"google"`,
+`"palantir"` or `"none"`) in nitpicker.config.json when it is not your formatter. The Checkstyle
+checks that only restate the formatter's layout are suppressed in both styles (`Indentation`,
 `CommentsIndentation`, `WhitespaceAround`, `WhitespaceAfter`, `GenericWhitespace`, `MethodParamPad`,
 `ParenPad`, `NoWhitespaceBefore`, `OperatorWrap`, `SeparatorWrap`, `NoLineWrap`, `CustomImportOrder`,
 `EmptyLineSeparator`, `LeftCurly`, `RightCurly`, `AnnotationLocation`, `FileTabCharacter` and the
@@ -1213,14 +1332,35 @@ empty-block spacing regex), in `languages/java/gradle/checkstyle-suppressions.xm
 everything that is not layout: naming, `NeedBraces`, `AvoidStarImport`, empty catch blocks, the
 Javadoc rules, `OneStatementPerLine` and the rest. Checkstyle's `LineLength` is suppressed too: the
 line-length rule above replaces it. A project's own
-Checkstyle config (`tools.checkstyle.precedence`) is used as written, layout checks included.
+Checkstyle config (`tools.checkstyle.precedence`) is layered over nitpicker's, and these suppressions apply to the
+merged config as well: the formatter and the line-length rule own layout and line length, so a project's settings
+for those checks change nothing.
+
+With no formatter (`none`), nothing else reports the layout and the unused imports that
+google-java-format used to remove, so the Gradle and Maven runs use
+`languages/java/gradle/checkstyle-suppressions-unformatted.xml`, which suppresses only the layout
+checks the formatters disagree on or that depend on a house style (`CommentsIndentation`,
+`OperatorWrap`, `SeparatorWrap`, `NoLineWrap`, `CustomImportOrder`, `EmptyLineSeparator`,
+`AnnotationLocation`, the empty-block spacing regex), `LineLength` and, by id, `LeftCurlyNl` (it asks
+for the brace of `case X: {` on its own line, which neither formatter does). The checks both
+formatters agree on stay on: `WhitespaceAround`, `WhitespaceAfter`, `GenericWhitespace`,
+`MethodParamPad`, `ParenPad`, `NoWhitespaceBefore`, `LeftCurlyEol` (the other `LeftCurly`) and
+`RightCurly`, `FileTabCharacter`, and
+`Indentation` at the measured width (2 by default; at 4 the `basicOffset`, `caseIndent` and
+`arrayInitIndent` of the bundled check become 4; for tab-indented files `Indentation` and
+`FileTabCharacter` are removed). Checkstyle's `UnusedImports` is added to the bundled checks, so an
+unused import is still a finding; Error Prone's `RemoveUnusedImports` stays off and PMD has no
+unused-import rule in the ruleset. The init script (`nitpicker.init.gradle`, reading
+`-Pnitpicker.java.style` and `-Pnitpicker.java.indentation`) and `unformatted-checks.mjs` (Maven)
+make the same edits, and these findings say to fix the layout by hand. The Java sources of a
+kotlin-preset project get the same checks.
 
 The style reaches Gradle as the command-line property `-Pnitpicker.java.style=aosp`, never through
 `gradle.properties`. The runner reads the convention from the head policy file at run time, like the
 other policy values, so it is not part of the analyzer's configuration hash; the base run gets the
 same policy file, so a change of style in the same pull request does not fail the files it makes
-differ. Format failures name the style (`File is not formatted with
-google-java-format --aosp`).
+differ. The Maven run resolves only the formatter jar its style needs (google-java-format, or
+palantir-java-format, or neither for `none`).
 
 ## Coupling and stability (ticket SH6)
 
@@ -1329,7 +1469,7 @@ forbid broad catches (the message says that a test uses `assertThrows`, as Check
 also counts MockMvc's `andExpect` and `andExpectAll`, BDDMockito's `then(...).should()`,
 `WebTestClient`'s `expectStatus`/`expectBody`/`expectHeader` and `StepVerifier`'s `expectNext`,
 `verifyComplete` and friends), and a class in test sources named like a test but without test
-methods fails (`TestClassWithoutTestCases`, which runs from `pmd-tests.xml`, excluding the main
+methods fails (`TestClassWithoutTestCases`, which runs from `pmd-tests.xml` (Gradle and Maven), excluding the main
 source directories, so a main class such as `TestDataGenerator` is not a test), except `*ArchTest`
 and `*ArchitectureTest` classes, which hold ArchUnit rules. The Spring rule set reads main sources only: the init script wraps it in
 `pmd-spring-main.xml` in the report directory with an exclude pattern per test source directory, since
@@ -1479,8 +1619,9 @@ errorprone and bestpractices PMD categories plus `AvoidCatchingGenericException`
   says it);
 - `mayBeIntended`: whether the rule can fire on code a careful team keeps (a CLI printing with
   `System.out`, a catch-all at a boundary);
-- `layout` (Checkstyle only): a layout check google-java-format fixes; the message then says to run
-  the formatter instead of a fix of its own.
+- `layout` (Checkstyle only): a layout check the formatter fixes; the message then says to run the
+  formatter that ran (`google-java-format`, `palantir-java-format`, or "your Java formatter" when the
+  style is not known), or to fix the layout by hand when none runs, instead of a fix of its own.
 
 `readJavaFindings` passes every finding through `applyRuleMessages`
 (`languages/java/messages/rule-messages.mjs`). It shortens Checkstyle rule names, then appends the

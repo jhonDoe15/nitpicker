@@ -21,6 +21,7 @@ import {
   initializeProject,
   kotlinE2eEnabled,
   kotlinPolicy,
+  kotlinPolicyWithProjectDetekt,
   kotlinSources,
   ktlintOf,
   ktlintRules,
@@ -78,6 +79,7 @@ describe.skipIf(!kotlinE2eEnabled)('Kotlin preset detekt, ktlint and ktfmt end t
     });
     commitBranch(project, 'violation', { [`${kotlinSources}/Bad.kt`]: BAD });
     commitBranch(project, 'java-in-kotlin-module', { 'src/main/java/demo/Danger.java': DANGER });
+    commitBranch(project, 'java-palantir', { 'src/main/java/demo/Danger.java': DANGER });
     commitBranch(project, 'detekt-config', {
       [`${kotlinSources}/Bad.kt`]: BAD,
       'config/detekt.yml': MAGIC_NUMBER_OFF_WITH_FORMATTING_RULESET,
@@ -139,8 +141,28 @@ describe.skipIf(!kotlinE2eEnabled)('Kotlin preset detekt, ktlint and ktfmt end t
       ),
     ).toEqual([]);
   });
-  it("runs detekt with the project's config laid over the defaults", () => {
+  it('checks the Java files of a Kotlin module with palantir-java-format when the project declares it', () => {
+    const conventions = { 'java.formatter': 'palantir', 'java.indentation': '4' };
+    const result = diffOf(project, 'java-palantir', {
+      policy: { preset: 'kotlin', javaStyle: 'palantir', conventions },
+    });
+
+    expect(fromTool(result.newEnforceable, 'palantir-java-format')).toEqual([
+      'palantir-java-format format Danger.java',
+    ]);
+    expect(
+      [...result.newFindings, ...result.unchangedFindings].filter(
+        ({ tool }) => tool === 'google-java-format',
+      ),
+    ).toEqual([]);
+  });
+  it("leaves the project's detekt config out unless the project is listed", () => {
     const result = diffOf(project, 'detekt-config');
+
+    expect(fromTool(result.newEnforceable, 'detekt')).toEqual([...BAD_DETEKT_FINDINGS].sort());
+  });
+  it("runs detekt with the project's config laid over the defaults when the project is listed", () => {
+    const result = diffOf(project, 'detekt-config', { policy: kotlinPolicyWithProjectDetekt });
 
     expect(fromTool(result.newEnforceable, 'detekt')).toEqual([
       'detekt detekt.style.UnusedPrivateProperty Bad.kt',

@@ -266,6 +266,26 @@ describe('hints follow the libraries of the project', () => {
     );
   });
 
+  it('name the default validation library when none is declared', () => {
+    expect(advice('pydantic-boundary', undefined, 'python-rules')).toBe(
+      expected(
+        'pydantic-boundary',
+        'Use pydantic only in an `adapters/` package to parse untrusted input (`Model.model_validate(data)`), and pass frozen dataclasses on from there.',
+      ),
+    );
+  });
+
+  it('name every declared validation library and the call of the first', () => {
+    expect(
+      advice('pydantic-boundary', { validators: ['marshmallow', 'msgspec'] }, 'python-rules'),
+    ).toBe(
+      expected(
+        'pydantic-boundary',
+        'Use marshmallow or msgspec only in an `adapters/` package to parse untrusted input (`Schema().load(data)`), and pass frozen dataclasses on from there.',
+      ),
+    );
+  });
+
   it.each([
     ['torch.load', 'torch.load(path, weights_only=True)'],
     ['numpy.load', 'allow_pickle=False'],
@@ -277,6 +297,43 @@ describe('hints follow the libraries of the project', () => {
     ['lxml.etree.XMLParser', 'defusedxml.lxml'],
   ])('name the safe loader for %s', (subject, form) => {
     expect(advice('unsafe-deserialization', {}, 'python-rules', subject)).toContain(form);
+  });
+
+  it.each([
+    [
+      undefined,
+      'Keep the traceback: `logger.exception("message")` or `logger.error("message", exc_info=True)`; the exception as an argument drops it. Re-raising after the log also passes.',
+    ],
+    [
+      'structlog',
+      'Keep the traceback: `logger.exception("event")` or `logger.error("event", exc_info=True)`; the exception as a field drops it. Re-raising after the log also passes.',
+    ],
+    [
+      'loguru',
+      'Keep the traceback: `logger.exception("message")` or `logger.opt(exception=True).error("message")`; the exception as an argument drops it. Re-raising after the log also passes.',
+    ],
+  ])(
+    'tell a caught error log to keep the traceback the way the %s logger does',
+    (logging, allowed) => {
+      expect(advice('catch-log-without-exception', { logging }, 'python-rules')).toBe(
+        expected('catch-log-without-exception', allowed),
+      );
+    },
+  );
+
+  it('describe the rules for caught logs and silent tests by their subject', () => {
+    expect(describeRuleFinding('catch-log-without-exception', 'logger.error(...)')).toBe(
+      '`logger.error(...)` logs a caught error without its traceback',
+    );
+    expect(describeRuleFinding('test-without-assertion', 'TestOrders.test_total')).toBe(
+      'Test `TestOrders.test_total` has no assertion',
+    );
+    expect(advice('test-without-assertion', undefined, 'python-rules')).toBe(
+      expected(
+        'test-without-assertion',
+        'Assert the outcome: `assert result == expected`, `with pytest.raises(SomeError):`, or call one of the assertion helpers the project tests use.',
+      ),
+    );
   });
 
   it.each([
