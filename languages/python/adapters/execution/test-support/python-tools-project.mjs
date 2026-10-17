@@ -28,7 +28,7 @@ export function coverageRc(...sources) {
     '    conftest.py',
     '    */tests/*',
     '    */test/*',
-    '    */testing/*',
+    '    testing/*',
     '[report]',
     'exclude_lines =',
     String.raw`    ^\s*if (typing\.)?TYPE_CHECKING:`,
