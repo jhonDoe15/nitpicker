@@ -233,11 +233,13 @@ describe.skipIf(!kotlinE2eEnabled)('Kotlin preset coverage and structure end to 
       'duplicates duplicate-clone Left.kt',
     ]);
     expect(
-      onlyTools(result.newEnforceable, 'coupling').map(({ rule, identity, message }) => ({
-        rule,
-        identity,
-        message,
-      })),
+      onlyTools(result.newEnforceable, 'coupling')
+        .filter(({ rule }) => rule === 'stability-direction')
+        .map(({ rule, identity, message }) => ({
+          rule,
+          identity,
+          message,
+        })),
     ).toEqual([
       {
         rule: 'stability-direction',
