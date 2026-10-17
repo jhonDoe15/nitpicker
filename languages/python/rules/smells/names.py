@@ -1,5 +1,6 @@
 import ast
 import os
+import re
 
 from checks.common import finding, last_name, words_of
 
@@ -19,8 +20,26 @@ GENERIC_WORDS = {
 }
 
 
+FRAMEWORK_BASES = ("Manager", "QuerySet")
+COMPOUND_TERMS = {"manager": "context", "managers": "context"}
+VERSION_WORD = re.compile(r"^v?\d*$")
+CHECKED_WORDS = 2
+
+
+def name_words(name):
+    words = [re.sub(r"\d+$", "", word) for word in words_of(name)]
+    words = [word for word in words if word and not VERSION_WORD.match(word)]
+    merged = []
+    for word in words:
+        if merged and COMPOUND_TERMS.get(word) == merged[-1]:
+            merged.pop()
+            continue
+        merged.append(word)
+    return merged
+
+
 def is_generic(name):
-    return (words_of(name) or [""])[-1] in GENERIC_WORDS
+    return any(word in GENERIC_WORDS for word in name_words(name)[-CHECKED_WORDS:])
 
 
 def follows_framework_type(node):
@@ -30,11 +49,23 @@ def follows_framework_type(node):
     )
 
 
+def extends_framework_manager(tree):
+    return any(
+        isinstance(node, ast.ClassDef)
+        and any(
+            (last_name(base) or "").endswith(FRAMEWORK_BASES) for base in node.bases
+        )
+        for node in ast.walk(tree)
+    )
+
+
 def path_findings(context):
     parts = context.path.split("/")
     stem = os.path.splitext(parts[-1])[0]
     found = []
-    if is_generic(stem):
+    if is_generic(stem) and not (
+        stem == "managers" and extends_framework_manager(context.tree)
+    ):
         found.append(
             {"rule": "generic-name", "path": context.path, "subject": stem, "line": 1}
         )
@@ -55,7 +86,7 @@ def check(context):
     if context.tests:
         return []
     found = path_findings(context)
-    for node in context.tree.body:
+    for node in ast.walk(context.tree):
         if (
             isinstance(node, ast.ClassDef)
             and is_generic(node.name)
