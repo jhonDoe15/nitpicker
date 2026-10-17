@@ -31,7 +31,9 @@ forms below from the start; the gate is a backstop.
 5. Never suppress: no `// NOPMD`, `@SuppressWarnings`, `@SuppressFBWarnings`, `CHECKSTYLE`
    comments, config `exclude`/`disable`/`exceptions`, legacy entries, or weakened tests. The one
    exception is `@SuppressWarnings("PMD.SpringDataNativeQuery")` on a repository method with native
-   SQL ([spring.md](spring.md)). If a finding seems wrong, stop and ask.
+   SQL ([spring.md](spring.md)). If a finding seems wrong, stop and ask. Never pass
+   `--accept-policy-change` or set `NITPICKER_ACCEPT_POLICY_CHANGE`: a
+   `nitpicker-config/policy-loosened` finding is for a person to accept.
 
 With Spring on the classpath, also follow [spring.md](spring.md).
 
