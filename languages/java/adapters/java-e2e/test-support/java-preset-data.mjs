@@ -9,37 +9,6 @@ public final class Legacy {
 }
 `;
 
-export const WIDE = `package demo;
-
-public final class Wide {
-  public int sum(int a, int b, int c, int d) {
-    return a + b + c + d;
-  }
-}
-`;
-
-export const WIDE_EXTENDED = WIDE.replace(
-  '  public int sum',
-  `  public int deep(int a) {
-    int total = 0;
-    if (a > 0) {
-      for (int i = 0; i < a; i++) {
-        if (i % 2 == 0) {
-          total += i;
-        }
-      }
-    }
-    return total;
-  }
-
-  public int sum`,
-);
-
-export const WIDE_REFORMATTED = WIDE.replace(
-  '  public int sum',
-  '  // Still too wide.\n  public int sum',
-);
-
 export const LEGACY_MOVED = LEGACY.replace(
   '  private int leftover;',
   '  // Kept for compatibility.\n  // See ticket 12.\n  private int leftover;',

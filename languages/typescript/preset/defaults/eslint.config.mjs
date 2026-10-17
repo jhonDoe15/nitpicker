@@ -13,7 +13,7 @@ import {
 import { applyRuleExceptions } from '../eslint-config/exceptions.mjs';
 import {
   applyJavascriptDialect,
-  javascriptRuleEntries,
+  scriptRuleEntries,
 } from '../../../javascript/preset/eslint-dialect.mjs';
 import { reactRuleIds, reactTestRuleIds } from '../eslint-config/react/react-rules.mjs';
 import {
@@ -83,8 +83,20 @@ const presetConfig = defineConfig(
       'nitpicker/preserve-error-cause': ['error', errorWrappingPolicy],
     },
   },
-  ...strictPresetConfig(layout, parserOptions, { react, routeHandlers }),
+  ...strictPresetConfig(layout, parserOptions, {
+    react,
+    routeHandlers,
+    frameworkDefaultExports: policy.frameworks.defaultExports,
+  }),
   ...productionLayoutConfigFor(layout, { react }),
+  ...(layout.endToEndGlobs.length === 0
+    ? []
+    : [
+        {
+          files: layout.endToEndGlobs,
+          rules: { 'no-empty-pattern': ['error', { allowObjectPatternsAsParameters: true }] },
+        },
+      ]),
   ...(react ? await reactScopeConfigFor(layout, policy.react) : []),
   ...(i18n ? await i18nScopeConfigFor(layout, policy.i18n) : []),
   {
@@ -158,9 +170,6 @@ const applicableExceptions = policy.exceptions.filter(
 );
 
 export default applyRuleExceptions(
-  applyJavascriptDialect(
-    [...presetConfig, ...javascriptRuleEntries(policy, selectedFiles)],
-    policy,
-  ),
+  applyJavascriptDialect([...presetConfig, ...scriptRuleEntries(selectedFiles)], policy),
   applicableExceptions,
 );

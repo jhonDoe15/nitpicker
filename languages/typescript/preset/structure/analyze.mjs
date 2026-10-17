@@ -62,20 +62,28 @@ function isControlNode(node) {
   );
 }
 
+function isElseIf(node, parent) {
+  return ts.isIfStatement(node) && ts.isIfStatement(parent) && parent.elseStatement === node;
+}
+
 function functionBodyMetrics(functionNode) {
   let statements = 0;
   let maxControlNesting = 0;
 
-  function children({ node, depth }) {
+  function opensLevel(node, parent) {
+    return node !== functionNode && isControlNode(node) && !isElseIf(node, parent);
+  }
+  function children({ node, depth, parent }) {
     if (node !== functionNode && isFunctionNode(node)) return [];
-    const nextDepth = node !== functionNode && isControlNode(node) ? depth + 1 : depth;
-    return syntaxChildren(node).map((child) => ({ node: child, depth: nextDepth }));
+    const nextDepth = opensLevel(node, parent) ? depth + 1 : depth;
+    return syntaxChildren(node).map((child) => ({ node: child, depth: nextDepth, parent: node }));
   }
   if (functionNode.body === undefined) return { statements, maxControlNesting };
-  for (const { node, depth } of depthFirst({ node: functionNode.body, depth: 0 }, children)) {
+  const root = { node: functionNode.body, depth: 0, parent: functionNode };
+  for (const { node, depth, parent } of depthFirst(root, children)) {
     if (node !== functionNode && isFunctionNode(node)) continue;
     if (node !== functionNode && ts.isStatement(node) && !ts.isBlock(node)) statements += 1;
-    const nextDepth = node !== functionNode && isControlNode(node) ? depth + 1 : depth;
+    const nextDepth = opensLevel(node, parent) ? depth + 1 : depth;
     maxControlNesting = Math.max(maxControlNesting, nextDepth);
   }
   return { statements, maxControlNesting };
@@ -123,14 +131,17 @@ export function analyzeSource(source, filename) {
 
 function productionFiles(root, displayRoot, layout) {
   if (!existsSync(root)) return [];
+  function projectRelative(absolute) {
+    return normalizePath(path.join(displayRoot, path.relative(root, absolute)));
+  }
   function skipDirectory(absolute, entry) {
-    return isExcludedPath(normalizePath(absolute)) || entry.name === '__tests__';
+    return isExcludedPath(projectRelative(absolute)) || entry.name === '__tests__';
   }
   return [...filesUnder(root, { skipDirectory })]
     .filter((absolute) => {
       const relative = normalizePath(path.relative(root, absolute));
       return (
-        !isExcludedPath(normalizePath(absolute)) &&
+        !isExcludedPath(projectRelative(absolute)) &&
         layout.isSourceFile(`${layout.sourceRoot}/${relative}`) &&
         !layout.isExcluded(normalizePath(path.join(displayRoot, relative)))
       );

@@ -61,20 +61,51 @@ describe('coupling report', () => {
       sourceRoot,
     );
 
+    const cohesive = report.packages.find((entry) => entry.name === 'cohesive');
+
     expect(report.summary).toEqual({
-      modules: 2,
+      modules: 3,
       dependencies: 1,
       runtimeDependencies: 1,
       typeOnlyDependencies: 0,
-      packages: 1,
+      packages: 2,
     });
-    expect(report.packages[0].cohesion).toEqual({
+    expect(report.packages.map((entry) => entry.name).sort()).toEqual(['build', 'cohesive']);
+    expect(cohesive.cohesion).toEqual({
       internalEdges: 1,
       edgeDensity: 0.5,
       connectedComponents: 1,
       largestComponentShare: 1,
     });
     expect(report.stabilityDirection).toEqual([]);
+  });
+
+  it('does not report a type-only import as a stability inversion but counts it in instability', () => {
+    const module = (name, ...dependencies) => ({
+      source: `src/main/${name}.ts`,
+      dependencies: dependencies.map(([target, dependencyTypes]) => ({
+        resolved: `src/main/${target}.ts`,
+        dependencyTypes,
+      })),
+    });
+    const graphWith = (types) => ({
+      modules: [
+        module('p1/a', ['stable/s', ['local']]),
+        module('p2/a', ['stable/s', ['local']]),
+        module('stable/s', ['volatile/v', types]),
+        module('volatile/v', ['leaf/q', ['local']]),
+        module('leaf/q'),
+      ],
+    });
+
+    const runtime = analyzeCoupling(graphWith(['local']), 'src/main');
+    const typeOnly = analyzeCoupling(graphWith(['type-only']), 'src/main');
+
+    expect(runtime.stabilityDirection.map(({ source, target }) => [source, target])).toEqual([
+      ['stable', 'volatile'],
+    ]);
+    expect(typeOnly.stabilityDirection).toEqual([]);
+    expect(typeOnly.packages).toEqual(runtime.packages);
   });
 
   it('lists shared modules that exactly one feature reaches, counting type-only imports', async () => {

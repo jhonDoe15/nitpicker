@@ -6,13 +6,27 @@ import {
   resolveHeadPolicy as resolveSharedHeadPolicy,
 } from '../../../shared/head-policy.mjs';
 import { isJavascriptPolicy } from '../../javascript/preset/javascript-preset.mjs';
-import { hasScopePackage, scopePackage } from './eslint-config/scope-support.mjs';
-import { excludedGlobs, resolveLayout, sourceRoots, testRoots } from './layout.mjs';
+import {
+  frameworkConventions,
+  hasScopePackage,
+  reactMajorOf,
+  scopePackage,
+  testsCleanUpAutomatically,
+} from './eslint-config/scope-support.mjs';
+import {
+  builtInExcludedGlobs,
+  resolveLayout,
+  resolveLayoutFor,
+  sourceRoots,
+  testRoots,
+} from './layout.mjs';
+import { stylingApproachFor } from './eslint-config/react/react-styling.mjs';
 import { prettierConventionOptions } from '../conventions/prettier-conventions.mjs';
+import { markedGeneratedFiles } from './layout/generated-files.mjs';
 
 export { headPolicyEnvironment, withHeadPolicyFile } from '../../../shared/head-policy.mjs';
 
-export const defaultLayout = { sourceRoots, testRoots, excludedGlobs };
+export const defaultLayout = { sourceRoots, testRoots, excludedGlobs: builtInExcludedGlobs };
 
 const PRETTIER_PROJECT_FILES = [
   '.prettierrc',
@@ -49,7 +63,7 @@ function withProjectFacts(policy, config, projectRoot) {
   const prettier = policy.tools?.prettier;
   return {
     ...policy,
-    ...(SCOPED_PRESETS.includes(config.preset) ? detectedScopes(policy, projectRoot) : {}),
+    ...(SCOPED_PRESETS.includes(config.preset) ? withDetectedScopes(policy, projectRoot) : {}),
     ...(usesProjectConfig(prettier?.precedence ?? [])
       ? {
           tools: {
@@ -61,6 +75,11 @@ function withProjectFacts(policy, config, projectRoot) {
   };
 }
 
+function withDetectedScopes(policy, projectRoot) {
+  const generatedFiles = markedGeneratedFiles(projectRoot);
+  return { generatedFiles, ...detectedScopes({ ...policy, generatedFiles }, projectRoot) };
+}
+
 function detectedScopes(policy, projectRoot) {
   const scopes = Object.fromEntries(
     ['react', 'i18n'].map((scope) => [
@@ -69,9 +88,56 @@ function detectedScopes(policy, projectRoot) {
     ]),
   );
   const iconPackage = scopePackage(projectRoot, 'icons');
+  const major = scopes.react.enabled ? reactMajorOf(projectRoot) : undefined;
+  const styling = scopes.react.enabled
+    ? stylingApproachFor({ projectRoot, react: scopes.react, layout: resolveLayoutFor(policy) })
+    : undefined;
+  const frameworks = frameworkConventions(projectRoot);
+  const detected = frameworks.defaultExports.length + frameworks.entryPoints.length > 0;
   return {
     ...scopes,
-    react: { ...scopes.react, ...(iconPackage === undefined ? {} : { iconPackage }) },
+    ...(detected ? { frameworks } : {}),
+    react: {
+      ...scopes.react,
+      ...(iconPackage === undefined ? {} : { iconPackage }),
+      ...(major === undefined ? {} : { major }),
+      ...(styling === undefined ? {} : { styling }),
+      ...(scopes.react.enabled ? { autoCleanup: testsCleanUpAutomatically(projectRoot) } : {}),
+    },
+  };
+}
+
+const HEAD_CHECKOUT_FACTS = ['conventions', 'generatedFiles', 'frameworks'];
+const SCOPE_FACTS = [
+  ['react', ['enabled', 'iconPackage', 'major', 'styling', 'autoCleanup']],
+  ['i18n', ['enabled']],
+];
+
+function picked(source, keys) {
+  return Object.fromEntries(
+    keys.filter((key) => source[key] !== undefined).map((key) => [key, source[key]]),
+  );
+}
+
+function headPrettierDigest(policy, headPolicy) {
+  const digest = headPolicy.tools?.prettier?.projectConfigDigest;
+  const prettier = policy.tools?.prettier;
+  return digest === undefined || !usesProjectConfig(prettier?.precedence ?? [])
+    ? {}
+    : { tools: { ...policy.tools, prettier: { ...prettier, projectConfigDigest: digest } } };
+}
+
+export function withHeadCheckoutFacts(policy, headPolicy = {}) {
+  return {
+    ...policy,
+    ...picked(headPolicy, HEAD_CHECKOUT_FACTS),
+    ...Object.fromEntries(
+      SCOPE_FACTS.filter(([scope]) => headPolicy[scope] !== undefined).map(([scope, keys]) => [
+        scope,
+        { ...policy[scope], ...picked(headPolicy[scope], keys) },
+      ]),
+    ),
+    ...headPrettierDigest(policy, headPolicy),
   };
 }
 
@@ -116,13 +182,18 @@ export function readHeadPolicy(environment = process.env) {
     preset: policy.preset,
     tools: policy.tools ?? {},
     conventions: policy.conventions,
+    generatedFiles: policy.generatedFiles ?? [],
+    frameworks: { defaultExports: [], entryPoints: [], ...policy.frameworks },
   };
 }
 
 export function readLayout(environment = process.env) {
   const policy = readHeadPolicy(environment);
   return {
-    ...resolveLayout(policy.layout, policy.exclude, { javascript: isJavascriptPolicy(policy) }),
-    entryPoints: policy.layout.entryPoints ?? [],
+    ...resolveLayout(readHeadPolicyFile(environment).layout, policy.exclude, {
+      javascript: isJavascriptPolicy(policy),
+      generatedFiles: policy.generatedFiles,
+    }),
+    entryPoints: [...(policy.layout.entryPoints ?? []), ...policy.frameworks.entryPoints],
   };
 }
