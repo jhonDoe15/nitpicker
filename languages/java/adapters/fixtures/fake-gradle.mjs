@@ -1,5 +1,12 @@
 #!/usr/bin/env node
-import { appendFileSync, existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import {
+  appendFileSync,
+  cpSync,
+  existsSync,
+  mkdirSync,
+  readFileSync,
+  writeFileSync,
+} from 'node:fs';
 import path from 'node:path';
 
 if (existsSync('GRADLE_FAIL')) {
@@ -117,10 +124,14 @@ function writeModule({ key, dir }) {
   if (existsSync('MAIN_CLASSES')) {
     writeFileSync(report('jdeps-classes.txt'), 'demo.A\n');
   }
-  for (const name of ['jdeps.txt', 'jdeps-classes.txt']) {
-    if (existsSync(inside(name))) {
-      writeFileSync(report(name), readFileSync(inside(name)));
+  for (const name of ['jdeps.txt', 'jdeps-classes.txt', 'jdeps-test.txt']) {
+    const source = [inside(name), inside(`jdeps/${name}`)].find((file) => existsSync(file));
+    if (source !== undefined) {
+      writeFileSync(report(name), readFileSync(source));
     }
+  }
+  if (existsSync(inside('test-results'))) {
+    cpSync(inside('test-results'), path.join(reportBase, key, 'test-results'), { recursive: true });
   }
   if (existsSync('mutations.xml')) {
     writeFileSync(report('pit/mutations.xml'), readFileSync('mutations.xml'));
