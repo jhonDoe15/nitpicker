@@ -1,4 +1,4 @@
-import { chmodSync } from 'node:fs';
+import { chmodSync, statSync } from 'node:fs';
 import path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { zipOf } from '../test-support/zip-writer.mjs';
@@ -116,6 +116,40 @@ describe('the differential lint', () => {
 
     const plan = javaPlan(head, { classpath: [path.join(head, 'lib/dep.jar')] });
 
+    expect(lint(plan, base).report).toEqual([
+      ...namesWarning('src/main/java/demo/A.java'),
+      '1 warning',
+      '',
+    ]);
+  });
+
+  it.each([
+    ['a directory', 'classes', { 'classes/dep/A.class': 'x' }, { 'classes/dep/A.class': 'y' }],
+    [
+      'a same-sized jar',
+      'dep.jar',
+      { 'dep.jar': zipOf({ 'dep/A.class': 'x' }) },
+      { 'dep.jar': zipOf({ 'dep/A.class': 'y' }) },
+    ],
+  ])('invalidates cached lint when an external classpath %s changes', (_, entry, before, after) => {
+    const base = temporaries.directory();
+    const head = temporaries.directory();
+    const external = temporaries.directory();
+    const files = { 'src/main/java/demo/A.java': RAW_NAMES };
+    writeFiles(base, files);
+    writeFiles(head, files);
+    writeFiles(external, before);
+    const classpath = [path.join(external, entry)];
+    const plan = javaPlan(head, { classpath });
+    const oldWarning = warning('src/main/java/demo/A.java', 9);
+    baseCache(javaPlan(base, { classpath }), [oldWarning]);
+
+    expect(lint(plan, base).report).toEqual([oldWarning, '']);
+
+    const oldSize = statSync(classpath[0]).size;
+    writeFiles(external, after);
+
+    expect(statSync(classpath[0]).size).toBe(oldSize);
     expect(lint(plan, base).report).toEqual([
       ...namesWarning('src/main/java/demo/A.java'),
       '1 warning',
