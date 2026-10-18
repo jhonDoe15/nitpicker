@@ -152,7 +152,7 @@ Config keys with this preset: `base`, `disable` (the analyzer names are `python`
 `legacyInventory` (same format and `baseline-expansion` rule as for Java), and the `python` object
 below. `layout` describes TypeScript source roots and stays a config error with this preset. The
 top-level `exceptions` is accepted only for the file and size limits shared with the other languages
-(`file-lines-limit`, `line-length-limit`, `folder-files-limit`, `folder-depth-limit`,
+(`file-lines-limit`, `line-length-limit`, `folder-files-limit`, `slow-test`, `folder-depth-limit`,
 `class-methods-limit`, `class-fields-limit`, `inheritance-depth-limit`), whose messages name it, and
 the [dependency and repository checks](usage.md#dependency-and-repository-checks); the Python equivalent of
 `exceptions` for every other rule is `python.exceptions`. `python` is an error with any other preset.
@@ -1357,28 +1357,44 @@ What the Python preset does the way the TypeScript and Java presets do (`parity/
   ids, as Java's `tests/tests-failed` (`test-runs/test-failures.mjs`). unittest failures are read
   from its `FAIL:`/`ERROR:` lines. A run that exits 1 without naming a test stays
   `python/tests-failed`.
-- **Slow tests.** `test-runtime/slow-test`, as for Java and Kotlin, for pytest and unittest
+- **Slow tests.** `slow-test` (tool `test-runtime`; `test-runtime/slow-test` is accepted in
+  `exceptions` as the same rule), as for Java, Kotlin and TypeScript, for pytest and unittest
   projects alike: a test the change adds or edits over 5 s, or 30 s for an integration test, from
-  the JUnit times (`test-runs/slow-tests.mjs`); a parametrized test counts its slowest case over
-  that case's own budget. A test is its decorators, its signature and its body, read by logical
-  line (`test-runs/python-blocks.mjs`: brackets, strings and continuations, so a wrapped signature
-  or decorator is one line), in the file and at the line where it is defined, inside the classes
-  that enclose it. It counts as edited when the base file has no identical block in the same
-  classes; a block that is only in a base test file the change removed or renamed counts as moved,
-  so a test copied next to an original that still exists is new. An inherited test (a mixin or base
-  class in another module, as the usual unittest and Django way to share tests) is also counted
-  when the class that collects it is new or its `class` line changed; a test built by a factory
-  (`test_import = make_case(6)`) when a line that names it is new or changed. pytest runs through
-  `test-runs/pytest_timings.py`, which times the call phase plus the setup of function-scoped
-  fixtures (`setup_method` is one), so a session, module or class fixture's setup (`setup_class`
-  too) is not charged to the first test that uses it, and records each case's marks; unittest
-  times each test from `startTest` to `stopTest` (its `setUp` and `tearDown`, not `setUpClass` or
+  the JUnit times (`test-runs/slow-tests.mjs`). The message is the shared one
+  (`shared/rules/slow-tests/`): the budget, the measured time, the fixes (patch the clock, fake
+  network, database and disk) with the way to move it to an integration test, and the top-level
+  `exceptions` entry that lifts it, `{ "rule": "slow-test", "paths": ["tests/db/**"], "reason":
+"..." }`, not `python.exceptions`. Only passed tests are timed (a failed, errored or skipped case
+  is left out). A parametrized test counts its slowest case over that case's own budget. A test is
+  its decorators, its signature and its body, read by logical line (`test-runs/python-blocks.mjs`:
+  brackets, strings and continuations, so a wrapped signature or decorator is one line), in the
+  file and at the line where it is defined, inside the classes that enclose it. It counts as edited
+  when the base file has no identical block in the same classes; a block that is only in a base
+  test file the change removed or renamed counts as moved, so a test copied next to an original
+  that still exists is new. An inherited test (a mixin or base class in another module, as the
+  usual unittest and Django way to share tests) is also counted when the class that collects it is
+  new or its `class` line changed; a test built by a factory (`test_import = make_case(6)`) when a
+  line that names it is new or changed. pytest runs through `test-runs/pytest_timings.py`, which
+  times the call phase (`junit_duration_report=call`) plus the setup of function-scoped fixtures
+  (`setup_method` is one), so a session, module or class fixture's setup (`setup_class` too) is
+  not charged to the first test that uses it, and records each case's marks; unittest times each
+  test from `startTest` to `stopTest` (its `setUp` and `tearDown`, not `setUpClass` or
   `setUpModule`), as JUnit charges `@BeforeEach` and not `@BeforeAll`. A test is an integration
   test under an `integration`, `integration_tests`, `e2e` or `end_to_end` folder, or with
   `@pytest.mark.integration` or `@pytest.mark.e2e` on that case, as pytest applies it (decorators,
   classes, `pytestmark`, conftest hooks, or `pytest.param(..., marks=...)` for that case only); the
-  unittest message names only the folder. `thresholds.unitTestSeconds` and
+  unittest advice names only the folder, and the pytest advice reminds that a marker must be
+  registered when the project uses `--strict-markers`. `thresholds.unitTestSeconds` and
   `integrationTestSeconds` change the limits. Base snapshots report none.
+  The times are those of the coverage run, so they include coverage's tracing overhead. Each test
+  over its budget is therefore run once more, alone, without coverage (the `retimeSlowTests` step
+  after the tests, `test-runs/slow-retime.mjs`: the node id for pytest, `-k <dotted id>` for
+  unittest, written to `rerun-junit.xml`), and reported only when that run is also over budget,
+  with its time; a second run that fails or does not report the test keeps the first time. When
+  the run that ran tests wrote no JUnit report, one descriptive `test-runtime/slow-test-not-timed`
+  finding says so and never fails the run; the same finding names a test file whose tests could
+  not be read, and the other files are still checked. A failing test run reports `tests-failed`
+  and no slow tests.
 - **Pinned runner options.** Options that let a failing run pass are taken out of the project's
   pytest `addopts` (read from the first of `pytest.toml`, `.pytest.toml`, `pytest.ini`,
   `.pytest.ini`, `pyproject.toml`, `tox.ini`, `setup.cfg`, as pytest does) with `-o addopts=...`,

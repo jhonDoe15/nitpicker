@@ -23,8 +23,6 @@ export const THRESHOLD_KEYS = [
   'unitTestSeconds',
   'integrationTestSeconds',
 ];
-const TEST_TIME_KEYS = ['unitTestSeconds', 'integrationTestSeconds'];
-const TEST_TIME_PRESETS = new Set(['java', 'kotlin', 'python']);
 const THRESHOLD_PRESETS = {
   folderDepth: ['typescript', 'javascript', 'java', 'kotlin', 'python'],
   classMethods: ['java', 'kotlin', 'python'],
@@ -64,15 +62,25 @@ export function validateStringArray(value, name) {
   }
 }
 
+const PRINTED_RULES = new Map([['test-runtime/slow-test', 'slow-test']]);
+
+export function withCanonicalRules(config) {
+  if (!isPlainObject(config) || !Array.isArray(config.exceptions)) {
+    return config;
+  }
+  return {
+    ...config,
+    exceptions: config.exceptions.map((entry) =>
+      isPlainObject(entry) && PRINTED_RULES.has(entry.rule)
+        ? { ...entry, rule: PRINTED_RULES.get(entry.rule) }
+        : entry,
+    ),
+  };
+}
+
 export function validateThresholds(thresholds, preset = 'typescript') {
   if (!isPlainObject(thresholds)) {
     throw configError('"thresholds" must be an object');
-  }
-  const testTime = TEST_TIME_KEYS.find((key) => thresholds[key] !== undefined);
-  if (testTime !== undefined && !TEST_TIME_PRESETS.has(preset)) {
-    throw configError(
-      `"thresholds.${testTime}" is supported only with "preset": "java", "kotlin" or "python"`,
-    );
   }
   for (const [key, value] of Object.entries(thresholds)) {
     if (!THRESHOLD_KEYS.includes(key)) {

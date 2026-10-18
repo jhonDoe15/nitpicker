@@ -3,12 +3,13 @@ import path from 'node:path';
 import { childrenNamed, parseXml } from '../../../../shared/ingest/common.mjs';
 import { inModule } from '../../builds/module-path.mjs';
 import { sourceLocator } from '../reporting/kotlin-reports.mjs';
+import { MESSAGES, RULE_IDS, renderMessage } from '../../../../shared/policy.mjs';
 import {
-  MESSAGES,
-  RULE_IDS,
-  TEST_TIME_DEFAULTS,
-  renderMessage,
-} from '../../../../shared/policy.mjs';
+  shownSeconds,
+  slowestRuns,
+  slowTestBudget,
+} from '../../../../shared/rules/slow-tests/slow-test-finding.mjs';
+import { SLOW_TEST_FIXES } from '../../../../shared/rules/slow-tests/slow-test-fixes.mjs';
 import { isSpringBootTest } from './spring-boot-tests.mjs';
 import { inheritedMethod, superclassOf } from './inherited-tests.mjs';
 import { templateMethods, testMethod } from './test-methods.mjs';
@@ -23,16 +24,23 @@ const MOVE_ADVICE = {
 };
 const MAVEN_TASKS = new Set(['surefire', 'failsafe']);
 
+const NOT_TIMED_OUTCOMES = ['failure', 'error', 'skipped'];
+
 export function testCasesOf(xml, task) {
   const root = parseXml(xml);
   const suites = root.name === 'testsuites' ? childrenNamed(root, 'testsuite') : [root];
   return suites.flatMap((suite) =>
-    childrenNamed(suite, 'testcase').map((testCase) => ({
-      task,
-      className: testCase.attrs.classname ?? suite.attrs.name ?? '',
-      name: testCase.attrs.name ?? '',
-      seconds: Number(String(testCase.attrs.time ?? '0').replaceAll(',', '')),
-    })),
+    childrenNamed(suite, 'testcase')
+      .filter((testCase) =>
+        NOT_TIMED_OUTCOMES.every((name) => childrenNamed(testCase, name).length === 0),
+      )
+      .map((testCase) => ({
+        task,
+        file: testCase.attrs.file,
+        className: testCase.attrs.classname ?? suite.attrs.name ?? '',
+        name: testCase.attrs.name ?? '',
+        seconds: Number(String(testCase.attrs.time ?? '0').replaceAll(',', '')),
+      })),
   );
 }
 
@@ -47,17 +55,6 @@ function readTestCases(reportRoot) {
         testCasesOf(readFileSync(path.join(resultsRoot, task, name), 'utf8'), task),
       ),
   );
-}
-
-function slowestRuns(testCases) {
-  const byKey = new Map();
-  for (const testCase of testCases) {
-    const key = `${testCase.className}#${testCase.name}`;
-    if ((byKey.get(key)?.seconds ?? -1) < testCase.seconds) {
-      byKey.set(key, testCase);
-    }
-  }
-  return [...byKey.values()];
 }
 
 function sourceOf(locate, className) {
@@ -137,7 +134,7 @@ function isChanged(slow, baselineRoot) {
 function slowTestFinding({ testCase, method, limit, integration, modulePath, ...slow }) {
   const source = slow.declaring?.source ?? slow.source;
   const exception = JSON.stringify({
-    rule: `${SLOW_TEST_TOOL}/${RULE_IDS.slowTest}`,
+    rule: RULE_IDS.slowTest,
     paths: [inModule(modulePath, source ?? '.')],
     reason: '...',
   });
@@ -149,10 +146,12 @@ function slowTestFinding({ testCase, method, limit, integration, modulePath, ...
     ...(method === undefined ? {} : { location: { line: method.line } }),
     message: renderMessage(MESSAGES.slowTest, {
       name: `${testCase.className.split('.').pop().replaceAll('$', '.')} ${testCase.name}`,
-      seconds: testCase.seconds.toFixed(1),
+      seconds: shownSeconds(testCase.seconds, limit),
       kind: integration ? 'an integration' : 'a unit',
       limit,
-      move: integration ? '' : MOVE_ADVICE[MAVEN_TASKS.has(testCase.task) ? 'maven' : 'gradle'],
+      fix: renderMessage(SLOW_TEST_FIXES.java, {
+        move: integration ? '' : MOVE_ADVICE[MAVEN_TASKS.has(testCase.task) ? 'maven' : 'gradle'],
+      }),
       exception,
     }),
     classification: 'enforceable',
@@ -164,9 +163,12 @@ export function readSlowTestFindings(options) {
   if (baseline?.snapshot === 'base') {
     return [];
   }
-  const budget = { ...TEST_TIME_DEFAULTS, ...limits };
+  const budget = slowTestBudget(limits);
   const locate = sourceLocator(projectRoot, testRoots);
-  return slowestRuns(readTestCases(reportRoot)).flatMap((testCase) => {
+  return slowestRuns(
+    readTestCases(reportRoot),
+    (testCase) => `${testCase.className}#${testCase.name}`,
+  ).flatMap((testCase) => {
     const source = sourceOf(locate, testCase.className);
     const text = readOptional(projectRoot, source);
     const integration = isIntegration(testCase, text, { locate, projectRoot });
