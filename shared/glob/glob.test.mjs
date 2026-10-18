@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { globToRegExp } from './glob.mjs';
+import { globToRegExp } from '../glob.mjs';
 
 describe('directory globstars', () => {
   it.each([
