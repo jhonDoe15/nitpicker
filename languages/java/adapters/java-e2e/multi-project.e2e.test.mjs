@@ -1,4 +1,6 @@
-import { cpSync, existsSync, mkdtempSync, rmSync } from 'node:fs';
+import { cpSync, existsSync, mkdtempSync, rmSync, readFileSync, writeFileSync } from 'node:fs';
+import { spawnSync } from 'node:child_process';
+import { childrenAt, childrenNamed, parseXml } from '../../../../shared/ingest/common.mjs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
@@ -93,4 +95,102 @@ describe.skipIf(!enabled)('a Gradle build of two projects and an extra source se
       ],
     ]);
   });
+});
+
+describe.skipIf(!enabled)('Java coverage with architecture tests', () => {
+  it(
+    'keeps merged execution data valid and counts only application tests toward coverage',
+    () => {
+      const root = mkdtempSync(path.join(tmpdir(), 'nitpicker-java-jacoco-'));
+      try {
+        cpSync(path.resolve(import.meta.dirname, '../fixtures/gradle-project'), root, {
+          recursive: true,
+        });
+        writeFileSync(
+          path.join(root, 'build.gradle'),
+          `${readFileSync(path.join(root, 'build.gradle'), 'utf8')}
+apply plugin: 'jacoco'
+jacoco { toolVersion = '0.8.12' }
+tasks.named('jacocoTestReport') {
+    executionData.setFrom(fileTree(layout.buildDirectory) { include 'jacoco/*.exec' })
+    reports { xml.required = true }
+}
+`,
+        );
+        writeFileSync(
+          path.join(root, 'src/test/java/demo/CoverageArchTest.java'),
+          `package demo;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import org.junit.jupiter.api.Test;
+
+class CoverageArchTest {
+  @Test
+  void exercisesCodeOutsideApplicationTests() {
+    assertEquals("ADA", new Greeter().shout("Ada"));
+  }
+}
+`,
+        );
+        const run = (args) => {
+          const result = spawnSync(gradle, ['--console=plain', ...args], {
+            cwd: root,
+            encoding: 'utf8',
+            timeout: GRADLE_STEP_TIMEOUT_MS,
+          });
+          expect(result.status, `${result.stdout}\n${result.stderr}`).toBe(0);
+        };
+        run(['test', 'jacocoTestReport']);
+        writeFileSync(
+          path.join(root, 'verify-coverage.init.gradle'),
+          `gradle.taskGraph.whenReady {
+    def task = gradle.rootProject.tasks.named('nitpickerArchunit').get()
+    assert !task.extensions.getByType(org.gradle.testing.jacoco.plugins.JacocoTaskExtension).enabled
+    assert !task.outputs.files.files.any { it.name == 'nitpickerArchunit.exec' }
+}
+`,
+        );
+        run([
+          'clean',
+          '-I',
+          path.resolve(import.meta.dirname, '../../gradle/nitpicker.init.gradle'),
+          '-I',
+          path.join(root, 'verify-coverage.init.gradle'),
+          'test',
+          'nitpickerArchunit',
+          'nitpickerJacoco',
+        ]);
+        expect(existsSync(path.join(root, 'build/jacoco/nitpickerArchunit.exec'))).toBe(false);
+        const architecture = parseXml(
+          readFileSync(
+            path.join(root, 'build/nitpicker/archunit/TEST-demo.CoverageArchTest.xml'),
+            'utf8',
+          ),
+        );
+        const { tests, skipped, failures, errors } = architecture.attrs;
+        expect({ tests, skipped, failures, errors }).toEqual({
+          tests: '1',
+          skipped: '0',
+          failures: '0',
+          errors: '0',
+        });
+        const coverage = parseXml(
+          readFileSync(path.join(root, 'build/nitpicker/jacoco.xml'), 'utf8'),
+        );
+        expect(
+          childrenAt(coverage, 'package', 'class', 'method').map((method) => [
+            method.attrs.name,
+            childrenNamed(method, 'counter').find(({ attrs }) => attrs.type === 'METHOD').attrs,
+          ]),
+        ).toEqual([
+          ['<init>', { type: 'METHOD', missed: '0', covered: '1' }],
+          ['greet', { type: 'METHOD', missed: '0', covered: '1' }],
+          ['shout', { type: 'METHOD', missed: '1', covered: '0' }],
+        ]);
+      } finally {
+        rmSync(root, { recursive: true, force: true });
+      }
+    },
+    GRADLE_STEP_TIMEOUT_MS,
+  );
 });

@@ -1,6 +1,5 @@
 import path from 'node:path';
-import { writeFileSync, mkdtempSync, cpSync, rmSync, readFileSync, existsSync } from 'node:fs';
-import { spawnSync } from 'node:child_process';
+import { writeFileSync, mkdtempSync, cpSync, rmSync } from 'node:fs';
 import { describe, beforeAll, afterAll, it, expect } from 'vitest';
 import { tmpdir } from 'node:os';
 import {
@@ -470,90 +469,4 @@ describe.skipIf(!enabled)('Java preset end to end', () => {
     GRADLE_STEP_TIMEOUT_MS,
   );
   // --- end coupling cases ---
-});
-
-describe.skipIf(!enabled)('Java coverage with architecture tests', () => {
-  it(
-    'keeps merged execution data valid and counts only application tests toward coverage',
-    () => {
-      const root = mkdtempSync(path.join(tmpdir(), 'nitpicker-java-jacoco-'));
-      try {
-        cpSync(path.resolve(import.meta.dirname, '../fixtures/gradle-project'), root, {
-          recursive: true,
-        });
-        writeFileSync(
-          path.join(root, 'build.gradle'),
-          `${readFileSync(path.join(root, 'build.gradle'), 'utf8')}
-apply plugin: 'jacoco'
-jacoco { toolVersion = '0.8.12' }
-tasks.named('jacocoTestReport') {
-    executionData.setFrom(fileTree(layout.buildDirectory) { include 'jacoco/*.exec' })
-    reports { xml.required = true }
-}
-`,
-        );
-        writeFileSync(
-          path.join(root, 'src/test/java/demo/CoverageArchTest.java'),
-          `package demo;
-
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import org.junit.jupiter.api.Test;
-
-class CoverageArchTest {
-  @Test
-  void exercisesCodeOutsideApplicationTests() {
-    assertEquals("ADA", new Greeter().shout("Ada"));
-  }
-}
-`,
-        );
-        const run = (args) => {
-          const result = spawnSync(gradle, ['--console=plain', ...args], {
-            cwd: root,
-            encoding: 'utf8',
-            timeout: GRADLE_STEP_TIMEOUT_MS,
-          });
-          expect(result.status, `${result.stdout}\n${result.stderr}`).toBe(0);
-        };
-        run(['test', 'jacocoTestReport']);
-        writeFileSync(
-          path.join(root, 'verify-coverage.init.gradle'),
-          `gradle.taskGraph.whenReady {
-    def task = gradle.rootProject.tasks.named('nitpickerArchunit').get()
-    assert !task.extensions.getByType(org.gradle.testing.jacoco.plugins.JacocoTaskExtension).enabled
-    assert !task.outputs.files.files.any { it.name == 'nitpickerArchunit.exec' }
-}
-`,
-        );
-        run([
-          'clean',
-          '-I',
-          path.resolve(import.meta.dirname, '../../gradle/nitpicker.init.gradle'),
-          '-I',
-          path.join(root, 'verify-coverage.init.gradle'),
-          'test',
-          'nitpickerArchunit',
-          'nitpickerJacoco',
-        ]);
-        expect(existsSync(path.join(root, 'build/jacoco/nitpickerArchunit.exec'))).toBe(false);
-        expect(
-          readFileSync(
-            path.join(root, 'build/nitpicker/archunit/TEST-demo.CoverageArchTest.xml'),
-            'utf8',
-          ),
-        ).toContain('tests="1" skipped="0" failures="0" errors="0"');
-        const coverage = readFileSync(path.join(root, 'build/nitpicker/jacoco.xml'), 'utf8');
-        const methods = [...coverage.matchAll(/<method name="([^"]+)"[^>]*>(.*?)<\/method>/g)];
-        expect(methods.find(([, name]) => name === 'greet')[2]).toContain(
-          '<counter type="METHOD" missed="0" covered="1"/>',
-        );
-        expect(methods.find(([, name]) => name === 'shout')[2]).toContain(
-          '<counter type="METHOD" missed="1" covered="0"/>',
-        );
-      } finally {
-        rmSync(root, { recursive: true, force: true });
-      }
-    },
-    GRADLE_STEP_TIMEOUT_MS,
-  );
 });
