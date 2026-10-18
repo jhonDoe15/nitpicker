@@ -20,17 +20,19 @@ function checkMutant(state, mutant) {
 function createChecker(options) {
   const state = {};
   return {
-    async init() {
+    init() {
       state.configs = readCompilerConfigs(options.tsconfigFile);
       state.baseline = diagnosticCounts(state.configs.flatMap((config) => compile(config)));
     },
-    async check(mutants) {
+    check(mutants) {
       return Object.fromEntries(mutants.map((mutant) => [mutant.id, checkMutant(state, mutant)]));
     },
   };
 }
-createChecker.inject = ['options'];
-
 export const strykerPlugins = [
-  { kind: 'Checker', name: 'nitpicker-typescript', factory: createChecker },
+  {
+    kind: 'Checker',
+    name: 'nitpicker-typescript',
+    factory: Object.assign(createChecker, { inject: ['options'] }),
+  },
 ];

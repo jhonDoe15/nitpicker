@@ -3,7 +3,7 @@ import path from 'node:path';
 
 function readCompilerConfig(configPath) {
   const file = path.resolve(configPath);
-  const read = ts.readConfigFile(file, ts.sys.readFile);
+  const read = ts.readConfigFile(file, (name) => ts.sys.readFile(name));
   if (read.error !== undefined) {
     throw new Error(ts.flattenDiagnosticMessageText(read.error.messageText, '\n'));
   }
@@ -52,11 +52,11 @@ function mutatedText(source, mutant) {
 
 export function compile(config, mutant) {
   const host = ts.createCompilerHost(config.options, true);
-  const readSource = host.getSourceFile;
+  const readSource = host.getSourceFile.bind(host);
   host.useSourceOfProjectReferenceRedirect = () => true;
-  host.getSourceFile = (...arguments_) => {
-    const [file, languageVersion] = arguments_;
-    const source = readSource(...arguments_);
+  host.getSourceFile = (...sourceArguments) => {
+    const [file, languageVersion] = sourceArguments;
+    const source = readSource(...sourceArguments);
     return source === undefined ||
       mutant === undefined ||
       path.resolve(file) !== path.resolve(mutant.fileName)
