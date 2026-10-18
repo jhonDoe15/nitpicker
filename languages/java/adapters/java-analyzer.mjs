@@ -14,6 +14,7 @@ const ENTRY_FILES = [
   'languages/java/adapters/java-runner.mjs',
 ];
 const RESOURCE_FILES = [
+  'languages/java/adapters/gradle-wrapper/gradle-supervisor.mjs',
   'languages/java/gradle/nitpicker.init.gradle',
   'languages/java/gradle/checkstyle-suppressions.xml',
   'languages/java/gradle/checkstyle-suppressions-unformatted.xml',

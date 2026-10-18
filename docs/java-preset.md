@@ -1869,3 +1869,11 @@ in it against the catalogs and Error Prone's check list.
   Java-specific part of X11's done criterion ("passes the conformance suite") is that the findings
   produced here satisfy the findings schema, which `collectJavaFindings` enforces on every run via
   `parseAnalyzerReport`.
+
+Gradle commands have a 15-minute deadline. On Linux and macOS, nitpicker starts each command
+in its own process group and stops that group with SIGTERM at the deadline, then SIGKILL
+after 500 ms. This also stops inherited Gradle/test-worker processes when the launcher exits
+first or ignores SIGTERM. On Windows, the deadline force-stops the command tree with
+`taskkill /T /F`. Cleanup adds at most 1.5 seconds on Linux/macOS or 2 seconds on Windows, plus process-launch overhead. Processes
+that deliberately leave the command group, including a pre-existing shared Gradle daemon,
+are outside this boundary; use `--no-daemon` when the whole build must stop with the command.
