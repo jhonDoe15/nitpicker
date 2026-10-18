@@ -653,6 +653,18 @@ hop, and type-only imports do not count.
   The rule covers the third argument of `it`/`test`, `{ timeout }` options, hook timeouts and
   `vi.setConfig`. A timeout that is not a constant written in the file is also reported. There is
   no e2e exemption; a genuinely long suite needs an exception in the config file.
+- `nitpicker/require-test-process-timeout`: synchronous `spawnSync`, `execSync` and `execFileSync`
+  calls from `node:child_process` or `child_process` in test-area files need a positive subprocess
+  timeout, for example `spawnSync(program, args, { timeout: 10_000 })`. A runner's timeout cannot
+  interrupt a synchronous call that blocks Node's event loop. Named import aliases, namespace and
+  default imports, CommonJS bindings, local constant options and object spreads count. A missing,
+  zero or negative timeout is reported; a timeout or options supplied dynamically is left to the
+  caller's contract. The rule sets no maximum: the process budget depends on the operation.
+  It covers integration tests and test helpers as well as unit tests, including `test-support/`
+  folders under the source roots, and works in the TypeScript,
+  JavaScript and React presets. If a process must wait without a deadline, add a reviewed exception
+  for the rule in `nitpicker.config.json`. A child that ignores its termination signal can still
+  outlive Node's subprocess timeout; this rule checks the configured deadline, not OS containment.
 - `nitpicker/no-first-test-charged-setup`: no lazily memoized shared setup that tests reach. It
   reports a call whose value is stored in a module-level `let`/`var` only while that variable is
   empty (`x ??= expensive()`, `x ||= call()`, `x = x ?? call()`, `if (!x) x = call()`,
