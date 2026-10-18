@@ -1,4 +1,3 @@
-import { spawnSync } from 'node:child_process';
 import { cpSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
@@ -119,7 +118,6 @@ describe.skipIf(!enabled)('Java preset escape hatches', () => {
   });
 
   afterAll(() => {
-    spawnSync(gradle, ['--stop'], { stdio: 'ignore' });
     rmSync(repository, { recursive: true, force: true });
   });
 
@@ -167,6 +165,7 @@ describe.skipIf(!enabled)('Java preset escape hatches', () => {
       expect(ofTool(result, 'pmd')).toEqual([
         'pmd AvoidCatchingGenericException SwallowingTest.java',
         'pmd MethodArgumentCouldBeFinal Bad.java',
+        'pmd TryCatchInTest SwallowingTest.java',
         'pmd UnitTestShouldIncludeAssert SwallowingTest.java',
       ]);
     },

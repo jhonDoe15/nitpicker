@@ -50,12 +50,13 @@ directory is the contract between the tool runs and the readers; later slices ad
   project's environment (`ruff@0.9.9;mypy@1.13.0;coverage@7.6.1;pytest@8.3.1`), read from the live checkout, and
   the configuration hash covers the Python adapter files, the nitpicker-owned ruff config and the
   `python` settings. Upgrading ruff, or editing the preset, therefore invalidates the base cache.
-- **Ingesters.** Nothing generic was moved. The Java ingesters are reused where they already are:
-  `languages/java/ingest/sarif.mjs` (ruff), `format-check.mjs` (the format check) and `common.mjs`.
+- **Ingesters.** The generic ingesters live in `shared/ingest/` and are shared with the Gradle
+  presets: `sarif.mjs` (ruff, with `prepareSarif`), `format-check.mjs` (the format check), `common.mjs` and
+  `lizard-crap.mjs`.
   The one new ingester is `languages/python/ingest/coverage-reports/coverage-json.mjs` for the coverage.py JSON
-  report. The legacy-inventory and `exclude` handling is Java's `applyJavaPolicy` /
-  `configureJavaAnalyzer`, which are language-neutral and take the tool name for a
-  `baseline-expansion` finding as an option.
+  report. The legacy-inventory and `exclude` handling is `applyFindingPolicy` in
+  `shared/findings/finding-policy.mjs` and Java's `configureJavaAnalyzer`, which are language-neutral and
+  take the tool name for a `baseline-expansion` finding as an option.
 
 ## The project's own environment
 
@@ -1005,7 +1006,7 @@ directory>` or `test-runs/unittest_timings.py <report> discover` (unittest's own
   inside the range from the `def` line to the last line of the function. `start_line` is not used, because only recent coverage.py
   versions report it. Coverage of a function is the lower of its line and branch percentage, as for
   JaCoCo, and CRAP is `ccn^2 * (1 - coverage)^3 + ccn`, shared with Java
-  (`ingestCrapRows` in `languages/java/ingest/crap.mjs`). A function with no statements and no
+  (`ingestCrapRows` in `shared/ingest/lizard-crap.mjs`). A function with no statements and no
   branches counts as fully covered: a docstring-only stub, and a function whose lines coverage.py
   excludes (`# pragma: no cover`, `if TYPE_CHECKING:`, a multi-line `@overload` stub). Definitions
   that share a name in a scope (a `@property` getter and its `@x.setter`, `@singledispatch`
@@ -1095,7 +1096,9 @@ All three read only the production sources under `python.sourceRoots`. A file is
 code when it is `test_*.py`, `*_test.py`, `tests.py` or `conftest.py`, or sits under a directory named `tests`,
 `test`, `migrations`, `build`, `dist`, `venv`, `site-packages`, `node_modules`, `__pycache__` or a
 hidden one such as `.venv`; the same list feeds jscpd's `--ignore`, the import scan and the module
-list. When the source root is `.` (a flat project without packages, or `python.sourceRoots`
+list. Only the duplicate scan can be changed: `duplicates.skippedFolders` replaces `tests`, `test`,
+`migrations`, `build` and `dist` there (the other names and the test file patterns always apply),
+so a package really called `build` can be scanned for clones. When the source root is `.` (a flat project without packages, or `python.sourceRoots`
 saying so), the top-level `docs`, `doc`, `examples` and `scripts` directories are skipped too, as
 the source root detection already does.
 
@@ -1107,12 +1110,14 @@ the source root detection already does.
   `runJscpd` and `evaluateDuplicates` the Java preset uses, so the findings are identical in shape:
   `duplicate-clone` (enforceable, one per clone) and `duplicate-clone-size` (descriptive `lines` and
   `tokens`), tool name `duplicates`. Identity is the sorted file pair, a hash of the cloned text and
-  the n-th occurrence of that text in the pair, never a line, so moving a legacy clone within its
-  files keeps it baselined; a legacy clone that shrank or split is held at its base token count while most of each copy
+  the n-th occurrence of that text in the pair, never a line, so moving a legacy clone within its files keeps it
+  baselined; a legacy clone that shrank or split is held at its base token count while most of each copy
   is unchanged code that was part of that base clone. Clones that consist only of import statements or `__all__` re-export lists are dropped
-  (`importsOnly`); a clone that also carries code is still reported. The finding is on the first
-  file of the pair, and its message tells to add that file to `exclude` when the repetition is
-  intended. A source root of `.` is supported.
+  (`importsOnly` in `core/tooling/jscpd/import-only/`, the same check the other languages use for
+  their import lines); a clone that also carries code is still reported. The finding is on the first
+  file of the pair, and its message names both files and tells to add either one to `exclude` when
+  the repetition is intended. An `exclude` glob or a `python.exceptions` entry for `duplicate-clone`
+  that matches either file of the pair lifts the finding. A source root of `.` is supported.
 - **Coupling.** `python -I languages/python/adapters/import-scan.py` (the project's interpreter,
   standard library only) parses every production file with `ast` and prints each file's `import`
   and `from ... import` statements, including those inside functions and `if TYPE_CHECKING:`
@@ -1457,7 +1462,7 @@ EDIT.`); and a file under a `generated/`, `_generated/` or `__generated__/` fold
 
 Each slice is one PR, adds one concern, and changes the Python adapters, ingesters or rules, tests,
 and this document. Slice 1 also made the config validation, the preset wiring in `core/` and the
-exclude and legacy-inventory policy (`applyJavaPolicy`) serve more than one language.
+exclude and legacy-inventory policy (`applyFindingPolicy`) serve more than one language.
 
 | #   | Ticket                                                    | Slice                        | Tool and report                                                      | Findings                                                                                          | Status |
 | --- | --------------------------------------------------------- | ---------------------------- | -------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------- | ------ |
