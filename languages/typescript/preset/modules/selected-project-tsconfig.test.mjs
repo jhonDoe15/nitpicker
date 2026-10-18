@@ -29,6 +29,7 @@ describe('explicit TypeScript project config', () => {
             module: 'ESNext',
             moduleResolution: 'Bundler',
             types: [],
+            lib: ['ES2022'],
           },
           include: ['../src/**/*.ts'],
           exclude: ['../src/project-excluded.ts'],
@@ -108,7 +109,7 @@ describe('explicit TypeScript project config', () => {
     writeFileSync(
       path.join(root, 'config/types.json'),
       JSON.stringify({
-        compilerOptions: { outDir: '../output' },
+        compilerOptions: { outDir: '../output', types: [], lib: ['ES2022'] },
         files: [],
         references: [{ path: '../app', prepend: false }],
       }),

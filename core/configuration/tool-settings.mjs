@@ -98,7 +98,9 @@ function validateToolSettings(name, settings, toolSettingKeys) {
   }
   if (ENGINES.has(name)) {
     validateEngine(name, settings[ENGINES.get(name).key]);
-    if (name === 'typescript') validateTypeScriptProject(settings.project);
+    if (name === 'typescript') {
+      validateTypeScriptProject(settings.project);
+    }
     return;
   }
   validatePrecedence(settings.precedence, name);
@@ -143,7 +145,9 @@ function validatePrecedence(precedence, name) {
 }
 
 function validateTypeScriptProject(project) {
-  if (project === undefined) return;
+  if (project === undefined) {
+    return;
+  }
   const normalized = typeof project === 'string' ? project.replaceAll('\\', '/') : '';
   if (
     normalized.trim().length === 0 ||
