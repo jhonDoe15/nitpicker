@@ -36,6 +36,19 @@ const PARSE_ERROR = {
   ruff: /^error: Failed to parse /,
 };
 
+function projectSettings({ projectRoot, liveRoot, settings, sourceRoots }) {
+  return {
+    formatter: detectFormatter(projectRoot, settings.formatter),
+    formatterDetected: settings.formatter === undefined,
+    typeCheckers: detectTypeCheckers(liveRoot, settings.typeChecker),
+    testRunner: detectTestRunner(projectRoot, settings.testRunner),
+    targetVersion: detectTargetVersion(projectRoot),
+    importLinter: settings.importLinter,
+    sourceRoots,
+    entryPoints: settings.entryPoints ?? [],
+  };
+}
+
 export function createToolContext({
   projectRoot,
   liveRoot,
@@ -56,6 +69,9 @@ export function createToolContext({
     setting: settings.environment,
   });
   const sourceRoots = detectSourceRoots(projectRoot, settings.sourceRoots);
+  const pythonPath = [...importRoots(projectRoot, sourceRoots), process.env.PYTHONPATH]
+    .filter((entry) => entry !== undefined && entry !== '')
+    .join(path.delimiter);
   return {
     projectRoot,
     reportRoot,
@@ -68,18 +84,9 @@ export function createToolContext({
     exclude,
     duplicateSkippedFolders,
     pytestAddopts,
-    project: {
-      formatter: detectFormatter(projectRoot, settings.formatter),
-      formatterDetected: settings.formatter === undefined,
-      typeCheckers: detectTypeCheckers(liveRoot, settings.typeChecker),
-      testRunner: detectTestRunner(projectRoot, settings.testRunner),
-      targetVersion: detectTargetVersion(projectRoot),
-      importLinter: settings.importLinter,
-      sourceRoots,
-      entryPoints: settings.entryPoints ?? [],
-    },
+    project: projectSettings({ projectRoot, liveRoot, settings, sourceRoots }),
     env: {
-      PYTHONPATH: pythonPathFor(projectRoot, sourceRoots, process.env.PYTHONPATH),
+      PYTHONPATH: pythonPath,
       PYTHONDONTWRITEBYTECODE: '1',
       ...(reportRoot === undefined ? {} : { COVERAGE_FILE: path.join(reportRoot, COVERAGE_DATA) }),
     },
@@ -234,10 +241,4 @@ export function mutationVersions(context) {
     pytestLabel(context),
     ...mutationRunnerLabels(context),
   ].join(';');
-}
-
-function pythonPathFor(projectRoot, sourceRoots, inheritedPath) {
-  return [...importRoots(projectRoot, sourceRoots), inheritedPath]
-    .filter((entry) => entry !== undefined && entry !== '')
-    .join(path.delimiter);
 }
