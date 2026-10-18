@@ -1,7 +1,7 @@
 import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import path from 'node:path';
-import { ingestFormatCheck } from '../../ingest/formatting/format-check.mjs';
-import { ingestSarif } from '../../ingest/sarif.mjs';
+import { ingestFormatCheck } from '../../../../shared/ingest/format-check.mjs';
+import { ingestSarif } from '../../../../shared/ingest/sarif.mjs';
 import { readSarifReport } from './sarif/sarif-reports.mjs';
 import { kotlinFormatAdvice } from '../kotlin/style/kotlin-format-advice.mjs';
 import {

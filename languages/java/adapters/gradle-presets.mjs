@@ -14,8 +14,12 @@ export function styleToolsOf(preset) {
   return STYLE_TOOLS.get(preset) ?? [];
 }
 
-export function styleToolNames() {
+function styleToolNames() {
   return [...STYLE_TOOLS.values()].flat();
+}
+
+export function precedenceToolNames() {
+  return [...PROJECT_TOOL_CONFIGS.keys(), ...styleToolNames()];
 }
 
 export const JAVA_TOOLS = [

@@ -352,12 +352,12 @@ finding that only moves stays baselined. The comparison key is already
 `tool, rule, path, symbol, identity, classification, metric name`; "identity" below is what each
 tool adds on top of rule and path.
 
-| Tool                                                                             | Report                     | Ingester                                                                       | Classification                                          | Identity                                                                                                            |
-| -------------------------------------------------------------------------------- | -------------------------- | ------------------------------------------------------------------------------ | ------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------- |
-| PMD (`pmd`)                                                                      | SARIF 2.1.0                | `ingestSarif` (X5), after URI rewriting                                        | enforceable: every reported violation                   | The rule's message text (PMD names the offending field, method or variable in it). Repeats get `#2`, `#3` in order. |
-| SpotBugs (`spotbugs`)                                                            | SARIF 2.1.0                | `ingestSarif` (X5), after URI rewriting                                        | enforceable: every reported bug                         | SpotBugs' message arguments (class, method or field, called method). Repeats get `#2`, `#3` in order.               |
-| google-java-format (`google-java-format`; `palantir-java-format` for that style) | file list from `--dry-run` | `ingestFormatCheck` (new, `languages/java/ingest/formatting/format-check.mjs`) | enforceable                                             | The constant `format`; the file path is the key. One finding per unformatted file.                                  |
-| JaCoCo (`jacoco`)                                                                | XML                        | `ingestJacoco` (X6)                                                            | descriptive: `line-coverage` metric, `uncovered-method` | As in X6: class and method name plus descriptor.                                                                    |
+| Tool                                                                             | Report                     | Ingester                                                    | Classification                                          | Identity                                                                                                            |
+| -------------------------------------------------------------------------------- | -------------------------- | ----------------------------------------------------------- | ------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------- |
+| PMD (`pmd`)                                                                      | SARIF 2.1.0                | `ingestSarif` (X5), after URI rewriting                     | enforceable: every reported violation                   | The rule's message text (PMD names the offending field, method or variable in it). Repeats get `#2`, `#3` in order. |
+| SpotBugs (`spotbugs`)                                                            | SARIF 2.1.0                | `ingestSarif` (X5), after URI rewriting                     | enforceable: every reported bug                         | SpotBugs' message arguments (class, method or field, called method). Repeats get `#2`, `#3` in order.               |
+| google-java-format (`google-java-format`; `palantir-java-format` for that style) | file list from `--dry-run` | `ingestFormatCheck` (new, `shared/ingest/format-check.mjs`) | enforceable                                             | The constant `format`; the file path is the key. One finding per unformatted file.                                  |
+| JaCoCo (`jacoco`)                                                                | XML                        | `ingestJacoco` (X6)                                         | descriptive: `line-coverage` metric, `uncovered-method` | As in X6: class and method name plus descriptor.                                                                    |
 
 Notes on the glue in `java-reports.mjs`:
 
@@ -530,12 +530,19 @@ identity when the value changes: editing such a line counts as a resolved plus a
 
 - **Where it runs.** jscpd is a Node tool, so it is not in the Gradle init script (which this slice
   does not touch). After the Gradle task has written `manifest.json` in the report directory,
-  `languages/java/adapters/metrics/java-duplicates.mjs` runs the package's own pinned jscpd (the one the TypeScript
-  `duplicates` check uses; its version is appended to the analyzer version as `jscpd@x.y.z`) once
-  per existing main source root with `--format java --mode mild` and a nitpicker-owned `--config`
-  (a project's `.jscpd.json` is not read), ignoring `build`, `generated`, `target` and `out`. It runs
-  once for the whole build, over the source roots of every Gradle project. Reports go to `jscpd/<n>/`
-  in the report directory and are merged into its `duplicates.json`. Clones across two source roots, and so across two Gradle projects, are not detected (running jscpd once over all roots would detect them, at the price of changing the identity of every existing Java clone finding). A jscpd
+  `languages/java/adapters/metrics/java-duplicates.mjs` runs the package's own pinned jscpd (`runJscpd` in
+  `core/tooling/jscpd/run-jscpd.mjs`, shared with Python and the one the TypeScript `duplicates`
+  check uses; its version is appended to the analyzer version as `jscpd@x.y.z`) once per existing
+  main source root with `--format java --mode mild` and a nitpicker-owned `--config` (a project's
+  `.jscpd.json` is not read). It ignores the folders named `build`, `generated`, `target` and `out`
+  at any depth; the config key `duplicates.skippedFolders` replaces this list (an empty list
+  ignores nothing) and reaches the runner as `--duplicate-skipped-folders`. Clones made only of
+  `package` and `import` lines (the clone may end on the line where the following declaration
+  starts) are not reported (`core/tooling/jscpd/import-only/jvm-imports.mjs`). The message names
+  both files and tells to add either to `exclude`, and a glob that matches either file of the pair
+  lifts the finding. It runs once for the whole build, over the source roots of every Gradle project.
+  Reports go to `jscpd/<n>/` in the report directory and are merged into its `duplicates.json`.
+  Clones across two source roots, and so across two Gradle projects, are not detected (running jscpd once over all roots would detect them, at the price of changing the identity of every existing Java clone finding). A jscpd
   failure is a tool error like a Gradle failure.
 - **Findings.** The same normalizer as the TypeScript check (`normalizeDuplicates`), tool name
   `duplicates`: `duplicate-clone` (enforceable, one per clone) and `duplicate-clone-size`
@@ -560,7 +567,7 @@ resolved plus a new finding, as in the TypeScript check.
 - **What makes it "changed": the head-vs-base line mapping.** The differential comparison already
   maps head lines to the merge base through `git diff --unified=0` (`readChangedLines`, used for
   the strict-preset rules). `touchedCode.isStrictRule(rule, finding)` now also answers true for
-  this rule when the finding comes from `jacoco` (`languages/java/adapters/touched-rules.mjs`), so an
+  this rule when the finding comes from `jacoco` (`isTouchedCodeRule` in `shared/policy.mjs`), so an
   uncovered branch whose head line lies in a changed range, or in an added file, is new even if
   the base had it. An uncovered branch on an unchanged line stays baselined. The library entry
   `runJavaDiff` passes the same `touchedCode` as the CLI path. The TypeScript check of the same
@@ -582,12 +589,15 @@ resolved plus a new finding, as in the TypeScript check.
 
 ## Slow tests
 
-- **Rule.** `test-runtime/slow-test` fails a test the change adds or edits when it takes more than 5 s
+- **Rule.** `slow-test` (tool `test-runtime`) fails a test the change adds or edits when it takes more than 5 s
   as a unit test, or more than 30 s as an integration test (`thresholds.unitTestSeconds` and
-  `thresholds.integrationTestSeconds`). Integration tests are those of a test task other than `test`
-  (Maven's `surefire` counts as `test`), classes named `*IT`, `*ITCase` or `*IntegrationTest(s)`, and
-  classes annotated `@SpringBootTest`, also through a superclass or an annotation of their own that
-  carries it, when that type's source is in a test root.
+  `thresholds.integrationTestSeconds`). The rule, message shape, budgets and exception are the same
+  for [TypeScript and JavaScript](typescript-strict-preset.md#slow-tests) and
+  [Python](python-preset.md#slow-tests); the finding prints the bare id `slow-test`, and
+  `test-runtime/slow-test` is accepted in `exceptions` as the same rule. Integration tests are those
+  of a test task other than `test` (Maven's `surefire` counts as `test`), classes named `*IT`,
+  `*ITCase` or `*IntegrationTest(s)`, and classes annotated `@SpringBootTest`, also through a
+  superclass or an annotation of their own that carries it, when that type's source is in a test root.
   The message names the budget, the measured time, the fixes (no `Thread.sleep` or other waits, a
   smaller Spring context or a test slice, or moving it to an integration test source set; on Maven,
   making it an integration test that Failsafe runs, `*IT`) and the exception route.
@@ -596,7 +606,12 @@ resolved plus a new finding, as in the TypeScript check.
 - **Measurement.** Head only, from the JUnit XML the test tasks already write: the init script copies
   `TEST-*.xml` of every test task in the run (not `nitpickerArchunit`) to
   `test-results/<task>/` in each module's report directory. No extra test run. A rerun test keeps
-  its slowest time. Maven builds copy Surefire's `TEST-*.xml` to `test-results/surefire/` and
+  its slowest time; only passed tests are timed (failed, errored and skipped cases are left out).
+  A failing build reports its own error and no slow tests.
+  Unlike TypeScript and Python, a slow test is not run again without coverage: the build runs the
+  tests once, and a second build would double the cost, so the time is that of the build's own run
+  (with JaCoCo's agent when the same run measures coverage) and is checked against the budget as
+  measured. Maven builds copy Surefire's `TEST-*.xml` to `test-results/surefire/` and
   Failsafe's to `test-results/failsafe/` (see [Maven builds](#maven-builds)); `surefire` counts as
   the `test` task, `failsafe` as an integration task. Failsafe runs when the project binds its
   `integration-test` goal and does not keep it off, because nitpicker then builds to `verify`.
@@ -1249,7 +1264,7 @@ table:
   identity: name, occurrence among equal names in the file and a hash of the method text with
   indentation removed, no line number. A moved or re-indented method stays baselined; editing a
   method that already violates produces a new finding, as in TypeScript.
-- **Cache invalidation.** `StructureMetrics.java`, `java-structure.mjs` and the shared structure
+- **Cache invalidation.** `StructureMetrics.java`, `java-structure.mjs`, `structure-report.mjs` and the shared structure
   rule files are in the Java analyzer's configuration hash.
 - **Tests.** `java-structure.test.mjs` (fast: limits, messages, identity stability);
   the gated e2e adds a branch with a method over the parameter limit (fails) and keeps a legacy

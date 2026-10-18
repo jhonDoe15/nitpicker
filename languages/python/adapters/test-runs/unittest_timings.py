@@ -44,7 +44,21 @@ class TimedResult(unittest.TextTestResult):
             self.timings.append((test, where, time.perf_counter() - started))
 
 
-def testcase(test, where, seconds):
+def result_status(result, test):
+    for status, problems in (("failure", result.failures), ("error", result.errors)):
+        if any(
+            problem is test or getattr(problem, "test_case", None) is test
+            for problem, _ in problems
+        ):
+            return status
+    if test in result.unexpectedSuccesses:
+        return "failure"
+    if any(problem is test for problem, _ in result.skipped + result.expectedFailures):
+        return "skipped"
+    return None
+
+
+def testcase(result, test, where, seconds):
     owner, defined, line = where
     module = owner[: -len(".py")].replace("/", ".")
     attributes = {
@@ -53,8 +67,17 @@ def testcase(test, where, seconds):
         "file": defined,
         **({} if line is None else {"line": str(line - 1)}),
         "time": "%.3f" % seconds,
+        "unittest_id": test.id(),
     }
-    return "<testcase " + " ".join(k + "=" + quoteattr(v) for k, v in attributes.items()) + "/>"
+    status = result_status(result, test)
+    body = "" if status is None else "<" + status + "/>"
+    return (
+        "<testcase "
+        + " ".join(k + "=" + quoteattr(v) for k, v in attributes.items())
+        + ">"
+        + body
+        + "</testcase>"
+    )
 
 
 def runner(report):
@@ -63,7 +86,7 @@ def runner(report):
 
         def run(self, test):
             result = super().run(test)
-            cases = "".join(testcase(*timing) for timing in result.timings)
+            cases = "".join(testcase(result, *timing) for timing in result.timings)
             with open(report, "w", encoding="utf-8") as handle:
                 handle.write("<testsuites><testsuite>" + cases + "</testsuite></testsuites>")
             return result

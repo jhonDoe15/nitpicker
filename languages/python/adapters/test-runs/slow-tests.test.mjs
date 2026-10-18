@@ -56,7 +56,12 @@ describe('slow pytest tests', () => {
         location: { line: 4 },
         classification: 'enforceable',
         message:
-          'test_wait took 6.2 s; a unit test may take 5 s. Remove time.sleep and other real waits, and use smaller fixtures, or move it to a tests/integration/ folder or mark it @pytest.mark.integration if it is one.',
+          'test_wait took 6.2 s; a unit test may take 5 s. Remove time.sleep and other waits ' +
+          '(patch the clock) and fake network, database and disk access, or move it to an ' +
+          'integration test (an integration or e2e folder, or an integration or e2e marker ' +
+          'registered in the pytest config) if it is one. If this is intended, add ' +
+          '{"rule":"slow-test","paths":["tests/test_a.py"],"reason":"..."} ' +
+          'to "exceptions" in nitpicker.config.json.',
       },
     ]);
   });
@@ -74,7 +79,10 @@ describe('slow pytest tests', () => {
     const findings = readSlowTestFindings({ reportRoot, projectRoot });
 
     expect(findings.map(({ message }) => message)).toEqual([
-      'test_wait took 31.0 s; an integration test may take 30 s. Remove time.sleep and other real waits, and use smaller fixtures.',
+      'test_wait took 31.0 s; an integration test may take 30 s. Remove time.sleep and other ' +
+        'waits (patch the clock) and fake network, database and disk access. If this is ' +
+        'intended, add {"rule":"slow-test","paths":["tests/test_marked.py"],"reason":"..."} ' +
+        'to "exceptions" in nitpicker.config.json.',
     ]);
   });
   it('reads a marker on the class and honours the configured limits', () => {
@@ -148,8 +156,8 @@ describe('slow pytest tests', () => {
       readSlowTestFindings({
         ...moved,
         baselineRoot: directory({ 'tests/test_other.py': '' }),
-      }).map(({ message }) => message.split('fixtures')[1]),
-    ).toEqual([', or move it to a tests/integration/ folder if it is one.']);
+      }).map(({ message }) => message.split(' access')[1].split('. If this')[0]),
+    ).toEqual([', or move it to an integration test (an integration or e2e folder) if it is one']);
   });
 });
 
