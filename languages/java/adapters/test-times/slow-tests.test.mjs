@@ -97,7 +97,11 @@ describe('readSlowTestFindings', () => {
         identity: 'test:shop.OrderTest#totals()',
         location: { line: 5 },
         message:
-          'OrderTest totals() took 5.4 s; a unit test may take 5 s. Remove Thread.sleep and other waits, start a smaller Spring context or a test slice, or move it to an integration test source set if it is one. If this is intended, add {"rule":"test-runtime/slow-test","paths":["src/test/java/shop/OrderTest.java"],"reason":"..."} to "exceptions" in nitpicker.config.json.',
+          'OrderTest totals() took 5.4 s; a unit test may take 5 s. Remove Thread.sleep and other ' +
+          'waits, start a smaller Spring context or a test slice, or move it to an integration test ' +
+          'source set if it is one. If this is intended, add ' +
+          '{"rule":"slow-test","paths":["src/test/java/shop/OrderTest.java"],"reason":"..."} ' +
+          'to "exceptions" in nitpicker.config.json.',
         classification: 'enforceable',
       },
     ]);
@@ -119,7 +123,10 @@ describe('readSlowTestFindings', () => {
     expect(findings.map(({ identity, message }) => [identity, message.split(';')[1]])).toEqual([
       [
         'test:shop.OrderIT#a()',
-        ' an integration test may take 30 s. Remove Thread.sleep and other waits, start a smaller Spring context or a test slice. If this is intended, add {"rule":"test-runtime/slow-test","paths":["."],"reason":"..."} to "exceptions" in nitpicker.config.json.',
+        ' an integration test may take 30 s. Remove Thread.sleep and other waits, start a smaller ' +
+          'Spring context or a test slice. If this is intended, add ' +
+          '{"rule":"slow-test","paths":["."],"reason":"..."} ' +
+          'to "exceptions" in nitpicker.config.json.',
       ],
     ]);
   });
@@ -161,7 +168,13 @@ describe('readSlowTestFindings', () => {
       ['test:shop.OrderTest#positive(int)[1]', 11],
       ['test:shop.OrderTest#[1] 1', undefined],
     ]);
-    expect(findingsFor({ sources: unchanged, results, base: {} })).toHaveLength(3);
+    expect(
+      findingsFor({ sources: unchanged, results, base: {} }).map(({ identity }) => identity),
+    ).toEqual([
+      'test:shop.OrderTest#totals()',
+      'test:shop.OrderTest#positive(int)[1]',
+      'test:shop.OrderTest#[1] 1',
+    ]);
     expect(findingsFor({ sources: unchanged, results, snapshot: 'base' })).toEqual([]);
   });
 
@@ -250,7 +263,8 @@ describe('readSlowTestFindings', () => {
   it('attributes a @Nested test to its own class and names it with a dot', () => {
     const calc = `${TEST_ROOT}/shop/CalcTest.java`;
     const source = (body) =>
-      `package shop;\n\nclass CalcTest {\n  @Nested\n  class WhenEmpty {\n    @Test\n    void returnsZero() {}\n  }\n\n  @Nested\n  class WhenFull {\n    @Test\n    void returnsZero() {${body}}\n  }\n}\n`;
+      `package shop;\n\nclass CalcTest {\n  @Nested\n  class WhenEmpty {\n    @Test\n    void ` +
+      `returnsZero() {}\n  }\n\n  @Nested\n  class WhenFull {\n    @Test\n    void returnsZero() {${body}}\n  }\n}\n`;
     const results = { test: suite('shop.CalcTest$WhenFull', [['returnsZero()', '9']]) };
     const run = (body) =>
       findingsFor({ sources: { [calc]: source(body) }, results, base: { [calc]: source('') } });
@@ -270,9 +284,11 @@ describe('readSlowTestFindings', () => {
         [`${support}/ShopTest.java`]:
           'package shop.support;\n\n@Retention(RUNTIME)\n@SpringBootTest\npublic @interface ShopTest {}\n',
         [`${TEST_ROOT}/shop/FlowTest.java`]:
-          'package shop;\n\nimport shop.support.AbstractIntegrationTest;\n\nclass FlowTest extends AbstractIntegrationTest {\n  @Test\n  void runs() {}\n}\n',
+          'package shop;\n\nimport shop.support.AbstractIntegrationTest;\n\nclass FlowTest extends ' +
+          'AbstractIntegrationTest {\n  @Test\n  void runs() {}\n}\n',
         [`${TEST_ROOT}/shop/CheckoutTest.java`]:
-          'package shop;\n\nimport shop.support.ShopTest;\n\n@ShopTest\nclass CheckoutTest {\n  @Test\n  void checksOut() {}\n}\n',
+          'package shop;\n\nimport shop.support.ShopTest;\n\n@ShopTest\nclass CheckoutTest {\n  @Test\n ' +
+          ' void checksOut() {}\n}\n',
         [ORDER_TEST]: ORDER_SOURCE,
       },
       results: {
@@ -314,7 +330,7 @@ describe('readSlowTestFindings', () => {
         path: spec,
         identity: 'test:shop.OrderSpec#ships an order',
         location: { line: 4 },
-        message: `OrderSpec ships an order took 6.0 s; a unit test may take 5 s. ${WAITS}, or move it to an integration test source set if it is one. If this is intended, add {"rule":"test-runtime/slow-test","paths":["${spec}"],"reason":"..."} ${EXCEPTIONS}`,
+        message: `OrderSpec ships an order took 6.0 s; a unit test may take 5 s. ${WAITS}, or move it to an integration test source set if it is one. If this is intended, add {"rule":"slow-test","paths":["${spec}"],"reason":"..."} ${EXCEPTIONS}`,
         classification: 'enforceable',
       },
     ]);
@@ -397,7 +413,9 @@ describe('readSlowTestFindings', () => {
         rule: 'slow-test',
         path: '.',
         identity: 'test:shop.Slow#crawls()',
-        message: `Slow crawls() took 31.0 s; an integration test may take 30 s. ${WAITS}. If this is intended, add {"rule":"test-runtime/slow-test","paths":["."],"reason":"..."} ${EXCEPTIONS}`,
+        message:
+          `Slow crawls() took 31.0 s; an integration test may take 30 s. ${WAITS}. If this is intended, ` +
+          `add {"rule":"slow-test","paths":["."],"reason":"..."} ${EXCEPTIONS}`,
         classification: 'enforceable',
       },
       {
@@ -406,7 +424,9 @@ describe('readSlowTestFindings', () => {
         path: ORDER_TEST,
         identity: 'test:shop.OrderTest#totals()',
         location: { line: 5 },
-        message: `OrderTest totals() took 6.0 s; a unit test may take 5 s. ${WAITS}, ${FAILSAFE_ADVICE}. If this is intended, add {"rule":"test-runtime/slow-test","paths":["${ORDER_TEST}"],"reason":"..."} ${EXCEPTIONS}`,
+        message:
+          `OrderTest totals() took 6.0 s; a unit test may take 5 s. ${WAITS}, ${FAILSAFE_ADVICE}. ` +
+          `If this is intended, add {"rule":"slow-test","paths":["${ORDER_TEST}"],"reason":"..."} ${EXCEPTIONS}`,
         classification: 'enforceable',
       },
     ]);
@@ -433,7 +453,10 @@ describe('readSlowTestFindings', () => {
         path: ORDER_TEST,
         identity: 'test:shop.OrderTest#totals()',
         location: { line: 5 },
-        message: `OrderTest totals() took 9.0 s; a unit test may take 5 s. ${WAITS}, ${FAILSAFE_ADVICE}. If this is intended, add {"rule":"test-runtime/slow-test","paths":["${modulePath}/${ORDER_TEST}"],"reason":"..."} ${EXCEPTIONS}`,
+        message:
+          `OrderTest totals() took 9.0 s; a unit test may take 5 s. ${WAITS}, ${FAILSAFE_ADVICE}. ` +
+          `If this is intended, add ` +
+          `{"rule":"slow-test","paths":["${modulePath}/${ORDER_TEST}"],"reason":"..."} ${EXCEPTIONS}`,
         classification: 'enforceable',
       },
     ]);
