@@ -7,8 +7,8 @@ import {
   sizeRules,
 } from './project-rules/size-rules.mjs';
 import { UNUSED_API_RULES, UNUSED_API_RULE_IDS } from './unused-api/unused-api-policy.mjs';
-import { reuseRules } from './rules/reuse-rules.mjs';
-import { testConsoleRule } from './rules/test-runtime.mjs';
+import { reuseRules } from './project-rules/reuse-rules.mjs';
+import { testConsoleRule } from './project-rules/test-runtime-rules.mjs';
 import { SOURCE_RULE_IDS, sourceRuleMessages, sourceRules } from './project-rules/source-rules.mjs';
 import { HYGIENE_EXCEPTION_RULES, HYGIENE_RULES } from './project-rules/hygiene-rules.mjs';
 
