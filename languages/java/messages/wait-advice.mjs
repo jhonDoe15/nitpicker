@@ -9,9 +9,9 @@ import {
 export const FIXED_SLEEP_RULE = 'FixedSleepInTest';
 
 const AWAITILITY_ADVICE =
-  "A fixed wait makes the test slow and flaky. Wait on the condition with Awaitility, which the project's tests use: await().atMost(Duration.ofSeconds(5)).until(...) with the real condition, not pollDelay(...).until(() -> true); verify(mock, timeout(1000)) for a mock. A sleep in a mock answer or a thread body is allowed. If a real wait is unavoidable, add an exception for pmd/FixedSleepInTest in nitpicker.config.json.";
+  "A fixed wait makes the test slow and flaky. Wait on the condition with Awaitility, which the project's tests use: await().atMost(Duration.ofSeconds(5)).until(...) with the real condition, not pollDelay(...).until(() -> true); verify(mock, timeout(1000)) for a mock. A sleep in a mock answer or a thread body is allowed.";
 const TIMED_WAIT_ADVICE =
-  'A timed wait, join(ms) or wait(ms), returns as soon as the thread ends or is notified, so it does not slow a passing test, but it also returns when the time runs out, and the test then goes on as if the wait had succeeded. Check the outcome: {check}; call wait(ms) only in a loop that checks its condition against a deadline. If going on after the timeout is intended, add an exception for pmd/FixedSleepInTest in nitpicker.config.json.';
+  'A timed wait, join(ms) or wait(ms), returns as soon as the thread ends or is notified, so it does not slow a passing test, but it also returns when the time runs out, and the test then goes on as if the wait had succeeded. Check the outcome: {check}; call wait(ms) only in a loop that checks its condition against a deadline.';
 const TIMED_WAIT_CHECK =
   'assertThat(thread.join(Duration.ofSeconds(5))).isTrue() for a thread, or assert the result of CountDownLatch.await(5, SECONDS)';
 const AWAITILITY_CHECK = `await().atMost(Duration.ofSeconds(5)).until(() -> !thread.isAlive()) with Awaitility, which the project's tests use, or ${TIMED_WAIT_CHECK}`;

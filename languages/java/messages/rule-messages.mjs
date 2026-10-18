@@ -1,6 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { exceptionHint } from '../../../shared/rules/exceptions.mjs';
 import { JAVA_FORMATTER_TOOLS, NOT_YOUR_JAVA_FORMATTER } from '../adapters/style/java-style.mjs';
+import { SOURCE_RULE_IDS } from '../adapters/kotlin/rules/kotlin-rules.mjs';
 
 export const CATALOG_TOOLS = ['pmd', 'checkstyle', 'spotbugs'];
 const CATALOGS = new Map(CATALOG_TOOLS.map((tool) => [tool, readCatalog(tool)]));
@@ -12,6 +13,8 @@ const ROUTED = new Set([
   'forbiddenapis',
   'duplicates',
   'coupling/package-cycle',
+  'coupling/test-only-export',
+  'detekt',
   'dependencies',
   'spring',
   'pit',
@@ -49,16 +52,29 @@ export function withRuleMessage(finding, { preset = 'java', testRoots = [], java
   const catalog = CATALOGS.get(finding.tool) ?? {};
   const rule = finding.tool === 'checkstyle' ? checkstyleRuleName(finding.rule) : finding.rule;
   const entry = Object.hasOwn(catalog, rule) ? catalog[rule] : undefined;
+  const exceptionRule = exceptionRuleFor({ ...finding, rule }, preset);
   const liftable =
-    preset === 'java' &&
+    exceptionRule !== undefined &&
     finding.classification === 'enforceable' &&
     entry?.mayBeIntended !== false &&
     !isCertainBug({ ...finding, rule }, testRoots);
   return {
     ...finding,
     rule,
-    message: ruleMessage({ ...finding, rule }, entry, { liftable, javaStyle }),
+    message: ruleMessage({ ...finding, rule }, entry, { liftable, javaStyle, exceptionRule }),
   };
+}
+
+function exceptionRuleFor(finding, preset) {
+  const qualified = `${finding.tool}/${finding.rule}`;
+  if (preset === 'kotlin') {
+    return finding.tool === 'detekt' && SOURCE_RULE_IDS.includes(finding.rule)
+      ? finding.rule
+      : qualified === 'coupling/test-only-export'
+        ? qualified
+        : undefined;
+  }
+  return preset === 'java' && finding.tool !== 'detekt' ? qualified : undefined;
 }
 
 function isCertainBug(finding, testRoots) {
@@ -73,7 +89,7 @@ export function applyRuleMessages(findings, options) {
   return findings.map((finding) => withRuleMessage(finding, options));
 }
 
-function ruleMessage(finding, entry, { liftable, javaStyle }) {
+function ruleMessage(finding, entry, { liftable, javaStyle, exceptionRule }) {
   const message = finding.message.trim();
   if (message.includes(CONFIG_FILE)) {
     return message;
@@ -85,6 +101,6 @@ function ruleMessage(finding, entry, { liftable, javaStyle }) {
   return [
     SENTENCE_END.test(message) ? message : `${message}.`,
     ...(typeof fix === 'string' ? [fix] : []),
-    ...(liftable ? [exceptionHint(`${finding.tool}/${finding.rule}`, finding.path)] : []),
+    ...(liftable ? [exceptionHint(exceptionRule, finding.path)] : []),
   ].join(' ');
 }

@@ -40,6 +40,25 @@ describe('checkstyleRuleName', () => {
 });
 
 describe('withRuleMessage', () => {
+  it('routes the Kotlin source rules by their bare IDs and test-only classes by their qualified ID', () => {
+    const source = finding('detekt', 'catch-log-without-exception', 'Keep the stack trace.');
+    const assertion = finding('detekt', 'test-without-assertion', 'Assert the result.');
+    const testOnly = finding('coupling', 'test-only-export', 'Move the class to test sources.');
+    expect(
+      applyRuleMessages([source, assertion, testOnly], { preset: 'kotlin' }).map(
+        ({ message }) => message,
+      ),
+    ).toEqual([
+      `${source.message} ${hint(source.rule)}`,
+      `${assertion.message} ${hint(assertion.rule)}`,
+      `${testOnly.message} ${hint('coupling/test-only-export')}`,
+    ]);
+    expect(withRuleMessage(testOnly).message).toBe(
+      `${testOnly.message} ${hint('coupling/test-only-export')}`,
+    );
+    expect(withRuleMessage(source).message).toBe(source.message);
+  });
+
   it('adds the fix and the exception route to a rule that can hit intended code', () => {
     expect(withRuleMessage(finding('pmd', 'SystemPrintln', 'Usage of System.out/err'))).toEqual(
       finding(
