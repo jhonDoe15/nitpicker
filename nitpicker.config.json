@@ -30,7 +30,9 @@
       "languages/typescript/preset/test-environment/read-environment.mjs",
       "languages/typescript/preset/architecture/public-contract-usage.mjs",
       "languages/typescript/preset/architecture/runtime-dependency-boundaries.mjs",
-      "languages/typescript/preset/coding-standards/check.mjs"
+      "languages/typescript/preset/coding-standards/check.mjs",
+      "languages/java/adapters/gradle-wrapper/gradle-supervisor.mjs",
+      "languages/java/adapters/gradle-wrapper/test-support/build-tree.mjs"
     ]
   },
   "exclude": [
