@@ -50,7 +50,6 @@ function copyOf(...sources) {
   return root;
 }
 
-const MESSY = 'src/main/java/demo/Messy.java';
 function twinProjects() {
   const gradleProject = copyOf(gradleFixture);
   const mavenProject = copyOf(gradleFixture, path.join(fixtures, 'single'));
