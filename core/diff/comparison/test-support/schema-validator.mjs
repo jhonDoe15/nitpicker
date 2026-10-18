@@ -1,8 +1,12 @@
 import { readFileSync } from 'node:fs';
 
-const schema = JSON.parse(
-  readFileSync(new URL('../../../../spec/findings.schema.json', import.meta.url), 'utf8'),
-);
+let schema;
+function readSchema() {
+  schema ??= JSON.parse(
+    readFileSync(new URL('../../../../spec/findings.schema.json', import.meta.url), 'utf8'),
+  );
+  return schema;
+}
 
 const SUPPORTED_KEYWORDS = new Set([
   '$schema',
@@ -36,24 +40,24 @@ function assertSupportedKeywords(node) {
   }
 }
 
-function validateReference(value, node, errors, at) {
+function validateReference(value, node, { errors, at }) {
   if (node.$ref === undefined) {
     return;
   }
   const target = node.$ref
     .replace(/^#\//, '')
     .split('/')
-    .reduce((current, key) => current[key], schema);
-  validate(value, target, errors, at);
+    .reduce((current, key) => current[key], readSchema());
+  validate(value, target, { errors, at });
 }
 
-function checkNumber(value, node, errors, at) {
+function checkNumber(value, node, { errors, at }) {
   if (typeof value === 'number' && node.minimum !== undefined && value < node.minimum) {
     errors.push(`${at} must be >= ${String(node.minimum)}`);
   }
 }
 
-function checkAllowedValues(value, node, errors, at) {
+function checkAllowedValues(value, node, { errors, at }) {
   if (node.enum !== undefined && !node.enum.includes(value)) {
     errors.push(`${at} must be one of ${node.enum.join(', ')}`);
   }
@@ -62,49 +66,53 @@ function checkAllowedValues(value, node, errors, at) {
   }
 }
 
-function checkCombinators(value, node, errors, at) {
+function checkCombinators(value, node, { errors, at }) {
   for (const part of node.allOf ?? []) {
-    validate(value, part, errors, at);
+    validate(value, part, { errors, at });
   }
-  if (node.not !== undefined && validate(value, node.not, [], at).length === 0) {
+  if (node.not !== undefined && validate(value, node.not, { errors: [], at }).length === 0) {
     errors.push(`${at} matches a forbidden schema`);
   }
-  if (node.if !== undefined && validate(value, node.if, [], at).length === 0 && node.then) {
-    validate(value, node.then, errors, at);
+  if (
+    node.if !== undefined &&
+    validate(value, node.if, { errors: [], at }).length === 0 &&
+    node.then
+  ) {
+    validate(value, node.then, { errors, at });
   }
 }
 
-export function validate(value, node = schema, errors = [], at = '$') {
+export function validate(value, node = readSchema(), { errors = [], at = '$' } = {}) {
   assertSupportedKeywords(node);
-  validateReference(value, node, errors, at);
-  checkType(value, node, errors, at);
+  validateReference(value, node, { errors, at });
+  checkType(value, node, { errors, at });
   if (typeof value === 'string') {
-    checkString(value, node, errors, at);
+    checkString(value, node, { errors, at });
   }
-  checkNumber(value, node, errors, at);
-  checkAllowedValues(value, node, errors, at);
-  checkCombinators(value, node, errors, at);
-  if (isRecord(value)) {
-    checkObject(value, node, errors, at);
+  checkNumber(value, node, { errors, at });
+  checkAllowedValues(value, node, { errors, at });
+  checkCombinators(value, node, { errors, at });
+  if (typeof value === 'object' && value !== null && !Array.isArray(value)) {
+    checkObject(value, node, { errors, at });
   }
   if (Array.isArray(value)) {
-    checkArray(value, node, errors, at);
+    checkArray(value, node, { errors, at });
   }
   return errors;
 }
 
-function checkArray(items, node, errors, at) {
+function checkArray(items, node, { errors, at }) {
   if (node.minItems !== undefined && items.length < node.minItems) {
     errors.push(`${at} has fewer than ${String(node.minItems)} items`);
   }
   for (const [index, item] of node.items === undefined ? [] : items.entries()) {
-    validate(item, node.items, errors, `${at}[${String(index)}]`);
+    validate(item, node.items, { errors, at: `${at}[${String(index)}]` });
   }
 }
 
-function checkType(value, node, errors, at) {
+function checkType(value, node, { errors, at }) {
   const checks = {
-    object: isRecord(value),
+    object: typeof value === 'object' && value !== null && !Array.isArray(value),
     array: Array.isArray(value),
     string: typeof value === 'string',
     number: typeof value === 'number' && Number.isFinite(value),
@@ -116,7 +124,7 @@ function checkType(value, node, errors, at) {
   }
 }
 
-function checkString(value, node, errors, at) {
+function checkString(value, node, { errors, at }) {
   if (node.minLength !== undefined && value.length < node.minLength) {
     errors.push(`${at} is shorter than ${String(node.minLength)}`);
   }
@@ -125,7 +133,7 @@ function checkString(value, node, errors, at) {
   }
 }
 
-function checkObject(value, node, errors, at) {
+function checkObject(value, node, { errors, at }) {
   for (const key of node.required ?? []) {
     if (!(key in value)) {
       errors.push(`${at}.${key} is required`);
@@ -133,18 +141,13 @@ function checkObject(value, node, errors, at) {
   }
   for (const [key, child] of Object.entries(node.properties ?? {})) {
     if (key in value) {
-      validate(value[key], child, errors, `${at}.${key}`);
+      validate(value[key], child, { errors, at: `${at}.${key}` });
     }
   }
-  if (node.additionalProperties === false) {
-    for (const key of Object.keys(value)) {
-      if (!(key in (node.properties ?? {}))) {
-        errors.push(`${at}.${key} is not allowed`);
-      }
+  if (node.additionalProperties !== false) return;
+  for (const key of Object.keys(value)) {
+    if (!(key in (node.properties ?? {}))) {
+      errors.push(`${at}.${key} is not allowed`);
     }
   }
-}
-
-function isRecord(value) {
-  return typeof value === 'object' && value !== null && !Array.isArray(value);
 }

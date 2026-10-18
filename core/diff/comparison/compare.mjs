@@ -8,8 +8,6 @@ import {
   ratchetKey,
 } from './ratchet/hold-ratchets.mjs';
 import { matchSimilarFindings } from './similar/match.mjs';
-import { normalizeGitPath } from '../git/normalize.mjs';
-import { folderMoves, mainDestination } from '../git/patches/renames.mjs';
 
 export function compareFindings({
   baseFindings,
