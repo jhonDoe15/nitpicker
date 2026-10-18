@@ -1,4 +1,4 @@
-import { childAt } from '../../ingest/common.mjs';
+import { childAt } from '../../../../shared/ingest/common.mjs';
 const DEPLOY = 'org.apache.maven.plugins:maven-deploy-plugin';
 
 const PUBLISHING_PLUGINS = [

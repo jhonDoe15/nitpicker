@@ -9,7 +9,8 @@ import { analyzeJavaSnapshot } from '../java-runner.mjs';
 import { runMaven } from '../../maven/maven-command.mjs';
 import { archunitMatcher } from '../../maven/maven-tests.mjs';
 import { requireTestngRun } from '../../maven/results/maven-test-results.mjs';
-import { childrenNamed, parseXml } from '../../ingest/common.mjs';
+import { childrenNamed, parseXml } from '../../../../shared/ingest/common.mjs';
+import { mavenFrameworkFindings } from '../test-support/maven-framework.mjs';
 
 const enabled = process.env.NITPICKER_JAVA_E2E === '1';
 const gradle = process.env.NITPICKER_GRADLE ?? 'gradle';
@@ -167,7 +168,11 @@ describe.skipIf(!enabled)('Java preset on each test framework', () => {
   it.each(['gradle', 'maven'])(
     'measures coverage and mutants of a Spock project on %s, runs its ArchUnit rules and finds its slow features in the Groovy sources',
     (build) => {
-      const findings = findingsOf('spock', build, { testSeconds: { unitTestSeconds: -1 } });
+      const policy = { testSeconds: { unitTestSeconds: -1 } };
+      const findings =
+        build === 'maven'
+          ? mavenFrameworkFindings(projectOf('spock', build), { maven, policy })
+          : findingsOf('spock', build, policy);
       const slow = findings
         .filter(({ tool }) => tool === 'test-runtime')
         .map(({ path: file, identity, location }) => ({ file, identity, location }));
