@@ -306,6 +306,14 @@ a passing test suite ...`) instead of Gradle's own failure output. Projects with
   project root (base and head are separate worktrees), so each side runs the Gradle version it pins.
   The wrapper downloads the Gradle distribution named in the head snapshot's
   `gradle-wrapper.properties`, and base and head each use their own wrapper.
+- **Gradle timeout.** Each Gradle command has a 15-minute budget by default, for both Java
+  and Kotlin. Set `NITPICKER_GRADLE_TIMEOUT_MINUTES` to a positive whole number of minutes,
+  for example `NITPICKER_GRADLE_TIMEOUT_MINUTES=45 npx nitpicker --base main` for a slow PIT
+  suite. The same budget applies to base and head. Empty values, fractions, units such as
+  `45m`, and values outside 1–17895 are errors. The upper bound keeps the analyzer's Node.js
+  timer within its supported range. The analyzer deadline allows two commands (the optional
+  Checkstyle configuration export and the analysis), plus one minute for reports. This does
+  not change Maven's command budget or configure individual PIT phases.
 - **Config keys.** `base`, `disable` and `analyzers` work as before. `thresholds`, `exclude` and
   `legacyInventory` are shared with the TypeScript preset (`shared/config.mjs`,
   `head-policy.mjs`, `legacy-inventory.mjs`) and reach the Java runner as arguments, so they are
@@ -1870,7 +1878,8 @@ in it against the catalogs and Error Prone's check list.
   produced here satisfy the findings schema, which `collectJavaFindings` enforces on every run via
   `parseAnalyzerReport`.
 
-Gradle commands have a 15-minute deadline. On Linux and macOS, nitpicker starts each command
+Gradle commands default to a 15-minute deadline, configurable with
+`NITPICKER_GRADLE_TIMEOUT_MINUTES` as described above. On Linux and macOS, nitpicker starts each command
 in its own process group and stops that group with SIGTERM at the deadline, then SIGKILL
 after 500 ms. This also stops inherited Gradle/test-worker processes when the launcher exits
 first or ignores SIGTERM. On Windows, the deadline force-stops the command tree with

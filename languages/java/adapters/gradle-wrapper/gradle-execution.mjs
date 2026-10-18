@@ -83,13 +83,17 @@ function stopTree(child, state, finish) {
     forceStop(child, state, finish);
   } else {
     signalGroup(child, 'SIGTERM', state.errors);
-    state.termination = setTimeout(() => forceStop(child, state, finish), GRACE_MS);
+    state.termination = setTimeout(() => {
+      forceStop(child, state, finish);
+    }, GRACE_MS);
   }
 }
 
 function shutdownHandlers(terminate) {
   return ['SIGINT', 'SIGTERM'].map((signal) => {
-    const handler = () => terminate({ message: `Gradle interrupted by ${signal}`, code: 'EINTR' });
+    function handler() {
+      terminate({ message: `Gradle interrupted by ${signal}`, code: 'EINTR' });
+    }
     process.on(signal, handler);
     return [signal, handler];
   });
