@@ -3,7 +3,8 @@ import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { compareFindings } from '../../../core/diff/comparison/compare.mjs';
 import { parseAnalyzerReport } from '../../../core/diff/comparison/finding-schema.mjs';
-import { calculateCrap, ingestCrap, parseLizardCsv } from './crap.mjs';
+import { calculateCrap, parseLizardCsv } from '../../../shared/ingest/lizard-crap.mjs';
+import { ingestCrap } from './crap.mjs';
 
 const fixture = (name) => readFileSync(path.resolve(import.meta.dirname, 'fixtures', name), 'utf8');
 const SOURCE_ROOTS = ['src/main/java'];

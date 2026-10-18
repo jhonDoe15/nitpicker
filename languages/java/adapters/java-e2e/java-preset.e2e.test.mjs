@@ -1,4 +1,3 @@
-import { spawnSync } from 'node:child_process';
 import path from 'node:path';
 import { writeFileSync, mkdtempSync, cpSync, rmSync } from 'node:fs';
 import { describe, beforeAll, afterAll, it, expect } from 'vitest';
@@ -154,7 +153,6 @@ describe.skipIf(!enabled)('Java preset end to end', () => {
   });
 
   afterAll(() => {
-    spawnSync(gradle, ['--stop'], { stdio: 'ignore' });
     rmSync(repository, { recursive: true, force: true });
   });
 

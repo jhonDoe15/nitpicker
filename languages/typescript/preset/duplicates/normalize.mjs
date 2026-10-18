@@ -1,4 +1,5 @@
-import { jscpdClones } from '../../../../core/tooling/jscpd-clones.mjs';
+import { withoutImportOnlyClones } from '../../../../core/tooling/jscpd/import-only.mjs';
+import { jscpdClones } from '../../../../core/tooling/jscpd/jscpd-clones.mjs';
 import { evaluateDuplicates } from '../../../../shared/rules/duplicates.mjs';
 import { readLayout } from '../head-policy.mjs';
 import { sourceRoot } from '../layout.mjs';
@@ -27,8 +28,9 @@ export function normalizeDuplicates(
   analyzerName,
   { configuredPaths = [sourceRoot], isTestFile = readLayout().isTestFile } = {},
 ) {
-  const clones = jscpdClones(report, configuredPaths).filter(
-    (clone) => !isRepeatedTestData(clone, isTestFile),
+  const clones = withoutImportOnlyClones(
+    jscpdClones(report, configuredPaths).filter((clone) => !isRepeatedTestData(clone, isTestFile)),
+    'typescript',
   );
   return evaluateDuplicates(clones, analyzerName);
 }

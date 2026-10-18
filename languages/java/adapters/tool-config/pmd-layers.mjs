@@ -1,4 +1,4 @@
-import { childrenNamed, parseXml } from '../../ingest/common.mjs';
+import { childrenNamed, parseXml } from '../../../../shared/ingest/common.mjs';
 import { element, renderXml } from './xml-write.mjs';
 
 const REFERENCE = /^(.+?\.xml)(?:\/([^/]+))?$/;

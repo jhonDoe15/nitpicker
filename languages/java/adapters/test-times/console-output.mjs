@@ -1,6 +1,6 @@
 import { sourceOf } from './spring-boot-tests.mjs';
 import { existsSync, readdirSync, readFileSync } from 'node:fs';
-import { childrenNamed, parseXml } from '../../ingest/common.mjs';
+import { childrenNamed, parseXml } from '../../../../shared/ingest/common.mjs';
 import { sourceLocator } from '../reporting/kotlin-reports.mjs';
 import { pathInside } from '../review-rules/java-sources.mjs';
 import { TEST_RESULTS_DIRECTORY } from './slow-tests.mjs';
