@@ -3,6 +3,7 @@ import path from 'node:path';
 import { childrenNamed, parseXml } from '../../../../shared/ingest/common.mjs';
 
 export const JUNIT_REPORT = 'pytest-junit.xml';
+export const RERUN_REPORT = 'rerun-junit.xml';
 const FAILED_CHILDREN = ['failure', 'error'];
 const PARAMETERS = /\[.*\]$/su;
 const MARKS_PROPERTY = 'nitpicker_marks';
@@ -46,6 +47,7 @@ function testCaseOf(testCase) {
   return {
     file: relative,
     qualifiedClass: classname,
+    ...(testCase.attrs.unittest_id === undefined ? {} : { runtimeId: testCase.attrs.unittest_id }),
     ...marksOf(testCase),
     line: line === undefined ? undefined : Number(line) + 1,
     className,
@@ -65,8 +67,12 @@ export function parseJunit(xml) {
   return suites.flatMap((suite) => childrenNamed(suite, 'testcase').map(testCaseOf));
 }
 
-export function readJunit(reportRoot) {
-  const report = path.join(reportRoot, JUNIT_REPORT);
+export function readJunit(reportRoot, name = JUNIT_REPORT) {
+  const base = path.resolve(reportRoot);
+  const report = path.resolve(base, name);
+  if (!report.startsWith(base + path.sep)) {
+    throw new Error(`JUnit report path escapes the report directory: ${name}`);
+  }
   return existsSync(report) ? parseJunit(readFileSync(report, 'utf8')) : [];
 }
 

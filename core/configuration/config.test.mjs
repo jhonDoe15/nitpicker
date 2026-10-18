@@ -164,6 +164,16 @@ describe('config file', () => {
       );
     });
 
+    it('accepts the bare slow-test exception with every preset', () => {
+      const slowTest = { ...exception, rule: 'slow-test' };
+      for (const preset of ['typescript', 'javascript', 'python', 'java', 'kotlin']) {
+        expect(validateConfig({ preset, exceptions: [slowTest] })).toEqual({
+          preset,
+          exceptions: [slowTest],
+        });
+      }
+    });
+
     it('names the rules that can be lifted when the rule is another detekt rule', () => {
       const other = { ...exception, rule: 'detekt.style.MagicNumber' };
 
@@ -183,6 +193,13 @@ describe('config file', () => {
     expect(validateConfig({ preset: 'typescript', ...shared })).toBeDefined();
     expect(() => validateConfig({ preset: 'java', thresholds: { crapLimit: 0 } })).toThrow(
       /positive number/,
+    );
+    for (const preset of ['typescript', 'javascript', 'python', 'java', 'kotlin']) {
+      const thresholds = { unitTestSeconds: 2, integrationTestSeconds: 20 };
+      expect(validateConfig({ preset, thresholds })).toEqual({ preset, thresholds });
+    }
+    expect(() => validateConfig({ preset: 'python', thresholds: { unitTestSeconds: 0 } })).toThrow(
+      '"thresholds.unitTestSeconds" must be a positive number',
     );
     expect(() => validateConfig({ preset: 'java', legacyInventory: '../x.json' })).toThrow(
       /inside the project/,

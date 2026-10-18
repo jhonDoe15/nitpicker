@@ -1,8 +1,8 @@
-import { readFileSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import { PACKAGE_ROOT } from '../../../../../core/tooling/tool-resolution.mjs';
-import { TEST_TIMEOUT_MS } from '../test-run.mjs';
+import { testTimeoutMs } from '../test-run.mjs';
 import { createRunnerProjects } from '../test-support/runner-project.mjs';
 import { coverageArguments } from './jest-coverage.mjs';
 import { jestArguments, runJest } from './jest.mjs';
@@ -67,6 +67,36 @@ afterEach(() => {
 });
 
 describe('the Jest command line', () => {
+  it('disables configured coverage when rerunning a slow test', () => {
+    const root = projects.project({
+      'package.json': {
+        name: 'p',
+        private: true,
+        jest: { collectCoverage: true, coverageProvider: 'babel', coverageReporters: ['json'] },
+      },
+      'src/value.js': 'exports.value = () => 42;',
+      'test/value.test.js': [
+        "const { value } = require('../src/value');",
+        "test('uncovered', () => {",
+        '  expect(value()).toBe(42);',
+        '  expect(global.__coverage__).toBeUndefined();',
+        '});',
+      ].join('\n'),
+    });
+    const run = runJest(
+      {
+        ...optionsFor(root),
+        liveProjectRoot: PACKAGE_ROOT,
+        rerun: { files: [path.join(root, 'test/value.test.js')], namePattern: '^uncovered$' },
+      },
+      command(undefined, []),
+    );
+
+    expect([run.failed, run.report.numTotalTests, existsSync(path.join(root, 'coverage'))]).toEqual(
+      [false, 1, false],
+    );
+  });
+
   it('drops the options that narrow the run to some of the tests', () => {
     const tokens = [
       ...['--shard=1/2', '--shard', '2/3', '-t', 'parse', '--testNamePattern=x'],
@@ -108,7 +138,7 @@ describe('a Jest run that a Create React App script starts', () => {
         ...['--json', `--outputFile=${path.join(root, '.nitpicker-diff-jest-report.json')}`],
         ...[
           '--testLocationInResults',
-          `--testTimeout=${String(TEST_TIMEOUT_MS)}`,
+          `--testTimeout=${String(testTimeoutMs())}`,
           '--restoreMocks',
         ],
         '--watchAll=false',

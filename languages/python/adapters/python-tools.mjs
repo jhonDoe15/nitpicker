@@ -22,6 +22,7 @@ import { ruffConfigFor } from './configuration/python-ruff-config.mjs';
 import { detectTestRunner, pytestLabel, testRunnerLabel } from './execution/python-test-runner.mjs';
 import { mutationRunnerLabels } from './mutation/test-run/python-mutation-runner.mjs';
 import { test } from './test-runs/test-step.mjs';
+import { retimeSlowTests } from './test-runs/timing/slow-retime.mjs';
 
 import { resolveTypeChecker, typeCheck } from './python-types.mjs';
 import { structure } from './analysis/python-structure.mjs';
@@ -77,6 +78,7 @@ export function createToolContext({
     reportRoot,
     snapshot,
     baselineRoot,
+    testSeconds: settings.testSeconds,
     conventions,
     policyRoot,
     toolPrecedence,
@@ -99,6 +101,7 @@ export function runPythonTools(context) {
     lint,
     format,
     test,
+    retimeSlowTests,
     typeCheck,
     checkRules,
     structure,
