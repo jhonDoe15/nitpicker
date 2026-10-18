@@ -68,11 +68,10 @@ export function withRuleMessage(finding, { preset = 'java', testRoots = [], java
 function exceptionRuleFor(finding, preset) {
   const qualified = `${finding.tool}/${finding.rule}`;
   if (preset === 'kotlin') {
-    return finding.tool === 'detekt' && SOURCE_RULE_IDS.includes(finding.rule)
-      ? finding.rule
-      : qualified === 'coupling/test-only-export'
-        ? qualified
-        : undefined;
+    if (finding.tool === 'detekt' && SOURCE_RULE_IDS.includes(finding.rule)) {
+      return finding.rule;
+    }
+    return qualified === 'coupling/test-only-export' ? qualified : undefined;
   }
   return preset === 'java' && finding.tool !== 'detekt' ? qualified : undefined;
 }
