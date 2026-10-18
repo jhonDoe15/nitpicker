@@ -177,14 +177,16 @@ const JUNIT_CASE = {
 };
 
 function writeJunit(status) {
-  const option = args.find((argument) => argument.startsWith('--junitxml='));
-  if (option === undefined) {
+  const pytestOption = args.find((argument) => argument.startsWith('--junitxml='));
+  const script = args.findIndex((argument) => argument.endsWith('unittest_timings.py'));
+  const target = pytestOption?.slice('--junitxml='.length) ?? args[script + 1];
+  if (pytestOption === undefined && script === -1) {
     return;
   }
   const report = existsSync('junit.xml')
     ? readFileSync('junit.xml', 'utf8')
     : `<testsuites><testsuite name="pytest">${JUNIT_CASE[status === 1 ? 'failed' : 'passed']}</testsuite></testsuites>`;
-  writeFileSync(option.slice('--junitxml='.length), report);
+  writeFileSync(target, report);
 }
 
 function coverage() {

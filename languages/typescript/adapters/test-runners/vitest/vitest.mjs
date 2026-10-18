@@ -1,7 +1,7 @@
 import path from 'node:path';
 import { readFileSync, writeFileSync, rmSync } from 'node:fs';
 import { runNodeTool } from '../../quality-areas/runners/tooling.mjs';
-import { TEST_TIMEOUT_MS, readRun, removeTemporary, temporaryProjectPath } from '../test-run.mjs';
+import { readRun, removeTemporary, temporaryProjectPath, testTimeoutMs } from '../test-run.mjs';
 import { RUNNER_NAMES } from '../../../preset/test-runner/runners.mjs';
 
 import { TEST_CONSOLE_REPORT_PATH } from '../../quality-areas/reporting/test-report.mjs';
@@ -24,13 +24,16 @@ export function runVitest(options) {
         'run',
         '--config',
         configPath,
-        '--coverage',
+        ...(options.rerun === undefined
+          ? ['--coverage']
+          : ['--maxWorkers=1', '--testNamePattern', options.rerun.namePattern]),
         '--testTimeout',
-        String(TEST_TIMEOUT_MS),
+        String(testTimeoutMs()),
         '--reporter',
         'json',
         '--outputFile',
         reportPath,
+        ...(options.rerun?.files ?? []),
         '--reporter',
         path.join(options.policyRoot, CONSOLE_REPORTER),
       ],

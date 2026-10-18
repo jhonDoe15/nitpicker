@@ -114,6 +114,7 @@ function projectShapeFindings({ projectRoot, reportRoot, policy, imports, manife
       baselineRoot: policy.baselineRoot,
       snapshot: policy.snapshot,
       testRunner: manifest.testRunner,
+      testsRan: manifest.testsRan,
     }),
     ...pythonFolderDepthFindings(sizedModules(projectRoot, imports.modules), {
       ...limits,
