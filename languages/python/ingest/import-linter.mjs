@@ -1,4 +1,4 @@
-import { createIdentityCounter } from '../../java/ingest/common.mjs';
+import { createIdentityCounter } from '../../../shared/ingest/common.mjs';
 
 const SUMMARY_LINE = /^Contracts: \d+ kept, \d+ broken\.$/m;
 const BROKEN_SECTION = /^Broken contracts$/m;

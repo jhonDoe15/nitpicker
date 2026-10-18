@@ -23,11 +23,15 @@ const TEST_REPORTS = {
 };
 const LIFTABLE_RULES = ['test-only-export', 'test-console-output'];
 const addedField = unusedFieldMessage('added');
-const cloneMessage =
-  'This code repeats src/main/java/demo/Second.java:3 (30 lines). Keep one copy and call it from both places. ' +
-  exceptionHint('duplicates/duplicate-clone', 'src/main/java/demo/First.java');
 const xmlText = (text) =>
   text.replaceAll('&', '&amp;').replaceAll('"', '&quot;').replaceAll("'", '&apos;');
+
+const CLONE_MESSAGE = [
+  'This code repeats src/main/java/demo/Second.java:3 (30 lines).',
+  'Keep one copy and call it from both places.',
+  'If the repetition is intended, add src/main/java/demo/First.java or',
+  'src/main/java/demo/Second.java to "exclude" in nitpicker.config.json.',
+].join(' ');
 
 const addedFieldOutput = expect.stringMatching(exactText`Base: comparison-base (argument)
 
@@ -180,7 +184,7 @@ describe('nitpicker with "preset": "java"', () => {
 Quality gate summary
 ✖ 1 new enforceable violation
   duplicates/duplicate-clone src/main/java/demo/First.java:3
-    ${cloneMessage}
+    ${CLONE_MESSAGE}
 Full diagnostics: /tmp/nitpicker-java-out-${/[A-Za-z0-9]{6}/}/reports/report.txt
 `),
     });
@@ -194,7 +198,7 @@ Full diagnostics: /tmp/nitpicker-java-out-${/[A-Za-z0-9]{6}/}/reports/report.txt
         path: 'src/main/java/demo/First.java',
         identity:
           'pair:src/main/java/demo/First.java|src/main/java/demo/Second.java:fragment:41aa749b80d76291fc31cc1b:occurrence:1',
-        message: cloneMessage,
+        message: CLONE_MESSAGE,
         classification: 'enforceable',
         location: { line: 3 },
         ratchet: {

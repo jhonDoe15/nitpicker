@@ -49,7 +49,7 @@ const PLANTED_OUTPUT = [
   unusedFile('lint/banned.js'),
   unusedFile('lint/mode.ts'),
   unusedFile('orders/place.js'),
-  'duplicates/duplicate-clone src/main/dup/a.js:5 This code repeats src/main/dup/b.js:5 (12 lines). Keep one copy and call it from both places.',
+  'duplicates/duplicate-clone src/main/dup/a.js:5 This code repeats src/main/dup/b.js:5 (12 lines). Keep one copy and call it from both places. If the repetition is intended, add src/main/dup/a.js or src/main/dup/b.js to "exclude" in nitpicker.config.json.',
   'entry-points/public-alternative-bypass src/main/orders/place.js Import src/main/billing/adapters/charge.js through src/main/billing/index.js (runtime)',
   unknownFolder('billing/adapters/charge.js', 5),
   unknownFolder('billing/index.js', 1),

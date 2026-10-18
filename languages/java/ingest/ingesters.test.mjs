@@ -4,7 +4,7 @@ import { describe, expect, it } from 'vitest';
 import { parseAnalyzerReport } from '../../../core/diff/comparison/finding-schema.mjs';
 import { ingestArchunit } from './archunit.mjs';
 import { ingestCheckstyle } from './formatting/checkstyle.mjs';
-import { decodeEntities, parseXml } from './common.mjs';
+import { decodeEntities, parseXml } from '../../../shared/ingest/common.mjs';
 import { ingestGoCoverprofile } from './coverage-reports/gocover.mjs';
 import { ingestJacoco } from './coverage-reports/jacoco.mjs';
 import { ingestLcov } from './coverage-reports/lcov.mjs';

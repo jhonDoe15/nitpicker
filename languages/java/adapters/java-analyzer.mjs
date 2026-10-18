@@ -1,6 +1,6 @@
 import { createHash } from 'node:crypto';
 import path from 'node:path';
-import { jscpdVersion } from './metrics/java-duplicates.mjs';
+import { jscpdVersion } from '../../../core/tooling/jscpd/run-jscpd.mjs';
 import { JAVA_TOOLS } from './gradle-presets.mjs';
 import { INIT_SCRIPT, readPinnedTools } from '../builds/java-build.mjs';
 import { importClosure } from '../../../shared/import-closure.mjs';

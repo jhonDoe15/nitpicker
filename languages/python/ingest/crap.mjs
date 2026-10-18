@@ -1,5 +1,5 @@
-import { ingestCrapRows } from '../../java/ingest/crap.mjs';
-import { normalizeReportPath } from '../../java/ingest/common.mjs';
+import { ingestCrapRows } from '../../../shared/ingest/lizard-crap.mjs';
+import { normalizeReportPath } from '../../../shared/ingest/common.mjs';
 
 const FULLY_COVERED = 100;
 

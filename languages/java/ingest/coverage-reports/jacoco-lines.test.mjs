@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { parseXml } from '../common.mjs';
+import { parseXml } from '../../../../shared/ingest/common.mjs';
 import { jacocoLineUnits } from './jacoco-lines.mjs';
 
 const REPORT = `<report name="demo"><package name="demo/app">

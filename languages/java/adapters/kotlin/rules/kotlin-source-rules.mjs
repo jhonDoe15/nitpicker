@@ -1,5 +1,5 @@
 import { readInside } from '../../../../../shared/conventions/read-inside.mjs';
-import { createIdentityCounter } from '../../../ingest/common.mjs';
+import { createIdentityCounter } from '../../../../../shared/ingest/common.mjs';
 import {
   CATCH_LOG_MESSAGE,
   CATCH_LOG_RULE,

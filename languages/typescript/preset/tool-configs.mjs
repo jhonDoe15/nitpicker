@@ -7,6 +7,10 @@ import {
   JAVASCRIPT_KNIP_PROJECT,
 } from '../../javascript/preset/javascript-preset.mjs';
 import {
+  SCRIPT_SKIPPED_FOLDERS,
+  withSkippedFolders,
+} from '../../../core/tooling/jscpd/skipped-folders.mjs';
+import {
   PROJECT_TSCONFIG,
   isSolutionTsconfig,
   projectLibs,
@@ -47,7 +51,8 @@ export function isCustomLayout(layout) {
         testRoots.filter((root) => root !== END_TO_END_ROOT),
       ]) ||
     layout.exclude.length > 0 ||
-    (layout.entryPoints ?? []).length > 0
+    (layout.entryPoints ?? []).length > 0 ||
+    layout.duplicateSkippedFolders !== undefined
   );
 }
 
@@ -105,7 +110,10 @@ export function layoutJscpdConfig(base, layout) {
     ...base,
     ...(layout.javascript ? { format: [...base.format, JAVASCRIPT_JSCPD_FORMAT] } : {}),
     path: expandLayoutRoots(base.path, layout),
-    ignore: [...base.ignore, ...layout.exclude],
+    ignore: [
+      ...withSkippedFolders(base.ignore, SCRIPT_SKIPPED_FOLDERS, layout.duplicateSkippedFolders),
+      ...layout.exclude,
+    ],
   };
 }
 

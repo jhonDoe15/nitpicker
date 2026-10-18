@@ -1,4 +1,4 @@
-import { childAt, childrenAt, childrenNamed } from '../../ingest/common.mjs';
+import { childAt, childrenAt, childrenNamed } from '../../../../shared/ingest/common.mjs';
 
 const COMPILER = 'maven-compiler-plugin';
 const UNRESOLVED = /\$\{/u;

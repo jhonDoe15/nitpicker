@@ -1,7 +1,7 @@
 import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { evaluateDuplicates } from '../../../shared/rules/duplicates.mjs';
-import { childrenNamed, parseXml, projectFile } from '../ingest/common.mjs';
+import { childrenNamed, parseXml, projectFile } from '../../../shared/ingest/common.mjs';
 import { LITERAL_OR_COMMENT } from '../ingest/source-text.mjs';
 import { CPD_IDENTITY_PREFIX, cpdNotRun, readCpdReport, skippedPaths } from './cpd/cpd-report.mjs';
 
