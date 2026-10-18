@@ -6,6 +6,10 @@ import { afterAll, describe, expect, it } from 'vitest';
 import { INIT_SCRIPT } from '../../builds/java-build.mjs';
 import { collectJavaFindings } from '../java-diff.mjs';
 import { analyzeJavaSnapshot } from '../java-runner.mjs';
+import { runMaven } from '../../maven/maven-command.mjs';
+import { archunitMatcher } from '../../maven/maven-tests.mjs';
+import { requireTestngRun } from '../../maven/results/maven-test-results.mjs';
+import { childrenNamed, parseXml } from '../../ingest/common.mjs';
 
 const enabled = process.env.NITPICKER_JAVA_E2E === '1';
 const gradle = process.env.NITPICKER_GRADLE ?? 'gradle';
@@ -123,7 +127,7 @@ describe.skipIf(!enabled)('Java preset on each test framework', () => {
     ]);
   });
 
-  it('measures TestNG coverage and mutants beside ArchUnit with Surefire 3.6', () => {
+  it('runs TestNG beside ArchUnit with Surefire 3.6', () => {
     const root = projectOf('testng', 'maven');
     const pom = path.join(root, 'pom.xml');
     writeFileSync(
@@ -131,9 +135,33 @@ describe.skipIf(!enabled)('Java preset on each test framework', () => {
       readFileSync(pom, 'utf8').replace('<version>3.5.4</version>', '<version>3.6.0</version>'),
     );
 
-    expect(summary(collectJavaFindings(root, { maven, policy: {} }))).toEqual(
-      [...CALC_FINDINGS, ARCHUNIT_FINDING].sort(),
-    );
+    const since = Date.now();
+    runMaven({
+      projectRoot: root,
+      maven,
+      args: ['--quiet', 'test', '-Dmaven.test.failure.ignore=true'],
+    });
+    const reports = path.join(root, 'target/surefire-reports');
+    for (const [className, reportedClass] of [
+      ['demo.CalcTest', 'demo.CalcTest'],
+      ['demo.NamingArchTest', 'NamingArchTest'],
+    ]) {
+      const report = parseXml(readFileSync(path.join(reports, `TEST-${className}.xml`), 'utf8'));
+      expect(childrenNamed(report, 'testcase').map(({ attrs }) => attrs.classname)).toEqual([
+        reportedClass,
+      ]);
+    }
+    requireTestngRun({
+      module: {
+        basedir: root,
+        testOutputDirectory: path.join(root, 'target/test-classes'),
+        surefireReports: reports,
+        failsafeReports: reports,
+      },
+      since,
+      isArchunit: archunitMatcher(),
+      testRuntime: ['testng-7.10.2.jar', 'junit-platform-engine-1.12.2.jar'],
+    });
   });
 
   it.each(['gradle', 'maven'])(
