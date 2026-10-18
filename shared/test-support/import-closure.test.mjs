@@ -2,7 +2,7 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
-import { importClosure } from './import-closure.mjs';
+import { importClosure } from '../import-closure.mjs';
 
 const roots = [];
 afterEach(() => {
@@ -43,7 +43,7 @@ describe('import closure', () => {
   it('ignores package imports, missing files and imports outside the root', () => {
     const root = project({
       'inner/main.mjs':
-        "import path from 'node:path';\nimport x from 'vitest';\nimport y from './missing.mjs';\nimport z from '../../outside.mjs';\n",
+        "import path from 'node:path';\nimport x from 'vitest';\nimport y from '../missing.mjs';\nimport z from '../../../outside.mjs';\n",
     });
 
     expect([...importClosure(['inner/main.mjs'], root).keys()]).toEqual(['inner/main.mjs']);

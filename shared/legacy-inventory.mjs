@@ -10,7 +10,6 @@
 import { createHash } from 'node:crypto';
 import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
-import { numericAllowance, siteKey } from './rules/baseline-expansion.mjs';
 
 /** Where a consumer project records existing violations, relative to its root. */
 export const DEFAULT_LEGACY_INVENTORY = 'nitpicker.legacy.json';
@@ -96,4 +95,22 @@ export function withLegacyInventory(analyzer, legacyInventory) {
         : configurationHash;
     },
   };
+}
+
+export function siteKey(site) {
+  if (
+    typeof site?.file !== 'string' ||
+    typeof site.rule !== 'string' ||
+    typeof site.source !== 'string'
+  ) {
+    throw new TypeError('Coding-standard baseline contains an invalid site');
+  }
+  return JSON.stringify([site.file, site.rule, site.source]);
+}
+
+export function numericAllowance(value) {
+  if (!Number.isInteger(value) || value < 1) {
+    throw new TypeError('Coding-standard baseline counts must be positive integers');
+  }
+  return value;
 }

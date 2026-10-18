@@ -37,7 +37,7 @@ function toolContext({ projectRoot, liveRoot, settings, policy }, reportRoot) {
   return createToolContext({
     projectRoot,
     liveRoot,
-    settings,
+    settings: { ...settings, testSeconds: policy?.testSeconds },
     reportRoot,
     exclude: policy?.exclude,
     duplicateSkippedFolders: policy?.duplicateSkippedFolders,

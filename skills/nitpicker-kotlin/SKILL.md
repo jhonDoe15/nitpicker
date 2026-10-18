@@ -83,7 +83,7 @@ it with `npx skills add jhonDoe15/nitpicker --skill nitpicker-java`.
   test files directly: group the rest into subpackages by what they do. Java sources follow the
   `nitpicker-java` rules.
 - Every branch you add needs a test: changed-branch coverage runs on your change.
-- Plan tests to be fast (`test-runtime/slow-test`): a test dispatcher or fake clock instead of
+- Plan tests to be fast (`slow-test`): a test dispatcher or fake clock instead of
   waits, a test slice instead of a full context.
 - A function or file already over a limit may be edited but must not get worse: put new code in a
   new function or file and call it.
