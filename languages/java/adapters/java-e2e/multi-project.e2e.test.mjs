@@ -1,4 +1,13 @@
-import { cpSync, existsSync, mkdtempSync, rmSync } from 'node:fs';
+import { spawnSync } from 'node:child_process';
+import {
+  cpSync,
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  rmSync,
+  writeFileSync,
+} from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
@@ -93,4 +102,57 @@ describe.skipIf(!enabled)('a Gradle build of two projects and an extra source se
       ],
     ]);
   });
+});
+
+describe.skipIf(!enabled)('formatting a module without Java sources', () => {
+  it(
+    'writes empty reports, clears stale findings and keeps real Gradle failures readable',
+    () => {
+      const root = mkdtempSync(path.join(tmpdir(), 'nitpicker-empty-format-'));
+      const initScript = path.resolve(import.meta.dirname, '../../gradle/nitpicker.init.gradle');
+      const report = path.join(root, 'models/build/nitpicker/format.txt');
+      const source = path.join(root, 'models/src/main/java/Example.java');
+      const run = (...tasks) =>
+        spawnSync(
+          gradle,
+          ['--no-daemon', '--console=plain', '--continue', '-I', initScript, ...tasks],
+          { cwd: root, encoding: 'utf8', timeout: GRADLE_STEP_TIMEOUT_MS },
+        );
+
+      try {
+        mkdirSync(path.join(root, 'models/src/main/resources'), { recursive: true });
+        writeFileSync(path.join(root, 'settings.gradle'), "include 'models'\n");
+        writeFileSync(path.join(root, 'models/build.gradle'), "plugins { id 'java' }\n");
+        writeFileSync(path.join(root, 'models/src/main/resources/schema.json'), '{}');
+        writeFileSync(
+          path.join(root, 'build.gradle'),
+          `tasks.register('unrelatedFailure') {
+        doLast { throw new GradleException('unrelated failure remains visible') }
+      }`,
+        );
+
+        const empty = run(':models:nitpickerFormat');
+        expect(empty.status, empty.stderr).toBe(0);
+        expect(empty.stdout).toContain(':models:nitpickerFormat SKIPPED');
+        expect(empty.stderr).not.toMatch(/no files were provided|Usage: google-java-format/);
+        expect(readFileSync(report, 'utf8')).toBe('');
+
+        mkdirSync(path.dirname(source), { recursive: true });
+        writeFileSync(source, 'class Example{int value(){return 1;}}\n');
+        const withJava = run(':models:nitpickerFormat');
+        expect(withJava.status, withJava.stderr).toBe(0);
+        expect(readFileSync(report, 'utf8')).toContain(source);
+
+        rmSync(source);
+        const failed = run(':models:nitpickerFormat', 'unrelatedFailure');
+        expect(failed.status).not.toBe(0);
+        expect(failed.stderr).toContain('unrelated failure remains visible');
+        expect(failed.stderr).not.toMatch(/no files were provided|Usage: google-java-format/);
+        expect(readFileSync(report, 'utf8')).toBe('');
+      } finally {
+        rmSync(root, { recursive: true, force: true });
+      }
+    },
+    GRADLE_STEP_TIMEOUT_MS,
+  );
 });
