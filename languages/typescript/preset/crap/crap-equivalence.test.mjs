@@ -24,13 +24,14 @@ function measured(extensions) {
     excludes: [],
     coverageReportPath: path.join(corpus, 'coverage-final.json'),
   });
-  return reportFunctionsOf(analysis.metrics).toSorted(
+  const functions = reportFunctionsOf(analysis.metrics).toSorted(
     (left, right) =>
       left.source.localeCompare(right.source) ||
       left.lines.start - right.lines.start ||
       left.lines.end - right.lines.end ||
       left.function.localeCompare(right.function),
   );
+  return JSON.parse(JSON.stringify(functions));
 }
 
 const summary = (functions) => ({

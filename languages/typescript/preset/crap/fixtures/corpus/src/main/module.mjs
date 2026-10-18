@@ -18,10 +18,7 @@ export class Box {
   }
 }
 
-export const compose =
-  (...fns) =>
-  (input) =>
-    fns.reduce((acc, fn) => fn(acc), input);
+export const compose = (...fns) => (input) => fns.reduce((acc, fn) => fn(acc), input);
 
 export async function* generate(limit) {
   for (let index = 0; index < limit; index += 1) {
