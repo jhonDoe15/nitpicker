@@ -265,10 +265,13 @@ export function existingRoots(projectRoot, roots) {
 }
 
 export function resolveLayoutFor(policy = {}) {
-  return resolveLayout(policy.layout, policy.exclude, {
-    javascript: isJavascriptPolicy(policy),
-    generatedFiles: policy.generatedFiles,
-  });
+  return {
+    ...resolveLayout(policy.layout, policy.exclude, {
+      javascript: isJavascriptPolicy(policy),
+      generatedFiles: policy.generatedFiles,
+    }),
+    duplicateSkippedFolders: policy.duplicates?.skippedFolders,
+  };
 }
 
 const defaults = resolveLayout();
