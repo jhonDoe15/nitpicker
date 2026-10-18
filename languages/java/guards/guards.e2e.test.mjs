@@ -13,9 +13,18 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { INIT_SCRIPT } from '../builds/java-build.mjs';
-import { runJavaDuplicates } from '../adapters/metrics/java-duplicates.mjs';
-import { readJavaFindings } from '../adapters/reporting/java-reports.mjs';
-import { readReportModules } from '../adapters/gradle-reports/report-modules.mjs';
+import { runJavaDuplicates, readDuplicateFindings } from '../adapters/metrics/java-duplicates.mjs';
+import {
+  readReportModules,
+  readMainCheckstyle,
+} from '../adapters/gradle-reports/report-modules.mjs';
+import { DUPLICATES_REPORT } from '../../../core/tooling/jscpd/run-jscpd.mjs';
+import { ingestSarif, prepareSarif } from '../../../shared/ingest/sarif.mjs';
+import { checkstyleFindings } from '../adapters/reporting/format-findings.mjs';
+import { sourceLocator } from '../adapters/reporting/kotlin-reports.mjs';
+import { applyRuleMessages } from '../messages/rule-messages.mjs';
+import { readGuardFindings } from './index.mjs';
+import { coveredByCpd } from './cpd-duplicates.mjs';
 import { readCouplingFindings } from '../adapters/metrics/java-coupling.mjs';
 import { readErrorProneFindings } from '../adapters/errorprone/java-errorprone.mjs';
 import { readCpdFindings } from './cpd-duplicates.mjs';
@@ -113,7 +122,43 @@ function reportBaseOf(root) {
 }
 
 function guardFindings(root) {
-  return readJavaFindings(root, { reportBase: reportBaseOf(root) }).findings;
+  const reportBase = reportBaseOf(root);
+  const { modules, manifest } = readReportModules(reportBase, 'java');
+  return applyRuleMessages(
+    [
+      ...modules.flatMap((module) => moduleGuardFindings(root, module)),
+      ...readDuplicateFindings(reportBase, DUPLICATES_REPORT, {
+        skip: coveredByCpd(modules, root),
+      }),
+    ],
+    { testRoots: manifest.testSourceRoots },
+  );
+}
+
+function moduleGuardFindings(projectRoot, module) {
+  const context = {
+    projectRoot,
+    reportRoot: module.reportRoot,
+    roots: [projectRoot],
+    manifest: module.manifest,
+    sourceRoots: module.manifest.sourceRoots,
+    module: { moduleDir: module.dir },
+    locate: sourceLocator(projectRoot, [
+      ...module.manifest.sourceRoots,
+      ...module.manifest.testSourceRoots,
+    ]),
+    mainCheckstyle: readMainCheckstyle(projectRoot, module, 'java'),
+  };
+  const pmd = prepareSarif(
+    JSON.parse(readFileSync(path.join(module.reportRoot, 'pmd.sarif'), 'utf8')),
+    { ...context, identityKey: (result) => result.message?.text },
+  );
+  return [
+    ...ingestSarif(pmd, { tool: 'pmd' }).findings,
+    ...checkstyleFindings(context),
+    ...readGuardFindings(context),
+    ...readCouplingFindings(module.reportRoot, context),
+  ];
 }
 
 function reportedViolations(root) {

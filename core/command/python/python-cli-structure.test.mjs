@@ -105,7 +105,7 @@ describe('nitpicker with "preset": "python" and function structure', () => {
         path: 'src/demo/a.py',
         identity: 'pair:src/demo/a.py|src/demo/b.py:fragment:8e33a9ff56a22a94c8efc96f:occurrence:1',
         message:
-          'This code repeats src/demo/b.py:1 (10 lines). Keep one copy and call it from both places. To allow it for some paths, add a "python.exceptions" entry for duplicate-clone in nitpicker.config.json.',
+          'This code repeats src/demo/b.py:1 (10 lines). Keep one copy and call it from both places. If the repetition is intended, add src/demo/a.py or src/demo/b.py to "exclude" in nitpicker.config.json. To allow it for some paths, add a "python.exceptions" entry for duplicate-clone in nitpicker.config.json.',
         classification: 'enforceable',
         location: { line: 1 },
         ratchet: {

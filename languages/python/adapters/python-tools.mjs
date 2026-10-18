@@ -1,6 +1,6 @@
 import { writeFileSync } from 'node:fs';
 import path from 'node:path';
-import { jscpdVersion } from '../../java/adapters/metrics/java-duplicates.mjs';
+import { jscpdVersion } from '../../../core/tooling/jscpd/run-jscpd.mjs';
 import { scanImports } from './analysis/python-coupling.mjs';
 import { scanDependencies } from './dependencies/dependency-findings.mjs';
 import { runDuplicates } from './analysis/python-duplicates.mjs';
@@ -36,12 +36,26 @@ const PARSE_ERROR = {
   ruff: /^error: Failed to parse /,
 };
 
+function projectSettings({ projectRoot, liveRoot, settings, sourceRoots }) {
+  return {
+    formatter: detectFormatter(projectRoot, settings.formatter),
+    formatterDetected: settings.formatter === undefined,
+    typeCheckers: detectTypeCheckers(liveRoot, settings.typeChecker),
+    testRunner: detectTestRunner(projectRoot, settings.testRunner),
+    targetVersion: detectTargetVersion(projectRoot),
+    importLinter: settings.importLinter,
+    sourceRoots,
+    entryPoints: settings.entryPoints ?? [],
+  };
+}
+
 export function createToolContext({
   projectRoot,
   liveRoot,
   settings = {},
   reportRoot,
   exclude = [],
+  duplicateSkippedFolders,
   snapshot = 'head',
   baselineRoot,
   conventions = {},
@@ -68,17 +82,9 @@ export function createToolContext({
     toolPrecedence,
     launcher,
     exclude,
+    duplicateSkippedFolders,
     pytestAddopts,
-    project: {
-      formatter: detectFormatter(projectRoot, settings.formatter),
-      formatterDetected: settings.formatter === undefined,
-      typeCheckers: detectTypeCheckers(liveRoot, settings.typeChecker),
-      testRunner: detectTestRunner(projectRoot, settings.testRunner),
-      targetVersion: detectTargetVersion(projectRoot),
-      importLinter: settings.importLinter,
-      sourceRoots,
-      entryPoints: settings.entryPoints ?? [],
-    },
+    project: projectSettings({ projectRoot, liveRoot, settings, sourceRoots }),
     env: {
       PYTHONPATH: pythonPath,
       PYTHONDONTWRITEBYTECODE: '1',

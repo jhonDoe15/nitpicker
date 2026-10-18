@@ -1,9 +1,9 @@
 import { existsSync, readdirSync, readFileSync, realpathSync } from 'node:fs';
 import path from 'node:path';
-import { ingestCheckstyle } from '../../ingest/formatting/checkstyle.mjs';
 import { ingestArchunit } from '../../ingest/archunit.mjs';
 import { ingestCrap } from '../../ingest/crap.mjs';
-import { DUPLICATES_REPORT, readDuplicateFindings } from '../metrics/java-duplicates.mjs';
+import { DUPLICATES_REPORT } from '../../../../core/tooling/jscpd/run-jscpd.mjs';
+import { readDuplicateFindings } from '../metrics/java-duplicates.mjs';
 import { coveredByCpd } from '../../guards/cpd-duplicates.mjs';
 import { readKotlinDuplicateFindings } from '../kotlin/kotlin-duplicates.mjs';
 import {
@@ -16,10 +16,11 @@ import { readErrorProneFindings } from '../errorprone/java-errorprone.mjs';
 import { readInlineSuppressionFindings } from '../suppressions/java-suppressions.mjs';
 import { readSpringConfigFindings } from '../spring/java-spring.mjs';
 import { readGuardFindings } from '../../guards/index.mjs';
-import { methodText, readJavaStructureFindings } from '../metrics/java-structure.mjs';
+import { readJavaStructureFindings } from '../metrics/java-structure.mjs';
+import { methodText } from '../../../../shared/ingest/structure-report.mjs';
 import { readClassLimitFindings } from '../size/class-limits.mjs';
 import { hash } from '../../../../shared/rules/finding-helpers.mjs';
-import { formatFindings } from './format-findings.mjs';
+import { checkstyleFindings, formatFindings } from './format-findings.mjs';
 import { readSlowTestFindings } from '../test-times/slow-tests.mjs';
 import { readTestConsoleFindings } from '../test-times/console-findings.mjs';
 import { ingestJacoco } from '../../ingest/coverage-reports/jacoco.mjs';
@@ -36,7 +37,6 @@ import {
   sourceLocator,
 } from './kotlin-reports.mjs';
 
-const CHECKSTYLE_SOURCE_SET_REPORT = /^checkstyle-.+\.xml$/u;
 const MODULE_IDENTITY_SEPARATOR = '@';
 const ROOT_MODULE = 'root';
 
@@ -180,22 +180,6 @@ function springFindings(projectRoot, manifest, options) {
         baselineRoot: baselineRootOf(options),
       })
     : [];
-}
-
-function checkstyleFindings({ reportRoot, roots, projectRoot, mainCheckstyle }) {
-  const sourceSetReports = readdirSync(reportRoot)
-    .filter((name) => CHECKSTYLE_SOURCE_SET_REPORT.test(name))
-    .sort()
-    .map((name) => readFileSync(path.join(reportRoot, name), 'utf8'));
-  return [mainCheckstyle, ...sourceSetReports]
-    .filter(Boolean)
-    .flatMap((checkstyle) =>
-      roots.flatMap((root) =>
-        ingestCheckstyle(checkstyle, { root }).findings.filter((finding) =>
-          existsSync(path.join(projectRoot, finding.path)),
-        ),
-      ),
-    );
 }
 
 function jacocoFindings(context, jacoco) {

@@ -34,9 +34,10 @@ export function probeAnalyzer() {
 function runProbe(tasks, policyFile) {
   const policy = policyFile === undefined ? {} : JSON.parse(readFileSync(policyFile, 'utf8'));
   const sourceRoots = policy.layout?.sourceRoots ?? ['src'];
+  const skipped = policy.duplicates?.skippedFolders ?? ['dist'];
   const reports = tasks.map((task) => {
     const [projectRoot] = task.invocation.args;
-    const findings = sourceRoots.flatMap((root) => scan(projectRoot, root));
+    const findings = sourceRoots.flatMap((root) => scan(projectRoot, root, skipped));
     const stdoutText = JSON.stringify({ findings });
     return [
       task.name,
@@ -58,13 +59,20 @@ function insideRoot(root, relativePath) {
   return full;
 }
 
-function scan(projectRoot, sourceRoot) {
+function scan(projectRoot, sourceRoot, skipped) {
   const directory = insideRoot(projectRoot, sourceRoot);
   if (directory === undefined || !existsSync(directory)) {
     return [];
   }
   return readdirSync(directory, { recursive: true })
     .map((name) => `${sourceRoot}/${String(name).split(path.sep).join('/')}`)
+    .filter(
+      (relativePath) =>
+        !relativePath
+          .split('/')
+          .slice(0, -1)
+          .some((part) => skipped.includes(part)),
+    )
     .filter((relativePath) => statSync(insideRoot(projectRoot, relativePath)).isFile())
     .sort()
     .flatMap((relativePath) => findingsIn(projectRoot, relativePath));

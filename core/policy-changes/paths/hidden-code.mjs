@@ -17,6 +17,9 @@ function reasonFor(set, file, scope) {
   if (hiders.length === 0) {
     return 'unhidden';
   }
+  if (set.establishedInBase?.(scope.basePathOf(file))) {
+    return undefined;
+  }
   if (!scope.baseCode.some((baseFile) => hiders.some((hides) => hides(baseFile)))) {
     return 'dormant';
   }

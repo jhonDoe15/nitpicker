@@ -1,6 +1,6 @@
 import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
-import { createLineIdentity, projectFile } from '../ingest/common.mjs';
+import { createLineIdentity, projectFile } from '../../../shared/ingest/common.mjs';
 import { placeDeclarations } from './forbidden/declarations.mjs';
 import { blanked } from '../ingest/source-text.mjs';
 

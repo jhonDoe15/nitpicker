@@ -2,7 +2,7 @@ import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
-import { childrenNamed, parseXml } from '../../ingest/common.mjs';
+import { childrenNamed, parseXml } from '../../../../shared/ingest/common.mjs';
 import { zipOf } from '../test-support/zip-writer.mjs';
 import {
   nitpickerCheckstyleConfig,

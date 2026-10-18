@@ -1,4 +1,4 @@
-import { childrenNamed, parseXml } from '../../ingest/common.mjs';
+import { childrenNamed, parseXml } from '../../../../shared/ingest/common.mjs';
 
 const CHECKSTYLE_DEFAULT_MAX = '80';
 

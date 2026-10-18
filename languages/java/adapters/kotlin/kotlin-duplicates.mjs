@@ -8,12 +8,14 @@ const KOTLIN_DUPLICATES = {
   reportFile: 'kotlin-duplicates.json',
 };
 
-export function runKotlinDuplicates(projectRoot, { reportRoot, manifest }) {
-  runJavaDuplicates(projectRoot, { ...KOTLIN_DUPLICATES, reportRoot, manifest });
+export function runKotlinDuplicates(projectRoot, { reportRoot, manifest, skippedFolders }) {
+  runJavaDuplicates(projectRoot, { ...KOTLIN_DUPLICATES, reportRoot, manifest, skippedFolders });
 }
 
 export function readKotlinDuplicateFindings(reportRoot) {
   return existsSync(path.join(reportRoot, KOTLIN_DUPLICATES.reportFile))
-    ? readDuplicateFindings(reportRoot, KOTLIN_DUPLICATES.reportFile)
+    ? readDuplicateFindings(reportRoot, KOTLIN_DUPLICATES.reportFile, {
+        format: KOTLIN_DUPLICATES.format,
+      })
     : [];
 }
