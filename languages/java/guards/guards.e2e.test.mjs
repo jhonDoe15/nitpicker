@@ -179,7 +179,11 @@ function runGradle(projectRoot, args) {
     { cwd: projectRoot, encoding: 'utf8', timeout: 90_000 },
   );
   if (result.status !== 0) {
-    throw new Error(`Gradle failed: ${result.stderr}`);
+    throw new Error(
+      `Gradle failed (status=${String(result.status)}, signal=${String(result.signal)}): ` +
+        `${result.error?.message ?? ''}\n${result.stderr || result.stdout}`,
+      { cause: result.error },
+    );
   }
 }
 
