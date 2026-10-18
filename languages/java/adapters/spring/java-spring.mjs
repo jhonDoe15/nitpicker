@@ -110,10 +110,6 @@ function exposesAll(value) {
     .some((item) => item.trim() === '*');
 }
 
-function allowance(rule) {
-  return `To allow it here, add an exception for spring/${rule} in nitpicker.config.json.`;
-}
-
 export function readSpringConfigFindings(
   projectRoot,
   { sourceRoots = [], resourceRoots, testSourceRoots, baselineRoot } = {},

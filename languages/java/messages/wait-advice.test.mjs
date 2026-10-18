@@ -3,6 +3,8 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import { FIXED_SLEEP_RULE, withWaitAdvice } from './wait-advice.mjs';
+import { applyRuleMessages } from './rule-messages.mjs';
+import { exceptionHint } from '../../../shared/rules/exceptions.mjs';
 
 const sleep = {
   tool: 'pmd',
@@ -42,9 +44,10 @@ describe('withWaitAdvice', () => {
       /^A fixed wait .* with Awaitility, which the project's tests use: /u,
     );
     expect(advised.message).toMatch(/not pollDelay\(\.\.\.\)\.until\(\(\) -> true\)/u);
-    expect(advised.message).toMatch(
-      /exception for pmd\/FixedSleepInTest in nitpicker\.config\.json\.$/u,
+    expect(applyRuleMessages([advised])[0].message).toBe(
+      `${advised.message} ${exceptionHint('pmd/FixedSleepInTest', sleep.path)}`,
     );
+    expect(applyRuleMessages([advised], { preset: 'kotlin' })[0].message).toBe(advised.message);
     expect(untouched).toBe(other);
   });
 

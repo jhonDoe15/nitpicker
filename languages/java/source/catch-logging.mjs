@@ -3,7 +3,7 @@ import { isFailureCall, logCalls, topLevelArguments } from './loggers.mjs';
 
 export const CATCH_LOG_RULE = 'catch-log-without-exception';
 export const CATCH_LOG_MESSAGE =
-  'Pass the caught exception to the logger as its own argument so the stack trace is kept (log.error("what failed", e), or logger.error(e) { "what failed" }). e.message, e.toString() and a string template of the exception drop it. If this log is right without the exception, add an "exceptions" entry for rule catch-log-without-exception in nitpicker.config.json.';
+  'Pass the caught exception to the logger as its own argument so the stack trace is kept (log.error("what failed", e), or logger.error(e) { "what failed" }). e.message, e.toString() and a string template of the exception drop it.';
 
 const CATCH = /\bcatch\s*\(([^()]*)\)\s*\{/g;
 const CAUGHT_NAME = { kotlin: /^\s*(\w+)\s*:/, java: /(\w+)\s*$/ };
