@@ -616,8 +616,8 @@ The Java sources of a mixed module get their complexity from `StructureMetrics.j
 ## Duplicates
 
 The shared duplicates rule runs on Kotlin: jscpd (the version of the TypeScript preset, mode `mild`)
-with `--format kotlin` over each Kotlin source root from the manifest, ignoring `build`, `generated`,
-`target` and `out`. Any new clone fails with `duplicate-clone`, tool `duplicates`, identity from the file pair,
+with `--format kotlin` over each Kotlin source root from the manifest, ignoring the folders named `build`, `generated`,
+`target` and `out` (replaced by `duplicates.skippedFolders`). Clones made only of `package` and `import` lines are not reported. Its message names both files and tells to add either to `exclude`; a glob that matches either file of the pair lifts the finding. Any new clone fails with `duplicate-clone`, tool `duplicates`, identity from the file pair,
 the cloned text and the n-th occurrence, never a line. Clones are found within one source root and
 within the Kotlin files; a clone between a `.kt` and a `.java` file, or between two source roots, is not
 (the same as for several Java roots).
@@ -649,7 +649,7 @@ the comparison and exiting with 2. Nothing is silently skipped and nothing throw
 
 ## Config keys
 
-`base`, `disable`, `analyzers`, `thresholds`, `exclude`, `legacyInventory` as for the Java preset
+`base`, `disable`, `analyzers`, `thresholds`, `exclude`, `duplicates`, `legacyInventory` as for the Java preset
 (legacy inventory sources are the findings' `identity`, for example
 `fp:nitpicker/subject=This expression contains a magic number. ...`). `kotlin.formatter` and
 `kotlin.detektConfig` are new and valid only with this preset. `exceptions` lifts the

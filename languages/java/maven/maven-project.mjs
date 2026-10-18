@@ -1,7 +1,7 @@
 import { isPublished, isTrue } from './configuration/publishing.mjs';
 import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
-import { childAt, childrenAt, childrenNamed, parseXml } from '../ingest/common.mjs';
+import { childAt, childrenAt, childrenNamed, parseXml } from '../../../shared/ingest/common.mjs';
 import { compilerSettings } from './errorprone/maven-compiler.mjs';
 
 const SCOPES = new Set(['compile', 'provided', 'runtime', 'test', 'system']);

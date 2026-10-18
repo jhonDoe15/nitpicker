@@ -1,4 +1,4 @@
-import { childrenNamed, createIdentityCounter, parseXml } from './common.mjs';
+import { childrenNamed, createIdentityCounter, parseXml } from '../../../shared/ingest/common.mjs';
 
 const VIOLATION = /^([A-Z][A-Za-z ]*?) <((?:[^<>]|<\w+>)+)>/;
 const SOURCE_REFERENCE = /\s+in \(([^():]+\.(?:java|kt|groovy)):\d+\)\s*$/;

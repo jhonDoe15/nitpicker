@@ -12,7 +12,7 @@ import { gradleTarget } from './gradle-wrapper/gradle-command.mjs';
 import { condenseFailure } from './gradle-wrapper/failure-text.mjs';
 import { runJavaDuplicates } from './metrics/java-duplicates.mjs';
 import { runKotlinDuplicates } from './kotlin/kotlin-duplicates.mjs';
-import { applyJavaPolicy } from './java-policy.mjs';
+import { applyFindingPolicy } from '../../../shared/findings/finding-policy.mjs';
 import { withoutFollowedImports } from './imports/followed-imports.mjs';
 import { withoutOverlaps } from './overlaps/static-overlaps.mjs';
 import { toolConfigChoices, toolConfigProperties } from './tool-config/tool-config-choices.mjs';
@@ -133,9 +133,14 @@ function gradleFindings(projectRoot, options, reportBase) {
   const kotlinRun = resolveKotlinRun(projectRoot, options.policy);
   runJavaPreset(projectRoot, { ...options, reportBase, kotlinRun });
   const report = readReportModules(reportBase, preset);
-  runJavaDuplicates(projectRoot, { reportRoot: reportBase, manifest: report.manifest });
+  const duplicates = {
+    reportRoot: reportBase,
+    manifest: report.manifest,
+    skippedFolders: options.policy?.duplicateSkippedFolders,
+  };
+  runJavaDuplicates(projectRoot, duplicates);
   if (preset === 'kotlin') {
-    runKotlinDuplicates(projectRoot, { reportRoot: reportBase, manifest: report.manifest });
+    runKotlinDuplicates(projectRoot, duplicates);
   }
   return readJavaFindings(projectRoot, {
     ...readOptions(options.policy),
@@ -167,7 +172,11 @@ function mavenFindings(projectRoot, options) {
   });
   for (const moduleDir of moduleDirs) {
     const { reportBase, report } = moduleReport(moduleDir, MAVEN_REPORT_DIRECTORY);
-    runJavaDuplicates(moduleDir, { reportRoot: reportBase, manifest: report.manifest });
+    runJavaDuplicates(moduleDir, {
+      reportRoot: reportBase,
+      manifest: report.manifest,
+      skippedFolders: options.policy?.duplicateSkippedFolders,
+    });
   }
   return readModuleFindings(projectRoot, moduleDirs, {
     ...readOptions(options.policy),
@@ -185,13 +194,13 @@ export function collectJavaFindings(root, options = {}) {
   function readSource(file) {
     return sourceText(projectRoot, file);
   }
-  return applyJavaPolicy(
+  return applyFindingPolicy(
     withoutFollowedImports(
       withProjectEnumPredicates(parseAnalyzerReport({ findings }, preset).findings, projectRoot),
       options.policy?.conventions,
       readSource,
     ),
-    options.policy,
+    { ...options.policy, inventoryTool: preset },
     (reported) => withoutOverlaps(reported, { readSource }),
   );
 }
