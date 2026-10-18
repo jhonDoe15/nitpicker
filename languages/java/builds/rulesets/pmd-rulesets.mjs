@@ -77,13 +77,7 @@ function written(reportDir, file, content) {
   return target;
 }
 
-export function writeGuardRulesets({
-  reportDir,
-  mainDirectories,
-  testDirectories,
-  compiler,
-  spring,
-}) {
+export function writeGuardRulesets({ reportDir, testDirectories, compiler }) {
   const skipped = javaRelease(compiler) < PATTERN_MATCHING_RELEASE ? PATTERN_MATCHING_RULES : [];
   const guards = scopedRuleset(
     'nitpicker-guards-main',
