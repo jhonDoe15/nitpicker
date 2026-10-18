@@ -10,7 +10,7 @@ import {
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterAll, describe, expect, it } from 'vitest';
-import { collectJavaFindings } from '../../adapters/java-diff.mjs';
+import { mavenFrameworkFindings } from '../../adapters/test-support/maven-framework.mjs';
 import { testCasesOf } from '../../adapters/test-times/slow-tests.mjs';
 
 const enabled = process.env.NITPICKER_JAVA_E2E === '1';
@@ -57,14 +57,16 @@ afterAll(() => {
 describe.skipIf(!enabled)('Java preset on a Maven build with Failsafe', () => {
   it('runs verify when Failsafe is bound, counting its tests for coverage and the integration budget', () => {
     const project = copyOfFixture();
-    const findings = collectJavaFindings(project, {
+    const findings = mavenFrameworkFindings(project, {
       maven,
+      mutations: false,
+      reportDir: path.join(project, 'target/nitpicker'),
       policy: { testSeconds: { integrationTestSeconds: -1 } },
     });
     const cases = copiedTestCases(project);
     const seconds = cases[0].seconds.toFixed(1);
     const exception =
-      '{"rule":"test-runtime/slow-test","paths":["src/test/java/demo/GreeterIT.java"],"reason":"..."}';
+      '{"rule":"slow-test","paths":["src/test/java/demo/GreeterIT.java"],"reason":"..."}';
 
     expect(cases.map(({ task, className, name }) => `${task} ${className}#${name}`)).toEqual([
       'failsafe demo.GreeterIT#saysGoodbye',
@@ -97,7 +99,11 @@ describe.skipIf(!enabled)('Java preset on a Maven build with Failsafe', () => {
       pom,
       readFileSync(pom, 'utf8').replace('<properties>', '<properties><skipITs>true</skipITs>'),
     );
-    const findings = collectJavaFindings(project, { maven, policy: {} });
+    const findings = mavenFrameworkFindings(project, {
+      maven,
+      mutations: false,
+      reportDir: path.join(project, 'target/nitpicker'),
+    });
 
     expect(
       copiedTestCases(project).map(({ task, className, name }) => `${task} ${className}#${name}`),
