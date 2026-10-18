@@ -239,7 +239,9 @@ comma-separated>` changes that. Those classes are excluded from the regular `tes
 - **What runs.** `nitpickerPit` runs the pinned `pitest-command-line` (1.17.4) with the
   `pitest-junit5-plugin` (1.2.1), default mutators, XML output, two threads, to
   `pit/mutations.xml` in the report directory. Tests are named class by class (`--targetTests`), and
-  `--mutableCodePaths` limits mutation to the main classes. The JUnit Platform is not pinned by
+  `--mutableCodePaths` limits mutation to the main classes. For a JUnit Platform `test` task, its
+  `includeTags` and `excludeTags` also select the tests PIT runs during its green-suite check and
+  mutation testing, including method-level tags. The JUnit Platform is not pinned by
   Nitpicker: the plugin's own platform dependencies are excluded and the project's are used, with a
   launcher of the project's engine version added when the project does not declare one. PIT
   requires a green test run: a failing test suite fails the build, which is a `java/gradle-failure`
