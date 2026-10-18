@@ -1,4 +1,4 @@
-import { childrenNamed, parseXml } from '../../ingest/common.mjs';
+import { childrenNamed, parseXml } from '../../../../shared/ingest/common.mjs';
 import { copyFileSync, existsSync, mkdirSync, readdirSync, readFileSync, statSync } from 'node:fs';
 import path from 'node:path';
 import { TEST_RESULTS_DIRECTORY } from '../../adapters/test-times/slow-tests.mjs';
