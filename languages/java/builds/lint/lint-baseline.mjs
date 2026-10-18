@@ -41,11 +41,7 @@ function directoryDigest(directory) {
 }
 
 function entryDigest(root, entry) {
-  if (!insideRoot(root, entry)) {
-    const size = existsSync(entry) ? String(statSync(entry).size) : 'missing';
-    return `${path.basename(entry)} ${size}`;
-  }
-  const name = posix(path.relative(root, entry));
+  const name = insideRoot(root, entry) ? posix(path.relative(root, entry)) : path.basename(entry);
   if (!existsSync(entry)) {
     return `${name} missing`;
   }
