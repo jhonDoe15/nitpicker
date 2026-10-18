@@ -14,7 +14,9 @@ export function withGradleLog(error, result) {
       },
     );
     return new Error(`Full Gradle log: ${file}\n${error.message}`, { cause: error });
-  } catch {
-    return error;
+  } catch (logError) {
+    return new Error(`${error.message}\nCould not save the Gradle log: ${logError.message}`, {
+      cause: error,
+    });
   }
 }

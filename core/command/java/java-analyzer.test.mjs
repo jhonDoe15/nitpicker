@@ -1,12 +1,17 @@
 import { readFileSync, rmSync } from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
+import { exactText } from '../../diff/reporting/test-support/output-expectations.mjs';
 import { runCli as nitpickerCli } from '../../cli.mjs';
 import { createJavaAnalyzer } from '../../../languages/java/adapters/java-analyzer.mjs';
 import { analyzeJavaSnapshot } from '../../../languages/java/adapters/java-runner.mjs';
 import { JAVA_TOOLS } from '../../../languages/java/adapters/gradle-presets.mjs';
 import { commit, fixtureGit } from '../../diff/git/test-support/git-repository.mjs';
-import { fakeGradle, useGradleFixtures } from './test-support/java-cli-harness.mjs';
+import {
+  fakeGradle,
+  gradleFailureMessage,
+  useGradleFixtures,
+} from './test-support/java-cli-harness.mjs';
 import { writeFiles } from '../../diff/git/test-support/fixture-files.mjs';
 
 const { kotlinRepository, run, temporaryRoot } = useGradleFixtures(nitpickerCli);
@@ -67,7 +72,7 @@ describe('Kotlin analyzer', () => {
         rule: 'gradle-failure',
         path: '.',
         identity: 'gradle-failure',
-        message: expect.stringContaining(`Java preset failed in ${root}: detekt crashed`),
+        message: gradleFailureMessage(`Java preset failed in ${root}: detekt crashed`),
         classification: 'tool-error',
       },
     ]);
@@ -136,7 +141,7 @@ describe('Java analyzer', () => {
         rule: 'gradle-failure',
         path: '.',
         identity: 'gradle-failure',
-        message: expect.stringContaining(`Java preset failed in ${root}: tool crashed`),
+        message: gradleFailureMessage(`Java preset failed in ${root}: tool crashed`),
         classification: 'tool-error',
       },
     ]);
@@ -158,8 +163,10 @@ describe('Gradle failure diagnostics', () => {
       const message = findings[0].message;
       const log = /Full Gradle log: ([^\n]+)/u.exec(message)?.[1];
       try {
-        expect(message).toContain(`Java preset failed in ${root}: ${expected}`);
-        expect(readFileSync(log, 'utf8')).toContain(`=== stdout ===\n${stdout}`);
+        expect(message).toEqual(gradleFailureMessage(`Java preset failed in ${root}: ${expected}`));
+        expect(readFileSync(log, 'utf8')).toBe(
+          `=== stdout ===\n${stdout}\n=== stderr ===\n${stderr}\n`,
+        );
       } finally {
         rmSync(path.dirname(log), { recursive: true, force: true });
       }
@@ -189,10 +196,16 @@ describe('Gradle failure diagnostics', () => {
       expect(log).toBeDefined();
       try {
         const text = readFileSync(log, 'utf8');
-        expect(text).toContain('full stdout marker');
-        expect(text).toContain(failure);
-        expect(error.message).toContain(`Java preset failed in ${error.snapshot}: FAILURE:`);
-        expect(error.message).toContain("Execution failed for task ':test'.");
+        expect(text).toBe(`=== stdout ===\nfull stdout marker\n=== stderr ===\n${failure}\n`);
+        expect(error.message).toEqual(
+          expect.stringMatching(exactText`Full Gradle log: ${log}
+Java preset failed in ${error.snapshot}: FAILURE: Build failed with an exception.
+* What went wrong:
+Execution failed for task ':test'.
+> There were failing tests. See the report at: build/reports/tests/test/index.html
+...
+${/(?:warning: ordinary compiler noise\n)+warning: [a-z ]+/}`),
+        );
         expect(error.message.length).toBeLessThanOrEqual(4003);
       } finally {
         rmSync(path.dirname(log), { recursive: true, force: true });
