@@ -1,6 +1,6 @@
 import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import path from 'node:path';
-import { childrenNamed, parseXml } from '../../ingest/common.mjs';
+import { childrenNamed, parseXml } from '../../../../shared/ingest/common.mjs';
 import { inModule } from '../../builds/module-path.mjs';
 import { sourceLocator } from '../reporting/kotlin-reports.mjs';
 import {

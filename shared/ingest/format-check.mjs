@@ -1,4 +1,4 @@
-import { normalizeReportPath } from '../common.mjs';
+import { normalizeReportPath } from './common.mjs';
 
 export function ingestFormatCheck(text, options = {}) {
   const tool = options.tool ?? 'formatter';
