@@ -338,7 +338,7 @@ describe.skipIf(!enabled)('Java preset on Maven builds', () => {
       const cases = copiedTestCases(project);
       const seconds = cases[0].seconds.toFixed(1);
       const exception =
-        '{"rule":"test-runtime/slow-test","paths":["src/test/java/demo/GreeterIT.java"],"reason":"..."}';
+        '{"rule":"slow-test","paths":["src/test/java/demo/GreeterIT.java"],"reason":"..."}';
 
       expect(cases.map(({ task, className, name }) => `${task} ${className}#${name}`)).toEqual([
         'failsafe demo.GreeterIT#saysGoodbye',

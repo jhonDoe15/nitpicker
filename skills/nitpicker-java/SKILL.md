@@ -122,7 +122,7 @@ Before you change code other modules use, or fix a bug, read
   (`mutant-survived`, `mutant-nocoverage`) fails. If no input can kill a mutant, the code is
   redundant: delete or simplify it. A `compareTo` boundary or an ignored lambda result that truly
   cannot be told apart takes an exception for `pit/mutant-survived`.
-- Plan tests to be fast (`test-runtime/slow-test`): a fake clock instead of `Thread.sleep`, a test
+- Plan tests to be fast (`slow-test`): a fake clock instead of `Thread.sleep`, a test
   slice instead of `@SpringBootTest`.
 - Never wait a fixed time (`FixedSleepInTest`): wait on the condition with Awaitility when the
   tests use it (`await().atMost(Duration.ofSeconds(5)).until(...)`), otherwise in a loop against a
