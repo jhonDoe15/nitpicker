@@ -119,8 +119,12 @@ class CalcTest {
       expect(report).toMatch(
         /status='KILLED'[\s\S]*?<mutatedClass>org\.acme\.calc\.Calc<\/mutatedClass>/u,
       );
-      expect(report).toContain('doublesTheValue');
-      expect(report).not.toContain('needsTheStressEnvironment');
+      const killingTests = new Set(
+        [...report.matchAll(/<killingTest>([^<]+)<\/killingTest>/gu)].map(([, name]) => name),
+      );
+      expect([...killingTests]).toEqual([
+        'org.acme.calc.CalcTest.[engine:junit-jupiter]/[class:org.acme.calc.CalcTest]/[method:doublesTheValue()]',
+      ]);
     },
     GRADLE_STEP_TIMEOUT_MS,
   );
