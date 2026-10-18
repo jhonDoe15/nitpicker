@@ -446,10 +446,10 @@ allprojects {
             executionData(emptyExecutionData)
         }
         gradle.projectsEvaluated {
-            tasks.withType(Test).configureEach {
-                def coverage = extensions.findByType(JacocoTaskExtension)
+            tasks.withType(Test).configureEach { testTask ->
+                def coverage = testTask.extensions.findByType(JacocoTaskExtension)
                 if (coverage != null) {
-                    coverage.enabled = true
+                    coverage.enabled = testTask.name != 'nitpickerArchunit'
                     coverage.includes = []
                     coverage.excludes = []
                     coverage.excludeClassLoaders = []
