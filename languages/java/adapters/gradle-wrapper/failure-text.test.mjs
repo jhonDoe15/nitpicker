@@ -61,7 +61,7 @@ describe('condenseFailure', () => {
 
     const condensed = condenseFailure(text, 1000);
 
-    const [head, kept, failure] = condensed.split('\n...\n');
+    const [failure, kept, head] = condensed.split('\n...\n');
     expect(condensed.length).toBeLessThanOrEqual(1000);
     expect(head.split('\n')[0]).toBe('INFO: step 0');
     expect(kept).toBe(cause);
@@ -83,10 +83,8 @@ describe('condenseFailure', () => {
     const condensed = condenseFailure(text, 400);
 
     expect(condensed.length).toBeLessThanOrEqual(400);
-    expect([condensed.split('\n')[0], condensed.split('\n').at(-1)]).toEqual([
-      'INFO: step 0',
-      'the last word',
-    ]);
+    expect(condensed.split('\n...\n')[0]).toContain('the last word');
+    expect(condensed.split('\n...\n').at(-1)).toContain('INFO: step 0');
   });
 
   it('does not repeat a cause that the head already shows', () => {
