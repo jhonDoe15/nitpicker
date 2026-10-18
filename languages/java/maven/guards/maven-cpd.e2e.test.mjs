@@ -14,7 +14,6 @@ import { readPinnedTools } from '../../builds/java-build.mjs';
 import { readCpdFindings } from '../../guards/cpd-duplicates.mjs';
 import { runCpd } from './maven-pmd.mjs';
 import { resolveTools } from '../maven-tools.mjs';
-import { GRADLE_STEP_TIMEOUT_MS } from '../../adapters/test-support/gradle-e2e.mjs';
 
 const enabled = process.env.NITPICKER_JAVA_E2E === '1';
 const maven = process.env.NITPICKER_MAVEN;
@@ -117,54 +116,40 @@ function cpdOver(files, extraRoots = []) {
 }
 
 describe.skipIf(!enabled)('the PMD CPD launcher', () => {
-  it.each(CPD_SCENARIOS)(
-    'reports on a class literal before an enum after %s',
-    (_, text) => {
-      expect(cpdOver({ 'Reg.java': text })).toEqual({
-        outputs: ['cpd.xml'],
-        duplications: 0,
-        findings: [],
-      });
-    },
-    GRADLE_STEP_TIMEOUT_MS,
-  );
+  it.each(CPD_SCENARIOS)('reports on a class literal before an enum after %s', (_, text) => {
+    expect(cpdOver({ 'Reg.java': text })).toEqual({
+      outputs: ['cpd.xml'],
+      duplications: 0,
+      findings: [],
+    });
+  });
 
-  it(
-    'reads a file under two overlapping source roots once',
-    () => {
-      expect(cpdOver({ 'A.java': REPEATED_RUN }, ['p'])).toEqual(
-        cpdOver({ 'A.java': REPEATED_RUN }),
-      );
-    },
-    2 * GRADLE_STEP_TIMEOUT_MS,
-  );
+  it('reads a file under two overlapping source roots once', () => {
+    expect(cpdOver({ 'A.java': REPEATED_RUN }, ['p'])).toEqual(cpdOver({ 'A.java': REPEATED_RUN }));
+  });
 
-  it(
-    'lists a file PMD cannot lex among the paths it skipped, after its class literals',
-    () => {
-      const result = cpdOver({
-        'L.java': `package p;\npublic class L {\n${CLASS_LITERAL_THEN_ENUM}  # bad\n}\n`,
-        'S.java': `package p;\npublic class S {\n  static final String B64 = "${'QUJD'.repeat(400)}";\n}\n`,
-      });
+  it('lists a file PMD cannot lex among the paths it skipped, after its class literals', () => {
+    const result = cpdOver({
+      'L.java': `package p;\npublic class L {\n${CLASS_LITERAL_THEN_ENUM}  # bad\n}\n`,
+      'S.java': `package p;\npublic class S {\n  static final String B64 = "${'QUJD'.repeat(400)}";\n}\n`,
+    });
 
-      expect(result).toEqual({
-        outputs: ['cpd.xml'],
-        duplications: 0,
-        findings: [
-          {
-            tool: 'duplicates',
-            rule: 'cpd-skipped-paths',
-            path: '.',
-            identity: 'cpd-skipped-paths',
-            message:
-              'CPD could not read or tokenize 1 path(s), so duplicated code there was not checked: ' +
-              "src/main/java/p/L.java: LexException: Lexical error in file 'src/main/java/p/L.java' " +
-              'at line 8, column 3: "#" (35), after : "" (in lexical state DEFAULT)',
-            classification: 'descriptive',
-          },
-        ],
-      });
-    },
-    GRADLE_STEP_TIMEOUT_MS,
-  );
+    expect(result).toEqual({
+      outputs: ['cpd.xml'],
+      duplications: 0,
+      findings: [
+        {
+          tool: 'duplicates',
+          rule: 'cpd-skipped-paths',
+          path: '.',
+          identity: 'cpd-skipped-paths',
+          message:
+            'CPD could not read or tokenize 1 path(s), so duplicated code there was not checked: ' +
+            "src/main/java/p/L.java: LexException: Lexical error in file 'src/main/java/p/L.java' " +
+            'at line 8, column 3: "#" (35), after : "" (in lexical state DEFAULT)',
+          classification: 'descriptive',
+        },
+      ],
+    });
+  });
 });

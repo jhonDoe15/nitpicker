@@ -30,6 +30,16 @@ const optionalGetMessage = (file) =>
   exceptionHint('pmd/OptionalGet', file);
 const LINE_MARKER = /\/\/ violation: (.*)$/;
 const FILE_MARKER = /\/\/ file violation: (.*)$/;
+const UNRELATED_TASKS = [
+  'nitpickerSpotbugs',
+  'nitpickerErrorProne',
+  'nitpickerFormat',
+  'nitpickerJacoco',
+  'nitpickerArchunit',
+  'nitpickerStructure',
+  'nitpickerPit',
+  'test',
+];
 const GUARD_TOOLS = new Set(['javac', 'forbiddenapis', 'dependencies', 'coupling', 'duplicates']);
 const GUARD_RULES = new Set([
   'OptionalGet',
@@ -121,7 +131,7 @@ function runGradle(projectRoot, args) {
   const result = spawnSync(
     gradle,
     ['--console=plain', '--quiet', '--no-configuration-cache', '-I', INIT_SCRIPT, ...args],
-    { cwd: projectRoot, encoding: 'utf8', timeout: 15 * 60 * 1000 },
+    { cwd: projectRoot, encoding: 'utf8', timeout: 90_000 },
   );
   if (result.status !== 0) {
     throw new Error(`Gradle failed: ${result.stderr}`);
@@ -145,28 +155,27 @@ function pmdRules(projectRoot) {
 describe.skipIf(!enabled)('Java guards on a fixture project', () => {
   const roots = [];
 
-  beforeAll(
-    () => {
-      roots.push(
-        gradleTasks('guards-project', ['nitpickerJava'], (root) => [
-          `-Pnitpicker.reportDir=${reportBaseOf(root)}`,
-        ]),
-      );
-      const { manifest } = readReportModules(reportBaseOf(roots[0]), 'java');
-      runJavaDuplicates(roots[0], { reportRoot: reportBaseOf(roots[0]), manifest });
-      roots.push(
-        gradleTasks('guards-compile-modes', [
-          'nitpickerLint',
-          ':legacy:nitpickerPmd',
-          ':arguments:nitpickerPmd',
-          ':modular:nitpickerJdeps',
-          ':modular:nitpickerErrorProne',
-          ':legacy:nitpickerCpd',
-        ]),
-      );
-    },
-    30 * 60 * 1000,
-  );
+  beforeAll(() => {
+    roots.push(
+      gradleTasks(
+        'guards-project',
+        ['nitpickerJava', ...UNRELATED_TASKS.flatMap((task) => ['-x', task])],
+        (root) => [`-Pnitpicker.reportDir=${reportBaseOf(root)}`],
+      ),
+    );
+    const { manifest } = readReportModules(reportBaseOf(roots[0]), 'java');
+    runJavaDuplicates(roots[0], { reportRoot: reportBaseOf(roots[0]), manifest });
+    roots.push(
+      gradleTasks('guards-compile-modes', [
+        'nitpickerLint',
+        ':legacy:nitpickerPmd',
+        ':arguments:nitpickerPmd',
+        ':modular:nitpickerJdeps',
+        ':modular:nitpickerErrorProne',
+        ':legacy:nitpickerCpd',
+      ]),
+    );
+  }, 120_000);
 
   afterAll(() => {
     for (const root of roots) {
