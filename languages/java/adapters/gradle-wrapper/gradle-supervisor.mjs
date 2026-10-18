@@ -9,7 +9,11 @@ async function readInvocation(input) {
   return JSON.parse(Buffer.concat(chunks).toString('utf8'));
 }
 
+async function main(input, output) {
+  const invocation = await readInvocation(input);
+  output.write(JSON.stringify(await executeGradle(invocation)));
+}
+
 if (import.meta.url === pathToFileURL(process.argv[1] ?? '').href) {
-  const invocation = await readInvocation(process.stdin);
-  process.stdout.write(JSON.stringify(await executeGradle(invocation)));
+  await main(process.stdin, process.stdout);
 }
