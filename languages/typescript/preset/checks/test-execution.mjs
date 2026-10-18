@@ -22,6 +22,7 @@ export function testExecutionChecksFor(exclusions) {
       concurrencyWeight: 2,
       concurrencyGroup: 'test-execution',
       executionPriority: 1,
+      reportedTools: ['test-runtime'],
       shardWeight: 16,
       timeoutMs: 5 * MINUTE_MS,
       configurationFiles: COVERAGE_CONFIGURATION_FILES,

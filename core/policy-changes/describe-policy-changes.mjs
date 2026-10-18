@@ -5,7 +5,14 @@ import { hiddenCodeChanges } from './paths/hidden-code.mjs';
 import { tsconfigChanges } from './paths/tsconfig-changes.mjs';
 import { listedChanges, loosensSetting } from './loosenings.mjs';
 
-const LISTED_KEYS = new Set(['exclude', 'disable', 'exceptions', 'thresholds', 'analyzers']);
+const LISTED_KEYS = new Set([
+  'exclude',
+  'disable',
+  'exceptions',
+  'thresholds',
+  'analyzers',
+  'duplicates',
+]);
 const LISTED_LAYOUT_KEYS = new Set(['excludedGlobs', 'entryPoints']);
 
 function withoutKeys(object, keys) {

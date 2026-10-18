@@ -1,7 +1,11 @@
 import { existsSync, rmSync } from 'node:fs';
 import path from 'node:path';
 import { trackTemporaryPath } from '../../../../core/tooling/temporary-files.mjs';
-import { readLayout } from '../../preset/head-policy.mjs';
+import { readHeadPolicy, readLayout } from '../../preset/head-policy.mjs';
+import {
+  slowTestBudget,
+  slowTestLimits,
+} from '../../../../shared/rules/slow-tests/slow-test-finding.mjs';
 import { projectTestRunner } from '../../preset/test-runner/project-runner.mjs';
 import { TEST_TIMEOUT_CEILING_MS } from '../../preset/eslint-plugin/rules/testing/assertions/no-raised-test-timeout.mjs';
 import {
@@ -11,7 +15,27 @@ import {
 } from '../quality-areas/reporting/test-report.mjs';
 
 export const TEST_TIMEOUT_MS = TEST_TIMEOUT_CEILING_MS;
-export const MAX_WORKERS = 4;
+const MAX_WORKERS = 4;
+const MILLISECONDS = 1000;
+
+export function testTimeoutMs() {
+  const budget = slowTestBudget(slowTestLimits(readHeadPolicy().thresholds));
+  const largest = Math.max(budget.unitTestSeconds, budget.integrationTestSeconds);
+  return TEST_TIMEOUT_MS + Math.ceil(largest * MILLISECONDS);
+}
+
+export function workerCount(options) {
+  return options.rerun === undefined ? MAX_WORKERS : 1;
+}
+
+export function uncoveredRun(command) {
+  return {
+    nodeArguments: [],
+    environment: command.environment,
+    write: () => Promise.resolve(),
+    remove: () => {},
+  };
+}
 
 export function coverageOutputFile(options) {
   return path.join(options.projectRoot, COVERAGE_REPORT_PATH);
