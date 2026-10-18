@@ -77,19 +77,24 @@ function runJdeps(context) {
   if (
     !context.directories.some((directory) => existsSync(path.join(directory, 'module-info.class')))
   ) {
-    return runJdepsCommand(context);
+    runJdepsCommand(context);
+    return;
   }
   const staged = mkdtempSync(path.join(tmpdir(), 'nitpicker-jdeps-'));
   try {
     const directories = context.directories.map((directory, index) => {
-      const target = path.join(staged, String(index));
+      const base = path.resolve(staged);
+      const target = path.resolve(base, String(index));
+      if (!target.startsWith(base + path.sep)) {
+        throw new Error('Class staging target is outside its directory');
+      }
       cpSync(directory, target, {
         recursive: true,
         filter: (file) => path.basename(file) !== 'module-info.class',
       });
       return target;
     });
-    return runJdepsCommand({ ...context, directories });
+    runJdepsCommand({ ...context, directories });
   } finally {
     rmSync(staged, { recursive: true, force: true });
   }

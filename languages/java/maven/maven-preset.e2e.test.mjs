@@ -59,29 +59,6 @@ function twinProjects() {
   return [gradleProject, mavenProject];
 }
 
-function copiedTestCases(project) {
-  const results = path.join(project, 'target/nitpicker/test-results');
-  return readdirSync(results)
-    .sort()
-    .flatMap((task) =>
-      readdirSync(path.join(results, task))
-        .sort()
-        .flatMap((name) => testCasesOf(readFileSync(path.join(results, task, name), 'utf8'), task)),
-    );
-}
-
-function lineCoverage(text, value) {
-  return {
-    tool: 'jacoco',
-    rule: 'line-coverage',
-    path: 'src/main/java/demo/Greeter.java',
-    identity: 'line-coverage',
-    metric: { name: 'line-coverage', value },
-    message: `line-coverage ${text}`,
-    classification: 'descriptive',
-  };
-}
-
 const comparable = (findings) => findings.map((finding) => JSON.stringify(finding)).sort();
 
 function withoutGradle(root) {
