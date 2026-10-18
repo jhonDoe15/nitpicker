@@ -73,7 +73,6 @@ function runJavaPreset(
     budget = gradleBudget(),
   } = {},
 ) {
-  const { commandTimeoutMs } = budget;
   const withKotlin = kotlinRun?.withArguments ?? ((run) => run([]));
   const directory = path.join(reportBase, 'tool-config');
   const since = Date.now() - CLOCK_SLACK_MS;
@@ -107,7 +106,7 @@ function runJavaPreset(
         encoding: 'utf8',
         maxBuffer: MAX_OUTPUT_BYTES,
         shell: target.shell,
-        timeout: commandTimeoutMs,
+        timeout: budget.commandTimeoutMs,
       });
       assertSucceeded(result, projectRoot, { reportBase, since });
     }
