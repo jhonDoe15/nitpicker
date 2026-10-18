@@ -9,12 +9,12 @@ afterEach(() => {
   for (const root of roots.splice(0)) rmSync(root, { recursive: true, force: true });
 });
 
-async function project(source, extra = {}) {
+function project(source, extra = {}) {
   const root = mkdtempSync(path.join(tmpdir(), 'nitpicker-mutation-types-'));
   roots.push(root);
   const files = {
     'tsconfig.json': JSON.stringify({
-      compilerOptions: { strict: true, types: [], skipLibCheck: true },
+      compilerOptions: { strict: true, types: [], lib: ['ES2022'], skipLibCheck: true },
       include: ['src'],
     }),
     'src/main.ts': source,
@@ -26,7 +26,7 @@ async function project(source, extra = {}) {
     writeFileSync(file, content);
   }
   const checker = strykerPlugins[0].factory({ tsconfigFile: path.join(root, 'tsconfig.json') });
-  await checker.init();
+  checker.init();
   return { root, checker };
 }
 
@@ -43,11 +43,11 @@ function mutant(root, source, { id, from, replacement }) {
 }
 
 describe('mutation checking with existing diagnostics', () => {
-  it('passes runnable mutants despite legacy errors and rejects newly invalid mutants', async () => {
+  it('passes runnable mutants despite legacy errors and rejects newly invalid mutants', () => {
     const source =
       "export const legacy: number = 'oops';\nexport function add(a: number, b: number): number { return a + b; }\n";
-    const { root, checker } = await project(source);
-    const result = await checker.check([
+    const { root, checker } = project(source);
+    const result = checker.check([
       mutant(root, source, { id: 'valid', from: 'a + b', replacement: 'a - b' }),
       mutant(root, source, { id: 'invalid', from: 'a + b', replacement: "'wrong'" }),
     ]);
@@ -58,11 +58,11 @@ describe('mutation checking with existing diagnostics', () => {
     });
   });
 
-  it('counts duplicate diagnostics rather than exempting every occurrence of a legacy error', async () => {
+  it('counts duplicate diagnostics rather than exempting every occurrence of a legacy error', () => {
     const source =
       "declare function consume(value: number): void;\nexport function old(): number { consume('oops'); return 1; }\n";
-    const { root, checker } = await project(source);
-    const result = await checker.check([
+    const { root, checker } = project(source);
+    const result = checker.check([
       mutant(root, source, {
         id: 'additional',
         from: 'return 1',
@@ -75,25 +75,24 @@ describe('mutation checking with existing diagnostics', () => {
     });
   });
 
-  it('keeps unchanged diagnostics baselined when a replacement moves later locations', async () => {
+  it('keeps unchanged diagnostics baselined when a replacement moves later locations', () => {
     const source = "export const value = 1; export const legacy: number = 'oops';\n";
-    const { root, checker } = await project(source);
+    const { root, checker } = project(source);
     expect(
-      await checker.check([
-        mutant(root, source, { id: 'shift', from: '1;', replacement: '1000000;' }),
-      ]),
+      checker.check([mutant(root, source, { id: 'shift', from: '1;', replacement: '1000000;' })]),
     ).toEqual({ shift: { status: 'passed' } });
   });
 
-  it('checks mutants in referenced projects even when the root config has no files', async () => {
+  it('checks mutants in referenced projects even when the root config has no files', () => {
     const source =
       "export const legacy: number = 'oops';\nexport function add(): number { return 1; }\n";
-    const { root, checker } = await project(source, {
+    const { root, checker } = project(source, {
       'tsconfig.json': JSON.stringify({ files: [], references: [{ path: './project' }] }),
       'project/tsconfig.json': JSON.stringify({
         compilerOptions: {
           strict: true,
           types: [],
+          lib: ['ES2022'],
           composite: true,
           skipLibCheck: true,
           rootDir: '..',
@@ -102,7 +101,7 @@ describe('mutation checking with existing diagnostics', () => {
       }),
     });
     expect(
-      await checker.check([
+      checker.check([
         mutant(root, source, { id: 'referenced', from: 'return 1', replacement: "return 'wrong'" }),
       ]),
     ).toEqual({
@@ -126,10 +125,16 @@ describe('mutation checking with existing diagnostics', () => {
     ],
   ])(
     'preserves compiler checks for %s projects with existing errors',
-    async (extension, source, compilerOptions) => {
-      const { root, checker } = await project("export const legacy: number = 'oops';\n", {
+    (extension, source, compilerOptions) => {
+      const { root, checker } = project("export const legacy: number = 'oops';\n", {
         'tsconfig.json': JSON.stringify({
-          compilerOptions: { strict: true, types: [], skipLibCheck: true, ...compilerOptions },
+          compilerOptions: {
+            strict: true,
+            types: [],
+            lib: ['ES2022'],
+            skipLibCheck: true,
+            ...compilerOptions,
+          },
           include: ['src'],
         }),
         [`src/extra.${extension}`]: source,
@@ -138,7 +143,7 @@ describe('mutation checking with existing diagnostics', () => {
         ...mutant(root, source, { id: 'typed', from: 'return 1', replacement: "return 'wrong'" }),
         fileName: path.join(root, `src/extra.${extension}`),
       };
-      expect(await checker.check([candidate])).toEqual({
+      expect(checker.check([candidate])).toEqual({
         typed: {
           status: 'compileError',
           reason: "Type 'string' is not assignable to type 'number'.",

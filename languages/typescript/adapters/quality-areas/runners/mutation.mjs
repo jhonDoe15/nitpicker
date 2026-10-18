@@ -89,8 +89,8 @@ function runnerConfig({ options, sourceConfig, createdFiles, testRunner }) {
     sourceConfig.tsconfigFile,
     createdFiles,
   );
-  const withChecker = (config) =>
-    baselineErrors
+  function withChecker(config) {
+    return baselineErrors
       ? {
           ...config,
           checkers: [strykerPlugins[0].name],
@@ -100,6 +100,7 @@ function runnerConfig({ options, sourceConfig, createdFiles, testRunner }) {
           ],
         }
       : config;
+  }
   const tsconfigFile = relativeProjectPath(options.projectRoot, tsconfigPath);
   if (testRunner.command.launcher === 'craco') {
     const cracoConfigPath = path.join(options.projectRoot, CRACO_JEST_CONFIG);
