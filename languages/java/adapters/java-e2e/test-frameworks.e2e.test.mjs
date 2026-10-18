@@ -6,7 +6,6 @@ import { afterAll, describe, expect, it } from 'vitest';
 import { INIT_SCRIPT } from '../../builds/java-build.mjs';
 import { collectJavaFindings } from '../java-diff.mjs';
 import { analyzeJavaSnapshot } from '../java-runner.mjs';
-import { GRADLE_STEP_TIMEOUT_MS } from '../test-support/gradle-e2e.mjs';
 
 const enabled = process.env.NITPICKER_JAVA_E2E === '1';
 const gradle = process.env.NITPICKER_GRADLE ?? 'gradle';
@@ -70,84 +69,72 @@ describe.skipIf(!enabled)('Java preset on each test framework', () => {
         [...CALC_FINDINGS, `archunit servicesOnly ${CALC} demo.Calc`].sort(),
       );
     },
-    GRADLE_STEP_TIMEOUT_MS,
   );
 
-  it(
-    'runs archunit-junit5 rules on the JUnit Platform beside JUnit 4 tests on Gradle',
-    () => {
-      const root = withRuleClassOf(projectOf('junit4', 'gradle'), 'testng');
-      const build = path.join(root, 'build.gradle');
-      writeFileSync(
-        build,
-        readFileSync(build, 'utf8').replace('archunit-junit4', 'archunit-junit5'),
-      );
-      const findings = collectJavaFindings(root, { gradle, policy: {} });
+  it('runs archunit-junit5 rules on the JUnit Platform beside JUnit 4 tests on Gradle', () => {
+    const root = withRuleClassOf(projectOf('junit4', 'gradle'), 'testng');
+    const build = path.join(root, 'build.gradle');
+    writeFileSync(build, readFileSync(build, 'utf8').replace('archunit-junit4', 'archunit-junit5'));
+    const findings = collectJavaFindings(root, { gradle, policy: {} });
 
-      expect(summary(findings.filter(({ tool }) => tool === 'archunit'))).toEqual([
-        ARCHUNIT_FINDING,
-      ]);
-    },
-    GRADLE_STEP_TIMEOUT_MS,
-  );
+    expect(summary(findings.filter(({ tool }) => tool === 'archunit'))).toEqual([ARCHUNIT_FINDING]);
+  });
 
-  it(
-    'fails on Gradle when ArchUnit classes exist and no runner picked any of them up',
-    () => {
-      const root = projectOf('testng', 'gradle');
-      writeFileSync(
-        path.join(root, NAMING_ARCH_TEST),
-        'package demo;\n\nclass NamingArchTest {}\n',
-      );
-      const result = spawnSync(
-        gradle,
-        ['--console=plain', '--quiet', '-I', INIT_SCRIPT, 'nitpickerArchunit'],
-        { cwd: root, encoding: 'utf8', timeout: GRADLE_STEP_TIMEOUT_MS },
-      );
+  it('fails on Gradle when ArchUnit classes exist and no runner picked any of them up', () => {
+    const root = projectOf('testng', 'gradle');
+    writeFileSync(path.join(root, NAMING_ARCH_TEST), 'package demo;\n\nclass NamingArchTest {}\n');
+    const result = spawnSync(
+      gradle,
+      ['--console=plain', '--quiet', '-I', INIT_SCRIPT, 'nitpickerArchunit'],
+      { cwd: root, encoding: 'utf8', timeout: 30_000 },
+    );
 
-      expect([result.status, /nitpickerArchunit ran none.*$/mu.exec(result.stderr)?.[0]]).toEqual([
-        1,
-        'nitpickerArchunit ran none of the ArchUnit classes in : (demo.NamingArchTest). archunit-junit4 ' +
-          'rules run on JUnit 4 and archunit-junit5 rules on the JUnit Platform; declare the one the ' +
-          'classes use in the test dependencies',
-      ]);
-    },
-    GRADLE_STEP_TIMEOUT_MS,
-  );
+    expect([result.status, /nitpickerArchunit ran none.*$/mu.exec(result.stderr)?.[0]]).toEqual([
+      1,
+      'nitpickerArchunit ran none of the ArchUnit classes in : (demo.NamingArchTest). archunit-junit4 ' +
+        'rules run on JUnit 4 and archunit-junit5 rules on the JUnit Platform; declare the one the ' +
+        'classes use in the test dependencies',
+    ]);
+  });
 
-  it(
-    'measures coverage and mutants of a TestNG project on Gradle and runs its archunit-junit5 rules on the Platform',
-    () => {
-      expect(summary(findingsOf('testng', 'gradle'))).toEqual(
-        [...CALC_FINDINGS, ARCHUNIT_FINDING].sort(),
-      );
-    },
-    GRADLE_STEP_TIMEOUT_MS,
-  );
+  it('measures coverage and mutants of a TestNG project on Gradle and runs its archunit-junit5 rules on the Platform', () => {
+    expect(summary(findingsOf('testng', 'gradle'))).toEqual(
+      [...CALC_FINDINGS, ARCHUNIT_FINDING].sort(),
+    );
+  });
 
-  it(
-    'stops a TestNG project on Maven whose archunit-junit5 hides its tests from Surefire',
-    () => {
-      const root = projectOf('testng', 'maven');
-      const { findings } = analyzeJavaSnapshot(root, { maven, policy: {} });
+  it('stops a TestNG project whose archunit-junit5 hides its tests from Surefire 3.5', () => {
+    const root = projectOf('testng', 'maven');
+    const { findings } = analyzeJavaSnapshot(root, { maven, policy: {} });
 
-      expect(findings).toEqual([
-        {
-          tool: 'java',
-          rule: 'maven-failure',
-          path: '.',
-          identity: 'maven-failure',
-          classification: 'tool-error',
-          message:
-            `Surefire ran none of the tests in ${root} but the ArchUnit classes: the JUnit Platform on its ` +
-            'test classpath makes Surefire use its JUnit Platform provider, which runs TestNG tests only through ' +
-            'the TestNG engine. Add org.junit.support:testng-engine to the test dependencies, or run TestNG in ' +
-            'a Surefire execution of its own',
-        },
-      ]);
-    },
-    GRADLE_STEP_TIMEOUT_MS,
-  );
+    expect(findings).toEqual([
+      {
+        tool: 'java',
+        rule: 'maven-failure',
+        path: '.',
+        identity: 'maven-failure',
+        classification: 'tool-error',
+        message:
+          `Surefire ran none of the tests in ${root} but the ArchUnit classes: the JUnit Platform on its ` +
+          'test classpath makes Surefire use its JUnit Platform provider, which runs TestNG tests only through ' +
+          'the TestNG engine. Add org.junit.support:testng-engine to the test dependencies, or run TestNG in ' +
+          'a Surefire execution of its own',
+      },
+    ]);
+  });
+
+  it('measures TestNG coverage and mutants beside ArchUnit with Surefire 3.6', () => {
+    const root = projectOf('testng', 'maven');
+    const pom = path.join(root, 'pom.xml');
+    writeFileSync(
+      pom,
+      readFileSync(pom, 'utf8').replace('<version>3.5.4</version>', '<version>3.6.0</version>'),
+    );
+
+    expect(summary(collectJavaFindings(root, { maven, policy: {} }))).toEqual(
+      [...CALC_FINDINGS, ARCHUNIT_FINDING].sort(),
+    );
+  });
 
   it.each(['gradle', 'maven'])(
     'measures coverage and mutants of a Spock project on %s, runs its ArchUnit rules and finds its slow features in the Groovy sources',
@@ -168,6 +155,5 @@ describe.skipIf(!enabled)('Java preset on each test framework', () => {
         },
       ]);
     },
-    GRADLE_STEP_TIMEOUT_MS,
   );
 });

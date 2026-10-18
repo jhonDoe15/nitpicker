@@ -287,13 +287,13 @@ Coverage (JaCoCo), mutation testing (PIT), ArchUnit and the slow-test check work
 frameworks, on Gradle and on Maven. Nitpicker detects the framework from the project's test runtime
 classpath and its `test` task, and adds no test library to the project.
 
-| Framework | Coverage | Mutation                                                    | ArchUnit                                                                                                                  | Slow tests                                                       |
-| --------- | -------- | ----------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------- |
-| JUnit 4   | yes      | PIT's built-in JUnit 4 support                              | `archunit-junit4`, run on JUnit 4                                                                                         | method by name                                                   |
-| JUnit 5   | yes      | `pitest-junit5-plugin` and a launcher of the engine version | `archunit-junit5`, run on the JUnit Platform                                                                              | method by name or `@DisplayName`                                 |
-| TestNG    | yes      | `pitest-testng-plugin`                                      | Gradle: `archunit-junit5` on the JUnit Platform. Maven: a tool error without `org.junit.support:testng-engine`, see below | method by name                                                   |
-| Spock 2   | yes      | `pitest-junit5-plugin` (Spock runs on the JUnit Platform)   | `archunit-junit5`, run on the JUnit Platform                                                                              | feature by name, an unrolled iteration by its feature; see below |
-| Kotest    | yes      | `pitest-junit5-plugin` (Kotest runs on the JUnit Platform)  | `archunit-junit5`, run on the JUnit Platform                                                                              | the spec file, no line; counted when the file changed            |
+| Framework | Coverage | Mutation                                                    | ArchUnit                                                                                                                             | Slow tests                                                       |
+| --------- | -------- | ----------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------ | ---------------------------------------------------------------- |
+| JUnit 4   | yes      | PIT's built-in JUnit 4 support                              | `archunit-junit4`, run on JUnit 4                                                                                                    | method by name                                                   |
+| JUnit 5   | yes      | `pitest-junit5-plugin` and a launcher of the engine version | `archunit-junit5`, run on the JUnit Platform                                                                                         | method by name or `@DisplayName`                                 |
+| TestNG    | yes      | `pitest-testng-plugin`                                      | Gradle: `archunit-junit5` on the JUnit Platform. Maven: Surefire 3.6+, or an engine/separate execution on older providers, see below | method by name                                                   |
+| Spock 2   | yes      | `pitest-junit5-plugin` (Spock runs on the JUnit Platform)   | `archunit-junit5`, run on the JUnit Platform                                                                                         | feature by name, an unrolled iteration by its feature; see below |
+| Kotest    | yes      | `pitest-junit5-plugin` (Kotest runs on the JUnit Platform)  | `archunit-junit5`, run on the JUnit Platform                                                                                         | the spec file, no line; counted when the file changed            |
 
 - **Coverage.** JaCoCo's agent records whatever test framework the build's own test task runs, so
   coverage needs nothing per framework.
@@ -308,9 +308,10 @@ classpath and its `test` task, and adds no test library to the project.
   `nitpickerArchunit` takes the framework of the declared ArchUnit library (see
   [Slice 4](#slice-4-archunit)); on Maven Surefire runs the rule classes with the provider it picks
   for the project. A violation in a Kotlin or Groovy class is anchored at its `.kt` or `.groovy`
-  file, found under the Kotlin source roots too. A TestNG project on Maven with `archunit-junit5` gets the JUnit Platform on its
-  test classpath, and Surefire then picks its JUnit Platform provider, which runs TestNG tests only
-  through `org.junit.support:testng-engine`: the project's own `mvn test` skips them too. When the
+  file, found under the Kotlin source roots too. Surefire 3.6 and newer can run TestNG beside
+  ArchUnit without a separate TestNG engine. Earlier Surefire versions select their JUnit Platform
+  provider when `archunit-junit5` puts the Platform on the test classpath; that provider runs TestNG
+  tests only through `org.junit.support:testng-engine`, so the project's own `mvn test` skips them too. When the
   TestNG engine is missing and Surefire ran none of a module's tests but the ArchUnit classes,
   nitpicker stops with a `java/maven-failure` that names the cause and the two ways out (add the
   TestNG engine, or run TestNG in a Surefire execution of its own) instead of reporting 0% coverage.
