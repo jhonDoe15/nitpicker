@@ -57,6 +57,7 @@ export function unusedFieldMessage(name, file = 'src/main/java/demo/A.java') {
 }
 
 export function gradleFailureMessage(detail) {
-  return expect.stringMatching(exactText`Full Gradle log: ${tmpdir()}/nitpicker-gradle-failure-${/[A-Za-z0-9]{6}/}/gradle.log
+  const suffix = /[A-Za-z0-9]{6}/;
+  return expect.stringMatching(exactText`Full Gradle log: ${tmpdir()}/nitpicker-gradle-failure-${suffix}/gradle.log
 ${detail}`);
 }
