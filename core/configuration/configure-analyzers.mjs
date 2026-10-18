@@ -66,7 +66,11 @@ function applyJavaConfig(analyzers, config) {
           legacyInventory: config.legacyInventory ?? DEFAULT_LEGACY_INVENTORY,
           ...(analyzer.name === MUTATION_ANALYZER_NAME
             ? { thresholds: { crapLimit: config.thresholds?.crapLimit } }
-            : { thresholds: config.thresholds, exceptions: config.exceptions }),
+            : {
+                thresholds: config.thresholds,
+                exceptions: config.exceptions,
+                duplicates: config.duplicates,
+              }),
         })
       : analyzer,
   );

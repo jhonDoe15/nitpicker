@@ -1,6 +1,6 @@
 import { writeFileSync } from 'node:fs';
 import path from 'node:path';
-import { jscpdVersion } from '../../java/adapters/metrics/java-duplicates.mjs';
+import { jscpdVersion } from '../../../core/tooling/jscpd/run-jscpd.mjs';
 import { scanImports } from './analysis/python-coupling.mjs';
 import { scanDependencies } from './dependencies/dependency-findings.mjs';
 import { runDuplicates } from './analysis/python-duplicates.mjs';
@@ -56,6 +56,7 @@ export function createToolContext({
   settings = {},
   reportRoot,
   exclude = [],
+  duplicateSkippedFolders,
   snapshot = 'head',
   baselineRoot,
   conventions = {},
@@ -83,6 +84,7 @@ export function createToolContext({
     toolPrecedence,
     launcher,
     exclude,
+    duplicateSkippedFolders,
     pytestAddopts,
     project: projectSettings({ projectRoot, liveRoot, settings, sourceRoots }),
     env: {

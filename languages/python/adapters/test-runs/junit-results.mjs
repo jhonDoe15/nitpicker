@@ -1,6 +1,6 @@
 import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
-import { childrenNamed, parseXml } from '../../../java/ingest/common.mjs';
+import { childrenNamed, parseXml } from '../../../../shared/ingest/common.mjs';
 
 export const JUNIT_REPORT = 'pytest-junit.xml';
 export const RERUN_REPORT = 'rerun-junit.xml';
