@@ -133,7 +133,9 @@ describe.skipIf(!enabled)('formatting a module without Java sources', () => {
 
         const empty = run(':models:nitpickerFormat');
         expect(empty.status, empty.stderr).toBe(0);
-        expect(empty.stdout).toContain(':models:nitpickerFormat SKIPPED');
+        expect(empty.stdout.split('\n').filter((line) => line.startsWith('> Task '))).toEqual([
+          '> Task :models:nitpickerFormat SKIPPED',
+        ]);
         expect(empty.stderr).not.toMatch(/no files were provided|Usage: google-java-format/);
         expect(readFileSync(report, 'utf8')).toBe('');
 
@@ -141,12 +143,14 @@ describe.skipIf(!enabled)('formatting a module without Java sources', () => {
         writeFileSync(source, 'class Example{int value(){return 1;}}\n');
         const withJava = run(':models:nitpickerFormat');
         expect(withJava.status, withJava.stderr).toBe(0);
-        expect(readFileSync(report, 'utf8')).toContain(source);
+        expect(readFileSync(report, 'utf8')).toBe(`${source}\n`);
 
         rmSync(source);
         const failed = run(':models:nitpickerFormat', 'unrelatedFailure');
         expect(failed.status).not.toBe(0);
-        expect(failed.stderr).toContain('unrelated failure remains visible');
+        expect(failed.stderr.split('* What went wrong:\n')[1]?.split('\n\n')[0]).toBe(
+          "Execution failed for task ':unrelatedFailure'.\n> unrelated failure remains visible",
+        );
         expect(failed.stderr).not.toMatch(/no files were provided|Usage: google-java-format/);
         expect(readFileSync(report, 'utf8')).toBe('');
       } finally {
