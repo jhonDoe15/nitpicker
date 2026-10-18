@@ -1,4 +1,5 @@
 import { chmodSync, mkdirSync, mkdtempSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
+import { exactText } from '../../../../core/diff/reporting/test-support/output-expectations.mjs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
@@ -139,7 +140,9 @@ describe.skipIf(process.platform === 'win32')('analyzeJavaSnapshot', () => {
     const root = project(wrapper(failing));
 
     expect(messageOf(root, { gradle: undefined })).toEqual(
-      expect.stringContaining(`Java preset failed in ${root}: ran ${root}/gradlew in ${root}`),
+      expect.stringMatching(
+        exactText`Full Gradle log: ${tmpdir()}/nitpicker-gradle-failure-${/[A-Za-z0-9]{6}/}/gradle.log\nJava preset failed in ${root}: ran ${root}/gradlew in ${root}`,
+      ),
     );
   });
 
@@ -147,7 +150,9 @@ describe.skipIf(process.platform === 'win32')('analyzeJavaSnapshot', () => {
     const root = project({ gradlew: { text: failing, mode: 0o644 } });
 
     expect(messageOf(root, { gradle: undefined })).toEqual(
-      expect.stringContaining(`Java preset failed in ${root}: ran ${root}/gradlew in ${root}`),
+      expect.stringMatching(
+        exactText`Full Gradle log: ${tmpdir()}/nitpicker-gradle-failure-${/[A-Za-z0-9]{6}/}/gradle.log\nJava preset failed in ${root}: ran ${root}/gradlew in ${root}`,
+      ),
     );
   });
 
@@ -158,8 +163,8 @@ describe.skipIf(process.platform === 'win32')('analyzeJavaSnapshot', () => {
     });
 
     expect(messageOf(root, { gradle: path.join(other, 'other-gradle') })).toEqual(
-      expect.stringContaining(
-        `Java preset failed in ${root}: configured ${other}/other-gradle in ${root}`,
+      expect.stringMatching(
+        exactText`Full Gradle log: ${tmpdir()}/nitpicker-gradle-failure-${/[A-Za-z0-9]{6}/}/gradle.log\nJava preset failed in ${root}: configured ${other}/other-gradle in ${root}`,
       ),
     );
   });
