@@ -72,6 +72,59 @@ describe.skipIf(!enabled)('PIT targets', () => {
     }
   });
 
+  it.each(['includeTags("fast")', 'excludeTags("stress")'])(
+    'preserves JUnit tag selection from test: %s',
+    (selection) => {
+      const root = projectUnderOrg();
+      writeFileSync(
+        path.join(root, 'build.gradle'),
+        `${readFileSync(path.join(root, 'build.gradle'), 'utf8')}
+ tasks.test { useJUnitPlatform { ${selection} } }
+`,
+      );
+      writeFileSync(
+        path.join(root, 'src/test/java/org/acme/calc/CalcTest.java'),
+        `package org.acme.calc;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.fail;
+
+import org.junit.jupiter.api.Tag;
+import org.junit.jupiter.api.Test;
+
+class CalcTest {
+  @Test
+  @Tag("fast")
+  void doublesTheValue() {
+    assertEquals(6, new Calc().twice(3));
+  }
+
+  @Test
+  @Tag("stress")
+  void needsTheStressEnvironment() {
+    fail("this test must remain excluded from both the baseline and mutation tests");
+  }
+}
+`,
+      );
+      const result = spawnSync(
+        gradle,
+        ['--console=plain', '--quiet', '-I', INIT_SCRIPT, 'test', 'nitpickerPit'],
+        { cwd: root, encoding: 'utf8', timeout: GRADLE_STEP_TIMEOUT_MS },
+      );
+
+      expect(result.stderr).not.toContain('did not pass without mutation');
+      expect(result.status, result.stderr).toBe(0);
+      const report = readFileSync(path.join(root, 'build/nitpicker/pit/mutations.xml'), 'utf8');
+      expect(report).toMatch(
+        /status='KILLED'[\s\S]*?<mutatedClass>org\.acme\.calc\.Calc<\/mutatedClass>/u,
+      );
+      expect(report).toContain('doublesTheValue');
+      expect(report).not.toContain('needsTheStressEnvironment');
+    },
+    GRADLE_STEP_TIMEOUT_MS,
+  );
+
   it(
     'mutates every class of a project rooted in org, which PIT refuses as org.*',
     () => {
