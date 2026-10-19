@@ -9,6 +9,7 @@ import { readChangedLines } from '../../../core/diff/git/patches/changed-lines.m
 import { readRenameMap } from '../../../core/diff/git/patches/project-moves.mjs';
 import { withTemporaryWorktree } from '../../../core/diff/git/repository/worktree.mjs';
 import { gradleTarget } from './gradle-wrapper/gradle-command.mjs';
+import { withGradleLog } from './gradle-wrapper/failure-log.mjs';
 import { condenseFailure } from './gradle-wrapper/failure-text.mjs';
 import { runJavaDuplicates } from './metrics/java-duplicates.mjs';
 import { runKotlinDuplicates } from './kotlin/kotlin-duplicates.mjs';
@@ -26,28 +27,26 @@ import { resolveKotlinRun } from './kotlin/kotlin-run.mjs';
 import { isJavaTouchedRule } from './touched-rules.mjs';
 import { withProjectEnumPredicates } from './review-rules/enum-predicates.mjs';
 import { javaStyleProperties } from './style/java-style.mjs';
+import { gradleBudget } from './gradle-wrapper/gradle-budget.mjs';
 
-const GRADLE_TIMEOUT_MS = 15 * 60 * 1000;
 const MAX_OUTPUT_BYTES = 50 * 1024 * 1024;
 const MAX_FAILURE_LENGTH = 3500;
 const CLOCK_SLACK_MS = 2000;
 const CHECKSTYLE_EXPORT = 'checkstyle-nitpicker.xml';
 
 function assertSucceeded(result, projectRoot, { reportBase, since }) {
-  if (result.error !== undefined) {
-    throw result.error;
+  if (result.error === undefined && result.status === 0) {
+    return;
   }
-  if (result.status !== 0) {
-    const failingTests = failingTestsOf(projectRoot, { reportBase, since });
-    if (failingTests !== undefined) {
-      throw failingTests;
-    }
-    const detail = condenseFailure(
-      result.stderr.trim() === '' ? result.stdout : result.stderr,
-      MAX_FAILURE_LENGTH,
-    );
-    throw new Error(`Java preset failed in ${projectRoot}: ${detail || 'no diagnostic output'}`);
-  }
+  const detail = condenseFailure(
+    result.stderr?.trim() ? result.stderr : (result.stdout ?? ''),
+    MAX_FAILURE_LENGTH,
+  );
+  const failure =
+    result.error ??
+    failingTestsOf(projectRoot, { reportBase, since }) ??
+    new Error(`Java preset failed in ${projectRoot}: ${detail || 'no diagnostic output'}`);
+  throw withGradleLog(failure, result);
 }
 
 function exportArguments(common, { initScript, directory, policy }) {
@@ -64,7 +63,14 @@ function exportArguments(common, { initScript, directory, policy }) {
 
 function runJavaPreset(
   projectRoot,
-  { gradle, initScript = INIT_SCRIPT, policy = {}, reportBase, kotlinRun } = {},
+  {
+    gradle,
+    initScript = INIT_SCRIPT,
+    policy = {},
+    reportBase,
+    kotlinRun,
+    budget = gradleBudget(),
+  } = {},
 ) {
   const withKotlin = kotlinRun?.withArguments ?? ((run) => run([]));
   const directory = path.join(reportBase, 'tool-config');
@@ -99,7 +105,7 @@ function runJavaPreset(
         encoding: 'utf8',
         maxBuffer: MAX_OUTPUT_BYTES,
         shell: target.shell,
-        timeout: GRADLE_TIMEOUT_MS,
+        timeout: budget.commandTimeoutMs,
       });
       assertSucceeded(result, projectRoot, { reportBase, since });
     }
