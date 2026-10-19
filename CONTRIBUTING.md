@@ -98,6 +98,12 @@ timing file automatically. Run one enabled JVM suite at a time. CI uploads a JSO
 shard for reviewing durations and failures; timing provenance and limits are in
 [scripts/test-shards/README.md](scripts/test-shards/README.md).
 
+Python end-to-end CI uses four isolated shards with two test workers each and retains the final
+`python-e2e` check. Reproduce one with
+`npm run test:python -- --maxWorkers=2 --shard=1/4`. Enabled runs and recordings use
+`scripts/test-shards/python-e2e.json` when `NITPICKER_PYTHON_E2E=1`. Enable only one language's
+end-to-end suite at a time so the sequencer and recorder can choose the correct timing profile.
+
 `npm test` runs `languages/python/metrics/structure_metrics.py` on a real `python3`, so it needs
 `python3` 3.10 or newer on the `PATH` (that test file is skipped, with its reason in the name,
 without one). The Python end-to-end suite (`npm run test:python`) needs more tools and the

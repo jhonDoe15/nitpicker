@@ -9,6 +9,15 @@ the corresponding enabled end-to-end suites. Selection uses the same `NITPICKER_
 `NITPICKER_KOTLIN_E2E=1` flag that enables those suites. The recorder and sequencer use the same
 profile; recording disabled tests in an ordinary run cannot erase enabled-suite measurements.
 
+Python uses `python-e2e.json` when `NITPICKER_PYTHON_E2E=1`, with four isolated runner jobs and
+two test workers each. Its initial weights come from the successful
+[Python run 39316386448](https://github.com/jhonDoe15/nitpicker/actions/runs/39316386448) on
+`aec1d434adabc8259fc8e0e56840687952a6c4d1`: 42 files, 767 tests and 399.74 seconds of test-run
+wall time, plus roughly 40 seconds of tool/dependency setup. The sum of per-file times is larger
+because files ran concurrently. The target is 2–4 minutes including setup, subject to measurement
+in the new matrix. Keep Python 3.9/3.10/3.13, version constraints and all current tests on every
+relevant shard; partitioning files must not change interpreter or behavioral coverage.
+
 The initial JVM weights are per-file milliseconds from successful CI logs on main commit
 `e527ccb15c2200c9b60c6d07d3fa010b020a5baa`, rounded up to seconds:
 
@@ -21,7 +30,13 @@ Each language starts with three parallel runner jobs and one active test file pe
 recorded loads split into roughly 747, 542 and 541 seconds, excluding provisioning. Kotlin's
 longest files previously competed on one runner, so their recorded durations include contention:
 those weights order the work, but do not predict its new runtime. Refresh them after isolated
-shard runs. No speedup has been measured for the new workflow yet.
+shard runs. The first isolated-shard runs measured slowest-shard test times of
+767.55 seconds for Java and 447.28 seconds for Kotlin:
+[Java](https://github.com/jhonDoe15/nitpicker/actions/runs/39316386497) and
+[Kotlin](https://github.com/jhonDoe15/nitpicker/actions/runs/39316386344). Cache/load differences
+make this an observed comparison rather than a controlled benchmark. The Kotlin lint suite now
+checks generated-source exclusion using its existing clean-change result, removing one duplicate
+build while retaining all its assertions; its new suite time still needs measuring.
 
 Each shard uploads a JSON test report under a language/shard/attempt-specific artifact name,
 including on test failure when a report exists. Compare slowest-shard time and full workflow wall

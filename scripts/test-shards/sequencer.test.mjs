@@ -25,21 +25,31 @@ describe('enabled end-to-end timing profiles', () => {
     [{ NITPICKER_JAVA_E2E: '0', NITPICKER_KOTLIN_E2E: '0' }, 'durations.json'],
     [{ NITPICKER_JAVA_E2E: '1' }, 'java-e2e.json'],
     [{ NITPICKER_KOTLIN_E2E: '1' }, 'kotlin-e2e.json'],
+    [{ NITPICKER_PYTHON_E2E: '1' }, 'python-e2e.json'],
+    [{ NITPICKER_PYTHON_E2E: '0' }, 'durations.json'],
   ])('selects the timing file for %j', (environment, expected) => {
     expect(path.basename(durationFile(environment))).toBe(expected);
   });
 
-  it('rejects simultaneous JVM profiles instead of using the wrong weights', () => {
-    expect(() => durationFile({ NITPICKER_JAVA_E2E: '1', NITPICKER_KOTLIN_E2E: '1' })).toThrow(
-      'Record or run one JVM end-to-end suite at a time.',
-    );
-  });
+  it.each([
+    ['JAVA', 'KOTLIN'],
+    ['JAVA', 'PYTHON'],
+    ['KOTLIN', 'PYTHON'],
+  ])(
+    'rejects simultaneous %s and %s profiles instead of using the wrong weights',
+    (first, second) => {
+      expect(() =>
+        durationFile({ [`NITPICKER_${first}_E2E`]: '1', [`NITPICKER_${second}_E2E`]: '1' }),
+      ).toThrow('Record or run one language end-to-end suite at a time.');
+    },
+  );
 
-  it.each(['JAVA', 'KOTLIN'])(
+  it.each(['JAVA', 'KOTLIN', 'PYTHON'])(
     'loads %s weights without changing the ordinary profile',
     (language) => {
       vi.stubEnv('NITPICKER_JAVA_E2E', undefined);
       vi.stubEnv('NITPICKER_KOTLIN_E2E', undefined);
+      vi.stubEnv('NITPICKER_PYTHON_E2E', undefined);
       const ordinary = readDurations();
       vi.stubEnv(`NITPICKER_${language}_E2E`, '1');
       const enabled = readDurations();
