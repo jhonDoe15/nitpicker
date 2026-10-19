@@ -239,7 +239,9 @@ comma-separated>` changes that. Those classes are excluded from the regular `tes
 - **What runs.** `nitpickerPit` runs the pinned `pitest-command-line` (1.17.4) with the
   `pitest-junit5-plugin` (1.2.1), default mutators, XML output, two threads, to
   `pit/mutations.xml` in the report directory. Tests are named class by class (`--targetTests`), and
-  `--mutableCodePaths` limits mutation to the main classes. The JUnit Platform is not pinned by
+  `--mutableCodePaths` limits mutation to the main classes. For a JUnit Platform `test` task, its
+  `includeTags` and `excludeTags` also select the tests PIT runs during its green-suite check and
+  mutation testing, including method-level tags. The JUnit Platform is not pinned by
   Nitpicker: the plugin's own platform dependencies are excluded and the project's are used, with a
   launcher of the project's engine version added when the project does not declare one. PIT
   requires a green test run: a failing test suite fails the build, which is a `java/gradle-failure`
@@ -306,6 +308,14 @@ a passing test suite ...`) instead of Gradle's own failure output. Projects with
   project root (base and head are separate worktrees), so each side runs the Gradle version it pins.
   The wrapper downloads the Gradle distribution named in the head snapshot's
   `gradle-wrapper.properties`, and base and head each use their own wrapper.
+- **Gradle timeout.** Each Gradle command has a 15-minute budget by default, for both Java
+  and Kotlin. Set `NITPICKER_GRADLE_TIMEOUT_MINUTES` to a positive whole number of minutes,
+  for example `NITPICKER_GRADLE_TIMEOUT_MINUTES=45 npx nitpicker --base main` for a slow PIT
+  suite. The same budget applies to base and head. Empty values, fractions, units such as
+  `45m`, and values outside 1–17895 are errors. The upper bound keeps the analyzer's Node.js
+  timer within its supported range. The analyzer deadline allows two commands (the optional
+  Checkstyle configuration export and the analysis), plus one minute for reports. This does
+  not change Maven's command budget or configure individual PIT phases.
 - **Config keys.** `base`, `disable` and `analyzers` work as before. `thresholds`, `exclude` and
   `legacyInventory` are shared with the TypeScript preset (`shared/config.mjs`,
   `head-policy.mjs`, `legacy-inventory.mjs`) and reach the Java runner as arguments, so they are

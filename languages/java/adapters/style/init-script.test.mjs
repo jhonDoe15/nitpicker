@@ -54,6 +54,14 @@ describe('the Gradle init script and the formatter style', () => {
       'classpath = configurations.nitpickerFormat',
       "mainClass = javaStyle == 'palantir' ? 'com.palantir.javaformat.java.Main' : 'com.google.googlejavaformat.java.Main'",
       "enabled = javaStyle != 'none'",
+      'onlyIf {',
+      'if (!javaFiles().isEmpty()) {',
+      'return true',
+      '}',
+      'reportDir.get().asFile.mkdirs()',
+      "reportDir.get().file('format.txt').asFile.text = ''",
+      'false',
+      '}',
       'ignoreExitValue = true',
       "jvmArgs(['api', 'file', 'parser', 'tree', 'util', 'code'].collect {",
       '"--add-exports=jdk.compiler/com.sun.tools.javac.${it}=ALL-UNNAMED".toString()',
@@ -61,10 +69,17 @@ describe('the Gradle init script and the formatter style', () => {
       'doFirst {',
       'reportDir.get().asFile.mkdirs()',
       "standardOutput = new FileOutputStream(reportDir.get().file('format.txt').asFile)",
-      'def files = (mainSources.files + testSourceDirectories()).findAll { it.exists() }',
-      ".collectMany { directory -> fileTree(directory) { include '**/*.java' }.files }.unique().sort()",
-      "args(['--dry-run'] + ([aosp: ['--aosp'], palantir: ['--palantir']][javaStyle] ?: []) + files*.absolutePath)",
+      "args(['--dry-run'] + ([aosp: ['--aosp'], palantir: ['--palantir']][javaStyle] ?: []) + javaFiles()*.absolutePath)",
       '}',
+      '}',
+    ]);
+  });
+
+  it('checks the same main and test Java files before and during formatting', () => {
+    expect(blockStartingWith('def javaFiles = {')).toEqual([
+      'def javaFiles = {',
+      '(mainSources.files + testSourceDirectories()).findAll { it.exists() }',
+      ".collectMany { directory -> fileTree(directory) { include '**/*.java' }.files }.unique().sort()",
       '}',
     ]);
   });
