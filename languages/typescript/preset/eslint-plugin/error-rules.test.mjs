@@ -61,11 +61,6 @@ ruleTester.run('no-silent-catch', noSilentCatch, {
       filename: '/repo/src/main/feature.ts',
       code: "try { execute(); } catch (error) { logger.error({ err: error }, 'failed'); throw error; }",
     },
-    { filename: '/repo/src/main/feature.ts', code: 'try { execute(); } catch { useFallback(); }' },
-    {
-      filename: '/repo/src/main/feature.ts',
-      code: "try { execute(); } catch (error) { logger.warn('bad'); recover(); }",
-    },
     {
       filename: '/repo/src/main/feature.ts',
       code: 'try { execute(); } catch (error) { errors.push(error); }',
@@ -96,23 +91,7 @@ ruleTester.run('no-silent-catch', noSilentCatch, {
     },
     {
       filename: '/repo/src/main/feature.ts',
-      code: 'try { execute(); } catch (error) { return computeFallback(); }',
-    },
-    {
-      filename: '/repo/src/main/feature.ts',
-      code: 'try { execute(); } catch (error) { result = computeFallback(); }',
-    },
-    {
-      filename: '/repo/src/main/feature.ts',
       code: 'async function f() { try { await execute(); } catch (error) { await recover(error); } }',
-    },
-    {
-      filename: '/repo/src/main/feature.ts',
-      code: 'async function f() { try { await execute(); } catch { await recover(); } }',
-    },
-    {
-      filename: '/repo/src/main/feature.ts',
-      code: 'for (const item of items) { try { execute(item); } catch (error) { break; } }',
     },
     {
       filename: '/repo/src/main/feature.ts',
@@ -121,10 +100,6 @@ ruleTester.run('no-silent-catch', noSilentCatch, {
     {
       filename: '/repo/src/main/feature.ts',
       code: 'try { execute(); } catch (error) { if (isFatal(error)) { throw error; } return null; }',
-    },
-    {
-      filename: '/repo/src/main/feature.ts',
-      code: 'try { execute(); } catch (error) { cleanup?.(); }',
     },
   ],
   invalid: [
@@ -286,6 +261,41 @@ ruleTester.run('no-silent-catch', noSilentCatch, {
     {
       filename: '/repo/src/main/feature.ts',
       code: 'try { execute(); } catch (error) { const retry = () => { throw error; }; }',
+      errors: [{ messageId: 'silent' }],
+    },
+    {
+      filename: '/repo/src/main/feature.ts',
+      code: 'try { execute(); } catch { useFallback(); }',
+      errors: [{ messageId: 'silent' }],
+    },
+    {
+      filename: '/repo/src/main/feature.ts',
+      code: "try { execute(); } catch (error) { logger.warn('bad'); recover(); }",
+      errors: [{ messageId: 'silent' }],
+    },
+    {
+      filename: '/repo/src/main/feature.ts',
+      code: 'try { execute(); } catch (error) { return computeFallback(); }',
+      errors: [{ messageId: 'silent' }],
+    },
+    {
+      filename: '/repo/src/main/feature.ts',
+      code: 'try { execute(); } catch (error) { result = computeFallback(); }',
+      errors: [{ messageId: 'silent' }],
+    },
+    {
+      filename: '/repo/src/main/feature.ts',
+      code: 'async function f() { try { await execute(); } catch { await recover(); } }',
+      errors: [{ messageId: 'silent' }],
+    },
+    {
+      filename: '/repo/src/main/feature.ts',
+      code: 'for (const item of items) { try { execute(item); } catch (error) { break; } }',
+      errors: [{ messageId: 'silent' }],
+    },
+    {
+      filename: '/repo/src/main/feature.ts',
+      code: 'try { execute(); } catch (error) { cleanup?.(); }',
       errors: [{ messageId: 'silent' }],
     },
   ],

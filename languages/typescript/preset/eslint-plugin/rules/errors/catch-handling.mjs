@@ -10,7 +10,6 @@ const REPORT_METHODS = new Set([
   'verbose',
   'silly',
 ]);
-const TALLY_METHODS = new Set(['push', 'unshift', 'add', 'set', 'append', 'concat']);
 const EMPTY_CONSTRUCTORS = new Set([
   'Array',
   'Object',
@@ -47,38 +46,43 @@ function loggerName(name) {
 }
 
 function receiverName(node) {
-  if (node.type === 'Identifier') return node.name;
+  if (node.type === 'Identifier') {
+    return node.name;
+  }
   if (node.type === 'MemberExpression' && !node.computed && node.property.type === 'Identifier') {
     return node.property.name;
   }
-  if (node.type === 'ThisExpression') return 'this';
+  if (node.type === 'ThisExpression') {
+    return 'this';
+  }
   return undefined;
 }
 
 function isReport(node) {
-  if (node.type !== 'CallExpression' || node.callee.type !== 'MemberExpression') return false;
+  if (node.type !== 'CallExpression' || node.callee.type !== 'MemberExpression') {
+    return false;
+  }
   const { object, property, computed } = node.callee;
-  if (computed || property.type !== 'Identifier') return false;
+  if (computed || property.type !== 'Identifier') {
+    return false;
+  }
   const owner = receiverName(object);
-  if (owner === 'console') return true;
-  if (['stderr', 'stdout'].includes(owner) && property.name === 'write') return true;
+  if (owner === 'console') {
+    return true;
+  }
+  if (['stderr', 'stdout'].includes(owner) && property.name === 'write') {
+    return true;
+  }
   return REPORT_METHODS.has(property.name) && owner !== undefined && loggerName(owner);
 }
 
 function calleeName(node) {
-  if (node.callee.type === 'Identifier') return node.callee.name;
+  if (node.callee.type === 'Identifier') {
+    return node.callee.name;
+  }
   return node.callee.type === 'MemberExpression' && node.callee.property.type === 'Identifier'
     ? node.callee.property.name
     : undefined;
-}
-
-function isTally(node) {
-  return (
-    node.callee.type === 'MemberExpression' &&
-    !node.callee.computed &&
-    node.callee.property.type === 'Identifier' &&
-    TALLY_METHODS.has(node.callee.property.name)
-  );
 }
 
 function isEmptyValue(node) {
@@ -101,7 +105,9 @@ export function createHandlerReader(sourceCode) {
   function* walk(root) {
     const pending = [root];
     for (const node of pending) {
-      if (node !== root && (SCOPES.has(node.type) || isReport(node))) continue;
+      if (node !== root && (SCOPES.has(node.type) || isReport(node))) {
+        continue;
+      }
       yield node;
       for (const key of visitorKeys[node.type] ?? []) {
         const child = node[key];
@@ -109,12 +115,6 @@ export function createHandlerReader(sourceCode) {
       }
     }
   }
-
-  const hasCall = (node) =>
-    node !== null &&
-    [...walk(node)].some(
-      (part) => ['CallExpression', 'NewExpression'].includes(part.type) && !isEmptyValue(part),
-    );
 
   function carries(node, variables) {
     return (
@@ -148,12 +148,6 @@ export function createHandlerReader(sourceCode) {
     return variables;
   }
 
-  function isStatementCall(node) {
-    let parent = node.parent;
-    while (['AwaitExpression', 'ChainExpression'].includes(parent.type)) parent = parent.parent;
-    return parent.type === 'ExpressionStatement';
-  }
-
   function readOutside(variable, handler) {
     return variable.references.some(
       (reference) => reference.isRead() && !within(handler, reference.identifier),
@@ -161,8 +155,12 @@ export function createHandlerReader(sourceCode) {
   }
 
   function assignmentEvidence(node, variables, handler) {
-    if (!carries(node.right, variables)) return node.operator === '=' && hasCall(node.right);
-    if (node.operator !== '=' || node.left.type !== 'Identifier') return true;
+    if (!carries(node.right, variables)) {
+      return false;
+    }
+    if (node.operator !== '=' || node.left.type !== 'Identifier') {
+      return true;
+    }
     const target = variables.find((variable) => variable.name === node.left.name);
     return target !== undefined && readOutside(target, handler);
   }
@@ -170,27 +168,23 @@ export function createHandlerReader(sourceCode) {
   function isEvidence(node, variables, handler) {
     switch (node.type) {
       case 'ThrowStatement':
-      case 'BreakStatement':
         return true;
       case 'CallExpression':
       case 'NewExpression':
         return (
-          (node.type === 'CallExpression' && isStatementCall(node) && !isTally(node)) ||
-          (!isEmptyValue(node) &&
-            !FORMATTERS.has(calleeName(node)) &&
-            node.arguments.some((argument) => carries(argument, variables)))
+          !isEmptyValue(node) &&
+          !FORMATTERS.has(calleeName(node)) &&
+          node.arguments.some((argument) => carries(argument, variables))
         );
       case 'ReturnStatement':
         return (
           node.argument !== null &&
-          (node.argument.type === 'ObjectExpression' ||
-            hasCall(node.argument) ||
-            carries(node.argument, variables))
+          (node.argument.type === 'ObjectExpression' || carries(node.argument, variables))
         );
       case 'AssignmentExpression':
         return assignmentEvidence(node, variables, handler);
       case 'VariableDeclarator':
-        return node.init !== null && !carries(node.init, variables) && hasCall(node.init);
+        return false;
       default:
         return false;
     }
