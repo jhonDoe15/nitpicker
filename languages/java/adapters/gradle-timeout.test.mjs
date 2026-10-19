@@ -1,5 +1,5 @@
 import { spawnSync } from 'node:child_process';
-import { mkdtempSync, rmSync } from 'node:fs';
+import { mkdtempSync, readFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it, vi } from 'vitest';
@@ -26,7 +26,14 @@ function runGradle() {
   roots.push(root);
   const error = new Error('stop before reading reports');
   vi.mocked(spawnSync).mockReturnValue({ error });
-  expect(analyzeJavaSnapshot(root, { gradle: 'gradle' }).findings[0].message).toBe(error.message);
+  const message = analyzeJavaSnapshot(root, { gradle: 'gradle' }).findings[0].message;
+  const logFile = message.split('\n')[0].slice('Full Gradle log: '.length);
+  expect(path.relative(tmpdir(), path.dirname(logFile))).toMatch(
+    /^nitpicker-gradle-failure-[\w-]+$/,
+  );
+  roots.push(path.dirname(logFile));
+  expect(message).toBe(`Full Gradle log: ${logFile}\n${error.message}`);
+  expect(readFileSync(logFile, 'utf8')).toBe('=== stdout ===\n\n=== stderr ===\n');
   return vi.mocked(spawnSync).mock.calls[0][2].timeout;
 }
 
