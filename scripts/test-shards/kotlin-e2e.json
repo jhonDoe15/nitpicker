@@ -1,0 +1,8 @@
+{
+  "languages/java/adapters/kotlin-e2e/kotlin-preset-coverage-and-structure.e2e.test.mjs": 887,
+  "languages/java/adapters/kotlin-e2e/kotlin-preset-lint.e2e.test.mjs": 1120,
+  "languages/java/adapters/kotlin-e2e/kotlin-preset-one-way-rules.e2e.test.mjs": 605,
+  "languages/java/adapters/kotlin-e2e/kotlin-preset-toolchain.e2e.test.mjs": 143,
+  "languages/java/adapters/kotlin-e2e/test-sources/kotlin-test-sources.e2e.test.mjs": 240,
+  "languages/java/adapters/kotlin-metrics.e2e.test.mjs": 44
+}

@@ -1,0 +1,13 @@
+{
+  "languages/java/adapters/errorprone/checks/checks-catalog.e2e.test.mjs": 10,
+  "languages/java/adapters/errorprone/error-prone.e2e.test.mjs": 35,
+  "languages/java/adapters/errorprone/lombok.e2e.test.mjs": 100,
+  "languages/java/adapters/java-e2e/java-preset.e2e.test.mjs": 747,
+  "languages/java/adapters/java-e2e/multi-project.e2e.test.mjs": 64,
+  "languages/java/adapters/java-e2e/pit-targets.e2e.test.mjs": 12,
+  "languages/java/adapters/spring/java-spring.e2e.test.mjs": 271,
+  "languages/java/adapters/suppressions/escape-hatches.e2e.test.mjs": 131,
+  "languages/java/maven/errorprone/maven-errorprone.e2e.test.mjs": 27,
+  "languages/java/maven/maven-preset.e2e.test.mjs": 431,
+  "languages/java/messages/rule-catalog.e2e.test.mjs": 2
+}
