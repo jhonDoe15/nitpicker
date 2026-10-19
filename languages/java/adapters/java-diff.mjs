@@ -17,6 +17,7 @@ import { applyFindingPolicy } from '../../../shared/findings/finding-policy.mjs'
 import { withoutFollowedImports } from './imports/followed-imports.mjs';
 import { withoutOverlaps } from './overlaps/static-overlaps.mjs';
 import { toolConfigChoices, toolConfigProperties } from './tool-config/tool-config-choices.mjs';
+import { javaFindingOptions } from './reporting/finding-options.mjs';
 import { readJavaFindings } from './reporting/java-reports.mjs';
 import { readReportModules } from './gradle-reports/report-modules.mjs';
 import { failingTestsOf } from './gradle-reports/failing-tests.mjs';
@@ -124,22 +125,6 @@ function withoutReportBase(error, reportBase) {
     : error;
 }
 
-function readOptions(policy = {}) {
-  return {
-    crapLimit: policy.crapLimit,
-    preset: policy.preset ?? 'java',
-    conventions: policy.conventions,
-    fileLimits: policy.fileLimits,
-    exclude: policy.exclude,
-    exceptions: policy.exceptions,
-    testSeconds: policy.testSeconds,
-    testConsoleAllow: policy.testConsoleAllow,
-    javaStyle: policy.javaStyle,
-    baselineRoot: policy.baselineRoot,
-    baseline: { snapshot: policy.snapshot, baselineRoot: policy.baselineRoot },
-  };
-}
-
 function gradleFindings(projectRoot, options, reportBase) {
   const preset = options.policy?.preset ?? 'java';
   const kotlinRun = resolveKotlinRun(projectRoot, options.policy);
@@ -155,7 +140,7 @@ function gradleFindings(projectRoot, options, reportBase) {
     runKotlinDuplicates(projectRoot, duplicates);
   }
   return readJavaFindings(projectRoot, {
-    ...readOptions(options.policy),
+    ...javaFindingOptions(options.policy),
     formatAdvice: kotlinRun?.advice,
     reportBase,
     report,
@@ -191,7 +176,7 @@ function mavenFindings(projectRoot, options) {
     });
   }
   return readModuleFindings(projectRoot, moduleDirs, {
-    ...readOptions(options.policy),
+    ...javaFindingOptions(options.policy),
     reportDirectory: MAVEN_REPORT_DIRECTORY,
   });
 }
