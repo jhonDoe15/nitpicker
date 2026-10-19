@@ -1,5 +1,5 @@
 import { spawnSync } from 'node:child_process';
-import { mkdirSync, mkdtempSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -57,11 +57,30 @@ function runQualityTests(projectFiles) {
     'languages/typescript/preset/defaults/vitest.quality.config.ts',
   );
   const vitest = path.join(packageRoot, 'node_modules/vitest/vitest.mjs');
-  return spawnSync(process.execPath, [vitest, 'run', '--config', config, '--root', root], {
-    cwd: root,
-    encoding: 'utf8',
-    env: { ...process.env, NITPICKER_POLICY: '' },
-  });
+  const report = path.join(root, 'test-results.json');
+  const result = spawnSync(
+    process.execPath,
+    [
+      vitest,
+      'run',
+      '--config',
+      config,
+      '--root',
+      root,
+      '--reporter=json',
+      `--outputFile=${report}`,
+    ],
+    {
+      cwd: root,
+      encoding: 'utf8',
+      env: { ...process.env, NITPICKER_POLICY: '' },
+      timeout: 30_000,
+    },
+  );
+  return {
+    ...result,
+    report: result.status === 0 ? JSON.parse(readFileSync(report, 'utf8')) : undefined,
+  };
 }
 
 function pick(source, keys) {
@@ -259,7 +278,7 @@ describe('a test run with the vitest config nitpicker runs tests with', () => {
   });
 
   it('keeps globals a setup file stubs for every test', () => {
-    expect({ status: run.status, passed: /Tests\s+2 passed/u.test(run.stdout) }).toEqual({
+    expect({ status: run.status, passed: run.report?.numPassedTests === 2 }).toEqual({
       status: 0,
       passed: true,
     });
