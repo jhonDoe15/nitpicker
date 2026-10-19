@@ -81,11 +81,15 @@ function measureFixture(context) {
 
 function fixtureFindings({ module, reportDir, policy }) {
   const projectRoot = module.basedir;
-  const relativeRoots = (roots) => roots.map((root) => path.relative(projectRoot, root));
+  function relativeRoots(roots) {
+    return roots.map((root) => path.relative(projectRoot, root));
+  }
   const sourceRoots = relativeRoots(module.sourceRoots);
   const testRoots = relativeRoots(module.testSourceRoots);
   const locate = sourceLocator(projectRoot, [...sourceRoots, ...testRoots]);
-  const resolvePath = (className, fileName) => sourceFileOf(locate, className, fileName);
+  function resolvePath(className, fileName) {
+    return sourceFileOf(locate, className, fileName);
+  }
   const jacoco = readFileSync(path.join(reportDir, 'jacoco.xml'), 'utf8');
   const archunitDir = path.join(reportDir, 'archunit');
   return [
