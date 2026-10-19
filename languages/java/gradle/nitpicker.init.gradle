@@ -412,6 +412,15 @@ allprojects {
                       '--threads', '2',
                       '--failWhenNoMutations', 'false',
                       '--verbose', 'false'])
+                def testOptions = tasks.named('test').get().options
+                if (testOptions instanceof org.gradle.api.tasks.testing.junitplatform.JUnitPlatformOptions) {
+                    if (!testOptions.includeTags.isEmpty()) {
+                        args '--includedGroups', testOptions.includeTags.toList().sort().join(',')
+                    }
+                    if (!testOptions.excludeTags.isEmpty()) {
+                        args '--excludedGroups', testOptions.excludeTags.toList().sort().join(',')
+                    }
+                }
             }
             onlyIf { mutatedClassDirs().any { it.exists() && it.list()?.length } }
             doLast {
