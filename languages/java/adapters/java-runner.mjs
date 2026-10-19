@@ -4,10 +4,15 @@ import { collectJavaFindings } from './java-diff.mjs';
 import { detectJavaBuild } from '../builds/java-build.mjs';
 import { parseJavaRunnerArguments } from './java-policy.mjs';
 import { javaStyle } from './style/java-style.mjs';
+import { gradleBudget } from './gradle-wrapper/gradle-budget.mjs';
 
 export const GRADLE_FAILURE_RULE = 'gradle-failure';
 export const MAVEN_FAILURE_RULE = 'maven-failure';
 const MAX_MESSAGE_LENGTH = 4000;
+
+export function javaExecutionBudget(environment = process.env) {
+  return gradleBudget(environment);
+}
 
 export function analyzeJavaSnapshot(
   projectRoot,
@@ -19,6 +24,7 @@ export function analyzeJavaSnapshot(
         gradle: gradle || undefined,
         maven: maven || undefined,
         policy,
+        budget: javaExecutionBudget(),
       }),
     };
   } catch (error) {
