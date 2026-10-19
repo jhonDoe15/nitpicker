@@ -1,3 +1,4 @@
+import { END_TO_END_ROOT, endToEndFor } from './layout/end-to-end.mjs';
 import { existsSync } from 'node:fs';
 import path from 'node:path';
 import { filesUnder } from '../../../shared/filesystem.mjs';
@@ -18,7 +19,7 @@ import {
 export { globToRegExp };
 
 const defaultSourceRoots = ['src'];
-export const END_TO_END_ROOT = 'e2e';
+export { END_TO_END_ROOT } from './layout/end-to-end.mjs';
 const defaultTestRoots = ['test', 'tests', '__tests__', END_TO_END_ROOT];
 export const codeExtensionNames = ['ts', 'tsx', 'mts', 'cts', 'js', 'jsx', 'mjs', 'cjs'];
 export const codeExtensions = `{${codeExtensionNames.join(',')}}`;
@@ -201,19 +202,6 @@ function exactPathPattern(files) {
   return files.length === 0
     ? undefined
     : `^(?:${files.map((file) => escapeRegExp(file)).join('|')})$`;
-}
-
-function endToEndFor(layout, testRoots, extensionGlob) {
-  const isRoot = testRoots.includes(END_TO_END_ROOT);
-  return {
-    executedTestRoots:
-      layout.testRoots === undefined
-        ? testRoots.filter((root) => root !== END_TO_END_ROOT)
-        : testRoots,
-    endToEndGlobs: isRoot ? [`${END_TO_END_ROOT}/**/*.${extensionGlob}`] : [],
-    isEndToEndTest: (file) =>
-      isRoot && file.replaceAll('\\', '/').startsWith(`${END_TO_END_ROOT}/`),
-  };
 }
 
 export function resolveLayout(
