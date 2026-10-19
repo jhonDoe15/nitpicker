@@ -102,13 +102,15 @@ describe.skipIf(!kotlinE2eEnabled)('Kotlin preset detekt, ktlint and ktfmt end t
     removeProject(project);
     removeProject(kotlinOnlyProject);
   });
-  it('passes a tested Kotlin change and keeps the legacy detekt finding baselined when its line moves', () => {
+  it('passes a tested Kotlin change, keeps moved legacy findings baselined and ignores generated sources', () => {
     const result = diffOf(project, 'clean');
 
     expect(result.failed).toBe(false);
     expect(summarize(result.newEnforceable)).toEqual([]);
     expect(fromTool(result.newFindings, 'jacoco')).toEqual(['jacoco line-coverage Farewell.kt']);
     expect(fromTool(result.unchangedFindings, 'detekt')).toEqual(LEGACY_FINDINGS);
+    expect(result.unchangedFindings.some(({ path: file }) => file.endsWith('Api.kt'))).toBe(false);
+    expect(result.newFindings.some(({ path: file }) => file.endsWith('Api.kt'))).toBe(false);
   });
   it('fails new detekt and ktlint findings (ktlint detected from .editorconfig) in Kotlin code', () => {
     const result = diffOf(project, 'violation');
@@ -122,12 +124,6 @@ describe.skipIf(!kotlinE2eEnabled)('Kotlin preset detekt, ktlint and ktfmt end t
     expect(Math.min(...ktlintOf(result.newEnforceable).map(({ location }) => location.line))).toBe(
       3,
     );
-  });
-  it('does not lint generated sources registered from the build directory', () => {
-    const result = diffOf(project, 'clean');
-
-    expect(result.unchangedFindings.some(({ path: file }) => file.endsWith('Api.kt'))).toBe(false);
-    expect(result.newFindings.some(({ path: file }) => file.endsWith('Api.kt'))).toBe(false);
   });
   it('still gates Java sources of a Kotlin module with the Java tools', () => {
     const result = diffOf(project, 'java-in-kotlin-module');
