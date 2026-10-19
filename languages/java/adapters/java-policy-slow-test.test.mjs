@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { applyJavaPolicy } from './java-policy.mjs';
+import { applyFindingPolicy } from '../../../shared/findings/finding-policy.mjs';
 
 const slow = {
   tool: 'test-runtime',
@@ -10,10 +10,10 @@ const slow = {
 };
 const exception = (rule) => ({ exceptions: [{ rule, glob: 'src/test/**' }] });
 
-describe('applyJavaPolicy slow tests', () => {
+describe('applyFindingPolicy slow tests', () => {
   it('lifts a slow test named bare or as printed', () => {
-    expect(applyJavaPolicy([slow], exception('slow-test'))).toEqual([]);
-    expect(applyJavaPolicy([slow], exception('test-runtime/slow-test'))).toEqual([]);
-    expect(applyJavaPolicy([slow], exception('pmd/slow-test'))).toEqual([slow]);
+    expect(applyFindingPolicy([slow], exception('slow-test'))).toEqual([]);
+    expect(applyFindingPolicy([slow], exception('test-runtime/slow-test'))).toEqual([]);
+    expect(applyFindingPolicy([slow], exception('pmd/slow-test'))).toEqual([slow]);
   });
 });

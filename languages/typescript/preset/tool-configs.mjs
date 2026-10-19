@@ -17,6 +17,7 @@ import {
   readJsonc,
   referencedTsconfigs,
 } from './modules/tsconfig-files.mjs';
+import { selectedProjectTsconfig } from './modules/selected-project-tsconfig.mjs';
 import { END_TO_END_ROOT, sourceRoots, testRoots } from './layout.mjs';
 
 const DEFAULT_SOURCE_ROOTS = new Set(sourceRoots);
@@ -143,6 +144,9 @@ export function layoutTransformFor(policyFileName, layout, { strictMutants = tru
   const relaxesMutants = name === STRYKER_TSCONFIG && !strictMutants;
   return (text, targetPath) => {
     const projectDirectory = path.dirname(targetPath);
+    if (layout.typescriptProject !== undefined) {
+      return selectedProjectTsconfig(projectDirectory, layout);
+    }
     const projectConfig = projectConfigName(projectDirectory, layout);
     if (projectConfig !== undefined) {
       const extended = projectBaseTsconfig(projectDirectory, layout, projectConfig);

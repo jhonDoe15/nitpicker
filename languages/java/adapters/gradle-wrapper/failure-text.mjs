@@ -54,5 +54,5 @@ export function condenseFailure(text, limit) {
     .filter((cause) => !head.includes(cause))
     .join('\n')
     .slice(0, causeText.length);
-  return [head, newCauses, failure].filter(Boolean).join(SEPARATOR);
+  return [failure, newCauses, head].filter(Boolean).join(SEPARATOR);
 }

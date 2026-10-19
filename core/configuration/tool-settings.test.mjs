@@ -103,3 +103,29 @@ describe('tool precedence', () => {
     );
   });
 });
+
+describe('TypeScript project config', () => {
+  it('accepts a config path independently of the compiler engine', () => {
+    expect(
+      validateConfig({
+        tools: { typescript: { project: 'config/types.json', engine: 'project' } },
+      }),
+    ).toBeDefined();
+  });
+  it.each([
+    '',
+    42,
+    null,
+    '/tmp/tsconfig.json',
+    '../tsconfig.json',
+    'C:\\tsconfig.json',
+    'config/../tsconfig.json',
+    '*.json',
+    'tsconfig',
+    'bad\0.json',
+  ])('rejects an unsafe or malformed config path %s', (project) => {
+    expect(() => validateConfig({ tools: { typescript: { project } } })).toThrow(
+      '"tools.typescript.project"',
+    );
+  });
+});
