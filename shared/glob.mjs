@@ -8,7 +8,7 @@ export function globToRegExpSource(glob) {
     const character = glob[index];
     if (character === '*' && glob[index + 1] === '*') {
       const followedBySlash = glob[index + 2] === '/';
-      source += followedBySlash ? '(?:.*/)?' : '.*';
+      source += followedBySlash ? '(?:|.*/)' : '.*';
       index += followedBySlash ? 2 : 1;
     } else if (character === '*') {
       source += '[^/]*';

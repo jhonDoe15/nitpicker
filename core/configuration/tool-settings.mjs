@@ -1,3 +1,4 @@
+import path from 'node:path';
 import {
   GRADLE_PRESETS,
   PROJECT_TOOL_CONFIGS,
@@ -9,7 +10,7 @@ import { TEST_RUNNERS } from '../../languages/typescript/preset/test-runner/runn
 const TOOL_SETTING_KEYS = new Map([
   ['prettier', ['precedence']],
   ['eslint', ['engine']],
-  ['typescript', ['engine']],
+  ['typescript', ['engine', 'project']],
   ['tests', ['runner']],
 ]);
 const ENGINES = new Map([
@@ -97,6 +98,9 @@ function validateToolSettings(name, settings, toolSettingKeys) {
   }
   if (ENGINES.has(name)) {
     validateEngine(name, settings[ENGINES.get(name).key]);
+    if (name === 'typescript') {
+      validateTypeScriptProject(settings.project);
+    }
     return;
   }
   validatePrecedence(settings.precedence, name);
@@ -137,5 +141,23 @@ function validatePrecedence(precedence, name) {
     throw configError(
       `"tools.${name}.precedence" must list "project", "nitpicker" or both, each once${ORDERED_PRECEDENCE_TOOLS.includes(name) ? ', highest first' : ''}`,
     );
+  }
+}
+
+function validateTypeScriptProject(project) {
+  if (project === undefined) {
+    return;
+  }
+  const normalized = typeof project === 'string' ? project.replaceAll('\\', '/') : '';
+  if (
+    normalized.trim().length === 0 ||
+    normalized.includes('\0') ||
+    path.posix.isAbsolute(normalized) ||
+    /^[A-Za-z]:/.test(normalized) ||
+    normalized.split('/').includes('..') ||
+    /[*?{}[\]]/.test(normalized) ||
+    !normalized.endsWith('.json')
+  ) {
+    throw configError('"tools.typescript.project" must name a JSON config file inside the project');
   }
 }

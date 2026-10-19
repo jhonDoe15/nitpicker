@@ -1069,6 +1069,26 @@ To always type check with the project's own TypeScript, set the engine:
 { "tools": { "typescript": { "engine": "project" } } }
 ```
 
+### TypeScript project config
+
+To use your project's own type scope and compiler options for type checking and Stryker's
+TypeScript checker, explicitly select a config in `nitpicker.config.json`:
+
+```json
+{ "tools": { "typescript": { "project": "tsconfig.quality.json" } } }
+```
+
+The path must name a JSON config file inside the project, relative to its root. Nested configs
+and their `extends` are supported. Each snapshot reads its own copy of that config. Its options,
+`files`, `include` and `exclude` are retained; nitpicker adds its configured `exclude` patterns
+and sets `noEmit: true`. Imported files and explicit `files` entries follow TypeScript's usual
+exclusion semantics. The preset does not add strictness, JavaScript inputs or DOM libraries to
+an explicitly selected config. A missing config is an error, without a preset fallback.
+
+`project` selects the config independently of `engine`, so both keys can be set together. With
+no `project`, nitpicker keeps its strict preset and automatic root tsconfig/jsconfig layering.
+Other analyzers still enforce nitpicker's rules and source/test layout.
+
 ## Adopting nitpicker on existing code
 
 Because only new findings fail, most analyzers need no preparation. The `coding-standards` analyzer
