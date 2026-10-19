@@ -11,7 +11,6 @@ import {
   useGradleFixtures,
 } from './test-support/java-cli-harness.mjs';
 import { writeFiles } from '../../diff/git/test-support/fixture-files.mjs';
-import { exceptionHint } from '../../../shared/rules/exceptions.mjs';
 import { acceptedDigest } from '../test-support/accepted-digest.mjs';
 
 const { gradleRepository, kotlinRepository, run, runCli, temporaryRoot } =
