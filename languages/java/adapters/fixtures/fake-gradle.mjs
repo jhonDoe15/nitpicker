@@ -9,6 +9,10 @@ import {
 } from 'node:fs';
 import path from 'node:path';
 
+if (existsSync('GRADLE_STDOUT')) {
+  process.stdout.write(readFileSync('GRADLE_STDOUT', 'utf8'));
+}
+
 if (existsSync('GRADLE_FAIL')) {
   process.stderr.write(`${readFileSync('GRADLE_FAIL', 'utf8')}\n`);
   process.exit(1);
