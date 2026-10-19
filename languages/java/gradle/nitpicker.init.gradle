@@ -308,11 +308,23 @@ allprojects {
             onlyIf { analyzedClassDirs().any { it.exists() && it.list()?.length } }
         }
 
+        def javaFiles = {
+            (mainSources.files + testSourceDirectories()).findAll { it.exists() }
+                .collectMany { directory -> fileTree(directory) { include '**/*.java' }.files }.unique().sort()
+        }
         tasks.register('nitpickerFormat', JavaExec) {
             group = 'nitpicker'
             classpath = configurations.nitpickerFormat
             mainClass = javaStyle == 'palantir' ? 'com.palantir.javaformat.java.Main' : 'com.google.googlejavaformat.java.Main'
             enabled = javaStyle != 'none'
+            onlyIf {
+                if (!javaFiles().isEmpty()) {
+                    return true
+                }
+                reportDir.get().asFile.mkdirs()
+                reportDir.get().file('format.txt').asFile.text = ''
+                false
+            }
             ignoreExitValue = true
             jvmArgs(['api', 'file', 'parser', 'tree', 'util', 'code'].collect {
                 "--add-exports=jdk.compiler/com.sun.tools.javac.${it}=ALL-UNNAMED".toString()
@@ -320,9 +332,7 @@ allprojects {
             doFirst {
                 reportDir.get().asFile.mkdirs()
                 standardOutput = new FileOutputStream(reportDir.get().file('format.txt').asFile)
-                def files = (mainSources.files + testSourceDirectories()).findAll { it.exists() }
-                    .collectMany { directory -> fileTree(directory) { include '**/*.java' }.files }.unique().sort()
-                args(['--dry-run'] + ([aosp: ['--aosp'], palantir: ['--palantir']][javaStyle] ?: []) + files*.absolutePath)
+                args(['--dry-run'] + ([aosp: ['--aosp'], palantir: ['--palantir']][javaStyle] ?: []) + javaFiles()*.absolutePath)
             }
         }
 
@@ -412,6 +422,15 @@ allprojects {
                       '--threads', '2',
                       '--failWhenNoMutations', 'false',
                       '--verbose', 'false'])
+                def testOptions = tasks.named('test').get().options
+                if (testOptions instanceof org.gradle.api.tasks.testing.junitplatform.JUnitPlatformOptions) {
+                    if (!testOptions.includeTags.isEmpty()) {
+                        args '--includedGroups', testOptions.includeTags.toList().sort().join(',')
+                    }
+                    if (!testOptions.excludeTags.isEmpty()) {
+                        args '--excludedGroups', testOptions.excludeTags.toList().sort().join(',')
+                    }
+                }
             }
             onlyIf { mutatedClassDirs().any { it.exists() && it.list()?.length } }
             doLast {
@@ -446,10 +465,10 @@ allprojects {
             executionData(emptyExecutionData)
         }
         gradle.projectsEvaluated {
-            tasks.withType(Test).configureEach {
-                def coverage = extensions.findByType(JacocoTaskExtension)
+            tasks.withType(Test).configureEach { testTask ->
+                def coverage = testTask.extensions.findByType(JacocoTaskExtension)
                 if (coverage != null) {
-                    coverage.enabled = true
+                    coverage.enabled = testTask.name != 'nitpickerArchunit'
                     coverage.includes = []
                     coverage.excludes = []
                     coverage.excludeClassLoaders = []
