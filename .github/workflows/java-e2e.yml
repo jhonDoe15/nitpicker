@@ -15,6 +15,7 @@ on:
       - 'package.json'
       - 'package-lock.json'
       - 'vitest.config.mts'
+      - 'scripts/test-shards/**'
       - '.github/workflows/java-e2e.yml'
   pull_request:
     types: [labeled]
@@ -27,11 +28,17 @@ concurrency:
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
-  java:
+  java-shard:
+    name: java shard ${{ matrix.shard }}/${{ strategy.job-total }}
     if: github.event_name != 'pull_request' || github.event.label.name == 'run-ci'
     runs-on: ubuntu-latest
-    # A healthy run takes well under an hour with cold Gradle and Maven caches; this stops a hung one well before the default.
+    # Files run serially inside each isolated shard to avoid competing JVM builds.
     timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      max-parallel: 3
+      matrix:
+        shard: [1, 2, 3]
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -53,4 +60,21 @@ jobs:
           gradle-version: 8.14.3
       - run: npm ci
       - name: Java end-to-end suite
-        run: npm run test:java
+        run: npm run test:java -- --shard=${{ matrix.shard }}/${{ strategy.job-total }} --reporter=default --reporter=json --outputFile=reports/java-e2e/shard-${{ matrix.shard }}.json
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: java-e2e-${{ matrix.shard }}-${{ github.run_attempt }}
+          path: reports/java-e2e/
+          if-no-files-found: warn
+
+  java:
+    if: ${{ always() && (github.event_name != 'pull_request' || github.event.label.name == 'run-ci') }}
+    needs: java-shard
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Every Java end-to-end shard passed
+        env:
+          RESULT: ${{ needs.java-shard.result }}
+        run: test "$RESULT" = success

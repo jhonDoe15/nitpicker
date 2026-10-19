@@ -84,6 +84,20 @@ arguments pass through) and rewrites the times of the files it ran.
 node scripts/test-shards/record-durations.mjs --maxWorkers=100%
 ```
 
+Java and Kotlin end-to-end CI each use three isolated runner shards, with files run serially in
+each shard. The final `java` or `kotlin` check passes only when all its shards pass. Reproduce a
+shard with `npm run test:java -- --shard=1/3` or
+`npm run test:kotlin -- --no-file-parallelism --shard=1/3`.
+
+Enabled JVM suites use separate timing files: `scripts/test-shards/java-e2e.json` and
+`scripts/test-shards/kotlin-e2e.json`. Ordinary recordings cannot overwrite these with the timings
+of skipped E2E tests. To record a JVM suite, set its `NITPICKER_JAVA_E2E=1` or
+`NITPICKER_KOTLIN_E2E=1` flag, pass the same file filters as its package script to
+`record-durations.mjs`, and use `--no-file-parallelism`. The recorder selects the corresponding
+timing file automatically. Run one enabled JVM suite at a time. CI uploads a JSON report per
+shard for reviewing durations and failures; timing provenance and limits are in
+[scripts/test-shards/README.md](scripts/test-shards/README.md).
+
 `npm test` runs `languages/python/metrics/structure_metrics.py` on a real `python3`, so it needs
 `python3` 3.10 or newer on the `PATH` (that test file is skipped, with its reason in the name,
 without one). The Python end-to-end suite (`npm run test:python`) needs more tools and the

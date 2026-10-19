@@ -1,5 +1,6 @@
 import path from 'node:path';
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
+import { durationFile } from './duration-profile.mjs';
 import { mergeDurations } from './record-durations.mjs';
 import {
   assignShards,
@@ -15,6 +16,43 @@ const durations = new Map([
   ['c.test.mjs', 40],
   ['d.test.mjs', 20],
 ]);
+
+afterEach(() => vi.unstubAllEnvs());
+
+describe('enabled end-to-end timing profiles', () => {
+  it.each([
+    [{}, 'durations.json'],
+    [{ NITPICKER_JAVA_E2E: '0', NITPICKER_KOTLIN_E2E: '0' }, 'durations.json'],
+    [{ NITPICKER_JAVA_E2E: '1' }, 'java-e2e.json'],
+    [{ NITPICKER_KOTLIN_E2E: '1' }, 'kotlin-e2e.json'],
+  ])('selects the timing file for %j', (environment, expected) => {
+    expect(path.basename(durationFile(environment))).toBe(expected);
+  });
+
+  it('rejects simultaneous JVM profiles instead of using the wrong weights', () => {
+    expect(() => durationFile({ NITPICKER_JAVA_E2E: '1', NITPICKER_KOTLIN_E2E: '1' })).toThrow(
+      'Record or run one JVM end-to-end suite at a time.',
+    );
+  });
+
+  it.each(['JAVA', 'KOTLIN'])(
+    'loads %s weights without changing the ordinary profile',
+    (language) => {
+      vi.stubEnv('NITPICKER_JAVA_E2E', undefined);
+      vi.stubEnv('NITPICKER_KOTLIN_E2E', undefined);
+      const ordinary = readDurations();
+      vi.stubEnv(`NITPICKER_${language}_E2E`, '1');
+      const enabled = readDurations();
+      expect(enabled).toEqual(readDurations(durationFile({ [`NITPICKER_${language}_E2E`]: '1' })));
+      expect(
+        [...enabled.values()].every((seconds) => seconds > 0 && Number.isInteger(seconds)),
+      ).toBe(true);
+      expect(enabled).not.toEqual(ordinary);
+      vi.unstubAllEnvs();
+      expect(readDurations()).toEqual(ordinary);
+    },
+  );
+});
 
 describe('assignShards', () => {
   it('puts every file in exactly one shard', () => {
