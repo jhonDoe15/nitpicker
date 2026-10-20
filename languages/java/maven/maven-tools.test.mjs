@@ -77,6 +77,8 @@ describe('toolDependencies', () => {
       'errorprone',
       'jacoco',
       'pit',
+      'pit-junit5',
+      'pit-testng',
     ]);
     expect(Object.keys(toolDependencies(pinned, [], formatTool('palantir', pinned)))).toEqual([
       'pmd',
@@ -86,13 +88,25 @@ describe('toolDependencies', () => {
       'errorprone',
       'jacoco',
       'pit',
+      'pit-junit5',
+      'pit-testng',
       'format-palantir',
     ]);
   });
 });
 
 describe.skipIf(process.platform === 'win32')('resolveTools', () => {
-  const common = ['pmd', 'forbiddenapis', 'spotbugs', 'checkstyle', 'errorprone', 'jacoco', 'pit'];
+  const common = [
+    'pmd',
+    'forbiddenapis',
+    'spotbugs',
+    'checkstyle',
+    'errorprone',
+    'jacoco',
+    'pit',
+    'pit-junit5',
+    'pit-testng',
+  ];
 
   it('resolves the google jar for google, the palantir jar for palantir and no formatter for none', () => {
     expect(resolvedWith('google')).toEqual([...common, 'format']);
