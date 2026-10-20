@@ -69,7 +69,7 @@ function gradleClasspath(project) {
       script,
       'printKotlinCompiler',
     ],
-    { cwd: project, encoding: 'utf8', timeout: 15 * 60 * 1000 },
+    { cwd: project, encoding: 'utf8', timeout: 180_000 },
   );
   expect(result.status, result.stderr).toBe(0);
   const lines = result.stdout.split('\n');
@@ -99,7 +99,7 @@ function measure(project) {
       project,
       'src',
     ],
-    { cwd: project, encoding: 'utf8', timeout: 5 * 60 * 1000 },
+    { cwd: project, encoding: 'utf8', timeout: 180_000 },
   );
   return {
     status: result.status,
