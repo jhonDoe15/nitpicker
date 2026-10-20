@@ -49,6 +49,7 @@ describe.skipIf(!enabled)('Kotlin preset on test sources', () => {
 
   it('lints new test code with detekt and ktlint, keeping the rules detekt itself excludes for tests off', () => {
     expect(ofFile(defaultDiff().newEnforceable, 'ShoutingTest.kt')).toEqual([
+      'detekt detekt.exceptions.SwallowedException ShoutingTest.kt',
       'detekt detekt.exceptions.TooGenericExceptionCaught ShoutingTest.kt',
       'detekt detekt.exceptions.TooGenericExceptionCaught ShoutingTest.kt',
       'detekt detekt.potential-bugs.UnsafeCallOnNullableType ShoutingTest.kt',
@@ -86,6 +87,7 @@ describe.skipIf(!enabled)('Kotlin preset on test sources', () => {
     });
 
     expect(ofFile(lifted.newEnforceable, 'ShoutingTest.kt')).toEqual([
+      'detekt detekt.exceptions.SwallowedException ShoutingTest.kt',
       'detekt detekt.potential-bugs.UnsafeCallOnNullableType ShoutingTest.kt',
       'detekt detekt.style.ForbiddenMethodCall ShoutingTest.kt',
       'ktlint ktlint.standard:indent ShoutingTest.kt',

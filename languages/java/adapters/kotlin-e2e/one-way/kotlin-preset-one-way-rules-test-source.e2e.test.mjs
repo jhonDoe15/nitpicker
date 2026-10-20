@@ -11,7 +11,7 @@ describe.skipIf(!kotlinE2eEnabled)('Kotlin swallowed exceptions in test sources'
   const fixture = useKotlinOneWayProject('test-source');
   it('reports a swallowing catch in a test source with the same message and the test form', () => {
     const swallowed = kotlinRuleCases.find(({ id }) => id === 'swallowedException');
-    const found = detektFindingsOf(testSourceResult.newEnforceable, swallowed);
+    const found = detektFindingsOf(fixture.testSourceResult.newEnforceable, swallowed);
 
     expect(found.map(({ rule, path: file, message }) => [rule, file, message])).toEqual([
       [
@@ -24,6 +24,13 @@ describe.skipIf(!kotlinE2eEnabled)('Kotlin swallowed exceptions in test sources'
         }).message,
       ],
     ]);
-    expect(found[0].message).toContain('In a test, use `assertFailsWith`.');
+    expect(found[0].message).toBe(
+      [
+        expectedMessage(swallowed, 'banned'),
+        'Rethrow it with its cause (`throw AppError("x", e)`), return a failure result that carries the error (`return Result.failure(e)`), or collect it for the caller (`errors.add(e)`); logging alone is not handling.',
+        'In a test, use `assertFailsWith`.',
+        'To allow it on specific paths, add an "exceptions" entry for rule detekt.exceptions.SwallowedException in nitpicker.config.json.',
+      ].join(' '),
+    );
   });
 });

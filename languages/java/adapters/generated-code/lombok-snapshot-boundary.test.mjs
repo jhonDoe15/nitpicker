@@ -1,9 +1,10 @@
-import { existsSync, mkdtempSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, mkdtempSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterAll, describe, expect, it } from 'vitest';
 import { collectJavaFindings } from '../java-diff.mjs';
 import { analyzeJavaSnapshot } from '../java-runner.mjs';
+import { LIVE_CHECKOUT_NOTE } from './lombok-config.mjs';
 
 const roots = [];
 
@@ -38,5 +39,23 @@ describe('where nitpicker edits lombok.config', () => {
 
     expect(findings.map(({ classification }) => classification)).toEqual(['tool-error']);
     expect(existsSync(path.join(root, 'lombok.config'))).toBe(true);
+  });
+
+  it('returns live-checkout diagnostics through the caller output boundary', () => {
+    const root = lombokProject();
+    mkdirSync(path.join(root, '.git'));
+    const notes = [];
+
+    const { findings } = analyzeJavaSnapshot(root, {
+      gradle: unavailableGradle,
+      policy: {},
+      onNote: (note) => {
+        notes.push(note);
+      },
+    });
+
+    expect(notes).toEqual([LIVE_CHECKOUT_NOTE]);
+    expect(findings.map(({ classification }) => classification)).toEqual(['tool-error']);
+    expect(existsSync(path.join(root, 'lombok.config'))).toBe(false);
   });
 });

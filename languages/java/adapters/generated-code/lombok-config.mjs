@@ -49,17 +49,17 @@ function walk(projectRoot) {
 }
 
 function parentPoms(projectRoot) {
-  const poms = [];
-  let directory = projectRoot;
-  while (existsSync(path.join(directory, 'pom.xml')) && !existsSync(path.join(directory, '.git'))) {
-    const parent = path.dirname(directory);
-    if (parent === directory || !existsSync(path.join(parent, 'pom.xml'))) {
-      break;
-    }
-    poms.push(path.join(parent, 'pom.xml'));
-    directory = parent;
+  if (
+    !existsSync(path.join(projectRoot, 'pom.xml')) ||
+    existsSync(path.join(projectRoot, '.git'))
+  ) {
+    return [];
   }
-  return poms;
+  const parent = path.dirname(projectRoot);
+  if (parent === projectRoot || !existsSync(path.join(parent, 'pom.xml'))) {
+    return [];
+  }
+  return [path.join(parent, 'pom.xml'), ...parentPoms(parent)];
 }
 
 function usesLombok({ root, configs, builds, sources }) {
@@ -89,15 +89,15 @@ function rewrite(file) {
 }
 
 function insideLiveCheckout(projectRoot) {
-  for (let directory = projectRoot; ; directory = path.dirname(directory)) {
-    const git = path.join(directory, '.git');
-    if (existsSync(git)) {
-      return statSync(git).isDirectory();
-    }
-    if (path.dirname(directory) === directory) {
-      return false;
-    }
+  const git = path.join(projectRoot, '.git');
+  if (existsSync(git)) {
+    return statSync(git).isDirectory();
   }
+  const parent = path.dirname(projectRoot);
+  if (parent === projectRoot) {
+    return false;
+  }
+  return insideLiveCheckout(parent);
 }
 
 export const LIVE_CHECKOUT_NOTE =
@@ -117,6 +117,8 @@ export function markLombokGeneratedCode(directory) {
   const configs = found.configs.includes(rootConfig)
     ? found.configs
     : [rootConfig, ...found.configs];
-  configs.forEach(rewrite);
+  for (const file of configs) {
+    rewrite(file);
+  }
   return { written: configs.map((file) => path.relative(projectRoot, file)), note: undefined };
 }
