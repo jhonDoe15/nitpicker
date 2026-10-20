@@ -93,3 +93,5 @@ Maven/Gradle actions cache dependencies; mutable fixture builds are not shared b
 The aggregate `java` and `kotlin` checks retain their names and require matrix success: a failed,
 cancelled or unexpectedly skipped matrix cannot turn green. Unrelated PR labels still skip the
 workflows' test jobs as before.
+
+PR 291 adds the swallowed-exception and generated-Lombok Java fixtures and a separate Kotlin test-source fixture. Their new profile entries (120, 150 and 120 seconds) are conservative planning estimates copied from comparable existing build fixtures, not observed recordings. Run the enabled recorder after CI evidence is available. Discovery now covers 80 Java cases across 28 files and 59 Kotlin cases across 16 files; the preexisting 76 Java and 54 Kotlin cases remain selected.

@@ -1,5 +1,9 @@
 import { afterAll, beforeAll } from 'vitest';
 import {
+  fixtureSource,
+  kotlinRuleCases,
+} from '../../kotlin/rules/test-support/kotlin-rule-cases.mjs';
+import {
   EXTRA_SOURCES,
   HOSTILE_DETEKT_CONFIG,
   ruleFixtures,
@@ -18,6 +22,7 @@ export function useKotlinOneWayProject(scenario) {
   let bannedResult;
   let allowedResult;
   let hostileConfigResult;
+  let testSourceResult;
   beforeAll(() => {
     project = initializeProject();
     commitBranch(project, 'one-way-banned', ruleFixtures('banned'));
@@ -32,6 +37,15 @@ export function useKotlinOneWayProject(scenario) {
         ]),
       ),
     });
+    if (scenario === 'test-source') {
+      commitBranch(project, 'one-way-test-source', {
+        'src/test/kotlin/demo/swallowedException/SwallowedTest.kt': fixtureSource(
+          kotlinRuleCases.find(({ id }) => id === 'swallowedException'),
+          'banned',
+        ),
+      });
+      testSourceResult = diffOf(project, 'one-way-test-source');
+    }
     if (scenario === 'banned') {
       bannedResult = diffOf(project, 'one-way-banned');
     }
@@ -56,6 +70,9 @@ export function useKotlinOneWayProject(scenario) {
     },
     get allowedResult() {
       return allowedResult;
+    },
+    get testSourceResult() {
+      return testSourceResult;
     },
     get hostileConfigResult() {
       return hostileConfigResult;

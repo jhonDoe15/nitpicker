@@ -1,6 +1,7 @@
 import { realpathSync } from 'node:fs';
 import { readHeadPolicyFile } from '../../../shared/head-policy.mjs';
 import { collectJavaFindings } from './java-diff.mjs';
+import { markLombokGeneratedCode } from './generated-code/lombok-config.mjs';
 import { detectJavaBuild } from '../builds/java-build.mjs';
 import { parseJavaRunnerArguments } from './java-policy.mjs';
 import { javaStyle } from './style/java-style.mjs';
@@ -16,9 +17,18 @@ export function javaExecutionBudget(environment = process.env) {
 
 export function analyzeJavaSnapshot(
   projectRoot,
-  { gradle = process.env.NITPICKER_GRADLE, maven = process.env.NITPICKER_MAVEN, policy } = {},
+  {
+    gradle = process.env.NITPICKER_GRADLE,
+    maven = process.env.NITPICKER_MAVEN,
+    policy,
+    onNote,
+  } = {},
 ) {
   try {
+    const { note } = markLombokGeneratedCode(projectRoot);
+    if (note !== undefined) {
+      onNote?.(note);
+    }
     return {
       findings: collectJavaFindings(projectRoot, {
         gradle: gradle || undefined,
@@ -55,16 +65,20 @@ export function readRunnerPolicy(runnerArguments, environment = process.env) {
   return { projectRoot, policy: { ...policy, conventions, javaStyle: javaStyle(conventions) } };
 }
 
-function main(arguments_) {
+function main(arguments_, { stdout, stderr }) {
   const { projectRoot, policy } = readRunnerPolicy(arguments_);
-  process.stdout.write(
-    `${JSON.stringify(analyzeJavaSnapshot(realpathSync(projectRoot), { policy }))}\n`,
-  );
+  const report = analyzeJavaSnapshot(realpathSync(projectRoot), {
+    policy,
+    onNote(note) {
+      stderr.write(`${note}\n`);
+    },
+  });
+  stdout.write(`${JSON.stringify(report)}\n`);
 }
 
 if (process.argv[1] !== undefined && realpathSync(process.argv[1]) === import.meta.filename) {
   try {
-    main(process.argv.slice(2));
+    main(process.argv.slice(2), { stdout: process.stdout, stderr: process.stderr });
   } catch (error) {
     process.stderr.write(
       `Java differential adapter failed: ${error instanceof Error ? error.message : String(error)}\n`,

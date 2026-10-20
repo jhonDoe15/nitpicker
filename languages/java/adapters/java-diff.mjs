@@ -25,6 +25,7 @@ import { detectJavaBuild, INIT_SCRIPT } from '../builds/java-build.mjs';
 import { moduleReport, readModuleFindings } from '../builds/java-modules.mjs';
 import { resolveKotlinRun } from './kotlin/kotlin-run.mjs';
 import { isJavaTouchedRule } from './touched-rules.mjs';
+import { markLombokGeneratedCode } from './generated-code/lombok-config.mjs';
 import { withProjectEnumPredicates } from './review-rules/enum-predicates.mjs';
 import { javaStyleProperties } from './style/java-style.mjs';
 import { gradleBudget } from './gradle-wrapper/gradle-budget.mjs';
@@ -226,7 +227,9 @@ function collectBothSnapshots({
   return withTemporaryWorktree(repositoryRoot, comparison.headSha, (headWorktree) => {
     const policyRoot = path.join(headWorktree, projectRelativePath);
     function collectIn(worktreeRoot, snapshot) {
-      return collectJavaFindings(path.join(worktreeRoot, projectRelativePath), {
+      const projectRoot = path.join(worktreeRoot, projectRelativePath);
+      markLombokGeneratedCode(projectRoot);
+      return collectJavaFindings(projectRoot, {
         ...options,
         policy: { ...policy, snapshot, policyRoot },
       });

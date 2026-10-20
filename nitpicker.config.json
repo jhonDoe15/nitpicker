@@ -189,7 +189,8 @@
               "languages/java/maven/preset/**",
               "languages/java/maven/__tests__/**",
               "languages/java/maven/errorprone/*.e2e.test.mjs",
-              "languages/java/messages/*.e2e.test.mjs"
+              "languages/java/messages/*.e2e.test.mjs",
+              "languages/java/adapters/generated-code/*.e2e.test.mjs"
             ],
             "testTimeoutMs": 180000,
             "hookTimeoutMs": 300000

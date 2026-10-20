@@ -36,6 +36,18 @@ style:
         reason: 'Use a scheduler or a test clock instead of sleeping.'
 coroutines:
   active: false
+exceptions:
+  active: false
+  excludes: ['**/*.kt']
+  SwallowedException:
+    active: false
+    severity: info
+    ignoredExceptionTypes: ['NumberFormatException']
+    allowedExceptionNameRegex: 'error'
+  TooGenericExceptionCaught:
+    active: false
+    excludes: ['**/*.kt']
+    exceptionNames: []
 potential-bugs:
   active: false
   ignoreAnnotated: ['Marker']
@@ -44,13 +56,6 @@ potential-bugs:
     ignoreAnnotated: ['Marker']
   CastNullableToNonNullableType:
     excludes: ['**/*.kt']
-exceptions:
-  active: false
-  excludes: ['**/*.kt']
-  TooGenericExceptionCaught:
-    active: false
-    excludes: ['**/*.kt']
-    exceptionNames: []
 `;
 
 export const EXTRA_SOURCES = {

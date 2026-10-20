@@ -1,7 +1,9 @@
 import { readdirSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
+import YAML from 'yaml';
 import { configurationFiles } from './java-analyzer.mjs';
+import { HOSTILE_DETEKT_CONFIG } from './kotlin-e2e/test-support/kotlin-one-way-data.mjs';
 
 const packageRoot = path.resolve(import.meta.dirname, '../../..');
 const STATIC_IMPORT = /(?:^|\n)\s*(?:import|export)\b[^'";]*?\bfrom\s*['"](\.[^'"]+)['"]/g;
@@ -24,6 +26,22 @@ function hashedAmong(expected) {
 }
 
 describe('Java analyzer configuration files', () => {
+  it('keeps the hostile detekt fixture valid while trying to disable both exception rules', () => {
+    const config = YAML.parse(HOSTILE_DETEKT_CONFIG);
+
+    expect(config.exceptions).toEqual({
+      active: false,
+      excludes: ['**/*.kt'],
+      SwallowedException: {
+        active: false,
+        severity: 'info',
+        ignoredExceptionTypes: ['NumberFormatException'],
+        allowedExceptionNameRegex: 'error',
+      },
+      TooGenericExceptionCaught: { active: false, excludes: ['**/*.kt'], exceptionNames: [] },
+    });
+  });
+
   it('hash the runner, the analyzer and every resource the Gradle and detekt runs read', () => {
     const expected = [
       'languages/java/adapters/java-runner.mjs',

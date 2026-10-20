@@ -1,6 +1,7 @@
 import { execFileSync } from 'node:child_process';
 import {
   cpSync,
+  existsSync,
   mkdirSync,
   mkdtempSync,
   readFileSync,
@@ -55,13 +56,10 @@ function runProbe(tasks, policyFile) {
 
 function scan(projectRoot, relativeDirectory, skipped) {
   const directory = path.join(projectRoot, relativeDirectory);
-  let entries;
-  try {
-    entries = readdirSync(directory, { withFileTypes: true });
-  } catch {
+  if (!existsSync(directory)) {
     return [];
   }
-  return entries.flatMap((entry) => {
+  return readdirSync(directory, { withFileTypes: true }).flatMap((entry) => {
     const relativePath = `${relativeDirectory}/${entry.name}`;
     if (entry.isDirectory()) {
       return skipped.includes(entry.name) ? [] : scan(projectRoot, relativePath, skipped);
