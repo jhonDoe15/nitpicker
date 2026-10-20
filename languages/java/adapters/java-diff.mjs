@@ -1,4 +1,3 @@
-import { spawnSync } from 'node:child_process';
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
@@ -9,8 +8,9 @@ import { readChangedLines } from '../../../core/diff/git/patches/changed-lines.m
 import { readRenameMap } from '../../../core/diff/git/patches/project-moves.mjs';
 import { withTemporaryWorktree } from '../../../core/diff/git/repository/worktree.mjs';
 import { gradleTarget } from './gradle-wrapper/gradle-command.mjs';
-import { withGradleLog } from './gradle-wrapper/failure-log.mjs';
-import { condenseFailure } from './gradle-wrapper/failure-text.mjs';
+import { runGradle } from './gradle-wrapper/gradle-process.mjs';
+import { withGradleLog } from './gradle-wrapper/diagnostics/failure-log.mjs';
+import { condenseFailure } from './gradle-wrapper/diagnostics/failure-text.mjs';
 import { runJavaDuplicates } from './metrics/java-duplicates.mjs';
 import { runKotlinDuplicates } from './kotlin/kotlin-duplicates.mjs';
 import { applyFindingPolicy } from '../../../shared/findings/finding-policy.mjs';
@@ -100,7 +100,7 @@ function runJavaPreset(
     ];
     for (const stage of stages) {
       const target = gradleTarget({ projectRoot, configured: gradle, args: stage() });
-      const result = spawnSync(target.command, target.args, {
+      const result = runGradle(target.command, target.args, {
         cwd: projectRoot,
         encoding: 'utf8',
         maxBuffer: MAX_OUTPUT_BYTES,

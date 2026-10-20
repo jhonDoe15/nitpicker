@@ -1,4 +1,4 @@
-import { exactText } from '../../../../core/diff/reporting/test-support/output-expectations.mjs';
+import { exactText } from '../../../../../core/diff/reporting/test-support/output-expectations.mjs';
 import { describe, expect, it } from 'vitest';
 import { condenseFailure, withoutToolNoise } from './failure-text.mjs';
 
