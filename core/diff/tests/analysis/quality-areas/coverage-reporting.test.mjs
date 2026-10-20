@@ -3,8 +3,8 @@ import { PACKAGE_ROOT } from '../../../../tooling/tool-resolution.mjs';
 import { runAnalyzers } from '../../../execution/run-analyzers.mjs';
 import {
   coverageFailureFindings,
-  formatVitestFailures,
-} from '../../../../../languages/typescript/adapters/quality-areas/reporting/vitest.mjs';
+  formatTestFailures,
+} from '../../../../../languages/typescript/adapters/quality-areas/reporting/test-report.mjs';
 import { compareFindings } from '../../../comparison/compare.mjs';
 import { describeUncoveredArms } from '../../../../../languages/typescript/adapters/quality-areas/reporting/source-hashes.mjs';
 import { normalizeCoverage } from '../../../../../languages/typescript/adapters/quality-areas/reporting/tests.mjs';
@@ -49,7 +49,7 @@ describe('coverage reporting in the quality-area analyzers', () => {
     expect(result.skipped.get('crap')).toBe('coverage');
   });
   it('names each failing test with its file and first assertion line', () => {
-    const message = formatVitestFailures(
+    const message = formatTestFailures(
       {
         numFailedTests: 2,
         testResults: [
@@ -84,26 +84,32 @@ describe('coverage reporting in the quality-area analyzers', () => {
     expect(() =>
       coverageFailureFindings(
         { analyzerName: 'coverage', projectRoot: '/p' },
-        { numFailedTests: 0, testResults: [] },
-        { status: 1, stdout: '', stderr: 'Unhandled Rejection: boom' },
+        {
+          report: { numFailedTests: 0, testResults: [] },
+          result: { status: 1, stdout: '', stderr: 'Unhandled Rejection: boom' },
+          runnerName: 'Vitest',
+        },
       ),
     ).toThrow(
-      /exited 1 without naming a failing test\nProcess output:\nUnhandled Rejection: boom/u,
+      /^Vitest exited 1 without naming a failing test\nProcess output:\nUnhandled Rejection: boom/u,
     );
   });
   it('anchors the tool error inside the project even for a test file Vitest reports elsewhere', () => {
     const [finding] = coverageFailureFindings(
       { analyzerName: 'coverage', projectRoot: '/p' },
       {
-        numFailedTests: 1,
-        testResults: [
-          {
-            name: '/elsewhere/test/a.test.ts',
-            assertionResults: [{ fullName: 'adds', status: 'failed', failureMessages: ['no'] }],
-          },
-        ],
+        report: {
+          numFailedTests: 1,
+          testResults: [
+            {
+              name: '/elsewhere/test/a.test.ts',
+              assertionResults: [{ fullName: 'adds', status: 'failed', failureMessages: ['no'] }],
+            },
+          ],
+        },
+        result: { status: 1, stdout: '', stderr: '' },
+        runnerName: 'Vitest',
       },
-      { status: 1, stdout: '', stderr: '' },
     );
 
     expect(finding).toEqual({
@@ -119,13 +125,48 @@ describe('coverage reporting in the quality-area analyzers', () => {
       '1 test fails, so coverage, CRAP and mutation were skipped. Fix the tests and rerun:\n  /elsewhere/test/a.test.ts > adds: no',
     );
   });
+  it('says which steps of the test script nitpicker did not run before the tests', () => {
+    const run = (precedingCommands) =>
+      coverageFailureFindings(
+        { analyzerName: 'coverage', projectRoot: '/p' },
+        {
+          report: {
+            numFailedTests: 1,
+            testResults: [
+              {
+                name: '/p/test/a.test.js',
+                status: 'failed',
+                message: "Cannot find module '../dist/a.js'",
+                assertionResults: [],
+              },
+            ],
+          },
+          result: { status: 1, stdout: '', stderr: '' },
+          runnerName: 'node:test',
+          precedingCommands,
+        },
+      ).map(({ message }) => message);
+    const failure =
+      '1 test fails, so coverage, CRAP and mutation were skipped. Fix the tests and rerun:\n' +
+      "  test/a.test.js > could not run: Cannot find module '../dist/a.js'";
+
+    expect(run(['tsc'])).toEqual([
+      `${failure}\nThe test script runs "tsc" before the tests; nitpicker runs only the test command, ` +
+        'so run that step first if the tests need it.',
+    ]);
+    expect(run(['npm run build', 'npm run seed'])).toEqual([
+      `${failure}\nThe test script runs "npm run build", "npm run seed" before the tests; ` +
+        'nitpicker runs only the test command, so run those steps first if the tests need it.',
+    ]);
+    expect(run([])).toEqual([failure]);
+  });
   it('lists at most five failing tests and a test file that could not run', () => {
     const failing = (index) => ({
       fullName: `case ${String(index)}`,
       status: 'failed',
       failureMessages: ['boom'],
     });
-    const message = formatVitestFailures(
+    const message = formatTestFailures(
       {
         numFailedTests: 7,
         testResults: [

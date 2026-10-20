@@ -1,10 +1,10 @@
 import { writeFileSync } from 'node:fs';
 import path from 'node:path';
-import { jscpdVersion } from '../../java/adapters/metrics/java-duplicates.mjs';
+import { jscpdVersion } from '../../../core/tooling/jscpd/run-jscpd.mjs';
 import { scanImports } from './analysis/python-coupling.mjs';
 import { scanDependencies } from './dependencies/dependency-findings.mjs';
 import { runDuplicates } from './analysis/python-duplicates.mjs';
-import { detectEnvironment, openEnvironment } from './execution/python-environment.mjs';
+import { openSnapshotEnvironment } from './execution/python-environment.mjs';
 import { checkRules } from './analysis/python-ast-rules.mjs';
 import { pytestStyle, pytestStyleFlags } from '../rules/libraries/pytest-style.mjs';
 import { importLinterEnabled, runImportLinter } from './analysis/python-import-linter.mjs';
@@ -20,7 +20,9 @@ import {
 import { formatCommand, ruffExclusions } from './formatting/format-command.mjs';
 import { ruffConfigFor } from './configuration/python-ruff-config.mjs';
 import { detectTestRunner, pytestLabel, testRunnerLabel } from './execution/python-test-runner.mjs';
+import { mutationRunnerLabels } from './mutation/test-run/python-mutation-runner.mjs';
 import { test } from './test-runs/test-step.mjs';
+import { retimeSlowTests } from './test-runs/timing/slow-retime.mjs';
 
 import { resolveTypeChecker, typeCheck } from './python-types.mjs';
 import { structure } from './analysis/python-structure.mjs';
@@ -35,12 +37,26 @@ const PARSE_ERROR = {
   ruff: /^error: Failed to parse /,
 };
 
+function projectSettings({ projectRoot, liveRoot, settings, sourceRoots }) {
+  return {
+    formatter: detectFormatter(projectRoot, settings.formatter),
+    formatterDetected: settings.formatter === undefined,
+    typeCheckers: detectTypeCheckers(liveRoot, settings.typeChecker),
+    testRunner: detectTestRunner(projectRoot, settings.testRunner),
+    targetVersion: detectTargetVersion(projectRoot),
+    importLinter: settings.importLinter,
+    sourceRoots,
+    entryPoints: settings.entryPoints ?? [],
+  };
+}
+
 export function createToolContext({
   projectRoot,
   liveRoot,
   settings = {},
   reportRoot,
   exclude = [],
+  duplicateSkippedFolders,
   snapshot = 'head',
   baselineRoot,
   conventions = {},
@@ -48,7 +64,11 @@ export function createToolContext({
   toolPrecedence,
   pytestAddopts,
 }) {
-  const launcher = openEnvironment(detectEnvironment(liveRoot, settings.environment), liveRoot);
+  const launcher = openSnapshotEnvironment({
+    projectRoot,
+    liveRoot,
+    setting: settings.environment,
+  });
   const sourceRoots = detectSourceRoots(projectRoot, settings.sourceRoots);
   const pythonPath = [...importRoots(projectRoot, sourceRoots), process.env.PYTHONPATH]
     .filter((entry) => entry !== undefined && entry !== '')
@@ -58,22 +78,15 @@ export function createToolContext({
     reportRoot,
     snapshot,
     baselineRoot,
+    testSeconds: settings.testSeconds,
     conventions,
     policyRoot,
     toolPrecedence,
     launcher,
     exclude,
+    duplicateSkippedFolders,
     pytestAddopts,
-    project: {
-      formatter: detectFormatter(projectRoot, settings.formatter),
-      formatterDetected: settings.formatter === undefined,
-      typeCheckers: detectTypeCheckers(liveRoot, settings.typeChecker),
-      testRunner: detectTestRunner(projectRoot, settings.testRunner),
-      targetVersion: detectTargetVersion(projectRoot),
-      importLinter: settings.importLinter,
-      sourceRoots,
-      entryPoints: settings.entryPoints ?? [],
-    },
+    project: projectSettings({ projectRoot, liveRoot, settings, sourceRoots }),
     env: {
       PYTHONPATH: pythonPath,
       PYTHONDONTWRITEBYTECODE: '1',
@@ -88,6 +101,7 @@ export function runPythonTools(context) {
     lint,
     format,
     test,
+    retimeSlowTests,
     typeCheck,
     checkRules,
     structure,
@@ -225,5 +239,9 @@ export function toolVersions(context) {
 }
 
 export function mutationVersions(context) {
-  return [`mutmut@${probeVersion(context, MUTMUT_VERSION_PROBE)}`, pytestLabel(context)].join(';');
+  return [
+    `mutmut@${probeVersion(context, MUTMUT_VERSION_PROBE)}`,
+    pytestLabel(context),
+    ...mutationRunnerLabels(context),
+  ].join(';');
 }

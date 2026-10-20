@@ -1,11 +1,22 @@
-import { indentationStep } from './java-conventions.mjs';
-import { trailingCommas, wildcardImports } from './kotlin-measures.mjs';
+import {
+  assertionEvidence,
+  followedHelpers,
+  MIN_FILES,
+  SAMPLE_LIMIT,
+  testAndSupportGlobs,
+} from './measures/assertion-helpers.mjs';
+import { COLUMNS } from '../../../shared/conventions/settings.mjs';
+import { indentationStep } from './measures/java-layout.mjs';
+import { lineLength } from './measures/kotlin-line-length.mjs';
+import { trailingCommas, wildcardImports } from './measures/kotlin-measures.mjs';
 
 const KOTLIN_FILES = ['**/*.kt'];
 
 export const KOTLIN_INDENTATION = 'kotlin.indentation';
 export const KOTLIN_TRAILING_COMMAS = 'kotlin.trailingCommas';
 export const KOTLIN_WILDCARD_IMPORTS = 'kotlin.wildcardImports';
+export const KOTLIN_LINE_LENGTH = 'kotlin.lineLength';
+const KOTLIN_ASSERTION_HELPERS = 'kotlin.assertionHelpers';
 
 export const KOTLIN_CONVENTIONS = [
   {
@@ -34,5 +45,26 @@ export const KOTLIN_CONVENTIONS = [
     fallback: 'explicit',
     files: KOTLIN_FILES,
     measure: wildcardImports,
+  },
+  {
+    id: KOTLIN_LINE_LENGTH,
+    label: 'Kotlin line length',
+    options: ['100', '120', '140'],
+    optionLabels: { 100: '100 columns', 120: '120 columns', 140: '140 columns' },
+    fallback: undefined,
+    ...COLUMNS,
+    files: KOTLIN_FILES,
+    measure: lineLength,
+  },
+  {
+    id: KOTLIN_ASSERTION_HELPERS,
+    label: 'Kotlin assertion helpers',
+    kind: 'names',
+    fallback: [],
+    minFiles: MIN_FILES,
+    sampleLimit: SAMPLE_LIMIT,
+    files: testAndSupportGlobs('kt'),
+    measure: (text, file) => assertionEvidence(text, file, 'kotlin'),
+    choose: followedHelpers,
   },
 ];

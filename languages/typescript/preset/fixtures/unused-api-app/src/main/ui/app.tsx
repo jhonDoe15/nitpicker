@@ -7,7 +7,9 @@ import { Home } from './pages';
 import { useFetch } from './use-fetch';
 
 export const routes = [{ path: '/', component: Home }];
-export const Settings = lazy(() => import('./pages').then((module) => ({ default: module.Settings })));
+export const Settings = lazy(() =>
+  import('./pages').then((module) => ({ default: module.Settings })),
+);
 
 export function App() {
   const request = useFetch('/api', { retries: 2 });

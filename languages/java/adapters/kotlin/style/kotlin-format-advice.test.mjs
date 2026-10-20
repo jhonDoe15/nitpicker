@@ -34,19 +34,11 @@ describe('the summary lines of the run', () => {
     ).toEqual(['Format with ktfmt: ktfmt --google-style --enable-editorconfig <Kotlin files>']);
   });
 
-  it('says what ktfmt ignores only when the project has it', () => {
+  it('says that ktfmt ignores the .editorconfig only when the project has one', () => {
     const tools = { formatter: 'ktfmt', ktfmtStyle: 'meta' };
 
     expect(kotlinSummary({ ...tools, editorconfigIgnored: true }, {})[1]).toBe(
       `Ignoring .editorconfig; opt in with ${OPT_IN('ktfmt')}`,
-    );
-    expect(kotlinSummary({ ...tools, ktfmtBuildStyleIgnored: true }, {})[1]).toBe(
-      `Ignoring the ktfmt style of your build file; opt in with ${OPT_IN('ktfmt')}`,
-    );
-    expect(
-      kotlinSummary({ ...tools, editorconfigIgnored: true, ktfmtBuildStyleIgnored: true }, {})[1],
-    ).toBe(
-      `Ignoring .editorconfig and the ktfmt style of your build file; opt in with ${OPT_IN('ktfmt')}`,
     );
   });
 
@@ -74,7 +66,7 @@ describe('the summary lines of the run', () => {
         },
       ),
     ).toEqual([
-      'ktlint reads your .editorconfig files, and uses indent_size = 2 where they set nothing',
+      'ktlint reads your .editorconfig files, and uses indent_size = 2 where they set nothing; the followed limits (indent_size) win over them',
     ]);
   });
 

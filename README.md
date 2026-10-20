@@ -55,7 +55,7 @@ The messages name zod, the default validation library; in a project that depends
   [Adopting nitpicker on existing code](docs/usage.md#adopting-nitpicker-on-existing-code).
 - **Beyond lint.** Depending on the language, it also checks that changed code is covered by
   tests, that tests can fail (mutation testing), function size, duplication, module boundaries,
-  dead code and slow test patterns.
+  dead code, slow tests, unused or unlisted dependencies, committed secrets and slow test patterns.
 - **Teaches first, gates second.** An agent skill for each preset teaches the allowed forms before
   the agent writes code. The gate in CI is the backstop.
 
@@ -64,9 +64,12 @@ The messages name zod, the default validation library; in a project that depends
 nitpicker needs Node.js 22.14 or newer and a Git repository. For a TypeScript project:
 
 ```sh
-npm install --save-dev nitpicker vitest @vitest/coverage-v8 typescript @types/node
+npm install --save-dev nitpicker typescript @types/node
 npx nitpicker
 ```
+
+Tests run with the runner your project already uses: Vitest, Jest, `node:test` or Mocha. A Vitest
+project also needs `@vitest/coverage-v8` at its Vitest version.
 
 The TypeScript preset assumes a feature-folder [layout](docs/typescript-strict-preset.md#layout-and-boundaries).
 For another language, put the preset in `nitpicker.config.json`, for example

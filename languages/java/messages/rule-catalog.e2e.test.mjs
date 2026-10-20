@@ -4,7 +4,6 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterAll, describe, expect, it } from 'vitest';
 import { INIT_SCRIPT } from '../builds/java-build.mjs';
-import { GRADLE_STEP_TIMEOUT_MS } from '../adapters/test-support/gradle-e2e.mjs';
 import { readCatalog } from './rule-messages.mjs';
 
 const enabled = process.env.NITPICKER_JAVA_E2E === '1';
@@ -18,6 +17,7 @@ const RULE_FILES = [
   'findbugs.xml',
 ];
 const EXTRA_PMD_RULES = ['AvoidCatchingGenericException'];
+const EXTRA_CHECKSTYLE_RULES = ['UnusedImports'];
 const CHECKSTYLE_INFRASTRUCTURE = /^(?:Checker|TreeWalker)$|Filter$|^Suppress/u;
 
 function pinnedVersion(tool) {
@@ -88,25 +88,24 @@ afterAll(() => {
 });
 
 describe.skipIf(!enabled)('Java rule catalogs', () => {
-  it(
-    'name exactly the rules of the pinned PMD categories, google_checks.xml and SpotBugs',
-    () => {
-      const read = extractRuleFiles();
+  it('name exactly the rules of the pinned PMD categories, google_checks.xml and SpotBugs', () => {
+    const read = extractRuleFiles();
 
-      expect({
-        pmd: catalogRules('pmd'),
-        checkstyle: catalogRules('checkstyle'),
-        spotbugs: catalogRules('spotbugs'),
-      }).toEqual({
-        pmd: sorted([
-          ...pmdRules(read('category/java/errorprone.xml')),
-          ...pmdRules(read('category/java/bestpractices.xml')),
-          ...EXTRA_PMD_RULES,
-        ]),
-        checkstyle: sorted(checkstyleRules(read('google_checks.xml'))),
-        spotbugs: sorted(spotbugsRules(read('findbugs.xml'))),
-      });
-    },
-    GRADLE_STEP_TIMEOUT_MS,
-  );
+    expect({
+      pmd: catalogRules('pmd'),
+      checkstyle: catalogRules('checkstyle'),
+      spotbugs: catalogRules('spotbugs'),
+    }).toEqual({
+      pmd: sorted([
+        ...pmdRules(read('category/java/errorprone.xml')),
+        ...pmdRules(read('category/java/bestpractices.xml')),
+        ...EXTRA_PMD_RULES,
+      ]),
+      checkstyle: sorted([
+        ...checkstyleRules(read('google_checks.xml')),
+        ...EXTRA_CHECKSTYLE_RULES,
+      ]),
+      spotbugs: sorted(spotbugsRules(read('findbugs.xml'))),
+    });
+  }, 180_000);
 });

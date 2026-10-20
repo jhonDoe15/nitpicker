@@ -1,4 +1,4 @@
-import { normalizeReportPath } from '../../java/ingest/common.mjs';
+import { normalizeReportPath } from '../../../shared/ingest/common.mjs';
 import { createIdentities } from './identities.mjs';
 
 const MYPY_LINE = /^(.+?):(\d+):(?:(\d+):)? (error|warning): (.*?)(?:\s+\[([\w-]+)\])?$/;

@@ -1,15 +1,17 @@
 import { ignoredConfigNotice } from '../../../../../shared/conventions/tool-precedence.mjs';
+import {
+  KOTLIN_INDENTATION,
+  KOTLIN_LINE_LENGTH,
+} from '../../../conventions/kotlin-conventions.mjs';
 import { ktlintDefaults } from './kotlin-style-files.mjs';
 
 function ktfmtLines(tools) {
   const flags = [
     `--${tools.ktfmtStyle}-style`,
+    ...(tools.ktfmtMaxWidth === undefined ? [] : [`--max-width=${tools.ktfmtMaxWidth}`]),
     ...(tools.ktfmtEditorconfig ? ['--enable-editorconfig'] : []),
   ].join(' ');
-  const ignored = [
-    ...(tools.editorconfigIgnored ? ['.editorconfig'] : []),
-    ...(tools.ktfmtBuildStyleIgnored ? ['the ktfmt style of your build file'] : []),
-  ];
+  const ignored = [...(tools.editorconfigIgnored ? ['.editorconfig'] : [])];
   return [
     `Format with ktfmt: ktfmt ${flags} <Kotlin files>`,
     ...(ignored.length === 0 ? [] : [ignoredConfigNotice(ignored.join(' and '), 'ktfmt')]),
@@ -26,10 +28,23 @@ function ktlintSettings(conventions) {
         .join(', ');
 }
 
+function followedLimits(conventions) {
+  return Object.entries({
+    indent_size: conventions[KOTLIN_INDENTATION],
+    max_line_length: conventions[KOTLIN_LINE_LENGTH],
+  })
+    .filter(([, value]) => value !== undefined)
+    .map(([key]) => key);
+}
+
 function ktlintLines(tools, conventions) {
   const settings = ktlintSettings(conventions);
+  const limits = followedLimits(conventions);
   if (tools.editorconfigFiles !== undefined) {
-    return [`ktlint reads your .editorconfig files, and uses ${settings} where they set nothing`];
+    return [
+      `ktlint reads your .editorconfig files, and uses ${settings} where they set nothing` +
+        (limits.length === 0 ? '' : `; the followed limits (${limits.join(', ')}) win over them`),
+    ];
   }
   return [
     `ktlint runs with ${settings}`,

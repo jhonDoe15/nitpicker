@@ -1,10 +1,9 @@
-import { existsSync, readFileSync, writeFileSync } from 'node:fs';
+import { writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { parseIni } from '../../configuration/ini-parser.mjs';
-import {
-  DJANGO_TEST_FILES,
-  isDjangoProject,
-} from '../../configuration/pytest/collection-options.mjs';
+import { isDjangoProject } from '../../configuration/pytest/collection-options.mjs';
+import { readOptional } from '../../execution/python-project.mjs';
+import { mutmutTestPatterns } from '../../execution/python-test-files.mjs';
 import { missingProjectConfig } from '../../../../../shared/conventions/tool-precedence.mjs';
 import { attempt, parseToml, stringifyToml, toolLayers, unique } from '../project-tool-layers.mjs';
 
@@ -50,28 +49,6 @@ const NUMBER_KEYS = new Set([
   'timeout_multiplier',
   'timeout_constant',
 ]);
-const TEST_PATTERNS = [
-  'tests/*',
-  'test/*',
-  '*/tests/*',
-  '*/test/*',
-  'test_*.py',
-  '*/test_*.py',
-  '*_test.py',
-  'conftest.py',
-  '*/conftest.py',
-];
-
-function djangoPatterns(projectRoot) {
-  return isDjangoProject(projectRoot)
-    ? DJANGO_TEST_FILES.flatMap((name) => [name, `*/${name}`])
-    : [];
-}
-
-function readOptional(file) {
-  return existsSync(file) ? readFileSync(file, 'utf8') : '';
-}
-
 function typedValue(key, text) {
   if (LIST_KEYS.has(key)) {
     return text.includes('\n') ? text.split('\n').filter(Boolean) : [text];
@@ -139,8 +116,7 @@ function mutmutSettings({ context, fail }) {
   const nitpicker = {
     source_paths: projectSource ?? sourceRoots,
     do_not_mutate: [
-      ...TEST_PATTERNS,
-      ...djangoPatterns(context.projectRoot),
+      ...mutmutTestPatterns(isDjangoProject(context.projectRoot)),
       ...excludedPatterns(context.exclude),
     ],
   };

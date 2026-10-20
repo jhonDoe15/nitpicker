@@ -80,6 +80,7 @@ export function resolvedDefinitions(facts, resolve) {
         return {
           ...definition,
           exported: exportNames.length > 0,
+          exportNames,
           key: keyOf(definition, fact, resolve),
           used:
             definition.usedLocally || names.has('*') || exportNames.some((name) => names.has(name)),

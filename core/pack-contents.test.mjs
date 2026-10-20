@@ -6,7 +6,8 @@ import { PACKAGE_ROOT } from './tooling/tool-resolution.mjs';
 
 const root = PACKAGE_ROOT;
 
-const NOT_SHIPPED_PATH = /(?:^|\/)(?:fixtures|test-support|__pycache__)\/|\.test\.mjs$|\.pyc$/u;
+const NOT_SHIPPED_PATH =
+  /(?:^|\/)(?:fixtures|test-support|__tests__|__pycache__)\/|\.test\.mjs$|\.pyc$/u;
 
 function isNotShipped(relative) {
   return NOT_SHIPPED_PATH.test(relative);
@@ -69,6 +70,7 @@ describe('npm package contents', () => {
         'core/cli.test.mjs',
         'core/diff/fixtures/fake-eslint-cli.mjs',
         'core/command/test-support/cli-harness.mjs',
+        'languages/java/adapters/java-e2e/__tests__/java-preset-project.mjs',
         'languages/java/adapters/fixtures/fake-gradle.mjs',
         'core/diff/execution/analyzer-scheduler.mjs',
         'languages/python/metrics/__pycache__/class_metrics.cpython-313.pyc',
@@ -78,6 +80,7 @@ describe('npm package contents', () => {
       'core/cli.test.mjs',
       'core/diff/fixtures/fake-eslint-cli.mjs',
       'core/command/test-support/cli-harness.mjs',
+      'languages/java/adapters/java-e2e/__tests__/java-preset-project.mjs',
       'languages/java/adapters/fixtures/fake-gradle.mjs',
       'languages/python/metrics/__pycache__/class_metrics.cpython-313.pyc',
     ]);
