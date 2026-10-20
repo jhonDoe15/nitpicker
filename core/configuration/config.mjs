@@ -1,5 +1,5 @@
 import path from 'node:path';
-import { CONFIG_FILE_NAME, configError } from '../../shared/config.mjs';
+import { CONFIG_FILE_NAME, configError, withCanonicalRules } from '../../shared/config.mjs';
 import { existsSync, readFileSync } from 'node:fs';
 import { validateConfig, KEYS } from './validate.mjs';
 import { rejectUnreadableSources } from './project-checks/project-config.mjs';
@@ -26,7 +26,7 @@ export function readConfigFile(projectRoot) {
       { cause: error },
     );
   }
-  return validateConfig(parsed);
+  return validateConfig(withCanonicalRules(parsed));
 }
 
 export function describeConfigOverrides(config) {

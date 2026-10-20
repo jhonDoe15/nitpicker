@@ -8,7 +8,7 @@ import {
   runNitpicker,
 } from '../../../typescript/preset/clean-projects/test-support/clean-project.mjs';
 
-const FIXTURE_TIMEOUT_MS = 300_000;
+const FIXTURE_TIMEOUT_MS = 180_000;
 const SOURCE_FILES = 2;
 const SHOUT_SOURCE = `/**
  * @param {string} text

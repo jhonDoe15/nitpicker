@@ -197,9 +197,13 @@ for jscpd, a long-running PIT) and each is expensive enough to deserve its own r
 
 - **What runs.** The project's own ArchUnit rules, executed as JUnit tests by the init script's
   `nitpickerArchunit` task (a `Test` task on the project's test classes and runtime classpath,
-  JUnit Platform, `ignoreFailures`). The project must have `archunit-junit5` (or any ArchUnit
-  setup running on the JUnit Platform) on its test classpath; Nitpicker adds no dependency and so
-  pins no ArchUnit version (the version map is unchanged). Test classes named `*ArchTest` or
+  `ignoreFailures`). It runs on the framework the declared ArchUnit library needs: JUnit 4 for
+  `archunit-junit4` rules (`@RunWith(ArchUnitRunner.class)`), the JUnit Platform for
+  `archunit-junit5`; with both or neither declared, on the framework of the project's `test` task.
+  When the test classes hold ArchUnit classes and none of them produced a report, the task fails
+  (a Gradle failure, `tool-error`), as Maven does, instead of passing without findings. The
+  project must have one of the two libraries on its test classpath; Nitpicker adds no dependency
+  and so pins no ArchUnit version (the version map is unchanged). Test classes named `*ArchTest` or
   `*ArchitectureTest` are selected; `-Pnitpicker.archunit.includes=<Gradle class patterns,
 comma-separated>` changes that. Those classes are excluded from the regular `test` task in
   Nitpicker runs, so a violated rule produces findings instead of failing the JaCoCo step. No
@@ -236,10 +240,13 @@ comma-separated>` changes that. Those classes are excluded from the regular `tes
   `org.example` targets `org.example.*`. PIT refuses `org.*` because it matches PIT's own classes,
   so classes directly in `org` are named one by one), against the project's own tests. The only
   profile can produce enforceable findings.
-- **What runs.** `nitpickerPit` runs the pinned `pitest-command-line` (1.17.4) with the
-  `pitest-junit5-plugin` (1.2.1), default mutators, XML output, two threads, to
+- **What runs.** `nitpickerPit` runs the pinned `pitest-command-line` (1.17.4) with the test
+  plugins the project's framework needs (`pitest-junit5-plugin` 1.2.1, `pitest-testng-plugin`
+  1.0.0, both pinned, added on the conditions below), default mutators, XML output, two threads, to
   `pit/mutations.xml` in the report directory. Tests are named class by class (`--targetTests`), and
-  `--mutableCodePaths` limits mutation to the main classes. The JUnit Platform is not pinned by
+  `--mutableCodePaths` limits mutation to the main classes. For a JUnit Platform `test` task, its
+  `includeTags` and `excludeTags` also select the tests PIT runs during its green-suite check and
+  mutation testing, including method-level tags. The JUnit Platform is not pinned by
   Nitpicker: the plugin's own platform dependencies are excluded and the project's are used, with a
   launcher of the project's engine version added when the project does not declare one. PIT
   requires a green test run: a failing test suite fails the build, which is a `java/gradle-failure`
@@ -248,7 +255,10 @@ comma-separated>` changes that. Those classes are excluded from the regular `tes
   names up to ten of them with the same text as on Maven (`Tests fail in <project>; nitpicker needs
 a passing test suite ...`) instead of Gradle's own failure output. Projects without main classes produce no report and no findings.
   The `pitest-junit5-plugin` and the launcher are added only when the project's test runtime has
-  `junit-platform-engine`; a JUnit 4 project runs PIT's built-in JUnit 4 support.
+  `junit-platform-engine`; a JUnit 4 project runs PIT's built-in JUnit 4 support. When the test
+  runtime has a `testng` jar, the pinned `pitest-testng-plugin` (1.0.0) is added too, without a
+  TestNG of its own: PIT refuses to run a TestNG project without it. Maven builds put the same
+  plugins on PIT's classpath on the same conditions. See [Test frameworks](#test-frameworks).
 - **Equivalent mutants.** A survived mutant's message names the common equivalent cases (a
   `compareTo` boundary, a discarded lambda return) and the way out: simplify the code, or add an
   exception for `pit/mutant-survived`.
@@ -272,6 +282,57 @@ a passing test suite ...`) instead of Gradle's own failure output. Projects with
 - **Tests.** `ingesters.test.mjs` (sample report `fixtures/pit-mutations.xml`), `java-reports.test.mjs`
   (glue), and gated e2e cases: a tested change with a surviving boundary mutant fails; the clean
   change now adds a test for its new method, because new untested code is a new `mutant-nocoverage`.
+
+## Test frameworks
+
+Coverage (JaCoCo), mutation testing (PIT), ArchUnit and the slow-test check work with these test
+frameworks, on Gradle and on Maven. Nitpicker detects the framework from the project's test runtime
+classpath and its `test` task, and adds no test library to the project.
+
+| Framework | Coverage | Mutation                                                    | ArchUnit                                                                                                                             | Slow tests                                                       |
+| --------- | -------- | ----------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------ | ---------------------------------------------------------------- |
+| JUnit 4   | yes      | PIT's built-in JUnit 4 support                              | `archunit-junit4`, run on JUnit 4                                                                                                    | method by name                                                   |
+| JUnit 5   | yes      | `pitest-junit5-plugin` and a launcher of the engine version | `archunit-junit5`, run on the JUnit Platform                                                                                         | method by name or `@DisplayName`                                 |
+| TestNG    | yes      | `pitest-testng-plugin`                                      | Gradle: `archunit-junit5` on the JUnit Platform. Maven: Surefire 3.6+, or an engine/separate execution on older providers, see below | method by name                                                   |
+| Spock 2   | yes      | `pitest-junit5-plugin` (Spock runs on the JUnit Platform)   | `archunit-junit5`, run on the JUnit Platform                                                                                         | feature by name, an unrolled iteration by its feature; see below |
+| Kotest    | yes      | `pitest-junit5-plugin` (Kotest runs on the JUnit Platform)  | `archunit-junit5`, run on the JUnit Platform                                                                                         | the spec file, no line; counted when the file changed            |
+
+- **Coverage.** JaCoCo's agent records whatever test framework the build's own test task runs, so
+  coverage needs nothing per framework.
+- **Mutation.** PIT needs a plugin per framework family: its JUnit 4 support is built in, JUnit
+  Platform engines (Jupiter, Spock 2, Kotest, the vintage engine) run through `pitest-junit5-plugin`,
+  and TestNG through `pitest-testng-plugin`. Each plugin is added only when its framework is on the
+  test runtime, so a JUnit 4 project does not get the JUnit 5 plugin, which fails without the JUnit
+  Platform. Kotest needs no `kotest-extensions-pitest`: through the JUnit Platform PIT already
+  tells killed, survived and uncovered mutants apart per Kotest test (pinned by the Kotest 6.0
+  end-to-end test).
+- **ArchUnit.** ArchUnit has runners for JUnit 4 and the JUnit Platform only. On Gradle
+  `nitpickerArchunit` takes the framework of the declared ArchUnit library (see
+  [Slice 4](#slice-4-archunit)); on Maven Surefire runs the rule classes with the provider it picks
+  for the project. A violation in a Kotlin or Groovy class is anchored at its `.kt` or `.groovy`
+  file, found under the Kotlin source roots too. Surefire 3.6 and newer can run TestNG beside
+  ArchUnit without a separate TestNG engine. Earlier Surefire versions select their JUnit Platform
+  provider when `archunit-junit5` puts the Platform on the test classpath; that provider runs TestNG
+  tests only through `org.junit.support:testng-engine`, so the project's own `mvn test` skips them too. When the
+  TestNG engine is missing and Surefire ran none of a module's tests but the ArchUnit classes,
+  nitpicker stops with a `java/maven-failure` that names the cause and the two ways out (add the
+  TestNG engine, or run TestNG in a Surefire execution of its own) instead of reporting 0% coverage.
+- **Slow tests.** Specifications are found under every test source root, `.groovy` files included:
+  Gradle's `allJava` source directories cover `src/test/groovy`; on Maven the GMavenPlus test
+  sources (its `testSources`, default `src/test/groovy`) and an existing `src/test/groovy` (as
+  groovy-eclipse-compiler builds it) are test source roots, and roots that lie outside the module
+  are dropped. A Spock feature is found by its quoted name (`def "ships an order"()`); an unrolled
+  iteration by its feature, its `#placeholders` read as wildcards (`adds 1 and 2` for
+  `def "adds #a and #b"()`) and the default iteration suffix (` [a: 1, b: 2, #0]`) ignored. A
+  feature with a `where:` block counts as a template, like a `@ParameterizedTest`. A test that
+  names no method (a Kotest test, a custom unroll name) in a file without templates is counted when
+  its file changed. `*IntegrationSpec` and `*ISpec` classes get the integration budget.
+- **Tests.** `adapters/java-e2e/test-frameworks.e2e.test.mjs` runs a JUnit 4 project with
+  `archunit-junit4` rules, a TestNG project and a Spock project, both with `archunit-junit5` rules,
+  on Gradle and on Maven (fixtures in `adapters/fixtures/test-frameworks/`), JUnit 4 tests with
+  `archunit-junit5` rules and an ArchUnit class no runner picks up on Gradle;
+  `adapters/kotlin-e2e/kotest.e2e.test.mjs` runs a Kotest project with `archunit-junit5` rules
+  under the Kotlin preset.
 
 ## Slice 2: CLI and reporter integration
 
@@ -306,6 +367,14 @@ a passing test suite ...`) instead of Gradle's own failure output. Projects with
   project root (base and head are separate worktrees), so each side runs the Gradle version it pins.
   The wrapper downloads the Gradle distribution named in the head snapshot's
   `gradle-wrapper.properties`, and base and head each use their own wrapper.
+- **Gradle timeout.** Each Gradle command has a 15-minute budget by default, for both Java
+  and Kotlin. Set `NITPICKER_GRADLE_TIMEOUT_MINUTES` to a positive whole number of minutes,
+  for example `NITPICKER_GRADLE_TIMEOUT_MINUTES=45 npx nitpicker --base main` for a slow PIT
+  suite. The same budget applies to base and head. Empty values, fractions, units such as
+  `45m`, and values outside 1–17895 are errors. The upper bound keeps the analyzer's Node.js
+  timer within its supported range. The analyzer deadline allows two commands (the optional
+  Checkstyle configuration export and the analysis), plus one minute for reports. This does
+  not change Maven's command budget or configure individual PIT phases.
 - **Config keys.** `base`, `disable` and `analyzers` work as before. `thresholds`, `exclude` and
   `legacyInventory` are shared with the TypeScript preset (`shared/config.mjs`,
   `head-policy.mjs`, `legacy-inventory.mjs`) and reach the Java runner as arguments, so they are
@@ -352,12 +421,12 @@ finding that only moves stays baselined. The comparison key is already
 `tool, rule, path, symbol, identity, classification, metric name`; "identity" below is what each
 tool adds on top of rule and path.
 
-| Tool                                                                             | Report                     | Ingester                                                                       | Classification                                          | Identity                                                                                                            |
-| -------------------------------------------------------------------------------- | -------------------------- | ------------------------------------------------------------------------------ | ------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------- |
-| PMD (`pmd`)                                                                      | SARIF 2.1.0                | `ingestSarif` (X5), after URI rewriting                                        | enforceable: every reported violation                   | The rule's message text (PMD names the offending field, method or variable in it). Repeats get `#2`, `#3` in order. |
-| SpotBugs (`spotbugs`)                                                            | SARIF 2.1.0                | `ingestSarif` (X5), after URI rewriting                                        | enforceable: every reported bug                         | SpotBugs' message arguments (class, method or field, called method). Repeats get `#2`, `#3` in order.               |
-| google-java-format (`google-java-format`; `palantir-java-format` for that style) | file list from `--dry-run` | `ingestFormatCheck` (new, `languages/java/ingest/formatting/format-check.mjs`) | enforceable                                             | The constant `format`; the file path is the key. One finding per unformatted file.                                  |
-| JaCoCo (`jacoco`)                                                                | XML                        | `ingestJacoco` (X6)                                                            | descriptive: `line-coverage` metric, `uncovered-method` | As in X6: class and method name plus descriptor.                                                                    |
+| Tool                                                                             | Report                     | Ingester                                                    | Classification                                          | Identity                                                                                                            |
+| -------------------------------------------------------------------------------- | -------------------------- | ----------------------------------------------------------- | ------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------- |
+| PMD (`pmd`)                                                                      | SARIF 2.1.0                | `ingestSarif` (X5), after URI rewriting                     | enforceable: every reported violation                   | The rule's message text (PMD names the offending field, method or variable in it). Repeats get `#2`, `#3` in order. |
+| SpotBugs (`spotbugs`)                                                            | SARIF 2.1.0                | `ingestSarif` (X5), after URI rewriting                     | enforceable: every reported bug                         | SpotBugs' message arguments (class, method or field, called method). Repeats get `#2`, `#3` in order.               |
+| google-java-format (`google-java-format`; `palantir-java-format` for that style) | file list from `--dry-run` | `ingestFormatCheck` (new, `shared/ingest/format-check.mjs`) | enforceable                                             | The constant `format`; the file path is the key. One finding per unformatted file.                                  |
+| JaCoCo (`jacoco`)                                                                | XML                        | `ingestJacoco` (X6)                                         | descriptive: `line-coverage` metric, `uncovered-method` | As in X6: class and method name plus descriptor.                                                                    |
 
 Notes on the glue in `java-reports.mjs`:
 
@@ -530,12 +599,19 @@ identity when the value changes: editing such a line counts as a resolved plus a
 
 - **Where it runs.** jscpd is a Node tool, so it is not in the Gradle init script (which this slice
   does not touch). After the Gradle task has written `manifest.json` in the report directory,
-  `languages/java/adapters/metrics/java-duplicates.mjs` runs the package's own pinned jscpd (the one the TypeScript
-  `duplicates` check uses; its version is appended to the analyzer version as `jscpd@x.y.z`) once
-  per existing main source root with `--format java --mode mild` and a nitpicker-owned `--config`
-  (a project's `.jscpd.json` is not read), ignoring `build`, `generated`, `target` and `out`. It runs
-  once for the whole build, over the source roots of every Gradle project. Reports go to `jscpd/<n>/`
-  in the report directory and are merged into its `duplicates.json`. Clones across two source roots, and so across two Gradle projects, are not detected (running jscpd once over all roots would detect them, at the price of changing the identity of every existing Java clone finding). A jscpd
+  `languages/java/adapters/metrics/java-duplicates.mjs` runs the package's own pinned jscpd (`runJscpd` in
+  `core/tooling/jscpd/run-jscpd.mjs`, shared with Python and the one the TypeScript `duplicates`
+  check uses; its version is appended to the analyzer version as `jscpd@x.y.z`) once per existing
+  main source root with `--format java --mode mild` and a nitpicker-owned `--config` (a project's
+  `.jscpd.json` is not read). It ignores the folders named `build`, `generated`, `target` and `out`
+  at any depth; the config key `duplicates.skippedFolders` replaces this list (an empty list
+  ignores nothing) and reaches the runner as `--duplicate-skipped-folders`. Clones made only of
+  `package` and `import` lines (the clone may end on the line where the following declaration
+  starts) are not reported (`core/tooling/jscpd/import-only/jvm-imports.mjs`). The message names
+  both files and tells to add either to `exclude`, and a glob that matches either file of the pair
+  lifts the finding. It runs once for the whole build, over the source roots of every Gradle project.
+  Reports go to `jscpd/<n>/` in the report directory and are merged into its `duplicates.json`.
+  Clones across two source roots, and so across two Gradle projects, are not detected (running jscpd once over all roots would detect them, at the price of changing the identity of every existing Java clone finding). A jscpd
   failure is a tool error like a Gradle failure.
 - **Findings.** The same normalizer as the TypeScript check (`normalizeDuplicates`), tool name
   `duplicates`: `duplicate-clone` (enforceable, one per clone) and `duplicate-clone-size`
@@ -560,7 +636,7 @@ resolved plus a new finding, as in the TypeScript check.
 - **What makes it "changed": the head-vs-base line mapping.** The differential comparison already
   maps head lines to the merge base through `git diff --unified=0` (`readChangedLines`, used for
   the strict-preset rules). `touchedCode.isStrictRule(rule, finding)` now also answers true for
-  this rule when the finding comes from `jacoco` (`languages/java/adapters/touched-rules.mjs`), so an
+  this rule when the finding comes from `jacoco` (`isTouchedCodeRule` in `shared/policy.mjs`), so an
   uncovered branch whose head line lies in a changed range, or in an added file, is new even if
   the base had it. An uncovered branch on an unchanged line stays baselined. The library entry
   `runJavaDiff` passes the same `touchedCode` as the CLI path. The TypeScript check of the same
@@ -582,12 +658,15 @@ resolved plus a new finding, as in the TypeScript check.
 
 ## Slow tests
 
-- **Rule.** `test-runtime/slow-test` fails a test the change adds or edits when it takes more than 5 s
+- **Rule.** `slow-test` (tool `test-runtime`) fails a test the change adds or edits when it takes more than 5 s
   as a unit test, or more than 30 s as an integration test (`thresholds.unitTestSeconds` and
-  `thresholds.integrationTestSeconds`). Integration tests are those of a test task other than `test`
-  (Maven's `surefire` counts as `test`), classes named `*IT`, `*ITCase` or `*IntegrationTest(s)`, and
-  classes annotated `@SpringBootTest`, also through a superclass or an annotation of their own that
-  carries it, when that type's source is in a test root.
+  `thresholds.integrationTestSeconds`). The rule, message shape, budgets and exception are the same
+  for [TypeScript and JavaScript](typescript-strict-preset.md#slow-tests) and
+  [Python](python-preset.md#slow-tests); the finding prints the bare id `slow-test`, and
+  `test-runtime/slow-test` is accepted in `exceptions` as the same rule. Integration tests are those
+  of a test task other than `test` (Maven's `surefire` counts as `test`), classes named `*IT`,
+  `*ITCase`, `*IntegrationTest(s)`, `*IntegrationSpec` or `*ISpec`, and classes annotated `@SpringBootTest`, also through a
+  superclass or an annotation of their own that carries it, when that type's source is in a test root.
   The message names the budget, the measured time, the fixes (no `Thread.sleep` or other waits, a
   smaller Spring context or a test slice, or moving it to an integration test source set; on Maven,
   making it an integration test that Failsafe runs, `*IT`) and the exception route.
@@ -596,7 +675,12 @@ resolved plus a new finding, as in the TypeScript check.
 - **Measurement.** Head only, from the JUnit XML the test tasks already write: the init script copies
   `TEST-*.xml` of every test task in the run (not `nitpickerArchunit`) to
   `test-results/<task>/` in each module's report directory. No extra test run. A rerun test keeps
-  its slowest time. Maven builds copy Surefire's `TEST-*.xml` to `test-results/surefire/` and
+  its slowest time; only passed tests are timed (failed, errored and skipped cases are left out).
+  A failing build reports its own error and no slow tests.
+  Unlike TypeScript and Python, a slow test is not run again without coverage: the build runs the
+  tests once, and a second build would double the cost, so the time is that of the build's own run
+  (with JaCoCo's agent when the same run measures coverage) and is checked against the budget as
+  measured. Maven builds copy Surefire's `TEST-*.xml` to `test-results/surefire/` and
   Failsafe's to `test-results/failsafe/` (see [Maven builds](#maven-builds)); `surefire` counts as
   the `test` task, `failsafe` as an integration task. Failsafe runs when the project binds its
   `integration-test` goal and does not keep it off, because nitpicker then builds to `verify`.
@@ -1249,7 +1333,7 @@ table:
   identity: name, occurrence among equal names in the file and a hash of the method text with
   indentation removed, no line number. A moved or re-indented method stays baselined; editing a
   method that already violates produces a new finding, as in TypeScript.
-- **Cache invalidation.** `StructureMetrics.java`, `java-structure.mjs` and the shared structure
+- **Cache invalidation.** `StructureMetrics.java`, `java-structure.mjs`, `structure-report.mjs` and the shared structure
   rule files are in the Java analyzer's configuration hash.
 - **Tests.** `java-structure.test.mjs` (fast: limits, messages, identity stability);
   the gated e2e adds a branch with a method over the parameter limit (fails) and keeps a legacy

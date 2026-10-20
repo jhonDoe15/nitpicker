@@ -1,4 +1,4 @@
-import { childAt, parseXml } from '../../ingest/common.mjs';
+import { childAt, parseXml } from '../../../../shared/ingest/common.mjs';
 import { buildFiles } from './build-files.mjs';
 import { withoutComments } from './build-comments.mjs';
 

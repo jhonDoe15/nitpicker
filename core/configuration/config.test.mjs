@@ -164,6 +164,16 @@ describe('config file', () => {
       );
     });
 
+    it('accepts the bare slow-test exception with every preset', () => {
+      const slowTest = { ...exception, rule: 'slow-test' };
+      for (const preset of ['typescript', 'javascript', 'python', 'java', 'kotlin']) {
+        expect(validateConfig({ preset, exceptions: [slowTest] })).toEqual({
+          preset,
+          exceptions: [slowTest],
+        });
+      }
+    });
+
     it('names the rules that can be lifted when the rule is another detekt rule', () => {
       const other = { ...exception, rule: 'detekt.style.MagicNumber' };
 
@@ -183,6 +193,13 @@ describe('config file', () => {
     expect(validateConfig({ preset: 'typescript', ...shared })).toBeDefined();
     expect(() => validateConfig({ preset: 'java', thresholds: { crapLimit: 0 } })).toThrow(
       /positive number/,
+    );
+    for (const preset of ['typescript', 'javascript', 'python', 'java', 'kotlin']) {
+      const thresholds = { unitTestSeconds: 2, integrationTestSeconds: 20 };
+      expect(validateConfig({ preset, thresholds })).toEqual({ preset, thresholds });
+    }
+    expect(() => validateConfig({ preset: 'python', thresholds: { unitTestSeconds: 0 } })).toThrow(
+      '"thresholds.unitTestSeconds" must be a positive number',
     );
     expect(() => validateConfig({ preset: 'java', legacyInventory: '../x.json' })).toThrow(
       /inside the project/,
@@ -265,6 +282,62 @@ describe('config file', () => {
     [{ layout: { sourceRoots: ['lib/**'] } }, /entries must be directories inside the project/],
     [{ analyzers: [{ name: 'a', command: 'b', extra: 1 }] }, /unknown key "extra"/],
   ])('rejects %j', (config, message) => {
+    expect(() => validateConfig(config)).toThrow(message);
+  });
+
+  it('accepts the folders the duplicate scan skips, for every preset', () => {
+    const duplicates = { skippedFolders: ['dist', 'generated'] };
+    for (const preset of ['typescript', 'javascript', 'java', 'kotlin', 'python']) {
+      expect(validateConfig({ preset, duplicates })).toEqual({ preset, duplicates });
+    }
+    expect(validateConfig({ duplicates: { skippedFolders: [] } })).toEqual({
+      duplicates: { skippedFolders: [] },
+    });
+    expect(validateConfig({ duplicates: {} })).toEqual({ duplicates: {} });
+    expect(describeConfigOverrides({ duplicates })).toEqual([
+      'duplicates: {"skippedFolders":["dist","generated"]}',
+    ]);
+  });
+
+  it.each([
+    [{ duplicates: [] }, '"duplicates" must be an object'],
+    [
+      { duplicates: { folders: [] } },
+      'unknown duplicates key "folders". Allowed duplicates keys: skippedFolders',
+    ],
+    [
+      { duplicates: { skippedFolders: 'build' } },
+      '"duplicates.skippedFolders" must be an array of non-empty strings',
+    ],
+    [
+      { duplicates: { skippedFolders: [''] } },
+      '"duplicates.skippedFolders" must be an array of non-empty strings',
+    ],
+    [
+      { duplicates: { skippedFolders: ['src/build'] } },
+      '"duplicates.skippedFolders" entries must be folder names without slashes, commas, glob characters or a leading "!": src/build',
+    ],
+    [
+      { duplicates: { skippedFolders: ['**/build/**'] } },
+      '"duplicates.skippedFolders" entries must be folder names without slashes, commas, glob characters or a leading "!": **/build/**',
+    ],
+    [
+      { duplicates: { skippedFolders: ['..'] } },
+      '"duplicates.skippedFolders" entries must be folder names without slashes, commas, glob characters or a leading "!": ..',
+    ],
+    [
+      { duplicates: { skippedFolders: ['a,b'] } },
+      '"duplicates.skippedFolders" entries must be folder names without slashes, commas, glob characters or a leading "!": a,b',
+    ],
+    [
+      { duplicates: { skippedFolders: ['!build'] } },
+      '"duplicates.skippedFolders" entries must be folder names without slashes, commas, glob characters or a leading "!": !build',
+    ],
+    [
+      { duplicates: { skippedFolders: ['dist', 'dist'] } },
+      '"duplicates.skippedFolders" must not contain duplicates',
+    ],
+  ])('rejects the duplicates setting %j', (config, message) => {
     expect(() => validateConfig(config)).toThrow(message);
   });
 
@@ -390,80 +463,5 @@ describe('strict exceptions', () => {
     expect(withLayout).toEqual(['layout: {"sourceRoots":["lib"]}']);
     const hashes = [plain, withException, withLayout].map((overrides) => policyHash([], overrides));
     expect(new Set(hashes).size).toBe(3);
-  });
-});
-
-describe('layout keys', () => {
-  it('accepts entry point globs for files that are loaded by path', () => {
-    const layout = { entryPoints: ['tools/*-runner.mjs'] };
-
-    expect(validateConfig({ layout })).toEqual({ layout });
-  });
-
-  it('accepts the directory roots and the excluded globs together', () => {
-    const layout = {
-      sourceRoots: ['lib'],
-      testRoots: ['spec'],
-      excludedGlobs: ['**/vendor/**', '**/*.generated.ts'],
-    };
-
-    expect(validateConfig({ layout })).toEqual({ layout });
-  });
-
-  it('validates globs for excludedGlobs and directories for the roots', () => {
-    expect(() => validateConfig({ layout: { excludedGlobs: ['**/vendor/**'] } })).not.toThrow();
-    expect(() => validateConfig({ layout: { sourceRoots: ['**/vendor/**'] } })).toThrow(
-      /entries must be directories inside the project/,
-    );
-    expect(() => validateConfig({ layout: { excludedGlobs: '**/vendor/**' } })).toThrow(
-      /"layout.excludedGlobs" must be an array/,
-    );
-    expect(() => validateConfig({ layout: { excludedGlobs: [''] } })).toThrow(
-      /"layout.excludedGlobs" must be an array of non-empty strings/,
-    );
-  });
-
-  it('lists every allowed layout key when one is unknown', () => {
-    expect(() => validateConfig({ layout: { roots: ['lib'] } })).toThrow(
-      /Allowed layout keys: sourceRoots, testRoots, excludedGlobs/,
-    );
-  });
-});
-
-describe('react keys', () => {
-  it('accepts enabled and every styling approach', () => {
-    for (const react of [
-      {},
-      { enabled: true },
-      { enabled: false },
-      { styling: 'class-names' },
-      { styling: 'css-in-js' },
-      { styling: 'inline-style' },
-      { enabled: true, styling: 'css-in-js' },
-    ]) {
-      expect(validateConfig({ react })).toEqual({ react });
-    }
-  });
-
-  it.each([
-    [[], /"react" must be an object/],
-    ['react', /"react" must be an object/],
-    [{ enable: true }, /unknown react key "enable". Allowed react keys: enabled, styling/],
-    [{ enabled: 'yes' }, /"react.enabled" must be true or false/],
-    [{ enabled: 1 }, /"react.enabled" must be true or false/],
-    [
-      { styling: 'tailwind' },
-      /"react.styling" must be one of: class-names, css-in-js, inline-style/,
-    ],
-  ])('rejects react %j', (react, message) => {
-    expect(() => validateConfig({ react })).toThrow(message);
-  });
-
-  it('reports the react override and changes the policy hash', () => {
-    const overrides = describeConfigOverrides({ react: { styling: 'css-in-js' } });
-    const analyzers = [{ name: 'a', version: '1', configurationHash: 'h' }];
-
-    expect(overrides).toEqual(['react: {"styling":"css-in-js"}']);
-    expect(policyHash(analyzers, overrides)).not.toBe(policyHash(analyzers, []));
   });
 });

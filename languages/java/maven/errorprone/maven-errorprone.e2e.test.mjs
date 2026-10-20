@@ -3,7 +3,6 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterAll, describe, expect, it } from 'vitest';
 import { collectJavaFindings } from '../../adapters/java-diff.mjs';
-import { GRADLE_STEP_TIMEOUT_MS } from '../../adapters/test-support/gradle-e2e.mjs';
 
 const enabled = process.env.NITPICKER_JAVA_E2E === '1';
 const maven = process.env.NITPICKER_MAVEN;
@@ -147,19 +146,13 @@ afterAll(() => {
 });
 
 describe.skipIf(!enabled)('Error Prone on a Spring Initializr style Maven build', () => {
-  it(
-    'takes the processors from the parent and the Boot BOM, and resolves classes generated into target/classes',
-    () => {
-      const findings = collectJavaFindings(project(), { maven, policy: {} })
-        .filter(
-          (finding) => finding.tool === 'errorprone' || finding.classification === 'tool-error',
-        )
-        .map(({ tool, rule, path: file, location }) => [tool, rule, file, location?.line]);
+  it('takes the processors from the parent and the Boot BOM, and resolves classes generated into target/classes', () => {
+    const findings = collectJavaFindings(project(), { maven, policy: {} })
+      .filter((finding) => finding.tool === 'errorprone' || finding.classification === 'tool-error')
+      .map(({ tool, rule, path: file, location }) => [tool, rule, file, location?.line]);
 
-      expect(findings).toStrictEqual([
-        ['errorprone', 'ReturnValueIgnored', 'app/src/main/java/demo/app/Garage.java', 11],
-      ]);
-    },
-    GRADLE_STEP_TIMEOUT_MS,
-  );
+    expect(findings).toStrictEqual([
+      ['errorprone', 'ReturnValueIgnored', 'app/src/main/java/demo/app/Garage.java', 11],
+    ]);
+  }, 180_000);
 });

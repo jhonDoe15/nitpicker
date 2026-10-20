@@ -179,14 +179,17 @@ describe('maven tools', () => {
 
     const tools = toolDependencies(pinned, ['1.11.4']);
 
-    expect(tools.pit).toEqual([
-      dependency('org.pitest', 'pitest-command-line', pinned.pitest),
+    expect(tools.pit).toEqual([dependency('org.pitest', 'pitest-command-line', pinned.pitest)]);
+    expect(tools['pit-junit5']).toEqual([
       dependency(
         'org.pitest',
         'pitest-junit5-plugin',
         pinned.pitestJunit5,
         `<exclusions>${exclusions}</exclusions>`,
       ),
+    ]);
+    expect(tools['pit-testng']).toEqual([
+      dependency('org.pitest', 'pitest-testng-plugin', pinned.pitestTestng),
     ]);
     expect(tools['launcher-1.11.4']).toEqual([
       dependency('org.junit.platform', 'junit-platform-launcher', '1.11.4'),

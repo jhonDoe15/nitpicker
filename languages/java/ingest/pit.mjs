@@ -1,5 +1,5 @@
 import { mutantFindings } from '../../../shared/rules/mutation.mjs';
-import { decodeEntities } from './common.mjs';
+import { decodeEntities } from '../../../shared/ingest/common.mjs';
 
 function pitWayOut(tool) {
   return `If no input can tell the two apart (a compareTo boundary, a discarded lambda return), simplify the code so this mutant disappears, or add an exception for ${tool}/mutant-survived in nitpicker.config.json.`;

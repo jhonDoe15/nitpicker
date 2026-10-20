@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { evaluateDuplicates } from '../../../../shared/rules/duplicates.mjs';
 import { applyPythonExceptions } from './python-exceptions.mjs';
 
 const finding = (rule, path) => ({ tool: 'ruff', rule, path, identity: rule });
@@ -50,5 +51,26 @@ describe('python exceptions', () => {
     expect(applyPythonExceptions([mypy, rules], [exception('frozen-dataclass', ['**'])])).toEqual([
       mypy,
     ]);
+  });
+
+  it('lifts a clone when the exception matches either file of the pair', () => {
+    const clones = evaluateDuplicates(
+      [
+        {
+          first: { file: 'src/a/left.py', line: 1 },
+          second: { file: 'src/b/right.py', line: 4 },
+          fragment: 'x',
+          lines: 9,
+          tokens: 70,
+        },
+      ],
+      'duplicates',
+    );
+    const lifted = (glob) =>
+      applyPythonExceptions(clones, [exception('duplicate-clone', [glob])]).map(({ rule }) => rule);
+
+    expect(lifted('src/a/**')).toEqual(['duplicate-clone-size', 'duplicate-clone-size']);
+    expect(lifted('src/b/**')).toEqual(['duplicate-clone-size', 'duplicate-clone-size']);
+    expect(lifted('src/c/**')).toEqual(clones.map(({ rule }) => rule));
   });
 });

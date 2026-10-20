@@ -4,7 +4,7 @@ import {
   hashIdentity,
   normalizeReportPath,
   parseXml,
-} from '../common.mjs';
+} from '../../../../shared/ingest/common.mjs';
 
 const ENFORCEABLE_SEVERITIES = new Set(['error', 'warning']);
 

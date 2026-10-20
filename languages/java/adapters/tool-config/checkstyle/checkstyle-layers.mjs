@@ -1,4 +1,4 @@
-import { childrenNamed, parseXml } from '../../../ingest/common.mjs';
+import { childrenNamed, parseXml } from '../../../../../shared/ingest/common.mjs';
 import { renderXml } from '../xml-write.mjs';
 
 const DOCTYPE_ID = '-//Checkstyle//DTD Checkstyle Configuration 1.3//EN';

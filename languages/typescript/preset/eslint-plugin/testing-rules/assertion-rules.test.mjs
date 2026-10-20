@@ -3,7 +3,6 @@ import { afterAll, afterEach, beforeAll, beforeEach, describe, it } from 'vitest
 import tseslint from 'typescript-eslint';
 import { rule as noWaitFor } from '../rules/testing/assertions/no-wait-for-with-fake-timers.mjs';
 import { rule as noInternalMocks } from '../rules/testing/assertions/no-internal-module-mocks.mjs';
-import { rule as noRaisedTestTimeout } from '../rules/testing/assertions/no-raised-test-timeout.mjs';
 import { rule as noPartialOutputAssertion } from '../rules/testing/assertions/no-partial-output-assertion.mjs';
 import { rule as noMockingSubjectUnderTest } from '../rules/testing/assertions/no-mocking-subject-under-test.mjs';
 import { rule as testTsconfigPinsLibAndTypes } from '../rules/testing/types/test-tsconfig-pins-lib-and-types.mjs';
@@ -178,63 +177,6 @@ ruleTester.run('integration-test-uses-approved-harness', integrationTestUsesAppr
       code: "import { startApp } from '../fixtures/app.js'; startApp();",
       options: [{ approvedFunctions: ['createServer'] }],
       errors: [{ messageId: 'missingHarness' }],
-    },
-  ],
-});
-ruleTester.run('no-raised-test-timeout', noRaisedTestTimeout, {
-  valid: [
-    { filename: testFile, code: "it('runs', () => {});" },
-    { filename: testFile, code: "it('runs', () => {}, 10_000);" },
-    { filename: testFile, code: "const LIMIT = 5 * 1000; test('runs', async () => {}, LIMIT);" },
-    { filename: testFile, code: "it('retries', { retry: 2 }, () => {});" },
-    { filename: testFile, code: "it.each([1, 2])('case %s', () => {}, 2000);" },
-    { filename: testFile, code: 'beforeAll(() => setup(), 10_000);' },
-    { filename: testFile, code: "describe('suite', () => { it('runs', () => {}); });" },
-    { filename: testFile, code: 'setTimeout(() => done(), 60_000);' },
-    {
-      filename: testFile,
-      code: 'vi.setConfig({ testTimeout: 5000, sequence: { shuffle: true } });',
-    },
-  ],
-  invalid: [
-    {
-      filename: '/repo/tests/integration/strict-clean.test.ts',
-      code: lines(
-        'const FIXTURE_TIMEOUT_MS = 300_000;',
-        "it('passes --all', () => { run(); }, FIXTURE_TIMEOUT_MS);",
-      ),
-      errors: [{ messageId: 'raisedTimeout', line: 2 }],
-    },
-    {
-      filename: '/repo/tests/integration/eslint-diff-policy.test.ts',
-      code: lines(
-        "it('compares', () => {}, 60_000);",
-        "it('compares typed', async () => {}, 120_000);",
-      ),
-      errors: [{ messageId: 'raisedTimeout' }, { messageId: 'raisedTimeout' }],
-    },
-    {
-      filename: testFile,
-      code: lines(
-        "it('object form', { timeout: 60_000 }, () => {});",
-        "describe('suite', { timeout: 20_000 }, () => {});",
-        'beforeAll(async () => setup(), 5 * 60 * 1000);',
-        'vi.setConfig({ testTimeout: 30_000, hookTimeout: 30_000 });',
-        "it.concurrent('fast?', async () => {}, 11_000);",
-      ),
-      errors: [
-        { messageId: 'raisedTimeout', line: 1 },
-        { messageId: 'raisedTimeout', line: 2 },
-        { messageId: 'raisedTimeout', line: 3 },
-        { messageId: 'raisedTimeout', line: 4 },
-        { messageId: 'raisedTimeout', line: 4 },
-        { messageId: 'raisedTimeout', line: 5 },
-      ],
-    },
-    {
-      filename: testFile,
-      code: "it('computed', () => {}, Number(process.env.SLOW_TIMEOUT));",
-      errors: [{ messageId: 'unknownTimeout' }],
     },
   ],
 });

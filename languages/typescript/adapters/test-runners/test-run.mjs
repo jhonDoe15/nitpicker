@@ -2,8 +2,12 @@ import { existsSync, rmSync } from 'node:fs';
 import path from 'node:path';
 import { trackTemporaryPath } from '../../../../core/tooling/temporary-files.mjs';
 import { readHeadPolicy, readLayout } from '../../preset/head-policy.mjs';
+import { readHeadPolicyFile } from '../../../../shared/head-policy.mjs';
+import {
+  resolveTestTimeouts,
+  TEST_TIMEOUT_CEILING_MS,
+} from '../../../../shared/test-timeouts/resolve.mjs';
 import { projectTestRunner } from '../../preset/test-runner/project-runner.mjs';
-import { TEST_TIMEOUT_CEILING_MS } from '../../preset/eslint-plugin/rules/testing/assertions/no-raised-test-timeout.mjs';
 import {
   COVERAGE_REPORT_PATH,
   formatProcessOutput,
@@ -11,7 +15,58 @@ import {
 } from '../quality-areas/reporting/test-report.mjs';
 
 export const TEST_TIMEOUT_MS = TEST_TIMEOUT_CEILING_MS;
-export const MAX_WORKERS = 4;
+const MAX_WORKERS = 4;
+
+export function testTimeouts(file, policy = readHeadPolicyFile()) {
+  return resolveTestTimeouts(policy, {
+    file,
+    language: policy.preset === 'javascript' ? 'javascript' : 'typescript',
+  });
+}
+
+export function testTimeoutMs(options, files, { hooks = true } = {}) {
+  if (options === undefined) {
+    return testTimeouts().testTimeoutMs;
+  }
+  const selected = files ?? options.rerun?.files ?? runnableTestFiles(options);
+  const limits = selected.map((file) =>
+    testTimeouts(path.isAbsolute(file) ? path.relative(options.projectRoot, file) : file),
+  );
+  if (limits.length === 0) {
+    limits.push(testTimeouts());
+  }
+  const timeout = limits[0].testTimeoutMs;
+  if (!hooks && limits.some((limit) => limit.hookTimeoutMs !== undefined)) {
+    throw new Error(
+      'This test runner cannot set hook deadlines. Use Vitest for configured hook timeouts.',
+    );
+  }
+  if (
+    limits.some(
+      (limit) =>
+        limit.testTimeoutMs !== timeout ||
+        (limit.hookTimeoutMs !== undefined && limit.hookTimeoutMs !== timeout),
+    )
+  ) {
+    throw new Error(
+      'This test runner uses one test and hook deadline. Use Vitest for projects with different timeout scopes.',
+    );
+  }
+  return timeout;
+}
+
+export function workerCount(options) {
+  return options.rerun === undefined ? MAX_WORKERS : 1;
+}
+
+export function uncoveredRun(command) {
+  return {
+    nodeArguments: [],
+    environment: command.environment,
+    write: () => Promise.resolve(),
+    remove: () => {},
+  };
+}
 
 export function coverageOutputFile(options) {
   return path.join(options.projectRoot, COVERAGE_REPORT_PATH);

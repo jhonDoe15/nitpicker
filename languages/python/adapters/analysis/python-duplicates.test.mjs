@@ -2,7 +2,7 @@ import { mkdirSync, mkdtempSync, realpathSync, rmSync, writeFileSync } from 'nod
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
-import { importsOnly, readDuplicateFindings, runDuplicates } from './python-duplicates.mjs';
+import { readDuplicateFindings, runDuplicates } from './python-duplicates.mjs';
 
 const roots = [];
 
@@ -57,7 +57,7 @@ describe('duplicates in Python sources', () => {
         path: 'src/app/a.py',
         identity: 'pair:src/app/a.py|src/app/b.py:fragment:8e33a9ff56a22a94c8efc96f:occurrence:1',
         message:
-          'This code repeats src/app/b.py:1 (10 lines). Keep one copy and call it from both places.',
+          'This code repeats src/app/b.py:1 (10 lines). Keep one copy and call it from both places. If the repetition is intended, add src/app/a.py or src/app/b.py to "exclude" in nitpicker.config.json.',
         classification: 'enforceable',
         location: { line: 1 },
       },
@@ -182,6 +182,22 @@ describe('duplicates in Python sources', () => {
     expect(clonesOf(context)).toEqual([]);
   });
 
+  it('analyses a package named like a skipped folder when the project lists its own folders', () => {
+    const files = {
+      'src/app/build/a.py': CLONE,
+      'src/app/build/b.py': CLONE,
+      'src/app/dist/c.py': CLONE,
+      'src/app/dist/d.py': CLONE,
+    };
+
+    expect(clonesOf(project(files))).toEqual([]);
+    expect(
+      clonesOf({ ...project(files), duplicateSkippedFolders: ['dist'] }).map(
+        ({ path: file }) => file,
+      ),
+    ).toEqual(['src/app/build/a.py']);
+  });
+
   it('ignores documentation, examples and scripts when the project is its own root', () => {
     const context = project({ 'examples/demo.py': CLONE, 'scripts/demo.py': CLONE }, ['.']);
 
@@ -202,25 +218,5 @@ describe('duplicates in Python sources', () => {
     expect(() => {
       runDuplicates({ ...context, reportRoot: blocker });
     }).toThrow(expect.objectContaining({ rule: 'duplicates-failed' }));
-  });
-});
-
-describe('telling import-only code from code', () => {
-  it.each([
-    ['plain imports', 'import os\nfrom a import b'],
-    ['a parenthesized import', 'from a import (\n    b,\n    c as d,\n)'],
-    ['the tail of a parenthesized import', '    b,\n    c,\n)\nimport os'],
-    ['a re-export list', '__all__ = [\n    "a",\n    "b",\n]'],
-    ['imports with blank lines and comments', 'import os\n\n# kept\nimport sys'],
-  ])('treats %s as imports only', (_, fragment) => {
-    expect(importsOnly(fragment)).toBe(true);
-  });
-
-  it.each([
-    ['a function', 'import os\n\ndef f():\n    return os.getcwd()'],
-    ['an assignment', 'import os\nVALUE = os.sep'],
-    ['a bare statement', 'pass\npass'],
-  ])('treats %s as code', (_, fragment) => {
-    expect(importsOnly(fragment)).toBe(false);
   });
 });
