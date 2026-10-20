@@ -4,7 +4,7 @@ import { describe, expect, it } from 'vitest';
 import { parseAnalyzerReport } from '../../../core/diff/comparison/finding-schema.mjs';
 import { ingestArchunit } from './archunit.mjs';
 import { ingestCheckstyle } from './formatting/checkstyle.mjs';
-import { decodeEntities, parseXml } from './common.mjs';
+import { decodeEntities, parseXml } from '../../../shared/ingest/common.mjs';
 import { ingestGoCoverprofile } from './coverage-reports/gocover.mjs';
 import { ingestJacoco } from './coverage-reports/jacoco.mjs';
 import { ingestLcov } from './coverage-reports/lcov.mjs';
@@ -172,6 +172,27 @@ describe('archunit', () => {
       'ArchUnit rule services_do_not_use_dao violated by demo.service.OrderService (3 violations): Constructor <demo.service.OrderService.<init>(demo.dao.OrderDao)> has parameter of type <demo.dao.OrderDao>',
     );
     expect(findings[0].message).not.toMatch(/\.java:\d/);
+  });
+
+  it('passes the Kotlin or Groovy file a violation names to the path resolver', () => {
+    const resolved = [];
+    const report = (fileName) =>
+      `<testsuite name="demo.NamingArchTest"><testcase name="servicesOnly" classname="demo.NamingArchTest"><failure message="Rule violated (1 times):&#10;Class &lt;demo.Calc&gt; does not have simple name ending with 'Service' in (${fileName}:0)"/></testcase></testsuite>`;
+    for (const fileName of ['Calc.kt', 'Calc.groovy']) {
+      ingestArchunit(report(fileName), {
+        resolvePath: (className, sourceFile) => {
+          resolved.push([className, sourceFile]);
+          return undefined;
+        },
+      });
+    }
+
+    expect(resolved).toEqual([
+      ['demo.NamingArchTest', undefined],
+      ['demo.Calc', 'Calc.kt'],
+      ['demo.NamingArchTest', undefined],
+      ['demo.Calc', 'Calc.groovy'],
+    ]);
   });
 
   it('ignores passing test cases and rejects other documents', () => {

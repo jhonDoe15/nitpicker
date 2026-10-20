@@ -10,6 +10,7 @@ import {
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
+import { RUFF_FORMAT_ADVICE } from './test-support/ruff-format-advice.mjs';
 import { installFakeToolchain } from './test-support/fake-toolchain.mjs';
 import { analyzePythonSnapshot, parsePythonArguments } from './python-runner.mjs';
 
@@ -107,11 +108,11 @@ describe('analyzing a Python snapshot', () => {
     );
 
     expect(messages).toEqual([
-      'format: File is not formatted with ruff (detected; set "python.formatter" if wrong)',
+      `format: File is not formatted with ruff (detected; set "python.formatter" if wrong). ${RUFF_FORMAT_ADVICE}`,
     ]);
     expect(
       enforceable(analyze(root, { settings: { formatter: 'ruff' } }).findings).at(-1).message,
-    ).toBe('File is not formatted with ruff');
+    ).toBe(`File is not formatted with ruff. ${RUFF_FORMAT_ADVICE}`);
   });
 
   it('reports a run without tests as an enforceable finding, so only a change that removes them fails', () => {
@@ -150,6 +151,30 @@ describe('analyzing a Python snapshot', () => {
       '`print` found. Use `logging`: `logger = logging.getLogger(__name__)`, then `logger.info(...)`. To allow it for some paths, add a "python.exceptions" entry for T201 in nitpicker.config.json.',
       'Incompatible return value type (got "int", expected "str"). Fix the type; inline ignores are banned. To allow it for some paths, add a "python.exceptions" entry for return-value in nitpicker.config.json.',
       'Dataclass Order is not frozen. Declare records as `@dataclass(frozen=True)` and build a changed copy with `dataclasses.replace`. To allow it for some paths, add a "python.exceptions" entry for frozen-dataclass in nitpicker.config.json.',
+    ]);
+  });
+
+  it('words the logging and validation hints after the libraries the project declares', () => {
+    const root = project({
+      'requirements.txt': 'loguru\nmarshmallow\n',
+      'violations.txt': 'T201|src/demo/a.py|`print` found\n',
+      'rules.json': JSON.stringify([
+        { rule: 'pydantic-boundary', path: 'src/demo/a.py', subject: 'marshmallow', line: 1 },
+        {
+          rule: 'catch-log-without-exception',
+          path: 'src/demo/a.py',
+          subject: 'logger.error(...)',
+          line: 9,
+        },
+      ]),
+    });
+
+    const findings = withoutCoupling(analyze(root));
+
+    expect(findings.map(({ message }) => message)).toEqual([
+      '`print` found. Use loguru: `from loguru import logger`, then `logger.info(...)`. To allow it for some paths, add a "python.exceptions" entry for T201 in nitpicker.config.json.',
+      'marshmallow is imported outside an adapters/ package. Use marshmallow only in an `adapters/` package to parse untrusted input (`Schema().load(data)`), and pass frozen dataclasses on from there. To allow it for some paths, add a "python.exceptions" entry for pydantic-boundary in nitpicker.config.json.',
+      '`logger.error(...)` logs a caught error without its traceback. Keep the traceback: `logger.exception("message")` or `logger.opt(exception=True).error("message")`; the exception as an argument drops it. Re-raising after the log also passes. To allow it for some paths, add a "python.exceptions" entry for catch-log-without-exception in nitpicker.config.json.',
     ]);
   });
 
@@ -430,6 +455,10 @@ describe('runner arguments', () => {
   });
 
   it('rejects unknown options', () => {
-    expect(() => parsePythonArguments(['--project-root', '/p', '--nope', 'x'])).toThrow('Usage');
+    expect(() => parsePythonArguments(['--project-root', '/p', '--nope', 'x'])).toThrow(
+      new Error(
+        'Usage: python-runner.mjs --project-root <directory> [--snapshot base|head] [--policy-root <directory>] [--baseline-root <directory>] [--crap-limit <number>] [--exclude <glob>]... [--exception <rule>:<glob>]... [--legacy-inventory <path>] [--kotlin-detekt-config <path>] [--file-limits <json>] [--test-seconds <json>] [--test-console-allow <json array>] [--duplicate-skipped-folders <json array>] [--<tool>-precedence <layers>]...',
+      ),
+    );
   });
 });

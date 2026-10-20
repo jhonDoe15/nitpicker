@@ -83,6 +83,31 @@ describe('baseConfigCoveringHead', () => {
     });
   });
 
+  it('measures the base with the stricter slow test budget, a missing side being the default', () => {
+    expect(
+      baseConfigCoveringHead(
+        { thresholds: { unitTestSeconds: 2, integrationTestSeconds: 60 } },
+        { thresholds: { unitTestSeconds: 9 } },
+      ).thresholds,
+    ).toEqual({ unitTestSeconds: 2, integrationTestSeconds: 30 });
+    expect(
+      baseConfigCoveringHead({ thresholds: {} }, { thresholds: { unitTestSeconds: 9 } }).thresholds,
+    ).toEqual({ unitTestSeconds: 5 });
+  });
+
+  it('measures the base with the duplicate-scan folders of the head and keeps its other keys', () => {
+    const head = { duplicates: { skippedFolders: ['build'] } };
+
+    expect(
+      baseConfigCoveringHead({ preset: 'java', duplicates: { skippedFolders: [] } }, head),
+    ).toEqual({ preset: 'java', duplicates: { skippedFolders: ['build'] } });
+    expect(baseConfigCoveringHead({ preset: 'java' }, head)).toEqual({
+      preset: 'java',
+      duplicates: { skippedFolders: ['build'] },
+    });
+    expect(baseConfigCoveringHead({ duplicates: { skippedFolders: ['dist'] } }, {})).toEqual({});
+  });
+
   it('measures the base with the python entry points both sides declare', () => {
     expect(
       baseConfigCoveringHead(

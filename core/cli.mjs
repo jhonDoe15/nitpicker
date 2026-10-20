@@ -6,7 +6,11 @@ import { runCacheCommand } from './command/cache.mjs';
 import { parseArguments, USAGE_TEXT } from './command/arguments.mjs';
 import { resolveProjectRoot } from './tooling/tool-resolution.mjs';
 import { realpathSync } from 'node:fs';
-import { loadConfig, describeConfigOverrides } from './configuration/config.mjs';
+import {
+  describeConfigOverrides,
+  describeDisableCascade,
+  loadConfig,
+} from './configuration/config.mjs';
 import { resolveHeadPolicy } from '../languages/typescript/preset/head-policy.mjs';
 import { configureAnalyzers } from './configuration/configure-analyzers.mjs';
 import { presetAnalyzers } from './configuration/preset-analyzers.mjs';
@@ -27,9 +31,18 @@ import { resolveCacheStore } from './diff/cache/cache-stores.mjs';
 import { selectAnalyzerShard } from './diff/sharding/sharding.mjs';
 import { renderConsoleSummary } from './diff/reporting/summary.mjs';
 import { renderRuleFilterSection } from './diff/reporting/text.mjs';
+import { runHygieneCli } from '../shared/hygiene/runner.mjs';
 
 export function runCli(options = {}) {
   const cli = withCliDefaults(options);
+  if (cli.arguments_[0] === 'hygiene') {
+    return runHygieneCli({
+      commandArguments: cli.arguments_.slice(1),
+      stdout: cli.stdout,
+      stderr: cli.stderr,
+      environment: cli.environment,
+    });
+  }
   if (cli.arguments_[0] === 'aggregate') {
     return runAggregateCli({
       arguments_: cli.arguments_.slice(1),
@@ -99,11 +112,11 @@ function runConfigured(cli) {
       : realpathSync(cli.currentProjectRoot);
   const config = loadConfig(currentProjectRoot);
   const headPolicy = resolveHeadPolicy(config, currentProjectRoot);
-  const analyzers = configureAnalyzers(
-    presetAnalyzers(config, options.all ? cli.snapshotAnalyzers : cli.analyzers),
-    config,
-    headPolicy,
-  );
+  const presetSet = presetAnalyzers(config, options.all ? cli.snapshotAnalyzers : cli.analyzers);
+  const analyzers = configureAnalyzers(presetSet, config, headPolicy);
+  for (const note of describeDisableCascade(presetSet, config)) {
+    cli.stderr.write(`nitpicker: ${note}\n`);
+  }
   return withRunLock({ projectRoot: currentProjectRoot, stderr: cli.stderr }, () => {
     if (options.all) {
       return runSnapshotCli({

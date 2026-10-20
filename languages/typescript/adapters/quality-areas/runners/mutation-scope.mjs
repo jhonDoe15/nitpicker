@@ -1,22 +1,16 @@
 import { parseChangedLines } from '../../../../../core/diff/git/patches/changed-lines.mjs';
 import { runGit } from '../../../../../core/diff/git/repository/command.mjs';
+import { diffFromBase } from '../../../../../core/tooling/git/base-diff.mjs';
 
 export const MUTATION_REPORT_PATH = 'reports/quality/mutation/mutation.json';
 
 export function diffAgainstBase({ baselineRoot, projectRoot }, format) {
-  const baseCommit = runGit(baselineRoot, ['rev-parse', 'HEAD']).trim();
-  return runGit(projectRoot, [
-    '-c',
-    'core.quotePath=false',
-    'diff',
-    format,
-    '--find-renames',
-    '--relative',
-    '--no-color',
-    '--no-ext-diff',
-    baseCommit,
-    'HEAD',
-  ]);
+  return diffFromBase({
+    runGit,
+    baselineRoot,
+    projectRoot,
+    args: [format, '--find-renames', '--relative', '--no-color', '--no-ext-diff'],
+  });
 }
 
 export function mutationTargets(options, layout) {

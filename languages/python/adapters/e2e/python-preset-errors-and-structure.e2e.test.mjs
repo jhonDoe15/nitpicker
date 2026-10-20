@@ -118,6 +118,22 @@ describe.skipIf(!pythonE2eEnabled)(
           ...NO_MUTATION,
           'src/demo/wide.py': 'def wide(a, b, c, d, e):\n    return a + b + c + d + e\n',
         });
+        commitBranch(project, 'branchy-lambda', {
+          ...NO_MUTATION,
+          'src/demo/pipeline.py': [
+            'def pipeline(items):',
+            '    score = lambda v: (',
+            Array.from(
+              { length: 9 },
+              (_, index) => `        (1 if v > ${String(index)} else 0)`,
+            ).join(' +\n'),
+            '    )',
+            '    return [score(item) for item in items]',
+            '',
+          ].join('\n'),
+          'tests/test_pipeline.py':
+            'from demo.pipeline import pipeline\n\n\ndef test_pipeline():\n    assert pipeline([3]) == [3]\n',
+        });
         commitBranch(project, 'untested-complex', {
           ...NO_MUTATION,
           ...SAME_NAME_SOURCES,
@@ -167,6 +183,32 @@ describe.skipIf(!pythonE2eEnabled)(
                 'wide grew from {base} to 5 parameters (limit 3). Group related parameters into one object instead of adding another.',
               heldMessage:
                 'wide: 5 parameters (limit 3), allowed because base was {base}; any increase fails.',
+            },
+          },
+        ]);
+      });
+      it('scores a lambda as a unit of its own and leaves its branches out of the function around it', () => {
+        const result = gate(project, 'branchy-lambda', MUTATION_DISABLED);
+
+        expect(result.exitCode, result.text).toBe(1);
+        expect(enforceable(result)).toEqual([
+          {
+            tool: 'crap',
+            rule: 'crap-score-limit',
+            path: 'src/demo/pipeline.py',
+            symbol: 'pipeline.score',
+            identity: expect.any(String),
+            message:
+              'pipeline.score has CRAP 10.00 although tests cover it; score must be below 9. Reduce its branches: split a branchy part into its own function.',
+            classification: 'enforceable',
+            location: { line: 2 },
+            ratchet: {
+              key: 'function:pipeline.score:crap',
+              value: 10,
+              worseMessage:
+                'pipeline.score CRAP rose from {base} to 10 (limit 9). Put new code in a new function and cover it with tests.',
+              heldMessage:
+                'pipeline.score: CRAP 10.00 (limit 9), allowed because base was {base}; any increase fails.',
             },
           },
         ]);

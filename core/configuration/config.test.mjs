@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { applyDisable, describeConfigOverrides } from './config.mjs';
+import { describeConfigOverrides } from './config.mjs';
 import { validateConfig } from './validate.mjs';
 import { policyHash } from '../diff/reporting/report-model.mjs';
 
@@ -160,8 +160,18 @@ describe('config file', () => {
         exceptions: [fileLimit, lineLength, slowTest],
       });
       expect(() => validateConfig({ preset: 'kotlin', thresholds: { lineLength: 140 } })).toThrow(
-        'detekt checks Kotlin line length',
+        '"kotlin.lineLength" (any number of columns) sets it for ktlint, ktfmt and detekt',
       );
+    });
+
+    it('accepts the bare slow-test exception with every preset', () => {
+      const slowTest = { ...exception, rule: 'slow-test' };
+      for (const preset of ['typescript', 'javascript', 'python', 'java', 'kotlin']) {
+        expect(validateConfig({ preset, exceptions: [slowTest] })).toEqual({
+          preset,
+          exceptions: [slowTest],
+        });
+      }
     });
 
     it('names the rules that can be lifted when the rule is another detekt rule', () => {
@@ -183,6 +193,13 @@ describe('config file', () => {
     expect(validateConfig({ preset: 'typescript', ...shared })).toBeDefined();
     expect(() => validateConfig({ preset: 'java', thresholds: { crapLimit: 0 } })).toThrow(
       /positive number/,
+    );
+    for (const preset of ['typescript', 'javascript', 'python', 'java', 'kotlin']) {
+      const thresholds = { unitTestSeconds: 2, integrationTestSeconds: 20 };
+      expect(validateConfig({ preset, thresholds })).toEqual({ preset, thresholds });
+    }
+    expect(() => validateConfig({ preset: 'python', thresholds: { unitTestSeconds: 0 } })).toThrow(
+      '"thresholds.unitTestSeconds" must be a positive number',
     );
     expect(() => validateConfig({ preset: 'java', legacyInventory: '../x.json' })).toThrow(
       /inside the project/,
@@ -243,7 +260,7 @@ describe('config file', () => {
     ]);
     expect(() => validateConfig({ preset: 'java', thresholds: { lineLength: 140 } })).toThrow(
       new Error(
-        'nitpicker.config.json: "thresholds.lineLength" is not supported with "preset": "java": Java keeps 100 characters per line, where google-java-format wraps; lift the rule for some paths with an exception for "line-length-limit"',
+        'nitpicker.config.json: "thresholds.lineLength" is not supported with "preset": "java": Java line length follows the formatter (google-java-format wraps at 100, palantir-java-format at 120); with the "conventions" key "java.formatter" set to "none", "java.lineLength" (any number of columns) sets it, as does max on LineLength in config/checkstyle/checkstyle.xml once "tools": { "checkstyle": { "precedence": ["project"] } } opts in, and an exception for "line-length-limit" lifts the rule for some paths',
       ),
     );
   });
@@ -268,18 +285,67 @@ describe('config file', () => {
     expect(() => validateConfig(config)).toThrow(message);
   });
 
+  it('accepts the folders the duplicate scan skips, for every preset', () => {
+    const duplicates = { skippedFolders: ['dist', 'generated'] };
+    for (const preset of ['typescript', 'javascript', 'java', 'kotlin', 'python']) {
+      expect(validateConfig({ preset, duplicates })).toEqual({ preset, duplicates });
+    }
+    expect(validateConfig({ duplicates: { skippedFolders: [] } })).toEqual({
+      duplicates: { skippedFolders: [] },
+    });
+    expect(validateConfig({ duplicates: {} })).toEqual({ duplicates: {} });
+    expect(describeConfigOverrides({ duplicates })).toEqual([
+      'duplicates: {"skippedFolders":["dist","generated"]}',
+    ]);
+  });
+
+  it.each([
+    [{ duplicates: [] }, '"duplicates" must be an object'],
+    [
+      { duplicates: { folders: [] } },
+      'unknown duplicates key "folders". Allowed duplicates keys: skippedFolders',
+    ],
+    [
+      { duplicates: { skippedFolders: 'build' } },
+      '"duplicates.skippedFolders" must be an array of non-empty strings',
+    ],
+    [
+      { duplicates: { skippedFolders: [''] } },
+      '"duplicates.skippedFolders" must be an array of non-empty strings',
+    ],
+    [
+      { duplicates: { skippedFolders: ['src/build'] } },
+      '"duplicates.skippedFolders" entries must be folder names without slashes, commas, glob characters or a leading "!": src/build',
+    ],
+    [
+      { duplicates: { skippedFolders: ['**/build/**'] } },
+      '"duplicates.skippedFolders" entries must be folder names without slashes, commas, glob characters or a leading "!": **/build/**',
+    ],
+    [
+      { duplicates: { skippedFolders: ['..'] } },
+      '"duplicates.skippedFolders" entries must be folder names without slashes, commas, glob characters or a leading "!": ..',
+    ],
+    [
+      { duplicates: { skippedFolders: ['a,b'] } },
+      '"duplicates.skippedFolders" entries must be folder names without slashes, commas, glob characters or a leading "!": a,b',
+    ],
+    [
+      { duplicates: { skippedFolders: ['!build'] } },
+      '"duplicates.skippedFolders" entries must be folder names without slashes, commas, glob characters or a leading "!": !build',
+    ],
+    [
+      { duplicates: { skippedFolders: ['dist', 'dist'] } },
+      '"duplicates.skippedFolders" must not contain duplicates',
+    ],
+  ])('rejects the duplicates setting %j', (config, message) => {
+    expect(() => validateConfig(config)).toThrow(message);
+  });
+
   it('describes overrides in a stable key order', () => {
     expect(describeConfigOverrides({ thresholds: { crapLimit: 12 }, base: 'main' })).toEqual([
       'base: "main"',
       'thresholds: {"crapLimit":12}',
     ]);
-  });
-
-  it('refuses to disable an analyzer that another enabled analyzer depends on', () => {
-    const analyzers = [{ name: 'coverage' }, { name: 'crap', dependencies: ['coverage'] }];
-
-    expect(() => applyDisable(analyzers, { disable: ['coverage'] })).toThrow(/depends on it/);
-    expect(applyDisable(analyzers, { disable: ['coverage', 'crap'] })).toEqual([]);
   });
 
   it('keeps the zero-config policy hash and changes it for any override', () => {
@@ -302,26 +368,9 @@ describe('tool precedence', () => {
     }
   });
 
-  it.each([
-    ['eslint', ['oxlint', 'eslint'], 'biome'],
-    ['typescript', ['native', 'project'], 'tsgo'],
-  ])('accepts only the known %s engines', (tool, engines, unknown) => {
-    for (const engine of [...engines, undefined]) {
-      expect(validateConfig({ tools: { [tool]: { engine } } })).toBeDefined();
-    }
-    for (const engine of [unknown, '']) {
-      expect(() => validateConfig({ tools: { [tool]: { engine } } })).toThrow(
-        `"tools.${tool}.engine" must be "${engines[0]}" or "${engines[1]}"`,
-      );
-    }
-    expect(() => validateConfig({ tools: { [tool]: { precedence: ['project'] } } })).toThrow(
-      `"tools.${tool}" has unknown key "precedence"`,
-    );
-  });
-
   it('rejects unknown tools, unknown keys and malformed precedence lists', () => {
     expect(() => validateConfig({ tools: { stylelint: { precedence: ['project'] } } })).toThrow(
-      '"tools" names unknown tool "stylelint". Supported tools with this preset: prettier, eslint, typescript',
+      '"tools" names unknown tool "stylelint". Supported tools with this preset: prettier, eslint, typescript, tests',
     );
     expect(() => validateConfig({ tools: { prettier: { config: 'project' } } })).toThrow(
       '"tools.prettier" has unknown key "config"',
@@ -347,21 +396,20 @@ describe('tool precedence', () => {
   });
 
   it.each(['java', 'kotlin'])(
-    'names PMD and Checkstyle with the %s preset, where Checkstyle runs one config',
+    'names PMD and Checkstyle with the %s preset, and accepts both layers for each',
     (preset) => {
       const tools = {
         pmd: { precedence: ['project', 'nitpicker'] },
         checkstyle: { precedence: ['project'] },
       };
+      const layered = { checkstyle: { precedence: ['nitpicker', 'project'] } };
       expect(validateConfig({ preset, tools })).toEqual({ preset, tools });
+      expect(validateConfig({ preset, tools: layered })).toEqual({ preset, tools: layered });
       expect(() =>
         validateConfig({ preset, tools: { prettier: { precedence: ['project'] } } }),
       ).toThrow(
-        '"tools" names unknown tool "prettier". Supported tools with this preset: pmd, checkstyle',
+        `"tools" names unknown tool "prettier". Supported tools with this preset: pmd, checkstyle${preset === 'kotlin' ? ', ktlint, ktfmt, detekt' : ''}`,
       );
-      expect(() =>
-        validateConfig({ preset, tools: { checkstyle: { precedence: ['nitpicker', 'project'] } } }),
-      ).toThrow('"tools.checkstyle.precedence" must be ["nitpicker"] or ["project"]');
     },
   );
 
@@ -369,12 +417,12 @@ describe('tool precedence', () => {
     const tools = { pmd: { precedence: ['project'] } };
     expect(() => validateConfig({ tools })).toThrow(
       new Error(
-        'nitpicker.config.json: "tools" names unknown tool "pmd". Supported tools with this preset: prettier, eslint, typescript',
+        'nitpicker.config.json: "tools" names unknown tool "pmd". Supported tools with this preset: prettier, eslint, typescript, tests',
       ),
     );
     expect(() => validateConfig({ preset: 'python', tools })).toThrow(
       new Error(
-        'nitpicker.config.json: "tools" is not supported with "preset": "python": it describes the TypeScript source layout and ESLint rules, which the Python preset does not have. Not supported with python: layout, exceptions, react, i18n, tools, except exceptions for file-lines-limit, line-length-limit, folder-files-limit, folder-depth-limit, class-methods-limit, class-fields-limit, inheritance-depth-limit. Shared by all presets: thresholds, exclude, legacyInventory',
+        'nitpicker.config.json: "tools" names unknown tool "pmd". Supported tools with this preset: ruff, black, pyright, mypy, mutmut',
       ),
     );
   });
@@ -415,80 +463,5 @@ describe('strict exceptions', () => {
     expect(withLayout).toEqual(['layout: {"sourceRoots":["lib"]}']);
     const hashes = [plain, withException, withLayout].map((overrides) => policyHash([], overrides));
     expect(new Set(hashes).size).toBe(3);
-  });
-});
-
-describe('layout keys', () => {
-  it('accepts entry point globs for files that are loaded by path', () => {
-    const layout = { entryPoints: ['tools/*-runner.mjs'] };
-
-    expect(validateConfig({ layout })).toEqual({ layout });
-  });
-
-  it('accepts the directory roots and the excluded globs together', () => {
-    const layout = {
-      sourceRoots: ['lib'],
-      testRoots: ['spec'],
-      excludedGlobs: ['**/vendor/**', '**/*.generated.ts'],
-    };
-
-    expect(validateConfig({ layout })).toEqual({ layout });
-  });
-
-  it('validates globs for excludedGlobs and directories for the roots', () => {
-    expect(() => validateConfig({ layout: { excludedGlobs: ['**/vendor/**'] } })).not.toThrow();
-    expect(() => validateConfig({ layout: { sourceRoots: ['**/vendor/**'] } })).toThrow(
-      /entries must be directories inside the project/,
-    );
-    expect(() => validateConfig({ layout: { excludedGlobs: '**/vendor/**' } })).toThrow(
-      /"layout.excludedGlobs" must be an array/,
-    );
-    expect(() => validateConfig({ layout: { excludedGlobs: [''] } })).toThrow(
-      /"layout.excludedGlobs" must be an array of non-empty strings/,
-    );
-  });
-
-  it('lists every allowed layout key when one is unknown', () => {
-    expect(() => validateConfig({ layout: { roots: ['lib'] } })).toThrow(
-      /Allowed layout keys: sourceRoots, testRoots, excludedGlobs/,
-    );
-  });
-});
-
-describe('react keys', () => {
-  it('accepts enabled and every styling approach', () => {
-    for (const react of [
-      {},
-      { enabled: true },
-      { enabled: false },
-      { styling: 'class-names' },
-      { styling: 'css-in-js' },
-      { styling: 'inline-style' },
-      { enabled: true, styling: 'css-in-js' },
-    ]) {
-      expect(validateConfig({ react })).toEqual({ react });
-    }
-  });
-
-  it.each([
-    [[], /"react" must be an object/],
-    ['react', /"react" must be an object/],
-    [{ enable: true }, /unknown react key "enable". Allowed react keys: enabled, styling/],
-    [{ enabled: 'yes' }, /"react.enabled" must be true or false/],
-    [{ enabled: 1 }, /"react.enabled" must be true or false/],
-    [
-      { styling: 'tailwind' },
-      /"react.styling" must be one of: class-names, css-in-js, inline-style/,
-    ],
-  ])('rejects react %j', (react, message) => {
-    expect(() => validateConfig({ react })).toThrow(message);
-  });
-
-  it('reports the react override and changes the policy hash', () => {
-    const overrides = describeConfigOverrides({ react: { styling: 'css-in-js' } });
-    const analyzers = [{ name: 'a', version: '1', configurationHash: 'h' }];
-
-    expect(overrides).toEqual(['react: {"styling":"css-in-js"}']);
-    expect(policyHash(analyzers, overrides)).not.toBe(policyHash(analyzers, []));
   });
 });

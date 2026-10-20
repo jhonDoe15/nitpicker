@@ -6,8 +6,9 @@ Status: Proposed, pending owner review.
 
 The default Stryker config (`languages/typescript/preset/defaults/stryker.config.mjs`) mutates `src/**` code
 files (`sourceGlobs` from `languages/typescript/preset/layout.mjs`), minus the shared excluded globs (the root folders `dist`, `build`,
-`generated`, `coverage`, `reports` and `target`, `node_modules` at any depth, and `*.d.ts`), `src/**/__tests__/**`,
-`src/**/test-support/**` when no test root exists (tests next to the code), and every test glob. It uses the vitest runner with the TypeScript checker, `perTest` coverage analysis,
+`generated`, `coverage`, `reports` and `target`, `node_modules` at any depth, and `*.d.ts`), `src/**/__tests__/**`, `src/**/test-support/**` when tests sit next to sources, and
+every test glob. It uses the Stryker runner for the project's test runner (Vitest, Jest, Mocha, or the tap runner
+for `node:test`; see [Test runners](usage.md#test-runners)) with the TypeScript checker, `perTest` coverage analysis,
 and `thresholds.break: null`, so Stryker itself never fails the run. The differential gate runs it
 through `languages/typescript/adapters/quality-areas-runner.mjs`, which rewrites the config, forces the `json`
 reporter, and turns `Survived` and `NoCoverage` mutants into findings. A mutant that a `Stryker

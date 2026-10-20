@@ -10,10 +10,15 @@
 //   junit.xml            written as the pytest JUnit report when `coverage run` passes --junitxml
 //                        (default: one passing test, or one failing test when test-exit.txt is 1)
 //   coverage-data.json   written as the coverage.py JSON report (default: no files)
+//   parallel-coverage.txt  `coverage run` leaves a per-process data file next to $COVERAGE_FILE
 //   unparsable.txt       one path per line: files the formatter cannot parse (it exits like the real
 //                        formatter does and names them on stderr)
 //   no-pytest.txt        `python -c "import pytest"` fails
-//   pytest-cov.txt, xdist.txt, rerunfailures.txt  the pytest probe reports that plugin as installed
+//   no-<name>.txt        the version probe of that distribution (Django, nose2) fails; it prints
+//                        5.1.0 otherwise
+//   pytest-cov.txt, xdist.txt, rerunfailures.txt, pytest-django.txt  the pytest probe reports that
+//                        plugin as installed
+//   ruff-rules.json      printed by `ruff rule --all` (default: that call exits 2, as an old ruff does)
 //   sources.txt          one path per line: what `ruff check --show-files` lists (default: every
 //                        .py file below the project, except .venv)
 //   type-errors.txt      printed by mypy as its report (exit 1 when not empty)
@@ -42,7 +47,7 @@
 //                        exit status is 1 when the text says BROKEN
 // `python -c` with `sys.executable` prints `$VIRTUAL_ENV/bin/python` and always works.
 // When FAKE_PYTHON_LOG is set, every call appends a JSON line with the tool, arguments, cwd,
-// PYTHONPATH, MYPYPATH and PYTEST_ADDOPTS.
+// PYTHONPATH, MYPYPATH, PYTEST_ADDOPTS and DJANGO_SETTINGS_MODULE.
 import {
   appendFileSync,
   existsSync,
@@ -57,6 +62,7 @@ const [tool, ...args] = process.argv.slice(2);
 const cwd = process.cwd();
 const lines = (file) =>
   existsSync(file) ? readFileSync(file, 'utf8').split('\n').filter(Boolean) : [];
+const read = (file, fallback) => (existsSync(file) ? readFileSync(file, 'utf8') : fallback);
 const valueOf = (flag) => args[args.indexOf(flag) + 1];
 
 if (process.env.FAKE_PYTHON_LOG !== undefined) {
@@ -69,6 +75,9 @@ if (process.env.FAKE_PYTHON_LOG !== undefined) {
       pythonPath: process.env.PYTHONPATH ?? '',
       ...(process.env.MYPYPATH === undefined ? {} : { mypyPath: process.env.MYPYPATH }),
       pytestAddopts: process.env.PYTEST_ADDOPTS,
+      ...(process.env.DJANGO_SETTINGS_MODULE === undefined
+        ? {}
+        : { djangoSettings: process.env.DJANGO_SETTINGS_MODULE }),
     })}\n`,
   );
 }
@@ -116,6 +125,12 @@ function sources() {
 function ruff() {
   if (args[0] === '--version') {
     process.stdout.write('ruff 0.9.9\n');
+  } else if (args[0] === 'rule') {
+    if (!existsSync('ruff-rules.json')) {
+      process.stderr.write('error: unrecognized subcommand\n');
+      process.exit(2);
+    }
+    process.stdout.write(read('ruff-rules.json', ''));
   } else if (args.includes('--show-files')) {
     process.stdout.write(
       sources()
@@ -162,29 +177,31 @@ const JUNIT_CASE = {
 };
 
 function writeJunit(status) {
-  const option = args.find((argument) => argument.startsWith('--junitxml='));
-  if (option === undefined) {
+  const pytestOption = args.find((argument) => argument.startsWith('--junitxml='));
+  const script = args.findIndex((argument) => argument.endsWith('unittest_timings.py'));
+  const target = pytestOption?.slice('--junitxml='.length) ?? args[script + 1];
+  if (pytestOption === undefined && script === -1) {
     return;
   }
   const report = existsSync('junit.xml')
     ? readFileSync('junit.xml', 'utf8')
     : `<testsuites><testsuite name="pytest">${JUNIT_CASE[status === 1 ? 'failed' : 'passed']}</testsuite></testsuites>`;
-  writeFileSync(option.slice('--junitxml='.length), report);
+  writeFileSync(target, report);
 }
 
 function coverage() {
   if (args[0] === '--version') {
     process.stdout.write('Coverage.py, version 7.6.1 with C extension\n');
   } else if (args[0] === 'run') {
+    if (existsSync('parallel-coverage.txt')) {
+      writeFileSync(`${process.env.COVERAGE_FILE}.host.1`, '');
+    }
     const status = Number(lines('test-exit.txt')[0] ?? 0);
     writeJunit(status);
     process.stdout.write(status === 0 ? '1 passed\n' : '1 failed: test_greet\n');
     process.exit(status);
-  } else {
-    const data = existsSync('coverage-data.json')
-      ? readFileSync('coverage-data.json', 'utf8')
-      : '{"files":{}}';
-    writeFileSync(valueOf('-o'), data);
+  } else if (args[0] !== 'combine') {
+    writeFileSync(valueOf('-o'), read('coverage-data.json', '{"files":{}}'));
   }
 }
 
@@ -193,7 +210,7 @@ function mypy() {
     process.stdout.write(`mypy ${lines('mypy-version.txt')[0] ?? '1.13.0'} (compiled: yes)\n`);
     return;
   }
-  const report = existsSync('type-errors.txt') ? readFileSync('type-errors.txt', 'utf8') : '';
+  const report = read('type-errors.txt', '');
   process.stdout.write(report);
   process.exit(report === '' ? 0 : 1);
 }
@@ -224,17 +241,14 @@ function lintImports() {
     process.stdout.write('lint-imports, version 2.5\n');
     return;
   }
-  const report = existsSync('lint-imports.txt')
-    ? readFileSync('lint-imports.txt', 'utf8')
-    : 'Contracts: 0 kept, 0 broken.\n';
+  const report = read('lint-imports.txt', 'Contracts: 0 kept, 0 broken.\n');
   process.stdout.write(report);
   process.exit(report.includes(' BROKEN') ? 1 : 0);
 }
 
 function python() {
   if (args[1]?.endsWith('nitpicker_rules.py')) {
-    const report = existsSync('rules.json') ? readFileSync('rules.json', 'utf8') : '[]';
-    writeFileSync(args[3], report);
+    writeFileSync(args[3], read('rules.json', '[]'));
     return;
   }
   if (args[1]?.includes('sys.version_info')) {
@@ -257,9 +271,7 @@ function python() {
     return;
   }
   if (args.some((argument) => argument.endsWith('import-scan.py'))) {
-    process.stdout.write(
-      existsSync('import-scan.json') ? readFileSync('import-scan.json', 'utf8') : '{}',
-    );
+    process.stdout.write(read('import-scan.json', '{}'));
     return;
   }
   if (args.some((argument) => argument.endsWith('distribution-scan.py'))) {
@@ -272,6 +284,14 @@ function python() {
   }
   if (args.some((argument) => argument.includes('"import-linter"'))) {
     process.stdout.write('2.5\n');
+    return;
+  }
+  const distribution = /m\.version\("([\w-]+)"\)/.exec(args.join(' '))?.[1];
+  if (distribution !== undefined) {
+    if (existsSync(`no-${distribution}.txt`)) {
+      process.exit(1);
+    }
+    process.stdout.write('5.1.0\n');
     return;
   }
   if (args[0]?.endsWith('.py')) {
@@ -291,9 +311,8 @@ function python() {
     process.exit(1);
   }
   const flag = (file) => (existsSync(file) ? 1 : 0);
-  process.stdout.write(
-    `8.3.1 ${flag('pytest-cov.txt')} ${flag('xdist.txt')} ${flag('rerunfailures.txt')}\n`,
-  );
+  const plugins = ['pytest-cov.txt', 'xdist.txt', 'rerunfailures.txt', 'pytest-django.txt'];
+  process.stdout.write(`8.3.1 ${plugins.map(flag).join(' ')}\n`);
 }
 
 const MUTMUT_MESSAGES = {
@@ -339,9 +358,7 @@ function mutmut() {
   }
   const status = Number(lines('mutmut-exit.txt')[0] ?? 0);
   process.stdout.write(
-    existsSync('mutmut-output.txt')
-      ? readFileSync('mutmut-output.txt', 'utf8')
-      : (MUTMUT_MESSAGES[status] ?? 'Failed to run clean test\n'),
+    read('mutmut-output.txt', MUTMUT_MESSAGES[status] ?? 'Failed to run clean test\n'),
   );
   process.exit(status);
 }

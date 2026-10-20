@@ -1,3 +1,4 @@
+import { DUPLICATES_CONFIGURATION_FILES } from './duplicates/configuration-files.mjs';
 import { EXCLUDED_PATH_PATTERN, prettierPatterns, resolveLayout } from './layout.mjs';
 import { testExecutionChecksFor } from './checks/test-execution.mjs';
 import {
@@ -145,6 +146,7 @@ function typeAndArchitectureChecksFor(layout) {
         'languages/typescript/preset/layout.mjs',
         'languages/typescript/preset/head-policy.mjs',
         'languages/typescript/preset/tool-configs.mjs',
+        'languages/typescript/preset/modules/selected-project-tsconfig.mjs',
         JAVASCRIPT_PRESET_FILE,
         'languages/typescript/preset/defaults/tsconfig.quality.json',
       ],
@@ -242,12 +244,7 @@ function repositoryChecksFor(exclusions) {
       exclusions: exclusions.general,
       timeoutMs: MINUTE_MS,
       shardWeight: 2,
-      configurationFiles: [
-        'languages/typescript/preset/defaults/jscpd.json',
-        'languages/typescript/preset/duplicates/normalize.mjs',
-        'languages/typescript/preset/tool-configs.mjs',
-        JAVASCRIPT_PRESET_FILE,
-      ],
+      configurationFiles: [...DUPLICATES_CONFIGURATION_FILES, JAVASCRIPT_PRESET_FILE],
     },
     {
       name: 'dead-code',
@@ -259,6 +256,7 @@ function repositoryChecksFor(exclusions) {
       configurationFiles: [
         'languages/typescript/preset/defaults/knip.json',
         'languages/typescript/preset/tool-configs.mjs',
+        'languages/typescript/preset/modules/selected-project-tsconfig.mjs',
         'languages/typescript/preset/layout.mjs',
         'languages/typescript/preset/head-policy.mjs',
         'languages/typescript/preset/eslint-config/scope-support.mjs',
