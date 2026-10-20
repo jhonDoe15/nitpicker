@@ -1,10 +1,10 @@
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
+import { durationFile } from './duration-profile.mjs';
 
-const DURATIONS_FILE = path.join(import.meta.dirname, 'durations.json');
 const UNMEASURED_SECONDS = 1;
 
-export function readDurations(file = DURATIONS_FILE) {
+export function readDurations(file = durationFile()) {
   return new Map(Object.entries(JSON.parse(readFileSync(file, 'utf8'))));
 }
 

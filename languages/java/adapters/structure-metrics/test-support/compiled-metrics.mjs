@@ -5,6 +5,8 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 
 const HASH_LENGTH = 16;
+const COMPILATION_TIMEOUT_MS = 30_000;
+const METRICS_TIMEOUT_MS = 120_000;
 const METRICS_SOURCE = path.resolve(import.meta.dirname, '../../../gradle/StructureMetrics.java');
 
 function placeCompiled(staging, classes) {
@@ -26,7 +28,10 @@ export function compiledMetrics() {
     return classes;
   }
   const staging = mkdtempSync(`${classes}-`);
-  const compiled = spawnSync('javac', ['-d', staging, METRICS_SOURCE], { encoding: 'utf8' });
+  const compiled = spawnSync('javac', ['-d', staging, METRICS_SOURCE], {
+    encoding: 'utf8',
+    timeout: COMPILATION_TIMEOUT_MS,
+  });
   if (compiled.status !== 0) {
     throw new Error(`javac failed: ${compiled.stderr}`);
   }
@@ -38,7 +43,7 @@ export function runMetrics(classes, { cwd, args }) {
   const result = spawnSync('java', ['-cp', classes, 'StructureMetrics', ...args], {
     cwd,
     encoding: 'utf8',
-    timeout: 120_000,
+    timeout: METRICS_TIMEOUT_MS,
   });
   const stderr = result.stderr
     .split('\n')

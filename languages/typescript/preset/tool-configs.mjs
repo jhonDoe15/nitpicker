@@ -7,12 +7,17 @@ import {
   JAVASCRIPT_KNIP_PROJECT,
 } from '../../javascript/preset/javascript-preset.mjs';
 import {
+  SCRIPT_SKIPPED_FOLDERS,
+  withSkippedFolders,
+} from '../../../core/tooling/jscpd/skipped-folders.mjs';
+import {
   PROJECT_TSCONFIG,
   isSolutionTsconfig,
   projectLibs,
   readJsonc,
   referencedTsconfigs,
 } from './modules/tsconfig-files.mjs';
+import { selectedProjectTsconfig } from './modules/selected-project-tsconfig.mjs';
 import { END_TO_END_ROOT, sourceRoots, testRoots } from './layout.mjs';
 
 const DEFAULT_SOURCE_ROOTS = new Set(sourceRoots);
@@ -47,7 +52,8 @@ export function isCustomLayout(layout) {
         testRoots.filter((root) => root !== END_TO_END_ROOT),
       ]) ||
     layout.exclude.length > 0 ||
-    (layout.entryPoints ?? []).length > 0
+    (layout.entryPoints ?? []).length > 0 ||
+    layout.duplicateSkippedFolders !== undefined
   );
 }
 
@@ -105,7 +111,10 @@ export function layoutJscpdConfig(base, layout) {
     ...base,
     ...(layout.javascript ? { format: [...base.format, JAVASCRIPT_JSCPD_FORMAT] } : {}),
     path: expandLayoutRoots(base.path, layout),
-    ignore: [...base.ignore, ...layout.exclude],
+    ignore: [
+      ...withSkippedFolders(base.ignore, SCRIPT_SKIPPED_FOLDERS, layout.duplicateSkippedFolders),
+      ...layout.exclude,
+    ],
   };
 }
 
@@ -135,6 +144,9 @@ export function layoutTransformFor(policyFileName, layout, { strictMutants = tru
   const relaxesMutants = name === STRYKER_TSCONFIG && !strictMutants;
   return (text, targetPath) => {
     const projectDirectory = path.dirname(targetPath);
+    if (layout.typescriptProject !== undefined) {
+      return selectedProjectTsconfig(projectDirectory, layout);
+    }
     const projectConfig = projectConfigName(projectDirectory, layout);
     if (projectConfig !== undefined) {
       const extended = projectBaseTsconfig(projectDirectory, layout, projectConfig);

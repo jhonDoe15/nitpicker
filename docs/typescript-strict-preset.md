@@ -212,6 +212,14 @@ Math` and `Math['random']()` are caught; `process`, `fetch`, `setTimeout`, `setI
   binding is read is slop. A deliberately dropped error needs an exception in the config file. The
   rule also covers test files; in a test, assert the failure with `expect(() => run()).toThrow()`
   or `await expect(promise).rejects.toThrow()`.
+- `nitpicker/no-dev-dependency-in-production` (all production code): a value import (`import`,
+  `export ... from`, `import()`, `require`) of a package that package.json lists only under
+  `devDependencies` is reported. Move the package to `dependencies` (zod included). Type-only imports
+  are not reported. An app a bundler builds (a bundler config or `build` script, and no `main`,
+  `module`, `exports` or `bin` in package.json) and test support files (`setupTests.*`,
+  `test-utils`, `testing/`, `__mocks__/`, stories) are skipped. The nearest package.json that lists
+  dependencies is used; one that is not a JSON object is reported. Unlisted packages and unused dependencies are reported by the
+  `dead-code` analyzer, see [Dependency and repository checks](usage.md#dependency-and-repository-checks).
 - `nitpicker/no-unvalidated-schema-field` (all production code): no `z.unknown()` or `z.any()`
   (also with `.optional()`, `.nullable()`, `.default()` and similar wrappers, `z.optional(...)`,
   `z.nullable(...)`, `z.nullish(...)` and `z.readonly(...)`) as a field of `z.object`,
@@ -565,6 +573,30 @@ for a file takes that file out of the rule, so a pair of copies that must both s
   other files, once per name and file; the identity is the name and file, so existing copies are
   baselined. The message tells an exported copy to keep one definition and import it, a private copy
   to import the exported copy when there is one, and otherwise to move to one module and import it.
+- `sibling-copy-edit`: a change edits a function or class so that it drifts from a copy with the
+  same name and kind in another module of the package, and leaves that copy unedited. The two must
+  be at least 80% the same tokens (twice the longest common token sequence over the tokens of both)
+  both before and after the edit, and the edit must lower that figure: an edit that brings two
+  copies closer, or that leaves them under 80% alike, is not reported. A pair that is identical
+  before the edit counts as 100%; a pair that is identical after it is left to
+  `duplicate-definition` and the `duplicates` check. It covers functions (declarations, function
+  expressions and arrow-function `const`s) and classes of 20 tokens or more in parameters and body;
+  types, interfaces, enums and constants are skipped, as are default exports and exported `GET`,
+  `POST`, `PUT`, `PATCH`, `DELETE`, `HEAD` and `OPTIONS` handlers, whose name is the framework's and
+  not a shared one (a route's `Page`, `Layout` or `GET`); ordinary names such as `handler` or
+  `render` are compared. A copy is edited when its normalized text differs from the definition of
+  the same name in the base (whitespace, comments, quote style and semicolons do not count), and
+  untouched when it is equal; a copy with no base counterpart is new and left to
+  `duplicate-definition`. A file that the diff reports as moved or renamed (the diff engine's own
+  rename detection: at least 50% of the content kept, within git's rename limit of 20000 files) is
+  read at its old path, so a moved copy counts as edited or untouched like any other; a rename that
+  detection misses leaves the copy new. The token comparison stops as soon as 80% can no longer be
+  reached, so large functions with scattered small edits are compared; a pair is skipped only when
+  what lies between its shared start and shared end is more than 20,000 tokens in the two together.
+  Only the edited copy is reported, naming the untouched ones, so copies that are all edited, in the
+  same way or differently, report nothing. Only the head snapshot reports it, as it reads the base
+  checkout; the identity is the name and file. It covers the same files as `duplicate-definition`,
+  and an exception for either copy's path lifts it. Edit the other copy too, or merge the two.
 - `exported-name-collision`: two modules export different definitions under one name and a module
   imports both without aliasing both, so a reader and auto-import can mistake one for the other. A
   module that aliases every colliding import (`import { handler as getUser }`, `import type`,
@@ -625,11 +657,24 @@ hop, and type-only imports do not count.
   them included), `*.test.*`/`*.spec.*` next to sources, and `__tests__` directories (their
   fixtures are skipped). A wait that cannot be avoided gets an exception for the rule.
 - `nitpicker/no-raised-test-timeout`: no test, suite or hook timeout above 10 000 ms. That is the
-  `testTimeout` nitpicker runs a project's tests with (`languages/typescript/preset/defaults/vitest.quality.config.ts`, which
-  Stryker also uses, and the coverage runner's `--testTimeout`; a test keeps them in step).
+  test timeout nitpicker runs a project's tests with (`languages/typescript/preset/defaults/vitest.quality.config.ts`, which
+  Stryker also uses, and the timeout it passes to Vitest, Jest, `node:test` and Mocha; a test keeps them in step; the
+  coverage run adds the larger slow-test budget to it, see [Slow tests](#slow-tests)).
   The rule covers the third argument of `it`/`test`, `{ timeout }` options, hook timeouts and
   `vi.setConfig`. A timeout that is not a constant written in the file is also reported. There is
   no e2e exemption; a genuinely long suite needs an exception in the config file.
+- `nitpicker/require-test-process-timeout`: synchronous `spawnSync`, `execSync` and `execFileSync`
+  calls from `node:child_process` or `child_process` in test-area files need a positive subprocess
+  timeout, for example `spawnSync(program, args, { timeout: 10_000 })`. A runner's timeout cannot
+  interrupt a synchronous call that blocks Node's event loop. Named import aliases, namespace and
+  default imports, CommonJS bindings, local constant options and object spreads count. A missing,
+  zero or negative timeout is reported; a timeout or options supplied dynamically is left to the
+  caller's contract. The rule sets no maximum: the process budget depends on the operation.
+  It covers integration tests and test helpers as well as unit tests, including `test-support/`
+  folders under the source roots, and works in the TypeScript,
+  JavaScript and React presets. If a process must wait without a deadline, add a reviewed exception
+  for the rule in `nitpicker.config.json`. A child that ignores its termination signal can still
+  outlive Node's subprocess timeout; this rule checks the configured deadline, not OS containment.
 - `nitpicker/no-first-test-charged-setup`: no lazily memoized shared setup that tests reach. It
   reports a call whose value is stored in a module-level `let`/`var` only while that variable is
   empty (`x ??= expensive()`, `x ||= call()`, `x = x ?? call()`, `if (!x) x = call()`,
@@ -705,13 +750,16 @@ hop, and type-only imports do not count.
   typescript-eslint's `no-explicit-any` and `no-non-null-assertion`. Like the other bans, these are
   strict rules: a finding on a line a change edits, or in a new test file, fails the run. An exception for
   `no-restricted-syntax` lifts all the syntax bans for those paths.
+- `vitest/no-conditional-expect` (from the vitest recommended set) reports an `expect` inside a `catch` or a branch; the message adds that a test asserts a failure with `expect(() => run()).toThrow(Specific)` or `await expect(promise).rejects.toThrow(Specific)`.
 - `vitest/no-conditional-in-test` is enabled for test files: no `if`, ternary or `&&`/`||` branching
   inside a test body. Give each outcome its own `it.each` table row instead of branching on it.
 - The vitest config nitpicker runs tests with (`defaults/vitest.quality.config.ts`, used for
   coverage and mutation) sets `restoreMocks: true`, so a `vi.spyOn` spy is restored after every test
   even when an assertion fails, and cannot leak into the next test. It also overrides a
-  `restoreMocks` value in the project's own vitest config for these runs. Vitest has no option that
-  restores fake timers automatically: call `vi.useRealTimers()` in `afterEach`.
+  `restoreMocks` value in the project's own vitest config for these runs. Jest runs with
+  `--restoreMocks` for the same reason, and `node:test` restores a test's `t.mock` itself. Neither
+  Vitest nor Jest restores fake timers automatically: call `vi.useRealTimers()` (or
+  `jest.useRealTimers()`) in `afterEach`.
 
 - `test-console-output` (the `test-console` check, not an ESLint rule): a test file that prints
   `console.error` or `console.warn` output the base run did not print fails, with the message and
@@ -729,6 +777,52 @@ across tests, or what an assertion depends on), so a finding would not reliably 
 Vitest's worker count in CI is a CI setting, not code. It belongs in the CI workflow or in a check
 of the project's CI files, not in these rules. That check would need its own analyzer (a runner
 kind, a version entry, a check definition and project-level findings) and is not built yet.
+
+## Slow tests
+
+- **Rule.** `slow-test` fails a test the change adds or edits when it takes more than 5 s as a unit
+  test, or more than 30 s as an integration test (`thresholds.unitTestSeconds` and
+  `thresholds.integrationTestSeconds`), the same rule, message shape and budgets as for
+  [Java and Kotlin](java-preset.md#slow-tests) and [Python](python-preset.md#slow-tests). Its tool
+  is `test-runtime`; the finding prints the bare route `slow-test`, and `test-runtime/slow-test` is
+  accepted in `exceptions` as the same rule. The message names the budget, the measured time, the
+  fixes (fake timers instead of waits, fakes for network, database and disk, or moving the test to
+  an integration test) and the exception. It is reported by the `coverage` analyzer, which already
+  runs the tests, so a failing test run reports `tests-failed` and no slow tests, and disabling `coverage` also
+  turns the check off. TypeScript,
+  JavaScript and React share it. `exclude` applies: a test in an excluded file is not checked.
+- **Measurement.** Head only, from the per-test `duration` of the report the project's runner
+  writes for the coverage run (Vitest and Jest JSON, the `node:test` reporter, Mocha JSON), which
+  runs with coverage instrumentation, four workers at most, and so measures slower than a plain run.
+  Only passed tests are timed (a failed or skipped test has no meaningful duration), and a test that
+  ran more than once keeps its slowest time. A test over the smaller budget in that run is run again
+  once, alone: only its file, selected by its full name, with one worker and without coverage, through
+  the same runner seam. It is reported only when it is still over its budget, with the time of the
+  second run; a second run that fails or finds nothing keeps the first time. So one noisy
+  instrumented timing never fails a change, and the rerun starts no extra process when no test is
+  slow. The seam's per-test timeout is 10 000 ms plus the larger of the two budgets (40 000 ms by
+  default), so a test that takes longer than 10 s can be measured at all;
+  `nitpicker/no-raised-test-timeout` still bans a project from raising its own timeout past
+  10 000 ms.
+- **Unit or integration.** A test is an integration test when its file is under the `e2e/` test
+  root, or has a folder named `integration`, `integrations`, `e2e`, `end-to-end`, `functional`,
+  `acceptance` or `system` (also with a `-tests` or `_tests` suffix, and `__integration__`) below
+  one of the test roots (or below an `__tests__` folder), or is named `*.integration.test.*`,
+  `*.e2e.test.*`, `*.int.test.*` or `*.it.test.*` (also `.spec.`). A production folder such as
+  `src/integrations` is not a test folder. Every other test is a unit test.
+- **Edited or added.** A test is found in its file by its full name (the `describe` titles and the
+  test title joined by spaces, the way the runners report it); `it.each` and `describe.each` titles
+  (`%s`, `%i`, `$name`), template titles and concatenated titles match as patterns, and a title the
+  source does not spell out matches any name. A test counts when its call text (whitespace
+  collapsed) differs from the base file's call with the same titles, or the file is new. A reported
+  test no call names counts when its file differs from the base. Slow tests the change does not
+  touch stay baselined, and the base snapshot reports none.
+- **Exception.** `{ "rule": "slow-test", "paths": ["test/db/**"], "reason": "..." }` in the
+  top-level `exceptions`, as printed in the message.
+- **Tests.** `languages/typescript/adapters/slow-tests/` (fake runner reports with a temporary
+  project and baseline, the rerun, the title patterns, the path rules) and
+  `slow-tests-runners.test.mjs` (a test that really waits, on each of the four runners, asserting
+  only that the rule fires).
 
 ## React
 
@@ -1345,16 +1439,18 @@ from a real caller) and the `exceptions` entry that lifts it.
   (`nitpicker/no-ui-framework-in-domain`), used to be `no-restricted-syntax` selectors. An existing
   `no-restricted-syntax` exception no longer lifts them; add an entry for the new rule id with the
   same paths.
-- The file limits (`file-lines-limit`, `line-length-limit`, `folder-files-limit`) take exceptions the
+- The file limits (`file-lines-limit`, `line-length-limit`, `folder-files-limit`) and `slow-test` take exceptions the
   same way; each failure message spells out the entry that would lift it.
 - `folder-depth-limit`: code may sit at most one folder below `features/<feature>/<layer>/` (a file in
   `domain/orders/x.ts` is fine, one in `domain/orders/rules/x.ts` is not), so nesting cannot dodge
   the 6-files-per-folder limit. `thresholds.folderDepth` changes the one folder. `__tests__` and `__mocks__` folders do not
   count as a level. A folder already deeper on the base fails only when it gets deeper, and the rule takes exceptions like the file
   limits.
-- The reuse rules (`shared-used-by-one-feature`, `duplicate-definition`, `exported-name-collision`,
-  `redefined-library-component`, `new-icon-asset`) come from the `coupling` and `structure` checks,
-  not from ESLint, and take exceptions the same way; the JavaScript preset runs them too.
+- The reuse rules (`shared-used-by-one-feature`, `duplicate-definition`, `sibling-copy-edit`,
+  `exported-name-collision`, `redefined-library-component`, `new-icon-asset`) come from the
+  `coupling` and `structure` checks, not from ESLint, and take exceptions the same way; the
+  JavaScript preset runs them too.
+
 - `layout.excludedGlobs`, `layout.entryPoints` and `layout.sourceRoots`/`layout.testRoots` are all valid `layout` keys. The
   default `testRoots` are `test`, `tests`, `__tests__` and `e2e` (repo-root folders only, so
   `src/crypto/e2e/` stays production code; a missing one is ignored). Type checking, duplicate
@@ -1370,10 +1466,8 @@ from a real caller) and the `exceptions` entry that lifts it.
   `page.evaluate` compile (the lib then applies to every file in that check). The default quality
   test run does not run `e2e`, since end-to-end runners start those tests themselves; a `testRoots`
   you list yourself is always run, so list `e2e` to keep a vitest or supertest suite there.
-- A Jest project with tests in a root `__tests__/` gets them run by Vitest in the quality test run,
-  and they fail on `jest.*` (Jest support is issue #162). Either list `layout.testRoots` without
-  `__tests__`, or add `"__tests__/**"` to `exclude`, which also leaves the folder out of the other
-  tools.
+- A Jest project with tests in a root `__tests__/` gets them run by Jest in the quality test run,
+  like every other test file (see [Test runners](usage.md#test-runners)).
 
 ## Enforcement sources
 

@@ -57,8 +57,17 @@ describe('analyzer cache keys', () => {
         'languages/typescript/preset/architecture/strict-boundary-rules.mjs',
         'languages/typescript/preset/architecture/strict-layout.mjs',
         'languages/typescript/preset/eslint-plugin/rules/analysis/constant-resolution.mjs',
+        ...['no-dev-dependency-in-production.mjs', 'package-manifest.mjs', 'test-support.mjs'].map(
+          (file) => `languages/typescript/preset/eslint-plugin/rules/dependencies/${file}`,
+        ),
       ]),
     ).toEqual([]);
     expect(missing('dependency-architecture', ['shared/glob.mjs'])).toEqual([]);
+    expect(
+      missing('dead-code', [
+        'languages/typescript/adapters/quality-areas/reporting/dead-code.mjs',
+        'shared/hygiene/rules.mjs',
+      ]),
+    ).toEqual([]);
   });
 });
