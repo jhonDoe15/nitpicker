@@ -9,7 +9,7 @@ import {
   runNitpicker,
 } from '../../../typescript/preset/clean-projects/test-support/clean-project.mjs';
 
-const FIXTURE_TIMEOUT_MS = 600_000;
+const FIXTURE_TIMEOUT_MS = 180_000;
 const JEST_COMMAND = 'node --experimental-vm-modules node_modules/jest/bin/jest.js';
 const VITEST_TEST = `import { describe, expect, it } from 'vitest';
 import { greet, totalLength } from '../src/main/features/greeting/index.js';

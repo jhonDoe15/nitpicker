@@ -8,6 +8,7 @@ def pinned = [
     lizard          : '1.24.1',
     pitest          : '1.17.4',
     pitestJunit5    : '1.2.1',
+    pitestTestng    : '1.0.0',
     detekt          : '1.23.8',
     detektKotlin    : '2.0.21',
     ktlint          : '1.8.0',
@@ -97,6 +98,7 @@ allprojects {
             nitpickerFormat { canBeConsumed = false }
             nitpickerPit { canBeConsumed = false }
             nitpickerPitJunit5 { canBeConsumed = false }
+            nitpickerPitTestng { canBeConsumed = false }
             nitpickerCheckstyle { canBeConsumed = false }
         }
         repositories { mavenCentral() }
@@ -121,6 +123,8 @@ allprojects {
                 exclude group: 'org.opentest4j'
                 exclude group: 'org.apiguardian'
             }
+            // PIT refuses a TestNG project without its TestNG plugin; TestNG itself comes from the project.
+            nitpickerPitTestng "org.pitest:pitest-testng-plugin:${pinned.pitestTestng}"
         }
         jacoco { toolVersion = pinned.jacoco }
         def inlineCheckstyleFilters = ['SuppressWarningsFilter', 'SuppressWarningsHolder',
@@ -308,11 +312,23 @@ allprojects {
             onlyIf { analyzedClassDirs().any { it.exists() && it.list()?.length } }
         }
 
+        def javaFiles = {
+            (mainSources.files + testSourceDirectories()).findAll { it.exists() }
+                .collectMany { directory -> fileTree(directory) { include '**/*.java' }.files }.unique().sort()
+        }
         tasks.register('nitpickerFormat', JavaExec) {
             group = 'nitpicker'
             classpath = configurations.nitpickerFormat
             mainClass = javaStyle == 'palantir' ? 'com.palantir.javaformat.java.Main' : 'com.google.googlejavaformat.java.Main'
             enabled = javaStyle != 'none'
+            onlyIf {
+                if (!javaFiles().isEmpty()) {
+                    return true
+                }
+                reportDir.get().asFile.mkdirs()
+                reportDir.get().file('format.txt').asFile.text = ''
+                false
+            }
             ignoreExitValue = true
             jvmArgs(['api', 'file', 'parser', 'tree', 'util', 'code'].collect {
                 "--add-exports=jdk.compiler/com.sun.tools.javac.${it}=ALL-UNNAMED".toString()
@@ -320,9 +336,7 @@ allprojects {
             doFirst {
                 reportDir.get().asFile.mkdirs()
                 standardOutput = new FileOutputStream(reportDir.get().file('format.txt').asFile)
-                def files = (mainSources.files + testSourceDirectories()).findAll { it.exists() }
-                    .collectMany { directory -> fileTree(directory) { include '**/*.java' }.files }.unique().sort()
-                args(['--dry-run'] + ([aosp: ['--aosp'], palantir: ['--palantir']][javaStyle] ?: []) + files*.absolutePath)
+                args(['--dry-run'] + ([aosp: ['--aosp'], palantir: ['--palantir']][javaStyle] ?: []) + javaFiles()*.absolutePath)
             }
         }
 
@@ -338,11 +352,25 @@ allprojects {
             testClassesDirs = sourceSets.test.output.classesDirs
             classpath = sourceSets.test.runtimeClasspath
             include archunitIncludes
-            useJUnitPlatform()
             ignoreFailures = true // violations are findings; the Nitpicker side reads the XML
             reports {
                 junitXml.outputLocation = reportDir.map { it.dir('archunit') }
                 html.required = false
+            }
+            // Like the Maven side: ArchUnit classes that no runner picked up are an error, not a pass.
+            doLast {
+                def archunitClasses = sourceSets.test.output.classesDirs.files.findAll { it.exists() }.collectMany { dir ->
+                    fileTree(dir) { include archunitIncludes }.files.collect {
+                        dir.toPath().relativize(it.toPath()).toString().replace('\\', '/')
+                            .replaceAll(/\.class$/, '').replace('/', '.').replaceAll(/\$.*/, '')
+                    }
+                }.unique().sort()
+                def reported = (reportDir.get().dir('archunit').asFile.listFiles() ?: [])*.name
+                if (!archunitClasses.isEmpty() && !archunitClasses.any { reported.contains("TEST-${it}.xml".toString()) }) {
+                    throw new GradleException("nitpickerArchunit ran none of the ArchUnit classes in ${project.path} " +
+                        "(${archunitClasses.join(', ')}). archunit-junit4 rules run on JUnit 4 and archunit-junit5 " +
+                        'rules on the JUnit Platform; declare the one the classes use in the test dependencies')
+                }
             }
         }
 
@@ -397,6 +425,9 @@ allprojects {
                     classpath += project.configurations.detachedConfiguration(
                         project.dependencies.create("org.junit.platform:junit-platform-launcher:${engine}"))
                 }
+                if (runtimeJars.any { it ==~ /testng-\d.*\.jar/ }) {
+                    classpath += configurations.nitpickerPitTestng
+                }
                 project.delete(pitDir)
                 pitDir.get().asFile.mkdirs()
                 def pitClasspath = (sourceSets.test.runtimeClasspath.files + classDirs)
@@ -412,6 +443,15 @@ allprojects {
                       '--threads', '2',
                       '--failWhenNoMutations', 'false',
                       '--verbose', 'false'])
+                def testOptions = tasks.named('test').get().options
+                if (testOptions instanceof org.gradle.api.tasks.testing.junitplatform.JUnitPlatformOptions) {
+                    if (!testOptions.includeTags.isEmpty()) {
+                        args '--includedGroups', testOptions.includeTags.toList().sort().join(',')
+                    }
+                    if (!testOptions.excludeTags.isEmpty()) {
+                        args '--excludedGroups', testOptions.excludeTags.toList().sort().join(',')
+                    }
+                }
             }
             onlyIf { mutatedClassDirs().any { it.exists() && it.list()?.length } }
             doLast {
@@ -446,13 +486,26 @@ allprojects {
             executionData(emptyExecutionData)
         }
         gradle.projectsEvaluated {
-            tasks.withType(Test).configureEach {
-                def coverage = extensions.findByType(JacocoTaskExtension)
+            tasks.withType(Test).configureEach { testTask ->
+                def coverage = testTask.extensions.findByType(JacocoTaskExtension)
                 if (coverage != null) {
-                    coverage.enabled = true
+                    coverage.enabled = testTask.name != 'nitpickerArchunit'
                     coverage.includes = []
                     coverage.excludes = []
                     coverage.excludeClassLoaders = []
+                }
+            }
+            // The rules run on the framework their ArchUnit library needs: archunit-junit4 on JUnit 4,
+            // archunit-junit5 on the JUnit Platform. With both or neither declared, they follow `test`.
+            tasks.named('nitpickerArchunit') {
+                def declared = configurations.testRuntimeClasspath.allDependencies*.name
+                def junit5Rules = declared.any { it.startsWith('archunit-junit5') }
+                def junit4Rules = declared.contains('archunit-junit4')
+                def testOnJUnit4 = tasks.named('test').get().options instanceof org.gradle.api.tasks.testing.junit.JUnitOptions
+                if (junit4Rules == junit5Rules ? testOnJUnit4 : junit4Rules) {
+                    useJUnit()
+                } else {
+                    useJUnitPlatform()
                 }
             }
             tasks.named('jacocoTestReport') {

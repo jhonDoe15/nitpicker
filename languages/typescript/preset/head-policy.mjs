@@ -5,7 +5,6 @@ import {
   readHeadPolicyFile,
   resolveHeadPolicy as resolveSharedHeadPolicy,
 } from '../../../shared/head-policy.mjs';
-import { isJavascriptPolicy } from '../../javascript/preset/javascript-preset.mjs';
 import {
   frameworkConventions,
   hasScopePackage,
@@ -16,7 +15,6 @@ import {
 import {
   builtInExcludedGlobs,
   globToRegExp,
-  resolveLayout,
   resolveLayoutFor,
   sourceRoots,
   testRoots,
@@ -26,7 +24,6 @@ import { stylingApproachFor } from './eslint-config/react/react-styling.mjs';
 import { hasPrettierConventions } from '../conventions/prettier-conventions.mjs';
 import { markedGeneratedFiles } from './layout/generated-files.mjs';
 import { detectedRunnerFact } from './test-runner/detect-runner.mjs';
-import { policyTestFiles } from './test-runner/test-files/test-file-patterns.mjs';
 
 export { headPolicyEnvironment, withHeadPolicyFile } from '../../../shared/head-policy.mjs';
 
@@ -228,6 +225,7 @@ export function readHeadPolicy(environment = process.env) {
     i18n: policy.i18n ?? {},
     preset: policy.preset,
     tools: policy.tools ?? {},
+    duplicates: policy.duplicates ?? {},
     conventions: policy.conventions,
     testConsole: policy.testConsole ?? {},
     conventionPins: policy.conventionPins,
@@ -240,11 +238,7 @@ export function readHeadPolicy(environment = process.env) {
 export function readLayout(environment = process.env) {
   const policy = readHeadPolicy(environment);
   return {
-    ...resolveLayout(readHeadPolicyFile(environment).layout, policy.exclude, {
-      javascript: isJavascriptPolicy(policy),
-      generatedFiles: policy.generatedFiles,
-      testFiles: policyTestFiles(policy.tools.tests),
-    }),
+    ...resolveLayoutFor({ ...policy, layout: readHeadPolicyFile(environment).layout }),
     entryPoints: [...(policy.layout.entryPoints ?? []), ...policy.frameworks.entryPoints],
   };
 }

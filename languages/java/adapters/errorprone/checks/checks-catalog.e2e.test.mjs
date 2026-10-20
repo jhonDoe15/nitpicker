@@ -3,7 +3,6 @@ import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterAll, describe, expect, it } from 'vitest';
-import { GRADLE_STEP_TIMEOUT_MS } from '../../test-support/gradle-e2e.mjs';
 import { CHECKS, documentedChecks } from './checks-docs.mjs';
 
 const enabled = process.env.NITPICKER_JAVA_E2E === '1';
@@ -60,34 +59,30 @@ afterAll(() => {
 });
 
 describe.skipIf(!enabled)('checks.json against the pinned Error Prone jar', () => {
-  it(
-    'reviews exactly the jar checks, and every list names checks in the state it assumes',
-    () => {
-      const classpath = errorProneClasspath();
-      const checkers = jarCheckers(classpath);
-      const byName = new Map(checkers.map((checker) => [checker.name, checker]));
-      const isOn = ({ name, state }) =>
-        CHECKS.enable.includes(name) || (state === 'on' && !CHECKS.disable.includes(name));
-      const on = checkers.filter((checker) => isOn(checker));
-      const onNames = on.map(({ name }) => name);
-      const onErrors = on.filter((checker) => checker.severity === 'ERROR').map(({ name }) => name);
-      const stateOf = (names) => names.map((name) => byName.get(name)?.state);
+  it('reviews exactly the jar checks, and every list names checks in the state it assumes', () => {
+    const classpath = errorProneClasspath();
+    const checkers = jarCheckers(classpath);
+    const byName = new Map(checkers.map((checker) => [checker.name, checker]));
+    const isOn = ({ name, state }) =>
+      CHECKS.enable.includes(name) || (state === 'on' && !CHECKS.disable.includes(name));
+    const on = checkers.filter((checker) => isOn(checker));
+    const onNames = on.map(({ name }) => name);
+    const onErrors = on.filter((checker) => checker.severity === 'ERROR').map(({ name }) => name);
+    const stateOf = (names) => names.map((name) => byName.get(name)?.state);
 
-      expect(
-        path.basename(classpath.split(path.delimiter).find((jar) => /nullaway/u.test(jar))),
-      ).toBe(`nullaway-${CHECKS.reviewed.nullAway}.jar`);
-      expect(CHECKS.reviewedChecks).toStrictEqual(sorted(checkers.map(({ name }) => name)));
-      expect(new Set(stateOf(CHECKS.enable))).toStrictEqual(new Set(['off']));
-      expect(new Set(stateOf(CHECKS.disable))).toStrictEqual(new Set(['on']));
-      expect(CHECKS.lombokUnsuppressedOff.filter((name) => !onNames.includes(name))).toStrictEqual(
-        [],
-      );
-      expect(CHECKS.certainBugs.filter((name) => !onErrors.includes(name))).toStrictEqual([]);
-      expect(sorted([...CHECKS.certainBugs, ...documentedChecks(ROUTE_KEPT)])).toStrictEqual(
-        sorted(onErrors),
-      );
-      expect(CHECKS.suppressible).toStrictEqual(sorted(on.flatMap(({ names }) => names)));
-    },
-    GRADLE_STEP_TIMEOUT_MS,
-  );
+    expect(
+      path.basename(classpath.split(path.delimiter).find((jar) => /nullaway/u.test(jar))),
+    ).toBe(`nullaway-${CHECKS.reviewed.nullAway}.jar`);
+    expect(CHECKS.reviewedChecks).toStrictEqual(sorted(checkers.map(({ name }) => name)));
+    expect(new Set(stateOf(CHECKS.enable))).toStrictEqual(new Set(['off']));
+    expect(new Set(stateOf(CHECKS.disable))).toStrictEqual(new Set(['on']));
+    expect(CHECKS.lombokUnsuppressedOff.filter((name) => !onNames.includes(name))).toStrictEqual(
+      [],
+    );
+    expect(CHECKS.certainBugs.filter((name) => !onErrors.includes(name))).toStrictEqual([]);
+    expect(sorted([...CHECKS.certainBugs, ...documentedChecks(ROUTE_KEPT)])).toStrictEqual(
+      sorted(onErrors),
+    );
+    expect(CHECKS.suppressible).toStrictEqual(sorted(on.flatMap(({ names }) => names)));
+  }, 180_000);
 });

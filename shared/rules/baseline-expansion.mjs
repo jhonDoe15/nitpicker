@@ -6,6 +6,7 @@
 // site whose allowance is above the base's (or that is new) is an enforceable `baseline-expansion`
 // finding: raising a legacy allowance is never free. Malformed sites throw a TypeError.
 
+import { numericAllowance, siteKey } from '../legacy-inventory.mjs';
 import { RULE_IDS } from '../policy.mjs';
 import { hash } from './finding-helpers.mjs';
 
@@ -31,22 +32,4 @@ export function evaluateBaselineExpansions(baseSites, headSites, analyzerName) {
       },
     ];
   });
-}
-
-export function siteKey(site) {
-  if (
-    typeof site?.file !== 'string' ||
-    typeof site.rule !== 'string' ||
-    typeof site.source !== 'string'
-  ) {
-    throw new TypeError('Coding-standard baseline contains an invalid site');
-  }
-  return JSON.stringify([site.file, site.rule, site.source]);
-}
-
-export function numericAllowance(value) {
-  if (!Number.isInteger(value) || value < 1) {
-    throw new TypeError('Coding-standard baseline counts must be positive integers');
-  }
-  return value;
 }

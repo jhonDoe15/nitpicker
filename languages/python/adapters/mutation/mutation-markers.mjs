@@ -1,4 +1,4 @@
-import { hashIdentity } from '../../../java/ingest/common.mjs';
+import { hashIdentity } from '../../../../shared/ingest/common.mjs';
 import { readProjectFile } from '../../libraries/project-files.mjs';
 import { listProductionModules } from '../analysis/python-sources.mjs';
 import { readMutmutConfig } from '../project-tools/mutmut/mutmut-config.mjs';

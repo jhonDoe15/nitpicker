@@ -96,11 +96,26 @@ function stricterLists(baseConfig, headConfig) {
   return covering;
 }
 
+function withHeadDuplicates(baseConfig, headConfig) {
+  const { duplicates } = headConfig;
+  const entries = Object.entries(baseConfig).flatMap(([key, value]) => {
+    if (key !== 'duplicates') {
+      return [[key, value]];
+    }
+    return duplicates === undefined ? [] : [[key, duplicates]];
+  });
+  return Object.fromEntries(
+    'duplicates' in baseConfig || duplicates === undefined
+      ? entries
+      : [...entries, ['duplicates', duplicates]],
+  );
+}
+
 export function baseConfigCoveringHead(baseConfig, headConfig) {
   const layout = coveringLayout(baseConfig.layout ?? {}, headConfig.layout ?? {});
   const covering = { ...baseConfig, ...stricterLists(baseConfig, headConfig) };
   if (Object.keys(layout).length > 0) {
     covering.layout = layout;
   }
-  return covering;
+  return withHeadDuplicates(covering, headConfig);
 }

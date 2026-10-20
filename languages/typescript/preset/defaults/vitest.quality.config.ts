@@ -106,9 +106,71 @@ async function layeredOnProjectConfig(projectConfigFile: string) {
   };
 }
 
+function timeoutLimits() {
+  const parsed: unknown = JSON.parse(process.env.NITPICKER_TEST_TIMEOUT_LIMITS ?? '{}');
+  if (
+    typeof parsed !== 'object' ||
+    parsed === null ||
+    !('testTimeoutMs' in parsed) ||
+    typeof parsed.testTimeoutMs !== 'number'
+  ) {
+    throw new Error('Nitpicker test timeout settings are missing.');
+  }
+  const hookTimeoutMs = 'hookTimeoutMs' in parsed ? parsed.hookTimeoutMs : undefined;
+  return {
+    testTimeoutMs: parsed.testTimeoutMs,
+    ...(typeof hookTimeoutMs === 'number' ? { hookTimeout: hookTimeoutMs } : {}),
+  };
+}
+
+function setupFilesOf(value: unknown): string[] {
+  if (typeof value === 'string') {
+    return [value];
+  }
+  if (Array.isArray(value)) {
+    return value.filter((entry: unknown): entry is string => typeof entry === 'string');
+  }
+  return [];
+}
+
+function timeoutSettings<T extends object>(test: T) {
+  const setup = process.env.NITPICKER_TEST_TIMEOUT_SETUP;
+  if (setup === undefined) {
+    return test;
+  }
+  const limits = timeoutLimits();
+  const existing = 'setupFiles' in test ? test.setupFiles : [];
+  return {
+    ...test,
+    testTimeout: limits.testTimeoutMs,
+    ...('hookTimeout' in limits ? { hookTimeout: limits.hookTimeout } : {}),
+    setupFiles: [setup, ...setupFilesOf(existing)],
+  };
+}
+
 export default defineConfig(async () => {
   const projectConfigFile = projectConfigInWorkingDirectory();
-  return projectConfigFile === undefined
-    ? configWithoutProjectConfig
-    : layeredOnProjectConfig(projectConfigFile);
+  const config =
+    projectConfigFile === undefined
+      ? configWithoutProjectConfig
+      : await layeredOnProjectConfig(projectConfigFile);
+  if (process.env.NITPICKER_TEST_TIMEOUT_SETUP === undefined) {
+    return config;
+  }
+  const projects =
+    config.test.projects === undefined
+      ? undefined
+      : await Promise.all(
+          config.test.projects.map(async (entry) => {
+            const project = await entry;
+            if (typeof project !== 'object') {
+              throw new Error('Nitpicker timeout scopes require inline Vitest projects.');
+            }
+            return { ...project, test: timeoutSettings(project.test ?? {}) };
+          }),
+        );
+  return {
+    ...config,
+    test: { ...timeoutSettings(config.test), ...(projects === undefined ? {} : { projects }) },
+  };
 });

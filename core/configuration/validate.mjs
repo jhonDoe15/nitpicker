@@ -6,6 +6,7 @@ import {
   liftsOnlyRules,
   validateStringArray,
   validateThresholds,
+  validateDuplicates,
   validateExceptions,
   TYPESCRIPT_ONLY_KEYS,
   validateProjectRelativePath,
@@ -25,6 +26,20 @@ import { i18nRuleIds } from '../../languages/typescript/preset/eslint-config/i18
 import { validateScope, validateTestConsole } from './scopes/scope-settings.mjs';
 import path from 'node:path';
 
+const OPTIONAL_VALIDATORS = [
+  [
+    'thresholds',
+    (thresholds, _key, preset) => {
+      validateThresholds(thresholds, preset);
+    },
+  ],
+  ['exclude', validateStringArray],
+  ['layout', validateLayout],
+  ['exceptions', validateExceptions],
+  ['legacyInventory', validateProjectRelativePath],
+  ['duplicates', validateDuplicates],
+  ['analyzers', validateCustomAnalyzers],
+];
 export const SUPPORTED_PRESETS = ['typescript', 'javascript', ...GRADLE_PRESETS, 'python'];
 
 export const KEYS = [
@@ -39,6 +54,7 @@ export const KEYS = [
   'i18n',
   'analyzers',
   'legacyInventory',
+  'duplicates',
   'python',
   'tools',
   'testConsole',
@@ -139,24 +155,13 @@ function validateDisable(disable) {
 }
 
 function validateOptional(config) {
-  if (config.thresholds !== undefined) {
-    validateThresholds(config.thresholds, config.preset);
-  }
-  if (config.exclude !== undefined) {
-    validateStringArray(config.exclude, 'exclude');
-  }
-  if (config.layout !== undefined) {
-    validateLayout(config.layout);
+  for (const [key, validate] of OPTIONAL_VALIDATORS) {
+    if (config[key] !== undefined) {
+      validate(config[key], key, config.preset);
+    }
   }
   if (config.exceptions !== undefined) {
-    validateExceptions(config.exceptions);
     validateI18nExceptions(config.exceptions, config.preset);
-  }
-  if (config.legacyInventory !== undefined) {
-    validateProjectRelativePath(config.legacyInventory, 'legacyInventory');
-  }
-  if (config.analyzers !== undefined) {
-    validateCustomAnalyzers(config.analyzers);
   }
   if (config.tools !== undefined) {
     validateTools(config.tools, config.preset);

@@ -10,12 +10,13 @@ import { NODE_DEFAULT_PATTERNS } from '../../../preset/test-runner/test-files/te
 import { spawnNodeTool } from '../../quality-areas/runners/tooling.mjs';
 import { startV8Coverage } from '../v8-coverage/v8-coverage-run.mjs';
 import {
-  MAX_WORKERS,
-  TEST_TIMEOUT_MS,
   readRun,
   removeTemporary,
   runnableTestFiles,
   temporaryProjectPath,
+  testTimeoutMs,
+  uncoveredRun,
+  workerCount,
 } from '../test-run.mjs';
 
 const REPORTER = pathToFileURL(path.join(import.meta.dirname, 'node-test-reporter.mjs')).href;
@@ -117,16 +118,18 @@ function testArguments(options, command, reportPath) {
     '--test',
     `--test-reporter=${REPORTER}`,
     `--test-reporter-destination=${reportPath}`,
-    `--test-timeout=${String(TEST_TIMEOUT_MS)}`,
-    `--test-concurrency=${String(MAX_WORKERS)}`,
+    `--test-timeout=${String(testTimeoutMs(options, testFiles, { hooks: false }))}`,
+    `--test-concurrency=${String(workerCount(options))}`,
+    ...(options.rerun === undefined ? [] : [`--test-name-pattern=${options.rerun.namePattern}`]),
     ...scriptOptions,
-    ...testFiles,
+    ...(options.rerun?.files ?? testFiles),
   ];
 }
 
 export async function runNodeTest(options, command) {
   const reportPath = temporaryProjectPath(options, 'node-test-report.json');
-  const coverage = startV8Coverage(options, command);
+  const coverage =
+    options.rerun === undefined ? startV8Coverage(options, command) : uncoveredRun(command);
   try {
     const result = spawnNodeTool({
       options,

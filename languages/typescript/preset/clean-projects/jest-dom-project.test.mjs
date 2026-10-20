@@ -5,7 +5,7 @@ import { createGitTemplate } from '../../../../core/diff/git/test-support/git-re
 import { createCleanProject, metricValue, runSnapshot } from './test-support/clean-project.mjs';
 
 const fixtureRoot = path.join(import.meta.dirname, '../fixtures/jest-dom-clean');
-const FIXTURE_TIMEOUT_MS = 300_000;
+const FIXTURE_TIMEOUT_MS = 180_000;
 const PLANTED_TEST = 'src/main/features/greeting/__tests__/sum.tsx';
 const PLANTED_OUTPUT = [
   'Nitpicker quality snapshot',
