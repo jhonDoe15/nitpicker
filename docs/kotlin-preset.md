@@ -430,9 +430,10 @@ classes, including the Java classes of a mixed module; for a class whose source 
 are descriptive, next to the `mutation-summary` counts. The reason is measured, below. The
 Arcmutate Kotlin plugin, which exists for this problem, is a paid product and is not used.
 
-**What runs.** The Java preset's `nitpickerPit` (PIT 1.17.4, `pitest-junit5-plugin` 1.2.1, default
-mutators, the project's own tests) now mutates `sourceSets.main.output.classesDirs`, which holds the
-Kotlin classes next to the Java ones; the other class tools keep to `compileJava`'s output. The
+**What runs.** The Java preset's `nitpickerPit` (PIT 1.17.4 with the test plugins the project's
+framework needs, `pitest-junit5-plugin` 1.2.1 for Kotest and JUnit 5, default mutators, the
+project's own tests) now mutates `sourceSets.main.output.classesDirs`, which holds the Kotlin
+classes next to the Java ones; the other class tools keep to `compileJava`'s output. The
 ingester finds a class's source file under both kinds of source root from PIT's `sourceFile`
 (also when the directory does not match the package, as for coverage).
 PIT's built-in `FKOTLIN` filter (on by default) removes only mutants at line 0 of a `.kt` file,
@@ -615,8 +616,8 @@ The Java sources of a mixed module get their complexity from `StructureMetrics.j
 ## Duplicates
 
 The shared duplicates rule runs on Kotlin: jscpd (the version of the TypeScript preset, mode `mild`)
-with `--format kotlin` over each Kotlin source root from the manifest, ignoring `build`, `generated`,
-`target` and `out`. Any new clone fails with `duplicate-clone`, tool `duplicates`, identity from the file pair,
+with `--format kotlin` over each Kotlin source root from the manifest, ignoring the folders named `build`, `generated`,
+`target` and `out` (replaced by `duplicates.skippedFolders`). Clones made only of `package` and `import` lines are not reported. Its message names both files and tells to add either to `exclude`; a glob that matches either file of the pair lifts the finding. Any new clone fails with `duplicate-clone`, tool `duplicates`, identity from the file pair,
 the cloned text and the n-th occurrence, never a line. Clones are found within one source root and
 within the Kotlin files; a clone between a `.kt` and a `.java` file, or between two source roots, is not
 (the same as for several Java roots).
@@ -648,20 +649,20 @@ the comparison and exiting with 2. Nothing is silently skipped and nothing throw
 
 ## Config keys
 
-`base`, `disable`, `analyzers`, `thresholds`, `exclude`, `legacyInventory` as for the Java preset
+`base`, `disable`, `analyzers`, `thresholds`, `exclude`, `duplicates`, `legacyInventory` as for the Java preset
 (legacy inventory sources are the findings' `identity`, for example
 `fp:nitpicker/subject=This expression contains a magic number. ...`). `kotlin.formatter` and
 `kotlin.detektConfig` are new and valid only with this preset. `exceptions` lifts the
 [one-way rules](#one-way-rules), `catch-log-without-exception` and `test-without-assertion`
 ([source scans](#source-scans)), the file limits `file-lines-limit` and `folder-files-limit` and
-`test-runtime/slow-test` and the [dependency and repository checks](usage.md#dependency-and-repository-checks) per path. `layout` is a config error.
+`slow-test` (or `test-runtime/slow-test`) and the [dependency and repository checks](usage.md#dependency-and-repository-checks) per path. `layout` is a config error.
 
 ## Slow tests
 
 As for Java ([slow tests](java-preset.md#slow-tests)): a test the change adds or edits fails over 5 s
 as a unit test or 30 s as an integration test (`thresholds.unitTestSeconds`,
-`thresholds.integrationTestSeconds`), measured on head from the JUnit XML of the test tasks. A Kotlin
-test named with backticks is found by its name.
+`thresholds.integrationTestSeconds`), measured on head from the JUnit XML of the test tasks, once and
+without a rerun (see Java). A Kotlin test named with backticks is found by its name.
 
 ## File limits
 

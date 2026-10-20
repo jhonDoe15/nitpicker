@@ -55,3 +55,37 @@ ruleTester.run('no-raised-test-timeout across runners', noRaisedTestTimeout, {
     },
   ].map((entry) => ({ filename, ...entry })),
 });
+
+const namedProjectSettings = {
+  nitpickerTestTimeoutPolicy: {
+    tools: {
+      tests: {
+        timeouts: {
+          languages: {
+            java: { testDeclarationCeilingMs: 120_000, hookDeclarationCeilingMs: 180_000 },
+          },
+          projects: { jvm: { language: 'java', include: ['**/tests/integration/**'] } },
+        },
+      },
+    },
+  },
+};
+
+ruleTester.run('named timeout tiers across runners', noRaisedTestTimeout, {
+  valid: [
+    'jest.setTimeout(120_000);',
+    "it('runs', () => {}).timeout(120_000);",
+    "test('runs', { timeout: 120_000 }, async () => {});",
+    'before(() => setup(), { timeout: 180_000 });',
+  ].map((code) => ({ filename, code, settings: namedProjectSettings })),
+  invalid: [
+    {
+      code: 'jest.setTimeout(120_001);',
+      errors: [{ messageId: 'raisedTimeout', data: { ceiling: '120000', kind: 'test' } }],
+    },
+    {
+      code: 'before(() => setup(), { timeout: 180_001 });',
+      errors: [{ messageId: 'raisedTimeout', data: { ceiling: '180000', kind: 'hook' } }],
+    },
+  ].map((entry) => ({ filename, settings: namedProjectSettings, ...entry })),
+});

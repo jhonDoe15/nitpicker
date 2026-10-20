@@ -4,11 +4,12 @@ import { withoutOptions } from '../../../preset/test-runner/script-command.mjs';
 import { RUNNER_NAMES } from '../../../preset/test-runner/runners.mjs';
 import { startV8Coverage } from '../v8-coverage/v8-coverage-run.mjs';
 import {
-  TEST_TIMEOUT_MS,
   finishedRun,
   removeTemporary,
   runnableTestFiles,
   temporaryProjectPath,
+  testTimeoutMs,
+  uncoveredRun,
 } from '../test-run.mjs';
 import { loadFailureReport, reportFromMocha } from './mocha-report.mjs';
 import { existsSync } from 'node:fs';
@@ -45,9 +46,10 @@ function mochaReport({ options, mochaReportPath, result, testFiles }) {
 }
 
 export async function runMocha(options, command) {
-  const testFiles = runnableTestFiles(options);
+  const testFiles = options.rerun?.files ?? runnableTestFiles(options);
   const mochaReportPath = temporaryProjectPath(options, 'mocha-output.json');
-  const coverage = startV8Coverage(options, command);
+  const coverage =
+    options.rerun === undefined ? startV8Coverage(options, command) : uncoveredRun(command);
   try {
     const result = spawnNodeTool({
       options,
@@ -63,7 +65,8 @@ export async function runMocha(options, command) {
         '--reporter-option',
         `output=${mochaReportPath}`,
         '--timeout',
-        String(TEST_TIMEOUT_MS),
+        String(testTimeoutMs(options, testFiles)),
+        ...(options.rerun === undefined ? [] : ['--grep', options.rerun.namePattern]),
         ...testFiles,
       ],
     });

@@ -50,12 +50,13 @@ directory is the contract between the tool runs and the readers; later slices ad
   project's environment (`ruff@0.9.9;mypy@1.13.0;coverage@7.6.1;pytest@8.3.1`), read from the live checkout, and
   the configuration hash covers the Python adapter files, the nitpicker-owned ruff config and the
   `python` settings. Upgrading ruff, or editing the preset, therefore invalidates the base cache.
-- **Ingesters.** Nothing generic was moved. The Java ingesters are reused where they already are:
-  `languages/java/ingest/sarif.mjs` (ruff), `format-check.mjs` (the format check) and `common.mjs`.
+- **Ingesters.** The generic ingesters live in `shared/ingest/` and are shared with the Gradle
+  presets: `sarif.mjs` (ruff, with `prepareSarif`), `format-check.mjs` (the format check), `common.mjs` and
+  `lizard-crap.mjs`.
   The one new ingester is `languages/python/ingest/coverage-reports/coverage-json.mjs` for the coverage.py JSON
-  report. The legacy-inventory and `exclude` handling is Java's `applyJavaPolicy` /
-  `configureJavaAnalyzer`, which are language-neutral and take the tool name for a
-  `baseline-expansion` finding as an option.
+  report. The legacy-inventory and `exclude` handling is `applyFindingPolicy` in
+  `shared/findings/finding-policy.mjs` and Java's `configureJavaAnalyzer`, which are language-neutral and
+  take the tool name for a `baseline-expansion` finding as an option.
 
 ## The project's own environment
 
@@ -151,7 +152,7 @@ Config keys with this preset: `base`, `disable` (the analyzer names are `python`
 `legacyInventory` (same format and `baseline-expansion` rule as for Java), and the `python` object
 below. `layout` describes TypeScript source roots and stays a config error with this preset. The
 top-level `exceptions` is accepted only for the file and size limits shared with the other languages
-(`file-lines-limit`, `line-length-limit`, `folder-files-limit`, `folder-depth-limit`,
+(`file-lines-limit`, `line-length-limit`, `folder-files-limit`, `slow-test`, `folder-depth-limit`,
 `class-methods-limit`, `class-fields-limit`, `inheritance-depth-limit`), whose messages name it, and
 the [dependency and repository checks](usage.md#dependency-and-repository-checks); the Python equivalent of
 `exceptions` for every other rule is `python.exceptions`. `python` is an error with any other preset.
@@ -1005,7 +1006,7 @@ directory>` or `test-runs/unittest_timings.py <report> discover` (unittest's own
   inside the range from the `def` line to the last line of the function. `start_line` is not used, because only recent coverage.py
   versions report it. Coverage of a function is the lower of its line and branch percentage, as for
   JaCoCo, and CRAP is `ccn^2 * (1 - coverage)^3 + ccn`, shared with Java
-  (`ingestCrapRows` in `languages/java/ingest/crap.mjs`). A function with no statements and no
+  (`ingestCrapRows` in `shared/ingest/lizard-crap.mjs`). A function with no statements and no
   branches counts as fully covered: a docstring-only stub, and a function whose lines coverage.py
   excludes (`# pragma: no cover`, `if TYPE_CHECKING:`, a multi-line `@overload` stub). Definitions
   that share a name in a scope (a `@property` getter and its `@x.setter`, `@singledispatch`
@@ -1095,7 +1096,9 @@ All three read only the production sources under `python.sourceRoots`. A file is
 code when it is `test_*.py`, `*_test.py`, `tests.py` or `conftest.py`, or sits under a directory named `tests`,
 `test`, `migrations`, `build`, `dist`, `venv`, `site-packages`, `node_modules`, `__pycache__` or a
 hidden one such as `.venv`; the same list feeds jscpd's `--ignore`, the import scan and the module
-list. When the source root is `.` (a flat project without packages, or `python.sourceRoots`
+list. Only the duplicate scan can be changed: `duplicates.skippedFolders` replaces `tests`, `test`,
+`migrations`, `build` and `dist` there (the other names and the test file patterns always apply),
+so a package really called `build` can be scanned for clones. When the source root is `.` (a flat project without packages, or `python.sourceRoots`
 saying so), the top-level `docs`, `doc`, `examples` and `scripts` directories are skipped too, as
 the source root detection already does.
 
@@ -1109,9 +1112,11 @@ the source root detection already does.
   `tokens`), tool name `duplicates`. Identity is the sorted file pair, a hash of the cloned text and
   the n-th occurrence of that pair, never a line, so moving a legacy clone within its files keeps it
   baselined. Clones that consist only of import statements or `__all__` re-export lists are dropped
-  (`importsOnly`); a clone that also carries code is still reported. The finding is on the first
-  file of the pair, and its message tells to add that file to `exclude` when the repetition is
-  intended. A source root of `.` is supported.
+  (`importsOnly` in `core/tooling/jscpd/import-only/`, the same check the other languages use for
+  their import lines); a clone that also carries code is still reported. The finding is on the first
+  file of the pair, and its message names both files and tells to add either one to `exclude` when
+  the repetition is intended. An `exclude` glob or a `python.exceptions` entry for `duplicate-clone`
+  that matches either file of the pair lifts the finding. A source root of `.` is supported.
 - **Coupling.** `python -I languages/python/adapters/import-scan.py` (the project's interpreter,
   standard library only) parses every production file with `ast` and prints each file's `import`
   and `from ... import` statements, including those inside functions and `if TYPE_CHECKING:`
@@ -1352,28 +1357,44 @@ What the Python preset does the way the TypeScript and Java presets do (`parity/
   ids, as Java's `tests/tests-failed` (`test-runs/test-failures.mjs`). unittest failures are read
   from its `FAIL:`/`ERROR:` lines. A run that exits 1 without naming a test stays
   `python/tests-failed`.
-- **Slow tests.** `test-runtime/slow-test`, as for Java and Kotlin, for pytest and unittest
+- **Slow tests.** `slow-test` (tool `test-runtime`; `test-runtime/slow-test` is accepted in
+  `exceptions` as the same rule), as for Java, Kotlin and TypeScript, for pytest and unittest
   projects alike: a test the change adds or edits over 5 s, or 30 s for an integration test, from
-  the JUnit times (`test-runs/slow-tests.mjs`); a parametrized test counts its slowest case over
-  that case's own budget. A test is its decorators, its signature and its body, read by logical
-  line (`test-runs/python-blocks.mjs`: brackets, strings and continuations, so a wrapped signature
-  or decorator is one line), in the file and at the line where it is defined, inside the classes
-  that enclose it. It counts as edited when the base file has no identical block in the same
-  classes; a block that is only in a base test file the change removed or renamed counts as moved,
-  so a test copied next to an original that still exists is new. An inherited test (a mixin or base
-  class in another module, as the usual unittest and Django way to share tests) is also counted
-  when the class that collects it is new or its `class` line changed; a test built by a factory
-  (`test_import = make_case(6)`) when a line that names it is new or changed. pytest runs through
-  `test-runs/pytest_timings.py`, which times the call phase plus the setup of function-scoped
-  fixtures (`setup_method` is one), so a session, module or class fixture's setup (`setup_class`
-  too) is not charged to the first test that uses it, and records each case's marks; unittest
-  times each test from `startTest` to `stopTest` (its `setUp` and `tearDown`, not `setUpClass` or
+  the JUnit times (`test-runs/slow-tests.mjs`). The message is the shared one
+  (`shared/rules/slow-tests/`): the budget, the measured time, the fixes (patch the clock, fake
+  network, database and disk) with the way to move it to an integration test, and the top-level
+  `exceptions` entry that lifts it, `{ "rule": "slow-test", "paths": ["tests/db/**"], "reason":
+"..." }`, not `python.exceptions`. Only passed tests are timed (a failed, errored or skipped case
+  is left out). A parametrized test counts its slowest case over that case's own budget. A test is
+  its decorators, its signature and its body, read by logical line (`test-runs/python-blocks.mjs`:
+  brackets, strings and continuations, so a wrapped signature or decorator is one line), in the
+  file and at the line where it is defined, inside the classes that enclose it. It counts as edited
+  when the base file has no identical block in the same classes; a block that is only in a base
+  test file the change removed or renamed counts as moved, so a test copied next to an original
+  that still exists is new. An inherited test (a mixin or base class in another module, as the
+  usual unittest and Django way to share tests) is also counted when the class that collects it is
+  new or its `class` line changed; a test built by a factory (`test_import = make_case(6)`) when a
+  line that names it is new or changed. pytest runs through `test-runs/pytest_timings.py`, which
+  times the call phase (`junit_duration_report=call`) plus the setup of function-scoped fixtures
+  (`setup_method` is one), so a session, module or class fixture's setup (`setup_class` too) is
+  not charged to the first test that uses it, and records each case's marks; unittest times each
+  test from `startTest` to `stopTest` (its `setUp` and `tearDown`, not `setUpClass` or
   `setUpModule`), as JUnit charges `@BeforeEach` and not `@BeforeAll`. A test is an integration
   test under an `integration`, `integration_tests`, `e2e` or `end_to_end` folder, or with
   `@pytest.mark.integration` or `@pytest.mark.e2e` on that case, as pytest applies it (decorators,
   classes, `pytestmark`, conftest hooks, or `pytest.param(..., marks=...)` for that case only); the
-  unittest message names only the folder. `thresholds.unitTestSeconds` and
+  unittest advice names only the folder, and the pytest advice reminds that a marker must be
+  registered when the project uses `--strict-markers`. `thresholds.unitTestSeconds` and
   `integrationTestSeconds` change the limits. Base snapshots report none.
+  The times are those of the coverage run, so they include coverage's tracing overhead. Each test
+  over its budget is therefore run once more, alone, without coverage (the `retimeSlowTests` step
+  after the tests, `test-runs/slow-retime.mjs`: the node id for pytest, `-k <dotted id>` for
+  unittest, written to `rerun-junit.xml`), and reported only when that run is also over budget,
+  with its time; a second run that fails or does not report the test keeps the first time. When
+  the run that ran tests wrote no JUnit report, one descriptive `test-runtime/slow-test-not-timed`
+  finding says so and never fails the run; the same finding names a test file whose tests could
+  not be read, and the other files are still checked. A failing test run reports `tests-failed`
+  and no slow tests.
 - **Pinned runner options.** Options that let a failing run pass are taken out of the project's
   pytest `addopts` (read from the first of `pytest.toml`, `.pytest.toml`, `pytest.ini`,
   `.pytest.ini`, `pyproject.toml`, `tox.ini`, `setup.cfg`, as pytest does) with `-o addopts=...`,
@@ -1456,7 +1477,7 @@ EDIT.`); and a file under a `generated/`, `_generated/` or `__generated__/` fold
 
 Each slice is one PR, adds one concern, and changes the Python adapters, ingesters or rules, tests,
 and this document. Slice 1 also made the config validation, the preset wiring in `core/` and the
-exclude and legacy-inventory policy (`applyJavaPolicy`) serve more than one language.
+exclude and legacy-inventory policy (`applyFindingPolicy`) serve more than one language.
 
 | #   | Ticket                                                    | Slice                        | Tool and report                                                      | Findings                                                                                          | Status |
 | --- | --------------------------------------------------------- | ---------------------------- | -------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------- | ------ |

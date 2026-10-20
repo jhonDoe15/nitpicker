@@ -39,6 +39,7 @@ describe('package-owned child configs', () => {
         'lib/**/.*rc.*',
         'lib/**/__tests__/**',
         'lib/**/__tests__/**/*.ts',
+        'lib/**/test-support/**/*.{ts,tsx,mts,cts,js,jsx,mjs,cjs}',
         'lib/main/features/*/adapters/**/*.{ts,tsx,mts,cts,js,jsx,mjs,cjs}',
         'lib/main/features/*/domain/**/*.{ts,tsx,mts,cts,js,jsx,mjs,cjs}',
         'spec/**/*.{test,spec}.{ts,tsx,mts,cts,js,jsx,mjs,cjs}',
