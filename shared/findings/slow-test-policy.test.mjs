@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { applyFindingPolicy } from '../../../shared/findings/finding-policy.mjs';
+import { applyFindingPolicy } from './finding-policy.mjs';
 
 const slow = {
   tool: 'test-runtime',
