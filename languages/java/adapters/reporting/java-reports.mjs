@@ -16,8 +16,7 @@ import { readErrorProneFindings } from '../errorprone/java-errorprone.mjs';
 import { readInlineSuppressionFindings } from '../suppressions/java-suppressions.mjs';
 import { readSpringConfigFindings } from '../spring/java-spring.mjs';
 import { readGuardFindings } from '../../guards/index.mjs';
-import { readJavaStructureFindings } from '../metrics/java-structure.mjs';
-import { methodText } from '../../../../shared/ingest/structure-report.mjs';
+import { javaMethodText, readJavaStructureFindings } from '../metrics/java-structure.mjs';
 import { readClassLimitFindings } from '../size/class-limits.mjs';
 import { hash } from '../../../../shared/rules/finding-helpers.mjs';
 import { checkstyleFindings, formatFindings } from './format-findings.mjs';
@@ -89,6 +88,7 @@ function moduleContextFindings(projectRoot, module, { manifest, options }) {
   return readModuleFindings(
     {
       projectRoot,
+      reactorRoot: options.reactorRoot ?? projectRoot,
       roots: projectRoots(projectRoot),
       reportRoot: module.reportRoot,
       manifest: module.manifest,
@@ -135,7 +135,7 @@ function readModuleFindings(context, crapLimit) {
     ...archunitFindings(context),
     ...crapFindings(context, jacoco, crapLimit),
     ...pitFindings(context),
-    ...readJavaStructureFindings(reportRoot, projectRoot),
+    ...readJavaStructureFindings(reportRoot, projectRoot, context.reactorRoot),
     ...readClassLimitFindings(reportRoot, context.classLimits),
     ...branchFindings(context, jacoco),
     ...(kotlin ? readKotlinFindings(context, crapLimit) : []),
@@ -207,7 +207,7 @@ function archunitFindings({ reportRoot, projectRoot, sourceRoots, manifest }) {
   );
 }
 
-function crapFindings({ reportRoot, sourceRoots, projectRoot }, jacoco, crapLimit) {
+function crapFindings({ reportRoot, sourceRoots, projectRoot, reactorRoot }, jacoco, crapLimit) {
   const sources = new Map();
   const structure = JSON.parse(readFileSync(path.join(reportRoot, 'structure.json'), 'utf8'));
   return ingestCrap(structure, jacoco, {
@@ -215,7 +215,7 @@ function crapFindings({ reportRoot, sourceRoots, projectRoot }, jacoco, crapLimi
     limit: crapLimit,
     sourceHash: (entry) =>
       existsSync(path.join(projectRoot, entry.file))
-        ? hash(methodText(sources, projectRoot, entry))
+        ? hash(javaMethodText(sources, { projectRoot, reactorRoot }, entry))
         : undefined,
   }).findings;
 }
