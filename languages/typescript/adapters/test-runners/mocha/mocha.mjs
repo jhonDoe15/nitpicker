@@ -1,3 +1,4 @@
+import { consoleReportEnvironment } from '../console-report.mjs';
 import { readTestReport } from '../../quality-areas/reporting/test-report.mjs';
 import { spawnNodeTool } from '../../quality-areas/runners/tooling.mjs';
 import { withoutOptions } from '../../../preset/test-runner/script-command.mjs';
@@ -55,7 +56,7 @@ export async function runMocha(options, command) {
       options,
       relativeToolPath: 'mocha/bin/mocha.js',
       nodeArguments: [...coverage.nodeArguments, ...command.nodeArguments],
-      environment: coverage.environment,
+      environment: { ...coverage.environment, ...consoleReportEnvironment(options) },
       arguments_: [
         ...withoutOptions(command.arguments_, OPTIONS_NITPICKER_SETS),
         '--require',

@@ -1,3 +1,4 @@
+import { consoleReportEnvironment } from '../console-report.mjs';
 import { globSync } from 'node:fs';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
@@ -134,7 +135,7 @@ export async function runNodeTest(options, command) {
     const result = spawnNodeTool({
       options,
       nodeArguments: [...coverage.nodeArguments, ...testArguments(options, command, reportPath)],
-      environment: coverage.environment,
+      environment: { ...coverage.environment, ...consoleReportEnvironment(options) },
       arguments_: [],
     });
     const run = readRun({ reportPath, result, runnerName: RUNNER_NAMES.node });

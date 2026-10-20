@@ -136,6 +136,10 @@ describe('a Jest run that a Create React App script starts', () => {
       [
         ...['test', '--runInBand', '--ci', '--no-watchman', '--passWithNoTests'],
         ...coverageArguments(options, root),
+        '--silent=false',
+        '--verbose=false',
+        '--reporters=default',
+        `--reporters=${path.join(PACKAGE_ROOT, 'languages/typescript/adapters/test-runners/jest/console-reporter.config.mjs')}`,
         ...['--json', `--outputFile=${path.join(root, '.nitpicker-diff-jest-report.json')}`],
         ...[
           '--testLocationInResults',
