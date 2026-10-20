@@ -205,11 +205,11 @@ describe('runJavacLint', () => {
       'src/lib/Greeter.java':
         'package lib;\npublic class Greeter {\n  public static String hi() { return "hi"; }\n}\n',
     });
-    execFileSync(JAVAC, [
-      '-d',
-      path.join(library, 'classes'),
-      path.join(library, 'src/lib/Greeter.java'),
-    ]);
+    execFileSync(
+      JAVAC,
+      ['-d', path.join(library, 'classes'), path.join(library, 'src/lib/Greeter.java')],
+      { timeout: 10_000 },
+    );
     const jar = path.join(library, 'greeter-lib-1.0.jar');
     writeFileSync(
       jar,

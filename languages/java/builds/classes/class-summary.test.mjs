@@ -23,7 +23,7 @@ function compiled(files) {
     writeFileSync(file, text);
     return file;
   });
-  execFileSync(JAVAC, ['-d', path.join(root, 'classes'), ...sources]);
+  execFileSync(JAVAC, ['-d', path.join(root, 'classes'), ...sources], { timeout: 10_000 });
   return path.join(root, 'classes');
 }
 
