@@ -16,11 +16,11 @@ describe('policy findings', () => {
     );
   });
 
-  it('names the allowed form first and the acceptance route for a person second', () => {
+  it('explains the exclusion before the self-contained acceptance route', () => {
     const [finding] = policyFindings(loosenings, 'd1e2f3a4b5c6', undefined);
 
     expect(finding.message).toBe(
-      "exclude added: src/**. Keep the base's policy and change the code until it passes: keep new code under the source roots, where the gate checks it, and fix findings instead of excluding, excepting or reclassifying the code. " +
+      'exclude added: src/**. Removes matching paths from analyzed scope and filters their findings, so newly hidden code needs review. Remove or narrow an unintended exclusion and fix the findings. ' +
         'If the policy change is intended, stop and ask a person reviewing this change: only they accept exactly these loosenings, with --accept-policy-change=d1e2f3a4b5c6 at an interactive terminal or NITPICKER_ACCEPT_POLICY_CHANGE=d1e2f3a4b5c6 in CI.',
     );
   });

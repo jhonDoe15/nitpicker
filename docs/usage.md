@@ -1248,3 +1248,27 @@ npx nitpicker aggregate --input-root shards --shard-count 3
   and takes the policy from the head commit recorded in the shards (or from `--policy-root`).
 - Set `NITPICKER_MAX_PARALLEL` to a positive integer to cap how many analyzers run at once within
   one job.
+
+### Reading policy review in the summary
+
+The console lists unapproved policy changes separately from new code violations and tool errors.
+Each affected setting/path appears once with its effect and a corrective action. Additional
+nonblocking changes (including tighter limits) remain listed. Policy findings still count as
+new enforceable findings in JSON and full diagnostics, retain their identities, and fail the gate
+until corrected or explicitly accepted. Full diagnostics include the review route on each finding.
+
+For unintended changes, restore or narrow the affected setting and fix the findings. For intended
+entrypoint declarations, a reviewer should verify the command or runtime that loads the script:
+static imports do not represent every runtime invocation. Entrypoint declarations affect
+reachability/public-use checks and permit module-load effects and process access in those
+composition roots; other checks still apply. Python entrypoint declarations exempt matching
+composition roots from the process-environment access guard.
+
+Local and CI runs use the same console renderer. They may compare different base/head trees
+(in particular, CI may check the pull request merged into its target branch), so their review
+digests can differ. The console prints the current run's digest once. A person reviewing an
+intentional change passes that exact value as `--accept-policy-change=<digest>` at an interactive
+terminal, or sets `NITPICKER_ACCEPT_POLICY_CHANGE=<digest>` in CI and reruns. The CLI flag is not
+honoured outside an interactive terminal, and the environment route is honoured only in CI.
+Acceptance of one digest does not accept subsequent changes. Coding agents must not accept
+policy changes themselves.

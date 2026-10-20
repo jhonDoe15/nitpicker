@@ -84,7 +84,7 @@ function runWithHeadConfig({ extraArguments = [], environment = {}, ...repositor
 
 const HEADING = 'Policy changed in this change (nitpicker.config.json, head against base):';
 const ACCEPTED_HEADING =
-  'Policy changed in this change (nitpicker.config.json, head against base; loosening accepted with --accept-policy-change):';
+  'Policy changed in this change (nitpicker.config.json, head against base; loosening accepted by exact digest):';
 
 function policyBlock(text, heading = HEADING) {
   const lines = text.split('\n');

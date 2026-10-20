@@ -1,3 +1,5 @@
+import { isPolicyFinding } from './review/policy-findings.mjs';
+import { consolePolicySummary } from './review/policy-changes.mjs';
 import { heldFindings, heldLine } from './format/held-findings.mjs';
 import { singleLine } from './format/text.mjs';
 import { appendReviewSummary } from './review/notices.mjs';
@@ -23,8 +25,16 @@ export function renderConsoleSummary(
     ),
   ];
 
-  appendViolationSummary(lines, { violations, incomplete: report.toolErrors.length > 0 }, color);
-  appendReviewSummary(lines, report.summary, (text) =>
+  appendViolationSummary(
+    lines,
+    {
+      violations: violations.filter((finding) => !isPolicyFinding(finding)),
+      incomplete: report.toolErrors.length > 0,
+      policyPending: violations.some(isPolicyFinding),
+    },
+    color,
+  );
+  appendReviewSummary(lines, consolePolicySummary(report), (text) =>
     style(text, [ANSI.bold, ANSI.yellow], color),
   );
   appendHeldSummary(lines, report.unchangedFindings, color);
@@ -57,13 +67,21 @@ function appendHeldSummary(lines, unchangedFindings, color) {
   }
 }
 
-function appendViolationSummary(lines, { violations, incomplete }, color) {
+function appendViolationSummary(lines, { violations, incomplete, policyPending }, color) {
   if (violations.length === 0 && incomplete) {
-    lines.push('No new enforceable violations, but the run is incomplete:');
+    lines.push(
+      policyPending
+        ? 'No new code violations, but policy review is required and the run is incomplete:'
+        : 'No new enforceable violations, but the run is incomplete:',
+    );
     return;
   }
   if (violations.length === 0) {
-    lines.push(style('✓ No new enforceable violations', [ANSI.green], color));
+    lines.push(
+      policyPending
+        ? 'No new code violations; policy review is required below.'
+        : style('✓ No new enforceable violations', [ANSI.green], color),
+    );
     return;
   }
   lines.push(
