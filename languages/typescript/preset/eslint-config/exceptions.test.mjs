@@ -44,6 +44,21 @@ describe('strict rule exceptions', () => {
     expect(applyRuleExceptions(presetConfig, [ignoredMutant])).toEqual(presetConfig);
   });
 
+  it('leaves exceptions for the hygiene and package checks to their own analyzers', () => {
+    const rules = ['committed-env-file', 'large-file', 'unused-dependency'];
+    const lifted = rules.map((name) => ({ rule: name, paths: ['config/**'], reason: 'Fixture' }));
+    expect(applyRuleExceptions(presetConfig, lifted)).toEqual(presetConfig);
+  });
+
+  it('lifts the dev dependency rule for the configured paths', async () => {
+    const devDependency = 'nitpicker/no-dev-dependency-in-production';
+    const config = applyRuleExceptions(presetConfig, [
+      { rule: devDependency, paths: ['src/bundled/**'], reason: 'Bundled into one file' },
+    ]);
+    await expect(ruleSeverity(config, 'src/bundled/a.ts', devDependency)).resolves.toBe(0);
+    await expect(ruleSeverity(config, 'src/main/a.ts', devDependency)).resolves.toBe(2);
+  });
+
   it('leaves exceptions for a dependency boundary rule to the architecture check', () => {
     const boundary = {
       rule: 'domain-does-not-import-node-io',
@@ -57,6 +72,7 @@ describe('strict rule exceptions', () => {
     const reuseRules = [
       'shared-used-by-one-feature',
       'duplicate-definition',
+      'sibling-copy-edit',
       'exported-name-collision',
       'redefined-library-component',
       'new-icon-asset',

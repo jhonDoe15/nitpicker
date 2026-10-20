@@ -5,6 +5,7 @@ import {
   TEST_RUN_EXCEPTION_RULES,
   TYPESCRIPT_PROJECT_EXCEPTION_RULES,
 } from '../../../../shared/policy.mjs';
+import { PACKAGE_EXCEPTION_RULES } from '../../../../shared/project-rules/hygiene-rules.mjs';
 import { strictBoundaryRules } from '../architecture/strict-boundary-rules.mjs';
 
 const boundaryRuleNames = strictBoundaryRules.map(({ name }) => name);
@@ -15,6 +16,7 @@ const NON_ESLINT_EXCEPTION_RULES = [
   ...TYPESCRIPT_SIZE_RULES,
   ...MUTATION_EXCEPTION_RULES,
   ...TEST_RUN_EXCEPTION_RULES,
+  ...PACKAGE_EXCEPTION_RULES,
 ];
 
 export function applyRuleExceptions(configEntries, allExceptions = []) {

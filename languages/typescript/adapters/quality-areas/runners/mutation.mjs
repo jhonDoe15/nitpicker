@@ -1,6 +1,6 @@
+import { runScopedMutation } from '../test-weakening/scoped-mutation.mjs';
 import { MUTATION_REPORT_PATH } from './mutation-scope.mjs';
 import { readHeadPolicy, readLayout } from '../../../preset/head-policy.mjs';
-import { runScopedMutation } from '../test-weakening/scoped-mutation.mjs';
 import {
   importPolicyModule,
   relativeProjectPath,
@@ -9,6 +9,7 @@ import {
   policyFile,
 } from './tooling.mjs';
 import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { normalizeMutation } from '../reporting/tests.mjs';
 import { withMutationSourceHashes } from '../reporting/source-hashes.mjs';
 import { rmSync, readFileSync, writeFileSync, existsSync } from 'node:fs';
@@ -16,9 +17,20 @@ import {
   TYPECHECK_FAILED_SKIPPED_RULE,
   TESTS_FAILED_SKIPPED_RULE,
 } from '../../../../../shared/rules/finding-helpers.mjs';
-import { toolErrorFinding } from '../reporting/vitest.mjs';
+import { toolErrorFinding } from '../reporting/test-report.mjs';
 import { layoutTransformFor } from '../../../preset/tool-configs.mjs';
 import { trackTemporaryPath } from '../../../../../core/tooling/temporary-files.mjs';
+import { projectTestRunner } from '../../../preset/test-runner/project-runner.mjs';
+import {
+  CRACO_JEST_CONFIG,
+  cracoJestConfigText,
+  mutationRunnerConfig,
+  unsupportedMutationRunner,
+} from '../../test-runners/mutation-runner-config.mjs';
+import { runnableTestFiles } from '../../test-runners/test-run.mjs';
+import { strykerPlugins } from '../../mutation-checker/plugin.mjs';
+
+const UNSUPPORTED_RUNNER_RULE = 'mutation-unsupported-runner';
 
 const STRYKER_TSCONFIG_TARGET = '.nitpicker-diff-tsconfig.stryker.json';
 
@@ -39,16 +51,30 @@ export function runMutation(options) {
 }
 
 async function mutationReport(options, targets) {
+  const testRunner = projectTestRunner(options);
+  const unsupported = unsupportedMutationRunner(options, testRunner.runner);
+  if (unsupported !== undefined) {
+    return {
+      skipped: [toolErrorFinding(options, { rule: UNSUPPORTED_RUNNER_RULE, message: unsupported })],
+    };
+  }
   const sourceConfig = (
     await importPolicyModule(options, STRYKER_CONFIG_PATH, `?run=${Date.now().toString()}`)
   ).default;
   const configPath = path.join(options.projectRoot, '.nitpicker-diff-stryker.config.mjs');
   const createdFiles = [];
   try {
-    writeStrykerConfig({ options, sourceConfig, targets, configPath, createdFiles });
-    const skipped = runStrykerOrExplainSkip(options, configPath);
-    if (skipped !== undefined) {
-      return { skipped };
+    const command = writeStrykerConfig({
+      options,
+      sourceConfig,
+      targets,
+      configPath,
+      createdFiles,
+      testRunner,
+    });
+    const skippedFindings = runStrykerOrExplainSkip(options, configPath, command);
+    if (skippedFindings !== undefined) {
+      return { skipped: skippedFindings };
     }
     return {
       report: withMutationSourceHashes(
@@ -63,32 +89,76 @@ async function mutationReport(options, targets) {
   }
 }
 
-function writeStrykerConfig({ options, sourceConfig, targets, configPath, createdFiles }) {
-  const typeChecked = options.snapshot !== 'base';
-  const tsconfigPath = typeChecked
-    ? installStrykerTsconfig(options, sourceConfig.tsconfigFile, createdFiles)
-    : undefined;
+function runnerConfig({ options, sourceConfig, createdFiles, testRunner }) {
+  const { tsconfigPath, baselineErrors } = installStrykerTsconfig(
+    options,
+    sourceConfig.tsconfigFile,
+    createdFiles,
+  );
+  function withChecker(config) {
+    return baselineErrors
+      ? {
+          ...config,
+          checkers: [strykerPlugins[0].name],
+          plugins: [
+            ...config.plugins,
+            fileURLToPath(new URL('../../mutation-checker/plugin.mjs', import.meta.url)),
+          ],
+        }
+      : config;
+  }
+  const tsconfigFile = relativeProjectPath(options.projectRoot, tsconfigPath);
+  if (testRunner.command.launcher === 'craco') {
+    const cracoConfigPath = path.join(options.projectRoot, CRACO_JEST_CONFIG);
+    writeTemporaryFile(cracoConfigPath, cracoJestConfigText(), createdFiles);
+  }
+  if (testRunner.runner !== 'vitest') {
+    return withChecker(
+      mutationRunnerConfig({
+        options,
+        runner: testRunner.runner,
+        command: testRunner.command,
+        testFiles: runnableTestFiles(options),
+        sourceConfig: { ...sourceConfig, tsconfigFile },
+      }),
+    );
+  }
   const vitestConfigPath = installMutationCompanion(
     options,
     [sourceConfig.vitest?.configFile, '.nitpicker-diff-stryker.vitest.config.ts'],
     createdFiles,
   );
-  const config = strykerRunConfig(sourceConfig, {
-    snapshot: options.snapshot,
-    targets,
-    tsconfigFile: tsconfigPath && relativeProjectPath(options.projectRoot, tsconfigPath),
-    vitestConfigFile: relativeProjectPath(options.projectRoot, vitestConfigPath),
-  });
+  return withChecker(
+    rebaseMutationConfig(sourceConfig, {
+      tsconfigFile,
+      vitestConfigFile: relativeProjectPath(options.projectRoot, vitestConfigPath),
+    }),
+  );
+}
+
+function writeStrykerConfig({
+  options,
+  sourceConfig,
+  targets,
+  configPath,
+  createdFiles,
+  testRunner,
+}) {
+  const config = strykerRunConfig(
+    runnerConfig({ options, sourceConfig, createdFiles, testRunner }),
+    { snapshot: options.snapshot, targets },
+  );
   writeTemporaryFile(
     configPath,
     `export default ${JSON.stringify(config, null, 2)};\n`,
     createdFiles,
   );
+  return testRunner.command;
 }
 
 export function strykerRunConfig(sourceConfig, { snapshot, targets, ...files }) {
   return {
-    ...rebaseMutationConfig(sourceConfig, files),
+    ...(Object.keys(files).length === 0 ? sourceConfig : rebaseMutationConfig(sourceConfig, files)),
     ...(targets === undefined ? {} : { mutate: targets }),
     ...(snapshot === 'base' ? { checkers: [] } : {}),
     reporters: ['json'],
@@ -99,7 +169,7 @@ export function strykerRunConfig(sourceConfig, { snapshot, targets, ...files }) 
 const SKIP_MESSAGES = {
   head: {
     typecheck:
-      'mutation skipped: the change does not type-check (see typescript-typecheck findings)',
+      'mutation skipped: the project does not type-check under the mutation checker configuration (see differential typescript-typecheck findings)',
     tests: 'mutation skipped: tests fail (see coverage findings)',
   },
   base: {
@@ -120,12 +190,13 @@ export function mutationSkipFor(errorMessage, snapshot = 'head') {
     : undefined;
 }
 
-function runStrykerOrExplainSkip(options, configPath) {
+function runStrykerOrExplainSkip(options, configPath, command) {
   try {
     runNodeTool({
       options,
       relativeToolPath: '@stryker-mutator/core/bin/stryker.js',
       arguments_: ['run', configPath],
+      environment: command.environment,
       acceptedStatuses: [0],
     });
     return undefined;
@@ -159,8 +230,9 @@ export function installStrykerTsconfig(options, sourceRelativePath, createdFiles
   const tsconfigPath = installMutationCompanion(options, target, createdFiles);
   if (!typechecksCleanly(options, tsconfigPath)) {
     writeFileSync(tsconfigPath, mutationCompanionText(options, target, { strictMutants: false }));
+    return { tsconfigPath, baselineErrors: !typechecksCleanly(options, tsconfigPath) };
   }
-  return tsconfigPath;
+  return { tsconfigPath, baselineErrors: false };
 }
 
 function typechecksCleanly(options, tsconfigPath) {

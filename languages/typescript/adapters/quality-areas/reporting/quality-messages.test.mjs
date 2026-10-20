@@ -2,7 +2,10 @@ import { describe, expect, it } from 'vitest';
 import { MESSAGES } from '../../../../../shared/policy.mjs';
 import { mutationSkipFor } from '../runners/mutation.mjs';
 import { normalizeCrap, normalizeMutation } from './tests.mjs';
-import { coverageFailureFindings, formatVitestFailures } from './vitest.mjs';
+import {
+  coverageFailureFindings,
+  formatTestFailures as formatVitestFailures,
+} from './test-report.mjs';
 import { crapUnknownMessage } from './crap-unknown-message.mjs';
 import {
   timeoutText,
@@ -135,8 +138,11 @@ describe('unhandled errors in the Vitest output', () => {
   it('becomes a tool error that names the file, the message and the fix', () => {
     const findings = coverageFailureFindings(
       { analyzerName: 'coverage', projectRoot: '/p' },
-      { numFailedTests: 0, testResults: [] },
-      { status: 1, stdout: '', stderr: unhandledOutput },
+      {
+        report: { numFailedTests: 0, testResults: [] },
+        result: { status: 1, stdout: '', stderr: unhandledOutput },
+        runnerName: 'Vitest',
+      },
     );
 
     expect(findings).toEqual([

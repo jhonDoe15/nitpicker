@@ -2,9 +2,9 @@ import { writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { readDurations } from './sequencer.mjs';
+import { durationFile } from './duration-profile.mjs';
 
 const repositoryRoot = path.resolve(import.meta.dirname, '..', '..');
-const DURATIONS_FILE = path.join(import.meta.dirname, 'durations.json');
 const RECORDED_ABOVE_SECONDS = 1;
 
 const secondsOf = (diagnostic) =>
@@ -32,6 +32,7 @@ export function mergeDurations(previous, modules, root) {
 }
 
 async function recordDurations(argv) {
+  const file = durationFile();
   const { parseCLI, startVitest } = await import('vitest/node');
   const { filter, options } = parseCLI(['vitest', 'run', ...argv]);
   const modules = [];
@@ -53,8 +54,8 @@ async function recordDurations(argv) {
   });
   await vitest.close();
   if (process.exitCode) return;
-  const durations = mergeDurations(readDurations(DURATIONS_FILE), modules, repositoryRoot);
-  writeFileSync(DURATIONS_FILE, `${JSON.stringify(durations, null, 2)}\n`);
+  const durations = mergeDurations(readDurations(file), modules, repositoryRoot);
+  writeFileSync(file, `${JSON.stringify(durations, null, 2)}\n`);
 }
 
 if (import.meta.url === pathToFileURL(process.argv[1]).href) {

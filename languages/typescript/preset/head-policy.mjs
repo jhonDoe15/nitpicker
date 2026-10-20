@@ -5,7 +5,6 @@ import {
   readHeadPolicyFile,
   resolveHeadPolicy as resolveSharedHeadPolicy,
 } from '../../../shared/head-policy.mjs';
-import { isJavascriptPolicy } from '../../javascript/preset/javascript-preset.mjs';
 import {
   frameworkConventions,
   hasScopePackage,
@@ -210,7 +209,9 @@ export function readHeadPolicy(environment = process.env) {
     i18n: policy.i18n ?? {},
     preset: policy.preset,
     tools: policy.tools ?? {},
+    duplicates: policy.duplicates ?? {},
     conventions: policy.conventions,
+    testConsole: policy.testConsole ?? {},
     conventionPins: policy.conventionPins,
     generatedFiles: policy.generatedFiles ?? [],
     libraries: policy.libraries,
@@ -221,10 +222,7 @@ export function readHeadPolicy(environment = process.env) {
 export function readLayout(environment = process.env) {
   const policy = readHeadPolicy(environment);
   return {
-    ...resolveLayout(readHeadPolicyFile(environment).layout, policy.exclude, {
-      javascript: isJavascriptPolicy(policy),
-      generatedFiles: policy.generatedFiles,
-    }),
+    ...resolveLayoutFor({ ...policy, layout: readHeadPolicyFile(environment).layout }),
     entryPoints: [...(policy.layout.entryPoints ?? []), ...policy.frameworks.entryPoints],
   };
 }

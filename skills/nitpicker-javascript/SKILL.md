@@ -72,6 +72,12 @@ Before you change code other modules use or fix a bug, read
 - Follow neighbouring signatures (parameter order, naming) and reuse helpers that exist. Match the
   module format of the files around you (ESM `import`/`export`, or CommonJS where the project is).
 
+## Dependencies and files
+
+- The gate fails unlisted, unused and unresolved dependencies, production imports of a
+  `devDependency`, and committed secrets, binaries, build output and files over 1 MB; each message
+  names the fix. Don't add an `exceptions` entry to get past one: stop and ask.
+
 ## Types are JSDoc
 
 JSDoc holds types only, never prose. Allowed tags: `@param`, `@property` (`@prop`), `@typedef`,
@@ -182,6 +188,8 @@ line) is a finding.
 - Every branch you add needs a test: changed-branch coverage and mutation testing run on your
   change. Test each outcome of each union.
 - Keep an assertion unless another test covers the same behaviour.
+- A test run that prints new `console.error` or `console.warn` output fails
+  (`test-console-output`): cancel the timer or subscription in the cleanup.
 - Test features through their `index.js` with fakes: plain functions returning
   `Promise.resolve(x)` / `Promise.reject(error)`; a non-Error rejection is
   `vi.fn().mockRejectedValue(42)`. Read a fake's calls through a helper that throws when the call is missing, not
@@ -200,3 +208,11 @@ line) is a finding.
   Don't pin call order or messages just to kill it. If an input can kill it, add that test (a
   padded value for a `.trim()`, two bad fields for a `join`); never delete a schema rule to silence it.
 - No per-test git repos, child processes, servers, fixed sleeps, or raised timeouts.
+- Give synchronous `child_process` calls in integration tests and shared test helpers a positive
+  subprocess `timeout`, such as `{ timeout: 10_000 }`. The runner's test timeout cannot interrupt
+  `spawnSync`, `execSync` or `execFileSync` while they block the event loop.
+- Plan tests to be fast (`slow-test`): a test you add or edit that takes over 5 s fails, over 30 s
+  for an integration test (under an `integration`, `e2e` or `functional` folder, or named
+  `*.integration.test.js`, folders counted under the test roots). Use fake timers instead of waits
+  and fakes instead of network or disk. A test over budget is run again alone without coverage and
+  fails only if it is still over. A slow test you did not touch stays baselined.

@@ -83,12 +83,24 @@ export function normalizeCrap(
 ) {
   const findings = summaryMetrics(analyzerName, report.summary, 'crap');
   const occurrences = new Map();
+  const violations = new Map();
   const functions = [...(report.functions ?? [])].sort(compareCrapSites);
   for (const entry of functions) {
     const occurrence = nextOccurrence(occurrences, `${entry.source}\0${entry.function}`);
-    addCrapFunction(findings, entry, { analyzerName, scoreLimit, occurrence });
+    const overLimit = !(Number.isFinite(entry.crap) && entry.crap < scoreLimit);
+    const violationOccurrence = overLimit
+      ? nextOccurrence(violations, `${entry.source}\0${entry.function}\0${crapSourceHash(entry)}`)
+      : occurrence;
+    addCrapFunction(findings, entry, { analyzerName, scoreLimit, occurrence, violationOccurrence });
   }
   return findings;
+}
+
+function crapSourceHash(entry) {
+  return (
+    entry.sourceHash ??
+    hash(`${entry.source}:${String(entry.lines?.start)}:${String(entry.lines?.end)}`)
+  );
 }
 
 function compareCrapSites(left, right) {
@@ -100,11 +112,12 @@ function compareCrapSites(left, right) {
   );
 }
 
-function addCrapFunction(findings, entry, { analyzerName, scoreLimit, occurrence }) {
-  const sourceHash =
-    entry.sourceHash ??
-    hash(`${entry.source}:${String(entry.lines?.start)}:${String(entry.lines?.end)}`);
-  const violationIdentity = `function:${entry.function}:occurrence:${String(occurrence)}:source:${sourceHash}`;
+function addCrapFunction(
+  findings,
+  entry,
+  { analyzerName, scoreLimit, occurrence, violationOccurrence },
+) {
+  const violationIdentity = `function:${entry.function}:occurrence:${String(violationOccurrence)}:source:${crapSourceHash(entry)}`;
   findings.push(
     ...crapFindings(
       [
@@ -112,7 +125,7 @@ function addCrapFunction(findings, entry, { analyzerName, scoreLimit, occurrence
           path: entry.source,
           name: entry.function,
           identity: violationIdentity,
-          ratchetKey: `function:${entry.function}:occurrence:${String(occurrence)}:crap`,
+          ratchetKey: `function:${entry.function}:occurrence:${String(violationOccurrence)}:crap`,
           line: entry.lines?.start,
           crap: entry.crap,
         },

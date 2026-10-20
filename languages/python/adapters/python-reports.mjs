@@ -1,10 +1,9 @@
 import { existsSync, readFileSync, realpathSync } from 'node:fs';
 import path from 'node:path';
 import { readDuplicateFindings } from './analysis/python-duplicates.mjs';
-import { prepareSarif } from '../../java/ingest/sarif.mjs';
-import { normalizeReportPath } from '../../java/ingest/common.mjs';
-import { ingestFormatCheck } from '../../java/ingest/formatting/format-check.mjs';
-import { ingestSarif } from '../../java/ingest/sarif.mjs';
+import { normalizeReportPath } from '../../../shared/ingest/common.mjs';
+import { ingestFormatCheck } from '../../../shared/ingest/format-check.mjs';
+import { ingestSarif, prepareSarif } from '../../../shared/ingest/sarif.mjs';
 import { ingestCoverageBranches } from '../ingest/coverage-reports/coverage-branches.mjs';
 import { ingestCoverageJson } from '../ingest/coverage-reports/coverage-json.mjs';
 import { PYTHON_ANALYZER_NAME } from './python-analyzer.mjs';
@@ -115,6 +114,7 @@ function projectShapeFindings({ projectRoot, reportRoot, policy, imports, manife
       baselineRoot: policy.baselineRoot,
       snapshot: policy.snapshot,
       testRunner: manifest.testRunner,
+      testsRan: manifest.testsRan,
     }),
     ...pythonFolderDepthFindings(sizedModules(projectRoot, imports.modules), {
       ...limits,
@@ -174,7 +174,8 @@ function noTestsFinding() {
 
 function formatMessage({ formatter, formatterDetected }) {
   const base = `File is not formatted with ${formatter}`;
-  return formatterDetected ? `${base} (detected; set "python.formatter" if wrong)` : base;
+  const detected = formatterDetected ? ' (detected; set "python.formatter" if wrong)' : '';
+  return `${base}${detected}. Format it with the "Format with ${formatter}" command printed at the start of the run.`;
 }
 
 function formatFindings(text, { roots, manifest }) {
