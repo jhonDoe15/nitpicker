@@ -1,1 +1,6 @@
-{ "preset": "javascript" }
+{
+  "preset": "javascript",
+  "layout": {
+    "entryPoints": ["src/main/features/greeting/index.js"]
+  }
+}

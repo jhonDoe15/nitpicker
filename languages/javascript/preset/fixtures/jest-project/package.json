@@ -4,9 +4,10 @@
   "type": "module",
   "exports": "./src/main/features/greeting/index.js",
   "scripts": {
-    "test": "node --experimental-vm-modules node_modules/jest/bin/jest.js"
+    "test": "NODE_OPTIONS=--experimental-vm-modules jest"
   },
   "devDependencies": {
-    "jest": "30.5.2"
+    "jest": "30.5.2",
+    "@jest/globals": "30.5.2"
   }
 }

@@ -1,3 +1,4 @@
+import { verifyRunnerFixtureDependencies } from './runner-fixture-dependencies.mjs';
 import { execFileSync } from 'node:child_process';
 import { cpSync, mkdirSync, mkdtempSync, readFileSync, symlinkSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -26,6 +27,7 @@ function writeFiles(root, files) {
 
 export function createCleanProject({ fixtureRoot, gitTemplateRoot, name, files = {} }) {
   const root = mkdtempSync(path.join(tmpdir(), `nitpicker-${name}-`));
+  verifyRunnerFixtureDependencies(fixtureRoot);
   cpSync(fixtureRoot, root, { recursive: true });
   writeFileSync(path.join(root, '.gitignore'), 'node_modules/\nreports/\n');
   symlinkSync(path.join(packageRoot, 'node_modules'), path.join(root, 'node_modules'));

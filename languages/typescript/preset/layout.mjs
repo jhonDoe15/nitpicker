@@ -1,7 +1,10 @@
 import { END_TO_END_ROOT, endToEndFor } from './layout/end-to-end.mjs';
-import { existsSync } from 'node:fs';
-import path from 'node:path';
-import { filesUnder } from '../../../shared/filesystem.mjs';
+import {
+  codeFilesUnder,
+  existingRoots,
+  DEPENDENCY_PATH_PATTERN,
+} from './layout/project-code-files.mjs';
+export { existingRoots, DEPENDENCY_PATH_PATTERN } from './layout/project-code-files.mjs';
 import { escapeRegExp, globToRegExp, globToRegExpSource } from '../../../shared/glob.mjs';
 import {
   isJavascriptPolicy,
@@ -41,7 +44,6 @@ export const builtInExcludedGlobs = [
   '**/node_modules/**',
 ];
 const declarationGlobs = ['**/*.d.ts'];
-export const DEPENDENCY_PATH_PATTERN = '(?:^|/)node_modules(?:/|$)';
 const ROOT_OUTPUT_PATTERN = `^(?:${ROOT_OUTPUT_FOLDERS.join('|')})(?:/|$)`;
 export const EXCLUDED_PATH_PATTERN = `${ROOT_OUTPUT_PATTERN}|${DEPENDENCY_PATH_PATTERN}`;
 const GENERATED_NAME = '(?:^|/)__generated__(?:/|$)|(?:\\.(?:generated|gen|pb)|_pb)\\.[^/]+$';
@@ -251,31 +253,6 @@ export function resolveLayout(
       codeFilesUnder(resolved, projectRoot, existingRoots(projectRoot, roots)),
   };
   return resolved;
-}
-
-function codeFilesUnder(layout, projectRoot, roots) {
-  return roots.flatMap((root) => codeFilesUnderRoot(layout, projectRoot, root).toSorted());
-}
-
-function codeFilesUnderRoot(layout, projectRoot, root) {
-  function relativeOf(absolute) {
-    return toPosix(path.relative(projectRoot, absolute));
-  }
-  return [
-    ...filesUnder(path.join(projectRoot, root), {
-      skipDirectory: (absolute) => DEPENDENCY_PATH.test(relativeOf(absolute)),
-    }),
-  ]
-    .map(relativeOf)
-    .filter((name) => !layout.isGeneratedPath(name) && isCodeFile(layout, name));
-}
-
-function isCodeFile(layout, name) {
-  return (layout.isSourceFile(name) || layout.isTestFile(name)) && !layout.isExcluded(name);
-}
-
-export function existingRoots(projectRoot, roots) {
-  return roots.filter((root) => existsSync(path.join(projectRoot, root)));
 }
 
 export function resolveLayoutFor(policy = {}) {

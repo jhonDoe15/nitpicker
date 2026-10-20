@@ -1,3 +1,4 @@
+import { consoleHooks } from './console-hooks.mjs';
 import { readFileSync } from 'node:fs';
 import { createRequire, findPackageJSON } from 'node:module';
 import path from 'node:path';
@@ -126,6 +127,20 @@ async function sinonRestoreHooks(projectRoot) {
   );
 }
 
-export function mochaHooks() {
-  return sinonRestoreHooks(process.cwd());
+export async function mochaHooks() {
+  const capture = consoleHooks(process.env, process.cwd());
+  const restore = await sinonRestoreHooks(process.cwd());
+  return {
+    beforeEach() {
+      capture.beforeEach?.call(this);
+      restore.beforeEach?.call(this);
+    },
+    afterEach() {
+      restore.afterEach?.call(this);
+      capture.afterEach?.call(this);
+    },
+    afterAll() {
+      capture.afterAll?.call(this);
+    },
+  };
 }
