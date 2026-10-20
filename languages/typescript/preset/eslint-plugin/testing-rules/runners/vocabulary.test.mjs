@@ -83,24 +83,22 @@ describe('rule messages name the API of the project runner', () => {
     expect(() => messagesFor(sleepRules, SLEEP, 'tap')).toThrow(/allowed values/u);
   });
 
-  it.each([
-    [undefined, 'beforeAll'],
-    ['jest', 'beforeAll'],
-    ['node', 'before'],
-    ['mocha', 'before'],
-  ])('name the shared setup hook of the runner the head policy records (%s)', (runner, hook) => {
-    const config = runner === undefined ? {} : { tools: { tests: { runner } } };
-    const code = "it('a', () => { expect(1).toBe(1); }, 60_000);";
+  it.each([undefined, 'jest', 'node', 'mocha'])(
+    'names the configured timeout project for runner %s',
+    (runner) => {
+      const config = runner === undefined ? {} : { tools: { tests: { runner } } };
+      const code = "it('a', () => { expect(1).toBe(1); }, 60_000);";
 
-    const messages = withHeadPolicyFile(resolveHeadPolicy(config), (policyFile) => {
-      vi.stubEnv('NITPICKER_POLICY', policyFile);
-      return messagesFor({ 'no-raised-test-timeout': noRaisedTimeout }, code);
-    });
+      const messages = withHeadPolicyFile(resolveHeadPolicy(config), (policyFile) => {
+        vi.stubEnv('NITPICKER_POLICY', policyFile);
+        return messagesFor({ 'no-raised-test-timeout': noRaisedTimeout }, code);
+      });
 
-    expect(messages).toEqual([
-      `Do not raise a test or hook timeout above 10000 ms, the testTimeout nitpicker runs tests with. Make the test faster instead: import code rather than spawning it, and share expensive setup in ${hook}. A genuinely long end-to-end suite can add an exception for this rule in nitpicker.config.json.`,
-    ]);
-  });
+      expect(messages).toEqual([
+        'Keep the test timeout between 1 and 10000 ms for this test project. Make the test faster or configure its named project timeout in tools.tests.timeouts.',
+      ]);
+    },
+  );
 });
 
 afterEach(() => {

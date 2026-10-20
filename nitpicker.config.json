@@ -15,6 +15,7 @@
       "languages/typescript/adapters/oxlint/oxlint-bridge.mjs",
       "languages/typescript/adapters/oxlint/oxlint-plan.mjs",
       "languages/typescript/adapters/test-runners/mocha/restore-sinon.mjs",
+      "languages/typescript/adapters/test-runners/jest/console-reporter.config.mjs",
       "languages/typescript/adapters/test-runners/node-test/node-test-reporter.mjs",
       "languages/typescript/adapters/test-runners/node-test/restore-mocks.cjs",
       "languages/typescript/adapters/test-runners/v8-coverage/loaded-sources.cjs",
