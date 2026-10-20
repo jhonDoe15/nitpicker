@@ -62,12 +62,15 @@ export function readModuleFindings(projectRoot, moduleDirs, options) {
   }
   const moduleFindings = moduleDirs.flatMap((moduleDir) => {
     const prefix = prefixOf(projectRoot, moduleDir);
-    return readModule(moduleDir, { ...options, projectWide: false, modulePath: prefix }).map(
-      (finding) => ({
-        ...finding,
-        path: inModule(prefix, finding.path),
-      }),
-    );
+    return readModule(moduleDir, {
+      ...options,
+      projectWide: false,
+      modulePath: prefix,
+      reactorRoot: projectRoot,
+    }).map((finding) => ({
+      ...finding,
+      path: inModule(prefix, finding.path),
+    }));
   });
   const roots = mergedRoots(projectRoot, moduleDirs, options.reportDirectory);
   return [

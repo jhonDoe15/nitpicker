@@ -4,7 +4,7 @@ export function inModule(modulePath, relativePath) {
   if (modulePath === undefined || modulePath === '') {
     return relativePath;
   }
-  return relativePath === '.' ? modulePath : `${modulePath}/${relativePath}`;
+  return relativePath === '.' ? modulePath : path.posix.normalize(`${modulePath}/${relativePath}`);
 }
 
 function asDirectory(root) {
