@@ -1,7 +1,7 @@
 import { RuleTester } from 'eslint';
 import { afterAll, afterEach, beforeAll, beforeEach, describe, it } from 'vitest';
 import tseslint from 'typescript-eslint';
-import { rule as noRaisedTestTimeout } from '../rules/testing/assertions/no-raised-test-timeout.mjs';
+import { rule as noRaisedTestTimeout } from '../../rules/testing/assertions/no-raised-test-timeout.mjs';
 
 RuleTester.afterAll = afterAll;
 
