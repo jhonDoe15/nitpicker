@@ -1,14 +1,9 @@
-import { readFileSync } from 'node:fs';
-import path from 'node:path';
-import ts from 'typescript';
-import { depthFirst } from '../../../../shared/traversal.mjs';
 import { describe, expect, it } from 'vitest';
 import { failureMessagesFor } from '../failure-messages/test-support/harness.mjs';
 import { TEST_TIMEOUT_CEILING_MS } from '../eslint-plugin/rules/testing/assertions/no-raised-test-timeout.mjs';
-import { TEST_TIMEOUT_MS } from '../../adapters/test-runners/test-run.mjs';
+import { testTimeouts } from '../../adapters/test-runners/test-run.mjs';
 import { resolveLayout } from '../layout.mjs';
 import { isStrictRule } from '../strict-rules.mjs';
-import { syntaxChildren } from '../syntax/children.mjs';
 import { strictPresetConfig } from './strict.mjs';
 import {
   strictTestConfigFor,
@@ -17,7 +12,6 @@ import {
   strictTestsConfig,
 } from './strict-tests.mjs';
 
-const packageRoot = path.resolve(import.meta.dirname, '../../../..');
 const raisedTimeout = "it('slow', () => {}, 60_000);";
 const loopMessage =
   'for...of is the only loop; iterate the items with for...of, or give each case its own test with it.each.';
@@ -35,33 +29,11 @@ function messages(code, filename, config = strictTestsConfig) {
   return failureMessagesFor({ config, filename, code });
 }
 
-function timeoutSettings(file) {
-  const source = ts.createSourceFile(
-    file,
-    readFileSync(path.join(packageRoot, file), 'utf8'),
-    ts.ScriptTarget.Latest,
-  );
-  const settings = [];
-  for (const node of depthFirst(source, syntaxChildren)) {
-    if (ts.isPropertyAssignment(node) && node.name.getText(source) === 'testTimeout') {
-      settings.push(['testTimeout', Number(node.initializer.getText(source).replaceAll('_', ''))]);
-    }
-    if (ts.isArrayLiteralExpression(node)) {
-      const values = node.elements.map((element) =>
-        ts.isStringLiteral(element) ? element.text : undefined,
-      );
-      const index = values.indexOf('--testTimeout');
-      if (index !== -1) settings.push(['--testTimeout', Number(values[index + 1])]);
-    }
-  }
-  return settings;
-}
-
 describe('strict test rules', () => {
   it('apply to test files under the test roots and next to sources', () => {
     for (const file of ['test/a.test.ts', 'tests/unit/a.spec.ts', 'src/a.test.ts']) {
       expect(messages(raisedTimeout, file)).toEqual([
-        'Do not raise a test or hook timeout above 10000 ms, the testTimeout nitpicker runs tests with. Make the test faster instead: import code rather than spawning it, and share expensive setup in beforeAll. A genuinely long end-to-end suite can add an exception for this rule in nitpicker.config.json.',
+        'Keep the test timeout between 1 and 10000 ms for this test project. Make the test faster or configure its named project timeout in tools.tests.timeouts.',
       ]);
     }
     expect(messages(raisedTimeout, 'src/__tests__/helpers.ts')).toHaveLength(1);
@@ -135,10 +107,8 @@ describe('strict test rules', () => {
     }
   });
 
-  it('cap timeouts at the testTimeout nitpicker runs tests with', () => {
-    expect(
-      timeoutSettings('languages/typescript/preset/defaults/vitest.quality.config.ts'),
-    ).toEqual([['testTimeout', TEST_TIMEOUT_CEILING_MS]]);
-    expect(TEST_TIMEOUT_MS).toBe(TEST_TIMEOUT_CEILING_MS);
+  it('keeps declaration ceilings separate from resolved runtime deadlines', () => {
+    expect(testTimeouts().testDeclarationCeilingMs).toBe(TEST_TIMEOUT_CEILING_MS);
+    expect(testTimeouts().testTimeoutMs).toBe(40_000);
   });
 });

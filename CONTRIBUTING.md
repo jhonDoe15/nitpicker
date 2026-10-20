@@ -90,6 +90,12 @@ Kotlin cases remain selected. The final `java` or `kotlin` check passes only whe
 pass. Reproduce a shard with `npm run test:java -- --shard=1/16` or
 `npm run test:kotlin -- --no-file-parallelism --shard=1/10`.
 
+Named `tools.tests.timeouts.projects` select the Java/Kotlin subject even though the harness is
+JavaScript. They inherit language declaration ceilings and repository execution defaults. JVM
+tests run with a three-minute deadline; Java hooks have five minutes and Kotlin hooks three.
+The timeout lint rule remains active for these suites. These are bounded execution limits,
+separate from slow-test thresholds and measured shard duration; see [timeout tiers](docs/usage.md#test-timeout-tiers).
+
 After moving E2E files or changing their package-script filters, verify real Vitest discovery,
 case counts, profile coverage and the configured matrix partition without starting JVM builds:
 

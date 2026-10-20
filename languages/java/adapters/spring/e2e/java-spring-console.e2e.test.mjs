@@ -2,7 +2,6 @@ import { rmSync } from 'node:fs';
 
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
-import { GRADLE_STEP_TIMEOUT_MS } from '../../test-support/gradle-e2e.mjs';
 import {
   enabled,
   gradle,
@@ -18,7 +17,7 @@ describe.skipIf(!enabled)('New console output of tests on Gradle and Maven build
   beforeAll(() => {
     runs.gradle = consoleChange({ gradle, policy: {} }, 'pom.xml');
     runs.maven = consoleChange({ maven, policy: {} }, 'build.gradle', 'settings.gradle');
-  }, 4 * GRADLE_STEP_TIMEOUT_MS);
+  }, 300_000);
 
   afterAll(() => {
     for (const root of roots.splice(0)) {

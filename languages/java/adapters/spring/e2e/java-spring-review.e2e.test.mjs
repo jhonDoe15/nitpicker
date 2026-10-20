@@ -3,7 +3,6 @@ import { rmSync } from 'node:fs';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import { collectJavaFindings } from '../../java-diff.mjs';
-import { GRADLE_STEP_TIMEOUT_MS } from '../../test-support/gradle-e2e.mjs';
 import {
   enabled,
   gradle,
@@ -26,7 +25,7 @@ describe.skipIf(!enabled)('Review rules on Gradle and Maven builds of a Spring p
     runs.markers = markedReviewViolations(gradleProject);
     runs.gradle = collectJavaFindings(gradleProject, { gradle, policy: {} });
     runs.maven = collectJavaFindings(mavenProject, { maven, policy: {} });
-  }, 2 * GRADLE_STEP_TIMEOUT_MS);
+  }, 300_000);
 
   afterAll(() => {
     for (const root of roots.splice(0)) {
