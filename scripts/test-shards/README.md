@@ -26,32 +26,56 @@ The initial JVM weights are per-file milliseconds from successful CI logs on mai
 - [Kotlin run 39273740059](https://github.com/jhonDoe15/nitpicker/actions/runs/39273740059):
   6 files, 54 tests, 1,121 seconds of test-run wall time before sharding.
 
-Each language starts with three parallel runner jobs and one active test file per job. Java's
-recorded loads split into roughly 747, 542 and 541 seconds, excluding provisioning. Kotlin's
-longest files previously competed on one runner, so their recorded durations include contention:
-those weights order the work, but do not predict its new runtime. Refresh them after isolated
-shard runs. The first isolated-shard runs measured slowest-shard test times of
-767.55 seconds for Java and 447.28 seconds for Kotlin:
+The first three-shard runs measured slowest-shard test times of 767.55 seconds for Java
+and 447.28 seconds for Kotlin:
 [Java](https://github.com/jhonDoe15/nitpicker/actions/runs/39316386497) and
-[Kotlin](https://github.com/jhonDoe15/nitpicker/actions/runs/39316386344). Cache/load differences
-make this an observed comparison rather than a controlled benchmark. The Kotlin lint suite now
-checks generated-source exclusion using its existing clean-change result, removing one duplicate
-build while retaining all its assertions; its new suite time still needs measuring.
+[Kotlin](https://github.com/jhonDoe15/nitpicker/actions/runs/39316386344). The next successful
+three-shard sample ([Java](https://github.com/jhonDoe15/nitpicker/actions/runs/39324054668),
+[Kotlin](https://github.com/jhonDoe15/nitpicker/actions/runs/39324054835)) on
+`16deb5774cd7013978b9566041fceeff340a9973` measured Java preset cases
+at 780.49 seconds, Maven preset cases at 347.68 seconds, Kotlin lint at 417.14 seconds and
+Kotlin coverage/structure at 297.21 seconds. Every individual case took at most 66.63 seconds.
+JSON first-to-last assertion time excludes the first `beforeAll`: the Spring file actually
+spent 213.51 seconds including hooks, and Kotlin one-way rules spent 211.65 seconds.
+
+The refined split uses 16 Java and 10 Kotlin runners. Java preset cases are grouped into nine
+pairs, Maven into five behavior groups, Kotlin lint into five pairs and coverage/structure into
+three groups. Spring retains its three existing independent build hooks in separate files.
+Kotlin one-way rules build only the banned, allowed or hostile-config snapshot needed by their
+file, rather than rebuilding all three snapshots in every group. Each original assertion and
+explicit test/hook timeout is retained; the timeout exception lists follow those exact moved
+Java files. Fixture setup and cleanup remain isolated by Vitest file isolation and runner.
+
+The current weights are planning estimates, not measurements of the new split. Unchanged files
+use the successful isolated-shard log totals, including hooks. Split case groups sum their
+measured case times plus original hook time and a conservative 25-second allowance for the
+additional first JVM build. Spring review/console weights are 88/150 seconds: their individual
+hooks were not logged, so these budget the observed combined 186 seconds by their two/four
+snapshot builds, with extra startup allowance. One-way banned/allowed/hostile weights are
+128/81/81 seconds, budgeting the observed 165-second combined hook evenly plus extra startup;
+the banned group also retains its measured 46.52-second exception comparison. These allocations
+are hypotheses to replace with new full-module measurements.
+
+The deterministic sequencer gives estimated Java loads of 111–157 seconds and Kotlin loads
+of 114–176 seconds, before runner setup. The goal is 2–3 minutes normally and under five minutes
+including setup. Those are targets, not observed new CI results. The prior setup overhead was
+29–45 seconds per job. More isolated runners repeat dependency/setup work and compete for
+account runner capacity, so queue delay and total runner minutes can rise even if each job is
+faster. One active file per runner avoids competing JVM builds inside a shard.
 
 Each shard uploads a JSON test report under a language/shard/attempt-specific artifact name,
-including on test failure when a report exists. Compare slowest-shard time and full workflow wall
-time, including setup, on warm and cold dependency caches. Three runners repeat setup and may
-increase runner minutes. Whole-file sharding cannot shorten the longest individual file; split a
-dominant file only after measuring its hooks and repeated fixture-build cost.
+including on test failure when a report exists. Compare the test step and full job elapsed time,
+including setup, on warm and cold dependency caches. Do not use JSON assertion spans as hook
+measurements. The existing duration recorder uses Vitest module diagnostics, which include hook
+execution in the module duration, and writes sorted whole-second profiles. Record enabled suites
+with the same package filters and flags after obtaining an isolated timing sample.
 
-The desired follow-up budget is 2–3 minutes per runner. This first whole-file split does not meet
-that budget: the largest Java preset file alone measured 747 seconds, and the Maven preset file
-431 seconds. The largest Kotlin lint and coverage/structure files measured 1,120 and 887 seconds
-while sharing a runner. These suites repeatedly build base and head snapshots. Use the new JSON
-reports to identify independent test groups, repeated snapshots and setup costs before splitting
-them further or replacing full-pipeline repetition with focused tool integrations. Preserve the
-full-pipeline representative cases and all existing behavioral assertions. More runner slots alone
-cannot remove these per-file limits.
+`node scripts/test-shards/verify-e2e-shards.mjs` collects through the real package scripts,
+checks the 67/53 discovered case counts, resolves CLI shard
+options through Vitest, and exercises the configured sequencer. It requires the profile to cover
+every selected file exactly and each matrix shard to be nonempty, with every selected file in
+exactly one shard. Vitest list itself does not apply sharding, so its `--shard` output alone is
+insufficient to verify the partition.
 
 Fixture Git trees, generated reports and build outputs remain local to each runner. The existing
 Maven/Gradle actions cache dependencies; mutable fixture builds are not shared between shards.

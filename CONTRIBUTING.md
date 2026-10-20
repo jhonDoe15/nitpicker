@@ -84,10 +84,18 @@ arguments pass through) and rewrites the times of the files it ran.
 node scripts/test-shards/record-durations.mjs --maxWorkers=100%
 ```
 
-Java and Kotlin end-to-end CI each use three isolated runner shards, with files run serially in
-each shard. The final `java` or `kotlin` check passes only when all its shards pass. Reproduce a
-shard with `npm run test:java -- --shard=1/3` or
-`npm run test:kotlin -- --no-file-parallelism --shard=1/3`.
+Java end-to-end CI uses 16 isolated runner shards and Kotlin uses 10, with files run serially in
+each shard. Independent behavior groups have separate fixture trees; the full 67 Java and 53
+Kotlin cases remain selected. The final `java` or `kotlin` check passes only when all its shards
+pass. Reproduce a shard with `npm run test:java -- --shard=1/16` or
+`npm run test:kotlin -- --no-file-parallelism --shard=1/10`.
+
+After moving E2E files or changing their package-script filters, verify real Vitest discovery,
+case counts, profile coverage and the configured matrix partition without starting JVM builds:
+
+```sh
+node scripts/test-shards/verify-e2e-shards.mjs
+```
 
 Enabled JVM suites use separate timing files: `scripts/test-shards/java-e2e.json` and
 `scripts/test-shards/kotlin-e2e.json`. Ordinary recordings cannot overwrite these with the timings
