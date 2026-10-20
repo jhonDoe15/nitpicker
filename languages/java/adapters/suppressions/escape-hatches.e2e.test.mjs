@@ -3,12 +3,7 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { runJavaDiff } from '../java-diff.mjs';
-import {
-  commitBranch,
-  GRADLE_STEP_TIMEOUT_MS,
-  runGitIn,
-  summarize,
-} from '../test-support/gradle-e2e.mjs';
+import { commitBranch, runGitIn, summarize } from '../test-support/gradle-e2e.mjs';
 
 const enabled = process.env.NITPICKER_JAVA_E2E === '1';
 const gradle = process.env.NITPICKER_GRADLE ?? 'gradle';
@@ -126,60 +121,44 @@ describe.skipIf(!enabled)('Java preset escape hatches', () => {
   let defaultResult;
   const defaultDiff = () => (defaultResult ??= diffOf());
 
-  it(
-    "ignores inline Checkstyle suppressions and the project's configs without an opt-in",
-    () => {
-      const result = defaultDiff();
+  it("ignores inline Checkstyle suppressions and the project's configs without an opt-in", () => {
+    const result = defaultDiff();
 
-      expect(result.failed).toBe(true);
-      expect(ofFile(result, 'Bad.java')).toEqual([
-        'errorprone DefaultCharset Bad.java',
-        'errorprone EmptyCatch Bad.java',
-        'google-java-format format Bad.java',
-        'pit mutant-nocoverage Bad.java',
-      ]);
-    },
-    GRADLE_STEP_TIMEOUT_MS,
-  );
+    expect(result.failed).toBe(true);
+    expect(ofFile(result, 'Bad.java')).toEqual([
+      'errorprone DefaultCharset Bad.java',
+      'errorprone EmptyCatch Bad.java',
+      'google-java-format format Bad.java',
+      'pit mutant-nocoverage Bad.java',
+    ]);
+  }, 180_000);
 
-  it(
-    'lints test sources with PMD, Error Prone, the formatter and the line length, without the assertion-style rules',
-    () => {
-      expect(ofFile(defaultDiff(), 'SwallowingTest.java')).toEqual([
-        'errorprone EmptyCatch SwallowingTest.java',
-        'google-java-format format SwallowingTest.java',
-        'pmd AvoidCatchingGenericException SwallowingTest.java',
-        'pmd UnitTestShouldIncludeAssert SwallowingTest.java',
-        'structure line-length-limit SwallowingTest.java',
-      ]);
-    },
-    GRADLE_STEP_TIMEOUT_MS,
-  );
+  it('lints test sources with PMD, Error Prone, the formatter and the line length, without the assertion-style rules', () => {
+    expect(ofFile(defaultDiff(), 'SwallowingTest.java')).toEqual([
+      'errorprone EmptyCatch SwallowingTest.java',
+      'google-java-format format SwallowingTest.java',
+      'pmd AvoidCatchingGenericException SwallowingTest.java',
+      'pmd UnitTestShouldIncludeAssert SwallowingTest.java',
+      'structure line-length-limit SwallowingTest.java',
+    ]);
+  }, 180_000);
 
-  it(
-    "adds the project's PMD rules to nitpicker's when tools.pmd opts in",
-    () => {
-      const result = diffOf({ policyRoot: repository, toolPrecedence: { pmd: ['project'] } });
+  it("adds the project's PMD rules to nitpicker's when tools.pmd opts in", () => {
+    const result = diffOf({ policyRoot: repository, toolPrecedence: { pmd: ['project'] } });
 
-      expect(ofTool(result, 'pmd')).toEqual([
-        'pmd AvoidCatchingGenericException SwallowingTest.java',
-        'pmd MethodArgumentCouldBeFinal Bad.java',
-        'pmd UnitTestShouldIncludeAssert SwallowingTest.java',
-      ]);
-    },
-    GRADLE_STEP_TIMEOUT_MS,
-  );
+    expect(ofTool(result, 'pmd')).toEqual([
+      'pmd AvoidCatchingGenericException SwallowingTest.java',
+      'pmd MethodArgumentCouldBeFinal Bad.java',
+      'pmd UnitTestShouldIncludeAssert SwallowingTest.java',
+    ]);
+  }, 180_000);
 
-  it(
-    "lays the project's Checkstyle config over nitpicker's when tools.checkstyle opts in",
-    () => {
-      const result = diffOf({
-        policyRoot: repository,
-        toolPrecedence: { checkstyle: ['project'] },
-      });
+  it("lays the project's Checkstyle config over nitpicker's when tools.checkstyle opts in", () => {
+    const result = diffOf({
+      policyRoot: repository,
+      toolPrecedence: { checkstyle: ['project'] },
+    });
 
-      expect(ofTool(result, 'checkstyle')).toEqual(['checkstyle FinalParameters Bad.java']);
-    },
-    GRADLE_STEP_TIMEOUT_MS,
-  );
+    expect(ofTool(result, 'checkstyle')).toEqual(['checkstyle FinalParameters Bad.java']);
+  }, 180_000);
 });

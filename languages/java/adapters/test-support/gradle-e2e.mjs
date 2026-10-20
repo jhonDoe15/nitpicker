@@ -2,7 +2,7 @@ import { spawnSync } from 'node:child_process';
 import { mkdirSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 
-export const GRADLE_STEP_TIMEOUT_MS = 15 * 60 * 1000;
+export const GRADLE_STEP_TIMEOUT_MS = 3 * 60 * 1000;
 const GIT_TIMEOUT_MS = 30_000;
 
 const GIT_ENVIRONMENT = {

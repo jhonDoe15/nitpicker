@@ -1,13 +1,13 @@
 import { existsSync, rmSync } from 'node:fs';
 import path from 'node:path';
 import { trackTemporaryPath } from '../../../../core/tooling/temporary-files.mjs';
-import { readHeadPolicy, readLayout } from '../../preset/head-policy.mjs';
+import { readLayout } from '../../preset/head-policy.mjs';
+import { readHeadPolicyFile } from '../../../../shared/head-policy.mjs';
 import {
-  slowTestBudget,
-  slowTestLimits,
-} from '../../../../shared/rules/slow-tests/slow-test-finding.mjs';
+  resolveTestTimeouts,
+  TEST_TIMEOUT_CEILING_MS,
+} from '../../../../shared/test-timeouts/resolve.mjs';
 import { projectTestRunner } from '../../preset/test-runner/project-runner.mjs';
-import { TEST_TIMEOUT_CEILING_MS } from '../../preset/eslint-plugin/rules/testing/assertions/no-raised-test-timeout.mjs';
 import {
   COVERAGE_REPORT_PATH,
   formatProcessOutput,
@@ -16,12 +16,43 @@ import {
 
 export const TEST_TIMEOUT_MS = TEST_TIMEOUT_CEILING_MS;
 const MAX_WORKERS = 4;
-const MILLISECONDS = 1000;
 
-export function testTimeoutMs() {
-  const budget = slowTestBudget(slowTestLimits(readHeadPolicy().thresholds));
-  const largest = Math.max(budget.unitTestSeconds, budget.integrationTestSeconds);
-  return TEST_TIMEOUT_MS + Math.ceil(largest * MILLISECONDS);
+export function testTimeouts(file, policy = readHeadPolicyFile()) {
+  return resolveTestTimeouts(policy, {
+    file,
+    language: policy.preset === 'javascript' ? 'javascript' : 'typescript',
+  });
+}
+
+export function testTimeoutMs(options, files, { hooks = true } = {}) {
+  if (options === undefined) {
+    return testTimeouts().testTimeoutMs;
+  }
+  const selected = files ?? options.rerun?.files ?? runnableTestFiles(options);
+  const limits = selected.map((file) =>
+    testTimeouts(path.isAbsolute(file) ? path.relative(options.projectRoot, file) : file),
+  );
+  if (limits.length === 0) {
+    limits.push(testTimeouts());
+  }
+  const timeout = limits[0].testTimeoutMs;
+  if (!hooks && limits.some((limit) => limit.hookTimeoutMs !== undefined)) {
+    throw new Error(
+      'This test runner cannot set hook deadlines. Use Vitest for configured hook timeouts.',
+    );
+  }
+  if (
+    limits.some(
+      (limit) =>
+        limit.testTimeoutMs !== timeout ||
+        (limit.hookTimeoutMs !== undefined && limit.hookTimeoutMs !== timeout),
+    )
+  ) {
+    throw new Error(
+      'This test runner uses one test and hook deadline. Use Vitest for projects with different timeout scopes.',
+    );
+  }
+  return timeout;
 }
 
 export function workerCount(options) {
