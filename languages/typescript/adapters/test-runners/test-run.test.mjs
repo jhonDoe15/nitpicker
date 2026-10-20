@@ -27,6 +27,51 @@ describe('the limits of a test run', () => {
     expect(testTimeoutMs()).toBe(100_500);
   });
 
+  it('rejects heterogeneous deadlines on runners with one shared timer', () => {
+    stubThresholds({});
+    writeFileSync(
+      path.join(directory, 'policy.json'),
+      JSON.stringify({
+        tools: {
+          tests: {
+            timeouts: {
+              projects: {
+                builds: { language: 'java', include: ['tests/build/**'], testTimeoutMs: 90_000 },
+              },
+            },
+          },
+        },
+      }),
+    );
+    const options = { projectRoot: directory };
+    expect(() =>
+      testTimeoutMs(options, ['tests/unit/a.test.mjs', 'tests/build/a.test.mjs']),
+    ).toThrow('one test and hook deadline');
+    expect(testTimeoutMs(options, ['tests/build/a.test.mjs'])).toBe(90_000);
+  });
+
+  it('rejects a separate hook deadline on runners with one shared timer', () => {
+    stubThresholds({});
+    writeFileSync(
+      path.join(directory, 'policy.json'),
+      JSON.stringify({
+        tools: {
+          tests: {
+            timeouts: {
+              defaults: { testTimeoutMs: 20_000, hookTimeoutMs: 30_000 },
+            },
+          },
+        },
+      }),
+    );
+    expect(() => testTimeoutMs({ projectRoot: directory }, ['tests/a.test.mjs'])).toThrow(
+      'one test and hook deadline',
+    );
+    expect(() =>
+      testTimeoutMs({ projectRoot: directory }, ['tests/a.test.mjs'], { hooks: false }),
+    ).toThrow('cannot set hook deadlines');
+  });
+
   it('runs the tests that time a rerun one at a time', () => {
     expect(workerCount({})).toBe(4);
     expect(workerCount({ rerun: { files: [], namePattern: '^$' } })).toBe(1);

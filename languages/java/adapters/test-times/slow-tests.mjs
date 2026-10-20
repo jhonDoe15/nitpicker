@@ -10,14 +10,14 @@ import {
   slowTestBudget,
 } from '../../../../shared/rules/slow-tests/slow-test-finding.mjs';
 import { SLOW_TEST_FIXES } from '../../../../shared/rules/slow-tests/slow-test-fixes.mjs';
-import { isSpringBootTest } from './spring-boot-tests.mjs';
+import { isSpringBootTest, sourceOf } from './spring-boot-tests.mjs';
 import { inheritedMethod, superclassOf } from './inherited-tests.mjs';
 import { templateMethods, testMethod } from './test-methods.mjs';
 
 const SLOW_TEST_TOOL = 'test-runtime';
 export const TEST_RESULTS_DIRECTORY = 'test-results';
 const UNIT_TEST_TASKS = new Set(['test', 'surefire']);
-const INTEGRATION_CLASS = /(?:IT|ITCase|IntegrationTests?)$/u;
+const INTEGRATION_CLASS = /(?:IT|ITCase|IntegrationTests?|IntegrationSpec|ISpec)$/u;
 const MOVE_ADVICE = {
   gradle: ', or move it to an integration test source set if it is one',
   maven: ', or make it an integration test that Failsafe runs (*IT) if it is one',
@@ -57,13 +57,6 @@ function readTestCases(reportRoot) {
   );
 }
 
-function sourceOf(locate, className) {
-  const parts = className.split('.');
-  const simple = parts.pop().split('$')[0];
-  const directory = parts.join('/');
-  return locate(directory, `${simple}.java`) ?? locate(directory, `${simple}.kt`);
-}
-
 function readOptional(root, relative) {
   const file = relative === undefined ? undefined : path.join(root, relative);
   return file !== undefined && existsSync(file) ? readFileSync(file, 'utf8') : undefined;
@@ -78,12 +71,15 @@ function isIntegration(testCase, text, context) {
   );
 }
 
+function sameUnnamedCase(baseText, text, className) {
+  const baseTemplates = templateMethods(baseText, className);
+  const templates = templateMethods(text, className);
+  return baseTemplates === '' && templates === '' ? baseText === text : baseTemplates === templates;
+}
+
 function sameTest(baseText, { testCase, method }) {
   if (method === undefined) {
-    return (
-      templateMethods(baseText, testCase.className) ===
-      templateMethods(testCase.text, testCase.className)
-    );
+    return sameUnnamedCase(baseText, testCase.text, testCase.className);
   }
   return testMethod(baseText, testCase.name, testCase.className)?.text === method.text;
 }
