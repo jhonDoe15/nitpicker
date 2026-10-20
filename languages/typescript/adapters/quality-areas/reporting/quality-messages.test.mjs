@@ -1,12 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import { MESSAGES } from '../../../../../shared/policy.mjs';
 import { mutationSkipFor } from '../runners/mutation.mjs';
-import { normalizeCrap, normalizeMutation } from './tests.mjs';
+import { normalizeCrap, normalizeMutation, crapUnknownMessage } from './tests.mjs';
 import {
   coverageFailureFindings,
   formatTestFailures as formatVitestFailures,
 } from './test-report.mjs';
-import { crapUnknownMessage } from './crap-unknown-message.mjs';
 import {
   timeoutText,
   unhandledErrors,

@@ -1,3 +1,4 @@
+import { filePatterns, globsFor } from './layout/path-patterns.mjs';
 import { existsSync } from 'node:fs';
 import path from 'node:path';
 import { filesUnder } from '../../../shared/filesystem.mjs';
@@ -57,39 +58,6 @@ export function prettierPatterns(layout) {
 
 function normalizeRoot(root) {
   return root.replaceAll('\\', '/').replace(/^\.\//, '').replace(/\/$/, '');
-}
-
-const TEST_SUPPORT_DIRECTORY = 'test-support';
-
-function filePatterns({ sourceRoots, testRoots, extensions, colocatedTests }) {
-  const sourceAlternatives = sourceRoots.map(escapeRegExp).join('|');
-  const testAlternatives = testRoots.map(escapeRegExp).join('|');
-  const suffix = `(?:${extensions.join('|')})$`;
-  const testPattern = new RegExp(
-    [
-      `^(?:${testAlternatives})/`,
-      `^(?:${sourceAlternatives})/.*\\.(?:test|spec)\\.${suffix}`,
-      `^(?:${sourceAlternatives})/(?:.*/)?__tests__/`,
-      ...(colocatedTests ? [`^(?:${sourceAlternatives})/(?:.*/)?${TEST_SUPPORT_DIRECTORY}/`] : []),
-    ]
-      .map((pattern) => `(?:${pattern})`)
-      .join('|'),
-  );
-  const sourcePattern = new RegExp(`^(?:${sourceAlternatives})/.*\\.${suffix}`);
-  return {
-    testPattern,
-    sourcePattern,
-    codePattern: new RegExp(`\\.${suffix}`),
-    runnableTestPattern: new RegExp(`\\.(?:test|spec)\\.${suffix}`),
-  };
-}
-
-function unitTestGlobsFor({ sourceRoots, testRoots, javascript, extensionGlob }) {
-  const extension = javascript ? extensionGlob : 'ts';
-  return [
-    ...sourceRoots.map((root) => `${root}/**/__tests__/**/*.${extension}`),
-    ...testRoots.map((root) => `${root}/unit/**/*.${extension}`),
-  ];
 }
 
 export function toPosix(file) {
@@ -156,23 +124,6 @@ function createClassifiers({ sourceRoots, testRoots, exclude, patterns, generate
     }),
     sourceRootOf: (file) => sourceRoots.find((root) => file.includes(`/${root}/`)),
     isTestFixture: (file, name = '') => testInput(name).test(toPosix(file)),
-  };
-}
-
-function globsFor({ sourceRoots, testRoots, javascript, extensionGlob, colocatedTests }) {
-  return {
-    testSupportGlobs: colocatedTests
-      ? sourceRoots.map((root) => `${root}/**/${TEST_SUPPORT_DIRECTORY}/**`)
-      : [],
-    sourceGlobs: sourceRoots.map((root) => `${root}/**/*.${extensionGlob}`),
-    testGlobs: [
-      ...testRoots.map((root) => `${root}/**/*.${extensionGlob}`),
-      ...sourceRoots.map((root) => `${root}/**/*.{test,spec}.${extensionGlob}`),
-    ],
-    sourceTestDirectoryGlobs: sourceRoots.map((root) => `${root}/**/__tests__/**`),
-    unitTestGlobs: unitTestGlobsFor({ sourceRoots, testRoots, javascript, extensionGlob }),
-    graphRoots: [...sourceRoots, ...testRoots],
-    graphIncludeOnly: `^(${[...sourceRoots, ...testRoots].map(escapeRegExp).join('|')})(?:/|$)`,
   };
 }
 

@@ -2,6 +2,7 @@ import { mkdirSync, mkdtempSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterAll, describe, expect, it } from 'vitest';
+import { resolveHeadPolicy } from '../head-policy.mjs';
 import { globToRegExp, resolveLayout } from '../layout.mjs';
 import {
   isCustomLayout,
@@ -21,6 +22,19 @@ import {
 afterAll(removeTemporaryRoots);
 
 describe('resolveLayout', () => {
+  it('marks the layout colocated only when no test root exists in the project', () => {
+    const root = mkdtempSync(path.join(tmpdir(), 'nitpicker-colocated-policy-'));
+    trackTemporaryRoot(root);
+    expect(resolveHeadPolicy({}, root).layout).toEqual({ colocatedTests: true });
+    expect(resolveHeadPolicy({ layout: { testRoots: ['spec'] } }, root).layout).toEqual({
+      testRoots: ['spec'],
+      colocatedTests: true,
+    });
+    mkdirSync(path.join(root, 'tests'));
+    expect(resolveHeadPolicy({}, root).layout).toEqual({});
+    expect(resolveHeadPolicy({}).layout).toEqual({});
+  });
+
   it('derives globs, roots and predicates from custom roots', () => {
     expect(customLayout.sourceGlobs).toEqual(['lib/**/*.{ts,tsx,mts,cts,js,jsx,mjs,cjs}']);
     expect(customLayout.testGlobs).toEqual([
