@@ -40,6 +40,7 @@ const POLICY_PATHS = [
   'languages/typescript/conventions/type-import-style.mjs',
   'languages/typescript/preset/layout.mjs',
   'languages/typescript/preset/layout/generated-files.mjs',
+  'languages/typescript/preset/layout/path-patterns.mjs',
   'languages/typescript/preset/head-policy.mjs',
   'languages/typescript/preset/libraries',
   'languages/typescript/preset/tool-configs.mjs',

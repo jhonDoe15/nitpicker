@@ -7,7 +7,7 @@ describe('describeCount', () => {
   });
 
   it('uses the singular for one', () => {
-    expect(describeCount(1)).toBe('1 name');
+    expect([describeCount(1), describeCount(2)]).toEqual(['1 name', '2 names']);
   });
 
   it('pluralizes many', () => {
