@@ -930,10 +930,12 @@ not timeout declaration ceilings. A shard's total execution time is also separat
 several cases and shared builds. Give shared build hooks their own measured allowance rather
 than raising every unit test's limit.
 
-Vitest applies the resolved deadlines per file while retaining inline project setup and coverage.
+Vitest applies the resolved deadlines per file while retaining project setup and coverage.
+Inline projects and external project configuration files, directories and globs are supported;
+external references are expanded into inline projects before applying deadlines. Unresolved or
+unsupported project entries fail rather than silently leaving those projects unconfigured.
 Other JavaScript runners reject scoped or independent hook settings they cannot faithfully
-represent. Explicit timeout policy with external Vitest project references is rejected rather
-than silently leaving those projects unconfigured. Native Gradle/Maven/pytest execution settings
+represent. Native Gradle/Maven/pytest execution settings
 are separate integrations; this option currently belongs to the JavaScript test harness.
 
 Increasing a resolved deadline or declaration ceiling, expanding a suite's membership, or removing
