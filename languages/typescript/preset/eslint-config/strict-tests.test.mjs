@@ -58,6 +58,24 @@ function timeoutSettings(file) {
 }
 
 describe('strict test rules', () => {
+  it('requires subprocess deadlines in integration tests and their shared helpers', () => {
+    const code = "import { spawnSync } from 'node:child_process'; spawnSync('tool', []);";
+    const expected = [
+      'Give spawnSync a positive subprocess timeout, such as { timeout: 10_000 }. A test runner timeout cannot interrupt a synchronous child process, so a stuck command can hang the suite. If this process must wait without a deadline, add an exception for this rule in nitpicker.config.json.',
+    ];
+    expect(
+      [
+        'test/integration/build.test.ts',
+        'tests/support/command.mjs',
+        'src/__tests__/helper.js',
+        'src/build/test-support/command.ts',
+      ].map((file) => messages(code, file)),
+    ).toEqual([expected, expected, expected, expected]);
+    expect(messages(code, 'src/main/command.ts')).toEqual([
+      'No matching configuration found for src/main/command.ts.',
+    ]);
+  });
+
   it('apply to test files under the test roots and next to sources', () => {
     for (const file of ['test/a.test.ts', 'tests/unit/a.spec.ts', 'src/a.test.ts']) {
       expect(messages(raisedTimeout, file)).toEqual([
