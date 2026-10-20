@@ -18,7 +18,6 @@ export function readJavaStructureFindings(reportRoot, projectRoot, reactorRoot =
   });
 }
 
-// Rebase module-relative sources to the reactor while retaining the shared containment check.
 export function javaMethodText(sources, { projectRoot, reactorRoot = projectRoot }, entry) {
   return methodText(sources, reactorRoot, {
     ...entry,
