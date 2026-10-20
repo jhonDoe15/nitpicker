@@ -4,6 +4,11 @@ import { DEFAULT_CRAP_SCORE_LIMIT } from '../../../../shared/policy.mjs';
 import { testConsoleCheckFor } from './test-console.mjs';
 
 const COVERAGE_CONFIGURATION_FILES = [
+  'shared/test-timeouts/resolve.mjs',
+  'shared/glob.mjs',
+  'shared/head-policy.mjs',
+  'shared/policy.mjs',
+  'languages/typescript/adapters/test-runners/vitest/test-timeouts-setup.mjs',
   'languages/typescript/preset/defaults/vitest.quality.config.ts',
   'languages/typescript/preset/layout.mjs',
   'languages/typescript/preset/head-policy.mjs',

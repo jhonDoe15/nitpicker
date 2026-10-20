@@ -6,12 +6,13 @@ import {
 } from '../../languages/java/adapters/gradle-presets.mjs';
 import { configError, isPlainObject } from '../../shared/config.mjs';
 import { TEST_RUNNERS } from '../../languages/typescript/preset/test-runner/runners.mjs';
+import { validateTestTimeouts } from '../../shared/test-timeouts/resolve.mjs';
 
 const TOOL_SETTING_KEYS = new Map([
   ['prettier', ['precedence']],
   ['eslint', ['engine']],
   ['typescript', ['engine', 'project']],
-  ['tests', ['runner']],
+  ['tests', ['runner', 'timeouts']],
 ]);
 const ENGINES = new Map([
   [
@@ -97,14 +98,21 @@ function validateToolSettings(name, settings, toolSettingKeys) {
     );
   }
   if (ENGINES.has(name)) {
-    validateEngine(name, settings[ENGINES.get(name).key]);
-    if (name === 'typescript') {
-      validateTypeScriptProject(settings.project);
-    }
+    validateEngineSettings(name, settings);
     return;
   }
   validatePrecedence(settings.precedence, name);
   validatePrecedenceOrder(settings.precedence, name);
+}
+
+function validateEngineSettings(name, settings) {
+  validateEngine(name, settings[ENGINES.get(name).key]);
+  if (name === 'tests' && settings.timeouts !== undefined) {
+    validateTestTimeouts(settings.timeouts);
+  }
+  if (name === 'typescript') {
+    validateTypeScriptProject(settings.project);
+  }
 }
 
 function validatePrecedenceOrder(precedence, name) {

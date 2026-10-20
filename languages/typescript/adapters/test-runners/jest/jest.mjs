@@ -111,7 +111,7 @@ export function runJest(options, command) {
       '--json',
       `--outputFile=${reportPath}`,
       '--testLocationInResults',
-      `--testTimeout=${String(testTimeoutMs())}`,
+      `--testTimeout=${String(testTimeoutMs(options))}`,
       '--restoreMocks',
       ...workerArguments(options, command.arguments_),
     ]);

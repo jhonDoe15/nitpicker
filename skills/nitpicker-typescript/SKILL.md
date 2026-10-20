@@ -157,6 +157,9 @@ Before you change code other modules use, fix a bug, or add a UI state, read
   Don't pin call order or messages just to kill it. If an input can kill it, add that test; never
   delete a schema rule to silence it.
 - No per-test git repos, child processes, servers, fixed sleeps, or raised timeouts.
+- Give synchronous `child_process` calls in integration tests and shared test helpers a positive
+  subprocess `timeout`, such as `{ timeout: 10_000 }`. The runner's test timeout cannot interrupt
+  `spawnSync`, `execSync` or `execFileSync` while they block the event loop.
 - Plan tests to be fast (`slow-test`): a test you add or edit that takes over 5 s fails, over 30 s
   for an integration test (under an `integration`, `e2e` or `functional` folder, or named
   `*.integration.test.ts`, folders counted under the test roots). Use fake timers instead of waits

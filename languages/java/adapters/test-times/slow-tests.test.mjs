@@ -3,7 +3,7 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterAll, describe, expect, it } from 'vitest';
 import { readSlowTestFindings, testCasesOf } from './slow-tests.mjs';
-import { testMethod } from './test-methods.mjs';
+import { ADDS_SPEC, ORDER_SOURCE } from './test-support/test-sources.mjs';
 
 const TEST_ROOT = 'src/test/java';
 const ORDER_TEST = `${TEST_ROOT}/shop/OrderTest.java`;
@@ -11,22 +11,7 @@ const WAITS = 'Remove Thread.sleep and other waits, start a smaller Spring conte
 const EXCEPTIONS = 'to "exceptions" in nitpicker.config.json.';
 const FAILSAFE_ADVICE = 'or make it an integration test that Failsafe runs (*IT) if it is one';
 const temporaryRoots = [];
-
-const ORDER_SOURCE = `package shop;
-
-class OrderTest {
-  @Test
-  void totals() {
-    assertEquals(3, total());
-  }
-
-  @ParameterizedTest
-  @ValueSource(ints = {1, 2})
-  void positive(int value) {
-    assertTrue(value > 0);
-  }
-}
-`;
+const GROOVY_ROOT = 'src/test/groovy';
 
 function directoryWith(files) {
   const root = mkdtempSync(path.join(tmpdir(), 'nitpicker-slow-tests-'));
@@ -45,7 +30,15 @@ function suite(className, cases) {
   return `<?xml version="1.0" encoding="UTF-8"?>\n<testsuite name="${className}">\n${testCases}\n</testsuite>\n`;
 }
 
-function findingsFor({ sources = {}, results, base, limits, snapshot = 'head', modulePath }) {
+function findingsFor({
+  sources = {},
+  results,
+  base,
+  limits,
+  snapshot = 'head',
+  modulePath,
+  testRoots = [TEST_ROOT],
+}) {
   const reportRoot = directoryWith(
     Object.fromEntries(
       Object.entries(results).flatMap(([task, xml]) =>
@@ -57,7 +50,7 @@ function findingsFor({ sources = {}, results, base, limits, snapshot = 'head', m
   return readSlowTestFindings({
     reportRoot,
     projectRoot: directoryWith(sources),
-    testRoots: [TEST_ROOT],
+    testRoots,
     limits,
     baseline,
     modulePath,
@@ -81,76 +74,6 @@ describe('testCasesOf', () => {
       { task: 'test', className: 'shop.OrderTest', name: '[1] 1', seconds: 0.25 },
       { task: 'test', className: 'shop.OrderTest', name: 'positive(int)[2]', seconds: 1234.5 },
     ]);
-  });
-});
-
-describe('testMethod', () => {
-  it('finds a method by its call name, its Surefire name or its display name, with its annotations', () => {
-    const named = `class A {\n  @Test\n  @DisplayName("adds \\"two\\"")\n  void adds() { if (x) { y(); } }\n}\n`;
-
-    expect(testMethod(ORDER_SOURCE, 'positive(int)[1]')).toEqual({
-      line: 11,
-      text: '@ParameterizedTest\n@ValueSource(ints = {1, 2})\nvoid positive(int value) {\nassertTrue(value > 0);\n}',
-    });
-    expect(testMethod(ORDER_SOURCE, 'totals')?.line).toBe(5);
-    expect(testMethod(named, 'adds "two"')?.line).toBe(4);
-    expect(testMethod(ORDER_SOURCE, '[1] 1')).toBeUndefined();
-  });
-
-  it('finds a JUnit 4 parameterized case and a @TestFactory that returns dynamic tests', () => {
-    const source = `class A {
-  @Test
-  public void adds() {}
-
-  @TestFactory
-  Stream<DynamicTest> grows() {
-    return Stream.of();
-  }
-
-  @TestFactory
-  DynamicTest[] shrinks() {
-    return new DynamicTest[0];
-  }
-}
-`;
-
-    expect(
-      ['adds[0]', 'grows()', 'grows()[1]', 'shrinks()'].map(
-        (name) => testMethod(source, name)?.line,
-      ),
-    ).toEqual([3, 6, 6, 11]);
-  });
-
-  it('looks for a @Nested test inside its own class, and an outer test outside nested ones', () => {
-    const source = `class CalcTest {
-  @Nested
-  class WhenEmpty {
-    @Test
-    void returnsZero() {}
-  }
-
-  @Nested
-  class WhenFull {
-    @Test
-    void returnsZero() {}
-  }
-
-  @Test
-  void returnsZero() {}
-}
-`;
-
-    expect(
-      ['CalcTest$WhenEmpty', 'CalcTest$WhenFull', 'CalcTest', 'CalcTest$Missing'].map(
-        (className) => testMethod(source, 'returnsZero()', className)?.line,
-      ),
-    ).toEqual([5, 11, 15, undefined]);
-  });
-
-  it('finds a Kotlin test named with backticks', () => {
-    const kotlin = 'class KTest {\n  @Test\n  fun `ships an order`() {\n    check(true)\n  }\n}\n';
-
-    expect(testMethod(kotlin, 'ships an order()')?.line).toBe(3);
   });
 });
 
@@ -309,6 +232,23 @@ describe('readSlowTestFindings', () => {
     ).toHaveLength(1);
   });
 
+  it('finds an inherited Spock feature in its Groovy base specification and counts it when edited', () => {
+    const basePath = `${GROOVY_ROOT}/shop/StoreSpec.groovy`;
+    const baseSpec = (body) =>
+      `package shop\n\nabstract class StoreSpec extends Specification {\n  def "puts then gets"() {\n    expect: ${body}\n  }\n}\n`;
+    const diskPath = `${GROOVY_ROOT}/shop/DiskStoreSpec.groovy`;
+    const disk = 'package shop\n\nclass DiskStoreSpec extends StoreSpec {\n}\n';
+    const results = { test: suite('shop.DiskStoreSpec', [['puts then gets', '9']]) };
+    const base = { [basePath]: baseSpec('true'), [diskPath]: disk };
+    const run = (sources) =>
+      findingsFor({ sources, results, base, testRoots: [GROOVY_ROOT] }).map(
+        ({ path: file, location }) => [file, location?.line],
+      );
+
+    expect(run(base)).toEqual([]);
+    expect(run({ ...base, [basePath]: baseSpec('1 == 1') })).toEqual([[basePath, 4]]);
+  });
+
   it('counts a case named after no method only when its file is new or a parameterized test changed', () => {
     const results = { test: suite('shop.OrderTest', [['[1] 1', '9']]) };
     const base = { [ORDER_TEST]: ORDER_SOURCE };
@@ -361,6 +301,90 @@ describe('readSlowTestFindings', () => {
     });
 
     expect(findings.map(({ identity }) => identity)).toEqual(['test:shop.OrderTest#totals()']);
+  });
+
+  it('finds a Spock specification under a Groovy test root and counts only its edited features', () => {
+    const groovyRoot = 'src/test/groovy';
+    const spec = `${groovyRoot}/shop/OrderSpec.groovy`;
+    const source = (body) =>
+      `package shop\n\nclass OrderSpec extends Specification {\n  def "ships an order"() {\n    expect: ${body}\n  }\n\n  def "cancels an order"() {\n    expect: true\n  }\n}\n`;
+    const results = {
+      test: suite('shop.OrderSpec', [
+        ['ships an order', '6'],
+        ['cancels an order', '6'],
+      ]),
+    };
+    const run = (body) =>
+      findingsFor({
+        sources: { [spec]: source(body) },
+        results,
+        base: { [spec]: source('true') },
+        testRoots: [TEST_ROOT, groovyRoot],
+      });
+
+    expect(run('true')).toEqual([]);
+    expect(run('1 == 1')).toEqual([
+      {
+        tool: 'test-runtime',
+        rule: 'slow-test',
+        path: spec,
+        identity: 'test:shop.OrderSpec#ships an order',
+        location: { line: 4 },
+        message: `OrderSpec ships an order took 6.0 s; a unit test may take 5 s. ${WAITS}, or move it to an integration test source set if it is one. If this is intended, add {"rule":"slow-test","paths":["${spec}"],"reason":"..."} ${EXCEPTIONS}`,
+        classification: 'enforceable',
+      },
+    ]);
+  });
+
+  it('counts a Spock iteration named after no feature when its file is new or a where: table changed', () => {
+    const spec = `${GROOVY_ROOT}/shop/AddsSpec.groovy`;
+    const results = { test: suite('shop.AddsSpec', [['one plus two', '9']]) };
+    const run = (source) =>
+      findingsFor({
+        sources: { [spec]: source },
+        results,
+        base: { [spec]: ADDS_SPEC },
+        testRoots: [GROOVY_ROOT],
+      });
+
+    expect(run(ADDS_SPEC.replace('    x\n', '    x + 0\n'))).toEqual([]);
+    expect(
+      run(ADDS_SPEC.replace('1 | 2 | 3', '2 | 2 | 4')).map(({ identity }) => identity),
+    ).toEqual(['test:shop.AddsSpec#one plus two']);
+  });
+
+  it('counts a Kotest test, which names no method, when its spec file changed, without a line', () => {
+    const kotlinRoot = 'src/test/kotlin';
+    const spec = `${kotlinRoot}/shop/CalcSpec.kt`;
+    const source = (value) =>
+      `package shop\n\nclass CalcSpec : FunSpec({\n  test("doubles") { Calc().twice(3) shouldBe ${value} }\n})\n`;
+    const results = { test: suite('shop.CalcSpec', [['doubles', '9']]) };
+    const run = (value) =>
+      findingsFor({
+        sources: { [spec]: source(value) },
+        results,
+        base: { [spec]: source('6') },
+        testRoots: [kotlinRoot],
+      });
+
+    expect(run('6')).toEqual([]);
+    expect(
+      run('7').map(({ path: file, identity, location }) => ({ file, identity, location })),
+    ).toEqual([{ file: spec, identity: 'test:shop.CalcSpec#doubles', location: undefined }]);
+  });
+
+  it('gives Spock integration specifications the integration budget', () => {
+    const findings = findingsFor({
+      results: {
+        test: [
+          suite('shop.OrderIntegrationSpec', [['ships', '29']]),
+          suite('shop.OrderISpec', [['ships', '29']]),
+          suite('shop.OrderSpec', [['ships', '29']]),
+        ],
+      },
+    });
+
+    expect(findings.map(({ identity }) => identity)).toEqual(['test:shop.OrderSpec#ships']);
   });
 
   it('reports a test whose source is missing on the project root path', () => {

@@ -19,7 +19,7 @@ import {
   runPit,
 } from './maven-tests.mjs';
 import { checkstyleIndentation } from '../adapters/style/java-style.mjs';
-import { copyTestResults } from './results/maven-test-results.mjs';
+import { copyTestResults, requireTestngRun } from './results/maven-test-results.mjs';
 import { formatTool, jacocoPlugin, MAVEN_PLUGINS, resolveTools } from './maven-tools.mjs';
 import { processorTool, runErrorProne } from './errorprone/maven-errorprone.mjs';
 import { GRADLE_DIRECTORY, readPinnedTools } from '../builds/java-build.mjs';
@@ -137,6 +137,13 @@ function readClasspaths(work, module) {
   return { ...moduleClasspaths(module, dependencies), dependencies };
 }
 
+function readTestRuns({ module, reportDir, since, isArchunit, testRuntime }) {
+  const testsRan = collectTestResults({ module, reportDir, since, isArchunit });
+  requireTestngRun({ module, since, isArchunit, testRuntime });
+  copyTestResults({ module, reportDir, since, isArchunit });
+  return testsRan;
+}
+
 function analyzeSources(context, project) {
   const { module, reportDir, tools, classpaths, configs, pinned, style } = context;
   runPmd({ module, reportDir, tools, classpaths, configs, spring: context.spring });
@@ -169,8 +176,13 @@ function analyzeModule({ project, ...options }) {
   const isArchunit = archunitMatcher(module.archunitIncludes);
   const spring = classpaths.mainCompile.some((entry) => SPRING_JAR.test(path.basename(entry)));
   const context = { ...options, reportDir, isArchunit, spring };
-  const testsRan = collectTestResults({ module, reportDir, since, isArchunit });
-  copyTestResults({ module, reportDir, since, isArchunit });
+  const testsRan = readTestRuns({
+    module,
+    reportDir,
+    since,
+    isArchunit,
+    testRuntime: classpaths.testRuntime,
+  });
   analyzeSources(context, project);
   analyzeTests(context, testsRan);
   writeManifest({ module, reportDir, pinned, spring, classpaths });

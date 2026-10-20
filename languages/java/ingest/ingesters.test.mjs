@@ -174,6 +174,27 @@ describe('archunit', () => {
     expect(findings[0].message).not.toMatch(/\.java:\d/);
   });
 
+  it('passes the Kotlin or Groovy file a violation names to the path resolver', () => {
+    const resolved = [];
+    const report = (fileName) =>
+      `<testsuite name="demo.NamingArchTest"><testcase name="servicesOnly" classname="demo.NamingArchTest"><failure message="Rule violated (1 times):&#10;Class &lt;demo.Calc&gt; does not have simple name ending with 'Service' in (${fileName}:0)"/></testcase></testsuite>`;
+    for (const fileName of ['Calc.kt', 'Calc.groovy']) {
+      ingestArchunit(report(fileName), {
+        resolvePath: (className, sourceFile) => {
+          resolved.push([className, sourceFile]);
+          return undefined;
+        },
+      });
+    }
+
+    expect(resolved).toEqual([
+      ['demo.NamingArchTest', undefined],
+      ['demo.Calc', 'Calc.kt'],
+      ['demo.NamingArchTest', undefined],
+      ['demo.Calc', 'Calc.groovy'],
+    ]);
+  });
+
   it('ignores passing test cases and rejects other documents', () => {
     expect(findings.some((finding) => finding.rule === 'layers_are_respected')).toBe(false);
     expect(() => ingestArchunit('<report/>')).toThrow('<testsuite>');

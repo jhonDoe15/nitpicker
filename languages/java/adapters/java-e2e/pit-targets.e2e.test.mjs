@@ -126,28 +126,24 @@ class CalcTest {
         'org.acme.calc.CalcTest.[engine:junit-jupiter]/[class:org.acme.calc.CalcTest]/[method:doublesTheValue()]',
       ]);
     },
-    GRADLE_STEP_TIMEOUT_MS,
+    180_000,
   );
 
-  it(
-    'mutates every class of a project rooted in org, which PIT refuses as org.*',
-    () => {
-      const root = projectUnderOrg();
+  it('mutates every class of a project rooted in org, which PIT refuses as org.*', () => {
+    const root = projectUnderOrg();
 
-      const result = spawnSync(
-        gradle,
-        ['--console=plain', '--quiet', '-I', INIT_SCRIPT, 'nitpickerPit'],
-        { cwd: root, encoding: 'utf8', timeout: GRADLE_STEP_TIMEOUT_MS },
-      );
+    const result = spawnSync(
+      gradle,
+      ['--console=plain', '--quiet', '-I', INIT_SCRIPT, 'nitpickerPit'],
+      { cwd: root, encoding: 'utf8', timeout: GRADLE_STEP_TIMEOUT_MS },
+    );
 
-      expect(result.stderr).not.toContain('PitHelpError');
-      expect(result.status).toBe(0);
-      const report = readFileSync(path.join(root, 'build/nitpicker/pit/mutations.xml'), 'utf8');
-      const mutated = new Set(
-        [...report.matchAll(/<mutatedClass>([^<]+)<\/mutatedClass>/gu)].map(([, name]) => name),
-      );
-      expect([...mutated].sort()).toEqual(['org.Top', 'org.acme.calc.Calc', 'org.acme.text.Words']);
-    },
-    GRADLE_STEP_TIMEOUT_MS,
-  );
+    expect(result.stderr).not.toContain('PitHelpError');
+    expect(result.status).toBe(0);
+    const report = readFileSync(path.join(root, 'build/nitpicker/pit/mutations.xml'), 'utf8');
+    const mutated = new Set(
+      [...report.matchAll(/<mutatedClass>([^<]+)<\/mutatedClass>/gu)].map(([, name]) => name),
+    );
+    expect([...mutated].sort()).toEqual(['org.Top', 'org.acme.calc.Calc', 'org.acme.text.Words']);
+  }, 180_000);
 });

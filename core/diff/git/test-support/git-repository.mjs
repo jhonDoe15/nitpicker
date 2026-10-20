@@ -5,6 +5,8 @@ import path from 'node:path';
 import { afterEach } from 'vitest';
 import { writeFiles } from './fixture-files.mjs';
 
+const GIT_TIMEOUT_MS = 30_000;
+
 const HERMETIC_GIT_ENVIRONMENT = {
   GIT_CONFIG_GLOBAL: '/dev/null',
   GIT_CONFIG_NOSYSTEM: '1',
@@ -22,6 +24,7 @@ export function fixtureGit(repositoryRoot, arguments_) {
     encoding: 'utf8',
     env: { ...process.env, ...HERMETIC_GIT_ENVIRONMENT },
     maxBuffer: 10 * 1024 * 1024,
+    timeout: GIT_TIMEOUT_MS,
   });
 }
 

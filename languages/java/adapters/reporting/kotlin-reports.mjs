@@ -58,6 +58,15 @@ export function sourceLocator(projectRoot, sourceRoots) {
   };
 }
 
+export function sourceFileOf(locate, className, fileName) {
+  const parts = className.split('.');
+  const simple = parts.pop().split('$')[0];
+  const directory = parts.join('/');
+  return fileName === undefined
+    ? (locate(directory, `${simple}.java`) ?? locate(directory, `${simple}.kt`))
+    : locate(directory, fileName);
+}
+
 function declaredKotlinFiles(projectRoot, sourceRoots) {
   return sourceRoots.flatMap((sourceRoot) => {
     const directory = path.join(projectRoot, sourceRoot);

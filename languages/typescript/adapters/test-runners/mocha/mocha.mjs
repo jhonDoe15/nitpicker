@@ -60,7 +60,7 @@ export async function runMocha(options, command) {
         '--reporter-option',
         `output=${mochaReportPath}`,
         '--timeout',
-        String(testTimeoutMs()),
+        String(testTimeoutMs(options, testFiles)),
         ...(options.rerun === undefined ? [] : ['--grep', options.rerun.namePattern]),
         ...testFiles,
       ],
