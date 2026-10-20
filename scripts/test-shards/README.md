@@ -47,7 +47,13 @@ independently of the `.mjs` harness extension. Tests have a three-minute executi
 Java build hooks have five minutes and Kotlin hooks three minutes. The lint rule enforces
 the corresponding finite declaration ceilings without path exemptions. Fixture setup and cleanup remain isolated by Vitest file isolation and runner.
 
-The current weights are planning estimates, not measurements of the new split. Unchanged files
+The framework cases merged from #279 add nine Java cases and one Kotlin case, giving 76/54
+cases in total. Their unchanged files use measured module durations from successful #279 CI:
+127 seconds for Java test frameworks ([run 39408625114](https://github.com/jhonDoe15/nitpicker/actions/runs/39408625114))
+and 99 seconds for Kotest ([run 39408625035](https://github.com/jhonDoe15/nitpicker/actions/runs/39408625035)).
+These measured weights are integrated into the same deterministic partition.
+
+The split-file weights remain planning estimates, not measurements of the new split. Unchanged files
 use the successful isolated-shard log totals, including hooks. Split case groups sum their
 measured case times plus original hook time and a conservative 25-second allowance for the
 additional first JVM build. Spring review/console weights are 88/150 seconds: their individual
@@ -57,8 +63,8 @@ snapshot builds, with extra startup allowance. One-way banned/allowed/hostile we
 the banned group also retains its measured 46.52-second exception comparison. These allocations
 are hypotheses to replace with new full-module measurements.
 
-The deterministic sequencer gives estimated Java loads of 111–157 seconds and Kotlin loads
-of 114–176 seconds, before runner setup. The goal is 2–3 minutes normally and under five minutes
+The deterministic sequencer gives estimated Java loads of 111–181 seconds and Kotlin loads
+of 117–181 seconds, before runner setup. The goal is 2–3 minutes normally and under five minutes
 including setup. The successful warm-cache sample on `0925469` measured Java jobs at 112/152/277 seconds
 (minimum/median/maximum) and Kotlin jobs at 110/150.5/206 seconds. Every shard stayed under
 five minutes; two shards per language exceeded three minutes. Java queue delays were
@@ -76,7 +82,7 @@ execution in the module duration, and writes sorted whole-second profiles. Recor
 with the same package filters and flags after obtaining an isolated timing sample.
 
 `node scripts/test-shards/verify-e2e-shards.mjs` collects through the real package scripts,
-checks the 67/53 discovered case counts, resolves CLI shard
+checks the 76/54 discovered case counts, resolves CLI shard
 options through Vitest, and exercises the configured sequencer. It requires the profile to cover
 every selected file exactly and each matrix shard to be nonempty, with every selected file in
 exactly one shard. Vitest list itself does not apply sharding, so its `--shard` output alone is

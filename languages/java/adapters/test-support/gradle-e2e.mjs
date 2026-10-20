@@ -3,6 +3,7 @@ import { mkdirSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 
 export const GRADLE_STEP_TIMEOUT_MS = 3 * 60 * 1000;
+const GIT_TIMEOUT_MS = 30_000;
 
 const GIT_ENVIRONMENT = {
   GIT_AUTHOR_NAME: 'test',
@@ -18,6 +19,7 @@ export function runGitIn(repository, ...args) {
     cwd: repository,
     encoding: 'utf8',
     env: { ...process.env, ...GIT_ENVIRONMENT },
+    timeout: GIT_TIMEOUT_MS,
   });
   if (result.status !== 0) {
     throw new Error(`git ${args.join(' ')} failed: ${result.stderr}`);
