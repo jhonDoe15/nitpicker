@@ -99,100 +99,104 @@ function within(outer, inner) {
   return outer.range[0] <= inner.range[0] && inner.range[1] <= outer.range[1];
 }
 
-export function createHandlerReader(sourceCode) {
-  const { visitorKeys } = sourceCode;
-
-  function* walk(root) {
-    const pending = [root];
-    for (const node of pending) {
-      if (node !== root && (SCOPES.has(node.type) || isReport(node))) {
-        continue;
-      }
-      yield node;
-      for (const key of visitorKeys[node.type] ?? []) {
-        const child = node[key];
-        pending.push(...(Array.isArray(child) ? child : [child]).filter(Boolean));
-      }
+function* walk(root, visitorKeys) {
+  const pending = [root];
+  for (const node of pending) {
+    if (node !== root && (SCOPES.has(node.type) || isReport(node))) {
+      continue;
+    }
+    yield node;
+    for (const key of visitorKeys[node.type] ?? []) {
+      const child = node[key];
+      pending.push(...(Array.isArray(child) ? child : [child]).filter(Boolean));
     }
   }
+}
 
-  function carries(node, variables) {
-    return (
-      node !== null &&
-      variables.some((variable) =>
-        variable.references.some((reference) => within(node, reference.identifier)),
-      )
-    );
+function carries(node, variables) {
+  return (
+    node !== null &&
+    variables.some((variable) =>
+      variable.references.some((reference) => within(node, reference.identifier)),
+    )
+  );
+}
+
+function aliasesAt(node, variables, sourceCode) {
+  if (node.type === 'VariableDeclarator' && carries(node.init, variables)) {
+    return sourceCode.getDeclaredVariables(node);
   }
-
-  function aliasesOf(handler, nodes, caught) {
-    let variables = [...caught];
-    for (let pass = 0; pass < ALIAS_PASSES; pass += 1) {
-      for (const node of nodes) {
-        if (node.type === 'VariableDeclarator' && carries(node.init, variables)) {
-          variables = [...new Set([...variables, ...sourceCode.getDeclaredVariables(node)])];
-        }
-        if (
-          node.type === 'AssignmentExpression' &&
-          node.operator === '=' &&
-          node.left.type === 'Identifier' &&
-          carries(node.right, variables)
-        ) {
-          const target = sourceCode
-            .getScope(node)
-            .references.find((reference) => reference.identifier === node.left)?.resolved;
-          if (target) variables = [...new Set([...variables, target])];
-        }
-      }
-    }
-    return variables;
+  if (
+    node.type !== 'AssignmentExpression' ||
+    node.operator !== '=' ||
+    node.left.type !== 'Identifier' ||
+    !carries(node.right, variables)
+  ) {
+    return [];
   }
+  const target = sourceCode
+    .getScope(node)
+    .references.find((reference) => reference.identifier === node.left)?.resolved;
+  return target ? [target] : [];
+}
 
-  function readOutside(variable, handler) {
-    return variable.references.some(
-      (reference) => reference.isRead() && !within(handler, reference.identifier),
-    );
+function aliasPass(nodes, caught, sourceCode) {
+  let variables = [...caught];
+  for (const node of nodes) {
+    variables = [...new Set([...variables, ...aliasesAt(node, variables, sourceCode)])];
   }
+  return variables;
+}
 
-  function assignmentEvidence(node, variables, handler) {
-    if (!carries(node.right, variables)) {
-      return false;
-    }
-    if (node.operator !== '=' || node.left.type !== 'Identifier') {
+function readOutside(variable, handler) {
+  return variable.references.some(
+    (reference) => reference.isRead() && !within(handler, reference.identifier),
+  );
+}
+
+function assignmentEvidence(node, variables, handler) {
+  if (!carries(node.right, variables)) {
+    return false;
+  }
+  if (node.operator !== '=' || node.left.type !== 'Identifier') {
+    return true;
+  }
+  const target = variables.find((variable) => variable.name === node.left.name);
+  return target !== undefined && readOutside(target, handler);
+}
+
+function isEvidence(node, variables, handler) {
+  switch (node.type) {
+    case 'ThrowStatement':
       return true;
-    }
-    const target = variables.find((variable) => variable.name === node.left.name);
-    return target !== undefined && readOutside(target, handler);
+    case 'CallExpression':
+    case 'NewExpression':
+      return (
+        !isEmptyValue(node) &&
+        !FORMATTERS.has(calleeName(node)) &&
+        node.arguments.some((argument) => carries(argument, variables))
+      );
+    case 'ReturnStatement':
+      return (
+        node.argument !== null &&
+        (node.argument.type === 'ObjectExpression' || carries(node.argument, variables))
+      );
+    case 'AssignmentExpression':
+      return assignmentEvidence(node, variables, handler);
+    case 'VariableDeclarator':
+      return false;
+    default:
+      return false;
   }
+}
 
-  function isEvidence(node, variables, handler) {
-    switch (node.type) {
-      case 'ThrowStatement':
-        return true;
-      case 'CallExpression':
-      case 'NewExpression':
-        return (
-          !isEmptyValue(node) &&
-          !FORMATTERS.has(calleeName(node)) &&
-          node.arguments.some((argument) => carries(argument, variables))
-        );
-      case 'ReturnStatement':
-        return (
-          node.argument !== null &&
-          (node.argument.type === 'ObjectExpression' || carries(node.argument, variables))
-        );
-      case 'AssignmentExpression':
-        return assignmentEvidence(node, variables, handler);
-      case 'VariableDeclarator':
-        return false;
-      default:
-        return false;
-    }
-  }
-
+export function createHandlerReader(sourceCode) {
   return function handles(handler) {
-    const nodes = [...walk(handler.body)];
-    const variables = aliasesOf(handler, nodes, sourceCode.getDeclaredVariables(handler));
+    const nodes = [...walk(handler.body, sourceCode.visitorKeys)];
+    const variables = Array.from({ length: ALIAS_PASSES }).reduce(
+      (caught) => aliasPass(nodes, caught, sourceCode),
+      sourceCode.getDeclaredVariables(handler),
+    );
     return nodes.some((node) => isEvidence(node, variables, handler));
   };
 }

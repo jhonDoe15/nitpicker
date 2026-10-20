@@ -71,7 +71,7 @@ export const kotlinRuleCases = [
     banned:
       'fun number(text: String): Int =\n    try {\n        text.toInt()\n    } catch (error: Exception) {\n        error.hashCode()\n    }\n',
     allowed:
-      'fun number(text: String): Int =\n    try {\n        text.toInt()\n    } catch (error: NumberFormatException) {\n        0\n    }\n',
+      'fun number(text: String): Int =\n    try {\n        text.toInt()\n    } catch (error: NumberFormatException) {\n        throw IllegalArgumentException("not a number", error)\n    }\n',
   },
   {
     id: 'globalScope',
