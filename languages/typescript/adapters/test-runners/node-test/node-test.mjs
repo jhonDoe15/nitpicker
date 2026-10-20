@@ -115,7 +115,7 @@ function testArguments(options, command, reportPath) {
     '--test',
     `--test-reporter=${REPORTER}`,
     `--test-reporter-destination=${reportPath}`,
-    `--test-timeout=${String(testTimeoutMs())}`,
+    `--test-timeout=${String(testTimeoutMs(options, testFiles, { hooks: false }))}`,
     `--test-concurrency=${String(workerCount(options))}`,
     ...(options.rerun === undefined ? [] : [`--test-name-pattern=${options.rerun.namePattern}`]),
     ...scriptOptions,

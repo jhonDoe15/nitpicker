@@ -16,5 +16,9 @@ export default defineConfig({
     include: ['{core,shared,languages,scripts}/**/*.test.mjs', 'evals/**/*.test.mjs'],
     testTimeout: 30_000,
     hookTimeout: 30_000,
+    setupFiles:
+      process.env.NITPICKER_JAVA_E2E === '1' || process.env.NITPICKER_KOTLIN_E2E === '1'
+        ? ['./scripts/test-shards/repository-timeouts.mjs']
+        : [],
   },
 });

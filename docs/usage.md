@@ -859,6 +859,74 @@ own tools do:
 
 Without a project `tsconfig.json` or Vitest config, nitpicker uses its own defaults.
 
+### Test timeout tiers
+
+With the TypeScript or JavaScript preset, `tools.tests.timeouts` sets finite execution deadlines
+and permitted timeout declarations. Each field inherits independently, in this order:
+
+1. nitpicker's packaged defaults;
+2. `languages[subjectLanguage]`;
+3. repository `defaults`;
+4. the matching named `projects` entry.
+
+```json
+{
+  "tools": {
+    "tests": {
+      "timeouts": {
+        "languages": {
+          "java": {
+            "testDeclarationCeilingMs": 180000,
+            "hookDeclarationCeilingMs": 300000
+          }
+        },
+        "defaults": { "testTimeoutMs": 30000, "hookTimeoutMs": 30000 },
+        "projects": {
+          "java-e2e": {
+            "language": "java",
+            "include": ["tests/jvm/**/*.test.mjs"],
+            "testTimeoutMs": 180000,
+            "hookTimeoutMs": 300000
+          }
+        }
+      }
+    }
+  }
+}
+```
+
+The subject language is explicit: a Vitest `.mjs` test that builds a Java project can select the
+Java tier while ordinary JavaScript tests keep their normal limits. `include` contains nonempty
+project-relative glob patterns using `**`, `*`, `?` and `{a,b}`. A file matching multiple named
+projects is an error; nitpicker never silently chooses the first or largest allowance. Moving a
+test inside its named suite keeps the same bounded policy. These entries do not disable the
+timeout rule or exempt files from it.
+
+`testTimeoutMs` and `hookTimeoutMs` control execution. `testDeclarationCeilingMs` and
+`hookDeclarationCeilingMs` limit explicit declarations in tests and hooks. All values are positive
+whole milliseconds. Without these settings, execution retains the existing runner behavior:
+the JavaScript adapters allow 10 seconds plus the larger observed-runtime budget, normally
+40 seconds, and preserve native hook settings. Declaration ceilings remain 10 seconds. An omitted
+hook deadline keeps the runner's hook default. A permitted declaration ceiling and a runner's
+execution deadline serve different purposes and need not be equal.
+
+The existing `thresholds.unitTestSeconds` and `thresholds.integrationTestSeconds` remain
+observed-performance budgets, normally 5 and 30 seconds. They produce slow-test findings and are
+not timeout declaration ceilings. A shard's total execution time is also separate: it can contain
+several cases and shared builds. Give shared build hooks their own measured allowance rather
+than raising every unit test's limit.
+
+Vitest applies the resolved deadlines per file while retaining inline project setup and coverage.
+Other JavaScript runners reject scoped or independent hook settings they cannot faithfully
+represent. Explicit timeout policy with external Vitest project references is rejected rather
+than silently leaving those projects unconfigured. Native Gradle/Maven/pytest execution settings
+are separate integrations; this option currently belongs to the JavaScript test harness.
+
+Increasing a resolved deadline or declaration ceiling, expanding a suite's membership, or removing
+a stricter override requires the existing policy-change review. Equivalent tier moves and project
+renames retain their effective budgets. The approval digest still needs explicit human acceptance;
+introducing this configuration does not accept its own policy changes.
+
 ### Your project's tool configs
 
 By default every tool runs with nitpicker's own config, so the project's settings can't loosen the

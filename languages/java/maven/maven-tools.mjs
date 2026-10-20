@@ -63,13 +63,14 @@ export function toolDependencies(pinned, launcherVersions = [], extraTools = [])
       dependency(`com.uber.nullaway:nullaway:${pinned.nullAway}`),
     ],
     jacoco: [dependency(`org.jacoco:org.jacoco.cli:${pinned.jacoco}:nodeps`)],
-    pit: [
-      dependency(`org.pitest:pitest-command-line:${pinned.pitest}`),
+    pit: [dependency(`org.pitest:pitest-command-line:${pinned.pitest}`)],
+    'pit-junit5': [
       dependency(
         `org.pitest:pitest-junit5-plugin:${pinned.pitestJunit5}`,
         JUNIT_PLATFORM_EXCLUSIONS,
       ),
     ],
+    'pit-testng': [dependency(`org.pitest:pitest-testng-plugin:${pinned.pitestTestng}`)],
     ...Object.fromEntries(
       launcherVersions.map((version) => [
         `launcher-${version}`,
