@@ -288,7 +288,7 @@ describe.skipIf(!enabled)('Error Prone through the init script', () => {
     runGradle(root, 'classes');
     regularBefore = regularClass(root);
     run = runGradle(root, 'nitpickerErrorProne');
-  }, GRADLE_STEP_TIMEOUT_MS);
+  }, 300_000);
 
   afterAll(() => {
     for (const directory of projects.splice(0)) rmSync(directory, { recursive: true, force: true });
@@ -429,21 +429,17 @@ describe.skipIf(!enabled)('Error Prone through the init script', () => {
     expect(regularClass(root).equals(regularBefore)).toBe(true);
   });
 
-  it(
-    'fails the build, with no report, when its own compile fails',
-    () => {
-      const broken = project(BREAK_ONLY_THE_EXTRA_COMPILE);
-      const result = runGradle(broken, 'nitpickerErrorProne');
-      const cause = /Error Prone could not compile the sources: (.*)$/m.exec(result.stderr)?.[1];
+  it('fails the build, with no report, when its own compile fails', () => {
+    const broken = project(BREAK_ONLY_THE_EXTRA_COMPILE);
+    const result = runGradle(broken, 'nitpickerErrorProne');
+    const cause = /Error Prone could not compile the sources: (.*)$/m.exec(result.stderr)?.[1];
 
-      expect(result.status).toBe(1);
-      expect(cause).toBe(
-        `${path.join(broken, 'src/main/java/demo/Broken.java')}:1: incompatible types: java.lang.String cannot be converted to int`,
-      );
-      expect(existsSync(path.join(broken, 'build/nitpicker/errorprone.json'))).toBe(false);
-    },
-    GRADLE_STEP_TIMEOUT_MS,
-  );
+    expect(result.status).toBe(1);
+    expect(cause).toBe(
+      `${path.join(broken, 'src/main/java/demo/Broken.java')}:1: incompatible types: java.lang.String cannot be converted to int`,
+    );
+    expect(existsSync(path.join(broken, 'build/nitpicker/errorprone.json'))).toBe(false);
+  }, 180_000);
 
   it.each(LEVEL_FORMS)(
     'compiles a project built with %s in the same form',
@@ -458,6 +454,6 @@ describe.skipIf(!enabled)('Error Prone through the init script', () => {
 
       expect([result.status, rules.includes('FutureReturnValueIgnored')]).toStrictEqual([0, true]);
     },
-    GRADLE_STEP_TIMEOUT_MS,
+    180_000,
   );
 });

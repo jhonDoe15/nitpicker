@@ -433,9 +433,10 @@ classes, including the Java classes of a mixed module; for a class whose source 
 are descriptive, next to the `mutation-summary` counts. The reason is measured, below. The
 Arcmutate Kotlin plugin, which exists for this problem, is a paid product and is not used.
 
-**What runs.** The Java preset's `nitpickerPit` (PIT 1.17.4, `pitest-junit5-plugin` 1.2.1, default
-mutators, the project's own tests) now mutates `sourceSets.main.output.classesDirs`, which holds the
-Kotlin classes next to the Java ones; the other class tools keep to `compileJava`'s output. The
+**What runs.** The Java preset's `nitpickerPit` (PIT 1.17.4 with the test plugins the project's
+framework needs, `pitest-junit5-plugin` 1.2.1 for Kotest and JUnit 5, default mutators, the
+project's own tests) now mutates `sourceSets.main.output.classesDirs`, which holds the Kotlin
+classes next to the Java ones; the other class tools keep to `compileJava`'s output. The
 ingester finds a class's source file under both kinds of source root from PIT's `sourceFile`
 (also when the directory does not match the package, as for coverage).
 PIT's built-in `FKOTLIN` filter (on by default) removes only mutants at line 0 of a `.kt` file,

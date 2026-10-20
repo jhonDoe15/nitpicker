@@ -20,7 +20,7 @@ import { copyTestResults } from '../../maven/results/maven-test-results.mjs';
 import { ingestArchunit } from '../../ingest/archunit.mjs';
 import { ingestJacoco } from '../../ingest/coverage-reports/jacoco.mjs';
 import { ingestPit } from '../../ingest/pit.mjs';
-import { sourceLocator } from '../reporting/kotlin-reports.mjs';
+import { sourceFileOf, sourceLocator } from '../reporting/kotlin-reports.mjs';
 import { readSlowTestFindings } from '../test-times/slow-tests.mjs';
 
 const CLOCK_SLACK_MS = 2000;
@@ -97,9 +97,7 @@ function fixtureFindings({ module, reportDir, policy, mutations }) {
   const testRoots = relativeRoots(module.testSourceRoots);
   const locate = sourceLocator(projectRoot, [...sourceRoots, ...testRoots]);
   function resolvePath(className, fileName) {
-    const parts = className.split('.');
-    const simple = parts.pop().split('$')[0];
-    return locate(parts.join('/'), fileName ?? `${simple}.java`);
+    return sourceFileOf(locate, className, fileName);
   }
   const jacoco = readFileSync(path.join(reportDir, 'jacoco.xml'), 'utf8');
   const archunitDir = path.join(reportDir, 'archunit');
