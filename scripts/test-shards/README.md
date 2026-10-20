@@ -42,9 +42,10 @@ The refined split uses 16 Java and 10 Kotlin runners. Java preset cases are grou
 pairs, Maven into five behavior groups, Kotlin lint into five pairs and coverage/structure into
 three groups. Spring retains its three existing independent build hooks in separate files.
 Kotlin one-way rules build only the banned, allowed or hostile-config snapshot needed by their
-file, rather than rebuilding all three snapshots in every group. Each original assertion and
-explicit test/hook timeout is retained; the timeout exception lists follow those exact moved
-Java files. Fixture setup and cleanup remain isolated by Vitest file isolation and runner.
+file, rather than rebuilding all three snapshots in every group. Each original assertion is retained. Named timeout projects select the Java/Kotlin test subject
+independently of the `.mjs` harness extension. Tests have a three-minute execution deadline;
+Java build hooks have five minutes and Kotlin hooks three minutes. The lint rule enforces
+the corresponding finite declaration ceilings without path exemptions. Fixture setup and cleanup remain isolated by Vitest file isolation and runner.
 
 The current weights are planning estimates, not measurements of the new split. Unchanged files
 use the successful isolated-shard log totals, including hooks. Split case groups sum their
@@ -58,7 +59,11 @@ are hypotheses to replace with new full-module measurements.
 
 The deterministic sequencer gives estimated Java loads of 111–157 seconds and Kotlin loads
 of 114–176 seconds, before runner setup. The goal is 2–3 minutes normally and under five minutes
-including setup. Those are targets, not observed new CI results. The prior setup overhead was
+including setup. The successful warm-cache sample on `0925469` measured Java jobs at 112/152/277 seconds
+(minimum/median/maximum) and Kotlin jobs at 110/150.5/206 seconds. Every shard stayed under
+five minutes; two shards per language exceeded three minutes. Java queue delays were
+116–255 seconds, separate from job execution. These measurements predate the layered timeout
+change; they do not prove cold-cache behavior. The prior setup overhead was
 29–45 seconds per job. More isolated runners repeat dependency/setup work and compete for
 account runner capacity, so queue delay and total runner minutes can rise even if each job is
 faster. One active file per runner avoids competing JVM builds inside a shard.

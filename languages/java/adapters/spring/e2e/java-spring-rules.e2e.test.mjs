@@ -18,21 +18,18 @@ import {
 describe.skipIf(!enabled)('Spring rules on a Spring project', () => {
   let projectRoot;
 
-  beforeAll(
-    () => {
-      projectRoot = path.join(mkdtempSync(path.join(tmpdir(), 'nitpicker-spring-')), 'shop');
-      cpSync(fixture, projectRoot, { recursive: true });
-      const result = spawnSync(
-        gradle,
-        ['--console=plain', '--quiet', '-I', INIT_SCRIPT, 'nitpickerPmd', 'nitpickerJava'],
-        { cwd: projectRoot, encoding: 'utf8', timeout: 15 * 60 * 1000 },
-      );
-      if (result.status !== 0) {
-        throw new Error(`Gradle failed: ${result.stderr}`);
-      }
-    },
-    16 * 60 * 1000,
-  );
+  beforeAll(() => {
+    projectRoot = path.join(mkdtempSync(path.join(tmpdir(), 'nitpicker-spring-')), 'shop');
+    cpSync(fixture, projectRoot, { recursive: true });
+    const result = spawnSync(
+      gradle,
+      ['--console=plain', '--quiet', '-I', INIT_SCRIPT, 'nitpickerPmd', 'nitpickerJava'],
+      { cwd: projectRoot, encoding: 'utf8', timeout: 180_000 },
+    );
+    if (result.status !== 0) {
+      throw new Error(`Gradle failed: ${result.stderr}`);
+    }
+  }, 300_000);
 
   afterAll(() => {
     if (projectRoot !== undefined) {
