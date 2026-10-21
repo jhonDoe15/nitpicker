@@ -43,6 +43,12 @@ describe.skipIf(!enabled)('explicit cancellation handlers', () => {
       ['finally overrides re-raise', 'try:\n    raise\nfinally:\n    return', lost],
       ['finally replaces cancellation', 'try:\n    raise\nfinally:\n    raise ValueError()', lost],
       ['rebound error', 'error = ValueError()\nraise error', lost],
+      ['redefined caught name', 'def error():\n    pass\nraise error', lost],
+      [
+        'import replaces caught name',
+        'from builtins import ValueError as error\nraise error',
+        lost,
+      ],
       ['nested definition is not propagation', 'def propagate():\n    raise\nreturn', lost],
       ['unreachable re-raise', 'return\nraise', lost],
       ['cleanup then return', 'await cleanup()\nreturn', lost],
