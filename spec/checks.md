@@ -155,3 +155,14 @@ Notes:
   `structure` and `duplicates` 1 minute.
 - "No threshold" means the gate is differential: the finding fails because it is new, not because
   it crosses a numeric limit.
+
+## Python cancellation propagation
+
+| Check | Scope | Implementation | Status |
+| --- | --- | --- | --- |
+| `python-rules/cancellation-not-propagated` | Source and tests; explicit asyncio, Trio and AnyIO cancellation handlers | `languages/python/rules/errors/cancellation.py` | enforceable |
+
+See [Python cancellation propagation](../docs/python-preset.md#cancellation-propagation) for backend
+recognition, allowed scope boundaries and limits of the initial path model. This replaces a
+duplicate `swallowed-exception` finding for the same handler; it does not analyze arbitrary helper
+implementations, broad catches, loops or nested exception dispatch.
