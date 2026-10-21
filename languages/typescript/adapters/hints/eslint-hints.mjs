@@ -181,6 +181,12 @@ const MESSAGE_REWRITERS = new Map([
   ['@typescript-eslint/no-floating-promises', floatingPromiseMessage],
   ['nitpicker/naming-convention', appendHint(NAMING_HINT)],
   ['@typescript-eslint/explicit-module-boundary-types', boundaryTypesMessage],
+  [
+    'require-atomic-updates',
+    appendHint(
+      ` Await the new value before reading shared state, or serialize the whole read/modify/write operation. If access is already serialized, ${EXCEPTION_ROUTE}.`,
+    ),
+  ],
   ['no-eval', () => EVAL_MESSAGE],
   ['no-param-reassign', appendHint(PARAM_REASSIGN_HINT)],
   ['curly', appendHint(CURLY_HINT)],
