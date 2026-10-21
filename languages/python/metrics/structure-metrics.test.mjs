@@ -233,23 +233,30 @@ describe.skipIf(!pythonUsable())('with python3 3.10 or newer on the PATH', () =>
       expect(metrics.map(({ file, name }) => `${file} ${name}`)).toEqual(['ok.py f']);
     });
 
-    it('fails with a clear message on a file too deeply nested for the parser instead of skipping it', () => {
+    it('reports parser recursion failure instead of silently skipping the file', () => {
       const directory = scratchDirectory();
-      writeFileSync(
-        path.join(directory, 'deep.py'),
-        `X = ${Array.from({ length: 60_000 }, () => '1').join(' + ')}\n`,
-      );
+      writeFileSync(path.join(directory, 'deep.py'), 'X = 1 + 1\n');
       writeFileSync(path.join(directory, 'listing.txt'), 'deep.py');
 
       const result = spawnSync(
         'python3',
         [
+          '-c',
+          [
+            'import ast, pathlib, runpy, sys',
+            'def exhausted_parser(*args, **kwargs):',
+            '    raise RecursionError("parser budget exhausted")',
+            'ast.parse = exhausted_parser',
+            'sys.argv = sys.argv[1:]',
+            'sys.path.insert(0, str(pathlib.Path(sys.argv[0]).parent))',
+            'runpy.run_path(sys.argv[0], run_name="__main__")',
+          ].join('\n'),
           script,
           path.join(directory, STRUCTURE_REPORT),
           directory,
           path.join(directory, 'listing.txt'),
         ],
-        { encoding: 'utf8' },
+        { encoding: 'utf8', timeout: 10_000 },
       );
 
       expect([result.status, result.stderr]).toEqual([
