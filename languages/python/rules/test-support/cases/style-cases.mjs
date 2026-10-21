@@ -1,6 +1,14 @@
 import { everyRule as every, ruffCases } from './define.mjs';
 
 export const STYLE_CASES = [
+  ...ruffCases('ruff-pitfalls', [
+    ['ASYNC210', 'worker thread'],
+    ['DTZ005', 'timezone.utc'],
+    ['LOG001', 'logging.getLogger'],
+    ['T100', 'remove the debugger'],
+    ['PLE1206', 'placeholder'],
+    ['PLW1510', 'check=True'],
+  ]),
   ...ruffCases(
     'logging-format',
     every(['G001', 'G002', 'G003', 'G004'], 'pass the values as arguments'),

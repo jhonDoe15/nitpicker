@@ -6,9 +6,12 @@ import { RUFF_CONFIG, isStableRule } from '../adapters/configuration/python-ruff
 
 const enabled = process.env.NITPICKER_PYTHON_E2E === '1';
 const ruff = process.env.NITPICKER_RUFF ?? 'ruff';
-const LISTED_GROUPS = /^(?:G|N|ERA|ARG|PT|S|TRY|FBT)\d+$/u;
+const LISTED_GROUPS = /^(?:G|N|ERA|ARG|PT|S|TRY|FBT|ASYNC|DTZ|LOG|PLE|PLW|T10)\d+$/u;
 const DECLINED = new Set([
   'FBT003',
+  'PLW1641',
+  'PT004',
+  'PT005',
   'PT009',
   'PT027',
   'S101',
@@ -21,12 +24,15 @@ const DECLINED = new Set([
   'S112',
   'S310',
   'S311',
+  'S320',
+  'S410',
   'S601',
   'S603',
   'S606',
   'S607',
   'S608',
   'TRY003',
+  'TRY200',
   'TRY300',
   'TRY301',
 ]);
@@ -34,6 +40,7 @@ const DECLINED = new Set([
 function stableCodesOfListedGroups() {
   const result = spawnSync(ruff, ['rule', '--all', '--output-format', 'json'], {
     encoding: 'utf8',
+    timeout: 10_000,
     maxBuffer: 64 * 1024 * 1024,
   });
   return JSON.parse(result.stdout)
