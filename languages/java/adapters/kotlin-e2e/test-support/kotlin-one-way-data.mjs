@@ -34,6 +34,14 @@ style:
         reason: 'The project allows run.'
       - value: 'java.lang.Thread.sleep'
         reason: 'Use a scheduler or a test clock instead of sleeping.'
+complexity:
+  active: false
+  StringLiteralDuplication:
+    active: false
+    severity: info
+    excludes: ['**/*.kt']
+    threshold: 100
+    ignoreStringsRegex: '.*'
 coroutines:
   active: false
 potential-bugs:

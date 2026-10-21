@@ -18,6 +18,7 @@ import { readSuppressionFindings } from '../kotlin/rules/kotlin-suppressions.mjs
 
 const DETEKT_TOOL = 'detekt';
 const DETEKT_REPORT = 'detekt.sarif';
+const REPEATED_STRING_RULE = 'detekt.complexity.StringLiteralDuplication';
 const KTLINT_REPORT = 'ktlint.sarif';
 const KTFMT_REPORT = 'ktfmt.txt';
 const KTLINT_PREFIX = 'ktlint.';
@@ -100,7 +101,7 @@ export function readKotlinFindings(context, crapLimit) {
   const testRoots = manifest.kotlinTestSourceRoots ?? [];
   const helpers = context.conventions?.['kotlin.assertionHelpers'] ?? [];
   return [
-    ...detektFindings(reportRoot, formatAdvice),
+    ...detektFindings(reportRoot, formatAdvice, testRoots),
     ...readSuppressionFindings(projectRoot, kotlinLintedRoots(manifest)),
     ...readCatchLogFindings(projectRoot, kotlinLintedRoots(manifest)),
     ...readTestAssertionFindings(projectRoot, testRoots, helpers),
@@ -142,10 +143,17 @@ function withProjectConfigRoute(finding, advice) {
     : { ...finding, message: appendSentence(finding.message, advice.detekt) };
 }
 
-function detektFindings(reportRoot, advice) {
-  return ingestSarif(readSarif(reportRoot, DETEKT_REPORT), { tool: DETEKT_TOOL }).findings.map(
-    (finding) => withProjectConfigRoute(finding, advice),
-  );
+function detektFindings(reportRoot, advice, testRoots) {
+  return ingestSarif(readSarif(reportRoot, DETEKT_REPORT), { tool: DETEKT_TOOL })
+    .findings.filter(
+      (finding) =>
+        finding.rule !== REPEATED_STRING_RULE ||
+        !testRoots.some((root) => {
+          const relative = path.posix.relative(root.replaceAll('\\', '/'), finding.path);
+          return relative !== '..' && !relative.startsWith('../');
+        }),
+    )
+    .map((finding) => withProjectConfigRoute(finding, advice));
 }
 
 function ktlintSwitch(ruleId) {

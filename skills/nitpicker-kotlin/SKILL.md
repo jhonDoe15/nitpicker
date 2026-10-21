@@ -87,3 +87,8 @@ it with `npx skills add jhonDoe15/nitpicker --skill nitpicker-java`.
   waits, a test slice instead of a full context.
 - A function or file already over a limit may be edited but must not get worse: put new code in a
   new function or file and call it.
+
+Repeated production strings of five characters or more used at least three times in a file must
+share a named constant (`detekt.complexity.StringLiteralDuplication`). Annotations and standard test
+paths are exempt. Independent concepts with the same text take a reviewed path exception in
+`nitpicker.config.json`; project detekt settings cannot disable this rule.

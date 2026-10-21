@@ -93,6 +93,10 @@ Before you change code other modules use, fix a bug, or add a UI state, read
 - `async`/`await`, never `.then()`. No floating promises.
 - Named exports only. No comments; a `/** ... */` doc comment on an export is the one exception.
 
+- Name a constant for a string used three times or more in a production file (five characters or
+  longer). Imports, property names, types and tests are exempt; independent concepts with the same
+  text take a reviewed `nitpicker/no-repeated-string-literal` path exception.
+
 ## Production rules
 
 - Wire clients, servers, pools and config in the composition root (`src/main/composition-root.ts`,

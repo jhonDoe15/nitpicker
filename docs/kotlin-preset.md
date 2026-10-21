@@ -86,9 +86,18 @@ Kotlin classes (see [Mutation](#mutation-report-only-for-kotlin)), and jdeps rea
   `**/test/**` where it is noise in tests: `MagicNumber`, `StringLiteralDuplication`, `TooManyFunctions`,
   `LateinitUsage`, `SpreadOperator`, `FunctionNaming`, `ForEachOnRange`, `InstanceOfCheckForException`,
   `ThrowingExceptionsWithoutMessageOrCause`, the `KDocReferencesNonPublicProperty` and `Undocumented*` rules. These stay
-  off for tests. The [one-way rules](#one-way-rules) are pinned with `excludes: []`, so they apply
+  off for tests. The other [one-way rules](#one-way-rules) are pinned with `excludes: []`, so they apply
   in tests too (`!!`, `GlobalScope`, `runBlocking`, scope functions, the broad catch). A legacy finding in a test
   file is baselined like one in main code, because both snapshots are analyzed with the same init script.
+- **Repeated strings.** `detekt.complexity.StringLiteralDuplication` is enabled in the enforced
+  layer of pinned detekt 1.23.8, with warning severity and threshold 3. Name a constant and reuse it.
+  Strings shorter than five characters and annotation arguments are excluded; detekt's standard test
+  path exclusions are retained, and report ingestion also excludes declared Kotlin test source roots.
+  Imports contain no string expressions. The pinned rule compares
+  Kotlin string-template source content, including interpolated templates; it does not resolve
+  runtime values or normalize escape spellings. It reports once per repeated content per file.
+  Project detekt configuration cannot disable or retune it; use a reviewed path exception for
+  `detekt.complexity.StringLiteralDuplication` in `nitpicker.config.json` when appropriate.
 - **Config.** By default detekt runs without the project's config: the layers are detekt's defaults
   (`--build-upon-default-config`), the convention layer (a `style: WildcardImport: active: false`
   file, only when `kotlin.wildcardImports` is `wildcard`), Nitpicker's own

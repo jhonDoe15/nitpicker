@@ -1,4 +1,5 @@
 import { readFileSync } from 'node:fs';
+import { parse } from 'yaml';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import {
@@ -105,31 +106,26 @@ describe('one-way rule messages', () => {
   it('lists each rule once under the id detekt reports', () => {
     expect(new Set(ONE_WAY_RULE_IDS).size).toBe(ONE_WAY_RULE_IDS.length);
     for (const id of ONE_WAY_RULE_IDS) {
-      expect(id).toMatch(/^detekt\.(?:potential-bugs|exceptions|coroutines|style)\.[A-Z]\w+$/);
+      expect(id).toMatch(
+        /^detekt\.(?:potential-bugs|exceptions|coroutines|style|complexity)\.[A-Z]\w+$/,
+      );
     }
   });
 });
 
 describe('nitpicker-detekt.yml', () => {
   function parseRulesets(text) {
-    const rulesets = {};
-    let ruleset;
-    let rule;
-    for (const [, indent, key, value] of text
-      .split('\n')
-      .map((line) => /^( *)([\w-]+):(?: ([^\n]*))?$/.exec(line) ?? [])
-      .filter((match) => match.length > 0)) {
-      if (indent === '') {
-        ruleset = { settings: {}, rules: {} };
-        rulesets[key] = ruleset;
-      } else if (indent.length === 2 && /^[A-Z]/.test(key)) {
-        rule = {};
-        ruleset.rules[key] = rule;
-      } else {
-        (indent.length === 2 ? ruleset.settings : rule)[key] = value;
-      }
-    }
-    return rulesets;
+    return Object.fromEntries(
+      Object.entries(parse(text)).map(([name, values]) => [
+        name,
+        {
+          settings: Object.fromEntries(
+            Object.entries(values).filter(([key]) => !/^[A-Z]/.test(key)),
+          ),
+          rules: Object.fromEntries(Object.entries(values).filter(([key]) => /^[A-Z]/.test(key))),
+        },
+      ]),
+    );
   }
 
   const rulesets = parseRulesets(
@@ -151,13 +147,26 @@ describe('nitpicker-detekt.yml', () => {
   });
 
   it('pins every ruleset and rule against a project config that switches it off or narrows it', () => {
-    const pinned = { active: 'true', excludes: '[]', ignoreAnnotated: '[]', includes: '[]' };
+    const pinned = { active: true, excludes: [], ignoreAnnotated: [], includes: [] };
     for (const { settings, rules } of Object.values(rulesets)) {
       expect(settings).toEqual(pinned);
-      for (const rule of Object.values(rules)) {
+      for (const [name, rule] of Object.entries(rules)) {
         const { active, excludes, ignoreAnnotated, includes, severity } = rule;
         expect({ active, excludes, ignoreAnnotated, includes, severity }).toEqual({
           ...pinned,
+          excludes:
+            name === 'StringLiteralDuplication'
+              ? [
+                  '**/test/**',
+                  '**/androidTest/**',
+                  '**/commonTest/**',
+                  '**/jvmTest/**',
+                  '**/androidUnitTest/**',
+                  '**/androidInstrumentedTest/**',
+                  '**/jsTest/**',
+                  '**/iosTest/**',
+                ]
+              : [],
           severity: 'warning',
         });
       }

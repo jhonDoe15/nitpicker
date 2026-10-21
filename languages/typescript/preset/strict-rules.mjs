@@ -28,6 +28,7 @@ export const strictEslintRuleIds = [
   'nitpicker/no-forwarding-wrapper',
   'nitpicker/no-handwritten-boundary-guard',
   'nitpicker/no-magic-numbers',
+  'nitpicker/no-repeated-string-literal',
   'nitpicker/no-module-level-let',
   'nitpicker/no-module-level-mutable-state',
   'nitpicker/no-mutating-method-in-domain',

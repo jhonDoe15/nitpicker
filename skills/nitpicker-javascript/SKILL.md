@@ -138,6 +138,10 @@ line) is a finding.
   destructure a `require`: `const { basename } = require('node:path');`, not
   `const path = require('node:path');`.
 
+Name a constant for a string used three times or more in a production file (five characters or
+longer). Imports, property names and tests are exempt; independent concepts with the same text take
+a reviewed `nitpicker/no-repeated-string-literal` path exception.
+
 ## domain/ is deeply readonly
 
 - `const` only, no loops, no mutation: use `map`, `filter`, `flatMap`, `reduce` with an initial
