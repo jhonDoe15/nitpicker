@@ -1,6 +1,7 @@
 import ast
 
 from boundary.pydantic_models import model_findings
+from boundary.type_laundering import check as type_laundering
 from boundary.type_aliases import has_any, is_functional_type
 from checks.common import finding
 
@@ -64,4 +65,4 @@ def check(context):
         found.extend(visitor.findings)
     if not context.tests:
         found.extend(model_findings(context))
-    return found
+    return found + type_laundering(context, found)
