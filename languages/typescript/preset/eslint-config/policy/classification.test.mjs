@@ -17,6 +17,7 @@ const BRANCH_STRICT_RULES = [
   'nitpicker/naming-convention',
   'nitpicker/no-disabled-tls-verification',
   'nitpicker/no-magic-numbers',
+  'nitpicker/no-repeated-string-literal',
   'nitpicker/no-module-level-mutable-state',
   'nitpicker/no-process-access-outside-composition-root',
   'nitpicker/no-shell-string-command',

@@ -5,6 +5,16 @@ const COROUTINE_IMPORTS =
 
 export const kotlinRuleCases = [
   {
+    id: 'repeatedStrings',
+    rule: 'detekt.complexity.StringLiteralDuplication',
+    message:
+      'Multiple occurrences of the same string literal within a single file detected. Prefer extracting the string literal into a property or constant.',
+    allowedForm: 'Name a constant',
+    banned: 'fun labels(): List<String> = listOf("pending", "pending", "pending")\n',
+    allowed:
+      'private const val PENDING = "pending"\nfun labels(): List<String> = listOf(PENDING, PENDING, PENDING)\n',
+  },
+  {
     id: 'nullAssertion',
     rule: 'detekt.potential-bugs.UnsafeCallOnNullableType',
     message:

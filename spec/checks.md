@@ -82,6 +82,17 @@ number about a function (`nitpicker/cognitive-complexity`, `complexity`, `max-li
 | `mutation`         | `mutant-survived`, `mutant-nocoverage`                                                                                                                                                                                                                                                                           | see [Custom rules](#custom-rules)                                                                                                                                                       | enforceable                                                                               |
 |                    | other mutant statuses, `mutation-summary`                                                                                                                                                                                                                                                                        | none                                                                                                                                                                                    | report-only                                                                               |
 
+## Repeated string literals
+
+Production strings used at least three times in a file should share a named constant. TypeScript
+and JavaScript enforce `nitpicker/no-repeated-string-literal` through `eslint-lint`; Kotlin enables
+`detekt.complexity.StringLiteralDuplication` in pinned detekt 1.23.8; Python already enforces
+`python-rules/repeated-string-literal`. These use a five-character minimum and exempt tests and
+imports. Language-specific contract, annotation and template exclusions are described in the preset
+guides. TypeScript/JavaScript and Python report occurrences after the second; detekt reports one
+finding per repeated content. All use existing differential comparison and reviewed path exceptions.
+Java retains PMD's existing `AvoidDuplicateLiterals` policy.
+
 ## Custom rules
 
 Generated from `shared/policy.mjs`. "enforced" means the language's adapter produces the

@@ -342,6 +342,13 @@ only the library follows the project. Nitpicker reads `dependencies`, `peerDepen
   The check is the TypeScript counterpart of the Java preset's `javac/deprecation` and
   `javac/removal` lint. A deprecation without a replacement, or an API the project must keep
   calling, takes an exception for the rule in `nitpicker.config.json`.
+- Name a constant for a string repeated three times or more in one production file
+  (`nitpicker/no-repeated-string-literal`). Strings shorter than five characters or containing no
+  letters/digits are exempt. Quoted strings and untagged templates without substitutions share decoded
+  values. Imports/re-exports/require paths, literal types, directives, property names/accesses and
+  JSX attribute text are excluded, as are tests. Dynamic and tagged templates are outside this rule.
+  Each occurrence after the second reports; unrelated concepts with the same text can use a reviewed
+  path exception in `nitpicker.config.json`.
 - No magic numbers (`nitpicker/no-magic-numbers`, which wraps
   `@typescript-eslint/no-magic-numbers`): name the number with a module-level constant; any number
   in its initializer is allowed (`const SECONDS_PER_DAY = 24 * 60 * 60;`,

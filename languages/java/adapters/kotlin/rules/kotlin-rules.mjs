@@ -24,6 +24,11 @@ const DETEKT_RULESETS = new Set([
 
 export const ONE_WAY_RULES = [
   {
+    name: 'StringLiteralDuplication',
+    ruleset: 'complexity',
+    allowed: 'Name a constant and reuse it so changes stay consistent.',
+  },
+  {
     name: 'UnsafeCallOnNullableType',
     ruleset: 'potential-bugs',
     allowed:

@@ -4,6 +4,7 @@ import { nitpickerRules } from '../../eslint-plugin/index.mjs';
 import { domainGlobsFor } from '../strict/strict-domain.mjs';
 import { SECURITY_RULES, securityRules, securitySupportGlobs } from './security-facts.mjs';
 
+const ERROR_SEVERITY = 'error';
 const JAVASCRIPT_FILES = '**/*.{js,jsx,mjs,cjs}';
 const MAGIC_NUMBER_ALLOWED = [-1, 0, 1, 2, 10, 100, 1000];
 
@@ -36,7 +37,7 @@ const routeHandlerNames = {
 function namingConvention({ react, routeHandlers }) {
   const underscores = 'allowSingleOrDouble';
   return [
-    'error',
+    ERROR_SEVERITY,
     ...(routeHandlers ? [routeHandlerNames] : []),
     { selector: 'typeLike', format: ['PascalCase'] },
     {
@@ -60,14 +61,14 @@ function namingConvention({ react, routeHandlers }) {
 
 function productionRules({ react, routeHandlers }) {
   return {
-    curly: ['error', 'all'],
-    'no-eval': 'error',
-    'no-param-reassign': ['error', { props: false }],
-    'no-duplicate-imports': ['error', { allowSeparateTypeImports: true }],
-    'no-restricted-properties': ['error', ...productionRestrictedProperties],
+    curly: [ERROR_SEVERITY, 'all'],
+    'no-eval': ERROR_SEVERITY,
+    'no-param-reassign': [ERROR_SEVERITY, { props: false }],
+    'no-duplicate-imports': [ERROR_SEVERITY, { allowSeparateTypeImports: true }],
+    'no-restricted-properties': [ERROR_SEVERITY, ...productionRestrictedProperties],
     'nitpicker/naming-convention': namingConvention({ react, routeHandlers }),
     'nitpicker/no-magic-numbers': [
-      'error',
+      ERROR_SEVERITY,
       {
         ignore: MAGIC_NUMBER_ALLOWED,
         ignoreArrayIndexes: true,
@@ -78,18 +79,19 @@ function productionRules({ react, routeHandlers }) {
         ignoreTypeIndexes: true,
       },
     ],
-    'regexp/no-super-linear-backtracking': 'error',
+    'nitpicker/no-repeated-string-literal': ERROR_SEVERITY,
+    'regexp/no-super-linear-backtracking': ERROR_SEVERITY,
   };
 }
 
 function productionGuardRules({ react, security }) {
   return {
     'nitpicker/no-process-access-outside-composition-root': [
-      'error',
+      ERROR_SEVERITY,
       { allowImportMetaEnv: react, allowBundlerEnv: react },
     ],
-    'nitpicker/no-shell-string-command': 'error',
-    'nitpicker/no-unsafe-path-join': 'error',
+    'nitpicker/no-shell-string-command': ERROR_SEVERITY,
+    'nitpicker/no-unsafe-path-join': ERROR_SEVERITY,
     ...securityRules({ react, security }),
   };
 }
@@ -106,7 +108,7 @@ export function productionLayoutConfigFor(layout, options = {}) {
       plugins: { nitpicker: nitpickerRules },
       rules: {
         'nitpicker/no-unknown-main-folder': [
-          'error',
+          ERROR_SEVERITY,
           { sourceRoots: layout.sourceRoots, react: options.react === true },
         ],
       },
@@ -143,7 +145,7 @@ export function productionPolicyConfigFor(layout, options = {}) {
       plugins: { '@typescript-eslint': tseslint.plugin },
       rules: {
         '@typescript-eslint/explicit-module-boundary-types': [
-          'error',
+          ERROR_SEVERITY,
           { allowArgumentsExplicitlyTypedAsAny: true },
         ],
       },
@@ -152,7 +154,7 @@ export function productionPolicyConfigFor(layout, options = {}) {
       files: layout.sourceGlobs,
       ignores: [...production.ignores, ...domainGlobsFor(layout.sourceRoots)],
       plugins: { nitpicker: nitpickerRules },
-      rules: { 'nitpicker/no-module-level-mutable-state': 'error' },
+      rules: { 'nitpicker/no-module-level-mutable-state': ERROR_SEVERITY },
     },
     {
       files: [...(layout.entryPoints ?? []), ...configFileGlobsFor(layout)],

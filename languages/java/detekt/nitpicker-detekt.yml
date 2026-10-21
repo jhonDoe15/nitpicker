@@ -108,3 +108,29 @@ style:
     excludes: []
     ignoreAnnotated: []
     includes: []
+
+complexity:
+  active: true
+  excludes: []
+  ignoreAnnotated: []
+  includes: []
+  StringLiteralDuplication:
+    active: true
+    severity: warning
+    excludes:
+      [
+        '**/test/**',
+        '**/androidTest/**',
+        '**/commonTest/**',
+        '**/jvmTest/**',
+        '**/androidUnitTest/**',
+        '**/androidInstrumentedTest/**',
+        '**/jsTest/**',
+        '**/iosTest/**',
+      ]
+    ignoreAnnotated: []
+    includes: []
+    threshold: 3
+    ignoreAnnotation: true
+    excludeStringsWithLessThan5Characters: true
+    ignoreStringsRegex: '$^'
