@@ -36,6 +36,12 @@ export const ONE_WAY_RULES = [
     allowed: 'In a test, use `assertFailsWith`.',
   },
   { name: 'GlobalCoroutineUsage', ruleset: 'coroutines' },
+  {
+    name: 'SuspendFunSwallowedCancellation',
+    ruleset: 'coroutines',
+    allowed:
+      'Use a direct suspend call or catch only the expected specific exception; a Result helper must rethrow CancellationException immediately.',
+  },
   { name: 'ForbiddenMethodCall', ruleset: 'style' },
   {
     name: 'UnnecessaryLet',

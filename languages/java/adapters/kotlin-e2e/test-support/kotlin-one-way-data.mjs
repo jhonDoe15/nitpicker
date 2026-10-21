@@ -36,6 +36,12 @@ style:
         reason: 'Use a scheduler or a test clock instead of sleeping.'
 coroutines:
   active: false
+  SuspendFunSwallowedCancellation:
+    active: false
+    severity: info
+    excludes: ['**/*.kt']
+    includes: ['missing/**']
+    ignoreAnnotated: ['Marker']
 potential-bugs:
   active: false
   ignoreAnnotated: ['Marker']

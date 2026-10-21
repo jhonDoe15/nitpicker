@@ -154,9 +154,22 @@ message names the fix and both routes. Each rule has a banned and an allowed fix
 |                   | `if (x == null) null else ...`        | `x?.let { ... }`                                                  | `style.UseLet`                                                           |
 | Coroutines        | `GlobalScope`                         | `coroutineScope { launch { ... } }`, or a scope its owner cancels | `coroutines.GlobalCoroutineUsage`                                        |
 |                   | `runBlocking`                         | a `suspend` caller (`suspend fun main()`); `runTest` in a test    | `style.ForbiddenMethodCall` (`kotlinx.coroutines.runBlocking`)           |
+|                   | `runCatching` around suspending work  | direct suspend call; catch only expected specific failures        | `coroutines.SuspendFunSwallowedCancellation`                             |
 | Exceptions        | `catch (e: Exception)`, `Throwable`   | catch the specific exception type; `assertFailsWith` in a test    | `exceptions.TooGenericExceptionCaught`                                   |
 | Records           | a class that only holds `val`s        | `data class`                                                      | `style.UseDataClass` (`allowVars: true`)                                 |
 |                   | a `data class` with a `var`           | `val` and `copy(...)`                                             | `style.DataClassShouldBeImmutable`                                       |
+
+`SuspendFunSwallowedCancellation` is enforced with detekt 1.23.8 in main and test sources,
+including aliased and qualified `kotlin.runCatching` calls. A suspend call inside `runCatching`
+can turn cancellation into a `Result` failure and let work outlive its owner. Call it directly,
+catch only the expected specific failure, or use a separate Result helper that immediately
+rethrows `CancellationException`. Non-suspending `runCatching` remains allowed, even in a
+suspend function. Adding `getOrThrow` or an `onFailure` rethrow after `runCatching` does not
+exempt the call: the pinned rule rejects the suspend/runCatching combination itself.
+This is separate from broad catch and lost-cause rules; it reports at the `runCatching` call.
+It uses type resolution, with the classpath/version limitations above; unresolved external
+calls are not proof of cancellation safety. A failed detekt invocation or missing report
+remains a tool error. Lift a legitimate path only through a reviewed Nitpicker exception.
 
 Rule ids in findings are `detekt.<ruleset>.<Rule>`. Test sources are analyzed with the same rules, so
 `runBlocking` in a test is a finding too; its message points to `runTest`. A broad catch in a test

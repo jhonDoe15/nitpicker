@@ -56,6 +56,12 @@ coroutines:
     excludes: []
     ignoreAnnotated: []
     includes: []
+  SuspendFunSwallowedCancellation:
+    active: true
+    severity: warning
+    excludes: []
+    ignoreAnnotated: []
+    includes: []
 
 style:
   active: true
