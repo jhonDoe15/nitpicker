@@ -825,6 +825,47 @@ ssl._create_unverified_context`; `check_hostname = False` and `verify_mode = ssl
   code does not exist before), and the generated pyright config sets `reportDeprecated` to
   `error`, so using an API marked `@deprecated` is a finding in each checker.
 
+### Cancellation propagation
+
+`python-rules/cancellation-not-propagated` rejects an explicit cancellation handler with a modeled
+path that returns, breaks, continues, falls through, or raises a different error. Cleanup and
+logging do not replace propagation: use a bare `raise`, or re-raise the unchanged caught exception
+(`raise error`, including `error.with_traceback(...)`). Returning a failure result containing the
+error or chaining a different exception still consumes the cancellation signal.
+
+The owned AST check recognizes imported `asyncio.CancelledError` (including
+`asyncio.exceptions.CancelledError`), `trio.Cancelled` and `anyio.get_cancelled_exc_class()` in
+handler types, including import aliases and tuples. Shadowed imports and local modules with those
+names are not assumed to be backend APIs. Source files, tests and entry points use the same rule;
+generated/excluded files follow the existing source policy. A matching handler receives this
+finding instead of a duplicate `swallowed-exception` finding. Ordinary errors retain their existing
+handling policy.
+
+Backend boundaries remain explicit. Raising a fresh asyncio `CancelledError` preserves its
+cancellation signal and is allowed; this does not establish preservation of its payload. Trio and
+AnyIO handlers should re-raise the original cancellation. Normal exits from `move_on_after`,
+`CancelScope` or `asyncio.timeout` are intentional scoped boundaries and are not handlers targeted
+by this rule. Deliberate asyncio suppression with `Task.uncancel()` is not inferred from a method
+name: review that boundary with a `python.exceptions` entry for `cancellation-not-propagated`,
+paths and a reason. No inline suppression is added.
+
+The initial path model covers straight-line handlers, `if` branches (including literal constant
+branches), terminal statements and `try/finally` completion overrides. Loops, `match` and nested
+exception dispatch remain unknown; unknown paths are not proof of propagation. Context managers
+can suppress raised errors, so a re-raise inside an unknown context manager is not verified. The
+check does not resolve arbitrary helper implementations, `NoReturn` annotations, assigned type
+aliases, runtime monkey patches, broad `BaseException` handlers or exception groups. It is a focused
+source guard, not a proof of cancellation safety. Ordinary calls are assumed able to return;
+helper-based propagation should re-raise explicitly in the handler or use a reviewed exception.
+
+Ruff **0.16.8** (the CI pin) has neither ASYNC103 nor ASYNC104; selecting its ASYNC family does not
+supply them. The documented flake8-async ASYNC103/104 behaviors motivated this narrower owned check;
+no flake8-async dependency or source implementation is used. Existing AST parsing, findings,
+line-independent identities, configuration hashing and path exceptions supply the integration.
+Regression fixtures execute actual asyncio task cancellation and statically exercise the explicit
+Trio/AnyIO forms; they do not establish measured precision over a real-project corpus or execute
+those third-party backends.
+
 ## Slice 1: tools, reports and identities
 
 - **Lint: ruff.** `ruff check --config <report dir>/nitpicker-ruff.toml --ignore-noqa
