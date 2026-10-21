@@ -71,6 +71,14 @@ function uncollectedAllowed(subject = '') {
 export const SMELL_HINTS = [
   {
     tool: RULES_TOOL,
+    rules: ['no-forwarding-wrapper'],
+    describe: (subject) =>
+      `Private wrapper \`${subject}\` forwards the same callable contract without adding behavior`,
+    allowed:
+      'Call the public target directly and remove the private wrapper; keep a wrapper when it adapts the contract or owns policy.',
+  },
+  {
+    tool: RULES_TOOL,
     rules: ['shell-command'],
     describe: (subject) => `\`${subject}\` runs a command through a shell`,
     allowed:

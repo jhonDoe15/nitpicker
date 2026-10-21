@@ -74,6 +74,13 @@ backstop. It fails only on findings your change adds, so leave code the task doe
 - The gate fails committed secrets, binaries, build output and files over 1 MB; each message names
   the fix. Don't add an `exceptions` entry to get past one: stop and ask.
 
+## Private forwarding functions
+
+- Call a public project function directly instead of adding a private synchronous module-level
+  function with the same parameters that only returns that call (`no-forwarding-wrapper`).
+  Keep public compatibility facades and wrappers that adapt types, defaults, coroutine behavior
+  or policy. The check resolves known project functions only; it does not guess at unknown targets.
+
 ## Size
 
 - A function stays within 50 lines, 15 statements, 2 levels of control nesting and 3 parameters;

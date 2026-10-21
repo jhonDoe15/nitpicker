@@ -738,6 +738,31 @@ ssl._create_unverified_context`; `check_hostname = False` and `verify_mode = ssl
   `tomllib` parsing, `.json()` or an `Any` parameter, and `TypeGuard` or `TypeIs` functions over
   `Any` or `object`. `pydantic-any-field` and `pydantic-extra-allow` look at classes deriving from
   `BaseModel`, `BaseSettings` or `RootModel` anywhere (v1 `Config` and `Extra.allow` too).
+- `no-forwarding-wrapper` reports a private synchronous module-level function whose sole statement
+  returns a call to a public project function with exactly the same parameter names and kinds,
+  forwarding every positional and required keyword-only argument unchanged. For example,
+  `def _normalize(value): return normalize(value)` is redundant when `normalize(value)` is a
+  resolved public function. Call that target directly. This is a design rule, not a claim of a
+  runtime bug. Findings name the wrapper and target owner; a reviewed `python.exceptions` entry
+  can retain a deliberate indirection.
+  Resolution supports direct same-file definitions, `from` imports (including aliases and relative
+  imports), and `import module as alias` followed by one member access, using configured source
+  roots and the existing project index. Ambiguous/rebound bindings and unknown targets stay quiet.
+  Public wrappers and modules declaring `__all__` remain compatibility surfaces. Private target
+  functions/modules, methods, nested functions, decorators, annotations, docstrings, defaults,
+  variadic signatures, async/generator contracts, argument adaptation, result discard and additional
+  policy are outside the violation. Test files and configured entry files/modules are excluded;
+  the existing source discovery, generated-file exclusion and finding policy remain in force.
+  The rule models static project bindings; arbitrary runtime monkeypatching, reflective mutation
+  and callable identity introspection are not modeled. It does not follow re-export/assignment
+  chains or third-party callables. Ruff 0.16.8's pinned rule catalog (also checked at 0.17.1) has no equivalent forwarding check;
+  no analyzer dependency was added.
+  A bounded precision scan used Nitpicker's 58 production Python rule files, Requests 2.34.2
+  (19 files) and urllib3 2.8.0 (36 files). All produced zero findings. The sole private single-return
+  call candidate, urllib3's `_obj_from_dict`, adapts a typed JS conversion contract and correctly
+  stayed quiet. This is negative-case evidence only: it establishes neither real-project recall
+  nor positive precision. Diagnostic fixtures cover the supported violation and aliases; keep this
+  narrow scope until independently reviewed positive real-project cases justify widening it.
 - `repeated-string-literal` counts a string of five characters or more used three times or more in
   a file (not tests) and reports it at its first use. Annotations, f-string parts, dictionary keys,
   docstrings and bare strings, `Literal[...]` subscripts and translation calls are not counted.

@@ -26,6 +26,7 @@ def load_checks():
     from security.tls import check as tls
     from silent_tests import unasserted
     from smells import literals, loops, names, secret_logs, secrets
+    from smells.forwarding import check as forwarding
 
     return [
         declarations,
@@ -43,6 +44,7 @@ def load_checks():
         guards,
         domain_types,
         paths,
+        forwarding,
         literals,
         names,
         secrets,
