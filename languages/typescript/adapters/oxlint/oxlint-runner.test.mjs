@@ -29,6 +29,7 @@ export default [
     languageOptions: { parser: tseslint.parser },
     plugins: { local },
     rules: {
+      'require-atomic-updates': ['error', { allowProperties: false }],
       'no-debugger': 'error',
       'no-irregular-whitespace': 'error',
       'local/no-foo': 'error',
@@ -39,6 +40,7 @@ export default [
 `;
 
 const SOURCES = {
+  'src/atomic.ts': 'export async function update(state, load) { state.total += await load(); }',
   'src/plain.ts': "// eslint-disable-next-line no-debugger\ndebugger;\nconst é = 'ü'; debugger;\n",
   'src/strict/locked.ts': '/* eslint-disable */\ndebugger;\nexport const foo = 1;\n',
   'src/[id].ts': 'debugger;\n',
@@ -67,6 +69,12 @@ afterAll(() => {
 });
 
 describe('lintWithOxlint', () => {
+  it('runs the atomic-update code-path rule through the existing engine', () => {
+    expect(messagesOf('src/atomic.ts')).toEqual([
+      { ruleId: 'require-atomic-updates', line: 1, column: 45 },
+    ]);
+  });
+
   it('honors disable comments and reports columns in UTF-16 units like ESLint', () => {
     expect(messagesOf('src/plain.ts')).toEqual([{ ruleId: 'no-debugger', line: 3, column: 16 }]);
   });
