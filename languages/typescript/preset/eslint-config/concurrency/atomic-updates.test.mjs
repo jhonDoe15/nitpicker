@@ -1,9 +1,9 @@
 import { Linter } from 'eslint';
-import { applyJavascriptDialect } from '../../../javascript/preset/eslint-dialect.mjs';
+import { applyJavascriptDialect } from '../../../../javascript/preset/eslint-dialect.mjs';
 import tseslint from 'typescript-eslint';
 import { describe, expect, it } from 'vitest';
-import { applyRuleExceptions } from './exceptions.mjs';
-import { eslintMessageWithHint } from '../../adapters/hints/eslint-hints.mjs';
+import { applyRuleExceptions } from '../exceptions.mjs';
+import { eslintMessageWithHint } from '../../../adapters/hints/eslint-hints.mjs';
 
 const rule = 'require-atomic-updates';
 const config = [
