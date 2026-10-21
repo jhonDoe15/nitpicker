@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<!-- Nitpicker's PMD rules: the errorprone and bestpractices categories plus a catch rule from
+<!-- Nitpicker's PMD rules: the errorprone, bestpractices, performance, multithreading and security
+     categories plus a catch rule from
      design, run over main and test sources. Two test rules are left out because they set an
      assertion style the TypeScript preset does not have: a message on every assertion, and one
      assertion per test. A test without any assertion still fails (UnitTestShouldIncludeAssert),
@@ -109,5 +110,22 @@
       </property>
     </properties>
   </rule>
+  <rule ref="category/java/performance.xml">
+    <!-- Allocation is not proven reusable; hoisting per-item state can change behavior. -->
+    <exclude name="AvoidInstantiatingObjectsInLoops"/>
+    <!-- Branch count does not establish a performance defect; exhaustive small switches are valid. -->
+    <exclude name="TooFewBranchesForSwitch"/>
+    <!-- The stream-finalizer premise is obsolete on the supported Java 21 runtime. -->
+    <exclude name="AvoidFileStream"/>
+  </rule>
+  <rule ref="category/java/multithreading.xml">
+    <!-- Volatile is a valid visibility/publication primitive; its presence is not a defect. -->
+    <exclude name="AvoidUsingVolatile"/>
+    <!-- J2EE container restrictions do not apply to every supported Java application. -->
+    <exclude name="DoNotUseThreads"/>
+    <!-- A Map declaration does not establish concurrent access; local HashMaps are valid. -->
+    <exclude name="UseConcurrentHashMap"/>
+  </rule>
+  <rule ref="category/java/security.xml"/>
   <rule ref="category/java/design.xml/AvoidCatchingGenericException"/>
 </ruleset>

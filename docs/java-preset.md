@@ -470,6 +470,38 @@ where both set one. A rule nitpicker runs through its test-only ruleset (`TestCl
 `pmd-test-only.xml`) is never added to the project's file, so a project category reference does not run
 it a second time; a project rule that names it is overlaid on that ruleset (`pmd-test-rules.xml`) instead.
 
+**Additional PMD categories (7.7.0).** The shared ruleset enables `performance`,
+`multithreading` and `security` on main and test Java sources, on both Gradle and Maven.
+This also covers Java sources in the Kotlin preset; it does not analyze Kotlin syntax.
+Performance rules cover redundant string allocation/conversion, builder accumulation and capacity,
+array copying, collection conversion and upload streaming. Multithreading rules cover thread groups,
+calling `Thread.run()` directly, unsafe singleton publication, shared mutable formatters, monitor
+notification and lock scope. Security rules detect hardcoded cryptographic keys and IVs. Each rule
+has a remediation in the message catalog and a reviewed path-exception route.
+
+Six category entries are excluded, with reasons beside the configuration:
+
+| Category       | Excluded rule                      | Reason                                                                               |
+| -------------- | ---------------------------------- | ------------------------------------------------------------------------------------ |
+| performance    | `AvoidInstantiatingObjectsInLoops` | Allocation is not proven reusable; hoisting per-item state can change behavior.      |
+| performance    | `TooFewBranchesForSwitch`          | Branch count alone does not establish a defect; small exhaustive switches are valid. |
+| performance    | `AvoidFileStream`                  | Its stream-finalizer premise is obsolete on the supported Java 21 runtime.           |
+| multithreading | `AvoidUsingVolatile`               | Volatile is a valid visibility/publication primitive.                                |
+| multithreading | `DoNotUseThreads`                  | J2EE container restrictions do not apply to every supported application.             |
+| multithreading | `UseConcurrentHashMap`             | A Map declaration does not establish concurrent access.                              |
+
+PMD omits the deprecated `TooFewBranchesForASwitchStatement` alias from category expansion;
+`TooFewBranchesForSwitch` is the effective rule excluded above.
+
+The synchronization rules prefer a private `ReentrantLock` released in `finally`, relevant to
+monitor pinning on Java 21 virtual threads. They do not prove contention or pinning in an application;
+JDK 24 removes monitor-related virtual-thread pinning. Review intentional monitor protocols through
+path exceptions. Builder capacity is a static estimate; `isBlank()` and `trim().isEmpty()` have different
+whitespace semantics, so preserve the intended predicate when fixing a finding. A constant IV may be
+intentional for decryption of an existing format; review that path rather than randomizing it.
+These categories do not establish transaction/remote-I/O safety (#317), loop I/O coverage (#328)
+or Spring layer ownership (#345).
+
 **PMD rules tuned by nitpicker.** These rules of the rule set allow a narrower form than PMD's
 default, and their messages name it:
 
@@ -1204,7 +1236,7 @@ table:
 - line: `errorprone/IdentityBinaryExpression`, `errorprone/SelfComparison`, `errorprone/SelfEquals` over `spotbugs/SA_FIELD_SELF_COMPARISON`, `spotbugs/SA_LOCAL_SELF_COMPARISON`
 - line: `errorprone/LockOnBoxedPrimitive` over `spotbugs/DL_SYNCHRONIZATION_ON_*`
 - line: `errorprone/BoxedPrimitiveConstructor` over `spotbugs/DM_FP_NUMBER_CTOR`, `spotbugs/DM_NUMBER_CTOR`, `pmd/PrimitiveWrapperInstantiation`
-- line: `errorprone/DoNotCall` over `spotbugs/RU_INVOKE_RUN`
+- line: `errorprone/DoNotCall` over `spotbugs/RU_INVOKE_RUN`, `pmd/DontCallThreadRun`
 - line: `errorprone/EqualsNaN` over `spotbugs/FE_TEST_IF_EQUAL_TO_NOT_A_NUMBER`, `pmd/ComparisonWithNaN`
 - line: `errorprone/BoxedPrimitiveEquality`, `errorprone/MemorySegmentReferenceEquality`, `errorprone/OptionalEquality`, `errorprone/ProtoStringFieldReferenceEquality` over `errorprone/ReferenceEquality`
 - line: `errorprone/BoxedPrimitiveEquality`, `errorprone/MemorySegmentReferenceEquality`, `errorprone/OptionalEquality`, `errorprone/ProtoStringFieldReferenceEquality`, `errorprone/ReferenceEquality` over `spotbugs/ES_COMPARING_*`, `spotbugs/RC_REF_COMPARISON*`, `pmd/CompareObjectsWithEquals`, `pmd/UseEqualsToCompareStrings`
@@ -1279,6 +1311,11 @@ table:
 - field: `errorprone/URLEqualsHashCode` over `spotbugs/DMI_COLLECTION_OF_URLS`
 - field: `pmd/UnusedPrivateField` over `spotbugs/URF_UNREAD_FIELD`, `spotbugs/UUF_UNUSED_FIELD`
 - field: `errorprone/NullAway` over `spotbugs/NP_UNWRITTEN_FIELD`, `spotbugs/UWF_UNWRITTEN_FIELD`
+- member: `errorprone/DoubleCheckedLocking` over `pmd/DoubleCheckedLocking`
+- line: `pmd/StringInstantiation` over `spotbugs/DM_STRING_CTOR`, `spotbugs/DM_STRING_VOID_CTOR`
+- line: `pmd/StringToString` over `spotbugs/DM_STRING_TOSTRING`
+- line: `pmd/UseStringBufferForStringAppends` over `spotbugs/SBSC_USE_STRINGBUFFER_CONCATENATION`
+- field: `pmd/UnsynchronizedStaticFormatter` over `spotbugs/STCAL_STATIC_SIMPLE_DATE_FORMAT_INSTANCE`
 
 ### Checks spared in annotated classes
 

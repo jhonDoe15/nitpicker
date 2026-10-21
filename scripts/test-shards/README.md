@@ -51,7 +51,9 @@ The framework cases merged from #279 add nine Java cases and one Kotlin case, gi
 cases in total. Their unchanged files use measured module durations from successful #279 CI:
 127 seconds for Java test frameworks ([run 39408625114](https://github.com/jhonDoe15/nitpicker/actions/runs/39408625114))
 and 99 seconds for Kotest ([run 39408625035](https://github.com/jhonDoe15/nitpicker/actions/runs/39408625035)).
-These measured weights are integrated into the same deterministic partition.
+These measured weights are integrated into the same deterministic partition. The PMD category
+checks add four Java cases, bringing current discovery to 80/54; their duration is recorded
+from the enabled suite with `record-durations.mjs`.
 
 The split-file weights remain planning estimates, not measurements of the new split. Unchanged files
 use the successful isolated-shard log totals, including hooks. Split case groups sum their
@@ -82,7 +84,7 @@ execution in the module duration, and writes sorted whole-second profiles. Recor
 with the same package filters and flags after obtaining an isolated timing sample.
 
 `node scripts/test-shards/verify-e2e-shards.mjs` collects through the real package scripts,
-checks the 76/54 discovered case counts, resolves CLI shard
+checks the 80/54 discovered case counts, resolves CLI shard
 options through Vitest, and exercises the configured sequencer. It requires the profile to cover
 every selected file exactly and each matrix shard to be nonempty, with every selected file in
 exactly one shard. Vitest list itself does not apply sharding, so its `--shard` output alone is
