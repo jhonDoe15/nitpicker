@@ -169,6 +169,8 @@ class TypeLaundering(ast.NodeVisitor):
                 self.annotation(part)
         elif isinstance(node, (ast.Name, ast.Attribute)):
             self.reference(node)
+        elif isinstance(node, ast.Call):
+            self.visit(node)
         else:
             for child in ast.iter_child_nodes(node):
                 self.annotation(child)
