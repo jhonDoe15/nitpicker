@@ -1,7 +1,10 @@
 export const FORWARDING_RULE = 'no-forwarding-wrapper';
 
 function underRoot(file, roots) {
-  return roots.some((root) => file.startsWith(`${root.replace(/\/$/u, '')}/`));
+  return roots.some((root) => {
+    const normalized = root.replace(/\/$/u, '');
+    return normalized === '' || normalized === '.' || file.startsWith(`${normalized}/`);
+  });
 }
 
 export function forwardingFindings(metrics, manifest) {

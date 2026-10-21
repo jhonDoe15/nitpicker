@@ -48,6 +48,12 @@ describe('Kotlin forwarding findings', () => {
     expect(forwardingFindings({ forwarders: [entry] }, {})).toEqual([]);
   });
 
+  it.each(['', '.'])('supports a production root at the project directory: %s', (root) => {
+    expect(forwardingFindings({ forwarders: [entry] }, { kotlinSourceRoots: [root] })).toEqual(
+      reported([entry]),
+    );
+  });
+
   it('keeps shifted findings baselined while a new wrapper reports', () => {
     const baseFindings = reported([entry]);
     const headFindings = reported([
@@ -67,9 +73,9 @@ describe('Kotlin forwarding findings', () => {
       paths: [entry.file],
       reason: 'Compatibility boundary',
     };
-    expect(() =>
-      validateKotlinOptions({ preset: 'kotlin', exceptions: [exception] }),
-    ).not.toThrow();
+    expect(() => {
+      validateKotlinOptions({ preset: 'kotlin', exceptions: [exception] });
+    }).not.toThrow();
     const other = { ...entry, file: 'custom/production/Other.kt' };
 
     expect(

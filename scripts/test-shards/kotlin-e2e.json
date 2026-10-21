@@ -13,5 +13,5 @@
   "languages/java/adapters/kotlin-e2e/one-way/kotlin-preset-one-way-rules-banned.e2e.test.mjs": 128,
   "languages/java/adapters/kotlin-e2e/one-way/kotlin-preset-one-way-rules-hostile-config.e2e.test.mjs": 81,
   "languages/java/adapters/kotlin-e2e/test-sources/kotlin-test-sources.e2e.test.mjs": 94,
-  "languages/java/adapters/kotlin-metrics.e2e.test.mjs": 14
+  "languages/java/adapters/kotlin-metrics.e2e.test.mjs": 65
 }
