@@ -30,6 +30,20 @@ function importBoundaryAdvice(libraries) {
 }
 
 export const STRUCTURE_HINTS = [
+  {
+    tool: RULES_TOOL,
+    rules: ['type-cast'],
+    describe: (subject) => `\`${subject}\` asserts a type without checking the value`,
+    allowed:
+      'Narrow with a runtime check, or parse untrusted input at the boundary; do not use `typing.cast`.',
+  },
+  {
+    tool: RULES_TOOL,
+    rules: ['explicit-any'],
+    describe: (subject) => `\`${subject}\` disables type checking with an explicit Any`,
+    allowed:
+      'Use a concrete type or `object`, then narrow with a runtime check or parse at the boundary.',
+  },
   { tool: 'ruff', rules: ['E722', 'BLE001'], allowed: HANDLE_EXCEPTION },
   {
     tool: RULES_TOOL,

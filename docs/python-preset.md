@@ -437,6 +437,19 @@ through the real tools.
 | fixing the code                                | `# type: ignore`, `# noqa`, `# pyright: ignore`, ...                         | `no-inline-suppression`                                    |
 | annotated code the checkers read               | `@no_type_check`, `if not TYPE_CHECKING:`, a stub beside                     | `no-type-check`, `not-type-checking`, `stub-beside-source` |
 
+`type-cast` rejects calls resolved to `typing.cast` or `typing_extensions.cast`;
+`explicit-any` rejects explicit references to those modules' `Any` in source and tests,
+including imported names, renamed imports and quoted annotations. Use a concrete type or
+`object` and narrow with a runtime check, or parse untrusted input in an adapter. Both
+rules accept reviewed `python.exceptions` entries with paths and a reason. Existing
+`any-in-domain` and `pydantic-any-field` findings take precedence on the same line.
+
+Resolution is lexical and conservative: a reassigned or ambiguous imported name is not
+assumed to refer to typing. Dynamic imports, wildcard imports, re-exports and arbitrary
+assignment aliases are not followed. Annotation strings are parsed as expressions;
+`Literal` string values and `Annotated` metadata are data, not type references. Unused
+imports alone do not produce these findings (ruff handles unused imports).
+
 Details that are decisions rather than the table:
 
 - `frozen-dataclass` and `pydantic-boundary` do not apply to test files (a `tests` or `test`
@@ -586,6 +599,19 @@ are listed at the end.
 | Timeouts                 | `timeout=10` on every request, `urlopen` and plain `requests.Session` call; never `timeout=None`                                                 | ruff `S113`, `http-without-timeout` (script)                                                                                                         |
 | Test honesty             | a reason on every skip, no sleeping, no tautologies, fixed time and seeded random values, no network                                             | ruff `PT`, `skipped-test-without-reason`, `sleep-in-test`, `tautological-assert`, `real-clock-in-test`, `random-in-test`, `network-in-test` (script) |
 | Test layout              | tests in files pytest collects; helpers in the tests folder                                                                                      | `uncollected-tests`, `test-helper-in-source` (script)                                                                                                |
+
+`type-cast` rejects calls resolved to `typing.cast` or `typing_extensions.cast`;
+`explicit-any` rejects explicit references to those modules' `Any` in source and tests,
+including imported names, renamed imports and quoted annotations. Use a concrete type or
+`object` and narrow with a runtime check, or parse untrusted input in an adapter. Both
+rules accept reviewed `python.exceptions` entries with paths and a reason. Existing
+`any-in-domain` and `pydantic-any-field` findings take precedence on the same line.
+
+Resolution is lexical and conservative: a reassigned or ambiguous imported name is not
+assumed to refer to typing. Dynamic imports, wildcard imports, re-exports and arbitrary
+assignment aliases are not followed. Annotation strings are parsed as expressions;
+`Literal` string values and `Annotated` metadata are data, not type references. Unused
+imports alone do not produce these findings (ruff handles unused imports).
 
 Details that are decisions rather than the table:
 
