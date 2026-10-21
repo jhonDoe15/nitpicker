@@ -10,6 +10,7 @@ const ruff = process.env.NITPICKER_RUFF ?? 'ruff';
 function stableRuffRules() {
   const result = spawnSync(ruff, ['rule', '--all', '--output-format', 'json'], {
     encoding: 'utf8',
+    timeout: 10_000,
     maxBuffer: 64 * 1024 * 1024,
   });
   return JSON.parse(result.stdout)

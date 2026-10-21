@@ -47,6 +47,13 @@ backstop. It fails only on findings your change adds, so leave code the task doe
   log in an `except` keeps the traceback (`logger.exception(...)` or `exc_info=True`); passing the
   error as an argument or `str(error)` drops it. Logging alone is not handling: also re-raise the
   error or return a failure that carries it.
+- Async: await the backend's async APIs; move blocking I/O to a worker thread. Let callers own
+  timeout scopes that contain a cancellation checkpoint, and coordinate with events instead of
+  polling sleeps. Ruff's local check does not prove cancellation through every helper or path.
+- Time: use aware datetimes (`datetime.now(tz=timezone.utc)`); derive dates from them. A parsed
+  offset uses `%z`; attach a known source timezone before converting a naive value.
+- Debugging and processes: remove debugger imports and breakpoints before committing. Pass
+  `check=True` to `subprocess.run`, or `check=False` and handle the exit status explicitly.
 - Records: `@dataclass(frozen=True)`, and `dataclasses.replace` for a changed copy. The project's
   validation library (pydantic by default) only in an `adapters/` package, where untrusted input is
   parsed once; pass frozen dataclasses on from there.

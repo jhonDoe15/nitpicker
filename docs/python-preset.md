@@ -388,9 +388,9 @@ through the real tools.
   `swallowed-exception` reports what they did, and more, once and under one id. The shared
   one-way rules add the groups `G` (logging calls), `N` (PEP 8 naming), `ERA` (commented-out
   code), `ARG` (unused arguments), `PT` (pytest style), `S` (security) and `TRY` (exceptions), and
-  the single rules `PLR2004`, `PLW0602`, `PLW0603`, `FBT001` and `FBT002`; the last section of this
-  slice lists each one with its allowed form and the rules of those groups that are left off.
-  The groups `RUF`, `G`, `N`, `PT`, `S` and `TRY` are selected by listing their stable codes, not
+  the pitfall groups `ASYNC`, `DTZ`, `LOG`, `PLE`, `PLW` and `T10`, and the single rules
+  `PLR2004`, `FBT001` and `FBT002`; the last section of this slice lists each one with its allowed form and the rules of those groups that are left off.
+  These groups, including `RUF`, `G`, `N`, `PT`, `S` and `TRY`, list stable codes, not
   by prefix, so a later ruff cannot add a rule (or a preview rule) to the gate. `ruffConfigFor`
   (`adapters/configuration/python-ruff-config.mjs`) writes the toml into the report directory
   without the codes that the installed ruff does not know or lists as preview or removed
@@ -774,6 +774,32 @@ ssl._create_unverified_context`; `check_hostname = False` and `verify_mode = ssl
   `TRY300` and `TRY301` (`else` after `try`, `raise` inside `try`), `FBT003` (a boolean argument at
   the call site) and, for `PT`, `PT009` and `PT027` (`unittest` assertions, which `unittest`
   projects use by design). `PT011` and `PT030` ask for a `match` or a more specific class.
+- The pitfall-family audit uses Ruff **0.16.8** (the CI constraint); it adds the stable
+  `ASYNC`, `DTZ`, `LOG`, `PLE`, `PLW` and `T10` codes, preserving the existing `S`, `TRY` and
+  `ERA` selections. Every excluded pitfall rule has its reason beside the preset. `PLW1641`
+  stays off: a class with equality and no hash may intentionally be unhashable, so that shape
+  alone does not establish a defect. Preview and removed rules stay out, and older Ruff
+  installations receive only the stable codes they support.
+- `ASYNC` checks known blocking operations, missing awaits and checkpoint-free timeout scopes.
+  Use awaited backend APIs (`httpx.AsyncClient`, for example), move blocking work to a worker
+  thread, and let callers own deadline scopes. Event/checkpoint/sleep-forever suggestions apply
+  to the backend named by Ruff. These are local syntactic checks: `ASYNC100` does not prove
+  effective cancellation through helpers, every path or every backend; #344 tracks that work.
+  Cancellation propagation (#342) is separate. No owned Python rule duplicates these diagnostics.
+- `DTZ` requires timezone-aware datetimes; use `datetime.now(tz=timezone.utc)` (also available
+  before Python 3.11), and derive a date with `.date()`. Parse offsets with `%z`, or attach
+  the known source timezone before converting. Intentional naive civil times use a reviewed
+  path exception. The domain clock rule still separately controls where time is read.
+- `LOG` uses named loggers and keeps exception tracebacks inside active handlers. `PLE`
+  checks invalid Python operations, special-method contracts and logging argument counts;
+  `PLW` checks suspicious assignments, ineffective locks and unchecked process results.
+  `T100` rejects committed debugger imports and breakpoints. They apply to test files too;
+  existing security/test-support allowances remain unchanged.
+- Real-tool regressions cover aliased async and datetime calls, aware timestamps, logging,
+  subprocess handling, debugger removal and line-stable identities. This is a bounded fixture
+  audit, not measured production precision. Run `NITPICKER_PYTHON_E2E=1 npm test -- languages/python/ruff`
+  to exercise the catalog review and shipped lint/SARIF path; the full Python command includes
+  these files as well. New stable codes require an explicit review before being enabled.
 - The advice follows the project when two forms are valid. Pytest style: the parentheses of
   `@pytest.fixture` (`PT001`) and marks (`PT023`) and the shape of `parametrize` (`PT006`,
   `PT007`) are read from the project's `[tool.ruff.lint.flake8-pytest-style]` table (`pyproject.toml`,
