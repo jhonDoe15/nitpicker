@@ -316,6 +316,18 @@ only the library follows the project. Nitpicker reads `dependencies`, `peerDepen
   do not count. `await Promise.allSettled(...)` with its result dropped hides every rejection, and
   `new Promise((resolve) => resolve(value))` wraps a value that `Promise.resolve(value)` or an
   async function returns directly.
+- Shared read/modify/write operations across `await` are rejected (`require-atomic-updates`,
+  ESLint 10.9.1, `allowProperties: false`) in production and test code, including the JavaScript
+  dialect. Await the new value before reading shared state, or serialize the entire operation.
+  Invocation-local values pass. The rule is explicitly enabled in `eslint-lint`; Oxlint 1.87.0
+  has no native equivalent, so the existing JavaScript plugin bridge runs the ESLint rule.
+  Findings use the standard ESLint semantic identity and reviewed `exceptions` entries
+  (`rule: "require-atomic-updates"`, `paths`, `reason`). Other immutability rules can independently
+  reject mutation; this rule specifically identifies stale reads across suspension.
+  This is bounded upstream analysis, not proof of race freedom: a local alias of a shared object
+  can escape detection, and a property write after an unrelated property read can be conservative.
+  Already serialized access can use a reviewed path exception. The pinned `allowProperties: true`
+  option disables property checks and is deliberately not the preset default.
 - `===` and `!==` only (`eqeqeq`). Braces on every `if`, `else` and loop body (`curly`). One import
   statement per module (`no-duplicate-imports`; a separate `import type` is fine).
 - Identifier casing (`nitpicker/naming-convention`, which wraps
