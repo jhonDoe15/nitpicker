@@ -168,6 +168,7 @@ describe('nitpicker-detekt.yml', () => {
 describe('isBannedSuppression', () => {
   it.each([
     'UnsafeCallOnNullableType',
+    'no-forwarding-wrapper',
     'MagicNumber',
     'LongMethod',
     'detekt',

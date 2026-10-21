@@ -772,3 +772,31 @@ fails only when it grows, and a package folder moved to a new path is matched to
   unresolved.
 - ArchUnit rule tests written in Kotlin run with the other tests, but the resolution of their
   findings to source files is only verified for Java.
+
+## Redundant forwarding functions
+
+The owned `no-forwarding-wrapper` rule reports a private or internal top-level production function
+that only calls an accessible same-file top-level function with unchanged positional arguments.
+For example, `internal fun increment(value: Int): Int = addOne(value)` adds no contract when
+`addOne` has the same parameter name, parameter type and explicit return type. Call `addOne`
+directly and remove `increment`, or give the wrapper a real policy or adapted contract.
+
+The Kotlin 2.4.21 PSI parser already used for metrics supplies this evidence; no dependency or
+compiler upgrade is required. The check accepts expression bodies and a block containing only
+`return target(args)`. Contracts must use explicit non-null built-in scalar types or `Unit`, with
+identical parameter names and order. It does not report public compatibility facades, annotated
+functions/files, private targets, defaults, named/spread arguments, overloads in the same file,
+receivers, generics, inline/suspend functions, context parameters, callable parameters or shadowing
+properties. Imported/aliased targets, cross-file calls, members, inferred types and other unresolved
+contracts are outside this initial scope. A skipped case is not proof that it provides an abstraction.
+
+This is a narrowly modeled design violation, not a runtime-correctness or module-depth claim.
+Pinned detekt 1.23.8 has no equivalent forwarding-contract rule; its existing unnecessary-call
+checks remain independent. The rule runs on declared Kotlin production roots, excludes test roots,
+and keeps its identity when lines move. The usual `exclude` policy applies to generated sources.
+A required boundary can use a reviewed `exceptions` entry naming `no-forwarding-wrapper`, paths
+and a reason in `nitpicker.config.json`; inline suppression is not an exception route.
+
+The parser regression corpus covers straightforward wrappers and compatibility/adaptation cases.
+This establishes the modeled behavior, not production prevalence or measured precision on an
+external Kotlin codebase. Broader type resolution or cross-file recognition needs separate evidence.

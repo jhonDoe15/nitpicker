@@ -3,6 +3,11 @@ import { cpSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } f
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import {
+  FORWARDING,
+  IMPORTED_FORWARDING,
+  SHADOWED_FORWARDING,
+} from './test-support/kotlin-forwarding-sources.mjs';
 import { INIT_SCRIPT } from '../builds/java-build.mjs';
 import {
   BOM,
@@ -251,6 +256,31 @@ describe.skipIf(!enabled)('KotlinMetrics on source files', () => {
       ['src/MfA.kt', ['demo.mf.Mf__MfAKt', 'demo.mf.Mf']],
       ['src/MfB.kt', ['demo.mf.Mf__MfBKt']],
     ]);
+  });
+
+  it('proves only simple same-file forwarding contracts and preserves identity across inserted lines', () => {
+    const source = {
+      'src/Forward.kt': FORWARDING,
+      'src/Alias.kt': IMPORTED_FORWARDING,
+      'src/Shadow.kt': SHADOWED_FORWARDING,
+    };
+    const first = measure(writeSources('forwarding', source));
+    const shifted = measure(
+      writeSources('forwarding-shifted', {
+        ...source,
+        'src/Forward.kt': `\n\n${FORWARDING}`,
+      }),
+    );
+
+    expect([first.status, shifted.status], first.log + shifted.log).toEqual([0, 0]);
+    expect(first.metrics.forwarders).toEqual([
+      { file: 'src/Forward.kt', name: 'redundant', target: 'target', line: 4 },
+      { file: 'src/Forward.kt', name: 'block', target: 'target', line: 5 },
+      { file: 'src/Forward.kt', name: 'unitForward', target: 'unitTarget', line: 35 },
+    ]);
+    expect(shifted.metrics.forwarders).toEqual(
+      first.metrics.forwarders.map((finding) => ({ ...finding, line: finding.line + 2 })),
+    );
   });
 
   it('fails on a syntax error, naming the file, the line and the pinned compiler', () => {

@@ -87,3 +87,12 @@ it with `npx skills add jhonDoe15/nitpicker --skill nitpicker-java`.
   waits, a test slice instead of a full context.
 - A function or file already over a limit may be edited but must not get worse: put new code in a
   new function or file and call it.
+
+## Forwarding functions
+
+Call a directly accessible top-level function instead of adding a private/internal same-file
+wrapper with identical explicit scalar parameter names/types and return type that only forwards
+unchanged positional arguments (`no-forwarding-wrapper`). Keep public compatibility facades,
+contract adaptation, policy, annotations and coroutine semantics. The initial check does not resolve
+cross-file/imported calls, members or inferred/generic contracts. A necessary boundary uses a
+reviewed path exception in `nitpicker.config.json`, not inline suppression.

@@ -75,6 +75,7 @@ public final class KotlinMetrics {
     }
     List<String> entries = new ArrayList<>();
     List<String> fileEntries = new ArrayList<>();
+    List<String> forwarders = new ArrayList<>();
     Set<String> claimedFacades = new HashSet<>();
     Disposable disposable = Disposer.newDisposable();
     try {
@@ -108,14 +109,131 @@ public final class KotlinMetrics {
         }
         new Collector(ktFile, text, relative, entries).collect();
         fileEntries.add(describe(ktFile, relative, claimedFacades));
+        forwarders.addAll(Forwarding.find(ktFile, relative));
       }
     } finally {
       Disposer.dispose(disposable);
     }
     Files.writeString(
         output,
-        "{\"functions\":[" + String.join(",", entries) + "],\"files\":[" + String.join(",", fileEntries) + "]}\n",
+        "{\"functions\":[" + String.join(",", entries) + "],\"files\":[" + String.join(",", fileEntries)
+            + "],\"forwarders\":[" + String.join(",", forwarders) + "]}\n",
         StandardCharsets.UTF_8);
+  }
+
+  private static final class Forwarding {
+    private static final Set<String> TYPES =
+        Set.of("Boolean", "Byte", "Short", "Int", "Long", "Float", "Double", "Char", "String", "Unit");
+
+    static List<String> find(KtFile file, String relative) {
+      if (!file.getAnnotationEntries().isEmpty()) {
+        return List.of();
+      }
+      List<KtNamedFunction> functions = file.getDeclarations().stream()
+          .filter(KtNamedFunction.class::isInstance).map(KtNamedFunction.class::cast).toList();
+      List<String> findings = new ArrayList<>();
+      for (KtNamedFunction wrapper : functions) {
+        if (wrapper.hasModifier(KtTokens.PUBLIC_KEYWORD)
+            || !(wrapper.hasModifier(KtTokens.PRIVATE_KEYWORD)
+                || wrapper.hasModifier(KtTokens.INTERNAL_KEYWORD))
+            || !simple(wrapper) || count(functions, wrapper.getName()) != 1) {
+          continue;
+        }
+        KtCallExpression call = forwardedCall(wrapper);
+        if (call == null || !(call.getCalleeExpression() instanceof KtNameReferenceExpression)) {
+          continue;
+        }
+        String targetName = ((KtNameReferenceExpression) call.getCalleeExpression()).getReferencedName();
+        List<KtNamedFunction> targets = functions.stream()
+            .filter(fn -> targetName.equals(fn.getName())).toList();
+        if (targets.size() != 1 || shadowed(file, wrapper, targetName)) {
+          continue;
+        }
+        KtNamedFunction target = targets.get(0);
+        if (target == wrapper || !simple(target) || target.hasModifier(KtTokens.PRIVATE_KEYWORD)
+            || !contract(wrapper).equals(contract(target)) || !unchanged(call, wrapper)) {
+          continue;
+        }
+        int line = file.getText().substring(0, wrapper.getTextOffset()).split("\n", -1).length;
+        findings.add("{\"file\":" + quote(relative) + ",\"name\":" + quote(wrapper.getName())
+            + ",\"target\":" + quote(targetName) + ",\"line\":" + line + "}");
+      }
+      return findings;
+    }
+
+    private static long count(List<KtNamedFunction> functions, String name) {
+      return functions.stream().filter(fn -> name.equals(fn.getName())).count();
+    }
+
+    private static boolean simple(KtNamedFunction fn) {
+      if (!fn.hasBody() || fn.getReceiverTypeReference() != null || !fn.getTypeParameters().isEmpty()
+          || !fn.getAnnotationEntries().isEmpty() || !fn.getContextReceivers().isEmpty()
+          || fn.getText().stripLeading().startsWith("context")
+          || fn.hasModifier(KtTokens.SUSPEND_KEYWORD) || fn.hasModifier(KtTokens.INLINE_KEYWORD)
+          || fn.hasModifier(KtTokens.TAILREC_KEYWORD) || fn.hasModifier(KtTokens.EXTERNAL_KEYWORD)
+          || fn.hasModifier(KtTokens.EXPECT_KEYWORD) || fn.hasModifier(KtTokens.ACTUAL_KEYWORD)
+          || !plainType(fn.getTypeReference())) {
+        return false;
+      }
+      return fn.getValueParameters().stream().allMatch(p ->
+          !p.hasDefaultValue() && p.getModifierList() == null && plainType(p.getTypeReference()));
+    }
+
+    private static boolean plainType(KtTypeReference type) {
+      return type != null && TYPES.contains(type.getText());
+    }
+
+    private static List<String> contract(KtNamedFunction fn) {
+      List<String> contract = new ArrayList<>(List.of(fn.getTypeReference().getText()));
+      for (KtParameter parameter : fn.getValueParameters()) {
+        contract.add(parameter.getName() + ":" + parameter.getTypeReference().getText());
+      }
+      return contract;
+    }
+
+    private static KtCallExpression forwardedCall(KtNamedFunction fn) {
+      KtExpression body = fn.getBodyExpression();
+      if (body instanceof KtBlockExpression) {
+        List<KtExpression> statements = ((KtBlockExpression) body).getStatements();
+        if (statements.size() != 1 || !(statements.get(0) instanceof KtReturnExpression)) {
+          return null;
+        }
+        KtReturnExpression returned = (KtReturnExpression) statements.get(0);
+        if (returned.getTargetLabel() != null) {
+          return null;
+        }
+        body = returned.getReturnedExpression();
+      }
+      return body instanceof KtCallExpression ? (KtCallExpression) body : null;
+    }
+
+    private static boolean unchanged(KtCallExpression call, KtNamedFunction fn) {
+      List<KtValueArgument> arguments = call.getValueArguments();
+      List<KtParameter> parameters = fn.getValueParameters();
+      if (!call.getTypeArguments().isEmpty() || !call.getLambdaArguments().isEmpty()
+          || arguments.size() != parameters.size()) {
+        return false;
+      }
+      for (int i = 0; i < arguments.size(); i++) {
+        KtValueArgument argument = arguments.get(i);
+        KtExpression value = argument.getArgumentExpression();
+        if (argument.isNamed() || argument.getSpreadElement() != null
+            || !(value instanceof KtNameReferenceExpression)
+            || !((KtNameReferenceExpression) value).getReferencedName().equals(parameters.get(i).getName())) {
+          return false;
+        }
+      }
+      return true;
+    }
+
+    private static boolean shadowed(KtFile file, KtNamedFunction wrapper, String name) {
+      return wrapper.getValueParameters().stream().anyMatch(p -> name.equals(p.getName()))
+          || file.getDeclarations().stream().anyMatch(d ->
+              d instanceof KtProperty && name.equals(((KtProperty) d).getName()))
+          || file.getImportDirectives().stream().anyMatch(i ->
+              i.isAllUnder() || (i.getImportedName() != null && name.equals(i.getImportedName().asString()))
+                  || (i.getAliasName() != null && name.equals(i.getAliasName())));
+    }
   }
 
   private static String describe(KtFile file, String relative, Set<String> claimedFacades) {

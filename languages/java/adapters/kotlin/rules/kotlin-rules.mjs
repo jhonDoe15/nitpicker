@@ -1,3 +1,4 @@
+import { FORWARDING_RULE } from './forwarding/forwarding-findings.mjs';
 import { CATCH_LOG_RULE } from '../../../source/catch-logging.mjs';
 
 const DETEKT_TOOL = 'detekt';
@@ -59,12 +60,16 @@ export const ONE_WAY_RULES = [
 export const SUPPRESSION_RULE = 'inline-suppression';
 export const TEST_ASSERTION_RULE = 'test-without-assertion';
 
-export const SOURCE_RULE_IDS = [CATCH_LOG_RULE, TEST_ASSERTION_RULE];
+export const SOURCE_RULE_IDS = [CATCH_LOG_RULE, TEST_ASSERTION_RULE, FORWARDING_RULE];
 
 export const ONE_WAY_RULE_IDS = ONE_WAY_RULES.map(({ id }) => id);
 
 export function isBannedSuppression(token) {
-  return DETEKT_RULESETS.has(token) || BANNED_SUPPRESSIONS.some((banned) => banned.test(token));
+  return (
+    SOURCE_RULE_IDS.includes(token) ||
+    DETEKT_RULESETS.has(token) ||
+    BANNED_SUPPRESSIONS.some((banned) => banned.test(token))
+  );
 }
 
 export function appendSentence(message, sentence) {

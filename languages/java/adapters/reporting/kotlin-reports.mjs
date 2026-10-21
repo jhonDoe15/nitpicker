@@ -16,6 +16,8 @@ import {
 } from '../kotlin/rules/kotlin-source-rules.mjs';
 import { readSuppressionFindings } from '../kotlin/rules/kotlin-suppressions.mjs';
 
+import { forwardingFindings } from '../kotlin/rules/forwarding/forwarding-findings.mjs';
+
 const DETEKT_TOOL = 'detekt';
 const DETEKT_REPORT = 'detekt.sarif';
 const KTLINT_REPORT = 'ktlint.sarif';
@@ -101,6 +103,7 @@ export function readKotlinFindings(context, crapLimit) {
   const helpers = context.conventions?.['kotlin.assertionHelpers'] ?? [];
   return [
     ...detektFindings(reportRoot, formatAdvice),
+    ...forwardingFindings(metrics, manifest),
     ...readSuppressionFindings(projectRoot, kotlinLintedRoots(manifest)),
     ...readCatchLogFindings(projectRoot, kotlinLintedRoots(manifest)),
     ...readTestAssertionFindings(projectRoot, testRoots, helpers),
