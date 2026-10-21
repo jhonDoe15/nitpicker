@@ -1,3 +1,4 @@
+import { jscpdCompleted, layeredJscpdConfig } from './config.mjs';
 import { spawnSync } from 'node:child_process';
 import { mkdirSync, readFileSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
@@ -41,7 +42,7 @@ function relativeNames(report, cwd) {
   };
 }
 
-function jscpdArguments({ jscpd, paths, config, format, output, ignore, together }) {
+function jscpdArguments({ jscpd, paths, config, format, output, ignore, together, mode }) {
   return [
     jscpd,
     ...paths,
@@ -50,7 +51,7 @@ function jscpdArguments({ jscpd, paths, config, format, output, ignore, together
     '--format',
     format,
     '--mode',
-    DUPLICATES_MODE,
+    mode,
     '--reporters',
     'json',
     '--output',
@@ -73,7 +74,7 @@ function runJscpdOnce({ cwd, output, args }) {
   if (result.error !== undefined) {
     throw result.error;
   }
-  if (result.status !== 0) {
+  if (!jscpdCompleted(result)) {
     const detail = result.stderr.trim() || result.stdout.trim() || 'no diagnostic output';
     throw new Error(`jscpd exited with ${String(result.status)} in ${cwd}: ${detail}`);
   }
@@ -91,13 +92,23 @@ export function runJscpd({
 }) {
   const jscpd = resolveTool('jscpd', { bin: 'run-jscpd.js' }).binPath;
   const config = path.join(reportRoot, JSCPD_CONFIG);
-  writeFileSync(config, JSON.stringify(JSCPD_SETTINGS));
+  const settings = layeredJscpdConfig(JSCPD_SETTINGS);
+  writeFileSync(config, JSON.stringify(settings));
   const groups = together
     ? [roots].filter((group) => group.length > 0)
     : roots.map((root) => [root]);
   const runs = groups.map((paths, index) => {
     const output = insideReportRoot(reportRoot, 'jscpd', String(index));
-    const args = jscpdArguments({ jscpd, paths, config, format, output, ignore, together });
+    const args = jscpdArguments({
+      jscpd,
+      paths,
+      config,
+      format,
+      output,
+      together,
+      mode: settings.mode ?? DUPLICATES_MODE,
+      ignore: [...(settings.ignore ?? []), ...ignore],
+    });
     const report = runJscpdOnce({ cwd, output, args });
     return together
       ? { root: '.', report: relativeNames(report, cwd) }

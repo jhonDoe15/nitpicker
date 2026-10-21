@@ -1,3 +1,4 @@
+import { resolveJscpdPolicy } from '../../../core/tooling/jscpd/config.mjs';
 import { createHash } from 'node:crypto';
 import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
@@ -61,8 +62,11 @@ export function resolveHeadPolicy(config = {}, projectRoot) {
 
 function withProjectFacts(policy, config, projectRoot) {
   const prettier = policy.tools?.prettier;
+  const jscpd = resolveJscpdPolicy(policy.tools?.jscpd, projectRoot);
+  const tools = { ...policy.tools, ...(jscpd === undefined ? {} : { jscpd }) };
   return {
     ...policy,
+    ...(jscpd === undefined ? {} : { tools }),
     ...(SCOPED_PRESETS.includes(config.preset)
       ? {
           ...withDetectedScopes(policy, projectRoot),
@@ -72,7 +76,7 @@ function withProjectFacts(policy, config, projectRoot) {
     ...(usesProjectConfig(prettier?.precedence ?? [])
       ? {
           tools: {
-            ...policy.tools,
+            ...tools,
             prettier: { ...prettier, projectConfigDigest: projectFilesDigest(projectRoot) },
           },
         }
@@ -135,12 +139,17 @@ function picked(source, keys) {
   );
 }
 
-function headPrettierDigest(policy, headPolicy) {
-  const digest = headPolicy.tools?.prettier?.projectConfigDigest;
-  const prettier = policy.tools?.prettier;
-  return digest === undefined || !usesProjectConfig(prettier?.precedence ?? [])
-    ? {}
-    : { tools: { ...policy.tools, prettier: { ...prettier, projectConfigDigest: digest } } };
+function headToolFacts(policy, headPolicy) {
+  const tools = { ...policy.tools };
+  for (const [tool, keys] of [
+    ['prettier', ['projectConfigDigest']],
+    ['jscpd', ['projectConfig', 'projectConfigDigest']],
+  ]) {
+    if (usesProjectConfig(tools[tool]?.precedence ?? [])) {
+      tools[tool] = { ...tools[tool], ...picked(headPolicy.tools?.[tool] ?? {}, keys) };
+    }
+  }
+  return policy.tools === undefined ? {} : { tools };
 }
 
 export function withHeadCheckoutFacts(policy, headPolicy = {}) {
@@ -153,7 +162,7 @@ export function withHeadCheckoutFacts(policy, headPolicy = {}) {
         { ...policy[scope], ...picked(headPolicy[scope], keys) },
       ]),
     ),
-    ...headPrettierDigest(policy, headPolicy),
+    ...headToolFacts(policy, headPolicy),
   };
 }
 

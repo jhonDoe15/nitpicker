@@ -1,7 +1,8 @@
 import { mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
+import { resolveHeadPolicy, withHeadPolicyFile } from '../../../typescript/preset/head-policy.mjs';
 import { applyFindingPolicy } from '../../../../shared/findings/finding-policy.mjs';
 import { readDuplicateFindings, runJavaDuplicates } from '../metrics/java-duplicates.mjs';
 import { readKotlinDuplicateFindings, runKotlinDuplicates } from '../kotlin/kotlin-duplicates.mjs';
@@ -9,6 +10,7 @@ import { readKotlinDuplicateFindings, runKotlinDuplicates } from '../kotlin/kotl
 const roots = [];
 
 afterEach(() => {
+  vi.unstubAllEnvs();
   for (const root of roots.splice(0)) {
     rmSync(root, { recursive: true, force: true });
   }
@@ -199,5 +201,40 @@ describe('duplicates in Kotlin sources', () => {
     expect(kotlinClones(projectRoot, ['target']).map(({ path: file }) => file)).toEqual([
       'src/main/kotlin/demo/build/One.kt',
     ]);
+  });
+});
+
+describe('JVM jscpd configuration precedence', () => {
+  it.each([
+    ['java', 'java', BODY, runJavaDuplicates, readDuplicateFindings],
+    ['kotlin', 'kt', KOTLIN_BODY, runKotlinDuplicates, readKotlinDuplicateFindings],
+  ])('uses the captured head settings for %s', (preset, extension, body, run, read) => {
+    const sourceRoot = `src/main/${preset}`;
+    const first = `${sourceRoot}/demo/One.${extension}`;
+    const root = project(
+      {
+        [first]: javaFile('One', '', body),
+        [`${sourceRoot}/demo/Two.${extension}`]: javaFile('Two', '', body),
+      },
+      { sourceRoots: [sourceRoot], kotlinSourceRoots: [sourceRoot] },
+    );
+    writeFileSync(path.join(root, '.jscpd.json'), JSON.stringify({ minTokens: 10000 }));
+    for (const [precedence, expected] of [
+      [['nitpicker'], [first]],
+      [['project'], []],
+      [['project', 'nitpicker'], []],
+      [['nitpicker', 'project'], [first]],
+    ]) {
+      const policy = resolveHeadPolicy({ preset, tools: { jscpd: { precedence } } }, root);
+      withHeadPolicyFile(policy, (policyFile) => {
+        vi.stubEnv('NITPICKER_POLICY', policyFile);
+        run(root, duplicateOptions(root));
+        expect(
+          read(path.join(root, 'build/nitpicker'))
+            .filter(({ rule }) => rule === 'duplicate-clone')
+            .map(({ path: file }) => file),
+        ).toEqual(expected);
+      });
+    }
   });
 });

@@ -1,8 +1,10 @@
+import { jscpdCompleted, layeredJscpdConfig } from '../../../../../core/tooling/jscpd/config.mjs';
 import {
   importPolicyModule,
   parseReportJson,
   runDependencyCruiser,
   runNodeTool,
+  spawnNodeTool,
 } from './tooling.mjs';
 import { hash } from '../../../../../shared/rules/finding-helpers.mjs';
 import {
@@ -13,7 +15,7 @@ import {
 } from '../reporting/repository.mjs';
 import { normalizeDeadCode } from '../reporting/dead-code.mjs';
 import path from 'node:path';
-import { existsSync, readFileSync, writeFileSync, realpathSync, unlinkSync } from 'node:fs';
+import { existsSync, readFileSync, writeFileSync, realpathSync, unlinkSync, rmSync } from 'node:fs';
 import { existingRoots } from '../../../preset/layout.mjs';
 import { readHeadPolicy, readLayout } from '../../../preset/head-policy.mjs';
 import { withFunctionSourceHashes, withDeadCodeSourceHashes } from '../reporting/source-hashes.mjs';
@@ -140,7 +142,7 @@ export function runDuplicates(options) {
   const configPath = path.join(options.projectRoot, '.nitpicker-diff-jscpd.json');
   const outputDirectory = path.join(options.projectRoot, 'reports/quality/duplicates');
   const layout = readLayout();
-  const config = layoutJscpdConfig(
+  const preset = layoutJscpdConfig(
     parseReportJson(
       readFileSync(
         path.join(options.policyRoot, 'languages/typescript/preset/defaults/jscpd.json'),
@@ -149,6 +151,13 @@ export function runDuplicates(options) {
     ),
     layout,
   );
+  const layered = layeredJscpdConfig(preset);
+  const config = {
+    ...layered,
+    path: preset.path,
+    format: preset.format,
+    ignore: [...(layered.ignore ?? []), ...layout.exclude],
+  };
   config.path = existingRoots(options.projectRoot, config.path);
   if (config.path.length === 0) return [];
   trackTemporaryPath(configPath);
@@ -157,12 +166,15 @@ export function runDuplicates(options) {
     `${JSON.stringify({ ...config, absolute: true, reporters: ['json'], output: outputDirectory })}\n`,
   );
   try {
-    runNodeTool({
+    rmSync(outputDirectory, { recursive: true, force: true });
+    const result = spawnNodeTool({
       options,
       relativeToolPath: 'jscpd/run-jscpd.js',
       arguments_: ['--config', configPath],
-      acceptedStatuses: [0],
     });
+    if (!jscpdCompleted(result)) {
+      throw new Error(`jscpd failed: ${result.stderr.trim() || result.stdout.trim()}`);
+    }
     const report = JSON.parse(
       readFileSync(path.join(outputDirectory, 'jscpd-report.json'), 'utf8'),
     );
