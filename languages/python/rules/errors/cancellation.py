@@ -1,7 +1,7 @@
 import ast
 
 from checks.common import finding, own_nodes, type_text
-from errors.cancellation_names import caught_cancellations, resolved_name
+from errors.cancellation_names import binds, caught_cancellations, resolved_name
 
 RULE = "cancellation-not-propagated"
 NEXT = "next"
@@ -20,12 +20,11 @@ def unchanged_error(handler):
 
 
 def binds_error(node, name):
-    return (
-        isinstance(node, ast.Name)
-        and node.id == name
-        and isinstance(node.ctx, (ast.Store, ast.Del))
-        or isinstance(node, ast.ExceptHandler)
-        and node.name == name
+    return binds(node, name) or (
+        isinstance(node, (ast.Import, ast.ImportFrom))
+        and any(
+            (alias.asname or alias.name.split(".")[0]) == name for alias in node.names
+        )
     )
 
 
