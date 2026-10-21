@@ -24,6 +24,12 @@ function handler(body, caught = 'asyncio.CancelledError', imports = 'import asyn
 }
 
 const lost = ['cancellation-not-propagated:5 except asyncio.CancelledError'];
+const MESSAGE = [
+  '`except asyncio.CancelledError` has a path that consumes cancellation or replaces it with another error.',
+  'After cleanup, use a bare `raise` or re-raise the unchanged caught cancellation.',
+  'Keep intentional cancellation boundaries in the backend’s timeout or cancellation scope; returning a failure result or chaining another error does not propagate cancellation.',
+  'To allow it for some paths, add a "python.exceptions" entry for cancellation-not-propagated in nitpicker.config.json.',
+].join(' ');
 
 describe.skipIf(!enabled)('explicit cancellation handlers', () => {
   it('reports lost cancellation paths and avoids swallowed-error duplicates', () => {
@@ -172,7 +178,7 @@ describe.skipIf(!enabled)('explicit cancellation handlers', () => {
         rule: 'cancellation-not-propagated',
         mention: 'bare `raise`',
       }),
-    ).toEqual({ ok: true, messages: [expect.stringContaining('bare `raise`')] });
+    ).toEqual({ ok: true, messages: [MESSAGE] });
   });
 
   it('preserves report identity after line movement and applies reviewed path exceptions', () => {
@@ -189,9 +195,7 @@ describe.skipIf(!enabled)('explicit cancellation handlers', () => {
 
     expect(after).toEqual([{ ...before[0], location: { line: 8 } }]);
     expect(before[0].classification).toBe('enforceable');
-    expect(before[0].message).toContain(
-      '"python.exceptions" entry for cancellation-not-propagated',
-    );
+    expect(before[0].message).toBe(MESSAGE);
     expect(
       applyPythonExceptions(after, [
         { rule: 'cancellation-not-propagated', paths: ['src/worker.py'] },
