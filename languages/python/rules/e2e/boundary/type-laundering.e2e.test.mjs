@@ -23,6 +23,11 @@ describe.skipIf(process.env.NITPICKER_PYTHON_E2E !== '1')('Python type launderin
         'from typing import cast\nname = lambda value=cast(str, source): value\n',
         ['type-cast:2 typing.cast'],
       ],
+      [
+        'cast in an annotation',
+        'from typing import cast\ndef name(value: cast(type, str)):\n    return value\n',
+        ['type-cast:2 name.typing.cast'],
+      ],
     ]);
     expect(actual).toEqual(expected);
   });
