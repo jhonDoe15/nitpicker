@@ -1,0 +1,139 @@
+import { execFileSync } from 'node:child_process';
+import {
+  cpSync,
+  mkdtempSync,
+  realpathSync,
+  rmSync,
+  symlinkSync,
+  writeFileSync,
+  appendFileSync,
+} from 'node:fs';
+import { tmpdir } from 'node:os';
+import path from 'node:path';
+
+export const REPOSITORY_ROOT = path.resolve(import.meta.dirname, '../..');
+const GRADLE_PROJECT = 'languages/java/adapters/fixtures/gradle-project';
+const JAVA_CONFIG = `${JSON.stringify({ preset: 'java' })}\n`;
+const SWALLOWED_JAVA = `package demo;
+
+public final class Parser {
+  public int parse(String text) {
+    try {
+      return Integer.parseInt(text);
+    } catch (NumberFormatException e) {
+    }
+    return 0;
+  }
+}
+`;
+const SWALLOWED_PYTHON = `def parse(text: str) -> int:
+    try:
+        return int(text)
+    except ValueError:
+        pass
+    return 0
+`;
+
+export const SAMPLES = {
+  typescript: {
+    sources: ['languages/typescript/preset/fixtures/strict-clean'],
+    files: { '.gitignore': 'node_modules/\nreports/\n' },
+    linkNodeModules: true,
+    change: {
+      append: {
+        'src/main/features/greeting/domain/greet.ts':
+          "\nexport const widened = ['a'] as readonly string[];\n",
+      },
+    },
+  },
+  gradle: {
+    sources: [GRADLE_PROJECT],
+    files: { '.gitignore': 'build/\n.gradle/\nreports/\n', 'nitpicker.config.json': JAVA_CONFIG },
+    change: { files: { 'src/main/java/demo/Parser.java': SWALLOWED_JAVA } },
+  },
+  maven: {
+    sources: [GRADLE_PROJECT, 'languages/java/maven/fixtures/single'],
+    removed: ['build.gradle', 'settings.gradle'],
+    files: { '.gitignore': 'target/\nreports/\n', 'nitpicker.config.json': JAVA_CONFIG },
+    change: { files: { 'src/main/java/demo/Parser.java': SWALLOWED_JAVA } },
+  },
+  python: {
+    sources: ['languages/python/adapters/fixtures/python-project'],
+    files: {
+      '.gitignore': '.venv/\n__pycache__/\n.pytest_cache/\n.ruff_cache/\nmutants/\nreports/\n',
+    },
+    pythonEnvironment: ['-e', '.', 'coverage', 'mutmut', 'mypy', 'pytest', 'ruff'],
+    change: { files: { 'src/demo/parser.py': SWALLOWED_PYTHON } },
+  },
+};
+
+const GIT_IDENTITY = {
+  GIT_AUTHOR_NAME: 'nitpicker',
+  GIT_AUTHOR_EMAIL: 'nitpicker@example.com',
+  GIT_COMMITTER_NAME: 'nitpicker',
+  GIT_COMMITTER_EMAIL: 'nitpicker@example.com',
+};
+
+export function runCommand(command, args, cwd) {
+  return execFileSync(command, args, {
+    cwd,
+    env: { ...process.env, ...GIT_IDENTITY },
+    encoding: 'utf8',
+    stdio: ['ignore', 'pipe', 'inherit'],
+  });
+}
+
+function writeFiles(root, files = {}) {
+  for (const [name, text] of Object.entries(files)) {
+    writeFileSync(path.join(root, name), text);
+  }
+}
+
+function applyChange(root, { files, append = {} }) {
+  writeFiles(root, files);
+  for (const [name, text] of Object.entries(append)) {
+    appendFileSync(path.join(root, name), text);
+  }
+}
+
+function installPythonEnvironment(root, packages) {
+  runCommand('uv', ['venv', '-q', '.venv'], root);
+  runCommand('uv', ['pip', 'install', '-q', '--python', '.venv', ...packages], root);
+}
+
+export function createSampleRepository(name) {
+  const sample = SAMPLES[name];
+  if (sample === undefined) {
+    throw new Error(`Unknown sample ${name}; choose one of ${Object.keys(SAMPLES).join(', ')}`);
+  }
+  const root = realpathSync.native(mkdtempSync(path.join(tmpdir(), `nitpicker-platform-${name}-`)));
+  for (const source of sample.sources) {
+    cpSync(path.join(REPOSITORY_ROOT, source), root, { recursive: true });
+  }
+  for (const removed of sample.removed ?? []) rmSync(path.join(root, removed));
+  writeFiles(root, sample.files);
+  if (sample.linkNodeModules) {
+    symlinkSync(
+      path.join(REPOSITORY_ROOT, 'node_modules'),
+      path.join(root, 'node_modules'),
+      'junction',
+    );
+  }
+  runCommand('git', ['init', '-q', '-b', 'main'], root);
+  runCommand('git', ['add', '-A'], root);
+  runCommand('git', ['commit', '-q', '-m', 'sample'], root);
+  if (sample.pythonEnvironment !== undefined)
+    installPythonEnvironment(root, sample.pythonEnvironment);
+  return {
+    root,
+    change() {
+      runCommand('git', ['checkout', '-q', '-b', 'change'], root);
+      applyChange(root, sample.change);
+      runCommand('git', ['add', '-A'], root);
+      runCommand('git', ['commit', '-q', '-m', 'change'], root);
+    },
+    remove() {
+      rmSync(root, { recursive: true, force: true, maxRetries: 3, retryDelay: 500 });
+    },
+  };
+}

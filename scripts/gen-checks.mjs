@@ -1,10 +1,8 @@
-// Regenerates the parts of the repository that come from shared/policy.mjs: the custom-rules table
-// in spec/checks.md and the jscpd mode in languages/typescript/preset/defaults/jscpd.json. `--check` writes nothing and
-// exits 1 when a file is stale.
 import { readFileSync, realpathSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { applyGeneratedBlock, applyJscpdMode } from '../shared/checks-catalog.mjs';
+import { applySupportMatrix } from './platforms/support-matrix.mjs';
 
 const repositoryRoot = path.resolve(import.meta.dirname, '..');
 export const GENERATED_FILES = [
@@ -13,6 +11,7 @@ export const GENERATED_FILES = [
     file: path.join(repositoryRoot, 'languages/typescript/preset/defaults/jscpd.json'),
     generate: applyJscpdMode,
   },
+  { file: path.join(repositoryRoot, 'docs/compatibility.md'), generate: applySupportMatrix },
 ];
 
 export function staleFiles() {

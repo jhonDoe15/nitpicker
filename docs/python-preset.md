@@ -921,8 +921,8 @@ directory>` or `test-runs/unittest_timings.py <report> discover` (unittest's own
   tool versions are read, and is reported as a plain tool error of each analyzer for each snapshot. Every failing step is reported, with the end of the tool output. The CLI
   exits 2 when nothing new failed, and a snapshot with a tool error is not compared, as for Java; the other analyzer is.
 - **Not included.** Multi-project
-  repositories are analyzed one project root at a time. Windows is untested (mutation testing
-  needs WSL, see slice 6).
+  repositories are analyzed one project root at a time. On Windows, CI runs a sample project
+  ([compatibility](compatibility.md)). Mutation testing there needs WSL (see slice 6).
 
 ## Slice 3: structure limits and CRAP
 
