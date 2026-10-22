@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { configuredAnalyzers } from '../../languages/typescript/preset/diff/configured-analyzers.mjs';
 import { resolveHeadPolicy } from '../../languages/typescript/preset/head-policy.mjs';
 import { createPythonAnalyzers } from '../../languages/python/adapters/python-analyzer.mjs';
+import { createJavaAnalyzer } from '../../languages/java/adapters/java-analyzer.mjs';
 import { configureAnalyzers } from './configure-analyzers.mjs';
 
 const packageAnalyzers = configuredAnalyzers();
@@ -91,4 +92,44 @@ describe('configureAnalyzers', () => {
     expect(configure(['mutation']).map(({ name }) => name)).toEqual(['python']);
     expect(configure(['python'])).toEqual([]);
   });
+});
+
+describe('the baseline moves file', () => {
+  const context = {
+    projectRoot: '/p',
+    policyRoot: '/p',
+    toolRoot: '/t',
+    liveProjectRoot: '/p',
+    snapshot: 'head',
+    baselineRoot: '/base',
+    baselineMovesFile: '/tmp/moves.json',
+  };
+
+  function configuredArguments(preset, analyzers, name) {
+    const config = { preset };
+    const configured = configureAnalyzers(analyzers, config, resolveHeadPolicy(config));
+    return configured.find((analyzer) => analyzer.name === name).createInvocation(context).args;
+  }
+
+  it('reaches the TypeScript structure analyzer, whose sibling-copy-edit reads the base', () => {
+    const args = configuredArguments('typescript', packageAnalyzers, 'structure');
+
+    expect(args.slice(-4)).toEqual([
+      '--baseline-root',
+      '/base',
+      '--baseline-moves-file',
+      '/tmp/moves.json',
+    ]);
+  });
+
+  it.each([
+    ['python', () => createPythonAnalyzers(), 'python'],
+    ['java', () => [createJavaAnalyzer()], 'java'],
+    ['kotlin', () => [createJavaAnalyzer({ kotlin: true })], 'kotlin'],
+  ])(
+    'is not passed to the %s runner, which runs no rule that reads it yet',
+    (preset, analyzers, name) => {
+      expect(configuredArguments(preset, analyzers(), name)).not.toContain('--baseline-moves-file');
+    },
+  );
 });
