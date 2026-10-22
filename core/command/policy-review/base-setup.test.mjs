@@ -34,6 +34,7 @@ describe('createBaseSetupResolver', () => {
       generatedFiles: ['src/api.gen.ts'],
       frameworks,
       libraries: { validation: ['valibot'], logger: ['winston'] },
+      layout: { sourceRoots: ['lib'], colocatedTests: true },
       react: { enabled: true, major: 18, styling: 'css-in-js', autoCleanup: false },
       i18n: { enabled: true },
       tools: { prettier: { precedence: ['nitpicker'], projectConfigDigest: 'abc' } },
@@ -44,7 +45,7 @@ describe('createBaseSetupResolver', () => {
 
     expect(setup.headPolicy).toEqual({
       exclude: [],
-      layout: {},
+      layout: { colocatedTests: true },
       exceptions: [],
       thresholds: {},
       conventions: { 'prettier.semi': false },
