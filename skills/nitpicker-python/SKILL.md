@@ -42,6 +42,7 @@ backstop. It fails only on findings your change adds, so leave code the task doe
 - A `try` inside a loop is flagged (PERF203): move it out, or extract the loop body into a function.
 - Flow: no `else` after a `return`, and return an expression directly instead of assigning it to a
   local first. Build a list with a comprehension, not `append` in a loop.
+- Fan-out: bound concurrent remote or message calls. Hold an `asyncio.Semaphore` (or `anyio.CapacityLimiter`) around each call, or `gather` fixed-size chunks. Never `asyncio.gather(*(fetch(u) for u in urls))` over a runtime collection.
 - Imports: name what you use. No `from module import *`.
 - Output: the project's logger (`logging.getLogger(__name__)`, structlog or loguru), never `print`. A
   log in an `except` keeps the traceback (`logger.exception(...)` or `exc_info=True`); passing the

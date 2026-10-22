@@ -82,6 +82,11 @@ describe('rules script report', () => {
     ['credential-shape', 'credential', 'A string has the shape of a credential'],
     ['secret-in-log', 'token', '`token` is a secret and is passed to a log call'],
     ['io-in-loop', 'requests.get()', '`requests.get()` runs once per item of a loop'],
+    [
+      'unbounded-fan-out',
+      'asyncio.gather|items|client.get()||remote',
+      '`asyncio.gather` starts `client.get()` for every element of `items` at once, with no bound on how many run together',
+    ],
     ['todo-without-issue', 'TODO: later', 'The task marker `TODO: later` has no issue'],
     [
       'skipped-test-without-reason',

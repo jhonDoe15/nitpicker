@@ -16,6 +16,7 @@ def load_checks():
     sys.path.insert(0, HERE)
     from boundary import domain_types, guards, paths
     from checks import comments, declarations, shell, state
+    from concurrency import fan_out
     from discovery import helpers, uncollected
     from environment import environment, purity
     from errors import errors
@@ -48,6 +49,7 @@ def load_checks():
         secrets,
         secret_logs,
         loops,
+        fan_out,
         skipped,
         assertions,
         unasserted,
@@ -86,7 +88,7 @@ def parse_file(path):
 
 
 def is_guarded(module):
-    return module.__name__.startswith("security.")
+    return module.__name__.startswith(("security.", "concurrency."))
 
 
 def check_failure(module, context, error):

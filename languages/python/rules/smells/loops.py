@@ -1,6 +1,7 @@
 import ast
 
 from checks.common import dotted_name, finding
+from concurrency.remote import is_task_call
 from smells.io_index import IoScope, chain_names, io_index
 
 CONCURRENT_COMBINATORS = {"asyncio.gather", "asyncio.wait", "asyncio.as_completed"}
@@ -52,6 +53,11 @@ def is_concurrent(comprehension, parents, aliases):
         isinstance(node, ast.Call)
         and dotted_name(node.func, aliases) in CONCURRENT_COMBINATORS
     )
+
+
+def is_task_work(call, parents, aliases):
+    parent = parents.get(id(call))
+    return is_task_call(parent, aliases) and call in parent.args
 
 
 def assigned_pairs(loop):
@@ -175,6 +181,8 @@ def check(context):
         if isinstance(loop, COMPREHENSIONS) and is_concurrent(
             loop, parents, context.aliases
         ):
+            continue
+        if is_task_work(node, parents, context.aliases):
             continue
         if (
             is_paging_loop(loop, scope)

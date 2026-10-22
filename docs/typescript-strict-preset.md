@@ -316,6 +316,31 @@ only the library follows the project. Nitpicker reads `dependencies`, `peerDepen
   do not count. `await Promise.allSettled(...)` with its result dropped hides every rejection, and
   `new Promise((resolve) => resolve(value))` wraps a value that `Promise.resolve(value)` or an
   async function returns directly.
+- Bounded fan-out (`nitpicker/unbounded-fan-out`): `Promise.all`, `allSettled`, `any` and `race`
+  over `xs.map(...)`, `xs.flatMap(...)`, `Array.from(xs, ...)`, a `const` holding one of those, a
+  spread of one, or an array filled by `push` inside a `for...of`, `for...in`, `for` or `forEach`
+  over `xs`, where the callback makes a remote call (HTTP or RPC: `fetch`, `axios`, `got`, `ky`,
+  `superagent`, `needle`, `undici`, `node-fetch`, `http(s).request`, `@nestjs/axios`,
+  `graphql-request`, AWS SDK v3 `client.send`, OpenAI, Anthropic, Stripe, Octokit and Slack
+  clients) or publishes to a broker (`kafkajs`, `amqplib`, `amqp-connection-manager`, `nats`,
+  `@google-cloud/pubsub`, `bullmq`, `bull`, `mqtt`, `ioredis` `publish`, Azure Service Bus, SQS, SNS,
+  EventBridge and Kinesis). It follows aliases, `require`, `await import()`, `axios.create()`-style
+  instances, `this.client` class fields and parameters typed with the library type, and a helper
+  function or method of the same file (up to three calls deep), reporting `load()` with the
+  `fetch()` it reaches. `pMap(xs, fn)` without a numeric `concurrency` runs unlimited too and is
+  reported. Database calls are not this rule's business: the per-item I/O rule reports them with
+  the batching remedy. Allowed: the call wrapped in a limiter created outside the callback with an
+  explicit bound (`pLimit(8)`, `p-queue` with `concurrency`, Bottleneck with `maxConcurrent`,
+  `p-throttle` with `limit`, `async-sema`, `async-mutex` `Semaphore`, `limiter`), a limiter received
+  as a parameter, `sema.acquire()` in the callback, a literal or `const` array or object, `slice`
+  or `splice` with an explicit size (`urls.slice(i, i + SIZE)`), `Array.from({ length: 3 })`, and
+  `for...of` over `chunk(xs, 20)`-style calls (`chunk`, `chunked`, `chunks`, `splitEvery`,
+  `cluster`, `batch`). A concurrency constant that no limiter uses, a limiter built inside the
+  callback and `pLimit(Infinity)` bound nothing. The message names the collection, the call, the
+  limiter form, the chunked form and the batch API alternative. Limits: a helper in another file
+  is not followed, a client that arrives untyped through a parameter or an unlisted library is not
+  recognized, and a collection that is small in practice but not by construction is reported;
+  lift such a path with an `exceptions` entry for the rule.
 - `===` and `!==` only (`eqeqeq`). Braces on every `if`, `else` and loop body (`curly`). One import
   statement per module (`no-duplicate-imports`; a separate `import type` is fine).
 - Identifier casing (`nitpicker/naming-convention`, which wraps

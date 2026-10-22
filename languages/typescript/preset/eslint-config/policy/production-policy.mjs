@@ -90,6 +90,7 @@ function productionGuardRules({ react, security }) {
     ],
     'nitpicker/no-shell-string-command': 'error',
     'nitpicker/no-unsafe-path-join': 'error',
+    'nitpicker/unbounded-fan-out': 'error',
     ...securityRules({ react, security }),
   };
 }
