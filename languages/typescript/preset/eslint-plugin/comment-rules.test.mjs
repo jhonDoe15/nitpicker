@@ -176,3 +176,30 @@ ruleTester.run('no-comments', noComments, {
     },
   ],
 });
+
+const suppressionsOnly = [{ suppressionsOnly: true }];
+
+ruleTester.run('no-comments, suppression comments only', noComments, {
+  valid: [
+    { code: "// the order matters here\nit('x', () => {});", options: suppressionsOnly },
+    { code: '/** Builds a user. */\nfunction build() { return 1; }', options: suppressionsOnly },
+    { code: '// @jsxImportSource preact\nexport const a = 1;', options: suppressionsOnly },
+  ],
+  invalid: [
+    {
+      code: '// @ts-expect-error wrong on purpose\nrun(1);',
+      options: suppressionsOnly,
+      errors: [{ messageId: 'typescriptSuppression' }],
+    },
+    {
+      code: '// Stryker disable all\nexport const a = 1;',
+      options: suppressionsOnly,
+      errors: [{ messageId: 'coverageSuppression' }],
+    },
+    {
+      code: 'run(); /* v8 ignore next */',
+      options: suppressionsOnly,
+      errors: [{ messageId: 'coverageSuppression' }],
+    },
+  ],
+});
