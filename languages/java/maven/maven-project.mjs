@@ -5,10 +5,6 @@ import { childAt, childrenAt, childrenNamed, parseXml } from '../../../shared/in
 import { compilerSettings } from './errorprone/maven-compiler.mjs';
 import { kotlinSourceRoots } from './configuration/kotlin-roots.mjs';
 
-const SCOPES = new Set(['compile', 'provided', 'runtime', 'test', 'system']);
-const MAIN_COMPILE_SCOPES = new Set(['compile', 'provided', 'system']);
-const SPRING_JAR = /^spring-(?:context|boot)-.*\.jar$/u;
-const TEST_COMPILE_SCOPES = new Set([...MAIN_COMPILE_SCOPES, 'test']);
 const BUILD_HELPER = 'org.codehaus.mojo:build-helper-maven-plugin';
 const GMAVENPLUS = 'org.codehaus.gmavenplus:gmavenplus-plugin';
 const GROOVY_TEST_ROOT = 'src/test/groovy';
@@ -251,52 +247,4 @@ export function readReactor(projectRoot, effectivePom) {
 
 export function lifecycleArgs(modules) {
   return modules.some((module) => module.runsFailsafe) ? VERIFY_BUILD : ['test'];
-}
-
-export function parseDependencyList(text) {
-  return text
-    .split(/\r?\n/u)
-    .map((line) =>
-      line
-        .trim()
-        .replace(/ -- module .*$/u, '')
-        .replace(/ \(optional\)$/u, ''),
-    )
-    .flatMap((line) => {
-      const parts = line.split(':');
-      const index = [5, 4].find(
-        (position) => SCOPES.has(parts[position]) && position < parts.length - 1,
-      );
-      return index === undefined
-        ? []
-        : [
-            {
-              groupId: parts[0],
-              artifactId: parts[1],
-              type: parts[2],
-              scope: parts[index],
-              file: parts.slice(index + 1).join(':'),
-            },
-          ];
-    });
-}
-
-function filesIn(dependencies, scopes) {
-  return dependencies.filter((entry) => scopes.has(entry.scope)).map((entry) => entry.file);
-}
-
-export function moduleClasspaths(module, dependencies) {
-  return {
-    mainCompile: filesIn(dependencies, MAIN_COMPILE_SCOPES),
-    testCompile: filesIn(dependencies, TEST_COMPILE_SCOPES),
-    testRuntime: [
-      module.testOutputDirectory,
-      module.outputDirectory,
-      ...dependencies.map((entry) => entry.file),
-    ],
-  };
-}
-
-export function usesSpring(classpaths) {
-  return classpaths.mainCompile.some((entry) => SPRING_JAR.test(path.basename(entry)));
 }
