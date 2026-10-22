@@ -1,6 +1,7 @@
 import { mkdirSync, mkdtempSync, readFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
+import { readEffectivePom } from './configuration/effective-pom.mjs';
 import { runMaven } from './maven-command.mjs';
 import {
   lifecycleArgs,
@@ -20,7 +21,7 @@ import {
 } from './maven-tools.mjs';
 import { processorTool } from './errorprone/maven-errorprone.mjs';
 import { readPinnedTools } from '../builds/java-build.mjs';
-import { kotlinSetup } from './kotlin/kotlin-options.mjs';
+import { kotlinSetup } from './kotlin/kotlin-setup.mjs';
 import {
   analyzeModule,
   jacocoExecFiles,
@@ -37,16 +38,6 @@ const PROJECT_CHECKS_OFF = [
   '-Dktlint.skip=true',
   '-Ddetekt.skip=true',
 ];
-
-function readEffectivePom(projectRoot, maven, work) {
-  const output = path.join(work, 'effective-pom.xml');
-  runMaven({
-    projectRoot,
-    maven,
-    args: ['--quiet', `${MAVEN_PLUGINS.help}:effective-pom`, `-Doutput=${output}`],
-  });
-  return readFileSync(output, 'utf8');
-}
 
 function dependencyFile(work, module) {
   const [groupId, artifactId] = module.coordinates.split(':');
@@ -119,7 +110,7 @@ export function runMavenPreset(projectRoot, { maven, policy = {}, configs }) {
   const work = mkdtempSync(path.join(tmpdir(), 'nitpicker-maven-'));
   try {
     const { modules, effectivePom } = readModules(projectRoot, maven, work);
-    const kotlin = kotlinSetup({ projectRoot, policy, modules, effectivePom, work, pinned });
+    const kotlin = kotlinSetup({ projectRoot, policy, modules, effectivePom, work, pinned, maven });
     const since = Date.now() - 2000;
     buildAndTest({ projectRoot, maven, work, pinned, modules });
     const analyzed = modules.map((module) => ({

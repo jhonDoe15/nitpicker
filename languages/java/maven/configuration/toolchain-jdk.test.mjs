@@ -7,6 +7,20 @@ import { jdkRequirements, toolchainJdkHome } from './toolchain-jdk.mjs';
 
 const homes = [];
 
+function contextOf(home) {
+  return { projectRoot: '/nowhere', environment: {}, home, maven: '/nonexistent/mvn' };
+}
+
+function mavenProject(files) {
+  const root = mkdtempSync(path.join(tmpdir(), 'nitpicker-toolchains-project-'));
+  homes.push(root);
+  for (const [name, text] of Object.entries(files)) {
+    mkdirSync(path.dirname(path.join(root, name)), { recursive: true });
+    writeFileSync(path.join(root, name), text);
+  }
+  return root;
+}
+
 function entry(version, vendor, jdkHome) {
   return `<toolchain><type>jdk</type><provides><version>${version}</version><vendor>${vendor}</vendor></provides>
     <configuration><jdkHome>${jdkHome}</jdkHome></configuration></toolchain>`;
@@ -65,28 +79,84 @@ describe('the JDK the build selects', () => {
         entry('17', 'zulu', '/jdks/zulu17') +
         entry('17', 'temurin', '/jdks/17'),
     );
+    const context = contextOf(home);
 
-    expect(toolchainJdkHome({ version: '17', vendor: 'temurin' }, { home })).toBe('/jdks/17');
-    expect(toolchainJdkHome({ version: '17' }, { home })).toBe('/jdks/zulu17');
+    expect(toolchainJdkHome({ version: '17', vendor: 'temurin' }, context)).toBe('/jdks/17');
+    expect(toolchainJdkHome({ version: '17' }, context)).toBe('/jdks/zulu17');
   });
 
   it('matches a version range', () => {
     const home = userHome(
       entry('11', 'a', '/jdks/11') + entry('17', 'a', '/jdks/17') + entry('21', 'a', '/jdks/21'),
     );
+    const context = contextOf(home);
 
-    expect(toolchainJdkHome({ version: '[17,21)' }, { home })).toBe('/jdks/17');
-    expect(toolchainJdkHome({ version: '[18,)' }, { home })).toBe('/jdks/21');
-    expect(toolchainJdkHome({ version: '(,11]' }, { home })).toBe('/jdks/11');
+    expect(toolchainJdkHome({ version: '[17,21)' }, context)).toBe('/jdks/17');
+    expect(toolchainJdkHome({ version: '[18,)' }, context)).toBe('/jdks/21');
+    expect(toolchainJdkHome({ version: '(,11]' }, context)).toBe('/jdks/11');
   });
 
-  it('fails loudly when no toolchain provides the JDK', () => {
+  it('finds no JDK when no toolchains file provides it', () => {
     const home = userHome(entry('11', 'temurin', '/jdks/11'));
 
-    expect(() => toolchainJdkHome({ version: '17' }, { home })).toThrow(
-      new Error(
-        `The build selects the JDK toolchain {"version":"17"}, and ${path.join(home, '.m2', 'toolchains.xml')} lists no JDK that provides it`,
-      ),
+    expect(toolchainJdkHome({ version: '17' }, contextOf(home))).toBeUndefined();
+  });
+
+  it.each([
+    ['-t', ['-t', 'custom.xml']],
+    ['--toolchains', ['--toolchains', 'custom.xml']],
+    ['--toolchains=', ['--toolchains=custom.xml']],
+  ])('reads the file named by %s in .mvn/maven.config, relative to the project', (_, words) => {
+    const home = userHome(entry('17', 'a', '/jdks/home'));
+    const projectRoot = mavenProject({
+      'custom.xml': `<toolchains>${entry('17', 'a', '/jdks/custom')}</toolchains>`,
+      '.mvn/maven.config': `${words.join('\n')}\n`,
+    });
+
+    expect(toolchainJdkHome({ version: '17' }, { ...contextOf(home), projectRoot })).toBe(
+      '/jdks/custom',
     );
+  });
+
+  it('reads the file named by MAVEN_ARGS and the global file', () => {
+    const home = userHome(entry('11', 'a', '/jdks/11'));
+    const projectRoot = mavenProject({
+      'user.xml': `<toolchains>${entry('17', 'a', '/jdks/user')}</toolchains>`,
+      'global.xml': `<toolchains>${entry('21', 'a', '/jdks/global')}</toolchains>`,
+    });
+    const context = {
+      ...contextOf(home),
+      projectRoot,
+      environment: { MAVEN_ARGS: '-t user.xml --global-toolchains global.xml' },
+    };
+
+    expect(toolchainJdkHome({ version: '17' }, context)).toBe('/jdks/user');
+    expect(toolchainJdkHome({ version: '21' }, context)).toBe('/jdks/global');
+  });
+
+  it('expands environment variables and the user home in a jdkHome', () => {
+    const home = userHome(
+      entry('17', 'a', '${env.CUSTOM_JDK}/x') + entry('21', 'a', '${user.home}/jdk'),
+    );
+    const context = { ...contextOf(home), environment: { CUSTOM_JDK: '/opt' } };
+
+    expect(toolchainJdkHome({ version: '17' }, context)).toBe('/opt/x');
+    expect(toolchainJdkHome({ version: '21' }, context)).toBe(`${home}/jdk`);
+  });
+
+  it('reads ${maven.home}/conf/toolchains.xml of the Maven that runs the build', () => {
+    const home = userHome(entry('11', 'a', '/jdks/11'));
+    const mavenHome = mavenProject({
+      'conf/toolchains.xml': `<toolchains>${entry('17', 'a', '/jdks/conf')}</toolchains>`,
+    });
+    const fake = path.join(mavenHome, 'mvn');
+    writeFileSync(fake, `#!/bin/sh\necho "Maven home: ${mavenHome}"\n`, { mode: 0o755 });
+
+    expect(
+      toolchainJdkHome(
+        { version: '17' },
+        { ...contextOf(home), projectRoot: mavenHome, maven: fake },
+      ),
+    ).toBe('/jdks/conf');
   });
 });

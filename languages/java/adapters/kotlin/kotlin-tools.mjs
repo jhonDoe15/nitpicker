@@ -8,10 +8,12 @@ import {
 import { KOTLIN_LINE_LENGTH } from '../../conventions/kotlin-conventions.mjs';
 import {
   BUILD_FILES,
-  buildText,
+  declaredKtfmtStyle,
   detectFormatter,
+  isMavenFacts,
   kotlinFilesOf,
   ktfmtStyle,
+  mavenBuildFacts,
   POM,
 } from './style/kotlin-build-text.mjs';
 import {
@@ -105,6 +107,16 @@ export function kotlinFormatterOf(projectRoot, configured, effectivePom) {
   return configured ?? detectFormatter(kotlinFilesOf(projectRoot, effectivePom));
 }
 
+export function mavenKotlinFacts(projectRoot, configured, effectivePom) {
+  return mavenBuildFacts(kotlinFilesOf(projectRoot, effectivePom), configured);
+}
+
+function declaredStyleOf({ configRoot, effectivePom, facts }) {
+  return isMavenFacts(facts)
+    ? facts.ktfmtStyle
+    : declaredKtfmtStyle(kotlinFilesOf(configRoot, effectivePom));
+}
+
 export function resolveKotlinTools(
   projectRoot,
   {
@@ -115,14 +127,15 @@ export function resolveKotlinTools(
     policyRoot,
     toolPrecedence = {},
     effectivePom,
+    facts,
   } = {},
 ) {
   const configRoot = policyRoot ?? projectRoot;
   const chosen = kotlinFormatterOf(projectRoot, formatter, effectivePom);
-  const build = buildText(configRoot, effectivePom);
+  const declared = declaredStyleOf({ configRoot, effectivePom, facts });
   return {
     formatter: chosen,
-    ktfmtStyle: ktfmtStyle({ build, conventions }),
+    ktfmtStyle: ktfmtStyle({ declared, conventions }),
     ktfmtMaxWidth: chosen === 'ktfmt' ? conventions[KOTLIN_LINE_LENGTH] : undefined,
     ...projectStyle(chosen, configRoot, toolPrecedence),
     ...detektLayerSettings({ configRoot, detektConfig, snapshot, toolPrecedence }),

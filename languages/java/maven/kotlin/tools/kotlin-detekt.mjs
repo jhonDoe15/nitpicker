@@ -3,6 +3,7 @@ import { existsSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { javaCommand, runJava } from '../../maven-command.mjs';
 import { EMPTY_SARIF, kotlinFiles, lintedRoots } from './kotlin-files.mjs';
+import { writeKotlinNotes } from '../../../adapters/reporting/kotlin-notes.mjs';
 import { GRADLE_DIRECTORY } from '../../../builds/java-build.mjs';
 import { toolchainJdkHome } from '../../configuration/toolchain-jdk.mjs';
 
@@ -24,8 +25,19 @@ function runningJdkHome() {
   return found;
 }
 
-export function jdkHome({ jdkToolchain }, options = {}) {
-  return jdkToolchain === undefined ? runningJdkHome() : toolchainJdkHome(jdkToolchain, options);
+export function jdkHome({ jdkToolchain }, context = {}) {
+  if (jdkToolchain === undefined) {
+    return { home: runningJdkHome() };
+  }
+  const home = toolchainJdkHome(jdkToolchain, context);
+  if (home !== undefined) {
+    return { home };
+  }
+  const fallback = runningJdkHome();
+  return {
+    home: fallback,
+    note: `The build selects the JDK toolchain ${JSON.stringify(jdkToolchain)}, which no toolchains file lists, so detekt resolves JDK types against ${fallback}`,
+  };
 }
 
 export function detektClasspath({ detektStdlib, javaClassDirectories, libraries, ownOutputs }) {
@@ -74,11 +86,13 @@ export function runDetekt({ module, reportDir, tools, classpaths, javaClassDirec
     libraries: [...classpaths.mainCompile, ...classpaths.testCompile],
     ownOutputs: [module.outputDirectory, module.testOutputDirectory],
   });
+  const jdk = jdkHome(module.kotlin, options.toolchains);
+  writeKotlinNotes(reportDir, jdk.note === undefined ? [] : [jdk.note]);
   runJava({
     tool: 'detekt',
     classpath: tools.detekt,
     mainClass: 'io.gitlab.arturbosch.detekt.cli.Main',
-    args: detektArguments({ module, report, options, classpath, home: jdkHome(module.kotlin) }),
+    args: detektArguments({ module, report, options, classpath, home: jdk.home }),
     cwd: module.basedir,
     accept: (result) =>
       (result.status === 0 || result.status === FINDINGS_EXIT_CODE) && existsSync(report),

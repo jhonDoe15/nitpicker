@@ -2,7 +2,7 @@ import { mkdirSync, mkdtempSync, readdirSync, rmSync, writeFileSync } from 'node
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
-import { copyJavaClasses, sourceFileOf } from './kotlin-classes.mjs';
+import { copyJavaClasses, sourceFileOf } from './java-classes.mjs';
 
 const roots = [];
 

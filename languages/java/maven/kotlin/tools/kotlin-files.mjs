@@ -14,14 +14,6 @@ export function kotlinFiles(roots) {
     .sort();
 }
 
-export function relativeTo(basedir, file) {
-  return path.relative(basedir, file).replaceAll('\\', '/');
-}
-
-export function relativeRoots(module, roots) {
-  return roots.map((root) => relativeTo(module.basedir, root));
-}
-
 export function lintedRoots({ sourceRoots, testSourceRoots = [] }) {
   return [...new Set([...sourceRoots, ...testSourceRoots])];
 }

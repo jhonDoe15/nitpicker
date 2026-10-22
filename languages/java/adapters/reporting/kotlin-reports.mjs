@@ -17,6 +17,7 @@ import {
 import { readKotlinSpringFindings } from '../kotlin/spring/kotlin-spring.mjs';
 import { readSuppressionFindings } from '../kotlin/rules/kotlin-suppressions.mjs';
 import { readKotlinReviewFindings } from '../kotlin/review-rules/review-findings.mjs';
+import { readKotlinNotes } from './kotlin-notes.mjs';
 
 const DETEKT_TOOL = 'detekt';
 const DETEKT_REPORT = 'detekt.sarif';
@@ -30,7 +31,7 @@ const PACKAGE_DECLARATION = /^\s*package\s+([\w.`]+)/m;
 export function requireKotlinManifest(manifest) {
   if (manifest.kotlin !== true) {
     throw new Error(
-      'The kotlin preset needs a Gradle project that applies org.jetbrains.kotlin.jvm; this one does not',
+      'The kotlin preset needs a project that applies the Kotlin plugin (org.jetbrains.kotlin.jvm for Gradle, kotlin-maven-plugin for Maven); this one does not',
     );
   }
 }
@@ -103,6 +104,7 @@ export function readKotlinFindings(context, crapLimit) {
   const helpers = context.conventions?.['kotlin.assertionHelpers'] ?? [];
   return [
     ...detektFindings(reportRoot, formatAdvice),
+    ...readKotlinNotes(reportRoot),
     ...readSuppressionFindings(projectRoot, kotlinLintedRoots(manifest)),
     ...readCatchLogFindings(projectRoot, kotlinLintedRoots(manifest)),
     ...readTestAssertionFindings(projectRoot, testRoots, helpers),

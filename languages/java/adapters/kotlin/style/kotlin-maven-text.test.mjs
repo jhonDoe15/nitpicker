@@ -1,44 +1,56 @@
 import { describe, expect, it } from 'vitest';
-import { buildText, detectFormatter, ktfmtStyle } from './kotlin-build-text.mjs';
-import { mavenFormatterText } from './kotlin-maven-text.mjs';
+import {
+  declaredKtfmtStyle,
+  detectFormatter,
+  kotlinFilesOf,
+  ktfmtStyle,
+  mavenBuildFacts,
+} from './kotlin-build-text.mjs';
+import { mavenFormatters } from './kotlin-maven-text.mjs';
+
+const SPOTLESS = ['com.diffplug.spotless', 'spotless-maven-plugin'];
+const GANTSIGN = ['com.github.gantsign.maven', 'ktlint-maven-plugin'];
+const EXEC = ['org.codehaus.mojo', 'exec-maven-plugin'];
 
 function pom(plugins, extra = '') {
   return `<project><artifactId>demo</artifactId>${extra}<build><plugins>${plugins}</plugins></build></project>`;
 }
 
-function plugin(artifactId, configuration = '') {
-  return `<plugin><artifactId>${artifactId}</artifactId><configuration>${configuration}</configuration></plugin>`;
+function plugin([groupId, artifactId], configuration = '') {
+  return `<plugin><groupId>${groupId}</groupId><artifactId>${artifactId}</artifactId><configuration>${configuration}</configuration></plugin>`;
 }
 
 function spotlessKotlin(steps, java = '') {
-  return plugin('spotless-maven-plugin', `${java}<kotlin>${steps}</kotlin>`);
+  return plugin(SPOTLESS, `${java}<kotlin>${steps}</kotlin>`);
 }
 
-const FACTS = (text) => ({ build: buildText('/nowhere', text), editorconfig: '' });
+const facts = (text) => kotlinFilesOf('/nowhere', text);
 
 describe('the formatter a Maven build declares', () => {
-  it('is named only by a plugin declaration', () => {
-    expect(mavenFormatterText(pom(plugin('ktlint-maven-plugin')))).toBe('ktlint\n');
-    expect(mavenFormatterText(pom(plugin('ktfmt-maven-plugin', '<style>GOOGLE</style>')))).toBe(
-      'ktfmt\ngoogleStyle',
-    );
+  it('is named only by the coordinates of a known plugin', () => {
+    expect(mavenFormatters(pom(plugin(GANTSIGN)))).toEqual([
+      { formatter: 'ktlint', via: 'plugin' },
+    ]);
+    expect(mavenFormatters(pom(plugin(EXEC, '<executable>ktfmt</executable>')))).toEqual([]);
+    expect(mavenFormatters(pom(plugin(['org.example', 'my-ktlint-helper'])))).toEqual([]);
     expect(
-      mavenFormatterText(pom(plugin('exec-maven-plugin', '<executable>ktlint</executable>'))),
-    ).toBe('ktlint\n');
-    expect(mavenFormatterText(pom(plugin('maven-compiler-plugin')))).toBe('');
+      mavenFormatters(pom(plugin(['org.apache.maven.plugins', 'maven-compiler-plugin']))),
+    ).toEqual([]);
   });
 
   it('reads the ktfmt and ktlint steps of Spotless for Kotlin and ignores the Java steps', () => {
     const java = '<java><googleJavaFormat><style>GOOGLE</style></googleJavaFormat></java>';
 
-    expect(mavenFormatterText(pom(spotlessKotlin('<ktfmt/>', java)))).toBe('ktfmt\n');
+    expect(mavenFormatters(pom(spotlessKotlin('<ktfmt/>', java)))).toEqual([
+      { formatter: 'ktfmt', style: undefined, via: 'spotless' },
+    ]);
     expect(
-      mavenFormatterText(pom(spotlessKotlin('<ktfmt><style>DROPBOX</style></ktfmt>', java))),
-    ).toBe('ktfmt\nkotlinlangStyle');
-    expect(mavenFormatterText(pom(spotlessKotlin('<ktlint/>')))).toBe('ktlint\n');
-    expect(
-      mavenFormatterText(pom(plugin('spotless-maven-plugin', '<java><googleJavaFormat/></java>'))),
-    ).toBe('');
+      mavenFormatters(pom(spotlessKotlin('<ktfmt><style>DROPBOX</style></ktfmt>', java))),
+    ).toEqual([{ formatter: 'ktfmt', style: 'kotlinlang', via: 'spotless' }]);
+    expect(mavenFormatters(pom(spotlessKotlin('<ktlint/>')))).toEqual([
+      { formatter: 'ktlint', style: undefined, via: 'spotless' },
+    ]);
+    expect(mavenFormatters(pom(plugin(SPOTLESS, '<java><googleJavaFormat/></java>')))).toEqual([]);
   });
 
   it('does not mistake a name, a dependency or a comment for a formatter', () => {
@@ -47,15 +59,24 @@ describe('the formatter a Maven build declares', () => {
       '<name>ktlint-rules</name><dependencies><dependency><artifactId>ktfmt</artifactId></dependency></dependencies>',
     );
 
-    expect(mavenFormatterText(named)).toBe('');
-    expect(mavenFormatterText(undefined)).toBe('');
-    expect(mavenFormatterText('<project/>')).toBe('');
+    expect(mavenFormatters(named)).toEqual([]);
+    expect(mavenFormatters(undefined)).toEqual([]);
+    expect(mavenFormatters('<project/>')).toEqual([]);
+  });
+
+  it('reads no declaration from a pom that is not well formed', () => {
+    const broken =
+      '<project><build><plugins><plugin><artifactId>x</plugin></plugins></build></project>';
+
+    expect(mavenFormatters(broken)).toEqual([]);
   });
 
   it('reads every project of an effective POM that lists the whole reactor', () => {
-    const reactor = `<projects>${pom('')}${pom(plugin('ktfmt-maven-plugin'))}</projects>`;
+    const reactor = `<projects>${pom('')}${pom(spotlessKotlin('<ktfmt/>'))}</projects>`;
 
-    expect(mavenFormatterText(reactor)).toBe('ktfmt\n');
+    expect(mavenFormatters(reactor)).toEqual([
+      { formatter: 'ktfmt', style: undefined, via: 'spotless' },
+    ]);
   });
 });
 
@@ -64,14 +85,29 @@ describe('the Kotlin facts of a Maven build', () => {
     const java = '<java><googleJavaFormat><style>GOOGLE</style></googleJavaFormat></java>';
     const ktfmt = pom(spotlessKotlin('<ktfmt><style>KOTLINLANG</style></ktfmt>', java));
 
-    expect(detectFormatter(FACTS(ktfmt))).toBe('ktfmt');
-    expect(ktfmtStyle({ build: FACTS(ktfmt).build, conventions: {} })).toBe('kotlinlang');
-    expect(
-      detectFormatter(FACTS(pom(plugin('ktlint-maven-plugin') + plugin('ktfmt-maven-plugin')))),
-    ).toBe('ktlint');
+    expect(detectFormatter(facts(ktfmt))).toBe('ktfmt');
+    expect(declaredKtfmtStyle(facts(ktfmt))).toBe('kotlinlang');
+    expect(ktfmtStyle({ declared: 'kotlinlang', conventions: {} })).toBe('kotlinlang');
+    expect(detectFormatter(facts(pom(plugin(GANTSIGN) + spotlessKotlin('<ktfmt/>'))))).toBe(
+      'ktlint',
+    );
   });
 
   it('detects no formatter from a project that only carries the word', () => {
-    expect(detectFormatter(FACTS(pom('', '<name>ktlint-rules</name>')))).toBe('none');
+    expect(detectFormatter(facts(pom('', '<name>ktlint-rules</name>')))).toBe('none');
+  });
+
+  it('is handed on as one record that names the build and the declared style', () => {
+    const ktfmt = pom(spotlessKotlin('<ktfmt><style>GOOGLE</style></ktfmt>'));
+
+    expect(mavenBuildFacts(facts(ktfmt))).toEqual({
+      formatter: 'ktfmt',
+      build: 'maven',
+      ktfmtStyle: 'google',
+    });
+    expect(mavenBuildFacts(facts(pom('')), 'ktlint')).toEqual({
+      formatter: 'ktlint',
+      build: 'maven',
+    });
   });
 });

@@ -163,8 +163,9 @@ by field. Per snapshot:
   modules, so a dependency from one module to another counts, and file limits are evaluated once
   over every module's roots, so `exceptions` and `exclude` globs are relative to the project root
   (`languages/java/builds/java-modules.mjs`; both builds share `builds/project-wide.mjs`). Duplicate
-  detection runs per module, so a clone between two modules is not found, as a clone between two
-  source roots is not.
+  detection scans one source root at a time, so a clone between two modules is not found, as a clone
+  between two source roots is not; on Maven the scan runs once from the project root over the roots of
+  all modules, as on Gradle, and its clone findings carry the module-prefixed paths.
 - **Binary.** `NITPICKER_MAVEN` when set; otherwise the project's `mvnw` (`mvnw.cmd` on Windows),
   run with `sh` when not executable; otherwise `mvn` from the PATH. A missing `mvn` is a tool error
   that names these three ways. The JDK tools (`java`, `jar`, `jdeps`) come from `JAVA_HOME` when
@@ -1659,11 +1660,12 @@ the `rule` of a config exception.
 | Spring Data   | `SpringDataDerivedQuery` (every declared repository method has `@Query`; inherited methods such as `findById` and `save` stay legal), `SpringDataNativeQuery` (also `EntityManager.createNativeQuery`), `SpringDataModifyingQuery`, `SpringDataNoSaveInLoop`, `SpringDataBatchOfOne`, `SpringDataRowWriteInLoop`, `SpringDataSaveInLoopHelper`, `SpringDataFilterInQuery`, `SpringQueryConcatenation`, `SpringDataNoFlush`, `SpringDataNamedParameters`, `SpringDataQueryTextBlock`                                                                                                                                                                                                                                                                                                                                                                          |
 | Tests         | `SpringUnusedContext` (test sources only, from `spring-test-ruleset.xml`; see [Review rules](#review-rules))                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 |
 
-**Kotlin.** PMD reads Java sources only, so every rule in this table checks the Java files of a
-project, on Gradle and Maven alike. Kotlin classes, in a kotlin-preset project or in a mixed
-module, get none of these rules for now: not the beans, HTTP-client, CSRF and security rules, not
-the JPA entity rules (`JpaEnumString`, `JpaIdentityHashCode`, `JpaLazyFetching`, ...) and not the
-Spring Data loop and query rules. The Spring configuration file checks
+**Kotlin.** PMD reads Java sources only, so PMD checks the Java files of a project, on Gradle and
+Maven alike. The Kotlin classes of a kotlin-preset project, or of a mixed module, get every rule in
+this table from nitpicker's own Kotlin implementation, which reads the Kotlin syntax tree: the same
+55 rules, with the same names and ids (`pmd/<Rule>`), the same messages in Kotlin terms and the same
+`exceptions` route, so a mixed module needs one entry per rule, not two. What differs for Kotlin is
+listed in the [Kotlin preset](kotlin-preset.md#spring). The Spring configuration file checks
 ([below](#spring-configuration-files)) do not depend on the language and apply to Kotlin projects
 too, and `missing-enable` scans the Kotlin sources.
 
@@ -2257,7 +2259,7 @@ to "exceptions" in nitpicker.config.json.
 
 The Kotlin preset, which runs the same tools on a mixed module's Java files, gets the fix but not
 the exception route: its `exceptions` lift detekt rules, the configuration checks (`spring/<rule>`)
-and the Kotlin Spring rules (`spring/<Rule>`). An `exceptions` entry that names a
+and the Kotlin Spring rules (`pmd/<Rule>`, as for Java). An `exceptions` entry that names a
 Checkstyle check by class (`checkstyle/com.puppycrawl...IndentationCheck`) is a config error that
 gives the name to write instead.
 

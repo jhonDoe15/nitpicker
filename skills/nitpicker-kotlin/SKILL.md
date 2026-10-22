@@ -25,12 +25,14 @@ it with `npx skills add jhonDoe15/nitpicker --skill nitpicker-java`.
    - 0: done.
    - 1: fix every new finding and any tool error listed below them, then rerun.
    - 2: no new findings, but a tool failed. Fix the cause it names (usually a failing test or a
-     Gradle error) and rerun. Exit 2 is never a pass. If it says another run is in progress, wait
+     Gradle or Maven error) and rerun. Exit 2 is never a pass. If it says another run is in progress, wait
      for that run; never kill it.
 4. Never suppress: no `@Suppress` of a detekt or ktlint rule, config `exclude`/`disable`, legacy
    entries, or weakened tests. In Java files the Java rules apply: `@SuppressFBWarnings` and
    `@SuppressWarnings("PMD")` are findings, and a project's own PMD or Checkstyle config is used
-   only when `nitpicker.config.json` opts in under `tools`. If a finding seems wrong, stop and ask.
+   only when `nitpicker.config.json` opts in under `tools`. The one inline marker is
+   `@Suppress("PMD.SpringDataNativeQuery")` on a function that needs native SQL; see
+   [spring.md](spring.md). If a finding seems wrong, stop and ask.
    Never pass `--accept-policy-change` or set `NITPICKER_ACCEPT_POLICY_CHANGE`: a
    `nitpicker-config/policy-loosened` finding is for a person to accept.
 

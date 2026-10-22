@@ -1,6 +1,6 @@
 import { readInside } from '../../../../../shared/conventions/read-inside.mjs';
 import { KOTLIN_INDENTATION } from '../../../conventions/kotlin-conventions.mjs';
-import { mavenFormatterText } from './kotlin-maven-text.mjs';
+import { mavenFormatters } from './kotlin-maven-text.mjs';
 
 export const BUILD_FILES = [
   'build.gradle',
@@ -10,6 +10,7 @@ export const BUILD_FILES = [
   'gradle/libs.versions.toml',
 ];
 export const POM = 'pom.xml';
+const MAVEN = 'maven';
 const EDITORCONFIG = '.editorconfig';
 const SPOTLESS_SCRIPT_BLOCK = 'kotlinGradle';
 const BRACE_DELTA = { '{': 1, '}': -1 };
@@ -48,41 +49,36 @@ function withoutBlocks(text, name) {
   return [...kept, text.slice(from)].join('');
 }
 
-function buildTextOf(texts, pom) {
-  const gradle = withoutBlocks(withoutComments(texts.join('\n')), SPOTLESS_SCRIPT_BLOCK);
-  return `${gradle}\n${mavenFormatterText(pom)}`.toLowerCase();
-}
-
-export function buildText(projectRoot, effectivePom) {
-  return buildTextOf(
-    BUILD_FILES.map((file) => readIfExists(projectRoot, file)),
-    effectivePom ?? readInside(projectRoot, POM, 'utf8'),
-  );
+function gradleText(texts) {
+  return withoutBlocks(withoutComments(texts.join('\n')), SPOTLESS_SCRIPT_BLOCK).toLowerCase();
 }
 
 export function kotlinFilesOf(projectRoot, effectivePom) {
   return {
-    build: buildText(projectRoot, effectivePom),
+    build: gradleText(BUILD_FILES.map((file) => readIfExists(projectRoot, file))),
+    formatters: mavenFormatters(effectivePom),
     editorconfig: readIfExists(projectRoot, EDITORCONFIG),
   };
 }
 
 export function kotlinFilesFromSource(source) {
-  const texts = source.readMany([...BUILD_FILES, POM, EDITORCONFIG]);
+  const texts = source.readMany([...BUILD_FILES, EDITORCONFIG]);
   return {
-    build: buildTextOf(
-      BUILD_FILES.map((file) => texts.get(file) ?? ''),
-      texts.get(POM),
-    ),
+    build: gradleText(BUILD_FILES.map((file) => texts.get(file) ?? '')),
+    formatters: [],
     editorconfig: texts.get(EDITORCONFIG) ?? '',
   };
 }
 
-export function detectFormatter({ build, editorconfig }) {
-  if (build.includes('ktlint')) {
+function names(formatters, formatter) {
+  return formatters.some((declared) => declared.formatter === formatter);
+}
+
+export function detectFormatter({ build, formatters = [], editorconfig }) {
+  if (build.includes('ktlint') || names(formatters, 'ktlint')) {
     return 'ktlint';
   }
-  if (build.includes('ktfmt')) {
+  if (build.includes('ktfmt') || names(formatters, 'ktfmt')) {
     return 'ktfmt';
   }
   return editorconfig.includes('ktlint_') ? 'ktlint' : 'none';
@@ -100,12 +96,16 @@ function namedStyle(build) {
   return NAMED_KTFMT_STYLES.find(([call]) => build.includes(call))?.[1];
 }
 
-export { namedStyle as declaredKtfmtStyle };
+export function declaredKtfmtStyle({ build, formatters = [] }) {
+  return (
+    namedStyle(build) ??
+    formatters.find((declared) => declared.formatter === 'ktfmt' && declared.style)?.style
+  );
+}
 
 export const KTFMT_STYLE_INDENTATION = { kotlinlang: '4', meta: '2', google: '2' };
 
-export function ktfmtStyle({ build, conventions }) {
-  const declared = namedStyle(build);
+export function ktfmtStyle({ declared, conventions }) {
   const followed = conventions[KOTLIN_INDENTATION];
   if (
     declared !== undefined &&
@@ -114,4 +114,17 @@ export function ktfmtStyle({ build, conventions }) {
     return declared;
   }
   return CONVENTION_KTFMT_STYLES[followed] ?? 'meta';
+}
+
+export function mavenBuildFacts(files, configured) {
+  const style = declaredKtfmtStyle(files);
+  return {
+    formatter: configured ?? detectFormatter(files),
+    build: MAVEN,
+    ...(style === undefined ? {} : { ktfmtStyle: style }),
+  };
+}
+
+export function isMavenFacts(facts) {
+  return facts?.build === MAVEN;
 }

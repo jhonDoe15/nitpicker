@@ -5,6 +5,7 @@ import { detektConfigOf, resolveKotlinTools } from '../adapters/kotlin/kotlin-to
 import {
   declaredKtfmtStyle,
   detectFormatter,
+  isMavenFacts,
   kotlinFilesFromSource,
   kotlinFilesOf,
   KTFMT_STYLE_INDENTATION,
@@ -55,9 +56,9 @@ function ktlintChoices(root) {
   });
 }
 
-function ktfmtBuildChoices(build) {
+function ktfmtBuildChoices(declared) {
   return choicesFrom('your build file', {
-    [KOTLIN_INDENTATION]: KTFMT_STYLE_INDENTATION[declaredKtfmtStyle(build)],
+    [KOTLIN_INDENTATION]: KTFMT_STYLE_INDENTATION[declared],
   });
 }
 
@@ -104,7 +105,7 @@ function projectWins(tools, tool) {
   return layers.usesProject && !layers.nitpickerFirst;
 }
 
-function summaryLines({ config, projectRoot }, conventions) {
+function summaryLines({ config, projectRoot, facts }, conventions) {
   try {
     const toolPrecedence = Object.fromEntries(
       Object.entries(config.tools ?? {}).map(([tool, { precedence }]) => [tool, precedence]),
@@ -116,6 +117,7 @@ function summaryLines({ config, projectRoot }, conventions) {
       conventions,
       policyRoot: projectRoot,
       toolPrecedence,
+      facts,
     });
     return kotlinSummary(tools, conventions);
   } catch (error) {
@@ -131,17 +133,38 @@ function formatterFacts(source, projectRoot) {
   return source === undefined ? kotlinFilesOf(projectRoot) : kotlinFilesFromSource(source);
 }
 
-function projectChoices({ tools, configured, formatter, facts }, configRoot) {
+function declaredStyle(facts, buildFacts) {
+  return isMavenFacts(buildFacts) ? buildFacts.ktfmtStyle : declaredKtfmtStyle(facts);
+}
+
+function projectChoices({ tools, configured, formatter, facts, buildFacts }, configRoot) {
   const detektListed =
     projectWins(tools, 'detekt') || (configured !== undefined && tools.detekt === undefined);
   const ktfmtListed = formatter === 'ktfmt' && projectWins(tools, 'ktfmt');
   const ktlintListed = formatter === 'ktlint' && projectWins(tools, 'ktlint');
   const root = detektListed || ktfmtListed || ktlintListed ? configRoot() : undefined;
   return {
-    ...(formatter === 'ktfmt' ? ktfmtBuildChoices(facts.build) : {}),
+    ...(formatter === 'ktfmt' ? ktfmtBuildChoices(declaredStyle(facts, buildFacts)) : {}),
     ...(detektListed ? detektChoices(root, configured) : {}),
     ...(ktfmtListed ? ktfmtChoices(root.path) : {}),
     ...(ktlintListed ? ktlintChoices(root.path) : {}),
+  };
+}
+
+function formatters({ config, projectRoot, source, buildFacts }) {
+  const configured = config.kotlin?.formatter;
+  if (isMavenFacts(buildFacts)) {
+    return {
+      facts: undefined,
+      formatter: buildFacts.formatter,
+      headFormatter: buildFacts.formatter,
+    };
+  }
+  const facts = formatterFacts(source, projectRoot);
+  return {
+    facts,
+    formatter: configured ?? detectFormatter(facts),
+    headFormatter: configured ?? detectFormatter(kotlinFilesOf(projectRoot)),
   };
 }
 
@@ -149,19 +172,25 @@ export function kotlinStyle({
   config,
   projectRoot,
   source,
+  headPolicy,
   configRoot = headConfigRoot(projectRoot),
 }) {
   const configured = config.kotlin?.detektConfig;
-  const facts = formatterFacts(source, projectRoot);
-  const formatter = config.kotlin?.formatter ?? detectFormatter(facts);
-  const headFormatter = config.kotlin?.formatter ?? detectFormatter(kotlinFilesOf(projectRoot));
+  const buildFacts = headPolicy?.kotlin;
+  const found = formatters({ config, projectRoot, source, buildFacts });
   return {
-    unused: unusedByBoth(formatter, headFormatter),
+    unused: unusedByBoth(found.formatter, found.headFormatter),
     project: projectChoices(
-      { tools: config.tools ?? {}, configured, formatter, facts },
+      {
+        tools: config.tools ?? {},
+        configured,
+        formatter: found.formatter,
+        facts: found.facts,
+        buildFacts,
+      },
       configRoot,
     ),
     note: () => undefined,
-    summary: (conventions) => summaryLines({ config, projectRoot }, conventions),
+    summary: (conventions) => summaryLines({ config, projectRoot, facts: buildFacts }, conventions),
   };
 }

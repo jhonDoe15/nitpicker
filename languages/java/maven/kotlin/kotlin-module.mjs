@@ -1,9 +1,9 @@
 import path from 'node:path';
-import { copyJavaClasses } from './kotlin-classes.mjs';
+import { copyJavaClasses } from './java-classes.mjs';
 import { runDetekt } from './tools/kotlin-detekt.mjs';
-import { relativeRoots } from './tools/kotlin-files.mjs';
+import { relativeRoots } from '../module/module-paths.mjs';
 import { runKotlinFormatter } from './tools/kotlin-format.mjs';
-import { runKotlinPsi, runKotlinSyntax } from './tools/kotlin-programs.mjs';
+import { runKotlinPsi } from './tools/kotlin-programs.mjs';
 
 const SERIALIZATION_JAR =
   /^(?:jackson-module-kotlin|kotlinx-serialization-(?:core|json)|moshi-kotlin).*\.jar$/u;
@@ -28,15 +28,7 @@ function kotlinManifest(module, options, classpaths) {
   };
 }
 
-export function analyzeKotlinModule({
-  module,
-  reportDir,
-  tools,
-  classpaths,
-  pinned,
-  options,
-  spring,
-}) {
+export function analyzeKotlinModule({ module, reportDir, tools, classpaths, pinned, options }) {
   if (options === undefined || !isKotlinModule(module)) {
     return { spotbugsModule: module, coverageModule: module, manifest: {} };
   }
@@ -54,9 +46,6 @@ export function analyzeKotlinModule({
   });
   runKotlinFormatter({ module, reportDir, tools, options });
   runKotlinPsi({ module, reportDir, tools, pinned, classes: options.psiClasses });
-  if (spring) {
-    runKotlinSyntax({ module, reportDir, tools, pinned });
-  }
   return {
     spotbugsModule: { ...module, outputDirectory: javaClasses },
     auxClasspath: [...classpaths.mainCompile, module.outputDirectory],

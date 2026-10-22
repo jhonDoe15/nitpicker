@@ -4,7 +4,7 @@ import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import { readPinnedTools } from '../../builds/java-build.mjs';
 import { forbiddenMethodsOf } from '../../adapters/kotlin/detekt/detekt-lists.mjs';
-import { kotlinSetup } from './kotlin-options.mjs';
+import { kotlinSetup } from './kotlin-setup.mjs';
 
 const roots = [];
 const pinned = readPinnedTools();

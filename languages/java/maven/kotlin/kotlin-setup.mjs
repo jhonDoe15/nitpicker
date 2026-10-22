@@ -1,4 +1,5 @@
 import { mkdirSync, writeFileSync } from 'node:fs';
+import { homedir } from 'node:os';
 import path from 'node:path';
 import { kotlinTools } from './tools/kotlin-dependencies.mjs';
 import { isKotlinModule } from './kotlin-module.mjs';
@@ -42,7 +43,7 @@ function detektSettings({ tools, style, configRoot, work }) {
   };
 }
 
-function resolveKotlinOptions({ projectRoot, policy, effectivePom, work }) {
+function resolveKotlinOptions({ projectRoot, policy, effectivePom, work, toolchains }) {
   const conventions = policy.conventions ?? {};
   const tools = resolveKotlinTools(projectRoot, {
     formatter: policy.kotlinFormatter,
@@ -52,10 +53,12 @@ function resolveKotlinOptions({ projectRoot, policy, effectivePom, work }) {
     policyRoot: policy.policyRoot,
     toolPrecedence: policy.toolPrecedence,
     effectivePom,
+    facts: policy.kotlinFacts,
   });
   const style = kotlinStyleFile(tools, conventions) ?? {};
   return {
     projectRoot,
+    toolchains,
     psiClasses: path.join(work, PSI_CLASSES),
     formatter: tools.formatter,
     ktfmtStyle: tools.ktfmtStyle,
@@ -67,7 +70,16 @@ function resolveKotlinOptions({ projectRoot, policy, effectivePom, work }) {
   };
 }
 
-export function kotlinSetup({ projectRoot, policy, modules, effectivePom, work, pinned }) {
+export function kotlinSetup({
+  projectRoot,
+  policy,
+  modules,
+  effectivePom,
+  work,
+  pinned,
+  maven,
+  environment = process.env,
+}) {
   if (policy.preset !== 'kotlin') {
     return NO_KOTLIN;
   }
@@ -76,6 +88,7 @@ export function kotlinSetup({ projectRoot, policy, modules, effectivePom, work, 
       'The kotlin preset needs a Maven project that applies kotlin-maven-plugin; this one does not. Use the java preset for its Java sources',
     );
   }
-  const options = resolveKotlinOptions({ projectRoot, policy, effectivePom, work });
+  const toolchains = { projectRoot, maven, environment, home: homedir() };
+  const options = resolveKotlinOptions({ projectRoot, policy, effectivePom, work, toolchains });
   return { options, extraTools: kotlinTools(pinned, options.formatter) };
 }
