@@ -16,7 +16,3 @@ export function isSuspendContext({ method, methodDescription }) {
 export function unmangled(method) {
   return method.replace(/-[\w]{7}$/, '');
 }
-
-export function outerClass(className) {
-  return className.split('$')[0];
-}

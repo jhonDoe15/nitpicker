@@ -4,9 +4,17 @@ import path from 'node:path';
 import { expect } from 'vitest';
 import { INIT_SCRIPT } from '../../builds/java-build.mjs';
 
-export const pinnedKotlinCompiler = /kotlinCompiler\s*:\s*'([^']+)'/.exec(
-  readFileSync(INIT_SCRIPT, 'utf8'),
-)[1];
+export function pinnedKotlinCompiler() {
+  return /kotlinCompiler\s*:\s*'([^']+)'/.exec(readFileSync(INIT_SCRIPT, 'utf8'))[1];
+}
+
+function insideOf(base, name) {
+  const full = path.resolve(base, name);
+  if (!full.startsWith(base + path.sep)) {
+    throw new Error(`${name} is outside ${base}`);
+  }
+  return full;
+}
 
 const PSI_SOURCES = path.resolve(import.meta.dirname, '../../gradle/kotlin-psi');
 
@@ -42,15 +50,18 @@ export function gradleClasspath({ gradle, project, workspace }) {
   );
   expect(result.status, result.stderr).toBe(0);
   const lines = result.stdout.split('\n');
-  const valueOf = (key) => lines.find((line) => line.startsWith(`${key}=`)).slice(key.length + 1);
+  function valueOf(key) {
+    return lines.find((line) => line.startsWith(`${key}=`)).slice(key.length + 1);
+  }
   return { javaHome: valueOf('JAVA_HOME'), classpath: valueOf('CLASSPATH') };
 }
 
 export function writeSources(workspace, name, files) {
-  const dir = path.join(workspace, name);
+  const dir = insideOf(workspace, name);
   for (const [relative, content] of Object.entries(files)) {
-    mkdirSync(path.dirname(path.join(dir, relative)), { recursive: true });
-    writeFileSync(path.join(dir, relative), content);
+    const file = insideOf(dir, relative);
+    mkdirSync(path.dirname(file), { recursive: true });
+    writeFileSync(file, content);
   }
   return dir;
 }

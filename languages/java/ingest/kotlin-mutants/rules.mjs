@@ -1,11 +1,6 @@
+import { outerClass } from '../class-names.mjs';
 import { generatedAccessor, generatedMember, valueClassMember } from './member-rules.mjs';
-import {
-  isConditional,
-  isReturn,
-  isSuspendContext,
-  outerClass,
-  unmangled,
-} from './mutant-kinds.mjs';
+import { isConditional, isReturn, isSuspendContext, unmangled } from './mutant-kinds.mjs';
 
 const INTRINSICS_CALL = /^removed call to kotlin\/jvm\/internal\/Intrinsics::(\w+)$/;
 const INLINE_MARKER_CALL = /^removed call to kotlin\/jvm\/internal\/InlineMarker::/;

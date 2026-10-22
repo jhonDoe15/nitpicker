@@ -1,5 +1,4 @@
 import { describe, expect, it } from 'vitest';
-import { createGeneratedFilter } from './generated-filter.mjs';
 import {
   FILE,
   boundary,
