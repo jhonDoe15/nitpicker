@@ -3,6 +3,12 @@ import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import { parseAnalyzerReport } from '../../../../core/diff/comparison/finding-schema.mjs';
 import {
+  file as reviewFile,
+  klass as reviewClass,
+  routeOf,
+  wait as reviewWait,
+} from '../kotlin/review-rules/test-support/facts.mjs';
+import {
   readJavaFindings,
   rootReports,
   reportBaseOf,
@@ -78,6 +84,35 @@ describe('readJavaFindings with the kotlin preset: metrics and errors', () => {
     expect(
       findings.filter(({ tool }) => ['structure', 'crap', 'duplicates'].includes(tool)),
     ).toEqual([]);
+  });
+  it('turns the Kotlin review facts into findings with the rules of the Java preset', () => {
+    const root = projectWithKotlinReports();
+    const reports = rootReports(root);
+    const testFile = 'src/test/kotlin/demo/WaitTest.kt';
+    writeFileSync(
+      path.join(reports, 'kotlin-facts.json'),
+      JSON.stringify({
+        files: [
+          reviewFile({
+            file: testFile,
+            test: true,
+            classes: [reviewClass('WaitTest')],
+            waits: [reviewWait('sleep')],
+          }),
+        ],
+      }),
+    );
+
+    const { findings } = readJavaFindings(root, { preset: 'kotlin' });
+    const review = findings.filter(({ tool }) => tool === 'pmd');
+
+    expect(review.map(({ rule, path: file }) => [rule, file])).toEqual([
+      ['FixedSleepInTest', testFile],
+    ]);
+    expect(routeOf(review[0].message)).toBe(
+      'If this is intended, add {"rule":"pmd/FixedSleepInTest","paths":["src/test/kotlin/demo/WaitTest.kt"],"reason":"..."} to "exceptions" in nitpicker.config.json.',
+    );
+    expect(() => parseAnalyzerReport({ findings }, 'kotlin')).not.toThrow();
   });
   it('fails when the project does not apply the Kotlin plugin', () => {
     const root = projectWithKotlinReports({ manifest: { kotlin: undefined } });

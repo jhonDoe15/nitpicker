@@ -88,11 +88,25 @@ describe('withRuleMessage', () => {
     );
   });
 
-  it('offers no exception outside the java preset, whose exceptions cannot lift these tools', () => {
+  it('offers the exception route for a Java source of a Kotlin project, as the Kotlin preset lifts Java rule ids there', () => {
     expect(
       withRuleMessage(finding('pmd', 'SystemPrintln', 'Usage of System.out/err'), {
         preset: 'kotlin',
       }).message,
+    ).toBe(
+      `Usage of System.out/err. ${readCatalog('pmd').SystemPrintln.fix} ${hint('pmd/SystemPrintln')}`,
+    );
+  });
+
+  it('offers no exception for a finding in a Kotlin source', () => {
+    expect(
+      withRuleMessage(
+        {
+          ...finding('pmd', 'SystemPrintln', 'Usage of System.out/err'),
+          path: 'src/main/kotlin/A.kt',
+        },
+        { preset: 'kotlin' },
+      ).message,
     ).toBe(`Usage of System.out/err. ${readCatalog('pmd').SystemPrintln.fix}`);
   });
 
@@ -103,11 +117,11 @@ describe('withRuleMessage', () => {
     ).toBe(`Usage of System.out/err. ${readCatalog('pmd').SystemPrintln.fix}`);
   });
 
-  it('keeps messages that already name the config file, and findings of other tools', () => {
+  it('keeps messages that already end with the route, and findings of other tools', () => {
     const spring = finding(
       'pmd',
       'SpringConstructorInjection',
-      'Inject through the constructor. If it is right here, add an exception for pmd/SpringConstructorInjection in nitpicker.config.json.',
+      `Inject through the constructor. ${hint('pmd/SpringConstructorInjection')}`,
     );
     const pit = finding('pit', 'mutant-survived', 'Survived');
 
