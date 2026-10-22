@@ -23,6 +23,7 @@ const PROJECT_MARKERS = [
   },
 ];
 const SCRIPT_FILE = /\.(?:ts|tsx|mts|cts|js|jsx|mjs|cjs)$/u;
+const TYPESCRIPT_OR_JSX_FILE = /\.(?:ts|tsx|mts|cts|jsx)$/u;
 const KOTLIN_FILE = /\.kts?$/u;
 const JAVA_FILE = /\.java$/u;
 const MINIFIED_FILE = /\.min\.[cm]?js$/u;
@@ -49,7 +50,7 @@ function codeFiles(directory, skippedFolders = SKIPPED_FOLDERS) {
   ].map((file) => path.basename(file));
 }
 
-function detectedPreset(projectRoot) {
+export function detectedPreset(projectRoot) {
   const marker = PROJECT_MARKERS.flatMap(({ preset, label, files }) =>
     files
       .filter((file) => existsSync(pathInside(projectRoot, file) ?? ''))
@@ -61,17 +62,39 @@ function detectedPreset(projectRoot) {
   const files = codeFiles(projectRoot);
   const kotlin = files.filter((name) => KOTLIN_FILE.test(name)).length;
   const java = files.filter((name) => JAVA_FILE.test(name)).length;
-  return kotlin > java ? { ...marker, preset: 'kotlin' } : marker;
+  return { ...marker, preset: kotlin > java ? 'kotlin' : 'java', javaSources: java > 0 };
+}
+
+function projectScripts(config, projectRoot) {
+  const roots = config.layout?.sourceRoots ?? defaultSourceRoots;
+  return roots
+    .flatMap((root) => codeFiles(path.join(projectRoot, root), ASSET_FOLDERS))
+    .filter((name) => SCRIPT_FILE.test(name) && !MINIFIED_FILE.test(name));
+}
+
+export function scriptProjectPreset(config, projectRoot) {
+  const scripts = projectScripts(config, projectRoot);
+  const ownedByOtherPreset =
+    detectedPreset(projectRoot) !== undefined &&
+    !existsSync(path.join(projectRoot, 'package.json'));
+  if (scripts.length === 0 || ownedByOtherPreset) {
+    return undefined;
+  }
+  const typed =
+    existsSync(path.join(projectRoot, 'tsconfig.json')) ||
+    scripts.some((name) => TYPESCRIPT_OR_JSX_FILE.test(name));
+  return typed ? 'typescript' : 'javascript';
 }
 
 export function presetToDeclare(config, projectRoot) {
-  const roots = config.layout?.sourceRoots ?? defaultSourceRoots;
-  const hasScripts = roots.some((root) =>
-    codeFiles(path.join(projectRoot, root), ASSET_FOLDERS).some(
-      (name) => SCRIPT_FILE.test(name) && !MINIFIED_FILE.test(name),
-    ),
-  );
-  return hasScripts ? undefined : detectedPreset(projectRoot);
+  return projectScripts(config, projectRoot).length > 0 ? undefined : detectedPreset(projectRoot);
+}
+
+export function javascriptPresetHint(config, projectRoot) {
+  if (config.preset !== undefined || scriptProjectPreset(config, projectRoot) !== 'javascript') {
+    return undefined;
+  }
+  return 'no "preset" is set, so the TypeScript preset runs, but these sources are JavaScript (no TypeScript files or tsconfig.json). Add "preset": "javascript" to nitpicker.config.json, or run `nitpicker init`.';
 }
 
 export function rejectUndeclaredPreset(config, projectRoot) {
